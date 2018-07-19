@@ -18,21 +18,21 @@ namespace gismo
 //**********************************************
 //************ class gsHalfEdgeMesh ************
 //**********************************************
-struct less_than_ptr
-{
-    bool operator()(gsMesh<>::gsVertexHandle lhs, gsMesh<>::gsVertexHandle rhs)
-    {
-        return ((*lhs) < (*rhs));
-    }
-};
-
-struct equal_ptr
-{
-    bool operator()(gsMesh<>::gsVertexHandle lhs, gsMesh<>::gsVertexHandle rhs)
-    {
-        return ((*lhs) == (*rhs));
-    }
-};
+//struct less_than_ptr
+//{
+//    bool operator()(gsMesh<>::gsVertexHandle lhs, gsMesh<>::gsVertexHandle rhs)
+//    {
+//        return ((*lhs) < (*rhs));
+//    }
+//};
+//
+//struct equal_ptr
+//{
+//    bool operator()(gsMesh<>::gsVertexHandle lhs, gsMesh<>::gsVertexHandle rhs)
+//    {
+//        return ((*lhs) == (*rhs));
+//    }
+//};
 
 //********************************************************************************
 
@@ -271,20 +271,23 @@ bool gsHalfEdgeMesh<T>::isBoundaryVertex(const size_t internVertexIndex) const
 template<class T>
 size_t gsHalfEdgeMesh<T>::getInternVertexIndex(const gsMesh<real_t>::gsVertexHandle &vertex) const
 {
-    //size_t internVertexIndex = 0;
-    for (size_t i = 0; i < this->vertex.size(); i++)
-    {
-        if (*(this->vertex[i]) == *vertex)
-            return i;//internVertexIndex;
-        //internVertexIndex++;
-    }
-    /*if (internVertexIndex > this->vertex.size() - 1)
-    {
-        gsWarn << "[" << __PRETTY_FUNCTION__ << "] The ESS_IO::IO_Vertex 'vertex' = (" << vertex->x()
-                  << ", " << vertex->y() << ", " << vertex->z() << ") is not contained in gsHalfEdgeMesh vertices.\n";
-        return 0;
-    }*/
-    return 0;
+    // if vertex->getId() is same as place in mesh.vertex - what it is after calling cleanStlMesh, then the internal vertex index is the same like the getId,
+    // therefore we can reduce from O(n) to O(1)
+    return vertex->getId();
+//    //size_t internVertexIndex = 0;
+//    for (size_t i = 0; i < this->vertex.size(); i++)
+//    {
+//        if (*(this->vertex[i]) == *vertex)
+//            return i;//internVertexIndex;
+//        //internVertexIndex++;
+//    }
+//    /*if (internVertexIndex > this->vertex.size() - 1)
+//    {
+//        gsWarn << "[" << __PRETTY_FUNCTION__ << "] The ESS_IO::IO_Vertex 'vertex' = (" << vertex->x()
+//                  << ", " << vertex->y() << ", " << vertex->z() << ") is not contained in gsHalfEdgeMesh vertices.\n";
+//        return 0;
+//    }*/
+//    return 0;
 }
 
 template<class T>

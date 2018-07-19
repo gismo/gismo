@@ -257,11 +257,13 @@ void gsMesh<T>::cleanStlMesh()
     // vertices. The old way was more efficient but did not work for
     // non-manifold solids.
 
+    gsDebug << "std::vector<> vertex before cleanStlMesh\n";
     for (int i = 0; i < vertex.size(); ++i)
     {
-        gsDebug << i << ": " << vertex[i] << " " << *vertex[i];
+        gsDebug << i << ": " << vertex[i] << " id: " << vertex[i]->getId() << " " << *vertex[i];
     }
-    
+    gsDebug << "----------------------------------------\n";
+
     // build up the unique map
     std::vector<int> uniquemap;
     uniquemap.reserve(vertex.size());
@@ -309,25 +311,31 @@ void gsMesh<T>::cleanStlMesh()
         gsDebug << "After : " << edge[i].source << " id: " << edge[i].source->getId() << "\n";
     }
 
-    std::set<int> uniqueset(uniquemap.begin(), uniquemap.end());
+    std::set<int> uniqueset(uniquemap.begin(), uniquemap.end());    // O(n*log(n))
     std::vector<VertexHandle> uvertex(uniqueset.size());
     int uvertex_index = 0;
-    for(int i = 0; i < uniquemap.size(); i++) {
-        if(uniqueset.find(i) != uniqueset.end())
+    for(int i = 0; i < uniquemap.size(); i++) {     // O(n)
+        if(uniqueset.find(i) != uniqueset.end())    // O(log(m)), n >> m
+        {
+            // re-number vertices id by new sequence - should we not do?
+            vertex[i]->setId(uvertex_index);
             uvertex[uvertex_index++] = vertex[i];
+        }
         else
         {
             delete vertex[i];
             vertex[i] = nullptr;
         }
-    }
+    }   // O(n*log(n)+O(n)*O(log(m)) ==> O(n*log(n))
     vertex.swap(uvertex);
     numVertices = vertex.size(); // TODO: remove numVertices
 
+    gsDebug << "std::vector<> vertex after cleanStlMesh\n";
     for (int i = 0; i < vertex.size(); ++i)
     {
-        gsDebug << i << ": " << vertex[i] << " " << *vertex[i];
+        gsDebug << i << ": " << vertex[i] << " id: " << vertex[i]->getId() << " " << *vertex[i];
     }
+    gsDebug << "----------------------------------------\n";
 }
 
 
