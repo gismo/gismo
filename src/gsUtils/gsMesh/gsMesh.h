@@ -166,6 +166,9 @@ public:
 
 public:
 
+    // TODO: maybe this should all be protected.
+    // nobody should be able to remove or add somethink to vertex, face and edge vectors without updating num integers.
+
     int numVertices;
     int numEdges;
     int numFaces;

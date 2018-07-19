@@ -40,10 +40,11 @@ template<class T>
 gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<> &mesh, real_t precision)
     : gsMesh<>(mesh), m_precision(precision)
 {
-    std::sort(this->vertex.begin(), this->vertex.end(), less_than_ptr());
-    typename std::vector<gsVertex<T> *, std::allocator<gsVertex<T> *> >::iterator
-    last = std::unique(this->vertex.begin(), this->vertex.end(), equal_ptr());
-gsDebugVar(this->vertex.size());
+    this->cleanStlMesh(); // TODO: move to stl reader
+    //std::sort(this->vertex.begin(), this->vertex.end(), less_than_ptr());
+    //typename std::vector<gsVertex<T> *, std::allocator<gsVertex<T> *> >::iterator
+    //last = std::unique(this->vertex.begin(), this->vertex.end(), equal_ptr());
+
     for (size_t i = 0; i < this->face.size(); i++)
     {
         m_halfedges.push_back(getInternHalfedge(this->face[i], 1));
@@ -51,10 +52,6 @@ gsDebugVar(this->vertex.size());
         m_halfedges.push_back(getInternHalfedge(this->face[i], 3));
     }
 
-    //freeAll(last,this->vertex.end()); // afterwards it fails with invalid read
-    this->vertex.erase(last, this->vertex.end());
-    gsDebugVar(this->vertex.size());
-    this->numVertices = this->vertex.size();
     m_boundary = Boundary(m_halfedges);
     m_n = this->vertex.size() - m_boundary.getNumberOfVertices();
     sortVertices();

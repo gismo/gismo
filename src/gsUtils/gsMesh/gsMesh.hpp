@@ -256,9 +256,15 @@ void gsMesh<T>::cleanStlMesh()
     // sure that the source and target of every edge is one of the chosen
     // vertices. The old way was more efficient but did not work for
     // non-manifold solids.
+
+    for (int i = 0; i < vertex.size(); ++i)
+    {
+        gsDebug << i << ": " << vertex[i] << " " << *vertex[i];
+    }
     
     // build up the unique map
     std::vector<int> uniquemap;
+    uniquemap.reserve(vertex.size());
     for(std::size_t i = 0; i < vertex.size(); i++)
     {
         std::size_t buddy = i;
@@ -272,21 +278,56 @@ void gsMesh<T>::cleanStlMesh()
         }
         uniquemap.push_back(buddy);
     }
-    
+
+    /*for (int i = 0; i < uniquemap.size(); ++i)
+    {
+        gsInfo << uniquemap[i] << ", ";
+    } gsInfo << "\n";*/
+
+    //
     for(std::size_t i = 0; i < face.size(); i++)
     {
-        for(std::size_t j = 0; j < 3; j++)
+        for (std::size_t j = 0; j < 3; j++)
         {
-            face[i]->vertices[j] = vertex[uniquemap[face[i]->vertices[j]->getId()]];
+            gsDebug << "face[" << i << "]->vertices[" << j << "]\n";
+            gsDebug << "Before: " << face[i]->vertices[j] << " id: " << face[i]->vertices[j]->getId() << "\n";
+            face[i]->vertices[j] = vertex[uniquemap[face[i]->vertices[j]->getId()]]; // getid is updated!
+            gsDebug << "After:  " << face[i]->vertices[j] << " id: " << face[i]->vertices[j]->getId() << "\n";
         }
     }
-    
+
     for(std::size_t i = 0; i < edge.size(); i++)
     {
+        gsDebug << "edge[" << i << "]->source\n";
+        gsDebug << "Before: " << edge[i].source << " id: " << edge[i].source->getId() << "\n";
         edge[i].source = vertex[uniquemap[edge[i].source->getId()]];
+        gsDebug << "After : " << edge[i].source << " id: " << edge[i].source->getId() << "\n";
+
+        gsDebug << "edge[" << i << "]->target\n";
+        gsDebug << "Before: " << edge[i].source << " id: " << edge[i].source->getId() << "\n";
         edge[i].target = vertex[uniquemap[edge[i].target->getId()]];
+        gsDebug << "After : " << edge[i].source << " id: " << edge[i].source->getId() << "\n";
     }
 
+    std::set<int> uniqueset(uniquemap.begin(), uniquemap.end());
+    std::vector<VertexHandle> uvertex(uniqueset.size());
+    int uvertex_index = 0;
+    for(int i = 0; i < uniquemap.size(); i++) {
+        if(uniqueset.find(i) != uniqueset.end())
+            uvertex[uvertex_index++] = vertex[i];
+        else
+        {
+            delete vertex[i];
+            vertex[i] = nullptr;
+        }
+    }
+    vertex.swap(uvertex);
+    numVertices = vertex.size(); // TODO: remove numVertices
+
+    for (int i = 0; i < vertex.size(); ++i)
+    {
+        gsDebug << i << ": " << vertex[i] << " " << *vertex[i];
+    }
 }
 
 
