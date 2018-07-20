@@ -318,7 +318,7 @@ SUITE(gsOptionList_test)
         myList.addInt("Size", "", 3);
         myList = myList.wrapIntoGroup("VEC");
 
-        std::vector<size_t> vec = myList.getMultiInt("VEC");
+        std::vector<int> vec = myList.getMultiInt("VEC");
 
         CHECK_EQUAL((size_t)3, vec.size());
         for (size_t i = 0; i < vec.size(); ++i) {
@@ -332,18 +332,18 @@ SUITE(gsOptionList_test)
     TEST(addMultiInt)
     {
         gsOptionList myList1, myList2;
-        size_t data[] = {5, 7, 4};
+        int data[] = {5, 7, 4};
         myList1.addInt("0", "", 5);
         myList1.addInt("1", "", 7);
         myList1.addInt("2", "", 4);
         myList1.addInt("Size", "", 3);
         myList1 = myList1.wrapIntoGroup("VEC");
 
-        std::vector<size_t> vec(data, data + sizeof(data)/ sizeof(size_t));
+        std::vector<int> vec(data, data + sizeof(data)/ sizeof(int));
         myList2.addMultiInt("VEC", "", vec);
 
-        std::vector<size_t> vec1 = myList1.getMultiInt("VEC");
-        std::vector<size_t> vec2 = myList2.getMultiInt("VEC");
+        std::vector<int> vec1 = myList1.getMultiInt("VEC");
+        std::vector<int> vec2 = myList2.getMultiInt("VEC");
 
         CHECK_EQUAL((size_t)3, vec.size());
         CHECK_EQUAL((size_t)3, vec1.size());
