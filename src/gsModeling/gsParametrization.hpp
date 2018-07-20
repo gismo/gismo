@@ -22,7 +22,7 @@ bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const siz
 {
     for (std::vector<int>::const_iterator it = corners.begin(); it != corners.end(); it++)
     {
-        if (*it < minimum || *it > maximum)
+        if ((size_t)*it < minimum || (size_t)*it > maximum)
         { return false; }
     }
     return true;
@@ -42,12 +42,12 @@ real_t findLengthOfPositionPart(const size_t position,
                   << numberOfPositions << ".\n";
     size_t numberOfBounds = bounds.size();
     size_t s = lengths.size();
-    if (position > bounds[numberOfBounds - 1] || position <= bounds[0])
+    if (position > (size_t)bounds[numberOfBounds - 1] || position <= (size_t)bounds[0])
         return lengths[s - 1];
     for (size_t i = 0; i < numberOfBounds; i++)
     {
-        if (position - bounds[0] + 1 > bounds[i] - bounds[0] + 1
-            && position - bounds[0] + 1 <= bounds[(i + 1) % numberOfBounds] - bounds[0] + 1)
+        if (position - (size_t)bounds[0] + 1 > (size_t)bounds[i] - (size_t)bounds[0] + 1
+            && position - (size_t)bounds[0] + 1 <= (size_t)bounds[(i + 1) % numberOfBounds] - (size_t)bounds[0] + 1)
             return lengths[i];
     }
     return 0;
@@ -241,7 +241,7 @@ gsMesh<> gsParametrization<T>::createFlatMesh()
     for (size_t i = 0; i < m_mesh.getNumberOfTriangles(); i++)
     {
         typename gsMesh<T>::VertexHandle v[3];
-        for (int j = 1; j <= 3; ++j)
+        for (size_t j = 1; j <= 3; ++j)
         {
             v[j-1] = mesh.addVertex(getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[0],
                                     getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[1]);
@@ -477,7 +477,7 @@ void gsParametrization<T>::Neighbourhood::searchAreas(const real_t range, std::v
     for(size_t i=0; i<h.size(); i++)
     {
         walkAlong += h[(corners[0]+i-1)%h.size()];
-        for(int j = 2; j>=0; j--)
+        for(size_t j = 2; j>=0; j--)
         {
             if(std::abs(walkAlong-midpoints[j]) <= l*range)
             {
@@ -492,10 +492,10 @@ void gsParametrization<T>::Neighbourhood::searchAreas(const real_t range, std::v
     bool smaller = false;
     for(size_t i=0; i<areas[0].size(); i++)
     {
-        if(areas[0][i].second > corners[0] || areas[0][i].second < corners[0])
+        if(areas[0][i].second > (size_t)corners[0] || areas[0][i].second < (size_t)corners[0])
         {
             corners.push_back(areas[0][i].second);
-            if(areas[0][i].second < corners[0])
+            if(areas[0][i].second < (size_t)corners[0])
             {
                 smaller = true;
             }
@@ -506,16 +506,16 @@ void gsParametrization<T>::Neighbourhood::searchAreas(const real_t range, std::v
     {
         if(smaller)
         {
-            if(areas[1][i].second > corners[1] && areas[1][i].second < corners[0])
+            if(areas[1][i].second > (size_t)corners[1] && areas[1][i].second < (size_t)corners[0])
             {
                 corners.push_back(areas[1][i].second);
                 break;
             }
         }
-        else if(areas[1][i].second > corners[1] || areas[1][i].second < corners[0])
+        else if(areas[1][i].second > (size_t)corners[1] || areas[1][i].second < (size_t)corners[0])
         {
             corners.push_back(areas[1][i].second);
-            if(areas[1][i].second < corners[0])
+            if(areas[1][i].second < (size_t)corners[0])
             {
                 smaller = true;
             }
@@ -526,13 +526,13 @@ void gsParametrization<T>::Neighbourhood::searchAreas(const real_t range, std::v
     {
         if(smaller)
         {
-            if(areas[2][i].second > corners[2] && areas[2][i].second < corners[0])
+            if(areas[2][i].second > (size_t)corners[2] && areas[2][i].second < (size_t)corners[0])
             {
                 corners.push_back(areas[2][i].second);
                 break;
             }
         }
-        else if(areas[2][i].second > corners[2] || areas[2][i].second < corners[0])
+        else if(areas[2][i].second > (size_t)corners[2] || areas[2][i].second < (size_t)corners[0])
         {
             corners.push_back(areas[2][i].second);
             break;

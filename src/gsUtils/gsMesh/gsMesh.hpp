@@ -97,11 +97,11 @@ gsMesh<T>::gsMesh(const gsBasis<T> & basis, int n)
 
 
         // add edges to the mesh (connect points)
-        for (std::size_t index = 0; index != neighbour.size(); index++)
+        for (size_t index = 0; index != neighbour.size(); index++)
         {
             const std::vector<unsigned> & v = neighbour[index];
 
-            for (std::size_t ngh = 0; ngh != v.size(); ngh++)
+            for (size_t ngh = 0; ngh != v.size(); ngh++)
             {
                 // add more vertices (n) for better physical resolution
                 addLine( map[index], map[v[ngh]], n );
@@ -258,7 +258,7 @@ void gsMesh<T>::cleanStlMesh()
     // non-manifold solids.
 
     gsDebug << "std::vector<> vertex before cleanStlMesh\n";
-    for (int i = 0; i < vertex.size(); ++i)
+    for (size_t i = 0; i < vertex.size(); ++i)
     {
         gsDebug << i << ": " << vertex[i] << " id: " << vertex[i]->getId() << " " << *vertex[i];
     }
@@ -267,10 +267,10 @@ void gsMesh<T>::cleanStlMesh()
     // build up the unique map
     std::vector<int> uniquemap;
     uniquemap.reserve(vertex.size());
-    for(std::size_t i = 0; i < vertex.size(); i++)
+    for(size_t i = 0; i < vertex.size(); i++)
     {
-        std::size_t buddy = i;
-        for(std::size_t j = 0; j < i; j++)
+        size_t buddy = i;
+        for(size_t j = 0; j < i; j++)
         {
             if(*(vertex[i]) == *(vertex[j])) // overload compares coords
             {
@@ -281,15 +281,15 @@ void gsMesh<T>::cleanStlMesh()
         uniquemap.push_back(buddy);
     }
 
-    /*for (int i = 0; i < uniquemap.size(); ++i)
+    /*for (size_t i = 0; i < uniquemap.size(); ++i)
     {
         gsInfo << uniquemap[i] << ", ";
     } gsInfo << "\n";*/
 
     //
-    for(std::size_t i = 0; i < face.size(); i++)
+    for(size_t i = 0; i < face.size(); i++)
     {
-        for (std::size_t j = 0; j < 3; j++)
+        for (size_t j = 0; j < 3; j++)
         {
             gsDebug << "face[" << i << "]->vertices[" << j << "]\n";
             gsDebug << "Before: " << face[i]->vertices[j] << " id: " << face[i]->vertices[j]->getId() << "\n";
@@ -298,7 +298,7 @@ void gsMesh<T>::cleanStlMesh()
         }
     }
 
-    for(std::size_t i = 0; i < edge.size(); i++)
+    for(size_t i = 0; i < edge.size(); i++)
     {
         gsDebug << "edge[" << i << "]->source\n";
         gsDebug << "Before: " << edge[i].source << " id: " << edge[i].source->getId() << "\n";
@@ -314,7 +314,7 @@ void gsMesh<T>::cleanStlMesh()
     std::set<int> uniqueset(uniquemap.begin(), uniquemap.end());    // O(n*log(n))
     std::vector<VertexHandle> uvertex(uniqueset.size());
     int uvertex_index = 0;
-    for(int i = 0; i < uniquemap.size(); i++) {     // O(n)
+    for(size_t i = 0; i < uniquemap.size(); i++) {     // O(n)
         if(uniqueset.find(i) != uniqueset.end())    // O(log(m)), n >> m
         {
             // re-number vertices id by new sequence - should we not do?
@@ -331,7 +331,7 @@ void gsMesh<T>::cleanStlMesh()
     numVertices = vertex.size(); // TODO: remove numVertices
 
     gsDebug << "std::vector<> vertex after cleanStlMesh\n";
-    for (int i = 0; i < vertex.size(); ++i)
+    for (size_t i = 0; i < vertex.size(); ++i)
     {
         gsDebug << i << ": " << vertex[i] << " id: " << vertex[i]->getId() << " " << *vertex[i];
     }

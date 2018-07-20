@@ -60,7 +60,8 @@ void writeSingleBasisMesh3D(const gsMesh<T> & sl,
     file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
     for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertex.begin(); it!=sl.vertex.end(); ++it)
     {
-        file << (*it)->operator[](0) << " " << (*it)->operator[](1) << " " << (*it)->operator[](2) << " \n";
+        const gsVertex<T>& vertex = **it;
+        file << vertex[0] << " " << vertex[1] << " " << vertex[2] << " \n";
     }
     file << "\n";
     file <<"</DataArray>\n";

@@ -124,7 +124,7 @@ bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const siz
 {
     for (std::vector<int>::const_iterator it = corners.begin(); it != corners.end(); it++)
     {
-        if (*it < minimum || *it > maximum)
+        if ((size_t)*it < minimum || (size_t)*it > maximum)
         { return false; }
     }
     return true;
