@@ -240,12 +240,13 @@ gsMesh<> gsParametrization<T>::createFlatMesh()
     gsMesh<> mesh;
     for (size_t i = 0; i < m_mesh.getNumberOfTriangles(); i++)
     {
+        typename gsMesh<T>::VertexHandle v[3];
         for (int j = 1; j <= 3; ++j)
         {
-            mesh.addVertex(getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[0],
-                           getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[1], 0);
+            v[j-1] = mesh.addVertex(getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[0],
+                                    getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[1]);
         }
-        mesh.addFace(i * 3, i * 3 + 1, i * 3 + 2);
+        mesh.addFace(v[0], v[1], v[2]);
     }
     return mesh;
 }

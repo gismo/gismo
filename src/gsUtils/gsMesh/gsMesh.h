@@ -49,10 +49,31 @@ public:
 
     gsMesh(const gsMesh<T> & mesh) : MeshElement(), numVertices(mesh.numVertices), numEdges(mesh.numEdges), numFaces(mesh.numFaces)
     {
-        cloneAll(mesh.vertex, vertex);
+        // Assert a already cleared gsMesh (getId
+        cloneAll(mesh.vertex, vertex);  // fine, new pointers for all vertices
+
+        // copy all pointers to it's original counterpart in face
         cloneAll(mesh.face, face);
+        for (int i = 0; i < mesh.face.size(); ++i)
+        {
+            for (int j = 0; j < 3; ++j)
+            {
+                GISMO_ASSERT(vertex[mesh.face[i]->vertices[j]->getId()]->getId() == mesh.face[i]->vertices[j]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and face don't match");
+                face[i]->vertices[j] = vertex[mesh.face[i]->vertices[j]->getId()];
+            }
+        }
+
         // iterate over all edges and make them new
         edge = mesh.edge;
+        for (int i = 0; i < mesh.edge.size(); ++i)
+        {
+            GISMO_ASSERT(mesh.edge[i].source->getId() == vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.source don't match");
+            edge[i].source = vertex[mesh.edge[i].source->getId()];
+
+            GISMO_ASSERT(mesh.edge[i].source->getId() == vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.target don't match");
+            edge[i].target = vertex[mesh.edge[i].target->getId()];
+        }
+
         //addEdge()
     }
 
