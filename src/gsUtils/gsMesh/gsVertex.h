@@ -73,12 +73,12 @@ public:
     { faces.push_back( f ); }
 
 
-    inline T   x () const { return this->operator()(0); }
-    inline T   y () const { return this->operator()(1); }
-    inline T   z () const { return this->operator()(2); }
-    inline T & x () { return this->operator()(0); }
-    inline T & y () { return this->operator()(1); }
-    inline T & z () { return this->operator()(2); }
+    inline T   x () const { return (*this)(0); }
+    inline T   y () const { return (*this)(1); }
+    inline T   z () const { return (*this)(2); }
+    inline T & x () { return (*this)(0); }
+    inline T & y () { return (*this)(1); }
+    inline T & z () { return (*this)(2); }
 
     std::ostream &print(std::ostream &os) const
     {

@@ -147,10 +147,14 @@ void writeSingleBasisMesh2D(const gsMesh<T> & sl,
     for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertex.begin(); it!=sl.vertex.end(); it+=4)
     {
         // order is important!
-        file << (*it)->operator[](0) << " " << (*it)->operator[](1) << " " << (*it)->operator[](2) << " \n";
-        file << (*(it+1))->operator[](0) << " " << (*(it+1))->operator[](1) << " " << (*(it+1))->operator[](2) << " \n";
-        file << (*(it+3))->operator[](0) << " " << (*(it+3))->operator[](1) << " " << (*(it+3))->operator[](2) << " \n";
-        file << (*(it+2))->operator[](0) << " " << (*(it+2))->operator[](1) << " " << (*(it+2))->operator[](2) << " \n";
+        const gsVertex<T>& vertex0 = **it;
+        const gsVertex<T>& vertex1 = **(it+1);
+        const gsVertex<T>& vertex3 = **(it+3);
+        const gsVertex<T>& vertex2 = **(it+2);
+        file << vertex0[0] << " " << vertex0[1] << " " << vertex0[2] << " \n";
+        file << vertex1[0] << " " << vertex1[1] << " " << vertex1[2] << " \n";
+        file << vertex3[0] << " " << vertex3[1] << " " << vertex3[2] << " \n";
+        file << vertex2[0] << " " << vertex2[1] << " " << vertex2[2] << " \n";
     }
     file << "\n";
     file <<"</DataArray>\n";
@@ -253,7 +257,7 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
         // Lift vertices at anchor positions
         for ( int i = 0; i!= msh.numVertices; ++i)
         {
-            msh.vertex[i]->operator[](d) = msh.vertex[i]->operator[](0);
+            (*msh.vertex[i])[d] = (*msh.vertex[i])[0];
             msh.vertex[i]->topRows(d) = anch.col(i);
         }
     }
@@ -1410,9 +1414,10 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd)
     file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
     for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertex.begin(); it!=sl.vertex.end(); ++it)
     {
-        file << (*it)->operator[](0) << " ";
-        file << (*it)->operator[](1) << " ";
-        file << (*it)->operator[](2) << " \n";
+        const gsVertex<T>& vertex = **it;
+        file << vertex[0] << " ";
+        file << vertex[1] << " ";
+        file << vertex[2] << " \n";
     }
     
     file << "\n";

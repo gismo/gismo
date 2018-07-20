@@ -182,7 +182,7 @@ public:
 
     /** \brief reorders the vertices of all faces of an .stl mesh, such that only 1 vertex is used instead of #(adjacent triangles) vertices
      */
-    void cleanStlMesh();
+    gsMesh& cleanStlMesh();
 
 
 public:

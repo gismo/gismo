@@ -247,7 +247,7 @@ std::ostream &gsMesh<T>::print(std::ostream &os) const
 
 
 template <class T>
-void gsMesh<T>::cleanStlMesh()
+gsMesh<T>& gsMesh<T>::cleanStlMesh()
 {
     gsWarn<<"Cleaning the stl mesh..."<<"\n";
     
@@ -336,6 +336,8 @@ void gsMesh<T>::cleanStlMesh()
         gsDebug << i << ": " << vertex[i] << " id: " << vertex[i]->getId() << " " << *vertex[i];
     }
     gsDebug << "----------------------------------------\n";
+
+    return *this;
 }
 
 

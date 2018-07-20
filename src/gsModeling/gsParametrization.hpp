@@ -248,7 +248,7 @@ gsMesh<> gsParametrization<T>::createFlatMesh()
         }
         mesh.addFace(v[0], v[1], v[2]);
     }
-    return mesh;
+    return mesh.cleanStlMesh();
 }
 
 template<class T>
@@ -477,7 +477,7 @@ void gsParametrization<T>::Neighbourhood::searchAreas(const real_t range, std::v
     for(size_t i=0; i<h.size(); i++)
     {
         walkAlong += h[(corners[0]+i-1)%h.size()];
-        for(size_t j = 2; j>=0; j--)
+        for(int j = 2; j>=0; j--)
         {
             if(std::abs(walkAlong-midpoints[j]) <= l*range)
             {
