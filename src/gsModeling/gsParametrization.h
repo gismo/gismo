@@ -167,11 +167,11 @@ public:
          *
          * @param[in] meshInfo gsHalfEdgeMesh object
          * @param[in] localNeighbourhood #local neighbourhood stores the needed information about the neighbours
-         * @param[in] parametrizationMethod #method used for parametrization, one can choose between uniform, shape, distance
+         * @param[in] parametrizationMethod #method used for parametrization, one can choose between 1:shape, 2:uniform, 3:distance
          * */
         LocalParametrization(const gsHalfEdgeMesh<T> &meshInfo,
                              const LocalNeighbourhood &localNeighbourhood,
-                             const size_t parametrizationMethod = "uniform");
+                             const size_t parametrizationMethod = 2);
 
         /**
          * @brief Get lambdas
