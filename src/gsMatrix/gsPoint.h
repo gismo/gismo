@@ -32,8 +32,8 @@ public:
 
     //gsPoint(const gsPoint<dim, T>& point) : gsVector<T,dim>(), m_vertexIndex(point.m_vertexIndex) { *this << point[0], point[1]; }
 
-    gsPoint(T x, T y, size_t index) : gsVector<T, dim>(), m_vertexIndex(index) { *this << x, y; }
-    gsPoint(T x, T y, T z, size_t index) : gsVector<T, dim>(), m_vertexIndex(index) { *this << x, y, z; }
+    gsPoint(T x, T y, size_t index) : gsVector<T, 2>(), m_vertexIndex(index) { *this << x, y; }
+    gsPoint(T x, T y, T z, size_t index) : gsVector<T, 3>(), m_vertexIndex(index) { *this << x, y, z; }
 
     inline int getVertexIndex() const { return m_vertexIndex; }
 
