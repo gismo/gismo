@@ -72,7 +72,7 @@ public:
         real_t d2 = m_direction[0] * p[1] - m_direction[1] * p[0];
         size_t i1 = d1 > 0 ? 2 : d1 < 0 ? 1 : 0;
         size_t i2 = d2 > 0 ? 2 : d2 < 0 ? 1 : 0;
-        return  i1 ^ i2;
+        return  (i1 ^ i2)!=0;
     }
 
     const gsVector<T, dim> & direction() const { return m_direction; }
