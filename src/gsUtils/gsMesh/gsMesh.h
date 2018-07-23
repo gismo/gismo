@@ -190,6 +190,9 @@ public:
     // TODO: maybe this should all be protected.
     // nobody should be able to remove or add somethink to vertex, face and edge vectors without updating num integers.
 
+    //size_t numVertices() { return vertex.size(); }
+    //size_t numEdges() { return edge.size(); }
+    //size_t numFaces() { return face.size(); }
     int numVertices;
     int numEdges;
     int numFaces;

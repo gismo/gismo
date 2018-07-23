@@ -98,7 +98,7 @@ size_t gsHalfEdgeMesh<T>::getVertexIndex(const gsMesh<>::gsVertexHandle &vertex)
 template<class T>
 size_t gsHalfEdgeMesh<T>::getGlobalVertexIndex(size_t localVertexIndex, size_t triangleIndex) const
 {
-    return m_inverseSorting[getInternVertexIndex(this->face[triangleIndex]->vertices[localVertexIndex-1])];
+    return m_inverseSorting[this->face[triangleIndex]->vertices[localVertexIndex-1]->getId()];
 }
 
 template<class T>
@@ -121,8 +121,7 @@ bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const siz
 template<class T>
 std::vector<real_t> gsHalfEdgeMesh<T>::getCornerLengths(std::vector<int> &corners) const
 {
-    size_t B = getNumberOfBoundaryVertices();
-    GISMO_ASSERT(rangeCheck<T>(corners, 1, B), "The corners must be <= number of boundary vertices.");
+    GISMO_ASSERT(rangeCheck<T>(corners, 1, getNumberOfBoundaryVertices()), "The corners must be <= number of boundary vertices.");
 
     std::sort(corners.begin(), corners.end());
     size_t s = corners.size();
@@ -247,7 +246,7 @@ bool gsHalfEdgeMesh<T>::isBoundaryVertex(const size_t internVertexIndex) const
         return m_boundary.isVertexContained(internVertexIndex);
 }
 
-template<class T>
+/*template<class T>
 size_t gsHalfEdgeMesh<T>::getInternVertexIndex(const gsMesh<real_t>::gsVertexHandle &vertex) const
 {
     // if vertex->getId() is same as place in mesh.vertex - what it is after calling cleanStlMesh, then the internal vertex index is the same like the getId,
@@ -261,15 +260,15 @@ size_t gsHalfEdgeMesh<T>::getInternVertexIndex(const gsMesh<real_t>::gsVertexHan
 //        //internVertexIndex++;
 //    }
 //    return 0;
-}
+}*/
 
 template<class T>
 const typename gsHalfEdgeMesh<T>::Halfedge
 gsHalfEdgeMesh<T>::getInternHalfedge(const gsMesh<real_t>::gsFaceHandle &triangle, size_t numberOfHalfedge) const
 {
-    size_t index1 = getInternVertexIndex((triangle->vertices[0]));
-    size_t index2 = getInternVertexIndex((triangle->vertices[1]));
-    size_t index3 = getInternVertexIndex((triangle->vertices[2]));
+    size_t index1 = triangle->vertices[0]->getId();
+    size_t index2 = triangle->vertices[1]->getId();
+    size_t index3 = triangle->vertices[2]->getId();
     if (numberOfHalfedge < 1 || numberOfHalfedge > 3)
     {
         gsWarn << "gsHalfEdgeMesh::getInternHalfedge: The inputted number of the halfedge " << numberOfHalfedge

@@ -22,7 +22,7 @@ template<int dim, class T>
 class gsLineSegment
 {
 public:
-    gsLineSegment() {}
+    //gsLineSegment() {}
     gsLineSegment(const gsPoint<dim, T>& point1, const gsPoint<dim, T>& point2) : m_point(point1),
         m_direction((point2 - point1)) { }
 

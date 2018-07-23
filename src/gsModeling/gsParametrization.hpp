@@ -417,7 +417,7 @@ const gsPoint2D gsParametrization<T>::Neighbourhood::findPointOnBoundary(const r
         return gsPoint2D(1-w+2,1, vertexIndex);
     else if(3<w && w<=4)
         return gsPoint2D(0,1-w+3, vertexIndex);
-    return gsPoint2D();
+    return gsPoint2D(0,0,0);
 }
 
 //*****************************************************************************************************
@@ -624,13 +624,12 @@ void gsParametrization<T>::LocalParametrization::calculateLambdas(const size_t N
     gsPoint2D p(0, 0, 0);
     size_t d = points.size();
     std::vector<real_t> my(d, 0);
-    gsLineSegment2D actualLine;
     size_t l=1;
     size_t steps = 0;
     //size_t checkOption = 0;
     for(std::vector<gsPoint2D>::const_iterator it=points.begin(); it != points.end(); it++)
     {
-        actualLine = gsLineSegment2D(p, *it);
+        gsLineSegment2D actualLine(p, *it);
         for(size_t i=1; i < d-1; i++)
         {
             if(l+i == d)
