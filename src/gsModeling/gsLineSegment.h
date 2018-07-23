@@ -67,11 +67,11 @@ public:
          */
 
         gsVector<T, 2> p = origin - m_point;
-        double d1 = m_direction[0] * p[1] - m_direction[1] * p[0];
+        real_t d1 = m_direction[0] * p[1] - m_direction[1] * p[0];
         p = (end - m_point);
-        double d2 = m_direction[0] * p[1] - m_direction[1] * p[0];
-        int i1 = d1 > 0 ? 2 : d1 < 0 ? 1 : 0;
-        int i2 = d2 > 0 ? 2 : d2 < 0 ? 1 : 0;
+        real_t d2 = m_direction[0] * p[1] - m_direction[1] * p[0];
+        size_t i1 = d1 > 0 ? 2 : d1 < 0 ? 1 : 0;
+        size_t i2 = d2 > 0 ? 2 : d2 < 0 ? 1 : 0;
         return  i1 ^ i2;
     }
 
