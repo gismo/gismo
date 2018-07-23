@@ -60,13 +60,24 @@ int main(int argc, char *argv[])
     gsOptionList ol = cmd.getOptionList();
 
     gsFileData<> fd(ol.getString("filenameIn"));
+    gsInfo << "reading input into gsMesh<real_t>::uPtr\n";
     gsMesh<real_t>::uPtr mm = fd.getFirst<gsMesh<real_t> >();
 
+    gsInfo << "creating gsParametrization<real_t>\n";
     gsParametrization<real_t> pm(*mm);
-    pm.setOptions(ol).compute();
 
+    gsInfo << "setOptions\n";
+    pm.setOptions(ol);
+
+    gsInfo << "compute\n";
+    pm.compute();
+
+    gsInfo << "createFlatMesh\n";
     gsMesh<> mesh = pm.createFlatMesh();
+
+    gsInfo << "createUVmatrix\n";
     gsMatrix<> uv = pm.createUVmatrix();
+    gsInfo << "createXYZmatrix\n";
     gsMatrix<> xyz = pm.createXYZmatrix();
 
     gsInfo << mesh << "\n";
