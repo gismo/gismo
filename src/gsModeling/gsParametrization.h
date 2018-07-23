@@ -370,6 +370,13 @@ private:
                    const real_t rangeInput,
                    const size_t numberInput);
 
+    real_t findLengthOfPositionPart(const size_t position,
+                                    const size_t numberOfPositions,
+                                    const std::vector<int> &bounds,
+                                    const std::vector<real_t> &lengths);
+
+    bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const size_t maximum);
+
     gsHalfEdgeMesh<T> m_mesh; ///< mesh information
     std::vector<gsPoint2D> m_parameterPoints; ///< parameter points
     gsOptionList m_options;

@@ -90,8 +90,7 @@ public:
         Halfedge(const size_t origin, const size_t end, const real_t length)
         {
             if (length < 0)
-                gsWarn << "[" << __PRETTY_FUNCTION__
-                          << "] Origin and end must be indices > 0 and length should be positiv or 0. One of the values is not correct:"
+                gsWarn << "Halfedge: Origin and end must be indices > 0 and length should be positiv or 0. One of the values is not correct:"
                           << std::endl << "origin: " << origin << std::endl << "end: " << end << std::endl
                           << "length: "
                           << length;

@@ -18,7 +18,8 @@
 namespace gismo
 {
 
-bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const size_t maximum)
+template<class T>
+bool gsParametrization<T>::rangeCheck(const std::vector<int> &corners, const size_t minimum, const size_t maximum)
 {
     for (std::vector<int>::const_iterator it = corners.begin(); it != corners.end(); it++)
     {
@@ -26,31 +27,6 @@ bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const siz
         { return false; }
     }
     return true;
-}
-
-real_t findLengthOfPositionPart(const size_t position,
-                                const size_t numberOfPositions,
-                                const std::vector<int> &bounds,
-                                const std::vector<real_t> &lengths)
-{
-    if (position < 1 || position > numberOfPositions)
-        gsInfo << "Error: [" << __PRETTY_FUNCTION__ << "] The position " << position
-                  << " is not a valid input. There are only " << numberOfPositions << " possible positions.\n";
-    if (!rangeCheck(bounds, 1, numberOfPositions))
-        gsInfo << "Error: [" << __PRETTY_FUNCTION__
-                  << "] The bounds are not a valid input. They have to be out of the possible positions, which only are "
-                  << numberOfPositions << ".\n";
-    size_t numberOfBounds = bounds.size();
-    size_t s = lengths.size();
-    if (position > (size_t)bounds[numberOfBounds - 1] || position <= (size_t)bounds[0])
-        return lengths[s - 1];
-    for (size_t i = 0; i < numberOfBounds; i++)
-    {
-        if (position - (size_t)bounds[0] + 1 > (size_t)bounds[i] - (size_t)bounds[0] + 1
-            && position - (size_t)bounds[0] + 1 <= (size_t)bounds[(i + 1) % numberOfBounds] - (size_t)bounds[0] + 1)
-            return lengths[i];
-    }
-    return 0;
 }
 
 template<class T>
@@ -80,18 +56,8 @@ void gsParametrization<T>::calculate(const size_t boundaryMethod,
                                      const real_t rangeInput,
                                      const size_t numberInput)
 {
-    if (boundaryMethod != 1 && boundaryMethod != 2 && boundaryMethod != 3
-        && boundaryMethod != 5 && boundaryMethod != 4 && boundaryMethod != 6)
-    {
-        gsInfo << "Error: [" << __PRETTY_FUNCTION__ << "] The boundary method " << boundaryMethod << " is not valid.\n";
-        gsInfo << "Boundary method can be chosen out of 'chords', 'corners', 'smallest', 'opposite' and 'restrict'.\n";
-    }
-    if (paraMethod != 2 && paraMethod != 1 && paraMethod != 3)
-    {
-        gsInfo << "Error: [" << __PRETTY_FUNCTION__ << "] The parametrization method " << paraMethod
-                  << " is not valid.\n";
-        gsInfo << "gsParametrization method can be chosen out of 'uniform', 'shape' and 'distance'.\n";
-    }
+    GISMO_ASSERT(boundaryMethod >= 1 && boundaryMethod <= 6, "The boundary method " << boundaryMethod << " is not valid.");
+    GISMO_ASSERT(paraMethod >= 1 && paraMethod <= 3, "The parametrization method " << paraMethod << " is not valid.");
     size_t n = m_mesh.getNumberOfInnerVertices();
     size_t N = m_mesh.getNumberOfVertices();
     size_t B = m_mesh.getNumberOfBoundaryVertices();
@@ -270,6 +236,29 @@ gsParametrization<T>& gsParametrization<T>::compute()
     return *this;
 }
 
+template<class T>
+real_t gsParametrization<T>::findLengthOfPositionPart(const size_t position,
+                                const size_t numberOfPositions,
+                                const std::vector<int> &bounds,
+                                const std::vector<real_t> &lengths)
+{
+    GISMO_ASSERT(1 <= position && position <= numberOfPositions, "The position " << position
+        << " is not a valid input. There are only " << numberOfPositions << " possible positions.");
+    GISMO_ASSERT(rangeCheck(bounds, 1, numberOfPositions), "The bounds are not a valid input. They have to be out of the possible positions, which only are "
+        << numberOfPositions << ". ");
+    size_t numberOfBounds = bounds.size();
+    size_t s = lengths.size();
+    if (position > (size_t)bounds[numberOfBounds - 1] || position <= (size_t)bounds[0])
+        return lengths[s - 1];
+    for (size_t i = 0; i < numberOfBounds; i++)
+    {
+        if (position - (size_t)bounds[0] + 1 > (size_t)bounds[i] - (size_t)bounds[0] + 1
+            && position - (size_t)bounds[0] + 1 <= (size_t)bounds[(i + 1) % numberOfBounds] - (size_t)bounds[0] + 1)
+            return lengths[i];
+    }
+    return 0;
+}
+
 //******************************************************************************************
 //******************************* nested class Neighbourhood *******************************
 //******************************************************************************************
@@ -419,9 +408,8 @@ const std::vector<int> gsParametrization<T>::Neighbourhood::getBoundaryCorners(c
 template<class T>
 const gsPoint2D gsParametrization<T>::Neighbourhood::findPointOnBoundary(const real_t w, size_t vertexIndex)
 {
-    if(w < 0 || w > 4)
-        gsInfo << "Error: [" << __PRETTY_FUNCTION__ << "] wrong value for w\n";
-    else if(0 <= w && w <=1)
+    GISMO_ASSERT(0 <= w && w <= 4, "Wrong value for w.");
+    if(0 <= w && w <=1)
         return gsPoint2D(w,0, vertexIndex);
     else if(1<w && w<=2)
         return gsPoint2D(1,w-1, vertexIndex);
@@ -694,48 +682,56 @@ void gsParametrization<T>::LocalParametrization::calculateLambdas(const size_t N
 template<class T>
 gsParametrization<T>::LocalNeighbourhood::LocalNeighbourhood(const gsHalfEdgeMesh<T>& meshInfo, const size_t vertexIndex, const bool innerVertex)
 {
-    if((innerVertex && vertexIndex > meshInfo.getNumberOfInnerVertices()) || vertexIndex < 1)
-        gsInfo << "Error: [" << __PRETTY_FUNCTION__ << "] Vertex with index " << vertexIndex << " does either not exist (< 1) or is not an inner vertex (> " << meshInfo.getNumberOfInnerVertices() << ").\n";
-    else
+    GISMO_ASSERT(!((innerVertex && vertexIndex > meshInfo.getNumberOfInnerVertices()) || vertexIndex < 1),
+                 "Vertex with index " << vertexIndex << " does either not exist (< 1) or is not an inner vertex (> "
+                                      << meshInfo.getNumberOfInnerVertices() << ").");
+
+    m_vertexIndex = vertexIndex;
+    std::queue<typename gsHalfEdgeMesh<T>::Halfedge>
+        allHalfedges = meshInfo.getOppositeHalfedges(m_vertexIndex, innerVertex);
+    std::queue<typename gsHalfEdgeMesh<T>::Halfedge> nonFittingHalfedges;
+    m_neighbours.appendNextHalfedge(allHalfedges.front());
+    m_angles.push_back((*meshInfo.getVertex(allHalfedges.front().getOrigin()) - *meshInfo.getVertex(m_vertexIndex))
+                           .angle((*meshInfo.getVertex(allHalfedges.front().getEnd())
+                               - *meshInfo.getVertex(vertexIndex))));
+    m_neighbourDistances.push_back(allHalfedges.front().getLength());
+    allHalfedges.pop();
+    while (!allHalfedges.empty())
     {
-        m_vertexIndex = vertexIndex;
-        std::queue<typename gsHalfEdgeMesh<T>::Halfedge> allHalfedges = meshInfo.getOppositeHalfedges(m_vertexIndex, innerVertex);
-        std::queue<typename gsHalfEdgeMesh<T>::Halfedge> nonFittingHalfedges;
-        m_neighbours.appendNextHalfedge(allHalfedges.front());
-        m_angles.push_back((*meshInfo.getVertex(allHalfedges.front().getOrigin()) - *meshInfo.getVertex(m_vertexIndex)).angle((*meshInfo.getVertex(allHalfedges.front().getEnd()) - *meshInfo.getVertex(vertexIndex))));
-        m_neighbourDistances.push_back(allHalfedges.front().getLength());
-        allHalfedges.pop();
-        while(!allHalfedges.empty())
+        if (m_neighbours.isAppendableAsNext(allHalfedges.front()))
         {
-            if(m_neighbours.isAppendableAsNext(allHalfedges.front()))
+            m_neighbours.appendNextHalfedge(allHalfedges.front());
+            m_angles
+                .push_back((*meshInfo.getVertex(allHalfedges.front().getOrigin()) - *meshInfo.getVertex(m_vertexIndex))
+                               .angle((*meshInfo.getVertex(allHalfedges.front().getEnd())
+                                   - *meshInfo.getVertex(m_vertexIndex))));
+            m_neighbourDistances.push_back(allHalfedges.front().getLength());
+            allHalfedges.pop();
+            while (!nonFittingHalfedges.empty())
             {
-                m_neighbours.appendNextHalfedge(allHalfedges.front());
-                m_angles.push_back((*meshInfo.getVertex(allHalfedges.front().getOrigin()) - *meshInfo.getVertex(m_vertexIndex)).angle( (*meshInfo.getVertex(allHalfedges.front().getEnd())-*meshInfo.getVertex(m_vertexIndex))));
-                m_neighbourDistances.push_back(allHalfedges.front().getLength());
-                allHalfedges.pop();
-                while(!nonFittingHalfedges.empty())
-                {
-                    allHalfedges.push(nonFittingHalfedges.front());
-                    nonFittingHalfedges.pop();
-                }
+                allHalfedges.push(nonFittingHalfedges.front());
+                nonFittingHalfedges.pop();
             }
-            else if(m_neighbours.isAppendableAsPrev(allHalfedges.front()))
+        }
+        else if (m_neighbours.isAppendableAsPrev(allHalfedges.front()))
+        {
+            m_neighbours.appendPrevHalfedge(allHalfedges.front());
+            m_angles
+                .push_front((*meshInfo.getVertex(allHalfedges.front().getOrigin()) - *meshInfo.getVertex(m_vertexIndex))
+                                .angle((*meshInfo.getVertex(allHalfedges.front().getEnd())
+                                    - *meshInfo.getVertex(m_vertexIndex))));
+            m_neighbourDistances.push_back(allHalfedges.front().getLength());
+            allHalfedges.pop();
+            while (!nonFittingHalfedges.empty())
             {
-                m_neighbours.appendPrevHalfedge(allHalfedges.front());
-                m_angles.push_front((*meshInfo.getVertex(allHalfedges.front().getOrigin())-*meshInfo.getVertex(m_vertexIndex)).angle( (*meshInfo.getVertex(allHalfedges.front().getEnd())-*meshInfo.getVertex(m_vertexIndex))));
-                m_neighbourDistances.push_back(allHalfedges.front().getLength());
-                allHalfedges.pop();
-                while(!nonFittingHalfedges.empty())
-                {
-                    allHalfedges.push(nonFittingHalfedges.front());
-                    nonFittingHalfedges.pop();
-                }
+                allHalfedges.push(nonFittingHalfedges.front());
+                nonFittingHalfedges.pop();
             }
-            else
-            {
-                nonFittingHalfedges.push(allHalfedges.front());
-                allHalfedges.pop();
-            }
+        }
+        else
+        {
+            nonFittingHalfedges.push(allHalfedges.front());
+            allHalfedges.pop();
         }
     }
 }
