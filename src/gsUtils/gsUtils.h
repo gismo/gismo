@@ -18,6 +18,7 @@
 
 #include <gsCore/gsExport.h>
 #include <gsCore/gsDebug.h>
+#include <gsCore/gsMemory.h>
 
 #ifdef __GNUC__ 
 #include <cxxabi.h>
