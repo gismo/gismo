@@ -92,7 +92,8 @@ for:
     CTEST_OUTPUT_ON_FAILURE: 1
     matrix:
     - BUILD: msvc2015
-      configuration: Release
+      #configuration: Release
+      configuration: Debug
       generator: "Visual Studio 14 2015"
 
 ####################
