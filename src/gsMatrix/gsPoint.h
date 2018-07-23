@@ -28,7 +28,7 @@ class gsPoint : public gsVector<T, dim>
 public:
     typedef T Scalar_t;
 
-    gsPoint() : gsVector<T, dim>(), m_vertexIndex((size_t)0) {}
+    //gsPoint() : gsVector<T, dim>(), m_vertexIndex((size_t)0) {}
 
     //gsPoint(const gsPoint<dim, T>& point) : gsVector<T,dim>(), m_vertexIndex(point.m_vertexIndex) { *this << point[0], point[1]; }
 
