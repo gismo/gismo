@@ -64,7 +64,7 @@ before_build:
 
 build_script:
   #- cmd: if (%BUILD%=="mingw") (mingw32-make -j4) else (msbuild /m:4 /p:Configuration=%configuration% /verbosity:minimal C:\projects\build-gismo\gismo.sln /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll")
-  - cmd: ctest --output-on-failure -j5 -C %configuration% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-V
+  - cmd: ctest --output-on-failure -j5 -C %configuration% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit -V
 
 #build:
 #  project: C:\projects\build-gismo\gismo.sln
@@ -109,7 +109,7 @@ for:
     #BOOST_LIBRARYDIR: c:\Libraries\boost\stage\lib
     matrix:
     - BUILD: msvc2015
-      configuration: Release
+      configuration: Debug
       generator: "Visual Studio 14 2015"
 
     - BUILD: msvc2015
