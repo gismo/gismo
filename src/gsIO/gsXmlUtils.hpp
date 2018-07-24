@@ -294,7 +294,7 @@ public:
                 gsGetInt(str, face[j]);
             m->addFace(face);
         }
-        m->cleanStlMesh();
+        m->cleanMesh();
         return m;
     }
 

@@ -40,7 +40,7 @@ template<class T>
 gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<> &mesh, real_t precision)
     : gsMesh<>(mesh), m_precision(precision)
 {
-    //this->cleanStlMesh(); // TODO: move to stl reader
+    //this->cleanMesh(); // TODO: move to stl reader
     //std::sort(this->vertex.begin(), this->vertex.end(), less_than_ptr());
     //typename std::vector<gsVertex<T> *, std::allocator<gsVertex<T> *> >::iterator
     //last = std::unique(this->vertex.begin(), this->vertex.end(), equal_ptr());
@@ -249,7 +249,7 @@ bool gsHalfEdgeMesh<T>::isBoundaryVertex(const size_t internVertexIndex) const
 /*template<class T>
 size_t gsHalfEdgeMesh<T>::getInternVertexIndex(const gsMesh<real_t>::gsVertexHandle &vertex) const
 {
-    // if vertex->getId() is same as place in mesh.vertex - what it is after calling cleanStlMesh, then the internal vertex index is the same like the getId,
+    // if vertex->getId() is same as place in mesh.vertex - what it is after calling cleanMesh, then the internal vertex index is the same like the getId,
     // therefore we can reduce from O(n) to O(1)
     return vertex->getId();
 //    //size_t internVertexIndex = 0;

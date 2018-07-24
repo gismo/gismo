@@ -214,7 +214,7 @@ gsMesh<> gsParametrization<T>::createFlatMesh()
         }
         mesh.addFace(v[0], v[1], v[2]);
     }
-    return mesh.cleanStlMesh();
+    return mesh.cleanMesh();
 }
 
 template<class T>

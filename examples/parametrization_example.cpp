@@ -17,6 +17,7 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
+    gsInfo << "parametrization_example\n";
     bool paraview = false;
     int parametrizationMethod(1); // 1:shape, 2:uniform, 3:distance
     // shape: best method, shape of the mesh is preserved, smooth surface fitting
@@ -57,9 +58,12 @@ int main(int argc, char *argv[])
     cmd.addSwitch("","plot","Plot with paraview",paraview);
     cmd.getValues(argc, argv);
 
+    gsInfo << "gsOptionList\n";
     gsOptionList ol = cmd.getOptionList();
 
+    gsInfo << "gsFileData\n";
     gsFileData<> fd(ol.getString("filenameIn"));
+    
     gsInfo << "reading input into gsMesh<real_t>::uPtr\n";
     gsMesh<real_t>::uPtr mm = fd.getFirst<gsMesh<real_t> >();
 

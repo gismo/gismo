@@ -1419,7 +1419,7 @@ void gsTriMeshToSolid<T>::getPatchData(T angle, T innerAngle,T patchAreaWeight,T
     
     // compute the features
     this->getFeatures(angle, non_manifold, warning_borders);
-    this->mesh->cleanStlMesh();
+    this->mesh->cleanMesh();
 
     // read features from a file, if required
     std::vector<gsEdge<T> > featEdges;

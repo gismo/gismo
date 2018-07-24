@@ -247,9 +247,9 @@ std::ostream &gsMesh<T>::print(std::ostream &os) const
 
 
 template <class T>
-gsMesh<T>& gsMesh<T>::cleanStlMesh()
+gsMesh<T>& gsMesh<T>::cleanMesh()
 {
-    gsWarn<<"Cleaning the stl mesh..."<<"\n";
+    gsDebug << "Cleaning the gsMesh\n";
     
     // This function looks for duplicated vertex coordinates. For each
     // vector, it chooses a unique vertex having that vector, then makes
@@ -257,7 +257,7 @@ gsMesh<T>& gsMesh<T>::cleanStlMesh()
     // vertices. The old way was more efficient but did not work for
     // non-manifold solids.
 
-    /*gsDebug << "std::vector<> vertex before cleanStlMesh\n";
+    /*gsDebug << "std::vector<> vertex before cleanMesh\n";
     for (size_t i = 0; i < vertex.size(); ++i)
     {
         gsDebug << i << ": " << vertex[i] << " id: " << vertex[i]->getId() << " " << *vertex[i];
@@ -330,7 +330,7 @@ gsMesh<T>& gsMesh<T>::cleanStlMesh()
     vertex.swap(uvertex);
     numVertices = vertex.size(); // TODO: remove numVertices
 
-    /*gsDebug << "std::vector<> vertex after cleanStlMesh\n";
+    /*gsDebug << "std::vector<> vertex after cleanMesh\n";
     for (size_t i = 0; i < vertex.size(); ++i)
     {
         gsDebug << i << ": " << vertex[i] << " id: " << vertex[i]->getId() << " " << *vertex[i];
