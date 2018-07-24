@@ -220,6 +220,18 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // Copy the result for output (FIXME: this should be avoided)
             plhs[0] = createPointerFromMatrix<unsigned>(vals);
 
+      } else if (!strcmp(cmd,"uniformRefine")) {
+
+            // ----------------------------------------------------------------------
+            // uniformRefine(numKnots, mult)
+
+            gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis<__DIM__> >(prhs[1]);
+            // Copy the input (FIXME: this should be avoided)
+            mwIndex numKnots = (mwIndex) mxGetScalar(prhs[2]);
+            mwIndex mult = (mwIndex) mxGetScalar(prhs[3]);
+
+            instance->uniformRefine(numKnots, mult);
+
         } else {
 
             // ----------------------------------------------------------------------

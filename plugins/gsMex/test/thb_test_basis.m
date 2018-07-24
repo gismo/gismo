@@ -16,7 +16,7 @@ hbs2 = gsTHBSplineBasis(knots_2build);
 fprintf('Dimension of the parameter space 1: %d\n',hbs.dim);        % rdim in geopdes
 fprintf('Dimension of the parameter space 2: %d\n',hbs2.dim);
 fprintf('Number of elements 1: %d\n',hbs.numElements);              % nel in geopdes
-fprintf('Number of elements 2: %d\n',hbs2.numElements); 
+fprintf('Number of elements 2: %d\n',hbs2.numElements);
 fprintf('Nb of degrees of freedom of the basis 1: %d\n',hbs.size);  % ndof in geopdes
 fprintf('Nb of degrees of freedom of the basis 2: %d\n',hbs2.size);
 fprintf('The tree 1 has %d nodes.\n',hbs.treeSize);
@@ -88,5 +88,9 @@ act2 = hbs2.active([pt2,pt2]);
 fprintf('Active functions 2 at point:\n')
 disp(act2)
 
-
-
+% Uniformily refine the basis
+fprintf('Knots at level 1, direction 1 before refinement:\n')
+disp(hbs.knots(1,1))
+hbs.uniformRefine(1,1);
+fprintf('Knots at level1, direction 1 after refinement:\n')
+disp(hbs.knots(1,1))

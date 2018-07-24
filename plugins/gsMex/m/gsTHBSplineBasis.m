@@ -419,5 +419,31 @@ classdef gsTHBSplineBasis < handle
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('active', this.objectHandle, varargin{:});
         end
 
+        % uniformRefine - call class method
+        function [varargout] = uniformRefine(this, varargin)
+            %uniformRefine - proceed to a uniformRefinement of a gsTHBSplineBasis object
+            %
+            %Usage:
+            %  thb.uniformRefine(numKnots, mult)
+            %
+            %Input:
+            %  thb: gsTHBSplineBasis, [1 x 1].
+            %    The gsTHBSplineBasis object.
+            %  numKnots: int, number of new knots inserted on each knot span.
+            %  mult: int, each knot is inserted with a multiplicity mult.
+            %
+            %Output:
+            %  None - changes done inline.
+
+            if (nargin~=3 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
+            if (~isa(varargin{1},'numeric') || ~(floor(varargin{1})==varargin{1}) || ~(varargin{1}>0) ||...
+                ~isa(varargin{2},'numeric') || ~(floor(varargin{2})==varargin{2}) || ~(varargin{2}>0))
+                error('Input argument no. 1 and 2 must stricly positive integers.')
+            end
+            mex_gsTHBSplineBasis('uniformRefine', this.objectHandle, varargin{:});
+        end
+
     end
 end
