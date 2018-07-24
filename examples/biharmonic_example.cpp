@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     cmd.addInt("r", "refine", "Number of refinement steps", numRefine);
     cmd.addInt("p", "degree", "Polynomial degree", numDegree);
     cmd.addSwitch( "plot", "Plot result in ParaView format", plot );
-    cmd.getValues(argc,argv);
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     dirichlet::strategy dirStrategy = dirichlet::elimination;
     iFace::strategy intStrategy = iFace::glue;

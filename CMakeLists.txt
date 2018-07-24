@@ -40,7 +40,7 @@ endif()
 
 set(gismo_VERSION_MAJOR "0")
 set(gismo_VERSION_MINOR "8")
-set(gismo_VERSION_PATCH "3")
+set(gismo_VERSION_PATCH "4")
 set(gismo_VERSION
   "${gismo_VERSION_MAJOR}.${gismo_VERSION_MINOR}.${gismo_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
   
@@ -152,36 +152,12 @@ if(GISMO_WITH_CODIPACK)
   include_directories(${CODIPACK_INCLUDE_DIR})
 endif(GISMO_WITH_CODIPACK)
 
-#include_directories(${METIS_INCLUDE_DIR})
-#set(gismo_LINKER ${gismo_LINKER} ${METIS_LIBRARIES}
-#    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
-
-if(GISMO_WITH_PSOLID)
-  add_subdirectory(extensions/gsParasolid)
-endif(GISMO_WITH_PSOLID)
-
-if(GISMO_WITH_ONURBS)
-  add_subdirectory(extensions/gsOpennurbs)
-endif(GISMO_WITH_ONURBS)
-
 if(GISMO_WITH_FDBB)
   add_subdirectory(extensions/gsFdbb)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${FDBB_INCLUDE_DIR}
   CACHE INTERNAL "${PROJECT_NAME} include directories")
   include_directories(${FDBB_INCLUDE_DIR})
 endif(GISMO_WITH_FDBB)
-
-if(GISMO_WITH_SPECTRA)
-  add_subdirectory(extensions/gsSpectra)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SPECTRA_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  include_directories(${SPECTRA_INCLUDE_DIR})
-endif(GISMO_WITH_SPECTRA)
-
-#if (GISMO_WITH_VTK)
-#  add_subdirectory(extensions/gsVtk)
-#  add_definitions(-DGISMO_WITH_VTK="${GISMO_WITH_VTK}")
-#endif(GISMO_WITH_VTK)
 
 if(GISMO_WITH_IPOPT)
   add_subdirectory(extensions/gsIpopt)
@@ -190,12 +166,69 @@ if(GISMO_WITH_IPOPT)
   #include_directories(${IPOPT_INCLUDE_DIR})
 endif(GISMO_WITH_IPOPT)
 
+#if(GISMO_WITH_METIS)
+#include_directories(${METIS_INCLUDE_DIR})
+#set(gismo_LINKER ${gismo_LINKER} ${METIS_LIBRARIES}
+#    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+#endif(GISMO_WITH_METIS)
+
+if(GISMO_WITH_MPI)
+  find_package(MPI REQUIRED)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MPI_INCLUDE_PATH}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  set(gismo_LINKER ${gismo_LINKER} ${MPI_CXX_LIBRARIES}
+  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  include_directories(SYSTEM ${MPI_INCLUDE_PATH})
+endif(GISMO_WITH_MPI)
+
+if(GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
+  find_package(GMP QUIET)
+  find_package(MPFR QUIET)
+
+  if (NOT GMP_FOUND OR NOT MPFR_FOUND)
+    add_subdirectory(extensions/gsMultiPrecision)
+  endif()
+
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GMP_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  set(gismo_LINKER ${gismo_LINKER} ${GMP_LIBRARY} ${GMPXX_LIBRARY}
+  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  include_directories(SYSTEM ${GMP_INCLUDE_DIR})
+
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MPFR_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  set(gismo_LINKER ${gismo_LINKER} ${MPFR_LIBRARY}
+  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  include_directories(SYSTEM ${MPFR_INCLUDE_DIR})
+endif()
+
+if(GISMO_WITH_ONURBS)
+  add_subdirectory(extensions/gsOpennurbs)
+endif(GISMO_WITH_ONURBS)
+
+if(GISMO_WITH_PARDISO)
+endif(GISMO_WITH_PARDISO)
+
+if(GISMO_WITH_PASTIX)
+endif(GISMO_WITH_PASTIX)
+
+if(GISMO_WITH_PSOLID)
+  add_subdirectory(extensions/gsParasolid)
+endif(GISMO_WITH_PSOLID)
+
+if(GISMO_WITH_SPECTRA)
+  add_subdirectory(extensions/gsSpectra)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SPECTRA_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  include_directories(${SPECTRA_INCLUDE_DIR})
+endif(GISMO_WITH_SPECTRA)
+
 if(GISMO_WITH_SUPERLU)
   find_package(SuperLU REQUIRED)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SUPERLU_INCLUDES}
   CACHE INTERNAL "${PROJECT_NAME} include directories")
   set(gismo_LINKER ${gismo_LINKER} ${SUPERLU_LIBRARIES}
-    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
   include_directories(SYSTEM ${SUPERLU_INCLUDES})
 endif(GISMO_WITH_SUPERLU)
 
@@ -204,7 +237,7 @@ if(GISMO_WITH_TAUCS)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TAUCS_INCLUDES}
   CACHE INTERNAL "${PROJECT_NAME} include directories")
   set(gismo_LINKER ${gismo_LINKER} ${TAUCS_LIBRARIES}
-    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
   include_directories(SYSTEM ${SUPERLU_INCLUDES})
 endif(GISMO_WITH_TAUCS)
 
@@ -213,25 +246,21 @@ if(GISMO_WITH_UMFPACK)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${UMFPACK_INCLUDES}
   CACHE INTERNAL "${PROJECT_NAME} include directories")
   set(gismo_LINKER ${gismo_LINKER} ${UMFPACK_LIBRARIES}
-    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
   include_directories(SYSTEM ${UMFPACK_INCLUDES})
 endif(GISMO_WITH_UMFPACK)
 
-#if(GISMO_WITH_METIS)
-
-if(GISMO_WITH_MPI)
-  find_package(MPI REQUIRED)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MPI_INCLUDE_PATH}
+if(GISMO_WITH_UNUM)
+  add_subdirectory(extensions/gsUnum)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${UNUM_INCLUDE_DIR}
   CACHE INTERNAL "${PROJECT_NAME} include directories")
-  set(gismo_LINKER ${gismo_LINKER} ${MPI_CXX_LIBRARIES}
-    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
-  include_directories(SYSTEM ${MPI_INCLUDE_PATH})
-endif(GISMO_WITH_MPI)
+  include_directories(${UNUM_INCLUDE_DIR})
+endif(GISMO_WITH_UNUM)
 
 if(GISMO_WITH_TRILINOS)
   add_subdirectory(extensions/gsTrilinos)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TRILINOS_INCLUDE_DIR} 
-    CACHE INTERNAL "${PROJECT_NAME} include directories") 
+  CACHE INTERNAL "${PROJECT_NAME} include directories") 
   include_directories(${TRILINOS_INCLUDE_DIR})
 endif(GISMO_WITH_TRILINOS)
 
@@ -273,14 +302,17 @@ if(GISMO_BUILD_AXL)
   add_subdirectory(plugins/gsAxel)
 endif(GISMO_BUILD_AXL)
 
-if(GISMO_BUILD_RHINOPLUGINS)
-  add_subdirectory(plugins/RhinoTHBSplines)
-endif(GISMO_BUILD_RHINOPLUGINS)
-
 if(GISMO_BUILD_MEX)
   add_subdirectory(plugins/gsMex)
 endif(GISMO_BUILD_MEX)
 
+if(GISMO_BUILD_PVIEW)
+  add_subdirectory(plugins/gsParaview)
+endif(GISMO_BUILD_PVIEW)
+
+if(GISMO_BUILD_RHINOPLUGINS)
+  add_subdirectory(plugins/RhinoTHBSplines)
+endif(GISMO_BUILD_RHINOPLUGINS)
 
 ## #################################################################
 ## Install

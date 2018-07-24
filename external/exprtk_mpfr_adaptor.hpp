@@ -23,38 +23,7 @@
 #include <string>
 #include <mpreal.h>
 
-
-namespace exprtk
-{
-   namespace details
-   {
-      namespace numeric { namespace details
-      {
-         struct mpfrreal_type_tag;
-
-         template <typename T> inline T const_pi_impl(mpfrreal_type_tag);
-         template <typename T> inline T const_e_impl (mpfrreal_type_tag);
-      }}
-
-      inline bool is_true (const mpfr::mpreal& v);
-      inline bool is_false(const mpfr::mpreal& v);
-
-      template <typename Iterator>
-      inline bool string_to_real(Iterator& itr_external, const Iterator end, mpfr::mpreal& t, numeric::details::mpfrreal_type_tag);
-
-   }
-
-   namespace rtl { namespace io
-   {
-      namespace details
-      {
-         inline void print_type(const std::string&, const mpfr::mpreal& v, exprtk::details::numeric::details::mpfrreal_type_tag);
-      }
-   }}
-
-   using details::is_true;
-}
-
+#include "exprtk_mpfr_forward.hpp"
 #include "exprtk.hpp"
 
 namespace exprtk
@@ -62,7 +31,7 @@ namespace exprtk
    namespace details
    {
 
-      namespace constant
+      namespace constant_mpfr
       {
          static const mp_prec_t  mpfr_precision = 128;
          static const mp_rnd_t   mpfr_round     = mpfr::mpreal::get_default_rnd();
@@ -144,16 +113,16 @@ namespace exprtk
             template <typename T> inline T   cot_impl(const T& v, mpfrreal_type_tag) { return mpfr::cot  (v); }
             template <typename T> inline T   sec_impl(const T& v, mpfrreal_type_tag) { return mpfr::sec  (v); }
             template <typename T> inline T   csc_impl(const T& v, mpfrreal_type_tag) { return mpfr::csc  (v); }
-            template <typename T> inline T   r2d_impl(const T& v, mpfrreal_type_tag) { return (v  * exprtk::details::constant::_180_pi); }
-            template <typename T> inline T   d2r_impl(const T& v, mpfrreal_type_tag) { return (v  * exprtk::details::constant::pi_180 ); }
+            template <typename T> inline T   r2d_impl(const T& v, mpfrreal_type_tag) { return (v  * exprtk::details::constant_mpfr::_180_pi); }
+            template <typename T> inline T   d2r_impl(const T& v, mpfrreal_type_tag) { return (v  * exprtk::details::constant_mpfr::pi_180 ); }
             template <typename T> inline T   d2g_impl(const T& v, mpfrreal_type_tag) { return (v  * mpfr::mpreal(20.0/9.0)); }
             template <typename T> inline T   g2d_impl(const T& v, mpfrreal_type_tag) { return (v  * mpfr::mpreal(9.0/20.0)); }
             template <typename T> inline T  notl_impl(const T& v, mpfrreal_type_tag) { return (v != mpfr::mpreal(0) ? mpfr::mpreal(0) : mpfr::mpreal(1)); }
             template <typename T> inline T  frac_impl(const T& v, mpfrreal_type_tag) { return mpfr::frac (v); }
             template <typename T> inline T trunc_impl(const T& v, mpfrreal_type_tag) { return mpfr::trunc(v); }
 
-            template <typename T> inline T const_pi_impl(mpfrreal_type_tag) { return mpfr::const_pi   (1024, exprtk::details::constant::mpfr_round); }
-            template <typename T> inline T const_e_impl (mpfrreal_type_tag) { return mpfr::const_euler(1024, exprtk::details::constant::mpfr_round); }
+            template <typename T> inline T const_pi_impl(mpfrreal_type_tag) { return mpfr::const_pi   (1024, exprtk::details::constant_mpfr::mpfr_round); }
+            template <typename T> inline T const_e_impl (mpfrreal_type_tag) { return mpfr::const_euler(1024, exprtk::details::constant_mpfr::mpfr_round); }
 
             inline bool is_true_impl (const mpfr::mpreal& v)
             {
@@ -224,7 +193,7 @@ namespace exprtk
             {
                T cnd = T(0.5) * (T(1) + erf_impl(
                                            mpfr::abs(v) /
-                                           T(constant::sqrt2),mpfrreal_type_tag()));
+                                           T(constant_mpfr::sqrt2),mpfrreal_type_tag()));
                return  (v < T(0)) ? (T(1) - cnd) : cnd;
             }
 

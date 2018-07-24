@@ -32,7 +32,7 @@ void reverseGaussSeidelSweep(const gsSparseMatrix<T> & A, gsMatrix<T>& x, const 
 template <typename MatrixType>
 class gsRichardsonOp : public gsPreconditionerOp<typename MatrixType::Scalar>
 {
-    typedef typename memory::shared_ptr<MatrixType>  MatrixPtr;
+    typedef memory::shared_ptr<MatrixType>           MatrixPtr;
     typedef typename MatrixType::Nested              NestedMatrix;
 
 public:
@@ -138,7 +138,7 @@ typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const Eigen::EigenBase<D
    \brief Returns a smart pointer to a Richardson operator referring on \a mat
 */
 template <class Derived>
-typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const typename memory::shared_ptr<Derived>& mat, typename Derived::Scalar tau = 1)
+typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const memory::shared_ptr<Derived>& mat, typename Derived::Scalar tau = 1)
 { return gsRichardsonOp<Derived>::make(mat, tau); }
 
 /// @brief Jacobi preconditioner
@@ -149,7 +149,7 @@ typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const typename memory::s
 template <typename MatrixType>
 class gsJacobiOp : public gsPreconditionerOp<typename MatrixType::Scalar>
 {
-    typedef typename memory::shared_ptr<MatrixType> MatrixPtr;
+    typedef memory::shared_ptr<MatrixType>          MatrixPtr;
     typedef typename MatrixType::Nested             NestedMatrix;
 
 public:
@@ -259,7 +259,7 @@ typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const Eigen::EigenBase<Derived>&
    \brief Returns a smart pointer to a Jacobi operator referring on \a mat
 */
 template <class Derived>
-typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const typename memory::shared_ptr<Derived>& mat, typename Derived::Scalar tau = 1)
+typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const memory::shared_ptr<Derived>& mat, typename Derived::Scalar tau = 1)
 { return gsJacobiOp<Derived>::make(mat, tau); }
 
 struct gsGaussSeidel
@@ -285,7 +285,7 @@ struct gsGaussSeidel
 template <typename MatrixType, gsGaussSeidel::ordering ordering = gsGaussSeidel::forward>
 class gsGaussSeidelOp : public gsPreconditionerOp<typename MatrixType::Scalar>
 {
-    typedef typename memory::shared_ptr<MatrixType> MatrixPtr;
+    typedef memory::shared_ptr<MatrixType>          MatrixPtr;
     typedef typename MatrixType::Nested             NestedMatrix;
 
 public:
@@ -371,7 +371,7 @@ typename gsGaussSeidelOp<Derived>::uPtr makeGaussSeidelOp(const Eigen::EigenBase
    \brief Returns a smart pointer to a Jacobi operator referring on \a mat
 */
 template <class Derived>
-typename gsGaussSeidelOp<Derived>::uPtr makeGaussSeidelOp(const typename memory::shared_ptr<Derived>& mat)
+typename gsGaussSeidelOp<Derived>::uPtr makeGaussSeidelOp(const memory::shared_ptr<Derived>& mat)
 { return gsGaussSeidelOp<Derived>::make(mat); }
 
 /**
@@ -385,7 +385,7 @@ typename gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::uPtr makeReverseGaussS
    \brief Returns a smart pointer to a reverse Gauss-Seidel operator referring on \a mat
 */
 template <class Derived>
-typename gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::uPtr makeReverseGaussSeidelOp(const typename memory::shared_ptr<Derived>& mat)
+typename gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::uPtr makeReverseGaussSeidelOp(const memory::shared_ptr<Derived>& mat)
 { return gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::make(mat); }
 
 /**
@@ -399,7 +399,7 @@ typename gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::uPtr makeSymmetricGa
    \brief Returns a smart pointer to a symmetric Gauss-Seidel operator referring on \a mat
 */
 template <class Derived>
-typename gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::uPtr makeSymmetricGaussSeidelOp(const typename memory::shared_ptr<Derived>& mat)
+typename gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::uPtr makeSymmetricGaussSeidelOp(const memory::shared_ptr<Derived>& mat)
 { return gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::make(mat); }
 
 } // namespace gismo

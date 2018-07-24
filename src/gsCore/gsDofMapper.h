@@ -173,6 +173,7 @@ public:
         std::swap(m_numElimDofs, other.m_numElimDofs);
         std::swap(m_numCpldDofs, other.m_numCpldDofs);
         std::swap(m_curElimId  , other.m_curElimId);
+        std::swap(m_tagged     , other.m_tagged);
     }
 
 private:
@@ -235,7 +236,7 @@ public:
     void finalize();
 
     /// \brief Checks whether finalize() has been called.
-    bool isFinalized() { return m_curElimId==0; }
+    bool isFinalized() const { return m_curElimId==0; }
 
     /// \brief Returns true iff the mapper is a permuatation
     bool isPermutation() const { return static_cast<std::size_t>(size())==mapSize(); }

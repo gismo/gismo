@@ -38,7 +38,7 @@ int main(int argc, char** argv)
 
     cmd.addInt("n", "size", "Size of the matrices", mat_size);
 
-    cmd.getValues(argc,argv);
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsSparseMatrix<>  Q(mat_size,mat_size);
     gsVector<>        b(mat_size), x(mat_size), x0(mat_size);
@@ -101,6 +101,13 @@ int main(int argc, char** argv)
     report( x, x0, succeeded );
 
 #ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLU solverpLU;
+    solverpLU.compute(Q);
+    x = solverpLU.solve(b);
+    gsInfo << "Error code of pardiso "<< solverpLU.info() <<"\n";
+    gsInfo << "Solve Ax = b with PardisoLU.\n";
+    report( x, x0, succeeded );
+
     gsSparseSolver<>::PardisoLDLT solverLDLT;
     solverLDLT.compute(Q);
     x = solverLDLT.solve(b);
@@ -114,14 +121,6 @@ int main(int argc, char** argv)
     gsInfo << "Error code of pardiso "<< solverLLT.info() <<"\n";
     gsInfo << "Solve Ax = b with PardisoLLT.\n";
     report( x, x0, succeeded );
-
-    gsSparseSolver<>::PardisoLU solverpLU;
-    solverpLU.compute(Q);
-    x = solverpLU.solve(b);
-    gsInfo << "Error code of pardiso "<< solverLU.info() <<"\n";
-    gsInfo << "Solve Ax = b with PardisoLU.\n";
-    report( x, x0, succeeded );
-
 #   else
     gsInfo << "PARDISO is not available.\n";
 #   endif

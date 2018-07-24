@@ -804,11 +804,11 @@ inline const typename internal::result_type<Lhs>::type
 
 //////////////////////////////////////////////////////////////////////////
 // sqrt
-const mpreal sqrt(const unsigned int v, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal sqrt(const long int v, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal sqrt(const int v, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal sqrt(const long double v, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal sqrt(const double v, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
+const mpreal sqrt(const unsigned int v, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal sqrt(const long int v, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal sqrt(const int v, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal sqrt(const long double v, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal sqrt(const double v, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
 
 // abs
 inline const mpreal abs(const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd());
@@ -820,50 +820,50 @@ const mpreal pow(const mpreal& a, const int b, mp_rnd_t rnd_mode = mpreal::get_d
 const mpreal pow(const mpreal& a, const long double b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
 const mpreal pow(const mpreal& a, const double b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
 
-const mpreal pow(const unsigned int a, const mpreal& b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const long int a, const mpreal& b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const int a, const mpreal& b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const long double a, const mpreal& b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const double a, const mpreal& b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
+const mpreal pow(const unsigned int a, const mpreal& b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const long int a, const mpreal& b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const int a, const mpreal& b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const long double a, const mpreal& b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const double a, const mpreal& b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
 
-const mpreal pow(const unsigned long int a, const unsigned int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const unsigned long int a, const long int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const unsigned long int a, const int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const unsigned long int a, const long double b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const unsigned long int a, const double b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
+const mpreal pow(const unsigned long int a, const unsigned int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const unsigned long int a, const long int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const unsigned long int a, const int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const unsigned long int a, const long double b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const unsigned long int a, const double b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
 
-const mpreal pow(const unsigned int a, const unsigned long int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const unsigned int a, const unsigned int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const unsigned int a, const long int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const unsigned int a, const int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const unsigned int a, const long double b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const unsigned int a, const double b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
+const mpreal pow(const unsigned int a, const unsigned long int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const unsigned int a, const unsigned int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const unsigned int a, const long int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const unsigned int a, const int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const unsigned int a, const long double b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const unsigned int a, const double b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
 
-const mpreal pow(const long int a, const unsigned long int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const long int a, const unsigned int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const long int a, const long int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const long int a, const int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const long int a, const long double b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const long int a, const double b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
+const mpreal pow(const long int a, const unsigned long int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const long int a, const unsigned int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const long int a, const long int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const long int a, const int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const long int a, const long double b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const long int a, const double b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
 
-const mpreal pow(const int a, const unsigned long int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const int a, const unsigned int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const int a, const long int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const int a, const int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd()); 
-const mpreal pow(const int a, const long double b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const int a, const double b, mp_rnd_t rnd_mode = mpreal::get_default_rnd()); 
+const mpreal pow(const int a, const unsigned long int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const int a, const unsigned int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const int a, const long int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const int a, const int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd()); 
+const mpreal pow(const int a, const long double b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const int a, const double b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd()); 
 
-const mpreal pow(const long double a, const long double b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());    
-const mpreal pow(const long double a, const unsigned long int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const long double a, const unsigned int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const long double a, const long int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const long double a, const int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
+const mpreal pow(const long double a, const long double b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());    
+const mpreal pow(const long double a, const unsigned long int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const long double a, const unsigned int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const long double a, const long int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const long double a, const int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
 
-const mpreal pow(const double a, const double b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());    
-const mpreal pow(const double a, const unsigned long int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const double a, const unsigned int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const double a, const long int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
-const mpreal pow(const double a, const int b, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
+const mpreal pow(const double a, const double b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());    
+const mpreal pow(const double a, const unsigned long int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const double a, const unsigned int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const double a, const long int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
+const mpreal pow(const double a, const int b, mp_rnd_t rnd_mode);// = mpreal::get_default_rnd());
 
 inline const mpreal mul_2ui(const mpreal& v, unsigned long int k, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
 inline const mpreal mul_2si(const mpreal& v, long int k, mp_rnd_t rnd_mode = mpreal::get_default_rnd());
@@ -2203,7 +2203,11 @@ inline const mpreal sqrt(const int v, mp_rnd_t rnd_mode)
 inline const mpreal root(const mpreal& x, unsigned long int k, mp_rnd_t r = mpreal::get_default_rnd())
 {
     mpreal y(0, mpfr_get_prec(x.mpfr_srcptr())); 
-    mpfr_root(y.mpfr_ptr(), x.mpfr_srcptr(), k, r);  
+#ifndef _MPFR_NO_DEPRECATED_ROOT
+    mpfr_rootn_ui(y.mpfr_ptr(), x.mpfr_srcptr(), k, r);
+#else
+    mpfr_root(y.mpfr_ptr(), x.mpfr_srcptr(), k, r);
+#endif
     return y; 
 }
 
@@ -2648,7 +2652,11 @@ inline const mpreal random(unsigned int seed = 0)
 inline const mpreal grandom (gmp_randstate_t& state, mp_rnd_t rnd_mode = mpreal::get_default_rnd())
 {
     mpreal x;
+#ifndef _MPFR_NO_DEPRECATED_GRANDOM
+    mpfr_nrandom(x.mpfr_ptr(), state, rnd_mode);
+#else
     mpfr_grandom(x.mpfr_ptr(), NULL, state, rnd_mode);
+#endif
     return x;
 }
 

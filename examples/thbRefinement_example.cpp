@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
                "Spline degree", degree);
     cmd.addSwitch("plot", "Plot result in ParaView format", plot);
 
-    cmd.getValues(argc,argv);
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // Create a tensot-producte basis
     gsKnotVector<> KV (0, 1, numknots, degree+1, 1);

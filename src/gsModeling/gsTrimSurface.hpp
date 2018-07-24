@@ -233,7 +233,7 @@ gsBSpline<T> gsTrimSurface<T>::cuttingCurve(int const & sourceID,int const & tar
 
 
 template <class T>
-typename memory::unique_ptr<gsMesh<T> > gsTrimSurface<T>::toMesh(int npoints) const
+memory::unique_ptr<gsMesh<T> > gsTrimSurface<T>::toMesh(int npoints) const
 {      
     typename gsMesh<T>::uPtr msh = m_domain->toMesh(npoints);
     gsMatrix<T> tmp;

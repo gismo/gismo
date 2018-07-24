@@ -98,7 +98,7 @@ public:
         flagStabType = static_cast<unsigned>(options.askInt("Stabilization", 0));
     
         // Set Geometry evaluation flags
-        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
     }
 
     // Evaluate on element.
@@ -158,9 +158,8 @@ public:
             const T weight = quWeights[k] * geoEval.measure(k);
 
             // Compute physical gradients at k as a Dim x numActive matrix
-            geoEval.transformGradients(k, basisGrads, physBasisGrad);
-
-            // ...just to make sure... tracking the dimensions of the terms involved...
+            geoEval.transformGradients   (k, basisGrads, physBasisGrad);
+            geoEval.transformDeriv2Hgrad (k, basisGrads, basis2ndDerivs, physBasisd2);
 
             // d ... dim
             // N ... numActive
@@ -191,10 +190,6 @@ public:
 
             if( flagStabType == 1 ) // 1: SUPG
             {
-
-                // auxiliary variable, number of second derivatives
-                const index_t d2_offsetter = d*(d+1)/2;
-
                 const typename gsMatrix<T>::constColumns J = geoEval.jacobian(k);
                 gsMatrix<T> Jinv = J.inverse();
 
@@ -206,38 +201,34 @@ public:
                 {
                     gsMatrix<T> tmp_basis2ndDerivs(d,d);
                     tmp_basis2ndDerivs.setZero();
-
                     if( d == 2 )
                     {
-                        tmp_basis2ndDerivs(0,0) = basis2ndDerivs(fct_i*d2_offsetter  , k);
-                        tmp_basis2ndDerivs(0,1) = basis2ndDerivs(fct_i*d2_offsetter+2, k);
-                        tmp_basis2ndDerivs(1,0) = basis2ndDerivs(fct_i*d2_offsetter+2, k);
-                        tmp_basis2ndDerivs(1,1) = basis2ndDerivs(fct_i*d2_offsetter+1, k);
+                        tmp_basis2ndDerivs(0,0) = physBasisd2(fct_i, 0);
+                        tmp_basis2ndDerivs(1,1) = physBasisd2(fct_i, 1);
+                        tmp_basis2ndDerivs(0,1) =
+                        tmp_basis2ndDerivs(1,0) = physBasisd2(fct_i, 2);
                     }
                     else if (d == 3 )
                     {
-                        tmp_basis2ndDerivs(0,0) = basis2ndDerivs(fct_i*d2_offsetter, k);
-                        tmp_basis2ndDerivs(0,1) = basis2ndDerivs(fct_i*d2_offsetter+3, k);
-                        tmp_basis2ndDerivs(0,2) = basis2ndDerivs(fct_i*d2_offsetter+4, k);
-                        tmp_basis2ndDerivs(1,0) = basis2ndDerivs(fct_i*d2_offsetter+3, k);
-                        tmp_basis2ndDerivs(1,1) = basis2ndDerivs(fct_i*d2_offsetter+1, k);
-                        tmp_basis2ndDerivs(1,2) = basis2ndDerivs(fct_i*d2_offsetter+5, k);
-                        tmp_basis2ndDerivs(2,0) = basis2ndDerivs(fct_i*d2_offsetter+4, k);
-                        tmp_basis2ndDerivs(2,1) = basis2ndDerivs(fct_i*d2_offsetter+5, k);
-                        tmp_basis2ndDerivs(2,2) = basis2ndDerivs(fct_i*d2_offsetter+2, k);
+                        tmp_basis2ndDerivs(0,0) = physBasisd2(fct_i, 0);
+                        tmp_basis2ndDerivs(1,1) = physBasisd2(fct_i, 1);
+                        tmp_basis2ndDerivs(2,2) = physBasisd2(fct_i, 2);
+                        tmp_basis2ndDerivs(0,1) =
+                        tmp_basis2ndDerivs(1,0) = physBasisd2(fct_i, 3);
+                        tmp_basis2ndDerivs(0,2) =
+                        tmp_basis2ndDerivs(2,0) = physBasisd2(fct_i, 4);
+                        tmp_basis2ndDerivs(1,2) =
+                        tmp_basis2ndDerivs(2,1) = physBasisd2(fct_i, 5);
                     }
                     else
                     {
                         GISMO_ERROR("What kind of dimension are you using? Should be 2 or 3.");
                     }
-                    // d x d-matrix
-                    tmp_basis2ndDerivs.noalias() = (Jinv.transpose() * tmp_basis2ndDerivs) * Jinv;
 
-
+                    //grad_b_basisGradsT.row(fct_i) = (tmp_basis2ndDerivs * coeff_b_vals.col(k) ).transpose();
                     for( unsigned i = 0; i < d; ++i )
                         for( unsigned j = 0; j < d; ++j )
                             grad_b_basisGradsT(fct_i, i) += coeff_b_vals(j,k) * tmp_basis2ndDerivs(j,i);
-
                 }
 
                 supgMat.noalias() += weight * grad_b_basisGradsT * ( tmp_A * physBasisGrad );
@@ -394,7 +385,7 @@ protected:
 protected:
     // Basis values
     std::vector<gsMatrix<T> > basisData;
-    gsMatrix<T>        physBasisGrad;
+    gsMatrix<T>        physBasisGrad, physBasisd2;
     gsMatrix<unsigned> actives;
     index_t numActive;
 

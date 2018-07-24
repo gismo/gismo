@@ -20,7 +20,7 @@ macro(gsJITConfigXml source_file target_file)
   # with G+Smo (CUDA and Fortran)
   include(CheckLanguage)
   check_language(CUDA)
-#  check_language(Fortran)
+# check_language(Fortran)
   
   # Set JIT compiler command
   set(JIT_C_COMPILER       ${CMAKE_C_COMPILER})  
@@ -80,16 +80,24 @@ macro(gsJITConfigXml source_file target_file)
   # Set includes
   string(REPLACE ";" " -I" JIT_INCLUDES "-I${GISMO_INCLUDE_DIRS} -I${CMAKE_CURRENT_SOURCE_DIR} -I${CMAKE_CURRENT_SOURCE_DIR}/src  -I${CMAKE_BINARY_DIR}")
 
-  # Set library directories
+  # Set (extra) library directories
   string(REPLACE ";" " -L" JIT_LIBRARIES "-L${GISMO_LIBRARY_DIR}")
 
+  foreach(lib ${GISMO_LIBRARIES} ${gismo_LINKER})
+    if (NOT IS_ABSOLUTE ${lib})
+      set(JIT_LIBRARIES "${JIT_LIBRARIES} -l${lib}")
+    else()
+      set(JIT_LIBRARIES "${JIT_LIBRARIES} ${lib}")
+    endif()
+  endforeach()
+  
   # Set libraries
-  string(REPLACE ";" " -l" JIT_LIBRARIES "${JIT_LIBRARIES} -l${GISMO_LIBRARIES}")
+  #string(REPLACE ";" " -l" JIT_LIBRARIES "${JIT_LIBRARIES} -l${GISMO_LIBRARIES}")
   
   # Set extra libraries
-  if (DEFINED gismo_LINKER)
-    string(REPLACE ";" " -l" JIT_LIBRARIES "${JIT_LIBRARIES} -l${gismo_LINKER}")
-  endif()
+  #if (DEFINED gismo_LINKER)
+  #  string(REPLACE ";" " -l" JIT_LIBRARIES "${JIT_LIBRARIES} -l${gismo_LINKER}")
+  #endif()
   
   # Generate config XML file
   configure_file(${source_file} ${target_file})

@@ -37,51 +37,81 @@ typedef std::numeric_limits<real_t> limits;
 
 // Math functions
 using std::abs;
-using std::sqrt;
-using std::ceil;
-using std::floor;
-using std::cos;
-using std::cosh;
-using std::sin;
-using std::sinh;
-using std::tan;
-using std::tanh;
 using std::acos;
 using std::asin;
-using std::log;
-using std::log10;
-using std::atan;
 using std::atan2;
+using std::atan;
+using std::ceil;
+using std::cos;
+using std::cosh;
 using std::exp;
-using std::min;
-using std::max;
+using std::floor;
 using std::frexp;
 using std::ldexp;
+using std::log10;
+using std::log;
+using std::max;
+using std::min;
 using std::pow;
+using std::sin;
+using std::sinh;
+using std::sqrt;
+using std::tan;
+using std::tanh;
 
 #ifdef GISMO_WITH_CODIPACK
 using codi::abs;
-using codi::sqrt;
-using codi::ceil;
-using codi::floor;
-using codi::cos;
-using codi::cosh;
-using codi::sin;
-using codi::sinh;
-using codi::tan;
-using codi::tanh;
 using codi::acos;
 using codi::asin;
-using codi::log;
-using codi::log10;
-using codi::atan;
 using codi::atan2;
+using codi::atan;
+using codi::ceil;
+using codi::cos;
+using codi::cosh;
 using codi::exp;
-using codi::min;
-using codi::max;
+using codi::floor;
 //using codi::frexp;
 //using codi::ldexp;
+using codi::log10;
+using codi::log;
+using codi::max;
+using codi::min;
 using codi::pow;
+using codi::sin;
+using codi::sinh;
+using codi::sqrt;
+using codi::tan;
+using codi::tanh;
+#endif
+
+#ifdef GISMO_WITH_UNUM
+using sw::unum::abs;
+using sw::unum::acos;
+using sw::unum::asin;
+using sw::unum::atan2;
+using sw::unum::atan;
+using sw::unum::ceil;
+using sw::unum::cos;
+using sw::unum::cosh;
+using sw::unum::exp;
+using sw::unum::floor;
+//using sw::unum::frexp;
+//using sw::unum::ldexp;
+using sw::unum::log10;
+using sw::unum::log;
+using sw::unum::max;
+using sw::unum::min;
+using sw::unum::pow;
+using sw::unum::sin;
+using sw::unum::sinh;
+using sw::unum::sqrt;
+using sw::unum::tan;
+using sw::unum::tanh;
+
+using sw::unum::isnan;
+using sw::unum::isfinite;
+using sw::unum::isinf;
+
 #endif
 
 // template <typename T> T min(T a, T b) {return  (a < b ? a : b); }
@@ -95,26 +125,87 @@ T round(T a) { return math::floor(a+0.5); }
 
 /// For numeric types, this function returns the next representable
 /// value after \a x in the direction of \a y
-inline real_t nextafter(real_t x, real_t y)
+
+template < typename T>
+inline T nextafter(T x, T y)
 {
-#   if defined(GISMO_WITH_MPFR) || defined(GISMO_WITH_MPQ)
-    return x + ( y < x ? -1e-16 : 1e-16 );
-#   elif defined(_MSC_VER) && _MSC_VER < 1800
+#   if defined(_MSC_VER) && _MSC_VER < 1800
     return _nextafter(x,y);
-    #else
+#   else
     return ::nextafter(x,y);
-    #endif
+#   endif
 }
+
+#ifdef GISMO_WITH_MPFR
+template<>
+inline mpfr::mpreal nextafter(mpfr::mpreal x, mpfr::mpreal y)
+{
+    return x + ( y < x ? -1e-16 : 1e-16 );
+}
+#endif
+
+#ifdef GISMO_WITH_MPQ
+template<>
+inline mpq_class nextafter(mpq_class x, mpq_class y)
+{
+    return x + ( y < x ? -1e-16 : 1e-16 );
+}
+#endif
+
+#ifdef GISMO_WITH_UNUM
+template<size_t nbits, size_t es>
+inline sw::unum::posit<nbits,es> nextafter(sw::unum::posit<nbits, es> x,
+                                           sw::unum::posit<nbits,es>  y)
+{
+    return sw::unum::nextafter(x,y);
+}
+#endif
+
+// inline real_t nextafter(real_t x, real_t y)
+// {
+// #   if defined(GISMO_WITH_MPFR) || defined(GISMO_WITH_MPQ)
+//     return x + ( y < x ? -1e-16 : 1e-16 );
+// #   elif defined(GISMO_WITH_UNUM)
+//     return sw::unum::nextafter(x,y);
+// #   elif defined(_MSC_VER) && _MSC_VER < 1800
+//     return _nextafter(x,y);
+// #   else
+//     return ::nextafter(x,y);
+// #   endif
+// }
 
 
 /** Numeric precision (number of exact decimal digits expected) for
     real_t
 */
+template <typename T>
+struct numeric_limits
+{
+    inline static int digits()
+    { return std::numeric_limits<T>::digits; }
+
+    inline static int digits10()
+    { return std::numeric_limits<T>::digits10; }
+};
+
 #ifdef GISMO_WITH_MPFR
-#  define REAL_DIG std::numeric_limits<real_t>::digits10()
-#else
-#  define REAL_DIG std::numeric_limits<real_t>::digits10
+template <>
+struct numeric_limits<mpfr::mpreal>
+{
+    inline static int digits()
+    { return std::numeric_limits<mpfr::mpreal>::digits(); }
+
+    inline static int digits10()
+    { return std::numeric_limits<mpfr::mpreal>::digits10(); }
+};
 #endif
+
+//#ifdef GISMO_WITH_MPFR
+//#  define REAL_DIG std::numeric_limits<real_t>::digits10()
+//#else
+//#  define REAL_DIG std::numeric_limits<real_t>::digits10
+//#endif
+#define REAL_DIG math::numeric_limits<real_t>::digits10()
 
 // functions to check for floating point errors
 // Get isnan/isinf working on different compilers
@@ -150,52 +241,52 @@ using std::isinf;
 #ifdef GISMO_WITH_MPFR
 // Math functions for MPFR
 using mpfr::abs;
-using mpfr::pow;
-using mpfr::sqrt;
+using mpfr::acos;
+using mpfr::asin;
+using mpfr::atan2;
+using mpfr::atan;
 using mpfr::ceil;
-using mpfr::floor;
 using mpfr::cos;
 using mpfr::cosh;
-using mpfr::asin;
+using mpfr::floor;
+using mpfr::log;
+using mpfr::pow;
 using mpfr::sin;
 using mpfr::sinh;
+using mpfr::sqrt;
 using mpfr::tan;
 using mpfr::tanh;
-using mpfr::acos;
-using mpfr::log;
-using mpfr::atan;
-using mpfr::atan2;
-using mpfr::isnan;
-using mpfr::isfinite;
-using mpfr::isinf;
-
 
 //dummies
-inline real_t frexp(const real_t & a, int* b) {return  a;}
-inline real_t ldexp(const real_t & a, int b ) {return  a;}
+inline mpfr::mpreal frexp(const mpfr::mpreal & a, int* b) {return  a;}
+inline mpfr::mpreal ldexp(const mpfr::mpreal & a, int b ) {return  a;}
+
+using mpfr::isfinite;
+using mpfr::isinf;
+using mpfr::isnan;
 
 #endif
 
 #ifdef GISMO_WITH_MPQ
 // Math functions for GMP/mpq_class
 using ::abs;
-using ::sqrt;
-using ::pow;
-using ::ceil;
-using ::floor;
-using ::cos;
-using ::cosh;
 using ::acos;
 using ::asin;
+using ::atan2;
+using ::atan;
+using ::ceil;
+using ::cos;
+using ::cosh;
+using ::exp;
+using ::floor;
+using ::log10;
+using ::log;
+using ::pow;
 using ::sin;
 using ::sinh;
+using ::sqrt;
 using ::tan;
 using ::tanh;
-using ::log;
-using ::log10;
-using ::atan;
-using ::atan2;
-using ::exp;
 
 //fixme: min/max duplication with global
 inline mpq_class (max)(const mpq_class & a, const mpq_class & b)
@@ -203,6 +294,7 @@ inline mpq_class (max)(const mpq_class & a, const mpq_class & b)
 inline mpq_class (min)(const mpq_class & a, const mpq_class & b)
 {return mpq_class(a < b ? a : b);}
 inline bool isfinite(mpq_class a) {return true; }
+inline bool isinf(mpq_class a)    {return false;}
 inline bool isnan(mpq_class a)    {return false;}
 inline mpq_class frexp(const mpq_class & a, int* b) {return  a;}
 inline mpq_class ldexp(const mpq_class & a, int b ) {return  a;}

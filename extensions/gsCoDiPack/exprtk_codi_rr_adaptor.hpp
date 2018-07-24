@@ -1,4 +1,4 @@
-/** @file exprtk_codi_rf_adaptop.hpp
+/** @file exprtk_codi_rr_adaptor.hpp
 
     @brief Provides an exprtk adaptor for the CoDiPack
     RealReverse arithmetic types of autodiff
@@ -17,32 +17,7 @@
 #include <string>
 #include <gsCoDiPack/gsCoDiPack.h>
 
-namespace exprtk
-{
-
-namespace details
-{
-namespace numeric { namespace details { struct codi_rr_type_tag; } }
-
-inline bool is_true (const codi::RealReverse& v);
-inline bool is_false(const codi::RealReverse& v);
-
-template <typename Iterator>
-inline bool string_to_real(Iterator& itr_external, const Iterator end, codi::RealReverse& t, numeric::details::codi_rr_type_tag);
-
-}
-
-namespace helper
-{
-namespace details
-{
-inline void print_type(const std::string&, const codi::RealReverse& v, exprtk::details::numeric::details::codi_rr_type_tag);
-}
-}
-
-using details::is_true;
-}
-
+#include "exprtk_codi_rr_forward.hpp"
 #include "exprtk.hpp"
 
 namespace exprtk
@@ -50,7 +25,7 @@ namespace exprtk
 namespace details
 {
 
-namespace constant
+namespace constant_codi_rr
 {
 static const double e       =  2.71828182845904523536028747135266249775724709369996;
 static const double pi      =  3.14159265358979323846264338327950288419716939937510;
@@ -125,13 +100,16 @@ template <typename T> inline T  tanh_impl(const T& v, codi_rr_type_tag) { return
 template <typename T> inline T   cot_impl(const T& v, codi_rr_type_tag) { return cot  (v); }
 template <typename T> inline T   sec_impl(const T& v, codi_rr_type_tag) { return sec  (v); }
 template <typename T> inline T   csc_impl(const T& v, codi_rr_type_tag) { return csc  (v); }
-template <typename T> inline T   r2d_impl(const T& v, codi_rr_type_tag) { return (v  * exprtk::details::constant::_180_pi); }
-template <typename T> inline T   d2r_impl(const T& v, codi_rr_type_tag) { return (v  * exprtk::details::constant::pi_180 ); }
+template <typename T> inline T   r2d_impl(const T& v, codi_rr_type_tag) { return (v  * exprtk::details::constant_codi_rr::_180_pi); }
+template <typename T> inline T   d2r_impl(const T& v, codi_rr_type_tag) { return (v  * exprtk::details::constant_codi_rr::pi_180 ); }
 template <typename T> inline T   d2g_impl(const T& v, codi_rr_type_tag) { return (v  * codi::RealReverse(20.0/9.0)); }
 template <typename T> inline T   g2d_impl(const T& v, codi_rr_type_tag) { return (v  * codi::RealReverse(9.0/20.0)); }
 template <typename T> inline T  notl_impl(const T& v, codi_rr_type_tag) { return (v != codi::RealReverse(0) ? codi::RealReverse(0) : codi::RealReverse(1)); }
 template <typename T> inline T  frac_impl(const T& v, codi_rr_type_tag) { return frac (v); }
 template <typename T> inline T trunc_impl(const T& v, codi_rr_type_tag) { return trunc(v); }
+
+template <typename T> inline T const_pi_impl(codi_rr_type_tag) { return exprtk::details::constant_codi_rr::pi; }
+template <typename T> inline T const_e_impl (codi_rr_type_tag) { return exprtk::details::constant_codi_rr::e; }
 
 inline bool is_true_impl (const codi::RealReverse& v)
 {
@@ -184,27 +162,25 @@ inline T log1p_impl(const T& v, codi_rr_type_tag)
 {
     return log1p(v);
 }
-///*
+
 template <typename T>
 inline T erf_impl(const T& v, codi_rr_type_tag)
 {
-    //return erf(v);
-    return v;
+    return erf(v);
 }
 
 template <typename T>
 inline T erfc_impl(const T& v, codi_rr_type_tag)
 {
-    //return erfc(v);
-    return v;
+    return erfc(v);
 }
-//*/
+
 template <typename T>
 inline T ncdf_impl(const T& v, codi_rr_type_tag)
 {
-    T cnd = T(0.5) * (T(1) + erf_impl(
+    T cnd = T(0.5) * (T(1) + codi::erf(
                           abs(v) /
-                          T(exprtk::details::constant::sqrt2), codi_rr_type_tag()));
+                          T(exprtk::details::constant_codi_rr::sqrt2)));
     return  (v < T(0)) ? (T(1) - cnd) : cnd;
 }
 
