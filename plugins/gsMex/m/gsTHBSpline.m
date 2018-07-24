@@ -25,7 +25,7 @@ classdef gsTHBSpline < handle
             %Usage:
             %  thb = gsTHBSpline( file )
             %  OR
-            %  thb = gsTHBSpline( thbbasis, coefs )
+            %  thb = gsTHBSpline( thbbasis, coefs)
             %
             %Input:
             %  file: char, [1 x numChar].
@@ -34,7 +34,10 @@ classdef gsTHBSpline < handle
             %  OR
             %  thbbasis: gsTHBSplineBasis
             %    THB spline basis from which the geometry is built
-            %  coefs: array 
+            %  coefs: array of double of size [numCoefs x geoDim],
+            %    where numCoefs is the number of coefficients (total
+            %    number of active basis functions) and geoDim is the
+            %    dimension of the physical space.
             %
             %Output:
             %  thb: gsTHBSpline, [1 x 1].
@@ -44,20 +47,21 @@ classdef gsTHBSpline < handle
                 error('Invalid number of input and/or output arguments.')
             elseif (nargin==1)
                 if (~(isa(varargin{1},'char')))
-                    error('Input arguments should be of type ''char'' or a gsTHBSplineBasis and array of double.')
+                    error('Input arguments should be of type ''char'', or a gsTHBSplineBasis and a 2d-array of double.')
                 elseif (~exist(varargin{1},'file'))
                     error('File does not exist: %s.',varargin{1})
-                else    
+                else 
                     this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), varargin{:});
                 end
             elseif (nargin==2)
-                if (~(isa(varargin{1},'gsTHBSplineBasis') && isa(varargin{2},'double')))
-                    error('Input arguments should be of type ''char'' or a gsTHBSplineBasis and array of double.')
-                else
-                    var1 = struct(varargin{1}).objectHandle;
-                    %var2 = reshape(varargin{2},
-                    this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), class(varargin{2}), var1, varargin{2});
+                var2 = varargin{2};
+                if (~(isa(varargin{1},'gsTHBSplineBasis') && isa(var2,'double') && ismatrix(var2)))
+                    error('Input arguments should be of type ''char'', or a gsTHBSplineBasis and a 2d-array of double.')
+                % elseif (size(var2,1)~=varargin{1}. TODO!!! number of dof!)
+                %    error('Wrong coefficient dimension with respect to the basis.')
                 end
+                var1 = struct(varargin{1}).objectHandle;
+                this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), class(varargin{2}), var1, var2);
             end
         end
         
@@ -183,7 +187,7 @@ classdef gsTHBSpline < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            basis_ptr = mex_gsTHBSpline('accessor', this.objectHandle, 'basis',  varargin{:});
+            basis_ptr = mex_gsTHBSpline('accessor', this.objectHandle, 'basis', varargin{:});
             [varargout{1:nargout}] = gsTHBSplineBasis(basis_ptr);
         end
         
@@ -199,16 +203,15 @@ classdef gsTHBSpline < handle
             %    The gsTHBSpline object.
             %
             %Output:
-            %  cc: double, [geoDim x n1 x ... x nd].
-            %    Control points of the gsTHBSpline, where geoDim is the
-            %    dimension of the physical space, d is the dimension of the
-            %    parametric space, and ni is the number of control points
-            %    in the parametric direction i. 
-            
+            %  cc: array of double. Control points of the gsTHBSpline.
+            %    of size [numCoefs x geoDim], where numCoefs is the 
+            %    number of coefficients (total number of active basis 
+            %    functions) and geoDim is the dimension of the physical space.
+
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'coefs',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'coefs', varargin{:});
         end
 
         % eval - call class method

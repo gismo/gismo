@@ -7,9 +7,9 @@ filename = join([filedata,'thbbasis/simple.xml']);
 fprintf('Reading THB spline basis from file: %s.\n',filename)
 hbs = gsTHBSplineBasis(filename);
 
-% Construct a truncated hierarchical basis from its knot vectors.
+% Construct a truncated hierarchical basis from its knot vector in a carthesian product way.
 knots_2build = {[0,0,0,1,2,2,2],[4,4,5,5.5,6,6]};
-fprintf('Reading THB spline basis from knot vector.\n')
+fprintf('Reading THB spline basis from knot vector, carthesian product way.\n')
 hbs2 = gsTHBSplineBasis(knots_2build);
 
 %% TEST ACCESSORS
@@ -44,12 +44,14 @@ fprintf('Degree in the last direction 2: %d\n',hbs2.degree(hbs2.dim));
 % Print evaluations at pts
 pts = uniformPointGrid(para(1:2),para(3:4),5);
 ev  = hbs.eval(pts');
-fprintf('Evaluation 1\n')
+fprintf('Number of points: %d; Number of active functions: %d x %d\n',...
+        size(pts,2), size(hbs.active(pts),1), size(hbs.active(pts),2))
+fprintf('Evaluation 1 of size %d x %d\n', size(ev,1),size(ev,2))
 disp(ev)
 
 pts2 = uniformPointGrid(para2(1:2),para2(3:4),5);
 ev2  = hbs2.eval(pts2);
-fprintf('Evaluation 2\n')
+fprintf('Evaluation 2 of size %d x %d\n', size(ev2,1), size(ev2,2))
 disp(ev2)
 
 % Print evaluations at a single active basis function

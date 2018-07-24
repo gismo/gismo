@@ -2,7 +2,7 @@
 % Author: O. Chanon
 close all
 
-% One should add the geopdes library to the path, and run set_path
+% One should add the geopdes and nurbs library to the path, and run set_path
 
 %% TEST CONSTRUCTORS
 % Construct a truncated hierarchical geometry by reading the specified file
@@ -25,8 +25,8 @@ fprintf('Dimension of the parametric space 1: %d\n',hbs.parDim);      % rdim in 
 fprintf('Dimension of the parametric space 2: %d\n',hbs2.parDim);
 fprintf('Dimension of the physical space 1: %d\n',hbs.geoDim);        % ndim in geopdes
 fprintf('Dimension of the physical space 2: %d\n',hbs2.geoDim);
-fprintf('Size of the basis 1: %d\n',hbs.size);                        % ncomp in geopdes? TODO
-fprintf('Size of the basis 2: %d\n',hbs2.size);
+fprintf('Size of the function set 1: %d\n',hbs.size);                 % ncomp in geopdes? TODO
+fprintf('Size of the function set 2: %d\n',hbs2.size);
 
 % Support
 para = hbs.support;
@@ -43,9 +43,10 @@ fprintf('Degree 2 in the last direction: %d\n', deg2);
 
 % Control points
 coefs_size = size(coefs);
-fprintf('Number of basis functions 1: %d\n', prod(coefs_size(2:end)));
-coefs2_size = size(hbs2.coefs());
-fprintf('Number of basis functions 2: %d\n', prod(coefs2_size(2:end)));
+fprintf('Number of basis functions 1: %d\n', coefs_size(1));
+coefs2_size = size(hbs2.coefs);
+fprintf('Number of basis functions 2: %d\n', coefs2_size(1));
+assert(isequal(coefs,hbs2.coefs));
 
 %% TEST OTHER METHODS
 % Print evaluations at pts
@@ -105,7 +106,7 @@ disp(act2)
 % Build GeoPDEs geometry structures
 geometry = geo_load(hbs);
 geometry2 = geo_load('/Users/ondine/Documents/geopdes/geopdes/inst/examples/geometry_files/geo_rectangle.txt');
-
+struct(geometry2)
 % Get the knot vector corresponding to the first level, 2nd direction
 kts12 = geometry.knots{1}{2};
 fprintf('Knots level 1, direction 2 from G+smo to GeoPdes:\n')
