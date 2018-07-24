@@ -109,7 +109,7 @@ for:
     #BOOST_LIBRARYDIR: c:\Libraries\boost\stage\lib
     matrix:
     - BUILD: msvc2015
-      configuration: Debug
+      configuration: Release
       generator: "Visual Studio 14 2015"
 
     - BUILD: msvc2015
