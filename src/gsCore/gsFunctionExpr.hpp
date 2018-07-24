@@ -61,6 +61,10 @@
 // adaptor files "exprtk_X_adaptor.hpp" have to be included AFTER the
 // file "exprtk.hpp".
 
+#if defined(GISMO_WITH_ADDSL)
+#include <gsAdDSL/exprtk_addsl_ar_forward.hpp>
+#endif
+
 #if defined(GISMO_WITH_ADIFF)
 #define DScalar gismo::ad::DScalar2<real_t,-1>
 #include <exprtk_ad_forward.hpp>
@@ -84,6 +88,10 @@
 #endif
 
 #include <exprtk.hpp>
+
+#if defined(GISMO_WITH_ADDSL)
+#include <gsAdDSL/exprtk_addsl_ar_adaptor.hpp>
+#endif
 
 #if defined(GISMO_WITH_ADIFF)
 #include <exprtk_ad_adaptor.hpp>

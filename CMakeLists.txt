@@ -152,6 +152,13 @@ if(GISMO_WITH_CODIPACK)
   include_directories(${CODIPACK_INCLUDE_DIR})
 endif(GISMO_WITH_CODIPACK)
 
+if(GISMO_WITH_ADDSL)
+  add_subdirectory(extensions/gsAdDSL)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${ADDSL_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  include_directories(${ADDSL_INCLUDE_DIR})
+endif(GISMO_WITH_ADDSL)
+
 if(GISMO_WITH_FDBB)
   add_subdirectory(extensions/gsFdbb)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${FDBB_INCLUDE_DIR}

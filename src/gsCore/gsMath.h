@@ -18,6 +18,10 @@
 //#define _USE_MATH_DEFINES
 #include <cmath>
 
+#ifdef GISMO_WITH_ADDSL
+  #include <gsAdDSL/gsAdDSLForwardDeclaration.h>
+#endif
+
 #ifdef GISMO_WITH_CODIPACK
   #include <gsCoDiPack/gsCoDiPack.h>
 #endif
@@ -58,6 +62,31 @@ using std::sinh;
 using std::sqrt;
 using std::tan;
 using std::tanh;
+
+#ifdef GISMO_WITH_ADDSL
+using adDSL::abs;
+using adDSL::acos;
+using adDSL::asin;
+using adDSL::atan2;
+using adDSL::atan;
+using adDSL::ceil;
+using adDSL::cos;
+using adDSL::cosh;
+using adDSL::exp;
+using adDSL::floor;
+//using adDSL::frexp;
+//using adDSL::ldexp;
+using adDSL::log10;
+using adDSL::log;
+using adDSL::max;
+using adDSL::min;
+using adDSL::pow;
+using adDSL::sin;
+using adDSL::sinh;
+using adDSL::sqrt;
+using adDSL::tan;
+using adDSL::tanh;
+#endif
 
 #ifdef GISMO_WITH_CODIPACK
 using codi::abs;
