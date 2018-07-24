@@ -40,7 +40,7 @@ template<class T>
 gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<> &mesh, real_t precision)
     : gsMesh<>(mesh), m_precision(precision)
 {
-    this->cleanStlMesh(); // TODO: move to stl reader
+    //this->cleanStlMesh(); // TODO: move to stl reader
     //std::sort(this->vertex.begin(), this->vertex.end(), less_than_ptr());
     //typename std::vector<gsVertex<T> *, std::allocator<gsVertex<T> *> >::iterator
     //last = std::unique(this->vertex.begin(), this->vertex.end(), equal_ptr());
