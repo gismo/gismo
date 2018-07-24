@@ -190,10 +190,6 @@ public:
 
             if( flagStabType == 1 ) // 1: SUPG
             {
-
-                // auxiliary variable, number of second derivatives
-                const index_t d2_offsetter = d*(d+1)/2;
-
                 const typename gsMatrix<T>::constColumns J = geoEval.jacobian(k);
                 gsMatrix<T> Jinv = J.inverse();
 
@@ -205,25 +201,24 @@ public:
                 {
                     gsMatrix<T> tmp_basis2ndDerivs(d,d);
                     tmp_basis2ndDerivs.setZero();
-
                     if( d == 2 )
                     {
-                        tmp_basis2ndDerivs(0,0) = physBasisd2(fct_i*d2_offsetter  , k);
-                        tmp_basis2ndDerivs(0,1) = physBasisd2(fct_i*d2_offsetter+2, k);
-                        tmp_basis2ndDerivs(1,0) = physBasisd2(fct_i*d2_offsetter+2, k);
-                        tmp_basis2ndDerivs(1,1) = physBasisd2(fct_i*d2_offsetter+1, k);
+                        tmp_basis2ndDerivs(0,0) = physBasisd2(fct_i, 0);
+                        tmp_basis2ndDerivs(1,1) = physBasisd2(fct_i, 1);
+                        tmp_basis2ndDerivs(0,1) =
+                        tmp_basis2ndDerivs(1,0) = physBasisd2(fct_i, 2);
                     }
                     else if (d == 3 )
                     {
-                        tmp_basis2ndDerivs(0,0) = physBasisd2(fct_i*d2_offsetter, k);
-                        tmp_basis2ndDerivs(0,1) = physBasisd2(fct_i*d2_offsetter+3, k);
-                        tmp_basis2ndDerivs(0,2) = physBasisd2(fct_i*d2_offsetter+4, k);
-                        tmp_basis2ndDerivs(1,0) = physBasisd2(fct_i*d2_offsetter+3, k);
-                        tmp_basis2ndDerivs(1,1) = physBasisd2(fct_i*d2_offsetter+1, k);
-                        tmp_basis2ndDerivs(1,2) = physBasisd2(fct_i*d2_offsetter+5, k);
-                        tmp_basis2ndDerivs(2,0) = physBasisd2(fct_i*d2_offsetter+4, k);
-                        tmp_basis2ndDerivs(2,1) = physBasisd2(fct_i*d2_offsetter+5, k);
-                        tmp_basis2ndDerivs(2,2) = physBasisd2(fct_i*d2_offsetter+2, k);
+                        tmp_basis2ndDerivs(0,0) = physBasisd2(fct_i, 0);
+                        tmp_basis2ndDerivs(1,1) = physBasisd2(fct_i, 1);
+                        tmp_basis2ndDerivs(2,2) = physBasisd2(fct_i, 2);
+                        tmp_basis2ndDerivs(0,1) =
+                        tmp_basis2ndDerivs(1,0) = physBasisd2(fct_i, 3);
+                        tmp_basis2ndDerivs(0,2) =
+                        tmp_basis2ndDerivs(2,0) = physBasisd2(fct_i, 4);
+                        tmp_basis2ndDerivs(1,2) =
+                        tmp_basis2ndDerivs(2,1) = physBasisd2(fct_i, 5);
                     }
                     else
                     {

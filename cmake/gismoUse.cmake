@@ -26,7 +26,7 @@ macro(add_gismo_pure_executable FILE)
     get_filename_component(FNAME ${FILE} NAME_WE) # name without extension
     add_test(${FNAME} ${CMAKE_BINARY_DIR}/bin/${FNAME} )
     #message(STATUS "exec (pure template): ${FNAME}")
-    add_executable(${FNAME} ${FILE} ${gismo_SOURCES} ${gismo_EXTENSIONS})
+    add_executable(${FNAME} ${FILE} ${gismo_SOURCES} ${gismo_EXTENSIONS} ${gismo_dev_EXTENSIONS})
     target_link_libraries(${FNAME} gismo_static)
     if(UNIX AND NOT APPLE)
     	target_link_libraries(${FNAME} dl)
