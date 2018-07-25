@@ -49,6 +49,9 @@ install:
 
 # scripts to run before build
 before_build:
+  - cmd: dir "%ProgramFiles(x86)%\Windows Kits\8.1\Debuggers"
+  - cmd: dir "%ProgramFiles(x86)%\Windows Kits\8.1\Debuggers"\lib\x64
+  - cmd: dir "%ProgramFiles(x86)%\Windows Kits\8.1\Debuggers"\inc 
   - cmd: if [%BUILD%]==[msvc2015] set envpath=C:\Program Files (x86)\MSBuild\14.0\Bin
   #- if [%BUILD%]==[mingw] set PATH=C:\mingw64\bin;%PATH%
   - cmd: if [%BUILD%]==[mingw] rename "C:\Program Files\Git\usr\bin\sh.exe" "sh2.exe"
