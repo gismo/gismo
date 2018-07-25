@@ -553,7 +553,7 @@ gsParametrization<T>::LocalParametrization::LocalParametrization(const gsHalfEdg
     else if(parametrizationMethod == 1)
     {
         std::list<real_t> angles = localNeighbourhood.getAngles();
-        std::vector<gsPoint2D> points;
+		VectorType points;
         real_t theta = 0;
         real_t nextAngle = 0;
         for(std::list<real_t>::iterator it = angles.begin(); it!=angles.end(); ++it)
@@ -615,7 +615,7 @@ const std::vector<real_t>& gsParametrization<T>::LocalParametrization::getLambda
 //*****************************************************************************************************
 
 template<class T>
-void gsParametrization<T>::LocalParametrization::calculateLambdas(const size_t N, std::vector<gsPoint2D>& points)
+void gsParametrization<T>::LocalParametrization::calculateLambdas(const size_t N, VectorType& points)
 {
     for(size_t j=1; j <= N; j++)
     {
@@ -627,7 +627,7 @@ void gsParametrization<T>::LocalParametrization::calculateLambdas(const size_t N
     size_t l=1;
     size_t steps = 0;
     //size_t checkOption = 0;
-    for(std::vector<gsPoint2D>::const_iterator it=points.begin(); it != points.end(); it++)
+    for(VectorType::const_iterator it=points.begin(); it != points.end(); it++)
     {
         gsLineSegment2D actualLine(p, *it);
         for(size_t i=1; i < d-1; i++)
