@@ -268,8 +268,8 @@ classdef gsTHBSplineBasis < handle
                 error('Invalid number of input and/or output arguments.')
             end
             if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ...
-                    ~(mod(varargin{1},1)==0) || varargin{1}>this.dim())
-                error('Input argument must be an integer less than %d.', this.dim())
+                    ~(mod(varargin{1},1)==0) || varargin{1}<1 || varargin{1}>this.dim())
+                error('Input argument must be a non negative integer less than %d.', this.dim())
             end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('degree', this.objectHandle, varargin{:});
         end
@@ -384,11 +384,12 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=3 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ~(mod(varargin{1},1)==0) || varargin{1}<1)
-                error('Input argument no. 1 must be a strictly positive integer.')
+            if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ~(mod(varargin{1},1)==0)...
+                || varargin{1}<1 || varargin{1}>this.maxLevel)
+                error('Input argument no. 1 must be a strictly positive integer smaller than %d.', this.maxLevel)
             elseif (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || ...
-                    ~(mod(varargin{2},1)==0) || varargin{2}<1 || varargin{2}>this.dim())
-                error('Input argument no. 2 must be a strictly positive integer smaller than %d.', this.dim())
+                    ~(mod(varargin{2},1)==0) || varargin{2}<1 || varargin{2}>this.dim)
+                error('Input argument no. 2 must be a strictly positive integer smaller than %d.', this.dim)
             end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('knots', this.objectHandle, varargin{:});
         end
@@ -435,14 +436,52 @@ classdef gsTHBSplineBasis < handle
             %Output:
             %  None - changes done inline.
 
-            if (nargin~=3 || nargout>1)
+            if (nargin~=3 || nargout>0)
                 error('Invalid number of input and/or output arguments.')
             end
-            if (~isa(varargin{1},'numeric') || ~(floor(varargin{1})==varargin{1}) || ~(varargin{1}>0) ||...
-                ~isa(varargin{2},'numeric') || ~(floor(varargin{2})==varargin{2}) || ~(varargin{2}>0))
+            if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ...
+                ~(floor(varargin{1})==varargin{1}) || ~(varargin{1}>0) ||...
+                ~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || ...
+                ~(floor(varargin{2})==varargin{2}) || ~(varargin{2}>0))
                 error('Input argument no. 1 and 2 must stricly positive integers.')
             end
             mex_gsTHBSplineBasis('uniformRefine', this.objectHandle, varargin{:});
+        end
+
+        % uniformRefine_withCoefs - call class method
+        function [varargout] = uniformRefine_withCoefs(this, varargin)
+            %uniformRefine_withCoefs - Refine the basis given by a gsTHBSplineBaiss 
+            % object uniformly. The function simultainously updates the vector coefs,
+            % representing a function in the bases, such that its new version 
+            % represents the same function.
+            %
+            %Usage:
+            %  thb.uniformRefine_withCoefs(coefs, numKnots, mult)
+            %
+            %Input:
+            %  thb: gsTHBSplineBasis, [1 x 1].
+            %    The gsTHBSplineBasis object.
+            %  coefs: the coefficients representing a function in the bases 
+            %    before the basis is refined.
+            %  numKnots: int, number of new knots inserted on each knot span.
+            %  mult: int, each knot is inserted with a multiplicity mult.
+            %
+            %Output:
+            %  None - changes done inline.
+
+            if (nargin~=4 || nargout~=1)
+                error('Invalid number of input and/or output arguments.')
+            end
+            if (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) ||...
+                ~(floor(varargin{2})==varargin{2}) || ~(varargin{2}>0) ||...
+                ~isa(varargin{3},'numeric') || ~isscalar(varargin{3}) ||...
+                ~(floor(varargin{3})==varargin{3}) || ~(varargin{3}>0) ||...
+                ~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}))
+                error('Input argument no. 1 should be a 2d array of double, inputs no. 2 and 3 must' ...
+                       + 'be stricly positive integers.')
+            end
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('uniformRefine_withCoefs', this.objectHandle,...
+                                                           varargin{:});
         end
 
     end

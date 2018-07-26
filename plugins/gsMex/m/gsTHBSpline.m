@@ -25,7 +25,7 @@ classdef gsTHBSpline < handle
             %Usage:
             %  thb = gsTHBSpline( file )
             %  OR
-            %  thb = gsTHBSpline( thbbasis, coefs)
+            %  thb = gsTHBSpline( thbbasis, coefs )
             %
             %Input:
             %  file: char, [1 x numChar].
@@ -42,16 +42,20 @@ classdef gsTHBSpline < handle
             %Output:
             %  thb: gsTHBSpline, [1 x 1].
             %    The gsTHBSpline object.
-
+            
             if (nargin>2 || nargin<1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             elseif (nargin==1)
-                if (~(isa(varargin{1},'char')))
-                    error('Input arguments should be of type ''char'', or a gsTHBSplineBasis and a 2d-array of double.')
-                elseif (~exist(varargin{1},'file'))
-                    error('File does not exist: %s.',varargin{1})
-                else 
-                    this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), varargin{:});
+                if isa(varargin{1},'uint64')
+                    this.objectHandle = varargin{1};
+                else
+                    if (~(isa(varargin{1},'char')))
+                        error('Input arguments should be of type ''char'', or a gsTHBSplineBasis and a 2d-array of double.')
+                    elseif (~exist(varargin{1},'file'))
+                        error('File does not exist: %s.',varargin{1})
+                    else 
+                        this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), varargin{:});
+                    end
                 end
             elseif (nargin==2)
                 var2 = varargin{2};
@@ -291,12 +295,11 @@ classdef gsTHBSpline < handle
             
             if (nargin~=3 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
-            end
-            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.parDim()))
+            elseif (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.parDim()))
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with %d rows.', this.parDim())
-            end
-            if (~isa(varargin{2},'numeric') || ~(mod(varargin{2},1)==0) || varargin{2}>this.parDim())
-                error('Input argument no. 2 must be an integer smaller than %d.', this.parDim())
+            elseif (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || ...
+                    ~(mod(varargin{2},1)==0) || varargin{2}<1 || varargin{2}>this.parDim())
+                error('Input argument no. 2 must be a non negative integer smaller than %d.', this.parDim())
             end
             [varargout{1:nargout}] = mex_gsTHBSpline('hess', this.objectHandle, varargin{:});
         end
@@ -325,6 +328,35 @@ classdef gsTHBSpline < handle
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
             [varargout{1:nargout}] = mex_gsTHBSpline('active', this.objectHandle, varargin{:});
+        end
+
+        % sliceCoefs - call class method
+        function [varargout] = sliceCoefs(this, varargin)
+            %sliceCoefs - cefficients corresponding to an isoparametric slice
+            % of this gsTHBSpline object.
+            %
+            %Usage:
+            %  slCoefs = thb.sliceCoefs(dir_fixed, par)
+            %
+            %Input:
+            %  thb: gsTHBSpline, [1 x 1].
+            %    The gsTHBSpline object.
+            %  dir_fixed: int, direction fixed for slicing.
+            %  par: double, parameter fixed for slicing.
+            %
+            %Output:
+            %  slCoefs: array of double [numCoefs x parDim]
+            %    The coefficients corresponding to the slice.
+
+            if (nargin~=3 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            elseif (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ...
+                    ~(mod(varargin{1},1)==0) || varargin{1}<1 || varargin{1}>this.parDim)
+                error('Input argument no. 1 must be a non negative integer smaller than %d.', this.parDim)
+            elseif (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || prod(size(varargin{1}))~=1)
+                error('Input argument no.2 must be a scalar.')
+            end
+            [varargout{1:nargout}] = mex_gsTHBSpline('sliceCoefs', this.objectHandle, varargin{:});
         end
 
     end

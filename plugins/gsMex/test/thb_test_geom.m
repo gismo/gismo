@@ -16,9 +16,12 @@ basis = hbs.basis;
 coefs = hbs.coefs;
 
 % Construct another truncated hierarchical geometry from the basis and
-% the control points of the previous one. 
+% the control points of the previous one.
 fprintf('Loading THB spline from basis and control points.\n')
 hbs2 = gsTHBSpline(basis, coefs);
+
+fprintf('Slicing along the first direction, fixing it to 0:\n')
+sl = hbs.sliceCoefs(1,0.);
 
 %% TEST ACCESSORS
 fprintf('Dimension of the parametric space 1: %d\n',hbs.parDim);      % rdim in geopdes
@@ -45,8 +48,17 @@ fprintf('Degree 2 in the last direction: %d\n', deg2);
 coefs_size = size(coefs);
 fprintf('Number of basis functions 1: %d\n', coefs_size(1));
 coefs2_size = size(hbs2.coefs);
-fprintf('Number of basis functions 2: %d\n', coefs2_size(1));
+fprintf('Number of basis functions 2: %d\n\n', coefs2_size(1));
 assert(isequal(coefs,hbs2.coefs));
+
+% Uniforimly refine basis and change coefficients
+new_coefs = basis.uniformRefine_withCoefs(coefs,1,1);
+new_coefs2 = basis2.uniformRefine_withCoefs(hbs2.coefs,1,1);
+fprintf('Refinement adds a single knot with multiplicity 1 on each knot span.\n');
+fprintf('Number of basis functions 1 after refinement: %d\n', size(new_coefs,1));
+fprintf('Number of basis functions 2 after refinement: %d\n', size(new_coefs2,1));
+fprintf('Number of knots 1 at level 1 direction 1 after refinement: %d\n', length(basis.knots(1,1)));
+fprintf('Number of knots 2 at level 1 direction 1 after refinement: %d\n', length(basis2.knots(1,1)));
 
 %% TEST OTHER METHODS
 % Print evaluations at pts
@@ -92,7 +104,6 @@ disp(hess2(:,1:5))
 hess2last = hbs2.hess(pts,hbs2.parDim);
 fprintf('Hessian 2 in direction parDim has total size %d x %d. \n', size(hess2last,1),size(hess2last,2))
 
-
 % Print active functions on pts %% TODO!! does what we want? what does it mean?
 act = hbs.active(pts(:,131:133));
 fprintf('Active functions 1 on three pts:\n')
@@ -106,7 +117,7 @@ disp(act2)
 % Build GeoPDEs geometry structures
 geometry = geo_load(hbs);
 geometry2 = geo_load('/Users/ondine/Documents/geopdes/geopdes/inst/examples/geometry_files/geo_rectangle.txt');
-struct(geometry2)
+
 % Get the knot vector corresponding to the first level, 2nd direction
 kts12 = geometry.knots{1}{2};
 fprintf('Knots level 1, direction 2 from G+smo to GeoPdes:\n')

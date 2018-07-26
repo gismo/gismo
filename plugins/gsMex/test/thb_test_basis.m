@@ -89,8 +89,8 @@ fprintf('Active functions 2 at point:\n')
 disp(act2)
 
 % Uniformily refine the basis
-fprintf('Knots at level 1, direction 1 before refinement:\n')
+fprintf('Knots at level 1, direction 1 before uniform refinement:\n')
 disp(hbs.knots(1,1))
 hbs.uniformRefine(1,1);
-fprintf('Knots at level1, direction 1 after refinement:\n')
+fprintf('Knots at level1, direction 1 after uniform refinement:\n')
 disp(hbs.knots(1,1))

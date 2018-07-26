@@ -125,8 +125,8 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                 gsTHBSplineBasis<__DIM__> * hbs = new gsTHBSplineBasis<__DIM__>(instance->basis());
                 plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(hbs);
             } else if (!strcmp(prop,"coefs")) {
-                const gsMatrix<>& cc = instance->coefs();
-                plhs[0] = createPointerFromMatrix(cc);
+                // const gsMatrix<>& cc = instance->coefs();
+                plhs[0] = createPointerFromMatrix(instance->coefs());
             } else {
                 // Unknown property
                 throw("Third input argument contains an unknown property string.");
@@ -181,9 +181,23 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
             // Call method
             gsMatrix<unsigned> vals = instance->active(pts);
-	    vals = vals + gsMatrix<unsigned>::Ones(vals.rows(),vals.cols());
+            vals = vals + gsMatrix<unsigned>::Ones(vals.rows(),vals.cols());
             // Copy the result for output (FIXME: this should be avoided)
             plhs[0] = createPointerFromMatrix<unsigned>(vals);
+
+          } else if (!strcmp(cmd,"sliceCoefs")) {
+
+            // ----------------------------------------------------------------------
+            // sliceCoefs(dir_fixed, par)
+
+            gsTHBSpline<__DIM__> *instance = convertMat2Ptr<gsTHBSpline<__DIM__> >(prhs[1]);
+            // Copy the input (FIXME: this should be avoided)
+            mwIndex dir_fixed = (mwIndex) mxGetScalar(prhs[2]);
+            real_t par = (real_t) mxGetScalar(prhs[3]);
+            gsTHBSpline<__DIM__-1> res;
+            // Call method
+            instance->slice(dir_fixed-1, par, res);
+            plhs[0] = createPointerFromMatrix(res.coefs());
 
         } else {
 

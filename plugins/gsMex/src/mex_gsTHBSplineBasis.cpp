@@ -232,6 +232,20 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
             instance->uniformRefine(numKnots, mult);
 
+      } else if (!strcmp(cmd,"uniformRefine_withCoefs")) {
+
+            // ----------------------------------------------------------------------
+            // uniformRefine_withCoefs(coefs, numKnots, mult)
+
+            gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis<__DIM__> >(prhs[1]);
+            // Copy the input (FIXME: this should be avoided)
+            gsMatrix<real_t> coefs = extractMatrixFromPointer<real_t>(prhs[2]);
+            mwIndex numKnots = (mwIndex) mxGetScalar(prhs[3]);
+            mwIndex mult = (mwIndex) mxGetScalar(prhs[4]);
+
+            instance->uniformRefine_withCoefs(coefs, numKnots, mult);
+            plhs[0] = createPointerFromMatrix<real_t>(coefs);
+
         } else {
 
             // ----------------------------------------------------------------------
