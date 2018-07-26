@@ -175,22 +175,16 @@ gsQuadRule<T>::mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
     nodes.setZero();
     weights.setZero();
 
-    gsVector<T> h(d);
-    T hprod(1.0); // for the computation of the size of the cube.
-
-    for ( index_t i = 0; i!=d; ++i)
-    {
-        // the factor 0.5 is due to the fact that the one-dimensional
-        // reference interval is [-1,1].
-        h[i] = ( lower[i] != upper[i] ? 0.5 * (upper[i]-lower[i]) : T(0.5) );
-        hprod *= h[i];
-    }
-
+    const gsVector<T> h = (upper-lower) / T(2) ;
     // Linear map from [-1,1]^d to [lower,upper]
     nodes.noalias() = ( h.asDiagonal() * (m_nodes.array()+1).matrix() ).colwise() + lower;
 
-    // Alternative (less numerically stable):
-    //nodes.noalias()   = ( h.asDiagonal() * m_nodes ).colwise() + 0.5*(lower+upper);
+    T hprod(1.0); //volume of the cube.
+    for ( index_t i = 0; i!=d; ++i)
+    {
+        // the factor 0.5 is due to the reference interval is [-1,1].
+        hprod *= ( 0 == h[i] ? T(0.5) : h[i] );
+    }
 
     // Adjust the weights (multiply by the Jacobian of the linear map)
     weights.noalias() = hprod * m_weights;
