@@ -51,7 +51,7 @@ void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
                                 index_t & numFree) const
 {
     GISMO_ASSERT( locals.cols() == 1, "localToGlobal: Expecting one column of locals");
-    GISMO_ASSERT( &locals != &globals, "localToGlobal: Inplace not supported");    
+    GISMO_ASSERT( &locals != &globals, "localToGlobal: Inplace not supported");
     const index_t numActive = locals.rows();
     globals.resize(numActive, 2);
 
@@ -107,6 +107,9 @@ void gsDofMapper::matchDof( index_t u, index_t i, index_t v, index_t j )
     //GISMO_ASSERT(u < m_offset.size() && i< m_offset[u+1] - m_offset[u] ,"Invalid patch-local dof "<<i<<" in matchDof.");
     //GISMO_ASSERT(v < m_offset.size() && j< m_offset[v+1] - m_offset[v] ,"Invalid patch-local dof "<<i<<" in matchDof.");
     //TODO: add check for correct range [by adding a last offset = number of total dofs]
+
+    GISMO_ASSERT(static_cast<size_t>(u)<numPatches(), "Invalid patch index "<< u <<" >= "<< numPatches() );
+    GISMO_ASSERT(static_cast<size_t>(v)<numPatches(), "Invalid patch index "<< v <<" >= "<< numPatches() );
 
     index_t d1 = MAPPER_PATCH_DOF(i,u);
     index_t d2 = MAPPER_PATCH_DOF(j,v);
@@ -167,6 +170,8 @@ void gsDofMapper::markCoupled( index_t i, index_t k )
 
 void gsDofMapper::markTagged( index_t i, index_t k )
 {
+    GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+
     //see gsSortedVector::push_sorted_unique
     index_t t = index(i,k);
     std::vector<index_t>::iterator pos = std::lower_bound(m_tagged.begin(), m_tagged.end(), t );
@@ -200,6 +205,7 @@ void gsDofMapper::markCoupledAsTagged()
 
 void gsDofMapper::eliminateDof( index_t i, index_t k )
 {
+    GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
     const index_t old = MAPPER_PATCH_DOF(i,k);
     if (old == 0)       // regular free dof
     {

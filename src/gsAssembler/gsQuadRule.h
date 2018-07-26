@@ -10,7 +10,7 @@
 
     Author(s): A. Mantzaflaris
 */
- 
+
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
@@ -18,21 +18,21 @@
 namespace gismo
 {
 
-/** 
+/**
     \brief Class representing a reference quadrature rule
-    
+
     \ingroup Assembler
 */
-  
+
 template<class T>
 class gsQuadRule
 {
 public:
 
     /// Default empty constructor
-    gsQuadRule() 
+    gsQuadRule()
     { }
-    
+
     virtual ~gsQuadRule() { }
 
     /**
@@ -142,12 +142,12 @@ public:
      */
     void mapToAll( const std::vector<T> & breaks,
                    gsMatrix<T> & nodes, gsVector<T> & weights ) const;
-    
+
 protected:
-    
+
     /// \brief Computes the tensor product rule from coordinate-wise
     /// 1D \a nodes and \a weights.
-    void computeTensorProductRule(const std::vector<gsVector<T> > & nodes, 
+    void computeTensorProductRule(const std::vector<gsVector<T> > & nodes,
                                   const std::vector<gsVector<T> > & weights);
 
 protected:
@@ -169,7 +169,7 @@ gsQuadRule<T>::mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
 {
     const index_t d = lower.size();
     GISMO_ASSERT( d == m_nodes.rows(), "Inconsistent quadrature mapping");
-    
+
     nodes.resize( m_nodes.rows(), m_nodes.cols() );
     weights.resize( m_weights.size() );
     nodes.setZero();
@@ -185,9 +185,12 @@ gsQuadRule<T>::mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
         h[i] = ( lower[i] != upper[i] ? 0.5 * (upper[i]-lower[i]) : T(0.5) );
         hprod *= h[i];
     }
-  
+
     // Linear map from [-1,1]^d to [lower,upper]
-    nodes.noalias()   = ( h.asDiagonal() * m_nodes ).colwise() + 0.5*(lower+upper);
+    nodes.noalias() = ( h.asDiagonal() * (m_nodes.array()+1).matrix() ).colwise() + lower;
+
+    // Alternative (less numerically stable):
+    //nodes.noalias()   = ( h.asDiagonal() * m_nodes ).colwise() + 0.5*(lower+upper);
 
     // Adjust the weights (multiply by the Jacobian of the linear map)
     weights.noalias() = hprod * m_weights;
