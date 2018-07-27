@@ -42,6 +42,11 @@ public:
     // Base is the single-column dense matrix class of Eigen
     typedef typename gsBase::Base Base;
 
+    // Self type
+    typedef gsVector<T,_Rows, _Options> Self;
+
+    typedef typename Eigen::aligned_allocator<Self> aalloc;
+
     // The type of the coefficients of the matrix
     typedef T Scalar_t;
 
