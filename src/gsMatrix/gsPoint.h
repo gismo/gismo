@@ -18,25 +18,25 @@
 namespace gismo
 {
 /**
- * @brief A Point in T^dim, with an index number.
- * @tparam dim
+ * @brief A Point in T^d, with an index number.
+ * @tparam d
  * @tparam T
  */
-template<int dim, class T>
-class gsPoint : public gsVector<T, dim>
+template<int d, class T>
+class gsPoint : public gsVector<T, d>
 {
 public:
-    typedef gsPoint<dim, T> Self;
+    typedef gsPoint<d, T> Self;
 
     typedef typename Eigen::aligned_allocator<Self> aalloc;
 
     typedef T Scalar_t;
 
-    //gsPoint() : gsVector<T, dim>(), m_vertexIndex((size_t)0) {}
+    gsPoint() : gsVector<T, d>(), m_vertexIndex((size_t)0) {}
 
-    //gsPoint(const gsPoint<dim, T>& point) : gsVector<T,dim>(), m_vertexIndex(point.m_vertexIndex) { *this << point[0], point[1]; }
+    gsPoint(const gsPoint<d, T>& point) : gsVector<T,d>(), m_vertexIndex(point.m_vertexIndex) { *this << point[0], point[1]; }
 
-    gsPoint(T x, T y, size_t index) : gsVector<T, 2>(), m_vertexIndex(index) { *this << x, y; }
+    gsPoint(T x, T y, size_t index) : gsVector<T, d>(), m_vertexIndex(index) { *this << x, y; }
     //gsPoint(T x, T y, T z, size_t index) : gsVector<T, 3>(), m_vertexIndex(index) { *this << x, y, z; }
 
     inline int getVertexIndex() const { return m_vertexIndex; }
@@ -56,21 +56,21 @@ public:
         *this += gsVector<>::vec(x, y, z);
     }
 
-    static gsPoint<2,T> point(T x, T y, size_t index)
+    static gsPoint<d == 2, T> point(T x, T y, size_t index)
     {
         return gsPoint<2, T>(x, y, index);
     };
 
-    /*static gsPoint<3,T> point(T x, T y, T z, size_t index)
+    static gsPoint<d == 3, T> point(T x, T y, T z, size_t index)
     {
         return gsPoint<3, T>(x, y, z, index);
-    };*/
+    };
 
 private:
     size_t m_vertexIndex;
 }; // class gsPoint
 
 typedef gsPoint<2, real_t> gsPoint2D;
-//typedef gsPoint<3, real_t> gsPoint3D;
+typedef gsPoint<3, real_t> gsPoint3D;
 
 } // namespace gismo
