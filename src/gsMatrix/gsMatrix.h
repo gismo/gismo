@@ -44,7 +44,7 @@ public:
     typedef Eigen::Matrix<T,_Rows, _Cols, _Options> Base;
 
     // Self type
-    typedef gsMatrix<const T,_Rows, _Cols, _Options> Self;
+    typedef gsMatrix<T,_Rows, _Cols, _Options> Self;
 
     // The type of the coefficients of the matrix
     typedef T Scalar_t;
