@@ -26,51 +26,25 @@ template<int d, class T>
 class gsPoint : public gsVector<T, d>
 {
 public:
+    typedef gsVector<T, d> Base;
+
     typedef gsPoint<d, T> Self;
 
     typedef typename Eigen::aligned_allocator<Self> aalloc;
 
     typedef T Scalar_t;
 
-    gsPoint() : gsVector<T, d>(), m_vertexIndex((size_t)0) {}
+    gsPoint() : Base(), m_vertexIndex((size_t)0) {}
 
-    gsPoint(const gsPoint<d, T>& point) : gsVector<T,d>(), m_vertexIndex(point.m_vertexIndex) { *this << point[0], point[1]; }
-
-    gsPoint(T x, T y, size_t index) : gsVector<T, d>(), m_vertexIndex(index) { *this << x, y; }
-    //gsPoint(T x, T y, T z, size_t index) : gsVector<T, 3>(), m_vertexIndex(index) { *this << x, y, z; }
+    gsPoint(T x, T y, size_t index) : Base(), m_vertexIndex(index) { *this << x, y; }
 
     inline int getVertexIndex() const { return m_vertexIndex; }
-
-    void moveToPosition(const T x, const T y) {
-        *this << x, y;
-    }
-    void moveToPosition(const T x, const T y, const T z) {
-        *this << x, y, z;
-    }
-
-    void shift(const T x, const T y) {
-        *this += gsVector<>::vec(x, y);
-    }
-
-    void shift(const T x, const T y, const T z) {
-        *this += gsVector<>::vec(x, y, z);
-    }
-
-    static gsPoint<d == 2, T> point(T x, T y, size_t index)
-    {
-        return gsPoint<2, T>(x, y, index);
-    };
-
-    static gsPoint<d == 3, T> point(T x, T y, T z, size_t index)
-    {
-        return gsPoint<3, T>(x, y, z, index);
-    };
 
 private:
     size_t m_vertexIndex;
 }; // class gsPoint
 
-typedef gsPoint<2, real_t> gsPoint2D;
-typedef gsPoint<3, real_t> gsPoint3D;
+//typedef gsPoint<2, real_t> gsPoint2D;
+//typedef gsPoint<3, real_t> gsPoint3D;
 
 } // namespace gismo

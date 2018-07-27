@@ -46,7 +46,9 @@ template<class T>
 class gsParametrization
 {
 public:
-	//typedef std::vector<gsPoint2D, gsPoint2D::aalloc> VectorType;	// if use std::vector with Eigen classes, the second template parameter is needed
+    typedef gsPoint<2, real_t> gsPoint2D;
+
+	typedef std::vector<gsPoint2D, gsPoint2D::aalloc> VectorType;	// if use std::vector with Eigen classes, the second template parameter is needed
 
     /**
      * @brief Class that maintains the local neighbourhood properties.
@@ -191,7 +193,7 @@ public:
          * @param[in] N const int - number of vertices of triangle mesh
          * @param[in] points std::vector<Point2D>& - two-dimensional points that have same angles ratio as mesh neighbours
          */
-        void calculateLambdas(const size_t N, std::vector<gsPoint2D, gsPoint2D::aalloc>& points);
+        void calculateLambdas(const size_t N, VectorType& points);
 
         size_t m_vertexIndex; ///< vertex index
         std::vector<real_t> m_lambdas; ///< lambdas
@@ -380,7 +382,7 @@ private:
     bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const size_t maximum);
 
     gsHalfEdgeMesh<T> m_mesh; ///< mesh information
-	std::vector<gsPoint2D, gsPoint2D::aalloc> m_parameterPoints; ///< parameter points
+	VectorType m_parameterPoints; ///< parameter points
     gsOptionList m_options;
 }; // class gsParametrization
 

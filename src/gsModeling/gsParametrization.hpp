@@ -64,7 +64,7 @@ void gsParametrization<T>::calculate(const size_t boundaryMethod,
     Neighbourhood neighbourhood(m_mesh, paraMethod);
     for (size_t i = 1; i <= n; i++)
     {
-        m_parameterPoints.push_back(gsPoint2D(0, 0, i));
+        m_parameterPoints.push_back(gsParametrization<T>::gsPoint2D(0, 0, i));
     }
 
     if (boundaryMethod == 1)
@@ -72,7 +72,7 @@ void gsParametrization<T>::calculate(const size_t boundaryMethod,
         real_t l = m_mesh.getBoundaryLength();
         real_t lInv = 1. / l;
         real_t w = 0;
-        m_parameterPoints.push_back(gsPoint2D(0, 0, n + 1));
+        m_parameterPoints.push_back(gsParametrization<T>::gsPoint2D(0, 0, n + 1));
         std::vector<real_t> halfedgeLengths = m_mesh.getBoundaryChordLengths();
         for (size_t i = 0; i < neighbourhood.getNumberOfBoundaryHalfedges() - 1; i++)
         {
@@ -85,7 +85,7 @@ void gsParametrization<T>::calculate(const size_t boundaryMethod,
     {
         for (size_t i = n + 1; i <= N; i++)
         {
-            m_parameterPoints.push_back(gsPoint2D(0, 0, i));
+            m_parameterPoints.push_back(gsParametrization<T>::gsPoint2D(0, 0, i));
         }
         std::vector<real_t> halfedgeLengths = m_mesh.getBoundaryChordLengths();
 
@@ -97,7 +97,7 @@ void gsParametrization<T>::calculate(const size_t boundaryMethod,
             corners = neighbourhood.getBoundaryCorners(boundaryMethod, rangeInput, numberInput);
         std::vector<real_t> lengths = m_mesh.getCornerLengths(corners);
         real_t w = 0;
-        m_parameterPoints[n + corners[0] - 1] = gsPoint2D(0, 0, n + corners[0]);
+        m_parameterPoints[n + corners[0] - 1] = gsParametrization<T>::gsPoint2D(0, 0, n + corners[0]);
 
         for (size_t i = corners[0] + 1; i < corners[0] + B; i++)
         {
@@ -161,12 +161,12 @@ void gsParametrization<T>::constructAndSolveEquationSystem(const Neighbourhood &
     v = A.lu().solve(b2);
     for (size_t i = 0; i < n; i++)
     {
-        m_parameterPoints[i].moveToPosition(u(i), v(i));
+        m_parameterPoints[i] << u(i), v(i);
     }
 }
 
 template<class T>
-const gsPoint2D &gsParametrization<T>::getParameterPoint(size_t vertexIndex) const
+const typename gsParametrization<T>::gsPoint2D &gsParametrization<T>::getParameterPoint(size_t vertexIndex) const
 {
     return m_parameterPoints[vertexIndex - 1];
 }
@@ -406,18 +406,18 @@ const std::vector<int> gsParametrization<T>::Neighbourhood::getBoundaryCorners(c
 }
 
 template<class T>
-const gsPoint2D gsParametrization<T>::Neighbourhood::findPointOnBoundary(const real_t w, size_t vertexIndex)
+const typename gsParametrization<T>::gsPoint2D gsParametrization<T>::Neighbourhood::findPointOnBoundary(const real_t w, size_t vertexIndex)
 {
     GISMO_ASSERT(0 <= w && w <= 4, "Wrong value for w.");
     if(0 <= w && w <=1)
-        return gsPoint2D(w,0, vertexIndex);
+        return gsParametrization<T>::gsPoint2D(w,0, vertexIndex);
     else if(1<w && w<=2)
-        return gsPoint2D(1,w-1, vertexIndex);
+        return gsParametrization<T>::gsPoint2D(1,w-1, vertexIndex);
     else if(2<w && w<=3)
-        return gsPoint2D(1-w+2,1, vertexIndex);
+        return gsParametrization<T>::gsPoint2D(1-w+2,1, vertexIndex);
     else if(3<w && w<=4)
-        return gsPoint2D(0,1-w+3, vertexIndex);
-    return gsPoint2D(0,0,0);
+        return gsParametrization<T>::gsPoint2D(0,1-w+3, vertexIndex);
+    return gsParametrization<T>::gsPoint2D();
 }
 
 //*****************************************************************************************************
@@ -553,16 +553,16 @@ gsParametrization<T>::LocalParametrization::LocalParametrization(const gsHalfEdg
     else if(parametrizationMethod == 1)
     {
         std::list<real_t> angles = localNeighbourhood.getAngles();
-		std::vector<gsPoint2D, gsPoint2D::aalloc> points;
+		VectorType points;
         real_t theta = 0;
         real_t nextAngle = 0;
         for(std::list<real_t>::iterator it = angles.begin(); it!=angles.end(); ++it)
         {
             theta += *it;
         }
-        gsPoint2D p(0, 0, 0);
+        gsParametrization<T>::gsPoint2D p(0, 0, 0);
         real_t length = (*meshInfo.getVertex(indices.front()) - *meshInfo.getVertex(m_vertexIndex)).norm();
-        gsPoint2D nextPoint(length, 0, indices.front());
+        gsParametrization<T>::gsPoint2D nextPoint(length, 0, indices.front());
         points.push_back(nextPoint);
         gsVector<> actualVector = nextPoint - p;
         indices.pop_front();
@@ -573,7 +573,7 @@ gsParametrization<T>::LocalParametrization::LocalParametrization(const gsHalfEdg
             //length =  (meshInfo.getVertex(indices.front()) - meshInfo.getVertex(m_vertexIndex) ).norm();
             nextAngle = angles.front()*thetaInv * 2 * EIGEN_PI;
             gsVector<> nextVector = ((Eigen::Rotation2D<T>(nextAngle) * actualVector).normalized()*length) + p;
-            nextPoint = gsPoint2D(nextVector[0], nextVector[1], indices.front());
+            nextPoint = gsParametrization<T>::gsPoint2D(nextVector[0], nextVector[1], indices.front());
             points.push_back(nextPoint);
             actualVector = nextPoint - p;
             angles.pop_front();
@@ -615,19 +615,19 @@ const std::vector<real_t>& gsParametrization<T>::LocalParametrization::getLambda
 //*****************************************************************************************************
 
 template<class T>
-void gsParametrization<T>::LocalParametrization::calculateLambdas(const size_t N, std::vector<gsPoint2D, gsPoint2D::aalloc>& points)
+void gsParametrization<T>::LocalParametrization::calculateLambdas(const size_t N, VectorType& points)
 {
     for(size_t j=1; j <= N; j++)
     {
         m_lambdas.push_back(0); //Lambda(m_vertexIndex, j, 0)
     }
-    gsPoint2D p(0, 0, 0);
+    gsParametrization<T>::gsPoint2D p(0, 0, 0);
     size_t d = points.size();
     std::vector<real_t> my(d, 0);
     size_t l=1;
     size_t steps = 0;
     //size_t checkOption = 0;
-    for(std::vector<gsPoint2D, gsPoint2D::aalloc>::const_iterator it=points.begin(); it != points.end(); it++)
+    for(VectorType::const_iterator it=points.begin(); it != points.end(); it++)
     {
         gsLineSegment2D actualLine(p, *it);
         for(size_t i=1; i < d-1; i++)
