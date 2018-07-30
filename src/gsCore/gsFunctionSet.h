@@ -209,7 +209,7 @@ public:
     GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet, clone)
 
     /// @brief Returns the piece(s) of the function(s) at subdomain \a k
-    virtual const gsFunctionSet & piece(const index_t k) const {return *this;}
+    virtual const gsFunctionSet & piece(const index_t) const {return *this;}
 
     /// @brief Helper which casts and returns the k-th piece of this
     /// function set as a gsFunction
@@ -512,8 +512,8 @@ public:
 
        @param[in] in 
        @param[out] out
-     */
-    virtual void compute(const gsMapData<T> & in, gsFuncData<T> & out) const;
+     */ // TODO: remove me, update devel
+    //virtual void compute(const gsMapData<T> & in, gsFuncData<T> & out) const;
 
 public:
     /**
