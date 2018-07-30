@@ -62,7 +62,7 @@ gsMatrix<T> gsFunctionSet<T>::support() const
 // actives
 
 template <typename T>
-void gsFunctionSet<T>::active_into     (const gsMatrix<T> &u, gsMatrix<unsigned> &result) const
+void gsFunctionSet<T>::active_into (const gsMatrix<T> &, gsMatrix<unsigned> &) const
 {
     GISMO_NO_IMPLEMENTATION
     // Single function 0 globally active:
@@ -72,15 +72,15 @@ void gsFunctionSet<T>::active_into     (const gsMatrix<T> &u, gsMatrix<unsigned>
 // evaluation
 
 template <typename T>
-void gsFunctionSet<T>::eval_into (const gsMatrix<T> &u, gsMatrix<T> &result) const
+void gsFunctionSet<T>::eval_into (const gsMatrix<T> &, gsMatrix<T> &) const
 {GISMO_NO_IMPLEMENTATION}
 
 template <typename T>
-void gsFunctionSet<T>::deriv_into (const gsMatrix<T> &u, gsMatrix<T> &result) const 
+void gsFunctionSet<T>::deriv_into (const gsMatrix<T> &, gsMatrix<T> &) const
 {GISMO_NO_IMPLEMENTATION}
 
 template <typename T>
-void gsFunctionSet<T>::deriv2_into (const gsMatrix<T> &u, gsMatrix<T> &result) const
+void gsFunctionSet<T>::deriv2_into (const gsMatrix<T> &, gsMatrix<T> &) const
 {GISMO_NO_IMPLEMENTATION}
 
 template <typename T>

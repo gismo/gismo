@@ -519,8 +519,7 @@ private:
                 push<false>(ee.rowVar(), ee.colVar(), m_patchInd);
         }// operator()
 
-        void operator() (const expr::_expr<expr::gsNullExpr<T> > & ne)
-        {/*GISMO_UNUSED(ne);*/}
+        void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
 
         template<bool isMatrix> void push(const expr::gsFeVariable<T> & v,
                                           const expr::gsFeVariable<T> & u,

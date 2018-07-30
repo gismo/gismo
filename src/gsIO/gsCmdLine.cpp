@@ -404,9 +404,8 @@ void gsCmdLinePrivate::GismoCmdOut::usage(TCLAP::CmdLineInterface& c)
 }
 
 
-void gsCmdLinePrivate::GismoCmdOut::version(TCLAP::CmdLineInterface& c)
+void gsCmdLinePrivate::GismoCmdOut::version(TCLAP::CmdLineInterface&)
 {
-    GISMO_UNUSED(c);
     gsCmdLine::printVersion();
 }
 

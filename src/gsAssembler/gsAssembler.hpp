@@ -50,7 +50,7 @@ void gsAssembler<T>::assemble()
 {GISMO_NO_IMPLEMENTATION}
 
 template<class T>
-void gsAssembler<T>::assemble(const gsMultiPatch<T> & curSolution)
+void gsAssembler<T>::assemble(const gsMultiPatch<T> &)
 {GISMO_NO_IMPLEMENTATION}
 
 template<class T>

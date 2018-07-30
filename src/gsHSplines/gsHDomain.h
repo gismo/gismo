@@ -566,7 +566,7 @@ private:
     static bool isDegenerate(box const & someBox);
 
     /// Adds \a nlevels new index levels in the tree
-    void setIndexLevel(int nlevels) const
+    void setIndexLevel(int) const
     {
         GISMO_NO_IMPLEMENTATION
     }
@@ -644,9 +644,8 @@ private:
         typedef int return_type;
         static const return_type init = 0;
         
-        static void visitLeaf(kdnode<d,T> * leafNode, return_type & i)
+        static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
         {
-            GISMO_UNUSED(i);
             leafNode->level++;
         }
     };
@@ -657,9 +656,8 @@ private:
         typedef int return_type;
         static const return_type init = 0;
         
-        static void visitLeaf(kdnode<d,T> * leafNode, return_type & i)
+        static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
         {
-            GISMO_UNUSED(i);
             leafNode->level--;
         }
     };
@@ -706,9 +704,8 @@ private:
         typedef int return_type;
         static const return_type init = 0;
         
-        static void visitLeaf(kdnode<d,T> * leafNode, return_type & i)
+        static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
         {
-            GISMO_UNUSED(i);
             gsInfo << *leafNode;
         }
     };

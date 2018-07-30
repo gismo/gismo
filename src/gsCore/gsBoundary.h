@@ -153,8 +153,8 @@ public:
      * @param dim
      * @return the first valid side in an dim-dimensional box
     **/
-    static  boxSide    getFirst     (int dim) 
-    {GISMO_UNUSED(dim); return boxSide(1);}
+    static  boxSide    getFirst     (int)
+    { return boxSide(1); }
 
     /**
      * @brief helper for iterating on sides of an n-dimensional box
@@ -353,11 +353,10 @@ public:
 
     /**
      * @brief helper for iterating on corners of an n-dimensional box
-     * @param dim
      * @return the first valid corners in an dim-dimensional box
     **/
-    static  boxCorner    getFirst     (int dim) 
-    {GISMO_UNUSED(dim); return boxCorner(1);}
+    static  boxCorner    getFirst     (int)
+    { return boxCorner(1); }
 
     /**
      * @brief helper for iterating on corners of an n-dimensional box

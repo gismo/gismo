@@ -119,9 +119,8 @@ public:
 
     // Function expression can be used as a global function defined
     // for any real value, on any subdomain
-    virtual const gsFunctionExpr & piece(const index_t k) const
+    virtual const gsFunctionExpr & piece(const index_t) const
     {
-        GISMO_UNUSED(k);
         return *this; 
     }
 
