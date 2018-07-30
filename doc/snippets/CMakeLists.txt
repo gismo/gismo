@@ -2,7 +2,7 @@
 ## CMakeLists.txt ---
 ## This file is part of the G+Smo library.
 ##
-## Author: Angelos Mantzaflaris 
+## Author: Angelos Mantzaflaris
 ## Copyright (C) 2012 - RICAM-Linz.
 ######################################################################
 
@@ -35,6 +35,7 @@ foreach(snippet_src ${snippets_SRCS})
     target_link_libraries(${snippet_target} gismo)
   endif()
 
+find_package(Doxygen)
 if(DOXYGEN_FOUND)
   add_custom_command(
     TARGET ${snippet_target}
