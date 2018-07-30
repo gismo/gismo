@@ -21,7 +21,7 @@ namespace gismo
 
 
 template<class T> 
-void gsBulk<T>::toMesh(gsMesh<T> & msh, int npoints) const
+void gsBulk<T>::toMesh(gsMesh<T> & msh, int ) const
 {   
     // OLD CODE NEVER USED gsTensorGridIter has been superseded
 

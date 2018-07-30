@@ -797,12 +797,13 @@ public:
     { return i; }
 
     /// \todo remove
-    inline unsigned index(unsigned i, unsigned j) const
+    inline unsigned index(unsigned , unsigned ) const
     { GISMO_ERROR("The basis is 1D"); }
 
     /// Returns the stride for dimension dir
     inline unsigned stride(int dir) const 
-    { 
+    {
+        GISMO_UNUSED(dir);
         GISMO_ASSERT(dir==0,"Invalid direction");
         return 1; 
     }
@@ -830,12 +831,14 @@ public:
 
     Basis_t & component(unsigned i)
     {
+        GISMO_UNUSED(i);
         GISMO_ASSERT(i==0,"Invalid component requested");
         return *this; 
     }
 
     const Basis_t & component(unsigned i) const 
     {
+        GISMO_UNUSED(i);
         GISMO_ASSERT(i==0,"Invalid component requested");
         return *this; 
     }

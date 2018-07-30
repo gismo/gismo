@@ -454,7 +454,7 @@ void gsBasis<T>::uniformRefine(int, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul)
+void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int , int )
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

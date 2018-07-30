@@ -121,9 +121,9 @@ public:
     class GismoNullOut : public TCLAP::CmdLineOutput
     {
     public:
-        void failure(TCLAP::CmdLineInterface& c, TCLAP::ArgException& e) { }
-        void usage(TCLAP::CmdLineInterface& c)  { }
-        void version(TCLAP::CmdLineInterface& c) { }
+        void failure(TCLAP::CmdLineInterface& , TCLAP::ArgException& ) { }
+        void usage(TCLAP::CmdLineInterface& )  { }
+        void version(TCLAP::CmdLineInterface& ) { }
     };
 
 
