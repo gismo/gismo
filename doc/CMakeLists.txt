@@ -102,6 +102,7 @@ add_custom_target(
   doc-gismo-prerequisites
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/html/
   #COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/navtree_hacks.js           ${CMAKE_CURRENT_BINARY_DIR}/html/
+  DEPENDS ${snippets_out}
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
