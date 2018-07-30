@@ -130,7 +130,7 @@ gsLobattoRule<T>::lookupReference(index_t n,   // Number of points
     {
     case 1 :
     {
-        x <<  0.0; // Note was: -1.0, but we better use 0
+        x << -1.0;
         w <<  2.0;
         return true;
     }

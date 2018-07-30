@@ -126,30 +126,25 @@ protected:
     /// Reads Wavefront OBJ file
     bool readObjFile(String const & fn);
 
+    /// Reads OpenCascade brep file
+    bool readBrepFile(String const & fn);
+
     /// Reads Iges file
     bool readIgesFile(String const & fn);
 
     /// Reads X3D file
     bool readX3dFile(String const & fn);
 
-#ifdef GISMO_WITH_ONURBS
     /// Reads 3DM file
     bool read3dmFile(String const & fn);
-#endif
 
-#ifdef GISMO_WITH_PSOLID
     /// Reads parasolid files
     bool readParasolidFile(String const & fn);
-#endif
 
     // Show the line number where something went wrong
     void ioError(int lineNumber,const String& str);
 
 public:
-
-////////////////////////////////////////////////////////
-// Generic functions to fetch Gismo objects
-////////////////////////////////////////////////////////
 
     // Generic functions to fetch Gismo object
     // template<class Object>

@@ -26,17 +26,13 @@ gsQuadRule<T>::mapTo( T startVal, T endVal,
 {
     GISMO_ASSERT( 1 == m_nodes.rows(), "Inconsistent quadrature mapping");
 
-    // the factor 0.5 is due to the fact that the one-dimensional
-    // reference interval is [-1,1].
-    const T h = ( startVal != endVal ? 0.5 * (endVal-startVal) : T(0.5) );
+    const T h = (endVal-startVal) / T(2);
 
     // Linear map from [-1,1]^d to [startVal,endVal]
     nodes = (h * (m_nodes.array()+1)) + startVal;
-    // Alternative (less numerically stable):
-    //nodes  = (h * m_nodes).array() + 0.5*(startVal+endVal);
 
     // Adjust the weights (multiply by the Jacobian of the linear map)
-    weights.noalias() = h * m_weights;
+    weights.noalias() = (0==h?T(0.5):h) * m_weights;
 }
 
 template<class T> void
@@ -56,18 +52,13 @@ gsQuadRule<T>::mapToAll( const std::vector<T> & breaks,
     {
         const T startVal = breaks[i ];
         const T endVal   = breaks[i+1];
-
-        // the factor 0.5 is due to the fact that the one-dimensional
-        // reference interval is [-1,1].
-        const T h = ( startVal != endVal ? 0.5 * (endVal-startVal) : T(0.5) );
+        const T h = (endVal-startVal) / T(2);
 
         // Linear map from [-1,1]^d to [startVal,endVal]
         nodes.middleCols(i*nnodes,nnodes) = (h * (m_nodes.array()+1)) + startVal;
-        // Alternative (less numerically stable):
-        //nodes.middleCols(i*nnodes,nnodes) = (h * m_nodes).array() + 0.5*(startVal+endVal);
 
         // Adjust the weights (multiply by the Jacobian of the linear map)
-        weights.segment(i*nnodes,nnodes)  = h * m_weights;
+        weights.segment(i*nnodes,nnodes)  = (0==h?T(0.5):h) * m_weights;
     }
 }
 
