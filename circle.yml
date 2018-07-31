@@ -8,7 +8,7 @@ jobs:
     docker:
       - image: centos:7
         environment:
-	  MAKEFLAGS: -j4
+        MAKEFLAGS: -j4
     steps:
       - run:
           name: Install dependencies
@@ -18,7 +18,7 @@ jobs:
       - run:
           name: Build G+Smo on CentOS
           command: cmake .. -DSITE="$CI_PULL_REQUESTS-$CI_BRANCH [circleci98]" -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98 -DGISMO_WITH_ONURBS=ON
-	  command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+          command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
 
 #deployment:
 #    working_directory: ~/deploy
