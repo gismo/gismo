@@ -37,7 +37,7 @@ workflows:
   version: 2
   build_and_test:
     jobs:
-      - centos_build
+      - centos_build98
 #      - deployment:
 #          requires:
 #            - build
