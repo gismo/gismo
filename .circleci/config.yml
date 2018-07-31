@@ -14,12 +14,11 @@ jobs:
     steps:
       - run:
           name: Install dependencies
-          command: yum install -y git cmake make gcc-c++ valgrind #clang
-          #command: ln -fs /usr/lib/libcurl.so.4 /usr/local/lib/
+          command: yum install -y git cmake make gcc-c++ #valgrind clang
       - checkout
       - run:
           name: Configure G+Smo on CentOS
-          command: cmake . -DSITE="$CI_PULL_REQUESTS-$CI_BRANCH [circleci98]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98 -DGISMO_WITH_ONURBS=ON
+          command: cmake . -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [circleci98]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on CentOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
