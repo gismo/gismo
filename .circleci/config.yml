@@ -8,7 +8,7 @@ jobs:
       branches:
         - only: stable
         - only: gsMesh
-    working_directory: ~/build
+    working_directory: ~/gismo
     environment:
       MAKEFLAGS: -j4
     steps:
@@ -19,7 +19,7 @@ jobs:
       - checkout
       - run:
           name: Configure G+Smo on CentOS
-          command: cmake .. -DSITE="$CI_PULL_REQUESTS-$CI_BRANCH [circleci98]" -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98 -DGISMO_WITH_ONURBS=ON
+          command: cmake . -DSITE="$CI_PULL_REQUESTS-$CI_BRANCH [circleci98]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on CentOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
