@@ -2,15 +2,15 @@ version: 2.0
 
 jobs:
   centos_build98:
+    docker:
+      - image: centos:7
     filters:
       branches:
         - only: stable
         - only: gsMesh
-      working_directory: ~/build
-      docker:
-        - image: centos:7
-      environment:
-        MAKEFLAGS: -j4
+    working_directory: ~/build
+    environment:
+      MAKEFLAGS: -j4
     steps:
       - run:
           name: Install dependencies
