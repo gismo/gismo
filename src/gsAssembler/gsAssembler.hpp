@@ -386,7 +386,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
 
 template<class T>
 void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
-                                                const gsMultiBasis<T> & mbasis,
+                                                const gsMultiBasis<T> & ,
                                                 const int unk_)
 {
     m_ddof[unk_].resize( mapper.boundarySize(), m_pde_ptr->numRhs() );

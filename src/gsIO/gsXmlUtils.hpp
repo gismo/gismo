@@ -297,8 +297,8 @@ public:
         return m;
     }
 
-    static gsXmlNode * put (const gsMesh<T> & obj,
-                            gsXmlTree & data )
+    static gsXmlNode * put (const gsMesh<T> &,
+                            gsXmlTree & )
     {
         return NULL;
     }
@@ -951,8 +951,8 @@ public:
         return NULL;
     }
     
-    static gsXmlNode * put (const gsPde<T> & obj,
-                            gsXmlTree & data )
+    static gsXmlNode * put (const gsPde<T> &,
+                            gsXmlTree & )
     {
         return NULL;
     }
@@ -1301,8 +1301,8 @@ public:
         return cf ;
     }
 
-    static gsXmlNode * put (const gsCurveFitting<T> & obj,
-                            gsXmlTree & data )
+    static gsXmlNode * put (const gsCurveFitting<T> &,
+                            gsXmlTree & )
     {
         return NULL;
     }
@@ -1377,8 +1377,8 @@ public:
         }
     }
     
-    static gsXmlNode * put (const gsPoissonPde<T> & obj,
-                            gsXmlTree & data )
+    static gsXmlNode * put (const gsPoissonPde<T> &,
+                            gsXmlTree & )
     {
         return NULL;
     }

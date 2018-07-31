@@ -478,7 +478,7 @@ private:
         template <typename E> void operator() (const gismo::expr::_expr<E> & v)
         { v.setFlag(); }
 
-        void operator() (const expr::_expr<expr::gsNullExpr<T> > & ne) {}
+        void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
     } _setFlag;
 
     struct __printExpr
