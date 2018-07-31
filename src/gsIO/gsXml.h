@@ -2,12 +2,12 @@
 
     @brief Provides declaration of input/output XML utilities struct.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -28,7 +28,7 @@
 
 /*
 // Forward declare rapidxml structures
-namespace rapidxml 
+namespace rapidxml
 {
     template<class Ch> class xml_node;
     template<class Ch> class xml_attribute;
@@ -58,12 +58,11 @@ namespace rapidxml
 
 #define TMPLA2(t1,t2)    t1,t2
 #define TMPLA3(t1,t2,t3) t1,t2,t3
-#define FILE_PRECISION 16
 
 #ifdef GISMO_WITH_MPQ
 // Specialize file I/O to floating point format
 #include<sstream>
-inline std::istringstream & 
+inline std::istringstream &
 operator>>(std::istringstream & is, mpq_class & var)
 {
     // read as decimal
@@ -71,13 +70,13 @@ operator>>(std::istringstream & is, mpq_class & var)
     if ( !(is >> dn) ) return is;
     const std::string::size_type comma( dn.find(".") );
     if( comma != std::string::npos )
-    {   
+    {
         const std::string::size_type exp = dn.size() - comma - 1;
         const mpz_class num( dn.erase(comma,1), 10);
         mpz_class den;
         mpz_ui_pow_ui(den.get_mpz_t(),10,exp);
         var = mpq_class(num, den);
-    } 
+    }
     else // integer or rational
         var.set_str(dn,10);
 
@@ -94,7 +93,7 @@ operator>>(std::istringstream & is, mpq_class & var)
 template <class U> inline std::ofstream & operator<<
 (std::ofstream &fs, __gmp_expr<U,U> & var)
 {
-    fs<<var.get_d(); 
+    fs<<var.get_d();
     // write as rational
     //os << var.get_str(10);
     return fs;
@@ -148,7 +147,7 @@ inline bool gsGetReal(std::istream & is, mpq_class & var)
         mpz_class den;
         mpz_ui_pow_ui(den.get_mpz_t(),10,exp);
         var = mpq_class(num, den);
-    } 
+    }
     else // integer or rational
     {
         if ('+'==dn[0]) dn.erase(0, 1);
@@ -191,7 +190,7 @@ class gsXml
 private:
     gsXml() { }// Disallow instantization
 public:
-    
+
     static std::string tag ();
 /*    {   // Next line will produce compile-time error
         // when class is not specialized for Object
@@ -229,7 +228,7 @@ Object * getById(gsXmlNode * node, const int & id)
         if (id_at && atoi(id_at->value()) == id )
             return internal::gsXml<Object>::get(child);
     }
-    std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag() 
+    std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag()
              <<" with id="<<id<<" not found.\n";
     return NULL;
 }
@@ -280,8 +279,8 @@ GISMO_EXPORT int countByTag(const std::string & tag, gsXmlNode * root );
 
 /// Helper to count the number of Objects (by name and type) that
 /// exist in the XML tree
-GISMO_EXPORT int  countByTagType(const std::string & tag, 
-                                 const std::string & type, 
+GISMO_EXPORT int  countByTagType(const std::string & tag,
+                                 const std::string & type,
                                  gsXmlNode * root );
 
 /// Helper to get the first object (by tag) if one exists in
@@ -292,7 +291,7 @@ GISMO_EXPORT gsXmlNode * firstByTag(const std::string & tag,
 /// Helper to get the first object (by tag and type) if one exists in
 /// the XML tree
 GISMO_EXPORT gsXmlNode * firstByTagType(const std::string & tag,
-                                         const std::string & type, 
+                                         const std::string & type,
                                          gsXmlNode * root );
 
 // Helper which finds a node matching \a tag and \a type in the XML
@@ -305,7 +304,7 @@ GISMO_EXPORT gsXmlNode * firstByTagType(const std::string & tag,
 GISMO_EXPORT gsXmlNode * anyByTag(const std::string & tag,
                                   gsXmlNode * root );
 
-GISMO_EXPORT void getBoundaries(gsXmlNode                * node, 
+GISMO_EXPORT void getBoundaries(gsXmlNode                * node,
                                 std::map<int, int>       & ids,
                                 std::vector< patchSide > & result);
 
@@ -320,7 +319,7 @@ GISMO_EXPORT void appendBoxTopology(const gsBoxTopology& topology,
 
 /// Helper to allocate XML node with gsMatrix value
 template<class T>
-gsXmlNode * makeNode( const std::string & name, 
+gsXmlNode * makeNode( const std::string & name,
                       const gsMatrix<T> & value, gsXmlTree & data,
                       bool transposed = false );
 
@@ -331,24 +330,24 @@ void getFunctionFromXml ( gsXmlNode * node, gsFunctionExpr<T> & result );
 
 /// Helper to fetch matrices
 template<class T>
-void getMatrixFromXml ( gsXmlNode * node, 
-                        unsigned const & rows, 
-                        unsigned const & cols, 
+void getMatrixFromXml ( gsXmlNode * node,
+                        unsigned const & rows,
+                        unsigned const & cols,
                         gsMatrix<T> & result );
 
 /// Helper to insert matrices into XML
 template<class T>
-gsXmlNode * putMatrixToXml ( gsMatrix<T> const & mat, 
+gsXmlNode * putMatrixToXml ( gsMatrix<T> const & mat,
                              gsXmlTree & data, std::string name = "Matrix");
 
 /// Helper to fetch sparse entries
 template<class T>
-void getSparseEntriesFromXml ( gsXmlNode * node, 
+void getSparseEntriesFromXml ( gsXmlNode * node,
                                gsSparseEntries<T> & result );
 
 /// Helper to insert sparse matrices into XML
 template<class T>
-gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T> const & mat, 
+gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T> const & mat,
                                    gsXmlTree & data, std::string name = "SparseMatrix");
 
 }// end namespace internal
