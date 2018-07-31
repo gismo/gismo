@@ -1,9 +1,11 @@
-version: 2
-  jobs:
-    centos_build98:
-      filters:
-        branches:
-          only: stable
+version: 2.0
+
+jobs:
+  centos_build98:
+    filters:
+      branches:
+        - only: stable
+        - only: gsMesh
       working_directory: ~/build
       docker:
         - image: centos:7
@@ -35,7 +37,7 @@ version: 2
 
 workflows:
   version: 2
-  build_and_test:
+  build:
     jobs:
       - centos_build98
 #      - deployment:
