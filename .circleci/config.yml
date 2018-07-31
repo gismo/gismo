@@ -14,7 +14,8 @@ jobs:
     steps:
       - run:
           name: Install dependencies
-          command: yum install -y git cmake valgrind clang
+	  yum groupinstall 'Development Tools'
+          command: yum install -y git cmake make gcc-c++ valgrind #clang
           #command: ln -fs /usr/lib/libcurl.so.4 /usr/local/lib/
       - checkout
       - run:
