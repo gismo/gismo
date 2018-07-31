@@ -36,7 +36,7 @@ jobs:
     steps:
       - run:
           name: Install dependencies
-          command: yum install -y git cmake make clang #valgrind
+          command: yum install -y git cmake make clang libgcc #valgrind
       - checkout
       - run:
           name: Configure G+Smo on Fedora
