@@ -125,7 +125,7 @@ void gsMultiBasis<T>::addInterface( gsBasis<T>* g1, boxSide s1,
 namespace {
 template <typename T>
 struct take_first {
-    T operator() (const T& a, const T&b) { return a; }
+    T operator() (const T& a, const T&) { return a; }
 };
 }
 

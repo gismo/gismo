@@ -665,7 +665,7 @@ gsNurbsCreator<T>::NurbsCurve2 (T const & r, T const & x, T const & y)
 
 
 template<class T> typename gsNurbsCreator<T>::NurbsPtr
-gsNurbsCreator<T>::NurbsBean(T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::NurbsBean(T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,12,3,1,2);
     gsMatrix<T> C(15,2);
@@ -695,7 +695,7 @@ gsNurbsCreator<T>::NurbsBean(T const & r, T const & x, T const & y)
 
 
 template<class T> typename gsNurbsCreator<T>::BSplinePtr
-gsNurbsCreator<T>::BSplineE (T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::BSplineE (T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,22,4,1,3);
     gsMatrix<T> C(26,2);
@@ -732,7 +732,7 @@ gsNurbsCreator<T>::BSplineE (T const & r, T const & x, T const & y)
 }
 
 template<class T> typename gsNurbsCreator<T>::NurbsPtr
-gsNurbsCreator<T>::NurbsAmoebaFull(T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::NurbsAmoebaFull(T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,19,3,1,2);
     gsMatrix<T> C(22,2);
@@ -904,7 +904,7 @@ gsNurbsCreator<T>::BSplineLShapeMultiPatch_p2()
 }
 
 template<class T> typename gsNurbsCreator<T>::BSplinePtr
-gsNurbsCreator<T>::BSplineAmoeba(T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::BSplineAmoeba(T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,19,3,1,2);
     gsMatrix<T> C(22,2);
@@ -943,7 +943,7 @@ gsNurbsCreator<T>::BSplineAmoeba(T const & r, T const & x, T const & y)
 }
 
 template<class T> typename gsNurbsCreator<T>::BSplinePtr
-gsNurbsCreator<T>::BSplineAmoebaBig(T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::BSplineAmoebaBig(T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,19,3,1,2);
     gsMatrix<T> C(22,2);
@@ -980,7 +980,7 @@ gsNurbsCreator<T>::BSplineAmoebaBig(T const & r, T const & x, T const & y)
 }
 
 template<class T> typename gsNurbsCreator<T>::BSplinePtr
-gsNurbsCreator<T>::BSplineAustria(T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::BSplineAustria(T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,31,3,1,2);
     gsMatrix<T> C(34,2);
@@ -1030,7 +1030,7 @@ gsNurbsCreator<T>::BSplineAustria(T const & r, T const & x, T const & y)
 
 
 template<class T> typename gsNurbsCreator<T>::BSplinePtr
-gsNurbsCreator<T>::BSplineFish(T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::BSplineFish(T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,13,3,1,2);
     gsMatrix<T> C(16,2);
@@ -1059,7 +1059,7 @@ gsNurbsCreator<T>::BSplineFish(T const & r, T const & x, T const & y)
 }
 
 template<class T> typename gsNurbsCreator<T>::BSplinePtr
-gsNurbsCreator<T>::BSplineAmoeba3degree(T const & r, T const & x, T const & y)
+gsNurbsCreator<T>::BSplineAmoeba3degree(T const &, T const & x, T const & y)
 {
     gsKnotVector<T> kv(0,1,18,4,1,3);
     gsMatrix<T> C(22,2);

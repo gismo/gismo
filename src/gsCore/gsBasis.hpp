@@ -26,7 +26,7 @@ gsBasis<T>::gsBasis()
 { }
 
 template<class T>
-gsBasis<T>::gsBasis(const gsBasis& other)
+gsBasis<T>::gsBasis(const gsBasis& )
 { }
         
 template<class T>
@@ -454,7 +454,7 @@ void gsBasis<T>::uniformRefine(int, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int , int )
+void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& , int , int )
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

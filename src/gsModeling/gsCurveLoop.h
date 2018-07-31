@@ -32,7 +32,8 @@ namespace gismo
     \ingroup Modeling
 */
 
-template<class T> class gsCurveLoop
+template<class T>
+class gsCurveLoop
 {
 
 public:

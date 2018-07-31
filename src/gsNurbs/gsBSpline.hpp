@@ -163,6 +163,7 @@ void gsBSpline<T>::swapDirections(const unsigned i, const unsigned j)
 template<class T>
 void gsBSpline<T>::degreeElevate(int const i, int const dir)
 {
+    GISMO_UNUSED(dir);
     GISMO_ASSERT( (dir == -1) || (dir == 0),
                   "Invalid basis component "<< dir <<" requested for degree elevation" );
     

@@ -202,7 +202,7 @@ public:
 
     gsFunctionSet();
 
-    gsFunctionSet(const gsFunctionSet & o);
+    gsFunctionSet(const gsFunctionSet &);
 
     virtual ~gsFunctionSet();
 

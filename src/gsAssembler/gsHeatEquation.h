@@ -38,8 +38,7 @@ public:
 public:
 
     /// Construction receiving all necessary data
-    gsHeatEquation(gsAssembler<T> & stationary,
-                   const gsOptionList & opt = Base::defaultOptions() )
+    explicit gsHeatEquation(gsAssembler<T> & stationary)
     :  Base(stationary),  // note: unnecessary sliced copy here
        m_stationary(&stationary), m_theta(0.5)
     {

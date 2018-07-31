@@ -1046,6 +1046,7 @@ void gsHTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
 {
+    GISMO_UNUSED(numKnots);
     GISMO_ASSERT(numKnots == 1, "Only implemented for numKnots = 1");
 
     GISMO_ASSERT( m_tree.getMaxInsLevel() < static_cast<unsigned>(m_bases.size()),

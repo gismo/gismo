@@ -129,7 +129,7 @@ public:
             if (trimID>-1)
                 m->addFace(vert, getById< gsTrimSurface<T> >( toplevel, trimID ) );
             else if (trimID==-1 && nLoops == 1)
-                m->addFace(vert[0]);
+                GISMO_ERROR("Case not handled");
             else if (trimID==-1)
             {
                 gsWarn<<"\nAutomatic creation of trimmed surfaces is only supported for a single loop\n";

@@ -284,7 +284,7 @@ public:
     }
     
     typedef T Scalar;
-    gsMatrix<T> eval(const index_t k) const { GISMO_ERROR("gsNullExpr"); }
+    gsMatrix<T> eval(const index_t) const { GISMO_ERROR("gsNullExpr"); }
     inline index_t rows() const { GISMO_ERROR("gsNullExpr"); }
     inline index_t cols() const { GISMO_ERROR("gsNullExpr"); }
     inline void setFlag() const {/* gsInfo<<"gsNullExpr emtpy flag\n"; */ }
@@ -1373,7 +1373,7 @@ public:
 
 public:
 
-    gsMatrix<Scalar>::IdentityReturnType eval(const index_t k) const
+    gsMatrix<Scalar>::IdentityReturnType eval(const index_t) const
     {
         return gsMatrix<Scalar>::Identity(_dim,_dim);
     }
@@ -1381,7 +1381,7 @@ public:
     index_t rows() const { return _dim; }
     index_t cols() const { return  _dim; }
     void setFlag() const { }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const {  }
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & ) const {  }
 
     static bool rowSpan() {return false;}
     static bool colSpan() {return false;}
