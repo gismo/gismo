@@ -14,13 +14,35 @@ jobs:
     steps:
       - run:
           name: Install dependencies
-          command: yum install -y git cmake make gcc-c++ #valgrind clang
+          command: yum install -y git cmake make gcc-c++ #valgrind
       - checkout
       - run:
           name: Configure G+Smo on CentOS
           command: cmake . -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [circleci98]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on CentOS
+          command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+
+  fedora_build_clang:
+    docker:
+      - image: centos:7
+    filters:
+      branches:
+        - only: stable
+        - only: gsMesh
+    working_directory: ~/gismo
+    environment:
+      MAKEFLAGS: -j4
+    steps:
+      - run:
+          name: Install dependencies
+          command: yum install -y git cmake make clang #valgrind
+      - checkout
+      - run:
+          name: Configure G+Smo on Fedora
+          command: cmake . -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [circleci98]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98 -DGISMO_WITH_ONURBS=ON
+      - run:
+          name: Build and test G+Smo on Fedora
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
 
 #deployment:
@@ -41,6 +63,7 @@ workflows:
   build:
     jobs:
       - centos_build98
+      - fedora_build_clang
 #      - deployment:
 #          requires:
 #            - build
