@@ -1,18 +1,18 @@
 version: 2
-jobs:
-  centos_build98:
-    filters:
-      branches:
-        only: stable
-    working_directory: ~/build
-    docker:
-      - image: centos:7
-        environment:
+  jobs:
+    centos_build98:
+      filters:
+        branches:
+          only: stable
+      working_directory: ~/build
+      docker:
+        - image: centos:7
+      environment:
         MAKEFLAGS: -j4
     steps:
       - run:
           name: Install dependencies
-          command: yum install -y git valgrind clang
+          command: yum install -y git cmake valgrind clang
           #command: ln -fs /usr/lib/libcurl.so.4 /usr/local/lib/
       - checkout
       - run:
