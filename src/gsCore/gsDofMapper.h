@@ -1,13 +1,13 @@
 /** @file gsDofMapper.h
-    
+
     @brief Provides the gsDofMapper class for re-indexing DoFs.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Bressan, C. Hofreither, A. Mantzaflaris
 */
 
@@ -43,25 +43,25 @@ namespace gismo
     - first the standard \em free (non-eliminated) dofs, ie. dofs that
       are not coupled on the boundary. For the standard dofs there is
       unique pre-image pair (patch,localdof).
-    
+
     - then the \em free dofs which are coupled with other dofs For the
       coupled dofs there is a list of pre-image pairs of the form
       (patch,localdof).
 
       Upto here we get all the dofs which are \em free (number:
       gsDofMapper::freeSize() ). Then a final group follows:
-    
+
     - then the dofs that are on Dirichlet boundaries (number:
       gsDofMapper::boundarySize()). These dofs might have a unique
       pre-image or not.
-    
+
     The boundary (eg. eliminated) dofs have their own 0-based
     numbering. The index of an boundary global dof in this numbering
     can be queried with gsDofMapper::bindex().
 
     The object must be finalized before it is used,
     i.e. gsDofMapper::finalize() has to be called once before use.
-    
+
     \ingroup Core
 
 */
@@ -85,7 +85,7 @@ public:
     gsDofMapper(
         const gsMultiBasis<T>         &bases,
         const gsBoundaryConditions<T> &dirichlet,
-        int unk = 0 
+        int unk = 0
         ) : m_shift(0), m_bshift(0)
     {
         init(bases, dirichlet, unk);
@@ -191,7 +191,7 @@ public:
     gsVector<index_t> asVector() const;
 
     /** \brief Returns a vector taking global indices to flat local
-        
+
         Assumes that the mapper is a permutation
     */
     gsVector<index_t> inverseAsVector() const;
@@ -227,7 +227,7 @@ public:
     /// Mark the local dofs \a boundaryDofs of patch \a k as eliminated.
     // to do: put k at the end
     void markBoundary( index_t k, const gsMatrix<unsigned> & boundaryDofs );
-    
+
     /// Mark the local dof \a i of patch \a k as eliminated.
     void eliminateDof( index_t i, index_t k );
 
@@ -275,7 +275,7 @@ public:
     void localToGlobal(const gsMatrix<unsigned>& locals,
                        index_t patchIndex,
                        gsMatrix<unsigned>& globals) const;
-    
+
     /** \brief Computes the global indices of the input local indices
      *
      * \param[in] locals a column matrix with the local indices
@@ -315,7 +315,7 @@ public:
     /// @brief Returns the boundary index of local dof \a i of patch \a k.
     ///
     /// Produces undefined results if local dof (i,k) does not lie on the boundary.
-    inline index_t bindex( index_t i, index_t k = 0 ) const 
+    inline index_t bindex( index_t i, index_t k = 0 ) const
     {
         GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
         return MAPPER_PATCH_DOF(i,k) - freeSize() + m_bshift;
@@ -340,7 +340,7 @@ public:
     /// Produces undefined results if dof \a gl does not lie on the boundary.
     inline index_t global_to_bindex( index_t gl ) const
     {
-        GISMO_ASSERT( is_boundary_index( gl ), 
+        GISMO_ASSERT( is_boundary_index( gl ),
                       "global_to_bindex(): specified dof is not on the boundary");
         return gl - m_shift - freeSize() + m_bshift;
     }
@@ -350,7 +350,7 @@ public:
     { return gl < freeSize() + m_shift; }
 
     /// Returns true if local dof \a i of patch \a k is not eliminated.
-    inline bool is_free( index_t i, index_t k = 0 ) const 
+    inline bool is_free( index_t i, index_t k = 0 ) const
     { return is_free_index( index(i, k) ); }
 
     /// Returns true if global dof \a gl is eliminated
@@ -358,15 +358,15 @@ public:
     { return gl >= freeSize() + m_shift; }
 
     /// Returns true if local dof \a i of patch \a k is eliminated.
-    inline bool is_boundary( index_t i, index_t k = 0 ) const 
+    inline bool is_boundary( index_t i, index_t k = 0 ) const
     {return is_boundary_index( index(i, k) );}
 
     /// Returns true if local dof \a i of patch \a k is coupled.
-    inline bool is_coupled( index_t i, index_t k = 0 ) const 
+    inline bool is_coupled( index_t i, index_t k = 0 ) const
     { return  is_coupled_index( index(i, k) ); }
 
     /// Returns true if \a gl is a coupled dof.
-    inline bool is_coupled_index( index_t gl) const 
+    inline bool is_coupled_index( index_t gl) const
     {
 	   return  (gl < m_numFreeDofs + m_shift                    ) && // is a free dof and
                     (gl + m_numCpldDofs + 1 > m_numFreeDofs + m_shift);   // is not standard dof
@@ -383,17 +383,17 @@ public:
     }
 
     /// Returns the total number of dofs (free and eliminated).
-    inline index_t size() const 
-    { 
+    inline index_t size() const
+    {
         GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return m_numFreeDofs + m_numElimDofs; 
+        return m_numFreeDofs + m_numElimDofs;
     }
 
     /// Returns the number of free (not eliminated) dofs.
-    inline index_t freeSize() const 
-    { 
+    inline index_t freeSize() const
+    {
         GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return m_numFreeDofs; 
+        return m_numFreeDofs;
     }
 
     /// Returns the number of coupled (not eliminated) dofs.
@@ -403,12 +403,12 @@ public:
     index_t taggedSize() const;
 
     /// Returns the number of eliminated dofs.
-    inline index_t boundarySize() const 
-    { 
+    inline index_t boundarySize() const
+    {
         GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return m_numElimDofs; 
+        return m_numElimDofs;
     }
-    
+
     index_t boundarySizeWithDuplicates() const;
 
     /// Returns the offset corresponding to patch \a k
@@ -424,10 +424,25 @@ public:
     std::size_t mapSize() const
     {return m_dofs.size();}
 
+    /// \brief Returns the total number of patch-local degrees on patch \a k
+    /// freedom that are being mapped
+    std::size_t patchSize(const index_t k) const
+    {
+        const std::size_t k1(k+1);
+        GISMO_ASSERT(k1<=numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+        if ( 1==m_offset.size() ) return m_dofs.size();
+        else if ( k1==m_offset.size() ) return m_dofs.size() - m_offset.back();
+        else return m_offset[k1]-m_offset[k];
+    }
+
     /// \brief For \a gl being a global index, this function returns a
     /// vector of pairs (patch,dof) that contains all the pairs which
     /// map to \a gl
     void preImage(index_t gl, std::vector<std::pair<index_t,index_t> > & result) const;
+
+    /// \brief For \a gl being a global index, this function returns true
+    /// whenever \a gl corresponds to patch \a k
+    bool indexOnPatch(const index_t gl, const index_t k) const;
 
     /// \brief For \a n being an index which is already offsetted, it
     /// returns the global index where it is mapped to by the dof
@@ -460,7 +475,7 @@ private:
     std::vector<index_t>     m_dofs;
     std::vector<std::size_t> m_offset;
     // Representation as vector of vectors, m_patchDofs[k][i]
-    // corresponds to patch k patch-local basis index i 
+    // corresponds to patch k patch-local basis index i
     // std::vector< std::vector<index_t> > m_patchDofs;
 
     // Shifting of the global index (zero by default)
