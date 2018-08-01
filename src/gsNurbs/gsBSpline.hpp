@@ -155,6 +155,8 @@ void gsBSpline<T>::setFurthestCorner(gsMatrix<T> const &v)
 template <class T>
 void gsBSpline<T>::swapDirections(const unsigned i, const unsigned j)
 {
+    GISMO_UNUSED(i);
+    GISMO_UNUSED(j);
     GISMO_ASSERT( static_cast<int>(i) == 0 && static_cast<int>(j) == 0,
                   "Invalid basis components "<<i<<" and "<<j<<" requested" );
 }
