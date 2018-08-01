@@ -41,23 +41,23 @@ public:
 
 public:
 
-    gsPiecewiseFunction(index_t npieces = 0)
+    explicit gsPiecewiseFunction(index_t npieces = 0) : gsFunctionSet<T>()
     { m_funcs.reserve(2+npieces); }
 
-    gsPiecewiseFunction(const gsFunction<T> & func)
+    gsPiecewiseFunction(const gsFunction<T> & func) : gsFunctionSet<T>(func)
     {
         m_funcs.push_back(func.clone().release());
         //m_funcs.resize(n, func.clone());
     }
 
-    gsPiecewiseFunction(const gsPiecewiseFunction & other)
+    gsPiecewiseFunction(const gsPiecewiseFunction & other) : gsFunctionSet<T>(other)
     {
         m_funcs.resize(other.m_funcs.size() );
         cloneAll( other.m_funcs.begin(), other.m_funcs.end(),
                   m_funcs.begin() );
     }
 
-    gsPiecewiseFunction(FunctionContainer & funcs)
+    gsPiecewiseFunction(FunctionContainer & funcs) : gsFunctionSet<T>()
     {
         m_funcs.swap(funcs); // funcs are consumed
     }

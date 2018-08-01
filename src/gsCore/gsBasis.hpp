@@ -26,7 +26,7 @@ gsBasis<T>::gsBasis()
 { }
 
 template<class T>
-gsBasis<T>::gsBasis(const gsBasis& )
+gsBasis<T>::gsBasis(const gsBasis& other) : Base(other)
 { }
         
 template<class T>

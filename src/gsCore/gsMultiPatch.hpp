@@ -25,7 +25,7 @@ namespace gismo
 
 template<class T>
 gsMultiPatch<T>::gsMultiPatch(const gsGeometry<T> & geo )
-    : gsBoxTopology( geo.parDim() )
+    : BaseA( geo.parDim() )
 {
     m_patches.push_back(geo.clone().release());
     //m_patches[0]->setId(0); // Note: for the single-patch constructor the id remains unchanged
@@ -35,7 +35,7 @@ gsMultiPatch<T>::gsMultiPatch(const gsGeometry<T> & geo )
 
 template<class T>
 gsMultiPatch<T>::gsMultiPatch( const gsMultiPatch& other )
-    : gsBoxTopology( other ), m_patches( other.m_patches.size() )
+    : BaseA( other ), BaseB( other ), m_patches( other.m_patches.size() )
 {
     // clone all geometries
     cloneAll( other.m_patches.begin(), other.m_patches.end(),
@@ -50,7 +50,7 @@ gsMultiPatch<T>& gsMultiPatch<T>::operator=( const gsMultiPatch& other )
     if (this!=&other)
     {
         freeAll(m_patches);
-        Base::operator=(other);
+        BaseA::operator=(other);
         m_patches.resize(other.m_patches.size());
         // clone all geometries
         cloneAll( other.m_patches.begin(), other.m_patches.end(),
@@ -63,7 +63,7 @@ template<class T>
 gsMultiPatch<T>& gsMultiPatch<T>::operator=( gsMultiPatch&& other )
 {
     freeAll(m_patches);
-    Base::operator=(give(other));
+    BaseA::operator=(give(other));
     m_patches = give(other.m_patches);
     return *this;
 }
@@ -73,7 +73,7 @@ gsMultiPatch<T>& gsMultiPatch<T>::operator=( gsMultiPatch&& other )
 
 template<class T>
 gsMultiPatch<T>::gsMultiPatch(PatchContainer & patches )
-    : gsBoxTopology( patches[0]->parDim(), patches.size() )
+    : BaseA( patches[0]->parDim(), patches.size() )
 {
     m_patches.swap(patches); // patches are consumed
     setIds();
@@ -84,7 +84,7 @@ template<class T>
 gsMultiPatch<T>::gsMultiPatch( PatchContainer& patches,
                                const std::vector<patchSide>& boundary,
                                const std::vector<boundaryInterface>& interfaces )
-    : gsBoxTopology( patches[0]->parDim(), patches.size(), boundary, interfaces )
+    : BaseA( patches[0]->parDim(), patches.size(), boundary, interfaces )
 {
     m_patches.swap(patches); // patches are consumed
     setIds();
@@ -126,7 +126,7 @@ std::string gsMultiPatch<T>::detail() const
     print(os);
     if ( nPatches() > 0 ) 
     {
-        gsBoxTopology::print( os );
+        BaseA::print( os );
     }
     return os.str();
 }
@@ -230,7 +230,7 @@ void gsMultiPatch<T>::addInterface( gsGeometry<T>* g1, boxSide s1,
 {
     int p1 = findPatchIndex( g1 );
     int p2 = findPatchIndex( g2 );
-    gsBoxTopology::addInterface( p1, s1, p2, s2 );
+    BaseA::addInterface( p1, s1, p2, s2 );
 }
 
 template<class T>
@@ -315,7 +315,7 @@ gsMultiPatch<T> gsMultiPatch<T>::uniformSplit() const
 template<class T>
 bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
 {
-    gsBoxTopology::clearTopology();
+    BaseA::clearTopology();
 
     const size_t   np    = m_patches.size();
     const index_t  nCorP = 1 << m_dim;     // corners per patch
@@ -406,7 +406,7 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
             {
                 dirMap(side.direction()) = pSide[other].direction();
                 dirOr (side.direction()) = !( side.parameter() == pSide[other].parameter() );
-                gsBoxTopology::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
+                BaseA::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
                 // done with pSide[other], remove it from candidate list
                 std::swap( pSide[other], pSide.back() );
                 pSide.pop_back();
@@ -415,7 +415,7 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
             }
         }
         if (!done) // not an interface ?
-            gsBoxTopology::addBoundary( side );
+            BaseA::addBoundary( side );
     }
 
     return true;
