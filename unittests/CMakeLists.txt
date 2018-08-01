@@ -17,8 +17,8 @@ include(gsConfig)
 get_filename_component(PARENT_DIR ${PROJECT_SOURCE_DIR} PATH)
 
 get_repo_info(GISMO_REPO GISMO_REPO_REV)
-#message("The repository is ${GISMO_REPO}.")
-#message("The revision is ${GISMO_REPO_REV}.")
+message("The repository is ${GISMO_REPO}.")
+message("The revision is ${GISMO_REPO_REV}.")
 
 if("x${GISMO_REPO}" STREQUAL "xgit")
     execute_process(COMMAND git submodule update --init -- extensions/gsUnitTest
