@@ -34,7 +34,7 @@ if("x${GISMO_REPO}" STREQUAL "xsvn" AND (NOT EXISTS "${PARENT_DIR}/extensions/gs
 endif()
 
 if( NOT EXISTS "${PARENT_DIR}/extensions/gsUnitTest/CMakeLists.txt")
-message(SEND_ERROR "The git submodule is not available.")
+message(WARNING "The git submodule is not available.")
 endif()
 
 # set include directory
