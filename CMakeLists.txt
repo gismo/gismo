@@ -1,8 +1,8 @@
 ######################################################################
 ## CMakeLists.txt
 ## This file is part of the G+Smo library.
-## 
-## Author: Angelos Mantzaflaris 
+##
+## Author: Angelos Mantzaflaris
 ## Copyright (C) 2012-2018 - RICAM-Linz.
 ######################################################################
 
@@ -43,7 +43,7 @@ set(gismo_VERSION_MINOR "8")
 set(gismo_VERSION_PATCH "4")
 set(gismo_VERSION
   "${gismo_VERSION_MAJOR}.${gismo_VERSION_MINOR}.${gismo_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
-  
+
 if(POLICY CMP0048)# CMake 3.0
   project(gismo LANGUAGES C CXX  VERSION ${gismo_VERSION})
 else()
@@ -259,15 +259,15 @@ endif(GISMO_WITH_UNUM)
 
 if(GISMO_WITH_TRILINOS)
   add_subdirectory(extensions/gsTrilinos)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TRILINOS_INCLUDE_DIR} 
-  CACHE INTERNAL "${PROJECT_NAME} include directories") 
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TRILINOS_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
   include_directories(${TRILINOS_INCLUDE_DIR})
 endif(GISMO_WITH_TRILINOS)
 
 if(GISMO_WITH_OCC)
   add_subdirectory(extensions/gsOpenCascade)
-  set (GISMO_INCLUDE_DIRS ${OCC_INCLUDE_DIRS} ${OCC_INCLUDE_DIR} 
-  CACHE INTERNAL "${PROJECT_NAME} include directories") 
+  set (GISMO_INCLUDE_DIRS ${OCC_INCLUDE_DIRS} ${OCC_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
   include_directories(${OCC_INCLUDE_DIR})
 endif(GISMO_WITH_OCC)
 
@@ -347,7 +347,7 @@ endif(GISMO_BUILD_EXAMPLES)
 if(GISMO_BUILD_UNITTESTS)
   add_subdirectory(unittests)
 else()
-  add_subdirectory(unittests EXCLUDE_FROM_ALL)
+  add_custom_target(unittests COMMAND "" COMMENT "Set CMake argument GISMO_BUILD_UNITTESTS=ON to enable unittests")
 endif(GISMO_BUILD_UNITTESTS)
 
 add_subdirectory(optional)

@@ -19,8 +19,11 @@ get_filename_component(PARENT_DIR ${PROJECT_SOURCE_DIR} PATH)
 #if((NOT GSUNITTEST_INCLUDE_DIR) OR (NOT EXISTS ${GSUNITTEST_INCLUDE_DIR}))
     # clone submodule if its not there
 execute_process(COMMAND git submodule update --init -- extensions/gsUnitTest
-  WORKING_DIRECTORY ${PARENT_DIR}
-  OUTPUT_FILE ${PARENT_DIR}/extensions/gsUnitTest)
+  WORKING_DIRECTORY ${PARENT_DIR} )
+
+if( NOT EXISTS "${PARENT_DIR}/extensions/gsUnitTest/CMakeLists.txt")
+message(SEND_ERROR "The git submodule is not available.")
+endif()
 
 # set include directory
 set(GSUNITTEST_INCLUDE_DIR ${PARENT_DIR}/extensions/gsUnitTest
@@ -40,9 +43,6 @@ install(DIRECTORY ${GSUNITTEST_INCLUDE_DIR} DESTINATION
 
     # build the project (if not header-only)
     add_subdirectory(${PARENT_DIR}/extensions/gsUnitTest ${CMAKE_BINARY_DIR}/extensions/gsUnitTest)
-    message(STATUS "Module: gsUnitTest")
-    # Alias the target
-    add_library(gsUnitTest_lib ALIAS UnitTestPP)
 #endif()
 
 include_directories(${GSUNITTEST_INCLUDE_DIR})
@@ -51,7 +51,6 @@ include_directories(${GSUNITTEST_INCLUDE_DIR})
 aux_gs_cpp_directory(${PROJECT_SOURCE_DIR} unittests_SRCS)
 
 add_executable(${PROJECT_NAME} gismo_unittest.h ${unittests_SRCS} main.cpp)
-#target_link_libraries(${PROJECT_NAME} gismo gsUnitTest_lib)
 target_link_libraries(${PROJECT_NAME} gismo UnitTestPP)
 set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "${PROJECT_NAME}")
 
