@@ -16,10 +16,22 @@ include(gsConfig)
 
 get_filename_component(PARENT_DIR ${PROJECT_SOURCE_DIR} PATH)
 
-#if((NOT GSUNITTEST_INCLUDE_DIR) OR (NOT EXISTS ${GSUNITTEST_INCLUDE_DIR}))
-    # clone submodule if its not there
-execute_process(COMMAND git submodule update --init -- extensions/gsUnitTest
-  WORKING_DIRECTORY ${PARENT_DIR} )
+get_repo_info(GISMO_REPO GISMO_REPO_REV)
+#message("The repository is ${GISMO_REPO}.")
+#message("The revision is ${GISMO_REPO_REV}.")
+
+if("x${GISMO_REPO}" STREQUAL "xgit")
+    execute_process(COMMAND git submodule update --init -- extensions/gsUnitTest
+      WORKING_DIRECTORY ${PARENT_DIR} )
+endif()
+if("x${GISMO_REPO}" STREQUAL "xsvn" AND (NOT EXISTS "${PARENT_DIR}/extensions/gsUnitTest/CMakeLists.txt"))
+  message("Getting SVN repo.")
+  execute_process(COMMAND svn co https://github.com/gismo/gsUnitTest extensions/gsUnitTest # /trunk ???
+    WORKING_DIRECTORY ${PARENT_DIR} )
+  file(RENAME ${PARENT_DIR}/extensions/gsUnitTest/trunk ${PARENT_DIR}/extensions/gsUnitTest_tr)
+  file(REMOVE_RECURSE ${PARENT_DIR}/extensions/gsUnitTest)
+  file(RENAME ${PARENT_DIR}/extensions/gsUnitTest_tr ${PARENT_DIR}/extensions/gsUnitTest)
+endif()
 
 if( NOT EXISTS "${PARENT_DIR}/extensions/gsUnitTest/CMakeLists.txt")
 message(SEND_ERROR "The git submodule is not available.")
