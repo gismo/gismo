@@ -22,7 +22,10 @@ get_repo_info(GISMO_REPO GISMO_REPO_REV)
 
 if("x${GISMO_REPO}" STREQUAL "xgit")
     execute_process(COMMAND git submodule update --init -- extensions/gsUnitTest
-      WORKING_DIRECTORY ${PARENT_DIR} )
+      WORKING_DIRECTORY ${PARENT_DIR}
+      RESULT_VARIABLE submodule_res OUTPUT_VARIABLE submodule_out ERROR_VARIABLE submodule_out
+      )
+    message("submodule: (${submodule_res}) ${submodule_out}")
 endif()
 if("x${GISMO_REPO}" STREQUAL "xsvn" AND (NOT EXISTS "${PARENT_DIR}/extensions/gsUnitTest/CMakeLists.txt"))
   message("Getting SVN repo.")
