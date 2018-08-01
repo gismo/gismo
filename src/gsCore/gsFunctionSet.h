@@ -498,23 +498,6 @@ public:
      */
     virtual void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const;
 
-    /**
-       @brief Computes function data
-
-       This function evaluates the functions and their derivatives at
-       the points contained in the gsMapData geo. The computed values
-       are written in the corresponding fields of \a result.  Which
-       field to write (and what to compute) is controlled by the \a
-       out.flags (see also gsFuncData).  Contrarily to
-       compute(const gsMatrix<T> &, gsFuncData<T> &) where the caller
-       must provide either parametric or physical points this call
-       differenciate automatically.  
-
-       @param[in] in 
-       @param[out] out
-     */ // TODO: remove me, update devel
-    //virtual void compute(const gsMapData<T> & in, gsFuncData<T> & out) const;
-
 public:
     /**
        @brief Dimension of the (source) domain.

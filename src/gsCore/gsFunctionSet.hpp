@@ -191,29 +191,4 @@ void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
     }
 }
 
-// Always returns quantities on mapped (physical) domain coordinates
-//template <class T>
-//void gsFunctionSet<T>::compute(const gsMapData<T> & in, gsFuncData<T> & out) const
-//{
-//    // the dafault implementation assumes a representation in parametric coordinates
-//    compute(in.points, out);
-//
-///* // todo gsFunctionExpr par/phys..
-//    const int parDim = domainDim();
-//    const int nGrads = out.values[1].rows() / parDim;
-//
-//    if (out.flags & NEED_DERIV)
-//    {
-//        for (index_t p = 0; p != in.points.cols(); ++p) // for all points
-//        {
-//            // first fundamental form at the current point
-//            const gsAsConstMatrix<T> fform = in.fundForm(p);
-//            gsAsMatrix<T> grads(out.values[1].col(p).data(), parDim, nGrads);
-//            grads = fform * grads;//tmp
-//        }
-//    }
-//*/
-//}
-
-
 } // namespace gismo
