@@ -141,6 +141,7 @@ public:
 
     nonConstVariable getVar(const gsFunctionSet<T> & mp, geometryMap G)
     {
+        GISMO_UNUSED(G);
         GISMO_ASSERT(&G==&mapVar, "geometry map not known");
         m_vlist.push_back( expr::gsFeVariable<T>() );
         expr::gsFeVariable<T> & var = m_vlist.back();

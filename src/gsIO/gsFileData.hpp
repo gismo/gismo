@@ -1291,7 +1291,8 @@ bool gsFileData<T>::readStlFile( String const & fn )
 
 template<class T>
 bool gsFileData<T>::readObjFile( String const & fn )
-{    
+{
+    GISMO_UNUSED(fn);
     //gsWarn<<"Assuming Linux file, please convert dos2unix first.\n";
 
 #if FALSE

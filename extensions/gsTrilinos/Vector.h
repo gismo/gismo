@@ -51,7 +51,7 @@ public:
     
     void copyTo(gsVector<real_t> & gsVec, const int rank = 0) const;
 
-    void copyTo(gsMatrix<real_t> & gsVec, const int rank = 0) const
+    void copyTo(gsMatrix<real_t> & gsVec, const int = 0) const
     {
         gsVector<real_t> tmp;
         copyTo(tmp);

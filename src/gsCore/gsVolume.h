@@ -65,8 +65,6 @@ public: inline uPtr clone() const { return uPtr(clone_impl()); }
 
     int domainDim() const { return 3; }
 
-    void toMesh(gsMesh<T> & msh, int npoints = 3375) const;
-
     virtual gsGeometryEvaluator<Scalar_t> * evaluator(unsigned flags) const;
 
 }; // class gsVolume

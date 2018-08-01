@@ -402,6 +402,7 @@ public:
     // Look at gsBasis class for documentation 
     virtual void degreeReduce(int const & i = 1, int const dir = -1)
     {
+        GISMO_UNUSED(dir);
         GISMO_ASSERT( static_cast<int>(dir) < this->dim(),
                       "Invalid basis component requested" );
         for (unsigned j = 0; j < d; ++j)
@@ -762,6 +763,7 @@ public:
     /// parameter component
     index_t size(int k) const 
     {
+        GISMO_UNUSED(k);
         GISMO_ASSERT(k==0, "Invalid direction");
         return this->size();
     }
@@ -780,6 +782,8 @@ public:
     
     void swapDirections(const unsigned i, const unsigned j)
     {
+        GISMO_UNUSED(i);
+        GISMO_UNUSED(j);
         GISMO_ASSERT( static_cast<int>(i) == 0 && static_cast<int>(j) == 0,
                       "Invalid basis components "<<i<<" and "<<j<<" requested" );
     }
@@ -787,6 +791,8 @@ public:
     /// Returns all the basis functions with tensor-numbering \a k in direction \a dir 
     gsMatrix<unsigned> coefSlice(int dir, int k) const
     {
+        GISMO_UNUSED(dir);
+        GISMO_UNUSED(k);
         GISMO_ASSERT(dir == 0, "Invalid direction");
         GISMO_ASSERT(k < this->size(), "Invalid index");
         // return 0 or size()-1
@@ -797,18 +803,19 @@ public:
     { return i; }
 
     /// \todo remove
-    inline unsigned index(unsigned i, unsigned j) const
+    inline unsigned index(unsigned , unsigned ) const
     { GISMO_ERROR("The basis is 1D"); }
 
     /// Returns the stride for dimension dir
     inline unsigned stride(int dir) const 
-    { 
+    {
+        GISMO_UNUSED(dir);
         GISMO_ASSERT(dir==0,"Invalid direction");
         return 1; 
     }
 
     /// Returns the components for a basis on the face \a s 
-    void getComponentsForSide(boxSide const & s, std::vector<gsBasis<T>*> & rr) const
+    void getComponentsForSide(boxSide const &, std::vector<gsBasis<T>*> & rr) const
     { rr.clear(); }
 
     /// Returns the global index of the basis function created by
@@ -830,12 +837,14 @@ public:
 
     Basis_t & component(unsigned i)
     {
+        GISMO_UNUSED(i);
         GISMO_ASSERT(i==0,"Invalid component requested");
         return *this; 
     }
 
     const Basis_t & component(unsigned i) const 
     {
+        GISMO_UNUSED(i);
         GISMO_ASSERT(i==0,"Invalid component requested");
         return *this; 
     }

@@ -556,6 +556,7 @@ gsVolumeBlock<T> *gsSolid<T>::newVolume(gsSolidHalfFaceHandle startingFace)
 template <class T>
 void gsSolid<T>::checkStructure(bool checkVerts) const
 {
+    GISMO_UNUSED(checkVerts);
     size_t numEdges = edge.size();
     for(size_t idxE = 0; idxE < numEdges; idxE++)
     {
@@ -863,7 +864,7 @@ std::vector<typename gsSolid<T>::gsSolidHalfEdgeHandle > gsSolid<T>::impedingEdg
 }
 
 template <class T>
-void gsSolid<T>::insertNewVertex(gsSolidHalfEdgeHandle he, int const & option)
+void gsSolid<T>::insertNewVertex(gsSolidHalfEdgeHandle he)
 {
     using std::size_t;
     checkStructure();
@@ -971,7 +972,7 @@ void gsSolid<T>::insertNewVertex(gsSolidHalfEdgeHandle he, int const & option)
 }
 
 template <class T>
-void gsSolid<T>::handleImpedingEdges(gsSolidHalfEdgeHandle he, int const & option)
+void gsSolid<T>::handleImpedingEdges(gsSolidHalfEdgeHandle he)
 {
     typename std::vector<gsSolidHalfEdgeHandle> iHe;
     iHe=this->impedingEdges(he);
@@ -980,7 +981,7 @@ void gsSolid<T>::handleImpedingEdges(gsSolidHalfEdgeHandle he, int const & optio
     {
         for (it=iHe.begin();it!=iHe.end();++it)
         {
-            this->insertNewVertex(*it,option);
+            this->insertNewVertex(*it);
         }
     }
     checkStructure();

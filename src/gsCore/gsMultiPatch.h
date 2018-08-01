@@ -34,7 +34,9 @@ class gsMultiPatch : public gsBoxTopology, public gsFunctionSet<T>
 {
 
 public:
-    typedef gsBoxTopology Base;
+    typedef gsBoxTopology    BaseA;
+    typedef gsFunctionSet<T> BaseB;
+    
     /// Shared pointer for gsMultiPatch
     typedef memory::shared_ptr< gsMultiPatch > Ptr;
     /// Unique pointer for gsMultiPatch
@@ -66,7 +68,7 @@ public:
 #else
     /// Move constructor
     gsMultiPatch( gsMultiPatch&& other )
-        : gsBoxTopology( give(other) ), m_patches( give(other.m_patches) )
+        : BaseA( give(other) ), m_patches( give(other.m_patches) )
     {}
 
     /// Assignment operator 
@@ -139,7 +141,7 @@ public:
     /// \brief Swap with another gsMultiPatch
     void swap(gsMultiPatch& other)
     {
-        gsBoxTopology::swap( other );
+        BaseA::swap( other );
         m_patches.swap( other.m_patches );
     }
 
@@ -180,7 +182,7 @@ public:
     /// \brief Returns a vector of patches // to do : replace by copies
     PatchContainer const& patches() const { return m_patches; }
 
-    const gsBoxTopology & topology() const { return *this; }
+    const BaseA & topology() const { return *this; }
     
     /// \brief Return the \a i-th patch.
     const gsGeometry<T> & operator []( size_t i ) const { return *m_patches[i]; }
@@ -221,12 +223,12 @@ public:
     GISMO_DEPRECATED void addInterface( gsGeometry<T>* g1, boxSide s1,
             gsGeometry<T>* g2, boxSide s2 );
 
-    using Base::addInterface; // unhide base function
+    using BaseA::addInterface; // unhide base function
     
     /// Add side \a s of patch \a g to the outer boundary of the domain
     void addPatchBoundary( gsGeometry<T>* g, boxSide s ) {
         int p = findPatchIndex( g );
-        gsBoxTopology::addBoundary( patchSide( p, s ) );
+        BaseA::addBoundary( patchSide( p, s ) );
     }
 
     /// Get coordinates of the patchCorner \a pc in the physical domain
@@ -270,7 +272,7 @@ public:
     /// Clear (delete) all patches
     void clear()
     {
-        Base::clearAll();
+        BaseA::clearAll();
         freeAll(m_patches);
         m_patches.clear();
     }

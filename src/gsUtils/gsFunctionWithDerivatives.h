@@ -90,10 +90,9 @@ public:
         return *m_deriv2;
     }
 
-    const gsFunctionWithDerivatives & piece(const index_t k) const
+    const gsFunctionWithDerivatives & piece(const index_t) const
     {
         // same on all pieces
-        GISMO_UNUSED(k);
         return *this; 
     }
 
