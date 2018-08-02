@@ -23,27 +23,27 @@ jobs:
           name: Build and test G+Smo on CentOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
 
-  macos_build:
-    macos:
-      xcode: "9.0"
-    filters:
-      branches:
-        - only: stable
-        - only: gsMesh
-    working_directory: ~/gismo
-    environment:
-      MAKEFLAGS: -j4
-    steps:
-      - run:
-          name: Install dependencies
-          command: brew install git cmake # make clang libgcc #valgrind
-      - checkout
-      - run:
-          name: Configure G+Smo on MacOS
-          command: cmake . -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [macos]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DGISMO_WITH_ONURBS=ON
-      - run:
-          name: Build and test G+Smo on MacOS
-          command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+#  macos_build:
+#    macos:
+#      xcode: "9.0"
+#    filters:
+#      branches:
+#        - only: stable
+#        - only: gsMesh
+#    working_directory: ~/gismo
+#    environment:
+#      MAKEFLAGS: -j4
+#    steps:
+#      - run:
+#          name: Install dependencies
+#          command: brew install git cmake # make clang libgcc #valgrind
+#      - checkout
+#      - run:
+#          name: Configure G+Smo on MacOS
+#          command: cmake . -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [macos]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DGISMO_WITH_ONURBS=ON
+#      - run:
+#          name: Build and test G+Smo on MacOS
+#          command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
 
 #deployment:
 #    working_directory: ~/deploy
@@ -63,7 +63,8 @@ workflows:
   build:
     jobs:
       - centos_build98
-      - macos_build
+#      - macos_build
+
 #      - deployment:
 #          requires:
 #            - build
