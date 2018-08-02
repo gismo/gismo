@@ -63,7 +63,7 @@ workflows:
   build:
     jobs:
       - centos_build98
-#      - macos_build
+      - macos_build
 
 #      - deployment:
 #          requires:
