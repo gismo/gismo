@@ -40,7 +40,7 @@ jobs:
       - checkout
       - run:
           name: Configure G+Smo on MacOS
-          command: cmake . -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [ubuntu]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DGISMO_WITH_ONURBS=ON
+          command: cmake . -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [macos]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
@@ -63,7 +63,7 @@ workflows:
   build:
     jobs:
       - centos_build98
-      - ubuntu_build_clang
+      - macos_build
 #      - deployment:
 #          requires:
 #            - build
