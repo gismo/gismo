@@ -33,7 +33,7 @@ public:
     
 // Data members    
 public:
-    gsVector3d<T> coords;
+    GISMO_DEPRECATED gsVector3d<T> coords;
     // halfedge out of this vertex
     gsSolidHalfEdgeHandle hed;    
     

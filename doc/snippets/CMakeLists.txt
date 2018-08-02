@@ -18,6 +18,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
 
+unset(snippet_out)
 foreach(snippet_src ${snippets_SRCS})
 
   get_filename_component(snippet_target ${snippet_src} NAME_WE)
@@ -35,20 +36,19 @@ foreach(snippet_src ${snippets_SRCS})
     target_link_libraries(${snippet_target} gismo)
   endif()
 
-if(DOXYGEN_FOUND)
-  add_custom_command(
-    TARGET ${snippet_target}
-    POST_BUILD
+if (NOT NOSNIPPETS)
+  add_custom_command(OUTPUT ${snippet_target}.out
     COMMAND ${snippet_target}
-    ARGS >${CMAKE_CURRENT_BINARY_DIR}/${snippet_target}.out
-  )
-endif(DOXYGEN_FOUND)
+    ARGS >${CMAKE_CURRENT_BINARY_DIR}/${snippet_target}.out )
+  add_custom_target(${snippet_target}_out DEPENDS ${snippet_target}.out)
+  set(__snippets_out ${__snippets_out} ${snippet_target}_out)
+endif()
 
   add_dependencies(${PROJECT_NAME} ${snippet_target})
-
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${snippet_src}
                               PROPERTIES OBJECT_DEPENDS ${snippet_src})
 endforeach(snippet_src)
 
+set(snippets_out ${__snippets_out} CACHE INTERNAL "Targets for output of snippets")
 #list(LENGTH snippets_SRCS len)
 #message(STATUS "Number of snippets to compile: ${len}")

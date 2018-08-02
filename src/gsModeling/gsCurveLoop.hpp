@@ -23,7 +23,7 @@ namespace gismo
 {
   
 template<class T>
-gsCurveLoop<T>::gsCurveLoop(const std::vector<gsVector3d<T> *> points3D, const std::vector<bool> isConvex, T margin, gsVector3d<T> *outNormal)
+gsCurveLoop<T>::gsCurveLoop(const std::vector<gsVector3d<T> *> points3D, const std::vector<bool> , T margin, gsVector3d<T> *outNormal)
 {
     // attempt to choose a curve loop by using the plane of best fit
     gsVector3d<T> resultNormal = initFrom3DPlaneFit(points3D, margin);
@@ -623,6 +623,7 @@ void gsCurveLoop<T>::flip1(T minu, T maxu)
 template<class T>
 gsMatrix<T> gsCurveLoop<T>::splitCurve(std::size_t curveId, T lengthRatio)
 {
+    GISMO_UNUSED(lengthRatio);
     GISMO_ASSERT(lengthRatio>0 && lengthRatio<1, "the second parameter *lengthRatio* must be between 0 and 1");
     GISMO_ASSERT(curveId < m_curves.size(), "the first parameter *curveID* exceeds the number of curves of the loop");
     // the two vertices a and b of the curve curveId, counting counterclockwise from z+

@@ -201,14 +201,15 @@ int main(int argc, char**argv)
         if (verbose) gsInfo << t_solver.currentParams();
 
         /// Compute solution
-        const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        //const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        t_solver.solve(t_b);
 
         /// Get solver status and timing
         if (status) gsInfo << t_solver.status();
         if (timing) gsInfo << t_solver.timing();
 
         /// Check error
-        GISMO_UNUSED(t_vx);
+        //GISMO_UNUSED(t_vx);
         bool OK = false;
         gsVector<> t_x;
         t_solver.getSolution(t_x); // collect solution at Proc 0
@@ -275,14 +276,15 @@ int main(int argc, char**argv)
         if (verbose) gsInfo << t_solver.currentParams();
 
         /// Compute solution
-        const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        //const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        t_solver.solve(t_b);
 
         /// Get solver status and timing
         if (status) gsInfo << t_solver.status();
         if (timing) gsInfo << t_solver.timing();
 
         /// Check error
-        GISMO_UNUSED(t_vx);
+        //GISMO_UNUSED(t_vx);
         bool OK = false;
         gsVector<> t_x;
         t_solver.getSolution(t_x); // collect solution at Proc 0
@@ -364,7 +366,8 @@ int main(int argc, char**argv)
         t_solver.setPreconditioner(t_precond);
 
         /// Compute solution
-        const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        //const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        t_solver.solve(t_b);
 
         /// Get solver status and timing
         if (status) gsInfo << t_solver.status();
@@ -374,7 +377,7 @@ int main(int argc, char**argv)
         if (timing) gsInfo << t_precond.timing();
 
         /// Check error
-        GISMO_UNUSED(t_vx);
+        //GISMO_UNUSED(t_vx);
         bool OK = false;
         gsVector<> t_x;
         t_solver.getSolution(t_x); // collect solution at Proc 0
@@ -456,14 +459,15 @@ int main(int argc, char**argv)
         if (verbose) gsInfo << t_solver.currentParams();
 
         /// Compute solution
-        const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        //const trilinos::Vector & t_vx = t_solver.solve(t_b);
+        t_solver.solve(t_b);
 
         /// Get solver status and timing
         if (status) gsInfo << t_solver.status();
         if (timing) gsInfo << t_solver.timing();
 
         /// Check error
-        GISMO_UNUSED(t_vx);
+        //GISMO_UNUSED(t_vx);
         bool OK = false;
         gsVector<> t_x;
         t_solver.getSolution(t_x); // collect solution at Proc 0
@@ -490,14 +494,15 @@ int main(int argc, char**argv)
     //     if (verbose) gsInfo << t_solver.currentParams();
 
     //     /// Compute solution
-    //     const trilinos::Vector & t_vx = t_solver.solve(t_b);
+    //     //const trilinos::Vector & t_vx = t_solver.solve(t_b);
+    //     t_solver.solve(t_b);
 
     //     /// Get solver status and timing
     //     if (status) gsInfo << t_solver.status();
     //     if (timing) gsInfo << t_solver.timing();
 
     //     /// Check error
-    //     GISMO_UNUSED(t_vx);
+    //     //GISMO_UNUSED(t_vx);
     //     bool OK = false;
     //     gsVector<> t_x;
     //     t_solver.getSolution(t_x); // collect solution at Proc 0

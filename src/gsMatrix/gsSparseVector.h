@@ -90,7 +90,7 @@ public:
     
     // Avoid default keyword for MSVC<2013 
     // https://msdn.microsoft.com/en-us/library/hh567368.aspx
-    gsSparseVector(const gsSparseVector& other)
+    gsSparseVector(const gsSparseVector& other) : Base(other)
     { Base::operator=(other); }
 
     gsSparseVector& operator= (const gsSparseVector & other)

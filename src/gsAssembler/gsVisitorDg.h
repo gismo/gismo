@@ -39,11 +39,11 @@ public:
      * Where \f[v\f] is the test function and \f[ u \f] is trial function.
      */
 
-    gsVisitorDg(const gsPde<T> & pde)
+    gsVisitorDg(const gsPde<T> &)
     {}
 
     void initialize(const gsBasis<T> & basis1,
-                    const gsBasis<T> & basis2,
+                    const gsBasis<T> & ,
                     const boundaryInterface & bi,
                     const gsOptionList & options,
                     gsQuadRule<T> & rule,

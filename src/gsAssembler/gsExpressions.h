@@ -284,11 +284,11 @@ public:
     }
     
     typedef T Scalar;
-    gsMatrix<T> eval(const index_t k) const { GISMO_ERROR("gsNullExpr"); }
+    gsMatrix<T> eval(const index_t) const { GISMO_ERROR("gsNullExpr"); }
     inline index_t rows() const { GISMO_ERROR("gsNullExpr"); }
     inline index_t cols() const { GISMO_ERROR("gsNullExpr"); }
     inline void setFlag() const {/* gsInfo<<"gsNullExpr emtpy flag\n"; */ }
-    void parse(gsSortedVector<const gsFunctionSet<T>*> & evList) const { GISMO_UNUSED(evList); }
+    void parse(gsSortedVector<const gsFunctionSet<T>*> &) const { }
 
     const gsFeVariable<T> & rowVar() const { GISMO_ERROR("gsNullExpr"); }
     const gsFeVariable<T> & colVar() const { GISMO_ERROR("gsNullExpr"); }
@@ -359,7 +359,7 @@ public:
     index_t rows() const { return 0; }
     index_t cols() const { return 0; }
     void setFlag() const { }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const { GISMO_UNUSED(evList); }
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> &) const { }
     static bool rowSpan() {return false;}
     static bool colSpan() {return false;}
     const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>(); }
@@ -489,7 +489,7 @@ public:
     inline index_t rows() const { return 0; }
     inline index_t cols() const { return 0; }
     inline void setFlag() const { }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const { GISMO_UNUSED(evList); }
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & ) const { }
 
     const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>(); }
     const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
@@ -518,7 +518,7 @@ public:
     inline index_t rows() const { return 0; }
     inline index_t cols() const { return 0; }
     inline void setFlag() const { }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const { GISMO_UNUSED(evList); }
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> &) const { }
     const gsFeVariable<T> & rowVar() const { gsNullExpr<T>(); }
     const gsFeVariable<T> & colVar() const { gsNullExpr<T>(); }
     static bool rowSpan() {return false; }
@@ -1373,7 +1373,7 @@ public:
 
 public:
 
-    gsMatrix<Scalar>::IdentityReturnType eval(const index_t k) const
+    gsMatrix<Scalar>::IdentityReturnType eval(const index_t) const
     {
         return gsMatrix<Scalar>::Identity(_dim,_dim);
     }
@@ -1381,7 +1381,7 @@ public:
     index_t rows() const { return _dim; }
     index_t cols() const { return  _dim; }
     void setFlag() const { }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const {  }
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & ) const {  }
 
     static bool rowSpan() {return false;}
     static bool colSpan() {return false;}

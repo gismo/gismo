@@ -93,7 +93,7 @@ void gsGeometry<T>::evaluateMesh(gsMesh<T>& mesh) const
     }
 }
 template<class T>
-std::vector<gsGeometry<T>* >  gsGeometry<T>::uniformSplit(index_t dir) const
+std::vector<gsGeometry<T>* > gsGeometry<T>::uniformSplit(index_t) const
 {
     GISMO_NO_IMPLEMENTATION
 }
@@ -136,20 +136,20 @@ void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,
 
 
 template<class T>
-void gsGeometry<T>::merge( gsGeometry * other )
+void gsGeometry<T>::merge(gsGeometry *)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
 gsGeometryEvaluator<typename gsGeometry<T>::Scalar_t> * 
-gsGeometry<T>:: evaluator(unsigned flags) const
+gsGeometry<T>:: evaluator(unsigned) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsGeometry<T>::toMesh(gsMesh<T> & msh, int npoints) const
+void gsGeometry<T>::toMesh(gsMesh<T> &, int) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsGeometry<T>::outerNormal_into(const gsMatrix<T>& u, gsMatrix<T> & result) const
+void gsGeometry<T>::outerNormal_into(const gsMatrix<T>&, gsMatrix<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

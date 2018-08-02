@@ -192,18 +192,18 @@ public:
 
     /// @brief Main non-linear assemble routine with input from
     /// current solution
-    virtual void assemble(const gsMultiPatch<T> & curSolution)
+    virtual void assemble(const gsMultiPatch<T> &)
     {GISMO_NO_IMPLEMENTATION}
 
     /// @brief Reconstruct solution from computed solution vector
-    virtual void constructSolution(const gsMatrix<T>& solVector, 
-                                   gsMultiPatch<T>& result) const
+    virtual void constructSolution(const gsMatrix<T>&,
+                                   gsMultiPatch<T>&) const
     {GISMO_NO_IMPLEMENTATION}
 
     /// @brief Update solution by adding the computed solution vector
     /// to the current solution
-    virtual void updateSolution(const gsMatrix<T>& solVector, 
-                                gsMultiPatch<T>& result) const
+    virtual void updateSolution(const gsMatrix<T>&,
+                                gsMultiPatch<T>&) const
     {GISMO_NO_IMPLEMENTATION}
 
 

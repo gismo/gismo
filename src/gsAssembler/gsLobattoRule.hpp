@@ -20,11 +20,11 @@ namespace gismo
 {
 
 template<class T> void
-gsLobattoRule<T>::setNodes( gsVector<index_t> const & numNodes, 
+gsLobattoRule<T>::setNodes( gsVector<index_t> const & numNodes,
                             unsigned digits)
 {
     const int d = numNodes.rows();
-    const T epsilon = std::pow(10.0, -REAL_DIG * 0.85);
+    static const T epsilon = std::pow(10.0, -REAL_DIG * 0.85);
     // Get base rule nodes and weights
     std::vector<gsVector<T> > nodes(d);
     std::vector<gsVector<T> > weights(d);
@@ -35,7 +35,8 @@ gsLobattoRule<T>::setNodes( gsVector<index_t> const & numNodes,
         {
             if (!lookupReference(numNodes[i], nodes[i], weights[i]))
                 computeReference(numNodes[i], nodes[i], weights[i], REAL_DIG);
-            nodes[i].last() -= epsilon; //interval may be half-open
+            if (1!=numNodes[i])
+                nodes[i].last() -= epsilon; //interval may be half-open
         }
     }
     else
@@ -43,9 +44,12 @@ gsLobattoRule<T>::setNodes( gsVector<index_t> const & numNodes,
         for (int i = 0; i < d; ++i)
         {
             computeReference(numNodes[i], nodes[i], weights[i], digits);
-            nodes[i].last() -= epsilon; //interval may be half-open
+            if (1!=numNodes[i])
+                nodes[i].last() -= epsilon; //interval may be half-open
         }
     }
+
+    //std::copy(nodes.begin(), nodes.end(), std::ostream_iterator<gsVector<T> >(gsInfo, "\n"));
 
     this->computeTensorProductRule(nodes, weights);
 }
@@ -64,14 +68,14 @@ gsLobattoRule<T>::computeReference(index_t n,       // Number of points
     int i, j;
     T test;
     const T tolerance = math::pow(T(0.1), static_cast<int>(digits));
-    
+
     if ( n == 1 )
     {
         x[0] = -1.0;
         w[0] = 2.0;
         return;
     }
- 
+
     // Initial estimate ( Chebyshev-Gauss-Lobatto nodes)
     for ( i = 0; i < n; i++ )
         x[i] = math::cos ( EIGEN_PI * ( i ) / ( n - 1 ) );
@@ -86,19 +90,19 @@ gsLobattoRule<T>::computeReference(index_t n,       // Number of points
             xold[i] = p[i+1*n] = x[i];
             p[i+0*n] = 1.0;
         }
-      
+
         for ( j = 2; j <= n-1; j++ )
         {
             for ( i = 0; i < n; i++)
             {
-                p[i+j*n] = ( (T) ( 2 * j - 1 ) * x[i] * p[i+(j-1)*n]     
-                             + (T) (   - j + 1 ) *        p[i+(j-2)*n] ) 
+                p[i+j*n] = ( (T) ( 2 * j - 1 ) * x[i] * p[i+(j-1)*n]
+                             + (T) (   - j + 1 ) *        p[i+(j-2)*n] )
                     / (T) (     j     );
             }
         }
 
         for ( i = 0; i < n; i++ )
-            x[i] = xold[i] - ( x[i] * p[i+(n-1)*n] - p[i+(n-2)*n] ) 
+            x[i] = xold[i] - ( x[i] * p[i+(n-1)*n] - p[i+(n-2)*n] )
                 / ( (T) ( n ) * p[i+(n-1)*n] );
 
         test = 0.0;
@@ -122,7 +126,7 @@ gsLobattoRule<T>::lookupReference(index_t n,   // Number of points
     x.resize(n);
     w.resize(n);
 
-    switch (n) 
+    switch (n)
     {
     case 1 :
     {
@@ -132,13 +136,13 @@ gsLobattoRule<T>::lookupReference(index_t n,   // Number of points
     }
     case 2 :
     {
-        x <<  - 1.0E+00, 1.0E+00;        
+        x <<  - 1.0E+00, 1.0E+00;
         w <<  1.0E+00, 1.0E+00;
         return true;
     }
     case 3 :
     {
-        x <<  - 1.0E+00, 0.0E+00, 1.0E+00;        
+        x <<  - 1.0E+00, 0.0E+00, 1.0E+00;
         w <<  1.0 / 3.0E+00, 4.0 / 3.0E+00, 1.0 / 3.0E+00;
         return true;
     }

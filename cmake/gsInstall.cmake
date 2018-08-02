@@ -60,6 +60,7 @@ export(PACKAGE gismo)
 set(CONF_INCLUDE_DIRS "${GISMO_INCLUDE_DIRS}"
                       "${PROJECT_BINARY_DIR}" )
 set(CONF_LIB_DIRS     "${CMAKE_BINARY_DIR}/lib")
+set(CONF_MODULE_PATH  "${gismo_SOURCE_DIR}/cmake")
 set(CONF_USE_FILE     "${CMAKE_BINARY_DIR}/gismoUse.cmake")
 configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfig.cmake.in
               "${CMAKE_BINARY_DIR}/gismoConfig.cmake" @ONLY)
@@ -68,6 +69,7 @@ file(COPY ${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake DESTINATION ${CMAKE_BINARY_
 # ... for the install tree
 set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
 set(CONF_LIB_DIRS     "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
+set(CONF_MODULE_PATH   "${CMAKE_INSTALL_DIR}")
 set(CONF_USE_FILE     "${CMAKE_INSTALL_DIR}/gismoUse.cmake")
 configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfig.cmake.in
                "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake" @ONLY)

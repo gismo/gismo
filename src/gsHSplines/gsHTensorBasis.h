@@ -3,7 +3,7 @@
     @brief Provides definition of HTensorBasis abstract interface.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -32,10 +32,9 @@ namespace gismo
 struct lvl_coef
 {
     int pos; // flat index at grid of level \a lvl
-    int unsigned lvl; // level 
+    int unsigned lvl; // level
     real_t coef; // value of the coefficient (lvl,pos)
 };
-
 
 /**
  * @brief Class representing a (scalar) hierarchical tensor
@@ -82,15 +81,15 @@ public:
     typedef memory::unique_ptr< gsHTensorBasis > uPtr;
 
     typedef gsHTensorBasis<d,T> Self_t;
-    
+
     typedef T Scalar_t;
 
     typedef gsHDomain<d> hdomain_type;
 
-    typedef typename hdomain_type::point point; 
+    typedef typename hdomain_type::point point;
 
     typedef typename hdomain_type::box   box;
-    
+
     typedef std::vector< box > boxHistory;
 
     typedef gsSortedVector< unsigned > CMatrix; // charMatrix_
@@ -105,24 +104,24 @@ public:
 
     /// Dimension of the parameter domain
     static const int Dim = d;
-    
+
 public:
 
     /// Default empty constructor
-    gsHTensorBasis() 
-    { 
+    gsHTensorBasis()
+    {
         initialize_class(tensorBasis());
         update_structure();
     }
 
     gsHTensorBasis( gsBasis<T> const&  tbasis)
-    {      
+    {
         initialize_class(tbasis);
         // Build the characteristic matrices
         update_structure();
     }
 
-    gsHTensorBasis( gsTensorBSplineBasis<d,T> const&  tbasis, 
+    gsHTensorBasis( gsTensorBSplineBasis<d,T> const&  tbasis,
                     const std::vector<unsigned> & boxes)
     {
         initialize_class(tbasis);
@@ -147,27 +146,27 @@ public:
         // Build the characteristic matrices (note: call is non-vritual)
         update_structure();
     }
-    
+
 /**
    @brief gsHTensorBasis
    @param tbasis - tensor basis
    @param boxes - matrix containing boxes - each 2x2 submatrix
    contains the lover left and upper right corner of the box
-   
+
    - the level where the box should be inserted is one higher as the
    level where it is completely contained
 */
-    gsHTensorBasis( gsTensorBSplineBasis<d,T> const&  tbasis, 
+    gsHTensorBasis( gsTensorBSplineBasis<d,T> const&  tbasis,
                     gsMatrix<T> const & boxes)
     {
         //assert(boxes.rows() == 2);    //can accept only 2D coordinates- Delete during the generalization of the lac to nD
         GISMO_ASSERT(boxes.rows() == d, "Points in boxes need to be of dimension d.");
         GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied gsHTensorBasis constructor with them.");
         initialize_class(tbasis);
-        
+
         gsVector<unsigned int,d> k1;
         gsVector<unsigned int,d> k2;
-        
+
         for(index_t i = 0; i < boxes.cols()/2; i++)
         {
             for(unsigned j = 0; j < d; j++)
@@ -198,7 +197,7 @@ public:
  * @param levels
  */
     gsHTensorBasis( gsTensorBSplineBasis<d,T> const& tbasis,
-                    gsMatrix<T> const & boxes, 
+                    gsMatrix<T> const & boxes,
                     const std::vector<unsigned int> & levels)
     {
         GISMO_ASSERT(boxes.rows() == d, "Points in boxes need to be of dimension d.");
@@ -212,7 +211,7 @@ public:
 
         const size_t mLevel = *std::max_element(levels.begin(), levels.end() );
         needLevel( mLevel );
-        
+
         for(index_t i = 0; i < boxes.cols()/2; i++)
         {
             for(unsigned j = 0; j < d; j++)
@@ -221,14 +220,14 @@ public:
                 k2[j] = m_bases[levels[i]]->knots(j).uFind(boxes(j,2*i+1)).uIndex()+1;
             }
 
-            /* m_boxHistory.push_back( box(k1,k2,levels[i]) );  */                      
+            /* m_boxHistory.push_back( box(k1,k2,levels[i]) );  */
             this->m_tree.insertBox(k1,k2, levels[i]);
-            
+
             // Build the characteristic matrices (note: call is non-vritual)
             update_structure();
         }
     }
-    
+
     /// Copy constructor
     gsHTensorBasis( const gsHTensorBasis & o) : gsBasis<T>(o)
     {
@@ -240,10 +239,10 @@ public:
         m_bases.resize( o.m_bases.size() );
         cloneAll(o.m_bases.begin(), o.m_bases.end(), m_bases.begin());
     }
-    
+
     /// Destructor
-    virtual ~gsHTensorBasis() 
-    { 
+    virtual ~gsHTensorBasis()
+    {
         freeAll( m_bases );
     }
 
@@ -309,7 +308,7 @@ public:
     std::vector<unsigned> m_xmatrix_offset;
 
     //------------------------------------
- 
+
 public:
     const std::vector< CMatrix >& getXmatrix() const
     {
@@ -325,9 +324,9 @@ public:
     }
 
     /// Returns the dimension of the parameter space
-    virtual int dim() const 
+    virtual int dim() const
     { return d; }
-    
+
     /// Returns the number of breaks (distinct knot values) in
     /// direction \a k of level \a lvl
     int numBreaks(int lvl, int k) const
@@ -354,7 +353,7 @@ public:
 
     /// Returns the anchors points that represent the members of the
     /// basis
-    virtual void anchors_into(gsMatrix<T> & result) const 
+    virtual void anchors_into(gsMatrix<T> & result) const
     {
         result.resize( d, this->size()) ;
         unsigned k(0);
@@ -366,7 +365,7 @@ public:
                      m_xmatrix[i].begin(); it != m_xmatrix[i].end(); it++)
             {
                 ind = m_bases[i]->tensorIndex(*it);
-                for ( unsigned r = 0; r!=d; ++r ) 
+                for ( unsigned r = 0; r!=d; ++r )
                     result(r,k) = m_bases[i]->knots(r).greville( ind[r] );
                 k++;
             }
@@ -375,20 +374,20 @@ public:
 
     virtual void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const;
     void connectivity(const gsMatrix<T> & nodes, int level, gsMesh<T> & mesh) const;
-    
+
     // Prints the characteristic matrices (ie. the indices of all basis
     // functions in the basis)
     void printCharMatrix(std::ostream &os = gsInfo) const
-    {  
+    {
         os<<"Characteristic matrix:\n";
         for(unsigned i = 0; i<= maxLevel(); i++)
         {
             if ( m_xmatrix[i].size() )
             {
-                os<<"- level="<<i<< 
+                os<<"- level="<<i<<
                     ", size="<<m_xmatrix[i].size() << ":\n";
                 os << "("<< m_bases[i]->tensorIndex(*m_xmatrix[i].begin()).transpose() <<")";
-                for( CMatrix::const_iterator  it = 
+                for( CMatrix::const_iterator  it =
                          m_xmatrix[i].begin()+1; it != m_xmatrix[i].end(); it++)
                 {
                     os << ", ("<< m_bases[i]->tensorIndex(*it).transpose() <<")";
@@ -404,13 +403,13 @@ public:
 
     /// Prints the spline-space hierarchy
     void printSpaces(std::ostream &os = gsInfo) const
-    {  
+    {
         os<<"Spline-space hierarchy:\n";
         for(unsigned i = 0; i<= maxLevel(); i++)
         {
             if ( m_xmatrix[i].size() )
             {
-                os<<"- level="<<i<< 
+                os<<"- level="<<i<<
                     ", size="<<m_xmatrix[i].size() << ":\n";
                 os << "Space: "<< * m_bases[i] <<")";
             }
@@ -439,7 +438,7 @@ public:
             os << this->m_xmatrix[i].size()<< " ";
         os<<"\n";
     }
-    
+
     // Look at gsBasis.h for the documentation of this function
     void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
 
@@ -452,7 +451,7 @@ public:
 
     // Look at gsBasis.h for the documentation of this function
     // /// \todo impl. evalAllDers_into
-    //void evalAllDers_into(const gsMatrix<T> & u, int n, 
+    //void evalAllDers_into(const gsMatrix<T> & u, int n,
     //                      std::vector<gsMatrix<T> >& result) const;
 
     /// Returns a reference to m_tree
@@ -461,7 +460,7 @@ public:
     /// Returns a reference to m_tree
     gsHDomain<d> &       tree()       { return m_tree; }
 
-    /// Cleans the basis, removing any inactive levels 
+    /// Cleans the basis, removing any inactive levels
     void makeCompressed();
 
 
@@ -508,7 +507,7 @@ public:
         return m_bases[ this->maxLevel() ]->component(i);
     }
 
-    /// Returns the tensor basis member of level i 
+    /// Returns the tensor basis member of level i
     tensorBasis & tensorLevel(unsigned i) const
     {
         needLevel( i );
@@ -546,8 +545,8 @@ public:
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const;
 
-    int maxDegree() const 
-    { 
+    int maxDegree() const
+    {
         int td = m_bases[0]->degree(0);
         // take maximum of coordinate bases degrees
         for (unsigned k=1; k!=d; ++k)
@@ -555,8 +554,8 @@ public:
         return td;
     }
 
-    int minDegree() const 
-    { 
+    int minDegree() const
+    {
         int td = m_bases[0]->degree(0);
         // take maximum of coordinate bases degrees
         for (unsigned k=1; k!=d; ++k)
@@ -606,12 +605,12 @@ public:
     }
 
     /// Returns the level of \a function, which is a hier. Id index
-    int get_level(unsigned function) const; 
+    int get_level(unsigned function) const;
 
     /// Returns the level of the function indexed \a i (in continued indices)
     inline int levelOf(unsigned i) const
     {
-        return std::upper_bound(m_xmatrix_offset.begin(), 
+        return std::upper_bound(m_xmatrix_offset.begin(),
                                 m_xmatrix_offset.end(), i)
             - m_xmatrix_offset.begin() - 1;
     }
@@ -623,9 +622,11 @@ public:
   }
 */
 
-    virtual void degreeElevate(int const & i = 1, int const dir = -1);
-    virtual void degreeIncrease(int const & i= 1, int const dir = -1);
+    void degreeElevate(int const & i = 1, int const dir = -1);
+    void degreeReduce(int const & i = 1, int const dir = -1);
 
+    void degreeIncrease(int const & i= 1, int const dir = -1);
+    void degreeDecrease(int const & i = 1, int const dir = -1);
 
     /** @brief Refine the basis to levels and in the areas defined by
      * \a boxes with an extension.
@@ -678,18 +679,18 @@ public:
 
     /// Refines all the cells on the side \a side up to level \a lvl
     void refineSide(const boxSide side, index_t lvl);
-        
+
     // Look at gsBasis.h for the documentation of this function
     //virtual void uniformRefine(int numKnots = 1);
 
-    typename gsBasis<T>::domainIter makeDomainIterator() const 
-    { 
+    typename gsBasis<T>::domainIter makeDomainIterator() const
+    {
         return typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(*this));
     }
 
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
-        return ( s == boundary::none ? 
+        return ( s == boundary::none ?
                  typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(*this)) :
                  typename gsBasis<T>::domainIter(new gsHDomainBoundaryIterator<T, d>(*this,s) )
             );
@@ -766,7 +767,7 @@ public:
         return numEl;
     }
     using gsBasis<T>::numElements; //unhide
-        
+
     /// @brief transformes a sortedVector \a indexes of flat tensor index
     /// of the bspline basis of \a level to hierachical indexes in place. If a flat
     /// tensor index is not found, it will transform to -1.
@@ -819,7 +820,7 @@ protected:
     /// @brief Updates the basis structure (eg. charact. matrices, etc), to
     /// be called after any modifications.
     virtual void update_structure(); // to do: rename as updateCharMatrices
-    
+
     /// @brief Makes sure that there are \a numLevels grids computed
     /// in the hierarachy
     void needLevel(int maxLevel) const;
@@ -835,19 +836,19 @@ protected:
 private:
 
     /// \brief Inserts a domain into the basis
-    void insert_box(gsVector<unsigned,d> const & k1, 
+    void insert_box(gsVector<unsigned,d> const & k1,
                     gsVector<unsigned,d> const & k2, int lvl);
-    
+
     void initialize_class(gsBasis<T> const&  tbasis);
 
     /// \brief Returns the basis functions of \a level which have support on \a
     /// box, represented as an index box
-    void functionOverlap(const point & boxLow, const point & boxUpp, 
+    void functionOverlap(const point & boxLow, const point & boxUpp,
                          const int level, point & actLow, point & actUpp);
 
     // \brief Sets all functions of \a level to active or passive- one by one
     void set_activ1(int level);
-    
+
     // \brief Computes the set of active basis functions in the basis
     void setActive();
 
