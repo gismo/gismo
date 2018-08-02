@@ -32,7 +32,7 @@ function(gismo_fetch_module)
   file(REMOVE "${GF_DOWNLOAD_DIR}/CMakeCache.txt")
 
 #  if(NOT EXISTS ${GF_DOWNLOAD_DIR}/CMakeLists.txt)
-    file(WRITE ${GF_DOWNLOAD_DIR}/CMakeLists.txt "cmake_minimum_required(VERSION 2.8.2)\n project(${GF_NAME}_fetch NONE)\n include(ExternalProject)\n ExternalProject_Add(${GF_NAME}_fetch\n ${GF_UNPARSED_ARGUMENTS}\n SOURCE_DIR          \"${GF_SOURCE_DIR}\"\n BINARY_DIR          \"${GF_BINARY_DIR}\"\n CONFIGURE_COMMAND   \"\"\n BUILD_COMMAND       \"\"\n INSTALL_COMMAND     \"\"\n TEST_COMMAND        \"\")\n")
+    file(WRITE ${GF_DOWNLOAD_DIR}/CMakeLists.txt "if(POLICY CMP0048) cmake_policy(SET CMP0048 NEW) endif() if(POLICY CMP0054) cmake_policy(SET CMP0054 NEW) endif()\n cmake_minimum_required(VERSION 2.8.8)\n project(${GF_NAME}_fetch NONE)\n include(ExternalProject)\n ExternalProject_Add(${GF_NAME}_fetch\n ${GF_UNPARSED_ARGUMENTS}\n SOURCE_DIR          \"${GF_SOURCE_DIR}\"\n BINARY_DIR          \"${GF_BINARY_DIR}\"\n CONFIGURE_COMMAND   \"\"\n BUILD_COMMAND       \"\"\n INSTALL_COMMAND     \"\"\n TEST_COMMAND        \"\")\n")
 #  endif()
 
   execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}"
@@ -53,7 +53,7 @@ function(gismo_fetch_module)
     message(FATAL_ERROR "Build step for ${GF_NAME} failed: ${result}")
   endif()
 
-  message(STATUS "Enabling remote module ${GF_NAME} - done")
+  message(STATUS "Enabling remote module ${GF_NAME} - downloaded")
 endfunction()
 
 function(gismo_fetch_git_module)
@@ -63,7 +63,8 @@ get_repo_info(GISMO_REPO GISMO_REPO_REV)
 #message("The revision is ${GISMO_REPO_REV}.")
 
 if( EXISTS "${CMAKE_SOURCE_DIR}/extensions/${ARGV0}/CMakeLists.txt")
-  message(STATUS "Found local module ${ARGV0}")
+  message(STATUS "Enabling remote module ${ARGV0} - found")
+  return()
 endif()
 
   set(git_pr https) #ssh
@@ -80,7 +81,7 @@ endif()
   endif()
 
 if(NOT EXISTS "${CMAKE_SOURCE_DIR}/extensions/${ARGV0}/CMakeLists.txt")
-  message(FATAL_ERROR "Module ${ARGV0} was not fetched correctly.")
+  message(ERROR "Enabling remote module ${ARGV0} - not found")
 endif()
 
 endfunction()
