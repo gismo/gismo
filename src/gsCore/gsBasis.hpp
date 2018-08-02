@@ -500,10 +500,7 @@ void gsBasis<T>::setDegree(int const& i)
         }
         else if  ( i < p )
         {
-            // If the degree is not the same in all directions, then
-            //this does not what is specified
-            this->degreeReduce(p-i);
-            //this->degreeReduce(p-i, k); // todo
+	    this->degreeReduce(p-i, k);
         }
     }
 }
