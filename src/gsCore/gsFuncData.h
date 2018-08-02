@@ -74,7 +74,7 @@ public:
      * @param patch in case of multipatch structures, on which patch to compute
      */
     explicit gsFuncData(unsigned flags = 0, int patch = 0)
-    : flags(flags), patchId(0)
+    : flags(flags), patchId(patch)
     { }
 
 public:

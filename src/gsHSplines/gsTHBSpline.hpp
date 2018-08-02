@@ -82,6 +82,10 @@ template<unsigned d, class T>
 //void gsTHBSpline<d,T>::getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level, std::vector< gsTensorBSpline<2> >& bpatches) const
 void gsTHBSpline<d, T>::getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level) const
 {
+    GISMO_UNUSED(b1);
+    GISMO_UNUSED(b2);
+    GISMO_UNUSED(level);
+    GISMO_NO_IMPLEMENTATION
     //------------------------------------------------------------------------------------------------------------------------------
     // define the 6 boxes and the corresponding levels for the MTU fillet example *** TO BE SUBSTITUTED WITH AUTOMATIC SPLITTING ***
     //------------------------------------------------------------------------------------------------------------------------------

@@ -52,9 +52,7 @@ public:
     /// Returns a bounding box for the domain
     /// eg. This coincides to the domain in case of tensor-product domains
     virtual gsMatrix<T> boundingBox()
-    {
-        GISMO_NO_IMPLEMENTATION
-    }
+    {GISMO_NO_IMPLEMENTATION}
 
     /// Returns a list of elements
     virtual gsMatrix<T> elements()

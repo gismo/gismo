@@ -168,13 +168,12 @@ public:
     /// func on the physical domain
     T distanceH1(gsFunction<T> const & func, 
                  bool isFunc_param = false,
-                 int numEvals=1000) const 
+                 int = 1000) const
     {
         if ( m_parametric ) // isogeometric field
             return igaFieldH1Distance(*this, func, isFunc_param);
         else
         {
-            GISMO_UNUSED(numEvals);
             gsWarn <<"H1 seminorm not implemented.\n";
             return -1;
         }
@@ -185,13 +184,12 @@ public:
     T distanceH1(gsFunction<T> const & func,
                  gsMultiBasis<T> const & B,
                  bool isFunc_param = false,
-                 int numEvals=1000) const
+                 int = 1000) const
     {
         if ( m_parametric ) // isogeometric field
             return igaFieldH1Distance(*this, func, B,isFunc_param);
         else
         {
-            GISMO_UNUSED(numEvals);
             gsWarn <<"H1 seminorm not implemented.\n";
             return -1;
         }
@@ -201,13 +199,12 @@ public:
     /// func on the physical domain
     T distanceDG(gsFunction<T> const & func, 
                  bool isFunc_param = false,
-                 int numEvals=1000) const 
+                 int = 1000) const
     {
         if ( m_parametric ) // isogeometric field
             return igaFieldDGDistance(*this, func, isFunc_param);
         else
         {
-            GISMO_UNUSED(numEvals);
             gsWarn <<"DG norm not implemented.\n";
             return -1;
         }

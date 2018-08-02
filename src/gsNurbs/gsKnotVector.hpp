@@ -44,7 +44,6 @@ public:
     {
         // TODO: make it unused when possible.
         int p = atoi(node->first_attribute("degree")->value() );
-        //GISMO_UNUSED(p);
 
         typename gsKnotVector<T>::knotContainer knotValues;
 

@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     gsPoissonAssembler<> stationary(pde, refine_bases);
     stationary.options().setInt("DirichletStrategy", dirichlet::elimination);
     stationary.options().setInt("InterfaceStrategy", iFace::glue);
-    gsHeatEquation<real_t> assembler(stationary, stationary.options());
+    gsHeatEquation<real_t> assembler(stationary);
     assembler.setTheta(theta);
     gsInfo<<assembler.options()<<"\n";
 

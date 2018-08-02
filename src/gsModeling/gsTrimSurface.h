@@ -294,6 +294,7 @@ public:
 
     void cleanEndpoints(T eps)
     {
+      GISMO_UNUSED(eps);
       gsMatrix<T> supp = this->m_surface->support();
       size_t n = domain().loop(0).curves().size();
       for(size_t i = 0; i < n; i++)

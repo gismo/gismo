@@ -80,7 +80,7 @@ public:
         localRhs.setZero(numActive, rhsVals.rows() );//multiple right-hand sides
     }
     
-    inline void assemble(gsDomainIterator<T>    & element, 
+    inline void assemble(gsDomainIterator<T>    & ,
                          gsGeometryEvaluator<T> & geoEval,
                          gsVector<T> const      & quWeights)
     {

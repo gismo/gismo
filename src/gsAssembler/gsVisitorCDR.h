@@ -86,7 +86,7 @@ public:
     }
 
     void initialize(const gsBasis<T> & basis,
-                    const index_t patchIndex,
+                    const index_t ,
                     const gsOptionList & options,
                     gsQuadRule<T>    & rule,
                     unsigned         & evFlags )

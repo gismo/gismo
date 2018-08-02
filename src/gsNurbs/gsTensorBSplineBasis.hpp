@@ -85,7 +85,7 @@ refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refine
 
 
 template<unsigned d, class T>
-void gsTensorBSplineBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
+void gsTensorBSplineBasis<d,T>::refine(gsMatrix<T> const & boxes, int)
 {
     // Note: refExt parameter is ignored
     GISMO_ASSERT( boxes.rows() == this->dim() , 

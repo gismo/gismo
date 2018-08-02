@@ -89,7 +89,7 @@ protected:
     }
 
     // assemble on element
-    inline T compute(gsDomainIterator<T>    & element, 
+    inline T compute(gsDomainIterator<T>    & ,
                      gsGeometryEvaluator<T> & geoEval,
                      gsVector<T> const      & quWeights,
                      T & accumulated)

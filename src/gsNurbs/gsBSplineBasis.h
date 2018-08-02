@@ -306,7 +306,8 @@ public:
 
     // Look at gsBasis class for a description
     int degree(int i) const 
-    { 
+    {
+        GISMO_UNUSED(i);
         GISMO_ASSERT(i==0,"Asked for degree(i) in 1D basis.");
         return m_p; 
     }
@@ -459,7 +460,8 @@ public:
   
     /// Elevate the degree of the basis and preserve the smoothness
     void degreeElevate(int const & i = 1, int const dir = -1)
-    { 
+    {
+        GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
         m_p+=i; m_knots.degreeElevate(i); 
     }
@@ -467,6 +469,7 @@ public:
     // Look at gsBasis for documentation
     void degreeReduce (int const & i = 1, int const dir = -1) 
     {
+        GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
         GISMO_ASSERT( i<=m_p, "Cannot reduce degree to negative");
         m_p-=i; m_knots.degreeReduce(i);
@@ -476,6 +479,7 @@ public:
     // Look at gsBasis for documentation
     void degreeIncrease(int const & i = 1, int const dir = -1)
     {
+        GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
         m_p+=i; m_knots.degreeIncrease(i);
     }
@@ -483,6 +487,7 @@ public:
     // Look at gsBasis for documentation
     void degreeDecrease(int const & i = 1, int const dir = -1)
     {
+        GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
         m_p-=i; m_knots.degreeDecrease(i);
     }
@@ -545,6 +550,7 @@ public:
     // Compatible with tensor B-spline basis
     void setPeriodic(int dir)
     {
+        GISMO_UNUSED(dir);
         GISMO_ASSERT(dir==0, "Invalid direction");
             _convertToPeriodic();
     }
@@ -604,6 +610,7 @@ public:
 
     gsMatrix<T> perCoefs(const gsMatrix<T>& coefs, int dir) const
     {
+        GISMO_UNUSED(dir);
         GISMO_ASSERT(dir==0, "Error");
         return perCoefs(coefs);
     }

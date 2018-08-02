@@ -221,7 +221,7 @@ public:
 
     // Avoid default keyword for MSVC<2013
     // https://msdn.microsoft.com/en-us/library/hh567368.aspx
-    gsSparseMatrix(const gsSparseMatrix& other)
+    gsSparseMatrix(const gsSparseMatrix& other) : Base(other)
     { Base::operator=(other); }
     gsSparseMatrix& operator= (const gsSparseMatrix & other)
     { Base::operator=(other); return *this; }

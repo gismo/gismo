@@ -63,8 +63,6 @@ public:
 
     int domainDim() const { return 4; }
 
-    void toMesh(gsMesh<T> & msh, int npoints = 3375) const;
-
     virtual gsGeometryEvaluator<Scalar_t> * evaluator(unsigned flags) const;
 
 }; // class gsBulk

@@ -182,7 +182,7 @@ gsMatrix<unsigned> gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
 }
 
 template <class T>
-gsConstantBasis<T> * gsTensorBSplineBasis<1,T>::boundaryBasis_impl(boxSide const & s) const
+gsConstantBasis<T> * gsTensorBSplineBasis<1,T>::boundaryBasis_impl(boxSide const &) const
 {
     return new gsConstantBasis<T>(1.0);
 }
@@ -1214,6 +1214,7 @@ void gsTensorBSplineBasis<1,T>::_stretchEndKnots()
 template <class T>
 gsBSplineBasis<T> & gsBSplineBasis<T>::component(unsigned i)
 {
+    GISMO_UNUSED(i);
     GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");
     return const_cast<gsBSplineBasis&>(*this);
 }
@@ -1221,6 +1222,7 @@ gsBSplineBasis<T> & gsBSplineBasis<T>::component(unsigned i)
 template <class T>
 const gsBSplineBasis<T> & gsBSplineBasis<T>::component(unsigned i) const
 {
+    GISMO_UNUSED(i);
     GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");
     return const_cast<gsBSplineBasis&>(*this);
 }

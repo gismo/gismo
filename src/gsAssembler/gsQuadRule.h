@@ -57,8 +57,8 @@ public:
      * rule will use precomputed tables if possible. If greater then 0,
      * it will force to compute it everytime.
      */
-    virtual void setNodes( gsVector<index_t> const & numNodes,
-                           unsigned digits = 0)
+    virtual void setNodes( gsVector<index_t> const &,
+                           unsigned = 0)
     { GISMO_NO_IMPLEMENTATION }
 
     /**

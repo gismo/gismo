@@ -203,7 +203,7 @@ public:
     }
 
     virtual bool step( VectorType& x ) = 0;                     ///< Perform one step, requires initIteration
-    virtual void finalizeIteration( VectorType& x ) {}          ///< Some post-processing might be required
+    virtual void finalizeIteration( VectorType& ) {}          ///< Some post-processing might be required
 
     /// Returns the size of the linear system
     index_t size() const                                       { return m_mat->rows(); }

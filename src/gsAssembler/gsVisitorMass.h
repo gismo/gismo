@@ -39,7 +39,7 @@ public:
     { }
 
     void initialize(const gsBasis<T> & basis,
-                    const index_t patchIndex,
+                    const index_t ,
                     const gsOptionList & options, 
                     gsQuadRule<T>    & rule,
                     unsigned         & evFlags )
@@ -72,7 +72,7 @@ public:
         localMat.setZero(numActive, numActive);
     }
 
-    inline void assemble(gsDomainIterator<T>    & element, 
+    inline void assemble(gsDomainIterator<T>    & ,
                          gsGeometryEvaluator<T> & geoEval,
                          gsVector<T> const      & quWeights)
     {
@@ -82,7 +82,7 @@ public:
     }
 
     inline void localToGlobal(const int patchIndex,
-                              const std::vector<gsMatrix<T> >    & eliminatedDofs,
+                              const std::vector<gsMatrix<T> >    & ,
                               gsSparseSystem<T>     & system)
     {
         // Map patch-local DoFs to global DoFs

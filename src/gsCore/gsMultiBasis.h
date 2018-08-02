@@ -36,6 +36,8 @@ template<class T>
 class gsMultiBasis : public gsFunctionSet<T>
 {
 public:
+    typedef gsFunctionSet<T> Base;
+
     typedef memory::shared_ptr<gsMultiBasis> Ptr;
     typedef memory::unique_ptr<gsMultiBasis> uPtr;
 
