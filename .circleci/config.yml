@@ -39,10 +39,10 @@ jobs:
           command: apt-get install git cmake make clang libgcc #valgrind
       - checkout
       - run:
-          name: Configure G+Smo on Fedora
-          command: cmake . -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [fedora]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DGISMO_WITH_ONURBS=ON
+          name: Configure G+Smo on Ubuntu
+          command: cmake . -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [ubuntu]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DGISMO_WITH_ONURBS=ON
       - run:
-          name: Build and test G+Smo on Fedora
+          name: Build and test G+Smo on Ubuntu
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
 
 #deployment:
@@ -63,7 +63,7 @@ workflows:
   build:
     jobs:
       - centos_build98
-      - fedora_build_clang
+      - ubuntu_build_clang
 #      - deployment:
 #          requires:
 #            - build
