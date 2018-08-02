@@ -44,7 +44,4 @@ private:
     size_t m_vertexIndex;
 }; // class gsPoint
 
-//typedef gsPoint<2, real_t> gsPoint2D;
-//typedef gsPoint<3, real_t> gsPoint3D;
-
 } // namespace gismo

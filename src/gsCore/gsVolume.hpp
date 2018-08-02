@@ -2,12 +2,12 @@
 
     @brief Provides implementation of Volume common operations.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -20,9 +20,9 @@ namespace gismo
 {
 
 
-template<class T> 
+template<class T>
 void gsVolume<T>::toMesh(gsMesh<T> & msh, int npoints) const
-{   
+{
     // OLD CODE NEVER USED gsTensorGridIter has been superseded
 
     // const gsMatrix<T> param        = this->parameterRange();
@@ -40,14 +40,14 @@ void gsVolume<T>::toMesh(gsMesh<T> & msh, int npoints) const
 
     // gsVector<unsigned> v;
     // v.setZero(3);
-    // do 
+    // do
     // {
     //     msh.addFace(v[0], v[0]+1, v[1]+1, v[1]);
     // }
     // while( nextLexicographic(v, np) )
 }
 
-template<class T> 
+template<class T>
 gsGeometryEvaluator<T> *
 gsVolume<T>::evaluator(unsigned flags) const
 {
@@ -64,5 +64,4 @@ gsVolume<T>::evaluator(unsigned flags) const
     }
 }
 
-}; // namespace gismo
-
+} // namespace gismo

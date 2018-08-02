@@ -46,9 +46,50 @@ template<class T>
 class gsParametrization
 {
 public:
-    typedef gsPoint<2, real_t> gsPoint2D;
+    typedef gsPoint<2, real_t> Point2D;
 
-	typedef std::vector<gsPoint2D, gsPoint2D::aalloc> VectorType;	// if use std::vector with Eigen classes, the second template parameter is needed
+    // if we use std::vector with static Eigen classes, the second template parameter is needed
+	typedef std::vector<Point2D, Point2D::aalloc> VectorType;
+
+private:
+    gsHalfEdgeMesh<T> m_mesh;     ///< mesh information
+	VectorType m_parameterPoints; ///< parameter points
+    gsOptionList m_options;
+
+public:
+
+    /// Constructor using the input mesh and (possibly) options
+    explicit gsParametrization(gsMesh<T> &mesh, gsOptionList list = defaultOptions());
+
+    /// @brief Returns the list of default options for gsParametrization
+    static gsOptionList defaultOptions();
+
+    /// Main function which performs the computation
+    gsParametrization<T>& compute();
+
+    /**
+     * Parametric Coordinates u,v from 0..1
+     * @return
+     */
+    gsMatrix<> createUVmatrix();
+
+    /**
+     * Corresponding mapped values in R3 to parametric coordinates.
+     * @return
+     */
+    gsMatrix<> createXYZmatrix();
+
+    /**
+     * Creates a flat mesh
+     * @return
+     */
+    gsMesh<> createFlatMesh();
+
+    gsOptionList& options() { return m_options; }
+
+    gsParametrization<T>& setOptions(const gsOptionList& list);
+
+private:
 
     /**
      * @brief Class that maintains the local neighbourhood properties.
@@ -240,8 +281,8 @@ public:
          * @param[in] filename const gsHalfEdgeMesh<T> object
          * @param[in] parametrizationMethod const size_t - {1:shape, 2:uniform, 3:distance}
          */
-        Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
-                      const size_t parametrizationMethod = 2);
+        explicit Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
+                               const size_t parametrizationMethod = 2);
 
         /**
          * @brief Get number of inner vertices
@@ -290,7 +331,7 @@ public:
         /**
          * @brief
          */
-        static const gsPoint2D findPointOnBoundary(real_t w, size_t index);
+        static const Point2D findPointOnBoundary(real_t w, size_t index);
 
     private:
         std::vector<real_t> midpoints(const size_t numberOfCorners, const real_t length) const;
@@ -301,44 +342,11 @@ public:
                                            std::vector<std::pair<real_t, size_t> > &sortedAngles,
                                            std::vector<int> &corners) const;
 
-        gsHalfEdgeMesh<T> m_basicInfos;
+        const gsHalfEdgeMesh<T> & m_basicInfos;
         std::vector<LocalParametrization> m_localParametrizations;
         std::vector<LocalNeighbourhood> m_localBoundaryNeighbourhoods;
     };
 
-    /// @brief Returns the list of default options for gsParametrization
-    static gsOptionList defaultOptions();
-
-    /**
-    * @brief Default constructor
-    */
-    //gsParametrization() { }
-
-    gsParametrization(gsMesh<T> &mesh, gsOptionList list = defaultOptions());
-
-    gsParametrization<T>& compute();
-
-    /**
-     * Parametric Coordinates u,v from 0..1
-     * @return
-     */
-    gsMatrix<> createUVmatrix();
-
-    /**
-     * Corresponding mapped values in R³ to parametric coordinates.
-     * @return
-     */
-    gsMatrix<> createXYZmatrix();
-
-    /**
-     * Creates a flat mesh
-     * @return
-     */
-    gsMesh<> createFlatMesh();
-
-    gsOptionList& options() { return m_options; }
-
-    gsParametrization<T>& setOptions(const gsOptionList& list);
 
 private:
     /**
@@ -348,7 +356,7 @@ private:
     * @param[in] vertexIndex int - vertex index
     * @return two-dimensional parameter point
     */
-    const gsPoint2D &getParameterPoint(size_t vertexIndex) const;
+    const Point2D &getParameterPoint(size_t vertexIndex) const;
 
     /**
     * @brief Constructs linear equation system and solves it
@@ -381,9 +389,6 @@ private:
 
     bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const size_t maximum);
 
-    gsHalfEdgeMesh<T> m_mesh; ///< mesh information
-	VectorType m_parameterPoints; ///< parameter points
-    gsOptionList m_options;
 }; // class gsParametrization
 
 } // namespace gismo

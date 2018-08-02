@@ -21,8 +21,8 @@ int main(int argc, char *argv[])
     bool paraview = false;
     int parametrizationMethod(1); // 1:shape, 2:uniform, 3:distance
     // shape: best method, shape of the mesh is preserved, smooth surface fitting
-    // uniform: the lambdas according to floater's algorithm are set to 1/d, where d is the number of neighbours
-    // distance: the lambdas according to floater's algorithm are set to the relative distances between the point and its neighbours
+    // uniform: the lambdas according to Floater's algorithm are set to 1/d, where d is the number of neighbours
+    // distance: the lambdas according to Floater's algorithm are set to the relative distances between the point and its neighbours
     int boundaryMethod(4); // 1:chords, 2:corners, 3:smallest, 4:restrict, 5:opposite, 6:distributed
     //chords: choose boundary points distributed on the unit square boundary wrt the chord lengths, no input needed
     //corners: choose 4 boundary corners for the corner points of the unit square and the rest of the boundary corners is distributed on the four edges of the unit square wrt the chord lengths, input is the corner numbers, e.g. 1,2,3,4 for the first, second, third and fourth boundary point
@@ -39,8 +39,8 @@ int main(int argc, char *argv[])
     gsCmdLine cmd("parametrization_example Command line");
     cmd.addInt("m", "parametrizationMethod", "parametrization methods: {shape, uniform, distance}\n"
                                                 "shape: best method, shape of the mesh is preserved, smooth surface fitting\n"
-                                                "uniform: the lambdas according to floater's algorithm are set to 1/d, where d is the number of neighbours\n"
-                                                "distance: the lambdas according to floater's algorithm are set to the relative distances between the point and its neighbours",
+                                                "uniform: the lambdas according to Floater's algorithm are set to 1/d, where d is the number of neighbours\n"
+                                                "distance: the lambdas according to Floater's algorithm are set to the relative distances between the point and its neighbours",
                   parametrizationMethod);
     cmd.addInt("b", "boundaryMethod", "boundary methodes: {chords, corners, smallest, restrict, opposite, distributed}\n"
                                          "chords: choose boundary points distributed on the unit square boundary wrt the chord lengths, no input needed\n"
@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 
     gsInfo << "gsFileData\n";
     gsFileData<> fd(ol.getString("filenameIn"));
-    
+
     gsInfo << "reading input into gsMesh<real_t>::uPtr\n";
     gsMesh<real_t>::uPtr mm = fd.getFirst<gsMesh<real_t> >();
 

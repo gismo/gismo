@@ -1,9 +1,9 @@
 
 ######################################################################
 ## CMakeLists.txt ---
-## This file is part of the G+Smo library. 
+## This file is part of the G+Smo library.
 ##
-## Author: Angelos Mantzaflaris 
+## Author: Angelos Mantzaflaris
 ## Copyright (C) 2012 - 2015 RICAM-Linz.
 ######################################################################
 
@@ -67,11 +67,11 @@ set(${PROJECT_NAME}_RUNTIME_OUTPUT_DIRECTORY bin)
 set(${PROJECT_NAME}_LIBRARY_OUTPUT_DIRECTORY lib)
 foreach(config ${CMAKE_CONFIGURATION_TYPES}) # For Visual studio
     # overrides Debug/Release subfolders
-    string(TOUPPER ${config} CONFIG) 
+    string(TOUPPER ${config} CONFIG)
     set(${PROJECT_NAME}_ARCHIVE_OUTPUT_DIRECTORY_${CONFIG} lib)
     set(${PROJECT_NAME}_RUNTIME_OUTPUT_DIRECTORY_${CONFIG} bin)
     set(${PROJECT_NAME}_LIBRARY_OUTPUT_DIRECTORY_${CONFIG} lib)
-endforeach() 
+endforeach()
 
 #Configure Valgrind
 #find_program( MEMORYCHECK_COMMAND valgrind )
@@ -126,7 +126,7 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 #      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MD")
 #    endif()
 
-    if (CMAKE_SIZEOF_VOID_P EQUAL 8) #64bit compiler 
+    if (CMAKE_SIZEOF_VOID_P EQUAL 8) #64bit compiler
        # Note: On 64bit-platforms, /Wp64 flag is present, causing extra warnings
        set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS} /wd4244 /wd4267")
 
@@ -153,7 +153,7 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   # Note: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53431
   # affects -Wno-ignored-attributes in Eigen
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -Wunused-variable")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -Wunused-variable") #-Wpedantic
   if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.8)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftrack-macro-expansion=0 -Wno-ignored-attributes")
   endif()
@@ -161,7 +161,7 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
       AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.2)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++11-compat")
   endif()
-  
+
   if(GISMO_WARNINGS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Woverloaded-virtual -Wextra")
     #-Wshadow -Wconversion -pedantic -Wunused -Wattributes
@@ -210,9 +210,9 @@ if (CMAKE_COMPILER_IS_GNUCXX AND NOT GISMO_WITH_OPENMP)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Intel" AND NOT GISMO_WITH_OPENMP)
-   if ( CMAKE_SYSTEM_NAME MATCHES "Linux" ) 
+   if ( CMAKE_SYSTEM_NAME MATCHES "Linux" )
      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -diag-disable 3180") #comma for more warns
-   elseif ( CMAKE_SYSTEM_NAME MATCHES "Windows" ) 
+   elseif ( CMAKE_SYSTEM_NAME MATCHES "Windows" )
       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Qdiag-disable:3180")
    endif()
    #set_property(TARGET mytarget PROPERTY INTERPROCEDURAL_OPTIMIZATION 1)

@@ -27,8 +27,8 @@ namespace solver
 
 struct NonLinearPrivate;
 
-/** 
-    
+/**
+
  */
 class GISMO_EXPORT NonLinear
 {
@@ -38,20 +38,18 @@ public:
     NonLinear(const SparseMatrix & A );
 
     ~NonLinear();
-    
+
     const Vector & solve( const Vector & b );
 
     void getSolution(gsVector<> & sol, const int rank = 0) const;
-    
+
 protected:
         virtual void solveProblem() = 0;
-    
+
 protected:
         NonLinearPrivate * my;
 };
 
-};// namespace solver
-};// namespace trilinos
-};// namespace gismo
-
-
+}// namespace solver
+}// namespace trilinos
+}// namespace gismo

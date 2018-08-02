@@ -61,7 +61,7 @@ public:
     ///
     /// @param message        The message to be used in the usage output.
     /// @param delimiter      The character that is used to separate
-    ///                       the argument flag/name from the value. 
+    ///                       the argument flag/name from the value.
     ///                       Defaults to ' ' (space).
     /// @param helpAndVersion Whether or not to create the Help and
     ///                       Version switches. Defaults to true.
@@ -186,7 +186,7 @@ public:
     ///                   If empty, no such flag can be used.
     /// @param name       Long form of the flag.
     /// @param desc       Description (printed if --help is invoked)
-    /// @param value      This should be a non-const bool variable.  
+    /// @param value      This should be a non-const bool variable.
     ///                   When \ref getValues is invoked and the user
     ///                   has added the switch on the command line,
     ///                   the \a value is toggled (i.e. if false it
@@ -269,4 +269,4 @@ private:
 
 }; // class gsCmdLine
 
-}; // namespace gismo
+} // namespace gismo

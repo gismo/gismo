@@ -2,12 +2,12 @@
 
     @brief Provides a helper class to write Paraview collection (.pvd) files.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -19,17 +19,17 @@
 
 namespace gismo {
 
-/** 
+/**
     \brief This class is used to create a Paraview .pvd (collection)
-    file. 
+    file.
 
     A collection is an XML file that contains a list of other
     files to be opened in Paraview.
-    
+
     Typical usage is
     \verbatim
     gsParaviewCollection pc(fn); // Initialize collection
-    
+
     // add files ("parts"), make sure that these files exist
     pc.addPart(filename1);
     pc.addPart(filename2);
@@ -40,7 +40,7 @@ namespace gismo {
     The above creates a file with extension pvd. When opening this
     file with Paraview, the containts of all parts in the list are
     loaded.
-    
+
     \ingroup IO
 */
 class gsParaviewCollection
@@ -48,7 +48,7 @@ class gsParaviewCollection
 public:
     typedef std::string String;
 public:
-    
+
     /// Constructor using a filename.
     gsParaviewCollection(std::string const & fn)
     : mfn(fn), counter(0)
@@ -79,7 +79,7 @@ public:
         GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
         mfile << "<DataSet part=\""<<i<<"\" file=\""<<fn<<i<<ext<<"\"/>\n";
     }
-    
+
     // to do: make time collections as well
 	// ! i is not included in the filename, must be in included fn !
     void addTimestep(String const & fn, int tstep, String const & ext)
@@ -115,7 +115,7 @@ public:
 private:
     /// Pointer to char stream
     std::stringstream mfile;
-    
+
     /// File name
     String mfn;
 
@@ -146,4 +146,4 @@ inline void makeCollection(std::string const & fn, std::string const & ext, int 
 }
 
 
-}; // end namespace gismo
+} // end namespace gismo

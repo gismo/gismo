@@ -6,6 +6,6 @@
 namespace gismo
 {
 
-CLASS_TEMPLATE_INST gsHalfEdgeMesh<real_t> ;
+CLASS_TEMPLATE_INST gsHalfEdgeMesh<real_t>;
 
 }

@@ -103,20 +103,9 @@ int main(int argc, char* argv[])
            << "Switch:       " << boolean << "\n\n"
            << "MultiInt      {";
 
-    for (std::vector<int>::iterator it = intvec.begin(); it != intvec.end(); ++it)
-    {
-        if(it != intvec.begin())
-            gsInfo << ", ";
-        gsInfo << *it;
-    }
+    std::copy(intvec.begin(), intvec.end(),
+              std::ostream_iterator<int>(gsInfo,", "));
     gsInfo << "}\n\n";
 
     return 0;
 }
-
-
-
-
-
-
-
