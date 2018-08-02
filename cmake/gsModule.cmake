@@ -64,7 +64,7 @@ get_repo_info(GISMO_REPO GISMO_REPO_REV)
 
 if( EXISTS "${CMAKE_SOURCE_DIR}/extensions/${ARGV0}/CMakeLists.txt")
   message(STATUS "Found local module ${ARGV0}")
-else()
+endif()
 
   set(git_pr https) #ssh
 
