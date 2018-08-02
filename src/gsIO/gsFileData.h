@@ -2,12 +2,12 @@
 
     @brief Utility class which holds I/O XML data to read/write to/from files
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -18,7 +18,7 @@
 
 #include <gsIO/gsXml.h>
 
-namespace gismo 
+namespace gismo
 {
 
 /**
@@ -40,16 +40,16 @@ public:
 
 public:
 
-    gsFileData() ;
-    
-    /** 
+    gsFileData();
+
+    /**
      * Initializes a a gsFileData object with the containts of a file
      *
      * @param fn filename string
      */
     explicit gsFileData(String const & fn);
-    
-    /** 
+
+    /**
      * Loads the contents of a file into a gsFileData object
      *
      * @param fn filename string
@@ -57,9 +57,9 @@ public:
      * Returns true on success, false on failure.
      */
     bool read(String const & fn) ;
-    
+
     ~gsFileData();
-    
+
     /// \brief Clear all data
     void clear();
 
@@ -71,10 +71,10 @@ public:
 
     /// \brief Save file contents to compressed xml file
     void saveCompressed(String const & fname = "dump") const;
-    
+
     /// \brief Dump file contents to an xml file
     void dump(String const & fname = "dump") const;
-    
+
     void addComment(String const & message);
 
     // Returns the path of the last file where data was read from
@@ -82,17 +82,27 @@ public:
     // If the corresponding file did not exist, the return value is an
     // empty string.
     String lastPath() const { return m_lastPath; }
+
+    /// Set the precision (number of decimals) used for writing floats
+    /// to output files
+    void setFloatPrecision(const unsigned k) { data->setFloatPrecision(k); }
+
+    /// Returns the precision (number of decimals) used for writing floats
+    /// to output files
+    unsigned getFloatPrecision() const { return data->getFloatPrecision(); }
+
 private:
     /// File data as an xml tree
     FileData * data;
-    
+
     // Used to hold parsed data of native gismo XML files
     std::vector<char> m_buffer;
 
+    // Holds the last path that was used in an I/O operation
     mutable String m_lastPath;
-    
+
 protected:
-    
+
 ////////////////////////////////////////////////////////
 // File readers
 ////////////////////////////////////////////////////////
@@ -152,14 +162,14 @@ public:
     // {
     //     return internal::gsXml<Object>::get(node);// Using gsXmlUtils
     // }
-    
+
     /// Searches and fetches the Gismo object with a given id
     template<class Object>
     inline memory::unique_ptr<Object> getId( const int & id)  const
     {
         return memory::make_unique( internal::gsXml<Object>::getId( getXmlRoot(), id ) );
     }
-    
+
     /// Searches and fetches the Gismo object with a given id
     template<class Object>
     inline void getId( const int & id, Object& result)  const
@@ -167,60 +177,60 @@ public:
         memory::unique_ptr<Object> obj = getId<Object>(id);
         result = give(*obj);
     }
-    
+
     /// Prints the XML tag of a Gismo object
     template<class Object>
     inline String tag() const
     { return internal::gsXml<Object>::tag(); }
-    
+
     /// Prints the XML tag type of a Gismo object
     template<class Object>
     inline String type() const
     { return internal::gsXml<Object>::type(); }
-    
+
     /// Returns true if an Object exists in the filedata
-    template<class Object> 
+    template<class Object>
     inline bool has() const
     {
-        return getFirstNode( internal::gsXml<Object>::tag(), 
+        return getFirstNode( internal::gsXml<Object>::tag(),
                              internal::gsXml<Object>::type() ) != 0 ;
     }
 
     /// Returns true if an Object exists in the filedata, even nested
     /// inside other objects
-    template<class Object> 
+    template<class Object>
     inline bool hasAny() const
     {
-        return getAnyFirstNode( internal::gsXml<Object>::tag(), 
+        return getAnyFirstNode( internal::gsXml<Object>::tag(),
                                 internal::gsXml<Object>::type() ) != 0 ;
     }
-    
+
     /// Counts the number of Objects in the filedata
-    template<class Object> 
+    template<class Object>
     inline int count() const
     {
         int i(0);
-        for (gsXmlNode * child = getFirstNode( internal::gsXml<Object>::tag(), 
-                                               internal::gsXml<Object>::type() ) ; 
-             child; child = getNextSibling(child, internal::gsXml<Object>::tag(), 
+        for (gsXmlNode * child = getFirstNode( internal::gsXml<Object>::tag(),
+                                               internal::gsXml<Object>::type() ) ;
+             child; child = getNextSibling(child, internal::gsXml<Object>::tag(),
                                            internal::gsXml<Object>::type() ))
             ++i;
         return i;
     }
 
-    
+
     /// Inserts an object to the XML tree
-    template<class Object>    
+    template<class Object>
     void operator<<(const Object & obj)
     {
         this->add<Object>(obj);
     }
-    
+
     /// Add the object to the Xml tree, same as <<
     template<class Object>
     void add (const Object & obj)
     {
-        gsXmlNode* node = 
+        gsXmlNode* node =
             internal::gsXml<Object>::put(obj, *data);
         if ( ! node )
         {
@@ -230,9 +240,9 @@ public:
         else
         {
             data->appendToRoot(node);
-        }            
+        }
     }
-    
+
     /// Returns the size of the data
     size_t bufferSize() const { return m_buffer.size(); };
 
@@ -248,9 +258,9 @@ public:
     /// template resolution.
     template<class Object>
     bool operator>>(Object * obj)
-    {        
+    {
         gsWarn<< "getting "<< typeid(Object).name() <<"\n";
-        gsXmlNode* node = getFirstNode(internal::gsXml<Object>::tag(), 
+        gsXmlNode* node = getFirstNode(internal::gsXml<Object>::tag(),
                                        internal::gsXml<Object>::type() );
         if ( !node )
         {
@@ -278,18 +288,18 @@ public:
      * @tparam Object Type of object.
      * @return An uPtr with the object inside, or null inside if no object was found.
      */
-    template<class Object> 
+    template<class Object>
     inline memory::unique_ptr<Object> getFirst() const
     {
-        gsXmlNode* node = getFirstNode(internal::gsXml<Object>::tag(), 
+        gsXmlNode* node = getFirstNode(internal::gsXml<Object>::tag(),
                                        internal::gsXml<Object>::type() );
         if ( !node )
         {
             gsWarn<<"gsFileData: getFirst: Didn't find any "<<
-                internal::gsXml<Object>::type()<<" "<< 
+                internal::gsXml<Object>::type()<<" "<<
                 internal::gsXml<Object>::tag() <<". Error.\n";
             return memory::unique_ptr<Object>();
-        }           
+        }
         return memory::make_unique( internal::gsXml<Object>::get(node) );// Using gsXmlUtils
     }
 
@@ -306,31 +316,31 @@ public:
      * @param result Object read into.
      * @return True if result has been found, false if result was not found.
      */
-    template<class Object> 
+    template<class Object>
     bool getFirst(Object & result) const
     {
-        gsXmlNode* node = getFirstNode(internal::gsXml<Object>::tag(), 
+        gsXmlNode* node = getFirstNode(internal::gsXml<Object>::tag(),
                                        internal::gsXml<Object>::type() );
         if ( !node )
         {
             gsWarn<<"gsFileData: getFirst: Didn't find any "<<
-                internal::gsXml<Object>::type()<<" "<< 
+                internal::gsXml<Object>::type()<<" "<<
                 internal::gsXml<Object>::tag() <<". Error.\n";
             return false;
-        }           
+        }
         internal::gsXml<Object>::get_into(node, result);// Using gsXmlUtils
         return true;
     }
-    
+
     /// Returns a vector with all Objects found in the XML data
     template<class Object>
     inline std::vector< memory::unique_ptr<Object> > getAll()  const
     {
         std::vector< memory::unique_ptr<Object> > result;
-        
-        for (gsXmlNode * child = getFirstNode( internal::gsXml<Object>::tag(), 
-                                               internal::gsXml<Object>::type() ) ; 
-             child; child = getNextSibling(child, internal::gsXml<Object>::tag(), 
+
+        for (gsXmlNode * child = getFirstNode( internal::gsXml<Object>::tag(),
+                                               internal::gsXml<Object>::type() ) ;
+             child; child = getNextSibling(child, internal::gsXml<Object>::tag(),
                                            internal::gsXml<Object>::type() ))
         {
             result.push_back( memory::make_unique(internal::gsXml<Object>::get(child)) );
@@ -350,18 +360,18 @@ public:
      * @tparam Object Type of object.
      * @return An uPtr with the object inside, or null inside if no object was found.
      */
-    template<class Object> 
+    template<class Object>
     inline memory::unique_ptr<Object> getAnyFirst() const
     {
-        gsXmlNode* node = getAnyFirstNode(internal::gsXml<Object>::tag(), 
+        gsXmlNode* node = getAnyFirstNode(internal::gsXml<Object>::tag(),
                                           internal::gsXml<Object>::type() );
         if ( !node )
         {
             gsWarn <<"gsFileData: getAnyFirst: Didn't find any "<<
-                internal::gsXml<Object>::type()<<" "<< 
+                internal::gsXml<Object>::type()<<" "<<
                 internal::gsXml<Object>::tag() <<". Error.\n";
             return memory::unique_ptr<Object>();
-      }           
+      }
         return memory::make_unique( internal::gsXml<Object>::get(node) );// Using gsXmlUtils
     }
 
@@ -381,12 +391,12 @@ public:
     template<class Object>
     bool getAnyFirst(Object & result) const
     {
-        gsXmlNode* node = getAnyFirstNode(internal::gsXml<Object>::tag(), 
+        gsXmlNode* node = getAnyFirstNode(internal::gsXml<Object>::tag(),
                                           internal::gsXml<Object>::type() );
         if ( !node )
         {
             gsWarn <<"gsFileData: getAnyFirst: Didn't find any "<<
-                internal::gsXml<Object>::type()<<" "<< 
+                internal::gsXml<Object>::type()<<" "<<
                 internal::gsXml<Object>::tag() <<". Error.\n";
             return false;
         }
@@ -395,11 +405,11 @@ public:
     }
 
     /// Lists the contents of the filedata
-    String contents () const;         
+    String contents () const;
 
     /// Counts the number of Objects/tags in the filedata
     int numTags () const;
-    
+
 private:
 
     gsXmlNode * getXmlRoot() const;
@@ -417,14 +427,14 @@ private:
     static gsXmlNode * getNextSibling( gsXmlNode* const & node,
                                        const String & name = "",
                                        const String & type = "" );
-    
+
     // Helpers for X3D files
     void addX3dShape(gsXmlNode * shape);
     void addX3dTransform(gsXmlNode * shape);
-    
+
 }; // class gsFileData
 
-// Print out operator    
+// Print out operator
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFileData<T> & fd)
 {return fd.print(os); }
