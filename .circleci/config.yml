@@ -23,9 +23,9 @@ jobs:
           name: Build and test G+Smo on CentOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
 
-  fedora_build_clang:
+  ubuntu_build_clang:
     docker:
-      - image: centos:7
+      - image: ubuntu:trusty
     filters:
       branches:
         - only: stable
