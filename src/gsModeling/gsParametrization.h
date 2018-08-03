@@ -59,7 +59,7 @@ private:
 public:
 
     /// Constructor using the input mesh and (possibly) options
-    explicit gsParametrization(gsMesh<T> &mesh, gsOptionList list = defaultOptions());
+    explicit gsParametrization(gsMesh<T> &mesh, const gsOptionList & list = defaultOptions());
 
     /// @brief Returns the list of default options for gsParametrization
     static gsOptionList defaultOptions();
@@ -71,19 +71,19 @@ public:
      * Parametric Coordinates u,v from 0..1
      * @return
      */
-    gsMatrix<> createUVmatrix();
+    gsMatrix<T> createUVmatrix();
 
     /**
      * Corresponding mapped values in R3 to parametric coordinates.
      * @return
      */
-    gsMatrix<> createXYZmatrix();
+    gsMatrix<T> createXYZmatrix();
 
     /**
      * Creates a flat mesh
      * @return
      */
-    gsMesh<> createFlatMesh();
+    gsMesh<T> createFlatMesh();
 
     gsOptionList& options() { return m_options; }
 
@@ -283,31 +283,6 @@ private:
          */
         explicit Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
                                const size_t parametrizationMethod = 2);
-
-        /**
-         * @brief Get number of inner vertices
-         *
-         * @return number of inner vertices
-         */
-        size_t getNumberOfInnerVertices() const;
-
-        /**
-         * @brief Get boundary length
-         *
-         * This method returns the length of the boundary chain, e. g. the sum of all halfedges in the boundary chain.
-         *
-         * @return boundary length
-         */
-        real_t getBoundaryLength() const;
-
-        /**
-         * @brief Get number of boundary halfedges
-         *
-         * This method returns the number of the boundary halfedges.
-         *
-         * @return number of boundary halfedges
-         */
-        size_t getNumberOfBoundaryHalfedges() const;
 
         /**
          * @brief Get vector of lambdas

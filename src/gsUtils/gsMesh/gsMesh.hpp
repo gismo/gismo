@@ -2,12 +2,12 @@
 
     @brief Provides implementation of the Mesh class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris, D. Mayer
 */
 
@@ -30,7 +30,7 @@ gsMesh<T>::~gsMesh()
 
 template<class T>
 gsMesh<T>::gsMesh(const gsBasis<T> & basis, int n)
-: MeshElement(), numVertices(0), numEdges(0), numFaces(0) 
+: MeshElement()
 {
     const unsigned d = basis.dim();
 
@@ -110,10 +110,10 @@ gsMesh<T>::gsMesh(const gsBasis<T> & basis, int n)
         }
 
         // idea: instead of edges add the faces to the mesh
-        // addFace( mesh.vertex.back(), 
-        //                *(vertex.end()-3), 
+        // addFace( mesh.vertex.back(),
+        //                *(vertex.end()-3),
         //                *(vertex.end()-4),
-        //                *(vertex.end()-2) 
+        //                *(vertex.end()-2)
         //     );
     }
 }
@@ -123,8 +123,8 @@ template<class T>
 typename gsMesh<T>::VertexHandle gsMesh<T>::addVertex(scalar_t const& x, scalar_t const& y, scalar_t const& z)
 {
     VertexHandle v = this->makeVertex(x,y,z);
+    v->setId(vertex.size());
     vertex.push_back(v );
-    v->setId(numVertices++);
     return v;
 }
 
@@ -133,8 +133,8 @@ template<class T>
 typename gsMesh<T>::VertexHandle gsMesh<T>::addVertex(gsVector<T> const & u)
 {
     VertexHandle v = this->makeVertex(u);
+    v->setId(vertex.size());
     vertex.push_back(v);
-    v->setId(numVertices++);
     return v;
 }
 
@@ -143,24 +143,23 @@ template<class T>
 void gsMesh<T>::addEdge(VertexHandle v0, VertexHandle v1)
 {
     edge.push_back( Edge(v0,v1) );
-    numEdges++;
 }
 
 
 template<class T>
 void gsMesh<T>::addEdge(int const & vind0, int const & vind1)
 {
-    GISMO_ASSERT( vind0 < numVertices, "Invalid vertex index "
-                  << vind0 << "(numVertices="<< numVertices <<").");
-    GISMO_ASSERT( vind1 < numVertices, "Invalid vertex index "
-                  << vind1 << "(numVertices="<< numVertices <<").");
+    GISMO_ASSERT( vind0 < numVertices(), "Invalid vertex index "
+                  << vind0 << "(numVertices="<< numVertices() <<").");
+    GISMO_ASSERT( vind1 < numVertices(), "Invalid vertex index "
+                  << vind1 << "(numVertices="<< numVertices() <<").");
 
     addEdge(vertex[vind0], vertex[vind1]);
 }
 
 
 template<class T>
-void gsMesh<T>::addEdge(gsVector<T> const & u0, 
+void gsMesh<T>::addEdge(gsVector<T> const & u0,
              gsVector<T> const & u1 )
 {
     addEdge( addVertex(u0), addVertex(u1) );
@@ -171,30 +170,30 @@ template<class T>
 typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(std::vector<VertexHandle> const & vert)
 {
     FaceHandle f = this->makeFace( vert );
-    face.push_back( f );
-    f->setId(numFaces++);
+    f->setId(face.size());
+    face.push_back(f);
     return f;
 }
 
 
 template<class T>
-typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(VertexHandle const & v0, VertexHandle const & v1, 
+typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(VertexHandle const & v0, VertexHandle const & v1,
                    VertexHandle const & v2)
 {
     FaceHandle f = this->makeFace( v0, v1, v2 );
-    face.push_back( f );
-    f->setId(numFaces++);
+    f->setId(face.size());
+    face.push_back(f);
     return f;
 }
 
 
 template<class T>
-typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(VertexHandle const & v0, VertexHandle const & v1, 
+typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(VertexHandle const & v0, VertexHandle const & v1,
                    VertexHandle const & v2,  VertexHandle const & v3)
 {
     FaceHandle f = this->makeFace( v0,v1,v2,v3 );
-    face.push_back( f );
-    f->setId(numFaces++);
+    f->setId(face.size());
+    face.push_back(f);
     return f;
 }
 
@@ -206,10 +205,10 @@ typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(std::vector<int> const & vert)
     for ( std::vector<int>::const_iterator it = vert.begin();
           it!= vert.end(); ++it )
         pvert.push_back( vertex[*it] );
-    
+
     FaceHandle f = this->makeFace( pvert );
-    face.push_back( f );
-    f->setId(numFaces++);
+    f->setId(face.size());
+    face.push_back(f);
     return f;
 }
 
@@ -218,8 +217,8 @@ template<class T>
 typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(const int & v0, const int & v1, const int & v2)
 {
     FaceHandle f = this->makeFace( vertex[v0],vertex[v1],vertex[v2] );
-    face.push_back( f );
-    f->setId(numFaces++);
+    f->setId(face.size());
+    face.push_back(f);
     return f;
 }
 
@@ -228,8 +227,8 @@ template<class T>
 typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(const int & v0, const int & v1, const int & v2, const int & v3)
 {
     FaceHandle f = this->makeFace( vertex[v0],vertex[v1],vertex[v2],vertex[v3] );
-    face.push_back( f );
-    f->setId(numFaces++);
+    f->setId(face.size());
+    face.push_back(f);
     return f;
 }
 
@@ -237,8 +236,8 @@ typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(const int & v0, const int & v1
 template<class T>
 std::ostream &gsMesh<T>::print(std::ostream &os) const
 {
-    os<<"gsMesh with "<<numVertices<<" vertices, "<<numEdges<<
-        " edges and "<<numFaces<<" faces.\n";
+    os<<"gsMesh with "<<numVertices()<<" vertices, "<<numEdges()<<
+        " edges and "<<numFaces()<<" faces.\n";
 //             for ( typename std::vector<FaceHandle>::const_iterator
 //                       it = face.begin(); it!= face.end(); ++it)
 //                 os<<" "<< **it ;
@@ -250,7 +249,7 @@ template <class T>
 gsMesh<T>& gsMesh<T>::cleanMesh()
 {
     gsDebug << "Cleaning the gsMesh\n";
-    
+
     // This function looks for duplicated vertex coordinates. For each
     // vector, it chooses a unique vertex having that vector, then makes
     // sure that the source and target of every edge is one of the chosen
@@ -328,7 +327,6 @@ gsMesh<T>& gsMesh<T>::cleanMesh()
         }
     }   // O(n*log(n)+O(n)*O(log(m)) ==> O(n*log(n))
     vertex.swap(uvertex);
-    numVertices = vertex.size(); // TODO: remove numVertices
 
     /*gsDebug << "std::vector<> vertex after cleanMesh\n";
     for (size_t i = 0; i < vertex.size(); ++i)
@@ -343,14 +341,14 @@ gsMesh<T>& gsMesh<T>::cleanMesh()
 
 template <class T>
 void gsMesh<T>::addLine(gsMatrix<T> const & points)
-    { 
+    {
         const index_t cols = points.cols();
         const bool zzero = ( points.rows()==2 );
 
         if ( cols < 2 )
             return;
-        
-        VertexHandle v1, 
+
+        VertexHandle v1,
             v0 = addVertex( points(0,0), points(1,0), zzero ? 0 : points(2,0) );
 
         for ( index_t i = 1; i<cols; ++i)
@@ -367,7 +365,7 @@ void gsMesh<T>::addLine(VertexHandle v0, VertexHandle v1, int n)
     const gsVector3d<T> & start = *dynamic_cast<gsVector3d<T>* >(v0);
     const T h = (*v1 - start).norm() / (n+1);
     const gsVector3d<T> step = (*v1 - start).normalized();
-    
+
     VertexHandle last = v0;
     VertexHandle next;
     for ( int i = 0; i<n; ++i )
@@ -396,4 +394,3 @@ void gsMesh<T>::addLine(VertexHandle v0, VertexHandle v1, int n)
 //    }
 
 };// namespace gismo
-

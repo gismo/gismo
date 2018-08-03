@@ -3,7 +3,7 @@
     @brief Provides implementation gsTriMeshToSolid class
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -304,7 +304,7 @@ void gsTriMeshToSolid<T>::divideAndMergePatches(T innerAngle, T patchAreaWeight,
         if(iter->sharp==1)
             i3++;
     }
-    gsDebug<<"Feature lines after merging patches: "<<i3<<"\n";    
+    gsDebug<<"Feature lines after merging patches: "<<i3<<"\n";
 }
 
 template <class T>
@@ -366,7 +366,7 @@ void gsTriMeshToSolid<T>::getFaces(std::vector<std::vector<VertexHandle> > & iPo
     //calculating interior points of each big face
     std::vector< std::set< VertexHandle> > iPointsSet;
     std::set< VertexHandle > vertexSet;
-    
+
     // first set up iPointsSet[i] for each i, which is the set of all
     // vertices that are on some triangle belonging to big face i
     for (int i=0;i<numBigFaces;i++)
@@ -620,7 +620,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
             }
         }
         else if(nm == -1) loop.flip1(); // consistent once we flip
-        // finish construction 
+        // finish construction
 
         // Get the parameter pre-images ( 2D points - coefficients of the line segments of the parameter loops)
         std::vector<gsVertex<T> > vector2D;
@@ -641,7 +641,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         if(face[i]->faceIdentity>0&&face[i]->faceIdentity<=numBigFaces)
             areas[face[i]->faceIdentity-1]+=calcArea(face[i]);
     }
-    
+
     T maxArea=0;
     for (size_t i=0;i<areas.size();i++)
         if(areas[i]>maxArea)
@@ -734,7 +734,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
     // At this point, we have a parametrized boundary point cloud
     // for each patch, and we go on to obtain a parameterization
     // of the inner points as well
-    
+
     gsDebug<<"allocating surfaces"<<'\n';
 
     //allocating the trimmed surfaces
@@ -780,7 +780,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
             vertexFaceSetBdry.insert(oPoints[i][j]);
         }
         // --- end Fill up point sets
-        
+
         // ----------------------- Start Floater's algorithm
         //set up a linear system of equations and solve it in
         //order to receive a parametrization of the inner points
@@ -799,7 +799,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         // info such as: for instance is it artificial THEN from
         // vertexhandle we can get the column index, and assemble the
         // matrix and rhs accordingly without searching every time
-        
+
         for (std::size_t j=0;j<n;j++) //run through all inner points of a single face -- Rows of matrix A
         {
             // initialize rhs vector position
@@ -868,7 +868,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                 c-=innerBdrys[i][k].size();
                 l=innerIndex-c;
                 // searching neighors of point j
-                for (std::size_t i2=0;i2<innerBdrys[i][k][l]->nVertices.size();i2++) 
+                for (std::size_t i2=0;i2<innerBdrys[i][k][l]->nVertices.size();i2++)
                 {
                     // is it a boundary neighbor ?
                     if(vertexFaceSetBdry.find(innerBdrys[i][k][l]->nVertices[i2])!=vertexFaceSetBdry.end())
@@ -893,7 +893,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                     }
                 }
             }
-            
+
             GISMO_ASSERT(normCoef > 0, "normCoef should be positive");
 
             for (std::size_t k=0;k<rhsCoefs.size();k++) // for all boundary connections of point j
@@ -901,7 +901,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                 rhsCoefs[k]=rhsCoefs[k]/normCoef; // normalize coefficient
                 check+=rhsCoefs[k];
                 int l=0;
-                while (*oPoints[i][l]!=*rhs[k]) // locate outer boundary neighbors of point j 
+                while (*oPoints[i][l]!=*rhs[k]) // locate outer boundary neighbors of point j
                 {
                     l++;
                 }
@@ -1341,9 +1341,8 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                 }
             }
 
-            for (int i=0;i!=mface->numVertices;i=i+3)
+            for (std::size_t i=0;i!=mface->numVertices();i=i+3)
             {
-
                 (mface)->addFace(mface->vertex[i], mface->vertex[i+1], mface->vertex[i+2]);
             }
             patchMeshes.push_back(mface);
@@ -1392,9 +1391,8 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                 }
             }
 
-            for (int i=0;i!=paraface->numVertices;i=i+3)
+            for (std::size_t i=0; i!=paraface->numVertices(); i+=3)
             {
-
                 (paraface)->addFace(paraface->vertex[i], paraface->vertex[i+1], paraface->vertex[i+2]);
             }
 
@@ -1416,7 +1414,7 @@ void gsTriMeshToSolid<T>::getPatchData(T angle, T innerAngle,T patchAreaWeight,T
                         )
 {
     bool non_manifold, warning_borders;
-    
+
     // compute the features
     this->getFeatures(angle, non_manifold, warning_borders);
     this->mesh->cleanMesh();
@@ -1426,17 +1424,17 @@ void gsTriMeshToSolid<T>::getPatchData(T angle, T innerAngle,T patchAreaWeight,T
     if (useFeatures!=0)
         this->readEdges(filenameFeatures, featEdges);
     this->setSharpEdges(featEdges, useFeatures);
-    
+
     // give every face a patch number
     this->calcPatchNumbers();
-    
+
     // improve quality by further dividing and merging patches according to more complex rules
     storeNeighboringFaces();
     divideAndMergePatches(innerAngle, patchAreaWeight, mergeSmallPatches);
-    
+
     // recompute patch numbers
     this->calcPatchNumbers();
-    
+
     this->getFaces(iPoints,oPoints,innerBdrys,innerBdrysMassP,oPointsConvexFlag);
 
 }
@@ -1531,7 +1529,7 @@ gsCurveLoop<T> * gsTriMeshToSolid<T>::calculateLoop(std::vector<Vertex> outerPoi
 
 template<class T>
 T gsTriMeshToSolid<T>::calcWeight(VertexHandle v1,VertexHandle v2,
-                    std::set<VertexHandle> 
+                    std::set<VertexHandle>
                     const & vertexFaceSet)
 {
     T weight = 0;
@@ -1542,7 +1540,7 @@ T gsTriMeshToSolid<T>::calcWeight(VertexHandle v1,VertexHandle v2,
         for(std::size_t j=0;j<v2->nVertices.size();j++)
         {
             //check if neighboring vertices coincide and if point found is part of the face
-            if ( *(v1->nVertices[i])==*(v2->nVertices[j]) && 
+            if ( *(v1->nVertices[i])==*(v2->nVertices[j]) &&
                  vertexFaceSet.find(v2->nVertices[j]) != vertexFaceSet.end()
                 )
             {
@@ -1553,7 +1551,7 @@ T gsTriMeshToSolid<T>::calcWeight(VertexHandle v1,VertexHandle v2,
         }
     }
     weight /= calcDist(v1,v2);
-    
+
     GISMO_ASSERT(weight > 0, "Weight should be positive");
 
     return weight;

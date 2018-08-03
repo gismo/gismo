@@ -18,21 +18,30 @@
 
 namespace gismo
 {
-enum triangleVertexIndex
-{
-    first, second, third, error
-};
 
 /**
- * @brief gsHalfEdgeMesh is a gsMesh implementation that handels Halfedges
+ * @brief gsHalfEdgeMesh is a gsMesh implementation that handles Halfedges
  *
- * According to Floater's algorithm the N points of the triangle mesh are given by x1, ..., xN where x1, ..., xn are inner points and x(n+1), ..., xN are boundary points.
- * In MeshInfo the points are stored without special order and then two vectors containig indices are constructed for easily accessing point xi s. t. xi is inner vertex for i<=n and boundary vertex for i > n.
- * In the following the 'vertexIndex' is used for the indices of the ordered vertices 1, ..., N and by 'internVertexIndex' the indices 0,...,N-1 of the unordered m_vertices vector is meant, s. t. *m_vertices[internVertexIndex] = x(vertexIndex).
+ * According to Floater's algorithm the N points of the triangle mesh
+ * are given by x1, ..., xN where x1, ..., xn are inner points and
+ * x(n+1), ..., xN are boundary points.  In MeshInfo the points are
+ * stored without special order and then two vectors containing indices
+ * are constructed for easily accessing point xi s. t. xi is inner
+ * vertex for i<=n and boundary vertex for i > n.
  *
- * There are getter functions for the number of vertices (N), triangles, halfedges, inner vertices (n) and boundary vertices plus one can get a vertex with particular vertex index or the index from a particular vertex.
- * The vertices of the triangle mesh get ordered, s. t. the first n vertex indices have correspondent inner vertices and the last N-n vertex indices correspond to the boundary vertices ordered counter-clockwise.
- * */
+ * In the following the 'vertexIndex' is used for the indices of the
+ * ordered vertices 1, ..., N and by 'internVertexIndex' the indices
+ * 0,...,N-1 of the unordered m_vertices vector is meant,
+ * s. t. *m_vertices[internVertexIndex] = x(vertexIndex).
+ *
+ * There are getter functions for the number of vertices (N),
+ * triangles, halfedges, inner vertices (n) and boundary vertices plus
+ * one can get a vertex with particular vertex index or the index from
+ * a particular vertex.  The vertices of the triangle mesh get
+ * ordered, s. t. the first n vertex indices have correspondent inner
+ * vertices and the last N-n vertex indices correspond to the boundary
+ * vertices ordered counter-clockwise.
+ */
 template <class T>
 class GISMO_EXPORT gsHalfEdgeMesh : public gsMesh<T>
 {
@@ -41,153 +50,112 @@ public:
     /**
      * @brief Class that maintains directed halfedges in any dimension.
      *
-     * The class Halfedge represents a halfedge in any dimension given by its origin and end point indices and its length.
-     * A halfedge can be constructed with desired origin and end point and length.
-     * Two halfedges can be compared by == and !=.
-     * There are getter function for origin, end and length.
-     * There are functions to test wheter a halfedge can be appended to another one before or afterwards and wheter a halfedge is a twin of another.
+     * The class Halfedge represents a halfedge in any dimension given
+     * by its origin and end point indices and its length.  A halfedge
+     * can be constructed with desired origin and end point and
+     * length.  Two halfedges can be compared by == and !=.  There are
+     * getter function for origin, end and length.  There are
+     * functions to test wheter a halfedge can be appended to another
+     * one before or afterwards and whether a halfedge is a twin of
+     * another.
      *
      * Halfedges can be outputted like (origin--end: length).
-     * */
+     */
     class Halfedge
     {
     public:
         /**
-         * @brief Default constructor
-         * The default constructor sets indices (m_origin, m_end) and length (m_length) to 0.
-         * */
-        Halfedge() : m_origin(0), m_end(0), m_length(0) {}
-
-        /**
-         * @brief Copy constructor
-         * */
-        Halfedge(const Halfedge &halfedge)
-        {
-            m_origin = halfedge.m_origin;
-            m_end = halfedge.m_end;
-            m_length = halfedge.m_length;
-        }
-
-        /**
-         * @brief Assignment operator
-         * */
-        Halfedge &operator=(const Halfedge &rhs)
-        {
-            m_origin = rhs.m_origin;
-            m_end = rhs.m_end;
-            m_length = rhs.m_length;
-            return *this;
-        }
-
-        /**
-         * @brief Constructor
-         * This constructor sets the origin- and end-point indices as well as length to preferred values.
-
+         * @brief This constructor sets the origin- and * end-point
+         * indices as well as length to preferred values.
+         *
          * @param[in] origin #index of origin vertex
          * @param[in] end #index of end vertex
          * @param[in] length #length of the halfedge
-         * */
-        Halfedge(const size_t origin, const size_t end, const real_t length)
+         */
+        explicit Halfedge(const size_t origin = 0,
+                          const size_t end = 0,
+                          const real_t length = 0)
+        : m_origin(origin), m_end(end), m_length(length)
         {
             if (length < 0)
                 gsWarn << "Halfedge: Origin and end must be indices > 0 and length should be positiv or 0. One of the values is not correct:"
                           << std::endl << "origin: " << origin << std::endl << "end: " << end << std::endl
                           << "length: "
                           << length;
-            m_origin = origin;
-            m_end = end;
-            m_length = length;
         }
-
-        /**
-       * @brief Comparison equal operator
-       * The comarison operator equals
-       *  TRUE if origin and end point indices equal and the length difference of the two halfedges is < 1e-8
-       *  FALSE otherwise
-       * */
-        bool operator==(const Halfedge &rhs) const { return (m_origin == rhs.m_origin && m_end == rhs.m_end); }
-
-        /**
-         * @brief Comparison not equal operator
-         * */
-        bool operator!=(const Halfedge &rhs) const { return !((*this) == rhs); }
 
         /**
          * @brief Get origin vertex index
          * @return index of origin vertex
-         * */
+         */
         size_t getOrigin() const { return m_origin; }
 
         /**
          * @brief Get end vertex index
          * @return index of end vertex
-         * */
+         */
         size_t getEnd() const { return m_end; }
 
         /**
          * @brief Get length of halfedge
          * @return length of halfedge
-         * */
+         */
         real_t getLength() const { return m_length; }
 
         /**
          * @brief Tells if halfedge can be added at end.
          * @param[in] nextHalfedge #halfedge which we want to know about if can be added at end
          * @return TRUE if halfedge can be added at end and FALSE otherwise.
-         * */
-        bool isPrev(const Halfedge &nextHalfedge) const { return (m_end == nextHalfedge.m_origin); }
+         */
+        bool isPrev(const Halfedge &nextHalfedge) const
+        { return (m_end == nextHalfedge.m_origin); }
 
         /**
          * @brief Tells if halfedge can be added at beginning.
          * @param[in] previousHalfedge #halfedge which we want to know about if can be added at beginning
          * @return TRUE if halfedge can be added at beginning and FALSE otherwise.
-         * */
-        bool isNext(const Halfedge &previousHalfedge) const { return (m_origin == previousHalfedge.m_end); }
+         */
+        bool isNext(const Halfedge &previousHalfedge) const
+        { return (m_origin == previousHalfedge.m_end); }
 
         /**
          * @brief Tells if halfedge is twin.
          * @param[in] halfedge #halfedge which we want to know about if it is a twin
          * @return TRUE if halfedge is a twin and FALSE otherwise.
-         * */
-        bool isTwin(const Halfedge &halfedge) const { return (m_origin == halfedge.m_end && m_end == halfedge.m_origin); }
+         */
+        bool isTwin(const Halfedge &halfedge) const
+        { return (m_origin == halfedge.m_end && m_end == halfedge.m_origin); }
 
     private:
         size_t m_origin; ///< index of origin vertex
-        size_t m_end; ///< index of end vertex
-        real_t m_length; ///< length of halfedge
+        size_t m_end;    ///< index of end vertex
+        T m_length;      ///< length of halfedge
     };
 
     /**
      * @brief Class that maintains chain of halfedges.
      *
-     * The halfedges of the chain are stored in a list, in order to easily insert new halfedges at the beginning and at the end of the list.
+     * The halfedges of the chain are stored in a list, in order to
+     * easily insert new halfedges at the beginning and at the end of
+     * the list.
      *
-     * There are functions for testing whether the chain is empty or closed.
-     * Using getter functions the number of halfedges or vertices, as well as the length and the lengths of all halfedges can be returned.
-     * Furthermore the vertex indices ordered like they appear in the chain and the first and last halfedge can be returned.
-     * The distance between two vertices can be calculated.
-     * It can be questioned wheter a vertex is contained in the chain and wheter another halfedge can be appended at the beginning or end.
+     * There are functions for testing whether the chain is empty or
+     * closed.  Using getter functions the number of halfedges or
+     * vertices, as well as the length and the lengths of all
+     * halfedges can be returned.
+     * Furthermore the vertex indices ordered like they appear in the
+     * chain and the first and last halfedge can be returned.
+     * The distance between two vertices can be calculated.  It can be
+     * questioned whether a vertex is contained in the chain and
+     * wheter another halfedge can be appended at the beginning or
+     * end.
      *
      * A chain can be printed by printing its halfedges.
      *
-     * */
+     */
     class Chain
     {
     public:
-        /**
-         * @brief Default constructor
-         * */
-        Chain() {}
-
-        /**
-         * @brief Copy constructor
-         * */
-        Chain(const Chain &chain) { m_chainedHalfedges = chain.m_chainedHalfedges; }
-
-        /**
-         * @brief Assignment operator
-         * */
-        Chain &operator=(const Chain &rhs) { m_chainedHalfedges = rhs.m_chainedHalfedges; return *this; }
 
         /**
          * @brief Tells whether chain is empty or not
@@ -198,7 +166,7 @@ public:
          *  FALSE otherwise.
          *
          * @return bool value
-         * */
+         */
         bool isEmpty() const { return m_chainedHalfedges.empty(); }
 
         /**
@@ -211,7 +179,7 @@ public:
          * In case the chain is empty, e. g. there are no halfedges stored yet, a warning is printed.
          *
          * @return bool value
-         * */
+         */
         bool isClosed() const;
 
         /**
@@ -221,7 +189,7 @@ public:
          * Otherwise the number of halfedges has to be increased by 1 to obtain the number of vertices.
          *
          * @return number of vertices
-         * */
+         */
         size_t getNumberOfVertices() const;
 
         /**
@@ -230,7 +198,7 @@ public:
          * The length of the chain is obtained by adding the lengths of all halfedges.
          *
          * @return length
-         * */
+         */
         real_t getLength() const;
 
         /**
@@ -240,8 +208,8 @@ public:
          * E. g. returnVector[i] stores the length of the (i+1)-th halfedge of the chain.
          *
          * @return vector of halfedge lengths
-         * */
-        const std::vector<real_t> getHalfedgeLengths() const;
+         */
+        std::vector<T> getHalfedgeLengths() const;
 
         /**
          * @brief Get first halfedge
@@ -250,7 +218,7 @@ public:
          * If the chain is empty an error message is printed.
          *
          * @return first halfedge
-         * */
+         */
         const Halfedge &getFirstHalfedge() const;
 
         /**
@@ -260,54 +228,70 @@ public:
          * If the chain is empty an error message is printed.
          *
          * @return last halfedge
-         * */
+         */
         const Halfedge &getLastHalfedge() const;
 
         /**
          * @brief Get list of vertex indices
          *
-         * The list m_chainedHalfedges is traversed and every vertex is stored in a list once.
-         * This is done maintaining the order of the vertices.
-         * Firstly every origin vertex index is stored and in case the list is not closed, the end vertex index of the last halfedge is stored, too.
+         * The list m_chainedHalfedges is traversed and every vertex
+         * is stored in a list once.  This is done maintaining the
+         * order of the vertices.  Firstly every origin vertex index
+         * is stored and in case the list is not closed, the end
+         * vertex index of the last halfedge is stored, too.
          *
-         * If the list m_chainedHalfedges is still empty, an empty list is returned and a warning is printed.
+         * If the list m_chainedHalfedges is still empty, an empty
+         * list is returned and a warning is printed.
          *
          * @return list of vertex indices
-         * */
-        const std::list<std::size_t > getVertexIndices() const;
+         */
+        const std::list<std::size_t> getVertexIndices() const;
 
         /**
          * @brief Get shortest distance between vertices
          *
-         * The shortest distance between two vertices i and j on a closed chain is calculated and returned.
+         * The shortest distance between two vertices i and j on a
+         * closed chain is calculated and returned.
          *
-         * Just in case the chain is closed, it is checked wheter the distance between the two given vertices in a clockwise or counterclockwise direction is shorter.
-         * Otherwise the distance from smaller to greater number of vertex is returned automatically.
+         * Just in case the chain is closed, it is checked wheter the
+         * distance between the two given vertices in a clockwise or
+         * counterclockwise direction is shorter.  Otherwise the
+         * distance from smaller to greater number of vertex is
+         * returned automatically.
          *
-         * If the chain is empty a warning is printed and 0 is returned.
-         * If either of the vertex indices is > number of vertices in the chain or < 1 an error message is printed and 0 is returned, too.
+         * If the chain is empty a warning is printed and 0 is
+         * returned.  If either of the vertex indices is > number of
+         * vertices in the chain or < 1 an error message is printed
+         * and 0 is returned, too.
          *
          * @param[in] i #number of the first vertex in the chain
          * @param[in] j #number of the second vertex in the chain
          * @return (shortest) distance between vertices
-         * */
+         */
         real_t getShortestDistanceBetween(size_t i, size_t j, real_t precision) const;
 
         /**
          * @brief Get distance between vertices
          *
-         * The distance between two vertices i and j in a particular direction is calculated.
-         * If the chain is empty a warning is printed and 0 is returned.
-         * If either of the vertices is > number of vertices in the chain or < 1 an error message is printed and 0 is returned, too.
+         * The distance between two vertices i and j in a particular
+         * direction is calculated.  If the chain is empty a warning
+         * is printed and 0 is returned.  If either of the vertices is
+         * > number of vertices in the chain or < 1 an error message
+         * is printed and 0 is returned, too.
          *
-         * If i < j the chain simply is traversed from i-th to j-th vertex and halfedge lengths are summed up.
-         * Otherwise the remaining length of the chain is returned, provided that the chain is closed.
-         * If i > j and chain is not closed, the distance from i to j is returned and a warning is printed.
+         * If i < j the chain simply is traversed from i-th to j-th
+         * vertex and halfedge lengths are summed up.  Otherwise the
+         * remaining length of the chain is returned, provided that
+         * the chain is closed.  If i > j and chain is not closed, the
+         * distance from i to j is returned and a warning is printed.
          *
-         * @param[in] i #number of the vertex in the chain, where the length should start, e. g. i=1 for first vertex
-         * @param[in] j #number of the vertex in the chain, where the length should end, e. g. j=4 for fourth vertex
+         * @param[in] i #number of the vertex in the chain, where the
+         * length should start, e. g. i=1 for first vertex
+         * @param[in] j #number of the vertex in the chain, where the
+         * length should end, e. g. j=4 for fourth vertex
          *
-         * @return distance between vertices, e.g. between first and fourth chain vertex
+         * @return distance between vertices, e.g. between first and
+         * fourth chain vertex
          **/
         real_t getDistanceBetween(size_t i, size_t j) const;
 
@@ -316,9 +300,12 @@ public:
          *
          * If the chain is empty, a warning is printed and FALSE is returned.
          *
-         * The list m_chainedHalfedges is traversed and every origin vertex index of the halfedges is checked for equality with index.
-         * If the input vertex index is found TRUE is returned, FALSE otherwise.
-         * For not closed chains, the end vertex index for the last halfedge is checked, too.
+         * The list m_chainedHalfedges is traversed and every origin
+         * vertex index of the halfedges is checked for equality with
+         * index.
+         * If the input vertex index is found TRUE is returned, FALSE
+         * otherwise.  For not closed chains, the end vertex index for
+         * the last halfedge is checked, too.
          *
          * @param[in] vertexIndex vertex index of the searched point
          * @return bool value
@@ -333,7 +320,7 @@ public:
          *
          * @param[in] previousHalfedge halfedge which is tested to append at beginning
          * @return bool value
-         * */
+         */
         bool isAppendableAsPrev(const Halfedge &previousHalfedge) const;
 
         /**
@@ -344,7 +331,7 @@ public:
          *
          * @param[in] nextHalfedge halfedge which is tested to append at end
          * @return bool value
-         * */
+         */
         bool isAppendableAsNext(const Halfedge &nextHalfedge) const;
 
         /**
@@ -355,7 +342,7 @@ public:
          *
          * @param[in] prevHalfedge halfedge that should be appended at beginning
          * @param[out] m_chainedHalfedges chain with appended prevHalfedge
-         * */
+         */
         void appendPrevHalfedge(const Halfedge &prevHalfedge);
 
         /**
@@ -366,48 +353,34 @@ public:
          *
          * @param[in] nextHalfedge halfedge that should be appended at end
          * @param[out] m_chainedHalfedges chain with appended nextHalfedge
-         * */
+         */
         void appendNextHalfedge(const Halfedge &nextHalfedge);
 
     private:
-        std::list<Halfedge> m_chainedHalfedges; ///< list of halfedges, structure like maps<int,maps<int,real_t>>
-
+        std::list<Halfedge> m_chainedHalfedges; ///< list of halfedges
     };
 
 private:
     /**
      * @brief Class that maintains boundary of triangle mesh.
      *
-     * A Boundary class object is given by a chain of the boundary halfedges.
-     * The halfedges are ordered counter clockwise.
+     * A Boundary class object is given by a chain of the boundary
+     * halfedges.  The halfedges are ordered counter clockwise.
      *
-     * An object of the class can be constructed by a vector of all unordered halfedges of the mesh.
-     * There are methods to get the number of halfedges, number of vertices, length, halfedge lengths, first and last halfedge, vertex indices, and distances between two vertices.
+     * An object of the class can be constructed by a vector of all
+     * unordered halfedges of the mesh.
      *
-     * A boundary can be printed.
+     * There are methods to get the number of halfedges, number of
+     * vertices, length, halfedge lengths, first and last halfedge,
+     * vertex indices, and distances between two vertices.
      *
-     * */
-    class Boundary
+     */
+    class Boundary // todo: replace by Chain
     {
     public:
-        /**
-         * @brief Default constructor
-         **/
-        Boundary() {}
 
-        /**
-         * @brief Copy constructor
-         **/
-        Boundary(const Boundary &boundary) { m_boundary = boundary.m_boundary; }
-
-        /**
-         * @brief Assignment operator
-         **/
-        Boundary &operator=(const Boundary &rhs)
-        {
-            m_boundary = rhs.m_boundary;
-            return *this;
-        }
+        /// Empty Constructor
+        Boundary() { }
 
         /**
          * @brief Constructor
@@ -457,7 +430,7 @@ private:
          * This method returns a list of all counter-clockwise ordered indices of the boundary.
          *
          * @return list of vertex indices
-         * */
+         */
         const std::list<std::size_t > getVertexIndices() const { return m_boundary.getVertexIndices(); }
 
         /**
@@ -470,7 +443,7 @@ private:
          * @param[in] j #number of the second vertex
          *
          * @return (shortest) distance between vertices
-         * */
+         */
         real_t getShortestDistanceBetween(const size_t &i, const size_t &j, real_t precision) const { return m_boundary.getShortestDistanceBetween(i, j, precision); }
 
         /**
@@ -484,7 +457,7 @@ private:
          * @param[in] j #number of the second vertex
          *
          * @return (shortest) distance between i-th and j-th vertex
-         * */
+         */
         real_t getDistanceBetween(const size_t &i, const size_t &j) const { return m_boundary.getDistanceBetween(i, j); }
 
         /**
@@ -493,7 +466,7 @@ private:
          * @param[in] vertexIndex #index (extern) of the searched point
          *
          * @return TRUE if it is contained and FALSE otherwise
-         * */
+         */
         bool isVertexContained(const size_t &internVertexIndex) const { return m_boundary.isVertexContained(internVertexIndex); }
 
     private:
@@ -512,21 +485,19 @@ private:
     };
 
 public:
-    /**
-     * @brief Default constructor
-     * The default constructor sets the number of inner vertices to 0.
-     * */
-    //gsHalfEdgeMesh() : m_n(0) { }
+
+    /// @brief Default constructor
+    explicit gsHalfEdgeMesh(size_t nv = 0) : m_n(nv) { }
 
     /**
      * @brief Constructor
      * This constructor uses a gsMesh and sortest its vertices.
      *
      * @param[in] mesh gsMesh object.
-     * */
-    gsHalfEdgeMesh(const gsMesh<> &mesh, real_t precision = 1e-8);
+     */
+    explicit gsHalfEdgeMesh(const gsMesh<T> &mesh, real_t precision = 1e-8);
 
-    virtual ~gsHalfEdgeMesh() {}
+    virtual ~gsHalfEdgeMesh() { }
 
     /**
      * @brief Get number of vertices
@@ -567,7 +538,7 @@ public:
      * @param[in] vertexIndex const int - index of the vertex that should be returned
      * @return vertex with index 'vertexIndex'
      */
-    const gsMesh<>::gsVertexHandle &getVertex(const size_t vertexIndex) const;
+    const typename gsMesh<T>::gsVertexHandle &getVertex(const size_t vertexIndex) const;
 
     /**
      * @brief Get vertex index
@@ -575,7 +546,7 @@ public:
      *
      * @param[in] vertex const ESS_IO::IO_Vertex& - three-dimensional vertex from the triangle mesh
      */
-    //size_t getVertexIndex(const gsMesh<>::gsVertexHandle &vertex) const;
+    //size_t getVertexIndex(const typename gsMesh<T>::gsVertexHandle &vertex) const;
 
     /**
      * @brief Get vertex index for firts, second or third vertex of triangle
@@ -625,7 +596,7 @@ public:
      * @param[in] i #number of the first boundary vertex
      * @param[in] j #number of the second boundary vertex
      * @return (shortest) distance between vertices
-     * */
+     */
     real_t getShortestBoundaryDistanceBetween(size_t i, size_t j) const;
 
     /**
@@ -655,7 +626,7 @@ public:
     getOppositeHalfedges(const size_t vertexIndex, const bool innerVertex = 1) const;
 
     /**
-     * @brief Returns if a vertex is contained in triangle
+     * @brief Returns the index of a vertex contained in triangle
      * The integers
      *  0 for not contained
      *  1 for being vertex1
@@ -669,7 +640,7 @@ public:
      * @param[in] triangleIndex int - number of triangle
      * @return 0,1,2 or 3 for [not contained], [vertex1], [vertex2], [vertex3]
      */
-    triangleVertexIndex isTriangleVertex(size_t vertexIndex, size_t triangleIndex) const;
+    int isTriangleVertex(size_t vertexIndex, size_t triangleIndex) const;
 
 private:
     /**
@@ -690,7 +661,7 @@ private:
      * @param[in] vertex const ESS_IO::IO_Vertex& - vertex that one wants to know the index of
      * @return int intern index
      */
-    size_t getInternVertexIndex(const gsMesh<>::gsVertexHandle &vertex) const;
+    size_t getInternVertexIndex(const typename gsMesh<T>::gsVertexHandle &vertex) const;
 
     /**
      * @brief Returns halfedge of triangle
@@ -706,7 +677,7 @@ private:
      * @return numberofHalfedge-th halfedge of triangle
      */
     const Halfedge
-    getInternHalfedge(const gsMesh<>::gsFaceHandle &triangle, size_t numberOfHalfedge) const;
+    getInternHalfedge(const typename gsMesh<T>::gsFaceHandle &triangle, size_t numberOfHalfedge) const;
 
     /**
      * @brief Creates ordering for vertices
@@ -726,6 +697,7 @@ private:
     std::vector<Halfedge> m_halfedges; ///< vector of halfedges
     Boundary m_boundary; ///< boundary of the mesh
     size_t m_n; ///< number of inner vertices in the mesh
+
     std::vector<int> m_inverseSorting; ///< vector of indices s. t. m_inverseSorting[internVertexIndex] = vertexIndex
     std::vector<int> m_sorting; ///< vector that stores the internVertexIndices s. t. m_sorting[vertexIndex-1] = internVertexIndex
     real_t m_precision;
