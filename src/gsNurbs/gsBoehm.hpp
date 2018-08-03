@@ -107,7 +107,7 @@ void gsBoehmSingle(
     int p = knots.degree();
 
     coefs.duplicateRow( k );
-    //// resize coefficient matrix
+    // // resize coefficient matrix
     //coefs.conservativeResize(coefs.rows() + 1, coefs.cols());
     //
     //for (index_t i = coefs.rows() - 1; i >= k+1; --i)

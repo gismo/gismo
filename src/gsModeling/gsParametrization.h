@@ -107,7 +107,7 @@ private:
      *
      * A local neighbourhood can be printed.
      *
-     * */
+     */
     class LocalNeighbourhood
     {
 

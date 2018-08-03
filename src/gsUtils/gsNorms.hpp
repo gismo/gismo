@@ -18,7 +18,9 @@ namespace gismo
 {
 
 
-// L2 norm ///////////////////////////////////////////////////////////////////////////
+/*
+ * L2 norm
+ */
 
 
 template <typename T>
@@ -119,9 +121,9 @@ T computeL2Distance(const gsField<T>& u, const gsField<T>& v, int numEvals)
     return math::sqrt(dist);
 }
 
-
-
-// iga L2 norm ///////////////////////////////////////////////////////////////////////////
+/*
+ * iga L2 norm
+ */
 
 template <typename T>
 T igaL2DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
@@ -341,7 +343,9 @@ gsVector< gsMatrix<T> > igaFieldL2DistanceEltWiseSq(const gsField<T>& u, const g
 }
 
 
-// H1 norm ///////////////////////////////////////////////////////////////////////////
+/*
+ * H1 norm
+ */
 
 
 
@@ -415,8 +419,6 @@ T igaH1Distance(const gsGeometry<T>& patch,
     }
     return math::sqrt(sum);
 }
-
-////////////
 
 template <typename T>
 T igaH1Distance(const gsGeometry<T>& patch,
@@ -501,7 +503,6 @@ T igaH1DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
     return sum;
 
 }
-////////////
 
 template <typename T>
 gsMatrix<T> igaH1DistanceEltWiseSq(const gsGeometry<T>& patch,
@@ -590,7 +591,9 @@ gsVector< gsMatrix<T> > igaFieldH1DistanceEltWiseSq(const gsField<T>& u, const g
 
 
 
-/////// DG norm ///////////////////////////////////////////////////////////
+/*
+ * DG norm
+ */
 
 template <typename T>
 T igaDGDistanceJump(const gsGeometry<T>& patch1, const gsGeometry<T>& patch2,
@@ -696,7 +699,6 @@ T igaDGDistanceJump(const gsGeometry<T>& patch1, const gsGeometry<T>& patch2,
     return math::sqrt(sum);
 }
 
-/////////
 template <typename T>
 T igaFieldDGDistance(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam)
 {
@@ -752,7 +754,9 @@ T igaFieldDGDistance(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam
 }
 
 
-// Maximum norm //////////////////////////////////////////////////////////////////////
+/*
+ * Maximum norm
+ */
 
 
 template <typename T>

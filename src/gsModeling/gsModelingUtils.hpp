@@ -457,22 +457,22 @@ gsBSpline<T> gsInterpolate(gsKnotVector<T> & kv,const gsMatrix<T> & preImage,
     tcp.col(0) = result.block(0   , 0, ntcp, 1);
     tcp.col(1) = result.block(ntcp, 0, ntcp, 1);
 
-////   gsDebug<< " parameterRange: \n"<< *trimLoop[sourceID]->basis().parameterRange()<<"\n";
-////   gsDebug<<" Ass: \n"<<Ass<<"\n";
-////   gsDebug<<" bss: \n"<<bss<<"\n";
-////   gsDebug<<" result: \n"<<result<<"\n";
-////   gsDebug<<" Q: \n"<< *Q<<"\n";
-////   gsDebug<<" preimage: \n"<< preImage<<"\n";
-////   gsDebug<<" prenormal: \n"<< preNormal<<"\n";
-////   gsDebug<<" image: \n"<< image<<"\n";
-////   gsDebug<<" normal: \n"<< normal<<"\n";
-////   gsDebug<<" Nu: \n"<< *Nu<<"\n";
-////   gsDebug<<" dNu: \n"<< *dNu<<"\n";
-////   gsDebug<<" AdN: \n"<< AdN<<"\n";
-////   gsDebug<<" BdN: \n"<< BdN<<"\n";
-////   gsDebug<<" tcp: \n"<< tcp<<"\n";
-////   gsDebug<<" preimageApp: \n"<< preImageApp<<"\n";
-////   gsDebug<<" imageApp: \n"<< imageApp<<"\n";
+//    gsDebug<< " parameterRange: \n"<< *trimLoop[sourceID]->basis().parameterRange()<<"\n";
+//    gsDebug<<" Ass: \n"<<Ass<<"\n";
+//    gsDebug<<" bss: \n"<<bss<<"\n";
+//    gsDebug<<" result: \n"<<result<<"\n";
+//    gsDebug<<" Q: \n"<< *Q<<"\n";
+//    gsDebug<<" preimage: \n"<< preImage<<"\n";
+//    gsDebug<<" prenormal: \n"<< preNormal<<"\n";
+//    gsDebug<<" image: \n"<< image<<"\n";
+//    gsDebug<<" normal: \n"<< normal<<"\n";
+//    gsDebug<<" Nu: \n"<< *Nu<<"\n";
+//    gsDebug<<" dNu: \n"<< *dNu<<"\n";
+//    gsDebug<<" AdN: \n"<< AdN<<"\n";
+//    gsDebug<<" BdN: \n"<< BdN<<"\n";
+//    gsDebug<<" tcp: \n"<< tcp<<"\n";
+//    gsDebug<<" preimageApp: \n"<< preImageApp<<"\n";
+//    gsDebug<<" imageApp: \n"<< imageApp<<"\n";
 //    gsDebug<<" residual of app x constraints: \n"<< *NuApp*tcp.col(0)-imageApp.row(0).transpose()<<std::endl;
 //    gsDebug<<" residual of app y constraints: \n"<< *NuApp*tcp.col(1)-imageApp.row(1).transpose()<<std::endl;
 //    gsDebug<<" residual of normal constraints: \n"<< AdN*tcp.col(0)+BdN*tcp.col(1)<<std::endl;
@@ -481,7 +481,7 @@ gsBSpline<T> gsInterpolate(gsKnotVector<T> & kv,const gsMatrix<T> & preImage,
     outNormalResiduals = AdN * tcp.col(0) + BdN * tcp.col(1);
     //gsDebug << std::flush;
 
-    delete Q; 
+    delete Q;
 
     gsBSpline<T> tcurve(kv, give(tcp));
 

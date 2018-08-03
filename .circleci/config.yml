@@ -7,7 +7,6 @@ jobs:
     filters:
       branches:
         - only: stable
-        - only: gsMesh
     working_directory: ~/gismo
     environment:
       MAKEFLAGS: -j4
@@ -29,7 +28,6 @@ jobs:
     filters:
       branches:
         - only: stable
-        - only: gsMesh
     working_directory: ~/gismo
     environment:
       MAKEFLAGS: -j4

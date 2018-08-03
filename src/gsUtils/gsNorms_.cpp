@@ -10,9 +10,9 @@
 namespace gismo
 {
 
-///////////////////////////////////////////////////////////////////
-////// Norm & distance computation
-///////////////////////////////////////////////////////////////////
+/*
+ * Norm & distance computation
+ */
 
 TEMPLATE_INST
 T computeL2Norm<T>(const gsGeometry<T>& geo, const gsFunction<T>& u, bool isParametrized_u, int numEvals);

@@ -1358,7 +1358,6 @@ void gsWriteParaview(gsSolid<T> const& sl, std::string const & fn, unsigned numP
         }
     }
 
-    ///////////////////////////////
     file <<"</PolyData>\n";
     file <<"</VTKFile>\n";
     file.close();

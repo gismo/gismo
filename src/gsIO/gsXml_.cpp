@@ -43,7 +43,9 @@ TEMPLATE_INST
 gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T> const & mat, 
                                    gsXmlTree & data, std::string name);
 
-////// instances for int
+/*
+ * instances for int
+ */
 
 TEMPLATE_INST
 gsXmlNode * makeNode( const std::string & name,

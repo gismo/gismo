@@ -152,9 +152,9 @@ class gsAAPolyline
      * Axis-aligned polyline in the plane. Ideally should be templated but this is not done properly yet.
      * Represented in terms of vertices of vertical segments forming it. Attempts to get rid of redundant vertices, where reasonable.
      */
-///////////////////////////////
+
 private:
-///////////////////////////////
+
     std::list< std::vector<T> > m_vertices; // Vertices of of the polyline, each represented as a vector of two coordinates.
 
     bool m_closed; // Whether the polyline is a closed curve.
@@ -165,9 +165,7 @@ private:
     /// Tries to insert vertical segment (x,y0,x,y1) to the beginning of the polyline.
     bool pushFront( T x, T y0, T y1 );
 
-////////////////////////////////
 public:
-////////////////////////////////
 
     gsAAPolyline(){ m_closed = false; }
     gsAAPolyline(gsVSegment<T> VSeg)

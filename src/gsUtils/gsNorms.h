@@ -42,7 +42,9 @@ namespace gismo
  */
 
  struct boundaryInterface;
-// L2 norms ///////////////////////////////////////////////////////////////////
+/*
+ * L2 norms
+ */
 
 template <typename T>
 T computeL2Norm(const gsGeometry<T>& geo, const gsFunction<T>& u, bool isParametrized_u, int numEvals=1000);
@@ -201,7 +203,9 @@ T igaL2DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const bool & v_isParam,
                       const typename gsBasis<T>::domainIter & domIt);
 
- // Maximum norms //////////////////////////////////////////////////////////////
+ /*
+  * Maximum norms
+  */
 
 template <typename T>
 T computeMaximumNorm(const gsFunction<T>& f, const gsVector<T>& lower, const gsVector<T>& upper, int numSamples=1000);
@@ -222,7 +226,9 @@ template <typename T>
 T computeMaximumDistance(const gsField<T>& u, const gsFunction<T>& v, bool isParametrized_v, int numSamples=1000);
 
 
- // H^1 semi-norm //////////////////////////////////////////////////////////////
+/*
+ * H^1 semi-norm
+ */
 
 template <typename T>
 T igaH1Distance(const gsGeometry<T>& patch, 
@@ -248,7 +254,9 @@ gsMatrix<T> igaH1DistanceEltWiseSq(const gsGeometry<T>& patch,
                 const gsFunction<T>& v,
                 bool v_isParam = false);
 
-// Auxiliary function for igaH1Distance() and igaH1DistanceEltWiseSq().
+/*
+ * Auxiliary function for igaH1Distance() and igaH1DistanceEltWiseSq().
+ */
 template <typename T>
 T igaH1DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const typename gsGeometryEvaluator<T>::uPtr & funcEval,
@@ -266,7 +274,9 @@ template <typename T>
 gsVector< gsMatrix<T> > igaFieldH1DistanceEltWiseSq(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam);
 
 
-// DG norm //////////////////////////////////////////////////////////////
+/*
+ * DG norm
+ */
 
 template <typename T>
 T igaDGDistanceJump(const gsGeometry<T>& patch1, const gsGeometry<T>& patch2,
