@@ -185,12 +185,12 @@ bool gsFileData<T>::read(String const & fn)
         return read3dmFile(m_lastPath);
 #endif
 #ifdef GISMO_WITH_OCC
-    else if (ext== "brep") 
+    else if (ext== "brep")
         return readBrepFile(m_lastPath);
-    //else if (ext== "iges") 
+    //else if (ext== "iges")
     //    return readIgesFile(m_lastPath);
-    //else if (ext== "step") 
-    //    return readStepFile(m_lastPath);    
+    //else if (ext== "step")
+    //    return readStepFile(m_lastPath);
 #endif
 #ifdef GISMO_WITH_PSOLID
     else if (ext== "xmt_txt")
@@ -217,9 +217,7 @@ bool gsFileData<T>::read(String const & fn)
     }
 }
 
-///////////////////////////////////////////////
-// Native Gismo format
-///////////////////////////////////////////////
+/*---------- Native Gismo format */
 
 template<class T>
 bool gsFileData<T>::readXmlFile( String const & fn )
@@ -260,11 +258,7 @@ bool gsFileData<T>::readGismoXmlStream(std::istream & is)
     return true;
 }
 
-
-///////////////////////////////////////////////
-// Axl file
-///////////////////////////////////////////////
-
+/*---------- Axl file */
 
 template<class T>
 bool gsFileData<T>::readAxelFile( String const & fn )
@@ -766,10 +760,7 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
 //bool gsFileData<T>::readGoToolsTrimSurf(gsXmlNode * node )
 //{ }
 
-
-///////////////////////////////////////////////
-// GeoPdes txt file
-///////////////////////////////////////////////
+/*---------- GeoPdes txt file */
 
 template<class T>
 bool gsFileData<T>::readGeompFile( String const & fn )
@@ -1013,9 +1004,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
     return true;
 };
 
-///////////////////////////////////////////////
-// SurfLab/BezierView
-///////////////////////////////////////////////
+/*---------- SurfLab/BezierView */
 
 /*
 template<class T>
@@ -1148,9 +1137,7 @@ bool gsFileData<T>::readBezierView( String const & fn )
 }
 //*/
 
-///////////////////////////////////////////////
-// OFF trinagular mesh .off file
-///////////////////////////////////////////////
+/*---------- OFF trinagular mesh .off file */
 
 template<class T>
 bool gsFileData<T>::readOffFile( String const & fn )
@@ -1202,9 +1189,7 @@ bool gsFileData<T>::readOffFile( String const & fn )
     return true;
 }
 
-///////////////////////////////////////////////
-// STL mesh file
-///////////////////////////////////////////////
+/*---------- STL mesh file */
 
 template<class T>
 bool gsFileData<T>::readStlFile( String const & fn )
