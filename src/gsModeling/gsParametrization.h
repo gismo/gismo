@@ -46,10 +46,10 @@ template<class T>
 class gsParametrization
 {
 public:
-    typedef gsPoint<2, real_t> Point2D;
+    typedef gsPoint<2, T> Point2D;
 
     // if we use std::vector with static Eigen classes, the second template parameter is needed
-	typedef std::vector<Point2D, Point2D::aalloc> VectorType;
+	typedef std::vector<Point2D, typename Point2D::aalloc> VectorType;
 
 private:
     gsHalfEdgeMesh<T> m_mesh;     ///< mesh information
@@ -163,9 +163,9 @@ private:
          * This method returns a list of the angles between the vector from the vertex to a neighbour and the vector from the vertex to the next neighbour.
          * The angles are stored in m_angles and were calculated when constructing the object.
          *
-         * @return angles stored in a list of real_t values
+         * @return angles stored in a list of T values
          */
-        const std::list<real_t> &getAngles() const;
+        const std::list<T> &getAngles() const;
 
         /**
          * @brief Get inner angle
@@ -175,22 +175,22 @@ private:
          *
          * @return inner angle, which is the sum of all angles
          */
-        real_t getInnerAngle() const;
+        T getInnerAngle() const;
 
         /**
          * @brief Get neighbour distances
          *
-         * This method returns a list of real_t values representing the lengths of the halfedges connecting the vertex with its neighbours stored in m_neighbourDistances.
+         * This method returns a list of T values representing the lengths of the halfedges connecting the vertex with its neighbours stored in m_neighbourDistances.
          *
          * @return list of neighbour distances
          */
-        std::list<real_t> getNeighbourDistances() const;
+        std::list<T> getNeighbourDistances() const;
 
     private:
         size_t m_vertexIndex; ///< vertex index
         typename gsHalfEdgeMesh<T>::Chain m_neighbours; ///< chain of neighbours
-        std::list<real_t> m_angles; ///< list of angles between neighbours
-        std::list<real_t> m_neighbourDistances; ///< list of distances to neighbours
+        std::list<T> m_angles; ///< list of angles between neighbours
+        std::list<T> m_neighbourDistances; ///< list of distances to neighbours
     };
 
     /**
@@ -224,7 +224,7 @@ private:
          *
          * @return lambdas
          */
-        const std::vector<real_t> &getLambdas() const;
+        const std::vector<T> &getLambdas() const;
 
     private:
         /**
@@ -237,7 +237,7 @@ private:
         void calculateLambdas(const size_t N, VectorType& points);
 
         size_t m_vertexIndex; ///< vertex index
-        std::vector<real_t> m_lambdas; ///< lambdas
+        std::vector<T> m_lambdas; ///< lambdas
 
     };
 
@@ -291,7 +291,7 @@ private:
          *
          * @return vector of lambdas
          */
-        const std::vector<real_t> &getLambdas(const size_t i) const;
+        const std::vector<T> &getLambdas(const size_t i) const;
 
         /**
          * @brief Get boundary corners depending on the method
@@ -301,20 +301,20 @@ private:
          * @return vector of boundary corners
          */
         const std::vector<int>
-        getBoundaryCorners(const size_t method, const real_t range = 0.1, const size_t number = 4) const;
+        getBoundaryCorners(const size_t method, const T range = 0.1, const size_t number = 4) const;
 
         /**
          * @brief
          */
-        static const Point2D findPointOnBoundary(real_t w, size_t index);
+        static const Point2D findPointOnBoundary(T w, size_t index);
 
     private:
-        std::vector<real_t> midpoints(const size_t numberOfCorners, const real_t length) const;
-        void searchAreas(const real_t range,
-                         std::vector<std::pair<real_t, size_t> > &sortedAngles,
+        std::vector<T> midpoints(const size_t numberOfCorners, const T length) const;
+        void searchAreas(const T range,
+                         std::vector<std::pair<T, size_t> > &sortedAngles,
                          std::vector<int> &corners) const;
         void takeCornersWithSmallestAngles(size_t number,
-                                           std::vector<std::pair<real_t, size_t> > &sortedAngles,
+                                           std::vector<std::pair<T, size_t> > &sortedAngles,
                                            std::vector<int> &corners) const;
 
         const gsHalfEdgeMesh<T> & m_basicInfos;
@@ -354,13 +354,13 @@ private:
     void calculate(const size_t boundaryMethod,
                    const size_t paraMethod,
                    const std::vector<int> &cornersInput,
-                   const real_t rangeInput,
+                   const T rangeInput,
                    const size_t numberInput);
 
-    real_t findLengthOfPositionPart(const size_t position,
+    T findLengthOfPositionPart(const size_t position,
                                     const size_t numberOfPositions,
                                     const std::vector<int> &bounds,
-                                    const std::vector<real_t> &lengths);
+                                    const std::vector<T> &lengths);
 
     bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const size_t maximum);
 

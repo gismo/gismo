@@ -37,7 +37,7 @@ namespace gismo
 //********************************************************************************
 
 template<class T>
-gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<T> &mesh, real_t precision)
+gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision)
     : gsMesh<T>(mesh), m_precision(precision)
 {
     //this->cleanMesh(); // TODO: move to stl reader
@@ -103,7 +103,7 @@ size_t gsHalfEdgeMesh<T>::getGlobalVertexIndex(size_t localVertexIndex, size_t t
 }
 
 template<class T>
-real_t gsHalfEdgeMesh<T>::getBoundaryLength() const
+T gsHalfEdgeMesh<T>::getBoundaryLength() const
 {
     return m_boundary.getLength();
 }
@@ -120,13 +120,13 @@ bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const siz
 }
 
 template<class T>
-std::vector<real_t> gsHalfEdgeMesh<T>::getCornerLengths(std::vector<int> &corners) const
+std::vector<T> gsHalfEdgeMesh<T>::getCornerLengths(std::vector<int> &corners) const
 {
     GISMO_ASSERT(rangeCheck<T>(corners, 1, getNumberOfBoundaryVertices()), "The corners must be <= number of boundary vertices.");
 
     std::sort(corners.begin(), corners.end());
     size_t s = corners.size();
-    std::vector<real_t> lengths;
+    std::vector<T> lengths;
     for (size_t i = 0; i < s; i++)
     {
         lengths.push_back(m_boundary.getDistanceBetween(corners[i], corners[(i + 1) % s]));
@@ -135,25 +135,25 @@ std::vector<real_t> gsHalfEdgeMesh<T>::getCornerLengths(std::vector<int> &corner
 }
 
 template<class T>
-real_t gsHalfEdgeMesh<T>::getShortestBoundaryDistanceBetween(size_t i, size_t j) const
+T gsHalfEdgeMesh<T>::getShortestBoundaryDistanceBetween(size_t i, size_t j) const
 {
     return m_boundary.getShortestDistanceBetween(i, j, m_precision);
 }
 
 template<class T>
-const std::vector<real_t> gsHalfEdgeMesh<T>::getBoundaryChordLengths() const
+const std::vector<T> gsHalfEdgeMesh<T>::getBoundaryChordLengths() const
 {
     return m_boundary.getHalfedgeLengths();
 }
 
 template<class T>
-real_t gsHalfEdgeMesh<T>::getHalfedgeLength(size_t originVertexIndex, size_t endVertexIndex) const
+T gsHalfEdgeMesh<T>::getHalfedgeLength(size_t originVertexIndex, size_t endVertexIndex) const
 {
     GISMO_ASSERT(originVertexIndex <= this->vertex.size() && endVertexIndex <= this->vertex.size(),
                  "One of the input vertex indices " << originVertexIndex << " or " << endVertexIndex
                  << " does not exist. There are only " << this->vertex.size() << " vertices.");
 
-    return gsVector3d<real_t>(getVertex(originVertexIndex)->x() - getVertex(endVertexIndex)->x(),
+    return gsVector3d<T>(getVertex(originVertexIndex)->x() - getVertex(endVertexIndex)->x(),
                                      getVertex(originVertexIndex)->y() - getVertex(endVertexIndex)->y(),
                                      getVertex(originVertexIndex)->z() - getVertex(endVertexIndex)->z()).norm();
 }
@@ -246,7 +246,7 @@ bool gsHalfEdgeMesh<T>::isBoundaryVertex(const size_t internVertexIndex) const
 }
 
 /*template<class T>
-size_t gsHalfEdgeMesh<T>::getInternVertexIndex(const gsMesh<real_t>::gsVertexHandle &vertex) const
+size_t gsHalfEdgeMesh<T>::getInternVertexIndex(const gsMesh<T>::gsVertexHandle &vertex) const
 {
     // if vertex->getId() is same as place in mesh.vertex - what it is after calling cleanMesh, then the internal vertex index is the same like the getId,
     // therefore we can reduce from O(n) to O(1)
@@ -277,7 +277,7 @@ gsHalfEdgeMesh<T>::getInternHalfedge(const typename gsMesh<T>::gsFaceHandle &tri
     if (numberOfHalfedge == 1)
     {
         return Halfedge(index2, index1,
-                                         gsVector3d<real_t>(
+                                         gsVector3d<T>(
                                              triangle->vertices[1]->x() - triangle->vertices[0]->x(),
                                              triangle->vertices[1]->y() - triangle->vertices[0]->y(),
                                              triangle->vertices[1]->z() - triangle->vertices[0]->z()).norm());
@@ -285,7 +285,7 @@ gsHalfEdgeMesh<T>::getInternHalfedge(const typename gsMesh<T>::gsFaceHandle &tri
     if (numberOfHalfedge == 2)
     {
         return Halfedge(index3, index2,
-                                         gsVector3d<real_t>(
+                                         gsVector3d<T>(
                                              triangle->vertices[2]->x() - triangle->vertices[1]->x(),
                                              triangle->vertices[2]->y() - triangle->vertices[1]->y(),
                                              triangle->vertices[2]->z() - triangle->vertices[1]->z()).norm());
@@ -293,7 +293,7 @@ gsHalfEdgeMesh<T>::getInternHalfedge(const typename gsMesh<T>::gsFaceHandle &tri
     if (numberOfHalfedge == 3)
     {
         return Halfedge(index1, index3,
-                                         gsVector3d<real_t>(
+                                         gsVector3d<T>(
                                              triangle->vertices[0]->x() - triangle->vertices[2]->x(),
                                              triangle->vertices[0]->y() - triangle->vertices[2]->y(),
                                              triangle->vertices[0]->z() - triangle->vertices[2]->z()).norm());
@@ -466,9 +466,9 @@ size_t gsHalfEdgeMesh<T>::Chain::getNumberOfVertices() const
 }
 
 template<class T>
-real_t gsHalfEdgeMesh<T>::Chain::getLength() const
+T gsHalfEdgeMesh<T>::Chain::getLength() const
 {
-    real_t length = 0;
+    T length = 0;
     for (typename std::list<Halfedge>::const_iterator it = m_chainedHalfedges.begin();
          it != m_chainedHalfedges.end(); ++it)
     {
@@ -484,7 +484,7 @@ std::vector<T> gsHalfEdgeMesh<T>::Chain::getHalfedgeLengths() const
     {
         gsWarn << "gsHalfEdgeMesh::Chain::getHalfedgeLengths: The chain does not store any halfedges yet.\n";
     }
-    std::vector<real_t> lengths;
+    std::vector<T> lengths;
     for (typename std::list<Halfedge>::const_iterator it = m_chainedHalfedges.begin();
          it != m_chainedHalfedges.end(); ++it)
     {
@@ -534,7 +534,7 @@ const std::list<size_t> gsHalfEdgeMesh<T>::Chain::getVertexIndices() const
 }
 
 template<class T>
-real_t gsHalfEdgeMesh<T>::Chain::getShortestDistanceBetween(size_t i, size_t j, real_t precision) const
+T gsHalfEdgeMesh<T>::Chain::getShortestDistanceBetween(size_t i, size_t j, T precision) const
 {
     if (this->isEmpty())
     {
@@ -550,8 +550,8 @@ real_t gsHalfEdgeMesh<T>::Chain::getShortestDistanceBetween(size_t i, size_t j, 
         return 0;
     }
     if (i > j) std::swap(i, j);
-    real_t distance = 0;
-    std::vector<real_t> l = this->getHalfedgeLengths();
+    T distance = 0;
+    std::vector<T> l = this->getHalfedgeLengths();
     for (size_t z = i - 1; z < j - 1; z++)
     {
         distance += l[z];
@@ -564,7 +564,7 @@ real_t gsHalfEdgeMesh<T>::Chain::getShortestDistanceBetween(size_t i, size_t j, 
 }
 
 template<class T>
-real_t gsHalfEdgeMesh<T>::Chain::getDistanceBetween(size_t i, size_t j) const
+T gsHalfEdgeMesh<T>::Chain::getDistanceBetween(size_t i, size_t j) const
 {
     if (this->isEmpty())
     {
@@ -581,8 +581,8 @@ real_t gsHalfEdgeMesh<T>::Chain::getDistanceBetween(size_t i, size_t j) const
     }
     bool ordered = (i < j);
     if (!ordered) std::swap(i, j);
-    real_t distance = 0;
-    std::vector<real_t> l = this->getHalfedgeLengths();
+    T distance = 0;
+    std::vector<T> l = this->getHalfedgeLengths();
     for (size_t z = i - 1; z < j - 1; z++)
     {
         distance += l[z];

@@ -62,7 +62,7 @@
 // file "exprtk.hpp".
 
 #if defined(GISMO_WITH_ADIFF)
-#define DScalar gismo::ad::DScalar2<real_t,-1>
+#define DScalar gismo::ad::DScalar2<T,-1>
 #include <exprtk_ad_forward.hpp>
 #endif
 

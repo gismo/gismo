@@ -673,8 +673,8 @@ private:
     /// @param[in] polyline description of polyline
     /// @param[out] pt the point where two cycles meet (if there are two cycles)
     /// @return the index of the segment with the point 
-    index_t identifyCycle(const std::vector< std::vector< real_t> >& polyline,
-			  std::pair<real_t, real_t>& pt) const;
+    index_t identifyCycle(const std::vector< std::vector< T> >& polyline,
+			  std::pair<T, T>& pt) const;
 
     
     /// @brief Breaks polyline into two parts.
@@ -687,15 +687,15 @@ private:
     /// @param[in] pt the point where two cyles in polyline meet
     /// @param[out] part1 first cycle of polyline
     /// @param[out] part2 second cycle of polyline
-    void breakPolylineIntoTwoParts(const std::vector< std::vector< real_t> >& polyline, 
+    void breakPolylineIntoTwoParts(const std::vector< std::vector<T> >& polyline,
 				   const index_t segment, 
-				   const std::pair<real_t, real_t>& pt,
-				   std::vector< std::vector< real_t> >& part1, 
-				   std::vector< std::vector< real_t> >& part2) const;
+				   const std::pair<T, T>& pt,
+				   std::vector< std::vector<T> >& part1,
+				   std::vector< std::vector<T> >& part2) const;
 
 
     /// @brief Finds new axis aligned bounding box for given polyline.
-    void findNewAABB(const std::vector< std::vector<real_t> >& polyline,
+    void findNewAABB(const std::vector< std::vector<T> >& polyline,
 		     std::vector<unsigned>& aabb) const;
 
 	

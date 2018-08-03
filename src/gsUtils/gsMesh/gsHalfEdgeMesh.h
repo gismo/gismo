@@ -74,7 +74,7 @@ public:
          */
         explicit Halfedge(const size_t origin = 0,
                           const size_t end = 0,
-                          const real_t length = 0)
+                          const T length = 0)
         : m_origin(origin), m_end(end), m_length(length)
         {
             if (length < 0)
@@ -100,7 +100,7 @@ public:
          * @brief Get length of halfedge
          * @return length of halfedge
          */
-        real_t getLength() const { return m_length; }
+        T getLength() const { return m_length; }
 
         /**
          * @brief Tells if halfedge can be added at end.
@@ -199,7 +199,7 @@ public:
          *
          * @return length
          */
-        real_t getLength() const;
+        T getLength() const;
 
         /**
          * @brief Get vector of halfedge lengths
@@ -268,7 +268,7 @@ public:
          * @param[in] j #number of the second vertex in the chain
          * @return (shortest) distance between vertices
          */
-        real_t getShortestDistanceBetween(size_t i, size_t j, real_t precision) const;
+        T getShortestDistanceBetween(size_t i, size_t j, T precision) const;
 
         /**
          * @brief Get distance between vertices
@@ -293,7 +293,7 @@ public:
          * @return distance between vertices, e.g. between first and
          * fourth chain vertex
          **/
-        real_t getDistanceBetween(size_t i, size_t j) const;
+        T getDistanceBetween(size_t i, size_t j) const;
 
         /**
          * @brief Tells if vertex is contained in chain
@@ -413,7 +413,7 @@ private:
          *
          * @return length
          */
-        real_t getLength() const { return m_boundary.getLength(); }
+        T getLength() const { return m_boundary.getLength(); }
 
         /**
          * @brief Get halfedge lengths
@@ -422,7 +422,7 @@ private:
          *
          * @return vector of halfedges
          */
-        const std::vector<real_t> getHalfedgeLengths() const { return m_boundary.getHalfedgeLengths(); }
+        const std::vector<T> getHalfedgeLengths() const { return m_boundary.getHalfedgeLengths(); }
 
         /**
          * @brief Get list of vertex indices in the chain.
@@ -444,7 +444,7 @@ private:
          *
          * @return (shortest) distance between vertices
          */
-        real_t getShortestDistanceBetween(const size_t &i, const size_t &j, real_t precision) const { return m_boundary.getShortestDistanceBetween(i, j, precision); }
+        T getShortestDistanceBetween(const size_t &i, const size_t &j, T precision) const { return m_boundary.getShortestDistanceBetween(i, j, precision); }
 
         /**
          * @brief Get distance between vertices
@@ -458,7 +458,7 @@ private:
          *
          * @return (shortest) distance between i-th and j-th vertex
          */
-        real_t getDistanceBetween(const size_t &i, const size_t &j) const { return m_boundary.getDistanceBetween(i, j); }
+        T getDistanceBetween(const size_t &i, const size_t &j) const { return m_boundary.getDistanceBetween(i, j); }
 
         /**
          * @brief Tells if vertex is contained in boundary chain.
@@ -495,7 +495,7 @@ public:
      *
      * @param[in] mesh gsMesh object.
      */
-    explicit gsHalfEdgeMesh(const gsMesh<T> &mesh, real_t precision = 1e-8);
+    explicit gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision = 1e-8);
 
     virtual ~gsHalfEdgeMesh() { }
 
@@ -564,7 +564,7 @@ public:
      *
      * @return length of boundary
      */
-    real_t getBoundaryLength() const;
+    T getBoundaryLength() const;
 
     /**
      * @brief Get boundary part lengths between corners
@@ -576,8 +576,8 @@ public:
      * @param[in] corners std::vector<size_t >& - vector of boundary point numbers for corners, [1,2,3,4] stands for 1., 2., 3., 4. boundary vertex serve as corners
      * @return vector with part lengths of the boundary
      */
-    std::vector<real_t> getCornerLengths(/*const*/ std::vector<int> &corners) const;
-    //std::vector<real_t> getBoundaryPartLengths(const std::vector<size_t >& corners) const;
+    std::vector<T> getCornerLengths(/*const*/ std::vector<int> &corners) const;
+    //std::vector<T> getBoundaryPartLengths(const std::vector<size_t >& corners) const;
 
     /**
      * @brief Get chord lengths of boundary
@@ -586,7 +586,7 @@ public:
      *
      * @return vector of lengths
      */
-    const std::vector<real_t> getBoundaryChordLengths() const;
+    const std::vector<T> getBoundaryChordLengths() const;
 
     /**
      * @brief Get distance between vertices
@@ -597,7 +597,7 @@ public:
      * @param[in] j #number of the second boundary vertex
      * @return (shortest) distance between vertices
      */
-    real_t getShortestBoundaryDistanceBetween(size_t i, size_t j) const;
+    T getShortestBoundaryDistanceBetween(size_t i, size_t j) const;
 
     /**
      * @brief Get halfedge length
@@ -608,7 +608,7 @@ public:
      * @param[in] endVertexIndex const int - vertex index of origin vertex
      * @return length of halfedge
      */
-    real_t getHalfedgeLength(const size_t originVertexIndex, const size_t endVertexIndex) const;
+    T getHalfedgeLength(const size_t originVertexIndex, const size_t endVertexIndex) const;
 
     /**
      * @brief Returns queue of all opposite halfedges of vertex
@@ -700,7 +700,7 @@ private:
 
     std::vector<int> m_inverseSorting; ///< vector of indices s. t. m_inverseSorting[internVertexIndex] = vertexIndex
     std::vector<int> m_sorting; ///< vector that stores the internVertexIndices s. t. m_sorting[vertexIndex-1] = internVertexIndex
-    real_t m_precision;
+    T m_precision;
 
 
 };//class gsHalfEdgeMesh

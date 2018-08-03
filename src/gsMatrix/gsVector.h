@@ -224,7 +224,7 @@ public:
     template<typename OtherDerived>
     gsVector3d(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }
 
-    real_t angle(const gsVector3d<T> & other)
+    T angle(const gsVector3d<T> & other)
     {
         return std::acos(this->normalized().dot(other.normalized()));
     }
