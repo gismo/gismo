@@ -316,7 +316,7 @@ gsMesh<T>& gsMesh<T>::cleanMesh()
 }
 
 template<class T>
-gsMesh& gsMesh<T>::reserve(size_t vertex, size_t face, size_t edge)
+gsMesh<T>& gsMesh<T>::reserve(size_t vertex, size_t face, size_t edge)
 {
     this->vertex.reserve(vertex);
     this->face.reserve(face);
