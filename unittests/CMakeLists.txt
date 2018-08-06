@@ -8,15 +8,15 @@
 
 project(unittests)
 
-include(gsModule)
-gismo_fetch_git_module(gsUnitTest
+include(gsFetch)
+gismo_fetch_module(gsUnitTest
 #  UPDATE_COMMAND "${CMAKE_COMMAND} -E echo (offline mode)"
   )
 
 include(gsConfig)
 
 # set include directory
-set(GSUNITTEST_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/extensions/gsUnitTest
+set(GSUNITTEST_INCLUDE_DIR ${gismo_SOURCE_DIR}/extensions/gsUnitTest
   CACHE INTERNAL "gsUnitTest include directory")
 
 install(DIRECTORY ${GSUNITTEST_INCLUDE_DIR} DESTINATION
@@ -31,7 +31,7 @@ install(DIRECTORY ${GSUNITTEST_INCLUDE_DIR} DESTINATION
 #  # need to export target as well
 #  #install(TARGETS ho_lib EXPORT the_export_set DESTINATION ${some_dest})
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/extensions/gsUnitTest ${CMAKE_BINARY_DIR}/extensions/gsUnitTest)
+add_subdirectory(${gismo_SOURCE_DIR}/extensions/gsUnitTest ${gismo_BINARY_DIR}/extensions/gsUnitTest)
 
 include_directories(${GSUNITTEST_INCLUDE_DIR})
 

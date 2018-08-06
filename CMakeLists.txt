@@ -1,4 +1,4 @@
-######################################################################
+#####################################################################
 ## CMakeLists.txt
 ## This file is part of the G+Smo library.
 ##
@@ -136,14 +136,14 @@ set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
       "${PROJECT_SOURCE_DIR}/extensions"
      CACHE INTERNAL "${PROJECT_NAME} include directories" )
 
+#first time
 include_directories(${GISMO_INCLUDE_DIRS})
 
 ## #################################################################
 ## Extensions
 ## #################################################################
 
-# Add externals directory
-add_subdirectory(external)
+include(gsFetch)
 
 if(GISMO_WITH_CODIPACK)
   add_subdirectory(extensions/gsCoDiPack)
@@ -266,14 +266,27 @@ endif(GISMO_WITH_TRILINOS)
 
 if(GISMO_WITH_OCC)
   add_subdirectory(extensions/gsOpenCascade)
-  set (GISMO_INCLUDE_DIRS ${OCC_INCLUDE_DIRS} ${OCC_INCLUDE_DIR}
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${OCC_INCLUDE_DIR}
   CACHE INTERNAL "${PROJECT_NAME} include directories")
   include_directories(${OCC_INCLUDE_DIR})
 endif(GISMO_WITH_OCC)
 
+if(GISMO_WITH_SMESH)
+  include(external/surface_mesh.cmake)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SMESH_INCLUDE_DIRS}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+#  include_directories(${SMESH_INCLUDE_DIR})
+endif()
+
 ## #################################################################
 ## Build G+Smo library instantized for GISMO_COEFF_TYPE number type
 ## #################################################################
+
+#second time
+include_directories(${GISMO_INCLUDE_DIRS})
+
+# Add externals directory
+add_subdirectory(external)
 
 # external inclusion paths
 #get_property(EXTERNAL_INCLUDE_DIRS GLOBAL PROPERTY EXTERNAL_INCLUDE_DIRS)
