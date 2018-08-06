@@ -62,52 +62,51 @@ void gsParametrization<T>::calculate(const size_t boundaryMethod,
     size_t N = m_mesh.getNumberOfVertices();
     size_t B = m_mesh.getNumberOfBoundaryVertices();
     Neighbourhood neighbourhood(m_mesh, paraMethod);
-    for (size_t i = 1; i <= n; i++)
-    {
-        m_parameterPoints.push_back(Point2D(0, 0, i));
-    }
 
-    // switch
-    if (boundaryMethod == 1)
-    {
-        T l = m_mesh.getBoundaryLength();
-        T lInv = 1. / l;
-        T w = 0;
-        m_parameterPoints.push_back(Point2D(0, 0, n + 1));
-        std::vector<T> halfedgeLengths = m_mesh.getBoundaryChordLengths();
-        for (size_t i = 0; i < m_mesh.getNumberOfBoundaryVertices() - 1; i++)
-        {
-            w += halfedgeLengths[i] * lInv * 4;
-            m_parameterPoints.push_back(Neighbourhood::findPointOnBoundary(w, n + i + 2));
-        }
-    }
-    else if (boundaryMethod == 2 || boundaryMethod == 3 || boundaryMethod == 5
-             || boundaryMethod == 4 || boundaryMethod == 6)
-    {
-        for (size_t i = n + 1; i <= N; i++)
-        {
-            m_parameterPoints.push_back(Point2D(0, 0, i));
-        }
-        std::vector<T> halfedgeLengths = m_mesh.getBoundaryChordLengths();
+    T w = 0;
+    std::vector<T> halfedgeLengths = m_mesh.getBoundaryChordLengths();
+    std::vector<int> corners;
+    std::vector<T> lengths;
 
-        std::vector<int> corners;
-        if (boundaryMethod == 2)
+    switch (boundaryMethod) {
+        case 1:
+            m_parameterPoints.reserve(n + B);
+            for (size_t i = 1; i <= n + 1; i++) {
+                m_parameterPoints.push_back(Point2D(0, 0, i));
+            }
+            for (size_t i = 0; i < B - 1; i++) {
+                w += halfedgeLengths[i] * (1. / m_mesh.getBoundaryLength()) * 4;
+                m_parameterPoints.push_back(Neighbourhood::findPointOnBoundary(w, n + i + 2));
+            }
+            break;
+        case 2:
             corners = cornersInput;
-        else if (boundaryMethod == 3 || boundaryMethod == 5 || boundaryMethod == 4
-                 || boundaryMethod == 6)
-            corners = neighbourhood.getBoundaryCorners(boundaryMethod, rangeInput, numberInput);
-        std::vector<T> lengths = m_mesh.getCornerLengths(corners);
-        T w = 0;
-        m_parameterPoints[n + corners[0] - 1] = Point2D(0, 0, n + corners[0]);
+        case 3:
+        case 4:
+        case 5:
+        case 6: // N
+            if (boundaryMethod != 2)
+                corners = neighbourhood.getBoundaryCorners(boundaryMethod, rangeInput, numberInput);
 
-        for (size_t i = corners[0] + 1; i < corners[0] + B; i++)
-        {
-            w += halfedgeLengths[(i - 2) % B]
-                / findLengthOfPositionPart(i > B ? i - B : i, B, corners, lengths);
-            m_parameterPoints[(n + i - 1) > N - 1 ? n + i - 1 - B : n + i - 1] =
-                Neighbourhood::findPointOnBoundary(w, n + i > N ? n + i - B : n + i);
-        }
+            m_parameterPoints.reserve(N);
+            for (size_t i = 1; i <= N; i++) {
+                m_parameterPoints.push_back(Point2D(0, 0, i));
+            }
+
+            lengths = m_mesh.getCornerLengths(corners);
+            m_parameterPoints[n + corners[0] - 1] = Point2D(0, 0, n + corners[0]);
+
+            for (size_t i = corners[0] + 1; i < corners[0] + B; i++) {
+                w += halfedgeLengths[(i - 2) % B]
+                     / findLengthOfPositionPart(i > B ? i - B : i, B, corners, lengths);
+                m_parameterPoints[(n + i - 1) > N - 1 ? n + i - 1 - B : n + i - 1] =
+                        Neighbourhood::findPointOnBoundary(w, n + i > N ? n + i - B : n + i);
+            }
+            break;
+        default:
+            GISMO_ERROR("boundaryMethod not valid: " << boundaryMethod);
     }
+
     constructAndSolveEquationSystem(neighbourhood, n, N);
 }
 
@@ -241,13 +240,12 @@ template<class T>
 gsParametrization<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo, const size_t parametrizationMethod)  : m_basicInfos(meshInfo)
 {
     m_localParametrizations.reserve(meshInfo.getNumberOfInnerVertices());
-    //hier geht die ganz zeit verloren (ENG!)
     for(size_t i=1; i <= meshInfo.getNumberOfInnerVertices(); i++)
     {
         m_localParametrizations.push_back(LocalParametrization(meshInfo, LocalNeighbourhood(meshInfo, i), parametrizationMethod));
     }
 
-    //ab hier geht etwas zeit verloren, aber nur ein bruchteil  (ENG!)
+    m_localBoundaryNeighbourhoods.reserve(meshInfo.getNumberOfVertices() - meshInfo.getNumberOfInnerVertices());
     for(size_t i=meshInfo.getNumberOfInnerVertices()+1; i<= meshInfo.getNumberOfVertices(); i++)
     {
         m_localBoundaryNeighbourhoods.push_back(LocalNeighbourhood(meshInfo, i,0));
@@ -265,6 +263,7 @@ const std::vector<int> gsParametrization<T>::Neighbourhood::getBoundaryCorners(c
 {
     std::vector<std::pair<T , size_t> > angles;
     std::vector<int> corners;
+    angles.reserve(m_localBoundaryNeighbourhoods.size());
     for(typename std::vector<LocalNeighbourhood>::const_iterator it=m_localBoundaryNeighbourhoods.begin(); it!=m_localBoundaryNeighbourhoods.end(); it++)
     {
         angles.push_back(std::pair<T , size_t>(it->getInnerAngle(), it->getVertexIndex() - m_basicInfos.getNumberOfInnerVertices()));
@@ -292,6 +291,7 @@ const std::vector<int> gsParametrization<T>::Neighbourhood::getBoundaryCorners(c
     else if(method == 4)
     {
         bool flag = true;
+        corners.reserve(4);
         corners.push_back(angles.front().second);
         angles.erase(angles.begin());
         while(corners.size() < 4)
@@ -324,13 +324,15 @@ const std::vector<int> gsParametrization<T>::Neighbourhood::getBoundaryCorners(c
         {
             gsDebug << angles[i].first << ", " << angles[i].second << "\n";
         }
-        for(size_t i=0; i<angles.size(); i++)
+        newCorners.reserve((angles.size()*(angles.size()-1)*(angles.size()-2)*(angles.size()-3))/6);
+        corners.reserve((angles.size()*(angles.size()-1)*(angles.size()-2)*(angles.size()-3))/6);
+        for(size_t i=0; i<angles.size(); i++)   // n
         {
-            for(size_t j=i+1; j<angles.size(); j++)
+            for(size_t j=i+1; j<angles.size(); j++) // * (n-1)/2
             {
-                for(size_t k=j+1; k<angles.size(); k++)
+                for(size_t k=j+1; k<angles.size(); k++) // * (n-2)/3
                 {
-                    for(size_t l=k+1; l<angles.size(); l++)
+                    for(size_t l=k+1; l<angles.size(); l++) // * (n-3)/4
                     {
                         newCorners.push_back(angles[i].second);
                         newCorners.push_back(angles[j].second);
@@ -399,7 +401,8 @@ void gsParametrization<T>::Neighbourhood::takeCornersWithSmallestAngles(size_t n
 template<class T>
 std::vector<T> gsParametrization<T>::Neighbourhood::midpoints(const size_t numberOfCorners, const T length) const
 {
-    std::vector<T> midpoints(numberOfCorners-1);
+    std::vector<T> midpoints;
+    midpoints.reserve(numberOfCorners-1);
     T n = 1./numberOfCorners;
     for(size_t i=1; i<numberOfCorners; i++)
     {
@@ -415,6 +418,7 @@ void gsParametrization<T>::Neighbourhood::searchAreas(const T range, std::vector
     std::vector<T> h = m_basicInfos.getBoundaryChordLengths();
     this->takeCornersWithSmallestAngles(1,sortedAngles, corners);
     std::vector<std::vector<std::pair<T , size_t> > > areas;
+    areas.reserve(3);
     for(size_t i=0; i<3; i++)
     {
         areas.push_back(std::vector<std::pair<T , size_t> >());
@@ -438,6 +442,7 @@ void gsParametrization<T>::Neighbourhood::searchAreas(const T range, std::vector
     std::sort(areas[1].begin(), areas[1].end());
     std::sort(areas[2].begin(), areas[2].end());
     bool smaller = false;
+    //corners.reserve(3);
     for(size_t i=0; i<areas[0].size(); i++)
     {
         if(areas[0][i].second > (size_t)corners[0] || areas[0][i].second < (size_t)corners[0])

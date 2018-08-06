@@ -17,7 +17,6 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    gsInfo << "parametrization_example\n";
     bool paraview = false;
     int parametrizationMethod(1); // 1:shape, 2:uniform, 3:distance
     // shape: best method, shape of the mesh is preserved, smooth surface fitting
@@ -37,12 +36,12 @@ int main(int argc, char *argv[])
     std::vector<int> corners; // in case of corners
 
     gsCmdLine cmd("parametrization_example Command line");
-    cmd.addInt("m", "parametrizationMethod", "parametrization methods: {shape, uniform, distance}\n"
+    cmd.addInt("m", "parametrizationMethod", "parametrization methods: {1: shape, 2: uniform, 3: distance}\n"
                                                 "shape: best method, shape of the mesh is preserved, smooth surface fitting\n"
                                                 "uniform: the lambdas according to Floater's algorithm are set to 1/d, where d is the number of neighbours\n"
                                                 "distance: the lambdas according to Floater's algorithm are set to the relative distances between the point and its neighbours",
                   parametrizationMethod);
-    cmd.addInt("b", "boundaryMethod", "boundary methodes: {chords, corners, smallest, restrict, opposite, distributed}\n"
+    cmd.addInt("b", "boundaryMethod", "boundary methodes: {1: chords, 2: corners, 3: smallest, 4: restrict, 5: opposite, 6: distributed}\n"
                                          "chords: choose boundary points distributed on the unit square boundary wrt the chord lengths, no input needed\n"
                                          "corners: choose 4 boundary corners for the corner points of the unit square and the rest of the boundary corners is distributed on the four edges of the unit square wrt the chord lengths, input is the corner numbers, e.g. 1,2,3,4 for the first, second, third and fourth boundary point"
                                          "smallest: choose 4 boundary corners as the vertices with the smallest inner angles, no input needed"
@@ -58,31 +57,47 @@ int main(int argc, char *argv[])
     cmd.addSwitch("","plot","Plot with paraview",paraview);
     cmd.getValues(argc, argv);
 
-    gsInfo << "gsOptionList\n";
     gsOptionList ol = cmd.getOptionList();
 
-    gsInfo << "gsFileData\n";
     gsFileData<> fd(ol.getString("filenameIn"));
 
-    gsInfo << "reading input into gsMesh<real_t>::uPtr\n";
+    gsInfo << "Reading input into gsMesh<real_t>::uPtr: ";
+    gsStopwatch stopwatch;
     gsMesh<real_t>::uPtr mm = fd.getFirst<gsMesh<real_t> >();
+    stopwatch.stop();
+    gsInfo << stopwatch << "\n";
 
-    gsInfo << "creating gsParametrization<real_t>\n";
+    gsInfo << "creating gsParametrization<real_t>       ";
+    stopwatch.restart();
     gsParametrization<real_t> pm(*mm);
+    stopwatch.stop();
+    gsInfo << stopwatch << "\n";
 
-    gsInfo << "setOptions\n";
     pm.setOptions(ol);
 
-    gsInfo << "compute\n";
+    gsInfo << "gsParametrization::compute()             ";
+    stopwatch.restart();
     pm.compute();
+    stopwatch.stop();
+    gsInfo << stopwatch << "\n";
 
-    gsInfo << "createFlatMesh\n";
+    gsInfo << "gsParametrization::createFlatMesh()      ";
+    stopwatch.restart();
     gsMesh<> mesh = pm.createFlatMesh();
+    stopwatch.stop();
+    gsInfo << stopwatch << "\n";
 
-    gsInfo << "createUVmatrix\n";
+    gsInfo << "gsParametrization::createUVmatrix()      ";
+    stopwatch.restart();
     gsMatrix<> uv = pm.createUVmatrix();
-    gsInfo << "createXYZmatrix\n";
+    stopwatch.stop();
+    gsInfo << stopwatch << "\n";
+
+    gsInfo << "gsParametrization::createXYZmatrix()     ";
+    stopwatch.restart();
     gsMatrix<> xyz = pm.createXYZmatrix();
+    stopwatch.stop();
+    gsInfo << stopwatch << "\n";
 
     gsInfo << mesh << "\n";
     gsInfo << uv << "\n";
