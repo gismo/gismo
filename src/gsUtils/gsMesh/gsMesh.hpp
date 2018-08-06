@@ -264,7 +264,7 @@ gsMesh<T>& gsMesh<T>::cleanMesh()
     gsDebug << "----------------------------------------\n";*/
 
     // build up the unique map
-    std::vector<int> uniquemap;
+    std::vector<size_t> uniquemap;
     uniquemap.reserve(vertex.size());
     for(size_t i = 0; i < vertex.size(); i++)
     {
@@ -280,45 +280,29 @@ gsMesh<T>& gsMesh<T>::cleanMesh()
         uniquemap.push_back(buddy);
     }
 
-    /*for (size_t i = 0; i < uniquemap.size(); ++i)
-    {
-        gsInfo << uniquemap[i] << ", ";
-    } gsInfo << "\n";*/
-
-    //
     for(size_t i = 0; i < face.size(); i++)
     {
         for (size_t j = 0; j < 3; j++)
         {
-            //gsDebug << "face[" << i << "]->vertices[" << j << "]\n";
-            //gsDebug << "Before: " << face[i]->vertices[j] << " id: " << face[i]->vertices[j]->getId() << "\n";
-            face[i]->vertices[j] = vertex[uniquemap[face[i]->vertices[j]->getId()]]; // getid is updated!
-            //gsDebug << "After:  " << face[i]->vertices[j] << " id: " << face[i]->vertices[j]->getId() << "\n";
+            face[i]->vertices[j] = vertex[uniquemap[face[i]->vertices[j]->getId()]];
         }
     }
 
     for(size_t i = 0; i < edge.size(); i++)
     {
-        //gsDebug << "edge[" << i << "]->source\n";
-        //gsDebug << "Before: " << edge[i].source << " id: " << edge[i].source->getId() << "\n";
         edge[i].source = vertex[uniquemap[edge[i].source->getId()]];
-        //gsDebug << "After : " << edge[i].source << " id: " << edge[i].source->getId() << "\n";
-
-        //gsDebug << "edge[" << i << "]->target\n";
-        //gsDebug << "Before: " << edge[i].source << " id: " << edge[i].source->getId() << "\n";
         edge[i].target = vertex[uniquemap[edge[i].target->getId()]];
-        //gsDebug << "After : " << edge[i].source << " id: " << edge[i].source->getId() << "\n";
     }
 
-    std::set<int> uniqueset(uniquemap.begin(), uniquemap.end());    // O(n*log(n))
-    std::vector<VertexHandle> uvertex(uniqueset.size());
-    int uvertex_index = 0;
+    std::set<size_t> uniqueset(uniquemap.begin(), uniquemap.end());    // O(n*log(n))
+    std::vector<VertexHandle> uvertex;
+    uvertex.reserve(uniqueset.size());
     for(size_t i = 0; i < uniquemap.size(); i++) {     // O(n)
         if(uniqueset.find(i) != uniqueset.end())    // O(log(m)), n >> m
         {
             // re-number vertices id by new sequence - should we not do?
-            vertex[i]->setId(uvertex_index);
-            uvertex[uvertex_index++] = vertex[i];
+            vertex[i]->setId(uvertex.size());
+            uvertex.push_back(vertex[i]);
         }
         else
         {
@@ -328,16 +312,17 @@ gsMesh<T>& gsMesh<T>::cleanMesh()
     }   // O(n*log(n)+O(n)*O(log(m)) ==> O(n*log(n))
     vertex.swap(uvertex);
 
-    /*gsDebug << "std::vector<> vertex after cleanMesh\n";
-    for (size_t i = 0; i < vertex.size(); ++i)
-    {
-        gsDebug << i << ": " << vertex[i] << " id: " << vertex[i]->getId() << " " << *vertex[i];
-    }
-    gsDebug << "----------------------------------------\n";*/
-
     return *this;
 }
 
+template<class T>
+gsMesh& gsMesh<T>::reserve(size_t vertex, size_t face, size_t edge)
+{
+    this->vertex.reserve(vertex);
+    this->face.reserve(face);
+    this->edge.reserve(edge);
+    return *this;
+}
 
 template <class T>
 void gsMesh<T>::addLine(gsMatrix<T> const & points)

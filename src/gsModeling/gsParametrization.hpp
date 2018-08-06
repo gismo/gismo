@@ -56,7 +56,8 @@ void gsParametrization<T>::calculate(const size_t boundaryMethod,
                                      const T rangeInput,
                                      const size_t numberInput)
 {
-    GISMO_ASSERT(boundaryMethod >= 1 && boundaryMethod <= 6, "The boundary method " << boundaryMethod << " is not valid.");
+    GISMO_ASSERT(boundaryMethod >= 1 && boundaryMethod <= 6,
+                 "The boundary method " << boundaryMethod << " is not valid.");
     GISMO_ASSERT(paraMethod >= 1 && paraMethod <= 3, "The parametrization method " << paraMethod << " is not valid.");
     size_t n = m_mesh.getNumberOfInnerVertices();
     size_t N = m_mesh.getNumberOfVertices();
@@ -68,13 +69,16 @@ void gsParametrization<T>::calculate(const size_t boundaryMethod,
     std::vector<int> corners;
     std::vector<T> lengths;
 
-    switch (boundaryMethod) {
+    switch (boundaryMethod)
+    {
         case 1:
             m_parameterPoints.reserve(n + B);
-            for (size_t i = 1; i <= n + 1; i++) {
+            for (size_t i = 1; i <= n + 1; i++)
+            {
                 m_parameterPoints.push_back(Point2D(0, 0, i));
             }
-            for (size_t i = 0; i < B - 1; i++) {
+            for (size_t i = 0; i < B - 1; i++)
+            {
                 w += halfedgeLengths[i] * (1. / m_mesh.getBoundaryLength()) * 4;
                 m_parameterPoints.push_back(Neighbourhood::findPointOnBoundary(w, n + i + 2));
             }
@@ -89,18 +93,20 @@ void gsParametrization<T>::calculate(const size_t boundaryMethod,
                 corners = neighbourhood.getBoundaryCorners(boundaryMethod, rangeInput, numberInput);
 
             m_parameterPoints.reserve(N);
-            for (size_t i = 1; i <= N; i++) {
+            for (size_t i = 1; i <= N; i++)
+            {
                 m_parameterPoints.push_back(Point2D(0, 0, i));
             }
 
             lengths = m_mesh.getCornerLengths(corners);
             m_parameterPoints[n + corners[0] - 1] = Point2D(0, 0, n + corners[0]);
 
-            for (size_t i = corners[0] + 1; i < corners[0] + B; i++) {
+            for (size_t i = corners[0] + 1; i < corners[0] + B; i++)
+            {
                 w += halfedgeLengths[(i - 2) % B]
-                     / findLengthOfPositionPart(i > B ? i - B : i, B, corners, lengths);
+                    / findLengthOfPositionPart(i > B ? i - B : i, B, corners, lengths);
                 m_parameterPoints[(n + i - 1) > N - 1 ? n + i - 1 - B : n + i - 1] =
-                        Neighbourhood::findPointOnBoundary(w, n + i > N ? n + i - B : n + i);
+                    Neighbourhood::findPointOnBoundary(w, n + i > N ? n + i - B : n + i);
             }
             break;
         default:
@@ -177,13 +183,14 @@ template<class T>
 gsMesh<T> gsParametrization<T>::createFlatMesh()
 {
     gsMesh<T> mesh;
+    mesh.reserve(3 * m_mesh.getNumberOfTriangles(), m_mesh.getNumberOfTriangles(), 0);
     for (size_t i = 0; i < m_mesh.getNumberOfTriangles(); i++)
     {
         typename gsMesh<T>::VertexHandle v[3];
         for (size_t j = 1; j <= 3; ++j)
         {
-            v[j-1] = mesh.addVertex(getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[0],
-                                    getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[1]);
+            v[j - 1] = mesh.addVertex(getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[0],
+                                      getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[1]);
         }
         mesh.addFace(v[0], v[1], v[2]);
     }
@@ -503,68 +510,77 @@ gsParametrization<T>::LocalParametrization::LocalParametrization(const gsHalfEdg
     m_vertexIndex = localNeighbourhood.getVertexIndex();
     std::list<size_t> indices = localNeighbourhood.getVertexIndicesOfNeighbours();
     size_t d = localNeighbourhood.getNumberOfNeighbours();
-    if(parametrizationMethod == 2) // --> switch
+    switch (parametrizationMethod)
     {
-        for(size_t j=1; j <= meshInfo.getNumberOfVertices(); j++)
+        case 1:
         {
-            m_lambdas.push_back(0); // Lambda(m_vertexIndex, j, 0)
-        }
-        while(!indices.empty())
-        {
-            m_lambdas[indices.front()-1] += (1./d);
-            indices.pop_front();
-        }
-    }
-    else if(parametrizationMethod == 1)
-    {
-        std::list<T> angles = localNeighbourhood.getAngles();
-		VectorType points;
-        T theta = 0;
-        T nextAngle = 0;
-        for(typename std::list<T>::iterator it = angles.begin(); it!=angles.end(); ++it)
-        {
-            theta += *it;
-        }
-        Point2D p(0, 0, 0);
-        T length = (*meshInfo.getVertex(indices.front()) - *meshInfo.getVertex(m_vertexIndex)).norm();
-        Point2D nextPoint(length, 0, indices.front());
-        points.push_back(nextPoint);
-        gsVector<T> actualVector = nextPoint - p;
-        indices.pop_front();
-        T thetaInv = 1./theta;
-        gsVector<T> nextVector;
-        while(!indices.empty())
-        {
-            length = (*meshInfo.getVertex(indices.front()) - *meshInfo.getVertex(m_vertexIndex)).norm();
-            //length =  (meshInfo.getVertex(indices.front()) - meshInfo.getVertex(m_vertexIndex) ).norm();
-            nextAngle = angles.front()*thetaInv * 2 * EIGEN_PI;
-            nextVector = ((Eigen::Rotation2D<T>(nextAngle) * actualVector).normalized()*length) + p;
-            nextPoint = Point2D(nextVector[0], nextVector[1], indices.front());
+            std::list<T> angles = localNeighbourhood.getAngles();
+            VectorType points;
+            T theta = 0;
+            T nextAngle = 0;
+            for(typename std::list<T>::iterator it = angles.begin(); it!=angles.end(); ++it)
+            {
+                theta += *it;
+            }
+            Point2D p(0, 0, 0);
+            T length = (*meshInfo.getVertex(indices.front()) - *meshInfo.getVertex(m_vertexIndex)).norm();
+            Point2D nextPoint(length, 0, indices.front());
+            points.reserve(indices.size());
             points.push_back(nextPoint);
-            actualVector = nextPoint - p;
-            angles.pop_front();
+            gsVector<T> actualVector = nextPoint - p;
             indices.pop_front();
+            T thetaInv = 1./theta;
+            gsVector<T> nextVector;
+            while(!indices.empty())
+            {
+                length = (*meshInfo.getVertex(indices.front()) - *meshInfo.getVertex(m_vertexIndex)).norm();
+                //length =  (meshInfo.getVertex(indices.front()) - meshInfo.getVertex(m_vertexIndex) ).norm();
+                nextAngle = angles.front()*thetaInv * 2 * EIGEN_PI;
+                nextVector = ((Eigen::Rotation2D<T>(nextAngle) * actualVector).normalized()*length) + p;
+                nextPoint = Point2D(nextVector[0], nextVector[1], indices.front());
+                points.push_back(nextPoint);
+                actualVector = nextPoint - p;
+                angles.pop_front();
+                indices.pop_front();
+            }
+            calculateLambdas(meshInfo.getNumberOfVertices(), points);
         }
-        calculateLambdas(meshInfo.getNumberOfVertices(), points);
-    }
-    else if(parametrizationMethod == 3)
-    {
-        std::list<T> neighbourDistances = localNeighbourhood.getNeighbourDistances();
-        T sumOfDistances = 0;
-        for(typename std::list<T>::iterator it = neighbourDistances.begin(); it != neighbourDistances.end(); it++)
+            break;
+        case 2:
+            m_lambdas.reserve(meshInfo.getNumberOfVertices());
+            for(size_t j=1; j <= meshInfo.getNumberOfVertices(); j++)
+            {
+                m_lambdas.push_back(0); // Lambda(m_vertexIndex, j, 0)
+            }
+            while(!indices.empty())
+            {
+                m_lambdas[indices.front()-1] += (1./d);
+                indices.pop_front();
+            }
+            break;
+        case 3:
         {
-            sumOfDistances += *it;
+            std::list<T> neighbourDistances = localNeighbourhood.getNeighbourDistances();
+            T sumOfDistances = 0;
+            for(typename std::list<T>::iterator it = neighbourDistances.begin(); it != neighbourDistances.end(); it++)
+            {
+                sumOfDistances += *it;
+            }
+            T sumOfDistancesInv = 1./sumOfDistances;
+            m_lambdas.reserve(meshInfo.getNumberOfVertices());
+            for(size_t j=1; j <= meshInfo.getNumberOfVertices(); j++)
+            {
+                m_lambdas.push_back(0); //Lambda(m_vertexIndex, j, 0)
+            }
+            for(typename std::list<T>::iterator it = neighbourDistances.begin(); it != neighbourDistances.end(); it++)
+            {
+                m_lambdas[indices.front()-1] += ((*it)*sumOfDistancesInv);
+                indices.pop_front();
+            }
         }
-        T sumOfDistancesInv = 1./sumOfDistances;
-        for(size_t j=1; j <= meshInfo.getNumberOfVertices(); j++)
-        {
-            m_lambdas.push_back(0); //Lambda(m_vertexIndex, j, 0)
-        }
-        for(typename std::list<T>::iterator it = neighbourDistances.begin(); it != neighbourDistances.end(); it++)
-        {
-            m_lambdas[indices.front()-1] += ((*it)*sumOfDistancesInv);
-            indices.pop_front();
-        }
+            break;
+        default:
+            GISMO_ERROR("parametrizationMethod not valid: " << parametrizationMethod);
     }
 }
 

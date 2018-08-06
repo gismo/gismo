@@ -175,6 +175,8 @@ public:
      */
     gsMesh& cleanMesh();
 
+    gsMesh& reserve(size_t vertex, size_t face, size_t edge);
+
     size_t numVertices() const { return vertex.size(); }
     size_t numEdges()    const { return edge.size(); }
     size_t numFaces()    const { return face.size(); }
