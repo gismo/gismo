@@ -266,7 +266,11 @@ endif(GISMO_WITH_TRILINOS)
 
 if(GISMO_WITH_OCC)
   add_subdirectory(extensions/gsOpenCascade)
+<<<<<<< HEAD
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${OCC_INCLUDE_DIR}
+=======
+  set (GISMO_INCLUDE_DIRS ${OCC_INCLUDE_DIRS} ${OCC_INCLUDE_DIR}
+>>>>>>> 4e72ae9382e3e955d0b9ca813f880572357f1d1d
   CACHE INTERNAL "${PROJECT_NAME} include directories")
   include_directories(${OCC_INCLUDE_DIR})
 endif(GISMO_WITH_OCC)
