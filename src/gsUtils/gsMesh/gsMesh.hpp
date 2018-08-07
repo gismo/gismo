@@ -202,6 +202,7 @@ template<class T>
 typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(std::vector<int> const & vert)
 {
     std::vector<VertexHandle> pvert; //(vert.size() );
+    pvert.reserve(vert.size());
     for ( std::vector<int>::const_iterator it = vert.begin();
           it!= vert.end(); ++it )
         pvert.push_back( vertex[*it] );
