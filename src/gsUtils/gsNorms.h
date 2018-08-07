@@ -186,7 +186,8 @@ T igaH1DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const gsFunction<T> & func,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
-                      const typename gsBasis<T>::domainIter & domIt);
+                      const typename gsBasis<T>::domainIter & domIt,
+					  const gsQuadRule<T> & quRule);
 
 
 // Auxiliary functions for igaL2Distance() and igaL2DistanceEltWiseSq().
@@ -195,13 +196,15 @@ T igaL2DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const typename gsGeometryEvaluator<T>::uPtr & funcEval,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
-                      const typename gsBasis<T>::domainIter & domIt);
+                      const typename gsBasis<T>::domainIter & domIt,
+					  const gsQuadRule<T> & quRule);
 template <typename T>
 T igaL2DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const gsFunction<T> & func,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
-                      const typename gsBasis<T>::domainIter & domIt);
+                      const typename gsBasis<T>::domainIter & domIt,
+					  const gsQuadRule<T> & quRule);
 
  /*
   * Maximum norms
@@ -263,7 +266,8 @@ T igaH1DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
                       const typename gsBasis<T>::domainIter & domIt,
-                      const int d);
+                      const int d,
+					  const gsQuadRule<T> & quRule);
 
 template <typename T>
 T igaFieldH1Distance(const gsField<T>& u, 

@@ -150,17 +150,6 @@ public:
         return curr_index; 
     }
 
-    // ---> Documentation in gsDomainIterator.h
-    // compute a tensor Gauss quadrature rule of the given order for
-    // the domain elements
-    void computeQuadratureRule(const gsVector<int>& numIntNodes)
-    {
-        GISMO_ASSERT( numIntNodes[dir]==1, "Can only use one point in the fixed direction." );
-
-        m_quadrature.setNodes(numIntNodes);
-        m_quadrature.mapTo(lower, upper, this->quNodes, this->quWeights);
-    }
-
     // get the basis function indices which are active in the current element
     void getActiveFunctions(gsMatrix<unsigned>& act)
     {
@@ -236,10 +225,6 @@ private:
             upper[i]  = *(curElement[i]+1);
             center[i] = T(0.5) * (lower[i] + upper[i]);
         }
-        
-        // Update quadrature points
-        m_quadrature.mapTo(lower, upper, this->quNodes, this->quWeights);
-        computeActiveFunctions();
 
         //gsDebug<<"lower: "<< lower.transpose() <<", upper="<<upper.transpose() <<"\n";
     }

@@ -113,41 +113,6 @@ public:
         const gsHTensorBasis<d, T>* hbs =  dynamic_cast<const gsHTensorBasis<d, T> *>(m_basis);
         initLeaf(hbs->tree());
     }
-    
-    // ---> Documentation in gsDomainIterator.h Compute a suitable
-    // quadrature rule of the given order for the current element
-    void computeQuadratureRule(const gsVector<int>& numIntNodes)
-    {
-        GISMO_ASSERT( numIntNodes[dir]==1, 
-                      "Can only use one point in the fixed direction." );
-
-        m_quadrature.setNodes(numIntNodes);
-        m_quadrature.mapTo(m_lower, m_upper, this->quNodes, this->quWeights);
-    }
-
-    void computeQuadratureRuleDefault()
-    {
-        // uses same formula as gsGaussAssembler::getNumIntNodesFor( gsBasis )
-        gsVector<int> numIntNodes( m_basis->dim() );
-        for (int i = 0; i < m_basis->dim(); ++i)
-            numIntNodes[i] = m_basis->degree(i) + 1;
-
-        numIntNodes[dir] = 1;
-        computeQuadratureRule( numIntNodes );
-    }
-    
-    // get the basis function indices which are active in the current
-    // element
-    void getActiveFunctions(gsMatrix<unsigned>& act)
-    {
-        this->m_basis->active_into(center, act);
-    }
-    
-    const gsMatrix<unsigned>& computeActiveFunctions()
-    {
-        this->m_basis->active_into(center, this->activeFuncs);
-        return this->activeFuncs;
-    }
 
     const gsVector<T>& lowerCorner() const { return m_lower; }
 
@@ -294,12 +259,6 @@ private:
             m_upper[i] = *(m_curElement[i]+1);
             center [i] = T(0.5) * (m_lower[i] + m_upper[i]);
         }
-
-        // Update quadrature rule
-        m_quadrature.mapTo(m_lower, m_upper, this->quNodes, this->quWeights);
-
-        // Update Active basis functions
-        computeActiveFunctions();
     }
 
 // =============================================================================
