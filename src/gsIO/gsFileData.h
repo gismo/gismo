@@ -84,11 +84,13 @@ public:
     String lastPath() const { return m_lastPath; }
 
     /// Set the precision (number of decimals) used for writing floats
-    /// to output files
+    /// to output files. A 32-bit float has a precision of about 8 digits. 
+    /// A 64-bit double has a precision of about 16.
     void setFloatPrecision(const unsigned k) { data->setFloatPrecision(k); }
 
     /// Returns the precision (number of decimals) used for writing floats
-    /// to output files
+    /// to output files. 8 digits reflects to a 32-bit float, while 16 reflects
+    /// to a 64-bit double.
     unsigned getFloatPrecision() const { return data->getFloatPrecision(); }
 
 private:
