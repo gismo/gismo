@@ -145,6 +145,9 @@ include_directories(${GISMO_INCLUDE_DIRS})
 
 include(gsFetch)
 
+# Add externals directory
+add_subdirectory(external)
+
 if(GISMO_WITH_CODIPACK)
   add_subdirectory(extensions/gsCoDiPack)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
@@ -284,9 +287,6 @@ endif()
 
 #second time
 include_directories(${GISMO_INCLUDE_DIRS})
-
-# Add externals directory
-add_subdirectory(external)
 
 # external inclusion paths
 #get_property(EXTERNAL_INCLUDE_DIRS GLOBAL PROPERTY EXTERNAL_INCLUDE_DIRS)
