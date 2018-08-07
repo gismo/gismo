@@ -222,6 +222,7 @@ T gsParametrization<T>::findLengthOfPositionPart(const size_t position,
                                                       const std::vector<int> &bounds,
                                                       const std::vector<T> &lengths)
 {
+    GISMO_UNUSED(numberOfPositions);
     GISMO_ASSERT(1 <= position && position <= numberOfPositions, "The position " << position
                  << " is not a valid input. There are only " << numberOfPositions << " possible positions.");
     GISMO_ASSERT(rangeCheck(bounds, 1, numberOfPositions), "The bounds are not a valid input. They have to be out of the possible positions, which only are "
@@ -599,6 +600,7 @@ const std::vector<T>& gsParametrization<T>::LocalParametrization::getLambdas() c
 template<class T>
 void gsParametrization<T>::LocalParametrization::calculateLambdas(const size_t N, VectorType& points)
 {
+    m_lambdas.reserve(N);
     for(size_t j=1; j <= N; j++)
     {
         m_lambdas.push_back(0); //Lambda(m_vertexIndex, j, 0)

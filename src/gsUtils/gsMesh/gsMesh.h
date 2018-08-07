@@ -121,7 +121,7 @@ public:
 
     void addEdge(VertexHandle v0, VertexHandle v1);
 
-    void addEdge(int const & vind0, int const & vind1);
+    void addEdge(int const vind0, int const vind1);
 
     void addEdge(gsVector<T> const & u0,
                  gsVector<T> const & u1 );
@@ -136,9 +136,9 @@ public:
 
     FaceHandle addFace(std::vector<int> const & vert);
 
-    FaceHandle addFace(const int & v0, const int & v1, const int & v2);
+    FaceHandle addFace(const int v0, const int v1, const int v2);
 
-    FaceHandle addFace(const int & v0, const int & v1, const int & v2, const int & v3);
+    FaceHandle addFace(const int v0, const int v1, const int v2, const int v3);
 
     /// Add to the mesh a list of vertices connected with edges
     /// One edges are added between two successive vertices in the input.

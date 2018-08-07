@@ -147,11 +147,11 @@ void gsMesh<T>::addEdge(VertexHandle v0, VertexHandle v1)
 
 
 template<class T>
-void gsMesh<T>::addEdge(int const & vind0, int const & vind1)
+void gsMesh<T>::addEdge(int const vind0, int const vind1)
 {
-    GISMO_ASSERT( vind0 < numVertices(), "Invalid vertex index "
+    GISMO_ASSERT( (size_t)vind0 < numVertices(), "Invalid vertex index "
                   << vind0 << "(numVertices="<< numVertices() <<").");
-    GISMO_ASSERT( vind1 < numVertices(), "Invalid vertex index "
+    GISMO_ASSERT( (size_t)vind1 < numVertices(), "Invalid vertex index "
                   << vind1 << "(numVertices="<< numVertices() <<").");
 
     addEdge(vertex[vind0], vertex[vind1]);
@@ -214,7 +214,7 @@ typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(std::vector<int> const & vert)
 
 
 template<class T>
-typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(const int & v0, const int & v1, const int & v2)
+typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(const int v0, const int v1, const int v2)
 {
     FaceHandle f = this->makeFace( vertex[v0],vertex[v1],vertex[v2] );
     f->setId(face.size());
@@ -224,7 +224,7 @@ typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(const int & v0, const int & v1
 
 
 template<class T>
-typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(const int & v0, const int & v1, const int & v2, const int & v3)
+typename gsMesh<T>::FaceHandle gsMesh<T>::addFace(const int v0, const int v1, const int v2, const int v3)
 {
     FaceHandle f = this->makeFace( vertex[v0],vertex[v1],vertex[v2],vertex[v3] );
     f->setId(face.size());

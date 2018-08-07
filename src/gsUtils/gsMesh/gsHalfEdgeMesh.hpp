@@ -245,22 +245,6 @@ bool gsHalfEdgeMesh<T>::isBoundaryVertex(const size_t internVertexIndex) const
         return m_boundary.isVertexContained(internVertexIndex);
 }
 
-/*template<class T>
-size_t gsHalfEdgeMesh<T>::getInternVertexIndex(const gsMesh<T>::gsVertexHandle &vertex) const
-{
-    // if vertex->getId() is same as place in mesh.vertex - what it is after calling cleanMesh, then the internal vertex index is the same like the getId,
-    // therefore we can reduce from O(n) to O(1)
-    return vertex->getId();
-//    //size_t internVertexIndex = 0;
-//    for (size_t i = 0; i < this->vertex.size(); i++)
-//    {
-//        if (*(this->vertex[i]) == *vertex)
-//            return i;//internVertexIndex;
-//        //internVertexIndex++;
-//    }
-//    return 0;
-}*/
-
 template<class T>
 const typename gsHalfEdgeMesh<T>::Halfedge
 gsHalfEdgeMesh<T>::getInternHalfedge(const typename gsMesh<T>::gsFaceHandle &triangle, size_t numberOfHalfedge) const
