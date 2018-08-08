@@ -7,7 +7,7 @@ branches:
 version: "G+Smo-stable.{build}"
 
 # Operating system (build VM template)
-#os: 
+#os:
 #  - Windows Server 2012 R2
 #  - Default Azure
 #  - SharePoint 2013
@@ -30,7 +30,7 @@ init:
 #  - cmd: set
 #  - cmd: msbuild /version
 #  - cmd: wmic os get osarchitecture
-  
+
 # clone directory (default)
 #clone_folder: C:\projects\gismo
 
@@ -115,7 +115,7 @@ for:
 
     - BUILD: mingw
       envpath: C:\mingw64\bin
-      configuration: Release 
+      configuration: Release
       generator: "MinGW Makefiles"
       #MSYS Makefiles
 
@@ -132,7 +132,7 @@ for:
       generator: "Visual Studio 10"
 
 #  - BUILD: msvc2008
-#  Note:  error C2039: 'data' : is not a member of 'std::vector<_Ty>' 
+#  Note:  error C2039: 'data' : is not a member of 'std::vector<_Ty>'
 #  ( &std::vector<_Ty>::front() would work)
 #    configuration: Release
 #    generator: "Visual Studio 9 2008"
@@ -143,7 +143,7 @@ for:
 #  - Release
 
 # build platform, i.e. Win32 (instead of x86), x64, Any CPU. This setting is optional.
-#platform: 
+#platform:
 #  - Win32
 #  - x64
 
