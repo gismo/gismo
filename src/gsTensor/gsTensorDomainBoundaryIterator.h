@@ -150,18 +150,6 @@ public:
         return curr_index; 
     }
 
-    // get the basis function indices which are active in the current element
-    void getActiveFunctions(gsMatrix<unsigned>& act)
-    {
-        m_basis->active_into(center, act);
-    }
-
-    const gsMatrix<unsigned>& computeActiveFunctions()
-    {
-        m_basis->active_into(center, this->activeFuncs);
-        return this->activeFuncs;
-    }
-
     const gsVector<T> & lowerCorner() const
     { return lower; }
 
