@@ -15,6 +15,7 @@
 
 #include <gsUtils/gsPointGrid.h>
 #include <gsAssembler/gsQuadrature.h>
+#include <gsAssembler/gsExprHelper.h>
 
 namespace gismo
 {
@@ -115,7 +116,7 @@ private:
     typename gsExprHelper<T>::Ptr m_exprdata;
 
     gsOptionList m_options;
-    
+
     expr::gsFeElement<T> m_element;
 
     gsSparseMatrix<T> m_matrix;
@@ -125,7 +126,7 @@ private:
     std::vector<expr::gsFeSpace<T>*> m_vcol;
 
     typedef typename gsExprHelper<T>::nullExpr    nullExpr;
-    
+
 public:
 
     typedef typename gsSparseMatrix<T>::BlockView matBlockView;
@@ -159,7 +160,7 @@ public:
 
     // The copy constructor replicates the same environemnt but does
     // not copy any matrix data
-        
+
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
 
@@ -197,8 +198,14 @@ public:
     /// @brief Returns the left-hand global matrix
     const gsSparseMatrix<T> & matrix() const { return m_matrix; }
 
+    /// @brief Writes the resulting matrix in \a out. The internal matrix is moved.
+    void matrixTo(gsSparseMatrix<T> & out) const { out = give(m_matrix); }
+
     /// @brief Returns the right-hand side vector(s)
     const gsMatrix<T> & rhs() const { return m_rhs; }
+
+    /// @brief Writes the resulting vector in \a out. The internal data is moved.
+    void rhsTo(gsSparseMatrix<T> & out) const { out = give(m_rhs); }
 
     /// \brief Sets the domain of integration.
     /// \warning Must be called before any computation is requested
@@ -261,7 +268,7 @@ public:
 
     /// Return the trial space of a pre-existing test space \a v
     space trialSpace(variable v) const { return trialSpace(v.id()); }
-    
+
     /// Return the variable (previously created by getTrialSpace) with the given \a id
     space testSpace(const index_t id)
     {
@@ -492,21 +499,21 @@ private:
         gsSparseMatrix<T> & m_matrix;
         gsMatrix<T>       & m_rhs;
         const gsVector<T> & m_quWeights;
-        index_t       m_patchInd;        
+        index_t       m_patchInd;
         gsMatrix<T>         localMat;
 
         _eval(gsSparseMatrix<T> & _matrix,
               gsMatrix<T>       & _rhs,
               const gsVector<>  & _quWeights)
-        : m_matrix(_matrix), m_rhs(_rhs), 
+        : m_matrix(_matrix), m_rhs(_rhs),
           m_quWeights(_quWeights), m_patchInd(0)
         { }
-        
+
         void setPatch(const index_t p) { m_patchInd=p; }
 
         template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
         {
-            // ------- Compute  ------- 
+            // ------- Compute  -------
             const T * w = m_quWeights.data();
             localMat.noalias() = (*w) * ee.eval(0);
             for (index_t k = 1; k != m_quWeights.rows(); ++k)
@@ -534,7 +541,7 @@ private:
             gsMatrix<unsigned> & colInd0 = const_cast<gsMatrix<unsigned>&>(u.data().actives);
             gsMatrix<unsigned> & rowInd0 = const_cast<gsMatrix<unsigned>&>(v.data().actives);
             const gsMatrix<T>  & fixedDofs = static_cast<const expr::gsFeSpace<T>&>(u).fixedPart();
-            
+
             gsMatrix<unsigned> rowInd, colInd;
             rowMap.localToGlobal(rowInd0, patchInd, rowInd);
             if (isMatrix)
@@ -550,11 +557,11 @@ private:
             {
                 const index_t rls = r * rowInd.rows();     //local stride
                 const index_t rgs = r * rowMap.freeSize(); //global stride
-                
+
                 for (index_t i = 0; i != rowInd.rows(); ++i)
                 {
                     const index_t ii = rgs + rowInd.at(i); // N_i
-                    
+
                     if ( rowMap.is_free_index(rowInd.at(i)) )
                     {
                         for (index_t c = 0; c != cd; ++c)
@@ -563,13 +570,13 @@ private:
                             {
                                 const index_t cls = c * colInd.rows();     //local stride
                                 const index_t cgs = c * colMap.freeSize(); //global stride
-                                
+
                                 for (index_t j = 0; j != colInd.rows(); ++j)
                                 {
                                     if ( 0 == localMat(rls+i,cls+j) ) continue;
-                                    
+
                                     const index_t jj = cgs + colInd.at(j); // N_j
-                                    
+
                                     if ( colMap.is_free_index(colInd.at(j)) )
                                     {
                                         // If matrix is symmetric, we could
@@ -592,7 +599,7 @@ private:
                     }
                 }
             }
-        }//push 
+        }//push
 
     };
 //*/
@@ -753,7 +760,7 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
                                          m_vrow[i-1]->dim()*m_vrow[i-1]->mapper().freeSize() );
     }
 }
-    
+
 template<class T>
 #if(__cplusplus >= 201103L) // c++11
 template<class... expr>
@@ -778,7 +785,7 @@ void gsExprAssembler<T>::assemble(expr... args)
     gsVector<T> quWeights; // quadrature weights
 
     _eval ee(m_matrix, m_rhs, quWeights);
-    
+
     for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
         ee.setPatch(patchInd);
@@ -955,7 +962,7 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
     if (right) exprRhs.setFlag();
     //m_exprdata->parse(exprLhs,exprRhs);
     //m_exprdata->parse(exprRhs);
-    
+
     // Local matrix
     gsMatrix<T> localMat, localRhs;
     gsVector<T> quWeights;// quadrature weights
@@ -1137,7 +1144,7 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl3(const expr::gsFeSpace<T> & u
           iit != u.bc().end()  ; ++iit )
     {
         const boundary_condition<T> * it = &iit->get();
-        
+
         GISMO_ASSERT(it->function()->targetDim() == u.dim(),
                      "Given Dirichlet boundary function does not match problem dimension."
                      <<it->function()->targetDim()<<" != "<<u.dim()<<"\n");
