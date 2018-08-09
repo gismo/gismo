@@ -175,8 +175,9 @@ gsSparseMatrix<T> gsPatchPreconditionersCreator<T>::massMatrix(
     )
 {
     std::vector< gsSparseMatrix<T> > local_mass = assembleTensorMass(basis, bc, opt);
-    gsSparseMatrix<T> result = local_mass[0];
-    for (size_t i=1; i<local_mass.size(); ++i)
+    const index_t d = local_mass.size();
+    gsSparseMatrix<T> result = local_mass[d-1];
+    for (index_t i=d-2; i>-1; --i)
         result = result.kron(local_mass[i]);
     return result;
 }
@@ -230,14 +231,14 @@ gsSparseMatrix<T> gsPatchPreconditionersCreator<T>::stiffnessMatrix(
     std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(basis, bc, opt);
     std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
 
-    gsSparseMatrix<T> K = give(local_stiff[0]);
-    gsSparseMatrix<T> M = give(local_mass [0]);
+    gsSparseMatrix<T> K = give(local_stiff[d-1]);
+    gsSparseMatrix<T> M = give(local_mass [d-1]);
 
-    for (index_t i=1; i<d; ++i)
+    for (index_t i=d-2; i>-1; --i)
     {
         K  = K.kron(local_mass[i]);
         K += M.kron(local_stiff[i]);
-        if ( i < d-1 || a != 0 )
+        if ( i != 0 || a != 0 )
             M = M.kron(local_mass[i]);
     }
     if (a==1)
