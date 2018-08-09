@@ -58,7 +58,12 @@ function(gismo_fetch_directory)
     message(FATAL_ERROR "Build step for ${GF_NAME} failed: ${result}")
   endif()
 
-  message(STATUS "Enabling remote module ${GF_NAME} - downloaded")
+  if(NOT EXISTS "${gismo_SOURCE_DIR}/extensions/${GF_NAME}/CMakeLists.txt")
+    message(FATAL_ERROR "Enabling remote module ${GF_NAME} - not found")
+  else()
+    message(STATUS "Enabling remote module ${GF_NAME} - downloaded")
+  endif()
+
 endfunction()
 
 
@@ -81,10 +86,6 @@ function(gismo_fetch_module)
   else()
     gismo_fetch_directory(${ARGN}
       URL https://github.com/gismo/${ARGV0}/archive/master.zip)
-  endif()
-
-  if(NOT EXISTS "${gismo_SOURCE_DIR}/extensions/${ARGV0}/CMakeLists.txt")
-    message(ERROR "Enabling remote module ${ARGV0} - not found")
   endif()
 
 endfunction()
