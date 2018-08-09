@@ -74,7 +74,7 @@ gsSparseMatrix<T> assembleMass(const gsBasis<T>& basis)
     mass.initMatrix();
     mass.assemble( u * u.tr() );
     gsSparseMatrix<T> result;
-    mass.matrixTo(result);
+    mass.matrix_into(result);
     return result;
 }
 
@@ -88,7 +88,7 @@ gsSparseMatrix<T> assembleStiffness(const gsBasis<T>& basis)
     stiff.initMatrix();
     stiff.assemble( grad(u) * grad(u).tr() );
     gsSparseMatrix<T> result;
-    stiff.matrixTo(result);
+    stiff.matrix_into(result);
     return result;
 }
 

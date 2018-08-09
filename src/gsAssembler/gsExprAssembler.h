@@ -199,13 +199,13 @@ public:
     const gsSparseMatrix<T> & matrix() const { return m_matrix; }
 
     /// @brief Writes the resulting matrix in \a out. The internal matrix is moved.
-    void matrixTo(gsSparseMatrix<T> & out) const { out = give(m_matrix); }
+    void matrix_into(gsSparseMatrix<T> & out) const { out = give(m_matrix); }
 
     /// @brief Returns the right-hand side vector(s)
     const gsMatrix<T> & rhs() const { return m_rhs; }
 
     /// @brief Writes the resulting vector in \a out. The internal data is moved.
-    void rhsTo(gsSparseMatrix<T> & out) const { out = give(m_rhs); }
+    void rhs_into(gsSparseMatrix<T> & out) const { out = give(m_rhs); }
 
     /// \brief Sets the domain of integration.
     /// \warning Must be called before any computation is requested
