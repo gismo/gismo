@@ -1046,6 +1046,7 @@ void gsHTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
 {
+    GISMO_UNUSED(numKnots);
     GISMO_ASSERT(numKnots == 1, "Only implemented for numKnots = 1");
 
     GISMO_ASSERT( m_tree.getMaxInsLevel() < static_cast<unsigned>(m_bases.size()),
@@ -1357,6 +1358,18 @@ void gsHTensorBasis<d,T>::degreeElevate(int const & i, int const dir)
 }
 
 template<unsigned d, class T>
+void gsHTensorBasis<d,T>::degreeReduce(int const & i, int const dir)
+{
+    for (size_t level=0;level<m_bases.size();++level)
+        m_bases[level]->degreeReduce(i,dir);
+
+    for(unsigned c=0; c<d; ++c)
+        m_deg[c]=m_bases[0]->degree(c);
+
+    this->update_structure();
+}
+
+template<unsigned d, class T>
 void gsHTensorBasis<d,T>::degreeIncrease(int const & i, int const dir)
 {
     for (size_t level=0;level<m_bases.size();++level)
@@ -1368,6 +1381,17 @@ void gsHTensorBasis<d,T>::degreeIncrease(int const & i, int const dir)
     this->update_structure();
 }
 
+template<unsigned d, class T>
+void gsHTensorBasis<d,T>::degreeDecrease(int const & i, int const dir)
+{
+    for (size_t level=0;level<m_bases.size();++level)
+        m_bases[level]->degreeDecrease(i,dir);
+
+    for(unsigned c=0; c<d; ++c)
+        m_deg[c]=m_bases[0]->degree(c);
+
+    this->update_structure();
+}
 
 namespace internal
 {

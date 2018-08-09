@@ -38,7 +38,7 @@ namespace gismo
 /** @brief The assembler class provides generic routines for volume
   and boundary integrals that are used for for matrix and right-hand
   side generation
-  
+
   \ingroup Assembler
 */
 template <class T>
@@ -49,7 +49,7 @@ private:
 
     typedef typename gsBoundaryConditions<T>::bcContainer bcContainer;
 
-protected: // *** Input data members *** 
+protected: // *** Input data members ***
 
     /// The PDE: contains multi-patch domain, boundary conditions and
     /// coeffcient functions
@@ -60,12 +60,12 @@ protected: // *** Input data members ***
     /// entry of the vector corresponds to one or more unknown (in case
     /// of a system of PDEs)
     std::vector< gsMultiBasis<T> > m_bases;
-    
+
     /// Options
     gsOptionList m_options;
 
-protected: // *** Output data members *** 
-    
+protected: // *** Output data members ***
+
     /// Global sparse linear system
     gsSparseSystem<T> m_system;
 
@@ -84,7 +84,7 @@ public:
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
-    
+
     /// @brief Create an empty Assembler of the derived type and return a
     /// pointer to it. Call the initialize functions to set the members
     virtual gsAssembler * create() const;
@@ -175,7 +175,7 @@ public:
         const int deg = m_bases[0][k].maxDegree();
         return (deg + m_bases[0][k].dim()) * (deg + 1) * T(2.0);
     }
-    
+
     /// @brief Provides an estimation of the number of non-zero matrix
     /// entries per column. This value can be used for sparse matrix
     /// memory allocation
@@ -248,7 +248,7 @@ public: /* Element visitors */
     void pushInterface()
     {
         InterfaceVisitor visitor(*m_pde_ptr);
-            
+
         const gsMultiPatch<T> & mp = m_pde_ptr->domain();
         for ( typename gsMultiPatch<T>::const_iiterator
                   it = mp.iBegin(); it != mp.iEnd(); ++it )
@@ -257,7 +257,7 @@ public: /* Element visitors */
                 ( m_bases[0][it->first() .patch].numElements(it->first() .side() ) <
                   m_bases[0][it->second().patch].numElements(it->second().side() ) ?
                   it->getInverse() : *it );
-            
+
             this->apply(visitor, iFace);
         }
     }
@@ -320,7 +320,7 @@ protected:  /* Helpers for Dirichlet degrees of freedom computation */
     void computeDirichletDofsIntpl(const gsDofMapper     & mapper,
                                    const gsMultiBasis<T> & mbasis,
                                    const int unk_ = 0);
-    
+
     /// @brief calculates the values of the eliminated dofs based on L2 Projection.
     /// \param[in] mapper the dofMapper for the considered unknown
     /// \param[in] mbasis the multipabasis for the considered unknown
@@ -363,7 +363,7 @@ public:  /* Solution reconstruction */
     virtual void updateSolution(const gsMatrix<T>& solVector,
                                 gsMultiPatch<T>& result, T theta = T(1)) const;
 
-public: // *** Accessors *** 
+public: // *** Accessors ***
 
     /// @brief Return the Pde
     const gsPde<T> & pde() const { return *m_pde_ptr; }
@@ -388,11 +388,11 @@ public: // *** Accessors ***
     /// ( multiple right hand sides possible )
     const gsMatrix<T> & rhs() const { return m_system.rhs(); }
     gsMatrix<T> & rhs() { return m_system.rhs(); }
-    
+
     /// @brief Returns the left-hand global matrix
     const gsSparseSystem<T> & system() const { return m_system; }
     gsSparseSystem<T> & system() { return m_system; }
-    
+
     /// @brief Swaps the actual sparse system with the given one
     void setSparseSystem(gsSparseSystem<T> & sys)
     {
@@ -436,12 +436,12 @@ protected:
 
 template <class T>
 template<class ElementVisitor>
-void gsAssembler<T>::apply(ElementVisitor & visitor, 
+void gsAssembler<T>::apply(ElementVisitor & visitor,
                            int patchIndex,
                            boxSide side)
 {
     //gsDebug<< "Apply to patch "<< patchIndex <<"("<< side <<")\n";
-    
+
     const gsBasisRefs<T> bases(m_bases, patchIndex);
 
 #pragma omp parallel
@@ -460,15 +460,15 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
 #else
     &visitor_ = visitor;
 #endif
-    
+
     // Initialize reference quadrature rule and visitor data
     visitor_.initialize(bases, patchIndex, m_options, QuRule, evFlags);
-    
+
     //fixme: gsMapData<T> mapData;
     // Initialize geometry evaluator
     typename gsGeometry<T>::Evaluator geoEval(
         m_pde_ptr->patches()[patchIndex].evaluator(evFlags));
-    
+
     // Initialize domain element iterator -- using unknown 0
     typename gsBasis<T>::domainIter domIt = bases[0].makeDomainIterator(side);
 
@@ -484,10 +484,10 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
 
         // Perform required evaluations on the quadrature nodes
         visitor_.evaluate(bases, /* *domIt,*/ *geoEval, quNodes);
-        
+
         // Assemble on element
         visitor_.assemble(*domIt, *geoEval, quWeights);
-        
+
         // Push to global matrix and right-hand side vector
 #pragma omp critical(localToGlobal)
         visitor_.localToGlobal(patchIndex, m_ddof, m_system); // omp_locks inside
@@ -502,8 +502,7 @@ template<class InterfaceVisitor>
 void gsAssembler<T>::apply(InterfaceVisitor & visitor,
                            const boundaryInterface & bi)
 {
-    //gsDebug<<"Apply DG on "<< bi <<".\n";
-    
+    //gsDebug<<"Apply DG on "<< bi <<".\n";   
     //const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
     gsRemapInterface<T> interfaceMap(m_pde_ptr->patches(), m_bases[0], bi);
     interfaceMap.constructReparam();
@@ -519,28 +518,30 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
     gsVector<T> quWeights;         // Mapped weights
     // Evaluation flags for the Geometry map
     unsigned evFlags(0);
-    
+
     const int bSize1      = B1.numElements( bi.first() .side() );
     const int bSize2      = B2.numElements( bi.second().side() );
     //const int ratio = bSize1 / bSize2;
     GISMO_ASSERT(bSize1 >= bSize2 && bSize1%bSize2==0,
                  "DG assumes nested interfaces. Got bSize1="<<
                  bSize1<<", bSize2="<<bSize2<<"." );
-    
+
     // Initialize
     visitor.initialize(B1, B2, bi, m_options, QuRule, evFlags);
-    
+
     // Initialize geometry evaluators
     typename gsGeometry<T>::Evaluator geoEval1(
         m_pde_ptr->patches()[patch1].evaluator(evFlags));
     typename gsGeometry<T>::Evaluator geoEval2(
         m_pde_ptr->patches()[patch2].evaluator(evFlags));
-    
+
     // Initialize domain element iterators
     typename gsBasis<T>::domainIter domIt1 = B1.makeDomainIterator( bi.first() .side() );
     typename gsBasis<T>::domainIter domIt2 = B2.makeDomainIterator( bi.second().side() );
 
+
     typename gsBasis<T>::domainIter domIt = interfaceMap.makeDomainIterator();
+    //typename gsBasis<T>::domainIter domIt = B2.makeDomainIterator(B2, bi);
 
     int count = 0;
     // iterate over all boundary grid cells on the "left"
@@ -574,19 +575,24 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
         count++;
         // Get the element of the other side in domIter2
         //domIter1->adjacent( bi.orient, *domIter2 );
-        
+
         // Compute the quadrature rule on both sides
         QuRule.mapTo( domIt1->lowerCorner(), domIt1->upperCorner(), quNodes1, quWeights);
         interfaceMap.eval_into(quNodes1,quNodes2);
-        
+
         // Perform required evaluations on the quadrature nodes
         visitor.evaluate(B1, *geoEval1, B2, *geoEval2, quNodes1, quNodes2);
-        
+
         // Assemble on element
         visitor.assemble(*domIt1,*domIt2, *geoEval1, *geoEval2, quWeights);
-        
+
         // Push to global patch matrix (m_rhs is filled in place)
         visitor.localToGlobal(patch1, patch2, m_ddof, m_system);
+
+        if ( count % ratio == 0 ) // next master element ?
+        {
+            domIt2->next();
+        }
     }
      */
 }

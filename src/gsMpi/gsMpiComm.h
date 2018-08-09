@@ -154,7 +154,7 @@ public:
      * @param[in] tag Specifies the message ID
      */
     template<typename T>
-    static int send (T* in, int len, int dest, int tag = 0)
+    static int send (T*, int, int, int = 0)
     {
         return 0;
     }
@@ -185,7 +185,7 @@ public:
      * @param[in] tag Specifies the message ID
      */
     template<typename T>
-    static int recv (T* out, int len, int source, int tag = 0)
+    static int recv (T*, int, int, int = 0)
     {
         return 0;
     }
@@ -227,7 +227,7 @@ public:
      * task.  @param[in] root The root task that gathers the data.
      */
     template<typename T>
-    static int gather (T* in, T* out, int len, int root) // note out must have same size as in
+    static int gather (T* in, T* out, int len, int) // note out must have same size as in
     {
         // copy_n(in, len, out);
         for (int i=0; i<len; i++)

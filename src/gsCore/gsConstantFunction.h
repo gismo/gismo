@@ -100,10 +100,9 @@ public:
 
     GISMO_CLONE_FUNCTION(gsConstantFunction)
 
-    const gsConstantFunction<T> & piece(const index_t k) const
+    const gsConstantFunction<T> & piece(const index_t) const
     {
         // same on all pieces
-        GISMO_UNUSED(k);
         return *this; 
     }
 

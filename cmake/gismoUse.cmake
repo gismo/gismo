@@ -1,8 +1,8 @@
 ######################################################################
 ## CMakeLists.txt ---
-## This file is part of the G+Smo library. 
+## This file is part of the G+Smo library.
 ##
-## Author: Angelos Mantzaflaris 
+## Author: Angelos Mantzaflaris
 ## Copyright (C) 2012 - 2015 RICAM-Linz.
 ######################################################################
 
@@ -26,13 +26,13 @@ macro(add_gismo_pure_executable FILE)
     get_filename_component(FNAME ${FILE} NAME_WE) # name without extension
     add_test(${FNAME} ${CMAKE_BINARY_DIR}/bin/${FNAME} )
     #message(STATUS "exec (pure template): ${FNAME}")
-    add_executable(${FNAME} ${FILE} ${gismo_SOURCES} ${gismo_EXTENSIONS})
+    add_executable(${FNAME} ${FILE} ${gismo_SOURCES} ${gismo_EXTENSIONS} ${gismo_dev_EXTENSIONS})
     target_link_libraries(${FNAME} gismo_static)
     if(UNIX AND NOT APPLE)
     	target_link_libraries(${FNAME} dl)
     endif(UNIX AND NOT APPLE)
     # Allow CMake to follow dependencies on hpp files
-    set_property(TARGET ${FNAME} PROPERTY 
+    set_property(TARGET ${FNAME} PROPERTY
     IMPLICIT_DEPENDS_INCLUDE_TRANSFORM "GISMO_HPP_HEADER(%)=\"%\"")
     SET_TARGET_PROPERTIES(${FNAME} PROPERTIES COMPILE_FLAGS -UGISMO_BUILD_LIB)
 endmacro(add_gismo_pure_executable)
@@ -41,7 +41,7 @@ endmacro(add_gismo_pure_executable)
 macro(add_gismo_shared_executable FILE)
     get_filename_component(FNAME ${FILE} NAME_WE) # name without extension
     add_test(${FNAME} ${CMAKE_BINARY_DIR}/bin/${FNAME} )
-    #message(STATUS "exec (dynamically linked): ${FNAME}") 	
+    #message(STATUS "exec (dynamically linked): ${FNAME}")
     add_executable(${FNAME} ${FILE})
     target_link_libraries(${FNAME} gismo)
     if (GISMO_BUILD_COVERAGE)
@@ -116,3 +116,21 @@ endmacro(aux_cxx_source_directory)
 macro(aux_instance_directory DIR VAR)
 	FILE(GLOB ${ARGV1} ${DIR}/[^.]*_.cpp)
 endmacro(aux_instance_directory)
+
+function(get_repo_info repository revision) #REPO_REVISION
+  if (EXISTS "${CMAKE_SOURCE_DIR}/.svn")
+    set(${repository} "svn" PARENT_SCOPE)
+    #find_program(Subversion_SVN_EXECUTABLE NAMES svn svn.bat)
+    find_package(Subversion)
+    set(${revision} ${Project_WC_REVISION} PARENT_SCOPE)
+    #elseif (EXISTS "${CMAKE_SOURCE_DIR}/.git/svn/refs")
+  elseif (EXISTS "${CMAKE_SOURCE_DIR}/.git")
+    set(${repository} "git" PARENT_SCOPE)
+    find_program(git_executable NAMES git git.exe git.cmd)
+    execute_process(COMMAND ${git_executable} log -1 --pretty=format:%H
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} TIMEOUT 5
+      RESULT_VARIABLE git_res OUTPUT_VARIABLE git_rev)
+    set(${revision} ${git_rev} PARENT_SCOPE)
+  endif()
+  #set( ${repo_exe}
+endfunction()

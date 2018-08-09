@@ -1,9 +1,9 @@
 ######################################################################
 ## CMakeLists.txt ---
 ## This file is part of the G+Smo library.
-## 
-## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012-2015 - RICAM-Linz.
+##
+## Author: Angelos Mantzaflaris
+## Copyright (C) 2012-2018 - RICAM-Linz.
 ######################################################################
 
 project(GismoDoc)
@@ -32,8 +32,8 @@ endif(CMAKE_COMPILER_IS_GNUCXX)
 # Set some Doxygen flags
 set(GISMO_DOXY_PROJECT_NAME             "G+Smo")
 set(GISMO_DOXY_OUTPUT_DIRECTORY_SUFFIX  "")
-set(GISMO_DOXY_INPUT                    "\"${gismo_SOURCE_DIR}/src\" \"${gismo_SOURCE_DIR}/doc\" \"${gismo_SOURCE_DIR}/plugins\" \"${gismo_SOURCE_DIR}/extensions\" \"${gismo_BINARY_DIR}/gsCore\"") #\"${gismo_SOURCE_DIR}/examples\" 
-# Uncomment the line below to have doxygen process only 
+set(GISMO_DOXY_INPUT                    "\"${gismo_SOURCE_DIR}/src\" \"${gismo_SOURCE_DIR}/doc\" \"${gismo_SOURCE_DIR}/plugins\" \"${gismo_SOURCE_DIR}/extensions\" \"${gismo_BINARY_DIR}/gsCore\"") #\"${gismo_SOURCE_DIR}/examples\"
+# Uncomment the line below to have doxygen process only
 # what is inside the doc folder when typing 'make doc'
 #set(GISMO_DOXY_INPUT                    " \"${gismo_SOURCE_DIR}/doc\" ")
 set(IMAGE_PATH        "\"${gismo_SOURCE_DIR}/doc/figs\"")
@@ -102,6 +102,7 @@ add_custom_target(
   doc-gismo-prerequisites
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/html/
   #COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/navtree_hacks.js           ${CMAKE_CURRENT_BINARY_DIR}/html/
+  DEPENDS ${snippets_out}
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
@@ -112,7 +113,7 @@ endif()
 add_custom_target(doc #ALL
   COMMAND doxygen
   WORKING_DIRECTORY ${gismo_BINARY_DIR}/doc
-  COMMENT "Generating doc: ${gismo_BINARY_DIR}/doc/html/index.html" VERBATIM	
+  COMMENT "Generating doc: ${gismo_BINARY_DIR}/doc/html/index.html" VERBATIM
 )
 
 add_custom_target(doctar #ALL
@@ -121,7 +122,7 @@ add_custom_target(doctar #ALL
   COMMAND ${CMAKE_COMMAND} -E tar cvfz gismo-doc/gismo-doc.tgz gismo-doc
   COMMAND ${CMAKE_COMMAND} -E rename gismo-doc html
   WORKING_DIRECTORY ${gismo_BINARY_DIR}/doc
-  COMMENT "Generating API documentation with Doxygen plus tar file" VERBATIM 
+  COMMENT "Generating API documentation with Doxygen plus tar file" VERBATIM
   DEPENDS doc
 )
 

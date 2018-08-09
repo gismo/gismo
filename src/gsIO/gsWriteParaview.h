@@ -41,7 +41,7 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
 
 /// \brief Export a mesh to paraview file
 ///
-/// \param sl a gsMesh obect
+/// \param sl a gsMesh object
 /// \param fn filename where paraview file is written
 /// \param pvd if true, a .pvd file is generated (for compatibility)
 template <class T>
@@ -198,7 +198,7 @@ void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
 
 /// \brief Depicting edge graph of each volume of one gsSolid with a segmenting loop
 ///
-/// \param sl a gsMesh obect
+/// \param sl a gsMesh object
 /// \param fn filename where paraview file is written
 /// \param numPoints_for_eachCurve number of points used for sampling each curve
 /// \param vol_Num ID of face(s), that should be written

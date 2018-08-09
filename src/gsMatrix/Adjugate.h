@@ -51,7 +51,7 @@ struct compute_adjugate
 template<typename MatrixType, typename ResultType>
 struct compute_adjugate<MatrixType, ResultType, 1>
 {
-    static inline void run(const MatrixType& matrix, ResultType& result)
+    static inline void run(const MatrixType& , ResultType& result)
     {
         result.coeffRef(0,0) = typename ResultType::Scalar(1);
     }

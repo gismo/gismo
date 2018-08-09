@@ -43,7 +43,7 @@ public:
     gsPoissonPde(const gsMultiPatch<T>         &domain,
                  const gsBoundaryConditions<T> &bc,
                  const gsPiecewiseFunction<T>  &rhs,
-                 const gsFunction<T>           *sol = NULL)
+                 const gsFunction<T>           * = NULL)
     : gsPde<T>(domain,bc), m_rhs(rhs)
     {
         m_unknownDim.setOnes(1);
@@ -53,7 +53,7 @@ public:
     GISMO_DEPRECATED
     gsPoissonPde(const gsFunction<T>  &rhs,
                  int                   domdim,
-                 const gsFunction<T>  &sol)
+                 const gsFunction<T>  &)
     : m_compat_dim(domdim), m_rhs(rhs)
     {
         m_unknownDim.setOnes(1);

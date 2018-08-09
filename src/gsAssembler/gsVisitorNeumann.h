@@ -27,7 +27,7 @@ class gsVisitorNeumann
 {
 public:
 
-    gsVisitorNeumann(const gsPde<T> & pde, const boundary_condition<T> & s) 
+    gsVisitorNeumann(const gsPde<T> & , const boundary_condition<T> & s)
     : neudata_ptr( s.function().get() ), side(s.side())
     { }
 
@@ -61,7 +61,7 @@ public:
     }
 
     void initialize(const gsBasis<T> & basis,
-                    const index_t patchIndex,
+                    const index_t ,
                     const gsOptionList & options, 
                     gsQuadRule<T>    & rule,
                     unsigned         & evFlags )
@@ -97,7 +97,7 @@ public:
         localRhs.setZero(numActive, neudata_ptr->targetDim() );
     }
 
-    inline void assemble(gsDomainIterator<T>    & element, 
+    inline void assemble(gsDomainIterator<T>    & ,
                          gsGeometryEvaluator<T> & geoEval,
                          gsVector<T> const      & quWeights)
     {
@@ -114,7 +114,7 @@ public:
     }
     
     inline void localToGlobal(const int patchIndex,
-                              const std::vector<gsMatrix<T> >   & eliminatedDofs,
+                              const std::vector<gsMatrix<T> >   & ,
                               gsSparseSystem<T>     & system)
     {
         // Map patch-local DoFs to global DoFs

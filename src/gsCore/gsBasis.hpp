@@ -26,7 +26,7 @@ gsBasis<T>::gsBasis()
 { }
 
 template<class T>
-gsBasis<T>::gsBasis(const gsBasis& other)
+gsBasis<T>::gsBasis(const gsBasis& other) : Base(other)
 { }
         
 template<class T>
@@ -264,11 +264,11 @@ gsGeometry<T> * gsBasis<T>::projectL2(gsFunction<T> const & func) const
 */
 
 template<class T> inline
-void gsBasis<T>::anchors_into(gsMatrix<T>& result) const
+void gsBasis<T>::anchors_into(gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T> inline
-void gsBasis<T>::anchor_into(unsigned i, gsMatrix<T>& result) const
+void gsBasis<T>::anchor_into(unsigned, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 
@@ -281,43 +281,43 @@ void gsBasis<T>::connectivityAtAnchors(gsMesh<T> & mesh) const
 }
 
 template<class T>
-void gsBasis<T>::connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const
+void gsBasis<T>::connectivity(const gsMatrix<T> &, gsMesh<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
+void gsBasis<T>::active_into(const gsMatrix<T> &, gsMatrix<unsigned>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template <class T>
-bool gsBasis<T>::isActive(const unsigned i, const gsVector<T> & u) const 
+bool gsBasis<T>::isActive(const unsigned, const gsVector<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::numActive_into(const gsMatrix<T> & u, gsVector<unsigned>& result) const
+void gsBasis<T>::numActive_into(const gsMatrix<T> &, gsVector<unsigned>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::activeCoefs_into(const gsVector<T> & u, const gsMatrix<T> & coefs, 
-                                  gsMatrix<T>& result) const
-{ GISMO_NO_IMPLEMENTATION }
-
-template<class T>
-gsMatrix<unsigned>
-gsBasis<T>::allBoundary( ) const
+void gsBasis<T>::activeCoefs_into(const gsVector<T> &, const gsMatrix<T> &,
+                                  gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
 gsMatrix<unsigned>
-gsBasis<T>::boundaryOffset(boxSide const & s,unsigned offset) const
+gsBasis<T>::allBoundary() const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
+gsMatrix<unsigned>
+gsBasis<T>::boundaryOffset(boxSide const &,unsigned) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
 unsigned
-gsBasis<T>::functionAtCorner(boxCorner const & c) const
+gsBasis<T>::functionAtCorner(boxCorner const &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsBasis<T> * gsBasis<T>::boundaryBasis_impl(boxSide const & s) const
+gsBasis<T> * gsBasis<T>::boundaryBasis_impl(boxSide const &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -325,7 +325,7 @@ gsMatrix<T> gsBasis<T>::support() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsMatrix<T> gsBasis<T>::support(const unsigned & i) const
+gsMatrix<T> gsBasis<T>::support(const unsigned &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -333,31 +333,31 @@ gsMatrix<T> gsBasis<T>::supportInterval(unsigned dir) const
 { return support().row(dir); }
 
 template<class T>
-void gsBasis<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
-    { GISMO_NO_IMPLEMENTATION }
-
-template<class T>
-void gsBasis<T>::evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const
+void gsBasis<T>::eval_into(const gsMatrix<T> &, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const
+void gsBasis<T>::evalSingle_into(unsigned, const gsMatrix<T> &, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::derivSingle_into(unsigned i, 
-                                  const gsMatrix<T> & u, 
-                                  gsMatrix<T>& result ) const
+void gsBasis<T>::deriv_into(const gsMatrix<T> &, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const
+void gsBasis<T>::derivSingle_into(unsigned,
+                                  const gsMatrix<T> &,
+                                  gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::deriv2Single_into(unsigned i, 
-                                   const gsMatrix<T> & u, 
-                                   gsMatrix<T>& result ) const
+void gsBasis<T>::deriv2_into(const gsMatrix<T> &, gsMatrix<T>&) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
+void gsBasis<T>::deriv2Single_into(unsigned,
+                                   const gsMatrix<T> &,
+                                   gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -387,14 +387,14 @@ void gsBasis<T>::evalAllDers_into(const gsMatrix<T> & u, int n,
 }
 
 template<class T>
-void gsBasis<T>::evalAllDersSingle_into(unsigned i, const gsMatrix<T> & u, 
-                                        int n, gsMatrix<T>& result) const
+void gsBasis<T>::evalAllDersSingle_into(unsigned, const gsMatrix<T> &,
+                                        int, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::evalDerSingle_into(unsigned i, const 
-                                    gsMatrix<T> & u, int n, 
-                                    gsMatrix<T>& result) const
+void gsBasis<T>::evalDerSingle_into(unsigned, const
+                                    gsMatrix<T> &, int,
+                                    gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 
@@ -404,7 +404,7 @@ typename gsBasis<T>::uPtr gsBasis<T>::create() const
 
 
 template<class T>
-typename gsBasis<T>::uPtr gsBasis<T>::tensorize(const gsBasis & other) const
+typename gsBasis<T>::uPtr gsBasis<T>::tensorize(const gsBasis &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -414,7 +414,7 @@ gsBasis<T>::makeDomainIterator() const
 
 template<class T>
 typename gsBasis<T>::domainIter
-gsBasis<T>::makeDomainIterator(const boxSide & s) const
+gsBasis<T>::makeDomainIterator(const boxSide &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -422,15 +422,15 @@ int gsBasis<T>::numElements() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-int gsBasis<T>::numElements(boxSide const & s) const
+int gsBasis<T>::numElements(boxSide const &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-int gsBasis<T>::elementIndex(const gsVector<T> & u) const
+int gsBasis<T>::elementIndex(const gsVector<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-const gsBasis<T>& gsBasis<T>::component(unsigned i) const
+const gsBasis<T>& gsBasis<T>::component(unsigned) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -438,53 +438,53 @@ gsBasis<T>& gsBasis<T>::component(unsigned i)
 { return const_cast<gsBasis<T>&>(const_cast<const gsBasis<T>*>(this)->component(i));}
 
 template<class T>
-void gsBasis<T>::refine(gsMatrix<T> const & boxes, int refExt)
+void gsBasis<T>::refine(gsMatrix<T> const &, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::refineElements(std::vector<unsigned> const & boxes)
+void gsBasis<T>::refineElements(std::vector<unsigned> const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes)
+void gsBasis<T>::refineElements_withCoefs(gsMatrix<T> &,std::vector<unsigned> const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformRefine(int numKnots, int mul)
+void gsBasis<T>::uniformRefine(int, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul)
+void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& , int , int )
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
-                                            int numKnots, int mul)
+void gsBasis<T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> &,
+                                            int, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformCoarsen(int numKnots)
+void gsBasis<T>::uniformCoarsen(int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
-                                            int numKnots)
+void gsBasis<T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> &,
+                                            int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeElevate(int const & i, int const dir)
+void gsBasis<T>::degreeElevate(int const &, int const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeReduce(int const & i, int const dir)
+void gsBasis<T>::degreeReduce(int const &, int const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeIncrease(int const & i, int const dir)
+void gsBasis<T>::degreeIncrease(int const &, int const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeDecrease(int const & i, int const dir)
+void gsBasis<T>::degreeDecrease(int const &, int const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -500,10 +500,7 @@ void gsBasis<T>::setDegree(int const& i)
         }
         else if  ( i < p )
         {
-            // If the degree is not the same in all directions, then
-            //this does not what is specified
-            this->degreeReduce(p-i);
-            //this->degreeReduce(p-i, k); // todo
+	    this->degreeReduce(p-i, k);
         }
     }
 }
@@ -521,11 +518,11 @@ void gsBasis<T>::setDegreePreservingMultiplicity(int const& i)
 }
 
 template<class T>
-void gsBasis<T>::elevateContinuity(int const & i)
+void gsBasis<T>::elevateContinuity(int const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::reduceContinuity(int const & i)
+void gsBasis<T>::reduceContinuity(int const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -545,7 +542,7 @@ int gsBasis<T>::totalDegree() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-int gsBasis<T>::degree(int i) const 
+int gsBasis<T>::degree(int) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -553,8 +550,8 @@ void gsBasis<T>::reverse()
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-               gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const
+void gsBasis<T>::matchWith(const boundaryInterface &, const gsBasis<T> &,
+               gsMatrix<unsigned> &, gsMatrix<unsigned> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

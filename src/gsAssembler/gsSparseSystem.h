@@ -1227,11 +1227,11 @@ public: /* Add local contributions to system matrix and right-hand side */
      * @param[in] r the row blocks where the matrices should be pushed
      * @param[in] c the colum blocks where the matrices shouldbe pushed
      */
-    void push(const std::vector<gsMatrix<T> > & localMat,
-              const std::vector<gsMatrix<T> > & localRhs,
-              const std::vector<gsMatrix<unsigned> > & actives,
-              const std::vector<gsMatrix<T> > & fixedDofs,
-              const gsVector<size_t> & r, const gsVector<size_t> & c)
+    void push(const std::vector<gsMatrix<T> > &,
+              const std::vector<gsMatrix<T> > &,
+              const std::vector<gsMatrix<unsigned> > &,
+              const std::vector<gsMatrix<T> > &,
+              const gsVector<size_t> &, const gsVector<size_t> &)
     {
         GISMO_NO_IMPLEMENTATION
     }

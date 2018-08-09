@@ -66,7 +66,7 @@ public:
 
     /// Set options based on a gsOptionList object
     // This implementation does not read any input
-    virtual void setOptions(const gsOptionList & opt)  {}
+    virtual void setOptions(const gsOptionList &)  {}
 
 }; // gsLinearOperator
 

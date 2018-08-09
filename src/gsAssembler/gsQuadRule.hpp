@@ -10,7 +10,7 @@
 
     Author(s): A. Mantzaflaris
 */
- 
+
 #pragma once
 
 #include <gsUtils/gsPointGrid.h>
@@ -25,16 +25,14 @@ gsQuadRule<T>::mapTo( T startVal, T endVal,
                       gsMatrix<T> & nodes, gsVector<T> & weights ) const
 {
     GISMO_ASSERT( 1 == m_nodes.rows(), "Inconsistent quadrature mapping");
-    
-    // the factor 0.5 is due to the fact that the one-dimensional
-    // reference interval is [-1,1].
-    const T h = ( startVal != endVal ? 0.5 * (endVal-startVal) : T(0.5) );
-  
+
+    const T h = (endVal-startVal) / T(2);
+
     // Linear map from [-1,1]^d to [startVal,endVal]
-    nodes  = (h * m_nodes).array() + 0.5*(startVal+endVal);
-    
+    nodes = (h * (m_nodes.array()+1)) + startVal;
+
     // Adjust the weights (multiply by the Jacobian of the linear map)
-    weights.noalias() = h * m_weights;
+    weights.noalias() = (0==h?T(0.5):h) * m_weights;
 }
 
 template<class T> void
@@ -46,7 +44,7 @@ gsQuadRule<T>::mapToAll( const std::vector<T> & breaks,
 
     const size_t nint    = breaks.size() - 1;
     const index_t nnodes = numNodes();
-        
+
     nodes  .resize(1, nint*nnodes);
     weights.resize( nint*nnodes );
 
@@ -54,38 +52,35 @@ gsQuadRule<T>::mapToAll( const std::vector<T> & breaks,
     {
         const T startVal = breaks[i ];
         const T endVal   = breaks[i+1];
+        const T h = (endVal-startVal) / T(2);
 
-        // the factor 0.5 is due to the fact that the one-dimensional
-        // reference interval is [-1,1].
-        const T h = ( startVal != endVal ? 0.5 * (endVal-startVal) : T(0.5) );
-        
         // Linear map from [-1,1]^d to [startVal,endVal]
-        nodes.middleCols(i*nnodes,nnodes) = (h * m_nodes).array() + 0.5*(startVal+endVal);
-        
+        nodes.middleCols(i*nnodes,nnodes) = (h * (m_nodes.array()+1)) + startVal;
+
         // Adjust the weights (multiply by the Jacobian of the linear map)
-        weights.segment(i*nnodes,nnodes)  = h * m_weights;
+        weights.segment(i*nnodes,nnodes)  = (0==h?T(0.5):h) * m_weights;
     }
 }
 
 
 template<class T> void
-gsQuadRule<T>::computeTensorProductRule(const std::vector<gsVector<T> > & nodes, 
+gsQuadRule<T>::computeTensorProductRule(const std::vector<gsVector<T> > & nodes,
                                         const std::vector<gsVector<T> > & weights)
 {
     const int d  = nodes.size();
-    GISMO_ASSERT( static_cast<std::size_t>(d) == weights.size(), 
+    GISMO_ASSERT( static_cast<std::size_t>(d) == weights.size(),
                   "Nodes and weights do not agree." );
 
     // compute the tensor quadrature rule
     gsPointGrid(nodes, m_nodes);
-    
+
     gsVector<index_t> numNodes(d);
     for( int i=0; i<d; ++i )
         numNodes[i] = weights[i].rows();
 
-    GISMO_ASSERT( m_nodes.cols() == numNodes.prod(), 
+    GISMO_ASSERT( m_nodes.cols() == numNodes.prod(),
                   "Inconsistent sizes in nodes and weights.");
-    
+
     // Compute weight products
     m_weights.resize( m_nodes.cols() );
     unsigned r = 0;

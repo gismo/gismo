@@ -77,7 +77,7 @@ public: inline uPtr clone() const { return uPtr(clone_impl()); }
         this->basis().reverse();
     }
 
-    virtual bool isOn(gsMatrix<T> const &u, T tol = 1e-3) const
+    virtual bool isOn(gsMatrix<T> const &, T = 1e-3) const
     { GISMO_NO_IMPLEMENTATION }
 
 }; // class gsCurve

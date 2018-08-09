@@ -59,8 +59,7 @@ public:
     virtual void jacobCon_into( const gsAsConstVector<T> & u, gsAsVector<T> & result ) const = 0;
 
     /// \brief Returns Hessian Lagrangian of the constraints at design value
-    /// \a u
-    virtual void hessLagr_into( const gsAsConstVector<T> & u, gsAsVector<T> & result ) const
+    virtual void hessLagr_into( const gsAsConstVector<T> &, gsAsVector<T> &) const
     {GISMO_NO_IMPLEMENTATION }
 
     /// @brief Computes the sparsity pattern of the constraint Jacobian matrix.

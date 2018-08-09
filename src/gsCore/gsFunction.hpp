@@ -232,9 +232,9 @@ int gsFunction<T>::targetDim() const
 */
 
 template <class T>
-void gsFunction<T>::eval_component_into(const gsMatrix<T>& u, 
-                                        const index_t comp,
-                                        gsMatrix<T>& result) const
+void gsFunction<T>::eval_component_into(const gsMatrix<T>&,
+                                        const index_t,
+                                        gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template <class T> gsMatrix<T>

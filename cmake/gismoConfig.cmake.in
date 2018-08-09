@@ -9,12 +9,13 @@
 ## GISMO_VERSION      - version string of G+SMO
 ## GISMO_INCLUDE_DIRS - include directories for G+SMO
 ## GISMO_LIBRARIES    - libraries to link against
-## GISMO_EXECUTABLE   - none 
+## GISMO_MODULE_PATH  - path containing cmake modules
+## GISMO_USE_FILE     - the cmake use-file
 ##
 ######################################################################
 
 # Compute paths
-get_filename_component(GISMO_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+#get_filename_component(GISMO_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 
 # Our library dependencies (contains definitions for IMPORTED targets)
 #if(NOT TARGET gismo AND NOT gismo_BINARY_DIR)
@@ -31,9 +32,10 @@ set(GISMO_VERSION        "@gismo_VERSION@")
 set(GISMO_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
 set(GISMO_LIBRARY_DIR  "@CONF_LIB_DIRS@")
 set(GISMO_LIBRARIES    gismo)
-#set(GISMO_MODULES_DIR "@CMAKE_BINARY_DIR@/modules")
-#set(GISMO_CMAKE_DIRS   "@CONF_CMAKE_DIRS@")
+set(GISMO_MODULE_PATH  "@CONF_MODULE_PATH@")
+set(GISMO_USE_FILE     "@CONF_USE_FILE@")
 
-set(GISMO_USE_FILE "@CONF_USE_FILE@")
-
-#message(STATUS "G+Smo is configured at ${GISMO_LIBRARY_DIR}")
+if(NOT GISMO_IS_CONFIGURED_MESSAGE)
+message(STATUS "G+Smo is configured at ${GISMO_LIBRARY_DIR}")
+set(GISMO_IS_CONFIGURED_MESSAGE 1 CACHE INTERNAL "Display once G+Smo library path")
+endif()

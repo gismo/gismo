@@ -19,22 +19,13 @@ namespace gismo
 {
 
 template <class T>
-gsFunctionSet<T>::gsFunctionSet()
-{ 
-
-}
+gsFunctionSet<T>::gsFunctionSet() {}
 
 template <class T>
-gsFunctionSet<T>::gsFunctionSet(const gsFunctionSet & o)
-{ 
-
-}
+gsFunctionSet<T>::gsFunctionSet(const gsFunctionSet &) {}
 
 template <class T>
-gsFunctionSet<T>::~gsFunctionSet ()
-{ 
-
-}
+gsFunctionSet<T>::~gsFunctionSet () {}
 
 template <class T>
 const gsFunction<T>& gsFunctionSet<T>::function(const index_t k) const
@@ -62,7 +53,7 @@ gsMatrix<T> gsFunctionSet<T>::support() const
 // actives
 
 template <typename T>
-void gsFunctionSet<T>::active_into     (const gsMatrix<T> &u, gsMatrix<unsigned> &result) const
+void gsFunctionSet<T>::active_into (const gsMatrix<T> &, gsMatrix<unsigned> &) const
 {
     GISMO_NO_IMPLEMENTATION
     // Single function 0 globally active:
@@ -72,15 +63,15 @@ void gsFunctionSet<T>::active_into     (const gsMatrix<T> &u, gsMatrix<unsigned>
 // evaluation
 
 template <typename T>
-void gsFunctionSet<T>::eval_into (const gsMatrix<T> &u, gsMatrix<T> &result) const
+void gsFunctionSet<T>::eval_into (const gsMatrix<T> &, gsMatrix<T> &) const
 {GISMO_NO_IMPLEMENTATION}
 
 template <typename T>
-void gsFunctionSet<T>::deriv_into (const gsMatrix<T> &u, gsMatrix<T> &result) const 
+void gsFunctionSet<T>::deriv_into (const gsMatrix<T> &, gsMatrix<T> &) const
 {GISMO_NO_IMPLEMENTATION}
 
 template <typename T>
-void gsFunctionSet<T>::deriv2_into (const gsMatrix<T> &u, gsMatrix<T> &result) const
+void gsFunctionSet<T>::deriv2_into (const gsMatrix<T> &, gsMatrix<T> &) const
 {GISMO_NO_IMPLEMENTATION}
 
 template <typename T>
@@ -199,30 +190,5 @@ void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
                 out.values[2].middleRows(dsz*i,out.dim.first).colwise().sum();
     }
 }
-
-// Always returns quantities on mapped (physical) domain coordinates
-template <class T>
-void gsFunctionSet<T>::compute(const gsMapData<T> & in, gsFuncData<T> & out) const
-{
-    // the dafault implementation assumes a representation in parametric coordinates
-    compute(in.points, out);
-
-/* // todo gsFunctionExpr par/phys..
-    const int parDim = domainDim();
-    const int nGrads = out.values[1].rows() / parDim;
-
-    if (out.flags & NEED_DERIV)
-    {
-        for (index_t p = 0; p != in.points.cols(); ++p) // for all points
-        {
-            // first fundamental form at the current point
-            const gsAsConstMatrix<T> fform = in.fundForm(p);
-            gsAsMatrix<T> grads(out.values[1].col(p).data(), parDim, nGrads);
-            grads = fform * grads;//tmp
-        }
-    }
-*/
-}
-
 
 } // namespace gismo

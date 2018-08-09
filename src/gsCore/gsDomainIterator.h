@@ -232,8 +232,8 @@ public:
 
     /// Updates \a other with and adjacent element
     /// \todo upgrade to return adjacent range instead
-    virtual void adjacent( const gsVector<bool> & orient, 
-                           gsDomainIterator & other )
+    virtual void adjacent( const gsVector<bool> & ,
+                           gsDomainIterator & )
     {
         GISMO_NO_IMPLEMENTATION
     }
