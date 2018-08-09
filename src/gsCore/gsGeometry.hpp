@@ -362,9 +362,6 @@ std::vector<boxSide> gsGeometry<T>::locateOn(const gsMatrix<T> & u, gsVector<boo
         //    && (tmp.array() <= pr.col(1).array()).all())
         if ((tmp.array() >= pr.col(0).array() - 1.e-4).all()
              && (tmp.array() <= pr.col(1).array() + 1.e-4).all()) // be careful! if u is on the boundary then we may get a wrong result
-            // the tolerance is due to imprsisions in the geometry map. E.g. If a circle is rotated then the corner need
-            // not to lie exactly on the interface of the neighbour patch since we use only B-splines for the modelling
-            // TODO: Maybe find a better solution!
         {
             onGeo(i) = true;
             preIm.col(i) = tmp;
