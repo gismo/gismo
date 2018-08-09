@@ -1,5 +1,7 @@
 # Fetching surface_mesh external
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 gismo_fetch_directory(surface_mesh
   GIT_REPOSITORY https://opensource.cit-ec.de/git/surface_mesh
   # todo: tarball etc
@@ -16,9 +18,10 @@ set(SMESH_INCLUDE_DIRS ${gismo_SOURCE_DIR}/extensions/surface_mesh/src CACHE INT
 #.. target_include_directories
 add_library(surface_mesh OBJECT EXCLUDE_FROM_ALL ${SMSOURCES} ${SMHEADERS})
 
+set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:surface_mesh>
+    CACHE INTERNAL "Gismo extensions to be included")
+
 #install(TARGETS surface_mesh DESTINATION lib OPTIONAL)
 install( FILES ${HEADERS} DESTINATION include/surface_mesh/ OPTIONAL)
-
-
 
 # Case 3: use ExternalProject_Add (to do)
