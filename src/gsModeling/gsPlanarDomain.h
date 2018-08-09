@@ -159,15 +159,10 @@ public:
         return m_loops[loopNumber]->curve(curveNumber);
     }
 
-    bool contains( gsVector<T> const & p, T tol) {
-        // is on boundary ?
-
-        // is inside ?
-        //      std::vector<T> ind = lineIntersections(0,p[0]);
-        //gsMatrix<T> ev;
-
-        return true;
-    };
+    bool contains( gsVector<T> const &, T)
+    {
+        GISMO_NO_IMPLEMENTATION
+    }
 
     gsMatrix<T> boundingBox() const
     {

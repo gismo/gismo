@@ -208,8 +208,8 @@ public:
 
     /// @brief Computes the L2-distance between this function and the
     /// field and a function \a func
-    virtual T distanceL2(gsFunction<T> const & func) const
-    { GISMO_UNUSED(func); GISMO_NO_IMPLEMENTATION }
+    virtual T distanceL2(gsFunction<T> const &) const
+    { GISMO_NO_IMPLEMENTATION }
 
     /// Newton-Raphson method to find a solution of the equation f(\a
     /// arg) = \a value with starting vector \a arg.

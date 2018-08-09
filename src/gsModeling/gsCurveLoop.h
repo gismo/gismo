@@ -32,7 +32,8 @@ namespace gismo
     \ingroup Modeling
 */
 
-template<class T> class gsCurveLoop
+template<class T>
+class gsCurveLoop
 {
 
 public:
@@ -225,15 +226,10 @@ private:
 
 }; // class gsCurveLoop
 
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
-
 template<class T>
-bool gsCurveLoop<T>::isInterior ( gsVector<T> const & p, const T& tol)
+bool gsCurveLoop<T>::isInterior ( gsVector<T> const &, const T&)
 {
-    // to do
-    return false;
+    GISMO_NO_IMPLEMENTATION
 }
 
 /// Print (as string) operator to be used by all derived classes

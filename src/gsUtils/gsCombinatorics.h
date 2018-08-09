@@ -595,6 +595,26 @@ void cubeIsometry( const gsVector<bool,d>    & flip,
     while (i!=dd);
 }
 
+/// \brief Computes the rotation matrix
+/// implied by a permutation \a perm of the cube directions
+/// plus a relocation \a flip
+///
+/// \param[in] flip the relocation of the cube vertices
+/// flip[k]==true  : the coordinate \em k is not relocated
+/// flip[k]==false : the coordinate \em k is relocated
+/// \param[in] perm the permutation of the directions (0,..,d-1)
+/// \param[out] result A rotation matrix
+/// \ingroup combinatorics
+template <int d>
+void cubeIsometryMatrix ( const gsVector<bool,d>    & flip,
+                          const gsVector<index_t,d> & perm,
+                          gsMatrix<int,d,d> & result)
+{
+    result.setZero(d,d);
+    for(int i = 0; i < d; ++i)
+        result(perm(i),i) = (flip(perm(i)) ? 1 : -1);
+}
+
 /// \brief Construct first composition of \a sum into \a dim integers
 /// \ingroup combinatorics
 template<class Vec>

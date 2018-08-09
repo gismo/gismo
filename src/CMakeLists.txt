@@ -12,6 +12,10 @@ if(GISMO_WITH_CODIPACK)
 include_directories(${CODIPACK_INCLUDE_DIR})
 endif()
 
+if(GISMO_WITH_UNUM)
+include_directories(${UNUM_INCLUDE_DIR})
+endif()
+
 SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
 #LIST( REMOVE_ITEM SUBDIRS misc)
 LIST( APPEND SUBDIRS gsUtils/gsMesh)
@@ -55,6 +59,14 @@ FOREACH(subdir ${SUBDIRS})
 
   if(GISMO_WITH_CODIPACK)
     add_dependencies(${GM_NAME} gsCoDiPackExtension)
+  endif()
+
+  if(GISMO_WITH_UNUM)
+    add_dependencies(${GM_NAME} gsUnumExtension)
+  endif()
+
+  if(GISMO_BUILD_MULTIPRECISION)
+    add_dependencies(${GM_NAME} gsMultiPrecisionExtension)
   endif()
 
   if (GISMO_BUILD_PCH)

@@ -49,8 +49,12 @@ public:
       m_rhs_norm(-1),
       m_error(-1)
     {
-        GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
+        GISMO_ASSERT(m_mat->rows()     == m_mat->cols(),     "The matrix is not square."                     );
+
         if (!m_precond) m_precond = gsIdentityOp<T>::make(m_mat->rows());
+        GISMO_ASSERT(m_precond->rows() == m_precond->cols(), "The preconditioner is not square."             );
+        GISMO_ASSERT(m_precond->rows() == m_mat->rows(),     "The preconditioner does not match the matrix: "
+                                                             <<m_precond->rows()<<"!="<<m_mat->rows()        );
     }
 
     /// @brief Contructor using any dense or sparse matrix and a
@@ -75,8 +79,12 @@ public:
       m_rhs_norm(-1),
       m_error(-1)
     {
-        GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
+        GISMO_ASSERT(m_mat->rows()     == m_mat->cols(),     "The matrix is not square."                     );
+
         if (!m_precond) m_precond = gsIdentityOp<T>::make(m_mat->rows());
+        GISMO_ASSERT(m_precond->rows() == m_precond->cols(), "The preconditioner is not square."             );
+        GISMO_ASSERT(m_precond->rows() == m_mat->rows(),     "The preconditioner does not match the matrix: "
+                                                             <<m_precond->rows()<<"!="<<m_mat->rows()        );
     }
 
     virtual ~gsIterativeSolver()    {}
@@ -165,14 +173,10 @@ public:
     virtual bool initIteration( const VectorType& rhs, VectorType& x )
     {
         GISMO_ASSERT( rhs.cols() == 1,
-                      "Iterative solvers only work for single column right hand side." );
-
-        GISMO_ASSERT( m_precond->rows() == m_mat->rows(),
-                      "The preconditionner does not match the matrix. "
-                      << m_precond->rows() <<"!="<< m_mat->rows() );
-
-        GISMO_ASSERT( m_precond->cols() == m_mat->cols(),
-                      "The preconditionner does not match the matrix." );
+                      "Iterative solvers only work for single column right-hand side." );
+        GISMO_ASSERT( rhs.rows() == m_mat->rows(),
+                      "The right-hand side does not match the matrix: "
+                      << rhs.rows() <<"!="<< m_mat->rows() );
 
         m_num_iter = 0;
 
@@ -186,17 +190,20 @@ public:
         }
 
         if ( 0 == x.size() ) // if no initial solution, start with zeros
-            x.setZero(rhs.rows(), rhs.cols() );
+            x.setZero(rhs.rows(), rhs.cols());
         else
         {
-           GISMO_ENSURE(m_mat->cols() == x.rows(), "Invalid initial solution");
-           GISMO_ENSURE(rhs.cols() == x.cols()   , "Initial solution does not match right-hand side");
+            GISMO_ASSERT( x.cols() == 1,
+                      "Iterative solvers only work for single right-hand side and solution." );
+            GISMO_ASSERT( x.rows() == m_mat->cols(),
+                      "The initial guess does not match the matrix: "
+                      << rhs.rows() <<"!="<< m_mat->cols() );
         }
         return false; // iteration is not finished
     }
 
     virtual bool step( VectorType& x ) = 0;                     ///< Perform one step, requires initIteration
-    virtual void finalizeIteration( VectorType& x ) {}          ///< Some post-processing might be required
+    virtual void finalizeIteration( VectorType& ) {}          ///< Some post-processing might be required
 
     /// Returns the size of the linear system
     index_t size() const                                       { return m_mat->rows(); }

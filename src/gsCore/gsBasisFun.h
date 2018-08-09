@@ -82,7 +82,7 @@ public:
     unsigned index() const { return m_index; }
     
     // temporary hack
-    virtual const gsBasisFun & piece(const index_t k) const
+    virtual const gsBasisFun & piece(const index_t) const
     {
         return *this; 
     }

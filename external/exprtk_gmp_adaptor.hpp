@@ -1,4 +1,4 @@
-/** @file exprtk_gmp_adaptop.hpp
+/** @file exprtk_gmp_adaptor.hpp
 
     @brief Provides an exprtk adaptor for the GMP/mpq_class number type
 
@@ -16,47 +16,7 @@
 #include <string>
 #include <gmpxx.h>
 
-namespace exprtk
-{
-
-/*
-// in case a math function is missing
-#define GMP_EXTRA_STD_UNARY_FUNCTION(std_fun) template <class U> \
-inline mpq_class std_fun(const __gmp_expr<mpq_t, U> & expr)      \
-{return std::std_fun(mpq_class(expr).get_d());}
-// GMP_EXTRA_STD_UNARY_FUNCTION(sqrt)
-#undef GMP_EXTRA_STD_UNARY_FUNCTION
-*/
-
-namespace details
-{
-namespace numeric { namespace details {
-
-struct mpq_type_tag;
-
-template <typename T> inline T const_pi_impl(mpq_type_tag);
-template <typename T> inline T const_e_impl (mpq_type_tag);
-
-} }
-
-inline bool is_true (const mpq_class& v);
-inline bool is_false(const mpq_class& v);
-
-template <typename Iterator>
-inline bool string_to_real(Iterator& itr_external, const Iterator end, mpq_class& t, numeric::details::mpq_type_tag);
-
-}
-
-namespace rtl { namespace io {
-namespace details
-{
-inline void print_type(const std::string&, const mpq_class& v, exprtk::details::numeric::details::mpq_type_tag);
-}
-} }
-
-using details::is_true;
-}
-
+#include "exprtk_gmp_forward.hpp"
 #include "exprtk.hpp"
 
 namespace exprtk
@@ -64,7 +24,7 @@ namespace exprtk
 namespace details
 {
 
-namespace constant
+namespace constant_gmp
 {
 static const double e       =  2.71828182845904523536028747135266249775724709369996;
 static const double pi      =  3.14159265358979323846264338327950288419716939937510;
@@ -139,16 +99,16 @@ template <typename T> inline T  tanh_impl(const T& v, mpq_type_tag) { return tan
 template <typename T> inline T   cot_impl(const T& v, mpq_type_tag) { return cot  (v); }
 template <typename T> inline T   sec_impl(const T& v, mpq_type_tag) { return sec  (v); }
 template <typename T> inline T   csc_impl(const T& v, mpq_type_tag) { return csc  (v); }
-template <typename T> inline T   r2d_impl(const T& v, mpq_type_tag) { return (v  * exprtk::details::constant::_180_pi); }
-template <typename T> inline T   d2r_impl(const T& v, mpq_type_tag) { return (v  * exprtk::details::constant::pi_180 ); }
+template <typename T> inline T   r2d_impl(const T& v, mpq_type_tag) { return (v  * exprtk::details::constant_gmp::_180_pi); }
+template <typename T> inline T   d2r_impl(const T& v, mpq_type_tag) { return (v  * exprtk::details::constant_gmp::pi_180 ); }
 template <typename T> inline T   d2g_impl(const T& v, mpq_type_tag) { return (v  * mpq_class(20.0/9.0)); }
 template <typename T> inline T   g2d_impl(const T& v, mpq_type_tag) { return (v  * mpq_class(9.0/20.0)); }
 template <typename T> inline T  notl_impl(const T& v, mpq_type_tag) { return (v != mpq_class(0) ? mpq_class(0) : mpq_class(1)); }
 template <typename T> inline T  frac_impl(const T& v, mpq_type_tag) { return (v); }
 template <typename T> inline T trunc_impl(const T& v, mpq_type_tag) { return (v); }
 
-template <typename T> inline T const_pi_impl(mpq_type_tag) { return exprtk::details::constant::pi; }
-template <typename T> inline T const_e_impl (mpq_type_tag) { return exprtk::details::constant::e; }
+template <typename T> inline T const_pi_impl(mpq_type_tag) { return exprtk::details::constant_gmp::pi; }
+template <typename T> inline T const_e_impl (mpq_type_tag) { return exprtk::details::constant_gmp::e; }
 
 
 inline bool is_true_impl (const mpq_class& v)
@@ -216,7 +176,7 @@ inline T ncdf_impl(const T& v, mpq_type_tag)
 {
     T cnd = T(0.5) * (T(1) + erf_impl(
                           abs(v) /
-                          T(exprtk::details::constant::sqrt2),mpq_type_tag()));
+                          T(exprtk::details::constant_gmp::sqrt2),mpq_type_tag()));
     return  (v < T(0)) ? (T(1) - cnd) : cnd;
 }
 

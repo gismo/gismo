@@ -237,7 +237,7 @@ public:
     }
 
     // Interpolates the expression \a expr over the isogeometric domain \a G
-    template<class E> void interpolate(const expr::_expr<E> & expr)
+    template<class E> void interpolate(const expr::_expr<E> &)
     {
         GISMO_NO_IMPLEMENTATION
         // for all patches
@@ -293,18 +293,16 @@ private:
     struct min_op
     {
         static inline T init() { return math::limits::max(); }
-        static inline void acc (const T contrib, const T w, T & res)
+        static inline void acc (const T contrib, const T, T & res)
         {
-            GISMO_UNUSED(w);
             res = math::min(contrib, res);
         }
     };
     struct max_op
     {
         static inline T init() { return math::limits::min(); }
-        static inline void acc (const T contrib, const T w, T & res)
+        static inline void acc (const T contrib, const T, T & res)
         {
-            GISMO_UNUSED(w);
             res = math::max(contrib, res);
         }
     };

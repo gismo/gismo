@@ -85,7 +85,7 @@ namespace {
         static const return_type init = 1000000;
 
         template<unsigned d, class T >
-        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int level, return_type & res)
+        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int , return_type & res)
         {
             //if ( (!isDegenerate(*leafNode->box)) && leafNode->level < res )
             if ( leafNode->level < res )
@@ -103,7 +103,7 @@ namespace {
         static const return_type init = -1;
 
         template<unsigned d, class T >
-        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int level, return_type & res)
+        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int , return_type & res)
         {
             //if ( (!isDegenerate(*leafNode->box)) && leafNode->level > res )
             if ( leafNode->level > res )

@@ -161,30 +161,33 @@ public:
     /// Returns a reference to the knot vector
     KnotVectorType & knots(const int i = 0) 
     {
+        GISMO_UNUSED(i);
         GISMO_ASSERT( i==0, "Requested knots of invalid direction "<< i );
-        return this->basis().knots(); 
+        return this->basis().knots();
     }
 
     /// Returns a (const )reference to the knot vector
     const KnotVectorType & knots(const int i = 0) const 
-    { 
+    {
+        GISMO_UNUSED(i);
         GISMO_ASSERT( i==0, "Requested knots of invalid direction "<< i );
         return this->basis().knots(); 
     }
 
     /// Returns the degree of the B-spline
     int degree(int i = 0) const 
-    { 
+    {
+        GISMO_UNUSED(i);
         GISMO_ASSERT( i==0, "Requested knots of invalid direction "<< i );
         return this->basis().degree(); 
     }
     
     // compatible curves: same degree, same first/last p+1 knots
-    void isCompatible( gsGeometry<T> * other )
+    void isCompatible( gsGeometry<T> * )
     { GISMO_NO_IMPLEMENTATION }
     
     // compatible curves: same degree, same first/last p+1 knots
-    void makeCompatible( gsGeometry<T> * other )
+    void makeCompatible( gsGeometry<T> * )
     { GISMO_NO_IMPLEMENTATION }
 
 

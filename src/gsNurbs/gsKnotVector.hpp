@@ -44,7 +44,6 @@ public:
     {
         // TODO: make it unused when possible.
         int p = atoi(node->first_attribute("degree")->value() );
-        //GISMO_UNUSED(p);
 
         typename gsKnotVector<T>::knotContainer knotValues;
 
@@ -933,12 +932,8 @@ void gsKnotVector<T>::greville_into(gsMatrix<T> & result) const
             if ( result(0,i) == result(0,i-1) )
             {
                 // perturbe point to remain inside the needed support
-#               ifdef GISMO_WITH_MPQ
-                result(0,i-1) -= mpq_class(1,10000000000);
-#               else
-                result(0,i-1) -= 1e-10;
+                result(0,i-1) -= 1/T(10000000000); // =mpq_class(1,10000000000);
                 //to try: result(0,i-1) = math::nextafter(result(0,i-1), *result.data() );
-#               endif
             }
         }
 

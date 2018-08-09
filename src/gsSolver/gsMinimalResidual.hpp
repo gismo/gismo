@@ -93,9 +93,8 @@ bool gsMinimalResidual<T>::step( typename gsMinimalResidual<T>::VectorType& x )
 }
 
 template<class T>
-void gsMinimalResidual<T>::finalizeIteration( typename gsMinimalResidual<T>::VectorType& x )
+void gsMinimalResidual<T>::finalizeIteration( typename gsMinimalResidual<T>::VectorType& )
 {
-    GISMO_UNUSED(x);
     // cleanup temporaries
     negResidual.clear();
     vPrev.clear(); v.clear(); vNew.clear();

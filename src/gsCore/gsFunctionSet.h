@@ -202,14 +202,14 @@ public:
 
     gsFunctionSet();
 
-    gsFunctionSet(const gsFunctionSet & o);
+    gsFunctionSet(const gsFunctionSet &);
 
     virtual ~gsFunctionSet();
 
     GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet, clone)
 
     /// @brief Returns the piece(s) of the function(s) at subdomain \a k
-    virtual const gsFunctionSet & piece(const index_t k) const {return *this;}
+    virtual const gsFunctionSet & piece(const index_t) const {return *this;}
 
     /// @brief Helper which casts and returns the k-th piece of this
     /// function set as a gsFunction
@@ -497,23 +497,6 @@ public:
        @param[out] out
      */
     virtual void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const;
-
-    /**
-       @brief Computes function data
-
-       This function evaluates the functions and their derivatives at
-       the points contained in the gsMapData geo. The computed values
-       are written in the corresponding fields of \a result.  Which
-       field to write (and what to compute) is controlled by the \a
-       out.flags (see also gsFuncData).  Contrarily to
-       compute(const gsMatrix<T> &, gsFuncData<T> &) where the caller
-       must provide either parametric or physical points this call
-       differenciate automatically.  
-
-       @param[in] in 
-       @param[out] out
-     */
-    virtual void compute(const gsMapData<T> & in, gsFuncData<T> & out) const;
 
 public:
     /**

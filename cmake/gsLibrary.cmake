@@ -79,6 +79,10 @@ if(${PROJECT_NAME}_LINKER)
   target_link_libraries(${PROJECT_NAME} "${${PROJECT_NAME}_LINKER}")
 endif()
 
+  if (GISMO_GCC_STATIC_LINKAGE)
+    target_link_libraries(${PROJECT_NAME} -static-libgcc -static-libstdc++)
+  endif()
+
 #  if (GISMO_WITH_OPENMP)
 #    find_package(OpenMP REQUIRED)
 #  endif()
@@ -117,15 +121,23 @@ endif(GISMO_BUILD_LIB)
 
   #generate_export_header(${PROJECT_NAME}_static)
 
+  if(${PROJECT_NAME}_LINKER)
+    target_link_libraries(${PROJECT_NAME}_static "${${PROJECT_NAME}_LINKER}")
+  endif()
+
   if (EIGEN_USE_MKL_ALL)
     # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
     find_package(MKL REQUIRED)
     target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
   endif()
 
-  IF (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
+  if (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
      target_link_libraries(${PROJECT_NAME}_static ${DBGHELP_LIBRARY}) 	
   ENDIF() 
+
+  if (GISMO_GCC_STATIC_LINKAGE)
+    target_link_libraries(${PROJECT_NAME}_static -static-libgcc -static-libstdc++)
+  endif()
 
   # Avoid naming conflic on MSVC
   if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
