@@ -104,9 +104,9 @@ std::vector< gsSparseMatrix<T> > assembleTensorMass_impl(
     GISMO_ENSURE (tb, "gsPatchPreconditionersCreator requires a tensor basis.");
 
     std::vector< gsSparseMatrix<T> > result(d);
-    for ( index_t i=d-1; i!=-1; --i )
+    for ( index_t i=0; i!=d; ++i )
     {
-        result[i] = assembleMass(tb->component(i));
+        result[i] = assembleMass(tb->component(d-i-1));
         eliminateDirichlet1D(boundaryConditionsForDirection(bc,i), opt, result[i]);
     }
     return result;
@@ -123,9 +123,9 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness_impl(
     GISMO_ENSURE (tb, "gsPatchPreconditionersCreator requires a tensor basis.");
 
     std::vector< gsSparseMatrix<T> > result(d);
-    for ( index_t i=d-1; i!=-1; --i )
+    for ( index_t i=0; i!=d; ++i )
     {
-        result[i] = assembleStiffness(tb->component(i));
+        result[i] = assembleStiffness(tb->component(d-i-1));
         eliminateDirichlet1D(boundaryConditionsForDirection(bc,i), opt, result[i]);
     }
     return result;
