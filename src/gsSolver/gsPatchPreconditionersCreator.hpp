@@ -138,14 +138,14 @@ std::vector< gsSparseMatrix<T> > assembleTensorMass(
     const gsOptionList& opt
     )
 {
-    switch (basis.dim()) {
+    switch (basis.dim())
+    {
     case 1: return assembleTensorMass_impl<1,T>(basis, bc, opt);
     case 2: return assembleTensorMass_impl<2,T>(basis, bc, opt);
     case 3: return assembleTensorMass_impl<3,T>(basis, bc, opt);
     case 4: return assembleTensorMass_impl<4,T>(basis, bc, opt);
-    default: GISMO_ENSURE( basis.dim() <= 4, "gsPatchPreconditionersCreator is only instanciated for up to 4 dimensions." );
+    default: GISMO_ERROR("gsPatchPreconditionersCreator is only instanciated for up to 4 dimensions." );
     }
-    return std::vector< gsSparseMatrix<T> >(); // to eliminate warning
 }
 
 template<typename T>
@@ -155,14 +155,14 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness(
     const gsOptionList& opt
     )
 {
-    switch (basis.dim()) {
+    switch (basis.dim())
+    {
     case 1: return assembleTensorStiffness_impl<1,T>(basis, bc, opt);
     case 2: return assembleTensorStiffness_impl<2,T>(basis, bc, opt);
     case 3: return assembleTensorStiffness_impl<3,T>(basis, bc, opt);
     case 4: return assembleTensorStiffness_impl<4,T>(basis, bc, opt);
-    default: GISMO_ENSURE( basis.dim() <= 4, "gsPatchPreconditionersCreator is only instanciated for up to 4 dimensions." );
+    default: GISMO_ERROR("gsPatchPreconditionersCreator is only instanciated for up to 4 dimensions." );
     }
-    return std::vector< gsSparseMatrix<T> >(); // to eliminate warning
 }
 
 } // anonymous namespace
@@ -321,6 +321,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
     std::vector<OpPtr> Qop(d);
     std::vector<OpPtr> QTop(d);
+    gsMatrix<T> ev;
 
     // Now, setup the Q's and update the D's
     for ( index_t i=0; i<d; ++i )
@@ -343,7 +344,6 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
                     diag( m + l*glob + n*loc*glob, 0 ) += D(l,0);
 
         // Finally, we store the eigenvectors
-        gsMatrix<T> ev;
         ev.swap(const_cast<evMatrix&>(ges.eigenvectors()));
 
         // These are the operators representing the eigenvectors
@@ -397,7 +397,7 @@ void tildeSpaceBasis_oneside(const gsTensorBSplineBasis<1,T>& basis, bool isLeft
     // normalize with h^(deriv)
     // use only odd derivatives if odd = true and only even derivatives if odd = false
     // skip last (on left) or first (on right) basis function since it's always in S-tilde
-    Eigen::Matrix<T, Dynamic, Dynamic> derivs;
+    gsMatrix<T> derivs;
     // If we have Dirichlet bc, we reduce the number of rows and columns by 1. We basically
     // eliminate the first row and the first column (first basis function, 0th derivative)
     // for the right-side, we have to remove the last basis function.
@@ -413,7 +413,7 @@ void tildeSpaceBasis_oneside(const gsTensorBSplineBasis<1,T>& basis, bool isLeft
         for (int j = 0; j < p-b; ++j)
             derivs(i-b, j) = math::pow(h, i) * allDerivs[i](j+offset);
 
-    Eigen::JacobiSVD< Eigen::Matrix<T, Dynamic, Dynamic> > svd = derivs.jacobiSvd(Eigen::ComputeFullV);
+    typename gsMatrix<T>::JacobiSVD svd = derivs.jacobiSvd(Eigen::ComputeFullV);
 
     int n_tilde;
     if (odd) n_tilde = (p + 1) / 2 - b;

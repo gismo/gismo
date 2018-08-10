@@ -108,20 +108,18 @@ SUITE(gsPreconditioner_test)
         gsOptionList opt = gsAssembler<>::defaultOptions();
 
         gsSparseMatrix<> stiff1 = gsPatchPreconditionersCreator<>::stiffnessMatrix(mb[0],bc,opt);
-        gsSparseMatrix<> stiff2;
-        {
-            gsPoissonAssembler<> assembler(
-                mp,
-                mb,
-                bc,
-                one,
-                (dirichlet::strategy) opt.getInt("DirichletStrategy"),
-                (iFace::strategy) opt.getInt("InterfaceStrategy")
+
+        gsPoissonAssembler<> assembler(
+            mp,
+            mb,
+            bc,
+            one,
+            (dirichlet::strategy) opt.getInt("DirichletStrategy"),
+            (iFace::strategy) opt.getInt("InterfaceStrategy")
             );
-            assembler.assemble();
-            stiff2 = give(assembler.matrix());
-        }
-        CHECK ( (stiff1-stiff2).norm() < 1/real_t(10000) );
+        assembler.assemble();
+
+        CHECK ( (stiff1-assembler.matrix() ).norm() < 1/real_t(10000) );
     }
 
 
