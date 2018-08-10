@@ -514,7 +514,8 @@ void tildeSpaceBasis(const gsTensorBSplineBasis<1,T>& basis, gsSparseMatrix<T>& 
 template<index_t d, typename T>
 void constructTildeSpaceBasisTensor(
     const gsBasis<T>& basis,
-    const gsBoundaryConditions<T>& bc, //TODO: assembler options
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt,
     std::vector< gsSparseMatrix<T> >& B_tilde,
     std::vector< gsSparseMatrix<T> >& B_l2compl,
     const bool odd = true
@@ -527,24 +528,31 @@ void constructTildeSpaceBasisTensor(
 
     B_tilde.resize(d);
     B_l2compl.resize(d);
-    for ( index_t i=0; i<d; ++i )
+    dirichlet::strategy ds = (dirichlet::strategy)opt.askInt("DirichletStrategy",dirichlet::elimination);
+    if (ds == dirichlet::elimination)
     {
-        index_t b = 0;
-        // boundary::west = 1, east = 2, south = 3, north = 4, front = 5, back = 6, stime = 7, etime = 8 (cf. gsCore/gsBoundary.h)
-        patchSide mywest(0,1+2*i);
-        patchSide myeast(0,2+2*i);
-        if ( bc.getConditionFromSide( mywest )!=NULL && bc.getConditionFromSide( mywest )->type() == condition_type::dirichlet ) b += 1;
-        if ( bc.getConditionFromSide( myeast )!=NULL && bc.getConditionFromSide( myeast )->type() == condition_type::dirichlet ) b += 2;
+        for ( index_t i=0; i<d; ++i )
+        {
+            index_t b = 0;
+            // boundary::west = 1, east = 2, south = 3, north = 4, front = 5, back = 6, stime = 7, etime = 8 (cf. gsCore/gsBoundary.h)
+            patchSide mywest(0,1+2*i);
+            patchSide myeast(0,2+2*i);
+            if ( bc.getConditionFromSide( mywest )!=NULL && bc.getConditionFromSide( mywest )->type() == condition_type::dirichlet ) b += 1;
+            if ( bc.getConditionFromSide( myeast )!=NULL && bc.getConditionFromSide( myeast )->type() == condition_type::dirichlet ) b += 2;
 
-        tildeSpaceBasis(tb->component(i), B_tilde[i], B_l2compl[i], b, odd);
+            tildeSpaceBasis(tb->component(i), B_tilde[i], B_l2compl[i], b, odd);
+        }
     }
+    else
+        GISMO_ERROR("Unknown Dirichlet strategy.");
 
 }
 
 template<typename T>
 void constructTildeSpaceBasis(
     const gsBasis<T>& basis,
-    const gsBoundaryConditions<T>& bc, //TODO: assembler options
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt,
     std::vector< gsSparseMatrix<T> >& B_tilde,
     std::vector< gsSparseMatrix<T> >& B_l2compl,
     const bool odd = true
@@ -552,10 +560,10 @@ void constructTildeSpaceBasis(
 {
     switch (basis.dim())
     {
-    case 1: constructTildeSpaceBasisTensor<1>( basis, bc, B_tilde, B_l2compl, odd ); return;
-    case 2: constructTildeSpaceBasisTensor<2>( basis, bc, B_tilde, B_l2compl, odd ); return;
-    case 3: constructTildeSpaceBasisTensor<3>( basis, bc, B_tilde, B_l2compl, odd ); return;
-    case 4: constructTildeSpaceBasisTensor<4>( basis, bc, B_tilde, B_l2compl, odd ); return;
+    case 1: constructTildeSpaceBasisTensor<1>( basis, bc, opt, B_tilde, B_l2compl, odd ); return;
+    case 2: constructTildeSpaceBasisTensor<2>( basis, bc, opt, B_tilde, B_l2compl, odd ); return;
+    case 3: constructTildeSpaceBasisTensor<3>( basis, bc, opt, B_tilde, B_l2compl, odd ); return;
+    case 4: constructTildeSpaceBasisTensor<4>( basis, bc, opt, B_tilde, B_l2compl, odd ); return;
     default: GISMO_ERROR ("gsPatchPreconditionersCreator is only instanciated for up to 4 dimensions.");
     }
 
@@ -611,7 +619,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
     // setup the basis
     std::vector< gsSparseMatrix<T> > B_tilde(d), B_l2compl(d), B_compl(d);
-    constructTildeSpaceBasis(basis, bc, B_tilde, B_l2compl);
+    constructTildeSpaceBasis(basis, bc, opt, B_tilde, B_l2compl);
 
     std::vector< gsSparseMatrix<T> > M_compl(d), K_compl(d);
     std::vector< typename gsLinearOperator<T>::Ptr > M_tilde_inv(d);
@@ -766,7 +774,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
             );
     }
 
-    return give(result); //TODO
+    return give(result);
 
 }
 
