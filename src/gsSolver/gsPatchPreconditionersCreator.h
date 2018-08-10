@@ -119,17 +119,24 @@ public:
     /// on the parameter domain (SIAM J. on Numerical Analysis. 55 (4). p. 2004 - 2024, 2017)
     ///
     /// This operator is spectrally equivalent to the inverse of
-    /// \f$ - \Delta u + \sigma h^{-2} u \f$
+    ///
+    /// \f$ - \Delta u + \sigma h^{-2} u + \alpha u \f$
+    ///
+    /// assuming \f$ \sigma \f$ to be large enough; the exact meaning of \f$ \sigma \f$ is
+    /// explained in the abovementioned paper (\f$ \sigma \f$ from the paper equals
+    /// \f$  1/(\sigma*h*h) \f$ here.)
     ///
     /// \param basis  A tensor basis
     /// \param bc     Boundary conditions
     /// \param opt    Assembler options
     /// \param sigma  Scaling parameter (see above)
+    /// \param alpha  Scaling parameter (see above)
     static OpUPtr            subspaceCorrectedMassSmootherOp(
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
         const gsOptionList& opt = gsAssembler<T>::defaultOptions(),
-        T sigma = T(12)/T(100)
+        T sigma = T(12)/T(100),
+        T alpha = 0
     );
 
 };

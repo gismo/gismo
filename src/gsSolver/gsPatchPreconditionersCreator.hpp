@@ -393,7 +393,7 @@ void tildeSpaceBasis_oneside(const gsTensorBSplineBasis<1,T>& basis, bool isLeft
     std::vector< gsMatrix<T> > allDerivs;
     basis.evalAllDers_into(U, p-1, allDerivs);
 
-    // collect all derivatives in matrix (rows: derivatives, columns: basis functions)
+    // Collect all derivatives in matrix (rows: derivatives, columns: basis functions)
     // normalize with h^(deriv)
     // use only odd derivatives if odd = true and only even derivatives if odd = false
     // skip last (on left) or first (on right) basis function since it's always in S-tilde
@@ -435,7 +435,7 @@ void tildeSpaceBasis(const gsTensorBSplineBasis<1,T>& basis, gsSparseMatrix<T>& 
     gsMatrix<T> b_L, b_compl_L;
     gsMatrix<T> b_R, b_compl_R;
 
-    //Contruct space with vanishing odd derivatives
+    // Contruct space with vanishing odd derivatives
     tildeSpaceBasis_oneside(basis, true,  b_L, b_compl_L, b%2, odd);
     tildeSpaceBasis_oneside(basis, false, b_R, b_compl_R, b/2, odd);
 
@@ -602,13 +602,10 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     const gsBasis<T>& basis,
     const gsBoundaryConditions<T>& bc,
     const gsOptionList& opt,
-    T sigma
+    T sigma,
+    T alpha
     )
 {
-
-    // TODO: is not configurable for now:
-    const T alpha = 0;
-
     // Get some properties
     const index_t d = basis.dim();
     const T  h = basis.getMinCellLength();
@@ -617,7 +614,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(basis, bc, opt);
     std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
 
-    // setup the basis
+    // Setup of basis
     std::vector< gsSparseMatrix<T> > B_tilde(d), B_l2compl(d), B_compl(d);
     constructTildeSpaceBasis(basis, bc, opt, B_tilde, B_l2compl);
 
@@ -631,14 +628,14 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         M_inv->apply( B_l2compl[i], B_compl_dense );
         B_compl[i] = B_compl_dense.sparseView();
 
-        // Setup the matrices and corresponding solvers
+        // Setup of matrices and corresponding solvers
         gsSparseMatrix<T> M_tilde = B_tilde[i].transpose() * local_mass[i] * B_tilde[i];
         M_tilde_inv[i] = makeSparseCholeskySolver( M_tilde );
         M_compl[i] = B_compl[i].transpose() * local_mass[i] * B_compl[i];
         K_compl[i] = B_compl[i].transpose() * local_stiff[i] * B_compl[i];
     }
 
-    // Setup the final operator
+    // Setup of final operator
     typename gsSumOp<T>::uPtr result = gsSumOp<T>::make();
 
     for ( index_t type = 0; type < (1<<d); ++ type )
@@ -648,9 +645,9 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
         std::vector< gsSparseMatrix<T>* > transfers(d);
 
-        index_t numberInteriors = 0; //type = alpha (0,1)
+        index_t numberInteriors = 0;
 
-        // setup the transfer
+        // Setup of transfer
         for ( index_t j = 0; j<d; ++ j )
         {
             if ( type & ( 1 << j ) )
@@ -672,7 +669,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         if ( transfer.cols() == 0 )
             continue;
 
-        // Setup the swap, where the boundary part is shifted to the begin
+        // Setup of swap, where the boundary part is shifted to the begin
 
         index_t left = 1, current = transfers[d-1]->cols(), right = 1;
         for ( index_t j = 0; j < d-1; ++j )
@@ -702,19 +699,18 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
         }
 
-        // Setup the interior correction
+        // Setup of interior correction
         for ( index_t j = d-1; j>=0; --j )
         {
             if ( ! ( type & ( 1 << j ) ) )
                 correction.push_back( M_tilde_inv[j] );
         }
 
-        // If we are in the interior, we have to do the scaling here as there is no boundary correction
+        // If we are in the interior, we have to do the scaling here as there is no boundary correction.
         if ( numberInteriors == d )
             correction[0] = gsScaledOp<T>::make( correction[0], 1./( alpha + numberInteriors/(sigma*h*h) ) );
 
-        // Setup the bondary correction, like  K(x)M(x)M+M(x)K(x)M+M(x)M(x)K+(alpha + (d-3)/(sigma*h*h)) M(x)M(x)M
-        // \sigma from the paper equals 1/(sigma*h*h) here.
+        // Setup of bondary correction, like  K(x)M(x)M+M(x)K(x)M+M(x)M(x)K+(alpha + (d-3)/(sigma*h*h)) M(x)M(x)M
         if ( numberInteriors < d )
         {
             gsSparseMatrix<T> bc_matrix;
@@ -763,8 +759,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         }
 
         typename gsMatrixOp< gsSparseMatrix<T> >::Ptr transOp = makeMatrixOp(transfer.moveToPtr());
-        // setup the whole operator
-        // the correction is the Kronecker-product of the operators in the vector correction
+        // Setup of whole operator
+        // The correction is the Kronecker-product of the operators in the vector correction.
         result->addOperator(
             gsProductOp<T>::make(
                 makeMatrixOp( transOp->matrix().transpose() ),
