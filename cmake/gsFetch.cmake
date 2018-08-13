@@ -88,4 +88,6 @@ function(gismo_fetch_module)
       URL https://github.com/gismo/${ARGV0}/archive/master.zip)
   endif()
 
+  add_subdirectory(${gismo_SOURCE_DIR}/extensions/${ARGN} ${gismo_BINARY_DIR}/extensions/${ARGN})
+
 endfunction()
