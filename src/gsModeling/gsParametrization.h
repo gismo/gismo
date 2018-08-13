@@ -17,6 +17,8 @@
 #include <gsIO/gsOptionList.h>
 #include <gsUtils/gsMesh/gsHalfEdgeMesh.h>
 
+#include <surface_mesh/Surface_mesh.h> // external
+
 namespace gismo
 {
 /**
@@ -52,14 +54,16 @@ public:
 	typedef std::vector<Point2D, typename Point2D::aalloc> VectorType;
 
 private:
-    gsHalfEdgeMesh<T> m_mesh;     ///< mesh information
+//    gsHalfEdgeMesh<T> m_mesh;     ///< mesh information
+    surface_mesh::Surface_mesh m_mesh;
+
 	VectorType m_parameterPoints; ///< parameter points
     gsOptionList m_options;
 
 public:
 
     /// Constructor using the input mesh and (possibly) options
-    explicit gsParametrization(gsMesh<T> &mesh, const gsOptionList & list = defaultOptions());
+    explicit gsParametrization(const gsMesh<T> &mesh, const gsOptionList & list = defaultOptions());
 
     /// @brief Returns the list of default options for gsParametrization
     static gsOptionList defaultOptions();
@@ -128,7 +132,7 @@ private:
          * @param[in] vertexIndex const int - vertex index
          * @param[in] innerVertex const bool - optional bool value that indicates if vertex is inner vertex or not
          */
-        LocalNeighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
+        LocalNeighbourhood(const surface_mesh::Surface_mesh & meshInfo,
                            const size_t vertexIndex,
                            const bool innerVertex = 1);
 
@@ -214,7 +218,7 @@ private:
          * @param[in] localNeighbourhood #local neighbourhood stores the needed information about the neighbours
          * @param[in] parametrizationMethod #method used for parametrization, one can choose between 1:shape, 2:uniform, 3:distance
          * */
-        LocalParametrization(const gsHalfEdgeMesh<T> &meshInfo,
+        LocalParametrization(const surface_mesh::Surface_mesh &meshInfo,
                              const LocalNeighbourhood &localNeighbourhood,
                              const size_t parametrizationMethod = 2);
 
@@ -281,7 +285,7 @@ private:
          * @param[in] filename const gsHalfEdgeMesh<T> object
          * @param[in] parametrizationMethod const size_t - {1:shape, 2:uniform, 3:distance}
          */
-        explicit Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
+        explicit Neighbourhood(const surface_mesh::Surface_mesh & meshInfo,
                                const size_t parametrizationMethod = 2);
 
         /**
@@ -317,7 +321,7 @@ private:
                                            std::vector<std::pair<T, size_t> > &sortedAngles,
                                            std::vector<int> &corners) const;
 
-        const gsHalfEdgeMesh<T> & m_basicInfos;
+        const surface_mesh::Surface_mesh & m_basicInfos;
         std::vector<LocalParametrization> m_localParametrizations;
         std::vector<LocalNeighbourhood> m_localBoundaryNeighbourhoods;
     };
