@@ -123,8 +123,8 @@ int main(int argc, char *argv[])
         // write patch numbers
         gsInfo << "Writing patch numbers...\n";
         std::ofstream pn("patchnumbers.txt");
-        
-        for(std::vector<gsMeshElement<>::gsFaceHandle >::iterator it(m->face.begin());it!=m->face.end();++it)
+
+        for(std::vector<gsMeshElement<>::gsFaceHandle >::const_iterator it(m->faces().begin());it!=m->faces().end();++it)
         {
             pn << (**it).faceIdentity << "\n";
         }
@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
     if (toxml)
     {
         gsInfo << "Writing xml file..." << "\n";
-        
+
         gsFileData<> newdata;
         newdata << sl;
         newdata.dump(baseName);

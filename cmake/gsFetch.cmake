@@ -78,8 +78,13 @@ function(gismo_fetch_module)
   set(git_pr https) #ssh
 
   if("x${GISMO_REPO}" STREQUAL "xgit")
+    if("x${git_pf}" STREQUAL "xssh")
+      set(git_repo git@github.com:gismo/${ARGV0}.git)
+    else()
+      set(git_repo https://github.com/gismo/${ARGV0}.git)
+    endif()
     gismo_fetch_directory(${ARGN}
-      GIT_REPOSITORY  ${git_pr}://git@github.com/gismo/${ARGV0}.git)
+      GIT_REPOSITORY  ${git_repo})
   elseif("x${GISMO_REPO}" STREQUAL "xsvn")
     gismo_fetch_directory(${ARGN}
       SVN_REPOSITORY  https://github.com/gismo/${ARGV0}/trunk)

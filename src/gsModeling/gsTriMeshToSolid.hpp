@@ -1343,7 +1343,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
 
             for (std::size_t i=0;i!=mface->numVertices();i=i+3)
             {
-                (mface)->addFace(mface->vertex[i], mface->vertex[i+1], mface->vertex[i+2]);
+                (mface)->addFace(&mface->vertex(i), &mface->vertex(i+1), &mface->vertex(i+2));
             }
             patchMeshes.push_back(mface);
 
@@ -1393,7 +1393,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
 
             for (std::size_t i=0; i!=paraface->numVertices(); i+=3)
             {
-                (paraface)->addFace(paraface->vertex[i], paraface->vertex[i+1], paraface->vertex[i+2]);
+                (paraface)->addFace(&paraface->vertex(i), &paraface->vertex(i+1), &paraface->vertex(i+2));
             }
 
             paraMeshes.push_back(paraface);

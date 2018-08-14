@@ -2,12 +2,12 @@
 
     @brief Provides declaration of Vector class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -38,7 +38,7 @@ class gsVector : public gsMatrix<T, _Rows, 1, _Options>
 public:
     typedef gsMatrix<T,_Rows,1,_Options> gsBase;
     //typedef gsMatrix<T,_Rows,(_Rows!=-1 ? 1 : -1), _Options> gsBase;
-    
+
     // Base is the single-column dense matrix class of Eigen
     typedef typename gsBase::Base Base;
 
@@ -109,7 +109,7 @@ public:
     inline operator const ConstRef () { return ConstRef(*this); }
 
     void clear() { this->resize(0); }
-    
+
     // This constructor allows constructing a gsVector from Eigen expressions
     template<typename OtherDerived>
     gsVector(const Eigen::EigenBase<OtherDerived>& other) : gsBase(other) { }
@@ -137,7 +137,7 @@ public:
     // Note: using Base::operator=; is ambiguous in MSVC
 #ifdef _MSC_VER
     template <class EigenExpr>
-    gsVector& operator= (const EigenExpr & other) 
+    gsVector& operator= (const EigenExpr & other)
     {
         this->Base::operator=(other);
         return *this;
@@ -157,7 +157,7 @@ public:
         return *this;
     }
 #endif
-    
+
     /// \brief Returns the \a i-th element of the vector
     inline T at(index_t i) const { return *(this->data()+i);}
 
@@ -226,7 +226,7 @@ public:
 
     T angle(const gsVector3d<T> & other)
     {
-        return std::acos(this->normalized().dot(other.normalized()));
+        return math::acos(this->normalized().dot(other.normalized()));
     }
 
     /*
@@ -234,7 +234,7 @@ public:
     // Note: using Base::operator=; is ambiguous in MSVC
 #ifdef _MSC_VER
     template <class EigenExpr>
-    gsVector3d& operator= (const EigenExpr & other) 
+    gsVector3d& operator= (const EigenExpr & other)
     {
         this->Base::operator=(other);
         return *this;
@@ -243,7 +243,7 @@ public:
     using Base::operator=;
 #endif
     */
-    
+
     // implicitly deleted in C++11
     gsVector3d & operator=(const gsVector3d & other)
     {
@@ -276,21 +276,21 @@ template<class T> inline
 gsVector3d<T>::gsVector3d() : Base() { }
 
 template<class T> inline
-gsVector3d<T>::gsVector3d(scalar_t x, scalar_t y,scalar_t z ) 
+gsVector3d<T>::gsVector3d(scalar_t x, scalar_t y,scalar_t z )
         {
             (*this)(0,0)=x;
             (*this)(1,0)=y;
-            (*this)(2,0)=z; 
+            (*this)(2,0)=z;
         }
 
 template<class T> inline
 gsVector3d<T>::gsVector3d(const Base& a): Base(a) { }
 
-// template<class T>   
+// template<class T>
 // template<typename OtherDerived> inline
 // gsVector3d<T>::gsVector3d(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }
-    
-    
+
+
 // template<class T> inline
 //     inline T   gsVector3d<T>::x () const { return (*this)(0); }
 // template<class T> inline

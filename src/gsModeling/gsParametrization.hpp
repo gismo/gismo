@@ -349,7 +349,7 @@ const std::vector<int> gsParametrization<T>::Neighbourhood::getBoundaryCorners(c
                         std::sort(newCorners.begin(), newCorners.end());
                         lengths = m_basicInfos.getCornerLengths(newCorners);
                         std::sort(lengths.begin(), lengths.end());
-                        newDifference = std::abs(lengths[0] - lengths[3]);
+                        newDifference = math::abs(lengths[0] - lengths[3]);
                         if(oldDifference == 0 || newDifference < oldDifference)
                         {
                             corners.erase(corners.begin(), corners.end());

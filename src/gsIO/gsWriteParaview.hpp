@@ -58,7 +58,7 @@ void writeSingleBasisMesh3D(const gsMesh<T> & sl,
     // Coordinates of vertices
     file <<"<Points>\n";
     file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertex.begin(); it!=sl.vertex.end(); ++it)
+    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertices().begin(); it!=sl.vertices().end(); ++it)
     {
         const gsVertex<T>& vertex = **it;
         file << vertex[0] << " " << vertex[1] << " " << vertex[2] << " \n";
@@ -70,7 +70,7 @@ void writeSingleBasisMesh3D(const gsMesh<T> & sl,
     // Point data
     file <<"<PointData Scalars=\"CellVolume\">\n";
     file <<"<DataArray type=\"Float32\" Name=\"CellVolume\" format=\"ascii\" NumberOfComponents=\"1\">\n";
-    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertex.begin(); it!=sl.vertex.end(); ++it)
+    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertices().begin(); it!=sl.vertices().end(); ++it)
     {
         file << (*it)->data <<" ";
     }
@@ -144,7 +144,7 @@ void writeSingleBasisMesh2D(const gsMesh<T> & sl,
     // Coordinates of vertices
     file <<"<Points>\n";
     file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertex.begin(); it!=sl.vertex.end(); it+=4)
+    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertices().begin(); it!=sl.vertices().end(); it+=4)
     {
         // order is important!
         const gsVertex<T>& vertex0 = **it;
@@ -163,7 +163,7 @@ void writeSingleBasisMesh2D(const gsMesh<T> & sl,
     // Point data
     file <<"<PointData Scalars=\"CellArea\">\n";
     file <<"<DataArray type=\"Float32\" Name=\"CellVolume\" format=\"ascii\" NumberOfComponents=\"1\">\n";
-    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertex.begin(); it!=sl.vertex.end(); ++it)
+    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertices().begin(); it!=sl.vertices().end(); ++it)
     {
         file << (*it)->data <<" ";
     }
@@ -257,8 +257,8 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
         // Lift vertices at anchor positions
         for (std::size_t i = 0; i!= msh.numVertices(); ++i)
         {
-            (*msh.vertex[i])[d] = (*msh.vertex[i])[0];
-            msh.vertex[i]->topRows(d) = anch.col(i);
+            msh.vertex(i)[d] = msh.vertex(i)[0];
+            msh.vertex(i).topRows(d) = anch.col(i);
         }
     }
     else if (n>3)
@@ -1411,7 +1411,7 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd)
     /// Coordinates of vertices
     file <<"<Points>\n";
     file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertex.begin(); it!=sl.vertex.end(); ++it)
+    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertices().begin(); it!=sl.vertices().end(); ++it)
     {
         const gsVertex<T>& vertex = **it;
         file << vertex[0] << " ";
@@ -1438,16 +1438,16 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd)
     // Write out edges
     file << "<Lines>\n";
     file << "<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
-    for (typename std::vector< gsEdge<T> >::const_iterator it=sl.edge.begin();
-         it!=sl.edge.end(); ++it)
+    for (typename std::vector< gsEdge<T> >::const_iterator it=sl.edges().begin();
+         it!=sl.edges().end(); ++it)
     {
             file << it->source->getId() << " " << it->target->getId() << "\n";
     }
     file << "</DataArray>\n";
     file << "<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
     int count=0;
-    for (typename std::vector< gsEdge<T> >::const_iterator it=sl.edge.begin();
-         it!=sl.edge.end(); ++it)
+    for (typename std::vector< gsEdge<T> >::const_iterator it=sl.edges().begin();
+         it!=sl.edges().end(); ++it)
     {
         count+=2;
         file << count << " ";
@@ -1471,8 +1471,8 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd)
     /// Which vertices belong to which faces
     file << "<Polys>\n";
     file << "<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
-    for (typename std::vector< gsFace<T>* >::const_iterator it=sl.face.begin();
-         it!=sl.face.end(); ++it)
+    for (typename std::vector< gsFace<T>* >::const_iterator it=sl.faces().begin();
+         it!=sl.faces().end(); ++it)
     {
         for (typename std::vector< gsVertex<T>* >::const_iterator vit= (*it)->vertices.begin();
              vit!=(*it)->vertices.end(); ++vit)
@@ -1484,8 +1484,8 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd)
     file << "</DataArray>\n";
     file << "<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
     count=0;
-    for (typename std::vector< gsFace<T>* >::const_iterator it=sl.face.begin();
-         it!=sl.face.end(); ++it)
+    for (typename std::vector< gsFace<T>* >::const_iterator it=sl.faces().begin();
+         it!=sl.faces().end(); ++it)
     {
         count += (*it)->vertices.size();
         file << count << " ";

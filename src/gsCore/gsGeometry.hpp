@@ -88,8 +88,8 @@ void gsGeometry<T>::evaluateMesh(gsMesh<T>& mesh) const
     // geometry mapping
     for (std::size_t i = 0; i!= mesh.numVertices(); ++i)
     {
-        eval_into( mesh.vertex[i]->topRows(pDim), tmp );
-        mesh.vertex[i]->topRows( gDim ) = tmp;
+        eval_into( mesh.vertex(i).topRows(pDim), tmp );
+        mesh.vertex(i).topRows( gDim ) = tmp;
     }
 }
 template<class T>

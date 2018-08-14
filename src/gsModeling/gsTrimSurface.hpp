@@ -241,8 +241,8 @@ memory::unique_ptr<gsMesh<T> > gsTrimSurface<T>::toMesh(int npoints) const
     // For all vertices of the msh, push forward the value by m_surface
     for (std::size_t i = 0; i!= msh->numVertices(); ++i)
     {
-        m_surface->eval_into( msh->vertex[i]->topRows(2), tmp );
-        msh->vertex[i]->topRows(m_surface->geoDim() ) = tmp;
+        m_surface->eval_into( msh->vertex(i).topRows(2), tmp );
+        msh->vertex(i).topRows(m_surface->geoDim() ) = tmp;
     }
 
     return msh;

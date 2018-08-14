@@ -57,28 +57,28 @@ public:
         if (this!=&other)
         {
             // Assert a already cleared gsMesh (getId)
-            cloneAll(other.vertex, vertex);  // fine, new pointers for all vertices
+            cloneAll(other.m_vertex, m_vertex);  // fine, new pointers for all vertices
 
             // copy all pointers to it's original counterpart in face
-            cloneAll(other.face, face);
-            for (size_t i = 0; i < other.face.size(); ++i)
+            cloneAll(other.m_face, m_face);
+            for (size_t i = 0; i < other.m_face.size(); ++i)
             {
                 for (size_t j = 0; j != 3; ++j)
                 {
-                    GISMO_ASSERT(vertex[other.face[i]->vertices[j]->getId()]->getId() == other.face[i]->vertices[j]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and face don't match");
-                    face[i]->vertices[j] = vertex[other.face[i]->vertices[j]->getId()];
+                    GISMO_ASSERT(m_vertex[other.m_face[i]->vertices[j]->getId()]->getId() == other.m_face[i]->vertices[j]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and face don't match");
+                    m_face[i]->vertices[j] = m_vertex[other.m_face[i]->vertices[j]->getId()];
                 }
             }
 
             // iterate over all edges and make them new
-            edge = other.edge;
-            for (size_t i = 0; i != other.edge.size(); ++i)
+            m_edge = other.m_edge;
+            for (size_t i = 0; i != other.m_edge.size(); ++i)
             {
-                GISMO_ASSERT(other.edge[i].source->getId() == vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.source don't match");
-                edge[i].source = vertex[other.edge[i].source->getId()];
+                GISMO_ASSERT(other.m_edge[i].source->getId() == m_vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.source don't match");
+                m_edge[i].source = m_vertex[other.m_edge[i].source->getId()];
 
-                GISMO_ASSERT(other.edge[i].source->getId() == vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.target don't match");
-                edge[i].target = vertex[other.edge[i].target->getId()];
+                GISMO_ASSERT(other.m_edge[i].source->getId() == m_vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.target don't match");
+                m_edge[i].target = m_vertex[other.m_edge[i].target->getId()];
             }
         }
         return *this;
@@ -177,19 +177,27 @@ public:
 
     gsMesh& reserve(size_t vertex, size_t face, size_t edge);
 
-    size_t numVertices() const { return vertex.size(); }
-    size_t numEdges()    const { return edge.size(); }
-    size_t numFaces()    const { return face.size(); }
-    //int numCells;
+    size_t numVertices() const { return m_vertex.size(); }
+    size_t numEdges()    const { return m_edge.size(); }
+    size_t numFaces()    const { return m_face.size(); }
 
-public: // private:
+    const std::vector<VertexHandle > & vertices() const
+    { return m_vertex; }
 
-    std::vector<VertexHandle > vertex;
-    std::vector<FaceHandle >  face;
-    //std::vector<Edge > edge;
-    gsSortedVector<Edge> edge;
+    const std::vector<Edge > & edges() const
+    { return m_edge; }
 
-    //gsBoundingBox<scalar_t> bb;
+    const std::vector<FaceHandle > & faces() const
+    { return m_face; }
+
+    const Vertex & vertex(size_t i) const { return *m_vertex[i]; }
+    Vertex & vertex(size_t i) { return *m_vertex[i]; }
+
+public: //protected: -- todo
+
+    std::vector<VertexHandle > m_vertex;
+    std::vector<FaceHandle >  m_face;
+    gsSortedVector<Edge> m_edge;
 };
 
 
