@@ -16,10 +16,13 @@ project(main)
 
 # G+Smo
 find_package(gismo REQUIRED)
+message(STATUS "G+Smo shared library in ${GISMO_LIBRARY_DIR}")
 include_directories( ${GISMO_INCLUDE_DIRS})
 link_directories   ( ${GISMO_LIBRARY_DIR} )
+
 include( ${GISMO_USE_FILE})
-message(STATUS "G+Smo shared library in ${GISMO_LIBRARY_DIR}")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${GISMO_MODULE_PATH}")
+include(gsConfig.cmake) #compiler configuration
 
 # Source file
 add_executable(main main.cpp)

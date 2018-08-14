@@ -31,8 +31,6 @@ install(DIRECTORY ${GSUNITTEST_INCLUDE_DIR} DESTINATION
 #  # need to export target as well
 #  #install(TARGETS ho_lib EXPORT the_export_set DESTINATION ${some_dest})
 
-add_subdirectory(${gismo_SOURCE_DIR}/extensions/gsUnitTest ${gismo_BINARY_DIR}/extensions/gsUnitTest)
-
 include_directories(${GSUNITTEST_INCLUDE_DIR})
 
 # Collect source file names
