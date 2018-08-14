@@ -2,12 +2,12 @@
 
     @brief Input and output Utilities.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris, J. Speh
 */
 
@@ -337,10 +337,10 @@ void makeMesh(const gsBasis<T>& basis, gsMesh<T> & mesh, int n = 0)
         }
 
         // idea: instead of edges add the faces to the mesh
-        // mesh->addFace( mesh.vertex.back(), 
-        //                *(mesh.vertex.end()-3), 
-        //                *(mesh.vertex.end()-4),
-        //                *(mesh.vertex.end()-2) 
+        // mesh->addFace( mesh.vertices().back(),
+        //                *(mesh.vertices().end()-3),
+        //                *(mesh.vertices.end()-4),
+        //                *(mesh.vertices.end()-2)
         //     );
 
     }
@@ -423,7 +423,7 @@ void makeHierarchicalMesh(const gsHTensorBasis<d, T>& basis,
             }
 
             meshes[level].addVertex(vertex);
-            map[counter++] = meshes[level].vertex.back();
+            map[counter++] = meshes[level].vertices().back();
 
         } while (nextCubePoint<gsVector<unsigned> >(cur, zeros, ones));
 
