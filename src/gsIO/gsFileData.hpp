@@ -217,7 +217,6 @@ bool gsFileData<T>::read(String const & fn)
     }
 }
 
-
 /*---------- Native Gismo format */
 
 template<class T>
@@ -258,8 +257,6 @@ bool gsFileData<T>::readGismoXmlStream(std::istream & is)
     // TO DO: Check if it contains unknown tags...
     return true;
 }
-
-
 
 /*---------- Axl file */
 
@@ -763,7 +760,6 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
 //bool gsFileData<T>::readGoToolsTrimSurf(gsXmlNode * node )
 //{ }
 
-
 /*---------- GeoPdes txt file */
 
 template<class T>
@@ -1192,7 +1188,6 @@ bool gsFileData<T>::readOffFile( String const & fn )
 
     return true;
 }
-
 
 /*---------- STL mesh file */
 

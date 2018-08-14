@@ -35,7 +35,7 @@ class EigenProblemPrivate;
     \brief Computes the eigenvalues of largest magnitude of an
     eigenvalue problem $A x = \lambda x$, using Anasazi's
     implementation of the Block Davidson method.
-    
+
     \see https://trilinos.org/docs/dev/packages/anasazi/doc/html/classAnasazi_1_1SolverManager.html
 
 */
@@ -46,21 +46,21 @@ public:
     typedef Epetra_Operator OP;
 
 public:
-    
+
     explicit EigenProblem(const SparseMatrix & A,
                           const AnasaziMethod & method = BlockKrylovSchur);
     // BlockDavidson
 
     ~EigenProblem();
-    
+
     void solve() const;
 
-    
+
 protected:
         EigenProblemPrivate * my;
 };
 
 
-};// namespace solver
-};// namespace trilinos
-};// namespace gismo
+}// namespace solver
+}// namespace trilinos
+}// namespace gismo

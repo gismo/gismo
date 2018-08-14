@@ -10,9 +10,9 @@
 namespace gismo
 {
 
-///////////////////////////////////////////////////////////////////
-////// Norm & distance computation
-///////////////////////////////////////////////////////////////////
+/*
+ * Norm & distance computation
+ */
 
 TEMPLATE_INST
 T computeL2Norm<T>(const gsGeometry<T>& geo, const gsFunction<T>& u, bool isParametrized_u, int numEvals);
@@ -67,7 +67,8 @@ T igaL2DistanceOnElt( const gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const gsGeometryEvaluator<T>::uPtr & funcEval,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
-                      const gsBasis<T>::domainIter & domIt);
+                      const gsBasis<T>::domainIter & domIt,
+					  const gsQuadRule<T> & quRule);
 
 TEMPLATE_INST
 T igaH1Distance(const gsGeometry<T>& patch, 
@@ -91,7 +92,8 @@ T igaH1DistanceOnElt( const gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const gsFunction<T> & func,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
-                      const gsBasis<T>::domainIter & domIt);
+                      const gsBasis<T>::domainIter & domIt,
+					  const gsQuadRule<T> & quRule);
 
 
 TEMPLATE_INST
@@ -112,7 +114,8 @@ T igaH1DistanceOnElt( const gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
                       const gsBasis<T>::domainIter & domIt,
-                      const int d);
+                      const int d,
+					  const gsQuadRule<T> & quRule);
 
 TEMPLATE_INST
 gsVector< gsMatrix<T> > igaFieldH1DistanceEltWiseSq(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam);

@@ -50,9 +50,9 @@ namespace gismo {
 
 namespace internal {
  
-////////////////////////////////////////////////////////
-// Getting Xml data
-////////////////////////////////////////////////////////
+/*
+ * Getting Xml data
+ */
 
 /// Get a solid
 template<class T>
@@ -294,6 +294,7 @@ public:
                 gsGetInt(str, face[j]);
             m->addFace(face);
         }
+        m->cleanMesh();
         return m;
     }
 
@@ -389,10 +390,9 @@ public:
     }
 };
 
-////////////////////////////////////////////////////////
-// Getting Bases from XML data
-////////////////////////////////////////////////////////
-
+/*
+ * Getting Bases from XML data
+ */
     
 /// Get a NurbsBasis from XML data
 template<class T>

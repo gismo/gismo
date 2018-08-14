@@ -105,9 +105,9 @@ private:
 
 protected:
 
-////////////////////////////////////////////////////////
-// File readers
-////////////////////////////////////////////////////////
+/*
+ * File readers
+ */
 
     /// Reads a file with xml extension
     bool readXmlFile( String const & fn );

@@ -42,6 +42,11 @@ public:
     // Base is the single-column dense matrix class of Eigen
     typedef typename gsBase::Base Base;
 
+    // Self type
+    typedef gsVector<T,_Rows, _Options> Self;
+
+    typedef typename Eigen::aligned_allocator<Self> aalloc;
+
     // The type of the coefficients of the matrix
     typedef T Scalar_t;
 
@@ -218,6 +223,11 @@ public:
     /// This constructor allows constructing a gsVector3d from Eigen expressions
     template<typename OtherDerived>
     gsVector3d(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }
+
+    T angle(const gsVector3d<T> & other)
+    {
+        return std::acos(this->normalized().dot(other.normalized()));
+    }
 
     /*
     // Using the assignment operators of Eigen

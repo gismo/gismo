@@ -52,6 +52,53 @@ bool gsOptionList::getSwitch(const std::string & label) const
     return it->second.first;
 }
 
+std::vector<std::string> gsOptionList::getMultiString(const std::string & gn) const
+{
+    GISMO_ASSERT(hasGroup(gn), "Invalid request (getMultiString): The group " + gn + " does not exist.");
+
+    std::vector<std::string> result;
+    const std::string search = gn + ".";
+    int sz = getInt(search + "Size");
+    result.reserve(sz);
+    // add strings to vector
+    for (int i = 0; i < sz; ++i)
+        result.push_back(getString(search + util::to_string(i)));
+
+    return result;
+}
+
+std::vector<int> gsOptionList::getMultiInt(const std::string & gn) const
+{
+    GISMO_ASSERT(hasGroup(gn), "Invalid request (getMultiInt): The group " + gn + " does not exist.");
+
+    std::vector<int> result;
+
+    const std::string search = gn + ".";
+
+    // add integers to vector
+    for (IntTable::const_iterator it = m_ints.begin(); it != m_ints.end(); it++)
+        if (util::starts_with(it->first, search) && !util::ends_with(it->first, "Size"))
+            result.push_back(it->second.first);
+
+    return result;
+}
+
+std::vector<real_t> gsOptionList::getMultiReal(const std::string & gn) const
+{
+    GISMO_ASSERT(hasGroup(gn), "Invalid request (getMultiReal): The group " + gn + " does not exist.");
+
+    std::vector<real_t> result;
+
+    const std::string search = gn + ".";
+
+    // add reals to vector
+    for (RealTable::const_iterator it = m_reals.begin(); it != m_reals.end(); it++)
+        if (util::starts_with(it->first, search) && !util::ends_with(it->first, "Size"))
+            result.push_back(it->second.first);
+
+    return result;
+}
+
 std::string gsOptionList::askString(const std::string & label,
                                     const std::string & value) const
 {
@@ -157,6 +204,20 @@ void gsOptionList::addReal(const std::string & label,
          "Invalid request (addReal): Option "<<label<<" already exists, but not as a real; it is "<<getInfo(label)<<"." );
     //GISMO_ASSERT( !exists(label), "Option "<<label<<" already exists." );
     m_reals[label] = std::make_pair(value,desc);
+}
+
+void gsOptionList::addMultiInt(const std::string & label,
+                               const std::string & desc,
+                               const std::vector<int> & values)
+{
+    GISMO_ENSURE( !( isString(label) || isReal(label) || isSwitch(label) ),
+                  "Invalid request (addMultiInt): Option "<<label<<" already exists, but not as an multiint; it is "<<getInfo(label)<<"." );
+
+    for (size_t i = 0; i < values.size(); ++i)
+    {
+        addInt(label + "." + util::to_string(i), desc, values[i]);
+    }
+    addInt(label + ".Size", desc, values.size());
 }
 
 void gsOptionList::addSwitch(const std::string & label,

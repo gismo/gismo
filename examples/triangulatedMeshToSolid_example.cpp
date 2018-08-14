@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 
     // compute the features
     tmts.getFeatures(cutoffAngle, non_manifold, warning_borders);
-    m->cleanStlMesh();
+    m->cleanMesh();
 
     // give every face a patch number
     tmts.calcPatchNumbers();

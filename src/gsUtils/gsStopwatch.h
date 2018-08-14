@@ -97,7 +97,9 @@ private:
 }; // class gsGenericStopwatch
 
 
-// SYSTEM-SPECIFIC WALL CLOCKS /////////////////////////////////////////////////
+/*
+ * SYSTEM-SPECIFIC WALL CLOCKS
+ */
 
 #if __cplusplus >= 201103L                                          // C++11 //
 // highest-resolution wall clock time
@@ -158,7 +160,9 @@ typedef gsGenericStopwatch<WallClock> gsStopwatch;
 #endif
 
 
-// SYSTEM-SPECIFIC CPU CLOCKS //////////////////////////////////////////////////
+/*
+ * SYSTEM-SPECIFIC CPU CLOCKS
+ */
 
 #if defined(__linux__) // || defined(TARGET_OS_MAC)                     // LINUX //
 

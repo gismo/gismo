@@ -11,7 +11,7 @@ project(doc-snippets)
 include(gsConfig)
 
 # Collect source file names
-file(GLOB snippets_SRCS "*.cpp")
+file(GLOB snippets_SRCS "*.cxx")
 
 add_custom_target(${PROJECT_NAME})
 set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "unittests")

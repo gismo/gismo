@@ -2,12 +2,12 @@
 
     @brief Provides implementation of Geometry default operatiions.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -64,7 +64,7 @@ gsGeometry<T>::boundary(boxSide const& s) const
 {
     gsMatrix<unsigned> ind = this->basis().boundary(s); // get indices of the boundary DOF
     gsMatrix<T> coeffs (ind.size(), geoDim()); // create matrix for boundary coefficients
-    
+
     for (index_t i=0; i != ind.size(); i++ )
     {
         coeffs.row(i) = m_coefs.row( (ind)(i,0) );
@@ -86,10 +86,10 @@ void gsGeometry<T>::evaluateMesh(gsMesh<T>& mesh) const
 
     // For all vertices of the mesh, push forward the value by the
     // geometry mapping
-    for ( int i = 0; i!= mesh.numVertices; ++i)
+    for (std::size_t i = 0; i!= mesh.numVertices(); ++i)
     {
-        eval_into( mesh.vertex[i]->coords.topRows(pDim), tmp );
-        mesh.vertex[i]->coords.topRows( gDim ) = tmp;
+        eval_into( mesh.vertex[i]->topRows(pDim), tmp );
+        mesh.vertex[i]->topRows( gDim ) = tmp;
     }
 }
 template<class T>
@@ -119,16 +119,16 @@ gsGeometry<T>::coefAtCorner(boxCorner const & c) const
 }
 
 template<class T>
-void gsGeometry<T>::invertPoints(const gsMatrix<T> & points, 
-                                 gsMatrix<T> & result, 
+void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,
+                                 gsMatrix<T> & result,
                                  const T accuracy) const
 {
     result.resize(parDim(), points.cols() );
     gsVector<T> arg;
     for ( index_t i = 0; i!= points.cols(); ++i)
-    {         
+    {
         arg = parameterCenter();
-        // int iter = 
+        // int iter =
         this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
         result.col(i) = arg;
     }
@@ -140,7 +140,7 @@ void gsGeometry<T>::merge(gsGeometry *)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsGeometryEvaluator<typename gsGeometry<T>::Scalar_t> * 
+gsGeometryEvaluator<typename gsGeometry<T>::Scalar_t> *
 gsGeometry<T>:: evaluator(unsigned) const
 { GISMO_NO_IMPLEMENTATION }
 
@@ -163,7 +163,7 @@ template<class T>
 void gsGeometry<T>::degreeElevate(int const i, int const dir)
 {
     typename gsBasis<T>::uPtr b = m_basis->clone();
- 
+
     if ( dir == -1 )
         b->degreeElevate(i);
     else if (dir < parDim() )
@@ -183,11 +183,11 @@ template<class T>
 void gsGeometry<T>::degreeReduce(int const i, int const dir)
 {
     typename gsBasis<T>::uPtr b = m_basis->clone();
- 
+
     if ( dir == -1 )
         b->degreeReduce(i);
     else if (dir < parDim() )
-        b->component(dir).degreeReduce(i);        
+        b->component(dir).degreeReduce(i);
     else
         GISMO_ERROR("Invalid direction "<< dir <<" to degree-reduce.");
 
@@ -202,19 +202,19 @@ void gsGeometry<T>::degreeReduce(int const i, int const dir)
 template<class T>
 gsMatrix<T>
 gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
-{  
+{
     static const unsigned d = this->m_basis->dim();
 
     gsMatrix<T> B, DD(d,d), tmp(d,d);
     gsMatrix<unsigned> ind;
 
     // coefficient matrix row k = coef. of basis function k
-    const gsMatrix<T>& C = this->m_coefs; 
+    const gsMatrix<T>& C = this->m_coefs;
     // col j = nonzero second derivatives at column point u(..,j)
-    m_basis->deriv2_into(u, B) ; 
+    m_basis->deriv2_into(u, B) ;
     // col j = indices of active functions at column point u(..,j)
-    m_basis->active_into(u, ind);  
-  
+    m_basis->active_into(u, ind);
+
     DD.setZero();
     unsigned j=0;// just one column
     //for ( unsigned j=0; j< u.cols(); j++ ) // for all points (columns of u)
@@ -231,7 +231,7 @@ gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
         }
         DD += C(ind(i,j), coord) * tmp;
     }
-  
+
     return DD;
 }
 
@@ -248,7 +248,7 @@ void extractRows( const gsMatrix<T> &in, typename gsMatrix<unsigned>::constColum
 template <class T>
 void
 gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
-{  
+{
 
     const unsigned flags = out.flags | NEED_ACTIVE;
     const index_t  numPt = in.cols();
@@ -256,7 +256,7 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
 
     gsFuncData<T> tmp(flags);
     this->basis().compute(in, tmp);
-    
+
     out.values.resize(out.maxDeriv()+1);
     out.dim.first  = tmp.dim.first;
     out.dim.second = numCo;

@@ -1,13 +1,20 @@
-##############################################################
-#    CMake Project Wrapper Makefile               
-#
-# Builds G+Smo in ./build/
-#
-############################################################## 
+######################################################################
+## Makefile
+## This file is part of the G+Smo library.
+##
+## Configures and builds G+Smo in ./build
+##
+## Author: Angelos Mantzaflaris
+## Copyright (C) 2012-2018
+######################################################################
 
 SHELL := /bin/bash
 RM    := rm -rf
 MKDIR := mkdir -p
+
+ifndef VERBOSE
+MAKEFLAGS += --no-print-directory
+endif
 
 all: ./build/Makefile
 	@ $(MAKE) -C build  && echo "Build completed in folder ./build"

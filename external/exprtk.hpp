@@ -2330,6 +2330,7 @@ namespace exprtk
 
          inline bool is_comment_start(details::char_cptr itr)
          {
+            static_cast<void>(itr);
             #ifndef exprtk_disable_comments
             const char_t c0 = *(itr + 0);
             const char_t c1 = *(itr + 1);

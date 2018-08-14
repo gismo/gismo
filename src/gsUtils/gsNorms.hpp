@@ -18,7 +18,9 @@ namespace gismo
 {
 
 
-// L2 norm ///////////////////////////////////////////////////////////////////////////
+/*
+ * L2 norm
+ */
 
 
 template <typename T>
@@ -119,38 +121,41 @@ T computeL2Distance(const gsField<T>& u, const gsField<T>& v, int numEvals)
     return math::sqrt(dist);
 }
 
-
-
-// iga L2 norm ///////////////////////////////////////////////////////////////////////////
+/*
+ * iga L2 norm
+ */
 
 template <typename T>
 T igaL2DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const typename gsGeometryEvaluator<T>::uPtr & funcEval,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
-                      const typename gsBasis<T>::domainIter & domIt)
+                      const typename gsBasis<T>::domainIter & domIt,
+                      const gsQuadRule<T> & quRule)
 {
+    gsMatrix<T> quNodes;
+    gsVector<T> quWeights;
+    quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
 
     // compute image of Gauss nodes under geometry mapping as well as Jacobians
-    geoEval->evaluateAt(domIt->quNodes);
-    funcEval->evaluateAt(domIt->quNodes);
+    geoEval->evaluateAt(quNodes);
+    funcEval->evaluateAt(quNodes);
     const gsMatrix<T> & func_vals = funcEval->values();
 
     // Evaluate function v
-    gsMatrix<T> v_val = v_isParam ? v.eval(domIt->quNodes)
+    gsMatrix<T> v_val = v_isParam ? v.eval(quNodes)
                                   : v.eval( geoEval->values() );
 
     // perform the quadrature
     T sum(0.0);
 
-    for (index_t k = 0; k < domIt->numQuNodes(); ++k) // loop over quadrature nodes
+    for (index_t k = 0; k < quRule.numNodes(); ++k) // loop over quadrature nodes
     {
-        const T weight = domIt->quWeights[k] * math::abs( geoEval->measure(k) );
+        const T weight = quWeights[k] * math::abs( geoEval->measure(k) );
         const gsVector<T> diff = func_vals.col(k) - v_val.col(k);
         sum += weight * diff.dot(diff);
     }
     return sum;
-
 }
 
 template <typename T>
@@ -158,29 +163,32 @@ T igaL2DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const gsFunction<T> & func,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
-                      const typename gsBasis<T>::domainIter & domIt)
+                      const typename gsBasis<T>::domainIter & domIt,
+                      const gsQuadRule<T> & quRule)
 {
+    gsMatrix<T> quNodes;
+    gsVector<T> quWeights;
+    quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
 
     // compute image of Gauss nodes under geometry mapping as well as Jacobians
-    geoEval->evaluateAt(domIt->quNodes);
+    geoEval->evaluateAt(quNodes);
     gsMatrix<T> func_vals;
-    func.eval_into(domIt->quNodes, func_vals);
+    func.eval_into(quNodes, func_vals);
 
     // Evaluate function v
-    gsMatrix<T> v_val = v_isParam ? v.eval(domIt->quNodes)
+    gsMatrix<T> v_val = v_isParam ? v.eval(quNodes)
                                   : v.eval( geoEval->values() );
 
     // perform the quadrature
     T sum(0.0);
 
-    for (index_t k = 0; k < domIt->numQuNodes(); ++k) // loop over quadrature nodes
+    for (index_t k = 0; k < quRule.numNodes(); ++k) // loop over quadrature nodes
     {
-        const T weight = domIt->quWeights[k] * math::abs( geoEval->measure(k) );
+        const T weight = quWeights[k] * math::abs( geoEval->measure(k) );
         const gsVector<T> diff = func_vals.col(k) - v_val.col(k);
         sum += weight * diff.dot(diff);
     }
     return sum;
-
 }
 
 
@@ -203,10 +211,10 @@ T igaL2Distance(const gsGeometry<T>& patch,
 
     T sum(0);
     typename gsBasis<T>::domainIter domIt = func.basis().makeDomainIterator();
-    domIt->computeQuadratureRule( numNodes );
+    gsGaussRule<T> quRule(numNodes);
     for (; domIt->good(); domIt->next())
     {
-        sum += igaL2DistanceOnElt( geoEval, funcEval, v, v_isParam, domIt);
+        sum += igaL2DistanceOnElt( geoEval, funcEval, v, v_isParam, domIt, quRule);
     }
     return math::sqrt(sum);
 }
@@ -228,10 +236,10 @@ T igaL2Distance(const gsGeometry<T>& patch,
 
     T sum(0);
     typename gsBasis<T>::domainIter domIt = B.makeDomainIterator();
-    domIt->computeQuadratureRule( numNodes );
+    gsGaussRule<T> quRule( numNodes );
     for (; domIt->good(); domIt->next())
     {
-        sum += igaL2DistanceOnElt( geoEval, func, v, v_isParam, domIt);
+        sum += igaL2DistanceOnElt( geoEval, func, v, v_isParam, domIt, quRule);
     }
     return math::sqrt(sum);
 }
@@ -256,7 +264,7 @@ gsMatrix<T> igaL2DistanceEltWiseSq(const gsGeometry<T>& patch,
     //gsVector<int> numNodes = gsGaussAssembler<T>::getNumIntNodesFor( func.basis() );
 
     typename gsBasis<T>::domainIter domIt = func.basis().makeDomainIterator();
-    domIt->computeQuadratureRule( numNodes );
+    gsGaussRule<T> quRule( numNodes );
 
     // Matrix to store the element-wise errors
     // in each line:
@@ -271,7 +279,7 @@ gsMatrix<T> igaL2DistanceEltWiseSq(const gsGeometry<T>& patch,
     for (; domIt->good(); domIt->next())
     {
         // compute the L2-distance
-        Errs(EltIdx,0) = igaL2DistanceOnElt( geoEval, funcEval, v, v_isParam, domIt);
+        Errs(EltIdx,0) = igaL2DistanceOnElt( geoEval, funcEval, v, v_isParam, domIt, quRule);
 
         // store coordinates of the element
         lowC = domIt->lowerCorner();
@@ -341,7 +349,9 @@ gsVector< gsMatrix<T> > igaFieldL2DistanceEltWiseSq(const gsField<T>& u, const g
 }
 
 
-// H1 norm ///////////////////////////////////////////////////////////////////////////
+/*
+ * H1 norm
+ */
 
 
 
@@ -351,34 +361,39 @@ T igaH1DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
                       const typename gsBasis<T>::domainIter & domIt,
-                      const int d)
+                      const int d,
+                      const gsQuadRule<T> & quRule)
 {
+    gsMatrix<T> quNodes;
+    gsVector<T> quWeights;
+    quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
+
     // compute image of Gauss nodes under geometry mapping as well as Jacobians
-    geoEval->evaluateAt(domIt->quNodes);
-    funcEval->evaluateAt(domIt->quNodes);
+    geoEval->evaluateAt(quNodes);
+    funcEval->evaluateAt(quNodes);
     gsMatrix<T> physGrad_f, func_ders = funcEval->jacobians();// (!) coping
 
     // get the gradients to columns
     func_ders.transposeInPlace();
-    func_ders.resize(d, domIt->numQuNodes() );
+    func_ders.resize(d, quRule.numNodes() );
 
     // Evaluate function v
-    gsMatrix<T> v_ders = v_isParam ? v.deriv(domIt->quNodes)
+    gsMatrix<T> v_ders = v_isParam ? v.deriv(quNodes)
                                    : v.deriv( geoEval->values() );
 
     // get the gradients to columns
-    v_ders.resize(d,domIt->numQuNodes() );
+    v_ders.resize(d,quRule.numNodes() );
 
     T sum(0.0);
     // perform the quadrature
-    for (index_t k = 0; k < domIt->numQuNodes(); ++k) // loop over quadrature nodes
+    for (index_t k = 0; k < quRule.numNodes(); ++k) // loop over quadrature nodes
     {
         // Transform the gradients
         geoEval->transformGradients(k, func_ders, physGrad_f);
         if ( v_isParam )
             v_ders.col(k)=geoEval->gradTransforms().block(0, k*d,d,d) * v_ders.col(k);// to do: generalize
 
-        const T weight = domIt->quWeights[k] * math::abs( geoEval->measure(k) );
+        const T weight = quWeights[k] * math::abs( geoEval->measure(k) );
         sum += weight * (physGrad_f - v_ders.col(k)).squaredNorm();
     }
     return sum;
@@ -408,15 +423,13 @@ T igaH1Distance(const gsGeometry<T>& patch,
 
     T sum(0);
     typename gsBasis<T>::domainIter domIt = func.basis().makeDomainIterator();
-    domIt->computeQuadratureRule( numNodes );
+    gsGaussRule<T> quRule( numNodes );
     for (; domIt->good(); domIt->next())
     {
-        sum += igaH1DistanceOnElt( geoEval, funcEval, v, v_isParam, domIt, d);
+        sum += igaH1DistanceOnElt( geoEval, funcEval, v, v_isParam, domIt, d, quRule);
     }
     return math::sqrt(sum);
 }
-
-////////////
 
 template <typename T>
 T igaH1Distance(const gsGeometry<T>& patch,
@@ -436,10 +449,10 @@ T igaH1Distance(const gsGeometry<T>& patch,
 
     T sum(0);
     typename gsBasis<T>::domainIter domIt = B.makeDomainIterator();
-    domIt->computeQuadratureRule( numNodes );
+    gsGaussRule<T> quRule( numNodes );
     for (; domIt->good(); domIt->next())
     {
-        sum += igaH1DistanceOnElt( geoEval, func, v, v_isParam, domIt);
+        sum += igaH1DistanceOnElt( geoEval, func, v, v_isParam, domIt, quRule);
     }
     return math::sqrt(sum);
 }
@@ -466,42 +479,46 @@ T igaH1DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const gsFunction<T> & func,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
-                      const typename gsBasis<T>::domainIter & domIt)
+                      const typename gsBasis<T>::domainIter & domIt,
+                      const gsQuadRule<T> & quRule)
 {
+    gsMatrix<T> quNodes;
+    gsVector<T> quWeights;
+    quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
+
     const int d = func.domainDim();
 
     // compute image of Gauss nodes under geometry mapping as well as Jacobians
-    geoEval->evaluateAt(domIt->quNodes);
+    geoEval->evaluateAt(quNodes);
     gsMatrix<T> func_ders;
-    func.deriv_into(domIt->quNodes, func_ders);
+    func.deriv_into(quNodes, func_ders);
 
     // get the gradients to columns
-    func_ders.resize(d, domIt->numQuNodes() );
+    func_ders.resize(d, quRule.numNodes() );
 
     // Evaluate function v
-    gsMatrix<T> v_ders = v_isParam ? v.deriv(domIt->quNodes)
+    gsMatrix<T> v_ders = v_isParam ? v.deriv(quNodes)
                                    : v.deriv( geoEval->values() );
 
     // get the gradients to columns
-    v_ders.resize(d,domIt->numQuNodes() );
+    v_ders.resize(d,quRule.numNodes() );
 
     // perform the quadrature
     gsMatrix<T> physGrad_f;
     T sum(0.0);
-    for (index_t k = 0; k < domIt->numQuNodes(); ++k) // loop over quadrature nodes
+    for (index_t k = 0; k < quRule.numNodes(); ++k) // loop over quadrature nodes
     {
         // Transform the gradients
         geoEval->transformGradients(k, func_ders, physGrad_f);
         if ( v_isParam )
             v_ders.col(k)=geoEval->gradTransforms().block(0, k*d,d,d) * v_ders.col(k);// to do: generalize
 
-        const T weight = domIt->quWeights[k] * math::abs( geoEval->measure(k) );
+        const T weight = quWeights[k] * math::abs( geoEval->measure(k) );
         sum += weight * (physGrad_f - v_ders.col(k)).squaredNorm();
     }
     return sum;
 
 }
-////////////
 
 template <typename T>
 gsMatrix<T> igaH1DistanceEltWiseSq(const gsGeometry<T>& patch,
@@ -524,7 +541,7 @@ gsMatrix<T> igaH1DistanceEltWiseSq(const gsGeometry<T>& patch,
     //gsVector<int> numNodes = gsGaussAssembler<T>::getNumIntNodesFor( func.basis() );
 
     typename gsBasis<T>::domainIter domIt = func.basis().makeDomainIterator();
-    domIt->computeQuadratureRule( numNodes );
+    gsGaussRule<T> quRule( numNodes );
 
     // Matrix to store the element-wise errors
     // in each line:
@@ -539,7 +556,7 @@ gsMatrix<T> igaH1DistanceEltWiseSq(const gsGeometry<T>& patch,
     for (; domIt->good(); domIt->next())
     {
         // compute the H1-distance
-        Errs(EltIdx,0) = igaH1DistanceOnElt( geoEval, funcEval, v, v_isParam, domIt, d);
+        Errs(EltIdx,0) = igaH1DistanceOnElt( geoEval, funcEval, v, v_isParam, domIt, d, quRule);
 
         // store coordinates of the element
         lowC = domIt->lowerCorner();
@@ -590,7 +607,9 @@ gsVector< gsMatrix<T> > igaFieldH1DistanceEltWiseSq(const gsField<T>& u, const g
 
 
 
-/////// DG norm ///////////////////////////////////////////////////////////
+/*
+ * DG norm
+ */
 
 template <typename T>
 T igaDGDistanceJump(const gsGeometry<T>& patch1, const gsGeometry<T>& patch2,
@@ -655,35 +674,46 @@ T igaDGDistanceJump(const gsGeometry<T>& patch1, const gsGeometry<T>& patch2,
     {
         count++;
         // Compute the quadrature rule on both sides
-        domIter1->computeQuadratureRule(intNodes1);
-        domIter2->computeQuadratureRule(intNodes2);
+        gsGaussRule<T> quRule1( intNodes1 );
+        gsGaussRule<T> quRule2( intNodes2 );
+
+        gsMatrix<T> quNodes1;
+        gsVector<T> quWeights1;
+        quRule1.mapTo(domIter1->lowerCorner(), domIter1->upperCorner(), quNodes1, quWeights1);
+
+        gsMatrix<T> quNodes2;
+        gsVector<T> quWeights2;
+        quRule2.mapTo(domIter2->lowerCorner(), domIter2->upperCorner(), quNodes2, quWeights2);
+
+        //domIter1->computeQuadratureRule(intNodes1);
+        //domIter2->computeQuadratureRule(intNodes2);
         
         // compute image of Gauss nodes under geometry mapping as well
         // as Jacobians
-        geoEval1->evaluateAt(domIter1->quNodes);
-        geoEval2->evaluateAt(domIter2->quNodes);
+        geoEval1->evaluateAt(quNodes1);
+        geoEval2->evaluateAt(quNodes2);
         
-        funcEval1->evaluateAt(domIter1->quNodes);
-        funcEval2->evaluateAt(domIter2->quNodes);
+        funcEval1->evaluateAt(quNodes1);
+        funcEval2->evaluateAt(quNodes2);
         
         gsMatrix<T> func1_vals = funcEval1->values();// (!) coping
         gsMatrix<T> func2_vals = funcEval2->values();// (!) coping
 
         // exact solution
-        gsMatrix<T> v1_vals = v_isParam ? v1.eval(domIter1->quNodes)
+        gsMatrix<T> v1_vals = v_isParam ? v1.eval(quNodes1)
                                         : v1.eval( geoEval1->values() );
         
-        gsMatrix<T> v2_vals = v_isParam ? v2.eval(domIter2->quNodes)
+        gsMatrix<T> v2_vals = v_isParam ? v2.eval(quNodes2)
                                         : v2.eval( geoEval2->values() );
 
-        for (index_t k=0; k!= domIter1->numQuNodes(); ++k)
+        for (index_t k=0; k!= quRule1.numNodes(); ++k)
         {
             // Compute the outer normal vector from patch1
             geoEval1->outerNormal(k, side1, unormal);
             
             // Integral transformation and quadarature weight (patch1)
             // assumed the same on both sides
-            const T fff = mu * domIter1->quWeights[k] *  unormal.norm()*(1./domIter1->getCellSize()+1./domIter2->getCellSize());
+            const T fff = mu * quWeights1[k] *  unormal.norm()*(1./domIter1->getCellSize()+1./domIter2->getCellSize());
             
             const T diff = (func1_vals(0,k) - v1_vals(0,k)) - (func2_vals(0,k) - v2_vals(0,k)) ;
             sum += fff * diff*diff;
@@ -696,7 +726,6 @@ T igaDGDistanceJump(const gsGeometry<T>& patch1, const gsGeometry<T>& patch2,
     return math::sqrt(sum);
 }
 
-/////////
 template <typename T>
 T igaFieldDGDistance(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam)
 {
@@ -752,7 +781,9 @@ T igaFieldDGDistance(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam
 }
 
 
-// Maximum norm //////////////////////////////////////////////////////////////////////
+/*
+ * Maximum norm
+ */
 
 
 template <typename T>

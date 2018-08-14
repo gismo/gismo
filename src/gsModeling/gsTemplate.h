@@ -647,11 +647,7 @@ public:
 
 }; // class gsTemplate
 
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
-
-/// Print (as string) a tamplate
+/// Print (as string) a template
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsTemplate<T>& b)
 {return b.print(os); }

@@ -3,7 +3,7 @@
     @brief Provides implementation gsTriMeshToSolid class
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -304,7 +304,7 @@ void gsTriMeshToSolid<T>::divideAndMergePatches(T innerAngle, T patchAreaWeight,
         if(iter->sharp==1)
             i3++;
     }
-    gsDebug<<"Feature lines after merging patches: "<<i3<<"\n";    
+    gsDebug<<"Feature lines after merging patches: "<<i3<<"\n";
 }
 
 template <class T>
@@ -366,7 +366,7 @@ void gsTriMeshToSolid<T>::getFaces(std::vector<std::vector<VertexHandle> > & iPo
     //calculating interior points of each big face
     std::vector< std::set< VertexHandle> > iPointsSet;
     std::set< VertexHandle > vertexSet;
-    
+
     // first set up iPointsSet[i] for each i, which is the set of all
     // vertices that are on some triangle belonging to big face i
     for (int i=0;i<numBigFaces;i++)
@@ -599,7 +599,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         std::vector<bool> isConvex=oPointsConvexFlag[i];
         for (std::size_t j=0;j<oPoints[i].size();j++)  // for all boundary points of i-th patch
         {
-            vertices.push_back(&(*vertexVec[j]).coords);
+            vertices.push_back(&(*vertexVec[j]));
         }
 
         // ---- Construct the boundary curve loop out of the points
@@ -620,7 +620,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
             }
         }
         else if(nm == -1) loop.flip1(); // consistent once we flip
-        // finish construction 
+        // finish construction
 
         // Get the parameter pre-images ( 2D points - coefficients of the line segments of the parameter loops)
         std::vector<gsVertex<T> > vector2D;
@@ -641,7 +641,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         if(face[i]->faceIdentity>0&&face[i]->faceIdentity<=numBigFaces)
             areas[face[i]->faceIdentity-1]+=calcArea(face[i]);
     }
-    
+
     T maxArea=0;
     for (size_t i=0;i<areas.size();i++)
         if(areas[i]>maxArea)
@@ -686,9 +686,9 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
             {
                 for(size_t k=j+1;k<oPoints[i].size();k++)
                 {
-                    T tempDiameter=((oPoints[i][j]->coords.x()-oPoints[i][k]->coords.x())*(oPoints[i][j]->coords.x()-oPoints[i][k]->coords.x()))+
-                            ((oPoints[i][j]->coords.y()-oPoints[i][k]->coords.y())*(oPoints[i][j]->coords.y()-oPoints[i][k]->coords.y()))+
-                            ((oPoints[i][j]->coords.z()-oPoints[i][k]->coords.z())*(oPoints[i][j]->coords.z()-oPoints[i][k]->coords.z()));
+                    T tempDiameter=((oPoints[i][j]->x()-oPoints[i][k]->x())*(oPoints[i][j]->x()-oPoints[i][k]->x()))+
+                            ((oPoints[i][j]->y()-oPoints[i][k]->y())*(oPoints[i][j]->y()-oPoints[i][k]->y()))+
+                            ((oPoints[i][j]->z()-oPoints[i][k]->z())*(oPoints[i][j]->z()-oPoints[i][k]->z()));
                     if(tempDiameter>diameterOut)
                         diameterOut=tempDiameter;
                 }
@@ -698,9 +698,9 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
             {
                 for(size_t k=j+1;k<innerBdrys[i][0].size();k++)
                 {
-                    T tempDiameter=((innerBdrys[i][0][j]->coords.x()-innerBdrys[i][0][k]->coords.x())*(innerBdrys[i][0][j]->coords.x()-innerBdrys[i][0][k]->coords.x()))+
-                            ((innerBdrys[i][0][j]->coords.y()-innerBdrys[i][0][k]->coords.y())*(innerBdrys[i][0][j]->coords.y()-innerBdrys[i][0][k]->coords.y()))+
-                            ((innerBdrys[i][0][j]->coords.z()-innerBdrys[i][0][k]->coords.z())*(innerBdrys[i][0][j]->coords.z()-innerBdrys[i][0][k]->coords.z()));
+                    T tempDiameter=((innerBdrys[i][0][j]->x()-innerBdrys[i][0][k]->x())*(innerBdrys[i][0][j]->x()-innerBdrys[i][0][k]->x()))+
+                            ((innerBdrys[i][0][j]->y()-innerBdrys[i][0][k]->y())*(innerBdrys[i][0][j]->y()-innerBdrys[i][0][k]->y()))+
+                            ((innerBdrys[i][0][j]->z()-innerBdrys[i][0][k]->z())*(innerBdrys[i][0][j]->z()-innerBdrys[i][0][k]->z()));
                     if(tempDiameter>diameterIn)
                         diameterIn=tempDiameter;
                 }
@@ -710,9 +710,9 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
             {
                 for(size_t k=0;k<innerBdrys[i][0].size();k++)
                 {
-                    T tempDist=((oPoints[i][j]->coords.x()-innerBdrys[i][0][k]->coords.x())*(oPoints[i][j]->coords.x()-innerBdrys[i][0][k]->coords.x()))+
-                            ((oPoints[i][j]->coords.y()-innerBdrys[i][0][k]->coords.y())*(oPoints[i][j]->coords.y()-innerBdrys[i][0][k]->coords.y()))+
-                            ((oPoints[i][j]->coords.z()-innerBdrys[i][0][k]->coords.z())*(oPoints[i][j]->coords.z()-innerBdrys[i][0][k]->coords.z()));
+                    T tempDist=((oPoints[i][j]->x()-innerBdrys[i][0][k]->x())*(oPoints[i][j]->x()-innerBdrys[i][0][k]->x()))+
+                            ((oPoints[i][j]->y()-innerBdrys[i][0][k]->y())*(oPoints[i][j]->y()-innerBdrys[i][0][k]->y()))+
+                            ((oPoints[i][j]->z()-innerBdrys[i][0][k]->z())*(oPoints[i][j]->z()-innerBdrys[i][0][k]->z()));
                     if(tempDist<distance||distance==0)
                         distance=tempDist;
                 }
@@ -734,7 +734,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
     // At this point, we have a parametrized boundary point cloud
     // for each patch, and we go on to obtain a parameterization
     // of the inner points as well
-    
+
     gsDebug<<"allocating surfaces"<<'\n';
 
     //allocating the trimmed surfaces
@@ -780,7 +780,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
             vertexFaceSetBdry.insert(oPoints[i][j]);
         }
         // --- end Fill up point sets
-        
+
         // ----------------------- Start Floater's algorithm
         //set up a linear system of equations and solve it in
         //order to receive a parametrization of the inner points
@@ -799,7 +799,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         // info such as: for instance is it artificial THEN from
         // vertexhandle we can get the column index, and assemble the
         // matrix and rhs accordingly without searching every time
-        
+
         for (std::size_t j=0;j<n;j++) //run through all inner points of a single face -- Rows of matrix A
         {
             // initialize rhs vector position
@@ -868,7 +868,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                 c-=innerBdrys[i][k].size();
                 l=innerIndex-c;
                 // searching neighors of point j
-                for (std::size_t i2=0;i2<innerBdrys[i][k][l]->nVertices.size();i2++) 
+                for (std::size_t i2=0;i2<innerBdrys[i][k][l]->nVertices.size();i2++)
                 {
                     // is it a boundary neighbor ?
                     if(vertexFaceSetBdry.find(innerBdrys[i][k][l]->nVertices[i2])!=vertexFaceSetBdry.end())
@@ -893,7 +893,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                     }
                 }
             }
-            
+
             GISMO_ASSERT(normCoef > 0, "normCoef should be positive");
 
             for (std::size_t k=0;k<rhsCoefs.size();k++) // for all boundary connections of point j
@@ -901,13 +901,13 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                 rhsCoefs[k]=rhsCoefs[k]/normCoef; // normalize coefficient
                 check+=rhsCoefs[k];
                 int l=0;
-                while (*oPoints[i][l]!=*rhs[k]) // locate outer boundary neighbors of point j 
+                while (*oPoints[i][l]!=*rhs[k]) // locate outer boundary neighbors of point j
                 {
                     l++;
                 }
                 // Fill in right hand side b
-                b1(j)+=(oPoints2D[i][l].coords[0])*rhsCoefs[k];
-                b2(j)+=(oPoints2D[i][l].coords[1])*rhsCoefs[k];
+                b1(j)+=(oPoints2D[i][l].operator[](0))*rhsCoefs[k];
+                b2(j)+=(oPoints2D[i][l].operator[](1))*rhsCoefs[k];
 
             }
 
@@ -1015,20 +1015,20 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
 
             if(oPoints[i][j]->numEdges>2)
             {
-                Corners2d(0,corNum)=oPoints2D[i][j].coords.x();
-                Corners2d(1,corNum)=oPoints2D[i][j].coords.y();
-                Corners3d(0,corNum)=oPoints[i][j]->coords.x();
-                Corners3d(1,corNum)=oPoints[i][j]->coords.y();
-                Corners3d(2,corNum)=oPoints[i][j]->coords.z();
+                Corners2d(0,corNum)=oPoints2D[i][j].x();
+                Corners2d(1,corNum)=oPoints2D[i][j].y();
+                Corners3d(0,corNum)=oPoints[i][j]->x();
+                Corners3d(1,corNum)=oPoints[i][j]->y();
+                Corners3d(2,corNum)=oPoints[i][j]->z();
                 corNum++;
             }
             else
             {
-                EdgePts2d(0,edgNum)=oPoints2D[i][j].coords.x();
-                EdgePts2d(1,edgNum)=oPoints2D[i][j].coords.y();
-                EdgePts3d(0,edgNum)=oPoints[i][j]->coords.x();
-                EdgePts3d(1,edgNum)=oPoints[i][j]->coords.y();
-                EdgePts3d(2,edgNum)=oPoints[i][j]->coords.z();
+                EdgePts2d(0,edgNum)=oPoints2D[i][j].x();
+                EdgePts2d(1,edgNum)=oPoints2D[i][j].y();
+                EdgePts3d(0,edgNum)=oPoints[i][j]->x();
+                EdgePts3d(1,edgNum)=oPoints[i][j]->y();
+                EdgePts3d(2,edgNum)=oPoints[i][j]->z();
                 edgNum++;
             }
         }
@@ -1036,21 +1036,21 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         {
             for(int k=0;k<closeBoundary;k++)
             {
-                EdgePts2d(0,edgNum)=oPoints2D[i][j].coords.x()*(k+1)/(closeBoundary+1)+oPoints2D[i][j+1].coords.x()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts2d(1,edgNum)=oPoints2D[i][j].coords.y()*(k+1)/(closeBoundary+1)+oPoints2D[i][j+1].coords.y()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts3d(0,edgNum)=oPoints[i][j]->coords.x()*(k+1)/(closeBoundary+1)+oPoints[i][j+1]->coords.x()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts3d(1,edgNum)=oPoints[i][j]->coords.y()*(k+1)/(closeBoundary+1)+oPoints[i][j+1]->coords.y()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts3d(2,edgNum)=oPoints[i][j]->coords.z()*(k+1)/(closeBoundary+1)+oPoints[i][j+1]->coords.z()*(closeBoundary-k)/(closeBoundary+1);
+                EdgePts2d(0,edgNum)=oPoints2D[i][j].x()*(k+1)/(closeBoundary+1)+oPoints2D[i][j+1].x()*(closeBoundary-k)/(closeBoundary+1);
+                EdgePts2d(1,edgNum)=oPoints2D[i][j].y()*(k+1)/(closeBoundary+1)+oPoints2D[i][j+1].y()*(closeBoundary-k)/(closeBoundary+1);
+                EdgePts3d(0,edgNum)=oPoints[i][j]->x()*(k+1)/(closeBoundary+1)+oPoints[i][j+1]->x()*(closeBoundary-k)/(closeBoundary+1);
+                EdgePts3d(1,edgNum)=oPoints[i][j]->y()*(k+1)/(closeBoundary+1)+oPoints[i][j+1]->y()*(closeBoundary-k)/(closeBoundary+1);
+                EdgePts3d(2,edgNum)=oPoints[i][j]->z()*(k+1)/(closeBoundary+1)+oPoints[i][j+1]->z()*(closeBoundary-k)/(closeBoundary+1);
                 edgNum++;
             }
         }
         for(int k=0;k<closeBoundary;k++)
         {
-            EdgePts2d(0,edgNum)=oPoints2D[i][0].coords.x()*(k+1)/(closeBoundary+1)+oPoints2D[i].back().coords.x()*(closeBoundary-k)/(closeBoundary+1);
-            EdgePts2d(1,edgNum)=oPoints2D[i][0].coords.y()*(k+1)/(closeBoundary+1)+oPoints2D[i].back().coords.y()*(closeBoundary-k)/(closeBoundary+1);
-            EdgePts3d(0,edgNum)=oPoints[i][0]->coords.x()*(k+1)/(closeBoundary+1)+oPoints[i].back()->coords.x()*(closeBoundary-k)/(closeBoundary+1);
-            EdgePts3d(1,edgNum)=oPoints[i][0]->coords.y()*(k+1)/(closeBoundary+1)+oPoints[i].back()->coords.y()*(closeBoundary-k)/(closeBoundary+1);
-            EdgePts3d(2,edgNum)=oPoints[i][0]->coords.z()*(k+1)/(closeBoundary+1)+oPoints[i].back()->coords.z()*(closeBoundary-k)/(closeBoundary+1);
+            EdgePts2d(0,edgNum)=oPoints2D[i][0].x()*(k+1)/(closeBoundary+1)+oPoints2D[i].back().x()*(closeBoundary-k)/(closeBoundary+1);
+            EdgePts2d(1,edgNum)=oPoints2D[i][0].y()*(k+1)/(closeBoundary+1)+oPoints2D[i].back().y()*(closeBoundary-k)/(closeBoundary+1);
+            EdgePts3d(0,edgNum)=oPoints[i][0]->x()*(k+1)/(closeBoundary+1)+oPoints[i].back()->x()*(closeBoundary-k)/(closeBoundary+1);
+            EdgePts3d(1,edgNum)=oPoints[i][0]->y()*(k+1)/(closeBoundary+1)+oPoints[i].back()->y()*(closeBoundary-k)/(closeBoundary+1);
+            EdgePts3d(2,edgNum)=oPoints[i][0]->z()*(k+1)/(closeBoundary+1)+oPoints[i].back()->z()*(closeBoundary-k)/(closeBoundary+1);
             edgNum++;
         }
 
@@ -1086,11 +1086,11 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         for (std::size_t j=0;j<iPoints2D[i].size();j++)
         {
             {
-                interiorPts2d(0,j)=iPoints2D[i][j].coords.x();
-                interiorPts2d(1,j)=iPoints2D[i][j].coords.y();
-                interiorPts3d(0,j)=iPoints[i][j]->coords.x();
-                interiorPts3d(1,j)=iPoints[i][j]->coords.y();
-                interiorPts3d(2,j)=iPoints[i][j]->coords.z();
+                interiorPts2d(0,j)=iPoints2D[i][j].x();
+                interiorPts2d(1,j)=iPoints2D[i][j].y();
+                interiorPts3d(0,j)=iPoints[i][j]->x();
+                interiorPts3d(1,j)=iPoints[i][j]->y();
+                interiorPts3d(2,j)=iPoints[i][j]->z();
             }
         }
         int intNum=iPsize;
@@ -1151,16 +1151,16 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                     GISMO_ASSERT(v1!=NULL&&v2!=NULL,"could not find source or target of the edge in the face");
                     for (int k=0;k<nAddIntPointsPerEdge[j];k++)
                     {
-                        interiorPts2d(0,intNum)=v1_2d->coords.x()*(k+1)/(nAddIntPointsPerEdge[j]+1)+
-                                v2_2d->coords.x()*(nAddIntPointsPerEdge[j]-k)/(nAddIntPointsPerEdge[j]+1);
-                        interiorPts2d(1,intNum)=v1_2d->coords.y()*(k+1)/(nAddIntPointsPerEdge[j]+1)+
-                                v2_2d->coords.y()*(nAddIntPointsPerEdge[j]-k)/(nAddIntPointsPerEdge[j]+1);
-                        interiorPts3d(0,intNum)=v1->coords.x()*(k+1)/(nAddIntPointsPerEdge[j]+1)+
-                                v2->coords.x()*(nAddIntPointsPerEdge[j]-k)/(nAddIntPointsPerEdge[j]+1);
-                        interiorPts3d(1,intNum)=v1->coords.y()*(k+1)/(nAddIntPointsPerEdge[j]+1)+
-                                v2->coords.y()*(nAddIntPointsPerEdge[j]-k)/(nAddIntPointsPerEdge[j]+1);
-                        interiorPts3d(2,intNum)=v1->coords.z()*(k+1)/(nAddIntPointsPerEdge[j]+1)+
-                                v2->coords.z()*(nAddIntPointsPerEdge[j]-k)/(nAddIntPointsPerEdge[j]+1);
+                        interiorPts2d(0,intNum)=v1_2d->x()*(k+1)/(nAddIntPointsPerEdge[j]+1)+
+                                v2_2d->x()*(nAddIntPointsPerEdge[j]-k)/(nAddIntPointsPerEdge[j]+1);
+                        interiorPts2d(1,intNum)=v1_2d->y()*(k+1)/(nAddIntPointsPerEdge[j]+1)+
+                                v2_2d->y()*(nAddIntPointsPerEdge[j]-k)/(nAddIntPointsPerEdge[j]+1);
+                        interiorPts3d(0,intNum)=v1->x()*(k+1)/(nAddIntPointsPerEdge[j]+1)+
+                                v2->x()*(nAddIntPointsPerEdge[j]-k)/(nAddIntPointsPerEdge[j]+1);
+                        interiorPts3d(1,intNum)=v1->y()*(k+1)/(nAddIntPointsPerEdge[j]+1)+
+                                v2->y()*(nAddIntPointsPerEdge[j]-k)/(nAddIntPointsPerEdge[j]+1);
+                        interiorPts3d(2,intNum)=v1->z()*(k+1)/(nAddIntPointsPerEdge[j]+1)+
+                                v2->z()*(nAddIntPointsPerEdge[j]-k)/(nAddIntPointsPerEdge[j]+1);
                         intNum++;
                     }
 
@@ -1173,20 +1173,20 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
             {
                 if(innerBdrys[i][j][k]->numEdges>2)
                 {
-                    Corners2d(0,corNum)=innerBdrys2D[i][j][k].coords.x();
-                    Corners2d(1,corNum)=innerBdrys2D[i][j][k].coords.y();                        
-                    Corners3d(0,corNum)=innerBdrys[i][j][k]->coords.x();
-                    Corners3d(1,corNum)=innerBdrys[i][j][k]->coords.y();
-                    Corners3d(2,corNum)=innerBdrys[i][j][k]->coords.z();
+                    Corners2d(0,corNum)=innerBdrys2D[i][j][k].x();
+                    Corners2d(1,corNum)=innerBdrys2D[i][j][k].y();
+                    Corners3d(0,corNum)=innerBdrys[i][j][k]->x();
+                    Corners3d(1,corNum)=innerBdrys[i][j][k]->y();
+                    Corners3d(2,corNum)=innerBdrys[i][j][k]->z();
                     corNum++;
                 }
                 else
                 {
-                    EdgePts2d(0,edgNum)=innerBdrys2D[i][j][k].coords.x();
-                    EdgePts2d(1,edgNum)=innerBdrys2D[i][j][k].coords.y();
-                    EdgePts3d(0,edgNum)=innerBdrys[i][j][k]->coords.x();
-                    EdgePts3d(1,edgNum)=innerBdrys[i][j][k]->coords.y();
-                    EdgePts3d(2,edgNum)=innerBdrys[i][j][k]->coords.z();
+                    EdgePts2d(0,edgNum)=innerBdrys2D[i][j][k].x();
+                    EdgePts2d(1,edgNum)=innerBdrys2D[i][j][k].y();
+                    EdgePts3d(0,edgNum)=innerBdrys[i][j][k]->x();
+                    EdgePts3d(1,edgNum)=innerBdrys[i][j][k]->y();
+                    EdgePts3d(2,edgNum)=innerBdrys[i][j][k]->z();
                     edgNum++;
                 }
             }
@@ -1197,21 +1197,21 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
             {
                 for(int k=0;k<closeBoundary;k++)
                 {
-                    EdgePts2d(0,edgNum)=innerBdrys2D[i][it][j].coords.x()*(k+1)/(closeBoundary+1)+innerBdrys2D[i][it][j+1].coords.x()*(closeBoundary-k)/(closeBoundary+1);
-                    EdgePts2d(1,edgNum)=innerBdrys2D[i][it][j].coords.y()*(k+1)/(closeBoundary+1)+innerBdrys2D[i][it][j+1].coords.y()*(closeBoundary-k)/(closeBoundary+1);
-                    EdgePts3d(0,edgNum)=innerBdrys[i][it][j]->coords.x()*(k+1)/(closeBoundary+1)+innerBdrys[i][it][j+1]->coords.x()*(closeBoundary-k)/(closeBoundary+1);
-                    EdgePts3d(1,edgNum)=innerBdrys[i][it][j]->coords.y()*(k+1)/(closeBoundary+1)+innerBdrys[i][it][j+1]->coords.y()*(closeBoundary-k)/(closeBoundary+1);
-                    EdgePts3d(2,edgNum)=innerBdrys[i][it][j]->coords.z()*(k+1)/(closeBoundary+1)+innerBdrys[i][it][j+1]->coords.z()*(closeBoundary-k)/(closeBoundary+1);
+                    EdgePts2d(0,edgNum)=innerBdrys2D[i][it][j].x()*(k+1)/(closeBoundary+1)+innerBdrys2D[i][it][j+1].x()*(closeBoundary-k)/(closeBoundary+1);
+                    EdgePts2d(1,edgNum)=innerBdrys2D[i][it][j].y()*(k+1)/(closeBoundary+1)+innerBdrys2D[i][it][j+1].y()*(closeBoundary-k)/(closeBoundary+1);
+                    EdgePts3d(0,edgNum)=innerBdrys[i][it][j]->x()*(k+1)/(closeBoundary+1)+innerBdrys[i][it][j+1]->x()*(closeBoundary-k)/(closeBoundary+1);
+                    EdgePts3d(1,edgNum)=innerBdrys[i][it][j]->y()*(k+1)/(closeBoundary+1)+innerBdrys[i][it][j+1]->y()*(closeBoundary-k)/(closeBoundary+1);
+                    EdgePts3d(2,edgNum)=innerBdrys[i][it][j]->z()*(k+1)/(closeBoundary+1)+innerBdrys[i][it][j+1]->z()*(closeBoundary-k)/(closeBoundary+1);
                     edgNum++;
                 }
             }
             for(int k=0;k<closeBoundary;k++)
             {
-                EdgePts2d(0,edgNum)=innerBdrys2D[i][it][0].coords.x()*(k+1)/(closeBoundary+1)+innerBdrys2D[i][it].back().coords.x()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts2d(1,edgNum)=innerBdrys2D[i][it][0].coords.y()*(k+1)/(closeBoundary+1)+innerBdrys2D[i][it].back().coords.y()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts3d(0,edgNum)=innerBdrys[i][it][0]->coords.x()*(k+1)/(closeBoundary+1)+innerBdrys[i][it].back()->coords.x()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts3d(1,edgNum)=innerBdrys[i][it][0]->coords.y()*(k+1)/(closeBoundary+1)+innerBdrys[i][it].back()->coords.y()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts3d(2,edgNum)=innerBdrys[i][it][0]->coords.z()*(k+1)/(closeBoundary+1)+innerBdrys[i][it].back()->coords.z()*(closeBoundary-k)/(closeBoundary+1);
+                EdgePts2d(0,edgNum)=innerBdrys2D[i][it][0].x()*(k+1)/(closeBoundary+1)+innerBdrys2D[i][it].back().x()*(closeBoundary-k)/(closeBoundary+1);
+                EdgePts2d(1,edgNum)=innerBdrys2D[i][it][0].y()*(k+1)/(closeBoundary+1)+innerBdrys2D[i][it].back().y()*(closeBoundary-k)/(closeBoundary+1);
+                EdgePts3d(0,edgNum)=innerBdrys[i][it][0]->x()*(k+1)/(closeBoundary+1)+innerBdrys[i][it].back()->x()*(closeBoundary-k)/(closeBoundary+1);
+                EdgePts3d(1,edgNum)=innerBdrys[i][it][0]->y()*(k+1)/(closeBoundary+1)+innerBdrys[i][it].back()->y()*(closeBoundary-k)/(closeBoundary+1);
+                EdgePts3d(2,edgNum)=innerBdrys[i][it][0]->z()*(k+1)/(closeBoundary+1)+innerBdrys[i][it].back()->z()*(closeBoundary-k)/(closeBoundary+1);
                 edgNum++;
             }
         }
@@ -1286,7 +1286,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         }
     }
     for (size_t i=0;i<vertVec.size();i++)
-        sl.addHeVertex(vertVec[i].coords[0],vertVec[i].coords[1],vertVec[i].coords[2]);
+        sl.addHeVertex(vertVec[i][0],vertVec[i][1],vertVec[i][2]);
     for (size_t i=0;i<oPoints.size();i++)
     {
         std::vector<std::vector<gsSolidHeVertex<T>* > > faceConstruct;
@@ -1327,23 +1327,22 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                 if(this->face[it]->faceIdentity==facenumber)
                 {
 
-                    mface->addVertex(this->face[it]->vertices[0]->coords[0],
-                            this->face[it]->vertices[0]->coords[1],
-                            this->face[it]->vertices[0]->coords[2]);
+                    mface->addVertex(this->face[it]->vertices[0]->operator[](0),
+                            this->face[it]->vertices[0]->operator[](1),
+                            this->face[it]->vertices[0]->operator[](2));
 
-                    mface->addVertex(this->face[it]->vertices[1]->coords[0],
-                            this->face[it]->vertices[1]->coords[1],
-                            this->face[it]->vertices[1]->coords[2]);
+                    mface->addVertex(this->face[it]->vertices[1]->operator[](0),
+                            this->face[it]->vertices[1]->operator[](1),
+                            this->face[it]->vertices[1]->operator[](2));
 
-                    mface->addVertex(this->face[it]->vertices[2]->coords[0],
-                            this->face[it]->vertices[2]->coords[1],
-                            this->face[it]->vertices[2]->coords[2]);
+                    mface->addVertex(this->face[it]->vertices[2]->operator[](0),
+                            this->face[it]->vertices[2]->operator[](1),
+                            this->face[it]->vertices[2]->operator[](2));
                 }
             }
 
-            for (int i=0;i!=mface->numVertices;i=i+3)
+            for (std::size_t i=0;i!=mface->numVertices();i=i+3)
             {
-
                 (mface)->addFace(mface->vertex[i], mface->vertex[i+1], mface->vertex[i+2]);
             }
             patchMeshes.push_back(mface);
@@ -1362,7 +1361,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                             if(*this->face[it]->vertices[vertIt]==*oPoints[facenumber-1][j]&&found==0)
                             {
 
-                                paraface->addVertex(oPoints2D[facenumber-1][j].coords[0],oPoints2D[facenumber-1][j].coords[1],0);
+                                paraface->addVertex(oPoints2D[facenumber-1][j][0],oPoints2D[facenumber-1][j][1],0);
                                 found=1;
                             }
                         }
@@ -1371,7 +1370,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                             if(*this->face[it]->vertices[vertIt]==*iPoints[facenumber-1][j]&&found==0)
                             {
 
-                                paraface->addVertex(iPoints2D[facenumber-1][j].coords[0],iPoints2D[facenumber-1][j].coords[1],0);
+                                paraface->addVertex(iPoints2D[facenumber-1][j][0],iPoints2D[facenumber-1][j][1],0);
                                 found=1;
 
                             }
@@ -1383,7 +1382,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                                 if(*this->face[it]->vertices[vertIt]==*innerBdrys[facenumber-1][j][k]&&found==0)
                                 {
 
-                                    paraface->addVertex(innerBdrys2D[facenumber-1][j][k].coords[0],innerBdrys2D[facenumber-1][j][k].coords[1],0);
+                                    paraface->addVertex(innerBdrys2D[facenumber-1][j][k][0],innerBdrys2D[facenumber-1][j][k][1],0);
                                     found=1;
                                 }
                             }
@@ -1392,9 +1391,8 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                 }
             }
 
-            for (int i=0;i!=paraface->numVertices;i=i+3)
+            for (std::size_t i=0; i!=paraface->numVertices(); i+=3)
             {
-
                 (paraface)->addFace(paraface->vertex[i], paraface->vertex[i+1], paraface->vertex[i+2]);
             }
 
@@ -1416,27 +1414,27 @@ void gsTriMeshToSolid<T>::getPatchData(T angle, T innerAngle,T patchAreaWeight,T
                         )
 {
     bool non_manifold, warning_borders;
-    
+
     // compute the features
     this->getFeatures(angle, non_manifold, warning_borders);
-    this->mesh->cleanStlMesh();
+    this->mesh->cleanMesh();
 
     // read features from a file, if required
     std::vector<gsEdge<T> > featEdges;
     if (useFeatures!=0)
         this->readEdges(filenameFeatures, featEdges);
     this->setSharpEdges(featEdges, useFeatures);
-    
+
     // give every face a patch number
     this->calcPatchNumbers();
-    
+
     // improve quality by further dividing and merging patches according to more complex rules
     storeNeighboringFaces();
     divideAndMergePatches(innerAngle, patchAreaWeight, mergeSmallPatches);
-    
+
     // recompute patch numbers
     this->calcPatchNumbers();
-    
+
     this->getFaces(iPoints,oPoints,innerBdrys,innerBdrysMassP,oPointsConvexFlag);
 
 }
@@ -1531,29 +1529,29 @@ gsCurveLoop<T> * gsTriMeshToSolid<T>::calculateLoop(std::vector<Vertex> outerPoi
 
 template<class T>
 T gsTriMeshToSolid<T>::calcWeight(VertexHandle v1,VertexHandle v2,
-                    std::set<VertexHandle> 
+                    std::set<VertexHandle>
                     const & vertexFaceSet)
 {
     T weight = 0;
-    const gsVector3d<T> vec1 = v2->coords - v1->coords;
+    const gsVector3d<T> vec1 = *v2 - *v1;
 
     for(std::size_t i=0;i<v1->nVertices.size();i++)
     {
         for(std::size_t j=0;j<v2->nVertices.size();j++)
         {
             //check if neighboring vertices coincide and if point found is part of the face
-            if ( *(v1->nVertices[i])==*(v2->nVertices[j]) && 
+            if ( *(v1->nVertices[i])==*(v2->nVertices[j]) &&
                  vertexFaceSet.find(v2->nVertices[j]) != vertexFaceSet.end()
                 )
             {
 
-                const gsVector3d<T> vec2 = v2->nVertices[j]->coords - v1->coords;
+                const gsVector3d<T> vec2 = *v2->nVertices[j] - *v1;
                 weight+=math::tan(conditionedAngle( vec1,  vec2)/2);
             }
         }
     }
     weight /= calcDist(v1,v2);
-    
+
     GISMO_ASSERT(weight > 0, "Weight should be positive");
 
     return weight;
@@ -1578,9 +1576,9 @@ int gsTriMeshToSolid<T>::normalMult(gsVector3d<T> globalNormal,
         // only look at triangles inside the surface
         if(face[i]->faceIdentity != bigFaceIdx) continue;
         // compute the normal of this face
-        const gsVector3d<T> v0 = face[i]->vertices[0]->coords;
-        const gsVector3d<T> off1 = face[i]->vertices[1]->coords - v0;
-        const gsVector3d<T> off2 = face[i]->vertices[2]->coords - v0;
+        const gsVector3d<T> v0 = *face[i]->vertices[0];
+        const gsVector3d<T> off1 = *face[i]->vertices[1] - v0;
+        const gsVector3d<T> off2 = *face[i]->vertices[2] - v0;
         const gsVector3d<T> thisNormal = off1.cross(off2);
         // compare against n and record
         T thisResult = thisNormal.dot(globalNormal);
@@ -1600,8 +1598,8 @@ bool gsTriMeshToSolid<T>::approxEqual(const gsEdge<T> & e1,const gsEdge<T> & e2)
 {
     const T epsilon= calcDist(e1.source, e1.target ) * 0.01 ;
 
-    return ( (e1.source->coords - e2.source->coords).norm() < epsilon &&
-             (e1.target->coords - e2.target->coords).norm() < epsilon );
+    return ( (*e1.source - *e2.source).norm() < epsilon &&
+             (*e1.target - *e2.target).norm() < epsilon );
     /*
       bool result=0;
       if((e1.source->x()>(e2.source->x()-epsilon))&&((e1.source->x()-epsilon)<e2.source->x())&&
@@ -1631,23 +1629,23 @@ T gsTriMeshToSolid<T>::calcAngle(EdgeHandle e1,EdgeHandle e2, int faceNum)
     gsVector3d<T> vec1(0,0,0);
     if (anglePoint==e1->source)
     {
-        gsVector3d<T> helpvec(e1->target->coords[0]-e1->source->coords[0],e1->target->coords[1]-e1->source->coords[1],e1->target->coords[2]-e1->source->coords[2]);
+        gsVector3d<T> helpvec(e1->target->operator[](0)-e1->source->operator[](0),e1->target->operator[](1)-e1->source->operator[](1),e1->target->operator[](2)-e1->source->operator[](2));
         vec1 = helpvec;
     }
     else
     {
-        gsVector3d<T> helpvec(e1->source->coords[0]-e1->target->coords[0],e1->source->coords[1]-e1->target->coords[1],e1->source->coords[2]-e1->target->coords[2]);
+        gsVector3d<T> helpvec(e1->source->operator[](0)-e1->target->operator[](0),e1->source->operator[](1)-e1->target->operator[](1),e1->source->operator[](2)-e1->target->operator[](2));
         vec1 = helpvec;
     }
     gsVector3d<T> vec2(0,0,0);
     if (anglePoint==e2->source)
     {
-        gsVector3d<T> helpvec(e2->target->coords[0]-e2->source->coords[0],e2->target->coords[1]-e2->source->coords[1],e2->target->coords[2]-e2->source->coords[2]);
+        gsVector3d<T> helpvec(e2->target->operator[](0)-e2->source->operator[](0),e2->target->operator[](1)-e2->source->operator[](1),e2->target->operator[](2)-e2->source->operator[](2));
         vec2 = helpvec;
     }
     else
     {
-        gsVector3d<T> helpvec(e2->source->coords[0]-e2->target->coords[0],e2->source->coords[1]-e2->target->coords[1],e2->source->coords[2]-e2->target->coords[2]);
+        gsVector3d<T> helpvec(e2->source->operator[](0)-e2->target->operator[](0),e2->source->operator[](1)-e2->target->operator[](1),e2->source->operator[](2)-e2->target->operator[](2));
         vec2=helpvec;
     }
     FaceHandle vec1Face=NULL;
@@ -1706,7 +1704,7 @@ gsVertex<T> gsTriMeshToSolid<T>::getMassP(std::vector<VertexHandle > vec)
 template<class T>
 T gsTriMeshToSolid<T>::calcDist(VertexHandle v1,VertexHandle v2)
 {
-    return (v1->coords - v2->coords).norm();
+    return (*v1 - *v2).norm();
 }
 
 
@@ -1729,7 +1727,7 @@ template<class T>
 gsBSpline<T> * gsTriMeshToSolid<T>::calcTCurve(Vertex v1,Vertex v2)
 {
     gsMatrix<T> tcp(2, 2);
-    tcp << v1.coords.x(), v1.coords.y(), v2.coords.x(), v2.coords.y();
+    tcp << v1.x(), v1.y(), v2.x(), v2.y();
     gsBSpline<T> * tcurve = new gsBSpline<T>( 0, 1, 0, 1, give(tcp) );
     return tcurve;
 }
@@ -1739,7 +1737,7 @@ template<class T>
 gsBSpline<T> * gsTriMeshToSolid<T>::calcTCurve(Vertex v1,Vertex v2,Vertex v3)
 {
     gsMatrix<T> tcp(3, 2);
-    tcp << v1.coords.x(), v1.coords.y(), v2.coords.x(), v2.coords.y(), v3.coords.x(), v3.coords.y();
+    tcp << v1.x(), v1.y(), v2.x(), v2.y(), v3.x(), v3.y();
     gsBSpline<T> * tcurve = new gsBSpline<T>( 0, 1, 0, 2, give(tcp) );
     return tcurve;
 }
@@ -1748,9 +1746,9 @@ gsBSpline<T> * gsTriMeshToSolid<T>::calcTCurve(Vertex v1,Vertex v2,Vertex v3)
 template<class T>
 typename gsTriMeshToSolid<T>::Vertex gsTriMeshToSolid<T>::giveMidpoint(Vertex v1,Vertex v2)
 {
-    return gsVertex<T>((v1.coords[0]+v2.coords[0])/2,
-                       (v1.coords[1]+v2.coords[1])/2,
-                       (v1.coords[2]+v2.coords[2])/2);
+    return gsVertex<T>((v1[0]+v2[0])/2,
+                       (v1[1]+v2[1])/2,
+                       (v1[2]+v2[2])/2);
 }
 
 

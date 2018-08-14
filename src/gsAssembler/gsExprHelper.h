@@ -66,7 +66,7 @@ public:
     typedef const expr::gsFeSpace<T>     & space;
     typedef const expr::gsNullExpr<T>      nullExpr;
 
-    
+
     typedef expr::gsFeVariable<T>  & nonConstVariable;
     typedef expr::gsFeSpace<T>     & nonConstSpace;
 
@@ -232,7 +232,7 @@ public:
             mapVar.source().function(patchIndex).computeMap(mapData);
             mapData.patchId = patchIndex;
         }
-        
+
         if ( mutVar.isValid() && 0!=mutData.flags)
         {
             GISMO_ASSERT( mutParametric || 0!=mapData.values.size(), "Map values not computed");
@@ -262,7 +262,7 @@ public:
         //evList.reserve(m_ptable.size()+m_itable.size());
         evList.clear();
         expr.parse(evList);
-    };
+    }
 
 /*
     void precompute(const index_t patch1, const index_t patch2);

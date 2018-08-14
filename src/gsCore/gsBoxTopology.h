@@ -102,9 +102,9 @@ public:
     /// Number of boundaries
     int nBoundary() const   { return m_boundary.size(); }
 
-//////////////////////////////////////////////////
-// Additional members for Multipatch geometries
-//////////////////////////////////////////////////
+/*
+ * Additional members for Multipatch geometries
+ */
 
 	/// Get a const-iterator to the interfaces
 	/// \return an iterator to the beginning of the interfaces

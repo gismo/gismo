@@ -1300,12 +1300,12 @@ void gsTHBSplineBasis<d, T>::breakCycles(
     {
         for (std::size_t line = 0; line != polylines[level].size(); line++)
         {
-            std::pair< real_t, real_t> pt; // point
+            std::pair<T, T> pt; // point
             index_t segment = identifyCycle(polylines[level][line], pt);
 	    
             if (-1 < segment)
             {
-                std::vector< std::vector<real_t> > part1, part2;
+                std::vector< std::vector<T> > part1, part2;
                 breakPolylineIntoTwoParts(polylines[level][line], segment, pt,
                                           part1, part2);
 		
@@ -1332,17 +1332,17 @@ void gsTHBSplineBasis<d, T>::breakCycles(
 
 // utility funcition for breakCycles
 template<unsigned d, class T>
-index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< real_t> >& line,
-                                              std::pair<real_t, real_t>& pt) const
+index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< T> >& line,
+                                              std::pair<T, T>& pt) const
 {
-    std::map< std::pair<real_t, real_t>, index_t > times;
-    std::map< std::pair<real_t, real_t>, index_t > index;
+    std::map< std::pair<T, T>, index_t > times;
+    std::map< std::pair<T, T>, index_t > index;
     
     for (std::size_t seg = 0; seg != line.size(); seg++)
     {
         const std::size_t seg1 = (seg + 1) % line.size();
 	
-        std::pair<real_t, real_t> currentPt( line[seg][0], line[seg][1] );
+        std::pair<T, T> currentPt( line[seg][0], line[seg][1] );
         if (!((currentPt.first == line[seg1][0] && currentPt.second == line[seg1][1]) ||
               (currentPt.first == line[seg1][2] && currentPt.second == line[seg1][3])))
         {
@@ -1362,7 +1362,7 @@ index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< re
         }
     }
 
-    typedef std::map< std::pair<real_t, real_t>, index_t>::iterator iterator;
+    typedef typename std::map< std::pair<T, T>, index_t>::iterator iterator;
     for (iterator it = times.begin(); it != times.end(); it++)
     {
         if (it->second == 2)
@@ -1381,11 +1381,11 @@ index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< re
 // utility funcition for breakCycles
 template<unsigned d, class T>
 void gsTHBSplineBasis<d, T>::breakPolylineIntoTwoParts(
-    const std::vector< std::vector< real_t> >& line, 
+    const std::vector< std::vector< T> >& line,
     const index_t segment, 
-    const std::pair<real_t, real_t>& meetingPt,
-    std::vector< std::vector< real_t> >& part1, 
-    std::vector< std::vector< real_t> >& part2) const
+    const std::pair<T, T>& meetingPt,
+    std::vector< std::vector<T> >& part1,
+    std::vector< std::vector<T> >& part2) const
 {
     bool p1 = false; // inside part 1
     bool p2 = false; // inside part 2
@@ -1434,13 +1434,13 @@ void gsTHBSplineBasis<d, T>::breakPolylineIntoTwoParts(
 
 // utility funcition for breakCycles
 template<unsigned d, class T>
-void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<real_t> >& polyline,
+void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& polyline,
                                          std::vector<unsigned>& aabb) const
 {
-    real_t minX = polyline[0][0];
-    real_t minY = polyline[0][1];
-    real_t maxX = polyline[0][2];
-    real_t maxY = polyline[0][3];
+    T minX = polyline[0][0];
+    T minY = polyline[0][1];
+    T maxX = polyline[0][2];
+    T maxY = polyline[0][3];
     
 
     for (std::size_t seg = 0; seg != polyline.size(); seg++)

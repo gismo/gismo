@@ -85,7 +85,7 @@ void gsSpringPatch<T>::compute_impl()
     A.setZero();
     b.setZero();
 
-    const real_t dd = 2*d;
+    const T dd = 2*d;
 
     // Fill in system matrix A and right-hand side b
     // 2 d c_i - sum neib(c_i) = 0

@@ -178,6 +178,8 @@ template <class T=real_t>                class gsField;
 template <class T=real_t>                class gsMesh;
 template <class T=real_t>                class gsHeMesh;
 
+template <int d, class T=real_t>         class gsLineSegment;
+
 template <class T=real_t>                class gsFileData;
 class gsFileManager;
 
@@ -226,7 +228,7 @@ template <class T=real_t>               struct gsFieldCreator;
 
 class gsOptionList;
 
-template<class T = real_t, int _Rows=-1, int _Cols=-1, 
+template<class T = real_t, int _Rows=-1, int _Cols=-1,
          int _Options  = 0|((_Rows==1 && _Cols!=1)?0x1:0)> class gsMatrix;
 template<class T = real_t, int _Rows=-1, int _Options = 0> class gsVector;
 

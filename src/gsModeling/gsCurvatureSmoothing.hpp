@@ -559,7 +559,7 @@ void gsCurvatureSmoothing<T>::smoothAllHadenfeld(const unsigned smooth_degree, c
     // construct the new smoother B-spline curve
     reset( new gsBSpline<T>(m_knots, give(m_coefs)) );
 
-};
+}
 
 template< class T>
 void gsCurvatureSmoothing<T>::write(std::ostream &os)
@@ -572,7 +572,7 @@ void gsCurvatureSmoothing<T>::write(std::ostream &os)
    }
    os << "{" << m_coefs(num_rows-1,0) << "," << m_coefs(num_rows-1,1) << "}}\n";
 
-};
+}
 
 template<class T>
 void gsCurvatureSmoothing<T>::computeApproxError(T & error)
@@ -679,7 +679,7 @@ void gsCurvatureSmoothing<T>::compute_AllValues(gsBSplineBasis<T> * basis, gsMat
             values3.col(i)+=coefs->row(actives(k,i))*m_results[3](k,i);
         }
 
-};
+}
 
 
 template<class T>
@@ -714,4 +714,4 @@ void gsCurvatureSmoothing<T>::compute_ObjectiveFunction(gsBSplineBasis<T> *basis
 
 
 
-}; // namespace gismo
+} // namespace gismo

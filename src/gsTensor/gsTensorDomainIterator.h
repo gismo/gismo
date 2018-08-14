@@ -59,9 +59,6 @@ public:
             if (meshEnd[i] == meshStart[i])
                 m_isGood = false;
         }
-        
-        // Set to one quadrature point by default
-        m_quadrature.setNodes( gsVector<int>::Ones(d) );
 
         if (m_isGood)
             update();
@@ -90,9 +87,6 @@ public:
             if (meshEnd[i] == meshStart[i])
                 m_isGood = false;
         }
-        
-        // Set to one quadrature point by default
-        m_quadrature.setNodes( gsVector<int>::Ones(d) );
 
         if (m_isGood)
             update();
@@ -135,30 +129,6 @@ public:
         return curr_index; 
     }
 
-    // Documentation in gsDomainIterator.h
-    // compute a tensor Gauss quadrature rule of the given order for
-    // the domain elements
-    void computeQuadratureRule(const gsVector<int>& numIntNodes)
-    {
-        m_quadrature.setNodes(numIntNodes);
-        m_quadrature.mapTo(lower, upper, this->quNodes, this->quWeights);
-    }
-
-    // get the basis function indices which are active in the current element
-    void getActiveFunctions(gsMatrix<unsigned>& act)
-    {
-        if ( m_basis != NULL )
-            m_basis->active_into(center, act);
-    }
-
-    const gsMatrix<unsigned>& computeActiveFunctions()
-    {
-        if ( m_basis != NULL )
-            m_basis->active_into(center, this->activeFuncs);
-
-        return this->activeFuncs;
-    }
-
     void getVertices(gsMatrix<T>& result) 
     {
         result.resize( D, 1 << D); 
@@ -194,10 +164,6 @@ private:
             upper[i]  = *(curElement[i]+1);
             center[i] = T(0.5) * (lower[i] + upper[i]);
         }
-
-        // Update quadrature rule
-        m_quadrature.mapTo(lower, upper, this->quNodes, this->quWeights);
-        computeActiveFunctions();
     }
 
 // Data members
@@ -214,9 +180,6 @@ private:
 
     // coordinates of the grid cell boundaries
     std::vector< std::vector<T> > breaks;
-
-    // Quadrature rule
-    gsGaussRule<T> m_quadrature;
 
     // Extent of the tensor grid
     gsVector<uiter, D> meshStart, meshEnd;

@@ -123,10 +123,6 @@ private:
 
 }; // class gsPointLoads
 
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
-
 /// Print (as string)
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsPointLoads<T>& pls)

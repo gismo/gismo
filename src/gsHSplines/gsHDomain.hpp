@@ -1273,8 +1273,9 @@ gsHDomain<d,T>::getBoxes_vec(std::vector<std::vector<unsigned int> >& boxes) con
     }
 }
 
-
-/////////////////////functions for returning the boudaries of domains////////////////////////
+/*
+ * functions for returning the boudaries of domains
+ */
 template<unsigned d, class T>
 std::vector< std::vector<std::vector< std::vector< unsigned int > > > >
 gsHDomain<d,T>::getPolylines() const

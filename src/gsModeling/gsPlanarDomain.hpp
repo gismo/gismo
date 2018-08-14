@@ -215,12 +215,12 @@ void gsPlanarDomain<T>::sampleLoop_into( int loopID, int npoints, int numEndPoin
 template <class T>
 T getDistance(gsVertex<T>* v1,gsVertex<T>* v2)  // todo: move as member of gsVertex 
 {
-    T x1=(v1->coords.x());
-    T x2=(v2->coords.x());
-    T y1=(v1->coords.y());
-    T y2=(v2->coords.y());
-    T z1=(v1->coords.z());
-    T z2=(v2->coords.z());
+    T x1=(v1->x());
+    T x2=(v2->x());
+    T y1=(v1->y());
+    T y2=(v2->y());
+    T z1=(v1->z());
+    T z2=(v2->z());
     T dist=sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
     return  dist;
 }
