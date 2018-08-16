@@ -2,12 +2,12 @@
 
     @brief Provides implementation of gsWriteParasolid function.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -63,7 +63,7 @@ PK_FACE_make_solid_bodies
 //PK_SURF_ask_uvbox(bsurf, &uvbox); // Get the parameter box
 //PK_BODY_t   sheet;      // Sheet is a kind of body
 //err = PK_SURF_make_sheet_body(bsurf, uvbox, &sheet);
-//PARASOLID_ERROR(PK_SURF_make_sheet_body, err);  
+//PARASOLID_ERROR(PK_SURF_make_sheet_body, err);
 
 */
 
@@ -96,7 +96,7 @@ void getInterval(const bool directionU,
                  const PK_CURVE_t line,
                  PK_INTERVAL_t& result);
 
-bool validMultiplicities(const std::vector<int>& mult, 
+bool validMultiplicities(const std::vector<int>& mult,
                          const int deg);
 
 template <class T>
@@ -118,7 +118,7 @@ template<class T>
 bool gsWriteParasolid( const gsMultiPatch<T> & gssurfs, std::string const & filename )
 {
     std::cout << "write parasolid mulitpatch" << std::endl;
-    
+
     PK_ERROR_code_t err;
     PK_BODY_t  part;     // Empty part
     PK_GEOM_t   geo[ gssurfs.nPatches() ];      // Geometries
@@ -134,7 +134,7 @@ bool gsWriteParasolid( const gsMultiPatch<T> & gssurfs, std::string const & file
 
     // Create Parasolid geometries
     int count = 0;
-    for (typename gsMultiPatch<T>::const_iterator 
+    for (typename gsMultiPatch<T>::const_iterator
              it = gssurfs.begin(); it != gssurfs.end(); ++it)
     {
         createPK_GEOM(**it, geo[count++] );
@@ -144,19 +144,19 @@ bool gsWriteParasolid( const gsMultiPatch<T> & gssurfs, std::string const & file
 // Push all geometries as orphans in an assembly part
 PK_ASSEMBLY_create_empty(&part);
 err = PK_PART_add_geoms(part, count, geo);
-PARASOLID_ERROR(PK_PART_add_geoms, err);  
+PARASOLID_ERROR(PK_PART_add_geoms, err);
 //*/
 
-    // Make a sheet body out of each geometry 
+    // Make a sheet body out of each geometry
     PK_BODY_t  parts[count];
     for (int i = 0; i!= count; ++i )
     {
         PK_UVBOX_t  uvbox;     // Parameter interval
         PK_ERROR_code_t err = PK_SURF_ask_uvbox(geo[i], &uvbox);
-        PARASOLID_ERROR(PK_SURF_ask_uvbox, err);    
+        PARASOLID_ERROR(PK_SURF_ask_uvbox, err);
 
         PK_SURF_make_sheet_body(geo[i], uvbox, &part);
-        PARASOLID_ERROR(PK_SURF_make_sheet_body, err);    
+        PARASOLID_ERROR(PK_SURF_make_sheet_body, err);
 
         parts[i] = part;
     }
@@ -191,11 +191,11 @@ bool gsWriteParasolid( const gsGeometry<T> & ggeo, std::string const & filename 
 
     // Create Parasolid geometry
     createPK_GEOM(ggeo, pgeo);
-    
+
     // Create parasolid part out of the geometry
     PK_ASSEMBLY_create_empty(&part);
     err = PK_PART_add_geoms(part, 1, &pgeo);
-    PARASOLID_ERROR(PK_PART_add_geoms, err);  
+    PARASOLID_ERROR(PK_PART_add_geoms, err);
 
     // Write it out to the file
     PK_PART_transmit_o_t transmit_options;
@@ -219,7 +219,7 @@ bool gsWriteParasolid( const gsMesh<T>& mesh, const std::string & filename)
     PK_LOGICAL_t checks(0);
     PK_SESSION_set_check_continuity(checks);
     PK_SESSION_set_check_self_int(checks);
-    
+
     PK_ASSEMBLY_t assembly;
     exportMesh(mesh, assembly);
 
@@ -229,9 +229,9 @@ bool gsWriteParasolid( const gsMesh<T>& mesh, const std::string & filename)
 
     PK_ERROR_code_t err = PK_PART_transmit(1, &assembly, filename.c_str(), &transmit_options);
     PARASOLID_ERROR(PK_PART_transmit, err);
-    
+
     gsPKSession::stop();
-    
+
     return err;
 }
 
@@ -243,19 +243,19 @@ bool gsWriteParasolid(const gsTHBSpline<2, T>& thb, const std::string& filename)
     PK_LOGICAL_t checks(0);
     PK_SESSION_set_check_continuity(checks);
     PK_SESSION_set_check_self_int(checks);
-    
+
     PK_ASSEMBLY_t assembly;
     exportTHBsurface<T>(thb, assembly);
-    
+
     PK_PART_transmit_o_t transmit_options;
     PK_PART_transmit_o_m(transmit_options);
-    transmit_options.transmit_format = PK_transmit_format_text_c;    
+    transmit_options.transmit_format = PK_transmit_format_text_c;
 
     PK_ERROR_code_t err = PK_PART_transmit(1, &assembly, filename.c_str(), &transmit_options);
     PARASOLID_ERROR(PK_PART_transmit, err);
-    
+
     gsPKSession::stop();
-    
+
     return err;
 }
 
@@ -281,19 +281,19 @@ bool gsWriteParasolid( const gsTHBSpline<2, T>& thb,const std::vector<T>& par_bo
 }
 
 
-template<class T> 
-bool createPK_GEOM( const gsGeometry<T> & ggeo, 
+template<class T>
+bool createPK_GEOM( const gsGeometry<T> & ggeo,
                     PK_GEOM_t & pgeo)
 {
     // Identify input gismo geometry
-    if ( const gsTensorBSpline<2,T> * tbsp = 
+    if ( const gsTensorBSpline<2,T> * tbsp =
          dynamic_cast<const gsTensorBSpline<2,T> *>(&ggeo) )
     {
         return createPK_BSURF(*tbsp, pgeo);
     }
-// the following lines produce warnings if called from multipatch version of gsWriteParasolid, 
+// the following lines produce warnings if called from multipatch version of gsWriteParasolid,
 // because it already assumes that the geometries are surfaces
-    else if ( const gsBSpline<>* bspl = 
+    else if ( const gsBSpline<>* bspl =
               dynamic_cast< const gsBSpline<>* >(&ggeo) )
     {
         return createPK_BCURVE(*bspl, pgeo);
@@ -306,8 +306,8 @@ bool createPK_GEOM( const gsGeometry<T> & ggeo,
 }
 
 
-template<class T> 
-bool createPK_BSURF(const gsTensorBSpline< 2, T> & bsp, 
+template<class T>
+bool createPK_BSURF(const gsTensorBSpline< 2, T> & bsp,
                     PK_BSURF_t & bsurf,
                     bool closed_u,
                     bool closed_v)
@@ -316,13 +316,13 @@ bool createPK_BSURF(const gsTensorBSpline< 2, T> & bsp,
     {
         const int deg = bsp.basis().degree(dim);
         std::vector<int> mult = bsp.basis().knots(dim).multiplicities();
-	
+
         if (!validMultiplicities(mult, deg))
         {
             return false;
         }
     }
-    
+
     // Translate to parasolid standard form, ie fill up parasolid
     // spline data record
     PK_BSURF_sf_t sform;   // B-spline data holder (standard form)
@@ -367,14 +367,14 @@ bool createPK_BSURF(const gsTensorBSpline< 2, T> & bsp,
     sform.v_knot_type   = PK_knot_unset_c;
     sform.is_u_periodic = PK_LOGICAL_false;
     sform.is_v_periodic = PK_LOGICAL_false;
-    sform.is_u_closed   = PK_LOGICAL_false;    
+    sform.is_u_closed   = PK_LOGICAL_false;
     sform.is_v_closed   = PK_LOGICAL_false;
 
     if (closed_u)
     {
         sform.is_u_closed = PK_LOGICAL_true;
     }
-    
+
     if (closed_v)
     {
         sform.is_v_closed = PK_LOGICAL_true;
@@ -386,19 +386,19 @@ bool createPK_BSURF(const gsTensorBSpline< 2, T> & bsp,
     // Create parasolid surface with the previous spline data
     PK_ERROR_code_t err = PK_BSURF_create(&sform, &bsurf);
     PARASOLID_ERROR(PK_BSURF_create, err);
-    
+
     return true;
 }
 
-template<class T> 
-bool createPK_BCURVE( const gsBSpline<T>& curve, 
+template<class T>
+bool createPK_BCURVE( const gsBSpline<T>& curve,
                       PK_BCURVE_t& bcurve)
 {
     PK_BCURVE_sf_t sform; // B-curve data holder (standard form)
 
     // Degree
     sform.degree = curve.degree();
-    
+
     // Knots
     std::vector<T> knots = curve.basis().knots().unique();
     std::vector<int> mult = curve.basis().knots().multiplicities();
@@ -420,7 +420,7 @@ bool createPK_BCURVE( const gsBSpline<T>& curve,
     coefs.resize(3 * curve.basis().size(), 1);
     sform.vertex_dim = 3;
     sform.vertex = coefs.data();
-    
+
     // Attributes
     sform.is_rational = PK_LOGICAL_false;
     sform.form = PK_BCURVE_form_unset_c;
@@ -428,14 +428,14 @@ bool createPK_BCURVE( const gsBSpline<T>& curve,
     sform.is_periodic = PK_LOGICAL_false;
     sform.is_closed = PK_LOGICAL_false;
     sform.self_intersecting = PK_self_intersect_unset_c;
-    
+
     PK_ERROR_code_t err = PK_BCURVE_create(&sform, &bcurve);
     PARASOLID_ERROR(PK_BCURVE_create, err);
-    
+
     return true;
 }
 
-template<class T> 
+template<class T>
 bool exportMesh(const gsMesh<T>& mesh,
                 PK_ASSEMBLY_t& assembly)
 {
@@ -443,7 +443,7 @@ bool exportMesh(const gsMesh<T>& mesh,
     //  - make one wire body out of all mesh edges with PK_CURVE_make_wire_body_2
     //    and it doesn't work, because edges cross each other
     //  - make a boolean union of all mesh edges with PK_BODY_boolean_2
-    //    and it doesn't work function fails to make a union body (I don't know 
+    //    and it doesn't work function fails to make a union body (I don't know
     //    the reason)
 
     PK_ERROR_t err = PK_ASSEMBLY_create_empty(&assembly);
@@ -454,30 +454,30 @@ bool exportMesh(const gsMesh<T>& mesh,
     gsBSpline<T> bspl(kv, coefs);
 
     gsMatrix<T> newCoefs(2, 3);
-    for (int i = 0; i != mesh.numEdges; ++i)
+    for (int i = 0; i != mesh.numEdges(); ++i)
     {
-        newCoefs.row(0) = mesh.edge[i].source->coords.transpose();
-        newCoefs.row(1) = mesh.edge[i].target->coords.transpose();
-	
+        newCoefs.row(0) = mesh.edges()[i].source->coords.transpose();
+        newCoefs.row(1) = mesh.edges()[i].target->coords.transpose();
+
         if ((newCoefs.row(0) - newCoefs.row(1)).norm() < 1e-6)
         {
             continue;
         }
 
         bspl.setCoefs(newCoefs);
-	
+
         PK_BCURVE_t bcurve;
         createPK_BCURVE(bspl, bcurve);
-	
+
         err = PK_PART_add_geoms(assembly, 1, &bcurve);
         PARASOLID_ERROR(PK_PART_add_geoms, err);
     }
-    
+
     return true;
 }
 
 
-template <class T> 
+template <class T>
 bool exportTHBsurface(const gsTHBSpline<2, T>& surface,
                       PK_ASSEMBLY_t& assembly)
 {
@@ -486,9 +486,9 @@ bool exportTHBsurface(const gsTHBSpline<2, T>& surface,
 
     gsTHBSplineBasis<2>::AxisAlignedBoundingBox boundaryAABB;
     gsTHBSplineBasis<2>::TrimmingCurves trimCurves;
-   
+
     const gsTHBSplineBasis<2>& basis= surface.basis();
-    
+
     basis.decomposeDomain(boundaryAABB, trimCurves);
 
     std::vector<gsTrimData<T> > trimData;
@@ -528,14 +528,14 @@ bool exportTHBsurface(const gsTHBSpline<2, T>& surface,
 
 // returns true la all multiplicities in muls are less (<) than deg + 1
 // parasolid restriction
-bool validMultiplicities(const std::vector<int>& mult, 
+bool validMultiplicities(const std::vector<int>& mult,
                          const int deg)
 {
     for (std::size_t i = 1; i != mult.size() - 1; i++)
     {
         if (mult[i] == deg + 1)
         {
-            std::cout << 
+            std::cout <<
                 "Only B-Splines with (inner) multiplicity less (<) "
                 "than degree + 1 are supported. \n"
                 "Parasolid restriction."
@@ -552,7 +552,7 @@ bool validMultiplicities(const std::vector<int>& mult,
 // - directionU tells if the curve is is-curve in parametric directionU
 // - paramConst if the fixed parameter in parametric direction defined by directionU
 // - param1 & param2 are non fixed parameters defined in the other direction than before
-// - param1, param2, paramConst defines two points -- between these two points we would like 
+// - param1, param2, paramConst defines two points -- between these two points we would like
 //                              to define parameter range for our curve
 void getInterval(const bool directionU,
                  const real_t param1,
@@ -567,7 +567,7 @@ void getInterval(const bool directionU,
     {
         param(0, 0) = param1;
         param(1, 0) = paramConst;
-	
+
         param(0, 1) = param2;
         param(1, 1) = paramConst;
     }
@@ -575,15 +575,15 @@ void getInterval(const bool directionU,
     {
         param(0, 0) = paramConst;
         param(1, 0) = param1;
-	
+
         param(0, 1) = paramConst;
         param(1, 1) = param2;
-    }    
-    
+    }
+
     gsMatrix<> points;
     bspline.eval_into(param, points);
-    
-    
+
+
     for (index_t i = 0; i != 2; i++)
     {
         PK_VECTOR_t position;
@@ -595,9 +595,9 @@ void getInterval(const bool directionU,
         {
             position.coord[row] = points(row, i);
         }
-	
+
         real_t p;
-	
+
         PK_ERROR_t err = PK_CURVE_parameterise_vector(line, position, &p);
         PARASOLID_ERROR(PK_CURVE_parameterise_vector, err);
 
@@ -615,15 +615,15 @@ void getInterval(const bool directionU,
 
 // This function is here as workaround around Parasolid / MTU visualization bug.
 // The bug is:
-//     Let say that you make a trimmed sheet in a such way that you make a 
-//     hole into geometry. So there is a region in geometry which will be trimmed 
-//     away. If multiple coefficients, which define this region, are equal to 
-//     (0, 0, 0) then Parasolid / MTU visualization complains because the surface 
+//     Let say that you make a trimmed sheet in a such way that you make a
+//     hole into geometry. So there is a region in geometry which will be trimmed
+//     away. If multiple coefficients, which define this region, are equal to
+//     (0, 0, 0) then Parasolid / MTU visualization complains because the surface
 //     self intersects. Parasolid / MTU visulation doesn't realize that this reigon
 //     will be trimmed away and it is not important.
 //
 // The workaround:
-//     We change the problematic coefficients, from the trimmed-away area, such that 
+//     We change the problematic coefficients, from the trimmed-away area, such that
 //     the bspline approximates the THB surface.
 //
 // TODO: refactor this function: split it to multiple parts
@@ -632,11 +632,11 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
                   gsTensorBSpline<2, real_t>& bspline)
 {
     // check how many coefs are zero
-    
+
     gsMatrix<>& coefs = bspline.coefs();
     gsVector<int> globalToLocal(coefs.rows());
     globalToLocal.setConstant(-1);
-    
+
     int numZeroRows = 0;
     for (index_t row = 0; row != coefs.rows(); row++)
     {
@@ -649,32 +649,32 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
                 break;
             }
         }
-	
+
         if (zeroRow)
         {
             globalToLocal(row) = numZeroRows;
             numZeroRows++;
         }
     }
- 
-    // if more than 2 coefs are zero, continue 
+
+    // if more than 2 coefs are zero, continue
 
     if (numZeroRows < 2)
     {
         return;
     }
-    
+
     // evaluate basis functions with zero coefs on grevielle points
 
     gsMatrix<> anchors;
     bspline.basis().anchors_into(anchors);
-    
+
     gsMatrix<> params(2, coefs.rows());
     gsVector<> localToGlobal(coefs.rows());
     index_t counter = 0;
 
     gsMatrix<> support = bspline.basis().support();
-    
+
     for (index_t fun = 0; fun != globalToLocal.rows(); fun++)
     {
         if (globalToLocal(fun) != -1)
@@ -687,7 +687,7 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
                 {
                     params(row, counter) = support(row, 0);
                 }
-		
+
                 if (support(row, 1) < params(row, counter))
                 {
                     params(row, counter) = support(row, 1);
@@ -699,35 +699,35 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
 
     params.conservativeResize(2, counter);
     localToGlobal.conservativeResize(counter);
-    
+
     gsMatrix<> points;
     surface.eval_into(params, points);
 
-    // do least square fit 
+    // do least square fit
 
     gsSparseMatrix<> A(localToGlobal.rows(), localToGlobal.rows());
     A.setZero();
     gsMatrix<> B(localToGlobal.rows(), surface.geoDim());
     B.setZero();
-    
+
     gsMatrix<> value;
     gsMatrix<unsigned> actives;
 
     for (index_t k = 0; k != params.cols(); k++)
     {
         const gsMatrix<>& curr_param = params.col(k);
-	
+
         bspline.basis().eval_into(curr_param, value);
         bspline.basis().active_into(curr_param, actives);
         const index_t numActive = actives.rows();
-	
+
         for (index_t i = 0; i != numActive; i++)
         {
             const int I = globalToLocal(actives(i, 0));
             if (I != -1)
             {
                 B.row(I) += value(i, 0) * points.col(k);
-		
+
                 for (index_t j = 0; j != numActive; j++)
                 {
                     const int J = globalToLocal(actives(j, 0));
@@ -739,7 +739,7 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
             }
         }
     }
-    
+
     A.makeCompressed();
     gsSparseSolver<real_t>::BiCGSTABILUT solver(A);
     if (solver.preconditioner().info() != Eigen::Success)
@@ -747,9 +747,9 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
         gsWarn<<  "The preconditioner failed. Aborting.\n";
         return;
     }
-    
+
     gsMatrix<> x = solver.solve(B);
-    
+
     for (index_t row = 0; row != x.rows(); row++)
     {
         coefs.row(localToGlobal(row)) = x.row(row);
