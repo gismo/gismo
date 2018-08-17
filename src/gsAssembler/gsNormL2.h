@@ -59,48 +59,48 @@ public:
 protected:
 
     void initialize(const gsBasis<T> & basis,
-                    gsQuadRule<T> & rule,
-                    unsigned      & evFlags) // replace with geoEval ?
+                    gsQuadRule<T> & rule)
     {
         // Setup Quadrature
         const unsigned d = basis.dim();
-        gsVector<index_t> numQuadNodes( d );
+        gsVector<index_t> numQuadNodes(d);
         for (unsigned i = 0; i < d; ++i)
             numQuadNodes[i] = basis.degree(i) + 2;
-        
+
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_MEASURE| NEED_VALUE;
+        md.flags = NEED_MEASURE | NEED_VALUE;
     }
     
     // Evaluate on element.
-    void evaluate(gsGeometryEvaluator<T> & geoEval,
-                  const gsFunction<T>    & _func1,
-                  const gsFunction<T>    & _func2,
-                  gsMatrix<T>            & quNodes)
+    void evaluate(const gsGeometry<T> & geo,
+                  const gsFunction<T> & _func1,
+                  const gsFunction<T> & _func2,
+                  gsMatrix<T>         & quNodes)
     {
+        md.points = quNodes;
         // Evaluate first function
-        _func1.eval_into(quNodes, f1vals);
-        
+        _func1.eval_into(md.points, f1vals);
+
         // Compute geometry related values
-        geoEval.evaluateAt(quNodes);
-        
+        geo.computeMap(md);
+
         // Evaluate second function
-        _func2.eval_into( f2param ? quNodes : geoEval.values() , f2vals);        
+        _func2.eval_into(f2param ? md.points : md.values[0], f2vals);
     }
     
     // assemble on element
-    T compute(gsDomainIterator<T>    & ,
-              gsGeometryEvaluator<T> & geoEval,
-              gsVector<T> const      & quWeights,
+    T compute(gsDomainIterator<T> &,
+              const gsGeometry<T> & geo,
+              const gsVector<T>   & quWeights,
               T & accumulated)
     {
         T sum(0.0);
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
-            const T weight = quWeights[k] * geoEval.measure(k);
+            const T weight = quWeights[k] * md.measure(k);
             switch (p)
             {
             case 0: // infinity norm
@@ -126,7 +126,7 @@ protected:
     }
 
     inline T takeRoot(const T v)
-    { 
+    {
         switch (p)
         {
         case 0: // infinity norm
@@ -144,6 +144,8 @@ private:
     gsMatrix<T> f1vals, f2vals;
 
     bool f2param;
+
+    using Base::md;
 };
 
 

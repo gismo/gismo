@@ -51,22 +51,4 @@ void gsCurve<T>::toMesh(gsMesh<T> & msh, int npoints) const
     }
 }
 
-template<class T>
-gsGeometryEvaluator<T> *
-gsCurve<T>::evaluator(unsigned flags) const
-{
-    switch ( this->coDim() )
-    {
-    case 0:
-        return new gsGenericGeometryEvaluator<T,1,0 >(*this, flags);
-    case 1:
-        return new gsGenericGeometryEvaluator<T,1,1>(*this, flags);
-    case 2:
-        return new gsGenericGeometryEvaluator<T,1,2>(*this, flags);
-    default:
-        GISMO_ERROR("Codimension problem.");
-    }
-}
-
-
 } // namespace gismo

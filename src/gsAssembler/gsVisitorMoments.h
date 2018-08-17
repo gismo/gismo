@@ -40,56 +40,55 @@ public:
     void initialize(const gsBasis<T> & basis,
                     const index_t patchIndex,
                     const gsOptionList & options,
-                    gsQuadRule<T>    & rule,
-                    unsigned         & evFlags )
+                    gsQuadRule<T>    & rule)
     {
         // Setup Quadrature
         rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_MEASURE | NEED_VALUE;
+        md.flags = NEED_MEASURE | NEED_VALUE;
     }
 
     // Evaluate on element.
-    inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
-                         gsGeometryEvaluator<T> & geoEval,
-                         gsMatrix<T> const      & quNodes)
+    inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
+                         const gsGeometry<T>    & geo,
+                         const gsMatrix<T>      & quNodes)
     {
+        md.points = quNodes;
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the elements
-        basis.active_into(quNodes.col(0), actives);
+        basis.active_into(md.points.col(0), actives);
         numActive = actives.rows();
-        
+
         // Evaluate basis functions on element
-        basis.evalAllDers_into( quNodes, 0, basisData);
-        
+        basis.evalAllDers_into(md.points, 0, basisData);
+
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
-        geoEval.evaluateAt(quNodes);// is this generic ??
-        
+        geo.computeMap(md);
+
         // Evaluate right-hand side at the geometry points paramCoef
         // specifies whether the right hand side function should be
         // evaluated in parametric(true) or physical (false)
-        rhs_ptr->eval_into( (paramCoef ?  quNodes :  geoEval.values() ), rhsVals );
-        
+        rhs_ptr->eval_into((paramCoef ? md.points : md.values[0]), rhsVals);
+
         // Initialize local matrix/rhs
-        localRhs.setZero(numActive, rhsVals.rows() );//multiple right-hand sides
+        localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
     }
     
-    inline void assemble(gsDomainIterator<T>    & element, 
-                         gsGeometryEvaluator<T> & geoEval,
+    inline void assemble(gsDomainIterator<T>    & element,
                          gsVector<T> const      & quWeights)
     {
-        gsMatrix<T> & bVals  = basisData[0];
+        gsMatrix<T> &bVals = basisData[0];
 
-        // localRhs.noalias() = quWeights.array() *  geoEval.measures().array() *  
+        // localRhs.noalias() = quWeights.array() * md.measures().array() *
         //                      bVals * rhsVals.transpose();
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply weight by the geometry measure
-            const T weight = quWeights[k] * geoEval.measure(k);
-            
-            localRhs.noalias() += weight * ( bVals.col(k) * rhsVals.col(k).transpose() ) ;
+            const T weight = quWeights[k] * md.measure(k);
+
+            localRhs.noalias() += weight * (bVals.col(k) * rhsVals.col(k).transpose());
         }
         //gsDebugVar(localRhs.transpose() );
         //gsDebugVar(localMat.asVector().transpose() );
@@ -141,10 +140,10 @@ protected:
 protected:
     // Local values of the right hand side
     gsMatrix<T> rhsVals;
-
-protected:
     // Local matrices
     gsMatrix<T> localRhs;
+
+    gsMapData<T> md;
 };
 
 

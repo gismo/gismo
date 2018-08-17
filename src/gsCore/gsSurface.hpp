@@ -45,23 +45,6 @@ void gsSurface<T>::toMesh(gsMesh<T> & msh, int npoints) const
         }
 }
 
-template<class T>
-gsGeometryEvaluator<T> *
-gsSurface<T>::evaluator(unsigned flags) const
-{
-    switch ( this->coDim() )
-    {
-    case 0:
-        return new gsGenericGeometryEvaluator<T,2,0 >(*this, flags);
-    case 1:
-        return new gsGenericGeometryEvaluator<T,2,1>(*this, flags);
-    case -1:
-        return new gsGenericGeometryEvaluator<T,2,-1>(*this, flags);
-    default:
-        GISMO_ERROR("Codimension problem.");
-    }
-}
-
 /*
    gsVector<unsigned> v;
     v.setZero(2);

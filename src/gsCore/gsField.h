@@ -17,7 +17,7 @@
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsCore/gsMultiBasis.h>
-#include <gsUtils/gsNorms.h>
+#include <gsUtils/gsPointGrid.h>
 
 namespace gismo
 {
@@ -54,6 +54,191 @@ namespace gismo
 template<class T>
 class gsField
 {
+private:
+    /*
+     * Begin of: Stuff from former gsNorms.hpp (not in stable anymore)
+     */
+    static T computeL2Distance(const gsGeometry<T>& geo, const gsFunction<T>& u, bool isParametrized_u, const gsFunction<T>& v, bool isParametrized_v, int numEvals)
+    {
+        GISMO_ASSERT(u.targetDim() == v.targetDim(), "Functions need to have same target dimension");
+
+        const int d = geo.parDim();
+        assert(d == geo.geoDim());
+
+        // compute the tensor Gauss rule
+        gsMatrix<T> nodes;
+        gsVector<T> weights;
+        gsMatrix<T> range = geo.basis().support();
+
+        // Number of nodes of the underlying Gauss rule to use
+        const index_t nodesPerInterval = 1;
+        const int nodesPerElement = math::ipow(nodesPerInterval, d);
+        const int numElements = (numEvals + nodesPerElement - 1) / nodesPerElement;
+        std::vector<std::vector<T> > intervals;
+        uniformIntervals<T>(range.col(0), range.col(1), intervals, numElements);
+
+        // perform the quadrature
+        gsGaussRule<T> quRule(gsVector<index_t>::Constant(d, nodesPerInterval));
+        const int numPts = quRule.numNodes();
+
+        gsTensorDomainIterator<T> domIt(intervals);
+        gsMatrix<T> geo_pts, geo_jac, u_val, v_val;
+        T sum = 0.0;
+
+        for (; domIt.good(); domIt.next())
+        {
+            // Map the Quadrature rule to the element
+            quRule.mapTo(domIt.lowerCorner(), domIt.upperCorner(), nodes, weights);
+
+            // only compute the geometry points if either function is not parametrized
+            geo_pts = (!isParametrized_u || !isParametrized_v) ?
+                      geo.eval(nodes) : gsMatrix<T>();
+            geo_jac = geo.jacobian(nodes);
+
+            // evaluate u and v
+            u_val = isParametrized_u ? u.eval(nodes) : u.eval(geo_pts);
+            v_val = isParametrized_v ? v.eval(nodes) : v.eval(geo_pts);
+
+            for (index_t k = 0; k < numPts; ++k)
+            {
+                const T funcDet = math::abs(geo_jac.block(0, k * d, d, d).determinant());
+                const gsVector<T> diff = u_val.col(k) - v_val.col(k);
+                sum += weights[k] * funcDet * diff.dot(diff);
+            }
+        }
+
+        return math::sqrt(sum);
+    }
+
+    static T igaL2DistanceOnElt( const gsGeometry<T> & geo,
+                          const gsGeometry<T> & func,
+                          const gsFunction<T> & v,
+                          const bool & v_isParam,
+                          const typename gsBasis<T>::domainIter & domIt,
+                          const gsQuadRule<T> & quRule)
+    {
+        gsMapData<T> mdGeo, mdFunc;
+        mdGeo.flags = NEED_VALUE | NEED_MEASURE;
+        mdFunc.flags = NEED_VALUE;
+
+        gsVector<T> quWeightsGeo, quWeightsFunc;
+        quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), mdGeo.points, quWeightsGeo);
+        quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), mdFunc.points, quWeightsFunc);
+
+        // compute image of Gauss nodes under geometry mapping as well as Jacobians
+        //geoEval->evaluateAt(quNodes);
+        //funcEval->evaluateAt(quNodes);
+        geo.computeMap(mdGeo);
+        func.computeMap(mdFunc);
+        const gsMatrix<T> & func_vals = mdFunc.values[0];
+
+        // Evaluate function v
+        gsMatrix<T> v_val = v_isParam ? v.eval(mdGeo.points)
+                                      : v.eval(mdGeo.values[0]);
+
+        // perform the quadrature
+        T sum(0.0);
+
+        for (index_t k = 0; k < quRule.numNodes(); ++k) // loop over quadrature nodes
+        {
+            const T weight = quWeightsGeo[k] * math::abs(mdGeo.measure(k));
+            const gsVector<T> diff = func_vals.col(k) - v_val.col(k);
+            sum += weight * diff.dot(diff);
+        }
+        return sum;
+    }
+
+    static T igaL2Distance(const gsGeometry<T>& patch,
+                    const gsGeometry<T>& func,
+                    const gsFunction<T>& v,
+                    bool v_isParam)
+    {
+        //typename gsGeometryEvaluator<T>::uPtr geoEval ( patch.evaluator(NEED_VALUE | NEED_MEASURE ));
+        // assuming real-valued function
+        //typename gsGeometryEvaluator<T>::uPtr funcEval ( func.evaluator(NEED_VALUE) );
+
+        // degree of the underlying Gauss rule to use
+        gsVector<int> numNodes(func.parDim());
+        for (index_t i = 0; i < numNodes.size(); ++i)
+            numNodes[i] = func.basis().degree(i) + 1;
+        //gsVector<int> numNodes = gsGaussAssembler<T>::getNumIntNodesFor( func.basis() );
+
+        T sum(0);
+        typename gsBasis<T>::domainIter domIt = func.basis().makeDomainIterator();
+        gsGaussRule<T> quRule(numNodes);
+        for (; domIt->good(); domIt->next())
+        {
+            sum += igaL2DistanceOnElt(patch, func, v, v_isParam, domIt, quRule);
+        }
+        return math::sqrt(sum);
+    }
+
+    // if u is given as a field, the information is split into
+    // "function"- and "geometry"-information and passed to igaL2Distance.
+    static T igaFieldL2Distance(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam)
+    {
+        T dist(0);
+
+        for (int i = 0; i < u.nPieces(); ++i)
+        {
+            // extract the "function"-part of the gsField
+            const gsGeometry<T> & func = static_cast<const gsGeometry<T> &>( u.function(i));
+            // call igaL2Distance( patch, func, v, v_isParam)
+            const T curDist = igaL2Distance(u.patch(i), func, v, v_isParam);
+            dist += curDist * curDist;
+        }
+
+        return math::sqrt(dist);
+    }
+
+    static T igaFieldL2Distance(const gsField<T>& u, const gsFunction<T>& v, const gsMultiBasis<T>& B, bool v_isParam)
+    {
+        T dist(0);
+
+        for (int i = 0; i < u.nPieces(); ++i)
+        {
+            // extract the "function"-part of the gsField
+            const gsFunction<T> & func = u.function(i);
+            // call igaL2Distance( patch, func, v, v_isParam)
+            const T curDist = igaL2Distance(u.patch(i), func, v, B[i], v_isParam);
+            dist += curDist * curDist;
+        }
+
+        return math::sqrt(dist);
+    }
+
+    static T computeL2Distance(const gsField<T>& u, const gsFunction<T>& v, bool isParametrized_v, int numEvals)
+    {
+        T dist = T();
+
+        for (int i = 0; i < u.nPieces(); ++i)
+        {
+            T curDist = computeL2Distance(u.patch(i), u.function(i), u.isParametrized(), v, isParametrized_v, numEvals);
+            dist += curDist * curDist;
+        }
+
+        return math::sqrt(dist);
+    }
+
+    static T computeL2Distance(const gsField<T>& u, const gsField<T>& v, int numEvals)
+    {
+        T dist = T();
+        GISMO_ASSERT(u.nPieces() == v.nPieces(), "Fields not matching: " << u.nPieces() << " != " << v.nPieces());
+
+        for (int i = 0; i < u.nPieces(); ++i)
+        {
+            T curDist = computeL2Distance(u.patch(i), u.function(i), u.isParametrized(),
+                                          v.function(i), v.isParametrized(), numEvals);
+            dist += curDist * curDist;
+        }
+
+        return math::sqrt(dist);
+    }
+    /*
+     * End of: Stuff from former gsNorms.hpp (not in stable anymore)
+     */
+
+
 public:
     typedef memory::shared_ptr< gsField >  Ptr;// todo: remove
     typedef memory::unique_ptr< gsField >  uPtr;// todo: remove
@@ -143,12 +328,12 @@ public:
     /// Computes the L2-distance between the field and a function \a func on the physical domain
     T distanceL2(gsFunction<T> const & func, 
                  bool isFunc_param = false,
-                 int numEvals=1000) const 
+                 int numEvals=1000) const
     {
-        if ( m_parametric ) // isogeometric field
+        if (m_parametric) // isogeometric field
             return igaFieldL2Distance(*this, func, isFunc_param);
         else
-            return computeL2Distance(*this, func, isFunc_param,  numEvals);
+            return computeL2Distance(*this, func, isFunc_param, numEvals);
     }
 
     /// Computes the L2-distance between the field and a function \a
@@ -158,10 +343,10 @@ public:
                  bool isFunc_param = false,
                  int numEvals=1000) const
     {
-        if ( m_parametric ) // isogeometric field
-            return igaFieldL2Distance(*this, func, B,isFunc_param);
+        if (m_parametric) // isogeometric field
+            return igaFieldL2Distance(*this, func, B, isFunc_param);
         else
-            return computeL2Distance(*this, func, isFunc_param,  numEvals);
+            return computeL2Distance(*this, func, isFunc_param, numEvals);
     }
 
     /// Computes the H1-distance between the field and a function \a

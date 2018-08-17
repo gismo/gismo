@@ -19,6 +19,7 @@
 #include <gsModeling/gsFitting.h>
 
 #include <gsCore/gsVolume.h>
+#include <gsCore/gsBoundary.h>
 
 
 

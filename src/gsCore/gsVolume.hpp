@@ -19,21 +19,4 @@
 namespace gismo
 {
 
-template<class T> 
-gsGeometryEvaluator<T> *
-gsVolume<T>::evaluator(unsigned flags) const
-{
-    switch ( this->coDim() )
-    {
-    case 0:
-        return new gsGenericGeometryEvaluator<T,3,0 >(*this, flags);
-    case 1:
-        return new gsGenericGeometryEvaluator<T,3,1 >(*this, flags);
-    case -2:
-        return new gsGenericGeometryEvaluator<T,3,-2>(*this, flags);
-    default:
-        GISMO_ERROR("Codimension problem.( codim="<<this->coDim() );
-    }
-}
-
 } // namespace gismo

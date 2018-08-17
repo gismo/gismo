@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include <gsCore/gsGeometryEvaluator.h>
-
 namespace gismo
 {
 
@@ -62,8 +60,6 @@ public:
     GISMO_UPTR_FUNCTION_PURE(gsBulk, clone)
 
     int domainDim() const { return 4; }
-
-    virtual gsGeometryEvaluator<Scalar_t> * evaluator(unsigned flags) const;
 
 }; // class gsBulk
 

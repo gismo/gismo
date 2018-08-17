@@ -34,6 +34,232 @@
 namespace gismo
 {
 
+template <class T>
+void transformGradients(const gsMapData<T> & md, index_t k, const gsMatrix<T>& allGrads, gsMatrix<T>& trfGradsK)
+{
+    GISMO_ASSERT(allGrads.rows() % md.dim.first == 0, "Invalid size of gradient matrix");
+
+    const index_t numGrads = allGrads.rows() / md.dim.first;
+    const gsAsConstMatrix<T> grads_k(allGrads.col(k).data(), md.dim.first, numGrads);
+    trfGradsK.noalias() = md.jacobian(k).inverse().transpose() * grads_k;
+}
+
+template <class T>
+void transformLaplaceHgrad( const gsMapData<T> & md, index_t k,
+                        const gsMatrix<T> & allGrads,
+                        const gsMatrix<T> & allHessians,
+                        gsMatrix<T> & result)
+{
+    //todo: check me
+    gsMatrix<T> hessians;
+    transformDeriv2Hgrad(md, k, allGrads, allHessians, hessians);
+    result = hessians.leftCols(md.dim.first).rowwise().sum(); // trace of Hessian
+    result.transposeInPlace();
+}
+
+template <class T>
+void normal(const gsMapData<T> & md, index_t k, gsVector<T> & result)
+{
+    GISMO_ASSERT( md.dim.first+1 == md.dim.second, "Codimension should be equal to one");
+    result.resize(md.dim.first+1);
+    const gsMatrix<T> Jk = md.jacobians().block(0, k*md.dim.first, md.dim.first+1, md.dim.first);
+
+    T alt_sgn(1.0);
+    typename gsMatrix<T>::RowMinorMatrixType minor;
+    for (int i = 0; i <= md.dim.first; ++i) // for all components of the normal vector
+    {
+        Jk.rowMinor(i, minor);
+        result[i] = alt_sgn * minor.determinant();
+        alt_sgn = -alt_sgn;
+    }
+}
+
+template <class T>
+void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & result)
+{
+    //todo: fix and check me
+    int m_orientation = md.jacobian(k).determinant() >= 0 ? 1 : -1;
+
+    const T sgn = sideOrientation(s) * m_orientation; // TODO: fix me
+    const int dir = s.direction();
+
+    // assumes points u on boundary "s"
+    result.resize(md.dim.second);
+    if (md.dim.first + 1 == md.dim.second) // surface case GeoDim == 3
+    {
+        const gsMatrix<T> Jk = md.jacobian(k);
+        // fixme: generalize to nD
+        normal(md, k, result);
+        result = result.normalized().cross(sgn * Jk.block(0, !dir, md.dim.first, 1));
+
+        /*
+          gsDebugVar(result.transpose()); // result 1
+          normal(k,result);
+          Jk.col(dir) = result.normalized();
+          gsMatrix<T, ParDim, md.dim.first> minor;
+          T alt_sgn = sgn;
+          for (int i = 0; i != GeoDim; ++i) // for all components of the normal
+          {
+          Jk.rowMinor(i, minor);
+          result[i] = alt_sgn * minor.determinant();
+          alt_sgn = -alt_sgn;
+          }
+          gsDebugVar(result.transpose()); // result 2
+        //*/
+    }
+    else // planar case
+    {
+        GISMO_ASSERT(md.dim.first == md.dim.second, "Codim different than zero/one");
+
+        if (1 == md.dim.second)
+        {
+            result[0] = sgn;
+            return;
+        } // 1D case
+
+        const gsMatrix<T> Jk =
+            md.jacobian(k);
+
+        T alt_sgn = sgn;
+        typename gsMatrix<T>::FirstMinorMatrixType minor;
+        for (int i = 0; i != md.dim.first; ++i) // for all components of the normal
+        {
+            Jk.firstMinor(i, dir, minor);
+            result[i] = alt_sgn * minor.determinant();
+            alt_sgn = -alt_sgn;
+        }
+    }
+}
+
+template<typename T>
+void secDerToHessian(typename gsMatrix<T>::constRef & secDers,
+                     gsMatrix<T> & hessian,
+                     int parDim)
+{
+    switch (parDim)
+    {
+        case 1:
+            hessian.resize(1, 1);
+            hessian(0, 0) = secDers(0, 0);
+            break;
+        case 2:
+            hessian.resize(2, 2);
+            hessian(0, 0) = secDers(0, 0);
+            hessian(1, 1) = secDers(1, 0);
+            hessian(0, 1) =
+            hessian(1, 0) = secDers(2, 0);
+            break;
+        case 3:
+            hessian.reshape(3, 3);
+            hessian(0, 0) = secDers(0, 0);
+            hessian(1, 1) = secDers(1, 0);
+            hessian(2, 2) = secDers(2, 0);
+            hessian(0, 1) =
+            hessian(1, 0) = secDers(3, 0);
+            hessian(0, 2) =
+            hessian(2, 0) = secDers(4, 0);
+            hessian(1, 2) =
+            hessian(2, 1) = secDers(5, 0);
+            break;
+        default:
+            break;
+    }
+}
+
+template<typename T>
+void hessianToSecDer (const gsMatrix<T> & hessian,
+                      typename gsMatrix<T>::Row secDers,
+                      int parDim)
+{
+    switch (parDim)
+    {
+        case 1:
+            secDers(0, 0) = hessian(0, 0);
+            break;
+        case 2:
+            secDers(0, 0) = hessian(0, 0);
+            secDers(0, 1) = hessian(1, 1);
+            secDers(0, 2) = (hessian(1, 0) + hessian(0, 1)) / 2.0;
+            break;
+        case 3:
+            secDers(0, 0) = hessian(0, 0);
+            secDers(0, 1) = hessian(1, 1);
+            secDers(0, 2) = hessian(2, 2);
+            secDers(0, 3) = (hessian(0, 1) + hessian(1, 0)) / 2.0;
+            secDers(0, 4) = (hessian(0, 2) + hessian(2, 0)) / 2.0;
+            secDers(0, 5) = (hessian(1, 2) + hessian(2, 1)) / 2.0;
+            break;
+        default:
+            break;
+    }
+}
+
+template<typename T>
+void secDerToTensor(Eigen::DenseBase<Eigen::Map<const Eigen::Matrix<double, -1, -1>, 0, Eigen::Stride<0, 0> > >::ConstColXpr & secDers,
+                    gsMatrix<T> * a,
+                    int parDim, int geoDim)
+{
+    const int dim = parDim * (parDim + 1) / 2;
+    for (int i = 0; i < geoDim; ++i)
+        secDerToHessian<T>(secDers.segment(i * dim, dim), a[i], parDim);
+}
+
+template <class T>
+void transformDeriv2Hgrad(const gsMapData<T> & md, 
+                          index_t              k,
+                          const gsMatrix<T> &  funcGrad,
+                          const gsMatrix<T> &  funcSecDir,
+                          gsMatrix<T> &        result)
+{
+    //todo: check me
+    const int ParDim = md.dim.first;
+    const int GeoDim = md.dim.second;
+    GISMO_ASSERT(
+        (ParDim == 1 && (GeoDim == 1 || GeoDim == 2 || GeoDim == 3))
+        || (ParDim == 2 && (GeoDim == 2 || GeoDim == 3))
+        || (ParDim == 3 && GeoDim == 3), "No implementation for this case");
+
+    // important sizes
+    const int parSecDirSize = ParDim * (ParDim + 1) / 2;
+    const int fisSecDirSize = GeoDim * (GeoDim + 1) / 2;
+
+    // allgrads
+    const index_t numGrads = funcGrad.rows() / ParDim;
+
+    result.resize(numGrads, fisSecDirSize);
+
+    typename gsMatrix<T>::constRef JMT = md.jacobian(k).inverse();  // m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
+    typename gsMatrix<T>::constRef JM1 = JMT.transpose();           // m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim);
+
+    // First part: J^-T H(u) J^-1
+    gsMatrix<T> parFuncHessian;
+    for (index_t i = 0; i < numGrads; ++i)
+    {
+        secDerToHessian<T>(funcSecDir.block(i * parSecDirSize, k, parSecDirSize, 1), parFuncHessian, ParDim);
+        hessianToSecDer<T>(JM1 * parFuncHessian * JMT, result.row(i), GeoDim);
+    }
+
+    // Second part: sum_i[  J^-T H(G_i) J^-1 ( e_i^T J^-T grad(u) ) ]
+    const gsAsConstMatrix<T, -1, -1>  & secDer = md.deriv2(k);
+#ifndef _MSC_VER
+    gsMatrix<T> DDG[GeoDim]; // Each matrix is the Hessian of a component of the Geometry
+#else
+    gsMatrix<T>* DDG = new gsMatrix<T>[GeoDim];
+#endif
+    secDerToTensor<T>(secDer.col(0), DDG, ParDim, GeoDim);
+    gsMatrix<T> HGT(GeoDim, fisSecDirSize);
+    for (int i = 0; i < GeoDim; ++i)
+        hessianToSecDer<T>(JM1 * DDG[i] * JMT, HGT.row(i), GeoDim);
+
+    // Lastpart: substract part2 from part1
+    const gsAsConstMatrix<T> grads_k(funcGrad.col(k).data(), ParDim, numGrads);
+    result.noalias() -= grads_k.transpose() * JMT * HGT;
+    // 1 x d * d x d * d x d * d * s -> 1 x s
+#ifdef _MSC_VER
+    delete[] DDG;
+#endif
+}
+
 /** @brief The assembler class provides generic routines for volume
   and boundary integrals that are used for for matrix and right-hand
   side generation
@@ -445,10 +671,9 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
 
 #pragma omp parallel
 {
-    gsQuadRule<T> QuRule ; // Quadrature rule
+    gsQuadRule<T> quRule ; // Quadrature rule
     gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
     gsVector<T> quWeights; // Temp variable for mapped weights
-    unsigned evFlags(0);
 
     ElementVisitor
 #ifdef _OPENMP
@@ -461,12 +686,9 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
 #endif
 
     // Initialize reference quadrature rule and visitor data
-    visitor_.initialize(bases, patchIndex, m_options, QuRule, evFlags);
+    visitor_.initialize(bases, patchIndex, m_options, quRule);
 
-    //fixme: gsMapData<T> mapData;
-    // Initialize geometry evaluator
-    typename gsGeometry<T>::Evaluator geoEval(
-        m_pde_ptr->patches()[patchIndex].evaluator(evFlags));
+    const gsGeometry<T> & patch = m_pde_ptr->patches()[patchIndex];
 
     // Initialize domain element iterator -- using unknown 0
     typename gsBasis<T>::domainIter domIt = bases[0].makeDomainIterator(side);
@@ -479,13 +701,13 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
 #endif
     {
         // Map the Quadrature rule to the element
-        QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
+        quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
         // Perform required evaluations on the quadrature nodes
-        visitor_.evaluate(bases, /* *domIt,*/ *geoEval, quNodes);
+        visitor_.evaluate(bases, patch, quNodes);
 
         // Assemble on element
-        visitor_.assemble(*domIt, *geoEval, quWeights);
+        visitor_.assemble(*domIt, quWeights);
 
         // Push to global matrix and right-hand side vector
 #pragma omp critical(localToGlobal)
@@ -505,16 +727,14 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
 
     const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
 
-    const int patch1      = bi.first().patch;
-    const int patch2      = bi.second().patch;
-    const gsBasis<T> & B1 = m_bases[0][patch1];// (!) unknown 0
-    const gsBasis<T> & B2 = m_bases[0][patch2];
+    const int patchIndex1      = bi.first().patch;
+    const int patchIndex2      = bi.second().patch;
+    const gsBasis<T> & B1 = m_bases[0][patchIndex1];// (!) unknown 0
+    const gsBasis<T> & B2 = m_bases[0][patchIndex2];
 
-    gsQuadRule<T> QuRule ; // Quadrature rule
+    gsQuadRule<T> quRule ; // Quadrature rule
     gsMatrix<T> quNodes1, quNodes2;// Mapped nodes
     gsVector<T> quWeights;         // Mapped weights
-    // Evaluation flags for the Geometry map
-    unsigned evFlags(0);
 
     const int bSize1      = B1.numElements( bi.first() .side() );
     const int bSize2      = B2.numElements( bi.second().side() );
@@ -524,13 +744,10 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
                  bSize1<<", bSize2="<<bSize2<<"." );
 
     // Initialize
-    visitor.initialize(B1, B2, bi, m_options, QuRule, evFlags);
+    visitor.initialize(B1, B2, bi, m_options, quRule);
 
-    // Initialize geometry evaluators
-    typename gsGeometry<T>::Evaluator geoEval1(
-        m_pde_ptr->patches()[patch1].evaluator(evFlags));
-    typename gsGeometry<T>::Evaluator geoEval2(
-        m_pde_ptr->patches()[patch2].evaluator(evFlags));
+    const gsGeometry<T> & patch1 = m_pde_ptr->patches()[patchIndex1];
+    const gsGeometry<T> & patch2 = m_pde_ptr->patches()[patchIndex2];
 
     // Initialize domain element iterators
     typename gsBasis<T>::domainIter domIt1 = B1.makeDomainIterator( bi.first() .side() );
@@ -547,17 +764,17 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
         //domIter1->adjacent( bi.orient, *domIter2 );
 
         // Compute the quadrature rule on both sides
-        QuRule.mapTo( domIt1->lowerCorner(), domIt1->upperCorner(), quNodes1, quWeights);
+        quRule.mapTo( domIt1->lowerCorner(), domIt1->upperCorner(), quNodes1, quWeights);
         interfaceMap.eval_into(quNodes1,quNodes2);
 
         // Perform required evaluations on the quadrature nodes
-        visitor.evaluate(B1, *geoEval1, B2, *geoEval2, quNodes1, quNodes2);
+        visitor.evaluate(B1, patch1, B2, patch2, quNodes1, quNodes2);
 
         // Assemble on element
-        visitor.assemble(*domIt1,*domIt2, *geoEval1, *geoEval2, quWeights);
+        visitor.assemble(*domIt1,*domIt2, quWeights);
 
         // Push to global patch matrix (m_rhs is filled in place)
-        visitor.localToGlobal(patch1, patch2, m_ddof, m_system);
+        visitor.localToGlobal(patchIndex1, patchIndex2, m_ddof, m_system);
 
         if ( count % ratio == 0 ) // next master element ?
         {

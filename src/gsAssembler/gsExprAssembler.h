@@ -1219,22 +1219,24 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
     // the L2-projection
     gsSparseEntries<T> projMatEntries;
     gsMatrix<T>        globProjRhs;
-    globProjRhs.setZero( mapper.boundarySize(), u.dim() );
+    globProjRhs.setZero(mapper.boundarySize(), u.dim());
 
     // Temporaries
-    gsMatrix<T> quNodes;
     gsVector<T> quWeights;
 
     gsMatrix<T> rhsVals;
     gsMatrix<unsigned> globIdxAct;
     gsMatrix<T> basisVals;
 
+    gsMapData<T> md;
+    md.flags = NEED_MEASURE | SAME_ELEMENT;
+
     const gsMultiPatch<T> & mp = static_cast<const gsMultiPatch<T> &>(m_exprdata->getMap().source());
 
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     typedef typename gsBoundaryConditions<T>::bcRefList bcRefList;
-    for ( typename bcRefList::const_iterator iit =  u.bc().begin();
-          iit != u.bc().end()  ; ++iit )
+    for (typename bcRefList::const_iterator iit = u.bc().begin();
+         iit != u.bc().end(); ++iit)
     {
         const boundary_condition<T> * iter = &iit->get();
 
@@ -1244,7 +1246,7 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
         const int patchIdx   = iter->patch();
         const gsBasis<T> & basis = mbasis[patchIdx];
 
-        typename gsGeometry<T>::Evaluator geoEval( mp.patches()[patchIdx]->evaluator(NEED_MEASURE));
+        const gsGeometry<T> & patch = mp.patch(patchIdx);
 
         // Set up quadrature to degree+1 Gauss points per direction,
         // all lying on iter->side() except from the direction which
@@ -1254,19 +1256,20 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
         // Create the iterator along the given part boundary.
         typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(iter->side());
 
-        for(; bdryIter->good(); bdryIter->next() )
+        for (; bdryIter->good(); bdryIter->next())
         {
-            bdQuRule.mapTo( bdryIter->lowerCorner(), bdryIter->upperCorner(),
-                            quNodes, quWeights);
+            bdQuRule.mapTo(bdryIter->lowerCorner(), bdryIter->upperCorner(),
+                           md.points, quWeights);
 
-            geoEval->evaluateAt( quNodes );
+            //geoEval->evaluateAt( md.points );
+            patch.computeMap(md);
 
             // the values of the boundary condition are stored
             // to rhsVals. Here, "rhs" refers to the right-hand-side
             // of the L2-projection, not of the PDE.
-            rhsVals = iter->function()->eval( m_exprdata->getMap().source().piece(patchIdx).eval( quNodes ) );
+            rhsVals = iter->function()->eval(m_exprdata->getMap().source().piece(patchIdx).eval(md.points));
 
-            basis.eval_into( quNodes, basisVals);
+            basis.eval_into(md.points, basisVals);
 
             // Indices involved here:
             // --- Local index:
@@ -1285,8 +1288,8 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
 
             // Get the global indices (second line) of the local
             // active basis (first line) functions/DOFs:
-            basis.active_into(quNodes.col(0), globIdxAct );
-            mapper.localToGlobal( globIdxAct, patchIdx, globIdxAct);
+            basis.active_into(md.points.col(0), globIdxAct);
+            mapper.localToGlobal(globIdxAct, patchIdx, globIdxAct);
 
             // Out of the active functions/DOFs on this element, collect all those
             // which correspond to a boundary DOF.
@@ -1296,45 +1299,49 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
             // something like a "element-wise index"
             std::vector<index_t> eltBdryFcts;
             eltBdryFcts.reserve(mapper.boundarySize());
-            for( index_t i=0; i < globIdxAct.rows(); i++)
-                if( mapper.is_boundary_index( globIdxAct(i,0)) )
-                    eltBdryFcts.push_back( i );
+            for (index_t i = 0; i < globIdxAct.rows(); i++)
+            {
+                if (mapper.is_boundary_index(globIdxAct(i, 0)))
+                {
+                    eltBdryFcts.push_back(i);
+                }
+            }
 
             // Do the actual assembly:
-            for( index_t k=0; k < quNodes.cols(); k++ )
+            for (index_t k = 0; k < md.points.cols(); k++)
             {
-                const T weight_k = quWeights[k] * geoEval->measure(k);
+                const T weight_k = quWeights[k] * md.measure(k);
 
                 // Only run through the active boundary functions on the element:
-                for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
+                for (size_t i0 = 0; i0 < eltBdryFcts.size(); i0++)
                 {
                     // Each active boundary function/DOF in eltBdryFcts has...
                     // ...the above-mentioned "element-wise index"
                     const unsigned i = eltBdryFcts[i0];
                     // ...the boundary index.
-                    const unsigned ii = mapper.global_to_bindex( globIdxAct( i ));
+                    const unsigned ii = mapper.global_to_bindex(globIdxAct(i));
 
-                    for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
+                    for (size_t j0 = 0; j0 < eltBdryFcts.size(); j0++)
                     {
                         const unsigned j = eltBdryFcts[j0];
-                        const unsigned jj = mapper.global_to_bindex( globIdxAct( j ));
+                        const unsigned jj = mapper.global_to_bindex(globIdxAct(j));
 
                         // Use the "element-wise index" to get the needed
                         // function value.
                         // Use the boundary index to put the value in the proper
                         // place in the global projection matrix.
-                        projMatEntries.add(ii, jj, weight_k * basisVals(i,k) * basisVals(j,k));
+                        projMatEntries.add(ii, jj, weight_k * basisVals(i, k) * basisVals(j, k));
                     } // for j
 
-                    globProjRhs.row(ii) += weight_k *  basisVals(i,k) * rhsVals.col(k).transpose();
+                    globProjRhs.row(ii) += weight_k * basisVals(i, k) * rhsVals.col(k).transpose();
 
                 } // for i
             } // for k
         } // bdryIter
     } // boundaryConditions-Iterator
 
-    gsSparseMatrix<T> globProjMat( mapper.boundarySize(), mapper.boundarySize() );
-    globProjMat.setFrom( projMatEntries );
+    gsSparseMatrix<T> globProjMat(mapper.boundarySize(), mapper.boundarySize());
+    globProjMat.setFrom(projMatEntries);
     globProjMat.makeCompressed();
 
     // Solve the linear system:
@@ -1342,7 +1349,7 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
     // numbering by the boundary index. Hence, we can simply take them
     // for the values of the eliminated Dirichlet DOFs.
     typename gsSparseSolver<T>::CGDiagonal solver;
-    fixedDofs = solver.compute( globProjMat ).solve ( globProjRhs );
+    fixedDofs = solver.compute(globProjMat).solve(globProjRhs);
 
 } // computeDirichletDofsL2Proj
 
