@@ -199,6 +199,17 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             instance->slice(dir_fixed-1, par, res);
             plhs[0] = createPointerFromMatrix(res.coefs());
 
+        } else if (!strcmp(cmd,"save")) {
+
+            // ----------------------------------------------------------------------
+            // save(file)
+
+            gsTHBSpline<__DIM__> *instance = convertMat2Ptr < gsTHBSpline< __DIM__ > >(prhs[1]);
+            char* input_buf = mxArrayToString(prhs[2]);
+            // Save the THB-spline in the specified file
+            std::string filename(input_buf); // Reading requires a std::string
+            gsWrite(*instance, filename);
+
         } else {
 
             // ----------------------------------------------------------------------

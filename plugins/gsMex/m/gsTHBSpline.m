@@ -353,10 +353,35 @@ classdef gsTHBSpline < handle
             elseif (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ...
                     ~(mod(varargin{1},1)==0) || varargin{1}<1 || varargin{1}>this.parDim)
                 error('Input argument no. 1 must be a non negative integer smaller than %d.', this.parDim)
-            elseif (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || prod(size(varargin{1}))~=1)
+            elseif (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || numel(varargin{1})~=1)
                 error('Input argument no.2 must be a scalar.')
             end
             [varargout{1:nargout}] = mex_gsTHBSpline('sliceCoefs', this.objectHandle, varargin{:});
+        end
+        
+        % save - call class method
+        function [varargout] = save(this, varargin)
+            %save - save a gsTHBSpline object as xml object
+            %
+            %Usage:
+            %  thb.save(filename);
+            %
+            %Input:
+            %  thb: gsTHBSplineBasis, [1 x 1].
+            %    The gsTHBSplineBasis object.
+            %  filename: string, name of the xml output file without
+            %    extension
+            % 
+            %Output:
+            %   (none - saved into an xml file)
+            
+            if (nargin~=2)
+                error('Invalid number of input arguments.')
+            end
+            if (~(isa(varargin{1},'char')))
+                error('Input argument no. 1 should be of type ''char''.')
+            end
+            [varargout{1:nargout}] = mex_gsTHBSpline('save', this.objectHandle, varargin{:});
         end
 
     end

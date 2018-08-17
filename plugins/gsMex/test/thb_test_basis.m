@@ -8,7 +8,8 @@ fprintf('Reading THB spline basis from file: %s.\n',filename)
 hbs = gsTHBSplineBasis(filename);
 
 % Construct a truncated hierarchical basis from its knot vector in a carthesian product way.
-knots_2build = {[0,0,0,1,2,2,2],[4,4,5,5.5,6,6]};
+% knots_2build = {[0,0,0,1,2,2,2],[4,4,5,5.5,6,6]};
+knots_2build = {[0,0,0,1,2,2,2],[4,4,4,5,6,6,6]};
 fprintf('Reading THB spline basis from knot vector, carthesian product way.\n')
 hbs2 = gsTHBSplineBasis(knots_2build);
 
@@ -92,5 +93,14 @@ disp(act2)
 fprintf('Knots at level 1, direction 1 before uniform refinement:\n')
 disp(hbs.knots(1,1))
 hbs.uniformRefine(1,1);
-fprintf('Knots at level1, direction 1 after uniform refinement:\n')
+fprintf('Knots at level 1, direction 1 after uniform refinement:\n')
 disp(hbs.knots(1,1))
+
+% Refine the basis by defining boxes
+fprintf('Number of elements before box (1,3)x(3,5) refinement at level 2: %d\n', ...
+    hbs2.numElements);
+boxes = [2,1,3,3,5];
+hbs2.refineElements(boxes);
+fprintf('Number of elements after box (1,3)x(3,5) refinement at level 2: %d\n', ...
+    hbs2.numElements);
+

@@ -246,6 +246,33 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             instance->uniformRefine_withCoefs(coefs, numKnots, mult);
             plhs[0] = createPointerFromMatrix<real_t>(coefs);
 
+        } else if (!strcmp(cmd,"refineElements")) {
+
+            // ----------------------------------------------------------------------
+            // refineElements(boxes)
+
+            gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis<__DIM__> >(prhs[1]);
+            // Copy the input (FIXME: this should be avoided)
+            std::vector<unsigned int> boxes = extractStdVectorFromPointer<unsigned int>(prhs[2]);
+            std::for_each(boxes.begin(), boxes.end(), [](unsigned int& d) { d-=1;});
+
+            instance->refineElements(boxes);
+
+        } else if (!strcmp(cmd,"refineElements_withCoefs")) {
+
+            // ----------------------------------------------------------------------
+            // refineElements_withCoefs(coefs, boxes)
+
+            gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis<__DIM__> >(prhs[1]);
+            // Copy the input (FIXME: this should be avoided)
+            gsMatrix<real_t> coefs = extractMatrixFromPointer<real_t>(prhs[2]);
+            std::vector<unsigned int> boxes = extractStdVectorFromPointer<unsigned int>(prhs[3]);
+
+            std::for_each(boxes.begin(), boxes.end(), [](unsigned int& d) { d-=1;});
+
+            instance->refineElements_withCoefs(coefs, boxes);
+            plhs[0] = createPointerFromMatrix<real_t>(coefs);
+
         } else {
 
             // ----------------------------------------------------------------------

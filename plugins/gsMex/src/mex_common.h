@@ -60,6 +60,18 @@ gismo::gsAsConstMatrix<T> extractMatrixFromPointer(const mxArray *pnt)
     return gismo::gsAsConstMatrix<real_t>(mxGetPr(pnt), mxGetM(pnt), mxGetN(pnt) );
 }
 
+// Copies the array pointed to by the input pointer and returns it
+// as a std::vector.
+template<class T>
+std::vector<T> extractStdVectorFromPointer(const mxArray *pnt)
+{
+    std::vector<T> out;
+    double* pr = mxGetPr(pnt);
+    unsigned int len = mxGetNumberOfElements(pnt);
+    out.assign(pr, pr + len);
+    return out;
+}
+
 // Copies the content of the input gsMatrix into a MATLAB real
 // double matrix and returns a pointer to it. Note: memory is
 // allocated (intended for output so it is not freed).

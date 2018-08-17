@@ -342,11 +342,13 @@ classdef gsTHBSplineBasis < handle
             %save - save a gsTHBSplineBasis object as xml object
             %
             %Usage:
-            %  thb.save();
+            %  thb.save(filename);
             %
             %Input:
             %  thb: gsTHBSplineBasis, [1 x 1].
             %    The gsTHBSplineBasis object.
+            %  filename: string, name of the xml output file without
+            %    extension
             %
             %Output:
             %   (none - saved into an xml file)
@@ -450,13 +452,13 @@ classdef gsTHBSplineBasis < handle
 
         % uniformRefine_withCoefs - call class method
         function [varargout] = uniformRefine_withCoefs(this, varargin)
-            %uniformRefine_withCoefs - Refine the basis given by a gsTHBSplineBaiss 
+            %uniformRefine_withCoefs - Refine the basis given by a gsTHBSplineBasis 
             % object uniformly. The function simultainously updates the vector coefs,
             % representing a function in the bases, such that its new version 
             % represents the same function.
             %
             %Usage:
-            %  thb.uniformRefine_withCoefs(coefs, numKnots, mult)
+            %  coefs_ref = thb.uniformRefine_withCoefs(coefs, numKnots, mult)
             %
             %Input:
             %  thb: gsTHBSplineBasis, [1 x 1].
@@ -467,7 +469,8 @@ classdef gsTHBSplineBasis < handle
             %  mult: int, each knot is inserted with a multiplicity mult.
             %
             %Output:
-            %  None - changes done inline.
+            %  coefs_ref: the coefficients representing a function in the
+            %     bases after the basis has been refined.
 
             if (nargin~=4 || nargout~=1)
                 error('Invalid number of input and/or output arguments.')
@@ -484,5 +487,68 @@ classdef gsTHBSplineBasis < handle
                                                            varargin{:});
         end
 
+        % refineElements - call class method
+        function [varargout] = refineElements(this, varargin)
+            %refineElements - proceed to a refinement of given elements of 
+            % a gsTHBSplineBasis object
+            %
+            %Usage:
+            %  thb.refineElements(boxes)
+            %
+            %Input:
+            %  thb: gsTHBSplineBasis, [1 x 1].
+            %    The gsTHBSplineBasis object.
+            %  boxes: int array of dimension N(2d+1) where N is the number
+            %    of boxes to refine (sets of cells), and d is the parametric
+            %    dimension. 
+            %
+            %Output:
+            %  None - changes done inline.
+
+            if (nargin~=2 || nargout>0)
+                error('Invalid number of input and/or output arguments.')
+            end
+            if ( ~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~(min(size(varargin{1}))==1) )
+                error('Input argument must be an array of integers.')
+            end
+            mex_gsTHBSplineBasis('refineElements', this.objectHandle, varargin{:});
+        end
+
+        % refineElements_withCoefs - call class method
+        function [varargout] = refineElements_withCoefs(this, varargin)
+            %refineElements_withCoefs - Refine the given elements of the 
+            % basis given by a gsTHBSplineBasis object. The function 
+            % simultainously updates the vector coefs, representing a 
+            % function in the bases, such that its new version represents 
+            % the same function.
+            %
+            %Usage:
+            %  coefs_ref = thb.refineElements_withCoefs(coefs, boxes).
+            %
+            %Input:
+            %  thb: gsTHBSplineBasis, [1 x 1].
+            %    The gsTHBSplineBasis object.
+            %  coefs: the coefficients representing a function in the bases 
+            %    before the basis is refined.
+            %  boxes: int array of dimension N(2d+1) where N is the number
+            %    of boxes to refine (sets of cells), and d is the parametric
+            %    dimension. 
+            %
+            %Output:
+            %  coefs_ref: the coefficients representing a function in the
+            %    bases after the basis has been refined.
+
+            if (nargin~=3 || nargout~=1)
+                error('Invalid number of input and/or output arguments.')
+            end
+            if ( ~isa(varargin{2},'numeric') || ~ismatrix(varargin{2}) || ~(min(size(varargin{2}))==1) ||...
+                ~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) )
+                error('Input argument no. 1 should be a 2d array of double, inputs no. 2 must' ...
+                       + 'be an array of integers.')
+            end
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('refineElements_withCoefs', this.objectHandle,...
+                                                           varargin{:});
+        end
+        
     end
 end
