@@ -536,8 +536,8 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
         m_pde_ptr->patches()[patch2].evaluator(evFlags));
 
     // Initialize domain element iterators
-    typename gsBasis<T>::domainIter domIt1 = B1.makeDomainIterator( bi.first() .side() );
-    typename gsBasis<T>::domainIter domIt2 = B2.makeDomainIterator( bi.second().side() );
+    //typename gsBasis<T>::domainIter domIt1 = B1.makeDomainIterator( bi.first() .side() );
+    //typename gsBasis<T>::domainIter domIt2 = B2.makeDomainIterator( bi.second().side() );
 
     typename gsBasis<T>::domainIter domIt = interfaceMap.makeDomainIterator();
 

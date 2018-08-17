@@ -158,7 +158,7 @@ class PardisoImpl : public SparseSolverBase<Derived>
     }
 
     // G+Smo: set indivisual parameter
-    void setParam(const int i, const int value) { m_iparam[i] = value; }
+    void setParam(const int i, const int value) { m_iparm[i] = value; }
 
     /** Performs a symbolic decomposition on the sparcity of \a matrix.
       *
