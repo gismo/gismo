@@ -65,18 +65,17 @@ public:
         return m_value;
     }
     virtual void initialize(const gsBasis<T> & basis,
-                        gsQuadRule<T> & rule,
-                        unsigned      & evFlags) = 0;
+                        gsQuadRule<T> & rule) = 0;
 
-    virtual void evaluate(gsGeometryEvaluator<T> & geoEval,
-                  const gsFunction<T>    & _func1,
-                  const gsFunction<T>    & _func2,
-                  gsMatrix<T>            & quNodes) = 0;
+    virtual void evaluate(const gsGeometry<T> & geo,
+                  const gsFunction<T>         & _func1,
+                  const gsFunction<T>         & _func2,
+                  gsMatrix<T>                 & quNodes) = 0;
 
-    virtual T compute(gsDomainIterator<T>    & element,
-                 gsGeometryEvaluator<T> & geoEval,
-                 gsVector<T> const      & quWeights,
-                 T & accumulated) = 0;
+    virtual T compute(gsDomainIterator<T> & element,
+                 const gsGeometry<T>      & geo,
+                 const gsVector<T>        & quWeights,
+                 T                        & accumulated) = 0;
 
     virtual T takeRoot(const T v) { return math::sqrt(v); }
 
@@ -99,10 +98,7 @@ public:
 
         gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
         gsVector<T> quWeights; // Temp variable for mapped weights
-        gsQuadRule<T> QuRule; // Reference Quadrature rule
-
-        // Evaluation flags for the Geometry map
-        unsigned evFlags(0);
+        gsQuadRule<T> quRule; // Reference Quadrature rule
 
         m_value = T(0.0);
         for (unsigned pn=0; pn < patchesPtr->nPatches(); ++pn )// for all patches
@@ -114,24 +110,23 @@ public:
                 field1->igaFunction(pn).basis() : field1->patch(pn).basis();
 
              // Initialize visitor
-            visitor.initialize(dom, QuRule, evFlags);
+            visitor.initialize(dom, quRule);
 
             // Initialize geometry evaluator
-            typename gsGeometry<T>::Evaluator geoEval(
-                patchesPtr->patch(pn).evaluator(evFlags));
+            const gsGeometry<T> & patch = patchesPtr->patch(pn);
             
             typename gsBasis<T>::domainIter domIt = dom.makeDomainIterator(side);
 
             // TODO: optimization of the assembling routine, it's too slow for now
             for(; domIt->good(); domIt->next()) {
                 // Map the Quadrature rule to the element
-                QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
+                quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
 
                 // Evaluate on quadrature points
-                visitor.evaluate(*geoEval, func1, func2p, quNodes);
+                visitor.evaluate(patch, func1, func2p, quNodes);
 
                 // Accumulate value from the current element (squared)
-                const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
+                const T result = visitor.compute(*domIt, patch, quWeights, m_value);
                 if (storeElWise) m_elWise.push_back(visitor.takeRoot(result));
             }
 
@@ -148,10 +143,7 @@ public:
 
         gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
         gsVector<T> quWeights; // Temp variable for mapped weights
-        gsQuadRule<T> QuRule; // Reference Quadrature rule
-
-        // Evaluation flags for the Geometry map
-        unsigned evFlags(0);
+        gsQuadRule<T> quRule; // Reference Quadrature rule
 
         m_value = T(0.0);
         for (unsigned pn=0; pn < patchesPtr->nPatches(); ++pn )// for all patches
@@ -163,24 +155,23 @@ public:
                                      field1->igaFunction(pn).basis() : field1->patch(pn).basis();
 
             // Initialize visitor
-            visitor.initialize(dom, QuRule, evFlags);
+            visitor.initialize(dom, quRule);
 
             // Initialize geometry evaluator
-            typename gsGeometry<T>::Evaluator geoEval(
-                    patchesPtr->patch(pn).evaluator(evFlags));
+            const gsGeometry<T> & patch = patchesPtr->patch(pn);
 
             typename gsBasis<T>::domainIter domIt = dom.makeDomainIterator(side);
 
             // TODO: optimization of the assembling routine, it's too slow for now
             for(; domIt->good(); domIt->next()) {
                 // Map the Quadrature rule to the element
-                QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
+                quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
 
                 // Evaluate on quadrature points
-                visitor.evaluate(*geoEval, func1, func2p, quNodes);
+                visitor.evaluate(patch, func1, func2p, quNodes);
 
                 // Accumulate value from the current element (squared)
-                const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
+                const T result = visitor.compute(*domIt, patch, quWeights, m_value);
                 if (storeElWise) m_elWise.push_back(visitor.takeRoot(result));
             }
 
@@ -195,10 +186,7 @@ public:
     {
         gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
         gsVector<T> quWeights; // Temp variable for mapped weights
-        gsQuadRule<T> QuRule; // Reference Quadrature rule
-
-        // Evaluation flags for the Geometry map
-        unsigned evFlags(0);
+        gsQuadRule<T> quRule; // Reference Quadrature rule
 
         const gsFunction<T> & func1  = field1->function(patchIndex);
         const gsFunction<T> & func2p = func2->function(patchIndex);
@@ -208,23 +196,22 @@ public:
             field1->igaFunction(patchIndex).basis() : field1->patch(patchIndex).basis();
 
         // Initialize visitor
-        visitor.initialize(dom, QuRule, evFlags);
+        visitor.initialize(dom, quRule);
         
         // Initialize geometry evaluator
-        typename gsGeometry<T>::Evaluator geoEval(
-            patchesPtr->patch(patchIndex).evaluator(evFlags));
+        const gsGeometry<T> & patch = patchesPtr->patch(patchIndex);
         
         typename gsBasis<T>::domainIter domIt = dom.makeDomainIterator(side);
         for (; domIt->good(); domIt->next())
         {
             // Map the Quadrature rule to the element
-            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
+            quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
             
             // Evaluate on quadrature points
-            visitor.evaluate(*geoEval, func1, func2p, quNodes);
+            visitor.evaluate(patch, func1, func2p, quNodes);
             
             // Accumulate value from the current element (squared)
-            const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
+            const T result = visitor.compute(*domIt, patch, quWeights, m_value);
             if ( storeElWise )
                 m_elWise.push_back( visitor.takeRoot(result) );
         }
@@ -270,6 +257,8 @@ protected:
     const gsField<T>    * field1;
 
     const gsFunctionSet<T> * func2;
+
+    gsMapData<T> md;
 
 protected:
 

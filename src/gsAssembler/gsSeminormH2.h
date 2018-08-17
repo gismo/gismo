@@ -25,96 +25,100 @@ namespace gismo
  * \ingroup Assembler
 */
 template <class T>
-class gsSeminormH2 : public gsNorm<T>
+class gsSeminormH2: public gsNorm<T>
 {
-    friend  class gsNorm<T>;
+    friend class gsNorm<T>;
+
+    typedef gsNorm<T> Base;
 
 public:
 
-    gsSeminormH2(const gsField<T> & _field1,
+    gsSeminormH2(const gsField<T>    & _field1,
                  const gsFunction<T> & _func2,
-                 bool _f2param = false) 
-    : gsNorm<T>(_field1,_func2), f2param(_f2param)
-    { }
+                 bool _f2param = false)
+        : Base(_field1, _func2), f2param(_f2param)
+    {}
 
     gsSeminormH2(const gsField<T> & _field1)
-    : gsNorm<T>(_field1), f2param(false)
-    { }
+        : Base(_field1), f2param(false)
+    {}
 
 public:
-    
+
     T compute(bool storeElWise = false)
     {
-        this->apply(*this,storeElWise);
+        this->apply(*this, storeElWise);
         return m_value;
     }
 
-    inline T takeRoot(const T v) { return math::sqrt(v);}
+    inline T takeRoot(const T v)
+    { return math::sqrt(v); }
 
 protected:
 
     void initialize(const gsBasis<T> & basis,
-                    gsQuadRule<T> & rule,
-                    unsigned      & evFlags) // replace with geoEval ?
+                    gsQuadRule<T>    & rule)
     {
         // Setup Quadrature
         const unsigned d = basis.dim();
-        gsVector<index_t> numQuadNodes( d );
+        gsVector<index_t> numQuadNodes(d);
         for (unsigned i = 0; i < d; ++i)
             numQuadNodes[i] = basis.degree(i) + 1;
 
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
-        
+
         // Set Geometry evaluation flags
-        evFlags = NEED_MEASURE|NEED_VALUE|NEED_GRAD_TRANSFORM|NEED_2ND_DER;
+        md.flags = NEED_MEASURE | NEED_VALUE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
     }
-    
+
     // Evaluate on element.
-    void evaluate(gsGeometryEvaluator<T> & geoEval,
-                  const gsFunction<T>    & _func1,
-                  const gsFunction<T>    & _func2,
-                  gsMatrix<T>            & quNodes)
+    void evaluate(const gsGeometry<T> & geo,
+                  const gsFunction<T> & _func1,
+                  const gsFunction<T> & _func2,
+                  gsMatrix<T>         & quNodes)
     {
+        md.points = quNodes;
         // Evaluate first function
-        _func1.deriv_into(quNodes, f1ders);
-        _func1.deriv2_into(quNodes, f1ders2);
+        _func1.deriv_into(md.points, f1ders);
+        _func1.deriv2_into(md.points, f1ders2);
         // get the gradients to columns
-        f1ders.resize(quNodes.rows(), quNodes.cols() );
+        f1ders.resize(md.points.rows(), md.points.cols());
         //f1ders2.transposeInPlace();
 
         // Evaluate second function (defined of physical domain)
-        geoEval.evaluateAt(quNodes);
-        _func2.deriv2_into(geoEval.values(), f2ders2);
+        geo.computeMap(md);
+        _func2.deriv2_into(md.values[0], f2ders2);
     }
 
     // assemble on element
-    inline T compute(gsDomainIterator<T>    & ,
-                     gsGeometryEvaluator<T> & geoEval,
-                     gsVector<T> const      & quWeights,
-                     T & accumulated)
+    inline T compute(gsDomainIterator<T> &,
+                     const gsGeometry<T> & geo,
+                     const gsVector<T>   & quWeights,
+                     T                   & accumulated)
     {
         T sum(0.0);
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Transform the gradients
-            geoEval.transformDeriv2Hgrad(k, f1ders, f1ders2, f1pders2);
+            transformDeriv2Hgrad(md, k, f1ders, f1ders2, f1pders2);
             f1pders2.transposeInPlace();
             //if ( f2Param )
             //f2ders.col(k)=geoEval.gradTransforms().block(0, k*d,d,d) * f2ders.col(k);// to do: generalize
-            int parDim = gsNorm<T>::patchesPtr->parDim();
-            int rest = f1pders2.rows()-parDim;
-            const T weight = quWeights[k] *  geoEval.measure(k);
+            int parDim = Base::patchesPtr->parDim();
+            int rest = f1pders2.rows() - parDim;
+            const T weight = quWeights[k] * md.measure(k);
             sum += weight * ((f1pders2.topRows(parDim) - f2ders2.col(k).topRows(parDim)).squaredNorm() +
-                             2*(f1pders2.bottomRows(rest) - f2ders2.col(k).bottomRows(rest)).squaredNorm());
+                2 * (f1pders2.bottomRows(rest) - f2ders2.col(k).bottomRows(rest)).squaredNorm());
         }
         accumulated += sum;
         return sum;
     }
-    
+
 private:
-    using gsNorm<T>::m_value;
-    using gsNorm<T>::m_elWise;
+    using Base::m_value;
+    using Base::m_elWise;
+    using Base::md;
 
     gsMatrix<T> f1ders, f1ders2, f2ders2;
     gsMatrix<T> f1pders2;
@@ -122,6 +126,4 @@ private:
     bool f2param;// not used yet
 };
 
-
 } // namespace gismo
-

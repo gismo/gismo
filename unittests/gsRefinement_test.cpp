@@ -41,6 +41,22 @@ void testBoehm_helper(const gsBSpline<>& bsp, const std::vector<real_t> knots)
     CHECK ((coef1 - coef2).array().abs().maxCoeff() <= 1e-12);
 }
 
+// copied from gsNorms.hpp, which is no longer in stable
+template <typename T>
+T computeMaximumDistance(const gsFunction<T>& f1, const gsFunction<T>& f2, const gsVector<T>& lower, const gsVector<T>& upper, int numSamples=1000)
+{
+    GISMO_ASSERT( f1.domainDim() == f2.domainDim(), "Functions need to have same domain dimension");
+    GISMO_ASSERT( f1.targetDim() == f2.targetDim(), "Functions need to have same target dimension");
+
+    gsMatrix<T> points = uniformPointGrid(lower, upper, numSamples);
+
+    gsMatrix<T> values1, values2;
+    f1.eval_into( points, values1 );
+    f2.eval_into( points, values2 );
+
+    return (values1 - values2).array().abs().maxCoeff();
+}
+
 SUITE(gsRefinement_test)
 {
     TEST(testBoehm)

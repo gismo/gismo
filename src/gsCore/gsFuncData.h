@@ -57,6 +57,8 @@ public:
     gsMatrix<unsigned> actives;
 
     /// Stores values and derivatives
+    /// values[0] for base
+    /// values[n] for n-th derivative
     std::vector<gsMatrix<T> > values;
 
     gsMatrix<T> curls;

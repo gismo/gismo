@@ -187,7 +187,6 @@ namespace internal
 
 /* ----------- Utilities ----------- */
 //#include <gsUtils/gsUtils.h> - in gsForwardDeclarations.h
-#include <gsUtils/gsNorms.h>
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
 

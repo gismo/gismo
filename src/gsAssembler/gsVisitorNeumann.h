@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <gsCore/gsFuncData.h>
+
 namespace gismo
 {
 /** @brief
@@ -44,8 +46,7 @@ public:
     { }
 
     void initialize(const gsBasis<T> & basis, 
-                    gsQuadRule<T>    & rule, 
-                    unsigned         & evFlags )
+                    gsQuadRule<T>    & rule)
     {
         const int dir = side.direction();
         gsVector<int> numQuadNodes ( basis.dim() );
@@ -57,54 +58,53 @@ public:
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_VALUE|NEED_JACOBIAN;
+        md.flags = NEED_VALUE|NEED_JACOBIAN;
     }
 
-    void initialize(const gsBasis<T> & basis,
+    void initialize(const gsBasis<T>   & basis,
                     const index_t ,
                     const gsOptionList & options, 
-                    gsQuadRule<T>    & rule,
-                    unsigned         & evFlags )
+                    gsQuadRule<T>      & rule)
     {
         // Setup Quadrature (harmless slicing occurs)
         rule = gsQuadrature::get(basis, options, side.direction());
 
         // Set Geometry evaluation flags
-        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
     }
 
     // Evaluate on element.
-    inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
-                         gsGeometryEvaluator<T> & geoEval,
+    inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
+                         const gsGeometry<T>    & geo,
                          // todo: add element here for efficiency
-                         gsMatrix<T>            & quNodes)
+                         const gsMatrix<T>      & quNodes)
     {
+        md.points = quNodes;
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the current element
-        basis.active_into(quNodes.col(0) , actives);
+        basis.active_into(md.points.col(0) , actives);
         const index_t numActive = actives.rows();
  
         // Evaluate basis functions on element
-        basis.eval_into(quNodes, basisData);
+        basis.eval_into(md.points, basisData);
 
         // Compute geometry related values
-        geoEval.evaluateAt(quNodes);
+        geo.computeMap(md);
 
         // Evaluate the Neumann data
-        neudata_ptr->eval_into(geoEval.values(), neuData);
+        neudata_ptr->eval_into(md.values[0], neuData);
 
         // Initialize local matrix/rhs
         localRhs.setZero(numActive, neudata_ptr->targetDim() );
     }
 
     inline void assemble(gsDomainIterator<T>    & ,
-                         gsGeometryEvaluator<T> & geoEval,
-                         gsVector<T> const      & quWeights)
+                         const gsVector<T>      & quWeights)
     {
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Compute the outer normal vector on the side
-            geoEval.outerNormal(k, side, unormal);
+            outerNormal(md, k, side, unormal);
             
             // Multiply quadrature weight by the measure of normal
             const T weight = quWeights[k] * unormal.norm();
@@ -163,6 +163,7 @@ protected:
     gsMatrix<T> localMat;
     gsMatrix<T> localRhs;
 
+    gsMapData<T> md;
 };
 
 

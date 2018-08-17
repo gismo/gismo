@@ -76,8 +76,7 @@ public:
 protected:
 
     void initialize(const gsBasis<T> & basis,
-                    gsQuadRule<T> & rule,
-                    unsigned      & evFlags) // replace with geoEval ?
+                    gsQuadRule<T> & rule)
     {        
         // Setup Quadrature
         const unsigned d = basis.dim();
@@ -91,39 +90,40 @@ protected:
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_MEASURE| NEED_VALUE;
+        md.flags = NEED_MEASURE| NEED_VALUE;
     }
     
     // Evaluate on element.
-    inline void evaluate(gsGeometryEvaluator<T> & geoEval,
-                         const gsFunction<T>    & _func1,
-                         const gsFunction<T>    & _func2,
-                         gsMatrix<T>            & quNodes)
+    inline void evaluate(const gsGeometry<T> & geo,
+                         const gsFunction<T> & _func1,
+                         const gsFunction<T> & _func2,
+                         gsMatrix<T>         & quNodes)
     {
+        md.points = quNodes;
         // Evaluate first function
-        _func1.eval_into(quNodes, f1vals);
+        _func1.eval_into(md.points, f1vals);
         
         // Compute geometry related values
-        geoEval.evaluateAt(quNodes);
+        geo.computeMap(md);
 
         // Evaluate second function (defined of physical domain)
-        _func2.eval_into(geoEval.values(), f2vals);
+        _func2.eval_into(md.values[0], f2vals);
         
         // ** Evaluate function v
-        //gsMatrix<T> f2val = func2Param ? _func2.eval(quNodes)
-        //: _func2.eval( geoEval->values() );
+        //gsMatrix<T> f2val = func2Param ? _func2.eval(md.points)
+        //: _func2.eval( md.values[0] );
     }
     
     // assemble on element
-    inline T compute(gsDomainIterator<T>    & element, 
-                     gsGeometryEvaluator<T> & geoEval,
-                     gsVector<T> const      & quWeights,
+    inline T compute(gsDomainIterator<T> & element,
+                     const gsGeometry<T> & geo,
+                     const gsVector<T>   & quWeights,
                      T & accumulated)
     {
         T sum(0.0);
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
-            geoEval.outerNormal(k, side, unormal);
+            outerNormal(md, k, side, unormal);
             const T weight = quWeights[k] * unormal.norm();
             sum +=weight * ( f1vals.col(k) - f2vals.col(k) ).squaredNorm();
         }
@@ -136,6 +136,7 @@ private:
     using Base::m_elWise;
     using Base::m_value;
     using Base::patchesPtr;
+    using Base::md;
     
     gsMatrix<T> f1vals, f2vals;
     gsVector<T> unormal;

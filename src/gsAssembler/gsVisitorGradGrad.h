@@ -42,9 +42,8 @@ public:
     { }
 
     /*
-    static void initialize(const gsBasis<T> & basis, 
-                           gsQuadRule<T> & rule, 
-                           unsigned & evFlags ) // replace with geoEval ?
+    void initialize(const gsBasis<T> & basis,
+                           gsQuadRule<T> & rule)
     {
         gsVector<index_t> numQuadNodes( basis.dim() );
         for (int i = 0; i < basis.dim(); ++i)
@@ -54,59 +53,56 @@ public:
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_MEASURE|NEED_GRAD_TRANSFORM;
-        //gsGeometryEvaluator<T>::ptr geoEval ( // -- TODO: Initialize inside visitor
-        //this->m_patches.patch(patchIndex).evaluator( evFlags ) );
-        
+        md.flags = NEED_MEASURE|NEED_GRAD_TRANSFORM;
+        // const gsGeometry<T> & patch = this->m_patches.patch(patchIndes); // -- TODO: Initialize inside visitor
     }
     */
 
     void initialize(const gsBasis<T> & basis,
                     const index_t patchIndex,
                     const gsOptionList & options, 
-                    gsQuadRule<T>    & rule,
-                    unsigned         & evFlags )
+                    gsQuadRule<T>    & rule)
     {
         // Setup Quadrature
         rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_MEASURE|NEED_GRAD_TRANSFORM;
+        md.flags = NEED_MEASURE|NEED_GRAD_TRANSFORM;
     }
 
 
     // Evaluate on element.
-    inline void evaluate(gsBasis<T> const       & basis,
-                         gsGeometryEvaluator<T> & geoEval,
+    inline void evaluate(const gsBasis<T>       & basis,
+                         const gsGeometry<T>    & geo,
                          // todo: add element here for efficiency
                          gsMatrix<T>            & quNodes)
     {
+        md.points = quNodes;
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the current element
-        basis.active_into(quNodes.col(0) , actives);
+        basis.active_into(md.points.col(0), actives);
         const index_t numActive = actives.rows();
- 
+
         // Evaluate basis functions on element
-        basis.deriv_into(quNodes, basisData);
+        basis.deriv_into(md.points, basisData);
 
         // Compute geometry related values
-        geoEval.evaluateAt(quNodes);
+        geo.computeMap(md);
 
         // Initialize local matrix
         localMat.setZero(numActive, numActive);
     }
 
-    inline void assemble(gsDomainIterator<T>    & element, 
-                         gsGeometryEvaluator<T> & geoEval,
+    inline void assemble(gsDomainIterator<T>    & element,
                          gsVector<T> const      & quWeights)
     {
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply quadrature weight by the geometry measure
-            const T weight = quWeights[k] * geoEval.measure(k);
+            const T weight = quWeights[k] * md.measure(k);
         
             // Compute physical gradients at k as a Dim x NumActive matrix
-            geoEval.transformGradients(k, basisData, basisPhGrads);
+            transformGradients(md, k, basisData, basisPhGrads);
 
             localMat.noalias() += weight * ( basisPhGrads.transpose() * basisPhGrads );
         }
@@ -124,6 +120,8 @@ private:
     
     // Local matrix
     using Base::localMat;
+
+    using Base::md;
 };
 
 

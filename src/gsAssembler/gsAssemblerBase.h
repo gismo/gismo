@@ -159,8 +159,7 @@ public:
         visitor.initialize(bases, QuRule, evFlags);
 
         // Initialize geometry evaluator -- TODO: Initialize inside visitor
-        typename gsGeometry<T>::Evaluator geoEval( 
-            m_patches[patchIndex].evaluator(evFlags));
+        const gsGeometry<T>& patch = m_patches[patchIndex];
 
         // Initialize domain element iterator -- using unknown 0
         typename gsBasis<T>::domainIter domIt = bases[0].makeDomainIterator(side);
@@ -172,10 +171,10 @@ public:
             QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor.evaluate(bases, /* *domIt,*/ *geoEval, quNodes);
+            visitor.evaluate(bases, /* *domIt,*/ patch, quNodes);
             
             // Assemble on element
-            visitor.assemble(*domIt, *geoEval, quWeights);
+            visitor.assemble(*domIt, quWeights);
             
             // Push to global matrix and right-hand side vector
             visitor.localToGlobal(mappers, m_ddof, patchIndex, m_matrix, m_rhs);
