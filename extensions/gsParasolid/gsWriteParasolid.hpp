@@ -456,8 +456,8 @@ bool exportMesh(const gsMesh<T>& mesh,
     gsMatrix<T> newCoefs(2, 3);
     for (int i = 0; i != mesh.numEdges(); ++i)
     {
-        newCoefs.row(0) = mesh.edges()[i].source->coords.transpose();
-        newCoefs.row(1) = mesh.edges()[i].target->coords.transpose();
+        newCoefs.row(0) = mesh.edges()[i].source->transpose();
+        newCoefs.row(1) = mesh.edges()[i].target->transpose();
 
         if ((newCoefs.row(0) - newCoefs.row(1)).norm() < 1e-6)
         {

@@ -369,3 +369,8 @@ if (NOT gismo_optionals STREQUAL "")
   string (REPLACE ";" ", " gismo_optionals "${gismo_optionals}")
   message(STATUS "Optional compile list: ${gismo_optionals}")
 endif()
+
+if(DEFINED GISMO_UNSUPPORTED)
+  gismo_fetch_module(unsupported)
+  gismo_fetch_module(motor)
+endif()
