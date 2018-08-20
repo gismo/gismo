@@ -605,7 +605,7 @@ std::pair< std::vector< gsSparseMatrix<T> >, std::vector< gsSparseMatrix<T> > > 
     )
 {
     std::vector< gsSparseMatrix<T> > B_tilde, B_l2compl;
-    constructTildeSpaceBasis( basis, bc, opt, B_tilde, B_l2compl, true );
+    constructTildeSpaceBasis( basis, bc, opt, B_tilde, B_l2compl, !opt.askSwitch( "UseVanishingEvenDerivatives", false ) );
     return std::pair< std::vector< gsSparseMatrix<T> >, std::vector< gsSparseMatrix<T> > >( B_tilde, B_l2compl );
 }
 
