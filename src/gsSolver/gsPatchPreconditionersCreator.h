@@ -139,6 +139,21 @@ public:
         T alpha = 0
     );
 
+    /// Provides matrices that represent the basis of the space \f$ \widetilde{S}_{p,h} \f$,
+    /// as introduced in M^3AS. 26 (7), p. 1411 - 1445, 2016, and its \f$\ell^2\f$ - orthogonal
+    /// complement.
+    ///
+    /// \param  basis  A tensor basis
+    /// \param  bc     Boundary conditions
+    /// \param  opt    Assembler options
+    /// \return \a std::pair containing \a std::vector of d sparse matrices (for each dimension) that represent
+    ///         the basis transformation for (a) \f$ \widetilde{S}_{p,h} \f$, and (b) its complement.
+    static std::pair< std::vector< gsSparseMatrix<T> >, std::vector< gsSparseMatrix<T> > > getTildeSpaceBasisTransformation(
+        const gsBasis<T>& basis,
+        const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
+        const gsOptionList& opt = gsAssembler<T>::defaultOptions()
+    );
+
 };
 
 } // namespace gismo

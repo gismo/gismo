@@ -598,6 +598,18 @@ gsSparseMatrix<T> kroneckerSwap( index_t e, index_t d, index_t c, index_t b, ind
 } // anonymous namespace
 
 template<typename T>
+std::pair< std::vector< gsSparseMatrix<T> >, std::vector< gsSparseMatrix<T> > > gsPatchPreconditionersCreator<T>::getTildeSpaceBasisTransformation(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt
+    )
+{
+    std::vector< gsSparseMatrix<T> > B_tilde, B_l2compl;
+    constructTildeSpaceBasis( basis, bc, opt, B_tilde, B_l2compl, true );
+    return std::pair< std::vector< gsSparseMatrix<T> >, std::vector< gsSparseMatrix<T> > >( B_tilde, B_l2compl );
+}
+
+template<typename T>
 typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<T>::subspaceCorrectedMassSmootherOp(
     const gsBasis<T>& basis,
     const gsBoundaryConditions<T>& bc,
