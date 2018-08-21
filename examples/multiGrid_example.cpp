@@ -29,6 +29,7 @@ int main(int argc, char *argv[])
     index_t postsmooth = 1;
     std::string smoother("GaussSeidel");
     real_t damping = -1;
+    real_t scaling = 0.12;
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
     bool plot = false;
@@ -43,20 +44,25 @@ int main(int argc, char *argv[])
     cmd.addInt   ("",  "MG.Presmooth",          "Number of pre-smoothing steps", presmooth);
     cmd.addInt   ("",  "MG.Postsmooth",         "Number of post-smoothing steps", postsmooth);
     cmd.addString("s", "MG.Smoother",           "Smoothing method", smoother);
-    cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother (handed over to smoother)", damping);
+    cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother", damping);
+    cmd.addReal  ("",  "MG.Scaling",            "Scaling factor for the subspace corrected mass smoother", scaling);
     cmd.addReal  ("t", "CG.Tolerance",          "Stopping criterion for cg", tolerance);
     cmd.addInt   ("",  "CG.MaxIterations",      "Stopping criterion for cg", maxIterations);
-    cmd.addSwitch("",  "plot",                  "Plot the result with Paraview", plot);
+    cmd.addSwitch("",  "Plot",                  "Plot the result with Paraview", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsOptionList opt = cmd.getOptionList();
 
-    // Handle some non-trivial standards
-    if (levels <0)  { levels = refinements; opt.setInt( "MG.Levels", levels );                                  }
-    if (damping<0)  { opt.remove( "MG.Damping" );                                                               }
-    if (dg)         { opt.addInt( "MG.InterfaceStrategy", "", (index_t)iFace::dg         ); opt.remove( "DG" ); }
-    else            { opt.addInt( "MG.InterfaceStrategy", "", (index_t)iFace::conforming ); opt.remove( "DG" ); }
+    // Default case is levels:=refinements, so replace invalid default accordingly
+    if (levels <0) { levels = refinements; opt.setInt( "MG.Levels", levels ); }
+    // The smoothers know their defaults, so remove the invalid default
+    if (damping<0) { opt.remove( "MG.Damping" ); }
+
+    // Define assembler options
+    opt.remove( "DG" );
+    opt.addInt( "Ass.InterfaceStrategy", "", (index_t)( dg ? iFace::dg : iFace::conforming )  );
+    opt.addInt( "Ass.DirichletStrategy", "", (index_t) dirichlet::elimination                 );
 
     if ( ! gsFileManager::fileExists(geometry) )
     {
@@ -71,15 +77,13 @@ int main(int argc, char *argv[])
 
     gsInfo << "Define geometry... " << std::flush;
 
-    gsMultiPatch<> mp;
-
-    gsFileData<> fileData(geometry);
-    if (!fileData.has< gsMultiPatch<> >())
+    gsMultiPatch<>::uPtr mpPtr = gsReadFile<>(geometry);
+    if (!mpPtr)
     {
-        gsInfo << "No multipatch object found in file " << geometry << ".\n";
+        gsInfo << "No geometry found in file " << geometry << ".\n";
         return EXIT_FAILURE;
     }
-    fileData.getFirst< gsMultiPatch<> >(mp);
+    gsMultiPatch<>& mp = *mpPtr;
 
     gsInfo << "done.\n";
 
@@ -90,18 +94,8 @@ int main(int argc, char *argv[])
     gsConstantFunction<> one(1.0, mp.geoDim());
 
     gsBoundaryConditions<> bc;
-    bc.addCondition( boundary::west,  condition_type::dirichlet, &one );
-    bc.addCondition( boundary::east,  condition_type::dirichlet, &one );
-    if (mp.geoDim() >= 2)
-    {
-        bc.addCondition( boundary::south, condition_type::dirichlet, &one );
-        bc.addCondition( boundary::north, condition_type::dirichlet, &one );
-    }
-    if (mp.geoDim() >= 3)
-    {
-        bc.addCondition( boundary::front, condition_type::dirichlet, &one );
-        bc.addCondition( boundary::back,  condition_type::dirichlet, &one );
-    }
+    for (gsMultiPatch<>::const_biterator it = mp.bBegin(); it < mp.bEnd(); ++it)
+         bc.addCondition( *it, condition_type::dirichlet, &one );
 
     gsInfo << "done.\n";
 
@@ -128,8 +122,8 @@ int main(int argc, char *argv[])
         mb,
         bc,
         gsConstantFunction<>(1,mp.geoDim()),
-        (dirichlet::strategy) opt.askInt("MG.DirichletStrategy",dirichlet::elimination),
-        (iFace::strategy) opt.askInt("MG.InterfaceStrategy",iFace::conforming)
+        (dirichlet::strategy) opt.getInt("Ass.DirichletStrategy"),
+        (iFace::strategy)     opt.getInt("Ass.InterfaceStrategy")
     );
     assembler.assemble();
 
@@ -140,8 +134,10 @@ int main(int argc, char *argv[])
     gsInfo << "Setup solver and solve... " << std::flush;
 
     std::vector< gsSparseMatrix<real_t,RowMajor> > transferMatrices;
+    std::vector< gsMultiBasis<real_t> > multiBases; // only needed for subspace corrected mass smoother
 
     gsGridHierarchy<>::buildByCoarsening(give(mb), bc, opt.getGroup("MG"))
+        .moveMultiBasesTo(multiBases)
         .moveTransferMatricesTo(transferMatrices)
         .clear();
 
@@ -152,14 +148,27 @@ int main(int argc, char *argv[])
     {
         gsPreconditionerOp<>::Ptr smootherOp;
         if ( opt.getString("MG.Smoother") == "Richardson" )
-            smootherOp = makeRichardsonOp(mg->matrix(i),(real_t)1/2);
+            smootherOp = makeRichardsonOp(mg->matrix(i));
         else if ( opt.getString("MG.Smoother") == "Jacobi" )
-            smootherOp = makeJacobiOp(mg->matrix(i),(real_t)1/2);
+            smootherOp = makeJacobiOp(mg->matrix(i));
         else if ( opt.getString("MG.Smoother") == "GaussSeidel" )
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
+        else if ( opt.getString("MG.Smoother") == "SubspaceCorrectedMassSmoother" )
+        {
+            if (multiBases[i].nBases() != 1)
+            {
+                gsInfo << "The chosen smoother only works for single-patch geometries.\n\n";
+                return EXIT_FAILURE;
+            }
+            smootherOp = gsPreconditionerFromOp<>::make(
+                mg->underlyingOp(i),
+                gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("Ass"),scaling)
+            );
+        }
         else
         {
-            gsInfo << "The chosen smoother is unknown.\n\n";
+            gsInfo << "The chosen smoother is unknown.\n\nKnown are:\n  Richardson\n  Jacobi\n  GaussSeidel"
+                      "\n  SubspaceCorrectedMassSmoother\n\n";
             return EXIT_FAILURE;
         }
         smootherOp->setOptions( opt.getGroup("MG") );
@@ -203,7 +212,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+        gsInfo << "Done. No output created, re-run with --Plot to get a ParaView "
                   "file containing the solution.\n";
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;
