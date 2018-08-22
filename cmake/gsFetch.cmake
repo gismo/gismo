@@ -62,6 +62,7 @@ function(gismo_fetch_directory)
     message(FATAL_ERROR "Enabling remote module ${GF_NAME} - not found")
   else()
     message(STATUS "Enabling remote module ${GF_NAME} - downloaded")
+    # rm "${gismo_BINARY_DIR}/extensions/${GF_NAME}_fetch"
   endif()
 
 endfunction()
@@ -75,13 +76,16 @@ function(gismo_fetch_module)
   #message("The repository is ${GISMO_REPO}.")
   #message("The revision is ${GISMO_REPO_REV}.")
 
-  set(git_pr https) #ssh
+  if (NOT DEFINED GISMO_FETCH_PROT)
+    set(GISMO_FETCH_PROT https) #ssh
+  endif()
 
   if("x${GISMO_REPO}" STREQUAL "xgit")
-    if("x${git_pf}" STREQUAL "xssh")
+    if("x${GISMO_FETCH_PROT}" STREQUAL "xssh")
       set(git_repo git@github.com:gismo/${ARGV0}.git)
-    else()
+    elseif("x${GISMO_FETCH_PROT}" STREQUAL "xhttps")
       set(git_repo https://github.com/gismo/${ARGV0}.git)
+    #else()
     endif()
     gismo_fetch_directory(${ARGN}
       GIT_REPOSITORY  ${git_repo})
