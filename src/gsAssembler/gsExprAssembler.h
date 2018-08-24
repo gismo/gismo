@@ -205,7 +205,7 @@ public:
     const gsMatrix<T> & rhs() const { return m_rhs; }
 
     /// @brief Writes the resulting vector in \a out. The internal data is moved.
-    void rhs_into(gsSparseMatrix<T> & out) const { out = give(m_rhs); }
+    void rhs_into(gsSparseMatrix<T> & out) { out = give(m_rhs); }
 
     /// \brief Sets the domain of integration.
     /// \warning Must be called before any computation is requested
