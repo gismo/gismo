@@ -199,7 +199,7 @@ public:
     const gsSparseMatrix<T> & matrix() const { return m_matrix; }
 
     /// @brief Writes the resulting matrix in \a out. The internal matrix is moved.
-    void matrix_into(gsSparseMatrix<T> & out) const { out = give(m_matrix); }
+    void matrix_into(gsSparseMatrix<T> & out) { out = give(m_matrix); }
 
     /// @brief Returns the right-hand side vector(s)
     const gsMatrix<T> & rhs() const { return m_rhs; }
