@@ -52,7 +52,7 @@ get_filename_component(TPL_MPI_LIBRARY_DIRS ${TPL_MPI_LIBRARY_DIRS} PATH)
 
 if(CMAKE_CXX_STANDARD EQUAL "98")
 set(Trilinos_ENABLE_CXX11 OFF)
-message(WARNING "GISMO_BUILD_CPP11 must be ON for Trilinos extensions to compile ?.")
+message(WARNING "CMAKE_CXX_STANDARD must be 11 or better for Trilinos extensions to compile ?.")
 else()
 set(Trilinos_ENABLE_CXX11 ON)
 endif()
