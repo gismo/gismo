@@ -60,7 +60,7 @@ struct epsilon_type<unum_posit_type_tag>
 
 inline bool is_nan_impl(const posit_32_2& v, unum_posit_type_tag)
 {
-    return v.isNaR();
+    return v.isnar();
 }
 
 template <typename T>
