@@ -48,9 +48,12 @@ endif()
   )
 
 if(GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
-    find_package(MPFR REQUIRED)
-    find_package(GMP  REQUIRED)
-    target_link_libraries(${PROJECT_NAME} ${MPFR_LIBRARY};${GMP_LIBRARY};${GMPXX_LIBRARY})
+    find_package(GMP)
+    find_package(MPFR)
+
+    if (GMP_FOUND AND MPFR_FOUND)
+      target_link_libraries(${PROJECT_NAME} ${MPFR_LIBRARY};${GMP_LIBRARY};${GMPXX_LIBRARY})
+    endif()
 endif()
 
 if (GISMO_WITH_SUPERLU)
