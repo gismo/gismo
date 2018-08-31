@@ -14,7 +14,7 @@
 
 #pragma once
 
-//#include <gsCore/gsRefVector.h>
+#include <gsCore/gsStdVectorRef.h>
 
 namespace gismo
 {
