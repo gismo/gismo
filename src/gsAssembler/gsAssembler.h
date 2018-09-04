@@ -150,7 +150,7 @@ void secDerToHessian(typename gsMatrix<T>::constRef & secDers,
             hessian(1, 0) = secDers(2, 0);
             break;
         case 3:
-            hessian.reshape(3, 3);
+            hessian.resize(3, 3);
             hessian(0, 0) = secDers(0, 0);
             hessian(1, 1) = secDers(1, 0);
             hessian(2, 2) = secDers(2, 0);
@@ -162,7 +162,7 @@ void secDerToHessian(typename gsMatrix<T>::constRef & secDers,
             hessian(2, 1) = secDers(5, 0);
             break;
         default:
-            break;
+            GISMO_ERROR("Parametric dimension 1, 2 or 3 was expected.");
     }
 }
 
@@ -190,7 +190,7 @@ void hessianToSecDer (const gsMatrix<T> & hessian,
             secDers(0, 5) = (hessian(1, 2) + hessian(2, 1)) / 2.0;
             break;
         default:
-            break;
+            GISMO_ERROR("Parametric dimension 1, 2 or 3 was expected.");
     }
 }
 
@@ -205,7 +205,7 @@ void secDerToTensor(Eigen::DenseBase<Eigen::Map<const Eigen::Matrix<double, -1, 
 }
 
 template <class T>
-void transformDeriv2Hgrad(const gsMapData<T> & md, 
+void transformDeriv2Hgrad(const gsMapData<T> & md,
                           index_t              k,
                           const gsMatrix<T> &  funcGrad,
                           const gsMatrix<T> &  funcSecDir,
