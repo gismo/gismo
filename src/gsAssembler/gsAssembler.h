@@ -41,7 +41,7 @@ void transformGradients(const gsMapData<T> & md, index_t k, const gsMatrix<T>& a
 
     const index_t numGrads = allGrads.rows() / md.dim.first;
     const gsAsConstMatrix<T> grads_k(allGrads.col(k).data(), md.dim.first, numGrads);
-    trfGradsK.noalias() = md.jacobian(k).inverse().transpose() * grads_k;
+    trfGradsK.noalias() = md.jacobian(k).cramerInverse().transpose() * grads_k;
 }
 
 template <class T>
@@ -228,8 +228,8 @@ void transformDeriv2Hgrad(const gsMapData<T> & md,
 
     result.resize(numGrads, fisSecDirSize);
 
-    typename gsMatrix<T>::constRef JMT = md.jacobian(k).inverse();  // m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
-    typename gsMatrix<T>::constRef JM1 = JMT.transpose();           // m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim);
+    gsMatrix<T> JMT = md.jacobian(k).cramerInverse();  // m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
+    typename gsMatrix<T>::Tr JM1 = JMT.transpose();           // m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim);
 
     // First part: J^-T H(u) J^-1
     gsMatrix<T> parFuncHessian;
