@@ -1228,8 +1228,7 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
     gsMatrix<unsigned> globIdxAct;
     gsMatrix<T> basisVals;
 
-    gsMapData<T> md;
-    md.flags = NEED_MEASURE | SAME_ELEMENT;
+    gsMapData<T> md(NEED_MEASURE | SAME_ELEMENT);
 
     const gsMultiPatch<T> & mp = static_cast<const gsMultiPatch<T> &>(m_exprdata->getMap().source());
 
@@ -1261,7 +1260,6 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
             bdQuRule.mapTo(bdryIter->lowerCorner(), bdryIter->upperCorner(),
                            md.points, quWeights);
 
-            //geoEval->evaluateAt( md.points );
             patch.computeMap(md);
 
             // the values of the boundary condition are stored
