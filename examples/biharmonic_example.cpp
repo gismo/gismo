@@ -13,12 +13,14 @@
 
 # include <gismo.h>
 # include <gsAssembler/gsBiharmonicAssembler.h>
-# include <gsAssembler/gsSeminormH2.h>
 
 using namespace gismo;
 
 int main(int argc, char *argv[])
 {
+    return 1;
+}
+/* fix REPLACEMENT for gsNorm and derivatives
 
     index_t numRefine = 5;
     index_t numDegree = 1;
@@ -116,3 +118,4 @@ int main(int argc, char *argv[])
 
     return  0;
 }
+*/

@@ -133,13 +133,6 @@ namespace internal
 #include <gsMultiGrid/gsMultiGrid.h>
 #include <gsMultiGrid/gsGridHierarchy.h>
 
-/* ----------- Norms ----------- */
-#include <gsAssembler/gsNorm.h>
-#include <gsAssembler/gsNormL2.h>
-#include <gsAssembler/gsNormL2Boundary.h>
-#include <gsAssembler/gsSeminormH1.h>
-#include <gsAssembler/gsSeminormH2.h>
-
 /* ----------- Quadrature ----------- */
 #include <gsAssembler/gsQuadRule.h>
 #include <gsAssembler/gsQuadrature.h>

@@ -103,7 +103,7 @@ public:
     // Evaluate on element.
     inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
                          const gsGeometry<T>    & geo,
-                         gsMatrix<T>            & quNodes)
+                         const gsMatrix<T>      & quNodes)
     {
         base = &geo;
         md.points = quNodes;
