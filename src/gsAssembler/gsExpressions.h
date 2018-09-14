@@ -63,7 +63,7 @@ template<class T> class gsExprHelper;
 
     @brief
     This namespace contains expressions used for FE computations
-    
+
     \ingroup Assembler
 */
 namespace expr
@@ -130,7 +130,7 @@ public:
     //typedef typename E::Scalar   Scalar;
     typedef typename expr_traits<E>::Nested_t Nested_t;
     typedef typename expr_traits<E>::Scalar   Scalar;
-    
+
     /// Prints the expression as a string to \a os
     void print(std::ostream &os) const
     {
@@ -209,7 +209,7 @@ public:
 
     col_expr<E> operator[](const index_t i) const
     { return col_expr<E>(static_cast<E const&>(*this),i); }
-    
+
     /// Returns the row-size of the expression
     index_t rows() const
     { return static_cast<E const&>(*this).rows(); }
@@ -282,7 +282,7 @@ public:
         static gsFeVariable<T> vv;
         return vv;
     }
-    
+
     typedef T Scalar;
     gsMatrix<T> eval(const index_t) const { GISMO_ERROR("gsNullExpr"); }
     inline index_t rows() const { GISMO_ERROR("gsNullExpr"); }
@@ -317,7 +317,7 @@ class col_expr : public _expr<col_expr<E> >
 public:
     typedef typename E::Scalar Scalar;
     typedef const col_expr<E> Nested_t;
-    
+
     col_expr(const E & c, const index_t i) : _c(c), _i(i) { }
 
 public:
@@ -922,7 +922,7 @@ public:
     const gsMatrix<T> & coefs() const { return *_Sv; }
 
     //gsMatrix<T> & coefs() { return *_Sv; } // wd4702 ?
-    
+
     /// Extract the coefficients of piece piece \a p
     void extract(gsMatrix<T> & result, const index_t p = 0) const
     {
@@ -1466,12 +1466,12 @@ public:
         return _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
     }
 
-    index_t rows() const { return _u.data().values[0].rows(); }
+    //index_t rows() const { return _u.data().values[0].rows(); }
     //index_t rows() const { return _u.data().actives.size(); }
     //index_t rows() const { return _u.rows(); }
-    //index_t rows() const { return _u.data().dim.second; }
+    index_t rows() const { return _u.source().targetDim(); }
+    index_t cols() const { return _u.source().domainDim(); }
 
-    index_t cols() const { return _u.data().dim.first; }
     void setFlag() const
     {
         _u.data().flags |= NEED_GRAD;
@@ -2799,7 +2799,7 @@ public:
 };
 
 /* Symmetrization operation
-template <typename E> symm_expr<E> const 
+template <typename E> symm_expr<E> const
 symm(_expr<E> const& u) { return symm_expr<E>(u);}
 */
 
@@ -2992,7 +2992,7 @@ GISMO_SHORTCUT_PHY_EXPRESSION(igrad, grad(u)*jac(G).ginv())
 
 template<class T> EIGEN_STRONG_INLINE grad_expr<T> // u is presumed to be defined over G
 GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u))
-    
+
 template<class T> EIGEN_STRONG_INLINE mult_expr<jac_expr<T>,jacGinv_expr<T>, 1>
 GISMO_SHORTCUT_PHY_EXPRESSION(ijac, jac(u) * jac(G).ginv() )
 
@@ -3014,4 +3014,3 @@ GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace() )
 } // namespace expr
 
 } //namespace gismo
-

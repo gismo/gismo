@@ -14,6 +14,7 @@
 #pragma once
 
 #include<gsIO/gsParaviewCollection.h>
+#include<gsAssembler/gsQuadrature.h>
 
 namespace gismo
 {
@@ -191,7 +192,7 @@ public:
     template<class E>
     T minElWise(const expr::_expr<E> & expr)
     { return compute_impl<E,true,min_op>(expr); }
-    
+
     /// Computes values of the expression \a expr
     /// at the grid points \a git of patch \a patchId
 #ifdef __DOXYGEN__
@@ -584,7 +585,7 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
                                             std::string const & fn)
     {
         m_exprdata->setFlags(expr);
-        
+
         //if false, embed topology ?
         const index_t n = m_exprdata->multiBasis().nBases();
         gsParaviewCollection collection(fn);

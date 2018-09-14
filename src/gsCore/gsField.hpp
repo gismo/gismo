@@ -13,6 +13,10 @@
 
 #pragma once
 
+#include <gsAssembler/gsExprHelper.h>
+#include <gsAssembler/gsExprEvaluator.h>
+#include <gsCore/gsDomainIterator.h>
+
 namespace gismo
 {
 
@@ -21,7 +25,16 @@ namespace gismo
 template <class T>
 T gsField<T>::distanceL2(gsField<T> const & field, int numEvals) const
 {
-    return 0; //computeL2Distance(*this, field, numEvals);
+    const gsMultiPatch<T> & mp = this->patches();
+    gsMultiBasis<T> mb(mp);
+    gsExprEvaluator<T> ev;
+    ev.setIntegrationElements(mb);
+    typename gsExprEvaluator<T>::geometryMap G = ev.getMap(mp);
+    typename gsExprEvaluator<T>::variable f1   = // getCoeff
+        (m_parametric ? ev.getVariable(*m_fields) : ev.getVariable(*m_fields, G) );
+    typename gsExprEvaluator<T>::variable f2   =
+        (field.m_parametric ? ev.getVariable(*field.m_fields) : ev.getVariable(*field.m_fields, G) );
+    return math::sqrt( ev.integral((f1 - f2).sqNorm() * meas(G)) );
 }
 
 /// Computes the L2-distance between the field and a function \a func on the physical domain
@@ -30,10 +43,8 @@ T gsField<T>::distanceL2(gsFunction<T> const & func,
                          bool isFunc_param,
                          int numEvals) const
 {
-    if (m_parametric) // isogeometric field
-        return 0; //igaFieldL2Distance(*this, func, isFunc_param);
-    else
-        return 0; //computeL2Distance(*this, func, isFunc_param, numEvals);
+    gsMultiBasis<T> mb(this->patches());
+    return distanceL2(func, mb, isFunc_param, numEvals);
 }
 
 /// Computes the L2-distance between the field and a function \a
@@ -44,45 +55,55 @@ T gsField<T>::distanceL2(gsFunction<T> const & func,
                          bool isFunc_param,
                          int numEvals) const
 {
-    if (m_parametric) // isogeometric field
-        return 0;//igaFieldL2Distance(*this, func, B, isFunc_param);
-    else
-        return 0;//computeL2Distance(*this, func, isFunc_param, numEvals);
+    GISMO_UNUSED(numEvals);// todo: subdivided quadrature elements
+    const gsMultiPatch<T> & mp = this->patches();
+    gsExprEvaluator<T> ev;
+    ev.setIntegrationElements(B);
+    typename gsExprEvaluator<T>::geometryMap G = ev.getMap(mp);
+    typename gsExprEvaluator<T>::variable f1   =
+        (m_parametric ? ev.getVariable(*m_fields) : ev.getVariable(*m_fields, G) );
+    typename gsExprEvaluator<T>::variable f2   =
+        (isFunc_param ? ev.getVariable(func) : ev.getVariable(func, G) );
+    gsDebugVar(m_parametric);
+    gsDebugVar(isFunc_param);
+    return math::sqrt( ev.integral((f1 - f2).sqNorm() * meas(G)) );
 }
 
 /// Computes the H1-distance between the field and a function \a
 /// func on the physical domain
 template <class T>
-T gsField<T>::distanceH1(gsFunction<T>
-                         const & func,
+T gsField<T>::distanceH1(gsFunction<T> const & func,
                          bool isFunc_param,
                          int) const
 {
-    if (m_parametric) // isogeometric field
-        return 0; //igaFieldH1Distance(*this, func, isFunc_param);
-    else
-    {
-        gsWarn << "H1 seminorm not implemented.\n";
-        return -1;
-    }
+    gsMultiBasis<T> mb(this->patches());
+    return distanceH1(func, mb, isFunc_param);
 }
 
 /// Computes the H1-distance between the field and a function \a
 /// func on the physical domain, using mesh from B
 template <class T>
-T gsField<T>::distanceH1(gsFunction<T>
-                         const & func,
+T gsField<T>::distanceH1(gsFunction<T> const & func,
                          gsMultiBasis<T> const & B,
                          bool isFunc_param,
                          int) const
 {
-    if (m_parametric) // isogeometric field
-        return 0; //igaFieldH1Distance(*this, func, B,isFunc_param);
-    else
-    {
-        gsWarn << "H1 seminorm not implemented.\n";
-        return -1;
-    }
+    const gsMultiPatch<T> & mp = this->patches();
+    gsExprEvaluator<T> ev;
+    ev.setIntegrationElements(B);
+    typename gsExprEvaluator<T>::geometryMap G = ev.getMap(mp);
+    typename gsExprEvaluator<T>::variable f1   =
+        (m_parametric ? ev.getVariable(*m_fields) : ev.getVariable(*m_fields, G) );
+    typename gsExprEvaluator<T>::variable f2   =
+        (isFunc_param ? ev.getVariable(func) : ev.getVariable(func, G) );
+
+    if (m_parametric && isFunc_param)
+        return math::sqrt(ev.integral( ( igrad(f1,G) - igrad(f2,G)).sqNorm()*meas(G) ) );
+    if (m_parametric)
+        return math::sqrt(ev.integral( ( igrad(f1,G) - igrad(f2)).sqNorm()*meas(G) ) );
+    if (isFunc_param)
+        return math::sqrt(ev.integral( ( igrad(f1) - igrad(f2,G)).sqNorm()*meas(G) ) );
+    return math::sqrt(ev.integral( ( igrad(f1) - igrad(f2)).sqNorm()*meas(G) ) );
 }
 
 /// Computes the DG-distance between the field and a function \a
