@@ -88,6 +88,32 @@ public:
         //mapVar.reset();
     }
 
+    void print() const
+    {
+        //mapData.side
+        if ( mapVar.isValid() ) // list ?
+        {
+            gsInfo << "mapVar: "<< &mapData <<"\n";
+        }
+
+        if ( mutVar.isValid() && 0!=mutData.flags)
+        {
+            gsInfo << "mutVar: "<< &mutVar <<"\n";
+        }
+
+        gsInfo << "ptable:\n";
+        for (const_ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
+        {
+            gsInfo << " * "<< &it->first <<" --> "<< &it->second <<"\n";
+        }
+
+        gsInfo << "itable:\n";
+        for (const_ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
+        {
+            gsInfo << " * "<< &it->first <<" --> "<< &it->second <<"\n";
+        }
+    }
+
     void cleanUp()
     {
         mapData.clear();
@@ -135,6 +161,7 @@ public:
         expr::gsFeVariable<T> & var = m_vlist.back();
         gsFuncData<T> & fd = m_ptable[&mp];
         //fd.dim = mp.dimensions();
+        //gsDebugVar(&fd);
         var.registerData(mp, fd, dim);
         return var;
     }
@@ -147,6 +174,7 @@ public:
         expr::gsFeVariable<T> & var = m_vlist.back();
         gsFuncData<T> & fd = m_itable[&mp];
         //fd.dim = mp.dimensions();
+        //gsDebugVar(&fd);
         var.registerData(mp, fd, 1, mapData);
         return var;
     }
@@ -228,7 +256,8 @@ public:
         //mapData.side
         if ( mapVar.isValid() ) // list ?
         {
-            //mapData.flags |= NEED_VALUE;
+            //gsDebugVar("MAPDATA-------***************");
+            mapData.flags |= NEED_VALUE;
             mapVar.source().function(patchIndex).computeMap(mapData);
             mapData.patchId = patchIndex;
         }
@@ -243,15 +272,25 @@ public:
 
         for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
         {
+            //gsDebugVar("-------");
+            //gsDebugVar(&it->second);
+            //gsDebugVar(it->second.dim.first);
             it->first->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
+            //gsDebugVar(&it->second);
+            //gsDebugVar(it->second.dim.first);
+            //gsDebugVar("-------");
             it->second.patchId = patchIndex;
         }
 
-        //GISMO_ASSERT( m_itable.empty() || 0!=mapData.values.size(), "Map values not computed");
+        GISMO_ASSERT( m_itable.empty() || 0!=mapData.values.size(), "Map values not computed");
+
         if ( 0!=mapData.values.size() && 0!= mapData.values[0].rows() ) // avoid left-over from previous expr.
         for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
         {
+            //gsDebugVar(&it->second);
+            //gsDebugVar(it->second.dim.first);
             it->first->piece(patchIndex).compute(mapData.values[0], it->second);
+            //gsDebugVar(it->second.dim.first);
             it->second.patchId = patchIndex;
         }
     }

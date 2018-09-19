@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include <gsCore/gsGeometryEvaluator.h>
-
 namespace gismo
 {
 
@@ -64,8 +62,6 @@ private: virtual gsVolume * clone_impl() const = 0;
 public: inline uPtr clone() const { return uPtr(clone_impl()); }
 
     int domainDim() const { return 3; }
-
-    virtual gsGeometryEvaluator<Scalar_t> * evaluator(unsigned flags) const;
 
 }; // class gsVolume
 

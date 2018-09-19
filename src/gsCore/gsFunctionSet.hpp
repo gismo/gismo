@@ -32,7 +32,7 @@ const gsFunction<T>& gsFunctionSet<T>::function(const index_t k) const
 {
     GISMO_ASSERT(dynamic_cast<const gsFunction<T>*>(&piece(k)),
                  "No function found, instead: "<< piece(k));
-    return static_cast<const gsFunction<T>&>(piece(k)); 
+    return static_cast<const gsFunction<T>&>(piece(k));
 }
 
 template <class T>
@@ -40,14 +40,14 @@ const gsBasis<T>& gsFunctionSet<T>::basis(const index_t k) const
 {
     GISMO_ASSERT(dynamic_cast<const gsBasis<T>*>(&piece(k)),
                  "No basis found, instead: "<< piece(k));
-    return static_cast<const gsBasis<T>&>(piece(k)); 
+    return static_cast<const gsBasis<T>&>(piece(k));
 }
 
 // support (domain of definition)
 template <class T>
 gsMatrix<T> gsFunctionSet<T>::support() const
-{ 
-    return gsMatrix<T>(); 
+{
+    return gsMatrix<T>();
 }
 
 // actives
@@ -75,11 +75,11 @@ void gsFunctionSet<T>::deriv2_into (const gsMatrix<T> &, gsMatrix<T> &) const
 {GISMO_NO_IMPLEMENTATION}
 
 template <typename T>
-void gsFunctionSet<T>::evalAllDers_into(const gsMatrix<T> & u, const int n, 
+void gsFunctionSet<T>::evalAllDers_into(const gsMatrix<T> & u, const int n,
                                         std::vector<gsMatrix<T> > & result) const
 {
     result.resize(n+1);
-    
+
     switch(n)
     {
     case 0:
@@ -137,7 +137,7 @@ void gsFunctionSet<T>::div_into       (const gsMatrix<T> & u, gsMatrix<T> &resul
 }
 
 template <typename T>
-void gsFunctionSet<T>::curl_into      (const gsMatrix<T> & u, gsMatrix<T> &result) const 
+void gsFunctionSet<T>::curl_into      (const gsMatrix<T> & u, gsMatrix<T> &result) const
 {
     gsMatrix<T> tmp;
     deriv_into(u,tmp);
@@ -145,7 +145,7 @@ void gsFunctionSet<T>::curl_into      (const gsMatrix<T> & u, gsMatrix<T> &resul
 }
 
 template <typename T>
-void gsFunctionSet<T>::laplacian_into (const gsMatrix<T> & u, gsMatrix<T> &result) const 
+void gsFunctionSet<T>::laplacian_into (const gsMatrix<T> & u, gsMatrix<T> &result) const
 {
     gsMatrix<T> tmp;
     deriv2_into(u,tmp);
@@ -156,14 +156,15 @@ void gsFunctionSet<T>::laplacian_into (const gsMatrix<T> & u, gsMatrix<T> &resul
 
 // Returns quantities either on the target domain or on the parametric
 // domain depending on the representation of the object
-template <typename T> 
+template <typename T>
 void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
                                gsFuncData<T> & out   ) const
 {
     const unsigned flags = out.flags;
-    
+
     out.dim = this->dimensions();
-    
+    //gsDebugVar(&out);
+
     const int md = out.maxDeriv();
     if (md != -1)
         evalAllDers_into(in, md, out.values);

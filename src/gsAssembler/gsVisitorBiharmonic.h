@@ -45,8 +45,7 @@ public:
     }
 
     void initialize(const gsBasis<T> & basis,
-                    gsQuadRule<T>    & rule,
-                    unsigned         & evFlags )
+                    gsQuadRule<T>    & rule)
     {
         gsVector<index_t> numQuadNodes( basis.dim() );
         for (int i = 0; i < basis.dim(); ++i) // to do: improve
@@ -56,53 +55,52 @@ public:
         rule = gsGaussRule<T>(numQuadNodes);// NB!
 
         // Set Geometry evaluation flags
-        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
     }
 
     void initialize(const gsBasis<T> & basis,
                     const index_t ,
                     const gsOptionList & options, 
-                    gsQuadRule<T>    & rule,
-                    unsigned         & evFlags )
+                    gsQuadRule<T>    & rule)
     {
         // Setup Quadrature
         rule = gsQuadrature::get(basis, options);
 
         // Set Geometry evaluation flags
-        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
     }
 
     // Evaluate on element.
-    inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
-                         gsGeometryEvaluator<T> & geoEval,
+    inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
+                         const gsGeometry<T>    & geo,
                          gsMatrix<T>            & quNodes)
     {
+        md.points = quNodes;
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the elements
-        basis.active_into(quNodes.col(0), actives);
+        basis.active_into(md.points.col(0), actives);
         numActive = actives.rows();
 
         //deriv2_into()
         //col(point) = B1_xx B2_yy B1_zz B_xy B1_xz B1_xy B2_xx ...
 
         // Evaluate basis functions on element
-        basis.evalAllDers_into( quNodes, 2, basisData);
+        basis.evalAllDers_into(md.points, 2, basisData);
 
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
-        geoEval.evaluateAt(quNodes);// is this generic ??
+        geo.computeMap(md);
 
         // Evaluate right-hand side at the geometry points
-        rhs_ptr->eval_into( geoEval.values(), rhsVals ); // Dim: 1 X NumPts
+        rhs_ptr->eval_into(md.values[0], rhsVals); // Dim: 1 X NumPts
 
         // Initialize local matrix/rhs
-        localMat.setZero(numActive, numActive      );
-        localRhs.setZero(numActive, rhsVals.rows() );//multiple right-hand sides
+        localMat.setZero(numActive, numActive);
+        localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
     }
 
 
     inline void assemble(gsDomainIterator<T>    & ,
-                         gsGeometryEvaluator<T> & geoEval,
-                         gsVector<T> const      & quWeights)
+                         const gsVector<T>      & quWeights)
     {
         gsMatrix<T> & basisVals  = basisData[0];
         gsMatrix<T> & basisGrads = basisData[1];
@@ -111,10 +109,10 @@ public:
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply weight by the geometry measure
-            const T weight = quWeights[k] * geoEval.measure(k);
+            const T weight = quWeights[k] * md.measure(k);
 
             // Compute physical laplacian at k as a 1 x numActive matrix
-            geoEval.transformLaplaceHgrad (k, basisGrads, basis2ndDerivs, physBasisLaplace);
+            transformLaplaceHgrad(md, k, basisGrads, basis2ndDerivs, physBasisLaplace);
 
             // (\Delta u, \Delta v)
             localMat.noalias() += weight * (physBasisLaplace.transpose() * physBasisLaplace);
@@ -191,6 +189,8 @@ protected:
     // Local matrices
     gsMatrix<T> localMat;
     gsMatrix<T> localRhs;
+
+    gsMapData<T> md;
 };
 
 

@@ -20,6 +20,8 @@
 
 #include <gsAssembler/gsVisitorPoisson.h> // Stiffness volume integrals and load vector
 
+#include <gsCore/gsFuncData.h>
+
 
 namespace gismo
 {
@@ -398,12 +400,13 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
     globProjRhs.setZero( mapper.boundarySize(), m_pde_ptr->numRhs() );
 
     // Temporaries
-    gsMatrix<T> quNodes;
     gsVector<T> quWeights;
 
     gsMatrix<T> rhsVals;
     gsMatrix<unsigned> globIdxAct;
     gsMatrix<T> basisVals;
+
+    gsMapData<T> md(NEED_MEASURE);
 
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     for ( typename gsBoundaryConditions<T>::const_iterator
@@ -416,7 +419,7 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
         const int patchIdx   = iter->patch();
         const gsBasis<T> & basis = (m_bases[unk])[patchIdx];
 
-        typename gsGeometry<T>::Evaluator geoEval( m_pde_ptr->domain()[patchIdx].evaluator(NEED_MEASURE));
+        const gsGeometry<T> & patch = m_pde_ptr->patches()[patchIdx];
 
         // Set up quadrature to degree+1 Gauss points per direction,
         // all lying on iter->side() except from the direction which
@@ -429,16 +432,17 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
         for(; bdryIter->good(); bdryIter->next() )
         {
             bdQuRule.mapTo( bdryIter->lowerCorner(), bdryIter->upperCorner(),
-                            quNodes, quWeights);
+                            md.points, quWeights);
 
-            geoEval->evaluateAt( quNodes );
+            //geoEval->evaluateAt( md.points );
+            patch.computeMap(md);
 
             // the values of the boundary condition are stored
             // to rhsVals. Here, "rhs" refers to the right-hand-side
             // of the L2-projection, not of the PDE.
-            rhsVals = iter->function()->eval( m_pde_ptr->domain()[patchIdx].eval( quNodes ) );
+            rhsVals = iter->function()->eval( m_pde_ptr->domain()[patchIdx].eval( md.points ) );
 
-            basis.eval_into( quNodes, basisVals);
+            basis.eval_into( md.points, basisVals);
 
             // Indices involved here:
             // --- Local index:
@@ -457,7 +461,7 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
 
             // Get the global indices (second line) of the local
             // active basis (first line) functions/DOFs:
-            basis.active_into(quNodes.col(0), globIdxAct );
+            basis.active_into(md.points.col(0), globIdxAct );
             mapper.localToGlobal( globIdxAct, patchIdx, globIdxAct);
 
             // Out of the active functions/DOFs on this element, collect all those
@@ -473,9 +477,9 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
                     eltBdryFcts.push_back( i );
 
             // Do the actual assembly:
-            for( index_t k=0; k < quNodes.cols(); k++ )
+            for( index_t k=0; k < md.points.cols(); k++ )
             {
-                const T weight_k = quWeights[k] * geoEval->measure(k);
+                const T weight_k = quWeights[k] * md.measure(k);
 
                 // Only run through the active boundary functions on the element:
                 for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )

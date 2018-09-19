@@ -46,8 +46,7 @@ public:
                     const gsBasis<T> & ,
                     const boundaryInterface & bi,
                     const gsOptionList & options,
-                    gsQuadRule<T> & rule,
-                    unsigned & evFlags)
+                    gsQuadRule<T> & rule)
     {
         side1 = bi.first().side();
 
@@ -59,30 +58,32 @@ public:
         penalty = (deg + basis1.dim()) * (deg + 1) * T(2.0);
 
         // Set Geometry evaluation flags
-        evFlags = NEED_VALUE|NEED_JACOBIAN|NEED_GRAD_TRANSFORM;
+        md1.flags = md2.flags = NEED_VALUE|NEED_JACOBIAN|NEED_GRAD_TRANSFORM;
     }
 
     // Evaluate on element.
-    inline void evaluate(gsBasis<T> const       & B1, // to do: more unknowns
-                         gsGeometryEvaluator<T> & geoEval1,
-                         gsBasis<T> const       & B2, // to do: more unknowns
-                         gsGeometryEvaluator<T> & geoEval2,
-                         gsMatrix<T>            & quNodes1,
-                         gsMatrix<T>            & quNodes2)
+    inline void evaluate(const gsBasis<T>       & B1, // to do: more unknowns
+                         const gsGeometry<T>    & geo1,
+                         const gsBasis<T>       & B2, // to do: more unknowns
+                         const gsGeometry<T>    & geo2,
+                         const gsMatrix<T>      & quNodes1,
+                         const gsMatrix<T>      & quNodes2)
     {
+        md1.points = quNodes1;
+        md2.points = quNodes2;
         // Compute the active basis functions
-        B1.active_into(quNodes1.col(0), actives1);
-        B2.active_into(quNodes2.col(0), actives2);
+        B1.active_into(md1.points.col(0), actives1);
+        B2.active_into(md2.points.col(0), actives2);
         const index_t numActive1 = actives1.rows();
         const index_t numActive2 = actives2.rows();
 
         // Evaluate basis functions and their first derivatives
-        B1.evalAllDers_into( quNodes1, 1, basisData1);
-        B2.evalAllDers_into( quNodes2, 1, basisData2);
+        B1.evalAllDers_into( md1.points, 1, basisData1);
+        B2.evalAllDers_into( md2.points, 1, basisData2);
 
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
-        geoEval1.evaluateAt(quNodes1);
-        geoEval2.evaluateAt(quNodes2);
+        geo1.computeMap(md1);
+        geo2.computeMap(md2);
 
         // Initialize local matrices
         B11.setZero(numActive1, numActive1); B12.setZero(numActive1, numActive2);
@@ -94,8 +95,6 @@ public:
     // assemble on element
     inline void assemble(gsDomainIterator<T>    & element1,
                          gsDomainIterator<T>    & element2,
-                         gsGeometryEvaluator<T> & geoEval1,
-                         gsGeometryEvaluator<T> & geoEval2,
                          gsVector<T>            & quWeights)
     {
         const index_t numActive1 = actives1.rows();
@@ -104,7 +103,7 @@ public:
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Compute the outer normal vector from patch1
-            geoEval1.outerNormal(k, side1, unormal);
+            outerNormal(md1, k, side1, unormal);
 
             // Integral transformation and quadrature weight (patch1)
             // assumed the same on both sides
@@ -122,8 +121,8 @@ public:
             gsMatrix<T> & grads2 = basisData2[1];// all grads
 
             // Transform the basis gradients
-            geoEval1.transformGradients(k, grads1, phGrad1);
-            geoEval2.transformGradients(k, grads2, phGrad2);
+            transformGradients(md1, k, grads1, phGrad1);
+            transformGradients(md2, k, grads2, phGrad2);
 
             // Compute element matrices
             const T c1     = weight * T(0.5);
@@ -188,7 +187,8 @@ private:
                 B22, B21, E22, E21, N2;
                 
     gsMatrix<T> m_localRhs1, m_localRhs2;
-    
+
+    gsMapData<T> md1, md2;
 };
 
 

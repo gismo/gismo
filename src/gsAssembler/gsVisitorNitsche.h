@@ -49,8 +49,7 @@ public:
     { }
 
     void initialize(const gsBasis<T> & basis, 
-                    gsQuadRule<T> & rule,
-                    unsigned & evFlags  )
+                    gsQuadRule<T> & rule)
     {
         const int dir = side.direction();
         gsVector<int> numQuadNodes ( basis.dim() );
@@ -62,20 +61,19 @@ public:
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_VALUE|NEED_JACOBIAN|NEED_GRAD_TRANSFORM;
+        md.flags = NEED_VALUE|NEED_JACOBIAN|NEED_GRAD_TRANSFORM;
     }
 
     void initialize(const gsBasis<T> & basis,
                     const index_t ,
                     const gsOptionList & options, 
-                    gsQuadRule<T>    & rule,
-                    unsigned         & evFlags )
+                    gsQuadRule<T>    & rule)
     {
         // Setup Quadrature (harmless slicing occurs)
         rule = gsQuadrature::get(basis, options, side.direction());
 
         // Set Geometry evaluation flags
-        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
 
         // Compute penalty parameter
         const int deg = basis.maxDegree();
@@ -83,33 +81,33 @@ public:
     }
 
     // Evaluate on element.
-    inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
-                         gsGeometryEvaluator<T> & geoEval,
+    inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
+                         const gsGeometry<T>    & geo,
                          // todo: add element here for efficiency
-                         gsMatrix<T>            & quNodes)
+                         const gsMatrix<T>      & quNodes)
     {
+        md.points = quNodes;
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the current element
-        basis.active_into(quNodes.col(0) , actives);
+        basis.active_into(md.points.col(0) , actives);
         const index_t numActive = actives.rows();
 
         // Evaluate basis values and derivatives on element
-        basis.evalAllDers_into( quNodes, 1, basisData);
+        basis.evalAllDers_into( md.points, 1, basisData);
 
         // Compute geometry related values
-        geoEval.evaluateAt(quNodes);
+        geo.computeMap(md);
 
         // Evaluate the Dirichlet data
-        dirdata_ptr->eval_into(geoEval.values(), dirData);
+        dirdata_ptr->eval_into(md.values[0], dirData);
 
         // Initialize local matrix/rhs
         localMat.setZero(numActive, numActive);
         localRhs.setZero(numActive, dirdata_ptr->targetDim() );
     }
 
-    inline void assemble(gsDomainIterator<T>    & element, 
-                         gsGeometryEvaluator<T> & geoEval,
-                         gsVector<T> const      & quWeights)
+    inline void assemble(gsDomainIterator<T>    & element,
+                         const gsVector<T>      & quWeights)
     {
         gsMatrix<T> & bGrads = basisData[1];
         const index_t numActive = actives.rows();
@@ -121,7 +119,7 @@ public:
             basisData[0].block(0,k,numActive,1);
 
         // Compute the outer normal vector on the side
-        geoEval.outerNormal(k, side, unormal);
+        outerNormal(md, k, side, unormal);
 
         // Multiply quadrature weight by the geometry measure
         const T weight = quWeights[k] *unormal.norm();   
@@ -130,7 +128,7 @@ public:
         unormal.normalize();
         
         // Compute physical gradients at k as a Dim x NumActive matrix
-        geoEval.transformGradients(k, bGrads, pGrads);
+        transformGradients(md, k, bGrads, pGrads);
         
         // Get penalty parameter
         const T h = element.getCellSize();
@@ -206,6 +204,7 @@ private:
     gsMatrix<T> localMat;
     gsMatrix<T> localRhs;
 
+    gsMapData<T> md;
 };
 
 

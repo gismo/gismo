@@ -41,44 +41,43 @@ public:
     void initialize(const gsBasis<T> & basis,
                     const index_t ,
                     const gsOptionList & options, 
-                    gsQuadRule<T>    & rule,
-                    unsigned         & evFlags )
+                    gsQuadRule<T>    & rule)
     {
         // Setup Quadrature (harmless slicing occurs)
         rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_MEASURE;
+        md.flags = NEED_MEASURE;
     }
 
     // Evaluate on element.
-    inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
-                         gsGeometryEvaluator<T> & geoEval,
+    inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
+                         const gsGeometry<T>    & geo,
                          // todo: add element here for efficiency
                          gsMatrix<T>            & quNodes)
     {
+        md.points = quNodes;
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the current element
-        basis.active_into(quNodes.col(0) , actives);
+        basis.active_into(md.points.col(0), actives);
         const index_t numActive = actives.rows();
- 
+
         // Evaluate basis functions on element
-        basis.eval_into(quNodes, basisData);
+        basis.eval_into(md.points, basisData);
 
         // Compute geometry related values
-        geoEval.evaluateAt(quNodes);
+        geo.computeMap(md);
 
         // Initialize local matrix/rhs
         localMat.setZero(numActive, numActive);
     }
 
     inline void assemble(gsDomainIterator<T>    & ,
-                         gsGeometryEvaluator<T> & geoEval,
                          gsVector<T> const      & quWeights)
     {
         localMat.noalias() = 
             basisData * quWeights.asDiagonal() * 
-            geoEval.measures().asDiagonal() * basisData.transpose();
+            md.measures.asDiagonal() * basisData.transpose();
     }
 
     inline void localToGlobal(const int patchIndex,
@@ -94,9 +93,8 @@ public:
 
 /* -----------------------  to be removed later*/
 
-    static void initialize(const gsBasis<T> & basis, 
-                           gsQuadRule<T> & rule, 
-                           unsigned & evFlags )
+    void initialize(const gsBasis<T> & basis,
+                           gsQuadRule<T> & rule)
     {
         gsVector<index_t> numQuadNodes( basis.dim() );
         for (int i = 0; i < basis.dim(); ++i)
@@ -106,7 +104,7 @@ public:
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_MEASURE;
+        md.flags = NEED_MEASURE;
     }
 
 
@@ -146,6 +144,8 @@ protected:
 
     // Local matrix
     gsMatrix<T> localMat;
+
+    gsMapData<T> md;
 };
 
 

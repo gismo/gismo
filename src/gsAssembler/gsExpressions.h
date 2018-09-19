@@ -63,7 +63,7 @@ template<class T> class gsExprHelper;
 
     @brief
     This namespace contains expressions used for FE computations
-    
+
     \ingroup Assembler
 */
 namespace expr
@@ -130,7 +130,7 @@ public:
     //typedef typename E::Scalar   Scalar;
     typedef typename expr_traits<E>::Nested_t Nested_t;
     typedef typename expr_traits<E>::Scalar   Scalar;
-    
+
     /// Prints the expression as a string to \a os
     void print(std::ostream &os) const
     {
@@ -209,7 +209,7 @@ public:
 
     col_expr<E> operator[](const index_t i) const
     { return col_expr<E>(static_cast<E const&>(*this),i); }
-    
+
     /// Returns the row-size of the expression
     index_t rows() const
     { return static_cast<E const&>(*this).rows(); }
@@ -282,7 +282,7 @@ public:
         static gsFeVariable<T> vv;
         return vv;
     }
-    
+
     typedef T Scalar;
     gsMatrix<T> eval(const index_t) const { GISMO_ERROR("gsNullExpr"); }
     inline index_t rows() const { GISMO_ERROR("gsNullExpr"); }
@@ -317,7 +317,7 @@ class col_expr : public _expr<col_expr<E> >
 public:
     typedef typename E::Scalar Scalar;
     typedef const col_expr<E> Nested_t;
-    
+
     col_expr(const E & c, const index_t i) : _c(c), _i(i) { }
 
 public:
@@ -922,7 +922,7 @@ public:
     const gsMatrix<T> & coefs() const { return *_Sv; }
 
     //gsMatrix<T> & coefs() { return *_Sv; } // wd4702 ?
-    
+
     /// Extract the coefficients of piece piece \a p
     void extract(gsMatrix<T> & result, const index_t p = 0) const
     {
@@ -1193,8 +1193,10 @@ private:
 
 public:
     trace_expr(_expr<E> const& u) : _u(u)
-    { GISMO_ASSERT(0== _u.cols()%_u.rows(), "Expecting square-block expression, got "
-                   << _u.rows() <<" x "<< _u.cols() ); }
+    {
+        // gcc 4.8.4: invalid read due to _u.rows() using gsFuncData
+        //GISMO_ASSERT(0== _u.cols()%_u.rows(), "Expecting square-block expression, got " << _u.rows() <<" x "<< _u.cols() );
+    }
 
     // choose if ColBlocks
     const gsMatrix<Scalar> & eval(const index_t k) const
@@ -1466,12 +1468,17 @@ public:
         return _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
     }
 
-    index_t rows() const { return _u.data().values[0].rows(); }
+    index_t rows() const
+    {
+        //return _u.data().values[0].rows();
+        return _u.data().values[1].rows() / cols();
+    }
     //index_t rows() const { return _u.data().actives.size(); }
     //index_t rows() const { return _u.rows(); }
-    //index_t rows() const { return _u.data().dim.second; }
 
-    index_t cols() const { return _u.data().dim.first; }
+    //index_t rows() const { return _u.source().targetDim() is wrong }
+    index_t cols() const { return _u.source().domainDim(); }
+
     void setFlag() const
     {
         _u.data().flags |= NEED_GRAD;
@@ -1722,7 +1729,7 @@ public:
         // ..nabla2.sum()
     }
 
-    index_t rows() const { return _u.data().values[0].rows(); }
+    index_t rows() const { return _u.data().laplacians.rows(); }
     index_t cols() const { return 1; }
 
     static bool rowSpan() {return true; }
@@ -1983,30 +1990,43 @@ public:
     enum {ScalarValued = 0, ColBlocks = 1};
 
 private:
-    const gsFuncData<T> & m_data;
+    const gsFuncData<T> * m_data;
     mutable gsMatrix<Scalar> res;
 
+    //hess_expr(const hess_expr & );
 public:
     hess_expr(const gsGeometryMap<T> & G)
-    : m_data(G.data()) { } //ColBlocks=0 ?
+    : m_data(&G.data()) { } //ColBlocks=0 ?
 
     hess_expr(const gsFeVariable<T> & _u)
-    : m_data(_u.data())
-    { GISMO_ASSERT(1==_u.dim(),"hess(.) requires 1D variable");}
+    : m_data(&_u.data())
+    {
+        GISMO_ASSERT(1==_u.dim(),"hess(.) requires 1D variable");
+    }
 
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
-        const index_t sz = m_data.values[0].rows();
-        res.resize(m_data.dim.first, sz*m_data.dim.first);
-        secDerToHessian(m_data.values[2].col(k), m_data.dim.first, res);
-        res.resize(m_data.dim.first, res.cols()*m_data.dim.first);
+        const index_t sz = cols();
+        res.resize(m_data->dim.first, sz*m_data->dim.first);
+        secDerToHessian(m_data->values[2].col(k), m_data->dim.first, res);
+        res.resize(m_data->dim.first, res.cols()*m_data->dim.first);
         // Note: auto returns by value here
         return res;
     }
 
-    index_t rows() const { return m_data.dim.first; }
-    index_t cols() const { return m_data.values[0].rows() * m_data.dim.first; }
-    void setFlag() const { m_data.flags |= NEED_2ND_DER; }
+    index_t rows() const
+    {
+        // gsDebugVar(m_data);
+        // gsDebugVar(m_data->dim.first);
+        // gsDebugVar(m_data->values[0].rows());
+        return m_data->dim.first;
+    }
+    index_t cols() const
+    {
+        return 2*m_data->values[2].rows() / (1+m_data->dim.first);
+    }
+
+    void setFlag() const { m_data->flags |= NEED_2ND_DER; }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     {
@@ -2080,7 +2100,11 @@ public:
 
     meas_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
-    T eval(const index_t k) const { return _G.data().measures.at(k); }
+    T eval(const index_t k) const
+    {
+        //gsDebugVar(_G.data().measures.at(k));
+        return _G.data().measures.at(k);
+    }
 
     index_t rows() const { return 0; }
     index_t cols() const { return 0; }
@@ -2737,6 +2761,8 @@ public:
                      "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in - operation");
         GISMO_ASSERT(_u.cols() == _v.cols(),
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in - operation");
+        //gsDebugVar( (_u.eval(k) - _v.eval(k)) );
+        //gsDebugVar( (_u.eval(k) - _v.eval(k)).squaredNorm() );
         return (_u.eval(k) - _v.eval(k) );
     }
 
@@ -2799,7 +2825,7 @@ public:
 };
 
 /* Symmetrization operation
-template <typename E> symm_expr<E> const 
+template <typename E> symm_expr<E> const
 symm(_expr<E> const& u) { return symm_expr<E>(u);}
 */
 
@@ -2960,17 +2986,22 @@ auto name(const gsFeVariable<T> & u, const gsGeometryMap<T> & G) { return impl; 
 
 // Divergence
 GISMO_SHORTCUT_VAR_EXPRESSION(  div, jac(u).trace() )
+GISMO_SHORTCUT_PHY_EXPRESSION( idiv, ijac(u,G).trace()    )
 
 // The unit (normalized) boundary (outer pointing) normal
 GISMO_SHORTCUT_MAP_EXPRESSION(unv, nv(G).normalized()   ) //(!) bug + mem. leak
 
 GISMO_SHORTCUT_PHY_EXPRESSION(igrad, grad(u)*jac(G).ginv() ) // transpose() problem ??
 GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u) ) // u is presumed to be defined over G
+
 GISMO_SHORTCUT_PHY_EXPRESSION( ijac, jac(u) * jac(G).ginv())
-GISMO_SHORTCUT_PHY_EXPRESSION( idiv, ijac(u,G).trace()    )
+
 GISMO_SHORTCUT_PHY_EXPRESSION(ihess,
 jac(G).ginv().tr()*( hess(u) - summ(igrad(u,G),hess(G)) ) * jac(G).ginv() )
+GISMO_SHORTCUT_VAR_EXPRESSION(ihess, hess(u) )
+
 GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace()   )
+GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )
 
 #else
 
@@ -2992,7 +3023,7 @@ GISMO_SHORTCUT_PHY_EXPRESSION(igrad, grad(u)*jac(G).ginv())
 
 template<class T> EIGEN_STRONG_INLINE grad_expr<T> // u is presumed to be defined over G
 GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u))
-    
+
 template<class T> EIGEN_STRONG_INLINE mult_expr<jac_expr<T>,jacGinv_expr<T>, 1>
 GISMO_SHORTCUT_PHY_EXPRESSION(ijac, jac(u) * jac(G).ginv() )
 
@@ -3002,9 +3033,14 @@ GISMO_SHORTCUT_PHY_EXPRESSION(idiv, ijac(u,G).trace() )
 template<class T> EIGEN_STRONG_INLINE mult_expr<mult_expr<tr_expr<jacGinv_expr<T> >,sub_expr<hess_expr<T>,summ_expr<mult_expr<grad_expr<T>, jacGinv_expr<T>, 0>, hess_expr<T> > >, 0>, jacGinv_expr<T>, 1>
 GISMO_SHORTCUT_PHY_EXPRESSION(ihess, jac(G).ginv().tr()*(hess(u)-summ(igrad(u,G),hess(G)))*jac(G).ginv() )
 
-//#define ilapl(u,G) ihess(u,G).trace()
+template<class T> EIGEN_STRONG_INLINE hess_expr<T>
+GISMO_SHORTCUT_VAR_EXPRESSION(ihess, hess(u) )
+
 template<class T> EIGEN_STRONG_INLINE trace_expr< mult_expr<mult_expr<tr_expr<jacGinv_expr<T> >, sub_expr<hess_expr<T>, summ_expr<mult_expr<grad_expr<T>, jacGinv_expr<T>, 0>, hess_expr<T> > >, 0>, jacGinv_expr<T>, 1> >
 GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace() )
+
+template<class T> EIGEN_STRONG_INLINE trace_expr<hess_expr<T> >
+GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )
 
 #endif
 #undef GISMO_SHORTCUT_PHY_EXPRESSION
@@ -3014,4 +3050,3 @@ GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace() )
 } // namespace expr
 
 } //namespace gismo
-
