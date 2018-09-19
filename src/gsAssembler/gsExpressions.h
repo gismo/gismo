@@ -1466,10 +1466,15 @@ public:
         return _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
     }
 
-    //index_t rows() const { return _u.data().values[0].rows(); }
+    index_t rows() const
+    {
+        //return _u.data().values[0].rows();
+        return _u.data().values[1].rows() / cols();
+    }
     //index_t rows() const { return _u.data().actives.size(); }
     //index_t rows() const { return _u.rows(); }
-    index_t rows() const { return _u.source().targetDim(); }
+
+    //index_t rows() const { return _u.source().targetDim() is wrong }
     index_t cols() const { return _u.source().domainDim(); }
 
     void setFlag() const
@@ -1722,7 +1727,7 @@ public:
         // ..nabla2.sum()
     }
 
-    index_t rows() const { return _u.data().values[0].rows(); }
+    index_t rows() const { return _u.data().laplacians.rows(); }
     index_t cols() const { return 1; }
 
     static bool rowSpan() {return true; }
@@ -1983,30 +1988,43 @@ public:
     enum {ScalarValued = 0, ColBlocks = 1};
 
 private:
-    const gsFuncData<T> & m_data;
+    const gsFuncData<T> * m_data;
     mutable gsMatrix<Scalar> res;
 
+    //hess_expr(const hess_expr & );
 public:
     hess_expr(const gsGeometryMap<T> & G)
-    : m_data(G.data()) { } //ColBlocks=0 ?
+    : m_data(&G.data()) { } //ColBlocks=0 ?
 
     hess_expr(const gsFeVariable<T> & _u)
-    : m_data(_u.data())
-    { GISMO_ASSERT(1==_u.dim(),"hess(.) requires 1D variable");}
+    : m_data(&_u.data())
+    {
+        GISMO_ASSERT(1==_u.dim(),"hess(.) requires 1D variable");
+    }
 
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
-        const index_t sz = m_data.values[0].rows();
-        res.resize(m_data.dim.first, sz*m_data.dim.first);
-        secDerToHessian(m_data.values[2].col(k), m_data.dim.first, res);
-        res.resize(m_data.dim.first, res.cols()*m_data.dim.first);
+        const index_t sz = cols();
+        res.resize(m_data->dim.first, sz*m_data->dim.first);
+        secDerToHessian(m_data->values[2].col(k), m_data->dim.first, res);
+        res.resize(m_data->dim.first, res.cols()*m_data->dim.first);
         // Note: auto returns by value here
         return res;
     }
 
-    index_t rows() const { return m_data.dim.first; }
-    index_t cols() const { return m_data.values[0].rows() * m_data.dim.first; }
-    void setFlag() const { m_data.flags |= NEED_2ND_DER; }
+    index_t rows() const
+    {
+        // gsDebugVar(m_data);
+        // gsDebugVar(m_data->dim.first);
+        // gsDebugVar(m_data->values[0].rows());
+        return m_data->dim.first;
+    }
+    index_t cols() const
+    {
+        return 2*m_data->values[2].rows() / (1+m_data->dim.first);
+    }
+
+    void setFlag() const { m_data->flags |= NEED_2ND_DER; }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     {
@@ -2080,7 +2098,11 @@ public:
 
     meas_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
-    T eval(const index_t k) const { return _G.data().measures.at(k); }
+    T eval(const index_t k) const
+    {
+        //gsDebugVar(_G.data().measures.at(k));
+        return _G.data().measures.at(k);
+    }
 
     index_t rows() const { return 0; }
     index_t cols() const { return 0; }
@@ -2737,6 +2759,8 @@ public:
                      "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in - operation");
         GISMO_ASSERT(_u.cols() == _v.cols(),
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in - operation");
+        //gsDebugVar( (_u.eval(k) - _v.eval(k)) );
+        //gsDebugVar( (_u.eval(k) - _v.eval(k)).squaredNorm() );
         return (_u.eval(k) - _v.eval(k) );
     }
 
