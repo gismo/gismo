@@ -26,7 +26,6 @@ T gsField<T>::distanceL2(gsFunctionSet<T> const & func,
                          bool isFunc_param,
                          int numEvals) const
 {
-    gsDebugVar(B.totalElements());
     GISMO_UNUSED(numEvals);// todo: subdivided quadrature elements
     gsExprEvaluator<T> ev;
     ev.setIntegrationElements(B);
@@ -35,8 +34,6 @@ T gsField<T>::distanceL2(gsFunctionSet<T> const & func,
         (m_parametric ? ev.getVariable(*m_fields) : ev.getVariable(*m_fields, G) );
     typename gsExprEvaluator<T>::variable f2   =
         (isFunc_param ? ev.getVariable(func) : ev.getVariable(func, G) );
-    gsDebugVar(m_parametric);
-    gsDebugVar(isFunc_param);
     return math::sqrt( ev.integral((f1 - f2).sqNorm() * meas(G)) );
 }
 
@@ -46,7 +43,6 @@ T gsField<T>::distanceH1(gsFunctionSet<T> const & func,
                          bool isFunc_param,
                          int) const
 {
-    gsDebugVar(B.totalElements());
     const gsMultiPatch<T> & mp = this->patches();
     gsExprEvaluator<T> ev;
     ev.setIntegrationElements(B);
