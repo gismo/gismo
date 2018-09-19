@@ -40,7 +40,7 @@ endif()
 
 set(gismo_VERSION_MAJOR "0")
 set(gismo_VERSION_MINOR "8")
-set(gismo_VERSION_PATCH "4")
+set(gismo_VERSION_PATCH "5")
 set(gismo_VERSION
   "${gismo_VERSION_MAJOR}.${gismo_VERSION_MINOR}.${gismo_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
 

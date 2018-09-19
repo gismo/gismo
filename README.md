@@ -5,11 +5,11 @@
    GGGG GGGGGG GGGGGGGGGGGGG GGGGGGGGGG GG GGGG GG GGGG GGGG   GGGGG
   GGGGG  GGGGG GGGGGGGGGGGG  GGGGGGGGG  GG GGGGGG GGGG  GGGG   GGGG
   GGGG   GGGG      GGGG           GGGG  GG  GGGG  GGGG  GGGG   GGGG
-   GGGGGGGGGG      GGGG     GGGGGGGGG  GG   GGG   GGGG  GGGGGGGGGG  
+   GGGGGGGGGG      GGGG     GGGGGGGGG  GG   GGG   GGGG  GGGGGGGGGG
 
 ======================================================================
 =====             Geometry plus Simulation modules               =====
-=====                      version 0.8.4 Alpha                   =====
+=====                      version 0.8.5 Alpha                   =====
 =====                   https://github.com/gismo                 =====
 =====          Copyright (C) JKU-RICAM-Linz, 2012 - 2018         =====
 ======================================================================
@@ -187,7 +187,7 @@ eleven modules are present as sub-folders:
 * **plugins**
 
    The plugins for:
-   
+
    - Axel modeler
    - Rhinoceros' 3DM
 
