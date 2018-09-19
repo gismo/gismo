@@ -18,10 +18,6 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    return 1;
-}
-/* fix REPLACEMENT for gsNorm and derivatives
-
     index_t numRefine = 5;
     index_t numDegree = 1;
     bool plot = false;
@@ -89,22 +85,15 @@ int main(int argc, char *argv[])
     gsField<> solField(BiharmonicAssembler.patches(), mpsol);
 
     //Contruct the H2 norm, part by part.
-    gsSeminormH2<real_t> h2Seminorm(solField,solution);
-    real_t errorH2Semi = h2Seminorm.compute();
-
-    gsSeminormH1<real_t> h1Seminorm(solField,solution);
-    real_t errorH1Semi = h1Seminorm.compute();
-
-    gsNormL2<real_t> L2Norm(solField,solution);
-    real_t errorL2 = L2Norm.compute();
-
+    real_t errorH2Semi = solField.distanceH2(solution, false);
+    real_t errorH1Semi = solField.distanceH1(solution, false);
+    real_t errorL2 = solField.distanceL2(solution, false);
     real_t errorH1 = math::sqrt(errorH1Semi*errorH1Semi + errorL2*errorL2);
     real_t errorH2 = math::sqrt(errorH2Semi*errorH2Semi + errorH1Semi*errorH1Semi + errorL2*errorL2);
 
-    gsInfo << "The H1 error of the solution is : " << errorH1 << "\n";
     gsInfo << "The L2 error of the solution is : " << errorL2 << "\n";
-    gsInfo << "The H2 error of the solution is : " << errorH2 << "\n";
-
+    gsInfo << "The H1 error of the solution is : " << errorH1Semi << "\n";
+    gsInfo << "The H2 error of the solution is : " << errorH2Semi << "\n";
 
     // Plot solution in paraview
     if (plot)
@@ -118,4 +107,3 @@ int main(int argc, char *argv[])
 
     return  0;
 }
-*/
