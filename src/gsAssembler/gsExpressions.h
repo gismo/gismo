@@ -1193,8 +1193,10 @@ private:
 
 public:
     trace_expr(_expr<E> const& u) : _u(u)
-    { GISMO_ASSERT(0== _u.cols()%_u.rows(), "Expecting square-block expression, got "
-                   << _u.rows() <<" x "<< _u.cols() ); }
+    {
+        // gcc 4.8.4: invalid read due to _u.rows() using gsFuncData
+        //GISMO_ASSERT(0== _u.cols()%_u.rows(), "Expecting square-block expression, got " << _u.rows() <<" x "<< _u.cols() );
+    }
 
     // choose if ColBlocks
     const gsMatrix<Scalar> & eval(const index_t k) const
