@@ -2984,17 +2984,22 @@ auto name(const gsFeVariable<T> & u, const gsGeometryMap<T> & G) { return impl; 
 
 // Divergence
 GISMO_SHORTCUT_VAR_EXPRESSION(  div, jac(u).trace() )
+GISMO_SHORTCUT_PHY_EXPRESSION( idiv, ijac(u,G).trace()    )
 
 // The unit (normalized) boundary (outer pointing) normal
 GISMO_SHORTCUT_MAP_EXPRESSION(unv, nv(G).normalized()   ) //(!) bug + mem. leak
 
 GISMO_SHORTCUT_PHY_EXPRESSION(igrad, grad(u)*jac(G).ginv() ) // transpose() problem ??
 GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u) ) // u is presumed to be defined over G
+
 GISMO_SHORTCUT_PHY_EXPRESSION( ijac, jac(u) * jac(G).ginv())
-GISMO_SHORTCUT_PHY_EXPRESSION( idiv, ijac(u,G).trace()    )
+
 GISMO_SHORTCUT_PHY_EXPRESSION(ihess,
 jac(G).ginv().tr()*( hess(u) - summ(igrad(u,G),hess(G)) ) * jac(G).ginv() )
+GISMO_SHORTCUT_VAR_EXPRESSION(ihess, hess(u) )
+
 GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace()   )
+GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )
 
 #else
 
@@ -3026,9 +3031,14 @@ GISMO_SHORTCUT_PHY_EXPRESSION(idiv, ijac(u,G).trace() )
 template<class T> EIGEN_STRONG_INLINE mult_expr<mult_expr<tr_expr<jacGinv_expr<T> >,sub_expr<hess_expr<T>,summ_expr<mult_expr<grad_expr<T>, jacGinv_expr<T>, 0>, hess_expr<T> > >, 0>, jacGinv_expr<T>, 1>
 GISMO_SHORTCUT_PHY_EXPRESSION(ihess, jac(G).ginv().tr()*(hess(u)-summ(igrad(u,G),hess(G)))*jac(G).ginv() )
 
-//#define ilapl(u,G) ihess(u,G).trace()
+template<class T> EIGEN_STRONG_INLINE hess_expr<T>
+GISMO_SHORTCUT_VAR_EXPRESSION(ihess, hess(u) )
+
 template<class T> EIGEN_STRONG_INLINE trace_expr< mult_expr<mult_expr<tr_expr<jacGinv_expr<T> >, sub_expr<hess_expr<T>, summ_expr<mult_expr<grad_expr<T>, jacGinv_expr<T>, 0>, hess_expr<T> > >, 0>, jacGinv_expr<T>, 1> >
 GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace() )
+
+template<class T> EIGEN_STRONG_INLINE trace_expr<hess_expr<T> >
+GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )
 
 #endif
 #undef GISMO_SHORTCUT_PHY_EXPRESSION

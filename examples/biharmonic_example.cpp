@@ -92,8 +92,8 @@ int main(int argc, char *argv[])
     real_t errorH2 = math::sqrt(errorH2Semi*errorH2Semi + errorH1Semi*errorH1Semi + errorL2*errorL2);
 
     gsInfo << "The L2 error of the solution is : " << errorL2 << "\n";
-    gsInfo << "The H1 error of the solution is : " << errorH1Semi << "\n";
-    gsInfo << "The H2 error of the solution is : " << errorH2Semi << "\n";
+    gsInfo << "The H1 error of the solution is : " << errorH1 << "\n";
+    gsInfo << "The H2 error of the solution is : " << errorH2 << "\n";
 
     // Plot solution in paraview
     if (plot)
