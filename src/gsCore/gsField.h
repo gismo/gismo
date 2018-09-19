@@ -214,6 +214,9 @@ public:
         return *static_cast<const gsMultiPatch<T>*>(m_patches);
     }
 
+    /// Returns the fields (defined per patch)
+    const gsFunctionSet<T> & fields() const { return *m_fields; }
+
     /// Returns the gsGeometry of patch \a i.
     const gsGeometry<T> & patch(int i=0) const
     {

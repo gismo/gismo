@@ -82,6 +82,9 @@ public:
     /// The number of lastly computed values
     size_t nValues() const { return m_elWise.size(); }
 
+    /// Returns an std::vector containing the last computed values per element.
+    const std::vector<T> & elementwise() const { return m_elWise; }
+
     /// Returns a vector containing the last computed values per element.
     gsAsConstVector<T> allValues() const { return gsAsConstVector<T>(m_elWise); }
 
