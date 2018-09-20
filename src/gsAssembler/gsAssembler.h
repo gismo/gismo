@@ -241,12 +241,8 @@ void transformDeriv2Hgrad(const gsMapData<T> & md,
 
     // Second part: sum_i[  J^-T H(G_i) J^-1 ( e_i^T J^-T grad(u) ) ]
     const gsAsConstMatrix<T, -1, -1>  & secDer = md.deriv2(k);
-#ifndef _MSC_VER
-    gsMatrix<T> DDG[GeoDim]; // Each matrix is the Hessian of a component of the Geometry
-#else
-    gsMatrix<T>* DDG = new gsMatrix<T>[GeoDim];
-#endif
-    secDerToTensor<T>(secDer.col(0), DDG, ParDim, GeoDim);
+    std::vector<gsMatrix<T> > DDG(GeoDim);
+    secDerToTensor<T>(secDer.col(0), DDG.data(), ParDim, GeoDim);
     gsMatrix<T> HGT(GeoDim, fisSecDirSize);
     for (int i = 0; i < GeoDim; ++i)
         hessianToSecDer<T>(JM1 * DDG[i] * JMT, HGT.row(i), GeoDim);
@@ -255,9 +251,6 @@ void transformDeriv2Hgrad(const gsMapData<T> & md,
     const gsAsConstMatrix<T> grads_k(funcGrad.col(k).data(), ParDim, numGrads);
     result.noalias() -= grads_k.transpose() * JMT * HGT;
     // 1 x d * d x d * d x d * d * s -> 1 x s
-#ifdef _MSC_VER
-    delete[] DDG;
-#endif
 }
 
 /** @brief The assembler class provides generic routines for volume
