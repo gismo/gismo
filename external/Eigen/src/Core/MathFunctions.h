@@ -12,7 +12,7 @@
 
 // source: http://www.geom.uiuc.edu/~huberty/math5337/groupe/digits.html
 // TODO this should better be moved to NumTraits
-#define EIGEN_PI 3.141592653589793238462643383279502884197169399375105820974944592307816406 // G+Smo
+#define EIGEN_PI 3.141592653589793238462643383279502884197169399375105820974944592307816406L
 
 
 namespace Eigen {
@@ -37,7 +37,7 @@ namespace internal {
   * - otherwise, global_math_functions_filtering_base<T>::type is a typedef for T.
   *
   * How it's used:
-  * To allow one to defined the global math functions (like sin...) in certain cases, like the Array expressions.
+  * To allow to defined the global math functions (like sin...) in certain cases, like the Array expressions.
   * When you do sin(array1+array2), the object array1+array2 has a complicated expression type, all what you want to know
   * is that it inherits ArrayBase. So we implement a partial specialization of sin_impl for ArrayBase<Derived>.
   * So we must make sure to use sin_impl<ArrayBase<Derived> > and not sin_impl<Derived>, otherwise our partial specialization
@@ -348,31 +348,7 @@ struct norm1_retval
 * Implementation of hypot                                                *
 ****************************************************************************/
 
-template<typename Scalar>
-struct hypot_impl
-{
-  typedef typename NumTraits<Scalar>::Real RealScalar;
-  static inline RealScalar run(const Scalar& x, const Scalar& y)
-  {
-    EIGEN_USING_STD_MATH(abs);
-    EIGEN_USING_STD_MATH(sqrt);
-    RealScalar _x = abs(x);
-    RealScalar _y = abs(y);
-    Scalar p, qp;
-    if(_x>_y)
-    {
-      p = _x;
-      qp = _y / p;
-    }
-    else
-    {
-      p = _y;
-      qp = _x / p;
-    }
-    if(p==RealScalar(0)) return RealScalar(0);
-    return p * sqrt(RealScalar(1) + qp*qp);
-  }
-};
+template<typename Scalar> struct hypot_impl;
 
 template<typename Scalar>
 struct hypot_retval
@@ -495,7 +471,7 @@ namespace std_fallback {
     typedef typename NumTraits<Scalar>::Real RealScalar;
     EIGEN_USING_STD_MATH(log);
     Scalar x1p = RealScalar(1) + x;
-    return ( x1p == Scalar(1) ) ? x : x * ( log(x1p) / (x1p - RealScalar(1)) );
+    return numext::equal_strict(x1p, Scalar(1)) ? x : x * ( log(x1p) / (x1p - RealScalar(1)) );
   }
 }
 

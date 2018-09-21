@@ -93,7 +93,7 @@ struct linspaced_op_impl<Scalar,Packet,/*IsInteger*/true>
     m_low(low),
     m_multiplier((high-low)/convert_index<Scalar>(num_steps<=1 ? 1 : num_steps-1)),
     m_divisor(convert_index<Scalar>((high>=low?num_steps:-num_steps)+(high-low))/((numext::abs(high-low)+1)==0?1:(numext::abs(high-low)+1))),
-      m_use_divisor(num_steps>1 && (numext::abs(high-low)+1)<static_cast<Scalar>(num_steps)) //G+Smo
+    m_use_divisor(num_steps>1 && (numext::abs(high-low)+1)<num_steps)
   {}
 
   template<typename IndexType>

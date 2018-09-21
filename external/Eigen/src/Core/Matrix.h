@@ -391,7 +391,7 @@ class Matrix
     EIGEN_DEVICE_FUNC
     Matrix& operator=(const RotationBase<OtherDerived,ColsAtCompileTime>& r);
 
-    // allow one to extend Matrix outside Eigen
+    // allow to extend Matrix outside Eigen
     #ifdef EIGEN_MATRIX_PLUGIN
     #include EIGEN_MATRIX_PLUGIN
     #endif

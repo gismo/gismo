@@ -154,7 +154,7 @@ template<typename MatrixType, unsigned int _Mode> class SparseSelfAdjointView
       EIGEN_ONLY_USED_FOR_DEBUG(rows);
       EIGEN_ONLY_USED_FOR_DEBUG(cols);
       eigen_assert(rows == this->rows() && cols == this->cols()
-                && "SparseSelfadjointView::resize() does not actually allow one to resize.");
+                && "SparseSelfadjointView::resize() does not actually allow to resize.");
     }
     
   protected:
@@ -311,7 +311,7 @@ inline void sparse_selfadjoint_time_dense_product(const SparseLhsType& lhs, cons
         while (i && i.index()<j) ++i;
         if(i && i.index()==j)
         {
-          res(j,k) += alpha * i.value() * rhs(j,k);
+          res.coeffRef(j,k) += alpha * i.value() * rhs.coeff(j,k);
           ++i;
         }
       }
@@ -324,14 +324,14 @@ inline void sparse_selfadjoint_time_dense_product(const SparseLhsType& lhs, cons
       {
         LhsScalar lhs_ij = i.value();
         if(!LhsIsRowMajor) lhs_ij = numext::conj(lhs_ij);
-        res_j += lhs_ij * rhs(i.index(),k);
+        res_j += lhs_ij * rhs.coeff(i.index(),k);
         res(i.index(),k) += numext::conj(lhs_ij) * rhs_j;
       }
-      res(j,k) += alpha * res_j;
+      res.coeffRef(j,k) += alpha * res_j;
 
       // handle diagonal coeff
       if (ProcessFirstHalf && i && (i.index()==j))
-        res(j,k) += alpha * i.value() * rhs(j,k);
+        res.coeffRef(j,k) += alpha * i.value() * rhs.coeff(j,k);
     }
   }
 }

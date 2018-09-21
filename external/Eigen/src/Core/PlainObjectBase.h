@@ -577,6 +577,10 @@ class PlainObjectBase : public internal::dense_xpr_base<Derived>::type
       * while the AlignedMap() functions return aligned Map objects and thus should be called only with 16-byte-aligned
       * \a data pointers.
       *
+      * Here is an example using strides:
+      * \include Matrix_Map_stride.cpp
+      * Output: \verbinclude Matrix_Map_stride.out
+      *
       * \see class Map
       */
     //@{
@@ -724,7 +728,7 @@ class PlainObjectBase : public internal::dense_xpr_base<Derived>::type
       // and lazyAssign will be called by the assign selector.
       //_resize_to_match(other);
       // the 'false' below means to enforce lazy evaluation. We don't use lazyAssign() because
-      // it wouldn't allow one to copy a row-vector into a column-vector.
+      // it wouldn't allow to copy a row-vector into a column-vector.
       internal::call_assignment_no_alias(this->derived(), other.derived(), internal::assign_op<Scalar,typename OtherDerived::Scalar>());
       return this->derived();
     }
