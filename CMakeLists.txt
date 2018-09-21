@@ -374,3 +374,6 @@ if(DEFINED GISMO_UNSUPPORTED)
   gismo_fetch_module(unsupported)
   gismo_fetch_module(motor)
 endif()
+
+unset(GISMO_UNAME CACHE)
+unset(GISMO_PASS CACHE)
