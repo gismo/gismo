@@ -377,3 +377,18 @@ endif()
 
 unset(GISMO_UNAME CACHE)
 unset(GISMO_PASS CACHE)
+
+# potentially change the dashboard site/location
+if(TEST_DROP_SITE OR TEST_DROP_LOCATION OR TEST_PROJECT_NAME)
+if(NOT TEST_PROJECT_NAME)
+  set(TEST_PROJECT_NAME "Gismo-stable" CACHE INTERNAL "CTest project name")
+endif()
+if(NOT TEST_DROP_SITE)
+  set(TEST_DROP_SITE "cdash.ricam.oeaw.ac.at" CACHE INTERNAL "CTest drop site")
+endif()
+if(NOT TEST_DROP_LOCATION)
+  set(TEST_DROP_LOCATION "/submit.php?project=Gismo-stable"  CACHE INTERNAL "CTest drop location")
+endif()
+configure_file ("${PROJECT_SOURCE_DIR}/cmake/CTestConfig.cmake.in"
+  "${PROJECT_SOURCE_DIR}/CTestConfig.cmake" )
+endif()
