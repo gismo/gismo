@@ -2,8 +2,8 @@
 ## ctest_script.txt
 ## This file is part of the G+Smo library.
 ## https://raw.githubusercontent.com/gismo/gismo/stable/cmake/ctest_script.cmake
-## 
-## Author: Angelos Mantzaflaris 
+##
+## Author: Angelos Mantzaflaris
 ## Copyright (C) 2012-2018
 ######################################################################
 
@@ -47,10 +47,14 @@
 ## #################################################################
 
 # Test model (Nightly, Continuous, Experimental)
-set(CTEST_TEST_MODEL Experimental)
+if (NOT DEFINED CTEST_TEST_MODEL)
+  set(CTEST_TEST_MODEL Experimental)
+endif()
 
 # Configuration type (Debug Release RelWithDebInfo MinSizeRel)
+if (NOT DEFINED CTEST_CONFIGURATION_TYPE)
 set(CTEST_CONFIGURATION_TYPE Release)
+endif()
 
 # Number of jobs for build/test
 #set(CTEST_BUILD_JOBS 8)
@@ -60,23 +64,31 @@ set(CTEST_CONFIGURATION_TYPE Release)
 # ("Unix Makefiles", "Ninja", "Xcode", "NMake Makefiles", "NMake Makefiles JOM",
 #  "MinGW Makefiles", "Visual Studio 12 2013", "Visual Studio 14 2015",
 #  "Visual Studio 14 2015 Win64", and so on)
+if (NOT DEFINED CTEST_CMAKE_GENERATOR)
 set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
+endif()
 
 # Tip fot C/C++ compilers
 # e.g. "cc/g++", "icc/icpc", "clang/clang++", "mpicc/mpic++"
 set(CNAME cc)
 set(CXXNAME g++)
 
+if (NOT DEFINED CTEST_TEST_TIMEOUT)
 # Test timeout in seconds
 set(CTEST_TEST_TIMEOUT 200)
+endif()
 
 # Dynamic analysis
 #Valgrind, Purify, BoundsChecker. ThreadSanitizer, AddressSanitizer,
 #LeakSanitizer, MemorySanitizer, and UndefinedBehaviorSanitizer.
+if (NOT DEFINED CTEST_MEMORYCHECK_TYPE)
 set(CTEST_MEMORYCHECK_TYPE "None")
+endif()
 
 # Coverage analysis
+if (NOT DEFINED DO_COVERAGE)
 set(test_coverage FALSE)
+endif()
 
 # The above parameters can be reset by passing upto 9 arguments
 # e.g. as: ctest -S ctest_script.cmake,"Experimental;Release;8;Ninja"
@@ -145,7 +157,7 @@ set(gismo_build_options
     -DGISMO_BUILD_PCH=OFF
     #-DGISMO_PLAINDOX=ON
 )
-  
+
 # Source folder (defaults inside the script directory)
 set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_src)
 
