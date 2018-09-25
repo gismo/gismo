@@ -162,6 +162,7 @@ bool gsFileData<T>::read(String const & fn)
     if ( m_lastPath.empty() )
     {
         gsWarn<<"gsFileData: Problem with file "<<fn<<": File not found.\n";
+        gsWarn<<"search paths: "<< gsFileManager::getSearchPaths()<<"\n";
         return false;
     }
 
