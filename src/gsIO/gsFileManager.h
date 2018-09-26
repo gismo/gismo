@@ -39,10 +39,10 @@ public:
     static bool isRelative(const std::string& fn);
 
     /// Set the search paths
-    static void setSearchPaths(const std::string& paths);
+    static bool setSearchPaths(const std::string& paths);
 
     /// Add more search paths
-    static void addSearchPaths(const std::string& paths);
+    static bool addSearchPaths(const std::string& paths);
 
     /// Get the defined search path
     static std::string getSearchPaths();
@@ -59,9 +59,12 @@ public:
     ///
     /// In any case, slashes are replaced by the native path separator.
     static std::string find(std::string fn);
-    
+
     /// Checks if the file exists (also in the search paths)
     static bool fileExists(const std::string& name);
+
+    /// Checks if the directory named \a path exists
+    static bool dirExists(const std::string& path);
 
     /// \brief Find a file in GISMO_DATA_DIR
     ///
@@ -73,10 +76,10 @@ public:
     ///
     /// In any case, slashes are replaced by the native path separator.
     static std::string findInDataDir(std::string fn);
-    
+
     /// Checks if the file exists in GISMO_DATA_DIR
     static bool fileExistsInDataDir(const std::string& name);
-    
+
     /// \brief Auto-detect temp directory
     static std::string getTempPath();
 
