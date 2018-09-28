@@ -21,6 +21,9 @@
 #if defined _WIN32
 #include <windows.h>
 #include <direct.h>
+#ifdef __MINGW32__
+#include <sys/stat.h>
+#endif
 #else
 #include <sys/stat.h>
 #include <dlfcn.h>

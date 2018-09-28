@@ -380,7 +380,8 @@ unset(GISMO_PASS CACHE)
 
 # potentially change the dashboard site/location
 if(TEST_DROP_SITE OR TEST_DROP_LOCATION OR TEST_PROJECT_NAME)
-if(NOT TEST_PROJECT_NAME)
+  message(STATUS "Using custom dashboard")
+  if(NOT TEST_PROJECT_NAME)
   set(TEST_PROJECT_NAME "Gismo-stable" CACHE INTERNAL "CTest project name")
 endif()
 if(NOT TEST_DROP_SITE)

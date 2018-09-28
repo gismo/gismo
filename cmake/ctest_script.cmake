@@ -159,13 +159,19 @@ set(gismo_build_options
 )
 
 # Source folder (defaults inside the script directory)
+if(NOT DEFINED CTEST_SOURCE_DIRECTORY)
 set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_src)
+endif()
 
 # Build folder (defaults inside the script directory)
+if(NOT DEFINED CTEST_BINARY_DIRECTORY)
 set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/build_${CTEST_TEST_MODEL}${CTEST_CONFIGURATION_TYPE}_${CXXNAME})
+endif()
 
 # Empty previous directory before building (otherwise builds are incremental)
-#ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
+if(EMPTY_BINARY_DIRECTORY)
+  ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
+endif()
 
 # Cleanup previous tests, settings and test data
 file(REMOVE_RECURSE ${CTEST_BINARY_DIRECTORY}/bin)
@@ -315,9 +321,17 @@ if(${CTEST_CMAKE_GENERATOR} MATCHES "Unix Makefiles"
 #message("Build flags: ${CTEST_BUILD_FLAGS}")
 endif()
 
+set(ENV{CTEST_USE_LAUNCHERS_DEFAULT} 1)
+
 macro(run_ctests)
+
   ctest_configure(OPTIONS "${gismo_build_options};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT})")
   ctest_submit(PARTS Configure Update)
+
+  #if("${CMAKE_VERSION}" VERSION_LESS "3.10" AND NOT "x${CTEST_LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
+  #foreach(subproject ${CTEST_LABELS_FOR_SUBPROJECTS})
+  #else() # CMake 3.10
+
   ctest_build(TARGET gsUnitTest APPEND) # for older versions of ninja
   ctest_submit(PARTS Build)
   ctest_build(APPEND)
@@ -338,6 +352,8 @@ macro(run_ctests)
     ctest_memcheck()
     ctest_submit(PARTS MemCheck)
   endif()
+
+  #endif()
 endmacro(run_ctests)
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
