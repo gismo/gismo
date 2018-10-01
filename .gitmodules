@@ -1,9 +1,6 @@
 [submodule "extensions/gsUnitTest"]
 	path = extensions/gsUnitTest
 	url = https://github.com/gismo/gsUnitTest
-[submodule "extensions/unsupported"]
-	path = extensions/unsupported
-	url = https://github.com/gismo/unsupported.git
 [submodule "extensions/motor"]
 	path = extensions/motor
 	url = https://github.com/gismo/motor.git
