@@ -1,3 +1,5 @@
 [submodule "extensions/gsUnitTest"]
 	path = extensions/gsUnitTest
 	url = https://github.com/gismo/gsUnitTest
+	url = https://github.com/gismo/unsupported
+	url = https://github.com/gismo/motor
