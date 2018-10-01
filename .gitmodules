@@ -5,5 +5,5 @@
 	path = extensions/motor
 	url = git@github.com:gismo/motor.git
 [submodule "unsupported"]
-	path = unsupported
+	path = extensions/unsupported
 	url = git@github.com:gismo/unsupported.git
