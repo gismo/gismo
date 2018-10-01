@@ -370,7 +370,7 @@ if (NOT gismo_optionals STREQUAL "")
   message(STATUS "Optional compile list: ${gismo_optionals}")
 endif()
 
-if(DEFINED GISMO_UNSUPPORTED)
+if(GISMO_UNSUPPORTED)
   gismo_fetch_module(unsupported)
   gismo_fetch_module(motor)
 endif()
