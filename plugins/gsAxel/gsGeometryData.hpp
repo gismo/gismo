@@ -450,7 +450,7 @@ void gsGeometryData<axlObj>::updateControlGrid()
 
         // Pass it to axel
         for (typename std::vector< gismo::gsEdge<double> >::const_iterator 
-                 it=msh.edge.begin(); it!=msh.edge.end(); ++it)
+                 it=msh.edges().begin(); it!=msh.edges().end(); ++it)
         {    
             this->defineControlPointConnection( it->source->getId(), it->target->getId() );
         }
