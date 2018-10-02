@@ -586,7 +586,7 @@ public:
     int parDim() const { return dim; }   
 
     /// Number of patches    
-    int nPatches() const { return this->size(); } 
+    index_t nPatches() const { return this->size(); }
 
     void addPatch( gsMatrix<T>* c) 
     { 
