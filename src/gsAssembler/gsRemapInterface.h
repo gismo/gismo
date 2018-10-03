@@ -52,7 +52,7 @@ public:
                                                                                                                 m_b1(basis[bi.first().patch]),
                                                                                                                 m_b2(basis[bi.second().patch])// in most cases they are just the other way around
     {
-
+        //gsInfo << "patches: " << bi.first().patch << " and " << bi.second().patch << "\n";
         m_isMatching = checkIfMatching();
 
         if(domainDim() == 3)
@@ -280,6 +280,10 @@ public:
         if(!m_isMatching)
             constructBreaks();
     }
+
+    // methods for IETIAssembler to compute the faceaverages
+    bool isMatching() const { return m_isMatching; }
+    const gsMatrix<T> & breakPoints() const { return m_breakpoints; }
 
 private:
     // flag if the interfaces are matching
@@ -1297,6 +1301,7 @@ template<class T>
 bool gsRemapInterface<T>::checkIfMatching()
 {
     int sameCorners = 0;
+
     for(int i = 1; i <= 1<<domainDim(); i++)
     {
         gsMatrix<T> c1 = m_g1.coefAtCorner(i).transpose();
@@ -1304,7 +1309,6 @@ bool gsRemapInterface<T>::checkIfMatching()
         for(int j = 1; j <= 1<<domainDim(); j++)
         {
             gsMatrix<T> c2 = m_g2.coefAtCorner(j).transpose();
-
             if(((c1-c2).squaredNorm() < 1.e-6))
                 sameCorners++;
         }
