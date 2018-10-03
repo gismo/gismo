@@ -21,20 +21,15 @@
 ##
 ## or even -VV.
 ##
-## Set execution options in the Configuration part.
-## For multiple tests (eg. different compilers) make multiple copies
-## of this file and adjust options. Few options can be passed by arguments:
+## Options can be passed by arguments (default options are displayed here):
 ##
-## ctest -S ctest_script.cmake,"Experimental;Release;8;Ninja;cc;g++;180;Valgrind"
+## ctest -S ctest_script.cmake -D CTEST_TEST_MODEL=Experimental -D CTEST_CONFIGURATION_TYPE=Release -D CTEST_BUILD_JOBS=8 -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=gcc -D CXXNAME=g++ -D CTEST_TEST_TIMEOUT=100 -D CTEST_MEMORYCHECK_TYPE=Valgrind -D test_coverage=TRUE
 ##
-## ctest -S ctest_script.cmake,"Nightly;Debug;8;Ninja;cc;g++;180;"";1"
-##
-## ctest -S ctest_script.cmake,"Nightly;RelWithDebInfo;8;Ninja;clang;clang++;180;"AddressSanitizer";0"
 ##
 ## On linux this script can be invoked in a cronjob. e.g.:
 ##    $ crontab -e
 ## Add the line:
-##    0 3 * * * ctest -S /path/toctest_script.cmake,"Nightly" -Q
+##    0 3 * * * ctest -S /path/toctest_script.cmake -D CTEST_TEST_MODEL=Nightly -Q
 ## save and exit. Now with
 ##    $ crontab -l
 ## you can see the scheduled task. The script will
@@ -141,7 +136,8 @@ set(ENV{CXX}  ${CXX})
 #set(ENV{MAKEFLAGS} "-j12")
 
 # Build options
-set(gismo_build_options
+if(NOT DEFINED CMAKE_ARGS)
+  set(CMAKE_ARGS
     -DGISMO_WARNINGS=OFF
     -DGISMO_COEFF_TYPE=double
     -DGISMO_BUILD_LIB=ON
@@ -160,7 +156,8 @@ set(gismo_build_options
     -DGISMO_EXTRA_DEBUG=OFF
     -DGISMO_BUILD_PCH=OFF
     #-DGISMO_PLAINDOX=ON
-)
+    )
+endif()
 
 # Source folder (defaults inside the script directory)
 if(NOT DEFINED CTEST_SOURCE_DIRECTORY)
@@ -349,36 +346,61 @@ macro(run_ctests)
   endif()
   set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS})
 
-  ctest_configure(OPTIONS "${gismo_build_options};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT})")
+  ctest_configure(OPTIONS "${CMAKE_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT})")
 
   ctest_submit(PARTS Configure Update)
 
-  #if("${CMAKE_VERSION}" VERSION_LESS "3.10" AND NOT "x${CTEST_LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
-  #foreach(subproject ${CTEST_LABELS_FOR_SUBPROJECTS})
-  #else() # CMake 3.10
+  #"${CMAKE_VERSION}" VERSION_LESS "3.10"
+  if(NOT "x${CTEST_LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
 
-  ctest_build(TARGET gsUnitTest APPEND) # for older versions of ninja
-  ctest_submit(PARTS Build)
-  ctest_build(APPEND)
-  ctest_submit(PARTS Build)
-  ctest_build(TARGET unittests APPEND)
-  ctest_submit(PARTS Build)
-  ctest_test(PARALLEL_LEVEL ${CTEST_TEST_JOBS})
-  ctest_submit(PARTS Test)
+    foreach(subproject ${CTEST_LABELS_FOR_SUBPROJECTS})
+      set_property(GLOBAL PROPERTY SubProject ${subproject}) #cdash subproject
+      set_property(GLOBAL PROPERTY Label ${subproject})      #test selection
+      ctest_build(TARGET ${subproject} APPEND)
+      ctest_submit(PARTS Build)
+      if ("${subproject}" STREQUAL "gismo")
+        ctest_build(TARGET doc-snippets APPEND)
+        ctest_submit(PARTS Build)
+      endif()
+      ctest_test(INCLUDE_LABEL "${subproject}" PARALLEL_LEVEL ${CTEST_TEST_JOBS})
+      ctest_submit(PARTS Test)
 
-  if(test_coverage)
-     #message("Running coverage..")
-     ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" APPEND)
-     ctest_submit(PARTS Coverage)
+      if(test_coverage)
+        ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" LABELS "${subproject}" APPEND)
+        ctest_submit(PARTS Coverage)
+      endif()
+
+      if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
+        ctest_memcheck(INCLUDE_LABEL "${subproject}" APPEND)
+        ctest_submit(PARTS MemCheck)
+      endif()
+
+    endforeach()
+
+  else() # No subprojects
+
+    ctest_build(TARGET gsUnitTest APPEND) # for older versions of ninja
+    ctest_submit(PARTS Build)
+    ctest_build(APPEND)
+    ctest_submit(PARTS Build)
+    ctest_build(TARGET unittests APPEND)
+    ctest_submit(PARTS Build)
+    ctest_test(PARALLEL_LEVEL ${CTEST_TEST_JOBS})
+    ctest_submit(PARTS Test)
+
+    if(test_coverage)
+      #message("Running coverage..")
+      ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" APPEND)
+      ctest_submit(PARTS Coverage)
+    endif()
+
+    if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
+      #message("Running memcheck..")
+      ctest_memcheck()
+      ctest_submit(PARTS MemCheck)
+    endif()
+
   endif()
-
-  if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
-    #message("Running memcheck..")
-    ctest_memcheck()
-    ctest_submit(PARTS MemCheck)
-  endif()
-
-  #endif()
 endmacro(run_ctests)
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
@@ -387,9 +409,9 @@ ctest_start(${CTEST_TEST_MODEL})
 
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
-#if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
-#  ctest_update()
-#endif()
+if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
+  ctest_update()
+endif()
 
 run_ctests()
 
