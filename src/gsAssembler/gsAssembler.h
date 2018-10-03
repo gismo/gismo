@@ -732,8 +732,8 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
     gsMatrix<T> quNodes1, quNodes2;// Mapped nodes
     gsVector<T> quWeights;         // Mapped weights
 
-    const int bSize1      = B1.numElements( bi.first() .side() );
-    const int bSize2      = B2.numElements( bi.second().side() );
+    // const int bSize1      = B1.numElements( bi.first() .side() );
+    // const int bSize2      = B2.numElements( bi.second().side() );
     //const int ratio = bSize1 / bSize2;
     //GISMO_ASSERT(bSize1 >= bSize2 && bSize1%bSize2==0,
     //             "DG assumes nested interfaces. Got bSize1="<<
@@ -761,20 +761,20 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
         // Compute the quadrature rule on both sides
         //gsInfo << "lower: " << domIt->lowerCorner() << "\n";
         //gsInfo << "upper: " << domIt->upperCorner() << "\n";
-        QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes1, quWeights);
+        quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes1, quWeights);
         interfaceMap.eval_into(quNodes1,quNodes2);
         //gsInfo << "qunodes 1: " << quNodes1 << "\n";
         //gsInfo << "qunodes 2: " << quNodes2 << "\n";
         //gsInfo << "qunodes 2 evaluated: " << m_pde_ptr->patches()[patch2].eval(quNodes2) << "\n";
 
         // Perform required evaluations on the quadrature nodes
-        visitor.evaluate(B1, *geoEval1, B2, *geoEval2, quNodes1, quNodes2);
+        visitor.evaluate(B1, patch1, B2, patch2, quNodes1, quNodes2);
 
         // Assemble on element
-        visitor.assemble(*domIt,*domIt, *geoEval1, *geoEval2, quWeights);
+        visitor.assemble(*domIt,*domIt, quWeights);
 
         // Push to global patch matrix (m_rhs is filled in place)
-        visitor.localToGlobal(patch1, patch2, m_ddof, m_system);
+        visitor.localToGlobal(patchIndex1, patchIndex2, m_ddof, m_system);
     }
 
 /*
