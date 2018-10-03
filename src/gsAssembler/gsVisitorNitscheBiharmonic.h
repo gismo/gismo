@@ -44,50 +44,49 @@ public:
     { }
 
     void initialize(const gsBasis<T> & basis, 
-                    gsQuadRule<T>    & rule,
-                    unsigned         & evFlags  )
+                    gsQuadRule<T>    & rule)
     {
         const int dir = side.direction();
-        gsVector<int> numQuadNodes ( basis.dim() );
+        gsVector<int> numQuadNodes(basis.dim());
         for (int i = 0; i < basis.dim(); ++i)
-            numQuadNodes[i]   = basis.degree(i) + 1;
-            numQuadNodes[dir] = 1;
-        
+            numQuadNodes[i] = basis.degree(i) + 1;
+        numQuadNodes[dir] = 1;
+
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
     }
 
     // Evaluate on element.
-    inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
-                         gsGeometryEvaluator<T> & geoEval,
+    inline void evaluate(const gsBasis<T>    & basis, // to do: more unknowns
+                         const gsGeometry<T> & geo,
                          // todo: add element here for efficiency
-                         gsMatrix<T>            & quNodes)
+                         gsMatrix<T>         & quNodes)
     {
+        md.points = quNodes;
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the current element
-        basis.active_into(quNodes.col(0) , actives);
+        basis.active_into(md.points.col(0), actives);
         const index_t numActive = actives.rows();
 
         // Evaluate basis values and derivatives on element
-        basis.evalAllDers_into( quNodes, 2, basisData);
+        basis.evalAllDers_into(md.points, 2, basisData);
 
         // Compute geometry related values
-        geoEval.evaluateAt(quNodes);
+        geo.computeMap(md);
 
         // Evaluate the Dirichlet data
-        dirdata_ptr->eval_into(geoEval.values(), dirData);
+        dirdata_ptr->eval_into(md.values[0], dirData);
 
         // Initialize local matrix/rhs
         localMat.setZero(numActive, numActive);
-        localRhs.setZero(numActive, dirdata_ptr->targetDim() );
+        localRhs.setZero(numActive, dirdata_ptr->targetDim());
     }
 
-    inline void assemble(gsDomainIterator<T>    & element, 
-                         gsGeometryEvaluator<T> & geoEval,
-                         gsVector<T> const      & quWeights)
+    inline void assemble(gsDomainIterator<T> & element,
+                         const gsVector<T>   & quWeights)
     {
         const unsigned d = element.dim();
 
@@ -95,38 +94,37 @@ public:
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
+            //const typename gsMatrix<T>::Block basisVals  = basisData.topRows(numActive);
+            const typename gsMatrix<T>::Block basisGrads =
+                basisData.middleRows(numActive, numActive * d);
+            const typename gsMatrix<T>::Block basis2ndDerivs =
+                basisData.bottomRows(numActive * (d * (d + 1)) / 2);
 
-        //const typename gsMatrix<T>::Block basisVals  = basisData.topRows(numActive);
-        const typename gsMatrix<T>::Block basisGrads =
-            basisData.middleRows( numActive, numActive * d );
-        const typename gsMatrix<T>::Block basis2ndDerivs =
-            basisData.bottomRows( numActive * (d * (d+1 ))/2 );            
+            // Compute the outer normal vector on the side
+            outerNormal(md, k, side, unormal);
 
-        // Compute the outer normal vector on the side
-        geoEval.outerNormal(k, side, unormal);
+            // Multiply quadrature weight by the geometry measure
+            const T weight = quWeights[k] * unormal.norm();
 
-        // Multiply quadrature weight by the geometry measure
-        const T weight = quWeights[k] *unormal.norm();   
+            // Compute the unit normal vector : Dim x 1
+            unormal.normalize();
 
-        // Compute the unit normal vector : Dim x 1
-        unormal.normalize();
-        
-        // Compute physical gradients at k as a Dim x NumActive matrix
-        geoEval.transformGradients   (k, basisGrads, physBasisGrads);
-        // Compute physical laplacian at k as a 1 x numActive matrix
-        geoEval.transformLaplaceHgrad(k, basisGrads, basis2ndDerivs, physBasisLaplace);
-        
-        // Get penalty parameter
-        const T h = element.getCellSize();
-        const T mu = penalty / (0!=h?h:1);
+            // Compute physical gradients at k as a Dim x NumActive matrix
+            transformGradients(md, k, basisGrads, physBasisGrads);
+            // Compute physical laplacian at k as a 1 x numActive matrix
+            transformLaplaceHgrad(md, k, basisGrads, basis2ndDerivs, physBasisLaplace);
 
-        // Sum up quadrature point evaluations
-        localRhs.noalias() += weight * (( physBasisLaplace.transpose() + mu * physBasisGrads.transpose() * unormal )
-                                        * dirData.col(k).transpose() );
+            // Get penalty parameter
+            const T h = element.getCellSize();
+            const T mu = penalty / (0 != h ? h : 1);
 
-        localMat.noalias() += weight * ( physBasisGrads.transpose() * unormal * physBasisLaplace
-                           +           ( physBasisGrads.transpose() * unormal * physBasisLaplace ).transpose()
-                           -       mu *  physBasisGrads.transpose() * physBasisGrads );
+            // Sum up quadrature point evaluations
+            localRhs.noalias() += weight * ((physBasisLaplace.transpose() + mu * physBasisGrads.transpose() * unormal)
+                * dirData.col(k).transpose());
+
+            localMat.noalias() += weight * (physBasisGrads.transpose() * unormal * physBasisLaplace
+                + (physBasisGrads.transpose() * unormal * physBasisLaplace).transpose()
+                - mu * physBasisGrads.transpose() * physBasisGrads);
         }
     }
     
@@ -180,6 +178,7 @@ private:
     gsMatrix<T> localMat;
     gsMatrix<T> localRhs;
 
+    gsMapData<T> md;
 };
 
 

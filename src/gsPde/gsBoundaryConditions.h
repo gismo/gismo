@@ -40,7 +40,7 @@ struct condition_type
 
 // Print (as string) a boundary type
 inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
-{    
+{
     switch (o)
     {
     case condition_type::dirichlet:
@@ -64,12 +64,12 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
     return os;
 }
 
-/** 
+/**
     @brief Class that defines a boundary condition for a side of a
     patch for some unknown variable of a PDE.
-    
+
     \todo rename to boundaryCondition
-    
+
     \ingroup Pde
 */
 template<class T>
@@ -92,7 +92,7 @@ struct boundary_condition
         else if (m_label == "Robin")     m_type = condition_type::robin;
         else m_type = condition_type::unknownType;
     }
-    
+
     boundary_condition( int p, boxSide s, const function_ptr & f_shptr,
                         condition_type::type t, int unknown, bool parametric)
     : ps(p, s),
@@ -124,10 +124,10 @@ struct boundary_condition
             break;
         };
     }
-    
+
     /// Returns true if there is no function data (homogeneous condition)
     bool isHomogeneous() const { return m_function.get() == NULL; }
-    
+
     /// Returns the function data pointer of the boundary condition
     function_ptr function() const { return m_function; }
 
@@ -139,7 +139,7 @@ struct boundary_condition
 
     /// Returns the type of the boundary condition
     const std::string & ctype() const { return m_label; }
-    
+
     /// Returns the patch to which this boundary condition refers to
     int     patch()    const { return ps.patch; }
 
@@ -168,13 +168,13 @@ struct boundary_condition
     std::string m_label;         ///< Description of type of the boundary condition
 
     int m_unknown;               ///< Unknown to which this boundary condition refers to
-    
+
     int m_unkcomp;               ///< Component of unknown to which this boundary condition refers to
 
     bool m_parametric;
 };
 
-/** 
+/**
     @brief Class prescribing a value related to a corner of a patch
 */
 template<class T>
@@ -191,16 +191,16 @@ struct corner_value
 
 /** @brief
     Class containing a set of  boundary conditions.
-    
+
     The boundary conditions are stored in the form of a list of boundary_condition
     instances.
-    
+
     \ingroup Pde
 */
 template<class T>
-class GISMO_EXPORT gsBoundaryConditions 
+class GISMO_EXPORT gsBoundaryConditions
 {
-    
+
 public:
 
     typedef typename std::deque<boundary_condition<T> > bcContainer;
@@ -239,14 +239,14 @@ public:
         return *this;
     }
     */
-    
+
     void swap(gsBoundaryConditions & other)
     {
         m_bc.swap(other.m_bc);
         corner_values.swap(other.corner_values);
         m_periodicPairs.swap(other.m_periodicPairs);
     }
-    
+
 public:
 
     void clear()
@@ -335,17 +335,17 @@ public:
     /// \return an iterator to the beginning of the Dirichlet sides
     const_iterator dirichletBegin() const
     { return m_bc["Dirichlet"].begin(); }
-    
+
     /// Get a const-iterator to the end of the Dirichlet sides
     /// \return an iterator to the end of the Dirichlet sides
     const_iterator dirichletEnd() const
     { return m_bc["Dirichlet"].end(); }
-    
+
     /// Get an iterator to the beginning of the Dirichlet sides
     /// \return an iterator to the beginning of the Dirichlet sides
     iterator dirichletBegin()
     { return m_bc["Dirichlet"].begin(); }
-    
+
     /// Get an iterator to the end of the Dirichlet sides
     /// \return an iterator to the end of the Dirichlet sides
     iterator dirichletEnd()
@@ -355,17 +355,17 @@ public:
     /// \return an iterator to the beginning of the Neumann sides
     const_iterator neumannBegin() const
     { return m_bc["Neumann"].begin(); }
-    
+
     /// Get a const-iterator to the end of the Neumann sides
     /// \return an iterator to the end of the Neumann sides
     const_iterator neumannEnd() const
     { return m_bc["Neumann"].end(); }
-    
+
     /// Get an iterator to the beginning of the Neumann sides
     /// \return an iterator to the beginning of the Neumann sides
     iterator neumannBegin()
     { return m_bc["Neumann"].begin(); }
-    
+
     /// Get an iterator to the end of the Neumann sides
     /// \return an iterator to the end of the Neumann sides
     iterator neumannEnd()
@@ -375,7 +375,7 @@ public:
     /// \return an iterator to the beginning of the Robin sides
     const_iterator robinBegin() const
     { return m_bc["Robin"].begin(); }
-    
+
     /// Get a const-iterator to the end of the Robin sides
     /// \return an iterator to the end of the Robin sides
     const_iterator robinEnd() const
@@ -385,17 +385,17 @@ public:
     /// \return an iterator to the beginning of the corner values
     const_citerator cornerBegin() const
     { return corner_values.begin(); }
-    
+
     /// Get an iterator to the end of corner values
     /// \return an iterator to the end of the corner values
     const_citerator cornerEnd() const
     { return corner_values.end(); }
-    
+
     /// Get an iterator to the beginning of the Robin sides
     /// \return an iterator to the beginning of the Robin sides
     iterator robinBegin()
     { return m_bc["Robin"].begin(); }
-    
+
     /// Get an iterator to the end of the Robin sides
     /// \return an iterator to the end of the Robin sides
     iterator robinEnd()
@@ -405,7 +405,7 @@ public:
     /// \return an iterator to the beginning of the corner values
     citerator cornerBegin()
     { return corner_values.begin(); }
-    
+
     /// Get an iterator to the end of corner values
     /// \return an iterator to the end of the corner values
     citerator cornerEnd()
@@ -538,10 +538,10 @@ public:
 
      It is the task of the user of this function to check if the
      returned pointer is NULL.
-     
+
      Do not use this function if you want to apply boundary conditions during matrix assembly.
-     Instead, iterate over all conditions of the type you need (eg. Neumann, Dirichlet) 
-     
+     Instead, iterate over all conditions of the type you need (eg. Neumann, Dirichlet)
+
      */
     const boundary_condition<T>* getConditionFromSide (patchSide ps) const
     {
@@ -654,7 +654,7 @@ public:
 
     /// Add a periodic condition between side \a s1 of box \a p1 and side \a s2 of box \a p2.
     void addPeriodic(int p1, boxSide s1, int p2, boxSide s2, int dim)
-    { m_periodicPairs.push_back( boundaryInterface(patchSide(p1,s1), patchSide(p2,s2), dim) ); } 
+    { m_periodicPairs.push_back( boundaryInterface(patchSide(p1,s1), patchSide(p2,s2), dim) ); }
 
     /// Removes all periodic pairs
     void clearPeriodicPairs() { m_periodicPairs.clear(); }
@@ -669,9 +669,9 @@ public:
 
     /// Get transformation matrix for the periodic pairs of sides
     gsMatrix<T> getTransformMatrix() const
-    { 
+    {
         GISMO_ASSERT(m_trMatrix.rows() > 0, "Transformation matrix for periodic conditions not set!");
-        return m_trMatrix; 
+        return m_trMatrix;
     }
 
     // Data members
@@ -695,10 +695,10 @@ private:
 
     ppContainer m_periodicPairs; // TODO: add read from xml
     gsMatrix<T> m_trMatrix;
-      
+
     // Pointer to associated multipatch domain
     //gsMultiPatch<T> * m_patches;
-    
+
 }; // class gsBoundaryConditions
 
 /// Print (as string)
@@ -707,3 +707,7 @@ std::ostream &operator<<(std::ostream &os, const gsBoundaryConditions<T>& bvp)
 {return bvp.print(os); }
 
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsBoundaryConditions.hpp)
+#endif

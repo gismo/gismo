@@ -1,8 +1,8 @@
 ######################################################################
 ## CMakeLists.txt ---
-## This file is part of the G+Smo library. 
+## This file is part of the G+Smo library.
 ##
-## Author: Angelos Mantzaflaris 
+## Author: Angelos Mantzaflaris
 ## Copyright (C) 2012 - 2016 RICAM-Linz.
 ######################################################################
 
@@ -24,7 +24,7 @@ if(GISMO_BUILD_LIB)
 
 if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR
    "x${CMAKE_GENERATOR}" STREQUAL "xXcode")
- set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} 
+ set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES}
      "${gismo_SOURCE_DIR}/src/misc/gsDllMain.cpp")
 endif()
 
@@ -36,11 +36,11 @@ endif()
 
   #generate_export_header(${PROJECT_NAME})
 
-  set_target_properties(${PROJECT_NAME} PROPERTIES 
+  set_target_properties(${PROJECT_NAME} PROPERTIES
   #https://community.kde.org/Policies/Binary_Compatibility_Issues_With_C%2B%2B
   VERSION ${${PROJECT_NAME}_VERSION}
   SOVERSION ${${PROJECT_NAME}_VERSION_MAJOR}
-  PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.h" 
+  PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.h"
   POSITION_INDEPENDENT_CODE ON
   LINKER_LANGUAGE CXX
   #COMPILE_DEFINITIONS ${PROJECT_NAME}_EXPORTS # Used for DLL exporting (defined by default by CMake)
@@ -48,9 +48,12 @@ endif()
   )
 
 if(GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
-    find_package(MPFR REQUIRED)
-    find_package(GMP  REQUIRED)
-    target_link_libraries(${PROJECT_NAME} ${MPFR_LIBRARY};${GMP_LIBRARY};${GMPXX_LIBRARY})
+    find_package(GMP)
+    find_package(MPFR)
+
+    if (GMP_FOUND AND MPFR_FOUND)
+      target_link_libraries(${PROJECT_NAME} ${MPFR_LIBRARY};${GMP_LIBRARY};${GMPXX_LIBRARY})
+    endif()
 endif()
 
 if (GISMO_WITH_SUPERLU)
@@ -87,9 +90,9 @@ endif()
 #    find_package(OpenMP REQUIRED)
 #  endif()
 
-if (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
-  target_link_libraries(${PROJECT_NAME} ${DBGHELP_LIBRARY}) 	
-endif() 
+if (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND)
+  target_link_libraries(${PROJECT_NAME} ${DBGHELP_LIBRARY})
+endif()
 
 if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
     if(CMAKE_CONFIGURATION_TYPES)
@@ -131,9 +134,9 @@ endif(GISMO_BUILD_LIB)
     target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
   endif()
 
-  if (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
-     target_link_libraries(${PROJECT_NAME}_static ${DBGHELP_LIBRARY}) 	
-  ENDIF() 
+  if (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND)
+     target_link_libraries(${PROJECT_NAME}_static ${DBGHELP_LIBRARY})
+  ENDIF()
 
   if (GISMO_GCC_STATIC_LINKAGE)
     target_link_libraries(${PROJECT_NAME}_static -static-libgcc -static-libstdc++)
@@ -170,7 +173,7 @@ set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header 
           PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
 
 if(GISMO_BUILD_LIB)
-  
+
   install(TARGETS ${PROJECT_NAME}
           # IMPORTANT: Add the ${PROJECT_NAME} library to the "export-set"
           EXPORT gismoTargets

@@ -2,8 +2,8 @@
 ## ctest_script.txt
 ## This file is part of the G+Smo library.
 ## https://raw.githubusercontent.com/gismo/gismo/stable/cmake/ctest_script.cmake
-## 
-## Author: Angelos Mantzaflaris 
+##
+## Author: Angelos Mantzaflaris
 ## Copyright (C) 2012-2018
 ######################################################################
 
@@ -21,20 +21,15 @@
 ##
 ## or even -VV.
 ##
-## Set execution options in the Configuration part.
-## For multiple tests (eg. different compilers) make multiple copies
-## of this file and adjust options. Few options can be passed by arguments:
+## Options can be passed by arguments (default options are displayed here):
 ##
-## ctest -S ctest_script.cmake,"Experimental;Release;8;Ninja;cc;g++;180;Valgrind"
+## ctest -S ctest_script.cmake -D CTEST_TEST_MODEL=Experimental -D CTEST_CONFIGURATION_TYPE=Release -D CTEST_BUILD_JOBS=8 -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=gcc -D CXXNAME=g++ -D CTEST_TEST_TIMEOUT=100 -D CTEST_MEMORYCHECK_TYPE=Valgrind -D test_coverage=TRUE
 ##
-## ctest -S ctest_script.cmake,"Nightly;Debug;8;Ninja;cc;g++;180;"";1"
-##
-## ctest -S ctest_script.cmake,"Nightly;RelWithDebInfo;8;Ninja;clang;clang++;180;"AddressSanitizer";0"
 ##
 ## On linux this script can be invoked in a cronjob. e.g.:
 ##    $ crontab -e
 ## Add the line:
-##    0 3 * * * ctest -S /path/toctest_script.cmake,"Nightly" -Q
+##    0 3 * * * ctest -S /path/toctest_script.cmake -D CTEST_TEST_MODEL=Nightly -Q
 ## save and exit. Now with
 ##    $ crontab -l
 ## you can see the scheduled task. The script will
@@ -47,12 +42,16 @@
 ## #################################################################
 
 # Test model (Nightly, Continuous, Experimental)
-set(CTEST_TEST_MODEL Experimental)
+if (NOT DEFINED CTEST_TEST_MODEL)
+  set(CTEST_TEST_MODEL Experimental)
+endif()
 
 # Configuration type (Debug Release RelWithDebInfo MinSizeRel)
+if (NOT DEFINED CTEST_CONFIGURATION_TYPE)
 set(CTEST_CONFIGURATION_TYPE Release)
+endif()
 
-# Number of jobs for build/test
+# Number of jobs for build/test (later on)
 #set(CTEST_BUILD_JOBS 8)
 #set(CTEST_TEST_JOBS 10)
 
@@ -60,23 +59,35 @@ set(CTEST_CONFIGURATION_TYPE Release)
 # ("Unix Makefiles", "Ninja", "Xcode", "NMake Makefiles", "NMake Makefiles JOM",
 #  "MinGW Makefiles", "Visual Studio 12 2013", "Visual Studio 14 2015",
 #  "Visual Studio 14 2015 Win64", and so on)
+if (NOT DEFINED CTEST_CMAKE_GENERATOR)
 set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
+endif()
 
 # Tip fot C/C++ compilers
 # e.g. "cc/g++", "icc/icpc", "clang/clang++", "mpicc/mpic++"
-set(CNAME cc)
-set(CXXNAME g++)
+if (NOT DEFINED CNAME)
+  set(CNAME cc)
+endif()
+if (NOT DEFINED CXXNAME)
+  set(CXXNAME g++)
+endif()
 
+if (NOT DEFINED CTEST_TEST_TIMEOUT)
 # Test timeout in seconds
 set(CTEST_TEST_TIMEOUT 200)
+endif()
 
 # Dynamic analysis
 #Valgrind, Purify, BoundsChecker. ThreadSanitizer, AddressSanitizer,
 #LeakSanitizer, MemorySanitizer, and UndefinedBehaviorSanitizer.
+if (NOT DEFINED CTEST_MEMORYCHECK_TYPE)
 set(CTEST_MEMORYCHECK_TYPE "None")
+endif()
 
 # Coverage analysis
+if (NOT DEFINED DO_COVERAGE)
 set(test_coverage FALSE)
+endif()
 
 # The above parameters can be reset by passing upto 9 arguments
 # e.g. as: ctest -S ctest_script.cmake,"Experimental;Release;8;Ninja"
@@ -125,7 +136,8 @@ set(ENV{CXX}  ${CXX})
 #set(ENV{MAKEFLAGS} "-j12")
 
 # Build options
-set(gismo_build_options
+if(NOT DEFINED CMAKE_ARGS)
+  set(CMAKE_ARGS
     -DGISMO_WARNINGS=OFF
     -DGISMO_COEFF_TYPE=double
     -DGISMO_BUILD_LIB=ON
@@ -144,16 +156,23 @@ set(gismo_build_options
     -DGISMO_EXTRA_DEBUG=OFF
     -DGISMO_BUILD_PCH=OFF
     #-DGISMO_PLAINDOX=ON
-)
-  
+    )
+endif()
+
 # Source folder (defaults inside the script directory)
+if(NOT DEFINED CTEST_SOURCE_DIRECTORY)
 set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_src)
+endif()
 
 # Build folder (defaults inside the script directory)
-set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/build_${CTEST_TEST_MODEL}${CTEST_CONFIGURATION_TYPE}_${CXXNAME})
+if(NOT DEFINED CTEST_BINARY_DIRECTORY)
+set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/build_${CTEST_TEST_MODEL}${CTEST_CONFIGURATION_TYPE}_${CNAME})
+endif()
 
 # Empty previous directory before building (otherwise builds are incremental)
-#ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
+if(EMPTY_BINARY_DIRECTORY)
+  ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
+endif()
 
 # Cleanup previous tests, settings and test data
 file(REMOVE_RECURSE ${CTEST_BINARY_DIRECTORY}/bin)
@@ -207,7 +226,9 @@ if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xUndefinedBehaviorSanitizer")
 endif()
 
 # Update type (git, svn, wget or url)
+if (NOT DEFINED UPDATE_TYPE)
 set(UPDATE_TYPE git)
+endif()
 
 # For continuous builds, number of seconds to stay alive
 set(test_runtime 43200) #12h by default
@@ -275,7 +296,7 @@ if(NOT DEFINED CTEST_BUILD_NAME)
 find_program(UNAME NAMES uname)
 execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname OUTPUT_STRIP_TRAILING_WHITESPACE)
 execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu" OUTPUT_STRIP_TRAILING_WHITESPACE)
-set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CXXNAME}")
+set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CNAME}")
 endif()
 
 if(NOT CTEST_BUILD_JOBS)
@@ -303,28 +324,82 @@ if(${CTEST_CMAKE_GENERATOR} MATCHES "Unix Makefiles"
 #message("Build flags: ${CTEST_BUILD_FLAGS}")
 endif()
 
+set(ENV{CTEST_USE_LAUNCHERS_DEFAULT} 1)
+
 macro(run_ctests)
-  ctest_configure(OPTIONS "${gismo_build_options};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT})")
-  ctest_submit(PARTS Configure Update)
-  ctest_build(TARGET gsUnitTest APPEND) # for older versions of ninja
-  ctest_submit(PARTS Build)
-  ctest_build(APPEND)
-  ctest_submit(PARTS Build)
-  ctest_build(TARGET unittests APPEND)
-  ctest_submit(PARTS Build)
-  ctest_test(PARALLEL_LEVEL ${CTEST_TEST_JOBS})
-  ctest_submit(PARTS Test)
 
-  if(test_coverage)
-     #message("Running coverage..")
-     ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" APPEND)
-     ctest_submit(PARTS Coverage)
+  # Reset CTestConfig variables
+  if(DEFINED PROJECT_NAME)
+    set(CTEST_PROJECT_NAME ${PROJECT_NAME})
+    if(NOT DEFINED DROP_LOCATION)
+      set(DROP_LOCATION "/submit.php?project=${PROJECT_NAME}")
+    endif()
   endif()
+  if(DEFINED DROP_LOCATION)
+    set(CTEST_DROP_LOCATION ${DROP_LOCATION})
+  endif()
+  if(DEFINED DROP_SITE)
+    set(CTEST_DROP_SITE ${DROP_SITE})
+  endif()
+  if(DEFINED DROP_METHOD)
+    set(CTEST_DROP_METHOD ${DROP_METHOD})
+  endif()
+  set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS})
 
-  if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
-    #message("Running memcheck..")
-    ctest_memcheck()
-    ctest_submit(PARTS MemCheck)
+  ctest_configure(OPTIONS "${CMAKE_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT})")
+
+  ctest_submit(PARTS Configure Update)
+
+  #"${CMAKE_VERSION}" VERSION_LESS "3.10"
+  if(NOT "x${CTEST_LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
+
+    foreach(subproject ${CTEST_LABELS_FOR_SUBPROJECTS})
+      set_property(GLOBAL PROPERTY SubProject ${subproject}) #cdash subproject
+      set_property(GLOBAL PROPERTY Label ${subproject})      #test selection
+      ctest_build(TARGET ${subproject} APPEND)
+      ctest_submit(PARTS Build)
+      if ("${subproject}" STREQUAL "gismo")
+        ctest_build(TARGET doc-snippets APPEND)
+        ctest_submit(PARTS Build)
+      endif()
+      ctest_test(INCLUDE_LABEL "${subproject}" PARALLEL_LEVEL ${CTEST_TEST_JOBS})
+      ctest_submit(PARTS Test)
+
+      if(test_coverage)
+        ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" LABELS "${subproject}" APPEND)
+        ctest_submit(PARTS Coverage)
+      endif()
+
+      if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
+        ctest_memcheck(INCLUDE_LABEL "${subproject}" APPEND)
+        ctest_submit(PARTS MemCheck)
+      endif()
+
+    endforeach()
+
+  else() # No subprojects
+
+    ctest_build(TARGET gsUnitTest APPEND) # for older versions of ninja
+    ctest_submit(PARTS Build)
+    ctest_build(APPEND)
+    ctest_submit(PARTS Build)
+    ctest_build(TARGET unittests APPEND)
+    ctest_submit(PARTS Build)
+    ctest_test(PARALLEL_LEVEL ${CTEST_TEST_JOBS})
+    ctest_submit(PARTS Test)
+
+    if(test_coverage)
+      #message("Running coverage..")
+      ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" APPEND)
+      ctest_submit(PARTS Coverage)
+    endif()
+
+    if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
+      #message("Running memcheck..")
+      ctest_memcheck()
+      ctest_submit(PARTS MemCheck)
+    endif()
+
   endif()
 endmacro(run_ctests)
 

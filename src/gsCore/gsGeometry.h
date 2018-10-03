@@ -101,8 +101,6 @@ public:
 
     typedef T Scalar_t;
 
-    typedef memory::unique_ptr<gsGeometryEvaluator<T> > Evaluator;
-
 public:
 
     /// @name Constructors
@@ -565,10 +563,6 @@ public:
         os<<"\nBasis:\n" << this->basis() ;
         return os; 
     }
-
-    /// Returns an evaluator object with the given \a flags that
-    /// provides geometry-related intrinsics
-    virtual gsGeometryEvaluator<Scalar_t> * evaluator(unsigned flags) const;
 
     /// Merge the given \a other geometry into this one.
     virtual void merge( gsGeometry * other );

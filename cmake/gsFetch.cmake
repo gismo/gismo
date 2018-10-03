@@ -46,7 +46,7 @@ function(gismo_fetch_directory)
     RESULT_VARIABLE result
     WORKING_DIRECTORY "${GF_DOWNLOAD_DIR}" )
   if(result)
-    message(FATAL_ERROR "Configure step for ${GF_NAME} failed: ${result}")
+    message(SEND_ERROR "Configure step for ${GF_NAME} failed: ${result}")
   endif()
 
   #! Update step requires the git sources to be available
@@ -55,11 +55,11 @@ function(gismo_fetch_directory)
     RESULT_VARIABLE result
     WORKING_DIRECTORY "${GF_DOWNLOAD_DIR}" )
   if(result)
-    message(FATAL_ERROR "Build step for ${GF_NAME} failed: ${result}")
+    message(SEND_ERROR "Build step for ${GF_NAME} failed: ${result}")
   endif()
 
   if(NOT EXISTS "${gismo_SOURCE_DIR}/extensions/${GF_NAME}/CMakeLists.txt")
-    message(FATAL_ERROR "Enabling remote module ${GF_NAME} - not found")
+    message(SEND_ERROR "Enabling remote module ${GF_NAME} - not found")
   else()
     message(STATUS "Enabling remote module ${GF_NAME} - downloaded")
   endif()
@@ -67,32 +67,39 @@ function(gismo_fetch_directory)
 endfunction()
 
 
-
-
 function(gismo_fetch_module)
 
-  get_repo_info(GISMO_REPO GISMO_REPO_REV)
-  #message("The repository is ${GISMO_REPO}.")
-  #message("The revision is ${GISMO_REPO_REV}.")
+  get_repo_info(GISMO_REPO GISMO_REPO_REV) # or set manually
+  if (NOT DEFINED GISMO_FETCH_PROT)
+    set(GISMO_FETCH_PROT https) #ssh
+  endif()
 
-  set(git_pr https) #ssh
+  #message("Fetch ${ARGV0} (repository: ${GISMO_REPO}, revision: ${GISMO_REPO_REV}, protocol: ${GISMO_FETCH_PROT}, username: ${GISMO_UNAME}, password: ${GISMO_PASS})")
 
   if("x${GISMO_REPO}" STREQUAL "xgit")
-    if("x${git_pf}" STREQUAL "xssh")
+    if("x${GISMO_FETCH_PROT}" STREQUAL "xssh")
       set(git_repo git@github.com:gismo/${ARGV0}.git)
-    else()
+    elseif("x${GISMO_FETCH_PROT}" STREQUAL "xhttps")
       set(git_repo https://github.com/gismo/${ARGV0}.git)
+    #else()
     endif()
     gismo_fetch_directory(${ARGN}
       GIT_REPOSITORY  ${git_repo})
   elseif("x${GISMO_REPO}" STREQUAL "xsvn")
+    #if("x${GISMO_FETCH_PROT}" STREQUAL "xssh") message(ERROR "GitHub does not support svn+ssh") endif()
     gismo_fetch_directory(${ARGN}
-      SVN_REPOSITORY  https://github.com/gismo/${ARGV0}/trunk)
+      SVN_REPOSITORY https://github.com/gismo/${ARGV0}/trunk
+      SVN_USERNAME ${GISMO_UNAME} # Username for Subversion checkout and update
+      SVN_PASSWORD ${GISMO_PASS}  # Password for Subversion checkout and update
+      SVN_TRUST_CERT 1            # Trust the Subversion server site certificate
+      )
   else()
     gismo_fetch_directory(${ARGN}
       URL https://github.com/gismo/${ARGV0}/archive/master.zip)
   endif()
 
-  add_subdirectory(${gismo_SOURCE_DIR}/extensions/${ARGN} ${gismo_BINARY_DIR}/extensions/${ARGN})
+  if(EXISTS "${gismo_SOURCE_DIR}/extensions/${ARGN}/CMakeLists.txt")
+    add_subdirectory(${gismo_SOURCE_DIR}/extensions/${ARGN} ${gismo_BINARY_DIR}/extensions/${ARGN})
+  endif()
 
 endfunction()

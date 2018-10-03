@@ -183,11 +183,6 @@ void gsGeometry<T>::merge(gsGeometry *)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsGeometryEvaluator<typename gsGeometry<T>::Scalar_t> *
-gsGeometry<T>:: evaluator(unsigned) const
-{ GISMO_NO_IMPLEMENTATION }
-
-template<class T>
 void gsGeometry<T>::toMesh(gsMesh<T> &, int) const
 { GISMO_NO_IMPLEMENTATION }
 

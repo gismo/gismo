@@ -297,7 +297,7 @@ gsMultiPatch<T> gsMultiPatch<T>::uniformSplit() const
     std::vector<gsGeometry<T>* > result;
     result.reserve(nPatches()*n);
 
-    for(size_t np = 0; np<nPatches();++np)
+    for(index_t np = 0; np<nPatches();++np)
     {
         std::vector<gsGeometry<T>* > result_temp = m_patches[np]->uniformSplit();
         result.insert(result.end(),result_temp.begin(),result_temp.end());

@@ -133,13 +133,6 @@ namespace internal
 #include <gsMultiGrid/gsMultiGrid.h>
 #include <gsMultiGrid/gsGridHierarchy.h>
 
-/* ----------- Norms ----------- */
-#include <gsAssembler/gsNorm.h>
-#include <gsAssembler/gsNormL2.h>
-#include <gsAssembler/gsNormL2Boundary.h>
-#include <gsAssembler/gsSeminormH1.h>
-#include <gsAssembler/gsSeminormH2.h>
-
 /* ----------- Quadrature ----------- */
 #include <gsAssembler/gsQuadRule.h>
 #include <gsAssembler/gsQuadrature.h>
@@ -168,6 +161,7 @@ namespace internal
 #include <gsSolver/gsSimplePreconditioners.h>
 #include <gsSolver/gsSumOp.h>
 #include <gsSolver/gsKroneckerOp.h>
+#include <gsSolver/gsPatchPreconditionersCreator.h>
 #include <gsSolver/gsLanczosMatrix.h>
 
 /* ----------- IO ----------- */
@@ -186,7 +180,6 @@ namespace internal
 
 /* ----------- Utilities ----------- */
 //#include <gsUtils/gsUtils.h> - in gsForwardDeclarations.h
-#include <gsUtils/gsNorms.h>
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
 

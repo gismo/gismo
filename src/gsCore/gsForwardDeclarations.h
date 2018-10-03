@@ -73,7 +73,6 @@ template <class T=real_t>                class gsBasis;
 template <class T=real_t>                class gsGeometry;
 template <class T=real_t>                class gsGeometrySlice;
 template <unsigned d, class T=real_t>    class gsGenericGeometry;
-template <class T=real_t>                class gsGeometryEvaluator;
 template <class T=real_t>                class gsConstantBasis;
 template <class T=real_t>                class gsBasisFun;
 
@@ -262,6 +261,7 @@ template <class T=real_t>                class gsProductOp;
 template <class T=real_t>                class gsCompositePrecOp;
 template <class T=real_t>                class gsKroneckerOp;
 template <class T=real_t>                class gsBlockOp;
+template <class T=real_t>                class gsPatchPreconditionersCreator;
 
 // gsMultiGrid
 

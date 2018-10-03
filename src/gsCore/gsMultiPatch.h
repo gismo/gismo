@@ -177,7 +177,7 @@ public:
     gsMatrix<T> parameterRange(int i = 0) const;
 
     /// \brief Number of patches
-    std::size_t nPatches() const          { return m_patches.size(); }
+    index_t nPatches() const          { return m_patches.size(); }
 
     /// \brief Returns a vector of patches // to do : replace by copies
     PatchContainer const& patches() const { return m_patches; }

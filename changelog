@@ -38,3 +38,26 @@ v0.8.3 (https://github.com/gismo/gismo/releases/tag/v0.8.3)
   - OpenMP features (Pardiso options, use in assemblers)
   - Memory and pointer handling
   - Performance bug in gsFitting
+
+v0.8.4 (https://github.com/gismo/gismo/releases/tag/v0.8.4)
+------
+* NEW
+  - gsParametrization
+  - gsHalfEdgeMesh
+  - Matlab plugin
+  - MultiPrecision extension
+  - Automated submodule system
+  - Isogeometric preconditioners for spline patches
+* IMPROVED
+  - gsOptionList, added MultiInt
+  - Many vectors now have a reserve before call of push_back
+  - External codes are downloaded at configure time
+  - Remove gsFunctionSet::compute(const gsMapData & in, gsFuncData & out)
+  - Remove unimplemented gsBulk::toMesh and gsVolume::toMesh
+  - Multiple arithmetic type adaptors are included in gsFunctionExpr
+  - Configurable file-write precision
+  - Doxygen documentation
+* FIXED
+  - gsMesh, fixed gsMesh::cleanMesh, fixed copy constructor
+  - -Wextra and -Wunused_parameter Warnings
+  - Several bug-fixes

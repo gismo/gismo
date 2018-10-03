@@ -14,6 +14,7 @@
 #pragma once
 
 #include<gsIO/gsParaviewCollection.h>
+#include<gsAssembler/gsQuadrature.h>
 
 namespace gismo
 {
@@ -80,6 +81,9 @@ public:
 
     /// The number of lastly computed values
     size_t nValues() const { return m_elWise.size(); }
+
+    /// Returns an std::vector containing the last computed values per element.
+    const std::vector<T> & elementwise() const { return m_elWise; }
 
     /// Returns a vector containing the last computed values per element.
     gsAsConstVector<T> allValues() const { return gsAsConstVector<T>(m_elWise); }
@@ -191,7 +195,7 @@ public:
     template<class E>
     T minElWise(const expr::_expr<E> & expr)
     { return compute_impl<E,true,min_op>(expr); }
-    
+
     /// Computes values of the expression \a expr
     /// at the grid points \a git of patch \a patchId
 #ifdef __DOXYGEN__
@@ -235,6 +239,8 @@ public:
         // expr.printDetail(gsInfo);
         gsInfo << "Result:\n"<< eval(expr,pt,patchInd) <<"\n";
     }
+
+    void info() const { m_exprdata->print(); }
 
     // Interpolates the expression \a expr over the isogeometric domain \a G
     template<class E> void interpolate(const expr::_expr<E> &)
@@ -335,6 +341,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
     {
         // Quadrature rule
         QuRule =  gsQuadrature::get(m_exprdata->multiBasis().basis(patchInd), m_options);
+        //gsDebugVar(QuRule.numNodes());
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
@@ -356,6 +363,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
             for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quadrature nodes
                 _op::acc(expr.val().eval(k), quWeights[k], elVal);
 
+            //gsDebugVar(elVal);
             _op::acc(elVal, 1, m_value);
             if ( storeElWise )
                 m_elWise.push_back( elVal );
@@ -584,7 +592,7 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
                                             std::string const & fn)
     {
         m_exprdata->setFlags(expr);
-        
+
         //if false, embed topology ?
         const index_t n = m_exprdata->multiBasis().nBases();
         gsParaviewCollection collection(fn);

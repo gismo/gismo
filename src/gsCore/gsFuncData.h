@@ -57,6 +57,8 @@ public:
     gsMatrix<unsigned> actives;
 
     /// Stores values and derivatives
+    /// values[0] for base
+    /// values[n] for n-th derivative
     std::vector<gsMatrix<T> > values;
 
     gsMatrix<T> curls;
@@ -64,6 +66,7 @@ public:
     gsMatrix<T> laplacians;
 
     /// \brief Dimension of the (source) domain and the target (image) space.
+    /// dim.first refers to ParDim, dim.second refers to GeoDim
     /// @return For \f$f:\mathbb{R}^n\rightarrow\mathbb{R}^m\f$ returns \f$n\f$.
     dim_t dim;
 
