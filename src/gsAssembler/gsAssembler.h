@@ -502,7 +502,7 @@ template<class InterfaceVisitor>
 void gsAssembler<T>::apply(InterfaceVisitor & visitor,
                            const boundaryInterface & bi)
 {
-    //gsDebug<<"Apply DG on "<< bi <<".\n";
+    //gsDebug<<"Apply DG on "<< bi <<".\n";   
 
     //const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
     gsRemapInterface<T> interfaceMap(m_pde_ptr->patches(), m_bases[0], bi);
@@ -538,9 +538,7 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
     // Initialize domain element iterators
     //typename gsBasis<T>::domainIter domIt1 = B1.makeDomainIterator( bi.first() .side() );
     //typename gsBasis<T>::domainIter domIt2 = B2.makeDomainIterator( bi.second().side() );
-
     typename gsBasis<T>::domainIter domIt = interfaceMap.makeDomainIterator();
-
     int count = 0;
 
     // iterate over all boundary grid cells on the "left"
