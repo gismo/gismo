@@ -56,7 +56,7 @@ if (NOT DEFINED CTEST_CONFIGURATION_TYPE)
 set(CTEST_CONFIGURATION_TYPE Release)
 endif()
 
-# Number of jobs for build/test
+# Number of jobs for build/test (later on)
 #set(CTEST_BUILD_JOBS 8)
 #set(CTEST_TEST_JOBS 10)
 
@@ -70,8 +70,12 @@ endif()
 
 # Tip fot C/C++ compilers
 # e.g. "cc/g++", "icc/icpc", "clang/clang++", "mpicc/mpic++"
-set(CNAME cc)
-set(CXXNAME g++)
+if (NOT DEFINED CNAME)
+  set(CNAME cc)
+endif()
+if (NOT DEFINED CXXNAME)
+  set(CXXNAME g++)
+endif()
 
 if (NOT DEFINED CTEST_TEST_TIMEOUT)
 # Test timeout in seconds
@@ -225,7 +229,9 @@ if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xUndefinedBehaviorSanitizer")
 endif()
 
 # Update type (git, svn, wget or url)
+if (NOT DEFINED UPDATE_TYPE)
 set(UPDATE_TYPE git)
+endif()
 
 # For continuous builds, number of seconds to stay alive
 set(test_runtime 43200) #12h by default
@@ -325,7 +331,26 @@ set(ENV{CTEST_USE_LAUNCHERS_DEFAULT} 1)
 
 macro(run_ctests)
 
+  # Reset CTestConfig variables
+  if(DEFINED PROJECT_NAME)
+    set(CTEST_PROJECT_NAME ${PROJECT_NAME})
+    if(NOT DEFINED DROP_LOCATION)
+      set(DROP_LOCATION "/submit.php?project=${PROJECT_NAME}")
+    endif()
+  endif()
+  if(DEFINED DROP_LOCATION)
+    set(CTEST_DROP_LOCATION ${DROP_LOCATION})
+  endif()
+  if(DEFINED DROP_SITE)
+    set(CTEST_DROP_SITE ${DROP_SITE})
+  endif()
+  if(DEFINED DROP_METHOD)
+    set(CTEST_DROP_METHOD ${DROP_METHOD})
+  endif()
+  set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS})
+
   ctest_configure(OPTIONS "${gismo_build_options};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT})")
+
   ctest_submit(PARTS Configure Update)
 
   #if("${CMAKE_VERSION}" VERSION_LESS "3.10" AND NOT "x${CTEST_LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
@@ -362,9 +387,9 @@ ctest_start(${CTEST_TEST_MODEL})
 
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
-if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
-  ctest_update()
-endif()
+#if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
+#  ctest_update()
+#endif()
 
 run_ctests()
 
