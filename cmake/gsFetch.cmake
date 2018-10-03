@@ -10,7 +10,6 @@ include(CMakeParseArguments)
 
 #latest CMake has FetchContent
 function(gismo_fetch_directory)
-
   set(GF_NAME "${ARGV0}")
   set(oneValueArgs
     # Protect the following options
@@ -69,22 +68,29 @@ endfunction()
 
 function(gismo_fetch_module)
 
+  # TODO: online/offline mode
+
   get_repo_info(GISMO_REPO GISMO_REPO_REV) # or set manually
-  if (NOT DEFINED GISMO_FETCH_PROT)
-    set(GISMO_FETCH_PROT https) #ssh
-  endif()
+
+  #if (NOT DEFINED GISMO_FETCH_PROT)
+  #  set(GISMO_FETCH_PROT https) #ssh
+  #endif()
 
   #message("Fetch ${ARGV0} (repository: ${GISMO_REPO}, revision: ${GISMO_REPO_REV}, protocol: ${GISMO_FETCH_PROT}, username: ${GISMO_UNAME}, password: ${GISMO_PASS})")
 
   if("x${GISMO_REPO}" STREQUAL "xgit")
-    if("x${GISMO_FETCH_PROT}" STREQUAL "xssh")
-      set(git_repo git@github.com:gismo/${ARGV0}.git)
-    elseif("x${GISMO_FETCH_PROT}" STREQUAL "xhttps")
-      set(git_repo https://github.com/gismo/${ARGV0}.git)
-    #else()
-    endif()
-    gismo_fetch_directory(${ARGN}
-      GIT_REPOSITORY  ${git_repo})
+    #if("x${GISMO_FETCH_PROT}" STREQUAL "xssh")
+    #  set(git_repo git@github.com:gismo/${ARGV0}.git)
+    #elseif("x${GISMO_FETCH_PROT}" STREQUAL "xhttps")
+    #  set(git_repo https://github.com/gismo/${ARGV0}.git)
+    #endif()
+    # gismo_fetch_directory(${ARGN} GIT_REPOSITORY  ${git_repo})
+    find_package(Git REQUIRED)
+    execute_process(COMMAND "${GIT_EXECUTABLE}" "submodule" "update" "--init" "extensions/${ARGV0}"
+      WORKING_DIRECTORY ${gismo_SOURCE_DIR}
+      #RESULT_VARIABLE gresult
+      #OUTPUT_QUIET
+      )
   elseif("x${GISMO_REPO}" STREQUAL "xsvn")
     #if("x${GISMO_FETCH_PROT}" STREQUAL "xssh") message(ERROR "GitHub does not support svn+ssh") endif()
     gismo_fetch_directory(${ARGN}
