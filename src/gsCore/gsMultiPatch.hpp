@@ -688,7 +688,7 @@ void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points, index_t pid1,
 
         for (std::size_t k = 0; k!= m_patches.size(); ++k)
         {
-            if (pid1==k) continue; // skip pid1
+            if (pid1==(index_t)k) continue; // skip pid1
 
             pr = m_patches[k]->parameterRange();
             m_patches[k]->invertPoints(pt, tmp);

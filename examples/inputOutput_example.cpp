@@ -13,10 +13,10 @@
 
 // For detailed options about visualization look at gsView.cpp example.
 
+
+
 #include <iostream>
 #include <gismo.h>
-
-static const real_t pi = (3.141592653589793238462643383279502);
 
 using namespace gismo;
 
@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
 {
 
     //! [Parse command line]
-    std::string input("motor_conforming.xml");
+    std::string input("curves3d/bspline3d_curve_01.xml");
     std::string output("");
 
     gsCmdLine cmd("Tutorial Input Output");
@@ -45,10 +45,10 @@ int main(int argc, char* argv[])
 
     gsFileData<> fileData(input);
 
-    gsMultiPatch<>::uPtr pGeom;
-    if (fileData.has< gsMultiPatch<> >())
+    gsGeometry<>::uPtr pGeom;
+    if (fileData.has< gsGeometry<> >())
     {
-        pGeom = fileData.getFirst< gsMultiPatch<> >();
+        pGeom = fileData.getFirst< gsGeometry<> >();
     }
     else
     {
@@ -57,35 +57,8 @@ int main(int argc, char* argv[])
     }
     //! [Read geometry]
 
-    /*
-     * create the full cross section of the electric motor
-    gsMultiPatch<> mpFull;
-
-    gsMultiPatch<> mpDub(*pGeom);
-    mpDub.clearTopology();
-
-    for(unsigned rot = 0; rot < 4; rot++)
-    {
-        for (unsigned i = 0; i < pGeom->nPatches(); i++)
-        {
-            gsGeometry <real_t> & geo = (mpDub.patch(i));
-            geo.rotate(rot * pi / 2.);
-            mpFull.addPatch(geo);
-        }
-
-    }
-
-    mpFull.computeTopology();
-     */
-
-    gsPiecewiseFunction<real_t> one;
-    gsFunctionExpr<real_t> patchOne("1.0", 2);
-    for(index_t n = 0; n < pGeom->nPatches(); n++)
-        one.addPiece(patchOne);
-
-
     //! [Print geometry]
-    //gsInfo << "The file contains: \n" << mpFull << "\n";
+    gsInfo << "The file contains: \n" << *pGeom << "\n";
     //! [Print geometry]
 
     if ( output.empty() )
@@ -97,17 +70,16 @@ int main(int argc, char* argv[])
 
     // writing a paraview file
     const std::string out = output + "Paraview";
-    gsField<> field(*pGeom, one);
-    gsWriteParaview(field, out, 200);
+    gsWriteParaview(*pGeom, out);
     gsInfo << "Wrote paraview files: " << out << ".vtp, " << out << ".pvd\n";
 
     //! [Write geometry]
     // writing a G+Smo .xml file
-    //gsFileData<> fd;
-    //fd << mpFull;
+    gsFileData<> fd;
+    fd << *pGeom;
     // output is a string. The extention .xml is added automatically
-    //fd.save(output);
-    //gsInfo << "Wrote G+Smo file:     " << output << ".xml \n";
+    fd.save(output);
+    gsInfo << "Wrote G+Smo file:     " << output << ".xml \n";
     //! [Write geometry]
 
     return EXIT_SUCCESS;
