@@ -56,7 +56,9 @@ public:
         m_isMatching = checkIfMatching();
 
         if(domainDim() == 3)
+        {
             GISMO_ASSERT(m_isMatching == true, "Cannot handle the 3D case when the interfaces are not matching");
+        }
 
         //gsInfo << "equal corners: " << sameCorners << "\n";
 
@@ -252,7 +254,7 @@ public:
 
         std::vector<T> newBreaks = getPointsOnInterface();
         gsInfo << "newBreaks: \n";
-        for(size_t i = 0; i < m_breakpoints.cols(); i++)
+        for(index_t i = 0; i < m_breakpoints.cols(); i++)
             gsInfo << newBreaks[i] << "\t";
 
         gsInfo << "\n";
@@ -564,7 +566,7 @@ void gsRemapInterface<T>::constructBreaks() {
         }
 
         m_breakpoints = gsMatrix<T>(domainDim(), parameterBreaks.size()); // Assume m_g1.geoDim() == m_g2.geoDim()
-        for (int i = 0; i < parameterBreaks.size(); i++) {
+        for (size_t i = 0; i < parameterBreaks.size(); i++) {
             if (fixedDir)
                 m_breakpoints.col(i) << parameterBreaks[i], G2_parametric_LC(1, 0);
             else
@@ -720,11 +722,11 @@ void gsRemapInterface<T>::constructReparam()
         gsMatrix<T> eval_points;// = gsMatrix<T>::Zero(numGeometries, errorInterval);
 
         for (index_t np = 0; np < numGeometries; np++) {
-            gsVector<T> lower(1), upper(1);
-            lower << t_vals(np, 0);
-            upper << t_vals(np, numIntervals - 1);
-            //gsMatrix<T> grid = uniformPointGrid(lower, upper, errorInterval);
-            gsMatrix<T> grid = gsPointGrid(lower, upper, errorSamples);
+            gsVector<T> lowerVal(1), upperVal(1);
+            lowerVal << t_vals(np, 0);
+            upperVal << t_vals(np, numIntervals - 1);
+            //gsMatrix<T> grid = uniformPointGrid(lowerVal, upperVal, errorInterval);
+            gsMatrix<T> grid = gsPointGrid(lowerVal, upperVal, errorSamples);
             eval_points.conservativeResize(np + 1, grid.cols()); // to check the error
             eval_points.row(np) = grid;
         }
