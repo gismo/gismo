@@ -62,7 +62,7 @@ void normal(const gsMapData<T> & md, index_t k, gsVector<T> & result)
 {
     GISMO_ASSERT( md.dim.first+1 == md.dim.second, "Codimension should be equal to one");
     result.resize(md.dim.first+1);
-    const gsMatrix<T> Jk = md.jacobians().block( k*md.dim.first, 0, md.dim.first+1, md.dim.first);
+    const gsMatrix<T> Jk = md.jacobian(k);
 
     T alt_sgn(1.0);
     typename gsMatrix<T>::RowMinorMatrixType minor;
