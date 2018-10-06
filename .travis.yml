@@ -1,10 +1,7 @@
-
 # G+smo Travis-CI YML script
 #
 # Author: Angelos Mantzaflaris 2012-2016
-#
 
-#sudo: required
 sudo: false
 
 git:
@@ -32,11 +29,11 @@ env:
 addons:
   coverity_scan:
     project:
-      name: "filiatra/gismo"
+      name: "gismo/gismo"
       description: "Build submitted via Travis CI"
     notification_email: filiatra@gmail.com
-    build_command_prepend: "cmake . -DCMAKE_BUILD_TYPE=Release"
-    build_command:   "make -j 4"
+    build_command_prepend: "cmake ."
+    build_command:   "make"
     branch_pattern: coverity_scan
 
 ###################
@@ -99,6 +96,7 @@ before_install:
   - test $TRAVIS_BRANCH != coverity_scan -o ${TRAVIS_JOB_NUMBER##*.} = 1 || exit 0
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update>/dev/null; brew install valgrind; fi #--HEAD
   #- echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
+  - if [ "$TRAVIS_BRANCH" == "stable" ]; then brew update>/dev/null; brew install doxygen; fi #--HEAD
 
 before_script:
   - mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH [travis]" #-DGISMO_WITH_IPOPT=ON
@@ -106,3 +104,15 @@ before_script:
 script:
   - if [ -e "cov-int/scm_log.txt" ]; then cat cov-int/scm_log.txt; fi
   - if [ $TRAVIS_BRANCH == stable ]; then ctest $MAKEFLAGS --output-on-failure -C %BUILD_TYPE% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit; else ctest $MAKEFLAGS --output-on-failure -C %BUILD_TYPE% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit; fi
+  - if [ $TRAVIS_BRANCH == stable ]; make doc; fi
+
+deploy:
+  provider: pages
+  skip-cleanup: true
+  github-token: $GITHUB_TOKEN
+  repo: https://github.com/gismo/gismo.github.io.git
+  target-branch: master
+  committer-from-gh: true
+  keep-history: true #remove
+  on:
+    branch: stable
