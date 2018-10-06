@@ -2,12 +2,12 @@
 
     @brief Provides declaration of iterator of hierarchical domain.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): J. Speh
 */
 
@@ -25,7 +25,7 @@ namespace gismo
 // Documentation in gsDomainIterator
 /** @brief Re-implements gsDomainIterator for iteration over all boundary
   * elements of a <b>hierarchical</b> parameter domain.
-  * 
+  *
   * <em>See
   * gsDomainIterator for more detailed documentation and an example of
   * the typical use!!!</em>\n Used, e.g., for basis of classes
@@ -41,7 +41,7 @@ public:
 
     typedef kdnode<d, unsigned> node;
 
-    typedef typename node::point point; 
+    typedef typename node::point point;
 
     typedef typename std::vector<T>::const_iterator  uiter;
 
@@ -57,7 +57,7 @@ public:
         // Initialize mesh data
         m_meshStart.resize(d);
         m_meshEnd  .resize(d);
-        
+
         // Initialize cell data
         m_curElement.resize(d);
         m_lower     .resize(d);
@@ -65,9 +65,6 @@ public:
 
         // Allocate breaks
         m_breaks = std::vector<std::vector<T> >(d, std::vector<T>());
-
-        // Set to one quadrature point by default
-        m_quadrature.setNodes( gsVector<int>::Ones(d) );
 
         m_leaf = hbs.tree().beginLeafIterator();
         updateLeaf();
@@ -87,7 +84,7 @@ public:
             if (this->m_isGood)
                 updateElement();
         }
-        
+
         return this->m_isGood;
     }
 
@@ -106,7 +103,7 @@ public:
 
         return this->m_isGood;
     }
-    
+
     /// Resets the iterator so that it can be used for another
     /// iteration through all boundary elements.
     void reset()
@@ -148,7 +145,7 @@ private:
     {
         const point & lower = m_leaf.lowerCorner();
         const point & upper = m_leaf.upperCorner();
-        // gsDebug<<"leaf "<<  lower.transpose() <<", " 
+        // gsDebug<<"leaf "<<  lower.transpose() <<", "
         //        << upper.transpose() <<"\n";
 
         const int level2 = m_leaf.level();
@@ -169,7 +166,7 @@ private:
             for (unsigned index = start; index <= end; ++index)
                 m_breaks[dim].push_back(kv.uValue(index));
 
-            m_curElement(dim) = 
+            m_curElement(dim) =
             m_meshStart(dim)  = m_breaks[dim].begin();
 
             // for n breaks, we have n - 1 elements (spans)
@@ -219,10 +216,6 @@ private:
 
     // parameter coordinates of current grid cell
     gsVector<T> m_lower, m_upper;
-
-    // Quadrature rule
-    gsGaussRule<T> m_quadrature;
-
 };
 
 } // end namespace gismo

@@ -1,7 +1,11 @@
-### G+SMO CMake Configuration file
-## 
-## Author: Angelos Mantzaflaris 
-## Copyright (C) 2014 - RICAM-Linz.
+######################################################################
+## gismoConfig.cmake --- G+SMO CMake Configuration file
+## This file is part of the G+Smo library.
+##
+## Author: Angelos Mantzaflaris
+## Copyright (C) 2012 - 2018
+######################################################################
+
 ######################################################################
 ##
 ## Config file for the G+SMO library
@@ -11,6 +15,7 @@
 ## GISMO_LIBRARIES    - libraries to link against
 ## GISMO_MODULE_PATH  - path containing cmake modules
 ## GISMO_USE_FILE     - the cmake use-file
+## GISMO_BUILD_TYPE   - the cmake build type used to compile G+Smo
 ##
 ######################################################################
 
@@ -34,8 +39,13 @@ set(GISMO_LIBRARY_DIR  "@CONF_LIB_DIRS@")
 set(GISMO_LIBRARIES    gismo)
 set(GISMO_MODULE_PATH  "@CONF_MODULE_PATH@")
 set(GISMO_USE_FILE     "@CONF_USE_FILE@")
+set(GISMO_BUILD_TYPE   "@CMAKE_BUILD_TYPE@")
 
 if(NOT GISMO_IS_CONFIGURED_MESSAGE)
-message(STATUS "G+Smo is configured at ${GISMO_LIBRARY_DIR}")
-set(GISMO_IS_CONFIGURED_MESSAGE 1 CACHE INTERNAL "Display once G+Smo library path")
+  message(STATUS "G+Smo is configured at ${GISMO_LIBRARY_DIR}")
+  set(GISMO_IS_CONFIGURED_MESSAGE 1 CACHE INTERNAL "Display once G+Smo library path")
+endif()
+
+if(NOT "x${CMAKE_BUILD_TYPE}" STREQUAL "x${GISMO_BUILD_TYPE}")
+  message(WARNING "G+Smo is configured in ${GISMO_BUILD_TYPE} mode but this project is in ${CMAKE_BUILD_TYPE} mode -- conflicts may occur.")
 endif()
