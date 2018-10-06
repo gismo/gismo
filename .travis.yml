@@ -114,6 +114,5 @@ deploy:
   repo: https://github.com/gismo/gismo.github.io.git
   target-branch: master
   committer-from-gh: true
-  keep-history: true #remove
   on:
     branch: stable
