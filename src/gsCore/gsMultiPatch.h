@@ -2,12 +2,12 @@
 
     @brief Provides declaration of the MultiPatch class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -26,7 +26,7 @@ namespace gismo
     faces.
 
     \tparam T coefficient type
-    
+
     \ingroup Core
 */
 template<class T>
@@ -36,7 +36,7 @@ class gsMultiPatch : public gsBoxTopology, public gsFunctionSet<T>
 public:
     typedef gsBoxTopology    BaseA;
     typedef gsFunctionSet<T> BaseB;
-    
+
     /// Shared pointer for gsMultiPatch
     typedef memory::shared_ptr< gsMultiPatch > Ptr;
     /// Unique pointer for gsMultiPatch
@@ -71,10 +71,10 @@ public:
         : BaseA( give(other) ), m_patches( give(other.m_patches) )
     {}
 
-    /// Assignment operator 
+    /// Assignment operator
     gsMultiPatch& operator= ( const gsMultiPatch& other );
 
-    /// Move assignment operator 
+    /// Move assignment operator
     gsMultiPatch& operator= ( gsMultiPatch&& other );
 
 #endif
@@ -89,7 +89,7 @@ public:
     gsMultiPatch( PatchContainer & patches,
                   const std::vector<patchSide>& boundary,
                   const std::vector<boundaryInterface>& interfaces );
-    
+
     /// Destructor
     ~gsMultiPatch();
 
@@ -99,26 +99,26 @@ public:
 
     /// Get a const-iterator to the patches
     /// \return an iterator to the beginning of the patches
-    const_iterator begin() const 
+    const_iterator begin() const
     { return m_patches.begin(); }
 
     /// Get a const iterator to the end of the patches
     /// \return an iterator to the end of the patches
-    const_iterator end() const 
+    const_iterator end() const
     { return m_patches.end(); }
 
     /// Get an iterator to the beginning of the  patches
     /// \return an iterator to the beginning of the  patches
-    iterator begin() 
+    iterator begin()
     { return m_patches.begin(); }
 
     /// Get an iterator to the end of the  patches
     /// \return an iterator to the end of the  patches
-    iterator end()  
+    iterator end()
     { return m_patches.end(); }
 
 public:
-    
+
     const gsGeometry<T> & piece(const index_t i) const { return patch(i); }
 
     index_t nPieces() const { return static_cast<index_t>(m_patches.size()); }
@@ -152,17 +152,17 @@ public:
     std::string detail() const;
 
     /// \brief Dimension of the parameter domain (must match for all patches).
-    int parDim() const 
+    int parDim() const
     {
         //GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
         return m_dim;
     }
     int domainDim () const {return parDim();}
-    
+
     /// \brief Dimension of the geometry (must match for all patches).
     int geoDim() const;
     int targetDim () const {return geoDim();}
-    
+
     /// \brief Co-dimension of the geometry (must match for all patches).
     int coDim() const;
 
@@ -183,7 +183,7 @@ public:
     PatchContainer const& patches() const { return m_patches; }
 
     const BaseA & topology() const { return *this; }
-    
+
     /// \brief Return the \a i-th patch.
     const gsGeometry<T> & operator []( size_t i ) const { return *m_patches[i]; }
 
@@ -197,7 +197,7 @@ public:
     /// Return the \a i-th patch.
     gsGeometry<T>& patch( std::size_t i ) const
     {
-        GISMO_ASSERT( i < m_patches.size(), "Invalid patch index requested from gsMultiPatch" );
+        GISMO_ASSERT( i < m_patches.size(), "Invalid patch index "<<i<<" requested from gsMultiPatch" );
         return *m_patches[i];
     }
 
@@ -224,7 +224,7 @@ public:
             gsGeometry<T>* g2, boxSide s2 );
 
     using BaseA::addInterface; // unhide base function
-    
+
     /// Add side \a s of patch \a g to the outer boundary of the domain
     void addPatchBoundary( gsGeometry<T>* g, boxSide s ) {
         int p = findPatchIndex( g );
@@ -255,7 +255,7 @@ public:
             ( *it )->embed(N);
         }
     }
-    
+
     /// \brief Attempt to compute interfaces and boundaries
     /// automatically.
     /// \param tol The tolerance to test for matching points
@@ -301,7 +301,7 @@ public:
     /// \param pids vector containing for each point the patch id where it belongs (or -1 if not found)
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
     void locatePoints(const gsMatrix<T> & points, gsVector<index_t> & pids, gsMatrix<T> & preim) const;
-    
+
 protected:
 
     void setIds();
@@ -326,7 +326,7 @@ private:
     // return true if all the vertices starting from start are matched
     static bool matchVerticesOnSide (
            const gsMatrix<T> &cc1, const std::vector<boxCorner> &ci1, index_t start,
-           const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2, 
+           const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2,
            const gsVector<bool> &matched,
            gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
            T tol, index_t reference=0);
