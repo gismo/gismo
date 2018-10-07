@@ -119,7 +119,7 @@ before_script:
 
 script:
   - if [ -e "cov-int/scm_log.txt" ]; then cat cov-int/scm_log.txt; fi
-  - ctest $MAKEFLAGS --output-on-failure -C %BUILD_TYPE% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild; -D ExperimentalTest fi
+  - ctest $MAKEFLAGS --output-on-failure -C %BUILD_TYPE% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest; fi
   - if [ $TRAVIS_BRANCH != stable ] && [ $TASK != Doxygen ]; then ctest $MAKEFLAGS --output-on-failure -D ExperimentalMemCheck; fi
   - if [ $TASK != Doxygen ]; then ctest -D ExperimentalSubmit; fi
 
