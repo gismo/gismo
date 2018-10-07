@@ -123,8 +123,8 @@ script:
 
 before_deploy:
   #- if [ "$TASK" == "Doxygen" ]; then make doc; fi
-  - cd build; make doc
-  - ctest --extra-submit doc/doxygen.log
+  - make doc
+  - ctest --add-notes doc/doxygen.log -M Experimental -T Submit
 
 deploy:
   provider: pages
@@ -133,10 +133,8 @@ deploy:
   repo: gismo/gismo.github.io
   target-branch: master
   committer-from-gh: true
-  local-dir: doc/html
-
-  verbose: true
+  local-dir: build/doc/html
+  #verbose: true
   on:
     branch: stable
-    compiler: gcc
-    os: linux
+    condition: $TASK = Doxygen
