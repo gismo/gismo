@@ -120,7 +120,9 @@ before_script:
 script:
   - if [ -e "cov-int/scm_log.txt" ]; then cat cov-int/scm_log.txt; fi
   - if [ $TRAVIS_BRANCH == stable ]; then ctest $MAKEFLAGS --output-on-failure -C %BUILD_TYPE% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit; else ctest $MAKEFLAGS --output-on-failure -C %BUILD_TYPE% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit; fi
-  - if [ $TASK == Doxygen ]; then make doc; fi # abort here ?
+
+after_script:
+  - if [ "$TASK" == "Doxygen" ]; then make doc; fi
 
 deploy:
   provider: pages
@@ -132,3 +134,5 @@ deploy:
   verbose: true
   on:
     branch: stable
+    compiler: gcc
+    os: linux
