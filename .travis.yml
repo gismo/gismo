@@ -121,8 +121,10 @@ script:
   - if [ -e "cov-int/scm_log.txt" ]; then cat cov-int/scm_log.txt; fi
   - if [ $TRAVIS_BRANCH == stable ]; then ctest $MAKEFLAGS --output-on-failure -C %BUILD_TYPE% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit; else ctest $MAKEFLAGS --output-on-failure -C %BUILD_TYPE% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit; fi
 
-after_script:
-  - if [ "$TASK" == "Doxygen" ]; then make doc; fi
+before_deploy:
+  #- if [ "$TASK" == "Doxygen" ]; then make doc; fi
+  - cd build; make doc
+  - ctest --extra-submit doc/doxygen.log
 
 deploy:
   provider: pages
@@ -131,6 +133,8 @@ deploy:
   repo: gismo/gismo.github.io
   target-branch: master
   committer-from-gh: true
+  local-dir: doc/html
+
   verbose: true
   on:
     branch: stable
