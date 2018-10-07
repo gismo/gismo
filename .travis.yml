@@ -55,8 +55,8 @@ matrix:
       addons:
         apt:
           packages:
-            - doxygen
-            - doxygen-latex
+            #- doxygen
+            #- doxygen-latex
             - graphviz
           sources:
             - ubuntu-toolchain-r-test
@@ -64,9 +64,9 @@ matrix:
         - BUILD_TYPE=Release
         - TASK=Doxygen
       install:
-        - wget -q 'ftp://ftp.stack.nl/pub/users/dimitri/doxygen-1.8.13.src.tar.gz'
-        - tar -xzvf doxygen-1.8.13.src.tar.gz
-        - pushd doxygen-1.8.13.src && cmake -G "Unix Makefiles" . -DCMAKE_INSTALL_PREFIX=/usr && make && sudo make install && popd
+        - wget -q 'ftp://ftp.stack.nl/pub/users/dimitri/doxygen-1.8.14.src.tar.gz'  -O doxygen.tar.gz
+        - tar -xzvf doxygen.tar.gz; mv doxygen-* doxygen
+        - pushd doxygen && cmake -G "Unix Makefiles" . -DCMAKE_INSTALL_PREFIX=/usr && make && sudo make install && popd
 
     - os: osx
       if: branch = ci_test
