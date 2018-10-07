@@ -66,7 +66,7 @@ matrix:
       install:
         - wget -q 'ftp://ftp.stack.nl/pub/users/dimitri/doxygen-1.8.13.src.tar.gz'
         - tar -xzvf doxygen-1.8.13.src.tar.gz
-        - pushd doxygen-1.8.13.sr && cmake -G "Unix Makefiles" . -DCMAKE_INSTALL_PREFIX=/usr && make && sudo make install && popd
+        - pushd doxygen-1.8.13.src && cmake -G "Unix Makefiles" . -DCMAKE_INSTALL_PREFIX=/usr && make && sudo make install && popd
 
     - os: osx
       if: branch = ci_test
