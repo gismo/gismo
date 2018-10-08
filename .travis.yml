@@ -1,7 +1,7 @@
-
 # G+smo Travis-CI YML script
 #
-# Author: Angelos Mantzaflaris 2012-2016
+# Author: Angelos Mantzaflaris 2012-2018
+#
 
 sudo: false
 
@@ -66,7 +66,8 @@ matrix:
         - BUILD_TYPE=Release
         - TASK=Doxygen
       install:
-        - wget -q 'ftp://ftp.stack.nl/pub/users/dimitri/doxygen-1.8.14.src.tar.gz'  -O doxygen.tar.gz
+        #- wget -q 'ftp://ftp.stack.nl/pub/users/dimitri/doxygen-1.8.14.src.tar.gz' -O doxygen.tar.gz
+        - wget -q 'https://github.com/doxygen/doxygen/archive/master.tar.gz' -O doxygen.tar.gz
         - tar -xzf doxygen.tar.gz; mv doxygen-* doxygen
         - pushd doxygen && cmake -G "Unix Makefiles" . -DCMAKE_RULE_MESSAGES=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr && make && sudo make install && popd
 
@@ -128,8 +129,6 @@ script:
   - if [ "$TASK" != "Doxygen" ]; then ctest -D ExperimentalSubmit; fi
 
 before_deploy:
-  - bibtex --version
-  - perl --version
   - make doc
   - ctest --add-notes doc/doxygen.log -M Experimental -T Submit
 
