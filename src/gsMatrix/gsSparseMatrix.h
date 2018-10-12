@@ -2,12 +2,12 @@
 
     @brief Provides declaration of the gsSparseMatrix class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -20,7 +20,7 @@ namespace gismo
 
 /**
    @brief Class that provides a container for triplets (i,j,value) to be
-   filled in a sparse matrix.  
+   filled in a sparse matrix.
 
    Constructing a sparse matrix from triplets is much faster than
    inserting directly.  Use gsSparseMatrix().setFrom(gsSparseEntries)
@@ -65,7 +65,7 @@ protected:
 
 
 
-/** 
+/**
     @brief Iterator over the non-zero entries of a sparse matrix
 
     This class is similar to Eigen::SparseMatrix::InnerIteretor but in
@@ -79,7 +79,7 @@ class gsSparseMatrixIter
 
 public:
     gsSparseMatrixIter()
-    : m_values(NULL), m_indices(NULL), 
+    : m_values(NULL), m_indices(NULL),
       m_end(NULL)   , m_outer(0)
     { }
 
@@ -89,24 +89,24 @@ public:
         const _Index oind = mat.outerIndexPtr()[outer];
         m_values  = mat.valuePtr()      + oind;
         m_indices = mat.innerIndexPtr() + oind;
-        m_end = mat.isCompressed() ? 
-            mat.innerIndexPtr() + mat.outerIndexPtr()[outer+1] : 
+        m_end = mat.isCompressed() ?
+            mat.innerIndexPtr() + mat.outerIndexPtr()[outer+1] :
             mat.innerIndexPtr() + oind + mat.innerNonZeroPtr()[outer];
     }
-    
-    inline gsSparseMatrixIter& operator++() 
+
+    inline gsSparseMatrixIter& operator++()
     { ++m_values; ++m_indices; return *this; }
-    
+
     inline const T& value() const { return *m_values; }
     inline T& valueRef() { return const_cast<T&>(*m_values); }
-    
+
     inline _Index index() const { return *m_indices; }
     inline _Index outer() const { return m_outer; }
     inline _Index row() const { return IsRowMajor ? m_outer : index(); }
     inline _Index col() const { return IsRowMajor ? index() : m_outer; }
 
     inline operator bool() const { return (m_indices < m_end); }
-    
+
 protected:
     const T      * m_values;
     const _Index * m_indices;
@@ -153,6 +153,9 @@ public:
     // Type pointing to a block view of the sparse matrix
     typedef gsMatrixBlockView<Base> BlockView;
 
+    // Type pointing to a block view of the sparse matrix
+    typedef gsMatrixBlockView<const Base> constBlockView;
+
     /// Shared pointer for gsSparseMatrix
     typedef memory::shared_ptr<gsSparseMatrix> Ptr;
 
@@ -186,8 +189,8 @@ public:
     gsSparseMatrix(const Eigen::MatrixBase<OtherDerived>& other)  : Base(other) { }
 
     /// This constructor allows constructing a gsSparseMatrix from another sparse expression
-    template<typename OtherDerived> 
-    gsSparseMatrix(const Eigen::SparseMatrixBase<OtherDerived>& other)  : Base(other) { } 
+    template<typename OtherDerived>
+    gsSparseMatrix(const Eigen::SparseMatrixBase<OtherDerived>& other)  : Base(other) { }
 
     /// This constructor allows constructing a gsSparseMatrix from Eigen expressions
     template<typename OtherDerived>
@@ -210,7 +213,7 @@ public:
 #else
 #  ifdef _MSC_VER
     template <class EigenExpr>
-    gsSparseMatrix& operator= (const EigenExpr & other) 
+    gsSparseMatrix& operator= (const EigenExpr & other)
     {
         this->Base::operator=(other);
         return *this;
@@ -225,16 +228,16 @@ public:
     { Base::operator=(other); }
     gsSparseMatrix& operator= (const gsSparseMatrix & other)
     { Base::operator=(other); return *this; }
-    
+
     gsSparseMatrix(gsSparseMatrix&& other)
     { gsSparseMatrix::operator=(std::forward<gsSparseMatrix>(other)); }
-    
+
     gsSparseMatrix & operator=(gsSparseMatrix&& other)
     {
         this->swap(other);
         other.clear();
         return *this;
-    }    
+    }
 
 #endif
 
@@ -249,7 +252,7 @@ public:
         m->swap(*this);
         return m;
     }
-    
+
     /// \brief Returns an iterator to the first non-zero elemenent of
     /// column \ a outer (or row \a outer if the matrix is RowMajor)
     inline iterator begin(const index_t outer) const { return iterator(*this,outer);}
@@ -260,7 +263,7 @@ public:
         this->data().squeeze();
     }
 
-    std::pair<index_t,index_t> dim() const 
+    std::pair<index_t,index_t> dim() const
     { return std::make_pair(this->rows(), this->cols() ); }
 
     void reservePerColumn(const index_t nz)
@@ -283,11 +286,26 @@ public:
         if (0!=val) this->coeffRef(i,j) += val;
     }
 
+    /// Insert to entry (\a i, \a j) the value \a val, but not an
+    /// explicit zero
+    inline void insertTo(_Index i, _Index j, const T val)
+    {
+        if (0!=val)
+            this->insert(i,j) = val;
+    }
+
     /// Return a block view of the matrix with \a rowSizes and \a colSizes
-    BlockView blockView(const gsVector<index_t> & rowSizes, 
+    BlockView blockView(const gsVector<index_t> & rowSizes,
                         const gsVector<index_t> & colSizes)
     {
         return BlockView(*this, rowSizes, colSizes);
+    }
+
+    /// Return a const block view of the matrix with \a rowSizes and \a colSizes
+    constBlockView blockView(const gsVector<index_t> & rowSizes,
+                        const gsVector<index_t> & colSizes) const
+    {
+        return constBlockView(*this, rowSizes, colSizes);
     }
 
     /// Returns a pointer wrapped as a gsAsConstVector, which contains
@@ -415,9 +433,9 @@ public:
         result.makeCompressed();
         return result;
     }
-    
+
 private:
-    
+
     /*
       The inherited setZero() destroys column-nonzeros structure and
       can make further computations very slow.  Almost equivalent to
@@ -434,7 +452,7 @@ private:
 //inline void gsSparseEntries<T>::add( int const& i, int const& j, const T & value)
 //        { this->push_back( Triplet(i,j,value) ); }
 
- 
+
 template<typename T, int _Options, typename _Index> inline
 gsSparseMatrix<T, _Options, _Index>::gsSparseMatrix() : Base() { }
 
@@ -442,7 +460,7 @@ template<typename T, int _Options, typename _Index> inline
 gsSparseMatrix<T, _Options, _Index>::gsSparseMatrix(_Index rows, _Index cols) : Base(rows,cols) { }
 
 template<typename T, int _Options, typename _Index> inline
-void gsSparseMatrix<T, _Options, _Index>::setFrom( gsSparseEntries<T> const & entries) 
+void gsSparseMatrix<T, _Options, _Index>::setFrom( gsSparseEntries<T> const & entries)
 { this->setFromTriplets(entries.begin(),entries.end() ); }
 
 template<typename T, int _Options, typename _Index> void
@@ -452,9 +470,9 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
     index_t c_i, c_j;
     const index_t nr = this->rows();
     const index_t nc = this->cols();
-    
+
     gsVector<index_t> piv(nr);
-        
+
     for (index_t i = 0; i!=nr; ++i)
     {
         // pull row(i)
@@ -465,7 +483,7 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
             if (c_j != nc )
                 R.tail(nc-c_j) -= R.at(c_j) * this->row(j).tail(nc-c_j);
         }
-        
+
             // store row pivot
             c_i = 0; while (c_i!= nc && 0 == R.at(c_i)) ++c_i;
             piv[i] = c_i;
@@ -483,7 +501,7 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
         {
             didSwap = false;
             c_j = c_i;
-            
+
             for( index_t i=0; i != c_j; i++)
                 if( piv[i] > piv[i+1] )
                 {
@@ -495,7 +513,7 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
         } while(didSwap);
 
         // todo: precompute nz (piv[nz])
-        
+
         // lower part
         for (index_t i = 0; i!=nr; ++i)
         {
@@ -512,7 +530,7 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
             }
             // push row(i)
             this->row(i) = R.sparseView();
-        }    
+        }
 }
 
 

@@ -884,7 +884,7 @@ public:
     static bool colSpan() {return false;}
 
     index_t rows() const {return _u.dim(); }
-    index_t cols() const {return 1; }
+    static index_t cols() {return 1; }
 
     void setFlag() const
     { _u.data().flags |= NEED_VALUE | NEED_ACTIVE; }
