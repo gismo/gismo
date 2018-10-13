@@ -2,12 +2,12 @@
 
     @brief Provides implementation of generic XML functions.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -23,7 +23,7 @@ Object * getTensorBasisFromXml ( gsXmlNode * node)
     // Note: we do not check for the Object tag here, to allow some
     // freedom (eg. BSplineBasis instead of TensorBSplineBasis1
     GISMO_ASSERT( !strcmp( node->name(),"Basis"), "Invalid tag when \"Basis\" was expected.");
-    
+
 	// Component container
 	std::vector<typename Object::CoordinateBasis* > bb;
 
@@ -42,7 +42,7 @@ Object * getTensorBasisFromXml ( gsXmlNode * node)
         for ( unsigned i = 0; i!=d; ++i)
         {
             bb.push_back( gsXml<typename Object::CoordinateBasis>::get(tmp) );
-            tmp =  tmp->next_sibling("Basis");        
+            tmp =  tmp->next_sibling("Basis");
         }
     }
     else
@@ -64,18 +64,18 @@ gsXmlNode * putTensorBasisToXml ( Object const & obj, gsXmlTree & data)
         return gsXml<typename Object::CoordinateBasis>::put(obj.component(0), data);
 
     // Add a new node (without data)
-    gsXmlNode* tp_node = internal::makeNode("Basis" , data);        
-    tp_node->append_attribute( makeAttribute("type", 
+    gsXmlNode* tp_node = internal::makeNode("Basis" , data);
+    tp_node->append_attribute( makeAttribute("type",
                                              internal::gsXml<Object>::type().c_str(), data) );
-    
+
 	for ( unsigned i = 0; i!=d; ++i )
     {
-		gsXmlNode* tmp = 
+		gsXmlNode* tmp =
 		    internal::gsXml< typename Object::CoordinateBasis >::put(obj.component(i), data );
 		tmp->append_attribute( makeAttribute("index", i, data) );
 		tp_node->append_node(tmp);
     }
-    
+
     // All set, return the basis
     return tp_node;
 }
@@ -92,7 +92,7 @@ Object * getRationalBasisFromXml ( gsXmlNode * node)
     // Read source basis
     gsXmlNode * tmp = node->first_node("Basis");
     typename Object::SourceBasis * src = gsXml<typename Object::SourceBasis>::get(tmp) ;
-       
+
     // Read weights
     tmp = node->first_node("weights");
     gsMatrix<typename Object::Scalar_t>   weights;
@@ -112,23 +112,23 @@ Object * getHTensorBasisFromXml ( gsXmlNode * node)
 
     typedef typename Object::Scalar_t T;
     static const int d = Object::Dim;
-    
+
     // Read max level
     //unsigned lvl = atoi( node->first_attribute("levels")->value() );
     gsXmlNode * tmp = node->first_node("Basis");
     GISMO_ASSERT( tmp , "Expected to find a basis node.");
-    
+
     // Read the Tensor-product basis
-    gsTensorBSplineBasis<d,T> * tp = 
+    gsTensorBSplineBasis<d,T> * tp =
         gsXml<gsTensorBSplineBasis<d,T> >::get(tmp);
-    
+
     // Initialize the HBSplineBasis
     std::istringstream str;
-    
+
     // Insert all boxes
     unsigned c;
     std::vector<unsigned int> all_boxes;
-    for (tmp = node->first_node("box"); 
+    for (tmp = node->first_node("box");
          tmp; tmp = tmp->next_sibling("box"))
     {
         all_boxes.push_back(atoi( tmp->first_attribute("level")->value() ));
@@ -153,29 +153,29 @@ gsXmlNode * putHTensorBasisToXml ( Object const & obj, gsXmlTree & data)
 
     // Add a new node (without data)
     gsXmlNode* tp_node = internal::makeNode("Basis" , data);
-    
+
     tp_node->append_attribute( makeAttribute("type",
                                              internal::gsXml<Object>::type().c_str(), data) );
 
     //tp_node->append_attribute( makeAttribute( "levels",2 ,data )); // deprecated
-  
+
     // Write the component bases
     gsXmlNode * tmp = putTensorBasisToXml(obj.tensorLevel(0), data);
     tp_node->append_node(tmp);
-    
+
     //Output boxes
     gsMatrix<unsigned> box(1,2*d);
 
-    for( typename Object::hdomain_type::const_literator lIter = 
+    for( typename Object::hdomain_type::const_literator lIter =
              obj.tree().beginLeafIterator(); lIter.good() ; lIter.next() )
     {
         if ( lIter->level > 0 )
         {
             box.leftCols(d)  = lIter.lowerCorner().transpose();
             box.rightCols(d) = lIter.upperCorner().transpose();
-       
+
             tmp = putMatrixToXml( box, data, "box" );
-           
+
             tmp->append_attribute( makeAttribute("level", to_string(lIter->level), data ) );
             tp_node->append_node(tmp);
         }
@@ -205,19 +205,19 @@ template<class Object>
 gsXmlNode * putRationalBasisToXml ( Object const & obj, gsXmlTree & data)
 {
     // Add a new node
-    gsXmlNode* rat_node = internal::makeNode("Basis" , data);        
+    gsXmlNode* rat_node = internal::makeNode("Basis" , data);
     rat_node->append_attribute( makeAttribute("type",
                                               internal::gsXml< Object >::type().c_str(), data) );
-	
+
     // Write the source basis
-	gsXmlNode* tmp = 
+	gsXmlNode* tmp =
         internal::gsXml< typename Object::SourceBasis >::put(obj.source(), data );
     rat_node->append_node(tmp);
-    
+
     // Write the weights
     tmp = putMatrixToXml( obj.weights(), data, "weights" );
     rat_node->append_node(tmp);
-	
+
 	// All done, return the node
 	return rat_node;
 }
@@ -236,7 +236,7 @@ Object * getById(gsXmlNode * node, const int & id)
         if (  atoi(child->first_attribute("id")->value() ) == id )
             return internal::gsXml<Object>::get(child);
     }
-    std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag() 
+    std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag()
              <<" with id="<<id<<" not found.\n";
     return NULL;
 }
@@ -246,11 +246,11 @@ Object * getById(gsXmlNode * node, const int & id)
 // Helper to get the tag of an id
 // std::string getTag(gsXmlNode * node, const int & id)
 // {
-//     for (gsXmlNode * child = node->first_node(); 
+//     for (gsXmlNode * child = node->first_node();
 // 	 child; child = child->next_sibling() )
 // 	if (  atoi(child->first_attribute("id")->value() ) == id )
 // 	    return child->name();
-    
+
 //     std::cerr<<"gsXmlUtils Warning: Tag with id="<<id<<" not found.\n";
 //     return "";
 // }
@@ -259,7 +259,7 @@ Object * getById(gsXmlNode * node, const int & id)
 
 
 /// Helper to fetch geometries
-//template<class Object> 
+//template<class Object>
 //Object * getGeometryFromXml ( gsXmlNode * node);
 template<class Object>
 Object * getGeometryFromXml ( gsXmlNode * node)
@@ -277,13 +277,13 @@ Object * getGeometryFromXml ( gsXmlNode * node)
 
     tmp = node->first_node("coefs");
     GISMO_ASSERT( tmp, "Did not find any coefficients for "<< gsXml<Object>::type().c_str() );
-    gsXmlAttribute * at_geodim = tmp->first_attribute("geoDim"); 
+    gsXmlAttribute * at_geodim = tmp->first_attribute("geoDim");
     GISMO_ASSERT( at_geodim , "geoDim attribute not found in Geometry XML tag");
     unsigned geoDim = atoi(at_geodim->value() ) ;
 
     //gsWarn<<"Read mat "<< b->size()<<"x"<< geoDim <<"\n";
 
-    gsMatrix<typename Object::Scalar_t> c; 
+    gsMatrix<typename Object::Scalar_t> c;
     getMatrixFromXml<typename Object::Scalar_t>( tmp, b->size(), geoDim, c );
 
     // Looking for transformations
@@ -291,7 +291,7 @@ Object * getGeometryFromXml ( gsXmlNode * node)
     gsMatrix<typename Object::Scalar_t> a;
     if ( tmp )
     {
-        for (gsXmlNode * tr = tmp->first_node();  
+        for (gsXmlNode * tr = tmp->first_node();
              tr; tr= tr->next_sibling() )
         {
             std::string val( tr->name() );
@@ -304,16 +304,16 @@ Object * getGeometryFromXml ( gsXmlNode * node)
             if (val ==  "rotation" ) // 3d
             {
                 getMatrixFromXml<typename Object::Scalar_t>(tmp, 4, 1, a);
-                Eigen::Transform<typename Object::Scalar_t,3,Eigen::Affine> 
-                    rot( Eigen::AngleAxis<typename Object::Scalar_t> 
+                Eigen::Transform<typename Object::Scalar_t,3,Eigen::Affine>
+                    rot( Eigen::AngleAxis<typename Object::Scalar_t>
                          ( a(3,0), a.template block<3,1>(0,0).normalized() ) );
-                c = (c. rowwise().homogeneous() * 
+                c = (c. rowwise().homogeneous() *
                      rot.matrix().transpose() ).leftCols(3) ;
 
             }
             if (val == "scale")
             {
-            
+
             }
             else
             {
@@ -321,7 +321,7 @@ Object * getGeometryFromXml ( gsXmlNode * node)
             }
         }
     }
-    
+
     return new Object(*b,c);
 }
 
@@ -331,14 +331,14 @@ Object * getGeometryFromXml ( gsXmlNode * node)
 template<class Object>
 gsXmlNode * putGeometryToXml ( Object const & obj, gsXmlTree & data)
 {
-    // Make a new XML Geometry node 
+    // Make a new XML Geometry node
     gsXmlNode * bs = internal::makeNode("Geometry", data);
-    bs->append_attribute( makeAttribute("type", 
+    bs->append_attribute( makeAttribute("type",
                                         internal::gsXml<Object>::type().c_str(), data) );
 
     // Add the basis
-    gsXmlNode* tmp = 
-	    internal::gsXml< typename Object::Basis >::put(obj.basis(), data);        
+    gsXmlNode* tmp =
+	    internal::gsXml< typename Object::Basis >::put(obj.basis(), data);
 	if ( ! tmp )
     {
 	    gsWarn<<"XML Warning: Writing basis failed.\n";

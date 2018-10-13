@@ -32,6 +32,7 @@ endif()
     ${${PROJECT_NAME}_MODULES}
     ${${PROJECT_NAME}_SOURCES}
     ${${PROJECT_NAME}_EXTENSIONS}
+    ${gismo_SOURCE_DIR}/external/base64.cpp
     )
 
   #generate_export_header(${PROJECT_NAME})

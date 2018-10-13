@@ -15,6 +15,8 @@
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsFunctionExpr.h>
 
+#include <base64.h> // external
+
 namespace gismo {
 
 namespace internal {
@@ -89,15 +91,33 @@ void getMatrixFromXml ( gsXmlNode * node, unsigned const & rows,
     str.str( node->value() );
     result.resize(rows,cols);
 
-    for (unsigned i=0; i<rows; ++i)
-        for (unsigned j=0; j<cols; ++j)
-            //if ( !(str >> result(i,j) ) )
-              if (! gsGetValue(str,result(i,j)) )
-            {
-                gsWarn<<"XML Warning: Reading matrix of size "<<rows<<"x"<<cols<<" failed.\n";
-                gsWarn<<"Tag: "<< node->name() <<", Matrix entry: ("<<i<<", "<<j<<").\n";
-                return;
-            }
+    gsXmlAttribute * at_format = node->first_attribute("format");
+    if( nullptr==at_format || !strcmp( at_format->value(),"ascii") )
+    {
+        for (unsigned i=0; i<rows; ++i)
+            for (unsigned j=0; j<cols; ++j)
+                //if ( !(str >> result(i,j) ) )
+                if (! gsGetValue(str,result(i,j)) )
+                {
+                    gsWarn<<"XML Warning: Reading matrix of size "<<rows<<"x"<<cols<<" failed.\n";
+                    gsWarn<<"Tag: "<< node->name() <<", Matrix entry: ("<<i<<", "<<j<<").\n";
+                    return;
+                }
+    }
+    else
+    {
+        GISMO_ASSERT( !strcmp( at_format->value(),"binary"),
+                      "Invalid data format "<< at_format->value() );
+        GISMO_ASSERT( nullptr!=node->first_attribute("dsize"), "Missing dsize" );
+        GISMO_ASSERT( nullptr!=node->first_attribute("fl"), "Missing fl" );
+        const int dsize = atoi( node->first_attribute("dsize")->value() );
+        GISMO_ENSURE( dsize==sizeof(T),
+                      "Invalid data size "<< dsize<<" != "<< sizeof(T));
+        const bool fl = atoi( node->first_attribute("fl")->value() );
+        GISMO_ENSURE( fl==!std::numeric_limits<T>::is_integer,
+                      "Invalid data size problem fl="<< fl);
+        decode64_array<T>(node->value(), result.data()/*, dsize, fl*/);
+    }
 }
 
 template<class T>
@@ -118,21 +138,36 @@ void getSparseEntriesFromXml ( gsXmlNode * node,
 
 
 template<class T>
-gsXmlNode * putMatrixToXml ( gsMatrix<T> const & mat, gsXmlTree & data, std::string name)
+gsXmlNode * putMatrixToXml ( gsMatrix<T> const & mat, gsXmlTree & data, std::string name) // format = binary
 {
     std::ostringstream str;
-    str << std::setprecision(data.getFloatPrecision());
-    // Write the matrix entries
-    for (index_t i=0; i< mat.rows(); ++i)
+    // data.formatType() ? ascii, binary
+#if FALSE
     {
-        for (index_t j=0; j<mat.cols(); ++j)
-            str << mat(i,j)<< " ";
-        str << "\n";
-    }
+        str << std::setprecision(data.getFloatPrecision());
+        // Write the matrix entries
+        for (index_t i=0; i< mat.rows(); ++i)
+        {
+            for (index_t j=0; j<mat.cols(); ++j)
+                str << mat(i,j)<< " ";
+            str << "\n";
+        }
 
-    // Create XML tree node
-    gsXmlNode* new_node = internal::makeNode(name, str.str(), data);
-    return new_node;
+        gsXmlNode* new_node = internal::makeNode(name, str.str(), data);
+        new_node->append_attribute( makeAttribute("format","ascii",data) );
+        return new_node;
+    }
+#else
+    {
+        gsXmlNode* new_node = internal::makeNode(name,
+        base64_encode(reinterpret_cast<const unsigned char*>(mat.data()),
+                      sizeof(T)*mat.size()) , data);
+        new_node->append_attribute( makeAttribute("format","binary",data) );
+        new_node->append_attribute( makeAttribute("dsize",sizeof(T),data) );
+        new_node->append_attribute( makeAttribute("fl",!std::numeric_limits<T>::is_integer,data) );
+        return new_node;
+    }
+#endif
 }
 
 template<class T>
