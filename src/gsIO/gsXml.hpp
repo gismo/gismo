@@ -15,7 +15,7 @@
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsFunctionExpr.h>
 
-#include <base64.h> // external
+#include <basen.hpp> // external
 
 namespace gismo {
 
@@ -108,15 +108,31 @@ void getMatrixFromXml ( gsXmlNode * node, unsigned const & rows,
     {
         GISMO_ASSERT( !strcmp( at_format->value(),"binary"),
                       "Invalid data format "<< at_format->value() );
-        GISMO_ASSERT( nullptr!=node->first_attribute("dsize"), "Missing dsize" );
+        GISMO_ASSERT( nullptr!=node->first_attribute("bytes"), "Missing byte attribute" );
         GISMO_ASSERT( nullptr!=node->first_attribute("fl"), "Missing fl" );
-        const int dsize = atoi( node->first_attribute("dsize")->value() );
-        GISMO_ENSURE( dsize==sizeof(T),
-                      "Invalid data size "<< dsize<<" != "<< sizeof(T));
+        const int bytes = atoi( node->first_attribute("bytes")->value() );
+        GISMO_ENSURE( bytes==sizeof(T),
+                      "Invalid data size "<< bytes<<" != "<< sizeof(T));
         const bool fl = atoi( node->first_attribute("fl")->value() );
         GISMO_ENSURE( fl==!std::numeric_limits<T>::is_integer,
-                      "Invalid data size problem fl="<< fl);
-        decode64_array<T>(node->value(), result.data()/*, dsize, fl*/);
+                      "Invalid property -- data is not integer, fl="<< fl);
+
+        const long int len = strlen(node->value());
+        char* arr = reinterpret_cast<char*>(result.data());
+        switch(bytes)
+        {
+        case 2:
+            bn::decode_b16(node->value(), node->value()+len, arr);
+            return;
+        case 4:
+            bn::decode_b32(node->value(), node->value()+len, arr);
+            return;
+        case 8:
+            bn::decode_b64(node->value(), node->value()+len, arr);
+            return;
+        default:
+            GISMO_ERROR("Something went notably wrong.. "<< bytes);
+        };
     }
 }
 
@@ -159,11 +175,27 @@ gsXmlNode * putMatrixToXml ( gsMatrix<T> const & mat, gsXmlTree & data, std::str
     }
 #else
     {
-        gsXmlNode* new_node = internal::makeNode(name,
-        base64_encode(reinterpret_cast<const unsigned char*>(mat.data()),
-                      sizeof(T)*mat.size()) , data);
+        const char* arr = reinterpret_cast<const char*>(mat.data());
+        static const short int n = sizeof(T);
+        std::string enc;
+        enc.reserve(n*mat.size());
+        switch(n)
+        {
+        case 2:
+            bn::encode_b16(arr,arr+n*mat.size(), std::back_inserter(enc));
+            break;
+        case 4:
+            bn::encode_b32(arr,arr+n*mat.size(), std::back_inserter(enc));
+            break;
+        case 8:
+            bn::encode_b64(arr,arr+n*mat.size(), std::back_inserter(enc));
+            break;
+        default:
+            GISMO_ERROR("Something went notably wrong.. "<< n);
+        };
+        gsXmlNode* new_node = internal::makeNode(name, enc, data);
         new_node->append_attribute( makeAttribute("format","binary",data) );
-        new_node->append_attribute( makeAttribute("dsize",sizeof(T),data) );
+        new_node->append_attribute( makeAttribute("bytes",n,data) );
         new_node->append_attribute( makeAttribute("fl",!std::numeric_limits<T>::is_integer,data) );
         return new_node;
     }
