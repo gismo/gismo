@@ -113,7 +113,7 @@ void getMatrixFromXml ( gsXmlNode * node, unsigned const & rows,
         const int bytes = atoi( node->first_attribute("bytes")->value() );
         GISMO_ENSURE( bytes==sizeof(T),
                       "Invalid data size "<< bytes<<" != "<< sizeof(T));
-        const bool fl = atoi( node->first_attribute("fl")->value() );
+        const bool fl = (0!=atoi( node->first_attribute("fl")->value() ));
         GISMO_ENSURE( fl==!std::numeric_limits<T>::is_integer,
                       "Invalid property -- data is not integer, fl="<< fl);
 
