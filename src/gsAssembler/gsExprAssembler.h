@@ -131,6 +131,8 @@ public:
 
     typedef typename gsSparseMatrix<T>::BlockView matBlockView;
 
+    typedef typename gsSparseMatrix<T>::constBlockView matConstBlockView;
+
     typedef typename gsBoundaryConditions<T>::bcRefList   bcRefList;
     typedef typename gsBoundaryConditions<T>::bcContainer bcContainer;
     //typedef typename gsBoundaryConditions<T>::ppContainer ifContainer;
@@ -165,7 +167,7 @@ public:
     static gsOptionList defaultOptions();
 
     /// Returns the number of degrees of freedom (after initialization)
-    index_t numDofs()
+    index_t numDofs() const
     {
         GISMO_ASSERT( m_vcol.back()->mapper().isFinalized(),
                       "gsExprAssembler::numDofs() says: initSystem() has not been called.");
@@ -174,7 +176,7 @@ public:
     }
 
     /// Returns the number of test functions (after initialization)
-    index_t numTestDofs()
+    index_t numTestDofs() const
     {
         GISMO_ASSERT( m_vrow.back()->mapper().isFinalized(),
                       "initSystem() has not been called.");
@@ -352,20 +354,26 @@ public:
     }
 
     /// Returns a block view of the system matrix, each block
-    /// corresponding to a different space
+    /// corresponding to a different space, or to different groups of
+    /// dofs, in case of calar problems
     matBlockView matrixBlockView()
     {
         GISMO_ASSERT( m_vcol.back()->mapper().isFinalized(),
                       "initSystem() has not been called.");
+        gsVector<index_t> rowSizes, colSizes;
+        _blockDims(rowSizes, colSizes);
+        return m_matrix.blockView(rowSizes,colSizes);
+    }
 
-        gsVector<index_t> rowSizes(m_vrow.size()), colSizes(m_vcol.size());
-
-        for (index_t r = 0; r != rowSizes.size(); ++r) // for all row-blocks
-            rowSizes[r] = m_vrow[r]->dim() * m_vrow[r]->mapper().freeSize();
-
-        for (index_t c = 0; c != colSizes.size(); ++c) // for all col-blocks
-            colSizes[c] = m_vcol[c]->dim() * m_vcol[c]->mapper().freeSize();
-
+    /// Returns a const block view of the system matrix, each block
+    /// corresponding to a different space, or to different groups of
+    /// dofs, in case of calar problems
+    matConstBlockView matrixBlockView() const
+    {
+        GISMO_ASSERT( m_vcol.back()->mapper().isFinalized(),
+                      "initSystem() has not been called.");
+        gsVector<index_t> rowSizes, colSizes;
+        _blockDims(rowSizes, colSizes);
         return m_matrix.blockView(rowSizes,colSizes);
     }
 
@@ -449,6 +457,29 @@ public:
     }
 
 private:
+
+    void _blockDims(gsVector<index_t> & rowSizes,
+                    gsVector<index_t> & colSizes)
+    {
+        if (1==m_vcol.size() && 1==m_vrow.size())
+        {
+            const gsDofMapper & dm = m_vcol.back()->mapper();
+            rowSizes.resize(3);
+            colSizes.resize(3);
+            rowSizes[0]=colSizes[0] = dm.freeSize()-dm.coupledSize();
+            rowSizes[1]=colSizes[1] = dm.coupledSize();
+            rowSizes[2]=colSizes[2] = dm.boundarySize();
+        }
+        else
+        {
+            rowSizes.resize(m_vrow.size());
+            for (index_t r = 0; r != rowSizes.size(); ++r) // for all row-blocks
+                rowSizes[r] = m_vrow[r]->dim() * m_vrow[r]->mapper().freeSize();
+            colSizes.resize(m_vcol.size());
+            for (index_t c = 0; c != colSizes.size(); ++c) // for all col-blocks
+                colSizes[c] = m_vcol[c]->dim() * m_vcol[c]->mapper().freeSize();
+        }
+    }
 
     /// \brief Reset the dimensions of all involved spaces.
     /// Called internally by the init* functions
