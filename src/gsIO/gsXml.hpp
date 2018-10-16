@@ -17,9 +17,22 @@
 
 #include <basen.hpp> // external
 
+//#include <stdint.h> //for uint32_t
+
 namespace gismo {
 
 namespace internal {
+
+/*
+inline bool is_big_endian()
+  {
+  union {
+        uint32_t i;
+        char c[4];
+    } bint = {0x01020304};
+    return bint.c[0] == 1;
+}
+*/
 
 /*
 template<class Object>
@@ -178,7 +191,7 @@ gsXmlNode * putMatrixToXml ( gsMatrix<T> const & mat, gsXmlTree & data, std::str
         const char* arr = reinterpret_cast<const char*>(mat.data());
         static const short int n = sizeof(T);
         std::string enc;
-        enc.reserve(n*mat.size());
+        enc.reserve(n*mat.size()*1.35);
         switch(n)
         {
         case 2:
