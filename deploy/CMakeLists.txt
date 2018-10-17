@@ -41,8 +41,21 @@ include( ${GISMO_USE_FILE} )
 set(CMAKE_MODULE_PATH ${GISMO_MODULE_PATH})
 include(gsConfig) #compiler configuration
 
-# Source file
-add_executable(main main.cpp)
-set_target_properties(main PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(main gismo)
-message(STATUS "Type \"make\" to build main")
+# Application files
+aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR} FILES)
+#message("found files: ${FILES}")
+
+foreach(file ${FILES})
+
+  add_gismo_executable(${file})
+  get_filename_component(tarname ${file} NAME_WE) # name without extension
+  set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
+  set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
+  add_dependencies(${PROJECT_NAME} ${tarname})
+
+  # install the example executables (optionally)
+  install(TARGETS ${tarname} DESTINATION bin COMPONENT exe OPTIONAL)
+
+endforeach(file ${FILES})
+
+message(STATUS "Type \"make\" to build")
