@@ -884,7 +884,7 @@ public:
     static bool colSpan() {return false;}
 
     index_t rows() const {return _u.dim(); }
-    index_t cols() const {return 1; }
+    static index_t cols() {return 1; }
 
     void setFlag() const
     { _u.data().flags |= NEED_VALUE | NEED_ACTIVE; }
@@ -2758,9 +2758,9 @@ public:
     AutoReturn_t eval(const index_t k) const
     {
         GISMO_ASSERT(_u.rows() == _v.rows(),
-                     "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in - operation");
+                     "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in - operation:\n" << _u <<" minus \n" << _v );
         GISMO_ASSERT(_u.cols() == _v.cols(),
-                     "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in - operation");
+                     "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in - operation:\n" << _u <<" minus \n" << _v );
         //gsDebugVar( (_u.eval(k) - _v.eval(k)) );
         //gsDebugVar( (_u.eval(k) - _v.eval(k)).squaredNorm() );
         return (_u.eval(k) - _v.eval(k) );

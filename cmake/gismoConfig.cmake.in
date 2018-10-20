@@ -47,5 +47,7 @@ if(NOT GISMO_IS_CONFIGURED_MESSAGE)
 endif()
 
 if(NOT "x${CMAKE_BUILD_TYPE}" STREQUAL "x${GISMO_BUILD_TYPE}")
-  message(WARNING "G+Smo is configured in ${GISMO_BUILD_TYPE} mode but this project is in ${CMAKE_BUILD_TYPE} mode -- conflicts may occur.")
+  message(WARNING "G+Smo is configured in ${GISMO_BUILD_TYPE} mode which does not coincide with this project! Conflicts may occur. Re-run CMake with CMAKE_BUILD_TYPE=${GISMO_BUILD_TYPE} to fix this, or update gismo_DIR.")
 endif()
+
+#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${GISMO_MODULE_PATH})

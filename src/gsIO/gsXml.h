@@ -323,6 +323,10 @@ gsXmlNode * makeNode( const std::string & name,
                       const gsMatrix<T> & value, gsXmlTree & data,
                       bool transposed = false );
 
+template<class T>
+char * makeValue(const gsMatrix<T> & value, gsXmlTree & data,
+                      bool transposed = false );
+
 /// Helper to fetch functions
 ///\todo read gsFunction instead
 template<class T>

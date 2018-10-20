@@ -19,6 +19,10 @@ gsXmlNode * makeNode( const std::string & name,
                       bool transposed);
 
 TEMPLATE_INST
+char * makeValue(const gsMatrix<T> & value, gsXmlTree & data,
+                 bool transposed);
+
+TEMPLATE_INST
 void getMatrixFromXml ( gsXmlNode * node,
                         unsigned const & rows,
                         unsigned const & cols,
@@ -50,6 +54,9 @@ gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T> const & mat,
 TEMPLATE_INST
 gsXmlNode * makeNode( const std::string & name,
                       const gsMatrix<int> & value, gsXmlTree & data,
+                      bool transposed);
+TEMPLATE_INST
+char * makeValue(const gsMatrix<int> & value, gsXmlTree & data,
                       bool transposed);
 
 TEMPLATE_INST

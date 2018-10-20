@@ -50,26 +50,36 @@ gsXmlNode * makeNode( const std::string & name,
                       const gsMatrix<T> & value, gsXmlTree & data,
                       bool transposed)
 {
+    return data.allocate_node(rapidxml::node_element ,
+                              data.allocate_string(name.c_str() ),
+                              makeValue(value,data,transposed) );
+}
+
+template<class T>
+char * makeValue(const gsMatrix<T> & value, gsXmlTree & data,
+                 bool transposed)
+{
     std::ostringstream oss;
     // Set precision
     oss << std::setprecision(data.getFloatPrecision());
 
+    // Read/Write is RowMajor
     if ( transposed )
-        for ( index_t j = 0; j< value.rows(); ++j)
-        {
-            for ( index_t i = 0; i< value.cols(); ++i)
-                oss << value(j,i) <<" ";
-            //oss << "\n";
-        }
-    else
         for ( index_t j = 0; j< value.cols(); ++j)
         {
             for ( index_t i = 0; i< value.rows(); ++i)
                 oss << value(i,j) <<" ";
-            //oss << "\n";
+            oss << "\n";
+        }
+    else
+        for ( index_t i = 0; i< value.rows(); ++i)
+        {
+            for ( index_t j = 0; j< value.cols(); ++j)
+                oss << value(i,j) <<" ";
+            oss << "\n";
         }
 
-    return makeNode(name, oss.str(), data);
+    return data.allocate_string( oss.str().c_str() );
 }
 
 template<class T>
@@ -107,7 +117,7 @@ void getMatrixFromXml ( gsXmlNode * node, unsigned const & rows,
     gsXmlAttribute * at_format = node->first_attribute("format");
     if( nullptr==at_format || !strcmp( at_format->value(),"ascii") )
     {
-        for (unsigned i=0; i<rows; ++i)
+        for (unsigned i=0; i<rows; ++i) // Read is RowMajor
             for (unsigned j=0; j<cols; ++j)
                 //if ( !(str >> result(i,j) ) )
                 if (! gsGetValue(str,result(i,j)) )
@@ -150,41 +160,13 @@ void getMatrixFromXml ( gsXmlNode * node, unsigned const & rows,
 }
 
 template<class T>
-void getSparseEntriesFromXml ( gsXmlNode * node,
-                              gsSparseEntries<T> & result )
-{
-    result.clear();
-
-    std::istringstream str;
-    str.str( node->value() );
-    index_t r,c;
-    T val;
-
-    //while( (str >> r) && (str >> c) && (str >> val) )
-    while( (str >> r) && (str >> c) && ( gsGetValue(str,val)) )
-        result.add(r,c,val);
-}
-
-
-template<class T>
 gsXmlNode * putMatrixToXml ( gsMatrix<T> const & mat, gsXmlTree & data, std::string name) // format = binary
 {
     std::ostringstream str;
     // data.formatType() ? ascii, binary
 #if FALSE
     {
-        str << std::setprecision(data.getFloatPrecision());
-        // Write the matrix entries
-        for (index_t i=0; i< mat.rows(); ++i)
-        {
-            for (index_t j=0; j<mat.cols(); ++j)
-                str << mat(i,j)<< " ";
-            str << "\n";
-        }
-
-        gsXmlNode* new_node = internal::makeNode(name, str.str(), data);
-        new_node->append_attribute( makeAttribute("format","ascii",data) );
-        return new_node;
+        return internal::makeNode(name, mat, data);
     }
 #else
     {
@@ -237,6 +219,21 @@ gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T> const & mat,
     return new_node;
 }
 
+template<class T>
+void getSparseEntriesFromXml ( gsXmlNode * node,
+                              gsSparseEntries<T> & result )
+{
+    result.clear();
+
+    std::istringstream str;
+    str.str( node->value() );
+    index_t r,c;
+    T val;
+
+    //while( (str >> r) && (str >> c) && (str >> val) )
+    while( (str >> r) && (str >> c) && ( gsGetValue(str,val)) )
+        result.add(r,c,val);
+}
 
 }// end namespace internal
 
