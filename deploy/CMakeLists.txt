@@ -47,11 +47,10 @@ aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR} FILES)
 
 foreach(file ${FILES})
 
-  add_gismo_executable(${file})
+  add_gismo_shared_executable(${file})
   get_filename_component(tarname ${file} NAME_WE) # name without extension
   set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
   set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
-  add_dependencies(${PROJECT_NAME} ${tarname})
 
   # install the example executables (optionally)
   install(TARGETS ${tarname} DESTINATION bin COMPONENT exe OPTIONAL)
