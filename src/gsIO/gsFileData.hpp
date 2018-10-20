@@ -976,7 +976,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
             // if ( weights == gsMatrix<T>::Ones(sz,1) )
             //      gsDebug<<"gsFileData: In fact weights are all equal to 1.\n";
 
-            gsXmlNode* c = internal::makeNode("weights", weights, *data);
+            gsXmlNode* c = internal::makeNode("weights", weights, *data, true);
             rtb->append_node(c);
 
             c = internal::makeNode("coefs", coefs, *data, true);
