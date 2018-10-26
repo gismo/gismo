@@ -329,7 +329,7 @@ public:
         resetDimensions();
         m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
 
-        if ( 0 == m_matrix.size() )
+        if ( 0 == m_matrix.rows() || 0 == m_matrix.cols() )
             gsWarn << " No internal DOFs, zero sized system.\n";
         else
         {
