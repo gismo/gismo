@@ -52,7 +52,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                     // Read the THB-spline basis from the specified file
                     std::string filename(input_buf); // Reading requires a std::string
                     gsFileData<real_t>  data( filename );
-                    gsTHBSplineBasis<__DIM__> * hbs = data.getFirst< gsTHBSplineBasis<2> >().release();
+                    gsTHBSplineBasis<__DIM__> * hbs = data.getFirst< gsTHBSplineBasis<__DIM__> >().release();
                     plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(hbs);
                     // Free the memory allocated by mxArrayToString
                     mxFree(input_buf);
@@ -206,6 +206,18 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             const gsKnotVector<>& kv = instance->tensorLevel(level-1).knots(direction-1);
             plhs[0] = createPointerFromStdVector(kv);
 
+        } else if (!strcmp(cmd,"numBreaks")) {
+
+            // ----------------------------------------------------------------------
+            // numBreaks(level, direction)
+
+            gsTHBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTHBSplineBasis < __DIM__ > > (prhs[1]);
+            mwIndex level = (mwIndex) mxGetScalar(prhs[2]);
+            mwIndex direction = (mwIndex) mxGetScalar(prhs[3]);
+            int val = instance->numBreaks(level-1, direction-1)+1;
+            mxArray *out = mxCreateDoubleScalar((double)val);
+            plhs[0]      = out;
+
         } else if (!strcmp(cmd,"active")) {
 
             // ----------------------------------------------------------------------
@@ -219,6 +231,19 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             vals = vals + gsMatrix<unsigned>::Ones(vals.rows(),vals.cols());
             // Copy the result for output (FIXME: this should be avoided)
             plhs[0] = createPointerFromMatrix<unsigned>(vals);
+
+        } else if (!strcmp(cmd,"elementIndex")) {
+
+            // ----------------------------------------------------------------------
+            // elementIndex(pt)
+
+            gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis<__DIM__> >(prhs[1]);
+            // Copy the input (FIXME: this should be avoided)
+            gsVector<real_t> pt = extractMatrixFromPointer<real_t>(prhs[2]);
+            // Call method
+            int index = instance->elementIndex(pt);
+            mxArray *out = mxCreateDoubleScalar((double)index);
+            plhs[0]      = out;
 
       } else if (!strcmp(cmd,"uniformRefine")) {
 
@@ -263,15 +288,31 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // refineElements_withCoefs(coefs, boxes)
 
-            gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis<__DIM__> >(prhs[1]);
+            gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis < __DIM__> > (prhs[1]);
             // Copy the input (FIXME: this should be avoided)
-            gsMatrix<real_t> coefs = extractMatrixFromPointer<real_t>(prhs[2]);
+            gsMatrix <real_t> coefs = extractMatrixFromPointer<real_t>(prhs[2]);
             std::vector<unsigned int> boxes = extractStdVectorFromPointer<unsigned int>(prhs[3]);
 
-            std::for_each(boxes.begin(), boxes.end(), [](unsigned int& d) { d-=1;});
+            std::for_each(boxes.begin(), boxes.end(), [](unsigned int &d) { d -= 1; });
 
             instance->refineElements_withCoefs(coefs, boxes);
             plhs[0] = createPointerFromMatrix<real_t>(coefs);
+
+        } else if (!strcmp(cmd,"getBoxes")) {
+
+            // ----------------------------------------------------------------------
+            // getBoxes()
+            gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis < __DIM__> > (prhs[1]);
+            gsMatrix< unsigned > b1, b2;
+            gsVector< unsigned > level;
+            (instance->tree()).getBoxes(b1,b2,level);
+            std::transform(level.begin(), level.end(), level.begin(),
+                      bind2nd(std::plus<double>(), 1.0));
+
+            // Copy the result for output (FIXME: this should be avoided)
+            plhs[0] = createPointerFromMatrix<unsigned>(b1);
+            plhs[1] = createPointerFromMatrix<unsigned>(b2);
+            plhs[2] = createPointerFromMatrix<unsigned>(level);
 
         } else {
 

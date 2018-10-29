@@ -34,7 +34,7 @@ function varargout = gismo_map(pts, in, der)
 end
 
 function pts_aux = cartesian_product_from_cell(pts)
-  % create cartesian product points from cell infomation
+  % create cartesian product points from cell information
   s = cellfun(@length,pts);
   s_cell = cell(length(s),1);
   for ii = 1:length(s)

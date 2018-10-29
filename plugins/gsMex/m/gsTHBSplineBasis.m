@@ -69,7 +69,7 @@ classdef gsTHBSplineBasis < handle
             %
             %Output:
             %  (none)
-        
+            
             mex_gsTHBSplineBasis('destructor', this.objectHandle);
         end
 
@@ -396,6 +396,41 @@ classdef gsTHBSplineBasis < handle
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('knots', this.objectHandle, varargin{:});
         end
         
+        % numBreaks - call class method
+        function [varargout] = numBreaks(this, varargin)
+            %numBreaks - returns the number of breaks (distinct knot values) 
+            %   of a gsTHBSplineBasis object in the specified level and on 
+            %   the specified direction
+            %
+            %Usage:
+            %  knt = thb.numBreaks( lev, dir )
+            %
+            %Input:
+            %  thb: gsTHBSplineBasis, [1 x 1].
+            %    The gsTHBSplineBasis object.
+            %  lev: int, [1 x 1].
+            %    Index of the level of the hierarchy to consider.
+            %  dir: int, [1 x 1].
+            %    index of the direction of space to consider. 
+            %
+            %Output:
+            %  numbreaks: int [1x1]
+            %    Knot vector corresponding to level lev in the direction
+            %    dir. 
+            
+            if (nargin~=3 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
+            if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ~(mod(varargin{1},1)==0)...
+                || varargin{1}<1 || varargin{1}>this.maxLevel)
+                error('Input argument no. 1 must be a strictly positive integer smaller than %d.', this.maxLevel)
+            elseif (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || ...
+                    ~(mod(varargin{2},1)==0) || varargin{2}<1 || varargin{2}>this.dim)
+                error('Input argument no. 2 must be a strictly positive integer smaller than %d.', this.dim)
+            end
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('numBreaks', this.objectHandle, varargin{:});
+        end
+        
         % active - call class method
         function [varargout] = active(this, varargin)
             %active - active functions of a gsTHBSplineBasis object
@@ -412,6 +447,33 @@ classdef gsTHBSplineBasis < handle
             %Output:
             %  act: double, [numFun x numPts].
             %    Index of active functions in each of the specified points.
+            
+            if (nargin~=2 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
+            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.dim()))
+                error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
+            end
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('active', this.objectHandle, varargin{:});
+        end
+        
+        % elementIndex - call class method
+        function [varargout] = elementIndex(this, varargin)
+            %elementIndex - returns an index for the element of a 
+            %  gsTHBSplineBasis object which contains point pt. 
+            %
+            %Usage:
+            %  ind = thb.elementIndex( pt )
+            %
+            %Input:
+            %  thb: gsTHBSplineBasis, [1 x 1].
+            %    The gsTHBSplineBasis object.
+            %  pt: double, [d x 1].
+            %    Point in which to evaluate the function.
+            %
+            %Output:
+            %  ind: int, [1 x 1].
+            %    Index of the element containing pt.
             
             if (nargin~=2 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
@@ -523,7 +585,7 @@ classdef gsTHBSplineBasis < handle
             % the same function.
             %
             %Usage:
-            %  coefs_ref = thb.refineElements_withCoefs(coefs, boxes).
+            %  coefs_ref = thb.refineElements_withCoefs(coefs, boxes)
             %
             %Input:
             %  thb: gsTHBSplineBasis, [1 x 1].
@@ -547,6 +609,33 @@ classdef gsTHBSplineBasis < handle
                        + 'be an array of integers.')
             end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('refineElements_withCoefs', this.objectHandle,...
+                                                           varargin{:});
+        end
+        
+        % getBoxes - call class method
+        function [varargout] = getBoxes(this, varargin)
+            %getBoxes returns the boxes which make up the hierarchical 
+            % domain on which a gsTHBSplineBasis is defined, and the 
+            % respective levels.
+            %
+            %Usage:
+            %  [b1,b2,levels] = thb.getBoxes()
+            %
+            %Input:
+            %  thb: gsTHBSplineBasis, [1 x 1].
+            %    The gsTHBSplineBasis object.
+            %
+            %Output:
+            %  b1	n x d-matrix, left bottom corners of boxes
+            %  b2	n x d-matrix, right upper corners of boxes
+            %  level	vector of length n, corresponding levels, 
+            % where n = number of boxes, d = dimension of the parametric
+            % domain. 
+            
+            if (nargin~=1 || nargout~=3)
+                error('Invalid number of input and/or output arguments.')
+            end
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('getBoxes', this.objectHandle,...
                                                            varargin{:});
         end
         

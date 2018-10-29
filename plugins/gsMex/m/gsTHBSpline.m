@@ -82,7 +82,7 @@ classdef gsTHBSpline < handle
             %
             %Output:
             %  (none)
-        
+            
             mex_gsTHBSpline('destructor', this.objectHandle);
         end
 
