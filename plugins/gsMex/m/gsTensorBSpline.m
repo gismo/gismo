@@ -1,6 +1,6 @@
-% @file gsTHBSpline.m
+% @file gsTensorBSpline.m
 %
-%    @brief Matlab wrapper for gsTHBSpline class
+%    @brief Matlab wrapper for gsTensorBSpline class
 %
 %    This file is part of the G+Smo library.
 %
@@ -8,9 +8,9 @@
 %    License, v. 2.0. If a copy of the MPL was not distributed with this
 %    file, You can obtain one at http://mozilla.org/MPL/2.0/.
 %
-%    Author(s): O. Chanon, A. Mantzaflaris
+%    Author(s): O. Chanon
 
-classdef gsTHBSpline < handle
+classdef gsTensorBSpline < handle
 
     properties (SetAccess = private, Hidden = true)
         objectHandle; % Handle to the underlying C++ class instance
@@ -19,29 +19,29 @@ classdef gsTHBSpline < handle
     methods(Access = public)
 
         % Constructor - Create a new C++ class instance 
-        function this = gsTHBSpline(varargin)
-            %gsTHBSpline - construct a gsTHBSpline object
+        function this = gsTensorBSpline(varargin)
+            %gsTensorBSpline - construct a gsTensorBSpline object
             %
             %Usage:
-            %  thb = gsTHBSpline( file )
+            %  bsp = gsTensorBSpline( file )
             %  OR
-            %  thb = gsTHBSpline( thbbasis, coefs )
+            %  bsp = gsTensorBSpline( basis, coefs )
             %
             %Input:
             %  file: char, [1 x numChar].
             %    Name of input file from which to read/construct the
-            %    gsTHBSpline.
+            %    gsTensorBSpline.
             %  OR
-            %  thbbasis: gsTHBSplineBasis
-            %    THB spline basis from which the geometry is built
+            %  bbasis: gsTensorBSplineBasis
+            %    Bspline basis from which the geometry is built
             %  coefs: array of double of size [numCoefs x geoDim],
             %    where numCoefs is the number of coefficients (total
             %    number of active basis functions) and geoDim is the
             %    dimension of the physical space.
             %
             %Output:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
+            %  bsp: gsTensorBSpline, [1 x 1].
+            %    The gsTensorBSpline object.
             
             if (nargin>2 || nargin<1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
@@ -50,186 +50,186 @@ classdef gsTHBSpline < handle
                     this.objectHandle = varargin{1};
                 else
                     if (~(isa(varargin{1},'char')))
-                        error('Input arguments should be of type ''char'', or a gsTHBSplineBasis and a 2d-array of double.')
+                        error('Input arguments should be of type ''char'', or a gsTensorBSplineBasis and a 2d-array of double.')
                     elseif (~exist(varargin{1},'file'))
                         error('File does not exist: %s.',varargin{1})
                     else 
-                        this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), varargin{:});
+                        this.objectHandle = mex_gsTensorBSpline('constructor', class(varargin{1}), varargin{:});
                     end
                 end
             elseif (nargin==2)
                 var2 = varargin{2};
-                if (~(isa(varargin{1},'gsTHBSplineBasis') && isa(var2,'double') && ismatrix(var2)))
-                    error('Input arguments should be of type ''char'', or a gsTHBSplineBasis and a 2d-array of double.')
+                if (~(isa(varargin{1},'gsTensorBSplineBasis') && isa(var2,'double') && ismatrix(var2)))
+                    error('Input arguments should be of type ''char'', or a gsTensorBSplineBasis and a 2d-array of double.')
                 % elseif (size(var2,1)~=varargin{1}. TODO!!! number of dof!)
                 %    error('Wrong coefficient dimension with respect to the basis.')
                 end
                 var1 = struct(varargin{1}).objectHandle;
-                this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), class(varargin{2}), var1, var2);
+                this.objectHandle = mex_gsTensorBSpline('constructor', class(varargin{1}), class(varargin{2}), var1, var2);
             end
         end
         
         % Destructor - Destroy the C++ class instance
         function delete(this)
-            %delete - delete a gsTHBSpline object
+            %delete - delete a gsTensorBSpline object
             %
             %Usage:
-            %  thb.delete()
+            %  bsp.delete()
             %
             %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
+            %  bsp: gsTensorBSpline, [1 x 1].
+            %    The gsTensorBSpline object.
             %
             %Output:
             %  (none)
             
-            mex_gsTHBSpline('destructor', this.objectHandle);
+            mex_gsTensorBSpline('destructor', this.objectHandle);
         end
 
         % parDim - call class method
         function varargout = parDim(this, varargin)
-            %parDim - dimension of the parameter space of a gsTHBSpline object
+            %parDim - dimension of the parameter space of a gsTensorBSpline object
             %
             %Usage:
-            %  val = thb.parDim()
+            %  val = bsp.parDim()
             %
             %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
+            %  bsp: gsTensorBSpline, [1 x 1].
+            %    The gsTensorBSpline object.
             %
             %Output:
             %  val: double, [1 x 1].
-            %    Dimension of the parameter space of the gsTHBSpline.
+            %    Dimension of the parameter space of the gsTensorBSpline.
             
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'parDim',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSpline('accessor', this.objectHandle, 'parDim',  varargin{:});
         end
         
         % geoDim - call class method
         function varargout = geoDim(this, varargin)
-            %geoDim - dimension of the physical space of a gsTHBSpline object
+            %geoDim - dimension of the physical space of a gsTensorBSpline object
             %
             %Usage:
-            %  val = thb.geoDim()
+            %  val = bsp.geoDim()
             %
             %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
+            %  bsp: gsTensorBSpline, [1 x 1].
+            %    The gsTensorBSpline object.
             %
             %Output:
             %  val: double, [1 x 1].
-            %    Dimension of the physical space of the gsTHBSpline.
+            %    Dimension of the physical space of the gsTensorBSpline.
             
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'geoDim',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSpline('accessor', this.objectHandle, 'geoDim',  varargin{:});
         end
 
         % size - call class method
         function varargout = size(this, varargin)
-            %size - size of a gsTHBSpline object
+            %size - size of a gsTensorBSpline object
             %
             %Usage:
-            %  num = thb.size()
+            %  num = bsp.size()
             %
             %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
+            %  bsp: gsTensorBSpline, [1 x 1].
+            %    The gsTensorBSpline object.
             %
             %Output:
             %  num: double, [1 x 1].
-            %    Size of the gsTHBSpline.
+            %    Size of the gsTensorBSpline.
             
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'size',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSpline('accessor', this.objectHandle, 'size',  varargin{:});
         end
         
         % support - call class method
         function varargout = support(this, varargin)
-            %support - support of a gsTHBSpline object
+            %support - support of a gsTensorBSpline object
             %
             %Usage:
-            %  supp = thb.support()
+            %  supp = bsp.support()
             %
             %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
+            %  bsp: gsTensorBSpline, [1 x 1].
+            %    The gsTensorBSpline object.
             %
             %Output:
             %  supp: double, [d x 2].
-            %    Support of the gsTHBSpline, ordered like 
+            %    Support of the gsTensorBSpline, ordered like 
             %      [u1_min, u1_max; u2_min, u2_max; ..., ud_min, ud_max]
             %    where d is the parametric dimension of the 
-            %    gsTHBSpline.
+            %    gsTensorBSpline.
             
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'support',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSpline('accessor', this.objectHandle, 'support',  varargin{:});
         end
         
         % basis - call class method
         function [varargout] = basis(this, varargin)
-            %basis - returns the gsTHBSplineBasis object linked to a 
-            % gsTHBSpline object
+            %basis - returns the gsTensorBSplineBasis object linked to a 
+            % gsTensorBSpline object
             %
             %Usage:
-            %  act = thb.basis()
+            %  act = bsp.basis()
             %
             %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
+            %  bsp: gsTensorBSpline, [1 x 1].
+            %    The gsTensorBSpline object.
             %
             %Output:
-            %  basis: gsTHBSplineBasis.
+            %  basis: gsTensorBSplineBasis.
             
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            basis_ptr = mex_gsTHBSpline('accessor', this.objectHandle, 'basis', varargin{:});
-            [varargout{1:nargout}] = gsTHBSplineBasis(basis_ptr);
+            basis_ptr = mex_gsTensorBSpline('accessor', this.objectHandle, 'basis', varargin{:});
+            [varargout{1:nargout}] = gsTensorBSplineBasis(basis_ptr);
         end
         
         % coefs - call class method
         function varargout = coefs(this, varargin)
-            %coefs - coefficients/control points of a gsTHBSpline object
+            %coefs - coefficients/control points of a gsTensorBSpline object
             %
             %Usage:
-            %  supp = thb.coefs()
+            %  supp = bsp.coefs()
             %
             %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
+            %  bsp: gsTensorBSpline, [1 x 1].
+            %    The gsTensorBSpline object.
             %
             %Output:
-            %  cc: array of double. Control points of the gsTHBSpline.
+            %  cc: array of double. Control points of the gsTensorBSpline.
             %    of size [numCoefs x geoDim], where numCoefs is the 
-            %    number of coefficients (total number of active basis 
-            %    functions) and geoDim is the dimension of the physical space.
+            %    number of coefficients and geoDim is the dimension 
+            %    of the physical space.
 
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'coefs', varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSpline('accessor', this.objectHandle, 'coefs', varargin{:});
         end
 
         % eval - call class method
         function [varargout] = eval(this, varargin)
-            %eval - evaluate a gsTHBSpline object
+            %eval - evaluate a gsTensorBSpline object
             %
             %Usage:
-            %  val = thb.eval( pts )
+            %  val = bsp.eval( pts )
             %
             %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
+            %  bsp: gsTensorBSpline, [1 x 1].
+            %    The gsTensorBSpline object.
             %  pts: double, [d x numPts].
-            %    Points in which to evaluate the gsTHBSpline.
+            %    Points in which to evaluate the gsTensorBSpline.
             %
             %Output:
             %  val: double, [numFun x numPts].
@@ -242,21 +242,21 @@ classdef gsTHBSpline < handle
             if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.parDim()))
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('eval', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSpline('eval', this.objectHandle, varargin{:});
         end
         
         % jacobian - call class method
         function [varargout] = jacobian(this, varargin)
-            %jacobian - evaluate the jacobian of a gsTHBSpline object
+            %jacobian - evaluate the jacobian of a gsTensorBSpline object
             %
             %Usage:
-            %  val = thb.jacobian( pts )
+            %  val = bsp.jacobian( pts )
             %
             %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
+            %  bsp: gsTensorBSpline, [1 x 1].
+            %    The gsTensorBSpline object.
             %  pts: double, [d x numPts].
-            %    Points in which to evaluate the gsTHBSpline.
+            %    Points in which to evaluate the gsTensorBSpline.
             %
             %Output:
             %  val: double, [numFun x numPts].
@@ -269,22 +269,22 @@ classdef gsTHBSpline < handle
             if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.parDim()))
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('jacobian', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSpline('jacobian', this.objectHandle, varargin{:});
         end
 
         % hess - call class method
         function [varargout] = hess(this, varargin)
-            %deriv - evaluate the hessian of a gsTHBSpline object in one
+            %deriv - evaluate the hessian of a gsTensorBSpline object in one
             %direction
             %
             %Usage:
-            %  val = thb.hess( pts, dir )
+            %  val = bsp.hess( pts, dir )
             %
             %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
+            %  bsp: gsTensorBSpline, [1 x 1].
+            %    The gsTensorBSpline object.
             %  pts: double, [d x numPts].
-            %    Points in which to evaluate the gsTHBSpline.
+            %    Points in which to evaluate the gsTensorBSpline.
             %  dir: int
             %    Direction of space on which to compute the hessian.
             %
@@ -301,19 +301,19 @@ classdef gsTHBSpline < handle
                     ~(mod(varargin{2},1)==0) || varargin{2}<1 || varargin{2}>this.parDim())
                 error('Input argument no. 2 must be a non negative integer smaller than %d.', this.parDim())
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('hess', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSpline('hess', this.objectHandle, varargin{:});
         end
         
         % active - call class method
         function [varargout] = active(this, varargin)
-            %active - active functions of a gsTHBSpline object
+            %active - active functions of a gsTensorBSpline object
             %
             %Usage:
-            %  act = thb.active( pts )
+            %  act = bsp.active( pts )
             %
             %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
+            %  bsp: gsTensorBSpline, [1 x 1].
+            %    The gsTensorBSpline object.
             %  pts: double, [d x numPts].
             %    Points in which to evaluate the function.
             %
@@ -327,48 +327,19 @@ classdef gsTHBSpline < handle
             if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.parDim()))
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('active', this.objectHandle, varargin{:});
-        end
-
-        % sliceCoefs - call class method
-        function [varargout] = sliceCoefs(this, varargin)
-            %sliceCoefs - cefficients corresponding to an isoparametric slice
-            % of this gsTHBSpline object.
-            %
-            %Usage:
-            %  slCoefs = thb.sliceCoefs(dir_fixed, par)
-            %
-            %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
-            %  dir_fixed: int, direction fixed for slicing.
-            %  par: double, parameter fixed for slicing.
-            %
-            %Output:
-            %  slCoefs: array of double [numCoefs x parDim]
-            %    The coefficients corresponding to the slice.
-
-            if (nargin~=3 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            elseif (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ...
-                    ~(mod(varargin{1},1)==0) || varargin{1}<1 || varargin{1}>this.parDim)
-                error('Input argument no. 1 must be a non negative integer smaller than %d.', this.parDim)
-            elseif (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || numel(varargin{1})~=1)
-                error('Input argument no.2 must be a scalar.')
-            end
-            [varargout{1:nargout}] = mex_gsTHBSpline('sliceCoefs', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSpline('active', this.objectHandle, varargin{:});
         end
         
         % save - call class method
         function [varargout] = save(this, varargin)
-            %save - save a gsTHBSpline object as xml object
+            %save - save a gsTensorBSpline object as xml object
             %
             %Usage:
-            %  thb.save(filename);
+            %  bsp.save(filename);
             %
             %Input:
-            %  thb: gsTHBSplineBasis, [1 x 1].
-            %    The gsTHBSplineBasis object.
+            %  bsp: gsTensorBSplineBasis, [1 x 1].
+            %    The gsTensorBSplineBasis object.
             %  filename: string, name of the xml output file without
             %    extension
             % 
@@ -381,7 +352,7 @@ classdef gsTHBSpline < handle
             if (~(isa(varargin{1},'char')))
                 error('Input argument no. 1 should be of type ''char''.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('save', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSpline('save', this.objectHandle, varargin{:});
         end
 
     end

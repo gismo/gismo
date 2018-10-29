@@ -9,7 +9,7 @@ hbs = gsTHBSplineBasis(filename);
 
 % Construct a truncated hierarchical basis from its knot vector in a carthesian product way.
 knots_2build = {[0,0,0,1,2,2,2],[4,4,4,5,6,6,6]};
-fprintf('Reading THB spline basis from knot vector, carthesian product way.\n')
+fprintf('Reading THB spline basis from knot vector, cartesian product way.\n')
 hbs2 = gsTHBSplineBasis(knots_2build);
 
 %% TEST ACCESSORS

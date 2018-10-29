@@ -1,4 +1,4 @@
-% @file gsTHBSpline.m
+% @file gsTHBSplineBasis.m
 %
 %    @brief Matlab wrapper for gsTHBSplineBasis class
 %
@@ -191,10 +191,10 @@ classdef gsTHBSplineBasis < handle
             %    The gsTHBSplineBasis object.
             %
             %Output:
-            %  supp: double, [1 x 2*d].
+            %  supp: double, [d x 2].
             %    Support of the gsTHBSplineBasis, ordered like 
-            %      [u1_min, ..., ud_min, u1_max, ..., ud_max]
-            %    where d is the parametric dimennsion of the 
+            %      [u1_min, u1_max; u2_min, u2_max; ..., ud_min, ud_max]
+            %    where d is the parametric dimension of the 
             %    gsTHBSplineBasis.
             
             if (nargin~=1 || nargout>1)
