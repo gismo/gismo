@@ -220,7 +220,7 @@ eleven modules are present as sub-folders:
 
 Coordinator and maintainer: Angelos Mantzaflaris
 
-See full list in [our wiki pages](http://gs.jku.at/trac/gismo/wiki/public/About#People)
+See full list in [our wiki pages](https://github.com/gismo/gismo/wiki/About--G-Smo)
 
 # Acknowledgement and os-license
 

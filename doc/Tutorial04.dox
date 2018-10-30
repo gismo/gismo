@@ -5,8 +5,8 @@ namespace gismo {
 In this tutorial we collect some tips and guidelines for writing code
 in \gismo.
 
-Information regarding code formatting are found in 
-<a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/Contributing#Codestyleandformatting" target="_parent"> the wiki</a>.
+Information regarding code formatting are found in
+<a href="https://github.com/gismo/gismo/wiki/Contributing#code-style-and-formatting" target="_parent"> the wiki</a>.
 
 
 \section conf04 Configuration options
@@ -26,58 +26,58 @@ Configuration:
 The full list of options can be accessed using the \b cmake-gui
 utility, or using the command-line version:
 
-\verbatim 
+\verbatim
 ccmake .
-\endverbatim 
+\endverbatim
 
 inside the build folder.
 
 
--   CMAKE_BUILD_TYPE 
+-   CMAKE_BUILD_TYPE
 
     Available values are the standard CMake build configurations:
     Debug, Release, RelWithDebInfo?, MinSizeRel?.
 
--   GISMO_COEFF_TYPE 
+-   GISMO_COEFF_TYPE
 
     The arithmetic type to be used for all computations. Available
     options include double, long double, float. This is the type is
     alias as \a real_t.
 
--   GISMO_EXTRA_DEBUG 
+-   GISMO_EXTRA_DEBUG
 
     If set to ON additional debugging tools are enabled during
     compilation. These include checked iterators for GCC and MSVC
     compilers and call stack back-trace printout when a runtime
     exception occurs.
 
--   GISMO_BUILD_LIB 
+-   GISMO_BUILD_LIB
 
     If enabled a dynamic library is created using GISMO_COEFF_TYPE
     arithmetic. A target for a static library named gismo_static is
     also created but not compiled by default.
 
--   GISMO_BUILD_EXAMPLES 
+-   GISMO_BUILD_EXAMPLES
 
     If enabled the programs in the examples folder are compiled, and
     executables are created in build-folder/bin.
 
--   GISMO_BUILD_AXL 
+-   GISMO_BUILD_AXL
 
     If enabled the plugin for Axel modeler is compiled (requires
     Axel).
 
--   GISMO_WITH_PSOLID 
+-   GISMO_WITH_PSOLID
 
     If enabled the extensions using functionalities of Parasolid
     geometric kernel are compiled.(requires Parasolid).
 
--   GISMO_WITH_ONURBS 
+-   GISMO_WITH_ONURBS
 
     If enabled the extension for reading and writing of Rhinoceros'
     3DM is compiled.
 
--   CMAKE_INSTALL_PREFIX 
+-   CMAKE_INSTALL_PREFIX
 
     The location for installation of the library, e.g. /usr/local on
     some Linux systems.
@@ -97,7 +97,7 @@ If the CMake option GISMO_EXTRA_DEBUG is set to ON, more checks are
 performed while running the code. In particular the Standard library
 containers are checked for invalid access, invalid iterators, and so
 on. Also upon failure of the program the call stack is printed on the
-screen. 
+screen.
 
 \note
 The setting GISMO_EXTRA_DEBUG replaces the standard containers, for
