@@ -25,6 +25,9 @@
 ##
 ## ctest -S ctest_script.cmake -D CTEST_TEST_MODEL=Experimental -D CTEST_CONFIGURATION_TYPE=Release -D CTEST_BUILD_JOBS=8 -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=gcc -D CXXNAME=g++ -D CTEST_TEST_TIMEOUT=100 -D CTEST_MEMORYCHECK_TYPE=Valgrind -D test_coverage=TRUE
 ##
+## Different dashboard projects and subprojects are possible:
+##
+## ctest -S /path/to/ctest_script.cmake -D PROJECT_NAME=myGismo -D CTEST_BUILD_JOBS=2 -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_TEST_TIMEOUT=100 -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests' -D CTEST_SOURCE_DIRECTORY=./gismo_src -D CTEST_BINARY_DIRECTORY=./build
 ##
 ## On linux this script can be invoked in a cronjob. e.g.:
 ##    $ crontab -e
@@ -348,16 +351,17 @@ macro(run_ctests)
   if(DEFINED DROP_METHOD)
     set(CTEST_DROP_METHOD ${DROP_METHOD})
   endif()
-  set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS})
+  #set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS}) #!Dangerous!
 
   ctest_configure(OPTIONS "${CMAKE_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}")
 
   ctest_submit(PARTS Configure Update)
 
   #"${CMAKE_VERSION}" VERSION_LESS "3.10"
-  if(NOT "x${CTEST_LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
+  if(NOT "x${LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
 
-    foreach(subproject ${CTEST_LABELS_FOR_SUBPROJECTS})
+    foreach(subproject ${LABELS_FOR_SUBPROJECTS})
+      #message("Subproject ${subproject}")
       set_property(GLOBAL PROPERTY SubProject ${subproject}) #cdash subproject
       set_property(GLOBAL PROPERTY Label ${subproject})      #test selection
       ctest_build(TARGET ${subproject} APPEND)
