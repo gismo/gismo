@@ -1,9 +1,12 @@
 [submodule "extensions/gsUnitTest"]
 	path = extensions/gsUnitTest
 	url = ../gsUnitTest.git
+	branch = master
 [submodule "extensions/motor"]
 	path = extensions/motor
 	url = ../motor.git
+	branch = master
 [submodule "unsupported"]
 	path = extensions/unsupported
 	url = ../unsupported.git
+	branch = master
