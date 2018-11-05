@@ -265,6 +265,7 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
         computeDirichletDofsL2Proj(mapper, mbasis,unk);
         break;
     case dirichlet::user :
+        m_ddof[unk].setZero(mapper.boundarySize(), m_pde_ptr->numRhs());
         // Assuming that the DoFs are already set by the user
         GISMO_ENSURE( m_ddof[unk].rows() == mapper.boundarySize() &&
                       m_ddof[unk].cols() == m_pde_ptr->numRhs(),

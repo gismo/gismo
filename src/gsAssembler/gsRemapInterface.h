@@ -432,7 +432,7 @@ void gsRemapInterface<T>::constructBreaks() {
     }
     else
     {
-        if(m_side1.index() == 1 || m_side2.index() == 2)
+        if(m_side1.index() == 1 || m_side1.index() == 2)
         {
             if(domIt1->upperCorner()(1,0) <= m_parameterbounds.first(1,1))
             {
@@ -1124,6 +1124,7 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
                 // in case 2 corners lie on the interface of patch 2
                 inversMaps.col(3) = parLoc;
                 completeOnPatch2 = true; // side of patch1 is completely contained in the corresponding side of patch2 or the patches are fully matching
+                //gsInfo << "corner: " << i << " and parametric loc.: \n" << parLoc << "\n";
             }
         }
 
@@ -1197,9 +1198,12 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
         {
             if (m_side1.index() == 3 || m_side1.index() == 4) //sort w.r.t u
             {
-                m_parameterbounds.first.row(0) = m_g1.parameterRange().row(0);
+                //m_parameterbounds.first.row(0) = m_g1.parameterRange().row(0);
+                m_parameterbounds.first(0, 0) = inversMaps.col(0)(0);
+                m_parameterbounds.first(0, 1) = inversMaps.col(2)(0);
                 m_parameterbounds.first(1, 0) = inversMaps.col(0)(1);
-                m_parameterbounds.first(1, 1) = inversMaps.col(0)(1);
+                //m_parameterbounds.first(1, 1) = inversMaps.col(0)(1);
+                m_parameterbounds.first(1, 1) = inversMaps.col(2)(1);
             } else {
                 if (m_side1.index() == 1 || m_side1.index() == 2) // sort w.r.t v
                 {
@@ -1214,13 +1218,13 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
             if (m_side1.index() == 3 || m_side1.index() == 4) //sort w.r.t u
             {
                 m_parameterbounds.first.row(0) = m_g1.parameterRange().row(0);
-                m_parameterbounds.first(1, 0) = inversMaps.col(0)(1);
-                m_parameterbounds.first(1, 1) = inversMaps.col(0)(1);
+                m_parameterbounds.first(1, 0) = m_side1.index() == 3 ? m_g1.parameterRange()(1,0) : m_g1.parameterRange()(1,1); //inversMaps.col(0)(1);
+                m_parameterbounds.first(1, 1) = m_parameterbounds.first(1,0); //inversMaps.col(0)(1);
             } else {
                 if (m_side1.index() == 1 || m_side1.index() == 2) // sort w.r.t v
                 {
-                    m_parameterbounds.first(0, 0) = inversMaps.col(0)(0);
-                    m_parameterbounds.first(0, 1) = inversMaps.col(0)(0);
+                    m_parameterbounds.first(0, 0) = m_side1.index() == 1 ? m_g1.parameterRange()(0,0) : m_g1.parameterRange()(0,1); //inversMaps.col(0)(0);
+                    m_parameterbounds.first(0, 1) = m_parameterbounds.first(0, 0);//inversMaps.col(0)(0);
                     m_parameterbounds.first.row(1) = m_g1.parameterRange().row(1);
                 }
             }
@@ -1265,9 +1269,11 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
         {
             if (m_side2.index() == 3 || m_side2.index() == 4) //sort w.r.t u
             {
-                m_parameterbounds.second.row(0) = m_g2.parameterRange().row(0);
+                m_parameterbounds.second(0, 0) = inversMaps.col(1)(0);
+                m_parameterbounds.second(0, 1) = inversMaps.col(3)(0);
+                //m_parameterbounds.second.row(0) = m_g2.parameterRange().row(0);
                 m_parameterbounds.second(1, 0) = inversMaps.col(1)(1);
-                m_parameterbounds.second(1, 1) = inversMaps.col(1)(1);
+                m_parameterbounds.second(1, 1) = inversMaps.col(3)(1);
             } else {
                 if (m_side2.index() == 1 || m_side2.index() == 2) // sort w.r.t v
                 {
@@ -1283,13 +1289,13 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
             if (m_side2.index() == 3 || m_side2.index() == 4) //sort w.r.t u
             {
                 m_parameterbounds.second.row(0) = m_g2.parameterRange().row(0);
-                m_parameterbounds.second(1, 0) = inversMaps.col(1)(1);
-                m_parameterbounds.second(1, 1) = inversMaps.col(1)(1);
+                m_parameterbounds.second(1, 0) = m_side2.index() == 3 ? m_g2.parameterRange()(1, 0) : m_g2.parameterRange()(1, 1);//inversMaps.col(1)(1);
+                m_parameterbounds.second(1, 1) = m_parameterbounds.second(1, 0); //inversMaps.col(1)(1);
             } else {
                 if (m_side2.index() == 1 || m_side2.index() == 2) // sort w.r.t v
                 {
-                    m_parameterbounds.second(0, 0) = inversMaps.col(1)(0);
-                    m_parameterbounds.second(0, 1) = inversMaps.col(1)(0);
+                    m_parameterbounds.second(0, 0) = m_side2.index() == 1 ? m_g2.parameterRange()(0, 0) : m_g2.parameterRange()(0, 1);//inversMaps.col(1)(0);
+                    m_parameterbounds.second(0, 1) = m_parameterbounds.second(0, 0); //inversMaps.col(1)(0);
                     m_parameterbounds.second.row(1) = m_g2.parameterRange().row(1);
                 }
             }
