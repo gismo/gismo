@@ -85,12 +85,16 @@ function(gismo_fetch_module)
     #  set(git_repo https://github.com/gismo/${ARGV0}.git)
     #endif()
     # gismo_fetch_directory(${ARGN} GIT_REPOSITORY  ${git_repo})
-    find_package(Git REQUIRED)
-    execute_process(COMMAND "${GIT_EXECUTABLE}" "submodule" "update" "--init" "extensions/${ARGV0}"
-      WORKING_DIRECTORY ${gismo_SOURCE_DIR}
-      #RESULT_VARIABLE gresult
-      #OUTPUT_QUIET
-      )
+    
+    if(NOT EXISTS "${gismo_SOURCE_DIR}/extensions/${ARGV0}/CMakeLists.txt")
+      message(STATUS "Initializing remote submodule ${ARGV0}")
+      find_package(Git REQUIRED)
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "submodule" "update" "--init" "extensions/${ARGV0}"
+        WORKING_DIRECTORY ${gismo_SOURCE_DIR}
+        #RESULT_VARIABLE gresult
+        #OUTPUT_QUIET
+        )
+    endif()
   elseif("x${GISMO_REPO}" STREQUAL "xsvn")
     #if("x${GISMO_FETCH_PROT}" STREQUAL "xssh") message(ERROR "GitHub does not support svn+ssh") endif()
     gismo_fetch_directory(${ARGN}
