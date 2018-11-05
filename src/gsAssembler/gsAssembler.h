@@ -106,7 +106,7 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
           alt_sgn = -alt_sgn;
           }
           gsDebugVar(result.transpose()); // result 2
-        */
+        //*/
     }
     else // planar case
     {
@@ -717,16 +717,11 @@ template<class InterfaceVisitor>
 void gsAssembler<T>::apply(InterfaceVisitor & visitor,
                            const boundaryInterface & bi)
 {
-    //gsDebug<<"Apply DG on "<< bi <<".\n";
+    //gsDebug<<"Apply DG on "<< bi <<".\n";   
 
     //const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
     gsRemapInterface<T> interfaceMap(m_pde_ptr->patches(), m_bases[0], bi);
     interfaceMap.init(); //calls constructReparam and constructBreaks
-
-    const int patch1      = bi.first().patch;
-    const int patch2      = bi.second().patch;
-    const gsBasis<T> & B1 = m_bases[0][patch1];// (!) unknown 0
-    const gsBasis<T> & B2 = m_bases[0][patch2];
 
     const int patchIndex1      = bi.first().patch;
     const int patchIndex2      = bi.second().patch;
@@ -753,9 +748,7 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
     // Initialize domain element iterators
     //typename gsBasis<T>::domainIter domIt1 = B1.makeDomainIterator( bi.first() .side() );
     //typename gsBasis<T>::domainIter domIt2 = B2.makeDomainIterator( bi.second().side() );
-
     typename gsBasis<T>::domainIter domIt = interfaceMap.makeDomainIterator();
-
     int count = 0;
 
     // iterate over all boundary grid cells on the "left"
@@ -792,19 +785,14 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
         //domIter1->adjacent( bi.orient, *domIter2 );
 
         // Compute the quadrature rule on both sides
-        //gsInfo << "lower: " << domIt->lowerCorner() << "\n";
-        //gsInfo << "upper: " << domIt->upperCorner() << "\n";
-        QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes1, quWeights);
+        quRule.mapTo( domIt1->lowerCorner(), domIt1->upperCorner(), quNodes1, quWeights);
         interfaceMap.eval_into(quNodes1,quNodes2);
-        //gsInfo << "qunodes 1: " << quNodes1 << "\n";
-        //gsInfo << "qunodes 2: " << quNodes2 << "\n";
-        //gsInfo << "qunodes 2 evaluated: " << m_pde_ptr->patches()[patch2].eval(quNodes2) << "\n";
 
         // Perform required evaluations on the quadrature nodes
-        visitor.evaluate(B1, *geoEval1, B2, *geoEval2, quNodes1, quNodes2);
+        visitor.evaluate(B1, patch1, B2, patch2, quNodes1, quNodes2);
 
         // Assemble on element
-        visitor.assemble(*domIt,*domIt, *geoEval1, *geoEval2, quWeights);
+        visitor.assemble(*domIt1,*domIt2, quWeights);
 
         // Push to global patch matrix (m_rhs is filled in place)
         visitor.localToGlobal(patch1, patch2, m_ddof, m_system);
