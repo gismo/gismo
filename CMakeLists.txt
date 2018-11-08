@@ -372,6 +372,10 @@ endif()
 
 if(GISMO_UNSUPPORTED)
   gismo_fetch_module(unsupported)
+  #gismo_fetch_module(motor)
+endif()
+
+if(GISMO_MOTOR)
   gismo_fetch_module(motor)
 endif()
 
