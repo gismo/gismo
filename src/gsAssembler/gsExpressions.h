@@ -1303,13 +1303,13 @@ public:                                                                 \
     // const gsFeVariable<Scalar> & colVar() const { return _u.colVar(); }
 
 /// Eucledian Norm
-GISMO_EXPR_VECTOR_EXPRESSION(norm,norm,1)
+GISMO_EXPR_VECTOR_EXPRESSION(norm,norm,1);
 /// Squared Eucledian Norm
-GISMO_EXPR_VECTOR_EXPRESSION(sqNorm,squaredNorm,1)
+GISMO_EXPR_VECTOR_EXPRESSION(sqNorm,squaredNorm,1);
 /// Normalization of a vector to unit measure
-GISMO_EXPR_VECTOR_EXPRESSION(normalized,normalized,0) // (!) mem.
+GISMO_EXPR_VECTOR_EXPRESSION(normalized,normalized,0); // (!) mem.
 /// Inverse of a matrix expression
-GISMO_EXPR_VECTOR_EXPRESSION(inv,inverse,0)
+GISMO_EXPR_VECTOR_EXPRESSION(inv,inverse,0);
 // GISMO_EXPR_VECTOR_EXPRESSION(cwSqr,array().square,0)
 // GISMO_EXPR_VECTOR_EXPRESSION(sum,array().sum,1)
 // GISMO_EXPR_VECTOR_EXPRESSION(sqrt,array().sqrt,0)
