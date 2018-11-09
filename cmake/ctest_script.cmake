@@ -260,9 +260,9 @@ find_program(CTEST_UPDATE_COMMAND NAMES ${UPDATE_TYPE} ${UPDATE_TYPE}.exe)
 if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
   if("x${UPDATE_TYPE}" STREQUAL "xgit")
     if("x${UPDATE_PROT}" STREQUAL "xhttps")
-      set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch stable git@github.com:gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
-    else() #ssh
       set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch stable https://github.com/gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
+    else() #ssh
+      set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch stable git@github.com:gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
     endif()
   elseif("x${UPDATE_TYPE}" STREQUAL "xsvn")
     set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} checkout https://github.com/gismo/gismo.git/trunk ${CTEST_SOURCE_DIRECTORY}")
