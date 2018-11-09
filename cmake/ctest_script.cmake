@@ -233,6 +233,10 @@ if (NOT DEFINED UPDATE_TYPE)
   set(UPDATE_TYPE git)
 endif()
 
+if (NOT DEFINED GISMO_BRANCH)
+  set(GISMO_BRANCH stable)
+endif()
+
 # Update modules with fetch HEAD commits for all initialized submodules
 if (NOT DEFINED UPDATE_MODULES)
   set(UPDATE_MODULES OFF)
@@ -260,21 +264,21 @@ find_program(CTEST_UPDATE_COMMAND NAMES ${UPDATE_TYPE} ${UPDATE_TYPE}.exe)
 if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
   if("x${UPDATE_TYPE}" STREQUAL "xgit")
     if("x${UPDATE_PROT}" STREQUAL "xhttps")
-      set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch stable git@github.com:gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
+      set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch ${GISMO_BRANCH} https://github.com/gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
     else() #ssh
-      set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch stable https://github.com/gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
+      set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch ${GISMO_BRANCH} git@github.com:gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
     endif()
   elseif("x${UPDATE_TYPE}" STREQUAL "xsvn")
     set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} checkout https://github.com/gismo/gismo.git/trunk ${CTEST_SOURCE_DIRECTORY}")
   elseif("x${UPDATE_TYPE}" STREQUAL "xwget")
-    execute_process(COMMAND /bin/bash "-c" "wget --no-check-certificate -qO - https://github.com/gismo/gismo/archive/stable.tar.gz | tar -zxf -")
-    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink gismo-stable ${CTEST_SOURCE_DIRECTORY})
+    execute_process(COMMAND /bin/bash "-c" "wget --no-check-certificate -qO - https://github.com/gismo/gismo/archive/${GISMO_BRANCH}.tar.gz | tar -zxf -")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink gismo-${GISMO_BRANCH} ${CTEST_SOURCE_DIRECTORY})
     set(CTEST_CHECKOUT_COMMAND "${CMAKE_COMMAND} --version")
   elseif("x${UPDATE_TYPE}" STREQUAL "xurl")
-    file(DOWNLOAD https://github.com/gismo/gismo/archive/stable.tar.gz ${CTEST_SCRIPT_DIRECTORY}/stable.tar.gz)
+    file(DOWNLOAD https://github.com/gismo/gismo/archive/${GISMO_BRANCH}.tar.gz ${CTEST_SCRIPT_DIRECTORY}/${GISMO_BRANCH}.tar.gz)
     execute_process(
-      COMMAND ${CMAKE_COMMAND} -E tar xzf stable.tar.gz
-      COMMAND ${CMAKE_COMMAND} -E create_symlink gismo-stable ${CTEST_SOURCE_DIRECTORY}
+      COMMAND ${CMAKE_COMMAND} -E tar xzf ${GISMO_BRANCH}.tar.gz
+      COMMAND ${CMAKE_COMMAND} -E create_symlink gismo-${GISMO_BRANCH} ${CTEST_SOURCE_DIRECTORY}
       WORKING_DIRECTORY ${CTEST_SCRIPT_DIRECTORY} )
     set(CTEST_CHECKOUT_COMMAND "${CMAKE_COMMAND} --version")
   endif()
