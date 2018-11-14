@@ -345,7 +345,7 @@ set(ENV{CTEST_USE_LAUNCHERS_DEFAULT} 1)
 function(update_gismo updcount)
   ctest_update(RETURN_VALUE updcount)
   if(UPDATE_MODULES)
-    execute_process(COMMAND "${GIT_EXECUTABLE}" "submodule" "update" "--remote"
+    execute_process(COMMAND "${CTEST_UPDATE_COMMAND}" "submodule" "update" "--remote"
       WORKING_DIRECTORY ${gismo_SOURCE_DIR}
       #RESULT_VARIABLE gresult
       #OUTPUT_QUIET
@@ -354,7 +354,6 @@ function(update_gismo updcount)
 endfunction(update_gismo)
 
 macro(run_ctests)
-
   # Reset CTestConfig variables
   if(DEFINED PROJECT_NAME)
     set(CTEST_PROJECT_NAME ${PROJECT_NAME})
@@ -438,6 +437,7 @@ ctest_start(${CTEST_TEST_MODEL})
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
   if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
+    #update_gismo()
     ctest_update()
   endif()
 
