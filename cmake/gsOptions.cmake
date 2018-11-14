@@ -1,8 +1,8 @@
 ######################################################################
 ## CMakeLists.txt ---
-## This file is part of the G+Smo library. 
+## This file is part of the G+Smo library.
 ##
-## Author: Angelos Mantzaflaris 
+## Author: Angelos Mantzaflaris
 ## Copyright (C) 2012 - 2016 RICAM-Linz.
 ######################################################################
 
@@ -21,7 +21,7 @@ message ("  GISMO_INDEX_TYPE        ${GISMO_INDEX_TYPE}")
 ## Options list: Standard options
 ## #################################################################
 
-option(GISMO_BUILD_AXL           "Build Axel Plugin"         false  )
+option(GISMO_BUILD_AXL           "Build Axl Plugin"         false  )
 if  (${GISMO_BUILD_AXL})
 message ("  GISMO_BUILD_AXL         ${GISMO_BUILD_AXL}")
 endif()
