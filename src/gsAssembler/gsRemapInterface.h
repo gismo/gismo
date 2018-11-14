@@ -18,10 +18,13 @@
 #include <gsIO/gsOptionList.h>
 #include <gsAssembler/gsAssembler.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
+
 #include <gsCore/gsAffineFunction.h>
 #include <gsUtils/gsSortedVector.h>
 #include <gsAssembler/gsQuadRule.h>
 #include <gsNurbs/gsBSpline.h>
+//#include <gsNurbs/gsNurbsBasis.h>
+#include <gsNurbs/gsTensorNurbsBasis.h> // this header requires #include <gsNurbs/gsNurbsBasis.h> !!!
 
 #include <gsModeling/gsCurveFitting.h>
 #include <gsModeling/gsFitting.h>
@@ -707,7 +710,7 @@ void gsRemapInterface<T>::constructReparam()
         // assume that the right map is the identity
         gsMatrix<T> eval_orig, eval_fit, B2, id;
 
-        gsKnotVector<T> KV(t_vals(0, 0), t_vals(0, numIntervals - 1), 0, 4);
+        gsKnotVector<T> KV(t_vals(0, 0), t_vals(0, numIntervals - 1), 5, 4);
 
         gsCurveFitting<T> fit(t_vals.row(0).transpose(), B, KV);
 
@@ -774,19 +777,36 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
 
         //gsInfo << "result before: \n" << result << "\n";
         // need here the second basis since result store points in the second geometry
-        const gsTensorBSplineBasis<2, T> *tb = dynamic_cast<const gsTensorBSplineBasis<2, T> * >(&m_g2.basis());
+        if(const gsTensorBSplineBasis<2, T> *tb = dynamic_cast<const gsTensorBSplineBasis<2, T> * >(&m_g2.basis()))
+        {
+            if(m_side2.direction() == 1 && m_side2.parameter() == 0) // v = 0
+                result.row(1).setConstant(tb->knots(1).first());
 
-        if(m_side2.direction() == 1 && m_side2.parameter() == 0) // v = 0
-            result.row(1).setConstant(tb->knots(1).first());
+            if(m_side2.direction() == 1 && m_side2.parameter() == 1) // v = 1
+                result.row(1).setConstant(tb->knots(1).last());
 
-        if(m_side2.direction() == 1 && m_side2.parameter() == 1) // v = 1
-            result.row(1).setConstant(tb->knots(1).last());
+            if(m_side2.direction() == 0 && m_side2.parameter() == 0) // u = 0
+                result.row(0).setConstant(tb->knots(0).first());
 
-        if(m_side2.direction() == 0 && m_side2.parameter() == 0) // u = 0
-            result.row(0).setConstant(tb->knots(0).first());
+            if(m_side2.direction() == 0 && m_side2.parameter() == 1) // u = 1
+                result.row(0).setConstant(tb->knots(0).last());
+        }
+        else
+        {
+            const gsTensorNurbsBasis<2, T> * ntb = dynamic_cast<const gsTensorNurbsBasis<2, T> * >(&(m_g2.basis()));
 
-        if(m_side2.direction() == 0 && m_side2.parameter() == 1) // u = 1
-            result.row(0).setConstant(tb->knots(0).last());
+            if(m_side2.direction() == 1 && m_side2.parameter() == 0) // v = 0
+                result.row(1).setConstant(ntb->source().knots(1).first());
+
+            if(m_side2.direction() == 1 && m_side2.parameter() == 1) // v = 1
+                result.row(1).setConstant(ntb->source().knots(1).last());
+
+            if(m_side2.direction() == 0 && m_side2.parameter() == 0) // u = 0
+                result.row(0).setConstant(ntb->source().knots(0).first());
+
+            if(m_side2.direction() == 0 && m_side2.parameter() == 1) // u = 1
+                result.row(0).setConstant(ntb->source().knots(0).last());
+        }
 
         //gsInfo << "result after: \n" << result << "\n";
     }
@@ -805,30 +825,65 @@ void gsRemapInterface<T>::enrichToVector(const int boundarySide, const gsGeometr
 {
     pts.resize(geo.geoDim(), intervals.cols());
 
-    const gsTensorBSplineBasis<2, T> *tb = dynamic_cast<const gsTensorBSplineBasis<2, T> * >(&geo.basis());
+    //const gsTensorBSplineBasis<2, T> *tb = dynamic_cast<const gsTensorBSplineBasis<2, T> * >(&geo.basis());
 
-    switch (boundarySide)
+    //if(tb == NULL)
+    //const gsTensorNurbsBasis<2, T> * tb = dynamic_cast<const gsTensorNurbsBasis<2, T> * >(&(geo.basis()));
+
+
+    if(const gsTensorBSplineBasis<2, T> *tb = dynamic_cast<const gsTensorBSplineBasis<2, T> * >(&geo.basis()))
     {
-        case 1 :
-            // u = value of the first knot in u direction
-            pts.row(0) = gsMatrix<T>::Constant(1, intervals.cols(), tb->knots(0).first());
-            pts.row(1) = intervals;
-            break;
-        case 2 :
-            //u = value of the last knot in u direction
-            pts.row(0) = gsMatrix<T>::Constant(1, intervals.cols(), tb->knots(0).last());
-            pts.row(1) = intervals;
-            break;
-        case 3 :
-            //v = value of the first knot in v direction;
-            pts.row(0) = intervals;
-            pts.row(1) = gsMatrix<T>::Constant(1, intervals.cols(), tb->knots(1).first());
-            break;
-        case 4 :
-            //v = value of the last knot in v direction
-            pts.row(0) = intervals;
-            pts.row(1) = gsMatrix<T>::Constant(1, intervals.cols(), tb->knots(1).last());
-            break;
+        switch (boundarySide)
+        {
+            case 1 :
+                // u = value of the first knot in u direction
+                pts.row(0) = gsMatrix<T>::Constant(1, intervals.cols(), tb->knots(0).first());
+                pts.row(1) = intervals;
+                break;
+            case 2 :
+                //u = value of the last knot in u direction
+                pts.row(0) = gsMatrix<T>::Constant(1, intervals.cols(), tb->knots(0).last());
+                pts.row(1) = intervals;
+                break;
+            case 3 :
+                //v = value of the first knot in v direction;
+                pts.row(0) = intervals;
+                pts.row(1) = gsMatrix<T>::Constant(1, intervals.cols(), tb->knots(1).first());
+                break;
+            case 4 :
+                //v = value of the last knot in v direction
+                pts.row(0) = intervals;
+                pts.row(1) = gsMatrix<T>::Constant(1, intervals.cols(), tb->knots(1).last());
+                break;
+        }
+    }
+    else
+    {
+        const gsTensorNurbsBasis<2, T> * ntb = dynamic_cast<const gsTensorNurbsBasis<2, T> * >(&(geo.basis()));
+
+        switch (boundarySide)
+        {
+            case 1 :
+                // u = value of the first knot in u direction
+                pts.row(0) = gsMatrix<T>::Constant(1, intervals.cols(), ntb->source().knots(0).first());
+                pts.row(1) = intervals;
+                break;
+            case 2 :
+                //u = value of the last knot in u direction
+                pts.row(0) = gsMatrix<T>::Constant(1, intervals.cols(), ntb->source().knots(0).last());
+                pts.row(1) = intervals;
+                break;
+            case 3 :
+                //v = value of the first knot in v direction;
+                pts.row(0) = intervals;
+                pts.row(1) = gsMatrix<T>::Constant(1, intervals.cols(), ntb->source().knots(1).first());
+                break;
+            case 4 :
+                //v = value of the last knot in v direction
+                pts.row(0) = intervals;
+                pts.row(1) = gsMatrix<T>::Constant(1, intervals.cols(), ntb->source().knots(1).last());
+                break;
+        }
     }
 }
 
