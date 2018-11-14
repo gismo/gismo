@@ -1995,36 +1995,7 @@ PREDEFINED             = __DOXYGEN__ \
 # definition found in the source code.
 # This tag requires that the tag ENABLE_PREPROCESSING is set to YES.
 
-EXPAND_AS_DEFINED      = PP_EXPAND \
-			 PP_ARG_N \
-			 PP_RSEQ_N \
-			 PP_NARG_ \
-			 PP_COMMASEQ_N \
-			 PP_COMMA \
-			 PP_HASCOMMA \
-			 PP_NARG \
-			 PP_NARG_HELPER1 \
-			 PP_NARG_HELPER2 \
-			 PP_NARG_HELPER3_01 \
-			 PP_NARG_HELPER3_00 \
-			 PP_NARG_HELPER3_11 \
-			 __DECn \
-			 __DEC0 \
-			 __DEC1 \
-			 __DEC2 \
-			 __DEFn \
-			 __DEF0 \
-			 __DEF1 \
-			 __DEF2 \
-			 GISMO_UPTR_FUNCTION_DEC \
-			 GISMO_UPTR_FUNCTION_DEC_ \
-			 GISMO_UPTR_FUNCTION_DEF \
-			 GISMO_UPTR_FUNCTION_DEF_ \
-			 GISMO_UPTR_FUNCTION_PURE \
-			 GISMO_UPTR_FUNCTION_PURE_ \
-			 GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION \
-			 GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION_ \
-			 GISMO_CLONE_FUNCTION
+EXPAND_AS_DEFINED      =
 
 # If the SKIP_FUNCTION_MACROS tag is set to YES then doxygen's preprocessor will
 # remove all references to function-like macros that are alone on a line, have

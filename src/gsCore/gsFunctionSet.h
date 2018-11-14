@@ -29,6 +29,28 @@
 // memory::unique_ptr (aka. uPtr) of the correct type. If casts are needed
 // afterward, use memory::convert_ptr<toType>(from).
 
+// NOTE: One has to add for the DOXYGEN documentation the signature by hand
+// and "comment out" the _impl method in the hpp file. This can be done with
+// the preprocessor definition __DOXYGEN__. Commenting out is done with @cond
+// till @endcond as a doxygen comment.
+
+// Example:
+
+// #if __DOXYGEN__
+// /**
+//  * Some Method
+//  * @param a
+//  * @param b
+//  * @return gsBasis<T>::uPtr
+//  */
+// gsBasis<T>::uPtr someMethod(int a, const int b)
+// #endif
+//
+// GISMO_UPTR_FUNCTION_PURE(gsBasis<T>, someMethod, int, const int)
+
+// /// @cond
+// gsBasis<T>* someClass<T>::someMethod_impl(int a, const int b) { .... }
+// /// @endcond
 
 // Helper macros for counting arguments, works till highest number in PP_RSEQ_N
 // Call with PP_NARG(__VA_ARGS__)
@@ -206,6 +228,13 @@ public:
 
     virtual ~gsFunctionSet();
 
+#if __DOXYGEN__
+    /**
+     * Clone methode. Produceds a deep copy.
+     * @return Pointer to a deep copy inside a uPtr.
+     */
+    uPtr clone();
+#endif
     GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet, clone)
 
     /// @brief Returns the piece(s) of the function(s) at subdomain \a k
