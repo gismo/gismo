@@ -36,7 +36,7 @@
 
 // Example:
 
-// #if __DOXYGEN__
+// #ifdef __DOXYGEN__
 // /**
 //  * Some Method
 //  * @param a
@@ -228,11 +228,8 @@ public:
 
     virtual ~gsFunctionSet();
 
-#if __DOXYGEN__
-    /**
-     * Clone methode. Produceds a deep copy.
-     * @return Pointer to a deep copy inside a uPtr.
-     */
+#ifdef __DOXYGEN__
+    /// @brief Clone methode. Produceds a deep copy inside a uPtr.
     uPtr clone();
 #endif
     GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet, clone)

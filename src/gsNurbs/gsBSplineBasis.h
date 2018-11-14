@@ -219,7 +219,10 @@ public:
     // Look at gsBasis class for a description
     gsMatrix<unsigned> boundaryOffset(boxSide const & s,unsigned offset) const;
 
-    // Look at gsBasis class for a description
+#ifdef __DOXYGEN__
+    /// Gives back the boundary basis at boxSide s
+    typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s);
+#endif
     GISMO_UPTR_FUNCTION_DEC(gsConstantBasis<T>, boundaryBasis, boxSide const &)
 
     // Look at gsBasis class for a description

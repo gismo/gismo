@@ -77,7 +77,10 @@ public:
         // initialize(); // is done in the base constructor
     }
 
+#ifdef __DOXYGEN__
     /// Gives back the boundary basis at boxSide s
+    typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s);
+#endif
     GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
     {
         return basisSlice(n1.direction(),n1.parameter());

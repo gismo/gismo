@@ -508,11 +508,10 @@ public:
 
     virtual unsigned functionAtCorner(boxCorner const & c) const;
 
-#if __DOXYGEN__
+#ifdef __DOXYGEN__
     /// Returns the boundary basis for side s.
-    gsBasis<T>::uPtr boundaryBasis(boxSide const &);
+    gsBasis<T>::uPtr boundaryBasis(boxSide const & s);
 #endif
-
     GISMO_UPTR_FUNCTION_DEC(gsBasis<T>, boundaryBasis, boxSide const &)
 
     /// @brief Returns (a bounding box for) the domain of the whole basis.

@@ -117,6 +117,10 @@ public:
         return os;
     }
 
+#ifdef __DOXYGEN__
+    /// Gives back the boundary basis at boxSide s
+    typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s);
+#endif
     GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
     {
         typename Src_t::BoundaryBasisType::uPtr bb = m_src->boundaryBasis(n1);

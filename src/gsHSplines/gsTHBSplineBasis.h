@@ -35,7 +35,7 @@ template<unsigned d, class T>
 class gsTHBSplineBasis : public gsHTensorBasis<d,T>
 {
 public:
-    /// Associated geometry type
+    /// Associated geometry type.
     typedef gsTHBSpline<d,T> GeometryType;
     
     typedef typename gsHTensorBasis<d,T>::CMatrix CMatrix;
@@ -44,15 +44,15 @@ public:
     
     typedef typename gsHTensorBasis<d,T>::tensorBasis tensorBasis;
 
-    /// Shared pointer for gsTHBSplineBasis
+    /// Shared pointer for gsTHBSplineBasis.
     typedef memory::shared_ptr< gsTHBSplineBasis > Ptr;
 
-    /// Unique pointer for gsTHBSplineBasis
+    /// Unique pointer for gsTHBSplineBasis.
     typedef memory::unique_ptr< gsTHBSplineBasis > uPtr;
 
+    /// Associated Boundary basis type.
     typedef typename
-    util::conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<d-1,T>
-                      >::type BoundaryBasisType;
+    util::conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<d-1,T> >::type BoundaryBasisType;
 
     using gsHTensorBasis<d, T>::flatTensorIndexOf;
 
@@ -108,7 +108,10 @@ public:
         : gsHTensorBasis<d,T>(tbasis)
     {  representBasis(); }
 
+#ifdef __DOXYGEN__
     /// Gives back the boundary basis at boxSide s
+    typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s);
+#endif
     GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
     {
         return basisSlice(n1.direction(),n1.parameter());
