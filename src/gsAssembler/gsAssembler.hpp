@@ -218,10 +218,11 @@ void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, int p
 }
 
 template<class T>
-void gsAssembler<T>::setFixedDofVector(gsMatrix<T> & vals, int unk)
+void gsAssembler<T>::setFixedDofVector(gsMatrix<T> vals, int unk)
 {
+   if(m_ddof.size()==0)
+       m_ddof.resize(m_system.numColBlocks());
     m_ddof[unk].swap(vals);
-    vals.resize(0,0);
     // Assuming that the DoFs are already set by the user
     GISMO_ENSURE( m_ddof[unk].rows() == m_system.colMapper(unk).boundarySize()
                   , //&& m_ddof[unk].cols() == m_pde_ptr->numRhs(),
@@ -265,12 +266,10 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
         computeDirichletDofsL2Proj(mapper, mbasis,unk);
         break;
     case dirichlet::user :
-        m_ddof[unk].setZero(mapper.boundarySize(), m_pde_ptr->numRhs());
-        // Assuming that the DoFs are already set by the user
-        GISMO_ENSURE( m_ddof[unk].rows() == mapper.boundarySize() &&
-                      m_ddof[unk].cols() == m_pde_ptr->numRhs(),
-                      "The Dirichlet DoFs are not set.");
-        break;
+         // Assuming that the DoFs are already set by the user
+        GISMO_ENSURE( m_ddof[unk].size() == mapper.boundarySize()*m_pde_ptr->numRhs(), "The Dirichlet DoFs are not set.");
+        m_ddof[unk].resize(mapper.boundarySize(), m_pde_ptr->numRhs());
+            break;
     default:
         GISMO_ERROR("Something went wrong with Dirichlet values.");
     }
