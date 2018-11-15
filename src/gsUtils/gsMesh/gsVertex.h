@@ -42,9 +42,7 @@ public:
     gsVertex() : MeshElement(), gsVector3d<T>() { }
 
     /// Constructor, take 3 scalars.
-    /// \param x Scalar for x
-    /// \param y Scalar for y
-    /// \param z Scalar for z
+    /// \param x, y, z Coordinates of position in 3D space.
     gsVertex(scalar_t x, scalar_t y, scalar_t z = 0) :
         MeshElement(), gsVector3d<T>(x,y,z),sharp(0)
     { }
@@ -78,9 +76,7 @@ public:
     uPtr clone() const { return uPtr(new gsVertex(*this)); }
 
     /// Moves a gsVertex relatively.
-    /// \param dx add to x
-    /// \param dy add to y
-    /// \param dz add to z
+    /// \param dx, dy, dz values added to x, y and z
     void move(scalar_t dx, scalar_t dy, scalar_t dz)
     {
         this->x() += dx;
