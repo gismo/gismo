@@ -498,7 +498,7 @@ public:  /* Dirichlet degrees of freedom computation */
     /// unknown.
     /// \param[in] vals the values of the eliminated dofs.
     /// \param[in] unk the considered unknown
-    void setFixedDofVector(gsMatrix<T> & vals, int unk = 0);
+    void setFixedDofVector(gsMatrix<T> vals, int unk = 0);
 
     /// Enforce Dirichlet boundary conditions by diagonal penalization
     /// \param[in] unk the considered unknown
