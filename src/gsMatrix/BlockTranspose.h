@@ -176,10 +176,7 @@ protected:
 
 } // namespace internal
 
-#ifdef __DOXYGEN__
-// TODO: find a way doxygen like it
-#else
-/**
+/** \memberof Eigen::MatrixBase
   * \return an expression of block-wise transposed tiled matrix
   */
 template<typename Derived>
@@ -188,8 +185,6 @@ MatrixBase<Derived>::blockTranspose(Index numBlocks) const
 {
   return BlockTranspose<Derived,Dynamic>(derived(),numBlocks);
 }
-#endif
-
 
 
 }
