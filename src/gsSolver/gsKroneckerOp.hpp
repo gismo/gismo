@@ -14,6 +14,7 @@
 namespace gismo
 {
 
+/// @cond
 template <typename T>
 void gsKroneckerOp<T>::apply(const std::vector<typename gsLinearOperator<T>::Ptr> & ops, const gsMatrix<T> & input, gsMatrix<T> & x)
 {
@@ -79,6 +80,7 @@ void gsKroneckerOp<T>::apply(const std::vector<typename gsLinearOperator<T>::Ptr
     q0.resize(sz, n);
     x.swap( q0 );
 }
+/// @endcond
 
 template <typename T>
 void gsKroneckerOp<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const

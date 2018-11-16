@@ -37,12 +37,10 @@
 // Example:
 
 // #ifdef __DOXYGEN__
-// /**
-//  * Some Method
-//  * @param a
-//  * @param b
-//  * @return gsBasis<T>::uPtr
-//  */
+// /// @briefSome Method
+// /// @param a
+// /// @param b
+// /// @return gsBasis<T>::uPtr
 // gsBasis<T>::uPtr someMethod(int a, const int b)
 // #endif
 //

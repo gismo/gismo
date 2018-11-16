@@ -155,6 +155,9 @@ struct traits<adjugate_impl<MatrixType> >
 
 // ***  Implementation of MatrixBase::adjugate()
 
+#ifdef __DOXYGEN__
+// TODO: Find a way doxygen works with it.
+#else
 template<typename Derived>
 inline const internal::adjugate_impl<Derived>
 MatrixBase<Derived>::adjugate() const
@@ -168,6 +171,6 @@ inline void MatrixBase<Derived>::adjugateInPlace()
 {
     derived() = adjugate().eval();
 }
-
+#endif
 
 }

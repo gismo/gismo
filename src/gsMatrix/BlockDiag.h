@@ -200,6 +200,9 @@ protected:
 
 } // namespace internal
 
+#ifdef __DOXYGEN__
+// TODO: find a way Doxygen likes it
+#else
 /**
   * \return an expression of the replication of \c *this
   *
@@ -214,6 +217,6 @@ MatrixBase<Derived>::blockDiag(Index numBlocks) const
 {
   return BlockDiag<Derived,Dynamic>(derived(),numBlocks);
 }
-
+#endif
 
 } // namespace eigen

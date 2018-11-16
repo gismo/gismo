@@ -10,8 +10,10 @@
     
     Author(s): A. Mantzaflaris
 */
-
-inline const internal::adjugate_impl<Derived> adjugate() const;
+namespace internal  // doxygen's scope operator is used with types rather than namespaces
+{
+inline const adjugate_impl<Derived> adjugate() const;
+}
 
 inline void adjugateInPlace();
     
