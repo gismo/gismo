@@ -26,10 +26,10 @@ template <class T>
 class gsVertex  : public gsMeshElement<T>, public gsVector3d<T>
 {
 public:
-    /// Shared pointer for gsVertex
+    /// @brief Shared pointer for gsVertex
     typedef memory::shared_ptr< gsVertex > Ptr;
 
-    /// Unique pointer for gsVertex
+    /// @brief Unique pointer for gsVertex
     typedef memory::unique_ptr< gsVertex > uPtr;
 
     typedef typename gsVector3d<T>::Scalar       scalar_t;
@@ -38,22 +38,22 @@ public:
     typedef typename MeshElement::gsVertexHandle gsVertexHandle;
 
 public:
-    /// Constructor
+    /// @brief Constructor
     gsVertex() : MeshElement(), gsVector3d<T>() { }
 
-    /// Constructor, take 3 scalars.
+    /// @brief Constructor, take 3 scalars.
     /// \param x, y, z Coordinates of position in 3D space.
     gsVertex(scalar_t x, scalar_t y, scalar_t z = 0) :
         MeshElement(), gsVector3d<T>(x,y,z),sharp(0)
     { }
 
-    /// Constructor, takes a gsVector3d
+    /// @brief Constructor, takes a gsVector3d
     /// \param u the gsVector3d
     gsVertex( gsVector3d<T> const & u) :
         MeshElement(), gsVector3d<T>(u),sharp(0)
     { }
 
-    /// Constructor, takes a gsVector.
+    /// @brief Constructor, takes a gsVector.
     /// \param u gsVector of dimension 1, 2 or 3. Fills with zero.
     gsVertex( gsVector<T> const & u) :
         MeshElement(), gsVector3d<T>(),sharp(0)
@@ -72,10 +72,10 @@ public:
 
     // clone function
     //GISMO_CLONE_FUNCTION(gsVertex)
-    /// Clone Function (deep copy)
+    /// @brief Clone Function (deep copy)
     uPtr clone() const { return uPtr(new gsVertex(*this)); }
 
-    /// Moves a gsVertex relatively.
+    /// @brief Moves a gsVertex relatively.
     /// \param dx, dy, dz values added to x, y and z
     void move(scalar_t dx, scalar_t dy, scalar_t dz)
     {
@@ -84,7 +84,7 @@ public:
         this->z() += dz;
     }
 
-    /// Adds a gsFaceHandle \a f to the list of faces adjaent to this vertex.
+    /// @brief Adds a gsFaceHandle \a f to the list of faces adjaent to this vertex.
     /// \param f gsFaceHandle
     inline void addFace(gsFaceHandle const& f)
     { faces.push_back( f ); }
@@ -114,7 +114,7 @@ public:
     //gsVector3d<T> coords;
     bool sharp;
 
-    /// List of faces adjacent to this vertex
+    /// @brief List of faces adjacent to this vertex
     std::vector<gsFaceHandle> faces;
     int numEdges;
 

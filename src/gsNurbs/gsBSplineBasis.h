@@ -26,7 +26,7 @@
 namespace gismo
 {
 
-/// \brief Traits for BSplineBasis in more dimensions
+/// @brief Traits for BSplineBasis in more dimensions
 template<unsigned d, class T>
 struct gsBSplineTraits
 {
@@ -78,22 +78,22 @@ public:
     typedef gsTensorBSplineBasis TensorSelf_t;
     typedef gsTensorBSplineBasis<1,T> TensorSelf_tt;
 
-    /// Coefficient type
+    /// @brief Coefficient type
     typedef T Scalar_t;
 
-    /// Associated geometry type
+    /// @brief Associated geometry type
     typedef typename gsBSplineTraits<1,T>::Geometry GeometryType;
 
-    /// Associated Boundary basis type
+    /// @brief Associated Boundary basis type
     typedef typename gsBSplineTraits<0,T>::Basis BoundaryBasisType;
 
-    /// Dimension of the parameter domain
+    /// @brief Dimension of the parameter domain
     static const int Dim = 1;
 
-    /// Smart pointer for gsTensorBSplineBasis
+    /// @brief Smart pointer for gsTensorBSplineBasis
     typedef memory::shared_ptr< Self_t > Ptr;
 
-    /// Smart pointer for gsTensorBSplineBasis
+    /// @brief Smart pointer for gsTensorBSplineBasis
     typedef memory::unique_ptr< Self_t > uPtr;
   
 public:
@@ -174,7 +174,7 @@ public:
     // Same as gsBasis::elementIndex but argument is a value instead of a vector
     int elementIndex(T u ) const;
 
-    /// \brief Returns span (element) indices of the beginning and end
+    /// @brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
     void elementSupport_into(const unsigned & i,
                              gsMatrix<unsigned,1,2>& result) const
@@ -190,13 +190,13 @@ public:
     // Look at gsBasis class for a description
     TensorSelf_t & component(unsigned i) = 0;
 
-    /// Returns the anchors (greville points) of the basis
+    /// @brief Returns the anchors (greville points) of the basis
     void anchors_into(gsMatrix<T> & result) const 
     { 
         m_knots.greville_into(result); 
     }
 
-    /// Returns the anchors (greville points) of the basis
+    /// @brief Returns the anchors (greville points) of the basis
     void anchor_into(unsigned i, gsMatrix<T> & result) const 
     { 
         result.resize(1,1);
@@ -220,7 +220,7 @@ public:
     gsMatrix<unsigned> boundaryOffset(boxSide const & s,unsigned offset) const;
 
 #ifdef __DOXYGEN__
-    /// Gives back the boundary basis at boxSide s
+    /// @brief Gives back the boundary basis at boxSide s
     typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s);
 #endif
     GISMO_UPTR_FUNCTION_DEC(gsConstantBasis<T>, boundaryBasis, boxSide const &)
@@ -231,7 +231,7 @@ public:
     // Look at gsBasis class for a description
     gsMatrix<T> support( const unsigned & i ) const ;
 
-    /// Only meaningfull for periodic basis: For basis members that have
+    /// @brief Only meaningfull for periodic basis: For basis members that have
     /// a twin, this function returns the other twin index, otherwise it
     /// returns the same index as the argument
     unsigned twin(unsigned i) const ;
@@ -269,7 +269,7 @@ public:
     // Look at gsBasis class for a description
     typename gsBasis<T>::uPtr tensorize(const gsBasis<T> & other) const;
     
-    /// Check the BSplineBasis for consistency
+    /// @brief Check the BSplineBasis for consistency
     bool check() const
     { 
         if ( m_periodic > 0 )
@@ -289,10 +289,10 @@ public:
         }
     }
   
-    /// Prints the object as a string.
+    /// @brief Prints the object as a string.
     std::ostream &print(std::ostream &os) const;
 
-    /// Return a string with detailed information on the basis.
+    /// @brief Return a string with detailed information on the basis.
     std::string detail() const;
 
     // Look at gsBasis class for a description
@@ -326,23 +326,23 @@ public:
     // Look at gsBasis class for a description
     int totalDegree() const { return m_p; }
  
-    /// Returns the order of the B-spline  basis
+    /// @brief Returns the order of the B-spline  basis
     inline unsigned order() const { return m_p+1; }
 
-    /// True iff the point \a pp is in the domain of the basis
+    /// @brief True iff the point \a pp is in the domain of the basis
     inline bool inDomain(T const & pp) const 
     { return ( (pp >= *(m_knots.begin()+m_p)) &&  (pp <= *(m_knots.end()-m_p-1) ) ); }
 
-    /// Returns the starting value of the domain of the basis
+    /// @brief Returns the starting value of the domain of the basis
     T domainStart() const { return *(m_knots.begin()+m_p); }
 
-    /// Returns the ending value of the domain of the basis
+    /// @brief Returns the ending value of the domain of the basis
     T domainEnd() const { return *(m_knots.end()-m_p-1); }
 
-    /// Returns length of the ``active" part of the knot vector.
+    /// @brief Returns length of the ``active" part of the knot vector.
     T _activeLength() const { return domainEnd() - domainStart(); }
 
-    /// Returns the index of the first active (ie. non-zero) basis function at point u
+    /// @brief Returns the index of the first active (ie. non-zero) basis function at point u
     /// Takes into account non-clamped knots.
     inline unsigned firstActive(T u) const { 
         return ( inDomain(u) ? (m_knots.iFind(u)-m_knots.begin()) - m_p : 0 );
@@ -354,7 +354,7 @@ public:
     // Look at gsBasis class for a description
     gsDomain<T> * domain() const { return const_cast<KnotVectorType *>(&m_knots); }
 
-    /// Returns the knot vector of the basis
+    /// @brief Returns the knot vector of the basis
     const KnotVectorType & knots (int i  = 0) const 
     { 
         GISMO_ENSURE(i==0, "Invalid knots requested");
@@ -368,7 +368,7 @@ public:
 
     T knot(index_t const & i) const { return m_knots[i];}
 
-    /// Inserts the knot \em knot in the underlying knot vector.
+    /// @brief Inserts the knot \em knot in the underlying knot vector.
     void insertKnot(T knot, int mult=1)
     { m_knots.insert( knot, mult); }
 
@@ -400,7 +400,7 @@ public:
     // Look at gsBasis class for a description
     void uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1);
 
-    /// Refine the basis by inserting the given knots and perform knot
+    /// @brief Refine the basis by inserting the given knots and perform knot
     /// refinement for the given coefficient matrix.
     void refine_withCoefs(gsMatrix<T>& coefs, const std::vector<T>& knots);
 
@@ -411,7 +411,7 @@ public:
         refine_withCoefs(coefs,refineKnots.front() );
     }
 
-    /// Refine the basis by inserting the given knots and produce a sparse matrix which maps coarse coefficient vectors to refined ones.
+    /// @brief Refine the basis by inserting the given knots and produce a sparse matrix which maps coarse coefficient vectors to refined ones.
     void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots);
 
     void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
@@ -422,7 +422,7 @@ public:
         //GISMO_NO_IMPLEMENTATION
     }
 
-    /// \brief Increases the degree without adjusting the smoothness at inner
+    /// @brief Increases the degree without adjusting the smoothness at inner
     /// knots, except from the knot values in \a knots (constrained
     /// knots of initial geometry)
     /// 
@@ -431,11 +431,11 @@ public:
     /// more) h-refinement steps the parent mesh (\a other),
     /// otherwise this function is equivalent to p-refinement of \a other.
     ///
-    /// \param other parent/reference mesh determining the
+    /// @param other parent/reference mesh determining the
     /// smoothness at the inner knots.
-    /// \param i number of k-refinement steps to perform
+    /// @param i number of k-refinement steps to perform
     ///
-    /// \remarks Not tested yet!
+    /// @remarks Not tested yet!
     void refine_k(const TensorSelf_t & other, int const & i = 1)
     { 
         GISMO_ASSERT( m_p >= other.m_p, "Degree of other knot-vector should be lower.");
@@ -453,15 +453,15 @@ public:
         m_knots.insert(knots,i);
     }
 
-    /// \brief p-refinement (essentially degree elevation)
+    /// @brief p-refinement (essentially degree elevation)
     void refine_p(int const & i = 1)
     { degreeElevate(i); }
 
-    /// \brief Uniform h-refinement (placing \a i new knots inside each knot-span
+    /// @brief Uniform h-refinement (placing \a i new knots inside each knot-span
     void refine_h(int const & i = 1)
     { uniformRefine(i); }
   
-    /// Elevate the degree of the basis and preserve the smoothness
+    /// @brief Elevate the degree of the basis and preserve the smoothness
     void degreeElevate(int const & i = 1, int const dir = -1)
     {
         GISMO_UNUSED(dir);
@@ -495,7 +495,7 @@ public:
         m_p-=i; m_knots.degreeDecrease(i);
     }
 
-    /// Elevate spline continuity at interior knots by \a i
+    /// @brief Elevate spline continuity at interior knots by \a i
     void elevateContinuity(int const & i = 1) 
     { 
         GISMO_ASSERT( i>=0 && ( m_knots.size()>static_cast<size_t>(2*(m_p+1)) || i<=m_p ), 
@@ -503,7 +503,7 @@ public:
         m_knots.reduceMultiplicity(i);
     }
 
-    /// Reduces spline continuity at interior knots by \a i
+    /// @brief Reduces spline continuity at interior knots by \a i
     void reduceContinuity(int const & i = 1) 
     { 
         GISMO_ASSERT( i>=0 && ( m_knots.size()>static_cast<size_t>(2*(m_p+1)) || i<=m_p ), 
@@ -512,7 +512,7 @@ public:
         m_knots.increaseMultiplicity(i);
     }
 
-    /// Tells, whether the basis is periodic.
+    /// @brief Tells, whether the basis is periodic.
     bool isPeriodic() const
     {
         return (m_periodic > 0);
@@ -521,13 +521,13 @@ public:
     // Look at gsBasis class for a description
     unsigned functionAtCorner(boxCorner const & c) const;
 
-    /// Returns number of functions crossing the boundary of the knot vector.
+    /// @brief Returns number of functions crossing the boundary of the knot vector.
     int numCrossingFunctions () const
     {
         return m_periodic;
     }
 
-    /// Checks, if both endknots have multiplicity m_p + 1.
+    /// @brief Checks, if both endknots have multiplicity m_p + 1.
     bool isClamped() const
     {
         if( m_knots[0] != m_knots[m_p])
@@ -540,7 +540,7 @@ public:
             return true;
     }
 
-    /// If flag is true, tries to convert the basis to periodic
+    /// @brief If flag is true, tries to convert the basis to periodic
     /// (succeeds only if the knot vector is suitable).
     void setPeriodic(bool flag = true)
     {
@@ -558,7 +558,7 @@ public:
             _convertToPeriodic();
     }
 
-    /// Returns the multiplicity of the first ``significant" knot
+    /// @brief Returns the multiplicity of the first ``significant" knot
     /// (i.e., the m_p+1st). If it is different from the multiplicity
     /// of the corresponding knot at the end, returns zero.
     int borderKnotMult() const;
@@ -576,7 +576,7 @@ public:
                 );
     }
 
-    /// Moves the knot vectors to enforce periodicity.
+    /// @brief Moves the knot vectors to enforce periodicity.
     void enforceOuterKnotsPeriodic();
 
     // Look at gsBasis class for a description
@@ -589,20 +589,20 @@ public:
 
 protected:
 
-    /// Tries to convert the basis into periodic
+    /// @brief Tries to convert the basis into periodic
     void _convertToPeriodic();
 
-    /// Adjusts endknots so that the knot vector can be made periodic.
+    /// @brief Adjusts endknots so that the knot vector can be made periodic.
     void _stretchEndKnots();
 
 public:
 
-    /// \brief Helper function for evaluation with periodic basis.
+    /// @brief Helper function for evaluation with periodic basis.
     ///
-    /// \param coefs coefficients (control points, one per row) before
+    /// @param coefs coefficients (control points, one per row) before
     /// converting the basis into periodic.  
     ///
-    ///\return copy of coefs with the first m_periodic rows copied to
+    /// @return copy of coefs with the first m_periodic rows copied to
     /// the last m_periodic rows.
     gsMatrix<T> perCoefs( const gsMatrix<T>& coefs ) const
     {
@@ -618,7 +618,7 @@ public:
         return perCoefs(coefs);
     }
 
-    /// \brief Helper function for transforming periodic coefficients
+    /// @brief Helper function for transforming periodic coefficients
     /// to full coefficients
     void expandCoefs(gsMatrix<T> & coefs) const
     {
@@ -627,7 +627,7 @@ public:
         coefs.bottomRows( m_periodic ) = coefs.topRows( m_periodic );
     }
 
-    /// \brief Helper function for transforming full coefficients to
+    /// @brief Helper function for transforming full coefficients to
     /// periodic coefficients
     void trimCoefs(gsMatrix<T> & coefs) const
     {
@@ -635,7 +635,7 @@ public:
         coefs.conservativeResize(sz-m_periodic, Eigen::NoChange);
     }
 
-    /// Returns the size of the basis ignoring the bureaucratic way of
+    /// @brief Returns the size of the basis ignoring the bureaucratic way of
     /// turning the basis into periodic.
     int trueSize() const
     { return this->size() + m_periodic; }
@@ -643,16 +643,16 @@ public:
 // Data members
 protected:
 
-    /// Degree
+    /// @brief Degree
     int m_p;
 
-    /// Knot vector
+    /// @brief Knot vector
     KnotVectorType m_knots;
     
-    /// Denotes whether the basis is periodic, ( 0 -- non-periodic, >0 -- number of ``crossing" functions)
+    /// @brief Denotes whether the basis is periodic, ( 0 -- non-periodic, >0 -- number of ``crossing" functions)
     int m_periodic;
 
-    /*/// Multiplicity of the p+1st knot from the beginning and from the end.
+    /*/// @brief Multiplicity of the p+1st knot from the beginning and from the end.
       int m_bordKnotMulti;*/
 
 }; // class gsTensorBSplineBasis<1>
@@ -682,10 +682,10 @@ public:
     typedef gsTensorBSplineBasis<1,T> Base;
     typedef gsBSplineBasis<T> Self_t;
 
-    /// Associated geometry type
+    /// @brief Associated geometry type
     typedef typename gsBSplineTraits<1,T>::Geometry GeometryType;
 
-    /// Associated Boundary basis type
+    /// @brief Associated Boundary basis type
     typedef typename gsBSplineTraits<0,T>::Basis BoundaryBasisType;
 
 public:
@@ -704,7 +704,7 @@ public:
             gsWarn << "Warning: Inconsistent "<< *this<< "\n";
     }
 
-    /// Construct BSpline basis of a knot vector
+    /// @brief Construct BSpline basis of a knot vector
     explicit gsBSplineBasis(KnotVectorType KV, const bool periodic = false)
     { 
         m_p        = KV.degree();
@@ -718,7 +718,7 @@ public:
             gsWarn << "Warning: Insconsistent "<< *this<< "\n";
     }
 
-    /// Compatibility constructor with input an std::vector containing
+    /// @brief Compatibility constructor with input an std::vector containing
     /// a single knotvector
     explicit gsBSplineBasis(std::vector<KnotVectorType> KV)
     { 
@@ -729,13 +729,13 @@ public:
         m_periodic = 0;
     }
 
-    /// Construct a BSpline basis
-    /// \param u0 starting parameter
-    /// \param u1 end parameter parameter
-    /// \param interior number of interior knots
-    /// \param degree degree of the spline space
-    /// \param mult_interior multiplicity at the interior knots
-    /// \param periodic specifies if basis is periodic or not
+    /// @brief Construct a BSpline basis
+    /// @param u0 starting parameter
+    /// @param u1 end parameter parameter
+    /// @param interior number of interior knots
+    /// @param degree degree of the spline space
+    /// @param mult_interior multiplicity at the interior knots
+    /// @param periodic specifies if basis is periodic or not
     gsBSplineBasis(const T u0, const T u1, const unsigned interior, 
                    const int degree, const unsigned mult_interior=1,
                    const bool periodic = false )
@@ -752,7 +752,7 @@ public:
     }
 
 /*
-    /// Copy Constructor
+    /// @brief Copy Constructor
     gsBSplineBasis( const gsBSplineBasis & o)
     : Base(o)
     { }
