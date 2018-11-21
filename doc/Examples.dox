@@ -48,7 +48,7 @@ In the gismo/examples sub-directory we find:
 
 - \subpage poisson2_example
 
-- \subpage poisson_exampleThb
+- \subpage poissonTHB_example
 
 - \subpage sparseSolvers_example
 
