@@ -33,7 +33,7 @@ public:
     
 // Data members    
 public:
-    GISMO_DEPRECATED gsVector3d<T> coords;
+    gsVector3d<T> coords; // TODO: should be inherited instead, makes it more naturally
     // halfedge out of this vertex
     gsSolidHalfEdgeHandle hed;    
     
