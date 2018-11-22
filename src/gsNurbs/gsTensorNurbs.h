@@ -177,10 +177,10 @@ public:
 
         std::vector< gsBSplineBasis<T>* > cbases;
         cbases.reserve(4);
-        cbases.push_back(new gsBSplineBasis<T>(give(KV1)) );
-        cbases.push_back(new gsBSplineBasis<T>(give(KV2)) );
-        cbases.push_back(new gsBSplineBasis<T>(give(KV3)) );
-        cbases.push_back(new gsBSplineBasis<T>(give(KV4)) );
+        cbases.push_back(new gsBSplineBasis<T>(KV1) );
+        cbases.push_back(new gsBSplineBasis<T>(KV2) );
+        cbases.push_back(new gsBSplineBasis<T>(KV3) );
+        cbases.push_back(new gsBSplineBasis<T>(KV4) );
         TBasis * tbasis = gsBSplineTraits<d,T>::Basis::New(cbases); //d==4
 
         GISMO_ASSERT(tbasis->size()== tcoefs.rows(),
@@ -328,7 +328,11 @@ public:
             if( mult>=degree )
             {
                 // no knot insertion needed, just extract the right coefficients
-                constructCoefsForSlice(dir_fixed,par,*this,coefs);
+                const gsKnotVector<T>& knots = this->basis().knots(dir_fixed);
+                const index_t index = (knots.iFind(par) - knots.begin()) - this->basis().degree(dir_fixed);
+                gsVector<index_t,d> sizes;
+                this->basis().size_cwise(sizes);
+                constructCoefsForSlice<d, T>(dir_fixed, index, this->coefs(), sizes, coefs);
             }
             else
             {
@@ -342,7 +346,11 @@ public:
                     intStrides.template cast<unsigned>(), degree-mult,true);
 
                 // extract right ceofficients
-                constructCoefsForSlice(dir_fixed,par,*clone,coefs);
+                const gsKnotVector<T>& knots = clone->basis().knots(dir_fixed);
+                const index_t index = (knots.iFind(par) - knots.begin()) - clone->basis().degree(dir_fixed);
+                gsVector<index_t,d> sizes;
+                clone->basis().size_cwise(sizes);
+                constructCoefsForSlice<d, T>(dir_fixed, index, clone->coefs(), sizes, coefs);
                 delete clone;
             }
 
@@ -368,43 +376,6 @@ protected:
 
     using gsGeometry<T>::m_coefs;
     using gsGeometry<T>::m_basis;
-
-// Data members
-private:
-
-    /// Helper function for the slice function
-    /// selects the row of coefficients from coefficients of geo that are suitable
-    /// for the isoparametric slice in \a dir_fixed with \a par.
-    /// Note that geo has to have already C^0 continuity at \a par in direction \a dir.
-    void constructCoefsForSlice(unsigned dir_fixed,T par,
-                                const gsTensorNurbs<d,T> & geo,
-                                gsMatrix<T>& result) const
-    {
-        // Note: assumes C^0 continuity at \a par in direction \a dir_fixed.
-
-        const gsTensorNurbsBasis<d,T>& base = geo.basis();
-        // pick the right coefficients and store them in coefs
-        const KnotVectorType& knots = base.knots(dir_fixed);
-        const int index = (knots.iFind(par) - knots.begin()) - base.degree(dir_fixed);
-        gsVector<index_t,d> sizes, lowerCorner, upperCorner;
-        base.size_cwise(sizes);
-        lowerCorner.setZero();
-        upperCorner = sizes;
-        lowerCorner[dir_fixed] = index;
-        upperCorner[dir_fixed] = index + 1;
-        // to do: gsMatrix<index_t> ind = gsTensorBasis::coefSlice(dim_fixed, index) ?
-
-        // Collect the boundary coefficients
-        const gsMatrix<T> & fullCoefs = geo.coefs();
-        result.resize( sizes.prod() / sizes[dir_fixed], fullCoefs.cols() );
-        gsVector<index_t,d> str, cur = lowerCorner;
-        base.stride_cwise(str);
-        index_t r = 0;
-
-        do {
-            result.row(r++) = fullCoefs.row( cur.dot(str) );
-        } while ( nextLexicographic(cur, lowerCorner, upperCorner) );
-    }
 
 }; // class gsTensorNurbs
 
