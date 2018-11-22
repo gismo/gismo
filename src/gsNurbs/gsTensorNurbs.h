@@ -54,7 +54,14 @@ public:
     
     // rational version of tensor basis (basis for this geometry)
     typedef gsTensorNurbsBasis<d,T>   Basis;
-    
+
+    /// Associated boundary geometry type
+    typedef typename gsBSplineTraits<d-1,T>::RatGeometry BoundaryGeometryType;
+    //typedef gsTensorNurbs<d-1,T> BoundaryGeometryType;
+
+    /// Associated boundary basis type
+    typedef typename gsBSplineTraits<d-1,T>::RatBasis BoundaryBasisType;
+
     /// Shared pointer for gsTensorNurbs
     typedef memory::shared_ptr< gsTensorNurbs > Ptr;
 
@@ -153,6 +160,34 @@ public:
                      "the expected number of control points (rows)." );
 
         this->m_basis = new Basis(tbasis) ;
+        this->m_coefs.swap(tcoefs);
+    }
+
+    /// Construct 4D tensor NURBS by knot vectors, degrees and coefficient matrix
+    /// \a tcoefs, \a wgts become empty after the constructor is called
+    gsTensorNurbs( gsKnotVector<T> const & KV1,
+                   gsKnotVector<T> const & KV2,
+                   gsKnotVector<T> const & KV3,
+                   gsKnotVector<T> const & KV4,
+                   gsMatrix<T>  tcoefs,
+                   gsMatrix<T> wgts )
+    {
+        GISMO_ASSERT(d==4, "Wrong dimension: tried to make a "<< d
+                                                              <<"D NURBS using 4 knot-vectors.");
+
+        std::vector< gsBSplineBasis<T>* > cbases;
+        cbases.reserve(4);
+        cbases.push_back(new gsBSplineBasis<T>(KV1) );
+        cbases.push_back(new gsBSplineBasis<T>(KV2) );
+        cbases.push_back(new gsBSplineBasis<T>(KV3) );
+        cbases.push_back(new gsBSplineBasis<T>(KV4) );
+        TBasis * tbasis = gsBSplineTraits<d,T>::Basis::New(cbases); //d==4
+
+        GISMO_ASSERT(tbasis->size()== tcoefs.rows(),
+                     "Coefficient matrix for the NURBS does not have "
+                         "the expected number of control points (rows)." );
+
+        this->m_basis = new Basis(tbasis, give(wgts));
         this->m_coefs.swap(tcoefs);
     }
 
@@ -264,15 +299,83 @@ public:
         tbsbasis.component(k).reverse();
     }
 
+    /// Constucts an isoparametric slice of this tensor Nurbs curve by fixing
+    /// \a par in direction \a dir_fixed. The resulting tensor Nurbs has
+    /// one less dimension and is given back in \a result.
+    void slice(index_t dir_fixed, T par, BoundaryGeometryType & result) const
+    {
+        GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
+        GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
+        // construct the d-1 basis
+        boxSide side(dir_fixed,0);
+        //typename gsTensorNurbsBasis<d-1,T>::uPtr tbasis = this->basis().boundaryBasis(side);
+        typename BoundaryBasisType::uPtr tbasis = this->basis().boundaryBasis(side);
+
+        if(d==1)
+        {
+            gsMatrix<T> val(1,1),point;
+            val(0,0)=par;
+            this->eval_into(val,point);
+            //result = gsTensorNurbs<d-1, T>(*tbasis, point );
+            result = BoundaryGeometryType(*tbasis, point );
+        }
+        else
+        {
+            const int mult   = this->basis().knots(dir_fixed).multiplicity(par);
+            const int degree = this->basis().degree(dir_fixed);
+
+            gsMatrix<T> coefs;
+            if( mult>=degree )
+            {
+                // no knot insertion needed, just extract the right coefficients
+                const gsKnotVector<T>& knots = this->basis().knots(dir_fixed);
+                const index_t index = (knots.iFind(par) - knots.begin()) - this->basis().degree(dir_fixed);
+                gsVector<index_t,d> sizes;
+                this->basis().size_cwise(sizes);
+                constructCoefsForSlice<d, T>(dir_fixed, index, this->coefs(), sizes, coefs);
+            }
+            else
+            {
+                // clone the basis and inserting up to degree knots at par
+                gsTensorNurbs<d,T>* clone = this->clone().release();
+
+                gsVector<index_t,d> intStrides;
+                this->basis().stride_cwise(intStrides);
+                gsTensorBoehm(
+                    clone->basis().knots(dir_fixed),clone->coefs(),par,dir_fixed,
+                    intStrides.template cast<unsigned>(), degree-mult,true);
+
+                // extract right ceofficients
+                const gsKnotVector<T>& knots = clone->basis().knots(dir_fixed);
+                const index_t index = (knots.iFind(par) - knots.begin()) - clone->basis().degree(dir_fixed);
+                gsVector<index_t,d> sizes;
+                clone->basis().size_cwise(sizes);
+                constructCoefsForSlice<d, T>(dir_fixed, index, clone->coefs(), sizes, coefs);
+                delete clone;
+            }
+
+            // construct the object
+            //result = gsTensorBSpline<d-1,T>(*tbasis, give(coefs) );
+            //result = BoundaryGeometry(*tbasis, give(coefs) );
+            result = BoundaryGeometryType (*tbasis, coefs );
+        }
+    }
+
+    void swapDirections(const unsigned i, const unsigned j)
+    {
+        gsVector<index_t,d> sz;
+        this->basis().size_cwise(sz);
+        swapTensorDirection(i, j, sz, m_coefs);
+        this->basis().swapDirections(i,j);
+    }
+
+
 
 protected:
     // todo: check function: check the coefficient number, degree, knot vector ...
 
     using gsGeometry<T>::m_coefs;
     using gsGeometry<T>::m_basis;
-
-// Data members
-private:
 
 }; // class gsTensorNurbs
 
