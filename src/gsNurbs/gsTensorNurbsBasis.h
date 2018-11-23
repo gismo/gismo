@@ -13,8 +13,11 @@
 
 #pragma once
 
+#include <gsNurbs/gsNurbs.h>
+#include <gsNurbs/gsNurbsBasis.h>
 #include <gsCore/gsRationalBasis.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
+#include <gsTensor/gsTensorTools.h>
 
 namespace gismo
 {
@@ -93,15 +96,16 @@ public:
 
     gsTensorNurbsBasis( const Src_t & basis ) : Base(basis) { }
 
-    gsTensorNurbsBasis( std::vector<gsBasis<T>* > const & bb, 
-                        gsMatrix<T> w )
-    : Base(Src_t(bb), give(w)) { }
+    gsTensorNurbsBasis( std::vector<gsBasis<T>* > const & bb, gsMatrix<T> w ) : Base(Src_t(bb), give(w)) { }
 
     gsTensorNurbsBasis( Src_t* basis, gsMatrix<T> w ) : Base(basis, give(w)) { }
 
     gsTensorNurbsBasis(const gsTensorNurbsBasis & o) : Base(o) { }
 
     GISMO_CLONE_FUNCTION(gsTensorNurbsBasis)
+
+    //static uPtr make(std::vector<gsBasis<T>* > const & bb, gsMatrix<T> w)
+    //{ return uPtr( new gsTensorNurbsBasis(bb, w) ); }
   
     GISMO_MAKE_GEOMETRY_NEW
 
@@ -115,6 +119,42 @@ public:
             os << "\n  Direction "<< i <<": "<< this->m_src->component(i).knots() <<" ";
         os << "\n";
         return os;
+    }
+    
+    gsKnotVector<T> & knots (int i)
+    { return m_src->knots(i); }
+
+    const gsKnotVector<T> & knots (int i) const
+    { return m_src->knots(i); }
+
+    // knot \a k of direction \a i
+    T knot(int i, int k) const
+    { return m_src->knot(i, k); }
+
+    /// The number of basis functions in the direction of the k-th parameter component
+    void size_cwise(gsVector<index_t,d> & result) const
+    {
+        // call the function of the underlying basis
+        m_src->size_cwise(result);
+    }
+
+    /// Returns the strides for all dimensions
+    void stride_cwise(gsVector<index_t,d> & result) const
+    {
+        // call the function of the underlying basis
+        m_src->stride_cwise(result);
+    }
+
+    void swapDirections(const unsigned i, const unsigned j)
+    {
+        gsVector<index_t, d> sz;
+        size_cwise(sz);
+
+        // First swap the weights
+        swapTensorDirection(i, j, sz, m_weights);
+
+        // Then swap the basis components
+        m_src->swapDirections(i, j);
     }
 
 #ifdef __DOXYGEN__

@@ -29,6 +29,30 @@ namespace gismo
 {
 
 template<unsigned d, class T>
+void constructCoefsForSlice(index_t dir_fixed, index_t index,
+                            const gsMatrix<T> & fullCoefs,
+                            const gsVector<index_t,d> & sizes,
+                            gsMatrix<T>& result)
+{
+    gsVector<index_t,d> lowerCorner, upperCorner;
+    lowerCorner.setZero();
+    upperCorner = sizes;
+    lowerCorner[dir_fixed] = index;
+    upperCorner[dir_fixed] = index + 1;
+    // to do: gsMatrix<index_t> ind = gsTensorBasis::coefSlice(dim_fixed, index) ?
+
+    // Collect the boundary coefficients
+    result.resize( sizes.prod() / sizes[dir_fixed], fullCoefs.cols() );
+    gsVector<index_t,d> str, cur = lowerCorner;
+    tensorStrides(sizes,str);
+    index_t r = 0;
+    do {
+        result.row(r++) = fullCoefs.row( cur.dot(str) );
+    } while ( nextLexicographic(cur, lowerCorner, upperCorner) );
+}
+
+
+template<unsigned d, class T>
 gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
                                       KnotVectorType KV1, KnotVectorType KV2)
 {
@@ -124,7 +148,11 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
         if( mult>=degree )
         {
             // no knot insertion needed, just extract the right coefficients
-            constructCoefsForSlice(dir_fixed,par,*this,coefs);
+            const gsKnotVector<T>& knots = this->basis().knots(dir_fixed);
+            const index_t index = (knots.iFind(par) - knots.begin()) - this->basis().degree(dir_fixed);
+            gsVector<index_t,d> sizes;
+            this->basis().size_cwise(sizes);
+            constructCoefsForSlice<d, T>(dir_fixed, index, this->coefs(), sizes, coefs);
         }
         else
         {
@@ -138,7 +166,11 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
                 intStrides.template cast<unsigned>(), degree-mult,true);
 
             // extract right ceofficients
-            constructCoefsForSlice(dir_fixed,par,*clone,coefs);
+            const gsKnotVector<T>& knots = clone->basis().knots(dir_fixed);
+            const index_t index = (knots.iFind(par) - knots.begin()) - clone->basis().degree(dir_fixed);
+            gsVector<index_t,d> sizes;
+            clone->basis().size_cwise(sizes);
+            constructCoefsForSlice<d, T>(dir_fixed, index, clone->coefs(), sizes, coefs);
             delete clone;
         }
 
@@ -322,38 +354,6 @@ typename gsGeometry<T>::uPtr gsTensorBSpline<d,T>::localRep(const gsMatrix<T> & 
 
     // All set, return the local representation
     return Basis(kv).makeGeometry(give(coefs));
-}
-
-template<unsigned d, class T>
-void gsTensorBSpline<d,T>::constructCoefsForSlice(unsigned dir_fixed,T par,
-                                                  const gsTensorBSpline<d,T>& geo,
-                                                  gsMatrix<T>& result) const
-{
-    // Note: assumes C^0 continuity at \a par in direction \a dir_fixed.
-
-    const gsTensorBSplineBasis<d,T>& base = geo.basis();
-    // pick the right coefficients and store them in coefs
-    const KnotVectorType& knots = base.knots(dir_fixed);
-    const int index = (knots.iFind(par) - knots.begin()) - base.degree(dir_fixed);
-    gsVector<index_t,d> sizes, lowerCorner, upperCorner;
-    base.size_cwise(sizes);
-    lowerCorner.setZero();
-    upperCorner = sizes;
-    lowerCorner[dir_fixed] = index;
-    upperCorner[dir_fixed] = index + 1;
-    
-    // to do: gsMatrix<index_t> ind = gsTensorBasis::coefSlice(dim_fixed, index) ?
-
-    // Collect the boundary coefficients
-    const gsMatrix<T> & fullCoefs = geo.coefs();
-    result.resize( sizes.prod() / sizes[dir_fixed], fullCoefs.cols() );
-    gsVector<index_t,d> str, cur = lowerCorner;
-    base.stride_cwise(str);
-    index_t r = 0;
-
-    do {
-        result.row(r++) = fullCoefs.row( cur.dot(str) );
-    } while ( nextLexicographic(cur, lowerCorner, upperCorner) );
 }
 
 
