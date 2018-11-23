@@ -59,7 +59,7 @@ public:
     gsMultiBasis() { }
 
     /// \brief Create a multi-basis instance from a gsMultiPatch
-    ///
+    /// \param mpatch used gsMultiPatch
     /// \param numeratorOnly If true, and the bases are derived from
     /// gsRationalBasis, then only the source bases (numerators) are
     /// returned
@@ -329,10 +329,10 @@ public:
     /// function restricts the matrices to the free dofs, e.g., Dirichlet dofs might be
     /// eliminated
     ///
-    /// @param localTransferMatrices[in]     The local and full (also non-free dofs) transfer matrices per patch
-    /// @param coarseMapper[in]              The DofMapper on the coarse grid
-    /// @param fineMapper[in]                The DofMapper on the fine grid
-    /// @param transferMatrix[out]           The combined transfer matrix restricted to the free dofs
+    /// @param[in] localTransferMatrices     The local and full (also non-free dofs) transfer matrices per patch
+    /// @param[in] coarseMapper              The DofMapper on the coarse grid
+    /// @param[in] fineMapper                The DofMapper on the fine grid
+    /// @param[out] transferMatrix           The combined transfer matrix restricted to the free dofs
     static void combineTransferMatrices(
         const std::vector< gsSparseMatrix<T, RowMajor> >& localTransferMatrices,
         const gsDofMapper& coarseMapper,

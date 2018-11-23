@@ -211,8 +211,11 @@ private:
          * Using this constructor one needs to input mesh information, a local neighbourhood and a parametrization method.
          *
          * @param[in] meshInfo gsHalfEdgeMesh object
-         * @param[in] localNeighbourhood #local neighbourhood stores the needed information about the neighbours
-         * @param[in] parametrizationMethod #method used for parametrization, one can choose between 1:shape, 2:uniform, 3:distance
+         * @param[in] localNeighbourhood local neighbourhood stores the needed information about the neighbours
+         * @param[in] parametrizationMethod method used for parametrization, one can choose between
+         * 1. shape,
+         * 2. uniform,
+         * 3. distance
          * */
         LocalParametrization(const gsHalfEdgeMesh<T> &meshInfo,
                              const LocalNeighbourhood &localNeighbourhood,
@@ -278,7 +281,7 @@ private:
          * This constructor takes as an input the filename and a parametrization method.
          * The LocalParametrization object then is constructed according to this method.
          *
-         * @param[in] filename const gsHalfEdgeMesh<T> object
+         * @param[in] meshInfo const gsHalfEdgeMesh<T> object
          * @param[in] parametrizationMethod const size_t - {1:shape, 2:uniform, 3:distance}
          */
         explicit Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
@@ -346,8 +349,6 @@ private:
     * @param[in] neighbourhood const Neighbourhood& - neighbourhood information of the mesh
     * @param[in] n const int - number of inner vertices and therefore size of the square matrix
     * @param[in] N const int - number of the vertices and therefore N-n is the size of the right-hand-side vector
-    *
-    * @param[out] m_parameterPoints solution of the system is stored in vector of parameter points
     */
     void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood, const size_t n, const size_t N);
 

@@ -37,61 +37,61 @@ public:
     ///
     /// If \a label is not found, the function throws.
     std::string getString(const std::string & label) const;
-    /// @copydoc gsOptionList::getString
+    /// @copydoc gsOptionList::getString()
     int         getInt   (const std::string & label) const;
-    /// @copydoc gsOptionList::getString
+    /// @copydoc gsOptionList::getString()
     real_t      getReal  (const std::string & label) const;
-    /// @copydoc gsOptionList::getString
+    /// @copydoc gsOptionList::getString()
     bool        getSwitch(const std::string & label) const;
 
     /// \brief Reads values of an option-group \a gn into a std::vector.
     ///
     /// If \a gn is not found, the function throws.
     std::vector<std::string> getMultiString(const std::string & gn) const;
-    /// @copydoc gsOptionList::getMultiString
+    /// @copydoc gsOptionList::getMultiString()
     std::vector<int>         getMultiInt   (const std::string & gn) const;
-    /// @copydoc gsOptionList::getMultiString
+    /// @copydoc gsOptionList::getMultiString()
     std::vector<real_t>      getMultiReal  (const std::string & gn) const;
 
     /// \brief Reads value for option \a label from options.
     ///
     /// If \a label is not found, it defaults to \a value (otherwise \a value is not used).
     std::string askString(const std::string & label, const std::string & value = ""    ) const;
-    /// @copydoc gsOptionList::askString
+    /// @copydoc gsOptionList::askString()
     int         askInt   (const std::string & label, const int &         value = 0     ) const;
-    /// @copydoc gsOptionList::askString
+    /// @copydoc gsOptionList::askString()
     real_t      askReal  (const std::string & label, const real_t &      value = 0     ) const;
-    /// @copydoc gsOptionList::askString
+    /// @copydoc gsOptionList::askString()
     bool        askSwitch(const std::string & label, const bool &        value = false ) const;
 
-    /// \brief Reads values of an option-group \a gn into a std::vector.
+    /*/// \brief Reads values of an option-group \a gn into a std::vector.
     ///
     /// If \a label is not found, it defaults to \a value (otherwise \a value is not used).
     //std::vector<std::string> askMultiString(const std::string & gn, const std::vector<std::string> & values = std::vector<std::string>()) const;
     /// @copydoc gsOptionList::askMultiString
     //std::vector<int>         askMultiInt   (const std::string & gn, const std::vector<int> &         values = std::vector<int>()        ) const;
     /// @copydoc gsOptionList::askMultiString
-    //std::vector<real_t>      askMultiReal  (const std::string & gn, const std::vector<real_t> &      values = std::vector<real_t>()     ) const;
+    //std::vector<real_t>      askMultiReal  (const std::string & gn, const std::vector<real_t> &      values = std::vector<real_t>()     ) const;*/
 
     /// \brief Sets an existing option \a label to be equal to \a value.
     ///
     /// If \a label is not found, the function throws.
-    void setString(const std::string & label, const std::string & value );
-    /// @copydoc gsOptionList::setString
-    void setInt   (const std::string & label, const int &         value );
-    /// @copydoc gsOptionList::setString
-    void setReal  (const std::string & label, const real_t &      value );
-    /// @copydoc gsOptionList::setString
-    void setSwitch(const std::string & label, const bool &        value );
+    void setString(const std::string & label, const std::string & value);
+    /// @copydoc gsOptionList::setString()
+    void setInt   (const std::string & label, const int &         value);
+    /// @copydoc gsOptionList::setString()
+    void setReal  (const std::string & label, const real_t &      value);
+    /// @copydoc gsOptionList::setString()
+    void setSwitch(const std::string & label, const bool &        value);
 
-    /// \brief Sets values of option-group \a gn from values of a std::vector.
+    /*/// \brief Sets values of option-group \a gn from values of a std::vector.
     ///
     /// If \a gn is not found, the function throws.
     //void setMultiString(const std::string & gn, const std::vector<std::string> & values );
     /// @copydoc gsOptionList::setMultiString
     //void setMultiInt   (const std::string & gn, const std::vector<int> &         values );
     /// @copydoc gsOptionList::setMultiString
-    //void setMultiReal  (const std::string & gn, const std::vector<real_t> &      values );
+    //void setMultiReal  (const std::string & gn, const std::vector<real_t> &      values );*/
 
     /// \brief Adds a option named \a label, with description \a desc
     /// and value \a value.
@@ -100,21 +100,24 @@ public:
     /// the function overwrites it. If it has another type, the function
     /// throws.
     void addString(const std::string & label, const std::string & desc, const std::string & value );
-    /// @copydoc gsOptionList::addString
+    /// @copydoc gsOptionList::addString()
     void addInt   (const std::string & label, const std::string & desc, const int &         value );
-    /// @copydoc gsOptionList::addString
+    /// @copydoc gsOptionList::addString()
     void addReal  (const std::string & label, const std::string & desc, const real_t &      value );
-    /// @copydoc gsOptionList::addString
+    /// @copydoc gsOptionList::addString()
     void addSwitch(const std::string & label, const std::string & desc, const bool &        value );
 
-    /// \brief Adds an option-group \a gn containing values of a std::vector.
+    /*/// \brief Adds an option-group \a gn containing values of a std::vector.
     ///
     /// If \a gn is not found, the function throws.
     //void addMultiString(const std::string & label, const std::string & desc, const std::vector<std::string> & values);
-    /// @copydoc gsOptionList::addMultiString
+    /// @copydoc gsOptionList::addMultiString()*/
+    /// \brief Adds an option-group \a gn containing values of a std::vector.
+    ///
+    /// If \a gn is not found, the function throws.
     void addMultiInt   (const std::string & label, const std::string & desc, const std::vector<int> &         values);
-    /// @copydoc gsOptionList::addMultiString
-    //void addMultiReal  (const std::string & label, const std::string & desc, const std::vector<real_t> &      values);
+    /*/// @copydoc gsOptionList::addMultiString()
+    //void addMultiReal  (const std::string & label, const std::string & desc, const std::vector<real_t> &      values);*/
 
     /// \brief Removes the option named \a label (if it exists).
     void remove(const std::string& label);
