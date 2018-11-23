@@ -607,7 +607,7 @@ void gsCurvatureSmoothing<T>::computeApproxErrorLMax(T & error)
     //computing the Lmax approximation error
     for(index_t k=0;k<m_points.rows();k++)
     {
-        error= math::max(error,math::sqrt(math::pow(m_points(k,0)-results(k,0),2)+math::pow(m_points(k,1)-results(k,1),2)));
+        error= math::max(error,(T)math::sqrt(math::pow(m_points(k,0)-results(k,0),2)+math::pow(m_points(k,1)-results(k,1),2)));
     }
 }
 
