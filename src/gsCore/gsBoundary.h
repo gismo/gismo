@@ -150,7 +150,6 @@ public:
     
     /**
      * @brief helper for iterating on sides of an n-dimensional box
-     * @param dim
      * @return the first valid side in an dim-dimensional box
     **/
     static  boxSide    getFirst     (int)

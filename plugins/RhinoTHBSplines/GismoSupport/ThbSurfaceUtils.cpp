@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "ThbSurfaceUtils.h"
-
+/// @cond
 int ON_GismoUtils::NurbForm(const gsBSpline<>& b, ON_NurbsCurve& crv, double tolerance)
 {
     crv = ON_NurbsCurve(3, true, b.degree() + 1, b.coefs().rows());
@@ -33,6 +33,7 @@ int ON_GismoUtils::NurbForm(const gsTensorBSpline2& nurbs, ON_NurbsSurface& ns, 
     int rc = ON_GismoUtils::NurbFormImpl(nurbs, ns, tolerance); 
     return rc;
 }
+/// @endcond
 
 int ON_GismoUtils::NurbForm(const gsTensorNurbs2& nurbs, ON_NurbsSurface& ns, double tolerance)
 {
