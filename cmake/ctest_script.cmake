@@ -432,21 +432,20 @@ endmacro(run_ctests)
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
 
-ctest_start(${CTEST_TEST_MODEL})
-
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
+  ctest_start(${CTEST_TEST_MODEL})
   if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
     #update_gismo()
     ctest_update()
   endif()
-
   run_ctests()
 
 else() #continuous model
 
   while(${CTEST_ELAPSED_TIME} LESS ${test_runtime})
     set(START_TIME ${CTEST_ELAPSED_TIME})
+    ctest_start(${dashboard_model})
     ctest_update(RETURN_VALUE updcount)
     if( ${updcount} GREATER 0 )
       run_ctests()
