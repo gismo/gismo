@@ -19,6 +19,16 @@
 namespace gismo
 {
 
+/// Helper function for the slice function
+/// selects the row of coefficients from coefficients of geo that are suitable
+/// for the isoparametric slice in \a dir_fixed with \a par.
+/// Note that geo has to have already C^0 continuity at \a par in direction \a dir.
+template <unsigned d, class T>
+void constructCoefsForSlice(index_t dir_fixed, const index_t index,
+                            const gsMatrix<T> & fullCoefs,
+                            const gsVector<index_t, d> & sizes,
+                            gsMatrix<T>& result);
+
 /** \brief
     A tensor product of \em d B-spline functions, with arbitrary target dimension.
 
@@ -229,16 +239,6 @@ public:
     /// Returns a local representation of the geometry in the cell
     /// containing the point \a u
     typename gsGeometry<T>::uPtr localRep(const gsMatrix<T> & u) const;
-
-private:
-
-    /// Helper function for the slice function
-    /// selects the row of coefficients from coefficients of geo that are suitable
-    /// for the isoparametric slice in \a dir_fixed with \a par.
-    /// Note that geo has to have already C^0 continuity at \a par in direction \a dir.
-    void constructCoefsForSlice(unsigned dir_fixed,T par,
-                                const gsTensorBSpline<d,T> & geo,
-                                gsMatrix<T>& result) const;
 
 public:
 

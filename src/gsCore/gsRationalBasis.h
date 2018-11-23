@@ -14,6 +14,8 @@
 #pragma once
 
 #include <gsCore/gsBasis.h>
+#include <gsCore/gsBoundary.h>
+
 
 namespace gismo
 {
@@ -149,7 +151,10 @@ public:
     
     gsMatrix<unsigned> boundaryOffset(boxSide const & s, unsigned offset ) const
     { return m_src->boundaryOffset(s,offset); }
-    
+
+    virtual unsigned functionAtCorner(boxCorner const & c) const
+    { return m_src->functionAtCorner(c); }
+
     // Look at gsBasis class for a description
     int degree(int i = 0) const {return m_src->degree(i); }
 
