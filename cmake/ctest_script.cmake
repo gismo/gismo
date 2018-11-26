@@ -445,7 +445,7 @@ else() #continuous model
 
   while(${CTEST_ELAPSED_TIME} LESS ${test_runtime})
     set(START_TIME ${CTEST_ELAPSED_TIME})
-    ctest_start(${dashboard_model})
+    ctest_start(${CTEST_TEST_MODEL})
     ctest_update(RETURN_VALUE updcount)
     if( ${updcount} GREATER 0 )
       run_ctests()
