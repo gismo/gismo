@@ -50,8 +50,40 @@
 
 ######################################################################
 ##
-## Complete Options List
+## Complete Options List:
 ##
+## ctest parameters: (ctest -D ...)
+##   CMAKE_ARGS
+##   CNAME
+##   CTEST_BINARY_DIRECTORY
+##   CTEST_BUILD_JOBS
+##   CTEST_BUILD_NAME
+##   CTEST_CMAKE_GENERATOR
+##   CTEST_CONFIGURATION_TYPE
+##   CTEST_COVERAGE_COMMAND
+##   CTEST_MEMORYCHECK_TYPE
+##   CTEST_SCRIPT_ARG
+##   CTEST_SITE
+##   CTEST_SOURCE_DIRECTORY
+##   CTEST_TEST_JOBS
+##   CTEST_TEST_MODEL
+##   CTEST_TEST_TIMEOUT
+##   CXXNAME
+##   DO_COVERAGE
+##   DROP_LOCATION
+##   DROP_METHOD
+##   DROP_SITE
+##   EMPTY_BINARY_DIRECTORY
+##   GISMO_BRANCH
+##   LABELS_FOR_SUBPROJECTS
+##   PROJECT_NAME
+##   UPDATE_MODULES
+##   UPDATE_TYPE
+##
+## Environment
+##   CFLAGS
+##   CXXFLAGS
+##   LDFLAGS
 ##
 ######################################################################
 
