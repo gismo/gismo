@@ -131,7 +131,7 @@ if (NOT DEFINED CTEST_MEMORYCHECK_TYPE)
 endif()
 
 # Coverage analysis - only GCC
-# if GCC was changed with CNAME/CXXName, CTEST_COVERAGE_COMMAND needs
+# if GCC was changed with CNAME/CXXNAME, CTEST_COVERAGE_COMMAND needs
 # also to be changed
 if (NOT DEFINED DO_COVERAGE)
   set(DO_COVERAGE FALSE)
