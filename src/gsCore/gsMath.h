@@ -17,6 +17,7 @@
 
 //#define _USE_MATH_DEFINES
 #include <cmath>
+#include <complex>
 
 #ifdef GISMO_WITH_CODIPACK
   #include <gsCoDiPack/gsCoDiPack.h>
@@ -58,6 +59,9 @@ using std::sinh;
 using std::sqrt;
 using std::tan;
 using std::tanh;
+using std::real;
+using std::imag;
+using std::conj;
 
 #ifdef GISMO_WITH_CODIPACK
 using codi::abs;
@@ -108,9 +112,20 @@ using sw::unum::sqrt;
 using sw::unum::tan;
 using sw::unum::tanh;
 
+// dummy
+template<size_t nbits, size_t es>
+inline sw::unum::posit<nbits,es> frexp(const sw::unum::posit<nbits,es> & a, int* b) {return  a;}
+
+template<size_t nbits, size_t es>
+inline sw::unum::posit<nbits,es> ldexp(const sw::unum::posit<nbits,es> & a, int b ) {return  a;}
+
 using sw::unum::isnan;
 using sw::unum::isfinite;
 using sw::unum::isinf;
+
+using sw::unum::real;
+using sw::unum::imag;
+using sw::unum::conj;
 
 #endif
 
@@ -154,7 +169,7 @@ inline mpq_class nextafter(mpq_class x, mpq_class y)
 
 #ifdef GISMO_WITH_UNUM
 template<size_t nbits, size_t es>
-inline sw::unum::posit<nbits,es> nextafter(sw::unum::posit<nbits, es> x,
+inline sw::unum::posit<nbits,es> nextafter(sw::unum::posit<nbits,es> x,
                                            sw::unum::posit<nbits,es>  y)
 {
     return sw::unum::nextafter(x,y);
