@@ -889,7 +889,7 @@ public: // others
     ///
     /// @param knotRemove    Number of consecutive knots to remove
     /// @param knotSkip      Number of consecutive knots which stay untouched in between
-    /// @param mRemove       Multiplicity drop for each processed knot (or -1, full remove)
+    /// @param mul           Multiplicity drop for each processed knot (or -1, full remove)
     std::vector<T> coarsen(index_t knotRemove = 1, index_t knotSkip = 1, mult_t  mul = -1);
 
 public: // members

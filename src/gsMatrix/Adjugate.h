@@ -155,6 +155,7 @@ struct traits<adjugate_impl<MatrixType> >
 
 // ***  Implementation of MatrixBase::adjugate()
 
+/// @memberof Eigen::MatrixBase
 template<typename Derived>
 inline const internal::adjugate_impl<Derived>
 MatrixBase<Derived>::adjugate() const
@@ -163,11 +164,11 @@ MatrixBase<Derived>::adjugate() const
     return internal::adjugate_impl<Derived>(derived());
 }
 
+/// @memberof Eigen::MatrixBase
 template<typename Derived>
 inline void MatrixBase<Derived>::adjugateInPlace()
 {
     derived() = adjugate().eval();
 }
-
 
 }

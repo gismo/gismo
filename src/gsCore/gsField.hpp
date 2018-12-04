@@ -119,8 +119,8 @@ T gsField<T>::distanceH1(gsFunctionSet<T> const & func,
 
 template <class T>
 T gsField<T>::distanceDG(gsFunctionSet<T>
-                         const & func,
-                         bool isFunc_param,
+                         const & ,
+                         bool ,
                          int) const
 {
     GISMO_NO_IMPLEMENTATION
