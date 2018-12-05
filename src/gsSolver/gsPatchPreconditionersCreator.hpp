@@ -107,7 +107,7 @@ std::vector< gsSparseMatrix<T> > assembleTensorMass_impl(
     for ( index_t i=0; i!=d; ++i )
     {
         result[i] = assembleMass(tb->component(d-i-1));
-        eliminateDirichlet1D(boundaryConditionsForDirection(bc,i), opt, result[i]);
+        eliminateDirichlet1D(boundaryConditionsForDirection(bc,d-i-1), opt, result[i]);
     }
     return result;
 }
@@ -126,7 +126,7 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness_impl(
     for ( index_t i=0; i!=d; ++i )
     {
         result[i] = assembleStiffness(tb->component(d-i-1));
-        eliminateDirichlet1D(boundaryConditionsForDirection(bc,i), opt, result[i]);
+        eliminateDirichlet1D(boundaryConditionsForDirection(bc,d-i-1), opt, result[i]);
     }
     return result;
 }
@@ -530,7 +530,7 @@ void constructTildeSpaceBasisTensor(
     if (ds == dirichlet::elimination)
     {
         for ( index_t i=0; i<d; ++i )
-            tildeSpaceBasis(tb->component(d-i-1), B_tilde[i], B_l2compl[i], boundaryConditionsForDirection(bc,i), odd);
+            tildeSpaceBasis(tb->component(d-i-1), B_tilde[i], B_l2compl[i], boundaryConditionsForDirection(bc,d-i-1), odd);
     }
     else
         GISMO_ERROR("Unknown Dirichlet strategy.");
