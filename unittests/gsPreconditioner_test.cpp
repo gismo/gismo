@@ -51,7 +51,6 @@ void runPreconditionerTest( index_t testcase )
     assembler.assemble();
     gsSparseMatrix<> mat = assembler.matrix();
     gsMatrix<> rhs = assembler.rhs();
-    gsInfo << "size_tot:" << mat.rows() << "\n";
     gsMatrix<> sol;
     sol.setRandom(rhs.rows(), rhs.cols());
 
@@ -59,7 +58,7 @@ void runPreconditionerTest( index_t testcase )
     {
         gsConjugateGradient<> solver(mat, makeJacobiOp(mat));
         solver.setTolerance( 1.e-8 );
-        solver.setMaxIterations( 107 );
+        solver.setMaxIterations( 110 );
         solver.solve(rhs,sol);
         CHECK ( solver.error() <= solver.tolerance() );
     }
@@ -67,7 +66,7 @@ void runPreconditionerTest( index_t testcase )
     {
         gsConjugateGradient<> solver(mat, makeSymmetricGaussSeidelOp(mat));
         solver.setTolerance( 1.e-8 );
-        solver.setMaxIterations( 33 );
+        solver.setMaxIterations( 35 );
         solver.solve(rhs,sol);
         CHECK ( solver.error() <= solver.tolerance() );
     }
@@ -75,7 +74,7 @@ void runPreconditionerTest( index_t testcase )
     {
         gsConjugateGradient<> solver(mat, gsPatchPreconditionersCreator<>::fastDiagonalizationOp(bases[0],bc));
         solver.setTolerance( 1.e-8 );
-        solver.setMaxIterations( 89 );
+        solver.setMaxIterations( 95 );
         solver.solve(rhs,sol);
         CHECK ( solver.error() <= solver.tolerance() );
     }
@@ -86,7 +85,7 @@ void runPreconditionerTest( index_t testcase )
         mat += (1/(h*h)) * gAssembler.assembleMass();
         gsConjugateGradient<> solver(mat, gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(bases[0],bc));
         solver.setTolerance( 1.e-8 );
-        solver.setMaxIterations( 48 );
+        solver.setMaxIterations( 50 );
         solver.solve(rhs,sol);
         CHECK ( solver.error() <= solver.tolerance() );
     }
