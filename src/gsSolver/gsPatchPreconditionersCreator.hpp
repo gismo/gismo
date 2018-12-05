@@ -324,7 +324,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     gsMatrix<T> ev;
 
     // Now, setup the Q's and update the D's
-    for ( index_t i=d-1; i>=0; --i )
+    for ( index_t i=0; i<d; ++i )
     {
         // Solve generalized eigenvalue problem
         ges.compute(local_stiff[i], local_mass[i], Eigen::ComputeEigenvectors);
@@ -348,9 +348,9 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
         // These are the operators representing the eigenvectors
         typename gsMatrixOp< gsMatrix<T> >::Ptr matrOp = makeMatrixOp( ev.moveToPtr() );
-        Qop [d-1-i] = matrOp;
+        Qop [i] = matrOp;
         // Here we are safe as long as we do not want to apply QTop after Qop got destroyed.
-        QTop[d-1-i] = makeMatrixOp( matrOp->matrix().transpose() );
+        QTop[i] = makeMatrixOp( matrOp->matrix().transpose() );
     }
 
     GISMO_ASSERT( glob == 1, "Internal error." );

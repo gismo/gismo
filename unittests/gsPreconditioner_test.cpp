@@ -74,7 +74,7 @@ void runPreconditionerTest( index_t testcase )
     {
         gsConjugateGradient<> solver(mat, gsPatchPreconditionersCreator<>::fastDiagonalizationOp(bases[0],bc));
         solver.setTolerance( 1.e-8 );
-        solver.setMaxIterations( 95 );
+        solver.setMaxIterations( 35 );
         solver.solve(rhs,sol);
         CHECK ( solver.error() <= solver.tolerance() );
     }
