@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
     bool plot = false;
+    std::string boundary_conditions("d");
 
     gsCmdLine cmd("Solves a PDE with an isogeometric discretization using a multigrid solver.");
     cmd.addString("g", "Geometry",              "Geometry file", geometry);
@@ -48,6 +49,7 @@ int main(int argc, char *argv[])
     cmd.addReal  ("",  "MG.Scaling",            "Scaling factor for the subspace corrected mass smoother", scaling);
     cmd.addReal  ("t", "CG.Tolerance",          "Stopping criterion for cg", tolerance);
     cmd.addInt   ("",  "CG.MaxIterations",      "Stopping criterion for cg", maxIterations);
+    cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundary_conditions);
     cmd.addSwitch("",  "Plot",                  "Plot the result with Paraview", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -71,7 +73,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    gsInfo << "Run gsMultiGridTutorial with options:\n" << opt << std::endl;
+    gsInfo << "Run multiGrid_example with options:\n" << opt << std::endl;
 
     /******************* Define geometry ********************/
 
@@ -94,10 +96,39 @@ int main(int argc, char *argv[])
     gsConstantFunction<> one(1.0, mp.geoDim());
 
     gsBoundaryConditions<> bc;
-    for (gsMultiPatch<>::const_biterator it = mp.bBegin(); it < mp.bEnd(); ++it)
-         bc.addCondition( *it, condition_type::dirichlet, &one );
+    {
+        const index_t len = boundary_conditions.length();
+        index_t i = 0;
+        for (gsMultiPatch<>::const_biterator it = mp.bBegin(); it < mp.bEnd(); ++it)
+        {
+            char b_local;
+            if ( len == 1 )
+                b_local = boundary_conditions[0];
+            else if ( i < len )
+                b_local = boundary_conditions[i];
+            else
+            {
+                gsInfo << "\nNot enough boundary conditions given.\n";
+                return EXIT_FAILURE;
+            }
 
-    gsInfo << "done.\n";
+            if ( b_local == 'd' )
+                bc.addCondition( *it, condition_type::dirichlet, &one );
+            else if ( b_local == 'n' )
+                bc.addCondition( *it, condition_type::neumann, &one );
+            else
+            {
+                gsInfo << "\nInvalid boundary condition given; only 'd' (Dirichlet) and 'n' (Neumann) are supported.\n";
+                return EXIT_FAILURE;
+            }
+
+            ++i;
+        }
+        if ( len > i )
+            gsInfo << "\nToo much boundary conditions have been specified. Ingnoring the remaining ones.\n";
+        gsInfo << "done. "<<i<<" boundary conditions set.\n";
+    }
+
 
     /************ Setup bases and adjust degree *************/
 

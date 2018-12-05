@@ -21,14 +21,14 @@ void runPreconditionerTest( index_t testcase )
     // Define Geometry (Unit square with 4 patches)
     gsMultiPatch<> patches( *gsNurbsCreator<>::NurbsQuarterAnnulus() );
 
-    gsConstantFunction<> f(1,2);
+    gsConstantFunction<> one(1,2);
 
     // Define Boundary conditions
-    gsBoundaryConditions<> bcInfo;
-    bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &f);
-    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &f);
-    bcInfo.addCondition(0, boundary::east,  condition_type::dirichlet, &f);
-    bcInfo.addCondition(0, boundary::west,  condition_type::dirichlet, &f);
+    gsBoundaryConditions<> bc;
+    bc.addCondition( boundary::west,  condition_type::neumann,   &one );
+    bc.addCondition( boundary::east,  condition_type::neumann,   &one );
+    bc.addCondition( boundary::south, condition_type::neumann,   &one );
+    bc.addCondition( boundary::north, condition_type::dirichlet, &one );
 
     // Copy bases for refinement
     gsMultiBasis<> bases( patches );
@@ -38,11 +38,20 @@ void runPreconditionerTest( index_t testcase )
         bases.uniformRefine();
 
     // Initilize Assembler and assemble
-    gsPoissonAssembler<> assembler(patches,bases,bcInfo,f,dirichlet::elimination,iFace::glue);
+    gsOptionList opt = gsAssembler<>::defaultOptions();
+    gsPoissonAssembler<> assembler(
+        patches,
+        bases,
+        bc,
+        one,
+        (dirichlet::strategy) opt.getInt("DirichletStrategy"),
+        (iFace::strategy) opt.getInt("InterfaceStrategy")
+        );
 
     assembler.assemble();
-    const gsSparseMatrix<>& mat = assembler.matrix();
-    const gsMatrix<>& rhs = assembler.rhs();
+    gsSparseMatrix<> mat = assembler.matrix();
+    gsMatrix<> rhs = assembler.rhs();
+    gsInfo << "size_tot:" << mat.rows() << "\n";
     gsMatrix<> sol;
     sol.setRandom(rhs.rows(), rhs.cols());
 
@@ -50,7 +59,7 @@ void runPreconditionerTest( index_t testcase )
     {
         gsConjugateGradient<> solver(mat, makeJacobiOp(mat));
         solver.setTolerance( 1.e-8 );
-        solver.setMaxIterations( 62 );
+        solver.setMaxIterations( 107 );
         solver.solve(rhs,sol);
         CHECK ( solver.error() <= solver.tolerance() );
     }
@@ -58,19 +67,29 @@ void runPreconditionerTest( index_t testcase )
     {
         gsConjugateGradient<> solver(mat, makeSymmetricGaussSeidelOp(mat));
         solver.setTolerance( 1.e-8 );
-        solver.setMaxIterations( 19 );
+        solver.setMaxIterations( 33 );
         solver.solve(rhs,sol);
         CHECK ( solver.error() <= solver.tolerance() );
     }
     else if (testcase==2)
     {
-        gsConjugateGradient<> solver(mat, gsPatchPreconditionersCreator<>::fastDiagonalizationOp(bases[0],bcInfo));
+        gsConjugateGradient<> solver(mat, gsPatchPreconditionersCreator<>::fastDiagonalizationOp(bases[0],bc));
         solver.setTolerance( 1.e-8 );
-        solver.setMaxIterations( 26 );
+        solver.setMaxIterations( 89 );
         solver.solve(rhs,sol);
         CHECK ( solver.error() <= solver.tolerance() );
     }
-
+    else if (testcase==3)
+    {
+        const real_t h = bases[0].getMinCellLength();
+        gsGenericAssembler<> gAssembler(patches,bases,opt,&bc);
+        mat += (1/(h*h)) * gAssembler.assembleMass();
+        gsConjugateGradient<> solver(mat, gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(bases[0],bc));
+        solver.setTolerance( 1.e-8 );
+        solver.setMaxIterations( 48 );
+        solver.solve(rhs,sol);
+        CHECK ( solver.error() <= solver.tolerance() );
+    }
 }
 
 
@@ -88,6 +107,10 @@ SUITE(gsPreconditioner_test)
     TEST(gsFastDiagonalizationPreconditioner_test)
     {
         runPreconditionerTest(2);
+    }
+    TEST(gsSubspaceCorrectedMassPreconditioner_test)
+    {
+        runPreconditionerTest(3);
     }
 
     TEST(gsPatchPreconditioner_stiff_test)
@@ -108,6 +131,9 @@ SUITE(gsPreconditioner_test)
         gsOptionList opt = gsAssembler<>::defaultOptions();
 
         gsSparseMatrix<> stiff1 = gsPatchPreconditionersCreator<>::stiffnessMatrix(mb[0],bc,opt);
+        gsMatrix<> stiff2;
+        gsPatchPreconditionersCreator<>::stiffnessMatrixOp(mb[0],bc,opt)->toMatrix(stiff2);
+
 
         gsPoissonAssembler<> assembler(
             mp,
@@ -120,6 +146,48 @@ SUITE(gsPreconditioner_test)
         assembler.assemble();
 
         CHECK ( (stiff1-assembler.matrix() ).norm() < 1/real_t(10000) );
+        CHECK ( (stiff2-assembler.matrix() ).norm() < 1/real_t(10000) );
+    }
+
+    TEST(gsPatchPreconditioner_mass_test)
+    {
+        gsGeometry<>::uPtr geo = gsNurbsCreator<>::BSplineSquare();
+        gsMultiPatch<> mp(*geo);
+        gsMultiBasis<> mb(mp);
+        mb.uniformRefine();
+        mb[0].setDegreePreservingMultiplicity(3);
+
+        gsBoundaryConditions<> bc;
+        gsConstantFunction<> one(1,mp.geoDim());
+        bc.addCondition( boundary::west,  condition_type::neumann,   &one );
+        bc.addCondition( boundary::east,  condition_type::neumann,   &one );
+        bc.addCondition( boundary::south, condition_type::neumann,   &one );
+        bc.addCondition( boundary::north, condition_type::dirichlet, &one );
+
+        gsOptionList opt = gsAssembler<>::defaultOptions();
+
+        gsGenericAssembler<> assembler(
+            mp,
+            mb,
+            opt,
+            &bc
+            );
+        gsSparseMatrix<> mass0 = assembler.assembleMass();
+
+
+        gsSparseMatrix<> mass1 = gsPatchPreconditionersCreator<>::massMatrix(mb[0],bc,opt);
+        CHECK ( ( mass0-mass1 ).norm() < 1/real_t(10000) );
+
+        gsMatrix<> mass2;
+        gsPatchPreconditionersCreator<>::massMatrixOp(mb[0],bc,opt)->toMatrix(mass2);
+        CHECK ( ( mass0-mass2 ).norm() < 1/real_t(10000) );
+
+
+        gsLinearOperator<>::Ptr massInv = gsPatchPreconditionersCreator<>::massMatrixInvOp(mb[0],bc,opt);
+        gsMatrix<> result;
+        massInv->apply(mass2,result);
+        for (index_t i=0; i<result.rows(); ++i) result(i,i)-=1;
+        CHECK ( result.norm() < 1/real_t(10000) );
     }
 
 
