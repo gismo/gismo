@@ -616,10 +616,10 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
 
     // Setup of basis
-    std::vector< gsSparseMatrix<T> > B_tilde(d), B_l2compl(d), B_compl(d);
+    std::vector< gsSparseMatrix<T> > B_tilde(d), B_l2compl(d);
     constructTildeSpaceBasis(basis, bc, opt, B_tilde, B_l2compl);
 
-    std::vector< gsSparseMatrix<T> > M_compl(d), K_compl(d);
+    std::vector< gsSparseMatrix<T> > M_compl(d), K_compl(d), B_compl(d);
     std::vector< typename gsLinearOperator<T>::Ptr > M_tilde_inv(d);
     for ( index_t i=0; i<d; ++i )
     {
@@ -652,10 +652,10 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         for ( index_t j = 0; j<d; ++ j )
         {
             if ( type & ( 1 << j ) )
-                transfers[j] = &(B_compl[j]);
+                transfers[j] = &(B_compl[d-1-j]);
             else
             {
-                transfers[j] = &(B_tilde[j]);
+                transfers[j] = &(B_tilde[d-1-j]);
                 ++numberInteriors;
             }
 
@@ -704,7 +704,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         for ( index_t j = d-1; j>=0; --j )
         {
             if ( ! ( type & ( 1 << j ) ) )
-                correction.push_back( M_tilde_inv[j] );
+                correction.push_back( M_tilde_inv[d-1-j] );
         }
 
         // If we are in the interior, we have to do the scaling here as there is no boundary correction.
@@ -723,9 +723,9 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
                     if ( type & ( 1 << k ) )
                     {
                         if ( s.rows() == 0 )
-                            s = M_compl[k];
+                            s = M_compl[d-1-k];
                         else
-                            s = M_compl[k].kron(s);
+                            s = M_compl[d-1-k].kron(s);
                     }
                 }
                 bc_matrix = ( alpha + numberInteriors/(sigma*h*h) ) * s;
@@ -742,9 +742,9 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
                         {
                             gsSparseMatrix<T>* chosenMatrix;
                             if ( j == k )
-                                chosenMatrix = &(K_compl[k]);
+                                chosenMatrix = &(K_compl[d-1-k]);
                             else
-                                chosenMatrix = &(M_compl[k]);
+                                chosenMatrix = &(M_compl[d-1-k]);
 
                             if ( s.rows() == 0 )
                                 s = *chosenMatrix;
