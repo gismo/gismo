@@ -106,8 +106,8 @@ std::vector< gsSparseMatrix<T> > assembleTensorMass_impl(
     std::vector< gsSparseMatrix<T> > result(d);
     for ( index_t i=0; i!=d; ++i )
     {
-        result[i] = assembleMass(tb->component(d-i-1));
-        eliminateDirichlet1D(boundaryConditionsForDirection(bc,i), opt, result[i]);
+        result[i] = assembleMass(tb->component(d-1-i));
+        eliminateDirichlet1D(boundaryConditionsForDirection(bc,d-1-i), opt, result[i]);
     }
     return result;
 }
@@ -125,8 +125,8 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness_impl(
     std::vector< gsSparseMatrix<T> > result(d);
     for ( index_t i=0; i!=d; ++i )
     {
-        result[i] = assembleStiffness(tb->component(d-i-1));
-        eliminateDirichlet1D(boundaryConditionsForDirection(bc,i), opt, result[i]);
+        result[i] = assembleStiffness(tb->component(d-1-i));
+        eliminateDirichlet1D(boundaryConditionsForDirection(bc,d-1-i), opt, result[i]);
     }
     return result;
 }
@@ -178,7 +178,7 @@ gsSparseMatrix<T> gsPatchPreconditionersCreator<T>::massMatrix(
     const index_t d = local_mass.size();
     gsSparseMatrix<T> result = local_mass[d-1];
     for (index_t i=d-2; i>-1; --i)
-        result = result.kron(local_mass[i]);
+        result = local_mass[i].kron(result);
     return result;
 }
 
@@ -236,10 +236,10 @@ gsSparseMatrix<T> gsPatchPreconditionersCreator<T>::stiffnessMatrix(
 
     for (index_t i=d-2; i>-1; --i)
     {
-        K  = K.kron(local_mass[i]);
-        K += M.kron(local_stiff[i]);
+        K  = local_mass[i].kron(K);
+        K += local_stiff[i].kron(M);
         if ( i != 0 || a != 0 )
-            M = M.kron(local_mass[i]);
+            M = local_mass[i].kron(M);
     }
     if (a==1)
         K += M;
@@ -327,7 +327,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     for ( index_t i=0; i<d; ++i )
     {
         // Solve generalized eigenvalue problem
-        ges.compute(local_stiff[i], local_mass [i], Eigen::ComputeEigenvectors);
+        ges.compute(local_stiff[i], local_mass[i], Eigen::ComputeEigenvectors);
         // Q^T M Q = I, or M = Q^{-T} Q^{-1}
         // Q^T K Q = D, or K = Q^{-T} D Q^{-1}
 
@@ -347,7 +347,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         ev.swap(const_cast<evMatrix&>(ges.eigenvectors()));
 
         // These are the operators representing the eigenvectors
-        typename gsMatrixOp<  gsMatrix<T> >::Ptr matrOp = makeMatrixOp( ev.moveToPtr() );
+        typename gsMatrixOp< gsMatrix<T> >::Ptr matrOp = makeMatrixOp( ev.moveToPtr() );
         Qop [i] = matrOp;
         // Here we are safe as long as we do not want to apply QTop after Qop got destroyed.
         QTop[i] = makeMatrixOp( matrOp->matrix().transpose() );
@@ -530,7 +530,7 @@ void constructTildeSpaceBasisTensor(
     if (ds == dirichlet::elimination)
     {
         for ( index_t i=0; i<d; ++i )
-            tildeSpaceBasis(tb->component(d-i-1), B_tilde[i], B_l2compl[i], boundaryConditionsForDirection(bc,i), odd);
+            tildeSpaceBasis(tb->component(d-1-i), B_tilde[i], B_l2compl[i], boundaryConditionsForDirection(bc,d-1-i), odd);
     }
     else
         GISMO_ERROR("Unknown Dirichlet strategy.");
@@ -609,17 +609,17 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 {
     // Get some properties
     const index_t d = basis.dim();
-    const T  h = basis.getMinCellLength();
+    const T h = basis.getMinCellLength();
 
     // Assemble univariate
     std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(basis, bc, opt);
     std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
 
     // Setup of basis
-    std::vector< gsSparseMatrix<T> > B_tilde(d), B_l2compl(d), B_compl(d);
+    std::vector< gsSparseMatrix<T> > B_tilde(d), B_l2compl(d);
     constructTildeSpaceBasis(basis, bc, opt, B_tilde, B_l2compl);
 
-    std::vector< gsSparseMatrix<T> > M_compl(d), K_compl(d);
+    std::vector< gsSparseMatrix<T> > M_compl(d), K_compl(d), B_compl(d);
     std::vector< typename gsLinearOperator<T>::Ptr > M_tilde_inv(d);
     for ( index_t i=0; i<d; ++i )
     {
@@ -652,10 +652,10 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         for ( index_t j = 0; j<d; ++ j )
         {
             if ( type & ( 1 << j ) )
-                transfers[j] = &(B_compl[j]);
+                transfers[j] = &(B_compl[d-1-j]);
             else
             {
-                transfers[j] = &(B_tilde[j]);
+                transfers[j] = &(B_tilde[d-1-j]);
                 ++numberInteriors;
             }
 
@@ -704,7 +704,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         for ( index_t j = d-1; j>=0; --j )
         {
             if ( ! ( type & ( 1 << j ) ) )
-                correction.push_back( M_tilde_inv[j] );
+                correction.push_back( M_tilde_inv[d-1-j] );
         }
 
         // If we are in the interior, we have to do the scaling here as there is no boundary correction.
@@ -723,9 +723,9 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
                     if ( type & ( 1 << k ) )
                     {
                         if ( s.rows() == 0 )
-                            s = M_compl[k];
+                            s = M_compl[d-1-k];
                         else
-                            s = M_compl[k].kron(s);
+                            s = M_compl[d-1-k].kron(s);
                     }
                 }
                 bc_matrix = ( alpha + numberInteriors/(sigma*h*h) ) * s;
@@ -742,9 +742,9 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
                         {
                             gsSparseMatrix<T>* chosenMatrix;
                             if ( j == k )
-                                chosenMatrix = &(K_compl[k]);
+                                chosenMatrix = &(K_compl[d-1-k]);
                             else
-                                chosenMatrix = &(M_compl[k]);
+                                chosenMatrix = &(M_compl[d-1-k]);
 
                             if ( s.rows() == 0 )
                                 s = *chosenMatrix;
