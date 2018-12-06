@@ -17,7 +17,7 @@ and Neumann (natural) boundary conditions are prescribed, respectively.
 We can also create a own \c .cpp and solve more complicated Poisson problems. In this tutorial, we
 explain how to do this. As an example we will use the \c poisson_example.cpp file in the
 example folder. We will go through essentials of the code in details (For more detail of the solver
-see the documentation for \ref gsPoissonAssembler, \ref gsAssemblerBase, and \ref gsVisitorPoisson.)
+see the documentation for \ref gsPoissonAssembler, \ref gsAssembler, and \ref gsVisitorPoisson.)
 
 First we include the library and use the gismo namespace.
 

@@ -119,19 +119,21 @@ endmacro(aux_instance_directory)
 
 function(get_repo_info repository revision) #REPO_REVISION
   if (NOT DEFINED ${repository})
-    if (EXISTS "${CMAKE_SOURCE_DIR}/.svn")
+    if (EXISTS "${gismo_SOURCE_DIR}/.svn")
       set(${repository} "svn" PARENT_SCOPE)
       #find_program(Subversion_SVN_EXECUTABLE NAMES svn svn.bat)
       find_package(Subversion)
       set(${revision} ${Project_WC_REVISION} PARENT_SCOPE)
-      #elseif (EXISTS "${CMAKE_SOURCE_DIR}/.git/svn/refs")
-    elseif (EXISTS "${CMAKE_SOURCE_DIR}/.git")
+      #elseif (EXISTS "${gismo_SOURCE_DIR}/.git/svn/refs")
+    elseif (EXISTS "${gismo_SOURCE_DIR}/.git")
       set(${repository} "git" PARENT_SCOPE)
       find_program(git_executable NAMES git git.exe git.cmd)
       execute_process(COMMAND ${git_executable} log -1 --pretty=format:%H
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} TIMEOUT 5
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR} TIMEOUT 5
 	RESULT_VARIABLE git_res OUTPUT_VARIABLE git_rev)
       set(${revision} ${git_rev} PARENT_SCOPE)
+    #else()
+    #  message("GISMO_REPO undefined.")
     endif()
   endif()
     #set( ${repo_exe}

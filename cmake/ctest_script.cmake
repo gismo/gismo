@@ -22,12 +22,20 @@
 ## or even -VV.
 ##
 ## Options can be passed by arguments (default options are displayed here):
+## NOTE: Line wrap can be done under Linux/macOS with \, under Windows with ^
 ##
-## ctest -S ctest_script.cmake -D CTEST_TEST_MODEL=Experimental -D CTEST_CONFIGURATION_TYPE=Release -D CTEST_BUILD_JOBS=8 -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=gcc -D CXXNAME=g++ -D CTEST_TEST_TIMEOUT=100 -D CTEST_MEMORYCHECK_TYPE=Valgrind -D test_coverage=TRUE
+## ctest -S ctest_script.cmake -D CTEST_TEST_MODEL=Experimental \
+##   -D CTEST_CONFIGURATION_TYPE=Release -D CTEST_BUILD_JOBS=8 \
+##   -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=gcc -D CXXNAME=g++ \
+##   -D CTEST_TEST_TIMEOUT=100 -D CTEST_MEMORYCHECK_TYPE=Valgrind \
+##   -D test_coverage=TRUE
 ##
 ## Different dashboard projects and subprojects are possible:
 ##
-## ctest -S /path/to/ctest_script.cmake -D PROJECT_NAME=myGismo -D CTEST_BUILD_JOBS=2 -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_TEST_TIMEOUT=100 -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests' -D CTEST_SOURCE_DIRECTORY=./gismo_src -D CTEST_BINARY_DIRECTORY=./build
+## ctest -S /path/to/ctest_script.cmake -D PROJECT_NAME=myGismo \
+##   -D CTEST_BUILD_JOBS=2 -D CTEST_CMAKE_GENERATOR="Unix Makefiles" \
+##   -D CTEST_TEST_TIMEOUT=100 -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests' \
+##   -D CTEST_SOURCE_DIRECTORY=./gismo_src -D CTEST_BINARY_DIRECTORY=./build
 ##
 ## On linux this script can be invoked in a cronjob. e.g.:
 ##    $ crontab -e
@@ -37,6 +45,44 @@
 ##    $ crontab -l
 ## you can see the scheduled task. The script will
 ## be executed every night at 03:00am.
+##
+######################################################################
+
+######################################################################
+##
+## Complete Options List:
+##
+## ctest parameters: (ctest -D ...)
+##   CMAKE_ARGS
+##   CNAME
+##   CTEST_BINARY_DIRECTORY
+##   CTEST_BUILD_JOBS
+##   CTEST_BUILD_NAME
+##   CTEST_CMAKE_GENERATOR
+##   CTEST_CONFIGURATION_TYPE
+##   CTEST_COVERAGE_COMMAND
+##   CTEST_MEMORYCHECK_TYPE
+##   CTEST_SITE
+##   CTEST_SOURCE_DIRECTORY
+##   CTEST_TEST_JOBS
+##   CTEST_TEST_MODEL
+##   CTEST_TEST_TIMEOUT
+##   CXXNAME
+##   DO_COVERAGE
+##   DROP_LOCATION
+##   DROP_METHOD
+##   DROP_SITE
+##   EMPTY_BINARY_DIRECTORY
+##   GISMO_BRANCH
+##   LABELS_FOR_SUBPROJECTS
+##   PROJECT_NAME
+##   UPDATE_MODULES
+##   UPDATE_TYPE
+##
+## Environment
+##   CFLAGS
+##   CXXFLAGS
+##   LDFLAGS
 ##
 ######################################################################
 
@@ -83,7 +129,9 @@ if (NOT DEFINED CTEST_MEMORYCHECK_TYPE)
   set(CTEST_MEMORYCHECK_TYPE "None")
 endif()
 
-# Coverage analysis
+# Coverage analysis - only GCC
+# if GCC was changed with CNAME/CXXNAME, CTEST_COVERAGE_COMMAND needs
+# also to be changed
 if (NOT DEFINED DO_COVERAGE)
   set(DO_COVERAGE FALSE)
 endif()
@@ -183,8 +231,10 @@ file(REMOVE ${CTEST_BINARY_DIRECTORY}/CMakeCache.txt)
 file(REMOVE_RECURSE ${CTEST_BINARY_DIRECTORY}/Testing)
 
 if (DO_COVERAGE)
-  find_program(CTEST_COVERAGE_COMMAND NAMES gcov)
-  set(CTEST_CUSTOM_COVERAGE_EXCLUDE "${CTEST_SOURCE_DIRECTORY}/external/")
+  if(NOT DEFINED CTEST_COVERAGE_COMMAND)
+    find_program(CTEST_COVERAGE_COMMAND NAMES gcov)
+  endif()
+    set(CTEST_CUSTOM_COVERAGE_EXCLUDE "${CTEST_SOURCE_DIRECTORY}/external/")
   set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -g -O0 --coverage -fprofile-arcs -ftest-coverage")
   set(ENV{CFLAGS} "$ENV{CFLAGS} -g -O0 --coverage -fprofile-arcs -ftest-coverage")
 endif()
@@ -269,7 +319,11 @@ if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
       set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch ${GISMO_BRANCH} git@github.com:gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
     endif()
   elseif("x${UPDATE_TYPE}" STREQUAL "xsvn")
-    set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} checkout https://github.com/gismo/gismo.git/trunk ${CTEST_SOURCE_DIRECTORY}")
+    if("x${GISMO_BRANCH}" STREQUAL "xstable") # stable
+      set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} checkout https://github.com/gismo/gismo.git/trunk ${CTEST_SOURCE_DIRECTORY}")
+    else() # branch
+      set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} checkout https://github.com/gismo/gismo.git/branches/${GISMO_BRANCH} ${CTEST_SOURCE_DIRECTORY}")
+    endif()
   elseif("x${UPDATE_TYPE}" STREQUAL "xwget")
     execute_process(COMMAND /bin/bash "-c" "wget --no-check-certificate -qO - https://github.com/gismo/gismo/archive/${GISMO_BRANCH}.tar.gz | tar -zxf -")
     execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink gismo-${GISMO_BRANCH} ${CTEST_SOURCE_DIRECTORY})
@@ -432,21 +486,20 @@ endmacro(run_ctests)
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
 
-ctest_start(${CTEST_TEST_MODEL})
-
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
+  ctest_start(${CTEST_TEST_MODEL})
   if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
     #update_gismo()
     ctest_update()
   endif()
-
   run_ctests()
 
 else() #continuous model
 
   while(${CTEST_ELAPSED_TIME} LESS ${test_runtime})
     set(START_TIME ${CTEST_ELAPSED_TIME})
+    ctest_start(${CTEST_TEST_MODEL})
     ctest_update(RETURN_VALUE updcount)
     if( ${updcount} GREATER 0 )
       run_ctests()
