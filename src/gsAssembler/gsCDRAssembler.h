@@ -58,7 +58,7 @@ public:
 
         // 0: no stabilization
         // 1: SUPG
-        m_options.addInt("Stabilization","Choice of stabilization method", 0);
+        m_options.addSwitch("Stabilization","Choice of stabilization method; 0 := no; 1 := SUPG;", 0);
         Base::initialize(pde, bases, m_options);
     }
 
@@ -74,7 +74,7 @@ public:
 
         // 0: no stabilization
         // 1: SUPG
-        m_options.addInt("Stabilization","Choice of stabilization method", 0);
+        m_options.addSwitch("Stabilization","Choice of stabilization method; 0 := no; 1 := SUPG;", flagStabilization);
         
         Base::initialize(pde, bases, m_options);
     }
@@ -109,7 +109,7 @@ public:
 
         // 0: no stabilization
         // 1: SUPG
-        m_options.addInt("Stabilization","Choice of stabilization method", 0);
+        m_options.addSwitch("Stabilization","Choice of stabilization method; 0 := no; 1 := SUPG;", flagStabilization);
 
         typename gsPde<T>::Ptr pde( new gsConvDiffRePde<T>
                                     (patches, bconditions, &coeff_A, &coeff_b, &coeff_c, &rhs));
