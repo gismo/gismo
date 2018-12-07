@@ -16,19 +16,17 @@
 #pragma once
 
 #include <gsIO/gsOptionList.h>
-#include <gsAssembler/gsAssembler.h>
-#include <gsNurbs/gsTensorBSplineBasis.h>
 
 #include <gsCore/gsAffineFunction.h>
 #include <gsUtils/gsSortedVector.h>
 #include <gsAssembler/gsQuadRule.h>
+
 #include <gsNurbs/gsBSpline.h>
-//#include <gsNurbs/gsNurbsBasis.h>
-#include <gsNurbs/gsTensorNurbsBasis.h> // this header requires #include <gsNurbs/gsNurbsBasis.h> !!!
+#include <gsNurbs/gsTensorBSplineBasis.h>
+#include <gsNurbs/gsTensorNurbsBasis.h>
 
 #include <gsModeling/gsCurveFitting.h>
 #include <gsModeling/gsFitting.h>
-
 
 namespace gismo {
 

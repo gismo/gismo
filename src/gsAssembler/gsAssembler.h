@@ -20,7 +20,6 @@
 #include <gsCore/gsMultiBasis.h>
 #include <gsCore/gsDomainIterator.h>
 #include <gsCore/gsAffineFunction.h>
-#include <gsAssembler/gsRemapInterface.h>
 
 #include <gsIO/gsOptionList.h>
 
@@ -29,6 +28,7 @@
 
 #include <gsAssembler/gsQuadRule.h>
 #include <gsAssembler/gsSparseSystem.h>
+#include <gsAssembler/gsRemapInterface.h>
 
 
 
