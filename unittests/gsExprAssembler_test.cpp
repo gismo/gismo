@@ -37,6 +37,6 @@ SUITE(gsExprAssembler_test)
                     gsExprEvaluator<>::variable f = ev.getVariable(ff, G);
 
                     const real_t v = ev.value();
-                    CHECK( v*v < 1e-16 );
+                    CHECK( v*v < 1e-10 );
                 }
         }

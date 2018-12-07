@@ -1138,7 +1138,7 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
     // first find the sides of the patches which belong to the interface
     const int nCorners = 1 << m_g1.geoDim();
     gsMatrix<T> inversMaps = gsMatrix<T>::Zero(m_g1.geoDim(), 4); // matrix to store the preimages of the corresponding verices on the interface
-    gsVector<T> corners(2); // vector to store the index of the corner which lies on the other patch, 0-th entry is the index of the corner for the first patch and vice versa
+    gsVector<index_t> corners(2); // vector to store the index of the corner which lies on the other patch, 0-th entry is the index of the corner for the first patch and vice versa
     corners.setZero();
 
     bool completeOnPatch2 = false, completeOnPatch1 = false; // check if one side of the patches is completely contained in the other side
@@ -1213,8 +1213,8 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
     // so far the code is not very nice -> room for improvement!!!
     // Maybe considering the exact values instead of approximations would be better
     gsMatrix<T> parIm;
-    if (completeOnPatch2 == false && corners(0) !=
-                                     0) // if the interface does not overlap entirely or if the side of patch2 is not a proper subset of the corresponding side of patch1
+    if (completeOnPatch2 == false
+                   && corners(0) != 0) // if the interface does not overlap entirely or if the side of patch2 is not a proper subset of the corresponding side of patch1
     {
         m_g1.invertPoints(m_g1.coefAtCorner(corners(0)).transpose(), parIm);
 
