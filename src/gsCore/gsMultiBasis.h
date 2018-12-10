@@ -19,6 +19,7 @@
 #include <gsCore/gsBoxTopology.h>
 #include <gsPde/gsBoundaryConditions.h>
 #include <gsAssembler/gsAssemblerOptions.h>
+#include <gsUtils/gsSortedVector.h>
 
 
 namespace gismo
@@ -657,6 +658,7 @@ public:
     struct glob {
         typename gsBasis<T>::Ptr basis;
         gsSparseMatrix<T,RowMajor> transfer;
+        gsSortedVector<unsigned> corners;
     };
 
     /// @brief Decomposes the whole basis into globs and gives the transfers

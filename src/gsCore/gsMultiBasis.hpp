@@ -915,6 +915,7 @@ template<typename T>
 struct gsGlob {
     gsVector<unsigned> indices;
     typename gsBasis<T>::Ptr basis;
+    gsSortedVector<unsigned> corners;
 // We want to have move semantics only
 #if EIGEN_HAS_RVALUE_REFERENCES
     gsGlob(const gsGlob&) = delete;
@@ -924,17 +925,23 @@ struct gsGlob {
 #endif
     void swap(gsGlob& other) { indices.swap(other.indices); basis.swap(other.basis);  }
     gsGlob() {} // needed for give in C++98
-    gsGlob( gsVector<unsigned> i, typename gsBasis<T>::Ptr b ) { i.swap(indices); b.swap(basis); }
+    gsGlob( gsVector<unsigned> i, typename gsBasis<T>::Ptr b, gsSortedVector<unsigned> c )
+    { i.swap(indices); b.swap(basis); c.swap(corners); }
 };
 
+// This decomposes a basis into globs. The basis itself could already be a boundary basis.
+// As an extreme case, this function is applied to corners (d=0). In this case, the basis is a nullptr.
 template<typename T>
 std::vector< gsGlob<T> > decomposeIntoGlobs( typename gsBasis<T>::Ptr basis, gsVector<unsigned> all )
 {
     std::vector< gsGlob<T> > result;
     const index_t d = basis ? basis->dim() : 0;
 
+    gsSortedVector<unsigned> corners;
     result.reserve(2*d);
 
+    // Consider all sides of the current box and construct the corresponding boundary basis.
+    // Here, we work recursively.
     for (index_t i=0;i<2*d;++i)
     {
         boxSide bs(i/2,i%2);
@@ -958,14 +965,24 @@ std::vector< gsGlob<T> > decomposeIntoGlobs( typename gsBasis<T>::Ptr basis, gsV
             }
             if (removeInvalids(tmp[j].indices))
                 result.push_back(give(tmp[j]));
+
+            const index_t s = tmp[j].corners.size();
+            for (index_t l=0; l<s; ++l)
+                corners.push_back(tmp[j].corners[l]);
         }
 
     }
+    // Finally, the last glob is the interior (provided that it is non-empty)
+    // The corner indices are taken from the corner indices from the boundary.
     if (removeInvalids(all))
-        result.push_back( gsGlob<T>(give(all), give(basis) ) );
+    {
+        if (d==0) corners.push_back(all[0]); // If we are zero-dimensional, we are already a corner.
+        result.push_back( gsGlob<T>(give(all), give(basis), give(corners)) );
+    }
     return result;
 }
 
+// Setup a transfer matrix from a vector containing the corresponding indices.
 template<typename T>
 gsSparseMatrix<T,RowMajor> setupTransfer( index_t cols, const gsVector<unsigned>& indices )
 {
@@ -1031,7 +1048,7 @@ gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc
     typename std::vector< gsGlob<T> >::iterator it = std::unique(pd.begin(), pd.end(), first_is_equal<T>);
     pd.erase(it, pd.end());
 
-    std::vector< std::vector< typename gsMultiBasis<T>::glob > > result(dim+1);
+    std::vector< std::vector< glob > > result(dim+1);
 
     const index_t sz = pd.size();
 
@@ -1048,6 +1065,7 @@ gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc
                 glob g;
                 g.basis = pd[i].basis;
                 g.transfer = setupTransfer<T>(totalNumberDof, pd[i].indices);
+                g.corners = pd[i].corners;
                 result[d].push_back(g);
             }
             else
@@ -1061,8 +1079,9 @@ gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc
         {
             vertices[counter] = -1u;
             glob g;
-            g.basis = BasisPtr();
+            // g.basis stays empty
             g.transfer = setupTransfer<T>(totalNumberDof, vertices);
+            // g.corners stays empty
             result[0].push_back(g);
         }
 
@@ -1076,6 +1095,7 @@ gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc
             glob g;
             g.basis = pd[i].basis;
             g.transfer = setupTransfer<T>(totalNumberDof, pd[i].indices);
+            g.corners = pd[i].corners;
             result[d].push_back(g);
         }
     }
