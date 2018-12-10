@@ -916,6 +916,7 @@ struct gsGlob {
     gsVector<unsigned> indices;
     typename gsBasis<T>::Ptr basis;
     gsSortedVector<unsigned> corners;
+    gsSortedVector<index_t> patch_nr;
 // We want to have move semantics only
 #if EIGEN_HAS_RVALUE_REFERENCES
     gsGlob(const gsGlob&) = delete;
@@ -926,16 +927,16 @@ struct gsGlob {
     bool operator==(const gsGlob& o) const { return corners == o.corners; }
     bool operator< (const gsGlob& o) const { return corners <  o.corners; }
     void swap(gsGlob& other)
-    { indices.swap(other.indices); basis.swap(other.basis); corners.swap(other.corners);  }
+    { indices.swap(other.indices); basis.swap(other.basis); corners.swap(other.corners); std::swap(patch_nr,other.patch_nr); }
     gsGlob() {} // needed for give in C++98
-    gsGlob( gsVector<unsigned> i, typename gsBasis<T>::Ptr b, gsSortedVector<unsigned> c )
-    { i.swap(indices); b.swap(basis); c.swap(corners); }
+    gsGlob( gsVector<unsigned> i, typename gsBasis<T>::Ptr b, gsSortedVector<unsigned> c, index_t p )
+    { i.swap(indices); b.swap(basis); c.swap(corners); patch_nr.push_back(p); }
 };
 
 // This decomposes a basis into globs. The basis itself could already be a boundary basis.
 // As an extreme case, this function is applied to corners (d=0). In this case, the basis is a nullptr.
 template<typename T>
-std::vector< gsGlob<T> > decomposeIntoGlobs( typename gsBasis<T>::Ptr basis, gsVector<unsigned> all )
+std::vector< gsGlob<T> > decomposeIntoGlobs( typename gsBasis<T>::Ptr basis, gsVector<unsigned> all, index_t patch_nr )
 {
     std::vector< gsGlob<T> > result;
     const index_t d = basis ? basis->dim() : 0;
@@ -950,9 +951,9 @@ std::vector< gsGlob<T> > decomposeIntoGlobs( typename gsBasis<T>::Ptr basis, gsV
     {
         boxSide bs(i/2,i%2);
         if(d>1)
-            tmp.push_back(decomposeIntoGlobs<T>( basis->boundaryBasis(bs), basis->boundary(bs) ));
+            tmp.push_back(decomposeIntoGlobs<T>( basis->boundaryBasis(bs), basis->boundary(bs), patch_nr ));
         else
-            tmp.push_back(decomposeIntoGlobs<T>(typename gsBasis<T>::Ptr(), basis->boundary(bs) ));
+            tmp.push_back(decomposeIntoGlobs<T>( typename gsBasis<T>::Ptr(), basis->boundary(bs), patch_nr ));
         const index_t sz = tmp[i].size();
 
         for (index_t j=0;j<sz;++j)
@@ -990,7 +991,7 @@ std::vector< gsGlob<T> > decomposeIntoGlobs( typename gsBasis<T>::Ptr basis, gsV
     if (removeInvalids(all))
     {
         if (d==0) corners.push_sorted_unique(all[0]); // If we are zero-dimensional, we are already a corner.
-        result.push_back( gsGlob<T>(give(all), give(basis), give(corners)) );
+        result.push_back( gsGlob<T>( give(all), give(basis), give(corners), patch_nr ) );
     }
     return result;
 }
@@ -1044,14 +1045,33 @@ gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc
     for (size_t i=0;i<this->nBases();++i)
     {
         typename gsBasis<T>::Ptr basis = m_bases[i]->clone();
-        std::vector< gsGlob<T> > tmp = decomposeIntoGlobs<T>(basis, locals[i]);
+        std::vector< gsGlob<T> > tmp = decomposeIntoGlobs<T>(basis, locals[i], i);
         //pd.insert( pd.end(), tmp.begin(), tmp.end() ); // would make copy, so we do...
         for( typename std::vector< gsGlob<T> >::iterator it=tmp.begin(); it<tmp.end(); ++it)
             pd.push_back(give(*it));
     }
     std::sort(pd.begin(), pd.end());
-    typename std::vector< gsGlob<T> >::iterator it = std::unique(pd.begin(), pd.end());
-    pd.erase(it, pd.end());
+    //typename std::vector< gsGlob<T> >::iterator it = std::unique(pd.begin(), pd.end());
+    //pd.erase(it, pd.end());
+    {
+        typedef typename std::vector< gsGlob<T> >::iterator it_t;
+        it_t it1 = pd.begin();
+        it_t it2 = pd.begin();
+        while(it2 < pd.end())
+        {
+            (*it1).swap(*it2);
+            ++it2;
+            while( it2 < pd.end() && *it1 == *it2 ) {
+                (*it1).patch_nr.push_sorted_unique( (*it2).patch_nr[0] );
+                ++it2;
+            }
+            ++it1;
+        }
+        pd.erase(it1, pd.end());
+    }
+    
+
+    std::vector< gsGlob<T> > pd_cleaned;
 
     std::vector< std::vector< glob > > result(dim+1);
 
@@ -1071,6 +1091,7 @@ gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc
                 g.basis = pd[i].basis;
                 g.transfer = setupTransfer<T>(totalNumberDof, pd[i].indices);
                 g.corners = give(pd[i].corners);
+                g.patches = give(pd[i].patch_nr);
                 result[d].push_back(g);
             }
             else
@@ -1087,6 +1108,7 @@ gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc
             // g.basis stays empty
             g.transfer = setupTransfer<T>(totalNumberDof, vertices);
             // g.corners stays empty
+            // g.patches stays empty
             result[0].push_back(g);
         }
 
@@ -1101,6 +1123,7 @@ gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc
             g.basis = pd[i].basis;
             g.transfer = setupTransfer<T>(totalNumberDof, pd[i].indices);
             g.corners = give(pd[i].corners);
+            g.patches = give(pd[i].patch_nr);
             result[d].push_back(g);
         }
     }

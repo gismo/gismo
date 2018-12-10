@@ -659,6 +659,7 @@ public:
         typename gsBasis<T>::Ptr basis;
         gsSparseMatrix<T,RowMajor> transfer;
         gsSortedVector<unsigned> corners;
+        gsSortedVector<index_t> patches;
     };
 
     /// @brief Decomposes the whole basis into globs and gives the transfers
@@ -674,16 +675,18 @@ public:
     ///   the edges
     ///   the corners
     ///
-    /// The result of this algorithm is a vector of vector of pairs containing the
-    /// corresponding basis (as \a gsBasis<T>::Ptr) and the corresponding transfer
-    /// matrix. The outer vector has d+1 entries. Its i th entry is again a vector
-    /// collecting all globs with d-i dimensions.
+    /// The result of this algorithm is a vector of vector of a struct containing the
+    /// corresponding basis (as \a gsBasis<T>::Ptr), the corresponding transfer
+    /// matrix, the indices of the corresponding corners and the indices of the
+    /// corresponding patches. The outer vector has d+1 entries. Its i th entry is
+    /// again a vector collecting all globs with d-i dimensions.
     ///
     /// \param bc The boundary conditions to be used
     /// \param dirichletStrategy The Dirichlet strategy to be used
     /// \param iFaceStrategy The interface strategy to be used
     /// \param combineCorners If this is set to true, all corners are considered
-    ///             as one glob.
+    ///           as one glob. The combined glob does not contain information on corners
+    ///           or patches.
     std::vector< std::vector< glob > >
     getGlobs_withTransferMatrices(
         const gsBoundaryConditions<T>& bc,

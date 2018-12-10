@@ -37,26 +37,42 @@ SUITE(gsGlobs_test)
                 for (unsigned n=0; n<result[i][j].corners.size(); ++n )
                     gsInfo << "  " << result[i][j].corners[n];
                 gsInfo << "\n";
+                gsInfo << "Patches: ";
+                for (unsigned n=0; n<result[i][j].patches.size(); ++n )
+                    gsInfo << "  " << result[i][j].patches[n];
+                gsInfo << "\n";
                 gsInfo << "Transfer: " << result[i][j].transfer.transpose() << "\n";
             }
-        */
+        //*/
 
         CHECK(result.size() == 3);
 
         // Have 7 vertices with 1 dof each
         CHECK(result[0].size() == 8);
         for (unsigned i=0; i<8; ++i )
+        {
             CHECK( result[0][i].transfer.cols() == 1 && result[0][i].transfer.rows() == 40 );
+            CHECK( result[0][i].corners.size() == 1 );
+            CHECK( result[0][i].patches.size() > 0 && result[0][i].patches.size() < 4 );
+        }
 
         // Have 10 edges with 2 dofs each
         CHECK(result[1].size() == 10);
         for (unsigned i=0; i<10; ++i )
+        {
             CHECK( result[1][i].transfer.cols() == 2 && result[1][i].transfer.rows() == 40 );
+            CHECK( result[1][i].corners.size() == 2 );
+            CHECK( result[1][i].patches.size() > 0 && result[1][i].patches.size() < 3 );
+        }
 
         // Have 3 patches with 4 interior dofs each
         CHECK(result[2].size() == 3);
         for (unsigned i=0; i<3; ++i )
+        {
             CHECK( result[2][i].transfer.cols() == 4 && result[2][i].transfer.rows() == 40 );
+            CHECK( result[2][i].corners.size() == 4 );
+            CHECK( result[2][i].patches.size() == 1 );
+        }
 
     }
 
