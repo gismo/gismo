@@ -353,7 +353,7 @@ public:
 public:
     enum {ScalarValued = 1};
 
-    inline Scalar eval(const index_t k) const { return _c; }
+    inline Scalar eval(const index_t ) const { return _c; }
 
     inline _expr val() const { return *this; }
     index_t rows() const { return 0; }
@@ -483,7 +483,7 @@ public:
 
     explicit cdiam_expr(const gsFeElement<T> & el) : _e(el) { }
 
-    T eval(const index_t k) const { return _e.m_di->getCellSize(); }
+    T eval(const index_t ) const { return _e.m_di->getCellSize(); }
 
     inline cdiam_expr<T> val() const { return *this; }
     inline index_t rows() const { return 0; }
