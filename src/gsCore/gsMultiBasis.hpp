@@ -2,12 +2,12 @@
 
     @brief Provides declaration of MultiBasis class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -36,7 +36,7 @@ gsMultiBasis<T>::gsMultiBasis( const gsMultiPatch<T> & mpatch, bool NoRational)
 {
     m_bases = mpatch.basesCopy(NoRational);
 }
-  
+
 template<class T>
 gsMultiBasis<T>::gsMultiBasis( const gsMultiBasis& other )
 : Base(other),
@@ -71,16 +71,16 @@ std::ostream& gsMultiBasis<T>::print( std::ostream& os ) const
     return os;
 }
 
- 
+
 template<class T>
-void gsMultiBasis<T>::addBasis( gsBasis<T> * g ) 
+void gsMultiBasis<T>::addBasis( gsBasis<T> * g )
 {
     //gsDebug<< "TO DO\n";
-    if ( m_topology.dim() == -1 ) 
+    if ( m_topology.dim() == -1 )
     {
         m_topology.setDim( g->dim() );
-    } 
-    else 
+    }
+    else
     {
         assert( g->dim() == m_topology.dim() );
     }
@@ -92,11 +92,11 @@ void gsMultiBasis<T>::addBasis( gsBasis<T> * g )
 template<class T>
 void gsMultiBasis<T>::addBasis(typename gsBasis<T>::uPtr g)
 {
-    if ( m_topology.dim() == -1 ) 
+    if ( m_topology.dim() == -1 )
     {
         m_topology.setDim( g->dim() );
-    } 
-    else 
+    }
+    else
     {
         GISMO_ASSERT( g->dim() == m_topology.dim(), "Dimensions do not match.");
     }
@@ -113,10 +113,10 @@ int gsMultiBasis<T>::findBasisIndex( gsBasis<T>* g ) const
     assert( it != m_bases.end() );
     return it - m_bases.begin();
 }
-  
+
 template<class T>
 void gsMultiBasis<T>::addInterface( gsBasis<T>* g1, boxSide s1,
-                                    gsBasis<T>* g2, boxSide s2 ) 
+                                    gsBasis<T>* g2, boxSide s2 )
 {
     int p1 = findBasisIndex( g1 );
     int p2 = findBasisIndex( g2 );
@@ -210,7 +210,7 @@ void gsMultiBasis<T>::uniformRefine_withTransfer(
         );
 
         // restrict to free dofs
-        combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );        
+        combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );
 
 }
 
@@ -249,7 +249,7 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
         );
 
         // restrict to free dofs
-        combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );        
+        combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );
 
 }
 
@@ -296,12 +296,12 @@ int gsMultiBasis<T>::minDegree(int k) const
 }
 
 template<class T>
-void gsMultiBasis<T>::getMapper(bool conforming, 
-                                gsDofMapper & mapper, 
+void gsMultiBasis<T>::getMapper(bool conforming,
+                                gsDofMapper & mapper,
                                 bool finalize) const
 {
     mapper = gsDofMapper(*this);//.init(*this);
-    
+
     if ( conforming )  // Conforming boundaries ?
     {
         for ( gsBoxTopology::const_iiterator it = m_topology.iBegin();
@@ -310,20 +310,20 @@ void gsMultiBasis<T>::getMapper(bool conforming,
             matchInterface(*it,mapper);
         }
     }
-    
+
     if (finalize)
         mapper.finalize();
 }
 
 template<class T>
-void gsMultiBasis<T>::getMapper(bool conforming, 
-                                const gsBoundaryConditions<T> & bc, 
+void gsMultiBasis<T>::getMapper(bool conforming,
+                                const gsBoundaryConditions<T> & bc,
                                 int unk,
-                                gsDofMapper & mapper, 
+                                gsDofMapper & mapper,
                                 bool finalize) const
 {
     mapper = gsDofMapper(*this, bc, unk); //.init(*this, bc, unk);
-    
+
     if ( conforming ) // Conforming boundaries ?
     {
         for ( gsBoxTopology::const_iiterator it = m_topology.iBegin();
@@ -336,7 +336,7 @@ void gsMultiBasis<T>::getMapper(bool conforming,
     if (finalize)
         mapper.finalize();
 }
-    
+
 template<class T>
 void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper & mapper) const
 {
@@ -852,6 +852,252 @@ bool gsMultiBasis<T>::repairInterface2d( const boundaryInterface & bi )
 
     return ( ( refElts0.size() > 0 ) || ( refElts1.size() > 0 ) );
 
+}
+
+template<class T>
+std::vector< gsSparseMatrix<T,RowMajor> >
+gsMultiBasis<T>::getTransferMatrices(const gsBoundaryConditions<T>& bc, dirichlet::strategy dirichletStrategy, iFace::strategy iFaceStrategy) const
+{
+    std::vector< gsSparseMatrix<T,RowMajor> > transfers;
+
+    const index_t n = this->nBases();
+    gsDofMapper dm;
+    this->getMapper(
+       dirichletStrategy,
+       iFaceStrategy,
+       bc,
+       dm,
+       0
+    );
+    const index_t nTotalDofs = dm.freeSize();
+    for (index_t i=0; i<n; ++i)
+    {
+        const index_t nDofs = m_bases[i]->size();
+        gsSparseEntries<T> transfer_se;
+        transfer_se.reserve(nDofs);
+        for (index_t j=0; j<nDofs; ++j)
+        {
+            const index_t dof_idx = dm.index(j,i);
+            if (dm.is_free_index(dof_idx))
+                transfer_se.add(dof_idx,j,1);
+        }
+        gsSparseMatrix<T,RowMajor> transfer(nTotalDofs,nDofs);
+        transfer.setFrom(transfer_se);
+        transfer.makeCompressed();
+        transfers.push_back(give(transfer));
+    }
+    return transfers;
+}
+
+namespace {
+
+bool removeInvalids( gsVector<unsigned>& vec )
+{
+    GISMO_ASSERT( vec.cols() == 1, "Only works for colum-vectors." );
+    const index_t sz = vec.rows();
+    index_t i = 0;
+    index_t j = 0;
+    while (j<sz)
+    {
+        if ( vec[j] != -1u )
+        {
+            vec[i] = vec[j];
+            i++;
+        }
+        j++;
+    }
+    bool found = i>0;
+    while (i<sz) { vec[i] = -1u; i++; }
+    return found;
+}
+
+template<typename T>
+struct Glob {
+    gsVector<unsigned> indices;
+    typename gsBasis<T>::Ptr basis;
+// We want to have move semantics only
+#if EIGEN_HAS_RVALUE_REFERENCES
+    Glob(const Glob&) = delete;
+    Glob(Glob&&) = default;
+    Glob& operator=(const Glob&) = delete;
+    Glob& operator=(Glob&&) = default;
+#endif
+    void swap(Glob& other) { indices.swap(other.indices); basis.swap(other.basis);  }
+    Glob() {} // needed for give in C++98
+    Glob( gsVector<unsigned> i, typename gsBasis<T>::Ptr b ) { i.swap(indices); b.swap(basis); }
+};
+
+template<typename T>
+std::vector< Glob<T> > decomposeIntoGlobs( typename gsBasis<T>::Ptr basis, gsVector<unsigned> all )
+{
+    std::vector< Glob<T> > result;
+    const index_t d = basis ? basis->dim() : 0;
+
+    result.reserve(2*d);
+
+    for (index_t i=0;i<2*d;++i)
+    {
+        boxSide bs(i/2,i%2);
+        std::vector< Glob<T> > tmp;
+        if(d>1)
+            tmp = decomposeIntoGlobs<T>( basis->boundaryBasis(bs), basis->boundary(bs) );
+        else
+            tmp = decomposeIntoGlobs<T>(typename gsBasis<T>::Ptr(), basis->boundary(bs) );
+        const index_t sz = tmp.size();
+
+        for (index_t j=0;j<sz;++j)
+        {
+            for (index_t l=0; l<tmp[j].indices.rows(); ++l)
+            {
+                const unsigned loc = tmp[j].indices[l];
+                if (loc != -1u)
+                {
+                    tmp[j].indices[l] = all[loc] != -1u ? all[loc] : -1u ;
+                    all[loc] = -1u;
+                }
+            }
+            if (removeInvalids(tmp[j].indices))
+                result.push_back(give(tmp[j]));
+        }
+
+    }
+    if (removeInvalids(all))
+        result.push_back( Glob<T>(give(all), give(basis) ) );
+    return result;
+}
+
+template<typename T>
+gsSparseMatrix<T,RowMajor> setupTransfer( index_t cols, const gsVector<unsigned>& indices )
+{
+    const index_t sz0 = indices.rows();
+    index_t sz=0;
+    for (; sz<sz0 && indices[sz] != -1u; ++sz) {}
+    gsSparseEntries<T> se;
+    se.reserve(sz);
+    for (index_t i=0; i<sz; ++i)
+        se.add(indices[i],i,1);
+    gsSparseMatrix<T,RowMajor> result(cols,sz);
+    result.setFrom(se);
+    return result;
+}
+
+template<typename T>
+bool first_is_lower( const Glob<T>& a, const Glob<T>& b )
+{ return a.indices[0]<b.indices[0]; }
+
+template<typename T>
+bool first_is_equal( const Glob<T>& a, const Glob<T>& b )
+{ return a.indices[0]==b.indices[0]; }
+
+template<typename T>
+std::vector< std::vector< std::pair< typename gsBasis<T>::Ptr, gsSparseMatrix<T,RowMajor> > > > constructGlobs(
+                                    const gsMultiBasis<T>& mb,
+                                    const std::vector< gsVector<unsigned> >& locals,
+                                    index_t totalNumberDof,
+                                    bool combineCorners
+                                )
+{
+
+
+}
+
+} // anonymous namespace
+
+template<class T>
+std::vector< std::vector< std::pair< typename gsBasis<T>::Ptr, gsSparseMatrix<T,RowMajor> > > >
+gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc, dirichlet::strategy dirichletStrategy, iFace::strategy iFaceStrategy, bool combineCorners) const
+{
+    typedef typename gsBasis<T>::Ptr BasisPtr;
+    const index_t dim = this->dim();
+
+    gsDofMapper dm;
+    this->getMapper(
+       dirichletStrategy,
+       iFaceStrategy,
+       bc,
+       dm,
+       0
+    );
+    std::vector< gsVector<unsigned> > locals(this->nBases());
+    for (size_t i=0;i<this->nBases();++i)
+    {
+        const index_t sz = m_bases[i]->size();
+        gsVector<unsigned> local(sz);
+        for (index_t j=0; j<sz; ++j)
+            local[j] = dm.is_free(j,i) ? dm.index(j, i) : -1u;
+        locals[i].swap(local);
+    }
+    const index_t totalNumberDof = dm.freeSize();
+
+    std::vector< Glob<T> > pd;
+
+    for (size_t i=0;i<this->nBases();++i)
+    {
+        typename gsBasis<T>::Ptr basis = m_bases[i]->clone();
+        std::vector< Glob<T> > tmp = decomposeIntoGlobs<T>(basis, locals[i]);
+        //pd.insert( pd.end(), tmp.begin(), tmp.end() ); // would make copy, so we do...
+        for( typename std::vector< Glob<T> >::iterator it=tmp.begin(); it<tmp.end(); ++it)
+            pd.push_back(give(*it));
+    }
+    std::sort(pd.begin(), pd.end(), first_is_lower<T>);
+    typename std::vector< Glob<T> >::iterator it = std::unique(pd.begin(), pd.end(), first_is_equal<T>);
+    pd.erase(it, pd.end());
+
+    std::vector< std::vector< std::pair< BasisPtr, gsSparseMatrix<T,RowMajor> > > > result(dim+1);
+
+    const index_t sz = pd.size();
+
+    if (combineCorners)
+    {
+        gsVector<unsigned> vertices(sz);
+        index_t counter = 0;
+        for (index_t i=0; i<sz; ++i)
+        {
+            const index_t d = pd[i].basis ? pd[i].basis->dim() : 0;
+            GISMO_ASSERT( d<=dim, "Internal error." );
+            if (d>0)
+            {
+                result[d].push_back(
+                    std::pair< BasisPtr, gsSparseMatrix<T> >(
+                        pd[i].basis,
+                        setupTransfer<T>(totalNumberDof, pd[i].indices)
+                    )
+                );
+            }
+            else
+            {
+                GISMO_ASSERT( pd[i].indices.rows()==1 || (pd[i].indices.rows()>1&&pd[i].indices[2]==-1u), "Internal error." );
+                vertices[counter] = pd[i].indices[0];
+                counter++;
+            }
+        }
+        if (counter)
+        {
+            vertices[counter] = -1u;
+            result[0].push_back(
+                std::pair< BasisPtr, gsSparseMatrix<T> >(
+                    BasisPtr(),
+                    setupTransfer<T>(totalNumberDof, vertices)
+                )
+            );
+        }
+
+    }
+    else
+    {
+        for (index_t i=0; i<sz; ++i)
+        {
+            const index_t d = pd[i].basis ? pd[i].basis->dim() : 0;
+            GISMO_ASSERT( d<=dim, "Internal error." );
+            result[d].push_back(
+                std::pair< BasisPtr, gsSparseMatrix<T> >(
+                    pd[i].basis,
+                    setupTransfer<T>(totalNumberDof, pd[i].indices)
+                )
+            );
+        }
+    }
+    return result;
 }
 
 } // namespace gismo
