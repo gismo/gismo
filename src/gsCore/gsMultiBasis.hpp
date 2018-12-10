@@ -989,18 +989,6 @@ template<typename T>
 bool first_is_equal( const Glob<T>& a, const Glob<T>& b )
 { return a.indices[0]==b.indices[0]; }
 
-template<typename T>
-std::vector< std::vector< std::pair< typename gsBasis<T>::Ptr, gsSparseMatrix<T,RowMajor> > > > constructGlobs(
-                                    const gsMultiBasis<T>& mb,
-                                    const std::vector< gsVector<unsigned> >& locals,
-                                    index_t totalNumberDof,
-                                    bool combineCorners
-                                )
-{
-
-
-}
-
 } // anonymous namespace
 
 template<class T>
