@@ -923,7 +923,10 @@ struct gsGlob {
     gsGlob& operator=(const gsGlob&) = delete;
     gsGlob& operator=(gsGlob&&) = default;
 #endif
-    void swap(gsGlob& other) { indices.swap(other.indices); basis.swap(other.basis);  }
+    bool operator==(const gsGlob& o) const { return corners == o.corners; }
+    bool operator< (const gsGlob& o) const { return corners <  o.corners; }
+    void swap(gsGlob& other)
+    { indices.swap(other.indices); basis.swap(other.basis); corners.swap(other.corners);  }
     gsGlob() {} // needed for give in C++98
     gsGlob( gsVector<unsigned> i, typename gsBasis<T>::Ptr b, gsSortedVector<unsigned> c )
     { i.swap(indices); b.swap(basis); c.swap(corners); }
@@ -942,33 +945,43 @@ std::vector< gsGlob<T> > decomposeIntoGlobs( typename gsBasis<T>::Ptr basis, gsV
 
     // Consider all sides of the current box and construct the corresponding boundary basis.
     // Here, we work recursively.
+    std::vector< std::vector< gsGlob<T> > > tmp;
     for (index_t i=0;i<2*d;++i)
     {
         boxSide bs(i/2,i%2);
-        std::vector< gsGlob<T> > tmp;
         if(d>1)
-            tmp = decomposeIntoGlobs<T>( basis->boundaryBasis(bs), basis->boundary(bs) );
+            tmp.push_back(decomposeIntoGlobs<T>( basis->boundaryBasis(bs), basis->boundary(bs) ));
         else
-            tmp = decomposeIntoGlobs<T>(typename gsBasis<T>::Ptr(), basis->boundary(bs) );
-        const index_t sz = tmp.size();
+            tmp.push_back(decomposeIntoGlobs<T>(typename gsBasis<T>::Ptr(), basis->boundary(bs) ));
+        const index_t sz = tmp[i].size();
 
         for (index_t j=0;j<sz;++j)
         {
-            for (index_t l=0; l<tmp[j].indices.rows(); ++l)
+            const index_t nc = tmp[i][j].corners.size();
+            for (index_t l = 0; l<nc; ++l)
+                tmp[i][j].corners[l] = all[tmp[i][j].corners[l]];
+        }
+    }
+    for (index_t i=0;i<2*d;++i)
+    {
+        const index_t sz = tmp[i].size();
+        for (index_t j=0;j<sz;++j)
+        {
+            for (index_t l=0; l<tmp[i][j].indices.rows(); ++l)
             {
-                const unsigned loc = tmp[j].indices[l];
+                const unsigned loc = tmp[i][j].indices[l];
                 if (loc != -1u)
                 {
-                    tmp[j].indices[l] = all[loc] != -1u ? all[loc] : -1u ;
+                    tmp[i][j].indices[l] = all[loc];
                     all[loc] = -1u;
                 }
             }
-            if (removeInvalids(tmp[j].indices))
-                result.push_back(give(tmp[j]));
-
-            const index_t s = tmp[j].corners.size();
+            const index_t s = tmp[i][j].corners.size();
             for (index_t l=0; l<s; ++l)
-                corners.push_back(tmp[j].corners[l]);
+                corners.push_sorted_unique(tmp[i][j].corners[l]);
+
+            if (removeInvalids(tmp[i][j].indices))
+                result.push_back(give(tmp[i][j]));
         }
 
     }
@@ -976,7 +989,7 @@ std::vector< gsGlob<T> > decomposeIntoGlobs( typename gsBasis<T>::Ptr basis, gsV
     // The corner indices are taken from the corner indices from the boundary.
     if (removeInvalids(all))
     {
-        if (d==0) corners.push_back(all[0]); // If we are zero-dimensional, we are already a corner.
+        if (d==0) corners.push_sorted_unique(all[0]); // If we are zero-dimensional, we are already a corner.
         result.push_back( gsGlob<T>(give(all), give(basis), give(corners)) );
     }
     return result;
@@ -997,14 +1010,6 @@ gsSparseMatrix<T,RowMajor> setupTransfer( index_t cols, const gsVector<unsigned>
     result.setFrom(se);
     return result;
 }
-
-template<typename T>
-bool first_is_lower( const gsGlob<T>& a, const gsGlob<T>& b )
-{ return a.indices[0]<b.indices[0]; }
-
-template<typename T>
-bool first_is_equal( const gsGlob<T>& a, const gsGlob<T>& b )
-{ return a.indices[0]==b.indices[0]; }
 
 } // anonymous namespace
 
@@ -1044,8 +1049,8 @@ gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc
         for( typename std::vector< gsGlob<T> >::iterator it=tmp.begin(); it<tmp.end(); ++it)
             pd.push_back(give(*it));
     }
-    std::sort(pd.begin(), pd.end(), first_is_lower<T>);
-    typename std::vector< gsGlob<T> >::iterator it = std::unique(pd.begin(), pd.end(), first_is_equal<T>);
+    std::sort(pd.begin(), pd.end());
+    typename std::vector< gsGlob<T> >::iterator it = std::unique(pd.begin(), pd.end());
     pd.erase(it, pd.end());
 
     std::vector< std::vector< glob > > result(dim+1);
@@ -1065,7 +1070,7 @@ gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc
                 glob g;
                 g.basis = pd[i].basis;
                 g.transfer = setupTransfer<T>(totalNumberDof, pd[i].indices);
-                g.corners = pd[i].corners;
+                g.corners = give(pd[i].corners);
                 result[d].push_back(g);
             }
             else
@@ -1095,7 +1100,7 @@ gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc
             glob g;
             g.basis = pd[i].basis;
             g.transfer = setupTransfer<T>(totalNumberDof, pd[i].indices);
-            g.corners = pd[i].corners;
+            g.corners = give(pd[i].corners);
             result[d].push_back(g);
         }
     }
