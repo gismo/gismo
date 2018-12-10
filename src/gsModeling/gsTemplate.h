@@ -344,7 +344,9 @@ public:
 
 
     /// square template constructed providing the 4 corners Bb matrix (2,4) (x and y coord.)
-    gsTemplate(int r, bool square) : Base()
+    gsTemplate(int  r,
+               bool ) //square)
+    : Base()
     {
 
         gsMatrix<T> Bb(2,4);
