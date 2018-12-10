@@ -912,25 +912,25 @@ bool removeInvalids( gsVector<unsigned>& vec )
 }
 
 template<typename T>
-struct Glob {
+struct gsGlob {
     gsVector<unsigned> indices;
     typename gsBasis<T>::Ptr basis;
 // We want to have move semantics only
 #if EIGEN_HAS_RVALUE_REFERENCES
-    Glob(const Glob&) = delete;
-    Glob(Glob&&) = default;
-    Glob& operator=(const Glob&) = delete;
-    Glob& operator=(Glob&&) = default;
+    gsGlob(const gsGlob&) = delete;
+    gsGlob(gsGlob&&) = default;
+    gsGlob& operator=(const gsGlob&) = delete;
+    gsGlob& operator=(gsGlob&&) = default;
 #endif
-    void swap(Glob& other) { indices.swap(other.indices); basis.swap(other.basis);  }
-    Glob() {} // needed for give in C++98
-    Glob( gsVector<unsigned> i, typename gsBasis<T>::Ptr b ) { i.swap(indices); b.swap(basis); }
+    void swap(gsGlob& other) { indices.swap(other.indices); basis.swap(other.basis);  }
+    gsGlob() {} // needed for give in C++98
+    gsGlob( gsVector<unsigned> i, typename gsBasis<T>::Ptr b ) { i.swap(indices); b.swap(basis); }
 };
 
 template<typename T>
-std::vector< Glob<T> > decomposeIntoGlobs( typename gsBasis<T>::Ptr basis, gsVector<unsigned> all )
+std::vector< gsGlob<T> > decomposeIntoGlobs( typename gsBasis<T>::Ptr basis, gsVector<unsigned> all )
 {
-    std::vector< Glob<T> > result;
+    std::vector< gsGlob<T> > result;
     const index_t d = basis ? basis->dim() : 0;
 
     result.reserve(2*d);
@@ -938,7 +938,7 @@ std::vector< Glob<T> > decomposeIntoGlobs( typename gsBasis<T>::Ptr basis, gsVec
     for (index_t i=0;i<2*d;++i)
     {
         boxSide bs(i/2,i%2);
-        std::vector< Glob<T> > tmp;
+        std::vector< gsGlob<T> > tmp;
         if(d>1)
             tmp = decomposeIntoGlobs<T>( basis->boundaryBasis(bs), basis->boundary(bs) );
         else
@@ -962,7 +962,7 @@ std::vector< Glob<T> > decomposeIntoGlobs( typename gsBasis<T>::Ptr basis, gsVec
 
     }
     if (removeInvalids(all))
-        result.push_back( Glob<T>(give(all), give(basis) ) );
+        result.push_back( gsGlob<T>(give(all), give(basis) ) );
     return result;
 }
 
@@ -982,17 +982,17 @@ gsSparseMatrix<T,RowMajor> setupTransfer( index_t cols, const gsVector<unsigned>
 }
 
 template<typename T>
-bool first_is_lower( const Glob<T>& a, const Glob<T>& b )
+bool first_is_lower( const gsGlob<T>& a, const gsGlob<T>& b )
 { return a.indices[0]<b.indices[0]; }
 
 template<typename T>
-bool first_is_equal( const Glob<T>& a, const Glob<T>& b )
+bool first_is_equal( const gsGlob<T>& a, const gsGlob<T>& b )
 { return a.indices[0]==b.indices[0]; }
 
 } // anonymous namespace
 
 template<class T>
-std::vector< std::vector< std::pair< typename gsBasis<T>::Ptr, gsSparseMatrix<T,RowMajor> > > >
+std::vector< std::vector< typename gsMultiBasis<T>::glob > >
 gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc, dirichlet::strategy dirichletStrategy, iFace::strategy iFaceStrategy, bool combineCorners) const
 {
     typedef typename gsBasis<T>::Ptr BasisPtr;
@@ -1017,21 +1017,21 @@ gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc
     }
     const index_t totalNumberDof = dm.freeSize();
 
-    std::vector< Glob<T> > pd;
+    std::vector< gsGlob<T> > pd;
 
     for (size_t i=0;i<this->nBases();++i)
     {
         typename gsBasis<T>::Ptr basis = m_bases[i]->clone();
-        std::vector< Glob<T> > tmp = decomposeIntoGlobs<T>(basis, locals[i]);
+        std::vector< gsGlob<T> > tmp = decomposeIntoGlobs<T>(basis, locals[i]);
         //pd.insert( pd.end(), tmp.begin(), tmp.end() ); // would make copy, so we do...
-        for( typename std::vector< Glob<T> >::iterator it=tmp.begin(); it<tmp.end(); ++it)
+        for( typename std::vector< gsGlob<T> >::iterator it=tmp.begin(); it<tmp.end(); ++it)
             pd.push_back(give(*it));
     }
     std::sort(pd.begin(), pd.end(), first_is_lower<T>);
-    typename std::vector< Glob<T> >::iterator it = std::unique(pd.begin(), pd.end(), first_is_equal<T>);
+    typename std::vector< gsGlob<T> >::iterator it = std::unique(pd.begin(), pd.end(), first_is_equal<T>);
     pd.erase(it, pd.end());
 
-    std::vector< std::vector< std::pair< BasisPtr, gsSparseMatrix<T,RowMajor> > > > result(dim+1);
+    std::vector< std::vector< typename gsMultiBasis<T>::glob > > result(dim+1);
 
     const index_t sz = pd.size();
 
@@ -1045,12 +1045,10 @@ gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc
             GISMO_ASSERT( d<=dim, "Internal error." );
             if (d>0)
             {
-                result[d].push_back(
-                    std::pair< BasisPtr, gsSparseMatrix<T> >(
-                        pd[i].basis,
-                        setupTransfer<T>(totalNumberDof, pd[i].indices)
-                    )
-                );
+                glob g;
+                g.basis = pd[i].basis;
+                g.transfer = setupTransfer<T>(totalNumberDof, pd[i].indices);
+                result[d].push_back(g);
             }
             else
             {
@@ -1062,12 +1060,10 @@ gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc
         if (counter)
         {
             vertices[counter] = -1u;
-            result[0].push_back(
-                std::pair< BasisPtr, gsSparseMatrix<T> >(
-                    BasisPtr(),
-                    setupTransfer<T>(totalNumberDof, vertices)
-                )
-            );
+            glob g;
+            g.basis = BasisPtr();
+            g.transfer = setupTransfer<T>(totalNumberDof, vertices);
+            result[0].push_back(g);
         }
 
     }
@@ -1077,12 +1073,10 @@ gsMultiBasis<T>::getGlobs_withTransferMatrices(const gsBoundaryConditions<T>& bc
         {
             const index_t d = pd[i].basis ? pd[i].basis->dim() : 0;
             GISMO_ASSERT( d<=dim, "Internal error." );
-            result[d].push_back(
-                std::pair< BasisPtr, gsSparseMatrix<T> >(
-                    pd[i].basis,
-                    setupTransfer<T>(totalNumberDof, pd[i].indices)
-                )
-            );
+            glob g;
+            g.basis = pd[i].basis;
+            g.transfer = setupTransfer<T>(totalNumberDof, pd[i].indices);
+            result[d].push_back(g);
         }
     }
     return result;

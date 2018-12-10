@@ -654,6 +654,11 @@ public:
         iFace::strategy iFaceStrategy = iFace::conforming
     ) const;
 
+    struct glob {
+        typename gsBasis<T>::Ptr basis;
+        gsSparseMatrix<T,RowMajor> transfer;
+    };
+
     /// @brief Decomposes the whole basis into globs and gives the transfers
     ///
     /// Globs are in 2 dimensions:
@@ -677,7 +682,7 @@ public:
     /// \param iFaceStrategy The interface strategy to be used
     /// \param combineCorners If this is set to true, all corners are considered
     ///             as one glob.
-    std::vector< std::vector< std::pair< typename gsBasis<T>::Ptr, gsSparseMatrix<T,RowMajor> > > >
+    std::vector< std::vector< glob > >
     getGlobs_withTransferMatrices(
         const gsBoundaryConditions<T>& bc,
         dirichlet::strategy dirichletStrategy = dirichlet::elimination,
