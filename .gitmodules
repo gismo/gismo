@@ -10,3 +10,7 @@
 	path = extensions/unsupported
 	url = ../unsupported.git
 	branch = master
+[submodule "extensions/gsElasticity"]
+	path = extensions/gsElasticity
+	url = ../gsElasticity.git
+	branch = master

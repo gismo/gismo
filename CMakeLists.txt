@@ -375,5 +375,9 @@ if(GISMO_UNSUPPORTED)
   gismo_fetch_module(motor)
 endif()
 
+if(GISMO_ELASTICITY)
+  gismo_fetch_module(gsElasticity)
+endif()
+
 unset(GISMO_UNAME CACHE)
 unset(GISMO_PASS CACHE)
