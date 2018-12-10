@@ -296,11 +296,14 @@ include_directories(${GISMO_INCLUDE_DIRS})
 add_subdirectory(src)
 
 if(GISMO_BUILD_LIB)
-
   if (GISMO_EXTRA_DEBUG)
     set(gismo_SOURCES ${gismo_SOURCES} ${PROJECT_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
   endif()
+endif()
 
+if(GISMO_ELASTICITY)
+    message(STATUS "Optional compile list: ${gismo_optionals}")
+  gismo_fetch_module(gsElasticity)
 endif()
 
 include(gsLibrary)
@@ -373,10 +376,6 @@ endif()
 if(GISMO_UNSUPPORTED)
   gismo_fetch_module(unsupported)
   gismo_fetch_module(motor)
-endif()
-
-if(GISMO_ELASTICITY)
-  gismo_fetch_module(gsElasticity)
 endif()
 
 unset(GISMO_UNAME CACHE)
