@@ -73,7 +73,7 @@ public:
         const size_t sz = m_transfers.size();
         for (size_t i=0; i<sz; ++i)
         {
-            GISMO_ASSERT ( m_transfers[i].rows()==m_transfers[0].rows() )
+            GISMO_ASSERT ( m_transfers[i].rows()==m_transfers[0].rows()
                        && m_transfers[i].cols() == m_op[i]->rows()
                        && m_op[i]->cols() == m_op[i]->rows(),
                        "Dimensions of the operators do not fit." );
