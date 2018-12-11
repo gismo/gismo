@@ -302,8 +302,11 @@ if(GISMO_BUILD_LIB)
 endif()
 
 if(GISMO_ELASTICITY)
-    message(STATUS "Optional compile list: ${gismo_optionals}")
   gismo_fetch_module(gsElasticity)
+endif()
+
+if(GISMO_EXASTENCILS)
+  gismo_fetch_module(gsExaStencils)
 endif()
 
 include(gsLibrary)
