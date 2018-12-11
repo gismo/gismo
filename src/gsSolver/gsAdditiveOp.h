@@ -111,7 +111,7 @@ public:
     index_t cols() const
     {
         GISMO_ASSERT( !m_transfers.empty(), "gsAdditiveOp::cols does not work for 0 operators." );
-        return m_transfers[0].cols();
+        return m_transfers[0].rows();
     }
 
 protected:
