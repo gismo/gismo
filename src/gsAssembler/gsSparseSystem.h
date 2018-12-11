@@ -1215,8 +1215,8 @@ public: /* Add local contributions to system matrix and right-hand side */
                             }
                             else // if ( mapper.is_boundary_index(jj) ) // Fixed DoF?
                             {
-                                m_rhs.row(ii).noalias() -= localMat(i, j) *  //  + c *..
-                                    fixedDofs.row( rowMap.global_to_bindex(jj) );
+                                m_rhs.at(ii) -= localMat(i, j) *  //  + c *..
+                                    fixedDofs.coeff( rowMap.global_to_bindex(jj), r );
                             }
                         }
                     }
