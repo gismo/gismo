@@ -8,7 +8,7 @@
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris, C. Hofer, K. Rafetseder
 */
 
@@ -19,7 +19,7 @@
 namespace gismo
 {
 
-/** 
+/**
     @brief A sparse linear system indexed by sets of degrees of
     freedom
 
@@ -34,9 +34,9 @@ protected:
     typedef std::vector<gsDofMapper>    DofMappers;
 
     typedef typename gsSparseMatrix<T>::BlockView matBlockView;
-    
+
     typedef typename gsMatrix<T>::BlockView rhsBlockView;
-    
+
 protected:
 
     /// @brief the system matrix
@@ -100,7 +100,7 @@ public:
                 m_cvar[0] = 0;
 
         m_mappers.front().swap(mapper);
-        
+
         m_matrix.resize( m_mappers.front().freeSize() ,
                          m_mappers.front().freeSize() );
     }
@@ -208,7 +208,7 @@ public:
         GISMO_ASSERT( rows > 0 && cols > 0, "Block dimensions must be positive");
 
         m_mappers.swap(mappers);
-        
+
         if ( static_cast<index_t>(m_mappers.size()) == rows + cols )
         {
             m_col.array() += rows;
@@ -281,7 +281,7 @@ public:
                       "Block dimensions must be positive");
 
         m_mappers.swap(mappers);
-        
+
         m_rstr[0] = m_cstr[0] = 0;
         for (index_t r = 1; r < rows; ++r) // for all row-blocks
             m_rstr[r] = m_rstr[r-1] + m_mappers[m_row[r-1]].freeSize();
@@ -307,7 +307,7 @@ public:
         m_cstr   .swap(other.m_cstr   );
         m_cvar   .swap(other.m_cvar   );
     }
-    
+
     /**
      * @brief reserve reserves the memory for the sparse matrix and the rhs.
      * @param[in] nz Non-zeros per column for the sparse matrix
@@ -488,7 +488,7 @@ public: /* Accessors */
     {
         return m_mappers[m_col[c]];
     }
-    
+
     /**
      * @brief colMapper returns the dofMapper for column block \a c
      * @param[in] c the index of the column block
@@ -533,7 +533,7 @@ public: /* Accessors */
         return gsRefVector<gsDofMapper>(m_mappers, m_row);
     }
     */
-    
+
 
 public: /* mapping patch-local to global indices */
 
@@ -553,7 +553,7 @@ public: /* mapping patch-local to global indices */
     {
         m_mappers[m_row.at(r)].localToGlobal(actives, patchIndex, result);
     }
-    
+
     /**
      * @brief mapColIndices Maps a set of basis indices by the corresponding dofMapper.
      * \note that the result is not the position in the sparse system, since the shifts
@@ -629,7 +629,7 @@ public: /* Add local contributions to system matrix */
         for (index_t i = 0; i != numActive; ++i)
         {
             const int ii = m_rstr.at(r) + actives.at(i); // N_i
-            
+
             if ( rowMap.is_free_index(actives.at(i)) )
             {
                 for (index_t j = 0; j != numActive; ++j)
@@ -1186,7 +1186,7 @@ public: /* Add local contributions to system matrix and right-hand side */
               const std::vector<gsMatrix<T> > & eliminatedDofs)
     {
         GISMO_ASSERT( m_matrix.cols() == m_rhs.rows(), "gsSparseSystem is not allocated");
-        
+
         for (size_t r = 0; r != actives.size(); ++r) // for all row-blocks
         {
             const gsDofMapper & rowMap    = m_mappers[m_row.at(r)];
@@ -1215,8 +1215,8 @@ public: /* Add local contributions to system matrix and right-hand side */
                             }
                             else // if ( mapper.is_boundary_index(jj) ) // Fixed DoF?
                             {
-                                m_rhs.row(ii).noalias() -= localMat(i, j) *  //  + c *..
-                                        fixedDofs.row( rowMap.global_to_bindex(jj) );
+                                m_rhs.at(ii) -= localMat(i, j) *  //  + c *..
+                                    fixedDofs.coeff( rowMap.global_to_bindex(jj), r );
                             }
                         }
                     }
@@ -1356,7 +1356,7 @@ public: /* Add local contributions to system matrix and right-hand side */
               const size_t r = 0, const size_t c = 0)
     {
         GISMO_ASSERT( m_matrix.cols() == m_rhs.rows(), "gsSparseSystem is not allocated");
-        
+
         const index_t numActive = actives.rows();
         const gsDofMapper & rowMap = m_mappers[m_row.at(r)];
         GISMO_ASSERT( &rowMap == &m_mappers[m_col.at(c)], "Error");

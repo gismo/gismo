@@ -296,11 +296,17 @@ include_directories(${GISMO_INCLUDE_DIRS})
 add_subdirectory(src)
 
 if(GISMO_BUILD_LIB)
-
   if (GISMO_EXTRA_DEBUG)
     set(gismo_SOURCES ${gismo_SOURCES} ${PROJECT_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
   endif()
+endif()
 
+if(GISMO_ELASTICITY)
+  gismo_fetch_module(gsElasticity)
+endif()
+
+if(GISMO_EXASTENCILS)
+  gismo_fetch_module(gsExaStencils)
 endif()
 
 include(gsLibrary)
