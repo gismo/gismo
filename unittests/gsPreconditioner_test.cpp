@@ -214,7 +214,7 @@ SUITE(gsPreconditioner_test)
         CHECK ( result.norm() < 1/real_t(10000) );
     }
 
-    TEST(gsAdditivePrecOp_test)
+    TEST(gsAdditiveOp_test)
     {
         gsSparseMatrix<real_t,RowMajor> t1(3,2);
         t1(0,0)=1;
@@ -238,32 +238,28 @@ SUITE(gsPreconditioner_test)
         o.push_back(makeMatrixOp(o1));
         o.push_back(makeMatrixOp(o2));
 
-        gsMatrix<> A(3,3);
-        A << 1,0,0,   0,1,0,   0,0,1;
-
         gsMatrix<> in(3,1);
         in << 9,8,7;
         gsMatrix<> out(3,1);
         out << 9,16,21;
 
         {
-            gsSumOp<>::Ptr s = gsSumOp<>::make();
+            gsSumOp<> s;
             for (size_t i=0; i<t.size(); ++i)
-            s->addOperator(
+            s.addOperator(
                 gsProductOp<>::make(
                     makeMatrixOp(t[i].transpose()),
                     o[i],
                     makeMatrixOp(t[i])
                 )
             );
-            gsPreconditionerFromOp<> a( makeMatrixOp(A), s );
             gsMatrix<> res;
-            a.apply( in, res );
+            s.apply( in, res );
             CHECK ( (res-out).norm() < 1/real_t(10000) );
         }
 
         {
-            gsAdditivePrecOp<> a(makeMatrixOp(A),t,o);
+            gsAdditiveOp<> a(t,o);
             gsMatrix<> res;
             a.apply( in, res );
             CHECK ( (res-out).norm() < 1/real_t(10000) );
