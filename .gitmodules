@@ -14,3 +14,6 @@
 	path = extensions/gsElasticity
 	url = ../gsElasticity.git
 	branch = master
+[submodule "extensions/gsExaStencils"]
+	path = extensions/gsExaStencils
+	url = ../gsExaStencils.git
