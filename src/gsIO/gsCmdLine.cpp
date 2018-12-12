@@ -14,7 +14,7 @@
 #include <gsIO/gsCmdLine.h>
 
 // --- start External files
-#include <tclap/CmdLine.h>   
+#include <tclap/CmdLine.h>
 #include <tclap/ValueArg.h>
 //#include <tclap/UnlabeledValueArg.h>
 //#include <tclap/MultiArg.h>
@@ -30,10 +30,11 @@ namespace gismo
 
 class gsCmdLinePrivate
 {
+    typedef index_t intVal_t;
 public:
     /*
     typedef TCLAP::Arg                             Arg;
-    typedef TCLAP::ValueArg<int>                   IntArg;
+    typedef TCLAP::ValueArg<intVal_t>              IntArg;
     typedef TCLAP::ValueArg<real_t>                RealArg;
     typedef TCLAP::ValueArg<std::string>           StrArg;
     typedef TCLAP::SwitchArg                       SwitchArg;
@@ -76,12 +77,12 @@ public:
     TCLAP::CmdLine cmd;
 
     // Stores integer arguments
-    std::vector<TCLAP::ValueArg<int>*>         intVals;
-    std::vector<int*>                          intRes;
+    std::vector<TCLAP::ValueArg<intVal_t>*>         intVals;
+    std::vector<intVal_t*>                     intRes;
 
     // Stores multi integer arguments
-    std::vector<TCLAP::MultiArg<int>*>         multiIntVals;
-    std::vector<std::vector<int>*>             multiIntRes;
+    std::vector<TCLAP::MultiArg<intVal_t>*>    multiIntVals;
+    std::vector<std::vector<intVal_t>*>        multiIntRes;
 
     // Stores real_t arguments
     std::vector<TCLAP::ValueArg<real_t>*>      realVals;
@@ -153,31 +154,31 @@ gsCmdLine::gsCmdLine( const std::string& message,
     */
 }
 
-void gsCmdLine::addInt( const std::string& flag, 
-                        const std::string& name, 
-                        const std::string& desc, 
-                        int              & value)
+void gsCmdLine::addInt( const std::string& flag,
+                        const std::string& name,
+                        const std::string& desc,
+                        intVal_t         & value)
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
-    my->intVals.push_back(new TCLAP::ValueArg<int>(flag,name,desc,false,value,"int",my->cmd) );
+    my->intVals.push_back(new TCLAP::ValueArg<intVal_t>(flag,name,desc,false,value,"int",my->cmd) );
     my->intRes.push_back(&value);
 }
 
-void gsCmdLine::addMultiInt( const std::string& flag, 
-                             const std::string& name, 
-                             const std::string& desc, 
-                             std::vector<int> & value)
+void gsCmdLine::addMultiInt( const std::string& flag,
+                             const std::string& name,
+                             const std::string& desc,
+                             std::vector<intVal_t> & value)
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
-    my->multiIntVals.push_back(new TCLAP::MultiArg<int>(flag,name,desc,false,"int",my->cmd) );
+    my->multiIntVals.push_back(new TCLAP::MultiArg<intVal_t>(flag,name,desc,false,"int",my->cmd) );
     my->multiIntRes.push_back(&value);
 }
 
-void gsCmdLine::addReal( const std::string& flag, 
-                         const std::string& name, 
-                         const std::string& desc, 
+void gsCmdLine::addReal( const std::string& flag,
+                         const std::string& name,
+                         const std::string& desc,
                          real_t           & value)
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
@@ -186,9 +187,9 @@ void gsCmdLine::addReal( const std::string& flag,
     my->realRes.push_back(&value);
 }
 
-void gsCmdLine::addMultiReal( const std::string  & flag, 
-                              const std::string  & name, 
-                              const std::string  & desc, 
+void gsCmdLine::addMultiReal( const std::string  & flag,
+                              const std::string  & name,
+                              const std::string  & desc,
                               std::vector<real_t>& value)
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
@@ -197,9 +198,9 @@ void gsCmdLine::addMultiReal( const std::string  & flag,
     my->multiRealRes.push_back(&value);
 }
 
-void gsCmdLine::addString( const std::string& flag, 
-                           const std::string& name, 
-                           const std::string& desc, 
+void gsCmdLine::addString( const std::string& flag,
+                           const std::string& name,
+                           const std::string& desc,
                            std::string      & value)
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
@@ -208,9 +209,9 @@ void gsCmdLine::addString( const std::string& flag,
     my->stringRes.push_back(&value);
 }
 
-void gsCmdLine::addMultiString( const std::string       & flag, 
-                                const std::string       & name, 
-                                const std::string       & desc, 
+void gsCmdLine::addMultiString( const std::string       & flag,
+                                const std::string       & name,
+                                const std::string       & desc,
                                 std::vector<std::string>& value)
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
@@ -219,9 +220,9 @@ void gsCmdLine::addMultiString( const std::string       & flag,
     my->multiStringRes.push_back(&value);
 }
 
-void gsCmdLine::addSwitch( const std::string& flag, 
-                           const std::string& name, 
-                           const std::string& desc, 
+void gsCmdLine::addSwitch( const std::string& flag,
+                           const std::string& name,
+                           const std::string& desc,
                            bool             & value)
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
@@ -230,8 +231,8 @@ void gsCmdLine::addSwitch( const std::string& flag,
     my->switchRes.push_back(&value);
 }
 
-void gsCmdLine::addPlainString( const std::string& name, 
-                                const std::string& desc, 
+void gsCmdLine::addPlainString( const std::string& name,
+                                const std::string& desc,
                                 std::string & value)
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
@@ -244,7 +245,7 @@ void gsCmdLine::addPlainString( const std::string& name,
 }
 
 
-bool gsCmdLine::valid(int argc, char *argv[]) const 
+bool gsCmdLine::valid(int argc, char *argv[]) const
 {
     const bool eh = my->cmd.getExceptionHandling();
     TCLAP::CmdLineOutput * o = my->cmd.getOutput();
@@ -349,7 +350,7 @@ gsOptionList gsCmdLine::getOptionList()
 
 #undef ADD_OPTION_LIST_ENTRY
 
-gsCmdLine::~gsCmdLine() 
+gsCmdLine::~gsCmdLine()
 {
     delete my;
 }
@@ -376,11 +377,11 @@ void gsCmdLinePrivate::GismoCmdOut::usage(TCLAP::CmdLineInterface& c)
     TCLAP::XorHandler xorHandler   = c.getXorHandler();
     std::vector< std::vector<TCLAP::Arg*> > xorList = xorHandler.getXorList();
 
-    // first the xor 
+    // first the xor
     for ( int i = 0; static_cast<unsigned int>(i) < xorList.size(); i++ )
     {
-        for ( TCLAP::ArgVectorIterator it = xorList[i].begin(); 
-                it != xorList[i].end(); 
+        for ( TCLAP::ArgVectorIterator it = xorList[i].begin();
+                it != xorList[i].end();
                 it++
             )
         {
@@ -397,8 +398,8 @@ void gsCmdLinePrivate::GismoCmdOut::usage(TCLAP::CmdLineInterface& c)
     for (TCLAP::ArgListIterator it = argList.begin(); it != argList.end(); it++)
     if ( !xorHandler.contains( (*it) ) )
     {
-        spacePrint( gsInfo, (*it)->longID(), 75, 3, 3 ); 
-        spacePrint( gsInfo, (*it)->getDescription(), 75, 5, 0 ); 
+        spacePrint( gsInfo, (*it)->longID(), 75, 3, 3 );
+        spacePrint( gsInfo, (*it)->getDescription(), 75, 5, 0 );
         gsInfo << std::endl;
     }
 }
