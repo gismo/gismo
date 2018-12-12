@@ -76,7 +76,7 @@ protected:
     /// uses multibasis m_cvar[i]. So this allows e.g. a single multibasis for several components.
     gsVector<index_t> m_cvar;
 
-    gsVector<unsigned> m_dims;
+    gsVector<index_t> m_dims;
 
 public:
 
@@ -142,7 +142,7 @@ public:
           m_col(dims.sum()),
           m_rstr(dims.sum()),
           m_cstr(dims.sum()),
-          m_dims(dims)
+          m_dims(dims.cast<index_t>())
     {
         const index_t d = dims.size();
         const index_t s = dims.sum();
@@ -515,7 +515,7 @@ public: /* Accessors */
     index_t colBasis(const index_t c) const // better name ?
     { return m_cvar[c]; }
 
-    unsigned unkSize(const index_t unk) const
+    index_t unkSize(const index_t unk) const
     {return m_dims[unk];}
 
     index_t numUnkowns() const {return m_dims.size(); }

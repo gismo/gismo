@@ -243,7 +243,7 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
     // m_system.numUnknown() provides the number of unknown;
     // m_system.unkSize(i) provides the number of components in the unknown i
     if(m_ddof.size()==0)
-        m_ddof.resize(m_system.numUnkowns());// !!! NOT EXACT@
+        m_ddof.resize(m_system.numUnkowns());
 
     if ( m_options.getInt("DirichletStrategy") == dirichlet::nitsche)
         return; // Nothing to compute
@@ -264,7 +264,7 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
     case dirichlet::homogeneous:
         // If we have a homogeneous Dirichlet problem fill boundary
         // DoFs with zeros
-        m_ddof[unk].setZero(mapper.boundarySize(), m_system.unkSize(unk) );
+        m_ddof[unk].setZero(mapper.boundarySize(), m_system.unkSize(unk)*m_system.rhs().cols() );
         break;
     case dirichlet::interpolation:
         computeDirichletDofsIntpl(mapper, mbasis,unk);
@@ -274,8 +274,8 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
         break;
     case dirichlet::user :
          // Assuming that the DoFs are already set by the user
-        GISMO_ENSURE( m_ddof[unk].size() == mapper.boundarySize()*m_system.unkSize(unk), "The Dirichlet DoFs are not set.");
-        m_ddof[unk].resize(mapper.boundarySize(), m_system.unkSize(unk));
+        GISMO_ENSURE( m_ddof[unk].size() == mapper.boundarySize()*m_system.unkSize(unk)*m_system.rhs().cols(), "The Dirichlet DoFs are not set.");
+        m_ddof[unk].resize(mapper.boundarySize(), m_system.unkSize(unk)*m_system.rhs().cols());
             break;
     default:
         GISMO_ERROR("Something went wrong with Dirichlet values.");
@@ -318,7 +318,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
                                                const gsMultiBasis<T> & mbasis,
                                                const int unk_)
 {
-    m_ddof[unk_].resize(mapper.boundarySize(), m_system.unkSize(unk_));
+    m_ddof[unk_].resize(mapper.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols());
 
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     for ( typename gsBoundaryConditions<T>::const_iterator
@@ -367,7 +367,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
             }
         }
 
-        GISMO_ASSERT(it->function()->targetDim() == m_system.unkSize(unk_),
+        GISMO_ASSERT(it->function()->targetDim() == m_system.unkSize(unk_)*m_system.rhs().cols(),
                      "Given Dirichlet boundary function does not match problem dimension."
                      <<it->function()->targetDim()<<" != "<<m_system.unkSize(unk_)<<"\n");
 
@@ -387,7 +387,6 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
         for (index_t l=0; l!= boundary.size(); ++l)
         {
             const int ii = mapper.bindex( boundary.at(l) , it->patch() );
-
             m_ddof[unk_].row(ii) = dVals.row(l);
         }
     }
@@ -398,13 +397,15 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
                                                 const gsMultiBasis<T> & ,
                                                 const int unk_)
 {
-    m_ddof[unk_].resize( mapper.boundarySize(), m_system.unkSize(unk_));  //m_pde_ptr->numRhs() );
+    m_ddof[unk_].resize( mapper.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
+
+
 
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
     gsSparseEntries<T> projMatEntries;
     gsMatrix<T>        globProjRhs;
-    globProjRhs.setZero( mapper.boundarySize(), m_system.unkSize(unk_) );
+    globProjRhs.setZero( mapper.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols() );
 
     // Temporaries
     gsVector<T> quWeights;
@@ -422,6 +423,10 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
     {
         if (iter->isHomogeneous() )
             continue;
+
+        GISMO_ASSERT(iter->function()->targetDim() == m_system.unkSize(unk_)*m_system.rhs().cols(),
+                     "Given Dirichlet boundary function does not match problem dimension."
+                     <<iter->function()->targetDim()<<" != "<<m_system.unkSize(unk_)<<"\n");
 
         const int unk = iter->unknown();
         if(unk!=unk_)
