@@ -50,10 +50,10 @@ public:
      * five quadrature points for the second coordinate. In this case,
      * 2*5 = 10 quadrature nodes and weights are set up.
      *
-     * @param numNodes vector of length \a d containing numbers of
+     * <hr>\b Parameters
+     * \n\b numNodes vector of length \a digits containing numbers of
      * nodes to be used (per integration variable).
-     *
-     * @param digits accuracy of nodes and weights. If 0, the quadrature
+     * \n\b digits accuracy of nodes and weights. If 0, the quadrature
      * rule will use precomputed tables if possible. If greater then 0,
      * it will force to compute it everytime.
      */
@@ -64,7 +64,7 @@ public:
     /**
      * @brief Initialize a univariate quadrature rule with \a numNodes
      * quadrature points
-     *
+     * @param numNodes quadrature point
      * @param digits accuracy of nodes and weights. If 0, the quadrature
      * rule will use precomputed tables if possible. If greater then 0,
      * it will force to compute it everytime.

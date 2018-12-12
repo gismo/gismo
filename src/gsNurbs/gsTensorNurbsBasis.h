@@ -41,31 +41,31 @@ class gsTensorNurbsBasis : public gsRationalBasis<typename gsBSplineTraits<d,T>:
 public: 
     typedef gsKnotVector<T> KnotVectorType;
 
-    /// Base type
+    /// @brief Base type
     typedef gsRationalBasis<typename gsBSplineTraits<d,T>::Basis> Base;
 
-    /// Family type
+    /// @brief Family type
     typedef gsBSplineBasis<T>  Family_t;
 
-    /// Source basis type
+    /// @brief Source basis type
     typedef typename gsBSplineTraits<d,T>::Basis Src_t;
 
-    /// Coordinate basis type
+    /// @brief Coordinate basis type
     typedef typename Src_t::Basis_t Basis_t;
 
-    /// Coefficient type
+    /// @brief Coefficient type
     typedef T Scalar_t;
 
-    /// Associated geometry type
+    /// @brief Associated geometry type
     typedef typename gsBSplineTraits<d,T>::RatGeometry GeometryType;
 
-    /// Associated Boundary basis type
+    /// @brief Associated Boundary basis type
     typedef typename gsBSplineTraits<d-1,T>::RatBasis BoundaryBasisType;
 
-    /// Shared pointer for gsTensorNurbsBasis
+    /// @brief Shared pointer for gsTensorNurbsBasis
     typedef memory::shared_ptr< gsTensorNurbsBasis > Ptr;
 
-    /// Unique pointer for gsTensorNurbsBasis
+    /// @brief Unique pointer for gsTensorNurbsBasis
     typedef memory::unique_ptr< gsTensorNurbsBasis > uPtr;
     
     //typedef typename Base::iterator iterator;
@@ -73,7 +73,7 @@ public:
 
 public:
 
-    /// Constructors for gsTensorNurbsBasis
+    /// @brief Constructors for gsTensorNurbsBasis
     gsTensorNurbsBasis( const KnotVectorType& KV1, const KnotVectorType& KV2 )
     : Base( new gsBSplineBasis<T>(KV1, KV1.degree()), new gsBSplineBasis<T>(KV2, KV2.degree()) )
     { }
@@ -111,7 +111,7 @@ public:
 
 public:
 
-    /// Prints the object as a string.
+    /// @brief Prints the object as a string.
     std::ostream &print(std::ostream &os) const
     {
         os << "TensorNurbsBasis: dim=" << this->dim()<< ", size="<< this->size() << ".";
@@ -119,6 +119,42 @@ public:
             os << "\n  Direction "<< i <<": "<< this->m_src->component(i).knots() <<" ";
         os << "\n";
         return os;
+    }
+    
+    gsKnotVector<T> & knots (int i)
+    { return m_src->knots(i); }
+
+    const gsKnotVector<T> & knots (int i) const
+    { return m_src->knots(i); }
+
+    // knot \a k of direction \a i
+    T knot(int i, int k) const
+    { return m_src->knot(i, k); }
+
+    /// The number of basis functions in the direction of the k-th parameter component
+    void size_cwise(gsVector<index_t,d> & result) const
+    {
+        // call the function of the underlying basis
+        m_src->size_cwise(result);
+    }
+
+    /// Returns the strides for all dimensions
+    void stride_cwise(gsVector<index_t,d> & result) const
+    {
+        // call the function of the underlying basis
+        m_src->stride_cwise(result);
+    }
+
+    void swapDirections(const unsigned i, const unsigned j)
+    {
+        gsVector<index_t, d> sz;
+        size_cwise(sz);
+
+        // First swap the weights
+        swapTensorDirection(i, j, sz, m_weights);
+
+        // Then swap the basis components
+        m_src->swapDirections(i, j);
     }
 
     gsKnotVector<T> & knots (int i)
@@ -156,6 +192,11 @@ public:
         // Then swap the basis components
         m_src->swapDirections(i, j);
     }
+
+#ifdef __DOXYGEN__
+    /// @brief Gives back the boundary basis at boxSide s
+    typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s);
+#endif
 
     GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
     {

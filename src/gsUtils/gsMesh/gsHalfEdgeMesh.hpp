@@ -15,9 +15,6 @@
 
 namespace gismo
 {
-//**********************************************
-//************ class gsHalfEdgeMesh ************
-//**********************************************
 //struct less_than_ptr
 //{
 //    bool operator()(gsMesh<>::gsVertexHandle lhs, gsMesh<>::gsVertexHandle rhs)
@@ -34,13 +31,11 @@ namespace gismo
 //    }
 //};
 
-//********************************************************************************
-
 template<class T>
 gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision)
     : gsMesh<T>(mesh), m_precision(precision)
 {
-    //this->cleanMesh(); // TODO: move to stl reader
+    //this->cleanMesh();
     //std::sort(this->m_vertex.begin(), this->m_vertex.end(), less_than_ptr());
     //typename std::vector<gsVertex<T> *, std::allocator<gsVertex<T> *> >::iterator
     //last = std::unique(this->m_vertex.begin(), this->m_vertex.end(), equal_ptr());
@@ -220,18 +215,13 @@ gsHalfEdgeMesh<T>::getOppositeHalfedges(const size_t vertexIndex, const bool inn
                 oppositeHalfedges.push(Halfedge(v2, v1, getHalfedgeLength(v2, v1)));
                 break;
             default:
-                //not supposed to show up
+                // vertex is not supposed to show up
                 break;
         }
     }
     return oppositeHalfedges;
 }
 
-//*****************************************************************************************************
-//*****************************************************************************************************
-//*******************THE******INTERN******FUNCTIONS******ARE******NOW******FOLLOWING*******************
-//*****************************************************************************************************
-//*****************************************************************************************************
 template<class T>
 bool gsHalfEdgeMesh<T>::isBoundaryVertex(const size_t internVertexIndex) const
 {
@@ -313,10 +303,8 @@ void gsHalfEdgeMesh<T>::sortVertices()
     }
 }
 
-//***********************************************
-//************ nested class Boundary ************
-//***********************************************
-
+// nested class Boundary
+/// @cond
 template<class T>
 gsHalfEdgeMesh<T>::Boundary::Boundary(const std::vector<typename gsHalfEdgeMesh<T>::Halfedge> &halfedges)
 {
@@ -357,8 +345,8 @@ gsHalfEdgeMesh<T>::Boundary::Boundary(const std::vector<typename gsHalfEdgeMesh<
                   << m_boundary.getFirstHalfedge().getOrigin() << "\n and "
                   << m_boundary.getLastHalfedge().getEnd() << "\n";
 }
-
-//********* private ***********
+/// @endcond
+// private
 
 template<class T>
 const std::list<typename gsHalfEdgeMesh<T>::Halfedge> gsHalfEdgeMesh<T>::Boundary::findNonTwinHalfedges(const std::vector<typename gsHalfEdgeMesh<T>::Halfedge> &allHalfedges)
@@ -425,9 +413,7 @@ const std::list<typename gsHalfEdgeMesh<T>::Halfedge> gsHalfEdgeMesh<T>::Boundar
     return nonTwinHalfedges;
 }
 
-//***********************************************
-//************ nested class Chain ************
-//***********************************************
+// nested class Chain
 
 template<class T>
 bool gsHalfEdgeMesh<T>::Chain::isClosed() const

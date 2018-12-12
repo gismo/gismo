@@ -461,6 +461,14 @@ public: /* Element visitors */
         }
     }
 
+    /// @brief Applies the \a BElementVisitor to the boundary condition \a BC
+    template<class BElementVisitor>
+    void push( BElementVisitor & visitor, const boundary_condition<T> & BC)
+    {
+        //Assemble (fill m_matrix and m_rhs) contribution from this BC
+        apply(visitor, BC.patch(), BC.side());
+    }
+
     /// @brief Iterates over all elements of interfaces and
     /// applies the \a InterfaceVisitor
     template<class InterfaceVisitor>
