@@ -316,6 +316,7 @@ public:
         m_rstr   .swap(other.m_rstr   );
         m_cstr   .swap(other.m_cstr   );
         m_cvar   .swap(other.m_cvar   );
+        m_dims   .swap(other.m_dims   );
     }
 
     /**
@@ -518,7 +519,7 @@ public: /* Accessors */
     index_t unkSize(const index_t unk) const
     {return m_dims[unk];}
 
-    index_t numUnkowns() const {return m_dims.size(); }
+    index_t numUnkowns() const {return m_dims.size(); }//TODO: rename as: numUnknowns
 
     /// @brief returns all dof Mappers.
     /// \note the result is not a one to one relation with the blocks.
