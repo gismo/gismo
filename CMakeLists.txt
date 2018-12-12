@@ -139,6 +139,11 @@ set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
 #first time
 include_directories(${GISMO_INCLUDE_DIRS})
 
+# Offer the user the choice of overriding the installation directories
+set(LIB_INSTALL_DIR     lib     CACHE STRING "Installation directory for libraries")
+set(BIN_INSTALL_DIR     bin     CACHE STRING "Installation directory for executables")
+set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header files")
+
 ## #################################################################
 ## Extensions
 ## #################################################################
