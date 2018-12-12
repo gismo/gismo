@@ -13,14 +13,15 @@
 
 #pragma once
 
-#include <gsSolver/gsPreconditioner.h>
-#include <gsSolver/gsMatrixOp.h>
-#include <gsCore/gsMultiPatch.h>
+#include <gsSolver/gsLinearOperator.h>
 
 namespace gismo
 {
 
 /// @brief Generic preconditioner which applies an arbitrary linear operator to the residual.
+///
+/// This preconditioner realizes \$f \sum_{i=1}^n T_i A_i T_i^T \$f, where the
+/// \$f T_i \$f are the transfer matrices and the \$f A_i \$f are linear operators
 ///
 /// \code{.cpp}
 ///    gsLinearOperator<>::Ptr pc = gsAdditiveOp<>::make( transfers, ops );
@@ -46,7 +47,7 @@ namespace gismo
 /// @ingroup Solvers
 
 template<class T>
-class gsAdditiveOp : public gsLinearOperator<T>
+class gsAdditiveOp GISMO_FINAL : public gsLinearOperator<T>
 {
     typedef typename gsLinearOperator<T>::Ptr   OpPtr;
     typedef std::vector<OpPtr>   OpContainer;
@@ -64,7 +65,12 @@ public:
     /// Default Constructor
     gsAdditiveOp() : m_transfers(), m_ops() {}
 
-    /// Constructor
+    /// @brief Constructor
+    ///
+    /// The operator realizes \$f \sum_{i=1}^n T_i A_i T_i^T \$f
+    ///
+    /// @param transfers  transfer matrices \$f T_i \$f
+    /// @param ops        local operators \$f A_i \$f
     gsAdditiveOp(TransferContainer transfers, OpContainer ops)
     : m_transfers(give(transfers)), m_ops(give(ops))
     {
@@ -78,18 +84,22 @@ public:
                        && m_ops[i]->cols() == m_ops[i]->rows(),
                        "Dimensions of the operators do not fit." );
         }
-#endif        
+#endif
     }
 
     /// Make function
+    ///
+    /// The operator realizes \$f \sum_{i=1}^n T_i A_i T_i^T \$f
+    ///
+    /// @param transfers  transfer matrices \$f T_i \$f
+    /// @param ops        local operators \$f A_i \$f
     static uPtr make(TransferContainer transfers, OpContainer ops)
     { return uPtr( new gsAdditiveOp( give(transfers), give(ops) ) ); }
 
-    /// Make function
-    static uPtr make(std::pair<TransferContainer,OpContainer> transfer_and_ops)
-    { return uPtr( new gsAdditiveOp( give(transfer_and_ops.first), give(transfer_and_ops.second) ) ); }
-    
-    /// Add another operator
+    /// Add another entry to the sum
+    ///
+    /// @param transfer   the additional transfer matrix \$f T_i \$f
+    /// @param op         the additional operator \$f A_i \$f
     void addOperator(Transfer transfer, OpPtr op)
     {
         m_transfers.push_back(give(transfer));
@@ -115,8 +125,8 @@ public:
     }
 
 protected:
-    TransferContainer m_transfers;
-    OpContainer m_ops;
+    TransferContainer m_transfers;   ///< Transfer matrices
+    OpContainer m_ops;               ///< Operators to be applied in the subspaces
 
 };
 

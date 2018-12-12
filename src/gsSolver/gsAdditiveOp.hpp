@@ -11,8 +11,6 @@
     Author(s): S. Takacs
 */
 
-#include <gsSolver/gsMatrixOp.h>
-
 namespace gismo
 {
 

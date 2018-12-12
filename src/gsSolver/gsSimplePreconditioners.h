@@ -30,7 +30,7 @@ void reverseGaussSeidelSweep(const gsSparseMatrix<T> & A, gsMatrix<T>& x, const 
 ///
 /// \ingroup Solver
 template <typename MatrixType>
-class gsRichardsonOp : public gsPreconditionerOp<typename MatrixType::Scalar>
+class gsRichardsonOp GISMO_FINAL : public gsPreconditionerOp<typename MatrixType::Scalar>
 {
     typedef memory::shared_ptr<MatrixType>           MatrixPtr;
     typedef typename MatrixType::Nested              NestedMatrix;
@@ -147,7 +147,7 @@ typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const memory::shared_ptr
 ///
 /// \ingroup Solver
 template <typename MatrixType>
-class gsJacobiOp : public gsPreconditionerOp<typename MatrixType::Scalar>
+class gsJacobiOp GISMO_FINAL : public gsPreconditionerOp<typename MatrixType::Scalar>
 {
     typedef memory::shared_ptr<MatrixType>          MatrixPtr;
     typedef typename MatrixType::Nested             NestedMatrix;
@@ -283,7 +283,7 @@ struct gsGaussSeidel
 ///
 /// \ingroup Solver
 template <typename MatrixType, gsGaussSeidel::ordering ordering = gsGaussSeidel::forward>
-class gsGaussSeidelOp : public gsPreconditionerOp<typename MatrixType::Scalar>
+class gsGaussSeidelOp GISMO_FINAL : public gsPreconditionerOp<typename MatrixType::Scalar>
 {
     typedef memory::shared_ptr<MatrixType>          MatrixPtr;
     typedef typename MatrixType::Nested             NestedMatrix;

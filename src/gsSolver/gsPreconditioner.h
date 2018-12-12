@@ -131,7 +131,7 @@ protected:
 ///
 /// \ingroup Solver
 template<class T>
-class gsPreconditionerFromOp : public gsPreconditionerOp<T>
+class gsPreconditionerFromOp GISMO_FINAL : public gsPreconditionerOp<T>
 {
 public:
 
