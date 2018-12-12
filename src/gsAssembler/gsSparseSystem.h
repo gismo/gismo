@@ -516,10 +516,12 @@ public: /* Accessors */
     index_t colBasis(const index_t c) const // better name ?
     { return m_cvar[c]; }
 
+    /// @brief return the number of components for the given component
     index_t unkSize(const index_t unk) const
     {return m_dims[unk];}
 
-    index_t numUnkowns() const {return m_dims.size(); }//TODO: rename as: numUnknowns
+    /// @brief returns the number of unknowns
+    index_t numUnknowns() const {return m_dims.size(); }
 
     /// @brief returns all dof Mappers.
     /// \note the result is not a one to one relation with the blocks.

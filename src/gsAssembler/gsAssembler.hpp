@@ -243,7 +243,7 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
     // m_system.numUnknown() provides the number of unknown;
     // m_system.unkSize(i) provides the number of components in the unknown i
     if(m_ddof.size()==0)
-        m_ddof.resize(m_system.numUnkowns());
+        m_ddof.resize(m_system.numUnknowns());
 
     if ( m_options.getInt("DirichletStrategy") == dirichlet::nitsche)
         return; // Nothing to compute
