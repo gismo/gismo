@@ -236,7 +236,7 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
     //if ddof-size is not set
     //fixme: discuss if this is really the right place for this.
     if(m_ddof.size()==0)
-        m_ddof.resize(m_system.numColBlocks());
+        m_ddof.resize(m_system.numColBlocks());// !!! NOT EXACT@
 
     if ( m_options.getInt("DirichletStrategy") == dirichlet::nitsche)
         return; // Nothing to compute
@@ -413,6 +413,9 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
           iter = m_pde_ptr->bc().dirichletBegin();
           iter != m_pde_ptr->bc().dirichletEnd(); ++iter )
     {
+        if (iter->isHomogeneous() )
+            continue;
+
         const int unk = iter->unknown();
         if(unk!=unk_)
             continue;
