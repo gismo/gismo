@@ -66,9 +66,9 @@
 #include <unsupported/Eigen/MPQClassExtra>
 #endif
 
-#ifdef GISMO_WITH_UNUM
-#include <gsUnum/gsUnum.h>
-#endif
+//#ifdef GISMO_WITH_UNUM
+//#include <gsUnum/gsUnum.h>
+//#endif
 
 /* Determine if only header files should be used. */
 #cmakedefine GISMO_BUILD_LIB

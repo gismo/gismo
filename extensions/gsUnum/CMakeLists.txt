@@ -15,24 +15,18 @@ aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
 # Apply same configuration as G+Smo
 include(gsConfig)
 
-message("STATUS CMake Will attempt to download Unum sources.")
-include(ExternalProject)
-ExternalProject_Add(Unum
-          SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Unum
-          GIT_REPOSITORY https://github.com/stillwater-sc/universal.git
-          CONFIGURE_COMMAND ""
-          BUILD_COMMAND ""
-          UPDATE_COMMAND ""
-          INSTALL_COMMAND ""
+gismo_fetch_directory(Unum
+    GIT_REPOSITORY https://github.com/stillwater-sc/universal.git
+    DESTINATION    external
 )
 
-set(UNUM_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Unum/posit CACHE INTERNAL "")
+set(UNUM_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/Unum/posit CACHE INTERNAL "")
 include_directories(${UNUM_INCLUDE_DIR})
 
 add_library(${PROJECT_NAME} OBJECT
-    ${${PROJECT_NAME}_SOURCES}
-    ${${PROJECT_NAME}_HEADERS}
-    ${${PROJECT_NAME}_HPPFILES}
+          ${${PROJECT_NAME}_SOURCES}
+          ${${PROJECT_NAME}_HEADERS}
+          ${${PROJECT_NAME}_HPPFILES}
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -46,8 +40,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
     CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
-
-add_dependencies(${PROJECT_NAME} Unum)
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
         DESTINATION include/gismo/gsUnum/
