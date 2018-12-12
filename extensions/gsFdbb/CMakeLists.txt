@@ -24,9 +24,9 @@ set(FDBB_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/FDBB/fdbb CACHE INTERNAL "")
 include_directories(${FDBB_INCLUDE_DIR})
 
 add_library(${PROJECT_NAME} OBJECT
-            ${${PROJECT_NAME}_SOURCES}
-            ${${PROJECT_NAME}_HEADERS}
-            ${${PROJECT_NAME}_HPPFILES}
+          ${${PROJECT_NAME}_SOURCES}
+          ${${PROJECT_NAME}_HEADERS}
+          ${${PROJECT_NAME}_HPPFILES}
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
