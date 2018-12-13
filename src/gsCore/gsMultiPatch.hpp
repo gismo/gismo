@@ -2,12 +2,12 @@
 
     @brief Provides declaration of the MultiPatch class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -100,14 +100,14 @@ template<class T>
 void gsMultiPatch<T>::setIds()
 {
     size_t id = 0;
-    for ( iterator it = m_patches.begin(); it != m_patches.end(); ++it ) 
+    for ( iterator it = m_patches.begin(); it != m_patches.end(); ++it )
     {
         ( *it )->setId( id++ );
     }
 }
 
 template<class T>
-std::ostream& gsMultiPatch<T>::print(std::ostream& os) const 
+std::ostream& gsMultiPatch<T>::print(std::ostream& os) const
 {
     if ( !this->empty() ) {
         os << "gsMultiPatch (" << this->nPatches() << "): ";
@@ -120,11 +120,11 @@ std::ostream& gsMultiPatch<T>::print(std::ostream& os) const
 }
 
 template<class T>
-std::string gsMultiPatch<T>::detail() const 
+std::string gsMultiPatch<T>::detail() const
 {
     std::ostringstream os;
     print(os);
-    if ( nPatches() > 0 ) 
+    if ( nPatches() > 0 )
     {
         BaseA::print( os );
     }
@@ -132,21 +132,21 @@ std::string gsMultiPatch<T>::detail() const
 }
 
 template<class T>
-int gsMultiPatch<T>::geoDim() const 
+int gsMultiPatch<T>::geoDim() const
 {
     GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
     return m_patches[0]->geoDim();
 }
 
 template<class T>
-int gsMultiPatch<T>::coDim() const 
+int gsMultiPatch<T>::coDim() const
 {
     GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
     return m_patches[0]->geoDim() - m_dim;
 }
 
 template<class T>
-gsMatrix<T> 
+gsMatrix<T>
 gsMultiPatch<T>::parameterRange(int i) const
 {
     return m_patches[i]->basis().support();
@@ -169,7 +169,7 @@ std::vector<gsBasis<T> *> gsMultiPatch<T>::basesCopy(bool NoRational) const
     if (NoRational)
     {
         for ( const_iterator it = m_patches.begin();
-              it != m_patches.end(); ++it ) 
+              it != m_patches.end(); ++it )
         {
             bb.push_back( (*it)->basis().source().clone().release() );
         }
@@ -177,7 +177,7 @@ std::vector<gsBasis<T> *> gsMultiPatch<T>::basesCopy(bool NoRational) const
     else
     {
         for ( const_iterator it = m_patches.begin();
-              it != m_patches.end(); ++it ) 
+              it != m_patches.end(); ++it )
         {
             bb.push_back( (*it)->basis().clone().release() );
         }
@@ -215,7 +215,7 @@ inline void gsMultiPatch<T>::addPatch(const gsGeometry<T> & g)
 }
 
 template<class T>
-int gsMultiPatch<T>::findPatchIndex( gsGeometry<T>* g ) const 
+int gsMultiPatch<T>::findPatchIndex( gsGeometry<T>* g ) const
 {
     const_iterator it
         = std::find( m_patches.begin(), m_patches.end(), g );
@@ -321,7 +321,7 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
     const index_t  nCorP = 1 << m_dim;     // corners per patch
     const index_t  nCorS = 1 << (m_dim-1); // corners per side
 
-    gsMatrix<T> supp, 
+    gsMatrix<T> supp,
     // Parametric coordinates of the reference points. These points
     // are used to decide if two sides match.
     // Currently these are the corner points and the side-centers
@@ -330,11 +330,11 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
         coor.resize(m_dim,nCorP);
     else
         coor.resize(m_dim,nCorP + 2*m_dim);
-    
+
     gsVector<bool> boxPar(m_dim);
 
     // each matrix contains the physical coordinates of the reference points
-    std::vector<gsMatrix<T> > pCorners(np); 
+    std::vector<gsMatrix<T> > pCorners(np);
 
     std::vector<patchSide> pSide; // list of all candidate patchSides to compare
     pSide.reserve(np * 2 * m_dim);
@@ -350,7 +350,7 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
             for (index_t i=0; i<m_dim;++i)
                 coor(i,c-1) = boxPar(i) ? supp(i,1) : supp(i,0);
         }
-        
+
         if (!cornersOnly)
         {
             // Sides' centers parametric coordinates
@@ -359,7 +359,7 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
             {
                 const index_t dir = c.direction();
                 const index_t s   = static_cast<index_t>(c.parameter());// 0 or 1
-                
+
                 for (index_t i=0; i<m_dim;++i)
                     coor(i,l) = ( dir==i ?  supp(i,s) :
                                   (supp(i,1)+supp(i,0))/2.0 );
@@ -391,17 +391,17 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
             side        .getContainedCorners(m_dim,cId1);
             pSide[other].getContainedCorners(m_dim,cId2);
             matched.setConstant(false);
-            
+
             // Check whether the side center matches
             if (!cornersOnly)
                 if ( ( pCorners[side.patch        ].col(nCorP+side-1        ) -
                        pCorners[pSide[other].patch].col(nCorP+pSide[other]-1)
                          ).norm() >= tol )
                     continue;
-            
+
             // Check whether the vertices match and compute direction map and orientation
-            if ( matchVerticesOnSide( pCorners[side.patch]        , cId1, 0, 
-                                      pCorners[pSide[other].patch], cId2, 
+            if ( matchVerticesOnSide( pCorners[side.patch]        , cId1, 0,
+                                      pCorners[pSide[other].patch], cId2,
                                       matched, dirMap, dirOr, tol ) )
             {
                 dirMap(side.direction()) = pSide[other].direction();
@@ -492,7 +492,7 @@ bool gsMultiPatch<T>::matchVerticesOnSide (
 }
 
 
-template<class T> 
+template<class T>
 void gsMultiPatch<T>::closeGaps(T tol)
 {
     const T tol2 = tol*tol;
@@ -514,17 +514,17 @@ void gsMultiPatch<T>::closeGaps(T tol)
 
         // Grab boundary control points in matching configuration
         p1.basis().matchWith(*it, p2.basis(), bdr1, bdr2);
-        
+
         //mapper.matchDofs(it->first().patch, bdr1, it->second().patch, bdr2);
         for (index_t i = 0; i!= bdr1.size(); ++i )
         {
             if ( ( p1.coef(bdr1(i)) - p2.coef(bdr2(i)) ).squaredNorm() > tol2 )
-                gsWarn<<"Big gap detected between patches "<< it->first().patch 
+                gsWarn<<"Big gap detected between patches "<< it->first().patch
                       <<" and "<<it->second().patch <<"\n";
 
             // Match the dofs on the interface
             mapper.matchDof(it->first().patch, bdr1(i,0), it->second().patch, bdr2(i,0) );
-        }        
+        }
     }
 
     // Finalize the mapper. At this point all patch-local dofs are
@@ -532,7 +532,7 @@ void gsMultiPatch<T>::closeGaps(T tol)
     mapper.finalize();
 
     gsMatrix<T> meanVal;
-    std::vector<std::pair<index_t,index_t> > dof; 
+    std::vector<std::pair<index_t,index_t> > dof;
     const index_t start = mapper.freeSize() - mapper.coupledSize();
     const index_t end   = mapper.freeSize();
 
@@ -546,7 +546,7 @@ void gsMultiPatch<T>::closeGaps(T tol)
         for (size_t k = 1; k!=dof.size(); ++k)
             meanVal += m_patches[dof[k].first]->coef(dof[k].second);
         meanVal.array() /= dof.size();
-        
+
         // Set involved control points equal to their average value
         for (size_t k = 0; k!=dof.size(); ++k)
             m_patches[dof[k].first]->coef(dof[k].second) = meanVal;
@@ -646,7 +646,7 @@ void gsMultiPatch<T>::repairInterfaces()
 template<class T>
 void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points,
                                    gsVector<index_t> & pids,
-                                   gsMatrix<T> & preim) const
+                                   gsMatrix<T> & preim, const T accuracy) const
 {
     pids.resize(points.cols());
     pids.setConstant(-1); // -1 implies not in the domain
@@ -656,11 +656,11 @@ void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points,
     for (index_t i = 0; i!=pids.size(); ++i)
     {
         pt = points.col(i);
-        
+
         for (std::size_t k = 0; k!= m_patches.size(); ++k)
         {
             pr = m_patches[k]->parameterRange();
-            m_patches[k]->invertPoints(pt, tmp);
+            m_patches[k]->invertPoints(pt, tmp, accuracy);
             if ( (tmp.array() >= pr.col(0).array()).all()
                  && (tmp.array() <= pr.col(1).array()).all() )
             {
