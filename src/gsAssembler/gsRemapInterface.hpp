@@ -24,6 +24,7 @@
 
 #include <gsNurbs/gsBSpline.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
+#include <gsNurbs/gsTensorNurbs.h>
 #include <gsNurbs/gsTensorNurbsBasis.h>
 
 #include <gsModeling/gsCurveFitting.h>
