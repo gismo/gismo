@@ -776,7 +776,7 @@ void gsRemapInterface<T>::findInterface()
     // first find the sides of the patches which belong to the interface
     const int nCorners = 1<<m_g1.geoDim();
     gsMatrix<T> inversMaps(m_g1.geoDim(), 4); // matrix to store the preimages of the corresponding verices on the interface
-    gsVector<T> corners(2); // vector to store the index of the corner which lies on the other patch, 0-th entry is the index of the corner for the first patch and vice versa
+    gsVector<index_t> corners(2); // vector to store the index of the corner which lies on the other patch, 0-th entry is the index of the corner for the first patch and vice versa
     corners.setZero();
 
     bool completeOnPatch2 = false, completeOnPatch1 = false; // check if one side of the patches is completely contained in the other side
