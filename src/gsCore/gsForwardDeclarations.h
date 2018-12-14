@@ -256,6 +256,7 @@ template <class T=real_t>                class gsIdentityOp;
 template <class T=real_t>                class gsPreconditionerOp;
 template <class T=real_t>                class gsPreconditionerFromOp;
 
+template <class T=real_t>                class gsAdditiveOp;
 template <class T=real_t>                class gsSumOp;
 template <class T=real_t>                class gsProductOp;
 template <class T=real_t>                class gsCompositePrecOp;

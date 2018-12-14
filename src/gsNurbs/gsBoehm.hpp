@@ -2,12 +2,12 @@
 
     @brief Boehm's algorithm for knot insertion
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): J. Speh
 */
 
@@ -47,7 +47,7 @@ void gsBoehm(
     typename KnotVectorType::uiterator kit = knots.uFind(val);
     const int k = kit.lastAppearance();
     // current multiplicity of val
-    const int s = (*kit == val || *(++kit)==val ? kit.multiplicity() : 0 ); 
+    const int s = (*kit == val || *(++kit)==val ? kit.multiplicity() : 0 );
     /*
       typename KnotVectorType::uiterator kit = knots.uFind(val);
       int k = knots.iFind(val) - knots.begin();
@@ -56,7 +56,7 @@ void gsBoehm(
 
     GISMO_ASSERT( s + r < p + 2  , "Multiplicity can be at most deg+1 ("<<p+1<<")" );
     int np= coefs.rows()-1;
-    
+
     Mat tmp = coefs.middleRows(k-p, p+1);
     // resize coefficient matrix
     coefs.conservativeResize( coefs.rows()+r, coefs.cols() );
@@ -78,12 +78,12 @@ void gsBoehm(
             tmp.row(i) = a * tmp.row(i+1) + (1.0-a) * tmp.row(i);
         }
         coefs.row(L)= tmp.row(0);
-        coefs.row(k+r-j-s)= tmp.row(math::max(p-j-s,0));
+        coefs.row(k+r-j-s)= tmp.row(math::max(p-j-s,index_t(0)));
     }
     for( index_t i = L+1; i<k-s; ++i )
         coefs.row(i) = tmp.row(i-L);
     //coefs.middleRows(L+1, k-s-L-1) = tmp.
-    
+
     // Update knot vector
     if ( update_knots )
         knots.insert(val,r);
@@ -167,7 +167,7 @@ void gsBoehmRefine( KnotVectorType & knots,
                     bool update_knots)
 {
     if ( valBegin == valEnd ) return;
-        
+
     typedef typename std::iterator_traits<ValIt>::value_type T;
 
     GISMO_ASSERT( (*valBegin >= knots[p]), "Value is before first knot: "
@@ -805,5 +805,3 @@ void gsTensorInsertKnotDegreeTimes(
 }
 
 } // namespace gismo
-
-

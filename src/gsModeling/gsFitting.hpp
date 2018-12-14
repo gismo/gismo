@@ -4,7 +4,7 @@
     squares approximation.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -23,15 +23,15 @@ namespace gismo
 {
 
 template<class T>
-gsFitting<T>::~gsFitting() 
+gsFitting<T>::~gsFitting()
 {
     if ( m_result )
         delete m_result;
 }
 
 template<class T>
-gsFitting<T>::  gsFitting(gsMatrix<T> const & param_values, 
-                          gsMatrix<T> const & points, 
+gsFitting<T>::  gsFitting(gsMatrix<T> const & param_values,
+                          gsMatrix<T> const & points,
                           gsBasis<T>  & basis)
 {
     m_param_values = param_values;
@@ -69,7 +69,7 @@ void gsFitting<T>::compute(T lambda)
 
     // building the matrix A and the vector b of the system of linear
     // equations A*x==b
-    
+
     assembleSystem(A_mat, m_B);
 
     // --- Smoothing matrix computation
@@ -106,7 +106,7 @@ template <class T>
 void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
                                   gsMatrix<T>& m_B)
 {
-    const int num_points = m_points.rows();    
+    const int num_points = m_points.rows();
 
     //for computing the value of the basis function
     gsMatrix<T> value, curr_point;
@@ -121,7 +121,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
         // which functions have been computed i.e. which are active
         m_basis->active_into(curr_point, actives);
-        
+
         const index_t numActive = actives.rows();
 
         for (index_t i = 0; i != numActive; ++i)
@@ -199,7 +199,7 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 //                            );
                 }
         }
-        
+
         for (index_t i=0; i!=numActive; ++i)
         {
             const int ii = actives(i,0);
@@ -219,7 +219,7 @@ void gsFitting<T>::computeErrors()
     m_result->eval_into(m_param_values, val_i);
     m_pointErrors.push_back( (m_points.row(0) - val_i.col(0).transpose()).norm() );
     m_max_error = m_min_error = m_pointErrors.back();
-    
+
     for (index_t i = 1; i < m_points.rows(); i++)
     {
         //m_result->eval_into(m_param_values.col(i), val_i);
@@ -254,7 +254,7 @@ void gsFitting<T>::computeMaxNormErrors()
 }
 
 
-  
+
 template<class T>
 void gsFitting<T>::computeApproxError(T& error, int type) const
 {
@@ -284,7 +284,7 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
 
 template<class T>
 void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
-{ 
+{
     errors.clear();
     gsMatrix<T> results;
     m_result->eval_into(m_param_values,results);
