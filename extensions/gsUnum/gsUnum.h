@@ -1,8 +1,6 @@
 
 #pragma once
 
-#include <gsCore/gsConfig.h>
-
 #ifndef NDEBUG
 #define POSIT_THROW_ARITHMETIC_EXCEPTION 1
 #endif
