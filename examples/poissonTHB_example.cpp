@@ -27,21 +27,21 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
  // Number of initial uniform mesh refinements
- int initUnifRef;
+ index_t initUnifRef;
  // Number of adaptive refinement loops
- int RefineLoopMax;
+ index_t RefineLoopMax;
 
  // Flag for refinemet criterion
  // (see doxygen documentation of the free function
  // gsMarkElementsForRef explanation)
- int refCriterion;
+ index_t refCriterion;
  // Parameter for computing adaptive refinement threshold
  // (see doxygen documentation of the free function
  // gsMarkElementsForRef explanation)
  real_t refParameter;  // ...specified below with the examples
 
  // Degree to use for discretization
- int degree;
+ index_t degree;
 
  // Flag whether final mesh should be plotted in ParaView
  bool plot = false;
