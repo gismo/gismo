@@ -259,7 +259,7 @@ classdef gsTHBSpline < handle
             %    Points in which to evaluate the gsTHBSpline.
             %
             %Output:
-            %  val: double, [numFun x numPts].
+            %  val: double, [geoDim x parDim x numPts].
             %    Value of the jacobian of all active functions in each of
             %    the specified points.
             
@@ -289,7 +289,7 @@ classdef gsTHBSpline < handle
             %    Direction of space on which to compute the hessian.
             %
             %Output:
-            %  val: double, [numFun x numPts].
+            %  val: double, [geoDim x parDim x parDim x numPts].
             %    Value of the hessian matrix in direction dir of all active 
             %    functions in each of the specified points.
             

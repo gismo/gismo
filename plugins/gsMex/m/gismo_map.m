@@ -20,7 +20,7 @@ function varargout = gismo_map(pts, in, der)
     end
   end
   if (der == 2)
-      rdim = length(in.eval(zeros(ndim,1)));
+      rdim = in.geoDim;
       hess = zeros(rdim,ndim,ndim,npts); % g+smo dim: rdim, (ndim x ndim) x npts ; geopdes dim rdim x ndim x ndim x npts
 %       for dir = 1:rdim %% TODO uncomment and check!!!!
 %         hess(dir,:,:,:) = reshape(in.hess(pts,dir),ndim,ndim,npts) and check!
