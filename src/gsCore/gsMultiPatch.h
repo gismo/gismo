@@ -214,7 +214,7 @@ public:
     void addPatch(const gsGeometry<T> & g);
 
     /// \brief Search for the given geometry and return its patch index.
-    int findPatchIndex( gsGeometry<T>* g ) const;
+    size_t findPatchIndex( gsGeometry<T>* g ) const;
 
     /// @brief Add an interface joint between side \a s1 of geometry
     /// \a g1 side \a s2 of geometry \a g2.
@@ -227,7 +227,7 @@ public:
 
     /// Add side \a s of patch \a g to the outer boundary of the domain
     void addPatchBoundary( gsGeometry<T>* g, boxSide s ) {
-        int p = findPatchIndex( g );
+        size_t p = findPatchIndex( g );
         BaseA::addBoundary( patchSide( p, s ) );
     }
 
