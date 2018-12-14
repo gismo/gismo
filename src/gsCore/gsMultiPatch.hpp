@@ -215,7 +215,7 @@ inline void gsMultiPatch<T>::addPatch(const gsGeometry<T> & g)
 }
 
 template<class T>
-int gsMultiPatch<T>::findPatchIndex( gsGeometry<T>* g ) const 
+size_t gsMultiPatch<T>::findPatchIndex( gsGeometry<T>* g ) const
 {
     const_iterator it
         = std::find( m_patches.begin(), m_patches.end(), g );

@@ -226,15 +226,15 @@ inline std::ostream &operator<<(std::ostream &os, const boxSide& o)
 struct GISMO_EXPORT patchSide : public boxSide
 {
 public:
-    index_t patch;              ///< The index of the patch.
+    size_t patch;              ///< The index of the patch.
 public:
 
     patchSide() : boxSide(), patch(0) { }
 
-    patchSide(index_t p, boxSide s)
+    patchSide(size_t p, boxSide s)
         : boxSide(s), patch(p) { }
 
-    patchSide(index_t p, boundary::side s)
+    patchSide(size_t p, boundary::side s)
         : boxSide(s), patch(p) { }
 
     // Accessors
@@ -393,16 +393,16 @@ public:
 struct patchCorner : public boxCorner
 {
 public:
-    index_t patch;
+    size_t patch;
 public:
     patchCorner() : boxCorner(0) { }
-    patchCorner(int p,boundary::corner c)
+    patchCorner(size_t p,boundary::corner c)
         : boxCorner(c), patch (p) { }
 
-    patchCorner(int p, int c)
+    patchCorner(size_t p, int c)
         : boxCorner(c), patch (p) { }
 
-    patchCorner(int p, boxCorner c)
+    patchCorner(size_t p, boxCorner c)
         : boxCorner(c), patch (p) { }
 
 
