@@ -5,12 +5,12 @@
 % Construct a truncated hierarchical basis by reading the specified file
 filename = join([filedata,'thbbasis/simple.xml']);
 fprintf('Reading THB spline basis from file: %s.\n',filename)
-hbs = gsTHBSplineBasis(filename);
+hbs = gsTHBSplineBasis(filename, 2);
 
-% Construct a truncated hierarchical basis from its knot vector in a carthesian product way.
+%% Construct a truncated hierarchical basis from its knot vector in a carthesian product way.
 knots_2build = {[0,0,0,1,2,2,2],[4,4,4,5,6,6,6]};
 fprintf('Reading THB spline basis from knot vector, cartesian product way.\n')
-hbs2 = gsTHBSplineBasis(knots_2build);
+hbs2 = gsTHBSplineBasis(knots_2build, 2);
 
 %% TEST ACCESSORS
 assert(hbs.dim==2)

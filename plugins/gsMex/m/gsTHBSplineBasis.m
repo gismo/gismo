@@ -14,6 +14,7 @@ classdef gsTHBSplineBasis < handle
 
     properties (SetAccess = private, Hidden = true)
         objectHandle; % Handle to the underlying C++ class instance
+        parDim; % Parametric dimension of the basis
     end
 
     methods(Access = public)
@@ -23,9 +24,11 @@ classdef gsTHBSplineBasis < handle
             %gsTHBSplineBasis - construct a gsTHBSplineBasis object
             %
             %Usage:
-            %  thb = gsTHBSplineBasis( file )
+            %  thb = gsTHBSplineBasis( file, parDim )
             %  OR
-            %  thb = gsTHBSplineBasis( knots )
+            %  thb = gsTHBSplineBasis( knots, parDim )
+            %  OR
+            %  thb = gsTHBSplineBasis( basis, parDim )
             %
             %Input:
             %  file: char, [1 x numChar].
@@ -34,25 +37,39 @@ classdef gsTHBSplineBasis < handle
             %  OR
             %  knots: cell
             %    The cell element i contains the knot vector in the
-            %    direction i.
+            %    direction i (basis built in a tensor product way on 1
+            %    level).
+            %  OR
+            %  basis: gsTHBSplineBasis
+            %    Copy constructor.
             %
             %Output:
             %  thb: gsTHBSplineBasis, [1 x 1].
             %    The gsTHBSplineBasis object.
 
-            if (nargin~=1 || nargout>1)
+            if (nargin~=2 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
             
             if (isa(varargin{1},'uint64'))
                 this.objectHandle = varargin{1};
             else
-                if (~( isa(varargin{1},'char') || isa(varargin{1},'cell') ))
-                    error('Input argument no. 1 should be of type ''char'' or be a cell of knot vectors.')
+                if (~( isa(varargin{1},'char') || isa(varargin{1},'cell') || isa(varargin{1},'gsTHBSplineBasis') ))
+                    error('Input argument no. 1 should be of type ''char'' or ''gsTHBSplineBasis'' or be a cell of knot vectors.')
                 elseif (isa(varargin{1},'char') && (~exist(varargin{1},'file')))
                     error('File does not exist: %s.',varargin{1})
                 end
-                this.objectHandle = mex_gsTHBSplineBasis('constructor', class(varargin{1}), varargin{:});
+                if isa(varargin{1},'gsTHBSplineBasis')
+                    var1 = struct(varargin{1}).objectHandle;
+                else
+                    var1 = varargin{1};
+                end
+                if (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || ~(floor(varargin{2})==varargin{2}) || ~(varargin{2}>0) )
+                    error('Input argument no.2 shoud be a positive integer.')
+                else
+                    this.parDim = varargin{2};
+                end
+                this.objectHandle = mex_gsTHBSplineBasis('constructor', class(varargin{1}), var1, this.parDim);
             end
         end
         
@@ -70,7 +87,7 @@ classdef gsTHBSplineBasis < handle
             %Output:
             %  (none)
             
-            mex_gsTHBSplineBasis('destructor', this.objectHandle);
+            mex_gsTHBSplineBasis('destructor', this.objectHandle, this.parDim);
         end
 
         % dim - call class method
@@ -91,7 +108,7 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'dim',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'dim',  varargin{:}, this.parDim);
         end
         
         % numElements - call class method
@@ -112,7 +129,7 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'numElements',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'numElements',  varargin{:}, this.parDim);
         end
         
         % size - call class method
@@ -134,7 +151,7 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'size',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'size',  varargin{:}, this.parDim);
         end
 
         % treeSize - call class method
@@ -155,7 +172,7 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'treeSize',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'treeSize',  varargin{:}, this.parDim);
         end
         
         % treeLeafSize - call class method
@@ -176,7 +193,7 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'treeLeafSize',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'treeLeafSize',  varargin{:}, this.parDim);
         end
         
         % support - call class method
@@ -200,7 +217,7 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'support',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'support',  varargin{:}, this.parDim);
         end
 
         % maxLevel - call class method
@@ -222,7 +239,7 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'maxLevel',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'maxLevel',  varargin{:}, this.parDim);
         end
         
         % treePrintLeaves - call class method
@@ -242,7 +259,7 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>0)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('treePrintLeaves', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('treePrintLeaves', this.objectHandle, varargin{:}, this.parDim);
         end
 
         % degree - call class method
@@ -271,7 +288,7 @@ classdef gsTHBSplineBasis < handle
                     ~(mod(varargin{1},1)==0) || varargin{1}<1 || varargin{1}>this.dim())
                 error('Input argument must be a non negative integer less than %d.', this.dim())
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('degree', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('degree', this.objectHandle, varargin{:}, this.parDim);
         end
         
         % eval - call class method
@@ -302,7 +319,7 @@ classdef gsTHBSplineBasis < handle
             elseif (isequal(size(varargin{1},2),this.dim()))
                 varargin{1} = varargin{1}.';
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('eval', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('eval', this.objectHandle, varargin{:}, this.parDim);
         end
 
         % evalSingle - call class method
@@ -334,7 +351,7 @@ classdef gsTHBSplineBasis < handle
             elseif (~isa(varargin{2},'numeric') || ~ismatrix(varargin{2}) || ~isequal(size(varargin{2},1),this.dim()))
                 error('Input argument no. 2 must be numeric, 2-dimensional, and with d rows.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('evalSingle', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('evalSingle', this.objectHandle, varargin{:}, this.parDim);
         end
         
         % save - call class method
@@ -359,7 +376,7 @@ classdef gsTHBSplineBasis < handle
             if (~(isa(varargin{1},'char')))
                 error('Input argument no. 1 should be of type ''char''.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('save', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('save', this.objectHandle, varargin{:}, this.parDim);
         end
         
         % knots - call class method
@@ -393,7 +410,7 @@ classdef gsTHBSplineBasis < handle
                     ~(mod(varargin{2},1)==0) || varargin{2}<1 || varargin{2}>this.dim)
                 error('Input argument no. 2 must be a strictly positive integer smaller than %d.', this.dim)
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('knots', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('knots', this.objectHandle, varargin{:}, this.parDim);
         end
         
         % numBreaks - call class method
@@ -428,7 +445,7 @@ classdef gsTHBSplineBasis < handle
                     ~(mod(varargin{2},1)==0) || varargin{2}<1 || varargin{2}>this.dim)
                 error('Input argument no. 2 must be a strictly positive integer smaller than %d.', this.dim)
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('numBreaks', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('numBreaks', this.objectHandle, varargin{:}, this.parDim);
         end
         
         % active - call class method
@@ -454,7 +471,7 @@ classdef gsTHBSplineBasis < handle
             if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.dim()))
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('active', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('active', this.objectHandle, varargin{:}, this.parDim);
         end
         
         % elementIndex - call class method
@@ -481,7 +498,7 @@ classdef gsTHBSplineBasis < handle
             if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.dim()))
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('active', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('active', this.objectHandle, varargin{:}, this.parDim);
         end
 
         % uniformRefine - call class method
@@ -509,7 +526,7 @@ classdef gsTHBSplineBasis < handle
                 ~(floor(varargin{2})==varargin{2}) || ~(varargin{2}>0))
                 error('Input argument no. 1 and 2 must stricly positive integers.')
             end
-            mex_gsTHBSplineBasis('uniformRefine', this.objectHandle, varargin{:});
+            mex_gsTHBSplineBasis('uniformRefine', this.objectHandle, varargin{:}, this.parDim);
         end
 
         % uniformRefine_withCoefs - call class method
@@ -546,7 +563,7 @@ classdef gsTHBSplineBasis < handle
                        + 'be stricly positive integers.')
             end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('uniformRefine_withCoefs', this.objectHandle,...
-                                                           varargin{:});
+                                                           varargin{:}, this.parDim);
         end
 
         % refineElements - call class method
@@ -573,7 +590,7 @@ classdef gsTHBSplineBasis < handle
             if ( ~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~(min(size(varargin{1}))==1) )
                 error('Input argument must be an array of integers.')
             end
-            mex_gsTHBSplineBasis('refineElements', this.objectHandle, varargin{:});
+            mex_gsTHBSplineBasis('refineElements', this.objectHandle, varargin{:}, this.parDim);
         end
 
         % refineElements_withCoefs - call class method
@@ -609,7 +626,7 @@ classdef gsTHBSplineBasis < handle
                        + 'be an array of integers.')
             end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('refineElements_withCoefs', this.objectHandle,...
-                                                           varargin{:});
+                                                           varargin{:}, this.parDim);
         end
         
         % getBoxes - call class method
@@ -636,8 +653,39 @@ classdef gsTHBSplineBasis < handle
                 error('Invalid number of input and/or output arguments.')
             end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('getBoxes', this.objectHandle,...
-                                                           varargin{:});
+                                                           varargin{:}, this.parDim);
+        end
+        
+        % basisSlice - call class method
+        function [varargout] = basisSlice(this, varargin)
+            %basisSlice gives back the basis at a slice in dir_fixed at par. 
+            %
+            %Usage:
+            %  basis = thb.basisSlice(dir_fixed, par)
+            %
+            %Input:
+            %  thb: gsTHBSplineBasis, [1 x 1].
+            %    The gsTHBSplineBasis object.
+            %
+            %Output:
+            %  basis: gsTHBSplineBasis of 1 less dimension, [1 x 1]
+            %    The basis of the chosen slice. 
+            %
+            
+            if (nargout~=1 || nargin~=3)
+                error('Invalid number of input and/or output arguments.')
+            end
+            if ( ~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) ||...
+                 ~(floor(varargin{1})==varargin{1}) || ~(varargin{1}>0) || ...
+                 ~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) )
+                error(['Input argument no. 1 should be an integer, argument no. 2 ',...
+                    'should be a double in the parametric space.'])
+            end
+            basis_ptr = mex_gsTHBSplineBasis('basisSlice', this.objectHandle,...
+                                                           varargin{:}, this.parDim);
+            [varargout{1:nargout}] = gsTHBSplineBasis(basis_ptr);
         end
         
     end
 end
+
