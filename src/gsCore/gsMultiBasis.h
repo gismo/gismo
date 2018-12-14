@@ -639,16 +639,9 @@ public:
     /// topology
     void tileParameters();
 
-    gsVector<index_t> selectInterior(const index_t k);
-
-    gsVector<index_t> selectBoundary(const index_t k);
-
-    gsVector<index_t> selectInterface(const index_t k, const index_t s = -1);
-
-    // select interior of patch i
-    // select boundary of patch i
-    // select (i,j) interface of patch i with j
-    // select all (i) interface of patch i with everybody
+    void partition(std::vector<gsVector<index_t> > & interior,
+                   std::vector<gsVector<index_t> > & boundary,
+                   std::vector<std::vector<gsVector<index_t> > >& interface);
 private:
 
     BasisContainer m_bases;

@@ -613,41 +613,31 @@ bool gsMultiBasis<T>::repairInterfaceFindElements(
     return ( ( refEltsFirst.size() > 0 ) || ( refEltsSecond.size() > 0 ) );
 }
 
-
 template<class T>
-gsVector<index_t> gsMultiBasis<T>::selectInterior(const index_t k)
+void gsMultiBasis<T>::partition(
+    std::vector<gsVector<index_t> > & interior,
+    std::vector<gsVector<index_t> > & boundary,
+    std::vector<std::vector<gsVector<index_t> > >& interface)
 {
-    std::vector<index_t> result;
+    gsDofMapper dm;
+    getMapper(true,dm,false);
+    for ( gsBoxTopology::biterator it = m_topology.bBegin(); it != m_topology.bEnd(); ++it )
+        dm.markBoundary(it->patch, basis(it->patch).boundary(it->side()) );
+    dm.finalize();
 
-    return gsAsVector<index_t>(result);
-}
-
-template<class T>
-gsVector<index_t> gsMultiBasis<T>::selectBoundary(const index_t k)
-{
-    std::vector<index_t> result;
-    // for all boundary sides of the topology
-    // if this boundary is at patch k
-    // get the indices
-    return gsAsVector<index_t>(result);
-}
-
-template<class T>
-gsVector<index_t> gsMultiBasis<T>::selectInterface(const index_t k, const index_t s)
-{
-    std::vector<index_t> result;
-    if (-1==s)
+    const index_t sz = this->nBases();
+    interior.resize(sz);
+    boundary.resize(sz);
+    interface.resize(sz);
+    for ( index_t k = 0; k!= sz; ++k) // for all patches
     {
-        //all interfaces
+        interior[k] = dm.findFreeUncoupled(k);
+        boundary[k] = dm.findBoundary(k);
+        interface[k].resize(sz);
+        for ( index_t j = 0; j!= sz; ++j)
+            interface[k][j]= dm.findCoupled(k,j);
     }
-    else
-    {
-        //only common part of k~s
-    }
-
-    return gsAsVector<index_t>(result);
 }
-
 
 template<class T>
 bool gsMultiBasis<T>::repairInterface2d( const boundaryInterface & bi )
