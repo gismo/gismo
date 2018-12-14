@@ -8,7 +8,7 @@ include(ExternalProject)
 
 ExternalProject_Add(mpfr_build
   SOURCE_DIR ${gismo_SOURCE_DIR}/external/mpfr
-  BINARY_DIR = ${CMAKE_CURRENT_BINARY_DIR}/mpfr_build
+  BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/mpfr_build
   CONFIGURE_COMMAND CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${gismo_SOURCE_DIR}/external/mpfr/configure --enable-cxx --prefix=<INSTALL_DIR> )
 
 ExternalProject_Get_Property(mpfr_build install_dir)

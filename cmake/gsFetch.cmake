@@ -7,13 +7,15 @@
 ######################################################################
 
 include(CMakeParseArguments)
+include(ExternalProject)
 
 #latest CMake has FetchContent
 function(gismo_fetch_directory)
   set(GF_NAME "${ARGV0}")
   set(oneValueArgs
-    # Protect the following options
+    # Use the following options
     DESTINATION
+    # Protect the following options
     SOURCE_DIR
     BINARY_DIR
     CONFIGURE_COMMAND
@@ -23,7 +25,7 @@ function(gismo_fetch_directory)
   cmake_parse_arguments(GF "${GF_NAME}" "${oneValueArgs}" "" ${ARGN})
   #message( GF_UNPARSED_ARGUMENTS "= ${GF_UNPARSED_ARGUMENTS}")
 
-  file(GLOB RESULT ${gismo_SOURCE_DIR}/${GF_DESTINATION}/${GF_NAME})
+  file(GLOB RESULT ${gismo_SOURCE_DIR}/${GF_DESTINATION}/${GF_NAME}/*)
   list(LENGTH RESULT RESULT_LENGTH)
   if(NOT RESULT_LENGTH EQUAL 0)
     message(STATUS "Enabling remote module ${GF_NAME} (${GF_DESTINATION}) - found")
@@ -33,20 +35,19 @@ function(gismo_fetch_directory)
   message(STATUS "Enabling remote module ${GF_NAME} (${GF_DESTINATION})")
   set(GF_SOURCE_DIR   "${gismo_SOURCE_DIR}/${GF_DESTINATION}/${GF_NAME}")
   set(GF_BINARY_DIR   "${gismo_BINARY_DIR}/${GF_DESTINATION}/${GF_NAME}_fetch")
-  set(GF_DOWNLOAD_DIR "${gismo_BINARY_DIR}/${GF_DESTINATION}/${GF_NAME}_fetch")
   set(${GF_NAME}_SOURCE_DIR "${GF_SOURCE_DIR}" PARENT_SCOPE)
   set(${GF_NAME}_BINARY_DIR "${GF_BINARY_DIR}" PARENT_SCOPE)
-  file(REMOVE "${GF_DOWNLOAD_DIR}/CMakeCache.txt")
 
-  #  if(NOT EXISTS ${GF_DOWNLOAD_DIR}/CMakeLists.txt)
-  file(WRITE ${GF_DOWNLOAD_DIR}/CMakeLists.txt "if(POLICY CMP0048)\ncmake_policy(SET CMP0048 NEW)\nendif()\nif(POLICY CMP0054)\ncmake_policy(SET CMP0054 NEW)\nendif()\ncmake_minimum_required(VERSION 2.8.8)\nproject(${GF_NAME}_fetch NONE)\ninclude(ExternalProject)\nExternalProject_Add(${GF_NAME}_fetch\n ${GF_UNPARSED_ARGUMENTS}\n SOURCE_DIR          \"${GF_SOURCE_DIR}\"\n BINARY_DIR          \"${GF_BINARY_DIR}\"\n CONFIGURE_COMMAND   \"\"\n BUILD_COMMAND       \"\"\n INSTALL_COMMAND     \"\"\n TEST_COMMAND        \"\")\n")
-  #  endif()
+  execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${GF_BINARY_DIR}) # avoid errors
+  #file(REMOVE_RECURSE "${GF_BINARY_DIR}/CMakeCache.txt")
+
+  file(WRITE ${GF_BINARY_DIR}/CMakeLists.txt "if(POLICY CMP0048)\ncmake_policy(SET CMP0048 NEW)\nendif()\nif(POLICY CMP0054)\ncmake_policy(SET CMP0054 NEW)\nendif()\ncmake_minimum_required(VERSION 2.8.8)\nproject(${GF_NAME}_fetch NONE)\ninclude(ExternalProject)\nExternalProject_Add(${GF_NAME}_fetch\n ${GF_UNPARSED_ARGUMENTS}\n SOURCE_DIR          \"${GF_SOURCE_DIR}\"\n BINARY_DIR          \"${GF_BINARY_DIR}\"\n CONFIGURE_COMMAND   \"\"\n BUILD_COMMAND       \"\"\n INSTALL_COMMAND     \"\"\n TEST_COMMAND        \"\")\n")
 
   execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}"
     -D "CMAKE_MAKE_PROGRAM:FILE=${CMAKE_MAKE_PROGRAM}" .
     OUTPUT_QUIET
     RESULT_VARIABLE result
-    WORKING_DIRECTORY "${GF_DOWNLOAD_DIR}" )
+    WORKING_DIRECTORY "${GF_BINARY_DIR}" )
   if(result)
     message(SEND_ERROR "Configure step for ${GF_NAME} failed: ${result}")
   endif()
@@ -55,21 +56,44 @@ function(gismo_fetch_directory)
   execute_process(COMMAND ${CMAKE_COMMAND} --build .
     OUTPUT_QUIET
     RESULT_VARIABLE result
-    WORKING_DIRECTORY "${GF_DOWNLOAD_DIR}" )
+    WORKING_DIRECTORY "${GF_BINARY_DIR}" )
   if(result)
     message(SEND_ERROR "Build step for ${GF_NAME} failed: ${result}")
   endif()
 
-  file(GLOB RESULT ${gismo_SOURCE_DIR}/${GF_DESTINATION}/${GF_NAME})
+  file(GLOB RESULT ${gismo_SOURCE_DIR}/${GF_DESTINATION}/${GF_NAME}/*)
   list(LENGTH RESULT RESULT_LENGTH)
   if(RESULT_LENGTH EQUAL 0)
-    message(SEND_ERROR "Enabling remote module ${GF_NAME} (${GF_DESTINATION}) - not found")
+    message(WARNING "Enabling remote module ${GF_NAME} (${GF_DESTINATION}) - not found")
   else()
     message(STATUS "Enabling remote module ${GF_NAME} (${GF_DESTINATION}) - downloaded")
   endif()
 
 endfunction()
 
+function(gismo_build_project)
+  set(GBP_NAME "${ARGV0}")
+  set(oneValueArgs
+    # Protect the following options
+    # Protect the following options
+    URL
+    DESTINATION
+    SOURCE_DIR
+    BINARY_DIR
+    CONFIGURE_COMMAND
+    BUILD_COMMAND
+    INSTALL_COMMAND
+    TEST_COMMAND )
+  cmake_parse_arguments(GBP "${GBP_NAME}" "${oneValueArgs}" "" ${ARGN})
+  #message( GBP_UNPARSED_ARGUMENTS "= ${GBP_UNPARSED_ARGUMENTS}")
+
+  ExternalProject_Add(${GBP_NAME}_build
+  SOURCE_DIR ${GBP_SOURCE_DIR}
+  BINARY_DIR ${GBP_BINARY_DIR}
+  CONFIGURE_COMMAND ${GBP_CONFIGURE_COMMAND}
+  )
+
+endfunction()
 
 function(gismo_fetch_module)
 
@@ -90,7 +114,7 @@ function(gismo_fetch_module)
     #  set(git_repo https://github.com/gismo/${ARGV0}.git)
     #endif()
     # gismo_fetch_directory(${ARGN} GIT_REPOSITORY  ${git_repo} DESTINATION  extensions)
-    
+
     if(NOT EXISTS "${gismo_SOURCE_DIR}/extensions/${ARGV0}/CMakeLists.txt")
       message(STATUS "Initializing remote submodule ${ARGV0}")
       find_package(Git REQUIRED)

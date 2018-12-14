@@ -8,7 +8,7 @@ include(ExternalProject)
 
 ExternalProject_Add(gmp_build
   SOURCE_DIR ${gismo_SOURCE_DIR}/external/gmp
-  BINARY_DIR = ${CMAKE_CURRENT_BINARY_DIR}/gmp_build
+  BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/gmp_build
   CONFIGURE_COMMAND CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${gismo_SOURCE_DIR}/external/gmp/configure --enable-cxx --prefix=<INSTALL_DIR> )
 
 ExternalProject_Get_Property(gmp_build install_dir)
