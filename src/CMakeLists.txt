@@ -57,14 +57,6 @@ FOREACH(subdir ${SUBDIRS})
     #EXCLUDE_FROM_DEFAULT_BUILD 1
     )
 
-  if(GISMO_WITH_CODIPACK)
-    add_dependencies(${GM_NAME} gsCoDiPackExtension)
-  endif()
-
-  if(GISMO_WITH_UNUM)
-    add_dependencies(${GM_NAME} gsUnumExtension)
-  endif()
-
   if(GISMO_BUILD_MULTIPRECISION)
     add_dependencies(${GM_NAME} gsMultiPrecisionExtension)
   endif()
