@@ -557,12 +557,21 @@ gsVector<index_t> gsDofMapper::findTagged(const index_t k) const
     citer istart = m_dofs.begin() + m_offset[k];
     citer iend   = istart + patchSize(k);
 
-    std::vector<index_t> si;
-//    std::set_intersection<index_t>(istart, iend,m_tagged.begin(), m_tagged.end(),
-//                                   std::back_inserter(si));
-    gsVector<index_t> rvo;
-    //rvo.swap(si);
-    return rvo;
+    citer cur = istart;
+    std::list<index_t> v;
+    while( cur != iend )
+    {
+        if (std::binary_search(m_tagged.begin(),m_tagged.end(),*cur))
+            v.push_back( std::distance(istart,cur) );
+        ++cur;
+    }
+
+    gsVector<index_t> res;
+    res.resize(v.size());
+    index_t * a = res.data();
+    for( std::list<index_t>::const_iterator it = v.begin();
+         it!=v.end(); ++it) *(a++) = *it;
+    return res;
 }
 
 void gsDofMapper::setShift (index_t shift)
