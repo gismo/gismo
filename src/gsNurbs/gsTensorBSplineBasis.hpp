@@ -1,4 +1,4 @@
-/** @file gsBasis.h
+/** @file gsTensorBSplineBasis.hpp
 
     @brief Provides declaration of tensor-product B-spline basis class.
 
