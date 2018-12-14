@@ -1,8 +1,8 @@
 ######################################################################
 ## CMakeLists.txt ---
-## This file is part of the G+Smo library. 
-## 
-## Author: Angelos Mantzaflaris 
+## This file is part of the G+Smo library.
+##
+## Author: Angelos Mantzaflaris
 ## Copyright (C) 2012 - 2015 RICAM-Linz.
 ######################################################################
 
@@ -49,7 +49,7 @@ FOREACH(subdir ${SUBDIRS})
     )
 
   set_target_properties(${GM_NAME} PROPERTIES
-    COMPILE_DEFINITIONS gismo_EXPORTS 
+    COMPILE_DEFINITIONS gismo_EXPORTS
     POSITION_INDEPENDENT_CODE ON
     LINKER_LANGUAGE CXX
     FOLDER "G+Smo modules"
@@ -57,13 +57,11 @@ FOREACH(subdir ${SUBDIRS})
     #EXCLUDE_FROM_DEFAULT_BUILD 1
     )
 
-  if(GISMO_BUILD_MULTIPRECISION)
-    add_dependencies(${GM_NAME} gsMultiPrecisionExtension)
-  endif()
-
   if (GISMO_BUILD_PCH)
     target_precompiled_header(${GM_NAME} gsPrecompiledHeader)
   endif()
+
+  add_dependencies(${GM_NAME} gsDepends)
 
   set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_NAME}>
       CACHE INTERNAL "G+Smo modules" )

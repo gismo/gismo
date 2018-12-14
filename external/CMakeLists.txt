@@ -1,6 +1,6 @@
 ### CMakeLists.txt ---
-## 
-## Author: Angelos Mantzaflaris 
+##
+## Author: Angelos Mantzaflaris
 ## Copyright (C) 2018 - RICAM-Linz.
 ######################################################################
 
@@ -33,5 +33,28 @@ endif(GISMO_BUILD_CPPLOT)
 #add_subdirectory(Eigen)
 #add_subdirectory(rapidxml)
 
+if(GISMO_WITH_MPFR)
+  find_package(MPFR QUIET)
+  if (NOT MPFR_FOUND  OR GISMO_BUILD_MPFR)
+    include(mpfr.cmake)
+  else()
+    message(STATUS "MPFR found ${MPFR_LIBRARY}")
+    set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MPFR_INCLUDE_DIR}
+      CACHE INTERNAL "${PROJECT_NAME} include directories")
+    set(gismo_LINKER ${gismo_LINKER} ${MPFR_LIBRARY}
+      CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  endif()
+endif()
 
-#include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+if(GISMO_WITH_GMP)
+  find_package(GMP QUIET)
+  if (NOT GMP_FOUND  OR GISMO_BUILD_GMP)
+    include(gmp.cmake)
+  else()
+    message(STATUS "GMP found ${GMP_LIBRARY} ${GMPXX_LIBRARY}")
+    set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GMP_INCLUDE_DIR}
+      CACHE INTERNAL "${PROJECT_NAME} include directories")
+    set(gismo_LINKER ${gismo_LINKER} ${GMP_LIBRARY} ${GMPXX_LIBRARY}
+      CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  endif()
+endif()

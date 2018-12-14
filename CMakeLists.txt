@@ -64,13 +64,16 @@ endif()
 
 set(CMAKE_INSTALL_MESSAGE NEVER)
 
-#Use solution folders for Visual Studio
+# Use solution folders for Visual Studio
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # Remove NDEBUG flag from RelWithDebInfo builds
 if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 endif()
+
+# Dependency hook
+add_custom_target(gsDepends)
 
 include( gismoUse )
 include( gsConfig )
@@ -188,27 +191,6 @@ if(GISMO_WITH_MPI)
   CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
   #include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 endif(GISMO_WITH_MPI)
-
-if(GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
-  find_package(GMP QUIET)
-  find_package(MPFR QUIET)
-
-  if (NOT GMP_FOUND OR NOT MPFR_FOUND)
-    add_subdirectory(extensions/gsMultiPrecision)
-  endif()
-
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GMP_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  set(gismo_LINKER ${gismo_LINKER} ${GMP_LIBRARY} ${GMPXX_LIBRARY}
-  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
-  #include_directories(SYSTEM ${GMP_INCLUDE_DIR})
-
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MPFR_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  set(gismo_LINKER ${gismo_LINKER} ${MPFR_LIBRARY}
-  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
-  #include_directories(SYSTEM ${MPFR_INCLUDE_DIR})
-endif()
 
 if(GISMO_WITH_ONURBS)
   add_subdirectory(extensions/gsOpennurbs)
