@@ -36,6 +36,10 @@ find_package(gismo REQUIRED)
 message(STATUS "G+Smo shared library in ${GISMO_LIBRARY_DIR}")
 include_directories( ${GISMO_INCLUDE_DIRS})
 link_directories   ( ${GISMO_LIBRARY_DIR} )
+#set(gismo_dev_DIR ${gismo_DIR} CACHE INTERNAL "")
+#find_package(gismo_dev REQUIRED)
+#include_directories( ${GISMO_DEV_INCLUDE_DIRS})
+#link_directories   ( ${GISMO_DEV_LIBRARY_DIR} )
 
 include( ${GISMO_USE_FILE} )
 set(CMAKE_MODULE_PATH ${GISMO_MODULE_PATH})
@@ -46,15 +50,12 @@ aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR} FILES)
 #message("found files: ${FILES}")
 
 foreach(file ${FILES})
-
   add_gismo_shared_executable(${file})
-  get_filename_component(tarname ${file} NAME_WE) # name without extension
+  get_filename_component(tarname ${file} NAME_WE)
   set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
-  set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
-
-  # install the example executables (optionally)
+  set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}"
+  #target_link_libraries(${tarname} gismo_dev)
   install(TARGETS ${tarname} DESTINATION bin COMPONENT exe OPTIONAL)
-
 endforeach(file ${FILES})
 
 message(STATUS "Type \"make\" to build")
