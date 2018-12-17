@@ -144,6 +144,11 @@ public:
         return pwf.print(os);
     }
 
+    void clear()
+    {
+        m_funcs.clear();
+    }
+
 protected:
     
     FunctionContainer m_funcs;
