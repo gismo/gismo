@@ -387,9 +387,9 @@ public:
 
 
 /**
-    @brief Struct which represents a certain corner of a patch.
-
-*/
+ *  @brief Struct which represents a certain corner of a patch.
+ *
+ */
 struct patchCorner : public boxCorner
 {
 public:
@@ -425,6 +425,130 @@ public:
         parameters_into(dim,param);
         for (int i=0;i<dim;++i)
             sides[i]=patchSide(patch, boxSide(i, param(i)));
+    }
+};
+
+/**
+ *   @brief Struct which represents a certain component (interior, face, egde, corner).
+ * 
+ *   This struct is a generalization of \a boxSide and of \a boxCorner.
+ * 
+ */
+
+struct GISMO_EXPORT boxComponent {
+public:
+    index_t m_index;        ///< The index defines the component
+    index_t m_total_dim;    ///< The dimension of the box itself
+public:
+
+    /// @brief Constructor
+    ///
+    /// @param b          The index that defines the component
+    /// @param total_dim  The dimension of the box itself
+    boxComponent( index_t b, index_t total_dim ) : m_index(b), m_total_dim(total_dim) {}
+
+    /// @brief Constructor converting \a boxSide to a boxComponent
+    ///
+    /// @param b          The box side
+    /// @param total_dim  The dimension of the box itself    
+    boxComponent( boxSide b, index_t total_dim );
+
+    /// @brief Constructor converting \a boxCorner to a boxComponent
+    ///
+    /// @param b          The box corner
+    /// @param total_dim  The dimension of the box itself    
+    boxComponent( boxCorner b, index_t total_dim );
+    
+    /// Dimension of the component
+    index_t dim() const;
+    
+    /// Returns a vector of all \a boxCorner s that are contained in the component
+    std::vector<boxCorner> containedCorners() const;
+
+    /// Converts to \a boxSide and fails if the component is not a side
+    boxSide asSide() const;
+
+    /// Converts to \a boxCorner and fails if the component is not a corner
+    boxCorner asCorner() const;
+
+    /// Represents a location
+    enum location {
+        interior = 0,  ///< Represents the interior
+        begin = 1,     ///< Represents the beginning
+        end = 2        ///< Represents the end
+    };
+
+    /// Gets the location for the direction
+    ///
+    /// If the result value is \a begin, then the component is characterized
+    /// by \$f x_i = 0 \$f
+    /// If the result value is \a end, then the component is characterized
+    /// by \$f x_i = 1 \$f
+    /// If the result value is \a begin, then the component is characterized
+    /// by \$f x_i \in (0,1) \$f
+    ///
+    /// @param direction   The index \$f i \$f from above
+    location locationForDirection(index_t direction) const;
+
+    /// Sets the location for the direction
+    ///
+    /// See \a locationForDirection
+    ///
+    /// @param direction   The index \$f i \$f from above
+    void setLocationForDirection(index_t direction, location par);
+
+};
+
+/**
+ *   @brief Struct which represents a certain component (interior, face, egde, corner) of a particular patch
+ * 
+ *   This struct is a generalization of \a patchSide and of \a patchCorner.
+ * 
+ */
+
+struct GISMO_EXPORT patchComponent : boxComponent {
+public:
+    index_t patch;    ///< The particular patch
+public:
+    
+    /// @brief Constructor
+    ///
+    /// @param p          The patch index
+    /// @param b          The index that defines the component
+    /// @param total_dim  The dimension of the box itself    
+    patchComponent( index_t p, index_t b, index_t total_dim ) : boxComponent(b,total_dim), patch(p) {}
+
+    /// @brief Constructor converting \a boxComponent to a patchComponent
+    ///
+    /// @param p          The patch index
+    /// @param b          The box component        
+    patchComponent( index_t p, boxComponent b ) : boxComponent(b), patch(p) {}
+    
+    /// @brief Constructor converting \a patchSide to a patchComponent
+    ///
+    /// @param p          The patch side
+    /// @param total_dim  The dimension of the box itself        
+    patchComponent( const patchSide& p, index_t total_dim ) : boxComponent(p,total_dim), patch(p) {}
+    
+    /// @brief Constructor converting \a patchCorner to a patchComponent
+    ///
+    /// @param p          The patch corner
+    /// @param total_dim  The dimension of the box itself    
+    patchComponent( patchCorner p, index_t total_dim ) : boxComponent(p, total_dim), patch(p) {}
+    
+    /// Returns a vector of all \a patchCorner s that are contained in the component    
+    std::vector<patchCorner> containedCorners() const;
+    
+    /// Converts to \a patchSide and fails if the component is not a corner
+    patchSide asSide() const
+    {
+        return patchSide( patch, boxComponent::asSide() );
+    }
+
+    /// Converts to \a patchCorner and fails if the component is not a corner
+    patchCorner asCorner() const
+    {
+        return patchCorner( patch, boxComponent::asCorner() );
     }
 };
 
