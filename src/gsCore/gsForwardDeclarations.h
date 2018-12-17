@@ -80,6 +80,9 @@ class  gsBoxTopology;
 class  boxSide;
 struct patchSide;
 struct boxCorner;
+struct patchCorner;
+struct boxComponent;
+struct patchComponent;
 struct boundaryInterface;
 
 template <class T=real_t>                class gsCurve;
