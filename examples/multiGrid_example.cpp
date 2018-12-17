@@ -65,8 +65,8 @@ int main(int argc, char *argv[])
 
     // Define assembler options
     opt.remove( "DG" );
-    opt.addInt( "Ass.InterfaceStrategy", "", (index_t)( dg ? iFace::dg : iFace::conforming )  );
-    opt.addInt( "Ass.DirichletStrategy", "", (index_t) dirichlet::elimination                 );
+    opt.addInt( "MG.InterfaceStrategy", "", (index_t)( dg ? iFace::dg : iFace::conforming )  );
+    opt.addInt( "MG.DirichletStrategy", "", (index_t) dirichlet::elimination                 );
 
     if ( ! gsFileManager::fileExists(geometry) )
     {
@@ -155,8 +155,8 @@ int main(int argc, char *argv[])
         mb,
         bc,
         gsConstantFunction<>(1,mp.geoDim()),
-        (dirichlet::strategy) opt.getInt("Ass.DirichletStrategy"),
-        (iFace::strategy)     opt.getInt("Ass.InterfaceStrategy")
+        (dirichlet::strategy) opt.getInt("MG.DirichletStrategy"),
+        (iFace::strategy)     opt.getInt("MG.InterfaceStrategy")
     );
     assembler.assemble();
 
