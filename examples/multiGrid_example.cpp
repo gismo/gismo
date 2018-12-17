@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
             smootherOp = makeJacobiOp(mg->matrix(i));
         else if ( smoother == "GaussSeidel" || smoother == "gs" )
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
-        else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" )
+        else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" || smoother == "Hybrid" || smoother == "hyb" )
         {
             if (multiBases[i].nBases() != 1)
             {
@@ -197,11 +197,14 @@ int main(int argc, char *argv[])
                 mg->underlyingOp(i),
                 gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("Ass"),scaling)
             );
+
+            if ( smoother == "Hybrid" || smoother == "hyb" )
+                smootherOp = gsCompositePrecOp<>::make( makeGaussSeidelOp(mg->matrix(i)), smootherOp );
         }
         else
         {
             gsInfo << "The chosen smoother is unknown.\n\nKnown are:\n  Richardson (r)\n  Jacobi (j)\n  GaussSeidel (gs)"
-                      "\n  SubspaceCorrectedMassSmoother (scms)\n\n";
+                      "\n  SubspaceCorrectedMassSmoother (scms)\n  Hybrid (hyb)\n\n";
             return EXIT_FAILURE;
         }
         smootherOp->setOptions( opt.getGroup("MG") );
