@@ -214,7 +214,7 @@ public:
     void addPatch(const gsGeometry<T> & g);
 
     /// \brief Search for the given geometry and return its patch index.
-    size_t findPatchIndex( gsGeometry<T>* g ) const;
+    std::size_t findPatchIndex( gsGeometry<T>* g ) const;
 
     /// @brief Add an interface joint between side \a s1 of geometry
     /// \a g1 side \a s2 of geometry \a g2.
