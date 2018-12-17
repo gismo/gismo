@@ -15,6 +15,8 @@
 
 using namespace gismo;
 
+gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(const gsSparseMatrix<>&, const gsMultiBasis<>&, const gsBoundaryConditions<>&, const gsOptionList&);
+
 int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
@@ -186,15 +188,17 @@ int main(int argc, char *argv[])
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
         else if ( opt.getString("MG.Smoother") == "SubspaceCorrectedMassSmoother" )
         {
-            if (multiBases[i].nBases() != 1)
+            if (multiBases[i].nBases() == 1)
             {
-                gsInfo << "The chosen smoother only works for single-patch geometries.\n\n";
-                return EXIT_FAILURE;
+                smootherOp = gsPreconditionerFromOp<>::make(
+                    mg->underlyingOp(i),
+                    gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("Ass"),scaling)
+                );
             }
-            smootherOp = gsPreconditionerFromOp<>::make(
-                mg->underlyingOp(i),
-                gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("Ass"),scaling)
-            );
+            else
+            {
+                smootherOp = setupSubspaceCorrectedMassSmoother(mg->matrix(i),multiBases[i],bc,opt);
+            }
         }
         else
         {
@@ -247,4 +251,84 @@ int main(int argc, char *argv[])
                   "file containing the solution.\n";
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;
-};
+}
+
+
+gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
+    const gsSparseMatrix<>& matrix,
+    const gsMultiBasis<>& mb,
+    const gsBoundaryConditions<>& bc,
+    const gsOptionList& opt
+)
+{
+    const index_t dim = mb.topology().dim();
+
+    // Setup dof mapper
+    gsDofMapper dm;
+    mb.getMapper(
+       (dirichlet::strategy)opt.askInt("Ass.DirichletStrategy",11),
+       (iFace    ::strategy)opt.askInt("Ass.InterfaceStrategy", 1),
+       bc,
+       dm,
+       0
+    );
+    const index_t nTotalDofs = dm.freeSize();
+
+    // Decompose the whole domain into components
+    std::vector<gsBoxTopology::component> components = mb.topology().allComponents(true);
+    const index_t nr_components = components.size();
+
+    // Setup Dirichlet boundary conditions
+    gsBoundaryConditions<> dir_bc;
+    for( index_t ps=0; ps < 2*dim; ++ps )
+        dir_bc.addCondition( 0, 1+ps, condition_type::dirichlet, NULL );
+
+    // Setup transfer matrices and local preconditioners
+    std::vector< gsSparseMatrix<real_t,RowMajor> > transfers;
+    transfers.reserve(nr_components);
+
+    std::vector< gsLinearOperator<>::Ptr > ops;
+    ops.reserve(nr_components);
+
+    for (index_t i=0; i<nr_components; ++i)
+    {
+        gsMatrix<unsigned> indices;
+        std::vector<gsBasis<>::uPtr> bases = mb.componentBasis_withIndices(components[i].components,bc,opt,indices,true);
+
+        index_t sz = indices.rows();
+        gsSparseEntries<> se;
+        se.reserve(sz);
+        for (index_t i=0; i<sz; ++i)
+            se.add(indices(i,0),i,real_t(1));
+        gsSparseMatrix<real_t,RowMajor> transfer(nTotalDofs,sz);
+        transfer.setFrom(se);
+
+        if (sz>0)
+        {
+            if (bases[0]->dim() == dim)
+            {
+                GISMO_ASSERT ( bases.size() == 1, "Only one basis is expected for each patch." );
+                ops.push_back(
+                    gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(
+                        *(bases[0]),
+                        dir_bc,
+                        gsOptionList(),
+                        opt.getReal("MG.Scaling")
+                    )
+                );
+            }
+            else
+            {
+                gsSparseMatrix<> mat = transfer.transpose() * matrix * transfer;
+                ops.push_back( makeSparseCholeskySolver(mat) );
+            }
+
+            transfers.push_back(give(transfer));
+        }
+    }
+
+    return gsPreconditionerFromOp<>::make(
+        makeMatrixOp(matrix),
+        gsAdditiveOp<>::make(transfers, ops)
+    );
+}
