@@ -391,7 +391,7 @@ struct gsFieldCreator
     static gsField<T> boundarySides(gsMultiPatch<T> const & mp)
     {
         gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
-        for (index_t k=0; k< mp.nPatches(); ++k)
+        for (size_t k=0; k< mp.nPatches(); ++k)
             nFields->addPiecePointer( new gsBoundaryField<T>(mp.patch(k)) );
         
         return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );

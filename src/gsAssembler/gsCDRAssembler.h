@@ -102,7 +102,6 @@ public:
                     dirichlet::strategy           dirStrategy = dirichlet::elimination,
                     iFace::strategy               intStrategy = iFace::glue,
                     bool flagStabilization = 0 )
-    : m_flagStabilization( flagStabilization  )
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
@@ -165,8 +164,6 @@ protected:
     using Base::m_ddof;
     using Base::m_options;
     using Base::m_system;
-    
-    bool m_flagStabilization;
 };
 
 

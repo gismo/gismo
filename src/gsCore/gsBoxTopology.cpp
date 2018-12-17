@@ -55,16 +55,18 @@ std::ostream & gsBoxTopology::print(std::ostream &os) const
 
 void gsBoxTopology::addAutoBoundaries()
 {
-    if ( nboxes == 0 ) {
+    if (nboxes == 0)
+    {
         return;
     }
-    for (index_t b=0; b<nboxes; ++b)
+    for (size_t b = 0; b < nboxes; ++b)
     {
-        for (boxSide bs=boxSide::getFirst(m_dim); bs<boxSide::getEnd(m_dim); ++bs)
+        for (boxSide bs = boxSide::getFirst(m_dim); bs < boxSide::getEnd(m_dim); ++bs)
         {
-            patchSide ps(b,bs);
-            if ( !isBoundary( ps ) && !isInterface( ps ) ) {
-                addBoundary( ps );
+            patchSide ps(b, bs);
+            if (!isBoundary(ps) && !isInterface(ps))
+            {
+                addBoundary(ps);
             }
         }
     }

@@ -84,7 +84,7 @@ public:
     }
     
     /// Number of boxes
-    int nBoxes() const       { return nboxes; }
+    size_t nBoxes() const       { return nboxes; }
 
     /// Dimension of the boxes
     int dim  () const       { return m_dim; }
@@ -97,10 +97,10 @@ public:
     }
 
     /// Number of interfaces
-    int nInterfaces() const { return m_interfaces.size(); }
+    size_t nInterfaces() const { return m_interfaces.size(); }
 
     /// Number of boundaries
-    int nBoundary() const   { return m_boundary.size(); }
+    size_t nBoundary() const   { return m_boundary.size(); }
 
 /*
  * Additional members for Multipatch geometries
@@ -171,10 +171,10 @@ public:
     }
 
     /// Add an interface between side \a s1 of box \a p1 and side \a s2 of box \a p2.
-    void addInterface( int p1, boxSide s1,
-                       int p2, boxSide s2)
+    void addInterface(size_t p1, boxSide s1,
+                      size_t p2, boxSide s2)
     {
-        addInterface(  boundaryInterface( patchSide(p1,s1),patchSide(p2,s2), m_dim ));
+        addInterface(boundaryInterface(patchSide(p1, s1), patchSide(p2, s2), m_dim));
     }
 
     /// Add an interface described by \a bi.
@@ -184,15 +184,15 @@ public:
     }
 
     /// Add \a i new boxes.
-    void addBox( int i = 1 )
+    void addBox(size_t i = 1)
     {
-        nboxes +=i;
+        nboxes += i;
     }
 
     /// Set side \a s of box \a p to a boundary.
-    void addBoundary( int p, boxSide s )
+    void addBoundary(size_t p, boxSide s)
     {
-        addBoundary( patchSide(p,s) );
+        addBoundary(patchSide(p, s));
     }
 
     /// Set patch side \a ps to a boundary.
