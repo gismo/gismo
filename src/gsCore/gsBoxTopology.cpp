@@ -210,6 +210,97 @@ int gsBoxTopology::getMaxValence() const
     return maxValence;
 }
 
+namespace {
+
+struct patchCornerSort {
+
+    bool operator() (const patchCorner& c1, const patchCorner& c2) const
+    { return c1.patch<c2.patch || (c1.patch==c2.patch && c1.m_index<c2.m_index); }
+
+};
+
+patchCorner getCanonicCorner( const patchCorner& c, const gsBoxTopology& bt )
+{
+    std::vector< patchCorner > corners;
+    bt.getCornerList(c,corners);
+    std::sort(corners.begin(), corners.end(), patchCornerSort());
+    return corners[0];
+}
+
+std::vector<patchCorner> getCanonicCorners( const std::vector<patchCorner>& c, const gsBoxTopology& bt )
+{
+    const index_t sz = c.size();
+    std::vector< patchCorner > corners;
+    corners.reserve(sz);
+    for (index_t i=0; i<sz; ++i)
+        corners.push_back( getCanonicCorner(c[i],bt) );
+    std::sort(corners.begin(),corners.end());
+    return corners;
+}
+
+std::vector<index_t> getCornerIndices( const std::vector<patchCorner>& corner, index_t dim )
+{
+    const index_t sz = corner.size();
+    std::vector<index_t> result(sz);
+    for (index_t i=0; i<sz; ++i)
+        result[i] = corner[i].patch*(1u<<(dim)) + corner[i].m_index;
+    return result;
+}
+
+} // end namespace
+
+std::vector<gsBoxTopology::component> gsBoxTopology::allComponents(bool combineCorners) const
+{
+    const index_t nPatches = nboxes;
+    const index_t dim = m_dim;
+
+    index_t cnr = 1;
+    for (index_t i=0; i<dim; ++i) cnr *= 3;
+
+    typedef std::map< std::vector<index_t>, component>   MapT;
+
+    std::vector<MapT> globs(dim+1);
+
+    for (index_t i = 0; i<nPatches; ++i)
+    {
+        for (index_t j = 0; j<cnr; ++j)
+        {
+            patchComponent pc(i, j, dim);
+            const index_t d = pc.dim();
+            std::vector< patchCorner > crns = getCanonicCorners(pc.containedCorners(),*this);
+            component& g = globs[d][getCornerIndices(crns, dim)];
+            g.corners = give(crns);
+            g.components.push_back(pc);
+        }
+    }
+    index_t sz = 0;
+    for (index_t i=0; i<dim+1; ++i)
+        sz += globs[i].size();
+
+    std::vector<component> result;
+    result.reserve(sz);
+    for (index_t i=dim; i>=0; --i)
+    {
+        if (!combineCorners || i>0)
+            for( typename MapT::iterator it = globs[i].begin(); it != globs[i].end(); ++it )
+                result.push_back( it->second );
+        else
+        {
+            component last;
+            for( typename MapT::iterator it = globs[i].begin(); it != globs[i].end(); ++it )
+            {
+                const index_t nrcr = it->second.corners.size();
+                for (index_t j=0; j<nrcr; ++j)
+                    last.corners.push_back(it->second.corners[i]);
+                const index_t nrcp = it->second.components.size();
+                for (index_t j=0; j<nrcp; ++j)
+                    last.components.push_back(it->second.components[i]);
+            }
+        }
+    }
+    return result;
+}
+
 void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists) const
 {
     GISMO_ASSERT(m_dim==2,"works only for 2D");
