@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
     index_t cycles = 1;
     index_t presmooth = 1;
     index_t postsmooth = 1;
+    bool extrasmooth = false;
     std::string smoother("GaussSeidel");
     real_t damping = -1;
     real_t scaling = 0.12;
@@ -44,6 +45,7 @@ int main(int argc, char *argv[])
     cmd.addInt   ("c", "MG.Cycles",             "Number of multi-grid cycles", cycles);
     cmd.addInt   ("",  "MG.Presmooth",          "Number of pre-smoothing steps", presmooth);
     cmd.addInt   ("",  "MG.Postsmooth",         "Number of post-smoothing steps", postsmooth);
+    cmd.addSwitch("",  "MG.Extrasmooth",        "Doubles the number of smoothing steps for each coarser level", extrasmooth);
     cmd.addString("s", "MG.Smoother",           "Smoothing method", smoother);
     cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother", damping);
     cmd.addReal  ("",  "MG.Scaling",            "Scaling factor for the subspace corrected mass smoother", scaling);
@@ -178,13 +180,13 @@ int main(int argc, char *argv[])
     for (index_t i = 1; i < mg->numLevels(); ++i)
     {
         gsPreconditionerOp<>::Ptr smootherOp;
-        if ( opt.getString("MG.Smoother") == "Richardson" )
+        if ( smoother == "Richardson" || smoother == "r" )
             smootherOp = makeRichardsonOp(mg->matrix(i));
-        else if ( opt.getString("MG.Smoother") == "Jacobi" )
+        else if ( smoother == "Jacobi" || smoother == "j" )
             smootherOp = makeJacobiOp(mg->matrix(i));
-        else if ( opt.getString("MG.Smoother") == "GaussSeidel" )
+        else if ( smoother == "GaussSeidel" || smoother == "gs" )
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
-        else if ( opt.getString("MG.Smoother") == "SubspaceCorrectedMassSmoother" )
+        else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" )
         {
             if (multiBases[i].nBases() != 1)
             {
@@ -198,11 +200,17 @@ int main(int argc, char *argv[])
         }
         else
         {
-            gsInfo << "The chosen smoother is unknown.\n\nKnown are:\n  Richardson\n  Jacobi\n  GaussSeidel"
-                      "\n  SubspaceCorrectedMassSmoother\n\n";
+            gsInfo << "The chosen smoother is unknown.\n\nKnown are:\n  Richardson (r)\n  Jacobi (j)\n  GaussSeidel (gs)"
+                      "\n  SubspaceCorrectedMassSmoother (scms)\n\n";
             return EXIT_FAILURE;
         }
         smootherOp->setOptions( opt.getGroup("MG") );
+        // Handle the extra-smooth option. On the finest grid level, there is nothing to handle.
+        if (extrasmooth && i < mg->numLevels()-1 )
+        {
+            smootherOp->setNumOfSweeps( 1 << (mg->numLevels()-1-i) );
+            smootherOp = gsPreconditionerFromOp<>::make(mg->underlyingOp(i),smootherOp);
+        }
         mg->setSmoother(i, smootherOp);
     }
 
