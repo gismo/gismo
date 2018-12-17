@@ -215,7 +215,7 @@ inline void gsMultiPatch<T>::addPatch(const gsGeometry<T> & g)
 }
 
 template<class T>
-size_t gsMultiPatch<T>::findPatchIndex( gsGeometry<T>* g ) const
+std::size_t gsMultiPatch<T>::findPatchIndex( gsGeometry<T>* g ) const
 {
     const_iterator it
         = std::find( m_patches.begin(), m_patches.end(), g );
@@ -294,13 +294,13 @@ template<class T>
 gsMultiPatch<T> gsMultiPatch<T>::uniformSplit() const
 {
     int n = math::exp2(parDim());
-    std::vector<gsGeometry<T>* > result;
-    result.reserve(nPatches()*n);
+    std::vector<gsGeometry<T>*> result;
+    result.reserve(nPatches() * n);
 
-    for(index_t np = 0; np<nPatches();++np)
+    for (size_t np = 0; np < nPatches(); ++np)
     {
-        std::vector<gsGeometry<T>* > result_temp = m_patches[np]->uniformSplit();
-        result.insert(result.end(),result_temp.begin(),result_temp.end());
+        std::vector<gsGeometry<T>*> result_temp = m_patches[np]->uniformSplit();
+        result.insert(result.end(), result_temp.begin(), result_temp.end());
     }
     gsMultiPatch<T> mp(result);
     mp.computeTopology();

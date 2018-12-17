@@ -286,7 +286,7 @@ protected:
     int m_dim;
 
     /// Number of boxes held
-    int nboxes;
+    size_t nboxes;
 
     /// List of boundaries of the boxes
     bContainer m_boundary;
