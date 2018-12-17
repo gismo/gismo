@@ -383,7 +383,7 @@ endif()
 
 if(GISMO_UNSUPPORTED)
   gismo_fetch_module(unsupported)
-  #gismo_fetch_module(motor)
+  gismo_fetch_module(motor)
 endif()
 
 unset(GISMO_UNAME CACHE)
