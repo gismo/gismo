@@ -182,35 +182,35 @@ void gsMultiBasis<T>::uniformRefine_withTransfer(
         int numKnots,
         int mul)
 {
-        // Get coarse mapper
-        gsDofMapper coarseMapper;
-        this->getMapper(
-                (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
-                (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-                boundaryConditions,
-                coarseMapper,
-                0
-        );
+    // Get coarse mapper
+    gsDofMapper coarseMapper;
+    this->getMapper(
+            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
+            (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
+            boundaryConditions,
+            coarseMapper,
+            0
+    );
 
-        // Refine
-        std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices(nBases());
-        for (size_t k = 0; k < m_bases.size(); ++k)
-        {
-            m_bases[k]->uniformRefine_withTransfer(localTransferMatrices[k],numKnots,mul);
-        }
+    // Refine
+    std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices(nBases());
+    for (size_t k = 0; k < m_bases.size(); ++k)
+    {
+        m_bases[k]->uniformRefine_withTransfer(localTransferMatrices[k],numKnots,mul);
+    }
 
-        // Get fine mapper
-        gsDofMapper fineMapper;
-        this->getMapper(
-                (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
-                (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-                boundaryConditions,
-                fineMapper,
-                0
-        );
+    // Get fine mapper
+    gsDofMapper fineMapper;
+    this->getMapper(
+            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
+            (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
+            boundaryConditions,
+            fineMapper,
+            0
+    );
 
-        // restrict to free dofs
-        combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );        
+    // restrict to free dofs
+    combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );
 
 }
 
@@ -221,36 +221,128 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
         const gsOptionList& assemblerOptions,
         int numKnots)
 {
-        // Get fine mapper
-        gsDofMapper fineMapper;
-        this->getMapper(
-                (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
-                (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-                boundaryConditions,
-                fineMapper,
-                0
-        );
+    // Get fine mapper
+    gsDofMapper fineMapper;
+    this->getMapper(
+            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
+            (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
+            boundaryConditions,
+            fineMapper,
+            0
+    );
 
-        // Refine
-        std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices(nBases());
-        for (size_t k = 0; k < m_bases.size(); ++k)
+    // Refine
+    std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices(nBases());
+    for (size_t k = 0; k < m_bases.size(); ++k)
+    {
+        m_bases[k]->uniformCoarsen_withTransfer(localTransferMatrices[k],numKnots);
+    }
+
+    // Get coarse mapper
+    gsDofMapper coarseMapper;
+    this->getMapper(
+            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
+            (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
+            boundaryConditions,
+            coarseMapper,
+            0
+    );
+
+    // restrict to free dofs
+    combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );
+
+}
+
+template <typename T>
+typename gsBasis<T>::uPtr gsMultiBasis<T>::componentBasis_withIndices(
+        patchComponent pc,
+        const gsBoundaryConditions<T>& bc,
+        const gsOptionList& opt,
+        gsMatrix<unsigned>& indices,
+        bool no_lower
+    ) const
+{
+    typename gsBasis<T>::uPtr result = m_bases[pc.patch]->componentBasis_withIndices(pc, indices, no_lower);
+
+    gsDofMapper dm;
+    this->getMapper(
+       (dirichlet::strategy)opt.askInt("DirichletStrategy",11),
+       (iFace    ::strategy)opt.askInt("InterfaceStrategy", 1),
+       bc,
+       dm,
+       0
+    );
+
+    const index_t sz = indices.rows();
+    index_t j = 0;
+    for (index_t i=0; i<sz; ++i)
+    {
+        const index_t loc = indices(i,0);
+        if (dm.is_free(loc, pc.patch))
         {
-            m_bases[k]->uniformCoarsen_withTransfer(localTransferMatrices[k],numKnots);
+            indices(j,0) = dm.index(loc, pc.patch);
+            ++j;
         }
+    }
+    // Eigen does delete all data on resize. Thus, we have to do it on
+    // our own. We consider two important special cases: j==0 and j==sz.
+    if (j==0)
+        indices.resize(0,1);
+    else if (j<sz)
+    {
+        gsMatrix<unsigned> indices2(j,1);
+        for (index_t i=0; i<j; ++i)
+            indices2(i,0) = indices(i,0);
+        indices.swap(indices2);
+    }
+    // if j==sz, nothing has to be done.
 
-        // Get coarse mapper
-        gsDofMapper coarseMapper;
-        this->getMapper(
-                (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
-                (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-                boundaryConditions,
-                coarseMapper,
-                0
+    return result;
+}
+
+template <typename T>
+std::vector<typename gsBasis<T>::uPtr> gsMultiBasis<T>::componentBasis_withIndices(
+        std::vector<patchComponent> pc,
+        const gsBoundaryConditions<T>& bc,
+        const gsOptionList& opt,
+        gsMatrix<unsigned>& indices,
+        bool no_lower
+    ) const
+{
+    const index_t nrpc = pc.size();
+    std::vector<typename gsBasis<T>::uPtr> bases;
+    bases.reserve(nrpc);
+    std::vector< gsMatrix<unsigned> > local_indices(nrpc);
+
+    index_t sz = 0;
+
+    for (index_t i=0; i<nrpc; ++i)
+    {
+        bases.push_back(
+            this->componentBasis_withIndices(pc[i], bc, opt, local_indices[i], no_lower)
         );
+        sz += local_indices[i].rows();
+    }
 
-        // restrict to free dofs
-        combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );        
+    std::vector<unsigned> global_indices;
+    global_indices.reserve(sz);
 
+    for (index_t i=0; i<nrpc; ++i)
+    {
+        const index_t nr_local_indices = local_indices[i].rows();
+        for (index_t j=0; j<nr_local_indices; ++j)
+            if ( i==0 || std::find(global_indices.begin(), global_indices.end(), local_indices[i](j,0) )
+                            == global_indices.end()
+            )
+                global_indices.push_back( local_indices[i](j,0) );
+    }
+
+    const index_t final_size = global_indices.size();
+    indices.resize(final_size,1);
+    for (index_t i=0; i<final_size; ++i)
+        indices(i,0) = global_indices[i];
+
+    return bases;
 }
 
 template<class T>

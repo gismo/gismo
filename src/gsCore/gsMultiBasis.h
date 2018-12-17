@@ -421,7 +421,43 @@ public:
         const gsOptionList& assemblerOptions,
         int numKnots = 1
         );
+
+    /// @brief Returns the basis that corresponds to the component
+    typename gsBasis<T>::uPtr componentBasis(patchComponent p) const
+    { return m_bases[p.patch]->componentBasis(p); }
+
+    /// @brief Returns the basis that corresponds to the component
+    ///
+    /// @param p         The component
+    /// @param bc        The boundary conditions
+    /// @param opt       The assembler options (directing Dirichlet and interface strategy)
+    /// @param indices   The row vector where the indices are stored to
+    /// @param no_lower  If true, the transfer matrix does not include parts belonging to lower-order
+    ///                  components (i.e., edges without corners or faces without corners and edges)
+    typename gsBasis<T>::uPtr componentBasis_withIndices(
+        patchComponent p,
+        const gsBoundaryConditions<T>& bc,
+        const gsOptionList& opt,
+        gsMatrix<unsigned>& indices,
+        bool no_lower = true
+    ) const;
     
+    /// @brief Returns the bases that correspond to the components
+    ///
+    /// @param p         The component
+    /// @param bc        The boundary conditions
+    /// @param opt       The assembler options (directing Dirichlet and interface strategy)
+    /// @param indices   The row vector where the indices are stored to
+    /// @param no_lower  If true, the transfer matrix does not include parts belonging to lower-order
+    ///                  components (i.e., edges without corners or faces without corners and edges)
+    std::vector<typename gsBasis<T>::uPtr> componentBasis_withIndices(
+        std::vector<patchComponent> p,
+        const gsBoundaryConditions<T>& bc,
+        const gsOptionList& opt,
+        gsMatrix<unsigned>& indices,
+        bool no_lower = true
+    ) const;
+
     /** @brief Checks if the interfaces \em bivec are fully matching, and if not, repairs them, i.e., makes them fully matching.
     *
     * \remarks Designed for gsHTensorBasis and derived bases.
