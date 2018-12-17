@@ -57,6 +57,8 @@
 #cmakedefine GISMO_WITH_UMFPACK
 #cmakedefine GISMO_WITH_UNUM
 
+/* Only include new types here that can be set as real_t */
+
 #ifdef GISMO_WITH_MPFR
 #include <mpreal.h>
 #endif

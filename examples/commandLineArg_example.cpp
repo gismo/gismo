@@ -21,11 +21,11 @@ int main(int argc, char* argv[])
     // Variables that will take values from the command line
     std::string string("none");  // string variable default value
     real_t flNumber = 1.0;       // flNumber variable default value
-    int number = 1;              // number variable default value
+    index_t number = 1;          // number variable default value
     bool boolean = false;        // boolean variable default value
     std::string plainString;     // argument of reading plain string
 
-    std::vector<int> intvec;
+    std::vector<index_t> intvec;
 
     // -----------------------------------------------------------------
     // First we Initialize the object that sets up and parses command line arguments

@@ -1,8 +1,6 @@
 
 #pragma once
 
-#include <gsCore/gsConfig.h>
-
 #ifndef SUPPORT_EIGEN
 #define SUPPORT_EIGEN
 #endif

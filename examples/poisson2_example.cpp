@@ -21,8 +21,8 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    int numRefine  = 5;
-    int numElevate = 0;
+    index_t numRefine  = 5;
+    index_t numElevate = 0;
     bool last = false;
     std::string fn("pde/poisson2d_bvp.xml");
 
