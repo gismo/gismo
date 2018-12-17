@@ -735,7 +735,7 @@ void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
 
     gsParaviewCollection collection(fn);
 
-    for (index_t i = 0; i != domain.nPatches(); ++i)
+    for (size_t i = 0; i != domain.nPatches(); ++i)
     {
         const std::string fileName = fn + util::to_string(i) + "_mesh";
         writeSingleCompMesh(mb[i], domain.patch(i), fileName, npts);
