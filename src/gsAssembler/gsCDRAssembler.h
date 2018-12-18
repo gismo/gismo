@@ -52,13 +52,14 @@ public:
         \param[in] bases a multi-basis that contains patch-wise bases
     */
     gsCDRAssembler( const gsConvDiffRePde<T>       & pde,
-                    const gsMultiBasis<T>          & bases)
+                    const gsMultiBasis<T>          & bases,
+                    index_t                          flagStabilization = 0)
     {
         // enrich options in constructor, refresh to apply options
 
         // 0: no stabilization
         // 1: SUPG
-        m_options.addSwitch("Stabilization","Choice of stabilization method; 0 := no; 1 := SUPG;", 0);
+        m_options.addInt("Stabilization","Choice of stabilization method; 0 := no; 1 := SUPG;", flagStabilization);
         Base::initialize(pde, bases, m_options);
     }
 
@@ -67,14 +68,14 @@ public:
                     const gsMultiBasis<T>          & bases,
                     dirichlet::strategy           dirStrategy,
                     iFace::strategy               intStrategy = iFace::glue,
-                    bool flagStabilization = 0 )
+                    index_t                       flagStabilization = 0 )
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
 
         // 0: no stabilization
         // 1: SUPG
-        m_options.addSwitch("Stabilization","Choice of stabilization method; 0 := no; 1 := SUPG;", flagStabilization);
+        m_options.addInt("Stabilization","Choice of stabilization method; 0 := no; 1 := SUPG;", flagStabilization);
         
         Base::initialize(pde, bases, m_options);
     }
@@ -101,14 +102,14 @@ public:
                     const gsFunction<T>           & coeff_c,
                     dirichlet::strategy           dirStrategy = dirichlet::elimination,
                     iFace::strategy               intStrategy = iFace::glue,
-                    bool flagStabilization = 0 )
+                    index_t                       flagStabilization = 0 )
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
 
         // 0: no stabilization
         // 1: SUPG
-        m_options.addSwitch("Stabilization","Choice of stabilization method; 0 := no; 1 := SUPG;", flagStabilization);
+        m_options.addInt("Stabilization","Choice of stabilization method; 0 := no; 1 := SUPG;", flagStabilization);
 
         typename gsPde<T>::Ptr pde( new gsConvDiffRePde<T>
                                     (patches, bconditions, &coeff_A, &coeff_b, &coeff_c, &rhs));
