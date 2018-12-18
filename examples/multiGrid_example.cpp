@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
             }
             smootherOp = gsPreconditionerFromOp<>::make(
                 mg->underlyingOp(i),
-                gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("Ass"),scaling)
+                gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("MG"),scaling)
             );
 
             if ( smoother == "Hybrid" || smoother == "hyb" )
