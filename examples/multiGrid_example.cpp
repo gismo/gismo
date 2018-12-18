@@ -201,6 +201,7 @@ int main(int argc, char *argv[])
             {
                 smootherOp = setupSubspaceCorrectedMassSmoother( mg->matrix(i), multiBases[i], bc, opt.getGroup("MG") );
             }
+
             if ( smoother == "Hybrid" || smoother == "hyb" )
                 smootherOp = gsCompositePrecOp<>::make( makeGaussSeidelOp(mg->matrix(i)), smootherOp );
         }
