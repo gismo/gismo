@@ -74,7 +74,7 @@ void gsBoxTopology::addAutoBoundaries()
 
 bool gsBoxTopology::isInterface( const patchSide& ps ) const
 {
-    for ( unsigned i = 0; i < m_interfaces.size(); ++i )
+    for ( size_t i = 0; i < m_interfaces.size(); ++i )
         if ( m_interfaces[i].first() == ps || m_interfaces[i].second() == ps ) {
             return true;
         }
@@ -83,7 +83,8 @@ bool gsBoxTopology::isInterface( const patchSide& ps ) const
 
 void gsBoxTopology::checkConsistency() const
 {
-    const int numSides = nboxes * 2 * m_dim;      // an n-D cube has 2*d sides
+    GISMO_ASSERT(m_dim >= 0, "m_dim asserted to be positive");
+    const size_t numSides = nboxes * 2 * m_dim;      // an n-D cube has 2*d sides
     if ( numSides != 2 * nInterfaces() + nBoundary() ) {
         std::cerr << "*** WARNING *** gsBoxTopology has inconsistent interfaces or boundaries!" <<
                      std::endl;
@@ -107,7 +108,7 @@ void gsBoxTopology::checkConsistency() const
 
 bool gsBoxTopology::getNeighbour(const patchSide& ps ,patchSide& result, int & ii) const
 {
-    for ( unsigned i = 0; i < m_interfaces.size(); ++i ) 
+    for ( size_t i = 0; i < m_interfaces.size(); ++i )
     {
        if ( m_interfaces[i].first() == ps )
        {
@@ -131,9 +132,9 @@ bool gsBoxTopology::getNeighbour(const patchSide& ps ,patchSide& result) const
     return getNeighbour(ps, result, a);
 }
 
-const boundaryInterface * gsBoxTopology::findInterface(const int b1, const int b2) const
+const boundaryInterface * gsBoxTopology::findInterface(const size_t b1, const size_t b2) const
 {
-    for ( unsigned i = 0; i < m_interfaces.size(); ++i ) 
+    for ( size_t i = 0; i < m_interfaces.size(); ++i )
     {
         if ( (m_interfaces[i].first() .patch == b1  && 
               m_interfaces[i].second().patch == b2) ||
@@ -153,7 +154,7 @@ bool gsBoxTopology::getCornerList(const patchCorner& start,std::vector<patchCorn
     std::vector<patchSide> psides;     // psides and vertices relate to each other
     std::vector<patchCorner> vertices;
     start.getContainingSides(m_dim,psides);
-    for(unsigned i = 0;i<psides.size();i++)
+    for(size_t i = 0;i<psides.size();i++)
         vertices.push_back(start);
     patchSide ps,psNeighbour;
     patchCorner pc,pcNeighbour;
@@ -181,7 +182,7 @@ bool gsBoxTopology::getCornerList(const patchCorner& start,std::vector<patchCorn
             continue;
         std::vector<patchSide> neighbourSides;
         pcNeighbour.getContainingSides(m_dim,neighbourSides);
-        for(unsigned i=0;i<neighbourSides.size();++i)
+        for(size_t i=0;i<neighbourSides.size();++i)
         {
             psides.push_back(neighbourSides[i]);
             vertices.push_back(pcNeighbour);
@@ -197,7 +198,7 @@ int gsBoxTopology::getMaxValence() const
     patchCorner start;
     std::vector<patchCorner> cornerList;
     int valence,maxValence=-1;
-    for(int i = 0;i<nboxes;++i)
+    for(size_t i = 0;i<nboxes;++i)
     {
         for(int j = 1;j<=( 1 << m_dim );++j)
         {
@@ -218,14 +219,14 @@ void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists)
     cornerLists.clear();
     std::vector<patchCorner> cornerList;
     patchCorner c;
-    for(int i = 0;i<nboxes;++i)
+    for(size_t i = 0;i<nboxes;++i)
     {
         for(int j=1;j<=4;++j)
         {
             c=patchCorner(i,j);
             bool isCycle = getCornerList(c,cornerList);
             bool alreadyReached = false;
-            for(unsigned k = 0;k<cornerList.size();++k)
+            for(size_t k = 0;k<cornerList.size();++k)
                 if(cornerList[k].patch<i)
                     alreadyReached = true;
             if(isCycle&&cornerList.size()!=4&&!alreadyReached)
@@ -240,14 +241,14 @@ void gsBoxTopology::getOVs(std::vector<std::vector<patchCorner> > & cornerLists)
     cornerLists.clear();
     std::vector<patchCorner> cornerList;
     patchCorner c;
-    for(int i = 0;i<nboxes;++i)
+    for(size_t i = 0;i<nboxes;++i)
     {
         for(int j=1;j<=4;++j)
         {
             c=patchCorner(i,j);
             bool isCycle = getCornerList(c,cornerList);
             bool alreadyReached = false;
-            for(unsigned k = 0;k<cornerList.size();++k)
+            for(size_t k = 0;k<cornerList.size();++k)
                 if(cornerList[k].patch<i)
                     alreadyReached = true;
             if(isCycle&&cornerList.size()==4&&!alreadyReached)

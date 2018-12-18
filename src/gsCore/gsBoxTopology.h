@@ -243,7 +243,7 @@ public:
 
     /// Returns a pointer to the interface between boxes \a b1 and \a
     /// b2, if one exists, otherwise it returns a null pointer
-    InterfacePtr findInterface(const int b1, const int b2) const;
+    InterfacePtr findInterface(const size_t b1, const size_t b2) const;
 
     /// set \a result to the associated interface of \a ps, returns
     /// false if it is a boundary patchSide

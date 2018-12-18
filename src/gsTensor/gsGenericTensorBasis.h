@@ -19,7 +19,7 @@
 namespace gismo
 {
 
-/*template <unsigned d, class T, class KnotVectorType>
+/*template <int d, class T, class KnotVectorType>
   struct TensorVersionOf<d, gsNurbsBasis<T,KnotVectorType> >
   {
   // Tensor basis for gsBSplineBasis
@@ -34,7 +34,7 @@ namespace gismo
     
     \ingroup Tensor
 */
-template<unsigned d, class T>
+template<int d, class T>
 class gsGenericTensorBasis : public gsTensorBasis<d,T>
 {
 

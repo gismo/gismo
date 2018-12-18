@@ -107,14 +107,14 @@ template <class T=real_t>                class gsMultiPatch;
 
 // Bases
 template <class basis_t >                class gsRationalBasis;
-template <unsigned d, class T=real_t>    class gsTensorBasis;
-template <unsigned d, class T=real_t>    class gsHTensorBasis;
+template <int d, class T=real_t>    class gsTensorBasis;
+template <int d, class T=real_t>    class gsHTensorBasis;
 
 template <class T=real_t>                class gsKnotVector;
 //template <class T=real_t>              class gsCompactKnotVector;
 template <class T=real_t>                class gsBSplineBasis;
 template <class T=real_t>                class gsNurbsBasis;
-template <unsigned d, class T=real_t>    class gsTensorBSplineBasis;
+template <int d, class T=real_t>    class gsTensorBSplineBasis;
 template <unsigned d, class T=real_t>    class gsTensorNurbsBasis;
 template <unsigned d, class T=real_t>   struct gsBSplineTraits;
 

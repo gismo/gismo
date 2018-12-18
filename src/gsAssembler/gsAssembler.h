@@ -425,7 +425,7 @@ public: /* Element visitors */
     template<class ElementVisitor>
     void push()
     {
-        for (index_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
+        for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
         {
             ElementVisitor visitor(*m_pde_ptr);
             //Assemble (fill m_matrix and m_rhs) on patch np
@@ -651,7 +651,7 @@ protected:
     /// integrals.
     template<class ElementVisitor>
     void apply(ElementVisitor & visitor,
-               int patchIndex = 0,
+               size_t patchIndex = 0,
                boxSide side = boundary::none);
 
     /// @brief Generic assembly routine for patch-interface integrals
@@ -663,7 +663,7 @@ protected:
 template <class T>
 template<class ElementVisitor>
 void gsAssembler<T>::apply(ElementVisitor & visitor,
-                           int patchIndex,
+                           size_t patchIndex,
                            boxSide side)
 {
     //gsDebug<< "Apply to patch "<< patchIndex <<"("<< side <<")\n";

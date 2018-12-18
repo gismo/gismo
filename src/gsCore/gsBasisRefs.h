@@ -30,7 +30,7 @@ private:
 public:
 
     /// Constructor from a gsMultiBasis \a bases and a patch index \a k
-    inline gsBasisRefs(std::vector<gsMultiBasis<T> > & bases, const index_t k)
+    inline gsBasisRefs(std::vector<gsMultiBasis<T> > & bases, const size_t k)
     {
         GISMO_ASSERT(bases.size()>0, "Cannot construct empty list of gsBasis.");
         m_refs.reserve(bases.size());

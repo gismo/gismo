@@ -480,7 +480,7 @@ gsHDomain<d,T>::bisectBox(box const & original, int k, T coord,
 }
 
 
-template<unsigned d, class T> 
+template<unsigned d, class T>
 template<typename visitor>
 typename visitor::return_type
 gsHDomain<d,T>::boxSearch(point const & k1, point const & k2, 
@@ -605,7 +605,7 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
 
 
 
-template<unsigned d, class T> 
+template<unsigned d, class T>
 typename gsHDomain<d,T>::node * 
 gsHDomain<d,T>::pointSearch(const point & p, int level, node  *_node ) const
 {
@@ -647,7 +647,7 @@ gsHDomain<d,T>::pointSearch(const point & p, int level, node  *_node ) const
    Function to traverse the tree nodes without recursion and without
    stack, when parents are not stored. Not thread-safe
 //
-template<unsigned d, class T> 
+template<unsigned d, class T>
 template<typename visitor>
 typename visitor::return_type
 gsHDomain<d,T>::nodeSearchMorris() const
@@ -690,7 +690,7 @@ gsHDomain<d,T>::nodeSearchMorris() const
 }
 */
 
-template<unsigned d, class T> 
+template<unsigned d, class T>
 template<typename visitor>
 typename visitor::return_type
 gsHDomain<d,T>::nodeSearch() const
@@ -724,7 +724,7 @@ gsHDomain<d,T>::nodeSearch() const
 
 /*
 // node search version with stack (if no parents available)
-template<unsigned d, class T> 
+template<unsigned d, class T>
 template<typename visitor> 
 typename visitor::return_type
 gsHDomain<d,T>::nodeSearch() const
@@ -750,7 +750,7 @@ gsHDomain<d,T>::nodeSearch() const
 }
 //*/
 
-template<unsigned d, class T> 
+template<unsigned d, class T>
 template<typename visitor>
 typename visitor::return_type
 gsHDomain<d,T>::leafSearch() const
@@ -786,7 +786,7 @@ gsHDomain<d,T>::leafSearch() const
 
 /*
 // leaf search version with stack (if no parents available)
-template<unsigned d, class T> 
+template<unsigned d, class T>
 template<typename visitor>
 typename visitor::return_type
 gsHDomain<d,T>::leafSearch() const

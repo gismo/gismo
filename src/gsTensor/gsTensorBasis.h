@@ -29,7 +29,7 @@ namespace gismo
  *   \ingroup Tensor
  */
 
-template<unsigned d, class T>
+template<int d, class T>
 class gsTensorBasis : public gsBasis<T>  
 {
 public: 
@@ -93,7 +93,7 @@ public:
     /// Constructor nD (takes ownership of the passed bases)
     explicit gsTensorBasis(iterator it) 
     {
-        for (unsigned i = 0; i < d; ++i)
+        for (int i = 0; i < d; ++i)
             m_bases[i] = *(it++);
     }
     
@@ -105,8 +105,8 @@ public:
     /// Returns the number of elements in the basis
     index_t size() const 
     {
-        unsigned r=1;
-        for (unsigned i = 0; i < d; ++i)
+        index_t r=1;
+        for (int i = 0; i < d; ++i)
             r *= m_bases[i]->size();
         return r; 
     }
@@ -115,7 +115,7 @@ public:
     int numElements() const 
     {
         int nElem = m_bases[0]->numElements();
-        for (unsigned dim = 1; dim < d; ++dim)
+        for (int dim = 1; dim < d; ++dim)
             nElem *= m_bases[dim]->numElements();
         return nElem;
     }
@@ -859,7 +859,7 @@ private:
 /* ******************************************** */
 /* ******************************************** */
 
-template<unsigned d, class Basis_t >
+template<int d, class Basis_t >
 inline unsigned gsTensorBasis<d,Basis_t>::index(gsVector<unsigned,d> const & v) const
 {
     unsigned ind;
@@ -870,14 +870,14 @@ inline unsigned gsTensorBasis<d,Basis_t>::index(gsVector<unsigned,d> const & v) 
     return ind;
 }
 
-template<unsigned d, class Basis_t > 
+template<int d, class Basis_t >
 inline unsigned gsTensorBasis<d,Basis_t>::index(unsigned i, unsigned j, unsigned k ) const
 {
     return size(0) * (size(1) * k + j) + i;
 }
 
 
-template<unsigned d, class Basis_t >
+template<int d, class Basis_t >
 inline unsigned gsTensorBasis<d,Basis_t>::stride(int dir) const
 {
     GISMO_ASSERT( dir>=0 &&  dir< this->dim(), 

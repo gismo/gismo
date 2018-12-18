@@ -155,7 +155,7 @@ void gsTensorBoehmRefine(
 /// number of nonzero coefficients in coefs matrix.
 /// 
 /// \ingroup Nurbs
-template <unsigned d, typename KnotVectorType, typename Mat, typename ValIt>
+template <int d, typename KnotVectorType, typename Mat, typename ValIt>
 void gsTensorBoehmRefineLocal(
         KnotVectorType& knots,
         const unsigned index,
@@ -184,7 +184,7 @@ void gsTensorBoehmRefineLocal(
 /// This function should just be used for evaluation via knot insertion (not the
 /// full coefficient matrix will be computed).
 /// \ingroup Nurbs
-template <unsigned d, typename T, typename KnotVectorType, typename Mat>
+template <int d, typename T, typename KnotVectorType, typename Mat>
 void gsTensorInsertKnotDegreeTimes(
         const KnotVectorType& knots,
         Mat& coefs,
@@ -232,7 +232,7 @@ int getIndex(const gsVector<unsigned>& stride,
 }
 
 
-template<unsigned d>
+template<int d>
 unsigned getIndex(const gsVector<unsigned, d>& stride,
                       const gsVector<unsigned, d>& position)
 {
@@ -409,7 +409,7 @@ void correctNewStride(gsVector<unsigned>& new_str,
 ///
 /// @param size_of_coef size of the coefficients
 /// @param last_point we compute last point into this variable
-template<unsigned d>
+template<int d>
 void getLastIndexLocal(const gsVector<unsigned, d>& size_of_coef,
                   gsVector<unsigned, d>& last_point)
 {
@@ -426,7 +426,7 @@ void getLastIndexLocal(const gsVector<unsigned, d>& size_of_coef,
 ///
 /// @param size_of_coefs size of the coefficients
 /// @param strides we compute strides into this variable
-template <unsigned d>
+template <int d>
 void buildCoeffsStrides(const gsVector<unsigned, d>& size_of_coefs,
                          gsVector<unsigned, d>& strides)
 {
