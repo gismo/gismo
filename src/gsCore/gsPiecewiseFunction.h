@@ -133,6 +133,8 @@ public:
 
     index_t size() const {return m_funcs.size();}
 
+    index_t nPieces() const {return m_funcs.size();}
+
     std::ostream &print(std::ostream &os) const
     {
         os << "Piecewise Function with "<<m_funcs.size() <<" pieces.\n";

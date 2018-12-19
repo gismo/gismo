@@ -174,6 +174,7 @@ template <class T=real_t>                class gsExprEvaluator;
 template <class T=real_t>                class gsCurveLoop;
 template <class T=real_t>                class gsPlanarDomain;
 template <class T=real_t>                class gsField;
+template <class T=real_t>                class gsPolyField;
 template <class T=real_t>                class gsMesh;
 template <class T=real_t>                class gsHeMesh;
 

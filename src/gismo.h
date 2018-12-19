@@ -68,6 +68,7 @@ namespace internal
 #include <gsCore/gsBoxTopology.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsCore/gsField.h>
+#include <gsCore/gsPolyField.h>
 
 #include <gsCore/gsBasis.h>
 

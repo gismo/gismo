@@ -25,7 +25,6 @@
 
 namespace gismo {
 
-
 /// \brief Export a gsGeometry (without scalar information) to paraview file
 ///
 /// \param Geo a geometry object
@@ -196,6 +195,18 @@ void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
                            const gsVector<index_t> & np,
                            std::string const & fn);
 
+/// \brief Export tensor-structured point set with several fields' data to Paraview file
+///
+/// \param points matrix that contain 2D or 3D points, points are columns
+/// \param data fields' data with names
+/// \param np
+/// \param fn filename where paraview file is written
+template<class T>
+void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
+                           std::map<std::string, gsMatrix<T> > const& data,
+                           const gsVector<index_t> & np,
+                           std::string const & fn);
+
 /// \brief Depicting edge graph of each volume of one gsSolid with a segmenting loop
 ///
 /// \param sl a gsMesh object
@@ -291,6 +302,17 @@ void plot_errors(const gsMatrix<T> & orig,
                  std::vector<T> const & errors,
                  std::string const & fn);
 
+/// \brief Write a Paraview file containing several fields defined on the same geometry
+///        (useful for multiphysics problem, i.e. velocity + pressure or deformation + temperature)
+///
+/// \param fields container with fields
+/// \param fn filename where paraview file is written
+/// \param npts number of points used for sampling each patch
+/// \param mesh if true, the parameter mesh is plotted as well
+/// \param ctrlNet if true, the control net is plotted as well
+template<class T>
+void gsWriteParaview(const gsPolyField<T> & fields, std::string const & fn,
+                     unsigned npts=NS, bool mesh = false, unsigned nptsMesh = 8);
 
 } // namespace gismo
 
