@@ -21,6 +21,7 @@
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsGeometrySlice.h>
 #include <gsCore/gsField.h>
+#include <gsCore/gsPolyField.h>
 #include <gsCore/gsDebug.h>
 
 #include <gsModeling/gsTrimSurface.h>
@@ -1658,6 +1659,144 @@ void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
     file << "</VTKFile>\n";
     file.close();
 
+}
+
+template<class T>
+void gsWriteParaview(const gsPolyField<T> & fields, std::string const & fn,
+                     unsigned npts, bool mesh, unsigned nptsMesh)
+{
+    gsParaviewCollection collection(fn);
+    gsParaviewCollection collectionMesh(fn + "_mesh");
+    std::string fileName = fn.substr(fn.find_last_of("/\\")+1);
+
+    for (int p = 0; p < fields.nPatches(); ++p)
+    {
+        //==== Can be moved to a separate funtion *gsWriteSinglePatchPolyField* ===//
+
+        const gsGeometry<> & geometry = fields.patch(p);
+        const unsigned d = geometry.domainDim();
+        GISMO_ASSERT(d <= 3, "Data has parametric dimension " + util::to_string(d) +
+                             ". Can't plot.\n");
+        const unsigned n = geometry.targetDim();
+        GISMO_ASSERT(n <= 3, "Data has dimension " + util::to_string(n) +
+                             ". Can't plot.\n");
+
+        gsVector<> a = geometry.support().col(0);
+        gsVector<> b = geometry.support().col(1);
+
+        gsVector<unsigned> np = uniformSampleCount(a,b,npts);
+        gsMatrix<> pts = gsPointGrid(a,b,np);
+
+        gsMatrix<> eval_geo;
+        geometry.eval_into(pts,eval_geo);
+        std::map<std::string, gsMatrix<> > data;
+        for (int i = 0; i < fields.nFields(); ++i)
+        {
+            fields.isParametric(i) ? fields.igaFunction(p,i).eval_into(pts,data[fields.name(i)])
+                                   : fields.function(p,i).eval_into(eval_geo,data[fields.name(i)]);
+
+            if (data[fields.name(i)].rows() == 2)
+            {
+                data[fields.name(i)].conservativeResize(3,eval_geo.cols() );
+                data[fields.name(i)].row(2).setZero();
+            }
+        }
+
+        if ( 3 - d > 0)
+        {
+            np.conservativeResize(3);
+            np.bottomRows(3-d).setOnes();
+        }
+        if ( 3 - n > 0 )
+        {
+            eval_geo.conservativeResize(3,eval_geo.cols() );
+            eval_geo.bottomRows(3-n).setZero();
+        }
+
+        gsWriteParaviewTPgrid(eval_geo, data, np.template cast<index_t>(), fn + util::to_string(p));
+
+        //=========================================================================//
+
+        collection.addPart(fileName + util::to_string(p),".vts");
+
+        if (mesh)
+        {
+            // if none of the fields is a BSpline function use basis of the geometry to plot mesh (may be coarse)
+            int index = -1;
+            for (int i = 0; i < fields.nFields(); ++i)
+                if (fields.isParametrized(i))
+                    index = i;
+            const gsBasis<T> & basis = (index == -1) ? fields.patch(p).basis()
+                                                     : fields.igaFunction(p,index).basis();
+            writeSingleCompMesh(basis,fields.patch(p),fn + util::to_string(p) + "_mesh",nptsMesh);
+            collectionMesh.addPart(fileName + util::to_string(p) + "_mesh",".vtp");
+        }
+    }
+
+    collection.save();
+    if (mesh)
+        collectionMesh.save();
+}
+
+template<class T>
+void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
+                           std::map<std::string, gsMatrix<T> > const& data,
+                           const gsVector<index_t> & np,
+                           std::string const & fn)
+{
+    const int n = points.rows();
+
+    std::string mfn(fn);
+    mfn.append(".vts");
+    std::ofstream file(mfn.c_str());
+    file << std::fixed; // no exponents
+    file << std::setprecision (PLOT_PRECISION);
+
+    file <<"<?xml version=\"1.0\"?>\n";
+    file <<"<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
+    file <<"<StructuredGrid WholeExtent=\"0 "<< np(0)-1<<" 0 "<<np(1)-1<<" 0 "
+         << (np.size()>2 ? np(2)-1 : 0) <<"\">\n";
+    file <<"<Piece Extent=\"0 "<< np(0)-1<<" 0 "<<np(1)-1<<" 0 "
+         << (np.size()>2 ? np(2)-1 : 0) <<"\">\n";
+
+    file <<"<PointData>\n";
+    for (auto it = data.begin(); it != data.end(); ++it)
+    {
+        file << "<DataArray type=\"Float32\" Name=\"" << it->first << "\" format=\"ascii\" NumberOfComponents=\""
+             << ( it->second.rows()==1 ? 1 : 3) <<"\">\n";
+        if ( it->second.rows()==1 )
+            for ( index_t j=0; j<it->second.cols(); ++j)
+                file<< it->second.at(j) <<" ";
+        else
+        {
+            for ( index_t j=0; j<it->second.cols(); ++j)
+            {
+                for ( index_t i=0; i!=it->second.rows(); ++i)
+                    file<< it->second(i,j) <<" ";
+                for ( index_t i=it->second.rows(); i<3; ++i)
+                    file<<"0 ";
+            }
+        }
+        file <<"</DataArray>\n";
+    }
+
+    file <<"</PointData>\n";
+    file <<"<Points>\n";
+    file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\">\n";
+    for ( index_t j=0; j<points.cols(); ++j)
+    {
+        for ( index_t i=0; i!=n; ++i)
+            file<< points(i,j) <<" ";
+        for ( index_t i=n; i<3; ++i)
+            file<<"0 ";
+    }
+    file <<"</DataArray>\n";
+    file <<"</Points>\n";
+    file <<"</Piece>\n";
+    file <<"</StructuredGrid>\n";
+    file <<"</VTKFile>\n";
+
+    file.close();
 }
 
 } // namespace gismo
