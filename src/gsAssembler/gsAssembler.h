@@ -454,9 +454,8 @@ public: /* Element visitors */
     {
         for (index_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
         {
-            ElementVisitor curVisitor = visitor;
             //Assemble (fill m_matrix and m_rhs) on patch np
-            apply(curVisitor, np);
+            apply(visitor, np);
         }
     }
 
