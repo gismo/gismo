@@ -72,13 +72,14 @@ public:
     }
 
     /// \brief Number of patches in the geometry
-    index_t nPatches() const { return m_patches->nPieces(); }
+    size_t nPatches() const { return m_patches->nPieces(); }
+
 
     /// \brief Number of fields in the container
-    index_t nFields() const { return m_fields.size(); }
+    size_t nFields() const { return m_fields.size(); }
 
     /// \brief Returns the geometry patch number \a p.
-    const gsGeometry<T> & patch(index_t p) const
+    const gsGeometry<T> & patch(size_t p) const
     {
         GISMO_ASSERT(p >= 0 && p < nPatches(),
                      "Invalid patch index " + util::to_string(p) +
@@ -87,7 +88,7 @@ public:
     }
 
     /// \brief Returns the function corresponding to the geometry patch \a p from the field \a i.
-    const gsFunction<T> & function(index_t p, index_t i) const
+    const gsFunction<T> & function(size_t p, size_t i) const
     {
         GISMO_ASSERT(p >= 0 && p < nPatches(),
                      "Invalid patch index " + util::to_string(p) +
@@ -98,7 +99,7 @@ public:
         return static_cast<const gsFunction<T> &>(m_fields[i]->piece(p));
     }
 
-    const gsGeometry<T> & igaFunction(index_t p, index_t i) const
+    const gsGeometry<T> & igaFunction(size_t p, size_t i) const
     {
         GISMO_ASSERT(p >= 0 && p < nPatches(),
                      "Invalid patch index " + util::to_string(p) +
@@ -111,7 +112,7 @@ public:
     }
 
     /// \brief Returns the name of the field number \a i.
-    const std::string & name(index_t i) const
+    const std::string & name(size_t i) const
     {
         GISMO_ASSERT(i >= 0 && i < nFields(),
                      "Invalid field index " + util::to_string(i) +
@@ -120,7 +121,7 @@ public:
     }
 
     /// \brief Returns true if the field number \a i is parametric.
-    bool isParametric(index_t i) const
+    bool isParametric(size_t i) const
     {
         GISMO_ASSERT(i >= 0 && i < nFields(),
                      "Invalid field index " + util::to_string(i) +
@@ -129,7 +130,7 @@ public:
     }
 
     /// \brief Returns true if the field number \a i is a BSpline function.
-    bool isParametrized(index_t i) const // bad function.
+    bool isParametrized(size_t i) const // bad function.
     {
         GISMO_ASSERT(i >= 0 && i < nFields(),
                      "Invalid field index " + util::to_string(i) +
@@ -138,7 +139,7 @@ public:
     }
 
     /// \brief Returns the function corresponding to the geometry patch \a p from the field named \a name.
-    const gsFunction<T> & function(index_t p, const std::string & name) const
+    const gsFunction<T> & function(size_t p, const std::string & name) const
     {
         GISMO_ASSERT(p >= 0 && p < nPatches(),
                      "Invalid patch index " + util::to_string(p) +
@@ -149,7 +150,7 @@ public:
     }
 
     /// \brief Returns the function corresponding to the geometry patch \a p from the field named \a name.
-    const gsGeometry<T> & igaFunction(index_t p, const std::string & name) const
+    const gsGeometry<T> & igaFunction(size_t p, const std::string & name) const
     {
         GISMO_ASSERT(p >= 0 && p < nPatches(),
                      "Invalid patch index " + util::to_string(p) +

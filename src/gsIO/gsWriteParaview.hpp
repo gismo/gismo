@@ -1669,7 +1669,7 @@ void gsWriteParaview(const gsPolyField<T> & fields, std::string const & fn,
     gsParaviewCollection collectionMesh(fn + "_mesh");
     std::string fileName = fn.substr(fn.find_last_of("/\\")+1);
 
-    for (int p = 0; p < fields.nPatches(); ++p)
+    for (size_t p = 0; p < fields.nPatches(); ++p)
     {
         //==== Can be moved to a separate funtion *gsWriteSinglePatchPolyField* ===//
 
@@ -1690,7 +1690,7 @@ void gsWriteParaview(const gsPolyField<T> & fields, std::string const & fn,
         gsMatrix<> eval_geo;
         geometry.eval_into(pts,eval_geo);
         std::map<std::string, gsMatrix<> > data;
-        for (int i = 0; i < fields.nFields(); ++i)
+        for (size_t i = 0; i < fields.nFields(); ++i)
         {
             fields.isParametric(i) ? fields.igaFunction(p,i).eval_into(pts,data[fields.name(i)])
                                    : fields.function(p,i).eval_into(eval_geo,data[fields.name(i)]);
@@ -1723,7 +1723,7 @@ void gsWriteParaview(const gsPolyField<T> & fields, std::string const & fn,
         {
             // if none of the fields is a BSpline function use basis of the geometry to plot mesh (may be coarse)
             int index = -1;
-            for (int i = 0; i < fields.nFields(); ++i)
+            for (size_t i = 0; i < fields.nFields(); ++i)
                 if (fields.isParametrized(i))
                     index = i;
             const gsBasis<T> & basis = (index == -1) ? fields.patch(p).basis()
