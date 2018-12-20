@@ -1760,7 +1760,7 @@ void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
          << (np.size()>2 ? np(2)-1 : 0) <<"\">\n";
 
     file <<"<PointData>\n";
-    for (auto it = data.begin(); it != data.end(); ++it)
+    for (typename std::map<std::string, gsMatrix<T> >::const_iterator it = data.begin(); it != data.end(); ++it)
     {
         file << "<DataArray type=\"Float32\" Name=\"" << it->first << "\" format=\"ascii\" NumberOfComponents=\""
              << ( it->second.rows()==1 ? 1 : 3) <<"\">\n";

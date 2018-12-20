@@ -143,7 +143,7 @@ public:
         GISMO_ASSERT(p >= 0 && p < nPatches(),
                      "Invalid patch index " + util::to_string(p) +
                      ". Number of patches is " + util::to_string(nPatches()) +".\n");
-        auto it = std::find(m_names.begin(),m_names.end(),name);
+        std::vector<std::string>::const_iterator it = std::find(m_names.begin(),m_names.end(),name);
         GISMO_ASSERT(it != m_names.end(), "Invalid field name *" + name + "*.\n");
         return function(p,it - m_names.begin());
     }
@@ -154,7 +154,7 @@ public:
         GISMO_ASSERT(p >= 0 && p < nPatches(),
                      "Invalid patch index " + util::to_string(p) +
                      ". Number of patches is " + util::to_string(nPatches()) +".\n");
-        auto it = std::find(m_names.begin(),m_names.end(),name);
+        std::vector<std::string>::const_iterator it = std::find(m_names.begin(),m_names.end(),name);
         GISMO_ASSERT(it != m_names.end(), "Invalid field name *" + name + "*.\n");
         return igaFunction(p,it - m_names.begin());
     }
@@ -162,7 +162,7 @@ public:
     /// \brief Returns true if the field named \a name is parametric.
     bool isParametric(const std::string & name) const
     {
-        auto it = std::find(m_names.begin(),m_names.end(),name);
+        std::vector<std::string>::const_iterator it = std::find(m_names.begin(),m_names.end(),name);
         GISMO_ASSERT(it != m_names.end(), "Invalid field name *" + name + "*.\n");
         return isParametric(it - m_names.begin());
     }
