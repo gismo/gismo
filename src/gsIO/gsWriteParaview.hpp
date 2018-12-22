@@ -1669,7 +1669,7 @@ void gsWriteParaview(const gsPolyField<T> & fields, std::string const & fn,
     gsParaviewCollection collectionMesh(fn + "_mesh");
     std::string fileName = fn.substr(fn.find_last_of("/\\")+1);
 
-    for (size_t p = 0; p < fields.nPatches(); ++p)
+    for (index_t p = 0; p < fields.nPatches(); ++p)
     {
         //==== Can be moved to a separate funtion *gsWriteSinglePatchPolyField* ===//
 

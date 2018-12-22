@@ -72,14 +72,13 @@ public:
     }
 
     /// \brief Number of patches in the geometry
-    size_t nPatches() const { return m_patches->nPieces(); }
-
+    index_t nPatches() const { return m_patches->nPieces(); }
 
     /// \brief Number of fields in the container
     size_t nFields() const { return m_fields.size(); }
 
     /// \brief Returns the geometry patch number \a p.
-    const gsGeometry<T> & patch(size_t p) const
+    const gsGeometry<T> & patch(index_t p) const
     {
         GISMO_ASSERT(p >= 0 && p < nPatches(),
                      "Invalid patch index " + util::to_string(p) +
@@ -88,7 +87,7 @@ public:
     }
 
     /// \brief Returns the function corresponding to the geometry patch \a p from the field \a i.
-    const gsFunction<T> & function(size_t p, size_t i) const
+    const gsFunction<T> & function(index_t p, size_t i) const
     {
         GISMO_ASSERT(p >= 0 && p < nPatches(),
                      "Invalid patch index " + util::to_string(p) +
@@ -99,7 +98,7 @@ public:
         return static_cast<const gsFunction<T> &>(m_fields[i]->piece(p));
     }
 
-    const gsGeometry<T> & igaFunction(size_t p, size_t i) const
+    const gsGeometry<T> & igaFunction(index_t p, size_t i) const
     {
         GISMO_ASSERT(p >= 0 && p < nPatches(),
                      "Invalid patch index " + util::to_string(p) +
@@ -139,7 +138,7 @@ public:
     }
 
     /// \brief Returns the function corresponding to the geometry patch \a p from the field named \a name.
-    const gsFunction<T> & function(size_t p, const std::string & name) const
+    const gsFunction<T> & function(index_t p, const std::string & name) const
     {
         GISMO_ASSERT(p >= 0 && p < nPatches(),
                      "Invalid patch index " + util::to_string(p) +
@@ -150,7 +149,7 @@ public:
     }
 
     /// \brief Returns the function corresponding to the geometry patch \a p from the field named \a name.
-    const gsGeometry<T> & igaFunction(size_t p, const std::string & name) const
+    const gsGeometry<T> & igaFunction(index_t p, const std::string & name) const
     {
         GISMO_ASSERT(p >= 0 && p < nPatches(),
                      "Invalid patch index " + util::to_string(p) +
