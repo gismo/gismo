@@ -450,7 +450,7 @@ public: /* Element visitors */
     /// @brief Iterates over all elements of the domain and applies
     /// the \a ElementVisitor
     template<class ElementVisitor>
-    void push(const ElementVisitor & visitor)
+    void push(ElementVisitor & visitor)
     {
         for (index_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
         {
