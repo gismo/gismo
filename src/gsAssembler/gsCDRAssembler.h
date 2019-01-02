@@ -44,17 +44,18 @@ class gsCDRAssembler : public gsPoissonAssembler<T>
 {
 public:
     typedef gsPoissonAssembler<T> Base;
+    typedef typename gsVisitorCDR<T>::stabilizationMethod stabMeth;
 
 public:
 
     /** @brief Main Constructor of the assembler object.
         \param[in] pde A boundary value Poisson problem
         \param[in] bases a multi-basis that contains patch-wise bases
-        \param[in] flagStabilization (default 0): 0 -> no stabilization, 1 -> SUPG
+        \param[in] flagStabilization (default noStabilization)
     */
     gsCDRAssembler(const gsConvDiffRePde<T> & pde,
-                   const gsMultiBasis<T> & bases,
-                   index_t flagStabilization = 0)
+                   const gsMultiBasis<T>    & bases,
+                   stabMeth                   flagStabilization = stabMeth::noStabilization)
     {
         // enrich options in constructor, refresh to apply options
 
@@ -69,13 +70,13 @@ public:
         \param[in] bases a multi-basis that contains patch-wise bases
         \param[in] dirStrategy option for the treatment of Dirichlet boundary
         \param[in] intStrategy option for the treatment of patch interfaces
-        \param[in] flagStabilization (default: 0): 0 -> no stabilization, 1 -> SUPG
+        \param[in] flagStabilization (default noStabilization)
     */
     gsCDRAssembler(const gsConvDiffRePde<T> & pde,
-                   const gsMultiBasis<T> & bases,
-                   dirichlet::strategy dirStrategy,
-                   iFace::strategy intStrategy = iFace::glue,
-                   index_t flagStabilization = 0)
+                   const gsMultiBasis<T>    & bases,
+                   dirichlet::strategy        dirStrategy,
+                   iFace::strategy            intStrategy = iFace::glue,
+                   stabMeth                   flagStabilization = stabMeth::noStabilization)
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
@@ -97,18 +98,18 @@ public:
         \param[in] coeff_c reaction coefficient.
         \param[in] dirStrategy option for the treatment of Dirichlet boundary
         \param[in] intStrategy option for the treatment of patch interfaces
-        \param[in] flagStabilization (default: 0): 0 -> no stabilization, 1 -> SUPG
+        \param[in] flagStabilization (default noStabilization)
      */
-    gsCDRAssembler(gsMultiPatch<T> const & patches,
-                   gsMultiBasis<T> const & bases,
+    gsCDRAssembler(gsMultiPatch<T> const         & patches,
+                   gsMultiBasis<T> const         & bases,
                    gsBoundaryConditions<T> const & bconditions,
-                   const gsFunction<T> & rhs,
-                   const gsFunction<T> & coeff_A,
-                   const gsFunction<T> & coeff_b,
-                   const gsFunction<T> & coeff_c,
-                   dirichlet::strategy dirStrategy = dirichlet::elimination,
-                   iFace::strategy intStrategy = iFace::glue,
-                   index_t flagStabilization = 0)
+                   const gsFunction<T>           & rhs,
+                   const gsFunction<T>           & coeff_A,
+                   const gsFunction<T>           & coeff_b,
+                   const gsFunction<T>           & coeff_c,
+                   dirichlet::strategy             dirStrategy = dirichlet::elimination,
+                   iFace::strategy                 intStrategy = iFace::glue,
+                   stabMeth                        flagStabilization = stabMeth::noStabilization)
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
