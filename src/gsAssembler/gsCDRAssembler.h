@@ -44,7 +44,6 @@ class gsCDRAssembler : public gsPoissonAssembler<T>
 {
 public:
     typedef gsPoissonAssembler<T> Base;
-    typedef typename gsVisitorCDR<T>::stabilizationMethod stabMeth;
 
 public:
 
@@ -55,7 +54,7 @@ public:
     */
     gsCDRAssembler(const gsConvDiffRePde<T> & pde,
                    const gsMultiBasis<T>    & bases,
-                   stabMeth                   flagStabilization = stabMeth::noStabilization)
+                   stabilizerCDR::method      flagStabilization = stabilizerCDR::none)
     {
         // enrich options in constructor, refresh to apply options
 
@@ -76,7 +75,7 @@ public:
                    const gsMultiBasis<T>    & bases,
                    dirichlet::strategy        dirStrategy,
                    iFace::strategy            intStrategy = iFace::glue,
-                   stabMeth                   flagStabilization = stabMeth::noStabilization)
+                   stabilizerCDR::method      flagStabilization = stabilizerCDR::none)
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
@@ -109,7 +108,7 @@ public:
                    const gsFunction<T>           & coeff_c,
                    dirichlet::strategy             dirStrategy = dirichlet::elimination,
                    iFace::strategy                 intStrategy = iFace::glue,
-                   stabMeth                        flagStabilization = stabMeth::noStabilization)
+                   stabilizerCDR::method           flagStabilization = stabilizerCDR::none)
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
