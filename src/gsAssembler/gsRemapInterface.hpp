@@ -171,7 +171,8 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiB
                 break;
         }
         //gsInfo << "parameterRange: \n" << mp[bi.second().patch].parameterRange() << "\n";
-        //gsInfo << "parameter bound: \n" << m_parameterbounds.second << "\n";
+        //gsInfo << "parameter bound one : \n" << m_parameterbounds.first << "\n";
+        //gsInfo << "parameter bound two: \n" << m_parameterbounds.second << "\n";
         //gsInfo << "side: \n" << m_side2.index() << "\n";
 
     }
