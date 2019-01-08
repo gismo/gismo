@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
     std::string smoother("GaussSeidel");
     real_t damping = -1;
     real_t scaling = 0.12;
+    std::string solver("cg");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
     bool plot = false;
@@ -51,8 +52,9 @@ int main(int argc, char *argv[])
     cmd.addString("s", "MG.Smoother",           "Smoothing method", smoother);
     cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother", damping);
     cmd.addReal  ("",  "MG.Scaling",            "Scaling factor for the subspace corrected mass smoother", scaling);
-    cmd.addReal  ("t", "CG.Tolerance",          "Stopping criterion for cg", tolerance);
-    cmd.addInt   ("",  "CG.MaxIterations",      "Stopping criterion for cg", maxIterations);
+    cmd.addString("",  "Solver",                "Solver: apply multigrid directly (Direct) or as a preconditioner for conjugate gradient (CG)", solver);
+    cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
+    cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundary_conditions);
     cmd.addSwitch("",  "Plot",                  "Plot the result with Paraview", plot);
 
@@ -207,7 +209,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            gsInfo << "The chosen smoother is unknown.\n\nKnown are:\n  Richardson (r)\n  Jacobi (j)\n  GaussSeidel (gs)"
+            gsInfo << "\n\nThe chosen smoother is unknown.\n\nKnown are:\n  Richardson (r)\n  Jacobi (j)\n  GaussSeidel (gs)"
                       "\n  SubspaceCorrectedMassSmoother (scms)\n  Hybrid (hyb)\n\n";
             return EXIT_FAILURE;
         }
@@ -224,9 +226,19 @@ int main(int argc, char *argv[])
     gsMatrix<> x, errorHistory;
     x.setRandom( assembler.matrix().rows(), 1 );
 
-    gsConjugateGradient<>( assembler.matrix(), mg )
-        .setOptions( opt.getGroup("CG") )
-        .solveDetailed( assembler.rhs(), x, errorHistory );
+    if (solver=="cg")
+        gsConjugateGradient<>( assembler.matrix(), mg )
+            .setOptions( opt.getGroup("Solver") )
+            .solveDetailed( assembler.rhs(), x, errorHistory );
+    else if (solver=="direct")
+        gsGradientMethod<>( assembler.matrix(), mg )
+            .setOptions( opt.getGroup("Solver") )
+            .solveDetailed( assembler.rhs(), x, errorHistory );
+    else
+    {
+        gsInfo << "\n\nThe chosen solver is unknown.\n\nKnown are:\n  conjugate gradient (cg)\n  direct (direct)\n\n";
+        return EXIT_FAILURE;
+    }
 
     gsInfo << "done.\n\n";
 
