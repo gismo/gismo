@@ -22,10 +22,10 @@ void refineMode(int rf, int lvl, unsigned meshSize,
 
 int main(int argc, char *argv[])
 {
-    int refLevels = 5;
-    int refmode   = 0;
-    int numknots  = 3;
-    int degree    = 2;
+    index_t refLevels = 5;
+    index_t refmode   = 0;
+    index_t numknots  = 3;
+    index_t degree    = 2;
     bool plot     = false;
 
     gsCmdLine cmd("Create standard refined TH>B meshes.");

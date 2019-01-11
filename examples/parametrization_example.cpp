@@ -18,11 +18,11 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     bool paraview = false;
-    int parametrizationMethod(1); // 1:shape, 2:uniform, 3:distance
+    index_t parametrizationMethod(1); // 1:shape, 2:uniform, 3:distance
     // shape: best method, shape of the mesh is preserved, smooth surface fitting
     // uniform: the lambdas according to Floater's algorithm are set to 1/d, where d is the number of neighbours
     // distance: the lambdas according to Floater's algorithm are set to the relative distances between the point and its neighbours
-    int boundaryMethod(4); // 1:chords, 2:corners, 3:smallest, 4:restrict, 5:opposite, 6:distributed
+    index_t boundaryMethod(4); // 1:chords, 2:corners, 3:smallest, 4:restrict, 5:opposite, 6:distributed
     //chords: choose boundary points distributed on the unit square boundary wrt the chord lengths, no input needed
     //corners: choose 4 boundary corners for the corner points of the unit square and the rest of the boundary corners is distributed on the four edges of the unit square wrt the chord lengths, input is the corner numbers, e.g. 1,2,3,4 for the first, second, third and fourth boundary point
     //smallest: choose 4 boundary corners as the vertices with the smallest inner angles, no input needed
@@ -32,8 +32,8 @@ int main(int argc, char *argv[])
     std::string filenameIn("stl/norm.stl");
     std::string filenameOut("flatMesh");
     real_t range = 0.1; // in case of restrict or opposite
-    int number = 4; // number of corners, in case of distributed
-    std::vector<int> corners; // in case of corners
+    index_t number = 4; // number of corners, in case of distributed
+    std::vector<index_t> corners; // in case of corners
 
     gsCmdLine cmd("parametrization_example Command line");
     cmd.addInt("m", "parametrizationMethod", "parametrization methods: {1: shape, 2: uniform, 3: distance}\n"
