@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
     std::string geometry("domain2d/yeti_mp2.xml");
     index_t refinements = 3;
     index_t degree = 2;
+    bool nonMatching = false;
     bool dg = false;
     index_t levels = -1;
     index_t cycles = 1;
@@ -33,7 +34,7 @@ int main(int argc, char *argv[])
     std::string smoother("GaussSeidel");
     real_t damping = -1;
     real_t scaling = 0.12;
-    std::string solver("cg");
+    std::string iterativeSolver("cg");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
     bool plot = false;
@@ -43,6 +44,7 @@ int main(int argc, char *argv[])
     cmd.addString("g", "Geometry",              "Geometry file", geometry);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
+    cmd.addSwitch("",  "NonMatching",           "Set up a non-matching multi-patch discretization", nonMatching);
     cmd.addSwitch("",  "DG",                    "Use a discontinuous Galerkin discretization", dg);
     cmd.addInt   ("l", "MG.Levels",             "Number of levels to use for multigrid iteration", levels);
     cmd.addInt   ("c", "MG.Cycles",             "Number of multi-grid cycles", cycles);
@@ -52,7 +54,7 @@ int main(int argc, char *argv[])
     cmd.addString("s", "MG.Smoother",           "Smoothing method", smoother);
     cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother", damping);
     cmd.addReal  ("",  "MG.Scaling",            "Scaling factor for the subspace corrected mass smoother", scaling);
-    cmd.addString("",  "Solver",                "Solver: apply multigrid directly (Direct) or as a preconditioner for conjugate gradient (CG)", solver);
+    cmd.addString("i", "IterativeSolver",       "Iterative solver: apply multigrid directly (d) or as a preconditioner for conjugate gradient (cg)", iterativeSolver);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundary_conditions);
@@ -150,6 +152,28 @@ int main(int argc, char *argv[])
 
     gsInfo << "done.\n";
 
+    if (nonMatching)
+    {
+        gsInfo << "Option NonMatching: Make uniform refinement for every third patch... " << std::flush;
+        for (size_t i = 0; i < mb.nBases(); ++i)
+            if ( i%3 == 0 )
+                mb[i].uniformRefine();
+        gsInfo << "done.\n";
+
+        gsInfo << "Option NonMatching: Increase spline degree for every other third patch... " << std::flush;
+        for (size_t i = 0; i < mb.nBases(); ++i)
+            if ( i%3 == 1 )
+                mb[i].setDegreePreservingMultiplicity(degree+1);
+        gsInfo << "done.\n";
+
+        if (!dg)
+        {
+            gsInfo << "\nThe option --NonMatching does not allow a conforming discretization. Thus, option --DG is required.\n";
+            return EXIT_FAILURE;
+        }
+
+    }
+
     /********* Setup assembler and assemble matrix **********/
 
     gsInfo << "Setup assembler and assemble matrix... " << std::flush;
@@ -226,17 +250,17 @@ int main(int argc, char *argv[])
     gsMatrix<> x, errorHistory;
     x.setRandom( assembler.matrix().rows(), 1 );
 
-    if (solver=="cg")
+    if (iterativeSolver=="cg")
         gsConjugateGradient<>( assembler.matrix(), mg )
             .setOptions( opt.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
-    else if (solver=="direct")
+    else if (iterativeSolver=="direct")
         gsGradientMethod<>( assembler.matrix(), mg )
             .setOptions( opt.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
     else
     {
-        gsInfo << "\n\nThe chosen solver is unknown.\n\nKnown are:\n  conjugate gradient (cg)\n  direct (direct)\n\n";
+        gsInfo << "\n\nThe chosen iterative solver is unknown.\n\nKnown are:\n  conjugate gradient (cg)\n  direct (d)\n\n";
         return EXIT_FAILURE;
     }
 
@@ -247,9 +271,9 @@ int main(int argc, char *argv[])
     const index_t iter = errorHistory.rows()-1;
     const bool success = errorHistory(iter,0) < tolerance;
     if (success)
-        gsInfo << "Reached desired tolerance after " << iter << " iterates:\n";
+        gsInfo << "Reached desired tolerance after " << iter << " iterations:\n";
     else
-        gsInfo << "Did not reach desired tolerance after " << iter << " iterates:\n";
+        gsInfo << "Did not reach desired tolerance after " << iter << " iterations:\n";
 
     if (errorHistory.rows() < 20)
         gsInfo << errorHistory.transpose() << "\n\n";
