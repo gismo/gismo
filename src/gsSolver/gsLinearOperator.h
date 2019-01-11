@@ -74,7 +74,7 @@ public:
 ///
 /// \ingroup Solver
 template<class T>
-class gsScaledOp : public gsLinearOperator<T>
+class gsScaledOp GISMO_FINAL : public gsLinearOperator<T>
 {
 public:
     /// Shared pointer for gsScaledOp
@@ -115,7 +115,7 @@ private:
 ///
 /// \ingroup Solver
 template<class T>
-class gsIdentityOp : public gsLinearOperator<T>
+class gsIdentityOp GISMO_FINAL : public gsLinearOperator<T>
 {
 public:
 

@@ -19,14 +19,14 @@ int main(int argc, char *argv[])
 {
     // Options with default values
     bool save     = false;
-    int numURef   = 3;
-    int iter      = 2;
-    int deg_x     = 2;
-    int deg_y     = 2;
+    index_t numURef   = 3;
+    index_t iter      = 2;
+    index_t deg_x     = 2;
+    index_t deg_y     = 2;
     real_t lambda = 1e-07;
     real_t threshold = 1e-02;
     real_t tolerance = 1e-02;
-    int extension = 2;
+    index_t extension = 2;
     real_t refPercent = 0.1;
     std::string fn = "fitting/deepdrawingC.xml";
 
@@ -162,4 +162,3 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-

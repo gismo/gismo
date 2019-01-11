@@ -8,11 +8,11 @@
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
-#pragma once 
+#pragma once
 
 #include <gsCore/gsConstantFunction.h>
 
@@ -65,10 +65,10 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     cbases.push_back(new gsBSplineBasis<T>(give(KV2)) );
     Basis * tbasis = Basis::New(cbases); //d==2
 
-    
+
     GISMO_ASSERT( (corner.rows()==4) && (corner.cols()==3),
                   "gsTensorBSpline: Please make sure that the size of *corner* is 4-by-3");
-    
+
     gsMatrix<T> pcp (n1*n2, 3);
     // set up CPs on boundary first. The inner CPs on each boundary curve are
     // uniformly linear dependent on the two corner CPs
@@ -182,7 +182,7 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
 
 template<unsigned d, class T>
 void gsTensorBSpline<d,T>::reverse(unsigned k)
-{ 
+{
     gsTensorBSplineBasis<d,T> & tbsbasis = this->basis();
     gsVector<index_t,d> sz;
     tbsbasis.size_cwise(sz);
@@ -214,12 +214,12 @@ bool gsTensorBSpline<d,T>::isPatchCorner(gsMatrix<T> const &v, T tol) const
             return true;
     }
     while ( nextCubeVertex(curr, vupp) );
-    
+
     return false;
 }
 
 template<unsigned d, class T>
-void gsTensorBSpline<d,T>::findCorner(const gsMatrix<T> & v, 
+void gsTensorBSpline<d,T>::findCorner(const gsMatrix<T> & v,
                                       gsVector<index_t,d> & curr,
                                       T tol)
 {
@@ -278,15 +278,15 @@ void gsTensorBSpline<d,T>::degreeElevate(int const i, int const dir)
             degreeElevate(i, j);
         return;
     }
-    
+
     GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
                   "Invalid basis component "<< dir <<" requested for degree elevation" );
 
     const index_t n = this->m_coefs.cols();
-    
+
     gsVector<index_t,d> sz;
     this->basis().size_cwise(sz);
-    
+
     swapTensorDirection(0, dir, sz, this->m_coefs);
     this->m_coefs.resize( sz[0], n * sz.template tail<d-1>().prod() );
 
@@ -358,7 +358,7 @@ typename gsGeometry<T>::uPtr gsTensorBSpline<d,T>::localRep(const gsMatrix<T> & 
 
 template<unsigned d, class T>
 std::ostream & gsTensorBSpline<d,T>::print(std::ostream &os) const
-{ 
+{
     os << "Tensor BSpline geometry "<< "R^"<< d <<
         " --> R^"<< this->geoDim()
        << ", #control pnts= "<< this->coefsSize();
@@ -460,9 +460,9 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
 
     gsMatrix<T> & coefs = copy.coefs();
     const index_t tDim  = coefs.cols();
-    
+
     //some more constants
-    gsVector<int,d> sizes;                    // number of coefs in each dir
+    gsVector<index_t,d> sizes;                    // number of coefs in each dir
     base.size_cwise(sizes);
     const index_t sz = sizes.prod();          // total number of coefs
 
@@ -539,7 +539,7 @@ public:
     {
         return getGeometryFromXml< gsTensorBSpline<d,T> >( node );
     }
-    
+
     static gsXmlNode * put (const gsTensorBSpline<d,T> & obj,
                             gsXmlTree & data)
     {

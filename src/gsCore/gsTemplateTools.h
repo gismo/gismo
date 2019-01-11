@@ -143,6 +143,13 @@ template<typename T> struct remove_pointer<T*> {typedef typename remove_pointer<
 
 /// \brief Type trait is_complex<T> checks if type T is of type
 /// std::complex<...>
+template <class T> struct is_complex : public false_type {};
+template <class T> struct is_complex<const T > : public is_complex<T>{};
+template <class T> struct is_complex<volatile const T > : public is_complex<T>{};
+template <class T> struct is_complex<volatile T > : public is_complex<T>{};
+template <class T> struct is_complex<std::complex<T> > : public true_type{};
+
+/*
 template<typename T>
 struct is_complex : integral_constant<bool,
                     is_same<T,std::complex<short int    > >::value ||
@@ -175,7 +182,7 @@ struct is_complex : integral_constant<bool,
 #endif
                     is_same<T,std::complex<real_t> >::value
                     > {};
-
+*/
 } // end namespace util
 
 } // end namespace gismo
