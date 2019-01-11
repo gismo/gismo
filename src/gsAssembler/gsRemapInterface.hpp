@@ -518,7 +518,7 @@ void gsRemapInterface<T>::constructReparam()
             upper(0) = lastKnot;
 
 
-            gsInfo << "lower:\n" << firstKnot << "\n upper:\n" << lastKnot << std::endl;
+            //gsInfo << "lower:\n" << firstKnot << "\n upper:\n" << lastKnot << std::endl;
 
             //t_vals.row(np) = uniformPointGrid(lower, upper, numIntervals); // uniformly distributed samples between the overlapping part of the interface
             t_vals.row(np) = gsPointGrid(lower, upper, numPoints);
