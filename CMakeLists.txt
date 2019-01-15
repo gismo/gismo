@@ -306,14 +306,6 @@ if(GISMO_BUILD_LIB)
   endif()
 endif()
 
-if(GISMO_ELASTICITY)
-  gismo_fetch_module(gsElasticity)
-endif()
-
-if(GISMO_EXASTENCILS)
-  gismo_fetch_module(gsExaStencils)
-endif()
-
 include(gsLibrary)
 
 ## #################################################################
@@ -381,12 +373,24 @@ if (NOT gismo_optionals STREQUAL "")
   message(STATUS "Optional compile list: ${gismo_optionals}")
 endif()
 
+## #################################################################
+## Submodules
+## #################################################################
+
 if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
   gismo_fetch_module(unsupported)
 endif()
 
 if(GISMO_MOTOR)
   gismo_fetch_module(motor)
+endif()
+
+if(GISMO_ELASTICITY)
+  gismo_fetch_module(gsElasticity)
+endif()
+
+if(GISMO_EXASTENCILS)
+  gismo_fetch_module(gsExaStencils)
 endif()
 
 unset(GISMO_UNAME CACHE)
