@@ -181,11 +181,13 @@ gsMatrix<unsigned> gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
     return res;
 }
 
+/// @cond
 template <class T>
 gsConstantBasis<T> * gsTensorBSplineBasis<1,T>::boundaryBasis_impl(boxSide const &) const
 {
     return new gsConstantBasis<T>(1.0);
 }
+/// @endcond
 
 template <class T>
 gsMatrix<T> gsTensorBSplineBasis<1,T>::support() const

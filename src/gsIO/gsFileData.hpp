@@ -979,7 +979,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
             gsXmlNode* c = internal::makeNode("weights", weights, *data, true);
             rtb->append_node(c);
 
-            c = internal::makeNode("coefs", coefs, *data, true);
+            c = internal::makeNode("coefs", coefs, *data, false);
             c->append_attribute( internal::makeAttribute("geoDim", N, *data ) );
             g->append_node(c);
         }

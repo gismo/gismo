@@ -166,6 +166,10 @@ public:
         setIsPeriodic();
     }
 
+#ifdef __DOXYGEN__
+    /// \brief Returns the boundary basis for side s.
+    typename gsBSplineTraits<d-1,T>::Basis::uPtr boundaryBasis(boxSide const & s);
+#endif
     GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
     {
         std::vector<gsBasis<T>*> rr;

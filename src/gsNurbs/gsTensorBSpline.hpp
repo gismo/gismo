@@ -8,11 +8,11 @@
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
-#pragma once 
+#pragma once
 
 #include <gsCore/gsConstantFunction.h>
 
@@ -29,6 +29,30 @@ namespace gismo
 {
 
 template<unsigned d, class T>
+void constructCoefsForSlice(index_t dir_fixed, index_t index,
+                            const gsMatrix<T> & fullCoefs,
+                            const gsVector<index_t,d> & sizes,
+                            gsMatrix<T>& result)
+{
+    gsVector<index_t,d> lowerCorner, upperCorner;
+    lowerCorner.setZero();
+    upperCorner = sizes;
+    lowerCorner[dir_fixed] = index;
+    upperCorner[dir_fixed] = index + 1;
+    // to do: gsMatrix<index_t> ind = gsTensorBasis::coefSlice(dim_fixed, index) ?
+
+    // Collect the boundary coefficients
+    result.resize( sizes.prod() / sizes[dir_fixed], fullCoefs.cols() );
+    gsVector<index_t,d> str, cur = lowerCorner;
+    tensorStrides(sizes,str);
+    index_t r = 0;
+    do {
+        result.row(r++) = fullCoefs.row( cur.dot(str) );
+    } while ( nextLexicographic(cur, lowerCorner, upperCorner) );
+}
+
+
+template<unsigned d, class T>
 gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
                                       KnotVectorType KV1, KnotVectorType KV2)
 {
@@ -42,10 +66,10 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     cbases.push_back(new gsBSplineBasis<T>(give(KV2)) );
     Basis * tbasis = Basis::New(cbases); //d==2
 
-    
+
     GISMO_ASSERT( (corner.rows()==4) && (corner.cols()==3),
                   "gsTensorBSpline: Please make sure that the size of *corner* is 4-by-3");
-    
+
     gsMatrix<T> pcp (n1*n2, 3);
     // set up CPs on boundary first. The inner CPs on each boundary curve are
     // uniformly linear dependent on the two corner CPs
@@ -124,7 +148,11 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
         if( mult>=degree )
         {
             // no knot insertion needed, just extract the right coefficients
-            constructCoefsForSlice(dir_fixed,par,*this,coefs);
+            const gsKnotVector<T>& knots = this->basis().knots(dir_fixed);
+            const index_t index = (knots.iFind(par) - knots.begin()) - this->basis().degree(dir_fixed);
+            gsVector<index_t,d> sizes;
+            this->basis().size_cwise(sizes);
+            constructCoefsForSlice<d, T>(dir_fixed, index, this->coefs(), sizes, coefs);
         }
         else
         {
@@ -138,7 +166,11 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
                 intStrides.template cast<unsigned>(), degree-mult,true);
 
             // extract right ceofficients
-            constructCoefsForSlice(dir_fixed,par,*clone,coefs);
+            const gsKnotVector<T>& knots = clone->basis().knots(dir_fixed);
+            const index_t index = (knots.iFind(par) - knots.begin()) - clone->basis().degree(dir_fixed);
+            gsVector<index_t,d> sizes;
+            clone->basis().size_cwise(sizes);
+            constructCoefsForSlice<d, T>(dir_fixed, index, clone->coefs(), sizes, coefs);
             delete clone;
         }
 
@@ -151,7 +183,7 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
 
 template<unsigned d, class T>
 void gsTensorBSpline<d,T>::reverse(unsigned k)
-{ 
+{
     gsTensorBSplineBasis<d,T> & tbsbasis = this->basis();
     gsVector<index_t,d> sz;
     tbsbasis.size_cwise(sz);
@@ -183,12 +215,12 @@ bool gsTensorBSpline<d,T>::isPatchCorner(gsMatrix<T> const &v, T tol) const
             return true;
     }
     while ( nextCubeVertex(curr, vupp) );
-    
+
     return false;
 }
 
 template<unsigned d, class T>
-void gsTensorBSpline<d,T>::findCorner(const gsMatrix<T> & v, 
+void gsTensorBSpline<d,T>::findCorner(const gsMatrix<T> & v,
                                       gsVector<index_t,d> & curr,
                                       T tol)
 {
@@ -247,15 +279,15 @@ void gsTensorBSpline<d,T>::degreeElevate(int const i, int const dir)
             degreeElevate(i, j);
         return;
     }
-    
+
     GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
                   "Invalid basis component "<< dir <<" requested for degree elevation" );
 
     const index_t n = this->m_coefs.cols();
-    
+
     gsVector<index_t,d> sz;
     this->basis().size_cwise(sz);
-    
+
     swapTensorDirection(0, dir, sz, this->m_coefs);
     this->m_coefs.resize( sz[0], n * sz.template tail<d-1>().prod() );
 
@@ -324,42 +356,10 @@ typename gsGeometry<T>::uPtr gsTensorBSpline<d,T>::localRep(const gsMatrix<T> & 
     return Basis(kv).makeGeometry(give(coefs));
 }
 
-template<unsigned d, class T>
-void gsTensorBSpline<d,T>::constructCoefsForSlice(unsigned dir_fixed,T par,
-                                                  const gsTensorBSpline<d,T>& geo,
-                                                  gsMatrix<T>& result) const
-{
-    // Note: assumes C^0 continuity at \a par in direction \a dir_fixed.
-
-    const gsTensorBSplineBasis<d,T>& base = geo.basis();
-    // pick the right coefficients and store them in coefs
-    const KnotVectorType& knots = base.knots(dir_fixed);
-    const int index = (knots.iFind(par) - knots.begin()) - base.degree(dir_fixed);
-    gsVector<index_t,d> sizes, lowerCorner, upperCorner;
-    base.size_cwise(sizes);
-    lowerCorner.setZero();
-    upperCorner = sizes;
-    lowerCorner[dir_fixed] = index;
-    upperCorner[dir_fixed] = index + 1;
-    
-    // to do: gsMatrix<index_t> ind = gsTensorBasis::coefSlice(dim_fixed, index) ?
-
-    // Collect the boundary coefficients
-    const gsMatrix<T> & fullCoefs = geo.coefs();
-    result.resize( sizes.prod() / sizes[dir_fixed], fullCoefs.cols() );
-    gsVector<index_t,d> str, cur = lowerCorner;
-    base.stride_cwise(str);
-    index_t r = 0;
-
-    do {
-        result.row(r++) = fullCoefs.row( cur.dot(str) );
-    } while ( nextLexicographic(cur, lowerCorner, upperCorner) );
-}
-
 
 template<unsigned d, class T>
 std::ostream & gsTensorBSpline<d,T>::print(std::ostream &os) const
-{ 
+{
     os << "Tensor BSpline geometry "<< "R^"<< d <<
         " --> R^"<< this->geoDim()
        << ", #control pnts= "<< this->coefsSize();
@@ -461,9 +461,9 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
 
     gsMatrix<T> & coefs = copy.coefs();
     const index_t tDim  = coefs.cols();
-    
+
     //some more constants
-    gsVector<int,d> sizes;                    // number of coefs in each dir
+    gsVector<index_t,d> sizes;                    // number of coefs in each dir
     base.size_cwise(sizes);
     const index_t sz = sizes.prod();          // total number of coefs
 
@@ -540,7 +540,7 @@ public:
     {
         return getGeometryFromXml< gsTensorBSpline<d,T> >( node );
     }
-    
+
     static gsXmlNode * put (const gsTensorBSpline<d,T> & obj,
                             gsXmlTree & data)
     {

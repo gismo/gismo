@@ -30,7 +30,7 @@ namespace gismo
   * \ingroup Solver
   */
 template <class MatrixType>
-class gsMatrixOp : public gsLinearOperator<typename MatrixType::Scalar>
+class gsMatrixOp GISMO_FINAL : public gsLinearOperator<typename MatrixType::Scalar>
 {
     typedef memory::shared_ptr<MatrixType> MatrixPtr;
     typedef typename MatrixType::Nested NestedMatrix;
@@ -168,7 +168,7 @@ typename gsMatrixOp<Derived>::uPtr makeMatrixOp(memory::unique_ptr<Derived> mat)
  * \ingroup Solver
  */
 template <class SolverType>
-class gsSolverOp : public gsLinearOperator<typename SolverType::Scalar>
+class gsSolverOp GISMO_FINAL : public gsLinearOperator<typename SolverType::Scalar>
 {
 public:
     typedef typename SolverType::Scalar T;

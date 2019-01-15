@@ -182,35 +182,35 @@ void gsMultiBasis<T>::uniformRefine_withTransfer(
         int numKnots,
         int mul)
 {
-        // Get coarse mapper
-        gsDofMapper coarseMapper;
-        this->getMapper(
-                (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
-                (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-                boundaryConditions,
-                coarseMapper,
-                0
-        );
+    // Get coarse mapper
+    gsDofMapper coarseMapper;
+    this->getMapper(
+            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
+            (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
+            boundaryConditions,
+            coarseMapper,
+            0
+    );
 
-        // Refine
-        std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices(nBases());
-        for (size_t k = 0; k < m_bases.size(); ++k)
-        {
-            m_bases[k]->uniformRefine_withTransfer(localTransferMatrices[k],numKnots,mul);
-        }
+    // Refine
+    std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices(nBases());
+    for (size_t k = 0; k < m_bases.size(); ++k)
+    {
+        m_bases[k]->uniformRefine_withTransfer(localTransferMatrices[k],numKnots,mul);
+    }
 
-        // Get fine mapper
-        gsDofMapper fineMapper;
-        this->getMapper(
-                (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
-                (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-                boundaryConditions,
-                fineMapper,
-                0
-        );
+    // Get fine mapper
+    gsDofMapper fineMapper;
+    this->getMapper(
+            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
+            (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
+            boundaryConditions,
+            fineMapper,
+            0
+    );
 
-        // restrict to free dofs
-        combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );        
+    // restrict to free dofs
+    combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );        
 
 }
 
@@ -221,35 +221,35 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
         const gsOptionList& assemblerOptions,
         int numKnots)
 {
-        // Get fine mapper
-        gsDofMapper fineMapper;
-        this->getMapper(
-                (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
-                (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-                boundaryConditions,
-                fineMapper,
-                0
-        );
+    // Get fine mapper
+    gsDofMapper fineMapper;
+    this->getMapper(
+            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
+            (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
+            boundaryConditions,
+            fineMapper,
+            0
+    );
 
-        // Refine
-        std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices(nBases());
-        for (size_t k = 0; k < m_bases.size(); ++k)
-        {
-            m_bases[k]->uniformCoarsen_withTransfer(localTransferMatrices[k],numKnots);
-        }
+    // Refine
+    std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices(nBases());
+    for (size_t k = 0; k < m_bases.size(); ++k)
+    {
+        m_bases[k]->uniformCoarsen_withTransfer(localTransferMatrices[k],numKnots);
+    }
 
-        // Get coarse mapper
-        gsDofMapper coarseMapper;
-        this->getMapper(
-                (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
-                (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-                boundaryConditions,
-                coarseMapper,
-                0
-        );
+    // Get coarse mapper
+    gsDofMapper coarseMapper;
+    this->getMapper(
+            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
+            (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
+            boundaryConditions,
+            coarseMapper,
+            0
+    );
 
-        // restrict to free dofs
-        combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );        
+    // restrict to free dofs
+    combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );        
 
 }
 

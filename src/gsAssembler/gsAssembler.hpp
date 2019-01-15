@@ -218,10 +218,11 @@ void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, int p
 }
 
 template<class T>
-void gsAssembler<T>::setFixedDofVector(gsMatrix<T> & vals, int unk)
+void gsAssembler<T>::setFixedDofVector(gsMatrix<T> vals, int unk)
 {
+   if(m_ddof.size()==0)
+       m_ddof.resize(m_system.numColBlocks());
     m_ddof[unk].swap(vals);
-    vals.resize(0,0);
     // Assuming that the DoFs are already set by the user
     GISMO_ENSURE( m_ddof[unk].rows() == m_system.colMapper(unk).boundarySize()
                   , //&& m_ddof[unk].cols() == m_pde_ptr->numRhs(),
@@ -234,8 +235,15 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
 {
     //if ddof-size is not set
     //fixme: discuss if this is really the right place for this.
+
+    // correction: m_ddof should have an array of ddofs for every unknown,
+    // not for every block in the sparse system;
+    // number of columns in each array is a number of components in the corresponding unknown;
+    // sparse system gets this info during construction;
+    // m_system.numUnknown() provides the number of unknown;
+    // m_system.unkSize(i) provides the number of components in the unknown i
     if(m_ddof.size()==0)
-        m_ddof.resize(m_system.numColBlocks());
+        m_ddof.resize(m_system.numUnknowns());
 
     if ( m_options.getInt("DirichletStrategy") == dirichlet::nitsche)
         return; // Nothing to compute
@@ -256,7 +264,7 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
     case dirichlet::homogeneous:
         // If we have a homogeneous Dirichlet problem fill boundary
         // DoFs with zeros
-        m_ddof[unk].setZero(mapper.boundarySize(), m_pde_ptr->numRhs() );
+        m_ddof[unk].setZero(mapper.boundarySize(), m_system.unkSize(unk)*m_system.rhs().cols() );
         break;
     case dirichlet::interpolation:
         computeDirichletDofsIntpl(mapper, mbasis,unk);
@@ -265,11 +273,10 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
         computeDirichletDofsL2Proj(mapper, mbasis,unk);
         break;
     case dirichlet::user :
-        // Assuming that the DoFs are already set by the user
-        GISMO_ENSURE( m_ddof[unk].rows() == mapper.boundarySize() &&
-                      m_ddof[unk].cols() == m_pde_ptr->numRhs(),
-                      "The Dirichlet DoFs are not set.");
-        break;
+         // Assuming that the DoFs are already set by the user
+        GISMO_ENSURE( m_ddof[unk].size() == mapper.boundarySize()*m_system.unkSize(unk)*m_system.rhs().cols(), "The Dirichlet DoFs are not set.");
+        m_ddof[unk].resize(mapper.boundarySize(), m_system.unkSize(unk)*m_system.rhs().cols());
+            break;
     default:
         GISMO_ERROR("Something went wrong with Dirichlet values.");
     }
@@ -311,7 +318,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
                                                const gsMultiBasis<T> & mbasis,
                                                const int unk_)
 {
-    m_ddof[unk_].resize(mapper.boundarySize(), m_pde_ptr->numRhs() );
+    m_ddof[unk_].resize(mapper.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols());
 
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     for ( typename gsBoundaryConditions<T>::const_iterator
@@ -360,9 +367,9 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
             }
         }
 
-        GISMO_ASSERT(it->function()->targetDim() == m_pde_ptr->numRhs(),
+        GISMO_ASSERT(it->function()->targetDim() == m_system.unkSize(unk_)*m_system.rhs().cols(),
                      "Given Dirichlet boundary function does not match problem dimension."
-                     <<it->function()->targetDim()<<" != "<<m_pde_ptr->numRhs()<<"\n");
+                     <<it->function()->targetDim()<<" != "<<m_system.unkSize(unk_)<<"\n");
 
         // Compute dirichlet values
         gsMatrix<T> fpts;
@@ -380,7 +387,6 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
         for (index_t l=0; l!= boundary.size(); ++l)
         {
             const int ii = mapper.bindex( boundary.at(l) , it->patch() );
-
             m_ddof[unk_].row(ii) = dVals.row(l);
         }
     }
@@ -391,13 +397,15 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
                                                 const gsMultiBasis<T> & ,
                                                 const int unk_)
 {
-    m_ddof[unk_].resize( mapper.boundarySize(), m_pde_ptr->numRhs() );
+    m_ddof[unk_].resize( mapper.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
+
+
 
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
     gsSparseEntries<T> projMatEntries;
     gsMatrix<T>        globProjRhs;
-    globProjRhs.setZero( mapper.boundarySize(), m_pde_ptr->numRhs() );
+    globProjRhs.setZero( mapper.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols() );
 
     // Temporaries
     gsVector<T> quWeights;
@@ -413,6 +421,13 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
           iter = m_pde_ptr->bc().dirichletBegin();
           iter != m_pde_ptr->bc().dirichletEnd(); ++iter )
     {
+        if (iter->isHomogeneous() )
+            continue;
+
+        GISMO_ASSERT(iter->function()->targetDim() == m_system.unkSize(unk_)*m_system.rhs().cols(),
+                     "Given Dirichlet boundary function does not match problem dimension."
+                     <<iter->function()->targetDim()<<" != "<<m_system.unkSize(unk_)<<"\n");
+
         const int unk = iter->unknown();
         if(unk!=unk_)
             continue;
@@ -424,6 +439,7 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
         // Set up quadrature to degree+1 Gauss points per direction,
         // all lying on iter->side() except from the direction which
         // is NOT along the element
+
         gsGaussRule<T> bdQuRule(basis, 1.0, 1, iter->side().direction());
 
         // Create the iterator along the given part boundary.
@@ -539,7 +555,7 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
                  "The provided solution vector does not match the system."
                  " Expected: "<<mapper.freeSize()<<", Got:"<<solVector.rows() );
     */
-
+    // is the situation whtn solVector has more than one columns important?
     const index_t dim = ( 0!=solVector.cols() ? solVector.cols() :  m_ddof[unk].cols() );
 
     // to do: test unknown_dim == dim

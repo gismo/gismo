@@ -160,26 +160,21 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib/)
 ## Installation
 ## #################################################################
 
-# Offer the user the choice of overriding the installation directories
-set(LIB_INSTALL_DIR     lib     CACHE STRING "Installation directory for libraries")
-set(BIN_INSTALL_DIR     bin     CACHE STRING "Installation directory for executables")
-set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header files")
-
-  install(TARGETS ${PROJECT_NAME}_static OPTIONAL
-          EXPORT gismoTargets
-          LIBRARY DESTINATION "${LIB_INSTALL_DIR}" COMPONENT shared
-          ARCHIVE DESTINATION "${LIB_INSTALL_DIR}" COMPONENT static
-          RUNTIME DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe
-          PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
+install(TARGETS ${PROJECT_NAME}_static OPTIONAL
+  EXPORT gismoTargets
+  LIBRARY DESTINATION "${LIB_INSTALL_DIR}" COMPONENT shared
+  ARCHIVE DESTINATION "${LIB_INSTALL_DIR}" COMPONENT static
+  RUNTIME DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe
+  PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
 
 if(GISMO_BUILD_LIB)
 
   install(TARGETS ${PROJECT_NAME}
-          # IMPORTANT: Add the ${PROJECT_NAME} library to the "export-set"
-          EXPORT gismoTargets
-          LIBRARY DESTINATION "${LIB_INSTALL_DIR}" COMPONENT shared
-          ARCHIVE DESTINATION "${LIB_INSTALL_DIR}" COMPONENT static
-          RUNTIME DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe
-          PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
+    # IMPORTANT: Add the ${PROJECT_NAME} library to the "export-set"
+    EXPORT gismoTargets
+    LIBRARY DESTINATION "${LIB_INSTALL_DIR}" COMPONENT shared
+    ARCHIVE DESTINATION "${LIB_INSTALL_DIR}" COMPONENT static
+    RUNTIME DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe
+    PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
 
 endif(GISMO_BUILD_LIB)

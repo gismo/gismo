@@ -68,9 +68,9 @@ public:
          * @brief This constructor sets the origin- and * end-point
          * indices as well as length to preferred values.
          *
-         * @param[in] origin #index of origin vertex
-         * @param[in] end #index of end vertex
-         * @param[in] length #length of the halfedge
+         * @param[in] origin index of origin vertex
+         * @param[in] end index of end vertex
+         * @param[in] length length of the halfedge
          */
         explicit Halfedge(const size_t origin = 0,
                           const size_t end = 0,
@@ -104,7 +104,7 @@ public:
 
         /**
          * @brief Tells if halfedge can be added at end.
-         * @param[in] nextHalfedge #halfedge which we want to know about if can be added at end
+         * @param[in] nextHalfedge halfedge which we want to know about if can be added at end
          * @return TRUE if halfedge can be added at end and FALSE otherwise.
          */
         bool isPrev(const Halfedge &nextHalfedge) const
@@ -112,7 +112,7 @@ public:
 
         /**
          * @brief Tells if halfedge can be added at beginning.
-         * @param[in] previousHalfedge #halfedge which we want to know about if can be added at beginning
+         * @param[in] previousHalfedge halfedge which we want to know about if can be added at beginning
          * @return TRUE if halfedge can be added at beginning and FALSE otherwise.
          */
         bool isNext(const Halfedge &previousHalfedge) const
@@ -120,7 +120,7 @@ public:
 
         /**
          * @brief Tells if halfedge is twin.
-         * @param[in] halfedge #halfedge which we want to know about if it is a twin
+         * @param[in] halfedge halfedge which we want to know about if it is a twin
          * @return TRUE if halfedge is a twin and FALSE otherwise.
          */
         bool isTwin(const Halfedge &halfedge) const
@@ -264,8 +264,9 @@ public:
          * vertices in the chain or < 1 an error message is printed
          * and 0 is returned, too.
          *
-         * @param[in] i #number of the first vertex in the chain
-         * @param[in] j #number of the second vertex in the chain
+         * @param[in] i number of the first vertex in the chain
+         * @param[in] j number of the second vertex in the chain
+         * @param[in] precision tolerance
          * @return (shortest) distance between vertices
          */
         T getShortestDistanceBetween(size_t i, size_t j, T precision) const;
@@ -285,9 +286,9 @@ public:
          * the chain is closed.  If i > j and chain is not closed, the
          * distance from i to j is returned and a warning is printed.
          *
-         * @param[in] i #number of the vertex in the chain, where the
+         * @param[in] i number of the vertex in the chain, where the
          * length should start, e. g. i=1 for first vertex
-         * @param[in] j #number of the vertex in the chain, where the
+         * @param[in] j number of the vertex in the chain, where the
          * length should end, e. g. j=4 for fourth vertex
          *
          * @return distance between vertices, e.g. between first and
@@ -341,7 +342,6 @@ public:
          * Otherwise a warning is printed.
          *
          * @param[in] prevHalfedge halfedge that should be appended at beginning
-         * @param[out] m_chainedHalfedges chain with appended prevHalfedge
          */
         void appendPrevHalfedge(const Halfedge &prevHalfedge);
 
@@ -352,7 +352,7 @@ public:
          * Otherwise a warning is printed.
          *
          * @param[in] nextHalfedge halfedge that should be appended at end
-         * @param[out] m_chainedHalfedges chain with appended nextHalfedge
+         * \note will be append to m_chainedHalfedges
          */
         void appendNextHalfedge(const Halfedge &nextHalfedge);
 
@@ -439,9 +439,9 @@ private:
          * The distance between i-th and j-th vertex of the boundary chain is returned.
          * In case the chain is closed, it is checked wheter the distance in a clockwise or counterclockwise direction is shorter, and this one is returned.
          *
-         * @param[in] i #number of the first vertex
-         * @param[in] j #number of the second vertex
-         *
+         * @param[in] i number of the first vertex
+         * @param[in] j number of the second vertex
+         * @param[in] precision tolerance
          * @return (shortest) distance between vertices
          */
         T getShortestDistanceBetween(const size_t &i, const size_t &j, T precision) const { return m_boundary.getShortestDistanceBetween(i, j, precision); }
@@ -453,8 +453,8 @@ private:
          * In case i > j the distance between j-th and i-th vertex is returned, provided a closed chain.
          * Otherwise a warning is printed
          *
-         * @param[in] i #number of the first vertex
-         * @param[in] j #number of the second vertex
+         * @param[in] i number of the first vertex
+         * @param[in] j number of the second vertex
          *
          * @return (shortest) distance between i-th and j-th vertex
          */
@@ -463,7 +463,7 @@ private:
         /**
          * @brief Tells if vertex is contained in boundary chain.
          *
-         * @param[in] vertexIndex #index (extern) of the searched point
+         * @param[in] internVertexIndex index of the searched point (from m_boundary)
          *
          * @return TRUE if it is contained and FALSE otherwise
          */
@@ -494,6 +494,7 @@ public:
      * This constructor uses a gsMesh and sortest its vertices.
      *
      * @param[in] mesh gsMesh object.
+     * @param[in] precision tolerance
      */
     explicit gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision = 1e-8);
 
@@ -540,13 +541,13 @@ public:
      */
     const typename gsMesh<T>::gsVertexHandle &getVertex(const size_t vertexIndex) const;
 
-    /**
+    /*/**
      * @brief Get vertex index
      * The vertex index of a three-dimensional vertex from the triangle mesh is returned.
      *
      * @param[in] vertex const ESS_IO::IO_Vertex& - three-dimensional vertex from the triangle mesh
      */
-    //size_t getVertexIndex(const typename gsMesh<T>::gsVertexHandle &vertex) const;
+    //size_t getVertexIndex(const typename gsMesh<T>::gsVertexHandle &vertex) const;*/
 
     /**
      * @brief Get vertex index for firts, second or third vertex of triangle
@@ -593,8 +594,8 @@ public:
      * The distance between i-th and j-th boundary vertex is returned.
      * In is checked wheter the distance in a clockwise or counterclockwise direction is shorter, and this one is returned.
      *
-     * @param[in] i #number of the first boundary vertex
-     * @param[in] j #number of the second boundary vertex
+     * @param[in] i number of the first boundary vertex
+     * @param[in] j number of the second boundary vertex
      * @return (shortest) distance between vertices
      */
     T getShortestBoundaryDistanceBetween(size_t i, size_t j) const;
@@ -688,9 +689,8 @@ private:
      * For construction of the index vectors all vertices stored in m_vertices are passed through.
      * The intern vertex indices of the non-boundary vertices are stored in the first n m_sorting entries. The other way round the vertex indices 1,...,n are stored in the corresponding m_inverseSorting entries.
      * At last the boundary is traversed and for every vertex the intern vertex index is stored in the last N-n m_sorting entries as well as the vertex index is stored in the corresponding m_inverseSorting entry.
-     *
-     * @param[out] m_sorting vector storing the intern vertex indices at place of vertex index
-     * @param[out] m_inverseSorting vector storing the vertex indices at place of intern vertex indices
+     * \note \b m_sorting vector storing the intern vertex indices at place of vertex index
+     * \n\b m_inverseSorting vector storing the vertex indices at place of intern vertex indices
      */
     void sortVertices();
 

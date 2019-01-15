@@ -29,10 +29,10 @@ int main(int argc, char *argv[])
     real_t innerAngle = 15.0;
     real_t patchAreaWeight = 0.2;
     real_t mergeSmallPatches = 2;
-    int degree = 4;
-    int interiorPts = 5;
-    int wEdge = 10;
-    int wInterior = 1;
+    index_t degree = 4;
+    index_t interiorPts = 5;
+    index_t wEdge = 10;
+    index_t wInterior = 1;
 
     gsCmdLine cmd("Recover the features of a triangulated surface.");
     cmd.addPlainString("filename", "File containing the input mesh", filename);

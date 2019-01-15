@@ -793,7 +793,7 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
 }
 
 template<class T>
-#if(__cplusplus >= 201103L) // c++11
+#if(__cplusplus >= 201103L || defined(__DOXYGEN__)) // c++11
 template<class... expr>
 void gsExprAssembler<T>::assemble(expr... args)
 #else

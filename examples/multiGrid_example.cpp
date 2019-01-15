@@ -27,12 +27,14 @@ int main(int argc, char *argv[])
     index_t cycles = 1;
     index_t presmooth = 1;
     index_t postsmooth = 1;
+    bool extrasmooth = false;
     std::string smoother("GaussSeidel");
     real_t damping = -1;
     real_t scaling = 0.12;
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
     bool plot = false;
+    std::string boundary_conditions("d");
 
     gsCmdLine cmd("Solves a PDE with an isogeometric discretization using a multigrid solver.");
     cmd.addString("g", "Geometry",              "Geometry file", geometry);
@@ -43,11 +45,13 @@ int main(int argc, char *argv[])
     cmd.addInt   ("c", "MG.Cycles",             "Number of multi-grid cycles", cycles);
     cmd.addInt   ("",  "MG.Presmooth",          "Number of pre-smoothing steps", presmooth);
     cmd.addInt   ("",  "MG.Postsmooth",         "Number of post-smoothing steps", postsmooth);
+    cmd.addSwitch("",  "MG.Extrasmooth",        "Doubles the number of smoothing steps for each coarser level", extrasmooth);
     cmd.addString("s", "MG.Smoother",           "Smoothing method", smoother);
     cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother", damping);
     cmd.addReal  ("",  "MG.Scaling",            "Scaling factor for the subspace corrected mass smoother", scaling);
     cmd.addReal  ("t", "CG.Tolerance",          "Stopping criterion for cg", tolerance);
     cmd.addInt   ("",  "CG.MaxIterations",      "Stopping criterion for cg", maxIterations);
+    cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundary_conditions);
     cmd.addSwitch("",  "Plot",                  "Plot the result with Paraview", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -61,8 +65,8 @@ int main(int argc, char *argv[])
 
     // Define assembler options
     opt.remove( "DG" );
-    opt.addInt( "Ass.InterfaceStrategy", "", (index_t)( dg ? iFace::dg : iFace::conforming )  );
-    opt.addInt( "Ass.DirichletStrategy", "", (index_t) dirichlet::elimination                 );
+    opt.addInt( "MG.InterfaceStrategy", "", (index_t)( dg ? iFace::dg : iFace::conforming )  );
+    opt.addInt( "MG.DirichletStrategy", "", (index_t) dirichlet::elimination                 );
 
     if ( ! gsFileManager::fileExists(geometry) )
     {
@@ -71,7 +75,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    gsInfo << "Run gsMultiGridTutorial with options:\n" << opt << std::endl;
+    gsInfo << "Run multiGrid_example with options:\n" << opt << std::endl;
 
     /******************* Define geometry ********************/
 
@@ -94,10 +98,39 @@ int main(int argc, char *argv[])
     gsConstantFunction<> one(1.0, mp.geoDim());
 
     gsBoundaryConditions<> bc;
-    for (gsMultiPatch<>::const_biterator it = mp.bBegin(); it < mp.bEnd(); ++it)
-         bc.addCondition( *it, condition_type::dirichlet, &one );
+    {
+        const index_t len = boundary_conditions.length();
+        index_t i = 0;
+        for (gsMultiPatch<>::const_biterator it = mp.bBegin(); it < mp.bEnd(); ++it)
+        {
+            char b_local;
+            if ( len == 1 )
+                b_local = boundary_conditions[0];
+            else if ( i < len )
+                b_local = boundary_conditions[i];
+            else
+            {
+                gsInfo << "\nNot enough boundary conditions given.\n";
+                return EXIT_FAILURE;
+            }
 
-    gsInfo << "done.\n";
+            if ( b_local == 'd' )
+                bc.addCondition( *it, condition_type::dirichlet, &one );
+            else if ( b_local == 'n' )
+                bc.addCondition( *it, condition_type::neumann, &one );
+            else
+            {
+                gsInfo << "\nInvalid boundary condition given; only 'd' (Dirichlet) and 'n' (Neumann) are supported.\n";
+                return EXIT_FAILURE;
+            }
+
+            ++i;
+        }
+        if ( len > i )
+            gsInfo << "\nToo much boundary conditions have been specified. Ingnoring the remaining ones.\n";
+        gsInfo << "done. "<<i<<" boundary conditions set.\n";
+    }
+
 
     /************ Setup bases and adjust degree *************/
 
@@ -122,8 +155,8 @@ int main(int argc, char *argv[])
         mb,
         bc,
         gsConstantFunction<>(1,mp.geoDim()),
-        (dirichlet::strategy) opt.getInt("Ass.DirichletStrategy"),
-        (iFace::strategy)     opt.getInt("Ass.InterfaceStrategy")
+        (dirichlet::strategy) opt.getInt("MG.DirichletStrategy"),
+        (iFace::strategy)     opt.getInt("MG.InterfaceStrategy")
     );
     assembler.assemble();
 
@@ -147,13 +180,13 @@ int main(int argc, char *argv[])
     for (index_t i = 1; i < mg->numLevels(); ++i)
     {
         gsPreconditionerOp<>::Ptr smootherOp;
-        if ( opt.getString("MG.Smoother") == "Richardson" )
+        if ( smoother == "Richardson" || smoother == "r" )
             smootherOp = makeRichardsonOp(mg->matrix(i));
-        else if ( opt.getString("MG.Smoother") == "Jacobi" )
+        else if ( smoother == "Jacobi" || smoother == "j" )
             smootherOp = makeJacobiOp(mg->matrix(i));
-        else if ( opt.getString("MG.Smoother") == "GaussSeidel" )
+        else if ( smoother == "GaussSeidel" || smoother == "gs" )
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
-        else if ( opt.getString("MG.Smoother") == "SubspaceCorrectedMassSmoother" )
+        else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" || smoother == "Hybrid" || smoother == "hyb" )
         {
             if (multiBases[i].nBases() != 1)
             {
@@ -162,16 +195,25 @@ int main(int argc, char *argv[])
             }
             smootherOp = gsPreconditionerFromOp<>::make(
                 mg->underlyingOp(i),
-                gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("Ass"),scaling)
+                gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("MG"),scaling)
             );
+
+            if ( smoother == "Hybrid" || smoother == "hyb" )
+                smootherOp = gsCompositePrecOp<>::make( makeGaussSeidelOp(mg->matrix(i)), smootherOp );
         }
         else
         {
-            gsInfo << "The chosen smoother is unknown.\n\nKnown are:\n  Richardson\n  Jacobi\n  GaussSeidel"
-                      "\n  SubspaceCorrectedMassSmoother\n\n";
+            gsInfo << "The chosen smoother is unknown.\n\nKnown are:\n  Richardson (r)\n  Jacobi (j)\n  GaussSeidel (gs)"
+                      "\n  SubspaceCorrectedMassSmoother (scms)\n  Hybrid (hyb)\n\n";
             return EXIT_FAILURE;
         }
         smootherOp->setOptions( opt.getGroup("MG") );
+        // Handle the extra-smooth option. On the finest grid level, there is nothing to handle.
+        if (extrasmooth && i < mg->numLevels()-1 )
+        {
+            smootherOp->setNumOfSweeps( 1 << (mg->numLevels()-1-i) );
+            smootherOp = gsPreconditionerFromOp<>::make(mg->underlyingOp(i),smootherOp);
+        }
         mg->setSmoother(i, smootherOp);
     }
 

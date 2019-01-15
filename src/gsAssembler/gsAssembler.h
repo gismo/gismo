@@ -195,7 +195,7 @@ void hessianToSecDer (const gsMatrix<T> & hessian,
 }
 
 template<typename T>
-void secDerToTensor(Eigen::DenseBase<Eigen::Map<const Eigen::Matrix<double, -1, -1>, 0, Eigen::Stride<0, 0> > >::ConstColXpr & secDers,
+void secDerToTensor(typename Eigen::DenseBase<Eigen::Map<const Eigen::Matrix<T, -1, -1>, 0, Eigen::Stride<0, 0> > >::ConstColXpr & secDers,
                     gsMatrix<T> * a,
                     int parDim, int geoDim)
 {
@@ -460,6 +460,14 @@ public: /* Element visitors */
         }
     }
 
+    /// @brief Applies the \a BElementVisitor to the boundary condition \a BC
+    template<class BElementVisitor>
+    void push( BElementVisitor & visitor, const boundary_condition<T> & BC)
+    {
+        //Assemble (fill m_matrix and m_rhs) contribution from this BC
+        apply(visitor, BC.patch(), BC.side());
+    }
+
     /// @brief Iterates over all elements of interfaces and
     /// applies the \a InterfaceVisitor
     template<class InterfaceVisitor>
@@ -498,7 +506,7 @@ public:  /* Dirichlet degrees of freedom computation */
     /// unknown.
     /// \param[in] vals the values of the eliminated dofs.
     /// \param[in] unk the considered unknown
-    void setFixedDofVector(gsMatrix<T> & vals, int unk = 0);
+    void setFixedDofVector(gsMatrix<T> vals, int unk = 0);
 
     /// Enforce Dirichlet boundary conditions by diagonal penalization
     /// \param[in] unk the considered unknown

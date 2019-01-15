@@ -16,3 +16,6 @@ build/
 
 # Files with ending ~ (backup files from some editors)
 **/*~
+
+# QtCreator user file
+CMakeLists.txt.user

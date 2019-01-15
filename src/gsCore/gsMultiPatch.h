@@ -297,7 +297,7 @@ public:
     void repairInterfaces();
 
     /// @brief For each point in \a points, locates the parametric coordinates of the point
-    ///
+    /// \param points
     /// \param pids vector containing for each point the patch id where it belongs (or -1 if not found)
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
     void locatePoints(const gsMatrix<T> & points, gsVector<index_t> & pids, gsMatrix<T> & preim) const;
@@ -348,3 +348,4 @@ std::ostream& operator<<( std::ostream& os, const gsMultiPatch<T>& b )
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsMultiPatch.hpp)
 #endif
+

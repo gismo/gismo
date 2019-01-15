@@ -252,7 +252,7 @@ public:
 
     /// \brief Permutes the mapped free indices according to permutation, i.e.,  dofs_perm[idx] = dofs_old[permutation[idx]]
     ///
-    /// \Warning Applying a permutation makes the functions regarding coupled dofs (cindex, is_coupled_index,.. ) invalid.
+    /// \warning Applying a permutation makes the functions regarding coupled dofs (cindex, is_coupled_index,.. ) invalid.
     /// The dofs are still coupled, but you have no way of extracting them. If you need this functions, first call
     /// markCoupledAsTagged() and then use the corresponding functions for tagged dofs.
     void permuteFreeDofs(const gsVector<index_t>& permutation);

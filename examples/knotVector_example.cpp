@@ -133,7 +133,7 @@ int main(int argc, char* argv[])
     delete greville;
 
 
-    std::vector<int> mult = kv6.multiplicities();
+    std::vector<index_t> mult = kv6.multiplicities();
     gsInfo << "Multiplicities: ";
     std::for_each(mult.begin(), mult.end(), print);
     gsInfo << "\n\n";
