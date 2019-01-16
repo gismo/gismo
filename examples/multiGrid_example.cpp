@@ -229,7 +229,10 @@ int main(int argc, char *argv[])
             }
 
             if ( smoother == "Hybrid" || smoother == "hyb" )
+            {
+                smootherOp->setOptions( opt.getGroup("MG") );
                 smootherOp = gsCompositePrecOp<>::make( makeGaussSeidelOp(mg->matrix(i)), smootherOp );
+            }
         }
         else
         {
@@ -254,7 +257,7 @@ int main(int argc, char *argv[])
         gsConjugateGradient<>( assembler.matrix(), mg )
             .setOptions( opt.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
-    else if (iterativeSolver=="direct")
+    else if (iterativeSolver=="d")
         gsGradientMethod<>( assembler.matrix(), mg )
             .setOptions( opt.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
