@@ -34,10 +34,20 @@ namespace gismo
  *
  */
 
+struct stabilizerCDR
+{
+    enum method
+    {
+        SUPG = 1,
+        none = 0
+    };
+};
+
 template <class T>
 class gsVisitorCDR
 {
 public:
+
 
     gsVisitorCDR(const gsPde<T> & pde)
     { 
@@ -49,7 +59,7 @@ public:
         coeff_c_ptr = cdr->reaction  ();
         rhs_ptr     = cdr->rhs       ();
 
-        flagStabType = 0;
+        flagStabType = stabilizerCDR::none;
         
         GISMO_ASSERT( rhs_ptr->targetDim() == 1 ,
                       "Not yet tested for multiple right-hand-sides");
@@ -76,13 +86,13 @@ public:
                  const gsFunction<T> & coeff_A,
                  const gsFunction<T> & coeff_b,
                  const gsFunction<T> & coeff_c,
-                 unsigned flagStabilization = 1) :
+                 stabilizerCDR::method flagStabilization = stabilizerCDR::SUPG) :
         rhs_ptr(&rhs),
         coeff_A_ptr( & coeff_A),coeff_b_ptr( & coeff_b),coeff_c_ptr( & coeff_c),
         flagStabType( flagStabilization )
     {
         GISMO_ASSERT( rhs.targetDim() == 1 ,"Not yet tested for multiple right-hand-sides");
-        GISMO_ASSERT( flagStabilization == 0 || flagStabilization == 1, "flagStabilization not known");
+        GISMO_ASSERT( flagStabilization == stabilizerCDR::none || flagStabilization == stabilizerCDR::SUPG, "flagStabilization not known");
     }
 
     void initialize(const gsBasis<T> & basis,
@@ -94,7 +104,7 @@ public:
         rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
 
         //flagStabType = static_cast<unsigned>(options.askSwitch("SUPG", false));
-        flagStabType = static_cast<unsigned>(options.askInt("Stabilization", 0));
+        flagStabType = static_cast<stabilizerCDR::method>(options.askInt("Stabilization", stabilizerCDR::none));
 
         // Set Geometry evaluation flags
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
@@ -189,7 +199,7 @@ public:
             localMat.noalias() += weight * coeff_c_vals(0,k) * (basisVals.col(k) * basisVals.col(k).transpose());
 
 
-            if( flagStabType == 1 ) // 1: SUPG
+            if( flagStabType == stabilizerCDR::SUPG ) // 1: SUPG
             {
                 //const typename gsMatrix<T>::constColumns J = geoEval.jacobian(k); //todo: correct?
                 const typename gsFuncData<T>::matrixTransposeView J = md.jacobian(k);
@@ -240,7 +250,7 @@ public:
             }
         }
 
-        if( flagStabType == 1 ) // 1: SUPG
+        if( flagStabType == stabilizerCDR::SUPG ) // 1: SUPG
         {
             // Calling getSUPGParameter re-evaluates the (*base) geometry. // todo: is that correct so?
             // Thus, it has to be called AFTER geo (*base) has been used.
@@ -378,7 +388,7 @@ protected:
     const gsFunction<T> * coeff_b_ptr;
     const gsFunction<T> * coeff_c_ptr;
     // flag for stabilization method
-    unsigned flagStabType;
+    stabilizerCDR::method flagStabType;
 
 protected:
     // Basis values
