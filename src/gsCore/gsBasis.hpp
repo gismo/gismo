@@ -2,12 +2,12 @@
 
     @brief Provides implementation of Basis default operatiions.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -28,7 +28,7 @@ gsBasis<T>::gsBasis()
 template<class T>
 gsBasis<T>::gsBasis(const gsBasis& other) : Base(other)
 { }
-        
+
 template<class T>
 gsBasis<T>::~gsBasis()
 { }
@@ -42,9 +42,9 @@ gsBasisFun<T> gsBasis<T>::function(unsigned i) const
 
 // Evaluates a linear combination of basis functions (default implementation)
 template<class T>
-void gsBasis<T>::evalFunc_into(const gsMatrix<T> &u, 
-                           const gsMatrix<T> & coefs, 
-                           gsMatrix<T>& result) const 
+void gsBasis<T>::evalFunc_into(const gsMatrix<T> &u,
+                           const gsMatrix<T> & coefs,
+                           gsMatrix<T>& result) const
 {
     gsMatrix<T> B ;
     gsMatrix<unsigned> actives;
@@ -63,8 +63,8 @@ void gsBasis<T>::evalFunc_into(const gsMatrix<T> &u,
 // Evaluates the Jacobian of the function given by coefs (default implementation)
 // For each point, result contains a geomDim x parDim matrix block containing the Jacobian matrix
 template<class T>
-void gsBasis<T>::jacobianFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const 
-{  
+void gsBasis<T>::jacobianFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const
+{
     const index_t n = coefs.cols();
     const index_t numPts = u.cols();       // at how many points to evaluate the gradients
     const index_t pardim = this->dim();
@@ -81,15 +81,15 @@ void gsBasis<T>::jacobianFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coe
         for (index_t c=0; c<n; ++c )     // c = component
             for ( index_t a=0; a< numAct ; ++a ) // a = active function
             {
-                result.block(c,p*pardim,  1, pardim).noalias() +=   
-                    coefs(ind(a,p), c) * B.block(a*pardim, p, pardim, 1).transpose();  
+                result.block(c,p*pardim,  1, pardim).noalias() +=
+                    coefs(ind(a,p), c) * B.block(a*pardim, p, pardim, 1).transpose();
             }
 }
 
 // Evaluates the partial derivatives of the function given by coefs (default implementation)
 // For each point, result contains one column with stacked gradients of the components
 template<class T>
-void gsBasis<T>::derivFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const 
+void gsBasis<T>::derivFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const
 {
     gsMatrix<T>        B;
     gsMatrix<unsigned> actives;
@@ -107,9 +107,9 @@ void gsBasis<T>::derivFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs,
 // Evaluates the second derivatives of the function given by coefs (default implementation)
 template<class T>
 void gsBasis<T>::deriv2Func_into(const gsMatrix<T> & u,
-                                 const gsMatrix<T> & coefs, 
-                                 gsMatrix<T>& result) const 
-{  
+                                 const gsMatrix<T> & coefs,
+                                 gsMatrix<T>& result) const
+{
     gsMatrix<T> B;
     gsMatrix<unsigned> actives;
 
@@ -159,7 +159,7 @@ void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
     const index_t tarDim = coefs.cols()  ;
     const index_t stride = values.rows() / actives.rows();
 
-    GISMO_ASSERT( actives.rows() * stride == values.rows(), 
+    GISMO_ASSERT( actives.rows() * stride == values.rows(),
                   "Number of values and actives does not fit together");
 
     result.resize( tarDim * stride, numPts );
@@ -184,7 +184,7 @@ inline gsMatrix<T> gsBasis<T>::laplacian(const gsMatrix<T> & u ) const
 }
 
 template<class T> inline
-void gsBasis<T>::collocationMatrix(const gsMatrix<T> & u, gsSparseMatrix<T> & result) const 
+void gsBasis<T>::collocationMatrix(const gsMatrix<T> & u, gsSparseMatrix<T> & result) const
 {
     result.resize( u.cols(), this->size() );
     gsMatrix<T> ev;
@@ -227,18 +227,18 @@ memory::unique_ptr<gsGeometry<T> > gsBasis<T>::interpolateData( gsMatrix<T> cons
 
     // Solves for many right hand side  columns
     x =  solver.solve( vals.transpose() );
-  
+
     // gsDebug <<"gs Interpolate error : " << solver.error() << std::"\n";
     // gsDebug <<"gs Interpolate iters : " << solver.iterations() << std::"\n";
     // gsDebug <<"intpl sol : " << x.transpose() << std::"\n";
-  
+
     return makeGeometry( give(x) );
 }
 
 template<class T> inline
 memory::unique_ptr<gsGeometry<T> > gsBasis<T>::interpolateAtAnchors(gsMatrix<T> const & vals) const
 {
-    GISMO_ASSERT (this->size() == vals.cols(), 
+    GISMO_ASSERT (this->size() == vals.cols(),
                   "Expecting as many values as the number of basis functions." );
     gsMatrix<T> pts;
     anchors_into(pts);
@@ -274,10 +274,10 @@ void gsBasis<T>::anchor_into(unsigned, gsMatrix<T>&) const
 
 template<class T> inline
 void gsBasis<T>::connectivityAtAnchors(gsMesh<T> & mesh) const
-{ 
+{
     gsMatrix<T> nodes = anchors();
     nodes.transposeInPlace();// coefficient vectors have ctrl points at rows
-    connectivity(nodes, mesh); 
+    connectivity(nodes, mesh);
 }
 
 template<class T>
@@ -424,7 +424,7 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b,
 }
 
 template<class T>
-gsMatrix<T> gsBasis<T>::support() const 
+gsMatrix<T> gsBasis<T>::support() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -432,7 +432,7 @@ gsMatrix<T> gsBasis<T>::support(const unsigned &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsMatrix<T> gsBasis<T>::supportInterval(unsigned dir) const 
+gsMatrix<T> gsBasis<T>::supportInterval(unsigned dir) const
 { return support().row(dir); }
 
 template<class T>
@@ -464,11 +464,11 @@ void gsBasis<T>::deriv2Single_into(unsigned,
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::evalAllDers_into(const gsMatrix<T> & u, int n, 
+void gsBasis<T>::evalAllDers_into(const gsMatrix<T> & u, int n,
                                   std::vector<gsMatrix<T> >& result) const
 {
     result.resize(n+1);
-    
+
     switch(n)
     {
     case 0:
@@ -610,7 +610,7 @@ void gsBasis<T>::setDegree(int const& i)
 
 template<class T>
 void gsBasis<T>::setDegreePreservingMultiplicity(int const& i)
-{ 
+{
     for ( index_t d = 0; d < dim(); ++ d )
     {
         if ( i > degree(d) )
@@ -688,9 +688,9 @@ T gsBasis<T>::getMaxCellLength() const
 
 /*
 template<class T>
-void gsBasis<T>::linearComb(const gsMatrix<unsigned>  & actives, 
+void gsBasis<T>::linearComb(const gsMatrix<unsigned>  & actives,
                             const gsMatrix<T>         & basisVals,
-                            const gsMatrix<T>         & coefs, 
+                            const gsMatrix<T>         & coefs,
                             gsMatrix<T>&                result )
 {
     // basisVals.rows()==1 (or else basisVals.rows() == coefs.cols() and .cwiseProd)
@@ -701,7 +701,7 @@ void gsBasis<T>::linearComb(const gsMatrix<unsigned>  & actives,
         //todo grab result.col(j)
 		result.col(j) =  basisVals(0,j) * coefs.row( actives(0,j) ) ;//transpose ?
 		for ( index_t i=1; i< actives.rows() ; i++ )
-		    result.col(j) += basisVals(i,j) * coefs.row( actives(i,j) ) ; 
+		    result.col(j) += basisVals(i,j) * coefs.row( actives(i,j) ) ;
     }
 }
 */
