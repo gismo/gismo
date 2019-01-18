@@ -140,7 +140,7 @@ function(gismo_fetch_module SUBMODULE KEEPBRANCH) #SUBBRANCH
 
   elseif("x${GISMO_REPO}" STREQUAL "xsvn")
     #if("x${GISMO_FETCH_PROT}" STREQUAL "xssh") message(ERROR "GitHub does not support svn+ssh") endif()
-    gismo_fetch_directory(${ARGN}
+    gismo_fetch_directory(${SUBMODULE}
       SVN_REPOSITORY https://github.com/gismo/${SUBMODULE}/trunk
       SVN_USERNAME ${GISMO_UNAME} # Username for Subversion checkout and update
       SVN_PASSWORD ${GISMO_PASS}  # Password for Subversion checkout and update
@@ -148,15 +148,14 @@ function(gismo_fetch_module SUBMODULE KEEPBRANCH) #SUBBRANCH
       DESTINATION  extensions
       )
   else()
-    gismo_fetch_directory(${ARGN}
+    gismo_fetch_directory(${SUBMODULE}
       URL https://github.com/gismo/${SUBMODULE}/archive/master.zip
       DESTINATION  extensions
       )
   endif()
 
-  # needed anymore?
-  if(EXISTS "${gismo_SOURCE_DIR}/extensions/${ARGN}/CMakeLists.txt")
-    add_subdirectory(${gismo_SOURCE_DIR}/extensions/${ARGN} ${gismo_BINARY_DIR}/extensions/${ARGN})
+  if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
+    add_subdirectory(${gismo_SOURCE_DIR}/extensions/${SUBMODULE} ${gismo_BINARY_DIR}/extensions/${SUBMODULE})
   endif()
 
 endfunction()
