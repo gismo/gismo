@@ -378,19 +378,19 @@ endif()
 ## #################################################################
 
 if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
-  gismo_fetch_module(unsupported)
+  gismo_fetch_module(unsupported FALSE)
 endif()
 
 if(GISMO_MOTOR)
-  gismo_fetch_module(motor)
+  gismo_fetch_module(motor FALSE)
 endif()
 
 if(GISMO_ELASTICITY)
-  gismo_fetch_module(gsElasticity)
+  gismo_fetch_module(gsElasticity FALSE)
 endif()
 
 if(GISMO_EXASTENCILS)
-  gismo_fetch_module(gsExaStencils)
+  gismo_fetch_module(gsExaStencils FALSE)
 endif()
 
 unset(GISMO_UNAME CACHE)

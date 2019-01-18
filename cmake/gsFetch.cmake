@@ -71,10 +71,11 @@ function(gismo_fetch_directory)
 endfunction()
 
 # called to fetch/download a submodule form git (working) and svn (in progress)
-# (ARGV0) SUBMODULE: name of submodule
-# (ARGV1) SUBBRANCH: branch for checkout - not set at the moment
-# (ARGVN)            Used to give Update Command, unittests/CMakeLists.txt-15-#07.08.18
-function(gismo_fetch_module SUBMODULE) #SUBBRANCH
+# (ARGV0) SUBMODULE:  name of submodule
+# (ARGV1) KEEPBRANCH: do not change branch
+# (ARGV2) SUBBRANCH:  branch for checkout, default master - not set at the moment
+# (ARGVN)               Used to give Update Command, unittests/CMakeLists.txt-15-#07.08.18
+function(gismo_fetch_module SUBMODULE KEEPBRANCH) #SUBBRANCH
 
 #  message(${ARGN})
 #  message(STATUS "\nARGC: ${ARGC}\n")
@@ -118,13 +119,15 @@ function(gismo_fetch_module SUBMODULE) #SUBBRANCH
         #OUTPUT_QUIET
         )
 
-      # checkout SUBBRANCH - must be done after init, should be done on every build (update corrupt servers to this branch)
-        # TODO: remove me, when it works on #130
-      execute_process(COMMAND "${GIT_EXECUTABLE}" "checkout" "${SUBBRANCH}"
-              WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE}
-              #RESULT_VARIABLE gresult
-              #OUTPUT_QUIET
-        )
+        if(NOT KEEPMODULE) # gsTestUnit should not change
+          # checkout SUBBRANCH - must be done after init, should be done on every build (update corrupt servers to this branch)
+          # TODO: remove me, when it works on #130
+          execute_process(COMMAND "${GIT_EXECUTABLE}" "checkout" "${SUBBRANCH}"
+                  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE}
+                  #RESULT_VARIABLE gresult
+                  #OUTPUT_QUIET
+          )
+        endif()
     endif()
 
 #    # TODO: nightlys should do it, builds by hand not
