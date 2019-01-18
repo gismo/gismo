@@ -119,7 +119,7 @@ function(gismo_fetch_module SUBMODULE KEEPBRANCH) #SUBBRANCH
         #OUTPUT_QUIET
         )
 
-        if(NOT KEEPMODULE) # gsTestUnit should not change
+        if(NOT ${KEEPBRANCH}) # gsTestUnit should not change
           # checkout SUBBRANCH - must be done after init, should be done on every build (update corrupt servers to this branch)
           # TODO: remove me, when it works on #130
           execute_process(COMMAND "${GIT_EXECUTABLE}" "checkout" "${SUBBRANCH}"
