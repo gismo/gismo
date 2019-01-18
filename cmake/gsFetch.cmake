@@ -70,10 +70,26 @@ function(gismo_fetch_directory)
 
 endfunction()
 
+# called to fetch/download a submodule form git (working) and svn (in progress)
+# (ARGV0) SUBMODULE: name of submodule
+# (ARGV1) SUBBRANCH: branch for checkout - not set at the moment
+# (ARGVN)            Used to give Update Command, unittests/CMakeLists.txt-15-#07.08.18
+function(gismo_fetch_module SUBMODULE) #SUBBRANCH
 
-function(gismo_fetch_module)
+#  message(${ARGN})
+#  message(STATUS "\nARGC: ${ARGC}\n")
+#  foreach(loop_var RANGE ${ARGC}-1)
+#    message(message(STATUS "\n ARGV${loop_var} : ${ARGV${loop_var}} \n"))
+#  endforeach(loop_var)
 
-  # TODO: online/offline mode
+# TODO: online/offline mode
+
+  # set SUBBRANCH for submodule to master if not set already
+  # due CMAKE fails in newer versions until all expacted (named) arguments are given,
+  # this may be to removed when SUBBRANCH gets a named argument
+  if (NOT DEFINED SUBBRANCH)
+    set(SUBBRANCH master)
+  endif()
 
   get_repo_info(GISMO_REPO GISMO_REPO_REV) # or set manually
 
@@ -81,29 +97,48 @@ function(gismo_fetch_module)
   #  set(GISMO_FETCH_PROT https) #ssh
   #endif()
 
-  #message("Fetch ${ARGV0} (repository: ${GISMO_REPO}, revision: ${GISMO_REPO_REV}, protocol: ${GISMO_FETCH_PROT}, username: ${GISMO_UNAME}, password: ${GISMO_PASS})")
+  #message("Fetch ${SUBMODULE} (repository: ${GISMO_REPO}, revision: ${GISMO_REPO_REV}, protocol: ${GISMO_FETCH_PROT}, username: ${GISMO_UNAME}, password: ${GISMO_PASS})")
 
   if("x${GISMO_REPO}" STREQUAL "xgit")
     #if("x${GISMO_FETCH_PROT}" STREQUAL "xssh")
-    #  set(git_repo git@github.com:gismo/${ARGV0}.git)
+    #  set(git_repo git@github.com:gismo/${SUBMODULE}.git)
     #elseif("x${GISMO_FETCH_PROT}" STREQUAL "xhttps")
-    #  set(git_repo https://github.com/gismo/${ARGV0}.git)
+    #  set(git_repo https://github.com/gismo/${SUBMODULE}.git)
     #endif()
     # gismo_fetch_directory(${ARGN} GIT_REPOSITORY  ${git_repo} DESTINATION  extensions)
     
-    if(NOT EXISTS "${gismo_SOURCE_DIR}/extensions/${ARGV0}/CMakeLists.txt")
-      message(STATUS "Initializing remote submodule ${ARGV0}")
+    if(NOT EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
+      message(STATUS "Initializing remote submodule ${SUBMODULE}")
       find_package(Git REQUIRED)
-      execute_process(COMMAND "${GIT_EXECUTABLE}" "submodule" "update" "--init" "extensions/${ARGV0}"
+
+      # init SUBMODULE
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "submodule" "update" "--init" "extensions/${SUBMODULE}"
         WORKING_DIRECTORY ${gismo_SOURCE_DIR}
         #RESULT_VARIABLE gresult
         #OUTPUT_QUIET
         )
+
+      # checkout SUBBRANCH - must be done after init, should be done on every build (update corrupt servers to this branch)
+        # TODO: remove me, when it works on #130
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "checkout" "${SUBBRANCH}"
+              WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE}
+              #RESULT_VARIABLE gresult
+              #OUTPUT_QUIET
+        )
     endif()
+
+#    # TODO: nightlys should do it, builds by hand not
+#    # checkout SUBBRANCH - must be done after init, should be done on every build (update corrupt servers to this branch)
+#    execute_process(COMMAND "${GIT_EXECUTABLE}" "checkout" "${SUBBRANCH}"
+#            WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE}
+#            #RESULT_VARIABLE gresult
+#            #OUTPUT_QUIET
+#      )
+
   elseif("x${GISMO_REPO}" STREQUAL "xsvn")
     #if("x${GISMO_FETCH_PROT}" STREQUAL "xssh") message(ERROR "GitHub does not support svn+ssh") endif()
     gismo_fetch_directory(${ARGN}
-      SVN_REPOSITORY https://github.com/gismo/${ARGV0}/trunk
+      SVN_REPOSITORY https://github.com/gismo/${SUBMODULE}/trunk
       SVN_USERNAME ${GISMO_UNAME} # Username for Subversion checkout and update
       SVN_PASSWORD ${GISMO_PASS}  # Password for Subversion checkout and update
       SVN_TRUST_CERT 1            # Trust the Subversion server site certificate
@@ -111,11 +146,12 @@ function(gismo_fetch_module)
       )
   else()
     gismo_fetch_directory(${ARGN}
-      URL https://github.com/gismo/${ARGV0}/archive/master.zip
+      URL https://github.com/gismo/${SUBMODULE}/archive/master.zip
       DESTINATION  extensions
       )
   endif()
 
+  # needed anymore?
   if(EXISTS "${gismo_SOURCE_DIR}/extensions/${ARGN}/CMakeLists.txt")
     add_subdirectory(${gismo_SOURCE_DIR}/extensions/${ARGN} ${gismo_BINARY_DIR}/extensions/${ARGN})
   endif()
