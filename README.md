@@ -28,9 +28,9 @@ The latest revision of the code can be obtained using subversion:
 
 ```svn co https://github.com/gismo/gismo/trunk gismo```
 
-or using git:
+or using git (via https):
 
-```git clone git@github.com:gismo/gismo.git```
+```git clone https://github.com/gismo/gismo.git```
 
 or as a zip file:
 
