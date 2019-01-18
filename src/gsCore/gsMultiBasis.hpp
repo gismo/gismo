@@ -629,12 +629,12 @@ void gsMultiBasis<T>::partition(
     interior.resize(sz);
     boundary.resize(sz);
     interface.resize(sz);
-    for ( index_t k = 0; k!= sz; ++k) // for all patches
+    for ( index_t k = 0; k!= sz; ++k ) // for all patches
     {
         interior[k] = dm.findFreeUncoupled(k);
         boundary[k] = dm.findBoundary(k);
         interface[k].resize(sz);
-        for ( index_t j = 0; j!= sz; ++j)
+        for ( index_t j = 0; j!= sz; ++j )
             interface[k][j]= dm.findCoupled(k,j);
     }
 }
