@@ -183,7 +183,7 @@ void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
     //     convertValue<T>::derivToCurl(out.values[1], out.curls, info());
     if (flags & NEED_LAPLACIAN)
     {
-        const index_t dsz    = out.derivSize();
+        const index_t dsz    = out.deriv2Size();
         const index_t numact = out.values[2].rows() / dsz;
         out.laplacians.resize(numact, in.cols());
         for (index_t i=0; i!= numact; ++i)

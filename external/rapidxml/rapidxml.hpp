@@ -1383,7 +1383,7 @@ namespace rapidxml
 
         void appendToRoot(xml_node<Ch> * node)
         {
-            char tmp[4];
+            char tmp[6];
             sprintf(tmp,"%d", (unsigned short)(++max_Id));
             node->append_attribute(this->allocate_attribute(
             this->allocate_string("id"), this->allocate_string(tmp) ) );

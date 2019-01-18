@@ -157,3 +157,7 @@ public:
 };
 
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsPatchPreconditionersCreator.hpp)
+#endif

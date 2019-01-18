@@ -155,6 +155,7 @@ namespace internal
 #include <gsSolver/gsGradientMethod.h>
 #include <gsSolver/gsConjugateGradient.h>
 #include <gsSolver/gsPreconditioner.h>
+#include <gsSolver/gsAdditiveOp.h>
 #include <gsSolver/gsBlockOp.h>
 #include <gsSolver/gsCompositePrecOp.h>
 #include <gsSolver/gsProductOp.h>
@@ -186,6 +187,10 @@ namespace internal
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF
 #include <gsAutoDiff.h>
+#endif
+
+#ifdef GISMO_WITH_FDBB
+#include <gsFdbb/gsFdbb.h>
 #endif
 
 /*

@@ -23,9 +23,9 @@ const double PI = 3.14159265;
 
 int main(int argc, char* argv[])
 {
-    int n = 5;
-    int m = 5;
-    int degree = 3;
+    index_t n = 5;
+    index_t m = 5;
+    index_t degree = 3;
     std::string output("");
 
     gsCmdLine cmd("Tutorial on gsTensorBSpline class.");
@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // Adjust values to the minimum required
-    degree = math::max(0, degree    );
+    degree = math::max(index_t(0), degree    );
     n      = math::max(n, degree + 1);
     m      = math::max(m, degree + 1);
 
@@ -99,5 +99,3 @@ int main(int argc, char* argv[])
 
     return 0;
 }
-
-

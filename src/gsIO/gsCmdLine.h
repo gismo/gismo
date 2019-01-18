@@ -54,6 +54,8 @@ class gsCmdLinePrivate;
  */
 class GISMO_EXPORT gsCmdLine
 {
+    typedef index_t intVal_t;
+
 public:
     ///
     /// @brief Command line constructor. Defines how the arguments will be
@@ -91,7 +93,7 @@ public:
     void addInt(const std::string& flag,
                 const std::string& name,
                 const std::string& desc,
-                int              & value);
+                intVal_t        & value);
 
     /// @brief Register an int option for the command line, which can be assigned more than once
     ///
@@ -108,7 +110,7 @@ public:
     void addMultiInt(const std::string& flag,
                      const std::string& name,
                      const std::string& desc,
-                     std::vector<int> & value);
+                     std::vector<intVal_t> & value);
 
     /// @brief Register a real option for the command line
     ///

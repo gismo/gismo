@@ -348,3 +348,4 @@ std::ostream& operator<<( std::ostream& os, const gsMultiPatch<T>& b )
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsMultiPatch.hpp)
 #endif
+
