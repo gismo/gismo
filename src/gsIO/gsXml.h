@@ -252,6 +252,11 @@ inline gsXmlNode * searchId(const int id, gsXmlNode * root)
 /// Helper to allocate XML value
 GISMO_EXPORT char * makeValue( const std::string & value, gsXmlTree & data);
 
+/// Helper to allocate matrix in XML pool
+template<class T>
+char * makeValue(const gsMatrix<T> & value, gsXmlTree & data,
+                 bool transposed);
+
 /// Helper to allocate XML attribute
 GISMO_EXPORT gsXmlAttribute *  makeAttribute( const std::string & name,
 				              const std::string & value, gsXmlTree & data);

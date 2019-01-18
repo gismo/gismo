@@ -62,7 +62,7 @@ void normal(const gsMapData<T> & md, index_t k, gsVector<T> & result)
 {
     GISMO_ASSERT( md.dim.first+1 == md.dim.second, "Codimension should be equal to one");
     result.resize(md.dim.first+1);
-    const gsMatrix<T> Jk = md.jacobians().block(0, k*md.dim.first, md.dim.first+1, md.dim.first);
+    const gsMatrix<T> Jk = md.jacobian(k);
 
     T alt_sgn(1.0);
     typename gsMatrix<T>::RowMinorMatrixType minor;
@@ -105,7 +105,7 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
           alt_sgn = -alt_sgn;
           }
           gsDebugVar(result.transpose()); // result 2
-        //*/
+        */
     }
     else // planar case
     {
@@ -195,7 +195,7 @@ void hessianToSecDer (const gsMatrix<T> & hessian,
 }
 
 template<typename T>
-void secDerToTensor(Eigen::DenseBase<Eigen::Map<const Eigen::Matrix<double, -1, -1>, 0, Eigen::Stride<0, 0> > >::ConstColXpr & secDers,
+void secDerToTensor(typename Eigen::DenseBase<Eigen::Map<const Eigen::Matrix<T, -1, -1>, 0, Eigen::Stride<0, 0> > >::ConstColXpr & secDers,
                     gsMatrix<T> * a,
                     int parDim, int geoDim)
 {
@@ -425,7 +425,7 @@ public: /* Element visitors */
     template<class ElementVisitor>
     void push()
     {
-        for (unsigned np=0; np < m_pde_ptr->domain().nPatches(); ++np )
+        for (index_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
         {
             ElementVisitor visitor(*m_pde_ptr);
             //Assemble (fill m_matrix and m_rhs) on patch np
@@ -452,12 +452,20 @@ public: /* Element visitors */
     template<class ElementVisitor>
     void push(const ElementVisitor & visitor)
     {
-        for (unsigned np=0; np < m_pde_ptr->domain().nPatches(); ++np )
+        for (index_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
         {
             ElementVisitor curVisitor = visitor;
             //Assemble (fill m_matrix and m_rhs) on patch np
             apply(curVisitor, np);
         }
+    }
+
+    /// @brief Applies the \a BElementVisitor to the boundary condition \a BC
+    template<class BElementVisitor>
+    void push( BElementVisitor & visitor, const boundary_condition<T> & BC)
+    {
+        //Assemble (fill m_matrix and m_rhs) contribution from this BC
+        apply(visitor, BC.patch(), BC.side());
     }
 
     /// @brief Iterates over all elements of interfaces and
@@ -498,7 +506,7 @@ public:  /* Dirichlet degrees of freedom computation */
     /// unknown.
     /// \param[in] vals the values of the eliminated dofs.
     /// \param[in] unk the considered unknown
-    void setFixedDofVector(gsMatrix<T> & vals, int unk = 0);
+    void setFixedDofVector(gsMatrix<T> vals, int unk = 0);
 
     /// Enforce Dirichlet boundary conditions by diagonal penalization
     /// \param[in] unk the considered unknown

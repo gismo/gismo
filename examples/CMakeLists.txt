@@ -1,11 +1,13 @@
 ### CMakeLists.txt ---
-## 
-## Author: Angelos Mantzaflaris 
+##
+## Author: Angelos Mantzaflaris
 ## Author: Harald Weiner
 ## Copyright (C) 2012-2018 - RICAM-Linz.
 ######################################################################
 
 project(examples)
+
+set(CMAKE_DIRECTORY_LABELS "${PROJECT_NAME}") #CMake 3.10
 
 # Add a grouping target that builds all tests this is equivalent to
 # running "make" inside the tests build folder

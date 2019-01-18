@@ -84,7 +84,7 @@ public:
     String lastPath() const { return m_lastPath; }
 
     /// Set the precision (number of decimals) used for writing floats
-    /// to output files. A 32-bit float has a precision of about 8 digits. 
+    /// to output files. A 32-bit float has a precision of about 8 digits.
     /// A 64-bit double has a precision of about 16.
     void setFloatPrecision(const unsigned k) { data->setFloatPrecision(k); }
 
@@ -152,6 +152,8 @@ protected:
 
     /// Reads parasolid files
     bool readParasolidFile(String const & fn);
+
+    bool readCsvFile(String const & fn);
 
     // Show the line number where something went wrong
     void ioError(int lineNumber,const String& str);

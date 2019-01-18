@@ -35,7 +35,7 @@ template<unsigned d, class T>
 class gsHBSplineBasis : public gsHTensorBasis<d,T>
 {
 public:
-    /// Associated geometry type
+    /// @brief Associated geometry type
     typedef gsHBSpline<d,T> GeometryType;
     
     typedef typename gsHTensorBasis<d,T>::CMatrix CMatrix;
@@ -46,17 +46,17 @@ public:
     util::conditional<d==1, gsConstantBasis<T>, gsHBSplineBasis<d-1,T>
                       >::type BoundaryBasisType;
 
-    /// Shared pointer for gsHBSplineBasis
+    /// @brief Shared pointer for gsHBSplineBasis
     typedef memory::shared_ptr< gsHBSplineBasis > Ptr;
 
-    /// Unique pointer for gsHBSplineBasis
+    /// @brief Unique pointer for gsHBSplineBasis
     typedef memory::unique_ptr< gsHBSplineBasis > uPtr;
 
 public:
 
     gsHBSplineBasis() { }
 
-    /// Constructor out of a tensor BSpline Basis
+    /// @brief Constructor out of a tensor BSpline Basis
     gsHBSplineBasis(gsBasis<T> const&  tbasis)
         : gsHTensorBasis<d,T>(tbasis) 
     {
@@ -77,14 +77,17 @@ public:
         // initialize(); // is done in the base constructor
     }
 
-    /// Gives back the boundary basis at boxSide s
+#ifdef __DOXYGEN__
+    /// @brief Gives back the boundary basis at boxSide s
+    typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s);
+#endif
     GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
     {
         return basisSlice(n1.direction(),n1.parameter());
     }
 
 public:
-    /// Gives back the basis at a slice in \a dir_fixed at \a par
+    /// @brief Gives back the basis at a slice in \a dir_fixed at \a par
     BoundaryBasisType * basisSlice(index_t dir_fixed,T par ) const;
 
     int domainDim() const { return d; }
@@ -103,16 +106,16 @@ public:
 
     GISMO_CLONE_FUNCTION(gsHBSplineBasis)
 
-    /// Prints the object as a string.
+    /// @brief Prints the object as a string.
     std::ostream &print(std::ostream &os) const;
-    ///returns transfer matrices betweend the levels of the given hierarchical spline
+    /// @brief returns transfer matrices betweend the levels of the given hierarchical spline
     void transferbyLvl(std::vector<gsSparseMatrix<T> >& result);
 
     GISMO_MAKE_GEOMETRY_NEW
     
 private:
     
-    /// Initialize the characteristic and coefficient matrices and the
+    /// @brief Initialize the characteristic and coefficient matrices and the
     /// internal bspline representations
     void initialize();
 

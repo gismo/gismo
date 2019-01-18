@@ -162,6 +162,7 @@ bool gsFileData<T>::read(String const & fn)
     if ( m_lastPath.empty() )
     {
         gsWarn<<"gsFileData: Problem with file "<<fn<<": File not found.\n";
+        gsWarn<<"search paths: "<< gsFileManager::getSearchPaths()<<"\n";
         return false;
     }
 
@@ -210,6 +211,8 @@ bool gsFileData<T>::read(String const & fn)
 //        return readBezierView(m_lastPath);
     else if (ext=="x3d")
         return readX3dFile(m_lastPath);
+    else if (ext=="csv")
+            return readCsvFile(m_lastPath);
     else
     {
         gsWarn<<"gsFileData: Problem with file "<<fn<<": Unknown extension \"."<<ext<<"\".\n";
@@ -973,10 +976,10 @@ bool gsFileData<T>::readGeompFile( String const & fn )
             // if ( weights == gsMatrix<T>::Ones(sz,1) )
             //      gsDebug<<"gsFileData: In fact weights are all equal to 1.\n";
 
-            gsXmlNode* c = internal::makeNode("weights", weights, *data);
+            gsXmlNode* c = internal::makeNode("weights", weights, *data, true);
             rtb->append_node(c);
 
-            c = internal::makeNode("coefs", coefs, *data, true);
+            c = internal::makeNode("coefs", coefs, *data, false);
             c->append_attribute( internal::makeAttribute("geoDim", N, *data ) );
             g->append_node(c);
         }
@@ -1781,6 +1784,34 @@ bool gsFileData<T>::readParasolidFile( String const & fn )
 #endif
 }
 
+template<class T>
+bool gsFileData<T>::readCsvFile( String const & fn )
+{
+    std::ifstream indata;
+    indata.open(fn.c_str());
+    std::string cell, line, mstr;
+    index_t rows = 0, nv = 0;
+    std::istringstream lnstream;
+    lnstream.unsetf(std::ios_base::skipws);
+    while (std::getline(indata, line))
+    {
+        lnstream.clear();
+        lnstream.str(line);
+        while (std::getline(lnstream, cell, ','))
+        {
+            ++nv;
+            mstr += cell + " ";
+        }
+        ++rows;
+    }
+    gsXmlNode * nd =  internal::makeNode("Matrix", mstr, *data);
+    nd->append_attribute( internal::makeAttribute("format","ascii",*data) );
+    nd->append_attribute( internal::makeAttribute("rows",rows,*data) );
+    nd->append_attribute( internal::makeAttribute("cols",nv/rows,*data) );
+
+    data->appendToRoot(nd);
+    return true;
+}
 
 template<class T>
 std::string

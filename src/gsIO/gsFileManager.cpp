@@ -21,6 +21,9 @@
 #if defined _WIN32
 #include <windows.h>
 #include <direct.h>
+#ifdef __MINGW32__
+#include <sys/stat.h>
+#endif
 #else
 #include <sys/stat.h>
 #include <dlfcn.h>
@@ -40,14 +43,14 @@ public:
     friend gsFileManagerData& gsFileManagerDataSingleton();
     friend class gsFileManager;
 
-    void addSearchPaths(const std::string& paths);
+    bool addSearchPaths(const std::string& paths);
 
     void clear() { m_paths.clear();}
 private:
     gsFileManagerData()
     {
 #ifdef GISMO_SEARCH_PATHS
-        addSearchPaths("" GISMO_SEARCH_PATHS);
+        (void)addSearchPaths("" GISMO_SEARCH_PATHS);
 #endif
     }
 
@@ -65,6 +68,12 @@ gsFileManagerData& gsFileManagerDataSingleton()
 bool gsFileManager::fileExists(const std::string& name)
 {
     return !find(name).empty();
+}
+
+bool gsFileManager::dirExists(const std::string& path)
+{
+    struct stat info;
+    return (0==stat(path.c_str(), &info)) && (info.st_mode & S_IFDIR);
 }
 
 bool gsFileManager::fileExistsInDataDir(const std::string& name)
@@ -125,19 +134,21 @@ void _replace_slash_by_basckslash(std::string& str)
         if ( *it=='/' ) *it = '\\';
 }
 
-void gsFileManager::addSearchPaths(const std::string& paths)
+bool gsFileManager::addSearchPaths(const std::string& paths)
 {
-    gsFileManagerDataSingleton().addSearchPaths(paths);
+    return gsFileManagerDataSingleton().addSearchPaths(paths);
 }
 
-void gsFileManager::setSearchPaths(const std::string& paths)
+bool gsFileManager::setSearchPaths(const std::string& paths)
 {
     gsFileManagerDataSingleton().clear();
-    gsFileManagerDataSingleton().addSearchPaths(paths);
+    return gsFileManagerDataSingleton().addSearchPaths(paths);
 }
 
-void gsFileManagerData::addSearchPaths(const std::string& paths)
+bool gsFileManagerData::addSearchPaths(const std::string& paths)
 {
+    bool ok = true;
+    std::string p;
     std::string::const_iterator a;
     std::string::const_iterator b = paths.begin();
     while (true)
@@ -145,7 +156,7 @@ void gsFileManagerData::addSearchPaths(const std::string& paths)
         a = b;
         while (b != paths.end() && (*b) != ';') { ++b; }
 
-        std::string p(a,b);
+        p.assign(a,b);
 
 #if defined _WIN32
         _replace_slash_by_basckslash(p);
@@ -160,7 +171,7 @@ void gsFileManagerData::addSearchPaths(const std::string& paths)
             if (*p.rbegin() != '/')
                 p.push_back('/');
 #endif
-
+            ok &= gsFileManager::dirExists(p);
             m_paths.push_back(p);
         }
 
@@ -168,6 +179,7 @@ void gsFileManagerData::addSearchPaths(const std::string& paths)
 
         ++b;
     }
+    return ok;
 }
 
 std::string gsFileManager::getSearchPaths()
@@ -261,7 +273,7 @@ std::string gsFileManager::getTempPath()
         // note: env variable needs no free
         return std::string(_temp);
     }
-    
+
     // And as third choice, use just current directory
     // http://man7.org/linux/man-pages/man2/getcwd.2.html
     _temp = getcwd(NULL, 0);

@@ -1,4 +1,4 @@
-/** @file gsGMRes.cpp
+/** @file gsGMRes.hpp
 
     @brief Preconditioned iterative solver using the generalized minimal residual method.
 

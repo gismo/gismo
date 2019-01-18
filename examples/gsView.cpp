@@ -20,8 +20,8 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     std::string fn("");
-    int numSamples(1000);
-    int choice(0);
+    index_t numSamples(1000);
+    index_t choice(0);
     bool plot_mesh = false;
     bool plot_net = false;
     bool plot_boundary = false;
@@ -138,7 +138,6 @@ int main(int argc, char *argv[])
             }
 
             gsWriteParaview(memory::get_raw(geo), "gsview", numSamples, plot_mesh, plot_net);
-
             break;
         }
 

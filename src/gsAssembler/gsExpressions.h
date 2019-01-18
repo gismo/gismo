@@ -884,7 +884,7 @@ public:
     static bool colSpan() {return false;}
 
     index_t rows() const {return _u.dim(); }
-    index_t cols() const {return 1; }
+    static index_t cols() {return 1; }
 
     void setFlag() const
     { _u.data().flags |= NEED_VALUE | NEED_ACTIVE; }
@@ -1303,13 +1303,13 @@ public:                                                                 \
     // const gsFeVariable<Scalar> & colVar() const { return _u.colVar(); }
 
 /// Eucledian Norm
-GISMO_EXPR_VECTOR_EXPRESSION(norm,norm,1)
+GISMO_EXPR_VECTOR_EXPRESSION(norm,norm,1);
 /// Squared Eucledian Norm
-GISMO_EXPR_VECTOR_EXPRESSION(sqNorm,squaredNorm,1)
+GISMO_EXPR_VECTOR_EXPRESSION(sqNorm,squaredNorm,1);
 /// Normalization of a vector to unit measure
-GISMO_EXPR_VECTOR_EXPRESSION(normalized,normalized,0) // (!) mem.
+GISMO_EXPR_VECTOR_EXPRESSION(normalized,normalized,0); // (!) mem.
 /// Inverse of a matrix expression
-GISMO_EXPR_VECTOR_EXPRESSION(inv,inverse,0)
+GISMO_EXPR_VECTOR_EXPRESSION(inv,inverse,0);
 // GISMO_EXPR_VECTOR_EXPRESSION(cwSqr,array().square,0)
 // GISMO_EXPR_VECTOR_EXPRESSION(sum,array().sum,1)
 // GISMO_EXPR_VECTOR_EXPRESSION(sqrt,array().sqrt,0)
@@ -1507,7 +1507,7 @@ public:
 
 
 /*
-   Expression for the nabla of a finite element variable,
+   Expression for the nabla (\f$\nabla\f$) of a finite element variable,
  */
 template<class T>
 class nabla_expr : public _expr<nabla_expr<T> >
@@ -1564,7 +1564,7 @@ public:
 };
 
 /*
-   Expression for the nabla2 (or Del2) of a finite element variable,
+   Expression for the nabla2 (\f$\nabla^2\f$ or Del2) of a finite element variable,
    see also https://en.wikipedia.org/wiki/Del
 
    Transposed pure second derivatives are returned as a matrix
@@ -1613,7 +1613,7 @@ public:
     static bool colSpan() {return false;}
 };
 
-/// The nabla2 (nabla^2) of a finite element variable
+/// The nabla2 (\f$\nabla^2\f$) of a finite element variable
 template<class T>
 nabla2_expr<T> nabla2(const gsFeVariable<T> & u)
 { return nabla2_expr<T>(u); }
@@ -2758,9 +2758,9 @@ public:
     AutoReturn_t eval(const index_t k) const
     {
         GISMO_ASSERT(_u.rows() == _v.rows(),
-                     "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in - operation");
+                     "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in - operation:\n" << _u <<" minus \n" << _v );
         GISMO_ASSERT(_u.cols() == _v.cols(),
-                     "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in - operation");
+                     "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in - operation:\n" << _u <<" minus \n" << _v );
         //gsDebugVar( (_u.eval(k) - _v.eval(k)) );
         //gsDebugVar( (_u.eval(k) - _v.eval(k)).squaredNorm() );
         return (_u.eval(k) - _v.eval(k) );
@@ -2851,7 +2851,7 @@ grad_expr<T> grad(const gsFeVariable<T> & u) { return grad_expr<T>(u); }
 template<class T> EIGEN_STRONG_INLINE
 curl_expr<T> curl(const gsFeVariable<T> & u) { return curl_expr<T>(u); }
 
-/// The nabla (\$\nabla\$) of a finite element variable
+/// The nabla (\f$\nabla\f$) of a finite element variable
 template<class T> EIGEN_STRONG_INLINE
 nabla_expr<T> nabla(const gsFeVariable<T> & u) { return nabla_expr<T>(u); }
 

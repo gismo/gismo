@@ -77,7 +77,7 @@ public:
 
     virtual const gsFunction & piece(const index_t k) const
     {
-        GISMO_ENSURE(0==k, "Single function is defined on single subdomain, received: "<<k );
+        GISMO_ENSURE(0==k, "Single function of type "<< typeid(*this).name() <<" is defined on single subdomain, received: "<<k<<". Is piece(k) implemented?" );
         return *this; 
     }
 

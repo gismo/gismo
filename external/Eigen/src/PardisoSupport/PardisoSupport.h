@@ -156,7 +156,10 @@ class PardisoImpl : public SparseSolverBase<Derived>
     {
       return m_iparm;
     }
-    
+
+    // G+Smo: set individual parameter
+    void setParam(const int i, const int value) { m_iparm[i] = value; }
+
     /** Performs a symbolic decomposition on the sparcity of \a matrix.
       *
       * This function is particularly useful when solving for several problems having the same structure.

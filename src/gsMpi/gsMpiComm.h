@@ -147,11 +147,11 @@ public:
     /** @brief Sends data to a destination process with a defined tag (blocking)
      *
      * One process sends data of length len to the destination process dest. The argument tag specifies the message ID.
-     *
-     * @param[in] in The send buffer with the data to send
-     * @param[in] len The number of elements which will be sent
-     * @param[in] dest The rank of the process which should receive the message
-     * @param[in] tag Specifies the message ID
+     * <hr>\b Parameters
+     * \n[in]\b in The send buffer with the data to send
+     * \n[in]\b len The number of elements which will be sent
+     * \n[in]\b dest The rank of the process which should receive the message
+     * \n[in]\b tag Specifies the message ID
      */
     template<typename T>
     static int send (T*, int, int, int = 0)
@@ -178,11 +178,11 @@ public:
     /** @brief Receives data from a source process with a defined tag (blocking)
      *
      * One process receives data of length len from the source process source. The argument tag specifies the message ID.
-     *
-     * @param[out] out The buffer to store the received data in
-     * @param[in] len The number of elements which will be received
-     * @param[in] source The rank of the process which sended the message
-     * @param[in] tag Specifies the message ID
+     * <hr>\b Parameters
+     * \n[out]\b out The buffer to store the received data in
+     * \n[in]\b len The number of elements which will be received
+     * \n[in]\b source The rank of the process which sended the message
+     * \n[in]\b tag Specifies the message ID
      */
     template<typename T>
     static int recv (T*, int, int, int = 0)
@@ -220,11 +220,12 @@ public:
      * Each process sends its in array of length len to the root
      * process (including the root itself). In the root process these
      * arrays are stored in rank order in the out array which must
-     * have size len * number of processes.  @param[in] in The send
-     * buffer with the data to send.  @param[out] out The buffer to
-     * store the received data in. Might have length zero on non-root
-     * tasks.  @param[in] len The number of elements to send on each
-     * task.  @param[in] root The root task that gathers the data.
+     * have size len * number of processes.
+     * @param[in] in The send buffer with the data to send.
+     * @param[out] out The buffer to store the received data in. Might
+     * have length zero on non-root tasks.
+     * @param[in] len The number of elements to send on each task.
+     * \n[in]\b root The root task that gathers the data.
      */
     template<typename T>
     static int gather (T* in, T* out, int len, int) // note out must have same size as in

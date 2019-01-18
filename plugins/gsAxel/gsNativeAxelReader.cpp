@@ -74,7 +74,7 @@ bool gsNativeAxelReader::reject(const QDomNode& node)
     return !this->accept(node);
 }
 
-dtkAbstractData *gsNativeAxelReader::read(const QDomNode& node)
+axlAbstractData *gsNativeAxelReader::read(const QDomNode& node)
 {
 
   return NULL;

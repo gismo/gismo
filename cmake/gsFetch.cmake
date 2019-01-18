@@ -10,10 +10,10 @@ include(CMakeParseArguments)
 
 #latest CMake has FetchContent
 function(gismo_fetch_directory)
-
   set(GF_NAME "${ARGV0}")
   set(oneValueArgs
     # Protect the following options
+    DESTINATION
     SOURCE_DIR
     BINARY_DIR
     CONFIGURE_COMMAND
@@ -23,15 +23,17 @@ function(gismo_fetch_directory)
   cmake_parse_arguments(GF "${GF_NAME}" "${oneValueArgs}" "" ${ARGN})
   #message( GF_UNPARSED_ARGUMENTS "= ${GF_UNPARSED_ARGUMENTS}")
 
-  if( EXISTS "${gismo_SOURCE_DIR}/extensions/${GF_NAME}/CMakeLists.txt")
-    message(STATUS "Enabling remote module ${GF_NAME} - found")
+  file(GLOB RESULT ${gismo_SOURCE_DIR}/${GF_DESTINATION}/${GF_NAME})
+  list(LENGTH RESULT RESULT_LENGTH)
+  if(NOT RESULT_LENGTH EQUAL 0)
+    message(STATUS "Enabling remote module ${GF_NAME} (${GF_DESTINATION}) - found")
     return()
   endif()
 
-  message(STATUS "Enabling remote module ${GF_NAME}")
-  set(GF_SOURCE_DIR   "${gismo_SOURCE_DIR}/extensions/${GF_NAME}")
-  set(GF_BINARY_DIR   "${gismo_BINARY_DIR}/extensions/${GF_NAME}_fetch")
-  set(GF_DOWNLOAD_DIR "${gismo_BINARY_DIR}/extensions/${GF_NAME}_fetch")
+  message(STATUS "Enabling remote module ${GF_NAME} (${GF_DESTINATION})")
+  set(GF_SOURCE_DIR   "${gismo_SOURCE_DIR}/${GF_DESTINATION}/${GF_NAME}")
+  set(GF_BINARY_DIR   "${gismo_BINARY_DIR}/${GF_DESTINATION}/${GF_NAME}_fetch")
+  set(GF_DOWNLOAD_DIR "${gismo_BINARY_DIR}/${GF_DESTINATION}/${GF_NAME}_fetch")
   set(${GF_NAME}_SOURCE_DIR "${GF_SOURCE_DIR}" PARENT_SCOPE)
   set(${GF_NAME}_BINARY_DIR "${GF_BINARY_DIR}" PARENT_SCOPE)
   file(REMOVE "${GF_DOWNLOAD_DIR}/CMakeCache.txt")
@@ -58,10 +60,12 @@ function(gismo_fetch_directory)
     message(SEND_ERROR "Build step for ${GF_NAME} failed: ${result}")
   endif()
 
-  if(NOT EXISTS "${gismo_SOURCE_DIR}/extensions/${GF_NAME}/CMakeLists.txt")
-    message(SEND_ERROR "Enabling remote module ${GF_NAME} - not found")
+  file(GLOB RESULT ${gismo_SOURCE_DIR}/${GF_DESTINATION}/${GF_NAME})
+  list(LENGTH RESULT RESULT_LENGTH)
+  if(RESULT_LENGTH EQUAL 0)
+    message(SEND_ERROR "Enabling remote module ${GF_NAME} (${GF_DESTINATION}) - not found")
   else()
-    message(STATUS "Enabling remote module ${GF_NAME} - downloaded")
+    message(STATUS "Enabling remote module ${GF_NAME} (${GF_DESTINATION}) - downloaded")
   endif()
 
 endfunction()
@@ -69,22 +73,33 @@ endfunction()
 
 function(gismo_fetch_module)
 
+  # TODO: online/offline mode
+
   get_repo_info(GISMO_REPO GISMO_REPO_REV) # or set manually
-  if (NOT DEFINED GISMO_FETCH_PROT)
-    set(GISMO_FETCH_PROT https) #ssh
-  endif()
+
+  #if (NOT DEFINED GISMO_FETCH_PROT)
+  #  set(GISMO_FETCH_PROT https) #ssh
+  #endif()
 
   #message("Fetch ${ARGV0} (repository: ${GISMO_REPO}, revision: ${GISMO_REPO_REV}, protocol: ${GISMO_FETCH_PROT}, username: ${GISMO_UNAME}, password: ${GISMO_PASS})")
 
   if("x${GISMO_REPO}" STREQUAL "xgit")
-    if("x${GISMO_FETCH_PROT}" STREQUAL "xssh")
-      set(git_repo git@github.com:gismo/${ARGV0}.git)
-    elseif("x${GISMO_FETCH_PROT}" STREQUAL "xhttps")
-      set(git_repo https://github.com/gismo/${ARGV0}.git)
-    #else()
+    #if("x${GISMO_FETCH_PROT}" STREQUAL "xssh")
+    #  set(git_repo git@github.com:gismo/${ARGV0}.git)
+    #elseif("x${GISMO_FETCH_PROT}" STREQUAL "xhttps")
+    #  set(git_repo https://github.com/gismo/${ARGV0}.git)
+    #endif()
+    # gismo_fetch_directory(${ARGN} GIT_REPOSITORY  ${git_repo} DESTINATION  extensions)
+    
+    if(NOT EXISTS "${gismo_SOURCE_DIR}/extensions/${ARGV0}/CMakeLists.txt")
+      message(STATUS "Initializing remote submodule ${ARGV0}")
+      find_package(Git REQUIRED)
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "submodule" "update" "--init" "extensions/${ARGV0}"
+        WORKING_DIRECTORY ${gismo_SOURCE_DIR}
+        #RESULT_VARIABLE gresult
+        #OUTPUT_QUIET
+        )
     endif()
-    gismo_fetch_directory(${ARGN}
-      GIT_REPOSITORY  ${git_repo})
   elseif("x${GISMO_REPO}" STREQUAL "xsvn")
     #if("x${GISMO_FETCH_PROT}" STREQUAL "xssh") message(ERROR "GitHub does not support svn+ssh") endif()
     gismo_fetch_directory(${ARGN}
@@ -92,10 +107,13 @@ function(gismo_fetch_module)
       SVN_USERNAME ${GISMO_UNAME} # Username for Subversion checkout and update
       SVN_PASSWORD ${GISMO_PASS}  # Password for Subversion checkout and update
       SVN_TRUST_CERT 1            # Trust the Subversion server site certificate
+      DESTINATION  extensions
       )
   else()
     gismo_fetch_directory(${ARGN}
-      URL https://github.com/gismo/${ARGV0}/archive/master.zip)
+      URL https://github.com/gismo/${ARGV0}/archive/master.zip
+      DESTINATION  extensions
+      )
   endif()
 
   if(EXISTS "${gismo_SOURCE_DIR}/extensions/${ARGN}/CMakeLists.txt")

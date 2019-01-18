@@ -194,7 +194,7 @@ public:
     int dim() const { return m_fields->targetDim(); }
 
     /// Returns the number of patches.
-    GISMO_DEPRECATED int nPatches()  const { return m_patches->nPieces(); }
+    GISMO_DEPRECATED index_t nPatches()  const { return m_patches->nPieces(); }
 
     /// Returns the number of pieces.
     int nPieces()  const { return m_patches->nPieces(); }

@@ -3,7 +3,7 @@ namespace gismo {
 /**
   \mainpage \gismo
 
-These pages were created on \today. The latest revision of this manual is <a href="http://gs.jku.at/trac/gismo/wiki/public/Doxygen" target="_parent">available online</a>.
+These pages were created on \today. The latest revision of this manual is <a href="https://gismo.github.io" target="_parent">available online</a>.
 
 \gismo (Geometry + Simulation Modules, pronounced "gismo") is an open-source C++ library that brings together mathematical tools for geometric design and numerical simulation. It implements the relatively new paradigm of isogeometric analysis, which suggests the use of a unified framework in the design and analysis pipeline. \gismo is an object-oriented, cross-platform, template C++ library and follows the generic programming principle, with a focus on both efficiency and ease of use. The library has been developed within the homonym research network supported by the Austrian Science Fund and aims at providing access to high quality, open-source software to the forming isogeometric numerical simulation community and beyond.
 

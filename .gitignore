@@ -1,0 +1,21 @@
+# CLion user-specific files
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/misc.xml
+.idea/**/.name
+.idea/**/dictionaries
+.idea/**/shelf
+.idea/modules.xml
+.idea/*.iml
+.idea/modules
+
+# Binary directories
+cmake-build-*/
+build/
+
+# Files with ending ~ (backup files from some editors)
+**/*~
+
+# QtCreator user file
+CMakeLists.txt.user

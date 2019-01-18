@@ -35,7 +35,7 @@ template<unsigned d, class T>
 class gsTHBSplineBasis : public gsHTensorBasis<d,T>
 {
 public:
-    /// Associated geometry type
+    /// @brief Associated geometry type.
     typedef gsTHBSpline<d,T> GeometryType;
     
     typedef typename gsHTensorBasis<d,T>::CMatrix CMatrix;
@@ -44,15 +44,15 @@ public:
     
     typedef typename gsHTensorBasis<d,T>::tensorBasis tensorBasis;
 
-    /// Shared pointer for gsTHBSplineBasis
+    /// @brief Shared pointer for gsTHBSplineBasis.
     typedef memory::shared_ptr< gsTHBSplineBasis > Ptr;
 
-    /// Unique pointer for gsTHBSplineBasis
+    /// @brief Unique pointer for gsTHBSplineBasis.
     typedef memory::unique_ptr< gsTHBSplineBasis > uPtr;
 
+    /// @brief Associated Boundary basis type.
     typedef typename
-    util::conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<d-1,T>
-                      >::type BoundaryBasisType;
+    util::conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<d-1,T> >::type BoundaryBasisType;
 
     using gsHTensorBasis<d, T>::flatTensorIndexOf;
 
@@ -82,7 +82,7 @@ public:
         representBasis(); 
     }
 
-    /// Constructor out of a Tensor BSpline Basis
+    /// @brief Constructor out of a Tensor BSpline Basis
     gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis) 
     : gsHTensorBasis<d,T>(tbasis) 
     { representBasis(); }
@@ -103,19 +103,22 @@ public:
     : gsHTensorBasis<d,T>(tbasis, boxes, levels)
     {  representBasis(); }
 
-    /// Constructor out of a tensor BSpline Basis
+    /// @brief Constructor out of a tensor BSpline Basis
     gsTHBSplineBasis(gsBasis<T> const&  tbasis)
         : gsHTensorBasis<d,T>(tbasis)
     {  representBasis(); }
 
-    /// Gives back the boundary basis at boxSide s
+#ifdef __DOXYGEN__
+    /// @brief Gives back the boundary basis at boxSide s
+    typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s);
+#endif
     GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
     {
         return basisSlice(n1.direction(),n1.parameter());
     }
 
 public:
-    /// Gives back the basis at a slice in \a dir_fixed at \a par
+    /// @brief Gives back the basis at a slice in \a dir_fixed at \a par
     BoundaryBasisType * basisSlice(index_t dir_fixed,T par ) const;
 
     // Look at gsBasis class for documentation
@@ -350,7 +353,7 @@ public:
     // eval_into from the base class.
     using gsBasis<T>::eval_into;
 
-    /// \brief Returns the number of truncated basis functions
+    /// @brief Returns the number of truncated basis functions
     unsigned numTruncated() const
     { return m_presentation.size(); }
 
@@ -359,15 +362,15 @@ public:
         return (this->m_is_truncated[i] != -1);
     }
 
-    /// \brief Returns an iterator to the representation of the first truncated basis function
+    /// @brief Returns an iterator to the representation of the first truncated basis function
     typename std::map<unsigned, gsSparseVector<T> >::const_iterator truncatedBegin() const
     { return m_presentation.begin(); }
 
-    /// \brief Returns an iterator past the last truncated basis function
+    /// @brief Returns an iterator past the last truncated basis function
     typename std::map<unsigned, gsSparseVector<T> >::const_iterator truncatedEnd() const
     { return m_presentation.end(); }
 
-    /// Returns sparse representation of the i-th basis function.
+    /// @brief Returns sparse representation of the i-th basis function.
     const gsSparseVector<T>& getCoefs(unsigned i) const
     {
         if (this->m_is_truncated[i] == -1)
@@ -404,7 +407,7 @@ private:
     void representBasis(); // rename: precompute coeffs
 
 
-    /// Computes representation of j-th basis function on pres_level and
+    /// @brief Computes representation of j-th basis function on pres_level and
     /// saves it.
     ///
     /// @param j     index of basis function
@@ -418,7 +421,7 @@ private:
 
 
 
-    /// Saves a presentation of the j-th basis function. Presentation is given
+    /// @brief Saves a presentation of the j-th basis function. Presentation is given
     /// by the coefficients coefs. The coefficients corresponds to the
     /// apropriate BSplines at presentation level.
     ///
@@ -436,7 +439,7 @@ private:
 
 
 
-    /// Computes tensor index of a basis function on a finer level (new_level)
+    /// @brief Computes tensor index of a basis function on a finer level (new_level)
     /// which is presented with tensor index (index) at a coarse level (level).
     ///
     /// @param index tensor index of the basis function on a coarse level
@@ -452,7 +455,7 @@ private:
 
 
 
-    /// Performs truncation.
+    /// @brief Performs truncation.
     ///
     /// @param coefs coefficients refined from level - 1 to level
     /// @param act_size_of_coefs actuall size of the coefficients
@@ -472,7 +475,7 @@ private:
                    const gsVector<unsigned, d>& finest_low);
 
 
-    /// We get current size of the coefficients. Function updates this sizes
+    /// @brief We get current size of the coefficients. Function updates this sizes
     /// accordingly to the refinement from coarser to finer grid. Assumption is
     /// that we are doing refinement from the index finest_low till the index
     /// highest_low.
@@ -493,12 +496,12 @@ private:
 
 public:
 
-  /// Returns the dimension of the parameter space
+  /// @brief Returns the dimension of the parameter space
   int domainDim() const { return d; }
 
     GISMO_CLONE_FUNCTION(gsTHBSplineBasis)
 
-  /// Prints the object as a string.
+  /// @brief Prints the object as a string.
   std::ostream &print(std::ostream &os) const
   {
       os << "Truncated ";
@@ -569,7 +572,7 @@ public:
     void getConnectedComponents(std::vector<std::vector<std::vector< std::vector<unsigned int> > > >& connectedComponents, gsVector<unsigned>& level) const;
 
 
-   ///returns transfer matrices betweend the levels of the given hierarchical spline
+   /// @brief returns transfer matrices betweend the levels of the given hierarchical spline
    void transferbyLvl (std::vector<gsSparseMatrix<T> >& result);
 
     /// @brief Decomposes domain of the THB-Spline-Basis into partitions.
