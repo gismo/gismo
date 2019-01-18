@@ -135,9 +135,9 @@ public:
     template<class iterator> void
     assign(iterator from, iterator to)
     {
-    this->resize(std::distance(from,to));
-    T * a = this->data();
-    for(iterator it = from; it!=to; ++it) *(a++) = *it;
+        this->resize(std::distance(from,to));
+        T * a = this->data();
+        for(iterator it = from; it!=to; ++it) *(a++) = *it;
     }
 
 /*
