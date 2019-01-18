@@ -12,9 +12,7 @@ set(CMAKE_DIRECTORY_LABELS "${PROJECT_NAME}") #CMake 3.10
 
 include(gsFetch)
 
-# TODO: here is some strange behavor, adding another argument to this gismo_fetch_module will result
-# in a ld: cannot find -lUnitTestPP
-gismo_fetch_module(gsUnitTest
+gismo_fetch_module(gsUnitTest TRUE
 #  UPDATE_COMMAND "${CMAKE_COMMAND} -E echo (offline mode)"
   )
 
