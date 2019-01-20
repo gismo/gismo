@@ -450,21 +450,23 @@ public: /* Element visitors */
     /// @brief Iterates over all elements of the domain and applies
     /// the \a ElementVisitor
     template<class ElementVisitor>
-    void push(ElementVisitor & visitor)
+    void push(const ElementVisitor & visitor)
     {
         for (index_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
         {
+            ElementVisitor curVisitor = visitor;
             //Assemble (fill m_matrix and m_rhs) on patch np
-            apply(visitor, np);
+            apply(curVisitor, np);
         }
     }
 
     /// @brief Applies the \a BElementVisitor to the boundary condition \a BC
     template<class BElementVisitor>
-    void push( BElementVisitor & visitor, const boundary_condition<T> & BC)
+    void push(const BElementVisitor & visitor, const boundary_condition<T> & BC)
     {
+        BElementVisitor curVisitor = visitor;
         //Assemble (fill m_matrix and m_rhs) contribution from this BC
-        apply(visitor, BC.patch(), BC.side());
+        apply(curVisitor, BC.patch(), BC.side());
     }
 
     /// @brief Iterates over all elements of interfaces and
