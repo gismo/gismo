@@ -330,7 +330,8 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis(boxComponent b) const
     const index_t dim = this->dim();
 
     uPtr result;
-    for (index_t d=0; d<dim; ++d)
+    index_t d=0;
+    for (index_t i=0; i<dim; ++i)
     {
         boxComponent::location loc = b.locationForDirection(d);
         if (loc)
@@ -340,6 +341,8 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis(boxComponent b) const
             else
                 result =   this->boundaryBasis( boxSide(loc+2*d) );
         }
+        else
+            ++d;
     }
 
     if (!result)
@@ -352,12 +355,11 @@ template<class T>
 typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b, gsMatrix<unsigned>& indices, bool noBoundary) const
 {
     GISMO_ASSERT( b.totalDim() == this->dim(), "The dimensions do not agree." );
-
     const index_t dim = this->dim();
-    index_t final_dim = dim;
 
     uPtr result;
-    for (index_t d=0; d<dim; ++d)
+    index_t d=0;
+    for (index_t i=0; i<dim; ++i)
     {
         boxComponent::location loc = b.locationForDirection(d);
         if (loc)
@@ -365,8 +367,8 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b,
             if (result)
             {
                 gsMatrix<unsigned> tmp = result->boundary( boxSide(loc+2*d) );
-                for (index_t i=0; i<tmp.size(); ++i)
-                    tmp(i,0) = indices(tmp(i,0),0);
+                for (index_t j=0; j<tmp.size(); ++j)
+                    tmp(j,0) = indices(tmp(j,0),0);
                 tmp.swap(indices);
                 result = result->boundaryBasis( boxSide(loc+2*d) );
             }
@@ -375,8 +377,9 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b,
                 indices = this->boundary( boxSide(loc+2*d) );
                 result = this->boundaryBasis( boxSide(loc+2*d) );
             }
-            --final_dim;
         }
+        else
+            ++d;
     }
 
     if (!result)
@@ -388,7 +391,7 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b,
             indices(i,0) = i;
     }
 
-    if (noBoundary && final_dim > 0)
+    if (noBoundary && d < dim)
     {
 
         gsMatrix<unsigned> bdy_indices = result->allBoundary();
