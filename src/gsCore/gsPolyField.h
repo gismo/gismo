@@ -134,7 +134,7 @@ public:
         GISMO_ASSERT(i >= 0 && i < nFields(),
                      "Invalid field index " + util::to_string(i) +
                      ". Number of fields is " + util::to_string(nFields()) +".\n");
-         { return m_isparams[i] && dynamic_cast<const gsGeometry<T>*>(&m_fields[i]->piece(0));}
+        return m_isparams[i] && dynamic_cast<const gsGeometry<T>*>(&m_fields[i]->piece(0));
     }
 
     /// \brief Returns the function corresponding to the geometry patch \a p from the field named \a name.
