@@ -106,6 +106,23 @@ std::vector<boxCorner> boxComponent::containedCorners() const
     return result;
 }
 
+std::vector<boxSide> boxComponent::containingSides() const
+{
+    const index_t d = dim();
+
+    std::vector<boxSide> result;
+    result.reserve(d);
+    index_t data = m_index;
+    for (index_t i=0; i<d; ++i)
+    {
+        const index_t loc = data%3;
+        if (loc)
+            result.push_back(boxSide(loc+2*d));
+        data /= 3;
+    }
+    return result;
+}
+
 boxSide boxComponent::asSide() const
 {
     GISMO_ENSURE( dim() == m_total_dim-1, "This is not a side." );
@@ -177,6 +194,17 @@ std::vector<patchCorner> patchComponent::containedCorners() const
     result.reserve(sz);
     for (index_t i=0; i<sz; ++i)
         result.push_back(patchCorner(m_patch,tmp[i]));
+    return result;
+}
+
+std::vector<patchSide> patchComponent::containingSides() const
+{
+    std::vector<boxSide> tmp = boxComponent::containingSides();
+    std::vector<patchSide> result;
+    const index_t sz = tmp.size();
+    result.reserve(sz);
+    for (index_t i=0; i<sz; ++i)
+        result.push_back(patchSide(m_patch,tmp[i]));
     return result;
 }
 

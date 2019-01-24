@@ -476,6 +476,9 @@ public:
     /// Returns a vector of all \a boxCorner s that are contained in the component
     std::vector<boxCorner> containedCorners() const;
 
+    /// Returns a vector of all \a boxSide s that contain the component
+    std::vector<boxSide> containingSides() const;
+
     /// Converts to \a boxSide and fails if the component is not a side
     boxSide asSide() const;
 
@@ -558,6 +561,9 @@ public:
 
     /// Returns a vector of all \a patchCorner s that are contained in the component
     std::vector<patchCorner> containedCorners() const;
+
+    /// Returns a vector of all \a patchSide s that contain the component
+    std::vector<patchSide> containingSides() const;
 
     /// Converts to \a patchSide and fails if the component is not a corner
     patchSide asSide() const
