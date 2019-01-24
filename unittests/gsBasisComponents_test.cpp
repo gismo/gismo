@@ -27,18 +27,17 @@ SUITE(gsBasisComponents_test)
         CHECK(mb.nBases() == 7);
 
         // Get all components
-        std::vector< std::pair< std::vector<patchComponent>, std::vector<patchCorner> > >
-        components = mb.topology().allComponents();
+        std::vector< std::vector<patchComponent> > components = mb.topology().allComponents();
 
         // Check dimensions
         gsMatrix<index_t> numbers(4,1);
         numbers.setZero(4,1);
         for (size_t i=0; i<components.size(); ++i)
         {
-            for (size_t j=0; j<components[i].first.size(); ++j)
-                CHECK(components[i].first[0].dim() == components[i].first[j].dim());
+            for (size_t j=0; j<components[i].size(); ++j)
+                CHECK(components[i][0].dim() == components[i][j].dim());
 
-            numbers( components[i].first[0].dim(), 0 ) += 1;
+            numbers( components[i][0].dim(), 0 ) += 1;
         }
         gsMatrix<index_t> numbers_check(4,1);
         numbers_check << 26,51,33,7;
@@ -53,7 +52,7 @@ SUITE(gsBasisComponents_test)
         for (index_t i=0; i<sz; ++i)
         {
             gsMatrix<unsigned> indices;
-            std::vector<gsBasis<>::uPtr> bases = mb.componentBasis_withIndices(components[i].first,bc,gsOptionList(),indices,true);
+            std::vector<gsBasis<>::uPtr> bases = mb.componentBasis_withIndices(components[i],bc,gsOptionList(),indices,true);
             for (index_t j=0; j<indices.rows(); ++j)
             {
                 index_t l = indices(j,0);
