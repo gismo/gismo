@@ -212,18 +212,11 @@ int gsBoxTopology::getMaxValence() const
 
 namespace {
 
-struct patchCornerSort {
-
-    bool operator() (const patchCorner& c1, const patchCorner& c2) const
-    { return c1.patch<c2.patch || (c1.patch==c2.patch && c1.m_index<c2.m_index); }
-
-};
-
 patchCorner getCanonicCorner( const patchCorner& c, const gsBoxTopology& bt )
 {
     std::vector< patchCorner > corners;
     bt.getCornerList(c,corners);
-    std::sort(corners.begin(), corners.end(), patchCornerSort());
+    std::sort(corners.begin(), corners.end());
     return corners[0];
 }
 
