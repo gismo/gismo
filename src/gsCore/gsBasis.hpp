@@ -333,7 +333,7 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis(boxComponent b) const
     index_t d=0;
     for (index_t i=0; i<dim; ++i)
     {
-        boxComponent::location loc = b.locationForDirection(d);
+        boxComponent::location loc = b.locationForDirection(i);
         if (loc)
         {
             if (result)
@@ -361,7 +361,7 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b,
     index_t d=0;
     for (index_t i=0; i<dim; ++i)
     {
-        boxComponent::location loc = b.locationForDirection(d);
+        boxComponent::location loc = b.locationForDirection(i);
         if (loc)
         {
             if (result)
@@ -391,7 +391,7 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b,
             indices(i,0) = i;
     }
 
-    if (noBoundary && d < dim)
+    if (noBoundary && d > 0)
     {
 
         gsMatrix<unsigned> bdy_indices = result->allBoundary();
