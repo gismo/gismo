@@ -154,6 +154,21 @@ void boxComponent::setLocationForDirection(index_t direction, boxComponent::loca
     }
 }
 
+boxComponent boxComponent::opposite() const
+{
+    boxComponent result(*this);
+    for (index_t i=0; i<m_total_dim; ++i)
+    {
+        location loc = locationForDirection(i);
+        if (loc == begin)
+            result.setLocationForDirection(i,end);
+        else if (loc == end)
+            result.setLocationForDirection(i,begin);
+        //if loc == interor, do nothing.
+    }
+    return result;
+}
+
 std::vector<patchCorner> patchComponent::containedCorners() const
 {
     std::vector<boxCorner> tmp = boxComponent::containedCorners();

@@ -482,6 +482,9 @@ public:
     /// Converts to \a boxCorner and fails if the component is not a corner
     boxCorner asCorner() const;
 
+    /// Returns the opposite boxCorner
+    boxComponent opposite() const;
+
     /// Represents a location
     enum location {
         interior = 0,  ///< Represents the interior
@@ -566,6 +569,12 @@ public:
     patchCorner asCorner() const
     {
         return patchCorner( m_patch, boxComponent::asCorner() );
+    }
+
+    /// Returns the opposite boxCorner
+    patchComponent opposite() const
+    {
+        return patchComponent( m_patch, boxComponent::opposite() );
     }
 
     /// Returns the patch number
