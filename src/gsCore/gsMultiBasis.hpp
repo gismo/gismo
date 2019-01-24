@@ -256,22 +256,12 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
 template <typename T>
 typename gsBasis<T>::uPtr gsMultiBasis<T>::componentBasis_withIndices(
         patchComponent pc,
-        const gsBoundaryConditions<T>& bc,
-        const gsOptionList& opt,
+        const gsDofMapper& dm,
         gsMatrix<unsigned>& indices,
         bool no_lower
     ) const
 {
     typename gsBasis<T>::uPtr result = m_bases[pc.patch()]->componentBasis_withIndices(pc, indices, no_lower);
-
-    gsDofMapper dm;
-    this->getMapper(
-       (dirichlet::strategy)opt.askInt("DirichletStrategy",11),
-       (iFace    ::strategy)opt.askInt("InterfaceStrategy", 1),
-       bc,
-       dm,
-       0
-    );
 
     const index_t sz = indices.rows();
     index_t j = 0;
@@ -303,8 +293,7 @@ typename gsBasis<T>::uPtr gsMultiBasis<T>::componentBasis_withIndices(
 template <typename T>
 std::vector<typename gsBasis<T>::uPtr> gsMultiBasis<T>::componentBasis_withIndices(
         std::vector<patchComponent> pc,
-        const gsBoundaryConditions<T>& bc,
-        const gsOptionList& opt,
+        const gsDofMapper& dm,
         gsMatrix<unsigned>& indices,
         bool no_lower
     ) const
@@ -319,7 +308,7 @@ std::vector<typename gsBasis<T>::uPtr> gsMultiBasis<T>::componentBasis_withIndic
     for (index_t i=0; i<nrpc; ++i)
     {
         bases.push_back(
-            this->componentBasis_withIndices(pc[i], bc, opt, local_indices[i], no_lower)
+            this->componentBasis_withIndices(pc[i], dm, local_indices[i], no_lower)
         );
         sz += local_indices[i].rows();
     }

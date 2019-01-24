@@ -45,14 +45,22 @@ SUITE(gsBasisComponents_test)
 
         // Check indices
         mb.uniformRefine();
-        gsBoundaryConditions<> bc;
-        const index_t nTotalDofs = 117;
+        gsDofMapper dm;
+        mb.getMapper(
+            dirichlet::elimination,
+            iFace::glue,
+            gsBoundaryConditions<>(),
+            dm,
+            0
+        );
+        const index_t nTotalDofs = dm.freeSize();
+        CHECK( nTotalDofs == 117 );
         gsMatrix<index_t> globalIndices = gsMatrix<index_t>::Constant(nTotalDofs,1,-1);
         index_t sz = components.size();
         for (index_t i=0; i<sz; ++i)
         {
             gsMatrix<unsigned> indices;
-            std::vector<gsBasis<>::uPtr> bases = mb.componentBasis_withIndices(components[i],bc,gsOptionList(),indices,true);
+            std::vector<gsBasis<>::uPtr> bases = mb.componentBasis_withIndices(components[i],dm,indices,true);
             for (index_t j=0; j<indices.rows(); ++j)
             {
                 index_t l = indices(j,0);

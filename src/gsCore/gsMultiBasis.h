@@ -429,15 +429,13 @@ public:
     /// @brief Returns the basis that corresponds to the component
     ///
     /// @param p         The component
-    /// @param bc        The boundary conditions
-    /// @param opt       The assembler options (directing Dirichlet and interface strategy)
+    /// @param dm        The dof mapper to be used
     /// @param indices   The row vector where the indices are stored to
     /// @param no_lower  If true, the transfer matrix does not include parts belonging to lower-order
     ///                  components (i.e., edges without corners or faces without corners and edges)
     typename gsBasis<T>::uPtr componentBasis_withIndices(
         patchComponent p,
-        const gsBoundaryConditions<T>& bc,
-        const gsOptionList& opt,
+        const gsDofMapper& dm,
         gsMatrix<unsigned>& indices,
         bool no_lower = true
     ) const;
@@ -445,15 +443,13 @@ public:
     /// @brief Returns the bases that correspond to the components
     ///
     /// @param p         The component
-    /// @param bc        The boundary conditions
-    /// @param opt       The assembler options (directing Dirichlet and interface strategy)
+    /// @param dm        The dof mapper to be used
     /// @param indices   The row vector where the indices are stored to
     /// @param no_lower  If true, the transfer matrix does not include parts belonging to lower-order
     ///                  components (i.e., edges without corners or faces without corners and edges)
     std::vector<typename gsBasis<T>::uPtr> componentBasis_withIndices(
         std::vector<patchComponent> p,
-        const gsBoundaryConditions<T>& bc,
-        const gsOptionList& opt,
+        const gsDofMapper& dm,
         gsMatrix<unsigned>& indices,
         bool no_lower = true
     ) const;
