@@ -218,5 +218,42 @@ std::size_t hash_range(T const * start, const T * const end)
 
 } // end namespace util
 
+#define GISMO_DELEGATING_COMPARIZATION_OPERATORS( T )               \
+inline bool operator!= (const T& a, const T& b) { return !(a==b); } \
+inline bool operator>  (const T& a, const T& b) { return b<a;     } \
+inline bool operator<= (const T& a, const T& b) { return !(b<a);  } \
+inline bool operator>= (const T& a, const T& b) { return !(a<b);  }
+
+#if _cplusplus >= 201103L
+#define GISMO_DELETE_COMPARIZATION_OPERATORS( S, T )      \
+inline bool operator== (const S& a, const T& b) = delete; \
+inline bool operator!= (const S& a, const T& b) = delete; \
+inline bool operator<  (const S& a, const T& b) = delete; \
+inline bool operator>  (const S& a, const T& b) = delete; \
+inline bool operator<= (const S& a, const T& b) = delete; \
+inline bool operator>= (const S& a, const T& b) = delete; \
+inline bool operator== (const T& a, const S& b) = delete; \
+inline bool operator!= (const T& a, const S& b) = delete; \
+inline bool operator<  (const T& a, const S& b) = delete; \
+inline bool operator>  (const T& a, const S& b) = delete; \
+inline bool operator<= (const T& a, const S& b) = delete; \
+inline bool operator>= (const T& a, const S& b) = delete;
+#else
+#define GISMO_DELETE_COMPARIZATION_OPERATORS( S, T ) \
+inline bool operator== (const S& a, const T& b); \
+inline bool operator!= (const S& a, const T& b); \
+inline bool operator<  (const S& a, const T& b); \
+inline bool operator>  (const S& a, const T& b); \
+inline bool operator<= (const S& a, const T& b); \
+inline bool operator>= (const S& a, const T& b); \
+inline bool operator== (const T& a, const S& b); \
+inline bool operator!= (const T& a, const S& b); \
+inline bool operator<  (const T& a, const S& b); \
+inline bool operator>  (const T& a, const S& b); \
+inline bool operator<= (const T& a, const S& b); \
+inline bool operator>= (const T& a, const S& b);
+
+#endif
+
 } // end namespace gismo
 

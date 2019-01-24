@@ -249,31 +249,6 @@ public:
     void getContainedCorners (int dim, std::vector<patchCorner> &corners) const;
 
     using boxSide::getContainedCorners; // unhiding
-
-    bool operator== (const patchSide & other) const
-    {
-        return patch==other.patch && m_index==other.m_index;
-    }
-    bool operator!= (const patchSide& other) const
-    {
-        return patch!=other.patch || m_index!=other.m_index;
-    }
-    bool operator>  (const patchSide& other) const
-    {
-        return patch>other.patch || (patch==other.patch && m_index>other.m_index);
-    }
-    bool operator<  (const patchSide& other) const
-    {
-        return patch<other.patch || (patch==other.patch && m_index<other.m_index);
-    }
-    bool operator<= (const patchSide& other) const
-    {
-        return patch<other.patch || (patch==other.patch && m_index<=other.m_index);
-    }
-    bool operator>= (const patchSide& other) const
-    {
-        return patch>other.patch || (patch==other.patch && m_index>=other.m_index);
-    }
 };
 
 /// Print (as string) a patch side
@@ -283,6 +258,17 @@ inline std::ostream &operator<<(std::ostream &os, patchSide const & i)
     os<<i.patch<<":"<< i.side();
     return os;
 }
+
+// We do not need comparization operators for boxSide since it decays to a number anyway
+
+inline bool operator== (const patchSide& a, const patchSide& b)
+{ return a.patch == b.patch && a.m_index == b.m_index; }
+inline bool operator<  (const patchSide& a, const patchSide& b)
+{ return a.patch < b.patch || (a.patch == b.patch && a.m_index < b.m_index); }
+GISMO_DELEGATING_COMPARIZATION_OPERATORS(patchSide)
+
+// This might cause terrible bugs
+GISMO_DELETE_COMPARIZATION_OPERATORS(boxSide,patchSide)
 
 
 
@@ -405,13 +391,6 @@ public:
     patchCorner(int p, boxCorner c)
         : boxCorner(c), patch (p) { }
 
-
-    bool operator== (const patchCorner& other) const
-    {
-        return patch==other.patch && m_index==other.m_index;
-    }
-
-
     /**
      * @brief returns a vector of patchSides that contain this corner
      * @param dim is the ambient dimension
@@ -427,6 +406,17 @@ public:
             sides[i]=patchSide(patch, boxSide(i, param(i)));
     }
 };
+
+// We do not need comparization operators for boxCorner since it decays to a number anyway
+
+inline bool operator== (const patchCorner& a, const patchCorner& b)
+{ return a.patch == b.patch && a.m_index == b.m_index; }
+inline bool operator<  (const patchCorner& a, const patchCorner& b)
+{ return a.patch < b.patch || (a.patch == b.patch && a.m_index < b.m_index); }
+GISMO_DELEGATING_COMPARIZATION_OPERATORS(patchCorner)
+
+// This might cause terrible bugs
+GISMO_DELETE_COMPARIZATION_OPERATORS(boxCorner,patchCorner)
 
 /**
  *   @brief Struct which represents a certain component (interior, face, egde, corner).
@@ -584,9 +574,23 @@ public:
     }
 
     /// Returns the patch number
-    index_t patch() { return m_patch; }
+    index_t patch() const { return m_patch; }
 };
 
+inline bool operator== (const boxComponent& a, const boxComponent& b)
+{ return a.index() == b.index(); }
+inline bool operator<  (const boxComponent& a, const boxComponent& b)
+{ return a.index() <  b.index(); }
+GISMO_DELEGATING_COMPARIZATION_OPERATORS(boxComponent)
+
+inline bool operator== (const patchComponent& a, const patchComponent& b)
+{ return a.patch() == b.patch() && a.index() == b.index(); }
+inline bool operator<  (const patchComponent& a, const patchComponent& b)
+{ return a.patch() < b.patch() || (a.patch() == b.patch() && a.index() < b.index()); }
+GISMO_DELEGATING_COMPARIZATION_OPERATORS(patchComponent)
+
+// This might cause terrible bugs
+GISMO_DELETE_COMPARIZATION_OPERATORS(boxComponent,patchComponent)
 
 /**
     @brief Struct which represents an interface between two patches.
