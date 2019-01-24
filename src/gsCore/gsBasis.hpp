@@ -325,74 +325,61 @@ gsBasis<T>* gsBasis<T>::boundaryBasis_impl(boxSide const &) const
 template<class T>
 typename gsBasis<T>::uPtr gsBasis<T>::componentBasis(boxComponent b) const
 {
-    if ( b.m_index == 0 )
-        return clone();
+    GISMO_ASSERT( b.totalDim() == this->dim(), "The dimensions do not agree." );
+
+    const index_t dim = this->dim();
 
     uPtr result;
-    index_t d=1;
-    while ( b.m_index > 0 )
+    for (index_t d=0; d<dim; ++d)
     {
-        if ( b.m_index%3 )
+        boxComponent::location loc = b.locationForDirection(d);
+        if (loc)
         {
             if (result)
-                result = result->boundaryBasis( boxSide(b.m_index+2*d) );
+                result = result->boundaryBasis( boxSide(loc+2*d) );
             else
-                result =   this->boundaryBasis( boxSide(b.m_index+2*d) );
+                result =   this->boundaryBasis( boxSide(loc+2*d) );
         }
-        b.m_index /= 3;
-        ++d;
     }
-    return result;
 
+    if (!result)
+        result = clone();
+
+    return result;
 }
 
 template<class T>
 typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b, gsMatrix<unsigned>& indices, bool noBoundary) const
 {
+    GISMO_ASSERT( b.totalDim() == this->dim(), "The dimensions do not agree." );
+
+    const index_t dim = this->dim();
+    index_t final_dim = dim;
+
     uPtr result;
-    index_t dim = this->dim();
-
-    if ( b.m_index == 0 )
+    for (index_t d=0; d<dim; ++d)
     {
-        result = clone();
-
-        const index_t sz = this->size();
-        indices.resize(sz,1);
-        for (index_t i=0;i<sz;++i)
-            indices(i,0) = i;
-    }
-    else
-    {
-        index_t d = 0;
-        while ( b.m_index > 0 )
+        boxComponent::location loc = b.locationForDirection(d);
+        if (loc)
         {
-            if ( b.m_index%3 )
+            if (result)
             {
-                if (result)
-                {
-                    gsMatrix<unsigned> tmp = result->boundary( boxSide( (b.m_index%3)+2*d ) );
-                    for (index_t i=0; i<tmp.size(); ++i)
-                        tmp(i,0) = indices(tmp(i,0),0);
-                    tmp.swap(indices);
-                    result = result->boundaryBasis( boxSide( (b.m_index%3)+2*d ) );
-                }
-                else
-                {
-                    indices = this->boundary( boxSide( (b.m_index%3)+2*d ) );
-                    result = this->boundaryBasis( boxSide( (b.m_index%3)+2*d ) );
-                }
-                --dim;
+                gsMatrix<unsigned> tmp = this->boundary( boxSide(loc+2*d) );
+                for (index_t i=0; i<tmp.size(); ++i)
+                    tmp(i,0) = indices(tmp(i,0),0);
+                tmp.swap(indices);
+                result = result->boundaryBasis( boxSide(loc+2*d) );
             }
             else
             {
-                ++d;
+                indices = this->boundary( boxSide(loc+2*d) );
+                result =   this->boundaryBasis( boxSide(loc+2*d) );
             }
-            b.m_index /= 3;
+            --final_dim;
         }
     }
 
-
-    if (no_lower && dim > 0)
+    if (noBoundary && final_dim > 0)
     {
 
         gsMatrix<unsigned> bdy_indices = result->allBoundary();
@@ -603,7 +590,7 @@ void gsBasis<T>::setDegree(int const& i)
         }
         else if  ( i < p )
         {
-	    this->degreeReduce(p-i, k);
+            this->degreeReduce(p-i, k);
         }
     }
 }
@@ -694,14 +681,14 @@ void gsBasis<T>::linearComb(const gsMatrix<unsigned>  & actives,
                             gsMatrix<T>&                result )
 {
     // basisVals.rows()==1 (or else basisVals.rows() == coefs.cols() and .cwiseProd)
-	result.resize(coefs.cols(), basisVals.cols()) ;
+    result.resize(coefs.cols(), basisVals.cols()) ;
 
-	for ( index_t j=0; j!=basisVals.cols() ; j++ ) // for all basis function values
+    for ( index_t j=0; j!=basisVals.cols() ; j++ ) // for all basis function values
     {
         //todo grab result.col(j)
-		result.col(j) =  basisVals(0,j) * coefs.row( actives(0,j) ) ;//transpose ?
-		for ( index_t i=1; i< actives.rows() ; i++ )
-		    result.col(j) += basisVals(i,j) * coefs.row( actives(i,j) ) ;
+        result.col(j) =  basisVals(0,j) * coefs.row( actives(0,j) ) ;//transpose ?
+        for ( index_t i=1; i< actives.rows() ; i++ )
+            result.col(j) += basisVals(i,j) * coefs.row( actives(i,j) ) ;
     }
 }
 */

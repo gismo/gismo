@@ -424,7 +424,7 @@ public:
 
     /// @brief Returns the basis that corresponds to the component
     typename gsBasis<T>::uPtr componentBasis(patchComponent p) const
-    { return m_bases[p.patch]->componentBasis(p); }
+    { return m_bases[p.patch()]->componentBasis(p); }
 
     /// @brief Returns the basis that corresponds to the component
     ///

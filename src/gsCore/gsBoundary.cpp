@@ -18,7 +18,7 @@
 namespace gismo {
 
 
-void boxSide::getContainedCorners (int dim, std::vector<boxCorner> &corners) const
+void boxSide::getContainedCorners(int dim, std::vector<boxCorner> &corners) const
 {
     GISMO_ASSERT(dim>=0, "Dimension must be non negative");
     corners.clear();
@@ -32,7 +32,7 @@ void boxSide::getContainedCorners (int dim, std::vector<boxCorner> &corners) con
     }
 }
 
-void patchSide::getContainedCorners (int dim, std::vector<patchCorner> &corners) const
+void patchSide::getContainedCorners(int dim, std::vector<patchCorner> &corners) const
 {
     std::vector<boxCorner> tmp;
     boxSide::getContainedCorners(dim, tmp);
@@ -63,7 +63,7 @@ boxComponent::boxComponent( boxCorner b, index_t total_dim ) : m_total_dim(total
         c *= 3;
     }
 }
-    
+
 index_t boxComponent::dim() const
 {
         index_t result = 0, tmp = m_index;
@@ -75,7 +75,7 @@ index_t boxComponent::dim() const
         }
         return result;
 }
-    
+
 std::vector<boxCorner> boxComponent::containedCorners() const
 {
     const index_t result_sz = 1u<<dim();
@@ -153,7 +153,7 @@ void boxComponent::setLocationForDirection(index_t direction, boxComponent::loca
         m_index += diff * factor;
     }
 }
-  
+
 std::vector<patchCorner> patchComponent::containedCorners() const
 {
     std::vector<boxCorner> tmp = boxComponent::containedCorners();
@@ -161,12 +161,12 @@ std::vector<patchCorner> patchComponent::containedCorners() const
     const index_t sz = tmp.size();
     result.reserve(sz);
     for (index_t i=0; i<sz; ++i)
-        result.push_back(patchCorner(patch,tmp[i]));
+        result.push_back(patchCorner(m_patch,tmp[i]));
     return result;
 }
 
 void boundaryInterface::faceData(gsVector<bool> & flip, gsVector<index_t> & perm) const
-{ 
+{
     const index_t d = directionMap.size();
     flip.resize(d-1);
     perm.resize(d-1);
@@ -206,5 +206,3 @@ void boundaryInterface::reorderCorners(gsMatrix<unsigned> & boundary) const
 
 
 } //namespace gismo
-
-

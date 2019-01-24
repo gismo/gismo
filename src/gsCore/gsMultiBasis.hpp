@@ -262,7 +262,7 @@ typename gsBasis<T>::uPtr gsMultiBasis<T>::componentBasis_withIndices(
         bool no_lower
     ) const
 {
-    typename gsBasis<T>::uPtr result = m_bases[pc.patch]->componentBasis_withIndices(pc, indices, no_lower);
+    typename gsBasis<T>::uPtr result = m_bases[pc.patch()]->componentBasis_withIndices(pc, indices, no_lower);
 
     gsDofMapper dm;
     this->getMapper(
@@ -278,9 +278,9 @@ typename gsBasis<T>::uPtr gsMultiBasis<T>::componentBasis_withIndices(
     for (index_t i=0; i<sz; ++i)
     {
         const index_t loc = indices(i,0);
-        if (dm.is_free(loc, pc.patch))
+        if (dm.is_free(loc, pc.patch()))
         {
-            indices(j,0) = dm.index(loc, pc.patch);
+            indices(j,0) = dm.index(loc, pc.patch());
             ++j;
         }
     }
