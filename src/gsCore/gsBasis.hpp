@@ -347,7 +347,7 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis(boxComponent b) const
 }
 
 template<class T>
-typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b, gsMatrix<unsigned>& indices, bool no_lower) const
+typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b, gsMatrix<unsigned>& indices, bool noBoundary) const
 {
     uPtr result;
     index_t dim = this->dim();

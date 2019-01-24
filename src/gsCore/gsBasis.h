@@ -519,11 +519,11 @@ public:
 
     /// @brief Returns the basis that corresponds to the component
     ///
-    /// @param b         The component
-    /// @param indices   The row vector where the indices are stored to
-    /// @param no_lower  If true, the transfer matrix does not include parts belonging to lower-order
-    ///                  components (i.e., edges without corners or faces without corners and edges)
-    virtual uPtr componentBasis_withIndices(boxComponent b, gsMatrix<unsigned>& indices, bool no_lower = true) const;
+    /// @param b           The component
+    /// @param indices     The row vector where the indices are stored to
+    /// @param noBoundary  If true, the transfer matrix does not include parts belonging to lower-order
+    ///                    components (i.e., edges without corners or faces without corners and edges)
+    virtual uPtr componentBasis_withIndices(boxComponent b, gsMatrix<unsigned>& indices, bool noBoundary = true) const;
 
     /// @brief Returns (a bounding box for) the domain of the whole basis.
     ///
