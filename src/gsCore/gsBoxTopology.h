@@ -265,18 +265,15 @@ public:
     /// returns the maximal valence of a vertex of this topology.
     int getMaxValence() const;
 
-    /// represents a collection of \a patchComponent s which represent the same
-    /// part (patch-interior, face, edge, corner, etc.) of the topology
-    struct component {
-        std::vector<patchComponent> components;
-        std::vector<patchCorner> corners;
-        void swap( component& other ) { components.swap(other.components); corners.swap(other.corners); }
-    };
-
-    /// @brief returns all \a component s representing the topology
+    /// @brief returns all components representing the topology
+    ///
+    /// Each entry of the outer vector represents a collection of \a patchComponent s which represent the same
+    /// part (patch-interior, face, edge, corner, etc.) of the topology; moreover, the containing corners
+    /// are given.
     ///
     /// @param combineCorners If this is set, all corners are treated as one component
-    std::vector<component> allComponents(bool combineCorners = false) const;
+    std::vector< std::pair< std::vector<patchComponent>, std::vector<patchCorner> > >
+    allComponents(bool combineCorners = false) const;
 
     /// gives back all the extraordinary vertices (3 faces or more than 4) of the topology
     /// each EV is represented by a vector of patchCorners, which represent the same vertex

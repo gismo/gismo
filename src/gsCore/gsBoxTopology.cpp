@@ -249,7 +249,8 @@ std::vector<index_t> getCornerIndices( const std::vector<patchCorner>& corner, i
 
 } // end namespace
 
-std::vector<gsBoxTopology::component> gsBoxTopology::allComponents(bool combineCorners) const
+std::vector< std::pair< std::vector<patchComponent>, std::vector<patchCorner> > >
+gsBoxTopology::allComponents(bool combineCorners) const
 {
     const index_t nPatches = nboxes;
     const index_t dim = m_dim;
@@ -257,9 +258,10 @@ std::vector<gsBoxTopology::component> gsBoxTopology::allComponents(bool combineC
     index_t cnr = 1;
     for (index_t i=0; i<dim; ++i) cnr *= 3;
 
+    typedef std::pair< std::vector<patchComponent>, std::vector<patchCorner> > component;
     typedef std::map< std::vector<index_t>, component>   MapT;
 
-    std::vector<MapT> globs(dim+1);
+    std::vector<MapT> comps(dim+1);
 
     for (index_t i = 0; i<nPatches; ++i)
     {
@@ -268,33 +270,33 @@ std::vector<gsBoxTopology::component> gsBoxTopology::allComponents(bool combineC
             patchComponent pc(i, j, dim);
             const index_t d = pc.dim();
             std::vector< patchCorner > crns = getCanonicCorners(pc.containedCorners(),*this);
-            component& g = globs[d][getCornerIndices(crns, dim)];
-            g.corners = give(crns);
-            g.components.push_back(pc);
+            component& g = comps[d][getCornerIndices(crns, dim)];
+            g.second = give(crns);
+            g.first.push_back(pc);
         }
     }
     index_t sz = 0;
     for (index_t i=0; i<dim+1; ++i)
-        sz += globs[i].size();
+        sz += comps[i].size();
 
-    std::vector<component> result;
+    std::vector< std::pair< std::vector<patchComponent>, std::vector<patchCorner> > > result;
     result.reserve(sz);
     for (index_t i=dim; i>=0; --i)
     {
         if (!combineCorners || i>0)
-            for( typename MapT::iterator it = globs[i].begin(); it != globs[i].end(); ++it )
+            for( typename MapT::iterator it = comps[i].begin(); it != comps[i].end(); ++it )
                 result.push_back( it->second );
         else
         {
             component last;
-            for( typename MapT::iterator it = globs[i].begin(); it != globs[i].end(); ++it )
+            for( typename MapT::iterator it = comps[i].begin(); it != comps[i].end(); ++it )
             {
-                const index_t nrcr = it->second.corners.size();
+                const index_t nrcr = it->second.second.size();
                 for (index_t j=0; j<nrcr; ++j)
-                    last.corners.push_back(it->second.corners[i]);
-                const index_t nrcp = it->second.components.size();
+                    last.second.push_back(it->second.second[i]);
+                const index_t nrcp = it->second.first.size();
                 for (index_t j=0; j<nrcp; ++j)
-                    last.components.push_back(it->second.components[i]);
+                    last.first.push_back(it->second.first[i]);
             }
         }
     }

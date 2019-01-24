@@ -325,7 +325,8 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     const index_t nTotalDofs = dm.freeSize();
 
     // Decompose the whole domain into components
-    std::vector<gsBoxTopology::component> components = mb.topology().allComponents(true);
+    std::vector< std::pair< std::vector<patchComponent>, std::vector<patchCorner> > >
+    components = mb.topology().allComponents(true);
     const index_t nr_components = components.size();
 
     // Setup Dirichlet boundary conditions
@@ -343,7 +344,7 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     for (index_t i=0; i<nr_components; ++i)
     {
         gsMatrix<unsigned> indices;
-        std::vector<gsBasis<>::uPtr> bases = mb.componentBasis_withIndices(components[i].components,bc,opt,indices,true);
+        std::vector<gsBasis<>::uPtr> bases = mb.componentBasis_withIndices(components[i].first,bc,opt,indices,true);
 
         index_t sz = indices.rows();
         gsSparseEntries<> se;

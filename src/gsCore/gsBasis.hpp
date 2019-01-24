@@ -364,7 +364,7 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b,
         {
             if (result)
             {
-                gsMatrix<unsigned> tmp = this->boundary( boxSide(loc+2*d) );
+                gsMatrix<unsigned> tmp = result->boundary( boxSide(loc+2*d) );
                 for (index_t i=0; i<tmp.size(); ++i)
                     tmp(i,0) = indices(tmp(i,0),0);
                 tmp.swap(indices);
@@ -373,10 +373,19 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b,
             else
             {
                 indices = this->boundary( boxSide(loc+2*d) );
-                result =   this->boundaryBasis( boxSide(loc+2*d) );
+                result = this->boundaryBasis( boxSide(loc+2*d) );
             }
             --final_dim;
         }
+    }
+
+    if (!result)
+    {
+        result = clone();
+        const index_t sz = this->size();
+        indices.resize(sz,1);
+        for (index_t i=0;i<sz;++i)
+            indices(i,0) = i;
     }
 
     if (noBoundary && final_dim > 0)
