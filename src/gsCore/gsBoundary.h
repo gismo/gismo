@@ -541,13 +541,13 @@ public:
     ///
     /// @param p          The patch side
     /// @param total_dim  The dimension of the box itself
-    patchComponent( const patchSide& p, index_t total_dim ) : boxComponent(p,total_dim), m_patch(p) {}
+    patchComponent( patchSide p, index_t total_dim ) : boxComponent(p,total_dim), m_patch(p.patch) {}
 
     /// @brief Constructor converting \a patchCorner to a patchComponent
     ///
     /// @param p          The patch corner
     /// @param total_dim  The dimension of the box itself
-    patchComponent( patchCorner p, index_t total_dim ) : boxComponent(p, total_dim), m_patch(p) {}
+    patchComponent( patchCorner p, index_t total_dim ) : boxComponent(p,total_dim), m_patch(p.patch) {}
 
     /// Returns a vector of all \a patchCorner s that are contained in the component
     std::vector<patchCorner> containedCorners() const;
