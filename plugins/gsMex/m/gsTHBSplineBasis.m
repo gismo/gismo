@@ -53,6 +53,7 @@ classdef gsTHBSplineBasis < handle
             
             if (isa(varargin{1},'uint64'))
                 this.objectHandle = varargin{1};
+                this.parDim = varargin{2};
             else
                 if (~( isa(varargin{1},'char') || isa(varargin{1},'cell') || isa(varargin{1},'gsTHBSplineBasis') ))
                     error('Input argument no. 1 should be of type ''char'' or ''gsTHBSplineBasis'' or be a cell of knot vectors.')
@@ -60,7 +61,7 @@ classdef gsTHBSplineBasis < handle
                     error('File does not exist: %s.',varargin{1})
                 end
                 if isa(varargin{1},'gsTHBSplineBasis')
-                    var1 = struct(varargin{1}).objectHandle;
+                    var1 = varargin{1}.objectHandle;
                 else
                     var1 = varargin{1};
                 end
@@ -474,35 +475,35 @@ classdef gsTHBSplineBasis < handle
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('active', this.objectHandle, varargin{:}, this.parDim);
         end
         
-        % elementIndex - call class method
-        function [varargout] = elementIndex(this, varargin)
-            %elementIndex - returns an index for the element of a 
-            %  gsTHBSplineBasis object which contains point pt. 
-            %
-            %Usage:
-            %  ind = thb.elementIndex( pt )
-            %
-            %Input:
-            %  thb: gsTHBSplineBasis, [1 x 1].
-            %    The gsTHBSplineBasis object.
-            %  pt: double, [d x 1].
-            %    Point in which to evaluate the function.
-            %
-            %Output:
-            %  ind: int, [1 x 1].
-            %    Index of the element containing pt.
-            
-            if (nargin~=2 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.dim()))
-                error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
-            end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('active', this.objectHandle, varargin{:}, this.parDim);
-        end
+%         % elementIndex - call class method
+%         function [varargout] = elementIndex(this, varargin)
+%             %elementIndex - returns an index for the element of a 
+%             %  gsTHBSplineBasis object which contains point pt. 
+%             %
+%             %Usage:
+%             %  ind = thb.elementIndex( pt )
+%             %
+%             %Input:
+%             %  thb: gsTHBSplineBasis, [1 x 1].
+%             %    The gsTHBSplineBasis object.
+%             %  pt: double, [d x 1].
+%             %    Point in which to evaluate the function.
+%             %
+%             %Output:
+%             %  ind: int, [1 x 1].
+%             %    Index of the element containing pt.
+%             
+%             if (nargin~=2 || nargout>1)
+%                 error('Invalid number of input and/or output arguments.')
+%             end
+%             if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.dim()))
+%                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
+%             end
+%             [varargout{1:nargout}] = mex_gsTHBSplineBasis('active', this.objectHandle, varargin{:}, this.parDim);
+%         end
 
         % uniformRefine - call class method
-        function [varargout] = uniformRefine(this, varargin)
+        function uniformRefine(this, varargin)
             %uniformRefine - proceed to a uniformRefinement of a gsTHBSplineBasis object
             %
             %Usage:
@@ -567,7 +568,7 @@ classdef gsTHBSplineBasis < handle
         end
 
         % refineElements - call class method
-        function [varargout] = refineElements(this, varargin)
+        function refineElements(this, varargin)
             %refineElements - proceed to a refinement of given elements of 
             % a gsTHBSplineBasis object
             %
@@ -666,6 +667,8 @@ classdef gsTHBSplineBasis < handle
             %Input:
             %  thb: gsTHBSplineBasis, [1 x 1].
             %    The gsTHBSplineBasis object.
+            %  dir_fixed: int, fixed direction of the slice.
+            %  par: parameter corresponding to the fixed direction.
             %
             %Output:
             %  basis: gsTHBSplineBasis of 1 less dimension, [1 x 1]
@@ -677,13 +680,14 @@ classdef gsTHBSplineBasis < handle
             end
             if ( ~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) ||...
                  ~(floor(varargin{1})==varargin{1}) || ~(varargin{1}>0) || ...
-                 ~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) )
+                 ~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || ...
+                 varargin{1}>this.dim )
                 error(['Input argument no. 1 should be an integer, argument no. 2 ',...
                     'should be a double in the parametric space.'])
             end
             basis_ptr = mex_gsTHBSplineBasis('basisSlice', this.objectHandle,...
                                                            varargin{:}, this.parDim);
-            [varargout{1:nargout}] = gsTHBSplineBasis(basis_ptr);
+            [varargout{1:nargout}] = gsTHBSplineBasis(basis_ptr, this.parDim-1);
         end
         
     end

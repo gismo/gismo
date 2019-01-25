@@ -6,6 +6,9 @@
 filename = join([filedata,'thbbasis/simple.xml']);
 fprintf('Reading THB spline basis from file: %s.\n',filename)
 hbs = gsTHBSplineBasis(filename, 2);
+fprintf('Copy constructor of a THB spline basis. \n')
+hbs_copy = gsTHBSplineBasis(hbs, 2);
+assert(isequal(hbs_copy.support, hbs.support))
 
 %% Construct a truncated hierarchical basis from its knot vector in a carthesian product way.
 knots_2build = {[0,0,0,1,2,2,2],[4,4,4,5,6,6,6]};
@@ -35,12 +38,16 @@ fprintf('Test on accesssors: passed.\n')
 % Print trees
 fprintf('\n Tree 1:\n')
 hbs.treePrintLeaves;
-fprintf('\nCheck that the output is:\nLeaf node (0 0), ( 8192 32768). level=0 \nLeaf node (8192    0), (24576  8192). level=0 \nLeaf node (8192 8192), (20480 20480). level=2 \nLeaf node ( 8192 20480), (20480 24576). level=1 \nLeaf node (20480  8192), (24576 24576). level=1 \nLeaf node ( 8192 24576), (24576 32768). level=0 \nLeaf node (24576     0), (32768 32768). level=0\n')
+fprintf(['\nCheck that the output is:\nLeaf node (0 0), ( 8192 32768). level=0 \n',...
+    'Leaf node (8192    0), (24576  8192). level=0 \nLeaf node (8192 8192), (20480 20480).',...
+    'level=2 \nLeaf node ( 8192 20480), (20480 24576). level=1 \nLeaf node (20480  8192), ',...
+    '(24576 24576). level=1 \nLeaf node ( 8192 24576), (24576 32768). level=0 \nLeaf node ',...
+    '(24576     0), (32768 32768). level=0\n'])
 fprintf('\n Tree 2:\n')
 hbs2.treePrintLeaves;
 fprintf('\nCheck that the output is:\nLeaf node (0 0), (16384 16384). level=0 \n\n')
 
-% Check degree
+% Check degree(dir)
 assert(hbs.degree(1)==2) % order = degree-1 in geopdes
 assert(hbs2.degree(hbs2.dim)==2)
 
@@ -58,7 +65,7 @@ assert(isequal(hbs2.eval(pt2),[0.25;0.25;0;0.25;0.25;0;0;0;0]))
 assert(hbs.evalSingle(55,pt)==0.25);
 assert(hbs2.evalSingle(6,pt2)==0.25);
 
-%%% assert(hbs.elementIndex([0;0])==1) TODO
+%%% assert(hbs.elementIndex([0;0])==1)
 
 % Save to output file
 hbs.save('output1');
@@ -118,10 +125,32 @@ assert(isequal(lev,[1;1;2;2;3;1;1]));
 hbs.uniformRefine(1,1);
 assert(isequal(hbs.knots(1,1),[0,0,linspace(0,1,9),1,1]));
 
+% Uniformily refine the basis with update of coefficients
+hbs2_copy = gsTHBSplineBasis(hbs2,2);
+clear coefs
+[coefs(:,:,1),coefs(:,:,2)] = ndgrid(1:4,1:4);
+coefs = reshape(coefs,16,2);
+coefs2 = hbs2_copy.uniformRefine_withCoefs(coefs,1,1);
+clear coefs3
+[coefs3(:,:,1),coefs3(:,:,2)] = ndgrid([1 1.5 2.25 2.75 3.5 4],[1 1.5 2.25 2.75 3.5 4]);
+coefs3 = reshape(coefs3,36,2);
+assert(isequal(coefs2,coefs3))
+
 % Refine the basis by defining boxes
+hbs3_copy = gsTHBSplineBasis(hbs2,2);
 boxes = [2,1,3,3,5];
 hbs2.refineElements(boxes);
 assert(hbs2.numElements==7);
+
+% Refine the basis by defining boxes with update of coefficients
+boxes = [2 1 1 3 3];
+coefs4 = hbs3_copy.refineElements_withCoefs(coefs, boxes);
+coefs =[ 2 1; 3 1; 4 1; 1 2; 2 2; 3 2; 4 2; 1 3; 2 3; 3 3; 4 3; 1 4; 2 4; 3 4; 4 4; 1 1; 1.5 1; 1 1.5; 1.5 1.5];
+assert(isequal(coefs,coefs4));
+
+% Slice the basis 
+slice = hbs3_copy.basisSlice(1, 0.5);
+assert(slice.numElements == 3)
 
 fprintf('All tests: passed.\n')
 

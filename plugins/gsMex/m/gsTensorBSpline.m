@@ -64,7 +64,7 @@ classdef gsTensorBSpline < handle
                 % elseif (size(var2,1)~=varargin{1}. TODO!!! number of dof!)
                 %    error('Wrong coefficient dimension with respect to the basis.')
                 end
-                var1 = struct(varargin{1}).objectHandle;
+                var1 = varargin{1}.objectHandle;
                 this.objectHandle = mex_gsTensorBSpline('constructor', class(varargin{1}), class(varargin{2}), var1, var2);
             end
         end

@@ -364,7 +364,7 @@ void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* p
         T *instance = convertMat2Ptr<T> (prhs[1]);
         typedef typename T::BoundaryBasisType BoundaryBasisType;
 
-        mwIndex dir_fixed = (mwIndex) mxGetScalar(prhs[2]);
+        mwIndex dir_fixed = (mwIndex) mxGetScalar(prhs[2]) - 1;
         mwIndex par = (mwIndex) mxGetScalar(prhs[3]);
         BoundaryBasisType *slice = instance->basisSlice(dir_fixed, par);
         plhs[0] = convertPtr2Mat<BoundaryBasisType>(
