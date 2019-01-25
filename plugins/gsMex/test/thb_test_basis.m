@@ -65,7 +65,7 @@ assert(isequal(hbs2.eval(pt2),[0.25;0.25;0;0.25;0.25;0;0;0;0]))
 assert(hbs.evalSingle(55,pt)==0.25);
 assert(hbs2.evalSingle(6,pt2)==0.25);
 
-%%% assert(hbs.elementIndex([0;0])==1)
+assert(isequal(hbs.elementIndex([0;0]),[1 2 3 5 6 7 9 10 11]))
 
 % Save to output file
 hbs.save('output1');
