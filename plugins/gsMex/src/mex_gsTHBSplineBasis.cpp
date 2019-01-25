@@ -16,7 +16,7 @@
 
 using namespace gismo;
 
-template<class T>
+template<class T, class T2>
 void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[], char* cmd);
 
 // --------------------------------------------------------------------------
@@ -36,15 +36,15 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
         if (nrhs < 2 || mxGetString(prhs[0], cmd, sizeof(cmd)))
             throw ("First input argument should be a command string"
                    "less than MAXSTRLEN characters long, second input argument"
-                   "shoud be an int8.");
+                   "should be an int8.");
 
         int8_t dimension = (int8_t) mxGetScalar(prhs[nrhs-1]);
         if (dimension == 1)
-            mexFunctionTemplate < gsTHBSplineBasis<1> > (nlhs, plhs, nrhs, prhs, cmd);
+            mexFunctionTemplate < gsTHBSplineBasis<1>, gsBSplineBasis<> > (nlhs, plhs, nrhs, prhs, cmd);
         else if (dimension == 2)
-            mexFunctionTemplate < gsTHBSplineBasis<2> > (nlhs, plhs, nrhs, prhs, cmd);
+            mexFunctionTemplate < gsTHBSplineBasis<2>, gsTensorBSplineBasis<2> > (nlhs, plhs, nrhs, prhs, cmd);
         else if (dimension == 3)
-            mexFunctionTemplate < gsTHBSplineBasis<3> > (nlhs, plhs, nrhs, prhs, cmd);
+            mexFunctionTemplate < gsTHBSplineBasis<3>, gsTensorBSplineBasis<3> > (nlhs, plhs, nrhs, prhs, cmd);
         else
             throw ("Dimension should be specified in the last argument"
                    "and must be equal to 1, 2 or 3.");
@@ -57,19 +57,22 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
         // Catch (command failed).
 
     } catch (std::exception& e) { // Caught from library.
-        std::string errMsg = std::string("\n  While executing the following command: ") + cmd + std::string("\n  The following exception/error ocurred: ") + e.what();
+        std::string errMsg = std::string("\n  While executing the following command: ")
+                + cmd + std::string("\n  The following exception/error occurred: ") + e.what();
         mexErrMsgTxt(errMsg.c_str());
     } catch (const char* str) { // Caught from within this mexFunction.
-        std::string errMsg = std::string("\n  While executing the following command: ") + cmd + std::string("\n  The following exception/error ocurred: ") + std::string(str);
+        std::string errMsg = std::string("\n  While executing the following command: ")
+                + cmd + std::string("\n  The following exception/error occurred: ") + std::string(str);
         mexErrMsgTxt(errMsg.c_str());
     } catch (...) { // Something else went wrong
-        std::string errMsg = std::string("\n  While executing the following command: ") + cmd + std:: string("\n  An error ocurred.");
+        std::string errMsg = std::string("\n  While executing the following command: ")
+                + cmd + std:: string("\n  An error occurred.");
         mexErrMsgTxt(errMsg.c_str());
     } // end try-catch
 
 } // end mexFunction
 
-template<class T>
+template<class T, class T2>
 void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[], char* cmd) {
     if (!strcmp(cmd, "constructor")) {
 
@@ -95,14 +98,13 @@ void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* p
                 plhs[0] = convertPtr2Mat<T> (hbs);
                 // Free the memory allocated by mxArrayToString
                 mxFree(input_buf);
-            } else if (!strcmp(constructSwitch, "gsTensorBSplineBasis")) { // TODO generalization to n dim
+            } else if (!strcmp(constructSwitch, "gsTensorBSplineBasis")) {
                 // constructor ( gsTensorBSplineBasis )
-                gsTensorBSplineBasis<__DIM__> *instance =
-                        convertMat2Ptr<gsTensorBSplineBasis < __DIM__> > (prhs[2]);
+                T2 *instance = convertMat2Ptr<T2> (prhs[2]);
                 plhs[0] = convertPtr2Mat<T> (new T(*instance));
             } else if (!strcmp(constructSwitch, "gsTHBSplineBasis")) {
                 // constructor ( T )
-                T *instance = convertMat2Ptr<T > (prhs[2]);
+                T *instance = convertMat2Ptr<T> (prhs[2]);
                 plhs[0] = convertPtr2Mat<T> (new T(*instance));
             } else if (!strcmp(constructSwitch, "cell")) {
                 mwSize dim(mxGetNumberOfElements(prhs[2]));
@@ -124,7 +126,7 @@ void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* p
                     }
                 }
                 // ...a 2D-tensor-B-spline basis with this knot vector...
-                gsTensorBSplineBasis<__DIM__> tens(kts);    // TODO generalization to n dim
+                T2 tens(kts);
 
                 // ...and a 2D-THB-spline basis out of the tensor-B-spline basis.
                 T thb(tens);
@@ -364,9 +366,9 @@ void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* p
         T *instance = convertMat2Ptr<T> (prhs[1]);
         typedef typename T::BoundaryBasisType BoundaryBasisType;
 
-        mwIndex dir_fixed = (mwIndex) mxGetScalar(prhs[2]) - 1;
-        mwIndex par = (mwIndex) mxGetScalar(prhs[3]);
-        BoundaryBasisType *slice = instance->basisSlice(dir_fixed, par);
+        mwIndex dir_fixed = (mwIndex) mxGetScalar(prhs[2]);
+        real_t par = (real_t) mxGetScalar(prhs[3]);
+        BoundaryBasisType *slice = instance->basisSlice(dir_fixed-1, par);
         plhs[0] = convertPtr2Mat<BoundaryBasisType>(
                 new BoundaryBasisType(*slice));
 

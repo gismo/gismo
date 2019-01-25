@@ -8,7 +8,7 @@ close all
 % Construct a truncated hierarchical geometry by reading the specified file
 filename = join([filedata, 'surfaces/thbs_face_3levels.xml']); %'domain2d/rectangleTHB.xml']); % 
 fprintf('Reading THB spline from file: %s.\n',filename)
-hbs = gsTHBSpline(filename);
+hbs = gsTHBSpline(filename, 2);
 
 % Get the gsTHBSplineBasis from which hbs is built
 basis = hbs.basis;
@@ -18,7 +18,7 @@ coefs = hbs.coefs;
 % Construct another truncated hierarchical geometry from the basis and
 % the control points of the previous one.
 fprintf('Loading THB spline from basis and control points.\n')
-hbs2 = gsTHBSpline(basis, coefs);
+hbs2 = gsTHBSpline(basis, coefs, 2);
 
 fprintf('Slicing along the first direction, fixing it to 0:\n')
 sl = hbs.sliceCoefs(1,0.);
@@ -62,8 +62,8 @@ fprintf('Number of basis functions 1 after refinement: %d\n', size(new_coefs,1))
 fprintf('Number of basis functions 2 after refinement: %d\n', size(new_coefs2,1));
 fprintf('Number of knots 1 at level 1 direction 1 after refinement: %d\n', length(basis.knots(1,1)));
 fprintf('Number of knots 2 at level 1 direction 1 after refinement: %d\n', length(basis2.knots(1,1)));
-hbs = gsTHBSpline(basis, new_coefs);
-hbs2 = gsTHBSpline(basis2, new_coefs2);
+hbs = gsTHBSpline(basis, new_coefs, 2);
+hbs2 = gsTHBSpline(basis2, new_coefs2, 2);
 
 % Refine the basis by defining boxes and change coefficients
 fprintf('Number of elements before box (1,2)x(1,2) refinement at level 2: %d\n', ...
@@ -73,7 +73,7 @@ boxes = [2,1,1,2,2];
 new_coefs2 = basis2.refineElements_withCoefs(hbs2.coefs,boxes);
 fprintf('Number of elements after box (1,2)x(1,2) refinement at level 2: %d\n', ...
     basis2.numElements);
-hbs2 = gsTHBSpline(basis2, new_coefs2);
+hbs2 = gsTHBSpline(basis2, new_coefs2, 2);
 
 %% TEST OTHER METHODS
 % Print evaluations at pts
@@ -130,7 +130,7 @@ disp(act2)
  
 %% TEST GEOPDES LOADING OF A GISMO GEOMETRY
 % Build GeoPDEs geometry structures
-hbs = gsTHBSpline(join([filedata, 'domain2d/rectangleTHB.xml']));
+hbs = gsTHBSpline(join([filedata, 'domain2d/rectangleTHB.xml']), 2);
 geometry = geo_load(hbs);
 geometry2 = geo_load('/Users/ondine/Documents/geopdes/geopdes/inst/examples/geometry_files/geo_rectangle.txt');
 

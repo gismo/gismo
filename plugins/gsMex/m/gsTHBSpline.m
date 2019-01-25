@@ -14,6 +14,7 @@ classdef gsTHBSpline < handle
 
     properties (SetAccess = private, Hidden = true)
         objectHandle; % Handle to the underlying C++ class instance
+        paramDim; % Parametric dimension
     end
 
     methods(Access = public)
@@ -23,9 +24,9 @@ classdef gsTHBSpline < handle
             %gsTHBSpline - construct a gsTHBSpline object
             %
             %Usage:
-            %  thb = gsTHBSpline( file )
+            %  thb = gsTHBSpline( file, paramDim )
             %  OR
-            %  thb = gsTHBSpline( thbbasis, coefs )
+            %  thb = gsTHBSpline( thbbasis, coefs, paramDim )
             %
             %Input:
             %  file: char, [1 x numChar].
@@ -43,29 +44,40 @@ classdef gsTHBSpline < handle
             %  thb: gsTHBSpline, [1 x 1].
             %    The gsTHBSpline object.
             
-            if (nargin>2 || nargin<1 || nargout>1)
+            if (nargin>3 || nargin<2 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
-            elseif (nargin==1)
+            elseif (nargin==2)
                 if isa(varargin{1},'uint64')
                     this.objectHandle = varargin{1};
+                    this.paramDim = varargin{2};
                 else
                     if (~(isa(varargin{1},'char')))
-                        error('Input arguments should be of type ''char'', or a gsTHBSplineBasis and a 2d-array of double.')
+                        error('First input arguments should be of type ''char'', or a gsTHBSplineBasis and a 2d-array of double.')
                     elseif (~exist(varargin{1},'file'))
                         error('File does not exist: %s.',varargin{1})
                     else 
-                        this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), varargin{:});
+                        if (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || ~(floor(varargin{2})==varargin{2}) || ~(varargin{2}>0) )
+                            error('Last input argument shoud be a positive integer.')
+                        else
+                            this.paramDim = varargin{2};
+                        end
+                        this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), varargin{1}, this.paramDim);
                     end
                 end
-            elseif (nargin==2)
+            elseif (nargin==3)
                 var2 = varargin{2};
                 if (~(isa(varargin{1},'gsTHBSplineBasis') && isa(var2,'double') && ismatrix(var2)))
-                    error('Input arguments should be of type ''char'', or a gsTHBSplineBasis and a 2d-array of double.')
+                    error('First input arguments should be of type ''char'', or a gsTHBSplineBasis and a 2d-array of double.')
                 % elseif (size(var2,1)~=varargin{1}. TODO!!! number of dof!)
                 %    error('Wrong coefficient dimension with respect to the basis.')
                 end
+                if (~isa(varargin{3},'numeric') || ~isscalar(varargin{3}) || ~(floor(varargin{3})==varargin{3}) || ~(varargin{3}>0) )
+                    error('Last input argument shoud be a positive integer.')
+                else
+                    this.paramDim = varargin{3};
+                end
                 var1 = varargin{1}.objectHandle;
-                this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), class(varargin{2}), var1, var2);
+                this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), class(varargin{2}), var1, var2, this.paramDim);
             end
         end
         
@@ -83,7 +95,7 @@ classdef gsTHBSpline < handle
             %Output:
             %  (none)
             
-            mex_gsTHBSpline('destructor', this.objectHandle);
+            mex_gsTHBSpline('destructor', this.objectHandle, this.paramDim);
         end
 
         % parDim - call class method
@@ -104,7 +116,7 @@ classdef gsTHBSpline < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'parDim',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'parDim',  varargin{:}, this.paramDim);
         end
         
         % geoDim - call class method
@@ -125,7 +137,7 @@ classdef gsTHBSpline < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'geoDim',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'geoDim',  varargin{:}, this.paramDim);
         end
 
         % size - call class method
@@ -146,7 +158,7 @@ classdef gsTHBSpline < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'size',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'size',  varargin{:}, this.paramDim);
         end
         
         % support - call class method
@@ -170,7 +182,7 @@ classdef gsTHBSpline < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'support',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'support',  varargin{:}, this.paramDim);
         end
         
         % basis - call class method
@@ -191,8 +203,8 @@ classdef gsTHBSpline < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            basis_ptr = mex_gsTHBSpline('accessor', this.objectHandle, 'basis', varargin{:});
-            [varargout{1:nargout}] = gsTHBSplineBasis(basis_ptr);
+            basis_ptr = mex_gsTHBSpline('accessor', this.objectHandle, 'basis', varargin{:}, this.paramDim);
+            [varargout{1:nargout}] = gsTHBSplineBasis(basis_ptr, this.paramDim);
         end
         
         % coefs - call class method
@@ -215,7 +227,7 @@ classdef gsTHBSpline < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'coefs', varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'coefs', varargin{:}, this.paramDim);
         end
 
         % eval - call class method
@@ -239,10 +251,10 @@ classdef gsTHBSpline < handle
             if (nargin~=2 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.parDim()))
+            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.paramDim))
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('eval', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSpline('eval', this.objectHandle, varargin{:}, this.paramDim);
         end
         
         % jacobian - call class method
@@ -269,7 +281,7 @@ classdef gsTHBSpline < handle
             if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.parDim()))
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('jacobian', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSpline('jacobian', this.objectHandle, varargin{:}, this.paramDim);
         end
 
         % hess - call class method
@@ -301,7 +313,7 @@ classdef gsTHBSpline < handle
                     ~(mod(varargin{2},1)==0) || varargin{2}<1 || varargin{2}>this.parDim())
                 error('Input argument no. 2 must be a non negative integer smaller than %d.', this.parDim())
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('hess', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSpline('hess', this.objectHandle, varargin{:}, this.paramDim);
         end
         
         % active - call class method
@@ -327,7 +339,7 @@ classdef gsTHBSpline < handle
             if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.parDim()))
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('active', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSpline('active', this.objectHandle, varargin{:}, this.paramDim);
         end
 
         % sliceCoefs - call class method
@@ -356,7 +368,7 @@ classdef gsTHBSpline < handle
             elseif (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || numel(varargin{1})~=1)
                 error('Input argument no.2 must be a scalar.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('sliceCoefs', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSpline('sliceCoefs', this.objectHandle, varargin{:}, this.paramDim);
         end
         
         % save - call class method
@@ -381,7 +393,7 @@ classdef gsTHBSpline < handle
             if (~(isa(varargin{1},'char')))
                 error('Input argument no. 1 should be of type ''char''.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('save', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSpline('save', this.objectHandle, varargin{:}, this.paramDim);
         end
 
     end

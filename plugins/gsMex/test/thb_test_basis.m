@@ -39,15 +39,15 @@ fprintf('Test on accesssors: passed.\n')
 fprintf('\n Tree 1:\n')
 hbs.treePrintLeaves;
 fprintf(['\nCheck that the output is:\nLeaf node (0 0), ( 8192 32768). level=0 \n',...
-    'Leaf node (8192    0), (24576  8192). level=0 \nLeaf node (8192 8192), (20480 20480).',...
-    'level=2 \nLeaf node ( 8192 20480), (20480 24576). level=1 \nLeaf node (20480  8192), ',...
-    '(24576 24576). level=1 \nLeaf node ( 8192 24576), (24576 32768). level=0 \nLeaf node ',...
-    '(24576     0), (32768 32768). level=0\n'])
+          'Leaf node (8192    0), (24576  8192). level=0 \nLeaf node (8192 8192), (20480 20480).',...
+          'level=2 \nLeaf node ( 8192 20480), (20480 24576). level=1 \nLeaf node (20480  8192), ',...
+          '(24576 24576). level=1 \nLeaf node ( 8192 24576), (24576 32768). level=0 \nLeaf node ',...
+          '(24576     0), (32768 32768). level=0\n'])
 fprintf('\n Tree 2:\n')
 hbs2.treePrintLeaves;
 fprintf('\nCheck that the output is:\nLeaf node (0 0), (16384 16384). level=0 \n\n')
 
-% Check degree(dir)
+% Check degree (dir)
 assert(hbs.degree(1)==2) % order = degree-1 in geopdes
 assert(hbs2.degree(hbs2.dim)==2)
 
@@ -148,9 +148,8 @@ coefs4 = hbs3_copy.refineElements_withCoefs(coefs, boxes);
 coefs =[ 2 1; 3 1; 4 1; 1 2; 2 2; 3 2; 4 2; 1 3; 2 3; 3 3; 4 3; 1 4; 2 4; 3 4; 4 4; 1 1; 1.5 1; 1 1.5; 1.5 1.5];
 assert(isequal(coefs,coefs4));
 
-% Slice the basis 
+% Slice the basis
 slice = hbs3_copy.basisSlice(1, 0.5);
 assert(slice.numElements == 3)
 
 fprintf('All tests: passed.\n')
-
