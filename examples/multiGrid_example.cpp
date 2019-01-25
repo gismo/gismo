@@ -140,17 +140,7 @@ int main(int argc, char *argv[])
 
     /************ Setup bases and adjust degree *************/
 
-    gsInfo << "Setup bases and adjust degree... " << std::flush;
-
     gsMultiBasis<> mb(mp);
-
-    for ( size_t i = 0; i < mb.nBases(); ++ i )
-        mb[i].setDegreePreservingMultiplicity(degree);
-
-    for ( index_t i = 0; i < refinements; ++i )
-        mb.uniformRefine();
-
-    gsInfo << "done.\n";
 
     if (nonMatching)
     {
@@ -159,6 +149,7 @@ int main(int argc, char *argv[])
             if ( i%3 == 0 )
                 mb[i].uniformRefine();
         gsInfo << "done.\n";
+        --refinements;
 
         gsInfo << "Option NonMatching: Increase spline degree for every other third patch... " << std::flush;
         for (size_t i = 0; i < mb.nBases(); ++i)
@@ -173,6 +164,16 @@ int main(int argc, char *argv[])
         }
 
     }
+
+    gsInfo << "Setup bases and adjust degree... " << std::flush;
+
+    for ( size_t i = 0; i < mb.nBases(); ++ i )
+        mb[i].setDegreePreservingMultiplicity(degree);
+
+    for ( index_t i = 0; i < refinements; ++i )
+        mb.uniformRefine();
+
+    gsInfo << "done.\n";
 
     /********* Setup assembler and assemble matrix **********/
 
