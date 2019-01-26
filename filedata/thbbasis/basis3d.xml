@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo 0.8.4-->
+<xml>
+ <Basis type="THBSplineBasis3" id="0">
+  <Basis type="TensorBSplineBasis3">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="1">0 0 0.5 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="1">0 0 0.5 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="2">
+    <KnotVector degree="1">0 0 0.5 1 1 </KnotVector>
+   </Basis>
+  </Basis>
+  <box level="1">0 0 0 2 2 2 
+</box>
+ </Basis>
+</xml>
+

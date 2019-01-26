@@ -276,19 +276,6 @@ void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* p
         // Copy the result for output (FIXME: this should be avoided)
         plhs[0] = createPointerFromMatrix<unsigned>(vals);
 
-    } else if (!strcmp(cmd, "elementIndex")) {
-
-        // ----------------------------------------------------------------------
-        // elementIndex(pt)
-
-        T *instance = convertMat2Ptr<T> (prhs[1]);
-        // Copy the input (FIXME: this should be avoided)
-        gsVector <real_t> pt = extractMatrixFromPointer<real_t>(prhs[2]);
-        // Call method
-        int index = instance->elementIndex(pt);
-        mxArray *out = mxCreateDoubleScalar((double) index);
-        plhs[0] = out;
-
     } else if (!strcmp(cmd, "uniformRefine")) {
 
         // ----------------------------------------------------------------------

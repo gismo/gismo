@@ -478,33 +478,6 @@ classdef gsTHBSplineBasis < handle
             end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('active', this.objectHandle, varargin{:}, this.parDim);
         end
-        
-       % elementIndex - call class method
-       function [varargout] = elementIndex(this, varargin)
-           %elementIndex - returns an index for the element of a
-           %  gsTHBSplineBasis object which contains point pt.
-           %
-           %Usage:
-           %  ind = thb.elementIndex( pt )
-           %
-           %Input:
-           %  thb: gsTHBSplineBasis, [1 x 1].
-           %    The gsTHBSplineBasis object.
-           %  pt: double, [d x 1].
-           %    Point in which to evaluate the function.
-           %
-           %Output:
-           %  ind: int, [1 x 1].
-           %    Index of the element containing pt.
-
-           if (nargin~=2 || nargout>1)
-               error('Invalid number of input and/or output arguments.')
-           end
-           if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.dim()))
-               error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
-           end
-           [varargout{1:nargout}] = mex_gsTHBSplineBasis('active', this.objectHandle, varargin{:}, this.parDim);
-       end
 
         % uniformRefine - call class method
         function uniformRefine(this, varargin)
@@ -681,6 +654,9 @@ classdef gsTHBSplineBasis < handle
             
             if (nargout~=1 || nargin~=3)
                 error('Invalid number of input and/or output arguments.')
+            end
+            if this.parDim == 1
+                error('Impossible to slice if parDim is 1')
             end
             if ( ~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) ||...
                  ~(floor(varargin{1})==varargin{1}) || ~(varargin{1}>0) || ...
