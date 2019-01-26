@@ -4,16 +4,18 @@
 %% TEST CONSTRUCTORS
 % Construct a truncated hierarchical basis by reading the specified file
 filename = join([filedata,'thbbasis/simple.xml']);
-fprintf('Reading THB spline basis from file: %s.\n',filename)
 hbs = gsTHBSplineBasis(filename, 2);
-fprintf('Copy constructor of a THB spline basis. \n')
+
+% Copy constructor test
 hbs_copy = gsTHBSplineBasis(hbs, 2);
 assert(isequal(hbs_copy.support, hbs.support))
 
-%% Construct a truncated hierarchical basis from its knot vector in a carthesian product way.
+% Construct a truncated hierarchical basis from its knot vector in a 
+% carthesian product way.
 knots_2build = {[0,0,0,1,2,2,2],[4,4,4,5,6,6,6]};
-fprintf('Reading THB spline basis from knot vector, cartesian product way.\n')
 hbs2 = gsTHBSplineBasis(knots_2build, 2);
+
+fprintf('Test on constructors: passed.\n')
 
 %% TEST ACCESSORS
 assert(hbs.dim==2)
@@ -30,7 +32,7 @@ para = hbs.support;
 assert(isequal(para,[0 1; 0 1]))
 para2 = hbs2.support;
 assert(isequal(para2,[0 2; 4 6]))
-assert(hbs.maxLevel==3) % nlevels in GeoPDEs
+assert(hbs.maxLevel==3)
 assert(hbs2.maxLevel==1)
 fprintf('Test on accesssors: passed.\n')
 
@@ -121,11 +123,11 @@ assert(isequal(b1,[12 0; 4 12; 10 4; 4 10; 4 4; 4 0; 0 0]));
 assert(isequal(b2,[16 16; 12 16; 12 12; 10 12; 10 10; 12 4; 4 16]));
 assert(isequal(lev,[1;1;2;2;3;1;1]));
 
-% Uniformily refine the basis
+% Uniformly refine the basis
 hbs.uniformRefine(1,1);
 assert(isequal(hbs.knots(1,1),[0,0,linspace(0,1,9),1,1]));
 
-% Uniformily refine the basis with update of coefficients
+% Uniformly refine the basis with update of coefficients
 hbs2_copy = gsTHBSplineBasis(hbs2,2);
 clear coefs
 [coefs(:,:,1),coefs(:,:,2)] = ndgrid(1:4,1:4);

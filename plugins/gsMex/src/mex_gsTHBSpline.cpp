@@ -149,7 +149,12 @@ void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* p
                 T *hbs = data.getFirst <T> ().release();
                 plhs[0] = convertPtr2Mat<T> (hbs);
                 // Free the memory allocated by mxArrayToString
-                mxFree(input_buf);
+                mxFree(input_buf);            
+            } else if (!strcmp(constructSwitch, "gsTHBSpline")) {
+                // copy constructor ( T )
+                T *instance = convertMat2Ptr<T> (prhs[2]);
+                plhs[0] = convertPtr2Mat<T> (new T(*instance));
+                
             /* } else if (!strcmp(constructSwitch, "gsTensorBSpline")) { // TODO generalize dimension!!!!!
                 // constructor ( gsTensorBSpline )
                 Ttensorbasis *instance = convertMat2Ptr<Ttensorbasis> (prhs[2]);
@@ -265,20 +270,6 @@ void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* p
         gsMatrix <real_t> vals = instance->hess(pts, dir - 1);
         // Copy result to output (FIXME: this should be avoided)
         plhs[0] = createPointerFromMatrix<real_t>(vals);
-
-    } else if (!strcmp(cmd, "active")) {
-
-        // ----------------------------------------------------------------------
-        // active(pts)
-
-        T *instance = convertMat2Ptr<T> (prhs[1]);
-        // Copy the input (FIXME: this should be avoided)
-        gsMatrix <real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
-        // Call method
-        gsMatrix<unsigned> vals = instance->active(pts);
-        vals = vals + gsMatrix<unsigned>::Ones(vals.rows(), vals.cols());
-        // Copy the result for output (FIXME: this should be avoided)
-        plhs[0] = createPointerFromMatrix<unsigned>(vals);
 
     } else if (!strcmp(cmd, "sliceCoefs")) {
 

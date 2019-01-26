@@ -27,6 +27,8 @@ classdef gsTHBSpline < handle
             %  thb = gsTHBSpline( file, paramDim )
             %  OR
             %  thb = gsTHBSpline( thbbasis, coefs, paramDim )
+            %  OR
+            %  thb = gsTHBSpline( thbgeom, paramDim )
             %
             %Input:
             %  file: char, [1 x numChar].
@@ -39,6 +41,9 @@ classdef gsTHBSpline < handle
             %    where numCoefs is the number of coefficients (total
             %    number of active basis functions) and geoDim is the
             %    dimension of the physical space.
+            %  OR
+            %  thbgeom: gsTHBSpline
+            %    Copy constructor.
             %
             %Output:
             %  thb: gsTHBSpline, [1 x 1].
@@ -51,33 +56,44 @@ classdef gsTHBSpline < handle
                     this.objectHandle = varargin{1};
                     this.paramDim = varargin{2};
                 else
-                    if (~(isa(varargin{1},'char')))
-                        error('First input arguments should be of type ''char'', or a gsTHBSplineBasis and a 2d-array of double.')
-                    elseif (~exist(varargin{1},'file'))
+                    if (~(isa(varargin{1},'char') || isa(varargin{1},'gsTHBSpline') ))
+                        error(['First input arguments should be of type ''char'',', ...
+                               'or a gsTHBSpline, or a gsTHBSplineBasis and a ',...
+                               '2d-array of double.'])
+                    elseif (isa(varargin{1},'char') && ~exist(varargin{1},'file'))
                         error('File does not exist: %s.',varargin{1})
-                    else 
-                        if (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || ~(floor(varargin{2})==varargin{2}) || ~(varargin{2}>0) )
-                            error('Last input argument shoud be a positive integer.')
-                        else
-                            this.paramDim = varargin{2};
-                        end
-                        this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), varargin{1}, this.paramDim);
                     end
+                    if isa(varargin{1}, 'gsTHBSpline')
+                        var1 = varargin{1}.objectHandle;
+                    else
+                        var1 = varargin{1};
+                    end
+                    if (~isa(varargin{2},'numeric') || ~isscalar(varargin{2})...
+                            || ~(floor(varargin{2})==varargin{2}) || ~(varargin{2}>0) )
+                        error('Last input argument shoud be a positive integer.')
+                    else
+                        this.paramDim = varargin{2};
+                    end
+                    this.objectHandle = mex_gsTHBSpline('constructor', ...
+                        class(varargin{1}), var1, this.paramDim);
                 end
             elseif (nargin==3)
                 var2 = varargin{2};
                 if (~(isa(varargin{1},'gsTHBSplineBasis') && isa(var2,'double') && ismatrix(var2)))
-                    error('First input arguments should be of type ''char'', or a gsTHBSplineBasis and a 2d-array of double.')
+                    error(['First input arguments should be of type ''char'', '...
+                           'or a gsTHBSplineBasis and a 2d-array of double.'])
                 % elseif (size(var2,1)~=varargin{1}. TODO!!! number of dof!)
                 %    error('Wrong coefficient dimension with respect to the basis.')
                 end
-                if (~isa(varargin{3},'numeric') || ~isscalar(varargin{3}) || ~(floor(varargin{3})==varargin{3}) || ~(varargin{3}>0) )
+                if (~isa(varargin{3},'numeric') || ~isscalar(varargin{3}) || ...
+                        ~(floor(varargin{3})==varargin{3}) || ~(varargin{3}>0) )
                     error('Last input argument shoud be a positive integer.')
                 else
                     this.paramDim = varargin{3};
                 end
                 var1 = varargin{1}.objectHandle;
-                this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), class(varargin{2}), var1, var2, this.paramDim);
+                this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}),...
+                    class(varargin{2}), var1, var2, this.paramDim);
             end
         end
         
@@ -314,32 +330,6 @@ classdef gsTHBSpline < handle
                 error('Input argument no. 2 must be a non negative integer smaller than %d.', this.parDim())
             end
             [varargout{1:nargout}] = mex_gsTHBSpline('hess', this.objectHandle, varargin{:}, this.paramDim);
-        end
-        
-        % active - call class method
-        function [varargout] = active(this, varargin)
-            %active - active functions of a gsTHBSpline object
-            %
-            %Usage:
-            %  act = thb.active( pts )
-            %
-            %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
-            %  pts: double, [d x numPts].
-            %    Points in which to evaluate the function.
-            %
-            %Output:
-            %  act: double, [numFun x numPts].
-            %    Index of active functions in each of the specified points.
-            
-            if (nargin~=2 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.parDim()))
-                error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
-            end
-            [varargout{1:nargout}] = mex_gsTHBSpline('active', this.objectHandle, varargin{:}, this.paramDim);
         end
 
         % sliceCoefs - call class method

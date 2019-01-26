@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+    <Geometry type="THBSpline1" id="0">
+        <Basis type="THBSplineBasis">
+            <Basis type="BSplineBasis">
+                <KnotVector degree="1">0.00000   0.00000   0.25000   0.50000   0.75000   1.00000   1.00000</KnotVector>
+            </Basis>
+            <box level="0">0 4</box>
+        </Basis>
+        <coefs geoDim="3">0    0    0
+                          0.6  0.1  0.1
+                          1    1    0.5
+                          2    0.4  0.45
+                          2.2  0.3  0.4 
+        </coefs>
+    </Geometry>
+</xml>

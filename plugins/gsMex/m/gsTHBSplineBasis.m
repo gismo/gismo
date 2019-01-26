@@ -55,8 +55,10 @@ classdef gsTHBSplineBasis < handle
                 this.objectHandle = varargin{1};
                 this.parDim = varargin{2};
             else
-                if (~( isa(varargin{1},'char') || isa(varargin{1},'cell') || isa(varargin{1},'gsTHBSplineBasis') ))
-                    error('Input argument no. 1 should be of type ''char'' or ''gsTHBSplineBasis'' or be a cell of knot vectors.')
+                if (~( isa(varargin{1},'char') || isa(varargin{1},'cell') ||...
+                        isa(varargin{1},'gsTHBSplineBasis') ))
+                    error(['Input argument no. 1 should be of type ''char'' ',...
+                           'or ''gsTHBSplineBasis'' or be a cell of knot vectors.'])
                 elseif (isa(varargin{1},'char') && (~exist(varargin{1},'file')))
                     error('File does not exist: %s.',varargin{1})
                 end
@@ -65,12 +67,14 @@ classdef gsTHBSplineBasis < handle
                 else
                     var1 = varargin{1};
                 end
-                if (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || ~(floor(varargin{2})==varargin{2}) || ~(varargin{2}>0) )
+                if (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) ||...
+                        ~(floor(varargin{2})==varargin{2}) || ~(varargin{2}>0) )
                     error('Input argument no.2 shoud be a positive integer.')
                 else
                     this.parDim = varargin{2};
                 end
-                this.objectHandle = mex_gsTHBSplineBasis('constructor', class(varargin{1}), var1, this.parDim);
+                this.objectHandle = mex_gsTHBSplineBasis('constructor', ...
+                    class(varargin{1}), var1, this.parDim);
             end
         end
         

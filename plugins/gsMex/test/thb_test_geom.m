@@ -1,178 +1,120 @@
 % This MATLAB script tests the MEX interface of the gsTHBSpline class.
 % Author: O. Chanon
-close all
-
-% One should add the geopdes and nurbs library to the path, and run set_path
 
 %% TEST CONSTRUCTORS
 % Construct a truncated hierarchical geometry by reading the specified file
-filename = join([filedata, 'surfaces/thbs_face_3levels.xml']); %'domain2d/rectangleTHB.xml']); % 
-fprintf('Reading THB spline from file: %s.\n',filename)
-hbs = gsTHBSpline(filename, 2);
+filename = join([filedata, 'domain1d/thbcurve.xml']);
+hbs1d = gsTHBSpline(filename, 1);
+filename = join([filedata, 'domain2d/rectangleTHB.xml']);
+hbs2d = gsTHBSpline(filename, 2);
+
+% Copy constructor of a THB spline geometry.
+hbs1d_copy = gsTHBSpline(hbs1d, 1);
+assert(isequal(hbs1d_copy.coefs, hbs1d.coefs))
+hbs2d_copy = gsTHBSpline(hbs2d, 2);
+assert(isequal(hbs2d_copy.coefs, hbs2d.coefs))
 
 % Get the gsTHBSplineBasis from which hbs is built
-basis = hbs.basis;
+basis1d = hbs1d.basis;
+basis2d = hbs2d.basis;
 % Get the control points from which hbs is built
-coefs = hbs.coefs;
+coefs1d = hbs1d.coefs;
+coefs2d = hbs2d.coefs;
 
 % Construct another truncated hierarchical geometry from the basis and
 % the control points of the previous one.
-fprintf('Loading THB spline from basis and control points.\n')
-hbs2 = gsTHBSpline(basis, coefs, 2);
+hbs1d_copy = gsTHBSpline(basis1d, coefs1d, 1);
+assert(isequal(hbs1d.support, hbs1d_copy.support))
+hbs2d_copy = gsTHBSpline(basis2d, coefs2d, 2);
+assert(isequal(hbs2d.support, hbs2d_copy.support))
 
-fprintf('Slicing along the first direction, fixing it to 0:\n')
-sl = hbs.sliceCoefs(1,0.);
-
-fprintf('Save to xml file.')
-hbs.save('hbsgeom_test');
+fprintf('Test on constructors: passed.\n')
 
 %% TEST ACCESSORS
-fprintf('Dimension of the parametric space 1: %d\n',hbs.parDim);      % rdim in geopdes
-fprintf('Dimension of the parametric space 2: %d\n',hbs2.parDim);
-fprintf('Dimension of the physical space 1: %d\n',hbs.geoDim);        % ndim in geopdes
-fprintf('Dimension of the physical space 2: %d\n',hbs2.geoDim);
-fprintf('Size of the function set 1: %d\n',hbs.size);                 % ncomp in geopdes
-fprintf('Size of the function set 2: %d\n',hbs2.size);
+assert(hbs1d.parDim==1); 
+assert(hbs1d.geoDim==3);
+assert(hbs1d.size==1);
+assert(hbs2d.parDim==2); 
+assert(hbs2d.geoDim==2); 
+assert(hbs2d.size==1); 
 
 % Support
-para = hbs.support;
-fprintf('The parameter range 1 is: [%f %f %f %f]\n', para);
-para2 = hbs2.support;
-fprintf('The parameter range 2 is: [%f %f %f %f]\n', para2);
+para1d = hbs1d.support;
+assert(isequal(para1d,[0 1]))
+para2d = hbs2d.support;
+assert(isequal(para2d,[0 1; 0 1]))
 
 % Basis
-deg1 = basis.degree(basis.dim());
-fprintf('Degree 1 in the last direction: %d\n', deg1);
-basis2 = hbs2.basis;
-deg2 = basis2.degree(basis2.dim());
-fprintf('Degree 2 in the last direction: %d\n', deg2);
+deg1 = basis1d.degree(basis1d.dim());
+assert(deg1==1);
+deg1 = basis2d.degree(basis2d.dim());
+assert(deg1==2);
 
 % Control points
-coefs_size = size(coefs);
-fprintf('Number of basis functions 1: %d\n', coefs_size(1));
-coefs2_size = size(hbs2.coefs);
-fprintf('Number of basis functions 2: %d\n\n', coefs2_size(1));
-assert(isequal(coefs,hbs2.coefs));
+c2 = [0    0    0;
+     0.6  0.1  0.1;
+     1    1    0.5;
+     2    0.4  0.45;
+     2.2  0.3  0.4 ];
+assert(prod(ismembertol(c2,coefs1d,'ByRows',true))==1)
+clear c
+[c(:,:,1),c(:,:,2)] = ndgrid(linspace(0,2,4), linspace(0,1,3));
+c = reshape(c, [12 2]);
+assert(prod(ismembertol(c,coefs2d,'ByRows',true))==1)
 
-% Uniforimly refine basis and change coefficients
-new_coefs = basis.uniformRefine_withCoefs(coefs,1,1);
-new_coefs2 = basis2.uniformRefine_withCoefs(hbs2.coefs,1,1);
-fprintf('Refinement adds a single knot with multiplicity 1 on each knot span.\n');
-fprintf('Number of basis functions 1 after refinement: %d\n', size(new_coefs,1));
-fprintf('Number of basis functions 2 after refinement: %d\n', size(new_coefs2,1));
-fprintf('Number of knots 1 at level 1 direction 1 after refinement: %d\n', length(basis.knots(1,1)));
-fprintf('Number of knots 2 at level 1 direction 1 after refinement: %d\n', length(basis2.knots(1,1)));
-hbs = gsTHBSpline(basis, new_coefs, 2);
-hbs2 = gsTHBSpline(basis2, new_coefs2, 2);
-
-% Refine the basis by defining boxes and change coefficients
-fprintf('Number of elements before box (1,2)x(1,2) refinement at level 2: %d\n', ...
-    basis2.numElements);
-basis2.knots(1,1)
-boxes = [2,1,1,2,2];
-new_coefs2 = basis2.refineElements_withCoefs(hbs2.coefs,boxes);
-fprintf('Number of elements after box (1,2)x(1,2) refinement at level 2: %d\n', ...
-    basis2.numElements);
-hbs2 = gsTHBSpline(basis2, new_coefs2, 2);
+fprintf('Test on accessors: passed.\n\n')
 
 %% TEST OTHER METHODS
 % Print evaluations at pts
-pts = uniformPointGrid(para(1:2),para(3:4),1000);
-ev  = hbs.eval(pts);
-fprintf('Evaluation 1 on %d pts: cf figure.\n',length(pts))
+ev1 = hbs1d.eval(linspace(0,1,50));
+pts = uniformPointGrid(para2d(1:2),para2d(3:4),1000);
+ev2 = hbs2d.eval(pts);
 figure;
-subplot(1,2,1)
-if (hbs.geoDim() == 3)
-    scatter3(ev(1,:), ev(2,:), ev(3,:), '+')
-elseif (hbs.geoDim() == 2)
-    plot(ev(1,:),ev(2,:),'+')
-end
+subplot(1,3,1)
+scatter3(ev1(1,:), ev1(2,:), ev1(3,:), '+')
+subplot(1,3,2)
+plot(ev2(1,:),ev2(2,:),'+')
 
-ev2  = hbs2.eval(pts);
-fprintf('Evaluation 2: cf figure.\n')
-subplot(1,2,2);
-if (hbs2.geoDim() == 3)
-    scatter3(ev2(1,:), ev2(2,:), ev2(3,:), '+')
-elseif (hbs2.geoDim() == 2)
-    plot(ev2(1,:),ev2(2,:),'+')
-end
+% Compute jacobian
+jac = hbs1d.jacobian(0.4);
+assert(prod(ismembertol(jac,[1.6; 3.6; 1.6],'ByRows',true))==1)
+jac = hbs2d.jacobian([0.5;0.2]);
+assert(prod(ismembertol(jac,[4/3 0; 0 1],'ByRows',true))==1)
 
-% Print jacobian at pts
-jac = hbs.jacobian(pts);
-fprintf('Jacobian (:,1:5) 1 of total size %d x %d: \n', size(jac,1),size(jac,2))
-disp(jac(:,1:5))
+% Print hessian on direction 1
+hess = hbs1d.hess(0.4,1);
+assert(prod(ismembertol(hess,[0; 0; 0],'ByRows',true))==1)
+hess = hbs2d.hess([0.5;0.2],1);
+assert(prod(ismembertol(hess,[8/3; 0; 0; 0],'ByRows',true))==1)
 
-jac2 = hbs2.jacobian(pts);
-fprintf('Jacobian (:,1:5) 2 of total size %d x %d: \n', size(jac2,1),size(jac2,2))
-disp(jac2(:,1:5))
+hess = hbs2d.hess([0.5;0.2],hbs2d.parDim);
+assert(prod(ismembertol(hess,zeros(4,1),'ByRows',true))==1)
 
-% Print hessian on direction 1 %% TODO !!!! NOT WELL IMPLEMENTED IN GISMO!!
-hess = hbs.hess(pts,1);
-fprintf('Hessian (:, 1:5) 1 in direction 1 of total size %d x %d: \n', size(hess,1),size(hess,2))
-disp(hess(:,1:5))
+% Slicing along the some direction (not possible for THBSplines of
+% parametric dimension 1)
+sl = hbs2d.sliceCoefs(1,0);
+assert(prod(ismembertol(sl,[0 0;0 0.5;0 1],'ByRows',true))==1)
 
-hess2 = hbs2.hess(pts,1);
-fprintf('Hessian (:, 1:5) 2 in direction 1 of total size %d x %d: \n', size(hess2,1),size(hess2,2))
-disp(hess2(:,1:5))
+% Save geometry to xml file.
+hbs1d.save('hbsgeom1d');
+hbs2d.save('hbsgeom2d');
+fprintf('Geometries saved to hbsgeom1d, hbsgeom2d and hbsgeom3d xml files.\n')
 
-hess2last = hbs2.hess(pts,hbs2.parDim);
-fprintf('Hessian 2 in direction parDim has total size %d x %d. \n', size(hess2last,1),size(hess2last,2))
+% Uniformly refine basis and change coefficients: obtain the same geometry
+new_coefs = basis1d.uniformRefine_withCoefs(coefs1d,1,1);
+hbs1d = gsTHBSpline(basis1d, new_coefs, 1);
+new_coefs = basis2d.uniformRefine_withCoefs(coefs2d,1,1);
+hbs2d = gsTHBSpline(basis2d, new_coefs, 2);
 
-% Print active functions on pts %% TODO!! does what we want? what does it mean?
-act = hbs.active(pts(:,131:133));
-fprintf('Active functions 1 on three pts:\n')
-disp(act)
+% Refine the basis by defining boxes and change coefficients: obtain the
+% same geometry
+boxes = [2,1,2];
+basis1d = hbs1d_copy.basis; coefs1d = hbs1d_copy.coefs;
+new_coefs1d = basis1d.refineElements_withCoefs(coefs1d, boxes);
+hbs1d2 = gsTHBSpline(basis1d, new_coefs1d, 1);
+boxes = [2,1,1,2,2];
+basis2d = hbs2d_copy.basis; coefs2d = hbs2d_copy.coefs;
+new_coefs2 = basis2d.refineElements_withCoefs(coefs2d,boxes);
+hbs2d2 = gsTHBSpline(basis2d, new_coefs2, 2);
 
-act2 = hbs2.active(pts(:,131:133));
-fprintf('Active functions 2 on three pts:\n')
-disp(act2)
- 
-% %% TEST GEOPDES LOADING OF A GISMO GEOMETRY
-% % Build GeoPDEs geometry structures
-% hbs = gsTHBSpline(join([filedata, 'domain2d/rectangleTHB.xml']), 2);
-% geometry = geo_load(hbs);
-% geometry2 = geo_load('/Users/ondine/Documents/geopdes/geopdes/inst/examples/geometry_files/geo_rectangle.txt');
-% 
-% % Get the knot vector corresponding to the first level, 2nd direction
-% kts12 = geometry.knots{1}{2};
-% fprintf('Knots level 1, direction 2 from G+smo to GeoPdes:\n')
-% disp(kts12);
-% 
-% kts12 = geometry2.nurbs.knots{2};
-% fprintf('Knots direction 2 in GeoPdes 2:\n')
-% disp(kts12);
-% 
-% % Plot GeoPDEs geometry coming from G+smo
-% [X,Y] = ndgrid(0:0.01:1, 0:0.01:1);
-% reshape(X,1,[]);
-% X = reshape(X,1,[]);
-% Y = reshape(Y,1,[]);
-% pts = [X;Y];
-% 
-% fprintf('Plot GeoPDEs geometries coming from G+smo: see figure.\n')
-% 
-% figure;
-% subplot(1,2,1)
-% ev21 = geometry.map(pts);
-% if (hbs.geoDim() == 3)
-%     scatter3(ev21(1,:),ev21(2,:),ev21(3,:))
-% elseif (hbs.geoDim() == 2)
-%     plot(ev21(1,:),ev21(2,:),'+')
-% end
-% 
-% subplot(1,2,2)
-% ev22 = geometry2.map(pts);
-% if (geometry2.rdim == 3)
-%     scatter3(ev22(1,:),ev22(2,:),ev22(3,:))
-% elseif (geometry2.rdim == 2)
-%     plot(ev22(1,:),ev22(2,:),'+')
-% end
-% fprintf('Max difference: %f\n', max(max(abs(ev21-ev22))))
-% 
-% der21 = geometry.map_der(pts);
-% der22 = geometry2.map_der(pts);
-% fprintf('GeoPDEs 1st derivative geometries coming from G+smo: max difference: %f\n', max(max(max(abs(der21-der22)))))
-% 
-% hess21 = geometry.map_der2(pts);
-% hess22 = geometry2.map_der2(pts);
-% fprintf('GeoPDEs hessian coming from G+smo: max difference: %f\n', max(max(max(max(abs(hess21-hess22))))))
+fprintf('All tests: passed.\n')
