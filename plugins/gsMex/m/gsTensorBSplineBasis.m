@@ -14,6 +14,7 @@ classdef gsTensorBSplineBasis < handle
 
     properties (SetAccess = private, Hidden = true)
         objectHandle; % Handle to the underlying C++ class instance
+        parDim; % Parametric dimension of the basis
     end
 
     methods(Access = public)
@@ -23,11 +24,14 @@ classdef gsTensorBSplineBasis < handle
             %gsTensorBSplineBasis - construct a gsTensorBSplineBasis object
             %
             %Usage:
-            %  bspb = gsTensorBSplineBasis( file )
+            %  bspb = gsTensorBSplineBasis( file, parDim )
             %  OR
-            %  bspb = gsTensorBSplineBasis( knots )
+            %  bspb = gsTensorBSplineBasis( knots, parDim )
+            %  OR
+            %  bspb = gsTensorBSplineBasis( basis, parDim )
             %
             %Input:
+            %  parDim: int, parametric dimension of the basis.
             %  file: char, [1 x numChar].
             %    Name of input file from which to read/construct the
             %    gsTensorBSplineBasis.
@@ -35,24 +39,42 @@ classdef gsTensorBSplineBasis < handle
             %  knots: cell
             %    The cell element i contains the knot vector in the
             %    direction i.
+            %  OR
+            %  basis: gsTensorBSplineBasis
+            %    Copy constructor.
             %
             %Output:
             %  bspb: gsTensorBSplineBasis, [1 x 1].
             %    The gsTensorBSplineBasis object.
 
-            if (nargin~=1 || nargout>1)
+            if (nargin~=2 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
             
             if (isa(varargin{1},'uint64'))
                 this.objectHandle = varargin{1};
+                this.parDim = varargin{2};
             else
-                if (~( isa(varargin{1},'char') || isa(varargin{1},'cell') ))
-                    error('Input argument no. 1 should be of type ''char'' or be a cell of knot vectors.')
+                if (~( isa(varargin{1},'char') || isa(varargin{1},'cell') ||...
+                        isa(varargin{1},'gsTensorBSplineBasis') ))
+                    error(['Input argument no. 1 should be of type ''char'' ',...
+                           'or ''gsTHBSplineBasis'' or be a cell of knot vectors.'])
                 elseif (isa(varargin{1},'char') && (~exist(varargin{1},'file')))
                     error('File does not exist: %s.',varargin{1})
                 end
-                this.objectHandle = mex_gsTensorBSplineBasis('constructor', class(varargin{1}), varargin{:});
+                if isa(varargin{1},'gsTensorBSplineBasis')
+                    var1 = varargin{1}.objectHandle;
+                else
+                    var1 = varargin{1};
+                end
+                if (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) ||...
+                        ~(floor(varargin{2})==varargin{2}) || ~(varargin{2}>0) )
+                    error('Input argument no.2 shoud be a positive integer.')
+                else
+                    this.parDim = varargin{2};
+                end
+                this.objectHandle = mex_gsTensorBSplineBasis('constructor', ...
+                    class(varargin{1}), var1, this.parDim);
             end
         end
         
@@ -70,7 +92,7 @@ classdef gsTensorBSplineBasis < handle
             %Output:
             %  (none)
             
-            mex_gsTensorBSplineBasis('destructor', this.objectHandle);
+            mex_gsTensorBSplineBasis('destructor', this.objectHandle, this.parDim);
         end
 
         % domainDim - call class method
@@ -91,7 +113,8 @@ classdef gsTensorBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('accessor', this.objectHandle, 'domainDim',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('accessor', ...
+                this.objectHandle, 'domainDim',  varargin{:}, this.parDim);
         end
         
         % numElements - call class method
@@ -112,7 +135,8 @@ classdef gsTensorBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('accessor', this.objectHandle, 'numElements',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('accessor',...
+                this.objectHandle, 'numElements',  varargin{:}, this.parDim);
         end
         
         % size - call class method
@@ -134,7 +158,8 @@ classdef gsTensorBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('accessor', this.objectHandle, 'size',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('accessor', ...
+                this.objectHandle, 'size',  varargin{:}, this.parDim);
         end
 
         % support - call class method
@@ -158,7 +183,8 @@ classdef gsTensorBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('accessor', this.objectHandle, 'support',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('accessor', ...
+                this.objectHandle, 'support',  varargin{:}, this.parDim);
         end
 
         % degree - call class method
@@ -184,10 +210,13 @@ classdef gsTensorBSplineBasis < handle
                 error('Invalid number of input and/or output arguments.')
             end
             if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ...
-                    ~(mod(varargin{1},1)==0) || varargin{1}<1 || varargin{1}>this.domainDim())
-                error('Input argument must be a non negative integer less than %d.', this.domainDim())
+                    ~(mod(varargin{1},1)==0) || varargin{1}<1 || ...
+                    varargin{1}>this.domainDim())
+                error('Input argument must be a non negative integer less than %d.',...
+                    this.domainDim())
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('degree', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('degree', ...
+                this.objectHandle, varargin{:}, this.parDim);
         end
         
         % eval - call class method
@@ -213,12 +242,15 @@ classdef gsTensorBSplineBasis < handle
             end
             if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}))
                 error('Input argument no. 1 must be numeric, 2-dimensional.')
-            elseif (~isequal(size(varargin{1},2),this.domainDim()) && ~isequal(size(varargin{1},1),this.domainDim()))
-                error('Input argument no. 1 must be numeric, 2-dimensional with one dimension equal to parametric dim.')
+            elseif (~isequal(size(varargin{1},2),this.domainDim()) && ...
+                    ~isequal(size(varargin{1},1),this.domainDim()))
+                error(['Input argument no. 1 must be numeric, 2-dimensional ',...
+                    'with one dimension equal to parametric dim.'])
             elseif (isequal(size(varargin{1},2),this.domainDim()))
                 varargin{1} = varargin{1}.';
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('eval', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('eval', ...
+                this.objectHandle, varargin{:}, this.parDim);
         end
 
         % evalSingle - call class method
@@ -247,10 +279,12 @@ classdef gsTensorBSplineBasis < handle
             if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ...
                     ~(mod(varargin{1},1)==0) || varargin{1}<1)
                 error('Input argument no. 1 must be an strictly positive integer.')
-            elseif (~isa(varargin{2},'numeric') || ~ismatrix(varargin{2}) || ~isequal(size(varargin{2},1),this.domainDim()))
+            elseif (~isa(varargin{2},'numeric') || ~ismatrix(varargin{2}) ||...
+                    ~isequal(size(varargin{2},1),this.domainDim()))
                 error('Input argument no. 2 must be numeric, 2-dimensional, and with d rows.')
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('evalSingle', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('evalSingle', ...
+                this.objectHandle, varargin{:}, this.parDim);
         end
         
         % save - call class method
@@ -275,7 +309,8 @@ classdef gsTensorBSplineBasis < handle
             if (~(isa(varargin{1},'char')))
                 error('Input argument no. 1 should be of type ''char''.')
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('save', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('save', ...
+                this.objectHandle, varargin{:}, this.parDim);
         end
         
         % knots - call class method
@@ -300,10 +335,13 @@ classdef gsTensorBSplineBasis < handle
                 error('Invalid number of input and/or output arguments.')
             end
             if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ...
-                    ~(mod(varargin{1},1)==0) || varargin{1}<1 || varargin{1}>this.domainDim)
-                error('Input argument no. 1 must be a strictly positive integer smaller than %d.', this.domainDim)
+                    ~(mod(varargin{1},1)==0) || varargin{1}<1 || ...
+                    varargin{1}>this.domainDim)
+                error('Input argument no. 1 must be a strictly positive integer smaller than %d.',...
+                    this.domainDim)
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('knots', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('knots', ...
+                this.objectHandle, varargin{:}, this.parDim);
         end
         
         % active - call class method
@@ -326,10 +364,12 @@ classdef gsTensorBSplineBasis < handle
             if (nargin~=2 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.domainDim()))
+            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ...
+                    ~isequal(size(varargin{1},1),this.domainDim()))
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('active', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('active', ...
+                this.objectHandle, varargin{:}, this.parDim);
         end
         
         % elementIndex - call class method
@@ -353,10 +393,12 @@ classdef gsTensorBSplineBasis < handle
             if (nargin~=2 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.domainDim()))
+            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) ||...
+                    ~isequal(size(varargin{1},1),this.domainDim()))
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('active', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('active',...
+                this.objectHandle, varargin{:}, this.parDim);
         end
 
         % uniformRefine - call class method
@@ -384,7 +426,8 @@ classdef gsTensorBSplineBasis < handle
                 ~(floor(varargin{2})==varargin{2}) || ~(varargin{2}>0))
                 error('Input argument no. 1 and 2 must stricly positive integers.')
             end
-            mex_gsTensorBSplineBasis('uniformRefine', this.objectHandle, varargin{:});
+            mex_gsTensorBSplineBasis('uniformRefine', this.objectHandle, ...
+                varargin{:}, this.parDim);
         end
 
         % uniformRefine_withCoefs - call class method
@@ -417,11 +460,12 @@ classdef gsTensorBSplineBasis < handle
                 ~isa(varargin{3},'numeric') || ~isscalar(varargin{3}) ||...
                 ~(floor(varargin{3})==varargin{3}) || ~(varargin{3}>0) ||...
                 ~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}))
-                error('Input argument no. 1 should be a 2d array of double, inputs no. 2 and 3 must' ...
-                       + 'be stricly positive integers.')
+                error(['Input argument no. 1 should be a 2d array of double, ',...
+                    'inputs no. 2 and 3 must be stricly positive integers.'])
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('uniformRefine_withCoefs', this.objectHandle,...
-                                                           varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis(...
+                'uniformRefine_withCoefs', this.objectHandle,...
+                 varargin{:}, this.parDim);
         end
 
         % refineElements - call class method
@@ -445,10 +489,12 @@ classdef gsTensorBSplineBasis < handle
             if (nargin~=2 || nargout>0)
                 error('Invalid number of input and/or output arguments.')
             end
-            if ( ~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~(min(size(varargin{1}))==1) )
+            if ( ~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ...
+                    ~(min(size(varargin{1}))==1) )
                 error('Input argument must be an array of integers.')
             end
-            mex_gsTensorBSplineBasis('refineElements', this.objectHandle, varargin{:});
+            mex_gsTensorBSplineBasis('refineElements', this.objectHandle, ...
+                varargin{:}, this.parDim);
         end
 
         % refineElements_withCoefs - call class method
@@ -478,13 +524,15 @@ classdef gsTensorBSplineBasis < handle
             if (nargin~=3 || nargout~=1)
                 error('Invalid number of input and/or output arguments.')
             end
-            if ( ~isa(varargin{2},'numeric') || ~ismatrix(varargin{2}) || ~(min(size(varargin{2}))==1) ||...
+            if ( ~isa(varargin{2},'numeric') || ~ismatrix(varargin{2}) ||...
+                    ~(min(size(varargin{2}))==1) ||...
                 ~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) )
-                error('Input argument no. 1 should be a 2d array of double, inputs no. 2 must' ...
-                       + 'be an array of integers.')
+                error(['Input argument no. 1 should be a 2d array of double, ',...
+                    'inputs no. 2 must be an array of integers.'])
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('refineElements_withCoefs', this.objectHandle,...
-                                                           varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis(...
+                'refineElements_withCoefs', this.objectHandle,...
+                varargin{:}, this.parDim);
         end
         
     end

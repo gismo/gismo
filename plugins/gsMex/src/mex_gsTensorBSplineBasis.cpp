@@ -16,6 +16,9 @@
 
 using namespace gismo;
 
+template<class T>
+void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[], char* cmd);
+
 // --------------------------------------------------------------------------
 // "main" gateway function
 //
@@ -30,16 +33,48 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     try  {
 
         // Fetch command string.
-        if (nrhs < 1 || mxGetString(prhs[0], cmd, sizeof(cmd)))
+        if (nrhs < 2 || mxGetString(prhs[0], cmd, sizeof(cmd)))
             throw("First input argument should be a command string"
                   "less than MAXSTRLEN characters long.");
 
+        int8_t dimension = (int8_t) mxGetScalar(prhs[nrhs-1]);
+       if (dimension == 2)
+            mexFunctionTemplate < gsTensorBSplineBasis<2> > (nlhs, plhs, nrhs, prhs, cmd);
+        else if (dimension == 3)
+            mexFunctionTemplate < gsTensorBSplineBasis<3> > (nlhs, plhs, nrhs, prhs, cmd);
+        else
+            throw ("Dimension should be specified in the last argument"
+                   "and must be equal to 2 or 3.");
+
+        // ------------------------------------------------------------------------
+        // That's it (command executed).
+        return;
+
+        // --------------------------------------------------------------------------
+        // Catch (command failed).
+
+    } catch (std::exception& e) { // Caught from library.
+        std::string errMsg = std::string("\n  While executing the following command: ") + cmd + std::string("\n  The following exception/error ocurred: ") + e.what();
+        mexErrMsgTxt(errMsg.c_str());
+    } catch (const char* str) { // Caught from within this mexFunction.
+        std::string errMsg = std::string("\n  While executing the following command: ") + cmd + std::string("\n  The following exception/error ocurred: ") + std::string(str);
+        mexErrMsgTxt(errMsg.c_str());
+    } catch (...) { // Something else went wrong
+        std::string errMsg = std::string("\n  While executing the following command: ") + cmd + std:: string("\n  An error ocurred.");
+        mexErrMsgTxt(errMsg.c_str());
+    } // end try-catch
+
+} // end mexFunction
+
+
+template<class T>
+void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[], char* cmd) {
         if (!strcmp(cmd,"constructor")) {
 
             // ----------------------------------------------------------------------
             // Constructors
 
-            if (nrhs==3) {
+            if (nrhs==4) {
                 // constructor from 1 argument (+ 1 type switch)
                 char constructSwitch[__MAXSTRLEN__];
                 if (mxGetString(prhs[1], constructSwitch, sizeof(constructSwitch)))
@@ -52,15 +87,15 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                     // Read the B-spline basis from the specified file
                     std::string filename(input_buf); // Reading requires a std::string
                     gsFileData<real_t>  data( filename );
-                    gsTensorBSplineBasis<__DIM__> * bspb = data.getFirst< gsTensorBSplineBasis<__DIM__> >().release();
-                    plhs[0] = convertPtr2Mat<gsTensorBSplineBasis<__DIM__> >(bspb);
+                    T * bspb = data.getFirst<T>().release();
+                    plhs[0] = convertPtr2Mat<T>(bspb);
                     // Free the memory allocated by mxArrayToString
                     mxFree(input_buf);
                 }
                 else if (!strcmp(constructSwitch,"gsTensorBSplineBasis")) {
                     // constructor ( gsTensorBSplineBasis )
-                    gsTensorBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTensorBSplineBasis<__DIM__> >(prhs[2]);
-                    plhs[0] = convertPtr2Mat<gsTensorBSplineBasis<__DIM__> >(new gsTensorBSplineBasis<__DIM__>(*instance));
+                    T *instance = convertMat2Ptr<T>(prhs[2]);
+                    plhs[0] = convertPtr2Mat<T>(new T(*instance));
                 }
                 else if (!strcmp(constructSwitch,"cell")) {
                     mwSize dim(mxGetNumberOfElements(prhs[2]));
@@ -82,11 +117,11 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                         }
                     }
                     // ...a 2D-tensor-B-spline basis with this knot vector...
-                    gsTensorBSplineBasis<__DIM__> tens(kts);
+                    T tens(kts);
 
                     // ...and a 2D B-spline basis out of the tensor-B-spline basis.
-                    gsTensorBSplineBasis<__DIM__> bspb( tens );
-                    plhs[0] = convertPtr2Mat<gsTensorBSplineBasis<__DIM__> >(new gsTensorBSplineBasis<__DIM__>(bspb));
+                    T bspb( tens );
+                    plhs[0] = convertPtr2Mat<T>(new T(bspb));
                 } else {
                     throw ("Invalid construction.");
                 }
@@ -99,7 +134,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
             // ----------------------------------------------------------------------
             // Destructor
-            destroyObject<gsTensorBSplineBasis<__DIM__> >(prhs[1]);
+            destroyObject<T>(prhs[1]);
 
         } else if (!strcmp(cmd,"accessor")) {
 
@@ -107,7 +142,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // Accessor
 
             // Fetch instance and property to be accessed
-            gsTensorBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTensorBSplineBasis<__DIM__> >(prhs[1]);
+            T *instance = convertMat2Ptr<T>(prhs[1]);
             char prop[__MAXSTRLEN__];
             if (mxGetString(prhs[2], prop, sizeof(prop)))
                 throw("Third input argument should be a property string less than MAXSTRLEN characters long.");
@@ -132,7 +167,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
         } else if (!strcmp(cmd,"degree")) {
 
-            gsTensorBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTensorBSplineBasis < __DIM__ > > (prhs[1]);
+            T *instance = convertMat2Ptr <T> (prhs[1]);
             mwIndex deg = (mwIndex) mxGetScalar(prhs[2]);
             mxArray *out = mxCreateDoubleScalar((double)instance->degree(deg-1));
             plhs[0] = out;
@@ -142,7 +177,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // eval(pts)
 
-            gsTensorBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTensorBSplineBasis<__DIM__> >(prhs[1]);
+            T *instance = convertMat2Ptr<T>(prhs[1]);
             // Copy the input (FIXME: this should be avoided)
             const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
             // Call the method
@@ -155,7 +190,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // evalSingle(ind,pts)
 
-            gsTensorBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTensorBSplineBasis < __DIM__ > > (prhs[1]);
+            T *instance = convertMat2Ptr <T> (prhs[1]);
             // Copy the input (FIXME: this should be avoided)
             const mwIndex ind = (mwIndex) * mxGetPr(prhs[2]);
             const gsMatrix <real_t> pts = extractMatrixFromPointer<real_t>(prhs[3]);
@@ -169,7 +204,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // save(file)
 
-            gsTensorBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTensorBSplineBasis < __DIM__ > > (prhs[1]);
+            T *instance = convertMat2Ptr <T> (prhs[1]);
             char* input_buf = mxArrayToString(prhs[2]);
             // Save the B-spline basis in the specified file
             std::string filename(input_buf); // Reading requires a std::string
@@ -180,7 +215,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // knots(direction)
 
-            gsTensorBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTensorBSplineBasis < __DIM__ > > (prhs[1]);
+            T *instance = convertMat2Ptr <T> (prhs[1]);
             mwIndex direction = (mwIndex) mxGetScalar(prhs[2]);
             const gsKnotVector<>& kv = instance->knots(direction-1);
             plhs[0] = createPointerFromStdVector(kv);
@@ -190,7 +225,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // active(pts)
 
-            gsTensorBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTensorBSplineBasis<__DIM__> >(prhs[1]);
+            T *instance = convertMat2Ptr<T>(prhs[1]);
             // Copy the input (FIXME: this should be avoided)
             gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
             // Call method
@@ -204,7 +239,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // elementIndex(pt)
 
-            gsTensorBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTensorBSplineBasis<__DIM__> >(prhs[1]);
+            T *instance = convertMat2Ptr<T>(prhs[1]);
             // Copy the input (FIXME: this should be avoided)
             gsVector<real_t> pt = extractMatrixFromPointer<real_t>(prhs[2]);
             // Call method
@@ -217,7 +252,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // uniformRefine(numKnots, mult)
 
-            gsTensorBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTensorBSplineBasis<__DIM__> >(prhs[1]);
+            T *instance = convertMat2Ptr<T>(prhs[1]);
             // Copy the input (FIXME: this should be avoided)
             mwIndex numKnots = (mwIndex) mxGetScalar(prhs[2]);
             mwIndex mult = (mwIndex) mxGetScalar(prhs[3]);
@@ -229,7 +264,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // uniformRefine_withCoefs(coefs, numKnots, mult)
 
-            gsTensorBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTensorBSplineBasis<__DIM__> >(prhs[1]);
+            T *instance = convertMat2Ptr<T>(prhs[1]);
             // Copy the input (FIXME: this should be avoided)
             gsMatrix<real_t> coefs = extractMatrixFromPointer<real_t>(prhs[2]);
             mwIndex numKnots = (mwIndex) mxGetScalar(prhs[3]);
@@ -243,7 +278,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // refineElements(boxes)
 
-            gsTensorBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTensorBSplineBasis<__DIM__> >(prhs[1]);
+            T *instance = convertMat2Ptr<T>(prhs[1]);
             // Copy the input (FIXME: this should be avoided)
             std::vector<unsigned int> boxes = extractStdVectorFromPointer<unsigned int>(prhs[2]);
             std::for_each(boxes.begin(), boxes.end(), [](unsigned int& d) { d-=1;});
@@ -255,7 +290,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // refineElements_withCoefs(coefs, boxes)
 
-            gsTensorBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTensorBSplineBasis < __DIM__> > (prhs[1]);
+            T *instance = convertMat2Ptr<T> (prhs[1]);
             // Copy the input (FIXME: this should be avoided)
             gsMatrix <real_t> coefs = extractMatrixFromPointer<real_t>(prhs[2]);
             std::vector<unsigned int> boxes = extractStdVectorFromPointer<unsigned int>(prhs[3]);
@@ -273,22 +308,4 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
         }
 
-        // ------------------------------------------------------------------------
-        // That's it (command executed).
-        return;
-
-        // --------------------------------------------------------------------------
-        // Catch (command failed).
-
-    } catch (std::exception& e) { // Caught from library.
-        std::string errMsg = std::string("\n  While executing the following command: ") + cmd + std::string("\n  The following exception/error ocurred: ") + e.what();
-        mexErrMsgTxt(errMsg.c_str());
-    } catch (const char* str) { // Caught from within this mexFunction.
-        std::string errMsg = std::string("\n  While executing the following command: ") + cmd + std::string("\n  The following exception/error ocurred: ") + std::string(str);
-        mexErrMsgTxt(errMsg.c_str());
-    } catch (...) { // Something else went wrong
-        std::string errMsg = std::string("\n  While executing the following command: ") + cmd + std:: string("\n  An error ocurred.");
-        mexErrMsgTxt(errMsg.c_str());
-    } // end try-catch
-
-} // end mexFunction
+}

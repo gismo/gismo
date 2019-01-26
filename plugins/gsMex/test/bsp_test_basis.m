@@ -5,12 +5,12 @@
 % Construct a tensor B-spline basis by reading the specified file
 filename = join([filedata,'bspbasis/tpBSpline2_02.xml']);
 fprintf('Reading gsTensorBSplineBasis from file: %s.\n',filename)
-bspb = gsTensorBSplineBasis(filename);
+bspb = gsTensorBSplineBasis(filename, 2);
 
 % Construct a tensor B-spline basis from its knot vector.
 knots_2build = {[0,0,0,1,2,2,2],[4,4,4,5,6,6,6]};
 fprintf('Reading gsTensorBSpline basis from knot vector.\n')
-bspb2 = gsTensorBSplineBasis(knots_2build);
+bspb2 = gsTensorBSplineBasis(knots_2build, 2);
 
 %% TEST ACCESSORS
 assert(bspb.domainDim==2)

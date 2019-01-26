@@ -17,6 +17,9 @@
 
 using namespace gismo;
 
+template<class T, class Tbasis>
+void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[], char* cmd);
+
 // --------------------------------------------------------------------------
 // "main" gateway function
 //
@@ -31,178 +34,20 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     try  {
 
         // Fetch command string.
-        if (nrhs < 1 || mxGetString(prhs[0], cmd, sizeof(cmd)))
+        if (nrhs < 2 || mxGetString(prhs[0], cmd, sizeof(cmd)))
             throw("First input argument should be a command string"
-                  "less than MAXSTRLEN characters long.");
-
-        if (!strcmp(cmd,"constructor")) {
-            // ----------------------------------------------------------------------
-            // Constructors
-
-            if (nrhs==3) {
-                // constructor from 1 argument (+ 1 type switch)
-                char constructSwitch[__MAXSTRLEN__];
-                if (mxGetString(prhs[1], constructSwitch, sizeof(constructSwitch)))
-                    throw("Second input argument should be a string"
-                          "less than MAXSTRLEN characters long.");
-                if (!strcmp(constructSwitch,"char")) {
-                    // constructor ( char filename )
-                    // Extract the input
-                    char* input_buf = mxArrayToString(prhs[2]);
-                    // Read the B-spline basis from the specified file
-                    std::string filename(input_buf); // Reading requires a std::string
-                    gsFileData<real_t>  data( filename );
-                    gsTensorBSpline<__DIM__> * bsp = data.getFirst< gsTensorBSpline<__DIM__> >().release();
-                    plhs[0] = convertPtr2Mat<gsTensorBSpline<__DIM__> >(bsp);
-                    // Free the memory allocated by mxArrayToString
-                    mxFree(input_buf);
-                } else if (!strcmp(constructSwitch,"gsTensorBSpline")) {
-                    // constructor ( gsTensorBSpline )
-                    gsTensorBSpline<__DIM__> *instance = convertMat2Ptr<gsTensorBSpline<__DIM__> >(prhs[2]);
-                    plhs[0] = convertPtr2Mat<gsTensorBSpline<__DIM__> >(new gsTensorBSpline<__DIM__>(*instance));
-                } else {
-                    throw ("Invalid construction.");
-                }
-            } else if (nrhs==5) {
-                // constructor from 2 argument (+ 2 type switch)
-                char constructSwitch1[__MAXSTRLEN__]; char constructSwitch2[__MAXSTRLEN__];
-                if (mxGetString(prhs[1], constructSwitch1, sizeof(constructSwitch1))) {
-                    throw ("Second input argument should be a string"
-                           "less than MAXSTRLEN characters long.");
-                }
-                if (mxGetString(prhs[2], constructSwitch2, sizeof(constructSwitch2))) {
-                    throw("Third input argument should be a string"
-                          "less than MAXSTRLEN characters long.");
-                }
-                if ( !(strcmp(constructSwitch1,"gsTensorBSplineBasis") || strcmp(constructSwitch2,"double")) ) {
-                    // constructor ( gsTensorBSplineBasis, controlPts )
-                    const gsMatrix<real_t> coefs = extractMatrixFromPointer<real_t>(prhs[4]);
-                    gsTensorBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTensorBSplineBasis<__DIM__> >(prhs[3]);
-                    plhs[0] = convertPtr2Mat<gsTensorBSpline<__DIM__> >(new gsTensorBSpline<__DIM__>(*instance, coefs));
-                } else {
-                    throw ("Invalid construction.");
-                }
-            } else {
-                // INVALID constructor
-                throw("Invalid construction.");
-            }
-
-        } else if (!strcmp(cmd,"destructor")) {
-
-            // ----------------------------------------------------------------------
-            // Destructor
-            destroyObject<gsTensorBSpline<__DIM__> >(prhs[1]);
-
-        } else if (!strcmp(cmd,"accessor")) {
-
-            // ----------------------------------------------------------------------
-            // Accessor
-
-            // Fetch instance and property to be accessed
-            gsTensorBSpline<__DIM__> *instance = convertMat2Ptr<gsTensorBSpline<__DIM__> >(prhs[1]);
-            char prop[__MAXSTRLEN__];
-            if (mxGetString(prhs[2], prop, sizeof(prop)))
-                throw("Third input argument should be a property string less than MAXSTRLEN characters long.");
-
-            // Call method as specified by the input string
-            if (!strcmp(prop,"parDim")) {
-                int val      = instance->parDim();
-                mxArray *out = mxCreateDoubleScalar((double)val);
-                plhs[0]      = out;
-            } else if (!strcmp(prop,"geoDim")) {
-                int val      = instance->geoDim();
-                mxArray *out = mxCreateDoubleScalar((double)val);
-                plhs[0]      = out;
-            } else if (!strcmp(prop,"size")) {
-                int val      = instance->size();
-                mxArray *out = mxCreateDoubleScalar((double)val);
-                plhs[0]      = out;
-            } else if (!strcmp(prop,"support")) {
-                gsMatrix<real_t> supp = instance->support();
-                plhs[0] = createPointerFromMatrix(supp);
-            } else if (!strcmp(prop,"basis")) {
-                // Copy the result for output (FIXME: this should be avoided)
-                gsTensorBSplineBasis<__DIM__> * bsp = new gsTensorBSplineBasis<__DIM__>(instance->basis());
-                plhs[0] = convertPtr2Mat<gsTensorBSplineBasis<__DIM__> >(bsp);
-            } else if (!strcmp(prop,"coefs")) {
-                // const gsMatrix<>& cc = instance->coefs();
-                plhs[0] = createPointerFromMatrix(instance->coefs());
-            } else {
-                // Unknown property
-                throw("Third input argument contains an unknown property string.");
-            }
-
-        } else if (!strcmp(cmd,"eval")) {
-
-            // ----------------------------------------------------------------------
-            // eval(pts)
-            gsTensorBSpline<__DIM__> *instance = convertMat2Ptr<gsTensorBSpline<__DIM__> >(prhs[1]);
-            // Copy the input (FIXME: this should be avoided)
-            const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
-            // Call the method
-            gsMatrix<real_t> vals = instance->eval(pts);
-            // Copy result to output (FIXME: this should be avoided)
-            plhs[0] = createPointerFromMatrix<real_t>(vals);
-
-        } else if (!strcmp(cmd,"jacobian")) {
-
-            // ----------------------------------------------------------------------
-            // deriv(pts)
-
-            gsTensorBSpline<__DIM__> *instance = convertMat2Ptr<gsTensorBSpline<__DIM__> >(prhs[1]);
-            // Copy the input (FIXME: this should be avoided)
-            const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
-            // Call the method
-            gsMatrix<real_t> vals = instance->jacobian(pts);
-            // Copy result to output (FIXME: this should be avoided)
-            plhs[0] = createPointerFromMatrix<real_t>(vals);
-
-        } else if (!strcmp(cmd,"hess")) {
-
-            // ----------------------------------------------------------------------
-            // hess(pts, dir)
-
-            gsTensorBSpline<__DIM__> *instance = convertMat2Ptr<gsTensorBSpline<__DIM__> >(prhs[1]);
-            // Copy the input (FIXME: this should be avoided)
-            const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
-            mwIndex dir = (mwIndex) mxGetScalar(prhs[3]);
-            // Call the method
-            gsMatrix<real_t> vals = instance->hess(pts, dir-1);
-            // Copy result to output (FIXME: this should be avoided)
-            plhs[0] = createPointerFromMatrix<real_t>(vals);
-
-        } else if (!strcmp(cmd,"active")) {
-
-            // ----------------------------------------------------------------------
-            // active(pts)
-
-            gsTensorBSpline<__DIM__> *instance = convertMat2Ptr<gsTensorBSpline<__DIM__> >(prhs[1]);
-            // Copy the input (FIXME: this should be avoided)
-            gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
-            // Call method
-            gsMatrix<unsigned> vals = instance->active(pts);
-            vals = vals + gsMatrix<unsigned>::Ones(vals.rows(),vals.cols());
-            // Copy the result for output (FIXME: this should be avoided)
-            plhs[0] = createPointerFromMatrix<unsigned>(vals);
-
-        } else if (!strcmp(cmd,"save")) {
-
-            // ----------------------------------------------------------------------
-            // save(file)
-
-            gsTensorBSpline<__DIM__> *instance = convertMat2Ptr < gsTensorBSpline< __DIM__ > >(prhs[1]);
-            char* input_buf = mxArrayToString(prhs[2]);
-            // Save the B-spline in the specified file
-            std::string filename(input_buf); // Reading requires a std::string
-            gsWrite(*instance, filename);
-
-        } else {
-
-            // ----------------------------------------------------------------------
-            // Unknown command
-            throw("unknown command.");
-
-        }
+                  "less than MAXSTRLEN characters long, second input argument "
+                  "should be an int8.");
+		int8_t dimension = (int8_t) mxGetScalar(prhs[nrhs - 1]);
+        if (dimension == 2)
+            mexFunctionTemplate<gsTensorBSpline<2>, gsTensorBSplineBasis<2> >
+                                               (nlhs, plhs, nrhs, prhs, cmd);
+        else if (dimension == 3)
+            mexFunctionTemplate<gsTensorBSpline<3>, gsTensorBSplineBasis<3> >
+                                      (nlhs, plhs, nrhs, prhs, cmd);
+        else
+            throw ("Dimension should be specified in the last argument "
+                   "and must be equal to 2 or 3.");
 
         // ------------------------------------------------------------------------
         // That's it (command executed).
@@ -226,3 +71,176 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     } // end try-catch
 
 } // end mexFunction
+
+
+template<class T, class Tbasis>
+void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[], char* cmd) {
+        if (!strcmp(cmd,"constructor")) {
+            // ----------------------------------------------------------------------
+            // Constructors
+
+            if (nrhs==4) {
+                // constructor from 1 argument (+ 1 type switch)
+                char constructSwitch[__MAXSTRLEN__];
+                if (mxGetString(prhs[1], constructSwitch, sizeof(constructSwitch)))
+                    throw("Second input argument should be a string"
+                          "less than MAXSTRLEN characters long.");
+                if (!strcmp(constructSwitch,"char")) {
+                    // constructor ( char filename )
+                    // Extract the input
+                    char* input_buf = mxArrayToString(prhs[2]);
+                    // Read the B-spline basis from the specified file
+                    std::string filename(input_buf); // Reading requires a std::string
+                    gsFileData<real_t>  data( filename );
+                    T * bsp = data.getFirst<T>().release();
+                    plhs[0] = convertPtr2Mat<T>(bsp);
+                    // Free the memory allocated by mxArrayToString
+                    mxFree(input_buf);
+                } else if (!strcmp(constructSwitch,"gsTensorBSpline")) {
+                    // constructor ( gsTensorBSpline )
+                    T *instance = convertMat2Ptr<T>(prhs[2]);
+                    plhs[0] = convertPtr2Mat<T>(new T(*instance));
+                } else {
+                    throw ("Invalid construction.");
+                }
+            } else if (nrhs==6) {
+                // constructor from 2 argument (+ 2 type switch)
+                char constructSwitch1[__MAXSTRLEN__]; char constructSwitch2[__MAXSTRLEN__];
+                if (mxGetString(prhs[1], constructSwitch1, sizeof(constructSwitch1))) {
+                    throw ("Second input argument should be a string"
+                           "less than MAXSTRLEN characters long.");
+                }
+                if (mxGetString(prhs[2], constructSwitch2, sizeof(constructSwitch2))) {
+                    throw("Third input argument should be a string"
+                          "less than MAXSTRLEN characters long.");
+                }
+                if ( !(strcmp(constructSwitch1,"gsTensorBSplineBasis") || strcmp(constructSwitch2,"double")) ) {
+                    // constructor ( gsTensorBSplineBasis, controlPts )
+                    const gsMatrix<real_t> coefs = extractMatrixFromPointer<real_t>(prhs[4]);
+                    Tbasis *instance = convertMat2Ptr<Tbasis>(prhs[3]);
+                    plhs[0] = convertPtr2Mat<T>(new T(*instance, coefs));
+                } else {
+                    throw ("Invalid construction.");
+                }
+            } else {
+                // INVALID constructor
+                throw("Invalid construction.");
+            }
+
+        } else if (!strcmp(cmd,"destructor")) {
+
+            // ----------------------------------------------------------------------
+            // Destructor
+            destroyObject<T>(prhs[1]);
+
+        } else if (!strcmp(cmd,"accessor")) {
+
+            // ----------------------------------------------------------------------
+            // Accessor
+
+            // Fetch instance and property to be accessed
+            T *instance = convertMat2Ptr<T>(prhs[1]);
+            char prop[__MAXSTRLEN__];
+            if (mxGetString(prhs[2], prop, sizeof(prop)))
+                throw("Third input argument should be a property string less than MAXSTRLEN characters long.");
+
+            // Call method as specified by the input string
+            if (!strcmp(prop,"parDim")) {
+                int val      = instance->parDim();
+                mxArray *out = mxCreateDoubleScalar((double)val);
+                plhs[0]      = out;
+            } else if (!strcmp(prop,"geoDim")) {
+                int val      = instance->geoDim();
+                mxArray *out = mxCreateDoubleScalar((double)val);
+                plhs[0]      = out;
+            } else if (!strcmp(prop,"size")) {
+                int val      = instance->size();
+                mxArray *out = mxCreateDoubleScalar((double)val);
+                plhs[0]      = out;
+            } else if (!strcmp(prop,"support")) {
+                gsMatrix<real_t> supp = instance->support();
+                plhs[0] = createPointerFromMatrix(supp);
+            } else if (!strcmp(prop,"basis")) {
+                // Copy the result for output (FIXME: this should be avoided)
+                Tbasis * bsp = new Tbasis(instance->basis());
+                plhs[0] = convertPtr2Mat<Tbasis>(bsp);
+            } else if (!strcmp(prop,"coefs")) {
+                // const gsMatrix<>& cc = instance->coefs();
+                plhs[0] = createPointerFromMatrix(instance->coefs());
+            } else {
+                // Unknown property
+                throw("Third input argument contains an unknown property string.");
+            }
+
+        } else if (!strcmp(cmd,"eval")) {
+
+            // ----------------------------------------------------------------------
+            // eval(pts)
+            T *instance = convertMat2Ptr<T>(prhs[1]);
+            // Copy the input (FIXME: this should be avoided)
+            const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
+            // Call the method
+            gsMatrix<real_t> vals = instance->eval(pts);
+            // Copy result to output (FIXME: this should be avoided)
+            plhs[0] = createPointerFromMatrix<real_t>(vals);
+
+        } else if (!strcmp(cmd,"jacobian")) {
+
+            // ----------------------------------------------------------------------
+            // deriv(pts)
+
+            T *instance = convertMat2Ptr<T>(prhs[1]);
+            // Copy the input (FIXME: this should be avoided)
+            const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
+            // Call the method
+            gsMatrix<real_t> vals = instance->jacobian(pts);
+            // Copy result to output (FIXME: this should be avoided)
+            plhs[0] = createPointerFromMatrix<real_t>(vals);
+
+        } else if (!strcmp(cmd,"hess")) {
+
+            // ----------------------------------------------------------------------
+            // hess(pts, dir)
+
+            T *instance = convertMat2Ptr<T>(prhs[1]);
+            // Copy the input (FIXME: this should be avoided)
+            const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
+            mwIndex dir = (mwIndex) mxGetScalar(prhs[3]);
+            // Call the method
+            gsMatrix<real_t> vals = instance->hess(pts, dir-1);
+            // Copy result to output (FIXME: this should be avoided)
+            plhs[0] = createPointerFromMatrix<real_t>(vals);
+
+        } else if (!strcmp(cmd,"active")) {
+
+            // ----------------------------------------------------------------------
+            // active(pts)
+
+            T *instance = convertMat2Ptr<T>(prhs[1]);
+            // Copy the input (FIXME: this should be avoided)
+            gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
+            // Call method
+            gsMatrix<unsigned> vals = instance->active(pts);
+            vals = vals + gsMatrix<unsigned>::Ones(vals.rows(),vals.cols());
+            // Copy the result for output (FIXME: this should be avoided)
+            plhs[0] = createPointerFromMatrix<unsigned>(vals);
+
+        } else if (!strcmp(cmd,"save")) {
+
+            // ----------------------------------------------------------------------
+            // save(file)
+
+            T *instance = convertMat2Ptr <T>(prhs[1]);
+            char* input_buf = mxArrayToString(prhs[2]);
+            // Save the B-spline in the specified file
+            std::string filename(input_buf); // Reading requires a std::string
+            gsWrite(*instance, filename);
+
+        } else {
+
+            // ----------------------------------------------------------------------
+            // Unknown command
+            throw("unknown command.");
+
+        }
+}

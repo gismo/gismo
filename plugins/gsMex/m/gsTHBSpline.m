@@ -31,6 +31,7 @@ classdef gsTHBSpline < handle
             %  thb = gsTHBSpline( thbgeom, paramDim )
             %
             %Input:
+            %  paramDim: int, parametric dimension.
             %  file: char, [1 x numChar].
             %    Name of input file from which to read/construct the
             %    gsTHBSpline.

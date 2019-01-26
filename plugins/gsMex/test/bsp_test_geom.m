@@ -8,7 +8,7 @@ close all
 % Construct a tensor B-spline geometry by reading the specified file
 filename = join([filedata, 'domain2d/lake.xml']); %'domain2d/rectangleTHB.xml']); % 
 fprintf('Reading gsTensorBSpline from file: %s.\n',filename)
-bsp = gsTensorBSpline(filename);
+bsp = gsTensorBSpline(filename, 2);
 
 % Get the gsTensorBSplineBasis from which hbs is built
 basis = bsp.basis;
@@ -18,7 +18,7 @@ coefs = bsp.coefs;
 % Construct another tensor B-spline geometry from the basis and
 % the control points of the previous one.
 fprintf('Loading gsTensorBSpline from basis and control points.\n')
-bsp2 = gsTensorBSpline(basis, coefs);
+bsp2 = gsTensorBSpline(basis, coefs, 2);
 
 fprintf('Save to xml file.')
 bsp.save('bspgeom_test');
@@ -59,8 +59,8 @@ fprintf('Number of basis functions 1 after refinement: %d\n', size(new_coefs,1))
 fprintf('Number of basis functions 2 after refinement: %d\n', size(new_coefs2,1));
 fprintf('Number of knots 1 in direction 1 after refinement: %d\n', length(basis.knots(1)));
 fprintf('Number of knots 2 in direction 1 after refinement: %d\n', length(basis2.knots(1)));
-bsp = gsTensorBSpline(basis, new_coefs);
-bsp2 = gsTensorBSpline(basis2, new_coefs2);
+bsp = gsTensorBSpline(basis, new_coefs, 2);
+bsp2 = gsTensorBSpline(basis2, new_coefs2, 2);
 
 %% TEST OTHER METHODS
 % Print evaluations at pts
@@ -115,33 +115,3 @@ act2 = bsp2.active(pts(:,131:133));
 fprintf('Active functions 2 on three pts:\n')
 disp(act2)
  
-%% TEST GEOPDES LOADING OF A GISMO GEOMETRY
-% Build GeoPDEs geometry structures
-%bsp = gsTensorBSpline(join([filedata, 'domain2d/lake.xml.xml']));
-geometry = geo_load(bsp);
-
-% Get the knot vector corresponding to the 2nd direction
-kts2 = geometry.knots{2};
-fprintf('Knots in direction 2 from G+smo to GeoPdes:\n')
-disp(kts2);
-
-% Plot GeoPDEs geometry coming from G+smo
-[X,Y] = ndgrid(0:0.01:1, 0:0.01:1);
-reshape(X,1,[]);
-X = reshape(X,1,[]);
-Y = reshape(Y,1,[]);
-pts = [X;Y];
-
-fprintf('Plot GeoPDEs geometries coming from G+smo: see figure.\n')
-
-figure;
-ev2 = geometry.map(pts);
-if (bsp.geoDim() == 3)
-    scatter3(ev2(1,:),ev2(2,:),ev2(3,:))
-elseif (bsp.geoDim() == 2)
-    plot(ev2(1,:),ev2(2,:),'+')
-end
-savefig('thb_test_geom_map')
-
-der21 = geometry.map_der(pts);
-hess21 = geometry.map_der2(pts);
