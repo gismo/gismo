@@ -58,10 +58,10 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             mexFunctionTemplate<gsTHBSpline<1>, gsTHBSplineBasis<1>, gsBSplineBasis<> >
                                                                           (nlhs, plhs, nrhs, prhs, cmd);
         else if (dimension == 2)
-            mexFunctionTemplate<gsTHBSpline<2>, gsTHBSplineBasis<2>, gsTensorBSplineBasis < 2 > >
+            mexFunctionTemplate<gsTHBSpline<2>, gsTHBSplineBasis<2>, gsTensorBSplineBasis <2> >
                                                                           (nlhs, plhs, nrhs, prhs, cmd);
         else if (dimension == 3)
-            mexFunctionTemplate<gsTHBSpline<3>, gsTHBSplineBasis<3>, gsTensorBSplineBasis < 3 > >
+            mexFunctionTemplate<gsTHBSpline<3>, gsTHBSplineBasis<3>, gsTensorBSplineBasis <3> >
                                                                           (nlhs, plhs, nrhs, prhs, cmd);
         else
             throw ("Dimension should be specified in the last argument "
@@ -149,13 +149,13 @@ void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* p
                 T *hbs = data.getFirst <T> ().release();
                 plhs[0] = convertPtr2Mat<T> (hbs);
                 // Free the memory allocated by mxArrayToString
-                mxFree(input_buf);            
+                mxFree(input_buf);
             } else if (!strcmp(constructSwitch, "gsTHBSpline")) {
                 // copy constructor ( T )
                 T *instance = convertMat2Ptr<T> (prhs[2]);
                 plhs[0] = convertPtr2Mat<T> (new T(*instance));
-                
-            /* } else if (!strcmp(constructSwitch, "gsTensorBSpline")) { // TODO generalize dimension!!!!!
+
+            /* } else if (!strcmp(constructSwitch, "gsTensorBSpline")) { // TODO
                 // constructor ( gsTensorBSpline )
                 Ttensorbasis *instance = convertMat2Ptr<Ttensorbasis> (prhs[2]);
                 plhs[0] = convertPtr2Mat<T> (new T(*instance)); */
@@ -302,4 +302,3 @@ void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* p
 
     }
 }
-

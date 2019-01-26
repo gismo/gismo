@@ -371,35 +371,6 @@ classdef gsTensorBSplineBasis < handle
             [varargout{1:nargout}] = mex_gsTensorBSplineBasis('active', ...
                 this.objectHandle, varargin{:}, this.parDim);
         end
-        
-        % elementIndex - call class method
-        function [varargout] = elementIndex(this, varargin)
-            %elementIndex - returns an index for the element of a 
-            %  gsTensorBSplineBasis object which contains point pt. 
-            %
-            %Usage:
-            %  ind = bspb.elementIndex( pt )
-            %
-            %Input:
-            %  bspb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
-            %  pt: double, [d x 1].
-            %    Point in which to evaluate the function.
-            %
-            %Output:
-            %  ind: int, [1 x 1].
-            %    Index of the element containing pt.
-            
-            if (nargin~=2 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) ||...
-                    ~isequal(size(varargin{1},1),this.domainDim()))
-                error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
-            end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('active',...
-                this.objectHandle, varargin{:}, this.parDim);
-        end
 
         % uniformRefine - call class method
         function [varargout] = uniformRefine(this, varargin)
@@ -497,43 +468,44 @@ classdef gsTensorBSplineBasis < handle
                 varargin{:}, this.parDim);
         end
 
-        % refineElements_withCoefs - call class method
-        function [varargout] = refineElements_withCoefs(this, varargin)
-            %refineElements_withCoefs - Refine the given elements of the 
-            % basis given by a gsTensorBSplineBasis object. The function 
-            % simultainously updates the vector coefs, representing a 
-            % function in the bases, such that its new version represents 
-            % the same function.
-            %
-            %Usage:
-            %  coefs_ref = bspb.refineElements_withCoefs(coefs, boxes)
-            %
-            %Input:
-            %  bspb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
-            %  coefs: the coefficients representing a function in the bases 
-            %    before the basis is refined.
-            %  boxes: int array of dimension N(2d+1) where N is the number
-            %    of boxes to refine (sets of cells), and d is the parametric
-            %    dimension. 
-            %
-            %Output:
-            %  coefs_ref: the coefficients representing a function in the
-            %    bases after the basis has been refined.
-
-            if (nargin~=3 || nargout~=1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            if ( ~isa(varargin{2},'numeric') || ~ismatrix(varargin{2}) ||...
-                    ~(min(size(varargin{2}))==1) ||...
-                ~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) )
-                error(['Input argument no. 1 should be a 2d array of double, ',...
-                    'inputs no. 2 must be an array of integers.'])
-            end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis(...
-                'refineElements_withCoefs', this.objectHandle,...
-                varargin{:}, this.parDim);
-        end
+%         VIRTUAL METHOD IN G+SMO
+%         % refineElements_withCoefs - call class method
+%         function [varargout] = refineElements_withCoefs(this, varargin)
+%             %refineElements_withCoefs - Refine the given elements of the 
+%             % basis given by a gsTensorBSplineBasis object. The function 
+%             % simultainously updates the vector coefs, representing a 
+%             % function in the bases, such that its new version represents 
+%             % the same function.
+%             %
+%             %Usage:
+%             %  coefs_ref = bspb.refineElements_withCoefs(coefs, boxes)
+%             %
+%             %Input:
+%             %  bspb: gsTensorBSplineBasis, [1 x 1].
+%             %    The gsTensorBSplineBasis object.
+%             %  coefs: the coefficients representing a function in the bases 
+%             %    before the basis is refined.
+%             %  boxes: int array of dimension N(2d+1) where N is the number
+%             %    of boxes to refine (sets of cells), and d is the parametric
+%             %    dimension. 
+%             %
+%             %Output:
+%             %  coefs_ref: the coefficients representing a function in the
+%             %    bases after the basis has been refined.
+% 
+%             if (nargin~=3 || nargout~=1)
+%                 error('Invalid number of input and/or output arguments.')
+%             end
+%             if ( ~isa(varargin{2},'numeric') || ~ismatrix(varargin{2}) ||...
+%                     ~(min(size(varargin{2}))==1) ||...
+%                 ~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) )
+%                 error(['Input argument no. 1 should be a 2d array of double, ',...
+%                     'inputs no. 2 must be an array of integers.'])
+%             end
+%             [varargout{1:nargout}] = mex_gsTensorBSplineBasis(...
+%                 'refineElements_withCoefs', this.objectHandle,...
+%                 varargin{:}, this.parDim);
+%         end
         
     end
 end

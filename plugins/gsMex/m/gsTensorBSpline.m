@@ -57,7 +57,7 @@ classdef gsTensorBSpline < handle
                     this.objectHandle = varargin{1};
                     this.paramDim = varargin{2};
                 else
-                    if (~(isa(varargin{1},'char') || isa(varargin{1},'gsTHBSpline') ))
+                    if (~(isa(varargin{1},'char') || isa(varargin{1},'gsTensorBSpline') ))
                         error(['First input arguments should be of type ''char'',', ...
                                'or a gsTensorBSpline, or a gsTensorBSplineBasis and a ',...
                                '2d-array of double.'])
