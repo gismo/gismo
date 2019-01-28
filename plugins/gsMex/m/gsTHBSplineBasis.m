@@ -640,7 +640,7 @@ classdef gsTHBSplineBasis < handle
         end
         
         % getBoxes - call class method
-        function [varargout] = getBoxes(this, varargin)
+        function [b1, b2, levels] = getBoxes(this, varargin)
             %getBoxes returns the boxes which make up the hierarchical 
             % domain on which a gsTHBSplineBasis is defined, and the 
             % respective levels.
@@ -662,8 +662,9 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout~=3)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('getBoxes', ...
+            [b1, b2, levels] = mex_gsTHBSplineBasis('getBoxes', ...
                 this.objectHandle, varargin{:}, this.parDim);
+            b1 = b1 + 1; b2 = b2 + 1;
         end
         
         % basisSlice - call class method

@@ -340,7 +340,8 @@ void mexFunctionTemplate ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* p
         (instance->tree()).getBoxes(b1, b2, level);
         std::transform(level.begin(), level.end(), level.begin(),
                        bind2nd(std::plus<double>(), 1.0));
-
+        // + 1 for b1 and b2 done in the .m file
+        
         // Copy the result for output (FIXME: this should be avoided)
         plhs[0] = createPointerFromMatrix<unsigned>(b1);
         plhs[1] = createPointerFromMatrix<unsigned>(b2);

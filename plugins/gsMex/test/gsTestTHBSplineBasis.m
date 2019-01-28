@@ -156,9 +156,9 @@ assert(hbs3d.numBreaks(2,3)==5)
 
 % Check getBoxes
 [b1,~,~] = hbs1d.getBoxes;
-assert(b1==0);
+assert(b1==1);
 [~,b2,~] = hbs2d.getBoxes;
-assert(isequal(b2(3,:),[12 12]));
+assert(isequal(b2(3,:),[13 13]));
 [~,~,lev] = hbs3d.getBoxes;
 assert(isequal(lev,[1;1;1;2]));
 
