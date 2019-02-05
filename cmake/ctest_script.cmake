@@ -486,12 +486,62 @@ endmacro(run_ctests)
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
 
+# repair broken cdash servers
+# read out gismo_src folders "version" for ctest_script
+# if
+if(EXISTS ${CTEST_SOURCE_DIRECTORY}/cdashv)
+  file(READ ${CTEST_SOURCE_DIRECTORY}/cdashv VERSION)
+else()
+  set(VERSION 0)
+endif()
+
+# deinit and init gismo_src, only if needed
+# inittrigger can be increased if needed.
+set(inittrigger 1)
+if(${VERSION} LESS ${inittrigger})
+  ## deinit submodules
+  execute_process(COMMAND git "submodule" "deinit" "--all" "--force"
+          WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+          )
+  ## init unsupported
+  execute_process(COMMAND git "submodule" "update" "--init" "extensions/unsupported"
+          WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+          )
+
+  ## init motor
+  execute_process(COMMAND git "submodule" "update" "--init" "extensions/motor"
+          WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+          )
+
+  ## write cdashv with lastest inittrigger
+  # TODO: uncomment after checking
+  # file(WRITE ${CTEST_SOURCE_DIRECTORY}/cdashv ${inittrigger})
+endif()
+
+## set git as update command
+# TODO: set it by default
+# CTEST_GIT_COMMAND must be set,
+# if not, ctest_update will not call
+# CTEST_GIT_UPDATE_CUSTOM
+if("x${UPDATE_TYPE}" STREQUAL "xgit")
+  set(CTEST_GIT_COMMAND ${CTEST_UPDATE_COMMAND})
+  unset(CTEST_UPDATE_COMMAND)
+endif()
+
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
   ctest_start(${CTEST_TEST_MODEL})
   if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
     #update_gismo()
+
+    # git pull for gismo_src
+    set(CTEST_GIT_UPDATE_CUSTOM "git" "pull")
     ctest_update()
+
+    ## git pull for subprojects
+    execute_process(COMMAND git "submodule" "foreach" "git" "pull" "origin" "master"
+       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+    )
   endif()
   run_ctests()
 
@@ -500,7 +550,20 @@ else() #continuous model
   while(${CTEST_ELAPSED_TIME} LESS ${test_runtime})
     set(START_TIME ${CTEST_ELAPSED_TIME})
     ctest_start(${CTEST_TEST_MODEL})
+
+    ## git pull for gismo_src
+    set(CTEST_GIT_UPDATE_CUSTOM "git" "pull")
     ctest_update(RETURN_VALUE updcount)
+
+    ## git pull for subprojects
+    # TODO: parse updated file count from OUTPUT_VARIABLE
+    execute_process(COMMAND git "submodule" "foreach" "git" "pull" "origin" "master"
+       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+    )
+       #RESULT_VARIABLE result
+       #RESULTS_VARIABLE results
+       #OUTPUT_VARIABLE out
+
     if( ${updcount} GREATER 0 )
       run_ctests()
     endif()
