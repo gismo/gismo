@@ -506,8 +506,7 @@ gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j) con
     GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
 
-    gsVector<index_t> rvo;
-    if (k==j) return rvo;
+    if (k==j) return gsVector<index_t>();
 
     typedef std::vector<index_t>::const_iterator citer;
     citer istart = m_dofs.begin() + m_offset[k];
@@ -516,7 +515,7 @@ gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j) con
     const index_t l = m_numFreeDofs+m_shift-m_numCpldDofs-1;
     const index_t u = m_numFreeDofs+m_shift;
     if (-1==j)
-        rvo = find_impl(istart, iend, _isBetween(l,u) );
+        return find_impl(istart, iend, _isBetween(l,u) );
     else
     {
         citer istartj = m_dofs.begin() + m_offset[j];
@@ -529,9 +528,14 @@ gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j) con
                 v.push_back( std::distance(istart,cur) );
             cur = std::find_if(cur+1, iend, _isBetween(l,u));
         }
-        rvo.assign(v.begin(), v.end());
+
+        gsVector<index_t> res;
+        res.resize(v.size());
+        index_t * a = res.data();
+        for( std::list<index_t>::const_iterator it = v.begin();
+             it!=v.end(); ++it) *(a++) = *it;
+        return res;
     }
-    return rvo;
 }
 
 gsVector<index_t> gsDofMapper::findFreeUncoupled(const index_t k) const
@@ -542,7 +546,7 @@ gsVector<index_t> gsDofMapper::findFreeUncoupled(const index_t k) const
     const citer istart = m_dofs.begin() + m_offset[k];
     const citer iend   = istart + patchSize(k);
     return find_impl(istart, iend,
-                     _isBetween(m_shift-1, m_numFreeDofs+m_shift-m_numCpldDofs-1) );
+                     _isBetween(m_shift-1, m_numFreeDofs+m_shift-m_numCpldDofs) );
 }
 
 gsVector<index_t> gsDofMapper::findTagged(const index_t k) const
@@ -552,17 +556,12 @@ gsVector<index_t> gsDofMapper::findTagged(const index_t k) const
     typedef std::vector<index_t>::const_iterator citer;
     citer istart = m_dofs.begin() + m_offset[k];
     citer iend   = istart + patchSize(k);
-    citer cur = istart;
-    std::list<index_t> v;
-    while( cur != iend )
-    {
-        if (std::binary_search(m_tagged.begin(),m_tagged.end(),*cur))
-            v.push_back( std::distance(istart,cur) );
-        ++cur;
-    }
 
+    std::vector<index_t> si;
+//    std::set_intersection<index_t>(istart, iend,m_tagged.begin(), m_tagged.end(),
+//                                   std::back_inserter(si));
     gsVector<index_t> rvo;
-    rvo.assign(v.begin(), v.end());
+    //rvo.swap(si);
     return rvo;
 }
 
