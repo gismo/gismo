@@ -540,7 +540,7 @@ if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
     ctest_update()  # update gismo
 
     set(CTEST_GIT_UPDATE_CUSTOM "git" "pull" "origin" "master") # git command for submodules
-    set(SOURCE_DIR ${CTEST_SOURCE_DIRECTORY}}) # safe source dir
+    set(SOURCE_DIR ${CTEST_SOURCE_DIRECTORY}) # safe source dir
 
     set(CTEST_SOURCE_DIRECTORY ${SOURCE_DIR}"/extensions/unsupported") # set extensions/unsupported to working path
     message(${CTEST_GIT_UPDATE_CUSTOM} " for " ${CTEST_SOURCE_DIRECTORY})
@@ -571,7 +571,7 @@ else() #continuous model
     ctest_update(RETURN_VALUE updcount0)
 
     set(CTEST_GIT_UPDATE_CUSTOM "git" "pull" "origin" "master") # git command for submodules
-    set(SOURCE_DIR ${CTEST_SOURCE_DIRECTORY}}) # safe source dir
+    set(SOURCE_DIR ${CTEST_SOURCE_DIRECTORY}) # safe source dir
 
     set(CTEST_SOURCE_DIRECTORY ${SOURCE_DIR}"/extensions/unsupported") # set extensions/unsupported to working path
     message(${CTEST_GIT_UPDATE_CUSTOM} " for " ${CTEST_SOURCE_DIRECTORY})
