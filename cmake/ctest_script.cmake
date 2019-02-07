@@ -536,12 +536,26 @@ if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
     # git pull for gismo_src
     set(CTEST_GIT_UPDATE_CUSTOM "git" "pull")
-    ctest_update()
+    message(${CTEST_GIT_COMMAND} " for " ${CTEST_SOURCE_DIRECTORY})
+    ctest_update()  # update gismo
+
+    set(CTEST_GIT_COMMAND "git" "pull" "origin" "master") # git command for submodules
+    set(SOURCE_DIR ${CTEST_SOURCE_DIRECTORY}}) # safe source dir
+
+    set(CTEST_SOURCE_DIRECTORY ${SOURCE_DIR}"/extensions/unsupported") # set extensions/unsupported to working path
+    message(${CTEST_GIT_COMMAND} " for " ${CTEST_SOURCE_DIRECTORY})
+    ctest_update() # update unsupported
+
+    set(CTEST_SOURCE_DIRECTORY ${SOURCE_DIR}"/extensions/motor") # set extensions/unsupported to working path
+    message(${CTEST_GIT_COMMAND} " for " ${CTEST_SOURCE_DIRECTORY})
+    ctest_update() # update motor
+
+    set(CTEST_SOURCE_DIRECTORY ${SOURCE_DIR}) # reset source dir to gismo
 
     ## git pull for subprojects
-    execute_process(COMMAND git "submodule" "foreach" "git" "pull" "origin" "master"
-       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-    )
+    #execute_process(COMMAND git "submodule" "foreach" "git" "pull" "origin" "master"
+    #   WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+    #)
   endif()
   run_ctests()
 
@@ -553,16 +567,23 @@ else() #continuous model
 
     ## git pull for gismo_src
     set(CTEST_GIT_UPDATE_CUSTOM "git" "pull")
-    ctest_update(RETURN_VALUE updcount)
+    message(${CTEST_GIT_COMMAND} " for " ${CTEST_SOURCE_DIRECTORY})
+    ctest_update(RETURN_VALUE updcount0)
 
-    ## git pull for subprojects
-    # TODO: parse updated file count from OUTPUT_VARIABLE
-    execute_process(COMMAND git "submodule" "foreach" "git" "pull" "origin" "master"
-       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-    )
-       #RESULT_VARIABLE result
-       #RESULTS_VARIABLE results
-       #OUTPUT_VARIABLE out
+    set(CTEST_GIT_COMMAND "git" "pull" "origin" "master") # git command for submodules
+    set(SOURCE_DIR ${CTEST_SOURCE_DIRECTORY}}) # safe source dir
+
+    set(CTEST_SOURCE_DIRECTORY ${SOURCE_DIR}"/extensions/unsupported") # set extensions/unsupported to working path
+    message(${CTEST_GIT_COMMAND} " for " ${CTEST_SOURCE_DIRECTORY})
+    ctest_update(RETURN_VALUE updcount1) # update unsupported
+
+    set(CTEST_SOURCE_DIRECTORY ${SOURCE_DIR}"/extensions/motor") # set extensions/unsupported to working path
+    message(${CTEST_GIT_COMMAND} " for " ${CTEST_SOURCE_DIRECTORY})
+    ctest_update(RETURN_VALUE updcount2) # update motor
+
+    set(CTEST_SOURCE_DIRECTORY ${SOURCE_DIR}) # reset source dir to gismo
+
+    math(EXPR updcount "${updcount0} + ${updcount1} + ${updcount2}")
 
     if( ${updcount} GREATER 0 )
       run_ctests()
