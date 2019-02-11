@@ -568,6 +568,9 @@ function(repair_repo inittrigger submodules)
   endif ()
 endfunction()
 
+message(submodules: ${submodules})
+list(LENGTH ${submodules} count)
+message(count: ${count})
 repair_repo(1 ${submodules})
 
 if (NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
