@@ -399,45 +399,57 @@ endif ()
 
 set(ENV{CTEST_USE_LAUNCHERS_DEFAULT} 1)
 
-set(update_retries 5)
+set(update_retries 4)
 
 macro(git_reset_hard)
   execute_process(COMMAND "git" "reset" "--hard"
       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY})
 endmacro()
 
-macro(pull_gismo updcount branch tries)
+function(pull_gismo updcount branch tries)
   # git pull origin <branch> isn't the best solution
   # it will be a fetch followed by a merge.
-  set(CTEST_GIT_UPDATE_CUSTOM "git" "pull" "--squash" "origin" "${branch}")
+  # set(CTEST_GIT_UPDATE_CUSTOM "git" "pull" "--squash" "origin" "${branch}")
+
+  git_checkout(${branch} "")
+  # default ctest_update will init all submodules,
+  # git pull will not do this
+  set(CTEST_GIT_UPDATE_CUSTOM "git" "pull")
+
   while (${tries} GREATER_EQUAL 0)
-    ctest_update(RETURN_VALUE updcount) # update unsupported
-    if (${updcount} GREATER_EQUAL 0)
+    # WARNING, ctest_update will change all submodule branches
+    # happens also with set(CTEST_GIT_UPDATE_CUSTOM "git" "pull")
+    ctest_update(RETURN_VALUE upcount)
+
+    if (${upcount} GREATER_EQUAL 0)
       break()
     else ()
       # sometimes a hard reset could work
       git_reset_hard()
     endif ()
-    message("git pull origin ${branch} didn't worked, ${tries} tries left.")
+    message("git pull didn't worked for ${CTEST_SOURCE_DIRECTORY}, ${tries} tries left.")
     math(EXPR tries "${tries}-1")
     ctest_sleep(5)  # 5 sec sleep
   endwhile ()
-endmacro()
+  set(${updcount} ${upcount} PARENT_SCOPE)
+endfunction()
 
 function(update_gismo_extension updcount submodule branch tries)
-  set(CTEST_SOURCE_DIRECTORY ${SOURCE_DIR}/extensions/${submodule})
+  set(CTEST_SOURCE_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
   pull_gismo(upcount ${branch} ${tries})
   set(${updcount} ${upcount} PARENT_SCOPE) # set upcount to updcount on parent scope
 endfunction()
 
-function(update_gismo updcount submodules)
+function(update_gismo updcount)
   # pull gismo-stable
   pull_gismo(upcount ${GISMO_BRANCH} ${update_retries})
+  #print_submodules("Submodules after pull_gismo")
 
   # pull submodules - master branch
-  foreach (submodule IN LIST ${submodules})
+  foreach (submodule ${submodules})
+    # message("update_gismo_extension(upc ${submodule} \"master\" ${update_retries})")
     update_gismo_extension(upc ${submodule} "master" ${update_retries})
-    math(EXPR upcount "${upcount}+${upc}")
+    math(EXPR upcount "${upcount} + ${upc}")
   endforeach ()
 
   set(${updcount} ${upcount} PARENT_SCOPE) # set upcount to updcount on parent scope
@@ -527,22 +539,38 @@ file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
 # with position >= 0 (-1 if not found)
 if (NOT "x${LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
   foreach (subproject ${LABELS_FOR_SUBPROJECTS})
-    if ("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xgismo_dev")
-      list(APPEND ${submodules} unsupported)
+    if ("x${subproject}" STREQUAL "xgismo_dev")
+      list(APPEND submodules unsupported)
     endif ()
-    if ("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xmotor")
-      list(APPEND ${submodules} motor)
+    if ("x${subproject}" STREQUAL "xmotor")
+      list(APPEND submodules motor)
     endif ()
-    if ("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xelasticity")
-      list(APPEND ${submodules} gsElasticity)
+    if ("x${subproject}" STREQUAL "xelasticity")
+      list(APPEND submodules gsElasticity)
     endif ()
-    if ("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xexastencils")
-      list(APPEND ${submodules} gsExaStencils)
+    if ("x${subproject}" STREQUAL "xexastencils")
+      list(APPEND submodules gsExaStencils)
     endif ()
   endforeach ()
 endif ()
 
-function(repair_repo inittrigger submodules)
+macro(print_submodules message)
+  message(${message})
+  execute_process(COMMAND git "submodule"
+      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+      OUTPUT_VARIABLE out)
+  message(${out})
+endmacro()
+
+macro(git_checkout branch directory)
+  # message("${CTEST_SOURCE_DIRECTORY}${directory} $ git checkout ${branch}")
+  execute_process(COMMAND git "checkout" ${branch}
+        WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}${directory})
+endmacro()
+
+function(repair_repo inittrigger)
+  print_submodules("Submodules before repair:")
+
   # repair git repo of broken cdash servers
   # read out gismo_src folders "version" for ctest_script
   if (EXISTS ${CTEST_SOURCE_DIRECTORY}/cdashv)
@@ -554,33 +582,42 @@ function(repair_repo inittrigger submodules)
   # deinit and init gismo_src, only if needed
   if (${repoversion} LESS ${inittrigger})
     ## deinit submodules
+    message("repair triggered")
+    message("deinit all submodules")
     execute_process(COMMAND git "submodule" "deinit" "--all" "--force"
-        WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-        )
-    foreach (submodule IN LIST ${submodules})
-      ## init unsupported
+        WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY})
+    # git_checkout(${GISMO_BRANCH} "")
+
+    foreach (submodule ${submodules})
+      message("init submodule: ${submodule}")
       execute_process(COMMAND git "submodule" "update" "--init" "extensions/${submodule}"
           WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY})
+      # git_checkout(master /extensions/${submodule})
     endforeach ()
 
     ## write cdashv with lastest inittrigger
-    # file(WRITE ${CTEST_SOURCE_DIRECTORY}/cdashv ${inittrigger})
+    file(WRITE ${CTEST_SOURCE_DIRECTORY}/cdashv ${inittrigger})
   endif ()
+
+  print_submodules("Submodules after repair:")
 endfunction()
 
-message(submodules: ${submodules})
-list(LENGTH ${submodules} count)
-message(count: ${count})
-repair_repo(1 ${submodules})
+# list(LENGTH submodules count)
+# message("Found ${count} submodules.")
+
+# starts repo repair for all cdashv < number
+repair_repo(1)
 
 if (NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
   ctest_start(${CTEST_TEST_MODEL})
   if (NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
 
-    update_gismo(updcount ${submodules})
+    update_gismo(updcount)
+    # message(sourcedir: ${CTEST_SOURCE_DIRECTORY})
 
   endif ()
+  print_submodules("submodules before run_ctests:")
   run_ctests()
 
 else () #continuous model
@@ -589,7 +626,7 @@ else () #continuous model
     set(START_TIME ${CTEST_ELAPSED_TIME})
     ctest_start(${CTEST_TEST_MODEL})
 
-    update_gismo(updcount ${submodules})
+    update_gismo(updcount)
 
     if (${updcount} GREATER 0)
       run_ctests()
