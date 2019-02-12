@@ -85,6 +85,25 @@ message( " GGGGGGGGGG      GGGG     GGGGGGGGG  GG   GGG   GGGG  GGGGGGGGGG  " )
 message( "                          version ${${PROJECT_NAME}_VERSION}" )
 
 ## #################################################################
+## Github hash and Subprojects
+## #################################################################
+
+execute_process(COMMAND git rev-parse --verify HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    RESULT_VARIABLE isGit
+    OUTPUT_VARIABLE gitHash)
+
+if(${isGit} EQUAL 0)
+  execute_process(COMMAND git "submodule"
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      OUTPUT_VARIABLE submoduleHashes)
+
+  message("Git hashes:")
+  message(" ${gitHash} /")
+  message(${submoduleHashes})
+endif()
+
+## #################################################################
 ## Project options
 ## #################################################################
 
