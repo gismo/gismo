@@ -1,6 +1,6 @@
 
 include(gsFetch)
-gismo_fetch_module(devel TRUE)
+gismo_fetch_module(devel)
 
 # Fetching surface_mesh external
 

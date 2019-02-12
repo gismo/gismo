@@ -72,25 +72,10 @@ endfunction()
 
 # called to fetch/download a submodule form git (working) and svn (in progress)
 # (ARGV0) SUBMODULE:  name of submodule
-# (ARGV1) KEEPBRANCH: do not change branch
-# (ARGV2) SUBBRANCH:  branch for checkout, default master - not set at the moment
-# (ARGVN)               Used to give Update Command, unittests/CMakeLists.txt-15-#07.08.18
-function(gismo_fetch_module SUBMODULE KEEPBRANCH) #SUBBRANCH
-
-#  message(${ARGN})
-#  message(STATUS "\nARGC: ${ARGC}\n")
-#  foreach(loop_var RANGE ${ARGC}-1)
-#    message(message(STATUS "\n ARGV${loop_var} : ${ARGV${loop_var}} \n"))
-#  endforeach(loop_var)
+# (ARGVN)             Used to give Update Command, unittests/CMakeLists.txt-15-#07.08.18
+function(gismo_fetch_module SUBMODULE)
 
 # TODO: online/offline mode
-
-  # set SUBBRANCH for submodule to master if not set already
-  # due CMAKE fails in newer versions until all expacted (named) arguments are given,
-  # this may be to removed when SUBBRANCH gets a named argument
-  if (NOT DEFINED SUBBRANCH)
-    set(SUBBRANCH master)
-  endif()
 
   get_repo_info(GISMO_REPO GISMO_REPO_REV) # or set manually
 
@@ -118,25 +103,7 @@ function(gismo_fetch_module SUBMODULE KEEPBRANCH) #SUBBRANCH
         #RESULT_VARIABLE gresult
         #OUTPUT_QUIET
         )
-
-        if(NOT ${KEEPBRANCH}) # gsTestUnit should not change
-          # checkout SUBBRANCH - must be done after init, should be done on every build (update corrupt servers to this branch)
-          # TODO: remove me, when it works on #130
-          execute_process(COMMAND "${GIT_EXECUTABLE}" "checkout" "${SUBBRANCH}"
-                  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE}
-                  #RESULT_VARIABLE gresult
-                  #OUTPUT_QUIET
-          )
-        endif()
     endif()
-
-#    # TODO: nightlys should do it, builds by hand not
-#    # checkout SUBBRANCH - must be done after init, should be done on every build (update corrupt servers to this branch)
-#    execute_process(COMMAND "${GIT_EXECUTABLE}" "checkout" "${SUBBRANCH}"
-#            WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE}
-#            #RESULT_VARIABLE gresult
-#            #OUTPUT_QUIET
-#      )
 
   elseif("x${GISMO_REPO}" STREQUAL "xsvn")
     #if("x${GISMO_FETCH_PROT}" STREQUAL "xssh") message(ERROR "GitHub does not support svn+ssh") endif()

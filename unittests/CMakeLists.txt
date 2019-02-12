@@ -12,7 +12,7 @@ set(CMAKE_DIRECTORY_LABELS "${PROJECT_NAME}") #CMake 3.10
 
 include(gsFetch)
 
-gismo_fetch_module(gsUnitTest TRUE
+gismo_fetch_module(gsUnitTest
 #  UPDATE_COMMAND "${CMAKE_COMMAND} -E echo (offline mode)"
   )
 
