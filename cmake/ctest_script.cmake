@@ -90,6 +90,26 @@
 ## Configuration
 ## #################################################################
 
+cmake_minimum_required(VERSION 2.8.8)
+
+if(POLICY CMP0048)# CMake 3.0
+  cmake_policy(SET CMP0011 NEW)
+  cmake_policy(SET CMP0042 NEW)
+  cmake_policy(SET CMP0048 NEW)
+endif()
+
+if(POLICY CMP0054)# CMake 3.1
+  cmake_policy(SET CMP0054 NEW)
+endif()
+
+if(POLICY CMP0053)# CMake 3.1.3
+  cmake_policy(SET CMP0053 NEW)
+endif()
+
+if(POLICY CMP0063)# CMake 3.3
+  cmake_policy(SET CMP0063 NEW)
+endif()
+
 # Test model (Nightly, Continuous, Experimental)
 if (NOT DEFINED CTEST_TEST_MODEL)
   set(CTEST_TEST_MODEL Experimental)
@@ -313,7 +333,7 @@ set(test_runtime 43200) #12h by default
 #   or CTEST_UPDATE_COMMAND <CTEST_COMMAND_OPTIONS> if CTEST_GIT_UPDATE_CUSTOM not set and CTEST_SOURCE_DIRECTORY is root folder.
 find_program(CTEST_UPDATE_COMMAND NAMES ${UPDATE_TYPE} ${UPDATE_TYPE}.exe)
 
-# Initial checkout
+# Initial checkout // TODO: does not work!
 if (NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
   if ("x${UPDATE_TYPE}" STREQUAL "xgit")
     if ("x${UPDATE_PROT}" STREQUAL "xhttps")
