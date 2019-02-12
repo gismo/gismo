@@ -98,10 +98,8 @@ if(${isGit} EQUAL 0)
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       OUTPUT_VARIABLE submoduleHashes)
 
-  string(STRIP gitHash ${gitHash})
-
   message("Git hashes:")
-  message(" ${gitHash} /")
+  message(" ${gitHash}")
   message(${submoduleHashes})
 endif()
 
