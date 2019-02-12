@@ -406,12 +406,14 @@ macro(git_reset_hard)
       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY})
 endmacro()
 
-function(pull_gismo updcount branch tries)
+function(pull_gismo updcount branch tries checkout)
   # git pull origin <branch> isn't the best solution
   # it will be a fetch followed by a merge.
   # set(CTEST_GIT_UPDATE_CUSTOM "git" "pull" "--squash" "origin" "${branch}")
 
-  git_checkout(${branch} "")
+  if (${checkout})
+    git_checkout(${branch} "")
+  endif ()
   # default ctest_update will init all submodules,
   # git pull will not do this
   set(CTEST_GIT_UPDATE_CUSTOM "git" "pull")
@@ -436,13 +438,13 @@ endfunction()
 
 function(update_gismo_extension updcount submodule branch tries)
   set(CTEST_SOURCE_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
-  pull_gismo(upcount ${branch} ${tries})
+  pull_gismo(upcount ${branch} ${tries} ${UPDATE_MODULES})
   set(${updcount} ${upcount} PARENT_SCOPE) # set upcount to updcount on parent scope
 endfunction()
 
 function(update_gismo updcount)
   # pull gismo-stable
-  pull_gismo(upcount ${GISMO_BRANCH} ${update_retries})
+  pull_gismo(upcount ${GISMO_BRANCH} ${update_retries} ON)
   #print_submodules("Submodules after pull_gismo")
 
   # pull submodules - master branch
@@ -565,7 +567,7 @@ endmacro()
 macro(git_checkout branch directory)
   # message("${CTEST_SOURCE_DIRECTORY}${directory} $ git checkout ${branch}")
   execute_process(COMMAND git "checkout" ${branch}
-        WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}${directory})
+      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}${directory})
 endmacro()
 
 function(repair_repo inittrigger)
