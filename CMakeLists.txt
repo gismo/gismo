@@ -97,9 +97,10 @@ if(${isGit} EQUAL 0)
   execute_process(COMMAND git "submodule"
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       OUTPUT_VARIABLE submoduleHashes)
+  string(SUBSTRING ${gitHash} 0 40 gitHash)
 
   message("Git hashes:")
-  message(" ${gitHash}")
+  message(" ${gitHash} /")
   message(${submoduleHashes})
 endif()
 
