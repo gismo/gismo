@@ -338,7 +338,7 @@ if (NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
   if ("x${UPDATE_TYPE}" STREQUAL "xgit")
     if ("x${UPDATE_PROT}" STREQUAL "xhttps")
       set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch ${GISMO_BRANCH} https://github.com/gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
-    else () #ssh - git@github.com or git@github.com-cdash with our config script
+    else () #ssh - git@github.com or git@github.com-cdash with our config scrip
       set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch ${GISMO_BRANCH} git@github.com-cdash:gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
     endif ()
   elseif ("x${UPDATE_TYPE}" STREQUAL "xsvn")
@@ -422,6 +422,7 @@ set(ENV{CTEST_USE_LAUNCHERS_DEFAULT} 1)
 set(update_retries 4)
 
 macro(git_reset_hard)
+  message("${CTEST_SOURCE_DIRECTORY} $ git reset --hard")
   execute_process(COMMAND "git" "reset" "--hard"
       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY})
 endmacro()
@@ -446,10 +447,11 @@ function(pull_gismo updcount branch tries checkout)
     if (${upcount} GREATER_EQUAL 0)
       break()
     else ()
+      message("git pull didn't worked with "${upcount}" for ${CTEST_SOURCE_DIRECTORY}, ${tries} tries left.")
       # sometimes a hard reset could work
       git_reset_hard()
     endif ()
-    message("git pull didn't worked for ${CTEST_SOURCE_DIRECTORY}, ${tries} tries left.")
+
     math(EXPR tries "${tries}-1")
     ctest_sleep(5)  # 5 sec sleep
   endwhile ()
