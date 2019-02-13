@@ -338,8 +338,8 @@ if (NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
   if ("x${UPDATE_TYPE}" STREQUAL "xgit")
     if ("x${UPDATE_PROT}" STREQUAL "xhttps")
       set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch ${GISMO_BRANCH} https://github.com/gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
-    else () #ssh
-      set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch ${GISMO_BRANCH} git@github.com:gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
+    else () #ssh - git@github.com or git@github.com-cdash with our config script
+      set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch ${GISMO_BRANCH} git@github.com-cdash:gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
     endif ()
   elseif ("x${UPDATE_TYPE}" STREQUAL "xsvn")
     if ("x${GISMO_BRANCH}" STREQUAL "xstable") # stable
@@ -465,7 +465,13 @@ endfunction()
 function(update_gismo updcount)
   # pull gismo-stable
   pull_gismo(upcount ${GISMO_BRANCH} ${update_retries} ON)
-  #print_submodules("Submodules after pull_gismo")
+  print_submodules("Submodules after pull_gismo of gismo")
+
+  # in most tests they are now back on the hash that is registered in gismo
+  # but in the logs of nightly builds it looks like this happens not always,
+  # in this case, do a "git submodule update [--checkout] -N", this sets back to
+  # that one registered in gismo. It is only a checkout without a fetch (-N). So
+  # updcount should still be calculated afterward with ctest_update() of "git pull".
 
   # pull submodules - master branch
   foreach (submodule ${submodules})
@@ -591,7 +597,7 @@ macro(git_checkout branch directory)
 endmacro()
 
 function(repair_repo inittrigger)
-  print_submodules("Submodules before repair:")
+
 
   # repair git repo of broken cdash servers
   # read out gismo_src folders "version" for ctest_script
@@ -605,6 +611,7 @@ function(repair_repo inittrigger)
   if (${repoversion} LESS ${inittrigger})
     ## deinit submodules
     message("repair triggered")
+    print_submodules("Submodules before repair:")
     message("deinit all submodules")
     execute_process(COMMAND git "submodule" "deinit" "--all" "--force"
         WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY})
@@ -619,9 +626,10 @@ function(repair_repo inittrigger)
 
     ## write cdashv with lastest inittrigger
     file(WRITE ${CTEST_SOURCE_DIRECTORY}/cdashv ${inittrigger})
+    print_submodules("Submodules after repair:")
+  else()
+    message("no repair needed")
   endif ()
-
-  print_submodules("Submodules after repair:")
 endfunction()
 
 # list(LENGTH submodules count)
