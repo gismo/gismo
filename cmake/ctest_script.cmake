@@ -419,7 +419,7 @@ endif ()
 
 set(ENV{CTEST_USE_LAUNCHERS_DEFAULT} 1)
 
-set(update_retries 4)
+set(update_retries 2)
 
 macro(git_reset_hard)
   message("${CTEST_SOURCE_DIRECTORY} $ git reset --hard")
@@ -427,14 +427,12 @@ macro(git_reset_hard)
       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY})
 endmacro()
 
-function(pull_gismo updcount branch tries checkout)
+function(pull_gismo updcount branch tries)
   # git pull origin <branch> isn't the best solution
   # it will be a fetch followed by a merge.
   # set(CTEST_GIT_UPDATE_CUSTOM "git" "pull" "--squash" "origin" "${branch}")
 
-  if (${checkout})
-    git_checkout(${branch} "")
-  endif ()
+  git_checkout(${branch} "")
   # default ctest_update will init all submodules,
   # git pull will not do this
   set(CTEST_GIT_UPDATE_CUSTOM "git" "pull")
@@ -443,13 +441,22 @@ function(pull_gismo updcount branch tries checkout)
     # WARNING, ctest_update will change all submodule branches
     # happens also with set(CTEST_GIT_UPDATE_CUSTOM "git" "pull")
     ctest_update(RETURN_VALUE upcount)
+    print_submodules("Submodules after ctest_update(${CTEST_GIT_UPDATE_CUSTOM}):")
 
     if (${upcount} GREATER_EQUAL 0)
       break()
     else ()
-      message("git pull didn't worked with "${upcount}" for ${CTEST_SOURCE_DIRECTORY}, ${tries} tries left.")
-      # sometimes a hard reset could work
-      git_reset_hard()
+      message("git pull didn't worked with ${upcount} for ${CTEST_SOURCE_DIRECTORY}, ${tries} tries left.")
+      if (${tries} EQUAL 2)
+        # sometimes a hard reset could work
+        git_reset_hard()
+      elseif(${tries} EQUAL 1)
+        # upstream set?
+        set(CTEST_GIT_UPDATE_CUSTOM "git" "pull" "origin" ${branch})
+      else()
+        # skip generation
+        message(SEND_ERROR "ERROR: git pull for ${CTEST_SOURCE_DIRECTORY} didn't worked!")
+      endif ()
     endif ()
 
     math(EXPR tries "${tries}-1")
@@ -460,27 +467,35 @@ endfunction()
 
 function(update_gismo_extension updcount submodule branch tries)
   set(CTEST_SOURCE_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
-  pull_gismo(upcount ${branch} ${tries} ${UPDATE_MODULES})
+  pull_gismo(upcount ${branch} ${tries})
   set(${updcount} ${upcount} PARENT_SCOPE) # set upcount to updcount on parent scope
 endfunction()
 
 function(update_gismo updcount)
-  # pull gismo-stable
-  pull_gismo(upcount ${GISMO_BRANCH} ${update_retries} ON)
-  print_submodules("Submodules after pull_gismo of gismo")
+  if (${UPDATE_MODULES})
+    # pull gismo-stable
+    pull_gismo(upcount ${GISMO_BRANCH} ${update_retries})
+    print_submodules("Submodules after pull_gismo of gismo")
 
-  # in most tests they are now back on the hash that is registered in gismo
-  # but in the logs of nightly builds it looks like this happens not always,
-  # in this case, do a "git submodule update [--checkout] -N", this sets back to
-  # that one registered in gismo. It is only a checkout without a fetch (-N). So
-  # updcount should still be calculated afterward with ctest_update() of "git pull".
+    # in most tests they are now back on the hash that is registered in gismo
+    # but in the logs of nightly builds it looks like this happens not always,
+    # in this case, do a "git submodule update [--checkout] -N", this sets back to
+    # that one registered in gismo. It is only a checkout without a fetch (-N). So
+    # updcount should still be calculated afterward with ctest_update() of "git pull".
 
-  # pull submodules - master branch
-  foreach (submodule ${submodules})
-    # message("update_gismo_extension(upc ${submodule} \"master\" ${update_retries})")
-    update_gismo_extension(upc ${submodule} "master" ${update_retries})
-    math(EXPR upcount "${upcount} + ${upc}")
-  endforeach ()
+    # pull submodules - master branch
+    foreach (submodule ${submodules})
+      # message("update_gismo_extension(upc ${submodule} \"master\" ${update_retries})")
+      update_gismo_extension(upc ${submodule} "master" ${update_retries})
+      math(EXPR upcount "${upcount} + ${upc}")
+    endforeach ()
+  else()
+    git_checkout(${branch} "")
+    # does ctest_update() init submodules now or not?
+    # saw both on tests (with set(CTEST_GIT_INIT_SUBMODULES OFF) was set!)
+    ctest_update(upcount)
+    print_submodules("Submodules after ctest_update():")
+  endif ()
 
   set(${updcount} ${upcount} PARENT_SCOPE) # set upcount to updcount on parent scope
 endfunction(update_gismo)
@@ -599,8 +614,6 @@ macro(git_checkout branch directory)
 endmacro()
 
 function(repair_repo inittrigger)
-
-
   # repair git repo of broken cdash servers
   # read out gismo_src folders "version" for ctest_script
   if (EXISTS ${CTEST_SOURCE_DIRECTORY}/cdashv)
@@ -645,7 +658,9 @@ if (NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
   ctest_start(${CTEST_TEST_MODEL})
   if (NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
 
+    print_submodules("Before ctest_update:")
     update_gismo(updcount)
+    print_submodules("After  ctest_update:")
     # message(sourcedir: ${CTEST_SOURCE_DIRECTORY})
 
   endif ()
@@ -658,7 +673,9 @@ else () #continuous model
     set(START_TIME ${CTEST_ELAPSED_TIME})
     ctest_start(${CTEST_TEST_MODEL})
 
+    print_submodules("Before ctest_update:")
     update_gismo(updcount)
+    print_submodules("After  ctest_update:")
 
     if (${updcount} GREATER 0)
       run_ctests()
