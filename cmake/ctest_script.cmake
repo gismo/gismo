@@ -681,5 +681,6 @@ else () #continuous model
     endif ()
     ctest_sleep(${START_TIME} 300 ${CTEST_ELAPSED_TIME})
   endwhile ()
+  message("stop continuous build after ${CTEST_ELAPSED_TIME} seconds.")
 
 endif (NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
