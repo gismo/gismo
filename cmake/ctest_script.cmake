@@ -490,7 +490,7 @@ function(update_gismo updcount)
       math(EXPR upcount "${upcount} + ${upc}")
     endforeach ()
   else ()
-    git_checkout(${branch} "")
+    git_checkout(${GISMO_BRANCH} "")
     # does ctest_update() init submodules now or not?
     # saw both on tests (with set(CTEST_GIT_INIT_SUBMODULES OFF) was set!)
     ctest_update(upcount)
