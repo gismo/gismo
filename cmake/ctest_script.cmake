@@ -92,23 +92,23 @@
 
 cmake_minimum_required(VERSION 2.8.8)
 
-if(POLICY CMP0048)# CMake 3.0
+if (POLICY CMP0048)# CMake 3.0
   cmake_policy(SET CMP0011 NEW)
   cmake_policy(SET CMP0042 NEW)
   cmake_policy(SET CMP0048 NEW)
-endif()
+endif ()
 
-if(POLICY CMP0054)# CMake 3.1
+if (POLICY CMP0054)# CMake 3.1
   cmake_policy(SET CMP0054 NEW)
-endif()
+endif ()
 
-if(POLICY CMP0053)# CMake 3.1.3
+if (POLICY CMP0053)# CMake 3.1.3
   cmake_policy(SET CMP0053 NEW)
-endif()
+endif ()
 
-if(POLICY CMP0063)# CMake 3.3
+if (POLICY CMP0063)# CMake 3.3
   cmake_policy(SET CMP0063 NEW)
-endif()
+endif ()
 
 # Test model (Nightly, Continuous, Experimental)
 if (NOT DEFINED CTEST_TEST_MODEL)
@@ -441,7 +441,6 @@ function(pull_gismo updcount branch tries)
     # WARNING, ctest_update will change all submodule branches
     # happens also with set(CTEST_GIT_UPDATE_CUSTOM "git" "pull")
     ctest_update(RETURN_VALUE upcount)
-    print_submodules("Submodules after ctest_update(${CTEST_GIT_UPDATE_CUSTOM}):")
 
     if (${upcount} GREATER_EQUAL 0)
       break()
@@ -450,10 +449,10 @@ function(pull_gismo updcount branch tries)
       if (${tries} EQUAL 2)
         # sometimes a hard reset could work
         git_reset_hard()
-      elseif(${tries} EQUAL 1)
+      elseif (${tries} EQUAL 1)
         # upstream set?
         set(CTEST_GIT_UPDATE_CUSTOM "git" "pull" "origin" ${branch})
-      else()
+      else ()
         # skip generation
         message(SEND_ERROR "ERROR: git pull for ${CTEST_SOURCE_DIRECTORY} didn't worked!")
       endif ()
@@ -487,14 +486,15 @@ function(update_gismo updcount)
     foreach (submodule ${submodules})
       # message("update_gismo_extension(upc ${submodule} \"master\" ${update_retries})")
       update_gismo_extension(upc ${submodule} "master" ${update_retries})
+      print_submodules("Submodules after pull_gismo of ${submodule}")
       math(EXPR upcount "${upcount} + ${upc}")
     endforeach ()
-  else()
+  else ()
     git_checkout(${branch} "")
     # does ctest_update() init submodules now or not?
     # saw both on tests (with set(CTEST_GIT_INIT_SUBMODULES OFF) was set!)
     ctest_update(upcount)
-    print_submodules("Submodules after ctest_update():")
+    print_submodules("Submodules after native ctest_update():")
   endif ()
 
   set(${updcount} ${upcount} PARENT_SCOPE) # set upcount to updcount on parent scope
@@ -642,7 +642,7 @@ function(repair_repo inittrigger)
     ## write cdashv with lastest inittrigger
     file(WRITE ${CTEST_SOURCE_DIRECTORY}/cdashv ${inittrigger})
     print_submodules("Submodules after repair:")
-  else()
+  else ()
     message("no repair needed")
   endif ()
 endfunction()
@@ -660,11 +660,10 @@ if (NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
     print_submodules("Before ctest_update:")
     update_gismo(updcount)
-    print_submodules("After  ctest_update:")
+    print_submodules("After ctest_update:")
     # message(sourcedir: ${CTEST_SOURCE_DIRECTORY})
 
   endif ()
-  print_submodules("submodules before run_ctests:")
   run_ctests()
 
 else () #continuous model
@@ -675,7 +674,7 @@ else () #continuous model
 
     print_submodules("Before ctest_update:")
     update_gismo(updcount)
-    print_submodules("After  ctest_update:")
+    print_submodules("After ctest_update:")
 
     if (${updcount} GREATER 0)
       run_ctests()
