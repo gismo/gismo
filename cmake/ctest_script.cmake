@@ -494,7 +494,7 @@ function(update_gismo updcount)
     # does ctest_update() init submodules now or not?
     # saw both on tests (with set(CTEST_GIT_INIT_SUBMODULES OFF) was set!)
     ctest_update(upcount)
-    print_submodules("Submodules after native ctest_update():")
+    print_submodules("Submodules after native ctest_update(): ${upcount}")
   endif ()
 
   set(${updcount} ${upcount} PARENT_SCOPE) # set upcount to updcount on parent scope
