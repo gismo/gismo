@@ -486,7 +486,7 @@ function(update_gismo updcount)
     foreach (submodule ${submodules})
       # message("update_gismo_extension(upc ${submodule} \"master\" ${update_retries})")
       update_gismo_extension(upc ${submodule} "master" ${update_retries})
-      print_submodules("Submodules after pull_gismo of ${submodule}")
+      # print_submodules("Submodules after pull_gismo of ${submodule}")
       math(EXPR upcount "${upcount} + ${upc}")
     endforeach ()
   else ()
@@ -601,10 +601,16 @@ endif ()
 
 macro(print_submodules message)
   message(${message})
+  execute_process(COMMAND git rev-parse --verify HEAD
+      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+      OUTPUT_VARIABLE gitHash)
   execute_process(COMMAND git "submodule"
       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-      OUTPUT_VARIABLE out)
-  message(${out})
+      OUTPUT_VARIABLE submoduleHashes)
+  string(SUBSTRING ${gitHash} 0 40 gitHash)
+
+  message(" ${gitHash} /")
+  message(${submoduleHashes})
 endmacro()
 
 macro(git_checkout branch directory)
@@ -661,6 +667,7 @@ if (NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
     print_submodules("Before ctest_update:")
     update_gismo(updcount)
     print_submodules("After ctest_update:")
+    message("Updated ${updcount} files.")
     # message(sourcedir: ${CTEST_SOURCE_DIRECTORY})
 
   endif ()
@@ -675,6 +682,7 @@ else () #continuous model
     print_submodules("Before ctest_update:")
     update_gismo(updcount)
     print_submodules("After ctest_update:")
+    message("Updated ${updcount} files.")
 
     if (${updcount} GREATER 0)
       run_ctests()
