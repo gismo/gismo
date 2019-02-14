@@ -493,7 +493,7 @@ function(update_gismo updcount)
     git_checkout(${GISMO_BRANCH} "")
     # does ctest_update() init submodules now or not?
     # saw both on tests (with set(CTEST_GIT_INIT_SUBMODULES OFF) was set!)
-    ctest_update(upcount)
+    ctest_update(RETURN_VALUE upcount)
     print_submodules("Submodules after native ctest_update(): ${upcount}")
   endif ()
 
