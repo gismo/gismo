@@ -609,6 +609,7 @@ macro(print_submodules message)
       OUTPUT_VARIABLE submoduleHashes)
   string(SUBSTRING ${gitHash} 0 40 gitHash)
 
+  message("Git Hashes at ${CTEST_ELAPSED_TIME}:")
   message(" ${gitHash} /")
   message(${submoduleHashes})
 endmacro()
