@@ -74,6 +74,7 @@
 ##   DROP_SITE
 ##   EMPTY_BINARY_DIRECTORY
 ##   GISMO_BRANCH
+##   GISMO_SUBMODULES
 ##   LABELS_FOR_SUBPROJECTS
 ##   PROJECT_NAME
 ##   UPDATE_MODULES
@@ -86,39 +87,39 @@
 ##
 ######################################################################
 
-## #################################################################
-## Configuration
-## #################################################################
-
 cmake_minimum_required(VERSION 2.8.8)
 
 if (POLICY CMP0048)# CMake 3.0
   cmake_policy(SET CMP0011 NEW)
   cmake_policy(SET CMP0042 NEW)
   cmake_policy(SET CMP0048 NEW)
-endif ()
+endif()
 
 if (POLICY CMP0054)# CMake 3.1
   cmake_policy(SET CMP0054 NEW)
-endif ()
+endif()
 
 if (POLICY CMP0053)# CMake 3.1.3
   cmake_policy(SET CMP0053 NEW)
-endif ()
+endif()
 
 if (POLICY CMP0063)# CMake 3.3
   cmake_policy(SET CMP0063 NEW)
-endif ()
+endif()
+
+## #################################################################
+## Configuration
+## #################################################################
 
 # Test model (Nightly, Continuous, Experimental)
 if (NOT DEFINED CTEST_TEST_MODEL)
   set(CTEST_TEST_MODEL Experimental)
-endif ()
+endif()
 
 # Configuration type (Debug Release RelWithDebInfo MinSizeRel)
 if (NOT DEFINED CTEST_CONFIGURATION_TYPE)
   set(CTEST_CONFIGURATION_TYPE Release)
-endif ()
+endif()
 
 # Number of jobs for build/test (later on)
 #set(CTEST_BUILD_JOBS 8)
@@ -130,7 +131,7 @@ endif ()
 #  "Visual Studio 14 2015 Win64", and so on)
 if (NOT DEFINED CTEST_CMAKE_GENERATOR)
   set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
-endif ()
+endif()
 
 # Tip fot C/C++ compilers
 # e.g. "cc/g++", "icc/icpc", "clang/clang++", "mpicc/mpic++", cl.exe/cl.exe
@@ -140,21 +141,21 @@ endif ()
 # Test timeout in seconds
 if (NOT DEFINED CTEST_TEST_TIMEOUT)
   set(CTEST_TEST_TIMEOUT 200)
-endif ()
+endif()
 
 # Dynamic analysis
 #Valgrind, Purify, BoundsChecker. ThreadSanitizer, AddressSanitizer,
 #LeakSanitizer, MemorySanitizer, and UndefinedBehaviorSanitizer.
 if (NOT DEFINED CTEST_MEMORYCHECK_TYPE)
   set(CTEST_MEMORYCHECK_TYPE "None")
-endif ()
+endif()
 
 # Coverage analysis - only GCC
 # if GCC was changed with CNAME/CXXNAME, CTEST_COVERAGE_COMMAND needs
 # also to be changed
 if (NOT DEFINED DO_COVERAGE)
   set(DO_COVERAGE FALSE)
-endif ()
+endif()
 
 # The above parameters can be reset by passing upto 9 arguments
 # e.g. as: ctest -S ctest_script.cmake,"Experimental;Release;8;Ninja"
@@ -162,42 +163,42 @@ macro(read_args)
   set(narg ${ARGC})
   if (narg GREATER 0)
     set(CTEST_TEST_MODEL ${ARGV0})
-  endif ()
+  endif()
   if (narg GREATER 1)
     set(CTEST_CONFIGURATION_TYPE ${ARGV1})
-  endif ()
+  endif()
   if (narg GREATER 2)
     set(CTEST_BUILD_JOBS "${ARGV2}")
-  endif ()
+  endif()
   if (narg GREATER 3)
     set(CTEST_CMAKE_GENERATOR "${ARGV3}")
-  endif ()
+  endif()
   if (narg GREATER 4)
     set(CNAME "${ARGV4}")
-  endif ()
+  endif()
   if (narg GREATER 5)
     set(CXXNAME "${ARGV5}")
-  endif ()
+  endif()
   if (narg GREATER 6)
     set(CTEST_TEST_TIMEOUT "${ARGV6}")
-  endif ()
+  endif()
   if (narg GREATER 7)
     set(CTEST_MEMORYCHECK_TYPE "${ARGV7}")
-  endif ()
+  endif()
   if (narg GREATER 8)
     set(DO_COVERAGE "${ARGV8}")
-  endif ()
+  endif()
 endmacro(read_args)
 read_args(${CTEST_SCRIPT_ARG})
 
-if (DEFINED CNAME)
-  find_program(CC NAMES ${CNAME})
-  set(ENV{CC} ${CC})
-endif ()
-if (DEFINED CXXNAME)
-  find_program(CXX NAMES ${CXXNAME})
-  set(ENV{CXX} ${CXX})
-endif ()
+if(DEFINED CNAME)
+  find_program (CC NAMES ${CNAME})
+  set(ENV{CC}  ${CC})
+endif()
+if(DEFINED CXXNAME)
+  find_program (CXX NAMES ${CXXNAME})
+  set(ENV{CXX}  ${CXX})
+endif()
 
 # Other Environment variables and scripts
 #set(ENV{OMP_NUM_THREADS} 3)
@@ -207,43 +208,43 @@ endif ()
 #set(ENV{MAKEFLAGS} "-j12")
 
 # Build options
-if (NOT DEFINED CMAKE_ARGS)
+if(NOT DEFINED CMAKE_ARGS)
   set(CMAKE_ARGS
-      -DGISMO_WARNINGS=OFF
-      -DGISMO_COEFF_TYPE=double
-      -DGISMO_BUILD_LIB=ON
-      #-DCMAKE_CXX_STANDARD=11
-      -DGISMO_BUILD_EXAMPLES=ON
-      -DGISMO_BUILD_UNITTESTS=ON
-      #-DGISMO_WITH_OPENMP=ON
-      #-DGISMO_WITH_MPI=ON
-      #-DGISMO_WITH_SPECTRA=ON
-      #-DGISMO_WITH_IPOPT=ON -DIpOpt_DIR=/path/to/ipopt
-      #-DGISMO_WITH_PSOLID=ON -DParasolid_DIR=/path/to/parasolid
-      #-DGISMO_BUILD_AXL=ON -DAxel_DIR=/path/to/axel
-      -DGISMO_WITH_ONURBS=ON
-      -DGISMO_WITH_TRILINOS=OFF
-      -DGISMO_WITH_SPECTRA=OFF
-      -DGISMO_EXTRA_DEBUG=OFF
-      -DGISMO_BUILD_PCH=OFF
-      #-DGISMO_PLAINDOX=ON
-      )
-endif ()
+    -DGISMO_WARNINGS=OFF
+    -DGISMO_COEFF_TYPE=double
+    -DGISMO_BUILD_LIB=ON
+    #-DCMAKE_CXX_STANDARD=11
+    -DGISMO_BUILD_EXAMPLES=ON
+    -DGISMO_BUILD_UNITTESTS=ON
+    #-DGISMO_WITH_OPENMP=ON
+    #-DGISMO_WITH_MPI=ON
+    #-DGISMO_WITH_SPECTRA=ON
+    #-DGISMO_WITH_IPOPT=ON -DIpOpt_DIR=/path/to/ipopt
+    #-DGISMO_WITH_PSOLID=ON -DParasolid_DIR=/path/to/parasolid
+    #-DGISMO_BUILD_AXL=ON -DAxel_DIR=/path/to/axel
+    -DGISMO_WITH_ONURBS=ON
+    -DGISMO_WITH_TRILINOS=OFF
+    -DGISMO_WITH_SPECTRA=OFF
+    -DGISMO_EXTRA_DEBUG=OFF
+    -DGISMO_BUILD_PCH=OFF
+    #-DGISMO_PLAINDOX=ON
+    )
+endif()
 
 # Source folder (defaults inside the script directory)
-if (NOT DEFINED CTEST_SOURCE_DIRECTORY)
+if(NOT DEFINED CTEST_SOURCE_DIRECTORY)
   set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_src)
-endif ()
+endif()
 
 # Build folder (defaults inside the script directory)
-if (NOT DEFINED CTEST_BINARY_DIRECTORY)
+if(NOT DEFINED CTEST_BINARY_DIRECTORY)
   set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/build_${CTEST_TEST_MODEL}${CTEST_CONFIGURATION_TYPE}_${CNAME})
-endif ()
+endif()
 
 # Empty previous directory before building (otherwise builds are incremental)
-if (EMPTY_BINARY_DIRECTORY)
+if(EMPTY_BINARY_DIRECTORY)
   ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
-endif ()
+endif()
 
 # Cleanup previous tests, settings and test data
 file(REMOVE_RECURSE ${CTEST_BINARY_DIRECTORY}/bin)
@@ -251,66 +252,66 @@ file(REMOVE ${CTEST_BINARY_DIRECTORY}/CMakeCache.txt)
 file(REMOVE_RECURSE ${CTEST_BINARY_DIRECTORY}/Testing)
 
 if (DO_COVERAGE)
-  if (NOT DEFINED CTEST_COVERAGE_COMMAND)
+  if(NOT DEFINED CTEST_COVERAGE_COMMAND)
     find_program(CTEST_COVERAGE_COMMAND NAMES gcov)
-  endif ()
-  set(CTEST_CUSTOM_COVERAGE_EXCLUDE "${CTEST_SOURCE_DIRECTORY}/external/")
+  endif()
+    set(CTEST_CUSTOM_COVERAGE_EXCLUDE "${CTEST_SOURCE_DIRECTORY}/external/")
   set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -g -O0 --coverage -fprofile-arcs -ftest-coverage")
   set(ENV{CFLAGS} "$ENV{CFLAGS} -g -O0 --coverage -fprofile-arcs -ftest-coverage")
-endif ()
+endif()
 
 if ("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xValgrind")
   find_program(CTEST_MEMORYCHECK_COMMAND NAMES valgrind)
   set(MEMORYCHECK_SUPPRESSIONS_FILE "${CTEST_SOURCE_DIRECTORY}/cmake/valgrind_supp.txt")
   set(MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=1 --leak-check=yes -q")
   #--tool=memcheck --show-reachable=yes --num-callers=50 --track-origins=yes --trace-children=yes
-endif ()
+endif()
 
-if ("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xAddressSanitizer")
+if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xAddressSanitizer")
   #See https://github.com/google/sanitizers
   set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -fsanitize=address -fno-omit-frame-pointer")
-  set(ENV{LDFLAGS} "$ENV{LDFLAGS} -fsanitize=address")
-  set(ENV{ASAN_OPTIONS} "symbolize=1:detect_leaks=1")
+  set(ENV{LDFLAGS}  "$ENV{LDFLAGS} -fsanitize=address")
+  set(ENV{ASAN_OPTIONS}  "symbolize=1:detect_leaks=1")
   #find_program(LLVMSYM NAMES llvm-symbolizer) #needed in path
   #set(ENV{ASAN_SYMBOLIZER_PATH}  "${LLVMSYM}")
-endif ()
-if ("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xLeakSanitizer")#part of AddressSanitizer
+endif()
+if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xLeakSanitizer")#part of AddressSanitizer
   set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -fsanitize=leak -fno-omit-frame-pointer")
-  set(ENV{LDFLAGS} "$ENV{LDFLAGS} -fsanitize=leak")
+  set(ENV{LDFLAGS}  "$ENV{LDFLAGS} -fsanitize=leak")
   #set(ENV{LSAN_OPTIONS} "suppressions="${CTEST_SOURCE_DIRECTORY}/cmake/asan_supp.txt")
-endif ()
-if ("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xMemorySanitizer")
+endif()
+if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xMemorySanitizer")
   # Note: requires full code (including libc++) compiled with -fsanitize=memory
   set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -fsanitize=memory -fno-omit-frame-pointer -fsanitize-memory-track-origins")
-  set(ENV{LDFLAGS} "$ENV{LDFLAGS} -fsanitize=memory -fsanitize-memory-track-origins")
-  set(ENV{MSAN_OPTIONS} "symbolize=1")
+  set(ENV{LDFLAGS}  "$ENV{LDFLAGS} -fsanitize=memory -fsanitize-memory-track-origins")
+  set(ENV{MSAN_OPTIONS}  "symbolize=1")
   #find_program(LLVMSYM NAMES llvm-symbolizer) #needed in path
   #set(ENV{MSAN_SYMBOLIZER_PATH}  "${LLVMSYM}")
-endif ()
-if ("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xThreadSanitizer")
+endif()
+if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xThreadSanitizer")
   set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -fsanitize=thread")
-  set(ENV{LDFLAGS} "$ENV{LDFLAGS} -fsanitize=thread")
+  set(ENV{LDFLAGS}  "$ENV{LDFLAGS} -fsanitize=thread")
   #set(ENV{TSAN_OPTIONS} "report_bugs=1")
-endif ()
-if ("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xUndefinedBehaviorSanitizer")
+endif()
+if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xUndefinedBehaviorSanitizer")
   set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -fsanitize=undefined -fno-omit-frame-pointer")
-  set(ENV{LDFLAGS} "$ENV{LDFLAGS} -fsanitize=undefined")
+  set(ENV{LDFLAGS}  "$ENV{LDFLAGS} -fsanitize=undefined")
   set(ENV{UBSAN_OPTIONS} "print_stacktrace=1")
-endif ()
+endif()
 
 # Update type (git, svn, wget or url)
 if (NOT DEFINED UPDATE_TYPE)
   set(UPDATE_TYPE git)
-endif ()
+endif()
 
 if (NOT DEFINED GISMO_BRANCH)
   set(GISMO_BRANCH stable)
-endif ()
+endif()
 
 # Update modules with fetch HEAD commits for all initialized submodules
 if (NOT DEFINED UPDATE_MODULES)
   set(UPDATE_MODULES OFF)
-endif ()
+endif()
 
 # For continuous builds, number of seconds to stay alive
 set(test_runtime 43200) #12h by default
@@ -328,205 +329,199 @@ set(test_runtime 43200) #12h by default
 
 #message(STATUS "Preserve full output (CTEST_FULL_OUTPUT)")
 
-# if CTEST_UPDATE_COMMAND is the "git executeable" (under linux) it will call later CTEST_GIT_UPDATE_CUSTOM if set for any folder.
-# if it is not set to the "git executable", it will run CTEST_GIT_UPDATE_CUSTOM if CTEST_SOURCE_DIRECTORY is a git root folder - holds for submodules too.
-#   or CTEST_UPDATE_COMMAND <CTEST_COMMAND_OPTIONS> if CTEST_GIT_UPDATE_CUSTOM not set and CTEST_SOURCE_DIRECTORY is root folder.
 find_program(CTEST_UPDATE_COMMAND NAMES ${UPDATE_TYPE} ${UPDATE_TYPE}.exe)
 
-# Initial checkout // TODO: does not work!
-if (NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
-  if ("x${UPDATE_TYPE}" STREQUAL "xgit")
-    if ("x${UPDATE_PROT}" STREQUAL "xhttps")
-      set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch ${GISMO_BRANCH} https://github.com/gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
-    else () #ssh - git@github.com or git@github.com-cdash with our config scrip
-      set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch ${GISMO_BRANCH} git@github.com-cdash:gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
-    endif ()
-  elseif ("x${UPDATE_TYPE}" STREQUAL "xsvn")
-    if ("x${GISMO_BRANCH}" STREQUAL "xstable") # stable
+# Initial checkout
+if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
+  if("x${UPDATE_TYPE}" STREQUAL "xgit")
+    if("x${UPDATE_PROT}" STREQUAL "xhttps")
+      set(gismo_url https://github.com/gismo/gismo.git)
+    else() #ssh
+      set(gismo_url git@github.com:gismo/gismo.git)
+    endif()
+    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} clone --depth 1 --branch ${GISMO_BRANCH} ${gismo_url} ${CTEST_SOURCE_DIRECTORY})
+    unset(CTEST_CHECKOUT_COMMAND)
+    
+  elseif("x${UPDATE_TYPE}" STREQUAL "xsvn")
+    if("x${GISMO_BRANCH}" STREQUAL "xstable") # stable
       set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} checkout https://github.com/gismo/gismo.git/trunk ${CTEST_SOURCE_DIRECTORY}")
-    else () # branch
+    else() # branch
       set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} checkout https://github.com/gismo/gismo.git/branches/${GISMO_BRANCH} ${CTEST_SOURCE_DIRECTORY}")
-    endif ()
-  elseif ("x${UPDATE_TYPE}" STREQUAL "xwget")
+    endif()
+  elseif("x${UPDATE_TYPE}" STREQUAL "xwget")
     execute_process(COMMAND /bin/bash "-c" "wget --no-check-certificate -qO - https://github.com/gismo/gismo/archive/${GISMO_BRANCH}.tar.gz | tar -zxf -")
     execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink gismo-${GISMO_BRANCH} ${CTEST_SOURCE_DIRECTORY})
     set(CTEST_CHECKOUT_COMMAND "${CMAKE_COMMAND} --version")
-  elseif ("x${UPDATE_TYPE}" STREQUAL "xurl")
+  elseif("x${UPDATE_TYPE}" STREQUAL "xurl")
     file(DOWNLOAD https://github.com/gismo/gismo/archive/${GISMO_BRANCH}.tar.gz ${CTEST_SCRIPT_DIRECTORY}/${GISMO_BRANCH}.tar.gz)
     execute_process(
-        COMMAND ${CMAKE_COMMAND} -E tar xzf ${GISMO_BRANCH}.tar.gz
-        COMMAND ${CMAKE_COMMAND} -E create_symlink gismo-${GISMO_BRANCH} ${CTEST_SOURCE_DIRECTORY}
-        WORKING_DIRECTORY ${CTEST_SCRIPT_DIRECTORY})
+      COMMAND ${CMAKE_COMMAND} -E tar xzf ${GISMO_BRANCH}.tar.gz
+      COMMAND ${CMAKE_COMMAND} -E create_symlink gismo-${GISMO_BRANCH} ${CTEST_SOURCE_DIRECTORY}
+      WORKING_DIRECTORY ${CTEST_SCRIPT_DIRECTORY} )
     set(CTEST_CHECKOUT_COMMAND "${CMAKE_COMMAND} --version")
-  endif ()
-endif ()
+  endif()
+endif()
 
-if ("${CTEST_CMAKE_GENERATOR}" MATCHES "Make" OR "${CTEST_CMAKE_GENERATOR}" MATCHES "Ninja")
+if("x${UPDATE_TYPE}" STREQUAL "xgit")
+  
+  if (NOT "x${GISMO_SUBMODULES}" STREQUAL "x")
+    foreach (submod ${GISMO_SUBMODULES})
+      #string(TOUPPER ${submod} csubmod)
+      #set(SUBM_ARGS ${SUBM_ARGS} -D${csubmod}=ON)
+      if ("x${submod}" STREQUAL "xunsupported")
+	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_UNSUPPORTED=ON)
+      endif()
+      if ("x${submod}" STREQUAL "xmotor")
+	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_MOTOR=ON)
+      endif()
+      if ("x${submod}" STREQUAL "xgsElasticity")
+	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_ELASTICITY=ON)#GSELASTICITY=ON
+      endif()
+      if ("x${submod}" STREQUAL "xgsExastencils")
+	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_EXASTENCILS=ON)
+      endif()
+    endforeach()
+  endif()
+    
+  foreach (submodule ${GISMO_SUBMODULES})
+    if( NOT EXISTS "${CTEST_SOURCE_DIRECTORY}/extensions/${submodule}/.git" )
+      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule update --init
+	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY})
+    endif()
+    if( NOT EXISTS "${CTEST_SOURCE_DIRECTORY}/extensions/${submodule}/.git" )
+      message(SEND_ERROR "Problem fetching ${submodule}")
+    endif()
+      
+    if(${UPDATE_MODULES})
+      set(CTEST_GIT_UPDATE_CUSTOM ${CTEST_UPDATE_COMMAND} pull)
+      unset(CTEST_GIT_UPDATE_OPTIONS)
+      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
+	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
+    endif()
+  endforeach()
+  
+  set(CTEST_GIT_UPDATE_CUSTOM ${CTEST_UPDATE_COMMAND} pull)
+  unset(CTEST_GIT_UPDATE_OPTIONS)
+endif()
+
+if("${CTEST_CMAKE_GENERATOR}" MATCHES "Make" OR "${CTEST_CMAKE_GENERATOR}" MATCHES "Ninja")
   set(CTEST_USE_LAUNCHERS 1)
-else ()
+else()
   set(CTEST_USE_LAUNCHERS 0)
-endif ()
+endif()
 
 set(ENV{CTEST_OUTPUT_ON_FAILURE} 1)
-set($ENV{LC_MESSAGES} "en_EN")
+set( $ENV{LC_MESSAGES} "en_EN")
 set(ENV{LC_ALL} C)# avoid non-ascii characters
 
-if (NOT DEFINED CTEST_TEST_MODEL AND DEFINED ENV{CTEST_TEST_MODEL})
+if(NOT DEFINED CTEST_TEST_MODEL AND DEFINED ENV{CTEST_TEST_MODEL})
   set(CTEST_TEST_MODEL $ENV{CTEST_TEST_MODEL})
-endif ()
-if (NOT DEFINED CTEST_CONFIGURATION_TYPE AND DEFINED ENV{CTEST_CONFIGURATION_TYPE})
+endif()
+if(NOT DEFINED CTEST_CONFIGURATION_TYPE AND DEFINED ENV{CTEST_CONFIGURATION_TYPE})
   set(CTEST_CONFIGURATION_TYPE $ENV{CTEST_CONFIGURATION_TYPE})
-endif ()
+endif()
 
-if (NOT DEFINED CTEST_SITE)
+if(NOT DEFINED CTEST_SITE)
   find_program(HOSTNAME_CMD NAMES hostname)
   execute_process(COMMAND ${HOSTNAME_CMD} OUTPUT_VARIABLE HOSTNAME OUTPUT_STRIP_TRAILING_WHITESPACE)
   set(CTEST_SITE "${HOSTNAME}")
-endif ()
+endif()
 
 # Name of this build
-if (NOT DEFINED CTEST_BUILD_NAME)
+if(NOT DEFINED CTEST_BUILD_NAME)
   find_program(UNAME NAMES uname)
   execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname OUTPUT_STRIP_TRAILING_WHITESPACE)
   execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu" OUTPUT_STRIP_TRAILING_WHITESPACE)
   set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CNAME}")
-endif ()
+endif()
 
-if (NOT CTEST_BUILD_JOBS)
+if(NOT CTEST_BUILD_JOBS)
   include(ProcessorCount)
   ProcessorCount(NPROC)
   #message("Number of processors: ${NPROC}")
-  if (${NPROC} EQUAL 0)
+  if(${NPROC} EQUAL 0)
     set(NPROC 1)
-  endif ()
-  if (${NPROC} GREATER 40)
+  endif()
+  if(${NPROC} GREATER 40)
     set(CTEST_BUILD_JOBS 20)
-  else ()
+  else()
     math(EXPR CTEST_BUILD_JOBS "(1+${NPROC})>>1")
     #message("CTEST_BUILD_JOBS ${CTEST_BUILD_JOBS}")
-  endif ()
-endif ()
+  endif()
+endif()
 
-if (NOT DEFINED CTEST_TEST_JOBS)
+if(NOT DEFINED CTEST_TEST_JOBS)
   set(CTEST_TEST_JOBS ${CTEST_BUILD_JOBS})
-endif ()
+endif()
 
-if (${CTEST_CMAKE_GENERATOR} MATCHES "Unix Makefiles"
+if(${CTEST_CMAKE_GENERATOR} MATCHES "Unix Makefiles"
     OR "${CTEST_CMAKE_GENERATOR}" MATCHES "Ninja")
   set(CTEST_BUILD_FLAGS "-j ${CTEST_BUILD_JOBS}")
   #message("Build flags: ${CTEST_BUILD_FLAGS}")
-endif ()
+endif()
 
 set(ENV{CTEST_USE_LAUNCHERS_DEFAULT} 1)
 
-set(update_retries 2)
+macro(get_git_status res)
+  execute_process(COMMAND ${CTEST_UPDATE_COMMAND} rev-parse --verify HEAD
+    WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    OUTPUT_VARIABLE gitHash)
+    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule
+      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+      OUTPUT_VARIABLE submoduleHashes)
+    set(${res} " ${gitHash} gismo\n${submoduleHashes}\n")
+endmacro(get_git_status)
 
-macro(git_reset_hard)
-  message("${CTEST_SOURCE_DIRECTORY} $ git reset --hard")
-  execute_process(COMMAND "git" "reset" "--hard"
-      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY})
-endmacro()
-
-function(pull_gismo updcount branch tries)
-  # git pull origin <branch> isn't the best solution
-  # it will be a fetch followed by a merge.
-  # set(CTEST_GIT_UPDATE_CUSTOM "git" "pull" "--squash" "origin" "${branch}")
-
-  git_checkout(${branch} "")
-  # default ctest_update will init all submodules,
-  # git pull will not do this
-  set(CTEST_GIT_UPDATE_CUSTOM "git" "pull")
-
-  while (${tries} GREATER_EQUAL 0)
-    # WARNING, ctest_update will change all submodule branches
-    # happens also with set(CTEST_GIT_UPDATE_CUSTOM "git" "pull")
-    ctest_update(RETURN_VALUE upcount)
-
-    if (${upcount} GREATER_EQUAL 0)
-      break()
-    else ()
-      message("git pull didn't worked with ${upcount} for ${CTEST_SOURCE_DIRECTORY}, ${tries} tries left.")
-      if (${tries} EQUAL 2)
-        # sometimes a hard reset could work
-        git_reset_hard()
-      elseif (${tries} EQUAL 1)
-        # upstream set?
-        set(CTEST_GIT_UPDATE_CUSTOM "git" "pull" "origin" ${branch})
-      else ()
-        # skip generation
-        message(SEND_ERROR "ERROR: git pull for ${CTEST_SOURCE_DIRECTORY} didn't worked!")
-      endif ()
-    endif ()
-
-    math(EXPR tries "${tries}-1")
-    ctest_sleep(5)  # 5 sec sleep
-  endwhile ()
-  set(${updcount} ${upcount} PARENT_SCOPE)
-endfunction()
-
-function(update_gismo_extension updcount submodule branch tries)
-  set(CTEST_SOURCE_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
-  pull_gismo(upcount ${branch} ${tries})
-  set(${updcount} ${upcount} PARENT_SCOPE) # set upcount to updcount on parent scope
-endfunction()
-
-function(update_gismo updcount)
-  if (${UPDATE_MODULES})
-    # pull gismo-stable
-    pull_gismo(upcount ${GISMO_BRANCH} ${update_retries})
-    print_submodules("Submodules after pull_gismo of gismo")
-
-    # in most tests they are now back on the hash that is registered in gismo
-    # but in the logs of nightly builds it looks like this happens not always,
-    # in this case, do a "git submodule update [--checkout] -N", this sets back to
-    # that one registered in gismo. It is only a checkout without a fetch (-N). So
-    # updcount should still be calculated afterward with ctest_update() of "git pull".
-
-    # pull submodules - master branch
-    foreach (submodule ${submodules})
-      # message("update_gismo_extension(upc ${submodule} \"master\" ${update_retries})")
-      update_gismo_extension(upc ${submodule} "master" ${update_retries})
-      # print_submodules("Submodules after pull_gismo of ${submodule}")
-      math(EXPR upcount "${upcount} + ${upc}")
-    endforeach ()
-  else ()
-    git_checkout(${GISMO_BRANCH} "")
-    # does ctest_update() init submodules now or not?
-    # saw both on tests (with set(CTEST_GIT_INIT_SUBMODULES OFF) was set!)
-    ctest_update(RETURN_VALUE upcount)
-    print_submodules("Submodules after native ctest_update(): ${upcount}")
-  endif ()
-
-  set(${updcount} ${upcount} PARENT_SCOPE) # set upcount to updcount on parent scope
+function(update_gismo ug_ucount)
+  set(ug_ucount 0)
+  #this should be last.
+  ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY} RETURN_VALUE updcount)
+  if(${UPDATE_MODULES})
+    foreach (submodule ${GISMO_SUBMODULES})
+      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
+	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
+      ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule} RETURN_VALUE ug_upd_sm)
+      if (${ug_upd_sm} GREATER 0)
+	math(EXPR ug_ucount "${ug_ucount} + ${ug_upd_sm}")
+      endif()
+      if(${ug_upd_sm} LESS 0)
+        message(SEND_ERROR "Git update submodule error")	
+      endif()
+    endforeach()
+  endif()
+  #if (${ug_ucount} GREATER 0) endif()
+  get_git_status(gitstatus)
+  file(WRITE ${CTEST_SCRIPT_DIRECTORY}/gitstatus.txt ${gitstatus})
 endfunction(update_gismo)
 
 macro(run_ctests)
   # Reset CTestConfig variables
-  if (DEFINED PROJECT_NAME)
+  if(DEFINED PROJECT_NAME)
     set(CTEST_PROJECT_NAME ${PROJECT_NAME})
-    if (NOT DEFINED DROP_LOCATION)
+    if(NOT DEFINED DROP_LOCATION)
       set(DROP_LOCATION "/submit.php?project=${PROJECT_NAME}")
-    endif ()
-  endif ()
-  if (DEFINED DROP_LOCATION)
+    endif()
+  endif()
+  if(DEFINED DROP_LOCATION)
     set(CTEST_DROP_LOCATION ${DROP_LOCATION})
-  endif ()
-  if (DEFINED DROP_SITE)
+  endif()
+  if(DEFINED DROP_SITE)
     set(CTEST_DROP_SITE ${DROP_SITE})
-  endif ()
-  if (DEFINED DROP_METHOD)
+  endif()
+  if(DEFINED DROP_METHOD)
     set(CTEST_DROP_METHOD ${DROP_METHOD})
-  endif ()
+  endif()
   #set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS}) #!Dangerous!
 
-  ctest_configure(OPTIONS "${CMAKE_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}")
+  ctest_configure(OPTIONS "${CMAKE_ARGS};${SUBM_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}")
 
-  ctest_submit(PARTS Configure Update)
+  ctest_submit(PARTS Configure Update Notes)
 
   #"${CMAKE_VERSION}" VERSION_LESS "3.10"
-  if (NOT "x${LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
+  if(NOT "x${LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
 
-    foreach (subproject ${LABELS_FOR_SUBPROJECTS})
+    foreach(subproject ${LABELS_FOR_SUBPROJECTS})
       #message("Subproject ${subproject}")
       set_property(GLOBAL PROPERTY SubProject ${subproject}) #cdash subproject
       set_property(GLOBAL PROPERTY Label ${subproject})      #test selection
@@ -535,23 +530,23 @@ macro(run_ctests)
       if ("${subproject}" STREQUAL "gismo")
         ctest_build(TARGET doc-snippets APPEND)
         ctest_submit(PARTS Build)
-      endif ()
+      endif()
       ctest_test(INCLUDE_LABEL "${subproject}" PARALLEL_LEVEL ${CTEST_TEST_JOBS})
       ctest_submit(PARTS Test)
 
-      if (DO_COVERAGE)
+      if(DO_COVERAGE)
         ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" LABELS "${subproject}" APPEND)
         ctest_submit(PARTS Coverage)
-      endif ()
+      endif()
 
-      if (NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
+      if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
         ctest_memcheck(INCLUDE_LABEL "${subproject}" APPEND)
         ctest_submit(PARTS MemCheck)
-      endif ()
+      endif()
 
-    endforeach ()
+    endforeach()
 
-  else () # No subprojects
+  else() # No subprojects
 
     ctest_build(TARGET gsUnitTest APPEND) # for older versions of ninja
     ctest_submit(PARTS Build)
@@ -562,134 +557,43 @@ macro(run_ctests)
     ctest_test(PARALLEL_LEVEL ${CTEST_TEST_JOBS})
     ctest_submit(PARTS Test)
 
-    if (DO_COVERAGE)
+    if(DO_COVERAGE)
       #message("Running coverage..")
       ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" APPEND)
       ctest_submit(PARTS Coverage)
-    endif ()
+    endif()
 
-    if (NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
+    if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
       #message("Running memcheck..")
       ctest_memcheck()
       ctest_submit(PARTS MemCheck)
-    endif ()
+    endif()
 
-  endif ()
+  endif()
 endmacro(run_ctests)
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
 
-# create submodules list, based on LABELS_FOR_SUBPROJECTS
-# other way would be string(FIND CMAKE_ARGS "GISMO_<submodule>=ON" position)
-# with position >= 0 (-1 if not found)
-if (NOT "x${LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
-  foreach (subproject ${LABELS_FOR_SUBPROJECTS})
-    if ("x${subproject}" STREQUAL "xgismo_dev")
-      list(APPEND submodules unsupported)
-    endif ()
-    if ("x${subproject}" STREQUAL "xmotor")
-      list(APPEND submodules motor)
-    endif ()
-    if ("x${subproject}" STREQUAL "xelasticity")
-      list(APPEND submodules gsElasticity)
-    endif ()
-    if ("x${subproject}" STREQUAL "xexastencils")
-      list(APPEND submodules gsExaStencils)
-    endif ()
-  endforeach ()
-endif ()
+set(CTEST_NOTES_FILES ${CTEST_SCRIPT_DIRECTORY}/gitstatus.txt)
 
-macro(print_submodules message)
-  message(${message})
-  execute_process(COMMAND git rev-parse --verify HEAD
-      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-      OUTPUT_VARIABLE gitHash)
-  execute_process(COMMAND git "submodule"
-      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-      OUTPUT_VARIABLE submoduleHashes)
-  string(SUBSTRING ${gitHash} 0 40 gitHash)
-
-  message("Git Hashes at ${CTEST_ELAPSED_TIME}:")
-  message(" ${gitHash} /")
-  message(${submoduleHashes})
-endmacro()
-
-macro(git_checkout branch directory)
-  # message("${CTEST_SOURCE_DIRECTORY}${directory} $ git checkout ${branch}")
-  execute_process(COMMAND git "checkout" ${branch}
-      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}${directory})
-endmacro()
-
-function(repair_repo inittrigger)
-  # repair git repo of broken cdash servers
-  # read out gismo_src folders "version" for ctest_script
-  if (EXISTS ${CTEST_SOURCE_DIRECTORY}/cdashv)
-    file(READ ${CTEST_SOURCE_DIRECTORY}/cdashv repoversion)
-  else ()
-    set(repoversion 0)
-  endif ()
-
-  # deinit and init gismo_src, only if needed
-  if (${repoversion} LESS ${inittrigger})
-    ## deinit submodules
-    message("repair triggered")
-    print_submodules("Submodules before repair:")
-    message("deinit all submodules")
-    execute_process(COMMAND git "submodule" "deinit" "--all" "--force"
-        WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY})
-    # git_checkout(${GISMO_BRANCH} "")
-
-    foreach (submodule ${submodules})
-      message("init submodule: ${submodule}")
-      execute_process(COMMAND git "submodule" "update" "--init" "extensions/${submodule}"
-          WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY})
-      # git_checkout(master /extensions/${submodule})
-    endforeach ()
-
-    ## write cdashv with lastest inittrigger
-    file(WRITE ${CTEST_SOURCE_DIRECTORY}/cdashv ${inittrigger})
-    print_submodules("Submodules after repair:")
-  else ()
-    message("no repair needed")
-  endif ()
-endfunction()
-
-# list(LENGTH submodules count)
-# message("Found ${count} submodules.")
-
-# starts repo repair for all cdashv < number
-repair_repo(1)
-
-if (NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
+if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
   ctest_start(${CTEST_TEST_MODEL})
-  if (NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
-
-    print_submodules("Before ctest_update:")
+  if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
     update_gismo(updcount)
-    print_submodules("After ctest_update:")
-    message("Updated ${updcount} files.")
-    # message(sourcedir: ${CTEST_SOURCE_DIRECTORY})
-
-  endif ()
+  endif()
   run_ctests()
 
-else () #continuous model
+else() #continuous model
 
-  while (${CTEST_ELAPSED_TIME} LESS ${test_runtime})
+  while(${CTEST_ELAPSED_TIME} LESS ${test_runtime})
     set(START_TIME ${CTEST_ELAPSED_TIME})
     ctest_start(${CTEST_TEST_MODEL})
-
-    print_submodules("Before ctest_update:")
     update_gismo(updcount)
-    print_submodules("After ctest_update:")
-    message("Updated ${updcount} files.")
-
-    if (${updcount} GREATER 0)
+    if( ${updcount} GREATER 0 )
       run_ctests()
-    endif ()
+    endif()
     ctest_sleep(${START_TIME} 300 ${CTEST_ELAPSED_TIME})
-  endwhile ()
-  message("stop continuous build after ${CTEST_ELAPSED_TIME} seconds.")
+  endwhile()
 
-endif (NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
+endif(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
