@@ -474,9 +474,7 @@ macro(get_git_status res)
 endmacro(get_git_status)
 
 macro(update_gismo ug_ucount)
-  set(${ug_ucount} 0)
-  #this should be last.
-  ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY} RETURN_VALUE updcount)
+  ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY} RETURN_VALUE ${ug_ucount})
   if(${UPDATE_MODULES})
     foreach (submodule ${GISMO_SUBMODULES})
       execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
