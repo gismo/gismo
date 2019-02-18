@@ -473,7 +473,7 @@ macro(get_git_status res)
     set(${res} " ${gitHash} gismo\n${submoduleHashes}\n")
 endmacro(get_git_status)
 
-function(update_gismo ug_ucount)
+macro(update_gismo ug_ucount)
   set(${ug_ucount} 0)
   #this should be last.
   ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY} RETURN_VALUE updcount)
@@ -493,7 +493,7 @@ function(update_gismo ug_ucount)
   #if (${ug_ucount} GREATER 0) endif()
   get_git_status(gitstatus)
   file(WRITE ${CTEST_SCRIPT_DIRECTORY}/gitstatus.txt ${gitstatus})
-endfunction(update_gismo)
+endmacro(update_gismo)
 
 macro(run_ctests)
   # Reset CTestConfig variables
