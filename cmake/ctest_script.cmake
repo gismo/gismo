@@ -385,7 +385,7 @@ if("x${UPDATE_TYPE}" STREQUAL "xgit")
     
   foreach (submodule ${GISMO_SUBMODULES})
     if( NOT EXISTS "${CTEST_SOURCE_DIRECTORY}/extensions/${submodule}/.git" )
-      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule update --init
+      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule update --init extensions/${submodule}
 	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY})
     endif()
     if( NOT EXISTS "${CTEST_SOURCE_DIRECTORY}/extensions/${submodule}/.git" )
