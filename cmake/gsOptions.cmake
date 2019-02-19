@@ -9,6 +9,16 @@
 message ("Configuration (cmake ${CMAKE_VERSION}):")
 
 message ("  Source folder:          ${CMAKE_SOURCE_DIR}")
+if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
+  find_package(Git)
+  execute_process(COMMAND ${GIT_EXECUTABLE} log --pretty=format:%h -n 1
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    RESULT_VARIABLE isGit
+    OUTPUT_VARIABLE gitHash)
+  if(${isGit} EQUAL 0)
+    message("  Git commit:             ${gitHash}")
+  endif()
+endif()
 message ("  CMAKE_BUILD_TYPE        ${CMAKE_BUILD_TYPE}")
 message ("  CMAKE_C_COMPILER        ${CMAKE_C_COMPILER}")
 message ("  CMAKE_CXX_COMPILER      ${CMAKE_CXX_COMPILER}")
@@ -200,6 +210,9 @@ if (GISMO_WITH_VTK)
 message ("  GISMO_WITH_VTK          ${GISMO_WITH_VTK}")
 endif()
 
+if(${isGit} EQUAL 0)
+  message(STATUS "Type \"${GIT_EXECUTABLE} submodule\" to see the state of submodules")
+endif()
 
 #https://www.threadingbuildingblocks.org/documentation
 #message ("  GISMO_WITH_ITBB          ${GISMO_WITH_ITBB}")

@@ -463,14 +463,16 @@ endif()
 set(ENV{CTEST_USE_LAUNCHERS_DEFAULT} 1)
 
 macro(get_git_status res)
-  execute_process(COMMAND ${CTEST_UPDATE_COMMAND} rev-parse --verify HEAD
-    WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    OUTPUT_VARIABLE gitHash)
+  if(EXISTS "${CTEST_SOURCE_DIRECTORY}/.git" )
+    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} rev-parse --verify HEAD
+      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      OUTPUT_VARIABLE gitHash)
     execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule
       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
       OUTPUT_VARIABLE submoduleHashes)
     set(${res} " ${gitHash} gismo\n${submoduleHashes}\n")
+  endif()
 endmacro(get_git_status)
 
 macro(update_gismo ug_ucount)
