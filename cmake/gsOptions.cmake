@@ -210,7 +210,7 @@ if (GISMO_WITH_VTK)
 message ("  GISMO_WITH_VTK          ${GISMO_WITH_VTK}")
 endif()
 
-if(${isGit} EQUAL 0)
+if(DEFINED ${isGit} AND ${isGit} EQUAL 0)
   message(STATUS "Type \"${GIT_EXECUTABLE} submodule\" to see the state of submodules")
 endif()
 
