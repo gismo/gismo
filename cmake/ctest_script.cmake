@@ -492,7 +492,7 @@ macro(update_gismo ug_ucount)
   endif()
   #if (${ug_ucount} GREATER 0) endif()
   get_git_status(gitstatus)
-  file(WRITE ${CTEST_SCRIPT_DIRECTORY}/gitstatus.txt ${gitstatus})
+  file(WRITE ${CTEST_BINARY_DIRECTORY}/gitstatus.txt ${gitstatus})
 endmacro(update_gismo)
 
 macro(run_ctests)
@@ -574,7 +574,7 @@ endmacro(run_ctests)
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
 
-set(CTEST_NOTES_FILES ${CTEST_SCRIPT_DIRECTORY}/gitstatus.txt)
+set(CTEST_NOTES_FILES ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
 
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
