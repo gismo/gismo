@@ -393,15 +393,14 @@ if("x${UPDATE_TYPE}" STREQUAL "xgit")
     endif()
       
     if(${UPDATE_MODULES})
-      set(CTEST_GIT_UPDATE_CUSTOM ${CTEST_UPDATE_COMMAND} pull)
-      unset(CTEST_GIT_UPDATE_OPTIONS)
       execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
 	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
     endif()
   endforeach()
-  
-  set(CTEST_GIT_UPDATE_CUSTOM ${CTEST_UPDATE_COMMAND} pull)
-  unset(CTEST_GIT_UPDATE_OPTIONS)
+  if(${UPDATE_MODULES})
+    set(CTEST_GIT_UPDATE_CUSTOM ${CTEST_UPDATE_COMMAND} pull)
+    unset(CTEST_GIT_UPDATE_OPTIONS)
+  endif()
 endif()
 
 if("${CTEST_CMAKE_GENERATOR}" MATCHES "Make" OR "${CTEST_CMAKE_GENERATOR}" MATCHES "Ninja")
@@ -470,6 +469,7 @@ macro(get_git_status res)
       OUTPUT_VARIABLE gitHash)
     execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule
       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+      OUTPUT_STRIP_TRAILING_WHITESPACE
       OUTPUT_VARIABLE submoduleHashes)
     set(${res} " ${gitHash} gismo\n${submoduleHashes}\n")
   endif()
@@ -477,11 +477,13 @@ endmacro(get_git_status)
 
 macro(update_gismo ug_ucount)
   ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY} RETURN_VALUE ${ug_ucount})
+  set(ug_updlog " ${${ug_ucount}} gismo\n")
   if(${UPDATE_MODULES})
     foreach (submodule ${GISMO_SUBMODULES})
       execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
 	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
       ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule} RETURN_VALUE ug_upd_sm)
+      set(ug_updlog "${ug_updlog} ${${ug_ucount}} extensions/${submodule}\n")
       if (${ug_upd_sm} GREATER 0)
 	math(EXPR ${ug_ucount} "${${ug_ucount}} + ${ug_upd_sm}")
       endif()
@@ -490,9 +492,8 @@ macro(update_gismo ug_ucount)
       endif()
     endforeach()
   endif()
-  #if (${ug_ucount} GREATER 0) endif()
   get_git_status(gitstatus)
-  file(WRITE ${CTEST_BINARY_DIRECTORY}/gitstatus.txt ${gitstatus})
+  file(WRITE ${CTEST_BINARY_DIRECTORY}/gitstatus.txt "Commit:\n${gitstatus}Updates:\n${ug_updlog}")
 endmacro(update_gismo)
 
 macro(run_ctests)
