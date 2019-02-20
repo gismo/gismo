@@ -2,12 +2,12 @@
 
     @brief Provides declaration of MultiBasis class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -36,7 +36,7 @@ gsMultiBasis<T>::gsMultiBasis( const gsMultiPatch<T> & mpatch, bool NoRational)
 {
     m_bases = mpatch.basesCopy(NoRational);
 }
-  
+
 template<class T>
 gsMultiBasis<T>::gsMultiBasis( const gsMultiBasis& other )
 : Base(other),
@@ -71,16 +71,16 @@ std::ostream& gsMultiBasis<T>::print( std::ostream& os ) const
     return os;
 }
 
- 
+
 template<class T>
-void gsMultiBasis<T>::addBasis( gsBasis<T> * g ) 
+void gsMultiBasis<T>::addBasis( gsBasis<T> * g )
 {
     //gsDebug<< "TO DO\n";
-    if ( m_topology.dim() == -1 ) 
+    if ( m_topology.dim() == -1 )
     {
         m_topology.setDim( g->dim() );
-    } 
-    else 
+    }
+    else
     {
         assert( g->dim() == m_topology.dim() );
     }
@@ -92,11 +92,11 @@ void gsMultiBasis<T>::addBasis( gsBasis<T> * g )
 template<class T>
 void gsMultiBasis<T>::addBasis(typename gsBasis<T>::uPtr g)
 {
-    if ( m_topology.dim() == -1 ) 
+    if ( m_topology.dim() == -1 )
     {
         m_topology.setDim( g->dim() );
-    } 
-    else 
+    }
+    else
     {
         GISMO_ASSERT( g->dim() == m_topology.dim(), "Dimensions do not match.");
     }
@@ -113,10 +113,10 @@ int gsMultiBasis<T>::findBasisIndex( gsBasis<T>* g ) const
     assert( it != m_bases.end() );
     return it - m_bases.begin();
 }
-  
+
 template<class T>
 void gsMultiBasis<T>::addInterface( gsBasis<T>* g1, boxSide s1,
-                                    gsBasis<T>* g2, boxSide s2 ) 
+                                    gsBasis<T>* g2, boxSide s2 )
 {
     int p1 = findBasisIndex( g1 );
     int p2 = findBasisIndex( g2 );
@@ -296,12 +296,12 @@ int gsMultiBasis<T>::minDegree(int k) const
 }
 
 template<class T>
-void gsMultiBasis<T>::getMapper(bool conforming, 
-                                gsDofMapper & mapper, 
+void gsMultiBasis<T>::getMapper(bool conforming,
+                                gsDofMapper & mapper,
                                 bool finalize) const
 {
     mapper = gsDofMapper(*this);//.init(*this);
-    
+
     if ( conforming )  // Conforming boundaries ?
     {
         for ( gsBoxTopology::const_iiterator it = m_topology.iBegin();
@@ -310,20 +310,20 @@ void gsMultiBasis<T>::getMapper(bool conforming,
             matchInterface(*it,mapper);
         }
     }
-    
+
     if (finalize)
         mapper.finalize();
 }
 
 template<class T>
-void gsMultiBasis<T>::getMapper(bool conforming, 
-                                const gsBoundaryConditions<T> & bc, 
+void gsMultiBasis<T>::getMapper(bool conforming,
+                                const gsBoundaryConditions<T> & bc,
                                 int unk,
-                                gsDofMapper & mapper, 
+                                gsDofMapper & mapper,
                                 bool finalize) const
 {
     mapper = gsDofMapper(*this, bc, unk); //.init(*this, bc, unk);
-    
+
     if ( conforming ) // Conforming boundaries ?
     {
         for ( gsBoxTopology::const_iiterator it = m_topology.iBegin();
@@ -336,7 +336,7 @@ void gsMultiBasis<T>::getMapper(bool conforming,
     if (finalize)
         mapper.finalize();
 }
-    
+
 template<class T>
 void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper & mapper) const
 {
@@ -612,8 +612,6 @@ bool gsMultiBasis<T>::repairInterfaceFindElements(
 
     return ( ( refEltsFirst.size() > 0 ) || ( refEltsSecond.size() > 0 ) );
 }
-
-
 
 template<class T>
 bool gsMultiBasis<T>::repairInterface2d( const boundaryInterface & bi )
