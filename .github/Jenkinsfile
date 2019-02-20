@@ -1,17 +1,19 @@
 // Jenkins script for G+Smo, Angelos Mantzaflaris, 2019
-pipeline {
-    //agent any
-    agent { label 'win7 && ubuntu && mavericks' }
-    stages {
-        stage('Build') {
-            steps {
-                echo 'Running build stage'
-                sh 'mkdir -p build'
-                dir('build'){
-                    sh 'cmake ../ -DGISMO_BUILD_UNITTESTS=ON'
-                    sh 'ctest --output-on-failure -C RelWithDebinfo -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit'
-                }
-            }
-        }
-    }
+
+def labels = ['ubuntu', 'mavericks', 'win7']
+def builders = [:]
+for (x in labels)
+{
+    def label = x
+    builders[label] = {  node(label) {buildGismo()}  }  
+}
+
+parallel builders
+
+void buildGismo() {
+    echo 'Running build stage'
+    sh 'mkdir -p build'
+    dir('build'){
+    sh 'cmake ../ -DGISMO_BUILD_UNITTESTS=ON'
+    sh 'ctest --output-on-failure -C RelWithDebinfo -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit'
 }
