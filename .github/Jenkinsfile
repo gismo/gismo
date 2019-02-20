@@ -1,0 +1,15 @@
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps {
+                echo 'Running build stage'
+                sh 'mkdir build'
+                dir('build'){
+                    sh 'cmake ..-DGISMO_BUILD_UNITTESTS=ON'
+                    sh 'ctest --output-on-failure -C RelWithDebinfo -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit'
+                }
+            }
+        }
+    }
+}
