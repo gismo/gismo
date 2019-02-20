@@ -1,5 +1,12 @@
+// Jenkins script for G+Smo, Angelos Mantzaflaris, 2019
 pipeline {
-    agent any
+    //agent any
+    agent { label 'allsystems' }
+    node {
+        label 'mavericks'
+        customWorkspace '/some/other/path'
+    }
+}
     stages {
         stage('Build') {
             steps {
