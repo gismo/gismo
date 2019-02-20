@@ -5,14 +5,20 @@ def builders = [:]
 for (x in labels)
 {
     def label = x
-    builders[label] = {  node(label) {buildGismo()}  }  
+    builders[label] =
+    {
+        node(label)
+	{
+	    checkout scm
+	    buildGismo()
+	}
+    }
 }
 
 parallel builders
 
 void buildGismo()
 {
-    echo 'Running build stage'
     sh 'mkdir -p build'
     dir('build')
     {
