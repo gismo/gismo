@@ -1,7 +1,7 @@
 // Jenkins script for G+Smo, Angelos Mantzaflaris, 2019
 pipeline {
     //agent any
-    agent { label 'allsystems' }
+    agent { label 'win7 && ubuntu && mavericks' }
     stages {
         stage('Build') {
             steps {
