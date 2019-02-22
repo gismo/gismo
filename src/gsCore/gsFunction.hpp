@@ -403,7 +403,7 @@ void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
     this->compute(InOut.points, InOut);
     
     // Fill extra data
-    typename gsFunctionSet<T>::dim_t Dim = this->dimensions();
+    std::pair<int,int> Dim = this->dimensions();
 
     GISMO_ASSERT(Dim.first<10,             "Domain dimension is too big");
     GISMO_ASSERT(Dim.first<=Dim.second, "Singular map: target dimension is lower then the domain dimension");

@@ -217,7 +217,6 @@ public:
     /// Unique pointer for gsFunctionSet
     typedef memory::unique_ptr< gsFunctionSet > uPtr;
 
-    typedef std::pair<int,int> dim_t;
 public:
 
     gsFunctionSet();
@@ -539,7 +538,7 @@ public:
       @brief Dimension of domain and target
       @return the pair of integers domainDim() and targetDim()
     */
-    dim_t dimensions() const {return std::make_pair(domainDim(),targetDim());}
+    std::pair<int,int> dimensions() const {return std::make_pair(domainDim(),targetDim());}
     
     /**
       @brief size

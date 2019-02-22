@@ -66,8 +66,6 @@ public:
 
     /// Unique pointer for gsFunction
     typedef memory::unique_ptr< gsFunction > uPtr;
-
-    typedef typename Base::dim_t dim_t;
     
     using Base::support;
     using Base::domainDim;
