@@ -35,5 +35,5 @@ env.UNIX = isUnix()
 def cmd (acmd)
 {
     if (Boolean.valueOf(env.UNIX)) { sh acmd } else { bat acmd}
-    #if (isUnix()) { sh acmd } else { bat acmd}
+    //if (isUnix()) { sh acmd } else { bat acmd}
 }
