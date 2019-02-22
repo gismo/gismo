@@ -19,10 +19,10 @@ parallel builders
 
 void buildGismo()
 {
-    sh 'mkdir -p build'
+    mkdir -p build
     dir('build')
     {
-    sh 'cmake ../ -DGISMO_BUILD_UNITTESTS=ON'
-    sh 'ctest --output-on-failure -C RelWithDebinfo -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit'
+    cmake ../ -DGISMO_BUILD_UNITTESTS=ON
+    ctest --output-on-failure -C RelWithDebinfo -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
     }
 }
