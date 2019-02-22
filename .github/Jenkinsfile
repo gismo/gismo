@@ -22,7 +22,6 @@ parallel builders
 // Building G+Smo
 void buildGismo()
 {
-    cmd 'mkdir -p build'
     dir('build')
     {
         cmd 'cmake ../ -DGISMO_BUILD_UNITTESTS=ON'
