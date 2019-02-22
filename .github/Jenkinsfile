@@ -15,14 +15,20 @@ for (x in labels)
     }
 }
 
+def cmd (acmd)
+{
+    if (isUnix()) { sh acmd }
+    else { bat acmd}
+}
+
 parallel builders
 
 void buildGismo()
 {
-    mkdir -p build
+    cmd 'mkdir -p build'
     dir('build')
     {
-    cmake ../ -DGISMO_BUILD_UNITTESTS=ON
-    ctest --output-on-failure -C RelWithDebinfo -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
+        cmd 'cmake ../ -DGISMO_BUILD_UNITTESTS=ON'
+        cmd 'ctest --output-on-failure -C RelWithDebinfo -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit'
     }
 }
