@@ -189,9 +189,9 @@ public:
 
 public:
 
-    int domainDim () const {return m_bases.front()->domainDim();}
+    dim_t domainDim () const {return m_bases.front()->domainDim();}
 
-    int targetDim () const {return m_bases.front()->targetDim();}
+    dim_t targetDim () const {return m_bases.front()->targetDim();}
 
     /// Swap with another gsMultiBasis.
     void swap(gsMultiBasis& other)

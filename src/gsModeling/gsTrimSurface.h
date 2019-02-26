@@ -85,7 +85,7 @@ public:
     
     gsBasis<T> & basis() const { return m_surface->basis(); }
 
-    int geoDim() const { return m_surface->geoDim(); }
+    dim_t geoDim() const { return m_surface->geoDim(); }
 
     //bool isProjective() const { return m_surface->isProjective(); }
     

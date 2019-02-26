@@ -61,7 +61,7 @@ public:
 private: virtual gsCurve * clone_impl() const = 0;
 public: inline uPtr clone() const { return uPtr(clone_impl()); }
 
-    int domainDim() const { return 1; }
+    dim_t domainDim() const { return 1; }
     
     int degree() const;
 

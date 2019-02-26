@@ -66,7 +66,7 @@ void normal(const gsMapData<T> & md, index_t k, gsVector<T> & result)
 
     T alt_sgn(1.0);
     typename gsMatrix<T>::RowMinorMatrixType minor;
-    for (int i = 0; i <= md.dim.first; ++i) // for all components of the normal vector
+    for (dim_t i = 0; i <= md.dim.first; ++i) // for all components of the normal vector
     {
         Jk.rowMinor(i, minor);
         result[i] = alt_sgn * minor.determinant();
@@ -122,7 +122,7 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
 
         T alt_sgn = sgn;
         typename gsMatrix<T>::FirstMinorMatrixType minor;
-        for (int i = 0; i != md.dim.first; ++i) // for all components of the normal
+        for (dim_t i = 0; i != md.dim.first; ++i) // for all components of the normal
         {
             Jk.firstMinor(i, dir, minor);
             result[i] = alt_sgn * minor.determinant();
@@ -134,7 +134,7 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
 template<typename T>
 void secDerToHessian(typename gsMatrix<T>::constRef & secDers,
                      gsMatrix<T> & hessian,
-                     int parDim)
+                     dim_t parDim)
 {
     switch (parDim)
     {
@@ -169,7 +169,7 @@ void secDerToHessian(typename gsMatrix<T>::constRef & secDers,
 template<typename T>
 void hessianToSecDer (const gsMatrix<T> & hessian,
                       typename gsMatrix<T>::Row secDers,
-                      int parDim)
+                      dim_t parDim)
 {
     switch (parDim)
     {
@@ -197,10 +197,10 @@ void hessianToSecDer (const gsMatrix<T> & hessian,
 template<typename T>
 void secDerToTensor(typename Eigen::DenseBase<Eigen::Map<const Eigen::Matrix<T, -1, -1>, 0, Eigen::Stride<0, 0> > >::ConstColXpr & secDers,
                     gsMatrix<T> * a,
-                    int parDim, int geoDim)
+                    dim_t parDim, dim_t geoDim)
 {
-    const int dim = parDim * (parDim + 1) / 2;
-    for (int i = 0; i < geoDim; ++i)
+    const index_t dim = parDim * (parDim + 1) / 2;
+    for (dim_t i = 0; i < geoDim; ++i)
         secDerToHessian<T>(secDers.segment(i * dim, dim), a[i], parDim);
 }
 
@@ -212,16 +212,16 @@ void transformDeriv2Hgrad(const gsMapData<T> & md,
                           gsMatrix<T> &        result)
 {
     //todo: check me
-    const int ParDim = md.dim.first;
-    const int GeoDim = md.dim.second;
+    const dim_t ParDim = md.dim.first;
+    const dim_t GeoDim = md.dim.second;
     GISMO_ASSERT(
         (ParDim == 1 && (GeoDim == 1 || GeoDim == 2 || GeoDim == 3))
         || (ParDim == 2 && (GeoDim == 2 || GeoDim == 3))
         || (ParDim == 3 && GeoDim == 3), "No implementation for this case");
 
     // important sizes
-    const int parSecDirSize = ParDim * (ParDim + 1) / 2;
-    const int fisSecDirSize = GeoDim * (GeoDim + 1) / 2;
+    const index_t parSecDirSize = ParDim * (ParDim + 1) / 2;
+    const index_t fisSecDirSize = GeoDim * (GeoDim + 1) / 2;
 
     // allgrads
     const index_t numGrads = funcGrad.rows() / ParDim;
@@ -244,7 +244,7 @@ void transformDeriv2Hgrad(const gsMapData<T> & md,
     std::vector<gsMatrix<T> > DDG(GeoDim);
     secDerToTensor<T>(secDer.col(0), DDG.data(), ParDim, GeoDim);
     gsMatrix<T> HGT(GeoDim, fisSecDirSize);
-    for (int i = 0; i < GeoDim; ++i)
+    for (dim_t i = 0; i < GeoDim; ++i)
         hessianToSecDer<T>(JM1 * DDG[i] * JMT, HGT.row(i), GeoDim);
 
     // Lastpart: substract part2 from part1

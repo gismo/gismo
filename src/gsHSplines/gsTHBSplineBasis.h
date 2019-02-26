@@ -497,7 +497,7 @@ private:
 public:
 
   /// @brief Returns the dimension of the parameter space
-  int domainDim() const { return d; }
+  dim_t domainDim() const { return d; }
 
     GISMO_CLONE_FUNCTION(gsTHBSplineBasis)
 

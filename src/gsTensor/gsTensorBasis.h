@@ -100,7 +100,7 @@ public:
 public:
 
     // Returns the dimension of the basis
-    int domainDim() const { return Dim; }
+    dim_t domainDim() const { return Dim; }
 
     /// Returns the number of elements in the basis
     index_t size() const 

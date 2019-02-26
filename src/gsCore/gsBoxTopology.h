@@ -54,9 +54,9 @@ public:
 public:
 
     /// Default constructor
-    gsBoxTopology(int d = -1, int n = 0) : m_dim(d), nboxes(n) { }
+    gsBoxTopology(dim_t d = -1, int n = 0) : m_dim(d), nboxes(n) { }
 
-    gsBoxTopology( int d, unsigned boxes,
+    gsBoxTopology( dim_t d, unsigned boxes,
             const bContainer & boundary,
             const ifContainer & interfaces )
         : m_dim(d), nboxes(boxes), m_boundary(boundary), m_interfaces(interfaces) { }
@@ -87,10 +87,10 @@ public:
     int nBoxes() const       { return nboxes; }
 
     /// Dimension of the boxes
-    int dim  () const       { return m_dim; }
+    dim_t dim  () const       { return m_dim; }
 
     /// Set the dimension of the boxes
-    void setDim  (int i)
+    void setDim  (dim_t i)
     { 
         GISMO_ASSERT(m_dim==-1 || i==m_dim, "Changing box dimension.");
         m_dim = i; 
@@ -283,7 +283,7 @@ protected:
     // Data members
 
     /// Dimension of the boxes held
-    int m_dim;
+    dim_t m_dim;
 
     /// Number of boxes held
     int nboxes;

@@ -66,7 +66,7 @@ public:
     /// \brief Dimension of the (source) domain and the target (image) space.
     /// dim.first refers to ParDim, dim.second refers to GeoDim
     /// @return For \f$f:\mathbb{R}^n\rightarrow\mathbb{R}^m\f$ returns \f$n\f$.
-    std::pair<int,int> dim;
+    std::pair<dim_t, dim_t> dim;
 
 public:
     /**

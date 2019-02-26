@@ -583,7 +583,7 @@ public:
         return os; 
     }
 
-    int parDim() const { return dim; }   
+    dim_t parDim() const { return dim; }
 
     /// Number of patches    
     index_t nPatches() const { return this->size(); }
