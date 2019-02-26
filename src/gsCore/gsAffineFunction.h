@@ -66,8 +66,8 @@ public:
     gsAffineFunction(const gsVector<index_t> &directions, const gsVector<bool> &orientation, const gsMatrix<T> &box1, const gsMatrix<T> &box2);
 
 
-    virtual int domainDim() const;
-    virtual int targetDim() const;
+    virtual dim_t domainDim() const;
+    virtual dim_t targetDim() const;
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
     virtual void eval_component_into(const gsMatrix<T>& u,
                                      const index_t comp,
