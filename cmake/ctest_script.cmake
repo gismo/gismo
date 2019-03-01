@@ -341,7 +341,7 @@ if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
     endif()
     execute_process(COMMAND ${CTEST_UPDATE_COMMAND} clone --depth 1 --branch ${GISMO_BRANCH} ${gismo_url} ${CTEST_SOURCE_DIRECTORY})
     unset(CTEST_CHECKOUT_COMMAND)
-    
+
   elseif("x${UPDATE_TYPE}" STREQUAL "xsvn")
     if("x${GISMO_BRANCH}" STREQUAL "xstable") # stable
       set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} checkout https://github.com/gismo/gismo.git/trunk ${CTEST_SOURCE_DIRECTORY}")
@@ -363,7 +363,7 @@ if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
 endif()
 
 if("x${UPDATE_TYPE}" STREQUAL "xgit")
-  
+
   if (NOT "x${GISMO_SUBMODULES}" STREQUAL "x")
     foreach (submod ${GISMO_SUBMODULES})
       #string(TOUPPER ${submod} csubmod)
@@ -382,7 +382,7 @@ if("x${UPDATE_TYPE}" STREQUAL "xgit")
       endif()
     endforeach()
   endif()
-    
+
   foreach (submodule ${GISMO_SUBMODULES})
     if( NOT EXISTS "${CTEST_SOURCE_DIRECTORY}/extensions/${submodule}/.git" )
       execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule update --init extensions/${submodule}
@@ -391,7 +391,7 @@ if("x${UPDATE_TYPE}" STREQUAL "xgit")
     if( NOT EXISTS "${CTEST_SOURCE_DIRECTORY}/extensions/${submodule}/.git" )
       message(SEND_ERROR "Problem fetching ${submodule}")
     endif()
-      
+
     if(${UPDATE_MODULES})
       execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
 	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
@@ -483,12 +483,12 @@ macro(update_gismo ug_ucount)
       execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
 	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
       ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule} RETURN_VALUE ug_upd_sm)
-      set(ug_updlog "${ug_updlog} ${${ug_ucount}} extensions/${submodule}\n")
+      set(ug_updlog "${ug_updlog} ${${ug_upd_sm}} extensions/${submodule}\n")
       if (${ug_upd_sm} GREATER 0)
 	math(EXPR ${ug_ucount} "${${ug_ucount}} + ${ug_upd_sm}")
       endif()
       if(${ug_upd_sm} LESS 0)
-        message(SEND_ERROR "Git update submodule error")	
+        message(SEND_ERROR "Git update submodule error")
       endif()
     endforeach()
   endif()
