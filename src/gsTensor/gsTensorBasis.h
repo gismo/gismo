@@ -458,7 +458,7 @@ public:
     gsMatrix<unsigned> coefSlice(int dir, int k) const;
 
     /// Returns the degree of the basis wrt variable \a i 
-    int degree(int i) const 
+    dim_t degree(dim_t i) const
     { 
         return m_bases[i]->degree(0); 
     }

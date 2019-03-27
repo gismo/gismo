@@ -504,7 +504,7 @@ public:
     }
 
     /// \brief Returns the degree wrt direction i
-    int degree(const unsigned & i) const
+    dim_t degree(const dim_t & i) const
      //{ return this->basisComponent(i).degree(); };
      { return this->basis().degree(i); }
 

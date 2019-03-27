@@ -205,12 +205,12 @@ public:
     std::ostream& print( std::ostream& os ) const;
 
     /// Dimension of the parameter domain (must match for all bases).
-    int dim() const
+    dim_t dim() const
     { return m_bases[0]->dim();}
 
     /// @brief Returns the polynomial degree of basis \a i in component \a j,
     /// if the basis is of polynomial or piecewise polynomial type.
-    int degree(size_t i = 0, int comp = 0) const
+    dim_t degree(size_t i = 0, dim_t comp = 0) const
     {
         GISMO_ASSERT( i < m_bases.size(),
                       "Invalid patch index "<<i<<" requested from gsMultiBasis" );
@@ -218,16 +218,16 @@ public:
     }
 
     /// @brief Maximum degree with respect to variable \a k.
-    int maxDegree(int k) const;
+    dim_t maxDegree(dim_t k) const;
 
     /// @brief Minimum degree with respect to variable \a k.
-    int minDegree(int k) const;
+    dim_t minDegree(dim_t k) const;
 
     /// @brief Maximum degree with respect to all variables
-    int maxCwiseDegree() const;
+    dim_t maxCwiseDegree() const;
 
     /// @brief Minimum degree with respect to all variables
-    int minCwiseDegree() const;
+    dim_t minCwiseDegree() const;
 
     /// @brief The number of basis functions in basis \a i.
     int size(size_t i) const

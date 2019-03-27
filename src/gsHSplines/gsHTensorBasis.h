@@ -566,7 +566,7 @@ public:
     /// @brief If the basis is a tensor product of (piecewise)
     /// polynomial bases, then this function returns the polynomial
     /// degree of the \a i-th component.
-    virtual inline int degree(int i) const
+    virtual inline dim_t degree(dim_t i) const
     { return m_bases[0]->degree(i);}
 
 

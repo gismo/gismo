@@ -195,7 +195,7 @@ public:
     /*** Additional members for tensor B-Splines ***/
 
     /// Returns the degree of the basis wrt direction i
-    unsigned degree(const unsigned & i) const
+    dim_t degree(const unsigned & i) const
     { return this->basis().component(i).degree(); }
 
     /// Toggle orientation wrt coordinate k

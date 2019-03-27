@@ -265,7 +265,7 @@ public:
     gsMatrix<T> & weights() { return this->basis().weights(); }
     
     /// Returns the degree of the basis wrt direction i 
-    unsigned degree(unsigned i) const 
+    dim_t degree(unsigned i) const
     { return this->basis().source().component(i).degree(); }
 
 /// Toggle orientation wrt coordinate k

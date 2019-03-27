@@ -254,10 +254,10 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
 }
 
 template<class T>
-int gsMultiBasis<T>::maxDegree(int k) const
+dim_t gsMultiBasis<T>::maxDegree(dim_t k) const
 {
     GISMO_ASSERT(m_bases.size(), "Empty multibasis.");
-    int result = m_bases[0]->degree(k);
+    dim_t result = m_bases[0]->degree(k);
     for (size_t i = 0; i < m_bases.size(); ++i)
         if (m_bases[i]->degree(k) > result )
             result = m_bases[i]->degree(k);
@@ -265,30 +265,30 @@ int gsMultiBasis<T>::maxDegree(int k) const
 }
 
 template<class T>
-int gsMultiBasis<T>::maxCwiseDegree() const
+dim_t gsMultiBasis<T>::maxCwiseDegree() const
 {
     GISMO_ASSERT(m_bases.size(), "Empty multibasis.");
-    int result = m_bases[0]->maxDegree();
+    dim_t result = m_bases[0]->maxDegree();
     for (size_t i = 0; i < m_bases.size(); ++i)
         result = math::max(m_bases[i]->maxDegree(), result);
     return result;
 }
 
 template<class T>
-int gsMultiBasis<T>::minCwiseDegree() const
+dim_t gsMultiBasis<T>::minCwiseDegree() const
 {
     GISMO_ASSERT(m_bases.size(), "Empty multibasis.");
-    int result = m_bases[0]->minDegree();
+    dim_t result = m_bases[0]->minDegree();
     for (size_t i = 0; i < m_bases.size(); ++i)
         result = math::min(m_bases[i]->minDegree(), result);
     return result;
 }
 
 template<class T>
-int gsMultiBasis<T>::minDegree(int k) const
+dim_t gsMultiBasis<T>::minDegree(dim_t k) const
 {
     GISMO_ASSERT(m_bases.size(), "Empty multibasis.");
-    int result = m_bases[0]->degree(k);
+    dim_t result = m_bases[0]->degree(k);
     for (size_t i = 0; i < m_bases.size(); ++i)
         if (m_bases[i]->degree(k) < result )
             result = m_bases[i]->degree(k);

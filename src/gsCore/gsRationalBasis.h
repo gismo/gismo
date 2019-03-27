@@ -156,7 +156,7 @@ public:
     { return m_src->functionAtCorner(c); }
 
     // Look at gsBasis class for a description
-    int degree(int i = 0) const {return m_src->degree(i); }
+    dim_t degree(dim_t i = 0) const {return m_src->degree(i); }
 
     // Look at gsBasis class for a description
     int maxDegree()   const   {return m_src->maxDegree(); }

@@ -508,9 +508,9 @@ void gsBasis<T>::setDegree(int const& i)
 }
 
 template<class T>
-void gsBasis<T>::setDegreePreservingMultiplicity(int const& i)
+void gsBasis<T>::setDegreePreservingMultiplicity(dim_t const& i)
 {
-    for ( index_t d = 0; d < dim(); ++ d )
+    for ( dim_t d = 0; d < dim(); ++ d )
     {
         if ( i > degree(d) )
             degreeIncrease(i-degree(d),d);
@@ -532,19 +532,19 @@ gsDomain<T> * gsBasis<T>::domain() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-int gsBasis<T>::maxDegree() const
+dim_t gsBasis<T>::maxDegree() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-int gsBasis<T>::minDegree() const
+dim_t gsBasis<T>::minDegree() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-int gsBasis<T>::totalDegree() const
+dim_t gsBasis<T>::totalDegree() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-int gsBasis<T>::degree(int) const
+dim_t gsBasis<T>::degree(dim_t) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

@@ -390,7 +390,7 @@ public:
     */
     T penalty(int k) const
     {
-        const int deg = m_bases[0][k].maxDegree();
+        const dim_t deg = m_bases[0][k].maxDegree();
         return (deg + m_bases[0][k].dim()) * (deg + 1) * T(2.0);
     }
 

@@ -109,7 +109,7 @@ public:
     //     const gsTensorBSplineBasis * a;
     //     if ( ( a = dynamic_cast<const gsTensorBSplineBasis *>( &o )) )
     //     {
-    //         m_p        = a->degree() ; 
+    //         m_p        = a->degree() ;
     //         m_knots    = KnotVectorType( a->knots() );
     //         m_periodic = a->m_periodic;
     //     }
@@ -308,14 +308,14 @@ public:
                                         int n, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description
-    int degree(int i) const 
+    dim_t degree(dim_t i) const
     {
         GISMO_UNUSED(i);
         GISMO_ASSERT(i==0,"Asked for degree(i) in 1D basis.");
         return m_p; 
     }
 
-    int degree() const {return m_p;}
+    dim_t degree() const {return m_p;}
 
     // Look at gsBasis class for a description
     int maxDegree()   const { return m_p; }
@@ -644,7 +644,7 @@ public:
 protected:
 
     /// @brief Degree
-    int m_p;
+    dim_t m_p;
 
     /// @brief Knot vector
     KnotVectorType m_knots;

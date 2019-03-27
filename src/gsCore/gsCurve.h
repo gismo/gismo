@@ -63,7 +63,7 @@ public: inline uPtr clone() const { return uPtr(clone_impl()); }
 
     dim_t domainDim() const { return 1; }
     
-    int degree() const;
+    dim_t degree() const;
 
     void toMesh(gsMesh<T> & msh, int npoints = 100) const;
 
