@@ -132,7 +132,7 @@ public:
     /**
      *  \brief Returns the index (as specified in boundary::side) of the box side
     **/
-    int    index () const {return m_index;}
+    index_t    index () const {return m_index;}
 
     /**
      *  \brief Returns the index of the box side implied by input

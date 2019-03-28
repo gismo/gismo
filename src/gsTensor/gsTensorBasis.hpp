@@ -376,7 +376,7 @@ template<dim_t d, class T>
 void
 gsTensorBasis<d,T>::getComponentsForSide(boxSide const& s, std::vector<Basis_t*> & rr) const
 {   
-    unsigned dir = s.direction( );
+    index_t dir = s.direction( );
 
     rr.clear();
     rr.reserve( d - 1 );
@@ -467,7 +467,7 @@ void gsTensorBasis<d,T>::deriv2Single_into(unsigned i,
         m_bases[k]->derivSingle_into( ti[k], u.row(k), dev[k]  );
     }
 
-    int c = d;
+    index_t c = d;
     for (dim_t k = 0; k != d; ++k)
     {
         // Pure second derivatives
@@ -487,11 +487,11 @@ void gsTensorBasis<d,T>::deriv2Single_into(unsigned i,
             result.row(c)     = result.row(c).cwiseProduct(dev[l]);
 
             // Multiply with values
-            for (unsigned r = 0; r != k; ++r)
+            for (dim_t r = 0; r != k; ++r)
                 result.row(c) = result.row(c).cwiseProduct(ev[r]);
-            for (unsigned r = k+1; r != l; ++r)
+            for (dim_t r = k+1; r != l; ++r)
                 result.row(c) = result.row(c).cwiseProduct(ev[r]);
-            for (unsigned r = l+1; r != d; ++r)
+            for (dim_t r = l+1; r != d; ++r)
                 result.row(c) = result.row(c).cwiseProduct(ev[r]);
             c++;
         }
@@ -598,14 +598,14 @@ void gsTensorBasis<d,T>::deriv_into(const gsMatrix<T> & u,
 
     gsVector<unsigned, d> v, size;
 
-    unsigned nb = 1;
+    index_t nb = 1;
     for (dim_t i = 0; i < d; ++i)
     {
         // evaluate basis functions and their first derivatives
         m_bases[i]->evalAllDers_into( u.row(i), 1, values[i]); 
 
         // number of basis functions
-        const int num_i = values[i].front().rows();
+        const index_t num_i = values[i].front().rows();
         nb *= num_i;
         size[i] = num_i;
     }
@@ -620,9 +620,9 @@ void gsTensorBasis<d,T>::deriv_into(const gsMatrix<T> & u,
             // derivative w.r.t. k-th variable
             const index_t rownum = r*d + k;
             result.row(rownum)  =  values[k][1].row( v(k) );
-            for ( unsigned i=0; i<k; ++i)
+            for ( dim_t i=0; i<k; ++i)
                 result.row(rownum).array() *= values[i][0].row( v(i) ).array();
-            for ( unsigned i=k+1; i<d; ++i)
+            for ( dim_t i=k+1; i<d; ++i)
                 result.row(rownum).array() *= values[i][0].row( v(i) ).array();
         }
         ++r ;
@@ -652,7 +652,7 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
         m_bases[i]->evalAllDers_into( u.row(i), n, values[i] ); 
       
         // number of basis functions
-        const int num_i = values[i].front().rows();
+        const index_t num_i = values[i].front().rows();
         nb_cwise[i] = num_i;
         nb         *= num_i;
     }

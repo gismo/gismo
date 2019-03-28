@@ -123,7 +123,7 @@ public:
     // Look at gsBasis class for a description
     int numElements(boxSide const & s) const
     {
-        const unsigned dir =  s.direction();
+        const index_t dir =  s.direction();
         int nElem = 1;
         for (dim_t dim = 0; dim < d; ++dim)
         {
