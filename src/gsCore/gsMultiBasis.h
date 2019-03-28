@@ -428,13 +428,13 @@ public:
 
     /// @brief Returns the basis that corresponds to the component
     ///
-    /// @param p         The component
+    /// @param pc        The component
     /// @param dm        The dof mapper to be used
     /// @param indices   The row vector where the indices are stored to
     /// @param no_lower  If true, the transfer matrix does not include parts belonging to lower-order
     ///                  components (i.e., edges without corners or faces without corners and edges)
     typename gsBasis<T>::uPtr componentBasis_withIndices(
-        patchComponent p,
+        patchComponent pc,
         const gsDofMapper& dm,
         gsMatrix<unsigned>& indices,
         bool no_lower = true
@@ -442,13 +442,13 @@ public:
     
     /// @brief Returns the bases that correspond to the components
     ///
-    /// @param p         The component
+    /// @param pc        The components
     /// @param dm        The dof mapper to be used
     /// @param indices   The row vector where the indices are stored to
     /// @param no_lower  If true, the transfer matrix does not include parts belonging to lower-order
     ///                  components (i.e., edges without corners or faces without corners and edges)
     std::vector<typename gsBasis<T>::uPtr> componentBasis_withIndices(
-        std::vector<patchComponent> p,
+        const std::vector<patchComponent>& pc,
         const gsDofMapper& dm,
         gsMatrix<unsigned>& indices,
         bool no_lower = true

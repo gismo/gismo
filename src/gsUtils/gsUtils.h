@@ -225,7 +225,7 @@ inline bool operator<= (const T& a, const T& b) { return !(b<a);  } \
 inline bool operator>= (const T& a, const T& b) { return !(a<b);  }
 
 #if __cplusplus >= 201103L
-#define GISMO_DELETE_COMPARIZATION_OPERATORS( S, T )      \
+#define GISMO_DELETE_COMPARISON_OPERATORS( S, T )         \
 inline bool operator== (const S& a, const T& b) = delete; \
 inline bool operator!= (const S& a, const T& b) = delete; \
 inline bool operator<  (const S& a, const T& b) = delete; \
@@ -239,7 +239,7 @@ inline bool operator>  (const T& a, const S& b) = delete; \
 inline bool operator<= (const T& a, const S& b) = delete; \
 inline bool operator>= (const T& a, const S& b) = delete;
 #else
-#define GISMO_DELETE_COMPARIZATION_OPERATORS( S, T ) \
+#define GISMO_DELETE_COMPARISON_OPERATORS( S, T ) \
 inline bool operator== (const S& a, const T& b); \
 inline bool operator!= (const S& a, const T& b); \
 inline bool operator<  (const S& a, const T& b); \

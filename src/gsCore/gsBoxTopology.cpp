@@ -212,14 +212,21 @@ int gsBoxTopology::getMaxValence() const
 
 namespace {
 
+// @brief Returns a canonic representation for the given patch corner
+//
+// This function determines all patchCorners that conicide with the given
+// one and returns the one withe the smallest patch number.
 patchCorner getCanonicCorner( const patchCorner& c, const gsBoxTopology& bt )
 {
     std::vector< patchCorner > corners;
     bt.getCornerList(c,corners);
-    std::sort(corners.begin(), corners.end());
-    return corners[0];
+    return *std::min_element(corners.begin(), corners.end());
 }
 
+// @brief Returns the canonic corners for the given corners
+//
+// The result is sorted. Thus, it can be used to uniquely characterize all kinds
+// of patchComponents (edges, faces, ...)
 std::vector<patchCorner> getCanonicCorners( const std::vector<patchCorner>& c, const gsBoxTopology& bt )
 {
     const index_t sz = c.size();
@@ -231,6 +238,7 @@ std::vector<patchCorner> getCanonicCorners( const std::vector<patchCorner>& c, c
     return corners;
 }
 
+// @brief Converts the given corners in unique corner ids
 std::vector<index_t> getCornerIndices( const std::vector<patchCorner>& corner, index_t dim )
 {
     const index_t sz = corner.size();

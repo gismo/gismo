@@ -274,25 +274,13 @@ typename gsBasis<T>::uPtr gsMultiBasis<T>::componentBasis_withIndices(
             ++j;
         }
     }
-    // Eigen does delete all data on resize. Thus, we have to do it on
-    // our own. We consider two important special cases: j==0 and j==sz.
-    if (j==0)
-        indices.resize(0,1);
-    else if (j<sz)
-    {
-        gsMatrix<unsigned> indices2(j,1);
-        for (index_t i=0; i<j; ++i)
-            indices2(i,0) = indices(i,0);
-        indices.swap(indices2);
-    }
-    // if j==sz, nothing has to be done.
-
+    indices.conservativeResize(j,1);
     return result;
 }
 
 template <typename T>
 std::vector<typename gsBasis<T>::uPtr> gsMultiBasis<T>::componentBasis_withIndices(
-        std::vector<patchComponent> pc,
+        const std::vector<patchComponent>& pc,
         const gsDofMapper& dm,
         gsMatrix<unsigned>& indices,
         bool no_lower
