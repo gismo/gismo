@@ -17,3 +17,4 @@
 [submodule "extensions/gsExaStencils"]
 	path = extensions/gsExaStencils
 	url = ../gsExaStencils.git
+	branch = master
