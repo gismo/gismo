@@ -28,7 +28,7 @@
 namespace gismo
 {
 
-template<unsigned d, class T>
+template<dim_t d, class T>
 class gsGenericGeometry : public gsGeoTraits<d,T>::GeometryBase
 {
 public:

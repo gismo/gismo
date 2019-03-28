@@ -72,7 +72,7 @@ enum gsNeedEnum
 template <class T=real_t>                class gsBasis;
 template <class T=real_t>                class gsGeometry;
 template <class T=real_t>                class gsGeometrySlice;
-template <unsigned d, class T=real_t>    class gsGenericGeometry;
+template <dim_t d, class T=real_t>       class gsGenericGeometry;
 template <class T=real_t>                class gsConstantBasis;
 template <class T=real_t>                class gsBasisFun;
 
@@ -107,36 +107,36 @@ template <class T=real_t>                class gsMultiPatch;
 
 // Bases
 template <class basis_t >                class gsRationalBasis;
-template <unsigned d, class T=real_t>    class gsTensorBasis;
-template <unsigned d, class T=real_t>    class gsHTensorBasis;
+template <dim_t d, class T=real_t>       class gsTensorBasis;
+template <dim_t d, class T=real_t>       class gsHTensorBasis;
 
 template <class T=real_t>                class gsKnotVector;
 //template <class T=real_t>              class gsCompactKnotVector;
 template <class T=real_t>                class gsBSplineBasis;
 template <class T=real_t>                class gsNurbsBasis;
-template <unsigned d, class T=real_t>    class gsTensorBSplineBasis;
-template <unsigned d, class T=real_t>    class gsTensorNurbsBasis;
-template <unsigned d, class T=real_t>   struct gsBSplineTraits;
+template <dim_t d, class T=real_t>       class gsTensorBSplineBasis;
+template <dim_t d, class T=real_t>       class gsTensorNurbsBasis;
+template <dim_t d, class T=real_t>       struct gsBSplineTraits;
 
-template <unsigned d, class T=real_t>    class gsCompositeIncrSmoothnessBasis;
-template <unsigned d, class T=real_t>    class gsCompositeGeom;
+template <dim_t d, class T=real_t>       class gsCompositeIncrSmoothnessBasis;
+template <dim_t d, class T=real_t>       class gsCompositeGeom;
 
 template <class T=real_t>                class gsBernsteinBasis;
-template <unsigned d, class T=real_t>    class gsTensorBernsteinBasis;
+template <dim_t d, class T=real_t>       class gsTensorBernsteinBasis;
 
 //template <class T=real_t>              class gsHKnotVector;
-template <unsigned d, class T=real_t>    class gsHBSplineBasis;
-template <unsigned d, class T=real_t>    class gsTHBSplineBasis;
-template <unsigned d, class T=real_t>    class gsTHBSpline;
+template <dim_t d, class T=real_t>       class gsHBSplineBasis;
+template <dim_t d, class T=real_t>       class gsTHBSplineBasis;
+template <dim_t d, class T=real_t>       class gsTHBSpline;
 
 // Geometries
 template <class T=real_t>                class gsBSpline;
 template <class T=real_t>                class gsNurbs;
 template <class T=real_t>                class gsBezier;
-template <unsigned d, class T=real_t>    class gsTensorBSpline;
-template <unsigned d, class T=real_t>    class gsTensorNurbs;
-template <unsigned d, class T=real_t>    class gsTensorBezier;
-template <unsigned d, class T=real_t>    class gsHBSpline;
+template <dim_t d, class T=real_t>       class gsTensorBSpline;
+template <dim_t d, class T=real_t>       class gsTensorNurbs;
+template <dim_t d, class T=real_t>       class gsTensorBezier;
+template <dim_t d, class T=real_t>       class gsHBSpline;
 template <class T=real_t>                class gsTrimSurface;
 
 // Quadrature rules
@@ -146,7 +146,7 @@ template <class T=real_t>                class gsGalerkinMethod;
 
 // Domains
 // template <class T=real_t>             class gsTensorDomain;
-template <unsigned d, class T=real_t>    class gsHFitting;
+template <dim_t d, class T=real_t>       class gsHFitting;
 
 template <class Z, int mode, int d=-1,
          bool = //std::is_integral<Z>::value>

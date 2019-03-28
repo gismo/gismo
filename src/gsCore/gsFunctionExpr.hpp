@@ -467,13 +467,13 @@ gsFunctionExpr<T>::~gsFunctionExpr()
 }
 
 template<typename T>
-int gsFunctionExpr<T>::domainDim() const
+dim_t gsFunctionExpr<T>::domainDim() const
 {
     return my->dim;
 }
 
 template<typename T>
-int gsFunctionExpr<T>::targetDim() const
+dim_t gsFunctionExpr<T>::targetDim() const
 {
     return static_cast<int>(my->string.size());
 }

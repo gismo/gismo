@@ -34,7 +34,7 @@ namespace gismo {
 /// \param out file stream
 ///
 /// \ingroup IO
-template <unsigned d, typename T>
+template <dim_t d, typename T>
 void gsWriteGoToolsBodySpline(const gsTensorBSpline<d, T>& bspl,
                               std::ofstream& out)
 {
@@ -90,7 +90,7 @@ void gsWriteGoToolsBodySpline(const gsTensorBSpline<d, T>& bspl,
 ///
 /// \param bspl tensor B-Spline
 /// \param out file stream
-template <unsigned d, typename T>
+template <dim_t d, typename T>
 void gsWriteGoToolsSpline(const gsTensorBSpline<d, T>& bspl,
                           std::ofstream& out)
 {
@@ -350,7 +350,7 @@ namespace internal
 {
 
 /// Look at function gismo::makeHierarchicalMesh
-template <unsigned d, typename T>
+template <dim_t d, typename T>
 void makeHierarchicalMesh(const gsHTensorBasis<d, T>& basis,
                           std::vector<gsMesh<T> >& meshes,
                           int n = 0)

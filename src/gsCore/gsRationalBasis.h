@@ -159,13 +159,13 @@ public:
     dim_t degree(dim_t i = 0) const {return m_src->degree(i); }
 
     // Look at gsBasis class for a description
-    int maxDegree()   const   {return m_src->maxDegree(); }
+    dim_t maxDegree()   const   {return m_src->maxDegree(); }
 
     // Look at gsBasis class for a description
-    int minDegree()   const    {return m_src->minDegree(); }
+    dim_t minDegree()   const    {return m_src->minDegree(); }
 
     // Look at gsBasis class for a description
-    int totalDegree() const     {return m_src->totalDegree(); }
+    dim_t totalDegree() const     {return m_src->totalDegree(); }
 
     void uniformRefine(int numKnots = 1, int mul=1)
     {

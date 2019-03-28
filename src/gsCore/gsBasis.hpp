@@ -490,12 +490,12 @@ void gsBasis<T>::degreeDecrease(int const &, int const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::setDegree(int const& i)
+void gsBasis<T>::setDegree(dim_t const& i)
 {
-    const int dm = this->dim();
-    for (int k = 0; k!=dm; ++k)
+    const dim_t dm = this->dim();
+    for (dim_t k = 0; k!=dm; ++k)
     {
-        const int p = this->degree(k);
+        const dim_t p = this->degree(k);
         if ( i > p )
         {
             this->degreeElevate(i-p, k);

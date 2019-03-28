@@ -36,7 +36,7 @@ namespace gismo
     \ingroup Nurbs
 */
 
-template<unsigned d, class T>
+template<dim_t d, class T>
 class gsTensorNurbs : public gsGeoTraits<d,T>::GeometryBase
 {
 

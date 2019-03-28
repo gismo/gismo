@@ -29,7 +29,7 @@
 #define index_t          @GISMO_INDEX_TYPE@
 
 /** Define default dimension type. */
-#define dim_t            int
+#define dim_t            short
 
 /** Define the file data directory. */
 #define GISMO_DATA_DIR "@GISMO_DATA_DIR@"

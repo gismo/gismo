@@ -626,7 +626,7 @@ namespace gismo
 {
 
 // Generic traits for geometry with dimension known at compile time
-template <unsigned d, typename T>
+template <dim_t d, typename T>
 struct gsGeoTraits
 {
     typedef gsGeometry<T> GeometryBase;

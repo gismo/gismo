@@ -70,7 +70,7 @@ struct lvl_coef
  *    \ingroup HSplines
  */
 
-template<unsigned d, class T>
+template<dim_t d, class T>
 class GISMO_DEFAULT_VIS gsHTensorBasis: public gsBasis<T>
 {
 public:
@@ -545,20 +545,20 @@ public:
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const;
 
-    int maxDegree() const
+    dim_t maxDegree() const
     {
-        int td = m_bases[0]->degree(0);
+        dim_t td = m_bases[0]->degree(0);
         // take maximum of coordinate bases degrees
-        for (unsigned k=1; k!=d; ++k)
+        for (dim_t k=1; k!=d; ++k)
             td = math::max(td, m_bases[0]->degree(k));
         return td;
     }
 
-    int minDegree() const
+    dim_t minDegree() const
     {
-        int td = m_bases[0]->degree(0);
+        dim_t td = m_bases[0]->degree(0);
         // take maximum of coordinate bases degrees
-        for (unsigned k=1; k!=d; ++k)
+        for (dim_t k=1; k!=d; ++k)
             td = math::min(td, m_bases[0]->degree(k));
         return td;
     }
