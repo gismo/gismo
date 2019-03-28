@@ -265,7 +265,7 @@ inline bool operator== (const patchSide& a, const patchSide& b)
 { return a.patch == b.patch && a.m_index == b.m_index; }
 inline bool operator<  (const patchSide& a, const patchSide& b)
 { return a.patch < b.patch || (a.patch == b.patch && a.m_index < b.m_index); }
-GISMO_DELEGATING_COMPARIZATION_OPERATORS(patchSide)
+GISMO_DELEGATING_COMPARISON_OPERATORS(patchSide)
 
 // This might cause terrible bugs
 GISMO_DELETE_COMPARISON_OPERATORS(boxSide,patchSide)
@@ -413,7 +413,7 @@ inline bool operator== (const patchCorner& a, const patchCorner& b)
 { return a.patch == b.patch && a.m_index == b.m_index; }
 inline bool operator<  (const patchCorner& a, const patchCorner& b)
 { return a.patch < b.patch || (a.patch == b.patch && a.m_index < b.m_index); }
-GISMO_DELEGATING_COMPARIZATION_OPERATORS(patchCorner)
+GISMO_DELEGATING_COMPARISON_OPERATORS(patchCorner)
 
 // This might cause terrible bugs
 GISMO_DELETE_COMPARISON_OPERATORS(boxCorner,patchCorner)
@@ -612,13 +612,13 @@ inline bool operator== (const boxComponent& a, const boxComponent& b)
 { return a.index() == b.index(); }
 inline bool operator<  (const boxComponent& a, const boxComponent& b)
 { return a.index() <  b.index(); }
-GISMO_DELEGATING_COMPARIZATION_OPERATORS(boxComponent)
+GISMO_DELEGATING_COMPARISON_OPERATORS(boxComponent)
 
 inline bool operator== (const patchComponent& a, const patchComponent& b)
 { return a.patch() == b.patch() && a.index() == b.index(); }
 inline bool operator<  (const patchComponent& a, const patchComponent& b)
 { return a.patch() < b.patch() || (a.patch() == b.patch() && a.index() < b.index()); }
-GISMO_DELEGATING_COMPARIZATION_OPERATORS(patchComponent)
+GISMO_DELEGATING_COMPARISON_OPERATORS(patchComponent)
 
 // This might cause terrible bugs
 GISMO_DELETE_COMPARISON_OPERATORS(boxComponent,patchComponent)

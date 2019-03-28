@@ -218,7 +218,7 @@ std::size_t hash_range(T const * start, const T * const end)
 
 } // end namespace util
 
-#define GISMO_DELEGATING_COMPARIZATION_OPERATORS( T )               \
+#define GISMO_DELEGATING_COMPARISON_OPERATORS( T )                  \
 inline bool operator!= (const T& a, const T& b) { return !(a==b); } \
 inline bool operator>  (const T& a, const T& b) { return b<a;     } \
 inline bool operator<= (const T& a, const T& b) { return !(b<a);  } \
