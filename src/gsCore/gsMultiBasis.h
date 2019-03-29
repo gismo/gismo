@@ -422,6 +422,38 @@ public:
         int numKnots = 1
         );
 
+    /// @brief Returns the basis that corresponds to the component
+    typename gsBasis<T>::uPtr componentBasis(patchComponent p) const
+    { return m_bases[p.patch()]->componentBasis(p); }
+
+    /// @brief Returns the basis that corresponds to the component
+    ///
+    /// @param pc        The component
+    /// @param dm        The dof mapper to be used
+    /// @param indices   The row vector where the indices are stored to
+    /// @param no_lower  If true, the transfer matrix does not include parts belonging to lower-order
+    ///                  components (i.e., edges without corners or faces without corners and edges)
+    typename gsBasis<T>::uPtr componentBasis_withIndices(
+        patchComponent pc,
+        const gsDofMapper& dm,
+        gsMatrix<unsigned>& indices,
+        bool no_lower = true
+    ) const;
+    
+    /// @brief Returns the bases that correspond to the components
+    ///
+    /// @param pc        The components
+    /// @param dm        The dof mapper to be used
+    /// @param indices   The row vector where the indices are stored to
+    /// @param no_lower  If true, the transfer matrix does not include parts belonging to lower-order
+    ///                  components (i.e., edges without corners or faces without corners and edges)
+    std::vector<typename gsBasis<T>::uPtr> componentBasis_withIndices(
+        const std::vector<patchComponent>& pc,
+        const gsDofMapper& dm,
+        gsMatrix<unsigned>& indices,
+        bool no_lower = true
+    ) const;
+
     /** @brief Checks if the interfaces \em bivec are fully matching, and if not, repairs them, i.e., makes them fully matching.
     *
     * \remarks Designed for gsHTensorBasis and derived bases.
