@@ -966,8 +966,8 @@ void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
         if (bndThis.size() == 1) return;
 
         // Get interface data
-        const unsigned s1 = bi.first() .direction();
-        const index_t  s2 = bi.second().direction();
+        const index_t s1 = bi.first() .direction();
+        const index_t s2 = bi.second().direction();
         const gsVector<bool>    & dirOr = bi.dirOrientation();
         const gsVector<index_t> & bMap  = bi.dirMap();
         
