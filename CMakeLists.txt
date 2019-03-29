@@ -310,6 +310,10 @@ if(GISMO_BUILD_LIB)
   endif()
 endif()
 
+if(GISMO_ELASTICITY)
+  gismo_fetch_module(gsElasticity)
+endif()
+
 include(gsLibrary)
 
 ## #################################################################
@@ -387,10 +391,6 @@ endif()
 
 if(GISMO_MOTOR)
   gismo_fetch_module(motor)
-endif()
-
-if(GISMO_ELASTICITY)
-  gismo_fetch_module(gsElasticity)
 endif()
 
 if(GISMO_EXASTENCILS)
