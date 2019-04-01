@@ -42,7 +42,7 @@ void patchSide::getContainedCorners(int dim, std::vector<patchCorner> &corners) 
         corners.push_back( patchCorner(patch, *it) );
 }
 
-boxComponent::boxComponent( boxSide b, index_t total_dim ) : m_total_dim(total_dim)
+boxComponent::boxComponent( boxSide b, dim_t total_dim ) : m_total_dim(total_dim)
 {
     const index_t d = (b.m_index-1)/2;
     const index_t o = (b.m_index-1)%2;
@@ -52,22 +52,22 @@ boxComponent::boxComponent( boxSide b, index_t total_dim ) : m_total_dim(total_d
         m_index *= 3;
 }
 
-boxComponent::boxComponent( boxCorner b, index_t total_dim ) : m_total_dim(total_dim)
+boxComponent::boxComponent( boxCorner b, dim_t total_dim ) : m_total_dim(total_dim)
 {
     b.m_index -= 1;
     m_index = 0;
     index_t c = 1;
-    for (index_t d=0; d<total_dim; ++d)
+    for (dim_t d=0; d<total_dim; ++d)
     {
         m_index += (1+b.m_index%2) * c;
         c *= 3;
     }
 }
 
-index_t boxComponent::dim() const
+dim_t boxComponent::dim() const
 {
         index_t result = 0, tmp = m_index;
-        for (index_t i=0; i<m_total_dim; ++i)
+        for (dim_t i=0; i<m_total_dim; ++i)
         {
             if (tmp%3 == 0)
                 ++result;

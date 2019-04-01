@@ -327,11 +327,11 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis(boxComponent b) const
 {
     GISMO_ASSERT( b.totalDim() == this->dim(), "The dimensions do not agree." );
 
-    const index_t dim = this->dim();
+    const dim_t dim = this->dim();
 
     uPtr result;
-    index_t d=0;
-    for (index_t i=0; i<dim; ++i)
+    dim_t d=0;
+    for (dim_t i=0; i<dim; ++i)
     {
         boxComponent::location loc = b.locationForDirection(i);
         if (loc)
@@ -355,11 +355,11 @@ template<class T>
 typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b, gsMatrix<unsigned>& indices, bool noBoundary) const
 {
     GISMO_ASSERT( b.totalDim() == this->dim(), "The dimensions do not agree." );
-    const index_t dim = this->dim();
+    const dim_t dim = this->dim();
 
     uPtr result;
-    index_t d=0;
-    for (index_t i=0; i<dim; ++i)
+    dim_t d=0;
+    for (dim_t i=0; i<dim; ++i)
     {
         boxComponent::location loc = b.locationForDirection(i);
         if (loc)
