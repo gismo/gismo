@@ -1418,8 +1418,8 @@ public:
         return ( v>0 ? 1 : ( v<0 ? -1 : 0 ) );
     }
 
-    static index_t rows() { return 1; }
-    static index_t cols() { return 1; }
+    static index_t rows() { return 0; }
+    static index_t cols() { return 0; }
 
     void setFlag() const { _u.setFlag(); }
 
@@ -1456,28 +1456,36 @@ private:
 public:
     matrix_by_space_expr(E1 const& u, E2 const& v) : _u(u), _v(v) { }
 
-    
+
     // choose if ColBlocks
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
         const index_t r   = _u.rows();
-        const index_t N  = _v.cols() / r;
+        const index_t N  = _v.cols() / (r*r);
+        gsDebugVar(r);
+        gsDebugVar(N);
 
-        MatExprType uEv        = _u.eval(k);
+        const MatExprType uEv        = _u.eval(k);
         const MatExprType vEv  = _v.eval(k);
+        gsDebugVar(vEv);
+        gsDebugVar(vEv.rows());
+        gsDebugVar(vEv.cols());
 
-        res.resize(r, N*r);
+        res.resize(r, N*r*r);
+        gsDebugVar(res.cols());
         for (index_t s = 0; s!=r; ++s)
             for (index_t i = 0; i!=N; ++i)
             {
-                res.middleCols(i*r,r) = uEv.col(s) * vEv.col(i).transpose();
+                res.middleCols((s*N + i)*r,r).noalias() =
+                uEv.col(s) * vEv.middleCols((s*N + i)*r,r).row(s);
+                // uEv*vEv.middleCols((s*N + i)*r,r);
             }
         //meaning: [Jg Jg Jg] * Jb ..
         return res;
     }
 
     index_t rows() const { return _u.cols(); }
-    index_t cols() const { return _u.cols() * _v.cols(); }
+    index_t cols() const { return _v.cols(); }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
