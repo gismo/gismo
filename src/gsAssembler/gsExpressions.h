@@ -98,12 +98,12 @@ template<class E1, class E2, bool = E1::ColBlocks> class mult_expr
 {using E1::GISMO_ERROR_mult_expr_has_invalid_template_arguments;};
 
 /*
-   Traits class for expressions
- */
+ Traits class for expressions
+*/
 template <typename E> struct expr_traits
 {
-    typedef real_t Scalar;//todo
-    typedef const E Nested_t;
+  typedef real_t Scalar;//todo
+  typedef const E Nested_t;
 };
 
 template <class E> struct is_arithmetic{enum{value=0};};
@@ -113,67 +113,67 @@ template <typename E, bool = is_arithmetic<E>::value >
 class _expr {using E::GISMO_ERROR_expr;};
 
 /**
-   \brief Base class for all expressions
- */
+ \brief Base class for all expressions
+*/
 template <typename E>
 class _expr<E, false>
 {
 protected://private:
-     _expr(){}
-     _expr(const _expr&) { }
-    //friend E;//
+   _expr(){}
+   _expr(const _expr&) { }
+  //friend E;//
 public:
 
-    enum {ScalarValued = 0, ColBlocks = 0};
-    //todo: ValueType=0,1,2 (scalar,vector,matrix)
+  enum {ScalarValued = 0, ColBlocks = 0};
+  //todo: ValueType=0,1,2 (scalar,vector,matrix)
 
-    //typedef typename E::Nested_t Nested_t;
-    //typedef typename E::Scalar   Scalar;
-    typedef typename expr_traits<E>::Nested_t Nested_t;
-    typedef typename expr_traits<E>::Scalar   Scalar;
+  //typedef typename E::Nested_t Nested_t;
+  //typedef typename E::Scalar   Scalar;
+  typedef typename expr_traits<E>::Nested_t Nested_t;
+  typedef typename expr_traits<E>::Scalar   Scalar;
 
-    /// Prints the expression as a string to \a os
-    void print(std::ostream &os) const
-    {
-        static_cast<E const&>(*this).print(os);
-    /*
-        std::string tmp(__PRETTY_FUNCTION__);
-        tmp.erase(0,74);
-        tmp.erase(tmp.size()-42,42);
-        size_t pos = 0;
-        while((pos=tmp.find(", false",0))!=std::string::npos) tmp.erase(pos,7);
-        while((pos=tmp.find(", true",0))!=std::string::npos) tmp.erase(pos,6);
-        while((pos=tmp.find("gismo::expr::",0))!=std::string::npos) tmp.erase(pos,13);
-        while((pos=tmp.find("_expr",0))!=std::string::npos) tmp.erase(pos,5);
-        while((pos=tmp.find("<double>",0))!=std::string::npos) tmp.erase(pos,8);
-        // while((pos=tmp.find("<long double>",0))!=std::string::npos) tmp.erase(pos,13);
-        // while((pos=tmp.find("<float>",0))!=std::string::npos) tmp.erase(pos,7);
-        tmp.erase(std::remove_if(tmp.begin(),tmp.end(),::isspace),tmp.end());
-        os<<tmp<<"\n";
-    */
-    }
+  /// Prints the expression as a string to \a os
+  void print(std::ostream &os) const
+  {
+      static_cast<E const&>(*this).print(os);
+  /*
+      std::string tmp(__PRETTY_FUNCTION__);
+      tmp.erase(0,74);
+      tmp.erase(tmp.size()-42,42);
+      size_t pos = 0;
+      while((pos=tmp.find(", false",0))!=std::string::npos) tmp.erase(pos,7);
+      while((pos=tmp.find(", true",0))!=std::string::npos) tmp.erase(pos,6);
+      while((pos=tmp.find("gismo::expr::",0))!=std::string::npos) tmp.erase(pos,13);
+      while((pos=tmp.find("_expr",0))!=std::string::npos) tmp.erase(pos,5);
+      while((pos=tmp.find("<double>",0))!=std::string::npos) tmp.erase(pos,8);
+      // while((pos=tmp.find("<long double>",0))!=std::string::npos) tmp.erase(pos,13);
+      // while((pos=tmp.find("<float>",0))!=std::string::npos) tmp.erase(pos,7);
+      tmp.erase(std::remove_if(tmp.begin(),tmp.end(),::isspace),tmp.end());
+      os<<tmp<<"\n";
+  */
+  }
 
-    std::ostream & printDetail(std::ostream &os) const
-    {
-        os << (isScalar() ? "Scalar " :
-              (isVector() ? "Vector " :
-              (isMatrix() ? "Matrix " :
-               "Unknown ") ) )
-           <<"expression of size "<< rows() // bug: this is not fixed, or may not be known
-           << " x "<<cols()<<"\n";
-        print(os);
-        return os;
-    }
+  std::ostream & printDetail(std::ostream &os) const
+  {
+      os << (isScalar() ? "Scalar " :
+            (isVector() ? "Vector " :
+            (isMatrix() ? "Matrix " :
+             "Unknown ") ) )
+         <<"expression of size "<< rows() // bug: this is not fixed, or may not be known
+         << " x "<<cols()<<"\n";
+      print(os);
+      return os;
+  }
 
-    /// Evaluates the expression at evaluation point indexed by \a k
-    MatExprType eval(const index_t k) const
+  /// Evaluates the expression at evaluation point indexed by \a k
+  MatExprType eval(const index_t k) const
     { return static_cast<E const&>(*this).eval(k); }
 
     /// Returns the transpose of the expression
     tr_expr<E> tr() const
     { return tr_expr<E>(static_cast<E const&>(*this)); }
 
-    /// Returns the transpose of the expression
+    /// Returns the sign of the expression
     sign_expr<E> sgn() const
     { return sign_expr<E>(static_cast<E const&>(*this)); }
 
@@ -1406,24 +1406,26 @@ template<class E>
 class sign_expr : public _expr<sign_expr<E> >
 {
     typename E::Nested_t _u;
+public:
     typedef typename E::Scalar Scalar;
     enum {ScalarValued = 1};
-public:
 
     sign_expr(_expr<E> const& u) : _u(u) { }
 
     Scalar eval(const index_t k) const
     {
-        const Scalar v = _u.value();
+        const Scalar v = _u.val().eval(k);
         return ( v>0 ? 1 : ( v<0 ? -1 : 0 ) );
     }
-        
+
     static index_t rows() { return 1; }
     static index_t cols() { return 1; }
 
     void setFlag() const { _u.setFlag(); }
-   
+
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & ) const {  }
+
+    static bool isScalar() { return true; }
 
     static bool rowSpan() {return false;}
     static bool colSpan() {return false;}
@@ -1435,29 +1437,29 @@ public:
 };
 
 
-/** 
+/**
 computes outer products of a matrix by a space of dimension > 1
-[Jg Jg Jg] * Jb .. 
+[Jg Jg Jg] * Jb ..
 (d x d^2)  * (d^2 x N*d)  --> (d x N*d)
 */
-template<class E>
-class matrix_by_space_expr  : public _expr<matrix_by_space_expr<E> >
+template <typename E1, typename E2>
+class matrix_by_space_expr  : public _expr<matrix_by_space_expr<E1,E2> >
 {
 public:
-    typedef typename E::Scalar Scalar;
+    typedef typename E1::Scalar Scalar;
     enum {ScalarValued = 0};
 private:
-    typename E::Nested_t _u;
-    typename E::Nested_t _v;
+    typename E1::Nested_t _u;
+    typename E2::Nested_t _v;
     mutable gsMatrix<Scalar> res;
 
 public:
-    matrix_by_space_expr(_expr<E> const& u, _expr<E> const& v) : _u(u), _v(v) { }
+    matrix_by_space_expr(E1 const& u, E2 const& v) : _u(u), _v(v) { }
 
     // choose if ColBlocks
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
-        const index_t r   = _u.rows();       
+        const index_t r   = _u.rows();
         const index_t N  = _v.cols() / r;
 
         MatExprType uEv        = _u.eval(k);
@@ -1469,7 +1471,7 @@ public:
             {
                 res.middleCols(i*r,r) = uEv.col(s) * vEv.col(i).transpose();
             }
-        //meaning: [Jg Jg Jg] * Jb .. 
+        //meaning: [Jg Jg Jg] * Jb ..
         return res;
     }
 
@@ -1483,8 +1485,8 @@ public:
     const gsFeVariable<Scalar> & rowVar() const { return _v.rowVar(); }
     const gsFeVariable<Scalar> & colVar() const { return _v.colVar(); }
 
-    static bool rowSpan() {return E::rowSpan();}
-    static bool colSpan() {return E::colSpan();}
+    static bool rowSpan() {return E1::rowSpan();}
+    static bool colSpan() {return E1::colSpan();}
 
     void print(std::ostream &os) const { os << "matrix_by_space("; _u.print(os); os<<")"; }
 };
@@ -3052,6 +3054,12 @@ add_expr<E1,E2> const operator+(_expr<E1> const& u, _expr<E2> const& v)
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
 summ_expr<E1,E2> const summ(E1 const & u, E2 const& M)
 { return summ_expr<E1,E2>(u, M); }
+
+/// Matrix by space TODO: find better name and/or description? And is this the best place?
+/// [Jg Jg Jg] * Jb ..
+template <typename E1, typename E2> EIGEN_STRONG_INLINE
+matrix_by_space_expr<E1,E2> const matrix_by_space(E1 const & u, E2 const& v)
+{ return matrix_by_space_expr<E1,E2>(u, v); }
 
 /// Subtraction operator for expressions
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
