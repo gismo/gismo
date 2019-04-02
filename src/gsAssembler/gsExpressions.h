@@ -1456,6 +1456,7 @@ private:
 public:
     matrix_by_space_expr(E1 const& u, E2 const& v) : _u(u), _v(v) { }
 
+    
     // choose if ColBlocks
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
