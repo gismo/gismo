@@ -4,7 +4,7 @@
 
 #--- C.1 Output ----------------------------------------------------------------
 print_user_options                    yes                # d=no
-print_level                           7                   # d=1
+print_level                           2                   # d=1
 # print_options_documentation          yes
 #--- C.2 Termination -----------------------------------------------------------
 tol                                   1e-6               # d=1e-8
@@ -74,5 +74,5 @@ check_derivatives_for_naninf          yes
 
 #--- Extra options  ------------------------------------------------------------
 
-jacobian_approximation                finite-difference-values
+#jacobian_approximation                finite-difference-values
 #hessian_approximation                 limited-memory

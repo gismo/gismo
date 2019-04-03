@@ -138,7 +138,7 @@ public:
             update();
     }
 
-    /// return the tensor index of the current element
+    /// Return the tensor index of the current element
     gsVector<unsigned, D> index() const
     {
         gsVector<unsigned, D> curr_index(d);  
@@ -190,6 +190,7 @@ public:
         other_.update();
     }
 
+    /// Function to set the breakpoints in direction @i manually
     void setBreaks(std::vector<T> newBreaks, index_t i) // i: direction
     {
         breaks[i].swap(newBreaks);
