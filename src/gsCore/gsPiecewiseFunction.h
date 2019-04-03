@@ -106,8 +106,8 @@ public:
 
     GISMO_CLONE_FUNCTION(gsPiecewiseFunction)
 
-    dim_t domainDim () const {return m_funcs.front()->domainDim();};
-    dim_t targetDim () const {return m_funcs.front()->targetDim();};
+    short_t domainDim () const {return m_funcs.front()->domainDim();};
+    short_t targetDim () const {return m_funcs.front()->targetDim();};
     
     /// Add a piece
     void addPiece(const gsFunction<T> & func)

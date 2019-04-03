@@ -125,10 +125,10 @@ public:
     }
 
     // Documented in gsFunction class
-    dim_t domainDim() const;
+    short_t domainDim() const;
 
     // Documented in gsFunction class
-    dim_t targetDim() const;
+    short_t targetDim() const;
 
     // returns the string expression for component \a i
     const std::string & expression(int i = 0) const;

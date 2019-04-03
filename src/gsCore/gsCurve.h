@@ -61,9 +61,9 @@ public:
 private: virtual gsCurve * clone_impl() const = 0;
 public: inline uPtr clone() const { return uPtr(clone_impl()); }
 
-    dim_t domainDim() const { return 1; }
+    short_t domainDim() const { return 1; }
     
-    dim_t degree() const;
+    short_t degree() const;
 
     void toMesh(gsMesh<T> & msh, int npoints = 100) const;
 

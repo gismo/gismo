@@ -297,22 +297,22 @@ public:
     virtual       gsBasis<T> & basis()       = 0;
 
     /// Dimension of the ambient physical space (overriding gsFunction::targetDim())
-    dim_t targetDim() const { return this->coefDim(); }
+    short_t targetDim() const { return this->coefDim(); }
 
     /// Dimension \em n of the coefficients (control points)
-    dim_t coefDim() const { return m_coefs.cols(); }
+    short_t coefDim() const { return m_coefs.cols(); }
 
     /// Dimension \em n of the absent physical space
-    dim_t geoDim() const { return this->coefDim(); }
+    short_t geoDim() const { return this->coefDim(); }
 
     /// Dimension \em d of the parameter domain (overriding gsFunction::domainDim()).
-    virtual dim_t domainDim() const { return this->basis().domainDim(); }
+    virtual short_t domainDim() const { return this->basis().domainDim(); }
 
     /// Dimension \em d of the parameter domain (same as domainDim()).
-    dim_t parDim() const { return this->basis().domainDim(); }
+    short_t parDim() const { return this->basis().domainDim(); }
 
     /// Co-dimension of the geometric object
-    dim_t coDim() const { return coefDim()-this->basis().domainDim(); }
+    short_t coDim() const { return coefDim()-this->basis().domainDim(); }
 
     /// Returns the range of parameters (same as parameterRange())
     gsMatrix<T> support() const
@@ -504,7 +504,7 @@ public:
     }
 
     /// \brief Returns the degree wrt direction i
-    dim_t degree(const dim_t & i) const
+    short_t degree(const short_t & i) const
      //{ return this->basisComponent(i).degree(); };
      { return this->basis().degree(i); }
 
@@ -626,7 +626,7 @@ namespace gismo
 {
 
 // Generic traits for geometry with dimension known at compile time
-template <dim_t d, typename T>
+template <short_t d, typename T>
 struct gsGeoTraits
 {
     typedef gsGeometry<T> GeometryBase;

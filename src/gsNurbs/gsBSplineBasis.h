@@ -27,7 +27,7 @@ namespace gismo
 {
 
 /// @brief Traits for BSplineBasis in more dimensions
-template<dim_t d, class T>
+template<short_t d, class T>
 struct gsBSplineTraits
 {
     typedef gsKnotVector<T> KnotVectorType;
@@ -155,7 +155,7 @@ public:
 /* Virtual member functions required by the base class */
 
     // Look at gsBasis class for a description
-    dim_t domainDim() const { return Dim; }
+    short_t domainDim() const { return Dim; }
 
     // Unhide/forward gsTensorBasis<1,T>::size(k), since the overload
     // with size() automatically hides it in this class
@@ -308,23 +308,23 @@ public:
                                         int n, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description
-    dim_t degree(dim_t i) const
+    short_t degree(short_t i) const
     {
         GISMO_UNUSED(i);
         GISMO_ASSERT(i==0,"Asked for degree(i) in 1D basis.");
         return m_p; 
     }
 
-    dim_t degree() const {return m_p;}
+    short_t degree() const {return m_p;}
 
     // Look at gsBasis class for a description
-    dim_t maxDegree()   const { return m_p; }
+    short_t maxDegree()   const { return m_p; }
 
     // Look at gsBasis class for a description
-    dim_t minDegree()   const { return m_p; }
+    short_t minDegree()   const { return m_p; }
 
     // Look at gsBasis class for a description
-    dim_t totalDegree() const { return m_p; }
+    short_t totalDegree() const { return m_p; }
  
     /// @brief Returns the order of the B-spline  basis
     inline unsigned order() const { return m_p+1; }
@@ -644,7 +644,7 @@ public:
 protected:
 
     /// @brief Degree
-    dim_t m_p;
+    short_t m_p;
 
     /// @brief Knot vector
     KnotVectorType m_knots;

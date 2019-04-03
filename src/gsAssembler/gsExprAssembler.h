@@ -338,8 +338,8 @@ public:
             const index_t bdB = m_options.getInt("bdB");
             const T bdO       = m_options.getReal("bdO");
             T nz = 1;
-            const dim_t dim = m_exprdata->multiBasis().domainDim();
-            for (dim_t i = 0; i != dim; ++i)
+            const short_t dim = m_exprdata->multiBasis().domainDim();
+            for (short_t i = 0; i != dim; ++i)
                 nz *= bdA * m_exprdata->multiBasis().maxDegree(i) + bdB;
 
             m_matrix.reservePerColumn(numBlocks()*cast<T,index_t>(nz*(1.0+bdO)) );

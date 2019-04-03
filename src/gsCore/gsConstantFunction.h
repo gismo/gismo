@@ -41,12 +41,12 @@ public:
     typedef memory::unique_ptr< gsConstantFunction > uPtr;
 
     /// Returns a null function 
-    static const gsConstantFunction Zero(dim_t domDim, dim_t tarDim)
+    static const gsConstantFunction Zero(short_t domDim, short_t tarDim)
     { return gsConstantFunction(gsVector<T>::Zero(tarDim),domDim); }
 
     gsConstantFunction() { }
 
-    explicit gsConstantFunction(const gsVector<T>& val, dim_t domainDim)
+    explicit gsConstantFunction(const gsVector<T>& val, short_t domainDim)
     :  m_domainDim(domainDim)
     {
         m_coefs = val.transpose();
@@ -54,7 +54,7 @@ public:
 
 
     ///  Constructs a constant function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R \f$
-    explicit gsConstantFunction(T x, dim_t domainDim)
+    explicit gsConstantFunction(T x, short_t domainDim)
         : m_domainDim(domainDim)
     {
         m_coefs.resize(1,1);
@@ -62,7 +62,7 @@ public:
     }
 
     /// Constructs a constant function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^2 \f$
-    gsConstantFunction(T x, T y, dim_t domainDim)
+    gsConstantFunction(T x, T y, short_t domainDim)
         : m_domainDim(domainDim)
     {
         m_coefs.resize(1,2);
@@ -71,7 +71,7 @@ public:
     }
 
     /// Constructs a constant Function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^3 \f$
-    gsConstantFunction(T x, T y, T z, dim_t domainDim)
+    gsConstantFunction(T x, T y, T z, short_t domainDim)
         : m_domainDim(domainDim)
     {
         m_coefs.resize(1,3);
@@ -81,7 +81,7 @@ public:
     }
 
     /// Constructs a constant Function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^4 \f$
-    gsConstantFunction(T x, T y, T z, T w,  dim_t domainDim)
+    gsConstantFunction(T x, T y, T z, T w,  short_t domainDim)
         : m_domainDim(domainDim)
     {
         m_coefs.resize(1,4);
@@ -107,19 +107,19 @@ public:
     }
 
     // Documentation in gsFunction class
-    virtual dim_t domainDim() const   { return m_domainDim ; }
+    virtual short_t domainDim() const   { return m_domainDim ; }
 
     // Documentation in gsFunction class
-    virtual dim_t targetDim() const   { return m_coefs.cols(); }
+    virtual short_t targetDim() const   { return m_coefs.cols(); }
 
     const gsVector<T> value() const { return m_coefs.transpose();}
 
     T value(size_t i) const { return m_coefs.at(i);}
 
-    void setValue(T val, dim_t domainDim)
+    void setValue(T val, short_t domainDim)
     { m_coefs.setConstant(1,1,val); m_domainDim = domainDim;}
 
-    void setValue(const gsVector<T> & val, dim_t domainDim)
+    void setValue(const gsVector<T> & val, short_t domainDim)
     { m_coefs = val.transpose(); m_domainDim = domainDim;}
 
     // Documentation in gsFunction class
@@ -166,7 +166,7 @@ private:
     using Base::m_coefs;
 
     /// Spatial dimension of the domain of definition of this function
-    dim_t m_domainDim;
+    short_t m_domainDim;
 };
 
 }

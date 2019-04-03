@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     {
         // Find maximum degree with respect to all the variables
         int tmp = refine_bases.maxDegree(0);
-        for (dim_t j = 1; j < patches.parDim(); ++j )
+        for (short_t j = 1; j < patches.parDim(); ++j )
             if ( tmp < refine_bases.maxDegree(j) )
                 tmp = refine_bases.maxDegree(j);
 

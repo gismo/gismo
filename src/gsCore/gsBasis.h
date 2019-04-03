@@ -406,7 +406,7 @@ public:
 
     /// @}
 
-    inline dim_t dim() const {return this->domainDim();}
+    inline short_t dim() const {return this->domainDim();}
 
     /*
       Member functions that need to be redefined in the derived class.
@@ -871,11 +871,11 @@ public:
 
     /// @brief Set the degree of the basis (either elevate or
     /// reduce) in order to have degree equal to \a i wrt to each variable
-    void setDegree(dim_t const& i);
+    void setDegree(short_t const& i);
 
     /// @brief Set the degree of the basis (either increase or
     /// decrecee) in order to have degree equal to \a i
-    void setDegreePreservingMultiplicity(dim_t const& i);
+    void setDegreePreservingMultiplicity(short_t const& i);
 
     /// @brief Elevates the continuity of the basis along element boundaries
     virtual void elevateContinuity(int const & i = 1);
@@ -889,21 +889,21 @@ public:
 
     /// @brief If the basis is of polynomial or piecewise polynomial
     /// type, then this function returns the maximum polynomial degree.
-    virtual dim_t maxDegree() const;
+    virtual short_t maxDegree() const;
 
     /// @brief If the basis is of polynomial or piecewise polynomial
     /// type, then this function returns the minimum polynomial degree.
-    virtual dim_t minDegree() const;
+    virtual short_t minDegree() const;
 
     /// @brief If the basis is of polynomial or piecewise polynomial
     /// type, then this function returns the total polynomial degree.
-    virtual dim_t totalDegree() const;
+    virtual short_t totalDegree() const;
 
     /// @brief Degree with respect to the i-th variable.
     /// If the basis is a tensor product of (piecewise)
     /// polynomial bases, then this function returns the polynomial
     /// degree of the \a i-th component.
-    virtual dim_t degree(dim_t i) const;
+    virtual short_t degree(short_t i) const;
 
     /// @brief Applies interpolation given the parameter values \a pts
     /// and values \a vals.

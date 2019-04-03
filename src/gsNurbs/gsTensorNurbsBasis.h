@@ -34,7 +34,7 @@ namespace gismo
     \ingroup basis
     \ingroup Nurbs
 */
-template<dim_t d, class T>
+template<short_t d, class T>
 class gsTensorNurbsBasis : public gsRationalBasis<typename gsBSplineTraits<d,T>::Basis>
 {
 

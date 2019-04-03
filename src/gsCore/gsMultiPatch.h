@@ -152,19 +152,19 @@ public:
     std::string detail() const;
 
     /// \brief Dimension of the parameter domain (must match for all patches).
-    dim_t parDim() const
+    short_t parDim() const
     {
         //GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
         return m_dim;
     }
-    dim_t domainDim () const {return parDim();}
+    short_t domainDim () const {return parDim();}
 
     /// \brief Dimension of the geometry (must match for all patches).
-    dim_t geoDim() const;
-    dim_t targetDim () const {return geoDim();}
+    short_t geoDim() const;
+    short_t targetDim () const {return geoDim();}
 
     /// \brief Co-dimension of the geometry (must match for all patches).
-    dim_t coDim() const;
+    short_t coDim() const;
 
     /// \brief Returns true if the multipatch object is a closed
     /// manifold (ie. it has no boundaries)

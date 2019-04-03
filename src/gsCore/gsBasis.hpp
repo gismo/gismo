@@ -327,11 +327,11 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis(boxComponent b) const
 {
     GISMO_ASSERT( b.totalDim() == this->dim(), "The dimensions do not agree." );
 
-    const dim_t dim = this->dim();
+    const short_t dim = this->dim();
 
     uPtr result;
-    dim_t d=0;
-    for (dim_t i=0; i<dim; ++i)
+    short_t d=0;
+    for (short_t i=0; i<dim; ++i)
     {
         boxComponent::location loc = b.locationForDirection(i);
         if (loc)
@@ -355,11 +355,11 @@ template<class T>
 typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b, gsMatrix<unsigned>& indices, bool noBoundary) const
 {
     GISMO_ASSERT( b.totalDim() == this->dim(), "The dimensions do not agree." );
-    const dim_t dim = this->dim();
+    const short_t dim = this->dim();
 
     uPtr result;
-    dim_t d=0;
-    for (dim_t i=0; i<dim; ++i)
+    short_t d=0;
+    for (short_t i=0; i<dim; ++i)
     {
         boxComponent::location loc = b.locationForDirection(i);
         if (loc)
@@ -590,12 +590,12 @@ void gsBasis<T>::degreeDecrease(int const &, int const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::setDegree(dim_t const& i)
+void gsBasis<T>::setDegree(short_t const& i)
 {
-    const dim_t dm = this->dim();
-    for (dim_t k = 0; k!=dm; ++k)
+    const short_t dm = this->dim();
+    for (short_t k = 0; k!=dm; ++k)
     {
-        const dim_t p = this->degree(k);
+        const short_t p = this->degree(k);
         if ( i > p )
         {
             this->degreeElevate(i-p, k);
@@ -608,9 +608,9 @@ void gsBasis<T>::setDegree(dim_t const& i)
 }
 
 template<class T>
-void gsBasis<T>::setDegreePreservingMultiplicity(dim_t const& i)
+void gsBasis<T>::setDegreePreservingMultiplicity(short_t const& i)
 {
-    for ( dim_t d = 0; d < dim(); ++ d )
+    for ( short_t d = 0; d < dim(); ++ d )
     {
         if ( i > degree(d) )
             degreeIncrease(i-degree(d),d);
@@ -632,19 +632,19 @@ gsDomain<T> * gsBasis<T>::domain() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-dim_t gsBasis<T>::maxDegree() const
+short_t gsBasis<T>::maxDegree() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-dim_t gsBasis<T>::minDegree() const
+short_t gsBasis<T>::minDegree() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-dim_t gsBasis<T>::totalDegree() const
+short_t gsBasis<T>::totalDegree() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-dim_t gsBasis<T>::degree(dim_t) const
+short_t gsBasis<T>::degree(short_t) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

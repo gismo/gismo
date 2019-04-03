@@ -55,9 +55,9 @@ public:
 
 public:
   
-    dim_t domainDim () const {return m_basis.domainDim();}
+    short_t domainDim () const {return m_basis.domainDim();}
 
-    dim_t targetDim () const {return m_basis.targetDim();}
+    short_t targetDim () const {return m_basis.targetDim();}
 
     gsMatrix<T> support() const;
 

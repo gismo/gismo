@@ -132,14 +132,14 @@ std::string gsMultiPatch<T>::detail() const
 }
 
 template<class T>
-dim_t gsMultiPatch<T>::geoDim() const
+short_t gsMultiPatch<T>::geoDim() const
 {
     GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
     return m_patches[0]->geoDim();
 }
 
 template<class T>
-dim_t gsMultiPatch<T>::coDim() const
+short_t gsMultiPatch<T>::coDim() const
 {
     GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
     return m_patches[0]->geoDim() - m_dim;
