@@ -99,6 +99,11 @@ endif()
 #message ("  GISMO_WITH_METIS        ${GISMO_WITH_METIS}")
 #endif()
 
+option(GISMO_WITH_GMP           "With GMP"                  false  )
+if  (${GISMO_WITH_GMP})
+message ("  GISMO_WITH_GMP         ${GISMO_WITH_GMP}")
+endif()
+
 option(GISMO_WITH_MPFR           "With MPFR"                  false  )
 if  (${GISMO_WITH_MPFR})
 message ("  GISMO_WITH_MPFR         ${GISMO_WITH_MPFR}")
