@@ -85,6 +85,7 @@ template<class E> class symm_expr;
 template<class E> class trace_expr;
 template<class E> class norm_expr;
 template<class E> class sqNorm_expr;
+template<class E> class det_expr;
 template<class E> class value_expr;
 template<class E> class asdiag_expr;
 template<class E> class col_expr;
@@ -192,6 +193,10 @@ public:
     /// Returns the Euclidean norm of the expression
     norm_expr<E> norm() const
     { return norm_expr<E>(static_cast<E const&>(*this)); }
+
+    /// Returns the determinant of the expression
+    norm_expr<E> det() const
+    { return det_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the squared Euclidean norm of the expression
     sqNorm_expr<E> sqNorm() const
@@ -1320,6 +1325,9 @@ GISMO_EXPR_VECTOR_EXPRESSION(inv,inverse,0);
 // GISMO_EXPR_VECTOR_EXPRESSION(sqrt,array().sqrt,0)
 // GISMO_EXPR_VECTOR_EXPRESSION(abs,array().abs,0)
 
+//Determinant
+GISMO_EXPR_VECTOR_EXPRESSION(det,det,1);
+
 #undef GISMO_EXPR_VECTOR_EXPRESSION
 
 /**
@@ -1970,7 +1978,7 @@ public:
         _G.data().flags |= NEED_DERIV;
     }
 
-    meas_expr<T> det() const
+    meas_expr<T> absDet() const
     {
         GISMO_ASSERT(rows() == cols(), "The Jacobian matrix is not square");
         return meas_expr<T>(_G);
