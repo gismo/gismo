@@ -343,7 +343,7 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
 }
 
 template<class T>
-std::vector<boxSide> gsGeometry<T>::locateOn(const gsMatrix<T> & u, gsVector<bool> & onGeo, gsMatrix<T> & preIm, bool lookForBoundary) const
+std::vector<boxSide> gsGeometry<T>::locateOn(const gsMatrix<T> & u, gsVector<bool> & onGeo, gsMatrix<T> & preIm, bool lookForBoundary, real_t tol) const
 {
     onGeo.resize(u.cols());
     std::vector<boxSide> sides(u.cols());
@@ -356,51 +356,33 @@ std::vector<boxSide> gsGeometry<T>::locateOn(const gsMatrix<T> & u, gsVector<boo
 
     for(index_t i = 0; i < u.cols(); i++)
     {
-        this->invertPoints(u.col(i), tmp);
+        this->invertPoints(u.col(i), tmp, tol);
         pr = this->parameterRange();
         //if ((tmp.array() >= pr.col(0).array()).all()
         //    && (tmp.array() <= pr.col(1).array()).all())
         if ((tmp.array() >= pr.col(0).array() - 1.e-4).all()
              && (tmp.array() <= pr.col(1).array() + 1.e-4).all()) // be careful! if u is on the boundary then we may get a wrong result
-            // the tolerance is due to imprsisions in the geometry map. E.g. If a circle is rotated then the corner need
+            // the tolerance is due to imprecisions in the geometry map. E.g. If a circle is rotated then the corner need
             // not to lie exactly on the interface of the neighbour patch since we use only B-splines for the modelling
             // TODO: Maybe find a better solution!
         {
             onGeo(i) = true;
             preIm.col(i) = tmp;
 
-
-
             if (lookForBoundary == true)
             {
                 boxSide s;
                 for (int d = 0; d < geoDim(); d++) {
-                    if ((math::abs(tmp(d, 0) - pr(d, 0)) < 1.e-6)) {
-                        switch (d) {
-                            case 0:
-                                s.m_index = 1; // u lower
-                                break;
-                            case 1:
-                                s.m_index = 3; // v lower
-                                break;
-                            case 2:
-                                s.m_index = 5; // w lower
-                                break;
-                        }
+                    if ((math::abs(tmp(d, 0) - pr(d, 0)) < tol))
+                    {
+                        s.m_index = 2*d+1; // lower
+                        break;
                     }
 
-                    if ((math::abs(tmp(d, 0) - pr(d, 1)) < 1.e-6)) {
-                        switch (d) {
-                            case 0:
-                                s.m_index = 2; // u upper
-                                break;
-                            case 1:
-                                s.m_index = 4; // v upper
-                                break;
-                            case 2:
-                                s.m_index = 6; // w upper
-                                break;
-                        }
+                    if ((math::abs(tmp(d, 0) - pr(d, 1)) < tol))
+                    {
+                        s.m_index = 2 * d + 2; // upper
+                        break;
                     }
                 }
                 sides[i] = s;

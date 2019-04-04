@@ -126,6 +126,10 @@ private:
     // if true then an affine map is created -> faster since no inversions etc. must be performed
     bool m_isMatching;
 
+    // flag which says whether the orientation of the second side is fliped
+    // this is important for reparameterization, especially for constructing the breakpoints
+    bool m_flipSide2;
+
     // The geometries to consider
     const gsGeometry<T> & m_g1;
     const gsGeometry<T> & m_g2;
@@ -155,6 +159,12 @@ private:
 
     //Member to check if the incoming patches are matching or not
     bool checkIfMatching();
+
+    //Member to check if the incoming evaluation points are out of bounds because of rounding errors
+    gsMatrix<T> checkIfInBound(const gsMatrix<T> & u) const;
+
+    //Member to change dir direction of the parameterization of the patches
+    void changeDir(const boundaryInterface & bi);
 
 }; // End gsRemapInterface
 

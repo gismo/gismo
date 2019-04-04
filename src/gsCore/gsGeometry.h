@@ -349,7 +349,7 @@ public:
      * @return A std::vector of boxSides containing the numbers of the sides or zero if the points are in the interior
      * If the flag lookForBoundary is not set then a vector containing anything will be returned
      */
-    std::vector<boxSide> locateOn(const gsMatrix<T> & u, gsVector<bool> & onG2, gsMatrix<T> & preIm, bool lookForBoundary = false) const; //
+    std::vector<boxSide> locateOn(const gsMatrix<T> & u, gsVector<bool> & onG2, gsMatrix<T> & preIm, bool lookForBoundary = false, real_t tol = 1.e-6) const; //
 
     // Whether the coefficients of this geometry are stored in projective or affine form
     //virtual bool isProjective() const = 0;
