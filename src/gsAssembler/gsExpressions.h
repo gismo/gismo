@@ -195,7 +195,7 @@ public:
     { return norm_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the determinant of the expression
-    norm_expr<E> det() const
+    det_expr<E> det() const
     { return det_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the squared Euclidean norm of the expression
@@ -1326,7 +1326,7 @@ GISMO_EXPR_VECTOR_EXPRESSION(inv,inverse,0);
 // GISMO_EXPR_VECTOR_EXPRESSION(abs,array().abs,0)
 
 //Determinant
-GISMO_EXPR_VECTOR_EXPRESSION(det,det,1);
+GISMO_EXPR_VECTOR_EXPRESSION(det,determinant,1);
 
 #undef GISMO_EXPR_VECTOR_EXPRESSION
 
@@ -1470,17 +1470,12 @@ public:
     {
         const index_t r   = _u.rows();
         const index_t N  = _v.cols() / (r*r);
-        gsDebugVar(r);
-        gsDebugVar(N);
 
         const MatExprType uEv        = _u.eval(k);
         const MatExprType vEv  = _v.eval(k);
-        gsDebugVar(vEv);
-        gsDebugVar(vEv.rows());
-        gsDebugVar(vEv.cols());
 
         res.resize(r, N*r*r);
-        gsDebugVar(res.cols());
+        // gsDebugVar(res.cols());
         for (index_t s = 0; s!=r; ++s)
             for (index_t i = 0; i!=N; ++i)
             {
@@ -1502,8 +1497,8 @@ public:
     const gsFeVariable<Scalar> & rowVar() const { return _v.rowVar(); }
     const gsFeVariable<Scalar> & colVar() const { return _v.colVar(); }
 
-    static bool rowSpan() {return E1::rowSpan();}
-    static bool colSpan() {return E1::colSpan();}
+    static bool rowSpan() {return E2::rowSpan();}
+    static bool colSpan() {return E2::colSpan();}
 
     void print(std::ostream &os) const { os << "matrix_by_space("; _u.print(os); os<<")"; }
 };
