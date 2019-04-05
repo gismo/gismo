@@ -251,10 +251,13 @@ public:
     ///Use this function after calling gsExprAssembler::getSpace when
     /// a distinct test space is requred (eg. Petrov-Galerkin
     /// methods).
-    space getTestSpace(variable u, const gsFunctionSet<T> & mp)
+    ///
+    /// \note The dimension is set to the same as \a u, unless the caller
+    /// sets as a third argument a new value.
+    space getTestSpace(variable u, const gsFunctionSet<T> & mp, index_t dim = -1)
     {
         //GISMO_ASSERT(0!=u.mapper(), "Not a space"); // done on initSystem
-        expr::gsFeSpace<T> & s = m_exprdata->getSpace(mp,u.dim());
+        expr::gsFeSpace<T> & s = m_exprdata->getSpace(mp,(-1 == dim ? u.dim() : dim));
         space uu = static_cast<space>(u);
         s.setId(uu.id());
         m_vrow[s.id()] = &s;
