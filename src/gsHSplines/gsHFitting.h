@@ -27,7 +27,7 @@ namespace gismo {
     \ingroup HSplines
 */
 
-template <unsigned d, class T>
+template <short_t d, class T>
 class gsHFitting : public gsFitting<T>
 {
 public:
@@ -181,7 +181,7 @@ protected:
 
 
 
-template<unsigned d, class T>
+template<short_t d, class T>
 bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold)
 {
     // INVARIANT
@@ -218,7 +218,7 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold)
     return true;
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsHFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_threshold)
 {
     // INVARIANT:
@@ -248,7 +248,7 @@ void gsHFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_thr
     }
 }
 
-template <unsigned d, class T>
+template <short_t d, class T>
 std::vector<unsigned> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
                                                  const T threshold)
 {
@@ -270,7 +270,7 @@ std::vector<unsigned> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
     return boxes;
 }
 
-template <unsigned d, class T>
+template <short_t d, class T>
 void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
                                   std::vector<unsigned>& cells,
                                   const gsVector<T>& parameter)
@@ -329,7 +329,7 @@ void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
 }
 
 
-template <unsigned d, class T>
+template <short_t d, class T>
 bool gsHFitting<d, T>::isCellAlreadyInserted(const gsVector<unsigned, d>& a_cell,
                                              const std::vector<unsigned>& cells)
 {
@@ -354,7 +354,7 @@ bool gsHFitting<d, T>::isCellAlreadyInserted(const gsVector<unsigned, d>& a_cell
     return false;
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 T gsHFitting<d, T>::setRefineThreshold(const std::vector<T>& errors )
 {
     std::vector<T> errorsCopy = errors;

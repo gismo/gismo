@@ -29,7 +29,7 @@ namespace gismo
  *   \ingroup Tensor
  */
 
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsTensorBasis : public gsBasis<T>  
 {
 public: 
@@ -46,7 +46,7 @@ public:
     typedef T Scalar_t;
 
     /// Dimension of the parameter domain
-    static const int Dim = d;
+    static const short_t Dim = d;
 
     /// Iterators on coordinate bases
     typedef Basis_t** iterator;
@@ -100,7 +100,7 @@ public:
 public:
 
     // Returns the dimension of the basis
-    int domainDim() const { return Dim; }
+    short_t domainDim() const { return Dim; }
 
     /// Returns the number of elements in the basis
     index_t size() const 
@@ -115,7 +115,7 @@ public:
     int numElements() const 
     {
         int nElem = m_bases[0]->numElements();
-        for (unsigned dim = 1; dim < d; ++dim)
+        for (short_t dim = 1; dim < d; ++dim)
             nElem *= m_bases[dim]->numElements();
         return nElem;
     }
@@ -123,9 +123,9 @@ public:
     // Look at gsBasis class for a description
     int numElements(boxSide const & s) const
     {
-        const unsigned dir =  s.direction();
+        const index_t dir =  s.direction();
         int nElem = 1;
-        for (unsigned dim = 0; dim < d; ++dim)
+        for (short_t dim = 0; dim < d; ++dim)
         {
             if(dim == dir)
                 continue;
@@ -151,7 +151,7 @@ public:
     void numElements_cwise(gsVector<unsigned>& result) const
     {
         result.resize(d);
-        for (unsigned dim = 0; dim < d; ++dim)
+        for (short_t dim = 0; dim < d; ++dim)
             result(dim) = static_cast<unsigned>(m_bases[dim]->numElements());
     }
 
@@ -458,33 +458,33 @@ public:
     gsMatrix<unsigned> coefSlice(int dir, int k) const;
 
     /// Returns the degree of the basis wrt variable \a i 
-    int degree(int i) const 
+    short_t degree(short_t i) const
     { 
         return m_bases[i]->degree(0); 
     }
 
-    int maxDegree() const 
+    short_t maxDegree() const
     { 
-        int td = m_bases[0]->degree(0);
+        short_t td = m_bases[0]->degree(0);
         // take maximum of coordinate bases degrees
-        for (unsigned k=1; k!=d; ++k)
+        for (short_t k=1; k!=d; ++k)
             td = math::max(td, m_bases[k]->degree(0));
         return td;
     }
     
-    int minDegree() const 
+    short_t minDegree() const
     { 
-        int td = m_bases[0]->degree(0);
+        short_t td = m_bases[0]->degree(0);
         // take minimum of coordinate bases degrees
-        for (unsigned k=1; k!=d; ++k)
+        for (short_t k=1; k!=d; ++k)
             td = math::min(td, m_bases[k]->degree(0));
         return td;
     }
     
-    int totalDegree() const 
+    short_t totalDegree() const
     { 
-        int td = 0;
-        for (unsigned k=0; k!=d; ++k)
+        short_t td = 0;
+        for (short_t k=0; k!=d; ++k)
             td = + m_bases[k]->degree(0);
         return td;
     }
@@ -711,7 +711,7 @@ public:
     
 public:
 
-    int dim() const { return 1;}
+    short_t dim() const { return 1;}
 
     /// Returns a box with the coordinate-wise active functions
     /// \param u evaluation points
@@ -859,7 +859,7 @@ private:
 /* ******************************************** */
 /* ******************************************** */
 
-template<unsigned d, class Basis_t >
+template<short_t d, class Basis_t >
 inline unsigned gsTensorBasis<d,Basis_t>::index(gsVector<unsigned,d> const & v) const
 {
     unsigned ind;
@@ -870,14 +870,14 @@ inline unsigned gsTensorBasis<d,Basis_t>::index(gsVector<unsigned,d> const & v) 
     return ind;
 }
 
-template<unsigned d, class Basis_t > 
+template<short_t d, class Basis_t >
 inline unsigned gsTensorBasis<d,Basis_t>::index(unsigned i, unsigned j, unsigned k ) const
 {
     return size(0) * (size(1) * k + j) + i;
 }
 
 
-template<unsigned d, class Basis_t >
+template<short_t d, class Basis_t >
 inline unsigned gsTensorBasis<d,Basis_t>::stride(int dir) const
 {
     GISMO_ASSERT( dir>=0 &&  dir< this->dim(), 

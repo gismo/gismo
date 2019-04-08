@@ -70,7 +70,7 @@ struct lvl_coef
  *    \ingroup HSplines
  */
 
-template<unsigned d, class T>
+template<short_t d, class T>
 class GISMO_DEFAULT_VIS gsHTensorBasis: public gsBasis<T>
 {
 public:
@@ -545,20 +545,20 @@ public:
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const;
 
-    int maxDegree() const
+    short_t maxDegree() const
     {
-        int td = m_bases[0]->degree(0);
+        short_t td = m_bases[0]->degree(0);
         // take maximum of coordinate bases degrees
-        for (unsigned k=1; k!=d; ++k)
+        for (short_t k=1; k!=d; ++k)
             td = math::max(td, m_bases[0]->degree(k));
         return td;
     }
 
-    int minDegree() const
+    short_t minDegree() const
     {
-        int td = m_bases[0]->degree(0);
+        short_t td = m_bases[0]->degree(0);
         // take maximum of coordinate bases degrees
-        for (unsigned k=1; k!=d; ++k)
+        for (short_t k=1; k!=d; ++k)
             td = math::min(td, m_bases[0]->degree(k));
         return td;
     }
@@ -566,7 +566,7 @@ public:
     /// @brief If the basis is a tensor product of (piecewise)
     /// polynomial bases, then this function returns the polynomial
     /// degree of the \a i-th component.
-    virtual inline int degree(int i) const
+    virtual inline short_t degree(short_t i) const
     { return m_bases[0]->degree(i);}
 
 

@@ -312,7 +312,7 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     const gsOptionList& opt
 )
 {
-    const index_t dim = mb.topology().dim();
+    const short_t dim = mb.topology().dim();
 
     // Setup dof mapper
     gsDofMapper dm;
