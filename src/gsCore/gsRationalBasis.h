@@ -132,7 +132,7 @@ public:
 // Virtual member functions overriding source basis
 // ***********************************************
 
-    int domainDim() const { return Dim; }
+    short_t domainDim() const { return Dim; }
     
     index_t size() const { return m_src->size(); }
 
@@ -156,16 +156,16 @@ public:
     { return m_src->functionAtCorner(c); }
 
     // Look at gsBasis class for a description
-    int degree(int i = 0) const {return m_src->degree(i); }
+    short_t degree(short_t i = 0) const {return m_src->degree(i); }
 
     // Look at gsBasis class for a description
-    int maxDegree()   const   {return m_src->maxDegree(); }
+    short_t maxDegree()   const   {return m_src->maxDegree(); }
 
     // Look at gsBasis class for a description
-    int minDegree()   const    {return m_src->minDegree(); }
+    short_t minDegree()   const    {return m_src->minDegree(); }
 
     // Look at gsBasis class for a description
-    int totalDegree() const     {return m_src->totalDegree(); }
+    short_t totalDegree() const     {return m_src->totalDegree(); }
 
     void uniformRefine(int numKnots = 1, int mul=1)
     {

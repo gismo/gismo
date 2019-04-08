@@ -172,6 +172,8 @@ T mixed_derivative(const exprtk::expression<T>& e,
 
 } //namespace
 
+#define N_VARS 7
+
 namespace gismo
 {
 
@@ -194,7 +196,7 @@ public:
     gsFunctionExprPrivate(const int _dim)
     : vars(), dim(_dim)
     {
-        GISMO_ENSURE( dim < 7, "The number of variables can be at most 6 (x,y,z,w,u,v)." );
+        GISMO_ENSURE( dim <= N_VARS, "The number of variables can be at most 7 (x,y,z,w,u,v,t)." );
         init();
     }
 
@@ -203,7 +205,7 @@ public:
     {
         GISMO_ASSERT ( string.size() == expression.size(), "Corrupted FunctionExpr");
         init();
-        //copy_n(other.vars, 6, vars);
+        //copy_n(other.vars, N_VARS+1, vars);
         string    .reserve(string.size());
         expression.reserve(string.size());
         for (std::size_t i = 0; i!= other.string.size(); ++i)
@@ -254,13 +256,14 @@ public:
         symbol_table.add_variable("w",vars[3]);
         symbol_table.add_variable("u",vars[4]);
         symbol_table.add_variable("v",vars[5]);
+        symbol_table.add_variable("t",vars[6]);
         //symbol_table.remove_variable("w",vars[3]);
         symbol_table.add_pi();
         //symbol_table.add_constant("C", 1);
     }
 
 public:
-    mutable Numeric_t         vars[6];
+    mutable Numeric_t         vars[N_VARS];
     SymbolTable_t             symbol_table;
     std::vector<Expression_t> expression;
     std::vector<std::string>  string;
@@ -464,13 +467,13 @@ gsFunctionExpr<T>::~gsFunctionExpr()
 }
 
 template<typename T>
-int gsFunctionExpr<T>::domainDim() const
+short_t gsFunctionExpr<T>::domainDim() const
 {
     return my->dim;
 }
 
 template<typename T>
-int gsFunctionExpr<T>::targetDim() const
+short_t gsFunctionExpr<T>::targetDim() const
 {
     return static_cast<int>(my->string.size());
 }
@@ -504,6 +507,9 @@ void gsFunctionExpr<T>::set_u (T const & v) const { my->vars[4]= v; }
 
 template<typename T>
 void gsFunctionExpr<T>::set_v (T const & v) const { my->vars[5]= v; }
+
+template<typename T>
+void gsFunctionExpr<T>::set_t (T const & t) const { my->vars[6]= t; }
 
 template<typename T>
 void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const

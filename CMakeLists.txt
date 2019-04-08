@@ -26,6 +26,10 @@ if(POLICY CMP0063)# CMake 3.3
 cmake_policy(SET CMP0063 NEW)
 endif()
 
+if(POLICY CMP0077)# CMake 3.13
+cmake_policy(SET CMP0077 NEW)
+endif()
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -89,9 +93,9 @@ message( "                          version ${${PROJECT_NAME}_VERSION}" )
 ## #################################################################
 
 include( gsOptions )
+include(CTest)
 # Note: clean cache to reset to OFF
 set(BUILD_TESTING "Enable testing" ${GISMO_BUILD_UNITTESTS})
-include(CTest)
 
 ## #################################################################
 ## Preprocessor definitions
@@ -310,10 +314,6 @@ if(GISMO_ELASTICITY)
   gismo_fetch_module(gsElasticity)
 endif()
 
-if(GISMO_EXASTENCILS)
-  gismo_fetch_module(gsExaStencils)
-endif()
-
 include(gsLibrary)
 
 ## #################################################################
@@ -381,9 +381,20 @@ if (NOT gismo_optionals STREQUAL "")
   message(STATUS "Optional compile list: ${gismo_optionals}")
 endif()
 
-if(GISMO_UNSUPPORTED)
+## #################################################################
+## Submodules
+## #################################################################
+
+if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
   gismo_fetch_module(unsupported)
+endif()
+
+if(GISMO_MOTOR)
   gismo_fetch_module(motor)
+endif()
+
+if(GISMO_EXASTENCILS)
+  gismo_fetch_module(gsExaStencils)
 endif()
 
 unset(GISMO_UNAME CACHE)

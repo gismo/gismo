@@ -655,6 +655,7 @@ void gsAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
                                     gsMultiPatch<T>& result, T theta) const
 {
     // GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
+    unsigned idx;
 
     for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
     {
@@ -670,7 +671,8 @@ void gsAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
             {
                 if ( mapper.is_free(i, p) ) // DoF value is in the solVector
                 {
-                    coeffs(i,j) += theta* solVector( mapper.index(i, p), 0);
+                    m_system.mapToGlobalColIndex(i,p,idx,j);
+                    coeffs(i,j) += theta * solVector(idx,0);
                 }
             }
         }

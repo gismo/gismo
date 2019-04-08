@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
    // Construct assembler
    gsCDRAssembler<real_t> cdrAss( cdrPde, bases);
    // Set stabilization flag to 1 = SUPG
-   cdrAss.options().setSwitch("Stabilization", 1);
+   cdrAss.options().setInt("Stabilization", stabilizerCDR::SUPG);
    // Compute Dirichlet values by L2-projection
    // Caution: Interpolation does not work for locally refined (T)HB-splines!
    cdrAss.options().setInt("DirichletValues",dirichlet::l2Projection);

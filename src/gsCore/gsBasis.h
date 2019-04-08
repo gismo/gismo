@@ -3,12 +3,12 @@
 
     @brief Provides declaration of Basis abstract interface.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -23,7 +23,7 @@ virtual memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T>coefs ) cons
 namespace gismo
 {
 
-/** 
+/**
     \brief A basis represents a family of \em scalar basis functions
     defined over a common parameter domain.
 
@@ -38,7 +38,7 @@ namespace gismo
     defined over a common parameter domain of dimension *d*. For the
     bases that G+Smo deals with, parameter domains are usually of
     tensor product type and therefore just *d*-dimensional boxes.
-        
+
     Ths gsBasis inteface provides many member functions to evaluate
     their basis functions as well as their derivatives at sets of
     points in the parameter domain.
@@ -60,7 +60,7 @@ namespace gismo
 
     The number of basis functions in a basis is called its \em size
     and can be queried using gsBasis::size().
-    
+
     Most bases have basis functions with local support, i.e., they
     are nonzero only in a small region of the parameter domain.
     A basis function is called \em active at a point \em u if
@@ -78,14 +78,14 @@ template<class T>
 class gsBasis : public gsFunctionSet<T>
 {
 
-public: 
+public:
 
     typedef gsFunctionSet<T> Base;
 
     /// Shared pointer for gsBasis
     typedef memory::shared_ptr< gsBasis > Ptr;
 
-    /// Unique pointer for gsBasis   
+    /// Unique pointer for gsBasis
     typedef memory::unique_ptr< gsBasis > uPtr;
 
     typedef T Scalar_t;
@@ -99,7 +99,7 @@ public:
     gsBasis();
 
     gsBasis(const gsBasis& other);
-    
+
     virtual ~gsBasis();
 
 public:
@@ -109,12 +109,12 @@ public:
       (override the _into versions in derived classes).
     */
 
-    const gsBasis<T> & piece(const index_t k) const 
+    const gsBasis<T> & piece(const index_t k) const
     {
         GISMO_ENSURE(0==k, "Single basis is defined on single subdomain, received: "<<k );
-        return *this; 
+        return *this;
     }
-    
+
     /// Returns the \a i-th basis function as a gsFunction.
     //
     /// Note that the gsBasisFun object only holds a reference to the current
@@ -181,7 +181,7 @@ public:
      *
      * This function has a default implementation that may be overridden
      * in derived classes for higher performance.
-     * 
+     *
      * \param u     evaluation points as \em m column vectors
      * \param coefs coefficient matrix describing the geometry in this basis, \em n columns
      * \return      a matrix of size <em>n x m</em> with one function value as a column vector
@@ -199,19 +199,19 @@ public:
      *
      * This function has a default implementation that may be overridden
      * in derived classes for higher performance.
-     * 
+     *
      * \param u     evaluation points as \em N column vectors
      * \param coefs coefficient matrix describing the geometry in this basis, \em n columns
      * \param[out] result  a matrix of size <em>n x N</em> with one function value as a column vector
      *              per evaluation point
      */
-    virtual void evalFunc_into(const gsMatrix<T> & u, 
-                               const gsMatrix<T> & coefs, 
+    virtual void evalFunc_into(const gsMatrix<T> & u,
+                               const gsMatrix<T> & coefs,
                                gsMatrix<T>& result) const;
 
 
     /** @brief Evaluate the derivatives of the function described by \a coefs at points \a u.
-     * 
+     *
      * \param u     evaluation points as \em N column vectors
      * \param coefs coefficient matrix describing the geometry in this basis, \em n columns
      * \return   For every column of \a u, the result matrix will contain
@@ -231,7 +231,7 @@ public:
      *
      * This function has a default implementation that may be overridden
      * in derived classes for higher performance.
-     * 
+     *
      * Let the function \f$f: \mathbb R^d \to \mathbb R^m \f$ be described by the coefficients \em coefs,
      * i.e.,\n
      * each evaluation point is in \f$\mathbb R^d\f$, and\n
@@ -286,15 +286,15 @@ public:
      *\em N is the number of evaluation points\n
      *\em K is the number of coefficients
      */
-    virtual void derivFunc_into(const gsMatrix<T> & u, 
-                                const gsMatrix<T> & coefs, 
+    virtual void derivFunc_into(const gsMatrix<T> & u,
+                                const gsMatrix<T> & coefs,
                                 gsMatrix<T>& result ) const;
 
     /** \brief Evaluate the Jacobian of the function described by \a coefs at points \a u.
         Jacobian matrices are stacked in blocks
      */
-    virtual void jacobianFunc_into(const gsMatrix<T> & u, 
-                                   const gsMatrix<T> & coefs, 
+    virtual void jacobianFunc_into(const gsMatrix<T> & u,
+                                   const gsMatrix<T> & coefs,
                                    gsMatrix<T>& result ) const;
 
 
@@ -406,7 +406,7 @@ public:
 
     /// @}
 
-    inline int dim() const {return this->domainDim();}
+    inline short_t dim() const {return this->domainDim();}
 
     /*
       Member functions that need to be redefined in the derived class.
@@ -488,9 +488,9 @@ public:
      * \param[out]  result For every column \a i of \a u, a column containing the indices of the
      *   active basis functions at evaluation point <em>u</em>.col(<em>i</em>).
      */
-    virtual void activeCoefs_into(const gsVector<T> & u, const gsMatrix<T> & coefs, 
+    virtual void activeCoefs_into(const gsVector<T> & u, const gsMatrix<T> & coefs,
                                   gsMatrix<T>& result) const;
-    
+
     /// @}
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary.
@@ -514,11 +514,22 @@ public:
 #endif
     GISMO_UPTR_FUNCTION_DEC(gsBasis<T>, boundaryBasis, boxSide const &)
 
+    /// @brief Returns the basis that corresponds to the component
+    virtual uPtr componentBasis(boxComponent b) const;
+
+    /// @brief Returns the basis that corresponds to the component
+    ///
+    /// @param b           The component
+    /// @param indices     The row vector where the indices are stored to
+    /// @param noBoundary  If true, the transfer matrix does not include parts belonging to lower-order
+    ///                    components (i.e., edges without corners or faces without corners and edges)
+    virtual uPtr componentBasis_withIndices(boxComponent b, gsMatrix<unsigned>& indices, bool noBoundary = true) const;
+
     /// @brief Returns (a bounding box for) the domain of the whole basis.
     ///
     /// Returns a dx2 matrix, containing the two diagonally extreme
     /// corners of a hypercube.
-    virtual gsMatrix<T> support() const ;
+    virtual gsMatrix<T> support() const;
 
     /// @brief Returns (a bounding box for) the support of the i-th basis function.
     ///
@@ -537,28 +548,28 @@ public:
 
     /**
     \brief Evaluates nonzero basis functions at point \a u into \a result.
-    
+
     Let...\n
     \a d denote the dimension of the parameter domain.\n
     \a K denote the number of active (i.e., non-zero) basis functions (see active_into()).
     \a N denote the number of evaluation points.\n
-    
+
     The \a n <b>evaluation points \a u</b> are given in a gsMatrix of size <em>d</em> x <em>N</em>.
     Each column of \a u represents one evaluation point.\n
     \n
     The gsMatrix <b>\a result</b> contains the computed function values in the following form:\n
     Column \a j of \a result corresponds to one evaluation point (specified by the <em>j</em>-th column of \a u).
     The column contains the values of all active functions "above" each other.\n
-    
+
     For example, for scalar basis functions \a Bi : (x,y,z)-> R, a column represents\n
     (B1, B2, ... , BN)^T,\n
     where the order the basis functions \a Bi is as returned by active() and active_into().
-    
+
     \param[in] u Evaluation points given as gsMatrix of size <em>d</em> x <em>N</em>.
     See above for details.
     \param[in,out] result gsMatrix of size <em>K</em> x <em>N</em>.
     See above for details.
-    */    
+    */
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
     /// Evaluate the \a i-th basis function at points \a u into \a result.
@@ -566,28 +577,28 @@ public:
 
     /**
     \brief Evaluates the first partial derivatives of the nonzero basis function.
-    
+
     Let \n
     \a d denote the dimension of the parameter domain.\n
     \a K denote the number of active (i.e., non-zero) basis functions (see active_into()).\n
     \a N denote the number of evaluation points.\n
-    
+
     The \a N <b>evaluation points \a u</b> are given in a gsMatrix of size <em>d</em> x <em>N</em>.
     Each column of \a u represents one evaluation point.\n
     \n
     The gsMatrix <b>\a result</b> contains the computed derivatives in the following form:\n
     Column \a j of \a result corresponds to one evaluation point (specified by the <em>j</em>-th column of \a u).
     The column contains the gradients of all active functions "above" each other.\n
-    
+
     For example, for scalar basis functions \a \f$B_i : (x,y,z)-> R\f$, a column represents\n
     \f$(dx B_1, dy B_1, dz B_1, dx B_2, dy B_2, dz B_2, ... , dx B_n, dy B_N, dz B_N)^T\f$,\n
     where the order the basis functions \a \f$B_i\f$ is as returned by active() and active_into().
-    
+
     \param[in] u Evaluation points given as gsMatrix of size <em>d</em> x <em>N</em>.
     See above for details.
     \param[in,out] result gsMatrix of size <em>(K*d)</em> x <em>N</em>.
     See above for details.
-    
+
     \todo Rename to _ grad_into
     */
     virtual void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
@@ -598,8 +609,8 @@ public:
     /// See deriv_into() for detailed documentation.
     ///
     /// \todo rename grad_into
-    virtual void derivSingle_into(unsigned i, 
-                                  const gsMatrix<T> & u, 
+    virtual void derivSingle_into(unsigned i,
+                                  const gsMatrix<T> & u,
                                   gsMatrix<T>& result ) const;
 
     /** \brief Evaluate the second derivatives of all active basis function at points \a u.
@@ -641,8 +652,8 @@ public:
     /// @brief Evaluate the (partial) derivatives of the \a i-th basis function
     /// at points \a u into \a result.
     // hessianSingle_into
-    virtual void deriv2Single_into(unsigned i, 
-                                   const gsMatrix<T> & u, 
+    virtual void deriv2Single_into(unsigned i,
+                                   const gsMatrix<T> & u,
                                    gsMatrix<T>& result ) const;
 
     /** @brief Evaluate the nonzero basis functions and their derivatives up
@@ -661,18 +672,18 @@ public:
      in \b result.
      \param[in,out] result See above for format.
     */
-    virtual void evalAllDers_into(const gsMatrix<T> & u, int n, 
+    virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
                                   std::vector<gsMatrix<T> >& result) const;
 
     /// @brief Evaluate the basis function \a i and its derivatives up
     /// to order \a n at points \a u into \a result.
-    virtual void evalAllDersSingle_into(unsigned i, const gsMatrix<T> & u, 
+    virtual void evalAllDersSingle_into(unsigned i, const gsMatrix<T> & u,
                                         int n, gsMatrix<T>& result) const;
 
     /// @brief Evaluate the (partial) derivative(s) of order \a n the
     /// \a i-th basis function at points \a u into \a result.
-    virtual void evalDerSingle_into(unsigned i, const 
-                                    gsMatrix<T> & u, int n, 
+    virtual void evalDerSingle_into(unsigned i, const
+                                    gsMatrix<T> & u, int n,
                                     gsMatrix<T>& result) const;
 
     /// Compute the Laplacian of all nonzero basis functions at points \a u.
@@ -698,7 +709,7 @@ public:
     virtual const gsBasis & source () const { return *this; }
 
     /// Applicable for rational bases: returns the underlying "source"
-    /// (non-rational) basis    
+    /// (non-rational) basis
     virtual gsBasis & source () { return *this; }
 
     /// Clone the source of this basis in case of rational basis, same
@@ -718,7 +729,7 @@ public:
     virtual std::ostream &print(std::ostream &os) const = 0;
 
     /// Prints the object as a string with extended details.
-    virtual std::string detail() const 
+    virtual std::string detail() const
     {
         // By default just uses print(..)
         std::ostringstream os;
@@ -856,16 +867,16 @@ public:
     virtual void degreeIncrease(int const & i = 1, int const dir = -1);
 
     /// @brief Lower the degree of the basis by the given amount, preserving knots multiplicity.
-    virtual void degreeDecrease(int const & i = 1, int const dir = -1); 
+    virtual void degreeDecrease(int const & i = 1, int const dir = -1);
 
     /// @brief Set the degree of the basis (either elevate or
     /// reduce) in order to have degree equal to \a i wrt to each variable
-    void setDegree(int const& i);
-    
+    void setDegree(short_t const& i);
+
     /// @brief Set the degree of the basis (either increase or
     /// decrecee) in order to have degree equal to \a i
-    void setDegreePreservingMultiplicity(int const& i);
-    
+    void setDegreePreservingMultiplicity(short_t const& i);
+
     /// @brief Elevates the continuity of the basis along element boundaries
     virtual void elevateContinuity(int const & i = 1);
 
@@ -878,21 +889,21 @@ public:
 
     /// @brief If the basis is of polynomial or piecewise polynomial
     /// type, then this function returns the maximum polynomial degree.
-    virtual int maxDegree() const;
+    virtual short_t maxDegree() const;
 
     /// @brief If the basis is of polynomial or piecewise polynomial
     /// type, then this function returns the minimum polynomial degree.
-    virtual int minDegree() const;
+    virtual short_t minDegree() const;
 
     /// @brief If the basis is of polynomial or piecewise polynomial
     /// type, then this function returns the total polynomial degree.
-    virtual int totalDegree() const;
+    virtual short_t totalDegree() const;
 
     /// @brief Degree with respect to the i-th variable.
     /// If the basis is a tensor product of (piecewise)
     /// polynomial bases, then this function returns the polynomial
     /// degree of the \a i-th component.
-    virtual int degree(int i) const;
+    virtual short_t degree(short_t i) const;
 
     /// @brief Applies interpolation given the parameter values \a pts
     /// and values \a vals.
@@ -904,7 +915,7 @@ public:
     /// classes with more efficient algorithms. (by default uses
     /// interpolateData(pts,vals)
     virtual memory::unique_ptr<gsGeometry<T> > interpolateAtAnchors(gsMatrix<T> const& vals) const;
-    
+
     //gsGeometry<T> * projectL2(gsFunction<T> const & func) const;
 
     /// @brief Computes the collocation matrix w.r.t. points \a u.
@@ -919,16 +930,16 @@ public:
 
     /// \brief Computes the indices of DoFs that match on the
     /// interface \a bi. The interface is assumed to be a common face
-    /// between this patch and \a other. 
+    /// between this patch and \a other.
     /// The output is two lists of indices \a bndThis and \a bndOther,
     /// with indices that match one-to-one on the boundary \a bi.
     virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                            gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const;
-                           
-                           
+
+
     /// Get the minimum mesh size, as expected for inverse inequalities
     virtual T getMinCellLength() const;
-    
+
     /// Get the maximum mesh size, as expected for approximation error estimates
     virtual T getMaxCellLength() const;
 
@@ -936,8 +947,8 @@ protected:
 
     // inline void getLinearCombination(
     // const gsMatrix<T>         & scalars,
-    // const gsMatrix<T> * const & coefs, 
-    // const gsMatrix<unsigned>  & indices, 
+    // const gsMatrix<T> * const & coefs,
+    // const gsMatrix<unsigned>  & indices,
     // gsMatrix<T>&                result );
 
 }; // class gsBasis
@@ -949,4 +960,3 @@ protected:
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsBasis.hpp)
 #endif
-

@@ -32,7 +32,7 @@ namespace gismo
     \ingroup Nurbs
 */
   
-template<int d, class T>
+template<short_t d, class T>
 class gsTensorBSplineBasis : public gsTensorBasis<d,T>
 {
 public: 

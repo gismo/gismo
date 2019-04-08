@@ -2,12 +2,12 @@
 
     @brief Provides declaration of MultiBasis class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -36,7 +36,7 @@ gsMultiBasis<T>::gsMultiBasis( const gsMultiPatch<T> & mpatch, bool NoRational)
 {
     m_bases = mpatch.basesCopy(NoRational);
 }
-  
+
 template<class T>
 gsMultiBasis<T>::gsMultiBasis( const gsMultiBasis& other )
 : Base(other),
@@ -71,16 +71,16 @@ std::ostream& gsMultiBasis<T>::print( std::ostream& os ) const
     return os;
 }
 
- 
+
 template<class T>
-void gsMultiBasis<T>::addBasis( gsBasis<T> * g ) 
+void gsMultiBasis<T>::addBasis( gsBasis<T> * g )
 {
     //gsDebug<< "TO DO\n";
-    if ( m_topology.dim() == -1 ) 
+    if ( m_topology.dim() == -1 )
     {
         m_topology.setDim( g->dim() );
-    } 
-    else 
+    }
+    else
     {
         assert( g->dim() == m_topology.dim() );
     }
@@ -92,11 +92,11 @@ void gsMultiBasis<T>::addBasis( gsBasis<T> * g )
 template<class T>
 void gsMultiBasis<T>::addBasis(typename gsBasis<T>::uPtr g)
 {
-    if ( m_topology.dim() == -1 ) 
+    if ( m_topology.dim() == -1 )
     {
         m_topology.setDim( g->dim() );
-    } 
-    else 
+    }
+    else
     {
         GISMO_ASSERT( g->dim() == m_topology.dim(), "Dimensions do not match.");
     }
@@ -113,10 +113,10 @@ int gsMultiBasis<T>::findBasisIndex( gsBasis<T>* g ) const
     assert( it != m_bases.end() );
     return it - m_bases.begin();
 }
-  
+
 template<class T>
 void gsMultiBasis<T>::addInterface( gsBasis<T>* g1, boxSide s1,
-                                    gsBasis<T>* g2, boxSide s2 ) 
+                                    gsBasis<T>* g2, boxSide s2 )
 {
     int p1 = findBasisIndex( g1 );
     int p2 = findBasisIndex( g2 );
@@ -210,7 +210,7 @@ void gsMultiBasis<T>::uniformRefine_withTransfer(
     );
 
     // restrict to free dofs
-    combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );        
+    combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );
 
 }
 
@@ -249,15 +249,84 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
     );
 
     // restrict to free dofs
-    combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );        
+    combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );
 
 }
 
+template <typename T>
+typename gsBasis<T>::uPtr gsMultiBasis<T>::componentBasis_withIndices(
+        patchComponent pc,
+        const gsDofMapper& dm,
+        gsMatrix<unsigned>& indices,
+        bool no_lower
+    ) const
+{
+    typename gsBasis<T>::uPtr result = m_bases[pc.patch()]->componentBasis_withIndices(pc, indices, no_lower);
+
+    const index_t sz = indices.rows();
+    index_t j = 0;
+    for (index_t i=0; i<sz; ++i)
+    {
+        const index_t loc = indices(i,0);
+        if (dm.is_free(loc, pc.patch()))
+        {
+            indices(j,0) = dm.index(loc, pc.patch());
+            ++j;
+        }
+    }
+    indices.conservativeResize(j,1);
+    return result;
+}
+
+template <typename T>
+std::vector<typename gsBasis<T>::uPtr> gsMultiBasis<T>::componentBasis_withIndices(
+        const std::vector<patchComponent>& pc,
+        const gsDofMapper& dm,
+        gsMatrix<unsigned>& indices,
+        bool no_lower
+    ) const
+{
+    const index_t nrpc = pc.size();
+    std::vector<typename gsBasis<T>::uPtr> bases;
+    bases.reserve(nrpc);
+    std::vector< gsMatrix<unsigned> > local_indices(nrpc);
+
+    index_t sz = 0;
+
+    for (index_t i=0; i<nrpc; ++i)
+    {
+        bases.push_back(
+            this->componentBasis_withIndices(pc[i], dm, local_indices[i], no_lower)
+        );
+        sz += local_indices[i].rows();
+    }
+
+    std::vector<unsigned> global_indices;
+    global_indices.reserve(sz);
+
+    for (index_t i=0; i<nrpc; ++i)
+    {
+        const index_t nr_local_indices = local_indices[i].rows();
+        for (index_t j=0; j<nr_local_indices; ++j)
+            if ( i==0 || std::find(global_indices.begin(), global_indices.end(), local_indices[i](j,0) )
+                            == global_indices.end()
+            )
+                global_indices.push_back( local_indices[i](j,0) );
+    }
+
+    const index_t final_size = global_indices.size();
+    indices.resize(final_size,1);
+    for (index_t i=0; i<final_size; ++i)
+        indices(i,0) = global_indices[i];
+
+    return bases;
+}
+
 template<class T>
-int gsMultiBasis<T>::maxDegree(int k) const
+short_t gsMultiBasis<T>::maxDegree(short_t k) const
 {
     GISMO_ASSERT(m_bases.size(), "Empty multibasis.");
-    int result = m_bases[0]->degree(k);
+    short_t result = m_bases[0]->degree(k);
     for (size_t i = 0; i < m_bases.size(); ++i)
         if (m_bases[i]->degree(k) > result )
             result = m_bases[i]->degree(k);
@@ -265,30 +334,30 @@ int gsMultiBasis<T>::maxDegree(int k) const
 }
 
 template<class T>
-int gsMultiBasis<T>::maxCwiseDegree() const
+short_t gsMultiBasis<T>::maxCwiseDegree() const
 {
     GISMO_ASSERT(m_bases.size(), "Empty multibasis.");
-    int result = m_bases[0]->maxDegree();
+    short_t result = m_bases[0]->maxDegree();
     for (size_t i = 0; i < m_bases.size(); ++i)
         result = math::max(m_bases[i]->maxDegree(), result);
     return result;
 }
 
 template<class T>
-int gsMultiBasis<T>::minCwiseDegree() const
+short_t gsMultiBasis<T>::minCwiseDegree() const
 {
     GISMO_ASSERT(m_bases.size(), "Empty multibasis.");
-    int result = m_bases[0]->minDegree();
+    short_t result = m_bases[0]->minDegree();
     for (size_t i = 0; i < m_bases.size(); ++i)
         result = math::min(m_bases[i]->minDegree(), result);
     return result;
 }
 
 template<class T>
-int gsMultiBasis<T>::minDegree(int k) const
+short_t gsMultiBasis<T>::minDegree(short_t k) const
 {
     GISMO_ASSERT(m_bases.size(), "Empty multibasis.");
-    int result = m_bases[0]->degree(k);
+    short_t result = m_bases[0]->degree(k);
     for (size_t i = 0; i < m_bases.size(); ++i)
         if (m_bases[i]->degree(k) < result )
             result = m_bases[i]->degree(k);
@@ -296,12 +365,12 @@ int gsMultiBasis<T>::minDegree(int k) const
 }
 
 template<class T>
-void gsMultiBasis<T>::getMapper(bool conforming, 
-                                gsDofMapper & mapper, 
+void gsMultiBasis<T>::getMapper(bool conforming,
+                                gsDofMapper & mapper,
                                 bool finalize) const
 {
     mapper = gsDofMapper(*this);//.init(*this);
-    
+
     if ( conforming )  // Conforming boundaries ?
     {
         for ( gsBoxTopology::const_iiterator it = m_topology.iBegin();
@@ -310,20 +379,20 @@ void gsMultiBasis<T>::getMapper(bool conforming,
             matchInterface(*it,mapper);
         }
     }
-    
+
     if (finalize)
         mapper.finalize();
 }
 
 template<class T>
-void gsMultiBasis<T>::getMapper(bool conforming, 
-                                const gsBoundaryConditions<T> & bc, 
+void gsMultiBasis<T>::getMapper(bool conforming,
+                                const gsBoundaryConditions<T> & bc,
                                 int unk,
-                                gsDofMapper & mapper, 
+                                gsDofMapper & mapper,
                                 bool finalize) const
 {
     mapper = gsDofMapper(*this, bc, unk); //.init(*this, bc, unk);
-    
+
     if ( conforming ) // Conforming boundaries ?
     {
         for ( gsBoxTopology::const_iiterator it = m_topology.iBegin();
@@ -336,7 +405,7 @@ void gsMultiBasis<T>::getMapper(bool conforming,
     if (finalize)
         mapper.finalize();
 }
-    
+
 template<class T>
 void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper & mapper) const
 {
@@ -612,8 +681,6 @@ bool gsMultiBasis<T>::repairInterfaceFindElements(
 
     return ( ( refEltsFirst.size() > 0 ) || ( refEltsSecond.size() > 0 ) );
 }
-
-
 
 template<class T>
 bool gsMultiBasis<T>::repairInterface2d( const boundaryInterface & bi )
