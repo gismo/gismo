@@ -78,7 +78,7 @@ public:
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
     // Overloaded member to get the parameter dimension of the domain
-    virtual int domainDim() const { return m_g1.geoDim(); }
+    virtual short_t domainDim() const { return m_g1.geoDim(); }
 
     domainIter makeDomainIterator() const
     {
