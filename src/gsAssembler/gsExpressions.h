@@ -1240,6 +1240,52 @@ public:
     void print(std::ostream &os) const { os << "trace("; _u.print(os); os<<")"; }
 };
 
+template<class E>
+class reshape_expr  : public _expr<reshape_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
+    enum {ScalarValued = 0};
+private:
+    typename E::Nested_t _u;
+    index_t _n, _m;
+    //mutable gsMatrix<Scalar> res;
+
+public:
+
+    //the reshaping is done column-wise
+    reshape_expr(_expr<E> const& u, index_t n, index_t m) : _u(u), _n(n), _m(m)
+    {
+        GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension");
+    }
+
+    const gsAsMatrix<Scalar> eval(const index_t k) const
+    {
+        return _u.eval(k).reshape(_n,_m);
+    }
+
+    index_t rows() const { return _n; }
+    index_t cols() const { return _m; }
+    void setFlag() const { _u.setFlag(); }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    { _u.parse(evList); }
+
+    const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeVariable<Scalar> & colVar() const { return _u.colVar(); }
+
+    static bool rowSpan() {return E::rowSpan();}
+    static bool colSpan() {return E::colSpan();}
+
+    void print(std::ostream &os) const { os << "reshape("; _u.print(os); os<<","<<_n<<","<<_m<<")"; }
+};
+
+/// Reshape an expression
+template <typename E> EIGEN_STRONG_INLINE
+reshape_expr<E> const reshape(E const & u, index_t n, index_t m)
+{ return reshape_expr<E>(u, n, m); }
+
+
 /*
    Expression for the diagonal(s) of a (matrix) expression
 
