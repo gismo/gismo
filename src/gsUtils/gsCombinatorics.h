@@ -263,11 +263,11 @@ bool nextCubeVertex(Vec& cur, const Vec& start, const Vec& end)
 template<class Vec>
 bool nextCubeVertex(Vec& cur, const Vec& end)
 {
-    const int d = cur.size();
+    const index_t d = cur.size();
     GISMO_ASSERT( d == end.size(),
                   "Vector sizes don't match in nextCubeVertex");
 
-    for (int i = 0; i != d; ++i)
+    for (index_t i = 0; i != d; ++i)
     {
         if ( cur[i] != end[i] )
         {
@@ -289,11 +289,11 @@ bool nextCubeVertex(Vec& cur, const Vec& end)
 template<class Vec>
 bool nextCubeVertex(Vec& cur)
 {
-    const int d = cur.size();
+    const index_t d = cur.size();
     GISMO_ASSERT( (cur.array() >= 0).all() && (cur.array() <= 1).all(),
                   "Input must be a vector of zeros and ones, got: "<<cur.transpose() );
 
-    for (int i = 0; i != d; ++i)
+    for (index_t i = 0; i != d; ++i)
     {
         if ( cur[i] == 0 )
         {
@@ -314,11 +314,11 @@ bool nextCubeVertex(Vec& cur)
 template<class Vec>
 bool nextCubePoint(Vec& cur, const Vec& end)
 {
-    const int d = cur.size();
+    const index_t d = cur.size();
     GISMO_ASSERT(d == static_cast<int>(end.size()),
                  "Vector sizes don't match in nextCubePoint");
 
-    for (int i = 0; i != d; ++i)
+    for (index_t i = 0; i != d; ++i)
     {
         if ( cur[i] != end[i] )
         {
@@ -339,12 +339,12 @@ bool nextCubePoint(Vec& cur, const Vec& end)
 template<class Vec>
 bool nextCubePoint(Vec& cur, const Vec& start, const Vec& end)
 {
-    const int d = cur.size();
+    const index_t d = cur.size();
     GISMO_ASSERT( d == static_cast<int>(start.size()) &&
                   d == static_cast<int>(end.size()),
                   "Vector sizes don't match in nextCubePoint");
 
-    for (int i = 0; i != d; ++i)
+    for (index_t i = 0; i != d; ++i)
     {
         if ( cur[i] != end[i] )
         {
@@ -365,11 +365,11 @@ bool nextCubePoint(Vec& cur, const Vec& start, const Vec& end)
 template<class Vec>
 bool nextCubeBoundary(Vec& cur, const Vec& start, const Vec& end)
 {
-    const int d = cur.size();
+    const index_t d = cur.size();
     GISMO_ASSERT( d == start.size() && d == end.size(),
                   "Vector sizes don't match in nextCubeBoundary");
 
-    for (int i = 0; i != d; ++i)
+    for (index_t i = 0; i != d; ++i)
     {        
         if ( cur[i] != end[i] )
         {
@@ -405,11 +405,11 @@ bool nextCubeBoundary(Vec& cur, const Vec& start, const Vec& end)
 template<class Vec>
 bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end, Vec & offset)
 {
-    const int d = cur.size();
+    const index_t d = cur.size();
     GISMO_ASSERT( d == start.size() && d == end.size(),
                   "Vector sizes don't match in nextCubeBoundaryOffset");
 
-    for (int i = 0; i != d; ++i)
+    for (index_t i = 0; i != d; ++i)
     {        
         if ( cur[i] != end[i] )
         {
@@ -447,11 +447,11 @@ template<class Vec>
 bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end, 
                             Vec & loffset, Vec & uoffset)
 {
-    const int d = cur.size();
+    const index_t d = cur.size();
     GISMO_ASSERT( d == start.size() && d == end.size(),
                   "Vector sizes don't match in nextCubeBoundaryOffset");
 
-    for (int i = 0; i != d; ++i)
+    for (index_t i = 0; i != d; ++i)
     {        
         if ( cur[i] != end[i] )
         {
@@ -611,7 +611,7 @@ void cubeIsometryMatrix ( const gsVector<bool,d>    & flip,
                           gsMatrix<int,d,d> & result)
 {
     result.setZero(d,d);
-    for(int i = 0; i < d; ++i)
+    for(index_t i = 0; i < d; ++i)
         result(perm(i),i) = (flip(perm(i)) ? 1 : -1);
 }
 

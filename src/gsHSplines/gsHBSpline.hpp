@@ -22,7 +22,7 @@ namespace internal
 
 
 /// Get a HBSpline from XML data
-template<class T, unsigned d>
+template<class T, short_t d>
 class gsXml< gsHBSpline<d,T> >
 {
 private:

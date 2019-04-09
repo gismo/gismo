@@ -132,7 +132,7 @@ public:
     /**
      *  \brief Returns the index (as specified in boundary::side) of the box side
     **/
-    int    index () const {return m_index;}
+    index_t    index () const {return m_index;}
 
     /**
      *  \brief Returns the index of the box side implied by input
@@ -396,13 +396,13 @@ public:
      * @param dim is the ambient dimension
      * @param sides
      */
-    void getContainingSides (int dim, std::vector<patchSide> &sides) const
+    void getContainingSides (short_t dim, std::vector<patchSide> &sides) const
     {
         GISMO_ASSERT(dim>=0, "Dimension must be non negative");
         sides.resize(dim);
         gsVector<bool> param;
         parameters_into(dim,param);
-        for (int i=0;i<dim;++i)
+        for (short_t i=0;i<dim;++i)
             sides[i]=patchSide(patch, boxSide(i, param(i)));
     }
 };
@@ -459,37 +459,37 @@ private:
     ///
     index_t m_index;
 
-    index_t m_total_dim;    ///< The dimension of the box itself
+    short_t m_total_dim;    ///< The dimension of the box itself
 public:
 
     /// @brief Constructor
     ///
     /// @param b          The index that defines the component
     /// @param total_dim  The dimension of the box itself
-    boxComponent( index_t b, index_t total_dim ) : m_index(b), m_total_dim(total_dim) {}
+    boxComponent( index_t b, short_t total_dim ) : m_index(b), m_total_dim(total_dim) {}
 
     /// @brief Constructor creating \a boxComponent representing the interior
     ///
     /// @param total_dim  The dimension of the box itself
-    boxComponent( index_t total_dim ) : m_index(0), m_total_dim(total_dim) {}
+    boxComponent( short_t total_dim ) : m_index(0), m_total_dim(total_dim) {}
 
     /// @brief Constructor converting \a boxSide to a boxComponent
     ///
     /// @param b          The box side
     /// @param total_dim  The dimension of the box itself
-    boxComponent( boxSide b, index_t total_dim );
+    boxComponent( boxSide b, short_t total_dim );
 
     /// @brief Constructor converting \a boxCorner to a boxComponent
     ///
     /// @param b          The box corner
     /// @param total_dim  The dimension of the box itself
-    boxComponent( boxCorner b, index_t total_dim );
+    boxComponent( boxCorner b, short_t total_dim );
 
     /// Dimension of the computational domain (the box itself)
-    index_t totalDim() const { return m_total_dim; }
+    short_t totalDim() const { return m_total_dim; }
 
     /// Dimension of the component
-    index_t dim() const;
+    short_t dim() const;
 
     /// Returns the index
     index_t index() const { return m_index; }
@@ -554,13 +554,13 @@ public:
     /// @param p          The patch index
     /// @param b          The index that defines the component
     /// @param total_dim  The dimension of the box itself
-    patchComponent( index_t p, index_t b, index_t total_dim ) : boxComponent(b,total_dim), m_patch(p) {}
+    patchComponent( index_t p, index_t b, short_t total_dim ) : boxComponent(b,total_dim), m_patch(p) {}
 
     /// @brief Constructor creating \a patchComponent representing the interior
     ///
     /// @param p          The patch index
     /// @param total_dim  The dimension of the box itself
-    patchComponent( index_t p, index_t total_dim ) : boxComponent(total_dim), m_patch(p) {}
+    patchComponent( index_t p, short_t total_dim ) : boxComponent(total_dim), m_patch(p) {}
 
     /// @brief Constructor converting \a boxComponent to a patchComponent
     ///
@@ -572,13 +572,13 @@ public:
     ///
     /// @param p          The patch side
     /// @param total_dim  The dimension of the box itself
-    patchComponent( patchSide p, index_t total_dim ) : boxComponent(p,total_dim), m_patch(p.patch) {}
+    patchComponent( patchSide p, short_t total_dim ) : boxComponent(p,total_dim), m_patch(p.patch) {}
 
     /// @brief Constructor converting \a patchCorner to a patchComponent
     ///
     /// @param p          The patch corner
     /// @param total_dim  The dimension of the box itself
-    patchComponent( patchCorner p, index_t total_dim ) : boxComponent(p,total_dim), m_patch(p.patch) {}
+    patchComponent( patchCorner p, short_t total_dim ) : boxComponent(p,total_dim), m_patch(p.patch) {}
 
     /// Returns a vector of all \a patchCorner s that are contained in the component
     std::vector<patchCorner> containedCorners() const;
