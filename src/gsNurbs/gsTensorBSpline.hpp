@@ -51,7 +51,6 @@ void constructCoefsForSlice(index_t dir_fixed, index_t index,
     } while ( nextLexicographic(cur, lowerCorner, upperCorner) );
 }
 
-
 template<short_t d, class T>
 gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
                                       KnotVectorType KV1, KnotVectorType KV2)

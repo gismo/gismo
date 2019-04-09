@@ -336,6 +336,21 @@ public:
     /// Get coordinates of the midpoint of the boxSide \a bs in the parameter domain
     gsMatrix<T> parameterCenter( const boxSide& bs );
 
+    /// Get back the side of point \a u
+    //boxSide sideOf(const gsVector<T> & u); //
+
+    /// Check if points \a u also lie on the geometry and if required computes the if the points in \a u lie on one of the boundaries of the geometry
+    /**
+     *
+     * @param u Matrix of points of the form geoDim() x #points
+     * @param onG2 gsVector of booleans which indicate if the point is in the domain or outside
+     * @param preIm Matrix of preimages of the points u
+     * @param lookForBoundary if required the boundaries are computed the points in u lie on
+     * @return A std::vector of boxSides containing the numbers of the sides or zero if the points are in the interior
+     * If the flag lookForBoundary is not set then a vector containing anything will be returned
+     */
+    std::vector<boxSide> locateOn(const gsMatrix<T> & u, gsVector<bool> & onG2, gsMatrix<T> & preIm, bool lookForBoundary = false, real_t tol = 1.e-6) const; //
+
     // Whether the coefficients of this geometry are stored in projective or affine form
     //virtual bool isProjective() const = 0;
 
