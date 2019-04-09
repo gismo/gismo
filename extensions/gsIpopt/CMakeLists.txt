@@ -19,7 +19,7 @@ find_package(IpOpt QUIET)
 set(IPOPT_SOURCES gsOptProblem_.cpp)
 
 if (NOT IPOPT_FOUND)
-  set(IPOPT_VER "3.12.6") #9
+  set(IPOPT_VER "3.12.6") # 3.12.9 conflicts patching
   message("IpOpt not found (define IpOpt_DIR if it exists on the system).")
   message("Will attempt to download and compile IpOpt ${IPOPT_VER} (do: make IpOpt; cmake .")
 
