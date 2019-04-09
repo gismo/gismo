@@ -28,7 +28,7 @@
 ##   -D CTEST_CONFIGURATION_TYPE=Release -D CTEST_BUILD_JOBS=8 \
 ##   -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=gcc -D CXXNAME=g++ \
 ##   -D CTEST_TEST_TIMEOUT=100 -D CTEST_MEMORYCHECK_TYPE=Valgrind \
-##   -D test_coverage=TRUE
+##   -D DO_COVERAGE=TRUE
 ##
 ## Different dashboard projects and subprojects are possible:
 ##
