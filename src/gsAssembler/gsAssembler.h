@@ -453,7 +453,7 @@ public: /* Element visitors */
     template<class ElementVisitor>
     void push(const ElementVisitor & visitor)
     {
-        for (index_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
+        for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
         {
             ElementVisitor curVisitor = visitor;
             //Assemble (fill m_matrix and m_rhs) on patch np
