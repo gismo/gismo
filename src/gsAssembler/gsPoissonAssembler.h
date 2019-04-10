@@ -51,8 +51,8 @@ public:
     gsPoissonAssembler( const gsPoissonPde<T>          & pde,
                         const gsMultiBasis<T>          & bases)
     {
-        Base::initialize(pde, bases, m_options);
         m_options.addReal("ThermalDiff","Thermal diffusivity of the material",1.);
+        Base::initialize(pde, bases, m_options);
     }
 
     
@@ -70,9 +70,9 @@ public:
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
+        m_options.addReal("ThermalDiff","Thermal diffusivity of the material",1.);
 
         Base::initialize(pde, bases, m_options);
-        m_options.addReal("ThermalDiff","Thermal diffusivity of the material",1.);
     }
 
     /** @brief
@@ -96,10 +96,10 @@ public:
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
+        m_options.addReal("ThermalDiff","Thermal diffusivity of the material",1.);
 
         typename gsPde<T>::Ptr pde( new gsPoissonPde<T>(patches,bconditions,rhs) );
         Base::initialize(pde, basis, m_options);
-        m_options.addReal("ThermalDiff","Thermal diffusivity of the material",1.);
     }
 
     virtual gsAssembler<T>* clone() const
