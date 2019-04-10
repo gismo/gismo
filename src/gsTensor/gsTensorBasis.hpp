@@ -32,7 +32,7 @@ namespace gismo
 
 template<short_t d, class T>
 gsTensorBasis<d,T>::gsTensorBasis( Basis_t* x,  Basis_t* y)
-{ 
+{
     GISMO_ASSERT( d==2, "gsTensorBasis error: wrong dimension." );
 
     if ( x->dim() == 1 && y->dim() == 1 )
@@ -46,7 +46,7 @@ gsTensorBasis<d,T>::gsTensorBasis( Basis_t* x,  Basis_t* y)
 
 template<short_t d, class T>
 gsTensorBasis<d,T>::gsTensorBasis(Basis_t* x, Basis_t* y, Basis_t* z)
-{ 
+{
     GISMO_ASSERT( d==3, "gsTensorBasis error: wrong dimension." );
   
     GISMO_ASSERT( x->dim() == 1 && y->dim() == 1 && z->dim() == 1,
@@ -64,7 +64,7 @@ gsTensorBasis<d,T>::gsTensorBasis(Basis_t* x, Basis_t* y, Basis_t* z)
 
 template<short_t d, class T>
 gsTensorBasis<d,T>::gsTensorBasis(Basis_t* x, Basis_t* y, Basis_t* z, Basis_t* w)
-{ 
+{
     GISMO_ASSERT( d==4, "gsTensorBasis error: wrong dimension." );
   
     GISMO_ASSERT( x->dim() == 1 && y->dim() == 1 && z->dim() == 1 && w->dim() == 1,
@@ -397,7 +397,7 @@ gsMatrix<T> gsTensorBasis<d,T>::support() const
 
 template<short_t d, class T>
 gsMatrix<T>
-gsTensorBasis<d,T>::support(const unsigned & i) const 
+gsTensorBasis<d,T>::support(const unsigned & i) const
 {
     gsMatrix<T> res(d,2);
     gsVector<unsigned, d> ti = tensorIndex(i);
@@ -408,7 +408,7 @@ gsTensorBasis<d,T>::support(const unsigned & i) const
 
 template<short_t d, class T>
 void gsTensorBasis<d,T>::evalSingle_into(unsigned i,
-                                               const gsMatrix<T> & u, 
+                                               const gsMatrix<T> & u,
                                                gsMatrix<T>& result) const
 {
     result.resize(1,u.cols() );
@@ -427,8 +427,8 @@ void gsTensorBasis<d,T>::evalSingle_into(unsigned i,
 
 template<short_t d, class T>
 void gsTensorBasis<d,T>::derivSingle_into(unsigned i,
-                                                const gsMatrix<T> & u, 
-                                                gsMatrix<T>& result) const
+                               const gsMatrix<T> & u,
+                                      gsMatrix<T>& result) const
 {
     gsVector<unsigned, d> ti;
     ti.noalias() = tensorIndex(i);
@@ -452,8 +452,8 @@ void gsTensorBasis<d,T>::derivSingle_into(unsigned i,
 
 template<short_t d, class T>
 void gsTensorBasis<d,T>::deriv2Single_into(unsigned i,
-                                                 const gsMatrix<T> & u, 
-                                                 gsMatrix<T>& result) const
+                                const gsMatrix<T> & u,
+                                       gsMatrix<T>& result) const
 {
     gsVector<unsigned, d> ti;
     ti.noalias() = tensorIndex(i);
@@ -537,8 +537,8 @@ void gsTensorBasis<d,T>::eval_into(const gsMatrix<T> & u,
 
 template<short_t d, class T>
 void gsTensorBasis<d,T>::eval_into(const gsMatrix<T> & u,
-                                         const gsMatrix<T> & coefs, 
-                                         gsMatrix<T>& result ) const
+                                   const gsMatrix<T> & coefs,
+                                         gsMatrix<T> & result ) const
 {
 
 #if (0)
@@ -728,7 +728,7 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
 
 template<short_t d, class T>
 void gsTensorBasis<d,T>::deriv2_into(const gsMatrix<T> & u,
-                                           gsMatrix<T>& result ) const 
+                                           gsMatrix<T> & result ) const
 {
     std::vector< gsMatrix<T> >values[d];
     gsVector<unsigned, d> v, nb_cwise;
