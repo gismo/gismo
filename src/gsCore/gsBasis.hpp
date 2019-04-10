@@ -402,19 +402,19 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b,
         // Copy all entries from indices to indices_cleaned except
         // those with indices in bdy_indices
 
-        gsMatrix<unsigned> indices_cleaned(indices_sz - bdy_indices_sz,1);
-        index_t j=0, t=0;
-        for (index_t i=0; i<indices_sz; ++i)
+        gsMatrix<unsigned> indices_cleaned(indices_sz - bdy_indices_sz, 1);
+        index_t j = 0, t = 0;
+        for (index_t i = 0; i < indices_sz; ++i)
         {
-            if (i>bdy_indices(j,0) && j < bdy_indices_sz)
+            if (static_cast<unsigned>(i) > bdy_indices(j, 0) && j < bdy_indices_sz)
                 ++j;
-            if (i<bdy_indices(j,0) || j == bdy_indices_sz)
+            if (static_cast<unsigned>(i) < bdy_indices(j, 0) || j == bdy_indices_sz)
             {
-                indices_cleaned(t,0) = indices(i,0);
+                indices_cleaned(t, 0) = indices(i, 0);
                 ++t;
             }
         }
-        GISMO_ASSERT( t == indices_cleaned.rows(), "Internal error." );
+        GISMO_ASSERT(t == indices_cleaned.rows(), "Internal error.");
         indices.swap(indices_cleaned);
     }
 
