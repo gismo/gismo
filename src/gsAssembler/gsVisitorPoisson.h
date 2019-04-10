@@ -45,6 +45,7 @@ public:
     {
         // Grab right-hand side for current patch
         rhs_ptr = &pde_ptr->rhs()->piece(patchIndex);
+        thermalDiff = options.getReal("ThermalDiff");
         
         // Setup Quadrature
         rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
@@ -95,7 +96,7 @@ public:
             transformGradients(md, k, bGrads, physGrad);
             
             localRhs.noalias() += weight * ( bVals.col(k) * rhsVals.col(k).transpose() ) ;
-            localMat.noalias() += weight * (physGrad.transpose() * physGrad);
+            localMat.noalias() += thermalDiff * weight * (physGrad.transpose() * physGrad);
         }
     }
 
@@ -113,6 +114,7 @@ public:
 protected:
     // Pointer to the pde data
     const gsPoissonPde<T> * pde_ptr;
+    T thermalDiff;
     
 protected:
     // Basis values
