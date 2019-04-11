@@ -31,7 +31,7 @@ namespace gismo
      * \ingroup HSplines
     */ 
     
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsHBSplineBasis : public gsHTensorBasis<d,T>
 {
 public:
@@ -90,7 +90,7 @@ public:
     /// @brief Gives back the basis at a slice in \a dir_fixed at \a par
     BoundaryBasisType * basisSlice(index_t dir_fixed,T par ) const;
 
-    int domainDim() const { return d; }
+    short_t domainDim() const { return d; }
     
     void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
 

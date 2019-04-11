@@ -419,7 +419,7 @@ public:
 
 
 /// Get a TensorNurbsBasis from XML data
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsXml< gsTensorNurbsBasis<d,T> >
 {
 private:
@@ -466,7 +466,7 @@ public:
 };
 
 /// Get a Tensor Nurbs from XML data
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsXml< gsTensorNurbs<d,T> >
 {
 private:
@@ -1330,7 +1330,7 @@ public:
 
         // Read the dimension
         GISMO_ASSERT( node->first_attribute("dim"), "xml reader: No dim found" ) ;
-        unsigned d = atoi( node->first_attribute("dim")->value() );
+        short_t d = atoi( node->first_attribute("dim")->value() );
 
         
         unsigned tDim = 0;

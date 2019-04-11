@@ -96,8 +96,8 @@ public:
     void initialize(const gsBasis<T> & basis,
                            gsQuadRule<T> & rule)
     {
-        gsVector<index_t> numQuadNodes( basis.dim() );
-        for (int i = 0; i < basis.dim(); ++i)
+        gsVector<short_t> numQuadNodes( basis.dim() );
+        for (short_t i = 0; i < basis.dim(); ++i)
             numQuadNodes[i] = basis.degree(i) + 1;
         
         // Setup Quadrature

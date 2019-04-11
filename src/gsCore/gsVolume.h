@@ -61,7 +61,7 @@ public:
 private: virtual gsVolume * clone_impl() const = 0;
 public: inline uPtr clone() const { return uPtr(clone_impl()); }
 
-    int domainDim() const { return 3; }
+    short_t domainDim() const { return 3; }
 
 }; // class gsVolume
 

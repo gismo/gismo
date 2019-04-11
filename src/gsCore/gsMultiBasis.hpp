@@ -210,7 +210,7 @@ void gsMultiBasis<T>::uniformRefine_withTransfer(
     );
 
     // restrict to free dofs
-    combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );        
+    combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );
 
 }
 
@@ -249,15 +249,84 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
     );
 
     // restrict to free dofs
-    combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );        
+    combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );
 
 }
 
+template <typename T>
+typename gsBasis<T>::uPtr gsMultiBasis<T>::componentBasis_withIndices(
+        patchComponent pc,
+        const gsDofMapper& dm,
+        gsMatrix<unsigned>& indices,
+        bool no_lower
+    ) const
+{
+    typename gsBasis<T>::uPtr result = m_bases[pc.patch()]->componentBasis_withIndices(pc, indices, no_lower);
+
+    const index_t sz = indices.rows();
+    index_t j = 0;
+    for (index_t i=0; i<sz; ++i)
+    {
+        const index_t loc = indices(i,0);
+        if (dm.is_free(loc, pc.patch()))
+        {
+            indices(j,0) = dm.index(loc, pc.patch());
+            ++j;
+        }
+    }
+    indices.conservativeResize(j,1);
+    return result;
+}
+
+template <typename T>
+std::vector<typename gsBasis<T>::uPtr> gsMultiBasis<T>::componentBasis_withIndices(
+        const std::vector<patchComponent>& pc,
+        const gsDofMapper& dm,
+        gsMatrix<unsigned>& indices,
+        bool no_lower
+    ) const
+{
+    const index_t nrpc = pc.size();
+    std::vector<typename gsBasis<T>::uPtr> bases;
+    bases.reserve(nrpc);
+    std::vector< gsMatrix<unsigned> > local_indices(nrpc);
+
+    index_t sz = 0;
+
+    for (index_t i=0; i<nrpc; ++i)
+    {
+        bases.push_back(
+            this->componentBasis_withIndices(pc[i], dm, local_indices[i], no_lower)
+        );
+        sz += local_indices[i].rows();
+    }
+
+    std::vector<unsigned> global_indices;
+    global_indices.reserve(sz);
+
+    for (index_t i=0; i<nrpc; ++i)
+    {
+        const index_t nr_local_indices = local_indices[i].rows();
+        for (index_t j=0; j<nr_local_indices; ++j)
+            if ( i==0 || std::find(global_indices.begin(), global_indices.end(), local_indices[i](j,0) )
+                            == global_indices.end()
+            )
+                global_indices.push_back( local_indices[i](j,0) );
+    }
+
+    const index_t final_size = global_indices.size();
+    indices.resize(final_size,1);
+    for (index_t i=0; i<final_size; ++i)
+        indices(i,0) = global_indices[i];
+
+    return bases;
+}
+
 template<class T>
-int gsMultiBasis<T>::maxDegree(int k) const
+short_t gsMultiBasis<T>::maxDegree(short_t k) const
 {
     GISMO_ASSERT(m_bases.size(), "Empty multibasis.");
-    int result = m_bases[0]->degree(k);
+    short_t result = m_bases[0]->degree(k);
     for (size_t i = 0; i < m_bases.size(); ++i)
         if (m_bases[i]->degree(k) > result )
             result = m_bases[i]->degree(k);
@@ -265,30 +334,30 @@ int gsMultiBasis<T>::maxDegree(int k) const
 }
 
 template<class T>
-int gsMultiBasis<T>::maxCwiseDegree() const
+short_t gsMultiBasis<T>::maxCwiseDegree() const
 {
     GISMO_ASSERT(m_bases.size(), "Empty multibasis.");
-    int result = m_bases[0]->maxDegree();
+    short_t result = m_bases[0]->maxDegree();
     for (size_t i = 0; i < m_bases.size(); ++i)
         result = math::max(m_bases[i]->maxDegree(), result);
     return result;
 }
 
 template<class T>
-int gsMultiBasis<T>::minCwiseDegree() const
+short_t gsMultiBasis<T>::minCwiseDegree() const
 {
     GISMO_ASSERT(m_bases.size(), "Empty multibasis.");
-    int result = m_bases[0]->minDegree();
+    short_t result = m_bases[0]->minDegree();
     for (size_t i = 0; i < m_bases.size(); ++i)
         result = math::min(m_bases[i]->minDegree(), result);
     return result;
 }
 
 template<class T>
-int gsMultiBasis<T>::minDegree(int k) const
+short_t gsMultiBasis<T>::minDegree(short_t k) const
 {
     GISMO_ASSERT(m_bases.size(), "Empty multibasis.");
-    int result = m_bases[0]->degree(k);
+    short_t result = m_bases[0]->degree(k);
     for (size_t i = 0; i < m_bases.size(); ++i)
         if (m_bases[i]->degree(k) < result )
             result = m_bases[i]->degree(k);

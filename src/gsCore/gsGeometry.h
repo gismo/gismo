@@ -297,22 +297,22 @@ public:
     virtual       gsBasis<T> & basis()       = 0;
 
     /// Dimension of the ambient physical space (overriding gsFunction::targetDim())
-    int targetDim() const { return this->coefDim(); }
+    short_t targetDim() const { return this->coefDim(); }
 
     /// Dimension \em n of the coefficients (control points)
-    int coefDim() const { return m_coefs.cols(); }
+    short_t coefDim() const { return m_coefs.cols(); }
 
     /// Dimension \em n of the absent physical space
-    int geoDim() const { return this->coefDim(); }
+    short_t geoDim() const { return this->coefDim(); }
 
     /// Dimension \em d of the parameter domain (overriding gsFunction::domainDim()).
-    virtual int domainDim() const { return this->basis().domainDim(); }
+    virtual short_t domainDim() const { return this->basis().domainDim(); }
 
     /// Dimension \em d of the parameter domain (same as domainDim()).
-    int parDim() const { return this->basis().domainDim(); }
+    short_t parDim() const { return this->basis().domainDim(); }
 
     /// Co-dimension of the geometric object
-    int coDim() const { return coefDim()-this->basis().domainDim(); }
+    short_t coDim() const { return coefDim()-this->basis().domainDim(); }
 
     /// Returns the range of parameters (same as parameterRange())
     gsMatrix<T> support() const
@@ -335,6 +335,21 @@ public:
 
     /// Get coordinates of the midpoint of the boxSide \a bs in the parameter domain
     gsMatrix<T> parameterCenter( const boxSide& bs );
+
+    /// Get back the side of point \a u
+    //boxSide sideOf(const gsVector<T> & u); //
+
+    /// Check if points \a u also lie on the geometry and if required computes the if the points in \a u lie on one of the boundaries of the geometry
+    /**
+     *
+     * @param u Matrix of points of the form geoDim() x #points
+     * @param onG2 gsVector of booleans which indicate if the point is in the domain or outside
+     * @param preIm Matrix of preimages of the points u
+     * @param lookForBoundary if required the boundaries are computed the points in u lie on
+     * @return A std::vector of boxSides containing the numbers of the sides or zero if the points are in the interior
+     * If the flag lookForBoundary is not set then a vector containing anything will be returned
+     */
+    std::vector<boxSide> locateOn(const gsMatrix<T> & u, gsVector<bool> & onG2, gsMatrix<T> & preIm, bool lookForBoundary = false, real_t tol = 1.e-6) const; //
 
     // Whether the coefficients of this geometry are stored in projective or affine form
     //virtual bool isProjective() const = 0;
@@ -504,7 +519,7 @@ public:
     }
 
     /// \brief Returns the degree wrt direction i
-    int degree(const unsigned & i) const
+    short_t degree(const short_t & i) const
      //{ return this->basisComponent(i).degree(); };
      { return this->basis().degree(i); }
 
@@ -626,7 +641,7 @@ namespace gismo
 {
 
 // Generic traits for geometry with dimension known at compile time
-template <unsigned d, typename T>
+template <short_t d, typename T>
 struct gsGeoTraits
 {
     typedef gsGeometry<T> GeometryBase;

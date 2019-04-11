@@ -175,7 +175,7 @@ public:
     }
 
     /// Returns the degree of the B-spline
-    int degree(int i = 0) const 
+    short_t degree(short_t i = 0) const
     {
         GISMO_UNUSED(i);
         GISMO_ASSERT( i==0, "Requested knots of invalid direction "<< i );

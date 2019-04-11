@@ -155,7 +155,7 @@ void gsTensorBoehmRefine(
 /// number of nonzero coefficients in coefs matrix.
 /// 
 /// \ingroup Nurbs
-template <unsigned d, typename KnotVectorType, typename Mat, typename ValIt>
+template <short_t d, typename KnotVectorType, typename Mat, typename ValIt>
 void gsTensorBoehmRefineLocal(
         KnotVectorType& knots,
         const unsigned index,
@@ -184,7 +184,7 @@ void gsTensorBoehmRefineLocal(
 /// This function should just be used for evaluation via knot insertion (not the
 /// full coefficient matrix will be computed).
 /// \ingroup Nurbs
-template <unsigned d, typename T, typename KnotVectorType, typename Mat>
+template <short_t d, typename T, typename KnotVectorType, typename Mat>
 void gsTensorInsertKnotDegreeTimes(
         const KnotVectorType& knots,
         Mat& coefs,
