@@ -1501,7 +1501,7 @@ class matrix_by_space_expr  : public _expr<matrix_by_space_expr<E1,E2> >
 {
 public:
     typedef typename E1::Scalar Scalar;
-    enum {ScalarValued = 0};
+    enum {ScalarValued = 0, ColBlocks = 1};
 private:
     typename E1::Nested_t _u;
     typename E2::Nested_t _v;
@@ -1527,7 +1527,7 @@ public:
             {
                 res.middleCols((s*N + i)*r,r).noalias() =
                 uEv.col(s) * vEv.middleCols((s*N + i)*r,r).row(s);
-                // uEv*vEv.middleCols((s*N + i)*r,r);
+                //uEv*vEv.middleCols((s*N + i)*r,r);
             }
         //meaning: [Jg Jg Jg] * Jb ..
         return res;
@@ -1549,6 +1549,63 @@ public:
     void print(std::ostream &os) const { os << "matrix_by_space("; _u.print(os); os<<")"; }
 };
 
+/**
+computes outer products of a matrix by a space of dimension > 1
+[Jg Jg Jg] * Jb ..
+(d x d^2)  * (d^2 x N*d)  --> (d x N*d)
+*/
+template <typename E1, typename E2>
+class matrix_by_space_expr_tr  : public _expr<matrix_by_space_expr_tr<E1,E2> >
+{
+public:
+    typedef typename E1::Scalar Scalar;
+    enum {ScalarValued = 0, ColBlocks = 1};
+private:
+    typename E1::Nested_t _u;
+    typename E2::Nested_t _v;
+    mutable gsMatrix<Scalar> res;
+
+public:
+    matrix_by_space_expr_tr(E1 const& u, E2 const& v) : _u(u), _v(v) { }
+
+
+    // choose if ColBlocks
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        const index_t r   = _u.rows();
+        const index_t N  = _v.cols() / (r*r);
+
+        const MatExprType uEv        = _u.eval(k);
+        const MatExprType vEv  = _v.eval(k);
+
+        res.resize(r, N*r*r);
+        // gsDebugVar(res.cols());
+        for (index_t s = 0; s!=r; ++s)
+            for (index_t i = 0; i!=N; ++i)
+            {
+                res.middleCols((s*N + i)*r,r).noalias() =
+                //uEv.col(s) * vEv.middleCols((s*N + i)*r,r).row(s);
+                uEv.transpose()*vEv.middleCols((s*N + i)*r,r).transpose();
+            }
+        //meaning: [Jg Jg Jg] * Jb ..
+        return res;
+    }
+
+    index_t rows() const { return _u.cols(); }
+    index_t cols() const { return _v.cols(); }
+    void setFlag() const { _u.setFlag(); _v.setFlag(); }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    { _u.parse(evList); }
+
+    const gsFeVariable<Scalar> & rowVar() const { return _v.rowVar(); }
+    const gsFeVariable<Scalar> & colVar() const { return _v.colVar(); }
+
+    static bool rowSpan() {return E2::rowSpan();}
+    static bool colSpan() {return E2::colSpan();}
+
+    void print(std::ostream &os) const { os << "matrix_by_space_tr("; _u.print(os); os<<")"; }
+};
 
 /*
    Adaptor for scalar-valued expression
@@ -2420,7 +2477,7 @@ private:
 
     mutable gsMatrix<Scalar> res;
 public:
-    enum {ScalarValued = 0, ColBlocks = 1};
+    enum {ScalarValued = 0};
 
     mult_expr(_expr<E1> const& u,
               _expr<E2> const& v)
@@ -2437,12 +2494,20 @@ public:
         const MatExprType tmpA = _u.eval(k);
         const MatExprType tmpB = _v.eval(k);
 
-        if ( _v.cols() == ur )
+        if ( _v.cols() == ur)
         {
             res.resize(ur, uc);
             for (index_t i = 0; i!=nb; ++i)
                 res.middleCols(i*ur,ur).noalias()
                     = tmpA.middleCols(i*ur,ur) * tmpB;
+        }
+        // DEBUG added by asgl
+        else if (_v.cols() == 1 and _v.rows() == ur){
+            res.resize(ur, nb);
+            for (index_t i = 0; i!=nb; ++i)
+                res.middleCols(i,1).noalias() = tmpA.middleCols(i*ur,ur) * tmpB;
+            res.transposeInPlace();
+
         }
         else
         {
@@ -2457,14 +2522,24 @@ public:
         return res;
     }
 
-    index_t rows() const { return _u.rows(); }
-    index_t cols() const { return _v.cols() * (_u.cols()/_u.rows()); }
+    index_t rows() const {
+        if (_v.cols() == 1){
+            return _u.cols()/_u.rows();
+        }
+        return _u.rows();
+    }
+    index_t cols() const {
+        if (_v.cols() == 1){
+            return _u.rows();
+        }
+        return _v.cols() * (_u.cols()/_u.rows());
+    }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    static bool rowSpan() { return E1::rowSpan(); }
-    static bool colSpan() { return false; }
+    static bool rowSpan() { return E1::rowSpan(); } // DEBUG was rowspan of E1 before
+    static bool colSpan() { return false; } // DEBUG was false before
 
     const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeVariable<Scalar> & colVar() const
@@ -3118,6 +3193,12 @@ summ_expr<E1,E2> const summ(E1 const & u, E2 const& M)
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
 matrix_by_space_expr<E1,E2> const matrix_by_space(E1 const & u, E2 const& v)
 { return matrix_by_space_expr<E1,E2>(u, v); }
+
+/// Matrix by space TODO: find better name and/or description? And is this the best place?
+/// [Jg Jg Jg] * Jb ..
+template <typename E1, typename E2> EIGEN_STRONG_INLINE
+matrix_by_space_expr_tr<E1,E2> const matrix_by_space_tr(E1 const & u, E2 const& v)
+{ return matrix_by_space_expr_tr<E1,E2>(u, v); }
 
 /// Subtraction operator for expressions
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
