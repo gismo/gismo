@@ -2477,7 +2477,7 @@ private:
 
     mutable gsMatrix<Scalar> res;
 public:
-    enum {ScalarValued = 0};
+    enum {ScalarValued = 0, ColBlocks = 1};
 
     mult_expr(_expr<E1> const& u,
               _expr<E2> const& v)
@@ -2598,6 +2598,79 @@ public:
 
     void print(std::ostream &os) const { os << _c <<"*";_v.print(os); }
 };
+
+
+template <typename E1, typename E2>
+class colapse_expr : public _expr<colapse_expr<E1, E2> >
+{
+    typename E1::Nested_t _u;
+    typename E2::Nested_t _v;
+
+public:
+    enum {ScalarValued = 0, ColBlocks = 0};
+
+    typedef typename E1::Scalar Scalar;
+
+    mutable gsMatrix<Scalar> res;
+ 
+    colapse_expr(_expr<E1> const& u,
+              _expr<E2> const& v)
+    : _u(u), _v(v) { }
+
+    //EIGEN_STRONG_INLINE MatExprType
+    const gsMatrix<Scalar> &
+    eval(const index_t k) const
+    {
+        const index_t nb = rows();
+        const MatExprType tmpA = _u.eval(k);
+        const MatExprType tmpB = _v.eval(k);
+        
+        if (E1::ColBlocks)
+        {
+            const index_t ur = _v.rows();
+            res.resize(nb, ur);
+            for (index_t i = 0; i!=nb; ++i)
+            {
+                res.row(i).transpose().noalias() = tmpA.middleCols(i*ur,ur) * tmpB;
+            }
+        }
+        else if (E2::ColBlocks)
+        {
+            const index_t ur = _u.cols();
+            res.resize(nb, ur);
+            for (index_t i = 0; i!=nb; ++i)
+            {
+                res.row(i).noalias() = tmpA * tmpB.middleCols(i*ur,ur);
+            }
+        }
+        
+        return res;
+    }
+
+    index_t rows() const { return E1::ColBlocks ? _u.cols() / _v.rows() : _v.cols() / _u.cols() ; }
+    index_t cols() const { return E1::ColBlocks ? _v.cols()  : _u.rows(); }
+    void setFlag() const { _u.setFlag(); _v.setFlag(); }
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    { _u.parse(evList); _v.parse(evList); }
+
+    static bool rowSpan() { return true; }
+    static bool colSpan() { return false; }
+
+    const gsFeVariable<Scalar> & rowVar() const
+    { return E1::ColBlocks ? _u.rowVar() : _v.rowVar(); }
+    const gsFeVariable<Scalar> & colVar() const
+    {
+        GISMO_ERROR("none");
+    }
+
+    void print(std::ostream &os) const { _u.print(os); os<<"~"; _v.print(os); }
+};
+
+// Multi-matrix colapsed by a vector
+template <typename E1, typename E2> //EIGEN_STRONG_INLINE
+//colapse_expr<E1,E2> const  operator&(<E1> const& u, _expr<E2> const& v)
+colapse_expr<E1,E2> colapse( _expr<E1> const& u, _expr<E2> const& v)
+{ return colapse_expr<E1, E2>(u, v); }
 
 
 /*
