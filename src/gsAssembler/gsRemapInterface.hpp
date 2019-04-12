@@ -181,6 +181,10 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiB
 
         changeDir(bi);
     }
+
+    constructReparam();
+        if(!m_isMatching)
+            constructBreaks();
 }
 
 
