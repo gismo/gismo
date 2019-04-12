@@ -788,7 +788,7 @@ public:
             for (typename bcRefList::const_iterator
                      it = this->bc().begin() ; it != this->bc().end(); ++it )
             {
-                GISMO_ASSERT( it->get().ps.patch < this->mapper().numPatches(),
+                GISMO_ASSERT(static_cast<size_t>(it->get().ps.patch) < this->mapper().numPatches(),
                               "Problem: a boundary condition is set on a patch id which does not exist.");
 
                 bnd = mb->basis(it->get().ps.patch).boundary( it->get().ps.side() );

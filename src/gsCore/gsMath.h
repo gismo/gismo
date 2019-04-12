@@ -321,6 +321,22 @@ template <typename T> int getSign(T val)
     return (T(0) < val) - (val < T(0));
 }
 
+/// Return smallest difference between two number as size_t
+/// especially the case abs_diff(INT32_MAX, INT32_MIN) := UINT32_MAX is correct
+template <typename T>
+inline size_t abs_diff(T a, T b)
+{
+#ifdef _INTEL_COMPILER
+    if (getSign(a) != getSign(b))
+    {
+#endif
+        return (size_t) max(a, b) + -(min(a, b) + 1) + 1;
+#ifdef _INTEL_COMPILER
+    }
+    return a > b ? a - b : b - a;
+#endif
+}
+
 /// integer power
 inline int ipow(int x, unsigned exp)
 {
