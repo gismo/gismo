@@ -436,26 +436,26 @@ private:
     ///
     /// So, in 2D (\a m_total_dim=2), we have indeces [00]=0 to [22]=8
     ///
-    /// [00] = 0 ... interior
-    /// [01] = 1 ... left edge
-    /// [02] = 2 ... right edge
-    /// [10] = 3 ... upper edge
-    /// [20] = 6 ... lower edge
-    /// [11] = 4 ... upper-left corner
-    /// etc., where [ab]=3*a+b
+    ///     [00] = 0 ... interior
+    ///     [01] = 1 ... left edge
+    ///     [02] = 2 ... right edge
+    ///     [10] = 3 ... upper edge
+    ///     [20] = 6 ... lower edge
+    ///     [11] = 4 ... upper-left corner
+    ///     etc., where [ab]=3*a+b
     ///
     /// In 3D (\a m_total_dim=3), we have indeces [000]=0 to [222]=26
     ///
-    /// [000] =  0 ... interior
-    /// [001] =  1 ... left face
-    /// [002] =  2 ... right face
-    /// [010] =  3 ... upper face
-    /// [020] =  6 ... lower face
-    /// [100] =  9 ... back face
-    /// [200] = 18 ... front face
-    /// [011] =  4 ... upper-left edge
-    /// [222] = 26 ... front-lower-right corner
-    /// etc., where [abc]=9*a+3*b+c
+    ///     [000] =  0 ... interior
+    ///     [001] =  1 ... left face
+    ///     [002] =  2 ... right face
+    ///     [010] =  3 ... upper face
+    ///     [020] =  6 ... lower face
+    ///     [100] =  9 ... back face
+    ///     [200] = 18 ... front face
+    ///     [011] =  4 ... upper-left edge
+    ///     [222] = 26 ... front-lower-right corner
+    ///     etc., where [abc]=9*a+3*b+c
     ///
     index_t m_index;
 
@@ -519,20 +519,21 @@ public:
     /// Gets the location for the direction
     ///
     /// If the result value is \a begin, then the component is characterized
-    /// by \$f x_i = 0 \$f
+    /// by \f$ x_i = 0 \f$
     /// If the result value is \a end, then the component is characterized
-    /// by \$f x_i = 1 \$f
+    /// by \f$ x_i = 1 \f$
     /// If the result value is \a begin, then the component is characterized
-    /// by \$f x_i \in (0,1) \$f
+    /// by \f$ x_i \in (0,1) \f$
     ///
-    /// @param direction   The index \$f i \$f from above
+    /// @param direction   The index \f$ i \f$ from above
     location locationForDirection(index_t direction) const;
 
     /// Sets the location for the direction
     ///
     /// See \a locationForDirection
     ///
-    /// @param direction   The index \$f i \$f from above
+    /// @param direction   The index \f$ i \f$ from above
+    /// @param par         See \a locationForDirection
     void setLocationForDirection(index_t direction, location par);
 
 };
