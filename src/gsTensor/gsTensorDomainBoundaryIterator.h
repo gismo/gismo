@@ -190,7 +190,7 @@ public:
         other_.update();
     }
 
-    /// Function to set the breakpoints in direction @i manually
+    /// Function to set the breakpoints in direction \a i manually
     void setBreaks(std::vector<T> newBreaks, index_t i) // i: direction
     {
         breaks[i].swap(newBreaks);
