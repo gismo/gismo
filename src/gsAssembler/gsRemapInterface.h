@@ -1,6 +1,6 @@
 /** @file gsRemapInterface.h
 
-    Provides a mapping from the patch side of geometry one to the corresponding patch side of geometry two
+    @brief Provides a mapping from the patch side of geometry one to the corresponding patch side of geometry two
 
     This file is part of the G+Smo library.
 
