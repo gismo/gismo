@@ -324,7 +324,7 @@ template <typename T> int getSign(T val)
 /// Return smallest difference between two (integer) numbers as size_t
 /// especially the case abs_diff(INT32_MAX, INT32_MIN) := UINT32_MAX is correct
 template <typename T>
-inline typename std::make_unsigned<T>::type abs_diff(T a, T b)
+inline typename util::make_unsigned<T>::type abs_diff(T a, T b)
 {
     return a > b ? a - b : b - a;
 }

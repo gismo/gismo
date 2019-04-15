@@ -144,7 +144,7 @@ struct make_unsigned<signed_type> {          \
     typedef unsigned signed_type type;       \
 };                                           \
 template<>                                   \
-struct make_unsigned(unsigned signed_type) { \
+struct make_unsigned<unsigned signed_type> { \
     typedef unsigned signed_type type;       \
 };
 
@@ -152,6 +152,7 @@ MAKE_UNSIGNED(short)
 MAKE_UNSIGNED(int)
 MAKE_UNSIGNED(long)
 MAKE_UNSIGNED(long long)
+#undef MAKE_UNSIGNED
 
 #endif
 
