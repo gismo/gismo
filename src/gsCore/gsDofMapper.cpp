@@ -494,12 +494,14 @@ gsVector<index_t> gsDofMapper::findFree(const index_t k) const
     return find_impl(istart, iend, std::bind2nd(std::less<index_t>(),s));
 }
 
+namespace {
 struct _isBetween
 {
     _isBetween(const index_t l, const index_t u) : _l(l), _u(u) { }
     index_t _l, _u;
     bool operator()(const index_t i) { return  (i < _u) && (i > _l); }
 };
+} // end anonymous namespace
 
 gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j) const
 {
@@ -558,8 +560,8 @@ gsVector<index_t> gsDofMapper::findTagged(const index_t k) const
     citer iend   = istart + patchSize(k);
 
     std::vector<index_t> si;
-//    std::set_intersection<index_t>(istart, iend,m_tagged.begin(), m_tagged.end(),
-//                                   std::back_inserter(si));
+    //    std::set_intersection<index_t>(istart, iend,m_tagged.begin(), m_tagged.end(),
+    //                                   std::back_inserter(si));
     gsVector<index_t> rvo;
     //rvo.swap(si);
     return rvo;
