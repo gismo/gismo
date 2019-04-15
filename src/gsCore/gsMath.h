@@ -321,7 +321,7 @@ template <typename T> int getSign(T val)
     return (T(0) < val) - (val < T(0));
 }
 
-/// Return smallest difference between two number as size_t
+/// Return smallest difference between two numbers as size_t
 /// especially the case abs_diff(INT32_MAX, INT32_MIN) := UINT32_MAX is correct
 template <typename T>
 inline size_t abs_diff(T a, T b)
