@@ -32,8 +32,8 @@ public:
     /// Unique pointer for gsRemapInterface
     typedef memory::unique_ptr< gsRemapInterface > uPtr;
 
-    /// Pointer to domain iterator
-    typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
+    /// Unique pointer to domain iterator
+    typedef memory::unique_ptr< gsDomainIterator<T> > domainIterUPtr;
 
     /// Constructor which takes a multipatch and a boundary interface, useful if the interface is fully matching
     gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & basis, const boundaryInterface & bi);
@@ -64,34 +64,15 @@ public:
     /// Returns arameter dimension of the domain
     virtual short_t domainDim() const { return m_g1.geoDim(); }
 
-    domainIter makeDomainIterator() const
-    {
-        if (m_isMatching) return m_b1.makeDomainIterator(m_side1);
+    /// Returns a domain iterator
+    domainIterUPtr makeDomainIterator() const;
 
-        gsTensorDomainBoundaryIterator<T> * tdi = new gsTensorDomainBoundaryIterator<T> (m_b1, m_side1);
-
-        std::vector<T> newBreaks = getPointsOnInterface();
-        gsInfo << "newBreaks: \n";
-        for(index_t i = 0; i < m_breakpoints.cols(); i++)
-            gsInfo << newBreaks[i] << "\t";
-
-        gsInfo << "\n";
-
-        // the input must be the direction which is moving
-        //tdi->setBreaks(newBreaks, m_side1.direction()); -> gives the fixed direction
-        // workaround: only works for 2 dimensions
-
-        if (m_side1.direction() == 1)
-            tdi->setBreaks(newBreaks, 0);
-        else //m_side1.direction() == 0
-            tdi->setBreaks(newBreaks, 1);
-
-
-        return domainIter(tdi);
-    }
-
-    // methods for IETIAssembler to compute the faceaverages
+    /// @brief Returns true iff the discretization is matching.
+    ///
+    /// In this case, the mapping is only affine-linear.
     bool isMatching() const { return m_isMatching; }
+
+    /// Returns the break points
     const gsMatrix<T> & breakPoints() const { return m_breakpoints; }
 
 private:
