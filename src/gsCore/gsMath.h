@@ -326,7 +326,8 @@ template <typename T> int getSign(T val)
 template <typename T>
 inline typename util::make_unsigned<T>::type abs_diff(T a, T b)
 {
-    return a > b ? a - b : b - a;
+    typedef typename util::make_unsigned<T>::type unsignedT;
+    return a > b ? unsignedT(a) - unsignedT(b) : unsignedT(b) - unsignedT(a);
 }
 
 /// integer power
