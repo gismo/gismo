@@ -138,7 +138,7 @@ template<typename T> struct is_integral: is_integral_base<typename remove_cv<T>:
 template<class T>
 struct make_unsigned;
 
-#define MAKE_UNSIGNED(signed_type)           \
+#define GISMO_MAKE_UNSIGNED(signed_type)           \
 template<>                                   \
 struct make_unsigned<signed_type> {          \
     typedef unsigned signed_type type;       \
@@ -148,11 +148,11 @@ struct make_unsigned<unsigned signed_type> { \
     typedef unsigned signed_type type;       \
 };
 
-MAKE_UNSIGNED(short)
-MAKE_UNSIGNED(int)
-MAKE_UNSIGNED(long)
-MAKE_UNSIGNED(long long)
-#undef MAKE_UNSIGNED
+GISMO_MAKE_UNSIGNED(short)
+GISMO_MAKE_UNSIGNED(int)
+GISMO_MAKE_UNSIGNED(long)
+GISMO_MAKE_UNSIGNED(long long)
+#undef GISMO_MAKE_UNSIGNED
 
 #endif
 
