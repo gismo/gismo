@@ -1216,8 +1216,9 @@ public:
         const index_t cb = _u.rows();
         const index_t r  = _u.cols() / cb;
         res.resize(r, 1);
-        for (index_t i = 0; i!=r; ++i)
+        for (index_t i = 0; i!=r; ++i){
             res(i,0) = tmp.middleCols(i*cb,cb).trace();
+        }
         return res;
     }
 
@@ -2501,14 +2502,6 @@ public:
                 res.middleCols(i*ur,ur).noalias()
                     = tmpA.middleCols(i*ur,ur) * tmpB;
         }
-        // DEBUG added by asgl
-        else if (_v.cols() == 1 and _v.rows() == ur){
-            res.resize(ur, nb);
-            for (index_t i = 0; i!=nb; ++i)
-                res.middleCols(i,1).noalias() = tmpA.middleCols(i*ur,ur) * tmpB;
-            res.transposeInPlace();
-
-        }
         else
         {
             GISMO_ASSERT( 0 == _v.cols() % nb, "Invalid dimensions");
@@ -2523,16 +2516,12 @@ public:
     }
 
     index_t rows() const {
-        if (_v.cols() == 1){
-            return _u.cols()/_u.rows();
-        }
         return _u.rows();
     }
     index_t cols() const {
-        if (_v.cols() == 1){
-            return _u.rows();
-        }
-        return _v.cols() * (_u.cols()/_u.rows());
+        // DEBUG changed by asgl, perhaps there was a bug here?
+        //return _v.cols() * (_u.cols()/_u.rows());
+        return _u.cols();
     }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
@@ -2601,7 +2590,7 @@ public:
 
 
 template <typename E1, typename E2>
-class colapse_expr : public _expr<colapse_expr<E1, E2> >
+class collapse_expr : public _expr<collapse_expr<E1, E2> >
 {
     typename E1::Nested_t _u;
     typename E2::Nested_t _v;
@@ -2612,8 +2601,8 @@ public:
     typedef typename E1::Scalar Scalar;
 
     mutable gsMatrix<Scalar> res;
- 
-    colapse_expr(_expr<E1> const& u,
+
+    collapse_expr(_expr<E1> const& u,
               _expr<E2> const& v)
     : _u(u), _v(v) { }
 
@@ -2624,7 +2613,7 @@ public:
         const index_t nb = rows();
         const MatExprType tmpA = _u.eval(k);
         const MatExprType tmpB = _v.eval(k);
-        
+
         if (E1::ColBlocks)
         {
             const index_t ur = _v.rows();
@@ -2643,12 +2632,12 @@ public:
                 res.row(i).noalias() = tmpA * tmpB.middleCols(i*ur,ur);
             }
         }
-        
+
         return res;
     }
 
     index_t rows() const { return E1::ColBlocks ? _u.cols() / _v.rows() : _v.cols() / _u.cols() ; }
-    index_t cols() const { return E1::ColBlocks ? _v.cols()  : _u.rows(); }
+    index_t cols() const { return E1::ColBlocks ? _v.rows()  : _u.cols(); }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
@@ -2666,11 +2655,11 @@ public:
     void print(std::ostream &os) const { _u.print(os); os<<"~"; _v.print(os); }
 };
 
-// Multi-matrix colapsed by a vector
+// Multi-matrix collapsed by a vector
 template <typename E1, typename E2> //EIGEN_STRONG_INLINE
-//colapse_expr<E1,E2> const  operator&(<E1> const& u, _expr<E2> const& v)
-colapse_expr<E1,E2> colapse( _expr<E1> const& u, _expr<E2> const& v)
-{ return colapse_expr<E1, E2>(u, v); }
+//collapse_expr<E1,E2> const  operator&(<E1> const& u, _expr<E2> const& v)
+collapse_expr<E1,E2> collapse( _expr<E1> const& u, _expr<E2> const& v)
+{ return collapse_expr<E1, E2>(u, v); }
 
 
 /*
