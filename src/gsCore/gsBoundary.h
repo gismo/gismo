@@ -439,22 +439,22 @@ private:
     ///     [00] = 0 ... interior
     ///     [01] = 1 ... left edge
     ///     [02] = 2 ... right edge
-    ///     [10] = 3 ... upper edge
-    ///     [20] = 6 ... lower edge
-    ///     [11] = 4 ... upper-left corner
+    ///     [10] = 3 ... lower edge
+    ///     [20] = 6 ... upper edge
+    ///     [11] = 4 ... lower-left corner
     ///     etc., where [ab]=3*a+b
     ///
     /// In 3D (\a m_total_dim=3), we have indeces [000]=0 to [222]=26
     ///
     ///     [000] =  0 ... interior
-    ///     [001] =  1 ... left face
-    ///     [002] =  2 ... right face
-    ///     [010] =  3 ... upper face
-    ///     [020] =  6 ... lower face
-    ///     [100] =  9 ... back face
-    ///     [200] = 18 ... front face
-    ///     [011] =  4 ... upper-left edge
-    ///     [222] = 26 ... front-lower-right corner
+    ///     [001] =  1 ... west face
+    ///     [002] =  2 ... east face
+    ///     [010] =  3 ... south face
+    ///     [020] =  6 ... north face
+    ///     [100] =  9 ... front face
+    ///     [200] = 18 ... back face
+    ///     [011] =  4 ... south-west edge
+    ///     [222] = 26 ... back-north-east corner
     ///     etc., where [abc]=9*a+3*b+c
     ///
     index_t m_index;
