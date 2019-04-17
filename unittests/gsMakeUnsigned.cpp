@@ -1,4 +1,4 @@
-/** @file gsBoxList.cpp
+/** @file gsMakeUnsigned.cpp
 
     @brief Tests std::make_unsigned, which is part of CXX11 and
     for CXX98 defined in gsTemplateTools.h.
