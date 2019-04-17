@@ -16,7 +16,6 @@
 #include <gsCore/gsExport.h>
 #include <utility>
 #include <complex>
-#include <stdint.h>
 
 namespace gismo
 {
@@ -139,20 +138,21 @@ template<typename T> struct is_integral: is_integral_base<typename remove_cv<T>:
 template<class T>
 struct make_unsigned;
 
-#define GISMO_MAKE_UNSIGNED(signed_type) \
-template<>                               \
-struct make_unsigned<signed_type> {      \
-    typedef u##signed_type type;         \
-};                                       \
-template<>                               \
-struct make_unsigned<u##signed_type> {   \
-    typedef u##signed_type type;         \
+#define GISMO_MAKE_UNSIGNED(signed_type)     \
+template<>                                   \
+struct make_unsigned<signed_type> {          \
+    typedef unsigned signed_type type;       \
+};                                           \
+template<>                                   \
+struct make_unsigned<unsigned signed_type> { \
+    typedef unsigned signed_type type;       \
 };
 
-GISMO_MAKE_UNSIGNED(int8_t)
-GISMO_MAKE_UNSIGNED(int16_t)
-GISMO_MAKE_UNSIGNED(int32_t)
-GISMO_MAKE_UNSIGNED(int64_t)
+GISMO_MAKE_UNSIGNED(char)
+GISMO_MAKE_UNSIGNED(short)
+GISMO_MAKE_UNSIGNED(int)
+GISMO_MAKE_UNSIGNED(long)
+GISMO_MAKE_UNSIGNED(long long)
 #undef GISMO_MAKE_UNSIGNED
 
 #endif
