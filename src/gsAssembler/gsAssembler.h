@@ -727,7 +727,6 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
                            const boundaryInterface & bi)
 {
     gsRemapInterface<T> interfaceMap(m_pde_ptr->patches(), m_bases[0], bi);
-    interfaceMap.init(); //calls constructReparam and constructBreaks
 
     const int patchIndex1      = bi.first().patch;
     const int patchIndex2      = bi.second().patch;

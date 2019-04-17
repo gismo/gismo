@@ -295,8 +295,9 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allComponents(bool com
             {
                 const index_t nrcp = it->second.size();
                 for (index_t j=0; j<nrcp; ++j)
-                    last.push_back(it->second[i]);
+                    last.push_back(it->second[j]);
             }
+            result.push_back(last);
         }
     }
     return result;
