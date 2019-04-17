@@ -16,6 +16,7 @@
 #include <gsCore/gsExport.h>
 #include <utility>
 #include <complex>
+#include <stdint.h>
 
 namespace gismo
 {
@@ -51,6 +52,7 @@ using std::remove_const;
 using std::remove_cv;
 using std::remove_volatile;
 using std::true_type;
+using std::make_unsigned;
 
 #else
 
@@ -133,6 +135,25 @@ template< class T >
 struct remove_cv { typedef typename remove_volatile<typename remove_const<T>::type>::type type; };
 
 template<typename T> struct is_integral: is_integral_base<typename remove_cv<T>::type> {};
+
+template<class T>
+struct make_unsigned;
+
+#define GISMO_MAKE_UNSIGNED(signed_type) \
+template<>                               \
+struct make_unsigned<signed_type> {      \
+    typedef u##signed_type type;         \
+};                                       \
+template<>                               \
+struct make_unsigned<u##signed_type> {   \
+    typedef u##signed_type type;         \
+};
+
+GISMO_MAKE_UNSIGNED(int8_t)
+GISMO_MAKE_UNSIGNED(int16_t)
+GISMO_MAKE_UNSIGNED(int32_t)
+GISMO_MAKE_UNSIGNED(int64_t)
+#undef GISMO_MAKE_UNSIGNED
 
 #endif
 
