@@ -450,7 +450,7 @@ public:
     index_t mapIndex(index_t n) const
     {return m_dofs[n]+m_shift;}
 
-     /// \brief Returns all boundart dofs on patch k (local dof indices)
+     /// \brief Returns all boundary dofs on patch k (local dof indices)
      gsVector<index_t> findBoundary(const index_t k) const;
 
      /// \brief Returns all free dofs on patch k (local dof indices)
