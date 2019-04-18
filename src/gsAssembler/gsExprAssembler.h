@@ -34,6 +34,9 @@ void gsAccumulateLocalToGlobal(
     const expr::gsFeSpace<T> & u, //colvar
     const index_t patchInd)
 {
+    GISMO_ASSERT(!left  || v.isValid(), "The row space is not valid");
+    GISMO_ASSERT(!right || u.isValid(), "The column space is not valid");
+
     const index_t cd            = u.dim();
     const index_t rd            = v.dim();
     const gsDofMapper  & colMap = u.mapper();
@@ -568,6 +571,9 @@ private:
                                           //const expr::gsFeSpace<T> & u,
                                           const index_t patchInd)
         {
+            GISMO_ASSERT(v.isValid(), "The row space is not valid");
+            GISMO_ASSERT(!isMatrix || u.isValid(), "The column space is not valid");
+
             const index_t cd            = u.dim();
             const index_t rd            = v.dim();
             const gsDofMapper  & colMap = static_cast<const expr::gsFeSpace<T>&>(u).mapper();

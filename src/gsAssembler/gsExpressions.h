@@ -2666,8 +2666,8 @@ collapse_expr<E1,E2> collapse( _expr<E1> const& u, _expr<E2> const& v)
 
 
 /*
-   Expression for the Frobenius matrix product (first version)
-   Also block-wise
+   Expression for the Frobenius matrix (or double dot) product (first
+   version) Also block-wise
 
    [A1 A2 A3] . [B1 B2 B3] = [A1.B1  A2.B2  A3.B3]
 */
@@ -2728,8 +2728,8 @@ public:
 
 /*
 
-   Expression for the Frobenius matrix product (second version),
-   When left hand only side is block-wise
+   Expression for the Frobenius matrix (or double dot) product (second
+   version), When left hand only side is block-wise
 
    [A1 A2 A3] . B = [A1.B  A2.B  A3.B]
 */
@@ -3223,7 +3223,7 @@ operator*(gsMatrix<typename E1::Scalar> const& u, _expr<E1> const& v)
 { return mult_expr<gsMatrix<typename E1::Scalar>,E1, false>(u, v); }
 */
 
-/// Frobenious product operator for expressions
+/// Frobenious product (also known as double dot product) operator for expressions
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
 frprod_expr<E1,E2> const  operator%(_expr<E1> const& u, _expr<E2> const& v)
 { return frprod_expr<E1, E2>(u, v); }
