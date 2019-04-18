@@ -609,9 +609,9 @@ protected:
         m_md  = &md;
     }
 
-    bool isValid() const { return NULL!=m_fd && NULL!=m_fs; }
-
 public:
+
+    bool isValid() const { return NULL!=m_fd && NULL!=m_fs; }
 
     // component
     // expr comp(const index_t i) const { return comp_expr<T>(*this,i); }
@@ -1250,19 +1250,22 @@ public:
 private:
     typename E::Nested_t _u;
     index_t _n, _m;
-    //mutable gsMatrix<Scalar> res;
+    mutable gsMatrix<Scalar> tmp;
 
 public:
 
     //the reshaping is done column-wise
     reshape_expr(_expr<E> const& u, index_t n, index_t m) : _u(u), _n(n), _m(m)
     {
-        GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension");
+        //GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension"); //
     }
 
-    const gsAsMatrix<Scalar> eval(const index_t k) const
+    const gsAsConstMatrix<Scalar> eval(const index_t k) const
     {
-        return _u.eval(k).reshape(_n,_m);
+        // Note: this assertion would fail in the constructore!
+        GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension");
+        tmp = _u.eval(k);
+        return gsAsConstMatrix<Scalar>(tmp.data(),_n,_m);
     }
 
     index_t rows() const { return _n; }
@@ -1820,7 +1823,7 @@ public:
 
     const gsFeVariable<T> & rowVar() const { return u.rowVar(); }
     const gsFeVariable<T> & colVar() const
-    {return gsNullExpr<T>();}
+    {return gsNullExpr<T>::get();}
 
     static bool rowSpan() {return true; }
     static bool colSpan() {return false;}
@@ -1991,8 +1994,8 @@ public:
         _G.data().flags |= NEED_GRAD_TRANSFORM;
     }
 
-    const gsFeVariable<Scalar> & rowVar() const {return gsNullExpr<T>();}
-    const gsFeVariable<Scalar> & colVar() const {return gsNullExpr<T>();}
+    const gsFeVariable<Scalar> & rowVar() const {return gsNullExpr<T>::get();}
+    const gsFeVariable<Scalar> & colVar() const {return gsNullExpr<T>::get();}
 
     void print(std::ostream &os) const { os << "fform("; _G.print(os); os <<")"; }
 };
@@ -2118,7 +2121,7 @@ public:
     }
 
     const gsFeVariable<T> & rowVar() const { return m_fev; }
-    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
+    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>::get(); }
 
     index_t rows() const { return m_fev.dim(); }
     index_t cols() const
@@ -2249,8 +2252,8 @@ public:
     static bool rowSpan() {return true; }
     static bool colSpan() {return false;}
 
-    const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>(); }
-    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
+    const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>::get(); }
+    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>::get(); }
 
     void print(std::ostream &os) const
     //    { os << "hess("; _u.print(os);os <<")"; }
