@@ -91,7 +91,7 @@ namespace gismo {
         <<__LINE__<<" ("<<__FUNCTION__<<")";                                 \
        throw std::logic_error(_m_.str()); } while(false)
 #else
-#   define GISMO_ASSERT(condition, message)
+#   define GISMO_ASSERT(condition, message) { condition; }
 #endif
 
 /**  
