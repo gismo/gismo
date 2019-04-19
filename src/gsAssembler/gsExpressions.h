@@ -2504,7 +2504,7 @@ public:
         }
         else
         {
-            GISMO_ASSERT( 0 == _v.cols() % nb, "Invalid dimensions");
+            GISMO_ASSERT( _u.cols() == _v.cols(), "Invalid dimensions");
             const index_t vc = _v.cols() / nb;
             res.resize(ur, _v.cols());
             for (index_t i = 0; i!=nb; ++i)
