@@ -399,10 +399,13 @@ public:
         return m_numFreeDofs;
     }
 
+    /// Returns the vector of tagged (not eliminated) dofs.
+    const std::vector<index_t> & getTagged() const { return m_tagged; }
+
     /// Returns the number of coupled (not eliminated) dofs.
     index_t coupledSize() const;
 
-    /// Returns the number of tagged (not eliminated) dofs.
+    /// Returns the number of tagged dofs.
     index_t taggedSize() const;
 
     /// Returns the number of eliminated dofs.

@@ -13,10 +13,18 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsFuncData.h>
+#include <gsCore/gsFuncCoordinate.h>
+
 #pragma once
 
 namespace gismo
 {
+
+template <class T>
+gsFuncCoordinate<T> gsFunction<T>::coord(const index_t c) const
+{
+    return gsFuncCoordinate<T>(*this,c);
+}
 
 template <class T>
 gsMatrix<T>
