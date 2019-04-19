@@ -609,9 +609,9 @@ protected:
         m_md  = &md;
     }
 
-    bool isValid() const { return NULL!=m_fd && NULL!=m_fs; }
-
 public:
+
+    bool isValid() const { return NULL!=m_fd && NULL!=m_fs; }
 
     // component
     // expr comp(const index_t i) const { return comp_expr<T>(*this,i); }
@@ -1250,19 +1250,22 @@ public:
 private:
     typename E::Nested_t _u;
     index_t _n, _m;
-    //mutable gsMatrix<Scalar> res;
+    mutable gsMatrix<Scalar> tmp;
 
 public:
 
     //the reshaping is done column-wise
     reshape_expr(_expr<E> const& u, index_t n, index_t m) : _u(u), _n(n), _m(m)
     {
-        GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension");
+        //GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension"); //
     }
 
-    const gsAsMatrix<Scalar> eval(const index_t k) const
+    const gsAsConstMatrix<Scalar> eval(const index_t k) const
     {
-        return _u.eval(k).reshape(_n,_m);
+        // Note: this assertion would fail in the constructore!
+        GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension");
+        tmp = _u.eval(k);
+        return gsAsConstMatrix<Scalar>(tmp.data(),_n,_m);
     }
 
     index_t rows() const { return _n; }
@@ -1820,7 +1823,7 @@ public:
 
     const gsFeVariable<T> & rowVar() const { return u.rowVar(); }
     const gsFeVariable<T> & colVar() const
-    {return gsNullExpr<T>();}
+    {return gsNullExpr<T>::get();}
 
     static bool rowSpan() {return true; }
     static bool colSpan() {return false;}
@@ -1991,8 +1994,8 @@ public:
         _G.data().flags |= NEED_GRAD_TRANSFORM;
     }
 
-    const gsFeVariable<Scalar> & rowVar() const {return gsNullExpr<T>();}
-    const gsFeVariable<Scalar> & colVar() const {return gsNullExpr<T>();}
+    const gsFeVariable<Scalar> & rowVar() const {return gsNullExpr<T>::get();}
+    const gsFeVariable<Scalar> & colVar() const {return gsNullExpr<T>::get();}
 
     void print(std::ostream &os) const { os << "fform("; _G.print(os); os <<")"; }
 };
@@ -2118,7 +2121,7 @@ public:
     }
 
     const gsFeVariable<T> & rowVar() const { return m_fev; }
-    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
+    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>::get(); }
 
     index_t rows() const { return m_fev.dim(); }
     index_t cols() const
@@ -2249,8 +2252,8 @@ public:
     static bool rowSpan() {return true; }
     static bool colSpan() {return false;}
 
-    const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>(); }
-    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
+    const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>::get(); }
+    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>::get(); }
 
     void print(std::ostream &os) const
     //    { os << "hess("; _u.print(os);os <<")"; }
@@ -2663,8 +2666,8 @@ collapse_expr<E1,E2> collapse( _expr<E1> const& u, _expr<E2> const& v)
 
 
 /*
-   Expression for the Frobenius matrix product (first version)
-   Also block-wise
+   Expression for the Frobenius matrix (or double dot) product (first
+   version) Also block-wise
 
    [A1 A2 A3] . [B1 B2 B3] = [A1.B1  A2.B2  A3.B3]
 */
@@ -2725,8 +2728,8 @@ public:
 
 /*
 
-   Expression for the Frobenius matrix product (second version),
-   When left hand only side is block-wise
+   Expression for the Frobenius matrix (or double dot) product (second
+   version), When left hand only side is block-wise
 
    [A1 A2 A3] . B = [A1.B  A2.B  A3.B]
 */
@@ -3220,7 +3223,7 @@ operator*(gsMatrix<typename E1::Scalar> const& u, _expr<E1> const& v)
 { return mult_expr<gsMatrix<typename E1::Scalar>,E1, false>(u, v); }
 */
 
-/// Frobenious product operator for expressions
+/// Frobenious product (also known as double dot product) operator for expressions
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
 frprod_expr<E1,E2> const  operator%(_expr<E1> const& u, _expr<E2> const& v)
 { return frprod_expr<E1, E2>(u, v); }

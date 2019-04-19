@@ -43,20 +43,18 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiB
     m_flipSide2 = false;
     m_isMatching = checkIfMatching();
 
-    if(domainDim() == 3)
+    if (domainDim() > 2)
     {
-        GISMO_ASSERT(m_isMatching == true, "Cannot handle the 3D case when the interfaces are not matching");
+        GISMO_ENSURE(m_isMatching == true, "Can handle non-matching interfaces only for 2 dimensions.");
     }
 
     //gsInfo << "equal corners: " << sameCorners << "\n";
 
-    if(!m_isMatching)
+    if (!m_isMatching)
     {
         //gsInfo << "the follwing patches do not match: " << m_g1.id() << " and " << m_g2.id() << "\n";
         findInterface(bi);
         changeDir(bi);
-
-
     }
     else
     {
@@ -181,6 +179,10 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiB
 
         changeDir(bi);
     }
+
+    constructReparam();
+    if(!m_isMatching)
+        constructBreaks();
 }
 
 
@@ -245,7 +247,7 @@ void gsRemapInterface<T>::constructBreaks() {
         }
 
 
-    // Compute interface knots in physical domain by evaluating left and right geometry maps at the knot values --------------------------------------
+    // Compute interface knots in physical domain by evaluating left and right geometry maps at the knot values
     int numelP1 = domIt1->numElements();
     int numelP2 = domIt2->numElements();
     gsMatrix <T> physicalKnotsP1(m_g1.geoDim(), numelP1 + 1), physicalKnotsP2(m_g2.geoDim(), numelP2 + 1), dummy;
@@ -461,6 +463,10 @@ void gsRemapInterface<T>::constructBreaks() {
 
         //gsInfo << "Mapped: \n" << result << "\n";
     }
+    else
+    {
+        // ?
+    }
 
 }
 
@@ -468,7 +474,7 @@ void gsRemapInterface<T>::constructBreaks() {
 template<class T>
 void gsRemapInterface<T>::constructReparam()
 {
-    const unsigned numIntervals = 11;
+    const unsigned numIntervals = 11; // ?
     const int numGeometries = 2;
 
 
@@ -731,6 +737,33 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
         GISMO_ERROR("Unfitted interface not supported");
     }
 
+}
+
+template<class T>
+memory::unique_ptr< gsDomainIterator<T> > gsRemapInterface<T>::makeDomainIterator() const
+{
+    if (m_isMatching) return m_b1.makeDomainIterator(m_side1);
+
+    gsTensorDomainBoundaryIterator<T> * tdi = new gsTensorDomainBoundaryIterator<T> (m_b1, m_side1);
+
+    std::vector<T> newBreaks = getPointsOnInterface();
+    gsInfo << "newBreaks: \n";
+    for(index_t i = 0; i < m_breakpoints.cols(); i++)
+        gsInfo << newBreaks[i] << "\t";
+
+    gsInfo << "\n";
+
+    // the input must be the direction which is moving
+    //tdi->setBreaks(newBreaks, m_side1.direction()); -> gives the fixed direction
+    // workaround: only works for 2 dimensions
+
+    if (m_side1.direction() == 1)
+        tdi->setBreaks(newBreaks, 0);
+    else //m_side1.direction() == 0
+        tdi->setBreaks(newBreaks, 1);
+
+
+    return domainIterUPtr(tdi);
 }
 
 // Function to enhance a sequence of 1D points in an interval to 2D points in the parameter domain
@@ -1326,14 +1359,14 @@ gsMatrix<T> gsRemapInterface<T>::checkIfInBound(const gsMatrix<T> & u) const
         else
             break;
 
-/*
+    /*
     if(u(0,0) - begin < 0)
         evalpts(0,0) += (begin - u(0,0));
 
 
     if(u(0, u.cols()-1) - end > 0)
         evalpts(0, u.cols()-1) -= (u(0, u.cols()-1) - end);
-        */
+    */
 
     return evalpts;
 }
@@ -1379,4 +1412,4 @@ void gsRemapInterface<T>::changeDir(const boundaryInterface & bi)
     }
 }
 
-} // End namespace::gismo
+} // End namespace gismo
