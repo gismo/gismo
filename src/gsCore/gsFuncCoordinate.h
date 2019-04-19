@@ -33,7 +33,7 @@ namespace gismo
 template<class T>
 class gsFuncCoordinate : public gsFunction<T>
 {
-private:
+public:
     /// Default empty constructor
     gsFuncCoordinate() { }
 
@@ -53,7 +53,7 @@ public:
 
 public:
 
-    short_t domainDim () const {return m_function.domainDim();}
+    short_t domainDim () const {return m_function->domainDim();}
 
     short_t targetDim () const {return 1;} // It is a coordinate of a vector function
 
@@ -62,6 +62,8 @@ public:
     void eval_into (const gsMatrix<T>& u, gsMatrix<T>& result ) const;
 
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result ) const;
+
+    void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result ) const;
 
     /// The gsFuncCoordinate points to the i-th coordinate
     /// after calling this setter.
@@ -80,31 +82,33 @@ public:
     unsigned index() const { return m_index; }
 
     // // temporary hack
-    // virtual const gsFuncCoordinate & piece(const index_t) const
-    // {
-    //     return *this;
-    // }
+    virtual const gsFuncCoordinate & piece(const index_t k) const
+    {
+        m_pieces[k] = gsFuncCoordinate(m_function->piece(k),m_index);
+        return m_pieces[k];
+    }
 
 
 // Data members
 private:
-    const gsFunctionSet<T> & m_function;
+    const gsFunctionSet<T> * m_function;
     unsigned m_index;
 
+    mutable std::map<index_t,gsFuncCoordinate> m_pieces;
 }; // class gsFuncCoordinate
 
 
 template<class T>
 gsFuncCoordinate<T>::gsFuncCoordinate(const gsFunctionSet<T> & function, const unsigned i )
-: m_function(function), m_index(i)
+: m_function(&function), m_index(i)
 {
-    GISMO_ASSERT( i<unsigned(m_function.targetDim()),"Invalid coordinate" );
+    GISMO_ASSERT( i<unsigned(m_function->targetDim()),"Invalid coordinate" );
 }
 
 template<class T> void
 gsFuncCoordinate<T>::setCoordinate( unsigned const & i )
 {
-    GISMO_ASSERT( i<unsigned(m_function.targetDim()),"Invalid coordinate" );
+    GISMO_ASSERT( i<unsigned(m_function->targetDim()),"Invalid coordinate" );
     m_index = i;
 }
 
@@ -117,35 +121,47 @@ gsFuncCoordinate<T>::first()
 template<class T> bool
 gsFuncCoordinate<T>::next()
 {
-    return ( ++m_index  < static_cast<unsigned>(m_function.targetDim()) );
+    return ( ++m_index  < static_cast<unsigned>(m_function->targetDim()) );
 }
 
 template<class T> bool
 gsFuncCoordinate<T>::valid()
 {
-    return ( m_index  < static_cast<unsigned>(m_function.targetDim()) );
+    return ( m_index  < static_cast<unsigned>(m_function->targetDim()) );
 }
 
 template<class T> gsMatrix<T>
 gsFuncCoordinate<T>::support()  const
 {
-    return m_function.support();
+    return m_function->support();
 }
 
 template<class T> void
 gsFuncCoordinate<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result )  const
 {
-    gsMatrix<> tmp(m_function.targetDim(),result.cols());
-    m_function.eval_into(u, tmp);
+    gsMatrix<T> tmp;
+    m_function->eval_into(u, tmp);
     result = tmp.row(m_index);
 }
 
 template<class T> void
 gsFuncCoordinate<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result )  const
 {
-    gsMatrix<> tmp(m_function.targetDim()*domainDim(),result.cols());
-    m_function.deriv_into(u, tmp);
-    result = tmp.middleRows(m_index*domainDim(),domainDim());
+    gsMatrix<T> tmp;
+    m_function->deriv_into(u, tmp);
+    const index_t stride = domainDim();
+    result = tmp.middleRows(m_index*stride,stride);
+}
+
+template<class T> void
+gsFuncCoordinate<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result )  const
+{
+    gsInfo << "deriv2 is called!\n";
+    gsMatrix<T> tmp;
+    m_function->deriv2_into(u, tmp);
+    const index_t dim = domainDim();
+    const index_t stride = dim*(dim+1)/2;
+    result = tmp.middleRows(m_index*stride,stride);
 }
 
 
