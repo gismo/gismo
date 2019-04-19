@@ -319,8 +319,10 @@ public:
     void setFixedDofs(const gsMatrix<T> & coefMatrix, int unk = 0, int patch = 0);
 
     /// \brief Initializes the sparse system (sparse matrix and rhs)
-    void initSystem()
+    void initSystem(bool resetFirst = true)
     {
+        if (resetFirst)
+            resetSpaces();
         // Check spaces.nPatches==mesh.patches
         initMatrix();
         m_rhs.setZero(numDofs(), 1);
@@ -330,8 +332,10 @@ public:
     }
 
     /// \brief Initializes the sparse matrix only
-    void initMatrix()
+    void initMatrix(bool resetFirst = true)
     {
+        if (resetFirst)
+            resetSpaces();
         resetDimensions();
         m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
 
@@ -353,8 +357,10 @@ public:
     }
 
     /// \brief Initializes the right-hand side vector only
-    void initVector(const index_t numRhs = 1)
+    void initVector(const index_t numRhs = 1, bool resetFirst = true)
     {
+        if (resetFirst)
+            resetSpaces();
         resetDimensions();
         m_rhs.setZero(numDofs(), numRhs);
     }
@@ -490,6 +496,8 @@ private:
     /// \brief Reset the dimensions of all involved spaces.
     /// Called internally by the init* functions
     void resetDimensions();
+
+    void resetSpaces();
 
     // template<bool left, bool right, class E1, class E2>
     // void assembleLhsRhs_impl(const expr::_expr<E1> & exprLhs,
@@ -777,7 +785,7 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, i
     }
 } // setFixedDofs
 
-template<class T> void gsExprAssembler<T>::resetDimensions()
+template<class T> void gsExprAssembler<T>::resetSpaces()
 {
     for (size_t i = 0; i!=m_vcol.size(); ++i)
     {
@@ -790,6 +798,10 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
             m_vrow[i]->reset();
         }
     }
+}
+
+template<class T> void gsExprAssembler<T>::resetDimensions()
+{
     for (size_t i = 1; i!=m_vcol.size(); ++i)
     {
         m_vcol[i]->mapper().setShift(m_vcol[i-1]->mapper().firstIndex() +
