@@ -257,7 +257,7 @@ public:
     ///
     /// \note The dimension is set to the same as \a u, unless the caller
     /// sets as a third argument a new value.
-    space getTestSpace(variable u, const gsFunctionSet<T> & mp, index_t dim = -1)
+    space getTestSpace(space u, const gsFunctionSet<T> & mp, index_t dim = -1)
     {
         //GISMO_ASSERT(0!=u.mapper(), "Not a space"); // done on initSystem
         expr::gsFeSpace<T> & s = m_exprdata->getSpace(mp,(-1 == dim ? u.dim() : dim));
@@ -275,7 +275,7 @@ public:
     }
 
     /// Return the trial space of a pre-existing test space \a v
-    space trialSpace(variable v) const { return trialSpace(v.id()); }
+    space trialSpace(space v) const { return trialSpace(v.id()); }
 
     /// Return the variable (previously created by getTrialSpace) with the given \a id
     space testSpace(const index_t id)
@@ -285,7 +285,7 @@ public:
     }
 
     /// Return the test space of a pre-existing trial space \a u
-    space testSpace(variable u) const { return testSpace(u.id()); }
+    space testSpace(space u) const { return testSpace(u.id()); }
 
     /// Registers \a func as a variable and returns a handle to it
     variable getCoeff(const gsFunctionSet<T> & func)
