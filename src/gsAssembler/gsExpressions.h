@@ -1501,7 +1501,7 @@ class sign_expr : public _expr<sign_expr<E> >
 public:
     typedef typename E::Scalar Scalar;
     enum {ScalarValued = 1 };
-    enum {Space = E::Space}
+    enum {Space = E::Space};
 
     sign_expr(_expr<E> const& u) : _u(u) { }
 
@@ -1541,7 +1541,7 @@ class matrix_by_space_expr  : public _expr<matrix_by_space_expr<E1,E2> >
 public:
     typedef typename E1::Scalar Scalar;
     enum {ScalarValued = 0, ColBlocks = 1};
-    enum {Space = E2::Space}
+    enum {Space = E2::Space};
 private:
     typename E1::Nested_t _u;
     typename E2::Nested_t _v;
