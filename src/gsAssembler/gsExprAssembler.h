@@ -321,10 +321,8 @@ public:
     /// \brief Initializes the sparse system (sparse matrix and rhs)
     void initSystem(bool resetFirst = true)
     {
-        if (resetFirst)
-            resetSpaces();
         // Check spaces.nPatches==mesh.patches
-        initMatrix();
+        initMatrix(resetFirst);
         m_rhs.setZero(numDofs(), 1);
 
         for (size_t i = 0; i!= m_vcol.size(); ++i)
@@ -567,28 +565,33 @@ private:
             //  ------- Accumulate  -------
             if (E::isMatrix())
                 push<true>(ee.rowVar(), ee.colVar(), m_patchInd);
-            else
+            else if (E::isVector())
                 push<false>(ee.rowVar(), ee.colVar(), m_patchInd);
+            else
+            {
+                GISMO_ERROR("Something went wrong at this point.");
+                //GISMO_ASSERTrowSpan() && (!colSpan())
+            }
+
         }// operator()
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
 
-        template<bool isMatrix> void push(const expr::gsFeVariable<T> & v,
-                                          const expr::gsFeVariable<T> & u,
-                                          //const expr::gsFeSpace<T> & v,
-                                          //const expr::gsFeSpace<T> & u,
+        template<bool isMatrix> void push(const expr::gsFeSpace<T> & v,
+                                          const expr::gsFeSpace<T> & u,
                                           const index_t patchInd)
         {
             GISMO_ASSERT(v.isValid(), "The row space is not valid");
             GISMO_ASSERT(!isMatrix || u.isValid(), "The column space is not valid");
+            GISMO_ASSERT(isMatrix || (0!=m_rhs.size()), "The right-hand side vector is not initialized");
 
             const index_t cd            = u.dim();
             const index_t rd            = v.dim();
-            const gsDofMapper  & colMap = static_cast<const expr::gsFeSpace<T>&>(u).mapper();
-            const gsDofMapper  & rowMap = static_cast<const expr::gsFeSpace<T>&>(v).mapper();
+            const gsDofMapper  & colMap = u.mapper();
+            const gsDofMapper  & rowMap = v.mapper();
             gsMatrix<unsigned> & colInd0 = const_cast<gsMatrix<unsigned>&>(u.data().actives);
             gsMatrix<unsigned> & rowInd0 = const_cast<gsMatrix<unsigned>&>(v.data().actives);
-            const gsMatrix<T>  & fixedDofs = static_cast<const expr::gsFeSpace<T>&>(u).fixedPart();
+            const gsMatrix<T>  & fixedDofs = u.fixedPart();
 
             gsMatrix<unsigned> rowInd, colInd;
             rowMap.localToGlobal(rowInd0, patchInd, rowInd);
@@ -596,10 +599,10 @@ private:
             {
                 //if (&rowInd0!=&colInd0)
                 colMap.localToGlobal(colInd0, patchInd, colInd);
-            }
 
-            GISMO_ASSERT( colMap.boundarySize()==fixedDofs.rows(),
-                          "Invalid values for fixed part");
+                GISMO_ASSERT( colMap.boundarySize()==fixedDofs.rows(),
+                              "Invalid values for fixed part");
+            }
 
             for (index_t r = 0; r != rd; ++r)
             {
@@ -642,7 +645,9 @@ private:
                                 }
                             }
                             else
+                            {
                                 m_rhs.row(ii) += localMat.row(rls+i);
+                            }
                         }
                     }
                 }
