@@ -262,6 +262,11 @@ public:
     /// that represent the same point in the vector \a cornerList
     bool getCornerList(const patchCorner& start, std::vector<patchCorner> & cornerList) const;
 
+    /// takes a patchCorner \a start and gives back all other patchCorners,
+    /// that represent the same point in the vector \a cornerList
+    /// this is function is more expensive than the original one
+    bool getNonMatchingCornerList(const patchCorner& start, std::vector<patchCorner> & cornerList) const;
+
     /// returns the maximal valence of a vertex of this topology.
     int getMaxValence() const;
 
@@ -275,6 +280,18 @@ public:
     ///
     /// @param combineCorners If this is set, all corners are treated as one component
     std::vector< std::vector<patchComponent> > allComponents(bool combineCorners = false) const;
+
+    /// @brief Returns all components representing the topology for non-conforming multipatch
+    /// representations
+    ///
+    /// Each entry of the outer vector represents one component (patch-interior, face,
+    /// edge, corner, etc.). Since the components refering to one interface can be
+    /// addressed as belonging to different patches, each component itself is represented
+    /// by an inner vector which contains all \a patchComponent objects that refer
+    /// to the particular component.
+    ///
+    /// @param combineCorners If this is set, all corners are treated as one component
+    std::vector< std::vector<patchComponent> > allNonMatchingComponents(bool combineCorners = false) const;
 
     /// gives back all the extraordinary vertices (3 faces or more than 4) of the topology
     /// each EV is represented by a vector of patchCorners, which represent the same vertex
