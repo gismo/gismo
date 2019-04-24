@@ -502,6 +502,7 @@ public:
 
 public:
     enum {ScalarValued = 1};
+    enum {Space = 0};
 
     inline Scalar eval(const index_t ) const { return _c; }
 
@@ -1600,6 +1601,7 @@ class matrix_by_space_expr_tr  : public _expr<matrix_by_space_expr_tr<E1,E2> >
 public:
     typedef typename E1::Scalar Scalar;
     enum {ScalarValued = 0, ColBlocks = 1};
+    enum {Space = E2::Space};
 private:
     typename E1::Nested_t _u;
     typename E2::Nested_t _v;
@@ -2145,6 +2147,7 @@ class jac_expr : public _expr<jac_expr<E> >
     typename E::Nested_t m_fev;
 public:
     enum {ColBlocks = E::rowSpan() };
+    enum {Space = E::Space };
 
     typedef typename E::Scalar Scalar;
 
@@ -2636,8 +2639,8 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    static constexpr bool rowSpan() { return E1::rowSpan(); } // DEBUG was rowspan of E1 before
-    static bool colSpan() { return false; } // DEBUG was false before
+    static constexpr bool rowSpan() { return E1::rowSpan(); }
+    static bool colSpan() { return false; }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const
@@ -2673,6 +2676,7 @@ private:
     //mult_expr(const mult_expr&);
 public:
     enum {ScalarValued = E2::ScalarValued, ColBlocks = E2::ColBlocks};
+    enum {Space = E2::Space};
 
     mult_expr(Scalar const & c, _expr<E2> const& v)
     : _c(c), _v(v) { }
@@ -2909,6 +2913,7 @@ public:
 
 public:
     enum {ScalarValued = E1::ScalarValued};
+    enum {Space = E1::Space}; // The denominator E2 has to be scalar.
 
     divide_expr(_expr<E1> const& u, _expr<E2> const& v)
     : _u(u), _v(v)
@@ -3020,6 +3025,7 @@ class add_expr : public _expr<add_expr<E1, E2> >
 public:
     enum {ScalarValued = E1::ScalarValued && E2::ScalarValued,
           ColBlocks = E1::ColBlocks && E2::ColBlocks };
+    enum {Space = E1::Space}; // == E2::Space
 
     typedef typename E1::Scalar Scalar;
 
