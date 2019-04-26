@@ -171,8 +171,7 @@ bool gsBoxTopology::getCornerList(const patchCorner& start,std::vector<patchCorn
         }
         if(std::find(visitedSides.begin(), visitedSides.end(), psNeighbour)!=visitedSides.end())
             continue;
-        if(std::find(visitedSides.begin(), visitedSides.end(), psNeighbour)==visitedSides.end())
-            visitedSides.push_back(psNeighbour);
+        visitedSides.push_back(psNeighbour);
         getInterface(ps,boundIf);
         pcNeighbour = boundIf.mapCorner(pc);
         if(pcNeighbour==pc)
