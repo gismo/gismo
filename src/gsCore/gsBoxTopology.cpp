@@ -131,6 +131,26 @@ bool gsBoxTopology::getNeighbour(const patchSide& ps ,patchSide& result) const
     return getNeighbour(ps, result, a);
 }
 
+bool gsBoxTopology::getAllNeighbours(const patchSide& ps ,std::vector<patchSide> & result) const
+{
+    bool found = false;
+
+    for ( unsigned i = 0; i < m_interfaces.size(); ++i )
+    {
+        if ( m_interfaces[i].first() == ps )
+        {
+            result.push_back(m_interfaces[i].second());
+            found = true;
+        }
+        else if ( m_interfaces[i].second() == ps )
+        {
+            result.push_back(m_interfaces[i].first());
+            found = true;
+        }
+    }
+    return found;
+}
+
 const boundaryInterface * gsBoxTopology::findInterface(const int b1, const int b2) const
 {
     for ( unsigned i = 0; i < m_interfaces.size(); ++i ) 
@@ -420,12 +440,17 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
             {
                 // add the side of the patch with 2 or more neighbours
                 patchSide ps1(i, j+1);
-                processedSide.push_back(ps1);
-                if(ps1.index() == 4)
-                    extension.push_back(patchComponent(ps1.patch, 6, m_dim));
-                else
-                    extension.push_back(patchComponent(ps1.patch, ps1.index(), m_dim));
+                //processedSide.push_back(ps1);
 
+                if((std::find(processedSide.begin(), processedSide.end(), ps1)) == processedSide.end())
+                {
+                    if (ps1.index() == 4)
+                        extension.push_back(patchComponent(ps1.patch, 6, m_dim));
+                    else
+                        extension.push_back(patchComponent(ps1.patch, ps1.index(), m_dim));
+                }
+
+                processedSide.push_back(ps1);
                 size_t nAdj = neighbours[i][j].size();
                 //gsInfo << "adjacent " << nAdj << "\n";
                 std::vector<index_t> patches, patches2;
@@ -434,10 +459,13 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
                     // add the sides of the adjacent patches
                     //gsInfo << " this is patch side " << neighbours[i][j][h] << "\n";
                     patchSide ps = neighbours[i][j][h];
-                    if (ps.index() == 4)
-                        extension.push_back(patchComponent(ps.patch, 6, m_dim));
-                    else
-                        extension.push_back(patchComponent(ps.patch, ps.index(), m_dim));
+                    if(std::find(processedSide.begin(), processedSide.end(), ps)==processedSide.end())
+                    {
+                        if (ps.index() == 4)
+                            extension.push_back(patchComponent(ps.patch, 6, m_dim));
+                        else
+                            extension.push_back(patchComponent(ps.patch, ps.index(), m_dim));
+                    }
 
                     // collect the adjacent patch numbers for the knots
                     patches.push_back(ps.patch);
@@ -452,7 +480,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
                     int p1 = patches.back();
                     patches.pop_back();
                     int p2 = patches.back();
-                    //gsInfo << "p1: " << p1 << ", p2: " << p2 << "\n";
+                    gsInfo << "p1: " << p1 << ", p2: " << p2 << "\n";
 
                     std::vector<patchCorner> crn;
                     std::vector<patchSide> pss;
@@ -463,18 +491,20 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
 
                     for(std::vector<patchCorner>::iterator it = crn.begin(); it != crn.end(); ++it)
                     {
-                        watch(*it);
                         it->getContainingSides(m_dim, pss);
                         for(std::vector<patchSide>::iterator sit = pss.begin(); sit != pss.end(); ++sit)
                         {
-                            patchSide tempNeighbour;
+                            std::vector<patchSide> tempNeighbour;
                             patchCorner other;
-                            if(getNeighbour(*sit, tempNeighbour))
-                                if(tempNeighbour.patch == (index_t)i) // found the correct vertex
+                            if(getAllNeighbours(*sit, tempNeighbour))
+                            {
+                                gsInfo << "p1: " << *sit << " with neighbour: " << tempNeighbour[0] << " and " << tempNeighbour[1] << "\n";
+                                watch(i);
+                                if((std::find(tempNeighbour.begin(), tempNeighbour.end(), ps1)) != tempNeighbour.end()) // found the correct vertex
                                 {
                                     // add the vertex of patch 0
                                     if(it->m_index == 1)
-                                        extension.push_back(patchComponent(it->patch, 3*(it->m_index), m_dim));
+                                        extension.push_back(patchComponent(it->patch, 3*(it->m_index)+1, m_dim));
                                     else if (it->m_index == 2 || it->m_index == 3)
                                         extension.push_back(patchComponent(it->patch, (3*(it->m_index) - (it->m_index-1)), m_dim));
                                     else
@@ -484,7 +514,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
                                     other = bI_ptr->mapCorner(*it);
                                     // !!! delete the following if then else statement if the corner is required only for the smallest participating patch
                                     if(other.m_index == 1)
-                                        extension.push_back(patchComponent(other.patch, 3*(other.m_index), m_dim));
+                                        extension.push_back(patchComponent(other.patch, 3*(other.m_index)+1, m_dim));
                                     else if(other.m_index == 2 || other.m_index == 3)
                                         extension.push_back(patchComponent(other.patch, (3*(other.m_index) - (other.m_index-1)), m_dim));
                                     else
@@ -494,6 +524,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
                                     processedCorner.push_back(*it);
                                     processedCorner.push_back(other);
                                 }
+                            }
                         }
                     }
 
@@ -564,7 +595,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
 
 
                         if (pc.m_index == 1)
-                            boundaryCorners.push_back(patchComponent(pc.patch, 3*(pc.m_index), m_dim));
+                            boundaryCorners.push_back(patchComponent(pc.patch, 3*(pc.m_index)+1, m_dim));
                         else if (pc.m_index == 2 || pc.m_index == 3)
                             boundaryCorners
                                 .push_back(patchComponent(pc.patch, (3 * (pc.m_index) - (pc.m_index - 1)), m_dim));
@@ -574,8 +605,12 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
                         processedCorner.push_back(*it);
                         processedCorner.push_back(pc);
                     }
-                    coll_boundaryCorners.push_back(boundaryCorners);
-                    boundaryCorners.clear();
+
+                    if(!boundaryCorners.empty())
+                    {
+                        coll_boundaryCorners.push_back(boundaryCorners);
+                        boundaryCorners.clear();
+                    }
                 }
                 //coll_boundaryCorners.push_back(boundaryCorners);
                 //boundaryCorners.clear();

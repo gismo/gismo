@@ -241,6 +241,10 @@ public:
     /// false if it is a boundary patchSide
     bool getNeighbour(const patchSide& ps ,patchSide& result) const;
 
+    /// set \a result to the associated patchSides of \a ps, returns
+    /// false if it is a boundary patchSide
+    bool getAllNeighbours(const patchSide& ps ,std::vector<patchSide> & result) const;
+
     /// Returns a pointer to the interface between boxes \a b1 and \a
     /// b2, if one exists, otherwise it returns a null pointer
     InterfacePtr findInterface(const int b1, const int b2) const;
