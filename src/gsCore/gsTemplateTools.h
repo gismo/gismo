@@ -52,6 +52,7 @@ using std::remove_cv;
 using std::remove_volatile;
 using std::true_type;
 using std::make_unsigned;
+using std::make_signed;
 
 #else
 
@@ -140,12 +141,17 @@ struct make_unsigned;
 
 #define GISMO_MAKE_UNSIGNED(signed_type)     \
 template<>                                   \
-struct make_unsigned<signed_type> {          \
+struct make_unsigned<signed signed_type> {   \
     typedef unsigned signed_type type;       \
 };                                           \
 template<>                                   \
 struct make_unsigned<unsigned signed_type> { \
     typedef unsigned signed_type type;       \
+};
+
+template<>
+struct make_unsigned<char> {
+    typedef unsigned char type;
 };
 
 GISMO_MAKE_UNSIGNED(char)
@@ -154,6 +160,31 @@ GISMO_MAKE_UNSIGNED(int)
 GISMO_MAKE_UNSIGNED(long)
 GISMO_MAKE_UNSIGNED(long long)
 #undef GISMO_MAKE_UNSIGNED
+
+template<class T>
+struct make_signed;
+
+#define GISMO_MAKE_SIGNED(unsigned_type)     \
+template<>                                   \
+struct make_signed<signed unsigned_type> {   \
+    typedef signed unsigned_type type;       \
+};                                           \
+template<>                                   \
+struct make_signed<unsigned unsigned_type> { \
+    typedef signed unsigned_type type;       \
+};
+
+template<>
+struct make_signed<char> {
+    typedef signed char type;
+};
+
+GISMO_MAKE_SIGNED(char)
+GISMO_MAKE_SIGNED(short)
+GISMO_MAKE_SIGNED(int)
+GISMO_MAKE_SIGNED(long)
+GISMO_MAKE_SIGNED(long long)
+#undef GISMO_MAKE_SIGNED
 
 #endif
 
@@ -169,6 +200,80 @@ template <class T> struct is_complex<const T > : public is_complex<T>{};
 template <class T> struct is_complex<volatile const T > : public is_complex<T>{};
 template <class T> struct is_complex<volatile T > : public is_complex<T>{};
 template <class T> struct is_complex<std::complex<T> > : public true_type{};
+
+/// \brief Casts a type T to an unsigned one
+template <class T>
+typename make_unsigned<T>::type to_unsigned(T t) {
+    return t;
+}
+/// \brief Casts a type T to a signed one
+template <class T>
+typename make_signed<T>::type to_signed(T t) {
+    return t;
+}
+
+/// Compares two (integer) numbers of even different type.
+/// Gets back the correct logical value even for a compare of a
+/// negative int with an unsigned.
+/// \return t1 < t2
+template<class T1, class T2>
+bool less(T1 t1, T2 t2)
+{
+    if (t1 < 0 && t2 >= 0)
+        return true;
+    else if (t2 < 0 && t1 >= 0)
+        return false;
+    else
+        return (t1 < t2);
+}
+
+/// Compares two (integer) numbers of even different type.
+/// Gets back the correct logical value even for a compare of a
+/// negative int with an unsigned.
+/// \return t1 <= t2
+template<class T1, class T2>
+bool less_equal(T1 t1, T2 t2)
+{
+    if (t1 < 0 && t2 >= 0)
+        return true;
+    else if (t2 < 0 && t1 >= 0)
+        return false;
+    else
+        return (t1 <= t2);
+}
+
+/// Compares two (integer) numbers of even different type.
+/// Gets back the correct logical value even for a compare of a
+/// negative int with an unsigned.
+/// \return t1 > t2
+template<class T1, class T2>
+bool greater(T1 t1, T2 t2)
+{
+    return less(t2, t1);
+}
+
+/// Compares two (integer) numbers of even different type.
+/// Gets back the correct logical value even for a compare of a
+/// negative int with an unsigned.
+/// \return t1 >= t2
+template<class T1, class T2>
+bool greater_equal(T1 t1, T2 t2)
+{
+    return less_equal(t2, t1);
+}
+
+/// Compares two (integer) numbers of even different type.
+/// Gets back the correct logical value even for a compare of a
+/// negative int with an unsigned.
+/// \return t1 == t2
+template<class T1, class T2>
+bool equal(T1 t1, T2 t2)
+{
+    if (t1 < 0 && t2 >= 0 || t2 < 0 && t1 >= 0)
+        return false;
+    else
+        return (t1 == t2);
+}
 
 /*
 template<typename T>
