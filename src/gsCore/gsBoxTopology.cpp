@@ -436,7 +436,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
         for(size_t j = 0; j < neighbours[i].size(); ++j)
         {
             //gsInfo << " with side: " << j+1 << "\n";
-            if(neighbours[i][j].size() >= 1)
+            if(neighbours[i][j].size() >= 2)
             {
                 // add the side of the patch with 2 or more neighbours
                 patchSide ps1(i, j+1);
@@ -497,22 +497,12 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
                                 if((std::find(tempNeighbour.begin(), tempNeighbour.end(), ps1)) != tempNeighbour.end()) // found the correct vertex
                                 {
                                     // add the vertex of patch 0
-                                    if(it->m_index == 1)
-                                        extension.push_back(patchComponent(it->patch, 3*(it->m_index)+1, m_dim));
-                                    else if (it->m_index == 2 || it->m_index == 3)
-                                        extension.push_back(patchComponent(it->patch, (3*(it->m_index) - (it->m_index-1)), m_dim));
-                                    else
-                                        extension.push_back(patchComponent(it->patch, 8, m_dim));
+                                    extension.push_back(patchComponent(*it,m_dim));
 
                                     // add the vertex of patch 1
                                     other = bI_ptr->mapCorner(*it);
                                     // !!! delete the following if then else statement if the corner is required only for the smallest participating patch
-                                    if(other.m_index == 1)
-                                        extension.push_back(patchComponent(other.patch, 3*(other.m_index)+1, m_dim));
-                                    else if(other.m_index == 2 || other.m_index == 3)
-                                        extension.push_back(patchComponent(other.patch, (3*(other.m_index) - (other.m_index-1)), m_dim));
-                                    else
-                                        extension.push_back(patchComponent(other.patch, 8, m_dim));
+                                    extension.push_back(patchComponent(other,m_dim));
 
                                     // push both to the vector of processed corners
                                     processedCorner.push_back(*it);
@@ -604,35 +594,39 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
 
     for (index_t i = 0; i<nPatches; ++i)
     {
-        for (index_t j = 0; j<cnr; ++j)
+        // Interiors
         {
-            patchSide p;
-            patchCorner c;
-            p.patch = i;
-            c.patch = i;
-
-            if(j == 1 || j == 2 || j == 3 )
-                p.side() = j;
-            else
-                if(j == 6)
-                    p.side() = 4;
-
-            if(j == 4 || j == 5)
-                c.m_index = j - 3;
-            else if(j == 7 || j == 8)
-                c.m_index = j - 4;
-
-            if((std::find(processedSide.begin(), processedSide.end(), p)==processedSide.end()) &&
-                (std::find(processedCorner.begin(), processedCorner.end(), c)==processedCorner.end()))
+            patchComponent pc(i, 0, dim);
+            const index_t d = pc.dim();
+            std::vector< patchCorner > crns = getCanonicCorners(pc.containedCorners(),*this);
+            component_coll_t& g = comps[d][getCornerIndices(crns, dim)];
+            g.push_back(pc);
+        }
+        // Edges
+        for (index_t j = 1; j<1+2*m_dim; ++j)
+        {
+            patchSide p(i,j);
+            if((std::find(processedSide.begin(), processedSide.end(), p)==processedSide.end()))
             {
-                patchComponent pc(i, j, dim);
+                patchComponent pc(p, dim);
                 const index_t d = pc.dim();
                 std::vector< patchCorner > crns = getCanonicCorners(pc.containedCorners(),*this);
                 component_coll_t& g = comps[d][getCornerIndices(crns, dim)];
                 g.push_back(pc);
             }
-            else
-                continue;
+        }
+        // Vertices
+        for (index_t j = 1; j<1+4/*2^dim*/; ++j)
+        {
+            patchCorner c(i,j);
+            if((std::find(processedCorner.begin(), processedCorner.end(), c)==processedCorner.end()))
+            {
+                patchComponent pc(c, dim);
+                const index_t d = pc.dim();
+                std::vector< patchCorner > crns = getCanonicCorners(pc.containedCorners(),*this);
+                component_coll_t& g = comps[d][getCornerIndices(crns, dim)];
+                g.push_back(pc);
+            }
         }
     }
 
