@@ -436,7 +436,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
         for(size_t j = 0; j < neighbours[i].size(); ++j)
         {
             //gsInfo << " with side: " << j+1 << "\n";
-            if(neighbours[i][j].size() >= 2)
+            if(neighbours[i][j].size() >= 1)
             {
                 // add the side of the patch with 2 or more neighbours
                 patchSide ps1(i, j+1);
@@ -444,10 +444,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
 
                 if((std::find(processedSide.begin(), processedSide.end(), ps1)) == processedSide.end())
                 {
-                    if (ps1.index() == 4)
-                        extension.push_back(patchComponent(ps1.patch, 6, m_dim));
-                    else
-                        extension.push_back(patchComponent(ps1.patch, ps1.index(), m_dim));
+                    extension.push_back(patchComponent(ps1,m_dim));
                 }
 
                 processedSide.push_back(ps1);
@@ -461,10 +458,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
                     patchSide ps = neighbours[i][j][h];
                     if(std::find(processedSide.begin(), processedSide.end(), ps)==processedSide.end())
                     {
-                        if (ps.index() == 4)
-                            extension.push_back(patchComponent(ps.patch, 6, m_dim));
-                        else
-                            extension.push_back(patchComponent(ps.patch, ps.index(), m_dim));
+                        extension.push_back(patchComponent(ps,m_dim));
                     }
 
                     // collect the adjacent patch numbers for the knots
@@ -498,7 +492,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
                             patchCorner other;
                             if(getAllNeighbours(*sit, tempNeighbour))
                             {
-                                gsInfo << "p1: " << *sit << " with neighbour: " << tempNeighbour[0] << " and " << tempNeighbour[1] << "\n";
+                                //gsInfo << "p1: " << *sit << " with neighbour: " << tempNeighbour[0] << " and " << tempNeighbour[1] << "\n";
                                 watch(i);
                                 if((std::find(tempNeighbour.begin(), tempNeighbour.end(), ps1)) != tempNeighbour.end()) // found the correct vertex
                                 {
@@ -580,28 +574,10 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
 
                     if (boundaries == 1 && boundaries2 == 1)
                     {
-                        if (it->m_index == 1)
-                            boundaryCorners
-                                .push_back(patchComponent(it->patch, 4, m_dim));
-                        else if (it->m_index == 2)
-                            boundaryCorners
-                                .push_back(patchComponent(it->patch, 5, m_dim));
-                        else if (it->m_index == 3)
-                            boundaryCorners
-                                .push_back(patchComponent(it->patch, 7, m_dim));
-                        else if (it->m_index == 4)
-                            boundaryCorners
-                                .push_back(patchComponent(it->patch, 8, m_dim));
+                        boundaryCorners.push_back(patchComponent(*it, m_dim));
 
-
-                        if (pc.m_index == 1)
-                            boundaryCorners.push_back(patchComponent(pc.patch, 3*(pc.m_index)+1, m_dim));
-                        else if (pc.m_index == 2 || pc.m_index == 3)
-                            boundaryCorners
-                                .push_back(patchComponent(pc.patch, (3 * (pc.m_index) - (pc.m_index - 1)), m_dim));
-                        else
-                            boundaryCorners.push_back(patchComponent(pc.patch, 8, m_dim));
-
+                        boundaryCorners.push_back(patchComponent(pc, m_dim));
+                        
                         processedCorner.push_back(*it);
                         processedCorner.push_back(pc);
                     }
