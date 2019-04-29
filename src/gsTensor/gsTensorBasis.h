@@ -93,7 +93,7 @@ public:
     /// Constructor nD (takes ownership of the passed bases)
     explicit gsTensorBasis(iterator it) 
     {
-        for (int i = 0; i < d; ++i)
+        for (short_t i = 0; i < d; ++i)
             m_bases[i] = *(it++);
     }
     
@@ -106,7 +106,7 @@ public:
     index_t size() const 
     {
         index_t r=1;
-        for (int i = 0; i < d; ++i)
+        for (short_t i = 0; i < d; ++i)
             r *= m_bases[i]->size();
         return r; 
     }
@@ -140,7 +140,7 @@ public:
         GISMO_ASSERT( u.rows() == d, "Wrong vector dimension");
 
         int ElIndex = m_bases[d-1]->elementIndex( u.col(d-1) );
-        for ( int i=d-2; i>=0; --i )
+        for ( short_t i=d-2; i>=0; --i )
             ElIndex = ElIndex * m_bases[i]->numElements() 
                     + m_bases[i]->elementIndex( u.col(i) );
 
@@ -313,7 +313,7 @@ public:
     // Look at gsBasis class for documentation 
     virtual void uniformRefine(int numKnots = 1, int mul=1)
     {
-        for (unsigned j = 0; j < d; ++j)
+        for (short_t j = 0; j < d; ++j)
             m_bases[j]->uniformRefine(numKnots,mul);
     }
 
@@ -344,7 +344,7 @@ public:
     // Look at gsBasis class for documentation 
     virtual void uniformCoarsen(int numKnots = 1)
     {
-        for (unsigned j = 0; j < d; ++j)
+        for (short_t j = 0; j < d; ++j)
             m_bases[j]->uniformCoarsen(numKnots);
     }
 
@@ -356,7 +356,7 @@ public:
     { 
         if (dir == -1)
         {
-            for (unsigned j = 0; j < d; ++j)
+            for (short_t j = 0; j < d; ++j)
                 m_bases[j]->degreeElevate(i);
         }
         else 
@@ -372,7 +372,7 @@ public:
     {
         if (dir == -1)
         {
-            for (unsigned j = 0; j < d; ++j)
+            for (short_t j = 0; j < d; ++j)
                 m_bases[j]->degreeIncrease(i);
         }
         else
@@ -388,7 +388,7 @@ public:
     {
         if (dir == -1)
         {
-            for (unsigned j = 0; j < d; ++j)
+            for (short_t j = 0; j < d; ++j)
                 m_bases[j]->degreeDecrease(i);
         }
         else
@@ -405,7 +405,7 @@ public:
         GISMO_UNUSED(dir);
         GISMO_ASSERT( static_cast<int>(dir) < this->dim(),
                       "Invalid basis component requested" );
-        for (unsigned j = 0; j < d; ++j)
+        for (short_t j = 0; j < d; ++j)
             m_bases[j]->degreeReduce(i);
     }
 
@@ -437,7 +437,7 @@ public:
     void size_cwise(gsVector<index_t,s> & result) const
     {
         result.resize(d);
-        for ( unsigned k = 0; k!=d; ++k )
+        for ( short_t k = 0; k!=d; ++k )
             result[k] = m_bases[k]->size(); 
     }
     
@@ -492,7 +492,7 @@ public:
     gsVector<int> cwiseDegree() const
     {
         gsVector<int> deg(d);
-        for (unsigned k=0; k!=d; ++k)
+        for (short_t k=0; k!=d; ++k)
             deg[k] = m_bases[k]->degree(0);
         return deg;
     }
@@ -502,14 +502,14 @@ public:
     inline unsigned index(unsigned i, unsigned j, unsigned k=0) const;
 
     /// Returns the stride for dimension dir
-    inline unsigned stride(int dir) const;
+    inline unsigned stride(short_t dir) const;
 
     /// Returns the strides for all dimensions
     void stride_cwise(gsVector<index_t,d> & result) const 
     { 
         //result.resize(d);
         result[0] = 1;
-        for ( unsigned i=1; i != d; ++i )
+        for ( short_t i=1; i != d; ++i )
             result[i] = result[i-1] * m_bases[i-1]->size();
     }
 
@@ -524,7 +524,7 @@ public:
     {
         gsVector<unsigned, d> ind;
         int mm = m;
-        for (unsigned i = 0; i<d; ++i )
+        for (short_t i = 0; i<d; ++i )
         {
             ind(i)= mm % size(i);
             mm -= ind(i);
@@ -544,7 +544,7 @@ public:
     /// \em ind is on the boundary
     inline bool indexOnBoundary(const gsVector<unsigned, d> & ind) const 
     {
-        for ( unsigned i = 0; i < d; ++i )
+        for ( short_t i = 0; i < d; ++i )
             if ( ind[i] == static_cast<unsigned>(size(i)-1) )
                 return true;
         return ( (ind.array() == 0).any() );
@@ -631,7 +631,7 @@ public:
     typedef memory::shared_ptr< gsTensorBasis<1,T> > Ptr;
     typedef memory::unique_ptr< gsTensorBasis<1,T> > uPtr;
 
-    static const int Dim = 1;
+    static const short_t Dim = 1;
 
     typedef gsBasis<T> Base;
 
@@ -807,7 +807,7 @@ public:
     { GISMO_ERROR("The basis is 1D"); }
 
     /// Returns the stride for dimension dir
-    inline unsigned stride(int dir) const 
+    inline unsigned stride(short_t dir) const
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT(dir==0,"Invalid direction");
@@ -878,12 +878,12 @@ inline unsigned gsTensorBasis<d,Basis_t>::index(unsigned i, unsigned j, unsigned
 
 
 template<short_t d, class Basis_t >
-inline unsigned gsTensorBasis<d,Basis_t>::stride(int dir) const
+inline unsigned gsTensorBasis<d,Basis_t>::stride(short_t dir) const
 {
     GISMO_ASSERT( dir>=0 &&  dir< this->dim(), 
                   "Something went wrong with requested direction." );
     unsigned s(1);
-    for ( int i=0; i<dir; ++i )
+    for ( short_t i=0; i<dir; ++i )
         s *= size(i);
     return s;
 }
