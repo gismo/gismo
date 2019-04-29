@@ -394,6 +394,8 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
 {
     const index_t nPatches = nboxes;
     const index_t dim = m_dim;
+    
+    GISMO_ENSURE (dim==2, "Three (or more) dimensions are yet too compilated for allNonMatchingComponents.");
 
     index_t cnr = 1;
     for (index_t i=0; i<dim; ++i) cnr *= 3;
@@ -405,7 +407,8 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
 
     // first iterate over all interfaces and look for sides which have 2 or more neighbours
     // add all participating sides to one component
-    // add all vertices between the neighbouring patches to the component
+    // add all vertices between the neighbouring patches to that component
+    // TODO: This does not work if there are several independent T-junctions.
     std::vector<std::vector<std::vector<patchSide>> > neighbours;
     neighbours.resize(this->nBoxes());
     for(std::vector<std::vector<std::vector<patchSide>> >::iterator it = neighbours.begin(); it != neighbours.end(); ++it)
@@ -584,14 +587,44 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
         }
     }
 
+    // Now, the simple neighbours (can't we do that simpler??)
+    for(size_t i = 0; i < neighbours.size(); ++i)
+    {
+        //gsInfo << "patch: " << i << "\n";
+        for(size_t j = 0; j < neighbours[i].size(); ++j)
+        {
+            //gsInfo << " with side: " << j+1 << "\n";
+            if(neighbours[i][j].size() == 1)
+            {
+                patchSide p1(i,j+1);
+                patchSide p2 = neighbours[i][j][0];
+                patchComponent pc1(p1, dim);
+                patchComponent pc2(p2, dim);
+
+                if( p1.patch<p2.patch
+                    && (std::find(extension.begin(), extension.end(), pc1)==extension.end())
+                    && (std::find(extension.begin(), extension.end(), pc2)==extension.end())
+                )
+                    {
+                        const index_t d = pc1.dim();
+                        std::vector< patchCorner > crns = getCanonicCorners(pc1.containedCorners(),*this);
+                        component_coll_t& g = comps[d][getCornerIndices(crns, dim)];
+                        g.push_back(pc1);
+                        g.push_back(pc2);
+                    }
+            }
+        }
+    }
+
     /*
     gsInfo << "number of elements: " << extension.size() << "\n";
     for(component_coll_t::iterator it = extension.begin(); it != extension.end(); ++it)
     {
         gsInfo << "Index: " << it->index() << "\n";
     }
-     */
+    */
 
+    // Now, construct the lonly components...
     for (index_t i = 0; i<nPatches; ++i)
     {
         // Interiors
