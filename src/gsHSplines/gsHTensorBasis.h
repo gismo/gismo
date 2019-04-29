@@ -135,7 +135,7 @@ public:
 
         for( size_t i = 0; i < (boxes.size()/(2*d+1)); i++)
         {
-            for( short_d j = 0; j < d; j++)
+            for( short_t j = 0; j < d; j++)
             {
                 i1[j] = boxes[(2*d+1)*i+j+1];
                 i2[j] = boxes[(2*d+1)*i+j+d+1];
