@@ -254,20 +254,18 @@ std::vector<index_t> getCornerIndices( const std::vector<patchCorner>& corner, i
 
 std::vector< std::vector<patchComponent> > gsBoxTopology::allComponents(bool combineCorners) const
 {
-    const index_t nPatches = nboxes;
-    const index_t dim = m_dim;
-
-    index_t cnr = 1;
-    for (index_t i=0; i<dim; ++i) cnr *= 3;
+    const size_t nPatches = nboxes;
+    const short_t dim = m_dim;
+    const short_t cnr = math::ipow(3, dim);
 
     typedef std::vector<patchComponent>                         component_coll_t;
     typedef std::map< std::vector<index_t>, component_coll_t>   map_t;
 
     std::vector<map_t> comps(dim+1);
 
-    for (index_t i = 0; i<nPatches; ++i)
+    for (short_t i = 0; i<nPatches; ++i)
     {
-        for (index_t j = 0; j<cnr; ++j)
+        for (short_t j = 0; j<cnr; ++j)
         {
             patchComponent pc(i, j, dim);
             const index_t d = pc.dim();
@@ -277,12 +275,12 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allComponents(bool com
         }
     }
     index_t sz = 0;
-    for (index_t i=0; i<dim+1; ++i)
+    for (short_t i=0; i<dim+1; ++i)
         sz += comps[i].size();
 
     std::vector<component_coll_t> result;
     result.reserve(sz);
-    for (index_t i=dim; i>=0; --i)
+    for (short_t i=dim; i>=0; --i)
     {
         if (!combineCorners || i>0)
             for( typename map_t::iterator it = comps[i].begin(); it != comps[i].end(); ++it )
