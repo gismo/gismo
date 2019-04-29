@@ -269,7 +269,7 @@ bool greater_equal(T1 t1, T2 t2)
 template<class T1, class T2>
 bool equal(T1 t1, T2 t2)
 {
-    if (t1 < 0 && t2 >= 0 || t2 < 0 && t1 >= 0)
+    if ((t1 < 0 && t2 >= 0) || (t2 < 0 && t1 >= 0))
         return false;
     else
         return (t1 == t2);
