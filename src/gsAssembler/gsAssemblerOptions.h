@@ -315,7 +315,7 @@ public: // Utility functions that return values implied by the settings
 
     static index_t numColNz(const gsBasis<real_t> & b,
                             double _bdA, int _bdB, double _mem)
-    {gsGaussRule.hpp
+    {
         index_t nz = 1;
         for (int i = 0; i != b.dim(); ++i)
             nz *= static_cast<index_t>(_bdA * static_cast<int>(b.degree(i)) + _bdB + 0.5);
