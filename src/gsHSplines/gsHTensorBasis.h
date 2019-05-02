@@ -359,7 +359,7 @@ public:
         unsigned k(0);
 
         gsVector<unsigned, d> ind;
-        for(std::size_t i = 0; i < m_xmatrix.size(); i++)
+        for(size_t i = 0; i < m_xmatrix.size(); i++)
         {
             for( CMatrix::const_iterator it =
                      m_xmatrix[i].begin(); it != m_xmatrix[i].end(); it++)

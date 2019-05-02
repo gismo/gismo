@@ -194,7 +194,7 @@ public:
     std::vector<gsBasis<T> *> basesCopy(bool numeratorOnly = false) const;
 
     /// Return the \a i-th patch.
-    gsGeometry<T>& patch( std::size_t i ) const
+    gsGeometry<T>& patch( size_t i ) const
     {
         GISMO_ASSERT( i < m_patches.size(), "Invalid patch index "<<i<<" requested from gsMultiPatch" );
         return *m_patches[i];
@@ -204,7 +204,7 @@ public:
     void permute(const std::vector<int> & perm);
 
     ///\brief Return the basis of the \a i-th patch.
-    gsBasis<T> & basis( std::size_t i ) const;
+    gsBasis<T> & basis( size_t i ) const;
 
     ///\brief Add a patch from a gsGeometry<T>::uPtr
     void addPatch(typename gsGeometry<T>::uPtr g);

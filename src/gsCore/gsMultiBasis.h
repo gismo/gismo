@@ -264,7 +264,7 @@ public:
     size_t nBases() const          { return m_bases.size(); }
 
     /// Return the \a i-th basis block.
-    const gsBasis<T> & basis(const  std::size_t i ) const
+    const gsBasis<T> & basis(const  size_t i ) const
     {
         GISMO_ASSERT( i < m_bases.size(),
                       "Invalid patch index"<<i<<" requested from gsMultiBasis" );
@@ -282,7 +282,7 @@ public:
     index_t nPieces() const { return static_cast<index_t>(m_bases.size()); }
 
     /// Return the \a i-th basis block.
-    gsBasis<T> & basis(const std::size_t i )
+    gsBasis<T> & basis(const size_t i )
     {
         GISMO_ASSERT( i < m_bases.size(),
                       "Invalid patch index"<<i<<" requested from gsMultiBasis" );

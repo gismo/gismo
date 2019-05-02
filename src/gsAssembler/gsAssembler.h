@@ -371,7 +371,7 @@ public:
 
         m_bases.clear();
         m_bases.reserve(basis.size());
-        for(std::size_t c=0;c<basis.size();c++)
+        for(size_t c=0;c<basis.size();c++)
             m_bases.push_back(gsMultiBasis<T>(basis[c]));
 
         m_options = opt;
@@ -520,7 +520,7 @@ public:  /* Dirichlet degrees of freedom computation */
     {
         if(unk==-1)
         {
-            for(std::size_t i=0;i<m_ddof.size();++i)
+            for(size_t i=0;i<m_ddof.size();++i)
                 m_ddof[i].setZero();
         }
         else
@@ -607,7 +607,7 @@ public: // *** Accessors ***
     gsMultiBasis<T> & multiBasis(index_t k = 0) { return m_bases[k]; }
 
     /// @brief Returns the number of multi-bases
-    std::size_t numMultiBasis() const {return m_bases.size(); }
+    size_t numMultiBasis() const {return m_bases.size(); }
 
     /// @brief Returns the left-hand global matrix
     const gsSparseMatrix<T> & matrix() const { return m_system.matrix(); }

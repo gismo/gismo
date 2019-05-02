@@ -39,7 +39,7 @@ public:
     }
 
     /// Accessor for a certain gsBasis
-    inline const gsBasis<T> & operator[](std::size_t i) const 
+    inline const gsBasis<T> & operator[](size_t i) const
     { return *m_refs[i]; }
 
     /// Cast to gsBasis to emulate scalar problem
@@ -55,7 +55,7 @@ public:
     { return *m_refs.back(); }
 
     /// Size
-    inline std::size_t size () const 
+    inline size_t size () const
     { return m_refs.size(); }
 
     /// Return the parametric dimension of the bases (assumed to be the same for all the bases)

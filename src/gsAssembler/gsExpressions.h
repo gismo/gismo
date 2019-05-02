@@ -716,7 +716,7 @@ public:
     const bcRefList & bc() const { return m_bcs; }
     void addBc(bcRefList bc) const { m_bcs = bc; }
     void clearBc() const { m_bcs.clear(); }
-    std::size_t bcSize() const { return m_bcs.size(); }
+    size_t bcSize() const { return m_bcs.size(); }
 
     index_t   id() const {return m_id;}
     index_t & setId(const index_t _id) {return m_id = _id;}

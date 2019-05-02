@@ -35,7 +35,7 @@ public:
 
 
     /// Accessor
-    inline const obj & operator[](std::size_t i) const
+    inline const obj & operator[](size_t i) const
     { return m_ref[i]; }
 
     /// Cast to std::vector
@@ -55,7 +55,7 @@ public:
     { return m_ref.back(); }
 
     /// Size
-    inline std::size_t size () const
+    inline size_t size () const
     { return m_ref.size(); }
 
 private:

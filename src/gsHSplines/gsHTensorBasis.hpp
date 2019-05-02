@@ -621,7 +621,7 @@ void gsHTensorBasis<d,T>::functionOverlap(const point & boxLow, const point & bo
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::setActive()
 {
-    // for(std::size_t lvl = 0; lvl != m_xmatrix.size(); lvl++)
+    // for(size_t lvl = 0; lvl != m_xmatrix.size(); lvl++)
     //     set_activ1(lvl);
     // return;
 
@@ -668,7 +668,7 @@ void gsHTensorBasis<d,T>::setActive()
         while( nextCubePoint(curr, actUpp) );
     }
 
-    for(std::size_t lvl = 0; lvl != m_xmatrix.size(); ++lvl)
+    for(size_t lvl = 0; lvl != m_xmatrix.size(); ++lvl)
     {
         m_xmatrix[lvl].sort();
         m_xmatrix[lvl].erase( std::unique( m_xmatrix[lvl].begin(), m_xmatrix[lvl].end() ),
@@ -845,7 +845,7 @@ void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateHook
     // Compress the tree
     m_tree.makeCompressed();
 
-    for(std::size_t i = 0; i != m_xmatrix.size(); i ++)
+    for(size_t i = 0; i != m_xmatrix.size(); i ++)
         set_activ1(i);
 
     // Store all indices of active basis functions to m_matrix
@@ -855,7 +855,7 @@ void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateHook
     m_xmatrix_offset.clear();
     m_xmatrix_offset.reserve(m_xmatrix.size()+1);
     m_xmatrix_offset.push_back(0);
-    for (std::size_t i = 0; i != m_xmatrix.size(); i++)
+    for (size_t i = 0; i != m_xmatrix.size(); i++)
     {
         m_xmatrix_offset.push_back(
             m_xmatrix_offset.back() + m_xmatrix[i].size() );
@@ -924,7 +924,7 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
 
     std::vector<std::vector<unsigned> > temp_output;//collects the outputs
     temp_output.resize( u.cols() );
-    std::size_t sz = 0;
+    size_t sz = 0;
 
     //gsMatrix<unsigned> activesLvl;
 
@@ -1203,7 +1203,7 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
     std::vector< gsSparseMatrix<T,RowMajor> > transfer(m_bases.size()-1);
     std::vector<std::vector<T> > knots(d);
 
-    for(std::size_t i = 1; i < m_bases.size(); ++i)
+    for(size_t i = 1; i < m_bases.size(); ++i)
     {
         //T_0_copy.uniformRefine_withTransfer(transfer[i-1], 1);
         for(unsigned dim = 0; dim != d; ++dim)
@@ -1255,7 +1255,7 @@ void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<unsigned> 
     std::vector< gsSparseMatrix<T,RowMajor> > transfer( m_bases.size()-1 );
     std::vector<std::vector<T> > knots(d);
     
-    for(std::size_t i = 1; i < m_bases.size(); ++i)
+    for(size_t i = 1; i < m_bases.size(); ++i)
     {
         //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
         for(unsigned int dim = 0; dim != d; ++dim)

@@ -252,7 +252,7 @@ void gsDofMapper::finalize()
                           std::bind2nd(std::less<index_t>(), 0) );
     */
 
-    for (std::size_t k = 0; k < m_dofs.size(); ++k)
+    for (size_t k = 0; k < m_dofs.size(); ++k)
     {
         const index_t dofType = m_dofs[k];
 
@@ -397,7 +397,7 @@ void gsDofMapper::preImage(const index_t gl,
 
     result.clear();
 
-    std::size_t cur = 0;//local offsetted index
+    size_t cur = 0;//local offsetted index
     for (citer it = m_dofs.begin(); it != m_dofs.end(); ++it, ++cur)
     {
         if ( *it == gl )

@@ -154,7 +154,7 @@ gsMultiPatch<T>::parameterRange(int i) const
 
 template<class T>
 gsBasis<T> &
-gsMultiPatch<T>::basis( std::size_t i ) const
+gsMultiPatch<T>::basis( size_t i ) const
 {
     GISMO_ASSERT( i < m_patches.size(), "Invalid patch index requested from gsMultiPatch" );
     return m_patches[i]->basis();
@@ -657,7 +657,7 @@ void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points,
     {
         pt = points.col(i);
 
-        for (std::size_t k = 0; k!= m_patches.size(); ++k)
+        for (size_t k = 0; k!= m_patches.size(); ++k)
         {
             pr = m_patches[k]->parameterRange();
             m_patches[k]->invertPoints(pt, tmp);

@@ -605,7 +605,7 @@ public:
         return m_skeleton;
     }
     
-    gsBSpline<T> * skeleton(std::size_t const & i) 
+    gsBSpline<T> * skeleton(size_t const & i)
     { 
         return m_skeleton[i];
     }

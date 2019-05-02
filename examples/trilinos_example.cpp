@@ -627,7 +627,7 @@ void poissonDiscretization(gsSparseMatrix<> &mat, gsVector<> &rhs, index_t N)
 template<typename Solver>
 void configureSolver(Solver & solver, const std::string & str)
 {
-    std::size_t npos=0, nlen=0;
+    size_t npos=0, nlen=0;
     while (nlen < str.length())
     {
         // Get token NAME:TYPE=VALUE
@@ -636,9 +636,9 @@ void configureSolver(Solver & solver, const std::string & str)
         npos+=nlen+1;
 
         // Split token into NAME
-        std::size_t mlen = token.find_last_of(":");
+        size_t mlen = token.find_last_of(":");
         std::string name = token.substr(0,mlen);
-        std::size_t mpos = mlen+1;
+        size_t mpos = mlen+1;
 
         /// ... TYPE
         mlen = token.substr(mpos).find_last_of("=");

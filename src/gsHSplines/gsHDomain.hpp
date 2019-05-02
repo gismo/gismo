@@ -908,7 +908,7 @@ void gsHDomain<d,T>::getBoxes(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gs
     b1.resize(boxes.size(),d);
     b2.resize(boxes.size(),d);
     level.resize(boxes.size());
-    for(std::size_t i = 0; i < boxes.size(); i++){
+    for(size_t i = 0; i < boxes.size(); i++){
         for(unsigned j = 0; j < d; j++){
             b1(i,j) = boxes[i][j];
             b2(i,j) = boxes[i][j+d];
@@ -995,7 +995,7 @@ void gsHDomain<d,T>::getBoxesInLevelIndex(gsMatrix<unsigned>& b1,
     b1.resize(boxes.size(),d);
     b2.resize(boxes.size(),d);
     level.resize(boxes.size());
-    for(std::size_t i = 0; i < boxes.size(); i++)
+    for(size_t i = 0; i < boxes.size(); i++)
     {
         for(unsigned j = 0; j < d; j++)
         {
