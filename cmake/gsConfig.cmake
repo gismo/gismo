@@ -48,9 +48,9 @@ if(NOT GISMO_INDEX_TYPE)
    set (GISMO_INDEX_TYPE "int" CACHE STRING
    #math(EXPR BITSZ_VOID_P "8*${CMAKE_SIZEOF_VOID_P}")
    #set (GISMO_INDEX_TYPE "int${BITSZ_VOID_P}_t" CACHE STRING
-   "Index type(int, int32_t, int64_t, unsigned, size_t)" FORCE)
+   "Index type(int, int32_t, int64_t, long, long long)" FORCE)
    set_property(CACHE GISMO_INDEX_TYPE PROPERTY STRINGS
-   "int" "int32_t" "int64_t" "unsigned" "size_t" )
+   "int" "int32_t" "int64_t" "long" "long long" )
 endif()
 
 # Set a default build type if none was specified
