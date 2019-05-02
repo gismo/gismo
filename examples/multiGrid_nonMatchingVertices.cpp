@@ -106,13 +106,13 @@ int main(int argc, char *argv[])
         }
         case 2:
         {
-            mpPtr = std::unique_ptr<gsMultiPatch<> >(  new gsMultiPatch<>(gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5)) );
+            mpPtr = memory::unique_ptr<gsMultiPatch<> >(  new gsMultiPatch<>(gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5)) );
             //mpPtr->computeTopology();
             break;
         }
         case 3:
         {
-            mpPtr = std::unique_ptr<gsMultiPatch<> >(  new gsMultiPatch<>(gsNurbsCreator<>::BSplineSquareGrid(2, 1, 0.5)) );
+            mpPtr = memory::unique_ptr<gsMultiPatch<> >(  new gsMultiPatch<>(gsNurbsCreator<>::BSplineSquareGrid(2, 1, 0.5)) );
             gsNurbsCreator<>::TensorBSpline2Ptr temp2 = (gsNurbsCreator<>::BSplineRectangle(0, 0.5, 1, 1));
 
             //mpPtr->addPatch(give(temp1[0]));
@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
         }
         case 4:
         {
-            mpPtr = std::unique_ptr<gsMultiPatch<> >(  new gsMultiPatch<>(gsNurbsCreator<>::BSplineSquareGrid(2, 1, 3)) );
+            mpPtr = memory::unique_ptr<gsMultiPatch<> >(  new gsMultiPatch<>(gsNurbsCreator<>::BSplineSquareGrid(2, 1, 3)) );
             gsMultiPatch<> temp2 = (gsNurbsCreator<>::BSplineSquareGrid(3, 1, 2, 0, 3));
 
             mpPtr->addPatch(give(temp2[0]));
