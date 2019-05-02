@@ -159,18 +159,20 @@ void gsCmdLine::addInt( const std::string& flag,
                         const std::string& desc,
                         intVal_t         & value)
 {
-    GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
+    GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
+    GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
     my->intVals.push_back(new TCLAP::ValueArg<intVal_t>(flag,name,desc,false,value,"int",my->cmd) );
     my->intRes.push_back(&value);
 }
 
-void gsCmdLine::addMultiInt( const std::string& flag,
-                             const std::string& name,
-                             const std::string& desc,
-                             std::vector<intVal_t> & value)
+void gsCmdLine::addMultiInt( const std::string    & flag,
+                             const std::string    & name,
+                             const std::string    & desc,
+                             std::vector<intVal_t>& value)
 {
-    GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
+    GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
+    GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
     my->multiIntVals.push_back(new TCLAP::MultiArg<intVal_t>(flag,name,desc,false,"int",my->cmd) );
     my->multiIntRes.push_back(&value);
@@ -181,7 +183,8 @@ void gsCmdLine::addReal( const std::string& flag,
                          const std::string& desc,
                          real_t           & value)
 {
-    GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
+    GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
+    GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
     my->realVals.push_back(new TCLAP::ValueArg<real_t>(flag,name,desc,false,value,"float",my->cmd) );
     my->realRes.push_back(&value);
@@ -192,7 +195,8 @@ void gsCmdLine::addMultiReal( const std::string  & flag,
                               const std::string  & desc,
                               std::vector<real_t>& value)
 {
-    GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
+    GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
+    GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
     my->multiRealVals.push_back(new TCLAP::MultiArg<real_t>(flag,name,desc,false,"float",my->cmd) );
     my->multiRealRes.push_back(&value);
@@ -203,7 +207,8 @@ void gsCmdLine::addString( const std::string& flag,
                            const std::string& desc,
                            std::string      & value)
 {
-    GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
+    GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
+    GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
     my->stringVals.push_back(new TCLAP::ValueArg<std::string>(flag,name,desc,false,value,"string",my->cmd));
     my->stringRes.push_back(&value);
@@ -214,7 +219,8 @@ void gsCmdLine::addMultiString( const std::string       & flag,
                                 const std::string       & desc,
                                 std::vector<std::string>& value)
 {
-    GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
+    GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
+    GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
     my->multiStringVals.push_back(new TCLAP::MultiArg<std::string>(flag,name,desc,false,"string",my->cmd) );
     my->multiStringRes.push_back(&value);
@@ -225,7 +231,8 @@ void gsCmdLine::addSwitch( const std::string& flag,
                            const std::string& desc,
                            bool             & value)
 {
-    GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
+    GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
+    GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
     my->switchVals.push_back(new TCLAP::SwitchArg(flag,name,desc,my->cmd) );
     my->switchRes.push_back(&value);
@@ -233,7 +240,7 @@ void gsCmdLine::addSwitch( const std::string& flag,
 
 void gsCmdLine::addPlainString( const std::string& name,
                                 const std::string& desc,
-                                std::string & value)
+                                std::string      & value)
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
