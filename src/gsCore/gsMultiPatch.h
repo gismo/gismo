@@ -44,7 +44,6 @@ public:
 
     typedef std::vector<gsGeometry<T> *> PatchContainer;
 
-    typedef typename PatchContainer::size_type size_t;
     typedef typename PatchContainer::iterator iterator;
     typedef typename PatchContainer::const_iterator const_iterator;
 

@@ -46,7 +46,6 @@ public:
 public:
 
     /// Type definitions
-    typedef typename BasisContainer::size_type size_t;
     typedef typename BasisContainer::iterator iterator;
     typedef typename BasisContainer::const_iterator const_iterator;
 
