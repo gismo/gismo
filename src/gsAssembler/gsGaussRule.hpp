@@ -20,10 +20,10 @@ namespace gismo
 {
 
 template<class T> void
-gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, int fixDir)
+gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, short_t fixDir)
 //const unsigned digits)
 {
-    const int d  = basis.dim();
+    const short_t d  = basis.dim();
     GISMO_ASSERT( fixDir < d && fixDir>-2, "Invalid input fixDir = "<<fixDir);
 
     std::vector<gsVector<T> > nodes(d);
@@ -40,7 +40,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, int f
 
     //if (digits <= 30 )
     //{
-    int i;
+    short_t i;
     for(i=0; i!=fixDir; ++i )
     {
         //note: +0.5 for rounding
@@ -73,7 +73,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, int f
 template<class T>
 gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, 
                             const T quA, const int quB,
-                            const int fixDir)
+                            const short_t fixDir)
 //const unsigned digits)
 {
     init(basis, quA, quB, fixDir);
@@ -82,7 +82,7 @@ gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis,
 template<class T>
 gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, 
                             const gsOptionList & options,
-                            const int fixDir)
+                            const short_t fixDir)
 //const unsigned digits)
 {
     const T       quA = options.getReal("quA");
