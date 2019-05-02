@@ -301,7 +301,7 @@ public: // Utility functions that return values implied by the settings
         index_t res = 1;
         for( int i=0; i<b.domainDim(); ++i )
         {
-            res *= static_cast<index_t>(_quA * b.degree(i) + _quB + 0.5);
+            res *= static_cast<index_t>(_quA * static_cast<int>(b.degree(i)) + _quB + 0.5);
         }
         
         return res;
@@ -315,10 +315,10 @@ public: // Utility functions that return values implied by the settings
 
     static index_t numColNz(const gsBasis<real_t> & b,
                             double _bdA, int _bdB, double _mem)
-    {
+    {gsGaussRule.hpp
         index_t nz = 1;
         for (int i = 0; i != b.dim(); ++i)
-            nz *= static_cast<index_t>(_bdA * b.degree(i) + _bdB + 0.5);
+            nz *= static_cast<index_t>(_bdA * static_cast<int>(b.degree(i)) + _bdB + 0.5);
         return static_cast<index_t>(nz*(1.0+_mem));
     }
 
