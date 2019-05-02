@@ -408,9 +408,9 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
     // add all participating sides to one component
     // add all vertices between the neighbouring patches to that component
     // TODO: This does not work if there are several independent T-junctions.
-    std::vector<std::vector<std::vector<patchSide>> > neighbours;
+    std::vector< std::vector< std::vector<patchSide> > > neighbours;
     neighbours.resize(this->nBoxes());
-    for(std::vector<std::vector<std::vector<patchSide>> >::iterator it = neighbours.begin(); it != neighbours.end(); ++it)
+    for(std::vector< std::vector< std::vector<patchSide> > >::iterator it = neighbours.begin(); it != neighbours.end(); ++it)
         it->resize(4);
 
     for(std::vector<boundaryInterface>::const_iterator it = m_interfaces.begin(); it != m_interfaces.end(); ++it)
