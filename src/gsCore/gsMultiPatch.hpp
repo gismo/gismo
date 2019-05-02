@@ -686,7 +686,7 @@ void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points, index_t pid1,
     {
         pt = points.col(i);
 
-        for (std::size_t k = 0; k!= m_patches.size(); ++k)
+        for (size_t k = 0; k!= m_patches.size(); ++k)
         {
             if (pid1==(index_t)k) continue; // skip pid1
 

@@ -263,7 +263,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allComponents(bool com
 
     std::vector<map_t> comps(dim+1);
 
-    for (short_t i = 0; i<nPatches; ++i)
+    for (size_t i = 0; i<nPatches; ++i)
     {
         for (short_t j = 0; j<cnr; ++j)
         {
