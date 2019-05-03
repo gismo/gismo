@@ -183,14 +183,14 @@ GISMO_MAKE_SIGNED(long long)
 
 template<class T>
 struct is_signed;
-#define GISMO_IS_SIGNED(type)     \
-template<>                        \
-struct is_signed<signed type> {   \
-    enum {value = 1};             \
-};                                \
-template <>                       \
-struct is_signed<unsigned type> { \
-    enum {value = 0};             \
+#define GISMO_IS_SIGNED(type)        \
+template<>                           \
+struct is_signed<signed type> {      \
+    static const bool VALUE = true;  \
+};                                   \
+template <>                          \
+struct is_signed<unsigned type> {    \
+    static const bool VALUE = false; \
 };
 GISMO_IS_SIGNED(char)
 GISMO_IS_SIGNED(short)
