@@ -95,7 +95,7 @@ template<class T> void
 gsGaussRule<T>::setNodes( gsVector<index_t> const & numNodes, 
                           unsigned digits)
 {
-    const int d = numNodes.rows();
+    const index_t d = numNodes.rows();
 
     // Get base rule nodes and weights
     std::vector<gsVector<T> > nodes(d);
@@ -103,7 +103,7 @@ gsGaussRule<T>::setNodes( gsVector<index_t> const & numNodes,
 
     if (digits == 0)
     {
-        for (int i = 0; i < d; ++i)
+        for (index_t i = 0; i < d; ++i)
         {
             if (!lookupReference(numNodes[i], nodes[i], weights[i]))
                 computeReference(numNodes[i], nodes[i], weights[i], REAL_DIG);
@@ -111,7 +111,7 @@ gsGaussRule<T>::setNodes( gsVector<index_t> const & numNodes,
     }
     else
     {
-        for (int i = 0; i < d; ++i)
+        for (index_t i = 0; i < d; ++i)
             computeReference(numNodes[i], nodes[i], weights[i], digits);
     }
 

@@ -406,9 +406,9 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b,
         index_t j = 0, t = 0;
         for (index_t i = 0; i < indices_sz; ++i)
         {
-            if (static_cast<unsigned>(i) > bdy_indices(j, 0) && j < bdy_indices_sz)
+            if (util::greater(i, bdy_indices(j, 0)) && j < bdy_indices_sz)
                 ++j;
-            if (static_cast<unsigned>(i) < bdy_indices(j, 0) || j == bdy_indices_sz)
+            if (util::less(i, bdy_indices(j, 0)) || j == bdy_indices_sz)
             {
                 indices_cleaned(t, 0) = indices(i, 0);
                 ++t;

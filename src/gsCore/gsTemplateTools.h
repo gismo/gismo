@@ -53,6 +53,7 @@ using std::remove_volatile;
 using std::true_type;
 using std::make_unsigned;
 using std::make_signed;
+using std::is_signed;
 
 #else
 
@@ -138,7 +139,6 @@ template<typename T> struct is_integral: is_integral_base<typename remove_cv<T>:
 
 template<class T>
 struct make_unsigned;
-
 #define GISMO_MAKE_UNSIGNED(signed_type)     \
 template<>                                   \
 struct make_unsigned<signed signed_type> {   \
@@ -148,12 +148,10 @@ template<>                                   \
 struct make_unsigned<unsigned signed_type> { \
     typedef unsigned signed_type type;       \
 };
-
 template<>
 struct make_unsigned<char> {
     typedef unsigned char type;
 };
-
 GISMO_MAKE_UNSIGNED(char)
 GISMO_MAKE_UNSIGNED(short)
 GISMO_MAKE_UNSIGNED(int)
@@ -163,7 +161,6 @@ GISMO_MAKE_UNSIGNED(long long)
 
 template<class T>
 struct make_signed;
-
 #define GISMO_MAKE_SIGNED(unsigned_type)     \
 template<>                                   \
 struct make_signed<signed unsigned_type> {   \
@@ -173,18 +170,35 @@ template<>                                   \
 struct make_signed<unsigned unsigned_type> { \
     typedef signed unsigned_type type;       \
 };
-
 template<>
 struct make_signed<char> {
     typedef signed char type;
 };
-
 GISMO_MAKE_SIGNED(char)
 GISMO_MAKE_SIGNED(short)
 GISMO_MAKE_SIGNED(int)
 GISMO_MAKE_SIGNED(long)
 GISMO_MAKE_SIGNED(long long)
 #undef GISMO_MAKE_SIGNED
+
+template<class T>
+struct is_signed;
+#define GISMO_IS_SIGNED(type)     \
+template<>                        \
+struct is_signed<signed type> {   \
+    enum {value = 1};             \
+};                                \
+template <>                       \
+struct is_signed<unsigned type> { \
+    enum {value = 0};             \
+};
+GISMO_IS_SIGNED(char)
+GISMO_IS_SIGNED(short)
+GISMO_IS_SIGNED(int)
+GISMO_IS_SIGNED(long)
+GISMO_IS_SIGNED(long long)
+#undef GISMO_IS_SIGNED
+
 
 #endif
 
@@ -214,11 +228,13 @@ typename make_signed<T>::type to_signed(T t) {
 
 /// Compares two (integer) numbers of even different type.
 /// Gets back the correct logical value even for a compare of a
-/// negative int with an unsigned.
+/// negative int with an unsigned. Like in Java or C#.
 /// \return t1 < t2
 template<class T1, class T2>
 bool less(T1 t1, T2 t2)
 {
+    if (is_signed<T1>::value == is_signed<T2>::value) // this is optimized at compile time
+        return (t1 < t2);
     if (t1 < 0 && t2 >= 0)
         return true;
     else if (t2 < 0 && t1 >= 0)
@@ -229,11 +245,13 @@ bool less(T1 t1, T2 t2)
 
 /// Compares two (integer) numbers of even different type.
 /// Gets back the correct logical value even for a compare of a
-/// negative int with an unsigned.
+/// negative int with an unsigned. Like in Java or C#.
 /// \return t1 <= t2
 template<class T1, class T2>
 bool less_equal(T1 t1, T2 t2)
 {
+    if (is_signed<T1>::value == is_signed<T2>::value)
+        return (t1 <= t2);
     if (t1 < 0 && t2 >= 0)
         return true;
     else if (t2 < 0 && t1 >= 0)
@@ -244,7 +262,7 @@ bool less_equal(T1 t1, T2 t2)
 
 /// Compares two (integer) numbers of even different type.
 /// Gets back the correct logical value even for a compare of a
-/// negative int with an unsigned.
+/// negative int with an unsigned. Like in Java or C#.
 /// \return t1 > t2
 template<class T1, class T2>
 bool greater(T1 t1, T2 t2)
@@ -254,7 +272,7 @@ bool greater(T1 t1, T2 t2)
 
 /// Compares two (integer) numbers of even different type.
 /// Gets back the correct logical value even for a compare of a
-/// negative int with an unsigned.
+/// negative int with an unsigned. Like in Java or C#.
 /// \return t1 >= t2
 template<class T1, class T2>
 bool greater_equal(T1 t1, T2 t2)
@@ -264,11 +282,13 @@ bool greater_equal(T1 t1, T2 t2)
 
 /// Compares two (integer) numbers of even different type.
 /// Gets back the correct logical value even for a compare of a
-/// negative int with an unsigned.
+/// negative int with an unsigned. Like in Java or C#.
 /// \return t1 == t2
 template<class T1, class T2>
 bool equal(T1 t1, T2 t2)
 {
+    if (is_signed<T1>::value == is_signed<T2>::value)
+        return (t1 == t2);
     if ((t1 < 0 && t2 >= 0) || (t2 < 0 && t1 >= 0))
         return false;
     else
