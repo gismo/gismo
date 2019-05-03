@@ -270,7 +270,7 @@ template<class T, int _Rows, int _Options> inline
 gsVector<T,_Rows,_Options>::gsVector(const Base& a): gsBase(a) { }
 
 template<class T, int _Rows, int _Options> inline
-gsVector<T,_Rows,_Options>::gsVector(int dimension): gsBase(dimension,1) { }
+gsVector<T,_Rows,_Options>::gsVector(short_t dimension): gsBase(dimension,1) { }
 
 template<class T> inline
 gsVector3d<T>::gsVector3d() : Base() { }

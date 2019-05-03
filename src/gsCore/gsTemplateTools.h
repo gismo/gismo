@@ -186,11 +186,11 @@ struct is_signed;
 #define GISMO_IS_SIGNED(type)        \
 template<>                           \
 struct is_signed<signed type> {      \
-    static const bool VALUE = true;  \
+    static const bool value = true;  \
 };                                   \
 template <>                          \
 struct is_signed<unsigned type> {    \
-    static const bool VALUE = false; \
+    static const bool value = false; \
 };
 GISMO_IS_SIGNED(char)
 GISMO_IS_SIGNED(short)
