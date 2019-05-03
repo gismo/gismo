@@ -88,7 +88,7 @@ public:
     typedef typename gsBSplineTraits<0,T>::Basis BoundaryBasisType;
 
     /// @brief Dimension of the parameter domain
-    static const int Dim = 1;
+    static const short_t Dim = 1;
 
     /// @brief Smart pointer for gsTensorBSplineBasis
     typedef memory::shared_ptr< Self_t > Ptr;
@@ -454,15 +454,15 @@ public:
     }
 
     /// @brief p-refinement (essentially degree elevation)
-    void refine_p(int const & i = 1)
+    void refine_p(short_t const & i = 1)
     { degreeElevate(i); }
 
     /// @brief Uniform h-refinement (placing \a i new knots inside each knot-span
-    void refine_h(int const & i = 1)
+    void refine_h(short_t const & i = 1)
     { uniformRefine(i); }
   
     /// @brief Elevate the degree of the basis and preserve the smoothness
-    void degreeElevate(int const & i = 1, int const dir = -1)
+    void degreeElevate(short_t const & i = 1, short_t const dir = -1)
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
@@ -470,7 +470,7 @@ public:
     }
 
     // Look at gsBasis for documentation
-    void degreeReduce (int const & i = 1, int const dir = -1) 
+    void degreeReduce (short_t const & i = 1, short_t const dir = -1)
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
@@ -480,7 +480,7 @@ public:
     }
 
     // Look at gsBasis for documentation
-    void degreeIncrease(int const & i = 1, int const dir = -1)
+    void degreeIncrease(short_t const & i = 1, short_t const dir = -1)
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
@@ -488,7 +488,7 @@ public:
     }
 
     // Look at gsBasis for documentation
-    void degreeDecrease(int const & i = 1, int const dir = -1)
+    void degreeDecrease(short_t const & i = 1, short_t const dir = -1)
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
@@ -791,7 +791,7 @@ private:
 #endif
 namespace gismo
 {
-template<class T> const int gsTensorBSplineBasis<1,T>::Dim; //-O3 (SLE11) fix
+template<class T> const short_t gsTensorBSplineBasis<1,T>::Dim; //-O3 (SLE11) fix
 EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<1,real_t>;
 EXTERN_CLASS_TEMPLATE gsBSplineBasis<real_t>;
 }

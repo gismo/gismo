@@ -527,7 +527,7 @@ public:
                                       std::vector<unsigned> & refEltsSecond );
 
     /// @brief Elevate the degree of every basis by the given amount. (keeping the smoothness)
-    void degreeElevate(int const i = 1, int const dir = -1)
+    void degreeElevate(short_t const i = 1, short_t const dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeElevate(i,dir);
@@ -535,7 +535,7 @@ public:
 
     /// @brief Increase the degree of every basis by the given
     /// amount. (keeping the multiplicity)
-    void degreeIncrease(int const i = 1, int const dir = -1)
+    void degreeIncrease(short_t const i = 1, short_t const dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeIncrease(i,dir);
@@ -543,21 +543,21 @@ public:
 
     /// @brief Increase the degree of every basis by the given
     /// amount. (keeping the multiplicity)
-    void degreeDecrease(int const i = 1, int const dir = -1)
+    void degreeDecrease(short_t const i = 1, short_t const dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeDecrease(i,dir);
     }
 
     /// Reduce the degree of the basis by the given amount.
-    void degreeReduce(int const i = 1)
+    void degreeReduce(short_t const i = 1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeReduce(i);
     }
 
     /// Set the degree of the basis.
-    void setDegree(int const& i)
+    void setDegree(short_t const& i)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->setDegree(i);

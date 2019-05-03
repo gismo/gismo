@@ -574,19 +574,19 @@ void gsBasis<T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> &,
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeElevate(int const &, int const)
+void gsBasis<T>::degreeElevate(short_t const &, short_t const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeReduce(int const &, int const)
+void gsBasis<T>::degreeReduce(short_t const &, short_t const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeIncrease(int const &, int const)
+void gsBasis<T>::degreeIncrease(short_t const &, short_t const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeDecrease(int const &, int const)
+void gsBasis<T>::degreeDecrease(short_t const &, short_t const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

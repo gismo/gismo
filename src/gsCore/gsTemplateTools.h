@@ -239,8 +239,10 @@ bool less(T1 t1, T2 t2)
         return true;
     else if (t2 < 0 && t1 >= 0)
         return false;
-    else
-        return (t1 < t2);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+    return (t1 < t2);
+#pragma GCC diagnostic pop
 }
 
 /// Compares two (integer) numbers of even different type.
@@ -256,8 +258,8 @@ bool less_equal(T1 t1, T2 t2)
         return true;
     else if (t2 < 0 && t1 >= 0)
         return false;
-    else
-        return (t1 <= t2);
+
+    return (t1 <= t2);
 }
 
 /// Compares two (integer) numbers of even different type.
@@ -291,8 +293,8 @@ bool equal(T1 t1, T2 t2)
         return (t1 == t2);
     if ((t1 < 0 && t2 >= 0) || (t2 < 0 && t1 >= 0))
         return false;
-    else
-        return (t1 == t2);
+
+    return (t1 == t2);
 }
 
 /*

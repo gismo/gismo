@@ -198,7 +198,7 @@ std::vector<gsGeometry<T> *> gsGeometry<T>:: boundary() const
 }
 
 template<class T>
-void gsGeometry<T>::degreeElevate(int const i, int const dir)
+void gsGeometry<T>::degreeElevate(short_t const i, short_t const dir)
 {
     typename gsBasis<T>::uPtr b = m_basis->clone();
 
@@ -218,7 +218,7 @@ void gsGeometry<T>::degreeElevate(int const i, int const dir)
 }
 
 template<class T>
-void gsGeometry<T>::degreeReduce(int const i, int const dir)
+void gsGeometry<T>::degreeReduce(short_t const i, short_t const dir)
 {
     typename gsBasis<T>::uPtr b = m_basis->clone();
 

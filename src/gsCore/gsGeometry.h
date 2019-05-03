@@ -526,12 +526,12 @@ public:
     /// \brief Elevate the degree by the given amount \a i for the
     /// direction \a dir. If \a dir is -1 then degree elevation is
     /// done for all directions
-    virtual void degreeElevate(int const i = 1, int const dir = -1);
+    virtual void degreeElevate(short_t const i = 1, short_t const dir = -1);
 
     /// \brief Reduces the degree by the given amount \a i for the
     /// direction \a dir. If \a dir is -1 then degree reduction is
     /// done for all directions
-    virtual void degreeReduce(int const i = 1, int const dir = -1);
+    virtual void degreeReduce(short_t const i = 1, short_t const dir = -1);
     
     /// Compute the Hessian matrix of the coordinate \a coord
     /// evaluated at points \a u

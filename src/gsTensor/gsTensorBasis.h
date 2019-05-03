@@ -352,7 +352,7 @@ public:
     void uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots=1);
 
     // Look at gsBasis class for documentation 
-    virtual void degreeElevate(int const & i = 1, int const dir = -1)
+    virtual void degreeElevate(short_t const & i = 1, short_t const dir = -1)
     { 
         if (dir == -1)
         {
@@ -361,14 +361,14 @@ public:
         }
         else 
         {
-            GISMO_ASSERT( static_cast<int>(dir) < this->dim(),
+            GISMO_ASSERT( dir < this->dim(),
                           "Invalid basis component requested" );
             m_bases[dir]->degreeElevate(i);
         }
     }
 
     // Look at gsBasis class for documentation
-    virtual void degreeIncrease(int const & i = 1, int const dir = -1)
+    virtual void degreeIncrease(short_t const & i = 1, short_t const dir = -1)
     {
         if (dir == -1)
         {
@@ -377,14 +377,14 @@ public:
         }
         else
         {
-            GISMO_ASSERT( static_cast<int>(dir) < this->dim(),
+            GISMO_ASSERT( dir < this->dim(),
                           "Invalid basis component requested" );
             m_bases[dir]->degreeIncrease(i);
         }
     }
 
     // Look at gsBasis class for documentation
-    virtual void degreeDecrease(int const & i = 1, int const dir = -1)
+    virtual void degreeDecrease(short_t const & i = 1, short_t const dir = -1)
     {
         if (dir == -1)
         {
@@ -393,17 +393,17 @@ public:
         }
         else
         {
-            GISMO_ASSERT( static_cast<int>(dir) < this->dim(),
+            GISMO_ASSERT( dir < this->dim(),
                           "Invalid basis component requested" );
             m_bases[dir]->degreeDecrease(i);
         }
     }
 
     // Look at gsBasis class for documentation 
-    virtual void degreeReduce(int const & i = 1, int const dir = -1)
+    virtual void degreeReduce(short_t const & i = 1, short_t const dir = -1)
     {
         GISMO_UNUSED(dir);
-        GISMO_ASSERT( static_cast<int>(dir) < this->dim(),
+        GISMO_ASSERT( dir < this->dim(),
                       "Invalid basis component requested" );
         for (short_t j = 0; j < d; ++j)
             m_bases[j]->degreeReduce(i);
