@@ -80,8 +80,11 @@ public:
     /// Checks if the file exists in GISMO_DATA_DIR
     static bool fileExistsInDataDir(const std::string& name);
 
-    /// \brief Auto-detect temp directory
+    /// Auto-detect temp directory
     static std::string getTempPath();
+
+    /// Get current directory
+    static std::string getCurrentPath();
 
     /// Make directory
     static bool mkdir( std::string fn );

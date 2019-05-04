@@ -285,6 +285,26 @@ std::string gsFileManager::getTempPath()
 #       endif
 }
 
+std::string gsFileManager::getCurrentPath()
+{
+#   if defined(_WIN32)
+    TCHAR _temp[MAX_PATH];
+    DWORD l = GetCurrentDirectory(MAX_PATH, // length of the buffer
+            _temp);// buffer for path
+    GISMO_UNUSED(l);
+    GISMO_ASSERT(l, "GetCurrentDirectory did return 0");
+    return std::string(_temp);
+#   else
+    // http://man7.org/linux/man-pages/man2/getcwd.2.html
+    _temp = getcwd(NULL, 0);
+    GISMO_ASSERT(NULL!=_temp, "getcwd returned NULL.");
+    std::string path(_temp);
+    // The string is allocated using malloc, see the reference above
+    std::free(_temp);
+    return path;
+#   endif
+}
+
 bool gsFileManager::pathEqual( const std::string& p1, const std::string& p2 )
 {
     const size_t sz = p1.size();
