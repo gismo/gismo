@@ -112,7 +112,10 @@ int main(int argc, char* argv[])
 
     GISMO_ENSURE( gsFileManager::getCanonicRepresentation(GISMO_DATA_DIR)
         == gsFileManager::getCanonicRepresentation(gsFileManager::getExePath()+"/../../../filedata/"),
-        "Something went wrong" );
+        "Not equal: "
+        << gsFileManager::getCanonicRepresentation(GISMO_DATA_DIR)
+        << " and "
+        << gsFileManager::getCanonicRepresentation(gsFileManager::getExePath()+"/../../../filedata/") );
 
     return 0;
 }
