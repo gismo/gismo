@@ -322,7 +322,9 @@ std::string gsFileManager::getExePath()
         return getCurrentPath();
     }
 
-    return getCanonicRepresentation( getCurrentPath() + "/" + argv0 );
+    return isFullyQualified( argv0 )
+        ? getCanonicRepresentation( argv0 )
+        : getCanonicRepresentation( getCurrentPath() + "/" + argv0 );
 }
 
 bool gsFileManager::pathEqual( const std::string& p1, const std::string& p2 )
