@@ -359,6 +359,80 @@ std::string gsFileManager::getFilename(std::string const & fn)
     return fn;
 }
 
+namespace {
+struct gsStringView {
+    const char* m_begin;
+    const char* m_end;
+
+    gsStringView( const std::string& s, size_t b, size_t e )
+        : m_begin(s.c_str()+b), m_end(s.c_str()+e) {}
+
+    bool operator==(const char* c) const
+    {
+        for (const char* it=m_begin; it<m_end; ++it, ++c)
+            if ( *it != *c ) return false;
+        return *c == '\0';
+    }
+
+    const char* begin() const { return m_begin; }
+    const char* end()   const { return m_end;   }
+
+};
+} // end anonymous namespace
+
+std::string gsFileManager::getCanonicRepresentation(const std::string& s)
+{
+    std::vector<gsStringView> parts;
+    size_t last = 0;
+    for (size_t i=0; i<s.size(); ++i)
+#if defined _WIN32
+        if (s[i] == '/' || s[i] == '\\')
+#else
+        if (s[i] == '/')
+#endif
+        {
+            parts.push_back(gsStringView(s,last,i));
+            last = i + 1;
+        }
+    parts.push_back(gsStringView(s,last,s.size()));
+
+    std::vector<gsStringView> result;
+    size_t sz = parts.size();
+    for (size_t i=0; i<sz; ++i)
+    {
+        if (parts[i] == "" && i > 0 && i < sz-1)
+            ; // discard part
+        else if (parts[i] == "." && i > 0)
+            ; // discard
+        else if (parts[i] == "..")
+        {
+            if (result.empty() || result.back() == "..")
+                result.push_back(parts[i]);
+            else if (result.back() == "")
+                gsWarn << "Cannot go above root.\n";
+            else if (result.back() == ".")
+            {
+                result.pop_back();
+                result.push_back(parts[i]);
+            }
+            else
+                result.pop_back();
+        }
+        else
+            result.push_back(parts[i]);
+    }
+
+    std::string final_result;
+    final_result.append( result[0].begin(), result[0].end() );
+    for (size_t i=1; i<result.size(); ++i)
+    {
+        final_result.push_back( '/' );
+        final_result.append( result[i].begin(), result[i].end() );
+    }
+    return final_result;
+}
+
+
 // todo: return bool for success/failure
 void gsFileManager::open(const std::string & fn)
 {

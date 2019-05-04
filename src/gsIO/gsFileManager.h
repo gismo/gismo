@@ -101,6 +101,11 @@ public:
     /// Returns the filename without the path of \a fn
     static std::string getFilename(std::string const & fn);
 
+    /// \brief Returns the canonic representation of the path \a fn
+    ///
+    /// This reduces foo/baz/../bar or foo/./bar to foo/bar
+    static std::string getCanonicRepresentation(const std::string & fn);
+
     /// Opens the file \a fn using the preferred application of the OS
     static void open(const std::string & fn);
 
