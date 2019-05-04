@@ -24,6 +24,7 @@
 // --- end External files
 
 #include <gsIO/gsOptionList.h>
+#include <gsIO/gsFileManager.h>
 
 namespace gismo
 {
@@ -280,6 +281,8 @@ void gsCmdLine::getValues(int argc, char *argv[])
 #ifndef NDEBUG
     my->didParseCmdLine = true;
 #endif
+
+    gsFileManager::setArgv0(argv[0]);
 
     my->cmd.parse(argc,argv);
 

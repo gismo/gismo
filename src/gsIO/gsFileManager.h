@@ -86,6 +86,9 @@ public:
     /// Get current directory
     static std::string getCurrentPath();
 
+    /// Get path of executable
+    static std::string getExePath();
+
     /// Make directory
     static bool mkdir( std::string fn );
 
@@ -113,6 +116,12 @@ private:
 
     // Return true iff file \a fn exists on the hard disk
     static bool fileNotPathExists(const std::string & fn);
+
+    // The result of argv[0]
+    // Since its static, it will be null by default
+    static void setArgv0( const char * c );
+
+    friend class gsCmdLine;
 };
 
 

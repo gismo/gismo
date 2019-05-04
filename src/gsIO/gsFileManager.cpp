@@ -57,12 +57,18 @@ private:
     gsFileManagerData(const gsFileManagerData&);
     gsFileManagerData& operator= (const gsFileManagerData&);
     std::vector<std::string> m_paths;
+    const char* argv0;
 };
 
 gsFileManagerData& gsFileManagerDataSingleton()
 {
     static gsFileManagerData singleton;
     return singleton;
+}
+
+void gsFileManager::setArgv0(const char* argv0)
+{
+    gsFileManagerDataSingleton().argv0 = argv0;
 }
 
 bool gsFileManager::fileExists(const std::string& name)
@@ -303,6 +309,20 @@ std::string gsFileManager::getCurrentPath()
     std::free(_temp);
     return path;
 #   endif
+}
+
+std::string gsFileManager::getExePath()
+{
+    // TODO: I think, windows allows a direct way.
+    const char* argv0 = gsFileManagerDataSingleton().argv0;
+    if (!argv0)
+    {
+        gsWarn << "gsCmdLine::getValues has not been called. Therefore, "
+             "the path is not available\n";
+        return getCurrentPath();
+    }
+
+    return getCanonicRepresentation( getCurrentPath() + "/" + argv0 );
 }
 
 bool gsFileManager::pathEqual( const std::string& p1, const std::string& p2 )

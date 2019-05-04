@@ -106,8 +106,13 @@ int main(int argc, char* argv[])
     std::copy(intvec.begin(), intvec.end(),
               std::ostream_iterator<int>(gsInfo,", "));
     gsInfo << "}\n\n"
-           << "Current path: " << gsFileManager::getCurrentPath() << "\n\n"
-           << "Temp path:    " << gsFileManager::getTempPath() << "\n\n";
+           << "Current path:       " << gsFileManager::getCurrentPath() << "\n"
+           << "Path of executable: " << gsFileManager::getExePath() << "\n"
+           << "Temp path:          " << gsFileManager::getTempPath() << "\n\n";
+
+    GISMO_ENSURE( gsFileManager::getCanonicRepresentation(GISMO_DATA_DIR)
+        == gsFileManager::getCanonicRepresentation(gsFileManager::getExePath()+"/../../../filedata/"),
+        "Something went wrong" );
 
     return 0;
 }
