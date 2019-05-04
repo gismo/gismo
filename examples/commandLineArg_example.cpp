@@ -105,7 +105,9 @@ int main(int argc, char* argv[])
 
     std::copy(intvec.begin(), intvec.end(),
               std::ostream_iterator<int>(gsInfo,", "));
-    gsInfo << "}\n\n";
+    gsInfo << "}\n\n"
+           << "Current path: " << gsFileManager::getCurrentPath() << "\n\n"
+           << "Temp path:    " << gsFileManager::getTempPath() << "\n\n";
 
     return 0;
 }

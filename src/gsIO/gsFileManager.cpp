@@ -296,7 +296,7 @@ std::string gsFileManager::getCurrentPath()
     return std::string(_temp);
 #   else
     // http://man7.org/linux/man-pages/man2/getcwd.2.html
-    _temp = getcwd(NULL, 0);
+    char* _temp = getcwd(NULL, 0);
     GISMO_ASSERT(NULL!=_temp, "getcwd returned NULL.");
     std::string path(_temp);
     // The string is allocated using malloc, see the reference above
