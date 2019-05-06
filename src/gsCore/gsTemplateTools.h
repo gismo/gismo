@@ -239,10 +239,7 @@ bool less(T1 t1, T2 t2)
         return true;
     else if (t2 < 0 && t1 >= 0)
         return false;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
     return (t1 < t2);
-#pragma GCC diagnostic pop
 }
 
 /// Compares two (integer) numbers of even different type.
