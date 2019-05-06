@@ -108,14 +108,15 @@ int main(int argc, char* argv[])
     gsInfo << "}\n\n"
            << "Current path:       " << gsFileManager::getCurrentPath() << "\n"
            << "Path of executable: " << gsFileManager::getExePath() << "\n"
-           << "Temp path:          " << gsFileManager::getTempPath() << "\n\n";
+           << "Temp path:          " << gsFileManager::getTempPath() << "\n"
+           << "Gismo data dir:     " << gsFileManager::getCanonicRepresentation(GISMO_DATA_DIR) << "\n"
+           << "Expected data dir:  " << gsFileManager::getCanonicRepresentation(gsFileManager::getExePath()+"../../filedata/") << "\n"
+           << "Are we here?        " << (gsFileManager::fileExists( gsFileManager::getExePath() + "commandLineArg_example" )
+                                            ? "yes":"no") << "\n"
+           ;
 
-    GISMO_ENSURE( gsFileManager::getCanonicRepresentation(GISMO_DATA_DIR)
-        == gsFileManager::getCanonicRepresentation(gsFileManager::getExePath()+"/../../../filedata/"),
-        "Not equal: "
-        << gsFileManager::getCanonicRepresentation(GISMO_DATA_DIR)
-        << " and "
-        << gsFileManager::getCanonicRepresentation(gsFileManager::getExePath()+"/../../../filedata/") );
+    GISMO_ENSURE( gsFileManager::fileExists( gsFileManager::getExePath() + "commandLineArg_example" ),
+                  "I can't find myself..." );
 
     return 0;
 }
