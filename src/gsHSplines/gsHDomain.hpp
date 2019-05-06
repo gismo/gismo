@@ -606,7 +606,7 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
 
 
 template<short_t d, class T>
-typename gsHDomain<d,T>::node * 
+typename gsHDomain<d,T>::node *
 gsHDomain<d,T>::pointSearch(const point & p, int level, node  *_node ) const
 {
     point pp;
@@ -725,7 +725,7 @@ gsHDomain<d,T>::nodeSearch() const
 /*
 // node search version with stack (if no parents available)
 template<short_t d, class T>
-template<typename visitor> 
+template<typename visitor>
 typename visitor::return_type
 gsHDomain<d,T>::nodeSearch() const
 {
@@ -908,7 +908,7 @@ void gsHDomain<d,T>::getBoxes(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gs
     b1.resize(boxes.size(),d);
     b2.resize(boxes.size(),d);
     level.resize(boxes.size());
-    for(std::size_t i = 0; i < boxes.size(); i++){
+    for(size_t i = 0; i < boxes.size(); i++){
         for(unsigned j = 0; j < d; j++){
             b1(i,j) = boxes[i][j];
             b2(i,j) = boxes[i][j+d];
@@ -995,7 +995,7 @@ void gsHDomain<d,T>::getBoxesInLevelIndex(gsMatrix<unsigned>& b1,
     b1.resize(boxes.size(),d);
     b2.resize(boxes.size(),d);
     level.resize(boxes.size());
-    for(std::size_t i = 0; i < boxes.size(); i++)
+    for(size_t i = 0; i < boxes.size(); i++)
     {
         for(unsigned j = 0; j < d; j++)
         {

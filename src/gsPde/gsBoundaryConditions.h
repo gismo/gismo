@@ -141,7 +141,7 @@ struct boundary_condition
     const std::string & ctype() const { return m_label; }
 
     /// Returns the patch to which this boundary condition refers to
-    int     patch()    const { return ps.patch; }
+    size_t     patch()    const { return ps.patch; }
 
     /// Returns the side to which this boundary condition refers to
     boxSide side()     const { return ps.side(); }
@@ -183,7 +183,7 @@ struct corner_value
     corner_value(int p, boxCorner c, T v, int unk = 0)
         : patch(p), corner(c), value(v), unknown(unk) { }
 
-    index_t patch;    ///< The index of the patch.
+    size_t patch;     ///< The index of the patch.
     boxCorner corner; ///< The corner
     T value;          ///< The value
     int   unknown;    ///< Unknown to which this boundary condition refers to
@@ -602,7 +602,7 @@ public:
      * @param[in] np the patch index
      * @param[out] result the new set of boundary conditions
      */
-    void getConditionsForPatch(const int np, gsBoundaryConditions& result) const
+    void getConditionsForPatch(const size_t np, gsBoundaryConditions& result) const
     {
         result.clear();
         bcContainer bc_all = allConditions(); //inefficient, but fewer code

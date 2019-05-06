@@ -33,7 +33,6 @@ class gsMatrixBlockView
 public:
     typedef Eigen::Block<MatrixType>   block_t    ;
     typedef Eigen::Block<MatrixType> * block_ptr_t;
-    typedef typename std::size_t       size_t     ;
 
     typedef Eigen::Matrix<index_t,Eigen::Dynamic, 1, Eigen::ColMajor> Vector_t;
 

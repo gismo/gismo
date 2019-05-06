@@ -115,7 +115,7 @@ public:
     {
         if ( !m_loops[0]->is_ccw() )
             gsWarn<< "Wrong orientation in outer loop of planar domain.";
-        for(std::size_t i=1; i< m_loops.size(); i++)
+        for(size_t i=1; i< m_loops.size(); i++)
         {
             if( m_loops[i]->is_ccw())
                 gsWarn<< "Wrong orientation in loop["<< i <<"] of planar domain.";
@@ -244,7 +244,7 @@ public:
     /// \param loopId specifies the loop
     /// \param curveId specifies the curve in the loop
     /// \param lengthRatio   ratio of the lengths of the first new curve and of the original curve
-    gsMatrix<T> splitCurve(std::size_t loopId, std::size_t curveId, T lengthRatio=.5)
+    gsMatrix<T> splitCurve(size_t loopId, size_t curveId, T lengthRatio=.5)
     {
         return m_loops[loopId]->splitCurve(curveId,lengthRatio);
     }

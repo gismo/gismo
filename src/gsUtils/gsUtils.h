@@ -142,12 +142,12 @@ inline void string_replace(std::string& str,
 /// \ingroup Utils
 inline std::string tokenize(const std::string& str,
                             const std::string& delim,
-                            const std::size_t token)
+                            const size_t token)
 {
-    std::size_t token_begin = 0;
-    std::size_t token_end   = str.find_first_of(delim);
+    size_t token_begin = 0;
+    size_t token_end   = str.find_first_of(delim);
     
-    for (std::size_t i=0; i<token; i++) {
+    for (size_t i=0; i<token; i++) {
         
         GISMO_ENSURE(token_end < std::string::npos,
                      "Requested token exceeds the number of tokens");
@@ -208,9 +208,9 @@ public:
 
 /// \brief Create hash key for a rangle of (integral) numbers
 template<typename T>
-std::size_t hash_range(T const * start, const T * const end)
+size_t hash_range(T const * start, const T * const end)
 {
-    std::size_t seed = end - start;
+    size_t seed = end - start;
     for(; start!=end; ++start) 
         seed ^= *start + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     return seed;

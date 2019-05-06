@@ -30,7 +30,7 @@ void testBoehm_helper(const gsBSpline<>& bsp, const std::vector<real_t> knots)
 
     gsKnotVector<> kv1 = kv_orig;
     gsMatrix<> coef1 = coef_orig;
-    for (std::size_t i = 0; i < knots.size(); ++i)
+    for (size_t i = 0; i < knots.size(); ++i)
         gsBoehm(kv1, coef1, knots[i]);
 
     gsKnotVector<> kv2 = kv_orig;
@@ -131,7 +131,7 @@ SUITE(gsRefinement_test)
 
         CHECK (compareKV(kv, kv_coarse));
 
-        for (std::size_t i = 0; i < removedNodes.size(); ++i)
+        for (size_t i = 0; i < removedNodes.size(); ++i)
             kv_coarse.insert(removedNodes[i]);
         CHECK (compareKV(kv_coarse, kv_fine));
     }

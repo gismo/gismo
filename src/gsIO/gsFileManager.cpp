@@ -320,8 +320,8 @@ std::string gsFileManager::getBasename(std::string const & fn)
 {
     if(fn.find_last_of(".") != std::string::npos)
     {
-        std::size_t pos1 = fn.find_last_of("/\\");
-        std::size_t pos2 = fn.rfind(".");
+        size_t pos1 = fn.find_last_of("/\\");
+        size_t pos2 = fn.rfind(".");
         std::string name = fn.substr(pos1+1, pos2-pos1-1);
         return name;
     }
@@ -330,7 +330,7 @@ std::string gsFileManager::getBasename(std::string const & fn)
 
 std::string gsFileManager::getFilename(std::string const & fn)
 {
-    std::size_t pos1 = fn.find_last_of("/\\");
+    size_t pos1 = fn.find_last_of("/\\");
     if(pos1 != std::string::npos)
     {
         std::string name = fn.substr(pos1+1);
