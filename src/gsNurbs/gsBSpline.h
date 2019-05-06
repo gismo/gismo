@@ -297,7 +297,7 @@ public:
     }
 
     // Look at gsGeometry class for a description
-    void degreeElevate(int const i = 1, int const dir = -1);
+    void degreeElevate(short_t const i = 1, short_t const dir = -1);
 
     /// @brief Returns true iff the point p is contained (approximately) on
     /// the curve, with the given tolerance.

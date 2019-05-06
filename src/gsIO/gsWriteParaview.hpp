@@ -255,7 +255,7 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
     {
         gsMatrix<T> anch = Geo.basis().anchors();
         // Lift vertices at anchor positions
-        for (std::size_t i = 0; i!= msh.numVertices(); ++i)
+        for (size_t i = 0; i!= msh.numVertices(); ++i)
         {
             msh.vertex(i)[d] = msh.vertex(i)[0];
             msh.vertex(i).topRows(d) = anch.col(i);
@@ -735,7 +735,7 @@ void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
 
     gsParaviewCollection collection(fn);
 
-    for (index_t i = 0; i != domain.nPatches(); ++i)
+    for (size_t i = 0; i != domain.nPatches(); ++i)
     {
         const std::string fileName = fn + util::to_string(i) + "_mesh";
         writeSingleCompMesh(mb[i], domain.patch(i), fileName, npts);
@@ -1285,7 +1285,7 @@ void gsWriteParaview(gsSolid<T> const& sl, std::string const & fn, unsigned numP
                 he = face->getHalfEdgeFromBoundaryOrder(iedge);
                 // search if he is in heSet
                 bool isMember(false);
-                for (std::size_t iheSet=0;iheSet<heSet.size();iheSet++)
+                for (size_t iheSet=0;iheSet<heSet.size();iheSet++)
                 {
                     if ( he->isEquiv(heSet.at(iheSet))==true || he->mate->isEquiv(heSet.at(iheSet))==true)
                     {isMember=true;
