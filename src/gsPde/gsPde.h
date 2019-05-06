@@ -131,13 +131,13 @@ public:
     }
     
     GISMO_DEPRECATED bool solutionGiven(index_t field_id = 0) const
-    {return false;}
+    { GISMO_UNUSED(field_id); return false;}
     
     const std::vector<gsFunction<T>*> &solutions() const
     { GISMO_ERROR("Deprecated"); }
     
     gsFunction<T>* solution(index_t field_id = 0) const
-    { return NULL; }
+    { GISMO_UNUSED(field_id); return NULL; }
     
     /**
      * @brief returns the dimension of the domain

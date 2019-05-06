@@ -770,7 +770,7 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, i
 
 template<class T> void gsExprAssembler<T>::resetDimensions()
 {
-    for (std::size_t i = 0; i!=m_vcol.size(); ++i)
+    for (size_t i = 0; i!=m_vcol.size(); ++i)
     {
         GISMO_ASSERT(NULL!=m_vcol[i], "Not set.");
         m_vcol[i]->reset();

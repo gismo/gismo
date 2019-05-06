@@ -336,7 +336,7 @@ struct gsFieldCreator
     
         gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
         
-        for (index_t k=0; k< mp.nPatches(); ++k)
+        for (size_t k=0; k< mp.nPatches(); ++k)
             nFields->addPiecePointer( new gsAbsError<T>(field.function(k), mp.patch(k), f, fparam) );
         
         return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
@@ -348,7 +348,7 @@ struct gsFieldCreator
         gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
         
         
-        for (index_t k=0; k< mp.nPatches(); ++k)
+        for (size_t k=0; k< mp.nPatches(); ++k)
             nFields->addPiecePointer( new gsGradientField<T>(mp.patch(k), f) );
         
         return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
@@ -359,7 +359,7 @@ struct gsFieldCreator
         gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
         
         
-        for (index_t k=0; k< mp.nPatches(); ++k)
+        for (size_t k=0; k< mp.nPatches(); ++k)
             nFields->addPiecePointer( new gsNormalField<T>(mp.patch(k)) );
         
         return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
@@ -371,7 +371,7 @@ struct gsFieldCreator
         gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
         
         
-        for (index_t k=0; k< mp.nPatches(); ++k)
+        for (size_t k=0; k< mp.nPatches(); ++k)
             nFields->addPiecePointer( new gsJacDetField<T>(mp.patch(k)) );
 
         return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
@@ -382,7 +382,7 @@ struct gsFieldCreator
         gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
         
         
-        for (index_t k=0; k< mp.nPatches(); ++k)
+        for (size_t k=0; k< mp.nPatches(); ++k)
             nFields->addPiecePointer( new gsParamField<T>(mp.patch(k)) );
 
         return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
@@ -391,7 +391,7 @@ struct gsFieldCreator
     static gsField<T> boundarySides(gsMultiPatch<T> const & mp)
     {
         gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
-        for (index_t k=0; k< mp.nPatches(); ++k)
+        for (size_t k=0; k< mp.nPatches(); ++k)
             nFields->addPiecePointer( new gsBoundaryField<T>(mp.patch(k)) );
         
         return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );

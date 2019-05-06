@@ -259,7 +259,7 @@ std::vector<unsigned> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
     // format: { level lower-corners  upper-corners ... }
     std::vector<unsigned> boxes;
 
-    for (std::size_t index = 0; index != errors.size(); index++)
+    for (size_t index = 0; index != errors.size(); index++)
     {
         if (threshold <= errors[index])
         {
@@ -334,7 +334,7 @@ bool gsHFitting<d, T>::isCellAlreadyInserted(const gsVector<unsigned, d>& a_cell
                                              const std::vector<unsigned>& cells)
 {
 
-    for (std::size_t i = 0; i != cells.size(); i += a_cell.rows())
+    for (size_t i = 0; i != cells.size(); i += a_cell.rows())
     {
         int commonEntries = 0;
         for (index_t col = 0; col != a_cell.rows(); col++)
@@ -358,7 +358,7 @@ template<short_t d, class T>
 T gsHFitting<d, T>::setRefineThreshold(const std::vector<T>& errors )
 {
     std::vector<T> errorsCopy = errors;
-    const std::size_t i = cast<T,std::size_t>(errorsCopy.size() * (1.0 - m_ref));
+    const size_t i = cast<T,size_t>(errorsCopy.size() * (1.0 - m_ref));
     typename std::vector<T>::iterator pos = errorsCopy.begin() + i;
     std::nth_element(errorsCopy.begin(), pos, errorsCopy.end());
     return *pos;

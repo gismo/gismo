@@ -286,31 +286,31 @@ void gsCmdLine::getValues(int argc, char *argv[])
 
     my->cmd.parse(argc,argv);
 
-    for( std::size_t i=0; i!=my->intVals.size(); ++i)
+    for( size_t i=0; i!=my->intVals.size(); ++i)
         *my->intRes[i] = my->intVals[i]->getValue();
 
-    for( std::size_t i=0; i!=my->realVals.size(); ++i)
+    for( size_t i=0; i!=my->realVals.size(); ++i)
         *my->realRes[i] = my->realVals[i]->getValue();
 
-    for( std::size_t i=0; i!=my->stringVals.size(); ++i)
+    for( size_t i=0; i!=my->stringVals.size(); ++i)
         *my->stringRes[i] = my->stringVals[i]->getValue();
 
-    for( std::size_t i=0; i!=my->switchVals.size(); ++i)
+    for( size_t i=0; i!=my->switchVals.size(); ++i)
         // Toggle switch-result if switch is present
         *my->switchRes[i] ^= my->switchVals[i]->getValue();
 
     if ( my->plainStringVal )
         *my->plainStringRes = my->plainStringVal->getValue();
 
-    for( std::size_t i=0; i!=my->multiIntVals.size(); ++i)
+    for( size_t i=0; i!=my->multiIntVals.size(); ++i)
         if( my->multiIntVals[i]->isSet() )
             *my->multiIntRes[i] = my->multiIntVals[i]->getValue();
 
-    for( std::size_t i=0; i!=my->multiRealVals.size(); ++i)
+    for( size_t i=0; i!=my->multiRealVals.size(); ++i)
         if( my->multiRealVals[i]->isSet() )
             *my->multiRealRes[i] = my->multiRealVals[i]->getValue();
 
-    for( std::size_t i=0; i!=my->multiStringVals.size(); ++i)
+    for( size_t i=0; i!=my->multiStringVals.size(); ++i)
         if( my->multiStringVals[i]->isSet() )
             *my->multiStringRes[i] = my->multiStringVals[i]->getValue();
 }
@@ -328,8 +328,8 @@ bool gsCmdLine::getExceptionHandling() const
 #define ADD_OPTION_LIST_ENTRY(res,vals,addFct)                                      \
 {                                                                                   \
     std::string nm = (vals)->getName() + ".";                                       \
-    std::size_t sz = (res).size();                                                  \
-    for ( std::size_t j=0; j<sz; ++j )                                              \
+    size_t sz = (res).size();                                                  \
+    for ( size_t j=0; j<sz; ++j )                                              \
     { result.addFct( nm+util::to_string(j), (vals)->getDescription(), (res)[j] ); } \
     result.addInt( nm+"Size", (vals)->getDescription(), sz );                       \
 }
@@ -339,19 +339,19 @@ gsOptionList gsCmdLine::getOptionList()
     GISMO_ASSERT( my->didParseCmdLine, "gsCmdLine::getOptionList can be called only after gsCmdLine::getValues." );
 
     gsOptionList result;
-    for( std::size_t i=0; i!=my->intVals.size(); ++i)
+    for( size_t i=0; i!=my->intVals.size(); ++i)
         result.addInt( my->intVals[i]->getName(), my->intVals[i]->getDescription(), *my->intRes[i] );
-    for( std::size_t i=0; i!=my->realVals.size(); ++i)
+    for( size_t i=0; i!=my->realVals.size(); ++i)
         result.addReal( my->realVals[i]->getName(), my->realVals[i]->getDescription(), *my->realRes[i] );
-    for( std::size_t i=0; i!=my->stringVals.size(); ++i)
+    for( size_t i=0; i!=my->stringVals.size(); ++i)
         result.addString( my->stringVals[i]->getName(), my->stringVals[i]->getDescription(), *my->stringRes[i] );
-    for( std::size_t i=0; i!=my->switchVals.size(); ++i)
+    for( size_t i=0; i!=my->switchVals.size(); ++i)
         result.addSwitch( my->switchVals[i]->getName(), my->switchVals[i]->getDescription(), *my->switchRes[i] );
-    for( std::size_t i=0; i!=my->multiIntVals.size(); ++i)
+    for( size_t i=0; i!=my->multiIntVals.size(); ++i)
         ADD_OPTION_LIST_ENTRY(*my->multiIntRes[i],my->multiIntVals[i],addInt)
-    for( std::size_t i=0; i!=my->multiRealVals.size(); ++i)
+    for( size_t i=0; i!=my->multiRealVals.size(); ++i)
         ADD_OPTION_LIST_ENTRY(*my->multiRealRes[i],my->multiRealVals[i],addReal)
-    for( std::size_t i=0; i!=my->multiStringVals.size(); ++i)
+    for( size_t i=0; i!=my->multiStringVals.size(); ++i)
         ADD_OPTION_LIST_ENTRY(*my->multiStringRes[i],my->multiStringVals[i],addString)
     if ( my->plainStringVal )
         result.addString( my->plainStringVal->getName(), my->plainStringVal->getDescription(), *my->plainStringRes );
@@ -388,7 +388,7 @@ void gsCmdLinePrivate::GismoCmdOut::usage(TCLAP::CmdLineInterface& c)
     std::vector< std::vector<TCLAP::Arg*> > xorList = xorHandler.getXorList();
 
     // first the xor
-    for ( int i = 0; static_cast<unsigned int>(i) < xorList.size(); i++ )
+    for ( size_t i = 0; static_cast<unsigned int>(i) < xorList.size(); i++ )
     {
         for ( TCLAP::ArgVectorIterator it = xorList[i].begin();
                 it != xorList[i].end();

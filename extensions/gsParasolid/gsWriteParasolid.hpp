@@ -541,7 +541,7 @@ bool exportTHBsurface(const gsTHBSpline<2, T>& surface,
 bool validMultiplicities(const std::vector<int>& mult,
                          const int deg)
 {
-    for (std::size_t i = 1; i != mult.size() - 1; i++)
+    for (size_t i = 1; i != mult.size() - 1; i++)
     {
         if (mult[i] == deg + 1)
         {

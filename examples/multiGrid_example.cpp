@@ -349,8 +349,8 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
         index_t sz = indices.rows();
         gsSparseEntries<> se;
         se.reserve(sz);
-        for (index_t i=0; i<sz; ++i)
-            se.add(indices(i,0),i,real_t(1));
+        for (index_t j=0; j<sz; ++j)
+            se.add(indices(j,0),j,real_t(1));
         gsSparseMatrix<real_t,RowMajor> transfer(nTotalDofs,sz);
         transfer.setFrom(se);
 

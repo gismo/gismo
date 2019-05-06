@@ -353,7 +353,7 @@ public:
 public:
     enum {ScalarValued = 1};
 
-    inline Scalar eval(const index_t k) const { return _c; }
+    inline Scalar eval(const index_t ) const { return _c; }
 
     inline _expr val() const { return *this; }
     index_t rows() const { return 0; }
@@ -483,7 +483,7 @@ public:
 
     explicit cdiam_expr(const gsFeElement<T> & el) : _e(el) { }
 
-    T eval(const index_t k) const { return _e.m_di->getCellSize(); }
+    T eval(const index_t ) const { return _e.m_di->getCellSize(); }
 
     inline cdiam_expr<T> val() const { return *this; }
     inline index_t rows() const { return 0; }
@@ -716,7 +716,7 @@ public:
     const bcRefList & bc() const { return m_bcs; }
     void addBc(bcRefList bc) const { m_bcs = bc; }
     void clearBc() const { m_bcs.clear(); }
-    std::size_t bcSize() const { return m_bcs.size(); }
+    size_t bcSize() const { return m_bcs.size(); }
 
     index_t   id() const {return m_id;}
     index_t & setId(const index_t _id) {return m_id = _id;}
@@ -788,7 +788,7 @@ public:
             for (typename bcRefList::const_iterator
                      it = this->bc().begin() ; it != this->bc().end(); ++it )
             {
-                GISMO_ASSERT( it->get().ps.patch < static_cast<index_t>(this->mapper().numPatches()),
+                GISMO_ASSERT(static_cast<size_t>(it->get().ps.patch) < this->mapper().numPatches(),
                               "Problem: a boundary condition is set on a patch id which does not exist.");
 
                 bnd = mb->basis(it->get().ps.patch).boundary( it->get().ps.side() );
