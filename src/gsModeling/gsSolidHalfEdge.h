@@ -93,7 +93,7 @@ public:
     T eps;
     /// Get the index of the corresponding trimming curve in the gsTrimSurface of the face
     // TODO: get rid of the following, using the indexOfEdge instead
-    int trimLoopInd(T tolerance){return this->face->indexOfEdge(this); }
+    int trimLoopInd(T tolerance){ GISMO_UNUSED(tolerance); return this->face->indexOfEdge(this); }
     int trimLoopInd();
 
     /// Moves along edge "n" times

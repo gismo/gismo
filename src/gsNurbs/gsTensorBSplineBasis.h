@@ -452,7 +452,7 @@ public:
 
         // Copy the chosen coefficients.
         gsMatrix<T> result = originalCoefs;
-        for( std::size_t i = 0; i != sourceSliceIndices.size(); i++ )
+        for( size_t i = 0; i != sourceSliceIndices.size(); i++ )
         {
             //gsDebug << "source: " << sourceSliceIndices[i]  << "\n";
             //gsDebug << "target: " << targetSliceIndices[i]  << "\n";

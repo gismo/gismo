@@ -107,8 +107,8 @@ void gsCurveLoop<T>::reverse()
               m_curves.begin(); it!= m_curves.end() ; it++ )
         (*it)->reverse();
     gsCurve<T>* swap;
-    std::size_t size=m_curves.size();
-    for ( std::size_t i=0;i<size/2;i++)
+    size_t size=m_curves.size();
+    for ( size_t i=0;i<size/2;i++)
     {
         swap = m_curves[i];
         m_curves[i]=m_curves[size-i-1];
@@ -621,7 +621,7 @@ void gsCurveLoop<T>::flip1(T minu, T maxu)
 }
   
 template<class T>
-gsMatrix<T> gsCurveLoop<T>::splitCurve(std::size_t curveId, T lengthRatio)
+gsMatrix<T> gsCurveLoop<T>::splitCurve(size_t curveId, T lengthRatio)
 {
     GISMO_UNUSED(lengthRatio);
     GISMO_ASSERT(lengthRatio>0 && lengthRatio<1, "the second parameter *lengthRatio* must be between 0 and 1");

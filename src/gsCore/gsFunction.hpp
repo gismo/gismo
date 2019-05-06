@@ -34,7 +34,7 @@ void gsFunction<T>::jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
     deriv_into(u, result);
 
     // Reshape the matrix to get one Jacobian block per evaluation point
-    const index_t d = domainDim();     // dimension of domain
+    const short_t d = domainDim();     // dimension of domain
     result.resize(d, result.size()/d); //transposed Jacobians
     result.blockTransposeInPlace( targetDim() );
 }

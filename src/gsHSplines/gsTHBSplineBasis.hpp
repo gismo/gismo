@@ -585,7 +585,7 @@ void gsTHBSplineBasis<d,T>::getConnectedComponents(
     //create the matrices b1,b2 and vector level
 
     level.resize(boxes.size());
-    for(std::size_t i = 0; i < boxes.size(); i++){
+    for(size_t i = 0; i < boxes.size(); i++){
         level[i] = boxes[i][2*d];
     }
 
@@ -703,7 +703,7 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
     b1.resize(boxes.size(),d);
     b2.resize(boxes.size(),d);
     level.resize(boxes.size());
-    for(std::size_t i = 0; i < boxes.size(); i++){
+    for(size_t i = 0; i < boxes.size(); i++){
         for(unsigned j = 0; j < d; j++){
             //convert from param spece to index space in highest level
             // (!) next lines: Conversion form double to int, possible loss of data
@@ -873,7 +873,7 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
     b1.resize(boxes.size(),d);
     b2.resize(boxes.size(),d);
     level.resize(boxes.size());
-    for(std::size_t i = 0; i < boxes.size(); i++)
+    for(size_t i = 0; i < boxes.size(); i++)
     {
         for(unsigned j = 0; j < d; j++)
         {
@@ -1296,9 +1296,9 @@ void gsTHBSplineBasis<d, T>::breakCycles(
     typename gsTHBSplineBasis<d, T>::AxisAlignedBoundingBox& aabb,
     typename gsTHBSplineBasis<d, T>::Polylines& polylines) const
 {
-    for (std::size_t level = 0; level != polylines.size(); level++)
+    for (size_t level = 0; level != polylines.size(); level++)
     {
-        for (std::size_t line = 0; line != polylines[level].size(); line++)
+        for (size_t line = 0; line != polylines[level].size(); line++)
         {
             std::pair<T, T> pt; // point
             index_t segment = identifyCycle(polylines[level][line], pt);
@@ -1338,9 +1338,9 @@ index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< T>
     std::map< std::pair<T, T>, index_t > times;
     std::map< std::pair<T, T>, index_t > index;
     
-    for (std::size_t seg = 0; seg != line.size(); seg++)
+    for (size_t seg = 0; seg != line.size(); seg++)
     {
-        const std::size_t seg1 = (seg + 1) % line.size();
+        const size_t seg1 = (seg + 1) % line.size();
 	
         std::pair<T, T> currentPt( line[seg][0], line[seg][1] );
         if (!((currentPt.first == line[seg1][0] && currentPt.second == line[seg1][1]) ||
@@ -1350,7 +1350,7 @@ index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< T>
             currentPt.second = line[seg][3];
         }
 	
-        std::size_t count = times.count(currentPt);
+        size_t count = times.count(currentPt);
         if (0 < count)
         {
             times[currentPt] += 1;
@@ -1443,7 +1443,7 @@ void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& po
     T maxY = polyline[0][3];
     
 
-    for (std::size_t seg = 0; seg != polyline.size(); seg++)
+    for (size_t seg = 0; seg != polyline.size(); seg++)
     {
         if (polyline[seg][0] < minX)
         {

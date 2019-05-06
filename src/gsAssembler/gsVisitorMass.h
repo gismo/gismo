@@ -36,7 +36,7 @@ public:
      * \f[ (u, v) \f]  
      */
     gsVisitorMass(const gsPde<T> & pde)
-    { }
+    { GISMO_UNUSED(pde); }
 
     void initialize(const gsBasis<T> & basis,
                     const index_t ,
