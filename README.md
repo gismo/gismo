@@ -28,9 +28,9 @@ The latest revision of the code can be obtained using subversion:
 
 ```svn co https://github.com/gismo/gismo/trunk gismo```
 
-or using git:
+or using git (via https):
 
-```git clone git@github.com:gismo/gismo.git```
+```git clone https://github.com/gismo/gismo.git```
 
 or as a zip file:
 
@@ -228,3 +228,4 @@ G+Smo library for isogeometric analysis is supported by the Research
 Network ''Geometry + Simulation'' (NFN S117), funded by the Austrian
 Science Fund, www.gs.jku.at.  It is distributed under the Mozilla
 Public License v2.0.  (see [LICENSE.txt](https://github.com/gismo/gismo/blob/stable/LICENSE.txt)).
+

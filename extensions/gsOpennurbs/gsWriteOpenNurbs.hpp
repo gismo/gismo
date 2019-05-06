@@ -198,7 +198,7 @@ bool writeON_MultiPatch( const gsMultiPatch<T> & patches)
   model.m_layer_table.Append(layer);
 */
 
-  for(index_t i = 0; i < patches.nPatches(); ++i)
+  for(size_t i = 0; i < patches.nPatches(); ++i)
   {          
       //gsInfo<< "Write patch "<< i << "\n";
       std::stringstream  nm("patch");

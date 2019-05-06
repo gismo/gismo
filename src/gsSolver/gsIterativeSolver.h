@@ -218,7 +218,7 @@ public:
     void setTolerance(T tol)                                   { m_tol = tol; }
 
     /// The number of iterations needed to reach the error criteria
-    int iterations() const                                     { return m_num_iter; }
+    index_t iterations() const                                 { return m_num_iter; }
 
     /// @brief The relative residual error of the current iterate
     ///

@@ -138,7 +138,7 @@ public:
             update();
     }
 
-    /// return the tensor index of the current element
+    /// Return the tensor index of the current element
     gsVector<unsigned, D> index() const
     {
         gsVector<unsigned, D> curr_index(d);  
@@ -190,6 +190,14 @@ public:
         other_.update();
     }
 
+    /// Function to set the breakpoints in direction \a i manually
+    void setBreaks(std::vector<T> newBreaks, index_t i) // i: direction
+    {
+        breaks[i].swap(newBreaks);
+        meshEnd[i]   = breaks[i].end() - 1;
+        meshBegin[i] = curElement[i] = breaks[i].begin();
+        reset();
+    }
 
 private:
 
@@ -222,7 +230,10 @@ protected:
     using gsDomainIterator<T>::m_basis;
     using gsDomainIterator<T>::m_isGood;
     using gsDomainIterator<T>::center;
+    using gsDomainIterator<T>::m_side;
+
 private:
+
     // the dimension of the parameter space
     int d;
 

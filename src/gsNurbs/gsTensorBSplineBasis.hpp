@@ -27,7 +27,7 @@ namespace gismo
 {
 
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSplineBasis<d,T>::
 active_cwise(const gsMatrix<T> & u, 
              gsVector<unsigned,d>& low, 
@@ -43,7 +43,7 @@ active_cwise(const gsMatrix<T> & u,
     }
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSplineBasis<d,T>::
 refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
                     const std::vector< std::vector<T> >& refineKnots)
@@ -60,7 +60,7 @@ refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer,
     tensorCombineTransferMatrices<d, T>( B, transfer );
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSplineBasis<d,T>::
 refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refineKnots)
 {
@@ -84,7 +84,7 @@ refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refine
 }
 
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSplineBasis<d,T>::refine(gsMatrix<T> const & boxes, int)
 {
     // Note: refExt parameter is ignored
@@ -143,7 +143,7 @@ void gsTensorBSplineBasis<d,T>::refine(gsMatrix<T> const & boxes, int)
  * This is the case for all current component bases, so we only keep this version for now.
  * Above, commented out, is the generic version which is quite a bit slower.
  */
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSplineBasis<d,T>::
 active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
 {
@@ -191,7 +191,7 @@ namespace internal
 {
 
 /// @brief Get a TensorBSplineBasis from XML data
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsXml< gsTensorBSplineBasis<d,T> >
 {
 private:

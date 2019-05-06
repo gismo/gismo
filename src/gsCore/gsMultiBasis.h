@@ -7,7 +7,7 @@
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -29,7 +29,7 @@ namespace gismo
     topology information.
 
     \tparam T coefficient type
-    
+
     \ingroup Core
 */
 template<class T>
@@ -46,7 +46,6 @@ public:
 public:
 
     /// Type definitions
-    typedef typename BasisContainer::size_type size_t;
     typedef typename BasisContainer::iterator iterator;
     typedef typename BasisContainer::const_iterator const_iterator;
 
@@ -75,7 +74,7 @@ public:
     {
         m_bases.swap(bases);// consumes the pointers
     }
-    
+
     /// Create a single-basis instance
     gsMultiBasis( const gsBasis<T> & geo );
 
@@ -87,20 +86,20 @@ public:
     {
         m_bases.swap(bases);// consumes the pointers
     }
-    
+
     /// Destructor
     ~gsMultiBasis();
 
     /// Copy constructor (makes deep copy)
     gsMultiBasis( const gsMultiBasis& other );
-    
+
 #if EIGEN_HAS_RVALUE_REFERENCES
     /// Move constructor
     gsMultiBasis(gsMultiBasis&& other) : m_bases(give(other.m_bases)), m_topology(give(other.m_topology)) {}
 
     /// Assignment operator
     gsMultiBasis& operator= ( const gsMultiBasis& other );
-    
+
     /// Move assignment operator
     gsMultiBasis& operator= ( gsMultiBasis&& other )
     {
@@ -168,7 +167,7 @@ public:
 
     const_reference operator[](size_t i) const
     {return *m_bases[i];}
-    
+
     reference operator[](size_t i)
     {return *m_bases[i];}
 
@@ -177,7 +176,7 @@ public:
 
     const_reference front() const
     {return *m_bases.front();}
-    
+
     // reference back()
     // {return *m_bases.back();}
 
@@ -189,9 +188,9 @@ public:
 
 public:
 
-    int domainDim () const {return m_bases.front()->domainDim();}
-    
-    int targetDim () const {return m_bases.front()->targetDim();}
+    short_t domainDim () const {return m_bases.front()->domainDim();}
+
+    short_t targetDim () const {return m_bases.front()->targetDim();}
 
     /// Swap with another gsMultiBasis.
     void swap(gsMultiBasis& other)
@@ -205,12 +204,12 @@ public:
     std::ostream& print( std::ostream& os ) const;
 
     /// Dimension of the parameter domain (must match for all bases).
-    int dim() const
+    short_t dim() const
     { return m_bases[0]->dim();}
 
     /// @brief Returns the polynomial degree of basis \a i in component \a j,
     /// if the basis is of polynomial or piecewise polynomial type.
-    int degree(size_t i = 0, int comp = 0) const
+    short_t degree(size_t i = 0, short_t comp = 0) const
     {
         GISMO_ASSERT( i < m_bases.size(),
                       "Invalid patch index "<<i<<" requested from gsMultiBasis" );
@@ -218,16 +217,16 @@ public:
     }
 
     /// @brief Maximum degree with respect to variable \a k.
-    int maxDegree(int k) const;
+    short_t maxDegree(short_t k) const;
 
     /// @brief Minimum degree with respect to variable \a k.
-    int minDegree(int k) const;
+    short_t minDegree(short_t k) const;
 
     /// @brief Maximum degree with respect to all variables
-    int maxCwiseDegree() const;
+    short_t maxCwiseDegree() const;
 
     /// @brief Minimum degree with respect to all variables
-    int minCwiseDegree() const;
+    short_t minCwiseDegree() const;
 
     /// @brief The number of basis functions in basis \a i.
     int size(size_t i) const
@@ -265,25 +264,25 @@ public:
     size_t nBases() const          { return m_bases.size(); }
 
     /// Return the \a i-th basis block.
-    const gsBasis<T> & basis(const  std::size_t i ) const
+    const gsBasis<T> & basis(const  size_t i ) const
     {
         GISMO_ASSERT( i < m_bases.size(),
                       "Invalid patch index"<<i<<" requested from gsMultiBasis" );
         return *m_bases[i];
     }
 
-    const gsBasis<T> & piece(const index_t i) const 
+    const gsBasis<T> & piece(const index_t i) const
     {
         GISMO_ASSERT( static_cast<size_t>(i) < m_bases.size(),
                       "Invalid patch index"<<i<<" requested from gsMultiBasis" );
-        return *m_bases[i]; 
+        return *m_bases[i];
     }
 
     /// @brief Number of patch-wise bases
     index_t nPieces() const { return static_cast<index_t>(m_bases.size()); }
 
     /// Return the \a i-th basis block.
-    gsBasis<T> & basis(const std::size_t i )
+    gsBasis<T> & basis(const size_t i )
     {
         GISMO_ASSERT( i < m_bases.size(),
                       "Invalid patch index"<<i<<" requested from gsMultiBasis" );
@@ -298,7 +297,7 @@ public:
 
     /// @brief Search for the given basis and return its index.
     int findBasisIndex( gsBasis<T>* g ) const;
-    
+
     /// @brief Add an interface joint between side \a s1 of geometry
     /// \a g1 side \a s2 of geometry \a g2.
     ///
@@ -312,7 +311,7 @@ public:
         const int p =findBasisIndex( g );
         m_topology.addBoundary( patchSide( p, s ) );
     }
-    
+
     /// @brief Refine every basis uniformly
     ///
     /// This calls \a gsBasis::uniformRefine(\a numKnots,\a mul) for all patches
@@ -357,7 +356,7 @@ public:
         int numKnots = 1,
         int mul = 1
         );
-    
+
     /// @brief Refine the component \a comp of every basis uniformly
     /// by inserting \a numKnots new knots on each knot span
     void uniformRefineComponent(int comp, int numKnots = 1, int mul = 1)
@@ -404,7 +403,7 @@ public:
             m_bases[k]->uniformCoarsen(numKnots);
         }
     }
-    
+
     /// @brief Coarsen every basis uniformly
     ///
     /// The function writes a sparse matrix into the variable \a transfer that indicates
@@ -421,7 +420,39 @@ public:
         const gsOptionList& assemblerOptions,
         int numKnots = 1
         );
+
+    /// @brief Returns the basis that corresponds to the component
+    typename gsBasis<T>::uPtr componentBasis(patchComponent p) const
+    { return m_bases[p.patch()]->componentBasis(p); }
+
+    /// @brief Returns the basis that corresponds to the component
+    ///
+    /// @param pc        The component
+    /// @param dm        The dof mapper to be used
+    /// @param indices   The row vector where the indices are stored to
+    /// @param no_lower  If true, the transfer matrix does not include parts belonging to lower-order
+    ///                  components (i.e., edges without corners or faces without corners and edges)
+    typename gsBasis<T>::uPtr componentBasis_withIndices(
+        patchComponent pc,
+        const gsDofMapper& dm,
+        gsMatrix<unsigned>& indices,
+        bool no_lower = true
+    ) const;
     
+    /// @brief Returns the bases that correspond to the components
+    ///
+    /// @param pc        The components
+    /// @param dm        The dof mapper to be used
+    /// @param indices   The row vector where the indices are stored to
+    /// @param no_lower  If true, the transfer matrix does not include parts belonging to lower-order
+    ///                  components (i.e., edges without corners or faces without corners and edges)
+    std::vector<typename gsBasis<T>::uPtr> componentBasis_withIndices(
+        const std::vector<patchComponent>& pc,
+        const gsDofMapper& dm,
+        gsMatrix<unsigned>& indices,
+        bool no_lower = true
+    ) const;
+
     /** @brief Checks if the interfaces \em bivec are fully matching, and if not, repairs them, i.e., makes them fully matching.
     *
     * \remarks Designed for gsHTensorBasis and derived bases.
@@ -496,7 +527,7 @@ public:
                                       std::vector<unsigned> & refEltsSecond );
 
     /// @brief Elevate the degree of every basis by the given amount. (keeping the smoothness)
-    void degreeElevate(int const i = 1, int const dir = -1)
+    void degreeElevate(short_t const i = 1, short_t const dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeElevate(i,dir);
@@ -504,7 +535,7 @@ public:
 
     /// @brief Increase the degree of every basis by the given
     /// amount. (keeping the multiplicity)
-    void degreeIncrease(int const i = 1, int const dir = -1)
+    void degreeIncrease(short_t const i = 1, short_t const dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeIncrease(i,dir);
@@ -512,21 +543,21 @@ public:
 
     /// @brief Increase the degree of every basis by the given
     /// amount. (keeping the multiplicity)
-    void degreeDecrease(int const i = 1, int const dir = -1)
+    void degreeDecrease(short_t const i = 1, short_t const dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeDecrease(i,dir);
     }
 
     /// Reduce the degree of the basis by the given amount.
-    void degreeReduce(int const i = 1)
+    void degreeReduce(short_t const i = 1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeReduce(i);
     }
 
     /// Set the degree of the basis.
-    void setDegree(int const& i)
+    void setDegree(short_t const& i)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->setDegree(i);
@@ -582,11 +613,11 @@ public:
                    bool finalize = true) const
     {
         if ( ds == dirichlet::elimination )
-            getMapper(is==iFace::glue, bc, unk, mapper, finalize); 
+            getMapper(is==iFace::glue, bc, unk, mapper, finalize);
         else
-            getMapper(is==iFace::glue,        mapper, finalize); 
+            getMapper(is==iFace::glue,        mapper, finalize);
     }
-    
+
     gsDofMapper getMapper(dirichlet::strategy ds,
                           iFace::strategy is,
                           const gsBoundaryConditions<T> & bc,
@@ -595,9 +626,9 @@ public:
     {
         gsDofMapper mapper;
         if ( ds == dirichlet::elimination )
-            getMapper(is==iFace::glue, bc, unk, mapper, finalize); 
+            getMapper(is==iFace::glue, bc, unk, mapper, finalize);
         else
-            getMapper(is==iFace::glue,        mapper, finalize); 
+            getMapper(is==iFace::glue,        mapper, finalize);
         return mapper;
     }
 
@@ -638,7 +669,7 @@ public:
     /// Tile the parameter domains of the pieces according to the
     /// topology
     void tileParameters();
-    
+
 private:
 
     BasisContainer m_bases;

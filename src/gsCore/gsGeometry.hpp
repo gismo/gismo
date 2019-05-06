@@ -58,6 +58,49 @@ gsMatrix<T> gsGeometry<T>::parameterCenter( const boxSide& bc )
     return coordinates;
 }
 
+    /*
+template<class T>
+boxSide gsGeometry<T>::sideOf( const gsVector<T> & u,  )
+{
+    // get the indices of the coefficients which lie on the boundary
+    gsMatrix<unsigned > allBnd = m_basis->allBoundary();
+    gsMatrix<T> bndCoeff(allBnd.rows(), m_coefs.rows());
+
+    // extract the indices of the boundary coefficients
+    for(index_t r = 0; r < allBnd.rows(); r++)
+        bndCoeff.row(r) = m_coefs.row(allBnd(r,0));
+
+
+    for(size_t size = 0; size < allBnd.rows(); size++)
+        if(boundaryPatch1[size] == 1)
+            interfaceIndicesPatch1.push_back(allBnd(size, 0)); // get the indices of the coefficients on patch 1 which lie on the common interface
+
+    boxSide side;
+
+    for(unsigned index = 1; index <= nBoundaries; index++) {
+        int contained = 0;
+        side.m_index = index;
+
+        gsMatrix<unsigned> bnd = m_basis->boundary(side);
+
+        for(size_t i = 0; i < interfaceIndicesPatch1.size(); i++)
+        {
+            gsInfo << "index: " << interfaceIndicesPatch1[i] << "\n";
+            for (int j = 0; j < bnd.rows(); j++)
+            {
+                if(bnd(j, 0) == interfaceIndicesPatch1[i])
+                    contained++;
+            }
+        }
+
+        if(contained == bnd.rows())
+            break;
+
+        //gsInfo << "indices of boundary : " << bnd << "\n";
+    }
+}
+     */
+
 template<class T>
 typename gsGeometry<T>::uPtr
 gsGeometry<T>::boundary(boxSide const& s) const
@@ -86,7 +129,7 @@ void gsGeometry<T>::evaluateMesh(gsMesh<T>& mesh) const
 
     // For all vertices of the mesh, push forward the value by the
     // geometry mapping
-    for (std::size_t i = 0; i!= mesh.numVertices(); ++i)
+    for (size_t i = 0; i!= mesh.numVertices(); ++i)
     {
         eval_into( mesh.vertex(i).topRows(pDim), tmp );
         mesh.vertex(i).topRows( gDim ) = tmp;
@@ -128,7 +171,7 @@ void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,
     for ( index_t i = 0; i!= points.cols(); ++i)
     {
         arg = parameterCenter();
-        // int iter =
+        //int iter =
         this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
         result.col(i) = arg;
     }
@@ -155,7 +198,7 @@ std::vector<gsGeometry<T> *> gsGeometry<T>:: boundary() const
 }
 
 template<class T>
-void gsGeometry<T>::degreeElevate(int const i, int const dir)
+void gsGeometry<T>::degreeElevate(short_t const i, short_t const dir)
 {
     typename gsBasis<T>::uPtr b = m_basis->clone();
 
@@ -175,7 +218,7 @@ void gsGeometry<T>::degreeElevate(int const i, int const dir)
 }
 
 template<class T>
-void gsGeometry<T>::degreeReduce(int const i, int const dir)
+void gsGeometry<T>::degreeReduce(short_t const i, short_t const dir)
 {
     typename gsBasis<T>::uPtr b = m_basis->clone();
 
@@ -297,6 +340,57 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
                 out.values[2].reshapeCol(p, der2S, numCo) = tmp.deriv2(p)*coefM;
         }
     }
+}
+
+template<class T>
+std::vector<boxSide> gsGeometry<T>::locateOn(const gsMatrix<T> & u, gsVector<bool> & onGeo, gsMatrix<T> & preIm, bool lookForBoundary, real_t tol) const
+{
+    onGeo.resize(u.cols());
+    std::vector<boxSide> sides(u.cols());
+
+    for(index_t i = 0; i < onGeo.size(); i++)
+        onGeo(i) = false;
+
+    preIm.resize(geoDim(), u.cols());
+    gsMatrix<T> pr = this->parameterRange(), tmp;
+
+    for(index_t i = 0; i < u.cols(); i++)
+    {
+        this->invertPoints(u.col(i), tmp, tol);
+        pr = this->parameterRange();
+        //if ((tmp.array() >= pr.col(0).array()).all()
+        //    && (tmp.array() <= pr.col(1).array()).all())
+        if ((tmp.array() >= pr.col(0).array() - 1.e-4).all()
+             && (tmp.array() <= pr.col(1).array() + 1.e-4).all()) // be careful! if u is on the boundary then we may get a wrong result
+            // the tolerance is due to imprecisions in the geometry map. E.g. If a circle is rotated then the corner need
+            // not to lie exactly on the interface of the neighbour patch since we use only B-splines for the modelling
+            // TODO: Maybe find a better solution!
+        {
+            onGeo(i) = true;
+            preIm.col(i) = tmp;
+
+            if (lookForBoundary == true)
+            {
+                boxSide s;
+                for (int d = 0; d < geoDim(); d++) {
+                    if ((math::abs(tmp(d, 0) - pr(d, 0)) < tol))
+                    {
+                        s.m_index = 2*d+1; // lower
+                        break;
+                    }
+
+                    if ((math::abs(tmp(d, 0) - pr(d, 1)) < tol))
+                    {
+                        s.m_index = 2 * d + 2; // upper
+                        break;
+                    }
+                }
+                sides[i] = s;
+            }
+        }
+    }
+
+    return sides;
 }
 
 

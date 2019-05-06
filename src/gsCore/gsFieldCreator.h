@@ -61,8 +61,8 @@ public:
 
     }
 
-    int domainDim() const { return m_f1.domainDim(); }
-    int targetDim() const { return m_f1.targetDim(); }
+    short_t domainDim() const { return m_f1.domainDim(); }
+    short_t targetDim() const { return m_f1.targetDim(); }
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -110,8 +110,8 @@ public:
         m_f.deriv_into(tmp, result);
     }
 
-    int domainDim() const { return m_geo.parDim(); }
-    int targetDim() const { return m_geo.geoDim(); }
+    short_t domainDim() const { return m_geo.parDim(); }
+    short_t targetDim() const { return m_geo.geoDim(); }
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -154,8 +154,8 @@ public:
             result(0,k) = m_geo.deriv(u.col(k)).reshape(m_dim,m_dim).determinant();
     }
 
-    int domainDim() const { return m_geo.parDim(); }
-    int targetDim() const { return 1; }
+    short_t domainDim() const { return m_geo.parDim(); }
+    short_t targetDim() const { return 1; }
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -191,7 +191,7 @@ public:
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        const int ParDim = m_geo.parDim();
+        const short_t ParDim = m_geo.parDim();
         result.resize(ParDim+1, u.cols()) ;
 
         gsMatrix<T> Jk;
@@ -210,8 +210,8 @@ public:
         }
     }
 
-    int domainDim() const { return m_geo.parDim(); }
-    int targetDim() const { return m_geo.geoDim();}
+    short_t domainDim() const { return m_geo.parDim(); }
+    short_t targetDim() const { return m_geo.geoDim();}
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -252,8 +252,8 @@ public:
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { result = u; }
 
-    int domainDim() const { return m_geo.domainDim(); }
-    int targetDim() const { return m_geo.domainDim(); }
+    short_t domainDim() const { return m_geo.domainDim(); }
+    short_t targetDim() const { return m_geo.domainDim(); }
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -306,8 +306,8 @@ public:
         }
     }
 
-    int domainDim() const { return geo.domainDim(); }
-    int targetDim() const { return 1; }
+    short_t domainDim() const { return geo.domainDim(); }
+    short_t targetDim() const { return 1; }
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -336,7 +336,7 @@ struct gsFieldCreator
     
         gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
         
-        for (index_t k=0; k< mp.nPatches(); ++k)
+        for (size_t k=0; k< mp.nPatches(); ++k)
             nFields->addPiecePointer( new gsAbsError<T>(field.function(k), mp.patch(k), f, fparam) );
         
         return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
@@ -348,7 +348,7 @@ struct gsFieldCreator
         gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
         
         
-        for (index_t k=0; k< mp.nPatches(); ++k)
+        for (size_t k=0; k< mp.nPatches(); ++k)
             nFields->addPiecePointer( new gsGradientField<T>(mp.patch(k), f) );
         
         return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
@@ -359,7 +359,7 @@ struct gsFieldCreator
         gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
         
         
-        for (index_t k=0; k< mp.nPatches(); ++k)
+        for (size_t k=0; k< mp.nPatches(); ++k)
             nFields->addPiecePointer( new gsNormalField<T>(mp.patch(k)) );
         
         return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
@@ -371,7 +371,7 @@ struct gsFieldCreator
         gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
         
         
-        for (index_t k=0; k< mp.nPatches(); ++k)
+        for (size_t k=0; k< mp.nPatches(); ++k)
             nFields->addPiecePointer( new gsJacDetField<T>(mp.patch(k)) );
 
         return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
@@ -382,7 +382,7 @@ struct gsFieldCreator
         gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
         
         
-        for (index_t k=0; k< mp.nPatches(); ++k)
+        for (size_t k=0; k< mp.nPatches(); ++k)
             nFields->addPiecePointer( new gsParamField<T>(mp.patch(k)) );
 
         return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
@@ -391,7 +391,7 @@ struct gsFieldCreator
     static gsField<T> boundarySides(gsMultiPatch<T> const & mp)
     {
         gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
-        for (index_t k=0; k< mp.nPatches(); ++k)
+        for (size_t k=0; k< mp.nPatches(); ++k)
             nFields->addPiecePointer( new gsBoundaryField<T>(mp.patch(k)) );
         
         return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );

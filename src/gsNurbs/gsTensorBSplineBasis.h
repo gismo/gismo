@@ -32,7 +32,7 @@ namespace gismo
     \ingroup Nurbs
 */
   
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsTensorBSplineBasis : public gsTensorBasis<d,T>
 {
 public: 
@@ -452,7 +452,7 @@ public:
 
         // Copy the chosen coefficients.
         gsMatrix<T> result = originalCoefs;
-        for( std::size_t i = 0; i != sourceSliceIndices.size(); i++ )
+        for( size_t i = 0; i != sourceSliceIndices.size(); i++ )
         {
             //gsDebug << "source: " << sourceSliceIndices[i]  << "\n";
             //gsDebug << "target: " << targetSliceIndices[i]  << "\n";

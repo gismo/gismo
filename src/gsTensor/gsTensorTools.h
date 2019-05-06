@@ -46,7 +46,7 @@ int fromTensorIndex(const gsVector<unsigned, d>& idx, const gsVector<unsigned, d
     
     \ingroup Tensor
  */
-template <unsigned d, typename T>
+template <short_t d, typename T>
 void tensorCombineTransferMatrices(
     gsSparseMatrix<T,RowMajor> B[d],
     gsSparseMatrix<T,RowMajor> & transfer)

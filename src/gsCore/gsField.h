@@ -183,11 +183,11 @@ public:
 
     /// \brief Returns the dimension of the parameter domain
     /// (e.g., if the domain is a surface in three-dimensional space, it returns 2).
-    int parDim() const { return m_patches->domainDim(); }
+    short_t parDim() const { return m_patches->domainDim(); }
 
     /// \brief Returns the dimension of the physical domain
     /// (e.g., if the domain is a surface in three-dimensional space, it returns 3).
-    int geoDim() const { return m_patches->targetDim(); }
+    short_t geoDim() const { return m_patches->targetDim(); }
 
     /// \brief Returns the dimension of the physical domain
     /// (e.g., if the domain is a surface in three-dimensional space, it returns 3).
