@@ -246,7 +246,7 @@ std::vector<index_t> getCornerIndices( const std::vector<patchCorner>& corner, i
     const index_t sz = corner.size();
     std::vector<index_t> result(sz);
     for (index_t i=0; i<sz; ++i)
-        result[i] = corner[i].patch*(1u<<(dim)) + corner[i].m_index;
+        result[i] = corner[i].patch*(1ull<<(dim)) + corner[i].m_index;
     return result;
 }
 
