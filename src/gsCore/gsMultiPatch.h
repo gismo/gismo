@@ -121,6 +121,8 @@ public:
 
     const gsGeometry<T> & piece(const index_t i) const { return patch(i); }
 
+    gsMultiPatch<T> coord(const index_t c) const;
+
     index_t nPieces() const { return static_cast<index_t>(m_patches.size()); }
 
     index_t size() const { return 1; }
@@ -152,19 +154,19 @@ public:
     std::string detail() const;
 
     /// \brief Dimension of the parameter domain (must match for all patches).
-    int parDim() const
+    short_t parDim() const
     {
         //GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
         return m_dim;
     }
-    int domainDim () const {return parDim();}
+    short_t domainDim () const {return parDim();}
 
     /// \brief Dimension of the geometry (must match for all patches).
-    int geoDim() const;
-    int targetDim () const {return geoDim();}
+    short_t geoDim() const;
+    short_t targetDim () const {return geoDim();}
 
     /// \brief Co-dimension of the geometry (must match for all patches).
-    int coDim() const;
+    short_t coDim() const;
 
     /// \brief Returns true if the multipatch object is a closed
     /// manifold (ie. it has no boundaries)
@@ -302,6 +304,12 @@ public:
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
     void locatePoints(const gsMatrix<T> & points, gsVector<index_t> & pids, gsMatrix<T> & preim, const T accuracy = 1e-6) const;
 
+    /// @brief For each point in \a points located on patch pid1, locates the parametric coordinates of the point
+    ///
+    /// \param pid2 vector containing for each point the patch id where it belongs (or -1 if not found)
+    /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
+    void locatePoints(const gsMatrix<T> & points, index_t pid1, gsVector<index_t> & pid2, gsMatrix<T> & preim) const;
+    
 protected:
 
     void setIds();

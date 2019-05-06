@@ -22,7 +22,7 @@ namespace gismo
 {
 
 /*
-template<unsigned d, class T>
+template<short_t d, class T>
 gsHBSplineBasis<d,T>::gsHBSplineBasis(gsBSplineBasis<T> &  bsbasis)
     : gsHTensorBasis<d,T>( gsTensorBSplineBasis<d,T>(&bsbasis) )
 {
@@ -35,7 +35,7 @@ gsHBSplineBasis<d,T>::gsHBSplineBasis(gsBSplineBasis<T> &  bsbasis)
 }
 */
 
-template<unsigned d, class T>
+template<short_t d, class T>
 typename gsHBSplineBasis<d,T>::BoundaryBasisType * gsHBSplineBasis<d,T>::basisSlice(index_t dir_fixed,T par ) const
 {
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
@@ -56,7 +56,7 @@ typename gsHBSplineBasis<d,T>::BoundaryBasisType * gsHBSplineBasis<d,T>::basisSl
     return bBasis;
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 std::ostream & gsHBSplineBasis<d,T>::print(std::ostream &os) const
 {
     os << "Hierarchical B-spline ";
@@ -66,14 +66,14 @@ std::ostream & gsHBSplineBasis<d,T>::print(std::ostream &os) const
 }
 
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsHBSplineBasis<d,T>::initialize()
 {
     // Sets everything related to gsHTensorBasis
     // this->update_structure(); // base class update
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsHBSplineBasis<d,T>::evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     int lvl = this->levelOf(i);
@@ -81,7 +81,7 @@ void gsHBSplineBasis<d,T>::evalSingle_into(unsigned i, const gsMatrix<T> & u, gs
         this->m_xmatrix[lvl][ i - this->m_xmatrix_offset[lvl] ], u, result);
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsHBSplineBasis<d,T>::derivSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     int lvl = this->levelOf(i);
@@ -89,7 +89,7 @@ void gsHBSplineBasis<d,T>::derivSingle_into(unsigned i, const gsMatrix<T> & u, g
         this->m_xmatrix[lvl][ i - this->m_xmatrix_offset[lvl] ], u, result);
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsHBSplineBasis<d,T>::deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     int lvl = this->levelOf(i);
@@ -97,7 +97,7 @@ void gsHBSplineBasis<d,T>::deriv2Single_into(unsigned i, const gsMatrix<T> & u, 
         this->m_xmatrix[lvl][ i - this->m_xmatrix_offset[lvl] ], u, result);
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     gsVector<unsigned> nact;
@@ -124,7 +124,7 @@ void gsHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result)
     }
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsHBSplineBasis<d,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     gsVector<unsigned> nact;
@@ -151,7 +151,7 @@ void gsHBSplineBasis<d,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result
     }
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsHBSplineBasis<d,T>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     gsVector<unsigned> nact;
@@ -184,7 +184,7 @@ void gsHBSplineBasis<d,T>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resul
     }
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& result)
 {
     result.clear();
@@ -224,7 +224,7 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& resul
 }
 
 
-template<unsigned d, class T>
+template<short_t d, class T>
 gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const
 {
     int size1= 0;int size2 = 0;
@@ -286,7 +286,7 @@ gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVe
     return result;
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
     int size1= 0;int size2 = 0;
@@ -383,7 +383,7 @@ gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsS
     return result;
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
                                                      const std::vector<gsSortedVector<unsigned> >& n,
                                                      const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
@@ -497,7 +497,7 @@ namespace internal
 {
 
 /// Get a Hierarchical B-spline basis from XML data
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsXml< gsHBSplineBasis<d,T> >
 {
 private:

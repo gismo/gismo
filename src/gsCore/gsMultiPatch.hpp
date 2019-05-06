@@ -24,6 +24,17 @@ namespace gismo
 {
 
 template<class T>
+gsMultiPatch<T> gsMultiPatch<T>::coord(const index_t c) const
+{
+    gsMultiPatch<T> result;
+    for ( const_iterator it = m_patches.begin(); it != m_patches.end(); ++it )
+    {
+        result.addPatch( (*it)->coord(c) );
+    }
+    return result;
+}
+
+template<class T>
 gsMultiPatch<T>::gsMultiPatch(const gsGeometry<T> & geo )
     : BaseA( geo.parDim() )
 {
@@ -132,14 +143,14 @@ std::string gsMultiPatch<T>::detail() const
 }
 
 template<class T>
-int gsMultiPatch<T>::geoDim() const
+short_t gsMultiPatch<T>::geoDim() const
 {
     GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
     return m_patches[0]->geoDim();
 }
 
 template<class T>
-int gsMultiPatch<T>::coDim() const
+short_t gsMultiPatch<T>::coDim() const
 {
     GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
     return m_patches[0]->geoDim() - m_dim;
@@ -665,6 +676,37 @@ void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points,
                  && (tmp.array() <= pr.col(1).array()).all() )
             {
                 pids[i] = k;
+                preim.col(i) = tmp;
+                break;
+            }
+        }
+    }
+}
+
+template<class T>
+void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points, index_t pid1,
+                                   gsVector<index_t> & pid2, gsMatrix<T> & preim) const
+{
+    // Assumes points are found on pid1 and possibly on one more patch
+    pid2.resize(points.cols());
+    pid2.setConstant(-1); // -1 implies not in the domain
+    preim.resize(parDim(), points.cols());//uninitialized by default
+    gsMatrix<T> pt, pr, tmp;
+
+    for (index_t i = 0; i!=pid2.size(); ++i)
+    {
+        pt = points.col(i);
+
+        for (std::size_t k = 0; k!= m_patches.size(); ++k)
+        {
+            if (pid1==(index_t)k) continue; // skip pid1
+
+            pr = m_patches[k]->parameterRange();
+            m_patches[k]->invertPoints(pt, tmp);
+            if ( (tmp.array() >= pr.col(0).array()).all()
+                 && (tmp.array() <= pr.col(1).array()).all() )
+            {
+                pid2[i] = k;
                 preim.col(i) = tmp;
                 break;
             }

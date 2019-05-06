@@ -79,30 +79,33 @@ namespace expr
 #  define AutoReturn_t typename util::conditional<ScalarValued,Scalar,MatExprType>::type
 #endif
 
+template<class T> class gsFeSpace;
 template<class T> class gsFeVariable;
 template<class T> class gsFeSolution;
 template<class E> class symm_expr;
 template<class E> class trace_expr;
 template<class E> class norm_expr;
 template<class E> class sqNorm_expr;
+template<class E> class det_expr;
 template<class E> class value_expr;
 template<class E> class asdiag_expr;
 template<class E> class col_expr;
 template<class T> class meas_expr;
 template<class E> class inv_expr;
 template<class E> class tr_expr;
+template<class E> class sign_expr;
 template<class T> class cdiam_expr;
 template<class E> class temp_expr;
 template<class E1, class E2, bool = E1::ColBlocks> class mult_expr
 {using E1::GISMO_ERROR_mult_expr_has_invalid_template_arguments;};
 
 /*
-   Traits class for expressions
- */
+ Traits class for expressions
+*/
 template <typename E> struct expr_traits
 {
-    typedef real_t Scalar;//todo
-    typedef const E Nested_t;
+  typedef real_t Scalar;//todo
+  typedef const E Nested_t;
 };
 
 template <class E> struct is_arithmetic{enum{value=0};};
@@ -112,65 +115,71 @@ template <typename E, bool = is_arithmetic<E>::value >
 class _expr {using E::GISMO_ERROR_expr;};
 
 /**
-   \brief Base class for all expressions
- */
+ \brief Base class for all expressions
+*/
 template <typename E>
 class _expr<E, false>
 {
 protected://private:
-     _expr(){}
-     _expr(const _expr&) { }
+    _expr(){}
+    _expr(const _expr&) { }
     //friend E;//
 public:
 
     enum {ScalarValued = 0, ColBlocks = 0};
     //todo: ValueType=0,1,2 (scalar,vector,matrix)
+    //Space = 0,1,2 (instead of rowSpan ColSpan ?)
+    enum {Space = 0};
 
     //typedef typename E::Nested_t Nested_t;
     //typedef typename E::Scalar   Scalar;
     typedef typename expr_traits<E>::Nested_t Nested_t;
     typedef typename expr_traits<E>::Scalar   Scalar;
 
-    /// Prints the expression as a string to \a os
-    void print(std::ostream &os) const
-    {
-        static_cast<E const&>(*this).print(os);
-    /*
-        std::string tmp(__PRETTY_FUNCTION__);
-        tmp.erase(0,74);
-        tmp.erase(tmp.size()-42,42);
-        size_t pos = 0;
-        while((pos=tmp.find(", false",0))!=std::string::npos) tmp.erase(pos,7);
-        while((pos=tmp.find(", true",0))!=std::string::npos) tmp.erase(pos,6);
-        while((pos=tmp.find("gismo::expr::",0))!=std::string::npos) tmp.erase(pos,13);
-        while((pos=tmp.find("_expr",0))!=std::string::npos) tmp.erase(pos,5);
-        while((pos=tmp.find("<double>",0))!=std::string::npos) tmp.erase(pos,8);
-        // while((pos=tmp.find("<long double>",0))!=std::string::npos) tmp.erase(pos,13);
-        // while((pos=tmp.find("<float>",0))!=std::string::npos) tmp.erase(pos,7);
-        tmp.erase(std::remove_if(tmp.begin(),tmp.end(),::isspace),tmp.end());
-        os<<tmp<<"\n";
-    */
-    }
+  /// Prints the expression as a string to \a os
+  void print(std::ostream &os) const
+  {
+      static_cast<E const&>(*this).print(os);
+  /*
+      std::string tmp(__PRETTY_FUNCTION__);
+      tmp.erase(0,74);
+      tmp.erase(tmp.size()-42,42);
+      size_t pos = 0;
+      while((pos=tmp.find(", false",0))!=std::string::npos) tmp.erase(pos,7);
+      while((pos=tmp.find(", true",0))!=std::string::npos) tmp.erase(pos,6);
+      while((pos=tmp.find("gismo::expr::",0))!=std::string::npos) tmp.erase(pos,13);
+      while((pos=tmp.find("_expr",0))!=std::string::npos) tmp.erase(pos,5);
+      while((pos=tmp.find("<double>",0))!=std::string::npos) tmp.erase(pos,8);
+      // while((pos=tmp.find("<long double>",0))!=std::string::npos) tmp.erase(pos,13);
+      // while((pos=tmp.find("<float>",0))!=std::string::npos) tmp.erase(pos,7);
+      tmp.erase(std::remove_if(tmp.begin(),tmp.end(),::isspace),tmp.end());
+      os<<tmp<<"\n";
+  */
+  }
 
-    std::ostream & printDetail(std::ostream &os) const
-    {
-        os << (isScalar() ? "Scalar " :
-              (isVector() ? "Vector " :
-              (isMatrix() ? "Matrix " :
-               "Unknown ") ) )
-           <<"expression of size "<< rows() // bug: this is not fixed, or may not be known
-           << " x "<<cols()<<"\n";
-        print(os);
-        return os;
-    }
+  std::ostream & printDetail(std::ostream &os) const
+  {
+      os << (isScalar() ? "Scalar " :
+            (isVector() ? "Vector " :
+            (isMatrix() ? "Matrix " :
+             "Unknown ") ) )
+         <<"expression of size "<< rows() // bug: this is not fixed, or may not be known
+         << " x "<<cols()<<"\n";
+      print(os);
+      return os;
+  }
 
-    /// Evaluates the expression at evaluation point indexed by \a k
-    MatExprType eval(const index_t k) const
+  /// Evaluates the expression at evaluation point indexed by \a k
+  MatExprType eval(const index_t k) const
     { return static_cast<E const&>(*this).eval(k); }
 
     /// Returns the transpose of the expression
     tr_expr<E> tr() const
     { return tr_expr<E>(static_cast<E const&>(*this)); }
+
+    /// Returns the sign of the expression
+    sign_expr<E> sgn() const
+    { return sign_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns an evaluation of the (sub-)expression in temporary memory
     temp_expr<E> temp() const
@@ -187,6 +196,10 @@ public:
     /// Returns the Euclidean norm of the expression
     norm_expr<E> norm() const
     { return norm_expr<E>(static_cast<E const&>(*this)); }
+
+    /// Returns the determinant of the expression
+    det_expr<E> det() const
+    { return det_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the squared Euclidean norm of the expression
     sqNorm_expr<E> sqNorm() const
@@ -228,7 +241,7 @@ public:
     ///\brief Returns true iff the expression is matrix-valued.
     static bool isMatrix() { return rowSpan() && colSpan(); }
 
-    static bool rowSpan() { return E::rowSpan(); }
+    static constexpr bool rowSpan() { return E::rowSpan(); }
 
     static bool colSpan() { return E::colSpan(); }
 
@@ -240,17 +253,17 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { static_cast<E const&>(*this).parse(evList); }
 
-    /// Returns the gsFeVariable that is found on the left-most of the
+    /// Returns the space that is found on the left-most of the
     /// expression
-    const gsFeVariable<Scalar> & rowVar() const
+    const gsFeSpace<Scalar> & rowVar() const
     {
         // assert ValueType!=0
         return static_cast<E const&>(*this).rowVar();
     }
 
-    /// Returns the gsFeVariable that is found on the right-most of
+    /// Returns the space that is found on the right-most of
     /// the expression
-    const gsFeVariable<Scalar> & colVar() const
+    const gsFeSpace<Scalar> & colVar() const
     {
         // assert ValueType==2
         return static_cast<E const&>(*this).colVar();
@@ -277,9 +290,9 @@ class gsNullExpr : public _expr<gsNullExpr<T> >
 {
 public:
 
-    operator const gsFeVariable<T> & () const
+    operator const gsFeSpace<T> & () const
     {
-        static gsFeVariable<T> vv;
+        static gsFeSpace<T> vv;
         return vv;
     }
 
@@ -290,9 +303,9 @@ public:
     inline void setFlag() const {/* gsInfo<<"gsNullExpr emtpy flag\n"; */ }
     void parse(gsSortedVector<const gsFunctionSet<T>*> &) const { }
 
-    const gsFeVariable<T> & rowVar() const { GISMO_ERROR("gsNullExpr"); }
-    const gsFeVariable<T> & colVar() const { GISMO_ERROR("gsNullExpr"); }
-    static bool rowSpan() {return false; }
+    const gsFeSpace<T> & rowVar() const { GISMO_ERROR("gsNullExpr"); }
+    const gsFeSpace<T> & colVar() const { GISMO_ERROR("gsNullExpr"); }
+    static constexpr bool rowSpan() {return false; }
     static bool colSpan() {return false;}
 
     void print(std::ostream &os) const { os << "NullExpr"; }
@@ -304,6 +317,143 @@ public:
     }
 //private:
     gsNullExpr() {}
+};
+
+
+template<class E>
+class symbol_expr : public _expr<E>
+{
+    typedef real_t T;
+
+    friend class gismo::gsExprHelper<T>;
+protected:
+    //const gsFuncData<T>    * m_fd2; // more data when needed
+    const gsFunctionSet<T> * m_fs; ///< Evaluation source for this FE variable
+    const gsFuncData<T>    * m_fd; ///< Temporary variable storing flags and evaluation data
+    index_t m_d;                   ///< Dimension of this (scalar or vector) variable
+    const gsMapData<T>     * m_md; ///< If set, the variable is composed with a geometry map
+    // comp(u,G)
+
+public:
+    typedef T Scalar;
+
+    enum {Space = 4};// remove!
+
+    /// Returns the function source
+    const gsFunctionSet<T> & source() const {return *m_fs;}
+
+    /// Returns the function data
+    const gsFuncData<T> & data() const {return *m_fd;}
+
+    /// Returns the mapping data (precondition: composed()==true)
+    const gsMapData<T> & mapData() const {return *m_md;}
+
+    /// Returns true if the variable is a composition
+    bool composed() const {return NULL!=m_md;}
+
+private:
+
+    void setSource(const gsFunctionSet<T> & fs) { m_fs = &fs;}
+    void setData(const gsFuncData<T> & val) { m_fd = &val;}
+    void clear() { m_fs = NULL; }
+    // gsFuncData<T> & data() {return *m_fd;}
+    // gsMapData<T> & mapData() {return *m_md;}
+
+protected:
+
+    explicit symbol_expr(index_t _d) : m_fs(NULL), m_fd(NULL), m_d(_d), m_md(NULL) { }
+
+    void registerData(const gsFunctionSet<T> & fs, const gsFuncData<T> & val, index_t d)
+    {
+        GISMO_ASSERT(NULL==m_fs, "gsFeVariable: already registered");
+        m_fs = &fs ;
+        m_fd = &val;
+        m_d  = d;
+        m_md = NULL;
+    }
+
+    void registerData(const gsFunctionSet<T> & fs, const gsFuncData<T> & val, index_t d,
+                      const gsMapData<T> & md)
+    {
+        registerData(fs,val,d);
+        m_md  = &md;
+    }
+
+public:
+
+    bool isValid() const { return NULL!=m_fd && NULL!=m_fs; }
+
+    // component
+    // expr comp(const index_t i) const { return comp_expr<T>(*this,i); }
+    // eval(k).col(i)
+
+
+    // The evaluation return rows for (basis) functions and columns
+    // for (coordinate) components
+    MatExprType eval(const index_t k) const
+    { return m_fd->values[0].col(k).blockDiag(m_d); } //!!
+    //{ return m_fd->values[0].col(k); }
+
+    const gsFeSpace<T> & rowVar() const {return gsNullExpr<T>::get();}
+    const gsFeSpace<T> & colVar() const {return gsNullExpr<T>::get();}
+
+    static constexpr bool colSpan() {return false;}
+
+    index_t rows() const
+    {
+        GISMO_ASSERT(NULL!=m_fs, "FeVariable: Function member not registered");
+        GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+
+        /*
+        gsDebugVar(m_fd->flags & NEED_VALUE);
+        gsDebugVar(m_fd->values[0].rows());
+        gsDebugVar(m_fd->flags & NEED_ACTIVE);
+        gsDebugVar(m_fd->actives.rows());
+        gsDebugVar(m_fd->flags & NEED_DERIV);
+        */
+
+        // note: precomputation is needed
+        if (m_fd->flags & NEED_VALUE)
+        {return m_d * m_fd->values[0].rows();}
+        if (m_fd->flags & NEED_ACTIVE) // note: gsFunction coeff ??
+        {return m_d * m_fd->actives.rows();}
+        if (m_fd->flags & NEED_DERIV)
+        {return m_d * m_fd->values[0].rows();}
+        GISMO_ERROR("Cannot deduce row size.");
+    }
+
+    index_t cols() const { return m_d; }
+
+    void setFlag() const
+    {
+        GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+        m_fd->flags |= NEED_VALUE;
+        if (NULL!=m_md) m_md->flags |= NEED_VALUE;
+    }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+        evList.push_sorted_unique(m_fs);
+        m_fd->flags |= NEED_VALUE;
+        if (NULL!=m_md) m_md->flags |= NEED_VALUE;
+    }
+
+    void print(std::ostream &os) const { os << "u"; }
+
+public:
+
+    /// Returns the vector dimension of the FE variable
+    index_t dim() const { return m_d;}
+
+    /// Returns the parameter domain dimension the FE variable
+    index_t parDim() const
+    {
+        return m_fs->domainDim();
+        //return m_fd->dim.first;
+    }
+
+    index_t cSize()  const { return m_fd->values[0].rows(); } // coordinate size
 };
 
 /*
@@ -329,10 +479,10 @@ public:
     index_t cols() const { return 1; }
     void setFlag() const { _c.setFlag();}
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const { _c.parse(evList); }
-    static bool rowSpan() {return E::rowSpan();}
+    static constexpr bool rowSpan() {return E::rowSpan();}
     static bool colSpan() {return false;}
-    const gsFeVariable<Scalar> & rowVar() const { return _c.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const { return _c.colVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _c.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _c.colVar(); }
 
     void print(std::ostream &os) const { os<<_c<<"["<<_i<<"]"; }
 };
@@ -352,6 +502,7 @@ public:
 
 public:
     enum {ScalarValued = 1};
+    enum {Space = 0};
 
     inline Scalar eval(const index_t k) const { return _c; }
 
@@ -360,10 +511,10 @@ public:
     index_t cols() const { return 0; }
     void setFlag() const { }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> &) const { }
-    static bool rowSpan() {return false;}
+    static constexpr bool rowSpan() {return false;}
     static bool colSpan() {return false;}
-    const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>(); }
-    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
+    const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>(); }
+    const gsFeSpace<T> & colVar() const { return gsNullExpr<T>(); }
 
     void print(std::ostream &os) const { os<<_c; }
 };
@@ -379,6 +530,8 @@ class gsGeometryMap : public _expr<gsGeometryMap<T> >
     //index_t d, n;
 
 public:
+
+    enum {Space = 3};
 
     /// Returns the function source
     const gsFunctionSet<T> & source() const {return *m_fs;}
@@ -412,17 +565,19 @@ protected:
         m_fd = &val;
     }
 
+public:
+
     /// Returns true iff the source function has been set
     bool isValid() const { return NULL!=m_fs; }
 
     index_t rows() const { return m_fd->dim.second; }
     index_t cols() const { return 1; }
 
-    static bool rowSpan() {return false;}
-    static bool colSpan() {return false;}
+    static constexpr bool rowSpan() {return false;}
+    static constexpr bool colSpan() {return false;}
 
-    const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>(); }
-    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
+    const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>(); }
+    const gsFeSpace<T> & colVar() const { return gsNullExpr<T>(); }
 
     void parse(gsSortedVector<const gsFunctionExpr<T>*> & evList) const
     {
@@ -491,9 +646,9 @@ public:
     inline void setFlag() const { }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & ) const { }
 
-    const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>(); }
-    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
-    static bool rowSpan() {return false; }
+    const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>(); }
+    const gsFeSpace<T> & colVar() const { return gsNullExpr<T>(); }
+    static constexpr bool rowSpan() {return false; }
     static bool colSpan() {return false;}
 
     void print(std::ostream &os) const
@@ -521,7 +676,7 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> &) const { }
     const gsFeVariable<T> & rowVar() const { gsNullExpr<T>(); }
     const gsFeVariable<T> & colVar() const { gsNullExpr<T>(); }
-    static bool rowSpan() {return false; }
+    static constexpr bool rowSpan() {return false; }
     static bool colSpan() {return false;}
 
     void print(std::ostream &os) const
@@ -533,7 +688,7 @@ template <typename T>
 struct expr_traits<gsFeVariable<T> >
 {
     typedef T Scalar;
-    typedef gsFeVariable<T> const & Nested_t;
+    typedef const gsFeVariable<T> & Nested_t;
 };
 
 /**
@@ -543,139 +698,14 @@ struct expr_traits<gsFeVariable<T> >
    belongs to an isogeometric function space (derived class gsFeSpace)
 */
 template<class T>
-class gsFeVariable  : public _expr<gsFeVariable<T> >
+class gsFeVariable  : public symbol_expr< gsFeVariable<T> >
 {
-    friend class gsNullExpr<T>;
-
-protected:
-    //const gsFuncData<T>    * m_fd2; // more data when needed
-    const gsFunctionSet<T> * m_fs; ///< Evaluation source for this FE variable
-    const gsFuncData<T>    * m_fd; ///< Temporary variable storing flags and evaluation data
-    index_t m_d;                   ///< Dimension of this (scalar or vector) variable
-    const gsMapData<T>     * m_md; ///< If set, the variable is composed with a geometry map
-    // comp(u,G)
-
-public:
-    typedef T Scalar;
-
-    /// Returns the function source
-    const gsFunctionSet<T> & source() const {return *m_fs;}
-
-    /// Returns the function data
-    const gsFuncData<T> & data() const {return *m_fd;}
-
-    /// Returns the mapping data (precondition: composed()==true)
-    const gsMapData<T> & mapData() const {return *m_md;}
-
-    /// Returns true if the variable is a composition
-    bool composed() const {return NULL!=m_md;}
-
-private:
     friend class gismo::gsExprHelper<T>;
-
-    void setSource(const gsFunctionSet<T> & fs) { m_fs = &fs;}
-    void setData(const gsFuncData<T> & val) { m_fd = &val;}
-    void clear() { m_fs = NULL; }
-    // gsFuncData<T> & data() {return *m_fd;}
-    // gsMapData<T> & mapData() {return *m_md;}
-
+    typedef symbol_expr< gsFeVariable<T> > Base;
 protected:
-
-    explicit gsFeVariable(index_t _d = 1) : m_fs(NULL), m_fd(NULL), m_d(_d), m_md(NULL) { }
-
-    void registerData(const gsFunctionSet<T> & fs, const gsFuncData<T> & val, index_t d)
-    {
-        GISMO_ASSERT(NULL==m_fs, "gsFeVariable: already registered");
-        m_fs = &fs ;
-        m_fd = &val;
-        m_d  = d;
-        m_md = NULL;
-    }
-
-    void registerData(const gsFunctionSet<T> & fs, const gsFuncData<T> & val, index_t d,
-                      const gsMapData<T> & md)
-    {
-        registerData(fs,val,d);
-        m_md  = &md;
-    }
-
-    bool isValid() const { return NULL!=m_fd && NULL!=m_fs; }
-
+    explicit gsFeVariable(index_t _d = 1) : Base(_d) { }
 public:
-
-    // component
-    // expr comp(const index_t i) const { return comp_expr<T>(*this,i); }
-    // eval(k).col(i)
-
-
-    // The evaluation return rows for (basis) functions and columns
-    // for (coordinate) components
-    MatExprType eval(const index_t k) const
-    { return m_fd->values[0].col(k).blockDiag(m_d); } //!!
-    //{ return m_fd->values[0].col(k); }
-
-    const gsFeVariable<T> & rowVar() const {return *this;}
-    const gsFeVariable<T> & colVar() const {return gsNullExpr<T>::get();}
-
-    static bool rowSpan() {return true; } // note: gsFunction coeff ??
-    static bool colSpan() {return false;}
-
-    index_t rows() const
-    {
-        GISMO_ASSERT(NULL!=m_fs, "FeVariable: Function member not registered");
-        GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-
-        /*
-        gsDebugVar(m_fd->flags & NEED_VALUE);
-        gsDebugVar(m_fd->values[0].rows());
-        gsDebugVar(m_fd->flags & NEED_ACTIVE);
-        gsDebugVar(m_fd->actives.rows());
-        gsDebugVar(m_fd->flags & NEED_DERIV);
-        */
-
-        // note: precomputation is needed
-        if (m_fd->flags & NEED_VALUE)
-        {return m_d * m_fd->values[0].rows();}
-        if (m_fd->flags & NEED_ACTIVE) // note: gsFunction coeff ??
-        {return m_d * m_fd->actives.rows();}
-        if (m_fd->flags & NEED_DERIV)
-        {return m_d * m_fd->values[0].rows();}
-        GISMO_ERROR("Cannot deduce row size.");
-    }
-
-    index_t cols() const { return m_d; }
-
-    void setFlag() const
-    {
-        GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        m_fd->flags |= NEED_VALUE;
-        if (NULL!=m_md) m_md->flags |= NEED_VALUE;
-    }
-
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
-    {
-        GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(m_fs);
-        m_fd->flags |= NEED_VALUE;
-        if (NULL!=m_md) m_md->flags |= NEED_VALUE;
-    }
-
-    void print(std::ostream &os) const { os << "u"; }
-
-public:
-
-    /// Returns the vector dimension of the FE variable
-    index_t dim() const { return m_d;}
-
-    /// Returns the parameter domain dimension the FE variable
-    index_t parDim() const
-    {
-        return m_fs->domainDim();
-        //return m_fd->dim.first;
-    }
-
-    index_t cSize()  const { return m_fd->values[0].rows(); } // coordinate size
-
+    static constexpr bool rowSpan() {return false; }
 };
 
 /**
@@ -686,12 +716,15 @@ public:
    belongs to an isogeometric function space
 */
 template<class T>
-class gsFeSpace :public gsFeVariable<T>
+class gsFeSpace :public symbol_expr< gsFeSpace<T> >
+//class gsFeSpace : public gsFeVariable<T>
 {
-protected:
+    friend class gsNullExpr<T>;
     friend class gsFeSolution<T>;
 
-    typedef gsFeVariable<T> Base;
+protected:
+    typedef symbol_expr< gsFeSpace<T> > Base;
+    //typedef gsFeVariable<T> Base;
 
     index_t             m_id;
 
@@ -705,7 +738,17 @@ protected:
     gsMatrix<T> m_fixedDofs;
 
 public:
+    static constexpr bool rowSpan() {return true; }
+
+public:
+
+    typedef const gsFeSpace & Nested_t;
+
+    enum {Space = 1};
+
     typedef T Scalar;
+
+    const gsFeSpace<T> & rowVar() const {return *this;}
 
     gsDofMapper & mapper() {return m_mapper;}
     const gsDofMapper & mapper() const {return m_mapper;}
@@ -880,7 +923,7 @@ public:
         return res;
     }
 
-    static bool rowSpan() {return false; }
+    static constexpr bool rowSpan() {return false; }
     static bool colSpan() {return false;}
 
     index_t rows() const {return _u.dim(); }
@@ -1030,7 +1073,7 @@ public:
         return res;
     }
 
-    static bool rowSpan() {return false;}
+    static constexpr bool rowSpan() {return false;}
     static bool colSpan() {return false;}
 
     index_t rows() const {return _u.dim();}
@@ -1074,6 +1117,7 @@ public:
 
 public:
     enum {ColBlocks = E::ColBlocks};
+    enum {Space = (E::Space==0?0:(E::Space==1?2:1))};
 
     MatExprType eval(const index_t k) const
     {
@@ -1107,10 +1151,10 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); }
 
-    const gsFeVariable<Scalar> & rowVar() const { return _u.colVar(); }
-    const gsFeVariable<Scalar> & colVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.colVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.rowVar(); }
 
-    static bool rowSpan() {return E::colSpan();}
+    static constexpr bool rowSpan() {return E::colSpan();}
     static bool colSpan() {return E::rowSpan();}
 
     void print(std::ostream &os) const { os<<"("; _u.print(os); os <<")'"; }
@@ -1169,10 +1213,10 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); }
 
-    const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const { return _u.colVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
 
-    static bool rowSpan() {return E::rowSpan();}
+    static constexpr bool rowSpan() {return E::rowSpan();}
     static bool colSpan() {return E::colSpan();}
 
     void print(std::ostream &os) const { _u.print(os); }
@@ -1187,6 +1231,7 @@ class trace_expr  : public _expr<trace_expr<E> >
 public:
     typedef typename E::Scalar Scalar;
     enum {ScalarValued = 0};
+    enum {Space = E::Space};
 private:
     typename E::Nested_t _u;
     mutable gsMatrix<Scalar> res;
@@ -1206,8 +1251,9 @@ public:
         const index_t cb = _u.rows();
         const index_t r  = _u.cols() / cb;
         res.resize(r, 1);
-        for (index_t i = 0; i!=r; ++i)
+        for (index_t i = 0; i!=r; ++i){
             res(i,0) = tmp.middleCols(i*cb,cb).trace();
+        }
         return res;
     }
 
@@ -1221,14 +1267,63 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); }
 
-    const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const { return _u.colVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
 
-    static bool rowSpan() {return E::rowSpan();}
+    static constexpr bool rowSpan() {return E::rowSpan();}
     static bool colSpan() {return E::colSpan();}
 
     void print(std::ostream &os) const { os << "trace("; _u.print(os); os<<")"; }
 };
+
+template<class E>
+class reshape_expr  : public _expr<reshape_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
+    enum {ScalarValued = 0};
+private:
+    typename E::Nested_t _u;
+    index_t _n, _m;
+    mutable gsMatrix<Scalar> tmp;
+
+public:
+
+    //the reshaping is done column-wise
+    reshape_expr(_expr<E> const& u, index_t n, index_t m) : _u(u), _n(n), _m(m)
+    {
+        //GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension"); //
+    }
+
+    const gsAsConstMatrix<Scalar> eval(const index_t k) const
+    {
+        // Note: this assertion would fail in the constructore!
+        GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension");
+        tmp = _u.eval(k);
+        return gsAsConstMatrix<Scalar>(tmp.data(),_n,_m);
+    }
+
+    index_t rows() const { return _n; }
+    index_t cols() const { return _m; }
+    void setFlag() const { _u.setFlag(); }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    { _u.parse(evList); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+
+    static constexpr bool rowSpan() {return E::rowSpan();}
+    static bool colSpan() {return E::colSpan();}
+
+    void print(std::ostream &os) const { os << "reshape("; _u.print(os); os<<","<<_n<<","<<_m<<")"; }
+};
+
+/// Reshape an expression
+template <typename E> EIGEN_STRONG_INLINE
+reshape_expr<E> const reshape(E const & u, index_t n, index_t m)
+{ return reshape_expr<E>(u, n, m); }
+
 
 /*
    Expression for the diagonal(s) of a (matrix) expression
@@ -1271,10 +1366,10 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); }
 
-    const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const { return _u.colVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
 
-    static bool rowSpan() {return _u.rowSpan();}
+    static constexpr bool rowSpan() {return _u.rowSpan();}
     static bool colSpan() {return _u.colSpan();}
 
     void print(std::ostream &os) const { os << "trace("; _u.print(os); os<<")"; }
@@ -1293,14 +1388,14 @@ public:                                                                 \
     index_t cols() const { return isSv ? 0 : _u.cols(); }               \
     void setFlag() const { _u.setFlag(); }                              \
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const { _u.parse(evList); } \
-    const gsFeVariable<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();} \
-    const gsFeVariable<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();} \
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();} \
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();} \
     void print(std::ostream &os) const                                  \
     { os << #name <<"("; _u.print(os); os <<")"; }                      \
-    static bool rowSpan() {return E::rowSpan();}                         \
+    static constexpr bool rowSpan() {return E::rowSpan();}                         \
     static bool colSpan() {return E::colSpan();} };
-    // const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
-    // const gsFeVariable<Scalar> & colVar() const { return _u.colVar(); }
+    // const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    // const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
 
 /// Eucledian Norm
 GISMO_EXPR_VECTOR_EXPRESSION(norm,norm,1);
@@ -1314,6 +1409,9 @@ GISMO_EXPR_VECTOR_EXPRESSION(inv,inverse,0);
 // GISMO_EXPR_VECTOR_EXPRESSION(sum,array().sum,1)
 // GISMO_EXPR_VECTOR_EXPRESSION(sqrt,array().sqrt,0)
 // GISMO_EXPR_VECTOR_EXPRESSION(abs,array().abs,0)
+
+//Determinant
+GISMO_EXPR_VECTOR_EXPRESSION(det,determinant,1);
 
 #undef GISMO_EXPR_VECTOR_EXPRESSION
 
@@ -1345,10 +1443,10 @@ public:
         return res;
     }
 
-    const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const { return _u.colVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
 
-    static bool rowSpan() {return E::rowSpan();}
+    static constexpr bool rowSpan() {return E::rowSpan();}
     static bool colSpan() {return E::colSpan();}
 
     index_t rows() const { return _u.rows(); }
@@ -1385,15 +1483,171 @@ public:
     void setFlag() const { }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & ) const {  }
 
-    static bool rowSpan() {return false;}
+    static constexpr bool rowSpan() {return false;}
     static bool colSpan() {return false;}
 
-    const gsFeVariable<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
-    const gsFeVariable<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
 
     void print(std::ostream &os) const { os << "id("<<_dim <<")";}
 };
 
+/**
+   Expression for the sign of another expression
+ */
+template<class E>
+class sign_expr : public _expr<sign_expr<E> >
+{
+    typename E::Nested_t _u;
+public:
+    typedef typename E::Scalar Scalar;
+    enum {ScalarValued = 1 };
+    enum {Space = E::Space};
+
+    sign_expr(_expr<E> const& u) : _u(u) { }
+
+    Scalar eval(const index_t k) const
+    {
+        const Scalar v = _u.val().eval(k);
+        return ( v>0 ? 1 : ( v<0 ? -1 : 0 ) );
+    }
+
+    static index_t rows() { return 0; }
+    static index_t cols() { return 0; }
+
+    void setFlag() const { _u.setFlag(); }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & ) const {  }
+
+    static bool isScalar() { return true; }
+
+    static constexpr bool rowSpan() {return false;}
+    static bool colSpan() {return false;}
+
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+
+    void print(std::ostream &os) const { os<<"sgn("; _u.print(os); os <<")"; }
+};
+
+
+/**
+computes outer products of a matrix by a space of dimension > 1
+[Jg Jg Jg] * Jb ..
+(d x d^2)  * (d^2 x N*d)  --> (d x N*d)
+*/
+template <typename E1, typename E2>
+class matrix_by_space_expr  : public _expr<matrix_by_space_expr<E1,E2> >
+{
+public:
+    typedef typename E1::Scalar Scalar;
+    enum {ScalarValued = 0, ColBlocks = 1};
+    enum {Space = E2::Space};
+private:
+    typename E1::Nested_t _u;
+    typename E2::Nested_t _v;
+    mutable gsMatrix<Scalar> res;
+
+public:
+    matrix_by_space_expr(E1 const& u, E2 const& v) : _u(u), _v(v) { }
+
+
+    // choose if ColBlocks
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        const index_t r   = _u.rows();
+        const index_t N  = _v.cols() / (r*r);
+
+        const MatExprType uEv        = _u.eval(k);
+        const MatExprType vEv  = _v.eval(k);
+
+        res.resize(r, N*r*r);
+        // gsDebugVar(res.cols());
+        for (index_t s = 0; s!=r; ++s)
+            for (index_t i = 0; i!=N; ++i)
+            {
+                res.middleCols((s*N + i)*r,r).noalias() =
+                uEv.col(s) * vEv.middleCols((s*N + i)*r,r).row(s);
+                //uEv*vEv.middleCols((s*N + i)*r,r);
+            }
+        //meaning: [Jg Jg Jg] * Jb ..
+        return res;
+    }
+
+    index_t rows() const { return _u.cols(); }
+    index_t cols() const { return _v.cols(); }
+    void setFlag() const { _u.setFlag(); _v.setFlag(); }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    { _u.parse(evList); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _v.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }
+
+    static constexpr bool rowSpan() {return E2::rowSpan();}
+    static bool colSpan() {return E2::colSpan();}
+
+    void print(std::ostream &os) const { os << "matrix_by_space("; _u.print(os); os<<")"; }
+};
+
+/**
+computes outer products of a matrix by a space of dimension > 1
+[Jg Jg Jg] * Jb ..
+(d x d^2)  * (d^2 x N*d)  --> (d x N*d)
+*/
+template <typename E1, typename E2>
+class matrix_by_space_expr_tr  : public _expr<matrix_by_space_expr_tr<E1,E2> >
+{
+public:
+    typedef typename E1::Scalar Scalar;
+    enum {ScalarValued = 0, ColBlocks = 1};
+    enum {Space = E2::Space};
+private:
+    typename E1::Nested_t _u;
+    typename E2::Nested_t _v;
+    mutable gsMatrix<Scalar> res;
+
+public:
+    matrix_by_space_expr_tr(E1 const& u, E2 const& v) : _u(u), _v(v) { }
+
+
+    // choose if ColBlocks
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        const index_t r   = _u.rows();
+        const index_t N  = _v.cols() / (r*r);
+
+        const MatExprType uEv        = _u.eval(k);
+        const MatExprType vEv  = _v.eval(k);
+
+        res.resize(r, N*r*r);
+        // gsDebugVar(res.cols());
+        for (index_t s = 0; s!=r; ++s)
+            for (index_t i = 0; i!=N; ++i)
+            {
+                res.middleCols((s*N + i)*r,r).noalias() =
+                //uEv.col(s) * vEv.middleCols((s*N + i)*r,r).row(s);
+                uEv.transpose()*vEv.middleCols((s*N + i)*r,r).transpose();
+            }
+        //meaning: [Jg Jg Jg] * Jb ..
+        return res;
+    }
+
+    index_t rows() const { return _u.cols(); }
+    index_t cols() const { return _v.cols(); }
+    void setFlag() const { _u.setFlag(); _v.setFlag(); }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    { _u.parse(evList); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _v.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }
+
+    static constexpr bool rowSpan() {return E2::rowSpan();}
+    static bool colSpan() {return E2::colSpan();}
+
+    void print(std::ostream &os) const { os << "matrix_by_space_tr("; _u.print(os); os<<")"; }
+};
 
 /*
    Adaptor for scalar-valued expression
@@ -1426,11 +1680,11 @@ public:
 
     static bool isScalar() { return true; }
 
-    static bool rowSpan() {return false;}
+    static constexpr bool rowSpan() {return false;}
     static bool colSpan() {return false;}
 
-    const gsFeVariable<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
-    const gsFeVariable<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
 
     void print(std::ostream &os) const { _u.print(os); }
 
@@ -1451,15 +1705,16 @@ private:
 
    Transposed gradient vectors are returned as a matrix
  */
-template<class T>
-class grad_expr : public _expr<grad_expr<T> >
+template<class E>
+class grad_expr : public _expr<grad_expr<E> >
 {
-    typename gsFeVariable<T>::Nested_t _u;
-
+    typename E::Nested_t _u;
 public:
-    typedef T Scalar;
+    enum{ Space = E::Space };
 
-    grad_expr(const gsFeVariable<T> & u) : _u(u)
+    typedef typename E::Scalar Scalar;
+
+    grad_expr(const E & u) : _u(u)
     { GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");}
 
     MatExprType eval(const index_t k) const
@@ -1495,12 +1750,12 @@ public:
             _u.mapData().flags |= NEED_VALUE;
     }
 
-    const gsFeVariable<T> & rowVar() const { return _u.rowVar(); }
-    const gsFeVariable<T> & colVar() const
-    {return gsNullExpr<T>::get();}
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const
+    {return gsNullExpr<Scalar>::get();}
 
-    static bool rowSpan() {return true; }
-    static bool colSpan() {return false;}
+    static constexpr bool rowSpan() {return E::rowSpan(); }
+    static constexpr bool colSpan() {return false;}
 
     void print(std::ostream &os) const { os << "grad("; _u.print(os); os <<")"; }
 };
@@ -1553,11 +1808,11 @@ public:
         u.data().flags |= NEED_GRAD;
     }
 
-    const gsFeVariable<T> & rowVar() const { return u.rowVar(); }
-    const gsFeVariable<T> & colVar() const
+    const gsFeSpace<T> & rowVar() const { return u.rowVar(); }
+    const gsFeSpace<T> & colVar() const
     {return gsNullExpr<T>();}
 
-    static bool rowSpan() {return true; }
+    static constexpr bool rowSpan() {return true; }
     static bool colSpan() {return false;}
 
     void print(std::ostream &os) const { os << "nabla("; u.print(os); os <<")"; }
@@ -1605,11 +1860,11 @@ public:
         u.data().flags |= NEED_DERIV2;
     }
 
-    const gsFeVariable<T> & rowVar() const { return u.rowVar(); }
-    const gsFeVariable<T> & colVar() const
-    {return gsNullExpr<T>();}
+    const gsFeSpace<T> & rowVar() const { return u.rowVar(); }
+    const gsFeSpace<T> & colVar() const
+    {return gsNullExpr<T>::get();}
 
-    static bool rowSpan() {return true; }
+    static constexpr bool rowSpan() {return true; }
     static bool colSpan() {return false;}
 };
 
@@ -1641,7 +1896,7 @@ public:
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return 1; }
 
-    static bool rowSpan() {GISMO_ERROR("onormal");}
+    static constexpr bool rowSpan() {GISMO_ERROR("onormal");}
     static bool colSpan() {GISMO_ERROR("onormal");}
 
     void setFlag() const { _G.data().flags |= NEED_OUTER_NORMAL; }
@@ -1687,7 +1942,7 @@ public:
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return 1; }
 
-    static bool rowSpan() {GISMO_ERROR("tangent");}
+    static constexpr bool rowSpan() {GISMO_ERROR("tangent");}
     static bool colSpan() {GISMO_ERROR("tangent");}
 
     void setFlag() const { _G.data().flags |= NEED_OUTER_NORMAL; }
@@ -1732,7 +1987,7 @@ public:
     index_t rows() const { return _u.data().laplacians.rows(); }
     index_t cols() const { return 1; }
 
-    static bool rowSpan() {return true; }
+    static constexpr bool rowSpan() {return true; }
     static bool colSpan() {return false;}
 
     void setFlag() const { _u.data().flags |= NEED_LAPLACIAN; }
@@ -1766,7 +2021,7 @@ public:
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return _G.data().dim.first ; }
 
-    static bool rowSpan() {return false; }
+    static constexpr bool rowSpan() {return false; }
     static bool colSpan() {return false;}
 
     void setFlag() const { _G.data().flags |= NEED_GRAD_TRANSFORM; }
@@ -1778,8 +2033,8 @@ public:
         _G.data().flags |= NEED_GRAD_TRANSFORM;
     }
 
-    const gsFeVariable<Scalar> & rowVar() const {return gsNullExpr<T>();}
-    const gsFeVariable<Scalar> & colVar() const {return gsNullExpr<T>();}
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<T>::get();}
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<T>::get();}
 
     void print(std::ostream &os) const { os << "fform("; _G.print(os); os <<")"; }
 };
@@ -1806,7 +2061,7 @@ public:
     index_t rows() const { return _G.data().dim.first;  }
     index_t cols() const { return _G.data().dim.second; }
 
-    static bool rowSpan() {return false; }
+    static constexpr bool rowSpan() {return false; }
     static bool colSpan() {return false;}
 
     void setFlag() const { _G.data().flags |= NEED_GRAD_TRANSFORM; }
@@ -1818,8 +2073,8 @@ public:
         _G.data().flags |= NEED_GRAD_TRANSFORM;
     }
 
-    const gsFeVariable<Scalar> & rowVar() const {return gsNullExpr<T>::get();}
-    const gsFeVariable<Scalar> & colVar() const {return gsNullExpr<T>::get();}
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<T>::get();}
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<T>::get();}
 
     // todo mat_expr ?
     // tr() const --> _G.data().fundForm(k)
@@ -1852,7 +2107,7 @@ public:
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return _G.data().dim.first; }
 
-    static bool rowSpan() {return false; }
+    static constexpr bool rowSpan() {return false; }
     static bool colSpan() {return false;}
 
     void setFlag() const { _G.data().flags |= NEED_DERIV; }
@@ -1864,7 +2119,7 @@ public:
         _G.data().flags |= NEED_DERIV;
     }
 
-    meas_expr<T> det() const
+    meas_expr<T> absDet() const
     {
         GISMO_ASSERT(rows() == cols(), "The Jacobian matrix is not square");
         return meas_expr<T>(_G);
@@ -1886,16 +2141,17 @@ public:
 /*
    Expression for the Jacobian matrix of a FE variable
  */
-template<class T>
-class jac_expr : public _expr<jac_expr<T> >
+template<class E>
+class jac_expr : public _expr<jac_expr<E> >
 {
-    const gsFeVariable<T> & m_fev;
+    typename E::Nested_t m_fev;
 public:
-    enum {ColBlocks = 1};
+    enum {ColBlocks = E::rowSpan() };
+    enum {Space = E::Space };
 
-    typedef T Scalar;
+    typedef typename E::Scalar Scalar;
 
-    jac_expr(const gsFeVariable<T> & _u)
+    jac_expr(const E & _u)
     : m_fev(_u) { }
 
     MatExprType eval(const index_t k) const
@@ -1904,8 +2160,8 @@ public:
         return m_fev.data().values[1].col(k).transpose().blockDiag(m_fev.dim());
     }
 
-    const gsFeVariable<T> & rowVar() const { return m_fev; }
-    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
+    const gsFeSpace<Scalar> & rowVar() const { return m_fev; }
+    const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
     index_t rows() const { return m_fev.dim(); }
     index_t cols() const
@@ -1913,7 +2169,7 @@ public:
         return m_fev.dim() * m_fev.data().actives.rows() * m_fev.data().dim.first;
     }
 
-    static bool rowSpan() {return true; }
+    static constexpr bool rowSpan() {return true; }
     static bool colSpan() {return false;}
 
     void setFlag() const
@@ -1954,13 +2210,13 @@ public:
         return m_fev.data().values[1].reshapeCol(k, cols(), rows()).transpose();
     }
 
-    const gsFeVariable<T> & rowVar() const { return m_fev; }
-    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
+    const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>::get(); }
+    const gsFeSpace<T> & colVar() const { return gsNullExpr<T>::get(); }
 
     index_t rows() const { return m_fev.data().dim.first; }
     index_t cols() const {return m_fev.data().dim.second; }
 
-    static bool rowSpan() {return true; }
+    static constexpr bool rowSpan() {return true; }
     static bool colSpan() {return false;}
 
     void setFlag() const
@@ -1981,7 +2237,7 @@ public:
 /*
    Expression for the Hessian matrix of (a coordinate of) the geometry
    map or a finite element variable
- */
+
 template<class T>
 class hess_expr : public _expr<hess_expr<T> >
 {
@@ -2033,16 +2289,82 @@ public:
         GISMO_ERROR("error 1712");
     }
 
-    static bool rowSpan() {return true; }
+    static constexpr bool rowSpan() {return true; }
     static bool colSpan() {return false;}
 
-    const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>(); }
-    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
+    const gsFeVariable<T> & rowVar() const
+    {
+        GISMO_ERROR("error -- hess");
+        return gsNullExpr<T>::get();
+    }
+    const gsFeSpace<T> & colVar() const { return gsNullExpr<T>::get(); }
 
     void print(std::ostream &os) const
     //    { os << "hess("; _u.print(os);os <<")"; }
     { os << "hess(U)"; }
 };
+ */
+
+template<class E>
+class hess_expr : public _expr<hess_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
+private:
+    typename E::Nested_t _u;
+    mutable gsMatrix<Scalar> res;
+public:
+    enum {ScalarValued = 0, ColBlocks = E::rowSpan() };
+    enum {Space = E::Space };
+
+public:
+    hess_expr(const E & u) : _u(u)
+    {
+        gsInfo << "expression is space ? "<<E::Space <<"\n"; _u.print(gsInfo);
+        //GISMO_ASSERT(1==_u.dim(),"hess(.) requires 1D variable");
+    }
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        const gsFuncData<Scalar> & dd = _u.data();
+        const index_t sz = cols();
+        res.resize(dd.dim.first, sz*dd.dim.first);
+        secDerToHessian(dd.values[2].col(k), dd.dim.first, res);
+        res.resize(dd.dim.first, res.cols()*dd.dim.first);
+        // Note: auto returns by value here
+        return res;
+    }
+
+    index_t rows() const
+    {
+        // gsDebugVar(m_data);
+        // gsDebugVar(_u.data().dim.first);
+        // gsDebugVar(_u.data().values[0].rows());
+        return _u.data().dim.first;
+    }
+    index_t cols() const
+    {
+        return 2*_u.data().values[2].rows() / (1+_u.data().dim.first);
+    }
+
+    void setFlag() const { _u.data().flags |= NEED_2ND_DER; }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        GISMO_ERROR("error 1712");
+    }
+
+    static constexpr bool rowSpan() {return E::rowSpan(); }
+    static bool colSpan() {return false;}
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
+
+    void print(std::ostream &os) const
+    //    { os << "hess("; _u.print(os);os <<")"; }
+    { os << "hess(U)"; }
+};
+
 
 /*
    Expression for the partial derivative (matrices) of the Jacobian
@@ -2080,7 +2402,7 @@ public:
         _G.data().flags |= NEED_2ND_DER;
     }
 
-    static bool rowSpan() {return false;}
+    static constexpr bool rowSpan() {return false;}
     static bool colSpan() {return false;}
 };
 
@@ -2116,10 +2438,10 @@ public:
         _G.data().flags |= NEED_MEASURE;
     }
 
-    const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>::get(); }
-    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>::get(); }
+    const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>::get(); }
+    const gsFeSpace<T> & colVar() const { return gsNullExpr<T>::get(); }
 
-    static bool rowSpan() {return false; }
+    static constexpr bool rowSpan() {return false; }
     static bool colSpan() {return false;}
 
     void print(std::ostream &os) const { os << "meas("; _G.print(os); os <<")"; }
@@ -2174,10 +2496,10 @@ public:
             _u.mapData().flags |= NEED_VALUE;
     }
 
-    const gsFeVariable<T> & rowVar() const { return _u.rowVar(); }
-    const gsFeVariable<T> & colVar() const {return gsNullExpr<T>::get();}
+    const gsFeSpace<T> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<T> & colVar() const {return gsNullExpr<T>::get();}
 
-    static bool rowSpan() {return true; }
+    static constexpr bool rowSpan() {return true; }
     static bool colSpan() {return false;}
 
     void print(std::ostream &os) const { os << "curl("; _u.print(os); os <<")"; }
@@ -2186,7 +2508,7 @@ public:
 /*
    Expression for multiplication operation (first version)
 
-   First argument has ColBlocks = false
+   First argument E1 has ColBlocks = false
  */
 template <typename E1, typename E2>
 class mult_expr<E1,E2,false> : public _expr<mult_expr<E1, E2, false> >
@@ -2197,6 +2519,7 @@ class mult_expr<E1,E2,false> : public _expr<mult_expr<E1, E2, false> >
 public:
     enum {ScalarValued = E1::ScalarValued && E2::ScalarValued,
           ColBlocks = E2::ColBlocks};
+    enum {Space = (0!=E1::Space ? E1::Space : E2::Space) };
 
     typedef typename E1::Scalar Scalar;
 
@@ -2229,14 +2552,15 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    static bool rowSpan() { return E1::ScalarValued ? E2::rowSpan() : E1::rowSpan(); }
-    static bool colSpan() { return E2::ScalarValued ? E1::colSpan() : E2::colSpan(); }
+    static constexpr bool rowSpan()
+    { return 0==E1::Space ? E2::rowSpan() : E1::rowSpan(); }
+    static bool colSpan() { return 0==E2::Space ? E1::colSpan() : E2::colSpan(); }
 
-    const gsFeVariable<Scalar> & rowVar() const
-    { return E1::ScalarValued ? _v.rowVar() : _u.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const
+    const gsFeSpace<Scalar> & rowVar() const
+    { return 0==E1::Space ? _v.rowVar() : _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const
     {
-        return E2::ScalarValued ? _u.colVar() : _v.colVar();
+        return 0==E2::Space ? _u.colVar() : _v.colVar();
         /*
         if ( _v.isScalar() )
             return _u.colVar();
@@ -2266,6 +2590,7 @@ private:
     mutable gsMatrix<Scalar> res;
 public:
     enum {ScalarValued = 0, ColBlocks = 1};
+    enum {Space = E1::Space};
 
     mult_expr(_expr<E1> const& u,
               _expr<E2> const& v)
@@ -2282,7 +2607,7 @@ public:
         const MatExprType tmpA = _u.eval(k);
         const MatExprType tmpB = _v.eval(k);
 
-        if ( _v.cols() == ur )
+        if ( _v.cols() == ur)
         {
             res.resize(ur, uc);
             for (index_t i = 0; i!=nb; ++i)
@@ -2291,7 +2616,7 @@ public:
         }
         else
         {
-            GISMO_ASSERT( 0 == _v.cols() % nb, "Invalid dimensions");
+            GISMO_ASSERT( _u.cols() == _v.cols(), "Invalid dimensions");
             const index_t vc = _v.cols() / nb;
             res.resize(ur, _v.cols());
             for (index_t i = 0; i!=nb; ++i)
@@ -2302,17 +2627,23 @@ public:
         return res;
     }
 
-    index_t rows() const { return _u.rows(); }
-    index_t cols() const { return _v.cols() * (_u.cols()/_u.rows()); }
+    index_t rows() const {
+        return _u.rows();
+    }
+    index_t cols() const {
+        // DEBUG changed by asgl, perhaps there was a bug here?
+        //return _v.cols() * (_u.cols()/_u.rows());
+        return _u.cols();
+    }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    static bool rowSpan() { return E1::rowSpan(); }
+    static constexpr bool rowSpan() { return E1::rowSpan(); }
     static bool colSpan() { return false; }
 
-    const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const
     {
         /*
         if ( _v.isScalar() )
@@ -2345,6 +2676,7 @@ private:
     //mult_expr(const mult_expr&);
 public:
     enum {ScalarValued = E2::ScalarValued, ColBlocks = E2::ColBlocks};
+    enum {Space = E2::Space};
 
     mult_expr(Scalar const & c, _expr<E2> const& v)
     : _c(c), _v(v) { }
@@ -2360,19 +2692,93 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _v.parse(evList); }
 
-    static bool rowSpan() { return E2::rowSpan(); }
+    static constexpr bool rowSpan() { return E2::rowSpan(); }
     static bool colSpan() { return E2::colSpan(); }
 
-    const gsFeVariable<Scalar> & rowVar() const { return _v.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const { return _v.colVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _v.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }
 
     void print(std::ostream &os) const { os << _c <<"*";_v.print(os); }
 };
 
 
+template <typename E1, typename E2>
+class collapse_expr : public _expr<collapse_expr<E1, E2> >
+{
+    typename E1::Nested_t _u;
+    typename E2::Nested_t _v;
+
+public:
+    enum {ScalarValued = 0, ColBlocks = 0};
+    enum { Space = E1::Space || E2::Space};
+
+    typedef typename E1::Scalar Scalar;
+
+    mutable gsMatrix<Scalar> res;
+
+    collapse_expr(_expr<E1> const& u,
+              _expr<E2> const& v)
+    : _u(u), _v(v) { }
+
+    //EIGEN_STRONG_INLINE MatExprType
+    const gsMatrix<Scalar> &
+    eval(const index_t k) const
+    {
+        const index_t nb = rows();
+        const MatExprType tmpA = _u.eval(k);
+        const MatExprType tmpB = _v.eval(k);
+
+        if (E1::ColBlocks)
+        {
+            const index_t ur = _v.rows();
+            res.resize(nb, ur);
+            for (index_t i = 0; i!=nb; ++i)
+            {
+                res.row(i).transpose().noalias() = tmpA.middleCols(i*ur,ur) * tmpB;
+            }
+        }
+        else if (E2::ColBlocks)
+        {
+            const index_t ur = _u.cols();
+            res.resize(nb, ur);
+            for (index_t i = 0; i!=nb; ++i)
+            {
+                res.row(i).noalias() = tmpA * tmpB.middleCols(i*ur,ur);
+            }
+        }
+
+        return res;
+    }
+
+    index_t rows() const { return E1::ColBlocks ? _u.cols() / _v.rows() : _v.cols() / _u.cols() ; }
+    index_t cols() const { return E1::ColBlocks ? _v.rows()  : _u.cols(); }
+    void setFlag() const { _u.setFlag(); _v.setFlag(); }
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    { _u.parse(evList); _v.parse(evList); }
+
+    static constexpr bool rowSpan() { return E1::Space ? E1::rowSpan() : E2::rowSpan(); }
+    static bool colSpan() { return E2::Space ? E2::colSpan() : E1::colSpan(); }
+
+    const gsFeSpace<Scalar> & rowVar() const
+    { return E1::ColBlocks ? _u.rowVar() : _v.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const
+    {
+        GISMO_ERROR("none");
+    }
+
+    void print(std::ostream &os) const { _u.print(os); os<<"~"; _v.print(os); }
+};
+
+// Multi-matrix collapsed by a vector
+template <typename E1, typename E2> //EIGEN_STRONG_INLINE
+//collapse_expr<E1,E2> const  operator&(<E1> const& u, _expr<E2> const& v)
+collapse_expr<E1,E2> collapse( _expr<E1> const& u, _expr<E2> const& v)
+{ return collapse_expr<E1, E2>(u, v); }
+
+
 /*
-   Expression for the Frobenius matrix product (first version)
-   Also block-wise
+   Expression for the Frobenius matrix (or double dot) product (first
+   version) Also block-wise
 
    [A1 A2 A3] . [B1 B2 B3] = [A1.B1  A2.B2  A3.B3]
 */
@@ -2421,11 +2827,11 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    static bool rowSpan() { return E1::rowSpan(); }
+    static constexpr bool rowSpan() { return E1::rowSpan(); }
     static bool colSpan() { return E2::rowSpan(); }
 
-    const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const { return _v.rowVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
 
     void print(std::ostream &os) const
     { os << "("; _u.print(os); os<<" % "; _v.print(os); os<<")";}
@@ -2433,8 +2839,8 @@ public:
 
 /*
 
-   Expression for the Frobenius matrix product (second version),
-   When left hand only side is block-wise
+   Expression for the Frobenius matrix (or double dot) product (second
+   version), When left hand only side is block-wise
 
    [A1 A2 A3] . B = [A1.B  A2.B  A3.B]
 */
@@ -2483,11 +2889,11 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    static bool rowSpan() { return E1::rowSpan(); }
+    static constexpr bool rowSpan() { return E1::rowSpan(); }
     static bool colSpan() { return E2::rowSpan(); }
 
-    const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const { return _v.rowVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
 
     void print(std::ostream &os) const
     { os << "("; _u.print(os); os<<" % "; _v.print(os); os<<")";}
@@ -2507,6 +2913,7 @@ public:
 
 public:
     enum {ScalarValued = E1::ScalarValued};
+    enum {Space = E1::Space}; // The denominator E2 has to be scalar.
 
     divide_expr(_expr<E1> const& u, _expr<E2> const& v)
     : _u(u), _v(v)
@@ -2523,11 +2930,11 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    static bool rowSpan() { return E1::rowSpan(); }
+    static constexpr bool rowSpan() { return E1::rowSpan(); }
     static bool colSpan() { return E1::colSpan(); }
 
-    const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const { return _u.colVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
 
     void print(std::ostream &os) const
     { os << "("; _u.print(os);os <<" / ";_v.print(os);os << ")"; }
@@ -2562,7 +2969,7 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); }
 
-    static bool rowSpan() { return E1::rowSpan(); }
+    static constexpr bool rowSpan() { return E1::rowSpan(); }
     static bool colSpan() { return E1::colSpan(); }
 
     void print(std::ostream &os) const
@@ -2599,7 +3006,7 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); }
 
-    static bool rowSpan() { return false; }
+    static constexpr bool rowSpan() { return false; }
     static bool colSpan() { return false; }
 
     void print(std::ostream &os) const
@@ -2618,6 +3025,7 @@ class add_expr : public _expr<add_expr<E1, E2> >
 public:
     enum {ScalarValued = E1::ScalarValued && E2::ScalarValued,
           ColBlocks = E1::ColBlocks && E2::ColBlocks };
+    enum {Space = E1::Space}; // == E2::Space
 
     typedef typename E1::Scalar Scalar;
 
@@ -2648,11 +3056,11 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    static bool rowSpan() { return E1::rowSpan(); }
+    static constexpr bool rowSpan() { return E1::rowSpan(); }
     static bool colSpan() { return E1::colSpan(); }
 
-    const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const { return _v.colVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }
 
     void print(std::ostream &os) const
     { os << "("; _u.print(os);os <<" + ";_v.print(os);os << ")"; }
@@ -2669,6 +3077,7 @@ operator^(_expr<E1> const& u, _expr<E2> const& v)
 
 
 /*
+lincom_expr (lc) ?
    Expression for (square) matrix summation operation
 
    M [r x r*k] is a list of matrices
@@ -2686,21 +3095,22 @@ class summ_expr : public _expr<summ_expr<E1,E2> >
 public:
     typedef typename E1::Scalar Scalar;
 
-    enum {ScalarValued = 0, ColBlocks = E2::ColBlocks};
+    enum {ScalarValued = 0, ColBlocks = E1::rowSpan()};
+    enum {Space = E1::Space };
 
     summ_expr(E1 const& u, E2 const& M) : _u(u), _M(M) { }
 
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
         MatExprType sl = _u.eval(k);
-        MatExprType ml = _M.eval(k);
         const index_t sr  = sl.rows();
+        MatExprType ml = _M.eval(k);
         const index_t mr  = ml.rows();
         const index_t mb  = ml.cols() / mr;
 
         res.setZero(mr, sr * mr);
         for (index_t i = 0; i!=sr; ++i)
-            for (index_t t = 0; t!=mb; ++t)
+            for (index_t t = 0; t!=mb; ++t) // lc
                 res.middleCols(i*mr,mr) += sl(i,t) * ml.middleCols(t*mr,mr);
         return res;
     }
@@ -2711,11 +3121,11 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _M.parse(evList); }
 
-    static bool rowSpan() { return E1::rowSpan(); }
+    static constexpr bool rowSpan() { return E1::rowSpan(); }
     static bool colSpan() { return false; }
 
-    const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
     void print(std::ostream &os) const
     { os << "sum("; _M.print(os); os<<","; _u.print(os); os<<")"; }
@@ -2740,6 +3150,7 @@ class sub_expr : public _expr<sub_expr<E1, E2> >
 public:
     enum {ScalarValued = E1::ScalarValued && E2::ScalarValued,
           ColBlocks = E1::ColBlocks && E2::ColBlocks };
+    enum {Space = E1::Space}; // == E2::Space
 
     typedef typename E1::Scalar Scalar;
 
@@ -2772,11 +3183,11 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    static bool rowSpan() { return E1::rowSpan(); }
+    static constexpr bool rowSpan() { return E1::rowSpan(); }
     static bool colSpan() { return E2::colSpan(); }
 
-    const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const { return _v.colVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }
 
     void print(std::ostream &os) const
     { os << "("; _u.print(os); os<<" - ";_v.print(os); os << ")";}
@@ -2815,11 +3226,11 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); }
 
-    static bool rowSpan() { return E::rowSpan(); }
+    static constexpr bool rowSpan() { return E::rowSpan(); }
     static bool colSpan() { return E::rowSpan(); }
 
-    const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.rowVar(); }
 
     void print(std::ostream &os) const { os << "symm("; _u.print(os); os <<")"; }
 };
@@ -2843,9 +3254,9 @@ EIGEN_STRONG_INLINE idMat_expr id(const index_t dim) { return idMat_expr(dim); }
 template<class T> EIGEN_STRONG_INLINE
 solGrad_expr<T> grad(const gsFeSolution<T> & u) { return solGrad_expr<T>(u); }
 
-/// The gradient of a finite element variable
-template<class T> EIGEN_STRONG_INLINE
-grad_expr<T> grad(const gsFeVariable<T> & u) { return grad_expr<T>(u); }
+/// The gradient of a variable
+template<class E> EIGEN_STRONG_INLINE
+grad_expr<E> grad(const E & u) { return grad_expr<E>(u); }
 
 /// The curl of a finite element variable
 template<class T> EIGEN_STRONG_INLINE
@@ -2876,20 +3287,21 @@ template<class T> EIGEN_STRONG_INLINE
 jacG_expr<T> jac(const gsGeometryMap<T> & G) { return jacG_expr<T>(G); }
 
 /// The Jacobian matrix of a FE variable
-template<class T> EIGEN_STRONG_INLINE
-jac_expr<T> jac(const gsFeVariable<T> & u) { return jac_expr<T>(u); }
+template<class E> EIGEN_STRONG_INLINE
+jac_expr<E> jac(const E & u) { return jac_expr<E>(u); }
 
 /// The Jacobian matrix of a vector function
 template<class T> EIGEN_STRONG_INLINE
 fjac_expr<T> fjac(const gsFeVariable<T> & u) { return fjac_expr<T>(u); }
 
 /// The Hessian matrix of (each coordianate of) the geometry map \a G
-template<class T> EIGEN_STRONG_INLINE
-hess_expr<T> hess(const gsGeometryMap<T> & G) { return hess_expr<T>(G); }
+//template<class T> EIGEN_STRONG_INLINE hess_expr<T> hess(const gsGeometryMap<T> & G) { return hess_expr<T >(G); }
 
 /// The Hessian matrix of a finite element variable
-template<class T> EIGEN_STRONG_INLINE
-hess_expr<T> hess(const gsFeVariable<T> & u) { return hess_expr<T>(u); }
+//template<class T> EIGEN_STRONG_INLINE hess_expr<T> hess(const gsFeVariable<T> & u) { return hess_expr<T>(u); }
+
+template<class E> EIGEN_STRONG_INLINE
+hess_expr<E> hess(const E & u) { return hess_expr<E>(u); }
 
 /// The partial derivatives of the Jacobian matrix of a geometry map
 template<class T> EIGEN_STRONG_INLINE
@@ -2928,7 +3340,7 @@ operator*(gsMatrix<typename E1::Scalar> const& u, _expr<E1> const& v)
 { return mult_expr<gsMatrix<typename E1::Scalar>,E1, false>(u, v); }
 */
 
-/// Frobenious product operator for expressions
+/// Frobenious product (also known as double dot product) operator for expressions
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
 frprod_expr<E1,E2> const  operator%(_expr<E1> const& u, _expr<E2> const& v)
 { return frprod_expr<E1, E2>(u, v); }
@@ -2958,6 +3370,18 @@ template <typename E1, typename E2> EIGEN_STRONG_INLINE
 summ_expr<E1,E2> const summ(E1 const & u, E2 const& M)
 { return summ_expr<E1,E2>(u, M); }
 
+/// Matrix by space TODO: find better name and/or description? And is this the best place?
+/// [Jg Jg Jg] * Jb ..
+template <typename E1, typename E2> EIGEN_STRONG_INLINE
+matrix_by_space_expr<E1,E2> const matrix_by_space(E1 const & u, E2 const& v)
+{ return matrix_by_space_expr<E1,E2>(u, v); }
+
+/// Matrix by space TODO: find better name and/or description? And is this the best place?
+/// [Jg Jg Jg] * Jb ..
+template <typename E1, typename E2> EIGEN_STRONG_INLINE
+matrix_by_space_expr_tr<E1,E2> const matrix_by_space_tr(E1 const & u, E2 const& v)
+{ return matrix_by_space_expr_tr<E1,E2>(u, v); }
+
 /// Subtraction operator for expressions
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
 sub_expr<E1,E2> const operator-(_expr<E1> const& u, _expr<E2> const& v)
@@ -2977,12 +3401,12 @@ operator-(typename E2::Scalar const& s, _expr<E2> const& v)
 
 // Shortcuts for common quantities, for instance function
 // transformations by the geometry map \a G
-#define GISMO_SHORTCUT_VAR_EXPRESSION(name,impl) template<class T> EIGEN_STRONG_INLINE \
-auto name(const gsFeVariable<T> & u) { return impl; }
+#define GISMO_SHORTCUT_VAR_EXPRESSION(name,impl) template<class E> EIGEN_STRONG_INLINE \
+auto name(const E & u) { return impl; }
 #define GISMO_SHORTCUT_MAP_EXPRESSION(name,impl) template<class T> EIGEN_STRONG_INLINE \
 auto name(const gsGeometryMap<T> & G) { return impl; }
-#define GISMO_SHORTCUT_PHY_EXPRESSION(name,impl) template<class T> EIGEN_STRONG_INLINE \
-auto name(const gsFeVariable<T> & u, const gsGeometryMap<T> & G) { return impl; }
+#define GISMO_SHORTCUT_PHY_EXPRESSION(name,impl) template<class E> EIGEN_STRONG_INLINE \
+    auto name(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return impl; }
 
 // Divergence
 GISMO_SHORTCUT_VAR_EXPRESSION(  div, jac(u).trace() )

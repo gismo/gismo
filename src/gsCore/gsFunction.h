@@ -66,8 +66,6 @@ public:
 
     /// Unique pointer for gsFunction
     typedef memory::unique_ptr< gsFunction > uPtr;
-
-    typedef typename Base::dim_t dim_t;
     
     using Base::support;
     using Base::domainDim;
@@ -80,6 +78,9 @@ public:
         GISMO_ENSURE(0==k, "Single function of type "<< typeid(*this).name() <<" is defined on single subdomain, received: "<<k<<". Is piece(k) implemented?" );
         return *this; 
     }
+
+    /// Returns the scalar function giving the i-th coordinate of this function
+    gsFuncCoordinate<T> coord(const index_t c) const;
 
     void active_into (const gsMatrix<T>  & u, gsMatrix<unsigned> &result) const
     { result.setConstant(1,u.cols(),0); }

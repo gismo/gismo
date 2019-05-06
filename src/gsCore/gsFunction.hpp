@@ -13,10 +13,18 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsFuncData.h>
+#include <gsCore/gsFuncCoordinate.h>
+
 #pragma once
 
 namespace gismo
 {
+
+template <class T>
+gsFuncCoordinate<T> gsFunction<T>::coord(const index_t c) const
+{
+    return gsFuncCoordinate<T>(*this,c);
+}
 
 template <class T>
 gsMatrix<T>
@@ -277,7 +285,7 @@ gsFunction<T>::hess(const gsMatrix<T>& u, unsigned coord) const
     return hessian;
 }
 
-template <typename T, int domDim, int tarDim>
+template <typename T, short_t domDim, short_t tarDim>
 inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
 {
     //GISMO_ASSERT( domDim*tarDim == 1, "Both domDim and tarDim must have the same sign");
@@ -403,7 +411,7 @@ void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
     this->compute(InOut.points, InOut);
     
     // Fill extra data
-    typename gsFunctionSet<T>::dim_t Dim = this->dimensions();
+    std::pair<short_t, short_t> Dim = this->dimensions();
 
     GISMO_ASSERT(Dim.first<10,             "Domain dimension is too big");
     GISMO_ASSERT(Dim.first<=Dim.second, "Singular map: target dimension is lower then the domain dimension");

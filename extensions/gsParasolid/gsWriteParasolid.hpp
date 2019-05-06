@@ -312,6 +312,8 @@ bool createPK_BSURF(const gsTensorBSpline< 2, T> & bsp,
                     bool closed_u,
                     bool closed_v)
 {
+    // Gismo and Parasolid store the coefficients in different order.
+    // Therefore we create the BSURF with u and v swapped and then transpose it.
     for (index_t dim = 0; dim != 2; dim++)
     {
         const int deg = bsp.basis().degree(dim);
@@ -372,12 +374,12 @@ bool createPK_BSURF(const gsTensorBSpline< 2, T> & bsp,
 
     if (closed_u)
     {
-        sform.is_u_closed = PK_LOGICAL_true;
+        sform.is_v_closed = PK_LOGICAL_true;
     }
 
     if (closed_v)
     {
-        sform.is_v_closed = PK_LOGICAL_true;
+        sform.is_u_closed = PK_LOGICAL_true;
     }
 
     sform.self_intersecting = PK_self_intersect_unset_c;
@@ -386,6 +388,14 @@ bool createPK_BSURF(const gsTensorBSpline< 2, T> & bsp,
     // Create parasolid surface with the previous spline data
     PK_ERROR_code_t err = PK_BSURF_create(&sform, &bsurf);
     PARASOLID_ERROR(PK_BSURF_create, err);
+
+    // Transposition (new on 2019-02-26).
+    PK_BSURF_reparameterise_o_t options;
+    PK_BSURF_reparameterise_o_m(options);
+    options.transpose = PK_LOGICAL_true;
+
+    err = PK_BSURF_reparameterise(bsurf,&options);
+    PARASOLID_ERROR(PK_BSURF_reparameterise, err);
 
     return true;
 }

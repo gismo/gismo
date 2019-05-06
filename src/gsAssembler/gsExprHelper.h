@@ -157,6 +157,7 @@ public:
 
     nonConstVariable getVar(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
+        // todo: static dispatch for ScalarValued
         m_vlist.push_back( expr::gsFeVariable<T>() );
         expr::gsFeVariable<T> & var = m_vlist.back();
         gsFuncData<T> & fd = m_ptable[&mp];
@@ -191,15 +192,15 @@ public:
 
     //void rmVar(
 
-    bool exists(variable a)
+    bool exists(space a)
     {
         typedef typename std::deque<expr::gsFeSpace<T> >::const_iterator siter;
         for (siter it = m_slist.begin(); it!=m_slist.end(); ++it)
             if ( &a == &(*it) ) return true;
 
-        typedef typename std::deque<expr::gsFeVariable<T> >::const_iterator viter;
-        for (viter it = m_vlist.begin(); it!=m_vlist.end(); ++it)
-            if ( &a == &(*it) ) return true;
+        // typedef typename std::deque<expr::gsFeVariable<T> >::const_iterator viter;
+        // for (viter it = m_vlist.begin(); it!=m_vlist.end(); ++it)
+        //     if ( &a == &(*it) ) return true;
 
         return false;
     }
@@ -280,6 +281,11 @@ public:
             //gsDebugVar(it->second.dim.first);
             //gsDebugVar("-------");
             it->second.patchId = patchIndex;
+
+            // gsDebugVar(it->second.actives.transpose());
+            // gsDebugVar(it->second.values.size());
+            // gsDebugIf(it->second.values.size(),it->second.values.back().rows()/it->second.deriv2Size());
+            // gsDebugIf(it->second.values.size(),it->second.values.back().cols());
         }
 
         GISMO_ASSERT( m_itable.empty() || 0!=mapData.values.size(), "Map values not computed");

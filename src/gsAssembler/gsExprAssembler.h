@@ -34,6 +34,9 @@ void gsAccumulateLocalToGlobal(
     const expr::gsFeSpace<T> & u, //colvar
     const index_t patchInd)
 {
+    GISMO_ASSERT(!left  || v.isValid(), "The row space is not valid");
+    GISMO_ASSERT(!right || u.isValid(), "The column space is not valid");
+
     const index_t cd            = u.dim();
     const index_t rd            = v.dim();
     const gsDofMapper  & colMap = u.mapper();
@@ -251,10 +254,13 @@ public:
     ///Use this function after calling gsExprAssembler::getSpace when
     /// a distinct test space is requred (eg. Petrov-Galerkin
     /// methods).
-    space getTestSpace(variable u, const gsFunctionSet<T> & mp)
+    ///
+    /// \note The dimension is set to the same as \a u, unless the caller
+    /// sets as a third argument a new value.
+    space getTestSpace(space u, const gsFunctionSet<T> & mp, index_t dim = -1)
     {
         //GISMO_ASSERT(0!=u.mapper(), "Not a space"); // done on initSystem
-        expr::gsFeSpace<T> & s = m_exprdata->getSpace(mp,u.dim());
+        expr::gsFeSpace<T> & s = m_exprdata->getSpace(mp,(-1 == dim ? u.dim() : dim));
         space uu = static_cast<space>(u);
         s.setId(uu.id());
         m_vrow[s.id()] = &s;
@@ -269,7 +275,7 @@ public:
     }
 
     /// Return the trial space of a pre-existing test space \a v
-    space trialSpace(variable v) const { return trialSpace(v.id()); }
+    space trialSpace(space v) const { return trialSpace(v.id()); }
 
     /// Return the variable (previously created by getTrialSpace) with the given \a id
     space testSpace(const index_t id)
@@ -279,7 +285,7 @@ public:
     }
 
     /// Return the test space of a pre-existing trial space \a u
-    space testSpace(variable u) const { return testSpace(u.id()); }
+    space testSpace(space u) const { return testSpace(u.id()); }
 
     /// Registers \a func as a variable and returns a handle to it
     variable getCoeff(const gsFunctionSet<T> & func)
@@ -313,10 +319,10 @@ public:
     void setFixedDofs(const gsMatrix<T> & coefMatrix, int unk = 0, int patch = 0);
 
     /// \brief Initializes the sparse system (sparse matrix and rhs)
-    void initSystem()
+    void initSystem(bool resetFirst = true)
     {
         // Check spaces.nPatches==mesh.patches
-        initMatrix();
+        initMatrix(resetFirst);
         m_rhs.setZero(numDofs(), 1);
 
         for (size_t i = 0; i!= m_vcol.size(); ++i)
@@ -324,8 +330,10 @@ public:
     }
 
     /// \brief Initializes the sparse matrix only
-    void initMatrix()
+    void initMatrix(bool resetFirst = true)
     {
+        if (resetFirst)
+            resetSpaces();
         resetDimensions();
         m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
 
@@ -338,8 +346,8 @@ public:
             const index_t bdB = m_options.getInt("bdB");
             const T bdO       = m_options.getReal("bdO");
             T nz = 1;
-            const index_t dim = m_exprdata->multiBasis().domainDim();
-            for (index_t i = 0; i != dim; ++i)
+            const short_t dim = m_exprdata->multiBasis().domainDim();
+            for (short_t i = 0; i != dim; ++i)
                 nz *= bdA * m_exprdata->multiBasis().maxDegree(i) + bdB;
 
             m_matrix.reservePerColumn(numBlocks()*cast<T,index_t>(nz*(1.0+bdO)) );
@@ -347,8 +355,10 @@ public:
     }
 
     /// \brief Initializes the right-hand side vector only
-    void initVector(const index_t numRhs = 1)
+    void initVector(const index_t numRhs = 1, bool resetFirst = true)
     {
+        if (resetFirst)
+            resetSpaces();
         resetDimensions();
         m_rhs.setZero(numDofs(), numRhs);
     }
@@ -485,6 +495,8 @@ private:
     /// Called internally by the init* functions
     void resetDimensions();
 
+    void resetSpaces();
+
     // template<bool left, bool right, class E1, class E2>
     // void assembleLhsRhs_impl(const expr::_expr<E1> & exprLhs,
     //                          const expr::_expr<E2> & exprRhs,
@@ -553,25 +565,33 @@ private:
             //  ------- Accumulate  -------
             if (E::isMatrix())
                 push<true>(ee.rowVar(), ee.colVar(), m_patchInd);
-            else
+            else if (E::isVector())
                 push<false>(ee.rowVar(), ee.colVar(), m_patchInd);
+            else
+            {
+                GISMO_ERROR("Something went wrong at this point.");
+                //GISMO_ASSERTrowSpan() && (!colSpan())
+            }
+
         }// operator()
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
 
-        template<bool isMatrix> void push(const expr::gsFeVariable<T> & v,
-                                          const expr::gsFeVariable<T> & u,
-                                          //const expr::gsFeSpace<T> & v,
-                                          //const expr::gsFeSpace<T> & u,
+        template<bool isMatrix> void push(const expr::gsFeSpace<T> & v,
+                                          const expr::gsFeSpace<T> & u,
                                           const index_t patchInd)
         {
+            GISMO_ASSERT(v.isValid(), "The row space is not valid");
+            GISMO_ASSERT(!isMatrix || u.isValid(), "The column space is not valid");
+            GISMO_ASSERT(isMatrix || (0!=m_rhs.size()), "The right-hand side vector is not initialized");
+
             const index_t cd            = u.dim();
             const index_t rd            = v.dim();
-            const gsDofMapper  & colMap = static_cast<const expr::gsFeSpace<T>&>(u).mapper();
-            const gsDofMapper  & rowMap = static_cast<const expr::gsFeSpace<T>&>(v).mapper();
+            const gsDofMapper  & colMap = u.mapper();
+            const gsDofMapper  & rowMap = v.mapper();
             gsMatrix<unsigned> & colInd0 = const_cast<gsMatrix<unsigned>&>(u.data().actives);
             gsMatrix<unsigned> & rowInd0 = const_cast<gsMatrix<unsigned>&>(v.data().actives);
-            const gsMatrix<T>  & fixedDofs = static_cast<const expr::gsFeSpace<T>&>(u).fixedPart();
+            const gsMatrix<T>  & fixedDofs = u.fixedPart();
 
             gsMatrix<unsigned> rowInd, colInd;
             rowMap.localToGlobal(rowInd0, patchInd, rowInd);
@@ -579,10 +599,10 @@ private:
             {
                 //if (&rowInd0!=&colInd0)
                 colMap.localToGlobal(colInd0, patchInd, colInd);
-            }
 
-            GISMO_ASSERT( colMap.boundarySize()==fixedDofs.rows(),
-                          "Invalid values for fixed part");
+                GISMO_ASSERT( colMap.boundarySize()==fixedDofs.rows(),
+                              "Invalid values for fixed part");
+            }
 
             for (index_t r = 0; r != rd; ++r)
             {
@@ -625,7 +645,9 @@ private:
                                 }
                             }
                             else
+                            {
                                 m_rhs.row(ii) += localMat.row(rls+i);
+                            }
                         }
                     }
                 }
@@ -768,7 +790,7 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, i
     }
 } // setFixedDofs
 
-template<class T> void gsExprAssembler<T>::resetDimensions()
+template<class T> void gsExprAssembler<T>::resetSpaces()
 {
     for (std::size_t i = 0; i!=m_vcol.size(); ++i)
     {
@@ -781,6 +803,10 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
             m_vrow[i]->reset();
         }
     }
+}
+
+template<class T> void gsExprAssembler<T>::resetDimensions()
+{
     for (size_t i = 1; i!=m_vcol.size(); ++i)
     {
         m_vcol[i]->mapper().setShift(m_vcol[i-1]->mapper().firstIndex() +

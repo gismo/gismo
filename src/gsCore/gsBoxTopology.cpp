@@ -210,6 +210,96 @@ int gsBoxTopology::getMaxValence() const
     return maxValence;
 }
 
+namespace {
+
+// @brief Returns a canonic representation for the given patch corner
+//
+// This function determines all patchCorners that conicide with the given
+// one and returns the one withe the smallest patch number.
+patchCorner getCanonicCorner( const patchCorner& c, const gsBoxTopology& bt )
+{
+    std::vector< patchCorner > corners;
+    bt.getCornerList(c,corners);
+    return *std::min_element(corners.begin(), corners.end());
+}
+
+// @brief Returns the canonic corners for the given corners
+//
+// The result is sorted. Thus, it can be used to uniquely characterize all kinds
+// of patchComponents (edges, faces, ...)
+std::vector<patchCorner> getCanonicCorners( const std::vector<patchCorner>& c, const gsBoxTopology& bt )
+{
+    const index_t sz = c.size();
+    std::vector< patchCorner > corners;
+    corners.reserve(sz);
+    for (index_t i=0; i<sz; ++i)
+        corners.push_back( getCanonicCorner(c[i],bt) );
+    std::sort(corners.begin(),corners.end());
+    return corners;
+}
+
+// @brief Converts the given corners in unique corner ids
+std::vector<index_t> getCornerIndices( const std::vector<patchCorner>& corner, index_t dim )
+{
+    const index_t sz = corner.size();
+    std::vector<index_t> result(sz);
+    for (index_t i=0; i<sz; ++i)
+        result[i] = corner[i].patch*(1u<<(dim)) + corner[i].m_index;
+    return result;
+}
+
+} // end namespace
+
+std::vector< std::vector<patchComponent> > gsBoxTopology::allComponents(bool combineCorners) const
+{
+    const index_t nPatches = nboxes;
+    const index_t dim = m_dim;
+
+    index_t cnr = 1;
+    for (index_t i=0; i<dim; ++i) cnr *= 3;
+
+    typedef std::vector<patchComponent>                         component_coll_t;
+    typedef std::map< std::vector<index_t>, component_coll_t>   map_t;
+
+    std::vector<map_t> comps(dim+1);
+
+    for (index_t i = 0; i<nPatches; ++i)
+    {
+        for (index_t j = 0; j<cnr; ++j)
+        {
+            patchComponent pc(i, j, dim);
+            const index_t d = pc.dim();
+            std::vector< patchCorner > crns = getCanonicCorners(pc.containedCorners(),*this);
+            component_coll_t& g = comps[d][getCornerIndices(crns, dim)];
+            g.push_back(pc);
+        }
+    }
+    index_t sz = 0;
+    for (index_t i=0; i<dim+1; ++i)
+        sz += comps[i].size();
+
+    std::vector<component_coll_t> result;
+    result.reserve(sz);
+    for (index_t i=dim; i>=0; --i)
+    {
+        if (!combineCorners || i>0)
+            for( typename map_t::iterator it = comps[i].begin(); it != comps[i].end(); ++it )
+                result.push_back( it->second );
+        else
+        {
+            component_coll_t last;
+            for( typename map_t::iterator it = comps[i].begin(); it != comps[i].end(); ++it )
+            {
+                const index_t nrcp = it->second.size();
+                for (index_t j=0; j<nrcp; ++j)
+                    last.push_back(it->second[j]);
+            }
+            result.push_back(last);
+        }
+    }
+    return result;
+}
+
 void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists) const
 {
     GISMO_ASSERT(m_dim==2,"works only for 2D");
