@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
     cmd.addReal("","ending","Ending knot",b);
     cmd.addInt("n","interior","Number of interior knots",interior);
     cmd.addInt("m","mult","Multiplicity at the two end knots",multEnd);
-    cmd.addSwitch("","plot","Plot with paraview",paraview);
+    cmd.addSwitch("plot","Plot with paraview",paraview);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsInfo << "------------- Constructions -----------------------------\n";
