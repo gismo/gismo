@@ -84,12 +84,12 @@ public:
     *
     * ...stored as number, specified in boundary::side
     **/
-    index_t m_index;
+    short_t m_index;
 public:
     boxSide (): m_index(0) {}
-    boxSide (index_t dir, bool par) : m_index(index(dir,par))
+    boxSide (short_t dir, bool par) : m_index(index(dir,par))
     { GISMO_ASSERT(dir>=0,"invalid side");}
-    boxSide (index_t a) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
+    boxSide (short_t a) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
     boxSide (boundary::side a) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
 
     // conversions
@@ -105,7 +105,7 @@ public:
      *  Since the side with index \em 3 corresponds to "south", i.e. to \f$ \{ (u,v):\ v = 0 \} \f$,
      *  calling parameter(3) will return <em>1</em>, because \em v (i.e., parameter direction with index \em 1) is fixed/set to zero.\n
     **/
-    index_t direction () const {return (m_index-1) / 2;}
+    short_t direction () const {return (m_index-1) / 2;}
 
     /**
      *  \brief Returns the parameter value (false=0=start, true=1=end) that corresponds to this side
@@ -138,7 +138,7 @@ public:
      *  \brief Returns the index of the box side implied by input
      *  direction \a dir and parameter \a par
     **/
-    static inline int index (index_t dir, bool par) {return par?2*dir+2:2*dir+1;}
+    static inline int index (short_t dir, bool par) {return par?2*dir+2:2*dir+1;}
 
 
     /**

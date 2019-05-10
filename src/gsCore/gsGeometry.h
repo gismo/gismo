@@ -300,7 +300,7 @@ public:
     short_t targetDim() const { return this->coefDim(); }
 
     /// Dimension \em n of the coefficients (control points)
-    short_t coefDim() const { return m_coefs.cols(); }
+    short_t coefDim() const { return static_cast<short_t>(m_coefs.cols()); }
 
     /// Dimension \em n of the absent physical space
     short_t geoDim() const { return this->coefDim(); }
