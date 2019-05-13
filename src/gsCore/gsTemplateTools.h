@@ -249,13 +249,13 @@ bool less(T1 t1, T2 t2)
     {
         if (t1 < 0)
             return true;
-        return (static_cast<unsignedT1>(t1) < t2);
+        return (static_cast<unsignedT1>(t1) < static_cast<unsignedT2>(t2));
     }
     if (!is_signed<T1>::value && is_signed<T2>::value)
     {
         if (t2 < 0)
             return false;
-        return (t1 < static_cast<unsignedT2>(t2));
+        return (static_cast<unsignedT1>(t1) < static_cast<unsignedT2>(t2));
     }
 }
 
@@ -282,13 +282,13 @@ bool less_equal(T1 t1, T2 t2)
     {
         if (t1 < 0)
             return true;
-        return (static_cast<unsignedT1>(t1) <= t2);
+        return (static_cast<unsignedT1>(t1) <= static_cast<unsignedT2>(t2));
     }
     if (!is_signed<T1>::value && is_signed<T2>::value)
     {
         if (t2 < 0)
             return false;
-        return (t1 <= static_cast<unsignedT2>(t2));
+        return (static_cast<unsignedT1>(t1) <= static_cast<unsignedT2>(t2));
     }
 }
 
@@ -335,13 +335,13 @@ bool equal(T1 t1, T2 t2)
     {
         if (t1 < 0)
             return false;
-        return (static_cast<unsignedT1>(t1) == t2);
+        return (static_cast<unsignedT1>(t1) == static_cast<unsignedT2>(t2));
     }
     if (!is_signed<T1>::value && is_signed<T2>::value)
     {
         if (t2 < 0)
             return false;
-        return (t1 == static_cast<unsignedT2>(t2));
+        return (static_cast<unsignedT1>(t1) == static_cast<unsignedT2>(t2));
     }
 }
 
