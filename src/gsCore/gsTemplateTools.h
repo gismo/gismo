@@ -247,12 +247,13 @@ bool less(T1 t1, T2 t2)
     }
     if (is_signed<T1>::value && !is_signed<T2>::value)
     {
-        if (t1 >= 0)
-            return (static_cast<unsignedT1>(t1) < t2);
-        return true;
+        if (t1 < 0)
+            return true;
+        return (static_cast<unsignedT1>(t1) < t2);
     }
-    if (!is_signed<T1>::value && is_signed<T2>::value) {
-        if(t2 < 0)
+    if (!is_signed<T1>::value && is_signed<T2>::value)
+    {
+        if (t2 < 0)
             return false;
         return (t1 < static_cast<unsignedT2>(t2));
     }
@@ -273,17 +274,22 @@ bool less_equal(T1 t1, T2 t2)
     if (is_signed<T1>::value == is_signed<T2>::value) // all is_signed are optimized out at compile time
     {
         if (is_signed<T1>::value) // both signed, cast to signedTx
-            return (signedT1(t1) <= signedT2(t2));
+            return (static_cast<signedT1>(t1) <= static_cast<signedT2>(t2));
         else                      // both unsigned, cast to unsignedTx
-            return (unsignedT1(t1) <= unsignedT2(t2));
+            return (static_cast<unsignedT1>(t1) <= static_cast<unsignedT2>(t2));
     }
-
-    if (t1 < 0 && t2 >= 0)
-        return true;
-    else if (t2 < 0 && t1 >= 0)
-        return false;
-
-    return (static_cast<size_t>(t1) <= static_cast<size_t>(t2)); // both positive and fit in size_t
+    if (is_signed<T1>::value && !is_signed<T2>::value)
+    {
+        if (t1 < 0)
+            return true;
+        return (static_cast<unsignedT1>(t1) <= t2);
+    }
+    if (!is_signed<T1>::value && is_signed<T2>::value)
+    {
+        if (t2 < 0)
+            return false;
+        return (t1 <= static_cast<unsignedT2>(t2));
+    }
 }
 
 /// Compares two (integer) numbers of even different type.
@@ -321,14 +327,22 @@ bool equal(T1 t1, T2 t2)
     if (is_signed<T1>::value == is_signed<T2>::value)
     {
         if (is_signed<T1>::value)
-            return signedT1(t1) == signedT2(t2);
+            return static_cast<signedT1>(t1) == static_cast<signedT2>(t2);
         else
-            return unsignedT1(t1) == unsignedT2(t2);
+            return static_cast<unsignedT1>(t1) == static_cast<unsignedT2>(t2);
     }
-    if ((t1 < 0 && t2 >= 0) || (t2 < 0 && t1 >= 0))
-        return false;
-
-    return (static_cast<size_t>(t1) == static_cast<size_t>(t2));
+    if (is_signed<T1>::value && !is_signed<T2>::value)
+    {
+        if (t1 < 0)
+            return false;
+        return (static_cast<unsignedT1>(t1) == t2);
+    }
+    if (!is_signed<T1>::value && is_signed<T2>::value)
+    {
+        if (t2 < 0)
+            return false;
+        return (t1 == static_cast<unsignedT2>(t2));
+    }
 }
 
 /*
