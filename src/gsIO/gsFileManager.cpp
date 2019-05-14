@@ -318,7 +318,7 @@ std::string gsFileManager::getExePath()
     DWORD l = GetModuleFileName( NULL, _temp, MAX_PATH );
     GISMO_UNUSED(l);
     GISMO_ASSERT(l, "GetModuleFileName did return 0");
-    return std::string(_temp);
+    return getCanonicRepresentation( std::string(_temp) + "/../" );
 #   else
     const char* argv0 = gsFileManagerDataSingleton().argv0;
     if (!argv0)
