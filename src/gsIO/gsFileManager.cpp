@@ -313,7 +313,13 @@ std::string gsFileManager::getCurrentPath()
 
 std::string gsFileManager::getExePath()
 {
-    // TODO: I think, windows allows a direct way.
+#   if defined(_WIN32)
+    TCHAR _temp[MAX_PATH];
+    DWORD l = GetModuleFileName( NULL, _temp, MAX_PATH );
+    GISMO_UNUSED(l);
+    GISMO_ASSERT(l, "GetModuleFileName did return 0");
+    return std::string(_temp);
+#   else
     const char* argv0 = gsFileManagerDataSingleton().argv0;
     if (!argv0)
     {
@@ -325,6 +331,7 @@ std::string gsFileManager::getExePath()
     return isFullyQualified( argv0 )
         ? getCanonicRepresentation( std::string(argv0) + "/../" )
         : getCanonicRepresentation( getCurrentPath() + "/" + argv0 + "/../" );
+#   endif
 }
 
 bool gsFileManager::pathEqual( const std::string& p1, const std::string& p2 )
