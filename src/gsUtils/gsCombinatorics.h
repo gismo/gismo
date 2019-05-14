@@ -28,7 +28,7 @@ namespace gismo
 // could also be in Utils, but doxygen allows only one group for free functions
 inline unsigned factorial( unsigned n)
 {
-    GISMO_ASSERT(n<14, "Overflow when computing factorial.");
+    GISMO_ASSERT(n<13, "Overflow when computing factorial.");
     static const unsigned precomputed[]= {1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600};
     return precomputed[n];
 }
