@@ -107,22 +107,5 @@ int main(int argc, char* argv[])
               std::ostream_iterator<int>(gsInfo,", "));
     gsInfo << "}\n\n";
 
-#if defined _WIN32
-    std::string own_fn("commandLineArg_example.exe");
-#else
-    std::string own_fn("commandLineArg_example");
-#endif
-
-    gsInfo << "Current path:       " << gsFileManager::getCurrentPath() << "\n"
-           << "Path of executable: " << gsFileManager::getExePath() << "\n"
-           << "Temp path:          " << gsFileManager::getTempPath() << "\n"
-           << "Gismo data dir:     " << gsFileManager::getCanonicRepresentation(GISMO_DATA_DIR) << "\n"
-           << "Expected data dir:  " << gsFileManager::getCanonicRepresentation(gsFileManager::getExePath()+"../../filedata/") << "\n"
-           << "Are we here?        " << (gsFileManager::fileExists( gsFileManager::getExePath() + own_fn ) ? "yes":"no") << "\n"
-           ;
-
-    GISMO_ENSURE( gsFileManager::fileExists( gsFileManager::getExePath() + own_fn ),
-                  "I can't find myself..." );
-
     return 0;
 }
