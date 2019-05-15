@@ -30,8 +30,9 @@ public:
     /// Get native path seperator
     static char getNativePathSeparator();
 
-    /// Checks if the path is fully qualified
-    /// If a name starts with "/", it is considered fully qualified
+    /// Checks if the path is fully qualified, also known as "absolute path"
+    /// Under Unix, if a name starts with "/", it is considered fully qualified
+    /// Under Windows, it starts with the drive-letter followed by the path
     static bool isFullyQualified(const std::string& fn);
 
     /// Checks if the path is a relative path
