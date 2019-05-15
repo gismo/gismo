@@ -12,7 +12,6 @@
 */
 
 #include "gismo_unittest.h"
-#include "../../../../../../usr/lib/gcc/x86_64-pc-linux-gnu/9.1.0/include/g++-v9/bits/basic_string.h"
 
 SUITE(gsFileManager_test)
 {
