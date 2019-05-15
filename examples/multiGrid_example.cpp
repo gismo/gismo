@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundary_conditions);
-    cmd.addSwitch("",  "Plot",                  "Plot the result with Paraview", plot);
+    cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 

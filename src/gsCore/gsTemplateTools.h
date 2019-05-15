@@ -233,13 +233,30 @@ typename make_signed<T>::type to_signed(T t) {
 template<class T1, class T2>
 bool less(T1 t1, T2 t2)
 {
-    if (is_signed<T1>::value == is_signed<T2>::value) // this is optimized at compile time
-        return (t1 < t2);
-    if (t1 < 0 && t2 >= 0)
-        return true;
-    else if (t2 < 0 && t1 >= 0)
-        return false;
-    return (static_cast<size_t>(t1) < static_cast<size_t>(t2));
+    typedef typename util::make_signed<T1>::type signedT1;
+    typedef typename util::make_signed<T2>::type signedT2;
+    typedef typename util::make_unsigned<T1>::type unsignedT1;
+    typedef typename util::make_unsigned<T2>::type unsignedT2;
+
+    if (is_signed<T1>::value == is_signed<T2>::value) // all is_signed are optimized out at compile time
+    {
+        if (is_signed<T1>::value) // both signed, cast to signedTx
+            return (static_cast<signedT1>(t1) < static_cast<signedT2>(t2));
+        else                      // both unsigned, cast to unsignedTx
+            return (static_cast<unsignedT1>(t1) < static_cast<unsignedT2>(t2));
+    }
+    if (is_signed<T1>::value && !is_signed<T2>::value)
+    {
+        if (t1 < 0)
+            return true;
+        return (static_cast<unsignedT1>(t1) < static_cast<unsignedT2>(t2));
+    }
+    if (!is_signed<T1>::value && is_signed<T2>::value)
+    {
+        if (t2 < 0)
+            return false;
+        return (static_cast<unsignedT1>(t1) < static_cast<unsignedT2>(t2));
+    }
 }
 
 /// Compares two (integer) numbers of even different type.
@@ -249,14 +266,30 @@ bool less(T1 t1, T2 t2)
 template<class T1, class T2>
 bool less_equal(T1 t1, T2 t2)
 {
-    if (is_signed<T1>::value == is_signed<T2>::value)
-        return (t1 <= t2);
-    if (t1 < 0 && t2 >= 0)
-        return true;
-    else if (t2 < 0 && t1 >= 0)
-        return false;
+    typedef typename util::make_signed<T1>::type signedT1;
+    typedef typename util::make_signed<T2>::type signedT2;
+    typedef typename util::make_unsigned<T1>::type unsignedT1;
+    typedef typename util::make_unsigned<T2>::type unsignedT2;
 
-    return (static_cast<size_t>(t1) <= static_cast<size_t>(t2));
+    if (is_signed<T1>::value == is_signed<T2>::value) // all is_signed are optimized out at compile time
+    {
+        if (is_signed<T1>::value) // both signed, cast to signedTx
+            return (static_cast<signedT1>(t1) <= static_cast<signedT2>(t2));
+        else                      // both unsigned, cast to unsignedTx
+            return (static_cast<unsignedT1>(t1) <= static_cast<unsignedT2>(t2));
+    }
+    if (is_signed<T1>::value && !is_signed<T2>::value)
+    {
+        if (t1 < 0)
+            return true;
+        return (static_cast<unsignedT1>(t1) <= static_cast<unsignedT2>(t2));
+    }
+    if (!is_signed<T1>::value && is_signed<T2>::value)
+    {
+        if (t2 < 0)
+            return false;
+        return (static_cast<unsignedT1>(t1) <= static_cast<unsignedT2>(t2));
+    }
 }
 
 /// Compares two (integer) numbers of even different type.
@@ -286,12 +319,30 @@ bool greater_equal(T1 t1, T2 t2)
 template<class T1, class T2>
 bool equal(T1 t1, T2 t2)
 {
-    if (is_signed<T1>::value == is_signed<T2>::value)
-        return (t1 == t2);
-    if ((t1 < 0 && t2 >= 0) || (t2 < 0 && t1 >= 0))
-        return false;
+    typedef typename util::make_signed<T1>::type signedT1;
+    typedef typename util::make_signed<T2>::type signedT2;
+    typedef typename util::make_unsigned<T1>::type unsignedT1;
+    typedef typename util::make_unsigned<T2>::type unsignedT2;
 
-    return (static_cast<size_t>(t1) == static_cast<size_t>(t2));
+    if (is_signed<T1>::value == is_signed<T2>::value)
+    {
+        if (is_signed<T1>::value)
+            return static_cast<signedT1>(t1) == static_cast<signedT2>(t2);
+        else
+            return static_cast<unsignedT1>(t1) == static_cast<unsignedT2>(t2);
+    }
+    if (is_signed<T1>::value && !is_signed<T2>::value)
+    {
+        if (t1 < 0)
+            return false;
+        return (static_cast<unsignedT1>(t1) == static_cast<unsignedT2>(t2));
+    }
+    if (!is_signed<T1>::value && is_signed<T2>::value)
+    {
+        if (t2 < 0)
+            return false;
+        return (static_cast<unsignedT1>(t1) == static_cast<unsignedT2>(t2));
+    }
 }
 
 /*

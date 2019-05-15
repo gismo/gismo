@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
     cmd.addReal("r", "range", "in case of restrict or opposite", range);
     cmd.addInt("n", "number", "number of corners, in case of corners", number);
     cmd.addMultiInt("c", "corners", "vector for corners, call it every time for an entry (-c 3 -c 1 -c 2 => {3,1,2})", corners);
-    cmd.addSwitch("","plot","Plot with paraview",paraview);
+    cmd.addSwitch("plot","Plot with paraview",paraview);
     cmd.getValues(argc, argv);
 
     gsOptionList ol = cmd.getOptionList();
