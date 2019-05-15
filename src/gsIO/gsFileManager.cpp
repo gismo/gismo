@@ -33,29 +33,9 @@
 namespace gismo
 {
 
-class gsFileManagerData;
-
-// Use a singleton to store data:
-class GISMO_EXPORT gsFileManagerData
-{
-public:
-
-    friend gsFileManagerData& gsFileManagerDataSingleton();
-    friend class gsFileManager;
-
-    bool addSearchPaths(const std::string& paths);
-
-    void clear() { m_paths.clear();}
-private:
-    gsFileManagerData()
-    {
-#ifdef GISMO_SEARCH_PATHS
-        (void)addSearchPaths("" GISMO_SEARCH_PATHS);
-#endif
-    }
-
-    gsFileManagerData(const gsFileManagerData&);
-    gsFileManagerData& operator= (const gsFileManagerData&);
+// Struct for storing data
+struct GISMO_EXPORT gsFileManagerData {
+    gsFileManagerData();
     std::vector<std::string> m_paths;
     const char* argv0;
 };
@@ -134,33 +114,24 @@ bool gsFileManager::isRelative(const std::string& fn)
 #endif
 }
 
+namespace {
+
 void _replace_slash_by_basckslash(std::string& str)
 {
     for ( std::string::iterator it=str.begin(); it!=str.end(); it++ )
         if ( *it=='/' ) *it = '\\';
 }
 
-bool gsFileManager::addSearchPaths(const std::string& paths)
-{
-    return gsFileManagerDataSingleton().addSearchPaths(paths);
-}
-
-bool gsFileManager::setSearchPaths(const std::string& paths)
-{
-    gsFileManagerDataSingleton().clear();
-    return gsFileManagerDataSingleton().addSearchPaths(paths);
-}
-
-bool gsFileManagerData::addSearchPaths(const std::string& paths)
+bool _addSearchPaths(const std::string& in, std::string& out)
 {
     bool ok = true;
     std::string p;
     std::string::const_iterator a;
-    std::string::const_iterator b = paths.begin();
+    std::string::const_iterator b = in.begin();
     while (true)
     {
         a = b;
-        while (b != paths.end() && (*b) != ';') { ++b; }
+        while (b != in.end() && (*b) != ';') { ++b; }
 
         p.assign(a,b);
 
@@ -178,14 +149,35 @@ bool gsFileManagerData::addSearchPaths(const std::string& paths)
                 p.push_back('/');
 #endif
             ok &= gsFileManager::dirExists(p);
-            m_paths.push_back(p);
+            out.push_back(p);
         }
 
-        if ( b == paths.end() ) break;
+        if ( b == in.end() ) break;
 
         ++b;
     }
     return ok;
+}
+
+} // anonymous namespace
+
+// constructor; registers data from macro
+gsFileManagerData::gsFileManagerData()
+{
+#ifdef GISMO_SEARCH_PATHS
+    (void)addSearchPaths("" GISMO_SEARCH_PATHS);
+#endif
+}
+
+bool gsFileManager::addSearchPaths(const std::string& paths)
+{
+    return _addSearchPaths( paths, gsFileManagerDataSingleton().m_paths );
+}
+
+bool gsFileManager::setSearchPaths(const std::string& paths)
+{
+    gsFileManagerDataSingleton().m_paths.clear();
+    return _addSearchPaths( paths, gsFileManagerDataSingleton().m_paths );
 }
 
 std::string gsFileManager::getSearchPaths()
@@ -253,12 +245,13 @@ bool gsFileManager::mkdir( std::string fn )
 
 std::string gsFileManager::getTempPath()
 {
-#       if   defined(_WIN32)
+#if defined _WIN32
     TCHAR _temp[MAX_PATH];
-    (void)GetTempPath(MAX_PATH, // length of the buffer
-            _temp);// buffer for path
+    DWORD l = GetTempPath(/*length of buffer:*/MAX_PATH, _temp);
+    GISMO_UNUSED(l);
+    GISMO_ASSERT(l, "GetTempPath did return 0");
     return std::string(_temp);
-#       else
+#else
 
     // Typically, we should consider TMPDIR
     //   http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html#tag_08_03
@@ -288,19 +281,18 @@ std::string gsFileManager::getTempPath()
     // The string is allocated using malloc, see the reference above
     std::free(_temp);
     return path;
-#       endif
+#endif
 }
 
 std::string gsFileManager::getCurrentPath()
 {
-#   if defined(_WIN32)
+#if defined _WIN32
     TCHAR _temp[MAX_PATH];
-    DWORD l = GetCurrentDirectory(MAX_PATH, // length of the buffer
-            _temp);// buffer for path
+    DWORD l = GetCurrentDirectory(/*length of buffer:*/MAX_PATH, _temp);
     GISMO_UNUSED(l);
     GISMO_ASSERT(l, "GetCurrentDirectory did return 0");
     return std::string(_temp);
-#   else
+#else
     // http://man7.org/linux/man-pages/man2/getcwd.2.html
     char* _temp = getcwd(NULL, 0);
     GISMO_ASSERT(NULL!=_temp, "getcwd returned NULL.");
@@ -308,30 +300,37 @@ std::string gsFileManager::getCurrentPath()
     // The string is allocated using malloc, see the reference above
     std::free(_temp);
     return path;
-#   endif
+#endif
 }
 
 std::string gsFileManager::getExePath()
 {
-#   if defined(_WIN32)
+#if defined _WIN32
     TCHAR _temp[MAX_PATH];
     DWORD l = GetModuleFileName( NULL, _temp, MAX_PATH );
     GISMO_UNUSED(l);
     GISMO_ASSERT(l, "GetModuleFileName did return 0");
+    GISMO_ASSERT(gsFileManager::fileNotPathExists(_temp),
+        "The executable cannot be found where it is expected." );
     return getCanonicRepresentation( std::string(_temp) + "/../" );
-#   else
+#else
     const char* argv0 = gsFileManagerDataSingleton().argv0;
     if (!argv0)
     {
         gsWarn << "gsCmdLine::getValues has not been called. Therefore, "
-             "the path is not available\n";
+             "the path is not available.\n";
         return getCurrentPath();
     }
+
+    GISMO_ASSERT( gsFileManager::fileNotPathExists( isFullyQualified( argv0 )
+        ? getCanonicRepresentation( std::string(argv0) )
+        : getCanonicRepresentation( getCurrentPath() + "/" + argv0 ),
+        "The executable cannot be found where it is expected." );
 
     return isFullyQualified( argv0 )
         ? getCanonicRepresentation( std::string(argv0) + "/../" )
         : getCanonicRepresentation( getCurrentPath() + "/" + argv0 + "/../" );
-#   endif
+#endif
 }
 
 bool gsFileManager::pathEqual( const std::string& p1, const std::string& p2 )
@@ -466,11 +465,11 @@ std::string gsFileManager::getCanonicRepresentation(const std::string& s)
 void gsFileManager::open(const std::string & fn)
 {
 
-#if defined(__APPLE__)
+#if defined __APPLE__
     const int ret = std::system( ("open " + fn + " &").c_str() );
-#elif defined(__unix__) //__linux__
+#elif defined __unix__  //__linux__
     const int ret = std::system( ("xdg-open " + fn + " &").c_str() );
-#elif defined(_WIN32)
+#elif defined _WIN32
     HINSTANCE hi = ShellExecute(GetDesktopWindow(), "open", fn.c_str(),
                                 NULL, NULL, SW_SHOWNORMAL);
     const bool ret = !( (INT_PTR)hi>32);
