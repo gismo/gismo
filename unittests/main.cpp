@@ -34,7 +34,8 @@ const real_t EPSILON = std::pow(10.0, - REAL_DIG * 0.75);
 
 /// Selects tests by matching their names to the input prefix given by command line argument
 // TODO implement more complex queries
-class Selector
+namespace gismo {
+class gsUnitTestSelector
 {
 private:
     int            m_argc;
@@ -42,7 +43,7 @@ private:
     mutable bool   m_did_run;
 
 public:
-    Selector(int argc, char* argv[])
+    gsUnitTestSelector(int argc, char* argv[])
     : m_argc(argc), m_argv(argv), m_did_run(false)
     { }
 
@@ -61,18 +62,21 @@ public:
     }
 
     bool didRunAnyTests() { return m_did_run; }
-};
 
+    static void setArgv0( const char* s ) { gsFileManager::setArgv0(s); }
+};
+} // namespace gismo
 
 int main(int argc, char* argv[])
 {
+    gsUnitTestSelector::setArgv0(argv[0]);
     gsCmdLine::printVersion();
 
     if (argc > 1)
     {
         UnitTest::TestReporterStdout reporter;
         UnitTest::TestRunner runner(reporter);
-        Selector sel(argc,argv);
+        gsUnitTestSelector sel(argc,argv);
         int result = runner.RunTestsIf(UnitTest::Test::GetTestList(), NULL, sel, 0);
         if (!sel.didRunAnyTests())
         {

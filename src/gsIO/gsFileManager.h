@@ -119,9 +119,12 @@ private:
 
     // The result of argv[0]
     // Since its static, it will be null by default
+    // This is called by gsCmdLine and via the unittest runner
+    // There is no need to call it otherwise
     static void setArgv0( const char * c );
 
     friend class gsCmdLine;
+    friend class gsUnitTestSelector;
 };
 
 

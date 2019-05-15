@@ -22,7 +22,7 @@ SUITE(gsFileManager_test)
 #else
         std::string own_fn("unittests");
 #endif
-        CHECK( gsFileManager::fileExists( gsFileManager::getExePath() + own_fn ) )
+        CHECK( gsFileManager::fileExists( gsFileManager::getExePath() + own_fn ) );
     }
 
 }
