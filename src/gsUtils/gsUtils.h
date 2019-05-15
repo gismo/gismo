@@ -216,6 +216,21 @@ size_t hash_range(T const * start, const T * const end)
     return seed;
 }
 
+#if __cplusplus >= 201703L
+using std::size;
+#else
+template <class T, size_t N>
+size_t size(const T (&)[N])
+{
+    return N;
+}
+template <class T>
+size_t size(const T& t)
+{
+    return t.size();
+}
+#endif
+
 } // end namespace util
 
 // This macro assumes the operators == and < to be present and
