@@ -18,59 +18,84 @@
 namespace gismo
 {
 
-/// @brief This class checks if the given filename can be found
-///  in one of the pre-defined search paths. It is possible to
-///  register additional search paths.
+/// @brief File-system related functionality.
+///
+/// Input paths to the fuctions of this class can be given using any
+/// valid path seperator, this is in Unix only "/" and in Windows both
+/// "/" and "\\".
+///
+/// Return values only contain the preferred native path seperator, which
+/// is in Unix "/" and in Windows "\\".
 ///
 /// @ingroup IO
 class GISMO_EXPORT gsFileManager
 {
 public:
 
-    /// Get native path seperator
+    /// Get preferred native path seperator
     static char getNativePathSeparator();
 
-    /// Checks if the path is fully qualified, also known as "absolute path"
-    /// Under Unix, if a name starts with "/", it is considered fully qualified
-    /// Under Windows, it starts with the drive-letter followed by the path
+    /// Get valid path seperators
+    static const std::string& getValidPathSeparators();
+    
+    /// @brief Checks if the path is fully qualified, also known as "absolute path"
+    /// Under Unix, if a name starts with "/", it is considered fully qualified.
+    /// Under Windows, it starts with the drive-letter followed by the path or
+    /// with a "/" or a "\\" (refers to the current drive).
     static bool isFullyQualified(const std::string& fn);
 
-    /// Checks if the path is a relative path
-    /// If a name starts with "./" or "../", it is considered fully qualified
-    static bool isRelative(const std::string& fn);
+    /// @brief Checks if the path is a relative path
+    /// Under Unix, if a name starts with "./" or "../", it is considered relative.
+    /// Under Windows, if a name starts with "./", ".\\", "../" or "..\\",
+    /// it is considered relative.
+    static bool isExplicitlyRelative(const std::string& fn);
 
-    /// Set the search paths
+    /// @brief Set the search paths
+    /// Returns true iff all paths exist
     static bool setSearchPaths(const std::string& paths);
 
-    /// Add more search paths
+    /// @brief Add more search paths
+    /// Returns true iff paths exist
     static bool addSearchPaths(const std::string& paths);
 
-    /// Get the defined search path
+    /// @brief Get the defined search paths
     static std::string getSearchPaths();
 
-    /// \brief Find a file.
+    /// @brief Find a file.
     ///
-    /// \param fn The filename
-    /// \returns  The full path or empty string
+    /// @param fn The filename
+    /// @returns The full path or empty string
     ///
-    /// If the file can be found, returns the full path.
-    /// Otherwiese, returns empty string.
+    /// If the fn \a isFullyQulaified (like "/foo/bar.txt"), or
+    /// if the fn \a isExplicitlyRelative (like "../foo/bar.txt"), the
+    /// name is returned unchanged if the file can be found. Otherwise,
+    /// an empty string is returned.
     ///
-    /// If \a fn satisfied \a isFullyQualified or \a isRelative, it is kept unchanged.
+    /// If the fn has the form "bar.txt" or "foo/bar.txt", the file
+    /// is searched in the current directory and all search paths
+    /// (cf. \a getSearchPaths). If the file can be found, the full
+    /// path is returned. Otherwise, an empty string is returned.
     ///
     /// In any case, slashes are replaced by the native path separator.
     static std::string find(std::string fn);
 
-    /// Checks if the file exists (also in the search paths)
+    /// @brief Checks if the file exists
+    ///
+    /// If the fn \a isFullyQulaified (like "/foo/bar.txt"), or
+    /// if the fn \a isExplicitlyRelative (like "../foo/bar.txt"), the
+    /// only this path is considered.
+    ///
+    /// If the fn has the form "bar.txt" or "foo/bar.txt", the file
+    /// is searched in the current directory and all search paths
+    /// (cf. \a getSearchPaths).
+    ///
+    /// @see \a find
     static bool fileExists(const std::string& name);
 
-    /// Checks if the directory named \a path exists
-    static bool dirExists(const std::string& path);
-
-    /// \brief Find a file in GISMO_DATA_DIR
+    /// @brief Find a file in GISMO_DATA_DIR
     ///
-    /// \param fn The filename
-    /// \returns  The full path or empty string
+    /// @param fn The filename
+    /// @returns  The full path or empty string
     ///
     /// If the file can be found, returns the full path.
     /// Otherwiese, returns empty string.
@@ -87,13 +112,21 @@ public:
     /// Get current directory
     static std::string getCurrentPath();
 
-    /// Get path of executable
+    /// Get path of executable (without filename)
     static std::string getExePath();
 
-    /// Make directory
+    /// @brief Make directory
+    ///
+    /// Return true iff directory is available after calling
+    /// this function. (This also holds if the directory has
+    /// existed already.)
     static bool mkdir( std::string fn );
 
-    /// Checks paths for equality, ignoring slash vs. backslash
+    /// @brief Checks paths for equality of paths
+    ///
+    /// If the path is not \a isFullyQualified, creates an absolute
+    /// path using \a getCurrentPath. Then \a getCanonicRepresentation
+    /// is called to get canonical representations which are compared.
     static bool pathEqual( const std::string& p1, const std::string& p2 );
 
     /// Returns the extension of the filename \a fn
@@ -105,19 +138,20 @@ public:
     /// Returns the filename without the path of \a fn
     static std::string getFilename(std::string const & fn);
 
-    /// \brief Returns the canonic representation of the path \a fn
+    /// @brief Returns the canonic representation of the path \a fn
     ///
-    /// This reduces foo/baz/../bar or foo/./bar to foo/bar
+    /// This reduces foo/baz/../bar or foo/./bar to foo/bar. Moreover,
+    /// the non-preferred path seperators are replaced by the preferred
+    /// ones.
+    ///
+    /// This does not access the file system, the current directory, or
+    /// the search paths.
     static std::string getCanonicRepresentation(const std::string & fn);
 
     /// Opens the file \a fn using the preferred application of the OS
     static void open(const std::string & fn);
 
 private:
-
-    // Return true iff file \a fn exists on the hard disk
-    static bool fileNotPathExists(const std::string & fn);
-
     // The result of argv[0]
     // Since its static, it will be null by default
     // This is called by gsCmdLine and via the unittest runner

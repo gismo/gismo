@@ -56,18 +56,19 @@ bool gsFileManager::fileExists(const std::string& name)
     return !find(name).empty();
 }
 
-bool gsFileManager::dirExists(const std::string& path)
-{
-    struct stat info;
-    return (0==stat(path.c_str(), &info)) && (info.st_mode & S_IFDIR);
-}
-
 bool gsFileManager::fileExistsInDataDir(const std::string& name)
 {
     return !findInDataDir(name).empty();
 }
 
-bool gsFileManager::fileNotPathExists(const std::string& fn)
+namespace {
+bool _dirExistsWithoutSearching(const std::string& path)
+{
+    struct stat info;
+    return (0==stat(path.c_str(), &info)) && (info.st_mode & S_IFDIR);
+}
+
+bool _fileExistsWithoutSearching(const std::string& fn)
 {
    // Note:
    //   std::ifstream s(fn.c_str()); return s.good() && ! s.eof();
@@ -80,18 +81,36 @@ bool gsFileManager::fileNotPathExists(const std::string& fn)
     return ( (0==stat(fn.c_str(), &buf)) && (0!=S_ISREG(buf.st_mode)) );
 #endif
 }
+} // anonymous namespace
+
+const std::string& gsFileManager::getValidPathSeparators()
+{
+#if defined _WIN32 || defined __CYGWIN__
+    static std::string ps("\\/");
+#else
+    static std::string ps("/");
+#endif
+    return ps;
+}
 
 char gsFileManager::getNativePathSeparator()
 {
-#if defined _WIN32 || defined __CYGWIN__
-    return '\\';
-#else
-    return '/';
-#endif
+    return getValidPathSeparators()[0];
 }
+
+
+namespace {
+inline bool _contains( const std::string& haystack, char needle )
+{
+    return haystack.find(needle) != std::string::npos;
+}
+
+} // anonymous namespace
+
 
 bool gsFileManager::isFullyQualified(const std::string& fn)
 {
+    // TODO: valid
 #if defined _WIN32
     return util::starts_with(fn,"/")
         || util::starts_with(fn,"\\")
@@ -103,6 +122,7 @@ bool gsFileManager::isFullyQualified(const std::string& fn)
 
 bool gsFileManager::isRelative(const std::string& fn)
 {
+    // TODO: valid
 #if defined _WIN32
     return util::starts_with(fn,"./")
         || util::starts_with(fn,".\\")
@@ -148,7 +168,7 @@ inline bool _addSearchPaths(const std::string& in, std::vector<std::string>& out
             if (*p.rbegin() != '/')
                 p.push_back('/');
 #endif
-            if (gsFileManager::dirExists(p))
+            if (_dirExistsWithoutSearching(p))
                 out.push_back(p);
             else
                 ok = false;
@@ -200,9 +220,9 @@ std::string gsFileManager::find(std::string fn)
     _replace_slash_by_basckslash(fn);
 #endif
 
-    if ( fileNotPathExists(fn) ) return fn;
+    if ( _fileExistsWithoutSearching(fn) ) return fn;
 
-    if ( isFullyQualified(fn) || isRelative(fn) ) return std::string();
+    if ( isFullyQualified(fn) || isExplicitlyRelative(fn) ) return std::string();
 
     gsFileManagerData& dat = gsFileManagerDataSingleton();
 
@@ -211,7 +231,7 @@ std::string gsFileManager::find(std::string fn)
             it < dat.m_paths.end(); ++it)
     {
         tmp = (*it) + fn;
-        if ( fileNotPathExists(tmp) )
+        if ( _fileExistsWithoutSearching(tmp) )
             return tmp;
     }
 
@@ -230,7 +250,7 @@ std::string gsFileManager::findInDataDir(std::string fn)
 
     std::string fn_out = GISMO_DATA_DIR + fn;
 
-    if ( fileNotPathExists(fn_out) ) return fn_out;
+    if ( _fileExistsWithoutSearching(fn_out) ) return fn_out;
 
     return std::string();
 }
@@ -312,7 +332,7 @@ std::string gsFileManager::getExePath()
     DWORD l = GetModuleFileName( NULL, _temp, MAX_PATH );
     GISMO_UNUSED(l);
     GISMO_ASSERT(l, "GetModuleFileName did return 0");
-    GISMO_ASSERT(gsFileManager::fileNotPathExists(_temp),
+    GISMO_ASSERT(_fileExistsWithoutSearching(_temp),
         "The executable cannot be found where it is expected." );
     return getCanonicRepresentation( std::string(_temp) + "/../" );
 #else
@@ -324,7 +344,7 @@ std::string gsFileManager::getExePath()
         return getCurrentPath();
     }
 
-    GISMO_ASSERT( gsFileManager::fileNotPathExists( isFullyQualified( argv0 )
+    GISMO_ASSERT( _fileExistsWithoutSearching( isFullyQualified( argv0 )
         ? getCanonicRepresentation( std::string(argv0) )
         : getCanonicRepresentation( getCurrentPath() + "/" + argv0 ) ),
         "The executable cannot be found where it is expected." );
@@ -370,7 +390,7 @@ std::string gsFileManager::getBasename(std::string const & fn)
 {
     if(fn.find_last_of(".") != std::string::npos)
     {
-        size_t pos1 = fn.find_last_of("/\\");
+        size_t pos1 = fn.find_last_of(getValidPathSeparators());
         size_t pos2 = fn.rfind(".");
         std::string name = fn.substr(pos1+1, pos2-pos1-1);
         return name;
@@ -380,7 +400,7 @@ std::string gsFileManager::getBasename(std::string const & fn)
 
 std::string gsFileManager::getFilename(std::string const & fn)
 {
-    size_t pos1 = fn.find_last_of("/\\");
+    size_t pos1 = fn.find_last_of(getValidPathSeparators());
     if(pos1 != std::string::npos)
     {
         std::string name = fn.substr(pos1+1);
@@ -415,11 +435,7 @@ std::string gsFileManager::getCanonicRepresentation(const std::string& s)
     std::vector<gsStringView> parts;
     size_t last = 0;
     for (size_t i=0; i<s.size(); ++i)
-#if defined _WIN32
-        if (s[i] == '/' || s[i] == '\\')
-#else
-        if (s[i] == '/')
-#endif
+        if (_contains(getValidPathSeparators(),s[i]))
         {
             parts.push_back(gsStringView(s,last,i));
             last = i + 1;
@@ -456,7 +472,7 @@ std::string gsFileManager::getCanonicRepresentation(const std::string& s)
     final_result.append( result[0].begin(), result[0].end() );
     for (size_t i=1; i<result.size(); ++i)
     {
-        final_result.push_back( '/' );
+        final_result.push_back( getNativePathSeparator() );
         final_result.append( result[i].begin(), result[i].end() );
     }
     return final_result;
