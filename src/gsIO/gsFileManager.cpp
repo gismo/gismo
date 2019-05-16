@@ -116,13 +116,13 @@ bool gsFileManager::isRelative(const std::string& fn)
 
 namespace {
 
-void _replace_slash_by_basckslash(std::string& str)
+inline void _replace_slash_by_basckslash(std::string& str)
 {
     for ( std::string::iterator it=str.begin(); it!=str.end(); it++ )
         if ( *it=='/' ) *it = '\\';
 }
 
-bool _addSearchPaths(const std::string& in, std::string& out)
+inline bool _addSearchPaths(const std::string& in, std::string& out)
 {
     bool ok = true;
     std::string p;
@@ -165,7 +165,7 @@ bool _addSearchPaths(const std::string& in, std::string& out)
 gsFileManagerData::gsFileManagerData()
 {
 #ifdef GISMO_SEARCH_PATHS
-    (void)addSearchPaths("" GISMO_SEARCH_PATHS);
+    (void)_addSearchPaths("" GISMO_SEARCH_PATHS, m_paths);
 #endif
 }
 
