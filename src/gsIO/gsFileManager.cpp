@@ -122,7 +122,7 @@ inline void _replace_slash_by_basckslash(std::string& str)
         if ( *it=='/' ) *it = '\\';
 }
 
-inline bool _addSearchPaths(const std::string& in, std::string& out)
+inline bool _addSearchPaths(const std::string& in, std::vector<std::string>& out)
 {
     bool ok = true;
     std::string p;
@@ -148,8 +148,10 @@ inline bool _addSearchPaths(const std::string& in, std::string& out)
             if (*p.rbegin() != '/')
                 p.push_back('/');
 #endif
-            ok &= gsFileManager::dirExists(p);
-            out.push_back(p);
+            if (gsFileManager::dirExists(p))
+                out.push_back(p);
+            else
+                ok = false;
         }
 
         if ( b == in.end() ) break;
@@ -324,7 +326,7 @@ std::string gsFileManager::getExePath()
 
     GISMO_ASSERT( gsFileManager::fileNotPathExists( isFullyQualified( argv0 )
         ? getCanonicRepresentation( std::string(argv0) )
-        : getCanonicRepresentation( getCurrentPath() + "/" + argv0 ),
+        : getCanonicRepresentation( getCurrentPath() + "/" + argv0 ) ),
         "The executable cannot be found where it is expected." );
 
     return isFullyQualified( argv0 )
