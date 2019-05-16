@@ -66,9 +66,9 @@ public:
     /// @param fn The filename
     /// @returns The full path or empty string
     ///
-    /// If the fn \a isFullyQulaified (like "/foo/bar.txt"), or
+    /// If the fn \a isFullyQualified (like "/foo/bar.txt"), or
     /// if the fn \a isExplicitlyRelative (like "../foo/bar.txt"), the
-    /// name is returned unchanged if the file can be found. Otherwise,
+    /// name is returned unchanged* if the file can be found. Otherwise,
     /// an empty string is returned.
     ///
     /// If the fn has the form "bar.txt" or "foo/bar.txt", the file
@@ -76,7 +76,7 @@ public:
     /// (cf. \a getSearchPaths). If the file can be found, the full
     /// path is returned. Otherwise, an empty string is returned.
     ///
-    /// In any case, slashes are replaced by the native path separator.
+    /// *: In any case, slashes are replaced by the native path separator.
     static std::string find(std::string fn);
 
     /// @brief Checks if the file exists
