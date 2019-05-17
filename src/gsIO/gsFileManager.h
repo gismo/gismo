@@ -27,6 +27,8 @@ namespace gismo
 /// Return values only contain the preferred native path seperator, which
 /// is in Unix "/" and in Windows "\\".
 ///
+/// Does not check for special system cases, like AUX under Windows.
+/// (see https://en.wikipedia.org/wiki/Filename)
 /// @ingroup IO
 class GISMO_EXPORT gsFileManager
 {

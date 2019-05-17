@@ -13,6 +13,12 @@
 
 #include "gismo_unittest.h"
 
+#if defined _WIN32 || defined __CYGWIN__
+#define own_fn "unittests.exe"
+#else
+#define own_fn "unittests"
+#endif
+
 SUITE(gsFileManager_test)
 {
 TEST(PathSeperators)
@@ -27,108 +33,186 @@ TEST(PathSeperators)
 #endif
 }
 
-TEST(isFullyQualified)
+TEST(Paths_absolut_relative)
 {
     // for any OS
-    std::string verum0("/");
-    std::string verum1("/foo");
-    std::string verum2("/Foo/Bar");
-    std::string verum3("/foo bar/bar foo");
+    std::string s00("/");
+    std::string s01("/foo");
+    std::string s02("/Foo/Bar");
+    std::string s03("/foo bar/bar foo");
+    std::string s04("");
+    std::string s05("foo");
+    std::string s06("foo\\bar");
+    std::string s07("\"" + s02 + "\"");
+    std::string s08("./");
+    std::string s09("./foo");
+    std::string s10("../");
+    std::string s11("../foo");
 
-    CHECK(gsFileManager::isFullyQualified(verum0));
-    CHECK(gsFileManager::isFullyQualified(verum1));
-    CHECK(gsFileManager::isFullyQualified(verum2));
-    CHECK(gsFileManager::isFullyQualified(verum3));
+    // isFullyQualified verum
+    CHECK(gsFileManager::isFullyQualified(s00));
+    CHECK(gsFileManager::isFullyQualified(s01));
+    CHECK(gsFileManager::isFullyQualified(s02));
+    CHECK(gsFileManager::isFullyQualified(s03));
+    // isFullyQualified falsum
+    CHECK(!gsFileManager::isFullyQualified(s04));
+    CHECK(!gsFileManager::isFullyQualified(s05));
+    CHECK(!gsFileManager::isFullyQualified(s06));
+    CHECK(!gsFileManager::isFullyQualified(s07));
+    CHECK(!gsFileManager::isFullyQualified(s08));
+    CHECK(!gsFileManager::isFullyQualified(s09));
+    CHECK(!gsFileManager::isFullyQualified(s10));
+    CHECK(!gsFileManager::isFullyQualified(s11));
 
-    std::string falsum0("");
-    std::string falsum1("foo");
-    std::string falsum2("foo\\bar");
-    std::string falsum3("\"" + verum2 + "\"");
-
-    CHECK(!gsFileManager::isFullyQualified(falsum0));
-    CHECK(!gsFileManager::isFullyQualified(falsum1));
-    CHECK(!gsFileManager::isFullyQualified(falsum2));
-    CHECK(!gsFileManager::isFullyQualified(falsum3));
+    // isExplicitlyRelative verum
+    CHECK(gsFileManager::isExplicitlyRelative(s08));
+    CHECK(gsFileManager::isExplicitlyRelative(s09));
+    CHECK(gsFileManager::isExplicitlyRelative(s10));
+    CHECK(gsFileManager::isExplicitlyRelative(s11));
+    // isExplicitlyRelative falsum
+    CHECK(!gsFileManager::isExplicitlyRelative(s00));
+    CHECK(!gsFileManager::isExplicitlyRelative(s01));
+    CHECK(!gsFileManager::isExplicitlyRelative(s02));
+    CHECK(!gsFileManager::isExplicitlyRelative(s03));
+    CHECK(!gsFileManager::isExplicitlyRelative(s04));
+    CHECK(!gsFileManager::isExplicitlyRelative(s05));
+    CHECK(!gsFileManager::isExplicitlyRelative(s06));
+    CHECK(!gsFileManager::isExplicitlyRelative(s07));
 
     // OS specific
+    std::string c00("\\");
+    std::string c01("E:\\Foo\\Bar");
+    std::string c02("\\foo bar\\bar foo");
+    std::string c03("f:/foo bar/bar foo");
+    std::string c04("\\c:\\Foo\\Bar");
+    std::string c05("/c:/Foo/Bar");
+    std::string c06(".\\");
+    std::string c07(".\\foo");
+    std::string c08("..\\");
+    std::string c09("..\\foo");
+
 #if defined _WIN32
-    std::string verum4("\\");
-    std::string verum5("E:\\Foo\\Bar");
-    std::string verum6("\\foo bar\\bar foo");
-    std::string verum7("f:/foo bar/bar foo");
+    // isFullyQualified verum
+    CHECK(gsFileManager::isFullyQualified(c00));
+    CHECK(gsFileManager::isFullyQualified(c01));
+    CHECK(gsFileManager::isFullyQualified(c02));
+    CHECK(gsFileManager::isFullyQualified(c03));
+    // isFullyQualified falsum
+    CHECK(!gsFileManager::isFullyQualified(c04));
+    CHECK(!gsFileManager::isFullyQualified(c05));
+    CHECK(!gsFileManager::isFullyQualified(c06));
+    CHECK(!gsFileManager::isFullyQualified(c07));
+    CHECK(!gsFileManager::isFullyQualified(c08));
+    CHECK(!gsFileManager::isFullyQualified(c09));
 
-    CHECK(gsFileManager::isFullyQualified(verum6));
-    CHECK(gsFileManager::isFullyQualified(verum7));
-
-    std::string falsum4("\\c:\\Foo\\Bar");
-    std::string falsum5("/c:/Foo/Bar");
+    // isExplicitlyRelative verum
+    CHECK(gsFileManager::isExplicitlyRelative(c06));
+    CHECK(gsFileManager::isExplicitlyRelative(c07));
+    CHECK(gsFileManager::isExplicitlyRelative(c08));
+    CHECK(gsFileManager::isExplicitlyRelative(c09));
+    // isExplicitlyRelative falsum
+    CHECK(!gsFileManager::isExplicitlyRelative(c00));
+    CHECK(!gsFileManager::isExplicitlyRelative(c01));
+    CHECK(!gsFileManager::isExplicitlyRelative(c02));
+    CHECK(!gsFileManager::isExplicitlyRelative(c03));
+    CHECK(!gsFileManager::isExplicitlyRelative(c04));
+    CHECK(!gsFileManager::isExplicitlyRelative(c05));
 #else
-    std::string verum4("\\c:\\Foo\\Bar");
-    std::string verum5("/c:/Foo/Bar");
 
-    std::string falsum4("\\");
-    std::string falsum5("E:\\Foo\\Bar");
-    std::string falsum6("\\foo bar\\bar foo");
-    std::string falsum7("f:/foo bar/bar foo");
+    // isFullyQualified verum
+    CHECK(gsFileManager::isFullyQualified(c05));
+    // isFullyQualified falsum
+    CHECK(!gsFileManager::isFullyQualified(c00));
+    CHECK(!gsFileManager::isFullyQualified(c01));
+    CHECK(!gsFileManager::isFullyQualified(c02));
+    CHECK(!gsFileManager::isFullyQualified(c03));
+    CHECK(!gsFileManager::isFullyQualified(c04));
+    CHECK(!gsFileManager::isFullyQualified(c06));
+    CHECK(!gsFileManager::isFullyQualified(c07));
+    CHECK(!gsFileManager::isFullyQualified(c08));
+    CHECK(!gsFileManager::isFullyQualified(c09));
 
-    CHECK(!gsFileManager::isFullyQualified(falsum6));
-    CHECK(!gsFileManager::isFullyQualified(falsum7));
+    // isExplicitlyRelative verum
+    // isExplicitlyRelative falsum
+    CHECK(!gsFileManager::isExplicitlyRelative(c00));
+    CHECK(!gsFileManager::isExplicitlyRelative(c01));
+    CHECK(!gsFileManager::isExplicitlyRelative(c02));
+    CHECK(!gsFileManager::isExplicitlyRelative(c03));
+    CHECK(!gsFileManager::isExplicitlyRelative(c04));
+    CHECK(!gsFileManager::isExplicitlyRelative(c05));
+    CHECK(!gsFileManager::isExplicitlyRelative(c06));
+    CHECK(!gsFileManager::isExplicitlyRelative(c07));
+    CHECK(!gsFileManager::isExplicitlyRelative(c08));
+    CHECK(!gsFileManager::isExplicitlyRelative(c09));
 #endif
-
-    CHECK(gsFileManager::isFullyQualified(verum4));
-    CHECK(gsFileManager::isFullyQualified(verum5));
-
-    CHECK(!gsFileManager::isFullyQualified(falsum4));
-    CHECK(!gsFileManager::isFullyQualified(falsum5));
-}
-
-TEST(isExplicitlyRelative) {
-    
-}
-
-TEST(getExePath)
-{
-#if defined _WIN32 // || defined __CYGWIN__
-    std::string own_fn("unittests.exe");
-#else
-    std::string own_fn("unittests");
-#endif
-    CHECK(gsFileManager::fileExists(gsFileManager::getExePath() + own_fn));
 }
 
 TEST(SearchPaths)
 {
+    std::string defaultPath = gsFileManager::getSearchPaths();
+    gsFileManager::setSearchPaths("");
+    CHECK_ASSERT(gsFileManager::getSearchPaths() == "");
+
     std::string verum0 = gsFileManager::getExePath();
     std::string verum1 = gsFileManager::getTempPath();
     CHECK_ASSERT(verum0 != verum1);
     std::string falsum("/fuubar");
 
-    gsFileManager::setSearchPaths(falsum);
+    CHECK(!gsFileManager::setSearchPaths(falsum));
     CHECK_EQUAL(gsFileManager::getSearchPaths(), "");
 
-    gsFileManager::setSearchPaths(verum1);
-    CHECK_EQUAL(gsFileManager::getSearchPaths(), verum1);
+    CHECK(gsFileManager::setSearchPaths(verum0));
+    CHECK_EQUAL(gsFileManager::getSearchPaths(), verum0);
 
-    gsFileManager::addSearchPaths(verum1);
+    CHECK(gsFileManager::addSearchPaths(verum1));
     CHECK_EQUAL(gsFileManager::getSearchPaths(), verum0 + ";" + verum1);
+
+    // clear SearchPaths
+    CHECK(!gsFileManager::setSearchPaths(""));
+    CHECK_EQUAL(gsFileManager::getSearchPaths(), "");
+
+    // set more values at once
+    CHECK(gsFileManager::setSearchPaths(verum0 + ";" + verum1));
+    CHECK_EQUAL(gsFileManager::getSearchPaths(), verum0 + ";" + verum1);
+
+    gsFileManager::setSearchPaths(defaultPath);
+    CHECK_ASSERT(gsFileManager::getSearchPaths() == defaultPath);
 }
 
 TEST(find)
 {
-#if defined _WIN32
-    std::string path("C:\\Windows");
-    std::string file("notepad.exe");
-#else
-    std::string path("/bin");
-    std::string file("mkdir");
-#endif
-    std::string falsum("fuubar");
+    std::string defaultPath = gsFileManager::getSearchPaths();
+    gsFileManager::setSearchPaths("");
+    CHECK_ASSERT(gsFileManager::getSearchPaths() == "");
 
-    gsFileManager::setSearchPaths(path);
-    CHECK(gsFileManager::find(file) == (gsFileManager::getCanonicRepresentation(path)
-        + gsFileManager::getNativePathSeparator() + file));
+    std::string relative("./");                         // relative
+    std::string absolute = gsFileManager::getExePath(); // absolute
+    std::string falsum("fuubar");                       // fails
 
+    CHECK_EQUAL(gsFileManager::find(relative + own_fn), relative + own_fn);
+    CHECK_EQUAL(gsFileManager::find(absolute + own_fn), absolute + own_fn);
+
+    CHECK_EQUAL(gsFileManager::find(own_fn), "");
+    CHECK_EQUAL(gsFileManager::find(falsum), "");
+
+    gsFileManager::setSearchPaths(relative);
+    CHECK(gsFileManager::find(own_fn) == absolute + gsFileManager::getNativePathSeparator() + own_fn);
     CHECK(gsFileManager::find(falsum) == "");
+
+    gsFileManager::setSearchPaths("");
+    CHECK_ASSERT(gsFileManager::getSearchPaths() == "");
+
+    gsFileManager::setSearchPaths(absolute);
+    CHECK(gsFileManager::find(own_fn) == absolute + gsFileManager::getNativePathSeparator() + own_fn);
+    CHECK(gsFileManager::find(falsum) == "");
+
+    gsFileManager::setSearchPaths(defaultPath);
+    CHECK_ASSERT(gsFileManager::getSearchPaths() == defaultPath);
+}
+
+TEST(getExePath)
+{
+    CHECK(gsFileManager::fileExists(gsFileManager::getExePath() + own_fn));
 }
 
 }
