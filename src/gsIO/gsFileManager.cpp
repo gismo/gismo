@@ -120,7 +120,7 @@ bool gsFileManager::isFullyQualified(const std::string& fn)
 #endif
 }
 
-bool gsFileManager::isRelative(const std::string& fn)
+bool gsFileManager::isExplicitlyRelative(const std::string& fn)
 {
     // TODO: valid
 #if defined _WIN32
@@ -432,6 +432,8 @@ struct gsStringView {
 
 std::string gsFileManager::getCanonicRepresentation(const std::string& s)
 {
+#if defined _WIN32
+#else
     std::vector<gsStringView> parts;
     size_t last = 0;
     for (size_t i=0; i<s.size(); ++i)
@@ -476,6 +478,7 @@ std::string gsFileManager::getCanonicRepresentation(const std::string& s)
         final_result.append( result[i].begin(), result[i].end() );
     }
     return final_result;
+#endif
 }
 
 
