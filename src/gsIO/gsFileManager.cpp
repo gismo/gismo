@@ -21,6 +21,8 @@
 #if defined _WIN32
 #include <windows.h>
 #include <direct.h>
+#include <Shlwapi.h>
+#include <algorithm>>
 #ifdef __MINGW32__
 #include <sys/stat.h>
 #endif
@@ -433,6 +435,25 @@ struct gsStringView {
 std::string gsFileManager::getCanonicRepresentation(const std::string& s)
 {
 #if defined _WIN32
+	std::string c = s;
+	for (size_t i = 1; i < getValidPathSeparators().length; i++)
+	{
+		std::replace(c.begin(), c.end(), getValidPathSeparators()[i], getNativePathSeparator());
+	}
+
+	char* buffer = new char[MAX_PATH];
+	std::string result;
+	if (PathCanonicalizeA(buffer, c.c_str()))
+	{
+		result = std::string(buffer);
+	}
+	else
+	{
+		gsWarn << "gsFileManager::getCanonicRepresentation(\"" << s << "\") failed.\n";
+		result = "";
+	}
+	delete[] buffer;
+	return result;
 #else
     std::vector<gsStringView> parts;
     size_t last = 0;
