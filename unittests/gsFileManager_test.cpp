@@ -158,14 +158,20 @@ TEST(SearchPaths)
     CHECK_ASSERT(verum0 != verum1);
     std::string falsum("/fuubar");
 
+    std::string result;
+
     CHECK(!gsFileManager::setSearchPaths(falsum));
     CHECK_EQUAL(gsFileManager::getSearchPaths(), "");
 
     CHECK(gsFileManager::setSearchPaths(verum0));
-    CHECK_EQUAL(gsFileManager::getSearchPaths(), verum0);
+    result = gsFileManager::getSearchPaths();
+    CHECK_EQUAL(result, verum0);
+    CHECK_EQUAL(result[result.length()-1], gsFileManager::getNativePathSeparator());
 
     CHECK(gsFileManager::addSearchPaths(verum1));
-    CHECK_EQUAL(gsFileManager::getSearchPaths(), verum0 + ";" + verum1);
+    result = gsFileManager::getSearchPaths();
+    CHECK_EQUAL(result, verum0 + ";" + verum1);
+    CHECK_EQUAL(result[result.length()-1], gsFileManager::getNativePathSeparator());
 
     // clear SearchPaths
     CHECK(!gsFileManager::setSearchPaths(""));
@@ -173,7 +179,9 @@ TEST(SearchPaths)
 
     // set more values at once
     CHECK(gsFileManager::setSearchPaths(verum0 + ";" + verum1));
-    CHECK_EQUAL(gsFileManager::getSearchPaths(), verum0 + ";" + verum1);
+    result = gsFileManager::getSearchPaths();
+    CHECK_EQUAL(result, verum0 + ";" + verum1);
+    CHECK_EQUAL(result[result.length()-1], gsFileManager::getNativePathSeparator());
 
     gsFileManager::setSearchPaths(defaultPath);
     CHECK_ASSERT(gsFileManager::getSearchPaths() == defaultPath);
@@ -196,23 +204,127 @@ TEST(find)
     CHECK_EQUAL(gsFileManager::find(falsum), "");
 
     gsFileManager::setSearchPaths(relative);
-    CHECK(gsFileManager::find(own_fn) == absolute + gsFileManager::getNativePathSeparator() + own_fn);
-    CHECK(gsFileManager::find(falsum) == "");
+    CHECK_EQUAL(gsFileManager::find(own_fn), absolute + own_fn);
+    CHECK_EQUAL(gsFileManager::find(falsum), "");
 
     gsFileManager::setSearchPaths("");
     CHECK_ASSERT(gsFileManager::getSearchPaths() == "");
 
     gsFileManager::setSearchPaths(absolute);
-    CHECK(gsFileManager::find(own_fn) == absolute + gsFileManager::getNativePathSeparator() + own_fn);
-    CHECK(gsFileManager::find(falsum) == "");
+    CHECK_EQUAL(gsFileManager::find(own_fn), absolute + own_fn);
+    CHECK_EQUAL(gsFileManager::find(falsum), "");
 
     gsFileManager::setSearchPaths(defaultPath);
     CHECK_ASSERT(gsFileManager::getSearchPaths() == defaultPath);
 }
 
+TEST(fileExists)
+{
+    // FILE
+    std::string defaultPath = gsFileManager::getSearchPaths();
+    gsFileManager::setSearchPaths("");
+    CHECK_ASSERT(gsFileManager::getSearchPaths() == "");
+
+    std::string relative("./");                         // relative
+    std::string absolute = gsFileManager::getExePath(); // absolute
+    std::string falsum("fuubar");                       // fails
+
+    CHECK(gsFileManager::fileExists(relative + own_fn));
+    CHECK(gsFileManager::fileExists(absolute + own_fn));
+
+    CHECK(!gsFileManager::fileExists(own_fn));
+    CHECK(!gsFileManager::fileExists(falsum));
+
+    gsFileManager::setSearchPaths(relative);
+    CHECK(gsFileManager::fileExists(own_fn));
+    CHECK(!gsFileManager::fileExists(falsum));
+
+    gsFileManager::setSearchPaths("");
+    CHECK_ASSERT(gsFileManager::getSearchPaths() == "");
+
+    gsFileManager::setSearchPaths(absolute);
+    CHECK(gsFileManager::fileExists(own_fn));
+    CHECK(!gsFileManager::fileExists(falsum));
+
+    gsFileManager::setSearchPaths(defaultPath);
+    CHECK_ASSERT(gsFileManager::getSearchPaths() == defaultPath);
+}
+
+TEST(findInDataDir)
+{
+    std::string verum("options/assembler_options.xml");
+    std::string falsum("fuu/bar");
+
+    CHECK_EQUAL(gsFileManager::findInDataDir(verum), GISMO_DATA_DIR + verum);
+    CHECK(gsFileManager::isFullyQualified(gsFileManager::findInDataDir(verum)));
+    CHECK(!gsFileManager::isExplicitlyRelative(gsFileManager::findInDataDir(verum)));
+
+    CHECK_EQUAL(gsFileManager::findInDataDir(falsum), "");
+}
+
+TEST(fileExistsInDataDir)
+{
+    std::string verum("options/assembler_options.xml");
+    std::string falsum("fuu/bar");
+
+    CHECK(gsFileManager::fileExistsInDataDir(verum));
+
+    CHECK(!gsFileManager::fileExistsInDataDir(falsum));
+}
+
+TEST(getTempPath)
+{
+    std::string testString = gsFileManager::getTempPath();
+    CHECK(testString != "");
+    CHECK(gsFileManager::isFullyQualified(testString));
+    CHECK(gsFileManager::fileExists(testString));
+    CHECK_EQUAL(testString[testString.length()-1], gsFileManager::getNativePathSeparator());
+}
+
+TEST(getCurrentPath)
+{
+    std::string testString = gsFileManager::getTempPath();
+    CHECK(testString != "");
+    CHECK(gsFileManager::isFullyQualified(testString));
+    CHECK(gsFileManager::fileExists(testString));
+    CHECK_EQUAL(testString[testString.length()-1], gsFileManager::getNativePathSeparator());
+}
+
 TEST(getExePath)
 {
-    CHECK(gsFileManager::fileExists(gsFileManager::getExePath() + own_fn));
+    std::string testString = gsFileManager::getTempPath();
+    CHECK(testString != "");
+    CHECK(gsFileManager::isFullyQualified(testString));
+    CHECK(gsFileManager::fileExists(testString));
+    CHECK_EQUAL(testString[testString.length()-1], gsFileManager::getNativePathSeparator());
+    CHECK(gsFileManager::fileExists(testString + own_fn));
 }
+
+TEST(mkdir)
+{
+    std::string temp = gsFileManager::getTempPath();
+    if(temp != "" && gsFileManager::fileExists(temp)
+       && temp[temp.length() - 1] == gsFileManager::getNativePathSeparator())
+    {
+        std::stringstream stream;
+        for (int i = 0; i < 0xFFFF; ++i)
+        {
+            stream << temp << "gsMkDir" << std::hex << i;
+            if (!gsFileManager::fileExists(stream.str()))
+            {
+                gsFileManager::mkdir(stream.str());
+                CHECK(gsFileManager::fileExists(stream.str()));
+                CHECK_EQUAL(stream.str() + gsFileManager::getNativePathSeparator(),
+                    gsFileManager::find(stream.str()));
+                break;
+            }
+            stream.str("");
+        }
+    }
+    else
+        CHECK(false);
+}
+
+
 
 }

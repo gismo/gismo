@@ -24,8 +24,10 @@ namespace gismo
 /// valid path seperator, this is in Unix only "/" and in Windows both
 /// "/" and "\\".
 ///
-/// Return values only contain the preferred native path seperator, which
+/// Return values only contain the preferred native path separator, which
 /// is in Unix "/" and in Windows "\\".
+///
+/// Output Paths always end with path separator, files without.
 ///
 /// Does not check for special system cases, like AUX under Windows.
 /// (see https://en.wikipedia.org/wiki/Filename)
@@ -100,7 +102,7 @@ public:
     /// @returns  The full path or empty string
     ///
     /// If the file can be found, returns the full path.
-    /// Otherwiese, returns empty string.
+    /// Otherwise, returns empty string.
     ///
     /// In any case, slashes are replaced by the native path separator.
     static std::string findInDataDir(std::string fn);
@@ -143,11 +145,11 @@ public:
     /// @brief Returns the canonic representation of the path \a fn
     ///
     /// This reduces foo/baz/../bar or foo/./bar to foo/bar. Moreover,
-    /// the non-preferred path seperators are replaced by the preferred
+    /// the non-preferred path separators are replaced by the preferred
     /// ones.
     ///
     /// This does not access the file system, the current directory, or
-    /// the search paths.
+    /// the search paths. Therefore, leading .. can't be replaced.
     static std::string getCanonicRepresentation(const std::string & fn);
 
     /// Opens the file \a fn using the preferred application of the OS
