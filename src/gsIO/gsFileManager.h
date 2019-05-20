@@ -86,7 +86,7 @@ public:
     /// @brief Checks if the file exists
     ///
     /// If the fn \a isFullyQulaified (like "/foo/bar.txt"), or
-    /// if the fn \a isExplicitlyRelative (like "../foo/bar.txt"), the
+    /// if the fn \a isExplicitlyRelative (like "../foo/bar.txt"), then
     /// only this path is considered.
     ///
     /// If the fn has the form "bar.txt" or "foo/bar.txt", the file
@@ -136,11 +136,16 @@ public:
     /// Returns the extension of the filename \a fn
     static std::string getExtension(std::string const & fn);
 
-    /// Returns the base name without extension of the filename \a fn
+    /// Returns the base name without path and extension of the filename \a fn
     static std::string getBasename(std::string const & fn);
 
     /// Returns the filename without the path of \a fn
     static std::string getFilename(std::string const & fn);
+
+    /// Returns the path without filename \a fn.
+    /// If \a resolve is set, it will resolve relative paths to absolute ones
+    /// with use of \a find.
+    static std::string getPath(std::string const & fn, bool resolve = false);
 
     /// @brief Returns the canonic representation of the path \a fn
     ///
@@ -150,6 +155,7 @@ public:
     ///
     /// This does not access the file system, the current directory, or
     /// the search paths. Therefore, leading .. can't be replaced.
+    /// Leading ./././ will be reduced to ./
     static std::string getCanonicRepresentation(const std::string & fn);
 
     /// Opens the file \a fn using the preferred application of the OS
