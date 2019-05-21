@@ -131,12 +131,14 @@ public:
     /// \param opt    Assembler options
     /// \param sigma  Scaling parameter (see above)
     /// \param alpha  Scaling parameter (see above)
+    /// \param geo    Pointer to a geometry; if provided, the operator is scaled accordingly
     static OpUPtr            subspaceCorrectedMassSmootherOp(
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
         const gsOptionList& opt = gsAssembler<T>::defaultOptions(),
         T sigma = T(12)/T(100),
-        T alpha = 0
+        T alpha = 0,
+        const gsGeometry<T>* geo = NULL
     );
 
     /// Provides matrices that represent the basis of the space \f$ \widetilde{S}_{p,h} \f$,
