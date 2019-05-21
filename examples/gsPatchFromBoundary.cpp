@@ -68,6 +68,10 @@ int main(int argc, char* argv[])
         break;
     }
 
-    if (save) gsInfo << "Result saved to result_patch.xml\n";
+    if (save)
+        gsInfo << "Result saved to result_patch.xml\n";
+    else
+        gsInfo << "Done. No output created, re-run with --save to get xml "
+                  "file containing the data.\n";
     return 0;
 }

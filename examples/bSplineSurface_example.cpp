@@ -96,6 +96,11 @@ int main(int argc, char* argv[])
         surface.controlNet(mesh);
         gsWriteParaview(mesh, out);
     }
+    else
+    {
+        gsInfo << "Done. No output created, re-run with --output <filename> to get a ParaView "
+                  "file containing the solution.\n";
+    }
 
     return 0;
 }
