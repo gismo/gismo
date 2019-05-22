@@ -477,7 +477,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
                     int p1 = patches.back();
                     patches.pop_back();
                     int p2 = patches.back();
-                    gsInfo << "p1: " << p1 << ", p2: " << p2 << "\n";
+                    //gsInfo << "p1: " << p1 << ", p2: " << p2 << "\n";
 
                     std::vector<patchCorner> crn;
                     std::vector<patchSide> pss;
@@ -496,7 +496,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
                             if(getAllNeighbours(*sit, tempNeighbour))
                             {
                                 //gsInfo << "p1: " << *sit << " with neighbour: " << tempNeighbour[0] << " and " << tempNeighbour[1] << "\n";
-                                watch(i);
+                                //watch(i);
                                 if((std::find(tempNeighbour.begin(), tempNeighbour.end(), ps1)) != tempNeighbour.end()) // found the correct vertex
                                 {
                                     // add the vertex of patch 0
@@ -522,7 +522,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
                 patchCorner pc;
                 std::vector<patchCorner> crn;
                 std::vector<patchSide> pss, pss2;
-                int boundaries = 0, boundaries2 = 0;
+                index_t boundaries = 0, boundaries2 = 0;
 
                 ps.getContainedCorners(m_dim, crn);
 
@@ -540,12 +540,12 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
 
                     if(boundaries == 1)
                     {
-                        for (std::vector<int>::iterator sit = patches2.begin(); sit != patches2.end(); ++sit)
+                        for (std::vector<index_t>::iterator sit = patches2.begin(); sit != patches2.end(); ++sit)
                         {
                             const boundaryInterface* bi = findInterface(i, *sit);
                             patchCorner temp_pc;
                             pc = bi->mapCorner(*it);
-                            //watch(*sit);
+                            //watch(*it);
                             //watch(pc);
                             if(std::find(processedCorner.begin(), processedCorner.end(), pc)==processedCorner.end())
                             {
@@ -606,7 +606,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
                     && (std::find(extension.begin(), extension.end(), pc2)==extension.end())
                 )
                     {
-                        const index_t d = pc1.dim();
+                        const short_t d = pc1.dim();
                         std::vector< patchCorner > crns = getCanonicCorners(pc1.containedCorners(),*this);
                         component_coll_t& g = comps[d][getCornerIndices(crns, dim)];
                         g.push_back(pc1);
