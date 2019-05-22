@@ -165,6 +165,105 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness(
     }
 }
 
+template<index_t d, typename T>
+gsMatrix<T> getMinCellLengths_impl(const gsBasis<T>& basis)
+{
+    const gsTensorBasis<d,T> * tb = dynamic_cast< const gsTensorBasis<d,T>* >( &basis );
+    GISMO_ENSURE (tb, "gsPatchPreconditionersCreator requires a tensor basis.");
+    gsMatrix<T> result(d,1);
+    for (index_t i=0; i<d; ++i)
+        result(i,0) = tb->component(d-1-i).getMinCellLength();
+    return result;
+}
+
+
+template<typename T>
+gsMatrix<T> getMinCellLengths(const gsBasis<T>& basis)
+{
+    switch (basis.dim())
+    {
+    case 1: return getMinCellLengths_impl<1,T>(basis);
+    case 2: return getMinCellLengths_impl<2,T>(basis);
+    case 3: return getMinCellLengths_impl<3,T>(basis);
+    case 4: return getMinCellLengths_impl<4,T>(basis);
+    default: GISMO_ERROR("getMinCellLengths is only instanciated for up to 4 dimensions." );
+    }
+}
+
+template<typename T>
+gsMatrix<T> getScalingFactors( const gsGeometry<T>& geo )
+{
+    GISMO_ASSERT( geo.targetDim() == geo.geoDim(), "Dimensions do not agree" );
+    const short_t dim = geo.targetDim();
+    const gsMatrix<T> support = geo.support();
+    const index_t split = 1;
+    const index_t N = math::ipow(split+2,dim);
+    gsMatrix<T> u(dim,N);
+    gsMatrix<index_t> v(dim,1);
+    for (index_t j=0; j<dim; ++j)
+        v(j,0) = 0;
+    for (index_t i=0; i<N; ++i)
+    {
+        for (index_t j=0; j<dim; ++j)
+            u(j,i) = support(j,0)
+                    + ( static_cast<T>(v(j))/(split+1) )
+                        *(support(j,1)-support(j,0));
+        if (i+1<N)
+        {
+            index_t j=0;
+            while ( v(j,0) == split+1 )
+            {
+                v(j,0) = 0;
+                ++j;
+            }
+            v(j,0) += 1;
+        }
+    }
+    gsMatrix<T> derivs;
+    geo.deriv_into(u,derivs);
+    gsMatrix<T> result(dim,2);
+    for (index_t j=0; j<dim; ++j)
+    {
+        T res = 0;
+        for (index_t k=0; k<dim; ++k)  res += derivs(k*dim+j,0)*derivs(k*dim+j,0);
+
+        result(dim-1-j,0) = res;
+        result(dim-1-j,1) = res;
+    }
+
+    for (index_t i=1; i<N; ++i)
+    {
+        for (index_t j=0; j<dim; ++j)
+        {
+            T res = 0;
+            for (index_t k=0; k<dim; ++k)  res += derivs(k*dim+j,i)*derivs(k*dim+j,i);
+            if (res < result(dim-1-j,0)) result(dim-1-j,0) = res;
+            if (res > result(dim-1-j,1)) result(dim-1-j,1) = res;
+        }
+    }
+    return result;
+}
+
+template<typename T>
+void scaleBasedOnGeo( const gsGeometry<T>* geo, std::vector< gsSparseMatrix<T> >* local_mass, std::vector< gsSparseMatrix<T> >* local_stiff, gsMatrix<T>* h )
+{
+    if (geo)
+    {
+        gsMatrix<T> factors = getScalingFactors( *geo );
+        const index_t dim = factors.rows();
+        if (local_mass)
+            for (index_t i=0; i<dim; ++i)
+                (*local_mass)[i]  *= math::sqrt(factors(i,0));
+        if (local_stiff)
+            for (index_t i=0; i<dim; ++i)
+                (*local_stiff)[i] /= math::sqrt(factors(i,1));
+        if (h)
+            for (index_t i=0; i<dim; ++i)
+                (*h)(i,0)         *= math::pow(factors(i,0)*factors(i,1),(T)1/(T)4);
+    }
+}
+
+
 } // anonymous namespace
 
 template<typename T>
@@ -604,16 +703,23 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     const gsBoundaryConditions<T>& bc,
     const gsOptionList& opt,
     T sigma,
-    T alpha
+    T alpha,
+    const gsGeometry<T>* geo
     )
 {
     // Get some properties
     const index_t d = basis.dim();
-    const T h = basis.getMinCellLength();
+    gsMatrix<T> h;
+    if (geo)
+        h = getMinCellLengths(basis);
+    else
+        h = gsMatrix<T>::Constant(d,1,basis.getMinCellLength());
 
     // Assemble univariate
     std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(basis, bc, opt);
     std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
+
+    scaleBasedOnGeo(geo, &local_mass, &local_stiff, &h);
 
     // Setup of basis
     std::vector< gsSparseMatrix<T> > B_tilde(d), B_l2compl(d);
@@ -647,8 +753,9 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         std::vector< gsSparseMatrix<T>* > transfers(d);
 
         index_t numberInteriors = 0;
+        T factor = alpha;
 
-        // Setup of transfer
+        // Setup of transfer and of the factor
         for ( index_t j = 0; j<d; ++ j )
         {
             if ( type & ( 1 << j ) )
@@ -657,6 +764,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
             {
                 transfers[j] = &(B_tilde[d-1-j]);
                 ++numberInteriors;
+                factor += 1/(sigma*h(j,0)*h(j,0));
             }
 
             if ( j == 0 )
@@ -709,7 +817,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
         // If we are in the interior, we have to do the scaling here as there is no boundary correction.
         if ( numberInteriors == d )
-            correction[0] = gsScaledOp<T>::make( correction[0], 1./( alpha + numberInteriors/(sigma*h*h) ) );
+            correction[0] = gsScaledOp<T>::make( correction[0], 1./factor );
 
         // Setup of bondary correction, like  K(x)M(x)M+M(x)K(x)M+M(x)M(x)K+(alpha + (d-3)/(sigma*h*h)) M(x)M(x)M
         if ( numberInteriors < d )
@@ -728,7 +836,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
                             s = M_compl[d-1-k].kron(s);
                     }
                 }
-                bc_matrix = ( alpha + numberInteriors/(sigma*h*h) ) * s;
+                bc_matrix = factor * s;
             }
 
             for ( index_t j = d-1; j>=0; --j )

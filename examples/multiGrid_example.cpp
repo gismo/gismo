@@ -15,7 +15,7 @@
 
 using namespace gismo;
 
-gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(const gsSparseMatrix<>&, const gsMultiBasis<>&, const gsBoundaryConditions<>&, const gsOptionList&);
+gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(const gsSparseMatrix<>&, const gsMultiBasis<>&, const gsMultiPatch<>&, const gsBoundaryConditions<>&, const gsOptionList&, bool useGeo);
 
 int main(int argc, char *argv[])
 {
@@ -215,21 +215,25 @@ int main(int argc, char *argv[])
             smootherOp = makeJacobiOp(mg->matrix(i));
         else if ( smoother == "GaussSeidel" || smoother == "gs" )
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
-        else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" || smoother == "Hybrid" || smoother == "hyb" )
+        else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" || smoother == "Hybrid" || smoother == "hyb"
+                    || smoother == "SubspaceCorrectedMassSmootherGeo" || smoother == "scmsg" || smoother == "HybridGeo" || smoother == "hybg"
+        )
         {
+            bool useGeo = smoother == "SubspaceCorrectedMassSmootherGeo" || smoother == "scmsg" || smoother == "HybridGeo" || smoother == "hybg";
+
             if (multiBases[i].nBases() == 1)
             {
                 smootherOp = gsPreconditionerFromOp<>::make(
                     mg->underlyingOp(i),
-                    gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("MG"),scaling)
+                    gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("MG"),scaling,0,useGeo?&mp[0]:NULL)
                 );
             }
             else
             {
-                smootherOp = setupSubspaceCorrectedMassSmoother( mg->matrix(i), multiBases[i], bc, opt.getGroup("MG") );
+                smootherOp = setupSubspaceCorrectedMassSmoother( mg->matrix(i), multiBases[i], mp, bc, opt.getGroup("MG"), useGeo );
             }
 
-            if ( smoother == "Hybrid" || smoother == "hyb" )
+            if ( smoother == "Hybrid" || smoother == "hyb" || smoother == "HybridGeo" || smoother == "hybg" )
             {
                 smootherOp->setOptions( opt.getGroup("MG") );
                 smootherOp = gsCompositePrecOp<>::make( makeGaussSeidelOp(mg->matrix(i)), smootherOp );
@@ -238,7 +242,7 @@ int main(int argc, char *argv[])
         else
         {
             gsInfo << "\n\nThe chosen smoother is unknown.\n\nKnown are:\n  Richardson (r)\n  Jacobi (j)\n  GaussSeidel (gs)"
-                      "\n  SubspaceCorrectedMassSmoother (scms)\n  Hybrid (hyb)\n\n";
+                      "\n  SubspaceCorrectedMassSmoother (scms)\n  Hybrid (hyb)\n  SubspaceCorrectedMassSmootherGeo (scmsg)\n  HybridGeo (hybg)\n\n";
             return EXIT_FAILURE;
         }
         smootherOp->setOptions( opt.getGroup("MG") );
@@ -308,8 +312,10 @@ int main(int argc, char *argv[])
 gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     const gsSparseMatrix<>& matrix,
     const gsMultiBasis<>& mb,
+    const gsMultiPatch<>& mp,
     const gsBoundaryConditions<>& bc,
-    const gsOptionList& opt
+    const gsOptionList& opt,
+    bool useGeo
 )
 {
     const short_t dim = mb.topology().dim();
@@ -359,12 +365,15 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
             if (bases[0]->dim() == dim)
             {
                 GISMO_ASSERT ( bases.size() == 1, "Only one basis is expected for each patch." );
+                GISMO_ASSERT ( components[i].size() == 1, "Only one basis is expected for each patch." );
                 ops.push_back(
                     gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(
                         *(bases[0]),
                         dir_bc,
                         gsOptionList(),
-                        opt.getReal("Scaling")
+                        opt.getReal("Scaling"),
+                        0,
+                        useGeo ? & mp[components[i][0].patch()] : NULL
                     )
                 );
             }
