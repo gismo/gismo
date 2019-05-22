@@ -39,6 +39,8 @@ int main(int argc, char *argv[])
     index_t maxIterations = 100;
     bool plot = false;
     std::string boundary_conditions("d");
+    index_t innerSize = 1;
+    index_t overlapSize = 0;
 
     gsCmdLine cmd("Solves a PDE with an isogeometric discretization using a multigrid solver.");
     cmd.addString("g", "Geometry",              "Geometry file", geometry);
@@ -57,6 +59,8 @@ int main(int argc, char *argv[])
     cmd.addString("i", "IterativeSolver",       "Iterative solver: apply multigrid directly (d) or as a preconditioner for conjugate gradient (cg)", iterativeSolver);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
+    cmd.addInt   ("",  "Solver.InnerSize",      "Inner size of macro-element for MacroGaussSeidel", innerSize);
+    cmd.addInt   ("",  "Solver.OverlapSize",    "Size of overlap for MacroGaussSeidel", overlapSize);
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundary_conditions);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
@@ -215,6 +219,23 @@ int main(int argc, char *argv[])
             smootherOp = makeJacobiOp(mg->matrix(i));
         else if ( smoother == "GaussSeidel" || smoother == "gs" )
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
+        else if ( smoother == "MacroGaussSeidel" || smoother == "mgs" )
+        {
+            GISMO_ENSURE (multiBases[i].nBases() == 1, "Only for 1 patch so far...");
+            gsBlockInfo bi;
+            const index_t d = mp.geoDim();
+            bi.m_dim.resize(d,1);
+            bi.m_innerSize.resize(d,1);
+            bi.m_overlapSize.resize(d,1);
+            for (index_t j=0; j<d; ++j)
+            {
+                GISMO_ENSURE (boundary_conditions.length() == 1, "Only 1 bc supported...");
+                bi.m_dim[j] = multiBases[i][0].component(d-1-j).size() - ((boundary_conditions[0]=='d')?2:0);
+                bi.m_innerSize[j] = innerSize;
+                bi.m_overlapSize[j] = overlapSize;
+            }
+            smootherOp = makeMacroGaussSeidelOp(mg->matrix(i),bi);
+        }
         else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" || smoother == "Hybrid" || smoother == "hyb" )
         {
             if (multiBases[i].nBases() == 1)

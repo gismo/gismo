@@ -14,6 +14,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsSolver/gsPreconditioner.h>
+#include <gsSolver/gsMatrixOp.h>
 
 namespace gismo
 {
@@ -24,6 +25,10 @@ template<typename T>
 void gaussSeidelSweep(const gsSparseMatrix<T> & A, gsMatrix<T>& x, const gsMatrix<T>& f);
 template<typename T>
 void reverseGaussSeidelSweep(const gsSparseMatrix<T> & A, gsMatrix<T>& x, const gsMatrix<T>& f);
+template<typename T>
+void macroGaussSeidelSweep(const gsSparseMatrix<T> & A, gsMatrix<T>& x, const gsMatrix<T>& f, const std::vector< gsSparseMatrix<T> >& transfers, const std::vector< typename gsLinearOperator<T>::Ptr >& local_solvers);
+template<typename T>
+void reverseMacroGaussSeidelSweep(const gsSparseMatrix<T> & A, gsMatrix<T>& x, const gsMatrix<T>& f, const std::vector< gsSparseMatrix<T> >& transfers, const std::vector< typename gsLinearOperator<T>::Ptr >& local_solvers);
 } // namespace internal
 
 /// @brief Richardson preconditioner
@@ -401,6 +406,186 @@ typename gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::uPtr makeSymmetricGa
 template <class Derived>
 typename gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::uPtr makeSymmetricGaussSeidelOp(const memory::shared_ptr<Derived>& mat)
 { return gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::make(mat); }
+
+struct gsBlockInfo {
+    gsVector<index_t> m_dim;
+    gsVector<index_t> m_innerSize;
+    gsVector<index_t> m_overlapSize;
+};
+
+
+/// @brief Macro-element wise Gauss-Seidel preconditioner
+///
+/// Requires a positive definite matrix.
+///
+/// \ingroup Solver
+template <typename MatrixType, gsGaussSeidel::ordering ordering = gsGaussSeidel::forward>
+class gsMacroGaussSeidelOp GISMO_FINAL : public gsPreconditionerOp<typename MatrixType::Scalar>
+{
+    typedef memory::shared_ptr<MatrixType>          MatrixPtr;
+    typedef typename MatrixType::Nested             NestedMatrix;
+
+public:
+    /// Scalar type
+    typedef typename MatrixType::Scalar T;
+
+    /// Shared pointer for gsMacroGaussSeidelOp
+    typedef memory::shared_ptr< gsMacroGaussSeidelOp > Ptr;
+
+    /// Unique pointer for gsMacroGaussSeidelOp
+    typedef memory::unique_ptr< gsMacroGaussSeidelOp > uPtr;
+
+    /// Base class
+    typedef gsPreconditionerOp<T> Base;
+
+    /// @brief Constructor with given matrix
+    explicit gsMacroGaussSeidelOp(const MatrixType& _mat, const gsBlockInfo& bi)
+    : m_mat(), m_expr(_mat.derived()) { init(bi); }
+
+    /// @brief Constructor with shared pointer to matrix
+    explicit gsMacroGaussSeidelOp(const MatrixPtr& _mat, const gsBlockInfo& bi)
+    : m_mat(_mat), m_expr(m_mat->derived()) { init(bi); }
+
+    static uPtr make(const MatrixType& _mat, const gsBlockInfo& bi)
+    { return memory::make_unique( new gsMacroGaussSeidelOp(_mat, bi) ); }
+
+    static uPtr make(const MatrixPtr& _mat, const gsBlockInfo& bi)
+    { return memory::make_unique( new gsMacroGaussSeidelOp(_mat, bi) ); }
+
+    void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
+    {
+        if (ordering == gsGaussSeidel::forward )
+            internal::macroGaussSeidelSweep<T>(m_expr,x,rhs,m_transfers,m_local_solvers);
+        if (ordering == gsGaussSeidel::reverse )
+            internal::reverseMacroGaussSeidelSweep<T>(m_expr,x,rhs,m_transfers,m_local_solvers);
+        if (ordering == gsGaussSeidel::symmetric )
+        {
+            internal::macroGaussSeidelSweep<T>(m_expr,x,rhs,m_transfers,m_local_solvers);
+            internal::reverseMacroGaussSeidelSweep<T>(m_expr,x,rhs,m_transfers,m_local_solvers);
+        }
+    }
+
+    void stepT(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
+    {
+        if ( ordering == gsGaussSeidel::forward )
+            internal::reverseMacroGaussSeidelSweep<T>(m_expr,x,rhs,m_transfers,m_local_solvers);
+        if ( ordering == gsGaussSeidel::reverse )
+            internal::macroGaussSeidelSweep<T>(m_expr,x,rhs,m_transfers,m_local_solvers);
+        if ( ordering == gsGaussSeidel::symmetric )
+        {
+            internal::macroGaussSeidelSweep<T>(m_expr,x,rhs,m_transfers,m_local_solvers);
+            internal::reverseMacroGaussSeidelSweep<T>(m_expr,x,rhs,m_transfers,m_local_solvers);
+        }
+    }
+
+    index_t rows() const {return m_expr.rows();}
+    index_t cols() const {return m_expr.cols();}
+
+    /// Returns the matrix
+    NestedMatrix matrix() const { return m_expr; }
+
+    /// Returns a shared pinter to the matrix
+    MatrixPtr    matrixPtr() const {
+        GISMO_ENSURE( m_mat, "A shared pointer is only available if it was provided to gsGaussSeidelOp." );
+        return m_mat;
+    }
+
+    typename gsLinearOperator<T>::Ptr underlyingOp() const { return makeMatrixOp(m_mat); }
+
+private:
+    gsSparseMatrix<T> makeTransfer(gsVector<index_t> begin, gsVector<index_t> end, gsVector<index_t> dim, index_t totalDim )
+    {
+        const index_t d = dim.rows();
+        const index_t sz = ((end-begin).array()).prod();
+        gsSparseEntries<T> se;
+        se.reserve(sz);
+        gsVector<index_t> curr = begin;
+        index_t i=0;
+        while (true)
+        {
+            index_t idx = 0;
+            for (int j=0; j<d; ++j)
+            {
+                idx *= dim[j];
+                idx += curr[j];
+            }
+            se.add(idx, i, (T)1);
+            index_t j=0;
+            while (j<d && curr[j]+1 >= end[j])
+            {
+                curr[j] = begin[j];
+                ++j;
+            }
+            if (j<d)
+                ++(curr[j]);
+            else
+                break;
+            ++i;
+        }
+        ++i;
+        gsSparseMatrix<T> result(totalDim, i);
+        result.setFrom(se);
+        return result;
+    }
+    
+    
+    void init(const gsBlockInfo& bi)
+    {
+        const index_t d = bi.m_dim.rows();
+        GISMO_ASSERT( bi.m_dim.rows() == bi.m_innerSize.rows() && bi.m_dim.rows() == bi.m_overlapSize.rows(), "Dimensions do not argee" );
+        index_t totalDim = bi.m_dim.array().prod();
+        GISMO_ENSURE( totalDim == m_expr.rows(), "Err" );
+
+        gsVector<index_t> curr = 0 * bi.m_innerSize;
+        
+        while(true)
+        {
+            gsVector<index_t> begin = curr-bi.m_overlapSize;
+            for (index_t i=0; i<d; ++i)
+                if (begin[i] < 0) begin[i] = 0;
+            gsVector<index_t> end   = curr+bi.m_innerSize+bi.m_overlapSize;
+            for (index_t i=0; i<d; ++i)
+                if (end[i] > bi.m_dim[i]) end[i] = bi.m_dim[i];
+
+            gsInfo << "\n makeTransfer("<<begin.transpose()<<", "<<end.transpose()<<", "<<bi.m_dim.transpose()<<", "<<totalDim<<")\n";
+            gsSparseMatrix<T> transfer = makeTransfer(begin, end, bi.m_dim, totalDim);
+            gsSparseMatrix<T> localMat = transfer.transpose() * m_expr * transfer;
+            m_local_solvers.push_back( makeSparseCholeskySolver(localMat) ); // TODO: should not be sparse...
+            m_transfers.push_back( give(transfer) );
+
+            index_t j=0;
+            while ( j < d &&curr[j]+1 >= bi.m_dim[j])
+            {
+                curr[j] = 0;
+                ++j;
+            }
+            if (j<d)
+                curr[j] += bi.m_innerSize[j];
+            else
+                break;
+        }
+    }
+    
+    std::vector< gsSparseMatrix<T> > m_transfers;
+    std::vector< typename gsLinearOperator<T>::Ptr > m_local_solvers;
+
+    const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
+    NestedMatrix    m_expr; ///< Nested Eigen expression
+};
+
+/**
+   \brief Returns a smart pointer to a Gauss-Seidel operator referring on \a mat
+*/
+template <class Derived>
+typename gsMacroGaussSeidelOp<Derived>::uPtr makeMacroGaussSeidelOp(const Eigen::EigenBase<Derived>& mat, const gsBlockInfo& bi)
+{ return gsMacroGaussSeidelOp<Derived>::make(mat.derived(),bi); }
+
+/**
+   \brief Returns a smart pointer to a Jacobi operator referring on \a mat
+*/
+template <class Derived>
+typename gsMacroGaussSeidelOp<Derived>::uPtr makeMacroGaussSeidelOp(const memory::shared_ptr<Derived>& mat, const gsBlockInfo& bi)
+{ return gsMacroGaussSeidelOp<Derived>::make(mat,bi); }
 
 } // namespace gismo
 
