@@ -391,8 +391,11 @@ std::string gsFileManager::getExePath()
 #endif
 }
 
-bool gsFileManager::pathEqual( const std::string& p1, const std::string& p2 )
+bool gsFileManager::pathEqual( const std::string& p1o, const std::string& p2o )
 {
+    std::string p1 = getCanonicRepresentation(p1o);
+    std::string p2 = getCanonicRepresentation(p2o);
+
     const size_t sz = p1.size();
 
     if (sz != p2.size())
@@ -447,8 +450,8 @@ std::string gsFileManager::getFilename(std::string const & fn)
 std::string gsFileManager::getPath(std::string const & fn, bool resolve)
 {
     if (resolve)
-        return gsFileManager::getCanonicRepresentation(gsFileManager::find(fn) + "/../");
-    return gsFileManager::getCanonicRepresentation(fn + "/../");
+        return getCanonicRepresentation(gsFileManager::find(fn) + "/../");
+    return getCanonicRepresentation(fn + "/../");
 }
 
 namespace {
