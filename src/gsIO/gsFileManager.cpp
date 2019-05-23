@@ -159,8 +159,8 @@ bool gsFileManager::isExplicitlyRelative(const std::string& fn)
     bool valid = false;
     for (int i = 0; i < getValidPathSeparators().length(); ++i)
     {
-        valid = valid || ((fn[0] == '.') && (fn[1] == getValidPathSeparators()[i])) ||
-                ((fn[0] == fn[1] == '.') && (fn[2] == getValidPathSeparators()[i]));
+        valid = valid || (fn[0] == '.' && fn[1] == getValidPathSeparators()[i]) ||
+         (fn[0] == '.' && fn[1] == '.' && fn[2] == getValidPathSeparators()[i]);
     }
     valid = valid && _isValidPathOrName(fn);
     return valid;
