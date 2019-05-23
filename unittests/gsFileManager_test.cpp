@@ -402,17 +402,17 @@ TEST(getExtension)
 
 TEST(getBasename)
 {
-    CHECK_EQUAL("foo", gsFileManager::getExtension("foo.bar"));
-    CHECK_EQUAL("foo", gsFileManager::getExtension("/foo.bar"));
-    CHECK_EQUAL("foo", gsFileManager::getExtension("./foo.bar"));
-    CHECK_EQUAL("foo", gsFileManager::getExtension("../foo.bar"));
+    CHECK_EQUAL("foo", gsFileManager::getBasename("foo.bar"));
+    CHECK_EQUAL("foo", gsFileManager::getBasename("/foo.bar"));
+    CHECK_EQUAL("foo", gsFileManager::getBasename("./foo.bar"));
+    CHECK_EQUAL("foo", gsFileManager::getBasename("../foo.bar"));
 
-    CHECK_EQUAL("foo.baz", gsFileManager::getExtension("foo.baz.bar"));
-    CHECK_EQUAL("foo.baz", gsFileManager::getExtension("/foo.baz.bar"));
-    CHECK_EQUAL("foo.baz", gsFileManager::getExtension("./foo.baz.bar"));
-    CHECK_EQUAL("foo.baz", gsFileManager::getExtension("../foo.baz.bar"));
+    CHECK_EQUAL("foo.baz", gsFileManager::getBasename("foo.baz.bar"));
+    CHECK_EQUAL("foo.baz", gsFileManager::getBasename("/foo.baz.bar"));
+    CHECK_EQUAL("foo.baz", gsFileManager::getBasename("./foo.baz.bar"));
+    CHECK_EQUAL("foo.baz", gsFileManager::getBasename("../foo.baz.bar"));
 
-    CHECK_EQUAL("bar", gsFileManager::getExtension("bar.foo"));
+    CHECK_EQUAL("bar", gsFileManager::getBasename("bar.foo"));
 }
 
 TEST(getFilename)
