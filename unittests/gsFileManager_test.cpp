@@ -151,11 +151,11 @@ TEST(SearchPaths)
 {
     std::string defaultPath = gsFileManager::getSearchPaths();
     gsFileManager::setSearchPaths("");
-    CHECK_ASSERT(gsFileManager::getSearchPaths() == "");
+    GISMO_ASSERT(gsFileManager::getSearchPaths() == "", "gsFileManager::getSearchPaths() not empty");
 
     std::string verum0 = gsFileManager::getExePath();
     std::string verum1 = gsFileManager::getTempPath();
-    CHECK_ASSERT(verum0 != verum1);
+    GISMO_ASSERT(verum0 != verum1, "gsFileManager::getExePath == gsFileManager::getTempPath()");
     std::string falsum("/fuubar");
 
     std::string result;
@@ -165,13 +165,13 @@ TEST(SearchPaths)
 
     CHECK(gsFileManager::setSearchPaths(verum0));
     result = gsFileManager::getSearchPaths();
-    CHECK_EQUAL(verum0, result);
-    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), result[result.length()-1]);
+    CHECK_EQUAL(verum0 + ";", result);
+    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), result[result.length()-2]);
 
     CHECK(gsFileManager::addSearchPaths(verum1));
     result = gsFileManager::getSearchPaths();
-    CHECK_EQUAL(verum0 + ";" + verum1, result);
-    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), result[result.length()-1]);
+    CHECK_EQUAL(verum0 + ";" + verum1 + ";", result);
+    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), result[result.length()-2]);
 
     // clear SearchPaths
     CHECK(!gsFileManager::setSearchPaths(""));
@@ -180,18 +180,18 @@ TEST(SearchPaths)
     // set more values at once
     CHECK(gsFileManager::setSearchPaths(verum0 + ";" + verum1));
     result = gsFileManager::getSearchPaths();
-    CHECK_EQUAL(verum0 + ";" + verum1, result);
-    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), result[result.length()-1]);
+    CHECK_EQUAL(verum0 + ";" + verum1 + ";", result);
+    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), result[result.length()-2]);
 
     gsFileManager::setSearchPaths(defaultPath);
-    CHECK_ASSERT(gsFileManager::getSearchPaths() == defaultPath);
+    GISMO_ASSERT(gsFileManager::getSearchPaths() == defaultPath, "Can't set back to default getSeachPaths!");
 }
 
 TEST(find)
 {
     std::string defaultPath = gsFileManager::getSearchPaths();
     gsFileManager::setSearchPaths("");
-    CHECK_ASSERT(gsFileManager::getSearchPaths() == "");
+    GISMO_ASSERT(gsFileManager::getSearchPaths() == "", "gsFileManager::getSearchPaths() not empty");
 
     std::string relative("./");                         // relative
     std::string absolute = gsFileManager::getExePath(); // absolute
@@ -208,14 +208,14 @@ TEST(find)
     CHECK_EQUAL("", gsFileManager::find(falsum));
 
     gsFileManager::setSearchPaths("");
-    CHECK_ASSERT(gsFileManager::getSearchPaths() == "");
+    GISMO_ASSERT(gsFileManager::getSearchPaths() == "", "gsFileManager::getSearchPaths() not empty");
 
     gsFileManager::setSearchPaths(absolute);
     CHECK_EQUAL(absolute + own_fn, gsFileManager::find(own_fn));
     CHECK_EQUAL("", gsFileManager::find(falsum));
 
     gsFileManager::setSearchPaths(defaultPath);
-    CHECK_ASSERT(gsFileManager::getSearchPaths() == defaultPath);
+    GISMO_ASSERT(gsFileManager::getSearchPaths() == defaultPath, "Can't set back to default getSeachPaths!");
 }
 
 TEST(fileExists)
@@ -223,7 +223,7 @@ TEST(fileExists)
     // FILE
     std::string defaultPath = gsFileManager::getSearchPaths();
     gsFileManager::setSearchPaths("");
-    CHECK_ASSERT(gsFileManager::getSearchPaths() == "");
+    GISMO_ASSERT(gsFileManager::getSearchPaths() == "", "gsFileManager::getSearchPaths() not empty");
 
     std::string relative("./");                         // relative
     std::string absolute = gsFileManager::getExePath(); // absolute
@@ -240,14 +240,14 @@ TEST(fileExists)
     CHECK(!gsFileManager::fileExists(falsum));
 
     gsFileManager::setSearchPaths("");
-    CHECK_ASSERT(gsFileManager::getSearchPaths() == "");
+    GISMO_ASSERT(gsFileManager::getSearchPaths() == "", "gsFileManager::getSearchPaths() not empty");
 
     gsFileManager::setSearchPaths(absolute);
     CHECK(gsFileManager::fileExists(own_fn));
     CHECK(!gsFileManager::fileExists(falsum));
 
     gsFileManager::setSearchPaths(defaultPath);
-    CHECK_ASSERT(gsFileManager::getSearchPaths() == defaultPath);
+    GISMO_ASSERT(gsFileManager::getSearchPaths() == defaultPath, "Can't set back to default getSeachPaths!");
 }
 
 TEST(findInDataDir)
