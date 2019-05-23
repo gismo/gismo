@@ -128,7 +128,7 @@ public:
 
     enum {ScalarValued = 0, ColBlocks = 0};
     //todo: ValueType=0,1,2 (scalar,vector,matrix)
-    //Space = 0,1,2 (instead of rowSpan ColSpan ?)
+    //Space = 0,1,2 (instead of rowSpan ColSpan, RowCol ?)
     enum {Space = 0};
 
     //typedef typename E::Nested_t Nested_t;
@@ -2110,6 +2110,9 @@ public:
     static constexpr bool rowSpan() {return false; }
     static bool colSpan() {return false;}
 
+    static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
+    static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
+    
     void setFlag() const { _G.data().flags |= NEED_DERIV; }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
@@ -2320,7 +2323,7 @@ public:
 public:
     hess_expr(const E & u) : _u(u)
     {
-        gsInfo << "expression is space ? "<<E::Space <<"\n"; _u.print(gsInfo);
+        //gsInfo << "expression is space ? "<<E::Space <<"\n"; _u.print(gsInfo);
         //GISMO_ASSERT(1==_u.dim(),"hess(.) requires 1D variable");
     }
 
@@ -2607,14 +2610,14 @@ public:
         const MatExprType tmpA = _u.eval(k);
         const MatExprType tmpB = _v.eval(k);
 
-        if ( _v.cols() == ur)
+        if ( _v.cols() == ur) //second is not ColBlocks
         {
             res.resize(ur, uc);
             for (index_t i = 0; i!=nb; ++i)
                 res.middleCols(i*ur,ur).noalias()
                     = tmpA.middleCols(i*ur,ur) * tmpB;
         }
-        else
+        else // both are ColBlocks: [A1 A2 A3] * [B1 B2 B3] = [A1*B1  A2*B2  A3*B3]
         {
             GISMO_ASSERT( _u.cols() == _v.cols(), "Invalid dimensions");
             const index_t vc = _v.cols() / nb;
@@ -2842,7 +2845,7 @@ public:
    Expression for the Frobenius matrix (or double dot) product (second
    version), When left hand only side is block-wise
 
-   [A1 A2 A3] . B = [A1.B  A2.B  A3.B]
+   [A1 A2 A3] : B = [A1:B  A2:B  A3:B]
 */
 template <typename E1, typename E2>
 class frprod_expr<E1,E2,false> : public _expr<frprod_expr<E1, E2,false> >
@@ -2871,11 +2874,11 @@ public:
     const gsMatrix<Scalar> & eval(const index_t k) const //todo: specialize for nb==1
     {
         // assert _u.size()==_v.size()
-        const index_t rb = _u.rows(); //==cb
-        const index_t nb = _u.cols() / rb;
         MatExprType A = _u.eval(k);
         MatExprType B = _v.eval(k);
-
+        const index_t rb = A.rows(); //==cb
+        const index_t nb = A.cols() / rb;
+        
         res.resize(nb, 1);
         for (index_t i = 0; i!=nb; ++i) // all with all
                 res(i,0) =
