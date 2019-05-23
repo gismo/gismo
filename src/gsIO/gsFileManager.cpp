@@ -444,7 +444,7 @@ std::string gsFileManager::getFilename(std::string const & fn)
     return fn;
 }
 
-std::string getPath(std::string const & fn, bool resolve = false)
+std::string gsFileManager::getPath(std::string const & fn, bool resolve)
 {
     if (resolve)
         return gsFileManager::getCanonicRepresentation(gsFileManager::find(fn) + "/../");
