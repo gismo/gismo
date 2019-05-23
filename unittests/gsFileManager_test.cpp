@@ -283,7 +283,7 @@ TEST(getTempPath)
 
 TEST(getCurrentPath)
 {
-    std::string testString = gsFileManager::getTempPath();
+    std::string testString = gsFileManager::getCurrentPath();
     CHECK(testString != "");
     CHECK(gsFileManager::isFullyQualified(testString));
     CHECK(gsFileManager::fileExists(testString));
@@ -292,7 +292,7 @@ TEST(getCurrentPath)
 
 TEST(getExePath)
 {
-    std::string testString = gsFileManager::getTempPath();
+    std::string testString = gsFileManager::getExePath();
     CHECK(testString != "");
     CHECK(gsFileManager::isFullyQualified(testString));
     CHECK(gsFileManager::fileExists(testString));
