@@ -217,6 +217,11 @@ public:
     void setIntegrationElements(const gsMultiBasis<T> & mesh)
     { m_exprdata->setMultiBasis(mesh); }
 
+#if EIGEN_HAS_RVALUE_REFERENCES
+    void setIntegrationElements(const gsMultiBasis<T> &&) = delete;
+    //const gsMultiBasis<T> * c++98
+#endif
+
     /// \brief Returns the domain of integration
     const gsMultiBasis<T> & integrationElements() const
     { return m_exprdata->multiBasis(); }
