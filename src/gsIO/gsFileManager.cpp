@@ -21,8 +21,6 @@
 #if defined _WIN32
 #include <windows.h>
 #include <direct.h>
-#include <Shlwapi.h>
-#include <algorithm>>
 #ifdef __MINGW32__
 #include <sys/stat.h>
 #endif
@@ -100,6 +98,16 @@ char gsFileManager::getNativePathSeparator()
     return getValidPathSeparators()[0];
 }
 
+const std::string& gsFileManager::getInvalidCharacters()
+{
+#if defined _WIN32 || defined __CYGWIN__
+    static std::string ps(":*?\"<>|"); // ':' allowed at fn[1]
+#else
+    // allowed under Unix: \?%*:|"<>
+    static std::string ps("");
+#endif
+    return ps;
+}
 
 namespace {
 inline bool _contains( const std::string& haystack, char needle )
@@ -107,41 +115,67 @@ inline bool _contains( const std::string& haystack, char needle )
     return haystack.find(needle) != std::string::npos;
 }
 
-} // anonymous namespace
+bool _isValidPathOrName(const std::string& fn)
+{
+    bool invalid = false;
+    for (int i = 0; i < fn.length(); ++i)
+    {
+        invalid = invalid | _contains(gsFileManager::getInvalidCharacters(), fn[i]);
+    }
+    return !invalid;
+}
 
+} // anonymous namespace
 
 bool gsFileManager::isFullyQualified(const std::string& fn)
 {
-    // TODO: valid
-#if defined _WIN32
-    return util::starts_with(fn,"/")
-        || util::starts_with(fn,"\\")
-        || ( fn.size() > 2 && fn[1] == ':' && ( fn[2] == '/' || fn[2] == '\\' ) );
-#else
-    return util::starts_with(fn,"/");
+    bool valid = false;
+#if defined _WIN32 || defined __CYGWIN__
+    // case "c:\\abc"
+    if ( fn.size() > 2 && isaplha(fn[0]) && fn[1] == ':')
+    {
+        for (int i = 0; i < getValidPathSeparators().length(); ++i)
+        {
+            valid = valid || (fn[2] == getValidPathSeparators()[i]);
+        }
+        valid = valid && _isValidPathOrName(fn.substr(3, fn.length()-3));
+    }
+    else // case "\\abc", same as Unix
+    {
 #endif
+    for (int i = 0; i < getValidPathSeparators().length(); ++i)
+    {
+        valid = valid || (fn[0] == getValidPathSeparators()[i]);
+    }
+    valid = valid && _isValidPathOrName(fn);
+#if defined _WIN32 || defined __CYGWIN__
+    }
+#endif
+    return valid;
 }
 
 bool gsFileManager::isExplicitlyRelative(const std::string& fn)
 {
-    // TODO: valid
-#if defined _WIN32
-    return util::starts_with(fn,"./")
-        || util::starts_with(fn,".\\")
-        || util::starts_with(fn,"../")
-        || util::starts_with(fn,"..\\");
-#else
-    return util::starts_with(fn,"./")
-        || util::starts_with(fn,"../");
-#endif
+    bool valid = false;
+    for (int i = 0; i < getValidPathSeparators().length(); ++i)
+    {
+        valid = valid || ((fn[0] == '.') && (fn[1] == getValidPathSeparators()[i])) ||
+                ((fn[0] == fn[1] == '.') && (fn[2] == getValidPathSeparators()[i]));
+    }
+    valid = valid && _isValidPathOrName(fn);
+    return valid;
 }
 
 namespace {
 
-inline void _replace_slash_by_basckslash(std::string& str)
+inline void _repacle_with_native_seperator(std::string& str)
 {
-    for ( std::string::iterator it=str.begin(); it!=str.end(); it++ )
-        if ( *it=='/' ) *it = '\\';
+    for (int i = 1; i < gsFileManager::getValidPathSeparators().length(); ++i)
+    {
+        std::replace(str.begin(), str.end(),
+            gsFileManager::getValidPathSeparators()[i],
+            gsFileManager::getNativePathSeparator());
+    }
 }
 
 inline bool _addSearchPaths(const std::string& in, std::vector<std::string>& out)
@@ -158,7 +192,7 @@ inline bool _addSearchPaths(const std::string& in, std::vector<std::string>& out
         p.assign(a,b);
 
 #if defined _WIN32
-        _replace_slash_by_basckslash(p);
+        _repacle_with_native_seperator(p);
 #endif
 
         if (!p.empty())
@@ -219,7 +253,7 @@ std::string gsFileManager::getSearchPaths()
 std::string gsFileManager::find(std::string fn)
 {
 #if defined _WIN32
-    _replace_slash_by_basckslash(fn);
+    _repacle_with_native_seperator(fn);
 #endif
 
     if ( _fileExistsWithoutSearching(fn) ) return fn;
@@ -243,7 +277,7 @@ std::string gsFileManager::find(std::string fn)
 std::string gsFileManager::findInDataDir(std::string fn)
 {
 #if defined _WIN32
-    _replace_slash_by_basckslash(fn);
+    _repacle_with_native_seperator(fn);
 #endif
 
     // We know that GISMO_DATA_DIR ends with a path seperator, but
@@ -260,7 +294,7 @@ std::string gsFileManager::findInDataDir(std::string fn)
 bool gsFileManager::mkdir( std::string fn )
 {
 #if defined _WIN32
-    _replace_slash_by_basckslash(fn);
+    _repacle_with_native_seperator(fn);
     return 0!=CreateDirectory(fn.c_str(),NULL);
 #else
     return ::mkdir(fn.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
@@ -374,7 +408,6 @@ bool gsFileManager::pathEqual( const std::string& p1, const std::string& p2 )
 
     }
     return true;
-
 }
 
 std::string gsFileManager::getExtension(std::string const & fn)
@@ -411,6 +444,13 @@ std::string gsFileManager::getFilename(std::string const & fn)
     return fn;
 }
 
+std::string getPath(std::string const & fn, bool resolve = false)
+{
+    if (resolve)
+        return gsFileManager::getCanonicRepresentation(gsFileManager::find(fn) + "/../");
+    return gsFileManager::getCanonicRepresentation(fn + "/../");
+}
+
 namespace {
 struct gsStringView {
     const char* m_begin;
@@ -434,27 +474,6 @@ struct gsStringView {
 
 std::string gsFileManager::getCanonicRepresentation(const std::string& s)
 {
-#if defined _WIN32
-	std::string c = s;
-	for (size_t i = 1; i < getValidPathSeparators().length; i++)
-	{
-		std::replace(c.begin(), c.end(), getValidPathSeparators()[i], getNativePathSeparator());
-	}
-
-	char* buffer = new char[MAX_PATH];
-	std::string result;
-	if (PathCanonicalizeA(buffer, c.c_str()))
-	{
-		result = std::string(buffer);
-	}
-	else
-	{
-		gsWarn << "gsFileManager::getCanonicRepresentation(\"" << s << "\") failed.\n";
-		result = "";
-	}
-	delete[] buffer;
-	return result;
-#else
     std::vector<gsStringView> parts;
     size_t last = 0;
     for (size_t i=0; i<s.size(); ++i)
@@ -499,7 +518,6 @@ std::string gsFileManager::getCanonicRepresentation(const std::string& s)
         final_result.append( result[i].begin(), result[i].end() );
     }
     return final_result;
-#endif
 }
 
 
