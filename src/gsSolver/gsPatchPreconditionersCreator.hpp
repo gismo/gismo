@@ -388,7 +388,7 @@ void tildeSpaceBasis_oneside(const gsTensorBSplineBasis<1,T>& basis, bool isLeft
 template<typename T>
 void tildeSpaceBasis(const gsBasis<T>& basis, gsSparseMatrix<T>& B_tilde, gsSparseMatrix<T>& B_compl, const gsBoundaryConditions<T>& bc, const bool odd = true)
 {
-    GISMO_ASSERT( nullptr != dynamic_cast<const gsTensorBSplineBasis<1,T>*>(&basis),
+    GISMO_ASSERT( nullptr != (dynamic_cast<const gsTensorBSplineBasis<1,T>*>(&basis)),
                     "gsPatchPreconditionersCreator<T>::getTildeSpaceBasisTransformation and "
                     "gsPatchPreconditionersCreator<T>::subspaceCorrectedMassSmootherOp only work with tensor-B-spline bases." );
     const gsTensorBSplineBasis<1,T>& bbasis = static_cast<const gsTensorBSplineBasis<1,T>&>(basis);
