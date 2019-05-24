@@ -554,7 +554,7 @@ private:
             m_transfers.push_back( give(transfer) );
 
             index_t j=0;
-            while ( j < d &&curr[j]+1 >= bi.m_dim[j])
+            while ( j < d &&curr[j]+bi.m_innerSize[j] >= bi.m_dim[j])
             {
                 curr[j] = 0;
                 ++j;
