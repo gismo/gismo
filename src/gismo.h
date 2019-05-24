@@ -156,6 +156,7 @@ namespace internal
 #include <gsSolver/gsConjugateGradient.h>
 #include <gsSolver/gsPreconditioner.h>
 #include <gsSolver/gsAdditiveOp.h>
+#include <gsSolver/gsMultiplicativeOp.h>
 #include <gsSolver/gsBlockOp.h>
 #include <gsSolver/gsCompositePrecOp.h>
 #include <gsSolver/gsProductOp.h>

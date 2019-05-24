@@ -17,6 +17,8 @@ using namespace gismo;
 
 gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(const gsSparseMatrix<>&, const gsMultiBasis<>&, const gsBoundaryConditions<>&, const gsOptionList&);
 
+gsMultiplicativeOp<>::Ptr macroGsInit(const gsSparseMatrix<>& A, std::vector<index_t>& dims, index_t innerSize, index_t overlapSize );
+
 int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
@@ -222,19 +224,15 @@ int main(int argc, char *argv[])
         else if ( smoother == "MacroGaussSeidel" || smoother == "mgs" )
         {
             GISMO_ENSURE (multiBases[i].nBases() == 1, "Only for 1 patch so far...");
-            gsBlockInfo bi;
             const index_t d = mp.geoDim();
-            bi.m_dim.resize(d,1);
-            bi.m_innerSize.resize(d,1);
-            bi.m_overlapSize.resize(d,1);
+            std::vector<index_t> dims(d);
             for (index_t j=0; j<d; ++j)
             {
                 GISMO_ENSURE (boundary_conditions.length() == 1, "Only 1 bc supported...");
-                bi.m_dim[j] = multiBases[i][0].component(d-1-j).size() - ((boundary_conditions[0]=='d')?2:0);
-                bi.m_innerSize[j] = innerSize;
-                bi.m_overlapSize[j] = overlapSize;
+                dims[j] = multiBases[i][0].component(d-1-j).size() - ((boundary_conditions[0]=='d')?2:0);
             }
-            smootherOp = makeMacroGaussSeidelOp(mg->matrix(i),bi);
+            gsInfo << "call macroGsInit..." << std::endl;
+            smootherOp = macroGsInit(mg->matrix(i),dims,innerSize,overlapSize);
         }
         else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" || smoother == "Hybrid" || smoother == "hyb" )
         {
@@ -403,4 +401,87 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
         makeMatrixOp(matrix),
         gsAdditiveOp<>::make(transfers, ops)
     );
+}
+
+gsSparseMatrix<> makeTransfer(gsVector<index_t> begin, gsVector<index_t> end, gsVector<index_t> dim, index_t totalDim )
+{
+    const index_t d = dim.rows();
+    const index_t sz = ((end-begin).array()).prod();
+    gsSparseEntries<> se;
+    se.reserve(sz);
+    gsVector<index_t> curr = begin;
+    index_t i=0;
+    while (true)
+    {
+        index_t idx = 0;
+        for (int j=0; j<d; ++j)
+        {
+            idx *= dim[j];
+            idx += curr[j];
+        }
+        se.add(idx, i, 1);
+        index_t j=0;
+        while (j<d && curr[j]+1 >= end[j])
+        {
+            curr[j] = begin[j];
+            ++j;
+        }
+        if (j<d)
+            ++(curr[j]);
+        else
+            break;
+        ++i;
+    }
+    ++i;
+    gsSparseMatrix<> result(totalDim, i);
+    result.setFrom(se);
+    return result;
+}
+    
+    
+gsMultiplicativeOp<>::Ptr macroGsInit(const gsSparseMatrix<>& A, std::vector<index_t>& dims_v, index_t innerSize, index_t overlapSize )
+{
+    gsMultiplicativeOp<>::Ptr result = gsMultiplicativeOp<>::make(A);
+    
+    const index_t d = dims_v.size();
+    index_t totalDim = 1;
+    for (index_t i=0; i<d; ++i)
+        totalDim *= dims_v[i];
+    GISMO_ENSURE( totalDim == A.rows(), "Err" );
+
+    gsVector<index_t> dims(d);
+    for (index_t i=0; i<d; ++i)
+        dims[i] = dims_v[i];
+
+    gsVector<index_t> curr = 0 * dims;
+    
+    while(true)
+    {
+        gsVector<index_t> begin = curr, end = curr;
+        for (index_t i=0; i<d; ++i)
+        {
+            begin[i] -= overlapSize;
+            if (begin[i] < 0) begin[i] = 0;
+        }
+        for (index_t i=0; i<d; ++i)
+        {
+            end[i] += innerSize+overlapSize;
+            if (end[i] > dims[i]) end[i] = dims[i];
+        }
+        gsSparseMatrix<> transfer = makeTransfer(begin, end, dims, totalDim);
+        gsSparseMatrix<> localMat = transfer.transpose() * A * transfer;
+        result->addOperator( give(transfer), makeSparseCholeskySolver(localMat) ); // TODO: should not be sparse...
+
+        index_t j=0;
+        while ( j < d &&curr[j]+innerSize >= dims[j])
+        {
+            curr[j] = 0;
+            ++j;
+        }
+        if (j<d)
+            curr[j] += innerSize;
+        else
+            break;
+    }
+    return result;
 }
