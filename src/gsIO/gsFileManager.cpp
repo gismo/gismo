@@ -86,14 +86,14 @@ bool _fileExistsWithoutSearching(const std::string& fn)
 const std::string& gsFileManager::getValidPathSeparators()
 {
 #if defined _WIN32 || defined __CYGWIN__
-    static std::string ps("\\/");
+    static const std::string ps("\\/");
 #else
-    static std::string ps("/");
+    static const std::string ps("/");
 #endif
     return ps;
 }
 
-char gsFileManager::getNativePathSeparator()
+const char gsFileManager::getNativePathSeparator()
 {
     return getValidPathSeparators()[0];
 }
@@ -123,6 +123,18 @@ bool _isValidPathOrName(const std::string& fn)
         invalid = invalid | _contains(gsFileManager::getInvalidCharacters(), fn[i]);
     }
     return !invalid;
+}
+
+// sets last character to the native path seperator
+// special case "" gets "./"
+void _makePath(std::string & final_result)
+{
+    if (final_result[final_result.length() - 1] != gsFileManager::getNativePathSeparator())
+    {
+        if (final_result.length() == 0)
+            final_result.push_back('.');
+        final_result.push_back(gsFileManager::getNativePathSeparator());
+    }
 }
 
 } // anonymous namespace
@@ -320,7 +332,9 @@ std::string gsFileManager::getTempPath()
     if (_temp != NULL && _temp[0] != '\0')
     {
         // note: env variable needs no free
-        return std::string(_temp);
+        std::string path(_temp);
+        _makePath(path);
+        return path;
     }
 
     // Okey, if first choice did not work, try this:
@@ -328,7 +342,9 @@ std::string gsFileManager::getTempPath()
     if (_temp != NULL && _temp[0] != '\0')
     {
         // note: env variable needs no free
-        return std::string(_temp);
+        std::string path(_temp);
+        _makePath(path);
+        return path;
     }
 
     // And as third choice, use just current directory
@@ -338,6 +354,7 @@ std::string gsFileManager::getTempPath()
     std::string path(_temp);
     // The string is allocated using malloc, see the reference above
     std::free(_temp);
+    _makePath(path);
     return path;
 #endif
 }
@@ -349,6 +366,7 @@ std::string gsFileManager::getCurrentPath()
     DWORD l = GetCurrentDirectory(/*length of buffer:*/MAX_PATH, _temp);
     GISMO_UNUSED(l);
     GISMO_ASSERT(l, "GetCurrentDirectory did return 0");
+    GSIMO_ASSERT(_temp[_temp.length() - 1] == getNativePathSeparator(), "getCurrentPath isn't a path.");
     return std::string(_temp);
 #else
     // http://man7.org/linux/man-pages/man2/getcwd.2.html
@@ -357,6 +375,7 @@ std::string gsFileManager::getCurrentPath()
     std::string path(_temp);
     // The string is allocated using malloc, see the reference above
     std::free(_temp);
+    _makePath(path);
     return path;
 #endif
 }
@@ -372,6 +391,7 @@ std::string gsFileManager::getExePath()
         "The executable cannot be found where it is expected." );
     return getCanonicRepresentation( std::string(_temp) + "/../" );
 #else
+    // TODO: use getcwd instead of argv0, see https://linux.die.net/man/3/getcwd
     const char* argv0 = gsFileManagerDataSingleton().argv0;
     if (!argv0)
     {
@@ -393,21 +413,33 @@ std::string gsFileManager::getExePath()
 
 bool gsFileManager::pathEqual( const std::string& p1o, const std::string& p2o )
 {
-    std::string p1 = getCanonicRepresentation(p1o);
-    std::string p2 = getCanonicRepresentation(p2o);
+    std::string p1 = p1o;
+    std::string p2 = p2o;
+
+    if (!isFullyQualified(p1))
+        p1 = getCurrentPath() + p1;
+    GISMO_ASSERT(isFullyQualified(p1), "p1 isn't a absolute path");
+    if (!isFullyQualified(p2))
+        p2 = getCurrentPath() + p2;
+    GISMO_ASSERT(isFullyQualified(p1), "p2 isn't a absolute path");
+
+    // canonic representation as path
+    p1 = getCanonicRepresentation(p1, true);
+    p2 = getCanonicRepresentation(p2, true);
 
     const size_t sz = p1.size();
 
     if (sz != p2.size())
         return false;
 
-    for (size_t i=0; i<sz; ++i)
+    for (size_t i = 0; i < sz; ++i)
     {
         if (!(
             p1[i] == p2[i]
-            || ( p1[i] == '/' && p2[i] == '\\' )
-            || ( p1[i] == '\\' && p2[i] == '/' )
-        )) return false;
+                || (p1[i] == '/' && p2[i] == '\\')
+                || (p1[i] == '\\' && p2[i] == '/')
+        ))
+            return false;
 
     }
     return true;
@@ -475,7 +507,7 @@ struct gsStringView {
 };
 } // end anonymous namespace
 
-std::string gsFileManager::getCanonicRepresentation(const std::string& s)
+std::string gsFileManager::getCanonicRepresentation(const std::string& s, bool asPath)
 {
     std::vector<gsStringView> parts;
     size_t last = 0;
@@ -520,9 +552,11 @@ std::string gsFileManager::getCanonicRepresentation(const std::string& s)
         final_result.push_back( getNativePathSeparator() );
         final_result.append( result[i].begin(), result[i].end() );
     }
+    if (asPath) {
+        _makePath(final_result);
+    }
     return final_result;
 }
-
 
 // todo: return bool for success/failure
 void gsFileManager::open(const std::string & fn)

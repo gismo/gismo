@@ -174,7 +174,7 @@ TEST(SearchPaths)
     CHECK_EQUAL(gsFileManager::getNativePathSeparator(), result[result.length()-2]);
 
     // clear SearchPaths
-    CHECK(!gsFileManager::setSearchPaths(""));
+    CHECK(gsFileManager::setSearchPaths(""));
     CHECK_EQUAL("", gsFileManager::getSearchPaths());
 
     // set more values at once
@@ -397,6 +397,8 @@ TEST(getExtension)
     CHECK_EQUAL("bar", gsFileManager::getExtension("./foo.baz.bar"));
     CHECK_EQUAL("bar", gsFileManager::getExtension("../foo.baz.bar"));
 
+    CHECK_EQUAL("bar", gsFileManager::getExtension("/some/../baz/other/../foo.baz.bar"));
+
     CHECK_EQUAL("foo", gsFileManager::getExtension("bar.foo"));
 }
 
@@ -411,6 +413,8 @@ TEST(getBasename)
     CHECK_EQUAL("foo.baz", gsFileManager::getBasename("/foo.baz.bar"));
     CHECK_EQUAL("foo.baz", gsFileManager::getBasename("./foo.baz.bar"));
     CHECK_EQUAL("foo.baz", gsFileManager::getBasename("../foo.baz.bar"));
+
+    CHECK_EQUAL("foo.baz", gsFileManager::getBasename("/some/../bax/other/../foo.baz.bar"));
 
     CHECK_EQUAL("bar", gsFileManager::getBasename("bar.foo"));
 }
@@ -436,9 +440,15 @@ TEST(getFilename)
 
 TEST(getPath)
 {
+    CHECK_EQUAL("", gsFileManager::getPath("foo"));
+    CHECK_EQUAL("", gsFileManager::getPath("foo.bar"));
+    CHECK_EQUAL("", gsFileManager::getPath("foo.baz.bar"));
     CHECK_EQUAL("/", gsFileManager::getPath("/foo"));
     CHECK_EQUAL("/", gsFileManager::getPath("/foo.bar"));
     CHECK_EQUAL("/", gsFileManager::getPath("/foo.baz.bar"));
+    CHECK_EQUAL("./", gsFileManager::getPath("./foo"));
+    CHECK_EQUAL("./", gsFileManager::getPath("./foo.bar"));
+    CHECK_EQUAL("./", gsFileManager::getPath("./foo.baz.bar"));
     CHECK_EQUAL("../", gsFileManager::getPath("../foo"));
     CHECK_EQUAL("../", gsFileManager::getPath("../foo.bar"));
     CHECK_EQUAL("../", gsFileManager::getPath("../foo.baz.bar"));
@@ -451,10 +461,18 @@ TEST(getPath)
     CHECK_EQUAL("./some/other/", gsFileManager::getPath("./some/other/foo"));
     CHECK_EQUAL("./some/other/", gsFileManager::getPath("./some/other/foo.bar"));
     CHECK_EQUAL("./some/other/", gsFileManager::getPath("./some/other/foo.baz.bar"));
+    CHECK_EQUAL("../some/other/", gsFileManager::getPath("../some/other/foo"));
+    CHECK_EQUAL("../some/other/", gsFileManager::getPath("../some/other/foo.bar"));
+    CHECK_EQUAL("../some/other/", gsFileManager::getPath("../some/other/foo.baz.bar"));
+    // some canonical check
+    CHECK_EQUAL("../some/other/", gsFileManager::getPath("../some/buz/../other/foo"));
+    CHECK_EQUAL("../some/other/", gsFileManager::getPath("../some/buz/../other/foo.bar"));
+    CHECK_EQUAL("../some/other/", gsFileManager::getPath("../some/buz/../other/foo.baz.bar"));
 }
 
 TEST(getCanonicRepresentation)
 {
+
     CHECK_EQUAL("foo/bar", gsFileManager::getCanonicRepresentation("foo/./bar"));
     CHECK_EQUAL("foo/bar", gsFileManager::getCanonicRepresentation("foo/baz/../bar"));
     CHECK_EQUAL("foo/bar", gsFileManager::getCanonicRepresentation("foo/baz/baz/../../bar"));
@@ -465,6 +483,11 @@ TEST(getCanonicRepresentation)
 
     CHECK_EQUAL("./foo", gsFileManager::getCanonicRepresentation("./././foo"));
     CHECK_EQUAL("../foo", gsFileManager::getCanonicRepresentation("./.././foo"));
+
+    CHECK_EQUAL("", gsFileManager::getCanonicRepresentation(""));
+    CHECK_EQUAL("./", gsFileManager::getCanonicRepresentation("", true));
+    CHECK_EQUAL("./foo/", gsFileManager::getCanonicRepresentation("./././foo", true));
+    CHECK_EQUAL("../foo/", gsFileManager::getCanonicRepresentation("./.././foo", true));
 
     CHECK_EQUAL("./foo/", gsFileManager::getCanonicRepresentation("./././foo/"));
     CHECK_EQUAL("../foo/", gsFileManager::getCanonicRepresentation("./.././foo/"));

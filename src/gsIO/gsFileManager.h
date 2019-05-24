@@ -37,7 +37,7 @@ class GISMO_EXPORT gsFileManager
 public:
 
     /// Get preferred native path seperator
-    static char getNativePathSeparator();
+    static const char getNativePathSeparator();
 
     /// Get valid path seperators
     static const std::string& getValidPathSeparators();
@@ -159,7 +159,12 @@ public:
     /// This does not access the file system, the current directory, or
     /// the search paths. Therefore, leading .. can't be replaced.
     /// Leading ./././ will be reduced to ./
-    static std::string getCanonicRepresentation(const std::string & fn);
+    ///
+    /// \param fn input path as std::string
+    /// \param asPath If true, make sure the last character of the output is the native-path-separator.
+    /// Else, let is as it was.
+    /// \return canonical representation of \a fn as std::string
+    static std::string getCanonicRepresentation(const std::string & fn, bool asPath = false);
 
     /// Opens the file \a fn using the preferred application of the OS
     static void open(const std::string & fn);
@@ -173,6 +178,7 @@ private:
 
     friend class gsCmdLine;
     friend class gsUnitTestSelector;
+    static void makePath(std::string & final_result);
 };
 
 
