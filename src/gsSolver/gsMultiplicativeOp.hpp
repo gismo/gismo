@@ -17,17 +17,17 @@ namespace gismo
 template<typename T>
 void gsMultiplicativeOp<T>::step(const gsMatrix<T>& f, gsMatrix<T>& x) const
 {
-    GISMO_ASSERT( m_underlying.rows() == x.rows() && x.rows() == f.rows() && m_underlying.cols() == m_underlying.rows() && x.cols() == f.cols(),
-        "Dimensions do not match.");
+    GISMO_ASSERT( m_underlying->rows() == x.rows() && x.rows() == f.rows() && m_underlying->cols() == m_underlying->rows() && x.cols() == f.cols(),
+        "Dimensions do not match."<<m_underlying->rows()<<"=="<<x.rows()<<"&&"<<x.rows()<<"=="<<f.rows()<<"&&"<<m_underlying->cols()<<"=="<<m_underlying->rows()<<"&&"<<x.cols()<<"=="<<f.cols());
 
     GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     // TODO: This is totally inefficient
-    gsMatrix<T> p;
+    gsMatrix<T> p(f.rows(),f.cols());
     const size_t sz = m_transfers.size();
     for (size_t i = 0; i < sz; ++i)
     {
-        m_ops[i]->apply( m_transfers[i].transpose() * (f - m_underlying*x), p );        
+        m_ops[i]->apply( m_transfers[i].transpose() * (f - (*m_underlying)*x), p );        
         x += m_transfers[i] * p;
     }
 }
@@ -35,17 +35,17 @@ void gsMultiplicativeOp<T>::step(const gsMatrix<T>& f, gsMatrix<T>& x) const
 template<typename T>
 void gsMultiplicativeOp<T>::stepT(const gsMatrix<T>& f, gsMatrix<T>& x) const
 {
-    GISMO_ASSERT( m_underlying.rows() == x.rows() && x.rows() == f.rows() && m_underlying.cols() == m_underlying.rows() && x.cols() == f.cols(),
+    GISMO_ASSERT( m_underlying->rows() == x.rows() && x.rows() == f.rows() && m_underlying->cols() == m_underlying->rows() && x.cols() == f.cols(),
         "Dimensions do not match.");
 
     GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     // TODO: This is totally inefficient
-    gsMatrix<T> p;
+    gsMatrix<T> p(f.rows(),f.cols());
     const size_t sz = m_transfers.size();
     for (size_t i = sz-1; i != (size_t)-1; --i)
     {
-        m_ops[i]->apply( m_transfers[i].transpose() * (f - m_underlying*x), p );        
+        m_ops[i]->apply( m_transfers[i].transpose() * (f - (*m_underlying)*x), p );        
         x += m_transfers[i] * p;
     }
 }

@@ -104,6 +104,7 @@ public:
     {
         m_transfers.push_back(give(transfer));
         m_ops.push_back(give(op));
+        // Todo: Assertion buggy:
         GISMO_ASSERT ( transfer.rows()==m_transfers[0].rows()
                        && transfer.cols() == op->rows()
                        && op->cols() == op->rows(),

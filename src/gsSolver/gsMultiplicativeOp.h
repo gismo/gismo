@@ -50,19 +50,22 @@ public:
     /// @param transfers   transfer matrices \f$ T_i \f$
     /// @param ops         local operators \f$ A_i \f$
     /// @note: This takes A by reference
-    gsMultiplicativeOp(const gsSparseMatrix<T>& underlying, TransferContainer transfers, OpContainer ops)
-    : m_underlying(underlying), m_transfers(give(transfers)), m_ops(give(ops))
+    gsMultiplicativeOp(memory::shared_ptr< gsSparseMatrix<T> > underlying, TransferContainer transfers, OpContainer ops)
+    : m_underlying(give(underlying)), m_transfers(give(transfers)), m_ops(give(ops))
     {
 #ifndef NDEBUG
-    //    GISMO_ASSERT( m_transfers.size() == m_ops.size(), "Sizes do not agree" );
-    //    const size_t sz = m_transfers.size();
-    //    for (size_t i=0; i<sz; ++i)
-    //    {
-    //        GISMO_ASSERT ( m_transfers[i].rows()==m_transfers[0].rows()
-    //                   && m_transfers[i].cols() == m_ops[i]->rows()
-    //                   && m_ops[i]->cols() == m_ops[i]->rows(),
-    //                   "Dimensions of the operators do not fit." );
-    //    }
+        GISMO_ASSERT( m_underlying->rows() == m_underlying->cols(), "Dimensions of the operators do not fit." );
+        GISMO_ASSERT( m_transfers.size() == m_ops.size(), "Sizes do not agree" );
+        const size_t sz = m_transfers.size();
+        for (size_t i=0; i<sz; ++i)
+        {
+            GISMO_ASSERT ( m_transfers[i].rows()==m_underlying->rows()
+                       && m_transfers[i].cols() == m_ops[i]->rows()
+                       && m_ops[i]->cols() == m_ops[i]->rows(),
+                       "Dimensions of the operators do not fit."<<m_transfers[i].rows()<<"=="<<m_underlying->rows()<<
+                       "&&"<<m_transfers[i].cols()<<"=="<< m_ops[i]->rows()<<
+	               "&&"<<m_ops[i]->cols()<<"=="<<m_ops[i]->rows()<<"; i="<<i<<"; sz="<<sz );
+        }
 #endif
     }
 
@@ -74,8 +77,8 @@ public:
     /// @param transfers  transfer matrices \f$ T_i \f$
     /// @param ops        local operators \f$ A_i \f$
     /// @note: This takes A by reference
-    static uPtr make(const gsSparseMatrix<T>& underlying, TransferContainer transfers, OpContainer ops)
-    { return uPtr( new gsMultiplicativeOp( underlying, give(transfers), give(ops) ) ); }
+    static uPtr make(memory::shared_ptr< gsSparseMatrix<T> > underlying, TransferContainer transfers, OpContainer ops)
+    { return uPtr( new gsMultiplicativeOp( give(underlying), give(transfers), give(ops) ) ); }
 
     /// Make function
     ///
@@ -83,8 +86,8 @@ public:
     ///
     /// @param underlying  underlying matrix \f$ A \f$
     /// @note: This takes A by reference
-    static uPtr make(const gsSparseMatrix<T>& underlying)
-    { return uPtr( new gsMultiplicativeOp( underlying, TransferContainer(), OpContainer() ) ); }
+    static uPtr make(memory::shared_ptr< gsSparseMatrix<T> > underlying)
+    { return uPtr( new gsMultiplicativeOp( give(underlying), TransferContainer(), OpContainer() ) ); }
 
     /// Add another entry to the sum
     ///
@@ -92,12 +95,12 @@ public:
     /// @param op         the additional operator \f$ A_i \f$
     void addOperator(Transfer transfer, OpPtr op)
     {
-        m_transfers.push_back(give(transfer));
-        m_ops.push_back(give(op));
-        //GISMO_ASSERT ( transfer.rows()==m_transfers[0].rows()
-        //               && transfer.cols() == op->rows()
-        //               && op->cols() == op->rows(),
-        //               "Dimensions of the operators do not fit." );
+        m_transfers.push_back(transfer); //TODO: should give
+        m_ops.push_back(op); //TODO: should give
+        GISMO_ASSERT ( transfer.rows()==m_underlying->rows()
+                       && transfer.cols() == op->rows()
+                       && op->cols() == op->rows(),
+                       "Dimensions of the operators do not fit."<<transfer.rows()<<"=="<<m_underlying->rows()<<"&&"<<transfer.cols()<<"=="<<op->rows()<<"&&"<<op->cols()<<"=="<<op->rows() );
     }
 
     void step(const gsMatrix<T>& rhs, gsMatrix<T>& x) const;
@@ -111,16 +114,16 @@ public:
 
     index_t rows() const
     {
-        return m_underlying.rows();
+        return m_underlying->rows();
     }
 
     index_t cols() const
     {
-        return m_underlying.rows();
+        return m_underlying->cols();
     }
 
 protected:
-    const gsSparseMatrix<T>& m_underlying; ///< Underlying matrix
+    memory::shared_ptr< gsSparseMatrix<T> > m_underlying; ///< Underlying matrix
     TransferContainer m_transfers;   ///< Transfer matrices
     OpContainer m_ops;               ///< Operators to be applied in the subspaces
 

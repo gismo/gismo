@@ -17,7 +17,8 @@ using namespace gismo;
 
 gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(const gsSparseMatrix<>&, const gsMultiBasis<>&, const gsBoundaryConditions<>&, const gsOptionList&);
 
-gsMultiplicativeOp<>::Ptr macroGsInit(const gsSparseMatrix<>& A, std::vector<index_t>& dims, index_t innerSize, index_t overlapSize );
+gsPreconditionerOp<>::Ptr setupMacroGsSmoother(const gsSparseMatrix<>& matrix, const gsMultiBasis<>& mb,
+    const gsBoundaryConditions<>& bc, const gsOptionList& opt, index_t innerSize, index_t overlapSize );
 
 int main(int argc, char *argv[])
 {
@@ -222,18 +223,7 @@ int main(int argc, char *argv[])
         else if ( smoother == "GaussSeidel" || smoother == "gs" )
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
         else if ( smoother == "MacroGaussSeidel" || smoother == "mgs" )
-        {
-            GISMO_ENSURE (multiBases[i].nBases() == 1, "Only for 1 patch so far...");
-            const index_t d = mp.geoDim();
-            std::vector<index_t> dims(d);
-            for (index_t j=0; j<d; ++j)
-            {
-                GISMO_ENSURE (boundary_conditions.length() == 1, "Only 1 bc supported...");
-                dims[j] = multiBases[i][0].component(d-1-j).size() - ((boundary_conditions[0]=='d')?2:0);
-            }
-            gsInfo << "call macroGsInit..." << std::endl;
-            smootherOp = macroGsInit(mg->matrix(i),dims,innerSize,overlapSize);
-        }
+            smootherOp = setupMacroGsSmoother(mg->matrix(i),multiBases[i], bc, opt.getGroup("MG"),innerSize,overlapSize);
         else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" || smoother == "Hybrid" || smoother == "hyb" )
         {
             if (multiBases[i].nBases() == 1)
@@ -441,13 +431,14 @@ gsSparseMatrix<> makeTransfer(gsVector<index_t> begin, gsVector<index_t> end, gs
     
 gsMultiplicativeOp<>::Ptr macroGsInit(const gsSparseMatrix<>& A, std::vector<index_t>& dims_v, index_t innerSize, index_t overlapSize )
 {
-    gsMultiplicativeOp<>::Ptr result = gsMultiplicativeOp<>::make(A);
+    gsSparseMatrix<> matrixCopy = A;
+    gsMultiplicativeOp<>::Ptr result = gsMultiplicativeOp<>::make(matrixCopy.moveToPtr());
     
     const index_t d = dims_v.size();
     index_t totalDim = 1;
     for (index_t i=0; i<d; ++i)
         totalDim *= dims_v[i];
-    GISMO_ENSURE( totalDim == A.rows(), "Err" );
+    GISMO_ENSURE( totalDim == A.rows() && A.rows() == A.cols(), "Err" );
 
     gsVector<index_t> dims(d);
     for (index_t i=0; i<d; ++i)
@@ -483,5 +474,71 @@ gsMultiplicativeOp<>::Ptr macroGsInit(const gsSparseMatrix<>& A, std::vector<ind
         else
             break;
     }
+    return result;
+}
+
+gsPreconditionerOp<>::Ptr setupMacroGsSmoother(
+    const gsSparseMatrix<>& matrix,
+    const gsMultiBasis<>& mb,
+    const gsBoundaryConditions<>& bc,
+    const gsOptionList& opt,
+    index_t innerSize,
+    index_t overlapSize
+)
+{
+    //const short_t dim = mb.topology().dim();
+
+    // Setup dof mapper
+    gsDofMapper dm;
+    mb.getMapper(
+       (dirichlet::strategy)opt.askInt("DirichletStrategy",11),
+       (iFace    ::strategy)opt.askInt("InterfaceStrategy", 1),
+       bc,
+       dm,
+       0
+    );
+    const index_t nTotalDofs = dm.freeSize();
+
+    // Decompose the whole domain into components
+    std::vector< std::vector<patchComponent> > components = mb.topology().allComponents(true);
+    const index_t nr_components = components.size();
+
+    gsSparseMatrix<> matrixCopy = matrix;
+    gsMultiplicativeOp<>::Ptr result = gsMultiplicativeOp<>::make(matrixCopy.moveToPtr());
+
+    for (index_t i=0; i<nr_components; ++i)
+    {
+        gsMatrix<unsigned> indices;
+        std::vector<gsBasis<>::uPtr> bases = mb.componentBasis_withIndices(components[i],dm,indices,true);
+
+        index_t sz = indices.rows();
+        gsSparseEntries<> se;
+        se.reserve(sz);
+        for (index_t j=0; j<sz; ++j)
+            se.add(indices(j,0),j,real_t(1));
+        if (sz>0)
+        {
+            gsSparseMatrix<real_t,RowMajor> transfer(nTotalDofs,sz);
+            transfer.setFrom(se);
+
+            const index_t d = bases[0]->dim();
+            std::vector<index_t> dims(d);
+            for (index_t j=0; j<d; ++j)
+                dims[j] = bases[0]->component(d-1-j).size() - 2;
+        
+
+            gsSparseMatrix<> mat = transfer.transpose() * matrix * transfer;
+            //GISMO_ASSERT ( bases.size() == 1, "Only one basis is expected, got"<<bases.size() );
+            gsLinearOperator<>::Ptr op =
+                macroGsInit(
+                    mat,
+                    dims,
+                    innerSize,
+                    overlapSize
+                );
+             result->addOperator(transfer, op );
+        }
+    }
+
     return result;
 }
