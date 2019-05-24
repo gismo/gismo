@@ -388,10 +388,10 @@ void tildeSpaceBasis_oneside(const gsTensorBSplineBasis<1,T>& basis, bool isLeft
 template<typename T>
 void tildeSpaceBasis(const gsBasis<T>& basis, gsSparseMatrix<T>& B_tilde, gsSparseMatrix<T>& B_compl, const gsBoundaryConditions<T>& bc, const bool odd = true)
 {
-    const gsTensorBSplineBasis<1,T>* bbasis_ptr = dynamic_cast<const gsTensorBSplineBasis<1,T>*>(&basis);
-    GISMO_ENSURE( nullptr != bbasis_ptr, "gsPatchPreconditionersCreator<T>::getTildeSpaceBasisTransformation and "
-                                         "gsPatchPreconditionersCreator<T>::subspaceCorrectedMassSmootherOp only work with tensor-B-spline bases." );
-    const gsTensorBSplineBasis<1,T>& bbasis = *bbasis_ptr;
+    GISMO_ASSERT( nullptr != dynamic_cast<const gsTensorBSplineBasis<1,T>*>(&basis),
+                    "gsPatchPreconditionersCreator<T>::getTildeSpaceBasisTransformation and "
+                    "gsPatchPreconditionersCreator<T>::subspaceCorrectedMassSmootherOp only work with tensor-B-spline bases." );
+    const gsTensorBSplineBasis<1,T>& bbasis = static_cast<const gsTensorBSplineBasis<1,T>&>(basis);
 
     patchSide west(0,boundary::west), east(0,boundary::east);
     bool bwest = ( bc.getConditionFromSide( west ) && bc.getConditionFromSide( west )->type() == condition_type::dirichlet );
@@ -404,16 +404,16 @@ void tildeSpaceBasis(const gsBasis<T>& basis, gsSparseMatrix<T>& B_tilde, gsSpar
     tildeSpaceBasis_oneside(bbasis, true,  b_L, b_compl_L, bwest, odd);
     tildeSpaceBasis_oneside(bbasis, false, b_R, b_compl_R, beast, odd);
 
-    const int n = bbasis.size() - (index_t)bwest - (index_t)beast;
-    const int n_L = b_L.cols();
-    const int m_L = b_L.rows();
-    const int n_R = b_R.cols();
-    const int m_R = b_R.rows();
-    const int n_c_L = b_compl_L.cols();
-    const int m_c_L = b_compl_L.rows();
-    const int n_c_R = b_compl_R.cols();
-    const int m_c_R = b_compl_R.rows();
-    const int n_I = n - n_L - n_R - n_c_L - n_c_R;
+    const index_t n = bbasis.size() - (index_t)bwest - (index_t)beast;
+    const index_t n_L = b_L.cols();
+    const index_t m_L = b_L.rows();
+    const index_t n_R = b_R.cols();
+    const index_t m_R = b_R.rows();
+    const index_t n_c_L = b_compl_L.cols();
+    const index_t m_c_L = b_compl_L.rows();
+    const index_t n_c_R = b_compl_R.cols();
+    const index_t m_c_R = b_compl_R.rows();
+    const index_t n_I = n - n_L - n_R - n_c_L - n_c_R;
 
     //GISMO_ENSURE ( n_I >= 0, "tildeSpaceBasis: Too few knots for that spline degree." );
     if ( n_I <= 0 )
@@ -430,7 +430,7 @@ void tildeSpaceBasis(const gsBasis<T>& basis, gsSparseMatrix<T>& B_tilde, gsSpar
 
         gsSparseEntries<T> E_compl;
         E_compl.reserve(n);
-        for (int i = 0; i < n; ++i)
+        for (index_t i = 0; i < n; ++i)
             E_compl.add(i,i,1.0);
         B_compl.resize(n,n);
         B_compl.setFrom(E_compl);
@@ -440,35 +440,35 @@ void tildeSpaceBasis(const gsBasis<T>& basis, gsSparseMatrix<T>& B_tilde, gsSpar
     gsSparseEntries<T> E_tilde, E_compl;
 
     // put b_L into upper left block of S-tilde basis
-    for (int j = 0; j < n_L; ++j)
+    for (index_t j = 0; j < n_L; ++j)
     {
-        for (int i = 0; i < m_L; ++i)
+        for (index_t i = 0; i < m_L; ++i)
             E_tilde.add(i, j, b_L(i, j));
     }
     // fill identity matrix into interior part of S-tilde basis
-    for (int j = 0; j < n_I; ++j)
+    for (index_t j = 0; j < n_I; ++j)
     {
         E_tilde.add(m_L + j, n_L + j, 1.0);
     }
     // put b_R into lower right block of S-tilde basis
-    for (int j = 0; j < n_R; ++j)
+    for (index_t j = 0; j < n_R; ++j)
     {
-        for (int i = 0; i < m_R; ++i)
+        for (index_t i = 0; i < m_R; ++i)
             E_tilde.add(m_L + n_I + i, n_L + n_I + j, b_R(i, j));
     }
     B_tilde.resize(n, n_L + n_I + n_R);
     B_tilde.setFrom(E_tilde);
 
     // put b_compl_L into upper left block of complement basis
-    for (int j = 0; j < n_c_L; ++j)
+    for (index_t j = 0; j < n_c_L; ++j)
     {
-        for (int i = 0; i < m_c_L; ++i)
+        for (index_t i = 0; i < m_c_L; ++i)
             E_compl.add(i, j, b_compl_L(i, j));
     }
     // put b_compl_R into lower right block of complement basis
-    for (int j = 0; j < n_c_R; ++j)
+    for (index_t j = 0; j < n_c_R; ++j)
     {
-        for (int i = 0; i < m_c_R; ++i)
+        for (index_t i = 0; i < m_c_R; ++i)
             E_compl.add(m_c_L + n_I + i, n_c_L + j, b_compl_R(i, j));
     }
     B_compl.resize(n, n_c_L + n_c_R);
