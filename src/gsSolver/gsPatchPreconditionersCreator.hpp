@@ -389,8 +389,8 @@ template<typename T>
 void tildeSpaceBasis(const gsBasis<T>& basis, gsSparseMatrix<T>& B_tilde, gsSparseMatrix<T>& B_compl, const gsBoundaryConditions<T>& bc, const bool odd = true)
 {
     const gsTensorBSplineBasis<1,T>* bbasis_ptr = dynamic_cast<const gsTensorBSplineBasis<1,T>*>(&basis);
-    GISMO_ENSURE( bbasis_ptr, "gsPatchPreconditionersCreator<T>::getTildeSpaceBasisTransformation and "
-                              "gsPatchPreconditionersCreator<T>::subspaceCorrectedMassSmootherOp only work with tensor-B-spline bases." );
+    GISMO_ENSURE( nullptr != bbasis_ptr, "gsPatchPreconditionersCreator<T>::getTildeSpaceBasisTransformation and "
+                                         "gsPatchPreconditionersCreator<T>::subspaceCorrectedMassSmootherOp only work with tensor-B-spline bases." );
     const gsTensorBSplineBasis<1,T>& bbasis = *bbasis_ptr;
 
     patchSide west(0,boundary::west), east(0,boundary::east);
