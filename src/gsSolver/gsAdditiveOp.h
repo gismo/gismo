@@ -104,9 +104,9 @@ public:
     {
         m_transfers.push_back(give(transfer));
         m_ops.push_back(give(op));
-        GISMO_ASSERT ( transfer.rows()==m_transfers[0].rows()
-                       && transfer.cols() == op->rows()
-                       && op->cols() == op->rows(),
+        GISMO_ASSERT ( m_transfers.back().rows()==m_transfers[0].rows()
+                       && m_transfers.back().cols() == m_ops.back()->rows()
+                       && m_ops.back()->cols() == m_ops.back()->rows(),
                        "Dimensions of the operators do not fit." );
     }
 
