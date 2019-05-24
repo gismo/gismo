@@ -178,7 +178,6 @@ private:
 
     friend class gsCmdLine;
     friend class gsUnitTestSelector;
-    static void makePath(std::string & final_result);
 };
 
 
