@@ -67,41 +67,6 @@ void reverseGaussSeidelSweep(const gsSparseMatrix<T> & A, gsMatrix<T>& x, const 
     }
 }
 
-template<typename T>
-void macroGaussSeidelSweep(const gsSparseMatrix<T> & A, gsMatrix<T>& x, const gsMatrix<T>& f, const std::vector< gsSparseMatrix<T> >& transfers, const std::vector< typename gsLinearOperator<T>::Ptr >& local_solvers)
-{
-    GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
-        "Dimensions do not match.");
-
-    GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
-
-    // TODO: This is totally inefficient
-    gsMatrix<T> p;
-    for (size_t i = 0; i < transfers.size(); ++i)
-    {
-        local_solvers[i]->apply( transfers[i].transpose() * (f - A*x), p );        
-        x += transfers[i] * p;
-    }
-}
-
-template<typename T>
-void reverseMacroGaussSeidelSweep(const gsSparseMatrix<T> & A, gsMatrix<T>& x, const gsMatrix<T>& f, const std::vector< gsSparseMatrix<T> >& transfers, const std::vector< typename gsLinearOperator<T>::Ptr >& local_solvers)
-{
-    GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
-        "Dimensions do not match.");
-
-    GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
-
-    // TODO: This is totally inefficient
-    gsMatrix<T> p;
-    for (size_t i = transfers.size()-1; i != (size_t)-1; --i)
-    {
-        local_solvers[i]->apply( transfers[i].transpose() * (f - A*x), p );        
-        x += transfers[i] * p;
-    }
-}
-
-
 } // namespace internal
 
 } // namespace gismo
