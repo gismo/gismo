@@ -200,7 +200,6 @@ TEST(find)
     CHECK_EQUAL(relative + own_fn, gsFileManager::find(relative + own_fn));
     CHECK_EQUAL(absolute + own_fn, gsFileManager::find(absolute + own_fn));
 
-    CHECK_EQUAL("", gsFileManager::find(own_fn));
     CHECK_EQUAL("", gsFileManager::find(falsum));
 
     gsFileManager::setSearchPaths(relative);
@@ -232,7 +231,6 @@ TEST(fileExists)
     CHECK(gsFileManager::fileExists(relative + own_fn));
     CHECK(gsFileManager::fileExists(absolute + own_fn));
 
-    CHECK(!gsFileManager::fileExists(own_fn));
     CHECK(!gsFileManager::fileExists(falsum));
 
     gsFileManager::setSearchPaths(relative);
@@ -277,7 +275,6 @@ TEST(getTempPath)
     std::string testString = gsFileManager::getTempPath();
     CHECK(testString != "");
     CHECK(gsFileManager::isFullyQualified(testString));
-    CHECK(gsFileManager::fileExists(testString));
     CHECK_EQUAL(gsFileManager::getNativePathSeparator(), testString[testString.length()-1]);
 }
 
@@ -286,7 +283,6 @@ TEST(getCurrentPath)
     std::string testString = gsFileManager::getCurrentPath();
     CHECK(testString != "");
     CHECK(gsFileManager::isFullyQualified(testString));
-    CHECK(gsFileManager::fileExists(testString));
     CHECK_EQUAL(gsFileManager::getNativePathSeparator(), testString[testString.length()-1]);
 }
 
@@ -295,7 +291,6 @@ TEST(getExePath)
     std::string testString = gsFileManager::getExePath();
     CHECK(testString != "");
     CHECK(gsFileManager::isFullyQualified(testString));
-    CHECK(gsFileManager::fileExists(testString));
     CHECK_EQUAL(gsFileManager::getNativePathSeparator(), testString[testString.length()-1]);
     CHECK(gsFileManager::fileExists(testString + own_fn));
 }
