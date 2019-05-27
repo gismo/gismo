@@ -28,6 +28,7 @@
 #include <sys/stat.h>
 #include <dlfcn.h>
 #include <unistd.h>
+#include <pwd.h>
 #endif
 
 namespace gismo
@@ -409,6 +410,27 @@ std::string gsFileManager::getExePath()
         ? getCanonicRepresentation( std::string(argv0) + "/../" )
         : getCanonicRepresentation( getCurrentPath() + "/" + argv0 + "/../" );
 #endif
+}
+
+std::string gsFileManager::getHomePath()
+{
+#if defined _WIN32
+    char* _temp = getenv("USERPROFILE");
+    if (NULL == _temp || _temp[0] == '\0')
+    {
+
+    }
+#else
+    char* _temp = getenv("HOME");
+    if (NULL == _temp || _temp[0] == '\0')
+    {
+        _temp = getpwuid(getuid())->pw_dir;
+    }
+#endif
+    GISMO_ASSERT((NULL != _temp) && (_temp[0] != '\0'), "Can't get Home directory.");
+    std::string path(_temp);
+    _makePath(path);
+    return path;
 }
 
 bool gsFileManager::pathEqual( const std::string& p1o, const std::string& p2o )

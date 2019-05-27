@@ -122,6 +122,9 @@ public:
     /// Get path of executable (without filename)
     static std::string getExePath();
 
+    /// Get path to home directory.
+    static std::string getHomePath();
+
     /// @brief Make directory
     ///
     /// Return true iff directory is available after calling
