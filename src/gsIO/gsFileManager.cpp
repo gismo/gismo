@@ -129,14 +129,12 @@ bool _isValidPathOrName(const std::string& fn)
 
 // sets last character to the native path seperator
 // special case "" gets "./"
-void _makePath(std::string & final_result)
+void _makePath(std::string& final_result)
 {
-    if (final_result[final_result.length() - 1] != gsFileManager::getNativePathSeparator())
-    {
-        if (final_result.length() == 0)
-            final_result.push_back('.');
-        final_result.push_back(gsFileManager::getNativePathSeparator());
-    }
+	if (final_result.length() == 0)
+		final_result.push_back('.');
+	if (final_result[final_result.length() - 1] != gsFileManager::getNativePathSeparator())
+		final_result.push_back(gsFileManager::getNativePathSeparator());
 }
 
 } // anonymous namespace
