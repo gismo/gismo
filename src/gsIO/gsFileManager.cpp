@@ -21,6 +21,7 @@
 #if defined _WIN32
 #include <windows.h>
 #include <direct.h>
+#include <ShlObj_core.h>
 #ifdef __MINGW32__
 #include <sys/stat.h>
 #endif
@@ -145,7 +146,7 @@ bool gsFileManager::isFullyQualified(const std::string& fn)
     bool valid = false;
 #if defined _WIN32 || defined __CYGWIN__
     // case "c:\\abc"
-    if ( fn.size() > 2 && isaplha(fn[0]) && fn[1] == ':')
+    if ( fn.size() > 2 && std::isalpha(fn[0]) && fn[1] == ':')
     {
         for (int i = 0; i < getValidPathSeparators().length(); ++i)
         {
@@ -364,10 +365,9 @@ std::string gsFileManager::getCurrentPath()
 {
 #if defined _WIN32
     TCHAR _temp[MAX_PATH];
-    DWORD l = GetCurrentDirectory(/*length of buffer:*/MAX_PATH, _temp);
+    DWORD l = GetCurrentDirectory(MAX_PATH, _temp);
     GISMO_UNUSED(l);
     GISMO_ASSERT(l, "GetCurrentDirectory did return 0");
-    GSIMO_ASSERT(_temp[_temp.length() - 1] == getNativePathSeparator(), "getCurrentPath isn't a path.");
     return std::string(_temp);
 #else
     // http://man7.org/linux/man-pages/man2/getcwd.2.html
@@ -415,11 +415,14 @@ std::string gsFileManager::getExePath()
 std::string gsFileManager::getHomePath()
 {
 #if defined _WIN32
-    char* _temp = getenv("USERPROFILE");
-    if (NULL == _temp || _temp[0] == '\0')
-    {
-
-    }
+	PWSTR wbuffer[MAX_PATH];
+	char _temp[MAX_PATH];
+	if (SHGetKnownFolderPath(FOLDERID_Profile, KF_FLAG_DEFAULT, NULL, wbuffer) == S_OK)
+	{
+		wcsrtombs_s(NULL, _temp,
+			const_cast<const wchar_t**>(reinterpret_cast<wchar_t**>(wbuffer)),
+			MAX_PATH, NULL);
+	}
 #else
     char* _temp = getenv("HOME");
     if (NULL == _temp || _temp[0] == '\0')
