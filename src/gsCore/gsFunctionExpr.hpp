@@ -77,6 +77,9 @@
 #if defined(GISMO_WITH_CODIPACK)
 #include <gsCoDiPack/exprtk_codi_rf_forward.hpp>
 #include <gsCoDiPack/exprtk_codi_rr_forward.hpp>
+  #if defined(GISMO_WITH_ADDSL)
+    #include <gsAdDSL/exprtk_addsl_ar_forward.hpp>
+  #endif
 #endif
 
 #if defined(GISMO_WITH_UNUM)
@@ -100,6 +103,9 @@
 #if defined(GISMO_WITH_CODIPACK)
 #include <gsCoDiPack/exprtk_codi_rf_adaptor.hpp>
 #include <gsCoDiPack/exprtk_codi_rr_adaptor.hpp>
+  #if defined(GISMO_WITH_ADDSL)
+    #include <gsAdDSL/exprtk_addsl_ar_adaptor.hpp>
+  #endif
 #endif
 
 #if defined(GISMO_WITH_UNUM)

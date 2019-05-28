@@ -42,6 +42,7 @@
 
 /* Enabled Extensions */
 #cmakedefine GISMO_WITH_ADIFF
+#cmakedefine GISMO_WITH_ADDSL
 #cmakedefine GISMO_WITH_CODIPACK
 #cmakedefine GISMO_WITH_FDBB
 #cmakedefine GISMO_WITH_IPOPT

@@ -10,6 +10,10 @@ include_directories(${GISMO_INCLUDE_DIRS})
 
 if(GISMO_WITH_CODIPACK)
 include_directories(${CODIPACK_INCLUDE_DIR})
+  if(GISMO_WITH_ADDSL)
+    include_directories(../extensions/unsupported/extensions)
+    include_directories(${ADDSL_INCLUDE_DIR})
+  endif()
 endif()
 
 if(GISMO_WITH_UNUM)

@@ -21,6 +21,9 @@
 
 #ifdef GISMO_WITH_CODIPACK
   #include <gsCoDiPack/gsCoDiPack.h>
+  #ifdef GISMO_WITH_ADDSL
+    #include <gsAdDSL/gsAdDSL.h>
+  #endif
 #endif
 
 namespace gismo {
@@ -86,6 +89,29 @@ using codi::sinh;
 using codi::sqrt;
 using codi::tan;
 using codi::tanh;
+
+  #ifdef GISMO_WITH_ADDSL
+using adDSL::abs;
+using adDSL::acos;
+using adDSL::asin;
+using adDSL::atan2;
+using adDSL::atan;
+using adDSL::ceil;
+using adDSL::cos;
+using adDSL::cosh;
+using adDSL::exp;
+using adDSL::floor;
+using adDSL::log10;
+using adDSL::log;
+using adDSL::max;
+using adDSL::min;
+using adDSL::pow;
+using adDSL::sin;
+using adDSL::sinh;
+using adDSL::sqrt;
+using adDSL::tan;
+using adDSL::tanh;
+  #endif
 #endif
 
 #ifdef GISMO_WITH_UNUM
