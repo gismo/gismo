@@ -166,12 +166,12 @@ TEST(SearchPaths)
     CHECK(gsFileManager::setSearchPaths(verum0));
     result = gsFileManager::getSearchPaths();
     CHECK_EQUAL(verum0 + ";", result);
-    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), result[result.length()-2]);
+    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), result[result.length() - 2]);
 
     CHECK(gsFileManager::addSearchPaths(verum1));
     result = gsFileManager::getSearchPaths();
     CHECK_EQUAL(verum0 + ";" + verum1 + ";", result);
-    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), result[result.length()-2]);
+    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), result[result.length() - 2]);
 
     // clear SearchPaths
     CHECK(gsFileManager::setSearchPaths(""));
@@ -181,10 +181,10 @@ TEST(SearchPaths)
     CHECK(gsFileManager::setSearchPaths(verum0 + ";" + verum1));
     result = gsFileManager::getSearchPaths();
     CHECK_EQUAL(verum0 + ";" + verum1 + ";", result);
-    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), result[result.length()-2]);
+    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), result[result.length() - 2]);
 
     gsFileManager::setSearchPaths(defaultPath);
-    GISMO_ASSERT(gsFileManager::getSearchPaths() == defaultPath, "Can't set back to default getSeachPaths!");
+    GISMO_ASSERT(gsFileManager::getSearchPaths() == defaultPath, "Can't set back to default getSearchPaths!");
 }
 
 TEST(find)
@@ -193,28 +193,42 @@ TEST(find)
     gsFileManager::setSearchPaths("");
     GISMO_ASSERT(gsFileManager::getSearchPaths() == "", "gsFileManager::getSearchPaths() not empty");
 
-    std::string relative("./");                         // relative
-    std::string absolute = gsFileManager::getExePath(); // absolute
+    // calculate relative path
+    std::string absolute = GISMO_DATA_DIR;              // absolute
+    std::string current = gsFileManager::getCurrentPath();
+    std::string relative = gsFileManager::makeRelative(current, absolute);
+    GISMO_ASSERT(gsFileManager::isExplicitlyRelative(relative),
+        "variable relative isn't gsFilemanager::isExplicitlyRealtive");
+
+    std::string verum("options/assembler_options.xml"); // success, if path known
     std::string falsum("fuubar");                       // fails
 
-    CHECK_EQUAL(relative + own_fn, gsFileManager::find(relative + own_fn));
-    CHECK_EQUAL(absolute + own_fn, gsFileManager::find(absolute + own_fn));
-
+    // check without SearchPaths
+    CHECK_EQUAL(relative + verum, gsFileManager::find(relative + verum));
+    CHECK_EQUAL(absolute + verum, gsFileManager::find(absolute + verum));
+    CHECK_EQUAL("", gsFileManager::find(verum));
     CHECK_EQUAL("", gsFileManager::find(falsum));
 
+    // check with SearchPath set to relative
     gsFileManager::setSearchPaths(relative);
-    CHECK_EQUAL(absolute + own_fn, gsFileManager::find(own_fn));
+    CHECK_EQUAL(relative + verum, gsFileManager::find(relative + verum));
+    CHECK_EQUAL(absolute + verum, gsFileManager::find(absolute + verum));
+    CHECK_EQUAL(absolute + verum, gsFileManager::find(verum));
     CHECK_EQUAL("", gsFileManager::find(falsum));
 
+    // clear SearchPaths
     gsFileManager::setSearchPaths("");
     GISMO_ASSERT(gsFileManager::getSearchPaths() == "", "gsFileManager::getSearchPaths() not empty");
 
+    // check with SearchPath set to absolute
     gsFileManager::setSearchPaths(absolute);
-    CHECK_EQUAL(absolute + own_fn, gsFileManager::find(own_fn));
+    CHECK_EQUAL(relative + verum, gsFileManager::find(relative + verum));
+    CHECK_EQUAL(absolute + verum, gsFileManager::find(absolute + verum));
+    CHECK_EQUAL(absolute + verum, gsFileManager::find(verum));
     CHECK_EQUAL("", gsFileManager::find(falsum));
 
     gsFileManager::setSearchPaths(defaultPath);
-    GISMO_ASSERT(gsFileManager::getSearchPaths() == defaultPath, "Can't set back to default getSeachPaths!");
+    GISMO_ASSERT(gsFileManager::getSearchPaths() == defaultPath, "Can't set back to default getSearchPaths!");
 }
 
 TEST(fileExists)
@@ -245,7 +259,7 @@ TEST(fileExists)
     CHECK(!gsFileManager::fileExists(falsum));
 
     gsFileManager::setSearchPaths(defaultPath);
-    GISMO_ASSERT(gsFileManager::getSearchPaths() == defaultPath, "Can't set back to default getSeachPaths!");
+    GISMO_ASSERT(gsFileManager::getSearchPaths() == defaultPath, "Can't set back to default getSearchPaths!");
 }
 
 TEST(findInDataDir)
@@ -275,7 +289,7 @@ TEST(getTempPath)
     std::string testString = gsFileManager::getTempPath();
     CHECK(testString != "");
     CHECK(gsFileManager::isFullyQualified(testString));
-    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), testString[testString.length()-1]);
+    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), testString[testString.length() - 1]);
 }
 
 TEST(getCurrentPath)
@@ -283,7 +297,7 @@ TEST(getCurrentPath)
     std::string testString = gsFileManager::getCurrentPath();
     CHECK(testString != "");
     CHECK(gsFileManager::isFullyQualified(testString));
-    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), testString[testString.length()-1]);
+    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), testString[testString.length() - 1]);
 }
 
 TEST(getExePath)
@@ -291,26 +305,29 @@ TEST(getExePath)
     std::string testString = gsFileManager::getExePath();
     CHECK(testString != "");
     CHECK(gsFileManager::isFullyQualified(testString));
-    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), testString[testString.length()-1]);
+    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), testString[testString.length() - 1]);
     CHECK(gsFileManager::fileExists(testString + own_fn));
 }
 
 TEST(mkdir)
 {
     std::string temp = gsFileManager::getTempPath();
-    if(temp != "" && gsFileManager::fileExists(temp)
-       && temp[temp.length() - 1] == gsFileManager::getNativePathSeparator())
+    if (temp != "")
     {
         std::stringstream stream;
         for (int i = 0; i < 0xFFFF; ++i)
         {
-            stream << temp << "gsMkDir" << std::hex << i;
-            if (!gsFileManager::fileExists(stream.str()))
+            stream << temp << "gsMkDir" << std::hex << i << gsFileManager::getNativePathSeparator();
+            if (!gsFileManager::fileExists(stream.str() + gsFileManager::getNativePathSeparator() + std::to_string(i) + ".xml"))
             {
-                gsFileManager::mkdir(stream.str());
+                CHECK(gsFileManager::mkdir(stream.str()));
+                stream << i;
+                {
+                    gsBSplineBasis<> geo;
+                    gsWrite(geo, stream.str());
+                }
+                stream << ".xml";
                 CHECK(gsFileManager::fileExists(stream.str()));
-                CHECK_EQUAL(stream.str() + gsFileManager::getNativePathSeparator(),
-                    gsFileManager::find(stream.str()));
                 break;
             }
             stream.str("");
@@ -328,17 +345,17 @@ TEST(pathEqual)
     CHECK(gsFileManager::pathEqual("/foo/bar", "/foo/bar"));
     CHECK(!gsFileManager::pathEqual("/foo", "/bar"));
     CHECK(!gsFileManager::pathEqual("/foo/bar", "/bar/foo"));
-        // canonical
+    // canonical
     CHECK(gsFileManager::pathEqual("/foo/./bar", "/foo/bar"));
     CHECK(gsFileManager::pathEqual("/foo/baz/../bar", "/foo/bar"));
-        // path separator - 2nd param
+    // path separator - 2nd param
     CHECK(gsFileManager::pathEqual("/foo", "/foo/"));
     CHECK(gsFileManager::pathEqual("/foo/bar", "/foo/bar/"));
     CHECK(!gsFileManager::pathEqual("/foo", "/bar/"));
     CHECK(!gsFileManager::pathEqual("/foo/bar", "/bar/foo/"));
     CHECK(gsFileManager::pathEqual("/foo/./bar", "/foo/bar/"));
     CHECK(gsFileManager::pathEqual("/foo/baz/../bar", "/foo/bar/"));
-        // path separator - 1st param
+    // path separator - 1st param
     CHECK(gsFileManager::pathEqual("/foo/", "/foo"));
     CHECK(gsFileManager::pathEqual("/foo/bar/", "/foo/bar"));
     CHECK(!gsFileManager::pathEqual("/foo/", "/bar"));
@@ -354,18 +371,18 @@ TEST(pathEqual)
     CHECK(gsFileManager::pathEqual("foo/bar", "foo/bar"));
     CHECK(!gsFileManager::pathEqual("foo", "bar"));
     CHECK(!gsFileManager::pathEqual("foo/bar", "bar/foo"));
-        // canonical
+    // canonical
     CHECK(gsFileManager::pathEqual("foo/./bar", "foo/bar"));
     CHECK(gsFileManager::pathEqual("foo/baz/../bar", "foo/bar"));
     CHECK(gsFileManager::pathEqual("../bar", "./buz/../../bar"));
-        // path separator - 2nd param
+    // path separator - 2nd param
     CHECK(gsFileManager::pathEqual("foo", "foo/"));
     CHECK(gsFileManager::pathEqual("foo/bar", "foo/bar/"));
     CHECK(!gsFileManager::pathEqual("foo", "bar/"));
     CHECK(!gsFileManager::pathEqual("foo/bar", "bar/foo/"));
     CHECK(gsFileManager::pathEqual("foo/./bar", "foo/bar/"));
     CHECK(gsFileManager::pathEqual("foo/baz/../bar", "foo/bar/"));
-        // path separator - 1st param
+    // path separator - 1st param
     CHECK(gsFileManager::pathEqual("foo/", "foo"));
     CHECK(gsFileManager::pathEqual("foo/bar/", "foo/bar"));
     CHECK(!gsFileManager::pathEqual("foo/", "bar"));

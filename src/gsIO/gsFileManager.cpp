@@ -280,7 +280,11 @@ std::string gsFileManager::find(std::string fn)
     {
         tmp = (*it) + fn;
         if ( _fileExistsWithoutSearching(tmp) )
+        {
+            if(isExplicitlyRelative(tmp))
+                tmp = getCanonicRepresentation(getCurrentPath() + tmp);
             return tmp;
+        }
     }
 
     return std::string();
@@ -432,6 +436,33 @@ std::string gsFileManager::getHomePath()
     std::string path(_temp);
     _makePath(path);
     return path;
+}
+
+std::string gsFileManager::makeRelative(const std::string & from, const std::string & to)
+{
+    if (!isFullyQualified(from))
+        return "";
+
+    std::string fromc = getCanonicRepresentation(from);
+    std::string toc = getCanonicRepresentation((isFullyQualified(to) ?
+        "": getCurrentPath()) + to);
+
+    size_t start = 0;
+    size_t pos = 0;
+    while(fromc[pos] == toc[pos]){
+        if(fromc[pos++] == getNativePathSeparator())
+            start = pos;
+    }
+
+    std:: string result;
+    for (size_t i = 0; i < util::count(fromc.substr(start), getNativePathSeparator()); ++i)
+    {
+        result += "..";
+        result.push_back(getNativePathSeparator());
+    }
+    result += toc.substr(start);
+
+    return result;
 }
 
 bool gsFileManager::pathEqual( const std::string& p1o, const std::string& p2o )

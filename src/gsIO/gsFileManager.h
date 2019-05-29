@@ -125,6 +125,15 @@ public:
     /// Get path to home directory.
     static std::string getHomePath();
 
+    /// Calculates the relative path from absolute path \a from to path \a to.
+    /// Example:
+    /// from  : /a/b/cd/
+    /// to    : /a/b/c/d
+    /// result: ../c/d
+    /// Return an empty string, if \a from isn't absolute.
+    /// Expands \a to with getCurrentPath if not absolute.
+    static std::string makeRelative(const std::string& from, const std::string& to);
+
     /// @brief Make directory
     ///
     /// Return true iff directory is available after calling

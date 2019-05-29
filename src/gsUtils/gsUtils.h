@@ -138,6 +138,36 @@ inline void string_replace(std::string& str,
     }
 }
 
+/// \brief Splits a string \a str into substrings with \a ch as separator.
+inline std::vector<std::string> split(std::string str, char ch)
+{
+    std::vector<std::string> result;
+    size_t pos = 0;
+    while ((pos = str.find(ch)) != std::string::npos)
+    {
+        if (pos == 0)
+        {
+            str.erase(0, 1);
+            continue;
+        }
+        result.push_back(str.substr(0, pos));
+        str.erase(0, pos + 1);
+    }
+    if(str.size())
+        result.push_back(str);
+    return result;
+}
+
+/// \brief Count occurrences of \a ch in string \a str.
+inline size_t count(std::string s0, char ch) {
+    size_t sum = 0;
+    for (std::string::iterator it = s0.begin(); it != s0.end(); ++it) {
+        if (*it == ch)
+            sum++;
+    }
+    return sum;
+}
+
 /// \brief Returns the \a i-th token of the string \a str using delimiter \a delim
 /// \ingroup Utils
 inline std::string tokenize(const std::string& str,
