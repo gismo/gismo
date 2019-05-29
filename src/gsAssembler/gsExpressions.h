@@ -2015,8 +2015,11 @@ public:
 
     fform_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
-    MatExprType eval(const index_t k) const // todo: fix funcdata
-    { return _G.data().fundForm(k).transpose() * _G.data().fundForm(k) ; }
+    MatExprType eval(const index_t k) const 
+    {   // todo: fix funcdata
+        //return _G.data().fundForm(k).transpose() * _G.data().fundForm(k) ;
+        GISMO_NO_IMPLEMENTATION
+    }
 
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return _G.data().dim.first ; }
@@ -2104,8 +2107,17 @@ public:
             .reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
     }
 
-    index_t rows() const { return _G.data().dim.second; }
-    index_t cols() const { return _G.data().dim.first; }
+    index_t rows() const
+    {
+        return _G.source().targetDim();
+        //return _G.data().dim.second;
+    }
+    
+    index_t cols() const
+    {
+        return _G.source().domainDim();
+        //return _G.data().dim.first;
+    }
 
     static constexpr bool rowSpan() {return false; }
     static bool colSpan() {return false;}
@@ -2803,10 +2815,11 @@ public:
     frprod_expr(_expr<E1> const& u, _expr<E2> const& v)
     : _u(u), _v(v)
     {
-        GISMO_ASSERT(_u.rows() == _v.rows(),
-                     "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in % operation");
-        GISMO_ASSERT(_u.cols() == _v.cols(),
-                     "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in % operation");
+        //todo: add check() functions, which will evaluate expressions on an empty matrix (no points) to setup initial dimensions ???
+        //GISMO_ASSERT(_u.rows() == _v.rows(),
+        //             "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in % operation");
+        //GISMO_ASSERT(_u.cols() == _v.cols(),
+        //             "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in % operation");
     }
 
     const gsMatrix<Scalar> & eval(const index_t k) const //todo: specialize for nb==1
@@ -2865,10 +2878,11 @@ public:
     frprod_expr(_expr<E1> const& u, _expr<E2> const& v)
     : _u(u), _v(v)
     {
-        // GISMO_ASSERT(_u.rows() == _v.rows(),
-        //              "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in % operation");
-        // GISMO_ASSERT(_u.cols() == _v.cols(),
-        //              "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in % operation");
+        
+        //GISMO_ASSERT(_u.rows() == _v.rows(),
+        //             "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in % operation");
+        //GISMO_ASSERT(_u.cols() == _v.cols(),
+        //             "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in % operation");
     }
 
     const gsMatrix<Scalar> & eval(const index_t k) const //todo: specialize for nb==1
@@ -2887,7 +2901,7 @@ public:
     }
 
     index_t rows() const { return _u.cols() / _u.rows(); }
-    index_t cols() const { return _u.cols() / _u.rows(); }
+    index_t cols() const { return 1; }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
@@ -3281,9 +3295,8 @@ tangent_expr<T> tv(const gsGeometryMap<T> & u) { return tangent_expr<T>(u); }
 template<class T> EIGEN_STRONG_INLINE
 lapl_expr<T> lapl(const gsFeVariable<T> & u) { return lapl_expr<T>(u); }
 
-/// The first fundamental form of \a G
-template<class T> EIGEN_STRONG_INLINE
-fform_expr<T> fform(const gsGeometryMap<T> & G) { return fform_expr<T>(G); }
+/// The first fundamental form of \a G //fform is buggy ?
+// template<class T> EIGEN_STRONG_INLINE fform_expr<T> fform(const gsGeometryMap<T> & G) { return fform_expr<T>(G); }
 
 /// The Jacobian matrix of a geometry map
 template<class T> EIGEN_STRONG_INLINE
@@ -3429,6 +3442,8 @@ GISMO_SHORTCUT_VAR_EXPRESSION(ihess, hess(u) )
 
 GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace()   )
 GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )
+
+GISMO_SHORTCUT_VAR_EXPRESSION(fform, jac(u).tr()*jac(u) )
 
 #else
 
