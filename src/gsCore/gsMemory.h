@@ -274,12 +274,12 @@ memory::shared_ptr<T> give(memory::shared_ptr<T> & x)
 // Only use this if the size is guaranteed not to be more than a few
 // hundred bytes! Be warned: overflow occurs without any warning
 #if defined(GISMO_WITH_MPQ) || defined(GISMO_WITH_MPFR)
- #define STACK_ARRAY( T, name, sz )    T name[sz];
+ #define STACK_ARRAY( T, name, sz )    T name[sz]; memset(name, 0, sizeof(T) * (sz));
 #else
 // Note: VLAs(following line) can be buggy on some compilers/versions,
 // also not nececarily on the stack
 // #define STACK_ARRAY( T, name, sz )    T name[sz];
-#define STACK_ARRAY( T, name, sz )    T * name = (T*) alloca ( (sz) * sizeof(T) );
+#define STACK_ARRAY( T, name, sz )    T * name = (T*) alloca ( (sz) * sizeof(T) ); memset(name, 0, sizeof(T) * (sz));
 #endif
 
 
