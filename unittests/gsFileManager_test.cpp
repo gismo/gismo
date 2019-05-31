@@ -318,7 +318,7 @@ TEST(mkdir)
         for (int i = 0; i < 0xFFFF; ++i)
         {
             stream << temp << "gsMkDir" << std::hex << i << gsFileManager::getNativePathSeparator();
-            if (!gsFileManager::fileExists(stream.str() + gsFileManager::getNativePathSeparator() + to_string(i) + ".xml"))
+            if (!gsFileManager::fileExists(stream.str() + gsFileManager::getNativePathSeparator() + util::to_string(i) + ".xml"))
             {
                 CHECK(gsFileManager::mkdir(stream.str()));  // create new directory
                 CHECK(gsFileManager::mkdir(stream.str()));  // already existing directory
