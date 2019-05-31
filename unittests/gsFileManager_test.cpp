@@ -238,8 +238,10 @@ TEST(fileExists)
     gsFileManager::setSearchPaths("");
     GISMO_ASSERT(gsFileManager::getSearchPaths() == "", "gsFileManager::getSearchPaths() not empty");
 
-    std::string relative("./");                         // relative
     std::string absolute = gsFileManager::getExePath(); // absolute
+    std::string relative = gsFileManager::makeRelative(
+        gsFileManager::getCurrentPath(), absolute);     // relative
+    CHECK(gsFileManager::isExplicitlyRelative(relative));
     std::string falsum("fuubar");                       // fails
 
     CHECK(gsFileManager::fileExists(relative + own_fn));
@@ -307,6 +309,35 @@ TEST(getExePath)
     CHECK(gsFileManager::isFullyQualified(testString));
     CHECK_EQUAL(gsFileManager::getNativePathSeparator(), testString[testString.length() - 1]);
     CHECK(gsFileManager::fileExists(testString + own_fn));
+}
+
+TEST(getHomePath)
+{
+    std::string testString = gsFileManager::getHomePath();
+    CHECK(testString != "");
+    CHECK(gsFileManager::isFullyQualified(testString));
+    CHECK_EQUAL(gsFileManager::getNativePathSeparator(), testString[testString.length() - 1]);
+}
+
+TEST(makeRelative)
+{
+#if defined _WIN32 || defined __CYGWIN__
+    CHECK_EQUAL(".\\d", gsFileManager::makeRelative("/a/b/c/", "/a/b/c/d"));
+    CHECK_EQUAL("..\\c\\d", gsFileManager::makeRelative("/a/b/cd/", "/a/b/c/d"));
+    CHECK_EQUAL(".\\d", gsFileManager::makeRelative("\\a\\b\\c\\", "\\a\\b\\c\\d"));
+    CHECK_EQUAL("..\\c\\d", gsFileManager::makeRelative("\\a\\b\\cd\\", "\\a\\b\\c\\d"));
+
+    // with drive letter
+    CHECK_EQUAL(".\\d", gsFileManager::makeRelative("c:\\a\\b\\c\\", "c:\\a\\b\\c\\d"));
+    CHECK_EQUAL("..\\c\\d", gsFileManager::makeRelative("c:\\a\\b\\cd\\", "c:\\a\\b\\c\\d"));
+
+    // no relative possible
+    CHECK_EQUAL("d:\\a\\b\\c\\d", gsFileManager::makeRelative("c:\\a\\b\\c\\", "d:\\a\\b\\c\\d"));
+    CHECK_EQUAL("d:\\a\\b\\c\\d", gsFileManager::makeRelative("c:\\a\\b\\cd\\", "d:\\a\\b\\c\\d"));
+#else
+    CHECK_EQUAL("./d", gsFileManager::makeRelative("/a/b/c/", "/a/b/c/d"));
+    CHECK_EQUAL("../c/d", gsFileManager::makeRelative("/a/b/cd/", "/a/b/c/d"));
+#endif
 }
 
 TEST(mkdir)
