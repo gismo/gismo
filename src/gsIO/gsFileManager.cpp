@@ -121,7 +121,7 @@ inline bool _contains( const std::string& haystack, char needle )
 bool _isValidPathOrName(const std::string& fn)
 {
     bool invalid = false;
-    for (int i = 0; i < fn.length(); ++i)
+    for (size_t i = 0; i < fn.length(); ++i)
     {
         invalid = invalid | _contains(gsFileManager::getInvalidCharacters(), fn[i]);
     }
@@ -156,7 +156,7 @@ bool gsFileManager::isFullyQualified(const std::string& fn)
     else // case "\\abc", same as Unix
     {
 #endif
-    for (int i = 0; i < getValidPathSeparators().length(); ++i)
+    for (size_t i = 0; i < getValidPathSeparators().length(); ++i)
     {
         valid = valid || (fn[0] == getValidPathSeparators()[i]);
     }
@@ -170,7 +170,7 @@ bool gsFileManager::isFullyQualified(const std::string& fn)
 bool gsFileManager::isExplicitlyRelative(const std::string& fn)
 {
     bool valid = false;
-    for (int i = 0; i < getValidPathSeparators().length(); ++i)
+    for (size_t i = 0; i < getValidPathSeparators().length(); ++i)
     {
         valid = valid || (fn[0] == '.' && fn[1] == getValidPathSeparators()[i]) ||
          (fn[0] == '.' && fn[1] == '.' && fn[2] == getValidPathSeparators()[i]);
@@ -183,7 +183,7 @@ namespace {
 
 inline void _repacle_with_native_seperator(std::string& str)
 {
-    for (int i = 1; i < gsFileManager::getValidPathSeparators().length(); ++i)
+    for (size_t i = 1; i < gsFileManager::getValidPathSeparators().length(); ++i)
     {
         std::replace(str.begin(), str.end(),
             gsFileManager::getValidPathSeparators()[i],
