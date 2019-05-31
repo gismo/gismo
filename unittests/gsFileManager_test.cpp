@@ -320,7 +320,8 @@ TEST(mkdir)
             stream << temp << "gsMkDir" << std::hex << i << gsFileManager::getNativePathSeparator();
             if (!gsFileManager::fileExists(stream.str() + gsFileManager::getNativePathSeparator() + std::to_string(i) + ".xml"))
             {
-                CHECK(gsFileManager::mkdir(stream.str()));
+                CHECK(gsFileManager::mkdir(stream.str()));  // create new directory
+                CHECK(gsFileManager::mkdir(stream.str()));  // already existing directory
                 stream << i;
                 {
                     gsBSplineBasis<> geo;
@@ -328,6 +329,7 @@ TEST(mkdir)
                 }
                 stream << ".xml";
                 CHECK(gsFileManager::fileExists(stream.str()));
+                CHECK(!gsFileManager::mkdir(stream.str())); // failing create of directory
                 break;
             }
             stream.str("");

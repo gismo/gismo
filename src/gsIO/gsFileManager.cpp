@@ -30,6 +30,7 @@
 #include <dlfcn.h>
 #include <unistd.h>
 #include <pwd.h>
+#include <dirent.h>
 #endif
 
 namespace gismo
@@ -313,7 +314,18 @@ bool gsFileManager::mkdir( std::string fn )
     _repacle_with_native_seperator(fn);
     return 0!=CreateDirectory(fn.c_str(),NULL);
 #else
-    return ::mkdir(fn.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    // create, if successful, return true;
+    if (0 == ::mkdir(fn.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
+        return true;
+    // create was unsuccessful, does the directory already exists?
+    bool exists = false;
+    DIR* dir = opendir(fn.c_str());
+    if(dir)
+    {
+        exists = true;
+        closedir(dir);
+    }
+    return exists;
 #endif
 }
 
@@ -445,21 +457,29 @@ std::string gsFileManager::makeRelative(const std::string & from, const std::str
 
     std::string fromc = getCanonicRepresentation(from);
     std::string toc = getCanonicRepresentation((isFullyQualified(to) ?
-        "": getCurrentPath()) + to);
+                                                "" : getCurrentPath()) + to);
 
     size_t start = 0;
     size_t pos = 0;
-    while(fromc[pos] == toc[pos]){
-        if(fromc[pos++] == getNativePathSeparator())
+    while (fromc[pos] == toc[pos])
+    {
+        if (fromc[pos++] == getNativePathSeparator())
             start = pos;
     }
 
-    std:: string result;
-    for (size_t i = 0; i < util::count(fromc.substr(start), getNativePathSeparator()); ++i)
+    std::string result;
+    size_t deep = util::count(fromc.substr(start), getNativePathSeparator());
+    if (deep == 0)
     {
-        result += "..";
+        result += ".";
         result.push_back(getNativePathSeparator());
     }
+    else
+        for (size_t i = 0; i < deep; ++i)
+        {
+            result += "..";
+            result.push_back(getNativePathSeparator());
+        }
     result += toc.substr(start);
 
     return result;
