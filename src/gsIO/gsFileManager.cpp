@@ -310,6 +310,12 @@ std::string gsFileManager::findInDataDir(std::string fn)
 
 bool gsFileManager::mkdir( std::string fn )
 {
+    if (!isFullyQualified(fn))
+    {
+        fn = getCanonicRepresentation(getCurrentPath() + fn);
+        if (fn == "")
+            return false;
+    }
 #if defined _WIN32
     _repacle_with_native_seperator(fn);
     return 0!=CreateDirectory(fn.c_str(),NULL);

@@ -139,6 +139,8 @@ public:
     /// Return true iff directory is available after calling
     /// this function. (This also holds if the directory has
     /// existed already.)
+    /// If a relative path is given as \a fn, it will be expanded
+    /// with getCurrentDirectory.
     static bool mkdir( std::string fn );
 
     /// @brief Checks paths for equality of paths
