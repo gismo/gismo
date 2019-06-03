@@ -406,9 +406,29 @@ std::string gsFileManager::getExePath()
         "The executable cannot be found where it is expected." );
     return getCanonicRepresentation( std::string(_temp) + "/../" );
 #elif defined __linux__ // GCC, Clang
-    return std::string(get_current_dir_name()) + util::to_string(getNativePathSeparator());
+    char exePath[PATH_MAX];
+    ssize_t len = ::readlink("/proc/self/exe", exePath, sizeof(exePath));
+    if (len == -1 || len == sizeof(exePath))
+        len = 0;
+    exePath[len] = '\0';
+    return getPath(std::string(exePath));
 #elif defined __APPLE__
-    return std::string(NSFileManager::currentDirectoryPath()); // TODO: exact implementation
+    char exePath[PATH_MAX];
+    uint32_t len = sizeof(exePath);
+    if (_NSGetExecutablePath(exePath, &len) != 0)
+    {
+        exePath[0] = '\0'; // buffer too small (!)
+    } else
+    {
+        // resolve symlinks, ., .. if possible
+        char *canonicalPath = realpath(exePath, NULL);
+        if (canonicalPath != NULL)
+        {
+            strncpy(exePath,canonicalPath,len);
+            free(canonicalPath);
+        }
+    }
+    return std::string(exePath);
 #endif
 }
 
