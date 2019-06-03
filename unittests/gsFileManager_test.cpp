@@ -329,6 +329,7 @@ TEST(makeRelative)
     CHECK_EQUAL("..\\c\\d", gsFileManager::makeRelative("\\a\\b\\cd\\", "\\a\\b\\c\\d"));
 
     // with drive letter
+	CHECK_EQUAL(".\\", gsFileManager::makeRelative("c:\\a\\b\\c\\", "c:\\a\\b\\c\\"));
     CHECK_EQUAL(".\\d", gsFileManager::makeRelative("c:\\a\\b\\c\\", "c:\\a\\b\\c\\d"));
     CHECK_EQUAL("..\\c\\d", gsFileManager::makeRelative("c:\\a\\b\\cd\\", "c:\\a\\b\\c\\d"));
 
@@ -466,7 +467,7 @@ TEST(getExtension)
 
     CHECK_EQUAL("foo", gsFileManager::getExtension("bar.foo"));
 
-    CHECK_EQUAL("e:\\bar", gsFileManager::getExtension("e:\\foo.bar"));
+    CHECK_EQUAL("bar", gsFileManager::getExtension("e:\\foo.bar"));
 #endif
 }
 
@@ -502,7 +503,7 @@ TEST(getBasename)
 
     CHECK_EQUAL("bar", gsFileManager::getBasename("bar.foo"));
 
-    CHECK_EQUAL("e:\\foo.baz", gsFileManager::getBasename("e:\\foo.baz.bar"));
+    CHECK_EQUAL("foo.baz", gsFileManager::getBasename("e:\\foo.baz.bar"));
 #endif
 }
 
@@ -543,9 +544,9 @@ TEST(getFilename)
     CHECK_EQUAL("foo.baz.bar", gsFileManager::getFilename(".\\some\\other\\foo.baz.bar"));
 
     // drive letter
-    CHECK_EQUAL("e:\\foo", gsFileManager::getFilename("e:\\some\\other\\foo"));
-    CHECK_EQUAL("e:\\foo.bar", gsFileManager::getFilename("e:\\some\\other\\foo.bar"));
-    CHECK_EQUAL("e:\\foo.baz.bar", gsFileManager::getFilename("e:\\some\\other\\foo.baz.bar"));
+    CHECK_EQUAL("foo", gsFileManager::getFilename("e:\\some\\other\\foo"));
+    CHECK_EQUAL("foo.bar", gsFileManager::getFilename("e:\\some\\other\\foo.bar"));
+    CHECK_EQUAL("foo.baz.bar", gsFileManager::getFilename("e:\\some\\other\\foo.baz.bar"));
 #endif
 }
 

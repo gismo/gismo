@@ -476,6 +476,13 @@ std::string gsFileManager::makeRelative(const std::string & from, const std::str
     std::string toc = getCanonicRepresentation((isFullyQualified(to) ?
                                                 "" : getCurrentPath()) + to);
 
+#if defined _WIN32
+	// if both start with diverent driveletter, retrun toc
+	if ((fromc.length() > 0) && isalpha(fromc[0]) && (toc.length() > 0) && isalpha(toc[0]) &&
+		(fromc[0] != toc[0]))
+		return toc;
+#endif // defined _WIN32
+
     size_t start = 0;
     size_t pos = 0;
     while (pos < fromc.length() && pos < toc.length() && fromc[pos] == toc[pos])
