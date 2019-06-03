@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): S. Takacs, A. Mantzaflaris, H. Weiner
+    Author(s): S. Takacs, A. Mantzaflaris, H. Weiner, J. Vogl
 */
 
 #include <gsIO/gsFileManager.h>
@@ -21,8 +21,7 @@
 #if defined _WIN32
 #include <windows.h>
 #include <direct.h>
-//#include <ShlObj_core.h>
-#include<ShlObj.h>
+#include <ShlObj.h>
 #ifdef __MINGW32__
 #include <sys/stat.h>
 #endif
@@ -477,7 +476,7 @@ std::string gsFileManager::makeRelative(const std::string & from, const std::str
                                                 "" : getCurrentPath()) + to);
 
 #if defined _WIN32
-	// if both start with diverent driveletter, retrun toc
+	// if both start with diverent driveletter, return toc
 	if ((fromc.length() > 0) && isalpha(fromc[0]) && (toc.length() > 0) && isalpha(toc[0]) &&
 		(fromc[0] != toc[0]))
 		return toc;
