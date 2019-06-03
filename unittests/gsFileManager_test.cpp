@@ -156,7 +156,7 @@ TEST(SearchPaths)
     std::string verum0 = gsFileManager::getExePath();
     std::string verum1 = gsFileManager::getTempPath();
     GISMO_ASSERT(verum0 != verum1, "gsFileManager::getExePath == gsFileManager::getTempPath()");
-    std::string falsum("/fuubar");
+    std::string falsum = gsFileManager::getCanonicRepresentation("/fuubar");
 
     std::string result;
 
@@ -266,8 +266,8 @@ TEST(fileExists)
 
 TEST(findInDataDir)
 {
-    std::string verum("options/assembler_options.xml");
-    std::string falsum("fuu/bar");
+    std::string verum = gsFileManager::getCanonicRepresentation("options/assembler_options.xml");
+    std::string falsum = gsFileManager::getCanonicRepresentation("fuu/bar");
 
     CHECK_EQUAL(GISMO_DATA_DIR + verum, gsFileManager::findInDataDir(verum));
     CHECK(gsFileManager::isFullyQualified(gsFileManager::findInDataDir(verum)));
@@ -278,8 +278,8 @@ TEST(findInDataDir)
 
 TEST(fileExistsInDataDir)
 {
-    std::string verum("options/assembler_options.xml");
-    std::string falsum("fuu/bar");
+    std::string verum = gsFileManager::getCanonicRepresentation("options/assembler_options.xml");
+    std::string falsum = gsFileManager::getCanonicRepresentation("fuu/bar");
 
     CHECK(gsFileManager::fileExistsInDataDir(verum));
 
@@ -351,11 +351,11 @@ TEST(mkdir)
         for (int i = 0; i < 0xFFFF; ++i)
         {
             stream << temp << "gsMkDir" << std::hex << i << gsFileManager::getNativePathSeparator();
-            if (!gsFileManager::fileExists(stream.str() + gsFileManager::getNativePathSeparator() + util::to_string(i) + ".xml"))
+            if (!gsFileManager::fileExists(stream.str() + gsFileManager::getNativePathSeparator() + "test.xml"))
             {
                 CHECK(gsFileManager::mkdir(stream.str()));  // create new directory
                 CHECK(gsFileManager::mkdir(stream.str()));  // already existing directory
-                stream << i;
+                stream << "test";
                 {
                     gsBSplineBasis<> geo;
                     gsWrite(geo, stream.str());

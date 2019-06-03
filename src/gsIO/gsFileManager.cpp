@@ -320,7 +320,7 @@ bool gsFileManager::mkdir( std::string fn )
     }
 #if defined _WIN32
     _repacle_with_native_seperator(fn);
-    return 0!=CreateDirectory(fn.c_str(),NULL);
+	return !fileExists(fn) && (0 != CreateDirectoryA(fn.c_str(), NULL) || (GetLastError() == ERROR_ALREADY_EXISTS));
 #else
     // create, if successful, return true;
     if (0 == ::mkdir(fn.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
