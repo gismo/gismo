@@ -33,6 +33,10 @@
 #include <dirent.h>
 #endif
 
+#if defined __APPLE__
+#include <mach-o/dyld.h>
+#endif
+
 namespace gismo
 {
 
