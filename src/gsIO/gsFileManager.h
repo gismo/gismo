@@ -183,9 +183,6 @@ public:
     /// Opens the file \a fn using the preferred application of the OS
     static void open(const std::string & fn);
 
-private:
-    friend class gsCmdLine;
-    friend class gsUnitTestSelector;
 };
 
 

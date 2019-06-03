@@ -282,8 +282,6 @@ void gsCmdLine::getValues(int argc, char *argv[])
     my->didParseCmdLine = true;
 #endif
 
-    gsFileManager::setArgv0(argv[0]);
-
     my->cmd.parse(argc,argv);
 
     for( size_t i=0; i!=my->intVals.size(); ++i)

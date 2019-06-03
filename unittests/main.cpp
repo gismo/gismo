@@ -62,14 +62,11 @@ public:
     }
 
     bool didRunAnyTests() { return m_did_run; }
-
-    static void setArgv0( const char* s ) { gsFileManager::setArgv0(s); }
 };
 } // namespace gismo
 
 int main(int argc, char* argv[])
 {
-    gsUnitTestSelector::setArgv0(argv[0]);
     gsCmdLine::printVersion();
 
     if (argc > 1)

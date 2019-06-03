@@ -406,7 +406,7 @@ std::string gsFileManager::getExePath()
         "The executable cannot be found where it is expected." );
     return getCanonicRepresentation( std::string(_temp) + "/../" );
 #elif defined __linux__ // GCC, Clang
-    return std::string(get_current_dir_name());
+    return std::string(get_current_dir_name()) + util::to_string(getNativePathSeparator());
 #elif defined __APPLE__
     return std::string(NSFileManager::currentDirectoryPath()); // TODO: exact implementation
 #endif
