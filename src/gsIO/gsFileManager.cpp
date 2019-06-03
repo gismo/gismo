@@ -40,18 +40,12 @@ namespace gismo
 struct GISMO_EXPORT gsFileManagerData {
     gsFileManagerData();
     std::vector<std::string> m_paths;
-    const char* argv0;
 };
 
 gsFileManagerData& gsFileManagerDataSingleton()
 {
     static gsFileManagerData singleton;
     return singleton;
-}
-
-void gsFileManager::setArgv0(const char* argv0)
-{
-    gsFileManagerDataSingleton().argv0 = argv0;
 }
 
 bool gsFileManager::fileExists(const std::string& name)
@@ -411,24 +405,10 @@ std::string gsFileManager::getExePath()
     GISMO_ASSERT(_fileExistsWithoutSearching(_temp),
         "The executable cannot be found where it is expected." );
     return getCanonicRepresentation( std::string(_temp) + "/../" );
-#else
-    // TODO: use getcwd instead of argv0, see https://linux.die.net/man/3/getcwd
-    const char* argv0 = gsFileManagerDataSingleton().argv0;
-    if (!argv0)
-    {
-        gsWarn << "gsCmdLine::getValues has not been called. Therefore, "
-             "the path is not available.\n";
-        return getCurrentPath();
-    }
-
-    GISMO_ASSERT( _fileExistsWithoutSearching( isFullyQualified( argv0 )
-        ? getCanonicRepresentation( std::string(argv0) )
-        : getCanonicRepresentation( getCurrentPath() + "/" + argv0 ) ),
-        "The executable cannot be found where it is expected." );
-
-    return isFullyQualified( argv0 )
-        ? getCanonicRepresentation( std::string(argv0) + "/../" )
-        : getCanonicRepresentation( getCurrentPath() + "/" + argv0 + "/../" );
+#elif defined __linux__ // GCC, Clang
+    return std::string(get_current_dir_name());
+#elif defined __APPLE__
+    return std::string(NSFileManager::currentDirectoryPath()); // TODO: exact implementation
 #endif
 }
 
