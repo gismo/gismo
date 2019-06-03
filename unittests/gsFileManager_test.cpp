@@ -322,6 +322,7 @@ TEST(getHomePath)
 TEST(makeRelative)
 {
 #if defined _WIN32 || defined __CYGWIN__
+    CHECK_EQUAL(".\\", gsFileManager::makeRelative("/a/b/c/", "/a/b/c/"));
     CHECK_EQUAL(".\\d", gsFileManager::makeRelative("/a/b/c/", "/a/b/c/d"));
     CHECK_EQUAL("..\\c\\d", gsFileManager::makeRelative("/a/b/cd/", "/a/b/c/d"));
     CHECK_EQUAL(".\\d", gsFileManager::makeRelative("\\a\\b\\c\\", "\\a\\b\\c\\d"));
@@ -335,6 +336,7 @@ TEST(makeRelative)
     CHECK_EQUAL("d:\\a\\b\\c\\d", gsFileManager::makeRelative("c:\\a\\b\\c\\", "d:\\a\\b\\c\\d"));
     CHECK_EQUAL("d:\\a\\b\\c\\d", gsFileManager::makeRelative("c:\\a\\b\\cd\\", "d:\\a\\b\\c\\d"));
 #else
+    CHECK_EQUAL("./", gsFileManager::makeRelative("/a/b/c/", "/a/b/c/"));
     CHECK_EQUAL("./d", gsFileManager::makeRelative("/a/b/c/", "/a/b/c/d"));
     CHECK_EQUAL("../c/d", gsFileManager::makeRelative("/a/b/cd/", "/a/b/c/d"));
 #endif

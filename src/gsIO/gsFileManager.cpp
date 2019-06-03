@@ -471,7 +471,7 @@ std::string gsFileManager::makeRelative(const std::string & from, const std::str
 
     size_t start = 0;
     size_t pos = 0;
-    while (fromc[pos] == toc[pos])
+    while (pos < fromc.length() && pos < toc.length() && fromc[pos] == toc[pos])
     {
         if (fromc[pos++] == getNativePathSeparator())
             start = pos;
