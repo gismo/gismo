@@ -21,7 +21,8 @@
 #if defined _WIN32
 #include <windows.h>
 #include <direct.h>
-#include <ShlObj_core.h>
+//#include <ShlObj_core.h>
+#include<ShlObj.h>
 #ifdef __MINGW32__
 #include <sys/stat.h>
 #endif
