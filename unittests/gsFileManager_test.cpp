@@ -194,13 +194,13 @@ TEST(find)
     GISMO_ASSERT(gsFileManager::getSearchPaths() == "", "gsFileManager::getSearchPaths() not empty");
 
     // calculate relative path
-    std::string absolute = GISMO_DATA_DIR;              // absolute
+    std::string absolute = gsFileManager::getCanonicRepresentation(GISMO_DATA_DIR);              // absolute
     std::string current = gsFileManager::getCurrentPath();
     std::string relative = gsFileManager::makeRelative(current, absolute);
     GISMO_ASSERT(gsFileManager::isExplicitlyRelative(relative),
         "variable relative isn't gsFilemanager::isExplicitlyRealtive");
 
-    std::string verum("options/assembler_options.xml"); // success, if path known
+    std::string verum = gsFileManager::getCanonicRepresentation("options/assembler_options.xml"); // success, if path known
     std::string falsum("fuubar");                       // fails
 
     // check without SearchPaths

@@ -75,7 +75,11 @@ bool _fileExistsWithoutSearching(const std::string& fn)
    //   std::ifstream s(fn.c_str()); return s.good() && ! s.eof();
    // is also possible; however that treats empty files as non-existing.
 #if defined _WIN32
-    DWORD dwAttrib = GetFileAttributes( fn.c_str() );
+	// doesn' t work for relative paths, so make absolute.
+	std::string fnc = fn;
+	if (gsFileManager::isExplicitlyRelative(fnc))
+		fnc = gsFileManager::getCanonicRepresentation(gsFileManager::getCurrentPath() + fnc);
+    DWORD dwAttrib = GetFileAttributes( fnc.c_str() );
     return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 #else
     struct stat buf;
@@ -386,7 +390,9 @@ std::string gsFileManager::getCurrentPath()
     DWORD l = GetCurrentDirectory(MAX_PATH, _temp);
     GISMO_UNUSED(l);
     GISMO_ASSERT(l, "GetCurrentDirectory did return 0");
-    return std::string(_temp);
+    std::string path(_temp);
+	_makePath(path);
+	return path;
 #else
     // http://man7.org/linux/man-pages/man2/getcwd.2.html
     char* _temp = getcwd(NULL, 0);
@@ -408,7 +414,7 @@ std::string gsFileManager::getExePath()
     GISMO_ASSERT(l, "GetModuleFileName did return 0");
     GISMO_ASSERT(_fileExistsWithoutSearching(_temp),
         "The executable cannot be found where it is expected." );
-    return getCanonicRepresentation( std::string(_temp) + "/../" );
+    return getPath(std::string(_temp));
 #elif defined __linux__ // GCC, Clang
     char exePath[PATH_MAX];
     ssize_t len = ::readlink("/proc/self/exe", exePath, sizeof(exePath));
