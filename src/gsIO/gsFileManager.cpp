@@ -148,7 +148,7 @@ bool gsFileManager::isFullyQualified(const std::string& fn)
     bool valid = false;
 #if defined _WIN32 || defined __CYGWIN__
     // case "c:\\abc"
-    if ( fn.size() > 2 && std::isalpha(fn[0]) && fn[1] == ':')
+    if ( fn.size() > 2 && isalpha(fn[0]) && fn[1] == ':')
     {
         for (int i = 0; i < getValidPathSeparators().length(); ++i)
         {
