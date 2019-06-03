@@ -427,11 +427,14 @@ TEST(pathEqual)
     CHECK(gsFileManager::pathEqual("/foo/bar", "\\foo\\bar"));
     CHECK(gsFileManager::pathEqual("foo/bar", "foo\\bar"));
     CHECK(gsFileManager::pathEqual("../bar", ".\\buz\\..\\..\\bar"));
+
+    CHECK(gsFileManager::pathEqual("e:/foo/bar", "e:\\foo\\bar"));
 #endif
 }
 
 TEST(getExtension)
 {
+    // any OS
     CHECK_EQUAL("bar", gsFileManager::getExtension("foo.bar"));
     CHECK_EQUAL("bar", gsFileManager::getExtension("/foo.bar"));
     CHECK_EQUAL("bar", gsFileManager::getExtension("./foo.bar"));
@@ -445,10 +448,29 @@ TEST(getExtension)
     CHECK_EQUAL("bar", gsFileManager::getExtension("/some/../baz/other/../foo.baz.bar"));
 
     CHECK_EQUAL("foo", gsFileManager::getExtension("bar.foo"));
+
+#if defined _WIN32
+    CHECK_EQUAL("bar", gsFileManager::getExtension("foo.bar"));
+    CHECK_EQUAL("bar", gsFileManager::getExtension("\\foo.bar"));
+    CHECK_EQUAL("bar", gsFileManager::getExtension(".\\foo.bar"));
+    CHECK_EQUAL("bar", gsFileManager::getExtension("..\\foo.bar"));
+
+    CHECK_EQUAL("bar", gsFileManager::getExtension("foo.baz.bar"));
+    CHECK_EQUAL("bar", gsFileManager::getExtension("\\foo.baz.bar"));
+    CHECK_EQUAL("bar", gsFileManager::getExtension(".\\foo.baz.bar"));
+    CHECK_EQUAL("bar", gsFileManager::getExtension("..\\foo.baz.bar"));
+
+    CHECK_EQUAL("bar", gsFileManager::getExtension("\\some\\..\\baz\\other\\..\\foo.baz.bar"));
+
+    CHECK_EQUAL("foo", gsFileManager::getExtension("bar.foo"));
+
+    CHECK_EQUAL("e:\\bar", gsFileManager::getExtension("e:\\foo.bar"));
+#endif
 }
 
 TEST(getBasename)
 {
+    // any OS
     CHECK_EQUAL("foo", gsFileManager::getBasename("foo.bar"));
     CHECK_EQUAL("foo", gsFileManager::getBasename("/foo.bar"));
     CHECK_EQUAL("foo", gsFileManager::getBasename("./foo.bar"));
@@ -462,10 +484,29 @@ TEST(getBasename)
     CHECK_EQUAL("foo.baz", gsFileManager::getBasename("/some/../bax/other/../foo.baz.bar"));
 
     CHECK_EQUAL("bar", gsFileManager::getBasename("bar.foo"));
+
+#if defined _WIN32
+    CHECK_EQUAL("foo", gsFileManager::getBasename("foo.bar"));
+    CHECK_EQUAL("foo", gsFileManager::getBasename("\\foo.bar"));
+    CHECK_EQUAL("foo", gsFileManager::getBasename(".\\foo.bar"));
+    CHECK_EQUAL("foo", gsFileManager::getBasename("..\\foo.bar"));
+
+    CHECK_EQUAL("foo.baz", gsFileManager::getBasename("foo.baz.bar"));
+    CHECK_EQUAL("foo.baz", gsFileManager::getBasename("\\foo.baz.bar"));
+    CHECK_EQUAL("foo.baz", gsFileManager::getBasename(".\\foo.baz.bar"));
+    CHECK_EQUAL("foo.baz", gsFileManager::getBasename("..\\foo.baz.bar"));
+
+    CHECK_EQUAL("foo.baz", gsFileManager::getBasename("\\some\\..\\bax\\other\\..\\foo.baz.bar"));
+
+    CHECK_EQUAL("bar", gsFileManager::getBasename("bar.foo"));
+
+    CHECK_EQUAL("e:\\foo.baz", gsFileManager::getBasename("e:\\foo.baz.bar"));
+#endif
 }
 
 TEST(getFilename)
 {
+    // any OS
     CHECK_EQUAL("foo", gsFileManager::getFilename("/foo"));
     CHECK_EQUAL("foo.bar", gsFileManager::getFilename("/foo.bar"));
     CHECK_EQUAL("foo.baz.bar", gsFileManager::getFilename("/foo.baz.bar"));
@@ -481,10 +522,68 @@ TEST(getFilename)
     CHECK_EQUAL("foo", gsFileManager::getFilename("./some/other/foo"));
     CHECK_EQUAL("foo.bar", gsFileManager::getFilename("./some/other/foo.bar"));
     CHECK_EQUAL("foo.baz.bar", gsFileManager::getFilename("./some/other/foo.baz.bar"));
+
+#if defined _WIN32
+    CHECK_EQUAL("foo", gsFileManager::getFilename("\\foo"));
+    CHECK_EQUAL("foo.bar", gsFileManager::getFilename("\\foo.bar"));
+    CHECK_EQUAL("foo.baz.bar", gsFileManager::getFilename("\\foo.baz.bar"));
+    CHECK_EQUAL("foo", gsFileManager::getFilename("..\\foo"));
+    CHECK_EQUAL("foo.bar", gsFileManager::getFilename("..\\foo.bar"));
+    CHECK_EQUAL("foo.baz.bar", gsFileManager::getFilename("..\\foo.baz.bar"));
+    CHECK_EQUAL("foo", gsFileManager::getFilename("some\\other\\foo"));
+    CHECK_EQUAL("foo.bar", gsFileManager::getFilename("some\\other\\foo.bar"));
+    CHECK_EQUAL("foo.baz.bar", gsFileManager::getFilename("some\\other\\foo.baz.bar"));
+    CHECK_EQUAL("foo", gsFileManager::getFilename("\\some\\other\\foo"));
+    CHECK_EQUAL("foo.bar", gsFileManager::getFilename("\\some\\other\\foo.bar"));
+    CHECK_EQUAL("foo.baz.bar", gsFileManager::getFilename("\\some\\other\\foo.baz.bar"));
+    CHECK_EQUAL("foo", gsFileManager::getFilename(".\\some\\other\\foo"));
+    CHECK_EQUAL("foo.bar", gsFileManager::getFilename(".\\some\\other\\foo.bar"));
+    CHECK_EQUAL("foo.baz.bar", gsFileManager::getFilename(".\\some\\other\\foo.baz.bar"));
+
+    // drive letter
+    CHECK_EQUAL("e:\\foo", gsFileManager::getFilename("e:\\some\\other\\foo"));
+    CHECK_EQUAL("e:\\foo.bar", gsFileManager::getFilename("e:\\some\\other\\foo.bar"));
+    CHECK_EQUAL("e:\\foo.baz.bar", gsFileManager::getFilename("e:\\some\\other\\foo.baz.bar"));
+#endif
 }
 
 TEST(getPath)
 {
+#if defined _WIN32
+    CHECK_EQUAL("", gsFileManager::getPath("foo"));
+    CHECK_EQUAL("", gsFileManager::getPath("foo.bar"));
+    CHECK_EQUAL("", gsFileManager::getPath("foo.baz.bar"));
+    CHECK_EQUAL("\\", gsFileManager::getPath("\\foo"));
+    CHECK_EQUAL("\\", gsFileManager::getPath("\\foo.bar"));
+    CHECK_EQUAL("\\", gsFileManager::getPath("\\foo.baz.bar"));
+    CHECK_EQUAL(".\\", gsFileManager::getPath(".\\foo"));
+    CHECK_EQUAL(".\\", gsFileManager::getPath(".\\foo.bar"));
+    CHECK_EQUAL(".\\", gsFileManager::getPath(".\\foo.baz.bar"));
+    CHECK_EQUAL("..\\", gsFileManager::getPath("..\\foo"));
+    CHECK_EQUAL("..\\", gsFileManager::getPath("..\\foo.bar"));
+    CHECK_EQUAL("..\\", gsFileManager::getPath("..\\foo.baz.bar"));
+    CHECK_EQUAL("some\\other\\", gsFileManager::getPath("some\\other\\foo"));
+    CHECK_EQUAL("some\\other\\", gsFileManager::getPath("some\\other\\foo.bar"));
+    CHECK_EQUAL("some\\other\\", gsFileManager::getPath("some\\other\\foo.baz.bar"));
+    CHECK_EQUAL("\\some\\other\\", gsFileManager::getPath("\\some\\other\\foo"));
+    CHECK_EQUAL("\\some\\other\\", gsFileManager::getPath("\\some\\other\\foo.bar"));
+    CHECK_EQUAL("\\some\\other\\", gsFileManager::getPath("\\some\\other\\foo.baz.bar"));
+    CHECK_EQUAL(".\\some\\other\\", gsFileManager::getPath(".\\some\\other\\foo"));
+    CHECK_EQUAL(".\\some\\other\\", gsFileManager::getPath(".\\some\\other\\foo.bar"));
+    CHECK_EQUAL(".\\some\\other\\", gsFileManager::getPath(".\\some\\other\\foo.baz.bar"));
+    CHECK_EQUAL("..\\some\\other\\", gsFileManager::getPath("..\\some\\other\\foo"));
+    CHECK_EQUAL("..\\some\\other\\", gsFileManager::getPath("..\\some\\other\\foo.bar"));
+    CHECK_EQUAL("..\\some\\other\\", gsFileManager::getPath("..\\some\\other\\foo.baz.bar"));
+    // some canonical check
+    CHECK_EQUAL("..\\some\\other\\", gsFileManager::getPath("..\\some\\buz\\..\\other\\foo"));
+    CHECK_EQUAL("..\\some\\other\\", gsFileManager::getPath("..\\some\\buz\\..\\other\\foo.bar"));
+    CHECK_EQUAL("..\\some\\other\\", gsFileManager::getPath("..\\some\\buz\\..\\other\\foo.baz.bar"));
+
+    // driver letter
+    CHECK_EQUAL("e:\\some\\other\\", gsFileManager::getPath("e:\\some\\other\\foo"));
+    CHECK_EQUAL("e:\\some\\other\\", gsFileManager::getPath("e:\\some\\other\\foo.bar"));
+    CHECK_EQUAL("e:\\some\\other\\", gsFileManager::getPath("e:\\some\\other\\foo.baz.bar"));
+#else
     CHECK_EQUAL("", gsFileManager::getPath("foo"));
     CHECK_EQUAL("", gsFileManager::getPath("foo.bar"));
     CHECK_EQUAL("", gsFileManager::getPath("foo.baz.bar"));
@@ -513,11 +612,39 @@ TEST(getPath)
     CHECK_EQUAL("../some/other/", gsFileManager::getPath("../some/buz/../other/foo"));
     CHECK_EQUAL("../some/other/", gsFileManager::getPath("../some/buz/../other/foo.bar"));
     CHECK_EQUAL("../some/other/", gsFileManager::getPath("../some/buz/../other/foo.baz.bar"));
+#endif
 }
 
 TEST(getCanonicRepresentation)
 {
+#if defined _WIN32
+    CHECK_EQUAL("foo\\bar", gsFileManager::getCanonicRepresentation("foo\\.\\bar"));
+    CHECK_EQUAL("foo\\bar", gsFileManager::getCanonicRepresentation("foo\\baz\\..\\bar"));
+    CHECK_EQUAL("foo\\bar", gsFileManager::getCanonicRepresentation("foo\\baz\\baz\\..\\..\\bar"));
+    CHECK_EQUAL("foo\\bar", gsFileManager::getCanonicRepresentation("foo\\baz\\..\\baz\\..\\bar"));
+    CHECK_EQUAL("foo\\bar", gsFileManager::getCanonicRepresentation("foo\\baz\\baz\\..\\.\\.\\.\\..\\bar"));
+    CHECK_EQUAL("foo\\bar", gsFileManager::getCanonicRepresentation("foo\\baz\\.\\..\\.\\baz\\.\\..\\.\\bar"));
+    CHECK_EQUAL("foo\\bar", gsFileManager::getCanonicRepresentation("baz\\baz\\..\\..\\foo\\bar"));
 
+    CHECK_EQUAL("e:\\foo\\bar", gsFileManager::getCanonicRepresentation("e:\\foo\\.\\bar"));
+    CHECK_EQUAL("e:\\foo\\bar", gsFileManager::getCanonicRepresentation("e:\\foo\\baz\\..\\bar"));
+    CHECK_EQUAL("e:\\foo\\bar", gsFileManager::getCanonicRepresentation("e:\\foo\\baz\\baz\\..\\..\\bar"));
+    CHECK_EQUAL("e:\\foo\\bar", gsFileManager::getCanonicRepresentation("e:\\foo\\baz\\..\\baz\\..\\bar"));
+    CHECK_EQUAL("e:\\foo\\bar", gsFileManager::getCanonicRepresentation("e:\\foo\\baz\\baz\\..\\.\\.\\.\\..\\bar"));
+    CHECK_EQUAL("e:\\foo\\bar", gsFileManager::getCanonicRepresentation("e:\\foo\\baz\\.\\..\\.\\baz\\.\\..\\.\\bar"));
+    CHECK_EQUAL("e:\\foo\\bar", gsFileManager::getCanonicRepresentation("e:\\baz\\baz\\..\\..\\foo\\bar"));
+
+    CHECK_EQUAL(".\\foo", gsFileManager::getCanonicRepresentation(".\\.\\.\\foo"));
+    CHECK_EQUAL("..\\foo", gsFileManager::getCanonicRepresentation(".\\..\\.\\foo"));
+
+    CHECK_EQUAL("", gsFileManager::getCanonicRepresentation(""));
+    CHECK_EQUAL(".\\", gsFileManager::getCanonicRepresentation("", true));
+    CHECK_EQUAL(".\\foo\\", gsFileManager::getCanonicRepresentation(".\\.\\.\\foo", true));
+    CHECK_EQUAL("..\\foo\\", gsFileManager::getCanonicRepresentation(".\\..\\.\\foo", true));
+
+    CHECK_EQUAL(".\\foo\\", gsFileManager::getCanonicRepresentation(".\\.\\.\\foo\\"));
+    CHECK_EQUAL("..\\foo\\", gsFileManager::getCanonicRepresentation(".\\..\\.\\foo\\"));
+#else
     CHECK_EQUAL("foo/bar", gsFileManager::getCanonicRepresentation("foo/./bar"));
     CHECK_EQUAL("foo/bar", gsFileManager::getCanonicRepresentation("foo/baz/../bar"));
     CHECK_EQUAL("foo/bar", gsFileManager::getCanonicRepresentation("foo/baz/baz/../../bar"));
@@ -536,6 +663,8 @@ TEST(getCanonicRepresentation)
 
     CHECK_EQUAL("./foo/", gsFileManager::getCanonicRepresentation("./././foo/"));
     CHECK_EQUAL("../foo/", gsFileManager::getCanonicRepresentation("./.././foo/"));
+#endif
 }
 
+// gsFileManager::open will not be tested here.
 }
