@@ -439,7 +439,7 @@ std::string gsFileManager::getExePath()
             free(canonicalPath);
         }
     }
-    return std::string(exePath);
+	return getPath(std::string(exePath));
 #endif
 }
 
