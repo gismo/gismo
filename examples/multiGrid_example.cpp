@@ -428,12 +428,9 @@ gsSparseMatrix<> makeTransfer(gsVector<index_t> begin, gsVector<index_t> end, gs
     return result;
 }
     
-    
-gsMultiplicativeOp<>::Ptr macroGsInit(const gsSparseMatrix<>& A, std::vector<index_t>& dims_v, index_t innerSize, index_t overlapSize )
-{
-    gsSparseMatrix<> matrixCopy = A;
-    gsMultiplicativeOp<>::Ptr result = gsMultiplicativeOp<>::make(matrixCopy.moveToPtr());
-    
+std::pair< std::vector< gsSparseMatrix<> >, std::vector< gsLinearOperator<>::Ptr > >
+macroGsInit(const gsSparseMatrix<>& A, std::vector<index_t>& dims_v, index_t innerSize, index_t overlapSize )
+{   
     const index_t d = dims_v.size();
     index_t totalDim = 1;
     for (index_t i=0; i<d; ++i)
@@ -445,6 +442,9 @@ gsMultiplicativeOp<>::Ptr macroGsInit(const gsSparseMatrix<>& A, std::vector<ind
         dims[i] = dims_v[i];
 
     gsVector<index_t> curr = 0 * dims;
+    
+    std::vector< gsLinearOperator<>::Ptr > ops;
+    std::vector< gsSparseMatrix<> > transfers;
     
     while(true)
     {
@@ -461,7 +461,8 @@ gsMultiplicativeOp<>::Ptr macroGsInit(const gsSparseMatrix<>& A, std::vector<ind
         }
         gsSparseMatrix<> transfer = makeTransfer(begin, end, dims, totalDim);
         gsSparseMatrix<> localMat = transfer.transpose() * A * transfer;
-        result->addOperator( give(transfer), makeSparseCholeskySolver(localMat) ); // TODO: should not be sparse...
+        transfers.push_back(give(transfer));
+        ops.push_back(makeSparseCholeskySolver(localMat));
 
         index_t j=0;
         while ( j < d &&curr[j]+innerSize >= dims[j])
@@ -474,7 +475,7 @@ gsMultiplicativeOp<>::Ptr macroGsInit(const gsSparseMatrix<>& A, std::vector<ind
         else
             break;
     }
-    return result;
+    return make_pair(transfers, ops);
 }
 
 gsPreconditionerOp<>::Ptr setupMacroGsSmoother(
@@ -529,14 +530,15 @@ gsPreconditionerOp<>::Ptr setupMacroGsSmoother(
 
             gsSparseMatrix<> mat = transfer.transpose() * matrix * transfer;
             //GISMO_ASSERT ( bases.size() == 1, "Only one basis is expected, got"<<bases.size() );
-            gsLinearOperator<>::Ptr op =
+            std::pair< std::vector< gsSparseMatrix<> >, std::vector< gsLinearOperator<>::Ptr > > local =
                 macroGsInit(
                     mat,
                     dims,
                     innerSize,
                     overlapSize
                 );
-             result->addOperator(transfer, op );
+            for (size_t i=0; i<local.first.size(); ++i)
+                result->addOperator(transfer*local.first[i], local.second[i]);
         }
     }
 
