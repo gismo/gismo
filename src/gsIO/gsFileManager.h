@@ -42,7 +42,7 @@ public:
     /// Get valid path seperators
     static const std::string& getValidPathSeparators();
 
-    /// Get system depending not allowed characters for paths and filenames
+    /// Get system-dependent invalid characters for paths and filenames
     static const std::string& getInvalidCharacters();
     
     /// @brief Checks if the path is fully qualified, also known as "absolute path"
