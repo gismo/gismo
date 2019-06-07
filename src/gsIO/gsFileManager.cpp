@@ -207,7 +207,7 @@ inline bool _addSearchPaths(const std::string& in, std::vector<std::string>& out
         p.assign(a,b);
 
 #if defined _WIN32
-        _repacle_with_native_seperator(p);
+        _replace_with_native_separator(p);
 #endif
 
         if (!p.empty())
@@ -268,7 +268,7 @@ std::string gsFileManager::getSearchPaths()
 std::string gsFileManager::find(std::string fn)
 {
 #if defined _WIN32
-    _repacle_with_native_seperator(fn);
+    _replace_with_native_separator(fn);
 #endif
 
     if ( _fileExistsWithoutSearching(fn) ) return fn;
@@ -296,10 +296,10 @@ std::string gsFileManager::find(std::string fn)
 std::string gsFileManager::findInDataDir(std::string fn)
 {
 #if defined _WIN32
-    _repacle_with_native_seperator(fn);
+    _replace_with_native_separator(fn);
 #endif
 
-    // We know that GISMO_DATA_DIR ends with a path seperator, but
+    // We know that GISMO_DATA_DIR ends with a path separator, but
     // maybe the user does not know it.
     if ( fn[0] == '/' || fn[0] == '\\' ) fn.erase(0,1);
 
@@ -319,7 +319,7 @@ bool gsFileManager::mkdir( std::string fn )
             return false;
     }
 #if defined _WIN32
-    _repacle_with_native_seperator(fn);
+    _replace_with_native_separator(fn);
 	return !fileExists(fn) && (0 != CreateDirectoryA(fn.c_str(), NULL) || (GetLastError() == ERROR_ALREADY_EXISTS));
 #else
     // create, if successful, return true;
