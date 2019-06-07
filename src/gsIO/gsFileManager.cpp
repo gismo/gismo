@@ -183,7 +183,7 @@ bool gsFileManager::isExplicitlyRelative(const std::string& fn)
 
 namespace {
 
-inline void _repacle_with_native_seperator(std::string& str)
+inline void _replace_with_native_separator(std::string & str)
 {
     for (size_t i = 1; i < gsFileManager::getValidPathSeparators().length(); ++i)
     {
