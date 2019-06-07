@@ -491,7 +491,8 @@ std::string gsFileManager::makeRelative(const std::string & from, const std::str
     }
 
     std::string result;
-    size_t deep = util::count(fromc.substr(start), getNativePathSeparator());
+    std::string sub = fromc.substr(start);
+    size_t deep = std::count(sub.begin(), sub.end(), getNativePathSeparator());
     if (deep == 0)
     {
         result += ".";

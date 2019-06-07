@@ -158,16 +158,6 @@ inline std::vector<std::string> split(std::string str, char ch)
     return result;
 }
 
-/// \brief Count occurrences of \a ch in string \a str.
-inline size_t count(std::string s0, char ch) {
-    size_t sum = 0;
-    for (std::string::iterator it = s0.begin(); it != s0.end(); ++it) {
-        if (*it == ch)
-            sum++;
-    }
-    return sum;
-}
-
 /// \brief Returns the \a i-th token of the string \a str using delimiter \a delim
 /// \ingroup Utils
 inline std::string tokenize(const std::string& str,
