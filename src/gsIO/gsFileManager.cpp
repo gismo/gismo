@@ -41,7 +41,7 @@ namespace gismo
 {
 
 // Struct for storing data
-struct GISMO_EXPORT gsFileManagerData {
+struct gsFileManagerData {
     gsFileManagerData();
     std::vector<std::string> m_paths;
 };
