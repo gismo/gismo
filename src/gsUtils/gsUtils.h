@@ -138,23 +138,43 @@ inline void string_replace(std::string& str,
     }
 }
 
-/// \brief Splits a string \a str into substrings with \a ch as separator.
-inline std::vector<std::string> split(std::string str, char ch)
+/// converts a \a std::string to \a T
+template<typename T> inline T convert_to             (const std::string&);
+template<> inline         int convert_to<int>        (const std::string& s) { return stoi(s); }
+template<> inline      double convert_to<double>     (const std::string& s) { return stod(s); }
+template<> inline std::string convert_to<std::string>(const std::string& s) { return s; }
+
+/// \brief Creates a container \a T, splits and adds the std::string \a str
+/// into parts of type \a T::value_type with char \a ch as separator.
+/// T can be any container from std, that implements insert(iterator pos, const T::value_type& val);
+/// Conversions from std::String to T::value_type must be defined as
+/// TYPE convert_to<TYPE>(const std::string& s){return ...}
+/// \example
+/// std::set<index_t> s split<std::set<index_t> >("1,3,2,4,3,2,1", ','); s => {1,2,3,4}
+/// std::vector<std::string> v split<std::vector<std::string> >("ab.ba.aa", '.'); v => {"ab","ba","aa"}
+/// \tparam T STL container type, like std::vector<std::string> >, but not std::map
+/// \param str input string
+/// \param ch separator
+/// \param empty if true, adds also empty parts. default is false. Makes only sense with std::string.
+/// \return a container of T<T::value_type>
+template <class T>
+inline T split(const std::string& str, char ch, bool empty = false)
 {
-    std::vector<std::string> result;
-    size_t pos = 0;
-    while ((pos = str.find(ch)) != std::string::npos)
+    T result;
+    size_t start = 0;
+    size_t found;
+    while ((found = str.find(ch, start)) != std::string::npos)
     {
-        if (pos == 0)
+        if (!empty && (found == start)) // we ignore if some separators lined up together
         {
-            str.erase(0, 1);
+            ++start;
             continue;
         }
-        result.push_back(str.substr(0, pos));
-        str.erase(0, pos + 1);
+        result.insert(result.end(), convert_to<typename T::value_type>(str.substr(start, found - start)));
+        start = found + 1;
     }
-    if(str.size())
-        result.push_back(str);
+    if(start < str.length())
+        result.insert(result.end(), convert_to<typename T::value_type>(str.substr(start, str.length())));
     return result;
 }
 
