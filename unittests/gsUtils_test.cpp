@@ -2,7 +2,7 @@
 
     @brief Tests helper functions in util namespace.
     Most of them exist native in CXX11 and are handmade for CXX98.
-    This Unittests help us to prove that the work as suggested.
+    This Unittests help us to prove that the work as expected.
 
     This file is part of the G+Smo library.
 
@@ -94,6 +94,11 @@ TEST(stoi)
     CHECK_EQUAL(1234567890, util::stoi("1234567890"));
     CHECK_EQUAL(-1, util::stoi("-0001"));
     CHECK_EQUAL(-1234567890, util::stoi("-1234567890"));
+    CHECK_EQUAL(42, util::stoi("42"));
+    CHECK_EQUAL(42, util::stoi(" 42"));
+    CHECK_EQUAL(42, util::stoi("42 "));
+    CHECK_EQUAL(42, util::stoi(" 42 "));
+    CHECK_EQUAL(4, util::stoi(" 4 2 "));
 }
 
 }
