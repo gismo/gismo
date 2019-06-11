@@ -15,7 +15,7 @@
 
 using namespace gismo;
 
-gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(const gsSparseMatrix<>&, const gsMultiBasis<>&, const gsMultiPatch<>&, const gsBoundaryConditions<>&, const gsOptionList&, bool useGeo);
+gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(const gsSparseMatrix<>&, const gsMultiBasis<>&, const gsMultiPatch<>&, const gsBoundaryConditions<>&, const gsOptionList&, bool useGeo, bool autoDamping);
 
 int main(int argc, char *argv[])
 {
@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
     bool extrasmooth = false;
     std::string smoother("GaussSeidel");
     real_t damping = -1;
+    bool autoDamping = false;
     real_t scaling = 0.12;
     std::string iterativeSolver("cg");
     real_t tolerance = 1.e-8;
@@ -53,6 +54,8 @@ int main(int argc, char *argv[])
     cmd.addSwitch("",  "MG.Extrasmooth",        "Doubles the number of smoothing steps for each coarser level", extrasmooth);
     cmd.addString("s", "MG.Smoother",           "Smoothing method", smoother);
     cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother", damping);
+    cmd.addSwitch(     "MG.AutoDamping",        "Adjeusts the damping of the subspace corrected mass smoother such that "
+                                                "rho(tau P*A) == damping.", autoDamping);
     cmd.addReal  ("",  "MG.Scaling",            "Scaling factor for the subspace corrected mass smoother", scaling);
     cmd.addString("i", "IterativeSolver",       "Iterative solver: apply multigrid directly (d) or as a preconditioner for conjugate gradient (cg)", iterativeSolver);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
@@ -67,7 +70,7 @@ int main(int argc, char *argv[])
     // Default case is levels:=refinements, so replace invalid default accordingly
     if (levels <0) { levels = refinements; opt.setInt( "MG.Levels", levels ); }
     // The smoothers know their defaults, so remove the invalid default
-    if (damping<0) { opt.remove( "MG.Damping" ); }
+    if (damping<0) { if (autoDamping) opt.setReal("MG.Damping", 1); else opt.remove( "MG.Damping" ); }
 
     // Define assembler options
     opt.remove( "DG" );
@@ -82,6 +85,13 @@ int main(int argc, char *argv[])
     }
 
     gsInfo << "Run multiGrid_example with options:\n" << opt << std::endl;
+
+    if (autoDamping && ( smoother == "Richardson" || smoother == "r"  || smoother == "Jacobi" || smoother == "j"
+        || smoother == "GaussSeidel" || smoother == "gs" ) )
+    {
+        gsInfo << "--MG.AutoDamping is only available for the mass smoothers.\n";
+        return EXIT_FAILURE;
+    }
 
     /******************* Define geometry ********************/
 
@@ -227,10 +237,14 @@ int main(int argc, char *argv[])
                     mg->underlyingOp(i),
                     gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("MG"),scaling,0,useGeo?&mp[0]:NULL)
                 );
+                if (autoDamping)
+                {
+                    opt.setReal( "MG.Damping", opt.getReal( "MG.Damping" ) / smootherOp->estimateLargestEigenvalue() );
+                }
             }
             else
             {
-                smootherOp = setupSubspaceCorrectedMassSmoother( mg->matrix(i), multiBases[i], mp, bc, opt.getGroup("MG"), useGeo );
+                smootherOp = setupSubspaceCorrectedMassSmoother( mg->matrix(i), multiBases[i], mp, bc, opt.getGroup("MG"), useGeo, autoDamping );
             }
 
             if ( smoother == "Hybrid" || smoother == "hyb" || smoother == "HybridGeo" || smoother == "hybg" )
@@ -315,7 +329,8 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     const gsMultiPatch<>& mp,
     const gsBoundaryConditions<>& bc,
     const gsOptionList& opt,
-    bool useGeo
+    bool useGeo,
+    bool autoDamping
 )
 {
     const short_t dim = mb.topology().dim();
@@ -387,8 +402,7 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
         }
     }
 
-    return gsPreconditionerFromOp<>::make(
-        makeMatrixOp(matrix),
-        gsAdditiveOp<>::make(transfers, ops)
-    );
+    gsAdditiveOp<>::uPtr prec = gsAdditiveOp<>::make(transfers, ops);
+    if (autoDamping) prec->setRelativeScaling(matrix);
+    return gsPreconditionerFromOp<>::make( makeMatrixOp(matrix), give(prec) );
 }
