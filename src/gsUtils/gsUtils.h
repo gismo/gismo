@@ -138,46 +138,6 @@ inline void string_replace(std::string& str,
     }
 }
 
-/// converts a \a std::string to \a T
-template<typename T> inline T convert_to             (const std::string&);
-template<> inline         int convert_to<int>        (const std::string& s) { return stoi(s); }
-template<> inline      double convert_to<double>     (const std::string& s) { return stod(s); }
-template<> inline std::string convert_to<std::string>(const std::string& s) { return s; }
-
-/// \brief Creates a container \a T, splits and adds the std::string \a str
-/// into parts of type \a T::value_type with char \a ch as separator.
-/// T can be any container from std, that implements insert(iterator pos, const T::value_type& val);
-/// Conversions from std::String to T::value_type must be defined as
-/// TYPE convert_to<TYPE>(const std::string& s){return ...}
-/// \example
-/// std::set<index_t> s split<std::set<index_t> >("1,3,2,4,3,2,1", ','); s => {1,2,3,4}
-/// std::vector<std::string> v split<std::vector<std::string> >("ab.ba.aa", '.'); v => {"ab","ba","aa"}
-/// \tparam T STL container type, like std::vector<std::string> >, but not std::map
-/// \param str input string
-/// \param ch separator
-/// \param empty if true, adds also empty parts. default is false. Makes only sense with std::string.
-/// \return a container of T<T::value_type>
-template <class T>
-inline T split(const std::string& str, char ch, bool empty = false)
-{
-    T result;
-    size_t start = 0;
-    size_t found;
-    while ((found = str.find(ch, start)) != std::string::npos)
-    {
-        if (!empty && (found == start)) // we ignore if some separators lined up together
-        {
-            ++start;
-            continue;
-        }
-        result.insert(result.end(), convert_to<typename T::value_type>(str.substr(start, found - start)));
-        start = found + 1;
-    }
-    if(start < str.length())
-        result.insert(result.end(), convert_to<typename T::value_type>(str.substr(start, str.length())));
-    return result;
-}
-
 /// \brief Returns the \a i-th token of the string \a str using delimiter \a delim
 /// \ingroup Utils
 inline std::string tokenize(const std::string& str,
