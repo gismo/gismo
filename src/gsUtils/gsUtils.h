@@ -120,7 +120,7 @@ inline double stod(const std::string& str)
 
     // hex is valid for std::stod - not a good implementation yet
     // ssi and ssd correct, better move to double need be done.
-    if(i == 0 && (pos = str.find("0x")) != std::string::npos)
+    if(i == 0 && (((pos = str.find("0x")) != std::string::npos) || ((pos = str.find("0X")) != std::string::npos)))
     {
         bool negative = false;
         if (pos > 0)
