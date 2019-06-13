@@ -89,34 +89,64 @@ void iota(ForwardIterator first, ForwardIterator last, T value)
     }
 }
 
+/// \brief equivalent to std::stoi(str), and therefore std::stoi(str, 0, 10)
 inline int stoi(const std::string& str)
 {
     std::istringstream ss(str);
     int i;
-    if (!(ss >> std::noskipws >> i))
+    if (!(ss >> std::skipws >> i)) // leading whitespaces are ignored by std::stoi
         //Extracting an int failed
-        return 0;
+        throw std::invalid_argument("stoi");    // if CXX11 code throws, CXX98 should do too, or?
 
-    char c;
-    if (ss >> c)
-        //There was something after the number
-        return 0;
+    // std::stoi ignores all after a valid number
+    //char c;
+    //if (ss >> c)
+    //    //There was something after the number
+    //    return 0;
     
     return i;
 }
 
+/// \brief equivalent to std::stod(str)
 inline double stod(const std::string& str)
 {
     std::istringstream ss(str);
     double i;
-    if (!(ss >> std::noskipws >> i))
+    if (!(ss >> i))
         //Extracting double failed
-        return 0;
+        throw std::invalid_argument("stod");
 
-    char c;
-    if (ss >> c)
-        //There was something after the number
-        return 0;
+    size_t pos;
+
+    // hex is valid for std::stod - not a good implementation yet
+    // ssi and ssd correct, better move to double need be done.
+    if(i == 0 && (pos = str.find("0x")) != std::string::npos)
+    {
+        bool negative = false;
+        if (pos > 0)
+            if (str[pos - 1] == '-')
+                negative = true;
+
+        size_t comma = str.find(".", pos+2);
+
+        size_t integer, decimal;
+        std::istringstream ssi(str.substr(pos+2, comma - pos - 2));
+        std::istringstream ssd(str.substr(++comma)); // we need always comma+1
+
+        if (!(ssi >> std::hex >> integer))
+            throw std::invalid_argument("stod");
+
+        if (!(ssd >> std::hex >> decimal))
+            throw std::invalid_argument("stod");
+
+        size_t lenght = str.find_first_not_of("0123456789abcdefABCDEF", comma);
+        if (lenght == std::string::npos)
+            lenght = str.length() - comma;
+        else
+            lenght -= comma;
+
+        i = (integer + (decimal/pow(16, lenght))) * (negative ? -1. : 1.);
+    }
 
     return i;
 }
@@ -145,18 +175,18 @@ inline std::string tokenize(const std::string& str,
                             const size_t token)
 {
     size_t token_begin = 0;
-    size_t token_end   = str.find_first_of(delim);
-    
+    size_t token_end   = str.find(delim);
+
     for (size_t i=0; i<token; i++) {
-        
+
         GISMO_ENSURE(token_end < std::string::npos,
                      "Requested token exceeds the number of tokens");
-        
-        token_begin += ++token_end;
-        token_end    = str.substr(token_begin).find_first_of(delim);
+
+        token_begin  = token_end + delim.length();
+        token_end    = str.find(delim, token_begin);
     }
-    
-    return str.substr(token_begin,token_end);
+
+    return str.substr(token_begin,token_end - token_begin);
 }
 
 /// \brief Capitalize string in situ
