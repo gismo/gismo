@@ -140,22 +140,6 @@ void gsMultiGridOp<T>::smoothingStep(index_t level, const gsMatrix<T>& rhs, gsMa
 }
 
 template<class T>
-T gsMultiGridOp<T>::estimateLargestEigenvalueOfSmoothedOperator(index_t level, index_t iter)
-{
-    gsMatrix<T> rhs, x, tmp;
-    rhs.setZero(nDofs(level),1);
-    x.setRandom(nDofs(level),1);
-    for (index_t i=0; i<iter; ++i )
-    {
-        x.array() /= math::sqrt( x.row(0).dot(x.row(0)) );
-        tmp = x;
-        m_smoother[level]->step(rhs, tmp);
-        x -= tmp;
-    }
-    return math::sqrt( x.row(0).dot(x.row(0)) );
-}
-
-template<class T>
 void gsMultiGridOp<T>::multiGridStep(index_t level, const gsMatrix<T>& rhs, gsMatrix<T>& x) const
 {
     GISMO_ASSERT ( 0 <= level && level < n_levels, "The given level is not feasible." );

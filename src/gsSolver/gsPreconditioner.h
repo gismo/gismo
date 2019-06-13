@@ -114,6 +114,22 @@ public:
         m_num_of_sweeps = opt.askInt( "NumOfSweeps", m_num_of_sweeps );
     }
 
+    /// Estimates the largest eigenvalue of \f$ P A \f$. Can be used to adjust the damping parameters.
+    T estimateLargestEigenvalue(const index_t iter = 100)
+    {
+        gsMatrix<T> rhs, x, tmp;
+        rhs.setZero(this->cols(),1);
+        x.setRandom(this->cols(),1);
+        for (index_t i=0; i<iter; ++i )
+        {
+            x.array() /= math::sqrt( x.row(0).dot(x.row(0)) );
+            tmp = x;
+            step(rhs, tmp);
+            x -= tmp;
+        }
+        return math::sqrt( x.row(0).dot(x.row(0)) );
+    }
+
 
 protected:
     index_t m_num_of_sweeps;
@@ -207,6 +223,14 @@ public:
 
     /// Get scaling parameter
     void getDamping()            { return m_tau; }
+
+    /// Set damping parameter such that \f$ \tau P A = tau0 \f$.
+    void setRelativeDamping(const T tau0, const index_t iter = 100)
+    {
+        m_tau = 1;
+        const T ev = this->estimateLargestEigenvalue(iter);
+        m_tau = tau0 / ev;
+    }
 
     /// Get the default options as gsOptionList object
     static gsOptionList defaultOptions()

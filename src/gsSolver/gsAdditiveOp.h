@@ -14,6 +14,8 @@
 #pragma once
 
 #include <gsSolver/gsLinearOperator.h>
+#include <gsSolver/gsPreconditioner.h>
+#include <gsSolver/gsMatrixOp.h>
 
 namespace gismo
 {
@@ -50,9 +52,9 @@ template<class T>
 class gsAdditiveOp GISMO_FINAL : public gsLinearOperator<T>
 {
     typedef typename gsLinearOperator<T>::Ptr   OpPtr;
-    typedef std::vector<OpPtr>   OpContainer;
-    typedef gsSparseMatrix<T,RowMajor>   Transfer;
-    typedef std::vector<Transfer>   TransferContainer;
+    typedef std::vector<OpPtr>                  OpContainer;
+    typedef gsSparseMatrix<T,RowMajor>          Transfer;
+    typedef std::vector<Transfer>               TransferContainer;
 
 public:
 
@@ -87,7 +89,7 @@ public:
 #endif
     }
 
-    /// Make function
+    /// @brief Make function
     ///
     /// The operator realizes \f$ \sum_{i=1}^n T_i A_i T_i^T \f$
     ///
@@ -96,7 +98,7 @@ public:
     static uPtr make(TransferContainer transfers, OpContainer ops)
     { return uPtr( new gsAdditiveOp( give(transfers), give(ops) ) ); }
 
-    /// Add another entry to the sum
+    /// @brief Add another entry to the sum
     ///
     /// @param transfer   the additional transfer matrix \f$ T_i \f$
     /// @param op         the additional operator \f$ A_i \f$
@@ -122,6 +124,51 @@ public:
     {
         GISMO_ASSERT( !m_transfers.empty(), "gsAdditiveOp::cols does not work for 0 operators." );
         return m_transfers[0].rows();
+    }
+
+    /// @brief Scales the local contributions by the given scaling parameters
+    ///
+    /// @note The scaling parameters need to be positive
+    /// @note If this function is called multiply, the scaling parameters are multiplied
+    void setScaling( const std::vector<T>& scaling )
+    {
+        GISMO_ASSERT( scaling.size() == m_transfers.size(), "Sizes do not argee" );
+        const size_t sz = scaling.size();
+        for (size_t i=0; i<sz; ++i)
+        {
+            m_transfers[i] *= math::sqrt(scaling[i]);
+        }
+    }
+
+    /// Estimates the eigenvalue of \f$ A_i T_i mat T_i^T \f$
+    T estimateLargestLocalEigenvalues( const size_t i, const gsSparseMatrix<T>& mat, const index_t iter = 100 ) const
+    {
+        GISMO_ASSERT( i < m_ops.size(), "Index is no frasible." );
+        gsSparseMatrix<T> localMat = m_transfers[i].transpose() * mat * m_transfers[i];
+        gsPreconditionerFromOp<T> p( makeMatrixOp(localMat), m_ops[i] );
+        return p.estimateLargestEigenvalue(iter);
+    }
+
+    /// Estimates the eigenvalues of \f$ A_i T_i mat T_i^T \f$ for all i
+    std::vector<T> estimateLargestLocalEigenvalues( const gsSparseMatrix<T>& mat, const index_t iter = 100 ) const
+    {
+        const size_t sz = m_ops.size();
+        std::vector<T> result(sz);
+        for (size_t i=0; i<sz; ++i)
+            result[i] = estimateLargestLocalEigenvalues(i, mat, iter);
+        return result;
+    }
+
+    /// @brief Scales the local contributions such that \f$ \rho( A_i T_i mat T_i^T ) = scaling \f$
+    ///
+    /// @note The scaling parameters need to be positive
+    void setRelativeScaling( const gsSparseMatrix<T>& mat, const T scaling = (T) 1, const index_t iter = 100 )
+    {
+        std::vector<T> v = estimateLargestLocalEigenvalues( mat, iter );
+        const size_t sz = v.size();
+        for (size_t i=0; i<sz; ++i)
+            v[i] = scaling / v[i];
+        setScaling(v);
     }
 
 protected:
