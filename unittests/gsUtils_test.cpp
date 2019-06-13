@@ -104,8 +104,8 @@ TEST(stoi)
     CHECK_EQUAL(4, util::stoi(" 4 2 "));
 
     CHECK_THROW(util::stoi("a1"), std::invalid_argument);
-    CHECK_EQUAL("1", util::stoi("1a"));
-    CHECK_EQUAL("0", util::stoi("0x42"));
+    CHECK_EQUAL(1, util::stoi("1a"));
+    CHECK_EQUAL(0, util::stoi("0x42"));
 }
 
 TEST(stod)
