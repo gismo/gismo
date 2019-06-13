@@ -48,7 +48,7 @@ public:
     GISMO_CLONE_FUNCTION(gsAffineFunction)
 
     /**
-     * @brief all fine maps are the composition of a linear map with a translation
+     * @brief Affine maps are the composition of a linear map with a translation
      *        this constructor takes the two components explicitly
      * @param mat the matrix corresponding to the linear map
      * @param trans the vector corresponding to the translation
@@ -56,7 +56,7 @@ public:
     gsAffineFunction(const gsMatrix<T> mat, const gsVector<T> trans);
 
     /**
-     * @brief construct the affine map that maps \a box1 to \a box2 by
+     * @brief Construct the affine map that maps \a box1 to \a box2 by
      *        mapping coordinate \a i of \a box1 to coordinate \a directions(i) of \a box2
      * @param directions specifies the permutation of the coordinate directions, i.e. the rotation
      * @param orientation specifies the sign of the destination
@@ -65,9 +65,28 @@ public:
      */
     gsAffineFunction(const gsVector<index_t> &directions, const gsVector<bool> &orientation, const gsMatrix<T> &box1, const gsMatrix<T> &box2);
 
+    /**
+     * @brief Affine maps are the composition of a linear map with a translation
+     *        this constructor takes the two components explicitly
+     * @param mat the matrix corresponding to the linear map
+     * @param trans the vector corresponding to the translation
+     */
+    static uPtr make(const gsMatrix<T> mat, const gsVector<T> trans)
+    { return uPtr(new gsAffineFunction(mat, trans)); }
 
-    virtual int domainDim() const;
-    virtual int targetDim() const;
+    /**
+     * @brief Construct the affine map that maps \a box1 to \a box2 by
+     *        mapping coordinate \a i of \a box1 to coordinate \a directions(i) of \a box2
+     * @param directions specifies the permutation of the coordinate directions, i.e. the rotation
+     * @param orientation specifies the sign of the destination
+     * @param box1 description of the domain box: lower corner in the first column, upper corner in the second
+     * @param box2 description of the target box
+     */
+    static uPtr make(const gsVector<index_t> &directions, const gsVector<bool> &orientation, const gsMatrix<T> &box1, const gsMatrix<T> &box2)
+    { return uPtr(new gsAffineFunction(directions, orientation, box1, box2)); }
+
+    virtual short_t domainDim() const;
+    virtual short_t targetDim() const;
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
     virtual void eval_component_into(const gsMatrix<T>& u,
                                      const index_t comp,

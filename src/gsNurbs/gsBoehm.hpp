@@ -497,7 +497,7 @@ void gsTensorBoehmRefine(
 }
 
 
-template <unsigned d, typename KnotVectorType, typename Mat, typename ValIt>
+template <short_t d, typename KnotVectorType, typename Mat, typename ValIt>
 void gsTensorBoehmRefineLocal(KnotVectorType& knots,
         const unsigned index,
         Mat& coefs,
@@ -674,7 +674,7 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
 /*
 This function performs local Tensor Boehm algorithm. It works.
 
-template <unsigned d, typename T, typename KnotVectorType, typename Mat>
+template <short_t d, typename T, typename KnotVectorType, typename Mat>
 void gsTensorBoehmLocal(
         const KnotVectorType& knots,
         unsigned index,
@@ -756,7 +756,7 @@ void gsTensorBoehmLocal(
 */
 
 
-template <unsigned d, typename T, typename KnotVectorType, typename Mat>
+template <short_t d, typename T, typename KnotVectorType, typename Mat>
 void gsTensorInsertKnotDegreeTimes(
         const KnotVectorType& knots,
         Mat& coefs,

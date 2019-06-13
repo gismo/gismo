@@ -338,8 +338,8 @@ public:
             const index_t bdB = m_options.getInt("bdB");
             const T bdO       = m_options.getReal("bdO");
             T nz = 1;
-            const index_t dim = m_exprdata->multiBasis().domainDim();
-            for (index_t i = 0; i != dim; ++i)
+            const short_t dim = m_exprdata->multiBasis().domainDim();
+            for (short_t i = 0; i != dim; ++i)
                 nz *= bdA * m_exprdata->multiBasis().maxDegree(i) + bdB;
 
             m_matrix.reservePerColumn(numBlocks()*cast<T,index_t>(nz*(1.0+bdO)) );
@@ -770,7 +770,7 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, i
 
 template<class T> void gsExprAssembler<T>::resetDimensions()
 {
-    for (std::size_t i = 0; i!=m_vcol.size(); ++i)
+    for (size_t i = 0; i!=m_vcol.size(); ++i)
     {
         GISMO_ASSERT(NULL!=m_vcol[i], "Not set.");
         m_vcol[i]->reset();

@@ -55,13 +55,13 @@ matrix:
       compiler: gcc
       addons:
         apt:
-          - sourceline: ppa:libreoffice/libreoffice-4-2 # for doxygen 1.8
           packages:
             - doxygen
             - doxygen-latex
             - texlive-binaries
             - graphviz
           sources:
+            - sourceline: ppa:libreoffice/libreoffice-4-2 # for doxygen 1.8
             - ubuntu-toolchain-r-test
       env:
         - BUILD_TYPE=Release

@@ -20,8 +20,8 @@ namespace gismo
 
 /// @brief Generic preconditioner which applies an arbitrary linear operator to the residual.
 ///
-/// This preconditioner realizes \$f \sum_{i=1}^n T_i A_i T_i^T \$f, where the
-/// \$f T_i \$f are the transfer matrices and the \$f A_i \$f are linear operators
+/// This preconditioner realizes \f$ \sum_{i=1}^n T_i A_i T_i^T \f$, where the
+/// \f$ T_i \f$ are the transfer matrices and the \f$ A_i \f$ are linear operators
 ///
 /// \code{.cpp}
 ///    gsLinearOperator<>::Ptr pc = gsAdditiveOp<>::make( transfers, ops );
@@ -67,10 +67,10 @@ public:
 
     /// @brief Constructor
     ///
-    /// The operator realizes \$f \sum_{i=1}^n T_i A_i T_i^T \$f
+    /// The operator realizes \f$ \sum_{i=1}^n T_i A_i T_i^T \f$
     ///
-    /// @param transfers  transfer matrices \$f T_i \$f
-    /// @param ops        local operators \$f A_i \$f
+    /// @param transfers  transfer matrices \f$ T_i \f$
+    /// @param ops        local operators \f$ A_i \f$
     gsAdditiveOp(TransferContainer transfers, OpContainer ops)
     : m_transfers(give(transfers)), m_ops(give(ops))
     {
@@ -89,24 +89,24 @@ public:
 
     /// Make function
     ///
-    /// The operator realizes \$f \sum_{i=1}^n T_i A_i T_i^T \$f
+    /// The operator realizes \f$ \sum_{i=1}^n T_i A_i T_i^T \f$
     ///
-    /// @param transfers  transfer matrices \$f T_i \$f
-    /// @param ops        local operators \$f A_i \$f
+    /// @param transfers  transfer matrices \f$ T_i \f$
+    /// @param ops        local operators \f$ A_i \f$
     static uPtr make(TransferContainer transfers, OpContainer ops)
     { return uPtr( new gsAdditiveOp( give(transfers), give(ops) ) ); }
 
     /// Add another entry to the sum
     ///
-    /// @param transfer   the additional transfer matrix \$f T_i \$f
-    /// @param op         the additional operator \$f A_i \$f
+    /// @param transfer   the additional transfer matrix \f$ T_i \f$
+    /// @param op         the additional operator \f$ A_i \f$
     void addOperator(Transfer transfer, OpPtr op)
     {
         m_transfers.push_back(give(transfer));
         m_ops.push_back(give(op));
-        GISMO_ASSERT ( transfer.rows()==m_transfers[0].rows()
-                       && transfer.cols() == op->rows()
-                       && op->cols() == op->rows(),
+        GISMO_ASSERT ( m_transfers.back().rows()==m_transfers[0].rows()
+                       && m_transfers.back().cols() == m_ops.back()->rows()
+                       && m_ops.back()->cols() == m_ops.back()->rows(),
                        "Dimensions of the operators do not fit." );
     }
 

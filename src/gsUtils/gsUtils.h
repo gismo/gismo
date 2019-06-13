@@ -142,12 +142,12 @@ inline void string_replace(std::string& str,
 /// \ingroup Utils
 inline std::string tokenize(const std::string& str,
                             const std::string& delim,
-                            const std::size_t token)
+                            const size_t token)
 {
-    std::size_t token_begin = 0;
-    std::size_t token_end   = str.find_first_of(delim);
+    size_t token_begin = 0;
+    size_t token_end   = str.find_first_of(delim);
     
-    for (std::size_t i=0; i<token; i++) {
+    for (size_t i=0; i<token; i++) {
         
         GISMO_ENSURE(token_end < std::string::npos,
                      "Requested token exceeds the number of tokens");
@@ -208,15 +208,72 @@ public:
 
 /// \brief Create hash key for a rangle of (integral) numbers
 template<typename T>
-std::size_t hash_range(T const * start, const T * const end)
+size_t hash_range(T const * start, const T * const end)
 {
-    std::size_t seed = end - start;
+    size_t seed = end - start;
     for(; start!=end; ++start) 
         seed ^= *start + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     return seed;
 }
 
+#if __cplusplus >= 201703L
+using std::size;
+#else
+template <class T, size_t N>
+size_t size(const T (&)[N])
+{
+    return N;
+}
+template <class T>
+size_t size(const T& t)
+{
+    return t.size();
+}
+#endif
+
 } // end namespace util
+
+// This macro assumes the operators == and < to be present and
+// defines other four operators !=, >, <= and >=
+#define GISMO_DELEGATING_COMPARISON_OPERATORS( T )                  \
+inline bool operator!= (const T& a, const T& b) { return !(a==b); } \
+inline bool operator>  (const T& a, const T& b) { return b<a;     } \
+inline bool operator<= (const T& a, const T& b) { return !(b<a);  } \
+inline bool operator>= (const T& a, const T& b) { return !(a<b);  }
+
+// This macro deletes the operators ==, !=, <, >, <= and >=
+// for operations that involve the types S and T (in either
+// order)
+#if __cplusplus >= 201103L
+#define GISMO_DELETE_COMPARISON_OPERATORS( S, T )         \
+inline bool operator== (const S& a, const T& b) = delete; \
+inline bool operator!= (const S& a, const T& b) = delete; \
+inline bool operator<  (const S& a, const T& b) = delete; \
+inline bool operator>  (const S& a, const T& b) = delete; \
+inline bool operator<= (const S& a, const T& b) = delete; \
+inline bool operator>= (const S& a, const T& b) = delete; \
+inline bool operator== (const T& a, const S& b) = delete; \
+inline bool operator!= (const T& a, const S& b) = delete; \
+inline bool operator<  (const T& a, const S& b) = delete; \
+inline bool operator>  (const T& a, const S& b) = delete; \
+inline bool operator<= (const T& a, const S& b) = delete; \
+inline bool operator>= (const T& a, const S& b) = delete;
+#else
+#define GISMO_DELETE_COMPARISON_OPERATORS( S, T ) \
+inline bool operator== (const S& a, const T& b); \
+inline bool operator!= (const S& a, const T& b); \
+inline bool operator<  (const S& a, const T& b); \
+inline bool operator>  (const S& a, const T& b); \
+inline bool operator<= (const S& a, const T& b); \
+inline bool operator>= (const S& a, const T& b); \
+inline bool operator== (const T& a, const S& b); \
+inline bool operator!= (const T& a, const S& b); \
+inline bool operator<  (const T& a, const S& b); \
+inline bool operator>  (const T& a, const S& b); \
+inline bool operator<= (const T& a, const S& b); \
+inline bool operator>= (const T& a, const S& b);
+
+#endif
 
 } // end namespace gismo
 
