@@ -127,40 +127,6 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness(
     return result;
 }
 
-template<typename T>
-std::vector< gsSparseMatrix<T> > assembleTensorMass(
-    const gsBasis<T>& basis,
-    const gsBoundaryConditions<T>& bc,
-    const gsOptionList& opt
-    )
-{
-    switch (basis.dim())
-    {
-    case 1: return assembleTensorMass_impl<1,T>(basis, bc, opt);
-    case 2: return assembleTensorMass_impl<2,T>(basis, bc, opt);
-    case 3: return assembleTensorMass_impl<3,T>(basis, bc, opt);
-    case 4: return assembleTensorMass_impl<4,T>(basis, bc, opt);
-    default: GISMO_ERROR("gsPatchPreconditionersCreator is only instanciated for up to 4 dimensions." );
-    }
-}
-
-template<typename T>
-std::vector< gsSparseMatrix<T> > assembleTensorStiffness(
-    const gsBasis<T>& basis,
-    const gsBoundaryConditions<T>& bc,
-    const gsOptionList& opt
-    )
-{
-    switch (basis.dim())
-    {
-    case 1: return assembleTensorStiffness_impl<1,T>(basis, bc, opt);
-    case 2: return assembleTensorStiffness_impl<2,T>(basis, bc, opt);
-    case 3: return assembleTensorStiffness_impl<3,T>(basis, bc, opt);
-    case 4: return assembleTensorStiffness_impl<4,T>(basis, bc, opt);
-    default: GISMO_ERROR("gsPatchPreconditionersCreator is only instanciated for up to 4 dimensions." );
-    }
-}
-
 template<index_t d, typename T>
 gsMatrix<T> getMinCellLengths_impl(const gsBasis<T>& basis)
 {
