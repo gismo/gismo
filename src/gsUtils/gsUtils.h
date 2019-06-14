@@ -119,7 +119,7 @@ inline double stod(const std::string& str)
     size_t pos;
 
     // hex is valid for std::stod - not a good implementation yet
-    // ssi and ssd correct, better move to double need be done.
+    // ssi and ssd correct, better move to double need be done => convert to decimal string and let it parse at usual way.
     if(i == 0 && (((pos = str.find("0x")) != std::string::npos) || ((pos = str.find("0X")) != std::string::npos)))
     {
         bool negative = false;
@@ -168,25 +168,36 @@ inline void string_replace(std::string& str,
     }
 }
 
-/// \brief Returns the \a i-th token of the string \a str using delimiter \a delim
+/// \brief Returns the \a i-th token of the string \a str using any character in \a delim as delimiter without counting
+/// empty sequences.
+/// \example util::tokenize("abcdbca", "bd", ...) => {a, c, ca}
 /// \ingroup Utils
 inline std::string tokenize(const std::string& str,
                             const std::string& delim,
                             const size_t token)
 {
+    size_t token_end = -1;
     size_t token_begin = 0;
-    size_t token_end   = str.find(delim);
+    size_t token_count = 0;
+    bool catched = false;
 
-    for (size_t i=0; i<token; i++) {
-
-        GISMO_ENSURE(token_end < std::string::npos,
+    do
+    {
+        GISMO_ENSURE(!catched,
                      "Requested token exceeds the number of tokens");
 
-        token_begin  = token_end + delim.length();
-        token_end    = str.find(delim, token_begin);
-    }
+        token_begin = token_end + 1;
+        token_end = str.find_first_of(delim, token_begin);
 
-    return str.substr(token_begin,token_end - token_begin);
+        if(token_end == std::string::npos)  // catch in next iteration
+            catched = true;
+
+        if (token_end != token_begin) // ignore empty sequences
+            ++token_count;
+    }
+    while (token_count <= token);
+
+    return str.substr(token_begin, token_end - token_begin);
 }
 
 /// \brief Capitalize string in situ

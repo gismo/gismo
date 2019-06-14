@@ -163,36 +163,36 @@ TEST(tokenize)
 
     std::string s1("ab..ba");
     CHECK_EQUAL("ab", util::tokenize(s1, ".", 0));
-    CHECK_EQUAL("", util::tokenize(s1, ".", 1));
-    CHECK_EQUAL("ba", util::tokenize(s1, ".", 2));
-    CHECK_THROW(util::tokenize(s1, ".", 3), std::runtime_error);
+    CHECK_EQUAL("ba", util::tokenize(s1, ".", 1));
+    CHECK_THROW(util::tokenize(s1, ".", 2), std::runtime_error);
 
-    // ab .. .ba
+    // ab ... ba
+    //    ^^^
     std::string s2("ab...ba");
     CHECK_EQUAL("ab", util::tokenize(s2, "..", 0));
-    CHECK_EQUAL(".ba", util::tokenize(s2, "..", 1));
+    CHECK_EQUAL("ba", util::tokenize(s2, "..", 1));
     CHECK_THROW(util::tokenize(s2, "..", 2), std::runtime_error);
 
-    /// xxx ab c ab zzz
-    std::string s3("xxxabcabzzz");
+    // xxx ab c ba zzz
+    //     ^^   ^^
+    std::string s3("xxxabcbazzz");
     CHECK_EQUAL("xxx", util::tokenize(s3, "ab", 0));
     CHECK_EQUAL("c", util::tokenize(s3, "ab", 1));
     CHECK_EQUAL("zzz", util::tokenize(s3, "ab", 2));
     CHECK_THROW(util::tokenize(s3, "ab", 3), std::runtime_error);
 
-    /// xxx ab b ab zzz
+    /// xxx abbab zzz
+    ///     ^^^^^
     std::string s4("xxxabbabzzz");
     CHECK_EQUAL("xxx", util::tokenize(s4, "ab", 0));
-    CHECK_EQUAL("b", util::tokenize(s4, "ab", 1));
-    CHECK_EQUAL("zzz", util::tokenize(s4, "ab", 2));
+    CHECK_EQUAL("zzz", util::tokenize(s4, "ab", 1));
     CHECK_THROW(util::tokenize(s4, "ab", 3), std::runtime_error);
 
     /// xxx aba b aba zzz
     std::string s5("xxxabababazzz");
     CHECK_EQUAL("xxx", util::tokenize(s5, "aba", 0));
-    CHECK_EQUAL("b", util::tokenize(s5, "aba", 1));
-    CHECK_EQUAL("zzz", util::tokenize(s5, "aba", 2));
-    CHECK_THROW(util::tokenize(s5, "aba", 3), std::runtime_error);
+    CHECK_EQUAL("zzz", util::tokenize(s5, "aba", 1));
+    CHECK_THROW(util::tokenize(s5, "aba", 2), std::runtime_error);
 }
 
 TEST(capitalize)
