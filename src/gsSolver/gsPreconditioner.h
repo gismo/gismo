@@ -221,8 +221,8 @@ public:
     /// Set damping parameter
     void setDamping(const T tau) { m_tau = tau;  }
 
-    /// Get scaling parameter
-    void getDamping()            { return m_tau; }
+    /// Get damping parameter
+    T getDamping() const         { return m_tau; }
 
     /// Set damping parameter such that \f$ \tau P A = tau0 \f$.
     void setRelativeDamping(const T tau0, const index_t iter = 100)
