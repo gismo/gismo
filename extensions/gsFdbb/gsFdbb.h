@@ -1,18 +1,12 @@
 
 #pragma once
 
-#ifndef SUPPORT_EIGEN
-#define SUPPORT_EIGEN
-#endif
-
-#if !defined(SUPPORT_CXX11) && !defined(SUPPORT_CXX14)
-#if __cplusplus == 201103L
-#define SUPPORT_CXX11
-#elif __cplusplus == 201402L
-#define SUPPORT_CXX14
-#else
+#if __cplusplus < 201103L
 #error "FDBB requires C++11 or C++14 support enabled"
 #endif
+
+#ifndef FDBB_BACKEND_EIGEN
+#define FDBB_BACKEND_EIGEN
 #endif
 
 #include <fdbb.h>
