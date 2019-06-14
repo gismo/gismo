@@ -397,5 +397,9 @@ if(GISMO_EXASTENCILS)
   gismo_fetch_module(gsExaStencils)
 endif()
 
+if(GISMO_COMPFLOW)
+  gismo_fetch_module(gsCompFlow)
+endif()
+
 unset(GISMO_UNAME CACHE)
 unset(GISMO_PASS CACHE)
