@@ -691,6 +691,31 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
     if(m_isMatching)
     {
         m_fittedInterface->eval_into(u, result);
+
+        // check if the result is within the bounds, TODO: find a better solution or even better, avoid it completely
+        for(index_t c = 0; c < result.cols(); ++c)
+            result(m_side2.direction(), c) = m_parameterbounds.second(m_side2.direction(), 0);
+
+/*
+        gsMatrix<T> evalpts = result.row(m_side2.direction());
+
+        real_t begin = m_parameterbounds.second(m_side2.direction(), 0);
+        real_t end = m_parameterbounds.second(m_side2.direction(), 1);
+
+        for(int c = 0; c < u.cols(); c++)
+            if(evalpts(0,c) - begin < 0)
+                evalpts(0,c) += (begin - evalpts(0,c));
+            else
+                break;
+
+
+        for(int c = u.cols()-1; c > -1; c--)
+            if(evalpts(0, c) - end > 0)
+                evalpts(0, c) -= (evalpts(0, c) - end);
+            else
+                break;
+
+        result.row(m_side2.direction()) = evalpts;*/
     }
     else
     {

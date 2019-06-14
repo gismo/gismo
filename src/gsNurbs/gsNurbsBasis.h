@@ -53,7 +53,8 @@ public:
     typedef T Scalar_t;
 
     /// Associated Boundary basis type
-    typedef gsConstantBasis<T> BoundaryBasisType;
+    //typedef gsConstantBasis<T> BoundaryBasisType;
+    typedef typename gsBSplineTraits<0,T>::Basis BoundaryBasisType;
 
     typedef memory::shared_ptr< gsNurbsBasis > Ptr;
     typedef memory::unique_ptr< gsNurbsBasis > uPtr;
@@ -103,6 +104,13 @@ public:
     GISMO_CLONE_FUNCTION(gsNurbsBasis)
   
     GISMO_MAKE_GEOMETRY_NEW
+
+#ifdef __DOXYGEN__
+    /// @brief Gives back the boundary basis at boxSide s
+    typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s);
+#endif
+
+    GISMO_UPTR_FUNCTION_DEC(BoundaryBasisType, boundaryBasis, boxSide const &)
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -175,8 +183,26 @@ public:
         //m_knots->degreeElevate(i);
         //m_knots->uniformRefine();
     };
+
+//protected:
+//    using Base::m_src;
+//    using Base::m_weights;
   
 }; // class gsNurbsBasis
+
+/// @cond
+template <class T>
+typename gsBSplineTraits<0,T>::Basis* gsNurbsBasis<T>::boundaryBasis_impl(boxSide const & n1) const
+{
+    typename gsBSplineBasis<T>::BoundaryBasisType::uPtr bb = (this->source()).boundaryBasis(n1);
+    gsMatrix<unsigned> ind = (this->source()).boundary(n1);
+
+    gsMatrix<T> ww( ind.size(),1);
+    for ( index_t i=0; i<ind.size(); ++i)
+        ww(i,0) = (this->weights())( (ind)(i,0), 0);
+
+    return new BoundaryBasisType(bb.release(), give(ww));// note: constructor consumes the pointer
+}
 
 
 } // namespace gismo

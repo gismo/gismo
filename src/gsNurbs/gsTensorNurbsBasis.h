@@ -121,10 +121,10 @@ public:
         return os;
     }
 
-    gsKnotVector<T> & knots (int i)
+    gsKnotVector<T> & knots (int i = 0)
     { return m_src->knots(i); }
 
-    const gsKnotVector<T> & knots (int i) const
+    const gsKnotVector<T> & knots (int i = 0) const
     { return m_src->knots(i); }
 
     // knot \a k of direction \a i
@@ -155,6 +155,11 @@ public:
 
         // Then swap the basis components
         m_src->swapDirections(i, j);
+    }
+
+    int numElements(boxSide const & side) const
+    {
+        return m_src->numElements(side);
     }
 
 #ifdef __DOXYGEN__

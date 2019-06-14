@@ -171,6 +171,8 @@ public:
     {
         m_src->uniformRefine_withCoefs(m_weights, numKnots, mul);
     }
+
+    void uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1);
     
     void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1,  int mul=1);
     
@@ -560,6 +562,16 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
                 m_weights.at( act(k,i) ) / (W*W); // * (w_k / W^2)
         }
     }
+}
+
+template<class SrcT>
+void gsRationalBasis<SrcT>::uniformCoarsen_withTransfer(gsSparseMatrix<T, RowMajor>& transfer, int numKnots)
+{
+
+    m_src->uniformCoarsen_withTransfer(transfer, numKnots);
+    const gsVector<T> tmp = m_weights ;
+    m_weights.noalias() = transfer.transpose() * tmp;  // Coarsen the weights as well
+
 }
 
 

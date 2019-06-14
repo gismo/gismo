@@ -18,6 +18,7 @@
 #include <gsSolver/gsMatrixOp.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
+#include <gsNurbs/gsTensorNurbsBasis.h>
 
 namespace gismo
 {
@@ -100,13 +101,28 @@ std::vector< gsSparseMatrix<T> > assembleTensorMass_impl(
     const gsOptionList& opt
     )
 {
-    const gsTensorBasis<d,T> * tb = dynamic_cast< const gsTensorBasis<d,T>* >( &basis );
-    GISMO_ENSURE (tb, "gsPatchPreconditionersCreator requires a tensor basis.");
+
+    //const gsTensorBasis<d,T> * tb = dynamic_cast< const gsTensorBasis<d,T>* >( &basis );
+    //const gsTensorNurbsBasis<d,T> * tb = dynamic_cast< const gsTensorNurbsBasis<d,T>* >( &basis );
+    //GISMO_ENSURE (tb, "gsPatchPreconditionersCreator requires a tensor basis.");
 
     std::vector< gsSparseMatrix<T> > result(d);
     for ( index_t i=0; i!=d; ++i )
     {
-        result[i] = assembleMass(tb->component(d-1-i));
+        try
+        {
+            const gsTensorBasis<d,T> * tb = dynamic_cast< const gsTensorBasis<d,T>* >( &basis );
+            if(!tb)
+                throw std::bad_cast();
+            //GISMO_ENSURE (tb, "gsPatchPreconditionersCreator requires a tensor basis.");
+            result[i] = assembleMass(tb->component(d-1-i));
+        }
+        catch (std::bad_cast& e)
+        {
+            const gsTensorNurbsBasis<d,T> * tb = dynamic_cast< const gsTensorNurbsBasis<d,T>* >( &basis );
+            GISMO_ENSURE (tb, "gsPatchPreconditionersCreator requires a tensor basis.");
+            result[i] = assembleMass(tb->component(d-1-i));
+        }
         eliminateDirichlet1D(boundaryConditionsForDirection(bc,d-1-i), opt, result[i]);
     }
     return result;
@@ -119,8 +135,10 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness_impl(
     const gsOptionList& opt
     )
 {
-    const gsTensorBasis<d,T> * tb = dynamic_cast< const gsTensorBasis<d,T>* >( &basis );
-    GISMO_ENSURE (tb, "gsPatchPreconditionersCreator requires a tensor basis.");
+    //const gsTensorBasis<d,T> * tb = dynamic_cast< const gsTensorBasis<d,T>* >( &basis );
+    //GISMO_ENSURE (tb, "gsPatchPreconditionersCreator requires a tensor basis.");
+
+    const gsTensorNurbsBasis<d,T> * tb = reinterpret_cast< const gsTensorNurbsBasis<d,T>* >( &basis );
 
     std::vector< gsSparseMatrix<T> > result(d);
     for ( index_t i=0; i!=d; ++i )
@@ -219,8 +237,23 @@ gsMatrix<T> getScalingFactors( const gsGeometry<T>& geo )
             v(j,0) += 1;
         }
     }
+
+    // check for rounding errors
+    for (index_t i=0; i<N; ++i)
+        for (index_t j=0; j<dim; ++j)
+            if(u(j, i) > support(j, 1))
+                u(j,i) -= ( u(j,i) - support(j,1) );
+
+            //GISMO_ASSERT(u(j, i) <= support(j, 1), "wrong " << u(j,i) << " < " << support(j,1));
+
+
+
+
     gsMatrix<T> derivs;
+    //gsInfo << "before\n";
+    //gsInfo << "\n" << support << "\n";
     geo.deriv_into(u,derivs);
+    //gsInfo << "after\n";
     gsMatrix<T> result(dim,2);
     for (index_t j=0; j<dim; ++j)
     {
@@ -619,17 +652,38 @@ void constructTildeSpaceBasisTensor(
     )
 {
 
-    const gsTensorBSplineBasis<d,T> * tb = dynamic_cast<const gsTensorBSplineBasis<d,T>*>(&basis);
-    if( !tb )
-        GISMO_ERROR ("This method only works for gsTensorBSplineBasis.");
+    //const gsTensorBSplineBasis<d,T> * tb = dynamic_cast<const gsTensorBSplineBasis<d,T>*>(&basis);
+    //if( !tb )
+    //    GISMO_ERROR ("This method only works for gsTensorBSplineBasis.");
 
     B_tilde.resize(d);
     B_l2compl.resize(d);
     dirichlet::strategy ds = (dirichlet::strategy)opt.askInt("DirichletStrategy",dirichlet::elimination);
     if (ds == dirichlet::elimination)
     {
-        for ( index_t i=0; i<d; ++i )
-            tildeSpaceBasis(tb->component(d-1-i), B_tilde[i], B_l2compl[i], boundaryConditionsForDirection(bc,d-1-i), odd);
+        try
+        {
+            const gsTensorBSplineBasis<d,T> * tb = dynamic_cast<const gsTensorBSplineBasis<d,T>*>(&basis);
+            if(!tb)
+                throw std::bad_cast();
+            for ( index_t i=0; i<d; ++i )
+                tildeSpaceBasis(tb->component(d-1-i), B_tilde[i], B_l2compl[i], boundaryConditionsForDirection(bc,d-1-i), odd);
+
+        }
+        catch (const std::bad_cast& e)
+        {
+            const gsTensorNurbsBasis<d,T> * tb = dynamic_cast<const gsTensorNurbsBasis<d,T>*>(&basis);
+            if(!tb)
+                GISMO_ERROR("This method only works for gsTensorBasis.");
+
+            for ( index_t i=0; i<d; ++i )
+            {
+                const gsBSplineBasis<T>* component = dynamic_cast<const gsBSplineBasis<T>*>( &(tb->component(d-1-i)) );
+                if(! component)
+                   GISMO_ERROR("cast fail");
+                tildeSpaceBasis(*component, B_tilde[i], B_l2compl[i], boundaryConditionsForDirection(bc,d-1-i), odd);
+            }
+        }
     }
     else
         GISMO_ERROR("Unknown Dirichlet strategy.");

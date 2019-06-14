@@ -611,6 +611,8 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
                         component_coll_t& g = comps[d][getCornerIndices(crns, dim)];
                         g.push_back(pc1);
                         g.push_back(pc2);
+                        processedSide.push_back(p1); // add it to proceedSide vector in order not to be added again below in the lonely components
+                        processedSide.push_back(p2); // add it to proceedSide vector in order not to be added again below in the lonely components
                     }
             }
         }
@@ -624,7 +626,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
     }
     */
 
-    // Now, construct the lonly components...
+    // Now, construct the lonely components...
     for (index_t i = 0; i<nPatches; ++i)
     {
         // Interiors
