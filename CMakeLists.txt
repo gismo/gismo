@@ -303,8 +303,16 @@ if(GISMO_BUILD_LIB)
   endif()
 endif()
 
+if(GISMO_COMPFLOW)
+  gismo_fetch_module(gsCompFlow)
+endif()
+
 if(GISMO_ELASTICITY)
   gismo_fetch_module(gsElasticity)
+endif()
+
+if(GISMO_EXASTENCILS)
+  gismo_fetch_module(gsExaStencils)
 endif()
 
 include(gsLibrary)
@@ -384,14 +392,6 @@ endif()
 
 if(GISMO_MOTOR)
   gismo_fetch_module(motor)
-endif()
-
-if(GISMO_EXASTENCILS)
-  gismo_fetch_module(gsExaStencils)
-endif()
-
-if(GISMO_COMPFLOW)
-  gismo_fetch_module(gsCompFlow)
 endif()
 
 unset(GISMO_UNAME CACHE)
