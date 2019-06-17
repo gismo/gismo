@@ -44,7 +44,7 @@ template<typename C>
 std::string to_string(const C & value)
 {
     std::ostringstream convert;
-    convert << value;
+    convert << value << '\0';
     return convert.str();
 }
 
