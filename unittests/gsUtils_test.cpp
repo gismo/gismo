@@ -286,7 +286,7 @@ TEST(name)
 #else
     CHECK_EQUAL("__int64", util::type<signed long long int>::name());
     CHECK_EQUAL("unsigned __int64", util::type<unsigned long long int>::name());
-    CHECK_EQUAL("gismo::gsGenericGeometry<2," + util::type<real_t>::name() + ">",
+    CHECK_EQUAL("class gismo::gsGenericGeometry<2," + util::type<real_t>::name() + ">",
         util::type<gsGenericGeometry<2> >::name());
 #endif
 }
