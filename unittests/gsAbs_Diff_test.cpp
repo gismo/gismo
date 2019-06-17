@@ -165,7 +165,7 @@ SUITE(gsMakeUnsigned)
     {
         long long i0 = INT64_MIN;
         long long i1 = 0;
-        unsigned long long exp = INT64_MAX + 1UL;
+        unsigned long long exp = (unsigned long long)INT64_MAX + 1UL;
 
         CHECK(math::abs_diff(i0, i1) == exp);
         CHECK(math::abs_diff(i1, i0) == exp);
@@ -175,7 +175,7 @@ SUITE(gsMakeUnsigned)
     {
         long long i0 = INT64_MIN;
         long long i1 = 1;
-        unsigned long long exp = INT64_MAX + 2UL;
+        unsigned long long exp = (unsigned long long)INT64_MAX + 2UL;
 
         CHECK(math::abs_diff(i0, i1) == exp);
         CHECK(math::abs_diff(i1, i0) == exp);
@@ -185,7 +185,7 @@ SUITE(gsMakeUnsigned)
     {
         long long i0 = -1;
         long long i1 = INT64_MAX;
-        unsigned long long exp = INT64_MAX + 1UL;
+        unsigned long long exp = (unsigned long long)INT64_MAX + 1UL;
 
         CHECK(math::abs_diff(i0, i1) == exp);
         CHECK(math::abs_diff(i1, i0) == exp);
