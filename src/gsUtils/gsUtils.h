@@ -44,8 +44,8 @@ template<typename C>
 std::string to_string(const C & value)
 {
     std::ostringstream convert;
-    convert << value << '\0';
-    return convert.str();
+    convert << value;
+    return std::string(convert.str().c_str());
 }
 
 /// \brief Checks if a string \a haystack begins with the string \a needle
