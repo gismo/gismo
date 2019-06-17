@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
 
     gsInfo << "Define geometry... " << std::flush;
 
-    gsMultiPatch<>::uPtr mpPtr = NULL;
+    gsMultiPatch<>::uPtr mpPtr;
 
     switch (c)
     {
@@ -151,9 +151,9 @@ int main(int argc, char *argv[])
             mpPtr = memory::unique_ptr<gsMultiPatch<> >(  new gsMultiPatch<>(gsNurbsCreator<>::BSplineSquareGrid(2, 1, 3)) );
             gsMultiPatch<> temp2 = (gsNurbsCreator<>::BSplineSquareGrid(3, 1, 2, 0, 3));
 
-            mpPtr->addPatch(give(temp2[0]));
-            mpPtr->addPatch(give(temp2[1]));
-            mpPtr->addPatch(give(temp2[2]));
+            mpPtr->addPatch(temp2[0]);
+            mpPtr->addPatch(temp2[1]);
+            mpPtr->addPatch(temp2[2]);
 
             mpPtr->clearTopology();
             mpPtr->addInterface(0, 2, 1, 1);
@@ -182,8 +182,8 @@ int main(int argc, char *argv[])
             gsGeometry<real_t>::Ptr geo1 = ( gsNurbsCreator<>::NurbsQuarterAnnulus(1.0, 1.5) );
             gsGeometry<real_t>::Ptr geo2 = ( gsNurbsCreator<>::NurbsQuarterAnnulus(1.5, 2.) );
 
-            mpPtr->addPatch(give(*geo1));
-            mpPtr->addPatch(give(*geo2));
+            mpPtr->addPatch( *gsNurbsCreator<>::NurbsQuarterAnnulus(1.0, 1.5) );
+            mpPtr->addPatch( *gsNurbsCreator<>::NurbsQuarterAnnulus(1.5, 2. ) );
 
             size_t size = mpPtr->nPatches();
 
