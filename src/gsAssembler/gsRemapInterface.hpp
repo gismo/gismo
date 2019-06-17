@@ -564,7 +564,7 @@ void gsRemapInterface<T>::constructReparam()
         //gsInfo << "vals2dPatch1:\n" << vals2dPatch1 << "\n vals2dPatch2:\n" << vals2dPatch2 << std::endl;
         //std::cout << "samples left:\n" << samples_left << "\n samples right:\n" << samples_right << std::endl;
 
-        gsMatrix<> B(numIntervals, m_g1.geoDim());
+        gsMatrix<T> B(numIntervals, m_g1.geoDim());
 
         for (int i = 0; i < t_vals.cols(); i++) {
             // find a suitable start value for the Newton iteration
@@ -664,13 +664,13 @@ void gsRemapInterface<T>::constructReparam()
 */
         //end test
 
-        double error = 0;
+        T error = 0;
 
         for (int i = 0; i < eval_points.cols(); i++)
             error += (id.col(i) - eval_fit.col(i)).squaredNorm();
             //error += (eval_orig.col(i) - B2.col(i)).squaredNorm();
 
-        error = std::sqrt(error);
+        error = math::sqrt(error);
 
         //if(error > 0.5)
         //    gsInfo << "patch 1: \n" << eval_orig << " and patch 2: \n" << B2 << "\n";
@@ -1343,8 +1343,8 @@ gsMatrix<T> gsRemapInterface<T>::checkIfInBound(const gsMatrix<T> & u) const
     // Here u contains only the coordinates in one direction
     gsMatrix<T> evalpts = u;
 
-    real_t begin = m_parameterbounds.first(!m_side1.direction(), 0);
-    real_t end = m_parameterbounds.first(!m_side1.direction(), 1);
+    T begin = m_parameterbounds.first(!m_side1.direction(), 0);
+    T end = m_parameterbounds.first(!m_side1.direction(), 1);
 
     for(int c = 0; c < u.cols(); c++)
         if(u(0,c) - begin < 0)
@@ -1374,7 +1374,7 @@ gsMatrix<T> gsRemapInterface<T>::checkIfInBound(const gsMatrix<T> & u) const
 template<typename T>
 void gsRemapInterface<T>::changeDir(const boundaryInterface & bi)
 {
-    real_t tmp = 0;
+    T tmp = 0;
     index_t row = -1;
 
     if(m_side1.index() == 3 || m_side1.index() == 4)

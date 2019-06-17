@@ -298,7 +298,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        gsInfo << "Done. No output created, re-run with --Plot to get a ParaView "
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;

@@ -91,6 +91,9 @@ int main(int argc, char* argv[])
     bsb0.degreeElevate();
     if (paraview)
         printToParaview(bsb0, "basisElevated");
+    else
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+                  "files containing the solution.\n";
 
     return 0;
 }

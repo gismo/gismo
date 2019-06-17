@@ -192,6 +192,11 @@ int main(int argc, char *argv[])
 
         gsWriteParaview( *m, "output");
     }
+    else
+    {
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+                  "file containing the solution.\n";
+    }
 
     // free meshes
     freeAll(fitMeshes);
