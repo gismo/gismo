@@ -190,6 +190,11 @@ public:
 
 } // namespace gismo
 
+#ifdef GISMO_WITH_CODIPACK
+  #ifdef GISMO_WITH_ADDSL
+    #include <gsAdDSL/gsAdDSLEigen.h>
+  #endif
+#endif
 
 #include <gsMatrix/gsMatrixBlockView.h>
 #include <gsMatrix/gsMatrix.h>
