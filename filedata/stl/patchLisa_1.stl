@@ -34,5 +34,4 @@ solid patch
       vertex 7 5.9 3.75
     endloop
   endfacet
-endsolid cube
-
+endsolid patch
