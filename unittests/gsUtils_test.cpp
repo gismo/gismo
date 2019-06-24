@@ -25,8 +25,8 @@ TEST(to_string)
     CHECK_EQUAL("abcd", util::to_string("abcd"));
     CHECK_EQUAL("abcd", util::to_string("abcd\0"));
     CHECK_EQUAL("ab", util::to_string("ab\0cd"));
-    char array[] = { 'a', 'b', 'c' };
-    CHECK_EQUAL("abc", util::to_string(array));
+    //char array[] = { 'a', 'b', 'c' };
+    //CHECK_EQUAL("abc", util::to_string(array)); // should fail to build
 }
 
 TEST(starts_with)
