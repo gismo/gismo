@@ -641,7 +641,9 @@ public:
     gsDynamicLibrary build(bool force = false)
     {
 #       if __cplusplus >= 201103L
-        size_t h = std::hash<std::string>()(getKernel().str());
+        size_t h = std::hash<std::string>()(getKernel().str() +
+                                            config.getCmd()+config.getFlags() +
+                                            config.getLang());
         return build(std::to_string(h), force);
 #       else
         return build("JIT", true);
