@@ -47,8 +47,6 @@ std::string to_string(C (& value)[N])
     convert << value;
     return convert.str();
 }
-#else
-void to_string(C (& value)[N]) {}
 #endif
 
 /// \brief Converts value to string, assuming "operator<<" defined on C
