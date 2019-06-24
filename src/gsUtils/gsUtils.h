@@ -38,8 +38,8 @@ namespace gismo
 namespace util
 {
 
-template <class C, size_t N> // we catch up char arrays
 #if __cplusplus >= 201103L
+template <class C, size_t N> // we catch up char arrays
 std::string to_string(C (& value)[N])
 {
     static_assert(!std::is_same<C[N], char[N]>::value, "Character arrays are not allowed");
