@@ -427,7 +427,7 @@ void gsCmdLine::printVersion()
     gsInfo << "Compiled by ";
 //https://sourceforge.net/p/predef/wiki/Compilers, see also boost/predef.h
 #if defined(_MSC_VER)
-    gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<__cplusplus <<", ";
+    gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<_MSVC_LANG <<", ";
 #elif defined(__clang__ )
     gsInfo << "Clang "<<__clang_version__<<" ("<<__cplusplus <<", ";
 #elif defined(_INTEL_COMPILER)
