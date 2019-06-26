@@ -264,7 +264,7 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
  */
 #ifndef GISMO_NO_STATIC_ASSERT
 
-  #if defined(__GXX_EXPERIMENTAL_CXX0X__) || _MSVC_VER > 199711L
+  #if defined(__GXX_EXPERIMENTAL_CXX0X__) || _MSVC_LANG > 199711L
 
     // Native static_assert is available
     #define GISMO_STATIC_ASSERT(X,MSG) static_assert(X,#MSG);
