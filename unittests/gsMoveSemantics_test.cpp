@@ -16,7 +16,7 @@
 SUITE(gsMoveSemantics_test)
 {
 
-#if (__cplusplus >=201103 || _MSVC_LANG >=201103) && EIGEN_HAS_RVALUE_REFERENCES
+#if (__cplusplus >= 201103L || _MSVC_LANG >= 201103L) && EIGEN_HAS_RVALUE_REFERENCES
 TEST(gsMatrix_mc) { CHECK(util::has_move_constructor<gismo::gsMatrix<> >::value); }
 TEST(gsVector_mc) { CHECK(util::has_move_constructor<gismo::gsVector<> >::value); }
 TEST(gsSparseMatrix_mc) { CHECK(util::has_move_constructor<gismo::gsSparseMatrix<> >::value); }

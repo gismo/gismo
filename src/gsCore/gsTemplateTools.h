@@ -22,7 +22,7 @@ namespace gismo
 
 namespace util {
 
-#if __cplusplus >= 201103 || _MSVC_LANG >= 201103 // (defined(_MSC_VER) && _MSC_VER > 1700) // MSVC 2012
+#if __cplusplus >= 201103L || _MSVC_LANG >= 201103L // (defined(_MSC_VER) && _MSC_VER > 1700) // MSVC 2012
 //see also http://lists.boost.org/Archives/boost/2009/04/151209.php
 template <typename T> struct has_move_constructor
 {
