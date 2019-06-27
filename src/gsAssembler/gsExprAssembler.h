@@ -851,7 +851,7 @@ void gsExprAssembler<T>::assemble(expr... args)
 }
 
 template<class T>
-if __cplusplus >= 201103L || _MSVC_LANG >= 201103L // c++11
+#if __cplusplus >= 201103L || _MSVC_LANG >= 201103L // c++11
 template<class... expr>
 void gsExprAssembler<T>::assemble(const bcRefList & BCs, expr... args)
 #else
