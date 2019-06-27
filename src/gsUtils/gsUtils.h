@@ -187,7 +187,7 @@ inline std::string tokenize(const std::string& str,
                             const std::string& delim,
                             const size_t token)
 {
-    size_t token_end = -1;
+    size_t token_end = std::string::npos;
     size_t token_begin = 0;
     size_t token_count = 0;
     bool catched = false;
