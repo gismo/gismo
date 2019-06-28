@@ -224,6 +224,15 @@ endif(GISMO_WITH_PARDISO)
 if(GISMO_WITH_PASTIX)
 endif(GISMO_WITH_PASTIX)
 
+if(GISMO_WITH_PYTHON)
+  find_package(PythonLibs REQUIRED)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${PYTHON_INCLUDE_DIRS}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  set(gismo_LINKER ${gismo_LINKER} ${PYTHON_LIBRARIES}
+  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  #include_directories(SYSTEM ${PYTHON_INCLUDE_DIRS})
+endif(GISMO_WITH_PYTHON)
+
 if(GISMO_WITH_PSOLID)
   add_subdirectory(extensions/gsParasolid)
 endif(GISMO_WITH_PSOLID)

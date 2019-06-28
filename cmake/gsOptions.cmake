@@ -144,6 +144,11 @@ if  (${GISMO_WITH_PASTIX})
 message ("  GISMO_WITH_PASTIX       ${GISMO_WITH_PASTIX}")
 endif()
 
+option(GISMO_WITH_PYTHON         "With Python"               false  )
+if  (${GISMO_WITH_PYTHON})
+message ("  GISMO_WITH_PYTHON       ${GISMO_WITH_PYTHON}")
+endif()
+
 option(GISMO_WITH_PSOLID         "With Parasolid"            false  )
 if  (${GISMO_WITH_PSOLID})
 message ("  GISMO_WITH_PSOLID       ${GISMO_WITH_PSOLID}")

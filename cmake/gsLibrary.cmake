@@ -56,6 +56,10 @@ if(GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
     endif()
 endif()
 
+if (GISMO_WITH_PYTHON)
+  target_link_libraries(${PROJECT_NAME} ${PYTHON_LIBRARIES})
+endif()
+
 if (GISMO_WITH_SUPERLU)
   target_link_libraries(${PROJECT_NAME} ${SUPERLU_LIBRARIES})
 endif()
