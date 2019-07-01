@@ -35,6 +35,8 @@
 
 #if defined __APPLE__
 #include <mach-o/dyld.h>
+#include <cstring>
+#include <sys/syslimits.h>
 #endif
 
 namespace gismo
