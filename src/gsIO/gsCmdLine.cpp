@@ -426,8 +426,12 @@ void gsCmdLine::printVersion()
     gsInfo << "               version "<< GISMO_VERSION<<"\n";
     gsInfo << "Compiled by ";
 //https://sourceforge.net/p/predef/wiki/Compilers, see also boost/predef.h
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && _MSC_VER < 1600
+    gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<"199711L" <<", ";
+#elsif _MSC_VER >= 1900
     gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<_MSVC_LANG <<", ";
+#elsif _MSC_VER >= 1600
+    gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<"201103L" <<", ";
 #elif defined(__clang__ )
     gsInfo << "Clang "<<__clang_version__<<" ("<<__cplusplus <<", ";
 #elif defined(_INTEL_COMPILER)
