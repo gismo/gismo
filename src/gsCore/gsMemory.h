@@ -69,7 +69,7 @@ usage:
 memory::unique_ptr<int> B;
 \endcode
 */
-#if __cplusplus >= 201103 || _MSVC_LANG >= 201103
+#if __cplusplus >= 201103 || _MSC_VER >= 1600
 using std::unique_ptr;
 using std::nullptr_t;
 #else
@@ -234,7 +234,7 @@ inline std::vector<T*> release(std::vector< unique_ptr<T> >& cont)
 
 } // namespace memory
 
-#if __cplusplus >= 201103 || _MSVC_LANG >= 201103
+#if __cplusplus >= 201103 || _MSC_VER >= 1600
 /** 
     Alias for std::move, to be used instead of writing std::move for
     keeping backward c++98 compatibility
@@ -398,7 +398,7 @@ inline void copy(T begin, T end, U* result)
 
 } // namespace gismo
 
-#if __cplusplus < 201103L && _MSVC_LANG < 201103L
+#if __cplusplus < 201103L && _MSC_VER < 1600
 // Define nullptr for compatibility with newer C++
 static const gismo::memory::nullptr_t nullptr ={};
 #endif

@@ -38,7 +38,7 @@ namespace gismo
 namespace util
 {
 
-#if __cplusplus >= 201103L || _MSVC_LANG >= 201103L
+#if __cplusplus >= 201103L || _MSC_VER >= 1600
 template <class C, size_t N> // we catch up char arrays
 std::string to_string(C (& value)[N])
 {
@@ -82,7 +82,7 @@ inline bool ends_with( const std::string & haystack, const std::string & needle 
     return std::equal(needle.rbegin(), needle.rend(), haystack.rbegin());
 }
 
-#if __cplusplus > 199711L || _MSVC_LANG > 199711L
+#if __cplusplus > 199711L || _MSC_VER >= 1600
 using std::iota;
 using std::stod;
 using std::stoi;
@@ -296,7 +296,7 @@ inline bool operator>= (const T& a, const T& b) { return !(a<b);  }
 // This macro deletes the operators ==, !=, <, >, <= and >=
 // for operations that involve the types S and T (in either
 // order)
-#if __cplusplus >= 201103L || _MSVC_LANG >= 201103L
+#if __cplusplus >= 201103L || _MSC_VER >= 1600
 #define GISMO_DELETE_COMPARISON_OPERATORS( S, T )         \
 inline bool operator== (const S& a, const T& b) = delete; \
 inline bool operator!= (const S& a, const T& b) = delete; \

@@ -12,14 +12,14 @@
 */
 
 #include "gismo_unittest.h"
-#if (__cplusplus >= 201103L || _MSVC_LANG >= 201103L)
+#if (__cplusplus >= 201103L || _MSC_VER >= 1600)
 #include <type_traits>
 #endif
 
 SUITE(gsMoveSemantics_test)
 {
 
-#if (__cplusplus >= 201103L || _MSVC_LANG >= 201103L) && EIGEN_HAS_RVALUE_REFERENCES
+#if (__cplusplus >= 201103L || _MSC_VER >= 1600) && EIGEN_HAS_RVALUE_REFERENCES
 
 #ifndef _MSC_VER // util::has_move_constructor doesn't work with MSVC
 TEST(gsMatrix_mc) { CHECK(util::has_move_constructor<gismo::gsMatrix<> >::value); }
@@ -45,9 +45,9 @@ TEST(gsTensorBSplineBasis_std_mc) { CHECK(std::is_move_constructible<gismo::gsTe
 TEST(gsTensorBSpline_std_mc) { CHECK(std::is_move_constructible<gismo::gsTensorBSpline<2> >::value); }
 
 // T needs to be a complete type.
-TEST(gsMatrix_mc4) { CHECK(std::is_nothrow_move_constructible<gismo::gsMatrix<> >::value); }
-TEST(gsVector_mc4) { CHECK(std::is_nothrow_move_constructible<gismo::gsVector<> >::value); }
-TEST(gsKnotVector_mc4) { CHECK(std::is_nothrow_move_constructible<gismo::gsKnotVector<> >::value); }
+TEST(gsMatrix_nothrow_mc) { CHECK(std::is_nothrow_move_constructible<gismo::gsMatrix<> >::value); }
+TEST(gsVector_nothrow_mc) { CHECK(std::is_nothrow_move_constructible<gismo::gsVector<> >::value); }
+TEST(gsKnotVector_nothrow_mc) { CHECK(std::is_nothrow_move_constructible<gismo::gsKnotVector<> >::value); }
 #endif
 
 

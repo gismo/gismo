@@ -72,7 +72,7 @@ namespace expr
 #if __cplusplus >= 201402L || _MSVC_LANG >= 201402L // c++14
 #  define MatExprType  auto
 #  define AutoReturn_t auto
-//#elif __cplusplus >= 201103L || _MSVC_LANG >= 201103L // c++11
+//#elif __cplusplus >= 201103L || _MSC_VER >= 1600 // c++11
 //note: in c++11 auto-return requires -> decltype(.)
 #else // 199711L, 201103L
 #  define MatExprType typename gsMatrix<Scalar>::constRef
