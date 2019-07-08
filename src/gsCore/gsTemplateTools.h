@@ -22,7 +22,7 @@ namespace gismo
 
 namespace util {
 
-#if __cplusplus >= 201103L || _MSC_VER >= 1600
+#if __cplusplus >= 201103L
 //see also http://lists.boost.org/Archives/boost/2009/04/151209.php
 // has_move_constructor is not working with MSVC up to VS2019
 template <typename T> struct has_move_constructor
