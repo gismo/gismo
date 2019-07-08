@@ -124,7 +124,7 @@ public:
 
     /// \brief Options for gsOptionList::update
     enum updateType {
-        ignoreIfUnknwon = 0,
+        ignoreIfUnknown = 0,
         addIfUnknown = 1
     };
 
@@ -132,9 +132,9 @@ public:
     ///
     /// Options which do not exist in \a other, are kept unchanged.
     /// Options in \a other which do not exist in this, are kept unchanged if
-    /// \a type is set to gsOptionList::ignoreIfUnknwon (default) or are added
+    /// \a type is set to gsOptionList::ignoreIfUnknown (default) or are added
     /// if \a type is set to gsOptionList::addIfUnknown.
-    void update(const gsOptionList& other, updateType type = ignoreIfUnknwon);
+    void update(const gsOptionList& other, updateType type = ignoreIfUnknown);
 
     /// \brief Creates a new gsOptionList where all labels are wrapped into a groupname \a gn.
     ///
@@ -303,5 +303,13 @@ public:
 
 }
 
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsOptionList
+   */
+  void pybind11_init_gsOptionList(pybind11::module &m);
+  
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo

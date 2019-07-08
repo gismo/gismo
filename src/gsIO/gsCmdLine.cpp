@@ -77,7 +77,7 @@ public:
     TCLAP::CmdLine cmd;
 
     // Stores integer arguments
-    std::vector<TCLAP::ValueArg<intVal_t>*>         intVals;
+    std::vector<TCLAP::ValueArg<intVal_t>*>    intVals;
     std::vector<intVal_t*>                     intRes;
 
     // Stores multi integer arguments
@@ -477,5 +477,69 @@ std::string & gsCmdLine::getMessage()
 {
     return my->cmd.getMessage();
 }
+
+#ifdef GISMO_BUILD_PYBIND11
+
+namespace py = pybind11;
+void pybind11_init_gsCmdLine(py::module &m) {
+  
+  py::class_<gsCmdLine>(m, "gsCmdLine")
+    
+    .def(py::init<const std::string&>())
+    
+    .def(py::init<const std::string&,
+         const char>())
+    
+    .def(py::init<const std::string&,
+         const char,
+         bool>())
+    
+    .def("addInt", &gsCmdLine::addInt)    
+    .def("addMultiInt", &gsCmdLine::addMultiInt)
+    
+    .def("addReal", &gsCmdLine::addReal)    
+    .def("addMultiReal", &gsCmdLine::addMultiReal)
+    
+    .def("addString", &gsCmdLine::addString)    
+    .def("addMultiString", &gsCmdLine::addMultiString)
+    
+    .def("addSwitch",
+         (void (gsCmdLine::*)(const std::string&, const std::string&, const std::string&, bool&))
+         &gsCmdLine::addSwitch)
+    
+    .def("addSwitch",
+         (void (gsCmdLine::*)(const std::string&, const std::string&, bool&))
+         &gsCmdLine::addSwitch)
+  
+    .def("addPlainString", &gsCmdLine::addPlainString)
+    
+    .def("getValues", [](gsCmdLine& self,
+                         std::vector<std::string> args) {
+                        std::vector<char *> cstrs;
+                        cstrs.reserve(args.size());
+                        for (auto &s : args) cstrs.push_back(const_cast<char *>(s.c_str()));
+                        self.getValues(cstrs.size(), cstrs.data());
+                      })
+    
+    .def("getOptionList", &gsCmdLine::getOptionList)
+    
+    .def_static("printVersion", &gsCmdLine::printVersion)
+    
+    .def("getMessage", &gsCmdLine::getMessage)
+    
+    .def("valid", [](gsCmdLine self,
+                     std::vector<std::string> args) {
+                    std::vector<char *> cstrs;
+                    cstrs.reserve(args.size());
+                    for (auto &s : args) cstrs.push_back(const_cast<char *>(s.c_str()));
+                    return self.valid(cstrs.size(), cstrs.data());
+                  })
+    
+    .def("setExceptionHandling", &gsCmdLine::setExceptionHandling)
+    .def("getExceptionHandling", &gsCmdLine::getExceptionHandling)
+    ;
+}
+
+#endif // GISMO_BUILD_PYBIND11
 
 } //namespace gismo

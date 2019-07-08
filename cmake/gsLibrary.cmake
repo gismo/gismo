@@ -34,6 +34,15 @@ endif()
     ${${PROJECT_NAME}_EXTENSIONS}
     )
 
+  if (GISMO_BUILD_PYBIND11)
+    pybind11_add_module(py${PROJECT_NAME} MODULE
+      ${${PROJECT_NAME}_MODULES}
+      ${${PROJECT_NAME}_SOURCES}
+      ${${PROJECT_NAME}_EXTENSIONS}
+      "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
+      )
+  endif(GISMO_BUILD_PYBIND11)
+  
   #generate_export_header(${PROJECT_NAME})
 
   set_target_properties(${PROJECT_NAME} PROPERTIES

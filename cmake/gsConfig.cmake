@@ -198,6 +198,14 @@ elseif(NOT MSVC AND NOT POLICY CMP0063 AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Dar
     endif()
 endif()
 
+if (GISMO_BUILD_PYBIND11)
+   find_package(pybind11 REQUIRED)
+   include_directories(${pybind11_INCLUDE_DIR})
+  
+   find_package(PythonLibs REQUIRED)
+   include_directories(${PYTHON_INCLUDE_DIRS})
+endif()
+
 if (GISMO_WITH_OPENMP)
    find_package(OpenMP REQUIRED)
    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")

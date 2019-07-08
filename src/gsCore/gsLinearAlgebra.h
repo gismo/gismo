@@ -71,6 +71,10 @@
 // PaStiX
 //#include <Eigen/PaStiXSupport>
 
+#ifdef GISMO_BUILD_PYBIND11
+#include <pybind11/eigen.h>
+#endif
+
 namespace gismo
 {
 
