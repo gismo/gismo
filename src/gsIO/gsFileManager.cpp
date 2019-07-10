@@ -222,7 +222,13 @@ inline bool _addSearchPaths(const std::string& in, std::vector<std::string>& out
             if (*p.rbegin() != '/')
                 p.push_back('/');
 #endif
+
+#if defined(_MSC_VER) && _MSC_VER < 1900
+            // with VS2013, a path must not end with pathseperator
+            if(_dirExistsWithoutSearching(gsFileManager::getCanonicRepresentation(p + "..")))
+#else
             if (_dirExistsWithoutSearching(p))
+#endif // defined(_MSC_VER) && _MSC_VER < 1900
                 out.push_back(p);
             else
                 ok = false;
