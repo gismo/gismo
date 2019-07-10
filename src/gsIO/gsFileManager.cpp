@@ -17,16 +17,17 @@
 #include <gsCore/gsConfig.h>
 #include <gsUtils/gsUtils.h>
 #include <cstdlib>
+#include <sys/stat.h>
 
 #if defined _WIN32
 #include <windows.h>
 #include <direct.h>
 #include <ShlObj.h>
 #ifdef __MINGW32__
-#include <sys/stat.h>
+//#include <sys/stat.h>
 #endif
 #else
-#include <sys/stat.h>
+//#include <sys/stat.h>
 #include <dlfcn.h>
 #include <unistd.h>
 #include <pwd.h>
