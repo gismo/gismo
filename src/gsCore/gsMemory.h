@@ -234,7 +234,7 @@ inline std::vector<T*> release(std::vector< unique_ptr<T> >& cont)
 
 } // namespace memory
 
-#if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1600)
+#if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
 /** 
     Alias for std::move, to be used instead of writing std::move for
     keeping backward c++98 compatibility
