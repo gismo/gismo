@@ -234,7 +234,7 @@ inline std::vector<T*> release(std::vector< unique_ptr<T> >& cont)
 
 } // namespace memory
 
-#if __cplusplus >= 201103 || _MSC_VER >= 1600
+#if __cplusplus >= 201103 || _MSC_VER >= 1900
 /** 
     Alias for std::move, to be used instead of writing std::move for
     keeping backward c++98 compatibility
@@ -253,7 +253,7 @@ auto give(T&& t) -> decltype(std::move(std::forward<T>(t)))
 #else
 /**
     Alias for std::move, to be used instead of std::move for backward
-    c++98 compatibility
+    c++98 compatibility and MSVC before 2015
 
     Based on swapping and copy elision.
 */
