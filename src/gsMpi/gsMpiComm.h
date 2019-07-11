@@ -195,7 +195,7 @@ private:
 };
 
 // Initialize static member variables
-const MPI_Status gsSerialStatus::m_status;
+ const MPI_Status gsSerialStatus::m_status = MPI_Status();
 
 /**
    @brief Prints the status object as a string
