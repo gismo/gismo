@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gsCore/gsTemplateTools.h>
-#include <type_traits>
 
 #ifdef __MINGW32__
 //#include <malloc/malloc.h> //xcode
