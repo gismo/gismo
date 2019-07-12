@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsTemplateTools.h>
+#include <type_traits>
 
 #ifdef __MINGW32__
 //#include <malloc/malloc.h> //xcode
@@ -235,6 +236,10 @@ inline std::vector<T*> release(std::vector< unique_ptr<T> >& cont)
 } // namespace memory
 
 #if __cplusplus >= 201103 || _MSC_VER >= 1900
+// TODO fix MSVC 2013- (_MSC_VER < 1900)
+// they do not work probably. give makes a copy, losses left value
+// But alternative code results in segmentation vaults
+
 /** 
     Alias for std::move, to be used instead of writing std::move for
     keeping backward c++98 compatibility
@@ -249,6 +254,31 @@ auto give(T&& t) -> decltype(std::move(std::forward<T>(t)))
 #endif
     return std::move(std::forward<T>(t));
 }
+
+#elif _MSC_VER >= 1600
+
+template <class T> inline
+auto give(T&& t) -> decltype(std::move(std::forward<T>(t)))
+{
+	return std::move(std::forward<T>(t));
+}
+
+/*template <typename S> inline S give(S& x)
+{
+	S t; t.swap(x); return t;
+}
+
+template <typename T> inline
+memory::unique_ptr<T> give(memory::unique_ptr<T>& x)
+{
+	return memory::unique_ptr<T>(x.release());
+}
+
+template <typename T> inline
+memory::shared_ptr<T> give(memory::shared_ptr<T>& x)
+{
+	memory::shared_ptr<T> result = x; x.reset(); return result;
+}*/
 
 #else
 /**
