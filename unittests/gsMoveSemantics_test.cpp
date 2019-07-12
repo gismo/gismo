@@ -50,7 +50,40 @@ TEST(gsVector_nothrow_mc) { CHECK(std::is_nothrow_move_constructible<gismo::gsVe
 TEST(gsKnotVector_nothrow_mc) { CHECK(std::is_nothrow_move_constructible<gismo::gsKnotVector<> >::value); }
 #endif
 
+TEST(gsMatrix_swap)
+{
+    gsMatrix<> a(2, 2);
+    gsMatrix<> b(2, 2);
 
+    a << 1, 2, 3, 4;
+    b << 5, 6, 7, 8;
+
+    gsMatrix<> c = a;                   // make a deep copy
+    gsMatrix<> d = b;                   // make a deep copy
+
+    size_t adda = (size_t) &a.at(0);    // gdb p a.m_storage.m_data
+    size_t addb = (size_t) &b.at(0);    // gdb p b.m_storage.m_data
+
+    CHECK(a == c);                      // same values
+    CHECK(!(b == c));
+    CHECK(&a != &c);                    // copy
+    CHECK(&a.at(0) != &c.at(0));        // deep copy
+
+    CHECK(!(a == d));
+    CHECK(b == d);                      // same values
+    CHECK(&b != &d);                    // copy
+    CHECK(&b.at(0) != &d.at(0));        // deep copy
+
+    a = give(b);                        // give swaps with flat copies
+
+    CHECK(b == c);                      // same values
+    CHECK(!(b == d));
+    CHECK((size_t) &b.at(0) == adda);   // flat copy
+
+    CHECK(!(a == c));
+    CHECK(a == d);                      // same values
+    CHECK((size_t) &a.at(0) == addb);   // flat copy
+}
 
 TEST(gsMatrix_ms)
 {
