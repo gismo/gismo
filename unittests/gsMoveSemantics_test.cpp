@@ -85,6 +85,7 @@ TEST(gsMatrix_swap)
     CHECK((size_t) &a != add_b);
     CHECK(!(a == c));
     CHECK(a == d);                      // same values
+    CHECK((size_t) &a.at(0) != add_m_a);// a isn't a any more
     CHECK((size_t) &a.at(0) == add_m_b);// flat copy
 
     // b
@@ -97,6 +98,7 @@ TEST(gsMatrix_swap)
 #else
     CHECK(0 == b.size());
 #endif
+    CHECK((size_t) &b.at(0) != add_m_b);// b isn't b any more
 }
 
 TEST(gsMatrix_ms)
