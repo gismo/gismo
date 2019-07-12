@@ -61,28 +61,42 @@ TEST(gsMatrix_swap)
     gsMatrix<> c = a;                   // make a deep copy
     gsMatrix<> d = b;                   // make a deep copy
 
-    size_t adda = (size_t) &a.at(0);    // gdb p a.m_storage.m_data
-    size_t addb = (size_t) &b.at(0);    // gdb p b.m_storage.m_data
+    size_t add_a = (size_t) &a;         // gdb p &a
+    size_t add_b = (size_t) &b;         // gdb p &b
+    size_t add_m_a = (size_t) &a.at(0); // gdb p a.m_storage.m_data
+    size_t add_m_b = (size_t) &b.at(0); // gdb p b.m_storage.m_data
 
+    // assert c is deep copy
     CHECK(a == c);                      // same values
     CHECK(!(b == c));
     CHECK(&a != &c);                    // copy
     CHECK(&a.at(0) != &c.at(0));        // deep copy
 
+    // assert d is deep copy
     CHECK(!(a == d));
     CHECK(b == d);                      // same values
     CHECK(&b != &d);                    // copy
     CHECK(&b.at(0) != &d.at(0));        // deep copy
 
-    a = give(b);                        // give swaps with flat copies
+    a = give(b);                        // give swaps with flat copies under C++11
 
-    CHECK(b == c);                      // same values
-    CHECK(!(b == d));
-    CHECK((size_t) &b.at(0) == adda);   // flat copy
-
+    // a
+    CHECK((size_t) &a == add_a);
+    CHECK((size_t) &a != add_b);
     CHECK(!(a == c));
     CHECK(a == d);                      // same values
-    CHECK((size_t) &a.at(0) == addb);   // flat copy
+    CHECK((size_t) &a.at(0) == add_m_b);// flat copy
+
+    // b
+    CHECK((size_t) &b != add_a);
+    CHECK((size_t) &b == add_b);
+#if __cplusplus >= 201103L || _MSC_VER >= 1600
+    CHECK(b == c);                      // same values
+    CHECK(!(b == d));
+    CHECK((size_t) &b.at(0) == add_m_a);// flat copy
+#else
+    CHECK(0 == b.size());
+#endif
 }
 
 TEST(gsMatrix_ms)
