@@ -124,7 +124,7 @@ public:
   /**
      @brief Returns a constant pointer to the internal group object
   */
-  const int* operator& () const
+  const MPI_Group* operator& () const
   {
     return &m_group;
   }
@@ -249,7 +249,7 @@ public:
   /**
      @brief Returns a constant pointer to the internal request object
   */
-  const int* operator& () const
+  const MPI_Request* operator& () const
   {
     return &m_request;
   }
