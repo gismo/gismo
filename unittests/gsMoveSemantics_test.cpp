@@ -86,15 +86,18 @@ TEST(gsMatrix_swap)
     CHECK(!(a == c));
     CHECK(a == d);                      // same values
     CHECK((size_t) &a.at(0) != add_m_a);// a isn't a any more
-    CHECK((size_t) &a.at(0) == add_m_b);// flat copy
+#if !defined(_MSC_VER) || _MSC_VER >= 1900
+    CHECK((size_t) &a.at(0) == add_m_b);// flat copy, move worked
+#endif
 
     // b
     CHECK((size_t) &b != add_a);
     CHECK((size_t) &b == add_b);
-#if __cplusplus >= 201103L || _MSC_VER >= 1600
+#if __cplusplus >= 201103L || _MSC_VER >= 1900
     CHECK(b == c);                      // same values
     CHECK(!(b == d));
     CHECK((size_t) &b.at(0) == add_m_a);// flat copy
+	CHECK(0 != b.size());
 #else
     CHECK(0 == b.size());
 #endif
@@ -104,8 +107,22 @@ TEST(gsMatrix_swap)
 TEST(gsMatrix_ms)
 {
     gsMatrix<> b(2,2);
-    gsMatrix<> a = give(b);
+	b << 1, 2, 3, 4;
+	CHECK_EQUAL(1, b.at(0));
+	CHECK_EQUAL(3, b.at(1));
+	CHECK_EQUAL(2, b.at(2));
+	CHECK_EQUAL(4, b.at(3));
+	size_t add_m_b = (size_t)& b.at(0);
+
+    gsMatrix<> a(give(b));
     CHECK(0 == b.size());
+#if !defined(_MSC_VER) || _MSC_VER >= 1900
+	CHECK((size_t)& a.at(0) == add_m_b);	// flat copy, move worked
+#endif
+	CHECK_EQUAL(1, a.at(0));
+	CHECK_EQUAL(3, a.at(1));
+	CHECK_EQUAL(2, a.at(2));
+	CHECK_EQUAL(4, a.at(3));
     /*
       gsMatrix<> c(2,2);
       c = give(b);
