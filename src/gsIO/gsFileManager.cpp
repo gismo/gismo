@@ -23,11 +23,7 @@
 #include <windows.h>
 #include <direct.h>
 #include <ShlObj.h>
-#ifdef __MINGW32__
-//#include <sys/stat.h>
-#endif
 #else
-//#include <sys/stat.h>
 #include <dlfcn.h>
 #include <unistd.h>
 #include <pwd.h>
