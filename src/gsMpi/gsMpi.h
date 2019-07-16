@@ -16,6 +16,7 @@
 #include <gsCore/gsForwardDeclarations.h>
 
 #ifdef GISMO_WITH_MPI
+#include <string.h>
 #include <mpi.h>
 // #if MPI_VERSION < 2
 // #  ifdef _MSC_VER
@@ -175,10 +176,37 @@ private:
 #   ifdef GISMO_WITH_MPI
         if( !initialized() )
         {
+#ifdef _OPENMP
+            // Initialize MPI with multi-threading support
+            char* MPI_INIT_THREAD = getenv("MPI_INIT_THREAD");
+            if (MPI_INIT_THREAD != NULL)
+            {
+              int MPI_thread_required, MPI_thread_provided;
+              if(      strcmp(MPI_INIT_THREAD, "MPI_THREAD_MULTIPLE")   == 0 )
+                  MPI_thread_required = MPI_THREAD_MULTIPLE;
+              else if( strcmp(MPI_INIT_THREAD, "MPI_THREAD_SERIALIZED") == 0 )
+                  MPI_thread_required = MPI_THREAD_SERIALIZED;
+              else if( strcmp(MPI_INIT_THREAD, "MPI_THREAD_FUNNELED")   == 0 )
+                  MPI_thread_required = MPI_THREAD_FUNNELED;
+              else if( strcmp(MPI_INIT_THREAD, "MPI_THREAD_SINGLE")     == 0 )
+                  MPI_thread_required = MPI_THREAD_SINGLE;
+              else
+                  GISMO_ERROR("Invalid value for environment variable MPI_INIT_THREAD = " + std::string(MPI_INIT_THREAD));
+              const int init = MPI_Init_thread(argc, &argv, MPI_thread_required, &MPI_thread_provided);
+              GISMO_ENSURE(MPI_SUCCESS==init &&
+                           MPI_thread_required <= MPI_thread_provided, "MPI failed to initialize");
+            } else
+            {
+                int MPI_thread_provided;
+                const int init = MPI_Init_thread(argc, &argv, MPI_THREAD_SINGLE, &MPI_thread_provided);
+                GISMO_ENSURE(MPI_SUCCESS==init, "MPI failed to initialize");
+            }
+#else
             //Note: valgrind false positive here, see
             // https://www.open-mpi.org/faq/?category=debugging#valgrind_clean
             const int init = MPI_Init(argc, &argv);
             GISMO_ENSURE(MPI_SUCCESS==init, "MPI failed to initialize");
+#endif
         }
 #       ifndef NDEBUG
         MPI_Comm_create_errhandler(gsMpiComm::ErrCallBack, &gsMpiComm::ErrHandler);
