@@ -931,10 +931,10 @@ public:
   */
   gsMpiStatus status () const
   {
-    gsMpiStatus status_;
+    gsMpiStatus status;
     int flag;
-    MPI_Request_get_status(m_request, &flag, &status_);
-    return status_;
+    MPI_Request_get_status(m_request, &flag, &status);
+    return status;
   }
   
   /** 
@@ -942,10 +942,10 @@ public:
   */
   gsMpiStatus test ()
   {
-    gsMpiStatus status_;
+    gsMpiStatus status;
     int flag;
-    MPI_Test(&m_request, &flag, &status_);
-    return status_;
+    MPI_Test(&m_request, &flag, &status);
+    return status;
   }
 
   /** 
@@ -953,9 +953,9 @@ public:
   */
   gsMpiStatus wait ()
   {
-    gsMpiStatus status_;
-    MPI_Wait(&m_request, &status_);
-    return status_;
+    gsMpiStatus status;
+    MPI_Wait(&m_request, &status);
+    return status;
   }
 
   /**
@@ -1246,10 +1246,10 @@ public:
 
     /// @copydoc gsSerialComm::isend()
     template<typename T>
-    int isend (T* in, int len, int dest, MPI_Request request, int tag = 0) const
+    int isend (T* in, int len, int dest, MPI_Request* req, int tag = 0) const
     {
         return MPI_Isend(in,len,MPITraits<T>::getType(),
-                          dest,tag,m_comm,request);
+                          dest,tag,m_comm,req);
     }
 
     /// @copydoc gsSerialComm::recv()
@@ -1262,10 +1262,10 @@ public:
 
     /// @copydoc gsSerialComm::irecv()
     template<typename T>
-    int irecv (T* out, int len, int source, MPI_Request request, int tag = 0) const
+    int irecv (T* out, int len, int source, MPI_Request* req, int tag = 0) const
     {
         return MPI_Irecv(out,len,MPITraits<T>::getType(),
-                          source,tag,m_comm,request);
+                          source,tag,m_comm,req);
     }
 
     /// @copydoc gsSerialComm::broadcast
