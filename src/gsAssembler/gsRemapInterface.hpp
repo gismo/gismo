@@ -211,6 +211,7 @@ template<class T>
 void gsRemapInterface<T>::constructBreaks() {
     // computes break points per element
 
+    real_t eps = 1.e-10;
     //const gsBasis <T> &B1 = m_g1.basis();
     //const gsBasis <T> &B2 = m_g2.basis();
 
@@ -307,7 +308,7 @@ void gsRemapInterface<T>::constructBreaks() {
     // evaluate the last point of the interface, i.e., this last point must also be within the parameter bound
     if(m_side1.index() == 3 || m_side1.index() == 4)
     {
-        if(domIt1->upperCorner()(0,0) <= m_parameterbounds.first(0,1))
+        if(domIt1->upperCorner()(0,0) <= (m_parameterbounds.first(0,1) + eps) )
         {
             m_g1.eval_into(domIt1->upperCorner(), dummy);
             physicalKnotsP1.col(numBreaksPatch1) = dummy;
@@ -318,7 +319,7 @@ void gsRemapInterface<T>::constructBreaks() {
     {
         if(m_side1.index() == 1 || m_side1.index() == 2)
         {
-            if(domIt1->upperCorner()(1,0) <= m_parameterbounds.first(1,1))
+            if(domIt1->upperCorner()(1,0) <= (m_parameterbounds.first(1,1) + eps) )
             {
                 m_g1.eval_into(domIt1->upperCorner(), dummy);
                 physicalKnotsP1.col(numBreaksPatch1) = dummy;
@@ -363,7 +364,7 @@ void gsRemapInterface<T>::constructBreaks() {
     // add only the breakpoints within the parameter bounds
     if(m_side2.index() == 3 || m_side2.index() == 4)
     {
-        if(domIt2->upperCorner()(0,0) <= std::max(m_parameterbounds.second(0,1), m_parameterbounds.second(0,0)))
+        if(domIt2->upperCorner()(0,0) <= (std::max(m_parameterbounds.second(0,1), m_parameterbounds.second(0,0)) + eps) )
         {
             m_g2.eval_into(domIt2->upperCorner(), dummy);
             physicalKnotsP2.col(numBreaksPatch2) = dummy;
@@ -374,7 +375,7 @@ void gsRemapInterface<T>::constructBreaks() {
     {
         if(m_side2.index() == 1 || m_side2.index() == 2)
         {
-            if(domIt2->upperCorner()(1,0) <= std::max(m_parameterbounds.second(1,1), m_parameterbounds.second(1,0)))
+            if(domIt2->upperCorner()(1,0) <= (std::max(m_parameterbounds.second(1,1), m_parameterbounds.second(1,0)) + eps) )
             {
                 m_g2.eval_into(domIt2->upperCorner(), dummy);
                 physicalKnotsP2.col(numBreaksPatch2) = dummy;
@@ -382,7 +383,7 @@ void gsRemapInterface<T>::constructBreaks() {
             }
         }
     }
-    //gsInfo << "physical knots 2: \n" << physicalKnotsP2 << "\n";
+    //gsInfo << "physical knots 2: \n" << physicalKnotsP2.transpose() << "\n";
 
     /// store all the physical points in one vector
     gsMatrix<T> physicalBreaks(domainDim(), numBreaksPatch1+numBreaksPatch2); // Assume m_g1.geoDim() == m_g2.geoDim()
@@ -580,7 +581,7 @@ void gsRemapInterface<T>::constructReparam()
             //gsMatrix<T> b = closestPoint(b_null, g2, samples_left.col(i));
 
             // this gives the same result as above
-            m_g2.newtonRaphson(samples_left.col(i), b_null, true, 10e-6, 100);
+            m_g2.newtonRaphson(samples_left.col(i), b_null, true, 1.e-14, 100);
             //gsInfo << "newton: " << b_null << "\n";
 
             // TODO: Check if the order of the coefficients has an impact on the mapping regarding assembling aso.
@@ -601,8 +602,8 @@ void gsRemapInterface<T>::constructReparam()
 
         fit.compute();
         m_fittedInterface = fit.curve().clone();
-        std::cout << "Hi, I'm the resulting curve: \n" << *m_fittedInterface << std::endl;
-
+        //std::cout << "Hi, I'm the resulting curve: \n" << *m_fittedInterface << std::endl;
+/*
         int errorInterval = 10;
         gsVector<unsigned > errorSamples(1);
         errorSamples << errorInterval;
@@ -628,7 +629,7 @@ void gsRemapInterface<T>::constructReparam()
         m_g2.eval_into(eval_fit, eval_orig);
         m_g2.eval_into(id, B2);
         //gsInfo << "b2: \n" << id.transpose() << " and eval_orig: \n" << eval_fit.transpose() << "\n";
-
+*/
         // do test
         /*
         for(int c = 0; c < eval_fit.cols(); c++)
@@ -664,18 +665,18 @@ void gsRemapInterface<T>::constructReparam()
 */
         //end test
 
-        T error = 0;
+        //T error = 0;
 
-        for (int i = 0; i < eval_points.cols(); i++)
-            error += (id.col(i) - eval_fit.col(i)).squaredNorm();
+        //for (int i = 0; i < eval_points.cols(); i++)
+        //    error += (id.col(i) - eval_fit.col(i)).squaredNorm();
             //error += (eval_orig.col(i) - B2.col(i)).squaredNorm();
 
-        error = math::sqrt(error);
+        //error = math::sqrt(error);
 
         //if(error > 0.5)
         //    gsInfo << "patch 1: \n" << eval_orig << " and patch 2: \n" << B2 << "\n";
 
-        std::cout << "Error: " << error << std::endl;
+        //std::cout << "Error: " << error << std::endl;
     }
 
 }
@@ -772,11 +773,11 @@ memory::unique_ptr< gsDomainIterator<T> > gsRemapInterface<T>::makeDomainIterato
     gsTensorDomainBoundaryIterator<T> * tdi = new gsTensorDomainBoundaryIterator<T> (m_b1, m_side1);
 
     std::vector<T> newBreaks = getPointsOnInterface();
-    gsInfo << "newBreaks: \n";
-    for(index_t i = 0; i < m_breakpoints.cols(); i++)
-        gsInfo << newBreaks[i] << "\t";
+    //gsInfo << "newBreaks: \n";
+    //for(index_t i = 0; i < m_breakpoints.cols(); i++)
+    //    gsInfo << newBreaks[i] << "\t";
 
-    gsInfo << "\n";
+    //gsInfo << "\n";
 
     // the input must be the direction which is moving
     //tdi->setBreaks(newBreaks, m_side1.direction()); -> gives the fixed direction
