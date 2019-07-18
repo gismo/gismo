@@ -440,7 +440,7 @@ private:
 
 /// Print (as string) operator to be used by all derived classes
 std::ostream &operator<<(std::ostream &os, const gsJITCompilerConfig& c)
-{return c.print(os); }
+{ return c.print(os); }
 
 namespace internal
 {
@@ -510,6 +510,8 @@ public:
 struct gsDynamicLibrary
 {
 public:
+    /// Default Constructor
+    gsDynamicLibrary() {}
 
     /// Constructor (using file name)
     gsDynamicLibrary(const char* filename, int flag)
