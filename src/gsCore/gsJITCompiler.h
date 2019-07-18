@@ -265,22 +265,43 @@ struct gsJITCompilerConfig
         switch(lang)
         {
         case (gsJITLang::C) :
+#if         defined(_WIN32)
+            return gsJITCompilerConfig("icl",
+                                       "/O3 /dll",
+                                       "c",
+                                       "/Fo");//no space
+#           else
             return gsJITCompilerConfig("icc",
                                        "-O3 -shared",
                                        "c",
                                        "-o ");
+#           endif
             break;
         case (gsJITLang::CXX) :
+#if         defined(_WIN32)
+            return gsJITCompilerConfig("icl",
+                                       "/O3 /dll",
+                                       "c",
+                                       "/Fo");//no space
+#           else
             return gsJITCompilerConfig("icpc",
                                        "-O3 -shared",
                                        "cxx",
                                        "-o ");
+#           endif
             break;
         case (gsJITLang::Fortran) :
+#if         defined(_WIN32)
+            return gsJITCompilerConfig("ifort",
+                                       "/O3 /dll",
+                                       "F90",
+                                       "/Fo");//no space
+#           else
             return gsJITCompilerConfig("ifort",
                                        "-O3 -shared",
                                        "F90",
                                        "-o ");
+#           endif
             break;
         default :
             GISMO_ERROR("Error : Invalid compiler language.");
@@ -410,11 +431,11 @@ struct gsJITCompilerConfig
         return pgi();
         
 #       elif defined(__SUNPRO_C)
-        return sunstudio(gsJITLang::C)
+        return sunstudio(gsJITLang::C);
 #       elif defined(__SUNPRO_CC)
-        return sunstudio(gsJITLang::CXX)
+        return sunstudio(gsJITLang::CXX);
 #       elif defined(__SUNPRO_F90) || defined(__SUNPRO_F95)
-            return sunstudio(gsJITLang::Fortran)
+        return sunstudio(gsJITLang::Fortran);
             
 #       else
         GISMO_ERROR("Compiler not known");
@@ -664,7 +685,7 @@ public:
 #       elif defined(unix) || defined(__unix__) || defined(__unix)
         libName << config.getTemp() << "/.lib" << name << ".so";
 #       else
-#       error("Unrecognized OS")
+#       error("Unsupported operating system")
 #       endif
         
         // Compile library (if required)

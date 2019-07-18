@@ -18,3 +18,7 @@
 	path = extensions/gsExaStencils
 	url = ../gsExaStencils.git
 	branch = master
+[submodule "extensions/gsCompFlow"]
+	path = extensions/gsCompFlow
+	url = ../gsCompFlow.git
+	branch = master
