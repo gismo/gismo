@@ -135,7 +135,7 @@ public:
 /**
    @brief Prints the group object as a string
 */
-std::ostream& operator<<(std::ostream& os, const gsSerialGroup& obj)
+inline std::ostream& operator<<(std::ostream& os, const gsSerialGroup& obj)
 {
     obj.print(os);
     return os;
@@ -191,7 +191,7 @@ public:
 /**
    @brief Prints the status object as a string
 */
-std::ostream& operator<<(std::ostream& os, const gsSerialStatus& obj)
+inline std::ostream& operator<<(std::ostream& os, const gsSerialStatus& obj)
 {
     obj.print(os);
     return os;
@@ -842,7 +842,7 @@ private:
 /**
    @brief Prints the group as a string
 */
-std::ostream& operator<<(std::ostream& os, const gsMpiGroup& obj)
+inline std::ostream& operator<<(std::ostream& os, const gsMpiGroup& obj)
 {
     obj.print(os);
     return os;
@@ -890,7 +890,7 @@ public:
 /**
    @brief Prints the status as a string
 */
-std::ostream& operator<<(std::ostream& os, const gsMpiStatus& obj)
+inline std::ostream& operator<<(std::ostream& os, const gsMpiStatus& obj)
 {
     obj.print(os);
     return os;
@@ -976,7 +976,7 @@ private:
 /**
    @brief Prints the request object as a string
 */
-std::ostream& operator<<(std::ostream& os, const gsMpiRequest& obj)
+inline std::ostream& operator<<(std::ostream& os, const gsMpiRequest& obj)
 {
     obj.print(os);
     return os;
