@@ -19,293 +19,279 @@ namespace gismo
 {
 
 #ifndef GISMO_WITH_MPI
-    typedef int MPI_Group;
-    typedef int MPI_Request;
-    struct MPI_Status {};
+typedef int MPI_Group;
+typedef int MPI_Request;
+struct MPI_Status {};
 #endif
 
 /**
-  @brief A sequential communicator group class
+   @brief A sequential communicator group class
  
-  @ingroup Mpi
- */
+   @ingroup Mpi
+*/
 class gsSerialGroup
 {
 public:
-  /**
-     @brief Compares the group with another group
-  */
-  static int compare (const gsSerialGroup& other)
-  {
-    return 0;
-  }
+    /**
+       @brief Compares the group with another group
+    */
+    static int compare (const gsSerialGroup& other)
+    {
+        return 0;
+    }
 
-  /**
-     @brief Compares the group with another group
-  */
-  static int compare (const int& other)
-  {
-    return 0;
-  }
+    /**
+       @brief Compares the group with another group
+    */
+    static int compare (const int& other)
+    {
+        return 0;
+    }
 
-  /**
-     @brief Creates a group from the difference of the group with another group
-  */
-  static gsSerialGroup diff (const gsSerialGroup& other)
-  {
-    return gsSerialGroup();
-  }
+    /**
+       @brief Creates a group from the difference of the group with another group
+    */
+    static gsSerialGroup diff (const gsSerialGroup& other)
+    {
+        return gsSerialGroup();
+    }
 
-  /**
-     @brief Creates a group from the difference of the group with another group
-  */
-  static gsSerialGroup diff (const int& other)
-  {
-    return gsSerialGroup();
-  }
+    /**
+       @brief Creates a group from the difference of the group with another group
+    */
+    static gsSerialGroup diff (const int& other)
+    {
+        return gsSerialGroup();
+    }
 
-  /**
-     @brief Creates a group from the intersection of the group with another group
-  */
-  static gsSerialGroup intersect (const gsSerialGroup& other)
-  {
-    return gsSerialGroup();
-  }
+    /**
+       @brief Creates a group from the intersection of the group with another group
+    */
+    static gsSerialGroup intersect (const gsSerialGroup& other)
+    {
+        return gsSerialGroup();
+    }
 
-  /**
-     @brief Creates a group from the intersection of the group with another group
-  */
-  static gsSerialGroup intersect (const int& other)
-  {
-    return gsSerialGroup();
-  }
+    /**
+       @brief Creates a group from the intersection of the group with another group
+    */
+    static gsSerialGroup intersect (const int& other)
+    {
+        return gsSerialGroup();
+    }
 
-  /**
-     @brief Creates a group from the union of the group with another group
-  */
-  static gsSerialGroup unite (const gsSerialGroup& other)
-  {
-    return gsSerialGroup();
-  }
+    /**
+       @brief Creates a group from the union of the group with another group
+    */
+    static gsSerialGroup unite (const gsSerialGroup& other)
+    {
+        return gsSerialGroup();
+    }
 
-  /**
-     @brief Creates a group from the union of the group with another group
-  */
-  static gsSerialGroup unite (const int& other)
-  {
-    return gsSerialGroup();
-  }
+    /**
+       @brief Creates a group from the union of the group with another group
+    */
+    static gsSerialGroup unite (const int& other)
+    {
+        return gsSerialGroup();
+    }
 
-  /**
-     @brief Returns the rank of the group
-  */
-  static int rank ()
-  {
-    return 0;
-  }
+    /**
+       @brief Returns the rank of the group
+    */
+    static int rank ()
+    {
+        return 0;
+    }
 
-  /**
-     @brief Returns the size of the group
-  */
-  static int size ()
-  {
-    return 1;
-  }
+    /**
+       @brief Returns the size of the group
+    */
+    static int size ()
+    {
+        return 1;
+    }
 
-  /**
-     @brief Prints the group object as a string
-  */
-  static std::ostream &print(std::ostream &os)
-  {
-    os << "gsSerialGroup : rank = " << rank() << ", size = " << size();
-    return os;
-  }
+    /**
+       @brief Prints the group object as a string
+    */
+    static std::ostream &print(std::ostream &os)
+    {
+        os << "gsSerialGroup : rank = " << rank() << ", size = " << size();
+        return os;
+    }
 
-  /**
-     @brief Returns a constant pointer to the internal group object
-  */
-  const MPI_Group* operator& () const
-  {
-    return &m_group;
-  }
+    /**
+       @brief Returns a constant pointer to the internal group object
+    */
+    const MPI_Group* operator& () const
+    {
+        static MPI_Group m_group(0);
+        return &m_group;
+    }
 
-private:
-  static const MPI_Group m_group;
 };
 
-// Initialize static member variables
-const MPI_Group gsSerialGroup::m_group = 0;
-
 /**
-@brief Prints the group object as a string
- */
+   @brief Prints the group object as a string
+*/
 std::ostream& operator<<(std::ostream& os, const gsSerialGroup& obj)
 {
-  obj.print(os);
-  return os;
+    obj.print(os);
+    return os;
 }
 
 /**
-  @brief A sequential communicator status class
+   @brief A sequential communicator status class
  
-  @ingroup Mpi
- */
+   @ingroup Mpi
+*/
 class GISMO_EXPORT gsSerialStatus
 {
 public:
-  /**
-     @brief Returns the rank of the status
-  */
-  static int rank () { return 0; }
+    /**
+       @brief Returns the rank of the status
+    */
+    static int rank () { return 0; }
 
-  /**
-     @brief Returns the tag of the status
-  */
-  static int tag () { return 0; }
+    /**
+       @brief Returns the tag of the status
+    */
+    static int tag () { return 0; }
 
-  /**
-     @brief Returns the size of the status
-  */
-  template<typename T>
-  static int size (T* in)
-  {
-    return 1;
-  }
+    /**
+       @brief Returns the size of the status
+    */
+    template<typename T>
+        static int size (T* in)
+    {
+        return 1;
+    }
 
-  /**
-     @brief Returns a constant pointer to the internal status object
-  */
-  const MPI_Status* operator& () const
-  {
-    return &m_status;
-  }
+    /**
+       @brief Returns a constant pointer to the internal status object
+    */
+    const MPI_Status* operator& () const
+    {
+        static MPI_Status status;
+        return &status;
+    }
 
-  /**
-     @brief Prints the status object as a string
-  */
-  static std::ostream &print(std::ostream &os)
-  {
-    os << "gsSerialStatus : rank = " << gsSerialStatus::rank() 
-       << ", tag = " << gsSerialStatus::tag();
-    return os;
-  }
-
-private:
-  static const MPI_Status m_status;
+    /**
+       @brief Prints the status object as a string
+    */
+    static std::ostream &print(std::ostream &os)
+    {
+        os << "gsSerialStatus : rank = " << gsSerialStatus::rank() 
+           << ", tag = " << gsSerialStatus::tag();
+        return os;
+    }
 };
-
-// Initialize static member variables
- const MPI_Status gsSerialStatus::m_status = MPI_Status();
 
 /**
    @brief Prints the status object as a string
- */
+*/
 std::ostream& operator<<(std::ostream& os, const gsSerialStatus& obj)
 {
-  obj.print(os);
-  return os;
+    obj.print(os);
+    return os;
 }
 
 /**
-  @brief A sequentil communicator request class
+   @brief A sequential communicator request class
  
-  @ingroup Mpi
- */
+   @ingroup Mpi
+*/
 class gsSerialRequest
 {
 public:
-  /** 
-      @brief Cancels the communication request.
-  */
-  static int cancel ()
-  {
-    return 0;
-  }
+    /** 
+        @brief Cancels the communication request.
+    */
+    static int cancel ()
+    {
+        return 0;
+    }
   
-  /** 
-      @brief Returns the status of the communication request
-  */
-  static gsSerialStatus status ()
-  {
-    return gsSerialStatus();
-  }
+    /** 
+        @brief Returns the status of the communication request
+    */
+    static gsSerialStatus status ()
+    {
+        return gsSerialStatus();
+    }
   
-  /** 
-      @brief Tests for the completion of for the communication request
-  */
-  static gsSerialStatus test ()
-  {
-    return gsSerialStatus();
-  }
+    /** 
+        @brief Tests for the completion of for the communication request
+    */
+    static gsSerialStatus test ()
+    {
+        return gsSerialStatus();
+    }
 
-  /** 
-      @brief Waits for the communication request
-  */
-  static gsSerialStatus wait ()
-  {
-    return gsSerialStatus();
-  }
+    /** 
+        @brief Waits for the communication request
+    */
+    static gsSerialStatus wait ()
+    {
+        return gsSerialStatus();
+    }
 
-  /**
-     @brief Returns a constant pointer to the internal request object
-  */
-  const MPI_Request* operator& () const
-  {
-    return &m_request;
-  }
+    /**
+       @brief Returns a constant pointer to the internal request object
+    */
+    const MPI_Request* operator& () const
+    {
+        static MPI_Request req(0);
+        return &req;
+    }
 
-  /**
-     @brief Prints the request object as a string
-  */
-  static std::ostream &print(std::ostream &os)
-  {
-    os << "gsSerialRequest";
-    return os;
-  }
-
-private:
-  static const MPI_Request m_request;
+    /**
+       @brief Prints the request object as a string
+    */
+    static std::ostream &print(std::ostream &os)
+    {
+        os << "gsSerialRequest";
+        return os;
+    }
 };
-
-// Initialize static member variables
-const MPI_Request gsSerialRequest::m_request = 0;
 
 /**
    @brief Prints the request object as a string
- */
-std::ostream& operator<<(std::ostream& os, const gsSerialRequest& obj)
+*/
+inline std::ostream& operator<<(std::ostream& os, const gsSerialRequest& obj)
 {
-  obj.print(os);
-  return os;
+    obj.print(os);
+    return os;
 }
 
 /**
-  @brief A serial communication class
+   @brief A serial communication class
  
-  This communicator can be used if no MPI is available or one wants to run
-  sequentially even if MPI is available and used.
+   This communicator can be used if no MPI is available or one wants to run
+   sequentially even if MPI is available and used.
 
-  \ingroup Mpi
- */
+   \ingroup Mpi
+*/
 class gsSerialComm
 {
 public:
     /**
-      @brief return rank of process, i.e. zero
+       @brief return rank of process, i.e. zero
       
-      This function is intentionally left non-static to avoid compiler
-      warnings of unused object.
-     */
+       This function is intentionally left non-static to avoid compiler
+       warnings of unused object.
+    */
     int rank () const { return 0; }
 
     /**
-      @brief return rank of process, i.e. one
-     */
+       @brief return rank of process, i.e. one
+    */
     static int size () { return 1; }
 
     /**
-      @brief Returns the name of the communicator
-     */
+       @brief Returns the name of the communicator
+    */
     static std::string name() { return "gsSerialComm"; }
 
     /** @brief Compares two communicators.
@@ -319,21 +305,21 @@ public:
      */
     gsSerialComm duplicate () const
     {
-      return gsSerialComm(*this);
+        return gsSerialComm(*this);
     }
 
     /** @brief Returns the group of the communicator.
      */
     static int group ( const MPI_Group* group_ )
     {
-      return 0;
+        return 0;
     }
 
     /** @brief Splits the communicator into two.
      */
     gsSerialComm split (int color, int key) const
     {
-      return gsSerialComm(*this);
+        return gsSerialComm(*this);
     }
 
 #ifdef GISMO_WITH_MPI
@@ -443,7 +429,7 @@ public:
      */
     static gsSerialStatus probe(int source, int tag = 0)
     {
-      return gsSerialStatus();
+        return gsSerialStatus();
     }
 
     /** @brief Sends data to a destination process with a defined tag (blocking)
@@ -697,310 +683,310 @@ public:
 #ifdef GISMO_WITH_MPI
 
 /**
-  @brief A parallel communicator group class
+   @brief A parallel communicator group class
  
-  @ingroup Mpi
- */
+   @ingroup Mpi
+*/
 class gsMpiGroup
 {
 public:
-  /**
-     @brief Default constructor
-  */
-  gsMpiGroup()
+    /**
+       @brief Default constructor
+    */
+    gsMpiGroup()
     {}
   
-  /**
-     @brief Constructor
-  */
-  gsMpiGroup(MPI_Group& group) : m_group(group) 
+    /**
+       @brief Constructor
+    */
+    gsMpiGroup(MPI_Group& group) : m_group(group) 
     {}
   
-  /**
-     @brief Destructor
-  */
-  ~gsMpiGroup()
-  {
-    MPI_Group_free(&m_group);
-  }
+    /**
+       @brief Destructor
+    */
+    ~gsMpiGroup()
+    {
+        MPI_Group_free(&m_group);
+    }
 
-  /**
-     @brief Compares the group with another group
-  */
-  int compare (const gsMpiGroup& other) const
-  {
-    int result;
-    MPI_Group_compare(m_group, *(&other), &result);
-    return result;
-  }
+    /**
+       @brief Compares the group with another group
+    */
+    int compare (const gsMpiGroup& other) const
+    {
+        int result;
+        MPI_Group_compare(m_group, *(&other), &result);
+        return result;
+    }
 
-  /**
-     @brief Compares the group with another group
-  */
-  int compare (const MPI_Group& other) const
-  {
-    int result;
-    MPI_Group_compare(m_group, other, &result);
-    return result;
-  }
+    /**
+       @brief Compares the group with another group
+    */
+    int compare (const MPI_Group& other) const
+    {
+        int result;
+        MPI_Group_compare(m_group, other, &result);
+        return result;
+    }
 
-  /**
-     @brief Creates a group from the difference of the group with another group
-  */
-  gsMpiGroup diff (const gsMpiGroup& other) const
-  {
-    gsMpiGroup diff_;
-    MPI_Group_difference(m_group, *(&other), &diff_);
-    return diff_;
-  }
+    /**
+       @brief Creates a group from the difference of the group with another group
+    */
+    gsMpiGroup diff (const gsMpiGroup& other) const
+    {
+        gsMpiGroup diff_;
+        MPI_Group_difference(m_group, *(&other), &diff_);
+        return diff_;
+    }
 
-  /**
-     @brief Creates a group from the difference of the group with another group
-  */
-  gsMpiGroup diff (const MPI_Group& other) const
-  {
-    gsMpiGroup diff_;
-    MPI_Group_difference(m_group, other, &diff_);
-    return diff_;
-  }
+    /**
+       @brief Creates a group from the difference of the group with another group
+    */
+    gsMpiGroup diff (const MPI_Group& other) const
+    {
+        gsMpiGroup diff_;
+        MPI_Group_difference(m_group, other, &diff_);
+        return diff_;
+    }
 
-  /**
-     @brief Creates a group from the intersection of the group with another group
-  */
-  gsMpiGroup intersect (const gsMpiGroup& other) const
-  {
-    gsMpiGroup intersect_;
-    MPI_Group_intersection(m_group, *(&other), &intersect_);
-    return intersect_;
-  }
+    /**
+       @brief Creates a group from the intersection of the group with another group
+    */
+    gsMpiGroup intersect (const gsMpiGroup& other) const
+    {
+        gsMpiGroup intersect_;
+        MPI_Group_intersection(m_group, *(&other), &intersect_);
+        return intersect_;
+    }
 
-  /**
-     @brief Creates a group from the intersection of the group with another group
-  */
-  gsMpiGroup intersect (const MPI_Group& other) const
-  {
-    gsMpiGroup intersect_;
-    MPI_Group_intersection(m_group, other, &intersect_);
-    return intersect_;
-  }
+    /**
+       @brief Creates a group from the intersection of the group with another group
+    */
+    gsMpiGroup intersect (const MPI_Group& other) const
+    {
+        gsMpiGroup intersect_;
+        MPI_Group_intersection(m_group, other, &intersect_);
+        return intersect_;
+    }
 
-  /**
-     @brief Creates a group from the union of the group with another group
-  */
-  gsMpiGroup unite (const gsMpiGroup& other) const
-  {
-    gsMpiGroup union_;
-    MPI_Group_union(m_group, *(&other), &union_);
-    return union_;
-  }
+    /**
+       @brief Creates a group from the union of the group with another group
+    */
+    gsMpiGroup unite (const gsMpiGroup& other) const
+    {
+        gsMpiGroup union_;
+        MPI_Group_union(m_group, *(&other), &union_);
+        return union_;
+    }
 
-  /**
-     @brief Creates a group from the union of the group with another group
-  */
-  gsMpiGroup unite (const MPI_Group& other) const
-  {
-    gsMpiGroup union_;
-    MPI_Group_union(m_group, other, &union_);
-    return union_;
-  }
+    /**
+       @brief Creates a group from the union of the group with another group
+    */
+    gsMpiGroup unite (const MPI_Group& other) const
+    {
+        gsMpiGroup union_;
+        MPI_Group_union(m_group, other, &union_);
+        return union_;
+    }
 
-  /**
-     @brief Returns the rank of the group
-  */
-  int rank () const
-  {
-    int rank_;
-    MPI_Group_rank(m_group, &rank_);
-    return rank_;
-  }
+    /**
+       @brief Returns the rank of the group
+    */
+    int rank () const
+    {
+        int rank_;
+        MPI_Group_rank(m_group, &rank_);
+        return rank_;
+    }
 
-  /**
-     @brief Returns the size of the group
-  */
-  int size () const
-  {
-    int size_;
-    MPI_Group_size(m_group, &size_);
-    return size_;
-  }
+    /**
+       @brief Returns the size of the group
+    */
+    int size () const
+    {
+        int size_;
+        MPI_Group_size(m_group, &size_);
+        return size_;
+    }
 
-  /**
-     @brief Prints the group as a string
-  */
-  std::ostream &print(std::ostream &os) const
-  {
-    os << "gsMpiGroup : rank = " << rank() << ", size = " << size();
-    return os;
-  }
+    /**
+       @brief Prints the group as a string
+    */
+    std::ostream &print(std::ostream &os) const
+    {
+        os << "gsMpiGroup : rank = " << rank() << ", size = " << size();
+        return os;
+    }
 
-  /**
-     @brief Returns a pointer to the internal MPI_Group object
-  */
-  MPI_Group* operator& ()
-  {
-    return &m_group;
-  }
+    /**
+       @brief Returns a pointer to the internal MPI_Group object
+    */
+    MPI_Group* operator& ()
+    {
+        return &m_group;
+    }
 
-  /**
-     @brief Returns a constant pointer to the internal MPI_Group object
-  */
-  const MPI_Group* operator& () const
-  {
-    return &m_group;
-  }
+    /**
+       @brief Returns a constant pointer to the internal MPI_Group object
+    */
+    const MPI_Group* operator& () const
+    {
+        return &m_group;
+    }
 
 private:
-  MPI_Group m_group;
+    MPI_Group m_group;
 };
 
 /**
-@brief Prints the group as a string
- */
- std::ostream& operator<<(std::ostream& os, const gsMpiGroup& obj)
+   @brief Prints the group as a string
+*/
+std::ostream& operator<<(std::ostream& os, const gsMpiGroup& obj)
 {
-  obj.print(os);
-  return os;
+    obj.print(os);
+    return os;
 }
 
 /**
-  @brief A parallel communicator status class
+   @brief A parallel communicator status class
  
-  @ingroup Mpi
- */
+   @ingroup Mpi
+*/
 class gsMpiStatus : public MPI_Status
 {
 public:
-  /**
-     @brief Returns the rank of the status
-  */
-  int rank () const { return MPI_SOURCE; }
+    /**
+       @brief Returns the rank of the status
+    */
+    int rank () const { return MPI_SOURCE; }
 
-  /**
-     @brief Returns the tag of the status
-  */
-  int tag () const { return MPI_TAG; }
+    /**
+       @brief Returns the tag of the status
+    */
+    int tag () const { return MPI_TAG; }
 
-  /**
-     @brief Returns the size of the status
-  */
-  template<typename T>
-  int size (T* in) const 
-  {
-    int count;
-    MPI_Get_count(this, MPITraits<T>::getType(), &count);
-    return count;
-  }
+    /**
+       @brief Returns the size of the status
+    */
+    template<typename T>
+    int size (T* in) const 
+    {
+        int count;
+        MPI_Get_count(this, MPITraits<T>::getType(), &count);
+        return count;
+    }
 
-  /**
-     @brief Prints the status as a string
-  */
-  std::ostream &print(std::ostream &os) const
-  {
-    os << "gsMpiStatus : rank = " << rank() << ", tag = " << tag();
-    return os;
-  }
+    /**
+       @brief Prints the status as a string
+    */
+    std::ostream &print(std::ostream &os) const
+    {
+        os << "gsMpiStatus : rank = " << rank() << ", tag = " << tag();
+        return os;
+    }
 };
 
 /**
    @brief Prints the status as a string
- */
+*/
 std::ostream& operator<<(std::ostream& os, const gsMpiStatus& obj)
 {
-  obj.print(os);
-  return os;
+    obj.print(os);
+    return os;
 }
 
 /**
-  @brief A parallel communicator request class
+   @brief A parallel communicator request class
  
-  @ingroup Mpi
- */
+   @ingroup Mpi
+*/
 class gsMpiRequest
 {
 public:
-  /** 
-      @brief Cancels the communication request.
-  */
-  int cancel ()
-  {
-    return MPI_Cancel(&m_request);
-  }
+    /** 
+        @brief Cancels the communication request.
+    */
+    int cancel ()
+    {
+        return MPI_Cancel(&m_request);
+    }
   
-  /** 
-      @brief Returns the status of the communication request
-  */
-  gsMpiStatus status () const
-  {
-    gsMpiStatus status;
-    int flag;
-    MPI_Request_get_status(m_request, &flag, &status);
-    return status;
-  }
+    /** 
+        @brief Returns the status of the communication request
+    */
+    gsMpiStatus status () const
+    {
+        gsMpiStatus status;
+        int flag;
+        MPI_Request_get_status(m_request, &flag, &status);
+        return status;
+    }
   
-  /** 
-      @brief Tests for the completion of for the communication request
-  */
-  gsMpiStatus test ()
-  {
-    gsMpiStatus status;
-    int flag;
-    MPI_Test(&m_request, &flag, &status);
-    return status;
-  }
+    /** 
+        @brief Tests for the completion of for the communication request
+    */
+    gsMpiStatus test ()
+    {
+        gsMpiStatus status;
+        int flag;
+        MPI_Test(&m_request, &flag, &status);
+        return status;
+    }
 
-  /** 
-      @brief Waits for the communication request
-  */
-  gsMpiStatus wait ()
-  {
-    gsMpiStatus status;
-    MPI_Wait(&m_request, &status);
-    return status;
-  }
+    /** 
+        @brief Waits for the communication request
+    */
+    gsMpiStatus wait ()
+    {
+        gsMpiStatus status;
+        MPI_Wait(&m_request, &status);
+        return status;
+    }
 
-  /**
-     @brief Prints the request object as a string
-  */
-  std::ostream &print(std::ostream &os) const
-  {
-    os << "gsMpiRequest";
-    return os;
-  }
+    /**
+       @brief Prints the request object as a string
+    */
+    std::ostream &print(std::ostream &os) const
+    {
+        os << "gsMpiRequest";
+        return os;
+    }
 
-  /**
-     @brief Returns a pointer to the internal MPI_Request object
-  */
-  MPI_Request* operator& ()
-  {
-    return &m_request;
-  }
+    /**
+       @brief Returns a pointer to the internal MPI_Request object
+    */
+    MPI_Request* operator& ()
+    {
+        return &m_request;
+    }
 
-  /**
-     @brief Returns a constant pointer to the internal MPI_Request object
-  */
-  const MPI_Request* operator& () const
-  {
-    return &m_request;
-  }
+    /**
+       @brief Returns a constant pointer to the internal MPI_Request object
+    */
+    const MPI_Request* operator& () const
+    {
+        return &m_request;
+    }
 
 private:
-  MPI_Request m_request;
+    MPI_Request m_request;
 };
 
 /**
    @brief Prints the request object as a string
- */
+*/
 std::ostream& operator<<(std::ostream& os, const gsMpiRequest& obj)
 {
-  obj.print(os);
-  return os;
+    obj.print(os);
+    return os;
 }
 
 /**
-  @brief A parallel communicator class based on MPI
+   @brief A parallel communicator class based on MPI
  
-  @ingroup Mpi
- */
+   @ingroup Mpi
+*/
 class gsMpiComm
 {
     friend class gsMpi;
@@ -1065,7 +1051,7 @@ public:
     {
         int result;
         MPI_Comm_compare(m_comm, comm, &result);
-	return result;
+        return result;
     }
 
     /// @copydoc gsSerialComm::duplicate
@@ -1073,13 +1059,13 @@ public:
     {
         MPI_Comm comm;
         MPI_Comm_dup(m_comm, &comm);
-	return comm;
+        return comm;
     }
 
     /// @copydoc gsSerialComm::group
     int group (MPI_Group* group_) const
     {
-      return MPI_Comm_group(m_comm, group_);
+        return MPI_Comm_group(m_comm, group_);
     }
 
     /// @copydoc gsSerialComm::split
@@ -1087,7 +1073,7 @@ public:
     {
         MPI_Comm comm;
         MPI_Comm_split(m_comm, color, key, &comm);
-	return comm;
+        return comm;
     }
 
     operator MPI_Comm () const { return m_comm; }
@@ -1233,7 +1219,7 @@ public:
     {
         gsMpiStatus status;
         MPI_Probe(source,tag,m_comm,&status);
-	return status;
+        return status;
     }
 
     /// @copydoc gsSerialComm::send()
@@ -1241,7 +1227,7 @@ public:
     int send (T* in, int len, int dest, int tag = 0) const
     {
         return MPI_Send(in,len,MPITraits<T>::getType(),
-                          dest,tag,m_comm);
+                        dest,tag,m_comm);
     }
 
     /// @copydoc gsSerialComm::isend()
@@ -1249,7 +1235,7 @@ public:
     int isend (T* in, int len, int dest, MPI_Request* req, int tag = 0) const
     {
         return MPI_Isend(in,len,MPITraits<T>::getType(),
-                          dest,tag,m_comm,req);
+                         dest,tag,m_comm,req);
     }
 
     /// @copydoc gsSerialComm::recv()
@@ -1257,7 +1243,7 @@ public:
     int recv (T* out, int len, int source, int tag = 0, MPI_Status* status = NULL) const
     {
         return MPI_Recv(out,len,MPITraits<T>::getType(),
-			source,tag,m_comm,(status == NULL ? MPI_STATUS_IGNORE : status));
+                        source,tag,m_comm,(status == NULL ? MPI_STATUS_IGNORE : status));
     }
 
     /// @copydoc gsSerialComm::irecv()
@@ -1265,7 +1251,7 @@ public:
     int irecv (T* out, int len, int source, MPI_Request* req, int tag = 0) const
     {
         return MPI_Irecv(out,len,MPITraits<T>::getType(),
-                          source,tag,m_comm,req);
+                         source,tag,m_comm,req);
     }
 
     /// @copydoc gsSerialComm::broadcast
@@ -1319,8 +1305,8 @@ public:
     int alltoall (T* send, T* recv, int sendcount, int recvcount) const
     {
         return MPI_Alltoall(send,sendcount,MPITraits<T>::getType(),
-                           recv,recvcount,MPITraits<T>::getType(),
-                           m_comm);
+                            recv,recvcount,MPITraits<T>::getType(),
+                            m_comm);
     }
 
     /// @copydoc gsSerialComm::scatterv()
@@ -1328,8 +1314,8 @@ public:
     int alltoallv (T* send, int* sendcount, int* senddispl, T* recv, int* recvcount, int* recvdispl) const
     {
         return MPI_Alltoallv(send,sendcount,senddispl,MPITraits<T>::getType(),
-                            recv,recvcount,recvdispl,MPITraits<T>::getType(),
-                            m_comm);
+                             recv,recvcount,recvdispl,MPITraits<T>::getType(),
+                             m_comm);
     }
 
     /// @copydoc gsSerialComm::allgather()
@@ -1351,14 +1337,14 @@ public:
     }
 
 #ifndef MPI_IN_PLACE
- #define MPI_IN_PLACE inout
- #define MASK_MPI_IN_PLACE
+#define MPI_IN_PLACE inout
+#define MASK_MPI_IN_PLACE
 /*
-#  ifdef _MSC_VER
-#    pragma message ("Masking MPI_IN_PLACE (not found in MPI version used).")
-#  else
-#    warning Masking MPI_IN_PLACE (not found in MPI version used).
-#  endif
+  #  ifdef _MSC_VER
+  #    pragma message ("Masking MPI_IN_PLACE (not found in MPI version used).")
+  #  else
+  #    warning Masking MPI_IN_PLACE (not found in MPI version used).
+  #  endif
 */
 #endif
     
