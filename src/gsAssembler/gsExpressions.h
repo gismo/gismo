@@ -69,12 +69,12 @@ template<class T> class gsExprHelper;
 namespace expr
 {
 
-#if(__cplusplus >= 201402L) // c++14
+#if __cplusplus >= 201402L || _MSVC_LANG >= 201402L // c++14
 #  define MatExprType  auto
 #  define AutoReturn_t auto
-//#elif(__cplusplus >= 201103L) // c++11
+//#elif __cplusplus >= 201103L || _MSC_VER >= 1600 // c++11
 //note: in c++11 auto-return requires -> decltype(.)
-#else // 199711L
+#else // 199711L, 201103L
 #  define MatExprType typename gsMatrix<Scalar>::constRef
 #  define AutoReturn_t typename util::conditional<ScalarValued,Scalar,MatExprType>::type
 #endif
@@ -2973,7 +2973,7 @@ operator-(typename E2::Scalar const& s, _expr<E2> const& v)
 
 
 //----------------------------------------------------------------------------------
-#if(__cplusplus >= 201402L)
+#if __cplusplus >= 201402L || _MSVC_LANG >= 201402L
 
 // Shortcuts for common quantities, for instance function
 // transformations by the geometry map \a G

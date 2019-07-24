@@ -368,7 +368,7 @@
 #if EIGEN_MAX_CPP_VER>=11 && \
     (__has_feature(cxx_rvalue_references) || \
     (defined(__cplusplus) && __cplusplus >= 201103L) || \
-    (EIGEN_COMP_MSVC >= 1600))
+    (EIGEN_COMP_MSVC >= 1900))
   #define EIGEN_HAS_RVALUE_REFERENCES 1
 #else
   #define EIGEN_HAS_RVALUE_REFERENCES 0

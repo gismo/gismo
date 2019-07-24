@@ -88,7 +88,7 @@ struct gsJITCompilerConfig
         std::swap(temp , other.temp );
     }
             
-#   if __cplusplus >= 201103L
+#   if __cplusplus >= 201103L || _MSC_VER >= 1600
 
     /// Constructor (copy)
     gsJITCompilerConfig(gsJITCompilerConfig const& other)
@@ -628,7 +628,7 @@ public:
         return *this;
     }
 
-#   if __cplusplus >= 201103L
+#   if __cplusplus >= 201103L || _MSC_VER >= 1600
     /// Constructor (move)
     gsJITCompiler(gsJITCompiler && other)
     : //kernel(std::move(other.kernel)),
@@ -664,7 +664,7 @@ public:
     /// (determine filename from hash of kernel source code)
     gsDynamicLibrary build(bool force = false)
     {
-#       if __cplusplus >= 201103L
+#       if __cplusplus >= 201103L || _MSC_VER >= 1600
         size_t h = std::hash<std::string>()(getKernel().str() +
                                             config.getCmd()+config.getFlags() +
                                             config.getLang());
