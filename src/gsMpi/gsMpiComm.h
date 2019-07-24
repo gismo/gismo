@@ -211,7 +211,7 @@ std::ostream& operator<<(std::ostream& os, const gsSerialStatus& obj)
  
   @ingroup Mpi
  */
-class GISMO_EXPORT gsSerialRequest
+class gsSerialRequest
 {
 public:
   /** 
@@ -701,7 +701,7 @@ public:
  
   @ingroup Mpi
  */
-class GISMO_EXPORT gsMpiGroup
+class gsMpiGroup
 {
 public:
   /**
@@ -867,7 +867,7 @@ private:
  
   @ingroup Mpi
  */
-class GISMO_EXPORT gsMpiStatus : public MPI_Status
+class gsMpiStatus : public MPI_Status
 {
 public:
   /**
@@ -915,7 +915,7 @@ std::ostream& operator<<(std::ostream& os, const gsMpiStatus& obj)
  
   @ingroup Mpi
  */
-class GISMO_EXPORT gsMpiRequest
+class gsMpiRequest
 {
 public:
   /** 
@@ -1001,7 +1001,7 @@ std::ostream& operator<<(std::ostream& os, const gsMpiRequest& obj)
  
   @ingroup Mpi
  */
-class GISMO_EXPORT gsMpiComm
+class gsMpiComm
 {
     friend class gsMpi;
 
