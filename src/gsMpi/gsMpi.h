@@ -185,12 +185,16 @@ private:
             {
             case 0:
                 MPI_thread_required = MPI_THREAD_SINGLE;
+                break;
             case 1:
                 MPI_thread_required = MPI_THREAD_FUNNELED;
+                break;
             case 2:
                 MPI_thread_required = MPI_THREAD_SERIALIZED;
+                break;
             case 3:
                 MPI_thread_required = MPI_THREAD_MULTIPLE;
+                break;
             default:
                 GISMO_ERROR("Invalid value for environment variable GISMO_MPI_THREAD_LEVEL");
             };
