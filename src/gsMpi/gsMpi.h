@@ -178,20 +178,20 @@ private:
         {
 #ifdef _OPENMP
             // Initialize MPI with multi-threading support
-            char* MPI_INIT_THREAD = getenv("MPI_INIT_THREAD");
-            if (MPI_INIT_THREAD != NULL)
+            char* MPI_THREAD_LEVEL = getenv("MPI_THREAD_LEVEL");
+            if (MPI_THREAD_LEVEL != NULL)
             {
               int MPI_thread_required, MPI_thread_provided;
-              if(      strcmp(MPI_INIT_THREAD, "MPI_THREAD_MULTIPLE")   == 0 )
+              if(      strcmp(MPI_THREAD_LEVEL, "3") == 0 )
                   MPI_thread_required = MPI_THREAD_MULTIPLE;
-              else if( strcmp(MPI_INIT_THREAD, "MPI_THREAD_SERIALIZED") == 0 )
+              else if( strcmp(MPI_THREAD_LEVEL, "2") == 0 )
                   MPI_thread_required = MPI_THREAD_SERIALIZED;
-              else if( strcmp(MPI_INIT_THREAD, "MPI_THREAD_FUNNELED")   == 0 )
+              else if( strcmp(MPI_THREAD_LEVEL, "1") == 0 )
                   MPI_thread_required = MPI_THREAD_FUNNELED;
-              else if( strcmp(MPI_INIT_THREAD, "MPI_THREAD_SINGLE")     == 0 )
+              else if( strcmp(MPI_THREAD_LEVEL, "0") == 0 )
                   MPI_thread_required = MPI_THREAD_SINGLE;
               else
-                  GISMO_ERROR("Invalid value for environment variable MPI_INIT_THREAD = " + std::string(MPI_INIT_THREAD));
+                  GISMO_ERROR("Invalid value for environment variable MPI_THREAD_LEVEL = " + std::string(MPI_THREAD_LEVEL));
               const int init = MPI_Init_thread(argc, &argv, MPI_thread_required, &MPI_thread_provided);
               GISMO_ENSURE(MPI_SUCCESS==init &&
                            MPI_thread_required <= MPI_thread_provided, "MPI failed to initialize");
