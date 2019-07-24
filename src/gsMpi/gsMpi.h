@@ -178,29 +178,26 @@ private:
         {
 #ifdef _OPENMP
             // Initialize MPI with multi-threading support
-            char* MPI_THREAD_LEVEL = getenv("MPI_THREAD_LEVEL");
-            if (MPI_THREAD_LEVEL != NULL)
+            char* thread_level = getenv("GISMO_MPI_THREAD_LEVEL");
+            const int req_level = ( NULL != thread_level ? atoi(getenv("GISMO_MPI_THREAD_LEVEL")) : 0);
+            int MPI_thread_required = MPI_THREAD_SINGLE, MPI_thread_provided;
+            switch(req_level)
             {
-              int MPI_thread_required, MPI_thread_provided;
-              if(      strcmp(MPI_THREAD_LEVEL, "3") == 0 )
-                  MPI_thread_required = MPI_THREAD_MULTIPLE;
-              else if( strcmp(MPI_THREAD_LEVEL, "2") == 0 )
-                  MPI_thread_required = MPI_THREAD_SERIALIZED;
-              else if( strcmp(MPI_THREAD_LEVEL, "1") == 0 )
-                  MPI_thread_required = MPI_THREAD_FUNNELED;
-              else if( strcmp(MPI_THREAD_LEVEL, "0") == 0 )
-                  MPI_thread_required = MPI_THREAD_SINGLE;
-              else
-                  GISMO_ERROR("Invalid value for environment variable MPI_THREAD_LEVEL = " + std::string(MPI_THREAD_LEVEL));
-              const int init = MPI_Init_thread(argc, &argv, MPI_thread_required, &MPI_thread_provided);
-              GISMO_ENSURE(MPI_SUCCESS==init &&
-                           MPI_thread_required <= MPI_thread_provided, "MPI failed to initialize");
-            } else
-            {
-                int MPI_thread_provided;
-                const int init = MPI_Init_thread(argc, &argv, MPI_THREAD_SINGLE, &MPI_thread_provided);
-                GISMO_ENSURE(MPI_SUCCESS==init, "MPI failed to initialize");
-            }
+            case 0:
+                MPI_thread_required = MPI_THREAD_SINGLE;
+            case 1:
+                MPI_thread_required = MPI_THREAD_FUNNELED;
+            case 2:
+                MPI_thread_required = MPI_THREAD_SERIALIZED;
+            case 3:
+                MPI_thread_required = MPI_THREAD_MULTIPLE;
+            default:
+                GISMO_ERROR("Invalid value for environment variable GISMO_MPI_THREAD_LEVEL");
+            };
+
+            const int init = MPI_Init_thread(argc, &argv, MPI_thread_required, &MPI_thread_provided);
+            GISMO_ENSURE(MPI_SUCCESS==init &&
+                         MPI_thread_required <= MPI_thread_provided, "MPI failed to initialize");
 #else
             //Note: valgrind false positive here, see
             // https://www.open-mpi.org/faq/?category=debugging#valgrind_clean
