@@ -29,7 +29,7 @@ namespace gismo
  
   @ingroup Mpi
  */
-class GISMO_EXPORT gsSerialGroup
+class gsSerialGroup
 {
 public:
   /**
