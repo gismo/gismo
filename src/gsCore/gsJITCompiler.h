@@ -460,7 +460,8 @@ private:
 };
 
 /// Print (as string) operator to be used by all derived classes
-std::ostream &operator<<(std::ostream &os, const gsJITCompilerConfig& c)
+inline std::ostream &operator<<(std::ostream &os,
+                                const gsJITCompilerConfig& c)
 { return c.print(os); }
 
 namespace internal
@@ -777,7 +778,7 @@ private:
 };
 
 /// Print (as string) operator to be used by all derived classes
-std::ostream &operator<<(std::ostream &os, const gsJITCompiler& c)
+inline std::ostream &operator<<(std::ostream &os, const gsJITCompiler& c)
 { return c.print(os); }
 
 namespace internal

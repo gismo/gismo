@@ -987,7 +987,7 @@ inline std::ostream& operator<<(std::ostream& os, const gsMpiRequest& obj)
  
    @ingroup Mpi
 */
-class gsMpiComm
+class GISMO_EXPORT gsMpiComm
 {
     friend class gsMpi;
 
