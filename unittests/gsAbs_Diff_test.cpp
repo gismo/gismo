@@ -1,6 +1,6 @@
-/** @file gsMakeUnsigned.cpp
+/** @file gsAbs_Diff_test.cpp
 
-    @brief Tests std::make_unsigned, which is part of CXX11 and
+    @brief Tests math::abs_diff, which is part of CXX11 and
     for CXX98 defined in gsTemplateTools.h.
 
     This file is part of the G+Smo library.
