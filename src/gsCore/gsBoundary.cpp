@@ -18,7 +18,7 @@
 namespace gismo {
 
 
-void boxSide::getContainedCorners(int dim, std::vector<boxCorner> &corners) const
+void boxSide::getContainedCorners(short_t dim, std::vector<boxCorner> &corners) const
 {
     GISMO_ASSERT(dim>=0, "Dimension must be non negative");
     corners.clear();
@@ -32,7 +32,7 @@ void boxSide::getContainedCorners(int dim, std::vector<boxCorner> &corners) cons
     }
 }
 
-void patchSide::getContainedCorners(int dim, std::vector<patchCorner> &corners) const
+void patchSide::getContainedCorners(short_t dim, std::vector<patchCorner> &corners) const
 {
     std::vector<boxCorner> tmp;
     boxSide::getContainedCorners(dim, tmp);

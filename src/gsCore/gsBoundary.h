@@ -132,13 +132,13 @@ public:
     /**
      *  \brief Returns the index (as specified in boundary::side) of the box side
     **/
-    index_t    index () const {return m_index;}
+    short_t index () const {return m_index;}
 
     /**
      *  \brief Returns the index of the box side implied by input
      *  direction \a dir and parameter \a par
     **/
-    static inline int index (short_t dir, bool par) {return par?2*dir+2:2*dir+1;}
+    static inline short_t index (short_t dir, bool par) {return par?2*dir+2:2*dir+1;}
 
 
     /**
@@ -146,7 +146,7 @@ public:
      * @param dim is the ambient dimension
      * @param corners
      */
-    void getContainedCorners (int dim, std::vector<boxCorner> &corners) const;
+    void getContainedCorners (short_t dim, std::vector<boxCorner> &corners) const;
 
     /**
      * @brief helper for iterating on sides of an n-dimensional box
@@ -246,7 +246,7 @@ public:
      * @param dim is the ambient dimension
      * @param corners
      */
-    void getContainedCorners (int dim, std::vector<patchCorner> &corners) const;
+    void getContainedCorners (short_t dim, std::vector<patchCorner> &corners) const;
 
     using boxSide::getContainedCorners; // unhiding
 };
