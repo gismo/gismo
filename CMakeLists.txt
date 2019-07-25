@@ -164,13 +164,6 @@ if(GISMO_WITH_CODIPACK)
   #include_directories(${CODIPACK_INCLUDE_DIR})
 endif(GISMO_WITH_CODIPACK)
 
-if(GISMO_WITH_FDBB)
-  add_subdirectory(extensions/gsFdbb)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${FDBB_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${FDBB_INCLUDE_DIR})
-endif(GISMO_WITH_FDBB)
-
 if(GISMO_WITH_IPOPT)
   add_subdirectory(extensions/gsIpopt)
   #set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${IPOPT_INCLUDE_DIR}
@@ -310,6 +303,18 @@ if(GISMO_BUILD_LIB)
   endif()
 endif()
 
+if(GISMO_COMPFLOW)
+  gismo_fetch_module(gsCompFlow)
+endif()
+
+if(GISMO_ELASTICITY)
+  gismo_fetch_module(gsElasticity)
+endif()
+
+if(GISMO_EXASTENCILS)
+  gismo_fetch_module(gsExaStencils)
+endif()
+
 include(gsLibrary)
 
 ## #################################################################
@@ -387,14 +392,6 @@ endif()
 
 if(GISMO_MOTOR)
   gismo_fetch_module(motor)
-endif()
-
-if(GISMO_ELASTICITY)
-  gismo_fetch_module(gsElasticity)
-endif()
-
-if(GISMO_EXASTENCILS)
-  gismo_fetch_module(gsExaStencils)
 endif()
 
 unset(GISMO_UNAME CACHE)

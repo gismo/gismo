@@ -41,7 +41,7 @@ https://github.com/gismo/gismo/archive/stable.zip
 * Operating systems:
   - MS Windows
   - Linux
-  - MacOSX
+  - macOS
 
 * Configuration: [CMake 2.8.8](https://cmake.org) or newer.
 
@@ -60,7 +60,7 @@ https://github.com/gismo/gismo/archive/stable.zip
 The compilation requires configuration using CMake at a new, empty
 folder (in-source builds are disabled).
 
-* On Linux/MacOSX: A Unix makefile exists in the root source
+* On Linux/macOS: A Unix makefile exists in the root source
   folder. Running "make" creates a sub folder named "build" and
   executes CMake and compilation inside that folder. Alternatively,
   choose your own build folder and execute CMake pointing to the

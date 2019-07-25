@@ -54,30 +54,28 @@ public:
     /// Default empty constructor
     gsFunctionExpr();
 
-    /**
-       \brief Constructor by an expression string and the domain dimension (real function)
-    */
+    ///\brief Constructor taking an expression string and the domain dimension (scalar function)
     gsFunctionExpr(const std::string & expression_string, int ddim);
 
-    ///\brief Constructor by two expression strings (2D vector function)
+    ///\brief Constructor taking two expression strings (2D vector valued function)
     gsFunctionExpr(const std::string & expression_string1,
                    const std::string & expression_string2,
                    int ddim);
 
-    ///\brief Constructor by three expression strings (3D vector function)
+    ///\brief Constructor taking three expression strings (3D vector valued function)
     gsFunctionExpr(const std::string & expression_string1,
                    const std::string & expression_string2,
                    const std::string & expression_string3,
                    int ddim);
 
-    ///\brief Constructor by four expression strings (4D vector function) used for matrix coefficients
+    ///\brief Constructor taking four expression strings (4D vector valued function) used for matrix coefficients
     gsFunctionExpr(const std::string & expression_string1,
                    const std::string & expression_string2,
                    const std::string & expression_string3,
                    const std::string & expression_string4,
                    int ddim);
 
-    ///\brief Constructor by nine expression strings (9D vector function) used for (3x3) matrix coefficients
+    ///\brief Constructor taking nine expression strings (9D vector valued function) used for (3x3) matrix coefficients
     gsFunctionExpr(const std::string & expression_string1,
                    const std::string & expression_string2,
                    const std::string & expression_string3,
@@ -92,6 +90,33 @@ public:
     gsFunctionExpr(const std::vector<std::string> & expression_string, int ddim);
 
     gsFunctionExpr(const gsFunctionExpr& other);
+
+    ///\brief Make function taking an expression string and the domain dimension (scalar function)
+    static uPtr make(const std::string & expression_string, int ddim)
+    { return uPtr(new gsFunctionExpr(expression_string, ddim)); }
+
+    ///\brief Make function taking two expression strings (2D vector valued function)
+    static uPtr make(const std::string & expression_string1, const std::string & expression_string2, int ddim)
+    { return uPtr(new gsFunctionExpr(expression_string1, expression_string2, ddim)); }
+
+    ///\brief Make function taking two expression strings (3D vector valued function)
+    static uPtr make(const std::string & expression_string1, const std::string & expression_string2,
+                     const std::string & expression_string3, int ddim)
+    { return uPtr(new gsFunctionExpr(expression_string1, expression_string2, expression_string3, ddim)); }
+
+    ///\brief Make function taking four expression strings (4D vector valued function) used for matrix coefficients
+    static uPtr make(const std::string & expression_string1, const std::string & expression_string2,
+                     const std::string & expression_string3, const std::string & expression_string4, int ddim)
+    { return uPtr(new gsFunctionExpr(expression_string1, expression_string2, expression_string3, expression_string4, ddim)); }
+
+    ///\brief Make function taking nine expression strings (9D vector valued function) used for (3x3) matrix coefficients
+    static uPtr make(const std::string & expression_string1, const std::string & expression_string2,
+                     const std::string & expression_string3, const std::string & expression_string4,
+                     const std::string & expression_string5, const std::string & expression_string6,
+                     const std::string & expression_string7, const std::string & expression_string8,
+                     const std::string & expression_string9, int ddim)
+    { return uPtr(new gsFunctionExpr(expression_string1, expression_string2, expression_string3, expression_string4,
+                expression_string5, expression_string6, expression_string7, expression_string8, expression_string9, ddim)); }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
     gsFunctionExpr(gsFunctionExpr&& other);
@@ -125,10 +150,10 @@ public:
     }
 
     // Documented in gsFunction class
-    int domainDim() const;
+    short_t domainDim() const;
 
     // Documented in gsFunction class
-    int targetDim() const;
+    short_t targetDim() const;
 
     // returns the string expression for component \a i
     const std::string & expression(int i = 0) const;

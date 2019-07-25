@@ -128,9 +128,12 @@
   Example:
   virtual void foo() GISMO_OVERRIDE;
 */
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && _MSC_VER < 1700   // all versions before MSVC 2012
 // MSVC2010 uses "sealed", later versions accept final as well
 #  define GISMO_FINAL sealed
+#  define GISMO_OVERRIDE override
+#elif _MSC_VER >= 1700   // MSVC 2012 upward
+#  define GISMO_FINAL final
 #  define GISMO_OVERRIDE override
 #elif defined(__clang__ ) && __has_feature(cxx_override_control)
 #  define GISMO_FINAL final

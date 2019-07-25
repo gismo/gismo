@@ -7,7 +7,7 @@
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Bressan, F. Buchegger, A. Mantzaflaris
 */
 
@@ -19,7 +19,7 @@
 
 namespace gismo
 {
-/** 
+/**
     @brief Struct that defines the boundary sides and corners and types of a geometric object.
 
     These definitions are used by, e.g., boxSide, boxCorner, etc.
@@ -49,7 +49,7 @@ namespace gismo
     &nbsp;                |    Corner 6, {(u,v,w) : u = 1, v = 0, w = 1}:  \c southeastback
     &nbsp;                |    Corner 7, {(u,v,w) : u = 0, v = 1, w = 1}:  \c northwestback
     &nbsp;                |    Corner 8, {(u,v,w) : u = 1, v = 1, w = 1}:  \c northeastback
-    
+
     \ingroup Core
 */
 struct boundary
@@ -74,7 +74,7 @@ struct patchCorner;
 
 /**
    @brief Struct which represents a certain side of a box.
-   
+
 */
 class GISMO_EXPORT boxSide
 {
@@ -132,7 +132,7 @@ public:
     /**
      *  \brief Returns the index (as specified in boundary::side) of the box side
     **/
-    int    index () const {return m_index;}
+    index_t    index () const {return m_index;}
 
     /**
      *  \brief Returns the index of the box side implied by input
@@ -141,13 +141,13 @@ public:
     static inline int index (index_t dir, bool par) {return par?2*dir+2:2*dir+1;}
 
 
-    /** 
-     * @brief returns the vector of the corners contained in the side 
-     * @param dim is the ambient dimension 
-     * @param corners 
-     */ 
-    void getContainedCorners (int dim, std::vector<boxCorner> &corners) const; 
-    
+    /**
+     * @brief returns the vector of the corners contained in the side
+     * @param dim is the ambient dimension
+     * @param corners
+     */
+    void getContainedCorners (int dim, std::vector<boxCorner> &corners) const;
+
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @return the first valid side in an dim-dimensional box
@@ -175,7 +175,7 @@ public:
      */
     boxSide& operator++ ()    { ++m_index; return *this;} //prefix
     //boxSide  operator++ (int) { boxSide temp(*this); ++m_index; return temp;} //postfix
- 
+
     /**
      * @brief Decrement boxSide
      */
@@ -218,23 +218,23 @@ inline std::ostream &operator<<(std::ostream &os, const boxSide& o)
     return os;
 }
 
-/** 
+/**
     @brief  Struct which represents a certain side of a patch.
 
     Basically a boxSide with an additional index for the patch.
-*/  
+*/
 struct GISMO_EXPORT patchSide : public boxSide
 {
 public:
-    index_t patch;              ///< The index of the patch.
+    size_t patch;              ///< The index of the patch.
 public:
 
     patchSide() : boxSide(), patch(0) { }
 
-    patchSide(index_t p, boxSide s)
+    patchSide(size_t p, boxSide s)
         : boxSide(s), patch(p) { }
 
-    patchSide(index_t p, boundary::side s)
+    patchSide(size_t p, boundary::side s)
         : boxSide(s), patch(p) { }
 
     // Accessors
@@ -249,31 +249,6 @@ public:
     void getContainedCorners (int dim, std::vector<patchCorner> &corners) const;
 
     using boxSide::getContainedCorners; // unhiding
-
-    bool operator== (const patchSide & other) const
-    {
-        return patch==other.patch && m_index==other.m_index;
-    }
-    bool operator!= (const patchSide& other) const
-    {
-        return patch!=other.patch || m_index!=other.m_index;
-    }
-    bool operator>  (const patchSide& other) const
-    {
-        return patch>other.patch || (patch==other.patch && m_index>other.m_index);
-    }
-    bool operator<  (const patchSide& other) const
-    {
-        return patch<other.patch || (patch==other.patch && m_index<other.m_index);
-    }
-    bool operator<= (const patchSide& other) const
-    {
-        return patch<other.patch || (patch==other.patch && m_index<=other.m_index);
-    }
-    bool operator>= (const patchSide& other) const
-    {
-        return patch>other.patch || (patch==other.patch && m_index>=other.m_index);
-    }
 };
 
 /// Print (as string) a patch side
@@ -283,6 +258,17 @@ inline std::ostream &operator<<(std::ostream &os, patchSide const & i)
     os<<i.patch<<":"<< i.side();
     return os;
 }
+
+// We do not need comparization operators for boxSide since it decays to a number anyway
+
+inline bool operator== (const patchSide& a, const patchSide& b)
+{ return a.patch == b.patch && a.m_index == b.m_index; }
+inline bool operator<  (const patchSide& a, const patchSide& b)
+{ return a.patch < b.patch || (a.patch == b.patch && a.m_index < b.m_index); }
+GISMO_DELEGATING_COMPARISON_OPERATORS(patchSide)
+
+// This might cause terrible bugs
+GISMO_DELETE_COMPARISON_OPERATORS(boxSide,patchSide)
 
 
 
@@ -387,53 +373,262 @@ public:
 
 
 /**
-    @brief Struct which represents a certain corner of a patch.
-
-*/
+ *  @brief Struct which represents a certain corner of a patch.
+ *
+ */
 struct patchCorner : public boxCorner
 {
 public:
-    index_t patch;
+    size_t patch;
 public:
     patchCorner() : boxCorner(0) { }
-    patchCorner(int p,boundary::corner c)
+    patchCorner(size_t p,boundary::corner c)
         : boxCorner(c), patch (p) { }
 
-    patchCorner(int p, int c)
+    patchCorner(size_t p, int c)
         : boxCorner(c), patch (p) { }
 
-    patchCorner(int p, boxCorner c)
+    patchCorner(size_t p, boxCorner c)
         : boxCorner(c), patch (p) { }
-
-
-    bool operator== (const patchCorner& other) const
-    {
-        return patch==other.patch && m_index==other.m_index;
-    }
-
 
     /**
      * @brief returns a vector of patchSides that contain this corner
      * @param dim is the ambient dimension
      * @param sides
      */
-    void getContainingSides (int dim, std::vector<patchSide> &sides) const
+    void getContainingSides (short_t dim, std::vector<patchSide> &sides) const
     {
         GISMO_ASSERT(dim>=0, "Dimension must be non negative");
         sides.resize(dim);
         gsVector<bool> param;
         parameters_into(dim,param);
-        for (int i=0;i<dim;++i)
+        for (short_t i=0;i<dim;++i)
             sides[i]=patchSide(patch, boxSide(i, param(i)));
     }
 };
 
+// We do not need comparization operators for boxCorner since it decays to a number anyway
 
-/** 
+inline bool operator== (const patchCorner& a, const patchCorner& b)
+{ return a.patch == b.patch && a.m_index == b.m_index; }
+inline bool operator<  (const patchCorner& a, const patchCorner& b)
+{ return a.patch < b.patch || (a.patch == b.patch && a.m_index < b.m_index); }
+GISMO_DELEGATING_COMPARISON_OPERATORS(patchCorner)
+
+// This might cause terrible bugs
+GISMO_DELETE_COMPARISON_OPERATORS(boxCorner,patchCorner)
+
+/**
+ *   @brief Struct which represents a certain component (interior, face, egde, corner).
+ *
+ *   This struct is a generalization of \a boxSide and of \a boxCorner.
+ *
+ */
+
+struct GISMO_EXPORT boxComponent {
+private:
+    /// @brief The index defines the component
+    ///
+    /// If the index is written as trinary number with digits 0, 1, 2
+    /// each position names one of the spatial dimensions and
+    /// values are: 0=interior, 1=begin, 2=end (cf \a location)
+    ///
+    ///
+    /// So, in 2D (\a m_total_dim=2), we have indeces [00]=0 to [22]=8
+    ///
+    ///     [00] = 0 ... interior
+    ///     [01] = 1 ... left edge
+    ///     [02] = 2 ... right edge
+    ///     [10] = 3 ... lower edge
+    ///     [20] = 6 ... upper edge
+    ///     [11] = 4 ... lower-left corner
+    ///     etc., where [ab]=3*a+b
+    ///
+    /// In 3D (\a m_total_dim=3), we have indeces [000]=0 to [222]=26
+    ///
+    ///     [000] =  0 ... interior
+    ///     [001] =  1 ... west face
+    ///     [002] =  2 ... east face
+    ///     [010] =  3 ... south face
+    ///     [020] =  6 ... north face
+    ///     [100] =  9 ... front face
+    ///     [200] = 18 ... back face
+    ///     [011] =  4 ... south-west edge
+    ///     [222] = 26 ... back-north-east corner
+    ///     etc., where [abc]=9*a+3*b+c
+    ///
+    index_t m_index;
+
+    short_t m_total_dim;    ///< The dimension of the box itself
+public:
+
+    /// @brief Constructor
+    ///
+    /// @param b          The index that defines the component
+    /// @param total_dim  The dimension of the box itself
+    boxComponent( index_t b, short_t total_dim ) : m_index(b), m_total_dim(total_dim) {}
+
+    /// @brief Constructor creating \a boxComponent representing the interior
+    ///
+    /// @param total_dim  The dimension of the box itself
+    boxComponent( short_t total_dim ) : m_index(0), m_total_dim(total_dim) {}
+
+    /// @brief Constructor converting \a boxSide to a boxComponent
+    ///
+    /// @param b          The box side
+    /// @param total_dim  The dimension of the box itself
+    boxComponent( boxSide b, short_t total_dim );
+
+    /// @brief Constructor converting \a boxCorner to a boxComponent
+    ///
+    /// @param b          The box corner
+    /// @param total_dim  The dimension of the box itself
+    boxComponent( boxCorner b, short_t total_dim );
+
+    /// Dimension of the computational domain (the box itself)
+    short_t totalDim() const { return m_total_dim; }
+
+    /// Dimension of the component
+    short_t dim() const;
+
+    /// Returns the index
+    index_t index() const { return m_index; }
+
+    /// Returns a vector of all \a boxCorner s that are contained in the component
+    std::vector<boxCorner> containedCorners() const;
+
+    /// Returns a vector of all \a boxSide s that contain the component
+    std::vector<boxSide> containingSides() const;
+
+    /// Converts to \a boxSide and fails if the component is not a side
+    boxSide asSide() const;
+
+    /// Converts to \a boxCorner and fails if the component is not a corner
+    boxCorner asCorner() const;
+
+    /// Returns the opposite boxCorner
+    boxComponent opposite() const;
+
+    /// Represents a location
+    enum location {
+        interior = 0,  ///< Represents the interior
+        begin = 1,     ///< Represents the beginning
+        end = 2        ///< Represents the end
+    };
+
+    /// Gets the location for the direction
+    ///
+    /// If the result value is \a begin, then the component is characterized
+    /// by \f$ x_i = 0 \f$
+    /// If the result value is \a end, then the component is characterized
+    /// by \f$ x_i = 1 \f$
+    /// If the result value is \a begin, then the component is characterized
+    /// by \f$ x_i \in (0,1) \f$
+    ///
+    /// @param direction   The index \f$ i \f$ from above
+    location locationForDirection(index_t direction) const;
+
+    /// Sets the location for the direction
+    ///
+    /// See \a locationForDirection
+    ///
+    /// @param direction   The index \f$ i \f$ from above
+    /// @param par         See \a locationForDirection
+    void setLocationForDirection(index_t direction, location par);
+
+};
+
+/**
+ *   @brief Struct which represents a certain component (interior, face, egde, corner) of a particular patch
+ *
+ *   This struct is a generalization of \a patchSide and of \a patchCorner.
+ *
+ */
+
+struct GISMO_EXPORT patchComponent : boxComponent {
+private:
+    index_t m_patch;    ///< The particular patch
+public:
+
+    /// @brief Constructor
+    ///
+    /// @param p          The patch index
+    /// @param b          The index that defines the component
+    /// @param total_dim  The dimension of the box itself
+    patchComponent( index_t p, index_t b, short_t total_dim ) : boxComponent(b,total_dim), m_patch(p) {}
+
+    /// @brief Constructor creating \a patchComponent representing the interior
+    ///
+    /// @param p          The patch index
+    /// @param total_dim  The dimension of the box itself
+    patchComponent( index_t p, short_t total_dim ) : boxComponent(total_dim), m_patch(p) {}
+
+    /// @brief Constructor converting \a boxComponent to a patchComponent
+    ///
+    /// @param p          The patch index
+    /// @param b          The box component
+    patchComponent( index_t p, boxComponent b ) : boxComponent(b), m_patch(p) {}
+
+    /// @brief Constructor converting \a patchSide to a patchComponent
+    ///
+    /// @param p          The patch side
+    /// @param total_dim  The dimension of the box itself
+    patchComponent( patchSide p, short_t total_dim ) : boxComponent(p,total_dim), m_patch(p.patch) {}
+
+    /// @brief Constructor converting \a patchCorner to a patchComponent
+    ///
+    /// @param p          The patch corner
+    /// @param total_dim  The dimension of the box itself
+    patchComponent( patchCorner p, short_t total_dim ) : boxComponent(p,total_dim), m_patch(p.patch) {}
+
+    /// Returns a vector of all \a patchCorner s that are contained in the component
+    std::vector<patchCorner> containedCorners() const;
+
+    /// Returns a vector of all \a patchSide s that contain the component
+    std::vector<patchSide> containingSides() const;
+
+    /// Converts to \a patchSide and fails if the component is not a corner
+    patchSide asSide() const
+    {
+        return patchSide( m_patch, boxComponent::asSide() );
+    }
+
+    /// Converts to \a patchCorner and fails if the component is not a corner
+    patchCorner asCorner() const
+    {
+        return patchCorner( m_patch, boxComponent::asCorner() );
+    }
+
+    /// Returns the opposite boxCorner
+    patchComponent opposite() const
+    {
+        return patchComponent( m_patch, boxComponent::opposite() );
+    }
+
+    /// Returns the patch number
+    index_t patch() const { return m_patch; }
+};
+
+inline bool operator== (const boxComponent& a, const boxComponent& b)
+{ return a.index() == b.index(); }
+inline bool operator<  (const boxComponent& a, const boxComponent& b)
+{ return a.index() <  b.index(); }
+GISMO_DELEGATING_COMPARISON_OPERATORS(boxComponent)
+
+inline bool operator== (const patchComponent& a, const patchComponent& b)
+{ return a.patch() == b.patch() && a.index() == b.index(); }
+inline bool operator<  (const patchComponent& a, const patchComponent& b)
+{ return a.patch() < b.patch() || (a.patch() == b.patch() && a.index() < b.index()); }
+GISMO_DELEGATING_COMPARISON_OPERATORS(patchComponent)
+
+// This might cause terrible bugs
+GISMO_DELETE_COMPARISON_OPERATORS(boxComponent,patchComponent)
+
+/**
     @brief Struct which represents an interface between two patches.
-    
-    
-*/  
+
+
+*/
 struct GISMO_EXPORT boundaryInterface
 {
 public:
@@ -481,9 +676,9 @@ public:
                       gsVector<index_t> const & map_info,
                       gsVector<bool>    const & orient_flags)
     : ps1(p(0),p(1)), ps2(p(2),p(3)),
-      directionMap(map_info), 
+      directionMap(map_info),
       directionOrientation(orient_flags)
-    {  
+    {
         GISMO_ASSERT(p.size() == 4, "Expecting four integers");
     }
 
@@ -648,7 +843,7 @@ public:
         else
             return getInverse().dirMap(ps,dir);
     }
-    
+
     /// Accessor for boundaryInterface::directionOrientation
     gsVector<bool> dirOrientation(const patchSide & ps) const
     {
@@ -768,7 +963,7 @@ inline std::ostream &operator<<(std::ostream &os, const boundaryInterface & i)
        << i.ps2.patch<<":"<<i.ps2.side()<<" [ ";
     for (index_t j = 0; j<i.directionMap.size(); ++j)
     {
-        if ( i.ps1.direction() == j ) 
+        if ( i.ps1.direction() == j )
             continue;
         os << j << "~" << (i.directionOrientation(j) ? "(+" : "(-") << i.directionMap(j)<<") ";
     }
@@ -805,7 +1000,7 @@ GISMO_DEPRECATED inline int direction (int s)
 {
     GISMO_ASSERT( s>0, "Requested direction of none boundary.\n");
     return (s-1) / 2 ;
-}  
+}
 
 
 /// \brief Returns the parameter value (false=0=start, true=1=end) that corresponds to side s
@@ -847,4 +1042,3 @@ gsMatrix<T> getFace (const boxSide side, const gsMatrix<T> &box)
 
 
 } // namespace gismo
-

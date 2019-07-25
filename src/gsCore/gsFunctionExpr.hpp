@@ -208,7 +208,7 @@ public:
         //copy_n(other.vars, N_VARS+1, vars);
         string    .reserve(string.size());
         expression.reserve(string.size());
-        for (std::size_t i = 0; i!= other.string.size(); ++i)
+        for (size_t i = 0; i!= other.string.size(); ++i)
             addComponent(other.string[i]);
     }
 
@@ -238,7 +238,7 @@ public:
 
            std::deque<symbol_t> symbol_list;
            parser.dec().symbols(symbol_list);
-           for (std::size_t i = 0; i != symbol_list.size(); ++i)
+           for (size_t i = 0; i != symbol_list.size(); ++i)
            {
            symbol_t& symbol = symbol_list[i];
            // do something
@@ -412,7 +412,7 @@ gsFunctionExpr<T>::gsFunctionExpr(const std::vector<std::string> & expression_st
                                   int ddim)
 : my(new PrivateData_t(ddim))
 {
-    for (std::size_t i = 0; i!= expression_string.size(); ++i)
+    for (size_t i = 0; i!= expression_string.size(); ++i)
         my->addComponent(expression_string[i]);
 }
 
@@ -467,13 +467,13 @@ gsFunctionExpr<T>::~gsFunctionExpr()
 }
 
 template<typename T>
-int gsFunctionExpr<T>::domainDim() const
+short_t gsFunctionExpr<T>::domainDim() const
 {
     return my->dim;
 }
 
 template<typename T>
-int gsFunctionExpr<T>::targetDim() const
+short_t gsFunctionExpr<T>::targetDim() const
 {
     return static_cast<int>(my->string.size());
 }

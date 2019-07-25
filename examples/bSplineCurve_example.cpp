@@ -47,6 +47,9 @@ int main(int argc, char *argv[])
         gsWriteParaview( curve, "bsplinecurve", 100);
         gsFileManager::open("bsplinecurve.pvd");
     }
+    else
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+                  "file containing the solution.\n";
 
     return 0;
 }

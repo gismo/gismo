@@ -23813,7 +23813,8 @@ namespace exprtk
             return error_node();
          }
 
-         T vector_size = size_expr->value();
+         const T vector_size = size_expr->value();
+         const std::size_t vec_size = static_cast<std::size_t>(details::numeric::to_int32(vector_size));
 
          free_node(node_allocator_,size_expr);
 
@@ -23999,7 +24000,7 @@ namespace exprtk
                }
             }
 
-            if (vec_initilizer_list.size() > vector_size)
+            if (vec_initilizer_list.size() > vec_size)
             {
                set_error(
                   make_error(parser_error::e_syntax,
@@ -24012,8 +24013,6 @@ namespace exprtk
          }
 
          typename symbol_table_t::vector_holder_ptr vec_holder = typename symbol_table_t::vector_holder_ptr(0);
-
-         const std::size_t vec_size = static_cast<std::size_t>(details::numeric::to_int32(vector_size));
 
          scope_element& se = sem_.get_element(vec_name);
 

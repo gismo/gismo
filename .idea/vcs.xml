@@ -3,7 +3,6 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extensions/gsUnitTest" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/extensions/motor" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extensions/unsupported" vcs="Git" />
   </component>
 </project>

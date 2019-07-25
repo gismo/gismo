@@ -344,7 +344,9 @@ public:
 
 
     /// square template constructed providing the 4 corners Bb matrix (2,4) (x and y coord.)
-    gsTemplate(int r, bool square) : Base()
+    gsTemplate(int  r,
+               bool ) //square)
+    : Base()
     {
 
         gsMatrix<T> Bb(2,4);
@@ -583,7 +585,7 @@ public:
         return os; 
     }
 
-    int parDim() const { return dim; }   
+    short_t parDim() const { return dim; }
 
     /// Number of patches    
     index_t nPatches() const { return this->size(); }
@@ -603,7 +605,7 @@ public:
         return m_skeleton;
     }
     
-    gsBSpline<T> * skeleton(std::size_t const & i) 
+    gsBSpline<T> * skeleton(size_t const & i)
     { 
         return m_skeleton[i];
     }

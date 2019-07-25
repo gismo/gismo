@@ -68,7 +68,7 @@ gsQuadRule<T>::computeTensorProductRule(const std::vector<gsVector<T> > & nodes,
                                         const std::vector<gsVector<T> > & weights)
 {
     const int d  = nodes.size();
-    GISMO_ASSERT( static_cast<std::size_t>(d) == weights.size(),
+    GISMO_ASSERT( static_cast<size_t>(d) == weights.size(),
                   "Nodes and weights do not agree." );
 
     // compute the tensor quadrature rule

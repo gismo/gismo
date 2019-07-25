@@ -15,6 +15,8 @@
 
 using namespace gismo;
 
+gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(const gsSparseMatrix<>&, const gsMultiBasis<>&, const gsBoundaryConditions<>&, const gsOptionList&);
+
 int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
@@ -22,6 +24,7 @@ int main(int argc, char *argv[])
     std::string geometry("domain2d/yeti_mp2.xml");
     index_t refinements = 3;
     index_t degree = 2;
+    bool nonMatching = false;
     bool dg = false;
     index_t levels = -1;
     index_t cycles = 1;
@@ -31,6 +34,7 @@ int main(int argc, char *argv[])
     std::string smoother("GaussSeidel");
     real_t damping = -1;
     real_t scaling = 0.12;
+    std::string iterativeSolver("cg");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
     bool plot = false;
@@ -40,6 +44,7 @@ int main(int argc, char *argv[])
     cmd.addString("g", "Geometry",              "Geometry file", geometry);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
+    cmd.addSwitch("",  "NonMatching",           "Set up a non-matching multi-patch discretization", nonMatching);
     cmd.addSwitch("",  "DG",                    "Use a discontinuous Galerkin discretization", dg);
     cmd.addInt   ("l", "MG.Levels",             "Number of levels to use for multigrid iteration", levels);
     cmd.addInt   ("c", "MG.Cycles",             "Number of multi-grid cycles", cycles);
@@ -49,10 +54,11 @@ int main(int argc, char *argv[])
     cmd.addString("s", "MG.Smoother",           "Smoothing method", smoother);
     cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother", damping);
     cmd.addReal  ("",  "MG.Scaling",            "Scaling factor for the subspace corrected mass smoother", scaling);
-    cmd.addReal  ("t", "CG.Tolerance",          "Stopping criterion for cg", tolerance);
-    cmd.addInt   ("",  "CG.MaxIterations",      "Stopping criterion for cg", maxIterations);
+    cmd.addString("i", "IterativeSolver",       "Iterative solver: apply multigrid directly (d) or as a preconditioner for conjugate gradient (cg)", iterativeSolver);
+    cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
+    cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundary_conditions);
-    cmd.addSwitch("",  "Plot",                  "Plot the result with Paraview", plot);
+    cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -134,9 +140,32 @@ int main(int argc, char *argv[])
 
     /************ Setup bases and adjust degree *************/
 
-    gsInfo << "Setup bases and adjust degree... " << std::flush;
-
     gsMultiBasis<> mb(mp);
+
+    if (nonMatching)
+    {
+        gsInfo << "Option NonMatching: Make uniform refinement for every third patch... " << std::flush;
+        for (size_t i = 0; i < mb.nBases(); ++i)
+            if ( i%3 == 0 )
+                mb[i].uniformRefine();
+        gsInfo << "done.\n";
+        --refinements;
+
+        gsInfo << "Option NonMatching: Increase spline degree for every other third patch... " << std::flush;
+        for (size_t i = 0; i < mb.nBases(); ++i)
+            if ( i%3 == 1 )
+                mb[i].setDegreePreservingMultiplicity(degree+1);
+        gsInfo << "done.\n";
+
+        if (!dg)
+        {
+            gsInfo << "\nThe option --NonMatching does not allow a conforming discretization. Thus, option --DG is required.\n";
+            return EXIT_FAILURE;
+        }
+
+    }
+
+    gsInfo << "Setup bases and adjust degree... " << std::flush;
 
     for ( size_t i = 0; i < mb.nBases(); ++ i )
         mb[i].setDegreePreservingMultiplicity(degree);
@@ -188,22 +217,27 @@ int main(int argc, char *argv[])
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
         else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" || smoother == "Hybrid" || smoother == "hyb" )
         {
-            if (multiBases[i].nBases() != 1)
+            if (multiBases[i].nBases() == 1)
             {
-                gsInfo << "The chosen smoother only works for single-patch geometries.\n\n";
-                return EXIT_FAILURE;
+                smootherOp = gsPreconditionerFromOp<>::make(
+                    mg->underlyingOp(i),
+                    gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("MG"),scaling)
+                );
             }
-            smootherOp = gsPreconditionerFromOp<>::make(
-                mg->underlyingOp(i),
-                gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("MG"),scaling)
-            );
+            else
+            {
+                smootherOp = setupSubspaceCorrectedMassSmoother( mg->matrix(i), multiBases[i], bc, opt.getGroup("MG") );
+            }
 
             if ( smoother == "Hybrid" || smoother == "hyb" )
+            {
+                smootherOp->setOptions( opt.getGroup("MG") );
                 smootherOp = gsCompositePrecOp<>::make( makeGaussSeidelOp(mg->matrix(i)), smootherOp );
+            }
         }
         else
         {
-            gsInfo << "The chosen smoother is unknown.\n\nKnown are:\n  Richardson (r)\n  Jacobi (j)\n  GaussSeidel (gs)"
+            gsInfo << "\n\nThe chosen smoother is unknown.\n\nKnown are:\n  Richardson (r)\n  Jacobi (j)\n  GaussSeidel (gs)"
                       "\n  SubspaceCorrectedMassSmoother (scms)\n  Hybrid (hyb)\n\n";
             return EXIT_FAILURE;
         }
@@ -220,9 +254,19 @@ int main(int argc, char *argv[])
     gsMatrix<> x, errorHistory;
     x.setRandom( assembler.matrix().rows(), 1 );
 
-    gsConjugateGradient<>( assembler.matrix(), mg )
-        .setOptions( opt.getGroup("CG") )
-        .solveDetailed( assembler.rhs(), x, errorHistory );
+    if (iterativeSolver=="cg")
+        gsConjugateGradient<>( assembler.matrix(), mg )
+            .setOptions( opt.getGroup("Solver") )
+            .solveDetailed( assembler.rhs(), x, errorHistory );
+    else if (iterativeSolver=="d")
+        gsGradientMethod<>( assembler.matrix(), mg )
+            .setOptions( opt.getGroup("Solver") )
+            .solveDetailed( assembler.rhs(), x, errorHistory );
+    else
+    {
+        gsInfo << "\n\nThe chosen iterative solver is unknown.\n\nKnown are:\n  conjugate gradient (cg)\n  direct (d)\n\n";
+        return EXIT_FAILURE;
+    }
 
     gsInfo << "done.\n\n";
 
@@ -231,9 +275,9 @@ int main(int argc, char *argv[])
     const index_t iter = errorHistory.rows()-1;
     const bool success = errorHistory(iter,0) < tolerance;
     if (success)
-        gsInfo << "Reached desired tolerance after " << iter << " iterates:\n";
+        gsInfo << "Reached desired tolerance after " << iter << " iterations:\n";
     else
-        gsInfo << "Did not reach desired tolerance after " << iter << " iterates:\n";
+        gsInfo << "Did not reach desired tolerance after " << iter << " iterations:\n";
 
     if (errorHistory.rows() < 20)
         gsInfo << errorHistory.transpose() << "\n\n";
@@ -254,8 +298,88 @@ int main(int argc, char *argv[])
     }
     else
     {
-        gsInfo << "Done. No output created, re-run with --Plot to get a ParaView "
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;
-};
+}
+
+
+gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
+    const gsSparseMatrix<>& matrix,
+    const gsMultiBasis<>& mb,
+    const gsBoundaryConditions<>& bc,
+    const gsOptionList& opt
+)
+{
+    const short_t dim = mb.topology().dim();
+
+    // Setup dof mapper
+    gsDofMapper dm;
+    mb.getMapper(
+       (dirichlet::strategy)opt.askInt("DirichletStrategy",11),
+       (iFace    ::strategy)opt.askInt("InterfaceStrategy", 1),
+       bc,
+       dm,
+       0
+    );
+    const index_t nTotalDofs = dm.freeSize();
+
+    // Decompose the whole domain into components
+    std::vector< std::vector<patchComponent> > components = mb.topology().allComponents(true);
+    const index_t nr_components = components.size();
+
+    // Setup Dirichlet boundary conditions
+    gsBoundaryConditions<> dir_bc;
+    for( index_t ps=0; ps < 2*dim; ++ps )
+        dir_bc.addCondition( 0, 1+ps, condition_type::dirichlet, NULL );
+
+    // Setup transfer matrices and local preconditioners
+    std::vector< gsSparseMatrix<real_t,RowMajor> > transfers;
+    transfers.reserve(nr_components);
+
+    std::vector< gsLinearOperator<>::Ptr > ops;
+    ops.reserve(nr_components);
+
+    for (index_t i=0; i<nr_components; ++i)
+    {
+        gsMatrix<unsigned> indices;
+        std::vector<gsBasis<>::uPtr> bases = mb.componentBasis_withIndices(components[i],dm,indices,true);
+
+        index_t sz = indices.rows();
+        gsSparseEntries<> se;
+        se.reserve(sz);
+        for (index_t j=0; j<sz; ++j)
+            se.add(indices(j,0),j,real_t(1));
+        gsSparseMatrix<real_t,RowMajor> transfer(nTotalDofs,sz);
+        transfer.setFrom(se);
+
+        if (sz>0)
+        {
+            if (bases[0]->dim() == dim)
+            {
+                GISMO_ASSERT ( bases.size() == 1, "Only one basis is expected for each patch." );
+                ops.push_back(
+                    gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(
+                        *(bases[0]),
+                        dir_bc,
+                        gsOptionList(),
+                        opt.getReal("Scaling")
+                    )
+                );
+            }
+            else
+            {
+                gsSparseMatrix<> mat = transfer.transpose() * matrix * transfer;
+                ops.push_back( makeSparseCholeskySolver(mat) );
+            }
+
+            transfers.push_back(give(transfer));
+        }
+    }
+
+    return gsPreconditionerFromOp<>::make(
+        makeMatrixOp(matrix),
+        gsAdditiveOp<>::make(transfers, ops)
+    );
+}

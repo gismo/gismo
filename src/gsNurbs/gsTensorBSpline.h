@@ -23,7 +23,7 @@ namespace gismo
 /// selects the row of coefficients from coefficients of geo that are suitable
 /// for the isoparametric slice in \a dir_fixed with \a par.
 /// Note that geo has to have already C^0 continuity at \a par in direction \a dir.
-template <unsigned d, class T>
+template <short_t d, class T>
 void constructCoefsForSlice(index_t dir_fixed, const index_t index,
                             const gsMatrix<T> & fullCoefs,
                             const gsVector<index_t, d> & sizes,
@@ -40,7 +40,7 @@ void constructCoefsForSlice(index_t dir_fixed, const index_t index,
     \ingroup geometry
     \ingroup Nurbs
 */
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsTensorBSpline GISMO_FINAL : public gsGeoTraits<d,T>::GeometryBase
 {
 public: 
@@ -176,7 +176,7 @@ public:
 public:
 
     // Look at gsGeometry class for a description
-    void degreeElevate(int const i = 1, int const dir = -1);
+    void degreeElevate(short_t const i = 1, short_t const dir = -1);
 
     /// Inserts knot \a knot at direction \a dir, \a i times
     void insertKnot( T knot, int dir, int i = 1);
@@ -195,7 +195,7 @@ public:
     /*** Additional members for tensor B-Splines ***/
 
     /// Returns the degree of the basis wrt direction i
-    unsigned degree(const unsigned & i) const
+    short_t degree(const unsigned & i) const
     { return this->basis().component(i).degree(); }
 
     /// Toggle orientation wrt coordinate k
