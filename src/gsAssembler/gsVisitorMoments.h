@@ -119,7 +119,7 @@ public:
         
         for (index_t i=0; i < numActive; ++i)
         {
-            const int ii = actives(i);
+            const index_t ii = actives(i);
             if ( mapper.is_free_index(ii) )
             {
                 rhsMatrix.row(ii) += localRhs.row(i);
@@ -134,7 +134,7 @@ protected:
 protected:
     // Basis values
     std::vector<gsMatrix<T> > basisData;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
     index_t numActive;
 
 protected:

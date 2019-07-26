@@ -581,9 +581,9 @@ public: /* mapping patch-local to global indices */
      * @param[out] result the mapped indices
      * @param[in] c the considered column block
      */
-    void mapColIndices(const gsMatrix<unsigned> & actives,
+    void mapColIndices(const gsMatrix<index_t> & actives,
                        const index_t patchIndex,
-                       gsMatrix<unsigned> & result,
+                       gsMatrix<index_t> & result,
                        const size_t c = 0) const
     {
         m_mappers[m_col.at(c)].localToGlobal(actives, patchIndex, result);
@@ -882,7 +882,7 @@ public: /* Add local contributions to system right-hand side */
      * @param[in] r the row block associated to
      */
     void pushToRhs(const gsMatrix<T> & localRhs,
-                   const gsMatrix<unsigned> & actives,
+                   const gsMatrix<index_t> & actives,
                    const size_t r = 0)
     {
         const gsDofMapper & mapper = m_mappers[m_row.at(r)];
@@ -890,7 +890,7 @@ public: /* Add local contributions to system right-hand side */
 
         for (index_t i = 0; i != numActive; ++i)
         {
-            const int ii =  m_rstr.at(r) + actives.at(i);
+            const index_t ii =  m_rstr.at(r) + actives.at(i);
             if ( mapper.is_free_index(actives.at(i)) )
             {
                 m_rhs.row(ii) += localRhs.row(i);
@@ -906,14 +906,14 @@ public: /* Add local contributions to system right-hand side */
      * @param[in] r the row block associated to
      */
     void pushToRhsAllFree(const gsMatrix<T> & localRhs,
-                          const gsMatrix<unsigned> & actives,
+                          const gsMatrix<index_t> & actives,
                           const size_t r = 0)
     {
         const index_t    numActive = actives.rows();
 
         for (index_t i = 0; i != numActive; ++i)
         {
-            const int ii =  m_rstr.at(r) + actives.at(i);
+            const index_t ii =  m_rstr.at(r) + actives.at(i);
             m_rhs.row(ii) += localRhs.row(i);
         }
     }

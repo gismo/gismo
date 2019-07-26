@@ -24,9 +24,9 @@ m_shift(0), m_numFreeDofs(0), m_numCpldDofs(1), m_curElimId(-1)
 }
 
 
-void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
+void gsDofMapper::localToGlobal(const gsMatrix<index_t>& locals,
                                 index_t patchIndex,
-                                gsMatrix<unsigned>& globals) const
+                                gsMatrix<index_t>& globals) const
 {
     GISMO_ASSERT( locals.cols() == 1, "localToGlobal: Expecting one column of locals");
     const index_t numActive = locals.rows();
