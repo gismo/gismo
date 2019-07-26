@@ -285,7 +285,7 @@ void gsBasis<T>::connectivity(const gsMatrix<T> &, gsMesh<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::active_into(const gsMatrix<T> &, gsMatrix<unsigned>&) const
+void gsBasis<T>::active_into(const gsMatrix<T> &, gsMatrix<index_t>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template <class T>
