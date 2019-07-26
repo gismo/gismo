@@ -26,8 +26,7 @@ void buildGismo()
     {
 	//cmd ctest -S ../cmake/ctest_script.cmake -D PROJECT_NAME=Gismo -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;gismo_dev;example_dev;unittest_dev;motor' -D CTEST_TEST_MODEL=Nightly -D GISMO_SUBMODULES='unsupported;motor' CMAKE_ARGS='-DGISMO_BUILD_UNITTESTS=ON' -Q
 
-        cmd 'cmake ../ -DGISMO_BUILD_UNITTESTS=ON'
-	//-DSITE=
+        cmd 'cmake ../ -DGISMO_BUILD_UNITTESTS=ON -DSITE=$NODE_NAME -DBUILD_NAME=$BUILD_TAG'
         cmd 'ctest --output-on-failure -C RelWithDebinfo -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit'
     }
 }
