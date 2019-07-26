@@ -105,7 +105,7 @@ public:
      *  Since the side with index \em 3 corresponds to "south", i.e. to \f$ \{ (u,v):\ v = 0 \} \f$,
      *  calling parameter(3) will return <em>1</em>, because \em v (i.e., parameter direction with index \em 1) is fixed/set to zero.\n
     **/
-    short_t direction () const {return (m_index-1) / 2;}
+    short_t direction () const {return static_cast<short_t>((m_index-1) / 2);}
 
     /**
      *  \brief Returns the parameter value (false=0=start, true=1=end) that corresponds to this side
@@ -126,7 +126,7 @@ public:
      * @brief returns the parallel opposite side
      * @return
      */
-    boxSide opposite() const {return boxSide(((m_index-1)^1)+1);}
+    boxSide opposite() const {return boxSide(static_cast<short_t>(((m_index-1)^1)+1));}
 
 
     /**
@@ -138,7 +138,7 @@ public:
      *  \brief Returns the index of the box side implied by input
      *  direction \a dir and parameter \a par
     **/
-    static inline short_t index (short_t dir, bool par) {return par?2*dir+2:2*dir+1;}
+    static inline short_t index (short_t dir, bool par) {return static_cast<short_t>(par?2*dir+2:2*dir+1);}
 
 
     /**
@@ -161,14 +161,14 @@ public:
      * @return the last valid side in an dim-dimensional box
     **/
 
-    static  boxSide    getLast      (int dim) {return boxSide(2*dim);}
+    static  boxSide    getLast      (int dim) {return boxSide(static_cast<short_t>(2*dim));}
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @param dim
      * @return the (invalid) side after the last one in dim-dimensional box
     **/
 
-    static  boxSide    getEnd       (int dim) {return boxSide(2*dim+1);}
+    static  boxSide    getEnd       (int dim) {return boxSide(static_cast<short_t>(2*dim+1));}
 
     /**
      * @brief Incrementset boxSide
@@ -306,14 +306,14 @@ public:
      * @param param entry \em i is 1 if the corner is contained in box_face(i,1)
      *        and 0 if it is contained in box_face(i,0)
      */
-    void parameters_into (int dim, gsVector<bool> &param) const
+    void parameters_into (short_t dim, gsVector<bool> &param) const
     {
         param.resize(static_cast<size_t>(dim));
-        for (int i=0; i<dim; ++i)
+        for (short_t i=0; i<dim; ++i)
             param(i)=((m_index-1)>>i)&1;
     }
 
-    gsVector<bool> parameters(int dim) const
+    gsVector<bool> parameters(short_t dim) const
     {
         gsVector<bool> r;
         parameters_into(dim,r);
@@ -326,13 +326,13 @@ public:
      * @param dim is the ambient dimension
      * @param sides
      */
-    void getContainingSides (int dim, std::vector<boxSide> &sides) const
+    void getContainingSides (short_t dim, std::vector<boxSide> &sides) const
     {
         GISMO_ASSERT(dim>=0, "Dimension must be non negative");
-        sides.resize(dim);
+        sides.resize(static_cast<size_t>(dim));
         gsVector<bool> param;
         parameters_into(dim,param);
-        for (int i=0;i<dim;++i)
+        for (short_t i=0;i<dim;++i)
             sides[i]=boxSide(i,param(i));
     }
 
@@ -340,7 +340,7 @@ public:
      * @brief helper for iterating on corners of an n-dimensional box
      * @return the first valid corners in an dim-dimensional box
     **/
-    static  boxCorner    getFirst     (int)
+    static  boxCorner    getFirst     (short_t)
     { return boxCorner(1); }
 
     /**
@@ -349,14 +349,14 @@ public:
      * @return the last valid corners in an dim-dimensional box
     **/
 
-    static  boxCorner    getLast      (int dim) {return boxCorner((1<<dim));}
+    static  boxCorner    getLast      (short_t dim) {return boxCorner((1<<dim));}
     /**
      * @brief helper for iterating on corners of an n-dimensional box
      * @param dim
      * @return the (invalid) corners after the last one in dim-dimensional box
     **/
 
-    static  boxCorner    getEnd       (int dim) {return boxCorner((1<<dim)+1);}
+    static  boxCorner    getEnd       (short_t dim) {return boxCorner((1<<dim)+1);}
     /**
      * @brief set to next boxCorner
      */
@@ -399,7 +399,7 @@ public:
     void getContainingSides (short_t dim, std::vector<patchSide> &sides) const
     {
         GISMO_ASSERT(dim>=0, "Dimension must be non negative");
-        sides.resize(dim);
+        sides.resize(static_cast<size_t>(dim));
         gsVector<bool> param;
         parameters_into(dim,param);
         for (short_t i=0;i<dim;++i)
@@ -652,7 +652,7 @@ public:
     //
     boundaryInterface(patchSide const & _ps1,
                       patchSide const & _ps2,
-                      int dim)
+                      short_t dim)
         : ps1(_ps1), ps2(_ps2)
     {
         directionMap.resize(dim);
@@ -661,7 +661,7 @@ public:
         directionMap(ps1.direction())=ps2.direction();
         directionOrientation(ps1.direction())= (ps1.parameter()!=ps2.parameter());
 
-        for (int i = 1 ; i < dim; ++i)
+        for (short_t i = 1 ; i < dim; ++i)
         {
             const index_t o = (ps1.direction()+i)%dim;
             const index_t d = (ps2.direction()+i)%dim;
@@ -672,7 +672,7 @@ public:
         }
     }
 
-    boundaryInterface(gsVector<int>     const & p,
+    boundaryInterface(gsVector<index_t>     const & p,
                       gsVector<index_t> const & map_info,
                       gsVector<bool>    const & orient_flags)
     : ps1(p(0),p(1)), ps2(p(2),p(3)),
@@ -696,7 +696,7 @@ public:
         init(_ps1,_ps2,orient_flags);
     }
 
-    GISMO_DEPRECATED boundaryInterface(gsVector<int>     const & p,
+    GISMO_DEPRECATED boundaryInterface(gsVector<index_t> const & p,
                       gsVector<bool>    const & orient_flags)
     {
         init(patchSide(p(0),boxSide(p(1))),patchSide(p(2),boxSide(p(3))) ,orient_flags);

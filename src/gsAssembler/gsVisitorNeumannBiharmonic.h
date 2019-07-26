@@ -56,7 +56,7 @@ public:
     }
 
     void initialize(const gsBasis<T> & basis,
-                    const index_t ,
+                    const size_t ,
                     const gsOptionList & options, 
                     gsQuadRule<T>    & rule)
     {
@@ -112,7 +112,7 @@ public:
         }
     }
     
-    inline void localToGlobal(const int patchIndex,
+    inline void localToGlobal(const size_t patchIndex,
                               const std::vector<gsMatrix<T> >    & ,
                               gsSparseSystem<T>     & system)
     {
@@ -126,7 +126,7 @@ public:
     /*
     void localToGlobal(const gsDofMapper  & mapper,
                        const gsMatrix<T>     & eliminatedDofs,
-                       const int patchIndex,
+                       const size_t patchIndex,
                        gsSparseMatrix<T>     & sysMatrix,
                        gsMatrix<T>           & rhsMatrix )
     {
@@ -137,7 +137,7 @@ public:
         for (index_t j=0; j!=numActive; ++j)
         {
             // convert local DoF index to global DoF index
-            const unsigned jj = actives(j);
+            const size_t jj = actives(j);
             if (mapper.is_free_index(jj))
             {
                 rhsMatrix.row(jj) += localRhs.row(j);
@@ -155,7 +155,7 @@ protected:
 
     // Basis values
     gsMatrix<T> basisGrads;
-    gsMatrix<unsigned> actives;
+    gsMatrix<size_t> actives;
 
     // Normal and Neumann values
     gsMatrix<T>        physBasisGrad;

@@ -204,7 +204,7 @@ public:
      * \a i ps. Thus, the whole set of dofs collapses to a single global dof
      *
      */
-    void colapseDofs(index_t k, const gsMatrix<unsigned> & b );
+    void colapseDofs(index_t k, const gsMatrix<size_t> & b );
 
     /// \brief Couples dof \a i of patch \a u with dof \a j of patch
     /// \a v such that they refer to the same global dof.
@@ -212,8 +212,8 @@ public:
 
     /// \brief Couples dofs \a b1 of patch \a u with dofs \a b2 of patch
     /// \a v one by one such that they refer to the same global dof.
-    void matchDofs(index_t u, const gsMatrix<unsigned> & b1,
-                   index_t v, const gsMatrix<unsigned> & b2);
+    void matchDofs(index_t u, const gsMatrix<size_t> & b1,
+                   index_t v, const gsMatrix<size_t> & b2);
 
     /// Mark the local dof \a i of patch \a k as coupled.
     void markCoupled( index_t i, index_t k );
@@ -226,7 +226,7 @@ public:
 
     /// Mark the local dofs \a boundaryDofs of patch \a k as eliminated.
     // to do: put k at the end
-    void markBoundary( index_t k, const gsMatrix<unsigned> & boundaryDofs );
+    void markBoundary( index_t k, const gsMatrix<size_t> & boundaryDofs );
 
     /// Mark the local dof \a i of patch \a k as eliminated.
     void eliminateDof( index_t i, index_t k );
@@ -272,9 +272,9 @@ public:
      * \param[in] patchIndex the index of the patch where the local indices belong to
      * \param[out] globals the global indices of the patch
      */
-    void localToGlobal(const gsMatrix<unsigned>& locals,
-                       index_t patchIndex,
-                       gsMatrix<unsigned>& globals) const;
+    void localToGlobal(const gsMatrix<index_t>& locals,
+                       size_t patchIndex,
+                       gsMatrix<index_t>& globals) const;
 
     /** \brief Computes the global indices of the input local indices
      *
@@ -283,9 +283,9 @@ public:
      * \param[out] globals the local-global correspondance
      * \param[out] numFree the number of free indices in \a local
      */
-    void localToGlobal(const gsMatrix<unsigned>& locals,
-                       index_t patchIndex,
-                       gsMatrix<unsigned>& globals,
+    void localToGlobal(const gsMatrix<index_t>& locals,
+                       size_t patchIndex,
+                       gsMatrix<index_t>& globals,
                        index_t & numFree) const;
 
     /** \brief Returns the index associated to local dof \a i of patch \a k without shifts.

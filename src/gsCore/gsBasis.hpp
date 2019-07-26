@@ -47,7 +47,7 @@ void gsBasis<T>::evalFunc_into(const gsMatrix<T> &u,
                            gsMatrix<T>& result) const
 {
     gsMatrix<T> B ;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     // compute function values
     this->eval_into(u,B);
@@ -71,7 +71,7 @@ void gsBasis<T>::jacobianFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coe
 
     result.setZero( n, pardim * numPts );
     gsMatrix<T> B;
-    gsMatrix<unsigned> ind;
+    gsMatrix<index_t> ind;
 
     this->deriv_into(u,B);
     this->active_into(u,ind);
@@ -92,7 +92,7 @@ template<class T>
 void gsBasis<T>::derivFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const
 {
     gsMatrix<T>        B;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     // compute first derivatives
     this->deriv_into(u,B);
@@ -111,7 +111,7 @@ void gsBasis<T>::deriv2Func_into(const gsMatrix<T> & u,
                                  gsMatrix<T>& result) const
 {
     gsMatrix<T> B;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     // compute second derivatives
     this->deriv2_into(u,B);
@@ -137,7 +137,7 @@ void gsBasis<T>::evalAllDersFunc_into(const gsMatrix<T> &u,
     std::vector< gsMatrix<T> >B;
     // actives will contain the indices of the basis functions
     // which are active at the evaluation points
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     this->evalAllDers_into(u,n,B);
     this->active_into(u,actives);
@@ -151,7 +151,7 @@ void gsBasis<T>::evalAllDersFunc_into(const gsMatrix<T> &u,
 
 template<class T>
 void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
-                                        const gsMatrix<unsigned> & actives,
+                                        const gsMatrix<index_t> & actives,
                                         const gsMatrix<T> & values,
                                         gsMatrix<T> & result)
 {
@@ -188,7 +188,7 @@ void gsBasis<T>::collocationMatrix(const gsMatrix<T> & u, gsSparseMatrix<T> & re
 {
     result.resize( u.cols(), this->size() );
     gsMatrix<T> ev;
-    gsMatrix<unsigned> act;
+    gsMatrix<size_t> act;
 
     eval_into  (u.col(0), ev);
     active_into(u.col(0), act);
@@ -285,7 +285,7 @@ void gsBasis<T>::connectivity(const gsMatrix<T> &, gsMesh<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::active_into(const gsMatrix<T> &, gsMatrix<unsigned>&) const
+void gsBasis<T>::active_into(const gsMatrix<T> &, gsMatrix<index_t>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template <class T>
@@ -337,9 +337,9 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis(boxComponent b) const
         if (loc)
         {
             if (result)
-                result = result->boundaryBasis( boxSide(loc+2*d) );
+                result = result->boundaryBasis( boxSide(static_cast<short_t>(loc+2*d)));
             else
-                result =   this->boundaryBasis( boxSide(loc+2*d) );
+                result =   this->boundaryBasis( boxSide(static_cast<short_t>(loc+2*d)));
         }
         else
             ++d;
@@ -366,16 +366,16 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b,
         {
             if (result)
             {
-                gsMatrix<unsigned> tmp = result->boundary( boxSide(loc+2*d) );
+                gsMatrix<unsigned> tmp = result->boundary( boxSide(static_cast<short_t>(loc+2*d)) );
                 for (index_t j=0; j<tmp.size(); ++j)
                     tmp(j,0) = indices(tmp(j,0),0);
                 tmp.swap(indices);
-                result = result->boundaryBasis( boxSide(loc+2*d) );
+                result = result->boundaryBasis( boxSide(static_cast<short_t>(loc+2*d)) );
             }
             else
             {
-                indices = this->boundary( boxSide(loc+2*d) );
-                result = this->boundaryBasis( boxSide(loc+2*d) );
+                indices = this->boundary( boxSide(static_cast<short_t>(loc+2*d)) );
+                result = this->boundaryBasis( boxSide(static_cast<short_t>(loc+2*d)) );
             }
         }
         else
@@ -598,11 +598,11 @@ void gsBasis<T>::setDegree(short_t const& i)
         const short_t p = this->degree(k);
         if ( i > p )
         {
-            this->degreeElevate(i-p, k);
+            this->degreeElevate(static_cast<short_t>(i-p), k);
         }
         else if  ( i < p )
         {
-            this->degreeReduce(p-i, k);
+            this->degreeReduce(static_cast<short_t>(p-i), k);
         }
     }
 }
@@ -613,9 +613,9 @@ void gsBasis<T>::setDegreePreservingMultiplicity(short_t const& i)
     for ( short_t d = 0; d < dim(); ++ d )
     {
         if ( i > degree(d) )
-            degreeIncrease(i-degree(d),d);
+            degreeIncrease(static_cast<short_t>(i-degree(d)),d);
         else if ( i < degree(d) )
-            degreeDecrease(-i+degree(d),d);
+            degreeDecrease(static_cast<short_t>(-i+degree(d)),d);
     }
 }
 

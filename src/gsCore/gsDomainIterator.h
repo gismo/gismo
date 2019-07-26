@@ -108,7 +108,7 @@ public:
     bool good() const   { return m_isGood; }
 
     /// Return dimension of the elements
-    int dim() const   { return center.size(); }
+    short_t dim() const   { return static_cast<short_t>(center.size()); }
 
     /// Updates \a other with and adjacent element
     /// \todo upgrade to return adjacent range instead

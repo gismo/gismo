@@ -149,7 +149,7 @@ void gsAssembler<T>::penalizeDirichletDofs(int unk)
     {
         const gsBasis<T> & basis = mbasis[it->patch()];
 
-        gsMatrix<unsigned> bnd = basis.boundary(it->side() );
+        gsMatrix<size_t> bnd = basis.boundary(it->side() );
         for (index_t k=0; k!= bnd.size(); ++k)
         {
             // free dof position
@@ -200,7 +200,7 @@ void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, int p
         if ( k == patch )
         {
             // Get indices in the patch on this boundary
-            const gsMatrix<unsigned> boundary =
+            const gsMatrix<size_t> boundary =
                     mbasis[k].boundary(it->side());
 
             //gsInfo <<"Setting the value for: "<< boundary.transpose() <<"\n";
@@ -332,7 +332,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
         const gsBasis<T> & basis = mbasis[k];
 
         // Get dofs on this boundary
-        const gsMatrix<unsigned> boundary = basis.boundary(it->side());
+        const gsMatrix<size_t> boundary = basis.boundary(it->side());
 
         // If the condition is homogeneous then fill with zeros
         if ( it->isHomogeneous() )
@@ -411,7 +411,7 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
     gsVector<T> quWeights;
 
     gsMatrix<T> rhsVals;
-    gsMatrix<unsigned> globIdxAct;
+    gsMatrix<index_t> globIdxAct;
     gsMatrix<T> basisVals;
 
     gsMapData<T> md(NEED_MEASURE);
@@ -502,14 +502,14 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
                 {
                     // Each active boundary function/DOF in eltBdryFcts has...
                     // ...the above-mentioned "element-wise index"
-                    const unsigned i = eltBdryFcts[i0];
+                    const size_t i = eltBdryFcts[i0];
                     // ...the boundary index.
-                    const unsigned ii = mapper.global_to_bindex( globIdxAct( i ));
+                    const size_t ii = mapper.global_to_bindex( globIdxAct( i ));
 
                     for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
                     {
-                        const unsigned j = eltBdryFcts[j0];
-                        const unsigned jj = mapper.global_to_bindex( globIdxAct( j ));
+                        const size_t j = eltBdryFcts[j0];
+                        const size_t jj = mapper.global_to_bindex( globIdxAct( j ));
 
                         // Use the "element-wise index" to get the needed
                         // function value.
@@ -594,7 +594,7 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     //GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
 
     GISMO_ASSERT(solVector.cols()==1, "Vector valued output only works for single rhs");
-    unsigned idx;
+    size_t idx;
 
     const index_t dim = unknowns.rows();
 
@@ -655,7 +655,7 @@ void gsAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
                                     gsMultiPatch<T>& result, T theta) const
 {
     // GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
-    unsigned idx;
+    size_t idx;
 
     for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
     {

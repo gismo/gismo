@@ -65,7 +65,7 @@ public:
     }
 
     void initialize(const gsBasis<T> & basis,
-                    const index_t ,
+                    const size_t ,
                     const gsOptionList & options, 
                     gsQuadRule<T>    & rule)
     {
@@ -144,7 +144,7 @@ public:
         }
     }
 
-    inline void localToGlobal(const int patchIndex,
+    inline void localToGlobal(const size_t patchIndex,
                               const std::vector<gsMatrix<T> >    & ,
                               gsSparseSystem<T>     & system)
     {
@@ -157,7 +157,7 @@ public:
     
     void localToGlobal(const gsDofMapper  & mapper,
                        const gsMatrix<T>     & eliminatedDofs,
-                       const int patchIndex,
+                       const size_t patchIndex,
                        gsSparseMatrix<T>     & sysMatrix,
                        gsMatrix<T>           & rhsMatrix )
     {
@@ -168,11 +168,11 @@ public:
         // Push element contribution to the global matrix and load vector
         for (index_t j=0; j!=numActive; ++j)
         {
-            const unsigned jj = actives(j);
+            const size_t jj = actives(j);
             rhsMatrix.row(jj) += localRhs.row(j);
             for (index_t i=0; i!=numActive; ++i)
             {
-                const unsigned ii = actives(i);
+                const size_t ii = actives(i);
 //                if ( jj <= ii ) // assuming symmetric problem
                     sysMatrix( ii, jj ) += localMat(i,j);
             }
@@ -194,7 +194,7 @@ private:
     // Basis values
     std::vector<gsMatrix<T> > basisData;
     gsMatrix<T>      pGrads;
-    gsMatrix<unsigned> actives;
+    gsMatrix<size_t> actives;
 
     // Normal and Neumann values
     gsVector<T> unormal;

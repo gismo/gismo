@@ -145,8 +145,8 @@ public:
         }
     }
     
-    inline void localToGlobal(const int                         patch1,
-                              const int                         patch2,
+    inline void localToGlobal(const size_t                      patch1,
+                              const size_t                      patch2,
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T>               & system)
     {

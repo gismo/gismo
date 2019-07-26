@@ -653,7 +653,7 @@ public:
     { return m_periodicPairs.end(); }
 
     /// Add a periodic condition between side \a s1 of box \a p1 and side \a s2 of box \a p2.
-    void addPeriodic(int p1, boxSide s1, int p2, boxSide s2, int dim)
+    void addPeriodic(index_t p1, boxSide s1, index_t p2, boxSide s2, short_t dim)
     { m_periodicPairs.push_back( boundaryInterface(patchSide(p1,s1), patchSide(p2,s2), dim) ); }
 
     /// Removes all periodic pairs

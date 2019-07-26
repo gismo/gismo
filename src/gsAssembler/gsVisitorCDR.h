@@ -96,7 +96,7 @@ public:
     }
 
     void initialize(const gsBasis<T> & basis,
-                    const index_t ,
+                    const size_t ,
                     const gsOptionList & options,
                     gsQuadRule<T>    & rule)
     {
@@ -153,7 +153,7 @@ public:
         gsMatrix<T> & basisGrads = basisData[1];
         gsMatrix<T> & basis2ndDerivs = basisData[2];
 
-        const unsigned d = element.dim();
+        const short_t d = element.dim();
 
         // supgMat will contain the contributions to the assembled matrix
         // that come from the SUPG stabilization. It is initialized whether
@@ -238,8 +238,8 @@ public:
                     }
 
                     //grad_b_basisGradsT.row(fct_i) = (tmp_basis2ndDerivs * coeff_b_vals.col(k) ).transpose();
-                    for( unsigned i = 0; i < d; ++i )
-                        for( unsigned j = 0; j < d; ++j )
+                    for( short_t i = 0; i < d; ++i )
+                        for( short_t j = 0; j < d; ++j )
                             grad_b_basisGradsT(fct_i, i) += coeff_b_vals(j,k) * tmp_basis2ndDerivs(j,i);
                 }
 
@@ -261,7 +261,7 @@ public:
         }
     }
 
-    inline void localToGlobal(const int patchIndex,
+    inline void localToGlobal(const size_t patchIndex,
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T>     & system)
     {
@@ -394,7 +394,7 @@ protected:
     // Basis values
     std::vector<gsMatrix<T> > basisData;
     gsMatrix<T>        physBasisGrad, physBasisd2;
-    gsMatrix<unsigned> actives;
+    gsMatrix<size_t> actives;
     index_t numActive;
 
     gsMatrix<T> coeff_A_vals;

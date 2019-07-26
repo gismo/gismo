@@ -59,7 +59,7 @@ public:
     }
 
     void initialize(const gsBasis<T> & basis,
-                    const index_t ,
+                    const size_t ,
                     const gsOptionList & options, 
                     gsQuadRule<T>    & rule)
     {
@@ -121,7 +121,7 @@ public:
         }
     }
 
-    inline void localToGlobal(const int patchIndex,
+    inline void localToGlobal(const size_t patchIndex,
                               const std::vector<gsMatrix<T> >    & eliminatedDofs,
                               gsSparseSystem<T>     & system)
     {
@@ -177,7 +177,7 @@ protected:
     // Basis values
     std::vector<gsMatrix<T> > basisData;
     gsMatrix<T>        physBasisLaplace;
-    gsMatrix<unsigned> actives;
+    gsMatrix<size_t> actives;
     index_t numActive;
 
 

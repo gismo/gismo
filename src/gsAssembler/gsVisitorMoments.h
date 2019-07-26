@@ -38,7 +38,7 @@ public:
     { }
 
     void initialize(const gsBasis<T> & basis,
-                    const index_t patchIndex,
+                    const size_t /*patchIndex*/,
                     const gsOptionList & options,
                     gsQuadRule<T>    & rule)
     {
@@ -94,7 +94,7 @@ public:
         //gsDebugVar(localMat.asVector().transpose() );
     }
     
-    inline void localToGlobal(const int patchIndex,
+    inline void localToGlobal(const size_t patchIndex,
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T>     & system)
     {
@@ -107,7 +107,7 @@ public:
 
     inline void localToGlobal(const gsDofMapper     & mapper,
                               const gsMatrix<T>     & eliminatedDofs,
-                              const int patchIndex,
+                              const size_t patchIndex,
                               gsSparseMatrix<T>     & sysMatrix,
                               gsMatrix<T>           & rhsMatrix )
     {
@@ -119,7 +119,7 @@ public:
         
         for (index_t i=0; i < numActive; ++i)
         {
-            const int ii = actives(i);
+            const index_t ii = actives(i);
             if ( mapper.is_free_index(ii) )
             {
                 rhsMatrix.row(ii) += localRhs.row(i);
@@ -134,7 +134,7 @@ protected:
 protected:
     // Basis values
     std::vector<gsMatrix<T> > basisData;
-    gsMatrix<unsigned> actives;
+    gsMatrix<size_t> actives;
     index_t numActive;
 
 protected:

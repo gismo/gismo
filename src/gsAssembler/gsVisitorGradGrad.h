@@ -59,7 +59,7 @@ public:
     */
 
     void initialize(const gsBasis<T> & basis,
-                    const index_t /*patchIndex*/,
+                    const size_t /*patchIndex*/,
                     const gsOptionList & options, 
                     gsQuadRule<T>    & rule)
     {

@@ -400,7 +400,7 @@ public:
      * @param[out] result gsMatrix of size \em stride x \em numPts
      */
     static void linearCombination_into(const gsMatrix<T> & coefs,
-                                       const gsMatrix<unsigned> & actives,
+                                       const gsMatrix<index_t> & actives,
                                        const gsMatrix<T> & values,
                                        gsMatrix<T> & result);
 
@@ -469,7 +469,7 @@ public:
      * \param[out]  result For every column \a i of \a u, a column containing the indices of the
      *   active basis functions at evaluation point <em>u</em>.col(<em>i</em>).
      */
-    virtual void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
+    virtual void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
 
     /// \brief Returns the number of active (nonzero) basis functions at points \a u in \a result.
     virtual void numActive_into(const gsMatrix<T> & u, gsVector<unsigned>& result) const;
