@@ -1,7 +1,7 @@
 // Jenkins script for G+Smo, Angelos Mantzaflaris, 2019
 
 // Gather builders
-def labels = ['gismo-ubuntu', 'gismo-macos', 'gismo-fedora', 'gismo-win7x64']
+def labels = ['gismo-ubuntu', 'gismo-macos', 'gismo-centos', 'gismo-fedora', 'gismo-win7x64']
 def builders = [:]
 for (x in labels)
 {
@@ -26,7 +26,7 @@ void buildGismo()
     {
 	//cmd ctest -S ../cmake/ctest_script.cmake -D PROJECT_NAME=Gismo -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;gismo_dev;example_dev;unittest_dev;motor' -D CTEST_TEST_MODEL=Nightly -D GISMO_SUBMODULES='unsupported;motor' CMAKE_ARGS='-DGISMO_BUILD_UNITTESTS=ON' -Q
 
-        cmd 'cmake ../ -DCMAKE_BUILD_TYPE=Release -DGISMO_BUILD_UNITTESTS=ON -DSITE=$NODE_NAME -DCTEST_BUILD_NAME=$BUILD_TAG'
+        cmd 'cmake ../ -DCMAKE_BUILD_TYPE=Release -DGISMO_BUILD_UNITTESTS=ON -DSITE=$NODE_NAME_$BUILD_TAG'
         cmd 'ctest --output-on-failure -C RelWithDebinfo -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit'
     }
 }
