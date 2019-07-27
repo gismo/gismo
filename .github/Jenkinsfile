@@ -1,9 +1,5 @@
 // Jenkins script for G+Smo, Angelos Mantzaflaris, 2019
 
-dir('gismo_src') {
-    checkout scm
-}
-
 // Gather builders
 def labels = ['gismo-ubuntu', 'gismo-macos', 'gismo-centos', 'gismo-fedora', 'gismo-win7x64']
 def builders = [:]
@@ -14,8 +10,11 @@ for (x in labels)
     {
         node(label)
 	{
-	    checkout scm
-	    buildGismo()
+   		dir('gismo_src')
+		{
+		    checkout scm
+		}
+	    	buildGismo()
 	}
     }
 }
