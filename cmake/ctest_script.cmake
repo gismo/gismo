@@ -244,7 +244,7 @@ endif()
 #  "Visual Studio 14 2015 Win64", and so on)
 if (NOT DEFINED CTEST_CMAKE_GENERATOR)
   file(WRITE ${CTEST_BINARY_DIRECTORY}/cgtest/CMakeLists.txt "message(\"\${CMAKE_GENERATOR}\")\n")
-  execute_process(COMMAND ${CMAKE_COMMAND} .
+  execute_process(COMMAND ${CMAKE_COMMAND} -Wno-dev .
     ERROR_VARIABLE CTEST_CMAKE_GENERATOR
     OUTPUT_QUIET
     WORKING_DIRECTORY ${CTEST_BINARY_DIRECTORY}/cgtest/
