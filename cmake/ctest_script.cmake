@@ -125,14 +125,6 @@ endif()
 #set(CTEST_BUILD_JOBS 8)
 #set(CTEST_TEST_JOBS 10)
 
-# The Generator for CMake
-# ("Unix Makefiles", "Ninja", "Xcode", "NMake Makefiles", "NMake Makefiles JOM",
-#  "MinGW Makefiles", "Visual Studio 12 2013", "Visual Studio 14 2015",
-#  "Visual Studio 14 2015 Win64", and so on)
-#if (NOT DEFINED CTEST_CMAKE_GENERATOR)
-#  set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
-#endif()
-
 # Tip fot C/C++ compilers
 # e.g. "cc/g++", "icc/icpc", "clang/clang++", "mpicc/mpic++", cl.exe/cl.exe
 #set(CNAME cc)
@@ -244,6 +236,19 @@ endif()
 # Empty previous directory before building (otherwise builds are incremental)
 if(EMPTY_BINARY_DIRECTORY)
   ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
+endif()
+
+# The Generator for CMake
+# ("Unix Makefiles", "Ninja", "Xcode", "NMake Makefiles", "NMake Makefiles JOM",
+#  "MinGW Makefiles", "Visual Studio 12 2013", "Visual Studio 14 2015",
+#  "Visual Studio 14 2015 Win64", and so on)
+if (NOT DEFINED CTEST_CMAKE_GENERATOR)
+  file(WRITE ${CTEST_BINARY_DIRECTORY}/cgtest/CMakeLists.txt "message(\"\${CMAKE_GENERATOR}\")\n")
+  execute_process(COMMAND ${CMAKE_COMMAND} .
+    ERROR_VARIABLE CTEST_CMAKE_GENERATOR
+    OUTPUT_QUIET
+    WORKING_DIRECTORY ${CTEST_BINARY_DIRECTORY}/cgtest/
+    ERROR_STRIP_TRAILING_WHITESPACE)
 endif()
 
 # Cleanup previous tests, settings and test data
