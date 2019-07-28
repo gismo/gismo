@@ -15,7 +15,7 @@
 #include "gismo_unittest.h"
 
 #define __STDC_LIMIT_MACROS
-#include <cstdint>
+#include <stdint.h>
 
 // This Unittest file tests math::abs_diff, and therefore
 // util::make_unsigned, which is native C++11 and has an
