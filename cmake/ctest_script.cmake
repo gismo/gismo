@@ -129,9 +129,9 @@ endif()
 # ("Unix Makefiles", "Ninja", "Xcode", "NMake Makefiles", "NMake Makefiles JOM",
 #  "MinGW Makefiles", "Visual Studio 12 2013", "Visual Studio 14 2015",
 #  "Visual Studio 14 2015 Win64", and so on)
-if (NOT DEFINED CTEST_CMAKE_GENERATOR)
-  set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
-endif()
+#if (NOT DEFINED CTEST_CMAKE_GENERATOR)
+#  set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
+#endif()
 
 # Tip fot C/C++ compilers
 # e.g. "cc/g++", "icc/icpc", "clang/clang++", "mpicc/mpic++", cl.exe/cl.exe
@@ -304,11 +304,12 @@ if (NOT DEFINED UPDATE_TYPE)
   set(UPDATE_TYPE git)
 endif()
 
-if (NOT DEFINED GISMO_BRANCH)
+if (NOT DEFINED GISMO_BRANCH) #for initial checkout
   set(GISMO_BRANCH stable)
 endif()
 
-# Update modules with fetch HEAD commits for all initialized submodules
+# Update modules with fetch HEAD commits for all initialized
+# submodules
 if (NOT DEFINED UPDATE_MODULES)
   set(UPDATE_MODULES OFF)
 endif()
