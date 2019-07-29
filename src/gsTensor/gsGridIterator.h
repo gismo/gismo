@@ -80,7 +80,7 @@ public:
     gsGridIterator()
     {
         GISMO_STATIC_ASSERT(std::numeric_limits<Z>::is_integer,"The template parameter needs to be an integer type.");
-        //GISMO_STATIC_ASSERT(mode > -1 && mode < 3, "The mode of gsGridIterator needs to be 0, 1 or 2.");
+        GISMO_STATIC_ASSERT(mode > -1 && mode < 3, "The mode of gsGridIterator needs to be 0, 1 or 2.");
     }
 
     /**
@@ -331,7 +331,7 @@ public:
     : m_iter(np, 1)
     {
         reset(a, b);
-        //GISMO_STATIC_ASSERT(mode > -1 && mode < 3, "The mode of gsGridIterator needs to be 0, 1 or 2.");
+        GISMO_STATIC_ASSERT(mode > -1 && mode < 3, "The mode of gsGridIterator needs to be 0, 1 or 2.");
     }
 
     /**
