@@ -13355,8 +13355,8 @@ size_t ON_BinaryFile::CurrentPosition() const
   return offset;
 }
 
-#if defined(__GNUC__) && (!defined( __INTEL_COMPILER)) 
-	    #pragma GCC diagnostic ignored "-Wunused-result"//G+Smo silence warning 
+#if defined(__GNUC__) && (!defined( __INTEL_COMPILER)) //G+Smo silence warning 
+    #pragma GCC diagnostic ignored "-Wunused-result"
 #       endif
 
 bool ON_BinaryFile::AtEnd() const
@@ -13386,10 +13386,6 @@ bool ON_BinaryFile::AtEnd() const
   }
   return rc;
 }
-
-#if defined(__GNUC__) && (!defined( __INTEL_COMPILER)) //G+Smo
-#       pragma GCC diagnostic pop 
-#       endif
 
 bool ON_BinaryFile::SeekFromCurrentPosition( int offset )
 {
