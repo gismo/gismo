@@ -343,7 +343,10 @@ int main(int argc, char *argv[])
         (dirichlet::strategy) opt.getInt("MG.DirichletStrategy"),
         (iFace::strategy)     opt.getInt("MG.InterfaceStrategy")
     );
+    gsStopwatch time;
+    time.restart();
     assembler.assemble();
+    real_t assTime = time.stop();
 
     gsInfo << "done.\n";
 
@@ -425,6 +428,7 @@ int main(int argc, char *argv[])
     gsMatrix<> x, errorHistory;
     x.setRandom( assembler.matrix().rows(), 1 );
 
+    time.restart();
     if (iterativeSolver=="cg")
         gsConjugateGradient<>( assembler.matrix(), mg )
             .setOptions( opt.getGroup("Solver") )
@@ -442,6 +446,9 @@ int main(int argc, char *argv[])
         gsInfo << "\n\nThe chosen iterative solver is unknown.\n\nKnown are:\n  conjugate gradient (cg)\n  direct (d)\n\n";
         return EXIT_FAILURE;
     }
+    time.stop();
+    gsInfo << "Problem solved! "<< "\n"<<std::flush;
+    gsInfo<< "Time for solving: "<<time.stop()<<"\n";
 
     gsInfo << "done.\n\n";
 
