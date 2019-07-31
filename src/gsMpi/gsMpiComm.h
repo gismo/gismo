@@ -237,6 +237,17 @@ public:
         return gsSerialStatus();
     }
 
+    static gsSerialStatus waitAny (int numberRequests, MPI_Request requests[], int* outIndex)
+    {
+        return gsSerialStatus();
+    }
+
+    static gsSerialRequest getNullRequest()
+    {
+        gsSerialRequest request;
+        return request;
+    }
+
     /**
        @brief Returns a constant pointer to the internal request object
     */
@@ -967,6 +978,26 @@ public:
     const MPI_Request* operator& () const
     {
         return &m_request;
+    }
+
+    static gsMpiStatus waitAny (int numberRequests, gsMpiRequest requests[], int* outIndex)
+    {
+        gsMpiStatus status;
+        MPI_Request mpiRequests[numberRequests];
+        for(int i = 0; i < numberRequests; i++)
+        {
+            mpiRequests[i] = requests[i].m_request;
+        }
+
+        MPI_Waitany(numberRequests, mpiRequests, outIndex, &status);
+        return status;
+    }
+
+    static gsMpiRequest getNullRequest()
+    {
+        gsMpiRequest request;
+        request.m_request = MPI_REQUEST_NULL;
+        return request;
     }
 
 private:
