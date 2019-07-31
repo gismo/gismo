@@ -138,7 +138,7 @@ void gsTensorDeboor( //LC
     // Default version - linear combination of basis functions
     result.resize( coefs.cols(), u.cols() ) ;
     gsMatrix<T> B ;
-    gsMatrix<unsigned> ind;
+    gsMatrix<index_t> ind;
 
     // "eval" of gsTensorBasis
     base.eval_into(u, B);   // col j = nonzero basis functions at column point u(..,j)
@@ -173,7 +173,7 @@ void gsTensorDeriv_into(const gsMatrix<T>& u,
 
     result.setZero(d, nPts);
     gsMatrix<T> deriv; // derivatives
-    gsMatrix<unsigned> ind;
+    gsMatrix<index_t> ind;
 
     base.deriv_into(u, deriv);   // col j = nonzero basis functions at column point u(..,j)
     base.active_into(u, ind);// col j = indices of active functions at column point u(..,j)
@@ -206,7 +206,7 @@ void gsTensorDeriv2_into(const gsMatrix<T>& u,
 
     result.setZero(n2der, nPts);
     gsMatrix<T> deriv2; // second derivatives
-    gsMatrix<unsigned> ind;
+    gsMatrix<index_t> ind;
 
 
     base.deriv2_into(u, deriv2);
