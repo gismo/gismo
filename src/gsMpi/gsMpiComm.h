@@ -430,7 +430,7 @@ public:
         return 0;
     }
 
-    /** @brief Query the status from a source process with a defined tag
+    /** @brief Query the status from a source process with a defined tag (blocking)
      *
      * One process queries the status of receiving data from the source process source.
      * The argument tag specifies the message ID.
@@ -439,6 +439,20 @@ public:
      * @param[in] tag Specifies the message ID
      */
     static gsSerialStatus probe(int source, int tag = 0)
+    {
+        return gsSerialStatus();
+    }
+
+    /** @brief Query the status from a source process with a defined tag (non-blocking)
+     *
+     * One process queries the status of receiving data from the source process source.
+     * The argument tag specifies the message ID.
+     *
+     * @param[in] source The rank of the process which sended the message
+     * @param[out] flag True if a message with the specified source, tag, and communicator is available (logical) 
+     * @param[in] tag Specifies the message ID
+     */
+    static gsSerialStatus iprobe (int source, int* flag, int tag = 0)
     {
         return gsSerialStatus();
     }
@@ -923,6 +937,11 @@ public:
         return MPI_Cancel(&m_request);
     }
   
+    int free ()
+    {
+        return MPI_Request_free(&m_request);
+    }
+
     /** 
         @brief Returns the status of the communication request
     */
@@ -1250,6 +1269,13 @@ public:
     {
         gsMpiStatus status;
         MPI_Probe(source,tag,m_comm,&status);
+        return status;
+    }
+
+    gsMpiStatus iprobe (int source, int* flag, int tag = 0) const
+    {
+        gsMpiStatus status;
+        MPI_Iprobe(source,tag,m_comm,flag,&status);
         return status;
     }
 
