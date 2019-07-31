@@ -215,7 +215,7 @@ public:
     }
 
     // Look at gsBasis class for a description
-    void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
 
     /// Returns a box with the coordinate-wise active functions
     /// \param u evaluation points
