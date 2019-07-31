@@ -411,7 +411,7 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
     gsVector<T> quWeights;
 
     gsMatrix<T> rhsVals;
-    gsMatrix<unsigned> globIdxAct;
+    gsMatrix<index_t> globIdxAct;
     gsMatrix<T> basisVals;
 
     gsMapData<T> md(NEED_MEASURE);
@@ -594,7 +594,7 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     //GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
 
     GISMO_ASSERT(solVector.cols()==1, "Vector valued output only works for single rhs");
-    unsigned idx;
+    index_t idx;
 
     const index_t dim = unknowns.rows();
 
