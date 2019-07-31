@@ -652,7 +652,7 @@ void gsCurvatureSmoothing<T>::compute_AllValues(gsBSplineBasis<T> * basis, gsMat
 
     std::vector<gsMatrix<T> > m_results;
     gsMatrix<T> m_results1;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
     basis->evalAllDers_into(u,3,m_results);
     basis->active_into(u,actives);
 
