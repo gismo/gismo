@@ -102,7 +102,7 @@ void gsTensorBSplineBasis<1,T>::matchWith(const boundaryInterface & bi,
 
 template <class T>
 void gsTensorBSplineBasis<1,T>::active_into(const gsMatrix<T>& u,
-                                            gsMatrix<unsigned>& result ) const
+                                            gsMatrix<index_t>& result ) const
 {
     result.resize(m_p+1, u.cols());
 
@@ -111,7 +111,7 @@ void gsTensorBSplineBasis<1,T>::active_into(const gsMatrix<T>& u,
         // We want to keep the non-periodic case unaffected wrt
         // complexity, therefore we keep the modulo operation of the
         // periodic case separate
-        const int s = size();
+        const index_t s = size();
         for (index_t j = 0; j < u.cols(); ++j)
         {
             unsigned first = firstActive(u(0,j));

@@ -208,7 +208,7 @@ public:
                       gsMesh<T> & mesh) const;
 
     // Look at gsBasis class for a description
-    void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
 
     // Look at gsBasis class for a description
     bool isActive(const unsigned i, const gsVector<T> & u) const;
