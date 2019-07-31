@@ -64,7 +64,7 @@ Template parameters
 \ingroup HSplines
 */
 
-template<short_t d, class T = unsigned>
+template<short_t d, class T = index_t>
 class gsHDomain
 {
 public:
