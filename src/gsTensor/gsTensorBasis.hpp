@@ -201,15 +201,15 @@ void gsTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes,
 }
 
 template<short_t d, class T>
-void gsTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
+void gsTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
 {
     //gsWarn<<"genericActive "<< *this;
 
-    gsMatrix<unsigned> act[d];
-    gsVector<unsigned, d> v, size;
+    gsMatrix<index_t> act[d];
+    gsVector<index_t, d> v, size;
  
     // Get component active basis functions
-    unsigned nb = 1;
+    index_t nb = 1;
     for (short_t i = 0; i < d; ++i)
     {
         m_bases[i]->active_into(u.row(i), act[i]);
@@ -227,7 +227,7 @@ void gsTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& 
         for ( index_t j=0; j<u.cols(); ++j)
         {
             nb = act[d-1]( v(d-1) ,j) ;//compute global index in the tensor product
-            for ( int i=d-2; i>=0; --i ) // to do: strides
+            for ( short_t i=d-2; i>=0; --i ) // to do: strides
                 nb = nb * m_bases[i]->size() + act[i](v(i), j) ;
             result(r, j) = nb;
         }
@@ -558,7 +558,7 @@ void gsTensorBasis<d,T>::eval_into(const gsMatrix<T> & u,
         
         m_bases[0]->eval_into(uu.row(0), cc, e0);
         
-        for ( unsigned i=1; i< d ; ++i )
+        for ( short_t i=1; i< d ; ++i )
         {
             sz /= m_bases[i]->size();
             e0.resize( m_bases[i]->size(),  n * sz );
@@ -576,7 +576,7 @@ void gsTensorBasis<d,T>::eval_into(const gsMatrix<T> & u,
     // Basis_t:: eval_into(u,coefs,result);
     result.resize( coefs.cols(), u.cols() ) ;
     gsMatrix<T> B ;
-    gsMatrix<unsigned> ind;
+    gsMatrix<index_t> ind;
     
     this->eval_into(u, B);   // col j = nonzero basis functions at column point u(..,j)
     this->active_into(u,ind);// col j = indices of active functions at column point u(..,j)

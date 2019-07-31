@@ -195,7 +195,7 @@ public:
      *   active basis functions at evaluation point <em>u</em>.col(<em>i</em>)
      *
      */
-    virtual void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
+    virtual void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
 
     // Look at gsBasis class for documentation 
     bool isActive(const unsigned i, const gsVector<T>& u) const;
@@ -718,10 +718,10 @@ public:
     /// \param low lower left corner of the box
     /// \param upp upper right corner of the box   
     void active_cwise(const gsMatrix<T> & u, 
-                      gsVector<unsigned,1>& low, 
-                      gsVector<unsigned,1>& upp ) const
+                      gsVector<index_t,1>& low,
+                      gsVector<index_t,1>& upp ) const
     { 
-        gsMatrix<unsigned> act;
+        gsMatrix<index_t> act;
         this->active_into(u, act);
         low[0]= act(0,0);
         upp[0]= act(act.size()-1, 0 );
