@@ -141,14 +141,14 @@ public:
     void fastEval_into(const gsMatrix<T>& u,
                        gsMatrix<T>& result) const
     {
-        gsMatrix<unsigned> indices;
+        gsMatrix<index_t> indices;
         this->active_into(u, indices);
 
         result.setZero(indices.rows(), u.cols());
 
         const unsigned maxLvl = this->m_tree.getMaxInsLevel() + 1;
         std::vector< gsMatrix<T> > tmpResults(maxLvl, gsMatrix<T>());
-        std::vector< gsMatrix<unsigned> > tmpActive(maxLvl, gsMatrix<unsigned>());
+        std::vector< gsMatrix<index_t> > tmpActive(maxLvl, gsMatrix<index_t>());
         gsVector<int> processed(maxLvl);
 
         for (int pt = 0; pt != u.cols(); pt++)
@@ -206,23 +206,23 @@ public:
     void fastDeriv_into(const gsMatrix<T>& u,
                         gsMatrix<T>& result) const
     {
-        gsMatrix<unsigned> indices;
+        gsMatrix<index_t> indices;
         this->active_into(u, indices);
 
         result.setZero(indices.rows() * d, u.cols());
 
         const unsigned maxLvl = this->m_tree.getMaxInsLevel() + 1;
         std::vector< gsMatrix<T> > tmpDeriv( maxLvl, gsMatrix<T>());
-        std::vector< gsMatrix<unsigned> > tmpActive(maxLvl, gsMatrix<unsigned>());
+        std::vector< gsMatrix<index_t> > tmpActive(maxLvl, gsMatrix<index_t>());
         gsVector<int> processed(maxLvl);
 
-        for (int pt = 0; pt != u.cols(); pt++)
+        for (index_t pt = 0; pt != u.cols(); pt++)
         {
             processed.setZero();
 
             for (int ind = 0; ind != indices.rows(); ind++)
             {
-                unsigned index = indices(ind, pt);
+                index_t index = indices(ind, pt);
                 if (ind != 0 && index == 0)
                     break;
 
@@ -274,7 +274,7 @@ public:
     void fastDeriv2_into(const gsMatrix<T>& u,
                          gsMatrix<T>& result) const
     {
-        gsMatrix<unsigned> indices;
+        gsMatrix<index_t> indices;
         this->active_into(u, indices);
         const unsigned numDers = (d * (d + 1)) / 2;
 
@@ -282,7 +282,7 @@ public:
 
         const unsigned maxLvl = this->m_tree.getMaxInsLevel() + 1;
         std::vector< gsMatrix<T> > tmpDeriv2(maxLvl, gsMatrix<T>());
-        std::vector< gsMatrix<unsigned> > tmpActive(maxLvl, gsMatrix<unsigned>());
+        std::vector< gsMatrix<index_t> > tmpActive(maxLvl, gsMatrix<index_t>());
         gsVector<int> processed(maxLvl);
 
         for (int pt = 0; pt != u.cols(); pt++)

@@ -1066,7 +1066,7 @@ void gsTHBSplineBasis<d,T>::deriv2Single_into(unsigned i,
 template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
-    gsMatrix<unsigned> indices;
+    gsMatrix<index_t> indices;
     gsMatrix<T> res(1, 1);
     this->active_into(u, indices);
 
@@ -1076,7 +1076,7 @@ void gsTHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result
     {
         for (index_t j = 0; j < indices.rows(); j++)
         {
-            const unsigned index = indices(j, i);
+            const index_t index = indices(j, i);
             if (j != 0 && index == 0)
                 break;
             
@@ -1090,10 +1090,10 @@ void gsTHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result
 template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result)const
 {
-    gsMatrix<unsigned> indices;
+    gsMatrix<index_t> indices;
     this->active_into(u, indices);
 
-    static const unsigned numDers = (d * (d + 1)) / 2;
+    static const short_t numDers = (d * (d + 1)) / 2;
     gsMatrix<T> res(numDers, 1); // result of deriv2Single_into
 
     result.setZero(indices.rows() * numDers, u.cols());
@@ -1102,7 +1102,7 @@ void gsTHBSplineBasis<d,T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& resul
     {
         for (int j = 0; j < indices.rows(); j++)
         {
-            const unsigned index = indices(j, i);
+            const index_t index = indices(j, i);
             if (j != 0 && index == 0)
                 break;
 
@@ -1118,7 +1118,7 @@ template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
 
-    gsMatrix<unsigned> indices;
+    gsMatrix<index_t> indices;
     this->active_into(u, indices);
     gsMatrix<T> res(d, 1);
 
