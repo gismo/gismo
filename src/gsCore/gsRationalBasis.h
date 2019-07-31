@@ -141,7 +141,7 @@ public:
     int numElements() const { return m_src->numElements(); }
     using Base::numElements; //unhide
     
-    void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const 
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
     { m_src->active_into(u, result); }
     
     virtual const gsBasis<T> & component(unsigned i) const { return m_src->component(i); }
@@ -456,7 +456,7 @@ void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u,
     // Formula:
     // R_i' = (w_i N_i / W)' = w_i ( N_i'W - N_i W' ) / W^2 
 
-    gsMatrix<unsigned> act;
+    gsMatrix<index_t> act;
     m_src->active_into(u,act);
 
     result.resize( act.rows()*Dim, u.cols() );
@@ -504,7 +504,7 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
     
     static const int str = Dim * (Dim+1) / 2;
 
-    gsMatrix<unsigned> act;
+    gsMatrix<index_t> act;
     m_src->active_into(u,act);
 
     result.resize( act.rows()*str, u.cols() );

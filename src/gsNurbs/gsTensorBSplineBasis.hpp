@@ -30,12 +30,12 @@ namespace gismo
 template<short_t d, class T>
 void gsTensorBSplineBasis<d,T>::
 active_cwise(const gsMatrix<T> & u, 
-             gsVector<unsigned,d>& low, 
-             gsVector<unsigned,d>& upp ) const
+             gsVector<index_t,d>& low,
+             gsVector<index_t,d>& upp ) const
 {
     for (index_t j = 0; j < u.cols(); ++j)
     {
-        for (unsigned i = 0; i < d; ++i)
+        for (short_t i = 0; i < d; ++i)
         {
             low[i] = component(i).firstActive( u(i,j) );
             upp[i] = low[i] + component(i).degree();

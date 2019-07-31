@@ -25,7 +25,7 @@ namespace gismo {
     
     \ingroup HSplines
 */
-template<short_t d, class Z = unsigned>
+template<short_t d, class Z = index_t>
 struct gsAabb
 {
 public:
@@ -64,7 +64,7 @@ public:
     
     \ingroup HSplines
 */
-template<short_t d, class Z = unsigned>
+template<short_t d, class Z = index_t>
 struct kdnode
 {
     // Defines the type of the box

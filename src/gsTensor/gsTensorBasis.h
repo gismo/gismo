@@ -204,8 +204,8 @@ public:
     /// \param u evaluation points
     /// \param low lower left corner of the box
     /// \param upp upper right corner of the box
-    void active_cwise(const gsMatrix<T> & u, gsVector<unsigned,d>& low, 
-                      gsVector<unsigned,d>& upp ) const;
+    void active_cwise(const gsMatrix<T> & u, gsVector<index_t,d>& low,
+                      gsVector<index_t,d>& upp ) const;
 
     // Look at gsBasis class for documentation 
     virtual void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const;

@@ -153,7 +153,7 @@ protected:
 
     // Basis values
     gsMatrix<T>      basisData;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     // Normal and Neumann values
     gsVector<T> unormal;

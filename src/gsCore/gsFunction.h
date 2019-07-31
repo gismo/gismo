@@ -79,7 +79,7 @@ public:
         return *this; 
     }
 
-    void active_into (const gsMatrix<T>  & u, gsMatrix<unsigned> &result) const
+    void active_into (const gsMatrix<T>  & u, gsMatrix<index_t> &result) const
     { result.setConstant(1,u.cols(),0); }
     
     /**

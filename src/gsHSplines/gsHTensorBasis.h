@@ -440,7 +440,7 @@ public:
     }
 
     // Look at gsBasis.h for the documentation of this function
-    void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
 
 
     // Look at gsBasis.h for the documentation of this function

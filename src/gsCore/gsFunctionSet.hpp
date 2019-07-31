@@ -53,7 +53,7 @@ gsMatrix<T> gsFunctionSet<T>::support() const
 // actives
 
 template <typename T>
-void gsFunctionSet<T>::active_into (const gsMatrix<T> &, gsMatrix<unsigned> &) const
+void gsFunctionSet<T>::active_into (const gsMatrix<T> &, gsMatrix<index_t> &) const
 {
     GISMO_NO_IMPLEMENTATION
     // Single function 0 globally active:

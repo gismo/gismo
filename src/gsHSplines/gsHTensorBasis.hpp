@@ -80,7 +80,7 @@ void gsHTensorBasis<d,T>::numActive(const gsMatrix<T> & u, gsVector<unsigned>& r
 
     for(index_t p = 0; p < u.cols(); p++ ) //for all input points
     {
-        for(int i = 0; i != d; ++i)
+        for(short_t i = 0; i != d; ++i)
             low[i] = m_bases[maxLevel]->knots(i).uFind(u(i,p)).uIndex();
 
         // Identify the level of the point
@@ -916,7 +916,7 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
 
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
+void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
 {
     gsMatrix<T> currPoint;
     point low, upp, cur;
@@ -932,7 +932,7 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
     {
         currPoint = u.col(p);
         
-        for(unsigned i = 0; i != d; ++i)
+        for(short_t i = 0; i != d; ++i)
             low[i] = m_bases[maxLevel]->knots(i).uFind( currPoint(i,0) ).uIndex();
         
         // Identify the level of the point

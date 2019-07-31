@@ -244,7 +244,7 @@ gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
     static const unsigned d = this->m_basis->dim();
 
     gsMatrix<T> B, DD(d,d), tmp(d,d);
-    gsMatrix<unsigned> ind;
+    gsMatrix<index_t> ind;
 
     // coefficient matrix row k = coef. of basis function k
     const gsMatrix<T>& C = this->m_coefs;
@@ -276,7 +276,7 @@ gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
 
 
 template <typename T>
-void extractRows( const gsMatrix<T> &in, typename gsMatrix<unsigned>::constColumn actives, gsMatrix<T> &out)
+void extractRows( const gsMatrix<T> &in, typename gsMatrix<index_t>::constColumn actives, gsMatrix<T> &out)
 {
     out.resize(actives.rows(), in.cols());
     for (index_t r=0; r<actives.rows();++r)

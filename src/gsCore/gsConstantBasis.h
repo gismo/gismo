@@ -69,7 +69,7 @@ public:
 
     index_t size() const   { return 1; }
 
-    void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
     {
         result.setZero(1,u.cols());
     }

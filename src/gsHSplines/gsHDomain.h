@@ -70,7 +70,7 @@ class gsHDomain
 public:
     typedef kdnode<d,T> node;
 
-    typedef typename node::point point; // it's a gsVector<unsigned,d>
+    typedef typename node::point point; // it's a gsVector<index_t,d>
 
     typedef typename node::kdBox box; // it's a gsAabb<d,unsigned>
 

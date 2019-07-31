@@ -266,7 +266,7 @@ public:
       @param u
       @param result
      */
-    virtual void active_into (const gsMatrix<T>  & u, gsMatrix<unsigned> &result) const;
+    virtual void active_into (const gsMatrix<T>  & u, gsMatrix<index_t> &result) const;
     
 public:
     /**
@@ -418,16 +418,16 @@ public:
         \param[in] u     Evaluation points in columns.
         \return  For every column of \a u, a column containing the second derivatives.
         See documentation for deriv2_into() (the one without input parameter \em coefs) for details.
-    */
+   unsigned */
     gsMatrix<T> deriv2(const gsMatrix<T>& u) const;
 
 
     /// @brief Returns the indices of active (nonzero) functions at
     /// points \a u, as a list of indices.
     /// \sa active_into()
-    gsMatrix<unsigned> active(const gsMatrix<T> & u) const
+    gsMatrix<index_t> active(const gsMatrix<T> & u) const
     {
-        gsMatrix<unsigned> rvo;
+        gsMatrix<index_t> rvo;
         this->active_into(u, rvo);
         return rvo;
     }

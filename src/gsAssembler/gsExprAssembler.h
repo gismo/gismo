@@ -38,11 +38,11 @@ void gsAccumulateLocalToGlobal(
     const index_t rd            = v.dim();
     const gsDofMapper  & colMap = u.mapper();
     const gsDofMapper  & rowMap = v.mapper();
-    gsMatrix<unsigned> & colInd0 = const_cast<gsMatrix<unsigned>&>(u.data().actives);
-    gsMatrix<unsigned> & rowInd0 = const_cast<gsMatrix<unsigned>&>(v.data().actives);
+    gsMatrix<index_t>  & colInd0 = const_cast<gsMatrix<index_t>&>(u.data().actives);
+    gsMatrix<index_t>  & rowInd0 = const_cast<gsMatrix<index_t> &>(v.data().actives);
     const gsMatrix<T>  & fixedDofs = u.fixedPart();
 
-    gsMatrix<unsigned> rowInd, colInd;
+    gsMatrix<index_t> rowInd, colInd;
     //if (&colMap==&rowMap) && (&rowInd==&colInd)
     if (left)
         colMap.localToGlobal(colInd0, patchInd, colInd);
@@ -569,11 +569,11 @@ private:
             const index_t rd            = v.dim();
             const gsDofMapper  & colMap = static_cast<const expr::gsFeSpace<T>&>(u).mapper();
             const gsDofMapper  & rowMap = static_cast<const expr::gsFeSpace<T>&>(v).mapper();
-            gsMatrix<unsigned> & colInd0 = const_cast<gsMatrix<unsigned>&>(u.data().actives);
-            gsMatrix<unsigned> & rowInd0 = const_cast<gsMatrix<unsigned>&>(v.data().actives);
+            gsMatrix<index_t> & colInd0 = const_cast<gsMatrix<index_t>&>(u.data().actives);
+            gsMatrix<index_t> & rowInd0 = const_cast<gsMatrix<index_t>&>(v.data().actives);
             const gsMatrix<T>  & fixedDofs = static_cast<const expr::gsFeSpace<T>&>(u).fixedPart();
 
-            gsMatrix<unsigned> rowInd, colInd;
+            gsMatrix<index_t> rowInd, colInd;
             rowMap.localToGlobal(rowInd0, patchInd, rowInd);
             if (isMatrix)
             {
@@ -1256,7 +1256,7 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
     gsVector<T> quWeights;
 
     gsMatrix<T> rhsVals;
-    gsMatrix<unsigned> globIdxAct;
+    gsMatrix<index_t> globIdxAct;
     gsMatrix<T> basisVals;
 
     gsMapData<T> md(NEED_MEASURE | SAME_ELEMENT);

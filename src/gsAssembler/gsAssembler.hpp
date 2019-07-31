@@ -655,7 +655,7 @@ void gsAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
                                     gsMultiPatch<T>& result, T theta) const
 {
     // GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
-    unsigned idx;
+    index_t idx;
 
     for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
     {

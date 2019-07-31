@@ -194,7 +194,7 @@ private:
     // Basis values
     std::vector<gsMatrix<T> > basisData;
     gsMatrix<T>      pGrads;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     // Normal and Neumann values
     gsVector<T> unormal;
