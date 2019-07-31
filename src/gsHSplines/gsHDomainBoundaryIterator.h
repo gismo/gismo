@@ -47,7 +47,7 @@ public:
 
     typedef typename std::vector<T>::const_iterator  uiter;
 
-    typedef gsHDomain<d,unsigned> hDomain;
+    typedef gsHDomain<d,index_t> hDomain;
 
     typedef typename hDomain::const_literator leafIterator;
 

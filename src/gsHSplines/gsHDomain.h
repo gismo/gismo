@@ -163,7 +163,7 @@ public:
         if ( m_root )
             delete m_root;
 
-        for (unsigned i=0; i<d; ++i) 
+        for (short_t i=0; i<d; ++i)
             m_upperIndex[i] = (upp[i]<< m_indexLevel);
 
         m_root = new node(m_upperIndex);
