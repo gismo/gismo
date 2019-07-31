@@ -72,7 +72,7 @@ namespace gismo
 #undef ComposeMPITraits
 
 
-  
+
   /// Forward declaration of gsVector class
   template<class T, int _Rows, int _Options> class gsVector;
 
@@ -82,19 +82,19 @@ namespace gismo
     gsVector_mpi()
       : Rows(0)
     {}
-    
+
     gsVector_mpi(const gsVector<T, _Rows, _Options>& vector)
       : Rows(vector.size())
     {}
 
     operator gsVector<T, _Rows, _Options>() const
     {
-      if (_Rows >= 0)       
+      if (_Rows >= 0)
         return gsVector<T, _Rows, _Options>();
       else
         return gsVector<T, _Rows, _Options>(Rows);
     }
-    
+
   private:
     int Rows;
   };
@@ -110,14 +110,14 @@ namespace gismo
   {
     return gsVector<T, _Rows, _Options>(vector);
   }
-  
-  
-  
+
+
+
   /// Specialization for resizeable gsVector class
   template<class T, int _Options>
   struct MPITraits<gsVector<T, -1, _Options> >
   {
-  public:    
+  public:
     static inline MPI_Datatype getType()
     {
       if(datatype==MPI_DATATYPE_NULL)
@@ -131,7 +131,7 @@ namespace gismo
           MPI_Get_address(&(fvector[0]), &displ);
           displ -= base;
           int length[1]={1};
-          
+
           MPI_Type_create_struct(1, length, &displ, &vectortype, &datatype);
           MPI_Type_commit(&datatype);
         }
@@ -147,12 +147,12 @@ namespace gismo
   MPI_Datatype MPITraits<gsVector<T, -1, _Options> >::datatype = MPI_DATATYPE_NULL;
   template<class T, int _Options>
   MPI_Datatype MPITraits<gsVector<T, -1, _Options> >::vectortype = {MPI_DATATYPE_NULL};
-  
+
   /// Specialization for fixed-size gsVector class
   template<class T, int _Rows, int _Options>
   struct MPITraits<gsVector<T, _Rows, _Options> >
   {
-  public:    
+  public:
     static inline MPI_Datatype getType()
     {
       if(datatype==MPI_DATATYPE_NULL)
@@ -166,7 +166,7 @@ namespace gismo
           MPI_Get_address(&(fvector[0]), &displ);
           displ -= base;
           int length[1]={1};
-          
+
           MPI_Type_create_struct(1, length, &displ, &vectortype, &datatype);
           MPI_Type_commit(&datatype);
         }
@@ -184,15 +184,15 @@ namespace gismo
   MPI_Datatype MPITraits<gsVector<T, _Rows, _Options> >::vectortype = {MPI_DATATYPE_NULL};
 
 
-  
+
   /// Forward declaration of gsMatrix class
   template<class T, int _Rows, int _Cols, int _Options> class gsMatrix;
-  
+
   /// Specialization for fixed-size gsMatrix class
   template<class T, int _Rows, int _Cols, int _Options>
   struct MPITraits<gsMatrix<T, _Rows, _Cols, _Options> >
   {
-  public:    
+  public:
     static inline MPI_Datatype getType()
     {
       if(datatype==MPI_DATATYPE_NULL)
@@ -206,7 +206,7 @@ namespace gismo
           MPI_Get_address(&(fmatrix(0,0)), &displ);
           displ -= base;
           int length[1]={1};
-          
+
           MPI_Type_create_struct(1, length, &displ, &matrixtype, &datatype);
           MPI_Type_commit(&datatype);
         }
@@ -237,11 +237,11 @@ namespace gismo
         {
           gsSparseMatrix<T, _Options, _Index> mat;
           MPI_Aint base;
-          MPI_Address(mat.data, &base);
+          MPI_Get_address(mat.data, &base);
           //MPI_Aint* displ = new int[n];
           //for (int i=0; i<n; ++i)
           //  {
-          //    MPI_Address(mat[i], &displ[i]);
+          //    MPI_Get_address(mat[i], &displ[i]);
           //    displ[i] -= base;
           //  }
 
@@ -250,10 +250,10 @@ namespace gismo
         }
       return datatype;
     }
-    
+
   private:
     static MPI_Datatype datatype;
-    static MPI_Datatype matrixtype;    
+    static MPI_Datatype matrixtype;
   };
 
   template<class T, int _Options, typename _Index>
@@ -308,21 +308,21 @@ namespace gismo
   template<typename T1, typename T2>
   MPI_Datatype MPITraits<std::pair<T1,T2> >::getType()
   {
-    if(type==MPI_DATATYPE_NULL) 
+    if(type==MPI_DATATYPE_NULL)
     {
         int length[2] = {1, 1};
         MPI_Aint disp[2];
         MPI_Datatype types[2] = {MPITraits<T1>::getType(),
                                  MPITraits<T2>::getType()};
-        
+
         typedef std::pair<T1, T2> Pair;
         //static_assert(std::is_standard_layout<Pair>::value, "offsetof() is only defined for standard layout types");
         disp[0] = offsetof(Pair, first);
         disp[1] = offsetof(Pair, second);
-        
+
         MPI_Datatype tmp;
         MPI_Type_create_struct(2, length, disp, types, &tmp);
-        
+
         MPI_Type_create_resized(tmp, 0, sizeof(Pair), &type);
         MPI_Type_commit(&type);
         MPI_Type_free(&tmp);
