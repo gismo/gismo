@@ -47,7 +47,7 @@ void gsBasis<T>::evalFunc_into(const gsMatrix<T> &u,
                            gsMatrix<T>& result) const
 {
     gsMatrix<T> B ;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     // compute function values
     this->eval_into(u,B);
@@ -71,7 +71,7 @@ void gsBasis<T>::jacobianFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coe
 
     result.setZero( n, pardim * numPts );
     gsMatrix<T> B;
-    gsMatrix<unsigned> ind;
+    gsMatrix<index_t> ind;
 
     this->deriv_into(u,B);
     this->active_into(u,ind);
@@ -92,7 +92,7 @@ template<class T>
 void gsBasis<T>::derivFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const
 {
     gsMatrix<T>        B;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     // compute first derivatives
     this->deriv_into(u,B);
@@ -111,7 +111,7 @@ void gsBasis<T>::deriv2Func_into(const gsMatrix<T> & u,
                                  gsMatrix<T>& result) const
 {
     gsMatrix<T> B;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     // compute second derivatives
     this->deriv2_into(u,B);
@@ -137,7 +137,7 @@ void gsBasis<T>::evalAllDersFunc_into(const gsMatrix<T> &u,
     std::vector< gsMatrix<T> >B;
     // actives will contain the indices of the basis functions
     // which are active at the evaluation points
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     this->evalAllDers_into(u,n,B);
     this->active_into(u,actives);
@@ -151,7 +151,7 @@ void gsBasis<T>::evalAllDersFunc_into(const gsMatrix<T> &u,
 
 template<class T>
 void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
-                                        const gsMatrix<unsigned> & actives,
+                                        const gsMatrix<index_t> & actives,
                                         const gsMatrix<T> & values,
                                         gsMatrix<T> & result)
 {
@@ -188,7 +188,7 @@ void gsBasis<T>::collocationMatrix(const gsMatrix<T> & u, gsSparseMatrix<T> & re
 {
     result.resize( u.cols(), this->size() );
     gsMatrix<T> ev;
-    gsMatrix<unsigned> act;
+    gsMatrix<index_t> act;
 
     eval_into  (u.col(0), ev);
     active_into(u.col(0), act);

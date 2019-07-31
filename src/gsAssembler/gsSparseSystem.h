@@ -364,7 +364,7 @@ public:
         const T bdO       = opt.getReal("bdO");
         const gsBasis<T> & b = mb[0];
         T nz = 1;
-        for (index_t i = 0; i != b.dim(); ++i)
+        for (short_t i = 0; i != b.dim(); ++i)
             nz *= bdA * b.degree(i) + bdB;
         return cast<T,index_t>(nz*(1.0+bdO));
     }
@@ -564,10 +564,10 @@ public: /* mapping patch-local to global indices */
      * @param[out] result the mapped indices
      * @param[in] r the considered row block
      */
-    void mapRowIndices(const gsMatrix<unsigned> & actives,
+    void mapRowIndices(const gsMatrix<index_t> & actives,
                        const index_t patchIndex,
-                       gsMatrix<unsigned> & result,
-                       const size_t r = 0) const
+                       gsMatrix<index_t> & result,
+                       const index_t r = 0) const
     {
         m_mappers[m_row.at(r)].localToGlobal(actives, patchIndex, result);
     }
@@ -584,7 +584,7 @@ public: /* mapping patch-local to global indices */
     void mapColIndices(const gsMatrix<index_t> & actives,
                        const index_t patchIndex,
                        gsMatrix<index_t> & result,
-                       const size_t c = 0) const
+                       const index_t c = 0) const
     {
         m_mappers[m_col.at(c)].localToGlobal(actives, patchIndex, result);
     }
@@ -597,10 +597,10 @@ public: /* mapping patch-local to global indices */
      * @param[out] result the mapped index
      * @param[in] r the considered row block
      */
-    void mapToGlobalRowIndex(const unsigned active,
+    void mapToGlobalRowIndex(const index_t active,
                              const index_t patchIndex,
-                             unsigned & result,
-                             const size_t r = 0) const
+                             index_t & result,
+                             const index_t r = 0) const
     {
         result = m_mappers[m_row.at(r)].index(active, patchIndex)+m_rstr[r];
     }
@@ -613,10 +613,10 @@ public: /* mapping patch-local to global indices */
      * @param[out] result the mapped index
      * @param[in] c the considered column block
      */
-    void mapToGlobalColIndex(const unsigned active,
+    void mapToGlobalColIndex(const index_t active,
                              const index_t patchIndex,
-                             unsigned & result,
-                             const size_t c = 0) const
+                             index_t & result,
+                             const index_t c = 0) const
     {
         result = m_mappers[m_col.at(c)].index(active, patchIndex)+m_cstr[c];
     }
@@ -636,7 +636,7 @@ public: /* Add local contributions to system matrix */
      * @param[in] c the column block
      */
     void pushToMatrix(const gsMatrix<T>  & localMat,
-                      const gsMatrix<unsigned> & actives,
+                      const gsMatrix<index_t> & actives,
                       const gsMatrix<T> & eliminatedDofs,
                       const size_t r = 0, const size_t c = 0)
     {
@@ -646,13 +646,13 @@ public: /* Add local contributions to system matrix */
 
         for (index_t i = 0; i != numActive; ++i)
         {
-            const int ii = m_rstr.at(r) + actives.at(i); // N_i
+            const index_t ii = m_rstr.at(r) + actives.at(i); // N_i
 
             if ( rowMap.is_free_index(actives.at(i)) )
             {
                 for (index_t j = 0; j != numActive; ++j)
                 {
-                    const int jj = m_cstr.at(c) + actives.at(j); // N_j
+                    const index_t jj = m_cstr.at(c) + actives.at(j); // N_j
 
                     if ( rowMap.is_free_index( actives.at(j)) )
                     {
@@ -687,8 +687,8 @@ public: /* Add local contributions to system matrix */
      * @param[in] c the column block
      */
     void pushToMatrix(const gsMatrix<T>  & localMat,
-                      const gsMatrix<unsigned> & actives_i,
-                      const gsMatrix<unsigned> & actives_j,
+                      const gsMatrix<index_t> & actives_i,
+                      const gsMatrix<index_t> & actives_j,
                       const gsMatrix<T> & eliminatedDofs_j,
                       const size_t r = 0, const size_t c = 0)
     {
@@ -700,13 +700,13 @@ public: /* Add local contributions to system matrix */
 
         for (index_t i = 0; i != numActive_i; ++i)
         {
-            const int ii = m_rstr.at(r) + actives_i.at(i); // N_i
+            const index_t ii = m_rstr.at(r) + actives_i.at(i); // N_i
 
             if ( rowMap.is_free_index(actives_i.at(i)) )
             {
                 for (index_t j = 0; j != numActive_j; ++j)
                 {
-                    const int jj = m_cstr.at(c) + actives_j.at(j); // N_j
+                    const index_t jj = m_cstr.at(c) + actives_j.at(j); // N_j
 
                     if ( colMap.is_free_index(actives_j.at(j)) )
                     {
@@ -738,7 +738,7 @@ public: /* Add local contributions to system matrix */
      * @param[in] c the column block
      */
     void pushToMatrixAllFree(const gsMatrix<T>  & localMat,
-                             const gsMatrix<unsigned> & actives,
+                             const gsMatrix<index_t> & actives,
                              const size_t r = 0, const size_t c = 0)
     {
         const index_t numActive = actives.rows();
@@ -746,11 +746,11 @@ public: /* Add local contributions to system matrix */
 
         for (index_t i = 0; i != numActive; ++i)
         {
-            const int ii = m_rstr.at(r) + actives.at(i); // N_i
+            const index_t ii = m_rstr.at(r) + actives.at(i); // N_i
 
             for (index_t j = 0; j != numActive; ++j)
             {
-                const int jj = m_cstr.at(c) + actives.at(j); // N_j
+                const index_t jj = m_cstr.at(c) + actives.at(j); // N_j
 
                 // If matrix is symmetric, we store only lower
                 // triangular part
@@ -776,8 +776,8 @@ public: /* Add local contributions to system matrix */
      * @param[in] c the column block
      */
     void pushToMatrixAllFree(const gsMatrix<T>  & localMat,
-                             const gsMatrix<unsigned> & actives_i,
-                             const gsMatrix<unsigned> & actives_j,
+                             const gsMatrix<index_t> & actives_i,
+                             const gsMatrix<index_t> & actives_j,
                              const size_t r = 0, const size_t c = 0)
     {
         const index_t numActive_i = actives_i.rows();
@@ -785,11 +785,11 @@ public: /* Add local contributions to system matrix */
 
         for (index_t i = 0; i != numActive_i; ++i)
         {
-            const int ii = m_rstr.at(r) + actives_i.at(i); // N_i
+            const index_t ii = m_rstr.at(r) + actives_i.at(i); // N_i
 
             for (index_t j = 0; j != numActive_j; ++j)
             {
-                const int jj = m_cstr.at(c) + actives_j.at(j); // N_j
+                const index_t jj = m_cstr.at(c) + actives_j.at(j); // N_j
 
                 // If matrix is symmetric, we store only lower
                 // triangular part
@@ -814,7 +814,7 @@ public: /* Add local contributions to system matrix */
      * @param[in] c_vec a vector of column block indices to which the local matrix is pushed
      */
     void pushToMatrix(const gsMatrix<T> & localMat,
-                      const std::vector<gsMatrix<unsigned> >& actives_vec,
+                      const std::vector<gsMatrix<index_t> >& actives_vec,
                       const std::vector<gsMatrix<T> > & eliminatedDofs,
                       const gsVector<size_t> & r_vec,
                       const gsVector<size_t> & c_vec)
@@ -971,7 +971,7 @@ public: /* Add local contributions to system matrix and right-hand side */
      */
     void push(const gsMatrix<T> & localMat,
               const gsMatrix<T> & localRhs,
-              const gsMatrix<unsigned> & actives,
+              const gsMatrix<index_t> & actives,
               const gsMatrix<T> & eliminatedDofs,
               const size_t r = 0, const size_t c = 0)
     {
@@ -1025,8 +1025,8 @@ public: /* Add local contributions to system matrix and right-hand side */
      */
     void push(const gsMatrix<T> & localMat,
               const gsMatrix<T> & localRhs,
-              const gsMatrix<unsigned> & actives_i,
-              const gsMatrix<unsigned> & actives_j,
+              const gsMatrix<index_t> & actives_i,
+              const gsMatrix<index_t> & actives_j,
               const gsMatrix<T> & eliminatedDofs_j,
               const size_t r = 0, const size_t c = 0)
     {
@@ -1081,7 +1081,7 @@ public: /* Add local contributions to system matrix and right-hand side */
      */
     void pushAllFree(const gsMatrix<T>  & localMat,
                      const gsMatrix<T>  & localRhs,
-                     const gsMatrix<unsigned> & actives,
+                     const gsMatrix<index_t> & actives,
                      const size_t r = 0, const size_t c = 0)
     {
         const index_t numActive = actives.rows();

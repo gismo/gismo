@@ -400,7 +400,7 @@ public:
      * @param[out] result gsMatrix of size \em stride x \em numPts
      */
     static void linearCombination_into(const gsMatrix<T> & coefs,
-                                       const gsMatrix<unsigned> & actives,
+                                       const gsMatrix<index_t> & actives,
                                        const gsMatrix<T> & values,
                                        gsMatrix<T> & result);
 

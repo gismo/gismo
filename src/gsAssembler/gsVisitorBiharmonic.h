@@ -177,7 +177,7 @@ protected:
     // Basis values
     std::vector<gsMatrix<T> > basisData;
     gsMatrix<T>        physBasisLaplace;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
     index_t numActive;
 
 
