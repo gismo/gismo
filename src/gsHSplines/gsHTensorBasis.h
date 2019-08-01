@@ -103,7 +103,7 @@ public:
     typedef typename gsBSplineTraits<d,T>::Basis tensorBasis;
 
     /// Dimension of the parameter domain
-    static const int Dim = d;
+    static const short_t Dim = d;
 
 public:
 
@@ -324,7 +324,7 @@ public:
     }
 
     /// Returns the dimension of the parameter space
-    virtual int dim() const
+    virtual short_t dim() const
     { return d; }
 
     /// Returns the number of breaks (distinct knot values) in
@@ -850,7 +850,7 @@ private:
     void set_activ1(int level);
 
     // \brief Computes the set of active basis functions in the basis
-    void setActive();
+    /*void setActive();*/
 
     // \brief Computes the connectivity for a level on a mesh that has all vertices
     void addConnectivity(int level, gsMesh<T> & mesh) const;

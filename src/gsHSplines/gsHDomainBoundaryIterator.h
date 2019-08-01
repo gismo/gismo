@@ -41,7 +41,7 @@ class gsHDomainBoundaryIterator: public gsDomainIterator<T>
 {
 public:
 
-    typedef kdnode<d, unsigned> node;
+    typedef kdnode<d, index_t> node;
 
     typedef typename node::point point; 
 

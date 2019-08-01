@@ -172,7 +172,7 @@ public:
 
                 if (m_is_truncated[index] == -1)
                 {
-                    unsigned flatTenIndx = this->flatTensorIndexOf(index, lvl);
+                    index_t flatTenIndx = this->flatTensorIndexOf(index, lvl);
                     int localIndex = -1;
                     for (int row = 0; row != tmpActive[lvl].rows(); ++row)
                     {
@@ -237,7 +237,7 @@ public:
 
                 if (m_is_truncated[index] == -1)
                 {
-                    unsigned flatTenIndx = this->flatTensorIndexOf(index, lvl);
+                    index_t flatTenIndx = this->flatTensorIndexOf(index, lvl);
                     int localIndex = -1;
                     for (int row = 0; row != tmpActive[lvl].rows(); ++row)
                     {
@@ -307,7 +307,7 @@ public:
 
                 if (m_is_truncated[index] == -1)
                 {
-                    unsigned flatTenIndx = this->flatTensorIndexOf(index, lvl);
+                    index_t flatTenIndx = this->flatTensorIndexOf(index, lvl);
                     int localIndx = -1;
                     for (int row = 0; row != tmpActive[lvl].rows(); ++row)
                     {

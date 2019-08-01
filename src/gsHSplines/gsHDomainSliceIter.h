@@ -35,7 +35,7 @@ template<typename node, bool isconst = false>
 class gsHDomainSliceIter
 {
 public:
-    //typedef kdnode<d, unsigned> node;
+    //typedef kdnode<d, index_t> node;
     typedef typename choose<isconst, const node&, node&>::type reference;
     typedef typename choose<isconst, const node*, node*>::type pointer;
 

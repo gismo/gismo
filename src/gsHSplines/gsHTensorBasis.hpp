@@ -618,7 +618,7 @@ void gsHTensorBasis<d,T>::functionOverlap(const point & boxLow, const point & bo
     }
 }
 
-template<short_t d, class T>
+/*template<short_t d, class T>
 void gsHTensorBasis<d,T>::setActive()
 {
     // for(size_t lvl = 0; lvl != m_xmatrix.size(); lvl++)
@@ -633,7 +633,7 @@ void gsHTensorBasis<d,T>::setActive()
     //       query3(supp,box.level) == level (min. is level: no coarser)
     // take care: duplicates from different leaves or adj. cells
     point curr, actUpp;
-    gsMatrix<unsigned,d,2> elSupp;
+    gsMatrix<index_t,d,2> elSupp;
 
     // try: iteration per level
     for ( typename hdomain_type::literator it = m_tree.beginLeafIterator(); 
@@ -674,7 +674,7 @@ void gsHTensorBasis<d,T>::setActive()
         m_xmatrix[lvl].erase( std::unique( m_xmatrix[lvl].begin(), m_xmatrix[lvl].end() ),
                               m_xmatrix[lvl].end() );
     }
-}
+}*/
 
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::setActiveToLvl(int level,

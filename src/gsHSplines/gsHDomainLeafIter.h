@@ -29,7 +29,7 @@ template<typename node, bool isconst = false>
 class gsHDomainLeafIter
 {
 public:
-    //typedef kdnode<d, unsigned> node;
+    //typedef kdnode<d, index_t> node;
     typedef typename util::conditional<isconst, const node&, node&>::type reference;
     typedef typename util::conditional<isconst, const node*, node*>::type pointer;
 
@@ -44,7 +44,7 @@ public:
     gsHDomainLeafIter() : curNode(0)
     { }
 
-    explicit gsHDomainLeafIter( node * const root_node, unsigned index_level)
+    explicit gsHDomainLeafIter( node * const root_node, index_t index_level)
         : m_index_level(index_level)
     { 
         m_stack.push(root_node);
@@ -112,7 +112,7 @@ public:
         return result; 
     }
 
-    unsigned indexLevel() const {return m_index_level;}
+    index_t indexLevel() const {return m_index_level;}
 
 private:
 
@@ -120,7 +120,7 @@ private:
     node * curNode;
 
     /// The level of the box representation
-    unsigned m_index_level;
+    index_t m_index_level;
 
     // stack of pointers to tree nodes, used in next()
     std::stack<node*> m_stack; // to do: change type to std::vector
