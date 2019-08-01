@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
     u(0,2) = 0.6;
     u(1,2) = 0.9;
 
-    gsMatrix<unsigned> resActives;
+    gsMatrix<index_t> resActives;
     gsMatrix<real_t>   resEvals;
 
     thb.active_into( u, resActives);

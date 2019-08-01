@@ -155,7 +155,7 @@ protected:
 
     // Basis values
     gsMatrix<T> basisGrads;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     // Normal and Neumann values
     gsMatrix<T>        physBasisGrad;

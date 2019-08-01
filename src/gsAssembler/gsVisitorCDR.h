@@ -394,7 +394,7 @@ protected:
     // Basis values
     std::vector<gsMatrix<T> > basisData;
     gsMatrix<T>        physBasisGrad, physBasisd2;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
     index_t numActive;
 
     gsMatrix<T> coeff_A_vals;
