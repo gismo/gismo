@@ -438,7 +438,7 @@ gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gs
             else
             {
 
-                gsMatrix<unsigned, d, 2> supp(d, 2);
+                gsMatrix<index_t, d, 2> supp(d, 2);
                 this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
                 //gsDebug<<"supp "<< supp<<std::endl;
                 //unsigned max_lvl = math::min<unsigned>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;

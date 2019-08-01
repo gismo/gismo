@@ -418,7 +418,7 @@ public:
         \param[in] u     Evaluation points in columns.
         \return  For every column of \a u, a column containing the second derivatives.
         See documentation for deriv2_into() (the one without input parameter \em coefs) for details.
-   unsigned */
+    */
     gsMatrix<T> deriv2(const gsMatrix<T>& u) const;
 
 

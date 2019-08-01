@@ -472,8 +472,7 @@ public:
 
     gsMatrix<T> support(const unsigned & i) const;
 
-    void elementSupport_into(const unsigned& i,
-                             gsMatrix<unsigned, d, 2>& result) const
+    void elementSupport_into(const unsigned& i, gsMatrix<index_t, d, 2>& result) const
     {
         unsigned lvl = levelOf(i);
 
@@ -850,7 +849,7 @@ private:
     void set_activ1(int level);
 
     // \brief Computes the set of active basis functions in the basis
-    /*void setActive();*/
+    void setActive();
 
     // \brief Computes the connectivity for a level on a mesh that has all vertices
     void addConnectivity(int level, gsMesh<T> & mesh) const;

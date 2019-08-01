@@ -363,8 +363,7 @@ public:
     /// \brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
     template <int _Rows>
-    void elementSupport_into(const unsigned& i,
-                             gsMatrix<unsigned, _Rows, 2> & result) const
+    void elementSupport_into(const unsigned& i, gsMatrix<index_t, _Rows, 2> & result) const
     {
         result.resize(d,2);
         gsMatrix<unsigned> tmp_vec;
@@ -379,9 +378,9 @@ public:
 
     /// \brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
-    gsMatrix<unsigned, d, 2> elementSupport(const unsigned & i) const
+    gsMatrix<index_t, d, 2> elementSupport(const unsigned & i) const
     {
-        gsMatrix<unsigned, d, 2> result(d, 2);
+        gsMatrix<index_t, d, 2> result(d, 2);
         elementSupport_into(i, result);
         return result;
     }

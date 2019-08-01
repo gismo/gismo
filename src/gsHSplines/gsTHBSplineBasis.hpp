@@ -59,7 +59,7 @@ void gsTHBSplineBasis<d,T>::representBasis()
         unsigned tensor_index = this->flatTensorIndexOf(j, level);
 
         // element indices
-        gsMatrix<unsigned, d, 2> element_ind(d, 2);
+        gsMatrix<index_t, d, 2> element_ind(d, 2);
         this->m_bases[level]->elementSupport_into(tensor_index, element_ind);
 
         // I tried with block, I can not trick the compiler to use references
@@ -1660,7 +1660,7 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<g
                 start_lv_i += n[l].size();
             }
             const unsigned old_ij = old[i][j];  // tensor product index
-            gsMatrix<unsigned, d, 2> supp(d, 2);
+            gsMatrix<index_t, d, 2> supp(d, 2);
             this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
             //gsDebug<<"supp "<< supp<<std::endl;
             //unsigned max_lvl =
@@ -1733,7 +1733,7 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<g
 //            else
 //            {
 
-//                gsMatrix<unsigned, d, 2> supp(d, 2);
+//                gsMatrix<index_t, d, 2> supp(d, 2);
 //                this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
 //                //gsDebug<<<"supp "<< supp<<std::endl;
 //                unsigned max_lvl =
@@ -1848,7 +1848,7 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gs
             {
                 result(start_lv_i + std::distance(n[i].begin(), n[i].find_it_or_fail(old_ij) ),glob_numb ) = 1;//settign the coefficient of the not refined basis function to 1
                 std::vector<lvl_coef> coeffs;
-                gsMatrix<unsigned, d, 2> supp(d, 2);
+                gsMatrix<index_t, d, 2> supp(d, 2);
                 this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
                 unsigned max_lvl = math::min<unsigned>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size()) ;//transfer.size();//
                 //gsDebug<<"transfer size "<< transfer.size()<<" max lvl"<< this->m_tree.query4(supp.col(0),supp.col(1), this->levelOf(start_lv_i+j))<<"   lvl of"<< this->levelOf(start_lv_i+j)<<" support\n"<<supp<<std::endl;
@@ -1923,7 +1923,7 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gs
             }
             else
             {
-                gsMatrix<unsigned, d, 2> supp(d, 2);
+                gsMatrix<index_t, d, 2> supp(d, 2);
                 this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
                 //gsDebug<<"supp "<< supp<<std::endl;
                 unsigned max_lvl =
