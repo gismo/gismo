@@ -188,7 +188,7 @@ template <short_t d, typename T, typename KnotVectorType, typename Mat>
 void gsTensorInsertKnotDegreeTimes(
         const KnotVectorType& knots,
         Mat& coefs,
-        const gsVector<unsigned, d>& size_of_coefs,
+        const gsVector<index_t, d>& size_of_coefs,
         T val,
         const unsigned direction,
         gsVector<unsigned, d>& start,

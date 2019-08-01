@@ -530,13 +530,13 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
     gsVector<unsigned, d> position(d); // position old points
     position.fill(0);
 
-    gsVector<unsigned, d> first_point(position); // first point of a cube
-    gsVector<unsigned, d> last_point(d); // last point of a cube (old points)
+    gsVector<index_t, d> first_point(position); // first point of a cube
+    gsVector<index_t, d> last_point(d); // last point of a cube (old points)
     bspline::getLastIndexLocal<d>(nmb_of_coefs, last_point);
     last_point[direction] = 0;
 
     // build strides
-    gsVector<unsigned, d> act_str(d);
+    gsVector<index_t, d> act_str(d);
     bspline::buildCoeffsStrides<d>(act_size_of_coefs, act_str);
 
     const int step = act_str[direction];
@@ -760,7 +760,7 @@ template <short_t d, typename T, typename KnotVectorType, typename Mat>
 void gsTensorInsertKnotDegreeTimes(
         const KnotVectorType& knots,
         Mat& coefs,
-        const gsVector<unsigned, d>& size_of_coefs,
+        const gsVector<index_t, d>& size_of_coefs,
         T val,
         unsigned direction,
         gsVector<unsigned, d>& start,
@@ -779,7 +779,7 @@ void gsTensorInsertKnotDegreeTimes(
     std::vector<std::vector<T> > alpha(r, std::vector<T> (p - s));
     computeAlpha<T, KnotVectorType>(alpha, knots, val, r, k, p, s);
 
-    gsVector<unsigned, d> coefs_str(d);
+    gsVector<index_t, d> coefs_str(d);
     bspline::buildCoeffsStrides<d>(size_of_coefs, coefs_str);
 
     start(direction) = 0;

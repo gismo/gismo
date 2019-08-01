@@ -416,8 +416,8 @@ private:
     /// @param finest_high "high index" of support of j-th basis function (finest grid)
     void _representBasisFunction(const unsigned j,
                                 const unsigned pres_level,
-                                const gsVector<unsigned, d>& finest_low,
-                                const gsVector<unsigned, d>& finest_high);
+                                const gsVector<index_t, d>& finest_low,
+                                const gsVector<index_t, d>& finest_high);
 
 
 
@@ -432,10 +432,10 @@ private:
     /// @param finest_low "low index" of support of j-th basis function
     ///        (at the finest grid)
     void _saveNewBasisFunPresentation(const gsMatrix<T>& coefs,
-                                      const gsVector<unsigned, d>& act_size_of_coefs,
+                                      const gsVector<index_t, d>& act_size_of_coefs,
                                       const unsigned j,
                                       const unsigned pres_level,
-                                      const gsVector<unsigned, d>& finest_low);
+                                      const gsVector<index_t, d>& finest_low);
 
 
 
@@ -448,9 +448,9 @@ private:
     /// @param new_level finer level
     ///
     /// @return global tensor index of a basis function on the finer level
-    unsigned _basisFunIndexOnLevel(const gsVector<unsigned, d>& index,
+    unsigned _basisFunIndexOnLevel(const gsVector<index_t, d>& index,
                                    const unsigned level,
-                                   const gsVector<unsigned, d>& fin_low,
+                                   const gsVector<index_t, d>& fin_low,
                                    const unsigned new_level);
 
 
@@ -467,12 +467,12 @@ private:
     ///                          bspl_vec_ti
     /// @param finest_low "low index" of the support of the basis function
     void _truncate(gsMatrix<T>& coefs,
-                   const gsVector<unsigned, d>& act_size_of_coefs,
-                   const gsVector<unsigned, d>& size_of_coefs,
+                   const gsVector<index_t, d>& act_size_of_coefs,
+                   const gsVector<index_t, d>& size_of_coefs,
                    const unsigned level,
-                   const gsVector<unsigned, d>& bspl_vec_ti,
+                   const gsVector<index_t, d>& bspl_vec_ti,
                    const unsigned bspl_vec_ti_level,
-                   const gsVector<unsigned, d>& finest_low);
+                   const gsVector<index_t, d>& finest_low);
 
 
     /// @brief We get current size of the coefficients. Function updates this sizes
@@ -490,9 +490,9 @@ private:
     /// @return number of all new coefficients
     unsigned _updateSizeOfCoefs(const unsigned clevel,
                                 const unsigned flevel,
-                                const gsVector<unsigned, d>& finest_low,
-                                const gsVector<unsigned, d>& finest_high,
-                                gsVector<unsigned, d>& size_of_coefs);
+                                const gsVector<index_t, d>& finest_low,
+                                const gsVector<index_t, d>& finest_high,
+                                gsVector<index_t, d>& size_of_coefs);
 
 public:
 
@@ -523,7 +523,7 @@ public:
    * @param[out] k1 knot vector of the B-spline patch (first dimension)
    * @param[out] k2 knot vector of the B-spline patch (second dimension)
   */
-  void getBsplinePatchGlobal(gsVector<unsigned> b1, gsVector<unsigned> b2, unsigned level, const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsKnotVector<T>& k1, gsKnotVector<T>& k2) const;  
+  void getBsplinePatchGlobal(gsVector<index_t> b1, gsVector<index_t> b2, unsigned level, const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsKnotVector<T>& k1, gsKnotVector<T>& k2) const;
 
   /**
    * @brief Return the list of B-spline patches to represent a THB-spline geometry.

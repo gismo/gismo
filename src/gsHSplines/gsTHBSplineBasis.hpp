@@ -63,8 +63,8 @@ void gsTHBSplineBasis<d,T>::representBasis()
         this->m_bases[level]->elementSupport_into(tensor_index, element_ind);
 
         // I tried with block, I can not trick the compiler to use references
-        gsVector<unsigned, d> low = element_ind.col(0); //block<d, 1>(0, 0);
-        gsVector<unsigned, d> high = element_ind.col(1); //block<d, 1>(0, 1);gsMatrix<unsigned> element_ind =
+        gsVector<index_t, d> low = element_ind.col(0); //block<d, 1>(0, 0);
+        gsVector<index_t, d> high = element_ind.col(1); //block<d, 1>(0, 1);gsMatrix<unsigned> element_ind =
 
         // Finds coarsest level that function, with supports given with
         // support indices of the coarsest level (low & high), has presentation
@@ -91,13 +91,13 @@ template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::_representBasisFunction(
     const unsigned j,
     const unsigned pres_level,
-    const gsVector<unsigned, d>& finest_low,
-    const gsVector<unsigned, d>& finest_high)
+    const gsVector<index_t, d>& finest_low,
+    const gsVector<index_t, d>& finest_high)
 {
     const unsigned cur_level = this->levelOf(j);
 
     // actual size of the coefficients
-    gsVector<unsigned, d> act_size_of_coefs(d);
+    gsVector<index_t, d> act_size_of_coefs(d);
     act_size_of_coefs.fill(1);
 
     // number of new coefficients
@@ -112,13 +112,13 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
 
     // vector of the numbers of the coefficients (in each dimension)
     // stored in coefs
-    gsVector<unsigned, d> vec_nmb_of_coefs(d);
+    gsVector<index_t, d> vec_nmb_of_coefs(d);
     vec_nmb_of_coefs.fill(1);
 
     unsigned tensor_index = this->flatTensorIndexOf(j, cur_level);
 
     // B-Spline vector tensor index
-    gsVector<unsigned, d> bspl_vec_ti =
+    gsVector<index_t, d> bspl_vec_ti =
         this->m_bases[cur_level]->tensorIndex(tensor_index);
 
 
@@ -127,7 +127,7 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
     std::vector<gsKnotVector<T> > vector_of_kv(d);
 
     // size of the coefficients that are affected in individual iteration
-    gsVector<unsigned, d> cur_size_of_coefs(d);
+    gsVector<index_t, d> cur_size_of_coefs(d);
     cur_size_of_coefs.fill(1);
 
     for (unsigned level = cur_level; level < pres_level; ++level)
@@ -138,7 +138,7 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
 
         // index of a support of the j-th basis function (l_low, l_high
         // on level, and l1_high, l1_low on level + 1)
-        gsVector<unsigned, d> clow, chigh, fhigh, flow;
+        gsVector<index_t, d> clow, chigh, fhigh, flow;
 
         this->m_tree.computeLevelIndex(finest_low, level, clow);
         this->m_tree.computeLevelIndex(finest_high, level, chigh);
@@ -183,31 +183,31 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
 template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::_saveNewBasisFunPresentation(
     const gsMatrix<T>& coefs,
-    const gsVector<unsigned, d>& act_size_of_coefs,
+    const gsVector<index_t, d>& act_size_of_coefs,
     const unsigned j,
     const unsigned pres_level,
-    const gsVector<unsigned, d>& finest_low)
+    const gsVector<index_t, d>& finest_low)
 {
     const unsigned level = this->levelOf(j);
     const unsigned tensor_index = this->flatTensorIndexOf(j, level);
 
-    gsVector<unsigned, d> bspl_vec_ti =
+    gsVector<index_t, d> bspl_vec_ti =
         this->m_bases[level]->tensorIndex(tensor_index);
 
     // finer tensor index
     const unsigned f_ten_index = _basisFunIndexOnLevel(bspl_vec_ti, level,
                                                        finest_low, pres_level);
 
-    gsVector<unsigned, d> act_coefs_strides(d);
+    gsVector<index_t, d> act_coefs_strides(d);
     bspline::buildCoeffsStrides<d>(act_size_of_coefs, act_coefs_strides);
 
 
-    gsVector<unsigned, d> position(d);
+    gsVector<index_t, d> position(d);
     position.fill(0);
 
 
-    gsVector<unsigned, d> first_point(position);
-    gsVector<unsigned, d> last_point(d);
+    gsVector<index_t, d> first_point(position);
+    gsVector<index_t, d> last_point(d);
     bspline::getLastIndexLocal<d>(act_size_of_coefs, last_point);
 
     this->m_presentation[j] =
@@ -234,25 +234,25 @@ void gsTHBSplineBasis<d,T>::_saveNewBasisFunPresentation(
         if (coefs(coef_index) != 0)
             presentation(ten_index) = coefs(coef_index);
 
-    } while(nextCubePoint<gsVector<unsigned, d> > (position, first_point,
+    } while(nextCubePoint<gsVector<index_t, d> > (position, first_point,
                                                    last_point));
 }
 
 
 template<short_t d, class T>
 unsigned gsTHBSplineBasis<d,T>::_basisFunIndexOnLevel(
-    const gsVector<unsigned, d>& index,
+    const gsVector<index_t, d>& index,
     const unsigned level,
-    const gsVector<unsigned, d>& fin_low,
+    const gsVector<index_t, d>& fin_low,
     const unsigned new_level)
 {
-    gsVector<unsigned, d> low(d);
+    gsVector<index_t, d> low(d);
     this->m_tree.computeLevelIndex(fin_low, level, low);
 
-    gsVector<unsigned, d> flow(d);
+    gsVector<index_t, d> flow(d);
     this->m_tree.computeLevelIndex(fin_low, new_level, flow);
 
-    gsVector<unsigned, d> new_index(d);
+    gsVector<index_t, d> new_index(d);
 
     for (unsigned dim = 0; dim < d; dim++)
     {
@@ -275,12 +275,12 @@ unsigned gsTHBSplineBasis<d,T>::_basisFunIndexOnLevel(
 template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::_truncate(
     gsMatrix<T>& coefs,
-    const gsVector<unsigned, d>& act_size_of_coefs,
-    const gsVector<unsigned, d>& size_of_coefs,
+    const gsVector<index_t, d>& act_size_of_coefs,
+    const gsVector<index_t, d>& size_of_coefs,
     const unsigned level,
-    const gsVector<unsigned, d>& bspl_vec_ti,
+    const gsVector<index_t, d>& bspl_vec_ti,
     const unsigned bspl_vec_ti_level,
-    const gsVector<unsigned, d>& finest_low)
+    const gsVector<index_t, d>& finest_low)
 {
     // if we dont have any active function in this level, we do not truncate
     if (this->m_xmatrix[level].size() == 0)
@@ -290,19 +290,19 @@ void gsTHBSplineBasis<d,T>::_truncate(
     // global tensor index
     const unsigned const_ten_index = _basisFunIndexOnLevel(bspl_vec_ti,
                                                            bspl_vec_ti_level, finest_low, level);
-    gsVector<unsigned, d> act_coefs_strides(d);
+    gsVector<index_t, d> act_coefs_strides(d);
     bspline::buildCoeffsStrides<d>(act_size_of_coefs, act_coefs_strides);
 
 
-    gsVector<unsigned, d> last_point(d);
+    gsVector<index_t, d> last_point(d);
     bspline::getLastIndexLocal<d>(size_of_coefs, last_point);
     last_point(0) = 0;
 
 
-    gsVector<unsigned, d> position(d);
+    gsVector<index_t, d> position(d);
     position.fill(0);
 
-    gsVector<unsigned, d> first_point(position);
+    gsVector<index_t, d> first_point(position);
 
     unsigned xmatrix_index = 0;
     unsigned tensor_active_index = this->m_xmatrix[level][0];
@@ -354,7 +354,7 @@ void gsTHBSplineBasis<d,T>::_truncate(
             ten_index++;
         }
 
-    } while(nextCubePoint<gsVector<unsigned, d> >(position, first_point,
+    } while(nextCubePoint<gsVector<index_t, d> >(position, first_point,
                                                   last_point));
 }
 
@@ -363,16 +363,16 @@ template<short_t d, class T>
 unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
     const unsigned clevel,
     const unsigned flevel,
-    const gsVector<unsigned, d>& finest_low,
-    const gsVector<unsigned, d>& finest_high,
-    gsVector<unsigned, d>& size_of_coefs)
+    const gsVector<index_t, d>& finest_low,
+    const gsVector<index_t, d>& finest_high,
+    gsVector<index_t, d>& size_of_coefs)
 {
-    gsVector<unsigned, d> clow, chigh;
+    gsVector<index_t, d> clow, chigh;
 
     this->m_tree.computeLevelIndex(finest_low, clevel, clow);
     this->m_tree.computeLevelIndex(finest_high, clevel, chigh);
 
-    gsVector<unsigned, d> flow, fhigh;
+    gsVector<index_t, d> flow, fhigh;
     this->m_tree.computeLevelIndex(finest_low, flevel, flow);
     this->m_tree.computeLevelIndex(finest_high, flevel, fhigh);
 
@@ -401,8 +401,8 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
 
 // return the B-spline representation of a THB-spline subpatch
 template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, 
-                                                  gsVector<unsigned> b2, 
+void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<index_t> b1,
+                                                  gsVector<index_t> b2,
                                                   unsigned level, 
                                                   const gsMatrix<T>& geom_coef,
                                                   gsMatrix<T>& cp,
@@ -417,7 +417,7 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1,
     if( b2[1]%loc2glob != 0 ) b2[1] += loc2glob -(b2[1]%loc2glob);
 
     // select the indices of all B-splines of the given level acting on the given box
-    gsVector<unsigned,d> b1_outputs, b2_outputs;
+    gsVector<index_t,d> b1_outputs, b2_outputs;
     this->m_tree.computeLevelIndex( b1, level, b1_outputs );
     this->m_tree.computeLevelIndex( b2, level, b2_outputs );
     int i0 = b1_outputs(0);
@@ -1248,7 +1248,7 @@ gsTHBSplineBasis<d,T>::getBSplinePatch(const std::vector<unsigned>& boundingBox,
                                        const unsigned level,
                                        const gsMatrix<T>& geomCoefs) const
 {
-    gsVector<unsigned, d> low, upp;
+    gsVector<index_t, d> low, upp;
     for (unsigned dim = 0; dim != d; dim++)
     {
         low(dim) = boundingBox[dim];
