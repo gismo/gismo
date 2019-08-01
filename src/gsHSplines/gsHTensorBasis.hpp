@@ -1092,7 +1092,7 @@ std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::d
     params.clear();
     std::vector< std::vector< std::vector< int > > > res_aabb;
     std::vector< std::vector< std::vector< unsigned int > > > res_aabb_unsigned;
-    std::vector< std::vector< std::vector< std::vector< unsigned int > > > > polylines;
+    std::vector< std::vector< std::vector< std::vector< index_t > > > > polylines;
 
     polylines =  this->m_tree.getPolylines();
     res_aabb.resize( polylines.size() );

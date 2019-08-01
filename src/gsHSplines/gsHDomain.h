@@ -178,24 +178,24 @@ public:
 
 public:
 
-    void computeFinestIndex( gsVector<unsigned,d> const & index,
+    void computeFinestIndex( gsVector<index_t,d> const & index,
                              unsigned lvl,
-                             gsVector<unsigned,d> & result
+                             gsVector<index_t,d> & result
         ) const;
 
-    void computeLevelIndex( gsVector<unsigned,d> const & index,
+    void computeLevelIndex( gsVector<index_t,d> const & index,
                             unsigned lvl,
-                            gsVector<unsigned,d> & result
+                            gsVector<index_t,d> & result
         ) const;
 
-    void local2globalIndex( gsVector<unsigned,d> const & index,
+    void local2globalIndex( gsVector<index_t,d> const & index,
                             unsigned lvl,
-                            gsVector<unsigned,d> & result
+                            gsVector<index_t,d> & result
         ) const;
 
-    void global2localIndex( gsVector<unsigned,d> const & index,
+    void global2localIndex( gsVector<index_t,d> const & index,
                             unsigned lvl,
-                            gsVector<unsigned,d> & result
+                            gsVector<index_t,d> & result
         ) const;
 
     /// Accessor for gsHDomain::m_upperIndex
@@ -513,9 +513,9 @@ public:
 
     ///return a list of polylines- boundaries of each connected
     ///component for all levels in the parameter space
-    std::vector< std::vector< std::vector< std::vector< unsigned int > > > > getPolylines() const;
+    std::vector< std::vector< std::vector< std::vector< index_t > > > > getPolylines() const;
 
-    std::vector< std::vector< std::vector< unsigned int > > > getPolylinesSingleLevel(std::vector<gsVSegment<T> >& seg) const;
+    std::vector< std::vector< std::vector< index_t > > > getPolylinesSingleLevel(std::vector<gsVSegment<T> >& seg) const;
 
 
     inline unsigned getIndexLevel() const
@@ -583,7 +583,7 @@ private:
     /// All indexing is in terms of level gsHDomain::m_maxInsLevel. \n
     // getBoxes-functions might get removed at some point of time.
     // Use iterators instead whenever possible.
-    void getBoxes_vec(std::vector<std::vector<unsigned int> >& boxes) const;
+    void getBoxes_vec(std::vector<std::vector<index_t> >& boxes) const;
 
     /// \brief connect the boxes returned from quadtree getBoxes_vec()
     ///
@@ -595,10 +595,10 @@ private:
     /// is represented as vector of size <em>2*d + 1</em> containing
     /// [ [lower corner],[upper corner], Level ], where the corners
     /// are defined by the knot indices on level gsHDomain::m_maxInsLevel.
-    void connect_Boxes(std::vector<std::vector<unsigned int> > &boxes) const;
-    void connect_Boxes2d(std::vector<std::vector<unsigned int> > &boxes) const;
+    void connect_Boxes(std::vector<std::vector<index_t> > &boxes) const;
+    void connect_Boxes2d(std::vector<std::vector<index_t> > &boxes) const;
 
-    void connect_Boxes_2(std::vector<std::vector<unsigned int> > &boxes) const;
+    void connect_Boxes_2(std::vector<std::vector<index_t> > &boxes) const;
 
     /// For each x-coordinate delete repeated parts of vertical segments.
     /// \a vert_seg_lists list, where for each x coordinate (sorted increasingly) a list of vertical segments
@@ -606,7 +606,7 @@ private:
     void getRidOfOverlaps( std::list< std::list< gsVSegment<T> > >& vert_seg_lists ) const;
 
     /// Sweepline algorithm.
-    void sweeplineConnectAndMerge( std::vector< std::vector< std::vector<unsigned int> > >& result,
+    void sweeplineConnectAndMerge( std::vector< std::vector< std::vector<index_t> > >& result,
                                    std::list< std::list< gsVSegment<T> > >& vert_seg_lists ) const;
     
 
