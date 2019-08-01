@@ -140,7 +140,7 @@ protected:
 
     // Basis values
     gsMatrix<T>      basisData;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     // Local matrix
     gsMatrix<T> localMat;
