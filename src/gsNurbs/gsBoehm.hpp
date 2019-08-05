@@ -566,11 +566,11 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
 
         for (unsigned j = b - 1; j < nopts; j++)
         {
-            int indx1 = j + nik - index;
-            int indx2 = j - index;
+            index_t indx1 = j + nik - index;
+            index_t indx2 = j - index;
 
             if (0 <= indx1 &&
-                    static_cast<unsigned>(indx1) < act_size_of_coefs[direction])
+                    indx1 < act_size_of_coefs[direction])
             {
                 if (indx2 < 0)
                     coefs.row(ind + indx1 * step) = zero.row(0);
@@ -590,11 +590,10 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
 
             while ((newKnot <= knots[i]) && (a < i))
             {
-                int indx1 = k - p - 1 - index;
-                int indx2 = i - p - 1 - index;
+                index_t indx1 = k - p - 1 - index;
+                index_t indx2 = i - p - 1 - index;
 
-                if (indx1 < 0 || act_size_of_coefs[direction] <=
-                        static_cast<unsigned>(indx1))
+                if (indx1 < 0 || act_size_of_coefs[direction] <= indx1)
                 {
                     k--;
                     i--;
@@ -614,14 +613,13 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
                 i--;
             }
 
-            int indx1 = k - p - 1 - index;
+            index_t indx1 = k - p - 1 - index;
 
-            if (0 <= indx1 && static_cast<unsigned>(indx1 + 1) <
-                    act_size_of_coefs[direction])
+            if (0 <= indx1 && (indx1 + 1) < act_size_of_coefs[direction])
                 coefs.row(ind + indx1 * step) =
                         coefs.row(ind + (indx1 + 1) * step);
 
-            if (static_cast<unsigned>(indx1) == act_size_of_coefs[direction] - 1)
+            if (indx1 == act_size_of_coefs[direction] - 1)
                 coefs.row(ind + indx1 * step) = zero.row(0);
 
             for (int ell = 1; ell <= p; ell++)
@@ -632,14 +630,12 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
                 if (mindex <= 0)
                     continue;
 
-                if (act_size_of_coefs[direction] <
-                        static_cast<unsigned>(mindex))
+                if (act_size_of_coefs[direction] < mindex)
                     break;
 
                 if (math::abs(alfa) == 0.0)
                 {
-                    if (static_cast<unsigned>(mindex) ==
-                            act_size_of_coefs[direction])
+                    if (mindex == act_size_of_coefs[direction])
                         coefs.row(ind + (mindex - 1) * step) = zero.row(0);
                     else
                         coefs.row(ind + (mindex - 1) * step) =
@@ -647,8 +643,7 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
                 }
                 else
                 {
-                    if (static_cast<unsigned>(mindex) ==
-                            act_size_of_coefs[direction])
+                    if (mindex == act_size_of_coefs[direction])
                         coefs.row(ind + (mindex - 1) * step) =
                                 alfa * coefs.row(ind + (mindex - 1) * step);
                     else

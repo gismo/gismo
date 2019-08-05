@@ -947,7 +947,7 @@ void gsHDomain<d,T>::getBoxesOnSide(boundary::side s, gsMatrix<unsigned>& b1, gs
         for( index_t i = 0; i < b1.rows(); i++)
         {
             // index of upper corner
-            unsigned B2( b2(i, quotient ) );
+            index_t B2( b2(i, quotient ) );
             // transform to index-level
             B2 = B2 << (m_indexLevel - m_maxInsLevel);
 
@@ -958,7 +958,7 @@ void gsHDomain<d,T>::getBoxesOnSide(boundary::side s, gsMatrix<unsigned>& b1, gs
     }
 
     // select only the boxes on side s:
-    for( unsigned i=0; i < onSide.size(); i++)
+    for( size_t i=0; i < onSide.size(); i++)
     {
         b1.row(i) = b1.row( onSide[i] );
         b2.row(i) = b2.row( onSide[i] );
@@ -977,7 +977,7 @@ void gsHDomain<d,T>::getBoxesInLevelIndex(gsMatrix<unsigned>& b1,
     getBoxes_vec(boxes);
     GISMO_ASSERT(d==2 || d==3,"Wrong dimension, should be 2 or 3.");
     //is this test really necessary? florian b.
-    for(unsigned int i = 0; i < boxes.size(); i++){
+    for(size_t i = 0; i < boxes.size(); i++){
         if ((boxes[i][0]==boxes[i][d+0]) || (boxes[i][1]==boxes[i][1+d]))
         {
             boxes.erase(boxes.begin()+i);
