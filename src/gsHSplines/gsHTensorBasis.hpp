@@ -421,14 +421,14 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refineElements(std::vector<unsigned> const & boxes)
 {
-    gsVector<unsigned int, d> i1;
-    gsVector<unsigned int, d> i2;
+    point i1;
+    point i2;
 
     GISMO_ASSERT( (boxes.size()%(2*d + 1))==0,
                   "The points did not define boxes properly. The boxes were not added to the basis.");
     for( unsigned int i = 0; i < (boxes.size())/(2*d+1); i++)
     {
-        for( unsigned j = 0; j < d; j++ )
+        for( short_t j = 0; j < d; j++ )
         {
             i1[j] = boxes[(i*(2*d+1))+j+1];
             i2[j] = boxes[(i*(2*d+1))+d+j+1];
@@ -557,7 +557,7 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     typedef typename gsKnotVector<T>::smart_iterator knotIter;
 
     //gsDebug<<" Setting level "<< level <<"\n";
-    gsVector<unsigned,d> low, upp;
+    point low, upp;
 
     CMatrix & cmat = m_xmatrix[level];
     
@@ -571,7 +571,7 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
 
 
     gsVector<knotIter,d> starts, ends, curr;
-    gsVector<unsigned,d> ind;
+    point ind;
     ind[0] = 0; // for d==1: warning: may be used uninitialized in this function (snap-ci)
 
     for(unsigned i = 0; i != d; ++i)
@@ -585,7 +585,7 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     curr = starts;// start iteration
     do
     {
-        for(unsigned i = 0; i != d; ++i)
+        for(short_t i = 0; i != d; ++i)
         {
             low[i]  = curr[i].uIndex();  // lower left corner of the support of the function
             upp[i]  = (curr[i]+m_deg[i]+1).uIndex(); // upper right corner of the support
@@ -607,7 +607,7 @@ void gsHTensorBasis<d,T>::functionOverlap(const point & boxLow, const point & bo
                                           const int level, point & actLow, point & actUpp)
 {
     const tensorBasis & tb = *m_bases[level];
-    for(unsigned i = 0; i != d; ++i)
+    for(short_t i = 0; i != d; ++i)
     {
         actLow[i] = tb.knots(i).lastKnotIndex (boxLow[i]) - m_deg[i];
         actUpp[i] = tb.knots(i).firstKnotIndex(boxUpp[i]) - 1       ;
@@ -732,8 +732,8 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level,
 
 ///private functions
 template<short_t d, class T> inline
-void gsHTensorBasis<d,T>::insert_box(gsVector<unsigned,d> const & k1,
-                                     gsVector<unsigned,d> const & k2,
+void gsHTensorBasis<d,T>::insert_box(typename gsHTensorBasis<d,T>::point const & k1,
+                                     typename gsHTensorBasis<d,T>::point const & k2,
                                      int lvl )
 {
     // Remember box in History (for debugging)

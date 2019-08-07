@@ -372,7 +372,7 @@ public:
         for (unsigned dim = 0; dim < d; ++dim)
         {
             Self_t::component(dim).knots().supportIndex_into(ti[dim], tmp_vec);
-            result.row(dim) = tmp_vec.row(0);
+            result.row(dim) = tmp_vec.row(0).template cast<index_t>();
         }
     }
 

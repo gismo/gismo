@@ -125,8 +125,8 @@ public:
                     const std::vector<unsigned> & boxes)
     {
         initialize_class(tbasis);
-        gsVector<unsigned int> i1;
-        gsVector<unsigned int> i2;
+        point i1;
+        point i2;
         i1.resize(d);
         i2.resize(d);
         // Set all functions to active
@@ -835,8 +835,7 @@ protected:
 private:
 
     /// \brief Inserts a domain into the basis
-    void insert_box(gsVector<unsigned,d> const & k1,
-                    gsVector<unsigned,d> const & k2, int lvl);
+    void insert_box(point const & k1, point const & k2, int lvl);
 
     void initialize_class(gsBasis<T> const&  tbasis);
 
