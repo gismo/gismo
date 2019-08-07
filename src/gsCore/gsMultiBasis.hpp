@@ -430,10 +430,10 @@ bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
     switch( this->dim() )
     {
     case 2:
-        changed = repairInterfaceFindElements<2>( bi, refEltsFirst, refEltsSecond );
+        changed = this->template repairInterfaceFindElements<2>( bi, refEltsFirst, refEltsSecond );
         break;
     case 3:
-        changed = repairInterfaceFindElements<3>( bi, refEltsFirst, refEltsSecond );
+        changed = this->template repairInterfaceFindElements<3>( bi, refEltsFirst, refEltsSecond );
         break;
     default:
         GISMO_ASSERT(false,"wrong dimension");
