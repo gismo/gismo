@@ -88,7 +88,7 @@ struct gsJITCompilerConfig
         std::swap(temp , other.temp );
     }
             
-#   if __cplusplus >= 201103L
+#   if __cplusplus >= 201103L || _MSC_VER >= 1600
 
     /// Constructor (copy)
     gsJITCompilerConfig(gsJITCompilerConfig const& other)
@@ -460,8 +460,9 @@ private:
 };
 
 /// Print (as string) operator to be used by all derived classes
-std::ostream &operator<<(std::ostream &os, const gsJITCompilerConfig& c)
-{return c.print(os); }
+inline std::ostream &operator<<(std::ostream &os,
+                                const gsJITCompilerConfig& c)
+{ return c.print(os); }
 
 namespace internal
 {
@@ -531,6 +532,8 @@ public:
 struct gsDynamicLibrary
 {
 public:
+    /// Default Constructor
+    gsDynamicLibrary() {}
 
     /// Constructor (using file name)
     gsDynamicLibrary(const char* filename, int flag)
@@ -625,7 +628,7 @@ public:
         return *this;
     }
 
-#   if __cplusplus >= 201103L
+#   if __cplusplus >= 201103L || _MSC_VER >= 1600
     /// Constructor (move)
     gsJITCompiler(gsJITCompiler && other)
     : //kernel(std::move(other.kernel)),
@@ -661,8 +664,10 @@ public:
     /// (determine filename from hash of kernel source code)
     gsDynamicLibrary build(bool force = false)
     {
-#       if __cplusplus >= 201103L
-        size_t h = std::hash<std::string>()(getKernel().str());
+#       if __cplusplus >= 201103L || _MSC_VER >= 1600
+        size_t h = std::hash<std::string>()(getKernel().str() +
+                                            config.getCmd()+config.getFlags() +
+                                            config.getLang());
         return build(std::to_string(h), force);
 #       else
         return build("JIT", true);
@@ -773,7 +778,7 @@ private:
 };
 
 /// Print (as string) operator to be used by all derived classes
-std::ostream &operator<<(std::ostream &os, const gsJITCompiler& c)
+inline std::ostream &operator<<(std::ostream &os, const gsJITCompiler& c)
 { return c.print(os); }
 
 namespace internal

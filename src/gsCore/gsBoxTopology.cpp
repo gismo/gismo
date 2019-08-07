@@ -373,12 +373,12 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allComponents(bool com
     for (short_t i=dim; i>=0; --i)
     {
         if (!combineCorners || i>0)
-            for( typename map_t::iterator it = comps[i].begin(); it != comps[i].end(); ++it )
+            for( map_t::iterator it = comps[i].begin(); it != comps[i].end(); ++it )
                 result.push_back( it->second );
         else
         {
             component_coll_t last;
-            for( typename map_t::iterator it = comps[i].begin(); it != comps[i].end(); ++it )
+            for( map_t::iterator it = comps[i].begin(); it != comps[i].end(); ++it )
             {
                 const index_t nrcp = it->second.size();
                 for (index_t j=0; j<nrcp; ++j)

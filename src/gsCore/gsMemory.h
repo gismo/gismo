@@ -69,7 +69,7 @@ usage:
 memory::unique_ptr<int> B;
 \endcode
 */
-#if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1600)
+#if __cplusplus >= 201103 || _MSC_VER >= 1600
 using std::unique_ptr;
 using std::nullptr_t;
 #else
@@ -234,7 +234,15 @@ inline std::vector<T*> release(std::vector< unique_ptr<T> >& cont)
 
 } // namespace memory
 
-#if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1600)
+#if __cplusplus >= 201103 || _MSC_VER >= 1900
+// fix MSVC 2013- (_MSC_VER < 1900)
+// MSVC < 1900 do not work probably. give makes a deep copy for return value,
+// losses left value. But the alternative code results in segmentation vaults
+// because a swap/give loop leads to a stack overflow.
+// From the adresses, it seams that Eigen do not support rvalue with MSVC < 1900
+// Therefore disabled EIGEN_HAS_RVALUE_REFERENCES for MSVC < 1900 and use
+// alternative code.
+
 /** 
     Alias for std::move, to be used instead of writing std::move for
     keeping backward c++98 compatibility
@@ -253,7 +261,7 @@ auto give(T&& t) -> decltype(std::move(std::forward<T>(t)))
 #else
 /**
     Alias for std::move, to be used instead of std::move for backward
-    c++98 compatibility
+    c++98 compatibility and MSVC before 2015
 
     Based on swapping and copy elision.
 */
@@ -398,7 +406,7 @@ inline void copy(T begin, T end, U* result)
 
 } // namespace gismo
 
-#if (__cplusplus < 201103) && (!defined(_MSC_VER) || _MSC_VER < 1600)
+#if __cplusplus < 201103L && _MSC_VER < 1600
 // Define nullptr for compatibility with newer C++
 static const gismo::memory::nullptr_t nullptr ={};
 #endif
