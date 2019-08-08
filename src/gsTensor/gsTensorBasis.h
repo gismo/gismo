@@ -515,7 +515,7 @@ public:
 
     /// Returns the global index of the basis function created by
     /// components of indices given in the vector v
-    inline unsigned index(gsVector<unsigned,d> const & v) const;
+    inline unsigned index(gsVector<index_t,d> const & v) const;
     //  inline unsigned index(gsVector<unsigned>         & v) const;
 
     /// \brief Returns the tensor index of the basis function with
@@ -860,7 +860,7 @@ private:
 /* ******************************************** */
 
 template<short_t d, class Basis_t >
-inline unsigned gsTensorBasis<d,Basis_t>::index(gsVector<unsigned,d> const & v) const
+inline unsigned gsTensorBasis<d,Basis_t>::index(gsVector<index_t,d> const & v) const
 {
     unsigned ind;
 
