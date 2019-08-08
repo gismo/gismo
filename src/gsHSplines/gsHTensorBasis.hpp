@@ -922,7 +922,7 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& 
     point low, upp, cur;
     const int maxLevel = m_tree.getMaxInsLevel();
 
-    std::vector<std::vector<unsigned> > temp_output;//collects the outputs
+    std::vector<std::vector<index_t> > temp_output;//collects the outputs
     temp_output.resize( u.cols() );
     size_t sz = 0;
 
@@ -977,7 +977,7 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& 
     for(index_t i = 0; i < result.cols(); i++)
     {
         result.col(i).topRows(temp_output[i].size())
-            = gsAsConstVector<unsigned>(temp_output[i]);
+            = gsAsConstVector<index_t>(temp_output[i]);
         result.col(i).bottomRows(sz-temp_output[i].size()).setZero();
     }
 }
