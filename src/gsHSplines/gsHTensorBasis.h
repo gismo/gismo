@@ -127,8 +127,8 @@ public:
         initialize_class(tbasis);
         point i1;
         point i2;
-        i1.resize(d);
-        i2.resize(d);
+        //i1.resize(d);
+        //i2.resize(d);
         // Set all functions to active
         GISMO_ASSERT( (boxes.size()%(2*d+1))==0,
                       "The points did not define boxes properly. The basis was created without any domain structure.");
