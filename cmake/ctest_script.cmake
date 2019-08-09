@@ -557,7 +557,7 @@ macro(run_ctests)
   else() # No subprojects
 
 
-    if(NOT "x${CTEST_CMAKE_GENERATOR}" STREQUAL "xNinja")
+    if("x${CTEST_CMAKE_GENERATOR}" STREQUAL "xNinja")
       ctest_build(TARGET UnitTestPP APPEND) # for older versions of ninja
     endif()
     ctest_submit(PARTS Build)
