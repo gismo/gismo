@@ -563,7 +563,7 @@ public:
         return td;
     }
 
-    /// @brief Reduces spline continuity at interior knots by \a i for all levels
+    /// @brief Reduces spline continuity at interior knots by \a i
     void reduceContinuity(int const & i = 1)
     {
         for (short_t lvl = 0; lvl <= maxLevel(); lvl++)
@@ -574,10 +574,15 @@ public:
 
                 // TODO check: max interior mult + i <= m_p+1
 
-                for (gsKnotVector<>::uiterator it = m_bases[lvl]->knots(dir).ubegin(); it != m_bases[lvl]->knots(dir).uend(); it++)
+                // We iterate through unique knots, skipping the first and last knot
+                // At level 0 we iterate through all unique knots,
+                // At level >0 we iterate through all knots that are new, i.e. every other knot starting from 1
+                for (gsKnotVector<>::uiterator it = m_bases[lvl]->knots(dir).ubegin() + 1; it < m_bases[lvl]->knots(dir).uend() - 1; it += (lvl == 0? 1 : 2))
                 {
-                    if (*it > m_bases[lvl]->knots(dir)[0] && *it < m_bases[lvl]->knots(dir)[nknots-1]) // Skip first and last knot
-                        increaseMultiplicity(lvl, dir, *it, i);
+                    for(unsigned int i =lvl;i < m_bases.size();i++)
+                        m_bases[i]->component(dir).insertKnot(*it,2);
+
+                    update_structure();
                 }
             }
         }
