@@ -315,6 +315,10 @@ if(GISMO_EXASTENCILS)
   gismo_fetch_module(gsExaStencils)
 endif()
 
+if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
+  gismo_fetch_module(unsupported)
+endif()
+
 include(gsLibrary)
 
 ## #################################################################
@@ -385,10 +389,6 @@ endif()
 ## #################################################################
 ## Submodules
 ## #################################################################
-
-if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
-  gismo_fetch_module(unsupported)
-endif()
 
 if(GISMO_MOTOR)
   gismo_fetch_module(motor)

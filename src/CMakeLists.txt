@@ -1,19 +1,19 @@
 ######################################################################
 ## CMakeLists.txt ---
-## This file is part of the G+Smo library. 
-## 
-## Author: Angelos Mantzaflaris 
+## This file is part of the G+Smo library.
+##
+## Author: Angelos Mantzaflaris
 ## Copyright (C) 2012 - 2015 RICAM-Linz.
 ######################################################################
 
 include_directories(${GISMO_INCLUDE_DIRS})
 
 if(GISMO_WITH_CODIPACK)
-include_directories(${CODIPACK_INCLUDE_DIR})
+  include_directories(${CODIPACK_INCLUDE_DIR})
 endif()
 
 if(GISMO_WITH_UNUM)
-include_directories(${UNUM_INCLUDE_DIR})
+  include_directories(${UNUM_INCLUDE_DIR})
 endif()
 
 SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
@@ -49,7 +49,7 @@ FOREACH(subdir ${SUBDIRS})
     )
 
   set_target_properties(${GM_NAME} PROPERTIES
-    COMPILE_DEFINITIONS gismo_EXPORTS 
+    COMPILE_DEFINITIONS gismo_EXPORTS
     POSITION_INDEPENDENT_CODE ON
     LINKER_LANGUAGE CXX
     FOLDER "G+Smo modules"
@@ -66,13 +66,13 @@ FOREACH(subdir ${SUBDIRS})
   endif()
 
   set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_NAME}>
-      CACHE INTERNAL "G+Smo modules" )
+    CACHE INTERNAL "G+Smo modules" )
 
   ## install module
   if (NOT ${GM_NAME} MATCHES gsMesh) # avoid installing twice gsMesh
     install(DIRECTORY   "${CMAKE_CURRENT_SOURCE_DIR}/${subdir}"
-            DESTINATION include/${PROJECT_NAME}
-            FILES_MATCHING PATTERN "*.h" )
+      DESTINATION include/${PROJECT_NAME}
+      FILES_MATCHING PATTERN "*.h" )
   endif()
 
 ENDFOREACH()
