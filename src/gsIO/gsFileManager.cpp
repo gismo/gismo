@@ -97,7 +97,7 @@ const std::string& gsFileManager::getValidPathSeparators()
     return ps;
 }
 
-const char gsFileManager::getNativePathSeparator()
+char gsFileManager::getNativePathSeparator()
 {
     return getValidPathSeparators()[0];
 }
