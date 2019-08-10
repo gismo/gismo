@@ -303,6 +303,10 @@ if(GISMO_BUILD_LIB)
   endif()
 endif()
 
+## #################################################################
+## Submodules
+## #################################################################
+
 if(GISMO_COMPFLOW)
   gismo_fetch_module(gsCompFlow)
 endif()
@@ -317,6 +321,10 @@ endif()
 
 if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
   gismo_fetch_module(unsupported)
+endif()
+
+if(GISMO_MOTOR)
+  gismo_fetch_module(motor)
 endif()
 
 include(gsLibrary)
@@ -384,14 +392,6 @@ add_subdirectory(optional)
 if (NOT gismo_optionals STREQUAL "")
   string (REPLACE ";" ", " gismo_optionals "${gismo_optionals}")
   message(STATUS "Optional compile list: ${gismo_optionals}")
-endif()
-
-## #################################################################
-## Submodules
-## #################################################################
-
-if(GISMO_MOTOR)
-  gismo_fetch_module(motor)
 endif()
 
 unset(GISMO_UNAME CACHE)
