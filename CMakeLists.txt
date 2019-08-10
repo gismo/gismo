@@ -211,11 +211,11 @@ if(GISMO_WITH_ONURBS)
   add_subdirectory(extensions/gsOpennurbs)
 endif(GISMO_WITH_ONURBS)
 
-if(GISMO_WITH_PARDISO)
-endif(GISMO_WITH_PARDISO)
+#if(GISMO_WITH_PARDISO)
+#endif(GISMO_WITH_PARDISO)
 
-if(GISMO_WITH_PASTIX)
-endif(GISMO_WITH_PASTIX)
+#if(GISMO_WITH_PASTIX)
+#endif(GISMO_WITH_PASTIX)
 
 if(GISMO_WITH_PSOLID)
   add_subdirectory(extensions/gsParasolid)
@@ -283,10 +283,6 @@ if(GISMO_WITH_SMESH)
   #include_directories(${SMESH_INCLUDE_DIR})
 endif()
 
-## #################################################################
-## Build G+Smo library instantized for GISMO_COEFF_TYPE number type
-## #################################################################
-
 #second time
 include_directories(${GISMO_INCLUDE_DIRS})
 
@@ -326,6 +322,10 @@ endif()
 if(GISMO_MOTOR)
   gismo_fetch_module(motor)
 endif()
+
+## #################################################################
+## Shared and static library
+## #################################################################
 
 include(gsLibrary)
 
@@ -396,3 +396,5 @@ endif()
 
 unset(GISMO_UNAME CACHE)
 unset(GISMO_PASS CACHE)
+
+#message("GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS}")
