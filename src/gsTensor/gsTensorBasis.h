@@ -520,9 +520,9 @@ public:
 
     /// \brief Returns the tensor index of the basis function with
     /// global index \a m.
-    inline gsVector<unsigned, d> tensorIndex(const unsigned& m) const 
+    inline gsVector<index_t, d> tensorIndex(const index_t& m) const
     {
-        gsVector<unsigned, d> ind;
+        gsVector<index_t, d> ind;
         int mm = m;
         for (short_t i = 0; i<d; ++i )
         {
@@ -825,9 +825,9 @@ public:
     
     /// Returns the tensor index of the basis function with global index
     /// \a m
-    inline gsVector<unsigned,1> tensorIndex(const unsigned& m) const 
+    inline gsVector<index_t,1> tensorIndex(const index_t& m) const
     {
-        return gsVector<unsigned,1>::Constant(1,m);
+        return gsVector<index_t,1>::Constant(1,m);
     }
 
     const Basis_t& x() const 
