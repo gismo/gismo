@@ -70,7 +70,7 @@ public:
         m_breaks = std::vector<std::vector<T> >(d, std::vector<T>());
 
         // Set to one quadrature point by default
-        m_quadrature.setNodes( gsVector<int>::Ones(d) );
+        m_quadrature.setNodes( gsVector<index_t>::Ones(d) );
 
         // Get the side information
         par = s.parameter();

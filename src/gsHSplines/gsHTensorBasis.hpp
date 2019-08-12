@@ -1011,7 +1011,7 @@ boundaryOffset(boxSide const & s,unsigned offset) const
     int par = s.parameter();
     
     std::vector<unsigned> temp;
-    gsVector<unsigned,d>  ind;
+    gsVector<index_t,d>  ind;
     // i goes through all levels of the hierarchical basis
     for(unsigned i = 0; i <= this->maxLevel(); i++)
     {

@@ -446,7 +446,7 @@ void buildCoeffsStrides(const gsVector<index_t, d>& size_of_coefs,
 ///
 /// @return number of iterations
 inline
-unsigned numberOfIterations(const gsVector<unsigned>& nmb_of_coefs,
+unsigned numberOfIterations(const gsVector<index_t>& nmb_of_coefs,
                             const unsigned direction)
 {
     unsigned nmb_of_iter = 1;

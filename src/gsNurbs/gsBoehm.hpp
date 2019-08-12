@@ -527,7 +527,7 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
     gsSparseVector<T> nknots(b + p + nik);
 
 
-    gsVector<unsigned, d> position(d); // position old points
+    gsVector<index_t, d> position(d); // position old points
     position.fill(0);
 
     gsVector<index_t, d> first_point(position); // first point of a cube
@@ -654,7 +654,7 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
             }
             k--;
         }
-    } while(nextCubePoint<gsVector<unsigned, d> >(position, first_point,
+    } while(nextCubePoint<gsVector<index_t, d> >(position, first_point,
                                                   last_point));
 
     nmb_of_coefs[direction] = size_of_coefs[direction];

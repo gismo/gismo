@@ -367,7 +367,7 @@ public:
     {
         result.resize(d,2);
         gsMatrix<unsigned> tmp_vec;
-        const gsVector<unsigned, d> ti = this->tensorIndex(i);
+        const gsVector<index_t, d> ti = this->tensorIndex(i);
 
         for (unsigned dim = 0; dim < d; ++dim)
         {

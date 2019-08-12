@@ -413,7 +413,7 @@ void gsTensorBasis<d,T>::evalSingle_into(unsigned i,
 {
     result.resize(1,u.cols() );
     gsMatrix<T> ev;
-    gsVector<unsigned, d> ti;
+    gsVector<index_t, d> ti;
     ti = tensorIndex(i);
 
     // Evaluate univariate basis functions and compute the product
@@ -430,7 +430,7 @@ void gsTensorBasis<d,T>::derivSingle_into(unsigned i,
                                const gsMatrix<T> & u,
                                       gsMatrix<T>& result) const
 {
-    gsVector<unsigned, d> ti;
+    gsVector<index_t, d> ti;
     ti.noalias() = tensorIndex(i);
     gsMatrix<T> ev, dev;
     result.setOnes(d, u.cols() );
