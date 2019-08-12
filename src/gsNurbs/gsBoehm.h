@@ -233,11 +233,11 @@ int getIndex(const gsVector<unsigned>& stride,
 
 
 template<short_t d>
-unsigned getIndex(const gsVector<unsigned, d>& stride,
-                      const gsVector<unsigned, d>& position)
+index_t getIndex(const gsVector<index_t, d>& stride,
+                      const gsVector<index_t, d>& position)
 {
 
-    unsigned ind = 0;
+    index_t ind = 0;
 
     for (short_t i = 0; i < d; ++i)
         ind += stride[i] * position[i];

@@ -465,7 +465,7 @@ bool gsMultiBasis<T>::repairInterfaceFindElements(
 
     // get direction and orientation maps
     const gsVector<bool> dirOrient = bi.dirOrientation();
-    const gsVector<int> dirMap= bi.dirMap();
+    const gsVector<index_t> dirMap= bi.dirMap();
 
     // get the bases of both sides as gsHTensorBasis
     const gsHTensorBasis<d,T> * bas0 = dynamic_cast< const gsHTensorBasis<d,T> * >( m_bases[ bi.first().patch ] );

@@ -512,15 +512,15 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
 
     typedef typename std::iterator_traits<ValIt>::value_type T;
 
-    const int nik = std::distance(valBegin, valEnd); // number of inserted knots
-    const int p = knots.degree(); // degree
+    const index_t nik = std::distance(valBegin, valEnd); // number of inserted knots
+    const index_t p = knots.degree(); // degree
     // number of original (not local) points
-    const unsigned nopts = knots.size() - p - 1;
+    const index_t nopts = knots.size() - p - 1;
     //const int d = size_of_coefs.size();    // dimension
 
 
-    const int a =  knots.iFind(*valBegin)     - knots.begin();
-    const int b = (knots.iFind(*(valEnd - 1)) - knots.begin()) + 1;
+    const index_t a =  knots.iFind(*valBegin)     - knots.begin();
+    const index_t b = (knots.iFind(*(valEnd - 1)) - knots.begin()) + 1;
 
 
     // allocate a memory for new knots and new control points
@@ -539,7 +539,7 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
     gsVector<index_t, d> act_str(d);
     bspline::buildCoeffsStrides<d>(act_size_of_coefs, act_str);
 
-    const int step = act_str[direction];
+    const index_t step = act_str[direction];
 
     gsMatrix<T> zero(1, coefs.cols());
     zero.fill(0.0);
@@ -562,9 +562,9 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
 
         ValIt valEndCopy = valEnd;
 
-        int ind = bspline::getIndex<d>(act_str, position);
+        index_t ind = bspline::getIndex<d>(act_str, position);
 
-        for (unsigned j = b - 1; j < nopts; j++)
+        for (index_t j = b - 1; j < nopts; j++)
         {
             index_t indx1 = j + nik - index;
             index_t indx2 = j - index;
@@ -625,7 +625,7 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
             for (int ell = 1; ell <= p; ell++)
             {
                 const T alfa = alpha[j][ell - 1];
-                const int mindex = k - p + ell - index;
+                const index_t mindex = k - p + ell - index;
 
                 if (mindex <= 0)
                     continue;
