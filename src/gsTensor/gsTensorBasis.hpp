@@ -171,15 +171,15 @@ void gsTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes,
         mesh.addVertex( nodes.row(i).transpose() );
 
     // Starting from lower corner
-    const gsVector<unsigned,d> low = gsVector<unsigned,d>::Zero();    
+    const gsVector<index_t,d> low = gsVector<index_t,d>::Zero();
 
     // Last tensor-index
-    gsVector<unsigned, d> end;
+    gsVector<index_t, d> end;
     for (short_t i = 0; i < d; ++i)
         end(i) = this->size(i) - 1;
 
     unsigned k, s;
-    gsVector<unsigned,d> v, upp;
+    gsVector<index_t,d> v, upp;
     for (short_t i = 0; i < d; ++i) // For all axes
     {
         s      = stride(i);
