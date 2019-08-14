@@ -358,7 +358,7 @@ public:
         result.resize( d, this->size()) ;
         unsigned k(0);
 
-        gsVector<unsigned, d> ind;
+        gsVector<index_t, d> ind;
         for(size_t i = 0; i < m_xmatrix.size(); i++)
         {
             for( CMatrix::const_iterator it =
