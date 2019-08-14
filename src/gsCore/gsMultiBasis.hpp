@@ -488,9 +488,9 @@ bool gsMultiBasis<T>::repairInterfaceFindElements(
     unsigned indexLevelDiff1 = indexLevelUse - bas1->tree().getIndexLevel();
 
     // get upper corners, but w.r.t. level "indexLevelUse"
-    gsVector<unsigned> upperCorn0 = bas0->tree().upperCorner();
-    gsVector<unsigned> upperCorn1 = bas1->tree().upperCorner();
-    for( unsigned i=0; i < d; i++)
+    gsVector<index_t> upperCorn0 = bas0->tree().upperCorner();
+    gsVector<index_t> upperCorn1 = bas1->tree().upperCorner();
+    for( short_t i=0; i < d; i++)
     {
         upperCorn0[i] = upperCorn0[i] << indexLevelDiff0;
         upperCorn1[i] = upperCorn1[i] << indexLevelDiff1;
