@@ -95,7 +95,7 @@ Index QuickSplit(VectorV &row, VectorI &ind, Index ncut)
   * alternatively, on GMANE:
   *   http://comments.gmane.org/gmane.comp.lib.eigen/3302
   */
-template <typename _Scalar, typename _StorageIndex = index_t>
+template <typename _Scalar, typename _StorageIndex = Index>
 class IncompleteLUT : public SparseSolverBase<IncompleteLUT<_Scalar, _StorageIndex> >
 {
   protected:
