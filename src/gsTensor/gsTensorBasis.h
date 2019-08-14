@@ -430,7 +430,7 @@ public:
     { return &m_bases[d]; }
 
     /// The number of basis functions in the direction of the k-th parameter component
-    int size(int k) const { return m_bases[k]->size(); }
+    index_t size(int k) const { return m_bases[k]->size(); }
 
     /// The number of basis functions in the direction of the k-th parameter component
     template<int s>

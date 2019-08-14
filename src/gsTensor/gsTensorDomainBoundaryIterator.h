@@ -94,7 +94,7 @@ public:
         }
 
         // Set to one quadrature point by default
-        m_quadrature.setNodes( gsVector<int>::Ones(d) );
+        m_quadrature.setNodes( gsVector<index_t>::Ones(d) );
 
         if (m_isGood)
             update();
@@ -235,10 +235,10 @@ protected:
 private:
 
     // the dimension of the parameter space
-    int d;
+    short_t d;
 
     // Boundary parameters
-    int  dir;
+    short_t  dir;
     bool par;
     unsigned tindex;
 
