@@ -455,7 +455,7 @@ void gsTensorBasis<d,T>::deriv2Single_into(unsigned i,
                                 const gsMatrix<T> & u,
                                        gsMatrix<T>& result) const
 {
-    gsVector<unsigned, d> ti;
+    gsVector<index_t, d> ti;
     ti.noalias() = tensorIndex(i);
     gsMatrix<T> ev[d], dev[d], ddev;
     result.setOnes( d*(d + 1)/2, u.cols() );
