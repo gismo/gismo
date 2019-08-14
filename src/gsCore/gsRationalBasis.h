@@ -365,7 +365,7 @@ template<class SrcT>
 void gsRationalBasis<SrcT>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 { 
     m_src->eval_into(u, result);
-    const gsMatrix<unsigned> act = m_src->active(u);
+    const gsMatrix<index_t> act = m_src->active(u);
     
     gsMatrix<T> denom;
     m_src->evalFunc_into(u, m_weights, denom); 

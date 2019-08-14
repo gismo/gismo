@@ -80,7 +80,7 @@ public:
             md.measures.asDiagonal() * basisData.transpose();
     }
 
-    inline void localToGlobal(const int patchIndex,
+    inline void localToGlobal(const index_t patchIndex,
                               const std::vector<gsMatrix<T> >    & ,
                               gsSparseSystem<T>     & system)
     {
@@ -110,7 +110,7 @@ public:
 
     void localToGlobal(const gsDofMapper     & mapper,
                        const gsMatrix<T>     & eliminatedDofs,
-                       const int               patchIndex,
+                       const index_t           patchIndex,
                        gsSparseMatrix<T>     & sysMatrix,
                        gsMatrix<T>           & rhsMatrix )
     {

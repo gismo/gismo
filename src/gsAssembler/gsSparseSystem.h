@@ -1285,7 +1285,7 @@ public: /* Add local contributions to system matrix and right-hand side */
      * @param[in] c the column block
      */
     void pushToMatrix(const gsMatrix<T>  & localMat,
-                      const gsMatrix<unsigned> & actives,
+                      const gsMatrix<index_t> & actives,
                       const size_t r = 0, const size_t c = 0)
     {
         const index_t numActive = actives.rows();

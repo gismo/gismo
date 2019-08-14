@@ -130,7 +130,7 @@ public:
     
     void localToGlobal(const gsDofMapper     & mapper,
                        const gsMatrix<T>     & eliminatedDofs,
-                       const int               patchIndex,
+                       const index_t           patchIndex,
                        gsSparseMatrix<T>     & sysMatrix,
                        gsMatrix<T>           & rhsMatrix )
     {

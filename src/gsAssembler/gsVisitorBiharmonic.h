@@ -121,7 +121,7 @@ public:
         }
     }
 
-    inline void localToGlobal(const int patchIndex,
+    inline void localToGlobal(const index_t patchIndex,
                               const std::vector<gsMatrix<T> >    & eliminatedDofs,
                               gsSparseSystem<T>     & system)
     {
@@ -135,7 +135,7 @@ public:
     /*
     inline void localToGlobal(const gsDofMapper     & mapper,
                               const gsMatrix<T>     & eliminatedDofs,
-                              const int patchIndex,
+                              const index_t patchIndex,
                               gsSparseMatrix<T>     & sysMatrix,
                               gsMatrix<T>           & rhsMatrix )
     {
