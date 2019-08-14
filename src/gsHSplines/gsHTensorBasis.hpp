@@ -371,7 +371,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
     }
 #endif
     
-    gsVector<unsigned,d> k1, k2;
+    gsVector<index_t,d> k1, k2;
     for(index_t i = 0; i < boxes.cols()/2; i++)
     {
         // 1. Get a small cell containing the box
