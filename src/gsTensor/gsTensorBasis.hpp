@@ -147,7 +147,7 @@ void gsTensorBasis<d,T>::anchors_into(gsMatrix<T>& result) const
 template<short_t d, class T>
 void gsTensorBasis<d,T>::anchor_into(unsigned i, gsMatrix<T>& result) const
 {
-    gsVector<unsigned, d> ti = tensorIndex(i);
+    gsVector<index_t, d> ti = tensorIndex(i);
 
     gsMatrix<T> gr;
     result.resize(d, 1);
@@ -239,7 +239,7 @@ template<short_t d, class T>
 bool gsTensorBasis<d,T>::isActive(const unsigned i, const gsVector<T>& u) const
 {
     GISMO_ASSERT( u.rows() == static_cast<index_t>(d), "Invalid input.");
-    const gsVector<unsigned, d> ti = tensorIndex(i);
+    const gsVector<index_t, d> ti = tensorIndex(i);
     for (short_t k = 0; k < d; ++k)
         if (  ! m_bases[k]->isActive(ti[k], u.row(k)) )
             return false;
@@ -400,7 +400,7 @@ gsMatrix<T>
 gsTensorBasis<d,T>::support(const unsigned & i) const
 {
     gsMatrix<T> res(d,2);
-    gsVector<unsigned, d> ti = tensorIndex(i);
+    gsVector<index_t, d> ti = tensorIndex(i);
     for (short_t j = 0; j < d; ++j)
         res.row(j) =  m_bases[j]->support( ti[j] );
     return res;
