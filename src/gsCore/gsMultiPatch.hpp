@@ -186,10 +186,10 @@ std::vector<gsBasis<T> *> gsMultiPatch<T>::basesCopy(bool NoRational) const
 }
 
 template<class T>
-void gsMultiPatch<T>::permute(const std::vector<int> & perm)
+void gsMultiPatch<T>::permute(const std::vector<index_t> & perm)
 {
     gsAsVector<gsGeometry<T>*> a (m_patches);
-    a = gsVector<>::Permutation(gsAsConstVector<int>(perm)) * a;
+    a = gsVector<>::Permutation(gsAsConstVector<index_t>(perm)) * a;
 }
 
 template<class T>
