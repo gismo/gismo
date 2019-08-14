@@ -45,7 +45,7 @@ set_property(CACHE GISMO_COEFF_TYPE PROPERTY STRINGS
 "float" "double" "long double" "mpfr::mpreal" "mpq_class" "posit_32_2")
 
 if(NOT GISMO_INDEX_TYPE)
-   set (GISMO_INDEX_TYPE "int" CACHE STRING
+   set (GISMO_INDEX_TYPE "int64_t" CACHE STRING
    #math(EXPR BITSZ_VOID_P "8*${CMAKE_SIZEOF_VOID_P}")
    #set (GISMO_INDEX_TYPE "int${BITSZ_VOID_P}_t" CACHE STRING
    "Index type(int, int32_t, int64_t, long, long long)" FORCE)

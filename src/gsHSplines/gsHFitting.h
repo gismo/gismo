@@ -147,12 +147,12 @@ protected:
     T setRefineThreshold(const std::vector<T>& errors);
 
     /// Checks if a_cell is already inserted in container of cells
-    static bool isCellAlreadyInserted(const gsVector<unsigned, d>& a_cell,
+    static bool isCellAlreadyInserted(const gsVector<index_t, d>& a_cell,
                                       const std::vector<unsigned>& cells);
 
     /// Appends a box to the end of boxes (This function also works for cells)
     static void append(std::vector<unsigned>& boxes,
-                       const gsVector<unsigned>& box)
+                       const gsVector<index_t>& box)
     {
         for (index_t col = 0; col != box.rows(); col++)
             boxes.push_back(box[col]);
@@ -280,12 +280,12 @@ void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
     const tensorBasis & tBasis = *(basis->getBases()[maxLvl]);
 
     // get a cell
-    gsVector<unsigned, d> a_cell;
+    gsVector<index_t, d> a_cell;
 
-    for (unsigned dim = 0; dim != d; dim++)
+    for (short_t dim = 0; dim != d; dim++)
     {
         const gsKnotVector<T> & kv = tBasis.component(dim).knots();
-        a_cell(dim) = static_cast<unsigned>(kv.uFind(parameter(dim)).uIndex());
+        a_cell(dim) = kv.uFind(parameter(dim)).uIndex();
     }
 
     if (!isCellAlreadyInserted(a_cell, cells))
@@ -293,13 +293,13 @@ void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
         append(cells, a_cell);
 
         // get level of a cell
-        gsVector<unsigned, d> a_cell_upp = a_cell + gsVector<unsigned, d>::Ones();
+        gsVector<index_t, d> a_cell_upp = a_cell + gsVector<index_t, d>::Ones();
         const int cell_lvl = basis->tree().query3(a_cell, a_cell_upp, maxLvl) + 1;
 
         // get the box
-        gsVector<unsigned> box(2 * d + 1);
+        gsVector<index_t> box(2 * d + 1);
         box[0] = cell_lvl;
-        for (unsigned dim = 0; dim != d; dim++)
+        for (short_t dim = 0; dim != d; dim++)
         {
             const unsigned numBreaks = basis->numBreaks(cell_lvl, dim) - 1 ;
 
@@ -330,7 +330,7 @@ void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
 
 
 template <short_t d, class T>
-bool gsHFitting<d, T>::isCellAlreadyInserted(const gsVector<unsigned, d>& a_cell,
+bool gsHFitting<d, T>::isCellAlreadyInserted(const gsVector<index_t, d>& a_cell,
                                              const std::vector<unsigned>& cells)
 {
 
