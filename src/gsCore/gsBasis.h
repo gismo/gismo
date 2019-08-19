@@ -753,11 +753,11 @@ public:
 
     /// @brief For a tensor product basis, return the (const) 1-d
     /// basis for the \a i-th parameter component.
-    virtual const gsBasis<T> & component(unsigned i) const;
+    virtual const gsBasis<T> & component(short_t i) const;
 
     /// @brief For a tensor product basis, return the 1-d basis for
     /// the \a i-th parameter component.
-    virtual gsBasis<T> & component(unsigned i);
+    virtual gsBasis<T> & component(short_t i);
 
     /** @brief Refine the basis on the area defined by the matrix \a boxes.
      *

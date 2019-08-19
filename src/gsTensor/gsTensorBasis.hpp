@@ -190,7 +190,7 @@ void gsTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes,
         do // Insert all edges normal to axis i 
         {
             k = index(v);
-            for (unsigned j = 0; j != end[i]; ++j)
+            for (index_t j = 0; j != end[i]; ++j)
             {
                 mesh.addEdge(k, k + s );
                 k += s;
@@ -247,7 +247,7 @@ bool gsTensorBasis<d,T>::isActive(const unsigned i, const gsVector<T>& u) const
 }
 
 template<short_t d, class T>
-gsMatrix<unsigned> gsTensorBasis<d,T>::coefSlice(int dir, int k) const
+gsMatrix<unsigned> gsTensorBasis<d,T>::coefSlice(short_t dir, index_t k) const
 {
     GISMO_ASSERT( dir>=0 &&  dir < this->dim(), "Invalid slice direction requested" );
     GISMO_ASSERT( k >=0 &&  k < this->size(dir), "Invalid slice position requested" );

@@ -184,10 +184,10 @@ public:
     }
 
     // Look at gsBasis class for a description
-    const TensorSelf_t & component(unsigned i) const = 0;
+    const TensorSelf_t & component(short_t i) const = 0;
 
     // Look at gsBasis class for a description
-    TensorSelf_t & component(unsigned i) = 0;
+    TensorSelf_t & component(short_t i) = 0;
 
     /// @brief Returns the anchors (greville points) of the basis
     void anchors_into(gsMatrix<T> & result) const 
@@ -761,10 +761,10 @@ public:
     GISMO_CLONE_FUNCTION(gsBSplineBasis)
 
     // Look at gsBasis class for a description
-    Self_t & component(unsigned i);
+    Self_t & component(short_t i);
     
     // Look at gsBasis class for a description
-    const Self_t & component(unsigned i) const;
+    const Self_t & component(short_t i) const;
 
     memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const;
             

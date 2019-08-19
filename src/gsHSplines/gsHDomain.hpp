@@ -1515,7 +1515,7 @@ template<short_t d, class T> inline void
                                      unsigned lvl,
                                      gsVector<index_t,d> & result ) const
 {
-    for ( unsigned i = 0; i!=d; ++i )
+    for ( short_t i = 0; i!=d; ++i )
         result[i] = index[i] << (m_maxInsLevel-lvl) ;
 }
 
@@ -1524,7 +1524,7 @@ template<short_t d, class T> inline void
                                     unsigned lvl,
                                     gsVector<index_t,d> & result ) const
 {
-    for ( unsigned i = 0; i!=d; ++i )
+    for ( short_t i = 0; i!=d; ++i )
         result[i] = index[i] >> (m_maxInsLevel-lvl) ;
 }
 
@@ -1534,7 +1534,7 @@ template<short_t d, class T> inline void
                     gsVector<index_t,d> & result
                     ) const
 {
-    for ( unsigned i = 0; i!=d; ++i )
+    for ( short_t i = 0; i!=d; ++i )
         result[i] = index[i] << (m_indexLevel-lvl) ;
 }
 
@@ -1544,7 +1544,7 @@ template<short_t d, class T> inline void
                                         gsVector<index_t,d> & result
     ) const
 {
-    for ( unsigned i = 0; i!=d; ++i )
+    for ( short_t i = 0; i!=d; ++i )
         result[i] = index[i] >> (this->m_indexLevel-lvl) ;
 }
 }// end namespace gismo

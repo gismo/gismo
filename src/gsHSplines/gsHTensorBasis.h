@@ -22,7 +22,7 @@
 #include <gsCore/gsBoundary.h>
 
 #include <gsNurbs/gsTensorBSplineBasis.h>
-#include <gsNurbs/gsBSplineBasis.h> // for gsBasis::component(int)
+#include <gsNurbs/gsBSplineBasis.h> // for gsBasis::component(short_t)
 
 #include <gsUtils/gsSortedVector.h>
 
@@ -164,8 +164,8 @@ public:
         GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied gsHTensorBasis constructor with them.");
         initialize_class(tbasis);
 
-        gsVector<unsigned int,d> k1;
-        gsVector<unsigned int,d> k2;
+        point k1;
+        point k2;
 
         for(index_t i = 0; i < boxes.cols()/2; i++)
         {
@@ -495,13 +495,13 @@ public:
     void numActive(const gsMatrix<T> & u, gsVector<unsigned>& result) const;
 
     /// The 1-d basis for the i-th parameter component at the highest level
-    virtual gsBSplineBasis<T> & component(unsigned i)
+    virtual gsBSplineBasis<T> & component(short_t i)
     {
         return m_bases[ this->maxLevel() ]->component(i);
     }
 
     /// The 1-d basis for the i-th parameter component at the highest level
-    virtual const gsBSplineBasis<T> & component(unsigned i) const
+    virtual const gsBSplineBasis<T> & component(short_t i) const
     {
         return m_bases[ this->maxLevel() ]->component(i);
     }

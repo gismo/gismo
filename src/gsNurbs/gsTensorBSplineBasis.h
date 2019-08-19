@@ -204,12 +204,12 @@ public:
     { return Self_t::component(i).knots()[k]; }
 
 
-    const Basis_t & component(unsigned dir) const 
+    const Basis_t & component(short_t dir) const
     {
         return static_cast<const Basis_t &>(Base::component(dir));
     }
 
-    Basis_t & component(unsigned dir)
+    Basis_t & component(short_t dir)
     {
         return static_cast<Basis_t &>(Base::component(dir));
     }
@@ -429,15 +429,15 @@ public:
     }
 
     /// Sets the coefficients so that the resulting TensorBSpline is periodic in direction dir.
-    gsMatrix<T> perCoefs( const gsMatrix<T>& originalCoefs, int dir ) const
+    gsMatrix<T> perCoefs( const gsMatrix<T>& originalCoefs, short_t dir ) const
     {
         // Identify which coefficients to copy and where to copy them.
         std::vector<index_t> sourceSliceIndices;
         std::vector<index_t> targetSliceIndices;
-        int numPeriodic = Self_t::component(dir).numCrossingFunctions();
+        index_t numPeriodic = Self_t::component(dir).numCrossingFunctions();
 
-        const int sz = this->size(dir) - numPeriodic;
-        for( int i = 0; i < numPeriodic; i++ )
+        const index_t sz = this->size(dir) - numPeriodic;
+        for( index_t i = 0; i < numPeriodic; i++ )
         {
             gsMatrix<unsigned> currentSourceSlice = this->coefSlice(dir,i);
             gsMatrix<unsigned> currentTargetSlice = this->coefSlice(dir, sz  + i );
@@ -468,7 +468,7 @@ private:
     void setIsPeriodic()
     {
         m_isPeriodic = -1;
-        for( int i = 0; i < this->dim(); i++ )
+        for( short_t i = 0; i < this->dim(); i++ )
         {
             if( Self_t::component(i).isPeriodic() )
             {
@@ -484,7 +484,7 @@ protected:
 
     /// Coordinate direction, where the basis is periodic (when equal
     /// to -1 if there is no such direction).
-    int m_isPeriodic;
+    short_t m_isPeriodic;
 
 };
 

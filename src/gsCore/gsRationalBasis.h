@@ -144,7 +144,7 @@ public:
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
     { m_src->active_into(u, result); }
     
-    virtual const gsBasis<T> & component(unsigned i) const { return m_src->component(i); }
+    virtual const gsBasis<T> & component(short_t i) const { return m_src->component(i); }
     using Base::component;
 
     gsMatrix<unsigned> allBoundary( ) const {return m_src->allBoundary(); }

@@ -430,7 +430,7 @@ public:
     { return &m_bases[d]; }
 
     /// The number of basis functions in the direction of the k-th parameter component
-    index_t size(int k) const { return m_bases[k]->size(); }
+    index_t size(short_t k) const { return m_bases[k]->size(); }
 
     /// The number of basis functions in the direction of the k-th parameter component
     template<int s>
@@ -455,7 +455,7 @@ public:
     Calling dir=0, k=1 gives all functions with tensor-numbering (1,b).
     Calling dir=1, k=3 gives all functions with tensor-numbering (a,3).
     */
-    gsMatrix<unsigned> coefSlice(int dir, int k) const;
+    gsMatrix<unsigned> coefSlice(short_t dir, index_t k) const;
 
     /// Returns the degree of the basis wrt variable \a i 
     short_t degree(short_t i) const
@@ -585,16 +585,16 @@ public:
             GISMO_ERROR("gsTensorBasis has no z component"); 
     }
 
-    Basis_t& component(unsigned dir)
+    Basis_t& component(short_t dir)
     { 
-        GISMO_ASSERT( static_cast<int>(dir) < Dim,
+        GISMO_ASSERT( dir < Dim,
                       "Invalid basis component requested" );
         return *m_bases[dir];
     }
     
-    const Basis_t & component(unsigned dir) const
+    const Basis_t & component(short_t dir) const
     { 
-        GISMO_ASSERT( static_cast<int>(dir) < Dim,
+        GISMO_ASSERT( dir < Dim,
                       "Invalid basis component requested" );
         return *m_bases[dir];
     }
@@ -761,7 +761,7 @@ public:
 
     /// \brief The number of basis functions in the direction of the k-th
     /// parameter component
-    index_t size(int k) const 
+    index_t size(short_t k) const
     {
         GISMO_UNUSED(k);
         GISMO_ASSERT(k==0, "Invalid direction");
@@ -789,7 +789,7 @@ public:
     }
 
     /// Returns all the basis functions with tensor-numbering \a k in direction \a dir 
-    gsMatrix<unsigned> coefSlice(int dir, int k) const
+    gsMatrix<unsigned> coefSlice(short_t dir, index_t k) const
     {
         GISMO_UNUSED(dir);
         GISMO_UNUSED(k);
@@ -835,14 +835,14 @@ public:
         return *this; 
     }
 
-    Basis_t & component(unsigned i)
+    Basis_t & component(short_t i)
     {
         GISMO_UNUSED(i);
         GISMO_ASSERT(i==0,"Invalid component requested");
         return *this; 
     }
 
-    const Basis_t & component(unsigned i) const 
+    const Basis_t & component(short_t i) const
     {
         GISMO_UNUSED(i);
         GISMO_ASSERT(i==0,"Invalid component requested");

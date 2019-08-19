@@ -532,11 +532,11 @@ int gsBasis<T>::elementIndex(const gsVector<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-const gsBasis<T>& gsBasis<T>::component(unsigned) const
+const gsBasis<T>& gsBasis<T>::component(short_t) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsBasis<T>& gsBasis<T>::component(unsigned i)
+gsBasis<T>& gsBasis<T>::component(short_t i)
 { return const_cast<gsBasis<T>&>(const_cast<const gsBasis<T>*>(this)->component(i));}
 
 template<class T>

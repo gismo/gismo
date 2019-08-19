@@ -1214,7 +1214,7 @@ void gsTensorBSplineBasis<1,T>::_stretchEndKnots()
 /* ********************************************** */
 
 template <class T>
-gsBSplineBasis<T> & gsBSplineBasis<T>::component(unsigned i)
+gsBSplineBasis<T> & gsBSplineBasis<T>::component(short_t i)
 {
     GISMO_UNUSED(i);
     GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");
@@ -1222,7 +1222,7 @@ gsBSplineBasis<T> & gsBSplineBasis<T>::component(unsigned i)
 }
 
 template <class T>
-const gsBSplineBasis<T> & gsBSplineBasis<T>::component(unsigned i) const
+const gsBSplineBasis<T> & gsBSplineBasis<T>::component(short_t i) const
 {
     GISMO_UNUSED(i);
     GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");

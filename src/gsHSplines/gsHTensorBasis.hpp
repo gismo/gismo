@@ -1007,8 +1007,8 @@ gsMatrix<unsigned>  gsHTensorBasis<d,T>::
 boundaryOffset(boxSide const & s,unsigned offset) const
 { 
     //get information on the side
-    int k   = s.direction();
-    int par = s.parameter();
+    index_t k   = s.direction();
+    bool par = s.parameter();
     
     std::vector<unsigned> temp;
     gsVector<index_t,d>  ind;
@@ -1019,7 +1019,7 @@ boundaryOffset(boxSide const & s,unsigned offset) const
                      "Offset cannot be bigger than the amount of basis" 
                      "functions orthogonal to Boxside s!");
 
-        unsigned r = ( par ? this->m_bases[i]->size(k) - 1 -offset : offset);
+        index_t r = ( par ? this->m_bases[i]->size(k) - 1 -offset : offset);
         for (CMatrix::const_iterator it = m_xmatrix[i].begin();
              it != m_xmatrix[i].end(); it++)
         {
