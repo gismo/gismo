@@ -249,7 +249,7 @@ public:
     /// Returns the internal coordinates of point \a point_idx of level \a lvl
     void internalIndex (point const & point_idx, int lvl, point & internal_idx)
     {
-        for ( unsigned i = 0; i!=d; ++i )
+        for ( short_t i = 0; i!=d; ++i )
             internal_idx[i] = point_idx[i] << (m_indexLevel-lvl);
     }
 
@@ -440,7 +440,7 @@ public:
     /// Returns the number of distinct knots in direction \a k of level \a lvl
     int numBreaks(int lvl, int k) const
     {
-        return (m_upperIndex[k] >> (m_indexLevel - lvl) );
+        return static_cast<typename util::make_unsigned<index_t>::type>(m_upperIndex[k]) >> (m_indexLevel - lvl);
     }
 
     /// Returns the number of leaves in the tree

@@ -197,7 +197,7 @@ void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> cons
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes)
+void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes)
 {
     std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
     refineElements(boxes);
@@ -208,7 +208,7 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vect
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::refineElements_withTransfer(std::vector<unsigned> const & boxes, gsSparseMatrix<T> & tran)
+void gsHTensorBasis<d,T>::refineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> & tran)
 {
     std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
     this->refineElements(boxes);
@@ -217,7 +217,7 @@ void gsHTensorBasis<d,T>::refineElements_withTransfer(std::vector<unsigned> cons
 
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes)
+void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<index_t> const & boxes)
 {
     std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
     refineElements(boxes);
@@ -238,8 +238,8 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
     //gsVector<unsigned> level;
     //gsMatrix<unsigned> p1, p2;
     //this->m_tree.getBoxes(p1,p2,level);
-    std::vector<unsigned> boxes;
-    unsigned lvl;
+    std::vector<index_t> boxes;
+    index_t lvl;
     
     for ( typename hdomain_type::literator it = m_tree.beginLeafIterator(); it.good(); it.next() )
     {
@@ -419,14 +419,14 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
 */
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::refineElements(std::vector<unsigned> const & boxes)
+void gsHTensorBasis<d,T>::refineElements(std::vector<index_t> const & boxes)
 {
     point i1;
     point i2;
 
     GISMO_ASSERT( (boxes.size()%(2*d + 1))==0,
                   "The points did not define boxes properly. The boxes were not added to the basis.");
-    for( unsigned int i = 0; i < (boxes.size())/(2*d+1); i++)
+    for(size_t i = 0; i < (boxes.size())/(2*d+1); i++)
     {
         for( short_t j = 0; j < d; j++ )
         {
@@ -1320,25 +1320,25 @@ void gsHTensorBasis<d,T>::increaseMultiplicity(index_t lvl, int dir, const std::
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, T par,std::vector<unsigned>& boxes ) const
+void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, T par,std::vector<index_t>& boxes ) const
 {
-    gsMatrix<unsigned> b1,b2;
-    gsVector<unsigned> level;
+    gsMatrix<index_t> b1,b2;
+    gsVector<index_t> level;
     m_tree.getBoxesInLevelIndex(b1,b2,level);
-    gsVector<unsigned> min,max;
-    for(int i = 0;i<level.rows();i++)
+    gsVector<index_t> min,max;
+    for(index_t i = 0;i<level.rows();i++)
     {
         min = b1.row(i);
         max = b2.row(i);
-        const unsigned l = level(i);
-        const unsigned par_index = m_bases[l]->knots(dir).uFind(par).uIndex();
+        const index_t l = level(i);
+        const index_t par_index = m_bases[l]->knots(dir).uFind(par).uIndex();
         if(l>0 && (par_index>=min(dir)) && (par_index<=max(dir)))
         {
             boxes.push_back(l);
-            for(int j=0;j<min.rows();++j)
+            for(index_t j=0;j<min.rows();++j)
                 if(j!=dir)
                     boxes.push_back(min(j));
-            for(int j=0;j<max.rows();++j)
+            for(index_t j=0;j<max.rows();++j)
                 if(j!=dir)
                     boxes.push_back(max(j));
         }

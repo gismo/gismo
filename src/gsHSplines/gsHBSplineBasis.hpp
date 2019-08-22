@@ -48,7 +48,7 @@ typename gsHBSplineBasis<d,T>::BoundaryBasisType * gsHBSplineBasis<d,T>::basisSl
 
     if(d!=1)
     {
-        std::vector<unsigned> boxes;
+        std::vector<index_t> boxes;
         this->getBoxesAlongSlice(dir_fixed,par,boxes);
         bBasis->refineElements(boxes);
     }

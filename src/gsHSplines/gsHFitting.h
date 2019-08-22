@@ -133,14 +133,14 @@ public:
     }
 
     /// Returns boxes which define refinment area.
-    std::vector<unsigned> getBoxes(const std::vector<T>& errors,
+    std::vector<index_t> getBoxes(const std::vector<T>& errors,
                                    const T threshold);
 
 protected:
     /// Appends a box around parameter to the boxes only if the box is not
     /// already in boxes
-    virtual void appendBox(std::vector<unsigned>& boxes,
-                   std::vector<unsigned>& cells,
+    virtual void appendBox(std::vector<index_t>& boxes,
+                   std::vector<index_t>& cells,
                    const gsVector<T>& parameter);
 
     /// Identifies the threshold from where we should refine
@@ -148,10 +148,10 @@ protected:
 
     /// Checks if a_cell is already inserted in container of cells
     static bool isCellAlreadyInserted(const gsVector<index_t, d>& a_cell,
-                                      const std::vector<unsigned>& cells);
+                                      const std::vector<index_t>& cells);
 
     /// Appends a box to the end of boxes (This function also works for cells)
-    static void append(std::vector<unsigned>& boxes,
+    static void append(std::vector<index_t>& boxes,
                        const gsVector<index_t>& box)
     {
         for (index_t col = 0; col != box.rows(); col++)
@@ -195,7 +195,7 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold)
             // if err_treshold is -1 we refine the m_ref percent of the whole domain
             T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
 
-            std::vector<unsigned> boxes = getBoxes(m_pointErrors, threshold);
+            std::vector<index_t> boxes = getBoxes(m_pointErrors, threshold);
             if(boxes.size()==0)
                 return false;
 
@@ -249,15 +249,15 @@ void gsHFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_thr
 }
 
 template <short_t d, class T>
-std::vector<unsigned> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
+std::vector<index_t> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
                                                  const T threshold)
 {
     // cells contains lower corners of elements marked for refinment from maxLevel
-    std::vector<unsigned> cells;
+    std::vector<index_t> cells;
 
     // boxes contains elements marked for refinement from differnet levels,
     // format: { level lower-corners  upper-corners ... }
-    std::vector<unsigned> boxes;
+    std::vector<index_t> boxes;
 
     for (size_t index = 0; index != errors.size(); index++)
     {
@@ -271,8 +271,8 @@ std::vector<unsigned> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
 }
 
 template <short_t d, class T>
-void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
-                                  std::vector<unsigned>& cells,
+void gsHFitting<d, T>::appendBox(std::vector<index_t>& boxes,
+                                  std::vector<index_t>& cells,
                                   const gsVector<T>& parameter)
 {
     gsTHBSplineBasis<d, T>* basis = static_cast< gsTHBSplineBasis<d,T>* > (this->m_basis);
@@ -316,8 +316,8 @@ void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
             }
 
             // apply extensions
-            unsigned low = ( (lowIndex > m_ext[dim]) ? (lowIndex - m_ext[dim]) : 0 );
-            unsigned upp = ( (lowIndex + m_ext[dim] + 1 < numBreaks) ?
+            index_t low = ( (lowIndex > m_ext[dim]) ? (lowIndex - m_ext[dim]) : 0 );
+            index_t upp = ( (lowIndex + m_ext[dim] + 1 < numBreaks) ?
                              (lowIndex + m_ext[dim] + 1) : numBreaks );
 
             box[1 + dim    ] = low;
@@ -331,12 +331,12 @@ void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
 
 template <short_t d, class T>
 bool gsHFitting<d, T>::isCellAlreadyInserted(const gsVector<index_t, d>& a_cell,
-                                             const std::vector<unsigned>& cells)
+                                             const std::vector<index_t>& cells)
 {
 
     for (size_t i = 0; i != cells.size(); i += a_cell.rows())
     {
-        int commonEntries = 0;
+        index_t commonEntries = 0;
         for (index_t col = 0; col != a_cell.rows(); col++)
         {
             if (cells[i + col] == a_cell[col])

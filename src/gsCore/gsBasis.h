@@ -788,7 +788,7 @@ public:
      * gsHTensorBasis::refineElements()
      *
      */
-    virtual void refineElements(std::vector<unsigned> const & boxes);
+    virtual void refineElements(std::vector<index_t> const & boxes);
 
     /** @brief Refine basis and geometry coefficients to levels.
      *

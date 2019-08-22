@@ -544,7 +544,7 @@ void gsBasis<T>::refine(gsMatrix<T> const &, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::refineElements(std::vector<unsigned> const &)
+void gsBasis<T>::refineElements(std::vector<index_t> const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

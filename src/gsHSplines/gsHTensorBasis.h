@@ -535,10 +535,10 @@ public:
      * then two indices (in the current level indexing) of the lower left corner and finally
      * two indices of the upper right corner, see gsHTensorBasis::refineElements() for details.
      */
-    void refineElements_withCoefs   (gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
-    void refineElements_withTransfer(std::vector<unsigned> const & boxes, gsSparseMatrix<T> &transfer);
+    void refineElements_withCoefs   (gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
+    void refineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
 
-    void refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
+    void refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
 
     // see gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
@@ -674,7 +674,7 @@ public:
      * \em d is the dimension of the parameter domain.\n
      * See description above for details on the format.
      */
-    virtual void refineElements(std::vector<unsigned> const & boxes);
+    virtual void refineElements(std::vector<index_t> const & boxes);
 
     /// Refines all the cells on the side \a side up to level \a lvl
     void refineSide(const boxSide side, index_t lvl);
@@ -830,7 +830,7 @@ protected:
     /// gets all the boxes along a slice in direction \a dir at parameter \a par.
     /// the boxes are given back in a std::vector<unsigned> and are in the right format
     /// to be given to refineElements().
-    void getBoxesAlongSlice( int dir, T par,std::vector<unsigned>& boxes ) const;
+    void getBoxesAlongSlice( int dir, T par,std::vector<index_t>& boxes ) const;
 
 private:
 
