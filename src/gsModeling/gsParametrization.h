@@ -354,7 +354,7 @@ private:
 
     void calculate(const size_t boundaryMethod,
                    const size_t paraMethod,
-                   const std::vector<int> &cornersInput,
+                   const std::vector<index_t> &cornersInput,
                    const T rangeInput,
                    const size_t numberInput);
 

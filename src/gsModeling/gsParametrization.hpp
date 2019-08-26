@@ -35,7 +35,7 @@ gsOptionList gsParametrization<T>::defaultOptions()
     gsOptionList opt;
     opt.addInt("boundaryMethod", "boundary methodes: {1:chords, 2:corners, 3:smallest, 4:restrict, 5:opposite, 6:distributed}", 4);
     opt.addInt("parametrizationMethod", "parametrization methods: {1:shape, 2:uniform, 3:distance}", 1);
-    std::vector<int> corners;
+    std::vector<index_t> corners;
     opt.addMultiInt("corners", "vector for corners", corners);
     opt.addReal("range", "in case of restrict or opposite", 0.1);
     opt.addInt("number", "number of corners, in case of corners", 4);
@@ -52,7 +52,7 @@ gsParametrization<T>::gsParametrization(gsMesh<T> &mesh, const gsOptionList & li
 template<class T>
 void gsParametrization<T>::calculate(const size_t boundaryMethod,
                                      const size_t paraMethod,
-                                     const std::vector<int> &cornersInput,
+                                     const std::vector<index_t> &cornersInput,
                                      const T rangeInput,
                                      const size_t numberInput)
 {
