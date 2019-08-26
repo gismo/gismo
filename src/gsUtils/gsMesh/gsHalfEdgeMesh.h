@@ -577,7 +577,7 @@ public:
      * @param[in] corners std::vector<size_t >& - vector of boundary point numbers for corners, [1,2,3,4] stands for 1., 2., 3., 4. boundary vertex serve as corners
      * @return vector with part lengths of the boundary
      */
-    std::vector<T> getCornerLengths(/*const*/ std::vector<int> &corners) const;
+    std::vector<T> getCornerLengths(/*const*/ std::vector<index_t> &corners) const;
     //std::vector<T> getBoundaryPartLengths(const std::vector<size_t >& corners) const;
 
     /**
@@ -641,7 +641,7 @@ public:
      * @param[in] triangleIndex int - number of triangle
      * @return 0,1,2 or 3 for [not contained], [vertex1], [vertex2], [vertex3]
      */
-    int isTriangleVertex(size_t vertexIndex, size_t triangleIndex) const;
+    short_t isTriangleVertex(size_t vertexIndex, size_t triangleIndex) const;
 
 private:
     /**
@@ -698,8 +698,8 @@ private:
     Boundary m_boundary; ///< boundary of the mesh
     size_t m_n; ///< number of inner vertices in the mesh
 
-    std::vector<int> m_inverseSorting; ///< vector of indices s. t. m_inverseSorting[internVertexIndex] = vertexIndex
-    std::vector<int> m_sorting; ///< vector that stores the internVertexIndices s. t. m_sorting[vertexIndex-1] = internVertexIndex
+    std::vector<index_t> m_inverseSorting; ///< vector of indices s. t. m_inverseSorting[internVertexIndex] = vertexIndex
+    std::vector<index_t> m_sorting; ///< vector that stores the internVertexIndices s. t. m_sorting[vertexIndex-1] = internVertexIndex
     T m_precision;
 
 
