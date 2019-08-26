@@ -38,7 +38,7 @@ public:
     /// If \a label is not found, the function throws.
     std::string getString(const std::string & label) const;
     /// @copydoc gsOptionList::getString()
-    int         getInt   (const std::string & label) const;
+    index_t     getInt   (const std::string & label) const;
     /// @copydoc gsOptionList::getString()
     real_t      getReal  (const std::string & label) const;
     /// @copydoc gsOptionList::getString()
@@ -49,7 +49,7 @@ public:
     /// If \a gn is not found, the function throws.
     std::vector<std::string> getMultiString(const std::string & gn) const;
     /// @copydoc gsOptionList::getMultiString()
-    std::vector<int>         getMultiInt   (const std::string & gn) const;
+    std::vector<index_t>     getMultiInt   (const std::string & gn) const;
     /// @copydoc gsOptionList::getMultiString()
     std::vector<real_t>      getMultiReal  (const std::string & gn) const;
 
@@ -58,7 +58,7 @@ public:
     /// If \a label is not found, it defaults to \a value (otherwise \a value is not used).
     std::string askString(const std::string & label, const std::string & value = ""    ) const;
     /// @copydoc gsOptionList::askString()
-    int         askInt   (const std::string & label, const int &         value = 0     ) const;
+    index_t     askInt   (const std::string & label, const index_t &     value = 0     ) const;
     /// @copydoc gsOptionList::askString()
     real_t      askReal  (const std::string & label, const real_t &      value = 0     ) const;
     /// @copydoc gsOptionList::askString()
@@ -69,7 +69,7 @@ public:
     /// If \a label is not found, it defaults to \a value (otherwise \a value is not used).
     //std::vector<std::string> askMultiString(const std::string & gn, const std::vector<std::string> & values = std::vector<std::string>()) const;
     /// @copydoc gsOptionList::askMultiString
-    //std::vector<int>         askMultiInt   (const std::string & gn, const std::vector<int> &         values = std::vector<int>()        ) const;
+    //std::vector<index_t>     askMultiInt   (const std::string & gn, const std::vector<index_t> &     values = std::vector<index_t>()    ) const;
     /// @copydoc gsOptionList::askMultiString
     //std::vector<real_t>      askMultiReal  (const std::string & gn, const std::vector<real_t> &      values = std::vector<real_t>()     ) const;*/
 
@@ -78,7 +78,7 @@ public:
     /// If \a label is not found, the function throws.
     void setString(const std::string & label, const std::string & value);
     /// @copydoc gsOptionList::setString()
-    void setInt   (const std::string & label, const int &         value);
+    void setInt   (const std::string & label, const index_t &     value);
     /// @copydoc gsOptionList::setString()
     void setReal  (const std::string & label, const real_t &      value);
     /// @copydoc gsOptionList::setString()
@@ -89,7 +89,7 @@ public:
     /// If \a gn is not found, the function throws.
     //void setMultiString(const std::string & gn, const std::vector<std::string> & values );
     /// @copydoc gsOptionList::setMultiString
-    //void setMultiInt   (const std::string & gn, const std::vector<int> &         values );
+    //void setMultiInt   (const std::string & gn, const std::vector<index_t> &     values );
     /// @copydoc gsOptionList::setMultiString
     //void setMultiReal  (const std::string & gn, const std::vector<real_t> &      values );*/
 
@@ -101,7 +101,7 @@ public:
     /// throws.
     void addString(const std::string & label, const std::string & desc, const std::string & value );
     /// @copydoc gsOptionList::addString()
-    void addInt   (const std::string & label, const std::string & desc, const int &         value );
+    void addInt   (const std::string & label, const std::string & desc, const index_t &     value );
     /// @copydoc gsOptionList::addString()
     void addReal  (const std::string & label, const std::string & desc, const real_t &      value );
     /// @copydoc gsOptionList::addString()
@@ -115,9 +115,9 @@ public:
     /// \brief Adds an option-group \a gn containing values of a std::vector.
     ///
     /// If \a gn is not found, the function throws.
-    void addMultiInt   (const std::string & label, const std::string & desc, const std::vector<int> &         values);
+    void addMultiInt(const std::string & label, const std::string & desc, const std::vector<index_t> &  values);
     /*/// @copydoc gsOptionList::addMultiString()
-    //void addMultiReal  (const std::string & label, const std::string & desc, const std::vector<real_t> &      values);*/
+    //void addMultiReal  (const std::string & label, const std::string & desc, const std::vector<real_t> & values);*/
 
     /// \brief Removes the option named \a label (if it exists).
     void remove(const std::string& label);
@@ -163,7 +163,7 @@ public:
     std::ostream & print(std::ostream & os) const;
 
     /// \brief Returns the length of this list of options
-    int size() const
+    size_t size() const
     {return m_strings.size()+m_ints.size()+m_reals.size()+m_switches.size();}
 
     /// getAllEntries() returns a vector of those. Contains the name of its type
@@ -250,7 +250,7 @@ private:
 
     // Format: std::pair<Value,Description>
     typedef std::pair<std::string,std::string> StringOpt;
-    typedef std::pair<int        ,std::string> IntOpt;
+    typedef std::pair<index_t    ,std::string> IntOpt;
     typedef std::pair<real_t     ,std::string> RealOpt;
     typedef std::pair<bool       ,std::string> SwitchOpt;
 
