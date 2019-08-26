@@ -795,7 +795,7 @@ public:
      * Refines the basis as well as the coefficients. The refinement and the format of the
      * input depend on the implementation of refineElements().
      */
-    virtual void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
+    virtual void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
 
     /// @brief Refine the basis uniformly by inserting \a numKnots new
     /// knots with multiplicity \a mul on each knot span

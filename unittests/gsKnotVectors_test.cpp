@@ -445,7 +445,7 @@ SUITE(gsKnotVectors_test_2)
         // The degree is intentionally -1.
         gsKnotVector<real_t> KV(-1, knots, knots + sizeof(knots)/sizeof(real_t));  //(0,1,3,3,2);
 
-        std::vector<unsigned> spans;
+        std::vector<index_t> spans;
         spans.push_back(0);
         KV.refineSpans(spans, 1);
         {

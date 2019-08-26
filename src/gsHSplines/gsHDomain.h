@@ -507,9 +507,9 @@ public:
     /// \param level corresponding levels
     // getBoxes-functions might get removed at some point of time.
     // Use iterators instead whenever possible.
-    void getBoxesInLevelIndex(gsMatrix<unsigned>& b1,
-                  gsMatrix<unsigned>& b2,
-                  gsVector<unsigned>& level) const;
+    void getBoxesInLevelIndex(gsMatrix<index_t>& b1,
+                  gsMatrix<index_t>& b2,
+                  gsVector<index_t>& level) const;
 
     ///return a list of polylines- boundaries of each connected
     ///component for all levels in the parameter space

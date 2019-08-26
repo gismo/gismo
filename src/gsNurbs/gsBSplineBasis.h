@@ -379,7 +379,7 @@ public:
     }
 
     // Look at gsBasis class for a description
-    void refineElements(std::vector<unsigned> const & elements)
+    void refineElements(std::vector<index_t> const & elements)
     { m_knots.refineSpans(elements); }
 
     // Look at gsBasis class for a description

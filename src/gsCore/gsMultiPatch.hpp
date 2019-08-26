@@ -602,8 +602,8 @@ void gsMultiPatch<T>::repairInterfaces()
         {
             changed = false;
 
-            std::vector<unsigned> refEltsFirst;
-            std::vector<unsigned> refEltsSecond;
+            std::vector<index_t> refEltsFirst;
+            std::vector<index_t> refEltsSecond;
 
             // For each interface, find the areas/elements that do not match...
             switch( this->dim() )

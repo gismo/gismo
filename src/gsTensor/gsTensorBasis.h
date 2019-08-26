@@ -331,7 +331,7 @@ public:
      * \param[in] elements vector of unsigned containing the
      * indices of the elements that should be refined (see above).
      */
-    void refineElements(std::vector<unsigned> const & elements);
+    void refineElements(std::vector<index_t> const & elements);
 
     /// Refine the basis uniformly and perform knot refinement for the
     /// given coefficient vector

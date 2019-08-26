@@ -970,9 +970,9 @@ void gsHDomain<d,T>::getBoxesOnSide(boundary::side s, gsMatrix<unsigned>& b1, gs
 }
 
 template<short_t d, class T>
-void gsHDomain<d,T>::getBoxesInLevelIndex(gsMatrix<unsigned>& b1,
-              gsMatrix<unsigned>& b2,
-              gsVector<unsigned>& level) const{
+void gsHDomain<d,T>::getBoxesInLevelIndex(gsMatrix<index_t>& b1,
+              gsMatrix<index_t>& b2,
+              gsVector<index_t>& level) const{
     std::vector<std::vector<index_t> > boxes;
     getBoxes_vec(boxes);
     GISMO_ASSERT(d==2 || d==3,"Wrong dimension, should be 2 or 3.");
@@ -997,7 +997,7 @@ void gsHDomain<d,T>::getBoxesInLevelIndex(gsMatrix<unsigned>& b1,
     level.resize(boxes.size());
     for(size_t i = 0; i < boxes.size(); i++)
     {
-        for(unsigned j = 0; j < d; j++)
+        for(short_t j = 0; j < d; j++)
         {
 //            b1(i,j) = boxes[i][j];
 //            b2(i,j) = boxes[i][j+d];

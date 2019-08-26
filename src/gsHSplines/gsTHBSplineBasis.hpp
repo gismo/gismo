@@ -1505,8 +1505,8 @@ template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& result)
 {
     result.clear();
-    gsVector<unsigned> level;
-    gsMatrix<unsigned> b1, b2;//boxes in highes level numbering
+    gsVector<index_t> level;
+    gsMatrix<index_t> b1, b2;//boxes in highes level numbering
     this->m_tree.getBoxesInLevelIndex(b1,b2,level);//return boxes in level indices
     tensorBasis T_0_copy = this->tensorLevel(0);
     std::vector< gsSparseMatrix<T,RowMajor> > transfer;
@@ -1516,7 +1516,7 @@ void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& resu
     for(unsigned i = 0; i < this->maxLevel(); ++i)
     {
         //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
-        for(unsigned int dim = 0; dim < d; dim++)
+        for(short_t dim = 0; dim < d; dim++)
         {
             const gsKnotVector<T> & ckv = m_bases[i]->knots(dim);
             const gsKnotVector<T> & fkv = m_bases[i + 1]->knots(dim);

@@ -31,7 +31,7 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
 
     // Construct a box covering the whole parameter domain.
     const typename gsHDomain<d>::point & uCorner = this->basis().tree().upperCorner();
-    std::vector<unsigned> wholeDomainAsBox(2*d+1,0);
+    std::vector<index_t> wholeDomainAsBox(2*d+1,0);
 
     wholeDomainAsBox[0] = this->basis().tree().getMaxInsLevel();
 

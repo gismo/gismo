@@ -488,7 +488,7 @@ public:
      * The syntax of \em boxes depends on the implementation in the
      * underlying basis. See gsBasis::refineElements_withCoefs() for details.
      */
-    void refineElements( std::vector<unsigned> const & boxes )
+    void refineElements( std::vector<index_t> const & boxes )
     {
         this->basis().refineElements_withCoefs(this->m_coefs, boxes );
     }

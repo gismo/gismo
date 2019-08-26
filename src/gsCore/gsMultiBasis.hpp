@@ -423,8 +423,8 @@ bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
 {
     bool changed = false;
 
-    std::vector<unsigned> refEltsFirst;
-    std::vector<unsigned> refEltsSecond;
+    std::vector<index_t> refEltsFirst;
+    std::vector<index_t> refEltsSecond;
 
     // Find the areas/elements that do not match...
     switch( this->dim() )
@@ -455,8 +455,8 @@ template<class T>
 template<int d>
 bool gsMultiBasis<T>::repairInterfaceFindElements(
         const boundaryInterface & bi,
-        std::vector<unsigned> & refEltsFirst,
-        std::vector<unsigned> & refEltsSecond )
+        std::vector<index_t> & refEltsFirst,
+        std::vector<index_t> & refEltsSecond )
 {
     GISMO_ASSERT( d == 2 || d == 3, "Dimension must be 2 or 3.");
 
@@ -508,14 +508,14 @@ bool gsMultiBasis<T>::repairInterfaceFindElements(
     // Compute the indices on the same level (indexLevelUse)
     idxExponent = ( indexLevelUse - bas0->tree().getMaxInsLevel());
     for( index_t i=0; i < index_t( lo0.rows() ); i++)
-        for( unsigned j=0; j < d; j++)
+        for( short_t j=0; j < d; j++)
         {
             lo0(i,j) = lo0(i,j) << idxExponent;
             up0(i,j) = up0(i,j) << idxExponent;
         }
     idxExponent = ( indexLevelUse - bas1->tree().getMaxInsLevel());
     for( index_t i=0; i < index_t( lo1.rows() ); i++)
-        for( unsigned jj=0; jj < d; jj++)
+        for( short_t jj=0; jj < d; jj++)
         {
             // Computation done via dirMap, because...
             unsigned j = dirMap[jj];
@@ -800,8 +800,8 @@ bool gsMultiBasis<T>::repairInterface2d( const boundaryInterface & bi )
     // reparing the interface
     unsigned knot0;
     unsigned knot1 = 0;
-    std::vector<unsigned> refElts0;
-    std::vector<unsigned> refElts1;
+    std::vector<index_t> refElts0;
+    std::vector<index_t> refElts1;
 
     for( unsigned i=0; i < intfcU.size(); i++)
     {

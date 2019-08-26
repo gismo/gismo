@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     gsWriteParaview(thb, "thb0_init" );
 
     //! [refViaStdVec]
-    std::vector<unsigned> box;
+    std::vector<index_t> box;
     box.push_back( 1 );
     box.push_back( 2 );
     box.push_back( 0 );

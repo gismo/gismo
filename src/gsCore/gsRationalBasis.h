@@ -198,7 +198,7 @@ public:
      * @param boxes See the function gsBasis::refineElements() of the underlying
      * basis for syntax.
      */
-    void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
+    void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
 
     void degreeElevate(int const& i = 1, int const dir = -1) 
     {
@@ -618,7 +618,7 @@ void gsRationalBasis<SrcT>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor
 
 template<class SrcT>
 void gsRationalBasis<SrcT>::refineElements_withCoefs(gsMatrix<T> & coefs,
-                                                     std::vector<unsigned> const & boxes)
+                                                     std::vector<index_t> const & boxes)
 {
     // switch from control points (n-dimensional) to
     // "projective control points" ((n+1)-dimensional),

@@ -793,19 +793,19 @@ void gsTensorBasis<d,T>::deriv2_tp(const std::vector< gsMatrix<T> > values[],
 
 
 template<short_t d, class T>
-void gsTensorBasis<d,T>::refineElements(std::vector<unsigned> const & elements)
+void gsTensorBasis<d,T>::refineElements(std::vector<index_t> const & elements)
 {
-    gsSortedVector<unsigned> elIndices[d];
-    unsigned tmp, mm;
+    gsSortedVector<index_t> elIndices[d];
+    index_t tmp, mm;
     
     // Get coordinate wise element indices
-    for ( typename  std::vector<unsigned>::const_iterator
+    for ( typename  std::vector<index_t>::const_iterator
               it = elements.begin(); it != elements.end(); ++it )
     {
         mm = *it;
             for (short_t i = 0; i<d; ++i )
             {
-                const unsigned nEl_i = m_bases[i]->numElements();
+                const index_t nEl_i = m_bases[i]->numElements();
                 tmp = mm % nEl_i;
                 mm = (mm - tmp) / nEl_i;
                 elIndices[i].push_sorted_unique(tmp);

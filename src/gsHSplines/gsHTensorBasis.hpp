@@ -252,9 +252,9 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
         const point & u = it.upperCorner();
 
         boxes.push_back(lvl);
-        for( unsigned i = 0; i < d; i++)
+        for( short_t i = 0; i < d; i++)
             boxes.push_back( l(i) * 2);
-        for( unsigned i = 0; i < d; i++)
+        for( short_t i = 0; i < d; i++)
             boxes.push_back( u(i) * 2);
     }
 
@@ -274,7 +274,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
     gsMatrix<T> para = support();
     for(int i = 0; i < boxes.cols()/2; i++)
     {
-        for( unsigned j = 0; j < d; j++ )
+        for( short_t j = 0; j < d; j++ )
         {
             GISMO_ASSERT( para(j,0) <= boxes(j, 2*i) ,
                           "In refine() the first corner is outside the computational domain.");
@@ -304,7 +304,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
 
         // Initialize vector of size
         // "entries per box" times "number of boxes":
-        std::vector<unsigned> refVector( offset * boxes.cols()/2 );
+        std::vector<index_t> refVector( offset * boxes.cols()/2 );
         gsMatrix<T> ctr(d,1);
 
         // Loop over all boxes:
@@ -361,7 +361,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
     gsMatrix<T> para = support();
     for(int i = 0; i < boxes.cols()/2; i++)
     {
-        for( unsigned j = 0; j < d; j++ )
+        for( short_t j = 0; j < d; j++ )
         {
             GISMO_ASSERT( para(j,0) <= boxes(j, 2*i) ,
                           "In refine() the first corner is outside the computational domain.");
