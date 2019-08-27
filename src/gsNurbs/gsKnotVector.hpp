@@ -635,12 +635,14 @@ void gsKnotVector<T>::initUniform( T first,
     for(unsigned i = m_deg - mult_ends + 1, j=0; i!= 0; --i)
     {   // add left ghost knots
         m_repKnots.push_back(first-i*h);
-	++j;
-        m_multSum .push_back(j);
+        m_multSum .push_back(++j);
     }
 
     m_repKnots.insert(m_repKnots.end(), mult_ends, first);
-    m_multSum .push_back(m_multSum.back() + mult_ends);
+    if(m_multSum.size() == 0)
+	m_multSum.push_back(mult_ends);
+    else
+	m_multSum .push_back(m_multSum.back() + mult_ends);
 
     for( unsigned i=1; i<=interior; ++i)
     {
