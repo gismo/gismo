@@ -259,7 +259,7 @@ SUITE(gsBoundaryConditions_test)
         int dim1 = 1;
         std::string funcName1 = "tan(x)";
         index_t index1 = 1; // Eigen Index
-        size_t index2 = 2;  // std::size_t
+        index_t index2 = 2; // index_t
         gismo::boxSide boxSide1 = gismo::boxSide(index1);
         gismo::boundary_condition<real_t>::function_ptr funcPtr1 =
                 gismo::memory::make_shared(

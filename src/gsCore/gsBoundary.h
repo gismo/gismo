@@ -84,12 +84,12 @@ public:
     *
     * ...stored as number, specified in boundary::side
     **/
-    index_t m_index;
+    short_t m_index;
 public:
     boxSide (): m_index(0) {}
-    boxSide (index_t dir, bool par) : m_index(index(dir,par))
+    boxSide (short_t dir, bool par) : m_index(index(dir,par))
     { GISMO_ASSERT(dir>=0,"invalid side");}
-    boxSide (index_t a) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
+    boxSide (short_t a) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
     boxSide (boundary::side a) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
 
     // conversions
@@ -105,7 +105,7 @@ public:
      *  Since the side with index \em 3 corresponds to "south", i.e. to \f$ \{ (u,v):\ v = 0 \} \f$,
      *  calling parameter(3) will return <em>1</em>, because \em v (i.e., parameter direction with index \em 1) is fixed/set to zero.\n
     **/
-    index_t direction () const {return (m_index-1) / 2;}
+    short_t direction () const {return static_cast<short_t>((m_index-1) / 2);}
 
     /**
      *  \brief Returns the parameter value (false=0=start, true=1=end) that corresponds to this side
@@ -126,19 +126,19 @@ public:
      * @brief returns the parallel opposite side
      * @return
      */
-    boxSide opposite() const {return boxSide(((m_index-1)^1)+1);}
+    boxSide opposite() const {return boxSide(static_cast<short_t>(((m_index-1)^1)+1));}
 
 
     /**
      *  \brief Returns the index (as specified in boundary::side) of the box side
     **/
-    index_t    index () const {return m_index;}
+    short_t    index () const {return m_index;}
 
     /**
      *  \brief Returns the index of the box side implied by input
      *  direction \a dir and parameter \a par
     **/
-    static inline index_t index (index_t dir, bool par) {return par?2*dir+2:2*dir+1;}
+    static inline short_t index (short_t dir, bool par) {return static_cast<short_t>(par?2*dir+2:2*dir+1);}
 
 
     /**
@@ -146,13 +146,13 @@ public:
      * @param dim is the ambient dimension
      * @param corners
      */
-    void getContainedCorners (int dim, std::vector<boxCorner> &corners) const;
+    void getContainedCorners (short_t dim, std::vector<boxCorner> &corners) const;
 
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @return the first valid side in an dim-dimensional box
     **/
-    static  boxSide    getFirst     (index_t)
+    static  boxSide    getFirst     (short_t)
     { return boxSide(1); }
 
     /**
@@ -161,14 +161,14 @@ public:
      * @return the last valid side in an dim-dimensional box
     **/
 
-    static  boxSide    getLast      (index_t dim) {return boxSide(2*dim);}
+    static  boxSide    getLast      (short_t dim) {return boxSide(static_cast<short_t>(2*dim));}
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @param dim
      * @return the (invalid) side after the last one in dim-dimensional box
     **/
 
-    static  boxSide    getEnd       (index_t dim) {return boxSide(2*dim+1);}
+    static  boxSide    getEnd       (short_t dim) {return boxSide(static_cast<short_t>(2*dim+1));}
 
     /**
      * @brief Incrementset boxSide

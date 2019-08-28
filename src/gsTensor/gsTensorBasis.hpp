@@ -296,7 +296,7 @@ gsMatrix<unsigned> gsTensorBasis<d,T>::allBoundary() const
             bdofs.insert( bd(i) );
     }
 
-    return makeMatrix<unsigned>(bdofs.begin(), bdofs.size(), 1 );
+    return makeMatrix<unsigned>(bdofs.begin(), static_cast<index_t>(bdofs.size()), 1 );
 }
 
 

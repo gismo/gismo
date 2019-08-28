@@ -78,7 +78,7 @@ SUITE(gsOptionList_test)
     TEST(get_items_from_empty_list)
     {
         gsOptionList myList;
-        CHECK_EQUAL(0, myList.size());
+        CHECK_EQUAL(0u, myList.size());
         CHECK_EQUAL(STR_1, myList.askString(LABEL_STR_1, STR_1));
         CHECK_EQUAL(INT_1, myList.askInt(LABEL_INT_1, INT_1));
         CHECK_EQUAL(REAL_1, myList.askReal(LABEL_REAL_1, REAL_1));
