@@ -101,7 +101,7 @@ void gsDofMapper::init(const gsMultiBasis<T>         &basis,
     {
         if (unk == -1 || it->unknown() == unk) // special value -1 eliminates all BCs found
         {
-            GISMO_ASSERT(it->ps.patch < m_offset.size(),
+            GISMO_ASSERT(it->ps.patch < static_cast<index_t>(m_offset.size()),
                          "Problem: a boundary condition is set on a patch id which does not exist.");
 
             gsMatrix<unsigned> bnd = basis[it->ps.patch].boundary(it->ps.side());

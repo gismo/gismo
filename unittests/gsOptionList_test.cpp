@@ -54,7 +54,7 @@ void saveToFile(std::string& path, gsOptionList& list)
 
 void checkAssemblerOptions(gsOptionList& myList)
 {
-    CHECK_EQUAL(8, myList.size());
+    CHECK_EQUAL(8u, myList.size());
     CHECK_EQUAL(11, myList.getInt("DirichletStrategy"));
     CHECK_EQUAL(101, myList.getInt("DirichletValues"));
     CHECK_EQUAL(1, myList.getInt("InterfaceStrategy"));

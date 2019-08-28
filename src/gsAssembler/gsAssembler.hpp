@@ -69,7 +69,7 @@ bool gsAssembler<T>::check()
     const gsBoundaryConditions<T> & m_bConditions = m_pde_ptr->bc();
 
     // Check if boundary conditions are OK
-    const size_t np = m_bases.front().nBases();
+    const index_t np = m_bases.front().nBases();
     for (typename gsBoundaryConditions<T>::const_iterator it =
          m_bConditions.dirichletBegin() ; it != m_bConditions.dirichletEnd(); ++it )
     {

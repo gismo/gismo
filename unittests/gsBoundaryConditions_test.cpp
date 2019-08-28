@@ -95,7 +95,7 @@ gsFunctionExpr<real_t> getFunctionExpr(boundary_condition<real_t> bc)
 }
 
 void checkBoundaryCondition(boundary_condition<real_t> bc, bool parametric,
-        std::string label, gismo::condition_type::type conditionType, size_t patch,
+        std::string label, gismo::condition_type::type conditionType, index_t patch,
         index_t index, int unknown, int unkcomp, short_t domainDim,
         std::string funcName)
 {
