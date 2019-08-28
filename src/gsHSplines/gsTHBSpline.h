@@ -50,7 +50,7 @@ public:
     typedef memory::unique_ptr< gsTHBSpline > uPtr;
 
     typedef typename
-    util::conditional<d==1, gsConstantFunction<T>, gsTHBSpline<d-1,T>
+    util::conditional<d==1, gsConstantFunction<T>, gsTHBSpline<static_cast<short_t>(d-1),T>
                       >::type BoundaryGeometryType;
 
     typedef typename gsTHBSplineBasis<d,T>::BoundaryBasisType BoundaryBasisType;

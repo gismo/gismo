@@ -52,7 +52,7 @@ public:
 
     /// @brief Associated Boundary basis type.
     typedef typename
-    util::conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<d-1,T> >::type BoundaryBasisType;
+    util::conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<static_cast<short_t>(d-1),T> >::type BoundaryBasisType;
 
     using gsHTensorBasis<d, T>::flatTensorIndexOf;
 

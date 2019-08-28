@@ -107,7 +107,7 @@ void gsPatchGenerator<T>::preparePatch(gsTensorBSplineBasis<d,T> & resultBasis, 
     GISMO_ASSERT(m_boundary.nPatches()  == 2*d, 
                  "Expecting "<<2*d<<" boundaries");
 
-    typedef typename gsBSplineTraits<d-1,T>::Geometry Boundary_t;
+    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::Geometry Boundary_t;
 
     //-------- 1. Find the pairs of facing boundaries
 

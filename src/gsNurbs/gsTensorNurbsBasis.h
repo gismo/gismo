@@ -60,7 +60,7 @@ public:
     typedef typename gsBSplineTraits<d,T>::RatGeometry GeometryType;
 
     /// @brief Associated Boundary basis type
-    typedef typename gsBSplineTraits<d-1,T>::RatBasis BoundaryBasisType;
+    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::RatBasis BoundaryBasisType;
 
     /// @brief Shared pointer for gsTensorNurbsBasis
     typedef memory::shared_ptr< gsTensorNurbsBasis > Ptr;

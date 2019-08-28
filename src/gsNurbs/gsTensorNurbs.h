@@ -56,11 +56,11 @@ public:
     typedef gsTensorNurbsBasis<d,T>   Basis;
 
     /// Associated boundary geometry type
-    typedef typename gsBSplineTraits<d-1,T>::RatGeometry BoundaryGeometryType;
-    //typedef gsTensorNurbs<d-1,T> BoundaryGeometryType;
+    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::RatGeometry BoundaryGeometryType;
+    //typedef gsTensorNurbs<static_cast<short_t>(d-1),T> BoundaryGeometryType;
 
     /// Associated boundary basis type
-    typedef typename gsBSplineTraits<d-1,T>::RatBasis BoundaryBasisType;
+    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::RatBasis BoundaryBasisType;
 
     /// Shared pointer for gsTensorNurbs
     typedef memory::shared_ptr< gsTensorNurbs > Ptr;
@@ -239,7 +239,7 @@ public:
         swapTensorDirection(0, dir, sz, m_coefs  );
         std::swap(sz[0],sz[dir]);
         swapTensorDirection(0, dir, sz, weights());
-        const index_t nc = sz.template tail<d-1>().prod();
+        const index_t nc = sz.template tail<static_cast<short_t>(d-1)>().prod();
         m_coefs  .resize( sz[0], n * nc );
         weights().resize( sz[0], nc     );
         
@@ -308,7 +308,7 @@ public:
         GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
         // construct the d-1 basis
         boxSide side(dir_fixed,0);
-        //typename gsTensorNurbsBasis<d-1,T>::uPtr tbasis = this->basis().boundaryBasis(side);
+        //typename gsTensorNurbsBasis<static_cast<short_t>(d-1),T>::uPtr tbasis = this->basis().boundaryBasis(side);
         typename BoundaryBasisType::uPtr tbasis = this->basis().boundaryBasis(side);
 
         if(d==1)
@@ -316,7 +316,7 @@ public:
             gsMatrix<T> val(1,1),point;
             val(0,0)=par;
             this->eval_into(val,point);
-            //result = gsTensorNurbs<d-1, T>(*tbasis, point );
+            //result = gsTensorNurbs<static_cast<short_t>(d-1), T>(*tbasis, point );
             result = BoundaryGeometryType(*tbasis, point );
         }
         else
@@ -355,7 +355,7 @@ public:
             }
 
             // construct the object
-            //result = gsTensorBSpline<d-1,T>(*tbasis, give(coefs) );
+            //result = gsTensorBSpline<static_cast<short_t>(d-1),T>(*tbasis, give(coefs) );
             //result = BoundaryGeometry(*tbasis, give(coefs) );
             result = BoundaryGeometryType (*tbasis, coefs );
         }

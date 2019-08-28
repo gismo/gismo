@@ -332,7 +332,7 @@ public:
     inline index_t tindex( index_t i, index_t k = 0 ) const
     {
         GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return std::distance(m_tagged.begin(),std::lower_bound(m_tagged.begin(),m_tagged.end(),MAPPER_PATCH_DOF(i,k)));
+        return static_cast<index_t>(std::distance(m_tagged.begin(),std::lower_bound(m_tagged.begin(),m_tagged.end(),MAPPER_PATCH_DOF(i,k))));
     }
 
     /// @brief Returns the boundary index of global dof \a gl.

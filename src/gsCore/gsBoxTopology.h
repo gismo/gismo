@@ -171,8 +171,8 @@ public:
     }
 
     /// Add an interface between side \a s1 of box \a p1 and side \a s2 of box \a p2.
-    void addInterface(size_t p1, boxSide s1,
-                      size_t p2, boxSide s2)
+    void addInterface(index_t p1, boxSide s1,
+                      index_t p2, boxSide s2)
     {
         addInterface(boundaryInterface(patchSide(p1, s1), patchSide(p2, s2), m_dim));
     }
@@ -190,7 +190,7 @@ public:
     }
 
     /// Set side \a s of box \a p to a boundary.
-    void addBoundary(size_t p, boxSide s)
+    void addBoundary(index_t p, boxSide s)
     {
         addBoundary(patchSide(p, s));
     }
@@ -211,7 +211,7 @@ public:
     }
 
     /// Returns true if side \a s on patch \a p is a boundary.
-    bool isBoundary( int p, boxSide s )
+    bool isBoundary( index_t p, boxSide s )
     {
         return isBoundary( patchSide(p,s) );
     }

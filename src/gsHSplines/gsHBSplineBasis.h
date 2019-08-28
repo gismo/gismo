@@ -43,7 +43,7 @@ public:
     typedef typename gsHTensorBasis<d,T>::tensorBasis tensorBasis;
 
     typedef typename 
-    util::conditional<d==1, gsConstantBasis<T>, gsHBSplineBasis<d-1,T>
+    util::conditional<d==1, gsConstantBasis<T>, gsHBSplineBasis<static_cast<short_t>(d-1),T>
                       >::type BoundaryBasisType;
 
     /// @brief Shared pointer for gsHBSplineBasis

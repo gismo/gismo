@@ -98,7 +98,7 @@ public:
 
     typedef gsKnotVector<T> KnotVectorType;
 
-    typedef typename gsBSplineTraits<d-1,T>::Basis BoundaryBasisType;
+    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::Basis BoundaryBasisType;
 
     typedef typename gsBSplineTraits<d,T>::Basis tensorBasis;
 

@@ -138,7 +138,7 @@ public:
      *  \brief Returns the index of the box side implied by input
      *  direction \a dir and parameter \a par
     **/
-    static inline int index (index_t dir, bool par) {return par?2*dir+2:2*dir+1;}
+    static inline index_t index (index_t dir, bool par) {return par?2*dir+2:2*dir+1;}
 
 
     /**
@@ -152,7 +152,7 @@ public:
      * @brief helper for iterating on sides of an n-dimensional box
      * @return the first valid side in an dim-dimensional box
     **/
-    static  boxSide    getFirst     (int)
+    static  boxSide    getFirst     (index_t)
     { return boxSide(1); }
 
     /**
@@ -161,14 +161,14 @@ public:
      * @return the last valid side in an dim-dimensional box
     **/
 
-    static  boxSide    getLast      (int dim) {return boxSide(2*dim);}
+    static  boxSide    getLast      (index_t dim) {return boxSide(2*dim);}
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @param dim
      * @return the (invalid) side after the last one in dim-dimensional box
     **/
 
-    static  boxSide    getEnd       (int dim) {return boxSide(2*dim+1);}
+    static  boxSide    getEnd       (index_t dim) {return boxSide(2*dim+1);}
 
     /**
      * @brief Incrementset boxSide
@@ -226,15 +226,15 @@ inline std::ostream &operator<<(std::ostream &os, const boxSide& o)
 struct GISMO_EXPORT patchSide : public boxSide
 {
 public:
-    size_t patch;              ///< The index of the patch.
+    index_t patch;              ///< The index of the patch.
 public:
 
     patchSide() : boxSide(), patch(0) { }
 
-    patchSide(size_t p, boxSide s)
+    patchSide(index_t p, boxSide s)
         : boxSide(s), patch(p) { }
 
-    patchSide(size_t p, boundary::side s)
+    patchSide(index_t p, boundary::side s)
         : boxSide(s), patch(p) { }
 
     // Accessors
@@ -306,14 +306,14 @@ public:
      * @param param entry \em i is 1 if the corner is contained in box_face(i,1)
      *        and 0 if it is contained in box_face(i,0)
      */
-    void parameters_into (int dim, gsVector<bool> &param) const
+    void parameters_into (index_t dim, gsVector<bool> &param) const
     {
-        param.resize(static_cast<size_t>(dim));
-        for (int i=0; i<dim; ++i)
+        param.resize(dim);
+        for (short_t i=0; i<dim; ++i)
             param(i)=((m_index-1)>>i)&1;
     }
 
-    gsVector<bool> parameters(int dim) const
+    gsVector<bool> parameters(index_t dim) const
     {
         gsVector<bool> r;
         parameters_into(dim,r);
@@ -326,13 +326,13 @@ public:
      * @param dim is the ambient dimension
      * @param sides
      */
-    void getContainingSides (int dim, std::vector<boxSide> &sides) const
+    void getContainingSides (index_t dim, std::vector<boxSide> &sides) const
     {
         GISMO_ASSERT(dim>=0, "Dimension must be non negative");
         sides.resize(dim);
         gsVector<bool> param;
         parameters_into(dim,param);
-        for (int i=0;i<dim;++i)
+        for (short_t i=0;i<dim;++i)
             sides[i]=boxSide(i,param(i));
     }
 
@@ -340,7 +340,7 @@ public:
      * @brief helper for iterating on corners of an n-dimensional box
      * @return the first valid corners in an dim-dimensional box
     **/
-    static  boxCorner    getFirst     (int)
+    static  boxCorner    getFirst     (short_t)
     { return boxCorner(1); }
 
     /**
@@ -349,14 +349,14 @@ public:
      * @return the last valid corners in an dim-dimensional box
     **/
 
-    static  boxCorner    getLast      (int dim) {return boxCorner((1<<dim));}
+    static  boxCorner    getLast      (short_t dim) {return boxCorner((1<<dim));}
     /**
      * @brief helper for iterating on corners of an n-dimensional box
      * @param dim
      * @return the (invalid) corners after the last one in dim-dimensional box
     **/
 
-    static  boxCorner    getEnd       (int dim) {return boxCorner((1<<dim)+1);}
+    static  boxCorner    getEnd       (short_t dim) {return boxCorner((1<<dim)+1);}
     /**
      * @brief set to next boxCorner
      */
@@ -379,16 +379,16 @@ public:
 struct patchCorner : public boxCorner
 {
 public:
-    size_t patch;
+    index_t patch;
 public:
     patchCorner() : boxCorner(0) { }
-    patchCorner(size_t p,boundary::corner c)
+    patchCorner(index_t p,boundary::corner c)
         : boxCorner(c), patch (p) { }
 
-    patchCorner(size_t p, int c)
+    patchCorner(index_t p, int c)
         : boxCorner(c), patch (p) { }
 
-    patchCorner(size_t p, boxCorner c)
+    patchCorner(index_t p, boxCorner c)
         : boxCorner(c), patch (p) { }
 
     /**
@@ -977,7 +977,7 @@ inline std::ostream &operator<<(std::ostream &os, const boundaryInterface & i)
 /// (counter-clockwise) or -1 (clock-wise).
 ///
 /// \param s integer corresponding to a boundary side
-inline int sideOrientation(int s)
+inline int sideOrientation(short_t s)
 {
     // The orientation sign is determined by the formula:
     // (direction + parameter) + 1 mod 2
@@ -996,7 +996,7 @@ inline int sideOrientation(int s)
 /// calling parameter(3) will return <em>1</em>, because \em v (i.e., parameter direction with index \em 1) is fixed/set to zero.\n
 ///
 /// use boxSide struct instead of enumerated values
-GISMO_DEPRECATED inline int direction (int s)
+GISMO_DEPRECATED inline index_t direction (index_t s)
 {
     GISMO_ASSERT( s>0, "Requested direction of none boundary.\n");
     return (s-1) / 2 ;

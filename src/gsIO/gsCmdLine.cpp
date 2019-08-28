@@ -325,7 +325,7 @@ bool gsCmdLine::getExceptionHandling() const
 #define ADD_OPTION_LIST_ENTRY(res,vals,addFct)                                      \
 {                                                                                   \
     std::string nm = (vals)->getName() + ".";                                       \
-    index_t sz = (res).size();                                                      \
+    index_t sz = static_cast<index_t>((res).size());                                \
     for ( index_t j=0; j<sz; ++j )                                                  \
     { result.addFct( nm+util::to_string(j), (vals)->getDescription(), (res)[j] ); } \
     result.addInt( nm+"Size", (vals)->getDescription(), sz );                       \
