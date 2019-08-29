@@ -191,7 +191,7 @@ void gsMarkFraction( const std::vector<T> & elError, T refParameter, std::vector
  * \ingroup Assembler
  */
 template <class T>
-void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T refParameter, std::vector<bool> & elMarked)
+void gsMarkElementsForRef( const std::vector<T> & elError, MarkingStrategy refCriterion, T refParameter, std::vector<bool> & elMarked)
 {
     switch (refCriterion)
     {
@@ -243,14 +243,14 @@ void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T r
 template <class T>
 void gsRefineMarkedElements(gsMultiBasis<T> & basis,
                             const std::vector<bool> & elMarked,
-                            int refExtension = 0)
+                            index_t refExtension = 0)
 {
-    const int dim = basis.dim();
+    const short_t dim = basis.dim();
 
     // numMarked: Number of marked cells on current patch, also currently marked cell
     // poffset  : offset index for the first element on a patch
     // globalCount: counter for the current global element index
-    int numMarked, poffset = 0, globalCount = 0;
+    index_t numMarked, poffset = 0, globalCount = 0;
 
     // refBoxes: contains marked boxes on a given patch
     gsMatrix<T> refBoxes;
