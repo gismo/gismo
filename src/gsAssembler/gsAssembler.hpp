@@ -92,7 +92,7 @@ bool gsAssembler<T>::check()
         gsWarn<< "No domain given ! \n";
 
     // /*
-    const int dirStr = m_options.getInt("DirichletStrategy");
+    const dirichlet::strategy dirStr = static_cast<dirichlet::strategy>(m_options.getInt("DirichletStrategy"));
     if ( 0 == m_pde_ptr->bc().size() && dirStr!=dirichlet::none && dirStr==dirichlet::homogeneous )
         gsWarn<< "No boundary conditions given ! \n";
     //*/
@@ -124,7 +124,7 @@ void gsAssembler<T>::scalarProblemGalerkinRefresh()
 }
 
 template<class T>
-void gsAssembler<T>::penalizeDirichletDofs(int unk)
+void gsAssembler<T>::penalizeDirichletDofs(index_t unk)
 {
     GISMO_ASSERT( m_options.getInt("DirichletStrategy")
                   == dirichlet::penalize, "Incorrect options");
@@ -167,19 +167,19 @@ void gsAssembler<T>::penalizeDirichletDofs(int unk)
           it = m_pde_ptr->bc().cornerBegin();
           it != m_pde_ptr->bc().cornerEnd(); ++it )
     {
-        const int i  = mbasis[it->patch].functionAtCorner(it->corner);
-        const int ii = mapper.bindex( i , it->patch );
+        const index_t i  = mbasis[it->patch].functionAtCorner(it->corner);
+        const index_t ii = mapper.bindex( i , it->patch );
         m_system.matrix()(ii,ii)       = PP;
         m_system.rhs().row(ii).setConstant(PP * it->value);
     }
 }
 
 template<class T>
-void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, int patch)
+void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, index_t unk, size_t patch)
 {
     GISMO_ASSERT( m_options.getInt("DirichletValues") == dirichlet::user, "Incorrect options");
 
-    const int dirStr = m_options.getInt("DirichletStrategy");
+    const dirichlet::strategy dirStr = static_cast<dirichlet::strategy>(m_options.getInt("DirichletStrategy"));
     const gsMultiBasis<T> & mbasis = m_bases[m_system.colBasis(unk)];
     const gsDofMapper & mapper =
         dirichlet::elimination == dirStr ? m_system.colMapper(unk)
@@ -196,7 +196,7 @@ void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, int p
           it =  m_pde_ptr->bc().dirichletBegin();
           it != m_pde_ptr->bc().dirichletEnd()  ; ++it )
     {
-        const int k = it->patch();
+        const index_t k = it->patch();
         if ( k == patch )
         {
             // Get indices in the patch on this boundary
@@ -209,7 +209,7 @@ void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, int p
             {
                 // Note: boundary.at(i) is the patch-local index of a
                 // control point on the patch
-                const int ii  = mapper.bindex( boundary.at(i) , k );
+                const index_t ii  = mapper.bindex( boundary.at(i) , k );
 
                 m_ddof[unk].row(ii) = coefMatrix.row(boundary.at(i));
             }
@@ -218,7 +218,7 @@ void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, int p
 }
 
 template<class T>
-void gsAssembler<T>::setFixedDofVector(gsMatrix<T> vals, int unk)
+void gsAssembler<T>::setFixedDofVector(gsMatrix<T> vals, index_t unk)
 {
    if(m_ddof.size()==0)
        m_ddof.resize(m_system.numColBlocks());
@@ -231,7 +231,7 @@ void gsAssembler<T>::setFixedDofVector(gsMatrix<T> vals, int unk)
 
 
 template<class T>
-void gsAssembler<T>::computeDirichletDofs(int unk)
+void gsAssembler<T>::computeDirichletDofs(index_t unk)
 {
     //if ddof-size is not set
     //fixme: discuss if this is really the right place for this.
@@ -288,8 +288,8 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
     {
         if(it->unknown == unk)
         {
-            const int i  = mbasis[it->patch].functionAtCorner(it->corner);
-            const int ii = mapper.bindex( i , it->patch );
+            const index_t i  = mbasis[it->patch].functionAtCorner(it->corner);
+            const index_t ii = mapper.bindex( i , it->patch );
             m_ddof[unk].row(ii).setConstant(it->value);
         }
         else
@@ -316,7 +316,7 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
 template<class T> //
 void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
                                                const gsMultiBasis<T> & mbasis,
-                                               const int unk_)
+                                               const index_t unk_)
 {
     m_ddof[unk_].resize(mapper.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols());
 
@@ -326,7 +326,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
           it != m_pde_ptr->bc().dirichletEnd(); ++it )
     {
         //const int unk = it->unknown();
-        const int k   = it->patch();
+        const index_t k   = it->patch();
         if(it->unknown()!=unk_)
             continue;
         const gsBasis<T> & basis = mbasis[k];
@@ -339,21 +339,21 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
         {
             for (index_t i=0; i!= boundary.size(); ++i)
             {
-                const int ii= mapper.bindex( boundary.at(i) , k );
+                const index_t ii= mapper.bindex( boundary.at(i) , k );
                 m_ddof[unk_].row(ii).setZero();
             }
             continue;
         }
 
         // Get the side information
-        int dir = it->side().direction( );
+        short_t dir = it->side().direction( );
         index_t param = (it->side().parameter() ? 1 : 0);
 
         // Compute grid of points on the face ("face anchors")
         std::vector< gsVector<T> > rr;
         rr.reserve( this->patches().parDim() );
 
-        for ( int i=0; i < this->patches().parDim(); ++i)
+        for ( short_t i=0; i < this->patches().parDim(); ++i)
         {
             if ( i==dir )
             {
@@ -386,7 +386,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
         // Save corresponding boundary dofs
         for (index_t l=0; l!= boundary.size(); ++l)
         {
-            const int ii = mapper.bindex( boundary.at(l) , it->patch() );
+            const index_t ii = mapper.bindex( boundary.at(l) , it->patch() );
             m_ddof[unk_].row(ii) = dVals.row(l);
         }
     }
@@ -395,7 +395,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
 template<class T>
 void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
                                                 const gsMultiBasis<T> & ,
-                                                const int unk_)
+                                                const index_t unk_)
 {
     m_ddof[unk_].resize( mapper.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
 
@@ -428,10 +428,10 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
                      "Given Dirichlet boundary function does not match problem dimension."
                      <<iter->function()->targetDim()<<" != "<<m_system.unkSize(unk_)<<"\n");
 
-        const int unk = iter->unknown();
+        const index_t unk = iter->unknown();
         if(unk!=unk_)
             continue;
-        const int patchIdx   = iter->patch();
+        const index_t patchIdx   = iter->patch();
         const gsBasis<T> & basis = (m_bases[unk])[patchIdx];
 
         const gsGeometry<T> & patch = m_pde_ptr->patches()[patchIdx];
@@ -540,7 +540,7 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
 
 template<class T>
 void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
-                                       gsMultiPatch<T>& result, int unk) const
+                                       gsMultiPatch<T>& result, index_t unk) const
 {
     // we might need to get a result even without having the system ..
     //GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
@@ -564,10 +564,10 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
     {
         // Reconstruct solution coefficients on patch p
-        const int sz  = m_bases[m_system.colBasis(unk)][p].size();
+        const size_t sz  = m_bases[m_system.colBasis(unk)][p].size();
         coeffs.resize(sz, dim);
 
-        for (index_t i = 0; i < sz; ++i)
+        for (size_t i = 0; i < sz; ++i)
         {
             if ( mapper.is_free(i, p) ) // DoF value is in the solVector
             {
@@ -612,13 +612,13 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 
     for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
     {
-        const int sz  = m_bases[basisIndices[0]][p].size(); //must be equal for all unk
+        const size_t sz  = m_bases[basisIndices[0]][p].size(); //must be equal for all unk
         coeffs.resize(sz, dim);
 
         for(index_t unk = 0; unk<dim;++unk)
         {
             // Reconstruct solution coefficients on patch p
-            for (index_t i = 0; i < sz; ++i)
+            for (size_t i = 0; i < sz; ++i)
             {
                 if ( mappers[unk].is_free(i, p) ) // DoF value is in the solVector
                 {
@@ -641,7 +641,7 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 
 template<class T>
 gsField<T> gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
-                                                int unk) const
+                                                index_t unk) const
 {
     typename gsMultiPatch<T>::Ptr result(new gsMultiPatch<T>);
     constructSolution(solVector,*result, unk);
@@ -660,14 +660,14 @@ void gsAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
     for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
     {
         // Update solution coefficients on patch p
-        const int sz  = m_bases[0][p].size();
+        const size_t sz  = m_bases[0][p].size();
 
         gsMatrix<T> & coeffs = result.patch(p).coefs();
 
         for (index_t j = 0; j < m_system.numColBlocks(); ++j)
         {
             const gsDofMapper & mapper = m_system.colMapper(j);
-            for (index_t i = 0; i < sz; ++i)
+            for (size_t i = 0; i < sz; ++i)
             {
                 if ( mapper.is_free(i, p) ) // DoF value is in the solVector
                 {
