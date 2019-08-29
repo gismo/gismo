@@ -63,7 +63,7 @@ void gsAccumulateLocalToGlobal(
 
         for (index_t i = 0; i != rowInd.rows(); ++i) // **
         {
-            const int ii = rgs + rowInd.at(i); // N_i
+            const index_t ii = rgs + rowInd.at(i); // N_i
 
             if ( rowMap.is_free_index(rowInd.at(i)) )
             {
@@ -82,7 +82,7 @@ void gsAccumulateLocalToGlobal(
                         {
                             if ( 0 == localMat(rls+i,cls+j) ) continue;
 
-                            const int jj = cgs + colInd.at(j); // N_j
+                            const index_t jj = cgs + colInd.at(j); // N_j
 
                             if ( colMap.is_free_index(colInd.at(j)) )
                             {
@@ -155,7 +155,7 @@ public:
     /// Constructor
     /// \param _rBlocks Number of spaces for test functions
     /// \param _cBlocks Number of spaces for solution variables
-    gsExprAssembler(int _rBlocks = 1, int _cBlocks = 1)
+    gsExprAssembler(index_t _rBlocks = 1, index_t _cBlocks = 1)
     : m_exprdata(gsExprHelper<T>::make()), m_options(defaultOptions()),
       m_vrow(_rBlocks,nullptr), m_vcol(_cBlocks,nullptr)
     { }
@@ -306,11 +306,11 @@ public:
 
     element getElement() const { return m_element; }
 
-    void computeDirichletDofs2(int unk);
+    void computeDirichletDofs2(index_t unk);
     void computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u);
     void computeDirichletDofsL2Proj(const expr::gsFeSpace<T> & u);
-    void setFixedDofVector(gsMatrix<T> & dof, int unk = 0);
-    void setFixedDofs(const gsMatrix<T> & coefMatrix, int unk = 0, int patch = 0);
+    void setFixedDofVector(gsMatrix<T> & dof, index_t unk = 0);
+    void setFixedDofs(const gsMatrix<T> & coefMatrix, index_t unk = 0, size_t patch = 0);
 
     /// \brief Initializes the sparse system (sparse matrix and rhs)
     void initSystem()
@@ -651,7 +651,7 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
 }
 
 template<class T>
-void gsExprAssembler<T>::computeDirichletDofs2(int unk)
+void gsExprAssembler<T>::computeDirichletDofs2(index_t unk)
 {
     expr::gsFeSpace<T> & u = *m_vcol[unk];
 
@@ -693,8 +693,8 @@ void gsExprAssembler<T>::computeDirichletDofs2(int unk)
     {
         if(it->unknown == unk)
         {
-            const int i  = mbasis[it->patch].functionAtCorner(it->corner);
-            const int ii = mapper.bindex( i , it->patch );
+            const index_t i  = mbasis[it->patch].functionAtCorner(it->corner);
+            const index_t ii = mapper.bindex( i , it->patch );
             u.fixedPart().row(ii).setConstant(it->value);
         }
         else
@@ -704,7 +704,7 @@ void gsExprAssembler<T>::computeDirichletDofs2(int unk)
 }
 
 template<class T>
-void gsExprAssembler<T>::setFixedDofVector(gsMatrix<T> & vals, int unk)
+void gsExprAssembler<T>::setFixedDofVector(gsMatrix<T> & vals, index_t unk)
 {
     expr::gsFeSpace<T> & u = *m_vcol[unk];
     gsMatrix<T>        & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
@@ -717,12 +717,12 @@ void gsExprAssembler<T>::setFixedDofVector(gsMatrix<T> & vals, int unk)
 }
 
 template<class T>
-void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, int patch)
+void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, index_t unk, size_t patch)
 {
     GISMO_ASSERT( m_options.getInt("DirichletValues") == dirichlet::user, "Incorrect options");
 
     expr::gsFeSpace<T> & u = *m_vcol[unk];
-    //const int dirStr = m_options.getInt("DirichletStrategy");
+    //const index_t dirStr = m_options.getInt("DirichletStrategy");
     const gsMultiBasis<T> & mbasis = *dynamic_cast<const gsMultiBasis<T>* >(&(u).source());
 
     //const gsBoundaryConditions<> & bbc = u.hasBc() ? u.bc() : gsBoundaryConditions<>();
@@ -747,7 +747,7 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, i
     for ( typename bcRefList::const_iterator it =  u.bc().dirichletBegin();
           it != u.bc().dirichletEnd()  ; ++it )
     {
-        const int k = it->patch();
+        const index_t k = it->patch();
         if ( k == patch )
         {
             // Get indices in the patch on this boundary
@@ -760,7 +760,7 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, i
             {
                 // Note: boundary.at(i) is the patch-local index of a
                 // control point on the patch
-                const int ii  = mapper.bindex( boundary.at(i) , k );
+                const index_t ii  = mapper.bindex( boundary.at(i) , k );
 
                 fixedDofs.row(ii) = coefMatrix.row(boundary.at(i));
             }
@@ -1005,8 +1005,8 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
          it != iFaces.end(); ++it )
     {
         const boundaryInterface & iFace = *it;
-        const int patch1 = iFace.first() .patch;
-        //const int patch2 = iFace.second().patch;
+        const index_t patch1 = iFace.first() .patch;
+        //const index_t patch2 = iFace.second().patch;
         //const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
 
         QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(patch1),
@@ -1071,7 +1071,7 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u
     {
         const boundary_condition<T> * it = &iit->get();
 
-        const int k = it->patch();
+        const index_t k = it->patch();
         if( it->unknown()!=u.id() )
             continue;
         const gsBasis<T> & basis = mbasis[k];
@@ -1084,21 +1084,21 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u
         {
             for (index_t i=0; i!= boundary.size(); ++i)
             {
-                const int ii= mapper.bindex( boundary.at(i) , k );
+                const index_t ii= mapper.bindex( boundary.at(i) , k );
                 fixedDofs.row(ii).setZero();
             }
             continue;
         }
 
         // Get the side information
-        int dir = it->side().direction( );
+        short_t dir = it->side().direction( );
         index_t param = (it->side().parameter() ? 1 : 0);
 
         // Compute grid of points on the face ("face anchors")
         std::vector< gsVector<T> > rr;
         rr.reserve( parDim );
 
-        for ( int i=0; i < parDim; ++i)
+        for ( short_t i=0; i < parDim; ++i)
         {
             if ( i==dir )
             {
@@ -1143,7 +1143,7 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u
         // Save corresponding boundary dofs
         for (index_t l=0; l!= boundary.size(); ++l)
         {
-            const int ii = mapper.bindex( boundary.at(l) , it->patch() );
+            const index_t ii = mapper.bindex( boundary.at(l) , it->patch() );
 
             fixedDofs.row(ii) = dVals.row(l);
         }
@@ -1180,7 +1180,7 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl3(const expr::gsFeSpace<T> & u
                      "Given Dirichlet boundary function does not match problem dimension."
                      <<it->function()->targetDim()<<" != "<<u.dim()<<"\n");
 
-        const int k   = it->patch();
+        const index_t k   = it->patch();
         if( it->unknown()!=u.id() )
             continue;
         const gsBasis<T> & basis = mbasis[k];
@@ -1193,7 +1193,7 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl3(const expr::gsFeSpace<T> & u
         {
             for (index_t i=0; i!= boundary.size(); ++i)
             {
-                const int ii= mapper.bindex( boundary.at(i) , k );
+                const index_t ii= mapper.bindex( boundary.at(i) , k );
                 fixedDofs.row(ii).setZero();
             }
             continue;
@@ -1270,10 +1270,10 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
     {
         const boundary_condition<T> * iter = &iit->get();
 
-        const int unk = iter->unknown();
+        const index_t unk = iter->unknown();
         if(unk != u.id())
             continue;
-        const int patchIdx   = iter->patch();
+        const index_t patchIdx   = iter->patch();
         const gsBasis<T> & basis = mbasis[patchIdx];
 
         const gsGeometry<T> & patch = mp.patch(patchIdx);
