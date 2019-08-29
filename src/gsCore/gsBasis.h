@@ -742,7 +742,7 @@ public:
     */
 
     /// @brief The number of elements.
-    virtual int numElements() const;
+    virtual size_t numElements() const;
 
     /// @brief The number of elements on side \a s.
     // fixme: default arg = none

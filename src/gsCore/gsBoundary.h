@@ -672,7 +672,7 @@ public:
         }
     }
 
-    boundaryInterface(gsVector<int>     const & p,
+    boundaryInterface(gsVector<short_t>     const & p,
                       gsVector<index_t> const & map_info,
                       gsVector<bool>    const & orient_flags)
     : ps1(p(0),p(1)), ps2(p(2),p(3)),
@@ -696,7 +696,7 @@ public:
         init(_ps1,_ps2,orient_flags);
     }
 
-    GISMO_DEPRECATED boundaryInterface(gsVector<int>     const & p,
+    GISMO_DEPRECATED boundaryInterface(gsVector<short_t>     const & p,
                       gsVector<bool>    const & orient_flags)
     {
         init(patchSide(p(0),boxSide(p(1))),patchSide(p(2),boxSide(p(3))) ,orient_flags);

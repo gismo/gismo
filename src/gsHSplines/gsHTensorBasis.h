@@ -753,11 +753,11 @@ public:
     /// < levels < polylines_in_one_level < x_ll, y_ll, x_ur, y_ur > > >, where "ur" stands for "upper right" and "ll" for "lower left".
     std::vector< std::vector< std::vector< unsigned int > > > domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector< unsigned int > > > >& result) const;
     // TO DO: use gsHDomainLeafIterator for a better implementation
-    int numElements() const
+    size_t numElements() const
     {
         gsHDomainIterator<T, d> domIter(*this);
 
-        int numEl = 0;
+        size_t numEl = 0;
         for (; domIter.good(); domIter.next())
         {
             numEl++;

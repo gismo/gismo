@@ -138,7 +138,7 @@ public:
 
     int size(int const& k) const{ return m_src->size(k); }
 
-    int numElements() const { return m_src->numElements(); }
+    size_t numElements() const { return m_src->numElements(); }
     using Base::numElements; //unhide
     
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const

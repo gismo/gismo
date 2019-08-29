@@ -112,9 +112,9 @@ public:
     }
 
     // Look at gsBasis class for a description
-    int numElements() const 
+    size_t numElements() const
     {
-        int nElem = m_bases[0]->numElements();
+        size_t nElem = m_bases[0]->numElements();
         for (short_t dim = 1; dim < d; ++dim)
             nElem *= m_bases[dim]->numElements();
         return nElem;
