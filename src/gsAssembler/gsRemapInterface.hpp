@@ -248,8 +248,8 @@ void gsRemapInterface<T>::constructBreaks() {
 
 
     // Compute interface knots in physical domain by evaluating left and right geometry maps at the knot values
-    int numelP1 = domIt1->numElements();
-    int numelP2 = domIt2->numElements();
+    size_t numelP1 = domIt1->numElements();
+    size_t numelP2 = domIt2->numElements();
     gsMatrix <T> physicalKnotsP1(m_g1.geoDim(), numelP1 + 1), physicalKnotsP2(m_g2.geoDim(), numelP2 + 1), dummy;
 
     domIt1->reset();

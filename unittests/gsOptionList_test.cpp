@@ -95,7 +95,7 @@ SUITE(gsOptionList_test)
     TEST(get_items_from_empty_list_and_throw_exception)
     {
         gsOptionList myList;
-        CHECK_EQUAL(0, myList.size());
+        CHECK_EQUAL(0u, myList.size());
         UnitTest::deactivate_output();
         CHECK_THROW_IN_DEBUG(myList.getString(LABEL_STR_1), std::exception);
         UnitTest::reactivate_output();

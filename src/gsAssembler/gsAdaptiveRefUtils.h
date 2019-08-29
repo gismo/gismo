@@ -258,7 +258,7 @@ void gsRefineMarkedElements(gsMultiBasis<T> & basis,
     for (size_t pn=0; pn < basis.nBases(); ++pn )// for all patches
     {
         // Get number of elements to be refined on this patch
-        const int numEl = basis[pn].numElements();
+        const size_t numEl = basis[pn].numElements();
         numMarked = std::count_if(elMarked.begin() + poffset,
                                   elMarked.begin() + poffset + numEl,
                                   std::bind2nd(std::equal_to<bool>(), true) );

@@ -121,10 +121,10 @@ public:
     }
 
     // Look at gsBasis class for a description
-    int numElements(boxSide const & s) const
+    size_t numElements(boxSide const & s) const
     {
-        const index_t dir =  s.direction();
-        int nElem = 1;
+        const short_t dir =  s.direction();
+        size_t nElem = 1;
         for (short_t dim = 0; dim < d; ++dim)
         {
             if(dim == dir)
@@ -135,11 +135,11 @@ public:
     }
 
     // Look at gsBasis class for a description
-    int elementIndex(const gsVector<T> & u ) const
+    size_t elementIndex(const gsVector<T> & u ) const
     {
         GISMO_ASSERT( u.rows() == d, "Wrong vector dimension");
 
-        int ElIndex = m_bases[d-1]->elementIndex( u.col(d-1) );
+        size_t ElIndex = m_bases[d-1]->elementIndex( u.col(d-1) );
         for ( short_t i=d-2; i>=0; --i )
             ElIndex = ElIndex * m_bases[i]->numElements() 
                     + m_bases[i]->elementIndex( u.col(i) );

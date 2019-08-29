@@ -169,10 +169,10 @@ public:
     using Base::numElements; //unhide
 
     // Look at gsBasis class for a description
-    int elementIndex(const gsVector<T> & u ) const;
+    size_t elementIndex(const gsVector<T> & u ) const;
 
     // Same as gsBasis::elementIndex but argument is a value instead of a vector
-    int elementIndex(T u ) const;
+    size_t elementIndex(T u ) const;
 
     /// @brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.

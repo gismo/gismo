@@ -141,7 +141,7 @@ struct boundary_condition
     const std::string & ctype() const { return m_label; }
 
     /// Returns the patch to which this boundary condition refers to
-    size_t     patch()    const { return ps.patch; }
+    index_t patch()    const { return ps.patch; }
 
     /// Returns the side to which this boundary condition refers to
     boxSide side()     const { return ps.side(); }

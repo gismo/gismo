@@ -49,13 +49,13 @@ gsTensorBSplineBasis<1,T>::New(std::vector<gsBasis<T>*> & bb )
 }
 
 template <class T>
-int gsTensorBSplineBasis<1,T>::elementIndex(const gsVector<T> & u ) const
+size_t gsTensorBSplineBasis<1,T>::elementIndex(const gsVector<T> & u ) const
 {
     return m_knots.uFind(u(0,0)).uIndex();
 }
 
 template <class T>
-int gsTensorBSplineBasis<1,T>::elementIndex(T u ) const
+size_t gsTensorBSplineBasis<1,T>::elementIndex(T u ) const
 {
     return m_knots.uFind( u ).uIndex();
 }
