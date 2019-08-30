@@ -191,7 +191,7 @@ public:
 
     /// \brief Returns the dimension of the physical domain
     /// (e.g., if the domain is a surface in three-dimensional space, it returns 3).
-    int dim() const { return m_fields->targetDim(); }
+    short_t dim() const { return m_fields->targetDim(); }
 
     /// Returns the number of patches.
     GISMO_DEPRECATED index_t nPatches()  const { return m_patches->nPieces(); }

@@ -49,7 +49,7 @@ void gsFitting<T>::compute(T lambda)
         delete m_result;
 
     const int num_basis=m_basis->size();
-    const int dimension=m_points.cols();
+    const short_t dimension=m_points.cols();
 
     //left side matrix
     //gsMatrix<T> A_mat(num_basis,num_basis);

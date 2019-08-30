@@ -23,7 +23,7 @@ namespace gismo
 template <typename T>
 const gsGeometry<T> & gsSpringPatch<T>::compute()
 {
-    const int dim = m_boundary.dim();
+    const short_t dim = m_boundary.dim();
 
     delete m_result;
     m_result = NULL;

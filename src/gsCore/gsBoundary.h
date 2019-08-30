@@ -246,7 +246,7 @@ public:
      * @param dim is the ambient dimension
      * @param corners
      */
-    void getContainedCorners (int dim, std::vector<patchCorner> &corners) const;
+    void getContainedCorners (short_t dim, std::vector<patchCorner> &corners) const;
 
     using boxSide::getContainedCorners; // unhiding
 };
@@ -652,7 +652,7 @@ public:
     //
     boundaryInterface(patchSide const & _ps1,
                       patchSide const & _ps2,
-                      int dim)
+                      short_t dim)
         : ps1(_ps1), ps2(_ps2)
     {
         directionMap.resize(dim);

@@ -20,7 +20,7 @@ namespace gismo
 {
 
 template<class T> void
-gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, short_t fixDir)
+gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const index_t quB, short_t fixDir)
 //const unsigned digits)
 {
     const short_t d  = basis.dim();
@@ -60,7 +60,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, short
     //}
     //else
     //{
-    //    for( int i=0; i<d; ++i )
+    //    for( short_t i=0; i<d; ++i )
     //    {
     //        const index_t numNodes = quA * basis.degree(i) + quB;
     //        computeReference(numNodes, nodes[i], weights[i], digits);
@@ -72,7 +72,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, short
 
 template<class T>
 gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, 
-                            const T quA, const int quB,
+                            const T quA, const index_t quB,
                             const short_t fixDir)
 //const unsigned digits)
 {

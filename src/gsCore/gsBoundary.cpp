@@ -32,7 +32,7 @@ void boxSide::getContainedCorners(short_t dim, std::vector<boxCorner> &corners) 
     }
 }
 
-void patchSide::getContainedCorners(int dim, std::vector<patchCorner> &corners) const
+void patchSide::getContainedCorners(short_t dim, std::vector<patchCorner> &corners) const
 {
     std::vector<boxCorner> tmp;
     boxSide::getContainedCorners(dim, tmp);

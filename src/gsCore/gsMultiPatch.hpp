@@ -433,7 +433,7 @@ bool gsMultiPatch<T>::matchVerticesOnSide (
     const bool computeOrientation = !(start&(start-1)) && (start != 0); // true if start is a power of 2
     const bool setReference       = start==0;          // if we search for the first point then we set the reference
 
-    const int dim = cc1.rows();
+    const short_t dim = cc1.rows();
 
     index_t o_dir = 0, d_dir = 0;
 

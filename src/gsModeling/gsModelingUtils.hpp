@@ -404,8 +404,8 @@ gsBSpline<T> gsInterpolate(gsKnotVector<T> & kv,const gsMatrix<T> & preImage,
     gsMatrix<T> *Q = innerProduct2(bs, bs);
 
     // Exact constraints: point interpolation
-    int dimPI = 1; // dimension of space of preImage, TODO: put dimPI, dimI to template<dimPI,...
-    int dimI = 2;  // dimension of space of image
+    short_t dimPI = 1; // dimension of space of preImage, TODO: put dimPI, dimI to template<dimPI,...
+    short_t dimI = 2;  // dimension of space of image
     GISMO_UNUSED(dimPI);
     int nip = image.cols(); // number of interpolating points
     int nn=normal.cols(); // number of prescribed normals

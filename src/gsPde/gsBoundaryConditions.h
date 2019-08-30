@@ -147,10 +147,10 @@ struct boundary_condition
     boxSide side()     const { return ps.side(); }
 
     /// Returns the unknown to which this boundary condition refers to
-    int     unknown()  const { return m_unknown; }
+    index_t     unknown()  const { return m_unknown; }
 
     /// Returns the component of the unknown which this boundary condition refers to
-    int     unkComponent()  const { return m_unkcomp; }
+    index_t     unkComponent()  const { return m_unkcomp; }
 
     /// Returns true if the function data for this boundary condition
     /// is defined in parametric coordinates
@@ -167,9 +167,9 @@ struct boundary_condition
 
     std::string m_label;         ///< Description of type of the boundary condition
 
-    int m_unknown;               ///< Unknown to which this boundary condition refers to
+    index_t m_unknown;               ///< Unknown to which this boundary condition refers to
 
-    int m_unkcomp;               ///< Component of unknown to which this boundary condition refers to
+    index_t m_unkcomp;               ///< Component of unknown to which this boundary condition refers to
 
     bool m_parametric;
 };
@@ -180,13 +180,13 @@ struct boundary_condition
 template<class T>
 struct corner_value
 {
-    corner_value(int p, boxCorner c, T v, int unk = 0)
+    corner_value(index_t p, boxCorner c, T v, index_t unk = 0)
         : patch(p), corner(c), value(v), unknown(unk) { }
 
-    size_t patch;     ///< The index of the patch.
+    index_t patch;     ///< The index of the patch.
     boxCorner corner; ///< The corner
     T value;          ///< The value
-    int   unknown;    ///< Unknown to which this boundary condition refers to
+    index_t   unknown;    ///< Unknown to which this boundary condition refers to
 };
 
 /** @brief
@@ -602,7 +602,7 @@ public:
      * @param[in] np the patch index
      * @param[out] result the new set of boundary conditions
      */
-    void getConditionsForPatch(const size_t np, gsBoundaryConditions& result) const
+    void getConditionsForPatch(const index_t np, gsBoundaryConditions& result) const
     {
         result.clear();
         bcContainer bc_all = allConditions(); //inefficient, but fewer code
@@ -653,7 +653,7 @@ public:
     { return m_periodicPairs.end(); }
 
     /// Add a periodic condition between side \a s1 of box \a p1 and side \a s2 of box \a p2.
-    void addPeriodic(int p1, boxSide s1, int p2, boxSide s2, int dim)
+    void addPeriodic(int p1, boxSide s1, int p2, boxSide s2, short_t dim)
     { m_periodicPairs.push_back( boundaryInterface(patchSide(p1,s1), patchSide(p2,s2), dim) ); }
 
     /// Removes all periodic pairs
@@ -664,7 +664,7 @@ public:
     { m_trMatrix = trMatrix; }
 
     /// Set identity transformation matrix for the periodic pairs of sides
-    void setIdentityMatrix(int dim)
+    void setIdentityMatrix(short_t dim)
     { m_trMatrix = gsMatrix<T>::Identity(dim, dim); }
 
     /// Get transformation matrix for the periodic pairs of sides

@@ -24,7 +24,7 @@ namespace gismo
 template <typename T> const
 gsGeometry<T> & gsCoonsPatch<T>::compute()
 {
-    const int dim = m_boundary.parDim();
+    const short_t dim = m_boundary.parDim();
 
     delete m_result;// delete any previous result
     m_result = NULL;

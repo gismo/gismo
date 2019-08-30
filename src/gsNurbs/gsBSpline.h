@@ -307,7 +307,7 @@ public:
             assert( p.cols()==1 );
             gsBSplineSolver<T> slv;
             std::vector<T> roots;
-            int dim = this->geoDim();
+            short_t dim = this->geoDim();
             gsMatrix<T> ev, tmp(1,1);
             int i(1);
 

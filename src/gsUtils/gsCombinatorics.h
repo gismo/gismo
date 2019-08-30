@@ -653,7 +653,7 @@ inline bool nextComposition(Vec & v)
 
 /// \brief Number of compositions of \a sum into \a dim integers
 /// \ingroup combinatorics
-inline unsigned numCompositions(int sum, int dim)
+inline unsigned numCompositions(int sum, short_t dim)
 {
     return binomial(sum+dim-1,dim-1);
 }

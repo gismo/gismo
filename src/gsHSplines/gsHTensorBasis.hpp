@@ -1258,7 +1258,7 @@ void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<unsigned> 
     for(size_t i = 1; i < m_bases.size(); ++i)
     {
         //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
-        for(unsigned int dim = 0; dim != d; ++dim)
+        for(short_t dim = 0; dim != d; ++dim)
         {
             const gsKnotVector<T> & ckv = m_bases[i-1]->knots(dim);
             const gsKnotVector<T> & fkv = m_bases[i  ]->knots(dim);

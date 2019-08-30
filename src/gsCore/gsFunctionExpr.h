@@ -138,7 +138,7 @@ public:
 private:
 
     // initializes the symbol table
-    void init(const int dim);
+    void init(const short_t dim);
 
 public:
 
