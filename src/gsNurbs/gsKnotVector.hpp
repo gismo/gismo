@@ -639,7 +639,7 @@ void gsKnotVector<T>::initUniform( T first,
     }
 
     m_repKnots.insert(m_repKnots.end(), mult_ends, first);
-    m_multSum .push_back(mult_ends + (m_multSum.size() == 0 ? 0 : m_multSum.back()));
+    m_multSum .push_back(mult_ends + (m_multSum.empty() ? 0 : m_multSum.back()));
 
     for( unsigned i=1; i<=interior; ++i)
     {
