@@ -194,7 +194,7 @@ public:
     }
 
     /// Stiffness assembly routine on patch \a patchIndex
-    const gsSparseMatrix<T> & assembleMass(int patchIndex)
+    const gsSparseMatrix<T> & assembleMass(index_t patchIndex)
     {
         gsGenericAssembler<T> tmp(m_pde.patches().patch(patchIndex), 
                                   m_bases[patchIndex], m_options);
@@ -204,7 +204,7 @@ public:
     }
 
     /// Stiffness assembly routine on patch \a patchIndex
-    const gsSparseMatrix<T> & assembleStiffness(int patchIndex)
+    const gsSparseMatrix<T> & assembleStiffness(index_t patchIndex)
     {
         gsGenericAssembler<T> tmp(m_pde.patches().patch(patchIndex), 
                                   m_bases[patchIndex],  m_options);
