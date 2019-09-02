@@ -104,7 +104,7 @@ private:
     std::pair<gsMatrix<T>, gsMatrix<T> > m_parameterbounds;
 
     // Member to enrich a matrix of 1D points to a matrix of m_domain.geoDim() points
-    void enrichToVector(const int boundarySide, const gsGeometry<T> & geo, const gsMatrix<T> & intervals, gsMatrix<T> & pts);
+    void enrichToVector(const short_t boundarySide, const gsGeometry<T> & geo, const gsMatrix<T> & intervals, gsMatrix<T> & pts);
 
     // Find the interface between the two incoming patches
     void findInterface();

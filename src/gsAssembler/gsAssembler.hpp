@@ -112,8 +112,8 @@ void gsAssembler<T>::scalarProblemGalerkinRefresh()
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper mapper;
     m_bases.front().getMapper(
-        (dirichlet::strategy)(m_options.getInt("DirichletStrategy")),
-        (iFace::strategy)(m_options.getInt("InterfaceStrategy")),
+        static_cast<dirichlet::strategy>(m_options.getInt("DirichletStrategy")),
+        static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
         this->pde().bc(), mapper, 0);
 
     if ( 0 == mapper.freeSize() ) // Are there any interior dofs ?

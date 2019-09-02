@@ -99,7 +99,7 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
           Jk.col(dir) = result.normalized();
           gsMatrix<T, ParDim, md.dim.first> minor;
           T alt_sgn = sgn;
-          for (int i = 0; i != GeoDim; ++i) // for all components of the normal
+          for (short_t i = 0; i != GeoDim; ++i) // for all components of the normal
           {
           Jk.rowMinor(i, minor);
           result[i] = alt_sgn * minor.determinant();
@@ -527,7 +527,7 @@ public:  /* Dirichlet degrees of freedom computation */
             m_ddof[unk].setZero();
     }
 
-    // index_t numFixedDofs(int unk = 0) {return m_dofMappers[unk].boundarySize();}
+    // index_t numFixedDofs(index_t unk = 0) {return m_dofMappers[unk].boundarySize();}
 
     /// @brief Returns all the Dirichlet values (if applicable)
     const std::vector<gsMatrix<T> > & allFixedDofs() const { return m_ddof; }
