@@ -74,7 +74,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
         //gsInfo << "the follwing patches match: " << m_g1.id() << " and " << m_g2.id() << "\n";
 
         switch (m_side1.index()) {
-            case boundary::side::west:
+            case 1:
                 m_parameterbounds.first.row(1) = mp[bi.first().patch].parameterRange().row(1);
                 m_parameterbounds.first(0, 0) = //mp[bi.first().patch].parameterRange()(0, 0);
                 m_parameterbounds.first(0, 1) = mp[bi.first().patch].parameterRange()(0, 0);
@@ -83,7 +83,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
                     m_parameterbounds.first.row(2) = mp[bi.first().patch].parameterRange().row(2);
 
                 break;
-            case boundary::side::east:
+            case 2:
                 m_parameterbounds.first.row(1) = mp[bi.first().patch].parameterRange().row(1);
                 m_parameterbounds.first(0, 0) = //mp[bi.first().patch].parameterRange()(0, 1);
                 m_parameterbounds.first(0, 1) = mp[bi.first().patch].parameterRange()(0, 1);
@@ -92,7 +92,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
                     m_parameterbounds.first.row(2) = mp[bi.first().patch].parameterRange().row(2);
 
                 break;
-            case boundary::side::south:
+            case 3:
                 m_parameterbounds.first.row(0) = mp[bi.first().patch].parameterRange().row(0);
                 m_parameterbounds.first(1, 0) = //mp[bi.first().patch].parameterRange()(1, 0);
                 m_parameterbounds.first(1, 1) = mp[bi.first().patch].parameterRange()(1, 0);
@@ -101,7 +101,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
                     m_parameterbounds.first.row(2) = mp[bi.first().patch].parameterRange().row(2);
 
                 break;
-            case boundary::side::north:
+            case 4:
                 m_parameterbounds.first.row(0) = mp[bi.first().patch].parameterRange().row(0);
                 m_parameterbounds.first(1, 0) = //mp[bi.first().patch].parameterRange()(1, 1);
                 m_parameterbounds.first(1, 1) = mp[bi.first().patch].parameterRange()(1, 1);
@@ -110,13 +110,13 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
                     m_parameterbounds.first.row(2) = mp[bi.first().patch].parameterRange().row(2);
 
                 break;
-            case boundary::side::front: // for 3D case
+            case 5: // for 3D case
                 m_parameterbounds.first.row(0) = mp[bi.first().patch].parameterRange().row(0);
                 m_parameterbounds.first.row(1) = mp[bi.first().patch].parameterRange().row(1);
                 m_parameterbounds.first(2, 0) = //mp[bi.first().patch].parameterRange()(2, 0);
                 m_parameterbounds.first(2, 1) = mp[bi.first().patch].parameterRange()(2, 0);
                 break;
-            case boundary::side::back: // for 3D case
+            case 6: // for 3D case
                 m_parameterbounds.first.row(0) = mp[bi.first().patch].parameterRange().row(0);
                 m_parameterbounds.first.row(1) = mp[bi.first().patch].parameterRange().row(1);
                 m_parameterbounds.first(2, 0) = //mp[bi.first().patch].parameterRange()(2, 1);
@@ -126,7 +126,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
 
         switch (m_side2.index()) {
 
-            case boundary::side::west:
+            case 1:
                 m_parameterbounds.second.row(1) = mp[bi.second().patch].parameterRange().row(1);
                 m_parameterbounds.second(0, 0) = //mp[bi.second().patch].parameterRange()(0, 0);
                 m_parameterbounds.second(0, 1) = mp[bi.second().patch].parameterRange()(0, 0);
@@ -135,7 +135,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
                     m_parameterbounds.second.row(2) = mp[bi.second().patch].parameterRange().row(2);
 
                 break;
-            case boundary::side::east:
+            case 2:
                 m_parameterbounds.second.row(1) = mp[bi.second().patch].parameterRange().row(1);
                 m_parameterbounds.second(0, 0) = //mp[bi.second().patch].parameterRange()(0, 1);
                 m_parameterbounds.second(0, 1) = mp[bi.second().patch].parameterRange()(0, 1);
@@ -144,7 +144,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
                     m_parameterbounds.second.row(2) = mp[bi.second().patch].parameterRange().row(2);
 
                 break;
-            case boundary::side::south:
+            case 3:
                 m_parameterbounds.second.row(0) = mp[bi.second().patch].parameterRange().row(0);
                 m_parameterbounds.second(1, 0) = //mp[bi.second().patch].parameterRange()(1, 0);
                 m_parameterbounds.second(1, 1) = mp[bi.second().patch].parameterRange()(1, 0);
@@ -153,7 +153,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
                     m_parameterbounds.second.row(2) = mp[bi.second().patch].parameterRange().row(2);
 
                 break;
-            case boundary::side::north:
+            case 4:
                 m_parameterbounds.second.row(0) = mp[bi.second().patch].parameterRange().row(0);
                 m_parameterbounds.second(1, 0) = //mp[bi.second().patch].parameterRange()(1, 1);
                 m_parameterbounds.second(1, 1) = mp[bi.second().patch].parameterRange()(1, 1);
@@ -162,13 +162,13 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
                     m_parameterbounds.second.row(2) = mp[bi.second().patch].parameterRange().row(2);
 
                 break;
-            case boundary::side::front: // for 3D case
+            case 5: // for 3D case
                 m_parameterbounds.second.row(0) = mp[bi.second().patch].parameterRange().row(0);
                 m_parameterbounds.second.row(1) = mp[bi.second().patch].parameterRange().row(1);
                 m_parameterbounds.second(2, 0) = //mp[bi.second().patch].parameterRange()(2, 0);
                 m_parameterbounds.second(2, 1) = mp[bi.second().patch].parameterRange()(2, 0);
                 break;
-            case boundary::side::back: // for 3D case
+            case 6: // for 3D case
                 m_parameterbounds.second.row(0) = mp[bi.second().patch].parameterRange().row(0);
                 m_parameterbounds.second.row(1) = mp[bi.second().patch].parameterRange().row(1);
                 m_parameterbounds.second(2, 0) = //mp[bi.second().patch].parameterRange()(2, 1);
@@ -256,8 +256,7 @@ void gsRemapInterface<T>::constructBreaks() {
     // loop over all elements of the boundary with interface part, but evaluate only element corners on the real interface
     for (; domIt1->good(); domIt1->next())
     {
-        if(m_side1.index() == boundary::side::south ||
-           m_side1.index() == boundary::side::north) // v is fix
+        if(m_side1.index() == 3 || m_side1.index() == 4) // v is fix
         {
             if(domIt1->lowerCorner()(0,0) > startPatch1(0,0) && domIt1->lowerCorner()(0,0) <= m_parameterbounds.first(0,1))
             {
@@ -274,8 +273,7 @@ void gsRemapInterface<T>::constructBreaks() {
         }
         else
         {
-            if(m_side1.index() == boundary::side::west ||
-               m_side1.index() == boundary::side::east) // u is fix
+            if(m_side1.index() == 1 || m_side1.index() == 2) // u is fix
             {
                 if(domIt1->lowerCorner()(1,0) > startPatch1(1,0) && domIt1->lowerCorner()(1,0) <= m_parameterbounds.first(1,1))
                 {
@@ -300,8 +298,7 @@ void gsRemapInterface<T>::constructBreaks() {
     }
 
     // evaluate the last point of the interface, i.e., this last point must also be within the parameter bound
-    if(m_side1.index() == boundary::side::south ||
-       m_side1.index() == boundary::side::north)
+    if(m_side1.index() == 3 || m_side1.index() == 4)
     {
         if(domIt1->upperCorner()(0,0) <= m_parameterbounds.first(0,1))
         {
@@ -312,8 +309,7 @@ void gsRemapInterface<T>::constructBreaks() {
     }
     else
     {
-        if(m_side1.index() == boundary::side::west ||
-           m_side1.index() == boundary::side::east)
+        if(m_side1.index() == 1 || m_side1.index() == 2)
         {
             if(domIt1->upperCorner()(1,0) <= m_parameterbounds.first(1,1))
             {
@@ -333,8 +329,7 @@ void gsRemapInterface<T>::constructBreaks() {
 
     for (; domIt2->good(); domIt2->next()) // for (index_t i = 0; i < numelP2; i++)
     {
-        if(m_side2.index() == boundary::side::south ||
-           m_side2.index() == boundary::side::north)
+        if(m_side2.index() == 3 || m_side2.index() == 4)
         {
             if (domIt2->lowerCorner()(0,0) > startPatch2(0,0) && domIt2->lowerCorner()(0,0) < std::max(m_parameterbounds.second(0,1), m_parameterbounds.second(0,0)))
             {
@@ -345,8 +340,7 @@ void gsRemapInterface<T>::constructBreaks() {
         }
         else
         {
-            if(m_side2.index() == boundary::side::west ||
-               m_side2.index() == boundary::side::east)
+            if(m_side2.index() == 1 || m_side2.index() == 2)
             {
                 if (domIt2->lowerCorner()(1,0) > startPatch2(1,0) && domIt2->lowerCorner()(1,0) < std::max(m_parameterbounds.second(1,1), m_parameterbounds.second(1,0)))
                 {
@@ -360,8 +354,7 @@ void gsRemapInterface<T>::constructBreaks() {
     }
 
     // add only the breakpoints within the parameter bounds
-    if(m_side2.index() == boundary::side::south ||
-       m_side2.index() == boundary::side::north)
+    if(m_side2.index() == 3 || m_side2.index() == 4)
     {
         if(domIt2->upperCorner()(0,0) <= std::max(m_parameterbounds.second(0,1), m_parameterbounds.second(0,0)))
         {
@@ -372,8 +365,7 @@ void gsRemapInterface<T>::constructBreaks() {
     }
     else
     {
-        if(m_side2.index() == boundary::side::west ||
-           m_side2.index() == boundary::side::east)
+        if(m_side2.index() == 1 || m_side2.index() == 2)
         {
             if(domIt2->upperCorner()(1,0) <= std::max(m_parameterbounds.second(1,1), m_parameterbounds.second(1,0)))
             {
