@@ -23,7 +23,7 @@ template<class T> void
 gsLobattoRule<T>::setNodes( gsVector<index_t> const & numNodes,
                             unsigned digits)
 {
-    const index_t d = numNodes.rows();
+    const short_t d = static_cast<short_t>(numNodes.rows());
     static const T epsilon = std::pow(10.0, -REAL_DIG * 0.85);
     // Get base rule nodes and weights
     std::vector<gsVector<T> > nodes(d);
@@ -31,7 +31,7 @@ gsLobattoRule<T>::setNodes( gsVector<index_t> const & numNodes,
 
     if (digits == 0)
     {
-        for (index_t i = 0; i < d; ++i)
+        for (short_t i = 0; i < d; ++i)
         {
             if (!lookupReference(numNodes[i], nodes[i], weights[i]))
                 computeReference(numNodes[i], nodes[i], weights[i], REAL_DIG);
@@ -41,7 +41,7 @@ gsLobattoRule<T>::setNodes( gsVector<index_t> const & numNodes,
     }
     else
     {
-        for (index_t i = 0; i < d; ++i)
+        for (short_t i = 0; i < d; ++i)
         {
             computeReference(numNodes[i], nodes[i], weights[i], digits);
             if (1!=numNodes[i])

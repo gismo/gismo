@@ -67,7 +67,7 @@ template<class T> void
 gsQuadRule<T>::computeTensorProductRule(const std::vector<gsVector<T> > & nodes,
                                         const std::vector<gsVector<T> > & weights)
 {
-    const size_t d  = nodes.size();
+    const short_t d  = static_cast<short_t>(nodes.size());
     GISMO_ASSERT( static_cast<size_t>(d) == weights.size(),
                   "Nodes and weights do not agree." );
 
@@ -75,7 +75,7 @@ gsQuadRule<T>::computeTensorProductRule(const std::vector<gsVector<T> > & nodes,
     gsPointGrid(nodes, m_nodes);
 
     gsVector<index_t> numNodes(d);
-    for( size_t i=0; i<d; ++i )
+    for( short_t i=0; i<d; ++i )
         numNodes[i] = weights[i].rows();
 
     GISMO_ASSERT( m_nodes.cols() == numNodes.prod(),
@@ -88,7 +88,7 @@ gsQuadRule<T>::computeTensorProductRule(const std::vector<gsVector<T> > & nodes,
     curr.setZero();
     do {
         m_weights[r] = weights[0][curr[0]];
-        for (size_t i=1; i<d; ++i)
+        for (short_t i=1; i<d; ++i)
             m_weights[r] *= weights[i][curr[i]];
         ++r;
     } while (nextLexicographic(curr, numNodes));

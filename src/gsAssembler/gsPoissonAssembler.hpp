@@ -51,17 +51,11 @@ void gsPoissonAssembler<T>::assemble()
 
     switch (m_options.getInt("DirichletStrategy"))
     {
-        case dirichlet::elimination:
-            break;
         case dirichlet::penalize:
             Base::penalizeDirichletDofs();
             break;
         case dirichlet::nitsche:
             Base::template push<gsVisitorNitsche<T> >(m_pde_ptr->bc().dirichletSides());
-            break;
-        case dirichlet::eliminatNormal:
-            break;
-        case dirichlet::none:
             break;
         default:
             break;

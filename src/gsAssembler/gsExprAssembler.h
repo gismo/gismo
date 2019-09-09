@@ -306,11 +306,11 @@ public:
 
     element getElement() const { return m_element; }
 
-    void computeDirichletDofs2(index_t unk);
+    void computeDirichletDofs2(short_t unk);
     void computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u);
     void computeDirichletDofsL2Proj(const expr::gsFeSpace<T> & u);
-    void setFixedDofVector(gsMatrix<T> & dof, index_t unk = 0);
-    void setFixedDofs(const gsMatrix<T> & coefMatrix, index_t unk = 0, size_t patch = 0);
+    void setFixedDofVector(gsMatrix<T> & dof, short_t unk = 0);
+    void setFixedDofs(const gsMatrix<T> & coefMatrix, short_t unk = 0, size_t patch = 0);
 
     /// \brief Initializes the sparse system (sparse matrix and rhs)
     void initSystem()
@@ -651,7 +651,7 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
 }
 
 template<class T>
-void gsExprAssembler<T>::computeDirichletDofs2(index_t unk)
+void gsExprAssembler<T>::computeDirichletDofs2(short_t unk)
 {
     expr::gsFeSpace<T> & u = *m_vcol[unk];
 
@@ -704,7 +704,7 @@ void gsExprAssembler<T>::computeDirichletDofs2(index_t unk)
 }
 
 template<class T>
-void gsExprAssembler<T>::setFixedDofVector(gsMatrix<T> & vals, index_t unk)
+void gsExprAssembler<T>::setFixedDofVector(gsMatrix<T> & vals, short_t unk)
 {
     expr::gsFeSpace<T> & u = *m_vcol[unk];
     gsMatrix<T>        & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
@@ -717,7 +717,7 @@ void gsExprAssembler<T>::setFixedDofVector(gsMatrix<T> & vals, index_t unk)
 }
 
 template<class T>
-void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, index_t unk, size_t patch)
+void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t unk, size_t patch)
 {
     GISMO_ASSERT( m_options.getInt("DirichletValues") == dirichlet::user, "Incorrect options");
 
@@ -1270,7 +1270,7 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
     {
         const boundary_condition<T> * iter = &iit->get();
 
-        const index_t unk = iter->unknown();
+        const short_t unk = iter->unknown();
         if(unk != u.id())
             continue;
         const index_t patchIdx   = iter->patch();
