@@ -124,7 +124,7 @@ void gsAssembler<T>::scalarProblemGalerkinRefresh()
 }
 
 template<class T>
-void gsAssembler<T>::penalizeDirichletDofs(index_t unk)
+void gsAssembler<T>::penalizeDirichletDofs(short_t unk)
 {
     GISMO_ASSERT( m_options.getInt("DirichletStrategy")
                   == dirichlet::penalize, "Incorrect options");
@@ -175,7 +175,7 @@ void gsAssembler<T>::penalizeDirichletDofs(index_t unk)
 }
 
 template<class T>
-void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, index_t unk, size_t patch)
+void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t unk, size_t patch)
 {
     GISMO_ASSERT( m_options.getInt("DirichletValues") == dirichlet::user, "Incorrect options");
 
@@ -218,7 +218,7 @@ void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, index_t unk, s
 }
 
 template<class T>
-void gsAssembler<T>::setFixedDofVector(gsMatrix<T> vals, index_t unk)
+void gsAssembler<T>::setFixedDofVector(gsMatrix<T> vals, short_t unk)
 {
    if(m_ddof.size()==0)
        m_ddof.resize(m_system.numColBlocks());
@@ -231,7 +231,7 @@ void gsAssembler<T>::setFixedDofVector(gsMatrix<T> vals, index_t unk)
 
 
 template<class T>
-void gsAssembler<T>::computeDirichletDofs(index_t unk)
+void gsAssembler<T>::computeDirichletDofs(short_t unk)
 {
     //if ddof-size is not set
     //fixme: discuss if this is really the right place for this.
@@ -316,7 +316,7 @@ void gsAssembler<T>::computeDirichletDofs(index_t unk)
 template<class T> //
 void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
                                                const gsMultiBasis<T> & mbasis,
-                                               const index_t unk_)
+                                               const short_t unk_)
 {
     m_ddof[unk_].resize(mapper.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols());
 
@@ -395,7 +395,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
 template<class T>
 void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
                                                 const gsMultiBasis<T> & ,
-                                                const index_t unk_)
+                                                const short_t unk_)
 {
     m_ddof[unk_].resize( mapper.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
 
@@ -428,7 +428,7 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
                      "Given Dirichlet boundary function does not match problem dimension."
                      <<iter->function()->targetDim()<<" != "<<m_system.unkSize(unk_)<<"\n");
 
-        const index_t unk = iter->unknown();
+        const short_t unk = iter->unknown();
         if(unk!=unk_)
             continue;
         const index_t patchIdx   = iter->patch();
@@ -540,7 +540,7 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
 
 template<class T>
 void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
-                                       gsMultiPatch<T>& result, index_t unk) const
+                                       gsMultiPatch<T>& result, short_t unk) const
 {
     // we might need to get a result even without having the system ..
     //GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
@@ -596,18 +596,18 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     GISMO_ASSERT(solVector.cols()==1, "Vector valued output only works for single rhs");
     index_t idx;
 
-    const index_t dim = unknowns.rows();
+    const short_t dim = unknowns.rows();
 
     // fixme: based on \a m_options and \a unk choose the right dof mapper
     std::vector<gsDofMapper> mappers(dim);
-    for(index_t unk = 0; unk<dim;++unk)
+    for(short_t unk = 0; unk<dim;++unk)
         mappers[unk] = m_system.colMapper(unknowns[unk]);
 
     result.clear(); // result is cleared first
 
     gsMatrix<T> coeffs;
     gsVector<index_t> basisIndices(dim);
-    for(index_t unk = 0; unk<dim;++unk)
+    for(short_t unk = 0; unk<dim;++unk)
         basisIndices[unk] = m_system.colBasis(unknowns[unk]);
 
     for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
@@ -615,7 +615,7 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
         const size_t sz  = m_bases[basisIndices[0]][p].size(); //must be equal for all unk
         coeffs.resize(sz, dim);
 
-        for(index_t unk = 0; unk<dim;++unk)
+        for(short_t unk = 0; unk<dim;++unk)
         {
             // Reconstruct solution coefficients on patch p
             for (size_t i = 0; i < sz; ++i)
@@ -641,7 +641,7 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 
 template<class T>
 gsField<T> gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
-                                                index_t unk) const
+                                                short_t unk) const
 {
     typename gsMultiPatch<T>::Ptr result(new gsMultiPatch<T>);
     constructSolution(solVector,*result, unk);

@@ -495,28 +495,28 @@ public:  /* Dirichlet degrees of freedom computation */
 
     /// @brief Triggers computation of the Dirichlet dofs
     /// \param[in] unk the considered unknown
-    void computeDirichletDofs(index_t unk = 0);
+    void computeDirichletDofs(short_t unk = 0);
 
     /// @brief the user can manually set the dirichlet Dofs for a given patch and
     /// unknown, based on the Basis coefficients
     /// \param[in] coefMatrix the coefficients of the function
     /// \param[in] unk the consideren unknown
     /// \param[in] patch the patch index
-    void setFixedDofs(const gsMatrix<T> & coefMatrix, index_t unk = 0, size_t patch = 0);
+    void setFixedDofs(const gsMatrix<T> & coefMatrix, short_t unk = 0, size_t patch = 0);
 
     /// @brief the user can manually set the dirichlet Dofs for a given patch and
     /// unknown.
     /// \param[in] vals the values of the eliminated dofs.
     /// \param[in] unk the considered unknown
-    void setFixedDofVector(gsMatrix<T> vals, index_t unk = 0);
+    void setFixedDofVector(gsMatrix<T> vals, short_t unk = 0);
 
     /// Enforce Dirichlet boundary conditions by diagonal penalization
     /// \param[in] unk the considered unknown
-    void penalizeDirichletDofs(index_t unk = 0);
+    void penalizeDirichletDofs(short_t unk = 0);
 
     /// @brief Sets any Dirichlet values to homogeneous (if applicable)
     /// \param[in] unk the considered unknown
-    void homogenizeFixedDofs(index_t unk = 0)
+    void homogenizeFixedDofs(short_t unk = 0)
     {
         if(unk==-1)
         {
@@ -527,17 +527,17 @@ public:  /* Dirichlet degrees of freedom computation */
             m_ddof[unk].setZero();
     }
 
-    // index_t numFixedDofs(index_t unk = 0) {return m_dofMappers[unk].boundarySize();}
+    // index_t numFixedDofs(short_t unk = 0) {return m_dofMappers[unk].boundarySize();}
 
     /// @brief Returns all the Dirichlet values (if applicable)
     const std::vector<gsMatrix<T> > & allFixedDofs() const { return m_ddof; }
 
     /// @brief Returns the Dirichlet values for a unknown (if applicable)
     /// \param[in] unk the considered unknown
-    const gsMatrix<T> & fixedDofs(index_t unk=0) const { return m_ddof[unk]; }
+    const gsMatrix<T> & fixedDofs(short_t unk=0) const { return m_ddof[unk]; }
 
     GISMO_DEPRECATED
-    const gsMatrix<T> & dirValues(index_t unk=0) const { return m_ddof[unk]; }//remove
+    const gsMatrix<T> & dirValues(short_t unk=0) const { return m_ddof[unk]; }//remove
 
 protected:  /* Helpers for Dirichlet degrees of freedom computation */
 
@@ -547,7 +547,7 @@ protected:  /* Helpers for Dirichlet degrees of freedom computation */
     /// \param[in] unk_ the considered unknown
     void computeDirichletDofsIntpl(const gsDofMapper     & mapper,
                                    const gsMultiBasis<T> & mbasis,
-                                   const index_t unk_ = 0);
+                                   const short_t unk_ = 0);
 
     /// @brief calculates the values of the eliminated dofs based on L2 Projection.
     /// \param[in] mapper the dofMapper for the considered unknown
@@ -555,7 +555,7 @@ protected:  /* Helpers for Dirichlet degrees of freedom computation */
     /// \param[in] unk_ the considered unknown
     void computeDirichletDofsL2Proj(const gsDofMapper     & mapper,
                                     const gsMultiBasis<T> & mbasis,
-                                    const index_t unk_ = 0);
+                                    const short_t unk_ = 0);
 
 public:  /* Solution reconstruction */
 
@@ -564,7 +564,7 @@ public:  /* Solution reconstruction */
     /// \param[out] result the solution in form of a gsMultiBasis
     /// \param[in] unk the considered unknown
     virtual void constructSolution(const gsMatrix<T>& solVector,
-                                   gsMultiPatch<T>& result, index_t unk = 0) const;
+                                   gsMultiPatch<T>& result, short_t unk = 0) const;
 
 
 
@@ -579,7 +579,7 @@ public:  /* Solution reconstruction */
                                    gsMultiPatch<T>& result,
                                    const gsVector<index_t>  & unknowns) const;
 
-    gsField<T> constructSolution(const gsMatrix<T>& solVector, index_t unk = 0) const;
+    gsField<T> constructSolution(const gsMatrix<T>& solVector, short_t unk = 0) const;
 
     /// @brief Update solution by adding the computed solution vector
     /// to the current solution specified by \par result. This method assumes that all
