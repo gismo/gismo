@@ -124,7 +124,7 @@ void gsPatchGenerator<T>::preparePatch(gsTensorBSplineBasis<d,T> & resultBasis, 
 
     std::vector<Boundary_t*> input;// permutation of the input boundaries
     input.reserve(2*d);
-    std::vector<short_t> perm;// permutation to be computed
+    std::vector<index_t> perm;// permutation to be computed
     perm.reserve(2*d);
 
     for (unsigned k = 0; k!=2*d; ++k) //for all boundaries
