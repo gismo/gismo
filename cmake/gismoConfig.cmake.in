@@ -46,7 +46,11 @@ if(NOT GISMO_IS_CONFIGURED_MESSAGE)
   set(GISMO_IS_CONFIGURED_MESSAGE 1 CACHE INTERNAL "Display once G+Smo library path")
 endif()
 
-if(NOT "x${CMAKE_BUILD_TYPE}" STREQUAL "x${GISMO_BUILD_TYPE}")
+if(NOT CMAKE_BUILD_TYPE)
+   # Set automatically the build type
+   set(CMAKE_BUILD_TYPE ${GISMO_BUILD_TYPE} CACHE STRING
+   "Type of build (set to comply with G+Smo library)" FORCE)
+elseif(NOT "x${CMAKE_BUILD_TYPE}" STREQUAL "x${GISMO_BUILD_TYPE}")
   message(WARNING "G+Smo is configured in ${GISMO_BUILD_TYPE} mode which does not coincide with this project! Conflicts may occur. Re-run CMake with CMAKE_BUILD_TYPE=${GISMO_BUILD_TYPE} to fix this, or update gismo_DIR.")
 endif()
 

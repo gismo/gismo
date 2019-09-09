@@ -1,6 +1,6 @@
 /** @file gsBasis.hpp
 
-    @brief Provides implementation of Basis default operatiions.
+    @brief Provides implementation of Basis default operations.
 
     This file is part of the G+Smo library.
 

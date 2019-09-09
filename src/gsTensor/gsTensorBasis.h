@@ -163,9 +163,12 @@ public:
 
     // TODO: Why is this documentation not in gsBasis?
     /**
-     * \brief Returns the indices of active (non-zero) basis functions
-     * at points <em>u</em>, as a list of indices, in <em>result</em>.
+     * \brief Returns the indices of active basis functions at points
+     * <em>u</em>, as a list of indices, in <em>result</em>. A
+     * function is said to be <em>active</em> in a point if this point
+     * lies in the closure of the function's support.
      *
+     * \par Tensor indexing in result
      * Assume that the parameter domain is three dimensional.
      * Let <em>n1</em>, <em>n2</em>, and <em>n3</em> denote the number of \em univariate basis
      * functions in the first, second and third coordinate direction, respectively.\n

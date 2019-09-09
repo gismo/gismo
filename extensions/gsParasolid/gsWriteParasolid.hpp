@@ -280,6 +280,45 @@ bool gsWriteParasolid( const gsTHBSpline<2, T>& thb,const std::vector<T>& par_bo
     return err;
 }
 
+template<class T>
+bool gsWritePK_SHEET(const gsTensorBSpline<2, T>& tp, const std::string& filename)
+{
+    gsPKSession::start();
+    PK_LOGICAL_t checks(0);
+    PK_SESSION_set_check_continuity(checks);
+    PK_SESSION_set_check_self_int(checks);
+
+    PK_ERROR_code_t err;
+
+    PK_BSURF_t bsurf;
+    createPK_BSURF<T>(tp, bsurf, false, false);
+
+    PK_UVBOX_t uv_box;
+    uv_box.param[0] = 0;
+    uv_box.param[1] = 0;
+    uv_box.param[2] = 1;
+    uv_box.param[3] = 1;
+    PK_BODY_t body;
+    err = PK_SURF_make_sheet_body(bsurf, uv_box, &body);
+    PARASOLID_ERROR(PK_SURF_make_sheet_body, err);
+
+    // PK_ASSEMBLY_t assembly;
+    // PK_ASSEMBLY_create_empty(&assembly);
+    // err = PK_PART_add_geoms(assembly, 1, &bsurf);
+    // PARASOLID_ERROR(PK_PART_add_geoms, err);
+
+    PK_PART_transmit_o_t transmit_options;
+    PK_PART_transmit_o_m(transmit_options);
+    transmit_options.transmit_format = PK_transmit_format_text_c;
+
+    err = PK_PART_transmit(1, &body, filename.c_str(), &transmit_options);
+    PARASOLID_ERROR(PK_PART_transmit, err);
+
+    gsPKSession::stop();
+
+    return err;
+}
+
 
 template<class T>
 bool createPK_GEOM( const gsGeometry<T> & ggeo,

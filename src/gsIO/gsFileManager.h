@@ -37,7 +37,7 @@ class GISMO_EXPORT gsFileManager
 public:
 
     /// Get preferred native path seperator
-    static const char getNativePathSeparator();
+    static char getNativePathSeparator();
 
     /// Get valid path seperators
     static const std::string& getValidPathSeparators();
