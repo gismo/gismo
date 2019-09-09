@@ -702,17 +702,17 @@ public: // things required by gsKnotVector
     }
 
     /// Because of type compatibility, cf. the other version.
-    /*void refineSpans( const std::vector<index_t> & spanIndices, mult_t knotsPerSpan = 1)
+    void refineSpans( const std::vector<unsigned> & spanIndices, mult_t knotsPerSpan = 1)
     {
         multContainer transformedIndices;
         transformedIndices.reserve(spanIndices.size());
-        for( std::vector<index_t>::const_iterator it = spanIndices.begin();
+        for( std::vector<unsigned>::const_iterator it = spanIndices.begin();
              it != spanIndices.end();
              ++it )
             transformedIndices.push_back(static_cast<mult_t>(*it));
 
         return refineSpans( transformedIndices, knotsPerSpan );
-    }*/
+    }
 
     /// Inserts \a knotsPerSpan knots into the spans corresponding to
     /// indices listed in \a span Indices.
