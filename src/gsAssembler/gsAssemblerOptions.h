@@ -273,7 +273,7 @@ public:
     // allocation of the sparse matrix, ie. the maximum number of
     // non-zero entries per column (set to: A * p + B)
     double  bdA;
-    index_t bdB;
+    int bdB;
 
     // more memory is allocated then required for efficency reasons,
     // more precise, (1+memOverhead) times the original memory is allocated
@@ -285,7 +285,7 @@ public:
     // closest to (A * p + B), where \a p is the (coordinate-wise)
     // degree of the basis
     double  quA;
-    index_t quB;
+    int quB;
 
 public: // Utility functions that return values implied by the settings
 
@@ -296,7 +296,7 @@ public: // Utility functions that return values implied by the settings
     }
 
     static index_t numQuNodes(const gsBasis<real_t> & b,
-                              double _quA, index_t _quB)
+                              double _quA, int _quB)
     {
         index_t res = 1;
         for(short_t i=0; i<b.domainDim(); ++i )
@@ -314,7 +314,7 @@ public: // Utility functions that return values implied by the settings
     }
 
     static index_t numColNz(const gsBasis<real_t> & b,
-                            double _bdA, index_t _bdB, double _mem)
+                            double _bdA, int _bdB, double _mem)
     {
         index_t nz = 1;
         for (short_t i = 0; i != b.dim(); ++i)
