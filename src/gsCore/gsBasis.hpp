@@ -293,7 +293,7 @@ bool gsBasis<T>::isActive(const unsigned, const gsVector<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::numActive_into(const gsMatrix<T> &, gsVector<unsigned>&) const
+void gsBasis<T>::numActive_into(const gsMatrix<T> &, gsVector<index_t>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

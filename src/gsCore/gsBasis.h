@@ -154,9 +154,9 @@ public:
      *  element, assuming that this number doesn't change for different
      *  parameters inside the element.
      */
-    gsVector<unsigned> numActive(const gsMatrix<T> & u) const
+    gsVector<index_t> numActive(const gsMatrix<T> & u) const
     {
-        gsVector<unsigned> result;
+        gsVector<index_t> result;
         this->numActive_into(u, result);
         return result;
     }
@@ -474,7 +474,7 @@ public:
     virtual void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
 
     /// \brief Returns the number of active (nonzero) basis functions at points \a u in \a result.
-    virtual void numActive_into(const gsMatrix<T> & u, gsVector<unsigned>& result) const;
+    virtual void numActive_into(const gsMatrix<T> & u, gsVector<index_t>& result) const;
 
     /// \brief Returns true if there the point \a u with non-zero
     /// value or derivatives when evaluated at the basis function \a i
