@@ -133,7 +133,7 @@ public:
      *
      * This assumes that this number doesn't change for different parameters.
      */
-    inline unsigned numActive() const { return this->source().numActive(); }
+    inline index_t numActive() const { return this->source().numActive(); }
 
     /// Returns the index of the first active (ie. non-zero) basis
     /// function at all columns (points) of u

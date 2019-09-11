@@ -492,7 +492,7 @@ public:
     }
 
     /// The number of active basis functions at points \a u
-    void numActive(const gsMatrix<T> & u, gsVector<unsigned>& result) const;
+    void numActive_into(const gsMatrix<T> & u, gsVector<index_t>& result) const;
 
     /// The 1-d basis for the i-th parameter component at the highest level
     virtual gsBSplineBasis<T> & component(short_t i)

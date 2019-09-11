@@ -100,10 +100,10 @@ void gsHBSplineBasis<d,T>::deriv2Single_into(unsigned i, const gsMatrix<T> & u, 
 template<short_t d, class T>
 void gsHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
-    gsVector<unsigned> nact;
+    gsVector<index_t> nact;
     gsMatrix<index_t> act;
     // Get the number of active functions
-    this->numActive(u, nact);
+    this->numActive_into(u, nact);
     // Set everything to zero
     result.setZero(nact.maxCoeff(), u.cols());
     
@@ -127,10 +127,10 @@ void gsHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result)
 template<short_t d, class T>
 void gsHBSplineBasis<d,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
-    gsVector<unsigned> nact;
+    gsVector<index_t> nact;
     gsMatrix<index_t> act;
     // Get the number of active functions
-    this->numActive(u, nact);
+    this->numActive_into(u, nact);
     // Set everything to zero
     result.setZero( d*nact.maxCoeff(), u.cols() );
     
@@ -154,13 +154,13 @@ void gsHBSplineBasis<d,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result
 template<short_t d, class T>
 void gsHBSplineBasis<d,T>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
-    gsVector<unsigned> nact;
+    gsVector<index_t> nact;
     gsMatrix<index_t> act;
 
     const int blocksize = d*(d + 1)/2;
 
     // Get the number of active functions
-    this->numActive(u, nact);
+    this->numActive_into(u, nact);
     result.resize( blocksize * nact.maxCoeff(), u.cols() );
     // Set everything to zero
     result.setZero();

@@ -440,7 +440,7 @@ public:
     /// Returns the number of distinct knots in direction \a k of level \a lvl
     int numBreaks(int lvl, int k) const
     {
-        return static_cast<typename util::make_unsigned<index_t>::type>(m_upperIndex[k]) >> (m_indexLevel - lvl);
+        return m_upperIndex[k] >> (m_indexLevel - lvl);
     }
 
     /// Returns the number of leaves in the tree

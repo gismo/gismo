@@ -70,7 +70,7 @@ void gsHTensorBasis<d,T>::getLevelUniqueSpanAtPoints(const  gsMatrix<T> & Pt,
 }
 
 template<short_t d, class T> inline
-void gsHTensorBasis<d,T>::numActive(const gsMatrix<T> & u, gsVector<unsigned>& result) const
+void gsHTensorBasis<d,T>::numActive_into(const gsMatrix<T> & u, gsVector<index_t>& result) const
 {
     result.resize( u.cols() );
     result.setZero();

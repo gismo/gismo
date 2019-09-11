@@ -348,7 +348,7 @@ public:
     }
 
     // Number of active functions at any point of the domain
-    inline unsigned numActive() const { return m_p + 1; }
+    inline index_t numActive() const { return m_p + 1; }
 
     // Look at gsBasis class for a description
     gsDomain<T> * domain() const { return const_cast<KnotVectorType *>(&m_knots); }
