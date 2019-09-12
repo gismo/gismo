@@ -162,12 +162,12 @@ public:
     }
 
     /// Returns the number of elements.
-    index_t numElements() const
+    size_t numElements() const
     {
-        index_t result = 1;
-        for (int i = 0; i < dir; ++i)
+        size_t result = 1;
+        for (short_t i = 0; i < dir; ++i)
             result *= breaks[i].size() - 1;
-        for (int i = dir+1; i < d; ++i)
+        for (short_t i = dir+1; i < d; ++i)
             result *= breaks[i].size() - 1;
         
         return result;
