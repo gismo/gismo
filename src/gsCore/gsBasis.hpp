@@ -268,7 +268,7 @@ void gsBasis<T>::anchors_into(gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T> inline
-void gsBasis<T>::anchor_into(unsigned, gsMatrix<T>&) const
+void gsBasis<T>::anchor_into(index_t, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 

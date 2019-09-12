@@ -145,7 +145,7 @@ void gsTensorBasis<d,T>::anchors_into(gsMatrix<T>& result) const
 }
 
 template<short_t d, class T>
-void gsTensorBasis<d,T>::anchor_into(unsigned i, gsMatrix<T>& result) const
+void gsTensorBasis<d,T>::anchor_into(index_t i, gsMatrix<T>& result) const
 {
     gsVector<index_t, d> ti = tensorIndex(i);
 

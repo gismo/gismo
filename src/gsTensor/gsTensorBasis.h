@@ -159,7 +159,7 @@ public:
     void anchors_into(gsMatrix<T>& result) const;
 
     /// Returns the anchors (graville absissae) that represent the members of the basis
-    void anchor_into(unsigned i, gsMatrix<T>& result) const;
+    void anchor_into(index_t i, gsMatrix<T>& result) const;
 
     // TODO: Why is this documentation not in gsBasis?
     /**

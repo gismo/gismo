@@ -429,7 +429,7 @@ public:
         return result;
     }
 
-    gsMatrix<T> anchor(unsigned i) const
+    gsMatrix<T> anchor(index_t i) const
     {
         gsMatrix<T> result;
         this->anchor_into(i, result);
@@ -449,7 +449,7 @@ public:
     virtual void anchors_into(gsMatrix<T>& result) const;
 
     /// Returns the anchor point for member \a i of the basis.
-    virtual void anchor_into(unsigned i, gsMatrix<T>& result) const;
+    virtual void anchor_into(index_t i, gsMatrix<T>& result) const;
 
     /// Returns the connectivity structure of the basis
     /// The returned mesh has the anchor points as vertices

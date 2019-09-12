@@ -196,7 +196,7 @@ public:
     }
 
     /// @brief Returns the anchors (greville points) of the basis
-    void anchor_into(unsigned i, gsMatrix<T> & result) const 
+    void anchor_into(index_t i, gsMatrix<T> & result) const
     { 
         result.resize(1,1);
         result(0,0) = m_knots.greville(i);
