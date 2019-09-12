@@ -236,7 +236,7 @@ void gsTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& r
 }
 
 template<short_t d, class T>
-bool gsTensorBasis<d,T>::isActive(const unsigned i, const gsVector<T>& u) const
+bool gsTensorBasis<d,T>::isActive(const index_t i, const gsVector<T>& u) const
 {
     GISMO_ASSERT( u.rows() == static_cast<index_t>(d), "Invalid input.");
     const gsVector<index_t, d> ti = tensorIndex(i);

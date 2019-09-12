@@ -131,7 +131,7 @@ void gsTensorBSplineBasis<1,T>::active_into(const gsMatrix<T>& u,
 }
 
 template <class T>
-bool gsTensorBSplineBasis<1,T>::isActive(const unsigned i, const gsVector<T>& u) const
+bool gsTensorBSplineBasis<1,T>::isActive(const index_t i, const gsVector<T>& u) const
 {
     GISMO_ASSERT( u.rows() == 1, "Invalid input.");
     // Note: right end of the support will be considered active

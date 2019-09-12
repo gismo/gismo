@@ -201,7 +201,7 @@ public:
     virtual void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
 
     // Look at gsBasis class for documentation 
-    bool isActive(const unsigned i, const gsVector<T>& u) const;
+    bool isActive(const index_t i, const gsVector<T>& u) const;
 
     /// Returns a box with the coordinate-wise active functions
     /// \param u evaluation points
