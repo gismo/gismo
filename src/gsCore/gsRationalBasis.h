@@ -220,7 +220,7 @@ public:
       GISMO_UPTR_FUNCTION_DEF(gsBasis<T>, boundaryBasis, boxSide const &)
       { 
       typename SrcT::BoundaryBasisType * bb = m_src->boundaryBasis(s);
-      gsMatrix<unsigned> ind = m_src->boundary(s);
+      gsMatrix<index_t> ind = m_src->boundary(s);
       
       gsMatrix<T> ww( ind.size(),1);
       for ( index_t i=0; i<ind.size(); ++i)

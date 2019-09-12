@@ -352,7 +352,7 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis(boxComponent b) const
 }
 
 template<class T>
-typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b, gsMatrix<unsigned>& indices, bool noBoundary) const
+typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b, gsMatrix<index_t>& indices, bool noBoundary) const
 {
     GISMO_ASSERT( b.totalDim() == this->dim(), "The dimensions do not agree." );
     const short_t dim = this->dim();
@@ -366,7 +366,7 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b,
         {
             if (result)
             {
-                gsMatrix<unsigned> tmp = result->boundary( boxSide(loc+2*d) );
+                gsMatrix<index_t> tmp = result->boundary( boxSide(loc+2*d) );
                 for (index_t j=0; j<tmp.size(); ++j)
                     tmp(j,0) = indices(tmp(j,0),0);
                 tmp.swap(indices);
@@ -402,7 +402,7 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b,
         // Copy all entries from indices to indices_cleaned except
         // those with indices in bdy_indices
 
-        gsMatrix<unsigned> indices_cleaned(indices_sz - bdy_indices_sz, 1);
+        gsMatrix<index_t> indices_cleaned(indices_sz - bdy_indices_sz, 1);
         index_t j = 0, t = 0;
         for (index_t i = 0; i < indices_sz; ++i)
         {

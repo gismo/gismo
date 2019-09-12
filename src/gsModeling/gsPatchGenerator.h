@@ -280,7 +280,7 @@ void gsPatchGenerator<T>::preparePatch(gsTensorBSplineBasis<d,T> & resultBasis, 
 
     //-------- 4. Fill in the boundary of the patch
 
-    gsMatrix<unsigned> bdr; // indices of the boundary control points
+    gsMatrix<index_t> bdr; // indices of the boundary control points
     coefs.setZero(resultBasis.size(), m_boundary.geoDim());
     
     // Fill in boundary coefficients

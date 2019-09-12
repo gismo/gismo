@@ -814,7 +814,7 @@ void gsHTensorBasis<d,T>::activeBoundaryFunctionsOfLevel(const unsigned level,co
 {
     needLevel( level );
 
-    const gsMatrix<unsigned> bound = m_bases[level]->boundary(s);
+    const gsMatrix<index_t> bound = m_bases[level]->boundary(s);
     const index_t sz = bound.rows();
     //gsSortedVector< int > indexes(bound->data(),bound->data()+sz);
     gsSortedVector< int > indexes;

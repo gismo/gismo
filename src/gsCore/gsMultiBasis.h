@@ -435,7 +435,7 @@ public:
     typename gsBasis<T>::uPtr componentBasis_withIndices(
         patchComponent pc,
         const gsDofMapper& dm,
-        gsMatrix<unsigned>& indices,
+        gsMatrix<index_t>& indices,
         bool no_lower = true
     ) const;
     
@@ -449,7 +449,7 @@ public:
     std::vector<typename gsBasis<T>::uPtr> componentBasis_withIndices(
         const std::vector<patchComponent>& pc,
         const gsDofMapper& dm,
-        gsMatrix<unsigned>& indices,
+        gsMatrix<index_t>& indices,
         bool no_lower = true
     ) const;
 

@@ -81,7 +81,7 @@ boxSide gsGeometry<T>::sideOf( const gsVector<T> & u,  )
         int contained = 0;
         side.m_index = index;
 
-        gsMatrix<unsigned> bnd = m_basis->boundary(side);
+        gsMatrix<index_t> bnd = m_basis->boundary(side);
 
         for(size_t i = 0; i < interfaceIndicesPatch1.size(); i++)
         {
@@ -105,7 +105,7 @@ template<class T>
 typename gsGeometry<T>::uPtr
 gsGeometry<T>::boundary(boxSide const& s) const
 {
-    gsMatrix<unsigned> ind = this->basis().boundary(s); // get indices of the boundary DOF
+    gsMatrix<index_t> ind = this->basis().boundary(s); // get indices of the boundary DOF
     gsMatrix<T> coeffs (ind.size(), geoDim()); // create matrix for boundary coefficients
 
     for (index_t i=0; i != ind.size(); i++ )

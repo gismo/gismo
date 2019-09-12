@@ -343,7 +343,7 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
 
     for (index_t i=0; i<nr_components; ++i)
     {
-        gsMatrix<unsigned> indices;
+        gsMatrix<index_t> indices;
         std::vector<gsBasis<>::uPtr> bases = mb.componentBasis_withIndices(components[i],dm,indices,true);
 
         index_t sz = indices.rows();

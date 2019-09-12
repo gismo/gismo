@@ -751,7 +751,7 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t un
         if ( k == patch )
         {
             // Get indices in the patch on this boundary
-            const gsMatrix<unsigned> boundary =
+            const gsMatrix<index_t> boundary =
                     mbasis[k].boundary(it->side());
 
             //gsInfo <<"Setting the value for: "<< boundary.transpose() <<"\n";
@@ -1077,7 +1077,7 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u
         const gsBasis<T> & basis = mbasis[k];
 
         // Get dofs on this boundary
-        const gsMatrix<unsigned> boundary = basis.boundary(it->side());
+        const gsMatrix<index_t> boundary = basis.boundary(it->side());
 
         // If the condition is homogeneous then fill with zeros
         if ( it->isHomogeneous() )
@@ -1186,7 +1186,7 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl3(const expr::gsFeSpace<T> & u
         const gsBasis<T> & basis = mbasis[k];
 
         // Get dofs on this boundary
-        gsMatrix<unsigned> boundary = basis.boundary(it->side());
+        gsMatrix<index_t> boundary = basis.boundary(it->side());
 
         // If the condition is homogeneous then fill with zeros
         if ( it->isHomogeneous() )

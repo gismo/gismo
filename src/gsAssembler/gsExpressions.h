@@ -784,7 +784,7 @@ public:
                 }
             }
 
-            gsMatrix<unsigned> bnd;
+            gsMatrix<index_t> bnd;
             for (typename bcRefList::const_iterator
                      it = this->bc().begin() ; it != this->bc().end(); ++it )
             {
@@ -799,7 +799,7 @@ public:
                  dynamic_cast<const gsBasis<T>*>(&this->source()) )
         {
             m_mapper = gsDofMapper(*b);
-            gsMatrix<unsigned> bnd;
+            gsMatrix<index_t> bnd;
             for (typename bcRefList::const_iterator
                      it = this->bc().begin() ; it != this->bc().end(); ++it )
             {

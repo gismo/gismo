@@ -165,7 +165,7 @@ public:
     GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
     {
         typename Src_t::BoundaryBasisType::uPtr bb = m_src->boundaryBasis(n1);
-        gsMatrix<unsigned> ind = m_src->boundary(n1);
+        gsMatrix<index_t> ind = m_src->boundary(n1);
         
         gsMatrix<T> ww( ind.size(),1);
         for ( index_t i=0; i<ind.size(); ++i)

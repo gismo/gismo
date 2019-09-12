@@ -149,7 +149,7 @@ void gsAssembler<T>::penalizeDirichletDofs(short_t unk)
     {
         const gsBasis<T> & basis = mbasis[it->patch()];
 
-        gsMatrix<unsigned> bnd = basis.boundary(it->side() );
+        gsMatrix<index_t> bnd = basis.boundary(it->side() );
         for (index_t k=0; k!= bnd.size(); ++k)
         {
             // free dof position
@@ -200,7 +200,7 @@ void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t unk, s
         if ( k == patch )
         {
             // Get indices in the patch on this boundary
-            const gsMatrix<unsigned> boundary =
+            const gsMatrix<index_t> boundary =
                     mbasis[k].boundary(it->side());
 
             //gsInfo <<"Setting the value for: "<< boundary.transpose() <<"\n";
@@ -332,7 +332,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
         const gsBasis<T> & basis = mbasis[k];
 
         // Get dofs on this boundary
-        const gsMatrix<unsigned> boundary = basis.boundary(it->side());
+        const gsMatrix<index_t> boundary = basis.boundary(it->side());
 
         // If the condition is homogeneous then fill with zeros
         if ( it->isHomogeneous() )

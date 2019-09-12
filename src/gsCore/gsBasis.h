@@ -525,7 +525,7 @@ public:
     /// @param indices     The row vector where the indices are stored to
     /// @param noBoundary  If true, the transfer matrix does not include parts belonging to lower-order
     ///                    components (i.e., edges without corners or faces without corners and edges)
-    virtual uPtr componentBasis_withIndices(boxComponent b, gsMatrix<unsigned>& indices, bool noBoundary = true) const;
+    virtual uPtr componentBasis_withIndices(boxComponent b, gsMatrix<index_t>& indices, bool noBoundary = true) const;
 
     /// @brief Returns (a bounding box for) the domain of the whole basis.
     ///

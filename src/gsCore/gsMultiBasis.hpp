@@ -257,7 +257,7 @@ template <typename T>
 typename gsBasis<T>::uPtr gsMultiBasis<T>::componentBasis_withIndices(
         patchComponent pc,
         const gsDofMapper& dm,
-        gsMatrix<unsigned>& indices,
+        gsMatrix<index_t>& indices,
         bool no_lower
     ) const
 {
@@ -282,14 +282,14 @@ template <typename T>
 std::vector<typename gsBasis<T>::uPtr> gsMultiBasis<T>::componentBasis_withIndices(
         const std::vector<patchComponent>& pc,
         const gsDofMapper& dm,
-        gsMatrix<unsigned>& indices,
+        gsMatrix<index_t>& indices,
         bool no_lower
     ) const
 {
     const index_t nrpc = pc.size();
     std::vector<typename gsBasis<T>::uPtr> bases;
     bases.reserve(nrpc);
-    std::vector< gsMatrix<unsigned> > local_indices(nrpc);
+    std::vector< gsMatrix<index_t> > local_indices(nrpc);
 
     index_t sz = 0;
 
@@ -301,7 +301,7 @@ std::vector<typename gsBasis<T>::uPtr> gsMultiBasis<T>::componentBasis_withIndic
         sz += local_indices[i].rows();
     }
 
-    std::vector<unsigned> global_indices;
+    std::vector<index_t> global_indices;
     global_indices.reserve(sz);
 
     for (index_t i=0; i<nrpc; ++i)
