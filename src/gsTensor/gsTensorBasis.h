@@ -215,11 +215,11 @@ public:
 
     /// Returns the indices of the basis functions that touch the domain
     /// boundary
-    gsMatrix<unsigned> allBoundary( ) const ;
+    gsMatrix<index_t> allBoundary( ) const ;
 
     /// Returns the indices of the basis functions that touch the domain
     /// boundary
-    gsMatrix<unsigned> boundaryOffset(boxSide const & s, unsigned offset) const;
+    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const;
 
     unsigned functionAtCorner(boxCorner const & c) const;
 
@@ -458,7 +458,7 @@ public:
     Calling dir=0, k=1 gives all functions with tensor-numbering (1,b).
     Calling dir=1, k=3 gives all functions with tensor-numbering (a,3).
     */
-    gsMatrix<unsigned> coefSlice(short_t dir, index_t k) const;
+    gsMatrix<index_t> coefSlice(short_t dir, index_t k) const;
 
     /// Returns the degree of the basis wrt variable \a i 
     short_t degree(short_t i) const
@@ -792,7 +792,7 @@ public:
     }
 
     /// Returns all the basis functions with tensor-numbering \a k in direction \a dir 
-    gsMatrix<unsigned> coefSlice(short_t dir, index_t k) const
+    gsMatrix<index_t> coefSlice(short_t dir, index_t k) const
     {
         GISMO_UNUSED(dir);
         GISMO_UNUSED(k);

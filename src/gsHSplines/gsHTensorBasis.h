@@ -444,10 +444,10 @@ public:
 
 
     // Look at gsBasis.h for the documentation of this function
-    gsMatrix<unsigned> allBoundary( ) const;
+    gsMatrix<index_t> allBoundary( ) const;
 
     // Look at gsBasis.h for the documentation of this function
-    virtual gsMatrix<unsigned> boundaryOffset(boxSide const & s, unsigned offset ) const;
+    virtual gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const;
 
     // Look at gsBasis.h for the documentation of this function
     // /// \todo impl. evalAllDers_into

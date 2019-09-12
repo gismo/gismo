@@ -302,13 +302,13 @@ void gsBasis<T>::activeCoefs_into(const gsVector<T> &, const gsMatrix<T> &,
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsMatrix<unsigned>
+gsMatrix<index_t>
 gsBasis<T>::allBoundary() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsMatrix<unsigned>
-gsBasis<T>::boundaryOffset(boxSide const &,unsigned) const
+gsMatrix<index_t>
+gsBasis<T>::boundaryOffset(boxSide const &,index_t) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -394,7 +394,7 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b,
     if (noBoundary && d > 0)
     {
 
-        gsMatrix<unsigned> bdy_indices = result->allBoundary();
+        gsMatrix<index_t> bdy_indices = result->allBoundary();
 
         const index_t indices_sz = indices.rows();
         const index_t bdy_indices_sz = bdy_indices.rows();

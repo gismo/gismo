@@ -139,18 +139,18 @@ bool gsTensorBSplineBasis<1,T>::isActive(const index_t i, const gsVector<T>& u) 
 }
 
 template <class T>
-gsMatrix<unsigned> gsTensorBSplineBasis<1,T>::allBoundary() const
+gsMatrix<index_t> gsTensorBSplineBasis<1,T>::allBoundary() const
 {
     if( m_periodic ) // Periodic basis does not have such things as boundaries.
     {
         gsWarn << "Periodic basis does not have such things as boundaries.\n";
         // return NULL;
-        gsMatrix<unsigned> matrix;
+        gsMatrix<index_t> matrix;
         return matrix;
     }
     else
     {
-        gsMatrix<unsigned> res(2,1);
+        gsMatrix<index_t> res(2,1);
         res(0,0) = 0;
         res(1,0) = m_knots.size()-m_p-2;
         return res;
@@ -159,13 +159,13 @@ gsMatrix<unsigned> gsTensorBSplineBasis<1,T>::allBoundary() const
 
 
 template <class T>
-gsMatrix<unsigned> gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
-                                                               unsigned offset ) const
+gsMatrix<index_t> gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
+                                                               index_t offset ) const
 {
     if( m_periodic )
         gsWarn << "Periodic basis does not have such things as boundaries.\n";
 
-    gsMatrix<unsigned> res(1,1);
+    gsMatrix<index_t> res(1,1);
     GISMO_ASSERT(offset+m_p+1 < static_cast<unsigned>(m_knots.size()),
                  "Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
     switch (s) {

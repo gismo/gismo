@@ -104,7 +104,7 @@ void gsDofMapper::init(const gsMultiBasis<T>         &basis,
             GISMO_ASSERT(it->ps.patch < static_cast<index_t>(m_offset.size()),
                          "Problem: a boundary condition is set on a patch id which does not exist.");
 
-            gsMatrix<unsigned> bnd = basis[it->ps.patch].boundary(it->ps.side());
+            gsMatrix<index_t> bnd = basis[it->ps.patch].boundary(it->ps.side());
             markBoundary(it->ps.patch, bnd);
         }
     }

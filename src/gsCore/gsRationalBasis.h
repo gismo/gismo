@@ -147,9 +147,9 @@ public:
     virtual const gsBasis<T> & component(short_t i) const { return m_src->component(i); }
     using Base::component;
 
-    gsMatrix<unsigned> allBoundary( ) const {return m_src->allBoundary(); }
+    gsMatrix<index_t> allBoundary( ) const {return m_src->allBoundary(); }
     
-    gsMatrix<unsigned> boundaryOffset(boxSide const & s, unsigned offset ) const
+    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const
     { return m_src->boundaryOffset(s,offset); }
 
     virtual unsigned functionAtCorner(boxCorner const & c) const

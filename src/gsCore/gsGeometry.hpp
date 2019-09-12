@@ -63,7 +63,7 @@ template<class T>
 boxSide gsGeometry<T>::sideOf( const gsVector<T> & u,  )
 {
     // get the indices of the coefficients which lie on the boundary
-    gsMatrix<unsigned > allBnd = m_basis->allBoundary();
+    gsMatrix<index_t > allBnd = m_basis->allBoundary();
     gsMatrix<T> bndCoeff(allBnd.rows(), m_coefs.rows());
 
     // extract the indices of the boundary coefficients

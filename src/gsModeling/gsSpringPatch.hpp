@@ -74,7 +74,7 @@ void gsSpringPatch<T>::compute_impl()
     const int sz  = resultBasis.size();
     gsDofMapper mapper(resultBasis);
     // boundary control point indices
-    gsMatrix<unsigned> bnd = resultBasis.allBoundary();
+    gsMatrix<index_t> bnd = resultBasis.allBoundary();
     mapper.markBoundary(0,bnd);
     mapper.finalize();
 

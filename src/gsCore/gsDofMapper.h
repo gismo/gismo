@@ -226,7 +226,7 @@ public:
 
     /// Mark the local dofs \a boundaryDofs of patch \a k as eliminated.
     // to do: put k at the end
-    void markBoundary( index_t k, const gsMatrix<unsigned> & boundaryDofs );
+    void markBoundary( index_t k, const gsMatrix<index_t> & boundaryDofs );
 
     /// Mark the local dof \a i of patch \a k as eliminated.
     void eliminateDof( index_t i, index_t k );

@@ -496,16 +496,16 @@ public:
     /// @}
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary.
-    virtual gsMatrix<unsigned> allBoundary( ) const;
+    virtual gsMatrix<index_t> allBoundary( ) const;
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary.
     /// If an offset is provided (the default is zero), it will return the indizes of the basis
     /// functions having this offset to the provided boxSide. Note that the offset cannot be
     /// bigger than the size of the basis in the direction orthogonal to boxSide.
-    virtual gsMatrix<unsigned> boundaryOffset(boxSide const & s, unsigned offset) const;
+    virtual gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const;
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary as single-column-matrix.
-    gsMatrix<unsigned> boundary(boxSide const & s) const
+    gsMatrix<index_t> boundary(boxSide const & s) const
     { return this->boundaryOffset(s,0); }
 
     virtual unsigned functionAtCorner(boxCorner const & c) const;

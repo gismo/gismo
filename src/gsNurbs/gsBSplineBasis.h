@@ -213,10 +213,10 @@ public:
     bool isActive(const index_t i, const gsVector<T> & u) const;
 
     // Look at gsBasis class for a description
-    gsMatrix<unsigned> allBoundary( ) const ;
+    gsMatrix<index_t> allBoundary( ) const ;
 
     // Look at gsBasis class for a description
-    gsMatrix<unsigned> boundaryOffset(boxSide const & s,unsigned offset) const;
+    gsMatrix<index_t> boundaryOffset(boxSide const & s,index_t offset) const;
 
 #ifdef __DOXYGEN__
     /// @brief Gives back the boundary basis at boxSide s

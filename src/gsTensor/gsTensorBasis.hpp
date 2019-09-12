@@ -247,7 +247,7 @@ bool gsTensorBasis<d,T>::isActive(const index_t i, const gsVector<T>& u) const
 }
 
 template<short_t d, class T>
-gsMatrix<unsigned> gsTensorBasis<d,T>::coefSlice(short_t dir, index_t k) const
+gsMatrix<index_t> gsTensorBasis<d,T>::coefSlice(short_t dir, index_t k) const
 {
     GISMO_ASSERT( dir>=0 &&  dir < this->dim(), "Invalid slice direction requested" );
     GISMO_ASSERT( k >=0 &&  k < this->size(dir), "Invalid slice position requested" );
@@ -266,7 +266,7 @@ gsMatrix<unsigned> gsTensorBasis<d,T>::coefSlice(short_t dir, index_t k) const
     upp(dir) = k + 1;
     low(dir) = k;
 
-    gsMatrix<unsigned> res(sliceSize,1);
+    gsMatrix<index_t> res(sliceSize,1);
 
     // iterate over all tensor product basis indices
     gsVector<index_t,d> v = low;
@@ -280,10 +280,10 @@ gsMatrix<unsigned> gsTensorBasis<d,T>::coefSlice(short_t dir, index_t k) const
 
 
 template<short_t d, class T>
-gsMatrix<unsigned> gsTensorBasis<d,T>::allBoundary() const
+gsMatrix<index_t> gsTensorBasis<d,T>::allBoundary() const
 {
-    gsMatrix<unsigned> bd;
-    std::set<unsigned> bdofs;
+    gsMatrix<index_t> bd;
+    std::set<index_t> bdofs;
 
     for (short_t k = 0; k != d; ++k)
     {
@@ -296,12 +296,12 @@ gsMatrix<unsigned> gsTensorBasis<d,T>::allBoundary() const
             bdofs.insert( bd(i) );
     }
 
-    return makeMatrix<unsigned>(bdofs.begin(), static_cast<index_t>(bdofs.size()), 1 );
+    return makeMatrix<index_t>(bdofs.begin(), static_cast<index_t>(bdofs.size()), 1 );
 }
 
 
 template<short_t d, class T>
-gsMatrix<unsigned> gsTensorBasis<d,T>::boundaryOffset(boxSide const& s,unsigned offset) const
+gsMatrix<index_t> gsTensorBasis<d,T>::boundaryOffset(boxSide const& s,index_t offset) const
 {
     //get m_bases index and start or end case
     short_t k = s.direction();

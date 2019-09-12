@@ -983,34 +983,34 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& 
 }
 
 template<short_t d, class T>
-gsMatrix<unsigned>  gsHTensorBasis<d,T>::allBoundary( ) const
+gsMatrix<index_t>  gsHTensorBasis<d,T>::allBoundary( ) const
 {
-    std::vector<unsigned> temp;
-    gsVector<unsigned,d>  ind;
+    std::vector<index_t> temp;
+    gsVector<index_t, d>  ind;
     for(unsigned i = 0; i <= this->maxLevel(); i++)
         for (CMatrix::const_iterator it = m_xmatrix[i].begin();
              it != m_xmatrix[i].end(); it++)
         {
             ind = this->m_bases[i]->tensorIndex(*it);
             for (unsigned j=0; j!=d; ++j )
-                if ( (ind[j]==0) || (ind[j]==unsigned(this->m_bases[i]->size(j)-1)) )
+                if ( (ind[j]==0) || (ind[j]==(this->m_bases[i]->size(j)-1)) )
                 {
                     temp.push_back(m_xmatrix_offset[i] + (it-m_xmatrix[i].begin()) );
                     break;
                 }
         }
-    return makeMatrix<unsigned>(temp.begin(),temp.size(),1 );
+    return makeMatrix<index_t>(temp.begin(),temp.size(),1 );
 }
 
 template<short_t d, class T>
-gsMatrix<unsigned>  gsHTensorBasis<d,T>::
-boundaryOffset(boxSide const & s,unsigned offset) const
+gsMatrix<index_t>  gsHTensorBasis<d,T>::
+boundaryOffset(boxSide const & s,index_t offset) const
 { 
     //get information on the side
     index_t k   = s.direction();
     bool par = s.parameter();
     
-    std::vector<unsigned> temp;
+    std::vector<index_t> temp;
     gsVector<index_t,d>  ind;
     // i goes through all levels of the hierarchical basis
     for(unsigned i = 0; i <= this->maxLevel(); i++)
@@ -1030,7 +1030,7 @@ boundaryOffset(boxSide const & s,unsigned offset) const
                     );
         }
     }
-    return makeMatrix<unsigned>(temp.begin(),temp.size(),1 );
+    return makeMatrix<index_t>(temp.begin(),temp.size(),1 );
 }
 
 /*
