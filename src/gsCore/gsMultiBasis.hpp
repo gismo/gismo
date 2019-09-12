@@ -410,7 +410,7 @@ template<class T>
 void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper & mapper) const
 {
     // should work for all basis which have matchWith() implementeds
-    gsMatrix<unsigned> b1, b2;
+    gsMatrix<index_t> b1, b2;
     m_bases[bi.first().patch]->matchWith(bi, *m_bases[bi.second().patch],
                                          b1, b2);
 

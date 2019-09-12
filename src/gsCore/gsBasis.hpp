@@ -653,7 +653,7 @@ void gsBasis<T>::reverse()
 
 template<class T>
 void gsBasis<T>::matchWith(const boundaryInterface &, const gsBasis<T> &,
-               gsMatrix<unsigned> &, gsMatrix<unsigned> &) const
+               gsMatrix<index_t> &, gsMatrix<index_t> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

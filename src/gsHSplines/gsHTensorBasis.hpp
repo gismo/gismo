@@ -453,8 +453,8 @@ void gsHTensorBasis<d,T>::refineSide(const boxSide side, index_t lvl)
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
                                     const gsBasis<T> & other,
-                                    gsMatrix<unsigned> & bndThis,
-                                    gsMatrix<unsigned> & bndOther) const
+                                    gsMatrix<index_t> & bndThis,
+                                    gsMatrix<index_t> & bndOther) const
 {
     if( const Self_t * _other = dynamic_cast<const Self_t*>( &other) )
     {

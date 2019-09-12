@@ -952,8 +952,8 @@ gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
 template<short_t d, class T>
 void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
                                    const gsBasis<T> & other,
-                                   gsMatrix<unsigned> & bndThis,
-                                   gsMatrix<unsigned> & bndOther) const
+                                   gsMatrix<index_t> & bndThis,
+                                   gsMatrix<index_t> & bndOther) const
 {
     if ( const Self_t * _other = dynamic_cast<const Self_t*>(&other) )
     {
@@ -1000,7 +1000,7 @@ void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
     
         // Apply permutation to bndThis and bndOther so that they
         // finally match on both sides
-        permuteTensorVector<unsigned,-1>(bPerm, bSize, bndThis);
+        permuteTensorVector<index_t,-1>(bPerm, bSize, bndThis);
 
         return;
     }

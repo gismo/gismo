@@ -496,7 +496,7 @@ template<class T>
 void gsMultiPatch<T>::closeGaps(T tol)
 {
     const T tol2 = tol*tol;
-    gsMatrix<unsigned> bdr1, bdr2; // indices of the boundary control points
+    gsMatrix<index_t> bdr1, bdr2; // indices of the boundary control points
 
     // Create a map which assigns to all meeting patch-local indices a
     // unique global id

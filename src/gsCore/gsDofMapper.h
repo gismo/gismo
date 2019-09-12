@@ -212,8 +212,8 @@ public:
 
     /// \brief Couples dofs \a b1 of patch \a u with dofs \a b2 of patch
     /// \a v one by one such that they refer to the same global dof.
-    void matchDofs(index_t u, const gsMatrix<unsigned> & b1,
-                   index_t v, const gsMatrix<unsigned> & b2);
+    void matchDofs(index_t u, const gsMatrix<index_t> & b1,
+                   index_t v, const gsMatrix<index_t> & b2);
 
     /// Mark the local dof \a i of patch \a k as coupled.
     void markCoupled( index_t i, index_t k );

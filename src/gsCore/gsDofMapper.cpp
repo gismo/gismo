@@ -154,8 +154,8 @@ void gsDofMapper::matchDof( index_t u, index_t i, index_t v, index_t j )
         --m_numFreeDofs;
 }
 
-void gsDofMapper::matchDofs(index_t u, const gsMatrix<unsigned> & b1,
-                            index_t v,const gsMatrix<unsigned> & b2)
+void gsDofMapper::matchDofs(index_t u, const gsMatrix<index_t> & b1,
+                            index_t v,const gsMatrix<index_t> & b2)
 {
     const index_t sz = b1.size();
     GISMO_ASSERT( sz == b2.size(), "Waiting for same number of DoFs");

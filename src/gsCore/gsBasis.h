@@ -936,7 +936,7 @@ public:
     /// The output is two lists of indices \a bndThis and \a bndOther,
     /// with indices that match one-to-one on the boundary \a bi.
     virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-                           gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const;
+                           gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const;
 
 
     /// Get the minimum mesh size, as expected for inverse inequalities
