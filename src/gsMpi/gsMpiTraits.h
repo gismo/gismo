@@ -71,82 +71,8 @@ namespace gismo
 
 #undef ComposeMPITraits
 
-
-
   /// Forward declaration of gsVector class
   template<class T, int _Rows, int _Options> class gsVector;
-
-  template<class T, int _Rows, int _Options>
-  struct gsVector_mpi
-  {
-    gsVector_mpi()
-      : Rows(0)
-    {}
-
-    gsVector_mpi(const gsVector<T, _Rows, _Options>& vector)
-      : Rows(vector.size())
-    {}
-
-    operator gsVector<T, _Rows, _Options>() const
-    {
-      if (_Rows >= 0)
-        return gsVector<T, _Rows, _Options>();
-      else
-        return gsVector<T, _Rows, _Options>(Rows);
-    }
-
-  private:
-    int Rows;
-  };
-
-  template<class T, int _Rows, int _Options>
-  gsVector_mpi<T, _Rows, _Options> to_mpi(const gsVector<T, _Rows, _Options>& vector)
-  {
-    return gsVector_mpi<T, _Rows, _Options>(vector);
-  }
-
-  template<class T, int _Rows, int _Options>
-  gsVector<T, _Rows, _Options> from_mpi(const gsVector_mpi<T, _Rows, _Options>& vector)
-  {
-    return gsVector<T, _Rows, _Options>(vector);
-  }
-
-
-
-  /// Specialization for resizeable gsVector class
-  template<class T, int _Options>
-  struct MPITraits<gsVector<T, -1, _Options> >
-  {
-  public:
-    static inline MPI_Datatype getType()
-    {
-      if(datatype==MPI_DATATYPE_NULL)
-        {
-          MPI_Type_contiguous(10, MPITraits<T>::getType(), &vectortype);
-          MPI_Type_commit(&vectortype);
-          gsVector<T, -1, _Options> fvector;
-          MPI_Aint base;
-          MPI_Aint displ;
-          MPI_Get_address(&fvector, &base);
-          MPI_Get_address(&(fvector[0]), &displ);
-          displ -= base;
-          int length[1]={1};
-
-          MPI_Type_create_struct(1, length, &displ, &vectortype, &datatype);
-          MPI_Type_commit(&datatype);
-        }
-      return datatype;
-    }
-
-  private:
-    static MPI_Datatype datatype;
-    static MPI_Datatype vectortype;
-  };
-
-  template<class T, int _Options>
-  MPI_Datatype MPITraits<gsVector<T, -1, _Options> >::datatype = MPI_DATATYPE_NULL;
-  template<class T, int _Options>
-  MPI_Datatype MPITraits<gsVector<T, -1, _Options> >::vectortype = {MPI_DATATYPE_NULL};
 
   /// Specialization for fixed-size gsVector class
   template<class T, int _Rows, int _Options>
