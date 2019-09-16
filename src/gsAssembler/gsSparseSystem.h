@@ -928,7 +928,7 @@ public: /* Add local contributions to system right-hand side */
      */
 
     void pushToRhs(const gsMatrix<T> & localRhs,
-                   const std::vector<gsMatrix<unsigned> >& actives_vec,
+                   const std::vector<gsMatrix<index_t> >& actives_vec,
                    const gsVector<size_t> & r_vec)
     {
         int rstrLocal = 0;
@@ -1121,7 +1121,7 @@ public: /* Add local contributions to system matrix and right-hand side */
 
     void push(const gsMatrix<T> & localMat,
               const gsMatrix<T> & localRhs,
-              const std::vector<gsMatrix<unsigned> >& actives_vec,
+              const std::vector<gsMatrix<index_t> >& actives_vec,
               const std::vector<gsMatrix<T> > & eliminatedDofs,
               const gsVector<size_t> & r_vec,
               const gsVector<size_t> & c_vec)
@@ -1200,7 +1200,7 @@ public: /* Add local contributions to system matrix and right-hand side */
      */
     void push(const gsMatrix<T> & localMat,
               const gsMatrix<T> & localRhs,
-              const std::vector<gsMatrix<unsigned> >& actives,
+              const std::vector<gsMatrix<index_t> >& actives,
               const std::vector<gsMatrix<T> > & eliminatedDofs)
     {
         GISMO_ASSERT( m_matrix.cols() == m_rhs.rows(), "gsSparseSystem is not allocated");
@@ -1263,7 +1263,7 @@ public: /* Add local contributions to system matrix and right-hand side */
      */
     void push(const std::vector<gsMatrix<T> > &,
               const std::vector<gsMatrix<T> > &,
-              const std::vector<gsMatrix<unsigned> > &,
+              const std::vector<gsMatrix<index_t> > &,
               const std::vector<gsMatrix<T> > &,
               const gsVector<size_t> &, const gsVector<size_t> &)
     {

@@ -115,7 +115,7 @@ void gsDofMapper::init(const gsMultiBasis<T>         &basis,
     {
         if (unk == -1 || it->unknown == unk)
         {
-            GISMO_ASSERT(it->patch < m_offset.size(),
+            GISMO_ASSERT(it->patch < static_cast<index_t>(m_offset.size()),
                          "Problem: a corner boundary condition is set on a patch id which does not exist.");
 
             eliminateDof(basis[it->patch].functionAtCorner(it->corner), it->patch);

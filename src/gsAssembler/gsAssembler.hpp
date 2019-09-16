@@ -93,7 +93,7 @@ bool gsAssembler<T>::check()
 
     // /*
     const dirichlet::strategy dirStr = static_cast<dirichlet::strategy>(m_options.getInt("DirichletStrategy"));
-    if ( 0 == m_pde_ptr->bc().size() && dirStr!=dirichlet::none && dirStr==dirichlet::homogeneous )
+    if ( 0 == m_pde_ptr->bc().size() && dirStr!=dirichlet::none && static_cast<dirichlet::values>(dirStr)==dirichlet::homogeneous )
         gsWarn<< "No boundary conditions given ! \n";
     //*/
 
@@ -197,7 +197,7 @@ void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t unk, s
           it != m_pde_ptr->bc().dirichletEnd()  ; ++it )
     {
         const index_t k = it->patch();
-        if ( k == patch )
+        if ( k == static_cast<index_t>(patch) )
         {
             // Get indices in the patch on this boundary
             const gsMatrix<index_t> boundary =

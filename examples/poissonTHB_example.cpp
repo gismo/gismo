@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     // Flag for refinemet criterion
     // (see doxygen documentation of the free function
     // gsMarkElementsForRef explanation)
-    MarkingStrategy refCriterion;
+    index_t refCriterion;   // MarkingStrategy
     // Parameter for computing adaptive refinement threshold
     // (see doxygen documentation of the free function
     // gsMarkElementsForRef explanation)
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
             initUnifRef);
     cmd.addInt("", "degree", "Spline degree of the THB basis", degree);
     cmd.addInt("c", "criterion",  "Criterion to be used for adaptive refinement (1-3, see documentation)",
-               reinterpret_cast<index_t&>(refCriterion));
+            refCriterion);
     cmd.addReal("p", "parameter", "Parameter for adaptive refinement", refParameter);
     cmd.addSwitch("dump", "Write geometry and sequence of bases into XML files",
                 dump);
@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
         // Mark elements for refinement, based on the computed local errors and
         // refCriterion and refParameter.
         std::vector<bool> elMarked( elErrEst.size() );
-        gsMarkElementsForRef( elErrEst, refCriterion, refParameter, elMarked);
+        gsMarkElementsForRef( elErrEst, static_cast<MarkingStrategy>(refCriterion), refParameter, elMarked);
 
         gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true);
 
