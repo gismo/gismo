@@ -125,7 +125,7 @@ void checkGsBoundaryCondition(const gsBoundaryConditions<real_t> & sut)
     gismo::corner_value<real_t> cv1 = c1[0];
     CHECK_EQUAL(0, cv1.corner);
     CHECK_EQUAL(0, cv1.corner.m_index);
-    CHECK_EQUAL(size_t(0), cv1.patch);
+    CHECK_EQUAL(0, cv1.patch);
     CHECK_EQUAL(0.0, cv1.value);
     CHECK_EQUAL(0, cv1.unknown);
 

@@ -108,7 +108,7 @@ SUITE(gsOptionList_test)
     {
         gsOptionList myList;
         myList.addString(LABEL_STR_1, DESC_1, STR_1);
-        CHECK_EQUAL(1, myList.size());
+        CHECK_EQUAL(1u, myList.size());
         CHECK_EQUAL(STR_1, myList.getString(LABEL_STR_1));
         CHECK_EQUAL(STR_1, myList.askString(LABEL_STR_1, STR_ANY));
         CHECK_EQUAL(STR_2, myList.askString(LABEL_STR_2, STR_2));
