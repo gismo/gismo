@@ -273,7 +273,7 @@ void gsTensorDeboor_v2(
 
         std::vector<bool> is_last(d, false);
 
-        for (unsigned dim = 0; dim < d; dim++)
+        for (short_t dim = 0; dim < d; dim++)
         {
             const KnotVectorType& kv = base.knots(dim);
 //            if (u(dim, i) == *(--kv.end()))
@@ -285,7 +285,7 @@ void gsTensorDeboor_v2(
 
 
 
-        gsVector<unsigned, d> low, upp;
+        gsVector<index_t, d> low, upp;
         base.active_cwise(u.col(i), low, upp);
 
 //        if (1 < log)
