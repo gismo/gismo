@@ -25,6 +25,9 @@ CMakeLists.txt.user
 /.vs
 /build*
 
-#CMake
+# CMake
 CMakeCache.txt
 CMakeFiles/
+
+# Patch Files
+*.patch
