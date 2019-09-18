@@ -474,9 +474,9 @@ public:
     */
     // getBoxes-functions might get removed at some point of time.
     // Use iterators instead whenever possible.
-    void getBoxes(gsMatrix<unsigned>& b1, 
-                  gsMatrix<unsigned>& b2, 
-                  gsVector<unsigned>& level) const;
+    void getBoxes(gsMatrix<index_t>& b1,
+                  gsMatrix<index_t>& b2,
+                  gsVector<index_t>& level) const;
 
     /** \brief Returns the boxes which make up the hierarchical domain
     * and the respective levels touching side \em s.
@@ -492,9 +492,9 @@ public:
     // getBoxes-functions might get removed at some point of time.
     // Use iterators instead whenever possible.
     void getBoxesOnSide(boundary::side s,
-                        gsMatrix<unsigned>& b1,
-                        gsMatrix<unsigned>& b2,
-                        gsVector<unsigned>& level) const;
+                        gsMatrix<index_t>& b1,
+                        gsMatrix<index_t>& b2,
+                        gsVector<index_t>& level) const;
 
 
 

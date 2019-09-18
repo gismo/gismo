@@ -39,7 +39,7 @@ gsMatrix<T> gsHTensorBasis<d,T>::support(const unsigned & i) const
 
 // S.K.
 template<short_t d, class T> inline
-int gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
+index_t gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
 {
     GISMO_ASSERT(Pt.cols() == 1, "Waiting for single point");
     point loIdx;
@@ -54,8 +54,8 @@ int gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
 
 template<short_t d, class T> inline
 void gsHTensorBasis<d,T>::getLevelUniqueSpanAtPoints(const  gsMatrix<T> & Pt,
-                                                     gsVector<unsigned> & lvl,
-                                                     gsMatrix<unsigned> & loIdx ) const
+                                                     gsVector<index_t> & lvl,
+                                                     gsMatrix<index_t> & loIdx ) const
 {
     lvl.resize( Pt.cols() );
     loIdx.resize( Pt.rows(), Pt.cols() );
@@ -63,7 +63,7 @@ void gsHTensorBasis<d,T>::getLevelUniqueSpanAtPoints(const  gsMatrix<T> & Pt,
     loIdx.setZero();
     for( index_t i = 0; i < Pt.cols(); i++)
     {
-        lvl[i] = static_cast<unsigned>( getLevelAtPoint( Pt.col(i) ) );
+        lvl[i] = getLevelAtPoint( Pt.col(i) );
         for( index_t j = 0; j < Pt.rows(); j++)
             loIdx(j,i) = m_bases[ lvl[i] ]->knots(j).uFind( Pt(j,i) ).uIndex() ;
     }

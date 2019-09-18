@@ -579,7 +579,7 @@ public:
     /// Each column of \em Pts represents one evaluation point.
     /// \return levels gsMatrix of size <em>1</em> x <em>n</em>.\n
     /// <em>levels(0,i)</em> is the level of the point defined by the <em>i</em>-th column in \em Pts.
-    int getLevelAtPoint(const  gsMatrix<T> & Pt ) const;
+    index_t getLevelAtPoint(const  gsMatrix<T> & Pt ) const;
 
     // S.K.
     /// @brief Returns the level(s) and knot span(s) at point(s) in the parameter domain.
@@ -594,8 +594,8 @@ public:
     /// the lower corner of the knot span containing <em>i</em>-th point. The corner is given
     /// in unique knot span indices of level lvl[i].
     void getLevelUniqueSpanAtPoints(const  gsMatrix<T> & Pt,
-                                    gsVector<unsigned> & lvl,
-                                    gsMatrix<unsigned> & loIdx ) const;
+                                    gsVector<index_t> & lvl,
+                                    gsMatrix<index_t> & loIdx ) const;
 
     /// Returns the level in which the indices are stored internally
     unsigned maxLevel() const

@@ -534,7 +534,7 @@ public:
    * @param[out] level levels of the boxes (level[i]: level of the i-th box,)
    * @param[out] nvertices number of control points (nvertices[i,j]: number of control points in j-direction for the i-th box)
   */
-  void getBsplinePatches(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level, gsMatrix<unsigned>& nvertices) const;
+  void getBsplinePatches(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level, gsMatrix<unsigned>& nvertices) const;
 
   /**
    * @brief Return a multipatch structure of B-splines

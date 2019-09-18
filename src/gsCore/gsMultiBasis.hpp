@@ -452,7 +452,7 @@ bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
 }
 
 template<class T>
-template<int d>
+template<short_t d>
 bool gsMultiBasis<T>::repairInterfaceFindElements(
         const boundaryInterface & bi,
         std::vector<index_t> & refEltsFirst,
@@ -473,12 +473,12 @@ bool gsMultiBasis<T>::repairInterfaceFindElements(
 
     GISMO_ASSERT( bas0 != 0 && bas1 != 0, "Cannot cast basis as needed.");
 
-    gsMatrix<unsigned> lo0;
-    gsMatrix<unsigned> up0;
-    gsVector<unsigned> level0;
-    gsMatrix<unsigned> lo1;
-    gsMatrix<unsigned> up1;
-    gsVector<unsigned> level1;
+    gsMatrix<index_t> lo0;
+    gsMatrix<index_t> up0;
+    gsVector<index_t> level0;
+    gsMatrix<index_t> lo1;
+    gsMatrix<index_t> up1;
+    gsVector<index_t> level1;
 
     unsigned idxExponent;
 
@@ -694,9 +694,9 @@ bool gsMultiBasis<T>::repairInterface2d( const boundaryInterface & bi )
 
     GISMO_ASSERT( bas0 != 0 && bas1 != 0, "Cannot cast basis as needed.");
 
-    gsMatrix<unsigned> lo;
-    gsMatrix<unsigned> up;
-    gsVector<unsigned> level;
+    gsMatrix<index_t> lo;
+    gsMatrix<index_t> up;
+    gsVector<index_t> level;
 
     unsigned idxExponent;
 

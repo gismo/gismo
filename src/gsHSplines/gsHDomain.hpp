@@ -892,7 +892,7 @@ gsHDomain<d,T>::query3Recur(box const & qBox, node *_node) const
 
 
 template<short_t d, class T>
-void gsHDomain<d,T>::getBoxes(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level) const
+void gsHDomain<d,T>::getBoxes(gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level) const
 {
     std::vector<std::vector<index_t> > boxes;
 
@@ -909,7 +909,7 @@ void gsHDomain<d,T>::getBoxes(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gs
     b2.resize(boxes.size(),d);
     level.resize(boxes.size());
     for(size_t i = 0; i < boxes.size(); i++){
-        for(unsigned j = 0; j < d; j++){
+        for(short_t j = 0; j < d; j++){
             b1(i,j) = boxes[i][j];
             b2(i,j) = boxes[i][j+d];
         }
@@ -919,11 +919,11 @@ void gsHDomain<d,T>::getBoxes(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gs
 
 
 template<short_t d, class T>
-void gsHDomain<d,T>::getBoxesOnSide(boundary::side s, gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level) const
+void gsHDomain<d,T>::getBoxesOnSide(boundary::side s, gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level) const
 {
 
     getBoxes( b1, b2, level);
-    std::vector<int> onSide;
+    std::vector<index_t> onSide;
 
     unsigned remainder = (s-1) % 2;
     // remainder will be

@@ -137,8 +137,8 @@ int main(int argc, char *argv[])
 
     // --------------- some gsHTensorBasis-specific functions ---------------
     //! [stdOpsHTens]
-    gsVector<unsigned> resLevels;
-    gsMatrix<unsigned> resLowerCorner;
+    gsVector<index_t> resLevels;
+    gsMatrix<index_t> resLowerCorner;
 
     thb.getLevelUniqueSpanAtPoints(u, resLevels, resLowerCorner);
 
@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
 
     // print the underlying tree
     //! [stdOpsHTensTree]
-    gsMatrix<unsigned> resUpperCorner;
+    gsMatrix<index_t> resUpperCorner;
 
     thb.tree().getBoxes( resLowerCorner, resUpperCorner, resLevels);
 

@@ -451,15 +451,15 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<index_t> b1,
 // returns the list of B-spline patches to represent a THB-spline geometry
 template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::getBsplinePatches(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp,
-                                              gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2,
-                                              gsVector<unsigned>& level, gsMatrix<unsigned>& nvertices) const
+                                              gsMatrix<index_t>& b1, gsMatrix<index_t>& b2,
+                                              gsVector<index_t>& level, gsMatrix<unsigned>& nvertices) const
 { 
     this->m_tree.getBoxes(b1,b2,level); // splitting based on the quadtree
     int nboxes = level.size();
     //------------------------------------------------------------------------------------------------------------------------------
     // iteration on the boxes to call getBsplinePatchGlobal()
     //------------------------------------------------------------------------------------------------------------------------------
-    gsVector<unsigned> p1, p2;
+    gsVector<index_t> p1, p2;
     p1.resize(this->dim());
     p2.resize(this->dim());
     gsMatrix<T> temp1, temp2;
@@ -513,12 +513,12 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch(const gsMat
 
     gsMultiPatch<T> result;
 
-    gsMatrix<unsigned> b1, b2;
-    gsVector<unsigned> level;
+    gsMatrix<index_t> b1, b2;
+    gsVector<index_t> level;
     this->m_tree.getBoxes(b1,b2,level); // splitting based on the quadtree
 
     const int nboxes = level.size();
-    gsVector<unsigned> p1, p2;
+    gsVector<index_t> p1, p2;
     gsMatrix<T> temp1;
     gsKnotVector<T> cku, ckv;
 
