@@ -24,3 +24,7 @@ CMakeLists.txt.user
 /CMakeSettings.json*
 /.vs
 /build*
+
+#CMake
+CMakeCache.txt
+CMakeFiles/
