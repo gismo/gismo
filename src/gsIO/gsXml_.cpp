@@ -53,28 +53,28 @@ gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T> const & mat,
 
 TEMPLATE_INST
 gsXmlNode * makeNode( const std::string & name,
-                      const gsMatrix<int> & value, gsXmlTree & data,
+                      const gsMatrix<index_t> & value, gsXmlTree & data,
                       bool transposed);
 TEMPLATE_INST
-char * makeValue(const gsMatrix<int> & value, gsXmlTree & data,
+char * makeValue(const gsMatrix<index_t> & value, gsXmlTree & data,
                       bool transposed);
 
 TEMPLATE_INST
 void getMatrixFromXml ( gsXmlNode * node,
                         unsigned const & rows,
                         unsigned const & cols,
-                        gsMatrix<int> & result );
+                        gsMatrix<index_t> & result );
 
 TEMPLATE_INST
-gsXmlNode * putMatrixToXml ( gsMatrix<int> const & mat,
+gsXmlNode * putMatrixToXml ( gsMatrix<index_t> const & mat,
                              gsXmlTree & data, std::string name);
 
 TEMPLATE_INST
 void getSparseEntriesFromXml ( gsXmlNode * node,
-                               gsSparseEntries<int> & result );
+                               gsSparseEntries<index_t> & result );
 
 TEMPLATE_INST
-gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<int> const & mat,
+gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<index_t> const & mat,
                                    gsXmlTree & data, std::string name);
 
 
