@@ -31,3 +31,4 @@ CMakeFiles/
 
 # Patch Files
 *.patch
+*.rej
