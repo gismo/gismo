@@ -414,7 +414,7 @@ void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n,
     m_src->evalAllDers_into(u, n, ev);
     
     // find active basis functions
-    gsMatrix<unsigned> act;
+    gsMatrix<index_t> act;
     m_src->active_into(u,act);
 
     const int numAct = act.rows();

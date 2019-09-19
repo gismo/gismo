@@ -165,10 +165,10 @@ private:
 
 private:
     // Basis values
-    gsMatrix<T>      basisData;
-    gsMatrix<T>      physBasisGrads;
-    gsMatrix<T>      physBasisLaplace;
-    gsMatrix<unsigned> actives;
+    gsMatrix<T>       basisData;
+    gsMatrix<T>       physBasisGrads;
+    gsMatrix<T>       physBasisLaplace;
+    gsMatrix<index_t> actives;
 
     // Normal and Neumann values
     gsVector<T> unormal;
