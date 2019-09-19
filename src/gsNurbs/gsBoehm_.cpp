@@ -190,8 +190,8 @@ void gsTensorInsertKnotDegreeTimes<3,
         const gsVector<index_t, 3>& size_of_coefs,
         T val,
         const unsigned direction,
-        gsVector<unsigned, 3>& start,
-        gsVector<unsigned, 3>& end);
+        gsVector<index_t, 3>& start,
+        gsVector<index_t, 3>& end);
 
 TEMPLATE_INST
 void gsTensorInsertKnotDegreeTimes<2,
@@ -203,8 +203,8 @@ void gsTensorInsertKnotDegreeTimes<2,
         const gsVector<index_t, 2>& size_of_coefs,
         T val,
         const unsigned direction,
-        gsVector<unsigned, 2>& start,
-        gsVector<unsigned, 2>& end);
+        gsVector<index_t, 2>& start,
+        gsVector<index_t, 2>& end);
 
 
 } // end namespace gismo

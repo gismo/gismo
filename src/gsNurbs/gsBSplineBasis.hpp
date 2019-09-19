@@ -166,7 +166,7 @@ gsMatrix<index_t> gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
         gsWarn << "Periodic basis does not have such things as boundaries.\n";
 
     gsMatrix<index_t> res(1,1);
-    GISMO_ASSERT(offset+m_p+1 < static_cast<unsigned>(m_knots.size()),
+    GISMO_ASSERT(offset+m_p+1 < static_cast<index_t>(m_knots.size()),
                  "Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
     switch (s) {
     case boundary::left : // left

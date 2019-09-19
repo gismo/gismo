@@ -758,8 +758,8 @@ void gsTensorInsertKnotDegreeTimes(
         const gsVector<index_t, d>& size_of_coefs,
         T val,
         unsigned direction,
-        gsVector<unsigned, d>& start,
-        gsVector<unsigned, d>& end)
+        gsVector<index_t, d>& start,
+        gsVector<index_t, d>& end)
 {
     int k = knots.iFind(val) - knots.begin();
     int s = knots.multiplicity(val);
@@ -779,7 +779,7 @@ void gsTensorInsertKnotDegreeTimes(
 
     start(direction) = 0;
     end(direction) = 0;
-    gsVector<unsigned, d> position(start);
+    gsVector<index_t, d> position(start);
 
     unsigned step = coefs_str[direction];
 
@@ -796,7 +796,7 @@ void gsTensorInsertKnotDegreeTimes(
                         (1.0 - alfa) * coefs.row(flat_ind + i * step);
             }
         }
-    } while(nextCubePoint<gsVector<unsigned, d> >(position, start, end));
+    } while(nextCubePoint<gsVector<index_t, d> >(position, start, end));
 }
 
 } // namespace gismo

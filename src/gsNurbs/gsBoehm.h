@@ -191,8 +191,8 @@ void gsTensorInsertKnotDegreeTimes(
         const gsVector<index_t, d>& size_of_coefs,
         T val,
         const unsigned direction,
-        gsVector<unsigned, d>& start,
-        gsVector<unsigned, d>& end);
+        gsVector<index_t, d>& start,
+        gsVector<index_t, d>& end);
 
 
 
