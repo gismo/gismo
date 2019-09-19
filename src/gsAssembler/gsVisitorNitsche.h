@@ -144,9 +144,9 @@ public:
         }
     }
 
-    inline void localToGlobal(const index_t patchIndex,
-                              const std::vector<gsMatrix<T> >    & ,
-                              gsSparseSystem<T>     & system)
+    inline void localToGlobal(const index_t                     patchIndex,
+                              const std::vector<gsMatrix<T> > & ,
+                              gsSparseSystem<T>               & system)
     {
         // Map patch-local DoFs to global DoFs
         system.mapColIndices(actives, patchIndex, actives);

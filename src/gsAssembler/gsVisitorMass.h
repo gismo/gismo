@@ -80,9 +80,9 @@ public:
             md.measures.asDiagonal() * basisData.transpose();
     }
 
-    inline void localToGlobal(const index_t patchIndex,
-                              const std::vector<gsMatrix<T> >    & ,
-                              gsSparseSystem<T>     & system)
+    inline void localToGlobal(const index_t                     patchIndex,
+                              const std::vector<gsMatrix<T> > & ,
+                              gsSparseSystem<T>               & system)
     {
         // Map patch-local DoFs to global DoFs
         system.mapColIndices(actives, patchIndex, actives);
@@ -108,11 +108,11 @@ public:
     }
 
 
-    void localToGlobal(const gsDofMapper     & mapper,
-                       const gsMatrix<T>     & eliminatedDofs,
-                       const index_t           patchIndex,
-                       gsSparseMatrix<T>     & sysMatrix,
-                       gsMatrix<T>           & rhsMatrix )
+    void localToGlobal(const gsDofMapper & mapper,
+                       const gsMatrix<T> & eliminatedDofs,
+                       const index_t       patchIndex,
+                       gsSparseMatrix<T> & sysMatrix,
+                       gsMatrix<T>       & rhsMatrix )
     {
         mapper.localToGlobal(actives, patchIndex, actives);
 

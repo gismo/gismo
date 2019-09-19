@@ -94,9 +94,9 @@ public:
         //gsDebugVar(localMat.asVector().transpose() );
     }
     
-    inline void localToGlobal(const index_t patchIndex,
+    inline void localToGlobal(const index_t                     patchIndex,
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
-                              gsSparseSystem<T>     & system)
+                              gsSparseSystem<T>               & system)
     {
         // Map patch-local DoFs to global DoFs
         system.mapColIndices(actives, patchIndex, actives);
@@ -105,11 +105,11 @@ public:
         system.pushToRhs(localRhs, actives, 0);
     }
 
-    inline void localToGlobal(const gsDofMapper     & mapper,
-                              const gsMatrix<T>     & eliminatedDofs,
-                              const index_t           patchIndex,
-                              gsSparseMatrix<T>     & sysMatrix,
-                              gsMatrix<T>           & rhsMatrix )
+    inline void localToGlobal(const gsDofMapper & mapper,
+                              const gsMatrix<T> & eliminatedDofs,
+                              const index_t       patchIndex,
+                              gsSparseMatrix<T> & sysMatrix,
+                              gsMatrix<T>       & rhsMatrix )
     {
         //Assert eliminatedDofs.rows() == mapper.boundarySize()
 
