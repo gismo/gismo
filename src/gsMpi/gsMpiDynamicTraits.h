@@ -74,6 +74,41 @@ namespace gismo
         return comm.isend(in.begin(), length, dest, &reqs[1], tag);
     }
 
+
+   /**
+     * @brief Dynamic non-blocking send for gsSparseMatrix of any size.
+     *
+     * reqs should be an array that can hold at least two MPI_Requests.
+     */
+    template<typename T, int _Options, typename _Index>
+    static int disend(gsMpiComm &comm, gsSparseMatrix<T, _Options, _Index>& in, int dest,  MPI_Request* reqs, int tag = 0)
+    {
+        int dimensions[2];
+        dimensions[0] = in.rows();
+        dimensions[1] = in.cols();
+
+        using Data = std::pair<std::pair<_Index, _Index>, T>;
+
+        int size = in.nonZeros();
+
+        Data* data = (Data*) malloc(sizeof(Data) * size);
+        int i = 0;
+        for(int outer = 0; outer < in.cols(); outer++) {
+            auto it = in.begin(outer);
+            while(it) {
+                std::pair<_Index, _Index> coeff = std::make_pair(it.row(), it.col());
+                data[i] = std::make_pair(coeff, it.value());
+                ++i;
+                ++it;
+            }
+        }
+
+        comm.isend(&dimensions, 2, dest, &reqs[0], tag);
+        int result = comm.isend(data, size, dest, &reqs[1], tag);
+        free(data);
+        return result;
+    }
+
     /**
      * @brief Specialized dynamic blocking receive for gsVector of any size.
      *
@@ -121,6 +156,8 @@ namespace gismo
             out(std::get<0>(indices), std::get<1>(indices)) = datum;
         }
 
+        free(data);
+
         return result;
     }
 
@@ -135,12 +172,14 @@ namespace gismo
         int* length = (int*) malloc(sizeof(int));
         gsActionableMpiRequest req;
         comm.irecv(length, 1, source, &req.req, tag);
-        req.action = [comm, out, length, source, tag](MPI_Status* status) {
+        req.action = [&comm, &out, length, source, tag](MPI_Status* status) {
             if(out.size() != *length) {
                 out.resize(*length);
             }
 
-            return comm.recv(out.begin(), *length, source, tag, status);
+            int result = comm.recv(out.begin(), *length, source, tag, status);
+            free(length);
+            return result;
         };
 
         return req;
