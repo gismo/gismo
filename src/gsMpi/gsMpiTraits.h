@@ -224,7 +224,7 @@ namespace gismo
 */
 
   template<typename T1, typename T2>
-  struct MPITraits<std::pair<T1,T2 > >
+  struct MPITraits<std::pair<T1,T2> >
   {
   public:
     inline static MPI_Datatype getType();
