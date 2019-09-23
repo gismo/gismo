@@ -50,7 +50,7 @@ public:
 
 public:
     mutable unsigned flags;
-    int      patchId; // move to mapdata
+    index_t      patchId; // move to mapdata
 
     gsMatrix<index_t> actives;
 

@@ -70,7 +70,7 @@ public:
     const unsinged Segments = 1);
 */
 
-    static BSplinePtr BSplineUnitInterval(int deg);
+    static BSplinePtr BSplineUnitInterval(short_t deg);
 
 /// 2d-rectange [low_x,upp_x] x [low_y,upp_y], rotated by \a turndeg degrees.
     static TensorBSpline2Ptr BSplineRectangle( T const & low_x = 0,
@@ -105,7 +105,7 @@ public:
     // Note: this can probably be removed once we have degree elevation for tensor B-splines.
     //
     /// The unit square represented as a tensor B-spline of degree \a deg
-    static TensorBSpline2Ptr BSplineSquare(int deg, T scale = 1.0);
+    static TensorBSpline2Ptr BSplineSquare(short_t deg, T scale = 1.0);
     
     static TensorBSpline3Ptr BSplineCube( T const & r = 1, T const & x = 0,
                                                T const & y = 0, T const & z = 0  );
@@ -113,7 +113,7 @@ public:
     // Note: this can probably be removed once we have degree elevation for tensor B-splines.
     //
     /// The unit cube represented as a tensor B-spline of degree \a deg
-    static TensorBSpline3Ptr BSplineCube(int deg);
+    static TensorBSpline3Ptr BSplineCube(short_t deg);
 
     static gsMultiPatch<T> BSplineCubeGrid(int n, int m,int p, T const & r = 1,
                                            T const & lx = 0, T const & ly = 0, T const & lz = 0);
@@ -127,10 +127,10 @@ public:
     static TensorNurbs2Ptr NurbsQuarterAnnulus( T const & r0 =1, T const & r1 =2);
     static TensorNurbs3Ptr BSplineSaddle();
     /// Inexact annulus using B-splines
-    static GeometryPtr BSplineQuarterAnnulus(int const & deg = 2);
+    static GeometryPtr BSplineQuarterAnnulus(const short_t & deg = 2);
 
     //static TensorNurbs2Ptr NurbsQuarterAnnulusMixedWithLShape();
-    //static GeometryPtr BSplineQuarterAnnulusMixedWithLShape(int const & deg = 2);
+    //static GeometryPtr BSplineQuarterAnnulusMixedWithLShape(const short_t & deg = 2);
 
     /// Fat annulus using B-splines, discarding the weights of the exact NURBS
     ///  Analytical formulation (when r0 = 1 and r1 = 2):
