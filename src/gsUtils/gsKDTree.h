@@ -32,7 +32,7 @@ namespace gismo
 template <class T>
 struct gsKDTreeTraits
 {
-  static inline std::size_t size() { return 0; }
+  static inline std::size_t size() { return 1; }
   
   static inline bool islhalf(const T& lhs, const T& rhs, std::size_t axis) { return lhs[axis] < rhs[axis]; }
   
