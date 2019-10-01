@@ -690,7 +690,8 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allNonMatchingComponen
     }
 
     //then push the extensions...
-    result.push_back(extension);
+    if(extension.size() > 0)
+        result.push_back(extension);
 
     //... and the boundary corners of non matching interfaces if existent
     if(coll_boundaryCorners.size() > 0)
