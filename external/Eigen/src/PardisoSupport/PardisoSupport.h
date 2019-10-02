@@ -71,16 +71,6 @@ namespace internal
       {
           IndexType error = 0;
           ::pardiso_printstats(&type, &n, a, ia, ja, &nrhs, b, &error);
-            if (error != 0)
-            {
-                printf("\nERROR: %d\n", error);
-
-                printf("\n ia :\n");
-                for (int i = 0; i < n; i++) printf("%d\t", ia[i]);
-                printf("\n ja :\n");
-                for (int i = 0; i < n; i++) printf("%d\t", ja[i]);
-
-            }
       }
 #endif
   };
@@ -263,7 +253,7 @@ class PardisoImpl : public SparseSolverBase<Derived>
       m_iparm[20] = 0;  // 1x1 pivoting
       m_iparm[26] = 0;  // No matrix checker
       m_iparm[27] = (sizeof(RealScalar) == 4) ? 1 : 0;
-      m_iparm[34] = 1;  // 1: C-style indexing (MKL only)
+      m_iparm[34] = 0;  // 1: C-style indexing (MKL only)
       m_iparm[36] = 0;  // use CSR format
       m_iparm[59] = 0;  // 0 - In-Core ; 1 - Automatic switch between In-Core and Out-of-Core modes ; 2 - Out-of-Core
 
@@ -400,12 +390,15 @@ void PardisoImpl<Derived>::_solve_impl(const MatrixBase<BDerived> &b, MatrixBase
 
   Index error;
 
-  #ifndef EIGEN_USE_MKL
+  // Following lines check and write out details on the CSR matrix
+  /*
+#ifndef EIGEN_USE_MKL
   internal::pardiso_run_selector<StorageIndex>::printstats(m_pt, 1, 1, m_type, 33, internal::convert_index<StorageIndex>(m_size),
                                                            m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
                                                            m_perm.data(), internal::convert_index<StorageIndex>(nrhs), m_iparm.data(), m_msglvl,
                                                            rhs_ptr, x.derived().data());
 #endif
+  */
 
   error = internal::pardiso_run_selector<StorageIndex>::run(m_pt, 1, 1, m_type, 33, internal::convert_index<StorageIndex>(m_size),
                                                             m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
@@ -466,16 +459,16 @@ class PardisoLU : public PardisoImpl< PardisoLU<MatrixType> >
     {
       m_matrix = matrix;
       m_matrix.makeCompressed();
-#ifndef EIGEN_USE_MKL
+      //1-index based conversion
       typedef typename MatrixType::StorageIndex StorageIndex;
       StorageIndex * s = m_matrix.innerIndexPtr();
-      std::transform(s, s+m_matrix.innerSize(), s,
+      std::transform(s, s + m_matrix.nonZeros(), s,
                      std::bind2nd(std::plus<StorageIndex>(), 1));
       s = m_matrix.outerIndexPtr();
-      std::transform(s, s+m_matrix.outerSize(), s,
+      std::transform(s, s + m_matrix.outerSize()+1, s,
                      std::bind2nd(std::plus<StorageIndex>(), 1));
-
-#endif
+      // gsInfo << "ia (outer) :"<< m_matrix.outerSize()<< " / "<< m_matrix.outerSize()+1 <<"\n";
+      // gsInfo << "ja (inner) :"<< m_matrix.innerSize()<< " / "<< m_matrix.nonZeros() <<"\n";
     }
 };
 
@@ -533,19 +526,17 @@ class PardisoLLT : public PardisoImpl< PardisoLLT<MatrixType,_UpLo> >
     void getMatrix(const MatrixType& matrix)
     {
       // PARDISO supports only upper, row-major matrices
-      PermutationMatrix<Dynamic,Dynamic,StorageIndex> p_null;
+      //PermutationMatrix<Dynamic,Dynamic,StorageIndex> p_null;
       m_matrix.resize(matrix.rows(), matrix.cols());
-      m_matrix.template selfadjointView<Upper>() = matrix.template selfadjointView<UpLo>().twistedBy(p_null);
+      m_matrix.template selfadjointView<Upper>() = matrix.template selfadjointView<UpLo>(); //.twistedBy(p_null);
       m_matrix.makeCompressed();
-#ifndef EIGEN_USE_MKL
-      typedef typename MatrixType::StorageIndex StorageIndex;
+      //1-index based conversion
       StorageIndex * s = m_matrix.innerIndexPtr();
-      std::transform(s, s+m_matrix.innerSize(), s,
+      std::transform(s, s+m_matrix.nonZeros(), s,
                      std::bind2nd(std::plus<StorageIndex>(), 1));
       s = m_matrix.outerIndexPtr();
-      std::transform(s, s+m_matrix.outerSize(), s,
+      std::transform(s, s+m_matrix.outerSize()+1, s,
                      std::bind2nd(std::plus<StorageIndex>(), 1));
-#endif
     }
 };
 
@@ -603,19 +594,17 @@ class PardisoLDLT : public PardisoImpl< PardisoLDLT<MatrixType,Options> >
     void getMatrix(const MatrixType& matrix)
     {
       // PARDISO supports only upper, row-major matrices
-      PermutationMatrix<Dynamic,Dynamic,StorageIndex> p_null;
+      //PermutationMatrix<Dynamic,Dynamic,StorageIndex> p_null;
       m_matrix.resize(matrix.rows(), matrix.cols());
-      m_matrix.template selfadjointView<Upper>() = matrix.template selfadjointView<UpLo>().twistedBy(p_null);
+      m_matrix.template selfadjointView<Upper>() = matrix.template selfadjointView<UpLo>(); //.twistedBy(p_null);
       m_matrix.makeCompressed();
-#ifndef EIGEN_USE_MKL
-      typedef typename MatrixType::StorageIndex StorageIndex;
+      //1-index based conversion
       StorageIndex * s = m_matrix.innerIndexPtr();
-      std::transform(s, s+m_matrix.innerSize(), s,
+      std::transform(s, s + m_matrix.nonZeros(), s,
                      std::bind2nd(std::plus<StorageIndex>(), 1));
       s = m_matrix.outerIndexPtr();
-      std::transform(s, s+m_matrix.outerSize(), s,
+      std::transform(s, s + m_matrix.outerSize()+1, s,
                      std::bind2nd(std::plus<StorageIndex>(), 1));
-#endif
     }
 };
 
