@@ -74,8 +74,218 @@ public:
     void print(std::ostream &os) const { os << "grad("; _u.print(os); os <<")"; }
 };
 
+
+// Comments for var1:
+// - I don't know up to which extent this is scalable to other domain dimensions due to the cross products..
+// template<class E>
+// class var1_expr : public _expr<var1_expr<E> >
+// {
+//     typename E::Nested_t _u;
+//     typename gsGeometryMap<T>::Nested_t _G;
+
+// public:
+//     enum{ Space = E::Space };
+
+//     typedef typename E::Scalar Scalar;
+
+//     var1_expr(const E & u, const gsGeometryMap<T> & G) : _u(u), _G(G) { }
+
+//     mutable gsMatrix<Scalar> res;
+
+//     MatExprType eval(const index_t k) const
+//     {
+//         index_t A = rows()/cols(); // note: rows/cols is the number of actives
+
+//         << VecFun needed >> 
+
+//         for (index_t d = 0; d!= cols(); ++d)
+//         {
+//             short_t s = d*A;
+//             for (index_t j = 0; j!= A; ++j) 
+//             {
+
+//                 bGrads = _u.data().values[1].col(k); // this one is (rows,cols) = ( domainDim x A, 1)
+//                 cJac = _G.data().values[1].col(k); // this one is (rows,cols) = ( domainDim x parDim, 1) [d1c1, d1c2, d1c3, d2c1, d2c2, d2c3]
+
+//                 m_v.noalias() = vecFun( j,bGrads(j) ).cross( cJac(d:2*d) )
+//                                 - vecFun( j,bGrads(j+A) ).cross( cJac(0:d) );               
+
+//                 normal = _G.data().outNormals.col(k);
+
+//                 // ---------------  First variation of the normal
+//                 n_der.noalias() = (m_v - ( normal.dot(m_v) ) * normal) / geoEval.measure(k);
+
+//                 res.row(s+j) = n_der;
+//             }
+//         }
+
+//         return M; // has size (rows,cols) = (parDim*A, domainDim)
+//     }
+
+//     index_t rows() const
+//     {
+//         //return _u.data().values[0].rows();
+//         return _u.data().values[1].rows();
+//     }
+//     //index_t rows() const { return _u.data().actives.size(); }
+//     //index_t rows() const { return _u.rows(); }
+
+//     //index_t rows() const { return _u.source().targetDim() is wrong }
+//     index_t cols() const { return _u.source().domainDim(); }
+
+//     void setFlag() const
+//     {
+//         _u.data().flags |= NEED_GRAD;
+//         _G.data().flags |= NEED_OUTER_NORMAL && NEED_JACOBIAN;
+//     }
+
+//     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+//     {
+//         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+//         evList.push_sorted_unique(&_u.source());
+//         _u.data().flags |= NEED_GRAD;
+//         if (_u.composed() )
+//             _u.mapData().flags |= NEED_VALUE;
+//     }
+
+//     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+//     const gsFeSpace<Scalar> & colVar() const
+//     {return gsNullExpr<Scalar>::get();}
+
+//     static constexpr bool rowSpan() {return E::rowSpan(); }
+//     static constexpr bool colSpan() {return false;}
+
+//     void print(std::ostream &os) const { os << "grad("; _u.print(os); os <<")"; }
+// };
+
+// template<class E>
+// class var2_expr : public _expr<var2_expr<E> >
+// {
+//     typename E::Nested_t _u;
+//     typename E::Nested_t _v;
+//     typename gsGeometryMap<T>::Nested_t _G;
+
+// public:
+//     enum{ Space = E::Space };
+
+//     typedef typename E::Scalar Scalar;
+
+//     var2_expr(const E & u) : _u(u)
+//     { GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");}
+
+//     MatExprType eval(const index_t k) const
+//     {
+//         // numActive x dim
+//         return _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
+//     }
+
+//     index_t rows() const
+//     {
+//         //return _u.data().values[0].rows();
+//         return _u.data().values[1].rows() / cols();
+//     }
+//     //index_t rows() const { return _u.data().actives.size(); }
+//     //index_t rows() const { return _u.rows(); }
+
+//     //index_t rows() const { return _u.source().targetDim() is wrong }
+//     index_t cols() const { return _u.source().domainDim(); }
+
+//     void setFlag() const
+//     {
+//         _u.data().flags |= NEED_GRAD;
+//         _G.data().flags |= NEED_OUTER_NORMAL;
+//         if (_u.composed() )
+//             _u.mapData().flags |= NEED_VALUE;
+//     }
+
+//     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+//     {
+//         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+//         evList.push_sorted_unique(&_u.source());
+//         _u.data().flags |= NEED_GRAD;
+//         if (_u.composed() )
+//             _u.mapData().flags |= NEED_VALUE;
+//     }
+
+//     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+//     const gsFeSpace<Scalar> & colVar() const
+//     {return gsNullExpr<Scalar>::get();}
+
+//     static constexpr bool rowSpan() {return E::rowSpan(); }
+//     static constexpr bool colSpan() {return false;}
+
+//     void print(std::ostream &os) const { os << "grad("; _u.print(os); os <<")"; }
+// };
+
+// template<class E>
+// class hessdot_expr : public _expr<hessdot_expr<E> >
+// {
+//     typename E::Nested_t _u;
+//     typename gsGeometryMap<T>::Nested_t _G;
+
+// public:
+//     enum{ Space = E::Space };
+
+//     typedef typename E::Scalar Scalar;
+
+//     hessdot_expr(const E & u) : _u(u)
+//     { GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");}
+
+// !    MatExprType eval(const index_t k) const
+//     {
+//         // numActive x dim
+//         return _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
+//     }
+
+// !    index_t rows() const
+//     {
+//         //return _u.data().values[0].rows();
+//         return _u.data().values[1].rows() / cols();
+//     }
+//     //index_t rows() const { return _u.data().actives.size(); }
+//     //index_t rows() const { return _u.rows(); }
+
+//     //index_t rows() const { return _u.source().targetDim() is wrong }
+// !    index_t cols() const { return _u.source().domainDim(); }
+
+//     void setFlag() const
+//     {
+//         _u.data().flags |= NEED_2ND_DER;
+//         _G.data().flags |= NEED_OUTER_NORMAL;
+//     }
+
+//     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+//     {
+//         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+//         evList.push_sorted_unique(&_u.source());
+//         _u.data().flags |= NEED_GRAD;
+//         if (_u.composed() )
+//             _u.mapData().flags |= NEED_VALUE;
+//     }
+
+// !    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+// !    const gsFeSpace<Scalar> & colVar() const
+//     {return gsNullExpr<Scalar>::get();}
+
+//     static constexpr bool rowSpan() {return E::rowSpan(); }
+//     static constexpr bool colSpan() {return false;}
+
+//     void print(std::ostream &os) const { os << "grad("; _u.print(os); os <<")"; }
+// };
+
+
+
 template<class E> EIGEN_STRONG_INLINE
 mygrad_expr<E> mygrad(const E & u) { return mygrad_expr<E>(u); }
+
+// template<class E> EIGEN_STRONG_INLINE
+// mygrad_expr<E> var1(const E & u, const gsGeometryMap<T> & G) { return var1_expr<E>(u, G); }
+
+// template<class E> EIGEN_STRONG_INLINE
+// mygrad_expr<E> var2(const E & u, const E & v, const gsGeometryMap<T> & G) { return var2_expr<E>(u, v, G); }
+
+// template<class E> EIGEN_STRONG_INLINE
+// mygrad_expr<E> hessdot(const E & u, const gsGeometryMap<T> & G) { return hessdot_expr<E>(u, G); }
 
 }}
 
