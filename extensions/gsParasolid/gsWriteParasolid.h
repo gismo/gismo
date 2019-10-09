@@ -70,6 +70,11 @@ namespace extensions {
     template<class T>
     bool gsWriteParasolid( const gsTHBSpline<2, T>& thb, const std::vector<T>&par_boxes, std::string const & filename );
 
+    /// Converts \a tp into a PK_SHEET and writes it to filename.xmt_txt.
+    template<class T>
+    bool gsWritePK_SHEET(const gsTensorBSpline<2, T>& tp, const std::string& filename);
+
+
     /// Translates a gsTensorBSpline to a PK_BSURF_t
     /// \param[in] bsp B-spline surface
     /// \param[out] bsurf Parasolid spline surface

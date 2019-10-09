@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundary_conditions);
-    cmd.addSwitch("",  "Plot",                  "Plot the result with Paraview", plot);
+    cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -298,7 +298,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        gsInfo << "Done. No output created, re-run with --Plot to get a ParaView "
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;
@@ -349,8 +349,8 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
         index_t sz = indices.rows();
         gsSparseEntries<> se;
         se.reserve(sz);
-        for (index_t i=0; i<sz; ++i)
-            se.add(indices(i,0),i,real_t(1));
+        for (index_t j=0; j<sz; ++j)
+            se.add(indices(j,0),j,real_t(1));
         gsSparseMatrix<real_t,RowMajor> transfer(nTotalDofs,sz);
         transfer.setFrom(se);
 

@@ -88,6 +88,9 @@ namespace rapidxml
         //! \return Pointer to null terminated description of the error.
         virtual const char *what() const throw()
         {
+            std::string cur;
+            cur.assign(this->where<char>(), 0, 128);//G+Smo
+            gsWarn << "Where:\n" << cur <<" ...\n";
             return m_what;
         }
 

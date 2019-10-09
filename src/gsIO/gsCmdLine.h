@@ -93,7 +93,7 @@ public:
     void addInt(const std::string& flag,
                 const std::string& name,
                 const std::string& desc,
-                intVal_t        & value);
+                intVal_t         & value);
 
     /// @brief Register an int option for the command line, which can be assigned more than once
     ///
@@ -107,10 +107,10 @@ public:
     ///
     /// If the flag is "n", the user might call "-n 10" at the command line.
     /// It the name is "size", the user might call "--size 10" at the command line.
-    void addMultiInt(const std::string& flag,
-                     const std::string& name,
-                     const std::string& desc,
-                     std::vector<intVal_t> & value);
+    void addMultiInt(const std::string    & flag,
+                     const std::string    & name,
+                     const std::string    & desc,
+                     std::vector<intVal_t>& value);
 
     /// @brief Register a real option for the command line
     ///

@@ -1,6 +1,6 @@
-/** @file gsMakeUnsigned.cpp
+/** @file gsAbs_Diff_test.cpp
 
-    @brief Tests std::make_unsigned, which is part of CXX11 and
+    @brief Tests math::abs_diff, which is part of CXX11 and
     for CXX98 defined in gsTemplateTools.h.
 
     This file is part of the G+Smo library.
@@ -14,8 +14,12 @@
 
 #include "gismo_unittest.h"
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 
+// This Unittest file tests math::abs_diff, and therefore
+// util::make_unsigned, which is native C++11 and has an
+// C++98 conform custom implementation in gsCore/gsTemplateTools.h
 SUITE(gsMakeUnsigned)
 {
     TEST(int32_m1_1)

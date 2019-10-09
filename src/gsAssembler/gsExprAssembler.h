@@ -396,7 +396,7 @@ public:
     void setOptions(gsOptionList opt) { m_options = opt; } // gsOptionList opt
     // .swap(opt) todo
 
-#   if(__cplusplus >= 201103L || defined(__DOXYGEN__))
+#   if(__cplusplus >= 201103L || _MSC_VER >= 1600 || defined(__DOXYGEN__))
     /// Adds the expressions \a args to the system matrix/rhs
     ///
     /// The arguments are considered as integrals over the whole domain
@@ -520,7 +520,7 @@ private:
                                 const ifContainer & iFaces);
 
 // /*
-#if(__cplusplus >= 201103L) // c++11
+#if __cplusplus >= 201103L || _MSC_VER >= 1600 // c++11
     template <class op, class E1>
     void _apply(op _op, const expr::_expr<E1> & firstArg) {_op(firstArg);}
     template <class op, class E1, class... Rest>
@@ -797,7 +797,7 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, i
 
 template<class T> void gsExprAssembler<T>::resetSpaces()
 {
-    for (std::size_t i = 0; i!=m_vcol.size(); ++i)
+    for (size_t i = 0; i!=m_vcol.size(); ++i)
     {
         GISMO_ASSERT(NULL!=m_vcol[i], "Not set.");
         m_vcol[i]->reset();
@@ -824,7 +824,7 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
 }
 
 template<class T>
-#if(__cplusplus >= 201103L || defined(__DOXYGEN__)) // c++11
+#if(__cplusplus >= 201103L || _MSC_VER >= 1600 || defined(__DOXYGEN__)) // c++11
 template<class... expr>
 void gsExprAssembler<T>::assemble(expr... args)
 #else
@@ -837,7 +837,7 @@ void gsExprAssembler<T>::assemble(expr... args)
 
     // initialize flags
     m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-#   if(__cplusplus >= 201103L)
+#   if __cplusplus >= 201103L || _MSC_VER >= 1600
     _apply(_setFlag, args...);
     //_apply(_printExpr, args...);
 #   else
@@ -870,7 +870,7 @@ void gsExprAssembler<T>::assemble(expr... args)
             //m_exprdata->precompute(QuRule, *domIt); // todo
 
             // Assemble contributions of the element
-#           if(__cplusplus >= 201103L)
+#           if __cplusplus >= 201103L || _MSC_VER >= 1600
             _apply(ee, args...);
 #           else
             ee(a1);ee(a2);ee(a3);ee(a4);ee(a5);
@@ -882,7 +882,7 @@ void gsExprAssembler<T>::assemble(expr... args)
 }
 
 template<class T>
-#if(__cplusplus >= 201103L) // c++11
+#if __cplusplus >= 201103L || _MSC_VER >= 1600 // c++11
 template<class... expr>
 void gsExprAssembler<T>::assemble(const bcRefList & BCs, expr... args)
 #else
@@ -892,7 +892,7 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
 {
     // initialize flags
     m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-#   if(__cplusplus >= 201103L)
+#   if __cplusplus >= 201103L || _MSC_VER >= 1600
     _apply(_setFlag, args...);
 #   else
     _setFlag(a1);
@@ -930,7 +930,7 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
             m_exprdata->precompute(it->patch());
 
             // Assemble contributions of the element
-#           if(__cplusplus >= 201103L)
+#           if __cplusplus >= 201103L || _MSC_VER >= 1600
             _apply(ee, args...);
 #           else
             ee(a1);

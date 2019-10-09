@@ -239,7 +239,7 @@ public:
     bool isFinalized() const { return m_curElimId==0; }
 
     /// \brief Returns true iff the mapper is a permuatation
-    bool isPermutation() const { return static_cast<std::size_t>(size())==mapSize(); }
+    bool isPermutation() const { return static_cast<size_t>(size())==mapSize(); }
 
     /// \brief Print summary
     std::ostream& print( std::ostream& os = gsInfo ) const;
@@ -415,23 +415,23 @@ public:
     index_t boundarySizeWithDuplicates() const;
 
     /// Returns the offset corresponding to patch \a k
-    std::size_t offset(int k) const
+    size_t offset(int k) const
     {return m_offset[k];}
 
     /// Returns the number of patches present underneath the mapper
-    std::size_t numPatches() const
+    size_t numPatches() const
     {return m_offset.size();}
 
     /// \brief Returns the total number of patch-local degrees of
     /// freedom that are being mapped
-    std::size_t mapSize() const
+    size_t mapSize() const
     {return m_dofs.size();}
 
     /// \brief Returns the total number of patch-local degrees on patch \a k
     /// freedom that are being mapped
-    std::size_t patchSize(const index_t k) const
+    size_t patchSize(const index_t k) const
     {
-        const std::size_t k1(k+1);
+        const size_t k1(k+1);
         GISMO_ASSERT(k1<=numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
         if ( 1==m_offset.size() ) return m_dofs.size();
         else if ( k1==m_offset.size() ) return m_dofs.size() - m_offset.back();
@@ -476,7 +476,7 @@ private:
     // Representation as a single vector plus offsets for patch-local
     // indices
     std::vector<index_t>     m_dofs;
-    std::vector<std::size_t> m_offset;
+    std::vector<size_t> m_offset;
     // Representation as vector of vectors, m_patchDofs[k][i]
     // corresponds to patch k patch-local basis index i
     // std::vector< std::vector<index_t> > m_patchDofs;

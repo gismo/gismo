@@ -113,7 +113,7 @@ private:
 
     T m_val;
 
-    int m_domainDim;
+    short_t m_domainDim;
 };
 
 
