@@ -163,7 +163,6 @@ void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
     const unsigned flags = out.flags;
 
     out.dim = this->dimensions();
-    //gsDebugVar(&out);
 
     const int md = out.maxDeriv();
     if (md != -1)
