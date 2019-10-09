@@ -16,7 +16,7 @@
 
 #  define MatExprType  auto
 
-namespace gismo{ 
+namespace gismo{
 namespace expr{
 
 template<class E>
@@ -76,87 +76,92 @@ public:
 
 
 // Comments for var1:
-// - I don't know up to which extent this is scalable to other domain dimensions due to the cross products..
-// template<class E>
-// class var1_expr : public _expr<var1_expr<E> >
-// {
-//     typename E::Nested_t _u;
-//     typename gsGeometryMap<T>::Nested_t _G;
+// - TODO: dimensionm indep. later on
+template<class E>
+class var1_expr : public _expr<var1_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
 
-// public:
-//     enum{ Space = E::Space };
+private:
 
-//     typedef typename E::Scalar Scalar;
+    typename E::Nested_t _u;
+    typename gsGeometryMap<Scalar>::Nested_t _G;
 
-//     var1_expr(const E & u, const gsGeometryMap<T> & G) : _u(u), _G(G) { }
+public:
+    enum{ Space = E::Space };
 
-//     mutable gsMatrix<Scalar> res;
+    var1_expr(const E & u, const gsGeometryMap<Scalar> & G) : _u(u), _G(G) { }
 
-//     MatExprType eval(const index_t k) const
-//     {
-//         index_t A = rows()/cols(); // note: rows/cols is the number of actives
+    mutable gsMatrix<Scalar> res;
 
-//         << VecFun needed >> 
+    mutable gsMatrix<Scalar> bGrads, cJac;
+    mutable gsVector<Scalar,3> m_v, normal;
 
-//         for (index_t d = 0; d!= cols(); ++d)
-//         {
-//             short_t s = d*A;
-//             for (index_t j = 0; j!= A; ++j) 
-//             {
+    // helper function
+    static inline gsVector<Scalar,3> vecFun(index_t pos, Scalar val)
+    {
+        gsVector<Scalar,3> result = gsVector<Scalar,3>::Zero();
+        result[pos] = val;
+        return result;
+    }
 
-//                 bGrads = _u.data().values[1].col(k); // this one is (rows,cols) = ( domainDim x A, 1)
-//                 cJac = _G.data().values[1].col(k); // this one is (rows,cols) = ( domainDim x parDim, 1) [d1c1, d1c2, d1c3, d2c1, d2c2, d2c3]
+    MatExprType eval(const index_t k) const
+    {
+        res.resize(rows(), cols());
+        const index_t A = rows()/cols(); // note: rows/cols is the number of actives
 
-//                 m_v.noalias() = vecFun( j,bGrads(j) ).cross( cJac(d:2*d) )
-//                                 - vecFun( j,bGrads(j+A) ).cross( cJac(0:d) );               
+        normal = _G.data().outNormals.col(k);
+        bGrads = _u.data().values[1].col(k);
+        cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
+        const Scalar measure =  _G.data().measures.at(k);
 
-//                 normal = _G.data().outNormals.col(k);
+        for (index_t d = 0; d!= cols(); ++d) // for all basis functions (1)
+        {
+            const short_t s = d*A;
+            for (index_t j = 0; j!= A; ++j) // for all basis functions (2)
+            {
+                // Jac(u) ~ Jac(G) with alternating signs ?..
+                m_v.noalias() = vecFun(d, bGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
+                              - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() );
 
-//                 // ---------------  First variation of the normal
-//                 n_der.noalias() = (m_v - ( normal.dot(m_v) ) * normal) / geoEval.measure(k);
+                // ---------------  First variation of the normal
+                res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose() / measure;
+            }
+        }
 
-//                 res.row(s+j) = n_der;
-//             }
-//         }
+        return res;
+    }
 
-//         return M; // has size (rows,cols) = (parDim*A, domainDim)
-//     }
+    index_t rows() const
+    {
+        return cols() * _u.data().values[1].rows() / _u.source().domainDim();
+    }
 
-//     index_t rows() const
-//     {
-//         //return _u.data().values[0].rows();
-//         return _u.data().values[1].rows();
-//     }
-//     //index_t rows() const { return _u.data().actives.size(); }
-//     //index_t rows() const { return _u.rows(); }
+    index_t cols() const { return _u.dim(); }
 
-//     //index_t rows() const { return _u.source().targetDim() is wrong }
-//     index_t cols() const { return _u.source().domainDim(); }
+    void setFlag() const
+    {
+        _u.data().flags |= NEED_GRAD;
+        _G.data().flags |= NEED_OUTER_NORMAL | NEED_DERIV | NEED_MEASURE;
+    }
 
-//     void setFlag() const
-//     {
-//         _u.data().flags |= NEED_GRAD;
-//         _G.data().flags |= NEED_OUTER_NORMAL && NEED_JACOBIAN;
-//     }
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        evList.push_sorted_unique(&_u.source());
+        _u.data().flags |= NEED_GRAD;
+        _G.data().flags |= NEED_OUTER_NORMAL | NEED_DERIV | NEED_MEASURE;
+    }
 
-//     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
-//     {
-//         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-//         evList.push_sorted_unique(&_u.source());
-//         _u.data().flags |= NEED_GRAD;
-//         if (_u.composed() )
-//             _u.mapData().flags |= NEED_VALUE;
-//     }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const
+    {return gsNullExpr<Scalar>::get();}
 
-//     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-//     const gsFeSpace<Scalar> & colVar() const
-//     {return gsNullExpr<Scalar>::get();}
+    static constexpr bool rowSpan() {return E::rowSpan(); }
+    static constexpr bool colSpan() {return false;}
 
-//     static constexpr bool rowSpan() {return E::rowSpan(); }
-//     static constexpr bool colSpan() {return false;}
-
-//     void print(std::ostream &os) const { os << "grad("; _u.print(os); os <<")"; }
-// };
+    void print(std::ostream &os) const { os << "var1("; _u.print(os); os <<")"; }
+};
 
 // template<class E>
 // class var2_expr : public _expr<var2_expr<E> >
@@ -278,8 +283,8 @@ public:
 template<class E> EIGEN_STRONG_INLINE
 mygrad_expr<E> mygrad(const E & u) { return mygrad_expr<E>(u); }
 
-// template<class E> EIGEN_STRONG_INLINE
-// mygrad_expr<E> var1(const E & u, const gsGeometryMap<T> & G) { return var1_expr<E>(u, G); }
+template<class E> EIGEN_STRONG_INLINE
+var1_expr<E> var1(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return var1_expr<E>(u, G); }
 
 // template<class E> EIGEN_STRONG_INLINE
 // mygrad_expr<E> var2(const E & u, const E & v, const gsGeometryMap<T> & G) { return var2_expr<E>(u, v, G); }
@@ -299,7 +304,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    index_t numRefine  = 5;
+    index_t numRefine  = 1;
     index_t numElevate = 0;
     bool last = false;
     std::string fn("pde/poisson2d_bvp.xml");
@@ -323,17 +328,6 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp;
     fd.getId(0, mp); // id=0: Multipatch domain
 
-    gsFunctionExpr<> f;
-    fd.getId(1, f); // id=1: source function
-    gsInfo<<"Source function "<< f << "\n";
-
-    gsBoundaryConditions<> bc;
-    fd.getId(2, bc); // id=2: boundary conditions
-    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
-
-    gsOptionList Aopt;
-    fd.getId(4, Aopt); // id=4: assembler options
-
     //! [Read input file]
 
     //! [Refinement]
@@ -351,12 +345,12 @@ int main(int argc, char *argv[])
         numRefine = 0;
     }
 
+    mp.embed(3);
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
     //! [Refinement]
 
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
-    A.setOptions(Aopt);
 
     //gsInfo<<"Active options:\n"<< A.options() <<"\n";
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -372,18 +366,8 @@ int main(int argc, char *argv[])
     geometryMap G = A.getMap(mp);
 
     // Set the discretization space
-    space u = A.getSpace(dbasis);
+    space u = A.getSpace(dbasis, 3);
     u.setInterfaceCont(0);
-    u.addBc( bc.get("Dirichlet") );
-
-    // Set the source term
-    variable ff = A.getCoeff(f, G);
-
-    // Recover manufactured solution
-    gsFunctionExpr<> ms;
-    fd.getId(3, ms); // id=3: reference solution
-    //gsInfo<<"Exact solution: "<< ms << "\n";
-    variable u_ex = ev.getVariable(ms, G);
 
     // Solution vector and solution variable
     gsMatrix<> solVector;
@@ -407,61 +391,14 @@ int main(int argc, char *argv[])
         gsInfo<< A.numDofs() <<std::flush;
 
         // Compute the system matrix and right-hand side
-        A.assemble( mygrad(u)*jac(G).ginv() * (mygrad(u)*jac(G).ginv()).tr() * meas(G), u * ff * meas(G) );
+//        A.assemble( mygrad(u)*jac(G).ginv() * (mygrad(u)*jac(G).ginv()).tr() * meas(G), u * ff * meas(G) );
 
-        // Enforce Neumann conditions to right-hand side
-        variable g_N = A.getBdrFunction();
-        A.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
-        //gsInfo<<"Sparse Matrix:\n"<< A.matrix().toDense() <<"\n";
-        //gsInfo<<"Rhs vector:\n"<< A.rhs().transpose() <<"\n";
-
-        gsInfo<< "." <<std::flush;// Assemblying done
-
-        solver.compute( A.matrix() );
-        solVector = solver.solve(A.rhs());
-
-        gsInfo<< "." <<std::flush; // Linear solving done
-
-        l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
-        h1err[r]= l2err[r] +
-        math::sqrt(ev.integral( ( igrad(u_ex) - grad(u_sol)*jac(G).inv() ).sqNorm() * meas(G) ));
-
-        gsInfo<< ". " <<std::flush; // Error computations done
+        A.assemble( var1(u,G) * var1(u,G).tr() );
+        //gsInfo<< A.rhs().transpose() <<"\n";
+        gsInfo<< A.matrix().toDense() <<"\n";
 
     } //for loop
 
-    //! [Solver loop]
-
-    //! [Error and convergence rates]
-    gsInfo<< "\n\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
-    gsInfo<< "H1 error: "<<std::scientific<<h1err.transpose()<<"\n";
-
-    if (!last && numRefine>0)
-    {
-        gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
-              << ( l2err.head(numRefine).array() /
-                   l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
-
-        gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
-              <<( h1err.head(numRefine).array() /
-                  h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
-    }
-    //! [Error and convergence rates]
-
-    // if (save)
-
-    //! [Export visualization in ParaView]
-    if (plot)
-    {
-        gsInfo<<"Plotting in Paraview...\n";
-        ev.options().setSwitch("plot.elements", true);
-        ev.writeParaview( u_sol   , G, "solution");
-        //ev.writeParaview( u_ex    , G, "solution_ex");
-        //ev.writeParaview( u, G, "aa");
-
-        gsFileManager::open("solution.pvd");
-    }
-    //! [Export visualization in ParaView]
 
     return EXIT_SUCCESS;
 
