@@ -369,7 +369,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
 
         GISMO_ASSERT(it->function()->targetDim() == m_system.unkSize(unk_)*m_system.rhs().cols(),
                      "Given Dirichlet boundary function does not match problem dimension."
-                     <<it->function()->targetDim()<<" != "<<m_system.unkSize(unk_)<<"\n");
+                     <<it->function()->targetDim()<<" != "<<m_system.unkSize(unk_) << " * " << m_system.rhs().cols()<<"\n");
 
         // Compute dirichlet values
         gsMatrix<T> fpts;
