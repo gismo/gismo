@@ -111,7 +111,7 @@ public:
         res.resize(rows(), cols());
         const index_t A = rows()/cols(); // note: rows/cols is the number of actives
 
-        normal = _G.data().outNormals.col(k);// not normalized to unit length
+        normal = _G.data().normal(k);// not normalized to unit length
         bGrads = _u.data().values[1].col(k);
         cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
         const Scalar measure =  _G.data().measures.at(k);
@@ -122,11 +122,19 @@ public:
             for (index_t j = 0; j!= A; ++j) // for all basis functions (2)
             {
                 // Jac(u) ~ Jac(G) with alternating signs ?..
-                m_v.noalias() = vecFun(d, bGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
-                              - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() );
+                m_v.noalias() = (vecFun(d, bGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
+                              - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() )) / measure;
 
+                // gsDebugVar(vecFun(d,bGrads.at(2*j  )));
+                // gsDebugVar(vecFun(d,bGrads.at(2*j+1)));
+                // gsDebugVar(cJac.col(0).template head<3>());
+                // gsDebugVar(cJac.col(1).template head<3>());
+
+                gsDebugVar(m_v);
+                gsDebugVar(normal); // THE NORMAL IS [-1,0,0]?????
+                gsDebugVar(( normal.dot(m_v) ) * normal);
                 // ---------------  First variation of the normal
-                res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose() / measure;
+                res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
             }
         }
 
@@ -144,7 +152,7 @@ public:
     void setFlag() const
     {
         _u.data().flags |= NEED_GRAD;
-        _G.data().flags |= NEED_OUTER_NORMAL | NEED_DERIV | NEED_MEASURE;
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
     }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
@@ -164,113 +172,179 @@ public:
     void print(std::ostream &os) const { os << "var1("; _u.print(os); os <<")"; }
 };
 
-// template<class E>
-// class var2_expr : public _expr<var2_expr<E> >
-// {
-//     typename E::Nested_t _u;
-//     typename E::Nested_t _v;
-//     typename gsGeometryMap<T>::Nested_t _G;
+// Comments for var2:
+// - TODO: dimensionm indep. later on
+// - TODO: how to structure this matrix
+template<class E>
+class var2_expr : public _expr<var2_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
 
-// public:
-//     enum{ Space = E::Space };
+private:
 
-//     typedef typename E::Scalar Scalar;
+    typename E::Nested_t _u;
+    typename gsGeometryMap<Scalar>::Nested_t _G;
 
-//     var2_expr(const E & u) : _u(u)
-//     { GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");}
+public:
+    enum{ Space = E::Space };
 
-//     MatExprType eval(const index_t k) const
-//     {
-//         // numActive x dim
-//         return _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
-//     }
+    var2_expr(const E & u, const gsGeometryMap<Scalar> & G) : _u(u), _G(G) { }
 
-//     index_t rows() const
-//     {
-//         //return _u.data().values[0].rows();
-//         return _u.data().values[1].rows() / cols();
-//     }
-//     //index_t rows() const { return _u.data().actives.size(); }
-//     //index_t rows() const { return _u.rows(); }
+    mutable gsMatrix<Scalar> res;
 
-//     //index_t rows() const { return _u.source().targetDim() is wrong }
-//     index_t cols() const { return _u.source().domainDim(); }
+    mutable gsMatrix<Scalar> bGrads, cJac;
+    mutable gsVector<Scalar,3> m_v, m_w, normal, m_vw, m_v_der, n_der, n_der2;
 
-//     void setFlag() const
-//     {
-//         _u.data().flags |= NEED_GRAD;
-//         _G.data().flags |= NEED_OUTER_NORMAL;
-//         if (_u.composed() )
-//             _u.mapData().flags |= NEED_VALUE;
-//     }
+    // helper function
+    static inline gsVector<Scalar,3> vecFun(index_t pos, Scalar val)
+    {
+        gsVector<Scalar,3> result = gsVector<Scalar,3>::Zero();
+        result[pos] = val;
+        return result;
+    }
 
-//     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
-//     {
-//         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-//         evList.push_sorted_unique(&_u.source());
-//         _u.data().flags |= NEED_GRAD;
-//         if (_u.composed() )
-//             _u.mapData().flags |= NEED_VALUE;
-//     }
+    MatExprType eval(const index_t k) const
+    {
+        res.resize(rows(), cols());
+        const index_t A = rows()/cols(); // note: rows/cols is the number of actives
 
-//     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-//     const gsFeSpace<Scalar> & colVar() const
-//     {return gsNullExpr<Scalar>::get();}
+        normal = _G.data().outNormals.col(k);
+        bGrads = _u.data().values[1].col(k);
+        cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
+        const Scalar measure =  _G.data().measures.at(k);
 
-//     static constexpr bool rowSpan() {return E::rowSpan(); }
-//     static constexpr bool colSpan() {return false;}
+        for (index_t d = 0; d!= _u.dim(); ++d) // for all basis functions v (1)
+        {
+            const short_t s = d*A;
+            for (index_t j = 0; j!= A; ++j) // for all basis functions v (2)
+            {
+                // Jac(u) ~ Jac(G) with alternating signs ?..
+                m_v.noalias() = vecFun(d, bGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
+                              - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() ) / measure;
 
-//     void print(std::ostream &os) const { os << "grad("; _u.print(os); os <<")"; }
-// };
+                for (index_t c = 0; c!= _u.dim(); ++c) // for all basis functions w (1)
+                {
+                    const short_t r = c*A;
+                    for (index_t i = 0; i!= A; ++i) // for all basis functions w (2)
+                    {
+
+                        m_w.noalias() = vecFun(c, bGrads.at(2*i  ) ).cross( cJac.col(1).template head<3>() )
+                                      - vecFun(c, bGrads.at(2*i+1) ).cross( cJac.col(0).template head<3>() ) / measure;
+
+                        n_der = (m_w - ( normal.dot(m_w) ) * normal);
+
+                        m_vw.noalias() = vecFun(d, bGrads.at(2*j  ) ).cross( vecFun(c, bGrads.at(2*i+1) ) )
+                                       - vecFun(d, bGrads.at(2*j+1) ).cross( vecFun(c, bGrads.at(2*i  ) ) ) / measure;
+
+                        m_v_der.noalias() = (m_vw - ( normal.dot(m_w) ) * m_v);
+
+                        // ---------------  Second variation of the normal
+                        gsVector<> tmp = m_v_der - (m_v.dot(n_der) + normal.dot(m_v_der) ) * normal - (normal.dot(m_v) ) * n_der;
+                        // gsDebugVar(tmp);
+                        // res(s+j,r+i) = m_v_der - (m_v * n_der + normal * m_v_der) * normal - (normal * m_v) * n_der;
+
+                        //?? How to order res??
+                    }
+                }
+            }
+        }
+
+        return res;
+    }
+
+    index_t rows() const
+    {
+        return _u.dim() * _u.data().values[1].rows() / _u.source().domainDim();
+    }
+
+    index_t cols() const 
+    { 
+        return _u.dim() * _u.data().values[1].rows() / _u.source().domainDim();
+    }
+
+    void setFlag() const
+    {
+        _u.data().flags |= NEED_GRAD;
+        _G.data().flags |= NEED_OUTER_NORMAL | NEED_DERIV | NEED_MEASURE;
+    }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        evList.push_sorted_unique(&_u.source());
+        _u.data().flags |= NEED_GRAD;
+        _G.data().flags |= NEED_OUTER_NORMAL | NEED_DERIV | NEED_MEASURE;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+
+    static constexpr bool rowSpan() {return E::rowSpan(); }
+    static constexpr bool colSpan() {return E::colSpan();}
+
+    void print(std::ostream &os) const { os << "var2("; _u.print(os); os <<")"; }
+};
 
 // template<class E>
 // class hessdot_expr : public _expr<hessdot_expr<E> >
 // {
 //     typename E::Nested_t _u;
-//     typename gsGeometryMap<T>::Nested_t _G;
 
 // public:
 //     enum{ Space = E::Space };
 
 //     typedef typename E::Scalar Scalar;
 
-//     hessdot_expr(const E & u) : _u(u)
-//     { GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");}
+//     hessdot_expr(const E & u) : _u(u) {}
 
-// !    MatExprType eval(const index_t k) const
+//     mutable gsMatrix<Scalar> res, hess, normal;
+//     mutable gsMatrix<Scalar> normalMat;
+
+//     MatExprType eval(const index_t k) const
 //     {
-//         // numActive x dim
-//         return _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
+
+//         res.resize(rows(), cols());
+//         const index_t A = cols()/rows(); //no. actives
+
+//         normal = _G.data().outNormals.col(k);
+//         const Scalar measure =  _G.data().measures.at(k);
+        
+//         secDerToHessian(_u.data().values[2].col(k), _u.data().dim.first, hess);
+//         res.resize(_u.data().dim.first, hess.cols()*_u.data().dim.first);
+
+//         for (index_t j = 0; j!= A; ++j) 
+//         {
+//             res.block(XX,XX) = (hessian 2x2) * normal.transpose();
+
+//         }
+//         return res;
 //     }
 
-// !    index_t rows() const
+//     index_t rows() const
 //     {
-//         //return _u.data().values[0].rows();
-//         return _u.data().values[1].rows() / cols();
+//         return _u.source().domainDim(); 
 //     }
-//     //index_t rows() const { return _u.data().actives.size(); }
-//     //index_t rows() const { return _u.rows(); }
 
-//     //index_t rows() const { return _u.source().targetDim() is wrong }
-// !    index_t cols() const { return _u.source().domainDim(); }
+//     index_t cols() const 
+//     { 
+//         return 2*_u.data().values[2].rows() / (1+_u.data().dim.first);
+//     }
 
 //     void setFlag() const
 //     {
 //         _u.data().flags |= NEED_2ND_DER;
-//         _G.data().flags |= NEED_OUTER_NORMAL;
 //     }
 
 //     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
 //     {
 //         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
 //         evList.push_sorted_unique(&_u.source());
-//         _u.data().flags |= NEED_GRAD;
-//         if (_u.composed() )
-//             _u.mapData().flags |= NEED_VALUE;
+//         _u.data().flags |= NEED_2ND_DER;
 //     }
 
-// !    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-// !    const gsFeSpace<Scalar> & colVar() const
+//     const gsFeSpace<Scalar> & rowVar() const
+//     {return gsNullExpr<Scalar>::get();}
+//     const gsFeSpace<Scalar> & colVar() const { return _u.rowVar(); }
 //     {return gsNullExpr<Scalar>::get();}
 
 //     static constexpr bool rowSpan() {return E::rowSpan(); }
@@ -287,11 +361,11 @@ mygrad_expr<E> mygrad(const E & u) { return mygrad_expr<E>(u); }
 template<class E> EIGEN_STRONG_INLINE
 var1_expr<E> var1(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return var1_expr<E>(u, G); }
 
-// template<class E> EIGEN_STRONG_INLINE
-// mygrad_expr<E> var2(const E & u, const E & v, const gsGeometryMap<T> & G) { return var2_expr<E>(u, v, G); }
+template<class E> EIGEN_STRONG_INLINE
+var2_expr<E> var2(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return var2_expr<E>(u, G); }
 
 // template<class E> EIGEN_STRONG_INLINE
-// mygrad_expr<E> hessdot(const E & u, const gsGeometryMap<T> & G) { return hessdot_expr<E>(u, G); }
+// hessdot_expr<E> hessdot(const E & u, const gsGeometryMap<T> & G) { return hessdot_expr<E>(u, G); }
 
 }}
 
@@ -329,9 +403,12 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp;
 
     // Annulus
-    //fd.getId(0, mp); // id=0: Multipatch domain
+    fd.getId(0, mp); // id=0: Multipatch domain
 
-    mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
+    // Unit square
+    // mp.addPatch( gsNurbsCreator<>::BSplineSquare(numElevate+1) ); // degree
+
+    
 
     //! [Read input file]
 
