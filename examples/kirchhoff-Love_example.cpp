@@ -111,7 +111,7 @@ public:
         res.resize(rows(), cols());
         const index_t A = rows()/cols(); // note: rows/cols is the number of actives
 
-        normal = _G.data().outNormals.col(k);
+        normal = _G.data().outNormals.col(k);// not normalized to unit length
         bGrads = _u.data().values[1].col(k);
         cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
         const Scalar measure =  _G.data().measures.at(k);
@@ -130,6 +130,7 @@ public:
             }
         }
 
+        gsDebugVar(res);
         return res;
     }
 
@@ -326,7 +327,11 @@ int main(int argc, char *argv[])
     gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
 
     gsMultiPatch<> mp;
-    fd.getId(0, mp); // id=0: Multipatch domain
+
+    // Annulus
+    //fd.getId(0, mp); // id=0: Multipatch domain
+
+    mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
 
     //! [Read input file]
 
@@ -388,14 +393,17 @@ int main(int argc, char *argv[])
         // Initialize the system
         A.initSystem();
 
-        gsInfo<< A.numDofs() <<std::flush;
+        gsInfo<< A.numDofs() <<"\n"<<std::flush;
 
         // Compute the system matrix and right-hand side
 //        A.assemble( mygrad(u)*jac(G).ginv() * (mygrad(u)*jac(G).ginv()).tr() * meas(G), u * ff * meas(G) );
 
-        A.assemble( var1(u,G) * var1(u,G).tr() );
-        //gsInfo<< A.rhs().transpose() <<"\n";
-        gsInfo<< A.matrix().toDense() <<"\n";
+        //A.assemble( var1(u,G) * var1(u,G).tr() );
+
+        A.assemble( var1(u,G)[0] );
+
+        gsInfo<< A.rhs().transpose() <<"\n";
+        //gsInfo<< A.matrix().toDense().diagonal().transpose() <<"\n";
 
     } //for loop
 
