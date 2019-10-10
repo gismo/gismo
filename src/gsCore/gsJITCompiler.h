@@ -682,13 +682,13 @@ public:
         std::stringstream libName;
 
 #       if   defined(_WIN32)
-        libName << config.getTemp() << "\\." << name << ".dll";
+        libName << config.getTemp() << "." << name << ".dll";
         //(void)std::system("del /f " + libName);
         //force = true;
 #       elif defined(__APPLE__)
-        libName << config.getTemp() << "/.lib" << name << ".dylib";
+        libName << config.getTemp() << ".lib" << name << ".dylib";
 #       elif defined(unix) || defined(__unix__) || defined(__unix)
-        libName << config.getTemp() << "/.lib" << name << ".so";
+        libName << config.getTemp() << ".lib" << name << ".so";
 #       else
 #       error("Unsupported operating system")
 #       endif
@@ -706,7 +706,7 @@ public:
             file << "#define EXPORT extern \"C\" __declspec(dllexport)\n";
             file << "#endif\n";
 #           else
-            srcName<< config.getTemp() << "/." << name << "." << config.getLang();
+            srcName<< config.getTemp() << "." << name << "." << config.getLang();
             std::ofstream file(srcName.str().c_str());
             file << "#ifdef __cplusplus\n";
             file << "#define EXPORT extern \"C\"\n";
