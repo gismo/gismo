@@ -126,14 +126,6 @@ public:
                 m_v.noalias() = (vecFun(d, bGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
                               - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() )) / measure;
 
-                // gsDebugVar(vecFun(d,bGrads.at(2*j  )));
-                // gsDebugVar(vecFun(d,bGrads.at(2*j+1)));
-                // gsDebugVar(cJac.col(0).template head<3>());
-                // gsDebugVar(cJac.col(1).template head<3>());
-
-                gsDebugVar(m_v);
-                gsDebugVar(normal); // THE NORMAL IS [-1,0,0]?????
-                gsDebugVar(( normal.dot(m_v) ) * normal);
                 // ---------------  First variation of the normal
                 res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
             }
@@ -195,8 +187,8 @@ public:
 
     mutable gsMatrix<Scalar> res;
 
-    mutable gsMatrix<Scalar> bGrads, cJac;
-    mutable gsVector<Scalar,3> m_v, m_w, normal, m_vw, m_v_der, n_der, n_der2;
+    mutable gsMatrix<Scalar> uGrads, vGrads, cJac, cDer2;
+    mutable gsVector<Scalar,3> m_v, m_w, normal, m_vw, m_v_der, n_der, n_der2, tmp;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     // helper function
@@ -210,67 +202,71 @@ public:
     MatExprType eval(const index_t k) const
     {
         res.resize(rows(), cols());
-        const index_t A = rows()/cols(); // note: rows/cols is the number of actives
 
         normal = _G.data().normals.col(k);
-        bGrads = _u.data().values[1].col(k);
+        uGrads = _u.data().values[1].col(k);
+        vGrads = _v.data().values[1].col(k);
         cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
+        cDer2 = _G.data().values[2].reshapeCol(k, _G.data().dim.second, _G.data().dim.second);
+
+        const index_t numAct = _u.data().values[0].rows();
+        const index_t numHess = cDer2.rows();
         const Scalar measure =  _G.data().measures.at(k);
 
-        for (index_t d = 0; d!= _u.dim(); ++d) // for all basis functions v (1)
+        for (index_t d = 0; d!= _u.dim(); ++d) // for all basis functions u (1)
         {
-            //const short_t s = d*A;
-            for (index_t j = 0; j!= A; ++j) // for all basis functions v (2)
+            const short_t s = d*numAct;
+            for (index_t j = 0; j!= numAct; ++j) // for all basis functions u (2)
             {
-                // Jac(u) ~ Jac(G) with alternating signs ?..
-                m_v.noalias() = vecFun(d, bGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
-                              - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() ) / measure;
+                m_v.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
+                              - vecFun(d, uGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() ) / measure;
 
-                for (index_t c = 0; c!= _u.dim(); ++c) // for all basis functions w (1)
+                for (index_t c = 0; c!= _v.dim(); ++c) // for all basis functions v (1)
                 {
-                    //const short_t r = c*A;
-                    for (index_t i = 0; i!= A; ++i) // for all basis functions w (2)
+                    const short_t r = c*numAct;
+                    for (index_t i = 0; i!= numAct; ++i) // for all basis functions v (2)
                     {
 
-                        m_w.noalias() = vecFun(c, bGrads.at(2*i  ) ).cross( cJac.col(1).template head<3>() )
-                                      - vecFun(c, bGrads.at(2*i+1) ).cross( cJac.col(0).template head<3>() ) / measure;
+                        m_w.noalias() = vecFun(c, vGrads.at(2*i  ) ).cross( cJac.col(1).template head<3>() )
+                                      - vecFun(c, vGrads.at(2*i+1) ).cross( cJac.col(0).template head<3>() ) / measure;
 
                         n_der = (m_w - ( normal.dot(m_w) ) * normal);
 
-                        m_vw.noalias() = vecFun(d, bGrads.at(2*j  ) ).cross( vecFun(c, bGrads.at(2*i+1) ) )
-                                       - vecFun(d, bGrads.at(2*j+1) ).cross( vecFun(c, bGrads.at(2*i  ) ) ) / measure;
+                        m_vw.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( vecFun(c, uGrads.at(2*i+1) ) )
+                                       - vecFun(d, vGrads.at(2*j+1) ).cross( vecFun(c, vGrads.at(2*i  ) ) ) / measure;
 
                         m_v_der.noalias() = (m_vw - ( normal.dot(m_w) ) * m_v);
 
                         // ---------------  Second variation of the normal
-                        gsVector<> tmp = m_v_der - (m_v.dot(n_der) + normal.dot(m_v_der) ) * normal - (normal.dot(m_v) ) * n_der;
-                        // gsDebugVar(tmp);
-                        // res(s+j,r+i) = m_v_der - (m_v * n_der + normal * m_v_der) * normal - (normal * m_v) * n_der;
-
-                        //?? How to order res??
+                        tmp = m_v_der - (m_v.dot(n_der) + normal.dot(m_v_der) ) * normal - (normal.dot(m_v) ) * n_der;
+                        
+                        for (index_t l=0; l != numHess; l++) // per hessian entry of c
+                        {
+                            res(s + j, r + i + l*_u.dim()*numAct ) = tmp.dot(cDer2.col(l));
+                        } 
                     }
                 }
             }
         }
 
+        gsDebugVar(res);
         return res;
     }
 
     index_t rows() const
     {
-        return (_u.dim() * _u.data().values[1].rows() / _u.source().domainDim()) *
-                (_u.dim() * _u.data().values[1].rows() / _u.source().domainDim()) ;
+        return _u.dim() * _u.data().values[0].rows();
     }
 
     index_t cols() const
     {
-        return _u.dim() * _u.data().values[1].rows() / _u.source().domainDim();
+        return  _u.source().domainDim() * (_u.source().domainDim()+1) / 2 * _v.dim() * _v.data().values[0].rows(); // hessian of c has dimension d(d+1)/2 and the columnspace of v has dimension v.dim()*numActive
     }
 
     void setFlag() const
     {
         _u.data().flags |= NEED_GRAD;
-        _G.data().flags |= NEED_OUTER_NORMAL | NEED_DERIV | NEED_MEASURE;
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
     }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
@@ -305,35 +301,36 @@ public:
 
     deriv2_expr(const E & u) : _u(u) { }
 
-    mutable gsMatrix<Scalar> res;
-
-    mutable gsMatrix<Scalar> bGrads, cJac;
-    mutable gsVector<Scalar,3> m_v, m_w, normal, m_vw, m_v_der, n_der, n_der2;
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-    // helper function
-    static inline gsVector<Scalar,3> vecFun(index_t pos, Scalar val)
-    {
-        gsVector<Scalar,3> result = gsVector<Scalar,3>::Zero();
-        result[pos] = val;
-        return result;
-    }
+    mutable gsMatrix<Scalar> res,tmp;
 
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
+        res.resize(rows(), cols());
+        tmp.resize(rows()/_u.dim(), cols());
         const index_t numAct = _u.data().values[0].rows();
-        res = gsAsConstMatrix<Scalar>(_u.data().values[2].col(k).data(), 3, numAct ).transpose();
+        const index_t numHess = _u.data().values[2].rows() / numAct;
+        gsDebugVar(numHess);
+        tmp = gsAsConstMatrix<Scalar>(_u.data().values[2].col(k).data(), 3, numAct ).transpose();
+
+
+        gsDebugVar(cols());
+        gsDebugVar(rows());
+
+        for (index_t i = 0; i!=_u.dim(); i++)
+            res.block(i*numAct,0,numAct,numHess) = tmp;
+
+        gsDebugVar(res); // 1: WHY DOES IN THE PRODUCT THE NUMBER OF ROWS DOUBLE?
         return res;
     }
 
     index_t rows() const
     {
-        return 3;
+        return _u.dim() * _u.data().values[0].rows(); // no. dimensions*numAct
     }
 
     index_t cols() const
     {
-        return _u.data().values[0].rows();
+        return _u.data().values[2].rows() / _u.data().values[0].rows(); // numHessian dimensions
     }
 
     void setFlag() const
@@ -440,6 +437,9 @@ var2_expr<E1,E2> var2(const E1 & u, const E2 & v, const gsGeometryMap<typename E
 
 template<class E1, class E2> EIGEN_STRONG_INLINE
 hessdot_expr<E1,E2> hessdot(const E1 & u, const E2 & v) { return hessdot_expr<E1,E2>(u, v); }
+
+template<class E> EIGEN_STRONG_INLINE
+deriv2_expr<E> deriv2(const E & u) { return deriv2_expr<E>(u); }
 
 }
 }
@@ -553,27 +553,27 @@ int main(int argc, char *argv[])
         gsInfo<< A.numDofs() <<"\n"<<std::flush;
 
         // Compute the system matrix and right-hand side
-//        A.assemble( mygrad(u)*jac(G).ginv() * (mygrad(u)*jac(G).ginv()).tr() * meas(G), u * ff * meas(G) );
+        // A.assemble( mygrad(u)*jac(G).ginv() * (mygrad(u)*jac(G).ginv()).tr() * meas(G), u * ff * meas(G) );
 
-//        A.assemble( var1(u,G) * var1(u,G).tr() );
+        // A.assemble( var1(u,G) * var1(u,G).tr() );
 
         A.assemble( var1(u,G)[0] );
 
-//        A.assemble( deriv2(u) * var1(u,G).tr() ); // todo
+        // A.assemble( deriv2(u) * var1(u,G).tr() ); // see comment 1
 
 
-//        A.assemble( var2(u,u,G)[0] ); // we do not need it
+        // A.assemble( var2(u,u,G) ); // comment: does not work, because I get an error "`dst.rows() == src.rows() && dst.cols() == src.cols()`". The var2 assembles, however.
 
         //
         auto snormal = sn(G);
 
-//        A.assemble( hessdot(u, vff )[0] ); // .normalized()
+        // A.assemble( hessdot(u, vff )[0] ); // .normalized()
 
         //A.assemble( hessdot(u, var1(u,G)) );
 
 
-        gsInfo<< A.rhs().transpose() <<"\n";
-        //gsInfo<< A.matrix().toDense().diagonal().transpose() <<"\n";
+        // gsInfo<< A.rhs().transpose() <<"\n";
+        // gsInfo<< A.matrix().toDense().diagonal().transpose() <<"\n";
 
     } //for loop
 
