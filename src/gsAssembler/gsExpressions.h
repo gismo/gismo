@@ -1126,13 +1126,12 @@ public:
 
     MatExprType eval(const index_t k) const
     {
-        //return eval_impl(k);
+        //return _u.eval(k).transpose();
         // /*
         if (E::ColBlocks)
-            return _u.eval(k).blockTranspose(_u.cols()/_u.rows());
+        return _u.eval(k).blockTranspose(_u.cols()/_u.rows());
         else
-            //return _u.eval(k).transpose(); // auto
-            return _u.eval(k).blockTranspose(1);
+            return _u.eval(k).blockTranspose(1); // buggy ?
         //*/
     }
 
@@ -2005,7 +2004,7 @@ nabla2_expr<T> nabla2(const gsFeVariable<T> & u)
 // #define lapl(x) nabla2(x).sum() // assume tarDim==1
 
 /**
-   Expression for the outer pointing normal of of a geometry map. This
+   Expression for the outer pointing normal of a geometry map. This
    expression is valid only at the boundaries of a geometric patch
  */
 template<class T>
@@ -2026,6 +2025,9 @@ public:
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return 1; }
 
+    const gsFeSpace<T> & rowVar() const {return gsNullExpr<T>::get();}
+    const gsFeSpace<T> & colVar() const {return gsNullExpr<T>::get();}
+
     static constexpr bool rowSpan() {GISMO_ERROR("onormal");}
     static bool colSpan() {GISMO_ERROR("onormal");}
 
@@ -2043,6 +2045,50 @@ public:
     { return normalized_expr<onormal_expr<T> >(*this); }
 
     void print(std::ostream &os) const { os << "nv("; _G.print(os); os <<")"; }
+};
+
+/**
+   Expression for the out of plane surface normal of a geometry map.
+   The expression is valid for a surface or hypersurface.
+ */
+template<class T>
+class normal_expr : public _expr<normal_expr<T> >
+{
+    typename gsGeometryMap<T>::Nested_t _G;
+
+public:
+    typedef T Scalar;
+
+    normal_expr(const gsGeometryMap<T> & G) : _G(G) { }
+
+    MatExprType eval(const index_t k) const
+    {
+        return _G.data().normals.col(k);
+    }
+
+    index_t rows() const { return _G.data().dim.second; }
+    index_t cols() const { return 1; }
+
+    static constexpr bool rowSpan() {GISMO_ERROR("normal");}
+    static bool colSpan() {GISMO_ERROR("normal");}
+
+    const gsFeSpace<T> & rowVar() const {return gsNullExpr<T>::get();}
+    const gsFeSpace<T> & colVar() const {return gsNullExpr<T>::get();}
+
+    void setFlag() const { _G.data().flags |= NEED_NORMAL; }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+        evList.push_sorted_unique(&_G.source());
+        _G.data().flags |= NEED_NORMAL;
+    }
+
+    // Normalized to unit length
+    normalized_expr<normal_expr<T> > normalized()
+    { return normalized_expr<normal_expr<T> >(*this); }
+
+    void print(std::ostream &os) const { os << "sn("; _G.print(os); os <<")"; }
 };
 
 /**
@@ -2145,7 +2191,7 @@ public:
 
     fform_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
-    MatExprType eval(const index_t k) const 
+    MatExprType eval(const index_t k) const
     {   // todo: fix funcdata
         //return _G.data().fundForm(k).transpose() * _G.data().fundForm(k) ;
         GISMO_NO_IMPLEMENTATION
@@ -2242,7 +2288,7 @@ public:
         return _G.source().targetDim();
         //return _G.data().dim.second;
     }
-    
+
     index_t cols() const
     {
         return _G.source().domainDim();
@@ -2664,7 +2710,7 @@ class mult_expr<E1,E2,false> : public _expr<mult_expr<E1, E2, false> >
 public:
     enum {ScalarValued = E1::ScalarValued && E2::ScalarValued,
           ColBlocks = E2::ColBlocks};
-    enum {Space = (0!=E1::Space ? E1::Space : E2::Space) };
+    enum {Space = ( 0!=E1::Space ? int(E1::Space) : int(E2::Space) ) };
 
     typedef typename E1::Scalar Scalar;
 
@@ -2687,6 +2733,9 @@ public:
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.rows()<<" in * operation:\n"
                      << _u <<" times \n" << _v );
         // Note: a * b * c --> (a*b).eval()*c
+        gsDebugVar( _u.eval(k) );
+        gsDebugVar( _v.eval(k) );
+
         tmp = _u.eval(k) * _v.eval(k); return tmp; // assume result not scalarvalued
         //return ( _u.eval(k) * _v.eval(k) );
     }
@@ -3419,6 +3468,9 @@ nabla_expr<T> nabla(const gsFeVariable<T> & u) { return nabla_expr<T>(u); }
 /// The (outer pointing) boundary normal of a geometry map
 template<class T> EIGEN_STRONG_INLINE
 onormal_expr<T> nv(const gsGeometryMap<T> & u) { return onormal_expr<T>(u); }
+
+template<class T> EIGEN_STRONG_INLINE
+normal_expr<T> sn(const gsGeometryMap<T> & u) { return normal_expr<T>(u); }
 
 /// The tangent boundary vector of a geometry map
 template<class T> EIGEN_STRONG_INLINE
