@@ -237,7 +237,7 @@ public:
         return gsSerialStatus();
     }
 
-    static gsSerialStatus waitAny (int numberRequests, MPI_Request requests[], int* outIndex)
+    static gsSerialStatus waitAny (int numberRequests, gsSerialRequest requests[], int* outIndex)
     {
         return gsSerialStatus();
     }
