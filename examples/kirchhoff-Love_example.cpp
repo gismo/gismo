@@ -232,8 +232,8 @@ public:
 
                         n_der = (m_w - ( normal.dot(m_w) ) * normal);
 
-                        m_vw.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( vecFun(c, uGrads.at(2*i+1) ) )
-                                       - vecFun(d, vGrads.at(2*j+1) ).cross( vecFun(c, vGrads.at(2*i  ) ) ) / measure;
+                        m_vw.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( vecFun(c, vGrads.at(2*i+1) ) )
+                                       - vecFun(d, uGrads.at(2*j+1) ).cross( vecFun(c, vGrads.at(2*i  ) ) ) / measure;
 
                         m_v_der.noalias() = (m_vw - ( normal.dot(m_w) ) * m_v);
 
