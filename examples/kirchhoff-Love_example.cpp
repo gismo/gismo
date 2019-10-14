@@ -19,62 +19,6 @@
 namespace gismo{
 namespace expr{
 
-template<class E>
-class mygrad_expr : public _expr<mygrad_expr<E> >
-{
-    typename E::Nested_t _u;
-public:
-    enum{ Space = E::Space };
-
-    typedef typename E::Scalar Scalar;
-
-    mygrad_expr(const E & u) : _u(u)
-    { GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");}
-
-    MatExprType eval(const index_t k) const
-    {
-        // numActive x dim
-        return _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
-    }
-
-    index_t rows() const
-    {
-        //return _u.data().values[0].rows();
-        return _u.data().values[1].rows() / cols();
-    }
-    //index_t rows() const { return _u.data().actives.size(); }
-    //index_t rows() const { return _u.rows(); }
-
-    //index_t rows() const { return _u.source().targetDim() is wrong }
-    index_t cols() const { return _u.source().domainDim(); }
-
-    void setFlag() const
-    {
-        _u.data().flags |= NEED_GRAD;
-        if (_u.composed() )
-            _u.mapData().flags |= NEED_VALUE;
-    }
-
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
-    {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_u.source());
-        _u.data().flags |= NEED_GRAD;
-        if (_u.composed() )
-            _u.mapData().flags |= NEED_VALUE;
-    }
-
-    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const
-    {return gsNullExpr<Scalar>::get();}
-
-    static constexpr bool rowSpan() {return E::rowSpan(); }
-    static constexpr bool colSpan() {return false;}
-
-    void print(std::ostream &os) const { os << "grad("; _u.print(os); os <<")"; }
-};
-
-
 // Comments for var1:
 // - TODO: dimensionm indep. later on
 template<class E>
@@ -131,7 +75,9 @@ public:
             }
         }
 
-        gsDebugVar(res);
+        // gsDebugVar(res.rows());
+        // gsDebugVar(res.cols());
+        // gsDebugVar(res);
         return res;
     }
 
@@ -239,17 +185,17 @@ public:
 
                         // ---------------  Second variation of the normal
                         tmp = m_v_der - (m_v.dot(n_der) + normal.dot(m_v_der) ) * normal - (normal.dot(m_v) ) * n_der;
-                        
+
                         for (index_t l=0; l != numHess; l++) // per hessian entry of c
                         {
                             res(s + j, r + i + l*_u.dim()*numAct ) = tmp.dot(cDer2.col(l));
-                        } 
+                        }
                     }
                 }
             }
         }
 
-        gsDebugVar(res);
+//        gsDebugVar(res);
         return res;
     }
 
@@ -276,11 +222,11 @@ public:
         _G.data().flags |= NEED_OUTER_NORMAL | NEED_DERIV | NEED_MEASURE;
     }
 
-    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { true; }
+    const gsFeSpace<Scalar> & colVar() const { true; }
 
-    static constexpr bool rowSpan() {return E1::rowSpan(); }
-    static constexpr bool colSpan() {return E2::colSpan();}
+    static constexpr bool rowSpan() {return true; }
+    static constexpr bool colSpan() {return true; }
 
     void print(std::ostream &os) const { os << "var2("; _u.print(os); os <<")"; }
 };
@@ -303,29 +249,11 @@ public:
 
     mutable gsMatrix<Scalar> res,tmp;
 
-    const gsMatrix<Scalar> & eval(const index_t k) const
-    {
-        res.resize(rows(), cols());
-        tmp.resize(rows()/_u.dim(), cols());
-        const index_t numAct = _u.data().values[0].rows();
-        const index_t numHess = _u.data().values[2].rows() / numAct;
-        gsDebugVar(numHess);
-        tmp = gsAsConstMatrix<Scalar>(_u.data().values[2].col(k).data(), 3, numAct ).transpose();
-
-
-        gsDebugVar(cols());
-        gsDebugVar(rows());
-
-        for (index_t i = 0; i!=_u.dim(); i++)
-            res.block(i*numAct,0,numAct,numHess) = tmp;
-
-        gsDebugVar(res); // 1: WHY DOES IN THE PRODUCT THE NUMBER OF ROWS DOUBLE?
-        return res;
-    }
+    const gsMatrix<Scalar> & eval(const index_t k) const { return eval_impl(_u,k); }
 
     index_t rows() const
     {
-        return _u.dim() * _u.data().values[0].rows(); // no. dimensions*numAct
+        return _u.targetDim() * _u.data().values[0].rows(); // no. dimensions*numAct
     }
 
     index_t cols() const
@@ -351,6 +279,39 @@ public:
     static constexpr bool colSpan() {return E::colSpan();}
 
     void print(std::ostream &os) const { os << "deriv2("; _u.print(os); os <<")"; }
+
+private:
+    template<class U> inline
+    typename util::enable_if< util::is_same<U,gsGeometryMap<Scalar> >::value, const gsMatrix<Scalar> & >::type
+    eval_impl(const U & u, const index_t k)  const
+    {
+        tmp =_u.data().values[2].reshapeCol(k, _u.data().dim.second, _u.data().dim.second);
+        for (index_t i = 0; i!=3; i++)
+            res.block(i*3,0,3,3) = tmp;
+        return res;
+    }
+
+    template<class U> inline
+    typename util::enable_if<util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
+    eval_impl(const U & u, const index_t k) const
+    {
+        res.resize(rows(), cols());
+        tmp.resize(rows()/_u.dim(), cols());
+        const index_t numAct = _u.data().values[0].rows();
+        const index_t numHess = _u.data().values[2].rows() / numAct;
+//        gsDebugVar(numHess);
+        tmp = gsAsConstMatrix<Scalar>(_u.data().values[2].col(k).data(), 3, numAct ).transpose();
+
+//        gsDebugVar(cols());
+//        gsDebugVar(rows());
+
+        for (index_t i = 0; i!=_u.dim(); i++)
+            res.block(i*numAct,0,numAct,numHess) = tmp;
+
+        gsDebugVar(res); // 1: WHY DOES IN THE PRODUCT THE NUMBER OF ROWS DOUBLE?
+        return res;
+    }
+
 };
 
 
@@ -422,11 +383,6 @@ public:
 
     void print(std::ostream &os) const { os << "hessdot("; _u.print(os); os <<")"; }
 };
-
-
-
-template<class E> EIGEN_STRONG_INLINE
-mygrad_expr<E> mygrad(const E & u) { return mygrad_expr<E>(u); }
 
 template<class E> EIGEN_STRONG_INLINE
 var1_expr<E> var1(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return var1_expr<E>(u, G); }
@@ -522,6 +478,7 @@ int main(int argc, char *argv[])
 
     // Set the geometry map
     geometryMap G = A.getMap(mp);
+    geometryMap defG = G;           // defG ??????
 
     // Set the discretization space
     space u = A.getSpace(dbasis, 3);
@@ -531,9 +488,18 @@ int main(int argc, char *argv[])
     gsMatrix<> solVector, vec3(3,1); vec3.setZero();
     solution u_sol = A.getSolution(u, solVector);
 
-    gsFunctionExpr<> vf("1","1","1",3);
-    variable vff = A.getCoeff(vf, G);
+    gsFunctionExpr<> materialMat("1","1","1","1","1","1","1","1","1",3);
+    variable mm = A.getCoeff(materialMat, G);
 
+
+    gsFunctionExpr<> mult2t("1","0","0","0","1","0","0","0","2",3);
+    variable m2 = A.getCoeff(mult2t, G);
+
+    gsFunctionExpr<> thickness("1", 2);
+    variable tt = A.getCoeff(thickness);
+
+    gsFunctionExpr<> force("0","0""1", 3);
+    variable ff = A.getCoeff(force, G);
 
     gsSparseSolver<>::CGDiagonal solver;
 
@@ -553,19 +519,31 @@ int main(int argc, char *argv[])
         gsInfo<< A.numDofs() <<"\n"<<std::flush;
 
         // Compute the system matrix and right-hand side
-        // A.assemble( mygrad(u)*jac(G).ginv() * (mygrad(u)*jac(G).ginv()).tr() * meas(G), u * ff * meas(G) );
 
-        // A.assemble( var1(u,G) * var1(u,G).tr() );
+        auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) );
+        auto E_m_der = flat( jac(u) * jac(defG) ) ;
+        auto E_m_der2 = flat( jac(u) * jac(u).tr() );
 
-        A.assemble( var1(u,G)[0] );
+        auto E_f = reshape(m2,2,2) * ( deriv2(defG) * nv(defG).normalized() - deriv2(G) * nv(G).normalized() ) ;
+        auto E_f_der = reshape(m2,2,2) * ( deriv2(u) * nv(defG).normalized() + deriv2(defG) * var1(u,G) );
+        auto E_f_der2 = reshape(m2,2,2) * ( 2 * deriv2(u) * var1(u,defG).tr() + var2(u,u,defG) );
 
-        // A.assemble( deriv2(u) * var1(u,G).tr() ); // see comment 1
+        A.assemble( tt * ( E_m * mm * E_m_der2 + E_m_der * mm * E_m_der ) +
+                    (tt*tt*tt/3.0) *( E_f * mm * E_f_der2 + E_f_der * mm * E_f_der ), // Matrix
 
+                    tt * ( E_m * mm * E_m_der ) + (tt*tt*tt/3.0) *( E_f * mm * E_f_der )  // Rhs
+                    - u * ff.tr()
+            );
 
-        // A.assemble( var2(u,u,G) ); // comment: does not work, because I get an error "`dst.rows() == src.rows() && dst.cols() == src.cols()`". The var2 assembles, however.
+        //A.assemble( var1(u,G) * var1(u,G).tr() );
 
-        //
-        auto snormal = sn(G);
+        //A.assemble( var1(u,G)[0] );
+
+        //A.assemble( deriv2(u) * var1(u,G).tr() ); // see comment 1
+
+        //A.assemble( var2(u,u,G)[0] );
+
+        // auto snormal = sn(G);
 
         // A.assemble( hessdot(u, vff )[0] ); // .normalized()
 
@@ -573,7 +551,7 @@ int main(int argc, char *argv[])
 
 
         // gsInfo<< A.rhs().transpose() <<"\n";
-        // gsInfo<< A.matrix().toDense().diagonal().transpose() <<"\n";
+        gsInfo<< A.matrix().toDense().diagonal().transpose() <<"\n";
 
     } //for loop
 
