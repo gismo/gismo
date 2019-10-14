@@ -451,6 +451,9 @@ public:
     /// Returns the vector dimension of the FE variable
     index_t dim() const { return m_d;}
 
+    /// Returns the vector dimension of the FE variable
+    index_t targetDim() const { return m_d;}
+
     /// Returns the parameter domain dimension the FE variable
     index_t parDim() const
     {
@@ -544,6 +547,7 @@ public:
     /// Returns the function data
     const gsMapData<T> & data() const  { return *m_fd; }
 
+    index_t targetDim() const { return m_fs->targetDim();}
 public:
     typedef T Scalar;
 
@@ -1124,14 +1128,23 @@ public:
     enum {ColBlocks = E::ColBlocks};
     enum {Space = (E::Space==0?0:(E::Space==1?2:1))};
 
-    MatExprType eval(const index_t k) const
+    mutable gsMatrix<Scalar> res;
+
+    //MatExprType eval(const index_t k) const
+    const gsMatrix<Scalar> & eval(const index_t k) const
     {
         //return _u.eval(k).transpose();
         // /*
         if (E::ColBlocks)
-        return _u.eval(k).blockTranspose(_u.cols()/_u.rows());
+        {
+            res = _u.eval(k).blockTranspose(_u.cols()/_u.rows()); return res;
+            //return _u.eval(k).blockTranspose(_u.cols()/_u.rows());
+        }
         else
-            return _u.eval(k).blockTranspose(1); // buggy ?
+        {
+            res = _u.eval(k).transpose(); return res;
+            //return _u.eval(k).blockTranspose(1); // buggy ?
+        }
         //*/
     }
 
@@ -1382,6 +1395,54 @@ template <typename E> EIGEN_STRONG_INLINE
 reshape_expr<E> const reshape(E const & u, index_t n, index_t m)
 { return reshape_expr<E>(u, n, m); }
 
+template<class E>
+class flat_expr  : public _expr<flat_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
+    enum {ScalarValued = 0};
+private:
+    typename E::Nested_t _u;
+    mutable gsMatrix<Scalar> tmp;
+
+public:
+
+    flat_expr(_expr<E> const& u) : _u(u)
+    {
+        //GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension"); //
+    }
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        // Note: this assertion would fail in the constructore!
+        GISMO_ASSERT( _u.rows()==2 && _u.cols()==2, "Wrong dimension");
+        tmp = _u.eval(k);
+        tmp(0,1) += tmp(1,0);
+        std::swap(tmp(1,0), tmp(1,1));
+        tmp.conservativeResize(3,1);
+        return tmp;
+    }
+
+    index_t rows() const { return 3; }
+    index_t cols() const { return 1; }
+    void setFlag() const { _u.setFlag(); }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    { _u.parse(evList); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+
+    static constexpr bool rowSpan() {return E::rowSpan();}
+    static bool colSpan() {return E::colSpan();}
+
+    void print(std::ostream &os) const { os << "flat("; _u.print(os); os<<")"; }
+};
+
+/// Make a matrix 2x2 expression "flat"
+template <typename E> EIGEN_STRONG_INLINE
+flat_expr<E> const flat(E const & u)
+{ return flat_expr<E>(u); }
 
 /*
    Expression for the diagonal(s) of a (matrix) expression
@@ -2733,8 +2794,8 @@ public:
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.rows()<<" in * operation:\n"
                      << _u <<" times \n" << _v );
         // Note: a * b * c --> (a*b).eval()*c
-        gsDebugVar( _u.eval(k) );
-        gsDebugVar( _v.eval(k) );
+//        gsDebugVar( _u.eval(k) );
+//        gsDebugVar( _v.eval(k) );
 
         tmp = _u.eval(k) * _v.eval(k); return tmp; // assume result not scalarvalued
         //return ( _u.eval(k) * _v.eval(k) );
