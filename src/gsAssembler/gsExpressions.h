@@ -105,6 +105,8 @@ template<class E1, class E2, bool = E1::ColBlocks> class mult_expr
 */
 template <typename E> struct expr_traits
 {
+public:
+//    typedef typename E::Scalar Scalar;
   typedef real_t Scalar;//todo
   typedef const E Nested_t;
 };
@@ -328,47 +330,47 @@ public:
 template<class E>
 class symbol_expr : public _expr<E>
 {
-    typedef real_t T;
+public:
+    typedef typename expr_traits<E>::Scalar Scalar;
 
-    friend class gismo::gsExprHelper<T>;
+    friend class gismo::gsExprHelper<Scalar>;
 protected:
-    //const gsFuncData<T>    * m_fd2; // more data when needed
-    const gsFunctionSet<T> * m_fs; ///< Evaluation source for this FE variable
-    const gsFuncData<T>    * m_fd; ///< Temporary variable storing flags and evaluation data
+    //const gsFuncData<Scalar>    * m_fd2; // more data when needed
+    const gsFunctionSet<Scalar> * m_fs; ///< Evaluation source for this FE variable
+    const gsFuncData<Scalar>    * m_fd; ///< Temporary variable storing flags and evaluation data
     index_t m_d;                   ///< Dimension of this (scalar or vector) variable
-    const gsMapData<T>     * m_md; ///< If set, the variable is composed with a geometry map
+    const gsMapData<Scalar>     * m_md; ///< If set, the variable is composed with a geometry map
     // comp(u,G)
 
 public:
-    typedef T Scalar;
 
     enum {Space = 4};// remove!
 
     /// Returns the function source
-    const gsFunctionSet<T> & source() const {return *m_fs;}
+    const gsFunctionSet<Scalar> & source() const {return *m_fs;}
 
     /// Returns the function data
-    const gsFuncData<T> & data() const {return *m_fd;}
+    const gsFuncData<Scalar> & data() const {return *m_fd;}
 
     /// Returns the mapping data (precondition: composed()==true)
-    const gsMapData<T> & mapData() const {return *m_md;}
+    const gsMapData<Scalar> & mapData() const {return *m_md;}
 
     /// Returns true if the variable is a composition
     bool composed() const {return NULL!=m_md;}
 
 private:
 
-    void setSource(const gsFunctionSet<T> & fs) { m_fs = &fs;}
-    void setData(const gsFuncData<T> & val) { m_fd = &val;}
+    void setSource(const gsFunctionSet<Scalar> & fs) { m_fs = &fs;}
+    void setData(const gsFuncData<Scalar> & val) { m_fd = &val;}
     void clear() { m_fs = NULL; }
-    // gsFuncData<T> & data() {return *m_fd;}
-    // gsMapData<T> & mapData() {return *m_md;}
+    // gsFuncData<Scalar> & data() {return *m_fd;}
+    // gsMapData<Scalar> & mapData() {return *m_md;}
 
 protected:
 
     explicit symbol_expr(index_t _d) : m_fs(NULL), m_fd(NULL), m_d(_d), m_md(NULL) { }
 
-    void registerData(const gsFunctionSet<T> & fs, const gsFuncData<T> & val, index_t d)
+    void registerData(const gsFunctionSet<Scalar> & fs, const gsFuncData<Scalar> & val, index_t d)
     {
         GISMO_ASSERT(NULL==m_fs, "gsFeVariable: already registered");
         m_fs = &fs ;
@@ -377,8 +379,8 @@ protected:
         m_md = NULL;
     }
 
-    void registerData(const gsFunctionSet<T> & fs, const gsFuncData<T> & val, index_t d,
-                      const gsMapData<T> & md)
+    void registerData(const gsFunctionSet<Scalar> & fs, const gsFuncData<Scalar> & val, index_t d,
+                      const gsMapData<Scalar> & md)
     {
         registerData(fs,val,d);
         m_md  = &md;
@@ -389,7 +391,7 @@ public:
     bool isValid() const { return NULL!=m_fd && NULL!=m_fs; }
 
     // component
-    // expr comp(const index_t i) const { return comp_expr<T>(*this,i); }
+    // expr comp(const index_t i) const { return comp_expr<Scalar>(*this,i); }
     // eval(k).col(i)
 
 
@@ -399,8 +401,8 @@ public:
     { return m_fd->values[0].col(k).blockDiag(m_d); } //!!
     //{ return m_fd->values[0].col(k); }
 
-    const gsFeSpace<T> & rowVar() const {return gsNullExpr<T>::get();}
-    const gsFeSpace<T> & colVar() const {return gsNullExpr<T>::get();}
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
 
     static constexpr bool colSpan() {return false;}
 
