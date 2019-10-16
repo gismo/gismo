@@ -66,6 +66,9 @@ public:
   
   // Frees up all the dynamically allocated resources
   ~gsKDTree();
+
+  // Frees up all the dynamically allocated resources
+  void clear();
   
   // Deep-copies the contents of another gsKDTree into this one.
   gsKDTree(const gsKDTree& other);
@@ -271,6 +274,12 @@ void gsKDTree<KeyType, ValueType>::freeResource(typename gsKDTree<KeyType, Value
   
 template <class KeyType, class ValueType>
 gsKDTree<KeyType, ValueType>::~gsKDTree()
+{
+  clear();
+}
+
+template <class KeyType, class ValueType>
+void gsKDTree<KeyType, ValueType>::clear()
 {
   freeResource(root_);
 }
@@ -493,7 +502,7 @@ ValueType& gsKDTree<KeyType, ValueType>::kNNValue(const KeyType& key, std::size_
   }
 
   // Return the most frequent element in the kNN set
-  ValueType* result;
+  ValueType* result = nullptr;
   int cnt = -1;
   for (const auto &p : counter) {
     if (p.second > cnt) {
