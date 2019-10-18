@@ -604,9 +604,6 @@ public:
         return m_tree.getMaxInsLevel();
     }
 
-    /// Returns the level of \a function, which is a hier. Id index
-    int get_level(unsigned function) const;
-
     /// Returns the level of the function indexed \a i (in continued indices)
     inline int levelOf(unsigned i) const
     {
