@@ -30,7 +30,7 @@ template<short_t d, class T>
 typename gsTHBSplineBasis<d,T>::BoundaryBasisType * gsTHBSplineBasis<d,T>::basisSlice(index_t dir_fixed,T par ) const
 {
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
-    GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
+    GISMO_ASSERT(dir_fixed>=0 && static_cast<index_t>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
     const boxSide side(dir_fixed,0);
     const typename gsTensorBSplineBasis<d,T>::BoundaryBasisType::uPtr bBSplineBasis =
         this->m_bases[0]->boundaryBasis(side);
@@ -53,9 +53,9 @@ void gsTHBSplineBasis<d,T>::representBasis()
     this->m_is_truncated.resize(this->size());
     m_presentation.clear();
 
-    for (unsigned j = 0; j < static_cast<unsigned>(this->size()); ++j)
+    for (unsigned j = 0; j < static_cast<index_t>(this->size()); ++j)
     {
-        unsigned level = static_cast<unsigned>(this->levelOf(j));
+        unsigned level = static_cast<index_t>(this->levelOf(j));
         unsigned tensor_index = this->flatTensorIndexOf(j, level);
 
         // element indices
@@ -64,7 +64,7 @@ void gsTHBSplineBasis<d,T>::representBasis()
 
         // I tried with block, I can not trick the compiler to use references
         gsVector<index_t, d> low = element_ind.col(0); //block<d, 1>(0, 0);
-        gsVector<index_t, d> high = element_ind.col(1); //block<d, 1>(0, 1);gsMatrix<unsigned> element_ind =
+        gsVector<index_t, d> high = element_ind.col(1); //block<d, 1>(0, 1);gsMatrix<index_t> element_ind =
 
         // Finds coarsest level that function, with supports given with
         // support indices of the coarsest level (low & high), has presentation
@@ -452,7 +452,7 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<index_t> b1,
 template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::getBsplinePatches(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp,
                                               gsMatrix<index_t>& b1, gsMatrix<index_t>& b2,
-                                              gsVector<index_t>& level, gsMatrix<unsigned>& nvertices) const
+                                              gsVector<index_t>& level, gsMatrix<index_t>& nvertices) const
 { 
     this->m_tree.getBoxes(b1,b2,level); // splitting based on the quadtree
     int nboxes = level.size();
@@ -537,7 +537,7 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch(const gsMat
 // /*
 template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::getConnectedComponents(
-    std::vector<std::vector<std::vector< std::vector<unsigned int> > > >& connectedComponents, gsVector<unsigned>& level) const
+    std::vector<std::vector<std::vector< std::vector<index_t> > > >& connectedComponents, gsVector<index_t>& level) const
 {
     //identify the outer polylines- conected components
     int first_level = 0;
@@ -550,9 +550,9 @@ void gsTHBSplineBasis<d,T>::getConnectedComponents(
         }
     }
     gsDebug<<"new min level"<<"\n";
-    std::vector< std::vector< std::vector< std::vector< unsigned int > > > > res; //things to assign to trim_curves
-    std::vector< std::vector< std::vector< unsigned int > > > aabb;//axis aligned bounding box
-    std::vector< std::vector< unsigned int > > boxes;
+    std::vector< std::vector< std::vector< std::vector<index_t> > > > res; //things to assign to trim_curves
+    std::vector< std::vector< std::vector<index_t > > > aabb;//axis aligned bounding box
+    std::vector< std::vector<index_t > > boxes;
     aabb = this->domainBoundariesIndices(res);
     for(unsigned int i = 0; i < aabb.size(); i++)//level
     {
@@ -651,10 +651,10 @@ template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
     const gsMatrix<T>& geom_coef,
     gsMatrix<T>& cp,
-    gsMatrix<unsigned>& b1,
-    gsMatrix<unsigned>& b2,
-    gsVector<unsigned>& level,
-    gsMatrix<unsigned>& nvertices,
+    gsMatrix<index_t>& b1,
+    gsMatrix<index_t>& b2,
+    gsVector<index_t>& level,
+    gsMatrix<index_t>& nvertices,
     std::vector<std::vector<std::vector< std::vector<T> > > >& trim_curves) const
 {
     //identify the outer polylines- conected components
@@ -668,8 +668,8 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
     
     // gsDebug<<"new min level"<< first_level << "\n";
     std::vector< std::vector< std::vector< std::vector< T > > > > res; //things to assign to trim_curves
-    std::vector< std::vector< std::vector< unsigned int > > > aabb;//axis aligned bounding box
-    std::vector< std::vector< unsigned int > > boxes;
+    std::vector< std::vector< std::vector<index_t> > > aabb;//axis aligned bounding box
+    std::vector< std::vector<index_t> > boxes;
     aabb = this->domainBoundariesParams(res);
     for(unsigned int i = 0; i < aabb.size(); i++)//level
     {
@@ -723,7 +723,7 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
     for (int i = 0; i < nboxes; i++)
     {
         gsMatrix<T> new_cp;
-        gsVector<unsigned> p1, p2;
+        gsVector<index_t> p1, p2;
         gsKnotVector<T> cku, ckv;
 
         p1 = b1.row(i).transpose();
@@ -822,9 +822,9 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
     const gsMatrix<T>& geom_coef,
     std::vector<std::vector<std::vector< std::vector<T> > > >& trim_curves) const
 {
-    gsMatrix<unsigned> b1;
-    gsMatrix<unsigned> b2;
-    gsVector<unsigned> level;
+    gsMatrix<index_t> b1;
+    gsMatrix<index_t> b2;
+    gsVector<index_t> level;
     gsMultiPatch<T> result;
     //identify the outer polylines- conected components
     int first_level = 0;
@@ -838,8 +838,8 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
     }
     gsDebug<<"new min level"<<"\n";
     std::vector< std::vector< std::vector< std::vector< T > > > > res; //things to assign to trim_curves
-    std::vector< std::vector< std::vector< unsigned int > > > aabb;//axis aligned bounding box
-    std::vector< std::vector< unsigned int > > boxes;
+    std::vector< std::vector< std::vector<index_t > > > aabb;//axis aligned bounding box
+    std::vector< std::vector<index_t > > boxes;
     aabb = this->domainBoundariesParams(res);
     for(unsigned int i = 0; i < aabb.size(); i++)//level
     {
@@ -890,7 +890,7 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
     //------------------------------------------------------------------------------------------------------------------------------
     // iteration on the boxes to call getBsplinePatchGlobal()
     //------------------------------------------------------------------------------------------------------------------------------
-    gsVector<unsigned> p1, p2;
+    gsVector<index_t> p1, p2;
     p1.resize(this->dim());
     p2.resize(this->dim());
     gsMatrix<T> temp1;
@@ -1178,7 +1178,7 @@ void gsTHBSplineBasis<d, T>::decomposeDomain(
     int numBoundaryBoxes = 0;
     for (unsigned level = 0; level != aabb.size(); level++)
     {
-        boundaryAABB.push_back(std::vector< std::vector<unsigned> >());
+        boundaryAABB.push_back(std::vector< std::vector<index_t> >());
         trimCurves.push_back(std::vector< std::vector< std::vector< std::vector<T> > > >());
 
         //compare every aabb with the others
@@ -1244,7 +1244,7 @@ void gsTHBSplineBasis<d, T>::decomposeDomain(
 
 template<short_t d, class T>
 gsTensorBSpline<d, T> 
-gsTHBSplineBasis<d,T>::getBSplinePatch(const std::vector<unsigned>& boundingBox,
+gsTHBSplineBasis<d,T>::getBSplinePatch(const std::vector<index_t>& boundingBox,
                                        const unsigned level,
                                        const gsMatrix<T>& geomCoefs) const
 {
@@ -1312,7 +1312,7 @@ void gsTHBSplineBasis<d, T>::breakCycles(
                 polylines[level][line] = part1;
                 polylines[level].push_back(part2);
 		
-                std::vector<unsigned> aabb1, aabb2;
+                std::vector<index_t> aabb1, aabb2;
                 findNewAABB(part1, aabb1);
                 findNewAABB(part2, aabb2);
 		
@@ -1435,7 +1435,7 @@ void gsTHBSplineBasis<d, T>::breakPolylineIntoTwoParts(
 // utility funcition for breakCycles
 template<short_t d, class T>
 void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& polyline,
-                                         std::vector<unsigned>& aabb) const
+                                         std::vector<index_t>& aabb) const
 {
     T minX = polyline[0][0];
     T minY = polyline[0][1];
@@ -1547,7 +1547,7 @@ void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& resu
 
 //todo remove
 template<short_t d, class T>
-gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const
+gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<index_t> >& old, const std::vector<gsSortedVector<index_t> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const
 {
     int size1= 0, size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
@@ -1614,8 +1614,8 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedV
     return result;
 }
 template<short_t d, class T>
-gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
-                                                       const std::vector<gsSortedVector<unsigned> >& n,
+gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSortedVector<index_t> >& old,
+                                                       const std::vector<gsSortedVector<index_t> >& n,
                                                        const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
     int size1= 0;int size2 = 0;
@@ -1664,7 +1664,7 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<g
             this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
             //gsDebug<<"supp "<< supp<<std::endl;
             //unsigned max_lvl =
-            //    math::min<unsigned>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
+            //    math::min<index_t>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
             gsSparseVector<T,RowMajor> t(this->m_bases[i]->size());
             t.setZero();
             t[old_ij] = 1;
@@ -1737,7 +1737,7 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<g
 //                this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
 //                //gsDebug<<<"supp "<< supp<<std::endl;
 //                unsigned max_lvl =
-//                    math::min<unsigned>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
+//                    math::min<index_t>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
 //                gsSparseVector<T,RowMajor> t(this->m_bases[i]->size());
 //                t.setZero();
 //                t[old_ij] = 1;
@@ -1791,8 +1791,8 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<g
 }
 
 template<short_t d, class T>
-gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old,
-                                                      const std::vector<gsSortedVector<unsigned> >& n,
+gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<index_t> >& old,
+                                                      const std::vector<gsSortedVector<index_t> >& n,
                                                       const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
     GISMO_ASSERT(old.size() < n.size(), "old,n problem in coarsening.");
@@ -1850,7 +1850,7 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gs
                 std::vector<lvl_coef> coeffs;
                 gsMatrix<index_t, d, 2> supp(d, 2);
                 this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
-                unsigned max_lvl = math::min<unsigned>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size()) ;//transfer.size();//
+                unsigned max_lvl = math::min<index_t>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size()) ;//transfer.size();//
                 //gsDebug<<"transfer size "<< transfer.size()<<" max lvl"<< this->m_tree.query4(supp.col(0),supp.col(1), this->levelOf(start_lv_i+j))<<"   lvl of"<< this->levelOf(start_lv_i+j)<<" support\n"<<supp<<std::endl;
                 lvl_coef temp;
                 temp.pos = old_ij;
@@ -1927,7 +1927,7 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gs
                 this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
                 //gsDebug<<"supp "<< supp<<std::endl;
                 unsigned max_lvl =
-                    math::min<unsigned>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
+                    math::min<index_t>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
                 std::vector<lvl_coef> coeffs;
                 lvl_coef temp;
                 temp.pos = old_ij;

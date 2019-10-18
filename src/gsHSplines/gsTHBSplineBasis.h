@@ -65,7 +65,7 @@ public:
     // the structure is [levels [ boxes [ low_x low_y upp_x upp_y] ] ]
     // where the box is define by lower left corner (low_x, low_y) and upper right 
     // corner (upp_x, upp_y)
-    typedef typename std::vector< std::vector< std::vector<unsigned> > > AxisAlignedBoundingBox;
+    typedef typename std::vector< std::vector< std::vector<index_t> > > AxisAlignedBoundingBox;
 
     //typedef typename std::vector< gsAabb<T> > AxisAlignedBoundingBox;
 
@@ -88,7 +88,7 @@ public:
     { representBasis(); }
 
     gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, 
-                     const std::vector<unsigned> & boxes) 
+                     const std::vector<index_t> & boxes) 
     : gsHTensorBasis<d,T>(tbasis, boxes)
     { representBasis(); }
 
@@ -99,7 +99,7 @@ public:
 
     gsTHBSplineBasis( gsTensorBSplineBasis<d,T> const&  tbasis, 
                       gsMatrix<T> const & boxes, 
-                      const std::vector<unsigned int> & levels)
+                      const std::vector<index_t> & levels)
     : gsHTensorBasis<d,T>(tbasis, boxes, levels)
     {  representBasis(); }
 
@@ -187,7 +187,7 @@ public:
                 else // basis function is truncated
                 {
                     const gsMatrix<T>& basis = tmpResults[lvl];
-                    const gsMatrix<unsigned>& active = tmpActive[lvl];
+                    const gsMatrix<index_t>& active = tmpActive[lvl];
 
 
                     const gsSparseVector<T>& coefs = getCoefs(index);
@@ -254,7 +254,7 @@ public:
                 else // basis function is truncated
                 {
                     const gsMatrix<T>& basis = tmpDeriv[lvl];
-                    const gsMatrix<unsigned>& active = tmpActive[lvl];
+                    const gsMatrix<index_t>& active = tmpActive[lvl];
                     const gsSparseVector<T>& coefs = getCoefs(index);
 
                     for (unsigned dim = 0; dim != d; dim++) // for all deric
@@ -324,7 +324,7 @@ public:
                 else // basis function is truncated
                 {
                     const gsMatrix<T>& basis = tmpDeriv2[lvl];
-                    const gsMatrix<unsigned>& active = tmpActive[lvl];
+                    const gsMatrix<index_t>& active = tmpActive[lvl];
                     const gsSparseVector<T>& coefs = getCoefs(index);
 
                     for (unsigned der = 0; der != numDers; der++)
@@ -363,11 +363,11 @@ public:
     }
 
     /// @brief Returns an iterator to the representation of the first truncated basis function
-    typename std::map<unsigned, gsSparseVector<T> >::const_iterator truncatedBegin() const
+    typename std::map<index_t, gsSparseVector<T> >::const_iterator truncatedBegin() const
     { return m_presentation.begin(); }
 
     /// @brief Returns an iterator past the last truncated basis function
-    typename std::map<unsigned, gsSparseVector<T> >::const_iterator truncatedEnd() const
+    typename std::map<index_t, gsSparseVector<T> >::const_iterator truncatedEnd() const
     { return m_presentation.end(); }
 
     /// @brief Returns sparse representation of the i-th basis function.
@@ -534,7 +534,7 @@ public:
    * @param[out] level levels of the boxes (level[i]: level of the i-th box,)
    * @param[out] nvertices number of control points (nvertices[i,j]: number of control points in j-direction for the i-th box)
   */
-  void getBsplinePatches(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level, gsMatrix<unsigned>& nvertices) const;
+  void getBsplinePatches(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level, gsMatrix<index_t>& nvertices) const;
 
   /**
    * @brief Return a multipatch structure of B-splines
@@ -552,7 +552,7 @@ public:
      * @param[out] nvertices number of control points (nvertices[i,j]: number of control points in j-direction for the i-th box)
      * @param[out] trim_curves the trimming curves for parasolid vector<connected_component<polylines<segments<T> > > > where the first polyline is the outer curve and the rest are holes
     */
-    void getBsplinePatches_trimming(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level, gsMatrix<unsigned>& nvertices,
+    void getBsplinePatches_trimming(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level, gsMatrix<index_t>& nvertices,
                            std::vector<std::vector<std::vector< std::vector<T> > > >& trim_curves) const;
 
     /**
@@ -567,9 +567,9 @@ public:
     /*
        * @brief Return the connected components of domain levels in knot vector indices (the boundary of a CC and the holes in the corresponding component)
        * @param[out] level levels of the boxes (level[i]: level of the i-th box,)
-       * @param[out] connectedComponents the connected components in format vector<connected_component<polylines<segments<unsigned int> > > > where the first polyline is the outer curve and the rest are holes
+       * @param[out] connectedComponents the connected components in format vector<connected_component<polylines<segments<index_t> > > > where the first polyline is the outer curve and the rest are holes
     */
-    void getConnectedComponents(std::vector<std::vector<std::vector< std::vector<unsigned int> > > >& connectedComponents, gsVector<unsigned>& level) const;
+    void getConnectedComponents(std::vector<std::vector<std::vector< std::vector<index_t> > > >& connectedComponents, gsVector<index_t>& level) const;
 
 
    /// @brief returns transfer matrices betweend the levels of the given hierarchical spline
@@ -591,7 +591,7 @@ public:
     /// The B-Spline patch knots are the same as the THB-Spline-Basis knots from the input
     /// level. Geometry of the patch is defined via input coefficients.
     gsTensorBSpline<d, T>
-    getBSplinePatch(const std::vector<unsigned>& boundingBox,
+    getBSplinePatch(const std::vector<index_t>& boundingBox,
                     const unsigned level,
                     const gsMatrix<T>& geomCoefs) const;
 
@@ -621,16 +621,16 @@ private:
     void globalRefinement(const gsMatrix<T> & thbCoefs, int level, 
                           gsMatrix<T> & lvlCoefs) const;
 
-    gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old,
-                           const std::vector<gsSortedVector<unsigned> >& n,
+    gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<index_t> >& old,
+                           const std::vector<gsSortedVector<index_t> >& n,
                            const gsSparseMatrix<T,RowMajor> & transfer) const;
 
-    gsSparseMatrix<T> coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old,
-                                   const std::vector<gsSortedVector<unsigned> >& n, 
+    gsSparseMatrix<T> coarsening_direct( const std::vector<gsSortedVector<index_t> >& old,
+                                   const std::vector<gsSortedVector<index_t> >& n, 
                                    const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const;
 
-    gsSparseMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
-                                   const std::vector<gsSortedVector<unsigned> >& n,
+    gsSparseMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<index_t> >& old,
+                                   const std::vector<gsSortedVector<index_t> >& n,
                                    const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const;
     
 
@@ -641,8 +641,8 @@ private:
     /// @brief Checks if the first box is completely inside second box.
     /// 
     /// Utility function for the decomposeDomain member function.
-    bool isFirstBoxCompletelyInsideSecond(const std::vector<unsigned>& firstBox,
-					  const std::vector<unsigned>& secondBox) const
+    bool isFirstBoxCompletelyInsideSecond(const std::vector<index_t>& firstBox,
+					  const std::vector<index_t>& secondBox) const
     {
 	return secondBox[0] < firstBox[0] && secondBox[1] < firstBox[1] &&
 	       firstBox[2] < secondBox[2] && firstBox[3] < secondBox[3];   
@@ -652,8 +652,8 @@ private:
     /// @brief Checks if the boxes are the same
     ///
     /// Utility function for the decomposeDomain member function.
-    bool areBoxesTheSame(const std::vector<unsigned>& firstBox,
-			 const std::vector<unsigned>& secondBox) const
+    bool areBoxesTheSame(const std::vector<index_t>& firstBox,
+			 const std::vector<index_t>& secondBox) const
     {
 	return firstBox[0] == secondBox[0] && firstBox[1] == secondBox[1] &&
   	       firstBox[2] == secondBox[2] && firstBox[3] == secondBox[3];
@@ -699,7 +699,7 @@ private:
 
     /// @brief Finds new axis aligned bounding box for given polyline.
     void findNewAABB(const std::vector< std::vector<T> >& polyline,
-		     std::vector<unsigned>& aabb) const;
+		     std::vector<index_t>& aabb) const;
 
 	
 
@@ -716,7 +716,7 @@ private:
     //
     // if m_is_truncated[j] is equal to -1, then there is no entry
     // m_presentation[j]
-    std::map<unsigned, gsSparseVector<T> > m_presentation;
+    std::map<index_t, gsSparseVector<T> > m_presentation;
 
     using gsHTensorBasis<d,T>::m_bases;
     using gsHTensorBasis<d,T>::m_xmatrix;

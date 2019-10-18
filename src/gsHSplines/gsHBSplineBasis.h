@@ -64,7 +64,7 @@ public:
     }
     
     gsHBSplineBasis( gsTensorBSplineBasis<d,T> const&  tbasis,
-                     std::vector<unsigned> & boxes)
+                     std::vector<index_t> & boxes)
         : gsHTensorBasis<d,T>(tbasis, boxes) 
     {
         // initialize(); // is done in the base constructor
@@ -119,10 +119,10 @@ private:
     /// internal bspline representations
     void initialize();
 
-    gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const;
-    gsSparseMatrix<T> coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const;
+    gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<index_t> >& old, const std::vector<gsSortedVector<index_t> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const;
+    gsSparseMatrix<T> coarsening_direct( const std::vector<gsSortedVector<index_t> >& old, const std::vector<gsSortedVector<index_t> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const;
 
-    gsSparseMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const;
+    gsSparseMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<index_t> >& old, const std::vector<gsSortedVector<index_t> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const;
 
     using gsHTensorBasis<d,T>::m_bases;
     using gsHTensorBasis<d,T>::m_xmatrix;

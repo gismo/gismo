@@ -106,18 +106,18 @@ void gsHTensorBasis<d,T>::numActive_into(const gsMatrix<T> & u, gsVector<index_t
 template<short_t d, class T>
 void gsHTensorBasis<d, T>::addConnectivity(int lvl, gsMesh<T> & mesh) const
 {
-    const gsVector<unsigned, d> & low = gsVector<unsigned, d>::Zero();
+    const gsVector<index_t, d> & low = gsVector<index_t, d>::Zero();
 
     const gsTensorBSplineBasis<d, T> & bb = *m_bases[lvl];
     const CMatrix & cmat = m_xmatrix[lvl];
 
     // Last tensor-index in level lvl
-    gsVector<unsigned, d> end(d);
+    gsVector<index_t, d> end(d);
     for (unsigned i = 0; i < d; ++i)
         end(i) = bb.component(i).size() - 1;
 
     unsigned k, s;
-    gsVector<unsigned, d> v, upp;
+    gsVector<index_t, d> v, upp;
     for (unsigned i = 0; i < d; ++i) // For all axes
     {
         s = bb.stride(i);
@@ -188,7 +188,7 @@ index_t gsHTensorBasis<d,T>::size() const
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes)
 {
-    std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
     refine(boxes);
     gsSparseMatrix<> transf;
     this->transfer(OX, transf);
@@ -199,7 +199,7 @@ void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> cons
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes)
 {
-    std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
     refineElements(boxes);
     gsSparseMatrix<> transf;
     this->transfer(OX, transf);
@@ -210,7 +210,7 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vect
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> & tran)
 {
-    std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
     this->refineElements(boxes);
     this->transfer(OX, tran);
 }
@@ -219,7 +219,7 @@ void gsHTensorBasis<d,T>::refineElements_withTransfer(std::vector<index_t> const
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<index_t> const & boxes)
 {
-    std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
     refineElements(boxes);
     gsSparseMatrix<> transf;
     this->transfer2(OX, transf);
@@ -230,13 +230,13 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vec
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul)
 {
-    std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
     //uniformRefine(numKnots);
     //gsMatrix<> transf;
     //CMatrix temp;
     //this->m_xmatrix.insert(this->m_xmatrix.begin(), temp);
-    //gsVector<unsigned> level;
-    //gsMatrix<unsigned> p1, p2;
+    //gsVector<index_t> level;
+    //gsMatrix<index_t> p1, p2;
     //this->m_tree.getBoxes(p1,p2,level);
     std::vector<index_t> boxes;
     index_t lvl;
@@ -684,10 +684,10 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level,
 
     // vectors of iterators. one iterator for each dimension
     gsVector<typename gsKnotVector<T>::smart_iterator,d> starts, ends, curr;
-    gsVector<unsigned,d> ind;
+    gsVector<index_t,d> ind;
     ind[0] = 0; // for d==1: warning: may be used uninitialized in this function (snap-ci)
     
-    gsVector<unsigned,d> low, upp;
+    gsVector<index_t,d> low, upp;
     for(int j =0; j < level+1; j++)
     {
         // Clear previous entries
@@ -800,7 +800,7 @@ void gsHTensorBasis<d,T>::flatTensorIndexesToHierachicalIndexes(gsSortedVector< 
 template<short_t d, class T>
 int gsHTensorBasis<d,T>::flatTensorIndexToHierachicalIndex(unsigned index,const int level) const
 {
-    if( m_xmatrix.size()<=static_cast<unsigned>(level) )
+    if( m_xmatrix.size()<=static_cast<index_t>(level) )
         return -1;
     CMatrix::const_iterator it = std::lower_bound(m_xmatrix[level].begin(), m_xmatrix[level].end(), index );
     if(it == m_xmatrix[level].end() || *it != index)
@@ -926,7 +926,7 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& 
     temp_output.resize( u.cols() );
     size_t sz = 0;
 
-    //gsMatrix<unsigned> activesLvl;
+    //gsMatrix<index_t> activesLvl;
 
     for(index_t p = 0; p < u.cols(); p++) //for all input points
     {
@@ -1049,7 +1049,7 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
     GISMO_UNUSED(numKnots);
     GISMO_ASSERT(numKnots == 1, "Only implemented for numKnots = 1");
 
-    GISMO_ASSERT( m_tree.getMaxInsLevel() < static_cast<unsigned>(m_bases.size()),
+    GISMO_ASSERT( m_tree.getMaxInsLevel() < static_cast<index_t>(m_bases.size()),
                   "Problem with max inserted levels: "<< m_tree.getMaxInsLevel()
                   <<"<" << m_bases.size() <<"\n");
 
@@ -1069,14 +1069,14 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
 }
 
 template<short_t d, class T>
-std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const
+std::vector< std::vector< std::vector<index_t > > > gsHTensorBasis<d,T>::domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const
 {
-    std::vector< std::vector< std::vector< std::vector< unsigned int > > > > dummy;
+    std::vector< std::vector< std::vector< std::vector<index_t > > > > dummy;
     return domainBoundariesGeneric( dummy, result, false );
 }
 
 template<short_t d, class T>
-std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector< unsigned int > > > >& result ) const
+std::vector< std::vector< std::vector<index_t > > > gsHTensorBasis<d,T>::domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector<index_t > > > >& result ) const
 {
     std::vector< std::vector< std::vector< std::vector< T > > > > dummy;
     return domainBoundariesGeneric( result, dummy, true );
@@ -1084,14 +1084,14 @@ std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::d
 
 
 template<short_t d, class T>
-std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::domainBoundariesGeneric(std::vector< std::vector< std::vector< std::vector< unsigned int > > > >& indices,
+std::vector< std::vector< std::vector<index_t > > > gsHTensorBasis<d,T>::domainBoundariesGeneric(std::vector< std::vector< std::vector< std::vector<index_t > > > >& indices,
                                                                                                        std::vector< std::vector< std::vector< std::vector< T > > > >& params,
                                                                                                        bool indicesFlag ) const
 {
     indices.clear();
     params.clear();
     std::vector< std::vector< std::vector< int > > > res_aabb;
-    std::vector< std::vector< std::vector< unsigned int > > > res_aabb_unsigned;
+    std::vector< std::vector< std::vector<index_t > > > res_aabb_unsigned;
     std::vector< std::vector< std::vector< std::vector< index_t > > > > polylines;
 
     polylines =  this->m_tree.getPolylines();
@@ -1193,7 +1193,7 @@ std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::d
 
 
 template<short_t d, class T>
-void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >& old, gsSparseMatrix<T>& result)
+void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<index_t> >& old, gsSparseMatrix<T>& result)
 {
     // Note: implementation assumes number of old + 1 m_bases exists in this basis
     needLevel( old.size() );
@@ -1224,7 +1224,7 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
 
     // Add missing empty char. matrices
     while ( old.size() >= m_xmatrix.size() )
-        m_xmatrix.push_back( gsSortedVector<unsigned>() );
+        m_xmatrix.push_back( gsSortedVector<index_t>() );
 
     result = this->coarsening_direct(old, m_xmatrix, transfer);
 
@@ -1246,7 +1246,7 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
 }
 
 template<short_t d, class T>
-void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<unsigned> >& old, gsSparseMatrix<T>& result)
+void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<index_t> >& old, gsSparseMatrix<T>& result)
 {
     // Note: implementation assumes number of old + 1 m_bases exists in this basis
     needLevel( old.size() );
@@ -1275,7 +1275,7 @@ void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<unsigned> 
 
     // Add missing empty char. matrices
     while ( old.size() >= m_xmatrix.size())
-        m_xmatrix.push_back( gsSortedVector<unsigned>() );
+        m_xmatrix.push_back( gsSortedVector<index_t>() );
 
     result = this->coarsening_direct2(old, m_xmatrix, transfer);
 }

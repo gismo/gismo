@@ -39,7 +39,7 @@ template<short_t d, class T>
 typename gsHBSplineBasis<d,T>::BoundaryBasisType * gsHBSplineBasis<d,T>::basisSlice(index_t dir_fixed,T par ) const
 {
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
-    GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
+    GISMO_ASSERT(dir_fixed>=0 && static_cast<index_t>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
     const boxSide side(dir_fixed,0);
     const typename gsTensorBSplineBasis<d,T>::BoundaryBasisType::uPtr bBSplineBasis =
             this->m_bases[0]->boundaryBasis(side);
@@ -188,8 +188,8 @@ template<short_t d, class T>
 void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& result)
 {
     result.clear();
-    //gsVector<unsigned> level;
-    //gsMatrix<unsigned> b1, b2; //boxes in highest level numbering
+    //gsVector<index_t> level;
+    //gsMatrix<index_t> b1, b2; //boxes in highest level numbering
     //this->m_tree.getBoxesInLevelIndex(b1, b2, level);//return boxes in level indices
     tensorBasis curTensorlvl = this->tensorLevel(0);
     //std::vector< gsSparseMatrix<T,RowMajor> > transfer(this->maxLevel());
@@ -225,7 +225,7 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& resul
 
 
 template<short_t d, class T>
-gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const
+gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<index_t> >& old, const std::vector<gsSortedVector<index_t> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const
 {
     int size1= 0;int size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
@@ -287,7 +287,7 @@ gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVe
 }
 
 template<short_t d, class T>
-gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
+gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<index_t> >& old, const std::vector<gsSortedVector<index_t> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
     int size1= 0;int size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
@@ -384,8 +384,8 @@ gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsS
 }
 
 template<short_t d, class T>
-gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
-                                                     const std::vector<gsSortedVector<unsigned> >& n,
+gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSortedVector<index_t> >& old,
+                                                     const std::vector<gsSortedVector<index_t> >& n,
                                                      const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
     int size1 = 0, size2 = 0;
@@ -441,7 +441,7 @@ gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gs
                 gsMatrix<index_t, d, 2> supp(d, 2);
                 this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
                 //gsDebug<<"supp "<< supp<<std::endl;
-                //unsigned max_lvl = math::min<unsigned>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
+                //unsigned max_lvl = math::min<index_t>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
                 gsSparseVector<T,RowMajor> t(this->m_bases[i]->size());
                 t.setZero();
                 t[old_ij] = 1;

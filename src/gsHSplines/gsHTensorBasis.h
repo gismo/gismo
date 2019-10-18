@@ -92,7 +92,7 @@ public:
 
     typedef std::vector< box > boxHistory;
 
-    typedef gsSortedVector< unsigned > CMatrix; // charMatrix_
+    typedef gsSortedVector< index_t > CMatrix; // charMatrix_
 
     typedef typename CMatrix::const_iterator cmatIterator;
 
@@ -122,7 +122,7 @@ public:
     }
 
     gsHTensorBasis( gsTensorBSplineBasis<d,T> const&  tbasis,
-                    const std::vector<unsigned> & boxes)
+                    const std::vector<index_t> & boxes)
     {
         initialize_class(tbasis);
         point i1;
@@ -198,7 +198,7 @@ public:
  */
     gsHTensorBasis( gsTensorBSplineBasis<d,T> const& tbasis,
                     gsMatrix<T> const & boxes,
-                    const std::vector<unsigned int> & levels)
+                    const std::vector<index_t> & levels)
     {
         GISMO_ASSERT(boxes.rows() == d, "Points in boxes need to be of dimension d.");
         GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied gsHTensorBasis constructor with them.");
@@ -206,8 +206,8 @@ public:
 
         initialize_class(tbasis);
 
-        gsVector<unsigned,d> k1;
-        gsVector<unsigned,d> k2;
+        gsVector<index_t,d> k1;
+        gsVector<index_t,d> k2;
 
         const size_t mLevel = *std::max_element(levels.begin(), levels.end() );
         needLevel( mLevel );
@@ -305,7 +305,7 @@ public:
     /// The entry <em>m_xmatrix_offset[k]</em>
     /// indicates the index from which the basis functions from
     /// level \em k (i.e., those taken from \f$ B^k \f$) start.
-    std::vector<unsigned> m_xmatrix_offset;
+    std::vector<index_t> m_xmatrix_offset;
 
     //------------------------------------
 
@@ -742,7 +742,7 @@ public:
     /// and where x1, y1, x2 and y2 are parameters (knots).
     /// @return bounding boxes of the polylines in the form
     /// < levels < polylines_in_one_level < x_ll, y_ll, x_ur, y_ur > > >, where "ur" stands for "upper right" and "ll" for "lower left".
-    std::vector< std::vector< std::vector< unsigned int > > > domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const;
+    std::vector< std::vector< std::vector<index_t > > > domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const;
 
     /// @brief Gives polylines on the boundaries between different levels of the mesh.
     /// @param result variable where to write the polylines in the form
@@ -751,7 +751,7 @@ public:
     /// and where x1, y1, x2 and y2 are indices of the knots with respect to m_maxInsLevel.
     /// @return bounding boxes of the polylines in the form
     /// < levels < polylines_in_one_level < x_ll, y_ll, x_ur, y_ur > > >, where "ur" stands for "upper right" and "ll" for "lower left".
-    std::vector< std::vector< std::vector< unsigned int > > > domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector< unsigned int > > > >& result) const;
+    std::vector< std::vector< std::vector<index_t > > > domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector<index_t > > > >& result) const;
     // TO DO: use gsHDomainLeafIterator for a better implementation
     size_t numElements() const
     {
@@ -828,7 +828,7 @@ protected:
     void createMoreLevels(int numLevels) const;
 
     /// gets all the boxes along a slice in direction \a dir at parameter \a par.
-    /// the boxes are given back in a std::vector<unsigned> and are in the right format
+    /// the boxes are given back in a std::vector<index_t> and are in the right format
     /// to be given to refineElements().
     void getBoxesAlongSlice( int dir, T par,std::vector<index_t>& boxes ) const;
 
@@ -854,13 +854,13 @@ private:
     void addConnectivity(int level, gsMesh<T> & mesh) const;
 
     ///returns a transfer matrix using the characteristic matrix of the old and new basis
-    virtual gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const = 0;
-    virtual gsSparseMatrix<T> coarsening_direct(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const = 0;
-    virtual gsSparseMatrix<T> coarsening_direct2(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const = 0;
+    virtual gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<index_t> >& old, const std::vector<gsSortedVector<index_t> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const = 0;
+    virtual gsSparseMatrix<T> coarsening_direct(const std::vector<gsSortedVector<index_t> >& old, const std::vector<gsSortedVector<index_t> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const = 0;
+    virtual gsSparseMatrix<T> coarsening_direct2(const std::vector<gsSortedVector<index_t> >& old, const std::vector<gsSortedVector<index_t> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const = 0;
 
     /// \brief Implementation of the features common to domainBoundariesParams and domainBoundariesIndices. It takes both
     /// @param indices and @param params but fills in only one depending on @param indicesFlag (if true, then it returns indices).
-    std::vector< std::vector< std::vector< unsigned int > > > domainBoundariesGeneric(std::vector< std::vector< std::vector< std::vector< unsigned int > > > >& indices,
+    std::vector< std::vector< std::vector<index_t > > > domainBoundariesGeneric(std::vector< std::vector< std::vector< std::vector<index_t > > > >& indices,
                                                                                       std::vector< std::vector< std::vector< std::vector< T > > > >& params,
                                                                                       bool indicesFlag ) const;
 
@@ -868,23 +868,23 @@ private:
 public:
     /// \brief Returns transfer matrix betweend the hirarchycal spline given
     /// by the characteristic matrix "old" and this
-    void transfer (const std::vector<gsSortedVector<unsigned> > &old, gsSparseMatrix<T>& result);
+    void transfer (const std::vector<gsSortedVector<index_t> > &old, gsSparseMatrix<T>& result);
 
-    void transfer2 (const std::vector<gsSortedVector<unsigned> > &old, gsSparseMatrix<T>& result);
+    void transfer2 (const std::vector<gsSortedVector<index_t> > &old, gsSparseMatrix<T>& result);
 
     /// \brief Creates characteristic matrices for basis where "level" is the
     /// maximum level i.e. ignoring higher level refinements
     void setActiveToLvl(int level, std::vector<CMatrix>& x_matrix_lvl) const;
 
 
-//    void local2globalIndex( gsVector<unsigned,d> const & index,
+//    void local2globalIndex( gsVector<index_t,d> const & index,
 //                            unsigned lvl,
-//                            gsVector<unsigned,d> & result
+//                            gsVector<index_t,d> & result
 //        ) const;
 
-//    void global2localIndex( gsVector<unsigned,d> const & index,
+//    void global2localIndex( gsVector<index_t,d> const & index,
 //                            unsigned lvl,
-//                            gsVector<unsigned,d> & result
+//                            gsVector<index_t,d> & result
 //        ) const;
 
 }; // class gsHTensorBasis

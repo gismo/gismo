@@ -127,7 +127,7 @@ Object * getHTensorBasisFromXml ( gsXmlNode * node)
     
     // Insert all boxes
     unsigned c;
-    std::vector<unsigned int> all_boxes;
+    std::vector<index_t> all_boxes;
     for (tmp = node->first_node("box"); 
          tmp; tmp = tmp->next_sibling("box"))
     {
