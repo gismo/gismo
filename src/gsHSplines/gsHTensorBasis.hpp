@@ -800,7 +800,7 @@ void gsHTensorBasis<d,T>::flatTensorIndexesToHierachicalIndexes(gsSortedVector< 
 template<short_t d, class T>
 int gsHTensorBasis<d,T>::flatTensorIndexToHierachicalIndex(unsigned index,const int level) const
 {
-    if( m_xmatrix.size()<=static_cast<index_t>(level) )
+    if( m_xmatrix.size()<=static_cast<unsigned>(level) )
         return -1;
     CMatrix::const_iterator it = std::lower_bound(m_xmatrix[level].begin(), m_xmatrix[level].end(), index );
     if(it == m_xmatrix[level].end() || *it != index)
