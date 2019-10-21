@@ -366,13 +366,13 @@ public:
     void elementSupport_into(const unsigned& i, gsMatrix<index_t, _Rows, 2> & result) const
     {
         result.resize(d,2);
-        gsMatrix<unsigned> tmp_vec;
+        gsMatrix<index_t> tmp_vec;
         const gsVector<index_t, d> ti = this->tensorIndex(i);
 
-        for (unsigned dim = 0; dim < d; ++dim)
+        for (short_t dim = 0; dim < d; ++dim)
         {
             Self_t::component(dim).knots().supportIndex_into(ti[dim], tmp_vec);
-            result.row(dim) = tmp_vec.row(0).template cast<index_t>();
+            result.row(dim) = tmp_vec.row(0);
         }
     }
 

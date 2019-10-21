@@ -989,7 +989,7 @@ void gsKnotVector<T>::getUniformRefinementKnots(mult_t knotsPerSpan, knotContain
 
 template< typename T>
 void gsKnotVector<T>::supportIndex_into(const mult_t& i,
-                                        gsMatrix<unsigned>& result) const
+                                        gsMatrix<index_t>& result) const
 {
     T suppBeg=*(this->begin()+i);
     T suppEnd=*(this->begin()+i+m_deg+1);

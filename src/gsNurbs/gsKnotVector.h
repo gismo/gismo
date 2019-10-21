@@ -602,7 +602,7 @@ public:
 
     /// Writes unique indices of the knots of the endpoints of \a
     /// i - th B-spline defined on this knot vector to \a result.
-    void supportIndex_into(const mult_t &i, gsMatrix<unsigned>& result) const;
+    void supportIndex_into(const mult_t &i, gsMatrix<index_t>& result) const;
     // TODO: If the function stays, make a unit test from what is in unifiedKnotVector.cpp.
 
     /// Inserts \a numKnots (and each of them \a mult - times) between

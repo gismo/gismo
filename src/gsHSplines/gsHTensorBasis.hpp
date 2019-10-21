@@ -574,7 +574,7 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     point ind;
     ind[0] = 0; // for d==1: warning: may be used uninitialized in this function (snap-ci)
 
-    for(unsigned i = 0; i != d; ++i)
+    for(short_t i = 0; i != d; ++i)
     {
         // beginning of the iteration in i-th direction
         starts[i] = m_bases[level]->knots(i).sbegin() ;

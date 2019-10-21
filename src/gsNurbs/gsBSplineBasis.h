@@ -178,7 +178,7 @@ public:
     /// of the support of the i-th basis function.
     void elementSupport_into(const unsigned & i, gsMatrix<index_t,1,2>& result) const
     {
-        gsMatrix<unsigned> tmp_vec;
+        gsMatrix<index_t> tmp_vec;
         m_knots.supportIndex_into(i, tmp_vec);
         result = tmp_vec;
     }
