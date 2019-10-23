@@ -521,19 +521,21 @@ int main(int argc, char *argv[])
         // Compute the system matrix and right-hand side
 
         auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) );
-        auto E_m_der = flat( jac(u) * jac(defG) ) ;
+        auto E_m_der = flat( jac(u).tr() * jac(defG) ) ; 
         auto E_m_der2 = flat( jac(u) * jac(u).tr() );
 
         auto E_f = reshape(m2,2,2) * ( deriv2(defG) * nv(defG).normalized() - deriv2(G) * nv(G).normalized() ) ;
         auto E_f_der = reshape(m2,2,2) * ( deriv2(u) * nv(defG).normalized() + deriv2(defG) * var1(u,G) );
         auto E_f_der2 = reshape(m2,2,2) * ( 2 * deriv2(u) * var1(u,defG).tr() + var2(u,u,defG) );
 
-        A.assemble( tt * ( E_m * mm * E_m_der2 + E_m_der * mm * E_m_der ) +
-                    (tt*tt*tt/3.0) *( E_f * mm * E_f_der2 + E_f_der * mm * E_f_der ), // Matrix
+        // A.assemble( tt * ( E_m * mm * E_m_der2 + E_m_der * mm * E_m_der ) +
+        //             (tt*tt*tt/3.0) *( E_f * mm * E_f_der2 + E_f_der * mm * E_f_der ), // Matrix
 
-                    tt * ( E_m * mm * E_m_der ) + (tt*tt*tt/3.0) *( E_f * mm * E_f_der )  // Rhs
-                    - u * ff.tr()
-            );
+        //             tt * ( E_m * mm * E_m_der ) + (tt*tt*tt/3.0) *( E_f * mm * E_f_der )  // Rhs
+        //             - u * ff.tr()
+        //     );
+
+        A.assemble( tt * ( E_m_der.tr() * reshape(mm,3,3) * E_m_der ), - u * ff );
 
         //A.assemble( var1(u,G) * var1(u,G).tr() );
 
@@ -550,7 +552,7 @@ int main(int argc, char *argv[])
         //A.assemble( hessdot(u, var1(u,G)) );
 
 
-        // gsInfo<< A.rhs().transpose() <<"\n";
+        gsInfo<< A.rhs().transpose() <<"\n";
         gsInfo<< A.matrix().toDense().diagonal().transpose() <<"\n";
 
     } //for loop

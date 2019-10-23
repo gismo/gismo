@@ -1416,12 +1416,20 @@ public:
 
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
+        _u.print(gsInfo); gsInfo<<std::endl;
         // Note: this assertion would fail in the constructore!
-        GISMO_ASSERT( _u.rows()==2 && _u.cols()==2, "Wrong dimension");
+        GISMO_ASSERT( _u.rows()==2 , "Wrong dimension, got " << _u.rows() << ", " << _u.cols());
+        
+
         tmp = _u.eval(k);
-        tmp(0,1) += tmp(1,0);
-        std::swap(tmp(1,0), tmp(1,1));
-        tmp.conservativeResize(3,1);
+        const index_t numActives = tmp.cols()/tmp.rows();
+        for (index_t i = 0; i<numActives; i++)
+        {
+            tmp(0,2*i+1) += tmp(1,2*i);
+            std::swap(tmp(2*i,0), tmp(2*i+1,2*i+1));
+        }
+        tmp.resize(4,numActives);
+        tmp.conservativeResize(3,numActives);
         return tmp;
     }
 
@@ -2867,6 +2875,7 @@ public:
         if ( _v.cols() == ur) //second is not ColBlocks
         {
             res.resize(ur, uc);
+            gsInfo<<"cols = "<<res.cols()<<"; rows = "<<res.rows()<<"\n";
             for (index_t i = 0; i!=nb; ++i)
                 res.middleCols(i*ur,ur).noalias()
                     = tmpA.middleCols(i*ur,ur) * tmpB;
