@@ -384,6 +384,76 @@ public:
     void print(std::ostream &os) const { os << "hessdot("; _u.print(os); os <<")"; }
 };
 
+
+template<class E1, class E2, class E3>
+class flatdot_expr  : public _expr<flatdot_expr<E1,E2,E3> >
+{
+public:
+    typedef typename E1::Scalar Scalar;
+    enum {ScalarValued = 0, Space = E1::Space};
+private:
+    typename E1::Nested_t _A;
+    typename E2::Nested_t _B;
+    typename E3::Nested_t _C;
+    mutable gsMatrix<Scalar> tmpA, tmpB, tmpC, res;
+
+public:
+
+    flatdot_expr(_expr<E1> const& A, _expr<E2> const& B, _expr<E3> const& C) : _A(A),_B(B),_C(C)
+    {
+        //GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension"); //
+    }
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        const index_t Ac = _A.cols();
+        const index_t Ar = _A.rows();
+        const index_t An = _A.cardinality();
+        const index_t Bc = _B.cols();
+        const index_t Br = _B.rows();
+        const index_t Bn = _B.cardinality();
+
+        const MatExprType eA = _A.eval(k);
+        const MatExprType eB = _B.eval(k);
+
+        // multiply by C
+        const MatExprType eC = _C.eval(k);
+        for (index_t i = 0; i!=An; ++i)
+        {
+            eA(0,2*i  ) *= eC.at(0);
+            eA(1,2*i+1) *= eC.at(1);
+            eA(1,2*i)   *= eC.at(2);
+            eA(0,2*i+1) *= eC.at(2);
+        }
+
+        res.resize(An, Bn);
+        for (index_t i = 0; i!=An; ++i)
+            for (index_t j = 0; j!=Bn; ++j)
+            {
+                res(i,j) = ( tmpA.middleCols(i*Ac,Ac) * tmpB.middleCols(j*Bc,Bc) ).sum();
+            }
+
+        return res;
+    }
+
+    index_t rows() const { return 1; }
+    index_t cols() const { return 1; }
+    void setFlag() const { _A.setFlag();_B.setFlag();_C.setFlag(); }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    { _A.parse(evList);_B.parse(evList);_C.parse(evList); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _A.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _B.colVar(); }
+    index_t cardinality_impl() const { return _A.cardinality_impl(); }
+
+    static constexpr bool rowSpan() {return E1::rowSpan();}
+    static bool colSpan() {return E2::colSpan();}
+
+    void print(std::ostream &os) const { os << "flatdot("; _A.print(os);_B.print(os);_C.print(os); os<<")"; }
+};
+
+
 template<class E> EIGEN_STRONG_INLINE
 var1_expr<E> var1(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return var1_expr<E>(u, G); }
 
@@ -521,21 +591,45 @@ int main(int argc, char *argv[])
         // Compute the system matrix and right-hand side
 
         auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) );
-        auto E_m_der = flat( jac(u).tr() * jac(defG) ) ; 
-        auto E_m_der2 = flat( jac(u) * jac(u).tr() );
+        auto E_m2 = 0.5 * ( jac(defG).tr()*jac(defG) - jac(G).tr()* jac(G) );
+
+        auto E_m_der = flat( jac(u).tr() * jac(defG) ) ; //colExpr
+        auto E_m_der2 = flat( jac(u).tr() * jac(u) );
 
         auto E_f = reshape(m2,2,2) * ( deriv2(defG) * nv(defG).normalized() - deriv2(G) * nv(G).normalized() ) ;
         auto E_f_der = reshape(m2,2,2) * ( deriv2(u) * nv(defG).normalized() + deriv2(defG) * var1(u,G) );
         auto E_f_der2 = reshape(m2,2,2) * ( 2 * deriv2(u) * var1(u,defG).tr() + var2(u,u,defG) );
 
-        // A.assemble( tt * ( E_m * mm * E_m_der2 + E_m_der * mm * E_m_der ) +
+        //A.assemble( tt * ( E_m.tr() * reshape(mm,3,3) * E_m_der2 + E_m_der.tr() * reshape(mm,3,3) * E_m_der ) +
         //             (tt*tt*tt/3.0) *( E_f * mm * E_f_der2 + E_f_der * mm * E_f_der ), // Matrix
 
         //             tt * ( E_m * mm * E_m_der ) + (tt*tt*tt/3.0) *( E_f * mm * E_f_der )  // Rhs
         //             - u * ff.tr()
         //     );
 
-        A.assemble( tt * ( E_m_der.tr() * reshape(mm,3,3) * E_m_der ), - u * ff );
+
+
+        gsVector<> pt(2); pt.setConstant(0.5);
+        gsInfo << "Eval:\n"<< ev.eval(
+            //E_m_der.tr() * reshape(mm,3,3) * E_m_der
+
+            //E_m.tr() *
+            E_m_der2
+
+                                       ,  pt
+            );
+       gsInfo << "\nEnd\n";
+
+        return 0;
+
+        A.assemble(
+            //tt * (
+
+            E_m_der.tr()
+              * reshape(mm,3,3)
+                * E_m_der
+                    // ), - u * ff
+            );
 
         //A.assemble( var1(u,G) * var1(u,G).tr() );
 
