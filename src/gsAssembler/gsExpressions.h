@@ -238,6 +238,11 @@ public:
     index_t cols() const
     { return static_cast<E const&>(*this).cols(); }
 
+    index_t cardinality() const
+    { return static_cast<E const&>(*this).cardinality_impl(); }
+
+    static index_t cardinality_impl() { return 1; }
+
     ///\brief Returns true iff the expression is scalar-valued.
     /// \note This is a runtime check, for compile-time check use E::ScalarValued
     bool isScalar() const { return rows()*cols()<=1; } //!rowSpan() && !colSpan()
@@ -357,6 +362,8 @@ public:
 
     /// Returns true if the variable is a composition
     bool composed() const {return NULL!=m_md;}
+
+    index_t cardinality_impl() const { return m_d * m_fd->actives.rows(); }
 
 private:
 
@@ -1139,7 +1146,7 @@ public:
         // /*
         if (E::ColBlocks)
         {
-            res = _u.eval(k).blockTranspose(_u.cols()/_u.rows()); return res;
+            res = _u.eval(k).blockTranspose( _u.cardinality() ); return res;
             //return _u.eval(k).blockTranspose(_u.cols()/_u.rows());
         }
         else
@@ -1152,17 +1159,17 @@ public:
 
     index_t rows() const
     {
-        if (ColBlocks) // note: sq. blocks assumed
-            return _u.rows();
-        else
+        // if (ColBlocks) // note: sq. blocks assumed
+        //     return _u.rows();
+        // else
             return _u.cols();
-
     }
+
     index_t cols() const
     {
-        if (ColBlocks) // note: sq. blocks assumed
-            return _u.cols();
-        else
+        // if (ColBlocks) // note: sq. blocks assumed
+        //     return _u.cols();
+        // else
             return _u.rows();
     }
     void setFlag() const { _u.setFlag(); }
@@ -1172,6 +1179,8 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.colVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _u.rowVar(); }
+
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
     static constexpr bool rowSpan() {return E::colSpan();}
     static bool colSpan() {return E::rowSpan();}
@@ -1402,7 +1411,7 @@ class flat_expr  : public _expr<flat_expr<E> >
 {
 public:
     typedef typename E::Scalar Scalar;
-    enum {ScalarValued = 0};
+    enum {ScalarValued = 0, Space = E::Space};
 private:
     typename E::Nested_t _u;
     mutable gsMatrix<Scalar> tmp;
@@ -1417,16 +1426,18 @@ public:
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
         _u.print(gsInfo); gsInfo<<std::endl;
-        // Note: this assertion would fail in the constructore!
-        GISMO_ASSERT( _u.rows()==2 , "Wrong dimension, got " << _u.rows() << ", " << _u.cols());
-        
+        //GISMO_ASSERT( _u.rows()==2 , "Wrong dimension, got " << _u.rows() << ", " << _u.cols());
 
         tmp = _u.eval(k);
-        const index_t numActives = tmp.cols()/tmp.rows();
-        for (index_t i = 0; i<numActives; i++)
+        gsDebugVar(tmp.rows());
+        gsDebugVar(tmp.cols());
+
+        const index_t numActives = _u.cardinality();
+        gsDebugVar(numActives);
+        for (index_t i = 0; i<numActives; ++i)
         {
             tmp(0,2*i+1) += tmp(1,2*i);
-            std::swap(tmp(2*i,0), tmp(2*i+1,2*i+1));
+            std::swap(tmp(0,2*i), tmp(1,2*i+1));
         }
         tmp.resize(4,numActives);
         tmp.conservativeResize(3,numActives);
@@ -1442,6 +1453,7 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
     static constexpr bool rowSpan() {return E::rowSpan();}
     static bool colSpan() {return E::colSpan();}
@@ -2427,8 +2439,14 @@ public:
 
     index_t rows() const { return m_fev.dim(); }
     index_t cols() const
-    {   //bug
-        return m_fev.dim() * m_fev.data().actives.rows() * m_fev.data().dim.first;
+    {   //bug: Should return the column size of each BLOCK contained
+        // return m_fev.dim() * m_fev.data().actives.rows() * m_fev.data().dim.first;
+        return m_fev.data().dim.first;
+    }
+
+    index_t cardinality_impl() const
+    {
+        return m_fev.dim() * m_fev.data().actives.rows();
     }
 
     static constexpr bool rowSpan() {return true; }
@@ -2465,7 +2483,9 @@ public:
 
     fjac_expr(const gsFeVariable<T> & _u)
     : m_fev(_u)
-    { }
+    {
+        gsInfo<<"(!) fjac(u) \n";
+    }
 
     MatExprType eval(const index_t k) const
     {
@@ -2798,8 +2818,8 @@ public:
     const Temporary_t &
     eval(const index_t k) const
     {
-        // _u.printDetail(gsInfo);
-        // _v.printDetail(gsInfo);
+        //_u.printDetail(gsInfo);
+        //_v.printDetail(gsInfo);
         GISMO_ASSERT(0==_u.cols()*_v.rows() || _u.cols() == _v.rows(),
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.rows()<<" in * operation:\n"
                      << _u <<" times \n" << _v );
@@ -2820,6 +2840,9 @@ public:
     static constexpr bool rowSpan()
     { return 0==E1::Space ? E2::rowSpan() : E1::rowSpan(); }
     static bool colSpan() { return 0==E2::Space ? E1::colSpan() : E2::colSpan(); }
+
+    index_t cardinality_impl() const
+    { return 0==E1::Space ? _v.cardinality(): _u.cardinality(); }
 
     const gsFeSpace<Scalar> & rowVar() const
     { return 0==E1::Space ? _v.rowVar() : _u.rowVar(); }
@@ -2868,27 +2891,36 @@ public:
     {
         const index_t uc = _u.cols();
         const index_t ur = _u.rows();
-        const index_t nb = uc / ur;
+        const index_t nb = _u.cardinality();
         const MatExprType tmpA = _u.eval(k);
         const MatExprType tmpB = _v.eval(k);
 
-        if ( _v.cols() == ur) //second is not ColBlocks
+        //gsDebugVar(tmpA);
+        //gsDebugVar(tmpB);
+        //gsDebugVar(_v.cols());
+        //gsDebugVar(ur);
+
+        //GISMO_ASSERT(uc==vr, "Assumption for product failed");
+        const index_t vc = _v.cols();
+        res.resize(ur, vc*_u.cardinality());
+
+        // gsDebugVar( _u.cardinality() );
+        // gsDebugVar( _v.cardinality() );
+
+        if ( _v.cardinality() != _u.cardinality() ) //second is not ColBlocks
         {
-            res.resize(ur, uc);
-            gsInfo<<"cols = "<<res.cols()<<"; rows = "<<res.rows()<<"\n";
-            for (index_t i = 0; i!=nb; ++i)
-                res.middleCols(i*ur,ur).noalias()
-                    = tmpA.middleCols(i*ur,ur) * tmpB;
-        }
-        else // both are ColBlocks: [A1 A2 A3] * [B1 B2 B3] = [A1*B1  A2*B2  A3*B3]
-        {
-            GISMO_ASSERT( _u.cols() == _v.cols(), "Invalid dimensions");
-            const index_t vc = _v.cols() / nb;
-            res.resize(ur, _v.cols());
+            //gsInfo<<"cols = "<<res.cols()<<"; rows = "<<res.rows()<<"\n";
             for (index_t i = 0; i!=nb; ++i)
                 res.middleCols(i*vc,vc).noalias()
-                    = tmpA.middleCols(i*ur,ur) * tmpB.middleCols(i*vc,vc);
+                    = tmpA.middleCols(i*uc,uc) * tmpB;
         }
+        else // _v.cardinality() == _u.cardinality() // both are ColBlocks: [A1 A2 A3] * [B1 B2 B3] = [A1*B1  A2*B2  A3*B3]
+        {
+            for (index_t i = 0; i!=nb; ++i)
+                res.middleCols(i*vc,vc).noalias()
+                    = tmpA.middleCols(i*vc,vc) * tmpB.middleCols(i*vc,vc);
+        }
+
 
         return res;
     }
@@ -2906,16 +2938,16 @@ public:
     { _u.parse(evList); _v.parse(evList); }
 
     static constexpr bool rowSpan() { return E1::rowSpan(); }
-    static bool colSpan() { return false; }
+    static bool colSpan() { return E1::colSpan(); }
+
+    index_t cardinality_impl() const { return  _u.cardinality(); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const
     {
-        /*
-        if ( _v.isScalar() )
+        if ( _v.cardinality() != _u.cardinality() )
             return _u.colVar();
         else
-        */
             return _v.colVar();
     }
 
