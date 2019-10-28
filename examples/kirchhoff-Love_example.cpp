@@ -55,16 +55,17 @@ public:
     {
         res.resize(rows(), cols());
         const index_t A = rows()/cols(); // note: rows/cols is the number of actives
+        gsDebugVar(A);
 
         normal = _G.data().normal(k);// not normalized to unit length
         bGrads = _u.data().values[1].col(k);
         cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
         const Scalar measure =  _G.data().measures.at(k);
 
-        for (index_t d = 0; d!= cols(); ++d) // for all basis functions (1)
+        for (index_t d = 0; d!= cols(); ++d) // for all basis function components
         {
             const short_t s = d*A;
-            for (index_t j = 0; j!= A; ++j) // for all basis functions (2)
+            for (index_t j = 0; j!= A; ++j) // for all actives
             {
                 // Jac(u) ~ Jac(G) with alternating signs ?..
                 m_v.noalias() = (vecFun(d, bGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
@@ -129,12 +130,12 @@ private:
 public:
     enum{ Space = E1::Space };
 
-    var2_expr(const E1 & u, const E2 & v, const gsGeometryMap<Scalar> & G) : _u(u),_v(v), _G(G) { }
+    var2_expr( const E1 & u, const E2 & v, const gsGeometryMap<Scalar> & G) : _u(u),_v(v), _G(G) { }
 
     mutable gsMatrix<Scalar> res;
 
     mutable gsMatrix<Scalar> uGrads, vGrads, cJac, cDer2;
-    mutable gsVector<Scalar,3> m_v, m_w, normal, m_vw, m_v_der, n_der, n_der2, tmp;
+    mutable gsVector<Scalar,3> m_u, m_v, normal, m_uv, m_u_der, n_der, n_der2, tmp;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     // helper function
@@ -155,45 +156,88 @@ public:
         cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
         cDer2 = _G.data().values[2].reshapeCol(k, _G.data().dim.second, _G.data().dim.second);
 
-        const index_t numAct = _u.data().values[0].rows();
+        const index_t cardU = _u.data().values[0].rows(); // cardinality of u
+        const index_t cardV = _v.data().values[0].rows(); // cardinality of v
+        gsDebugVar(cardU);
         const index_t numHess = cDer2.rows();
         const Scalar measure =  _G.data().measures.at(k);
 
-        for (index_t d = 0; d!= _u.dim(); ++d) // for all basis functions u (1)
+        
+        for (index_t j = 0; j!= cardU; ++j) // for all basis functions u (1)
         {
-            const short_t s = d*numAct;
-            for (index_t j = 0; j!= numAct; ++j) // for all basis functions u (2)
+            for (index_t i = 0; i!= cardV; ++i) // for all basis functions v (1)
             {
-                m_v.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
-                              - vecFun(d, uGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() ) / measure;
-
-                for (index_t c = 0; c!= _v.dim(); ++c) // for all basis functions v (1)
+                for (index_t d = 0; d!= _u.dim(); ++d) // for all basis functions u (2)
                 {
-                    const short_t r = c*numAct;
-                    for (index_t i = 0; i!= numAct; ++i) // for all basis functions v (2)
+                    m_u.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
+                                  - vecFun(d, uGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() ) / measure;
+                    const short_t s = d*cardU;
+                    for (index_t c = 0; c!= _v.dim(); ++c) // for all basis functions v (2)
                     {
-
-                        m_w.noalias() = vecFun(c, vGrads.at(2*i  ) ).cross( cJac.col(1).template head<3>() )
+                        const short_t r = c*cardV;
+                        m_v.noalias() = vecFun(c, vGrads.at(2*i  ) ).cross( cJac.col(1).template head<3>() )
                                       - vecFun(c, vGrads.at(2*i+1) ).cross( cJac.col(0).template head<3>() ) / measure;
 
-                        n_der = (m_w - ( normal.dot(m_w) ) * normal);
+                        n_der = (m_v - ( normal.dot(m_v) ) * normal);
 
-                        m_vw.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( vecFun(c, vGrads.at(2*i+1) ) )
+                        m_uv.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( vecFun(c, vGrads.at(2*i+1) ) )
                                        - vecFun(d, uGrads.at(2*j+1) ).cross( vecFun(c, vGrads.at(2*i  ) ) ) / measure;
 
-                        m_v_der.noalias() = (m_vw - ( normal.dot(m_w) ) * m_v);
+                        m_u_der.noalias() = (m_uv - ( normal.dot(m_v) ) * m_u);
 
                         // ---------------  Second variation of the normal
-                        tmp = m_v_der - (m_v.dot(n_der) + normal.dot(m_v_der) ) * normal - (normal.dot(m_v) ) * n_der;
+                        tmp = m_u_der - (m_u.dot(n_der) + normal.dot(m_u_der) ) * normal - (normal.dot(m_u) ) * n_der;
+                        gsDebugVar(tmp);
 
                         for (index_t l=0; l != numHess; l++) // per hessian entry of c
                         {
-                            res(s + j, r + i + l*_u.dim()*numAct ) = tmp.dot(cDer2.col(l));
+                            res(s + j, r + i + l*_u.dim()*cardU ) = tmp.dot(cDer2.col(l));
                         }
                     }
                 }
             }
         }
+
+
+
+
+
+        // for (index_t d = 0; d!= _u.dim(); ++d) // for all basis functions u (1)
+        // {
+        //     const short_t s = d*cardU;
+        //     for (index_t j = 0; j!= cardU; ++j) // for all basis functions u (2)
+        //     {
+        //         m_v.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
+        //                       - vecFun(d, uGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() ) / measure;
+
+        //         for (index_t c = 0; c!= _v.dim(); ++c) // for all basis functions v (1)
+        //         {
+        //             const short_t r = c*cardV;
+        //             for (index_t i = 0; i!= cardV; ++i) // for all basis functions v (2)
+        //             {
+
+        //                 m_w.noalias() = vecFun(c, vGrads.at(2*i  ) ).cross( cJac.col(1).template head<3>() )
+        //                               - vecFun(c, vGrads.at(2*i+1) ).cross( cJac.col(0).template head<3>() ) / measure;
+
+        //                 n_der = (m_w - ( normal.dot(m_w) ) * normal);
+
+        //                 m_vw.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( vecFun(c, vGrads.at(2*i+1) ) )
+        //                                - vecFun(d, uGrads.at(2*j+1) ).cross( vecFun(c, vGrads.at(2*i  ) ) ) / measure;
+
+        //                 m_v_der.noalias() = (m_vw - ( normal.dot(m_w) ) * m_v);
+
+        //                 // ---------------  Second variation of the normal
+        //                 tmp = m_v_der - (m_v.dot(n_der) + normal.dot(m_v_der) ) * normal - (normal.dot(m_v) ) * n_der;
+        //                 gsDebugVar(tmp);
+
+        //                 for (index_t l=0; l != numHess; l++) // per hessian entry of c
+        //                 {
+        //                     res(s + j, r + i + l*_u.dim()*cardU ) = tmp.dot(cDer2.col(l));
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
 
 //        gsDebugVar(res);
         return res;
@@ -253,12 +297,14 @@ public:
 
     index_t rows() const
     {
-        return _u.targetDim() * _u.data().values[0].rows(); // no. dimensions*numAct
+        return _u.source().domainDim() * ( _u.source().domainDim() + 1 ) / 2;
     }
 
     index_t cols() const
     {
-        return _u.data().values[2].rows() / _u.data().values[0].rows(); // numHessian dimensions
+        // return _u.data().values[2].rows() / _u.data().values[0].rows(); // numHessian dimensions
+        // return _u.source().targetDim(); // no. dimensions should be 3
+        return 3; // no. dimensions
     }
 
     void setFlag() const
@@ -285,30 +331,42 @@ private:
     typename util::enable_if< util::is_same<U,gsGeometryMap<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
-        tmp =_u.data().values[2].reshapeCol(k, _u.data().dim.second, _u.data().dim.second);
-        for (index_t i = 0; i!=3; i++)
-            res.block(i*3,0,3,3) = tmp;
-        return res;
+        // evaluate the geometry map of U
+        return res =_u.data().values[2].reshapeCol(k, _u.data().dim.second, _u.data().dim.second);
     }
 
     template<class U> inline
     typename util::enable_if<util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k) const
     {
-        res.resize(rows(), cols());
-        tmp.resize(rows()/_u.dim(), cols());
-        const index_t numAct = _u.data().values[0].rows();
-        const index_t numHess = _u.data().values[2].rows() / numAct;
+        // matrix has block-number of rows and the blocks are column-wise placed 
+        // per active ( _u.cardinality() ) for all dimensions ( _u.dim() )
+
+        const index_t numAct = u.data().values[0].rows();
+
+        // res.resize(rows(), cols() * _u.cardinality() * _u.dim() );
+        res.resize(rows(), cols() * numAct * _u.dim() );
+        // tmp.resize(rows(), cols() * _u.cardinality() );
+        tmp.resize(rows(), cols() * numAct );
 //        gsDebugVar(numHess);
-        tmp = gsAsConstMatrix<Scalar>(_u.data().values[2].col(k).data(), 3, numAct ).transpose();
+        // tmp = gsAsConstMatrix<Scalar>(_u.data().values[2].col(k).data(), rows(), cols() * _u.cardinality() ).transpose();
 
-//        gsDebugVar(cols());
-//        gsDebugVar(rows());
+        // tmp =_u.data().values[2].reshapeCol(k, rows() , _u.cardinality() );
+        tmp =_u.data().values[2].reshapeCol(k, rows() , numAct );
 
+        // gsDebugVar(tmp);
+        // gsDebugVar(cols());
+        // gsDebugVar(rows());
+        // gsDebugVar(_u.cardinality()); // = 0 ??????
+
+        gsDebugVar(_u.dim());
         for (index_t i = 0; i!=_u.dim(); i++)
-            res.block(i*numAct,0,numAct,numHess) = tmp;
-
-        gsDebugVar(res); // 1: WHY DOES IN THE PRODUCT THE NUMBER OF ROWS DOUBLE?
+        {
+            res.block( 0 , i*numAct, rows(), numAct ) = tmp;
+            // res.block( i*_u.cardinality(),0,_u.cardinality(),rows() ) = tmp;
+            gsDebugVar(res.block( 0 , i*numAct, rows(), numAct ));
+        }
+            
         return res;
     }
 
@@ -316,73 +374,73 @@ private:
 
 
 
-template<class E1, class E2>
-class hessdot_expr : public _expr<hessdot_expr<E1,E2> >
-{
-    typename E1::Nested_t _u;
-    typename E2::Nested_t _v;
+// template<class E1, class E2>
+// class hessdot_expr : public _expr<hessdot_expr<E1,E2> >
+// {
+//     typename E1::Nested_t _u;
+//     typename E2::Nested_t _v;
 
-public:
-    enum{ Space = E1::Space };
+// public:
+//     enum{ Space = E1::Space };
 
-    typedef typename E1::Scalar Scalar;
+//     typedef typename E1::Scalar Scalar;
 
-    hessdot_expr(const E1 & u, const E2 & v) : _u(u), _v(v) {}
+//     hessdot_expr(const E1 & u, const E2 & v) : _u(u), _v(v) {}
 
-    mutable gsMatrix<Scalar> res, hess, tmp;
-    mutable gsMatrix<Scalar> normalMat;
+//     mutable gsMatrix<Scalar> res, hess, tmp;
+//     mutable gsMatrix<Scalar> normalMat;
 
-    MatExprType eval(const index_t k) const
-    {
-        const gsFuncData<Scalar> & udata = _u.data(); // udata.values[2].col(k)
-        const index_t numAct = udata.values[0].rows();
-        const gsAsConstMatrix<Scalar> ders(udata.values[2].col(k).data(), 3, numAct );
+//     MatExprType eval(const index_t k) const
+//     {
+//         const gsFuncData<Scalar> & udata = _u.data(); // udata.values[2].col(k)
+//         const index_t numAct = udata.values[0].rows();
+//         const gsAsConstMatrix<Scalar> ders(udata.values[2].col(k).data(), 3, numAct );
 
-        tmp = _v.eval(k);
+//         tmp = _v.eval(k);
 
-        res.resize(rows(), cols() );
+//         res.resize(rows(), cols() );
 
 
-            for (index_t i = 0; i!=tmp.rows(); ++i)
-            {
-                res.block(i*numAct, 0, numAct, 3).noalias() = ders.transpose() * tmp.at(i);
-            }
+//             for (index_t i = 0; i!=tmp.rows(); ++i)
+//             {
+//                 res.block(i*numAct, 0, numAct, 3).noalias() = ders.transpose() * tmp.at(i);
+//             }
 
-        return res;
-    }
+//         return res;
+//     }
 
-    index_t rows() const
-    {
-        return _u.dim() * _u.data().values[0].rows();
-    }
+//     index_t rows() const
+//     {
+//         return _u.dim() * _u.data().values[0].rows();
+//     }
 
-    index_t cols() const
-    {
-        return // ( E2::rowSpan() ? rows() : 1 ) *
-            _u.data().values[2].rows() / _u.data().values[0].rows();//=3
-    }
+//     index_t cols() const
+//     {
+//         return // ( E2::rowSpan() ? rows() : 1 ) *
+//             _u.data().values[2].rows() / _u.data().values[0].rows();//=3
+//     }
 
-    void setFlag() const
-    {
-        _u.data().flags |= NEED_2ND_DER;
-        _v.setFlag();
-    }
+//     void setFlag() const
+//     {
+//         _u.data().flags |= NEED_2ND_DER;
+//         _v.setFlag();
+//     }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
-    {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_u.source());
-        _u.data().flags |= NEED_2ND_DER;
-    }
+//     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+//     {
+//         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+//         evList.push_sorted_unique(&_u.source());
+//         _u.data().flags |= NEED_2ND_DER;
+//     }
 
-    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
+//     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+//     const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
 
-    static constexpr bool rowSpan() {return E1::rowSpan(); }
-    static constexpr bool colSpan() {return E2::rowSpan(); }
+//     static constexpr bool rowSpan() {return E1::rowSpan(); }
+//     static constexpr bool colSpan() {return E2::rowSpan(); }
 
-    void print(std::ostream &os) const { os << "hessdot("; _u.print(os); os <<")"; }
-};
+//     void print(std::ostream &os) const { os << "hessdot("; _u.print(os); os <<")"; }
+// };
 
 
 template<class E1, class E2, class E3>
@@ -413,24 +471,37 @@ public:
         const index_t Br = _B.rows();
         const index_t Bn = _B.cardinality();
 
-        const MatExprType eA = _A.eval(k);
+        MatExprType eA = _A.eval(k);
         const MatExprType eB = _B.eval(k);
 
         // multiply by C
         const MatExprType eC = _C.eval(k);
+
+        // gsDebugVar(Ac);
+        // gsDebugVar(Ar);
+        // gsDebugVar(An);
+        // gsDebugVar(Bc);
+        // gsDebugVar(Br);
+        // gsDebugVar(Bn);
+        // gsDebugVar(eC);
+
         for (index_t i = 0; i!=An; ++i)
         {
-            eA(0,2*i  ) *= eC.at(0);
-            eA(1,2*i+1) *= eC.at(1);
-            eA(1,2*i)   *= eC.at(2);
-            eA(0,2*i+1) *= eC.at(2);
+            // gsDebugVar(eA(0,2*i  ));
+            // gsDebugVar(eA(0,2*i+1));
+            // gsDebugVar(eC);
+
+            eA(0,2*i  ) *= eC(0);
+            eA(1,2*i+1) *= eC(1);
+            eA(1,2*i)   *= eC(2);
+            eA(0,2*i+1) *= eC(2);
         }
 
         res.resize(An, Bn);
         for (index_t i = 0; i!=An; ++i)
             for (index_t j = 0; j!=Bn; ++j)
             {
-                res(i,j) = ( tmpA.middleCols(i*Ac,Ac) * tmpB.middleCols(j*Bc,Bc) ).sum();
+                res(i,j) = ( eA.middleCols(i*Ac,Ac) * eB.middleCols(j*Bc,Bc) ).sum();
             }
 
         return res;
@@ -461,11 +532,15 @@ template<class E1, class E2> EIGEN_STRONG_INLINE
 var2_expr<E1,E2> var2(const E1 & u, const E2 & v, const gsGeometryMap<typename E1::Scalar> & G)
 { return var2_expr<E1,E2>(u,v, G); }
 
-template<class E1, class E2> EIGEN_STRONG_INLINE
-hessdot_expr<E1,E2> hessdot(const E1 & u, const E2 & v) { return hessdot_expr<E1,E2>(u, v); }
+// template<class E1, class E2> EIGEN_STRONG_INLINE
+// hessdot_expr<E1,E2> hessdot(const E1 & u, const E2 & v) { return hessdot_expr<E1,E2>(u, v); }
 
 template<class E> EIGEN_STRONG_INLINE
 deriv2_expr<E> deriv2(const E & u) { return deriv2_expr<E>(u); }
+
+template<class E1, class E2, class E3> EIGEN_STRONG_INLINE
+flatdot_expr<E1,E2,E3> flatdot(const E1 & u, const E2 & v, const E3 & w) 
+{ return flatdot_expr<E1,E2,E3>(u, v, w); }
 
 }
 }
@@ -558,7 +633,7 @@ int main(int argc, char *argv[])
     gsMatrix<> solVector, vec3(3,1); vec3.setZero();
     solution u_sol = A.getSolution(u, solVector);
 
-    gsFunctionExpr<> materialMat("1","1","1","1","1","1","1","1","1",3);
+    gsFunctionExpr<> materialMat("1","0","0","0","1","0","0","0","1",3);
     variable mm = A.getCoeff(materialMat, G);
 
 
@@ -590,15 +665,17 @@ int main(int argc, char *argv[])
 
         // Compute the system matrix and right-hand side
 
-        auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) );
+        auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ); //[checked]
         auto E_m2 = 0.5 * ( jac(defG).tr()*jac(defG) - jac(G).tr()* jac(G) );
 
-        auto E_m_der = flat( jac(u).tr() * jac(defG) ) ; //colExpr
-        auto E_m_der2 = flat( jac(u).tr() * jac(u) );
+        auto E_m_der = flat( jac(u).tr() * jac(defG) ) ; //[checked]
+        // auto E_m_der2 = flat( jac(u).tr() * jac(u) );
+        auto E_m_der2 = flatdot( jac(u).tr(),jac(u), E_m.tr() * reshape(mm,3,3) );
 
-        auto E_f = reshape(m2,2,2) * ( deriv2(defG) * nv(defG).normalized() - deriv2(G) * nv(G).normalized() ) ;
-        auto E_f_der = reshape(m2,2,2) * ( deriv2(u) * nv(defG).normalized() + deriv2(defG) * var1(u,G) );
-        auto E_f_der2 = reshape(m2,2,2) * ( 2 * deriv2(u) * var1(u,defG).tr() + var2(u,u,defG) );
+        auto E_f = reshape(m2,3,3) * ( deriv2(defG).tr() * sn(defG).normalized() - deriv2(G).tr() * sn(G).normalized() ) ;//[checked]
+        auto E_f_der = reshape(m2,3,3) * ( deriv2(u).tr() * sn(defG).normalized() + deriv2(defG).tr() * var1(u,G) );
+        // auto E_f_der2 = reshape(m2,3,3) * ( 2 * deriv2(u) * var1(u,defG).tr() + var2(u,u,defG) );
+        auto E_f_der2 = 2 * flatdot( reshape(m2,3,3) * deriv2(u).tr() , var1(u,defG).tr(), E_f.tr() * reshape(mm,3,3) );
 
         //A.assemble( tt * ( E_m.tr() * reshape(mm,3,3) * E_m_der2 + E_m_der.tr() * reshape(mm,3,3) * E_m_der ) +
         //             (tt*tt*tt/3.0) *( E_f * mm * E_f_der2 + E_f_der * mm * E_f_der ), // Matrix
@@ -611,11 +688,17 @@ int main(int argc, char *argv[])
 
         gsVector<> pt(2); pt.setConstant(0.5);
         gsInfo << "Eval:\n"<< ev.eval(
-            //E_m_der.tr() * reshape(mm,3,3) * E_m_der
+            // E_m              // works; output 3 x 1
+            // E_m_der          // works; output 3 x 27
+            // E_m_der2         // works; output 27 x 27
+            // E_f              // works: output 3 x 1
+            // E_f_der          // does not work;
+            // E_f_der2         // does not work;
 
-            //E_m.tr() *
-            E_m_der2
-
+            // var1(u,G) * deriv2(defG)
+            // deriv2(u)
+            // var1(u,G)
+            deriv2(u) //.tr() //* sn(defG).normalized()
                                        ,  pt
             );
        gsInfo << "\nEnd\n";
