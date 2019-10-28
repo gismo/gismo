@@ -98,7 +98,7 @@ public:
     {
         evList.push_sorted_unique(&_u.source());
         _u.data().flags |= NEED_GRAD;
-        _G.data().flags |= NEED_OUTER_NORMAL | NEED_DERIV | NEED_MEASURE;
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -186,8 +186,9 @@ public:
 
                         // ---------------  Second variation of the normal
                         tmp = m_u_der - (m_u.dot(n_der) + normal.dot(m_u_der) ) * normal - (normal.dot(m_u) ) * n_der;
-                        gsDebugVar(tmp);
 
+                        // NOTE: This all happens in Colspace. Is that right?
+                        // NOTE: We multiply with the column of c. This means that we multiply with [d11 c1, d22 c1, d12 c1]. Should't it be [d11 c1, d11 c2, d11 c3]. We simplyneed to transppse c.
                         for (index_t l=0; l != numHess; l++) // per hessian entry of c
                         {
                             res(s + j, r + i + l*_u.dim()*cardU ) = tmp.dot(cDer2.col(l));
@@ -197,48 +198,6 @@ public:
             }
         }
 
-
-
-
-
-        // for (index_t d = 0; d!= _u.dim(); ++d) // for all basis functions u (1)
-        // {
-        //     const short_t s = d*cardU;
-        //     for (index_t j = 0; j!= cardU; ++j) // for all basis functions u (2)
-        //     {
-        //         m_v.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
-        //                       - vecFun(d, uGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() ) / measure;
-
-        //         for (index_t c = 0; c!= _v.dim(); ++c) // for all basis functions v (1)
-        //         {
-        //             const short_t r = c*cardV;
-        //             for (index_t i = 0; i!= cardV; ++i) // for all basis functions v (2)
-        //             {
-
-        //                 m_w.noalias() = vecFun(c, vGrads.at(2*i  ) ).cross( cJac.col(1).template head<3>() )
-        //                               - vecFun(c, vGrads.at(2*i+1) ).cross( cJac.col(0).template head<3>() ) / measure;
-
-        //                 n_der = (m_w - ( normal.dot(m_w) ) * normal);
-
-        //                 m_vw.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( vecFun(c, vGrads.at(2*i+1) ) )
-        //                                - vecFun(d, uGrads.at(2*j+1) ).cross( vecFun(c, vGrads.at(2*i  ) ) ) / measure;
-
-        //                 m_v_der.noalias() = (m_vw - ( normal.dot(m_w) ) * m_v);
-
-        //                 // ---------------  Second variation of the normal
-        //                 tmp = m_v_der - (m_v.dot(n_der) + normal.dot(m_v_der) ) * normal - (normal.dot(m_v) ) * n_der;
-        //                 gsDebugVar(tmp);
-
-        //                 for (index_t l=0; l != numHess; l++) // per hessian entry of c
-        //                 {
-        //                     res(s + j, r + i + l*_u.dim()*cardU ) = tmp.dot(cDer2.col(l));
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
-
-//        gsDebugVar(res);
         return res;
     }
 
@@ -276,21 +235,22 @@ public:
 
 
 template<class E1, class E2>
-class deriv2_expr : public _expr<deriv2_expr<E> >
+class deriv2_expr : public _expr<deriv2_expr<E1, E2> >
 {
 public:
-    typedef typename E::Scalar Scalar;
+    typedef typename E1::Scalar Scalar;
 
 private:
 
-    typename E::Nested_t _u;
+    typename E1::Nested_t _u;
+    typename E2::Nested_t _v;
 
 public:
-    enum{ Space = E::Space };
+    enum{ Space = E1::Space };
 
     deriv2_expr(const E1 & u, const E2 & v) : _u(u), _v(v) { }
 
-    mutable gsMatrix<Scalar> res,tmp;
+    mutable gsMatrix<Scalar> res,tmp, vEv;
 
     const gsMatrix<Scalar> & eval(const index_t k) const { return eval_impl(_u,k); }
 
@@ -330,14 +290,26 @@ private:
     typename util::enable_if< util::is_same<U,gsGeometryMap<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
-        const index_t c  = cols();
-        // evaluate the geometry map of U
-        tmp =_u.data().values[2].reshapeCol(k, c, c);
+        /*
+            Here, we multiply the hessian of the geometry map by a vector, which possibly has multiple actives.
+            The hessian of the geometry map c has the form: hess(c)
+            [d11 c1, d11 c2, d11 c3]
+            [d22 c1, d22 c2, d22 c3]
+            [d12 c1, d12 c2, d12 c3]
+            And we want to compute [d11 c .v; d22 c .v;  d12 c .v] ( . denotes a dot product and c and v are both vectors)
+            So we simply evaluate for every active basis function v_k the product hess(c).v_k
+        */
 
+
+        // evaluate the geometry map of U
+        tmp =_u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second);
+
+        gsDebugVar(tmp);
         vEv = _v.eval(k);
 
-        res.resize(rows(), vEv.cols() );
-
+        gsDebugVar(vEv);
+        // res.resize(rows(), vEv.cols() );
+        res = tmp * vEv;
 
         //..
         return res;
@@ -347,31 +319,19 @@ private:
     typename util::enable_if<util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k) const
     {
+        /*
+            We assume that the basis has the form v*e_i where e_i is the unit vector with 1 on index i and 0 elsewhere
+            This implies that hess(v) = [hess(v_1), hess(v_2), hess(v_3)] only has nonzero entries in column i. Hence, 
+            hess(v) . normal = hess(v_i) * n_i (vector-scalar multiplication. The result is then of the form 
+            [hess(v_1)*n_1 .., hess(v_1)*n_1 .., hess(v_1)*n_1 ..]. Here, the dots .. represent the active basis functions.
+        */
         const index_t numAct = u.data().values[0].rows();
-
-        // res.resize(rows(), cols() * _u.cardinality() * _u.dim() );
         res.resize(rows()*numAct, cols() );
-        // tmp.resize(rows(), cols() * _u.cardinality() );
-//        gsDebugVar(numHess);
-        // tmp = gsAsConstMatrix<Scalar>(_u.data().values[2].col(k).data(), rows(), cols() * _u.cardinality() ).transpose();
-
-        // tmp =_u.data().values[2].reshapeCol(k, rows() , _u.cardinality() );
         tmp.transpose() =_u.data().values[2].reshapeCol(k, rows() , numAct );
         vEv = _v.eval(k);
 
-
-        // gsDebugVar(tmp);
-        // gsDebugVar(cols());
-        // gsDebugVar(rows());
-        // gsDebugVar(_u.cardinality()); // = 0 ??????
-        //gsDebugVar(_u.dim());
-
         for (index_t i = 0; i!=_u.dim(); i++)
-        {
             res.block(i*numAct, 0, numAct, cols() ) = tmp * vEv.at(i);
-            // res.block( i*_u.cardinality(),0,_u.cardinality(),rows() ) = tmp;
-            //gsDebugVar(res.block( 0 , i*numAct, rows(), numAct ));
-        }
 
         return res;
     }
@@ -553,8 +513,8 @@ var2_expr<E1,E2> var2(const E1 & u, const E2 & v, const gsGeometryMap<typename E
 // template<class E1, class E2> EIGEN_STRONG_INLINE
 // hessdot_expr<E1,E2> hessdot(const E1 & u, const E2 & v) { return hessdot_expr<E1,E2>(u, v); }
 
-template<class E> EIGEN_STRONG_INLINE
-deriv2_expr<E> deriv2(const E & u) { return deriv2_expr<E>(u); }
+template<class E1, class E2> EIGEN_STRONG_INLINE
+deriv2_expr<E1, E2> deriv2(const E1 & u, const E2 & v) { return deriv2_expr<E1, E2>(u,v); }
 
 template<class E1, class E2, class E3> EIGEN_STRONG_INLINE
 flatdot_expr<E1,E2,E3> flatdot(const E1 & u, const E2 & v, const E3 & w)
@@ -690,11 +650,11 @@ int main(int argc, char *argv[])
         // auto E_m_der2 = flat( jac(u).tr() * jac(u) );
         auto E_m_der2 = flatdot( jac(u).tr(),jac(u), E_m.tr() * reshape(mm,3,3) );
 
-        auto E_f = reshape(m2,3,3) * ( deriv2(defG).tr() * sn(defG).normalized() - deriv2(G).tr() * sn(G).normalized() ) ;//[checked]
-        auto E_f_der = reshape(m2,3,3) * ( deriv2(u).tr() * sn(defG).normalized() + deriv2(defG).tr() * var1(u,G) );
+        auto E_f = reshape(m2,3,3) * ( deriv2(defG,sn(defG).normalized()) - deriv2(G,sn(G).normalized()) ) ;//[checked]
+        auto E_f_der = reshape(m2,3,3) * ( deriv2(u,sn(defG).normalized() ) + deriv2(defG,var1(u,G) ) );
         // auto E_f_der2 = reshape(m2,3,3) * ( 2 * deriv2(u) * var1(u,defG).tr() + var2(u,u,defG) );
-        auto E_f_der2 = flatdot( reshape(m2,3,3) * deriv2(u).tr() , var1(u,defG).tr(), E_f.tr() * reshape(mm,3,3) )
-                      + flatdot( reshape(m2,3,3) * deriv2(u).tr() , var1(u,defG).tr(), E_f.tr() * reshape(mm,3,3) ).tr()
+        // auto E_f_der2 = flatdot( reshape(m2,3,3) * deriv2(u).tr() , var1(u,defG).tr(), E_f.tr() * reshape(mm,3,3) )
+        //               + flatdot( reshape(m2,3,3) * deriv2(u).tr() , var1(u,defG).tr(), E_f.tr() * reshape(mm,3,3) ).tr()
             // + var2*Ef
             ;
 
@@ -716,7 +676,8 @@ int main(int argc, char *argv[])
             // E_f_der          // does not work;
             // E_f_der2         // does not work;
 
-            deriv2(u)
+            // deriv2(G,var1(u,G))
+            var2(u,u,defG)
 
             //var1(u,G) * deriv2(defG) //.tr()
             //deriv2(u) * sn(G)
