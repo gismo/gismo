@@ -53,9 +53,8 @@ public:
 
     MatExprType eval(const index_t k) const
     {
-        res.resize(rows(), cols());
-        const index_t A = rows()/cols(); // note: rows/cols is the number of actives
-        gsDebugVar(A);
+        const index_t A = _u.cardinality(); // note: rows/cols is the number of actives
+        res.resize(rows()*A, cols());
 
         normal = _G.data().normal(k);// not normalized to unit length
         bGrads = _u.data().values[1].col(k);
@@ -84,7 +83,7 @@ public:
 
     index_t rows() const
     {
-        return cols() * _u.data().values[1].rows() / _u.source().domainDim();
+        return 1; //cols() * _u.data().values[1].rows() / _u.source().domainDim();
     }
 
     index_t cols() const { return _u.dim(); }
@@ -162,7 +161,7 @@ public:
         const index_t numHess = cDer2.rows();
         const Scalar measure =  _G.data().measures.at(k);
 
-        
+
         for (index_t j = 0; j!= cardU; ++j) // for all basis functions u (1)
         {
             for (index_t i = 0; i!= cardV; ++i) // for all basis functions v (1)
@@ -276,7 +275,7 @@ public:
 };
 
 
-template<class E>
+template<class E1, class E2>
 class deriv2_expr : public _expr<deriv2_expr<E> >
 {
 public:
@@ -289,22 +288,22 @@ private:
 public:
     enum{ Space = E::Space };
 
-    deriv2_expr(const E & u) : _u(u) { }
+    deriv2_expr(const E1 & u, const E2 & v) : _u(u), _v(v) { }
 
     mutable gsMatrix<Scalar> res,tmp;
 
     const gsMatrix<Scalar> & eval(const index_t k) const { return eval_impl(_u,k); }
 
-    index_t rows() const
+    index_t rows() const //(components)
     {
-        return _u.source().domainDim() * ( _u.source().domainDim() + 1 ) / 2;
+        // return _u.data().values[2].rows() / _u.data().values[0].rows(); // numHessian dimensions
+        // return _u.source().targetDim(); // no. dimensions should be 3
+        return 3; // _u.dim() for space or targetDim() for geometry
     }
 
     index_t cols() const
     {
-        // return _u.data().values[2].rows() / _u.data().values[0].rows(); // numHessian dimensions
-        // return _u.source().targetDim(); // no. dimensions should be 3
-        return 3; // no. dimensions
+        return _u.source().domainDim() * ( _u.source().domainDim() + 1 ) / 2;
     }
 
     void setFlag() const
@@ -319,10 +318,10 @@ public:
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
 
-    static constexpr bool rowSpan() {return E::rowSpan(); }
-    static constexpr bool colSpan() {return E::colSpan();}
+    static constexpr bool rowSpan() {return E1::rowSpan(); }
+    static constexpr bool colSpan() {return E2::rowSpan();}
 
     void print(std::ostream &os) const { os << "deriv2("; _u.print(os); os <<")"; }
 
@@ -331,42 +330,49 @@ private:
     typename util::enable_if< util::is_same<U,gsGeometryMap<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
+        const index_t c  = cols();
         // evaluate the geometry map of U
-        return res =_u.data().values[2].reshapeCol(k, _u.data().dim.second, _u.data().dim.second);
+        tmp =_u.data().values[2].reshapeCol(k, c, c);
+
+        vEv = _v.eval(k);
+
+        res.resize(rows(), vEv.cols() );
+
+
+        //..
+        return res;
     }
 
     template<class U> inline
     typename util::enable_if<util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k) const
     {
-        // matrix has block-number of rows and the blocks are column-wise placed 
-        // per active ( _u.cardinality() ) for all dimensions ( _u.dim() )
-
         const index_t numAct = u.data().values[0].rows();
 
         // res.resize(rows(), cols() * _u.cardinality() * _u.dim() );
-        res.resize(rows(), cols() * numAct * _u.dim() );
+        res.resize(rows()*numAct, cols() );
         // tmp.resize(rows(), cols() * _u.cardinality() );
-        tmp.resize(rows(), cols() * numAct );
 //        gsDebugVar(numHess);
         // tmp = gsAsConstMatrix<Scalar>(_u.data().values[2].col(k).data(), rows(), cols() * _u.cardinality() ).transpose();
 
         // tmp =_u.data().values[2].reshapeCol(k, rows() , _u.cardinality() );
-        tmp =_u.data().values[2].reshapeCol(k, rows() , numAct );
+        tmp.transpose() =_u.data().values[2].reshapeCol(k, rows() , numAct );
+        vEv = _v.eval(k);
+
 
         // gsDebugVar(tmp);
         // gsDebugVar(cols());
         // gsDebugVar(rows());
         // gsDebugVar(_u.cardinality()); // = 0 ??????
+        //gsDebugVar(_u.dim());
 
-        gsDebugVar(_u.dim());
         for (index_t i = 0; i!=_u.dim(); i++)
         {
-            res.block( 0 , i*numAct, rows(), numAct ) = tmp;
+            res.block(i*numAct, 0, numAct, cols() ) = tmp * vEv.at(i);
             // res.block( i*_u.cardinality(),0,_u.cardinality(),rows() ) = tmp;
-            gsDebugVar(res.block( 0 , i*numAct, rows(), numAct ));
+            //gsDebugVar(res.block( 0 , i*numAct, rows(), numAct ));
         }
-            
+
         return res;
     }
 
@@ -443,6 +449,18 @@ private:
 // };
 
 
+/**
+   Takes
+   A: rowspace
+   B: rowspace
+   C: vector
+
+   and computes
+
+   A* : B
+
+   where A* = A "hadamard" C
+ */
 template<class E1, class E2, class E3>
 class flatdot_expr  : public _expr<flatdot_expr<E1,E2,E3> >
 {
@@ -539,7 +557,7 @@ template<class E> EIGEN_STRONG_INLINE
 deriv2_expr<E> deriv2(const E & u) { return deriv2_expr<E>(u); }
 
 template<class E1, class E2, class E3> EIGEN_STRONG_INLINE
-flatdot_expr<E1,E2,E3> flatdot(const E1 & u, const E2 & v, const E3 & w) 
+flatdot_expr<E1,E2,E3> flatdot(const E1 & u, const E2 & v, const E3 & w)
 { return flatdot_expr<E1,E2,E3>(u, v, w); }
 
 }
@@ -675,7 +693,10 @@ int main(int argc, char *argv[])
         auto E_f = reshape(m2,3,3) * ( deriv2(defG).tr() * sn(defG).normalized() - deriv2(G).tr() * sn(G).normalized() ) ;//[checked]
         auto E_f_der = reshape(m2,3,3) * ( deriv2(u).tr() * sn(defG).normalized() + deriv2(defG).tr() * var1(u,G) );
         // auto E_f_der2 = reshape(m2,3,3) * ( 2 * deriv2(u) * var1(u,defG).tr() + var2(u,u,defG) );
-        auto E_f_der2 = 2 * flatdot( reshape(m2,3,3) * deriv2(u).tr() , var1(u,defG).tr(), E_f.tr() * reshape(mm,3,3) );
+        auto E_f_der2 = flatdot( reshape(m2,3,3) * deriv2(u).tr() , var1(u,defG).tr(), E_f.tr() * reshape(mm,3,3) )
+                      + flatdot( reshape(m2,3,3) * deriv2(u).tr() , var1(u,defG).tr(), E_f.tr() * reshape(mm,3,3) ).tr()
+            // + var2*Ef
+            ;
 
         //A.assemble( tt * ( E_m.tr() * reshape(mm,3,3) * E_m_der2 + E_m_der.tr() * reshape(mm,3,3) * E_m_der ) +
         //             (tt*tt*tt/3.0) *( E_f * mm * E_f_der2 + E_f_der * mm * E_f_der ), // Matrix
@@ -695,10 +716,15 @@ int main(int argc, char *argv[])
             // E_f_der          // does not work;
             // E_f_der2         // does not work;
 
-            // var1(u,G) * deriv2(defG)
+            deriv2(u)
+
+            //var1(u,G) * deriv2(defG) //.tr()
+            //deriv2(u) * sn(G)
+
             // deriv2(u)
             // var1(u,G)
-            deriv2(u) //.tr() //* sn(defG).normalized()
+            //deriv2(u) //.tr() //* sn(defG).normalized()
+            //deriv2(G) //.tr() //* sn(defG).normalized()
                                        ,  pt
             );
        gsInfo << "\nEnd\n";
