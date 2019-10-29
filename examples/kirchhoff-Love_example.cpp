@@ -676,8 +676,8 @@ int main(int argc, char *argv[])
             // E_f_der          // does not work;
             // E_f_der2         // does not work;
 
-            // deriv2(G,var1(u,G))
-            var2(u,u,defG)
+            deriv2(G,jac(u))
+            // var2(u,u,defG)
 
             //var1(u,G) * deriv2(defG) //.tr()
             //deriv2(u) * sn(G)
