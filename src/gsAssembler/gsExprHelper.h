@@ -247,12 +247,12 @@ public:
     void initFlags(const unsigned fflag = 0,
                    const unsigned mflag = 0)
     {
-        mapData.flags = mflag;
-        mutData.flags = fflag;
+        mapData.flags = mflag | NEED_ACTIVE;
+        mutData.flags = fflag | NEED_ACTIVE;
         for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
-            it->second.flags = fflag;
+            it->second.flags = fflag | NEED_ACTIVE;
         for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
-            it->second.flags = fflag;
+            it->second.flags = fflag | NEED_ACTIVE;
     }
 
     template<class Expr> // to remove

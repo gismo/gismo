@@ -53,8 +53,8 @@ public:
 
     MatExprType eval(const index_t k) const
     {
-        const index_t A = _u.cardinality(); // note: rows/cols is the number of actives
-        res.resize(rows()*A, cols());
+        const index_t A = _u.cardinality()/_u.targetDim();
+        res.resize(A*_u.targetDim(), cols()); // rows()*
 
         normal = _G.data().normal(k);// not normalized to unit length
         bGrads = _u.data().values[1].col(k);
@@ -90,7 +90,7 @@ public:
 
     void setFlag() const
     {
-        _u.data().flags |= NEED_GRAD;
+        _u.data().flags |= NEED_GRAD | NEED_ACTIVE;
         _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
     }
 
@@ -235,7 +235,7 @@ public:
 
 
 template<class E1, class E2>
-class deriv2_expr : public _expr<deriv2_expr<E1, E2> >
+class deriv2dot_expr : public _expr<deriv2dot_expr<E1, E2> >
 {
 public:
     typedef typename E1::Scalar Scalar;
@@ -248,7 +248,7 @@ private:
 public:
     enum{ Space = E1::Space };
 
-    deriv2_expr(const E1 & u, const E2 & v) : _u(u), _v(v) { }
+    deriv2dot_expr(const E1 & u, const E2 & v) : _u(u), _v(v) { }
 
     mutable gsMatrix<Scalar> res,tmp, vEv;
 
@@ -269,6 +269,7 @@ public:
     void setFlag() const
     {
         _u.data().flags |= NEED_DERIV2;
+        _v.setFlag();
     }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
@@ -283,7 +284,7 @@ public:
     static constexpr bool rowSpan() {return E1::rowSpan(); }
     static constexpr bool colSpan() {return E2::rowSpan();}
 
-    void print(std::ostream &os) const { os << "deriv2("; _u.print(os); os <<")"; }
+    void print(std::ostream &os) const { os << "deriv2("; _u.print(os); _v.print(os); os <<")"; }
 
 private:
     template<class U> inline
@@ -302,14 +303,15 @@ private:
 
 
         // evaluate the geometry map of U
-        tmp =_u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second);
-
-        gsDebugVar(tmp);
+        tmp =_u.data().values[2].reshapeCol(k, rows(), _u.data().dim.second).transpose();
         vEv = _v.eval(k);
 
-        gsDebugVar(vEv);
-        // res.resize(rows(), vEv.cols() );
-        res = tmp * vEv;
+        // gsDebugVar(tmp.rows());
+        // gsDebugVar(tmp.cols());
+        // gsDebugVar(vEv.rows());
+        // gsDebugVar(vEv.cols());
+
+        res = vEv * tmp;
 
         //..
         return res;
@@ -321,8 +323,8 @@ private:
     {
         /*
             We assume that the basis has the form v*e_i where e_i is the unit vector with 1 on index i and 0 elsewhere
-            This implies that hess(v) = [hess(v_1), hess(v_2), hess(v_3)] only has nonzero entries in column i. Hence, 
-            hess(v) . normal = hess(v_i) * n_i (vector-scalar multiplication. The result is then of the form 
+            This implies that hess(v) = [hess(v_1), hess(v_2), hess(v_3)] only has nonzero entries in column i. Hence,
+            hess(v) . normal = hess(v_i) * n_i (vector-scalar multiplication. The result is then of the form
             [hess(v_1)*n_1 .., hess(v_1)*n_1 .., hess(v_1)*n_1 ..]. Here, the dots .. represent the active basis functions.
         */
         const index_t numAct = u.data().values[0].rows();
@@ -336,6 +338,63 @@ private:
         return res;
     }
 
+};
+
+template<class E>
+class deriv2_expr : public _expr<deriv2_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
+
+private:
+
+    typename E::Nested_t _u;
+
+public:
+    enum{ Space = E::Space };
+
+    deriv2_expr(const E & u) : _u(u) { }
+
+    mutable gsMatrix<Scalar> res;
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        //gsDebugVar(_u.targetDim());
+        //const index_t c = _u.cardinality() / _u.targetDim();
+        res = _u.data().values[2].blockDiag(_u.targetDim());
+        return res;
+    }
+
+    index_t rows() const //(components)
+    {
+        // return _u.data().values[2].rows() / _u.data().values[0].rows(); // numHessian dimensions
+        // return _u.source().targetDim(); // no. dimensions should be 3
+        return 3; // _u.dim() for space or targetDim() for geometry
+    }
+
+    index_t cols() const
+    {
+        return _u.source().domainDim() * ( _u.source().domainDim() + 1 ) / 2;
+    }
+
+    void setFlag() const
+    {
+        _u.data().flags |= NEED_DERIV2|NEED_ACTIVE;
+    }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        evList.push_sorted_unique(&_u.source());
+        _u.data().flags |= NEED_DERIV2;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.rowVar(); }
+
+    static constexpr bool rowSpan() {return E::rowSpan(); }
+    static constexpr bool colSpan() {return E::rowSpan();}
+
+    void print(std::ostream &os) const { os << "deriv2("; _u.print(os); os <<")"; }
 };
 
 
@@ -443,10 +502,10 @@ public:
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
         const index_t Ac = _A.cols();
-        const index_t Ar = _A.rows();
+        //const index_t Ar = _A.rows();
         const index_t An = _A.cardinality();
         const index_t Bc = _B.cols();
-        const index_t Br = _B.rows();
+        //const index_t Br = _B.rows();
         const index_t Bn = _B.cardinality();
 
         MatExprType eA = _A.eval(k);
@@ -513,8 +572,11 @@ var2_expr<E1,E2> var2(const E1 & u, const E2 & v, const gsGeometryMap<typename E
 // template<class E1, class E2> EIGEN_STRONG_INLINE
 // hessdot_expr<E1,E2> hessdot(const E1 & u, const E2 & v) { return hessdot_expr<E1,E2>(u, v); }
 
+template<class E> EIGEN_STRONG_INLINE
+deriv2_expr<E> deriv2(const E & u) { return deriv2_expr<E>(u); }
+
 template<class E1, class E2> EIGEN_STRONG_INLINE
-deriv2_expr<E1, E2> deriv2(const E1 & u, const E2 & v) { return deriv2_expr<E1, E2>(u,v); }
+deriv2dot_expr<E1, E2> deriv2(const E1 & u, const E2 & v) { return deriv2dot_expr<E1, E2>(u,v); }
 
 template<class E1, class E2, class E3> EIGEN_STRONG_INLINE
 flatdot_expr<E1,E2,E3> flatdot(const E1 & u, const E2 & v, const E3 & w)
@@ -650,11 +712,16 @@ int main(int argc, char *argv[])
         // auto E_m_der2 = flat( jac(u).tr() * jac(u) );
         auto E_m_der2 = flatdot( jac(u).tr(),jac(u), E_m.tr() * reshape(mm,3,3) );
 
-        auto E_f = reshape(m2,3,3) * ( deriv2(defG,sn(defG).normalized()) - deriv2(G,sn(G).normalized()) ) ;//[checked]
-        auto E_f_der = reshape(m2,3,3) * ( deriv2(u,sn(defG).normalized() ) + deriv2(defG,var1(u,G) ) );
-        // auto E_f_der2 = reshape(m2,3,3) * ( 2 * deriv2(u) * var1(u,defG).tr() + var2(u,u,defG) );
-        // auto E_f_der2 = flatdot( reshape(m2,3,3) * deriv2(u).tr() , var1(u,defG).tr(), E_f.tr() * reshape(mm,3,3) )
-        //               + flatdot( reshape(m2,3,3) * deriv2(u).tr() , var1(u,defG).tr(), E_f.tr() * reshape(mm,3,3) ).tr()
+        auto E_f = ( deriv2(defG,sn(defG).normalized().tr()) - deriv2(G,sn(G).normalized().tr()) ) * reshape(m2,3,3) ;//[checked]
+        auto E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,G) ) ) * reshape(m2,3,3);
+        //auto E_f_der2 = reshape(m2,3,3) * ( 2 * deriv2(u) * var1(u,defG).tr() + var2(u,u,defG) );
+
+        auto E_f_der2 = flatdot(
+            deriv2(u).tr(),
+            var1(u,defG).tr(),
+            E_f.tr() * reshape(mm,3,3) );
+        //    + flatdot( reshape(m2,3,3) * deriv2(u).tr() , var1(u,defG).tr(), E_f.tr() * reshape(mm,3,3) ).tr()
+
             // + var2*Ef
             ;
 
@@ -665,18 +732,21 @@ int main(int argc, char *argv[])
         //             - u * ff.tr()
         //     );
 
-
-
         gsVector<> pt(2); pt.setConstant(0.5);
-        gsInfo << "Eval:\n"<< ev.eval(
+        gsMatrix<> evresult = ev.eval(
             // E_m              // works; output 3 x 1
             // E_m_der          // works; output 3 x 27
             // E_m_der2         // works; output 27 x 27
-            // E_f              // works: output 3 x 1
-            // E_f_der          // does not work;
-            // E_f_der2         // does not work;
+//             E_f              // works: output 3 x 1
+//             E_f_der          // works output  27 x 3
+             E_f_der2         // does not work;
 
-            deriv2(G,jac(u))
+//            deriv2(u,var1(u,G))
+//            deriv2(u)
+
+//
+//            deriv2(G,var1(u,G))
+//            deriv2(G, var1(u,G) )
             // var2(u,u,defG)
 
             //var1(u,G) * deriv2(defG) //.tr()
@@ -688,7 +758,8 @@ int main(int argc, char *argv[])
             //deriv2(G) //.tr() //* sn(defG).normalized()
                                        ,  pt
             );
-       gsInfo << "\nEnd\n";
+        gsInfo << "Eval:\n"<< evresult;
+        gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
 
         return 0;
 
