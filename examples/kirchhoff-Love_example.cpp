@@ -191,7 +191,7 @@ public:
                         // NOTE: We multiply with the column of c. This means that we multiply with [d11 c1, d22 c1, d12 c1]. Should't it be [d11 c1, d11 c2, d11 c3]. We simplyneed to transppse c.
                         for (index_t l=0; l != numHess; l++) // per hessian entry of c
                         {
-                            res(s + j, r + i + l*_u.dim()*cardU ) = tmp.dot(cDer2.col(l));
+                            res(s + j, r + i + l*_u.dim()*cardU ) = tmp.dot(cDer2.row(l));
                         }
                     }
                 }
@@ -744,9 +744,7 @@ int main(int argc, char *argv[])
 //            deriv2(u,var1(u,G))
 //            deriv2(u)
 
-//
-//            deriv2(G,var1(u,G))
-//            deriv2(G, var1(u,G) )
+            deriv2(G,var1(u,G))
             // var2(u,u,defG)
 
             //var1(u,G) * deriv2(defG) //.tr()
