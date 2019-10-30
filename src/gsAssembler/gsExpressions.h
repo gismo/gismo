@@ -1385,7 +1385,8 @@ public:
     const gsAsConstMatrix<Scalar> eval(const index_t k) const
     {
         // Note: this assertion would fail in the constructore!
-        GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension");
+        GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension "
+         << _u.rows() << " x "<<_u.cols() << "!=" << _n << " * "<< _m );
         tmp = _u.eval(k);
         return gsAsConstMatrix<Scalar>(tmp.data(),_n,_m);
     }
@@ -1482,21 +1483,20 @@ public:
         tmp = _u.eval(k);
         const index_t numActives = _u.cardinality();
 
-        gsDebugVar(tmp.rows());
-        gsDebugVar(tmp.cols());
-        gsDebugVar(numActives);
         for (index_t i = 0; i<numActives; ++i)
         {
             tmp(0,2*i+1) += tmp(1,2*i);
             std::swap(tmp(1,2*i), tmp(1,2*i+1));
         }
-        tmp.resize(4,numActives);
-        tmp.conservativeResize(3,numActives);
+        tmp.resize(numActives,4);
+        tmp.conservativeResize(numActives,3);
+        gsDebugVar(rowSpan());
+        gsDebugVar(colSpan());
         return tmp;
     }
 
-    index_t rows() const { return 3; }
-    index_t cols() const { return 1; }
+    index_t rows() const { return 1; }
+    index_t cols() const { return 3; }
     void setFlag() const { _u.setFlag(); }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
@@ -2881,8 +2881,8 @@ public:
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.rows()<<" in * operation:\n"
                      << _u <<" times \n" << _v );
         // Note: a * b * c --> (a*b).eval()*c
-        gsDebugVar( _u.eval(k) );
-        gsDebugVar( _v.eval(k) );
+        // gsDebugVar( _u.eval(k) );
+        // gsDebugVar( _v.eval(k) );
 
 
         tmp = _u.eval(k) * _v.eval(k); return tmp; // assume result not scalarvalued
