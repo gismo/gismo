@@ -104,6 +104,7 @@ public:
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const
     {return gsNullExpr<Scalar>::get();}
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
     static constexpr bool rowSpan() {return E::rowSpan(); }
     static constexpr bool colSpan() {return false;}
@@ -114,8 +115,8 @@ public:
 // Comments for var2:
 // - TODO: dimensionm indep. later on
 // - TODO: how to structure this matrix
-template<class E1, class E2>
-class var2_expr : public _expr<var2_expr<E1,E2> >
+template<class E1, class E2, class E3>
+class var2_expr : public _expr<var2_expr<E1,E2,E3> >
 {
 public:
     typedef typename E1::Scalar Scalar;
@@ -125,15 +126,16 @@ private:
     typename E1::Nested_t _u;
     typename E2::Nested_t _v;
     typename gsGeometryMap<Scalar>::Nested_t _G;
+    typename E3::Nested_t _Ef;
 
 public:
     enum{ Space = E1::Space };
 
-    var2_expr( const E1 & u, const E2 & v, const gsGeometryMap<Scalar> & G) : _u(u),_v(v), _G(G) { }
+    var2_expr( const E1 & u, const E2 & v, const gsGeometryMap<Scalar> & G, const E3 & Ef) : _u(u),_v(v), _G(G), _Ef(Ef) { }
 
     mutable gsMatrix<Scalar> res;
 
-    mutable gsMatrix<Scalar> uGrads, vGrads, cJac, cDer2;
+    mutable gsMatrix<Scalar> uGrads, vGrads, cJac, cDer2, evEf;
     mutable gsVector<Scalar,3> m_u, m_v, normal, m_uv, m_u_der, n_der, n_der2, tmp;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -161,6 +163,7 @@ public:
         const index_t numHess = cDer2.rows();
         const Scalar measure =  _G.data().measures.at(k);
 
+        evEf = _Ef.eval(k);
 
         for (index_t j = 0; j!= cardU; ++j) // for all basis functions u (1)
         {
@@ -341,12 +344,12 @@ private:
 };
 
 
-/* 
-    The deriv2_expr computes the hessian of a basis. 
-    It assumes that the vector of basis functions is of the form v = u*e_i where u 
+/*
+    The deriv2_expr computes the hessian of a basis.
+    It assumes that the vector of basis functions is of the form v = u*e_i where u
     is the scalar basis function u: [0,1]^3 -> R^1 and e_i is the unit vector with a 1 on index i and a 0 elsewhere.
     Let us define the following blocks
-    hess1(u) =              hess2(u) =              hess3(u) = 
+    hess1(u) =              hess2(u) =              hess3(u) =
     [d11 u , 0 , 0 ]    |   [0 , d11 u , 0 ]     |  [0 , 0 , d11 u ]
     [d22 u , 0 , 0 ]    |   [0 , d22 u , 0 ]     |  [0 , 0 , d22 u ]
     [d12 u , 0 , 0 ]    |   [0 , d12 u , 0 ]     |  [0 , 0 , d12 u ]
@@ -412,6 +415,8 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _u.rowVar(); }
+
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
     static constexpr bool rowSpan() {return E::rowSpan(); }
     static constexpr bool colSpan() {return E::rowSpan();}
@@ -542,7 +547,10 @@ public:
         // gsDebugVar(Bc);
         // gsDebugVar(Br);
         // gsDebugVar(Bn);
-        // gsDebugVar(eC);
+        gsDebugVar(eB);
+        gsDebugVar(eC);
+
+        GISMO_ASSERT(eB.rows()==Ac, "Dimensions: "<<eB.rows()<<","<< Ac<< "do not match");
 
         for (index_t i = 0; i!=An; ++i)
         {
@@ -587,9 +595,9 @@ public:
 template<class E> EIGEN_STRONG_INLINE
 var1_expr<E> var1(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return var1_expr<E>(u, G); }
 
-template<class E1, class E2> EIGEN_STRONG_INLINE
-var2_expr<E1,E2> var2(const E1 & u, const E2 & v, const gsGeometryMap<typename E1::Scalar> & G)
-{ return var2_expr<E1,E2>(u,v, G); }
+template<class E1, class E2, class E3> EIGEN_STRONG_INLINE
+var2_expr<E1,E2,E3> var2(const E1 & u, const E2 & v, const gsGeometryMap<typename E1::Scalar> & G, const E3 & Ef)
+{ return var2_expr<E1,E2,E3>(u,v, G, Ef); }
 
 // template<class E1, class E2> EIGEN_STRONG_INLINE
 // hessdot_expr<E1,E2> hessdot(const E1 & u, const E2 & v) { return hessdot_expr<E1,E2>(u, v); }
@@ -738,12 +746,9 @@ int main(int argc, char *argv[])
 
         auto E_f_der2 = flatdot(
             deriv2(u).tr(),
-            var1(u,defG).tr(),
-            E_f.tr() * reshape(mm,3,3) );
-        //    + flatdot( reshape(m2,3,3) * deriv2(u).tr() , var1(u,defG).tr(), E_f.tr() * reshape(mm,3,3) ).tr()
-
-            // + var2*Ef
-            ;
+            replicate( var1(u,defG).tr(), 1, 3),
+            reshape(mm,3,3) * E_f.tr() ).symmetrize();
+//            + var2(u,u,defG) * E_f.tr();
 
         //A.assemble( tt * ( E_m.tr() * reshape(mm,3,3) * E_m_der2 + E_m_der.tr() * reshape(mm,3,3) * E_m_der ) +
         //             (tt*tt*tt/3.0) *( E_f * mm * E_f_der2 + E_f_der * mm * E_f_der ), // Matrix
@@ -757,14 +762,14 @@ int main(int argc, char *argv[])
             // E_m              // works; output 3 x 1
             // E_m_der          // works; output 3 x 27
             // E_m_der2         // works; output 27 x 27
-            // E_f              // works: output 1 x 3
+//             E_f              // works: output 1 x 3
             // E_f_der          // works output  27 x 3
-             // E_f_der2         // does not work;
+//             E_f_der2         // does not work;
 
 //            deriv2(u,var1(u,G))
 //            deriv2(u)
-            // var2(u,u,defG)
-
+            var2(u,u,defG,E_f)
+//            replicate( var1(u,defG), 3)
             //var1(u,G) * deriv2(defG) //.tr()
             //deriv2(u) * sn(G)
 
@@ -829,72 +834,68 @@ int main(int argc, char *argv[])
 // // * Mutables for the matrices?
 // // * Flags are correct?
 // // * struct for material model
-// class materialMatrix : public gismo::gsFunction<>
-// {
-//   // Computes the material matrix for different material models
-//   //
-// protected:
-//     gsExprAssembler<>::geometryMap & G;
-//     // const std::vector<gsExprEvaluator<> > & e;
+class materialMatrix : public gismo::gsFunction<>
+{
+  // Computes the material matrix for different material models
+  //
+protected:
+    const gsMultiPatch<> & _mp;
+    const gsFunction<> & _YoungsModulus;
+    const gsFunction<> & _PoissonRatio;
+    mutable gsMapData<> _tmp;
+    mutable gsMatrix<real_t,3,3> F0;
 
-// public:
-//     /// Shared pointer for materialMatrix
-//     typedef memory::shared_ptr< materialMatrix > Ptr;
+public:
+    /// Shared pointer for materialMatrix
+    typedef memory::shared_ptr< materialMatrix > Ptr;
 
-//     /// Unique pointer for materialMatrix
-//     typedef memory::unique_ptr< materialMatrix > uPtr;
+    /// Unique pointer for materialMatrix
+    typedef memory::unique_ptr< materialMatrix > uPtr;
 
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-//     materialMatrix(const gsExprAssembler<>::geometryMap & G) : G(G) { }
+    materialMatrix(const gsMultiPatch<> & mp, const gsFunction<> & YoungsModulus,
+                   const gsFunction<> & PoissonRatio) :
+    _mp(mp), _YoungsModulus(YoungsModulus), _PoissonRatio(PoissonRatio)
+    {
+        _tmp.flags = NEED_JACOBIAN | NEED_NORMAL;
+        F0.resize(3,3);
+    }
 
-//     GISMO_CLONE_FUNCTION(materialMatrix)
+    GISMO_CLONE_FUNCTION(materialMatrix)
 
-//     short_t domainDim() const {return 2;}
+    short_t domainDim() const {return 2;}
 
-//     short_t targetDim() const {return 9;}
+    short_t targetDim() const {return 9;}
 
-//     void eval_into(const gsMatrix<>& u, gsMatrix<>& result) const
-//     {
-//         // ---------------  Material matrix
-//         gsMatrix<real_t,3,3> F0, jacobian;
-//         gsVector<> normal(3);
+    void eval_into(const gsMatrix<>& u, gsMatrix<>& result) const
+    {
+        result.resize( targetDim() , u.cols() );
+        for( index_t i=0; i< u.cols(); ++i )
+        {
+            _tmp.points = u.col(i);
+            _mp.patch(0).computeMap(_tmp); // !! Single patch for now !!
 
-//         result.resize( targetDim() , u.cols() );
-//         for( index_t i=0; i< result.cols(); ++i )
-//         {
-//             jacobian = ev.eval( gismo::expr::jac(G), u.col(i) );
-//             normal = ev.eval( gismo::expr::normal(G), u.col(i) );
-//             normal.normalize();
-//             // F0.leftCols(2) = G.jacobian(k); // should be 2 columns, i.e. a surface.
-//             //F0 = F0.inverse(); F0 = F0 * F0.transpose();
-//             F0.col(2)      = normal;
-//             F0 = F0.inverse() * F0.inverse().transpose();
+            F0.leftCols(2) = _tmp.jacobians();
+            F0.col(2)      = _tmp.normals.normalized();
+            F0 = F0.inverse();
+            F0 = F0 * F0.transpose();
 
-//             // const real_t C_constant = 4*m_lambda*m_mu/(m_lambda+2*m_mu);
+            // const real_t C_constant = 4*m_lambda*m_mu/(m_lambda+2*m_mu);
 
-//             // m_C(0,0) = C_constant*F0(0,0)*F0(0,0) + 2*m_mu*(2*F0(0,0)*F0(0,0));
-//             // m_C(1,1) = C_constant*F0(1,1)*F0(1,1) + 2*m_mu*(2*F0(1,1)*F0(1,1));
-//             // m_C(2,2) = C_constant*F0(0,1)*F0(0,1) + 2*m_mu*(F0(0,0)*F0(1,1) + F0(0,1)*F0(0,1));
-//             // m_C(1,0) = 
-//             // m_C(0,1) = C_constant*F0(0,0)*F0(1,1) + 2*m_mu*(2*F0(0,1)*F0(0,1));
-//             // m_C(2,0) = 
-//             // m_C(0,2) = C_constant*F0(0,0)*F0(0,1) + 2*m_mu*(2*F0(0,0)*F0(0,1));
-//             // m_C(2,1) = m_C(1,2) = C_constant*F0(0,1)*F0(1,1) + 2*m_mu*(2*F0(0,1)*F0(1,1)); 
+            // m_C(0,0) = C_constant*F0(0,0)*F0(0,0) + 2*m_mu*(2*F0(0,0)*F0(0,0));
+            // m_C(1,1) = C_constant*F0(1,1)*F0(1,1) + 2*m_mu*(2*F0(1,1)*F0(1,1));
+            // m_C(2,2) = C_constant*F0(0,1)*F0(0,1) + 2*m_mu*(F0(0,0)*F0(1,1) + F0(0,1)*F0(0,1));
+            // m_C(1,0) =
+            // m_C(0,1) = C_constant*F0(0,0)*F0(1,1) + 2*m_mu*(2*F0(0,1)*F0(0,1));
+            // m_C(2,0) =
+            // m_C(0,2) = C_constant*F0(0,0)*F0(0,1) + 2*m_mu*(2*F0(0,0)*F0(0,1));
+            // m_C(2,1) = m_C(1,2) = C_constant*F0(0,1)*F0(1,1) + 2*m_mu*(2*F0(0,1)*F0(1,1));
 
-//             //gsDebug<< "C: \n"<< m_C << "\n";
-//         }
-//     }
+            //gsDebug<< "C: \n"<< m_C << "\n";
+        }
+    }
 
-//     void setFlag() const
-//     {
-//         G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
-//     }
+    // piece(k) --> for patch k
 
-//     void parse(gsSortedVector<const gsFunctionSet<>*> & evList) const
-//     {
-//         evList.push_sorted_unique(&_u.source());
-//         G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
-    
-//     std::ostream &print(std::ostream &os) const
-//     { os << "material matrix"; return os; };
-// };
+};
