@@ -131,7 +131,7 @@ private:
 public:
     enum{ Space = E1::Space };
 
-    var2_expr( const E1 & u, const E2 & v, const gsGeometryMap<Scalar> & G, const E3 & Ef) : _u(u),_v(v), _G(G), _Ef(Ef) { }
+    var2_expr( const E1 & u, const E2 & v, const gsGeometryMap<Scalar> & G, _expr<E3> const& Ef) : _u(u),_v(v), _G(G), _Ef(Ef) { }
 
     mutable gsMatrix<Scalar> res;
 
@@ -149,7 +149,7 @@ public:
 
     MatExprType eval(const index_t k) const
     {
-        res.resize(rows(), cols());
+        res.resize(_u.cardinality(), _u.cardinality());
 
         normal = _G.data().normals.col(k);
         uGrads = _u.data().values[1].col(k);
@@ -157,10 +157,8 @@ public:
         cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
         cDer2 = _G.data().values[2].reshapeCol(k, _G.data().dim.second, _G.data().dim.second);
 
-        const index_t cardU = _u.data().values[0].rows(); // cardinality of u
-        const index_t cardV = _v.data().values[0].rows(); // cardinality of v
-        gsDebugVar(cardU);
-        const index_t numHess = cDer2.rows();
+        const index_t cardU = _u.data().values[0].rows(); // number of actives per component of u
+        const index_t cardV = _v.data().values[0].rows(); // number of actives per component of v
         const Scalar measure =  _G.data().measures.at(k);
 
         evEf = _Ef.eval(k);
@@ -174,6 +172,7 @@ public:
                     m_u.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
                                   - vecFun(d, uGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() ) / measure;
                     const short_t s = d*cardU;
+
                     for (index_t c = 0; c!= _v.dim(); ++c) // for all basis functions v (2)
                     {
                         const short_t r = c*cardV;
@@ -190,34 +189,31 @@ public:
                         // ---------------  Second variation of the normal
                         tmp = m_u_der - (m_u.dot(n_der) + normal.dot(m_u_der) ) * normal - (normal.dot(m_u) ) * n_der;
 
-                        // NOTE: This all happens in Colspace. Is that right?
-                        // NOTE: We multiply with the column of c. This means that we multiply with [d11 c1, d22 c1, d12 c1]. Should't it be [d11 c1, d11 c2, d11 c3]. We simplyneed to transppse c.
-                        for (index_t l=0; l != numHess; l++) // per hessian entry of c
-                        {
-                            res(s + j, r + i + l*_u.dim()*cardU ) = tmp.dot(cDer2.row(l));
-                        }
+                        // Evaluate the product
+                        gsMatrix<> result = evEf * (cDer2 * tmp);
+                        res(s + j, r + i ) = result(0,0);
                     }
                 }
             }
         }
-
         return res;
     }
 
     index_t rows() const
     {
-        return _u.dim() * _u.data().values[0].rows();
+        return 1; // because the resulting matrix has scalar entries for every combination of active basis functions
     }
 
     index_t cols() const
     {
-        return  _u.source().domainDim() * (_u.source().domainDim()+1) / 2 * _v.dim() * _v.data().values[0].rows(); // hessian of c has dimension d(d+1)/2 and the columnspace of v has dimension v.dim()*numActive
+        return 1; // because the resulting matrix has scalar entries for every combination of active basis functions
     }
 
     void setFlag() const
     {
         _u.data().flags |= NEED_GRAD;
         _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
+        _Ef.setFlag();
     }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
@@ -225,6 +221,7 @@ public:
         evList.push_sorted_unique(&_u.source());
         _u.data().flags |= NEED_GRAD;
         _G.data().flags |= NEED_OUTER_NORMAL | NEED_DERIV | NEED_MEASURE;
+        _Ef.setFlag();
     }
 
     const gsFeSpace<Scalar> & rowVar() const { true; }
@@ -257,11 +254,9 @@ public:
 
     const gsMatrix<Scalar> & eval(const index_t k) const { return eval_impl(_u,k); }
 
-    index_t rows() const //(components)
+    index_t rows() const
     {
-        // return _u.data().values[2].rows() / _u.data().values[0].rows(); // numHessian dimensions
-        // return _u.source().targetDim(); // no. dimensions should be 3
-        return 3; // _u.dim() for space or targetDim() for geometry
+        return 1; //since the product with another vector is computed
     }
 
     index_t cols() const
@@ -285,7 +280,7 @@ public:
     const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
 
     static constexpr bool rowSpan() {return E1::rowSpan(); }
-    static constexpr bool colSpan() {return E2::rowSpan();}
+    static constexpr bool colSpan() {return E2::rowSpan(); }
 
     void print(std::ostream &os) const { os << "deriv2("; _u.print(os); _v.print(os); os <<")"; }
 
@@ -306,17 +301,9 @@ private:
 
 
         // evaluate the geometry map of U
-        tmp =_u.data().values[2].reshapeCol(k, rows(), _u.data().dim.second).transpose();
+        tmp =_u.data().values[2].reshapeCol(k, _u.data().dim.second, cols() ).transpose();
         vEv = _v.eval(k);
-
-        // gsDebugVar(tmp.rows());
-        // gsDebugVar(tmp.cols());
-        // gsDebugVar(vEv.rows());
-        // gsDebugVar(vEv.cols());
-
         res = vEv * tmp;
-
-        //..
         return res;
     }
 
@@ -330,11 +317,11 @@ private:
             hess(v) . normal = hess(v_i) * n_i (vector-scalar multiplication. The result is then of the form
             [hess(v_1)*n_1 .., hess(v_1)*n_1 .., hess(v_1)*n_1 ..]. Here, the dots .. represent the active basis functions.
         */
-        const index_t numAct = u.data().values[0].rows();
-        res.resize(rows()*numAct, cols() );
-        tmp.transpose() =_u.data().values[2].reshapeCol(k, rows() , numAct );
+        const index_t numAct = u.data().values[0].rows();   // number of actives of a basis function
+        const index_t cardinality = u.cardinality();        // total number of actives (=3*numAct)
+        res.resize(rows()*cardinality, cols() );
+        tmp =_u.data().values[2].reshapeCol(k, numAct , cols() );
         vEv = _v.eval(k);
-
         for (index_t i = 0; i!=_u.dim(); i++)
             res.block(i*numAct, 0, numAct, cols() ) = tmp * vEv.at(i);
 
@@ -547,8 +534,8 @@ public:
         // gsDebugVar(Bc);
         // gsDebugVar(Br);
         // gsDebugVar(Bn);
-        gsDebugVar(eB);
-        gsDebugVar(eC);
+        // gsDebugVar(eB);
+        // gsDebugVar(eC);
 
         GISMO_ASSERT(eB.rows()==Ac, "Dimensions: "<<eB.rows()<<","<< Ac<< "do not match");
 
@@ -619,6 +606,95 @@ flatdot_expr<E1,E2,E3> flatdot(const E1 & u, const E2 & v, const E3 & w)
 using namespace gismo;
 
 //! [Include namespace]
+
+// // To Do:
+// // * Add m_YoungsModulus and m_PoissonRatio as gsExpressions so that they can be different everywhere.
+// // * Mutables for the matrices?
+// // * Flags are correct?
+// // * struct for material model
+class materialMatrix : public gismo::gsFunction<>
+{
+  // Computes the material matrix for different material models
+  //
+protected:
+    const gsMultiPatch<> & _mp;
+    const gsFunction<> & _YoungsModulus;
+    const gsFunction<> & _PoissonRatio;
+    mutable gsMapData<> _tmp;
+    mutable gsMatrix<real_t,3,3> F0, C;
+    mutable gsMatrix<> Emat,Nmat;
+    mutable real_t lambda, mu, E, nu, C_constant;
+
+public:
+    /// Shared pointer for materialMatrix
+    typedef memory::shared_ptr< materialMatrix > Ptr;
+
+    /// Unique pointer for materialMatrix
+    typedef memory::unique_ptr< materialMatrix > uPtr;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    materialMatrix(const gsMultiPatch<> & mp, const gsFunction<> & YoungsModulus,
+                   const gsFunction<> & PoissonRatio) :
+    _mp(mp), _YoungsModulus(YoungsModulus), _PoissonRatio(PoissonRatio)
+    {
+        _tmp.flags = NEED_JACOBIAN | NEED_NORMAL;
+        F0.resize(3,3);
+        C.resize(3,3);
+    }
+
+    GISMO_CLONE_FUNCTION(materialMatrix)
+
+    short_t domainDim() const {return 2;}
+
+    short_t targetDim() const {return 9;}
+
+    void eval_into(const gsMatrix<>& u, gsMatrix<>& result) const
+    {
+        result.resize( targetDim() , u.cols() );
+
+        _YoungsModulus.eval_into(u, Emat);
+        _PoissonRatio.eval_into(u, Nmat);
+
+        _tmp.points = u;
+        _mp.patch(0).computeMap(_tmp); // !! Single patch for now !!
+        for( index_t i=0; i< u.cols(); ++i )
+        {
+            F0.leftCols(2) = _tmp.jacobian(i);
+            F0.col(2)      = _tmp.normal(i).normalized();
+            F0 = F0.inverse();
+            F0 = F0 * F0.transpose();
+
+
+            // Evaluate material properties on the quadrature point
+            E = Emat(0,i);
+            nu = Nmat(0,i);
+            lambda = E * nu / ( (1. + nu)*(1.-2.*nu)) ;
+            mu     = E / (2.*(1. + nu)) ;
+
+            C_constant = 4*lambda*mu/(lambda+2*mu);
+
+            C(0,0) = C_constant*F0(0,0)*F0(0,0) + 2*mu*(2*F0(0,0)*F0(0,0));
+            C(1,1) = C_constant*F0(1,1)*F0(1,1) + 2*mu*(2*F0(1,1)*F0(1,1));
+            C(2,2) = C_constant*F0(0,1)*F0(0,1) + 2*mu*(F0(0,0)*F0(1,1) + F0(0,1)*F0(0,1));
+            C(1,0) =
+            C(0,1) = C_constant*F0(0,0)*F0(1,1) + 2*mu*(2*F0(0,1)*F0(0,1));
+            C(2,0) =
+            C(0,2) = C_constant*F0(0,0)*F0(0,1) + 2*mu*(2*F0(0,0)*F0(0,1));
+            C(2,1) = C(1,2) = C_constant*F0(0,1)*F0(1,1) + 2*mu*(2*F0(0,1)*F0(1,1));
+
+            // C.setZero();
+            // C(0,0) = 1.;
+            // C(1,1) = 1.;
+            // C(2,2) = 1.;
+
+            gsDebug<< "C: \n"<< C << "\n";
+        }
+    }
+
+    // piece(k) --> for patch k
+
+};
 
 int main(int argc, char *argv[])
 {
@@ -701,7 +777,11 @@ int main(int argc, char *argv[])
     gsMatrix<> solVector, vec3(3,1); vec3.setZero();
     solution u_sol = A.getSolution(u, solVector);
 
-    gsFunctionExpr<> materialMat("1","0","0","0","1","0","0","0","1",3);
+    // gsFunctionExpr<> materialMat("1","0","0","0","1","0","0","0","1",3);
+    // variable mm = A.getCoeff(materialMat, G);
+    gsFunctionExpr<> E("1.0",3);
+    gsFunctionExpr<> nu("0.0",3);
+    materialMatrix materialMat(mp, E, nu);
     variable mm = A.getCoeff(materialMat, G);
 
 
@@ -731,24 +811,29 @@ int main(int argc, char *argv[])
 
         gsInfo<< A.numDofs() <<"\n"<<std::flush;
 
-        // Compute the system matrix and right-hand side
+        /*
+            We provide the following functions:
+                E_m         membrane strain tensor.
+                E_m_der     first variation of E_m.
+                E_m_der2    second variation of E_m MULTIPLIED BY S_m.
+                E_f         flexural strain tensor.
+                E_f_der     second variation of E_f.
+                E_f_der2    second variation of E_f MULTIPLIED BY S_f.
 
+            Where:
+                G       the undeformed geometry, 
+                defG    the deformed geometry, 
+                mm      the material matrix,
+                m2      an auxillary matrix to multiply the last row of a tensor with 2
+        **/
         auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ); //[checked]
-        auto E_m2 = 0.5 * ( jac(defG).tr()*jac(defG) - jac(G).tr()* jac(G) );
-
         auto E_m_der = flat( jac(u).tr() * jac(defG) ) ; //[checked]
-        // auto E_m_der2 = flat( jac(u).tr() * jac(u) );
-        auto E_m_der2 = flatdot( jac(u).tr(),jac(u), E_m.tr() * reshape(mm,3,3) );
+        auto E_m_der2 = flatdot( jac(u).tr(),jac(u), E_m * reshape(mm,3,3) );
 
         auto E_f = ( deriv2(defG,sn(defG).normalized().tr()) - deriv2(G,sn(G).normalized().tr()) ) * reshape(m2,3,3) ;//[checked]
         auto E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,G) ) ) * reshape(m2,3,3);
-        //auto E_f_der2 = reshape(m2,3,3) * ( 2 * deriv2(u) * var1(u,defG).tr() + var2(u,u,defG) );
-
-        auto E_f_der2 = flatdot(
-            deriv2(u).tr(),
-            replicate( var1(u,defG).tr(), 1, 3),
-            reshape(mm,3,3) * E_f.tr() ).symmetrize();
-//            + var2(u,u,defG) * E_f.tr();
+        auto E_f_der2 = flatdot( deriv2(u).tr(), replicate( var1(u,defG).tr(), 1, 3), E_f * reshape(mm,3,3)  ).symmetrize() 
+                            + var2(u,u,defG,E_f * reshape(mm,3,3));
 
         //A.assemble( tt * ( E_m.tr() * reshape(mm,3,3) * E_m_der2 + E_m_der.tr() * reshape(mm,3,3) * E_m_der ) +
         //             (tt*tt*tt/3.0) *( E_f * mm * E_f_der2 + E_f_der * mm * E_f_der ), // Matrix
@@ -757,41 +842,29 @@ int main(int argc, char *argv[])
         //             - u * ff.tr()
         //     );
 
-        gsVector<> pt(2); pt.setConstant(0.5);
-        gsMatrix<> evresult = ev.eval(
-            // E_m              // works; output 3 x 1
-            // E_m_der          // works; output 3 x 27
-            // E_m_der2         // works; output 27 x 27
-//             E_f              // works: output 1 x 3
-            // E_f_der          // works output  27 x 3
-//             E_f_der2         // does not work;
+        // gsVector<> pt(2); pt.setConstant(0.5);
+        // gsMatrix<> evresult = ev.eval(
+        //     // E_m              // works; output 1 x 3
+        //     // E_m_der          // works; output 27 x 3
+        //     // E_m_der2         // works; output 27 x 27
+        //     // E_f              // works; output 1 x 3
+        //     // E_f_der          // works; output  27 x 3
+        //     // E_f_der2         // works; output 27 x 27
 
-//            deriv2(u,var1(u,G))
-//            deriv2(u)
-            var2(u,u,defG,E_f)
-//            replicate( var1(u,defG), 3)
-            //var1(u,G) * deriv2(defG) //.tr()
-            //deriv2(u) * sn(G)
-
-            // deriv2(u)
-            // var1(u,G)
-            //deriv2(u) //.tr() //* sn(defG).normalized()
-            //deriv2(G) //.tr() //* sn(defG).normalized()
-                                       ,  pt
-            );
-        gsInfo << "Eval:\n"<< evresult;
-        gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
-
-        return 0;
+        //     // var2(u,u,defG,mmreshape )
+        //                                ,  pt
+        //     );
+        // gsInfo << "Eval:\n"<< evresult;
+        // gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
 
         A.assemble(
             //tt * (
 
-            E_m_der.tr()
-              * reshape(mm,3,3)
-                * E_m_der
-
-            +
+            // E_m_der
+            //   * reshape(mm,3,3)
+            //     * E_m_der.tr()
+                /// in this thing, the flat expression causes trouble. It provides a colSpan instead of a rowSpan.
+            // +
 
             E_f_der
               * reshape(mm,3,3)
@@ -829,73 +902,3 @@ int main(int argc, char *argv[])
 
 }// end main
 
-// // To Do:
-// // * Add m_YoungsModulus and m_PoissonRatio as gsExpressions so that they can be different everywhere.
-// // * Mutables for the matrices?
-// // * Flags are correct?
-// // * struct for material model
-class materialMatrix : public gismo::gsFunction<>
-{
-  // Computes the material matrix for different material models
-  //
-protected:
-    const gsMultiPatch<> & _mp;
-    const gsFunction<> & _YoungsModulus;
-    const gsFunction<> & _PoissonRatio;
-    mutable gsMapData<> _tmp;
-    mutable gsMatrix<real_t,3,3> F0;
-
-public:
-    /// Shared pointer for materialMatrix
-    typedef memory::shared_ptr< materialMatrix > Ptr;
-
-    /// Unique pointer for materialMatrix
-    typedef memory::unique_ptr< materialMatrix > uPtr;
-
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-    materialMatrix(const gsMultiPatch<> & mp, const gsFunction<> & YoungsModulus,
-                   const gsFunction<> & PoissonRatio) :
-    _mp(mp), _YoungsModulus(YoungsModulus), _PoissonRatio(PoissonRatio)
-    {
-        _tmp.flags = NEED_JACOBIAN | NEED_NORMAL;
-        F0.resize(3,3);
-    }
-
-    GISMO_CLONE_FUNCTION(materialMatrix)
-
-    short_t domainDim() const {return 2;}
-
-    short_t targetDim() const {return 9;}
-
-    void eval_into(const gsMatrix<>& u, gsMatrix<>& result) const
-    {
-        result.resize( targetDim() , u.cols() );
-        for( index_t i=0; i< u.cols(); ++i )
-        {
-            _tmp.points = u.col(i);
-            _mp.patch(0).computeMap(_tmp); // !! Single patch for now !!
-
-            F0.leftCols(2) = _tmp.jacobians();
-            F0.col(2)      = _tmp.normals.normalized();
-            F0 = F0.inverse();
-            F0 = F0 * F0.transpose();
-
-            // const real_t C_constant = 4*m_lambda*m_mu/(m_lambda+2*m_mu);
-
-            // m_C(0,0) = C_constant*F0(0,0)*F0(0,0) + 2*m_mu*(2*F0(0,0)*F0(0,0));
-            // m_C(1,1) = C_constant*F0(1,1)*F0(1,1) + 2*m_mu*(2*F0(1,1)*F0(1,1));
-            // m_C(2,2) = C_constant*F0(0,1)*F0(0,1) + 2*m_mu*(F0(0,0)*F0(1,1) + F0(0,1)*F0(0,1));
-            // m_C(1,0) =
-            // m_C(0,1) = C_constant*F0(0,0)*F0(1,1) + 2*m_mu*(2*F0(0,1)*F0(0,1));
-            // m_C(2,0) =
-            // m_C(0,2) = C_constant*F0(0,0)*F0(0,1) + 2*m_mu*(2*F0(0,0)*F0(0,1));
-            // m_C(2,1) = m_C(1,2) = C_constant*F0(0,1)*F0(1,1) + 2*m_mu*(2*F0(0,1)*F0(1,1));
-
-            //gsDebug<< "C: \n"<< m_C << "\n";
-        }
-    }
-
-    // piece(k) --> for patch k
-
-};
