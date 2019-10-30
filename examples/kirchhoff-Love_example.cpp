@@ -340,6 +340,28 @@ private:
 
 };
 
+
+/* 
+    The deriv2_expr computes the hessian of a basis. 
+    It assumes that the vector of basis functions is of the form v = u*e_i where u 
+    is the scalar basis function u: [0,1]^3 -> R^1 and e_i is the unit vector with a 1 on index i and a 0 elsewhere.
+    Let us define the following blocks
+    hess1(u) =              hess2(u) =              hess3(u) = 
+    [d11 u , 0 , 0 ]    |   [0 , d11 u , 0 ]     |  [0 , 0 , d11 u ]
+    [d22 u , 0 , 0 ]    |   [0 , d22 u , 0 ]     |  [0 , 0 , d22 u ]
+    [d12 u , 0 , 0 ]    |   [0 , d12 u , 0 ]     |  [0 , 0 , d12 u ]
+
+    Then the deriv2(u) is defined as follows (for k number of actives)
+    [hess1(u)_1]
+    ...
+    [hess1(u)_k]
+    [hess2(u)_1]
+    ...
+    [hess2(u)_k]
+    [hess3(u)_1]
+    ...
+    [hess3(u)_k]
+**/
 template<class E>
 class deriv2_expr : public _expr<deriv2_expr<E> >
 {
@@ -590,8 +612,6 @@ using namespace gismo;
 
 //! [Include namespace]
 
-
-
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
@@ -737,14 +757,12 @@ int main(int argc, char *argv[])
             // E_m              // works; output 3 x 1
             // E_m_der          // works; output 3 x 27
             // E_m_der2         // works; output 27 x 27
-//             E_f              // works: output 3 x 1
-//             E_f_der          // works output  27 x 3
-             E_f_der2         // does not work;
+            // E_f              // works: output 1 x 3
+            // E_f_der          // works output  27 x 3
+             // E_f_der2         // does not work;
 
 //            deriv2(u,var1(u,G))
 //            deriv2(u)
-
-            deriv2(G,var1(u,G))
             // var2(u,u,defG)
 
             //var1(u,G) * deriv2(defG) //.tr()
@@ -767,6 +785,12 @@ int main(int argc, char *argv[])
             E_m_der.tr()
               * reshape(mm,3,3)
                 * E_m_der
+
+            +
+
+            E_f_der
+              * reshape(mm,3,3)
+                * E_f_der.tr()
                     // ), - u * ff
             );
 
@@ -785,6 +809,11 @@ int main(int argc, char *argv[])
         //A.assemble( hessdot(u, var1(u,G)) );
 
 
+        gsInfo<<"RHS rows = "<<A.rhs().rows()<<"\n";
+        gsInfo<<"RHS cols = "<<A.rhs().cols()<<"\n";
+        gsInfo<<"MAT rows = "<<A.matrix().rows()<<"\n";
+        gsInfo<<"MAT cols = "<<A.matrix().cols()<<"\n";
+
         gsInfo<< A.rhs().transpose() <<"\n";
         gsInfo<< A.matrix().toDense().diagonal().transpose() <<"\n";
 
@@ -794,3 +823,78 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 
 }// end main
+
+// // To Do:
+// // * Add m_YoungsModulus and m_PoissonRatio as gsExpressions so that they can be different everywhere.
+// // * Mutables for the matrices?
+// // * Flags are correct?
+// // * struct for material model
+// class materialMatrix : public gismo::gsFunction<>
+// {
+//   // Computes the material matrix for different material models
+//   //
+// protected:
+//     gsExprAssembler<>::geometryMap & G;
+//     // const std::vector<gsExprEvaluator<> > & e;
+
+// public:
+//     /// Shared pointer for materialMatrix
+//     typedef memory::shared_ptr< materialMatrix > Ptr;
+
+//     /// Unique pointer for materialMatrix
+//     typedef memory::unique_ptr< materialMatrix > uPtr;
+
+
+//     materialMatrix(const gsExprAssembler<>::geometryMap & G) : G(G) { }
+
+//     GISMO_CLONE_FUNCTION(materialMatrix)
+
+//     short_t domainDim() const {return 2;}
+
+//     short_t targetDim() const {return 9;}
+
+//     void eval_into(const gsMatrix<>& u, gsMatrix<>& result) const
+//     {
+//         // ---------------  Material matrix
+//         gsMatrix<real_t,3,3> F0, jacobian;
+//         gsVector<> normal(3);
+
+//         result.resize( targetDim() , u.cols() );
+//         for( index_t i=0; i< result.cols(); ++i )
+//         {
+//             jacobian = ev.eval( gismo::expr::jac(G), u.col(i) );
+//             normal = ev.eval( gismo::expr::normal(G), u.col(i) );
+//             normal.normalize();
+//             // F0.leftCols(2) = G.jacobian(k); // should be 2 columns, i.e. a surface.
+//             //F0 = F0.inverse(); F0 = F0 * F0.transpose();
+//             F0.col(2)      = normal;
+//             F0 = F0.inverse() * F0.inverse().transpose();
+
+//             // const real_t C_constant = 4*m_lambda*m_mu/(m_lambda+2*m_mu);
+
+//             // m_C(0,0) = C_constant*F0(0,0)*F0(0,0) + 2*m_mu*(2*F0(0,0)*F0(0,0));
+//             // m_C(1,1) = C_constant*F0(1,1)*F0(1,1) + 2*m_mu*(2*F0(1,1)*F0(1,1));
+//             // m_C(2,2) = C_constant*F0(0,1)*F0(0,1) + 2*m_mu*(F0(0,0)*F0(1,1) + F0(0,1)*F0(0,1));
+//             // m_C(1,0) = 
+//             // m_C(0,1) = C_constant*F0(0,0)*F0(1,1) + 2*m_mu*(2*F0(0,1)*F0(0,1));
+//             // m_C(2,0) = 
+//             // m_C(0,2) = C_constant*F0(0,0)*F0(0,1) + 2*m_mu*(2*F0(0,0)*F0(0,1));
+//             // m_C(2,1) = m_C(1,2) = C_constant*F0(0,1)*F0(1,1) + 2*m_mu*(2*F0(0,1)*F0(1,1)); 
+
+//             //gsDebug<< "C: \n"<< m_C << "\n";
+//         }
+//     }
+
+//     void setFlag() const
+//     {
+//         G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
+//     }
+
+//     void parse(gsSortedVector<const gsFunctionSet<>*> & evList) const
+//     {
+//         evList.push_sorted_unique(&_u.source());
+//         G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
+    
+//     std::ostream &print(std::ostream &os) const
+//     { os << "material matrix"; return os; };
+// };
