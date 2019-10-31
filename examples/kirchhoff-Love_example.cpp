@@ -605,6 +605,9 @@ flatdot_expr<E1,E2,E3> flatdot(const E1 & u, const E2 & v, const E3 & w)
 
 using namespace gismo;
 
+template <class T>
+class gsMaterialMatrix;
+
 //! [Include namespace]
 
 // // To Do:
@@ -612,59 +615,80 @@ using namespace gismo;
 // // * Mutables for the matrices?
 // // * Flags are correct?
 // // * struct for material model
-class materialMatrix : public gismo::gsFunction<>
+// Input is parametric coordinates of the surface \a mp
+template <class T>
+class gsMaterialMatrix : public gismo::gsFunction<T>
 {
   // Computes the material matrix for different material models
   //
 protected:
-    const gsMultiPatch<> & _mp;
-    const gsFunction<> & _YoungsModulus;
-    const gsFunction<> & _PoissonRatio;
-    mutable gsMapData<> _tmp;
-    mutable gsMatrix<real_t,3,3> F0, C;
-    mutable gsMatrix<> Emat,Nmat;
+    const gsFunctionSet<T> * _mp;
+    const gsFunction<T> * _YoungsModulus;
+    const gsFunction<T> * _PoissonRatio;
+    mutable gsMapData<T> _tmp;
+    mutable gsMatrix<real_t,3,3> F0;
+    mutable gsMatrix<T> Emat,Nmat;
     mutable real_t lambda, mu, E, nu, C_constant;
 
 public:
-    /// Shared pointer for materialMatrix
-    typedef memory::shared_ptr< materialMatrix > Ptr;
+    /// Shared pointer for gsMaterialMatrix
+    typedef memory::shared_ptr< gsMaterialMatrix > Ptr;
 
-    /// Unique pointer for materialMatrix
-    typedef memory::unique_ptr< materialMatrix > uPtr;
+    /// Unique pointer for gsMaterialMatrix
+    typedef memory::unique_ptr< gsMaterialMatrix > uPtr;
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    materialMatrix(const gsMultiPatch<> & mp, const gsFunction<> & YoungsModulus,
-                   const gsFunction<> & PoissonRatio) :
-    _mp(mp), _YoungsModulus(YoungsModulus), _PoissonRatio(PoissonRatio)
+    gsMaterialMatrix(const gsFunctionSet<T> & mp, const gsFunction<T> & YoungsModulus,
+                   const gsFunction<T> & PoissonRatio) :
+    _mp(&mp), _YoungsModulus(&YoungsModulus), _PoissonRatio(&PoissonRatio), _mm_piece(nullptr)
     {
-        _tmp.flags = NEED_JACOBIAN | NEED_NORMAL;
-        F0.resize(3,3);
-        C.resize(3,3);
+        _tmp.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
     }
 
-    GISMO_CLONE_FUNCTION(materialMatrix)
+    ~gsMaterialMatrix() { delete _mm_piece; }
+
+    GISMO_CLONE_FUNCTION(gsMaterialMatrix)
 
     short_t domainDim() const {return 2;}
 
     short_t targetDim() const {return 9;}
 
-    void eval_into(const gsMatrix<>& u, gsMatrix<>& result) const
+    mutable gsMaterialMatrix<T> * _mm_piece; // todo: improve the way pieces are accessed
+
+    const gsFunction<T> & piece(const index_t k) const
     {
-        result.resize( targetDim() , u.cols() );
+        delete _mm_piece;
+        _mm_piece = new gsMaterialMatrix(_mp->piece(k), *_YoungsModulus, *_PoissonRatio);
+        return *_mm_piece;
+    }
 
-        _YoungsModulus.eval_into(u, Emat);
-        _PoissonRatio.eval_into(u, Nmat);
-
+    // Input is parametric coordinates of the surface \a mp
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        // NOTE 1: if the input \a u is considered to be in physical coordinates
+        // then we first need to invert the points to parameter space
+        // _mp.patch(0).invertPoints(u, _tmp.points, 1e-8)
+        // otherwise we just use the input paramteric points
         _tmp.points = u;
-        _mp.patch(0).computeMap(_tmp); // !! Single patch for now !!
+
+        static_cast<const gsFunction<T>*>(_mp)->computeMap(_tmp);
+
+        // NOTE 2: in the case that parametric value is needed it suffices
+        // to evaluate Youngs modulus and Poisson's ratio at
+        // \a u instead of _tmp.values[0].
+        _YoungsModulus->eval_into(_tmp.values[0], Emat);
+        _PoissonRatio->eval_into(_tmp.values[0], Nmat);
+
+        result.resize( targetDim() , u.cols() );
         for( index_t i=0; i< u.cols(); ++i )
         {
+            gsAsMatrix<T, Dynamic, Dynamic> C = result.reshapeCol(i,3,3);
+
             F0.leftCols(2) = _tmp.jacobian(i);
             F0.col(2)      = _tmp.normal(i).normalized();
             F0 = F0.inverse();
-            F0 = F0 * F0.transpose();
-
+            F0 = F0 * F0.transpose(); //3x3
 
             // Evaluate material properties on the quadrature point
             E = Emat(0,i);
@@ -688,7 +712,7 @@ public:
             // C(1,1) = 1.;
             // C(2,2) = 1.;
 
-            gsDebug<< "C: \n"<< C << "\n";
+            //gsDebugVar(C);
         }
     }
 
@@ -781,8 +805,8 @@ int main(int argc, char *argv[])
     // variable mm = A.getCoeff(materialMat, G);
     gsFunctionExpr<> E("1.0",3);
     gsFunctionExpr<> nu("0.0",3);
-    materialMatrix materialMat(mp, E, nu);
-    variable mm = A.getCoeff(materialMat, G);
+    gsMaterialMatrix materialMat(mp, E, nu);
+    variable mm = A.getCoeff(materialMat);
 
 
     gsFunctionExpr<> mult2t("1","0","0","0","1","0","0","0","2",3);
@@ -821,18 +845,18 @@ int main(int argc, char *argv[])
                 E_f_der2    second variation of E_f MULTIPLIED BY S_f.
 
             Where:
-                G       the undeformed geometry, 
-                defG    the deformed geometry, 
+                G       the undeformed geometry,
+                defG    the deformed geometry,
                 mm      the material matrix,
                 m2      an auxillary matrix to multiply the last row of a tensor with 2
         **/
         auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ); //[checked]
-        auto E_m_der = flat( jac(u).tr() * jac(defG) ) ; //[checked]
+        auto E_m_der = flat( jac(defG).tr() * jac(u) ) ; //[checked]
         auto E_m_der2 = flatdot( jac(u).tr(),jac(u), E_m * reshape(mm,3,3) );
 
         auto E_f = ( deriv2(defG,sn(defG).normalized().tr()) - deriv2(G,sn(G).normalized().tr()) ) * reshape(m2,3,3) ;//[checked]
         auto E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,G) ) ) * reshape(m2,3,3);
-        auto E_f_der2 = flatdot( deriv2(u).tr(), replicate( var1(u,defG).tr(), 1, 3), E_f * reshape(mm,3,3)  ).symmetrize() 
+        auto E_f_der2 = flatdot( deriv2(u).tr(), replicate( var1(u,defG).tr(), 1, 3), E_f * reshape(mm,3,3)  ).symmetrize()
                             + var2(u,u,defG,E_f * reshape(mm,3,3));
 
         //A.assemble( tt * ( E_m.tr() * reshape(mm,3,3) * E_m_der2 + E_m_der.tr() * reshape(mm,3,3) * E_m_der ) +
@@ -842,34 +866,34 @@ int main(int argc, char *argv[])
         //             - u * ff.tr()
         //     );
 
-        // gsVector<> pt(2); pt.setConstant(0.5);
-        // gsMatrix<> evresult = ev.eval(
-        //     // E_m              // works; output 1 x 3
-        //     // E_m_der          // works; output 27 x 3
-        //     // E_m_der2         // works; output 27 x 27
-        //     // E_f              // works; output 1 x 3
-        //     // E_f_der          // works; output  27 x 3
-        //     // E_f_der2         // works; output 27 x 27
+        /*
+         gsVector<> pt(2); pt.setConstant(0.5);
+         gsMatrix<> evresult = ev.eval(
+             // E_m              // works; output 1 x 3
+             E_m_der          // works; output 27 x 3
+             // E_m_der2         // works; output 27 x 27
+             // E_f              // works; output 1 x 3
+             // E_f_der          // works; output  27 x 3
+             // E_f_der2         // works; output 27 x 27
+             // var2(u,u,defG,mmreshape )
+        ,  pt );
+         gsInfo << "Eval:\n"<< evresult;
+         gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
 
-        //     // var2(u,u,defG,mmreshape )
-        //                                ,  pt
-        //     );
-        // gsInfo << "Eval:\n"<< evresult;
-        // gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
-
+        return 0;
+        //*/
         A.assemble(
             //tt * (
 
-            // E_m_der
-            //   * reshape(mm,3,3)
-            //     * E_m_der.tr()
-                /// in this thing, the flat expression causes trouble. It provides a colSpan instead of a rowSpan.
-            // +
-
+            E_m_der
+            * reshape(mm,3,3)
+            * E_m_der.tr()
+            /// in this thing, the flat expression causes trouble. It provides a colSpan instead of a rowSpan.
+            +
             E_f_der
-              * reshape(mm,3,3)
-                * E_f_der.tr()
-                    // ), - u * ff
+            * reshape(mm,3,3)
+            * E_f_der.tr()
+            // ), - u * ff
             );
 
         //A.assemble( var1(u,G) * var1(u,G).tr() );
@@ -901,4 +925,3 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 
 }// end main
-

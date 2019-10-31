@@ -1458,6 +1458,13 @@ template <typename E> EIGEN_STRONG_INLINE
 replicate_expr<E> const replicate(E const & u, index_t n, index_t m = 1)
 { return replicate_expr<E>(u, n, m); }
 
+/**
+  Transforms a matrix expression into a vector expression by computing the vector
+  [ a b c+d]^T
+  for each matrix block
+  [ a d ]
+  [ c b ]
+*/
 template<class E>
 class flat_expr  : public _expr<flat_expr<E> >
 {
@@ -1488,10 +1495,19 @@ public:
             tmp(0,2*i+1) += tmp(1,2*i);
             std::swap(tmp(1,2*i), tmp(1,2*i+1));
         }
-        tmp.resize(numActives,4);
-        tmp.conservativeResize(numActives,3);
-        gsDebugVar(rowSpan());
-        gsDebugVar(colSpan());
+
+        tmp.resize(4,numActives);
+        tmp.conservativeResize(3,numActives);
+
+        //tmp.resize(numActives,4);
+        //tmp.conservativeResize(numActives,3);
+
+
+        // gsDebugVar(rowSpan());
+        // gsDebugVar(colSpan());
+        if ( rowSpan() )
+            tmp.transposeInPlace();
+
         return tmp;
     }
 
