@@ -28,7 +28,7 @@ void gsDofMapper::localToGlobal(const gsMatrix<index_t>& locals,
                                 index_t patchIndex,
                                 gsMatrix<index_t>& globals) const
 {
-    GISMO_ASSERT( locals.cols() == 1, "localToGlobal: Expecting one column of locals");
+    GISMO_ASSERT( locals.cols() == 1, "localToGlobal: Expecting one column of locals, got " << locals.cols() << ".");
     const index_t numActive = locals.rows();
     globals.resize(numActive,1);
 
