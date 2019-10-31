@@ -1507,6 +1507,8 @@ public:
         // gsDebugVar(colSpan());
         if ( rowSpan() )
             tmp.transposeInPlace();
+        else if (!colSpan()) // if not colSpan and not rowSpan
+            tmp.transposeInPlace(); 
 
         return tmp;
     }
