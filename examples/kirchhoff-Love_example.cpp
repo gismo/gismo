@@ -558,6 +558,8 @@ public:
                 res(i,j) = ( eA.middleCols(i*Ac,Ac) * eB.middleCols(j*Bc,Bc) ).sum();
             }
 
+        gsDebugVar(rowSpan());
+        gsDebugVar(colSpan());
         return res;
     }
 
@@ -610,11 +612,8 @@ class gsMaterialMatrix;
 
 //! [Include namespace]
 
-// // To Do:
-// // * Add m_YoungsModulus and m_PoissonRatio as gsExpressions so that they can be different everywhere.
-// // * Mutables for the matrices?
-// // * Flags are correct?
-// // * struct for material model
+// To Do:
+// * struct for material model
 // Input is parametric coordinates of the surface \a mp
 template <class T>
 class gsMaterialMatrix : public gismo::gsFunction<T>
@@ -706,11 +705,6 @@ public:
             C(2,0) =
             C(0,2) = C_constant*F0(0,0)*F0(0,1) + 2*mu*(2*F0(0,0)*F0(0,1));
             C(2,1) = C(1,2) = C_constant*F0(0,1)*F0(1,1) + 2*mu*(2*F0(0,1)*F0(1,1));
-
-            // C.setZero();
-            // C(0,0) = 1.;
-            // C(1,1) = 1.;
-            // C(2,2) = 1.;
 
             //gsDebugVar(C);
         }
@@ -850,7 +844,7 @@ int main(int argc, char *argv[])
                 mm      the material matrix,
                 m2      an auxillary matrix to multiply the last row of a tensor with 2
         **/
-        auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ); //[checked]
+        auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ;
         auto E_m_der = flat( jac(defG).tr() * jac(u) ) ; //[checked]
         auto E_m_der2 = flatdot( jac(u).tr(),jac(u), E_m * reshape(mm,3,3) );
 
@@ -859,31 +853,24 @@ int main(int argc, char *argv[])
         auto E_f_der2 = flatdot( deriv2(u).tr(), replicate( var1(u,defG).tr(), 1, 3), E_f * reshape(mm,3,3)  ).symmetrize()
                             + var2(u,u,defG,E_f * reshape(mm,3,3));
 
-        //A.assemble( tt * ( E_m.tr() * reshape(mm,3,3) * E_m_der2 + E_m_der.tr() * reshape(mm,3,3) * E_m_der ) +
-        //             (tt*tt*tt/3.0) *( E_f * mm * E_f_der2 + E_f_der * mm * E_f_der ), // Matrix
-
-        //             tt * ( E_m * mm * E_m_der ) + (tt*tt*tt/3.0) *( E_f * mm * E_f_der )  // Rhs
-        //             - u * ff.tr()
-        //     );
-
+        
         /*
-         gsVector<> pt(2); pt.setConstant(0.5);
-         gsMatrix<> evresult = ev.eval(
-             // E_m              // works; output 1 x 3
-             E_m_der          // works; output 27 x 3
-             // E_m_der2         // works; output 27 x 27
-             // E_f              // works; output 1 x 3
-             // E_f_der          // works; output  27 x 3
-             // E_f_der2         // works; output 27 x 27
-             // var2(u,u,defG,mmreshape )
+        gsVector<> pt(2); pt.setConstant(0.5);
+        gsMatrix<> evresult = ev.eval(
+         // E_m              // works; output 1 x 3
+         // E_m_der          // works; output 27 x 3
+         // E_m_der2         // works; output 27 x 27 -------> COLSPAN = ROWSPAN = false??
+         // E_f              // works; output 1 x 3
+         // E_f_der          // works; output  27 x 3
+         // E_f_der2         // works; output 27 x 27 -------> MEMORY LEAKS! -------> COLSPAN = ROWSPAN = true
         ,  pt );
-         gsInfo << "Eval:\n"<< evresult;
-         gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
+        gsInfo << "Eval:\n"<< evresult;
+        gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
 
         return 0;
-        //*/
+        // */
         A.assemble(
-            //tt * (
+        //     //tt * (
 
             E_m_der
             * reshape(mm,3,3)
@@ -892,23 +879,20 @@ int main(int argc, char *argv[])
             +
             E_f_der
             * reshape(mm,3,3)
-            * E_f_der.tr()
-            // ), - u * ff
+            * E_f_der.tr() 
+            // +  E_m_der2 // does not work.. colspan=rowspan=false
+            // +  
+            // E_f_der2 // does not work.. bad_aoc
+        //     ,- u * ff
             );
 
-        //A.assemble( var1(u,G) * var1(u,G).tr() );
+        // A.assemble( ( E_m_der2.tr() + E_m_der * reshape(mm,3,3) * E_m_der.tr() ) +
+        //             ( E_f_der2.tr() + E_f_der * reshape(mm,3,3) * E_f_der.tr() ) // Matrix
+                    //,
+                             // ( E_m * mm * E_m_der.tr() ) + ( E_f * mm * E_f_der.tr() )  // Rhs
+                            // - u * ff.tr()
+                    // );
 
-        //A.assemble( var1(u,G)[0] );
-
-        //A.assemble( deriv2(u) * var1(u,G).tr() ); // see comment 1
-
-        //A.assemble( var2(u,u,G)[0] );
-
-        // auto snormal = sn(G);
-
-        // A.assemble( hessdot(u, vff )[0] ); // .normalized()
-
-        //A.assemble( hessdot(u, var1(u,G)) );
 
 
         gsInfo<<"RHS rows = "<<A.rhs().rows()<<"\n";
@@ -925,3 +909,133 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 
 }// end main
+
+// To Do:
+// * struct for material model
+// Input is parametric coordinates of the surface \a mp
+template <class T>
+class gsMaterialMatrixIncompressible : public gismo::gsFunction<T>
+{
+  // Computes the material matrix for different material models
+  //
+protected:
+    const gsFunctionSet<T> * _mp;
+    const gsFunction<T> * _par1;
+    // const gsFunction<T> * _par2;
+    const gsFunctionSet<T> * _mp_def;
+    mutable gsMapData<T> _tmp;
+    mutable gsMapData<T> _tmp_def;
+    mutable gsMatrix<real_t,3,3> F0;
+    mutable gsMatrix<T> par1mat,par2mat;
+    mutable real_t lambda, mu, E, nu, C_constant;
+
+public:
+    /// Shared pointer for gsMaterialMatrixIncompressible
+    typedef memory::shared_ptr< gsMaterialMatrixIncompressible > Ptr;
+
+    /// Unique pointer for gsMaterialMatrixIncompressible
+    typedef memory::unique_ptr< gsMaterialMatrixIncompressible > uPtr;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    gsMaterialMatrixIncompressible( const gsFunctionSet<T> & mp, 
+                                    const gsFunction<T> & par1,
+                                    // const gsFunction<T> & par2, 
+                                    const gsFunctionSet<T> & mp_def) : // deformed multipatch
+    _mp(&mp), 
+    _par1(&par1),
+    // _par2(&par2), 
+    _mp_def(mp_def), 
+    _mm_piece(nullptr)
+    {
+        _tmp.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
+        _tmp_def.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
+    }
+
+    ~gsMaterialMatrixIncompressible() { delete _mm_piece; }
+
+    GISMO_CLONE_FUNCTION(gsMaterialMatrixIncompressible)
+
+    short_t domainDim() const {return 2;}
+
+    short_t targetDim() const {return 9;}
+
+    mutable gsMaterialMatrixIncompressible<T> * _mm_piece; // todo: improve the way pieces are accessed
+
+    const gsFunction<T> & piece(const index_t k) const
+    {
+        delete _mm_piece;
+        // _mm_piece = new gsMaterialMatrixIncompressible(_mp->piece(k), *_par1, *_par2, _mp_def.piece(k) );
+        _mm_piece = new gsMaterialMatrixIncompressible(_mp->piece(k), *_par1, _mp_def.piece(k) );
+        return *_mm_piece;
+    }
+
+    // Input is parametric coordinates of the surface \a mp
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        // NOTE 1: if the input \a u is considered to be in physical coordinates
+        // then we first need to invert the points to parameter space
+        // _mp.patch(0).invertPoints(u, _tmp.points, 1e-8)
+        // otherwise we just use the input paramteric points
+        _tmp.points = u;
+        _tmp_def.points = u;
+
+        static_cast<const gsFunction<T>*>(_mp)->computeMap(_tmp);
+        static_cast<const gsFunction<T>*>(_mp_def)->computeMap(_tmp_def);
+
+        // NOTE 2: in the case that parametric value is needed it suffices
+        // to evaluate Youngs modulus and Poisson's ratio at
+        // \a u instead of _tmp.values[0].
+        _par1->eval_into(_tmp.values[0], par1mat);
+        // _par2->eval_into(_tmp.values[0], par2mat);
+
+        result.resize( targetDim() , u.cols() );
+        for( index_t i=0; i< u.cols(); ++i )
+        {
+            gsAsMatrix<T, Dynamic, Dynamic> C = result.reshapeCol(i,3,3);
+
+            F0.leftCols(2) = _tmp.jacobian(i);
+            F0.col(2)      = _tmp.normal(i).normalized();
+            F0 = F0.inverse();
+            F0 = F0 * F0.transpose(); //3x3
+
+            // Evaluate material properties on the quadrature point
+            E = Emat(0,i);
+            nu = Nmat(0,i);
+            lambda = E * nu / ( (1. + nu)*(1.-2.*nu)) ;
+            mu     = E / (2.*(1. + nu)) ;
+
+            C_constant = 4*lambda*mu/(lambda+2*mu);
+
+            C(0,0) = C_constant*F0(0,0)*F0(0,0) + 2*mu*(2*F0(0,0)*F0(0,0));
+            C(1,1) = C_constant*F0(1,1)*F0(1,1) + 2*mu*(2*F0(1,1)*F0(1,1));
+            C(2,2) = C_constant*F0(0,1)*F0(0,1) + 2*mu*(F0(0,0)*F0(1,1) + F0(0,1)*F0(0,1));
+            C(1,0) =
+            C(0,1) = C_constant*F0(0,0)*F0(1,1) + 2*mu*(2*F0(0,1)*F0(0,1));
+            C(2,0) =
+            C(0,2) = C_constant*F0(0,0)*F0(0,1) + 2*mu*(2*F0(0,0)*F0(0,1));
+            C(2,1) = C(1,2) = C_constant*F0(0,1)*F0(1,1) + 2*mu*(2*F0(0,1)*F0(1,1));
+
+            //gsDebugVar(C);
+
+
+
+            // for completeness, the computation of variable S^\alpha\beta is given here, commented. It should be implemented later in a separate class or function
+            /* TRANSFORM JACOBIANS!!
+            mu = par1mat(0,i);
+            jacGdef = _tmp_def.jacobian(i);
+            jacGdef = jacGdef.transpose() * jacGdef; // CHECK TRANSPOSE
+            jacGori = _tmp_def.jacobian(i);
+            jacGori = jacGori.transpose() * jacGori; // CHECK TRANSPOSE
+            J0 = math::sqrt( jacGdef.determinant() / jacGori.determinant() );
+            Sab = mu * (jacGori - math::pow(J0,-2.) * jacGdef );
+
+            C is
+            mu * math::pow(J0,-2.) * ( 2 *  )
+            */
+        }
+    }
+
+    // piece(k) --> for patch k
+
+};
