@@ -135,8 +135,8 @@ public:
 
     mutable gsMatrix<Scalar> res;
 
-    mutable gsMatrix<Scalar> uGrads, vGrads, cJac, cDer2, evEf;
-    mutable gsVector<Scalar,3> m_u, m_v, normal, m_uv, m_u_der, n_der, n_der2, tmp;
+    mutable gsMatrix<Scalar> uGrads, vGrads, cJac, cDer2, evEf, result;
+    mutable gsVector<Scalar> m_u, m_v, normal, m_uv, m_u_der, n_der, n_der2, tmp; // memomry leaks when gsVector<T,3>, i.e. fixed dimension
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     // helper function
@@ -147,7 +147,7 @@ public:
         return result;
     }
 
-    MatExprType eval(const index_t k) const
+    const gsMatrix<Scalar> & eval(const index_t k) const
     {
         res.resize(_u.cardinality(), _u.cardinality());
 
@@ -156,6 +156,8 @@ public:
         vGrads = _v.data().values[1].col(k);
         cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
         cDer2 = _G.data().values[2].reshapeCol(k, _G.data().dim.second, _G.data().dim.second);
+
+        // debug with setZero(dim.first, etc..) and see if error is still there
 
         const index_t cardU = _u.data().values[0].rows(); // number of actives per component of u
         const index_t cardV = _v.data().values[0].rows(); // number of actives per component of v
@@ -182,7 +184,7 @@ public:
                         n_der = (m_v - ( normal.dot(m_v) ) * normal);
 
                         m_uv.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( vecFun(c, vGrads.at(2*i+1) ) )
-                                       - vecFun(d, uGrads.at(2*j+1) ).cross( vecFun(c, vGrads.at(2*i  ) ) ) / measure;
+                                       - vecFun(d, uGrads.at(2*j+1) ).cross( vecFun(c, vGrads.at(2*i  ) ) ) / measure; //check
 
                         m_u_der.noalias() = (m_uv - ( normal.dot(m_v) ) * m_u);
 
@@ -190,7 +192,7 @@ public:
                         tmp = m_u_der - (m_u.dot(n_der) + normal.dot(m_u_der) ) * normal - (normal.dot(m_u) ) * n_der;
 
                         // Evaluate the product
-                        gsMatrix<> result = evEf * (cDer2 * tmp);
+                        result = evEf * (cDer2 * tmp);
                         res(s + j, r + i ) = result(0,0);
                     }
                 }
@@ -224,8 +226,8 @@ public:
         _Ef.setFlag();
     }
 
-    const gsFeSpace<Scalar> & rowVar() const { true; }
-    const gsFeSpace<Scalar> & colVar() const { true; }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
 
     static constexpr bool rowSpan() {return true; }
     static constexpr bool colSpan() {return true; }
@@ -252,7 +254,7 @@ public:
 
     mutable gsMatrix<Scalar> res,tmp, vEv;
 
-    const gsMatrix<Scalar> & eval(const index_t k) const { return eval_impl(_u,k); }
+    const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
 
     index_t rows() const
     {
@@ -374,6 +376,7 @@ public:
         //gsDebugVar(_u.targetDim());
         //const index_t c = _u.cardinality() / _u.targetDim();
         res = _u.data().values[2].blockDiag(_u.targetDim());
+        // res = _u.data().values[2].col(k).transpose().blockDiag(_u.targetDim()); // analoguous to jacobian..
         return res;
     }
 
@@ -401,12 +404,12 @@ public:
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
 
     index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
-    static constexpr bool rowSpan() {return E::rowSpan(); }
-    static constexpr bool colSpan() {return E::rowSpan();}
+    static constexpr bool rowSpan() {return E::rowSpan();}
+    static constexpr bool colSpan() {return E::colSpan();}
 
     void print(std::ostream &os) const { os << "deriv2("; _u.print(os); os <<")"; }
 };
@@ -485,7 +488,7 @@ public:
 /**
    Takes
    A: rowspace
-   B: rowspace
+   B: colspace
    C: vector
 
    and computes
@@ -515,11 +518,11 @@ public:
 
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
-        const index_t Ac = _A.cols();
-        //const index_t Ar = _A.rows();
+        // const index_t Ac = _A.cols();
+        const index_t Ar = _A.rows();
         const index_t An = _A.cardinality();
         const index_t Bc = _B.cols();
-        //const index_t Br = _B.rows();
+        // const index_t Br = _B.rows();
         const index_t Bn = _B.cardinality();
 
         MatExprType eA = _A.eval(k);
@@ -528,38 +531,32 @@ public:
         // multiply by C
         const MatExprType eC = _C.eval(k);
 
-        // gsDebugVar(Ac);
-        // gsDebugVar(Ar);
-        // gsDebugVar(An);
-        // gsDebugVar(Bc);
-        // gsDebugVar(Br);
-        // gsDebugVar(Bn);
-        // gsDebugVar(eB);
-        // gsDebugVar(eC);
+        gsDebugVar(eA);
+        gsDebugVar(eB);
 
-        GISMO_ASSERT(eB.rows()==Ac, "Dimensions: "<<eB.rows()<<","<< Ac<< "do not match");
+        gsDebugVar(_A.rowSpan());
+        gsDebugVar(_A.colSpan());
+
+        gsDebugVar(eA.rows());
+        gsDebugVar(eA.cols());
+        gsDebugVar(_A.rows());
+        gsDebugVar(_A.cols());
+
+        GISMO_ASSERT(Bc==Ar, "Dimensions: "<<Bc<<","<< Ar<< "do not match");
+        GISMO_ASSERT(Bc==Ar, "Dimensions: "<<Bc<<","<< Ar<< "do not match");
+        GISMO_ASSERT(_A.rowSpan(), "First entry should be rowSpan");
+        GISMO_ASSERT(_B.colSpan(), "Second entry should be colSpan.");
 
         for (index_t i = 0; i!=An; ++i)
-        {
-            // gsDebugVar(eA(0,2*i  ));
-            // gsDebugVar(eA(0,2*i+1));
-            // gsDebugVar(eC);
-
-            eA(0,2*i  ) *= eC(0);
-            eA(1,2*i+1) *= eC(1);
-            eA(1,2*i)   *= eC(2);
-            eA(0,2*i+1) *= eC(2);
-        }
+            for (index_t j = 0; j!=Ar; ++j)
+                eA.row(i*Ar+j) *= eC(j);    
 
         res.resize(An, Bn);
         for (index_t i = 0; i!=An; ++i)
             for (index_t j = 0; j!=Bn; ++j)
             {
-                res(i,j) = ( eA.middleCols(i*Ac,Ac) * eB.middleCols(j*Bc,Bc) ).sum();
+                res(i,j) = ( eA.middleRows(i*Ar,Ar) * eB.middleCols(j*Bc,Bc) ).sum();
             }
-
-        gsDebugVar(rowSpan());
-        gsDebugVar(colSpan());
         return res;
     }
 
@@ -575,7 +572,7 @@ public:
     index_t cardinality_impl() const { return _A.cardinality_impl(); }
 
     static constexpr bool rowSpan() {return E1::rowSpan();}
-    static bool colSpan() {return E2::colSpan();}
+    static constexpr bool colSpan() {return E2::colSpan();}
 
     void print(std::ostream &os) const { os << "flatdot("; _A.print(os);_B.print(os);_C.print(os); os<<")"; }
 };
@@ -846,23 +843,24 @@ int main(int argc, char *argv[])
         **/
         auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ;
         auto E_m_der = flat( jac(defG).tr() * jac(u) ) ; //[checked]
-        auto E_m_der2 = flatdot( jac(u).tr(),jac(u), E_m * reshape(mm,3,3) );
+        auto E_m_der2 = flatdot( jac(u).tr(),jac(u), E_m * reshape(mm,3,3) ); // change jac(u), jac(u).tr()
 
         auto E_f = ( deriv2(defG,sn(defG).normalized().tr()) - deriv2(G,sn(G).normalized().tr()) ) * reshape(m2,3,3) ;//[checked]
         auto E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,G) ) ) * reshape(m2,3,3);
-        auto E_f_der2 = flatdot( deriv2(u).tr(), replicate( var1(u,defG).tr(), 1, 3), E_f * reshape(mm,3,3)  ).symmetrize()
-                            + var2(u,u,defG,E_f * reshape(mm,3,3));
+        auto E_f_der2 = flatdot( deriv2(u), replicate( var1(u,defG), 3, 1).tr(), E_f * reshape(mm,3,3)  ).symmetrize()
+                            + var2(u,u,defG,E_f * reshape(mm,3,3) );
 
         
-        /*
+        // /*
         gsVector<> pt(2); pt.setConstant(0.5);
         gsMatrix<> evresult = ev.eval(
          // E_m              // works; output 1 x 3
          // E_m_der          // works; output 27 x 3
-         // E_m_der2         // works; output 27 x 27 -------> COLSPAN = ROWSPAN = false??
+         // E_m_der2         // works; output 27 x 27 -------> problem: transpose transposes block matrices but still stores over the rows for jac(u). For all other entries, tr() transposes the whole matrix....
          // E_f              // works; output 1 x 3
          // E_f_der          // works; output  27 x 3
-         // E_f_der2         // works; output 27 x 27 -------> MEMORY LEAKS! -------> COLSPAN = ROWSPAN = true
+         E_f_der2         // works; output 27 x 27
+            // deriv2(u).tr()          
         ,  pt );
         gsInfo << "Eval:\n"<< evresult;
         gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
@@ -872,17 +870,18 @@ int main(int argc, char *argv[])
         A.assemble(
         //     //tt * (
 
-            E_m_der
-            * reshape(mm,3,3)
-            * E_m_der.tr()
+            // E_m_der
+            // * reshape(mm,3,3)
+            // * E_m_der.tr()
             /// in this thing, the flat expression causes trouble. It provides a colSpan instead of a rowSpan.
-            +
-            E_f_der
-            * reshape(mm,3,3)
-            * E_f_der.tr() 
+            // +
+            // E_f_der
+            // * reshape(mm,3,3)
+            // * E_f_der.tr() 
             // +  E_m_der2 // does not work.. colspan=rowspan=false
             // +  
-            // E_f_der2 // does not work.. bad_aoc
+            // E_f_der2 // does not work.. bad_aloc
+            E_m_der2
         //     ,- u * ff
             );
 
