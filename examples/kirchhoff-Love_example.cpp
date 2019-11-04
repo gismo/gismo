@@ -716,7 +716,7 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot = false;
     index_t numRefine  = 1;
-    index_t numElevate = 0;
+    index_t numElevate = 1;
     bool last = false;
     std::string fn("pde/poisson2d_bvp.xml");
 
@@ -733,17 +733,17 @@ int main(int argc, char *argv[])
 
     //! [Read input file]
 
-    gsFileData<> fd(fn);
-    gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
+    // gsFileData<> fd(fn);
+    // gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
 
     gsMultiPatch<> mp;
 
     // Annulus
-    fd.getId(0, mp); // id=0: Multipatch domain
+    // fd.getId(0, mp); // id=0: Multipatch domain
 
     // Unit square
-    // mp.addPatch( gsNurbsCreator<>::BSplineSquare(numElevate+1) ); // degree
-
+    mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
+    mp.addAutoBoundaries();
 
 
     //! [Read input file]
@@ -756,15 +756,20 @@ int main(int argc, char *argv[])
     dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
 
     // h-refine each basis
-    if (last)
-    {
-        for (int r =0; r < numRefine-1; ++r)
+    for (int r =0; r < numRefine-1; ++r)
             dbasis.uniformRefine();
-        numRefine = 0;
-    }
 
     mp.embed(3);
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
+
+    gsBoundaryConditions<> bc;
+    for (index_t i=0; i!=3; ++i)
+    {
+        bc.addCondition(boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
+        bc.addCondition(boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z    
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z    
+    }
     //! [Refinement]
 
     //! [Problem setup]
@@ -787,6 +792,7 @@ int main(int argc, char *argv[])
     // Set the discretization space
     space u = A.getSpace(dbasis, 3);
     u.setInterfaceCont(0);
+    u.addBc( bc.get("Dirichlet") );
 
     // Solution vector and solution variable
     gsMatrix<> solVector, vec3(3,1); vec3.setZero();
@@ -803,10 +809,12 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> mult2t("1","0","0","0","1","0","0","0","2",3);
     variable m2 = A.getCoeff(mult2t, G);
 
-    gsFunctionExpr<> thickness("1", 2);
-    variable tt = A.getCoeff(thickness);
+    // gsFunctionExpr<> thickness("1.0", 2);
+    // variable tt = A.getCoeff(thickness);
+    // TEMPORARILY!!
+    real_t tt = 0.5;
 
-    gsFunctionExpr<> force("0","0""1", 3);
+    gsFunctionExpr<> force("0","0","1", 3);
     variable ff = A.getCoeff(force, G);
 
     gsSparseSolver<>::CGDiagonal solver;
@@ -814,96 +822,99 @@ int main(int argc, char *argv[])
     //! [Problem setup]
 
     //! [Solver loop]
-    gsVector<> l2err(numRefine+1), h1err(numRefine+1);
-    gsInfo<< "(dot1=assembled, dot2=solved, dot3=got_error)\n"
-        "\nDoFs: ";
-    for (int r=0; r<=numRefine; ++r)
+
+    // Initialize the system
+    A.initSystem();
+
+    gsInfo<< A.numDofs() <<"\n"<<std::flush;
+
+    /*
+        We provide the following functions:
+            E_m         membrane strain tensor.
+            E_m_der     first variation of E_m.
+            E_m_der2    second variation of E_m MULTIPLIED BY S_m.
+            E_f         flexural strain tensor.
+            E_f_der     second variation of E_f.
+            E_f_der2    second variation of E_f MULTIPLIED BY S_f.
+
+        Where:
+            G       the undeformed geometry,
+            defG    the deformed geometry,
+            mm      the material matrix,
+            m2      an auxillary matrix to multiply the last row of a tensor with 2
+    **/
+    auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ;
+    auto E_m_der = flat( jac(defG).tr() * jac(u) ) ; //[checked]
+    auto E_m_der2 = flatdot( jac(u).tr(),jac(u), E_m * reshape(mm,3,3) ); // change jac(u), jac(u).tr()
+
+    auto E_f = ( deriv2(defG,sn(defG).normalized().tr()) - deriv2(G,sn(G).normalized().tr()) ) * reshape(m2,3,3) ;//[checked]
+    auto E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,G) ) ) * reshape(m2,3,3);
+    auto E_f_der2 = flatdot( deriv2(u), replicate( var1(u,defG), 3, 1).tr(), E_f * reshape(mm,3,3)  ).symmetrize()
+                        + var2(u,u,defG,E_f * reshape(mm,3,3) );
+
+    /*
+    gsVector<> pt(2); pt.setConstant(0.5);
+    gsMatrix<> evresult = ev.eval(
+     // E_m              // works; output 1 x 3
+     // E_m_der          // works; output 27 x 3
+     // E_m_der2         // works; output 27 x 27 -------> problem: transpose transposes block matrices but still stores over the rows for jac(u). For all other entries, tr() transposes the whole matrix....
+     // E_f              // works; output 1 x 3
+     // E_f_der          // works; output  27 x 3
+     // E_f_der2         // works; output 27 x 27
+        // deriv2(u).tr()          
+        tt * E_m_der * reshape(mm,3,3) * E_m_der.tr()
+        // - u * ff
+    ,  pt );
+    gsInfo << "Eval:\n"<< evresult;
+    gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
+
+    return 0;
+    // */
+    A.assemble(
+    //     //tt * (
+        tt * E_m_der * reshape(mm,3,3) * E_m_der.tr()
+        +
+        math::pow(tt,3)/3.0 * E_f_der * reshape(mm,3,3) * E_f_der.tr() 
+        // +  E_m_der2 // does not work.. colspan=rowspan=false
+        // +  
+        // E_f_der2
+        ,- u * ff
+        );
+
+    // A.assemble( ( E_m_der2.tr() + E_m_der * reshape(mm,3,3) * E_m_der.tr() ) +
+    //             ( E_f_der2.tr() + E_f_der * reshape(mm,3,3) * E_f_der.tr() ) // Matrix
+                //,
+                         // ( E_m * mm * E_m_der.tr() ) + ( E_f * mm * E_f_der.tr() )  // Rhs
+                        // - u * ff.tr()
+                // );
+
+
+
+    gsInfo<<"RHS rows = "<<A.rhs().rows()<<"\n";
+    gsInfo<<"RHS cols = "<<A.rhs().cols()<<"\n";
+    gsInfo<<"MAT rows = "<<A.matrix().rows()<<"\n";
+    gsInfo<<"MAT cols = "<<A.matrix().cols()<<"\n";
+
+    gsInfo<< A.rhs().transpose() <<"\n";
+    gsInfo<< A.matrix().toDense()<<"\n";
+
+    solver.compute( A.matrix() );
+    solVector = solver.solve(A.rhs());
+
+    // ADD BOUNDARY CONDITIONS! (clamped will be tricky..............)
+
+
+    //! [Export visualization in ParaView]
+    if (plot)
     {
-        dbasis.uniformRefine();
+        gsInfo<<"Plotting in Paraview...\n";
+        ev.options().setSwitch("plot.elements", true);
+        ev.writeParaview( u_sol   , G, "solution");
+        //ev.writeParaview( u_ex    , G, "solution_ex");
+        //ev.writeParaview( u, G, "aa");
 
-        // Initialize the system
-        A.initSystem();
-
-        gsInfo<< A.numDofs() <<"\n"<<std::flush;
-
-        /*
-            We provide the following functions:
-                E_m         membrane strain tensor.
-                E_m_der     first variation of E_m.
-                E_m_der2    second variation of E_m MULTIPLIED BY S_m.
-                E_f         flexural strain tensor.
-                E_f_der     second variation of E_f.
-                E_f_der2    second variation of E_f MULTIPLIED BY S_f.
-
-            Where:
-                G       the undeformed geometry,
-                defG    the deformed geometry,
-                mm      the material matrix,
-                m2      an auxillary matrix to multiply the last row of a tensor with 2
-        **/
-        auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ;
-        auto E_m_der = flat( jac(defG).tr() * jac(u) ) ; //[checked]
-        auto E_m_der2 = flatdot( jac(u).tr(),jac(u), E_m * reshape(mm,3,3) ); // change jac(u), jac(u).tr()
-
-        auto E_f = ( deriv2(defG,sn(defG).normalized().tr()) - deriv2(G,sn(G).normalized().tr()) ) * reshape(m2,3,3) ;//[checked]
-        auto E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,G) ) ) * reshape(m2,3,3);
-        auto E_f_der2 = flatdot( deriv2(u), replicate( var1(u,defG), 3, 1).tr(), E_f * reshape(mm,3,3)  ).symmetrize()
-                            + var2(u,u,defG,E_f * reshape(mm,3,3) );
-
-        
-        // /*
-        gsVector<> pt(2); pt.setConstant(0.5);
-        gsMatrix<> evresult = ev.eval(
-         // E_m              // works; output 1 x 3
-         // E_m_der          // works; output 27 x 3
-         // E_m_der2         // works; output 27 x 27 -------> problem: transpose transposes block matrices but still stores over the rows for jac(u). For all other entries, tr() transposes the whole matrix....
-         // E_f              // works; output 1 x 3
-         // E_f_der          // works; output  27 x 3
-         E_f_der2         // works; output 27 x 27
-            // deriv2(u).tr()          
-        ,  pt );
-        gsInfo << "Eval:\n"<< evresult;
-        gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
-
-        return 0;
-        // */
-        A.assemble(
-        //     //tt * (
-
-            // E_m_der
-            // * reshape(mm,3,3)
-            // * E_m_der.tr()
-            /// in this thing, the flat expression causes trouble. It provides a colSpan instead of a rowSpan.
-            // +
-            // E_f_der
-            // * reshape(mm,3,3)
-            // * E_f_der.tr() 
-            // +  E_m_der2 // does not work.. colspan=rowspan=false
-            // +  
-            // E_f_der2 // does not work.. bad_aloc
-            E_m_der2
-        //     ,- u * ff
-            );
-
-        // A.assemble( ( E_m_der2.tr() + E_m_der * reshape(mm,3,3) * E_m_der.tr() ) +
-        //             ( E_f_der2.tr() + E_f_der * reshape(mm,3,3) * E_f_der.tr() ) // Matrix
-                    //,
-                             // ( E_m * mm * E_m_der.tr() ) + ( E_f * mm * E_f_der.tr() )  // Rhs
-                            // - u * ff.tr()
-                    // );
-
-
-
-        gsInfo<<"RHS rows = "<<A.rhs().rows()<<"\n";
-        gsInfo<<"RHS cols = "<<A.rhs().cols()<<"\n";
-        gsInfo<<"MAT rows = "<<A.matrix().rows()<<"\n";
-        gsInfo<<"MAT cols = "<<A.matrix().cols()<<"\n";
-
-        gsInfo<< A.rhs().transpose() <<"\n";
-        gsInfo<< A.matrix().toDense().diagonal().transpose() <<"\n";
-
-    } //for loop
-
+        // gsFileManager::open("solution.pvd");
+    }
 
     return EXIT_SUCCESS;
 
