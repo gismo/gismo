@@ -132,7 +132,7 @@ void gsGeometry<T>::evaluateMesh(gsMesh<T>& mesh) const
     for (size_t i = 0; i!= mesh.numVertices(); ++i)
     {
         eval_into( mesh.vertex(i).topRows(pDim), tmp );
-        mesh.vertex(i).topRows( gDim ) = tmp;
+        mesh.vertex(i).bottomRows( gDim ) = tmp;
     }
 }
 template<class T>
