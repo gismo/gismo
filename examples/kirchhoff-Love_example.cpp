@@ -57,6 +57,7 @@ public:
         res.resize(A*_u.targetDim(), cols()); // rows()*
 
         normal = _G.data().normal(k);// not normalized to unit length
+        normal.normalize();
         bGrads = _u.data().values[1].col(k);
         cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
         const Scalar measure =  _G.data().measures.at(k);
@@ -68,12 +69,15 @@ public:
             {
                 // Jac(u) ~ Jac(G) with alternating signs ?..
                 m_v.noalias() = (vecFun(d, bGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
-                              - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() )) / measure;
+                              - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() ));
 
                 // ---------------  First variation of the normal
-                res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
+                res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose() / measure;
             }
         }
+
+        // gsDebugVar(cJac.col(0).template head<3>());
+        // gsDebugVar(cJac.col(1).template head<3>());
 
         // gsDebugVar(res.rows());
         // gsDebugVar(res.cols());
@@ -303,9 +307,9 @@ private:
 
 
         // evaluate the geometry map of U
-        tmp =_u.data().values[2].reshapeCol(k, _u.data().dim.second, cols() ).transpose();
+        tmp =_u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second );
         vEv = _v.eval(k);
-        res = vEv * tmp;
+        res = vEv * tmp.transpose();
         return res;
     }
 
@@ -322,8 +326,9 @@ private:
         const index_t numAct = u.data().values[0].rows();   // number of actives of a basis function
         const index_t cardinality = u.cardinality();        // total number of actives (=3*numAct)
         res.resize(rows()*cardinality, cols() );
-        tmp =_u.data().values[2].reshapeCol(k, numAct , cols() );
+        tmp.transpose() =_u.data().values[2].reshapeCol(k, cols(), numAct );
         vEv = _v.eval(k);
+
         for (index_t i = 0; i!=_u.dim(); i++)
             res.block(i*numAct, 0, numAct, cols() ) = tmp * vEv.at(i);
 
@@ -717,13 +722,19 @@ int main(int argc, char *argv[])
     bool plot = false;
     index_t numRefine  = 1;
     index_t numElevate = 1;
+    index_t testCase = 1;
     bool last = false;
     std::string fn("pde/poisson2d_bvp.xml");
+
+    real_t E_modulus = 1.0;
+    real_t PoissonRatio = 0.0;
+    real_t thickness = 1.0;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
+    cmd.addInt( "t", "testCase", "Test case to run: 1 = unit square; 2 = Scordelis Lo Roof",  testCase );
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
@@ -732,20 +743,39 @@ int main(int argc, char *argv[])
     //! [Parse command line]
 
     //! [Read input file]
-
-    // gsFileData<> fd(fn);
-    // gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
-
     gsMultiPatch<> mp;
+    gsMultiPatch<> mp_def;
+    if (testCase==1)
+    {
+        // Unit square
+        mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
+        mp.addAutoBoundaries();
+        mp.embed(3);
+        E_modulus = 1.0;
+        thickness = 0.5;
 
-    // Annulus
-    // fd.getId(0, mp); // id=0: Multipatch domain
-
-    // Unit square
-    mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
-    mp.addAutoBoundaries();
-
-
+        mp_def = mp;
+    }
+    else if (testCase == 2)
+    { 
+        thickness = 0.125;
+        E_modulus = 4.32E8;
+        fn = "../extensions/unsupported/filedata/scordelis_lo_roof.xml";
+        gsReadFile<>(fn, mp);
+        fn = "../extensions/unsupported/filedata/scordelis_lo_roof_shallow.xml";
+        gsReadFile<>(fn, mp_def);
+    }
+    else if (testCase==9)
+    {
+        gsFileData<> fd(fn);
+        gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
+        // Annulus
+        fd.getId(0, mp); // id=0: Multipatch domain
+        mp.embed(3);
+        E_modulus = 1.0;
+        thickness = 0.5;
+        mp = mp_def;
+    }
     //! [Read input file]
 
     //! [Refinement]
@@ -759,16 +789,58 @@ int main(int argc, char *argv[])
     for (int r =0; r < numRefine-1; ++r)
             dbasis.uniformRefine();
 
-    mp.embed(3);
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
+    gsInfo << dbasis.basis(0)<<"\n";
 
     gsBoundaryConditions<> bc;
-    for (index_t i=0; i!=3; ++i)
+    gsVector<> tmp(3);
+    tmp << 0, 0, 0;
+    if (testCase == 1)
     {
-        bc.addCondition(boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
-        bc.addCondition(boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z    
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z    
+        for (index_t i=0; i!=3; ++i)
+        {
+            bc.addCondition(boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
+            bc.addCondition(boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
+            bc.addCondition(boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z    
+            bc.addCondition(boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z    
+        }
+        tmp << 0,0,-1;
+    }
+    else if (testCase == 2)
+    {
+        // Diaphragm conditions
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
+        
+        // ORIGINAL
+        // bc.addCornerValue(boundary::southwest, 0.0, 0, 0); // (corner,value, patch, unknown)
+
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
+
+        // NOT ORIGINAL
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - y
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ); // unknown 1 - y
+
+        // Surface forces
+        tmp << 0, 0, -90;
+    }
+    else if (testCase == 9)
+    {
+        for (index_t i=0; i!=3; ++i)
+        {
+            // patch 0
+            bc.addCondition(0,boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
+            // bc.addCondition(0,boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
+            bc.addCondition(0,boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z    
+            bc.addCondition(0,boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z 
+            // patch 1
+            bc.addCondition(1,boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
+            bc.addCondition(1,boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
+            bc.addCondition(1,boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z    
+            // bc.addCondition(1,boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z    
+        }
+        tmp << 0,0,-1;
     }
     //! [Refinement]
 
@@ -786,8 +858,9 @@ int main(int argc, char *argv[])
     gsExprEvaluator<> ev(A);
 
     // Set the geometry map
-    geometryMap G = A.getMap(mp);
-    geometryMap defG = G;           // defG ??????
+    geometryMap defG = A.getMap(mp_def);           // defG ?????? --------> does not work for evaluation!!
+    geometryMap G = A.getMap(mp); // the last map counts 
+    
 
     // Set the discretization space
     space u = A.getSpace(dbasis, 3);
@@ -800,8 +873,8 @@ int main(int argc, char *argv[])
 
     // gsFunctionExpr<> materialMat("1","0","0","0","1","0","0","0","1",3);
     // variable mm = A.getCoeff(materialMat, G);
-    gsFunctionExpr<> E("1.0",3);
-    gsFunctionExpr<> nu("0.0",3);
+    gsFunctionExpr<> E(std::to_string(E_modulus),3);
+    gsFunctionExpr<> nu(std::to_string(PoissonRatio),3);
     gsMaterialMatrix materialMat(mp, E, nu);
     variable mm = A.getCoeff(materialMat);
 
@@ -812,9 +885,10 @@ int main(int argc, char *argv[])
     // gsFunctionExpr<> thickness("1.0", 2);
     // variable tt = A.getCoeff(thickness);
     // TEMPORARILY!!
-    real_t tt = 0.5;
+    real_t tt = thickness;
 
-    gsFunctionExpr<> force("0","0","1", 3);
+    // gsFunctionExpr<> force("0","0","1", 3);
+    gsConstantFunction<> force(tmp,3);
     variable ff = A.getCoeff(force, G);
 
     gsSparseSolver<>::CGDiagonal solver;
@@ -844,11 +918,11 @@ int main(int argc, char *argv[])
             m2      an auxillary matrix to multiply the last row of a tensor with 2
     **/
     auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ;
-    auto E_m_der = flat( jac(defG).tr() * jac(u) ) ; //[checked]
+    auto E_m_der = flat( jac(G).tr() * jac(u) ) ; //[checked]
     auto E_m_der2 = flatdot( jac(u).tr(),jac(u), E_m * reshape(mm,3,3) ); // change jac(u), jac(u).tr()
 
     auto E_f = ( deriv2(defG,sn(defG).normalized().tr()) - deriv2(G,sn(G).normalized().tr()) ) * reshape(m2,3,3) ;//[checked]
-    auto E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,G) ) ) * reshape(m2,3,3);
+    auto E_f_der = ( deriv2(u,sn(G).normalized().tr() ) + deriv2(G,var1(u,G) ) ) * reshape(m2,3,3);
     auto E_f_der2 = flatdot( deriv2(u), replicate( var1(u,defG), 3, 1).tr(), E_f * reshape(mm,3,3)  ).symmetrize()
                         + var2(u,u,defG,E_f * reshape(mm,3,3) );
 
@@ -862,23 +936,26 @@ int main(int argc, char *argv[])
      // E_f_der          // works; output  27 x 3
      // E_f_der2         // works; output 27 x 27
         // deriv2(u).tr()          
-        tt * E_m_der * reshape(mm,3,3) * E_m_der.tr()
+        // tt * E_m_der * reshape(mm,3,3) * E_m_der.tr()
         // - u * ff
+        G
     ,  pt );
     gsInfo << "Eval:\n"<< evresult;
     gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
 
     return 0;
     // */
+    // linear case 
     A.assemble(
-    //     //tt * (
+        (
         tt * E_m_der * reshape(mm,3,3) * E_m_der.tr()
         +
         math::pow(tt,3)/3.0 * E_f_der * reshape(mm,3,3) * E_f_der.tr() 
         // +  E_m_der2 // does not work.. colspan=rowspan=false
         // +  
         // E_f_der2
-        ,- u * ff
+        ) * meas(G)
+        ,u * ff * meas(G)
         );
 
     // A.assemble( ( E_m_der2.tr() + E_m_der * reshape(mm,3,3) * E_m_der.tr() ) +
