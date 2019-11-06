@@ -723,7 +723,7 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
 	    // resolution of the mesh edges and the surface. The
 	    // additional multiplication by deg - 1 ensures quadratic
 	    // elements to be approximated by at least two lines etc.
-	    ptsPerEdge = std::max(Geo.basis().maxDegree() - 1, 1) * pow(evalPtsPerElem, 1.0/Geo.domainDim());
+	    ptsPerEdge = std::max(Geo.basis().maxDegree() - 1, 1) * math::pow(evalPtsPerElem, 1.0/Geo.domainDim());
 	}
 	else
 	{
