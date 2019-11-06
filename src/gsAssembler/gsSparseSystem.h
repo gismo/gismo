@@ -1407,8 +1407,8 @@ public: /* Add local contributions to system matrix and right-hand side */
 public:
     void pushSparse(const gsSparseMatrix<T> & localMat,
                     const gsMatrix<T> & localRhs,
-                    const gsMatrix<unsigned> & actives_i,
-                    const gsMatrix<unsigned> & actives_j,
+                    const gsMatrix<index_t> & actives_i,
+                    const gsMatrix<index_t> & actives_j,
                     const gsMatrix<T> & eliminatedDofs_j,
                     const size_t r = 0, const size_t c = 0)
     {
