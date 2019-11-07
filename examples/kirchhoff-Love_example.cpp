@@ -1311,7 +1311,7 @@ int main(int argc, char *argv[])
     auto E_f_der2 =  flatdot2( deriv2(u), var1(u,defG).tr(), E_f * reshape(mm,3,3)  ); //.symmetrize()
                         // + var2(u,u,defG,E_f * reshape(mm,3,3) );
 
-     /*
+    // /*
     gsVector<> pt(2); pt.setConstant(0.5);
     gsMatrix<> evresult = ev.eval(
      // E_m              // works; output 1 x 3
@@ -1319,11 +1319,8 @@ int main(int argc, char *argv[])
      // E_m_der2         // works; output 27 x 27
      // E_f              // works; output 1 x 3
      // E_f_der          // works; output  27 x 3
-     E_f_der2         // works; output 27 x 27
-        // deriv2(u).tr()          
-        // var1(u,G)
-        // tt * E_m_der * reshape(mm,3,3) * E_m_der.tr()
-        // - u * ff
+     // E_f_der2         // works; output 27 x 27
+        - (( E_m * reshape(mm,3,3) * E_m_der.tr() ) + ( E_f * reshape(mm,3,3) * E_f_der.tr() ) * meas(G)).tr()
     ,  pt );
     gsInfo << "Eval:\n"<< evresult;
     gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
@@ -1352,7 +1349,8 @@ int main(int argc, char *argv[])
         +
         (tt.val() * tt.val() * tt.val())/3.0 * (E_f_der * reshape(mm,3,3) * E_f_der.tr() +  E_f_der2)
         ) * meas(G)
-        ,u * ff * meas(G) // - ( E_m * reshape(mm,3,3) * E_m_der.tr() ) + ( E_f * reshape(mm,3,3) * E_f_der.tr() ) * meas(G)
+        // ,u * ff * meas(G) - 
+        ,(( E_m * reshape(mm,3,3) * E_m_der.tr() + E_f * reshape(mm,3,3) * E_f_der.tr() ) * meas(G)).tr()
         );
 
     // A.assemble( ( E_m_der2.tr() + E_m_der * reshape(mm,3,3) * E_m_der.tr() ) +
