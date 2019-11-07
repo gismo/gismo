@@ -2893,15 +2893,12 @@ public:
     const Temporary_t &
     eval(const index_t k) const
     {
-        //_u.printDetail(gsInfo);
-        //_v.printDetail(gsInfo);
         GISMO_ASSERT(0==_u.cols()*_v.rows() || _u.cols() == _v.rows(),
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.rows()<<" in * operation:\n"
                      << _u <<" times \n" << _v );
         // Note: a * b * c --> (a*b).eval()*c
         // gsDebugVar( _u.eval(k) );
         // gsDebugVar( _v.eval(k) );
-
 
         tmp = _u.eval(k) * _v.eval(k); return tmp; // assume result not scalarvalued
         //return ( _u.eval(k) * _v.eval(k) );
@@ -2976,8 +2973,8 @@ public:
         const MatExprType tmpA = _u.eval(k);
         const MatExprType tmpB = _v.eval(k);
 
-        //gsDebugVar(tmpA);
-        //gsDebugVar(tmpB);
+        // gsDebugVar(tmpA);
+        // gsDebugVar(tmpB);
         //gsDebugVar(_v.cols());
         //gsDebugVar(ur);
 
@@ -3635,6 +3632,7 @@ class symmetrize_expr : public _expr<symmetrize_expr<E> >
 
     mutable gsMatrix<typename E::Scalar> tmp;
 public:
+    enum {Space = E::Space};
     typedef typename E::Scalar Scalar;
 
     symmetrize_expr(_expr<E> const& u)

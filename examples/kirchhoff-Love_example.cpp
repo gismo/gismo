@@ -370,6 +370,7 @@ private:
     typename E::Nested_t _u;
 
 public:
+    enum {ColBlocks = E::rowSpan() };
     enum{ Space = E::Space };
 
     deriv2_expr(const E & u) : _u(u) { }
@@ -380,8 +381,8 @@ public:
     {
         //gsDebugVar(_u.targetDim());
         //const index_t c = _u.cardinality() / _u.targetDim();
-        res = _u.data().values[2].blockDiag(_u.targetDim());
-        // res = _u.data().values[2].col(k).transpose().blockDiag(_u.targetDim()); // analoguous to jacobian..
+        // res = _u.data().values[2].blockDiag(_u.targetDim());
+        res = _u.data().values[2].col(k).transpose().blockDiag(_u.targetDim()); // analoguous to jacobian..
         return res;
     }
 
@@ -491,16 +492,7 @@ public:
 
 
 /**
-   Takes
-   A: rowspace
-   B: colspace
-   C: vector
-
-   and computes
-
-   A* : B
-
-   where A* = A "hadamard" C
+   TO ADD
  */
 template<class E1, class E2, class E3>
 class flatdot_expr  : public _expr<flatdot_expr<E1,E2,E3> >
@@ -512,7 +504,7 @@ private:
     typename E1::Nested_t _A;
     typename E2::Nested_t _B;
     typename E3::Nested_t _C;
-    mutable gsMatrix<Scalar> tmpA, tmpB, tmpC, res;
+    mutable gsMatrix<Scalar> eA, eB, eC, tmp, res;
 
 public:
 
@@ -523,44 +515,42 @@ public:
 
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
-        // const index_t Ac = _A.cols();
-        const index_t Ar = _A.rows();
+        const index_t Ac = _A.cols();
         const index_t An = _A.cardinality();
         const index_t Bc = _B.cols();
-        // const index_t Br = _B.rows();
         const index_t Bn = _B.cardinality();
 
-        MatExprType eA = _A.eval(k);
-        const MatExprType eB = _B.eval(k);
-
-        // multiply by C
-        const MatExprType eC = _C.eval(k);
+        eA = _A.eval(k);
+        eB = _B.eval(k);
+        eC = _C.eval(k);
 
         gsDebugVar(eA);
         gsDebugVar(eB);
+        gsDebugVar(eC);
 
-        gsDebugVar(_A.rowSpan());
-        gsDebugVar(_A.colSpan());
+        // gsDebugVar(eA.rows());
+        // gsDebugVar(eA.cols());
+        // gsDebugVar(_A.rows());
+        // gsDebugVar(_A.cols());
+        // gsDebugVar(eB.rows());
+        // gsDebugVar(eB.cols());
+        // gsDebugVar(_B.rows());
+        // gsDebugVar(_B.cols());
 
-        gsDebugVar(eA.rows());
-        gsDebugVar(eA.cols());
-        gsDebugVar(_A.rows());
-        gsDebugVar(_A.cols());
-
-        GISMO_ASSERT(Bc==Ar, "Dimensions: "<<Bc<<","<< Ar<< "do not match");
-        GISMO_ASSERT(Bc==Ar, "Dimensions: "<<Bc<<","<< Ar<< "do not match");
+        GISMO_ASSERT(Bc==_A.rows(), "Dimensions: "<<Bc<<","<< _A.rows()<< "do not match");
         GISMO_ASSERT(_A.rowSpan(), "First entry should be rowSpan");
         GISMO_ASSERT(_B.colSpan(), "Second entry should be colSpan.");
-
-        for (index_t i = 0; i!=An; ++i)
-            for (index_t j = 0; j!=Ar; ++j)
-                eA.row(i*Ar+j) *= eC(j);    
 
         res.resize(An, Bn);
         for (index_t i = 0; i!=An; ++i)
             for (index_t j = 0; j!=Bn; ++j)
             {
-                res(i,j) = ( eA.middleRows(i*Ar,Ar) * eB.middleCols(j*Bc,Bc) ).sum();
+                tmp.noalias() = eB.middleCols(i*Bc,Bc) * eA.middleCols(j*Ac,Ac);
+                tmp(0,0) *= eC.at(0);
+                tmp(0,1) *= eC.at(2);
+                tmp(1,0) *= eC.at(2);
+                tmp(1,1) *= eC.at(1);
+                res(i,j) = tmp.sum();
             }
         return res;
     }
@@ -580,6 +570,88 @@ public:
     static constexpr bool colSpan() {return E2::colSpan();}
 
     void print(std::ostream &os) const { os << "flatdot("; _A.print(os);_B.print(os);_C.print(os); os<<")"; }
+};
+
+/**
+   To Do: 
+   *    Improve by inputting u instead of deriv2(u)
+ */
+template<class E1, class E2, class E3>
+class flatdot2_expr  : public _expr<flatdot2_expr<E1,E2,E3> >
+{
+public:
+    typedef typename E1::Scalar Scalar;
+    enum {ScalarValued = 0, Space = E1::Space};
+    enum {ColBlocks = 0 };
+
+private:
+    typename E1::Nested_t _A;
+    typename E2::Nested_t _B;
+    typename E3::Nested_t _C;
+    mutable gsMatrix<Scalar> eA, eB, eC, res;
+
+public:
+
+    flatdot2_expr(_expr<E1> const& A, _expr<E2> const& B, _expr<E3> const& C) : _A(A),_B(B),_C(C)
+    {
+        //GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension"); //
+    }
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        const index_t Ac = _A.cols();
+        const index_t An = _A.cardinality();
+        const index_t Bn = _B.cardinality();
+
+        eA = _A.eval(k);
+        eB = _B.eval(k);
+        eC = _C.eval(k);
+
+        // gsDebugVar(eA);
+        // gsDebugVar(eB);
+        // gsDebugVar(eC);
+
+        // gsDebugVar(eA.rows());
+        // gsDebugVar(eA.cols());
+        // gsDebugVar(_A.rows());
+        // gsDebugVar(_A.cols());
+        // gsDebugVar(eB.rows());
+        // gsDebugVar(eB.cols());
+        // gsDebugVar(_B.rows());
+        // gsDebugVar(_B.cols());
+
+        GISMO_ASSERT(_B.rows()==_A.cols(), "Dimensions: "<<_B.rows()<<","<< _A.cols()<< "do not match");
+        GISMO_ASSERT(_A.rowSpan(), "First entry should be rowSpan");
+        GISMO_ASSERT(_B.colSpan(), "Second entry should be colSpan.");
+
+        for (index_t i = 0; i!=An; ++i)
+            for (index_t j = 0; j!=Ac; ++j)
+                eA.middleCols(i*Ac,Ac).row(j) *= eC(j);  
+                // eA.transpose().col(i*Ac+j) 
+
+        res.resize(An, Bn);
+        for (index_t i = 0; i!=An; ++i)
+            for (index_t j = 0; j!=Bn; ++j)
+                res(i,j) = ( eA.middleCols(i*Ac,Ac) * eB.col(j) ).sum();
+
+        return res;
+    }
+
+    index_t rows() const { return 1; }
+    index_t cols() const { return 1; }
+    void setFlag() const { _A.setFlag();_B.setFlag();_C.setFlag(); }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    { _A.parse(evList);_B.parse(evList);_C.parse(evList); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _A.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _B.colVar(); }
+    index_t cardinality_impl() const { return _A.cardinality_impl(); }
+
+    static constexpr bool rowSpan() {return E1::rowSpan();}
+    static constexpr bool colSpan() {return E2::colSpan();}
+
+    void print(std::ostream &os) const { os << "flatdot2("; _A.print(os);_B.print(os);_C.print(os); os<<")"; }
 };
 
 
@@ -602,6 +674,10 @@ deriv2dot_expr<E1, E2> deriv2(const E1 & u, const E2 & v) { return deriv2dot_exp
 template<class E1, class E2, class E3> EIGEN_STRONG_INLINE
 flatdot_expr<E1,E2,E3> flatdot(const E1 & u, const E2 & v, const E3 & w)
 { return flatdot_expr<E1,E2,E3>(u, v, w); }
+
+template<class E1, class E2, class E3> EIGEN_STRONG_INLINE
+flatdot2_expr<E1,E2,E3> flatdot2(const E1 & u, const E2 & v, const E3 & w)
+{ return flatdot2_expr<E1,E2,E3>(u, v, w); }
 
 }
 }
@@ -1191,10 +1267,10 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> mult2t("1","0","0","0","1","0","0","0","2",3);
     variable m2 = A.getCoeff(mult2t, G);
 
-    // gsFunctionExpr<> thickness("1.0", 2);
-    // variable tt = A.getCoeff(thickness);
+    gsFunctionExpr<> t(std::to_string(thickness), 3);
+    variable tt = A.getCoeff(t,G);
     // TEMPORARILY!!
-    real_t tt = thickness;
+    // real_t tt = thickness;
 
     // gsFunctionExpr<> force("0","0","1", 3);
     gsConstantFunction<> force(tmp,3);
@@ -1228,43 +1304,55 @@ int main(int argc, char *argv[])
     **/
     auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ;
     auto E_m_der = flat( jac(G).tr() * jac(u) ) ; //[checked]
-    auto E_m_der2 = flatdot( jac(u).tr(),jac(u), E_m * reshape(mm,3,3) ); // change jac(u), jac(u).tr()
+    auto E_m_der2 = flatdot( jac(u),jac(u).tr(), E_m * reshape(mm,3,3) ); // change jac(u), jac(u).tr()
 
     auto E_f = ( deriv2(defG,sn(defG).normalized().tr()) - deriv2(G,sn(G).normalized().tr()) ) * reshape(m2,3,3) ;//[checked]
     auto E_f_der = ( deriv2(u,sn(G).normalized().tr() ) + deriv2(G,var1(u,G) ) ) * reshape(m2,3,3);
-    auto E_f_der2 = flatdot( deriv2(u), replicate( var1(u,defG), 3, 1).tr(), E_f * reshape(mm,3,3)  ).symmetrize()
-                        + var2(u,u,defG,E_f * reshape(mm,3,3) );
+    auto E_f_der2 =  flatdot2( deriv2(u), var1(u,G).tr(), E_f * reshape(mm,3,3)  ); //.symmetrize()
+                        // + var2(u,u,defG,E_f * reshape(mm,3,3) );
 
-    /*
+     /*
     gsVector<> pt(2); pt.setConstant(0.5);
     gsMatrix<> evresult = ev.eval(
      // E_m              // works; output 1 x 3
      // E_m_der          // works; output 27 x 3
-     // E_m_der2         // works; output 27 x 27 -------> problem: transpose transposes block matrices but still stores over the rows for jac(u). For all other entries, tr() transposes the whole matrix....
+     // E_m_der2         // works; output 27 x 27
      // E_f              // works; output 1 x 3
      // E_f_der          // works; output  27 x 3
-     // E_f_der2         // works; output 27 x 27
+     E_f_der2         // works; output 27 x 27
         // deriv2(u).tr()          
+        // var1(u,G)
         // tt * E_m_der * reshape(mm,3,3) * E_m_der.tr()
         // - u * ff
-        G
     ,  pt );
     gsInfo << "Eval:\n"<< evresult;
     gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
+
+    evresult = ev.eval(
+     // E_m              // works; output 1 x 3
+     // E_m_der          // works; output 27 x 3
+     // E_m_der2         // works; output 27 x 27
+     // E_f              // works; output 1 x 3
+     // E_f_der          // works; output  27 x 3
+     E_f_der2         // works; output 27 x 27
+        // deriv2(u).tr()          
+        // tt * E_m_der * reshape(mm,3,3) * E_m_der.tr()
+        // - u * ff
+    ,  pt );
+    gsInfo << "Eval:\n"<< evresult;
+    gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
+
 
     return 0;
     // */
     // linear case 
     A.assemble(
         (
-        tt * E_m_der * reshape(mm,3,3) * E_m_der.tr()
+        (tt.val()) * (E_m_der * reshape(mm,3,3) * E_m_der.tr() + E_m_der2)
         +
-        math::pow(tt,3)/3.0 * E_f_der * reshape(mm,3,3) * E_f_der.tr() 
-        // +  E_m_der2 // does not work.. colspan=rowspan=false
-        // +  
-        // E_f_der2
+        (tt.val() * tt.val() * tt.val())/3.0 * (E_f_der * reshape(mm,3,3) * E_f_der.tr() +  E_f_der2)
         ) * meas(G)
-        ,u * ff * meas(G)
+        ,u * ff * meas(G) // - ( E_m * reshape(mm,3,3) * E_m_der.tr() ) + ( E_f * reshape(mm,3,3) * E_f_der.tr() ) * meas(G)
         );
 
     // A.assemble( ( E_m_der2.tr() + E_m_der * reshape(mm,3,3) * E_m_der.tr() ) +
