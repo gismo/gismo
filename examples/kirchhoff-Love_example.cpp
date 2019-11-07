@@ -1308,7 +1308,7 @@ int main(int argc, char *argv[])
 
     auto E_f = ( deriv2(defG,sn(defG).normalized().tr()) - deriv2(G,sn(G).normalized().tr()) ) * reshape(m2,3,3) ;//[checked]
     auto E_f_der = ( deriv2(u,sn(G).normalized().tr() ) + deriv2(G,var1(u,G) ) ) * reshape(m2,3,3);
-    auto E_f_der2 =  flatdot2( deriv2(u), var1(u,G).tr(), E_f * reshape(mm,3,3)  ); //.symmetrize()
+    auto E_f_der2 =  flatdot2( deriv2(u), var1(u,defG).tr(), E_f * reshape(mm,3,3)  ); //.symmetrize()
                         // + var2(u,u,defG,E_f * reshape(mm,3,3) );
 
      /*
