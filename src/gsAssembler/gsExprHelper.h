@@ -44,9 +44,9 @@ private:
     //FunctionTable i_map;
 
     // geometry map
-    expr::gsGeometryMap<T> mapVar;
+    expr::gsGeometryMap<T> mapVar, mapVar2;
 public:
-    gsMapData<T> mapData;
+    gsMapData<T> mapData, mapData2;
 private:
 
     // mutable pair of variable and data,
@@ -117,6 +117,7 @@ public:
     void cleanUp()
     {
         mapData.clear();
+        mapData2.clear();
         mutData.clear();
         for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
             it->second.clear();
@@ -145,8 +146,16 @@ public:
     geometryMap getMap(const gsMultiPatch<T> & mp)
     {
         //mapData.clear();
-        mapVar.registerData(mp, mapData);
-        return mapVar;
+        if (!mapVar.isValid() )
+        {
+            mapVar.registerData(mp, mapData);
+            return mapVar;
+        }
+        else
+        {
+            mapVar2.registerData(mp, mapData2);
+            return mapVar2;
+        }
     }
 
     geometryMap getMap() const
@@ -228,6 +237,7 @@ public:
                    const unsigned mflag = 0)
     {
         mapData.flags = mflag | NEED_ACTIVE;
+        mapData2.flags = mflag | NEED_ACTIVE;
         mutData.flags = fflag | NEED_ACTIVE;
         for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
             it->second.flags = fflag | NEED_ACTIVE;
@@ -262,7 +272,14 @@ public:
             mapVar.source().function(patchIndex).computeMap(mapData);
             mapData.patchId = patchIndex;
         }
-
+        if ( mapVar2.isValid() ) // list ?
+        {
+            mapData2.points = points();
+            //gsDebugVar("MAPDATA-------***************");
+            mapData2.flags |= NEED_VALUE;
+            mapVar2.source().function(patchIndex).computeMap(mapData2);
+            mapData2.patchId = patchIndex;
+        }
         if ( mutVar.isValid() && 0!=mutData.flags)
         {
             GISMO_ASSERT( mutParametric || 0!=mapData.values.size(), "Map values not computed");

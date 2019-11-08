@@ -377,14 +377,7 @@ public:
 
     mutable gsMatrix<Scalar> res;
 
-    const gsMatrix<Scalar> & eval(const index_t k) const
-    {
-        //gsDebugVar(_u.targetDim());
-        //const index_t c = _u.cardinality() / _u.targetDim();
-        // res = _u.data().values[2].blockDiag(_u.targetDim());
-        res = _u.data().values[2].col(k).transpose().blockDiag(_u.targetDim()); // analoguous to jacobian..
-        return res;
-    }
+    const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
 
     index_t rows() const //(components)
     {
@@ -418,6 +411,35 @@ public:
     static constexpr bool colSpan() {return E::colSpan();}
 
     void print(std::ostream &os) const { os << "deriv2("; _u.print(os); os <<")"; }
+
+    private:
+        template<class U> inline
+        typename util::enable_if< util::is_same<U,gsGeometryMap<Scalar> >::value, const gsMatrix<Scalar> & >::type
+        eval_impl(const U & u, const index_t k)  const
+        {
+            /*
+                Here, we compute the hessian of the geometry map.
+                The hessian of the geometry map c has the form: hess(c)
+                [d11 c1, d11 c2, d11 c3]
+                [d22 c1, d22 c2, d22 c3]
+                [d12 c1, d12 c2, d12 c3]
+            */
+            // evaluate the geometry map of U
+            res = _u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second );
+            return res;
+        }
+
+        template<class U> inline
+        typename util::enable_if<util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
+        eval_impl(const U & u, const index_t k) const
+        {
+            //gsDebugVar(_u.targetDim());
+            //const index_t c = _u.cardinality() / _u.targetDim();
+            // res = _u.data().values[2].blockDiag(_u.targetDim());
+            res = _u.data().values[2].col(k).transpose().blockDiag(_u.targetDim()); // analoguous to jacobian..
+            return res;
+        }
+
 };
 
 
@@ -524,9 +546,9 @@ public:
         eB = _B.eval(k);
         eC = _C.eval(k);
 
-        gsDebugVar(eA);
-        gsDebugVar(eB);
-        gsDebugVar(eC);
+        // gsDebugVar(eA);
+        // gsDebugVar(eB);
+        // gsDebugVar(eC);
 
         // gsDebugVar(eA.rows());
         // gsDebugVar(eA.cols());
@@ -573,7 +595,7 @@ public:
 };
 
 /**
-   To Do: 
+   To Do:
    *    Improve by inputting u instead of deriv2(u)
  */
 template<class E1, class E2, class E3>
@@ -626,8 +648,8 @@ public:
 
         for (index_t i = 0; i!=An; ++i)
             for (index_t j = 0; j!=Ac; ++j)
-                eA.middleCols(i*Ac,Ac).row(j) *= eC(j);  
-                // eA.transpose().col(i*Ac+j) 
+                eA.middleCols(i*Ac,Ac).row(j) *= eC(j);
+                // eA.transpose().col(i*Ac+j)
 
         res.resize(An, Bn);
         for (index_t i = 0; i!=An; ++i)
@@ -684,6 +706,11 @@ flatdot2_expr<E1,E2,E3> flatdot2(const E1 & u, const E2 & v, const E3 & w)
 
 
 using namespace gismo;
+
+template <class T>
+void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsVector<T> pt);
+template <class T>
+void constructSolution(gsExprAssembler<T> assembler, gsMultiPatch<T> mp_def);
 
 // To Do:
 // * struct for material model
@@ -816,14 +843,14 @@ public:
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    gsMaterialMatrixIncompressible( const gsFunctionSet<T> & mp, 
+    gsMaterialMatrixIncompressible( const gsFunctionSet<T> & mp,
                                     const gsFunction<T> & par1,
-                                    // const gsFunction<T> & par2, 
+                                    // const gsFunction<T> & par2,
                                     const gsFunctionSet<T> & mp_def) : // deformed multipatch
-    _mp(&mp), 
+    _mp(&mp),
     _par1(&par1),
-    // _par2(&par2), 
-    _mp_def(&mp_def), 
+    // _par2(&par2),
+    _mp_def(&mp_def),
     _mm_piece(nullptr)
     {
         _tmp.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
@@ -857,6 +884,8 @@ public:
         // otherwise we just use the input paramteric points
         _tmp.points = u;
         _tmp_def.points = u;
+
+        real_t z = 0; // parametric coordinate in thickness direction
 
         static_cast<const gsFunction<T>*>(_mp)->computeMap(_tmp);
         static_cast<const gsFunction<T>*>(_mp_def)->computeMap(_tmp_def);
@@ -901,7 +930,7 @@ public:
             C(2,0) =
             C(0,2) = 2*F0(0,0)*F0(0,1) + F0(0,0)*F0(0,1) + F0(0,1)*F0(0,0);                 // C1112
             C(1,1) = 2*F0(1,1)*F0(1,1) + F0(1,1)*F0(1,1) + F0(1,1)*F0(1,1);                 // C2222
-            C(2,1) = 
+            C(2,1) =
             C(1,2) = 2*F0(1,1)*F0(0,1) + F0(1,0)*F0(1,1) + F0(1,1)*F0(1,0);                 // C2212
             C(2,2) = 2*F0(0,1)*F0(0,1) + F0(0,0)*F0(1,1) + F0(0,1)*F0(1,0);                 // C1212
 
@@ -914,7 +943,7 @@ public:
             // for completeness, the computation of variable S^\alpha\beta is given here, commented. It should be implemented later in a separate class or function
             /* TRANSFORM JACOBIANS!
             Sab(0,0) = mu * (jacGori(0,0) - math::pow(J0,-2.) * jacGdef(0,0) );
-            Sab(0,1) = 
+            Sab(0,1) =
             Sab(1,0) = mu * (jacGori(1,0) - math::pow(J0,-2.) * jacGdef(1,0) ); // CHECK SYMMETRIES
             Sab(1,1) = mu * (jacGori(1,1) - math::pow(J0,-2.) * jacGdef(1,1) );
             */
@@ -951,14 +980,14 @@ public:
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    gsMaterialMatrixCompressible( const gsFunctionSet<T> & mp, 
+    gsMaterialMatrixCompressible( const gsFunctionSet<T> & mp,
                                     const gsFunction<T> & par1,
-                                    const gsFunction<T> & par2, 
+                                    const gsFunction<T> & par2,
                                     const gsFunctionSet<T> & mp_def) : // deformed multipatch
-    _mp(&mp), 
+    _mp(&mp),
     _par1(&par1),
-    _par2(&par2), 
-    _mp_def(&mp_def), 
+    _par2(&par2),
+    _mp_def(&mp_def),
     _mm_piece(nullptr)
     {
         _tmp.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
@@ -1043,7 +1072,7 @@ public:
             std::function<T (index_t i, index_t j, index_t k, index_t l)> Cijkl;
             Cijkl = [=](index_t i, index_t j, index_t k, index_t l)
             {
-                T res = 1.0 / 9.0 * mu * math::pow( J , -2.0/3.0 ) * ( traceC * ( 2*cinv(i,j)*cinv(k,l) + 3*cinv(i,k)*cinv(j,l) + 3*cinv(i,l)*cinv(j,k) ) 
+                T res = 1.0 / 9.0 * mu * math::pow( J , -2.0/3.0 ) * ( traceC * ( 2*cinv(i,j)*cinv(k,l) + 3*cinv(i,k)*cinv(j,l) + 3*cinv(i,l)*cinv(j,k) )
                                 - 6*jacGori(i,j)*cinv(k,l) + cinv(i,j)*jacGori(k,l) ) + K * ( J*J*cinv(i,j)*cinv(k,l) - 0.5*(J*J-1)*( cinv(i,k)*cinv(j,l) + cinv(i,l)*cinv(j,k) ) );
                 return res;
             };
@@ -1078,12 +1107,12 @@ public:
                         a,b,c,d = 1,2; i,j,k,l = 1...3;
                     */
                     C(0,0) = Cijkl(0,0,0,0) - ( Cijkl(0,0,2,2) * Cijkl(2,2,0,0) ) / (Cijkl(2,2,2,2)); // C1111
-                    C(0,1) = 
+                    C(0,1) =
                     C(1,0) = Cijkl(0,0,1,1) - ( Cijkl(0,0,2,2) * Cijkl(2,2,1,1) ) / (Cijkl(2,2,2,2)); // C1122
-                    C(0,2) = 
+                    C(0,2) =
                     C(2,0) = Cijkl(0,0,0,1) - ( Cijkl(0,0,2,2) * Cijkl(2,2,0,1) ) / (Cijkl(2,2,2,2)); // C1112
                     C(1,1) = Cijkl(1,1,1,1) - ( Cijkl(1,1,2,2) * Cijkl(2,2,1,1) ) / (Cijkl(2,2,2,2)); // C2222
-                    C(1,2) = 
+                    C(1,2) =
                     C(2,1) = Cijkl(1,1,0,1) - ( Cijkl(1,1,2,2) * Cijkl(2,2,0,1) ) / (Cijkl(2,2,2,2)); // C2212
                     C(2,2) = Cijkl(0,1,0,1) - ( Cijkl(0,1,2,2) * Cijkl(2,2,0,1) ) / (Cijkl(2,2,2,2)); // C1212
                 }
@@ -1108,7 +1137,7 @@ int main(int argc, char *argv[])
     index_t numRefine  = 1;
     index_t numElevate = 1;
     index_t testCase = 1;
-    bool last = false;
+    bool nonlinear = false;
     std::string fn("pde/poisson2d_bvp.xml");
 
     real_t E_modulus = 1.0;
@@ -1121,7 +1150,7 @@ int main(int argc, char *argv[])
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
     cmd.addInt( "t", "testCase", "Test case to run: 1 = unit square; 2 = Scordelis Lo Roof",  testCase );
     cmd.addString( "f", "file", "Input XML file", fn );
-    cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
+    cmd.addSwitch("nl", "Solve nonlinear problem", nonlinear);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -1139,10 +1168,9 @@ int main(int argc, char *argv[])
         E_modulus = 1.0;
         thickness = 0.5;
 
-        mp_def = mp;
     }
     else if (testCase == 2)
-    { 
+    {
         thickness = 0.125;
         E_modulus = 4.32E8;
         fn = "../extensions/unsupported/filedata/scordelis_lo_roof.xml";
@@ -1159,20 +1187,21 @@ int main(int argc, char *argv[])
         mp.embed(3);
         E_modulus = 1.0;
         thickness = 0.5;
-        mp = mp_def;
     }
     //! [Read input file]
 
+    // p-refine
+    mp.degreeElevate(numElevate);
+
+    // h-refine
+    for (int r =0; r < numRefine; ++r)
+            mp.uniformRefine();
+
+    if (2!=testCase)
+        mp_def = mp;
+
     //! [Refinement]
     gsMultiBasis<> dbasis(mp);
-
-    // Elevate and p-refine the basis to order p + numElevate
-    // where p is the highest degree in the bases
-    dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
-
-    // h-refine each basis
-    for (int r =0; r < numRefine-1; ++r)
-            dbasis.uniformRefine();
 
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
     gsInfo << dbasis.basis(0)<<"\n";
@@ -1186,8 +1215,8 @@ int main(int argc, char *argv[])
         {
             bc.addCondition(boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
             bc.addCondition(boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
-            bc.addCondition(boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z    
-            bc.addCondition(boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z    
+            bc.addCondition(boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z
+            bc.addCondition(boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z
         }
         tmp << 0,0,-1;
     }
@@ -1196,7 +1225,7 @@ int main(int argc, char *argv[])
         // Diaphragm conditions
         bc.addCondition(boundary::west, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
         bc.addCondition(boundary::west, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
-        
+
         // ORIGINAL
         // bc.addCornerValue(boundary::southwest, 0.0, 0, 0); // (corner,value, patch, unknown)
 
@@ -1217,13 +1246,13 @@ int main(int argc, char *argv[])
             // patch 0
             bc.addCondition(0,boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
             // bc.addCondition(0,boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
-            bc.addCondition(0,boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z    
-            bc.addCondition(0,boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z 
+            bc.addCondition(0,boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z
+            bc.addCondition(0,boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z
             // patch 1
             bc.addCondition(1,boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
             bc.addCondition(1,boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
-            bc.addCondition(1,boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z    
-            // bc.addCondition(1,boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z    
+            bc.addCondition(1,boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z
+            // bc.addCondition(1,boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z
         }
         tmp << 0,0,-1;
     }
@@ -1243,14 +1272,14 @@ int main(int argc, char *argv[])
     gsExprEvaluator<> ev(A);
 
     // Set the geometry map
-    geometryMap defG = A.getMap(mp_def);           // defG ?????? --------> does not work for evaluation!!
-    geometryMap G = A.getMap(mp); // the last map counts 
-    
+    geometryMap G = A.getMap(mp); // the last map counts
+    geometryMap defG = A.getMap(mp_def);
+
 
     // Set the discretization space
     space u = A.getSpace(dbasis, 3);
-    u.setInterfaceCont(0);
-    u.addBc( bc.get("Dirichlet") );
+    u.setInterfaceCont(0); // todo: 1 (smooth basis)
+    u.addBc( bc.get("Dirichlet") ); // (!) must be called only once
 
     // Solution vector and solution variable
     gsMatrix<> solVector, vec3(3,1); vec3.setZero();
@@ -1282,6 +1311,9 @@ int main(int argc, char *argv[])
 
     //! [Solver loop]
 
+    // Set Dirichlet values
+    //A.options().setInt("DirichletValues", dirichlet::homogeneous);
+
     // Initialize the system
     A.initSystem();
 
@@ -1308,70 +1340,107 @@ int main(int argc, char *argv[])
 
     auto E_f = ( deriv2(defG,sn(defG).normalized().tr()) - deriv2(G,sn(G).normalized().tr()) ) * reshape(m2,3,3) ;//[checked]
     auto E_f_der = ( deriv2(u,sn(G).normalized().tr() ) + deriv2(G,var1(u,G) ) ) * reshape(m2,3,3);
-    auto E_f_der2 =  flatdot2( deriv2(u), var1(u,defG).tr(), E_f * reshape(mm,3,3)  ); //.symmetrize()
-                        // + var2(u,u,defG,E_f * reshape(mm,3,3) );
+    auto E_f_der2 =  flatdot2( deriv2(u), var1(u,defG).tr(), E_f * reshape(mm,3,3)  ).symmetrize() + var2(u,u,defG,E_f * reshape(mm,3,3) );
 
-    // /*
     gsVector<> pt(2); pt.setConstant(0.5);
-    gsMatrix<> evresult = ev.eval(
-     // E_m              // works; output 1 x 3
-     // E_m_der          // works; output 27 x 3
-     // E_m_der2         // works; output 27 x 27
-     // E_f              // works; output 1 x 3
-     // E_f_der          // works; output  27 x 3
-     // E_f_der2         // works; output 27 x 27
-        - (( E_m * reshape(mm,3,3) * E_m_der.tr() ) + ( E_f * reshape(mm,3,3) * E_f_der.tr() ) * meas(G)).tr()
-    ,  pt );
-    gsInfo << "Eval:\n"<< evresult;
-    gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
+    evaluateFunction(ev, u * ff * meas(G), pt); // evaluates an expression on a point
 
-    evresult = ev.eval(
-     // E_m              // works; output 1 x 3
-     // E_m_der          // works; output 27 x 3
-     // E_m_der2         // works; output 27 x 27
-     // E_f              // works; output 1 x 3
-     // E_f_der          // works; output  27 x 3
-     E_f_der2         // works; output 27 x 27
-        // deriv2(u).tr()          
-        // tt * E_m_der * reshape(mm,3,3) * E_m_der.tr()
-        // - u * ff
-    ,  pt );
-    gsInfo << "Eval:\n"<< evresult;
-    gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
+    // ! [Solve linear problem]
 
-
-    return 0;
-    // */
-    // linear case 
+    // assemble system
     A.assemble(
         (
-        (tt.val()) * (E_m_der * reshape(mm,3,3) * E_m_der.tr() + E_m_der2)
+        (tt.val()) * (E_m_der * reshape(mm,3,3) * E_m_der.tr())
         +
-        (tt.val() * tt.val() * tt.val())/3.0 * (E_f_der * reshape(mm,3,3) * E_f_der.tr() +  E_f_der2)
+        (tt.val() * tt.val() * tt.val())/3.0 * (E_f_der * reshape(mm,3,3) * E_f_der.tr())
         ) * meas(G)
-        // ,u * ff * meas(G) - 
-        ,(( E_m * reshape(mm,3,3) * E_m_der.tr() + E_f * reshape(mm,3,3) * E_f_der.tr() ) * meas(G)).tr()
+        ,u * ff * meas(G)
+        // -
+        // ,(( E_m * reshape(mm,3,3) * E_m_der.tr() + E_f * reshape(mm,3,3) * E_f_der.tr() ) * meas(G)).tr()
         );
 
-    // A.assemble( ( E_m_der2.tr() + E_m_der * reshape(mm,3,3) * E_m_der.tr() ) +
-    //             ( E_f_der2.tr() + E_f_der * reshape(mm,3,3) * E_f_der.tr() ) // Matrix
-                //,
-                         // ( E_m * mm * E_m_der.tr() ) + ( E_f * mm * E_f_der.tr() )  // Rhs
-                        // - u * ff.tr()
-                // );
-
-
-
-    gsInfo<<"RHS rows = "<<A.rhs().rows()<<"\n";
-    gsInfo<<"RHS cols = "<<A.rhs().cols()<<"\n";
-    gsInfo<<"MAT rows = "<<A.matrix().rows()<<"\n";
-    gsInfo<<"MAT cols = "<<A.matrix().cols()<<"\n";
-
-    gsInfo<< A.rhs().transpose() <<"\n";
-    gsInfo<< A.matrix().toDense()<<"\n";
-
+    // solve system
     solver.compute( A.matrix() );
     solVector = solver.solve(A.rhs());
+
+    // update deformed patch
+    gsMatrix<> cc;
+    for ( size_t k =0; k!=mp_def.nPatches(); ++k) // Deform the geometry
+    {
+        // extract deformed geometry
+        u_sol.extract(cc, k);
+        mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
+    }
+
+    // for testing purposes
+    pt.setConstant(0.25);
+    evaluateFunction(ev, defG, pt);
+    evaluateFunction(ev, flat(jac(defG).tr()*jac(defG)), pt);
+    evaluateFunction(ev, (( E_m * reshape(mm,3,3) * E_m_der.tr() + E_f * reshape(mm,3,3) * E_f_der.tr() ) * meas(G)).tr(), pt);
+
+
+    /*Something with Dirichlet homogenization*/
+
+    // ! [Solve linear problem]
+
+    // ! [Solve nonlinear problem]
+
+    if (nonlinear)
+    {
+        index_t itMax = 10;
+        real_t tol = 1e-8;
+        for (index_t it = 0; it != itMax; ++it)
+        {
+            // assemble system
+            A.assemble(
+                (
+                (tt.val()) * (E_m_der * reshape(mm,3,3) * E_m_der.tr() + E_m_der2)
+                +
+                (tt.val() * tt.val() * tt.val())/3.0 * (E_f_der * reshape(mm,3,3) * E_f_der.tr() +  E_f_der2)
+                ) * meas(G)
+                ,u * ff * meas(G)
+                -
+                (( E_m * reshape(mm,3,3) * E_m_der.tr() + E_f * reshape(mm,3,3) * E_f_der.tr() ) * meas(G)).tr()
+                );
+
+            // solve system
+            solver.compute( A.matrix() );
+            solVector = solver.solve(A.rhs()); // this is the UPDATE
+            gsDebugVar(A.matrix().toDense() );
+
+            // update deformed patch
+            gsMatrix<> cc;
+            for ( size_t k =0; k!=mp_def.nPatches(); ++k) // Deform the geometry
+            {
+                // extract deformed geometry
+                u_sol.extract(cc, k);
+                mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
+            }
+
+
+            if (solVector.norm() < tol)
+                break;
+        }
+    }
+
+
+    // ! [Solve nonlinear problem]
+
+    // For Neumann (same for Dirichlet/Nitche) conditions
+    // variable g_N = A.getBdrFunction();
+    // A.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
+
+    // Penalize the matrix? (we need values for the DoFs to be enforced..
+    // function/call:  penalize_matrix(DoF_indices, DoF_values)
+    // otherwise: should we tag the DoFs inside "u" ?
+
+    // gsInfo<<"RHS rows = "<<A.rhs().rows()<<"\n";
+    // gsInfo<<"RHS cols = "<<A.rhs().cols()<<"\n";
+    // gsInfo<<"MAT rows = "<<A.matrix().rows()<<"\n";
+    // gsInfo<<"MAT cols = "<<A.matrix().cols()<<"\n";
+
+    // gsInfo<< A.rhs().transpose() <<"\n";
+    // gsInfo<< A.matrix().toDense()<<"\n";
 
     // ADD BOUNDARY CONDITIONS! (clamped will be tricky..............)
 
@@ -1382,8 +1451,6 @@ int main(int argc, char *argv[])
         gsInfo<<"Plotting in Paraview...\n";
         ev.options().setSwitch("plot.elements", true);
         ev.writeParaview( u_sol   , G, "solution");
-        //ev.writeParaview( u_ex    , G, "solution_ex");
-        //ev.writeParaview( u, G, "aa");
 
         // gsFileManager::open("solution.pvd");
     }
@@ -1391,3 +1458,16 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 
 }// end main
+
+template <class T>
+void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsVector<T> pt)
+{
+    gsMatrix<T> evresult = ev.eval( expression,pt );
+    gsInfo << "Eval on point ("<<pt.at(0)<<" , "<<pt.at(1)<<") :\n"<< evresult;
+    gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
+};
+
+/*
+    to do:
+    =  make function for construction of the solution given the space and the mp
+*/
