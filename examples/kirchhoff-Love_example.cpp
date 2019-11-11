@@ -62,6 +62,8 @@ public:
         cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
         const Scalar measure =  _G.data().measures.at(k);
 
+        // gsDebugVar(_G.data().values[0].col(k).transpose());
+
         for (index_t d = 0; d!= cols(); ++d) // for all basis function components
         {
             const short_t s = d*A;
@@ -69,19 +71,13 @@ public:
             {
                 // Jac(u) ~ Jac(G) with alternating signs ?..
                 m_v.noalias() = (vecFun(d, bGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
-                              - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() ));
+                              - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() )) / measure;
 
                 // ---------------  First variation of the normal
-                res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose() / measure;
+                res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
+
             }
         }
-
-        // gsDebugVar(cJac.col(0).template head<3>());
-        // gsDebugVar(cJac.col(1).template head<3>());
-
-        // gsDebugVar(res.rows());
-        // gsDebugVar(res.cols());
-        // gsDebugVar(res);
         return res;
     }
 
@@ -155,13 +151,12 @@ public:
     {
         res.resize(_u.cardinality(), _u.cardinality());
 
-        normal = _G.data().normals.col(k);
+        normal = _G.data().normal(k);
+        normal.normalize();
         uGrads = _u.data().values[1].col(k);
         vGrads = _v.data().values[1].col(k);
         cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
         cDer2 = _G.data().values[2].reshapeCol(k, _G.data().dim.second, _G.data().dim.second);
-
-        // debug with setZero(dim.first, etc..) and see if error is still there
 
         const index_t cardU = _u.data().values[0].rows(); // number of actives per component of u
         const index_t cardV = _v.data().values[0].rows(); // number of actives per component of v
@@ -175,20 +170,24 @@ public:
             {
                 for (index_t d = 0; d!= _u.dim(); ++d) // for all basis functions u (2)
                 {
-                    m_u.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
-                                  - vecFun(d, uGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() ) / measure;
+                    m_u.noalias() = ( vecFun(d, uGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
+                                     -vecFun(d, uGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() ))
+                                    / measure;
+
                     const short_t s = d*cardU;
 
                     for (index_t c = 0; c!= _v.dim(); ++c) // for all basis functions v (2)
                     {
                         const short_t r = c*cardV;
-                        m_v.noalias() = vecFun(c, vGrads.at(2*i  ) ).cross( cJac.col(1).template head<3>() )
-                                      - vecFun(c, vGrads.at(2*i+1) ).cross( cJac.col(0).template head<3>() ) / measure;
+                        m_v.noalias() = ( vecFun(c, vGrads.at(2*i  ) ).cross( cJac.col(1).template head<3>() )
+                                         -vecFun(c, vGrads.at(2*i+1) ).cross( cJac.col(0).template head<3>() ))
+                                        / measure;
 
-                        n_der = (m_v - ( normal.dot(m_v) ) * normal);
+                        n_der.noalias() = (m_v - ( normal.dot(m_v) ) * normal);
 
-                        m_uv.noalias() = vecFun(d, uGrads.at(2*j  ) ).cross( vecFun(c, vGrads.at(2*i+1) ) )
-                                       - vecFun(d, uGrads.at(2*j+1) ).cross( vecFun(c, vGrads.at(2*i  ) ) ) / measure; //check
+                        m_uv.noalias() = ( vecFun(d, uGrads.at(2*j  ) ).cross( vecFun(c, vGrads.at(2*i+1) ) )
+                                          +vecFun(c, vGrads.at(2*i  ) ).cross( vecFun(d, uGrads.at(2*j+1) ) ))
+                                          / measure; //check
 
                         m_u_der.noalias() = (m_uv - ( normal.dot(m_v) ) * m_u);
 
@@ -196,7 +195,10 @@ public:
                         tmp = m_u_der - (m_u.dot(n_der) + normal.dot(m_u_der) ) * normal - (normal.dot(m_u) ) * n_der;
 
                         // Evaluate the product
-                        result = evEf * (cDer2 * tmp);
+                        tmp = cDer2 * tmp; // E_f_der2, last component
+                        tmp.row(2) *= 2.0;
+                        result = evEf * tmp;
+
                         res(s + j, r + i ) = result(0,0);
                     }
                 }
@@ -226,7 +228,7 @@ public:
     {
         evList.push_sorted_unique(&_u.source());
         _u.data().flags |= NEED_GRAD;
-        _G.data().flags |= NEED_OUTER_NORMAL | NEED_DERIV | NEED_MEASURE;
+        _G.data().flags |=  NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
         _Ef.setFlag();
     }
 
@@ -375,7 +377,7 @@ public:
 
     deriv2_expr(const E & u) : _u(u) { }
 
-    mutable gsMatrix<Scalar> res;
+    mutable gsMatrix<Scalar> res, tmp;
 
     const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
 
@@ -423,6 +425,8 @@ public:
                 [d11 c1, d11 c2, d11 c3]
                 [d22 c1, d22 c2, d22 c3]
                 [d12 c1, d12 c2, d12 c3]
+
+                The geometry map has components c=[c1,c2,c3]
             */
             // evaluate the geometry map of U
             res = _u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second );
@@ -433,10 +437,40 @@ public:
         typename util::enable_if<util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
         eval_impl(const U & u, const index_t k) const
         {
-            //gsDebugVar(_u.targetDim());
-            //const index_t c = _u.cardinality() / _u.targetDim();
-            // res = _u.data().values[2].blockDiag(_u.targetDim());
-            res = _u.data().values[2].col(k).transpose().blockDiag(_u.targetDim()); // analoguous to jacobian..
+            /*
+                Here, we compute the hessian of the basis with n actives.
+                The hessian of the basis u has the form: hess(u)
+                    active 1                active 2                        active n = cardinality
+                [d11 u1, d11 u2, d11 u3] [d11 u1, d11 u2, d11 u3] ... [d11 u1, d11 u2, d11 u3]
+                [d22 u1, d22 u2, d22 u3] [d22 u1, d22 u2, d22 u3] ... [d22 u1, d22 u2, d22 u3]
+                [d12 u1, d12 u2, d12 u3] [d12 u1, d12 u2, d12 u3] ... [d12 u1, d12 u2, d12 u3]
+
+                Here, the basis function has components u = [u1,u2,u3]. Since they are evaluated for scalars
+                we use blockDiag to make copies for all components ui
+
+                    active 1     active 2     active k = cardinality/dim   active 1           active 2k       active 1           active 2k
+                [d11 u, 0, 0] [d11 u, 0, 0] ... [d11 u, 0, 0]            [0, d11 u, 0]  ... [0, d11 u, 0]  [0, d11 u, 0]  ... [0, d11 u, 0]
+                [d22 u, 0, 0] [d22 u, 0, 0] ... [d22 u, 0, 0]            [0, d22 u, 0]  ... [0, d22 u, 0]  [0, d22 u, 0]  ... [0, d22 u, 0]
+                [d12 u, 0, 0] [d12 u, 0, 0] ... [d12 u, 0, 0]            [0, d12 u, 0]  ... [0, d12 u, 0]  [0, d12 u, 0]  ... [0, d12 u, 0]
+
+            */
+            const index_t numAct = u.data().values[0].rows();   // number of actives of a basis function
+            const index_t cardinality = u.cardinality();        // total number of actives (=3*numAct)
+
+            res.resize(rows(), _u.dim() *_u.cardinality()); // (3 x 3*cardinality)
+            res.setZero();
+
+            tmp = _u.data().values[2].reshapeCol(k, cols(), numAct );
+            for (index_t d = 0; d != cols(); ++d)
+            {
+                const index_t s = d*(cardinality + 1);
+                for (index_t i = 0; i != numAct; ++i)
+                    res.col(s+i*_u.cols()) = tmp.col(i);
+            }
+
+            // res = _u.data().values[2].col(k).transpose().blockDiag(_u.targetDim()); // analoguous to jacobian..
+            // res = res.transpose();
+            // gsDebugVar(res);
             return res;
         }
 
@@ -610,7 +644,7 @@ private:
     typename E1::Nested_t _A;
     typename E2::Nested_t _B;
     typename E3::Nested_t _C;
-    mutable gsMatrix<Scalar> eA, eB, eC, res;
+    mutable gsMatrix<Scalar> eA, eB, eC, res, tmp;
 
 public:
 
@@ -645,17 +679,21 @@ public:
         GISMO_ASSERT(_B.rows()==_A.cols(), "Dimensions: "<<_B.rows()<<","<< _A.cols()<< "do not match");
         GISMO_ASSERT(_A.rowSpan(), "First entry should be rowSpan");
         GISMO_ASSERT(_B.colSpan(), "Second entry should be colSpan.");
+        GISMO_ASSERT(_C.cols()==_B.rows(), "Dimensions: "<<_C.rows()<<","<< _B.rows()<< "do not match");
 
-        for (index_t i = 0; i!=An; ++i)
-            for (index_t j = 0; j!=Ac; ++j)
-                eA.middleCols(i*Ac,Ac).row(j) *= eC(j);
-                // eA.transpose().col(i*Ac+j)
+        // NOTE: product moved to the loop since that is more consistent with the formulations
+        // for (index_t i = 0; i!=An; ++i)
+        //     for (index_t j = 0; j!=Ac; ++j)
+        //         eA.middleCols(i*Ac,Ac).row(j) *= eC(j);
 
         res.resize(An, Bn);
         for (index_t i = 0; i!=An; ++i)
             for (index_t j = 0; j!=Bn; ++j)
-                res(i,j) = ( eA.middleCols(i*Ac,Ac) * eB.col(j) ).sum();
-
+            {
+                tmp = eA.middleCols(i*Ac,Ac) * eB.col(j);   // E_f_der2
+                tmp.row(2) *= 2.0;                          // multiply the third row of E_f_der2 by 2 for voight notation
+                res(i,j) = eC.row(0) * tmp.col(0);          // E_f^T * mm * E_f_der2
+            }
         return res;
     }
 
@@ -941,12 +979,12 @@ public:
 
 
             // for completeness, the computation of variable S^\alpha\beta is given here, commented. It should be implemented later in a separate class or function
-            /* TRANSFORM JACOBIANS!
-            Sab(0,0) = mu * (jacGori(0,0) - math::pow(J0,-2.) * jacGdef(0,0) );
-            Sab(0,1) =
-            Sab(1,0) = mu * (jacGori(1,0) - math::pow(J0,-2.) * jacGdef(1,0) ); // CHECK SYMMETRIES
-            Sab(1,1) = mu * (jacGori(1,1) - math::pow(J0,-2.) * jacGdef(1,1) );
-            */
+             // TRANSFORM JACOBIANS!
+            // Sab(0,0) = mu * (jacGori(0,0) - math::pow(J0,-2.) * jacGdef(0,0) );
+            // Sab(0,1) =
+            // Sab(1,0) = mu * (jacGori(1,0) - math::pow(J0,-2.) * jacGdef(1,0) ); // CHECK SYMMETRIES
+            // Sab(1,1) = mu * (jacGori(1,1) - math::pow(J0,-2.) * jacGdef(1,1) );
+
         }
     }
 
@@ -1011,6 +1049,17 @@ public:
         // _mm_piece = new gsMaterialMatrixCompressible(_mp->piece(k), *_par1, _mp_def.piece(k) );
         return *_mm_piece;
     }
+
+
+
+//class .. matMatrix_z
+// should contain eval_into(thickness variable)
+
+
+    // void computeThickness()
+    // {
+
+    // }
 
     // Input is parametric coordinates of the surface \a mp
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
@@ -1175,8 +1224,6 @@ int main(int argc, char *argv[])
         E_modulus = 4.32E8;
         fn = "../extensions/unsupported/filedata/scordelis_lo_roof.xml";
         gsReadFile<>(fn, mp);
-        fn = "../extensions/unsupported/filedata/scordelis_lo_roof_shallow.xml";
-        gsReadFile<>(fn, mp_def);
     }
     else if (testCase==9)
     {
@@ -1191,14 +1238,14 @@ int main(int argc, char *argv[])
     //! [Read input file]
 
     // p-refine
-    mp.degreeElevate(numElevate);
+    if (numElevate!=0)
+        mp.degreeElevate(numElevate);
 
     // h-refine
     for (int r =0; r < numRefine; ++r)
-            mp.uniformRefine();
+        mp.uniformRefine();
 
-    if (2!=testCase)
-        mp_def = mp;
+    mp_def = mp;
 
     //! [Refinement]
     gsMultiBasis<> dbasis(mp);
@@ -1320,13 +1367,13 @@ int main(int argc, char *argv[])
     gsInfo<< A.numDofs() <<"\n"<<std::flush;
 
     /*
-        We provide the following functions:
-            E_m         membrane strain tensor.
-            E_m_der     first variation of E_m.
-            E_m_der2    second variation of E_m MULTIPLIED BY S_m.
-            E_f         flexural strain tensor.
-            E_f_der     second variation of E_f.
-            E_f_der2    second variation of E_f MULTIPLIED BY S_f.
+        We provide the following functions:                         checked with previous assembler
+            E_m         membrane strain tensor.                             V
+            E_m_der     first variation of E_m.                             V
+            E_m_der2    second variation of E_m MULTIPLIED BY S_m.          V
+            E_f         flexural strain tensor.                             V
+            E_f_der     second variation of E_f.                            V
+            E_f_der2    second variation of E_f MULTIPLIED BY S_f.          X NOTE: var1 in E_f_der2 in previous assembler is computed with both G and defG
 
         Where:
             G       the undeformed geometry,
@@ -1334,16 +1381,18 @@ int main(int argc, char *argv[])
             mm      the material matrix,
             m2      an auxillary matrix to multiply the last row of a tensor with 2
     **/
-    auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ;
-    auto E_m_der = flat( jac(G).tr() * jac(u) ) ; //[checked]
-    auto E_m_der2 = flatdot( jac(u),jac(u).tr(), E_m * reshape(mm,3,3) ); // change jac(u), jac(u).tr()
+    auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ; //[checked]
+    auto E_m_der = flat( jac(defG).tr() * jac(u) ) ; //[checked]
+    auto E_m_der2 = flatdot( jac(u),jac(u).tr(), E_m * reshape(mm,3,3) ); //[checked]
 
-    auto E_f = ( deriv2(defG,sn(defG).normalized().tr()) - deriv2(G,sn(G).normalized().tr()) ) * reshape(m2,3,3) ;//[checked]
-    auto E_f_der = ( deriv2(u,sn(G).normalized().tr() ) + deriv2(G,var1(u,G) ) ) * reshape(m2,3,3);
-    auto E_f_der2 =  flatdot2( deriv2(u), var1(u,defG).tr(), E_f * reshape(mm,3,3)  ).symmetrize() + var2(u,u,defG,E_f * reshape(mm,3,3) );
+    auto E_f = ( deriv2(G,sn(G).normalized().tr()) - deriv2(defG,sn(defG).normalized().tr()) ) * reshape(m2,3,3) ; //[checked]
+    auto E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,defG) ) ) * reshape(m2,3,3); //[checked]
+    auto E_f_der2 = flatdot2( deriv2(u), var1(u,defG).tr(), E_f * reshape(mm,3,3)  ).symmetrize() + var2(u,u,defG,E_f * reshape(mm,3,3) );
+    // NOTE: var1(u,G) in E_F_der2 should be var1(u,defG)
 
-    gsVector<> pt(2); pt.setConstant(0.5);
-    evaluateFunction(ev, u * ff * meas(G), pt); // evaluates an expression on a point
+
+    gsVector<> pt(2); pt.setConstant(0.25);
+    // evaluateFunction(ev, u * ff * meas(G), pt); // evaluates an expression on a point
 
     // ! [Solve linear problem]
 
@@ -1355,13 +1404,14 @@ int main(int argc, char *argv[])
         (tt.val() * tt.val() * tt.val())/3.0 * (E_f_der * reshape(mm,3,3) * E_f_der.tr())
         ) * meas(G)
         ,u * ff * meas(G)
-        // -
-        // ,(( E_m * reshape(mm,3,3) * E_m_der.tr() + E_f * reshape(mm,3,3) * E_f_der.tr() ) * meas(G)).tr()
         );
 
     // solve system
     solver.compute( A.matrix() );
     solVector = solver.solve(A.rhs());
+
+    gsInfo<<"Vector:\n"<<A.rhs().transpose()<<"\n";
+    gsInfo<<"Matrix:\n"<<A.matrix().toDense()<<"\n";
 
     // update deformed patch
     gsMatrix<> cc;
@@ -1372,12 +1422,7 @@ int main(int argc, char *argv[])
         mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
     }
 
-    // for testing purposes
-    pt.setConstant(0.25);
-    evaluateFunction(ev, defG, pt);
-    evaluateFunction(ev, flat(jac(defG).tr()*jac(defG)), pt);
-    evaluateFunction(ev, (( E_m * reshape(mm,3,3) * E_m_der.tr() + E_f * reshape(mm,3,3) * E_f_der.tr() ) * meas(G)).tr(), pt);
-
+    gsInfo<<"solVector.transpose() = "<<solVector.transpose()<<"\n";
 
     /*Something with Dirichlet homogenization*/
 
@@ -1385,28 +1430,41 @@ int main(int argc, char *argv[])
 
     // ! [Solve nonlinear problem]
 
+    real_t residual = A.rhs().norm();
     if (nonlinear)
     {
         index_t itMax = 10;
         real_t tol = 1e-8;
         for (index_t it = 0; it != itMax; ++it)
         {
+            A.initSystem();
             // assemble system
             A.assemble(
                 (
                 (tt.val()) * (E_m_der * reshape(mm,3,3) * E_m_der.tr() + E_m_der2)
                 +
-                (tt.val() * tt.val() * tt.val())/3.0 * (E_f_der * reshape(mm,3,3) * E_f_der.tr() +  E_f_der2)
+                (tt.val() * tt.val() * tt.val())/3.0 * (E_f_der * reshape(mm,3,3) * E_f_der.tr() -  E_f_der2)
                 ) * meas(G)
-                ,u * ff * meas(G)
+                , u * ff * meas(G)
                 -
-                (( E_m * reshape(mm,3,3) * E_m_der.tr() + E_f * reshape(mm,3,3) * E_f_der.tr() ) * meas(G)).tr()
+                (
+                 (
+                    (tt.val()) *(E_m * reshape(mm,3,3) * E_m_der.tr()) -
+                    (tt.val() * tt.val() * tt.val())/3.0 * (E_f * reshape(mm,3,3) * E_f_der.tr())
+                 ) * meas(G)
+                ).tr()
                 );
 
+            // A.assemble(tt.val() * tt.val() * tt.val() / 3.0 * E_f_der2);
             // solve system
             solver.compute( A.matrix() );
             solVector = solver.solve(A.rhs()); // this is the UPDATE
-            gsDebugVar(A.matrix().toDense() );
+            residual = A.rhs().norm();
+
+            gsInfo<<"Iteration: "<< it
+                   <<", residue: "<< residual
+                   <<", update norm: "<<solVector.norm()
+                   <<"\n";
 
             // update deformed patch
             gsMatrix<> cc;
@@ -1418,7 +1476,7 @@ int main(int argc, char *argv[])
             }
 
 
-            if (solVector.norm() < tol)
+            if (residual < tol)
                 break;
         }
     }
@@ -1448,9 +1506,16 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
+        gsMultiPatch<> deformation = mp_def;
+        for (index_t k = 0; k != mp_def.nPatches(); ++k)
+            deformation.patch(0).coefs() -= mp.patch(0).coefs();
+
+        gsField<> solField(mp, deformation);
         gsInfo<<"Plotting in Paraview...\n";
-        ev.options().setSwitch("plot.elements", true);
-        ev.writeParaview( u_sol   , G, "solution");
+        gsWriteParaview<>( solField, "solution", 1000, true);
+
+        // ev.options().setSwitch("plot.elements", true);
+        // ev.writeParaview( u_sol   , G, "solution");
 
         // gsFileManager::open("solution.pvd");
     }
@@ -1470,4 +1535,46 @@ void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsVector<T> pt)
 /*
     to do:
     =  make function for construction of the solution given the space and the mp
+*/
+
+
+
+/*
+template<class T>
+void gsShellAssembler<T>::applyLoads()
+{
+    gsMatrix<T>        bVals;
+    gsMatrix<unsigned> acts,globalActs;
+
+    for (size_t i = 0; i< m_pLoads.numLoads(); ++i )
+    {
+        if ( m_pLoads[i].parametric )
+        {
+            m_bases.front().basis(m_pLoads[i].patch).active_into( m_pLoads[i].point, acts );
+            m_bases.front().basis(m_pLoads[i].patch).eval_into  ( m_pLoads[i].point, bVals);
+        }
+        else
+        {
+            gsMatrix<> forcePoint;
+            m_patches.patch(m_pLoads[i].patch).invertPoints(m_pLoads[i].point,forcePoint);
+            u.source().piece(m_pLoads[i].patch).active_into( forcePoint, acts );
+            u.source().piece(m_pLoads[i].patch).active_into( forcePoint, bVals);
+        }
+
+        // translate patch-local indices to global dof indices
+        for (size_t j = 0; j< 3; ++j)
+        {
+            if (m_pLoads[i].value[j] != 0.0)
+            {
+                u.dofMappers[j].localToGlobal(acts, m_pLoads[i].patch, globalActs);
+
+                for (index_t k=0; k < globalActs.rows(); ++k)
+                {
+                    if (int(globalActs(k,0)) < m_dofs)
+                        m_rhs(globalActs(k,0), 0) += bVals(k,0) * m_pLoads[i].value[j];
+                }
+            }
+        }
+    }
+}
 */
