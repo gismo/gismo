@@ -1410,9 +1410,6 @@ int main(int argc, char *argv[])
     solver.compute( A.matrix() );
     solVector = solver.solve(A.rhs());
 
-    gsInfo<<"Vector:\n"<<A.rhs().transpose()<<"\n";
-    gsInfo<<"Matrix:\n"<<A.matrix().toDense()<<"\n";
-
     // update deformed patch
     gsMatrix<> cc;
     for ( size_t k =0; k!=mp_def.nPatches(); ++k) // Deform the geometry
@@ -1421,8 +1418,6 @@ int main(int argc, char *argv[])
         u_sol.extract(cc, k);
         mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
     }
-
-    gsInfo<<"solVector.transpose() = "<<solVector.transpose()<<"\n";
 
     /*Something with Dirichlet homogenization*/
 
