@@ -564,7 +564,6 @@ private:
             // ------- Compute  -------
             const T * w = m_quWeights.data();
             localMat.noalias() = (*w) * ee.eval(0);
-            //gsDebugVar(localMat);
             for (index_t k = 1; k != m_quWeights.rows(); ++k)
                 localMat.noalias() += (*(++w)) * ee.eval(k);
 

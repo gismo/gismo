@@ -422,7 +422,7 @@ public:
     {
         GISMO_ASSERT(NULL!=m_fs, "FeVariable: Function member not registered");
         GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-
+        return m_fs->targetDim();
         /*
         gsDebugVar(m_fd->flags & NEED_VALUE);
         gsDebugVar(m_fd->values[0].rows());
@@ -431,6 +431,7 @@ public:
         gsDebugVar(m_fd->flags & NEED_DERIV);
         */
 
+	/* HV: NOT NEDED SINCE CARDINALITY IMPLEMENTATION
         // note: precomputation is needed
         if (m_fd->flags & NEED_VALUE)
         {return m_d * m_fd->values[0].rows();}
@@ -439,6 +440,7 @@ public:
         if (m_fd->flags & NEED_DERIV)
         {return m_d * m_fd->values[0].rows();}
         GISMO_ERROR("Cannot deduce row size.");
+	*/
     }
 
     index_t cols() const { return m_d; }
@@ -1508,7 +1510,7 @@ public:
         if ( rowSpan() )
             tmp.transposeInPlace();
         else if (!colSpan()) // if not colSpan and not rowSpan
-            tmp.transposeInPlace(); 
+            tmp.transposeInPlace();
 
         return tmp;
     }
