@@ -157,10 +157,10 @@ template <class T>
 class gsIntegrate : public gismo::gsFunction<T>
 {
     protected:
-        const typename gsFunction<T>::Ptr _fun; //, _t;
+        const typename gsFunction<T>::Ptr _fun, _t;
         mutable gsMatrix<T> tmp, thickMat;
         gsMatrix<T> _surfPts;
-        T _t;
+        // T _t;
     public:
         /// Shared pointer for gsIntegrate
         typedef memory::shared_ptr< gsIntegrate > Ptr;
@@ -172,14 +172,14 @@ class gsIntegrate : public gismo::gsFunction<T>
     explicit gsIntegrate(const gsIntegrate &other)
     : _fun(other._fun), _t(other._t), _surfPts(other._surfPts) {}
 
-    gsIntegrate(const gsFunction<T> & fun, T thickness)
-    : _fun(fun.clone()), _t(thickness)
-    {
-        // gsConstantFunction _t(thickness, 3);
-    }
+    // gsIntegrate(const gsFunction<T> & fun, T thickness)
+    // : _fun(fun.clone()), _t(thickness)
+    // {
+    //     gsConstantFunction _t(thickness, 3);
+    // }
 
-    // gsIntegrate(const gsFunction<T> & fun, gsFunction<T> & thickFun)
-    // : _fun(fun.clone()), _t(thickFun.clone()) { }
+    gsIntegrate(const gsFunction<T> & fun, gsFunction<T> & thickFun)
+    : _fun(fun.clone()), _t(thickFun.clone()) { }
 
     GISMO_CLONE_FUNCTION(gsIntegrate)
 
@@ -190,40 +190,42 @@ class gsIntegrate : public gismo::gsFunction<T>
     // u are xy-coordinates only; domainDim=2
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        // // Compute the thickness
-        // _t.eval_into(u, thickMat);
+        // Compute the thickness
+        _t->eval_into(u, thickMat);
 
         result.resize(_fun->targetDim(),u.cols());
 
         // Define integrator for the z direction
         gsExprEvaluator<real_t> ev;
 
-        // Define integration interval
-        int k = 1; // interior knots
-        int p = 1; // B-spline order
-
-        // Make 1D domain with a basis
-        gsKnotVector<> KV(-_t/2.0, _t/2.0, k, p+1);
-        gsMultiBasis<> basis;
-        basis.addBasis(gsBSplineBasis<>::make(KV));
-
-        // Set integration elements along basis
-        ev.setIntegrationElements(basis);
-
         // Define integrant variables
         typedef gsExprEvaluator<real_t>::variable    variable;
         gsIntegrantZ integrant(*_fun);
-        variable    intfun = ev.getVariable(integrant, 1);
 
+        T tHalf;
         for (index_t i=0; i!=_fun->targetDim(); ++i)
             for (index_t j = 0; j != u.cols(); ++j)
             {
+                // this part is quite sloppy since a multi-basis is created every iteration..
+                tHalf = thickMat(0,j)/2.0;
+
+                gsKnotVector<> KV(-tHalf, tHalf, 2, 2);
+                gsMultiBasis<> basis;
+                basis.addBasis(gsBSplineBasis<>::make(KV));
+
+                // Set integration elements along basis
+                ev.setIntegrationElements(basis);
+
+                variable intfun = ev.getVariable(integrant, 1);
+
                 // set new integration point
                 integrant.setPoint(u.col(j));
 
                 //thickness integral for all components i.
+                // ev.eval(intfun.coord(i));
                 ev.integral(intfun.tr()[i]);
                 result(i,j) = ev.value();
+                gsDebugVar(ev.value());
             }
     }
 
@@ -323,7 +325,8 @@ int main(int argc, char *argv[])
     /*
         test gsIntegrate function
     */
-    gsIntegrate integrate(fun,bound);
+    gsConstantFunction<> thickFun(bound,2);
+    gsIntegrate integrate(fun,thickFun);
     integrate.eval_into(points,result);
 
     gsInfo<<"Integration of the third component of the following function from "<<-bound/2.0<<" to "<<bound/2.0<<"\n";
@@ -332,34 +335,7 @@ int main(int argc, char *argv[])
     gsInfo<<points.transpose()<<"\n";
     gsInfo<<"Result: \n"<<result.transpose()<<"\n";
 
-
-
-    /*
-        test changing domain
-    */
-    // gsKnotVector<> KV(0, 1, 0, 2);
-    gsBSplineBasis<> my_basis(0, 1, 0, 1);
-    gsInfo<<my_basis<<"\n";
-    gsBSpline<> mycurve;
-
-    real_t dim = 0.2;
-    gsMatrix<real_t,2,1> coefs;
-    coefs<<-dim,dim;
-    gsMatrix<real_t,2,1> &coefref = coefs;
-
-    mycurve = gsBSpline<>(my_basis,coefref);
-    gsInfo<<mycurve;
-
-
-    coefs<<-0.3,0.3;
-    mycurve = gsBSpline<>(my_basis,coefref);
-    gsInfo<<mycurve;
 /*
-
-
-
-
-
 
     // Define integrant variables
     typedef gsExprEvaluator<real_t>::element     element;
