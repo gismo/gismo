@@ -41,15 +41,17 @@ class gsIntegrantZ : public gismo::gsFunction<T>
     // copy constructor
     explicit gsIntegrantZ(const gsIntegrantZ &other) : _fun(other._fun), _surfPts(other._surfPts) {}
 
-    // gsIntegrantZ(const gsFunction<T> & fun, const gsMatrix<T>& surfPts) : _fun(fun.clone()), _surfPts(surfPts) { }
     gsIntegrantZ(const gsFunction<T> & fun) : _fun(fun.clone()) { }
+
     GISMO_CLONE_FUNCTION(gsIntegrantZ)
 
     void setPoint(const gsMatrix<T>& surfPts) { _surfPts = surfPts; }
 
+    gsMatrix<T> point() { return _surfPts; }
+
     short_t domainDim() const {return 1;}
 
-    short_t targetDim() const {return 9;}
+    short_t targetDim() const {return _fun->targetDim();}
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -78,7 +80,7 @@ template <class T>
 class gsIntegrateZ : public gismo::gsFunction<T>
 {
     protected:
-        const typename gsFunction<T>::Ptr _fun; //,_t
+        const typename gsFunction<T>::Ptr _fun;//, _t;
         mutable gsMatrix<T> tmp;
         gsMatrix<T> _surfPts;
         T _t;
@@ -94,19 +96,30 @@ class gsIntegrateZ : public gismo::gsFunction<T>
     : _fun(other._fun), _t(other._t), _surfPts(other._surfPts) {}
 
     gsIntegrateZ(const gsFunction<T> & fun, T thickness)
-    : _fun(fun.clone()), _t(thickness) { }
+    : _fun(fun.clone()), _t(thickness)
+    {
+        // gsConstantFunction _t(thickness, 3);
+    }
+
+    // gsIntegrateZ(const gsFunction<T> & fun, gsFunction<T> & thickFun)
+    // : _fun(fun.clone()), _t(thickFun.clone()) { }
 
     GISMO_CLONE_FUNCTION(gsIntegrateZ)
 
     short_t domainDim() const {return 1;}
 
-    short_t targetDim() const {return 9;}
+    short_t targetDim() const {return _fun->targetDim();}
 
+    void setPoint(const gsMatrix<T>& surfPts) { _surfPts = surfPts; }
+
+    // u are z-coordinates only!
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         // // Compute the thickness
         // _tmp.points = u;
         // _t.eval_into(_tmp.values[0], thickMat);
+
+        result.resize(_fun->targetDim(),u.cols());
 
         // Define integrator for the z direction
         gsExprEvaluator<real_t> ev;
@@ -125,15 +138,97 @@ class gsIntegrateZ : public gismo::gsFunction<T>
 
         // Define integrant variables
         typedef gsExprEvaluator<real_t>::variable    variable;
-        variable    integrant = ev.getVariable(_fun, 1); // material matrix
+        variable    integrant = ev.getVariable(*_fun, 1);
 
-        //thickness integral
-        ev.integral(integrant);
-        result = ev.value();
+        for (index_t i=0; i!=_fun->targetDim(); ++i)
+            for (index_t j = 0; j != u.cols(); ++j)
+            {
+                //thickness integral for all components i.
+                ev.integral(integrant.tr()[i]);
+                result(i,j) = ev.value();
+            }
     }
 
     std::ostream &print(std::ostream &os) const
-      { os << "gsIntegrantZ ( " << _fun << " )"; return os; };
+      { os << "gsIntegrateZ ( " << _fun << " )"; return os; };
+};
+
+template <class T>
+class gsIntegrate : public gismo::gsFunction<T>
+{
+    protected:
+        const typename gsFunction<T>::Ptr _fun; //, _t;
+        mutable gsMatrix<T> tmp, thickMat;
+        gsMatrix<T> _surfPts;
+        T _t;
+    public:
+        /// Shared pointer for gsIntegrate
+        typedef memory::shared_ptr< gsIntegrate > Ptr;
+
+        /// Unique pointer for gsIntegrate
+        typedef memory::unique_ptr< gsIntegrate > uPtr;
+
+    // copy constructor
+    explicit gsIntegrate(const gsIntegrate &other)
+    : _fun(other._fun), _t(other._t), _surfPts(other._surfPts) {}
+
+    gsIntegrate(const gsFunction<T> & fun, T thickness)
+    : _fun(fun.clone()), _t(thickness)
+    {
+        // gsConstantFunction _t(thickness, 3);
+    }
+
+    // gsIntegrate(const gsFunction<T> & fun, gsFunction<T> & thickFun)
+    // : _fun(fun.clone()), _t(thickFun.clone()) { }
+
+    GISMO_CLONE_FUNCTION(gsIntegrate)
+
+    short_t domainDim() const {return 2;}
+
+    short_t targetDim() const {return _fun->targetDim();}
+
+    // u are xy-coordinates only; domainDim=2
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        // // Compute the thickness
+        // _t.eval_into(u, thickMat);
+
+        result.resize(_fun->targetDim(),u.cols());
+
+        // Define integrator for the z direction
+        gsExprEvaluator<real_t> ev;
+
+        // Define integration interval
+        int k = 1; // interior knots
+        int p = 1; // B-spline order
+
+        // Make 1D domain with a basis
+        gsKnotVector<> KV(-_t/2.0, _t/2.0, k, p+1);
+        gsMultiBasis<> basis;
+        basis.addBasis(gsBSplineBasis<>::make(KV));
+
+        // Set integration elements along basis
+        ev.setIntegrationElements(basis);
+
+        // Define integrant variables
+        typedef gsExprEvaluator<real_t>::variable    variable;
+        gsIntegrantZ integrant(*_fun);
+        variable    intfun = ev.getVariable(integrant, 1);
+
+        for (index_t i=0; i!=_fun->targetDim(); ++i)
+            for (index_t j = 0; j != u.cols(); ++j)
+            {
+                // set new integration point
+                integrant.setPoint(u.col(j));
+
+                //thickness integral for all components i.
+                ev.integral(intfun.tr()[i]);
+                result(i,j) = ev.value();
+            }
+    }
+
+    std::ostream &print(std::ostream &os) const
+      { os << "gsIntegrateZ ( " << _fun << " )"; return os; };
 };
 
 
@@ -155,8 +250,9 @@ int main(int argc, char *argv[])
     //b.degreeElevate();
     //b.basis(0).component(0).uniformRefine();
 
-    gsFunctionExpr<> a_("x+y",2);
-    gsFunctionExpr<> b_("x+y",2);
+    // Construct a tensor-product point grid
+    const gsMatrix<> param = mp.patch(0).parameterRange();
+    gsGridIterator<real_t,CUBE> grid(param, 12);
 
     // Initiate the expression evaluator
     gsExprEvaluator<real_t> ev;
@@ -173,50 +269,91 @@ int main(int argc, char *argv[])
     gsVector<> pt2D(2); pt2D.setConstant(0.25);
     gsVector<> pt3D(3); pt3D.setConstant(0.25);
 
-    gsFunctionExpr<> fun("1*x","2*y","3*z",3);
+    gsMatrix<> points(2,11);
+    points<<0,1,2,3,4,5,6,7,8,9,10,
+            0,1,2,3,4,5,6,7,8,9,10;
+
+    gsFunctionExpr<> fun("1*x","2*y","x*y*z^2",3);
 
     gsMatrix<> result;
     fun.eval_into(pt3D,result);
-    gsInfo<<"result = "<<result<<"\n";
+    gsInfo<<"Evaluation of the following function on point (x,y) = ("<<pt3D.at(0)<<","<<pt3D.at(1)<<") and z coordinate "<<pt3D.at(2)<<"\n";
+    gsInfo<<fun<<"\n";
+    gsInfo<<"result = "<<result.transpose()<<"\n";
 
+    gsInfo<<"Evaluation of the following function on point (x,y) = ("<<pt2D.at(0)<<","<<pt2D.at(1)<<") and z coordinate "<<pt1D.at(0)<<"\n";
+    gsInfo<<fun<<"\n";
     gsIntegrantZ fun2(fun);
     fun2.setPoint(pt2D); // if changes to be applied
     fun2.eval_into(pt1D,result);
-    gsInfo<<"result = "<<result<<"\n";
+    gsInfo<<"result = "<<result.transpose()<<"\n";
+
+    pt2D.setConstant(0.1);
+    gsInfo<<"Evaluation of the following function on point (x,y) = ("<<pt2D.at(0)<<","<<pt2D.at(1)<<") and z coordinate "<<pt1D.at(0)<<"\n";
+    gsInfo<<fun<<"\n";
+    fun2.setPoint(pt2D); // if changes to be applied
+    fun2.eval_into(pt1D,result);
+    gsInfo<<"result = "<<result.transpose()<<"\n";
 
     /*
         test gsIntegrateZ function
     */
-    gsFunctionExpr<> fun3("x^2",1);
+    gsFunctionExpr<> fun3("1","x","x^2","x^3","x^4","x^5","x^6","x^7","x^8",1);
 
-    // // Define integrator for the z direction
-    // gsExprEvaluator<real_t> ev2;
-
-    // // Define integration interval
-    // int k = 1; // interior knots
-    // int p = 1; // B-spline order
-
-    // // Make 1D domain with a basis
-    // gsKnotVector<> KV(-1.0/2.0, 1.0/2.0, k, p+1);
-    // gsMultiBasis<> basis;
-    // basis.addBasis(gsBSplineBasis<>::make(KV));
-    // // gsBasis<>::uPtr tBasis = ;
-
-    // // Set integration elements along basis
-    // ev2.setIntegrationElements(basis);
-
-    // // Define integrant variables
-    // typedef gsExprEvaluator<real_t>::variable    variable;
-    // // variable    intfun = ev2.getVariable(fun2, 1);
-    // variable    intfun = ev2.getVariable(fun3, 1);
-
-    // //thickness integral
-    // ev2.integral(intfun);
-    // gsInfo<<"ev2.value() = "<<ev2.value()<<"\n";
-    gsIntegrateZ integrator(fun3,1.0);
+    real_t bound = 1.0;
+    gsIntegrateZ<real_t> integrator(fun3,bound);
     integrator.eval_into(pt1D,result);
-    gsInfo<<"result = "<<result<<"\n";
 
+    gsInfo<<"Integration of the following function from "<<-bound/2.0<<" to "<<bound/2.0<<": \n";
+    gsInfo<<fun3<<"\n";
+    gsInfo<<"Result: "<<result.transpose()<<"\n";
+
+    /*
+        test gsIntegrateZ function
+    */
+    bound = 1.0;
+    gsIntegrateZ integrator2(fun2,bound);
+    integrator2.eval_into(pt1D,result);
+
+    gsInfo<<"Integration of the third component of the following function from "<<-bound/2.0<<" to "<<bound/2.0<<" on point (x,y) = ("<<pt2D.at(0)<<","<<pt2D.at(1)<<") \n";
+    gsInfo<<fun<<"\n";
+    gsInfo<<"Result: "<<result.transpose()<<"\n";
+
+
+    /*
+        test gsIntegrate function
+    */
+    gsIntegrate integrate(fun,bound);
+    integrate.eval_into(points,result);
+
+    gsInfo<<"Integration of the third component of the following function from "<<-bound/2.0<<" to "<<bound/2.0<<"\n";
+    gsInfo<<fun<<"\n";
+    gsInfo<<"on points (x,y) = \n";
+    gsInfo<<points.transpose()<<"\n";
+    gsInfo<<"Result: \n"<<result.transpose()<<"\n";
+
+
+
+    /*
+        test changing domain
+    */
+    // gsKnotVector<> KV(0, 1, 0, 2);
+    gsBSplineBasis<> my_basis(0, 1, 0, 1);
+    gsInfo<<my_basis<<"\n";
+    gsBSpline<> mycurve;
+
+    real_t dim = 0.2;
+    gsMatrix<real_t,2,1> coefs;
+    coefs<<-dim,dim;
+    gsMatrix<real_t,2,1> &coefref = coefs;
+
+    mycurve = gsBSpline<>(my_basis,coefref);
+    gsInfo<<mycurve;
+
+
+    coefs<<-0.3,0.3;
+    mycurve = gsBSpline<>(my_basis,coefref);
+    gsInfo<<mycurve;
 /*
 
 
