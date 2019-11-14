@@ -225,7 +225,6 @@ class gsIntegrate : public gismo::gsFunction<T>
                 // ev.eval(intfun.coord(i));
                 ev.integral(intfun.tr()[i]);
                 result(i,j) = ev.value();
-                gsDebugVar(ev.value());
             }
     }
 
@@ -233,28 +232,125 @@ class gsIntegrate : public gismo::gsFunction<T>
       { os << "gsIntegrateZ ( " << _fun << " )"; return os; };
 };
 
+template <class T>
+class gsMaterialMatrix : public gismo::gsFunction<T>
+{
+  // Computes the material matrix for different material models
+  //
+protected:
+    const gsFunctionSet<T> * _mp;
+    const gsFunction<T> * _YoungsModulus;
+    const gsFunction<T> * _PoissonRatio;
+    mutable gsMapData<T> _tmp;
+    mutable gsMatrix<real_t,3,3> F0;
+    mutable gsMatrix<T> Emat,Nmat;
+    mutable real_t lambda, mu, E, nu, C_constant;
+
+public:
+    /// Shared pointer for gsMaterialMatrix
+    typedef memory::shared_ptr< gsMaterialMatrix > Ptr;
+
+    /// Unique pointer for gsMaterialMatrix
+    typedef memory::unique_ptr< gsMaterialMatrix > uPtr;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    gsMaterialMatrix(const gsFunctionSet<T> & mp, const gsFunction<T> & YoungsModulus,
+                   const gsFunction<T> & PoissonRatio) :
+    _mp(&mp), _YoungsModulus(&YoungsModulus), _PoissonRatio(&PoissonRatio), _mm_piece(nullptr)
+    {
+        _tmp.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
+    }
+
+    ~gsMaterialMatrix() { delete _mm_piece; }
+
+    GISMO_CLONE_FUNCTION(gsMaterialMatrix)
+
+    short_t domainDim() const {return 2;}
+
+    short_t targetDim() const {return 9;}
+
+    mutable gsMaterialMatrix<T> * _mm_piece; // todo: improve the way pieces are accessed
+
+    const gsFunction<T> & piece(const index_t k) const
+    {
+        delete _mm_piece;
+        _mm_piece = new gsMaterialMatrix(_mp->piece(k), *_YoungsModulus, *_PoissonRatio);
+        return *_mm_piece;
+    }
+
+    //class .. matMatrix_z
+    // should contain eval_into(thickness variable)
+
+    // Input is parametric coordinates of the surface \a mp
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        // NOTE 1: if the input \a u is considered to be in physical coordinates
+        // then we first need to invert the points to parameter space
+        // _mp.patch(0).invertPoints(u, _tmp.points, 1e-8)
+        // otherwise we just use the input paramteric points
+        gsDebugVar(u);
+        _tmp.points = u;
+        gsDebugVar(_mp->piece(0));
+        gsDebugVar(_tmp.points);
+
+        static_cast<const gsFunction<T>*>(_mp)->computeMap(_tmp);
+
+        // NOTE 2: in the case that parametric value is needed it suffices
+        // to evaluate Youngs modulus and Poisson's ratio at
+        // \a u instead of _tmp.values[0].
+        _YoungsModulus->eval_into(_tmp.values[0], Emat);
+        _PoissonRatio->eval_into(_tmp.values[0], Nmat);
+
+        result.resize( targetDim() , u.cols() );
+        for( index_t i=0; i< u.cols(); ++i )
+        {
+            gsAsMatrix<T, Dynamic, Dynamic> C = result.reshapeCol(i,3,3);
+
+            F0.leftCols(2) = _tmp.jacobian(i);
+            F0.col(2)      = _tmp.normal(i).normalized();
+            F0 = F0.inverse();
+            F0 = F0 * F0.transpose(); //3x3
+
+            // Evaluate material properties on the quadrature point
+            E = Emat(0,i);
+            nu = Nmat(0,i);
+            lambda = E * nu / ( (1. + nu)*(1.-2.*nu)) ;
+            mu     = E / (2.*(1. + nu)) ;
+
+            C_constant = 4*lambda*mu/(lambda+2*mu);
+
+            C(0,0) = C_constant*F0(0,0)*F0(0,0) + 2*mu*(2*F0(0,0)*F0(0,0));
+            C(1,1) = C_constant*F0(1,1)*F0(1,1) + 2*mu*(2*F0(1,1)*F0(1,1));
+            C(2,2) = C_constant*F0(0,1)*F0(0,1) + 2*mu*(F0(0,0)*F0(1,1) + F0(0,1)*F0(0,1));
+            C(1,0) =
+            C(0,1) = C_constant*F0(0,0)*F0(1,1) + 2*mu*(2*F0(0,1)*F0(0,1));
+            C(2,0) =
+            C(0,2) = C_constant*F0(0,0)*F0(0,1) + 2*mu*(2*F0(0,0)*F0(0,1));
+            C(2,1) = C(1,2) = C_constant*F0(0,1)*F0(1,1) + 2*mu*(2*F0(0,1)*F0(1,1));
+
+            //gsDebugVar(C);
+        }
+    }
+
+    // std::ostream &print(std::ostream &os) const
+    //   { os << "gsMaterialMatrix "; return os; };
+};
 
 int main(int argc, char *argv[])
 {
-    //std::string fn("surfaces/sphere1.xml"); // todo: test
-    std::string fn("planar/two_squares.xml");
-    //std::string fn("planar/quarter_annulus_2p.xml");
-
     gsCmdLine cmd("Testing expression evaluator.");
-    cmd.addString("g","geometry","File containing Geometry (.xml, .axl, .txt)", fn);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsMultiPatch<> mp;
-    gsReadFile<>(fn, mp);
-    mp.computeTopology();
+
+    mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
+    mp.addAutoBoundaries();
+    mp.embed(3);
+
     gsMultiBasis<> b(mp);
     b.uniformRefine(1);
-    //b.degreeElevate();
-    //b.basis(0).component(0).uniformRefine();
 
-    // Construct a tensor-product point grid
-    const gsMatrix<> param = mp.patch(0).parameterRange();
-    gsGridIterator<real_t,CUBE> grid(param, 12);
 
     // Initiate the expression evaluator
     gsExprEvaluator<real_t> ev;
@@ -335,125 +431,22 @@ int main(int argc, char *argv[])
     gsInfo<<points.transpose()<<"\n";
     gsInfo<<"Result: \n"<<result.transpose()<<"\n";
 
-/*
 
-    // Define integrant variables
-    typedef gsExprEvaluator<real_t>::element     element;
-    typedef gsExprEvaluator<real_t>::geometryMap geometryMap;
-    typedef gsExprEvaluator<real_t>::variable    variable;
-    element     e = ev.getElement();
-    geometryMap G = ev.getMap(mp);
-    variable    u = ev.getVariable(a_, G);
-    variable    v = ev.getVariable(b_);
+    /*
+        Integrate now a material matrix point by point
+    */
+    real_t E_modulus = 1.0;
+    real_t PoissonRatio = 0.0;
+    gsFunctionExpr<> E(std::to_string(E_modulus),3);
+    gsFunctionExpr<> nu(std::to_string(PoissonRatio),3);
+    gsMaterialMatrix materialMat(mp, E, nu);
+    // gsIntegrate integrateMM(materialMat,thickFun);
 
-    //------------- Evaluation on a point grid
+    materialMat.eval_into(pt2D, result);
+    // materialMat.eval_into(points, result);
+    // integrateMM.eval_into(points,result);
 
-    // Construct a tensor-product point grid
-    const gsMatrix<> param = mp.patch(0).parameterRange();
-    gsGridIterator<real_t,CUBE> grid(param, 12);
-    gsInfo<< "* Jacobian determinant values on tensor-product grid:\n";
-    ev.eval( jac(G), grid );
-    gsInfo<< "  Result: "<< ev.allValues().transpose() <<"\n";
+    gsInfo<<"Result: \n"<<result.transpose()<<"\n";
 
-    gsInfo<< "* Derivative values on tensor-product grid:\n";
-    ev.eval( grad(u) * jac(G), grid );
-    gsInfo<< "  Result: "<< ev.allValues().transpose() <<"\n";
-
-    //------------- Maximum and minimum value
-
-    gsInfo<< "* The maximum value of [ meas(G) ]:\n";
-    ev.max( meas(G) );
-    gsInfo<< "  Result: "<< ev.value() <<"\n";
-
-    gsInfo<< "* The minimum value of [ meas(G) ]:\n";
-    ev.min( meas(G) );
-    gsInfo<< "  Result: "<< ev.value() <<"\n";
-
-    //------------- Geometric quantities
-
-    gsInfo<< "* The area of the domain [ meas(G) ]:\n";
-    ev.integral( meas(G) );
-    gsInfo<< "  Result: "<< ev.value() <<"\n";
-
-    gsInfo<< "* The area of the domain, assuming codim=0 [ jac(G).det() ] (!) :\n";
-    ev.integral( jac(G).det() );
-    gsInfo<< "  Result: "<< ev.value() <<"\n";
-
-    gsInfo<< "* The boundary area (eg. perimeter) of the domain [ nv(G).norm() ]:\n";
-    // Note: meas(G) is different than nv(G).norm()
-    ev.integralBdr( nv(G).norm() );
-    gsInfo<< "  Result: "<< ev.value() <<"\n";
-
-    gsInfo<< "* The area of the parameter domain [ 1 ] :\n";
-    ev.integral( 1 );
-    gsInfo<< "  Result: "<< ev.value() <<"\n";
-
-    //------------- L2 Norm
-
-    gsInfo<< "* The squared L2 norm [ u.sqr() * meas(G) ]:\n";
-    ev.integral( u.sqr() * meas(G) );
-
-    gsInfo<< "  Result: "<< ev.value() <<"\n";
-    ev.calcSqrt();
-    gsInfo<< "  sqrt  : "<< ev.value() <<"\n";
-
-    gsInfo<< "* The squared L2 distance [ (u-v).sqNorm() * meas(G) ]:\n";
-    ev.integral( (u-v).sqNorm() * meas(G) );
-    gsInfo<< "  Result: "<< ev.value() <<"\n";
-
-    gsInfo<< "* The squared L2 norm ||u-v+2*v*u|| [ (u-v+2*v*u).sqNorm() * meas(G) ]:\n";
-    ev.integral( (u-v+2*v*u).sqNorm() * meas(G) );
-    gsInfo<< "  Result: "<< ev.value() <<"\n";
-
-    gsInfo<< "* The squared L2 distance on the boundary [ u.sqNorm() * nv(G).norm() ]:\n";
-    ev.integralBdr( u.sqNorm() * nv(G).norm() );
-    gsInfo<< "  Result: "<< ev.value() <<"\n";
-
-    // gsInfo<< "* The cubed L3 distance [  ]:\n";
-    // ev.integral( (u-v).abs().pow(3)*(u-v).abs().pow(3) * meas(G) );
-    // gsInfo<< "  Result: "<< ev.value() <<"\n";
-
-    //------------- H1 Norm
-
-    gsInfo<< "* The squared H1 seminorm [ igrad(u,G).sqNorm() * meas(G) ]:\n";
-    ev.integral( igrad(u,G).sqNorm() * meas(G) );
-    gsInfo<< "  Result: "<< ev.value() <<"\n";
-
-    gsInfo<< "* The squared H1 norm [ (igrad(u,G).sqNorm()+u.sqNorm() ) * meas(G) ]:\n";
-    ev.integral( (igrad(u,G).sqNorm() + u.sqNorm() ) * meas(G) );
-    gsInfo<< "  Result: "<< ev.value() <<"\n";
-
-    gsInfo<< "* The squared H1 norm per element :\n";
-    ev.integralElWise( (igrad(u,G).sqNorm() + u.sqNorm() ) * meas(G) );
-    gsInfo<< "  Result (elwise sum): "<< ev.allValues().sum() <<"\n";
-    gsInfo<< "  Result (global)    : "<< ev.value() <<"\n";
-    ev.calcSqrt();
-    gsInfo<< "  sqrt (elwise): "<< ev.allValues().transpose() <<"\n";
-    gsInfo<< "  sqrt (global): "<< ev.value() <<"\n";
-
-    //------------- H2 Norm
-
-    gsInfo<< "* The squared H2 seminorm [ ihess(u,G).sqNorm() * meas(G) ]:\n";
-    ev.integral( ihess(u,G).sqNorm() * meas(G) );
-    gsInfo<< "  Result: "<< ev.value() <<"\n";
-
-    gsInfo<< "* The squared H2 norm [ ihess(u,G).sqNorm()+igrad(u,G).sqNorm()+u.sqNorm() ) * meas(G) ]:\n";
-    ev.integral( ( ihess(u,G).sqNorm() + igrad(u,G).sqNorm() + u.sqNorm() ) * meas(G) );
-    gsInfo<< "  Result: "<< ev.value() <<"\n";
-
-    //------------- Error estimates
-
-    gsInfo<< "* Poisson residual [ (ilapl(u,G) + v).sqr() * meas(G) ]:\n";
-    // u is the trial solution
-    // v is the rhs
-    ev.integral((ilapl(u,G) + v).sqNorm() * meas(G) );
-    gsInfo<< "  Result: "<< ev.value() <<"\n";
-
-    gsInfo<< "* Poisson residual estimator [ e.diam().sqr()*(ilapl(u,G)+v).sqr()*meas(G) ]:\n";
-    ev.integralElWise( e.diam().sqr() * (ilapl(u,G) + v).sqr() * meas(G) );
-    gsInfo<< "  Result: "<< ev.allValues().transpose() <<"\n";
-    gsInfo<< "  Global: "<< ev.value() <<"\n"; //== ev.allValues().sum()
-    // todo: add boundary contributions and interface contributions
-*/
     return EXIT_SUCCESS;
 }
