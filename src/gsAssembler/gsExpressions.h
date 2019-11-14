@@ -984,7 +984,7 @@ public:
     gsFuncData<T> & data() {return *_u.m_fd;}
     const gsFuncData<T> & data() const {return *_u.m_fd;}
 
-    void setSolutionVector(const gsMatrix<T>& solVector)
+    void setSolutionVector(gsMatrix<T>& solVector)
     { _Sv = & solVector; }
 
     const gsMatrix<T> & coefs() const { return *_Sv; }
