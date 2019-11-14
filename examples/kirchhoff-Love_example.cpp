@@ -12,9 +12,32 @@
 */
 
 //! [Include namespace]
+#include <typeinfo>
 #include <gismo.h>
 
 #  define MatExprType  auto
+
+template <typename T>
+constexpr auto type_name()
+{
+    std::string_view name, prefix, suffix;
+#ifdef __clang__
+    name = __PRETTY_FUNCTION__;
+    prefix = "auto type_name() [T = ";
+    suffix = "]";
+#elif defined(__GNUC__)
+    name = __PRETTY_FUNCTION__;
+    prefix = "constexpr auto type_name() [with T = ";
+    suffix = "]";
+#elif defined(_MSC_VER)
+    name = __FUNCSIG__;
+    prefix = "auto __cdecl type_name<";
+    suffix = ">(void)";
+#endif
+    name.remove_prefix(prefix.size());
+    name.remove_suffix(suffix.size());
+    return name;
+}
 
 namespace gismo{
 namespace expr{
@@ -853,10 +876,102 @@ public:
 
     // piece(k) --> for patch k
 
-};
+}; //! [Include namespace]
 
+template <typename T1, typename T2, typename T3 > using var2_t = gismo::expr::var2_expr<T1,T2,T3>;
+template <typename T1, typename T2, typename T3 > using flatdot_t = gismo::expr::flatdot_expr<T1,T2,T3 >;
+template <typename T1, typename T2, typename T3 > using flatdot2_t= gismo::expr::flatdot2_expr<T1,T2,T3 >;
+template <typename T1, typename T2  > using mult_t = gismo::expr::mult_expr<T1,T2,false >;
+template <typename T1, typename T2  > using add_t  = gismo::expr::add_expr<T1,T2>;
+template <typename T1, typename T2  > using sub_t  = gismo::expr::sub_expr<T1,T2>;
+template <typename T1, typename T2  > using der2d_t= gismo::expr::deriv2dot_expr<T1,T2>;
 
-//! [Include namespace]
+template <typename T> using jacG_t      = gismo::expr::jacG_expr<T>;
+template <typename T> using jac_t       = gismo::expr::jac_expr<T>;
+template <typename T> using sn_t        = gismo::expr::normal_expr<T>;
+template <typename T> using var1_t      = gismo::expr::var1_expr<T>;
+template <typename T> using der2_t      = gismo::expr::deriv2_expr<T>;
+template <typename T> using normalized_t= gismo::expr::normalized_expr<T>;
+template <typename T> using symmetrize_t= gismo::expr::symmetrize_expr<T>;
+template <typename T> using flat_t      = gismo::expr::flat_expr<T>;
+template <typename T> using tr_t        = gismo::expr::tr_expr<T>;
+template <typename T> using u_t         = gismo::expr::gsFeSpace<T>;
+template <typename T> using G_t         = gismo::expr::gsGeometryMap<T>;
+template <typename T> using var_t       = gismo::expr::gsFeVariable<T>;
+template <typename T> using reshape_t   = gismo::expr::reshape_expr<T>;
+
+template <typename T> using E_m_t  =
+mult_t
+< T,
+    sub_t
+    <
+        flat_t
+        <
+            mult_t< tr_t< jacG_t<T> >, jacG_t<T> >
+        >
+        ,
+        flat_t
+        <
+            mult_t< tr_t< jacG_t<T> >, jacG_t<T> >
+        >
+    >
+>;
+
+template <typename T> using E_m_der_t  =
+flat_t
+<
+    mult_t< tr_t< jacG_t<T> >, jac_t<u_t<T>> >
+>;
+
+template <typename T> using E_m_der2_t  =
+flatdot_t
+<
+    jac_t< u_t<T> >,
+    tr_t< jac_t< u_t<T> > >,
+    mult_t< E_m_t<T>,reshape_t< var_t<T> > >
+>;
+
+template <typename T> using E_f_t  =
+mult_t
+<
+    sub_t
+    <
+        der2d_t<G_t<T>, tr_t< normalized_t< sn_t<T> > > >
+        ,
+        der2d_t<G_t<T>, tr_t< normalized_t< sn_t<T> > > >
+    >
+    ,
+    reshape_t< var_t<T> >
+>;
+
+template <typename T> using E_f_der_t  =
+mult_t
+<
+    add_t
+    <
+        der2d_t<u_t<T>, tr_t< normalized_t< sn_t<T> > > >
+        ,
+        der2d_t<G_t<T>, var1_t< u_t<T> > >
+    >
+    ,
+    reshape_t< var_t<T> >
+>;
+
+template <typename T> using E_f_der2_t  =
+add_t
+<
+    symmetrize_t
+    <
+        flatdot2_t
+        <
+            der2_t< u_t<T> >,
+            tr_t< var1_t<u_t<T> > >,
+            mult_t < E_f_t<T>, reshape_t< var_t <T> > >
+        >
+    >
+    ,
+    var2_t< u_t<T>, u_t<T>, mult_t < E_f_t<T>, reshape_t< var_t <T> > > >
+>;
 
 int main(int argc, char *argv[])
 {
@@ -1008,8 +1123,8 @@ int main(int argc, char *argv[])
     u.addBc( bc.get("Dirichlet") ); // (!) must be called only once
 
     // Solution vector and solution variable
-    gsMatrix<> solVector;
-    solution u_sol = A.getSolution(u, solVector);
+    gsMatrix<> random;
+    solution u_sol = A.getSolution(u,random);
 
     // gsFunctionExpr<> materialMat("1","0","0","0","1","0","0","0","1",3);
     // variable mm = A.getCoeff(materialMat, G);
@@ -1060,14 +1175,33 @@ int main(int argc, char *argv[])
             mm      the material matrix,
             m2      an auxillary matrix to multiply the last row of a tensor with 2
     **/
-    auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ; //[checked]
-    auto E_m_der = flat( jac(defG).tr() * jac(u) ) ; //[checked]
-    auto E_m_der2 = flatdot( jac(u),jac(u).tr(), E_m * reshape(mm,3,3) ); //[checked]
 
-    auto E_f = ( deriv2(G,sn(G).normalized().tr()) - deriv2(defG,sn(defG).normalized().tr()) ) * reshape(m2,3,3) ; //[checked]
-    auto E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,defG) ) ) * reshape(m2,3,3); //[checked]
-    auto E_f_der2 = flatdot2( deriv2(u), var1(u,defG).tr(), E_f * reshape(mm,3,3)  ).symmetrize() + var2(u,u,defG,E_f * reshape(mm,3,3) );
+    mult_t< real_t, flat_t< jacG_t<real_t> >> E_mtest = 0.5 * flat(jac(G));
+
+
+    E_m_t<real_t>       E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ; //[checked]
+    E_m_der_t<real_t>   E_m_der = flat( jac(defG).tr() * jac(u) ) ; //[checked]
+    E_m_der2_t<real_t>  E_m_der2 = flatdot( jac(u),jac(u).tr(), E_m * reshape(mm,3,3) ); //[checked]
+
+    E_f_t<real_t>       E_f = ( deriv2(G,sn(G).normalized().tr()) - deriv2(defG,sn(defG).normalized().tr()) ) * reshape(m2,3,3) ; //[checked]
+    E_f_der_t<real_t>   E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,defG) ) ) * reshape(m2,3,3); //[checked]
+    E_f_der2_t<real_t>  E_f_der2 = flatdot2( deriv2(u), var1(u,defG).tr(), E_f * reshape(mm,3,3)  ).symmetrize() + var2(u,u,defG,E_f * reshape(mm,3,3) );
+
+    /*
+        E_f_der2_t<real_t>
+        E_f_der_t<real_t>
+        E_f_t<real_t>
+    */
+
     // NOTE: var1(u,G) in E_F_der2 should be var1(u,defG)
+
+    gsInfo<<"E_m_test: "<<typeid(E_mtest).name()<<"\n";
+    gsInfo<<"E_m: "<<typeid(E_m).name()<<"\n";
+    gsInfo<<"E_m_der: "<<typeid(E_m_der).name()<<"\n";
+    gsInfo<<"E_m_der2: "<<typeid(E_m_der2).name()<<"\n";
+    gsInfo<<"E_f: "<<typeid(E_f).name()<<"\n";
+    gsInfo<<"E_f_der: "<<typeid(E_f_der).name()<<"\n";
+    gsInfo<<"E_f_der2: "<<typeid(E_f_der2).name()<<"\n";
 
 
     gsVector<> pt(2); pt.setConstant(0.25);
@@ -1085,25 +1219,28 @@ int main(int argc, char *argv[])
         ,u * ff * meas(G)
         );
 
+    // // solve system
+    // solver.compute( A.matrix() );
+    // solVector = solver.solve(A.rhs());
+
     // solve system
     solver.compute( A.matrix() );
-    solVector = solver.solve(A.rhs());
-
+    gsMatrix<> solVector = solver.solve(A.rhs());
     // update deformed patch
     gsMatrix<> cc;
+
+    u_sol.setSolutionVector(solVector);
     for ( size_t k =0; k!=mp_def.nPatches(); ++k) // Deform the geometry
     {
-        // extract deformed geometry
+        // // extract deformed geometry
         u_sol.extract(cc, k);
         mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
     }
-
     /*Something with Dirichlet homogenization*/
 
     // ! [Solve linear problem]
 
     // ! [Solve nonlinear problem]
-
     real_t residual = A.rhs().norm();
     if (nonlinear)
     {
@@ -1132,25 +1269,22 @@ int main(int argc, char *argv[])
             // A.assemble(tt.val() * tt.val() * tt.val() / 3.0 * E_f_der2);
             // solve system
             solver.compute( A.matrix() );
-            solVector = solver.solve(A.rhs()); // this is the UPDATE
+            gsMatrix<> updateVector = solver.solve(A.rhs()); // this is the UPDATE
+            solVector += updateVector;
             residual = A.rhs().norm();
 
             gsInfo<<"Iteration: "<< it
                    <<", residue: "<< residual
-                   <<", update norm: "<<solVector.norm()
+                   <<", update norm: "<<updateVector.norm()
                    <<"\n";
 
             // update deformed patch
-            gsMatrix<> cc;
+            u_sol.setSolutionVector(updateVector);
             for ( size_t k =0; k!=mp_def.nPatches(); ++k) // Deform the geometry
             {
-                // extract deformed geometry
+                // // extract deformed geometry
                 u_sol.extract(cc, k);
                 mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
-
-
-                // gsInfo<<"coefficients = "<<cc<<"\n";
-                // gsInfo<<"solVector = "<<solVector.transpose()<<"\n";
             }
 
 
@@ -1184,6 +1318,15 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
+        u_sol.setSolutionVector(solVector);
+        mp_def = mp;
+        for ( size_t k =0; k!=mp.nPatches(); ++k) // Deform the geometry
+        {
+            // // extract deformed geometry
+            u_sol.extract(cc, k);
+            mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
+        }
+
         gsMultiPatch<> deformation = mp_def;
         for (index_t k = 0; k != mp_def.nPatches(); ++k)
             deformation.patch(0).coefs() -= mp.patch(0).coefs();
