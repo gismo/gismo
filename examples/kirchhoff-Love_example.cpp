@@ -737,6 +737,158 @@ public:
     void print(std::ostream &os) const { os << "flatdot2("; _A.print(os);_B.print(os);_C.print(os); os<<")"; }
 };
 
+/*
+   Expression for the Jacobian matrix of a geometry map
+ */
+template<class T>
+class cartcov_expr : public _expr<cartcov_expr<T> >
+{
+    typename gsGeometryMap<T>::Nested_t _G;
+
+public:
+    typedef T Scalar;
+
+    cartcov_expr(const gsGeometryMap<T> & G) : _G(G) { }
+
+    mutable gsMatrix<Scalar,3,3> covBasis, conBasis, covMetric, conMetric, cartBasis, result;
+    mutable gsVector<Scalar,3> normal, tmp;
+    mutable gsVector<Scalar,3> e1, e2, a1, a2;
+
+    MatExprType eval(const index_t k) const
+    {
+        // Compute covariant bases in deformed and undeformed configuration
+        normal = _G.data().normals.col(k);
+        normal.normalize();
+        covBasis.leftCols(2) = _G.data().jacobian(k);
+        covBasis.col(2)      = normal;
+        covMetric = covBasis.transpose() * covBasis;
+
+        conMetric = covMetric.inverse();
+
+        // conBasis.col(0) = conMetric(0,0)*covBasis.col(0)+conMetric(0,1)*covBasis.col(1)+conMetric(0,2)*covBasis.col(2);
+        conBasis.col(1) = conMetric(1,0)*covBasis.col(0)+conMetric(1,1)*covBasis.col(1)+conMetric(1,2)*covBasis.col(2);
+        // conBasis.col(2) = conMetric(2,0)*covBasis.col(0)+conMetric(2,1)*covBasis.col(1)+conMetric(2,2)*covBasis.col(2);
+
+        e1 = covBasis.col(0); e1.normalize();
+        e2 = conBasis.col(1); e2.normalize();
+        // e3 = normal;
+
+        a1 = covBasis.col(0);
+        a2 = covBasis.col(1);
+
+        result(0,0) = (e1.dot(a1))*(a1.dot(e1));
+        result(0,1) = (e1.dot(a2))*(a2.dot(e2));
+        result(0,2) = 2*(e1.dot(a1))*(a2.dot(e1));
+        // Row 1
+        result(1,0) = (e2.dot(a1))*(a1.dot(e2));
+        result(1,1) = (e2.dot(a2))*(a2.dot(e2));
+        result(1,2) = 2*(e2.dot(a1))*(a2.dot(e2));
+        // Row 2
+        result(2,0) = (e1.dot(a1))*(a1.dot(e2));
+        result(2,1) = (e1.dot(a2))*(a2.dot(e2));
+        result(2,2) = (e1.dot(a1))*(a2.dot(e2)) + (e1.dot(a2))*(a1.dot(e2));
+
+        return result;
+    }
+
+    index_t rows() const { return 3; }
+
+    index_t cols() const { return 3; }
+
+    static constexpr bool rowSpan() {return false; }
+    static bool colSpan() {return false;}
+
+    static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
+    static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
+
+    void setFlag() const { _G.data().flags |= NEED_NORMAL|NEED_DERIV; }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+        evList.push_sorted_unique(&_G.source());
+        _G.data().flags |= NEED_NORMAL|NEED_DERIV;
+    }
+
+    void print(std::ostream &os) const { os << "cartcov("; _G.print(os); os <<")"; }
+};
+
+/*
+   Expression for the Jacobian matrix of a geometry map
+ */
+template<class T>
+class cartcon_expr : public _expr<cartcon_expr<T> >
+{
+    typename gsGeometryMap<T>::Nested_t _G;
+
+public:
+    typedef T Scalar;
+
+    cartcon_expr(const gsGeometryMap<T> & G) : _G(G) { }
+
+    mutable gsMatrix<Scalar,3,3> covBasis, conBasis, covMetric, conMetric, cartBasis, result;
+    mutable gsVector<Scalar,3> normal, tmp;
+    mutable gsVector<Scalar,3> e1, e2, ac1, ac2;
+
+    MatExprType eval(const index_t k) const
+    {
+        // Compute covariant bases in deformed and undeformed configuration
+        normal = _G.data().normals.col(k);
+        normal.normalize();
+        covBasis.leftCols(2) = _G.data().jacobian(k);
+        covBasis.col(2)      = normal;
+        covMetric = covBasis.transpose() * covBasis;
+
+        conMetric = covMetric.inverse();
+
+        conBasis.col(0) = conMetric(0,0)*covBasis.col(0)+conMetric(0,1)*covBasis.col(1)+conMetric(0,2)*covBasis.col(2);
+        conBasis.col(1) = conMetric(1,0)*covBasis.col(0)+conMetric(1,1)*covBasis.col(1)+conMetric(1,2)*covBasis.col(2);
+        // conBasis.col(2) = conMetric(2,0)*covBasis.col(0)+conMetric(2,1)*covBasis.col(1)+conMetric(2,2)*covBasis.col(2);
+
+        e1 = covBasis.col(0); e1.normalize();
+        e2 = conBasis.col(1); e2.normalize();
+        // e3 = normal;
+
+        ac1 = conBasis.col(0);
+        ac2 = conBasis.col(1);
+
+        result(0,0) = (e1.dot(ac1))*(ac1.dot(e1));
+        result(0,1) = (e1.dot(ac2))*(ac2.dot(e2));
+        result(0,2) = 2*(e1.dot(ac1))*(ac2.dot(e1));
+        // Row 1
+        result(1,0) = (e2.dot(ac1))*(ac1.dot(e2));
+        result(1,1) = (e2.dot(ac2))*(ac2.dot(e2));
+        result(1,2) = 2*(e2.dot(ac1))*(ac2.dot(e2));
+        // Row 2
+        result(2,0) = (e1.dot(ac1))*(ac1.dot(e2));
+        result(2,1) = (e1.dot(ac2))*(ac2.dot(e2));
+        result(2,2) = (e1.dot(ac1))*(ac2.dot(e2)) + (e1.dot(ac2))*(ac1.dot(e2));
+
+        return result;
+    }
+
+    index_t rows() const { return 3; }
+
+    index_t cols() const { return 3; }
+
+    static constexpr bool rowSpan() {return false; }
+    static bool colSpan() {return false;}
+
+    static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
+    static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
+
+    void setFlag() const { _G.data().flags |= NEED_NORMAL|NEED_DERIV; }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+        evList.push_sorted_unique(&_G.source());
+        _G.data().flags |= NEED_NORMAL|NEED_DERIV;
+    }
+
+    void print(std::ostream &os) const { os << "cartcon("; _G.print(os); os <<")"; }
+};
+
 
 template<class E> EIGEN_STRONG_INLINE
 var1_expr<E> var1(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return var1_expr<E>(u, G); }
@@ -762,6 +914,12 @@ template<class E1, class E2, class E3> EIGEN_STRONG_INLINE
 flatdot2_expr<E1,E2,E3> flatdot2(const E1 & u, const E2 & v, const E3 & w)
 { return flatdot2_expr<E1,E2,E3>(u, v, w); }
 
+template<class E> EIGEN_STRONG_INLINE
+cartcov_expr<E> cartcov(const gsGeometryMap<E> & G) { return cartcov_expr<E>(G); }
+
+template<class E> EIGEN_STRONG_INLINE
+cartcon_expr<E> cartcon(const gsGeometryMap<E> & G) { return cartcon_expr<E>(G); }
+
 }
 }
 
@@ -770,6 +928,8 @@ using namespace gismo;
 
 template <class T>
 void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsVector<T> pt);
+template <class T>
+void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsMatrix<T> pt);
 template <class T>
 void constructSolution(gsExprAssembler<T> assembler, gsMultiPatch<T> mp_def);
 
@@ -859,16 +1019,106 @@ public:
             lambda = E * nu / ( (1. + nu)*(1.-2.*nu)) ;
             mu     = E / (2.*(1. + nu)) ;
 
-            C_constant = 4*lambda*mu/(lambda+2*mu);
+            C_constant = 2*lambda*mu/(lambda+2*mu);
 
-            C(0,0) = C_constant*F0(0,0)*F0(0,0) + 2*mu*(2*F0(0,0)*F0(0,0));
-            C(1,1) = C_constant*F0(1,1)*F0(1,1) + 2*mu*(2*F0(1,1)*F0(1,1));
-            C(2,2) = C_constant*F0(0,1)*F0(0,1) + 2*mu*(F0(0,0)*F0(1,1) + F0(0,1)*F0(0,1));
+            C(0,0) = C_constant*F0(0,0)*F0(0,0) + 1*mu*(2*F0(0,0)*F0(0,0));
+            C(1,1) = C_constant*F0(1,1)*F0(1,1) + 1*mu*(2*F0(1,1)*F0(1,1));
+            C(2,2) = C_constant*F0(0,1)*F0(0,1) + 1*mu*(F0(0,0)*F0(1,1) + F0(0,1)*F0(0,1));
             C(1,0) =
-            C(0,1) = C_constant*F0(0,0)*F0(1,1) + 2*mu*(2*F0(0,1)*F0(0,1));
+            C(0,1) = C_constant*F0(0,0)*F0(1,1) + 1*mu*(2*F0(0,1)*F0(0,1));
             C(2,0) =
-            C(0,2) = C_constant*F0(0,0)*F0(0,1) + 2*mu*(2*F0(0,0)*F0(0,1));
-            C(2,1) = C(1,2) = C_constant*F0(0,1)*F0(1,1) + 2*mu*(2*F0(0,1)*F0(1,1));
+            C(0,2) = C_constant*F0(0,0)*F0(0,1) + 1*mu*(2*F0(0,0)*F0(0,1));
+            C(2,1) = C(1,2) = C_constant*F0(0,1)*F0(1,1) + 1*mu*(2*F0(0,1)*F0(1,1));
+
+            //gsDebugVar(C);
+        }
+    }
+
+    // piece(k) --> for patch k
+
+}; //! [Include namespace]
+
+template <class T>
+class gsMaterialMatrixD : public gismo::gsFunction<T>
+{
+  // Computes the material matrix for different material models
+  //
+protected:
+    const gsFunctionSet<T> * _mp;
+    const gsFunction<T> * _YoungsModulus;
+    const gsFunction<T> * _PoissonRatio;
+    mutable gsMapData<T> _tmp;
+    mutable gsMatrix<T> Emat,Nmat;
+    mutable real_t E, nu, D_constant;
+
+public:
+    /// Shared pointer for gsMaterialMatrixD
+    typedef memory::shared_ptr< gsMaterialMatrixD > Ptr;
+
+    /// Unique pointer for gsMaterialMatrixD
+    typedef memory::unique_ptr< gsMaterialMatrixD > uPtr;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    gsMaterialMatrixD(const gsFunctionSet<T> & mp, const gsFunction<T> & YoungsModulus,
+                   const gsFunction<T> & PoissonRatio) :
+    _mp(&mp), _YoungsModulus(&YoungsModulus), _PoissonRatio(&PoissonRatio), _mm_piece(nullptr)
+    {
+        _tmp.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
+    }
+
+    ~gsMaterialMatrixD() { delete _mm_piece; }
+
+    GISMO_CLONE_FUNCTION(gsMaterialMatrixD)
+
+    short_t domainDim() const {return 2;}
+
+    short_t targetDim() const {return 9;}
+
+    mutable gsMaterialMatrixD<T> * _mm_piece; // todo: improve the way pieces are accessed
+
+    const gsFunction<T> & piece(const index_t k) const
+    {
+        delete _mm_piece;
+        _mm_piece = new gsMaterialMatrixD(_mp->piece(k), *_YoungsModulus, *_PoissonRatio);
+        return *_mm_piece;
+    }
+
+    //class .. matMatrix_z
+    // should contain eval_into(thickness variable)
+
+    // Input is parametric coordinates of the surface \a mp
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        // NOTE 1: if the input \a u is considered to be in physical coordinates
+        // then we first need to invert the points to parameter space
+        // _mp.patch(0).invertPoints(u, _tmp.points, 1e-8)
+        // otherwise we just use the input paramteric points
+        _tmp.points = u;
+
+        static_cast<const gsFunction<T>*>(_mp)->computeMap(_tmp);
+
+        // NOTE 2: in the case that parametric value is needed it suffices
+        // to evaluate Youngs modulus and Poisson's ratio at
+        // \a u instead of _tmp.values[0].
+        _YoungsModulus->eval_into(_tmp.values[0], Emat);
+        _PoissonRatio->eval_into(_tmp.values[0], Nmat);
+
+        result.resize( targetDim() , u.cols() );
+        for( index_t i=0; i< u.cols(); ++i )
+        {
+            gsAsMatrix<T, Dynamic, Dynamic> D = result.reshapeCol(i,3,3);
+
+            // Evaluate material properties on the quadrature point
+            E = Emat(0,i);
+            nu = Nmat(0,i);
+
+            D_constant = E/(1-nu*nu);
+            D(0,0) = D(1,1) = 1;
+            D(2,2) = (1-nu)/2;
+            D(0,1) = D(1,0) = nu;
+            D(2,0) = D(0,2) = D(2,1) = D(1,2) = 0;
+            D *= D_constant;
 
             //gsDebugVar(C);
         }
@@ -1009,12 +1259,12 @@ int main(int argc, char *argv[])
         mp.addAutoBoundaries();
         mp.embed(3);
         E_modulus = 1.0;
-        thickness = 0.5;
+        thickness = 1.0;
 
     }
     else if (testCase == 2)
     {
-        thickness = 0.125;
+        thickness = 0.25;
         E_modulus = 4.32E8;
         fn = "../extensions/unsupported/filedata/scordelis_lo_roof.xml";
         gsReadFile<>(fn, mp);
@@ -1027,7 +1277,7 @@ int main(int argc, char *argv[])
         fd.getId(0, mp); // id=0: Multipatch domain
         mp.embed(3);
         E_modulus = 1.0;
-        thickness = 0.5;
+        thickness = 1.0;
     }
     //! [Read input file]
 
@@ -1132,6 +1382,8 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> nu(std::to_string(PoissonRatio),3);
     gsMaterialMatrix materialMat(mp, E, nu);
     variable mm = A.getCoeff(materialMat);
+    gsMaterialMatrixD materialMatD(mp, E, nu);
+    variable mmD = A.getCoeff(materialMatD);
 
 
     gsFunctionExpr<> mult2t("1","0","0","0","1","0","0","0","2",3);
@@ -1187,25 +1439,38 @@ int main(int argc, char *argv[])
     E_f_der_t<real_t>   E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,defG) ) ) * reshape(m2,3,3); //[checked]
     E_f_der2_t<real_t>  E_f_der2 = flatdot2( deriv2(u), var1(u,defG).tr(), E_f * reshape(mm,3,3)  ).symmetrize() + var2(u,u,defG,E_f * reshape(mm,3,3) );
 
-    /*
-        E_f_der2_t<real_t>
-        E_f_der_t<real_t>
-        E_f_t<real_t>
-    */
+    auto That   = cartcon(G);
+    auto Ttilde = cartcov(G);
+    auto D = reshape(mmD,3,3);
+    auto C = reshape(mm,3,3);
+
+    auto S_m = tt.val() * C * E_m;
+    auto S_f = 2.0*tt.val()*tt.val()*tt.val()/12.0 * C * E_f;
 
     // NOTE: var1(u,G) in E_F_der2 should be var1(u,defG)
 
-    gsInfo<<"E_m_test: "<<typeid(E_mtest).name()<<"\n";
-    gsInfo<<"E_m: "<<typeid(E_m).name()<<"\n";
-    gsInfo<<"E_m_der: "<<typeid(E_m_der).name()<<"\n";
-    gsInfo<<"E_m_der2: "<<typeid(E_m_der2).name()<<"\n";
-    gsInfo<<"E_f: "<<typeid(E_f).name()<<"\n";
-    gsInfo<<"E_f_der: "<<typeid(E_f_der).name()<<"\n";
-    gsInfo<<"E_f_der2: "<<typeid(E_f_der2).name()<<"\n";
+    // gsInfo<<"E_m_test: "<<typeid(E_mtest).name()<<"\n";
+    // gsInfo<<"E_m: "<<typeid(E_m).name()<<"\n";
+    // gsInfo<<"E_m_der: "<<typeid(E_m_der).name()<<"\n";
+    // gsInfo<<"E_m_der2: "<<typeid(E_m_der2).name()<<"\n";
+    // gsInfo<<"E_f: "<<typeid(E_f).name()<<"\n";
+    // gsInfo<<"E_f_der: "<<typeid(E_f_der).name()<<"\n";
+    // gsInfo<<"E_f_der2: "<<typeid(E_f_der2).name()<<"\n";
 
 
-    gsVector<> pt(2); pt.setConstant(0.25);
-    // evaluateFunction(ev, u * ff * meas(G), pt); // evaluates an expression on a point
+    // gsVector<> pt(2); pt.setConstant(0.25);
+    gsMatrix<> pt(7,2);
+    pt<<0,0,
+    0,0.5,
+    0,1.0,
+    0.5,0,
+    1.0,0,
+    0.5,0.5,
+    1.0,1.0;
+    pt = pt.transpose();
+    evaluateFunction(ev, That, pt); // evaluates an expression on a point
+    evaluateFunction(ev, Ttilde, pt); // evaluates an expression on a point
+    evaluateFunction(ev, D, pt); // evaluates an expression on a point
 
     // ! [Solve linear problem]
 
@@ -1214,7 +1479,7 @@ int main(int argc, char *argv[])
         (
         (tt.val()) * (E_m_der * reshape(mm,3,3) * E_m_der.tr())
         +
-        (tt.val() * tt.val() * tt.val())/3.0 * (E_f_der * reshape(mm,3,3) * E_f_der.tr())
+        (tt.val() * tt.val() * tt.val())/12.0 * (E_f_der * reshape(mm,3,3) * E_f_der.tr())
         ) * meas(G)
         ,u * ff * meas(G)
         );
@@ -1254,14 +1519,14 @@ int main(int argc, char *argv[])
                 (
                 (tt.val()) * (E_m_der * reshape(mm,3,3) * E_m_der.tr() + E_m_der2)
                 +
-                (tt.val() * tt.val() * tt.val())/3.0 * (E_f_der * reshape(mm,3,3) * E_f_der.tr() -  E_f_der2)
+                (tt.val() * tt.val() * tt.val())/12.0 * (E_f_der * reshape(mm,3,3) * E_f_der.tr() -  E_f_der2)
                 ) * meas(G)
                 , u * ff * meas(G)
                 -
                 (
                  (
                     (tt.val()) *(E_m * reshape(mm,3,3) * E_m_der.tr()) -
-                    (tt.val() * tt.val() * tt.val())/3.0 * (E_f * reshape(mm,3,3) * E_f_der.tr())
+                    (tt.val() * tt.val() * tt.val())/12.0 * (E_f * reshape(mm,3,3) * E_f_der.tr())
                  ) * meas(G)
                 ).tr()
                 );
@@ -1336,7 +1601,7 @@ int main(int argc, char *argv[])
         gsWriteParaview<>( solField, "solution", 1000, true);
 
         // ev.options().setSwitch("plot.elements", true);
-        // ev.writeParaview( u_sol   , G, "solution");
+        ev.writeParaview( S_f.tr()[0]   , G, "stress");
 
         // gsFileManager::open("solution.pvd");
     }
@@ -1351,6 +1616,19 @@ void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsVector<T> pt)
     gsMatrix<T> evresult = ev.eval( expression,pt );
     gsInfo << "Eval on point ("<<pt.at(0)<<" , "<<pt.at(1)<<") :\n"<< evresult;
     gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
+};
+
+template <class T>
+void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsMatrix<T> pt)
+{
+    gsVector<T> tmp;
+    gsMatrix<T> evresult;
+    for (index_t k=0; k!= pt.cols(); ++k)
+    {
+        tmp = pt.col(k);
+        evresult = ev.eval( expression,tmp );
+        gsInfo<<evresult<<"\n";
+    }
 };
 
 /*
