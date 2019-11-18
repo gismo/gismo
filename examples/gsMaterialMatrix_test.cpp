@@ -338,6 +338,163 @@ public:
 };
 
 
+/*
+    Todo:
+        * Improve for mu, E, phi as gsFunction instead of reals
+*/
+template <class T>
+class gsMaterialMatrixD : public gismo::gsFunction<T>
+{
+  // Computes the material matrix for different material models
+  // NOTE: This material matrix is in local Cartesian coordinates and should be transformed!
+  //
+protected:
+    // const gsFunctionSet<T> * _mp;
+    const std::vector<std::pair<T,T>> _YoungsModuli;
+    const std::vector<T> _ShearModuli;
+    const std::vector<std::pair<T,T>> _PoissonRatios;
+    const std::vector<T> _thickness;
+    const std::vector<T> _phi;
+    mutable gsMapData<T> _tmp;
+    mutable real_t E1, E2, G12, nu12, nu21, t, t_tot, z, z_mid, phi;
+    mutable gsMatrix<T> Tmat, Dmat;
+
+public:
+    /// Shared pointer for gsMaterialMatrixD
+    typedef memory::shared_ptr< gsMaterialMatrixD > Ptr;
+
+    /// Unique pointer for gsMaterialMatrixD
+    typedef memory::unique_ptr< gsMaterialMatrixD > uPtr;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    gsMaterialMatrixD(  //const gsFunctionSet<T> & mp,
+                        const std::vector<std::pair<T,T>> & YoungsModuli,
+                        const std::vector<T> & ShearModuli,
+                        const std::vector<std::pair<T,T>> & PoissonRatios,
+                        const std::vector<T> thickness,
+                        const std::vector<T> phi) :
+    // _mp(&mp),
+    _YoungsModuli(YoungsModuli),
+    _ShearModuli(ShearModuli),
+    _PoissonRatios(PoissonRatios),
+    _thickness(thickness),
+    _phi(phi)//,
+    // _mm_piece(nullptr)
+    {
+        _tmp.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
+    }
+
+    // ~gsMaterialMatrixD() { delete _mm_piece; }
+
+    GISMO_CLONE_FUNCTION(gsMaterialMatrixD)
+
+    short_t domainDim() const {return 2;}
+
+    short_t targetDim() const {return 9;}
+
+    // mutable gsMaterialMatrixD<T> * _mm_piece; // todo: improve the way pieces are accessed
+
+    // const gsFunction<T> & piece(const index_t k) const
+    // {
+    //     delete _mm_piece;
+    //     _mm_piece = new gsMaterialMatrixD(_mp->piece(k), _YoungsModuli, _ShearModuli, _PoissonRatios, _thickness, _phi);
+    //     return *_mm_piece;
+    // }
+
+    // Input is parametric coordinates of the surface \a mp
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        // static_cast<const gsFunction<T>*>(_mp)->computeMap(_tmp);
+
+        gsDebugVar(_YoungsModuli.size());
+        gsDebugVar(_ShearModuli.size());
+        gsDebugVar(_PoissonRatios.size());
+        gsDebugVar(_thickness.size());
+        gsDebugVar(_phi.size());
+
+        GISMO_ASSERT(_YoungsModuli.size()==_PoissonRatios.size(),"Size of vectors of Youngs Moduli and Poisson Ratios is not equal: " << _YoungsModuli.size()<<" & "<<_PoissonRatios.size());
+        GISMO_ASSERT(_YoungsModuli.size()==_ShearModuli.size(),"Size of vectors of Youngs Moduli and Shear Moduli is not equal: " << _YoungsModuli.size()<<" & "<<_ShearModuli.size());
+        GISMO_ASSERT(_thickness.size()==_phi.size(),"Size of vectors of thickness and angles is not equal: " << _thickness.size()<<" & "<<_phi.size());
+        GISMO_ASSERT(_YoungsModuli.size()==_thickness.size(),"Size of vectors of material properties and laminate properties is not equal: " << _YoungsModuli.size()<<" & "<<_thickness.size());
+        GISMO_ASSERT(_YoungsModuli.size()!=0,"No laminates defined");
+
+        // Compute total thickness (sum of entries)
+        t_tot = std::accumulate(_thickness.begin(), _thickness.end(), 0);
+        gsDebugVar(t_tot);
+
+        // compute mid-plane height of total plate
+        z_mid = t_tot / 2.0;
+
+        // now we use t_tot to add the thickness of all plies iteratively
+        t_tot = 0.0;
+
+        // Initialize material matrix and result
+        Dmat.resize(3,3);
+        result.resize( targetDim(), 1 );
+
+        // Initialize transformation matrix
+        Tmat.resize(3,3);
+
+
+        for (index_t i = 0; i != _phi.size(); ++i) // loop over laminates
+        {
+            // Compute all quantities
+            E1 = _YoungsModuli[i].first;
+            E2 = _YoungsModuli[i].second;
+            G12 = _ShearModuli[i];
+            nu12 = _PoissonRatios[i].first;
+            nu21 = _PoissonRatios[i].second;
+            t = _thickness[i];
+            phi = _phi[i];
+
+            GISMO_ASSERT(nu21*E1 == nu12*E2, "No symmetry in material properties for ply "<<i<<". nu12*E2!=nu21*E1:\n"<<
+                    "\tnu12 = "<<nu12<<"\t E2 = "<<E2<<"\t nu12*E2 = "<<nu12*E2<<"\n"
+                  <<"\tnu21 = "<<nu21<<"\t E1 = "<<E1<<"\t nu21*E1 = "<<nu21*E1);
+
+            // Fill material matrix
+            Dmat(0,0) = E1 / (1-nu12*nu21);
+            Dmat(1,1) = E2 / (1-nu12*nu21);;
+            Dmat(2,2) = G12;
+            Dmat(0,1) = nu21*E1 / (1-nu12*nu21);
+            Dmat(1,0) = nu12*E2 / (1-nu12*nu21);
+            Dmat(2,0) = Dmat(0,2) = Dmat(2,1) = Dmat(1,2) = 0;
+
+            // Make transformation matrix
+            Tmat(0,0) = Tmat(1,1) = math::pow(math::cos(phi),2);
+            Tmat(0,1) = Tmat(1,0) = math::pow(math::sin(phi),2);
+            Tmat(2,0) = Tmat(0,2) = Tmat(2,1) = Tmat(1,2) = math::sin(phi) * math::cos(phi);
+            Tmat(2,0) *= -2.0;
+            Tmat(2,1) *= 2.0;
+            Tmat(1,2) *= -1.0;
+            Tmat(2,2) = math::pow(math::cos(phi),2) - math::pow(math::sin(phi),2);
+
+            // Compute laminate stiffness matrix
+            Dmat = Tmat.transpose() * Dmat * Tmat;
+
+            z = math::abs(z_mid - (t/2.0 + t_tot) ); // distance from mid-plane of plate
+
+            // Make matrices A, B and C
+            // [NOTE: HOW TO DO THIS NICELY??]
+            result.reshape(3,3) += Dmat * t; // A
+            // result.reshape(3,3) += Dmat * t*z; // B
+            // result.reshape(3,3) += Dmat * ( t*z*z + t*t*t/12.0 ); // D
+
+            t_tot += t;
+            gsDebugVar(t);
+        }
+
+        GISMO_ASSERT(t_tot==std::accumulate(_thickness.begin(), _thickness.end(), 0),"Total thickness after loop is wrong. t_tot = "<<t_tot<<" and sum(thickness) = "<<std::accumulate(_thickness.begin(), _thickness.end(), 0));
+
+        // Replicate for all points since the quantities are equal over the whole domain
+        result.replicate(1, u.cols());
+    }
+
+    // piece(k) --> for patch k
+
+}; //! [Include namespace]
+
+
 
 int main(int argc, char *argv[])
 {
@@ -436,19 +593,40 @@ int main(int argc, char *argv[])
 
     /*
         Integrate now a material matrix point by point
+        NOTE: does not work
     */
-    real_t E_modulus = 1.0;
-    real_t PoissonRatio = 0.0;
-    gsFunctionExpr<> E(std::to_string(E_modulus),3);
-    gsFunctionExpr<> nu(std::to_string(PoissonRatio),3);
-    gsMaterialMatrix materialMat(mp, E, nu);
-    // gsIntegrate integrateMM(materialMat,thickFun);
+    // real_t E_modulus = 1.0;
+    // real_t PoissonRatio = 0.0;
+    // gsFunctionExpr<> E(std::to_string(E_modulus),3);
+    // gsFunctionExpr<> nu(std::to_string(PoissonRatio),3);
+    // gsMaterialMatrix materialMat(mp, E, nu);
+    // // gsIntegrate integrateMM(materialMat,thickFun);
 
-    materialMat.eval_into(pt2D, result);
-    // materialMat.eval_into(points, result);
-    // integrateMM.eval_into(points,result);
+    // materialMat.eval_into(pt2D, result);
+    // // materialMat.eval_into(points, result);
+    // // integrateMM.eval_into(points,result);
 
-    gsInfo<<"Result: \n"<<result.transpose()<<"\n";
+    // gsInfo<<"Result: \n"<<result.transpose()<<"\n";
+
+
+    /*
+        make composite material matrix
+        NOTE: does not work
+    */
+    std::vector<std::pair<real_t,real_t>> Emod;
+    std::vector<std::pair<real_t,real_t>> Nu;
+    std::vector<real_t> G;
+    std::vector<real_t> t;
+    std::vector<real_t> phi;
+
+    Emod.push_back( std::make_pair(300.0,200.0) );
+    Nu.push_back( std::make_pair(0.3,0.2) );
+    G.push_back( 100.0 );
+    t.push_back( 0.100 );
+    phi.push_back( 3.1415/2.0);
+
+    gsMaterialMatrixD Dmat(Emod,G,Nu,t,phi);
+    Dmat.eval_into(pt2D, result);
 
     return EXIT_SUCCESS;
 }
