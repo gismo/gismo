@@ -241,7 +241,7 @@ void boundaryInterface::cornerMap(gsVector<index_t> & cmap) const
 }
 
 
-void boundaryInterface::reorderCorners(gsMatrix<unsigned> & boundary) const
+void boundaryInterface::reorderCorners(gsMatrix<index_t> & boundary) const
 {
     gsVector<index_t> cmap;
     cornerMap(cmap);
