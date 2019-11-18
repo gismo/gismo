@@ -788,7 +788,7 @@ public:
         result(2,1) = (e1.dot(a2))*(a2.dot(e2));
         result(2,2) = (e1.dot(a1))*(a2.dot(e2)) + (e1.dot(a2))*(a1.dot(e2));
 
-        return result;
+        return result.inverse();
     }
 
     index_t rows() const { return 3; }
@@ -1262,7 +1262,7 @@ int main(int argc, char *argv[])
         thickness = 1.0;
 
     }
-    else if (testCase == 2)
+    else if (testCase == 2  || testCase == 3)
     {
         thickness = 0.25;
         E_modulus = 4.32E8;
@@ -1300,6 +1300,11 @@ int main(int argc, char *argv[])
     gsBoundaryConditions<> bc;
     gsVector<> tmp(3);
     tmp << 0, 0, 0;
+
+    gsVector<> neu(3);
+    neu << 0, 0, 0;
+
+    gsConstantFunction<> neuData(neu,3);
     if (testCase == 1)
     {
         for (index_t i=0; i!=3; ++i)
@@ -1329,6 +1334,28 @@ int main(int argc, char *argv[])
 
         // Surface forces
         tmp << 0, 0, -90;
+    }
+    else if (testCase == 3)
+    {
+        neu << 0, 0, -90;
+        neuData.setValue(neu,3);
+        // Diaphragm conditions
+        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
+        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
+        bc.addCondition(boundary::west, condition_type::neumann, &neuData );
+
+        // ORIGINAL
+        // bc.addCornerValue(boundary::southwest, 0.0, 0, 0); // (corner,value, patch, unknown)
+
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
+
+        // NOT ORIGINAL
+        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - y
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ); // unknown 1 - y
+
+        // Surface forces
+        tmp << 0, 0, 0;
     }
     else if (testCase == 9)
     {
@@ -1439,9 +1466,10 @@ int main(int argc, char *argv[])
     E_f_der_t<real_t>   E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,defG) ) ) * reshape(m2,3,3); //[checked]
     E_f_der2_t<real_t>  E_f_der2 = flatdot2( deriv2(u), var1(u,defG).tr(), E_f * reshape(mm,3,3)  ).symmetrize() + var2(u,u,defG,E_f * reshape(mm,3,3) );
 
-    auto That   = cartcon(G);
-    auto Ttilde = cartcov(G);
-    auto D = reshape(mmD,3,3);
+    auto That       = cartcon(G);
+    auto Ttilde     = cartcov(G); // IS INVERTED
+    // auto TtildeInv  = cartcov(G).inv(); // DOES NOT WORK!!
+    auto D = Ttilde*reshape(mmD,3,3)*That;
     auto C = reshape(mm,3,3);
 
     auto S_m = tt.val() * C * E_m;
@@ -1458,18 +1486,21 @@ int main(int argc, char *argv[])
     // gsInfo<<"E_f_der2: "<<typeid(E_f_der2).name()<<"\n";
 
 
-    // gsVector<> pt(2); pt.setConstant(0.25);
-    gsMatrix<> pt(7,2);
-    pt<<0,0,
-    0,0.5,
-    0,1.0,
-    0.5,0,
-    1.0,0,
-    0.5,0.5,
-    1.0,1.0;
-    pt = pt.transpose();
+    gsVector<> pt(2); pt.setConstant(0.25);
+    // gsMatrix<> pt(7,2);
+    // pt<<0,0,
+    // 0,0.5,
+    // 0,1.0,
+    // 0.5,0,
+    // 1.0,0,
+    // 0.5,0.5,
+    // 1.0,1.0;
+    // pt = pt.transpose();
+    gsDebugVar(pt);
     evaluateFunction(ev, That, pt); // evaluates an expression on a point
     evaluateFunction(ev, Ttilde, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, TtildeInv, pt); // evaluates an expression on a point
+    evaluateFunction(ev, C, pt); // evaluates an expression on a point
     evaluateFunction(ev, D, pt); // evaluates an expression on a point
 
     // ! [Solve linear problem]
@@ -1484,9 +1515,9 @@ int main(int argc, char *argv[])
         ,u * ff * meas(G)
         );
 
-    // // solve system
-    // solver.compute( A.matrix() );
-    // solVector = solver.solve(A.rhs());
+    // For Neumann (same for Dirichlet/Nitsche) conditions
+    variable g_N = A.getBdrFunction();
+    A.assembleRhsBc(u * g_N, bc.neumannSides() );
 
     // solve system
     solver.compute( A.matrix() );
@@ -1531,6 +1562,10 @@ int main(int argc, char *argv[])
                 ).tr()
                 );
 
+            // For Neumann (same for Dirichlet/Nitche) conditions
+            variable g_N = A.getBdrFunction();
+            A.assembleRhsBc(u * g_N, bc.neumannSides() );
+
             // A.assemble(tt.val() * tt.val() * tt.val() / 3.0 * E_f_der2);
             // solve system
             solver.compute( A.matrix() );
@@ -1561,10 +1596,6 @@ int main(int argc, char *argv[])
 
     // ! [Solve nonlinear problem]
 
-    // For Neumann (same for Dirichlet/Nitche) conditions
-    // variable g_N = A.getBdrFunction();
-    // A.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
-
     // Penalize the matrix? (we need values for the DoFs to be enforced..
     // function/call:  penalize_matrix(DoF_indices, DoF_values)
     // otherwise: should we tag the DoFs inside "u" ?
@@ -1576,8 +1607,6 @@ int main(int argc, char *argv[])
 
     // gsInfo<< A.rhs().transpose() <<"\n";
     // gsInfo<< A.matrix().toDense()<<"\n";
-
-    // ADD BOUNDARY CONDITIONS! (clamped will be tricky..............)
 
 
     //! [Export visualization in ParaView]
@@ -1601,7 +1630,7 @@ int main(int argc, char *argv[])
         gsWriteParaview<>( solField, "solution", 1000, true);
 
         // ev.options().setSwitch("plot.elements", true);
-        ev.writeParaview( S_f.tr()[0]   , G, "stress");
+        // ev.writeParaview( S_f.tr()[0]   , G, "stress");
 
         // gsFileManager::open("solution.pvd");
     }
