@@ -57,11 +57,11 @@ protected:
 
     /// @brief map between row blocks and index of \a m_mappers, i.e.
     ///  row block i is described by m_mappers[m_row[i]].
-    gsVector<size_t> m_row;
+    gsVector<index_t> m_row;
 
     /// @brief map between column blocks and index of \a m_mappers i.e.
     ///  col block j is described by m_mappers[m_col[j]].
-    gsVector<size_t> m_col;
+    gsVector<index_t> m_col;
 
     /// @brief strides for the row blocks (shifting of mapped indices).
     /// The mapper do not have this information anymore.
@@ -205,8 +205,8 @@ public:
     gsSparseSystem(DofMappers & mappers,
                    const index_t rows,
                    const index_t cols)
-        : m_row (gsVector<size_t>::LinSpaced(rows,0,rows-1)),
-          m_col (gsVector<size_t>::LinSpaced(cols,0,cols-1)),
+        : m_row (gsVector<index_t>::LinSpaced(rows,0,rows-1)),
+          m_col (gsVector<index_t>::LinSpaced(cols,0,cols-1)),
           m_rstr(rows),
           m_cstr(cols),
           m_dims(cols)
@@ -273,8 +273,8 @@ public:
      * @param[in] colvar assignment of unknowns to the used bases (i.e. column blocks to MultiBasis)
      */
     gsSparseSystem(DofMappers & mappers,
-                   const gsVector<size_t> & rowInd,
-                   const gsVector<size_t> & colInd,
+                   const gsVector<index_t> & rowInd,
+                   const gsVector<index_t> & colInd,
                    const gsVector<index_t> & colvar)
         : m_row (rowInd),
           m_col (colInd),
@@ -929,13 +929,13 @@ public: /* Add local contributions to system right-hand side */
 
     void pushToRhs(const gsMatrix<T> & localRhs,
                    const std::vector<gsMatrix<index_t> >& actives_vec,
-                   const gsVector<size_t> & r_vec)
+                   const gsVector<index_t> & r_vec)
     {
         int rstrLocal = 0;
 
         for (index_t r_ind = 0; r_ind != r_vec.size(); ++r_ind) // for row-blocks
         {
-            size_t r = r_vec(r_ind);
+            index_t r = r_vec(r_ind);
             const gsDofMapper & rowMap    = m_mappers[m_row.at(r)];
             const index_t numActive_i = actives_vec[r].rows();
 
@@ -1265,7 +1265,7 @@ public: /* Add local contributions to system matrix and right-hand side */
               const std::vector<gsMatrix<T> > &,
               const std::vector<gsMatrix<index_t> > &,
               const std::vector<gsMatrix<T> > &,
-              const gsVector<size_t> &, const gsVector<size_t> &)
+              const gsVector<index_t> &, const gsVector<index_t> &)
     {
         GISMO_NO_IMPLEMENTATION
     }
