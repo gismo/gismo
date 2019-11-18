@@ -356,7 +356,7 @@ protected:
     const std::vector<T> _thickness;
     const std::vector<T> _phi;
     mutable gsMapData<T> _tmp;
-    mutable real_t E1, E2, G12, nu12, nu21, t, t_tot, z, z_mid, phi;
+    mutable real_t E1, E2, G12, nu12, nu21, t, t_tot, t_temp, z, z_mid, phi;
     mutable gsMatrix<T> Tmat, Dmat;
 
 public:
@@ -406,13 +406,6 @@ public:
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         // static_cast<const gsFunction<T>*>(_mp)->computeMap(_tmp);
-
-        gsDebugVar(_YoungsModuli.size());
-        gsDebugVar(_ShearModuli.size());
-        gsDebugVar(_PoissonRatios.size());
-        gsDebugVar(_thickness.size());
-        gsDebugVar(_phi.size());
-
         GISMO_ASSERT(_YoungsModuli.size()==_PoissonRatios.size(),"Size of vectors of Youngs Moduli and Poisson Ratios is not equal: " << _YoungsModuli.size()<<" & "<<_PoissonRatios.size());
         GISMO_ASSERT(_YoungsModuli.size()==_ShearModuli.size(),"Size of vectors of Youngs Moduli and Shear Moduli is not equal: " << _YoungsModuli.size()<<" & "<<_ShearModuli.size());
         GISMO_ASSERT(_thickness.size()==_phi.size(),"Size of vectors of thickness and angles is not equal: " << _thickness.size()<<" & "<<_phi.size());
@@ -420,14 +413,13 @@ public:
         GISMO_ASSERT(_YoungsModuli.size()!=0,"No laminates defined");
 
         // Compute total thickness (sum of entries)
-        t_tot = std::accumulate(_thickness.begin(), _thickness.end(), 0);
-        gsDebugVar(t_tot);
+        t_tot = std::accumulate(_thickness.begin(), _thickness.end(), 0.0);
 
         // compute mid-plane height of total plate
         z_mid = t_tot / 2.0;
 
-        // now we use t_tot to add the thickness of all plies iteratively
-        t_tot = 0.0;
+        // now we use t_temp to add the thickness of all plies iteratively
+        t_temp = 0.0;
 
         // Initialize material matrix and result
         Dmat.resize(3,3);
@@ -458,7 +450,7 @@ public:
             Dmat(2,2) = G12;
             Dmat(0,1) = nu21*E1 / (1-nu12*nu21);
             Dmat(1,0) = nu12*E2 / (1-nu12*nu21);
-            Dmat(2,0) = Dmat(0,2) = Dmat(2,1) = Dmat(1,2) = 0;
+            Dmat(2,0) = Dmat(0,2) = Dmat(2,1) = Dmat(1,2) = 0.0;
 
             // Make transformation matrix
             Tmat(0,0) = Tmat(1,1) = math::pow(math::cos(phi),2);
@@ -472,7 +464,7 @@ public:
             // Compute laminate stiffness matrix
             Dmat = Tmat.transpose() * Dmat * Tmat;
 
-            z = math::abs(z_mid - (t/2.0 + t_tot) ); // distance from mid-plane of plate
+            z = math::abs(z_mid - (t/2.0 + t_temp) ); // distance from mid-plane of plate
 
             // Make matrices A, B and C
             // [NOTE: HOW TO DO THIS NICELY??]
@@ -480,11 +472,10 @@ public:
             // result.reshape(3,3) += Dmat * t*z; // B
             // result.reshape(3,3) += Dmat * ( t*z*z + t*t*t/12.0 ); // D
 
-            t_tot += t;
-            gsDebugVar(t);
+            t_temp += t;
         }
 
-        GISMO_ASSERT(t_tot==std::accumulate(_thickness.begin(), _thickness.end(), 0),"Total thickness after loop is wrong. t_tot = "<<t_tot<<" and sum(thickness) = "<<std::accumulate(_thickness.begin(), _thickness.end(), 0));
+        GISMO_ASSERT(t_tot==t_temp,"Total thickness after loop is wrong. t_temp = "<<t_temp<<" and sum(thickness) = "<<t_tot);
 
         // Replicate for all points since the quantities are equal over the whole domain
         result.replicate(1, u.cols());
@@ -627,6 +618,10 @@ int main(int argc, char *argv[])
 
     gsMaterialMatrixD Dmat(Emod,G,Nu,t,phi);
     Dmat.eval_into(pt2D, result);
+
+    gsInfo<<"Result: \n"<<result.reshape(3,3)<<"\n";
+
+
 
     return EXIT_SUCCESS;
 }
