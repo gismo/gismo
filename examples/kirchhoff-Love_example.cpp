@@ -995,7 +995,7 @@ public:
         // otherwise we just use the input paramteric points
         _tmp.points = u;
 
-        static_cast<const gsFunction<T>*>(_mp)->computeMap(_tmp);
+        static_cast<const gsFunction<T>*>(_mp->piece(0))->computeMap(_tmp); // the piece(0) here implies that if you call class.eval_into, it will be evaluated on piece(0). Hence, call class.piece(k).eval_into()
 
         // NOTE 2: in the case that parametric value is needed it suffices
         // to evaluate Youngs modulus and Poisson's ratio at
