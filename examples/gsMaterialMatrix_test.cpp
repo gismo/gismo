@@ -266,7 +266,7 @@ public:
 
     GISMO_CLONE_FUNCTION(gsMaterialMatrix)
 
-    short_t domainDim() const {return 2;}
+    short_t domainDim() const {return 3;}
 
     short_t targetDim() const {return 9;}
 
@@ -289,12 +289,11 @@ public:
         // then we first need to invert the points to parameter space
         // _mp.patch(0).invertPoints(u, _tmp.points, 1e-8)
         // otherwise we just use the input paramteric points
-        gsDebugVar(u);
-        _tmp.points = u;
-        gsDebugVar(_mp->piece(0));
-        gsDebugVar(_tmp.points);
 
-        static_cast<const gsFunction<T>*>(_mp)->computeMap(_tmp);
+        _tmp.points = u.topRows(2);
+
+        static_cast<const gsFunction<T>&>( _mp->piece(0) ).computeMap(_tmp);
+        // _mp->piece(0).computeMap(_tmp);
 
         // NOTE 2: in the case that parametric value is needed it suffices
         // to evaluate Youngs modulus and Poisson's ratio at
@@ -328,6 +327,9 @@ public:
             C(2,0) =
             C(0,2) = C_constant*F0(0,0)*F0(0,1) + 2*mu*(2*F0(0,0)*F0(0,1));
             C(2,1) = C(1,2) = C_constant*F0(0,1)*F0(1,1) + 2*mu*(2*F0(0,1)*F0(1,1));
+
+            real_t temp = u(2,i);
+            C *= temp;
 
             //gsDebugVar(C);
         }
@@ -518,8 +520,8 @@ int main(int argc, char *argv[])
     gsVector<> pt3D(3); pt3D.setConstant(0.25);
 
     gsMatrix<> points(2,11);
-    points<<0,1,2,3,4,5,6,7,8,9,10,
-            0,1,2,3,4,5,6,7,8,9,10;
+    points<<0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,
+            0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0;
 
     gsFunctionExpr<> fun("1*x","2*y","x*y*z^2",3);
 
@@ -586,18 +588,21 @@ int main(int argc, char *argv[])
         Integrate now a material matrix point by point
         NOTE: does not work
     */
-    // real_t E_modulus = 1.0;
-    // real_t PoissonRatio = 0.0;
-    // gsFunctionExpr<> E(std::to_string(E_modulus),3);
-    // gsFunctionExpr<> nu(std::to_string(PoissonRatio),3);
-    // gsMaterialMatrix materialMat(mp, E, nu);
-    // // gsIntegrate integrateMM(materialMat,thickFun);
+    real_t E_modulus = 1.0;
+    real_t PoissonRatio = 0.0;
+    gsFunctionExpr<> E(std::to_string(E_modulus),3);
+    gsFunctionExpr<> nu(std::to_string(PoissonRatio),3);
+    gsMaterialMatrix materialMat(mp, E, nu);
+    gsIntegrate integrateMM(materialMat,thickFun);
 
     // materialMat.eval_into(pt2D, result);
-    // // materialMat.eval_into(points, result);
-    // // integrateMM.eval_into(points,result);
+    // materialMat.eval_into(pt3D, result);
+    // gsInfo<<"Result: \n"<<result<<"\n"; //.reshape(3,3)
 
-    // gsInfo<<"Result: \n"<<result.transpose()<<"\n";
+
+    integrateMM.eval_into(points,result);
+    gsInfo<<"Result: \n"<<result<<"\n"; //.reshape(3,3)
+
 
 
     /*
@@ -610,11 +615,18 @@ int main(int argc, char *argv[])
     std::vector<real_t> t;
     std::vector<real_t> phi;
 
+    real_t pi = math::atan(1)*4;
+
     Emod.push_back( std::make_pair(300.0,200.0) );
     Nu.push_back( std::make_pair(0.3,0.2) );
     G.push_back( 100.0 );
     t.push_back( 0.100 );
-    phi.push_back( 3.1415/2.0);
+    phi.push_back( pi/2.0);
+
+
+
+    gsInfo<<math::cos(pi/2.0)<<"\n";
+    gsInfo<<math::sin(pi/2.0)<<"\n";
 
     gsMaterialMatrixD Dmat(Emod,G,Nu,t,phi);
     Dmat.eval_into(pt2D, result);
