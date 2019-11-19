@@ -1132,6 +1132,7 @@ template <typename T1, typename T2, typename T3 > using var2_t = gismo::expr::va
 template <typename T1, typename T2, typename T3 > using flatdot_t = gismo::expr::flatdot_expr<T1,T2,T3 >;
 template <typename T1, typename T2, typename T3 > using flatdot2_t= gismo::expr::flatdot2_expr<T1,T2,T3 >;
 template <typename T1, typename T2  > using mult_t = gismo::expr::mult_expr<T1,T2,false >;
+template <typename T1, typename T2  > using divide_t= gismo::expr::divide_expr<T1,T2 >;
 template <typename T1, typename T2  > using add_t  = gismo::expr::add_expr<T1,T2>;
 template <typename T1, typename T2  > using sub_t  = gismo::expr::sub_expr<T1,T2>;
 template <typename T1, typename T2  > using der2d_t= gismo::expr::deriv2dot_expr<T1,T2>;
@@ -1148,6 +1149,7 @@ template <typename T> using tr_t        = gismo::expr::tr_expr<T>;
 template <typename T> using u_t         = gismo::expr::gsFeSpace<T>;
 template <typename T> using G_t         = gismo::expr::gsGeometryMap<T>;
 template <typename T> using var_t       = gismo::expr::gsFeVariable<T>;
+template <typename T> using val_t       = gismo::expr::value_expr<T>;
 template <typename T> using reshape_t   = gismo::expr::reshape_expr<T>;
 
 template <typename T> using E_m_t  =
@@ -1167,18 +1169,40 @@ mult_t
     >
 >;
 
+template <typename T> using S_m_t  =
+mult_t
+<
+    E_m_t<T>
+    ,
+    reshape_t< var_t <T> >
+>;
+
+template <typename T> using N_t  =
+mult_t< val_t<var_t<T>>, S_m_t<T> >;
+
 template <typename T> using E_m_der_t  =
 flat_t
 <
     mult_t< tr_t< jacG_t<T> >, jac_t<u_t<T>> >
 >;
 
+template <typename T> using S_m_der_t  =
+mult_t
+<
+    E_m_der_t<T>
+    ,
+    reshape_t< var_t <T> >
+>;
+
+template <typename T> using N_der_t  =
+mult_t< val_t<var_t<T>>, S_m_der_t<T> >;
+
 template <typename T> using E_m_der2_t  =
 flatdot_t
 <
     jac_t< u_t<T> >,
     tr_t< jac_t< u_t<T> > >,
-    mult_t< E_m_t<T>,reshape_t< var_t<T> > >
+    N_t<T>
 >;
 
 template <typename T> using E_f_t  =
@@ -1194,6 +1218,37 @@ mult_t
     reshape_t< var_t<T> >
 >;
 
+template <typename T> using S_f_t  =
+mult_t
+<
+    E_f_t<T>
+    ,
+    reshape_t< var_t <T> >
+>;
+
+template <typename T> using M_t  =
+mult_t
+<
+    divide_t
+    <
+        mult_t
+        <
+            mult_t
+            <
+                val_t<var_t<T>>
+                ,
+                val_t<var_t<T>>
+            >
+            ,
+            val_t<var_t<T>>
+        >
+    ,
+    T
+    >
+    ,
+    S_f_t<T>
+>;
+
 template <typename T> using E_f_der_t  =
 mult_t
 <
@@ -1207,6 +1262,38 @@ mult_t
     reshape_t< var_t<T> >
 >;
 
+template <typename T> using S_f_der_t  =
+mult_t
+<
+    E_f_der_t<T>
+    ,
+    reshape_t< var_t <T> >
+>;
+
+template <typename T> using M_der_t  =
+mult_t
+<
+    divide_t
+    <
+        mult_t
+        <
+            mult_t
+            <
+                val_t<var_t<T>>
+                ,
+                val_t<var_t<T>>
+            >
+            ,
+            val_t<var_t<T>>
+        >
+    ,
+    T
+    >
+    ,
+    S_f_der_t<T>
+>;
+
+
 template <typename T> using E_f_der2_t  =
 add_t
 <
@@ -1216,12 +1303,14 @@ add_t
         <
             der2_t< u_t<T> >,
             tr_t< var1_t<u_t<T> > >,
-            mult_t < E_f_t<T>, reshape_t< var_t <T> > >
+            M_t<T>
         >
     >
     ,
-    var2_t< u_t<T>, u_t<T>, mult_t < E_f_t<T>, reshape_t< var_t <T> > > >
+    var2_t< u_t<T>, u_t<T>, M_t<T> >
 >;
+
+template <typename T> using force_t = var_t<T>;
 
 int main(int argc, char *argv[])
 {
@@ -1304,6 +1393,8 @@ int main(int argc, char *argv[])
     gsVector<> neu(3);
     neu << 0, 0, 0;
 
+    gsFunctionExpr<> displ("1",3);
+
     gsConstantFunction<> neuData(neu,3);
     if (testCase == 1)
     {
@@ -1329,8 +1420,9 @@ int main(int argc, char *argv[])
         bc.addCondition(boundary::east, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
 
         // NOT ORIGINAL
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - y
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ); // unknown 1 - y
+        // bc.addCondition(boundary::west, condition_type::dirichlet, &displ, 0 ); // unknown 1 - x
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
 
         // Surface forces
         tmp << 0, 0, -90;
@@ -1351,8 +1443,8 @@ int main(int argc, char *argv[])
         bc.addCondition(boundary::east, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
 
         // NOT ORIGINAL
-        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - y
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ); // unknown 1 - y
+        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
 
         // Surface forces
         tmp << 0, 0, 0;
@@ -1457,14 +1549,30 @@ int main(int argc, char *argv[])
 
     mult_t< real_t, flat_t< jacG_t<real_t> >> E_mtest = 0.5 * flat(jac(G));
 
-
+    // Membrane components
     E_m_t<real_t>       E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ; //[checked]
-    E_m_der_t<real_t>   E_m_der = flat( jac(defG).tr() * jac(u) ) ; //[checked]
-    E_m_der2_t<real_t>  E_m_der2 = flatdot( jac(u),jac(u).tr(), E_m * reshape(mm,3,3) ); //[checked]
+    S_m_t<real_t>       S_m = E_m * reshape(mm,3,3);
+    N_t<real_t>         N       = tt.val() * S_m;
 
+    E_m_der_t<real_t>   E_m_der = flat( jac(defG).tr() * jac(u) ) ; //[checked]
+    S_m_der_t<real_t>   S_m_der = E_m_der * reshape(mm,3,3);
+    N_der_t<real_t>     N_der   = tt.val() * S_m_der;
+
+    E_m_der2_t<real_t>  E_m_der2 = flatdot( jac(u),jac(u).tr(), N ); //[checked]
+
+    // Flexural components
     E_f_t<real_t>       E_f = ( deriv2(G,sn(G).normalized().tr()) - deriv2(defG,sn(defG).normalized().tr()) ) * reshape(m2,3,3) ; //[checked]
+    S_f_t<real_t>       S_f = E_f * reshape(mm,3,3);
+    M_t<real_t>         M       = tt.val() * tt.val() * tt.val() / 12.0 * S_f;
+
     E_f_der_t<real_t>   E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,defG) ) ) * reshape(m2,3,3); //[checked]
-    E_f_der2_t<real_t>  E_f_der2 = flatdot2( deriv2(u), var1(u,defG).tr(), E_f * reshape(mm,3,3)  ).symmetrize() + var2(u,u,defG,E_f * reshape(mm,3,3) );
+    S_f_der_t<real_t>   S_f_der = E_f_der * reshape(mm,3,3);
+    M_der_t<real_t>     M_der   = tt.val() * tt.val() * tt.val() / 12.0 * S_f_der;
+
+    E_f_der2_t<real_t>  E_f_der2 = flatdot2( deriv2(u), var1(u,defG).tr(), M  ).symmetrize() + var2(u,u,defG, M );
+
+
+    force_t<real_t>     F       = ff;
 
     auto That       = cartcon(G);
     auto Ttilde     = cartcov(G); // IS INVERTED
@@ -1472,8 +1580,8 @@ int main(int argc, char *argv[])
     auto D = Ttilde*reshape(mmD,3,3)*That;
     auto C = reshape(mm,3,3);
 
-    auto S_m = tt.val() * C * E_m;
-    auto S_f = 2.0*tt.val()*tt.val()*tt.val()/12.0 * C * E_f;
+    // auto S_m = tt.val() * C * E_m;
+    // auto S_f = 2.0*tt.val()*tt.val()*tt.val()/12.0 * C * E_f;
 
     // NOTE: var1(u,G) in E_F_der2 should be var1(u,defG)
 
@@ -1507,12 +1615,9 @@ int main(int argc, char *argv[])
 
     // assemble system
     A.assemble(
-        (
-        (tt.val()) * (E_m_der * reshape(mm,3,3) * E_m_der.tr())
-        +
-        (tt.val() * tt.val() * tt.val())/12.0 * (E_f_der * reshape(mm,3,3) * E_f_der.tr())
-        ) * meas(G)
-        ,u * ff * meas(G)
+        (N_der * E_m_der.tr() + M_der * E_f_der.tr()) * meas(G)
+        ,
+        u * F * meas(G)
         );
 
     // For Neumann (same for Dirichlet/Nitsche) conditions
@@ -1547,19 +1652,8 @@ int main(int argc, char *argv[])
             A.initSystem();
             // assemble system
             A.assemble(
-                (
-                (tt.val()) * (E_m_der * reshape(mm,3,3) * E_m_der.tr() + E_m_der2)
-                +
-                (tt.val() * tt.val() * tt.val())/12.0 * (E_f_der * reshape(mm,3,3) * E_f_der.tr() -  E_f_der2)
-                ) * meas(G)
-                , u * ff * meas(G)
-                -
-                (
-                 (
-                    (tt.val()) *(E_m * reshape(mm,3,3) * E_m_der.tr()) -
-                    (tt.val() * tt.val() * tt.val())/12.0 * (E_f * reshape(mm,3,3) * E_f_der.tr())
-                 ) * meas(G)
-                ).tr()
+                ( N_der * E_m_der.tr() + E_m_der2 + M_der * E_f_der.tr() - E_f_der2 ) * meas(G)
+                , u * F * meas(G) - ( ( N * E_m_der.tr() - M * E_f_der.tr() ) * meas(G) ).tr()
                 );
 
             // For Neumann (same for Dirichlet/Nitche) conditions
