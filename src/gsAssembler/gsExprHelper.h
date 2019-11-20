@@ -69,7 +69,6 @@ public:
     typedef const expr::gsFeSpace<T>     & space;
     typedef const expr::gsNullExpr<T>      nullExpr;
 
-
     typedef expr::gsFeVariable<T>  & nonConstVariable;
     typedef expr::gsFeSpace<T>     & nonConstSpace;
 
@@ -165,6 +164,12 @@ public:
     {
         GISMO_ASSERT(mapVar.isValid(), "The Geometry map is not initialized)");
         return mapVar;
+    }
+
+    geometryMap getMap2() const
+    {
+        GISMO_ASSERT(mapVar2.isValid(), "The Geometry map2 is not initialized)");
+        return mapVar2;
     }
 
     nonConstVariable getVar(const gsFunctionSet<T> & mp, index_t dim = 1)
