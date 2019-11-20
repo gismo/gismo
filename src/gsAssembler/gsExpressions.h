@@ -1746,6 +1746,49 @@ public:
 };
 
 
+template<class E>
+class pow_expr : public _expr<pow_expr<E> >
+{
+    typename E::Nested_t _u;
+
+public:
+    typedef typename E::Scalar Scalar;
+    enum {ScalarValued = 1 };
+    enum {Space = E::Space};
+
+    Scalar _q;// power
+
+    pow_expr(_expr<E> const& u, Scalar q) : _u(u), _q(q) { }
+
+    Scalar eval(const index_t k) const
+    {
+        const Scalar v = _u.val().eval(k);
+        return math::pow(v,_q);
+    }
+
+    static index_t rows() { return 0; }
+    static index_t cols() { return 0; }
+
+    void setFlag() const { _u.setFlag(); }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & ) const {  }
+
+    static bool isScalar() { return true; }
+
+    static constexpr bool rowSpan() {return false;}
+    static bool colSpan() {return false;}
+
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+
+    void print(std::ostream &os) const { os<<"pow("; _u.print(os); os <<")"; }
+};
+
+// Call as pow(a,b)
+template<class E>
+pow_expr<E> pow(_expr<E> const& u, real_t q) { return pow_expr<E>(u,q); }
+
+
 /**
 computes outer products of a matrix by a space of dimension > 1
 [Jg Jg Jg] * Jb ..
@@ -2868,6 +2911,11 @@ public:
    Expression for multiplication operation (first version)
 
    First argument E1 has ColBlocks = false
+
+   Partial specialization for (right) blockwise multiplication
+
+   B * [A1 A2 A3] = [B*A1  B*A2  B*A3]
+
  */
 template <typename E1, typename E2>
 class mult_expr<E1,E2,false> : public _expr<mult_expr<E1, E2, false> >
@@ -2902,8 +2950,8 @@ public:
         // gsDebugVar( _u.eval(k) );
         // gsDebugVar( _v.eval(k) );
 
-        tmp = _u.eval(k) * _v.eval(k); return tmp; // assume result not scalarvalued
-        //return ( _u.eval(k) * _v.eval(k) );
+        tmp = _u.eval(k) * _v.eval(k);
+        return tmp; // assume result not scalarv
     }
 
     index_t rows() const { return E1::ScalarValued ? _v.rows()  : _u.rows(); }
@@ -3031,7 +3079,18 @@ public:
     { _u.parse(evList); _v.parse(evList); }
 
     static constexpr bool rowSpan() { return E1::rowSpan(); }
+
     static bool colSpan() { return E1::colSpan(); }
+/*
+    static bool colSpan()
+    {
+        // if ( (!E1::colSpan()) && (E2::colSpan()) )
+        if ( E2::colSpan() )
+            return E2::colSpan();
+        else
+            return E1::colSpan();
+    }
+*/
 
     index_t cardinality_impl() const { return  _u.cardinality(); }
 
