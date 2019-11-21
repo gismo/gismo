@@ -245,7 +245,7 @@ public:
     
     void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
     
-    void evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
+    void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 
     void evalFunc_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const;
 
@@ -350,7 +350,7 @@ protected:
     
     
 template<class SrcT>
-void gsRationalBasis<SrcT>::evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const
+void gsRationalBasis<SrcT>::evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const
 { 
     m_src->evalSingle_into(i, u, result);  
     result.array() *= m_weights.at(i);

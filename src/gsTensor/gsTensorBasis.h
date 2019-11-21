@@ -242,7 +242,7 @@ public:
     // see gsBasis for doxygen documentation
     // Evaluate the i-th basis function at all columns of the matrix
     // (or vector) u
-    void evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
+    void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 
     /// Evaluate an element of the space given by coefs at points u
     virtual void eval_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const;

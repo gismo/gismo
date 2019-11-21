@@ -351,7 +351,7 @@ void gsTensorBSplineBasis<1,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& re
 
 
 template <class T>
-void gsTensorBSplineBasis<1,T>::evalSingle_into(unsigned i,
+void gsTensorBSplineBasis<1,T>::evalSingle_into(index_t i,
                                                 const gsMatrix<T> & u,
                                                 gsMatrix<T>& result) const
 {

@@ -407,7 +407,7 @@ gsTensorBasis<d,T>::support(const index_t & i) const
 }
 
 template<short_t d, class T>
-void gsTensorBasis<d,T>::evalSingle_into(unsigned i,
+void gsTensorBasis<d,T>::evalSingle_into(index_t i,
                                                const gsMatrix<T> & u,
                                                gsMatrix<T>& result) const
 {

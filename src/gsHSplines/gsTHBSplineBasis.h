@@ -385,7 +385,7 @@ public:
     }
 
 
-    void evalSingle_into(unsigned i,
+    void evalSingle_into(index_t i,
                          const gsMatrix<T>& u,
                          gsMatrix<T>& result) const;
 

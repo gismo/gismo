@@ -1014,7 +1014,7 @@ void gsTHBSplineBasis<d,T>::globalRefinement(const gsMatrix<T> & thbCoefs,
 
 
 template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::evalSingle_into(unsigned i,
+void gsTHBSplineBasis<d,T>::evalSingle_into(index_t i,
                                             const gsMatrix<T>& u,
                                             gsMatrix<T>& result) const
 {    

@@ -439,7 +439,7 @@ void gsBasis<T>::eval_into(const gsMatrix<T> &, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::evalSingle_into(unsigned, const gsMatrix<T> &, gsMatrix<T>&) const
+void gsBasis<T>::evalSingle_into(index_t, const gsMatrix<T> &, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

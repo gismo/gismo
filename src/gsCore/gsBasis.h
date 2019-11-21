@@ -575,7 +575,7 @@ public:
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
     /// Evaluate the \a i-th basis function at points \a u into \a result.
-    virtual void evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
+    virtual void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
     /**
     \brief Evaluates the first partial derivatives of the nonzero basis function.

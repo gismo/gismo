@@ -74,7 +74,7 @@ void gsHBSplineBasis<d,T>::initialize()
 }
 
 template<short_t d, class T>
-void gsHBSplineBasis<d,T>::evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const
+void gsHBSplineBasis<d,T>::evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     int lvl = this->levelOf(i);
     this->m_bases[lvl]->evalSingle_into( 
