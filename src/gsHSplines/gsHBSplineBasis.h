@@ -98,9 +98,9 @@ public:
 
     void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
     
-    void evalSingle_into  (unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
+    void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
     
-    void derivSingle_into (unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
+    void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
     
     void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
