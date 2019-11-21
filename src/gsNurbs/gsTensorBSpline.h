@@ -176,7 +176,7 @@ public:
 public:
 
     // Look at gsGeometry class for a description
-    void degreeElevate(int const i = 1, int const dir = -1);
+    void degreeElevate(short_t const i = 1, short_t const dir = -1);
 
     /// Inserts knot \a knot at direction \a dir, \a i times
     void insertKnot( T knot, int dir, int i = 1);

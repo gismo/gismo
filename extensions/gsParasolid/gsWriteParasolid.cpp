@@ -60,6 +60,10 @@ gsWriteParasolid<real_t>
 ( const gsTHBSpline<2, real_t>& thb,const std::vector<real_t>&par_boxes, std::string const & filename);
 
 TEMPLATE_INST bool
+gsWritePK_SHEET<real_t>
+( const gsTensorBSpline<2, real_t>& tp, std::string const & filename);
+
+TEMPLATE_INST bool
 getTrimCurvesAndBoundingBoxes<real_t>
 ( const gsTHBSpline<2, real_t>& surface,
   const std::vector<real_t>& par_boxes,

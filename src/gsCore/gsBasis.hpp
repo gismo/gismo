@@ -1,6 +1,6 @@
 /** @file gsBasis.hpp
 
-    @brief Provides implementation of Basis default operatiions.
+    @brief Provides implementation of Basis default operations.
 
     This file is part of the G+Smo library.
 
@@ -402,19 +402,19 @@ typename gsBasis<T>::uPtr gsBasis<T>::componentBasis_withIndices(boxComponent b,
         // Copy all entries from indices to indices_cleaned except
         // those with indices in bdy_indices
 
-        gsMatrix<unsigned> indices_cleaned(indices_sz - bdy_indices_sz,1);
-        index_t j=0, t=0;
-        for (index_t i=0; i<indices_sz; ++i)
+        gsMatrix<unsigned> indices_cleaned(indices_sz - bdy_indices_sz, 1);
+        index_t j = 0, t = 0;
+        for (index_t i = 0; i < indices_sz; ++i)
         {
-            if (i>bdy_indices(j,0) && j < bdy_indices_sz)
+            if (util::greater(i, bdy_indices(j, 0)) && j < bdy_indices_sz)
                 ++j;
-            if (i<bdy_indices(j,0) || j == bdy_indices_sz)
+            if (util::less(i, bdy_indices(j, 0)) || j == bdy_indices_sz)
             {
-                indices_cleaned(t,0) = indices(i,0);
+                indices_cleaned(t, 0) = indices(i, 0);
                 ++t;
             }
         }
-        GISMO_ASSERT( t == indices_cleaned.rows(), "Internal error." );
+        GISMO_ASSERT(t == indices_cleaned.rows(), "Internal error.");
         indices.swap(indices_cleaned);
     }
 
@@ -574,19 +574,19 @@ void gsBasis<T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> &,
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeElevate(int const &, int const)
+void gsBasis<T>::degreeElevate(short_t const &, short_t const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeReduce(int const &, int const)
+void gsBasis<T>::degreeReduce(short_t const &, short_t const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeIncrease(int const &, int const)
+void gsBasis<T>::degreeIncrease(short_t const &, short_t const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeDecrease(int const &, int const)
+void gsBasis<T>::degreeDecrease(short_t const &, short_t const)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

@@ -33,7 +33,7 @@ struct gsQuadrature
     /// Constructs a quadrature rule based on input \a options
     template<class T>
     static gsQuadRule<T> get(const gsBasis<T> & basis,
-                             const gsOptionList & options, int fixDir = -1)
+                             const gsOptionList & options, short_t fixDir = -1)
     {
         const int     qu  = options.askInt("quRule", GaussLegendre);
         const T       quA = options.getReal("quA");
@@ -61,9 +61,9 @@ struct gsQuadrature
     /// of \a basis
     template<class T>
     static gsVector<index_t> numNodes(const gsBasis<T> & basis,
-                               const T quA, const int quB, int fixDir = -1)
+                               const T quA, const int quB, short_t fixDir = -1)
     {
-        const int d  = basis.dim();
+        const short_t d  = basis.dim();
         GISMO_ASSERT( fixDir < d && fixDir>-2, "Invalid input fixDir = "<<fixDir);
         gsVector<index_t> nnodes(d);
 
@@ -72,7 +72,7 @@ struct gsQuadrature
         else
             nnodes[fixDir] = 1;
 
-        int i;
+        short_t i;
         for(i=0; i!=fixDir; ++i )
             //note: +0.5 for rounding
             nnodes[i] = cast<T,index_t>(quA * basis.degree(i) + quB + 0.5);

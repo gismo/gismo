@@ -133,9 +133,9 @@ public:
         GISMO_ASSERT( (boxes.size()%(2*d+1))==0,
                       "The points did not define boxes properly. The basis was created without any domain structure.");
 
-        for( unsigned i = 0; i < (boxes.size()/(2*d+1)); i++)
+        for( size_t i = 0; i < (boxes.size()/(2*d+1)); i++)
         {
-            for( unsigned int j = 0; j < d; j++)
+            for( short_t j = 0; j < d; j++)
             {
                 i1[j] = boxes[(2*d+1)*i+j+1];
                 i2[j] = boxes[(2*d+1)*i+j+d+1];
@@ -169,13 +169,13 @@ public:
 
         for(index_t i = 0; i < boxes.cols()/2; i++)
         {
-            for(unsigned j = 0; j < d; j++)
+            for(short_t j = 0; j < d; j++)
             {
                 k1[j] = this->m_bases.back()->knots(j).uFind(boxes(j,2*i)).uIndex();
                 k2[j] = this->m_bases.back()->knots(j).uFind(boxes(j,2*i+1)).uIndex()+1;
             }
             int level = m_tree.query3(k1,k2,m_bases.size()-1);
-            for(unsigned j = 0; j < d; j++)
+            for(short_t j = 0; j < d; j++)
             {
                 k1[j] = this->m_bases[level+1]->knots(j).uFind(boxes(j,2*i)).uIndex();
                 k2[j] = this->m_bases[level+1]->knots(j).uFind(boxes(j,2*i+1)).uIndex()+1;
@@ -214,7 +214,7 @@ public:
 
         for(index_t i = 0; i < boxes.cols()/2; i++)
         {
-            for(unsigned j = 0; j < d; j++)
+            for(short_t j = 0; j < d; j++)
             {
                 k1[j] = m_bases[levels[i]]->knots(j).uFind(boxes(j,2*i)).uIndex();
                 k2[j] = m_bases[levels[i]]->knots(j).uFind(boxes(j,2*i+1)).uIndex()+1;
@@ -359,13 +359,13 @@ public:
         unsigned k(0);
 
         gsVector<unsigned, d> ind;
-        for(std::size_t i = 0; i < m_xmatrix.size(); i++)
+        for(size_t i = 0; i < m_xmatrix.size(); i++)
         {
             for( CMatrix::const_iterator it =
                      m_xmatrix[i].begin(); it != m_xmatrix[i].end(); it++)
             {
                 ind = m_bases[i]->tensorIndex(*it);
-                for ( unsigned r = 0; r!=d; ++r )
+                for ( short_t r = 0; r!=d; ++r )
                     result(r,k) = m_bases[i]->knots(r).greville( ind[r] );
                 k++;
             }
@@ -626,9 +626,6 @@ public:
     {
         return m_tree.getMaxInsLevel();
     }
-
-    /// Returns the level of \a function, which is a hier. Id index
-    int get_level(unsigned function) const;
 
     /// Returns the level of the function indexed \a i (in continued indices)
     inline int levelOf(unsigned i) const

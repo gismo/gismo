@@ -37,7 +37,7 @@ gsPlanarDomain<T>::gsPlanarDomain( std::vector< gsCurveLoop<T> *> const & loops)
     if(!loops[0]->is_ccw())
         loops[0]->reverse();
     m_loops.push_back(loops[0]);
-    for(std::size_t i=1; i<loops.size();i++ )
+    for(size_t i=1; i<loops.size();i++ )
     {
 
         if( loops[i]->is_ccw() )
@@ -58,7 +58,7 @@ gsMatrix<T> gsPlanarDomain<T>::averageValue( std::vector<gsFunction<T>*> const &
     gsMatrix<T> xev,B (f.size(),1);
     B.setZero();
     iteratedGaussRule(ngrid, wgrid, 2, breaks);
-    for(std::size_t i=0; i<f.size();i++)
+    for(size_t i=0; i<f.size();i++)
     {
         for(int k=0; k<ngrid.cols();k++) //for all quadrature points
         {
@@ -82,7 +82,7 @@ bool gsPlanarDomain<T>::inDomain( gsMatrix<T> const & u, int direction)
     std::vector<T> tmp = m_loops[0]->lineIntersections(direction, u(direction,0) );
 
     //   gsDebug<< "intersections:\n";
-    //   for( std::size_t i = 0; i!=tmp.size(); ++i)
+    //   for( size_t i = 0; i!=tmp.size(); ++i)
     //     gsDebug<< " "<< tmp[i];
     //   gsDebug<<"\n";
 
@@ -511,7 +511,7 @@ memory::unique_ptr<gsMesh<T> > gsPlanarDomain<T>::toMesh(int npoints) const     
 
                 gsAsMatrix<T> xx(x);
                 gsMatrix<T> e = curve->eval( xx );
-                for (std::size_t k=0;k<x.size();k++)
+                for (size_t k=0;k<x.size();k++)
                 {
                     x_all.push_back(e(0,k));
                 }
@@ -544,8 +544,8 @@ memory::unique_ptr<gsMesh<T> > gsPlanarDomain<T>::toMesh(int npoints) const     
     T checkDist=(y_samples(0,1)-y_samples(0,0))*5;
     for(size_t i=0;i<intersections.size()-1;i++)
     {
-        std::size_t currentTop=0;
-        std::size_t currentBot=0;
+        size_t currentTop=0;
+        size_t currentBot=0;
 
         T topToBotDist=0;
         T botToTopDist=0;

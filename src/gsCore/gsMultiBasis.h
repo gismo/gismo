@@ -46,7 +46,6 @@ public:
 public:
 
     /// Type definitions
-    typedef typename BasisContainer::size_type size_t;
     typedef typename BasisContainer::iterator iterator;
     typedef typename BasisContainer::const_iterator const_iterator;
 
@@ -265,7 +264,7 @@ public:
     size_t nBases() const          { return m_bases.size(); }
 
     /// Return the \a i-th basis block.
-    const gsBasis<T> & basis(const  std::size_t i ) const
+    const gsBasis<T> & basis(const  size_t i ) const
     {
         GISMO_ASSERT( i < m_bases.size(),
                       "Invalid patch index"<<i<<" requested from gsMultiBasis" );
@@ -283,7 +282,7 @@ public:
     index_t nPieces() const { return static_cast<index_t>(m_bases.size()); }
 
     /// Return the \a i-th basis block.
-    gsBasis<T> & basis(const std::size_t i )
+    gsBasis<T> & basis(const size_t i )
     {
         GISMO_ASSERT( i < m_bases.size(),
                       "Invalid patch index"<<i<<" requested from gsMultiBasis" );
@@ -528,7 +527,7 @@ public:
                                       std::vector<unsigned> & refEltsSecond );
 
     /// @brief Elevate the degree of every basis by the given amount. (keeping the smoothness)
-    void degreeElevate(int const i = 1, int const dir = -1)
+    void degreeElevate(short_t const i = 1, short_t const dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeElevate(i,dir);
@@ -536,7 +535,7 @@ public:
 
     /// @brief Increase the degree of every basis by the given
     /// amount. (keeping the multiplicity)
-    void degreeIncrease(int const i = 1, int const dir = -1)
+    void degreeIncrease(short_t const i = 1, short_t const dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeIncrease(i,dir);
@@ -544,21 +543,21 @@ public:
 
     /// @brief Increase the degree of every basis by the given
     /// amount. (keeping the multiplicity)
-    void degreeDecrease(int const i = 1, int const dir = -1)
+    void degreeDecrease(short_t const i = 1, short_t const dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeDecrease(i,dir);
     }
 
     /// Reduce the degree of the basis by the given amount.
-    void degreeReduce(int const i = 1)
+    void degreeReduce(short_t const i = 1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeReduce(i);
     }
 
     /// Set the degree of the basis.
-    void setDegree(int const& i)
+    void setDegree(short_t const& i)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->setDegree(i);

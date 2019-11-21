@@ -377,9 +377,10 @@ template<class T>
 template<class E, class _op>
 T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr)
 {
-    GISMO_ASSERT( expr.isScalar(),
-                  "Expecting scalar expression instead of "
-                  <<expr.cols()<<" x "<<expr.rows() );
+    // GISMO_ASSERT( expr.isScalar(),
+    //               "Expecting scalar expression instead of "
+    //               <<expr.cols()<<" x "<<expr.rows() );
+
     //expr.print(gsInfo);
 
     gsQuadRule<T> QuRule;  // Quadrature rule
@@ -432,9 +433,9 @@ template<class T>
 template<class E, class _op>
 T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const intContainer & iFaces)
 {
-    GISMO_ASSERT( expr.isScalar(),
-                  "Expecting scalar expression instead of "
-                  <<expr.cols()<<" x "<<expr.rows() );
+    // GISMO_ASSERT( expr.isScalar(),
+    //               "Expecting scalar expression instead of "
+    //               <<expr.cols()<<" x "<<expr.rows() );
 
     //expr.print(gsInfo);
 

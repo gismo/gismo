@@ -61,6 +61,7 @@ boxComponent::boxComponent( boxCorner b, short_t total_dim ) : m_total_dim(total
     {
         m_index += (1+b.m_index%2) * c;
         c *= 3;
+        b.m_index /= 2;
     }
 }
 

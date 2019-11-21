@@ -38,7 +38,7 @@ public:
  * \f[ ( \nabla u , \nabla v )_{K} \f].
  * Where \f[ v$ \f]  is the test function and \f[u \f] is trial function.
  */
-    gsVisitorGradGrad(const gsPde<T> & pde)
+    gsVisitorGradGrad(const gsPde<T> & /*pde*/)
     { }
 
     /*
@@ -59,7 +59,7 @@ public:
     */
 
     void initialize(const gsBasis<T> & basis,
-                    const index_t patchIndex,
+                    const index_t /*patchIndex*/,
                     const gsOptionList & options, 
                     gsQuadRule<T>    & rule)
     {
@@ -93,7 +93,7 @@ public:
         localMat.setZero(numActive, numActive);
     }
 
-    inline void assemble(gsDomainIterator<T>    & element,
+    inline void assemble(gsDomainIterator<T>    & /*element*/,
                          gsVector<T> const      & quWeights)
     {
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes

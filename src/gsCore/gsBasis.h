@@ -462,8 +462,10 @@ public:
     /// @name Evaluation functions
     /// @{
 
-    /** \brief Returns the indices of active (non-zero) basis functions
-     * at points <em>u</em>, as a list of indices, in <em>result</em>.
+    /** \brief Returns the indices of active basis functions at points
+     * <em>u</em>, as a list of indices, in <em>result</em>. A
+     * function is said to be <em>active</em> in a point if this point
+     * lies in the closure of the function's support.
      *
      * \param[in] u  gsMatrix containing evaluation points. Each column represents one evaluation point.
      * \param[out]  result For every column \a i of \a u, a column containing the indices of the
@@ -858,16 +860,16 @@ public:
                                              int numKnots = 1);
 
     /// @brief Elevate the degree of the basis by the given amount, preserve smoothness.
-    virtual void degreeElevate(int const & i = 1, int const dir = -1);
+    virtual void degreeElevate(short_t const & i = 1, short_t const dir = -1);
 
     /// @brief Reduce the degree of the basis by the given amount, preserve smoothness.
-    virtual void degreeReduce(int const & i = 1, int const dir = -1);
+    virtual void degreeReduce(short_t const & i = 1, short_t const dir = -1);
 
     /// @brief Elevate the degree of the basis by the given amount, preserve knots multiplicity.
-    virtual void degreeIncrease(int const & i = 1, int const dir = -1);
+    virtual void degreeIncrease(short_t const & i = 1, short_t const dir = -1);
 
     /// @brief Lower the degree of the basis by the given amount, preserving knots multiplicity.
-    virtual void degreeDecrease(int const & i = 1, int const dir = -1);
+    virtual void degreeDecrease(short_t const & i = 1, short_t const dir = -1);
 
     /// @brief Set the degree of the basis (either elevate or
     /// reduce) in order to have degree equal to \a i wrt to each variable
