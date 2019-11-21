@@ -119,13 +119,13 @@ public:
     //
     /// Note that the gsBasisFun object only holds a reference to the current
     /// basis, so it is invalidated when the basis is destroyed.
-    gsBasisFun<T> function(unsigned i) const;
+    gsBasisFun<T> function(index_t i) const;
 
     /// @name Evaluation functions
     /// @{
 
     /// Evaluate a single basis function \a i at points \a u.
-    gsMatrix<T> evalSingle(unsigned i, const gsMatrix<T> & u) const
+    gsMatrix<T> evalSingle(index_t i, const gsMatrix<T> & u) const
     {
         gsMatrix<T> result;
         this->evalSingle_into(i, u, result);
@@ -133,7 +133,7 @@ public:
     }
 
     /// Evaluate a single basis function \a i derivative at points \a u.
-    gsMatrix<T> derivSingle(unsigned i, const gsMatrix<T> & u) const
+    gsMatrix<T> derivSingle(index_t i, const gsMatrix<T> & u) const
     {
         gsMatrix<T> result;
         this->derivSingle_into(i, u, result);
@@ -141,7 +141,7 @@ public:
     }
 
     /// Evaluate the second derivative of a single basis function \a i at points \a u.
-    gsMatrix<T> deriv2Single(unsigned i, const gsMatrix<T> & u) const
+    gsMatrix<T> deriv2Single(index_t i, const gsMatrix<T> & u) const
     {
         gsMatrix<T> result;
         this->deriv2Single_into(i, u, result);
@@ -679,12 +679,12 @@ public:
 
     /// @brief Evaluate the basis function \a i and its derivatives up
     /// to order \a n at points \a u into \a result.
-    virtual void evalAllDersSingle_into(unsigned i, const gsMatrix<T> & u,
+    virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u,
                                         int n, gsMatrix<T>& result) const;
 
     /// @brief Evaluate the (partial) derivative(s) of order \a n the
     /// \a i-th basis function at points \a u into \a result.
-    virtual void evalDerSingle_into(unsigned i, const
+    virtual void evalDerSingle_into(index_t i, const
                                     gsMatrix<T> & u, int n,
                                     gsMatrix<T>& result) const;
 

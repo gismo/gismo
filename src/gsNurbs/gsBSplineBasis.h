@@ -295,7 +295,7 @@ public:
     std::string detail() const;
 
     // Look at gsBasis class for a description
-    virtual void evalDerSingle_into(unsigned i, const gsMatrix<T> & u, 
+    virtual void evalDerSingle_into(index_t i, const gsMatrix<T> & u,
                                     int n, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description
@@ -303,7 +303,7 @@ public:
                                   std::vector<gsMatrix<T> >& result) const;
 
     // Look at gsBasis class for a description
-    virtual void evalAllDersSingle_into(unsigned i, const gsMatrix<T> & u, 
+    virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u,
                                         int n, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description

@@ -431,7 +431,7 @@ void gsTensorBSplineBasis<1,T>::evalSingle_into(index_t i,
 }
 
 template <class T>
-void gsTensorBSplineBasis<1,T>::evalDerSingle_into(unsigned i,
+void gsTensorBSplineBasis<1,T>::evalDerSingle_into(index_t i,
                                                    const gsMatrix<T> & u,
                                                    int n,
                                                    gsMatrix<T>& result) const
@@ -665,7 +665,7 @@ void gsTensorBSplineBasis<1,T>::derivSingle_into(index_t i,
 
 template <class T>  inline
 void
-gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(unsigned i,
+gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(index_t i,
                                                   const gsMatrix<T> & u,
                                                   int n,
                                                   gsMatrix<T>& result) const

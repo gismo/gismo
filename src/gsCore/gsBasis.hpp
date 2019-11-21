@@ -34,7 +34,7 @@ gsBasis<T>::~gsBasis()
 { }
 
 template<class T>
-gsBasisFun<T> gsBasis<T>::function(unsigned i) const
+gsBasisFun<T> gsBasis<T>::function(index_t i) const
 {
     return gsBasisFun<T>(*this,i);
 }
@@ -489,12 +489,12 @@ void gsBasis<T>::evalAllDers_into(const gsMatrix<T> & u, int n,
 }
 
 template<class T>
-void gsBasis<T>::evalAllDersSingle_into(unsigned, const gsMatrix<T> &,
+void gsBasis<T>::evalAllDersSingle_into(index_t, const gsMatrix<T> &,
                                         int, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::evalDerSingle_into(unsigned, const
+void gsBasis<T>::evalDerSingle_into(index_t, const
                                     gsMatrix<T> &, int,
                                     gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
