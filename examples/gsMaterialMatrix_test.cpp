@@ -84,6 +84,7 @@ class gsIntegrateZ : public gismo::gsFunction<T>
         mutable gsMatrix<T> tmp;
         gsMatrix<T> _surfPts;
         T _t;
+        int _mom;
     public:
         /// Shared pointer for gsIntegrateZ
         typedef memory::shared_ptr< gsIntegrateZ > Ptr;
@@ -95,8 +96,8 @@ class gsIntegrateZ : public gismo::gsFunction<T>
     explicit gsIntegrateZ(const gsIntegrateZ &other)
     : _fun(other._fun), _t(other._t), _surfPts(other._surfPts) {}
 
-    gsIntegrateZ(const gsFunction<T> & fun, T thickness)
-    : _fun(fun.clone()), _t(thickness)
+    gsIntegrateZ(const gsFunction<T> & fun, T thickness, int moment = 0)
+    : _fun(fun.clone()), _t(thickness), _mom(moment)
     {
         // gsConstantFunction _t(thickness, 3);
     }
@@ -140,11 +141,13 @@ class gsIntegrateZ : public gismo::gsFunction<T>
         typedef gsExprEvaluator<real_t>::variable    variable;
         variable    integrant = ev.getVariable(*_fun, 1);
 
+        gsFunctionExpr<> height("x",1);
+        variable z = ev.getVariable(height);
         for (index_t i=0; i!=_fun->targetDim(); ++i)
             for (index_t j = 0; j != u.cols(); ++j)
             {
-                //thickness integral for all components i.
-                ev.integral(integrant.tr()[i]);
+                //thickness integral for all components i with moment _mom
+                ev.integral(pow(z,_mom)*integrant.tr()[i]);
                 result(i,j) = ev.value();
             }
     }
@@ -160,6 +163,7 @@ class gsIntegrate : public gismo::gsFunction<T>
         const typename gsFunction<T>::Ptr _fun, _t;
         mutable gsMatrix<T> tmp, thickMat;
         gsMatrix<T> _surfPts;
+        int _mom;
         // T _t;
     public:
         /// Shared pointer for gsIntegrate
@@ -178,14 +182,16 @@ class gsIntegrate : public gismo::gsFunction<T>
     //     gsConstantFunction _t(thickness, 3);
     // }
 
-    gsIntegrate(const gsFunction<T> & fun, gsFunction<T> & thickFun)
-    : _fun(fun.clone()), _t(thickFun.clone()) { }
+    gsIntegrate(const gsFunction<T> & fun, gsFunction<T> & thickFun, int moment = 0)
+    : _fun(fun.clone()), _t(thickFun.clone()), _mom(moment) { }
 
     GISMO_CLONE_FUNCTION(gsIntegrate)
 
     short_t domainDim() const {return 2;}
 
     short_t targetDim() const {return _fun->targetDim();}
+
+    void setMoment(const int moment ) { _mom = moment;}
 
     // u are xy-coordinates only; domainDim=2
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
@@ -203,6 +209,8 @@ class gsIntegrate : public gismo::gsFunction<T>
         gsIntegrantZ integrant(*_fun);
 
         T tHalf;
+        gsFunctionExpr<> height("x",1);
+        variable z = ev.getVariable(height);
         for (index_t i=0; i!=_fun->targetDim(); ++i)
             for (index_t j = 0; j != u.cols(); ++j)
             {
@@ -221,9 +229,8 @@ class gsIntegrate : public gismo::gsFunction<T>
                 // set new integration point
                 integrant.setPoint(u.col(j));
 
-                //thickness integral for all components i.
-                // ev.eval(intfun.coord(i));
-                ev.integral(intfun.tr()[i]);
+                //thickness integral for all components i with moment _mom
+                ev.integral(pow(z,_mom)*intfun.tr()[i]);
                 result(i,j) = ev.value();
             }
     }
@@ -233,7 +240,7 @@ class gsIntegrate : public gismo::gsFunction<T>
 };
 
 template <class T>
-class gsMaterialMatrix : public gismo::gsFunction<T>
+class gsMaterialMatrixLinear : public gismo::gsFunction<T>
 {
   // Computes the material matrix for different material models
   //
@@ -247,35 +254,35 @@ protected:
     mutable real_t lambda, mu, E, nu, C_constant;
 
 public:
-    /// Shared pointer for gsMaterialMatrix
-    typedef memory::shared_ptr< gsMaterialMatrix > Ptr;
+    /// Shared pointer for gsMaterialMatrixLinear
+    typedef memory::shared_ptr< gsMaterialMatrixLinear > Ptr;
 
-    /// Unique pointer for gsMaterialMatrix
-    typedef memory::unique_ptr< gsMaterialMatrix > uPtr;
+    /// Unique pointer for gsMaterialMatrixLinear
+    typedef memory::unique_ptr< gsMaterialMatrixLinear > uPtr;
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    gsMaterialMatrix(const gsFunctionSet<T> & mp, const gsFunction<T> & YoungsModulus,
+    gsMaterialMatrixLinear(const gsFunctionSet<T> & mp, const gsFunction<T> & YoungsModulus,
                    const gsFunction<T> & PoissonRatio) :
     _mp(&mp), _YoungsModulus(&YoungsModulus), _PoissonRatio(&PoissonRatio), _mm_piece(nullptr)
     {
         _tmp.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
     }
 
-    ~gsMaterialMatrix() { delete _mm_piece; }
+    ~gsMaterialMatrixLinear() { delete _mm_piece; }
 
-    GISMO_CLONE_FUNCTION(gsMaterialMatrix)
+    GISMO_CLONE_FUNCTION(gsMaterialMatrixLinear)
 
     short_t domainDim() const {return 3;}
 
     short_t targetDim() const {return 9;}
 
-    mutable gsMaterialMatrix<T> * _mm_piece; // todo: improve the way pieces are accessed
+    mutable gsMaterialMatrixLinear<T> * _mm_piece; // todo: improve the way pieces are accessed
 
     const gsFunction<T> & piece(const index_t k) const
     {
         delete _mm_piece;
-        _mm_piece = new gsMaterialMatrix(_mp->piece(k), *_YoungsModulus, *_PoissonRatio);
+        _mm_piece = new gsMaterialMatrixLinear(_mp->piece(k), *_YoungsModulus, *_PoissonRatio);
         return *_mm_piece;
     }
 
@@ -302,18 +309,18 @@ public:
         _PoissonRatio->eval_into(_tmp.values[0], Nmat);
 
         result.resize( targetDim() , u.cols() );
-        for( index_t i=0; i< u.cols(); ++i )
+        for( index_t k=0; k< u.cols(); ++k )
         {
-            gsAsMatrix<T, Dynamic, Dynamic> C = result.reshapeCol(i,3,3);
+            gsAsMatrix<T, Dynamic, Dynamic> C = result.reshapeCol(k,3,3);
 
-            F0.leftCols(2) = _tmp.jacobian(i);
-            F0.col(2)      = _tmp.normal(i).normalized();
+            F0.leftCols(2) = _tmp.jacobian(k);
+            F0.col(2)      = _tmp.normal(k).normalized();
             F0 = F0.inverse();
             F0 = F0 * F0.transpose(); //3x3
 
             // Evaluate material properties on the quadrature point
-            E = Emat(0,i);
-            nu = Nmat(0,i);
+            E = Emat(0,k);
+            nu = Nmat(0,k);
             lambda = E * nu / ( (1. + nu)*(1.-2.*nu)) ;
             mu     = E / (2.*(1. + nu)) ;
 
@@ -328,9 +335,6 @@ public:
             C(0,2) = C_constant*F0(0,0)*F0(0,1) + 2*mu*(2*F0(0,0)*F0(0,1));
             C(2,1) = C(1,2) = C_constant*F0(0,1)*F0(1,1) + 2*mu*(2*F0(0,1)*F0(1,1));
 
-            real_t temp = u(2,i);
-            C *= temp;
-
             //gsDebugVar(C);
         }
     }
@@ -339,17 +343,399 @@ public:
     //   { os << "gsMaterialMatrix "; return os; };
 };
 
+// To Do:
+// * struct for material model
+// Input is parametric coordinates of the surface \a mp
+template <class T, int mat>
+class gsMaterialMatrixIncompressible : public gismo::gsFunction<T>
+{
+  // Computes the material matrix for different material models
+  //
+protected:
+    const gsFunctionSet<T> * _mp;
+    const gsFunction<T> * _par1;
+    // const gsFunction<T> * _par2;
+    const gsFunctionSet<T> * _mp_def;
+    mutable gsMapData<T> _tmp;
+    mutable gsMapData<T> _tmp_def;
+    mutable gsMatrix<T> jacGdef, jacGori, a_ori, a_def, b_ori, b_def, g_def, g_ori;
+    mutable gsVector<T> n_def, n_ori;
+    mutable gsMatrix<T> par1mat,par2mat;
+    mutable real_t mu, J0;
+
+public:
+    /// Shared pointer for gsMaterialMatrixIncompressible
+    typedef memory::shared_ptr< gsMaterialMatrixIncompressible > Ptr;
+
+    /// Unique pointer for gsMaterialMatrixIncompressible
+    typedef memory::unique_ptr< gsMaterialMatrixIncompressible > uPtr;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    gsMaterialMatrixIncompressible( const gsFunctionSet<T> & mp,
+                                    const gsFunction<T> & par1,
+                                    // const gsFunction<T> & par2,
+                                    const gsFunctionSet<T> & mp_def) : // deformed multipatch
+    _mp(&mp),
+    _par1(&par1),
+    // _par2(&par2),
+    _mp_def(&mp_def),
+    _mm_piece(nullptr)
+    {
+        _tmp.flags     = NEED_VALUE | NEED_JACOBIAN | NEED_NORMAL |  NEED_2ND_DER;
+        _tmp_def.flags = NEED_VALUE | NEED_JACOBIAN | NEED_NORMAL |  NEED_2ND_DER;
+    }
+
+    ~gsMaterialMatrixIncompressible() { delete _mm_piece; }
+
+    GISMO_CLONE_FUNCTION(gsMaterialMatrixIncompressible)
+
+    short_t domainDim() const {return 3;}
+
+    short_t targetDim() const
+    {
+        switch (mat)
+        {
+            case 0:
+                return 3;
+                break;
+            case 1:
+                return 9;
+                break;
+        }
+    }
+
+    mutable gsMaterialMatrixIncompressible<T,mat> * _mm_piece; // todo: improve the way pieces are accessed
+
+    const gsFunction<T> & piece(const index_t k) const
+    {
+        delete _mm_piece;
+        // _mm_piece = new gsMaterialMatrixIncompressible(_mp->piece(k), *_par1, *_par2, _mp_def->piece(k) );
+        _mm_piece = new gsMaterialMatrixIncompressible(_mp->piece(k), *_par1, _mp_def->piece(k) );
+        return *_mm_piece;
+    }
+
+    // Input is parametric coordinates of the surface \a mp
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        // NOTE 1: if the input \a u is considered to be in physical coordinates
+        // then we first need to invert the points to parameter space
+        // _mp.patch(0).invertPoints(u, _tmp.points, 1e-8)
+        // otherwise we just use the input paramteric points
+        _tmp.points     = u.topRows(2);
+        _tmp_def.points = u.topRows(2);
+
+        static_cast<const gsFunction<T>&>( _mp->piece(0)     ).computeMap(_tmp);
+        static_cast<const gsFunction<T>&>( _mp_def->piece(0) ).computeMap(_tmp_def);
+
+        // NOTE 2: in the case that parametric value is needed it suffices
+        // to evaluate Youngs modulus and Poisson's ratio at
+        // \a u instead of _tmp.values[0].
+        _par1->eval_into(_tmp.values[0], par1mat);
+        // _par2->eval_into(_tmp.values[0], par2mat);
+
+        result.resize( targetDim() , u.cols() );
+        for( index_t k=0; k< u.cols(); ++k )
+        {
+            // Construct metric tensor a = [dcd1*dcd1, dcd1*dcd2; dcd2*dcd1, dcd2*dcd2]
+            jacGdef = _tmp_def.jacobian(k);
+            a_def   = jacGdef.transpose() * jacGdef;
+            jacGori = _tmp.jacobian(k);
+            a_ori   = jacGori.transpose() * jacGori;
+
+            // Construct metric tensor b = [d11c*n, d12c*n ; d21c*n, d22c*n]
+            gsAsConstMatrix<T,3,3> deriv2def( _tmp_def.deriv2(0).data(),3,3 ); // gives [d11 c1, d11c2, d11c3; d22c1, d22c1, d22c3; d12c1, d12c2, d12c3]
+            gsAsConstMatrix<T,3,3> deriv2ori(     _tmp.deriv2(0).data(),3,3 );
+            n_def = _tmp_def.normal(k).normalized();
+            n_ori = _tmp.normal(k).normalized();
+            b_def.resize(2,2);
+            b_ori.resize(2,2);
+
+            b_def(0,0) = deriv2def.row(0).dot(n_def);
+            b_def(1,1) = deriv2def.row(1).dot(n_def);
+            b_def(0,1) = b_def(1,0) = deriv2def.row(2).dot(n_def);
+
+            b_ori(0,0) = deriv2ori.row(0).dot(n_ori);
+            b_ori(1,1) = deriv2ori.row(1).dot(n_ori);
+            b_ori(0,1) = b_ori(1,0) = deriv2ori.row(2).dot(n_ori);
+
+            // Construct basis of coordinate system g = [a_ij - 2*theta3*b_ij]
+            g_def = a_def - 2 * u(2,k) * b_def;
+            g_ori = a_ori - 2 * u(2,k) * b_ori;
+
+            // Evaluate material properties on the quadrature point
+            mu = par1mat(0,k);
+            J0 = math::sqrt( g_def.determinant() / g_ori.determinant() );
+            J0 = math::pow( J0, -2 );
+
+            switch (mat)
+            {
+                case 0:
+                    // Sab(0,0) = mu * (jacGori(0,0) - math::pow(J0,-2.) * jacGdef(0,0) );
+                    // Sab(0,1) =
+                    // Sab(1,0) = mu * (jacGori(1,0) - math::pow(J0,-2.) * jacGdef(1,0) ); // CHECK SYMMETRIES
+                    // Sab(1,1) = mu * (jacGori(1,1) - math::pow(J0,-2.) * jacGdef(1,1) );
+
+                    result(0,k) = mu * (jacGori(0,0) - math::pow(J0,-2.) * jacGdef(0,0) );
+                    result(1,k) = mu * (jacGori(1,1) - math::pow(J0,-2.) * jacGdef(1,1) );
+                    result(2,k) = mu * (jacGori(1,0) - math::pow(J0,-2.) * jacGdef(1,0) ); // CHECK SYMMETRIES
+                    break;
+
+                case 1:
+                    /*
+                        C =     C1111,  C1122,  C1112
+                                symm,   C2222,  C2212
+                                symm,   symm,   C1212
+                    */
+                    gsAsMatrix<T, Dynamic, Dynamic> C = result.reshapeCol(k,3,3);
+                    C(0,0) = 2*g_ori(0,0)*g_ori(0,0) + g_ori(0,0)*g_ori(0,0) + g_ori(0,0)*g_ori(0,0); // C1111
+                    C(1,0) =
+                    C(0,1) = 2*g_ori(0,0)*g_ori(1,1) + g_ori(0,1)*g_ori(0,1) + g_ori(0,1)*g_ori(0,1); // C1122
+                    C(2,0) =
+                    C(0,2) = 2*g_ori(0,0)*g_ori(0,1) + g_ori(0,0)*g_ori(0,1) + g_ori(0,1)*g_ori(0,0); // C1112
+                    C(1,1) = 2*g_ori(1,1)*g_ori(1,1) + g_ori(1,1)*g_ori(1,1) + g_ori(1,1)*g_ori(1,1); // C2222
+                    C(2,1) =
+                    C(1,2) = 2*g_ori(1,1)*g_ori(0,1) + g_ori(1,0)*g_ori(1,1) + g_ori(1,1)*g_ori(1,0); // C2212
+                    C(2,2) = 2*g_ori(0,1)*g_ori(0,1) + g_ori(0,0)*g_ori(1,1) + g_ori(0,1)*g_ori(1,0); // C1212
+
+                    C *= mu * J0;
+                    break;
+            }
+        }
+    }
+
+};
+
+
+// To Do:
+// * struct for material model
+// Input is parametric coordinates of the surface \a mp
+template <class T, int mat>
+class gsMaterialMatrixCompressible : public gismo::gsFunction<T>
+{
+  // Computes the material matrix for different material models
+  //
+protected:
+    const gsFunctionSet<T> * _mp;
+    const gsFunction<T> * _par1;
+    const gsFunction<T> * _par2;
+    const gsFunctionSet<T> * _mp_def;
+    mutable gsMapData<T> _tmp;
+    mutable gsMapData<T> _tmp_def;
+    mutable gsMatrix<T> jacGdef, jacGori, a_ori, a_def, b_ori, b_def, g_def, g_ori;
+    mutable gsVector<T> n_def, n_ori;
+    mutable gsMatrix<T> par1mat,par2mat;
+    mutable real_t mu, K, J0, J;
+
+public:
+    /// Shared pointer for gsMaterialMatrixCompressible
+    typedef memory::shared_ptr< gsMaterialMatrixCompressible > Ptr;
+
+    /// Unique pointer for gsMaterialMatrixCompressible
+    typedef memory::unique_ptr< gsMaterialMatrixCompressible > uPtr;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    gsMaterialMatrixCompressible( const gsFunctionSet<T> & mp,
+                                    const gsFunction<T> & par1,
+                                    const gsFunction<T> & par2,
+                                    const gsFunctionSet<T> & mp_def) : // deformed multipatch
+    _mp(&mp),
+    _par1(&par1),
+    _par2(&par2),
+    _mp_def(&mp_def),
+    _mm_piece(nullptr)
+    {
+        _tmp.flags     = NEED_VALUE | NEED_JACOBIAN | NEED_NORMAL |  NEED_2ND_DER;
+        _tmp_def.flags = NEED_VALUE | NEED_JACOBIAN | NEED_NORMAL |  NEED_2ND_DER;
+    }
+
+    ~gsMaterialMatrixCompressible() { delete _mm_piece; }
+
+    GISMO_CLONE_FUNCTION(gsMaterialMatrixCompressible)
+
+    short_t domainDim() const {return 3;}
+
+    short_t targetDim() const
+    {
+        switch (mat)
+        {
+            case 0:
+                return 3;
+                break;
+            case 1:
+                return 9;
+                break;
+        }
+    }
+
+    mutable gsMaterialMatrixCompressible<T,mat> * _mm_piece; // todo: improve the way pieces are accessed
+
+    const gsFunction<T> & piece(const index_t k) const
+    {
+        delete _mm_piece;
+        _mm_piece = new gsMaterialMatrixCompressible(_mp->piece(k), *_par1, *_par2, _mp_def->piece(k) );
+        // _mm_piece = new gsMaterialMatrixCompressible(_mp->piece(k), *_par1, _mp_def.piece(k) );
+        return *_mm_piece;
+    }
+
+
+
+//class .. matMatrix_z
+// should contain eval_into(thickness variable)
+
+
+    // void computeThickness()
+    // {
+
+    // }
+
+    // Input is parametric coordinates of the surface \a mp
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        // NOTE 1: if the input \a u is considered to be in physical coordinates
+        // then we first need to invert the points to parameter space
+        // _mp.patch(0).invertPoints(u, _tmp.points, 1e-8)
+        // otherwise we just use the input paramteric points
+        _tmp.points     = u.topRows(2);
+        _tmp_def.points = u.topRows(2);
+
+        static_cast<const gsFunction<T>&>( _mp->piece(0)     ).computeMap(_tmp);
+        static_cast<const gsFunction<T>&>( _mp_def->piece(0) ).computeMap(_tmp_def);
+
+        // NOTE 2: in the case that parametric value is needed it suffices
+        // to evaluate Youngs modulus and Poisson's ratio at
+        // \a u instead of _tmp.values[0].
+        _par1->eval_into(_tmp.values[0], par1mat);
+        _par2->eval_into(_tmp.values[0], par2mat);
+
+        result.resize( targetDim() , u.cols() );
+        for( index_t k=0; k< u.cols(); ++k )
+        {
+            // Material parameters
+            mu = par1mat(0,k);
+            K = par1mat(0,k);
+
+            // Define objects
+            gsMatrix<T,3,3> c, cinv;
+            T S33, C3333, dc33, traceC;
+
+            // Construct metric tensor a = [dcd1*dcd1, dcd1*dcd2; dcd2*dcd1, dcd2*dcd2]
+            jacGdef = _tmp_def.jacobian(k);
+            a_def   = jacGdef.transpose() * jacGdef;
+            jacGori = _tmp.jacobian(k);
+            a_ori   = jacGori.transpose() * jacGori;
+
+            // Construct metric tensor b = [d11c*n, d12c*n ; d21c*n, d22c*n]
+            gsAsConstMatrix<T,3,3> deriv2def( _tmp_def.deriv2(0).data(),3,3 ); // gives [d11 c1, d11c2, d11c3; d22c1, d22c1, d22c3; d12c1, d12c2, d12c3]
+            gsAsConstMatrix<T,3,3> deriv2ori(     _tmp.deriv2(0).data(),3,3 );
+            n_def = _tmp_def.normal(k).normalized();
+            n_ori = _tmp.normal(k).normalized();
+            b_def.resize(2,2);
+            b_ori.resize(2,2);
+
+            b_def(0,0) = deriv2def.row(0).dot(n_def);
+            b_def(1,1) = deriv2def.row(1).dot(n_def);
+            b_def(0,1) = b_def(1,0) = deriv2def.row(2).dot(n_def);
+
+            b_ori(0,0) = deriv2ori.row(0).dot(n_ori);
+            b_ori(1,1) = deriv2ori.row(1).dot(n_ori);
+            b_ori(0,1) = b_ori(1,0) = deriv2ori.row(2).dot(n_ori);
+
+            // Construct basis of coordinate system g = [a_ij - 2*theta3*b_ij]
+            g_def = g_ori = gsMatrix<T>::Zero(3,3);
+            g_def.block(0,0,2,2) = a_def - 2 * u(2,k) * b_def;
+            g_ori.block(0,0,2,2) = a_ori - 2 * u(2,k) * b_ori;
+            g_def(2,2) = g_ori(2,2) = 1.0;
+
+            // Initialize c
+            c.setZero();
+            c.block(0,0,2,2) = g_def.block(0,0,2,2);
+            c(2,2) = 1.0; // c33
+            cinv = c.inverse();
+            // note: can also just do c = jacGdef because the normal has length one and hence c(2,2) is 1. CHECK!
+
+            J0 = math::sqrt( g_def.determinant() / g_ori.determinant() );
+            J = J0 * math::sqrt( c(2,2) );
+
+            index_t itmax = 20;
+            T tol = 1e-6;
+            S33 = 0.0;
+            C3333 = 1.0;
+
+            // Define lambda function for C
+            std::function<T (index_t i, index_t j, index_t k, index_t l)> Cijkl;
+            Cijkl = [=](index_t i, index_t j, index_t k, index_t l)
+            {
+                T res = 1.0 / 9.0 * mu * math::pow( J , -2.0/3.0 ) * ( traceC * ( 2*cinv(i,j)*cinv(k,l) + 3*cinv(i,k)*cinv(j,l) + 3*cinv(i,l)*cinv(j,k) )
+                                - 6*g_ori(i,j)*cinv(k,l) + cinv(i,j)*g_ori(k,l) ) + K * ( J*J*cinv(i,j)*cinv(k,l) - 0.5*(J*J-1)*( cinv(i,k)*cinv(j,l) + cinv(i,l)*cinv(j,k) ) );
+                return res;
+            };
+
+            for (index_t it = 0; it < itmax; it++)
+            {
+                dc33 = -2. * S33 / C3333;
+                c(2,2) += dc33;
+                cinv(2,2) = 1.0/c(2,2);
+
+                traceC = c.trace();
+                J = J0 * math::sqrt( c(2,2) );
+
+                S33     = mu * math::pow( J , -2.0/3.0 ) * ( g_ori(2,2) - 1.0/3.0 * traceC * cinv(2,2) ) + 0.5 * K * ( J*J - 1 ) * cinv(2,2);
+                C3333   = Cijkl(2,2,2,2);
+
+                if (S33 < tol)
+                {
+                    // gsInfo<<"Converged in "<<it<<" iterations, S33 = "<<S33<<" and tolerance = "<<tol<<"\n";
+                    switch (mat)
+                    {
+                        case 0:
+                            result(0,k) = mu * math::pow( J , -2.0/3.0 ) * ( g_ori(0,0) - 1.0/3.0 * traceC * cinv(0,0) ) + 0.5 * K * ( J*J - 1 ) * cinv(0,0); // S11
+                            result(1,k) = mu * math::pow( J , -2.0/3.0 ) * ( g_ori(1,1) - 1.0/3.0 * traceC * cinv(1,1) ) + 0.5 * K * ( J*J - 1 ) * cinv(1,1); // S22
+                            result(2,k) = mu * math::pow( J , -2.0/3.0 ) * ( g_ori(0,1) - 1.0/3.0 * traceC * cinv(0,1) ) + 0.5 * K * ( J*J - 1 ) * cinv(0,1); // S12
+                            break;
+                        case 1:
+                            /*
+                                C =     C1111,  C1122,  C1112
+                                        symm,   C2222,  C2212
+                                        symm,   symm,   C1212
+                                Here, Cabcd = Cijkl - Cab33*C33cd / C3333;
+                                a,b,c,d = 1,2; i,j,k,l = 1...3;
+                            */
+                            gsAsMatrix<T, Dynamic, Dynamic> C = result.reshapeCol(k,3,3);
+                            C(0,0) = Cijkl(0,0,0,0) - ( Cijkl(0,0,2,2) * Cijkl(2,2,0,0) ) / (Cijkl(2,2,2,2)); // C1111
+                            C(0,1) =
+                            C(1,0) = Cijkl(0,0,1,1) - ( Cijkl(0,0,2,2) * Cijkl(2,2,1,1) ) / (Cijkl(2,2,2,2)); // C1122
+                            C(0,2) =
+                            C(2,0) = Cijkl(0,0,0,1) - ( Cijkl(0,0,2,2) * Cijkl(2,2,0,1) ) / (Cijkl(2,2,2,2)); // C1112
+                            C(1,1) = Cijkl(1,1,1,1) - ( Cijkl(1,1,2,2) * Cijkl(2,2,1,1) ) / (Cijkl(2,2,2,2)); // C2222
+                            C(1,2) =
+                            C(2,1) = Cijkl(1,1,0,1) - ( Cijkl(1,1,2,2) * Cijkl(2,2,0,1) ) / (Cijkl(2,2,2,2)); // C2212
+                            C(2,2) = Cijkl(0,1,0,1) - ( Cijkl(0,1,2,2) * Cijkl(2,2,0,1) ) / (Cijkl(2,2,2,2)); // C1212
+                            break;
+                    }
+                    break;
+                }
+                else if (it == itmax - 1)
+                {
+                    gsInfo<<"Error: Method did not converge, S33 = "<<S33<<" and tolerance = "<<tol<<"\n";
+                    // std::terminate();
+                }
+            }
+        }
+    }
+};
 
 /*
     Todo:
         * Improve for mu, E, phi as gsFunction instead of reals
 */
-template <class T>
+template <class T, int mat>
 class gsMaterialMatrixD : public gismo::gsFunction<T>
 {
   // Computes the material matrix for different material models
   // NOTE: This material matrix is in local Cartesian coordinates and should be transformed!
-  //
+  // NOTE: To make this efficient, we can output all matrices stacked and use expressions to pick the 1st, second and third
 protected:
     // const gsFunctionSet<T> * _mp;
     const std::vector<std::pair<T,T>> _YoungsModuli;
@@ -431,7 +817,7 @@ public:
         Tmat.resize(3,3);
 
 
-        for (index_t i = 0; i != _phi.size(); ++i) // loop over laminates
+        for (size_t i = 0; i != _phi.size(); ++i) // loop over laminates
         {
             // Compute all quantities
             E1 = _YoungsModuli[i].first;
@@ -470,9 +856,21 @@ public:
 
             // Make matrices A, B and C
             // [NOTE: HOW TO DO THIS NICELY??]
-            result.reshape(3,3) += Dmat * t; // A
+            // result.reshape(3,3) += Dmat * t; // A
             // result.reshape(3,3) += Dmat * t*z; // B
             // result.reshape(3,3) += Dmat * ( t*z*z + t*t*t/12.0 ); // D
+            switch (mat)
+            {
+                case 0:
+                    result.reshape(3,3) += Dmat * t; // A
+                    break;
+                case 1:
+                    result.reshape(3,3) += Dmat * t; // A
+                    break;
+                case 2:
+                    result.reshape(3,3) += Dmat * t; // A
+                    break;
+            }
 
             t_temp += t;
         }
@@ -488,7 +886,6 @@ public:
 }; //! [Include namespace]
 
 
-
 int main(int argc, char *argv[])
 {
     gsCmdLine cmd("Testing expression evaluator.");
@@ -496,13 +893,13 @@ int main(int argc, char *argv[])
 
     gsMultiPatch<> mp;
 
-    mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
+    mp.addPatch( gsNurbsCreator<>::BSplineSquare(4) ); // degree
     mp.addAutoBoundaries();
     mp.embed(3);
 
+    mp.uniformRefine(1);
+    // mp.degreeElevate(2);
     gsMultiBasis<> b(mp);
-    b.uniformRefine(1);
-
 
     // Initiate the expression evaluator
     gsExprEvaluator<real_t> ev;
@@ -519,11 +916,16 @@ int main(int argc, char *argv[])
     gsVector<> pt2D(2); pt2D.setConstant(0.25);
     gsVector<> pt3D(3); pt3D.setConstant(0.25);
 
-    gsMatrix<> points(2,11);
-    points<<0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,
-            0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0;
+    // gsMatrix<> points(2,11);
+    // points<<0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,
+    //         0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0;
+
+    gsMatrix<> points(2,3);
+    points<<0.0,0.5,1.0,
+            0.0,0.5,1.0;
 
     gsFunctionExpr<> fun("1*x","2*y","x*y*z^2",3);
+
 
     gsMatrix<> result;
     fun.eval_into(pt3D,result);
@@ -548,15 +950,35 @@ int main(int argc, char *argv[])
     /*
         test gsIntegrateZ function
     */
-    gsFunctionExpr<> fun3("1","x","x^2","x^3","x^4","x^5","x^6","x^7","x^8",1);
+    gsFunctionExpr<> fun3("1","x","x^2",1);
 
     real_t bound = 1.0;
+    gsConstantFunction<> thickFun(bound,2);
+
+
     gsIntegrateZ<real_t> integrator(fun3,bound);
     integrator.eval_into(pt1D,result);
 
     gsInfo<<"Integration of the following function from "<<-bound/2.0<<" to "<<bound/2.0<<": \n";
     gsInfo<<fun3<<"\n";
     gsInfo<<"Result: "<<result.transpose()<<"\n";
+
+    gsFunctionExpr<> fun4("1",3);
+    gsInfo<<"Or by directly computing the moments; integral from "<<-bound/2.0<<" to "<<bound/2.0<<": \n";
+    // We use the point pt2D since gsIntegrate requires a function fun: R^3->R^n
+    gsIntegrate integrator4(fun4,thickFun,0);
+    integrator4.setMoment(0);
+    integrator4.eval_into(pt2D,result);
+
+    gsInfo<<"Result: "<<result<<"\t";
+    integrator4.setMoment(1);
+    integrator4.eval_into(pt2D,result);
+    gsInfo<<result<<"\t";
+
+    integrator4.setMoment(2);
+    integrator4.eval_into(pt2D,result);
+    gsInfo<<result<<"\n";
+
 
     /*
         test gsIntegrateZ function
@@ -573,8 +995,7 @@ int main(int argc, char *argv[])
     /*
         test gsIntegrate function
     */
-    gsConstantFunction<> thickFun(bound,2);
-    gsIntegrate integrate(fun,thickFun);
+    gsIntegrate integrate(fun,thickFun,0);
     integrate.eval_into(points,result);
 
     gsInfo<<"Integration of the third component of the following function from "<<-bound/2.0<<" to "<<bound/2.0<<"\n";
@@ -592,16 +1013,36 @@ int main(int argc, char *argv[])
     real_t PoissonRatio = 0.0;
     gsFunctionExpr<> E(std::to_string(E_modulus),3);
     gsFunctionExpr<> nu(std::to_string(PoissonRatio),3);
-    gsMaterialMatrix materialMat(mp, E, nu);
-    gsIntegrate integrateMM(materialMat,thickFun);
+    gsMaterialMatrixLinear materialMat(mp, E, nu);
+    gsIntegrate integrateMM(materialMat,thickFun,0);
+
+    integrateMM.eval_into(points,result);
+    gsInfo<<"Result: \n"<<result<<"\n"; //.reshape(3,3)
+
+
+    real_t muPar = 1.5*1e6;
+    gsFunctionExpr<> mu(std::to_string(muPar),3);
+    gsMaterialMatrixIncompressible<real_t,0> materialMatI(mp, mu, mp);
+    gsIntegrate integrateMMI(materialMatI,thickFun,0);
+
+    integrateMMI.eval_into(points,result);
+    gsInfo<<"Result: \n"<<result<<"\n"; //.reshape(3,3)
+
+    real_t nuPar = 0.45;
+    real_t KPar = 2*muPar*(1+nuPar)/(3-6*nuPar);
+    gsFunctionExpr<> K(std::to_string(KPar),3);
+    gsMaterialMatrixCompressible<real_t,0> materialMatC(mp, mu, K, mp);
+    gsIntegrate integrateMMC(materialMatC,thickFun,0);
+
+    integrateMMC.eval_into(points,result);
+    gsInfo<<"Result: \n"<<result<<"\n"; //.reshape(3,3)
+
+
 
     // materialMat.eval_into(pt2D, result);
     // materialMat.eval_into(pt3D, result);
     // gsInfo<<"Result: \n"<<result<<"\n"; //.reshape(3,3)
 
-
-    integrateMM.eval_into(points,result);
-    gsInfo<<"Result: \n"<<result<<"\n"; //.reshape(3,3)
 
 
 
@@ -628,7 +1069,7 @@ int main(int argc, char *argv[])
     gsInfo<<math::cos(pi/2.0)<<"\n";
     gsInfo<<math::sin(pi/2.0)<<"\n";
 
-    gsMaterialMatrixD Dmat(Emod,G,Nu,t,phi);
+    gsMaterialMatrixD<real_t,0> Dmat(Emod,G,Nu,t,phi);
     Dmat.eval_into(pt2D, result);
 
     gsInfo<<"Result: \n"<<result.reshape(3,3)<<"\n";
