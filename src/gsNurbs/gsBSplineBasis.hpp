@@ -644,7 +644,7 @@ void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u,
 }
 
 template <class T>  inline
-void gsTensorBSplineBasis<1,T>::derivSingle_into(unsigned i,
+void gsTensorBSplineBasis<1,T>::derivSingle_into(index_t i,
                                                  const gsMatrix<T> & u,
                                                  gsMatrix<T>& result ) const
 {

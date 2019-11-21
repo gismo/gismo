@@ -1141,7 +1141,7 @@ void gsTHBSplineBasis<d,T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result
 
 
 template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::derivSingle_into(unsigned i,
+void gsTHBSplineBasis<d,T>::derivSingle_into(index_t i,
                                              const gsMatrix<T> & u,
                                              gsMatrix<T>& result) const
 {

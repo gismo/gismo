@@ -133,7 +133,7 @@ public:
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
  
     // Look at gsBasis class for documentation
-    void derivSingle_into(unsigned i,
+    void derivSingle_into(index_t i,
                              const gsMatrix<T> & u,
                           gsMatrix<T>& result) const;
 

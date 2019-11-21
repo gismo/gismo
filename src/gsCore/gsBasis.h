@@ -611,7 +611,7 @@ public:
     /// See deriv_into() for detailed documentation.
     ///
     /// \todo rename grad_into
-    virtual void derivSingle_into(unsigned i,
+    virtual void derivSingle_into(index_t i,
                                   const gsMatrix<T> & u,
                                   gsMatrix<T>& result ) const;
 

@@ -279,7 +279,7 @@ private:
 public:
     // see gsBasis for doxygen documentation
     // Evaluate the i-th basis function derivative at all columns of
-    virtual void derivSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
+    virtual void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 
     virtual void deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 

@@ -248,7 +248,7 @@ public:
     void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for a description
-    void derivSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
+    void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for a description
     void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;

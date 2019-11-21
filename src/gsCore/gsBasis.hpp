@@ -447,7 +447,7 @@ void gsBasis<T>::deriv_into(const gsMatrix<T> &, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::derivSingle_into(unsigned,
+void gsBasis<T>::derivSingle_into(index_t,
                                   const gsMatrix<T> &,
                                   gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
