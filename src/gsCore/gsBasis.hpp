@@ -431,7 +431,7 @@ gsMatrix<T> gsBasis<T>::support(const index_t &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsMatrix<T> gsBasis<T>::supportInterval(unsigned dir) const
+gsMatrix<T> gsBasis<T>::supportInterval(index_t dir) const
 { return support().row(dir); }
 
 template<class T>

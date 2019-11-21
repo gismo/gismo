@@ -543,7 +543,7 @@ public:
     /// direction \a dir.
     ///
     /// Returns a 1x2 matrix, containing the two endpoints of the interval.
-    gsMatrix<T> supportInterval(unsigned dir) const;
+    gsMatrix<T> supportInterval(index_t dir) const;
 
     /// @name Evaluation functions
     /// @{
