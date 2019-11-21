@@ -451,7 +451,7 @@ void gsTensorBasis<d,T>::derivSingle_into(index_t i,
 }
 
 template<short_t d, class T>
-void gsTensorBasis<d,T>::deriv2Single_into(unsigned i,
+void gsTensorBasis<d,T>::deriv2Single_into(index_t i,
                                 const gsMatrix<T> & u,
                                        gsMatrix<T>& result) const
 {

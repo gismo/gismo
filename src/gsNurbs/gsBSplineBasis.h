@@ -257,7 +257,7 @@ public:
     void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for a description
-    void deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
+    void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for a description
     void deriv2_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;

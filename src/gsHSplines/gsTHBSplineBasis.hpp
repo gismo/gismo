@@ -1040,7 +1040,7 @@ void gsTHBSplineBasis<d,T>::evalSingle_into(index_t i,
 }
 
 template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::deriv2Single_into(unsigned i,
+void gsTHBSplineBasis<d,T>::deriv2Single_into(index_t i,
                                               const gsMatrix<T>& u,
                                               gsMatrix<T>& result) const
 {

@@ -102,7 +102,7 @@ public:
     
     void derivSingle_into (unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
     
-    void deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
+    void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
     GISMO_CLONE_FUNCTION(gsHBSplineBasis)
 

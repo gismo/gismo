@@ -90,7 +90,7 @@ void gsHBSplineBasis<d,T>::derivSingle_into(index_t i, const gsMatrix<T> & u, gs
 }
 
 template<short_t d, class T>
-void gsHBSplineBasis<d,T>::deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const
+void gsHBSplineBasis<d,T>::deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     int lvl = this->levelOf(i);
     this->m_bases[lvl]->deriv2Single_into( 

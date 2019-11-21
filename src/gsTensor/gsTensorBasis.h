@@ -281,7 +281,7 @@ public:
     // Evaluate the i-th basis function derivative at all columns of
     virtual void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 
-    virtual void deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
+    virtual void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 
     // Evaluates the (partial) derivatives of an element given by coefs at (the columns of) u.
     //void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;
