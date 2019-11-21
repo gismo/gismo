@@ -55,7 +55,7 @@ class gsIpOptTNLP : public Ipopt::TNLP
         bool get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
                           Index& nnz_h_lag, IndexStyleEnum& index_style)
         {
-            //gsDebug<<"Getting get_nlp_info.\n";
+            // gsDebug<<"Getting get_nlp_info.\n";
 
             n = m_op.m_numDesignVars;
             m = m_op.m_numConstraints;
@@ -108,7 +108,7 @@ class gsIpOptTNLP : public Ipopt::TNLP
         bool eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
         {
             //gsDebug<<"Getting eval_f.\n";
-            
+
             gsAsConstVector<T> xx(x, n);
             obj_value = m_op.evalObj( xx );
             return true;
@@ -209,6 +209,7 @@ class gsIpOptTNLP : public Ipopt::TNLP
         curr->Copy(dv);
         m_op.m_curDesign = gsAsConstVector<T>(dx->Values(),m_op.m_curDesign.rows());
         */
+        // gsInfo << "\n === intermediateCallback is called === \n\n";
         return m_op.intermediateCallback();
 
         //SmartPtr< const IteratesVector >  trial = ip_data->trial();
@@ -228,6 +229,7 @@ class gsIpOptTNLP : public Ipopt::TNLP
                                IpoptCalculatedQuantities* ip_cq)
         {
             m_op.m_curDesign = gsAsConstVector<T>(x,n);
+            m_op.m_lambda = gsAsConstVector<T>(lambda,m);
 
             //m_op.finalize();
         }
