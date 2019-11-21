@@ -427,7 +427,7 @@ gsMatrix<T> gsBasis<T>::support() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsMatrix<T> gsBasis<T>::support(const unsigned &) const
+gsMatrix<T> gsBasis<T>::support(const index_t &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

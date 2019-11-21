@@ -232,7 +232,7 @@ public:
 
     // see gsBasis for doxygen documentation
     // Returns a bounding box for the support of the ith basis function
-    gsMatrix<T> support( const unsigned & i ) const ;
+    gsMatrix<T> support(const index_t & i ) const ;
 
     // see gsBasis for doxygen documentation
     // Evaluates the non-zero basis functions (and optionally their

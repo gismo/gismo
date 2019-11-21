@@ -470,7 +470,7 @@ public:
     /// Returns a bounding box for the basis' domain
     gsMatrix<T> support() const;
 
-    gsMatrix<T> support(const unsigned & i) const;
+    gsMatrix<T> support(const index_t & i) const;
 
     void elementSupport_into(const unsigned& i, gsMatrix<index_t, d, 2>& result) const
     {

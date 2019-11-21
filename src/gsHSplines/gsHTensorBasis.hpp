@@ -29,7 +29,7 @@ gsMatrix<T> gsHTensorBasis<d,T>::support() const
 
 //i in continuous numbering
 template<short_t d, class T>
-gsMatrix<T> gsHTensorBasis<d,T>::support(const unsigned & i) const
+gsMatrix<T> gsHTensorBasis<d,T>::support(const index_t & i) const
 {
     // Get the level
     int lvl = levelOf(i);

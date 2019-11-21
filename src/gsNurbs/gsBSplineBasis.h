@@ -228,7 +228,7 @@ public:
     gsMatrix<T> support() const ;
 
     // Look at gsBasis class for a description
-    gsMatrix<T> support( const unsigned & i ) const ;
+    gsMatrix<T> support(const index_t & i ) const ;
 
     /// @brief Only meaningfull for periodic basis: For basis members that have
     /// a twin, this function returns the other twin index, otherwise it

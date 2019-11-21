@@ -397,7 +397,7 @@ gsMatrix<T> gsTensorBasis<d,T>::support() const
 
 template<short_t d, class T>
 gsMatrix<T>
-gsTensorBasis<d,T>::support(const unsigned & i) const
+gsTensorBasis<d,T>::support(const index_t & i) const
 {
     gsMatrix<T> res(d,2);
     gsVector<index_t, d> ti = tensorIndex(i);

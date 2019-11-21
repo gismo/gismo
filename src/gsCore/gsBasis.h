@@ -537,7 +537,7 @@ public:
     ///
     /// Returns a dx2 matrix, containing the two diagonally extreme
     /// corners of a hypercube.
-    virtual gsMatrix<T> support(const unsigned & i) const;
+    virtual gsMatrix<T> support(const index_t & i) const;
 
     /// \brief Returns an interval that contains the parameter values in
     /// direction \a dir.

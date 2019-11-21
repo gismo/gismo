@@ -241,7 +241,7 @@ public:
     
     gsMatrix<T> support() const {return m_src->support(); }
     
-    gsMatrix<T> support(const unsigned & i) const {return m_src->support(i); }
+    gsMatrix<T> support(const index_t & i) const {return m_src->support(i); }
     
     void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
     

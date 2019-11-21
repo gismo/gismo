@@ -202,7 +202,7 @@ gsMatrix<T> gsTensorBSplineBasis<1,T>::support() const
 }
 
 template <class T>
-gsMatrix<T> gsTensorBSplineBasis<1,T>::support(const unsigned & i) const
+gsMatrix<T> gsTensorBSplineBasis<1,T>::support(const index_t & i) const
 {
     // Note: in the periodic case last index is
     // m_knots.size() - m_p - 1 - m_periodic
