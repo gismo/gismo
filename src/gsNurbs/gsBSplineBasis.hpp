@@ -1082,7 +1082,7 @@ void gsTensorBSplineBasis<1,T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,Row
 }
 
 template <class T>
-unsigned gsTensorBSplineBasis<1,T>::functionAtCorner(boxCorner const & c) const
+index_t gsTensorBSplineBasis<1,T>::functionAtCorner(boxCorner const & c) const
 {
     GISMO_ASSERT(c<3,"Invalid corner for 1D basis.");
     return ( c == 1 ? 0 : this->size()-1);

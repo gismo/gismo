@@ -311,17 +311,17 @@ gsMatrix<index_t> gsTensorBasis<d,T>::boundaryOffset(boxSide const& s,index_t of
 }
 
 template<short_t d, class T>
-unsigned gsTensorBasis<d,T>::functionAtCorner(boxCorner const & c) const
+index_t gsTensorBasis<d,T>::functionAtCorner(boxCorner const & c) const
 {
     gsVector<bool> position(d);
     c.parameters_into(d, position);
     
-    unsigned index = 0;
-    unsigned str   = 1;
+    index_t index = 0;
+    index_t str   = 1;
     
     for(short_t i = 0; i!=d; ++i)
     {
-        const unsigned sz_i = size(i);
+        const index_t sz_i = size(i);
         if ( position[i] )
             index+= str * ( sz_i - 1 );
         str *= sz_i;

@@ -221,7 +221,7 @@ public:
     /// boundary
     gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const;
 
-    unsigned functionAtCorner(boxCorner const & c) const;
+    index_t functionAtCorner(boxCorner const & c) const;
 
     /// Returns the components for a basis on the face \a s 
     void getComponentsForSide(boxSide const & s, std::vector<Basis_t*> & rr) const;

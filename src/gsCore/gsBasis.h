@@ -508,7 +508,7 @@ public:
     gsMatrix<index_t> boundary(boxSide const & s) const
     { return this->boundaryOffset(s,0); }
 
-    virtual unsigned functionAtCorner(boxCorner const & c) const;
+    virtual index_t functionAtCorner(boxCorner const & c) const;
 
 #ifdef __DOXYGEN__
     /// @brief Returns the boundary basis for side s.

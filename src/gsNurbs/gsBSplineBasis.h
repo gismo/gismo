@@ -518,7 +518,7 @@ public:
     }
 
     // Look at gsBasis class for a description
-    unsigned functionAtCorner(boxCorner const & c) const;
+    index_t functionAtCorner(boxCorner const & c) const;
 
     /// @brief Returns number of functions crossing the boundary of the knot vector.
     int numCrossingFunctions () const

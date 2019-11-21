@@ -312,7 +312,7 @@ gsBasis<T>::boundaryOffset(boxSide const &,index_t) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-unsigned
+index_t
 gsBasis<T>::functionAtCorner(boxCorner const &) const
 { GISMO_NO_IMPLEMENTATION }
 
