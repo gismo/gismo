@@ -122,33 +122,23 @@ class gsIntegrateZ : public gismo::gsFunction<T>
 
         result.resize(_fun->targetDim(),u.cols());
 
-        // Define integrator for the z direction
-        gsExprEvaluator<real_t> ev;
+        gsMatrix<> quNodes;
+        gsVector<> quWeights;
+        gsGaussRule <> gauss(10);
+        gauss.mapTo(-_t/2,_t/2,quNodes,quWeights);
 
-        // Define integration interval
-        int k = 1; // interior knots
-        int p = 1; // B-spline order
-
-        // Make 1D domain with a basis
-        gsKnotVector<> KV(-_t/2.0, _t/2.0, k, p+1);
-        gsMultiBasis<> basis;
-        basis.addBasis(gsBSplineBasis<>::make(KV));
-
-        // Set integration elements along basis
-        ev.setIntegrationElements(basis);
-
-        // Define integrant variables
-        typedef gsExprEvaluator<real_t>::variable    variable;
-        variable    integrant = ev.getVariable(*_fun, 1);
-
-        gsFunctionExpr<> height("x",1);
-        variable z = ev.getVariable(height);
+        gsMatrix<> tmp;
         for (index_t i=0; i!=_fun->targetDim(); ++i)
             for (index_t j = 0; j != u.cols(); ++j)
             {
                 //thickness integral for all components i with moment _mom
-                ev.integral(pow(z,_mom)*integrant.tr()[i]);
-                result(i,j) = ev.value();
+                real_t res = 0.0;
+                _fun->eval_into(quNodes,tmp);
+                for (index_t k = 0; k != quWeights.size(); ++k)
+                {
+                    res += quWeights.at(k) * math::pow(quNodes(0,k),_mom)*tmp(i,k);
+                }
+                result(i,j) = res;
             }
     }
 
@@ -201,42 +191,39 @@ class gsIntegrate : public gismo::gsFunction<T>
 
         result.resize(_fun->targetDim(),u.cols());
 
-        // Define integrator for the z direction
-        gsExprEvaluator<real_t> ev;
-
-        // Define integrant variables
-        typedef gsExprEvaluator<real_t>::variable    variable;
-        gsIntegrantZ integrant(*_fun);
-
         T tHalf;
-        gsFunctionExpr<> height("x",1);
-        variable z = ev.getVariable(height);
-        for (index_t i=0; i!=_fun->targetDim(); ++i)
-            for (index_t j = 0; j != u.cols(); ++j)
+
+        gsMatrix<> quNodes;
+        gsVector<> quWeights;
+        size_t numGauss = 10;
+        gsGaussRule <> gauss(numGauss);
+
+        size_t ptDim = u.rows() + 1;
+        gsMatrix<> pts(ptDim,numGauss);
+        for (index_t j = 0; j != u.cols(); ++j) // points
+        {
+            // Compute values of in-plane points
+            pts.topRows(ptDim-1) = u.col(j).replicate(1,numGauss);
+
+            // set new integration point
+            tHalf = thickMat(0,j)/2.0;
+            gauss.mapTo(-tHalf,tHalf,quNodes,quWeights);
+            pts.bottomRows(1) = quNodes;
+
+            _fun->eval_into(pts,tmp);
+            for (index_t i=0; i!=_fun->targetDim(); ++i) // components
             {
-                // this part is quite sloppy since a multi-basis is created every iteration..
-                tHalf = thickMat(0,j)/2.0;
+                real_t res = 0.0;
+                for (index_t k = 0; k != numGauss; ++k) // compute integral
+                    res += quWeights.at(k) * math::pow(quNodes(0,k),_mom) * tmp(i,k);
 
-                gsKnotVector<> KV(-tHalf, tHalf, 2, 2);
-                gsMultiBasis<> basis;
-                basis.addBasis(gsBSplineBasis<>::make(KV));
-
-                // Set integration elements along basis
-                ev.setIntegrationElements(basis);
-
-                variable intfun = ev.getVariable(integrant, 1);
-
-                // set new integration point
-                integrant.setPoint(u.col(j));
-
-                //thickness integral for all components i with moment _mom
-                ev.integral(pow(z,_mom)*intfun.tr()[i]);
-                result(i,j) = ev.value();
+                result(i,j) = res;
             }
+        }
     }
 
     std::ostream &print(std::ostream &os) const
-      { os << "gsIntegrateZ ( " << _fun << " )"; return os; };
+      { os << "gsIntegrate ( " << _fun << " )"; return os; };
 };
 
 template <class T>
