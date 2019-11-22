@@ -788,7 +788,7 @@ public:
         result(2,1) = (e1.dot(a2))*(a2.dot(e2));
         result(2,2) = (e1.dot(a1))*(a2.dot(e2)) + (e1.dot(a2))*(a1.dot(e2));
 
-        return result.inverse();
+        return result.inverse(); // !!!!
     }
 
     index_t rows() const { return 3; }
@@ -995,7 +995,7 @@ public:
         // otherwise we just use the input paramteric points
         _tmp.points = u;
 
-        static_cast<const gsFunction<T>*>(_mp->piece(0))->computeMap(_tmp); // the piece(0) here implies that if you call class.eval_into, it will be evaluated on piece(0). Hence, call class.piece(k).eval_into()
+        static_cast<const gsFunction<T>&>(_mp->piece(0)).computeMap(_tmp); // the piece(0) here implies that if you call class.eval_into, it will be evaluated on piece(0). Hence, call class.piece(k).eval_into()
 
         // NOTE 2: in the case that parametric value is needed it suffices
         // to evaluate Youngs modulus and Poisson's ratio at
@@ -1127,6 +1127,166 @@ public:
     // piece(k) --> for patch k
 
 }; //! [Include namespace]
+
+/*
+    Todo:
+        * Improve for mu, E, phi as gsFunction instead of reals!!
+*/
+template <class T, int mat>
+class gsMaterialMatrixComp : public gismo::gsFunction<T>
+{
+  // Computes the material matrix for different material models
+  // NOTE: This material matrix is in local Cartesian coordinates and should be transformed!
+  // NOTE: To make this efficient, we can output all matrices stacked and use expressions to pick the 1st, second and third
+protected:
+    // const gsFunctionSet<T> * _mp;
+    const std::vector<std::pair<T,T>> _YoungsModuli;
+    const std::vector<T> _ShearModuli;
+    const std::vector<std::pair<T,T>> _PoissonRatios;
+    const std::vector<T> _thickness;
+    const std::vector<T> _phi;
+    mutable gsMapData<T> _tmp;
+    mutable real_t E1, E2, G12, nu12, nu21, t, t_tot, t_temp, z, z_mid, phi;
+    mutable gsMatrix<T> Tmat, Dmat;
+
+public:
+    /// Shared pointer for gsMaterialMatrixComp
+    typedef memory::shared_ptr< gsMaterialMatrixComp > Ptr;
+
+    /// Unique pointer for gsMaterialMatrixComp
+    typedef memory::unique_ptr< gsMaterialMatrixComp > uPtr;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    gsMaterialMatrixComp(  //const gsFunctionSet<T> & mp,
+                        const std::vector<std::pair<T,T>> & YoungsModuli,
+                        const std::vector<T> & ShearModuli,
+                        const std::vector<std::pair<T,T>> & PoissonRatios,
+                        const std::vector<T> thickness,
+                        const std::vector<T> phi) :
+    // _mp(&mp),
+    _YoungsModuli(YoungsModuli),
+    _ShearModuli(ShearModuli),
+    _PoissonRatios(PoissonRatios),
+    _thickness(thickness),
+    _phi(phi)//,
+    // _mm_piece(nullptr)
+    {
+        _tmp.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
+    }
+
+    // ~gsMaterialMatrixComp() { delete _mm_piece; }
+
+    GISMO_CLONE_FUNCTION(gsMaterialMatrixComp)
+
+    short_t domainDim() const {return 2;}
+
+    short_t targetDim() const {return 9;}
+
+    // mutable gsMaterialMatrixComp<T> * _mm_piece; // todo: improve the way pieces are accessed
+
+    // const gsFunction<T> & piece(const index_t k) const
+    // {
+    //     delete _mm_piece;
+    //     _mm_piece = new gsMaterialMatrixComp(_mp->piece(k), _YoungsModuli, _ShearModuli, _PoissonRatios, _thickness, _phi);
+    //     return *_mm_piece;
+    // }
+
+    // Input is parametric coordinates of the surface \a mp
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        // static_cast<const gsFunction<T>*>(_mp)->computeMap(_tmp);
+        GISMO_ASSERT(_YoungsModuli.size()==_PoissonRatios.size(),"Size of vectors of Youngs Moduli and Poisson Ratios is not equal: " << _YoungsModuli.size()<<" & "<<_PoissonRatios.size());
+        GISMO_ASSERT(_YoungsModuli.size()==_ShearModuli.size(),"Size of vectors of Youngs Moduli and Shear Moduli is not equal: " << _YoungsModuli.size()<<" & "<<_ShearModuli.size());
+        GISMO_ASSERT(_thickness.size()==_phi.size(),"Size of vectors of thickness and angles is not equal: " << _thickness.size()<<" & "<<_phi.size());
+        GISMO_ASSERT(_YoungsModuli.size()==_thickness.size(),"Size of vectors of material properties and laminate properties is not equal: " << _YoungsModuli.size()<<" & "<<_thickness.size());
+        GISMO_ASSERT(_YoungsModuli.size()!=0,"No laminates defined");
+
+        // Compute total thickness (sum of entries)
+        t_tot = std::accumulate(_thickness.begin(), _thickness.end(), 0.0);
+
+        // compute mid-plane height of total plate
+        z_mid = t_tot / 2.0;
+
+        // now we use t_temp to add the thickness of all plies iteratively
+        t_temp = 0.0;
+
+        // Initialize material matrix and result
+        Dmat.resize(3,3);
+        result.resize( targetDim(), 1 );
+
+        // Initialize transformation matrix
+        Tmat.resize(3,3);
+
+
+        for (size_t i = 0; i != _phi.size(); ++i) // loop over laminates
+        {
+            // Compute all quantities
+            E1 = _YoungsModuli[i].first;
+            E2 = _YoungsModuli[i].second;
+            G12 = _ShearModuli[i];
+            nu12 = _PoissonRatios[i].first;
+            nu21 = _PoissonRatios[i].second;
+            t = _thickness[i];
+            phi = _phi[i];
+
+            GISMO_ASSERT(nu21*E1 == nu12*E2, "No symmetry in material properties for ply "<<i<<". nu12*E2!=nu21*E1:\n"<<
+                    "\tnu12 = "<<nu12<<"\t E2 = "<<E2<<"\t nu12*E2 = "<<nu12*E2<<"\n"
+                  <<"\tnu21 = "<<nu21<<"\t E1 = "<<E1<<"\t nu21*E1 = "<<nu21*E1);
+
+            // Fill material matrix
+            Dmat(0,0) = E1 / (1-nu12*nu21);
+            Dmat(1,1) = E2 / (1-nu12*nu21);;
+            Dmat(2,2) = G12;
+            Dmat(0,1) = nu21*E1 / (1-nu12*nu21);
+            Dmat(1,0) = nu12*E2 / (1-nu12*nu21);
+            Dmat(2,0) = Dmat(0,2) = Dmat(2,1) = Dmat(1,2) = 0.0;
+
+            // Make transformation matrix
+            Tmat(0,0) = Tmat(1,1) = math::pow(math::cos(phi),2);
+            Tmat(0,1) = Tmat(1,0) = math::pow(math::sin(phi),2);
+            Tmat(2,0) = Tmat(0,2) = Tmat(2,1) = Tmat(1,2) = math::sin(phi) * math::cos(phi);
+            Tmat(2,0) *= -2.0;
+            Tmat(2,1) *= 2.0;
+            Tmat(1,2) *= -1.0;
+            Tmat(2,2) = math::pow(math::cos(phi),2) - math::pow(math::sin(phi),2);
+
+            // Compute laminate stiffness matrix
+            Dmat = Tmat.transpose() * Dmat * Tmat;
+
+            z = math::abs(z_mid - (t/2.0 + t_temp) ); // distance from mid-plane of plate
+
+            // Make matrices A, B and C
+            // [NOTE: HOW TO DO THIS NICELY??]
+            // result.reshape(3,3) += Dmat * t; // A
+            // result.reshape(3,3) += Dmat * t*z; // B
+            // result.reshape(3,3) += Dmat * ( t*z*z + t*t*t/12.0 ); // D
+            switch (mat)
+            {
+                case 0:
+                    result.reshape(3,3) += Dmat * t; // A
+                    break;
+                case 1:
+                    result.reshape(3,3) += Dmat * t; // A
+                    break;
+                case 2:
+                    result.reshape(3,3) += Dmat * t; // A
+                    break;
+            }
+
+            t_temp += t;
+        }
+
+        GISMO_ASSERT(t_tot==t_temp,"Total thickness after loop is wrong. t_temp = "<<t_temp<<" and sum(thickness) = "<<t_tot);
+
+        // Replicate for all points since the quantities are equal over the whole domain
+        result.replicate(1, u.cols());
+    }
+
+    // piece(k) --> for patch k
+
+}; //! [Include namespace]
+
 
 template <typename T1, typename T2, typename T3 > using var2_t = gismo::expr::var2_expr<T1,T2,T3>;
 template <typename T1, typename T2, typename T3 > using flatdot_t = gismo::expr::flatdot_expr<T1,T2,T3 >;
@@ -1500,22 +1660,22 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> E(std::to_string(E_modulus),3);
     gsFunctionExpr<> nu(std::to_string(PoissonRatio),3);
     gsMaterialMatrix materialMat(mp, E, nu);
-    variable mm = A.getCoeff(materialMat);
+    variable mm = A.getCoeff(materialMat); // evaluates in the parametric domain, but the class transforms E and nu to physical
     gsMaterialMatrixD materialMatD(mp, E, nu);
-    variable mmD = A.getCoeff(materialMatD);
+    variable mmD = A.getCoeff(materialMatD); // evaluates in the parametric domain, but the class transforms E and nu to physical
 
 
     gsFunctionExpr<> mult2t("1","0","0","0","1","0","0","0","2",3);
-    variable m2 = A.getCoeff(mult2t, G);
+    variable m2 = A.getCoeff(mult2t, G); // evaluates in the physical domain
 
     gsFunctionExpr<> t(std::to_string(thickness), 3);
-    variable tt = A.getCoeff(t,G);
+    variable tt = A.getCoeff(t, G); // evaluates in the physical domain
     // TEMPORARILY!!
     // real_t tt = thickness;
 
     // gsFunctionExpr<> force("0","0","1", 3);
     gsConstantFunction<> force(tmp,3);
-    variable ff = A.getCoeff(force, G);
+    variable ff = A.getCoeff(force,G); // evaluates in the physical domain
 
     gsSparseSolver<>::CGDiagonal solver;
 
@@ -1571,7 +1731,6 @@ int main(int argc, char *argv[])
 
     E_f_der2_t<real_t>  E_f_der2 = flatdot2( deriv2(u), var1(u,defG).tr(), M  ).symmetrize() + var2(u,u,defG, M );
 
-
     force_t<real_t>     F       = ff;
 
     auto That       = cartcon(G);
@@ -1595,6 +1754,7 @@ int main(int argc, char *argv[])
 
 
     gsVector<> pt(2); pt.setConstant(0.25);
+    gsVector<> pt2(3); pt2.setConstant(2);
     // gsMatrix<> pt(7,2);
     // pt<<0,0,
     // 0,0.5,
@@ -1615,9 +1775,10 @@ int main(int argc, char *argv[])
 
     // assemble system
     A.assemble(
-        (N_der * E_m_der.tr() + M_der * E_f_der.tr()) * meas(G)
+        (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
+        // (E_m_der * E_m_der.tr() + E_f_der * E_f_der.tr()) * meas(G)
         ,
-        u * F * meas(G)
+        u * cartcon(G) * cartcon(G) * F  * meas(G)
         );
 
     // For Neumann (same for Dirichlet/Nitsche) conditions
@@ -1627,6 +1788,12 @@ int main(int argc, char *argv[])
     // solve system
     solver.compute( A.matrix() );
     gsMatrix<> solVector = solver.solve(A.rhs());
+
+    // gsInfo<<A.matrix().toDense()<<"\n";
+    // gsInfo<<A.rhs()<<"\n";
+    // gsInfo<<solVector<<"\n";
+
+
     // update deformed patch
     gsMatrix<> cc;
 
