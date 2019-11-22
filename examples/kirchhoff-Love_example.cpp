@@ -1560,9 +1560,9 @@ int main(int argc, char *argv[])
     {
         for (index_t i=0; i!=3; ++i)
         {
-            bc.addCondition(boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
+            bc.addCondition(boundary::north,condition_type::dirichlet, 0, i ); // unknown 0 - x
             bc.addCondition(boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
-            bc.addCondition(boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z
+            bc.addCondition(boundary::south,condition_type::dirichlet, 0, i ); // unknown 2 - z
             bc.addCondition(boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z
         }
         tmp << 0,0,-1;
@@ -1613,16 +1613,10 @@ int main(int argc, char *argv[])
     {
         for (index_t i=0; i!=3; ++i)
         {
-            // patch 0
-            bc.addCondition(0,boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
-            // bc.addCondition(0,boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
-            bc.addCondition(0,boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z
-            bc.addCondition(0,boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z
-            // patch 1
-            bc.addCondition(1,boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
-            bc.addCondition(1,boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
-            bc.addCondition(1,boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z
-            // bc.addCondition(1,boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z
+            bc.add(0,boundary::north,std::string("dirichlet weak"), 0, i);
+            bc.add(0,boundary::east, std::string("dirichlet weak"), 0, i);
+            bc.add(0,boundary::south,std::string("dirichlet weak"), 0, i);
+            bc.add(0,boundary::west, std::string("dirichlet weak"), 0, i);
         }
         tmp << 0,0,-1;
     }
@@ -1783,15 +1777,41 @@ int main(int argc, char *argv[])
 
     // For Neumann (same for Dirichlet/Nitsche) conditions
     variable g_N = A.getBdrFunction();
-    A.assembleRhsBc(u * g_N, bc.neumannSides() );
+    A.assembleRhsBc(u * g_N, bc.container("Neumann") );
+
+    // for weak dirichlet (DOES THIS HANDLE COMPONENTS?)
+    real_t alpha_d = 1e3;
+    A.assembleLhsRhsBc
+    (
+        alpha_d * u * u.tr()
+        ,
+        alpha_d * u * (defG - G - g_N).tr()
+        ,
+        bc.container("dirichlet weak")
+    );
+
+    // for weak clamped
+    real_t alpha_r = 1e3;
+    A.assembleLhsRhsBc
+    (
+        // alpha_r * ( sn(defG).tr()*sn(G) - 1.0 ) * ( flatdot2??? )
+        // +
+        alpha_r * ( var1(u,defG) * sn(G).tr() ).symmetrize()
+        ,
+        alpha_r * ( sn(defG)*sn(G).tr() - sn(G)*sn(G).tr() ) * ( var1(u,defG) * sn(G).tr() )
+        ,
+        bc.container("clamped weak")
+    );
+
+
 
     // solve system
     solver.compute( A.matrix() );
     gsMatrix<> solVector = solver.solve(A.rhs());
 
-    // gsInfo<<A.matrix().toDense()<<"\n";
-    // gsInfo<<A.rhs()<<"\n";
-    // gsInfo<<solVector<<"\n";
+    gsInfo<<A.matrix().toDense()<<"\n";
+    gsInfo<<A.rhs()<<"\n";
+    gsInfo<<solVector<<"\n";
 
 
     // update deformed patch
