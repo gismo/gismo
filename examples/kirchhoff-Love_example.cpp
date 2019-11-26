@@ -17,28 +17,6 @@
 
 #  define MatExprType  auto
 
-template <typename T>
-constexpr auto type_name()
-{
-    std::string_view name, prefix, suffix;
-#ifdef __clang__
-    name = __PRETTY_FUNCTION__;
-    prefix = "auto type_name() [T = ";
-    suffix = "]";
-#elif defined(__GNUC__)
-    name = __PRETTY_FUNCTION__;
-    prefix = "constexpr auto type_name() [with T = ";
-    suffix = "]";
-#elif defined(_MSC_VER)
-    name = __FUNCSIG__;
-    prefix = "auto __cdecl type_name<";
-    suffix = ">(void)";
-#endif
-    name.remove_prefix(prefix.size());
-    name.remove_suffix(suffix.size());
-    return name;
-}
-
 namespace gismo{
 namespace expr{
 
@@ -788,7 +766,8 @@ public:
         result(2,1) = (e1.dot(a2))*(a2.dot(e2));
         result(2,2) = (e1.dot(a1))*(a2.dot(e2)) + (e1.dot(a2))*(a1.dot(e2));
 
-        return result.inverse(); // !!!!
+        // return result.inverse(); // !!!!
+        return result;
     }
 
     index_t rows() const { return 3; }
@@ -1730,11 +1709,12 @@ int main(int argc, char *argv[])
     auto That       = cartcon(G);
     auto Ttilde     = cartcov(G); // IS INVERTED
     // auto TtildeInv  = cartcov(G).inv(); // DOES NOT WORK!!
-    auto D = Ttilde*reshape(mmD,3,3)*That;
+    auto D = That*reshape(mmD,3,3)*That; // NOTE: That = Ttilde.inv()
+
     auto C = reshape(mm,3,3);
 
-    // auto S_m = tt.val() * C * E_m;
-    // auto S_f = 2.0*tt.val()*tt.val()*tt.val()/12.0 * C * E_f;
+    auto S_m2 = (tt.val() * E_m * C ) * Ttilde;
+    auto S_f2 = (pow(tt.val(),3)/12.0 * E_f * C ) * Ttilde;
 
     // NOTE: var1(u,G) in E_F_der2 should be var1(u,defG)
 
@@ -1747,7 +1727,7 @@ int main(int argc, char *argv[])
     // gsInfo<<"E_f_der2: "<<typeid(E_f_der2).name()<<"\n";
 
 
-    gsVector<> pt(2); pt.setConstant(0.25);
+    gsVector<> pt(2); pt.setConstant(0.1);
     gsVector<> pt2(3); pt2.setConstant(2);
     // gsMatrix<> pt(7,2);
     // pt<<0,0,
@@ -1764,6 +1744,8 @@ int main(int argc, char *argv[])
     // evaluateFunction(ev, TtildeInv, pt); // evaluates an expression on a point
     evaluateFunction(ev, C, pt); // evaluates an expression on a point
     evaluateFunction(ev, D, pt); // evaluates an expression on a point
+
+
 
     // ! [Solve linear problem]
 
@@ -1910,8 +1892,9 @@ int main(int argc, char *argv[])
         gsInfo<<"Plotting in Paraview...\n";
         gsWriteParaview<>( solField, "solution", 1000, true);
 
-        // ev.options().setSwitch("plot.elements", true);
-        // ev.writeParaview( S_f.tr()[0]   , G, "stress");
+        ev.options().setSwitch("plot.elements", true);
+        ev.writeParaview( S_f2, G, "stress");
+        evaluateFunction(ev, S_f2[0], pt); // evaluates an expression on a point
 
         // gsFileManager::open("solution.pvd");
     }
