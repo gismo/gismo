@@ -512,7 +512,8 @@ protected:
     mutable gsMatrix<T> jacGdef, jacGori, a_ori, a_def, b_ori, b_def, g_def, g_ori;
     mutable gsVector<T> n_def, n_ori;
     mutable gsMatrix<T> par1mat,par2mat;
-    mutable real_t mu, K, J0, J;
+    mutable real_t mu, K, J0, J, traceC;
+    mutable gsMatrix<T,3,3> c, cinv;
 
 public:
     /// Shared pointer for gsMaterialMatrixCompressible
@@ -566,7 +567,12 @@ public:
         return *_mm_piece;
     }
 
-
+    T Cijkl(index_t i, index_t j, index_t k, index_t l) const
+    {
+        T res = 1.0 / 9.0 * mu * math::pow( J , -2.0/3.0 ) * ( traceC * ( 2*cinv(i,j)*cinv(k,l) + 3*cinv(i,k)*cinv(j,l) + 3*cinv(i,l)*cinv(j,k) )
+                        - 6*g_ori(i,j)*cinv(k,l) + cinv(i,j)*g_ori(k,l) ) + K * ( J*J*cinv(i,j)*cinv(k,l) - 0.5*(J*J-1)*( cinv(i,k)*cinv(j,l) + cinv(i,l)*cinv(j,k) ) );
+        return res;
+    }
 
 //class .. matMatrix_z
 // should contain eval_into(thickness variable)
@@ -604,8 +610,7 @@ public:
             K = par1mat(0,k);
 
             // Define objects
-            gsMatrix<T,3,3> c, cinv;
-            T S33, C3333, dc33, traceC;
+            T S33, C3333, dc33;
 
             // Construct metric tensor a = [dcd1*dcd1, dcd1*dcd2; dcd2*dcd1, dcd2*dcd2]
             jacGdef = _tmp_def.jacobian(k);
@@ -651,13 +656,13 @@ public:
             C3333 = 1.0;
 
             // Define lambda function for C
-            std::function<T (index_t i, index_t j, index_t k, index_t l)> Cijkl;
-            Cijkl = [=](index_t i, index_t j, index_t k, index_t l)
-            {
-                T res = 1.0 / 9.0 * mu * math::pow( J , -2.0/3.0 ) * ( traceC * ( 2*cinv(i,j)*cinv(k,l) + 3*cinv(i,k)*cinv(j,l) + 3*cinv(i,l)*cinv(j,k) )
-                                - 6*g_ori(i,j)*cinv(k,l) + cinv(i,j)*g_ori(k,l) ) + K * ( J*J*cinv(i,j)*cinv(k,l) - 0.5*(J*J-1)*( cinv(i,k)*cinv(j,l) + cinv(i,l)*cinv(j,k) ) );
-                return res;
-            };
+            // std::function<T (index_t i, index_t j, index_t k, index_t l)> Cijkl;
+            // Cijkl = [=](index_t i, index_t j, index_t k, index_t l)
+            // {
+            //     T res = 1.0 / 9.0 * mu * math::pow( J , -2.0/3.0 ) * ( traceC * ( 2*cinv(i,j)*cinv(k,l) + 3*cinv(i,k)*cinv(j,l) + 3*cinv(i,l)*cinv(j,k) )
+            //                     - 6*g_ori(i,j)*cinv(k,l) + cinv(i,j)*g_ori(k,l) ) + K * ( J*J*cinv(i,j)*cinv(k,l) - 0.5*(J*J-1)*( cinv(i,k)*cinv(j,l) + cinv(i,l)*cinv(j,k) ) );
+            //     return res;
+            // };
 
             for (index_t it = 0; it < itmax; it++)
             {
