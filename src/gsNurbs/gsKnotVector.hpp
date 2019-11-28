@@ -698,12 +698,12 @@ gsKnotVector<T>::uFind( const T u ) const
 //    GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
 
     // The last element is closed from both sides.
-    uiterator dend = domainUEnd();
+    uiterator dend = uend();
 
-    if (u==*dend) // knot at domain end ?
-        return --dend;
-    else
-        return std::upper_bound( domainUBegin(), dend, u ) - 1;
+    // if (u==*dend) // knot at domain end ?
+    //     return --dend;
+    // else
+        return std::upper_bound( ubegin(), dend, u ) - 1;
 }
 
 template<typename T>
@@ -727,15 +727,15 @@ typename gsKnotVector<T>::iterator
 gsKnotVector<T>::iFind( const T u ) const
 {
     // GISMO_ASSERT done in uFind().
-    return begin() + uFind(u).lastAppearance();
+    //return begin() + uFind(u).lastAppearance();
 
     // equivalent
-    /*GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
-      iterator dend = domainEnd();
-      if ( u == *dend )
-      return --dend;
-      else
-      return std::upper_bound( domainBegin(), dend, u) - 1; */
+    //GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
+    iterator dend = domainEnd();
+    if ( u == *dend )
+	return --dend;
+    else
+	return std::upper_bound( domainBegin(), dend, u) - 1;
 }
 
 template<typename T>
