@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris, D. Mokris
 */
 
 #include <gsParasolid/gsFrustrum.h>
@@ -850,7 +850,7 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
         //std::cout << "bspline coef size: " << bspline.coefs().rows() << std::endl;
         makeValidGeometry(surface, bspline);
 
-        //gsWriteParaview(bspline,"paraviewtest",1000,true,true);
+        //gsWriteParaview(bspline,"paraviewtest" + std::to_string(box),1000,true,true);
 
         PK_BSURF_t bsurf;
         createPK_BSURF<T>(bspline, bsurf); // swap
@@ -864,10 +864,10 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
         {
             for (unsigned seg = 0; seg != polylines[loop].size(); seg++)
             {
-                real_t x1 = polylines[loop][seg][0];
-                real_t y1 = polylines[loop][seg][1];
-                real_t x2 = polylines[loop][seg][2];
-                real_t y2 = polylines[loop][seg][3];
+                real_t y1 = polylines[loop][seg][0];
+                real_t x1 = polylines[loop][seg][1];
+                real_t y2 = polylines[loop][seg][2];
+                real_t x2 = polylines[loop][seg][3];
 
                 PK_CURVE_t line;
                 PK_INTERVAL_t intervalDummy;
@@ -882,7 +882,7 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
                                                       &options, &line, &intervalDummy);
                     PARASOLID_ERROR(PK_SURF_make_curve_isoparam, err);
 
-                    getInterval(false, y1, y2, x1, bspline, line, interval);
+                    getInterval(true, y1, y2, x1, bspline, line, interval);
                 }
                 else
                 {
@@ -890,7 +890,7 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
                                                       &options, &line, &intervalDummy);
                     PARASOLID_ERROR(PK_SURF_make_curve_isoparam, err);
 
-                    getInterval(true, x1, x2,  y1, bspline, line, interval);
+                    getInterval(false, x1, x2,  y1, bspline, line, interval);
                 }
 
                 curves.push_back(line);
@@ -966,6 +966,16 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
 //        PARASOLID_ERROR(PK_PART_transmit, err);
 
         // ----------------------------------------------------------------------
+
+	// Extra transposition (2019-11-14) to compensate for the transposition in createPK_BSURF.
+	// PK_BSURF_reparameterise_o_t rep_options;
+	// PK_BSURF_reparameterise_o_m(rep_options);
+	// rep_options.transpose = PK_LOGICAL_true;
+
+	// err = PK_BSURF_reparameterise(bsurf,&rep_options);
+	// PARASOLID_ERROR(PK_BSURF_reparameterise, err);
+	// End of the transposition.
+
 
         PK_SURF_trim_data_t trim_data;
         trim_data.n_spcurves = static_cast<int>(curves.size());
