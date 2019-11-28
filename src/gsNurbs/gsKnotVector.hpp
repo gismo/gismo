@@ -777,8 +777,8 @@ void gsKnotVector<T>::uniformRefine( mult_t numKnots, mult_t mult )
     getUniformRefinementKnots(numKnots,newKnots,mult); // iterate instead of store ?
     insert(newKnots.begin(),newKnots.end()); // complexity: newKnots.size() + size()
 
-    if (0!=l) trimLeft (l);
-    if (0!=r) trimRight(r);
+    // if (0!=l) trimLeft (l);
+    // if (0!=r) trimRight(r);
 }
 
 
