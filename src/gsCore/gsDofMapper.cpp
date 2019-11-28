@@ -83,15 +83,6 @@ gsVector<index_t> gsDofMapper::asVector() const
     return v;
 }
 
-gsVector<index_t> gsDofMapper::inverseAsVector() const
-{
-    GISMO_ASSERT(isPermutation(), "This dofMapper is not 1-1");
-    gsVector<index_t> v(size());
-    for(index_t i = 0; i!= v.size(); ++i)
-        v[m_dofs[i]] = i;
-    return v;
-}
-
 void gsDofMapper::colapseDofs(index_t k, const gsMatrix<unsigned> & b )
 {
     const index_t last = b.size()-1;
@@ -410,6 +401,31 @@ void gsDofMapper::preImage(const index_t gl,
             result.push_back( std::make_pair(patch, cur - m_offset[patch] - m_shift) );
         }
     }
+}
+
+gsVector<index_t> gsDofMapper::inverseAsVector() const
+{
+    GISMO_ASSERT(isPermutation(), "This dofMapper is not 1-1");
+    gsVector<index_t> v(size());
+    for(index_t i = 0; i!= v.size(); ++i)
+        v[m_dofs[i]] = i;
+    return v;
+}
+
+std::map<index_t,index_t> 
+gsDofMapper::inverseOnPatch(const index_t k) const
+{
+    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+
+    const index_t sz = patchSize(k);
+    std::map<index_t,index_t> inv;
+    //inv.reserve(patchSize(k));
+    typedef std::vector<index_t>::const_iterator citer;
+    citer it = m_dofs.begin()+m_offset[k];
+    for(index_t i = 0;i!=sz;++i,++it)
+      inv[*it]=i;
+    return inv;
 }
 
 bool gsDofMapper::indexOnPatch(const index_t gl, const index_t k) const
