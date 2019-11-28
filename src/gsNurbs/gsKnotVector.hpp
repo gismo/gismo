@@ -695,7 +695,7 @@ typename gsKnotVector<T>::uiterator
 gsKnotVector<T>::uFind( const T u ) const
 {
     GISMO_ASSERT(size()>1,"Not enough knots."); // todo: check() --> size() > 2*m_deg+1
-    GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
+//    GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
 
     // The last element is closed from both sides.
     uiterator dend = domainUEnd();
