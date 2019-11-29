@@ -77,9 +77,11 @@ void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
 
 gsVector<index_t> gsDofMapper::asVector() const
 {
-    gsVector<index_t> v(m_dofs.size());
-    for(index_t i = 0; i!= v.size(); ++i)
-        v[i] = m_dofs[i]+m_shift;
+  gsVector<index_t> v(m_dofs.front().size()*m_dofs.size());
+  index_t c = 0;
+  for(size_t i = 0; i!= m_dofs.size(); ++i)
+    for(size_t j = 0; j!= m_dofs[i].size(); ++j)
+      v[c++] = m_dofs[i][j]+m_shift;
     return v;
 }
 
@@ -288,7 +290,7 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
     return os;
 }
 
-void gsDofMapper::setIdentity(index_t nPatches, size_t nDofs)
+  void gsDofMapper::setIdentity(index_t nPatches, size_t nDofs, size_t nComp)
 {
     m_curElimId   = -1;
     m_numFreeDofs = nDofs;
@@ -300,10 +302,10 @@ void gsDofMapper::setIdentity(index_t nPatches, size_t nDofs)
     // Initialize all offsets to zero
     m_offset.resize(nPatches, 0);
 
-    m_dofs.resize( m_numFreeDofs, 0);
+    m_dofs.resize(nComp, std::vector<index_t>(m_numFreeDofs, 0));
 }
 
-void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation)
+  void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp)
 {
     GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(m_numFreeDofs == permutation.size(), "permutation size does not match number of free dofs");
@@ -311,20 +313,20 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation)
     //We could check here, that permutation is indeed a permutation
 
     //make a copy of the old ordering, easiest way to implement the permutation. Inplace reordering is quite hard.
-    std::vector<index_t> dofs = m_dofs;
+    std::vector<index_t> dofs = m_dofs[comp];
     //first use a tempory coupled vector, other wise is_coupled_index() would not work correctly
     std::vector<index_t> tagged_permuted;
     tagged_permuted.reserve(taggedSize()); //reserve enough memory
 
     for(index_t i=0; i<(index_t)dofs.size();++i)
     {
-        index_t idx = dofs[i];
+        const index_t idx = dofs[i];
         if(is_free_index(idx))
         {
-            m_dofs[i] = permutation[idx];
+            m_dofs[comp][i] = permutation[idx];
             //fill  bookkeeping for tagged dofs
             if(is_tagged_index(idx))
-                tagged_permuted.push_back(m_dofs[i]);
+                tagged_permuted.push_back(m_dofs[comp][i]);
         }
         else if(is_tagged_index(idx)) //Take care about eliminated tagged dofs
             tagged_permuted.push_back(idx);
@@ -341,7 +343,7 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation)
 }
 
 
-void gsDofMapper::initPatchDofs(const gsVector<index_t> & patchDofSizes)
+  void gsDofMapper::initPatchDofs(const gsVector<index_t> & patchDofSizes, index_t nComp)
 {
     m_curElimId   = -1;
     m_numElimDofs = 0;
@@ -360,12 +362,13 @@ void gsDofMapper::initPatchDofs(const gsVector<index_t> & patchDofSizes)
 
     m_numFreeDofs = m_offset.back() + patchDofSizes[nPatches-1];
 
-    m_dofs.resize( m_numFreeDofs, 0);
+    m_dofs.resize(nComp, std::vector<index_t>(m_numFreeDofs, 0));
 }
 
 void gsDofMapper::replaceDofGlobally(index_t oldIdx, index_t newIdx)
 {
-    std::replace( m_dofs.begin(), m_dofs.end(), oldIdx, newIdx );
+    const index_t comp = oldIdx / m_dofs.front().size();
+    std::replace( m_dofs[comp].begin(), m_dofs[comp].end(), oldIdx, newIdx );
 }
 
 void gsDofMapper::mergeDofsGlobally(index_t dof1, index_t dof2)
@@ -388,8 +391,10 @@ void gsDofMapper::preImage(const index_t gl,
 
     result.clear();
 
+    const index_t comp = oldIdx / m_dofs.front().size();
+
     size_t cur = 0;//local offsetted index
-    for (citer it = m_dofs.begin(); it != m_dofs.end(); ++it, ++cur)
+    for (citer it = m_dofs[comp].begin(); it != m_dofs[comp].end(); ++it, ++cur)
     {
         if ( *it == gl )
         {
@@ -407,8 +412,10 @@ gsVector<index_t> gsDofMapper::inverseAsVector() const
 {
     GISMO_ASSERT(isPermutation(), "This dofMapper is not 1-1");
     gsVector<index_t> v(size());
-    for(index_t i = 0; i!= v.size(); ++i)
-        v[m_dofs[i]] = i;
+    index_t c = 0;
+    for(size_t i = 0; i!= m_dofs.size(); ++i)
+      for(size_t j = 0; j!= m_dofs[i].size(); ++j)
+	v[ m_dofs[i][j] ] = c++;
     return v;
 }
 
@@ -422,9 +429,14 @@ gsDofMapper::inverseOnPatch(const index_t k) const
     std::map<index_t,index_t> inv;
     //inv.reserve(patchSize(k));
     typedef std::vector<index_t>::const_iterator citer;
-    citer it = m_dofs.begin()+m_offset[k];
-    for(index_t i = 0;i!=sz;++i,++it)
-      inv[*it]=i;
+
+    index_t c = 0;
+    for(size_t i = 0; i!= m_dofs.size(); ++i)
+      {
+	citer it = m_dofs[i].begin()+m_offset[k];
+	for(size_t j = 0; j!= m_dofs[i].size(); ++j,++it)
+	  inv[*it]=j;
+      }
     return inv;
 }
 
@@ -433,7 +445,8 @@ bool gsDofMapper::indexOnPatch(const index_t gl, const index_t k) const
     GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
     typedef std::vector<index_t>::const_iterator citer;
-    const citer istart = m_dofs.begin()+m_offset[k];
+    const index_t comp = gl / m_dofs.front().size();
+    const citer istart = m_dofs[comp].begin()+m_offset[k];
     const citer iend   = istart + patchSize(k);
     return (std::find(istart, iend, gl)!=iend);
 }
@@ -442,9 +455,12 @@ index_t gsDofMapper::boundarySizeWithDuplicates() const
 {
     GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
 
-    const index_t s = m_numFreeDofs + m_shift - 1;
-    return std::count_if(m_dofs.begin(), m_dofs.end(),
-                         std::bind2nd(std::greater<index_t>(), s) );
+    index_t res = 0;
+    for (size_t i = 0; i!= m_dofs.size(); ++i)
+      res += std::count_if(m_dofs[i].begin(), m_dofs[i].end(),
+			   std::bind2nd(std::greater<index_t>()),
+					m_numFreeDofs[i] - 1 );
+    return res;
 }
 
 

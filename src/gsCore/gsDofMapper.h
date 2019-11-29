@@ -182,8 +182,9 @@ private:
     template <typename T>
     void initSingle( const gsBasis<T> & basis);
 
-    /// Initialize by vector of DoF indices
-    void initPatchDofs(const gsVector<index_t> & patchDofSizes);
+    /// Initialize by vector of DoF indices and dimension
+    void initPatchDofs(const gsVector<index_t> & patchDofSizes, 
+		       index_t nComp = 1);
 
 public:
 
@@ -245,7 +246,7 @@ public:
     std::ostream& print( std::ostream& os = gsInfo ) const;
 
     ///\brief Set this mapping to beh the identity
-    void setIdentity(index_t nPatches, size_t nDofs);
+    void setIdentity(index_t nPatches, size_t nDofs, size_t nComp = 1);
 
     ///\brief Set the shift amount for the global numbering
     void setShift(index_t shift);
@@ -255,10 +256,11 @@ public:
     /// \warning Applying a permutation makes the functions regarding coupled dofs (cindex, is_coupled_index,.. ) invalid.
     /// The dofs are still coupled, but you have no way of extracting them. If you need this functions, first call
     /// markCoupledAsTagged() and then use the corresponding functions for tagged dofs.
-    void permuteFreeDofs(const gsVector<index_t>& permutation);
+    void permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp = 0);
 
     ///\brief Returns the smallest value of the indices
-    index_t firstIndex() const { return m_shift; }
+    index_t firstIndex(index_t comp = 0) const 
+    { return comp*m_dofs.front().size() + m_shift; }
 
     ///\brief Returns one past the biggest value of the indices
     index_t lastIndex() const { return m_shift + freeSize(); }
@@ -422,17 +424,20 @@ public:
     /// \brief Returns the total number of patch-local degrees of
     /// freedom that are being mapped
     size_t mapSize() const
+    {return m_dofs.size() * m_dofs.front().size();}
+
+    size_t componentsSize() const
     {return m_dofs.size();}
 
-    /// \brief Returns the total number of patch-local degrees on patch \a k
-    /// freedom that are being mapped
+    /// \brief Returns the total number of patch-local DoFs on
+    /// patch \a k that are being mapped
     size_t patchSize(const index_t k) const
     {
         const size_t k1(k+1);
         GISMO_ASSERT(k1<=numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
-        if ( 1==m_offset.size() ) return m_dofs.size();
-        else if ( k1==m_offset.size() ) return m_dofs.size() - m_offset.back();
-        else return m_offset[k1]-m_offset[k];
+        if ( 1==m_offset.size() ) return m_dofs.size()* m_dofs.front().size();
+        else if ( k1==m_offset.size() ) return (m_dofs.front().size() - m_offset.back()) *m_dofs.size();
+        else return (m_offset[k1]-m_offset[k])*m_dofs.size();
     }
 
     /// \brief For \a gl being a global index, this function returns a
@@ -453,7 +458,11 @@ public:
     /// mapper.
     index_t mapIndex(index_t n) const
     {return m_dofs[n]+m_shift;}
-
+    {
+      
+      return m_dofs[n/m_dofs.front().size()]
+	[n%m_dofs.front().size()] + m_shift;
+    }
 private:
 
     // replace all references to oldIdx by newIdx
@@ -476,7 +485,8 @@ private:
 
     // Representation as a single vector plus offsets for patch-local
     // indices
-    std::vector<index_t>     m_dofs;
+    std::vector<std::vector<index_t> >  m_dofs;
+    //    std::vector<index_t>     m_dofs;
     std::vector<size_t> m_offset;
     // Representation as vector of vectors, m_patchDofs[k][i]
     // corresponds to patch k patch-local basis index i
@@ -491,6 +501,9 @@ private:
     index_t m_numFreeDofs;
     index_t m_numElimDofs;
     index_t m_numCpldDofs;
+    //std::vector<index_t> m_numFreeDofs;
+    //std::vector<index_t> m_numElimDofs;
+    //std::vector<index_t> m_numCpldDofs;
 
     // used during setup: running id for current eliminated dof
     // After finalize() is called m_curElimId takes the value zero.
