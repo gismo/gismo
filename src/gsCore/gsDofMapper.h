@@ -20,7 +20,7 @@
 namespace gismo
 {
 
-#define MAPPER_PATCH_DOF(a,b) m_dofs[m_offset[b]+a]
+#define MAPPER_PATCH_DOF(a,b,c) m_dofs[c][m_offset[b]+a]
 
 /** @brief Maintains a mapping from patch-local dofs to global dof indices
     and allows the elimination of individual dofs.
@@ -183,7 +183,7 @@ private:
     void initSingle( const gsBasis<T> & basis);
 
     /// Initialize by vector of DoF indices and dimension
-    void initPatchDofs(const gsVector<index_t> & patchDofSizes, 
+    void initPatchDofs(const gsVector<index_t> & patchDofSizes,
 		       index_t nComp = 1);
 
 public:
@@ -205,11 +205,11 @@ public:
      * \a i ps. Thus, the whole set of dofs collapses to a single global dof
      *
      */
-    void colapseDofs(index_t k, const gsMatrix<unsigned> & b );
+void colapseDofs(index_t k, const gsMatrix<unsigned> & b, index_t comp = 0);
 
     /// \brief Couples dof \a i of patch \a u with dof \a j of patch
-    /// \a v such that they refer to the same global dof.
-    void matchDof( index_t u, index_t i, index_t v, index_t j );
+    /// \a v such that they refer to the same global dof at component \a comp.
+void matchDof( index_t u, index_t i, index_t v, index_t j, index_t comp = 0);
 
     /// \brief Couples dofs \a b1 of patch \a u with dofs \a b2 of patch
     /// \a v one by one such that they refer to the same global dof.
@@ -230,7 +230,7 @@ public:
     void markBoundary( index_t k, const gsMatrix<unsigned> & boundaryDofs );
 
     /// Mark the local dof \a i of patch \a k as eliminated.
-    void eliminateDof( index_t i, index_t k );
+    void eliminateDof( index_t i, index_t k, index_t comp = 0 );
 
     /// \brief Must be called after all boundaries and interfaces have
     /// been marked to set up the dof numbering.
@@ -259,7 +259,7 @@ public:
     void permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp = 0);
 
     ///\brief Returns the smallest value of the indices
-    index_t firstIndex(index_t comp = 0) const 
+    index_t firstIndex(index_t comp = 0) const
     { return comp*m_dofs.front().size() + m_shift; }
 
     ///\brief Returns one past the biggest value of the indices
@@ -296,10 +296,10 @@ public:
      * marked and finalize() has been called.
      */
 
-    inline index_t freeIndex( index_t i, index_t k = 0 ) const
+inline index_t freeIndex( index_t i, index_t k = 0, index_t c = 0 ) const
     {
         GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return MAPPER_PATCH_DOF(i,k);
+        return MAPPER_PATCH_DOF(i,k,c);
     }
 
     /** \brief Returns the global dof index associated to local dof \a i of patch \a k.
@@ -308,33 +308,37 @@ public:
      * marked and finalize() has been called.
      */
 
-    inline index_t index( index_t i, index_t k = 0 ) const
+    inline index_t index( index_t i, index_t k = 0, index_t c = 0 ) const
     {
         GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return MAPPER_PATCH_DOF(i,k)+m_shift;
+        return MAPPER_PATCH_DOF(i,k,c)+m_shift;
     }
 
     /// @brief Returns the boundary index of local dof \a i of patch \a k.
     ///
     /// Produces undefined results if local dof (i,k) does not lie on the boundary.
-    inline index_t bindex( index_t i, index_t k = 0 ) const
+    inline index_t bindex( index_t i, index_t k = 0, index_t c = 0 ) const
     {
         GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return MAPPER_PATCH_DOF(i,k) - freeSize() + m_bshift;
+        return MAPPER_PATCH_DOF(i,k,c) - freeSizeUpto(c)
+            - ( 0!=c ? boundarySizeUpto(c-1): 0) + m_bshift;
+
     }
 
     /// @brief Returns the coupled dof index
-    inline index_t cindex( index_t i, index_t k = 0 ) const
+    inline index_t cindex( index_t i, index_t k = 0, index_t c = 0 ) const
     {
         GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return MAPPER_PATCH_DOF(i,k) + m_numCpldDofs - m_numFreeDofs;
+        //return MAPPER_PATCH_DOF(i,k,c) - ( m_numFreeDofs - m_numCpldDofs ) ;
+        return MAPPER_PATCH_DOF(i,k,c) - ( freeSizeUpto(c) - coupledSizeUpto(c) )
+            - ( 0!=c ? boundarySizeupto(c-1): 0);
     }
 
     /// @brief Returns the tagged dof index
-    inline index_t tindex( index_t i, index_t k = 0 ) const
+    inline index_t tindex( index_t i, index_t k = 0, index_t c = 0 ) const
     {
         GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return std::distance(m_tagged.begin(),std::lower_bound(m_tagged.begin(),m_tagged.end(),MAPPER_PATCH_DOF(i,k)));
+        return std::distance(m_tagged.begin(),std::lower_bound(m_tagged.begin(),m_tagged.end(),MAPPER_PATCH_DOF(i,k,c)));
     }
 
     /// @brief Returns the boundary index of global dof \a gl.
@@ -388,18 +392,35 @@ public:
     inline index_t size() const
     {
         GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return m_numFreeDofs + m_numElimDofs;
+        return freeSize() + boundarySize();
+    }
+
+    /// Returns the total number of dofs (free and eliminated).
+    inline index_t size(index_t comp) const
+    {
+        GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
+        return m_numFreeDofs[comp] + m_numElimDofs[comp];
+    }
+
+    /// Returns the number of free (not eliminated) dofs.
+    inline index_t freeSizeUpto(index_t comp) const
+    {
+        GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
+        return std::accumulate(m_numFreeDofs.begin(), m_numFreeDofs.begin()+comp, 0);
+        //return m_numFreeDofs;
     }
 
     /// Returns the number of free (not eliminated) dofs.
     inline index_t freeSize() const
     {
-        GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return m_numFreeDofs;
+        return freeSizeUpto(m_dofs.size());
+        //return m_numFreeDofs;
     }
 
     /// Returns the number of coupled (not eliminated) dofs.
     index_t coupledSize() const;
+
+    index_t coupledSizeUpto(index_t comp) const;
 
     /// Returns the number of tagged (not eliminated) dofs.
     index_t taggedSize() const;
@@ -408,7 +429,14 @@ public:
     inline index_t boundarySize() const
     {
         GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return m_numElimDofs;
+        return boundarySizeUpto(m_dofs.size());
+    }
+
+    /// Returns the number of eliminated dofs.
+    inline index_t boundarySizeUpto(index_t comp) const
+    {
+        GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
+        return std::accumulate(m_numElimDofs.begin(), m_numElimDofs.begin()+comp, 0);
     }
 
     index_t boundarySizeWithDuplicates() const;
@@ -457,18 +485,16 @@ public:
     /// returns the global index where it is mapped to by the dof
     /// mapper.
     index_t mapIndex(index_t n) const
-    {return m_dofs[n]+m_shift;}
     {
-      
-      return m_dofs[n/m_dofs.front().size()]
-	[n%m_dofs.front().size()] + m_shift;
+        return m_dofs[n/m_dofs.front().size()]
+            [n%m_dofs.front().size()] + m_shift;
     }
 private:
 
     // replace all references to oldIdx by newIdx
     inline void replaceDofGlobally(index_t oldIdx, index_t newIdx);
 
-    void mergeDofsGlobally(index_t dof1, index_t dof2);
+void mergeDofsGlobally(index_t dof1, index_t dof2, index_t comp = 0);
 
 // Data members
 private:
@@ -498,12 +524,12 @@ private:
     // Shifting of the boundary index (zero by default)
     index_t m_bshift;
 
-    index_t m_numFreeDofs;
-    index_t m_numElimDofs;
-    index_t m_numCpldDofs;
-    //std::vector<index_t> m_numFreeDofs;
-    //std::vector<index_t> m_numElimDofs;
-    //std::vector<index_t> m_numCpldDofs;
+    //index_t m_numFreeDofs;
+    //index_t m_numElimDofs;
+    //index_t m_numCpldDofs;
+    std::vector<index_t> m_numFreeDofs;
+    std::vector<index_t> m_numElimDofs;
+    std::vector<index_t> m_numCpldDofs;
 
     // used during setup: running id for current eliminated dof
     // After finalize() is called m_curElimId takes the value zero.
