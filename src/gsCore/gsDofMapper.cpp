@@ -59,7 +59,7 @@ void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
     for (index_t i = 0; i != numActive; ++i)
     {
       const index_t ii = index(locals(i,0), patchIndex, comp);
-        if ( ii<m_numElimDofs[comp] + m_numFreeDofs[comp] + m_shift )//is_free_index
+        if ( ii< m_numFreeDofs[comp+1] + m_numElimDofs[comp] + m_shift )//is_free_index
         {
             globals(numFree  , 0) = i ;
             globals(numFree++, 1) = ii;
@@ -340,7 +340,7 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
     for(index_t i=0; i<(index_t)dofs.size();++i)
     {
         const index_t idx = dofs[i];
-        if(is_free_index(idx))
+        if(idx<m_numFreeDofs[comp+1] + m_numElimDofs[comp] + m_shift)//is_free_index(idx)
         {
             m_dofs[comp][i] = permutation[idx];
             //fill  bookkeeping for tagged dofs
