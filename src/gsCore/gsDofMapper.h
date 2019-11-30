@@ -257,7 +257,7 @@ public:
     /// markCoupledAsTagged() and then use the corresponding functions for tagged dofs.
     void permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp = 0);
 
-    ///\brief Returns the smallest value of the indices
+    ///\brief Returns the smallest value of the indices for \a comp
     index_t firstIndex(index_t comp = 0) const
     { return m_numFreeDofs[comp]+ m_numElimDofs[comp] + m_shift; }
 
@@ -328,7 +328,7 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     inline index_t bindex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs[c]
+        return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs[c+1]
             - m_numElimDofs[c] + m_bshift;
     }
 
@@ -337,9 +337,8 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
         //return MAPPER_PATCH_DOF(i,k,c) - ( m_numFreeDofs - m_numCpldDofs ) ;
-        return MAPPER_PATCH_DOF(i,k,c) - 
-	  ( m_numFreeDofs[c] - m_numCpldDofs[c] )
-	  - m_numElimDofs[c];
+        return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs[c+1] 
+	          + m_numCpldDofs[c+1] - m_numElimDofs[c];
     }
 
     /// @brief Returns the tagged dof index
@@ -356,14 +355,15 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT( is_boundary_index( gl ),
                       "global_to_bindex(): specified dof is not on the boundary");
-        return gl - m_shift - m_numFreeDofs[componentOf(gl)] + m_bshift;
+	const index_t c = componentOf(gl);
+        return gl - m_shift - m_numFreeDofs[c+1] - m_numElimDofs[c] + m_bshift;
     }
 
     /// Returns true if global dof \a gl is not eliminated.
     inline bool is_free_index(index_t gl) const
     {
       const index_t c = componentOf(gl);
-      return gl < m_numElimDofs[c] + m_numFreeDofs[c] + m_shift; 
+      return gl < m_numFreeDofs[c+1] + m_numElimDofs[c] +  m_shift; 
     }
 
     /// Returns true if local dof \a i of patch \a k is not eliminated.
@@ -436,7 +436,7 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     /// Returns the number of eliminated dofs.
     inline index_t boundarySize() const
     {
-        GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
+      GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
         return m_numElimDofs.back();
     }
 

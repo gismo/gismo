@@ -203,6 +203,13 @@ public:
     /// @brief Writes the resulting matrix in \a out. The internal matrix is moved.
     void matrix_into(gsSparseMatrix<T> & out) { out = give(m_matrix); }
 
+    EIGEN_STRONG_INLINE gsSparseMatrix<T> giveMatrix()
+    {
+         gsSparseMatrix<T> rvo;
+         rvo.swap(m_matrix);
+          return rvo;
+    }
+
     /// @brief Returns the right-hand side vector(s)
     const gsMatrix<T> & rhs() const { return m_rhs; }
 
@@ -578,11 +585,10 @@ private:
             if (isMatrix)
             {
                 //if (&rowInd0!=&colInd0)
-                colMap.localToGlobal(colInd0, patchInd, colInd);
+	        colMap.localToGlobal(colInd0, patchInd, colInd);
+	        GISMO_ASSERT( colMap.boundarySize()==fixedDofs.rows(),
+			      "Invalid values for fixed part");
             }
-
-            GISMO_ASSERT( colMap.boundarySize()==fixedDofs.rows(),
-                          "Invalid values for fixed part");
 
             for (index_t r = 0; r != rd; ++r)
             {
@@ -772,12 +778,12 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
 {
     for (size_t i = 0; i!=m_vcol.size(); ++i)
     {
-        GISMO_ASSERT(NULL!=m_vcol[i], "Not set.");
+        GISMO_ASSERT(NULL!=m_vcol[i], "The assembler spaces where not set.");
         m_vcol[i]->reset();
 
         if ( m_vcol[i] != m_vrow[i] )
         {
-            GISMO_ASSERT(NULL!=m_vrow[i], "Not set.");
+            GISMO_ASSERT(NULL!=m_vrow[i], "The assembler spaces where not set.");
             m_vrow[i]->reset();
         }
     }

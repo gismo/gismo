@@ -83,7 +83,7 @@ gsVector<index_t> gsDofMapper::asVector(index_t comp) const
     return v;
 }
 
-  void gsDofMapper::colapseDofs(index_t k, const gsMatrix<unsigned> & b,index_t comp)
+void gsDofMapper::colapseDofs(index_t k, const gsMatrix<unsigned> & b,index_t comp)
 {
     const index_t last = b.size()-1;
     for ( index_t l=0; l!=last; ++l)
@@ -239,12 +239,7 @@ void gsDofMapper::finalizeComp(const index_t comp)
     // For assigning coupling and eliminated dofs to continuous
     // indices (-1 = unassigned)
     std::vector<index_t> couplingDofs(m_numCpldDofs[comp+1] -1, -1);
-
-    std::vector<index_t> elimDofs(
-    //std::count_if(dofs.begin(), dofs.end(),std::bind2nd(std::less<index_t>(),0) ),
-    -m_curElimId - 1 - m_numElimDofs[comp]
- -1);
-    //std::vector<index_t> elimDofs    (-m_curElimId - 1, -1);
+    std::vector<index_t> elimDofs(-m_curElimId - 1 - m_numElimDofs[comp], -1);
 
     // Free dofs start at "0"
     index_t curFreeDof = m_numFreeDofs[comp]+m_numElimDofs[comp]; //= 0;
@@ -306,7 +301,7 @@ void gsDofMapper::finalizeComp(const index_t comp)
 std::ostream& gsDofMapper::print( std::ostream& os ) const
 {
   os<<" Dofs: "<< this->size() 
-    <<", components: "<< m_dofs.size()<<"\n";
+    <<"\n components: "<< m_dofs.size()<<"\n";
     os<<" free: "<< this->freeSize() <<"\n";
     os<<" coupled: "<< this->coupledSize() <<"\n";
     os<<" tagged: "<< this->taggedSize() <<"\n";
@@ -451,7 +446,6 @@ gsDofMapper::inverseOnPatch(const index_t k) const
     GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
 
-    const index_t sz = patchSize(k);
     std::map<index_t,index_t> inv;
     //inv.reserve(patchSize(k));
     typedef std::vector<index_t>::const_iterator citer;
