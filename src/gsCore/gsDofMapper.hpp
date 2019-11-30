@@ -34,18 +34,18 @@ void gsDofMapper::init( const gsMultiBasis<T> & bases, index_t nComp)
 
     m_numFreeDofs.assign(1+nComp,m_offset.back() + bases.back().size()); m_numFreeDofs.front()=0;
 
-    m_dofs.resize(nComp, std::vector<index_t>(m_numFreeDofs.back().size(), 0));
+    m_dofs.resize(nComp, std::vector<index_t>(m_numFreeDofs.back(), 0));
 }
 
 template<class T>
 void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
 {
+    const index_t numComp = bases.size();
     m_curElimId   = -1;
-    m_numCpldDofs =  1;
+    m_numCpldDofs.assign(numComp+1,1); m_numCpldDofs.front()=0;
     m_offset.clear();
 
     const size_t nPatches = bases[0]->nBases();
-    const index_t numComp = bases.size();
 
     //Checking if bases are same size in for components.
     std::vector<index_t> offsets(nPatches);
@@ -83,8 +83,8 @@ void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
       m_numFreeDofs.assign(numComp, (m_offset.back() + bases[0]->back().size())*nPatches); m_numFreeDofs.front()=0;
     }
 
-    m_numElimDofs.assign(nComp+1,0);
-    m_dofs.resize(numComp, std::vector<index_t>(m_numFreeDofs.back().size(), 0));
+    m_numElimDofs.assign(numComp+1,0);
+    m_dofs.resize(numComp, std::vector<index_t>(m_numFreeDofs.back(), 0));
 }
 
 template<class T>
@@ -129,7 +129,7 @@ void gsDofMapper::initSingle( const gsBasis<T> & basis, index_t nComp)
     m_numCpldDofs.assign(nComp+1,1); m_numCpldDofs.front()=0;
     m_numElimDofs.assign(nComp+1,0);
     m_offset.resize(1,0);
-    m_dofs.resize(nComp, std::vector<index_t>(m_numFreeDofs.back().size(), 0));
+    m_dofs.resize(nComp, std::vector<index_t>(m_numFreeDofs.back(), 0));
 }
 
 }//namespace gismo

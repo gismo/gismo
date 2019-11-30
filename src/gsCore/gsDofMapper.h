@@ -259,7 +259,7 @@ public:
 
     ///\brief Returns the smallest value of the indices
     index_t firstIndex(index_t comp = 0) const
-    { return m_numFreeDofs[comp]+ m_numElimDofs[c] + m_shift; }
+    { return m_numFreeDofs[comp]+ m_numElimDofs[comp] + m_shift; }
 
     ///\brief Returns one past the biggest value of the indices
     index_t lastIndex() const { return m_shift + freeSize(); }
@@ -303,7 +303,7 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
         return MAPPER_PATCH_DOF(i,k,c);
     }
 
- index_t componentOf(index_t gl) 
+ index_t componentOf(index_t gl) const
  {
    index_t c = 1; // could do some binary search
    while (gl >= m_numFreeDofs[c]+m_numElimDofs[c]) { ++c; }
@@ -362,7 +362,7 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     /// Returns true if global dof \a gl is not eliminated.
     inline bool is_free_index(index_t gl) const
     {
-      const index_t c = conponentOf(gl);
+      const index_t c = componentOf(gl);
       return gl < m_numElimDofs[c] + m_numFreeDofs[c] + m_shift; 
     }
 
@@ -375,7 +375,7 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     { return !is_free_index(gl); }
 
     /// Returns true if local dof \a i of patch \a k is eliminated.
-    inline bool is_boundary(index_t i, index_t k = 0, , index_t c = 0) const
+    inline bool is_boundary(index_t i, index_t k = 0, index_t c = 0) const
     {return is_boundary_index( index(i, k, c) );}
 
     /// Returns true if local dof \a i of patch \a k is coupled.
@@ -388,7 +388,7 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
       const index_t gc = componentOf(gl);
       const index_t vv = m_numFreeDofs[gc+1]+m_numElimDofs[gc] + m_shift;
       return  (gl < vv && // is a free dof and
-	(gl + m_numCpldDofs[gc+1] + 1 > vv);   // is not standard dof
+	      (gl + m_numCpldDofs[gc+1] + 1 > vv) );  // is not standard dof
     }
 
     /// Returns true if local dof \a i of patch \a k is tagged.
@@ -419,7 +419,7 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     /// Returns the number of free (not eliminated) dofs.
     inline index_t freeSize() const
     {
-      return m_numFreeDofs[m_dofs.size()];
+      return m_numFreeDofs.back();
     }
 
     inline index_t freeSize(index_t comp) const
@@ -430,8 +430,6 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     /// Returns the number of coupled (not eliminated) dofs.
     index_t coupledSize() const;
 
-    index_t coupledSizeUpto(index_t comp) const;
-
     /// Returns the number of tagged (not eliminated) dofs.
     index_t taggedSize() const;
 
@@ -439,7 +437,7 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     inline index_t boundarySize() const
     {
         GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return m_numElimDofs[m_dofs.size()];
+        return m_numElimDofs.back();
     }
 
     index_t boundarySizeWithDuplicates() const;
