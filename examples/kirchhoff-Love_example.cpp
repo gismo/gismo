@@ -76,17 +76,12 @@ public:
 
                 // ---------------  First variation of the normal
                 res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
-
             }
         }
         return res;
     }
 
-    index_t rows() const
-    {
-        return 1; //cols() * _u.data().values[1].rows() / _u.source().domainDim();
-    }
-
+    index_t rows() const { return 1; }
     index_t cols() const { return _u.dim(); }
 
     void setFlag() const
@@ -103,8 +98,7 @@ public:
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const
-    {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
     index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
     static constexpr bool rowSpan() {return E::rowSpan(); }
@@ -1264,7 +1258,7 @@ public:
 
     // piece(k) --> for patch k
 
-}; //! [Include namespace]
+};
 
 
 template <typename T1, typename T2, typename T3 > using var2_t = gismo::expr::var2_expr<T1,T2,T3>;
@@ -1683,28 +1677,29 @@ int main(int argc, char *argv[])
     mult_t< real_t, flat_t< jacG_t<real_t> >> E_mtest = 0.5 * flat(jac(G));
 
     // Membrane components
-    E_m_t<real_t>       E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ; //[checked]
-    S_m_t<real_t>       S_m = E_m * reshape(mm,3,3);
-    N_t<real_t>         N       = tt.val() * S_m;
+    auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ; //[checked]
+    // auto E_m = 0.5 * ( flat(jac(u_sol).tr()*jac(u_sol)) ) ; //[checked]
+    auto S_m = E_m * reshape(mm,3,3);
+    auto N       = tt.val() * S_m;
 
-    E_m_der_t<real_t>   E_m_der = flat( jac(defG).tr() * jac(u) ) ; //[checked]
-    S_m_der_t<real_t>   S_m_der = E_m_der * reshape(mm,3,3);
-    N_der_t<real_t>     N_der   = tt.val() * S_m_der;
+    auto E_m_der = flat( jac(defG).tr() * jac(u) ) ; //[checked]
+    auto S_m_der = E_m_der * reshape(mm,3,3);
+    auto N_der   = tt.val() * S_m_der;
 
-    E_m_der2_t<real_t>  E_m_der2 = flatdot( jac(u),jac(u).tr(), N ); //[checked]
+    auto E_m_der2 = flatdot( jac(u),jac(u).tr(), N ); //[checked]
 
     // Flexural components
-    E_f_t<real_t>       E_f = ( deriv2(G,sn(G).normalized().tr()) - deriv2(defG,sn(defG).normalized().tr()) ) * reshape(m2,3,3) ; //[checked]
-    S_f_t<real_t>       S_f = E_f * reshape(mm,3,3);
-    M_t<real_t>         M       = tt.val() * tt.val() * tt.val() / 12.0 * S_f;
+    auto E_f = ( deriv2(G,sn(G).normalized().tr()) - deriv2(defG,sn(defG).normalized().tr()) ) * reshape(m2,3,3) ; //[checked]
+    auto S_f = E_f * reshape(mm,3,3);
+    auto M   = tt.val() * tt.val() * tt.val() / 12.0 * S_f;
 
-    E_f_der_t<real_t>   E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,defG) ) ) * reshape(m2,3,3); //[checked]
-    S_f_der_t<real_t>   S_f_der = E_f_der * reshape(mm,3,3);
-    M_der_t<real_t>     M_der   = tt.val() * tt.val() * tt.val() / 12.0 * S_f_der;
+    auto E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,defG) ) ) * reshape(m2,3,3); //[checked]
+    auto S_f_der = E_f_der * reshape(mm,3,3);
+    auto M_der   = tt.val() * tt.val() * tt.val() / 12.0 * S_f_der;
 
-    E_f_der2_t<real_t>  E_f_der2 = flatdot2( deriv2(u), var1(u,defG).tr(), M  ).symmetrize() + var2(u,u,defG, M );
+    auto E_f_der2 = flatdot2( deriv2(u), var1(u,defG).tr(), M  ).symmetrize() + var2(u,u,defG, M );
 
-    force_t<real_t>     F       = ff;
+    auto F        = ff;
 
     auto That       = cartcon(G);
     auto Ttilde     = cartcov(G); // IS INVERTED
@@ -1744,8 +1739,6 @@ int main(int argc, char *argv[])
     // evaluateFunction(ev, TtildeInv, pt); // evaluates an expression on a point
     evaluateFunction(ev, C, pt); // evaluates an expression on a point
     evaluateFunction(ev, D, pt); // evaluates an expression on a point
-
-
 
     // ! [Solve linear problem]
 
@@ -1807,6 +1800,18 @@ int main(int argc, char *argv[])
         mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
     }
     /*Something with Dirichlet homogenization*/
+
+    auto sol1 = G + u_sol;
+    auto sol2 = defG;
+
+    auto nsol1= sn(G);
+    // defG.registerData(G.source(), G.data())
+    auto nsol2= sn(defG);
+
+    evaluateFunction(ev, sol1, pt); // evaluates an expression on a point
+    evaluateFunction(ev, sol2, pt); // evaluates an expression on a point
+    evaluateFunction(ev, nsol1, pt); // evaluates an expression on a point
+    evaluateFunction(ev, nsol2, pt); // evaluates an expression on a point
 
     // ! [Solve linear problem]
 
@@ -1923,13 +1928,6 @@ void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsMatrix<T> pt)
         gsInfo<<evresult<<"\n";
     }
 };
-
-/*
-    to do:
-    =  make function for construction of the solution given the space and the mp
-*/
-
-
 
 /*
 template<class T>
