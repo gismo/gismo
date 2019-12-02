@@ -250,6 +250,9 @@ public:
     ///\brief Set the shift amount for the global numbering
     void setShift(index_t shift);
 
+    ///\brief Add a shift amount to the global numbering
+    void addShift(index_t shift);
+
     /// \brief Permutes the mapped free indices according to permutation, i.e.,  dofs_perm[idx] = dofs_old[permutation[idx]]
     ///
     /// \warning Applying a permutation makes the functions regarding coupled dofs (cindex, is_coupled_index,.. ) invalid.

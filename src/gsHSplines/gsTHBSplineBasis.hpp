@@ -3,7 +3,7 @@
     @brief Provides implementation of THBSplineBasis class.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -11,7 +11,7 @@
     Author(s): G. Kiss, A. Mantzaflaris, J. Speh
 */
 
-#pragma once 
+#pragma once
 
 #include <gsCore/gsMultiPatch.h>
 
@@ -401,15 +401,15 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
 
 // return the B-spline representation of a THB-spline subpatch
 template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, 
-                                                  gsVector<unsigned> b2, 
-                                                  unsigned level, 
+void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1,
+                                                  gsVector<unsigned> b2,
+                                                  unsigned level,
                                                   const gsMatrix<T>& geom_coef,
                                                   gsMatrix<T>& cp,
                                                   gsKnotVector<T>& k1,
                                                   gsKnotVector<T>& k2) const
-{    
-    // check if the indices in b1, and b2 are correct with respect to the given level    
+{
+    // check if the indices in b1, and b2 are correct with respect to the given level
     const unsigned loc2glob = ( 1<< (this->maxLevel() - level) );
     if( b1[0]%loc2glob != 0 ) b1[0] -= b1[0]%loc2glob;
     if( b1[1]%loc2glob != 0 ) b1[1] -= b1[1]%loc2glob;
@@ -440,11 +440,11 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1,
     for(int j = j0; j <= j1; j++)
         for(int k = i0; k <= i1; k++)
             cp.row(cc++) = temp.row(j*sz0+k);
-    
+
     // compute the new vectors for the B-spline patch
-    k1 = gsKnotVector<T>(m_deg[0], m_bases[level]->knots(0).begin() + i0 , 
+    k1 = gsKnotVector<T>(m_deg[0], m_bases[level]->knots(0).begin() + i0 ,
                          m_bases[level]->knots(0).begin() + i1 + m_deg[0] + 2);
-    k2 = gsKnotVector<T>(m_deg[1], m_bases[level]->knots(1).begin() + j0 , 
+    k2 = gsKnotVector<T>(m_deg[1], m_bases[level]->knots(1).begin() + j0 ,
                          m_bases[level]->knots(1).begin() + j1 + m_deg[1] + 2);
 }
 
@@ -453,7 +453,7 @@ template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::getBsplinePatches(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp,
                                               gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2,
                                               gsVector<unsigned>& level, gsMatrix<unsigned>& nvertices) const
-{ 
+{
     this->m_tree.getBoxes(b1,b2,level); // splitting based on the quadtree
     int nboxes = level.size();
     //------------------------------------------------------------------------------------------------------------------------------
@@ -471,7 +471,7 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches(const gsMatrix<T>& geom_coef, gsMa
         p1 = b1.row(i).transpose();
         p2 = b2.row(i).transpose();
 
-        this->getBsplinePatchGlobal(p1, p2, level[i], geom_coef, temp1, cku, ckv);        
+        this->getBsplinePatchGlobal(p1, p2, level[i], geom_coef, temp1, cku, ckv);
 
         if (i == 0)
         {
@@ -661,11 +661,11 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
 //     int first_level = 0;
 //     for(unsigned int i = 0; i < this->m_xmatrix.size(); i++){
 //         if(this->m_xmatrix[i].size()>0){
-//             first_level = i - 1; 
+//             first_level = i - 1;
 //             break;
 //         }
 //     }
-    
+
     // gsDebug<<"new min level"<< first_level << "\n";
     std::vector< std::vector< std::vector< std::vector< T > > > > res; //things to assign to trim_curves
     std::vector< std::vector< std::vector< unsigned int > > > aabb;//axis aligned bounding box
@@ -996,7 +996,7 @@ void gsTHBSplineBasis<d,T>::globalRefinement(const gsMatrix<T> & thbCoefs,
         // refine direction 0
         lvlCoefs.resize(m_bases[l-1]->size(0), n * m_bases[l-1]->size(1));
         gsBoehmRefine(k1, lvlCoefs, m_deg[0], knots_x.begin(), knots_x.end(), false);
-        
+
         // refine direction 1
         lvlCoefs.blockTransposeInPlace(m_bases[l-1]->size(1));
         gsBoehmRefine(k2, lvlCoefs, m_deg[1], knots_y.begin(), knots_y.end(), false);
@@ -1017,23 +1017,23 @@ template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::evalSingle_into(unsigned i,
                                             const gsMatrix<T>& u,
                                             gsMatrix<T>& result) const
-{    
+{
     if (this->m_is_truncated[i] == -1)  // basis function not truncated
     {
         unsigned level = this->levelOf(i);
-        unsigned tensor_index = flatTensorIndexOf(i, level);           
+        unsigned tensor_index = flatTensorIndexOf(i, level);
         this->m_bases[level]->evalSingle_into(tensor_index, u, result);
     }
     else
     {
-        
+
         unsigned level = this->m_is_truncated[i];
-        
+
         const gsSparseVector<T>& coefs = getCoefs(i);
-        
+
         const gsTensorBSplineBasis<d, T>& base =
             *this->m_bases[level];
-        
+
         gsTensorDeboor<d, T, gsKnotVector<T>, gsSparseVector<T> >
             (u, base, coefs, result);
     }
@@ -1044,7 +1044,7 @@ void gsTHBSplineBasis<d,T>::deriv2Single_into(unsigned i,
                                               const gsMatrix<T>& u,
                                               gsMatrix<T>& result) const
 {
-    
+
     if (this->m_is_truncated[i] == -1) // basis function not truncated
     {
         const unsigned level = this->levelOf(i);
@@ -1057,7 +1057,7 @@ void gsTHBSplineBasis<d,T>::deriv2Single_into(unsigned i,
         const gsSparseVector<T>& coefs = this->getCoefs(i);
         const gsTensorBSplineBasis<d, T> & base =
             *this->m_bases[level];
-        
+
         gsTensorDeriv2_into<d, T, gsKnotVector<T>,
                             gsSparseVector<T> >(u, base, coefs, result);
     }
@@ -1079,7 +1079,7 @@ void gsTHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result
             const unsigned index = indices(j, i);
             if (j != 0 && index == 0)
                 break;
-            
+
             evalSingle_into(index, u.col(i), res);
             result(j, i) = res.value();
         }
@@ -1171,7 +1171,7 @@ void gsTHBSplineBasis<d, T>::decomposeDomain(
 {
     Polylines polylines;
     AxisAlignedBoundingBox aabb;
-    
+
     aabb = this->domainBoundariesParams(polylines);
     breakCycles(aabb, polylines);
 
@@ -1184,7 +1184,7 @@ void gsTHBSplineBasis<d, T>::decomposeDomain(
         //compare every aabb with the others
         for (unsigned boxI = 0; boxI != aabb[level].size(); boxI++)
         {
-            bool isBoundaryBox = true; 
+            bool isBoundaryBox = true;
             for (unsigned boxJ = 0; boxJ != aabb[level].size(); boxJ++)
             {
                 if (boxI != boxJ)
@@ -1195,31 +1195,31 @@ void gsTHBSplineBasis<d, T>::decomposeDomain(
                     }
                 }
             }
-	    
+
             if (isBoundaryBox)
             {
                 numBoundaryBoxes++;
                 boundaryAABB[level].push_back(aabb[level][boxI]);
-		
+
                 // make new componenet
                 trimCurves[level].push_back(std::vector< std::vector< std::vector<T> > >());
                 trimCurves[level][trimCurves[level].size() - 1].push_back(polylines[level][boxI]);
             }
-        }	
+        }
     }
-    
+
     for (unsigned level = 0; level != aabb.size(); level++)
     {
         for (unsigned box = 0; box != aabb[level].size(); box++)
         {
             int closestBox = -1;
-            for (unsigned boundBox = 0; 
-                 boundBox != boundaryAABB[level].size(); 
+            for (unsigned boundBox = 0;
+                 boundBox != boundaryAABB[level].size();
                  boundBox++)
             {
                 if (isFirstBoxCompletelyInsideSecond(aabb[level][box], boundaryAABB[level][boundBox]))
                 {
-                    if (closestBox == -1 ||  
+                    if (closestBox == -1 ||
                         !isFirstBoxCompletelyInsideSecond(boundaryAABB[level][closestBox],
                                                           boundaryAABB[level][boundBox]))
                     {
@@ -1232,7 +1232,7 @@ void gsTHBSplineBasis<d, T>::decomposeDomain(
                     break;
                 }
             }
-	    
+
             if (-1 < closestBox)
             {
                 trimCurves[level][closestBox].push_back(polylines[level][box]);
@@ -1243,7 +1243,7 @@ void gsTHBSplineBasis<d, T>::decomposeDomain(
 
 
 template<short_t d, class T>
-gsTensorBSpline<d, T> 
+gsTensorBSpline<d, T>
 gsTHBSplineBasis<d,T>::getBSplinePatch(const std::vector<unsigned>& boundingBox,
                                        const unsigned level,
                                        const gsMatrix<T>& geomCoefs) const
@@ -1256,7 +1256,7 @@ gsTHBSplineBasis<d,T>::getBSplinePatch(const std::vector<unsigned>& boundingBox,
     }
     this->m_tree.computeLevelIndex(low, level, low);
     this->m_tree.computeLevelIndex(upp, level, upp);
-    
+
     const gsKnotVector<T> & knots0 = m_bases[level]->knots(0);
     const gsKnotVector<T> & knots1 = m_bases[level]->knots(1);
 
@@ -1280,10 +1280,10 @@ gsTHBSplineBasis<d,T>::getBSplinePatch(const std::vector<unsigned>& boundingBox,
 
     std::vector<gsKnotVector<T> > kv(2);
 
-    kv[0] = gsKnotVector<T>(m_deg[0], knots0.begin() + lowIndex0, 
+    kv[0] = gsKnotVector<T>(m_deg[0], knots0.begin() + lowIndex0,
                             knots0.begin() + uppIndex0 + m_deg[0] + 2);
 
-    kv[1] = gsKnotVector<T>(m_deg[1], knots1.begin() + lowIndex1, 
+    kv[1] = gsKnotVector<T>(m_deg[1], knots1.begin() + lowIndex1,
                             knots1.begin() + uppIndex1 + m_deg[1] + 2);
 
     tensorBasis basis(kv);
@@ -1302,25 +1302,25 @@ void gsTHBSplineBasis<d, T>::breakCycles(
         {
             std::pair<T, T> pt; // point
             index_t segment = identifyCycle(polylines[level][line], pt);
-	    
+
             if (-1 < segment)
             {
                 std::vector< std::vector<T> > part1, part2;
                 breakPolylineIntoTwoParts(polylines[level][line], segment, pt,
                                           part1, part2);
-		
+
                 polylines[level][line] = part1;
                 polylines[level].push_back(part2);
-		
+
                 std::vector<unsigned> aabb1, aabb2;
                 findNewAABB(part1, aabb1);
                 findNewAABB(part2, aabb2);
-		
+
                 aabb[level][line] = aabb1;
                 aabb[level].push_back(aabb2);
-		
+
                 // very important, this will check current line again if it has more cycles
-                line--; 
+                line--;
             }
         }
     }
@@ -1337,11 +1337,11 @@ index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< T>
 {
     std::map< std::pair<T, T>, index_t > times;
     std::map< std::pair<T, T>, index_t > index;
-    
+
     for (size_t seg = 0; seg != line.size(); seg++)
     {
         const size_t seg1 = (seg + 1) % line.size();
-	
+
         std::pair<T, T> currentPt( line[seg][0], line[seg][1] );
         if (!((currentPt.first == line[seg1][0] && currentPt.second == line[seg1][1]) ||
               (currentPt.first == line[seg1][2] && currentPt.second == line[seg1][3])))
@@ -1349,7 +1349,7 @@ index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< T>
             currentPt.first = line[seg][2];
             currentPt.second = line[seg][3];
         }
-	
+
         size_t count = times.count(currentPt);
         if (0 < count)
         {
@@ -1382,19 +1382,19 @@ index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< T>
 template<short_t d, class T>
 void gsTHBSplineBasis<d, T>::breakPolylineIntoTwoParts(
     const std::vector< std::vector< T> >& line,
-    const index_t segment, 
+    const index_t segment,
     const std::pair<T, T>& meetingPt,
     std::vector< std::vector<T> >& part1,
     std::vector< std::vector<T> >& part2) const
 {
     bool p1 = false; // inside part 1
     bool p2 = false; // inside part 2
-    
+
     index_t length = static_cast<index_t> (line.size());
     for (index_t i = 0; i != length; i++)
     {
         const index_t seg = (i + segment) % length;
-	
+
         if (!p1 && !p2) // start
         {
             p1 = true;
@@ -1441,7 +1441,7 @@ void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& po
     T minY = polyline[0][1];
     T maxX = polyline[0][2];
     T maxY = polyline[0][3];
-    
+
 
     for (size_t seg = 0; seg != polyline.size(); seg++)
     {
@@ -1462,11 +1462,11 @@ void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& po
             maxY = polyline[seg][3];
         }
     }
-    
+
     unsigned maxLevel = this->maxLevel();
     const gsKnotVector<T>& kv0 = this->m_bases[maxLevel]->knots(0);
     const gsKnotVector<T>& kv1 = this->m_bases[maxLevel]->knots(1);
-    
+
     aabb.resize(4);
     for (unsigned i = 0; i != kv0.uSize(); i++)
     {
@@ -1480,7 +1480,7 @@ void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& po
             break;
         }
     }
-    
+
     for (unsigned i = 0; i != kv1.uSize(); i++)
     {
         if (kv1.uValue(i) <= minY)
@@ -1547,7 +1547,9 @@ void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& resu
 
 //todo remove
 template<short_t d, class T>
-gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const
+gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<unsigned> >& old,
+                                                     const std::vector<gsSortedVector<unsigned> >& n,
+                                                     const gsSparseMatrix<T,RowMajor> & transfer) const
 {
     int size1= 0, size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis

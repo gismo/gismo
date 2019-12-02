@@ -33,6 +33,7 @@ private:
     typedef std::map<const gsFunctionSet<T>*,gsFuncData<T> > FunctionTable;
     typedef typename FunctionTable::iterator ftIterator;
     typedef typename FunctionTable::const_iterator const_ftIterator;
+    typedef std::deque<gsDofMapper>    DofMappers;
 
     // variable/space list
     std::deque<expr::gsFeVariable<T> > m_vlist;
@@ -42,6 +43,8 @@ private:
     FunctionTable m_itable;
     FunctionTable m_ptable;
     //FunctionTable i_map;
+
+    DofMappers m_mappers;
 
     // geometry map
     expr::gsGeometryMap<T> mapVar;
@@ -178,6 +181,23 @@ public:
         var.registerData(mp, fd, 1, mapData);
         return var;
     }
+
+    /*
+    nonConstVariable searchVar(const gsFunctionSet<T> & mp)
+    {
+    // Search in the variable list and get back the first object which source \a mp
+        GISMO_UNUSED(G);
+        GISMO_ASSERT(&G==&mapVar, "geometry map not known");
+        m_vlist.push_back( expr::gsFeVariable<T>() );
+        expr::gsFeVariable<T> & var = m_vlist.back();
+        gsFuncData<T> & fd = m_itable[&mp];
+        //fd.dim = mp.dimensions();
+        //gsDebugVar(&fd);
+        var.registerData(mp, fd, 1, mapData);
+        return var;
+    }
+    */
+
 
     nonConstSpace getSpace(const gsFunctionSet<T> & mp, index_t dim = 1)
     {

@@ -3,7 +3,7 @@
     @brief Provides implementation of the HDomain class.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -15,7 +15,7 @@
 /*
 // Note 1: stride(lvl): 1 << (m_index_level-lvl);
 // Note 2:Translate index from lvl1 to lvl2
-inline unsigned translateIndex( unsigned const & i, 
+inline unsigned translateIndex( unsigned const & i,
                                 unsigned const & lvl1,
                                 unsigned const & lvl2)
 {
@@ -44,7 +44,7 @@ namespace {
     struct query1_visitor
     {
         typedef bool return_type;
-        
+
         // initialize result as true
         static const return_type init = true;
 
@@ -57,12 +57,12 @@ namespace {
                 res = false;
         }
     };
-    
+
     // Query 2
     struct query2_visitor
     {
         typedef bool return_type;
-        
+
         // initialize result as true
         static const return_type init = true;
 
@@ -74,12 +74,12 @@ namespace {
                 res = false;
         }
     };
-    
+
     // Query 3
     struct query3_visitor
     {
         typedef int return_type;
-        
+
         // initialize result as a max possible value, since we are looking
         // for a minimum
         static const return_type init = 1000000;
@@ -92,12 +92,12 @@ namespace {
                 res = leafNode->level;
         }
     };
-    
+
     // Query 4
     struct query4_visitor
     {
         typedef int return_type;
-        
+
         // initialize result as a minimum possible value, since we are
         // looking for a maximum
         static const return_type init = -1;
@@ -133,7 +133,7 @@ gsHDomain<d,T>::haveOverlap(box const & box1, box const & box2)
 
     for( unsigned i = 0; i < d; i++ )
     {
-        if( (box2.second[i] <= box1.first[i] ) || 
+        if( (box2.second[i] <= box1.first[i] ) ||
             (box2.first[i]  >= box1.second[i]) )
             return false;
     }
@@ -151,7 +151,7 @@ gsHDomain<d,T>::isContained(box const & box1, box const & box2)
 
     for( unsigned i = 0; i < d; i++ )
     {
-        if( (box1.first [i] <  box2.first [i] ) || 
+        if( (box1.first [i] <  box2.first [i] ) ||
             (box1.second[i] >  box2.second[i]) )
             return false;
     }
@@ -195,7 +195,7 @@ gsHDomain<d,T>::isDegenerate(box const & someBox)
 
 template<short_t d, class T > void
 gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
-                             node *_node, int lvl)
+                            node *_node, int lvl) // CONSTRAINT: lvl is "minimum level"
 {
     GISMO_ENSURE( lvl <= static_cast<int>(m_indexLevel), "Max index level reached..");
 
@@ -216,24 +216,24 @@ gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
         gsWarn<<" Invalid box coordinate "<<  k1.transpose() <<" at level" <<lvl<<".\n";
         return;
     }
-    
+
     // Initialize stack
     std::vector<node*> stack;
     stack.reserve( 2 * (m_maxPath + d) );
-    stack.push_back(_node);  //push(_node); 
-    
+    stack.push_back(_node);  //push(_node);
+
     node * curNode;
     while ( ! stack.empty() )
     {
         curNode = stack.back(); //top();
         stack.pop_back();       //pop();
-        
+
 /*
         if ( curNode->is_Node() ) // reached a leaf
         {
             if ( isDegenerate(*curNode->box) )
                 continue;
-            
+
             if ( isContained(*curNode->box, iBox) )
             {
                 if ( lvl > curNode->level )
@@ -258,7 +258,7 @@ gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
             // Split the leaf (if possible)
             //node * newLeaf = curNode->adaptiveSplit(iBox);
             node * newLeaf = curNode->adaptiveAlignedSplit(iBox, m_indexLevel);
-            
+
             // If curNode is still a leaf, its domain is almost
             // contained in iBox
             if ( !newLeaf ) //  curNode->isLeaf()
@@ -281,8 +281,8 @@ gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
                 // iBox overlaps only right child of this split-node
                 stack.push_back(curNode->right);
             else
-            {   
-                // iBox overlaps both children of this split-node 
+            {
+                // iBox overlaps both children of this split-node
                 stack.push_back(curNode->left );
                 stack.push_back(curNode->right);
             }
@@ -295,10 +295,10 @@ gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
 }
 
 template<short_t d, class T > void
-gsHDomain<d,T>::sinkBox ( point const & k1, 
-                          point const & k2, int lvl)
+gsHDomain<d,T>::sinkBox(point const & k1,
+                         point const & k2, int lvl)
 {
-    GISMO_ENSURE( m_maxInsLevel+1 <= m_indexLevel, 
+    GISMO_ENSURE( m_maxInsLevel+1 <= m_indexLevel,
                   "Max index level might be reached..");
 
     // Make a box
@@ -316,12 +316,12 @@ gsHDomain<d,T>::sinkBox ( point const & k1,
         //gsWarn<<" Invalid box coordinate "<<  k1.transpose() <<" at level" <<lvl<<".\n";
         return;
     }
-    
+
     // Initialize stack
     std::stack<node*, std::vector<node*> > stack;
     //stack.reserve( 2 * m_maxPath );
-    stack.push(m_root); 
-    
+    stack.push(m_root);
+
     node * curNode;
     while ( ! stack.empty() )
     {
@@ -333,7 +333,7 @@ gsHDomain<d,T>::sinkBox ( point const & k1,
             // Since we reached a leaf, it should overlap with iBox.
             // Split the leaf (if possible)
             node * newLeaf = curNode->adaptiveAlignedSplit(iBox, m_indexLevel);
-            
+
             // If curNode is still a leaf, its domain is almost
             // contained in iBox
             if ( !newLeaf ) //  implies curNode was a leaf
@@ -356,8 +356,8 @@ gsHDomain<d,T>::sinkBox ( point const & k1,
                 // iBox overlaps only right child of this split-node
                 stack.push(curNode->right);
             else
-            {   
-                // iBox overlaps both children of this split-node 
+            {
+                // iBox overlaps both children of this split-node
                 stack.push(curNode->left );
                 stack.push(curNode->right);
             }
@@ -378,7 +378,7 @@ gsHDomain<d,T>::makeCompressed()
     {
         curNode = stack.top();
         stack.pop();
-        
+
         if ( curNode->isTerminal() )
         {
             // Remember this terminal node
@@ -396,8 +396,8 @@ gsHDomain<d,T>::makeCompressed()
     {
         curNode = tstack.top();
         tstack.pop();
-        
-        if (curNode->left->level == curNode->right->level) 
+
+        if (curNode->left->level == curNode->right->level)
         {
             // Merge left and right
             curNode->merge();
@@ -406,7 +406,7 @@ gsHDomain<d,T>::makeCompressed()
                 tstack.push(curNode->parent );
         }
     }
-    
+
     // Store the max path length
     m_maxPath = minMaxPath().second;
 }
@@ -476,14 +476,14 @@ gsHDomain<d,T>::bisectBox(box const & original, int k, T coord,
     GISMO_ASSERT( ! isDegenerate(original) , "Invalid box .");
     GISMO_ASSERT( (k>=0) && (k< static_cast<int>(d)) , "Invalid axis "<< k <<".");
     leftBox = rightBox = original;
-    leftBox.second[k] = rightBox.first[k] = coord; 
+    leftBox.second[k] = rightBox.first[k] = coord;
 }
 
 
 template<short_t d, class T>
 template<typename visitor>
 typename visitor::return_type
-gsHDomain<d,T>::boxSearch(point const & k1, point const & k2, 
+gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
                           int level, node  *_node ) const
 {
     // Make a box
@@ -499,10 +499,10 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
 
 /*  // under construction
     node * curNode = m_root;
-    
+
     while (true)
-    {   
-        if ( curNode->isLeaf() ) 
+    {
+        if ( curNode->isLeaf() )
         {
             visitor::visitLeaf(curNode, level, res );
 
@@ -517,7 +517,7 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
                     //curNode = curNode->parent;
                     curNode = curNode->parent->right;
             }
-            
+
             if ( curNode->parent == NULL )
                 break;
             else// Found a left child,follow right simbling
@@ -544,7 +544,7 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
             //         break;
             //     else
             //         curNode = curNode->parent;
-                
+
             //     if  ( qBox.second[curNode->axis] > curNode->pos )  // overlap right ?
             //         curNode = curNode->right;
             //     else
@@ -561,7 +561,7 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
             else
                 break;
         }
-    } 
+    }
 
 // */
 
@@ -569,14 +569,14 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
 
     std::vector<node*> stack;
     stack.reserve( 2 * m_maxPath );
-    stack.push_back(_node);  //push(_node); 
+    stack.push_back(_node);  //push(_node);
 
     node * curNode;
     while ( ! stack.empty() )
     {
         curNode = stack.back(); //top();
         stack.pop_back();       //pop();
-        
+
         if ( curNode->isLeaf() )
         {
             // Visit the leaf
@@ -592,13 +592,13 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
                 // qBox overlaps only right child of this split-node
                 stack.push_back(curNode->right); //push(curNode->right);
             else
-            {   
-                // qBox overlaps both children of this split-node 
+            {
+                // qBox overlaps both children of this split-node
                 stack.push_back(curNode->left ); //push(curNode->left );
                 stack.push_back(curNode->right); //push(curNode->right);
             }
         }
-    }   
+    }
 //*/
     return res;
 }
@@ -617,14 +617,14 @@ gsHDomain<d,T>::pointSearch(const point & p, int level, node  *_node ) const
 
     std::vector<node*> stack;
     stack.reserve( 2 * m_maxPath );
-    stack.push_back(_node);  //push(_node); 
+    stack.push_back(_node);  //push(_node);
 
     node * curNode;
     while ( ! stack.empty() )
     {
         curNode = stack.back(); //top();
         stack.pop_back();       //pop();
-        
+
         if ( curNode->isLeaf() )
         {
             // Point found at current node
@@ -643,7 +643,7 @@ gsHDomain<d,T>::pointSearch(const point & p, int level, node  *_node ) const
 
 
 
-/* 
+/*
    Function to traverse the tree nodes without recursion and without
    stack, when parents are not stored. Not thread-safe
 //
@@ -653,35 +653,35 @@ typename visitor::return_type
 gsHDomain<d,T>::nodeSearchMorris() const
 {
     node * curNode, * preNode;
-    
+
     typename visitor::return_type i = visitor::init;
     curNode = m_root;
-    
+
     while(curNode != NULL)
     {
         if(curNode->left == NULL)
         {
             visitor::visitNode(curNode, i);
             curNode = curNode->right;
-        }    
+        }
         else
         {
             // Find the inorder predecessor of curNode
             preNode = curNode->left;
             while(preNode->right != NULL && preNode->right != curNode)
                 preNode = preNode->right;
-            
+
             // Make curNode as right child of its inorder predecessor
             if(preNode->right == NULL)
             {
                 preNode->right = curNode;
                 curNode = curNode->left;
             }
-            else 
-            {   // Revert the changes made in "if" part to restore the original 
+            else
+            {   // Revert the changes made in "if" part to restore the original
                 preNode->right = NULL;
                 visitor::visitNode(curNode, i);
-                curNode = curNode->right;      
+                curNode = curNode->right;
             } // end if(preNode->right == NULL)
         } // end if (curNode->left == NULL)
     } // end while
@@ -696,26 +696,26 @@ typename visitor::return_type
 gsHDomain<d,T>::nodeSearch() const
 {
     typename visitor::return_type i = visitor::init;
-    
+
     node * curNode = m_root;
-    
+
     while(true)
     {
         visitor::visitNode(curNode, i);
-        
+
         if ( !curNode->isLeaf() )
         {   //property: tree has no singles
             curNode = curNode->left;
-        }    
+        }
         else
         {
-            while (curNode->parent != NULL && 
+            while (curNode->parent != NULL &&
                    curNode != curNode->parent->left)
                 curNode = curNode->parent;
-            
-            if ( curNode->isRoot() ) 
+
+            if ( curNode->isRoot() )
                 break;
-            else 
+            else
                 curNode = curNode->parent->right;
         }
     }
@@ -731,7 +731,7 @@ gsHDomain<d,T>::nodeSearch() const
 {
     typename visitor::return_type i = visitor::init;
     std::stack<node*, std::vector<node*> > stack;
-    stack.push(m_root); 
+    stack.push(m_root);
 
     node * curNode;
     while ( ! stack.empty() )
@@ -739,7 +739,7 @@ gsHDomain<d,T>::nodeSearch() const
         curNode = stack.top();
         stack.pop();
         visitor::visitNode(curNode, i);
-        
+
         if ( ! curNode->isLeaf() )
         {
                 stack.push(curNode->left );
@@ -756,27 +756,27 @@ typename visitor::return_type
 gsHDomain<d,T>::leafSearch() const
 {
     typename visitor::return_type i = visitor::init;
-    
+
     node * curNode = m_root;
-    
+
     while(true)
-    {        
+    {
         if ( !curNode->isLeaf() )
         {   //property: tree has no singles (only childs)
             curNode = curNode->left;
-        }    
+        }
         else
         {
             // Visit the leaf
             visitor::visitLeaf(curNode, i);
-            
-            while (curNode->parent != NULL && 
+
+            while (curNode->parent != NULL &&
                    curNode != curNode->parent->left)
                 curNode = curNode->parent;
-            
-            if ( curNode->isRoot() ) 
+
+            if ( curNode->isRoot() )
                 break;
-            else 
+            else
                 curNode = curNode->parent->right;
         }
     }
@@ -793,14 +793,14 @@ gsHDomain<d,T>::leafSearch() const
 {
     typename visitor::return_type i = visitor::init;
     std::stack<node*, std::vector<node*> > stack;
-    stack.push(m_root); 
+    stack.push(m_root);
 
     node * curNode;
     while ( ! stack.empty() )
     {
         curNode = stack.top();
         stack.pop();
-        
+
         if ( curNode->isLeaf() )
         {
             // Visit the leaf
@@ -822,9 +822,9 @@ gsHDomain<d,T>::minMaxPath() const
 {
     node * curNode = m_root;
     int min = 1000000000, max = -1, cur = 0;
-    
+
     while(true)
-    {        
+    {
         if ( !curNode->isLeaf() )
         {   //property: tree has no singles
             curNode = curNode->left;
@@ -835,15 +835,15 @@ gsHDomain<d,T>::minMaxPath() const
             // Update min-max
             min = math::min(min,cur);
             max = math::max(max,cur);
-            
-            while (curNode->parent != NULL && 
+
+            while (curNode->parent != NULL &&
                    curNode != curNode->parent->left)
             {
                 curNode = curNode->parent;
                 cur--;
             }
 
-            if ( curNode->isRoot() ) 
+            if ( curNode->isRoot() )
                 break;
             else
                 curNode = curNode->parent->right;
@@ -860,11 +860,11 @@ gsHDomain<d,T>::query3Recur(box const & qBox, node *_node) const
     // Note: reccursive implementation of query3, qBox assumed in m_index_level indices.
     // Is kept here as an example of reccursive implementation
     GISMO_ASSERT(_node != NULL, "invalid node.");
-        
+
     if( isDegenerate(qBox) )
         GISMO_ERROR("query3 says: Wrong order of points defining the box (or empty box)."
                     << qBox.first.transpose() <<", "<< qBox.second.transpose() <<".\n" );
-    
+
     if ( _node->isLeaf() )
     {
         return _node->level;
@@ -1234,13 +1234,13 @@ gsHDomain<d,T>::getBoxes_vec(std::vector<std::vector<unsigned int> >& boxes) con
 
     std::stack<node*, std::vector<node*> > stack;
     //stack.reserve( 2 * m_maxPath );
-    stack.push(m_root);    
+    stack.push(m_root);
     node * curNode;
     while ( ! stack.empty() )
     {
         curNode = stack.top();
         stack.pop();
-        
+
         if ( curNode->isLeaf() )
         {
             // We need to convert the indices to those of m_maxInsLevel
