@@ -261,7 +261,7 @@ public:
     index_t firstIndex(index_t comp = 0) const
     { return m_numFreeDofs[comp]+ m_numElimDofs[comp] + m_shift; }
 
-    ///\brief Returns one past the biggest value of the indices
+    ///\brief Returns one past the biggest value of the free indices
     index_t lastIndex() const { return m_shift + freeSize(); }
 
     ///\brief Set the shift amount for the boundary numbering
@@ -285,11 +285,11 @@ public:
      * \param[out] globals the local-global correspondance
      * \param[out] numFree the number of free indices in \a local
      */
-    void localToGlobal(const gsMatrix<unsigned>& locals,
-                       index_t patchIndex,
-                       gsMatrix<unsigned>& globals,
-                       index_t & numFree, 
-		       index_t comp = 0) const;
+    void localToGlobal2(const gsMatrix<unsigned>& locals,
+                        index_t patchIndex,
+                        gsMatrix<unsigned>& globals,
+                        index_t & numFree, 
+		        index_t comp = 0) const;
 
     /** \brief Returns the index associated to local dof \a i of patch \a k without shifts.
      *
@@ -305,9 +305,15 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
 
  index_t componentOf(index_t gl) const
  {
-   index_t c = 1; // could do some binary search
-   while (gl >= m_numFreeDofs[c]+m_numElimDofs[c]) { ++c; }
-   return c-1;
+     GISMO_ASSERT(m_curElimId==0,"finalize() was not called on gsDofMapper");
+     //index_t c = 1; // could do some binary search
+     //in place
+     //while (gl >= m_numFreeDofs[c]+m_numElimDofs[c]) { ++c; }
+     //elim
+     return (gl<m_numFreeDofs.back() ? 
+       std::distance(m_numFreeDofs.begin(), std::upper_bound(m_numFreeDofs.begin(), m_numFreeDofs.end(), gl))
+	     : std::distance(m_numElimDofs.begin(),std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(), gl-m_numFreeDofs.back())) ) - 1;
+     //while (gl >= m_numFreeDofs[c] + m_shift) { ++c; } return c-1;
  }
 
     /** \brief Returns the global dof index associated to local dof \a i of patch \a k.
@@ -319,7 +325,10 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     inline index_t index(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return MAPPER_PATCH_DOF(i,k,c)+m_shift;
+	//if in_place
+        //return MAPPER_PATCH_DOF(i,k,c)+m_shift;
+	// else (elim)
+        return MAPPER_PATCH_DOF(i,k,c)+m_shift - m_numElimDofs[c];
     }
 
     /// @brief Returns the boundary index of local dof \a i of patch \a k.
@@ -328,8 +337,11 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     inline index_t bindex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs[c+1]
-            - m_numElimDofs[c] + m_bshift;
+	//in place
+        //return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs[c+1]
+        //    - m_numElimDofs[c] + m_bshift;
+	//elim
+        return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs[c+1] + m_bshift;
     }
 
     /// @brief Returns the coupled dof index
@@ -356,14 +368,19 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
         GISMO_ASSERT( is_boundary_index( gl ),
                       "global_to_bindex(): specified dof is not on the boundary");
 	const index_t c = componentOf(gl);
-        return gl - m_shift - m_numFreeDofs[c+1] - m_numElimDofs[c] + m_bshift;
+	//inplace
+	//return gl - m_shift - m_numFreeDofs[c+1] - m_numElimDofs[c] + m_bshift;
+	  return gl - m_shift - m_numFreeDofs[c+1] + m_bshift;
     }
 
     /// Returns true if global dof \a gl is not eliminated.
     inline bool is_free_index(index_t gl) const
     {
-      const index_t c = componentOf(gl);
-      return gl < m_numFreeDofs[c+1] + m_numElimDofs[c] +  m_shift; 
+      //const index_t c = componentOf(gl);
+      //if in_place
+      //return true;
+      //else (elim)
+      return gl < m_numFreeDofs.back() + m_shift; 
     }
 
     /// Returns true if local dof \a i of patch \a k is not eliminated.
@@ -386,7 +403,9 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     inline bool is_coupled_index(index_t gl) const
     {
       const index_t gc = componentOf(gl);
-      const index_t vv = m_numFreeDofs[gc+1]+m_numElimDofs[gc] + m_shift;
+      // in_place:
+      //const index_t vv = m_numFreeDofs[gc+1]+m_numElimDofs[gc] + m_shift;
+      const index_t vv = m_numFreeDofs[gc+1] + m_shift;
       return  (gl < vv && // is a free dof and
 	      (gl + m_numCpldDofs[gc+1] + 1 > vv) );  // is not standard dof
     }
@@ -493,8 +512,10 @@ private:
 
     // replace all references to oldIdx by newIdx
     inline void replaceDofGlobally(index_t oldIdx, index_t newIdx);
+    inline void replaceDofGlobally(index_t oldIdx, index_t newIdx, index_t comp);
 
     void mergeDofsGlobally(index_t dof1, index_t dof2);
+    void mergeDofsGlobally(index_t dof1, index_t dof2, index_t comp);
 
 // Data members
 private:
@@ -528,6 +549,9 @@ private:
     std::vector<index_t> m_numElimDofs;
     /// Offsets of coupled dofs, nComp+1
     std::vector<index_t> m_numCpldDofs;
+
+    /// Offset for 
+    std::vector<index_t> m_ElimOffset;
 
     // used during setup: running id for current eliminated dof
     // After finalize() is called m_curElimId takes the value zero.

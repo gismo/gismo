@@ -41,10 +41,10 @@ void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
     */
 
     for (index_t i = 0; i < numActive; ++i)
-      globals(i,0) = index(locals(i,0), patchIndex, comp);
+        globals(i,0) = index(locals(i,0), patchIndex, comp);
 }
 
-void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
+void gsDofMapper::localToGlobal2(const gsMatrix<unsigned>& locals,
                                 index_t patchIndex,
                                 gsMatrix<unsigned>& globals,
                                 index_t & numFree, index_t comp) const
@@ -116,11 +116,11 @@ void gsDofMapper::matchDof(index_t u, index_t i,
     if (d1 < 0)         // first dof is eliminated
     {
         if (d2 < 0)
-            mergeDofsGlobally(d1, d2);  // both are eliminated, merge their indices
+	  mergeDofsGlobally(d1, d2, comp);  // both are eliminated, merge their indices
         else if (d2 == 0)
             MAPPER_PATCH_DOF(j,v, comp) = d1;   // second is free, eliminate it along with first
         else /* d2 > 0*/
-            replaceDofGlobally(d2, d1); // second is coupling, eliminate all instances of it
+            replaceDofGlobally(d2, d1, comp); // second is coupling, eliminate all instances of it
     }
     else if (d1 == 0)   // first dof is a free dof
     {
@@ -137,7 +137,7 @@ void gsDofMapper::matchDof(index_t u, index_t i,
     else /* d1 > 0 */   // first dof is a coupling dof
     {
         GISMO_ASSERT(d2 > 0, "Something went terribly wrong");
-        mergeDofsGlobally( d1, d2 );      // both are coupling dofs, merge them
+        mergeDofsGlobally( d1, d2, comp);      // both are coupling dofs, merge them
     }
 
     // if we merged two different non-eliminated dofs, we lost one free dof
@@ -175,7 +175,7 @@ void gsDofMapper::matchDofs(index_t u, const gsMatrix<unsigned> & b1,
   void gsDofMapper::markBoundary(index_t k, const gsMatrix<unsigned> & boundaryDofs, index_t comp)
 {
     for (index_t i = 0; i < boundaryDofs.rows(); ++i)
-      eliminateDof( boundaryDofs(i,0), k, comp );
+      eliminateDof( boundaryDofs.at(i), k, comp );
 }
 
 void gsDofMapper::markCoupledAsTagged()
@@ -210,7 +210,7 @@ void gsDofMapper::eliminateDof( index_t i, index_t k, index_t comp)
     else if (old > 0)   // coupling dof
     {
         --m_numFreeDofs[comp+1];
-        replaceDofGlobally( old, m_curElimId-- );
+        replaceDofGlobally( old, m_curElimId--, comp);//superfluous ElimId
     }
     // else: old < 0: already an eliminated dof, nothing to do
 }
@@ -221,9 +221,17 @@ void gsDofMapper::finalize()
 
     for (size_t c = 0; c!=m_dofs.size(); ++c)
       {
+	gsInfo<<"---- Component "<< c <<" : "<< -m_curElimId-1<< "----\n";
+
+	gsDebugVar(m_numFreeDofs[c+1]);
+	gsDebugVar(m_numCpldDofs[c+1]);
+	gsDebugVar(m_numElimDofs[c+1]);
+	gsInfo<<"---- Finalize \n";
+
 	finalizeComp(c);
 	
 	//off-set
+	m_curElimId -= m_numElimDofs[c+1];
 	m_numFreeDofs[c+1] += m_numFreeDofs[c];
 	m_numElimDofs[c+1] += m_numElimDofs[c];
 	m_numCpldDofs[c+1] += m_numCpldDofs[c];
@@ -239,10 +247,10 @@ void gsDofMapper::finalizeComp(const index_t comp)
     // For assigning coupling and eliminated dofs to continuous
     // indices (-1 = unassigned)
     std::vector<index_t> couplingDofs(m_numCpldDofs[comp+1] -1, -1);
-    std::vector<index_t> elimDofs(-m_curElimId - 1 - m_numElimDofs[comp], -1);
-
-    // Free dofs start at "0"
-    index_t curFreeDof = m_numFreeDofs[comp]+m_numElimDofs[comp]; //= 0;
+    //std::vector<index_t> elimDofs(-m_curElimId - 1 - m_numElimDofs[comp], -1);
+    std::map<index_t,index_t> elimDofs;
+    // Free dofs start at offset
+    index_t curFreeDof = m_numFreeDofs[comp]+m_numElimDofs[comp];
     // Eliminated dofs start after free dofs plus previous components
     index_t curElimDof = m_numFreeDofs[comp+1] + curFreeDof;
 
@@ -251,7 +259,7 @@ void gsDofMapper::finalizeComp(const index_t comp)
     // Devise number of coupled dofs (m_numCpldDofs was used as
     // coupling id up to here)
     m_numCpldDofs[comp+1] = m_numFreeDofs[comp+1] - curCplDof;
-    curCplDof += m_numCpldDofs[comp]; //off-set
+    curCplDof += curFreeDof; //off-set
 
     /*// For debugging: counting the number of coupled and boundary dofs
     std::vector<index_t> alldofs = dofs;
@@ -273,9 +281,13 @@ void gsDofMapper::finalizeComp(const index_t comp)
             dofs[k] = curFreeDof++;
         else if (dofType < 0)   // eliminated dof
         {
-            const index_t id = -dofType - 1 - m_numElimDofs[comp];
-            if (elimDofs[id] < 0)
-                elimDofs[id] = curElimDof++;
+//            gsDebugVar(-dofType);
+//            const index_t id = -dofType - 1 - m_numElimDofs[comp];
+//            if (elimDofs[id] < 0)
+//                elimDofs[id] = curElimDof++;
+            const index_t id = -dofType-1;
+	    if (elimDofs.find(id)==elimDofs.end())
+	      elimDofs[id] = curElimDof++;
             dofs[k] = elimDofs[id];
         }
         else // dofType > 0     // coupling dof
@@ -287,15 +299,22 @@ void gsDofMapper::finalizeComp(const index_t comp)
         }
     }
 
+    // Devise number of eliminated dofs
+    m_numElimDofs[comp+1] = curElimDof - curCplDof;
+
+    gsDebugVar(m_numFreeDofs[comp+1]);
+    gsDebugVar(m_numCpldDofs[comp+1]);
+    gsDebugVar(m_numElimDofs[comp+1]);
+
+    curCplDof -= m_numFreeDofs[comp]+m_numElimDofs[comp]; //de-off-set
     GISMO_ASSERT(curCplDof == m_numFreeDofs[1+comp],
                  "gsDofMapper::finalize() - computed number of coupling "
                  "dofs does not match allocated number, "<<curCplDof<<"!="<<m_numFreeDofs[comp+1]);
+
+    curFreeDof -= m_numFreeDofs[comp]+m_numElimDofs[comp];//de-off-set
     GISMO_ASSERT(curFreeDof + m_numCpldDofs[comp+1] == m_numFreeDofs[comp+1],
                  "gsDofMapper::finalize() - computed number of free dofs "
                  "does not match allocated number");
-
-    // Devise number of eliminated dofs
-    m_numElimDofs[comp+1] = curElimDof - m_numFreeDofs[comp+1];
 }
 
 std::ostream& gsDofMapper::print( std::ostream& os ) const
@@ -391,7 +410,13 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
 
 void gsDofMapper::replaceDofGlobally(index_t oldIdx, index_t newIdx)
 {
-    std::vector<index_t> & dofs = m_dofs[componentOf(oldIdx)];
+  for(size_t i = 0; i!= m_dofs.size(); ++i)
+    std::replace(m_dofs[i].begin(), m_dofs[i].end(), oldIdx, newIdx );
+}
+
+  void gsDofMapper::replaceDofGlobally(index_t oldIdx, index_t newIdx, index_t comp)
+{
+    std::vector<index_t> & dofs = m_dofs[comp];
     std::replace(dofs.begin(), dofs.end(), oldIdx, newIdx );
 }
 
@@ -404,6 +429,16 @@ void gsDofMapper::mergeDofsGlobally(index_t dof1, index_t dof2)
             std::swap(dof1, dof2);
 
         replaceDofGlobally(dof1, dof2);
+    }
+}
+
+  void gsDofMapper::mergeDofsGlobally(index_t dof1, index_t dof2, index_t comp)
+{
+    if (dof1 != dof2)
+    {
+        if (dof1 < dof2)
+            std::swap(dof1, dof2);
+        replaceDofGlobally(dof1, dof2, comp);
     }
 }
 
