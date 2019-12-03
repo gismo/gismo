@@ -287,6 +287,55 @@ void gsRefineMarkedElements(gsMultiBasis<T> & basis,
     }
 }
 
+template <class T>
+void gsRefineMarkedElements(gsMultiPatch<T> & mp,
+                            const std::vector<bool> & elMarked,
+                            int refExtension = 0)
+{
+    const int dim = mp.dim();
+
+    // numMarked: Number of marked cells on current patch, also currently marked cell
+    // poffset  : offset index for the first element on a patch
+    // globalCount: counter for the current global element index
+    int numMarked, poffset = 0, globalCount = 0;
+
+    // refBoxes: contains marked boxes on a given patch
+    gsMatrix<T> refBoxes;
+
+    for (size_t pn=0; pn < mp.nPatches(); ++pn )// for all patches
+    {
+        // Get number of elements to be refined on this patch
+        const int numEl = mp[pn].basis().numElements();
+        numMarked = std::count_if(elMarked.begin() + poffset,
+                                  elMarked.begin() + poffset + numEl,
+                                  std::bind2nd(std::equal_to<bool>(), true) );
+
+        poffset += numEl;
+        refBoxes.resize(dim, 2*numMarked);
+        //gsDebugVar(numMarked);
+        numMarked = 0;// counting current patch element to be refined
+
+        // for all elements in patch pn
+        typename gsBasis<T>::domainIter domIt = mp.patch(pn).basis().makeDomainIterator();
+        for (; domIt->good(); domIt->next())
+        {
+            if( elMarked[ globalCount++ ] ) // refine this element ?
+            {
+                // Construct degenerate box by setting both
+                // corners equal to the center
+                refBoxes.col(2*numMarked  ) =
+                        refBoxes.col(2*numMarked+1) = domIt->centerPoint();
+
+                // Advance marked cells counter
+                numMarked++;
+            }
+        }
+        // Refine all of the found refBoxes in this patch
+        std::vector<unsigned> elements = mp.patch(pn).basis().asElements(refBoxes, refExtension);
+        mp.patch(pn).refineElements( elements );
+    }
+}
+
 
 
 } // namespace gismo

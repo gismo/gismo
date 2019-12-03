@@ -198,17 +198,6 @@ void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> cons
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes)
-{
-    std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
-    refine(boxes);
-    gsSparseMatrix<> transf;
-    this->transfer(OX, transf);
-    gsDebug<<"tranf orig:\n"<<transf<<std::endl;
-    coefs = transf*coefs;
-}
-
-template<short_t d, class T>
 void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes)
 {
     std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
@@ -280,7 +269,7 @@ template<short_t d, class T>
 void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
 {
     GISMO_ASSERT(boxes.rows() == d, "refine() needs d rows of boxes.");
-    GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied refine() with them.");
+    GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provide refine() with them.");
 
 #ifndef NDEBUG
     gsMatrix<T> para = support();
@@ -307,56 +296,8 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
     }
     else
     {
-        // TODO: New implementation:
-        //std::vector<unsigned> refVector = this->asElements(boxes, refExt);
-
-        // If there is a refinement-extension, we will have to use
-        // refineElements( std::vector )
-        //
-        // Each box will be represented by 2*d+1 entries specifying
-        // <level to be refined to>,<lower corner>,<upper corner>
-        const int offset = 2*d+1;
-
-        // Initialize vector of size
-        // "entries per box" times "number of boxes":
-        std::vector<unsigned> refVector( offset * boxes.cols()/2 );
-        gsMatrix<T> ctr(d,1);
-
-        // Loop over all boxes:
-        for(index_t i = 0; i < boxes.cols()/2; i++)
-        {
-            ctr = ( boxes.col( 2*i ) + boxes.col( 2*i+1) )/2;
-
-            // Compute the level we want to refine to.
-            // Note that, if the box extends over several elements,
-            // the level at the centerpoint will be taken for reference
-            const int refLevel = getLevelAtPoint( ctr ) + 1;
-
-            // Make sure there are enough levels
-            needLevel( refLevel );
-
-            for(index_t j = 0; j < boxes.rows();j++)
-            {
-                // Convert the parameter coordinates to (unique) knot indices
-                const gsKnotVector<T> & kv = m_bases[refLevel]->knots(j);
-                int k1 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
-                                           boxes(j,2*i  ) ) - 1).uIndex();
-                int k2 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
-                                           boxes(j,2*i+1) ) - 1).uIndex();
-
-                // If applicable, add the refinement extension.
-                // Note that extending by one cell on level L means
-                // extending by two cells in level L+1
-                ( k1 < 2*refExt ? k1=0 : k1-=2*refExt );
-                const index_t maxKtIndex = kv.size();
-                ( k2 + 2*refExt >= maxKtIndex ? k2=maxKtIndex-1 : k2+=2*refExt);
-
-                // Store the data...
-                refVector[i*offset]       = refLevel;
-                refVector[i*offset+1+j]   = k1;
-                refVector[i*offset+1+j+d] = k2;
-            }
-        }
+        // Make an element vector
+        std::vector<unsigned> refVector = this->asElements(boxes, refExt);//std::vector<unsigned> refVector = this->asElements(boxes, refExt);
 
         // ...and refine
         this->refineElements( refVector );
@@ -423,6 +364,72 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
     // Update the basis
     update_structure();
 }
+
+template<short_t d, class T>
+std::vector<unsigned> gsHTensorBasis<d,T>::asElements(gsMatrix<T> const & boxes, int refExt) const
+{
+    // If there is a refinement-extension, we will have to use
+    // refineElements( std::vector )
+    //
+    // Each box will be represented by 2*d+1 entries specifying
+    // <level to be refined to>,<lower corner>,<upper corner>
+    const int offset = 2*d+1;
+
+    // Initialize vector of size
+    // "entries per box" times "number of boxes":
+    std::vector<unsigned> refVector( offset * boxes.cols()/2 );
+    gsMatrix<T> ctr(d,1);
+
+    // Loop over all boxes:
+    for(index_t i = 0; i < boxes.cols()/2; i++)
+    {
+        ctr = ( boxes.col( 2*i ) + boxes.col( 2*i+1) )/2;
+
+        // Compute the level we want to refine to.
+        // Note that, if the box extends over several elements,
+        // the level at the centerpoint will be taken for reference
+        const int refLevel = getLevelAtPoint( ctr ) + 1;
+
+        // Make sure there are enough levels
+        needLevel( refLevel );
+
+        for(index_t j = 0; j < boxes.rows();j++)
+        {
+            // Convert the parameter coordinates to (unique) knot indices
+            const gsKnotVector<T> & kv = m_bases[refLevel]->knots(j);
+            int k1 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
+                                       boxes(j,2*i  ) ) - 1).uIndex();
+            int k2 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
+                                       boxes(j,2*i+1) ) - 1).uIndex();
+
+            // Trivial boxes trigger some refinement
+            if ( k1 == k2)
+            {
+                if (0!=k1) {--k1;}
+                ++k2;
+            }
+
+            // If applicable, add the refinement extension.
+            // Note that extending by one cell on level L means
+            // extending by two cells in level L+1
+            ( k1 < 2*refExt ? k1=0 : k1-=2*refExt );
+            const index_t maxKtIndex = kv.size();
+            ( k2 + 2*refExt >= maxKtIndex ? k2=maxKtIndex-1 : k2+=2*refExt);
+
+            // Store the data...
+            refVector[i*offset]       = refLevel;
+            refVector[i*offset+1+j]   = k1;
+            refVector[i*offset+1+j+d] = k2;
+        }
+    }
+    // gsDebug<<"begin\n";
+    // for (std::vector<unsigned>::const_iterator i = refVector.begin(); i != refVector.end(); ++i)
+    //     std::cout << *i << ' ';
+    // gsDebug<<"end\n";
+
+    return refVector;
+}
+
 
 
 /*

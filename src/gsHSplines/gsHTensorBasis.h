@@ -636,9 +636,11 @@ public:
      * refined around the respective boxes.
      *
      */
-    virtual void refine(gsMatrix<T> const & boxes, int refExt = 0);
+    virtual void refine(gsMatrix<T> const & boxes, int refExt);
 
     std::vector<unsigned> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
+
+    // std::vector<unsigned> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
 
     /** @brief Refine the basis to levels and in the areas defined by \a boxes.
      *
@@ -675,9 +677,6 @@ public:
      * See description above for details on the format.
      */
     virtual void refineElements(std::vector<unsigned> const & boxes);
-
-    virtual void refineElements(std::vector<unsigned> const & boxes);
-
 
     /// Refines all the cells on the side \a side up to level \a lvl
     void refineSide(const boxSide side, index_t lvl);
