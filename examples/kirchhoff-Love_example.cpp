@@ -710,8 +710,10 @@ public:
 };
 
 /*
-   Expression for the Jacobian matrix of a geometry map
+   Expression for the transformation matrix between local cartesian and covariant bases, based on a geometry map
  */
+template<class T> class cartcovinv_expr ;
+
 template<class T>
 class cartcov_expr : public _expr<cartcov_expr<T> >
 {
@@ -764,6 +766,12 @@ public:
         return result;
     }
 
+    cartcovinv_expr<T> inv() const
+    {
+        GISMO_ASSERT(rows() == cols(), "The Jacobian matrix is not square");
+        return cartcovinv_expr<T>(_G);
+    }
+
     index_t rows() const { return 3; }
 
     index_t cols() const { return 3; }
@@ -786,9 +794,51 @@ public:
     void print(std::ostream &os) const { os << "cartcov("; _G.print(os); os <<")"; }
 };
 
+template<class T>
+class cartcovinv_expr : public _expr<cartcovinv_expr<T> >
+{
+    typename gsGeometryMap<T>::Nested_t _G;
+
+public:
+    typedef T Scalar;
+
+    cartcovinv_expr(const gsGeometryMap<T> & G) : _G(G) { }
+
+    mutable gsMatrix<T> temp;
+
+    MatExprType eval(const index_t k) const
+    {
+        return  (cartcov_expr(_G).eval(k)).reshape(3,3).inverse();
+    }
+
+    index_t rows() const { return 3; }
+
+    index_t cols() const { return 3; }
+
+    static constexpr bool rowSpan() {return false; }
+    static bool colSpan() {return false;}
+
+    static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
+    static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
+
+    void setFlag() const { _G.data().flags |= NEED_NORMAL|NEED_DERIV; }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+        evList.push_sorted_unique(&_G.source());
+        _G.data().flags |= NEED_NORMAL|NEED_DERIV;
+    }
+
+    void print(std::ostream &os) const { os << "cartcovinv("; _G.print(os); os <<")"; }
+};
+
+
 /*
-   Expression for the Jacobian matrix of a geometry map
+   Expression for the transformation matrix between local cartesian and contravariant bases, based on a geometry map
  */
+template<class T> class cartconinv_expr ;
+
 template<class T>
 class cartcon_expr : public _expr<cartcon_expr<T> >
 {
@@ -840,6 +890,12 @@ public:
         return result;
     }
 
+    cartconinv_expr<T> inv() const
+    {
+        GISMO_ASSERT(rows() == cols(), "The Jacobian matrix is not square");
+        return cartconinv_expr<T>(_G);
+    }
+
     index_t rows() const { return 3; }
 
     index_t cols() const { return 3; }
@@ -860,6 +916,45 @@ public:
     }
 
     void print(std::ostream &os) const { os << "cartcon("; _G.print(os); os <<")"; }
+};
+
+template<class T>
+class cartconinv_expr : public _expr<cartconinv_expr<T> >
+{
+    typename gsGeometryMap<T>::Nested_t _G;
+
+public:
+    typedef T Scalar;
+
+    cartconinv_expr(const gsGeometryMap<T> & G) : _G(G) { }
+
+    mutable gsMatrix<T> temp;
+
+    MatExprType eval(const index_t k) const
+    {
+        return  (cartcon_expr(_G).eval(k)).reshape(3,3).inverse();
+    }
+
+    index_t rows() const { return 3; }
+
+    index_t cols() const { return 3; }
+
+    static constexpr bool rowSpan() {return false; }
+    static bool colSpan() {return false;}
+
+    static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
+    static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
+
+    void setFlag() const { _G.data().flags |= NEED_NORMAL|NEED_DERIV; }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+        evList.push_sorted_unique(&_G.source());
+        _G.data().flags |= NEED_NORMAL|NEED_DERIV;
+    }
+
+    void print(std::ostream &os) const { os << "cartconinv("; _G.print(os); os <<")"; }
 };
 
 
@@ -1702,9 +1797,9 @@ int main(int argc, char *argv[])
     auto F        = ff;
 
     auto That       = cartcon(G);
-    auto Ttilde     = cartcov(G); // IS INVERTED
+    auto Ttilde     = cartcov(G).inv(); // IS INVERTED
     // auto TtildeInv  = cartcov(G).inv(); // DOES NOT WORK!!
-    auto D = That*reshape(mmD,3,3)*That; // NOTE: That = Ttilde.inv()
+    auto D = Ttilde*reshape(mmD,3,3)*That; // NOTE: That = Ttilde.inv()
 
     auto C = reshape(mm,3,3);
 
