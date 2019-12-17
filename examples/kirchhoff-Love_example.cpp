@@ -1840,7 +1840,7 @@ int main(int argc, char *argv[])
     // assemble system
     A.assemble(
         (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
-        // (E_m_der * E_m_der.tr() + E_f_der * E_f_der.tr()) * meas(G)
+        // (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
         ,
         u * cartcon(G) * cartcon(G) * F  * meas(G)
         );
@@ -1986,7 +1986,7 @@ int main(int argc, char *argv[])
 
         gsMultiPatch<> deformation = mp_def;
         for (index_t k = 0; k != mp_def.nPatches(); ++k)
-            deformation.patch(0).coefs() -= mp.patch(0).coefs();
+            deformation.patch(k).coefs() -= mp.patch(k).coefs();
 
         gsField<> solField(mp, deformation);
         gsInfo<<"Plotting in Paraview...\n";
