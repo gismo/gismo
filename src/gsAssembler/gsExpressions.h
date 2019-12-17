@@ -1975,7 +1975,7 @@ public:
     grad_expr(const E & u) : _u(u)
     { GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");}
 
-    MatExprType eval(const index_t k) const
+    const gsMatrix<Scalar> & eval(const index_t k) const
     {
         // numActive x dim
         return _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
@@ -3926,6 +3926,9 @@ GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )
 GISMO_SHORTCUT_VAR_EXPRESSION(fform, jac(u).tr()*jac(u) )
 
 #else
+// note for C++11 and older: to fix
+//error: could not convert .. from ‘A' to 'B'
+// we need to update the return type from B to A
 
 #define GISMO_SHORTCUT_VAR_EXPRESSION(name,impl) \
 name(const gsFeVariable<T> & u) { return impl; }
@@ -3940,10 +3943,11 @@ GISMO_SHORTCUT_VAR_EXPRESSION(div, jac(u).trace() )
 template<class T> EIGEN_STRONG_INLINE normalized_expr<onormal_expr<T> >
 GISMO_SHORTCUT_MAP_EXPRESSION(unv, nv(G).normalized() )
 
-template<class T> EIGEN_STRONG_INLINE mult_expr<grad_expr<T>,jacGinv_expr<T>, 0>
+template<class T> EIGEN_STRONG_INLINE
+mult_expr<grad_expr<gsFeVariable<T> >,jacGinv_expr<T>, 0>
 GISMO_SHORTCUT_PHY_EXPRESSION(igrad, grad(u)*jac(G).ginv())
 
-template<class T> EIGEN_STRONG_INLINE grad_expr<T> // u is presumed to be defined over G
+template<class T> EIGEN_STRONG_INLINE grad_expr<gsFeVariable<T> > // u is presumed to be defined over G
 GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u))
 
 template<class T> EIGEN_STRONG_INLINE mult_expr<jac_expr<T>,jacGinv_expr<T>, 1>
@@ -3952,16 +3956,17 @@ GISMO_SHORTCUT_PHY_EXPRESSION(ijac, jac(u) * jac(G).ginv() )
 template<class T> EIGEN_STRONG_INLINE trace_expr<mult_expr<jac_expr<T>,jacGinv_expr<T>, 1> >
 GISMO_SHORTCUT_PHY_EXPRESSION(idiv, ijac(u,G).trace() )
 
-template<class T> EIGEN_STRONG_INLINE mult_expr<mult_expr<tr_expr<jacGinv_expr<T> >,sub_expr<hess_expr<T>,summ_expr<mult_expr<grad_expr<T>, jacGinv_expr<T>, 0>, hess_expr<T> > >, 0>, jacGinv_expr<T>, 1>
+template<class T> EIGEN_STRONG_INLINE
+mult_expr<mult_expr<tr_expr<jacGinv_expr<T> >,sub_expr<hess_expr<gsFeVariable<T> >,summ_expr<mult_expr<grad_expr<gsFeVariable<T> >, jacGinv_expr<T>, 0>, hess_expr<gsGeometryMap<T> > > >, 0>, jacGinv_expr<T>, 0>
 GISMO_SHORTCUT_PHY_EXPRESSION(ihess, jac(G).ginv().tr()*(hess(u)-summ(igrad(u,G),hess(G)))*jac(G).ginv() )
 
-template<class T> EIGEN_STRONG_INLINE hess_expr<T>
+template<class T> EIGEN_STRONG_INLINE hess_expr<gsFeVariable<T> >
 GISMO_SHORTCUT_VAR_EXPRESSION(ihess, hess(u) )
 
-template<class T> EIGEN_STRONG_INLINE trace_expr< mult_expr<mult_expr<tr_expr<jacGinv_expr<T> >, sub_expr<hess_expr<T>, summ_expr<mult_expr<grad_expr<T>, jacGinv_expr<T>, 0>, hess_expr<T> > >, 0>, jacGinv_expr<T>, 1> >
+template<class T> EIGEN_STRONG_INLINE trace_expr< mult_expr<mult_expr<tr_expr<jacGinv_expr<T> >, sub_expr<hess_expr<T>, summ_expr<mult_expr<grad_expr<gsFeVariable<T> >, jacGinv_expr<T>, 0>, hess_expr<gsGeometryMap<T> > > >, 0>, jacGinv_expr<T>, 1> >
 GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace() )
 
-template<class T> EIGEN_STRONG_INLINE trace_expr<hess_expr<T> >
+template<class T> EIGEN_STRONG_INLINE trace_expr<hess_expr<gsGeometryMap<T> > >
 GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )
 
 #endif
