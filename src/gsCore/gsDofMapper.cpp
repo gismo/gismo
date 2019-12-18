@@ -77,9 +77,15 @@ void gsDofMapper::localToGlobal2(const gsMatrix<unsigned>& locals,
 gsVector<index_t> gsDofMapper::asVector(index_t comp) const
 {
   gsVector<index_t> v(m_dofs[comp].size());
-  index_t c = 0;
     for(size_t j = 0; j!= m_dofs[comp].size(); ++j)
-      v[c++] = m_dofs[comp][j]+m_shift;
+      {
+	const index_t l = m_dofs[comp][j];
+	v[j] = 
+	  (l<m_numFreeDofs[comp+1]+m_numElimDofs[comp] ?
+	   l + m_shift - m_numElimDofs[comp]        :
+	   l + m_shift - m_numFreeDofs[comp+1] + m_numFreeDofs.back()
+	   );
+      }
     return v;
 }
 
@@ -221,13 +227,6 @@ void gsDofMapper::finalize()
 
     for (size_t c = 0; c!=m_dofs.size(); ++c)
       {
-	gsInfo<<"---- Component "<< c <<" : "<< -m_curElimId-1<< "----\n";
-
-	gsDebugVar(m_numFreeDofs[c+1]);
-	gsDebugVar(m_numCpldDofs[c+1]);
-	gsDebugVar(m_numElimDofs[c+1]);
-	gsInfo<<"---- Finalize \n";
-
 	finalizeComp(c);
 	
 	//off-set
@@ -325,6 +324,10 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
     os<<" coupled: "<< this->coupledSize() <<"\n";
     os<<" tagged: "<< this->taggedSize() <<"\n";
     os<<" elim: "<< this->boundarySize() <<"\n";
+    os<<" m_numFreeDofs: "<< gsAsConstVector<index_t>(m_numFreeDofs).transpose() <<"\n";
+    os<<" m_numElimDofs: "<< gsAsConstVector<index_t>(m_numElimDofs).transpose() <<"\n";
+    os<<" m_numCpldDofs: "<< gsAsConstVector<index_t>(m_numCpldDofs).transpose() <<"\n";
+    
     return os;
 }
 

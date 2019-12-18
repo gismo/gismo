@@ -328,7 +328,13 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
 	//if in_place
         //return MAPPER_PATCH_DOF(i,k,c)+m_shift;
 	// else (elim)
-        return MAPPER_PATCH_DOF(i,k,c)+m_shift - m_numElimDofs[c];
+
+	const index_t l = MAPPER_PATCH_DOF(i,k,c);
+
+	if (l<m_numFreeDofs[c+1]+m_numElimDofs[c]) 
+	  return l + m_shift - m_numElimDofs[c];
+	else // bindex(i,k,c) + m_numFreeDofs.back()
+	  return l + m_shift - m_numFreeDofs[c+1] + m_numFreeDofs.back();
     }
 
     /// @brief Returns the boundary index of local dof \a i of patch \a k.
@@ -341,7 +347,8 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
         //return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs[c+1]
         //    - m_numElimDofs[c] + m_bshift;
 	//elim
-        return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs[c+1] + m_bshift;
+        return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs[c+1]
+	  - m_numElimDofs[c] + m_bshift;
     }
 
     /// @brief Returns the coupled dof index
@@ -366,11 +373,10 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     inline index_t global_to_bindex(index_t gl) const
     {
         GISMO_ASSERT( is_boundary_index( gl ),
-                      "global_to_bindex(): specified dof is not on the boundary");
-	const index_t c = componentOf(gl);
+                      "global_to_bindex(): dof "<<gl<<" is not on the boundary");
 	//inplace
-	//return gl - m_shift - m_numFreeDofs[c+1] - m_numElimDofs[c] + m_bshift;
-	  return gl - m_shift - m_numFreeDofs[c+1] + m_bshift;
+	//return gl - m_shift - m_numFreeDofs[c+1] + m_bshift - m_numElimDofs[c];
+	return gl - m_shift - m_numFreeDofs.back() + m_bshift;
     }
 
     /// Returns true if global dof \a gl is not eliminated.
