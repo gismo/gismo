@@ -236,7 +236,7 @@ public:
     void finalize();
 
     /// \brief Checks whether finalize() has been called.
-    bool isFinalized() const { return m_curElimId==0; }
+    bool isFinalized() const { return m_curElimId>=0; }
 
     /// \brief Returns true iff the mapper is a permuatation
     bool isPermutation() const { return static_cast<size_t>(size())==mapSize(); }
@@ -259,7 +259,7 @@ public:
 
     ///\brief Returns the smallest value of the indices for \a comp
     index_t firstIndex(index_t comp = 0) const
-    { return m_numFreeDofs[comp]+ m_numElimDofs[comp] + m_shift; }
+    { return m_numFreeDofs[comp] + m_numElimDofs[comp] + m_shift; }
 
     ///\brief Returns one past the biggest value of the free indices
     index_t lastIndex() const { return m_shift + freeSize(); }
@@ -297,15 +297,15 @@ public:
      * marked and finalize() has been called.
      */
 
-inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
+    inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     {
-        GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+        GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
         return MAPPER_PATCH_DOF(i,k,c);
     }
 
  index_t componentOf(index_t gl) const
  {
-     GISMO_ASSERT(m_curElimId==0,"finalize() was not called on gsDofMapper");
+     GISMO_ASSERT(m_curElimId>=0,"finalize() was not called on gsDofMapper");
      //index_t c = 1; // could do some binary search
      //in place
      //while (gl >= m_numFreeDofs[c]+m_numElimDofs[c]) { ++c; }
@@ -324,17 +324,8 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
 
     inline index_t index(index_t i, index_t k = 0, index_t c = 0) const
     {
-        GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
-	//if in_place
-        //return MAPPER_PATCH_DOF(i,k,c)+m_shift;
-	// else (elim)
-
-	const index_t l = MAPPER_PATCH_DOF(i,k,c);
-
-	if (l<m_numFreeDofs[c+1]+m_numElimDofs[c]) 
-	  return l + m_shift - m_numElimDofs[c];
-	else // bindex(i,k,c) + m_numFreeDofs.back()
-	  return l + m_shift - m_numFreeDofs[c+1] + m_numFreeDofs.back();
+        GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
+        return MAPPER_PATCH_DOF(i,k,c)+m_shift;
     }
 
     /// @brief Returns the boundary index of local dof \a i of patch \a k.
@@ -342,28 +333,27 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     /// Produces undefined results if local dof (i,k) does not lie on the boundary.
     inline index_t bindex(index_t i, index_t k = 0, index_t c = 0) const
     {
-        GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
-	//in place
-        //return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs[c+1]
-        //    - m_numElimDofs[c] + m_bshift;
-	//elim
-        return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs[c+1]
+        GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
+        return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs.back()
 	  - m_numElimDofs[c] + m_bshift;
     }
+
+    /// Returns true iff all DoFs are considered as free
+    bool allFree() const
+    { return m_numFreeDofs.back()+m_numElimDofs.back()==m_curElimId; }
 
     /// @brief Returns the coupled dof index
     inline index_t cindex(index_t i, index_t k = 0, index_t c = 0) const
     {
-        GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        //return MAPPER_PATCH_DOF(i,k,c) - ( m_numFreeDofs - m_numCpldDofs ) ;
+        GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
         return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs[c+1] 
-	          + m_numCpldDofs[c+1] - m_numElimDofs[c];
+	  + m_numCpldDofs[c+1];
     }
 
     /// @brief Returns the tagged dof index
     inline index_t tindex(index_t i, index_t k = 0, index_t c = 0) const
     {
-        GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+        GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
         return std::distance(m_tagged.begin(),std::lower_bound(m_tagged.begin(),m_tagged.end(),MAPPER_PATCH_DOF(i,k,c)));
     }
 
@@ -374,19 +364,18 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT( is_boundary_index( gl ),
                       "global_to_bindex(): dof "<<gl<<" is not on the boundary");
-	//inplace
-	//return gl - m_shift - m_numFreeDofs[c+1] + m_bshift - m_numElimDofs[c];
-	return gl - m_shift - m_numFreeDofs.back() + m_bshift;
+
+	gl -= m_numFreeDofs.back();
+	const index_t c = std::distance(m_numElimDofs.begin(),
+        std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(),
+	gl)) -1;
+	return gl - m_numElimDofs[c] - m_shift + m_bshift;
     }
 
     /// Returns true if global dof \a gl is not eliminated.
     inline bool is_free_index(index_t gl) const
     {
-      //const index_t c = componentOf(gl);
-      //if in_place
-      //return true;
-      //else (elim)
-      return gl < m_numFreeDofs.back() + m_shift; 
+      return gl < m_curElimId + m_shift;
     }
 
     /// Returns true if local dof \a i of patch \a k is not eliminated.
@@ -395,7 +384,7 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
 
     /// Returns true if global dof \a gl is eliminated
     inline bool is_boundary_index( index_t gl ) const
-    { return !is_free_index(gl); }
+    { return gl >= m_numFreeDofs.back() + m_shift; }
 
     /// Returns true if local dof \a i of patch \a k is eliminated.
     inline bool is_boundary(index_t i, index_t k = 0, index_t c = 0) const
@@ -409,8 +398,6 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     inline bool is_coupled_index(index_t gl) const
     {
       const index_t gc = componentOf(gl);
-      // in_place:
-      //const index_t vv = m_numFreeDofs[gc+1]+m_numElimDofs[gc] + m_shift;
       const index_t vv = m_numFreeDofs[gc+1] + m_shift;
       return  (gl < vv && // is a free dof and
 	      (gl + m_numCpldDofs[gc+1] + 1 > vv) );  // is not standard dof
@@ -429,14 +416,14 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     /// Returns the total number of dofs (free and eliminated).
     inline index_t size() const
     {
-        GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
+        GISMO_ENSURE(m_curElimId>=0, "finalize() was not called on gsDofMapper");
         return freeSize() + boundarySize();
     }
 
     /// Returns the total number of dofs (free and eliminated).
     inline index_t size(index_t comp) const
     {
-        GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
+        GISMO_ENSURE(m_curElimId>=0, "finalize() was not called on gsDofMapper");
         return m_numFreeDofs[comp+1]-m_numFreeDofs[comp] 
 	  + m_numElimDofs[comp+1]-m_numElimDofs[comp];
     }
@@ -444,12 +431,13 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     /// Returns the number of free (not eliminated) dofs.
     inline index_t freeSize() const
     {
-      return m_numFreeDofs.back();
+      return m_curElimId;
     }
 
     inline index_t freeSize(index_t comp) const
     {
-      return m_numFreeDofs[comp+1]-m_numFreeDofs[comp];
+      return m_numFreeDofs[comp+1]-m_numFreeDofs[comp] + 
+	(allFree() ? m_numElimDofs[comp+1]-m_numElimDofs[comp] : 0 );
     }
 
     /// Returns the number of coupled (not eliminated) dofs.
@@ -461,7 +449,7 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     /// Returns the number of eliminated dofs.
     inline index_t boundarySize() const
     {
-      GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
+      GISMO_ENSURE(m_curElimId>=0, "finalize() was not called on gsDofMapper");
         return m_numElimDofs.back();
     }
 
@@ -480,15 +468,15 @@ inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
 
     size_t componentsSize() const {return m_dofs.size();}
 
-    /// \brief Returns the total number of patch-local DoFs on
-    /// patch \a k that are being mapped
-    size_t patchSize(const index_t k) const
+    /// \brief Returns the total number of patch-local DoFs
+    /// that live on patch \a k for component \a c
+    size_t patchSize(const index_t k, const index_t c = 0) const
     {
         const size_t k1(k+1);
         GISMO_ASSERT(k1<=numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
-        if ( 1==m_offset.size() ) return m_dofs.size()* m_dofs.front().size();
-        else if ( k1==m_offset.size() ) return (m_dofs.front().size() - m_offset.back()) *m_dofs.size();
-        else return (m_offset[k1]-m_offset[k])*m_dofs.size();
+        if ( 1==m_offset.size() ) return  m_dofs[c].size();
+        else if ( k1==m_offset.size() ) return (m_dofs[c].size() - m_offset.back());
+        else return (m_offset[k1]-m_offset[k]);
     }
 
     /// \brief For \a gl being a global index, this function returns a
@@ -556,11 +544,8 @@ private:
     /// Offsets of coupled dofs, nComp+1
     std::vector<index_t> m_numCpldDofs;
 
-    /// Offset for 
-    std::vector<index_t> m_ElimOffset;
-
     // used during setup: running id for current eliminated dof
-    // After finalize() is called m_curElimId takes the value zero.
+    // After finalize() is called m_curElimId takes positive value.
     index_t m_curElimId;
 
     /// Stores the tagged indices

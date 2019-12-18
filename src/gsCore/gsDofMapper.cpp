@@ -59,7 +59,7 @@ void gsDofMapper::localToGlobal2(const gsMatrix<unsigned>& locals,
     for (index_t i = 0; i != numActive; ++i)
     {
       const index_t ii = index(locals(i,0), patchIndex, comp);
-        if ( ii< m_numFreeDofs[comp+1] + m_numElimDofs[comp] + m_shift )//is_free_index
+      if ( is_free_index(ii))
         {
             globals(numFree  , 0) = i ;
             globals(numFree++, 1) = ii;
@@ -77,19 +77,13 @@ void gsDofMapper::localToGlobal2(const gsMatrix<unsigned>& locals,
 gsVector<index_t> gsDofMapper::asVector(index_t comp) const
 {
   gsVector<index_t> v(m_dofs[comp].size());
-    for(size_t j = 0; j!= m_dofs[comp].size(); ++j)
-      {
-	const index_t l = m_dofs[comp][j];
-	v[j] = 
-	  (l<m_numFreeDofs[comp+1]+m_numElimDofs[comp] ?
-	   l + m_shift - m_numElimDofs[comp]        :
-	   l + m_shift - m_numFreeDofs[comp+1] + m_numFreeDofs.back()
-	   );
-      }
-    return v;
+  for(size_t j = 0; j!= m_dofs[comp].size(); ++j)
+    v[j] = m_dofs[comp][j] + m_shift;
+  return v;
 }
 
-void gsDofMapper::colapseDofs(index_t k, const gsMatrix<unsigned> & b,index_t comp)
+void gsDofMapper::colapseDofs(index_t k, const gsMatrix<unsigned> & b,
+			      index_t comp)
 {
     const index_t last = b.size()-1;
     for ( index_t l=0; l!=last; ++l)
@@ -161,12 +155,12 @@ void gsDofMapper::matchDofs(index_t u, const gsMatrix<unsigned> & b1,
       this->matchDof( u, b1(k,0), v, b2(k,0), comp );
 }
 
-  void gsDofMapper::markCoupled(index_t i, index_t k, index_t comp)
+void gsDofMapper::markCoupled(index_t i, index_t k, index_t comp)
 {
-  matchDof(k,i,k,i,comp);
+    matchDof(k,i,k,i,comp);
 }
 
-  void gsDofMapper::markTagged( index_t i, index_t k, index_t comp )
+  void gsDofMapper::markTagged( index_t i, index_t k, index_t comp)
 {
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
 
@@ -186,7 +180,7 @@ void gsDofMapper::matchDofs(index_t u, const gsMatrix<unsigned> & b1,
 
 void gsDofMapper::markCoupledAsTagged()
 {
-    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     m_tagged.reserve(m_tagged.size()+m_numCpldDofs.back());
     std::vector<index_t>::const_iterator fr = m_numFreeDofs.begin()+1;
     std::vector<index_t>::const_iterator el = m_numElimDofs.begin();
@@ -236,7 +230,21 @@ void gsDofMapper::finalize()
 	m_numCpldDofs[c+1] += m_numCpldDofs[c];
       }
 
-    m_curElimId = 0;// Only equal to zero after finalize is called.
+    if ( 1!=m_dofs.size() )
+      for (size_t c = 0; c!=m_dofs.size(); ++c)
+	{
+	  std::vector<index_t> & dofs = m_dofs[c];
+	  for(std::vector<index_t>::iterator j = 
+		dofs.begin(); j!= dofs.end(); ++j)
+	    *j =  (*j<m_numFreeDofs[c+1]+m_numElimDofs[c] ?
+		   *j - m_numElimDofs[c]                  :
+		   *j - m_numFreeDofs[c+1] + m_numFreeDofs.back()
+		   );
+	}
+
+    // Only bigger or equal to zero after finalize is called.
+    m_curElimId = m_numFreeDofs.back();
+    //if () m_curElimId += m_numElimDofs.back();
 }
 
 void gsDofMapper::finalizeComp(const index_t comp)
@@ -280,10 +288,6 @@ void gsDofMapper::finalizeComp(const index_t comp)
             dofs[k] = curFreeDof++;
         else if (dofType < 0)   // eliminated dof
         {
-//            gsDebugVar(-dofType);
-//            const index_t id = -dofType - 1 - m_numElimDofs[comp];
-//            if (elimDofs[id] < 0)
-//                elimDofs[id] = curElimDof++;
             const index_t id = -dofType-1;
 	    if (elimDofs.find(id)==elimDofs.end())
 	      elimDofs[id] = curElimDof++;
@@ -301,9 +305,11 @@ void gsDofMapper::finalizeComp(const index_t comp)
     // Devise number of eliminated dofs
     m_numElimDofs[comp+1] = curElimDof - curCplDof;
 
+    /*
     gsDebugVar(m_numFreeDofs[comp+1]);
     gsDebugVar(m_numCpldDofs[comp+1]);
     gsDebugVar(m_numElimDofs[comp+1]);
+    */
 
     curCplDof -= m_numFreeDofs[comp]+m_numElimDofs[comp]; //de-off-set
     GISMO_ASSERT(curCplDof == m_numFreeDofs[1+comp],
@@ -324,10 +330,13 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
     os<<" coupled: "<< this->coupledSize() <<"\n";
     os<<" tagged: "<< this->taggedSize() <<"\n";
     os<<" elim: "<< this->boundarySize() <<"\n";
-    os<<" m_numFreeDofs: "<< gsAsConstVector<index_t>(m_numFreeDofs).transpose() <<"\n";
-    os<<" m_numElimDofs: "<< gsAsConstVector<index_t>(m_numElimDofs).transpose() <<"\n";
-    os<<" m_numCpldDofs: "<< gsAsConstVector<index_t>(m_numCpldDofs).transpose() <<"\n";
-    
+    if ( 1!=m_dofs.size() )
+      {
+	os<<" Free per comp: "<< gsAsConstVector<index_t>(m_numFreeDofs).transpose() <<"\n";
+	os<<" Elim per comp: "<< gsAsConstVector<index_t>(m_numElimDofs).transpose() <<"\n";
+	os<<" Cpld per comp: "<< gsAsConstVector<index_t>(m_numCpldDofs).transpose() <<"\n";
+      }
+
     return os;
 }
 
@@ -348,7 +357,7 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
 
   void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp)
 {
-    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(m_numFreeDofs[comp+1] == permutation.size(), "permutation size does not match number of free dofs");
     //GISMO_ASSERT(m_tagged.empty(), "you cannot permute the dofVector twice, combine the permutation");
     //We could check here, that permutation is indeed a permutation
@@ -362,7 +371,7 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
     for(index_t i=0; i<(index_t)dofs.size();++i)
     {
         const index_t idx = dofs[i];
-        if(idx<m_numFreeDofs[comp+1] + m_numElimDofs[comp] + m_shift)//is_free_index(idx)
+        if(is_free_index(idx))
         {
             m_dofs[comp][i] = permutation[idx];
             //fill  bookkeeping for tagged dofs
@@ -448,7 +457,7 @@ void gsDofMapper::mergeDofsGlobally(index_t dof1, index_t dof2)
 void gsDofMapper::preImage(const index_t gl,
                            std::vector<std::pair<index_t,index_t> > & result) const
 {
-    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     typedef std::vector<index_t>::const_iterator citer;
     const std::vector<index_t> & dofs = m_dofs[componentOf(gl)];
     result.clear();
@@ -472,16 +481,15 @@ gsVector<index_t> gsDofMapper::inverseAsVector(index_t comp) const
 {
     GISMO_ASSERT(isPermutation(), "This dofMapper is not 1-1");
     gsVector<index_t> v(size());
-    index_t c = 0;
       for(size_t j = 0; j!= m_dofs[comp].size(); ++j)
-	v[ m_dofs[comp][j] ] = c++;
+	v[ m_dofs[comp][j] ] = j;
     return v;
 }
 
 std::map<index_t,index_t>
 gsDofMapper::inverseOnPatch(const index_t k) const
 {
-    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
 
     std::map<index_t,index_t> inv;
@@ -499,7 +507,7 @@ gsDofMapper::inverseOnPatch(const index_t k) const
 
 bool gsDofMapper::indexOnPatch(const index_t gl, const index_t k) const
 {
-    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
     typedef std::vector<index_t>::const_iterator citer;
     const std::vector<index_t> & dofs = m_dofs[componentOf(gl)];
@@ -510,7 +518,7 @@ bool gsDofMapper::indexOnPatch(const index_t gl, const index_t k) const
 
 index_t gsDofMapper::boundarySizeWithDuplicates() const
 {
-    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
 
     index_t res = 0;
     for (size_t i = 0; i!= m_dofs.size(); ++i)
@@ -522,11 +530,11 @@ index_t gsDofMapper::boundarySizeWithDuplicates() const
 
 index_t gsDofMapper::coupledSize() const
 {
-    GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    GISMO_ENSURE(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     return m_numCpldDofs.back();
 /*// Implementation without saving this number:
     // Property: coupled (eliminated or not) DoFs appear more than once in the mapping.
-    GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    GISMO_ENSURE(m_curElimId>=0, "finalize() was not called on gsDofMapper");
 
     std::vector<index_t> CountMap(m_numFreeDofs,0);
 
@@ -545,7 +553,6 @@ index_t gsDofMapper::taggedSize() const
 {
     return m_tagged.size();
 }
-
 
 void gsDofMapper::setShift (index_t shift)
 {
