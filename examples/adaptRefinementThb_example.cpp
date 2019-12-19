@@ -102,14 +102,24 @@ int main(int argc, char *argv[])
    //! [Boundary conditions]
 
 
-   gsVector<> pt(2); pt<< .99, .99 ;
+   gsVector<> pt(2); 
+   pt.setConstant(.99);
+   /*
    gsTensorBSpline<2> & p1 = 
      const_cast<gsTensorBSpline<2>&>(
      dynamic_cast<const gsTensorBSpline<2>&>
      (patchesTens.piece(1)) );
-   p1.insertKnot(pt[0],0,1); //knot, dir, mult
-   p1.insertKnot(pt[1],1,1);
+   gsTensorBSpline<2> & p0 = 
+     const_cast<gsTensorBSpline<2>&>(
+     dynamic_cast<const gsTensorBSpline<2>&>
+     (patchesTens.piece(0)) );
+   gsTensorBSpline<2> & p2 = 
+     const_cast<gsTensorBSpline<2>&>(
+     dynamic_cast<const gsTensorBSpline<2>&>
+     (patchesTens.piece(2)) );
 
+   gsWriteParaview(patchesTens,"patches", 500, true);
+   */
    // --------------- set up basis ---------------
 
    //! [GetBasisFromTens]
@@ -123,12 +133,26 @@ int main(int argc, char *argv[])
    for (int i = 0; i < numInitUniformRefine; ++i)
      basesTens.uniformRefine();
 
+   gsTensorBSplineBasis<2> & p0 = 
+     const_cast<gsTensorBSplineBasis<2>&>(
+     dynamic_cast<const gsTensorBSplineBasis<2>&>(basesTens.piece(0)) );
+   gsTensorBSplineBasis<2> & p1 = 
+     const_cast<gsTensorBSplineBasis<2>&>(
+     dynamic_cast<const gsTensorBSplineBasis<2>&>(basesTens.piece(1)) );
+   gsTensorBSplineBasis<2> & p2 = 
+     const_cast<gsTensorBSplineBasis<2>&>(
+     dynamic_cast<const gsTensorBSplineBasis<2>&>(basesTens.piece(2)) );
+   p0.insertKnot(pt[0],1,numElevate+1);
+   p1.insertKnot(pt[0],0,numElevate+1); //knot, dir, mult
+   p1.insertKnot(pt[1],1,numElevate+1);
+   p2.insertKnot(pt[1],0,numElevate+1);
+
    // fill the "basisContainer" with patch-wise...
    for ( size_t i = 0; i < basesTens.nBases(); i++)
      if (thb)
-       basisContainer.push_back(new gsTHBSplineBasis<2,real_t>( basesTens.basis(i)));
+       basisContainer.push_back(new gsTHBSplineBasis<2,real_t>(basesTens.basis(i)));
      else
-       basisContainer.push_back(new gsHBSplineBasis<2,real_t>( basesTens.basis(i)));
+       basisContainer.push_back(new gsHBSplineBasis<2,real_t>(basesTens.basis(i)));
 
    // finally, create the gsMultiBasis containing gsTHBSpline ...
    gsMultiBasis<real_t> bases( basisContainer, patchesTens );
@@ -174,6 +198,7 @@ int main(int argc, char *argv[])
        PoissonAssembler.constructSolution(solVector, sol);
        // Associate the solution to the patches (isogeometric field)
        gsField<> solField(patchesTens, sol);
+       gsWriteParaview<>(solField, "adaptRef", 500, true);
        //! [solverPart]
 
        // --------------- error estimation/computation ---------------
@@ -182,10 +207,15 @@ int main(int argc, char *argv[])
        // Compute the error in the H1-seminorm ( = energy norm in this example )
        // using the known exact solution.
        gsExprEvaluator<> ev;
-       ev.setIntegrationElements(PoissonAssembler.multiBasis());
+       ev.setIntegrationElements(bases);
        gsExprEvaluator<>::geometryMap Gm = ev.getMap(patchesTens);
        gsExprEvaluator<>::variable is = ev.getVariable(sol);
        gsExprEvaluator<>::variable xy = ev.getVariable(dist, Gm);
+
+       real_t val = ev.eval(is, pt  ,1).value();
+       gsInfo << std::fixed << "-Value: "<< std::setprecision(16) 
+	      << val        <<"   reference: 1.02679192610";
+       gsInfo<< "( dofs: "<< bases.totalSize() <<").\n";
 
        //gsExprEvaluator<>::element el = ev.getElement();
        ev.options().setReal("quA", .0);
@@ -193,12 +223,6 @@ int main(int argc, char *argv[])
        ev.minElWise( 1.0/xy.sqNorm() ); // distance from singularity (0,0)
        const std::vector<real_t> & eltErrs  = ev.elementwise();
        //! [errorComputation]
-
-       real_t val = ev.eval(is, pt  ,1).value();
-       gsInfo << std::fixed << "-Value: "<< std::setprecision(16) 
-	      << val        <<"   reference: 1.0267919261";
-       // seems 1.0263977336908929 is false
-       gsInfo<< "( dofs: "<< bases.totalSize() <<").\n";
        
        if (refLoop == numRefinementLoops)
 	 {
@@ -221,6 +245,7 @@ int main(int argc, char *argv[])
        // Mark elements for refinement, based on the computed local errors and
        // the refinement-criterion and -parameter.
        std::vector<bool> elMarked( eltErrs.size() );
+
        gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
 
        // Refine the marked elements with a 1-ring of cells around marked elements
