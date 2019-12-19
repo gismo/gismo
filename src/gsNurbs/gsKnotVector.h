@@ -370,6 +370,19 @@ public: // miscellaneous
     /// Removes the right-most \a numKnots from the knot-vector
     void trimRight(const mult_t numKnots);
 
+    /// Computes the number of left ghosts, i.e., of the knots to the
+    /// left of the domain beginnning.
+    index_t numLeftGhosts() const
+    {
+	return std::distance(ubegin(), domainUBegin());
+    }
+
+    /// Analogously to numLeftGhosts.
+    index_t numRightGhosts() const
+    {
+	return std::distance(domainUEnd(), uend()) - 1;
+    }
+
 public:
 
     /// Sanity check.

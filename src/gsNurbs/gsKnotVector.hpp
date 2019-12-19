@@ -695,7 +695,7 @@ typename gsKnotVector<T>::uiterator
 gsKnotVector<T>::uFind( const T u ) const
 {
     GISMO_ASSERT(size()>1,"Not enough knots."); // todo: check() --> size() > 2*m_deg+1
-//    GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
+    GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
 
     // The last element is closed from both sides.
     uiterator dend = uend();
@@ -777,8 +777,8 @@ void gsKnotVector<T>::uniformRefine( mult_t numKnots, mult_t mult )
     getUniformRefinementKnots(numKnots,newKnots,mult); // iterate instead of store ?
     insert(newKnots.begin(),newKnots.end()); // complexity: newKnots.size() + size()
 
-    // if (0!=l) trimLeft (l);
-    // if (0!=r) trimRight(r);
+    if (0!=l) trimLeft (l);
+    if (0!=r) trimRight(r);
 }
 
 
@@ -991,8 +991,8 @@ template< typename T>
 void gsKnotVector<T>::supportIndex_into(const mult_t& i,
                                         gsMatrix<unsigned>& result) const
 {
-    T suppBeg=*(this->begin()+i);
-    T suppEnd=*(this->begin()+i+m_deg+1);
+    T suppBeg=*(this->begin()+i < this->domainBegin() ? this->domainBegin() : this->begin()+i);
+    T suppEnd=*(this->begin()+i+m_deg+1 > this->domainEnd() ? this->domainEnd(): this->begin()+i+m_deg+1);
     uiterator ubeg   = this->ubegin();
     uiterator indBeg = uFind(suppBeg);
     uiterator indEnd = std::find_if(indBeg, this->uend(), std::bind2nd(std::greater_equal<T>(), suppEnd));
