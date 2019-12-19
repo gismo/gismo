@@ -142,6 +142,13 @@ int main(int argc, char *argv[])
    gsTensorBSplineBasis<2> & p2 = 
      const_cast<gsTensorBSplineBasis<2>&>(
      dynamic_cast<const gsTensorBSplineBasis<2>&>(basesTens.piece(2)) );
+
+   pt.setConstant(.98);
+   p0.insertKnot(pt[0],1,numElevate+1);
+   p1.insertKnot(pt[0],0,numElevate+1); //knot, dir, mult
+   p1.insertKnot(pt[1],1,numElevate+1);
+   p2.insertKnot(pt[1],0,numElevate+1);
+   pt.setConstant(.99);
    p0.insertKnot(pt[0],1,numElevate+1);
    p1.insertKnot(pt[0],0,numElevate+1); //knot, dir, mult
    p1.insertKnot(pt[1],1,numElevate+1);
