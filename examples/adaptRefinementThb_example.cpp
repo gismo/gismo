@@ -233,6 +233,8 @@ int main(int argc, char *argv[])
        
        if (refLoop == numRefinementLoops)
 	 {
+	   gsInfo <<"Ref.  : 1.02679192610\n";
+       
 	   gsInfo<<std::setprecision(5) <<" Basis on 1 patch: "<< bases.piece(1) <<"\n";
 
 	   //! [Export to Paraview]
