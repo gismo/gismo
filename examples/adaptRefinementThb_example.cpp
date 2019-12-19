@@ -22,7 +22,7 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
    //! [Parse command line]
-   bool plot = false;
+  bool plot = false, thb = false;
    // Number of refinement loops to be done
    int numElevate = 1, numRefinementLoops = 4;
    // Number of initial uniform refinement steps:
@@ -30,6 +30,8 @@ int main(int argc, char *argv[])
    
    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+   cmd.addSwitch("tbnp", "Use truncated HB splines", thb );
+
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps)", numElevate );
     cmd.addInt( "u", "urefine",
@@ -111,7 +113,10 @@ int main(int argc, char *argv[])
 
    // fill the "basisContainer" with patch-wise...
    for ( size_t i = 0; i < basesTens.nBases(); i++)
-       basisContainer.push_back(new gsTHBSplineBasis<2,real_t>( basesTens.basis(i) ));
+     if (thb)
+       basisContainer.push_back(new gsTHBSplineBasis<2,real_t>( basesTens.basis(i)));
+     else
+       basisContainer.push_back(new gsHBSplineBasis<2,real_t>( basesTens.basis(i)));
 
    // finally, create the gsMultiBasis containing gsTHBSpline ...
    gsMultiBasis<real_t> bases( basisContainer, patchesTens );
@@ -171,14 +176,9 @@ int main(int argc, char *argv[])
        ev.setIntegrationElements(PoissonAssembler.multiBasis());
        gsExprEvaluator<>::geometryMap Gm = ev.getMap(patchesTens);
        gsExprEvaluator<>::variable is = ev.getVariable(sol);
-       gsExprEvaluator<>::variable ms = ev.getVariable(g, Gm);
        gsExprEvaluator<>::variable xy = ev.getVariable(id, Gm);
 
-       gsExprEvaluator<>::element el = ev.getElement();
-
-       // Get the element-wise norms.
-       //ev.integralElWise( ( igrad(is,Gm) - igrad(ms)).sqNorm()*meas(Gm) );
-
+       //gsExprEvaluator<>::element el = ev.getElement();
        ev.minElWise( 1.0/xy.sqNorm() ); // distance from singularity (0,0)
 
        const std::vector<real_t> & eltErrs  = ev.elementwise();
