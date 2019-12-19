@@ -47,6 +47,7 @@ int main(int argc, char *argv[])
    //   gsFunctionExpr<> g("if( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x)+3*pi)/3.0 ) )", 2);
 
    gsFunctionExpr<> g("(x+1)^2",2);
+   gsFunctionExpr<> id("x","y",2);
 
    // Define source function
    gsFunctionExpr<> f("0",2);
@@ -171,22 +172,37 @@ int main(int argc, char *argv[])
        gsExprEvaluator<>::geometryMap Gm = ev.getMap(patchesTens);
        gsExprEvaluator<>::variable is = ev.getVariable(sol);
        gsExprEvaluator<>::variable ms = ev.getVariable(g, Gm);
+       gsExprEvaluator<>::variable xy = ev.getVariable(id, Gm);
+
+       gsExprEvaluator<>::element el = ev.getElement();
 
        // Get the element-wise norms.
-       ev.integralElWise( ( igrad(is,Gm) - igrad(ms)).sqNorm()*meas(Gm) );
+       //ev.integralElWise( ( igrad(is,Gm) - igrad(ms)).sqNorm()*meas(Gm) );
+
+       ev.minElWise( 1.0/xy.sqNorm() ); // distance from singularity (0,0)
+
        const std::vector<real_t> & eltErrs  = ev.elementwise();
        //! [errorComputation]
 
        if (refLoop == numRefinementLoops)
 	 {
 	   gsInfo<<" Basis on 1 patch: "<< bases.piece(1) <<"\n";
-
 	   gsInfo<< "Using "<< bases.totalSize() <<" DoFs\n";
 	   real_t val = ev.eval(is, pt  ,1).value();
 	   gsInfo << std::fixed << "-Value: "<< std::setprecision(16) 
 		  << val        <<"\n   vs  : 1.0263977336908929 \n";
+
+	   //! [Export to Paraview]
+	   // Export the final solution
+	   if( plot )
+	   {
+	     // Write the computed solution to paraview files
+	     gsWriteParaview<>(solField, "adaptRef", 1000, true);
+	   }
+	   //! [Export to Paraview]
+
 	 break;
-	 }       
+	 }
        // --------------- adaptive refinement ---------------
 
        //! [adaptRefinementPart]
@@ -205,16 +221,6 @@ int main(int argc, char *argv[])
        // match along patch interfaces.
        bases.repairInterfaces( patchesTens.interfaces() );
        //! [repairInterfaces]
-
-       //! [Export to Paraview]
-       // Export the final solution
-       if( plot && refLoop == numRefinementLoops )
-       {
-           // Write the computed solution to paraview files
-           gsWriteParaview<>(solField, "adaptRef", 1000, true);
-       }
-       //! [Export to Paraview]
-
    }
 
    
