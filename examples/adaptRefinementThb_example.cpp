@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
        real_t val = ev.eval(is, pt  ,1).value();
        gsInfo << std::fixed << "-Value: "<< std::setprecision(16) 
 	      << val        <<"   reference: 1.02679192610";
-       gsInfo<< "( dofs: "<< bases.totalSize() <<").\n";
+       gsInfo<< "( dofs: "<< bases.totalSize() <<").\n"<<std::flush;
 
        //gsExprEvaluator<>::element el = ev.getElement();
        ev.options().setReal("quA", .0);
@@ -233,7 +233,7 @@ int main(int argc, char *argv[])
        
        if (refLoop == numRefinementLoops)
 	 {
-	   gsInfo <<"Ref.  : 1.02679192610\n";
+	   gsInfo <<"Ref.  : 1.02679192610\n"<<std::flush;
        
 	   gsInfo<<std::setprecision(5) <<" Basis on 1 patch: "<< bases.piece(1) <<"\n";
 
