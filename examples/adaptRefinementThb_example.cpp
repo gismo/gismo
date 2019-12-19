@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
        real_t val = ev.eval(is, pt  ,1).value();
        gsInfo << std::fixed << "-Value: "<< std::setprecision(16) 
 	      << val        <<"   vs  : 1.0263977336908929 ";
-       gsInfo<< "( dofs: "<< bases.totalSize() <<". ";
+       gsInfo<< "( dofs: "<< bases.totalSize() <<".\n";
        
        if (refLoop == numRefinementLoops)
 	 {
