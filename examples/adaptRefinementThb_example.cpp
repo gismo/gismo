@@ -102,6 +102,11 @@ int main(int argc, char *argv[])
    //! [Boundary conditions]
 
 
+   gsVector<> pt(2); pt<< .99, .99 ;
+
+   patchesTens.insertKnot(pt[0],0,1); //knot, dir, mult
+   patchesTens.insertKnot(pt[1],1,1);
+
    // --------------- set up basis ---------------
 
    //! [GetBasisFromTens]
@@ -140,7 +145,6 @@ int main(int argc, char *argv[])
 
    // --------------- adaptive refinement loop ---------------
 
-   gsVector<> pt(2); pt<< .99, .99 ;
    //! [beginRefLoop]
    for( int refLoop = 0; refLoop <= numRefinementLoops; refLoop++)
    {
@@ -189,8 +193,9 @@ int main(int argc, char *argv[])
 
        real_t val = ev.eval(is, pt  ,1).value();
        gsInfo << std::fixed << "-Value: "<< std::setprecision(16) 
-	      << val        <<"   vs  : 1.0263977336908929 ";
-       gsInfo<< "( dofs: "<< bases.totalSize() <<".\n";
+	      << val        <<"   reference: 1.0267919261";
+       // seems 1.0263977336908929 is false
+       gsInfo<< "( dofs: "<< bases.totalSize() <<").\n";
        
        if (refLoop == numRefinementLoops)
 	 {
