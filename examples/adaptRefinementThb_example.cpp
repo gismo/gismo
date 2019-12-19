@@ -187,12 +187,11 @@ int main(int argc, char *argv[])
        const std::vector<real_t> & eltErrs  = ev.elementwise();
        //! [errorComputation]
 
-       gsInfo<< "Using "<< bases.totalSize() <<" DoFs\n";
-
        real_t val = ev.eval(is, pt  ,1).value();
        gsInfo << std::fixed << "-Value: "<< std::setprecision(16) 
-	      << val        <<"   vs  : 1.0263977336908929 \n";
-
+	      << val        <<"   vs  : 1.0263977336908929 ";
+       gsInfo<< "( dofs: "<< bases.totalSize() <<". ";
+       
        if (refLoop == numRefinementLoops)
 	 {
 	   gsInfo<<" Basis on 1 patch: "<< bases.piece(1) <<"\n";
