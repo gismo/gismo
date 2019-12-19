@@ -28,9 +28,13 @@ int main(int argc, char *argv[])
    // Number of initial uniform refinement steps:
    int numInitUniformRefine  = 1;
    
+   real_t adaptRefParam = 0.9;
+
    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
    cmd.addSwitch("tbnp", "Use truncated HB splines", thb );
+    cmd.addReal( "a", "adaptiveParam",
+                "Refinement parameter)", adaptRefParam );
 
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps)", numElevate );
@@ -131,8 +135,6 @@ int main(int argc, char *argv[])
    //MarkingStrategy adaptRefCrit = GARU;
    //MarkingStrategy adaptRefCrit = errorFraction;
 
-   // ... and parameter.
-   const real_t adaptRefParam = 0.9;
    //! [adaptRefSettings]
 
 
