@@ -103,9 +103,10 @@ int main(int argc, char *argv[])
 
 
    gsVector<> pt(2); pt<< .99, .99 ;
-
-   patchesTens.insertKnot(pt[0],0,1); //knot, dir, mult
-   patchesTens.insertKnot(pt[1],1,1);
+   gsTensorBSpline<2> & p1 = dynamic_cast<gsTensorBSpline<2>&>
+     (patchesTens.piece(1));
+   p1.insertKnot(pt[0],0,1); //knot, dir, mult
+   p1.piece(1).insertKnot(pt[1],1,1);
 
    // --------------- set up basis ---------------
 
