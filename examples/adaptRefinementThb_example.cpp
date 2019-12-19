@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
    //   gsFunctionExpr<> g("if( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x)+3*pi)/3.0 ) )", 2);
 
    gsFunctionExpr<> g("(x+1)^2",2);
-   gsFunctionExpr<> id("x","y",2);
+   gsFunctionExpr<> dist("x-.01","y-.01",2);
 
    // Define source function
    gsFunctionExpr<> f("0",2);
@@ -178,18 +178,20 @@ int main(int argc, char *argv[])
        ev.setIntegrationElements(PoissonAssembler.multiBasis());
        gsExprEvaluator<>::geometryMap Gm = ev.getMap(patchesTens);
        gsExprEvaluator<>::variable is = ev.getVariable(sol);
-       gsExprEvaluator<>::variable xy = ev.getVariable(id, Gm);
+       gsExprEvaluator<>::variable xy = ev.getVariable(dist, Gm);
 
        //gsExprEvaluator<>::element el = ev.getElement();
+       ev.options().setReal("quA", .0);
+       ev.options().setInt ("quB", 1 );
        ev.minElWise( 1.0/xy.sqNorm() ); // distance from singularity (0,0)
-
        const std::vector<real_t> & eltErrs  = ev.elementwise();
        //! [errorComputation]
+
+       gsInfo<< "Using "<< bases.totalSize() <<" DoFs\n";
 
        if (refLoop == numRefinementLoops)
 	 {
 	   gsInfo<<" Basis on 1 patch: "<< bases.piece(1) <<"\n";
-	   gsInfo<< "Using "<< bases.totalSize() <<" DoFs\n";
 	   real_t val = ev.eval(is, pt  ,1).value();
 	   gsInfo << std::fixed << "-Value: "<< std::setprecision(16) 
 		  << val        <<"\n   vs  : 1.0263977336908929 \n";
