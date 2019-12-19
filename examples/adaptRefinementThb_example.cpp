@@ -23,9 +23,19 @@ int main(int argc, char *argv[])
 {
    //! [Parse command line]
    bool plot = false;
-
+   // Number of refinement loops to be done
+   int numElevate = 1, numRefinementLoops = 4;
+   // Number of initial uniform refinement steps:
+   int numInitUniformRefine  = 1;
+   
    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addInt( "e", "degreeElevation",
+                "Number of degree elevation steps)", numElevate );
+    cmd.addInt( "u", "urefine",
+                "Number of a priori uniform refinement steps)", numInitUniformRefine );
+   cmd.addInt( "r", "refine",
+                "Number of adaptive refinement loops)", numRefinementLoops );
    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
    //! [Parse command line]
 
@@ -33,7 +43,11 @@ int main(int argc, char *argv[])
 
    //! [Function data]
    // Define exact solution (will be used for specifying Dirichlet boundary conditions
-   gsFunctionExpr<> g("if( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x)+3*pi)/3.0 ) )", 2);
+
+   //   gsFunctionExpr<> g("if( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x)+3*pi)/3.0 ) )", 2);
+
+   gsFunctionExpr<> g("(x+1)^2",2);
+
    // Define source function
    gsFunctionExpr<> f("0",2);
    //! [Function data]
@@ -42,10 +56,11 @@ int main(int argc, char *argv[])
    gsInfo<<"Source function " << f << "\n";
    gsInfo<<"Exact solution "  << g << "\n\n";
 
-
    // --------------- read geometry from file ---------------
 
    //! [GetGeometryData]
+   
+   /*
    // Read xml and create gsMultiPatch
    std::string fileSrc( "planar/lshape2d_3patches_thb.xml" );
    gsMultiPatch<real_t> patches;
@@ -57,7 +72,7 @@ int main(int argc, char *argv[])
    // Get all interfaces and boundaries:
    patches.computeTopology();
    //! [computeTopology]
-
+   */
 
    //! [GetGeometryDataTens]
    std::string fileSrcTens( "planar/lshape2d_3patches_tens.xml" );
@@ -66,7 +81,6 @@ int main(int argc, char *argv[])
    patchesTens.computeTopology();
    //! [GetGeometryDataTens]
 
-
    // --------------- add bonudary conditions ---------------
    //! [Boundary conditions]
    gsBoundaryConditions<> bcInfo;
@@ -74,7 +88,7 @@ int main(int argc, char *argv[])
    // For simplicity, set Dirichlet boundary conditions
    // given by exact solution g on all boundaries:
    for ( gsMultiPatch<>::const_biterator
-            bit = patches.bBegin(); bit != patches.bEnd(); ++bit)
+         bit = patchesTens.bBegin(); bit != patchesTens.bEnd(); ++bit)
    {
        bcInfo.addCondition( *bit, condition_type::dirichlet, &g );
    }
@@ -83,11 +97,6 @@ int main(int argc, char *argv[])
 
    // --------------- set up basis ---------------
 
-   //! [GetBasisFromTHB]
-   // Copy basis from the geometry
-   gsMultiBasis<> bases( patches );
-   //! [GetBasisFromTHB]
-
    //! [GetBasisFromTens]
    // Copy tensor basis
    gsMultiBasis<real_t> basesTens( patchesTens );
@@ -95,29 +104,21 @@ int main(int argc, char *argv[])
    // Create a "basisContainer"
    std::vector< gsBasis<real_t>* > basisContainer;
 
+   basesTens.degreeElevate(numElevate);
+   for (int i = 0; i < numInitUniformRefine; ++i)
+     basesTens.uniformRefine();
+
    // fill the "basisContainer" with patch-wise...
    for ( size_t i = 0; i < basesTens.nBases(); i++)
        basisContainer.push_back(new gsTHBSplineBasis<2,real_t>( basesTens.basis(i) ));
 
    // finally, create the gsMultiBasis containing gsTHBSpline ...
-   gsMultiBasis<real_t> basesFromTens( basisContainer, patches );
+   gsMultiBasis<real_t> bases( basisContainer, patchesTens );
    //! [GetBasisFromTens]
-
-
-   //! [initialRefinements]
-   // Number of initial uniform refinement steps:
-   int numInitUniformRefine  = 2;
-
-   for (int i = 0; i < numInitUniformRefine; ++i)
-     bases.uniformRefine();
-   //! [initialRefinements]
-
 
    // --------------- set up adaptive refinement loop ---------------
 
    //! [adaptRefSettings]
-   // Number of refinement loops to be done
-   int numRefinementLoops = 4;
 
    // Specify cell-marking strategy...
    MarkingStrategy adaptRefCrit = PUCA;
@@ -131,6 +132,7 @@ int main(int argc, char *argv[])
 
    // --------------- adaptive refinement loop ---------------
 
+   gsVector<> pt(2); pt<< .99, .99 ;
    //! [beginRefLoop]
    for( int refLoop = 0; refLoop <= numRefinementLoops; refLoop++)
    {
@@ -140,7 +142,7 @@ int main(int argc, char *argv[])
 
        //! [solverPart]
        // Construct assembler
-       gsPoissonAssembler<real_t> PoissonAssembler(patches,bases,bcInfo,f);
+       gsPoissonAssembler<real_t> PoissonAssembler(patchesTens,bases,bcInfo,f);
        PoissonAssembler.options().setInt("DirichletValues", dirichlet::l2Projection);
 
        // Generate system matrix and load vector
@@ -156,7 +158,7 @@ int main(int argc, char *argv[])
        gsMultiPatch<> sol;
        PoissonAssembler.constructSolution(solVector, sol);
        // Associate the solution to the patches (isogeometric field)
-       gsField<> solField(patches, sol);
+       gsField<> solField(patchesTens, sol);
        //! [solverPart]
 
        // --------------- error estimation/computation ---------------
@@ -166,7 +168,7 @@ int main(int argc, char *argv[])
        // using the known exact solution.
        gsExprEvaluator<> ev;
        ev.setIntegrationElements(PoissonAssembler.multiBasis());
-       gsExprEvaluator<>::geometryMap Gm = ev.getMap(patches);
+       gsExprEvaluator<>::geometryMap Gm = ev.getMap(patchesTens);
        gsExprEvaluator<>::variable is = ev.getVariable(sol);
        gsExprEvaluator<>::variable ms = ev.getVariable(g, Gm);
 
@@ -175,6 +177,16 @@ int main(int argc, char *argv[])
        const std::vector<real_t> & eltErrs  = ev.elementwise();
        //! [errorComputation]
 
+       if (refLoop == numRefinementLoops)
+	 {
+	   gsInfo<<" Basis on 1 patch: "<< bases.piece(1) <<"\n";
+
+	   gsInfo<< "Using "<< bases.totalSize() <<" DoFs\n";
+	   real_t val = ev.eval(is, pt  ,1).value();
+	   gsInfo << std::fixed << "-Value: "<< std::setprecision(16) 
+		  << val        <<"\n   vs  : 1.0263977336908929 \n";
+	 break;
+	 }       
        // --------------- adaptive refinement ---------------
 
        //! [adaptRefinementPart]
@@ -191,9 +203,8 @@ int main(int argc, char *argv[])
        //! [repairInterfaces]
        // Call repair interfaces to make sure that the new meshes
        // match along patch interfaces.
-       bases.repairInterfaces( patches.interfaces() );
+       bases.repairInterfaces( patchesTens.interfaces() );
        //! [repairInterfaces]
-
 
        //! [Export to Paraview]
        // Export the final solution
@@ -206,6 +217,9 @@ int main(int argc, char *argv[])
 
    }
 
+   
+   
+   
    //! [Plot in Paraview]
    if( plot )
    {
