@@ -189,12 +189,13 @@ int main(int argc, char *argv[])
 
        gsInfo<< "Using "<< bases.totalSize() <<" DoFs\n";
 
+       real_t val = ev.eval(is, pt  ,1).value();
+       gsInfo << std::fixed << "-Value: "<< std::setprecision(16) 
+	      << val        <<"   vs  : 1.0263977336908929 \n";
+
        if (refLoop == numRefinementLoops)
 	 {
 	   gsInfo<<" Basis on 1 patch: "<< bases.piece(1) <<"\n";
-	   real_t val = ev.eval(is, pt  ,1).value();
-	   gsInfo << std::fixed << "-Value: "<< std::setprecision(16) 
-		  << val        <<"\n   vs  : 1.0263977336908929 \n";
 
 	   //! [Export to Paraview]
 	   // Export the final solution
