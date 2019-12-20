@@ -160,8 +160,7 @@ int main(int argc, char *argv[])
    p1.insertKnot(pt[1],1,numElevate+1);
    p2.insertKnot(pt[1],0,numElevate+1);
 
-   gsWriteParaview<>(basesTens, patchesTens, "init", 100);
-   return 0;
+   //gsWriteParaview<>(basesTens, patchesTens, "init", 100);
 
    // fill the "basisContainer" with patch-wise...
    for ( size_t i = 0; i < basesTens.nBases(); i++)
