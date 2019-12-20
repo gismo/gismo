@@ -143,6 +143,12 @@ int main(int argc, char *argv[])
      const_cast<gsTensorBSplineBasis<2>&>(
      dynamic_cast<const gsTensorBSplineBasis<2>&>(basesTens.piece(2)) );
 
+/*   pt.setConstant(.97);
+   p0.insertKnot(pt[0],1,numElevate+1);
+   p1.insertKnot(pt[0],0,numElevate+1); //knot, dir, mult
+   p1.insertKnot(pt[1],1,numElevate+1);
+   p2.insertKnot(pt[1],0,numElevate+1);
+*/
    pt.setConstant(.98);
    p0.insertKnot(pt[0],1,numElevate+1);
    p1.insertKnot(pt[0],0,numElevate+1); //knot, dir, mult
@@ -153,6 +159,9 @@ int main(int argc, char *argv[])
    p1.insertKnot(pt[0],0,numElevate+1); //knot, dir, mult
    p1.insertKnot(pt[1],1,numElevate+1);
    p2.insertKnot(pt[1],0,numElevate+1);
+
+   gsWriteParaview<>(basesTens, patchesTens, "init", 100);
+   return 0;
 
    // fill the "basisContainer" with patch-wise...
    for ( size_t i = 0; i < basesTens.nBases(); i++)
@@ -196,7 +205,8 @@ int main(int argc, char *argv[])
 
        // Initialize the conjugate gradient solver
        gsSparseSolver<>::CGDiagonal solver( PoissonAssembler.matrix() );
-
+       solver.setMaxIterations(5*PoissonAssembler.matrix().rows());
+       solver.setTolerance(1e-9);
        // Solve the linear system
        gsMatrix<> solVector = solver.solve( PoissonAssembler.rhs() );
 
