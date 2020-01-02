@@ -56,7 +56,7 @@ public:
     MatExprType eval(const index_t k) const
     {
         const index_t A = _u.cardinality()/_u.targetDim();
-        res.resize(A*_u.targetDim(), cols()); // rows()*
+        res.resize(_u.cardinality(), cols()); // rows()*
 
         normal = _G.data().normal(k);// not normalized to unit length
         normal.normalize();
@@ -76,7 +76,8 @@ public:
                               - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() )) / measure;
 
                 // ---------------  First variation of the normal
-                res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
+                // res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
+                res.row(s+j).noalias() = (m_v - ( normal*m_v.transpose() ) * normal).transpose(); // outer-product version
             }
         }
         return res;
@@ -179,16 +180,19 @@ public:
                                          -vecFun(c, vGrads.at(2*i+1) ).cross( cJac.col(0).template head<3>() ))
                                         / measure;
 
-                        n_der.noalias() = (m_v - ( normal.dot(m_v) ) * normal);
+                        // n_der.noalias() = (m_v - ( normal.dot(m_v) ) * normal);
+                        n_der.noalias() = (m_v - ( normal*m_v.transpose() ) * normal); // outer-product version
 
                         m_uv.noalias() = ( vecFun(d, uGrads.at(2*j  ) ).cross( vecFun(c, vGrads.at(2*i+1) ) )
                                           +vecFun(c, vGrads.at(2*i  ) ).cross( vecFun(d, uGrads.at(2*j+1) ) ))
                                           / measure; //check
 
                         m_u_der.noalias() = (m_uv - ( normal.dot(m_v) ) * m_u);
+                        // m_u_der.noalias() = (m_uv - ( normal*m_v.transpose() ) * m_u); // outer-product version TODO
 
                         // ---------------  Second variation of the normal
                         tmp = m_u_der - (m_u.dot(n_der) + normal.dot(m_u_der) ) * normal - (normal.dot(m_u) ) * n_der;
+                        // tmp = m_u_der - (m_u.dot(n_der) + normal.dot(m_u_der) ) * normal - (normal.dot(m_u) ) * n_der;
 
                         // Evaluate the product
                         tmp = cDer2 * tmp; // E_f_der2, last component
@@ -1783,7 +1787,7 @@ int main(int argc, char *argv[])
         gsInfo << "done." << "\n";
 
         // Solve system
-        gsInfo << "Solving ("<<A.numDofs()<<" dofs)... "<< std::flush;
+        gsInfo << "Solving ("<<A.matrix().rows()<<","<<A.matrix().cols()<<" )... "<< std::flush;
         solver.compute(A.matrix());
         solVector = solver.solve(A.rhs());
         gsInfo << "done." << "\n";
