@@ -75,7 +75,8 @@ public:
                               - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() )) / measure;
 
                 // ---------------  First variation of the normal
-                res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
+                // res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
+                res.row(s+j).noalias() = (m_v - ( normal*m_v.transpose() ) * normal).transpose(); // outer-product version
             }
         }
         return res;
@@ -178,16 +179,19 @@ public:
                                          -vecFun(c, vGrads.at(2*i+1) ).cross( cJac.col(0).template head<3>() ))
                                         / measure;
 
-                        n_der.noalias() = (m_v - ( normal.dot(m_v) ) * normal);
+                        // n_der.noalias() = (m_v - ( normal.dot(m_v) ) * normal);
+                        n_der.noalias() = (m_v - ( normal*m_v.transpose() ) * normal); // outer-product version
 
                         m_uv.noalias() = ( vecFun(d, uGrads.at(2*j  ) ).cross( vecFun(c, vGrads.at(2*i+1) ) )
                                           +vecFun(c, vGrads.at(2*i  ) ).cross( vecFun(d, uGrads.at(2*j+1) ) ))
                                           / measure; //check
 
-                        m_u_der.noalias() = (m_uv - ( normal.dot(m_v) ) * m_u);
+                        // m_u_der.noalias() = (m_uv - ( normal.dot(m_v) ) * m_u);
+                        m_u_der.noalias() = (m_uv - ( normal*m_v.transpose() ) * m_u); // outer-product version TODO
 
                         // ---------------  Second variation of the normal
                         tmp = m_u_der - (m_u.dot(n_der) + normal.dot(m_u_der) ) * normal - (normal.dot(m_u) ) * n_der;
+                        // tmp = m_u_der - (m_u.dot(n_der) + normal.dot(m_u_der) ) * normal - (normal.dot(m_u) ) * n_der;
 
                         // Evaluate the product
                         tmp = cDer2 * tmp; // E_f_der2, last component
@@ -1829,11 +1833,11 @@ int main(int argc, char *argv[])
     // 1.0,1.0;
     // pt = pt.transpose();
     gsDebugVar(pt);
-    evaluateFunction(ev, That, pt); // evaluates an expression on a point
-    evaluateFunction(ev, Ttilde, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, That, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, Ttilde, pt); // evaluates an expression on a point
     // evaluateFunction(ev, TtildeInv, pt); // evaluates an expression on a point
-    evaluateFunction(ev, C, pt); // evaluates an expression on a point
-    evaluateFunction(ev, D, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, C, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, D, pt); // evaluates an expression on a point
 
     // ! [Solve linear problem]
 
@@ -1844,6 +1848,17 @@ int main(int argc, char *argv[])
         ,
         u * cartcon(G) * cartcon(G) * F  * meas(G)
         );
+
+    // evaluateFunction(ev, N_der * cartcon(G) * (E_m_der * cartcon(G)).tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr()).tr(), pt); // evaluates an expression on a point
+
+    // gsDebugVar((jac(defG).tr() * jac(u) * jac(defG) * jac(u).tr()).isMatrix());
+    // gsDebugVar((jac(defG).tr() * jac(u) * jac(defG) * jac(u).tr()).colSpan());
+    // gsDebugVar((jac(defG).tr() * jac(u) * jac(defG) * jac(u).tr()).rowSpan());
+    // gsDebugVar((jac(defG).tr() * jac(u)).colSpan());
+    // gsDebugVar((jac(defG).tr() * jac(u)).rowSpan());
+    // gsDebugVar(((jac(defG).tr() * jac(u)).tr()).colSpan());
+    // gsDebugVar(((jac(defG).tr() * jac(u)).tr()).rowSpan());
 
     // For Neumann (same for Dirichlet/Nitsche) conditions
     variable g_N = A.getBdrFunction();
@@ -1878,11 +1893,6 @@ int main(int argc, char *argv[])
     // solve system
     solver.compute( A.matrix() );
     gsMatrix<> solVector = solver.solve(A.rhs());
-
-    gsInfo<<A.matrix().toDense()<<"\n";
-    gsInfo<<A.rhs()<<"\n";
-    gsInfo<<solVector<<"\n";
-
 
     // update deformed patch
     gsMatrix<> cc;
