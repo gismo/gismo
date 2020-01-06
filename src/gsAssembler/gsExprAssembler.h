@@ -155,6 +155,11 @@ public:
     */
 public:
 
+    void cleanUp()
+    {
+        m_exprdata->clean();
+    }
+
     /// Constructor
     /// \param _rBlocks Number of spaces for test functions
     /// \param _cBlocks Number of spaces for solution variables

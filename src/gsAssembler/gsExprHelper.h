@@ -97,6 +97,10 @@ public:
         {
             gsInfo << "mapVar: "<< &mapData <<"\n";
         }
+        if ( mapVar2.isValid() ) // list ?
+        {
+            gsInfo << "mapVar2: "<< &mapData2 <<"\n";
+        }
 
         if ( mutVar.isValid() && 0!=mutData.flags)
         {
@@ -125,6 +129,17 @@ public:
             it->second.clear();
         for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
             it->second.clear();
+    }
+
+    void clean()
+    {
+        m_ptable.clear();
+        m_vlist.clear();
+        m_itable.clear();
+        // for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
+        //     it->second.clear();
+        // for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
+        //     it->second.clear();
     }
 
     void setMultiBasis(const gsMultiBasis<T> & mesh) { mesh_ptr = &mesh; }
