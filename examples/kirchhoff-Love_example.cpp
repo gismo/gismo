@@ -186,8 +186,8 @@ public:
                                           +vecFun(c, vGrads.at(2*i  ) ).cross( vecFun(d, uGrads.at(2*j+1) ) ))
                                           / measure; //check
 
-                        // m_u_der.noalias() = (m_uv - ( normal.dot(m_v) ) * m_u);
-                        m_u_der.noalias() = (m_uv - ( normal*m_v.transpose() ) * m_u); // outer-product version TODO
+                        m_u_der.noalias() = (m_uv - ( normal.dot(m_v) ) * m_u);
+                        // m_u_der.noalias() = (m_uv - ( normal*m_v.transpose() ) * m_u); // outer-product version TODO
 
                         // ---------------  Second variation of the normal
                         tmp = m_u_der - (m_u.dot(n_der) + normal.dot(m_u_der) ) * normal - (normal.dot(m_u) ) * n_der;
@@ -332,7 +332,6 @@ private:
 
         for (index_t i = 0; i!=_u.dim(); i++)
             res.block(i*numAct, 0, numAct, cols() ) = tmp * vEv.at(i);
-
         return res;
     }
 
