@@ -2953,6 +2953,20 @@ public:
         // gsDebugVar( _v.eval(k) );
 
         tmp = _u.eval(k) * _v.eval(k);
+        // gsDebugVar(_u.eval(k));
+        // gsDebugVar(_v.eval(k));
+        // gsDebugVar(tmp);
+        // gsDebugVar(E1::Space);
+        // gsDebugVar(E2::Space);
+        // gsDebugVar(Space);
+        // gsDebugVar(E1::rowSpan());
+        // gsDebugVar(E1::colSpan());
+        // gsDebugVar(E2::rowSpan());
+        // gsDebugVar(E2::colSpan());
+        // gsDebugVar(rowSpan());
+        // gsDebugVar(colSpan());
+        // gsInfo<<"expression: "; _u.print(gsInfo); gsInfo<<"\n";
+        // gsInfo<<"expression: "; _v.print(gsInfo); gsInfo<<"\n";
         return tmp; // assume result not scalarv
     }
 
