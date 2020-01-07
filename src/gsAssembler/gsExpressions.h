@@ -1971,6 +1971,7 @@ public:
     enum{ Space = E::Space };
 
     typedef typename E::Scalar Scalar;
+    mutable gsMatrix<Scalar> tmp;
 
     grad_expr(const E & u) : _u(u)
     { GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");}
@@ -1978,7 +1979,8 @@ public:
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
         // numActive x dim
-        return _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
+        tmp = _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
+        return tmp;
     }
 
     index_t rows() const
