@@ -812,21 +812,15 @@ public:
         const int sz  = mb[p].size();
         result.resize(sz, dim); // (!)
 
-        for (index_t i = 0; i < sz; ++i)
+        for (index_t c = 0; c!=dim; c++) // for all components
         {
-            const int ii = m_mapper.index(i, p);
-
-            if ( m_mapper.is_free_index(ii) ) // DoF value is in the solVector
+            for (index_t i = 0; i < sz; ++i) // loop over all basis functions (even the eliminated ones)
             {
-                for (index_t k = 0; k != dim; ++k)
-                {
-                    const index_t cgs = k * m_mapper.freeSize(); //global stride
-                    result(i,k) = solVector.at( cgs + ii );
-                }
-            }
-            else // eliminated DoF: fill with Dirichlet data
-            {
-                result.row(i) = m_fixedDofs.row( m_mapper.global_to_bindex(ii) ).head(dim);
+                const int ii = m_mapper.index(i, p, c);
+                if ( m_mapper.is_free_index(ii) ) // DoF value is in the solVector
+                    result(i,c) = solVector.at(ii );
+                else // eliminated DoF: fill with Dirichlet data
+                    result.row(i) = m_fixedDofs.row( m_mapper.global_to_bindex(ii) ).head(dim);
             }
         }
     }
@@ -841,7 +835,7 @@ public:
         if (const gsMultiBasis<T> * mb =
             dynamic_cast<const gsMultiBasis<T>*>(&this->source()) )
         {
-            m_mapper = gsDofMapper(*mb);
+            m_mapper = gsDofMapper(*mb, this->dim());
             //m_mapper.init(*mb); //bug
             if ( 0==this->interfaceCont() ) // Conforming boundaries ?
             {
@@ -860,7 +854,8 @@ public:
                               "Problem: a boundary condition is set on a patch id which does not exist.");
 
                 bnd = mb->basis(it->get().ps.patch).boundary( it->get().ps.side() );
-                m_mapper.markBoundary(it->get().ps.patch, bnd);
+                for (index_t c=0; c!= this->dim(); c++) // for all components
+                    m_mapper.markBoundary(it->get().ps.patch, bnd, c);
             }
         }
         else if (const gsBasis<T> * b =
@@ -928,21 +923,18 @@ public:
 
         res.setZero(_u.dim(), 1);
         const gsDofMapper & map = _u.mapper();
-        for (index_t i = 0; i!=_u.data().actives.size(); ++i)
+
+        for (index_t c = 0; c!=_u.dim(); c++) // for all components
         {
-            const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId);
-            if ( map.is_free_index(ii) ) // DoF value is in the solVector
+            // const index_t cgs = c*_u.data().actives.rows();
+            for (index_t i = 0; i!=_u.data().actives.size(); ++i)
             {
-                for (index_t r = 0; r != res.rows(); ++r)
-                {
-                    const index_t cgs = r * map.freeSize();
-                    res.at(r) += _Sv->at(cgs+ii) * _u.data().values[0](i,k);
-                }
-            }
-            else
-            {
-                res.noalias() += _u.data().values[0](i,k) *
-                    _u.fixedPart().row( map.global_to_bindex(ii) ).transpose();//head(_u.dim());
+                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId, c);
+                if ( map.is_free_index(ii) ) // DoF value is in the solVector
+                    res.at(c) += _Sv->at(ii) * _u.data().values[0](i,k);
+                else
+                    res.noalias() += _u.data().values[0](i,k) *
+                        _u.fixedPart().row( map.global_to_bindex(ii) ).transpose();//head(_u.dim());
             }
         }
         return res;
@@ -1031,23 +1023,20 @@ public:
         gsMatrix<T> & sol = *_Sv;
         //gsMatrix<T> & fixedPart = _u.fixedPart();
         const gsDofMapper & mapper = _u.mapper();
-        for (index_t i = 0; i != cf.rows(); ++i)
+        for (index_t c = 0; c!=_u.dim(); c++) // for all components
         {
-            const index_t ii = mapper.index(i, p);
-            if ( mapper.is_free_index(ii) ) // DoF value is in the solVector
+            for (index_t i = 0; i != cf.rows(); ++i)
             {
-                for (index_t k = 0; k != dim; ++k)
-                {
-                    const index_t cgs = k * mapper.freeSize();
-                    sol.at(cgs+ii) = cf(i, k);
-                }
+                const index_t ii = mapper.index(i, p, c);
+                if ( mapper.is_free_index(ii) ) // DoF value is in the solVector
+                    sol.at(ii) = cf(i, c);
+                /*
+                  else
+                  {
+                  fixedPart.row(m_mapper.global_to_bindex(ii)) = cf.row(i);
+                  }
+                */
             }
-            /*
-              else
-              {
-              fixedPart.row(m_mapper.global_to_bindex(ii)) = cf.row(i);
-              }
-            */
         }
     }
 };
@@ -1978,7 +1967,6 @@ public:
 
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
-        // numActive x dim
         tmp = _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
         return tmp;
     }
