@@ -35,27 +35,6 @@ void gsDofMapper::init( const gsMultiBasis<T> & bases, index_t nComp)
     m_numFreeDofs.assign(1+nComp,m_offset.back() + bases.back().size()); m_numFreeDofs.front()=0;
 
     m_dofs.resize(nComp, std::vector<index_t>(m_numFreeDofs.back(), 0));
-
-    gsInfo<<"Number of components: "<<nComp<<"\n";
-
-    gsInfo<<"m_numFreeDofs:\n";
-    for (index_t l=0; l!= m_numFreeDofs.size(); l++)
-    {
-        gsInfo<<m_numFreeDofs[l]<<",";
-    }
-    gsInfo<<"\n";
-
-    gsInfo<<"m_dofs:\n";
-    for (index_t k=0; k!= m_dofs.size(); k++)
-    {
-        gsInfo<<"k="<<k<<"\n";
-        for (index_t l=0; l!= m_dofs[k].size(); l++)
-        {
-            gsInfo<<m_dofs[k][l]<<",";
-        }
-        gsInfo<<"\n";
-    }
-    gsInfo<<"end\n";
 }
 
 template<class T>
@@ -107,25 +86,6 @@ void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
     m_numElimDofs.assign(numComp+1,0);
 
     m_dofs.resize(numComp, std::vector<index_t>(m_numFreeDofs.back(), 0));
-
-    gsInfo<<"m_numFreeDofs:\n";
-    for (index_t l=0; l!= m_numFreeDofs.size(); l++)
-    {
-        gsInfo<<m_numFreeDofs[l]<<",";
-    }
-    gsInfo<<"\n";
-
-    gsInfo<<"m_dofs:\n";
-    for (index_t k=0; k!= m_dofs.size(); k++)
-    {
-        gsInfo<<"k="<<k<<"\n";
-        for (index_t l=0; l!= m_dofs[k].size(); l++)
-        {
-            gsInfo<<m_dofs[k][l]<<",";
-        }
-        gsInfo<<"\n";
-    }
-    gsInfo<<"end\n";
 
 }
 

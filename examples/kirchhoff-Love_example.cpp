@@ -1754,7 +1754,7 @@ int main(int argc, char *argv[])
     // Initialize the system
     A.initSystem();
 
-    gsInfo<< A.numDofs() <<"\n"<<std::flush;
+    gsInfo<<"Number of degrees of freedom: "<< A.numDofs() <<"\n"<<std::flush;
 
     /*
         We provide the following functions:                         checked with previous assembler
