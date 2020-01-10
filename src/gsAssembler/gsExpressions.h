@@ -926,7 +926,6 @@ public:
 
         for (index_t c = 0; c!=_u.dim(); c++) // for all components
         {
-            // const index_t cgs = c*_u.data().actives.rows();
             for (index_t i = 0; i!=_u.data().actives.size(); ++i)
             {
                 const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId, c);
@@ -1062,26 +1061,25 @@ public:
 
         res.setZero(_u.dim(), _u.parDim());
         const gsDofMapper & map = _u.mapper();
-        for (index_t i = 0; i!=_u.data().actives.size(); ++i)
+        for (index_t c = 0; c!= _u.dim(); c++)
         {
-            const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId);
-            if ( map.is_free_index(ii) ) // DoF value is in the solVector
+            for (index_t i = 0; i!=_u.data().actives.size(); ++i)
             {
-                for (index_t r = 0; r != res.rows(); ++r)
+                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,c);
+                if ( map.is_free_index(ii) ) // DoF value is in the solVector
                 {
-                    const index_t cgs = r * map.freeSize();
-                    res.row(r) += _u.coefs().at(cgs+ii) *
-                        _u.data().values[1]
-                        //.block(i*_u.parDim(),k,_u.parDim(),1).transpose();
-                        .col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
+                        res.row(r) += _u.coefs().at(ii) *
+                            _u.data().values[1]
+                            //.block(i*_u.parDim(),k,_u.parDim(),1).transpose();
+                            .col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
                 }
-            }
-            else
-            {
-                res.noalias() +=
-                    _u.fixedPart().row( map.global_to_bindex(ii) ).asDiagonal() *
-                    _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim())
-                    .transpose().replicate(_u.dim(),1);
+                else
+                {
+                    res.noalias() +=
+                        _u.fixedPart().row( map.global_to_bindex(ii) ).asDiagonal() *
+                        _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim())
+                        .transpose().replicate(_u.dim(),1);
+                }
             }
         }
         return res;
