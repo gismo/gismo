@@ -360,9 +360,9 @@ void gsFitting<T>::setConstraints(const std::vector<index_t>& indices,
     index_t duplicates = 0;
     for(size_t r=0; r<indices.size(); r++)
     {
-	index_t fix = indices[r];
-	lhs(r-duplicates, fix) = 1;
-	rhs.row(r-duplicates) = coefs[r];
+        index_t fix = indices[r];
+        lhs(r-duplicates, fix) = 1;
+        rhs.row(r-duplicates) = coefs[r];
     }
 
     setConstraints(lhs, rhs);
