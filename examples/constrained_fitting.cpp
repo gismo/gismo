@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
 	{
 	    gsFileData<> fd_out;
 	    fd_out << *fitting.result() ;
-	    fd_out.dump("fitting_out" + std::to_string(i));
+	    fd_out.dump("fitting_out" + util::to_string(i));
 	}
 
         if ( fitting.maxPointError() < tolerance )
