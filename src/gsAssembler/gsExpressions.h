@@ -1068,7 +1068,7 @@ public:
                 const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,c);
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                 {
-                        res.row(r) += _u.coefs().at(ii) *
+                        res.row(i) += _u.coefs().at(ii) *
                             _u.data().values[1]
                             //.block(i*_u.parDim(),k,_u.parDim(),1).transpose();
                             .col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
@@ -2964,9 +2964,8 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    static constexpr bool rowSpan()
-    { return 0==E1::Space ? E2::rowSpan() : E1::rowSpan(); }
-    static bool colSpan() { return 0==E2::Space ? E1::colSpan() : E2::colSpan(); }
+    static constexpr bool rowSpan() { return 0==E1::Space ? E2::rowSpan() : E1::rowSpan(); }
+    static           bool colSpan() { return 0==E2::Space ? E1::colSpan() : E2::colSpan(); }
 
     index_t cardinality_impl() const
     { return 0==E1::Space ? _v.cardinality(): _u.cardinality(); }
@@ -3027,8 +3026,23 @@ public:
         const MatExprType tmpA = _u.eval(k);
         const MatExprType tmpB = _v.eval(k);
 
-        // gsDebugVar(tmpA);
-        // gsDebugVar(tmpB);
+        // gsDebugVar(_u.eval(k));
+        // gsDebugVar(_v.eval(k));
+        // gsDebugVar(E1::rowSpan());
+        // gsDebugVar(E1::colSpan());
+        // gsDebugVar(E2::rowSpan());
+        // gsDebugVar(E2::colSpan());
+        // gsDebugVar(rowSpan());
+        // gsDebugVar(colSpan());
+        // gsDebugVar(rowVar());
+        // gsDebugVar(colVar());
+        // gsDebugVar(_u.rowVar());
+        // gsDebugVar(_u.colVar());
+        // gsDebugVar(_v.rowVar());
+        // gsDebugVar(_v.colVar());
+        // gsInfo<<"expression: "; _u.print(gsInfo); gsInfo<<"\n";
+        // gsInfo<<"expression: "; _v.print(gsInfo); gsInfo<<"\n";
+
         //gsDebugVar(_v.cols());
         //gsDebugVar(ur);
 
@@ -3082,10 +3096,18 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    static constexpr bool rowSpan() { return E1::rowSpan(); }
+    // static constexpr bool rowSpan() { return E1::rowSpan(); }
 
-    static bool colSpan() { return E1::colSpan(); }
-/*
+    static constexpr bool rowSpan()
+    {
+        if ( E1::rowSpan() )
+            return E1::rowSpan();
+        else
+            return E2::rowSpan();
+    }
+
+    // static bool colSpan() { return E1::colSpan(); }
+
     static bool colSpan()
     {
         // if ( (!E1::colSpan()) && (E2::colSpan()) )
@@ -3094,7 +3116,7 @@ public:
         else
             return E1::colSpan();
     }
-*/
+
 
     index_t cardinality_impl() const { return  _u.cardinality(); }
 
@@ -3138,6 +3160,7 @@ public:
     EIGEN_STRONG_INLINE AutoReturn_t eval(const index_t k) const
     {
         return ( _c * _v.eval(k) );
+
     }
 
     index_t rows() const { return _v.rows(); }
