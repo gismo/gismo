@@ -1631,12 +1631,19 @@ int main(int argc, char *argv[])
     {
         for (index_t i=0; i!=3; ++i)
         {
-            bc.addCondition(boundary::north,condition_type::dirichlet, 0, i ); // unknown 0 - x
+            bc.addCondition(boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
             bc.addCondition(boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
-            bc.addCondition(boundary::south,condition_type::dirichlet, 0, i ); // unknown 2 - z
+            bc.addCondition(boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z
             bc.addCondition(boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z
         }
+        // tmp << 0,0,0;
         tmp << 0,0,-1;
+
+        // Point loads
+        gsVector<> point(2);
+        gsVector<> load (3);
+        // point<< 0.5, 0.5 ; load << 0.0, 1.0, 0.0 ;
+        // pLoads.addLoad(point, load, 0 );
     }
     else if (testCase == 2)
     {
