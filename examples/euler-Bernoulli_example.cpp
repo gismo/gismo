@@ -1577,10 +1577,10 @@ int main(int argc, char *argv[])
     // evaluateFunction(ev, E_m_der.tr(), pt); // evaluates an expression on a point
     // evaluateFunction(ev, N_der, pt); // evaluates an expression on a point
     // evaluateFunction(ev, N_der.tr(), pt); // evaluates an expression on a point
-    evaluateFunction(ev, N_der.tr() * E_m_der, pt); // evaluates an expression on a point
-    evaluateFunction(ev, N_der * E_m_der.tr(), pt); // evaluates an expression on a point
-    evaluateFunction(ev, E_m_der, pt); // evaluates an expression on a point
-    evaluateFunction(ev, E_m_der.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, N_der.tr() * E_m_der, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, N_der * E_m_der.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, E_m_der, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, E_m_der.tr(), pt); // evaluates an expression on a point
 
     evaluateFunction(ev, (jac(defG).tr() * jac(u)) * (jac(defG).tr() * jac(u)).tr(), pt); // evaluates an expression on a point
 
@@ -1606,7 +1606,7 @@ int main(int argc, char *argv[])
     // assemble system
     A.assemble(
         (
-            E_m_der * E_m_der.tr()
+            E_m_der.tr() * E_m_der
             // +
             // M_der * E_f_der.tr()
             ) //* meas(G)
