@@ -1068,7 +1068,7 @@ public:
                 const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,c);
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                 {
-                        res.row(i) += _u.coefs().at(ii) *
+                        res.row(c) += _u.coefs().at(ii) *
                             _u.data().values[1]
                             //.block(i*_u.parDim(),k,_u.parDim(),1).transpose();
                             .col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
