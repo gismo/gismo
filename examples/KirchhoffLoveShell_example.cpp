@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 {
     index_t numRefine = 5;
     index_t numDegree = 1;
-    bool plot = true;
+    bool plot = false;
 
     gsCmdLine cmd("Example for solving the Kirchhoff-Love problem.");
     cmd.addInt("r", "refine", "Number of refinement steps", numRefine);
@@ -41,10 +41,18 @@ int main(int argc, char *argv[])
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
-    gsMultiPatch<> geo( *gsNurbsCreator<>::BSplineFatQuarterAnnulus() );
-    gsMultiBasis<> basis(geo);
+    std::string fileSrc( "KirchhoffLoveGeo/square.xml" );
+    gsMultiPatch<> geo;
+    gsReadFile<>( fileSrc, geo);
+    gsInfo << "The domain is a "<< geo;
 
-    //p-refine to get equal polynomial degree s,t directions (for Annulus)
+    //! [computeTopology]
+    // Get all interfaces and boundaries:
+    geo.computeTopology();
+
+    gsMultiBasis<> basis( geo );
+
+    //p-refine to get equal polynomial degree s,t directions
     basis.degreeElevate(1,0);
 
     for (int i = 0; i < numDegree; ++i)
