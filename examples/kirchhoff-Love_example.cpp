@@ -713,7 +713,7 @@ public:
 };
 
 /*
-   Expression for the transformation matrix between local cartesian and covariant bases, based on a geometry map
+   Expression for the transformation matrix FROM local covariant TO local cartesian bases, based on a geometry map
  */
 template<class T> class cartcovinv_expr ;
 
@@ -838,7 +838,7 @@ public:
 
 
 /*
-   Expression for the transformation matrix between local cartesian and contravariant bases, based on a geometry map
+   Expression for the transformation matrix FROM local contravariant TO local cartesian bases, based on a geometry map
  */
 template<class T> class cartconinv_expr ;
 
@@ -959,7 +959,6 @@ public:
 
     void print(std::ostream &os) const { os << "cartconinv("; _G.print(os); os <<")"; }
 };
-
 
 template<class E> EIGEN_STRONG_INLINE
 var1_expr<E> var1(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return var1_expr<E>(u, G); }
@@ -1807,8 +1806,8 @@ int main(int argc, char *argv[])
     auto F        = ff;
 
     auto That       = cartcon(G);
+    auto That_def   = cartcon(defG);
     auto Ttilde     = cartcov(G).inv(); // IS INVERTED
-    // auto TtildeInv  = cartcov(G).inv(); // DOES NOT WORK!!
     auto D = Ttilde*reshape(mmD,3,3)*That; // NOTE: That = Ttilde.inv()
 
     auto C = reshape(mm,3,3);
@@ -1839,13 +1838,20 @@ int main(int argc, char *argv[])
     // 1.0,1.0;
     // pt = pt.transpose();
     gsDebugVar(pt);
-    // evaluateFunction(ev, That, pt); // evaluates an expression on a point
+    evaluateFunction(ev, cartcov(G).inv()*F, pt); // evaluates an expression on a point
     // evaluateFunction(ev, Ttilde, pt); // evaluates an expression on a point
     // evaluateFunction(ev, TtildeInv, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, C, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, D, pt); // evaluates an expression on a point
+    evaluateFunction(ev, C, pt); // evaluates an expression on a point
+    evaluateFunction(ev, D, pt); // evaluates an expression on a point
 
     // ! [Solve linear problem]
+
+    // assemble mass
+    A.assemble(u*u.tr());
+    gsDebugVar(A.matrix().toDense());
+    gsDebugVar(A.matrix().rows());
+    gsDebugVar(A.matrix().cols());
+
 
     // assemble system
     A.assemble(
@@ -1895,6 +1901,11 @@ int main(int argc, char *argv[])
     );
 
 
+    gsDebugVar(A.matrix().toDense());
+    gsDebugVar(A.matrix().rows());
+    gsDebugVar(A.matrix().cols());
+
+
 
     // solve system
     solver.compute( A.matrix() );
@@ -1919,10 +1930,10 @@ int main(int argc, char *argv[])
     // defG.registerData(G.source(), G.data())
     auto nsol2= sn(defG);
 
-    evaluateFunction(ev, sol1, pt); // evaluates an expression on a point
-    evaluateFunction(ev, sol2, pt); // evaluates an expression on a point
-    evaluateFunction(ev, nsol1, pt); // evaluates an expression on a point
-    evaluateFunction(ev, nsol2, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, sol1, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, sol2, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, nsol1, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, nsol2, pt); // evaluates an expression on a point
 
     // ! [Solve linear problem]
 
@@ -1971,6 +1982,10 @@ int main(int argc, char *argv[])
                 break;
         }
     }
+
+    evaluateFunction(ev, defG, pt); // evaluates an expression on a point
+    evaluateFunction(ev, cartcov(defG).inv()*F, pt); // evaluates an expression on a point
+
 
 
     // ! [Solve nonlinear problem]
