@@ -1,6 +1,6 @@
-/** @file biharmonic_example.cpp
+/** @file KirchhoffLoveShell_example.cpp
 
-    @brief A Biharmonic example.
+    @brief A Kirchhoff-Love example.
 
     This file is part of the G+Smo library.
 
@@ -12,7 +12,7 @@
 */
 
 # include <gismo.h>
-# include <gsAssembler/gsBiharmonicAssembler.h>
+# include <gsAssembler/gsKirchhoffLoveShellAssembler.h>
 
 using namespace gismo;
 
@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     index_t numDegree = 1;
     bool plot = true;
 
-    gsCmdLine cmd("Example for solving the biharmonic problem.");
+    gsCmdLine cmd("Example for solving the Kirchhoff-Love problem.");
     cmd.addInt("r", "refine", "Number of refinement steps", numRefine);
     cmd.addInt("p", "degree", "Polynomial degree", numDegree);
     cmd.addSwitch( "plot", "Plot result in ParaView format", plot );
@@ -35,10 +35,10 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
     gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-                              "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
+                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
     gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
-                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
-                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
+                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
+                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
     gsMultiPatch<> geo( *gsNurbsCreator<>::BSplineFatQuarterAnnulus() );
@@ -67,22 +67,22 @@ int main(int argc, char *argv[])
     bcInfo2.addCondition( boundary::south, condition_type::neumann, &laplace);
 
     //Initilize solver
-    gsBiharmonicAssembler<real_t> BiharmonicAssembler( geo,basis,bcInfo,bcInfo2,source,
+    gsKirchhoffLoveShellAssembler<real_t> KirchhoffLoveShellAssembler( geo,basis,bcInfo,bcInfo2,source,
                                                        dirStrategy, intStrategy);
 
     gsInfo<<"Assembling..." << "\n";
-    BiharmonicAssembler.assemble();
+    KirchhoffLoveShellAssembler.assemble();
 
-    gsInfo<<"Solving with direct solver, "<< BiharmonicAssembler.numDofs()<< " DoFs..."<< "\n";
+    gsInfo<<"Solving with direct solver, "<< KirchhoffLoveShellAssembler.numDofs()<< " DoFs..."<< "\n";
     gsSparseSolver<real_t>::LU solver;
-    solver.analyzePattern(BiharmonicAssembler.matrix() );
-    solver.factorize(BiharmonicAssembler.matrix());
-    gsMatrix<> solVector= solver.solve(BiharmonicAssembler.rhs());
+    solver.analyzePattern(KirchhoffLoveShellAssembler.matrix() );
+    solver.factorize(KirchhoffLoveShellAssembler.matrix());
+    gsMatrix<> solVector= solver.solve(KirchhoffLoveShellAssembler.rhs());
 
     //Reconstruct solution
     gsMultiPatch<> mpsol;
-    BiharmonicAssembler.constructSolution(solVector, mpsol);
-    gsField<> solField(BiharmonicAssembler.patches(), mpsol);
+    KirchhoffLoveShellAssembler.constructSolution(solVector, mpsol);
+    gsField<> solField(KirchhoffLoveShellAssembler.patches(), mpsol);
 
     //Contruct the H2 norm, part by part.
     real_t errorH2Semi = solField.distanceH2(solution, false);
@@ -100,9 +100,9 @@ int main(int argc, char *argv[])
     {
         // Write approximate and exact solution to paraview files
         gsInfo<<"Plotting in ParaView...\n";
-        gsWriteParaview<>(solField, "Biharmonic2d", 5000);
+        gsWriteParaview<>(solField, "KirchhoffLoveShell2d", 5000);
         const gsField<> exact( geo, solution, false );
-        gsWriteParaview<>( exact, "Biharmonic2d_exact", 5000);
+        gsWriteParaview<>( exact, "KirchhoffLoveShell2d_exact", 5000);
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
