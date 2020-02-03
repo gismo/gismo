@@ -14,6 +14,7 @@
 //! [Include namespace]
 #include <typeinfo>
 #include <gismo.h>
+#include <gsAssembler/gsAdaptiveRefUtils.h>
 
 #  define MatExprType  auto
 
@@ -75,8 +76,7 @@ public:
                               - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() )) / measure;
 
                 // ---------------  First variation of the normal
-                // res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
-                res.row(s+j).noalias() = (m_v - ( normal*m_v.transpose() ) * normal).transpose(); // outer-product version
+                res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
             }
         }
         return res;
@@ -179,19 +179,16 @@ public:
                                          -vecFun(c, vGrads.at(2*i+1) ).cross( cJac.col(0).template head<3>() ))
                                         / measure;
 
-                        // n_der.noalias() = (m_v - ( normal.dot(m_v) ) * normal);
-                        n_der.noalias() = (m_v - ( normal*m_v.transpose() ) * normal); // outer-product version
+                        n_der.noalias() = (m_v - ( normal.dot(m_v) ) * normal);
 
                         m_uv.noalias() = ( vecFun(d, uGrads.at(2*j  ) ).cross( vecFun(c, vGrads.at(2*i+1) ) )
                                           +vecFun(c, vGrads.at(2*i  ) ).cross( vecFun(d, uGrads.at(2*j+1) ) ))
                                           / measure; //check
 
                         m_u_der.noalias() = (m_uv - ( normal.dot(m_v) ) * m_u);
-                        // m_u_der.noalias() = (m_uv - ( normal*m_v.transpose() ) * m_u); // outer-product version TODO
 
                         // ---------------  Second variation of the normal
                         tmp = m_u_der - (m_u.dot(n_der) + normal.dot(m_u_der) ) * normal - (normal.dot(m_u) ) * n_der;
-                        // tmp = m_u_der - (m_u.dot(n_der) + normal.dot(m_u_der) ) * normal - (normal.dot(m_u) ) * n_der;
 
                         // Evaluate the product
                         tmp = cDer2 * tmp; // E_f_der2, last component
@@ -332,6 +329,7 @@ private:
 
         for (index_t i = 0; i!=_u.dim(); i++)
             res.block(i*numAct, 0, numAct, cols() ) = tmp * vEv.at(i);
+
         return res;
     }
 
@@ -713,7 +711,7 @@ public:
 };
 
 /*
-   Expression for the transformation matrix FROM local covariant TO local cartesian bases, based on a geometry map
+   Expression for the transformation matrix between local cartesian and covariant bases, based on a geometry map
  */
 template<class T> class cartcovinv_expr ;
 
@@ -838,7 +836,7 @@ public:
 
 
 /*
-   Expression for the transformation matrix FROM local contravariant TO local cartesian bases, based on a geometry map
+   Expression for the transformation matrix between local cartesian and contravariant bases, based on a geometry map
  */
 template<class T> class cartconinv_expr ;
 
@@ -959,6 +957,7 @@ public:
 
     void print(std::ostream &os) const { os << "cartconinv("; _G.print(os); os <<")"; }
 };
+
 
 template<class E> EIGEN_STRONG_INLINE
 var1_expr<E> var1(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return var1_expr<E>(u, G); }
@@ -1544,23 +1543,39 @@ template <typename T> using force_t = var_t<T>;
 
 int main(int argc, char *argv[])
 {
+    // Number of adaptive refinement loops
+    index_t RefineLoopMax;
+    // Flag for refinemet criterion
+    // (see doxygen documentation of the free function
+    // gsMarkElementsForRef explanation)
+    index_t refCriterion;
+    // Parameter for computing adaptive refinement threshold
+    // (see doxygen documentation of the free function
+    // gsMarkElementsForRef explanation)
+    real_t refParameter;  // ...specified below with the examples
+
+
     //! [Parse command line]
     bool plot = false;
     index_t numRefine  = 1;
     index_t numElevate = 1;
-    index_t testCase = 1;
     bool nonlinear = false;
-    std::string fn("pde/poisson2d_bvp.xml");
+    std::string fn;
 
     real_t E_modulus = 1.0;
     real_t PoissonRatio = 0.0;
     real_t thickness = 1.0;
 
+    refCriterion = GARU;
+    refParameter = 0.85;
+    RefineLoopMax = 2;
+
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
-    cmd.addInt( "t", "testCase", "Test case to run: 1 = unit square; 2 = Scordelis Lo Roof",  testCase );
+    cmd.addInt("R", "refine", "Maximum number of adaptive refinement steps to perform",
+        RefineLoopMax);
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("nl", "Solve nonlinear problem", nonlinear);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
@@ -1569,44 +1584,35 @@ int main(int argc, char *argv[])
     //! [Parse command line]
 
     //! [Read input file]
-    gsMultiPatch<> mp;
+    gsMultiPatch<> mpBspline;
     gsMultiPatch<> mp_def;
-    if (testCase==1)
-    {
-        // Unit square
-        mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
-        mp.addAutoBoundaries();
-        mp.embed(3);
-        E_modulus = 1.0;
-        thickness = 1.0;
-
-    }
-    else if (testCase == 2  || testCase == 3)
-    {
-        thickness = 0.25;
-        E_modulus = 4.32E8;
-        fn = "../extensions/unsupported/filedata/scordelis_lo_roof.xml";
-        gsReadFile<>(fn, mp);
-    }
-    else if (testCase==9)
-    {
-        gsFileData<> fd(fn);
-        gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
-        // Annulus
-        fd.getId(0, mp); // id=0: Multipatch domain
-        mp.embed(3);
-        E_modulus = 1.0;
-        thickness = 1.0;
-    }
-    //! [Read input file]
+    // Unit square
+    mpBspline.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
+    mpBspline.addAutoBoundaries();
+    mpBspline.embed(3);
+    E_modulus = 1.0;
+    thickness = 1.0;
 
     // p-refine
     if (numElevate!=0)
-        mp.degreeElevate(numElevate);
+        mpBspline.degreeElevate(numElevate);
 
     // h-refine
     for (int r =0; r < numRefine; ++r)
-        mp.uniformRefine();
+        mpBspline.uniformRefine();
+
+
+    // Cast all patches of the mp object to THB splines
+    gsMultiPatch<> mp;
+    // gsTensorBSpline<2,real_t> *geo;
+    gsTHBSpline<2,real_t> thb;
+    for (index_t k=0; k!=mpBspline.nPatches(); ++k)
+    {
+        gsTensorBSpline<2,real_t> *geo = dynamic_cast< gsTensorBSpline<2,real_t> * > (&mpBspline.patch(k));
+        thb = gsTHBSpline<2,real_t>(*geo);
+        mp.addPatch(thb);
+    }
+
 
     mp_def = mp;
 
@@ -1626,77 +1632,15 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> displ("1",3);
 
     gsConstantFunction<> neuData(neu,3);
-    if (testCase == 1)
+
+    for (index_t i=0; i!=3; ++i)
     {
-        for (index_t i=0; i!=3; ++i)
-        {
-            bc.addCondition(boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
-            bc.addCondition(boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
-            bc.addCondition(boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z
-            bc.addCondition(boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z
-        }
-        // tmp << 0,0,0;
-        tmp << 0,0,-1;
-
-        // Point loads
-        gsVector<> point(2);
-        gsVector<> load (3);
-        // point<< 0.5, 0.5 ; load << 0.0, 1.0, 0.0 ;
-        // pLoads.addLoad(point, load, 0 );
+        bc.addCondition(boundary::north,condition_type::dirichlet, 0, i ); // unknown 0 - x
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
+        bc.addCondition(boundary::south,condition_type::dirichlet, 0, i ); // unknown 2 - z
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z
     }
-    else if (testCase == 2)
-    {
-        // Diaphragm conditions
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
-
-        // ORIGINAL
-        // bc.addCornerValue(boundary::southwest, 0.0, 0, 0); // (corner,value, patch, unknown)
-
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
-
-        // NOT ORIGINAL
-        // bc.addCondition(boundary::west, condition_type::dirichlet, &displ, 0 ); // unknown 1 - x
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
-
-        // Surface forces
-        tmp << 0, 0, -90;
-    }
-    else if (testCase == 3)
-    {
-        neu << 0, 0, -90;
-        neuData.setValue(neu,3);
-        // Diaphragm conditions
-        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
-        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
-        bc.addCondition(boundary::west, condition_type::neumann, &neuData );
-
-        // ORIGINAL
-        // bc.addCornerValue(boundary::southwest, 0.0, 0, 0); // (corner,value, patch, unknown)
-
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
-
-        // NOT ORIGINAL
-        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
-
-        // Surface forces
-        tmp << 0, 0, 0;
-    }
-    else if (testCase == 9)
-    {
-        for (index_t i=0; i!=3; ++i)
-        {
-            bc.add(0,boundary::north,std::string("dirichlet weak"), 0, i);
-            bc.add(0,boundary::east, std::string("dirichlet weak"), 0, i);
-            bc.add(0,boundary::south,std::string("dirichlet weak"), 0, i);
-            bc.add(0,boundary::west, std::string("dirichlet weak"), 0, i);
-        }
-        tmp << 0,0,-1;
-    }
+    tmp << 0,0,-1;
     //! [Refinement]
 
     //! [Problem setup]
@@ -1760,7 +1704,7 @@ int main(int argc, char *argv[])
     // Initialize the system
     A.initSystem();
 
-    gsInfo<<"Number of degrees of freedom: "<< A.numDofs() <<"\n"<<std::flush;
+    gsInfo<< A.numDofs() <<"\n"<<std::flush;
 
     /*
         We provide the following functions:                         checked with previous assembler
@@ -1806,8 +1750,8 @@ int main(int argc, char *argv[])
     auto F        = ff;
 
     auto That       = cartcon(G);
-    auto That_def   = cartcon(defG);
     auto Ttilde     = cartcov(G).inv(); // IS INVERTED
+    // auto TtildeInv  = cartcov(G).inv(); // DOES NOT WORK!!
     auto D = Ttilde*reshape(mmD,3,3)*That; // NOTE: That = Ttilde.inv()
 
     auto C = reshape(mm,3,3);
@@ -1815,202 +1759,136 @@ int main(int argc, char *argv[])
     auto S_m2 = (tt.val() * E_m * C ) * Ttilde;
     auto S_f2 = (pow(tt.val(),3)/12.0 * E_f * C ) * Ttilde;
 
-    // NOTE: var1(u,G) in E_F_der2 should be var1(u,defG)
-
-    // gsInfo<<"E_m_test: "<<typeid(E_mtest).name()<<"\n";
-    // gsInfo<<"E_m: "<<typeid(E_m).name()<<"\n";
-    // gsInfo<<"E_m_der: "<<typeid(E_m_der).name()<<"\n";
-    // gsInfo<<"E_m_der2: "<<typeid(E_m_der2).name()<<"\n";
-    // gsInfo<<"E_f: "<<typeid(E_f).name()<<"\n";
-    // gsInfo<<"E_f_der: "<<typeid(E_f_der).name()<<"\n";
-    // gsInfo<<"E_f_der2: "<<typeid(E_f_der2).name()<<"\n";
-
-
-    gsVector<> pt(2); pt.setConstant(0.1);
-    gsVector<> pt2(3); pt2.setConstant(2);
-    // gsMatrix<> pt(7,2);
-    // pt<<0,0,
-    // 0,0.5,
-    // 0,1.0,
-    // 0.5,0,
-    // 1.0,0,
-    // 0.5,0.5,
-    // 1.0,1.0;
-    // pt = pt.transpose();
-    gsDebugVar(pt);
-    evaluateFunction(ev, cartcov(G).inv()*F, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, Ttilde, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, TtildeInv, pt); // evaluates an expression on a point
-    evaluateFunction(ev, C, pt); // evaluates an expression on a point
-    evaluateFunction(ev, D, pt); // evaluates an expression on a point
-
     // ! [Solve linear problem]
 
-    // assemble mass
-    A.assemble(u*u.tr());
-    gsDebugVar(A.matrix().toDense());
-    gsDebugVar(A.matrix().rows());
-    gsDebugVar(A.matrix().cols());
-
-
-    // assemble system
-    A.assemble(
-        (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
-        // (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
-        ,
-        u * cartcon(G) * cartcon(G) * F  * meas(G)
-        );
-
-    // evaluateFunction(ev, N_der * cartcon(G) * (E_m_der * cartcon(G)).tr(), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr()).tr(), pt); // evaluates an expression on a point
-
-    // gsDebugVar((jac(defG).tr() * jac(u) * jac(defG) * jac(u).tr()).isMatrix());
-    // gsDebugVar((jac(defG).tr() * jac(u) * jac(defG) * jac(u).tr()).colSpan());
-    // gsDebugVar((jac(defG).tr() * jac(u) * jac(defG) * jac(u).tr()).rowSpan());
-    // gsDebugVar((jac(defG).tr() * jac(u)).colSpan());
-    // gsDebugVar((jac(defG).tr() * jac(u)).rowSpan());
-    // gsDebugVar(((jac(defG).tr() * jac(u)).tr()).colSpan());
-    // gsDebugVar(((jac(defG).tr() * jac(u)).tr()).rowSpan());
-
-    // For Neumann (same for Dirichlet/Nitsche) conditions
-    variable g_N = A.getBdrFunction();
-    A.assembleRhsBc(u * g_N, bc.container("Neumann") );
-
-    // for weak dirichlet (DOES THIS HANDLE COMPONENTS?)
-    real_t alpha_d = 1e3;
-    A.assembleLhsRhsBc
-    (
-        alpha_d * u * u.tr()
-        ,
-        alpha_d * u * (defG - G - g_N).tr()
-        ,
-        bc.container("dirichlet weak")
-    );
-
-    // for weak clamped
-    real_t alpha_r = 1e3;
-    A.assembleLhsRhsBc
-    (
-        // alpha_r * ( sn(defG).tr()*sn(G) - 1.0 ) * ( flatdot2??? )
-        // +
-        alpha_r * ( var1(u,defG) * sn(G).tr() ).symmetrize()
-        ,
-        alpha_r * ( sn(defG)*sn(G).tr() - sn(G)*sn(G).tr() ) * ( var1(u,defG) * sn(G).tr() )
-        ,
-        bc.container("clamped weak")
-    );
-
-
-    gsDebugVar(A.matrix().toDense());
-    gsDebugVar(A.matrix().rows());
-    gsDebugVar(A.matrix().cols());
-
-
-
-    // solve system
-    solver.compute( A.matrix() );
-    gsMatrix<> solVector = solver.solve(A.rhs());
-
-    // update deformed patch
-    gsMatrix<> cc;
-
-    u_sol.setSolutionVector(solVector);
-    for ( size_t k =0; k!=mp_def.nPatches(); ++k) // Deform the geometry
+    gsMatrix<> solVector;
+    // So, ready to start the adaptive refinement loop:
+    for( int RefineLoop = 1; RefineLoop <= RefineLoopMax ; RefineLoop++ )
     {
-        // // extract deformed geometry
-        u_sol.extract(cc, k);
-        mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
-    }
-    /*Something with Dirichlet homogenization*/
+        gsInfo << "\n ====== Loop " << RefineLoop << " of " << RefineLoopMax << " ======" << "\n" << "\n";
 
-    auto sol1 = G + u_sol;
-    auto sol2 = defG;
+        gsInfo <<"Basis: "<< mp.basis(0) <<"\n";
 
-    auto nsol1= sn(G);
-    // defG.registerData(G.source(), G.data())
-    auto nsol2= sn(defG);
+        dbasis = gsMultiBasis<>(mp);
+        // Assemble matrix and rhs
+        gsInfo << "Assembling... " << std::flush;
+        A.initSystem(true);
+        geometryMap G = A.getMap(mp);
+        A.assemble(
+                // (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
+                (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
+                ,
+                u * F  * meas(G)
+            );
+        gsInfo << "done." << "\n";
 
-    // evaluateFunction(ev, sol1, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, sol2, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, nsol1, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, nsol2, pt); // evaluates an expression on a point
+        // Solve system
+        gsInfo << "Solving ("<<A.numDofs()<<" dofs)... "<< std::flush;
+        solver.compute(A.matrix());
+        solVector = solver.solve(A.rhs());
+        gsInfo << "done." << "\n";
 
-    // ! [Solve linear problem]
+        // // Construct the solution for plotting the mesh later
+        // pa.constructSolution(solVector, mpsol);
+        // gsField<> sol(pa.patches(), mpsol);
 
-    // ! [Solve nonlinear problem]
-    real_t residual = A.rhs().norm();
-    if (nonlinear)
-    {
-        index_t itMax = 10;
-        real_t tol = 1e-8;
-        for (index_t it = 0; it != itMax; ++it)
+        // The vector with element-wise local error estimates.
+        u_sol.setSolutionVector(solVector);
+        ev.maxElWise( u_sol.norm() );
+        const std::vector<real_t> & elErrEst = ev.elementwise();
+
+        // Get the vector with element-wise local (known in this case) errors...
+        //gsExprEvaluator<>::variable gg = ev.getVariable(g, Gm);
+        //ev.integralElWise( (f1 - gg).sqNorm() * meas(Gm) );
+        //const std::vector<real_t> & elErrEst = ev.elementwise();
+
+        // Mark elements for refinement, based on the computed local errors and
+        // refCriterion and refParameter.
+        std::vector<bool> elMarked( elErrEst.size() );
+        gsMarkElementsForRef( elErrEst, refCriterion, refParameter, elMarked);
+
+        gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true)<<"\n";
+
+        // Refine the elements of the mesh, based on elMarked.
+        if (RefineLoop != RefineLoopMax)
         {
-            A.initSystem();
-            // assemble system
-            A.assemble(
-                ( N_der * E_m_der.tr() + E_m_der2 + M_der * E_f_der.tr() - E_f_der2 ) * meas(G)
-                , u * F * meas(G) - ( ( N * E_m_der.tr() - M * E_f_der.tr() ) * meas(G) ).tr()
-                );
-
-            // For Neumann (same for Dirichlet/Nitche) conditions
-            variable g_N = A.getBdrFunction();
-            A.assembleRhsBc(u * g_N, bc.neumannSides() );
-
-            // A.assemble(tt.val() * tt.val() * tt.val() / 3.0 * E_f_der2);
-            // solve system
-            solver.compute( A.matrix() );
-            gsMatrix<> updateVector = solver.solve(A.rhs()); // this is the UPDATE
-            solVector += updateVector;
-            residual = A.rhs().norm();
-
-            gsInfo<<"Iteration: "<< it
-                   <<", residue: "<< residual
-                   <<", update norm: "<<updateVector.norm()
-                   <<"\n";
-
-            // update deformed patch
-            u_sol.setSolutionVector(updateVector);
-            for ( size_t k =0; k!=mp_def.nPatches(); ++k) // Deform the geometry
-            {
-                // // extract deformed geometry
-                u_sol.extract(cc, k);
-                mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
-            }
-
-
-            if (residual < tol)
-                break;
+            gsRefineMarkedElements( mp, elMarked);
+            gsWriteParaview<>( mp, "mp", 1000, true);
         }
+
+
+        // if ( (RefineLoop == RefineLoopMax) && plot)
+        // {
+        //     // Write approximate solution to paraview files
+        //     gsInfo<<"Plotting in Paraview...\n";
+        //     gsWriteParaview<>(sol, "p2d_adaRef_sol", 5001, true);
+        //     // Run paraview and plot the last mesh
+        //     gsFileManager::open("p2d_adaRef_sol.pvd");
+        // }
+
     }
 
-    evaluateFunction(ev, defG, pt); // evaluates an expression on a point
-    evaluateFunction(ev, cartcov(defG).inv()*F, pt); // evaluates an expression on a point
+    // ! [Solve linear problem]
+
+    // // ! [Solve nonlinear problem]
+    // real_t residual = A.rhs().norm();
+    // if (nonlinear)
+    // {
+    //     index_t itMax = 10;
+    //     real_t tol = 1e-8;
+    //     for (index_t it = 0; it != itMax; ++it)
+    //     {
+    //         A.initSystem();
+    //         // assemble system
+    //         A.assemble(
+    //             ( N_der * E_m_der.tr() + E_m_der2 + M_der * E_f_der.tr() - E_f_der2 ) * meas(G)
+    //             , u * F * meas(G) - ( ( N * E_m_der.tr() - M * E_f_der.tr() ) * meas(G) ).tr()
+    //             );
+
+    //         // For Neumann (same for Dirichlet/Nitche) conditions
+    //         variable g_N = A.getBdrFunction();
+    //         A.assembleRhsBc(u * g_N, bc.neumannSides() );
+
+    //         // A.assemble(tt.val() * tt.val() * tt.val() / 3.0 * E_f_der2);
+    //         // solve system
+    //         solver.compute( A.matrix() );
+    //         gsMatrix<> updateVector = solver.solve(A.rhs()); // this is the UPDATE
+    //         solVector += updateVector;
+    //         residual = A.rhs().norm();
+
+    //         gsInfo<<"Iteration: "<< it
+    //                <<", residue: "<< residual
+    //                <<", update norm: "<<updateVector.norm()
+    //                <<"\n";
+
+    //         // update deformed patch
+    //         u_sol.setSolutionVector(updateVector);
+    //         for ( size_t k =0; k!=mp_def.nPatches(); ++k) // Deform the geometry
+    //         {
+    //             // // extract deformed geometry
+    //             u_sol.extract(cc, k);
+    //             mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
+    //         }
 
 
+    //         if (residual < tol)
+    //             break;
+    //     }
+    // }
 
-    // ! [Solve nonlinear problem]
-
-    // Penalize the matrix? (we need values for the DoFs to be enforced..
-    // function/call:  penalize_matrix(DoF_indices, DoF_values)
-    // otherwise: should we tag the DoFs inside "u" ?
-
-    // gsInfo<<"RHS rows = "<<A.rhs().rows()<<"\n";
-    // gsInfo<<"RHS cols = "<<A.rhs().cols()<<"\n";
-    // gsInfo<<"MAT rows = "<<A.matrix().rows()<<"\n";
-    // gsInfo<<"MAT cols = "<<A.matrix().cols()<<"\n";
-
-    // gsInfo<< A.rhs().transpose() <<"\n";
-    // gsInfo<< A.matrix().toDense()<<"\n";
 
 
     //! [Export visualization in ParaView]
     if (plot)
     {
+        gsMatrix<> cc;
         u_sol.setSolutionVector(solVector);
         mp_def = mp;
+
+        gsWriteParaview<>( mp_def, "mp_def", 1000, true);
         for ( size_t k =0; k!=mp.nPatches(); ++k) // Deform the geometry
         {
-            // // extract deformed geometry
+            // extract deformed geometry
             u_sol.extract(cc, k);
             mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
         }
@@ -2023,9 +1901,10 @@ int main(int argc, char *argv[])
         gsInfo<<"Plotting in Paraview...\n";
         gsWriteParaview<>( solField, "solution", 1000, true);
 
-        ev.options().setSwitch("plot.elements", true);
-        ev.writeParaview( S_f2, G, "stress");
-        evaluateFunction(ev, S_f2[0], pt); // evaluates an expression on a point
+        // ev.options().setSwitch("plot.elements", true);
+        // ev.writeParaview( S_f2, G, "stress");
+        // evaluateFunction(ev, S_f2[0], pt); // evaluates an expression on a point
+
 
         // gsFileManager::open("solution.pvd");
     }

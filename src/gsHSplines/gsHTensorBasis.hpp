@@ -3,7 +3,7 @@
     @brief Provides implementation of HTensorBasis common operations.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -11,7 +11,7 @@
     Author(s): G. Kiss, A. Mantzaflaris, J. Speh
 */
 
-#pragma once 
+#pragma once
 
 #include <gsUtils/gsMesh/gsMesh.h>
 
@@ -94,7 +94,7 @@ void gsHTensorBasis<d,T>::numActive(const gsMatrix<T> & u, gsVector<unsigned>& r
             {
                 CMatrix::const_iterator it =
                     m_xmatrix[i].find_it_or_fail( m_bases[i]->index(cur) );
-                
+
                 if( it != m_xmatrix[i].end() )// if index is found
                     result[p]++;
             }
@@ -185,6 +185,7 @@ index_t gsHTensorBasis<d,T>::size() const
 {
     return m_xmatrix_offset.back();
 }
+
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes)
 {
@@ -240,7 +241,7 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
     //this->m_tree.getBoxes(p1,p2,level);
     std::vector<unsigned> boxes;
     unsigned lvl;
-    
+
     for ( typename hdomain_type::literator it = m_tree.beginLeafIterator(); it.good(); it.next() )
     {
         //        gsDebug <<" level : "<< it.level() <<"\n";
@@ -268,7 +269,7 @@ template<short_t d, class T>
 void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
 {
     GISMO_ASSERT(boxes.rows() == d, "refine() needs d rows of boxes.");
-    GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied refine() with them.");
+    GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provide refine() with them.");
 
 #ifndef NDEBUG
     gsMatrix<T> para = support();
@@ -283,7 +284,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
         }
     }
 #endif
-    
+
     if( refExt == 0 )
     {
         // If there is no refinement-extension, just use the
@@ -295,53 +296,8 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
     }
     else
     {
-        // If there is a refinement-extension, we will have to use
-        // refineElements( std::vector )
-        //
-        // Each box will be represented by 2*d+1 entries specifying
-        // <level to be refined to>,<lower corner>,<upper corner>
-        const int offset = 2*d+1;
-
-        // Initialize vector of size
-        // "entries per box" times "number of boxes":
-        std::vector<unsigned> refVector( offset * boxes.cols()/2 );
-        gsMatrix<T> ctr(d,1);
-
-        // Loop over all boxes:
-        for(index_t i = 0; i < boxes.cols()/2; i++)
-        {
-            ctr = ( boxes.col( 2*i ) + boxes.col( 2*i+1) )/2;
-
-            // Compute the level we want to refine to.
-            // Note that, if the box extends over several elements,
-            // the level at the centerpoint will be taken for reference
-            const int refLevel = getLevelAtPoint( ctr ) + 1;
-
-            // Make sure there are enough levels
-            needLevel( refLevel );
-
-            for(index_t j = 0; j < boxes.rows();j++)
-            {
-                // Convert the parameter coordinates to (unique) knot indices
-                const gsKnotVector<T> & kv = m_bases[refLevel]->knots(j);
-                int k1 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
-                                           boxes(j,2*i  ) ) - 1).uIndex();
-                int k2 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
-                                           boxes(j,2*i+1) ) - 1).uIndex();
-
-                // If applicable, add the refinement extension.
-                // Note that extending by one cell on level L means
-                // extending by two cells in level L+1
-                ( k1 < 2*refExt ? k1=0 : k1-=2*refExt );
-                const index_t maxKtIndex = kv.size();
-                ( k2 + 2*refExt >= maxKtIndex ? k2=maxKtIndex-1 : k2+=2*refExt);
-
-                // Store the data...
-                refVector[i*offset]       = refLevel;
-                refVector[i*offset+1+j]   = k1;
-                refVector[i*offset+1+j+d] = k2;
-            }
-        }
+        // Make an element vector
+        std::vector<unsigned> refVector = this->asElements(boxes, refExt);//std::vector<unsigned> refVector = this->asElements(boxes, refExt);
 
         // ...and refine
         this->refineElements( refVector );
@@ -370,7 +326,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
         }
     }
 #endif
-    
+
     gsVector<unsigned,d> k1, k2;
     for(index_t i = 0; i < boxes.cols()/2; i++)
     {
@@ -408,6 +364,72 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
     // Update the basis
     update_structure();
 }
+
+template<short_t d, class T>
+std::vector<unsigned> gsHTensorBasis<d,T>::asElements(gsMatrix<T> const & boxes, int refExt) const
+{
+    // If there is a refinement-extension, we will have to use
+    // refineElements( std::vector )
+    //
+    // Each box will be represented by 2*d+1 entries specifying
+    // <level to be refined to>,<lower corner>,<upper corner>
+    const int offset = 2*d+1;
+
+    // Initialize vector of size
+    // "entries per box" times "number of boxes":
+    std::vector<unsigned> refVector( offset * boxes.cols()/2 );
+    gsMatrix<T> ctr(d,1);
+
+    // Loop over all boxes:
+    for(index_t i = 0; i < boxes.cols()/2; i++)
+    {
+        ctr = ( boxes.col( 2*i ) + boxes.col( 2*i+1) )/2;
+
+        // Compute the level we want to refine to.
+        // Note that, if the box extends over several elements,
+        // the level at the centerpoint will be taken for reference
+        const int refLevel = getLevelAtPoint( ctr ) + 1;
+
+        // Make sure there are enough levels
+        needLevel( refLevel );
+
+        for(index_t j = 0; j < boxes.rows();j++)
+        {
+            // Convert the parameter coordinates to (unique) knot indices
+            const gsKnotVector<T> & kv = m_bases[refLevel]->knots(j);
+            int k1 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
+                                       boxes(j,2*i  ) ) - 1).uIndex();
+            int k2 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
+                                       boxes(j,2*i+1) ) - 1).uIndex();
+
+            // Trivial boxes trigger some refinement
+            if ( k1 == k2)
+            {
+                if (0!=k1) {--k1;}
+                ++k2;
+            }
+
+            // If applicable, add the refinement extension.
+            // Note that extending by one cell on level L means
+            // extending by two cells in level L+1
+            ( k1 < 2*refExt ? k1=0 : k1-=2*refExt );
+            const index_t maxKtIndex = kv.size();
+            ( k2 + 2*refExt >= maxKtIndex ? k2=maxKtIndex-1 : k2+=2*refExt);
+
+            // Store the data...
+            refVector[i*offset]       = refLevel;
+            refVector[i*offset+1+j]   = k1;
+            refVector[i*offset+1+j+d] = k2;
+        }
+    }
+    // gsDebug<<"begin\n";
+    // for (std::vector<unsigned>::const_iterator i = refVector.begin(); i != refVector.end(); ++i)
+    //     std::cout << *i << ' ';
+    // gsDebug<<"end\n";
+
+    return refVector;
+}
+
 
 
 /*
@@ -560,7 +582,7 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     gsVector<unsigned,d> low, upp;
 
     CMatrix & cmat = m_xmatrix[level];
-    
+
     // Clear previous entries
     cmat.clear();
 
@@ -636,7 +658,7 @@ void gsHTensorBasis<d,T>::setActive()
     gsMatrix<unsigned,d,2> elSupp;
 
     // try: iteration per level
-    for ( typename hdomain_type::literator it = m_tree.beginLeafIterator(); 
+    for ( typename hdomain_type::literator it = m_tree.beginLeafIterator();
           it.good(); it.next() )
     {
         const int lvl = it.level();
@@ -645,10 +667,10 @@ void gsHTensorBasis<d,T>::setActive()
         // Get candidate functions
         functionOverlap(it.lowerCorner(), it.upperCorner(), lvl, curr, actUpp);
 
-        do 
+        do
         {
             const unsigned gi = m_bases[lvl]->index( curr );
-            
+
             // Get element support
             m_bases[lvl]->elementSupport_into(gi, elSupp);
 
@@ -686,7 +708,7 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level,
     gsVector<typename gsKnotVector<T>::smart_iterator,d> starts, ends, curr;
     gsVector<unsigned,d> ind;
     ind[0] = 0; // for d==1: warning: may be used uninitialized in this function (snap-ci)
-    
+
     gsVector<unsigned,d> low, upp;
     for(int j =0; j < level+1; j++)
     {
@@ -706,9 +728,9 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level,
         {
             for(unsigned i = 0; i != d; ++i)
             {
-                low[i]  = curr[i].uIndex(); // lower left corner of the support of the function 
+                low[i]  = curr[i].uIndex(); // lower left corner of the support of the function
                 upp[i]  = (curr[i]+m_deg[i]+1).uIndex(); // upper right corner of the support
-                ind[i]  = curr[i].index(); // index of the function in the matrix 
+                ind[i]  = curr[i].index(); // index of the function in the matrix
             }
             if(j < level)
             {
@@ -931,10 +953,10 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
     for(index_t p = 0; p < u.cols(); p++) //for all input points
     {
         currPoint = u.col(p);
-        
+
         for(unsigned i = 0; i != d; ++i)
             low[i] = m_bases[maxLevel]->knots(i).uFind( currPoint(i,0) ).uIndex();
-        
+
         // Identify the level of the point
         const int lvl = m_tree.levelOf(low, maxLevel);
 
@@ -942,12 +964,12 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
         {
             /*
               m_bases[i]->active_into(currPoint, activesLvl);
-              
+
               std::set_intersection(m_xmatrix[i].begin(), m_xmatrix[i].end(),
               activesLvl.data(), activesLvl.data() + activesLvl.size(),
               std::back_inserter( temp_output[p] ) );
               +++ Renumbering to H-basis indexing
-            // */                                 
+            // */
 
             // /*
             m_bases[i]->active_cwise(currPoint, low, upp);
@@ -1005,18 +1027,18 @@ gsMatrix<unsigned>  gsHTensorBasis<d,T>::allBoundary( ) const
 template<short_t d, class T>
 gsMatrix<unsigned>  gsHTensorBasis<d,T>::
 boundaryOffset(boxSide const & s,unsigned offset) const
-{ 
+{
     //get information on the side
     int k   = s.direction();
     int par = s.parameter();
-    
+
     std::vector<unsigned> temp;
     gsVector<unsigned,d>  ind;
     // i goes through all levels of the hierarchical basis
     for(unsigned i = 0; i <= this->maxLevel(); i++)
     {
         GISMO_ASSERT(static_cast<int>(offset)<this->m_bases[i]->size(k),
-                     "Offset cannot be bigger than the amount of basis" 
+                     "Offset cannot be bigger than the amount of basis"
                      "functions orthogonal to Boxside s!");
 
         unsigned r = ( par ? this->m_bases[i]->size(k) - 1 -offset : offset);
@@ -1103,7 +1125,7 @@ std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::d
     // We want indices/params to be of the same size as polylines. We achieve this here and in the for cycles.
     if( indicesFlag )
         indices.resize( polylines.size() );
-    
+
     else
         params.resize(polylines.size());
 
@@ -1112,7 +1134,7 @@ std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::d
     // although we don't need them if indicesFlag == true.
     std::vector<T> x_dir(m_bases[maxLevel]->knots(0).unique());
     std::vector<T> y_dir(m_bases[maxLevel]->knots(1).unique());
-    
+
     for(unsigned int i0 = 0; i0 < polylines.size(); i0++)
     {
         if( indicesFlag )
@@ -1254,7 +1276,7 @@ void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<unsigned> 
     tensorBasis T_0_copy = this->tensorLevel(0);
     std::vector< gsSparseMatrix<T,RowMajor> > transfer( m_bases.size()-1 );
     std::vector<std::vector<T> > knots(d);
-    
+
     for(size_t i = 1; i < m_bases.size(); ++i)
     {
         //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
@@ -1286,7 +1308,7 @@ void gsHTensorBasis<d,T>::increaseMultiplicity(index_t lvl, int dir, T knotValue
 {
     GISMO_ASSERT( static_cast<size_t>(lvl) < m_xmatrix.size(),
                   "Requested level does not exist.\n");
-        
+
     if (m_bases[lvl]->knots(dir).has(knotValue))
     {
         for(unsigned int i =lvl;i < m_bases.size();i++)
@@ -1424,7 +1446,7 @@ public:
         gsWarn<<"gsXmlUtils: gsHTensorBasis: No known basis \""<<s<<"\". Error.\n";
         return NULL;
     }
-    
+
     static gsXmlNode * put (const gsHTensorBasis<d,T> & obj,
                             gsXmlTree & data )
     {
@@ -1434,12 +1456,12 @@ public:
         if ( const gsHBSplineBasis<d,T>  * g =
              dynamic_cast<const gsHBSplineBasis<d,T> *>( ptr ) )
             return gsXml< gsHBSplineBasis<d,T> >::put(*g,data);
-        
+
         // Truncated hier. B-splines
         if ( const gsTHBSplineBasis<d,T>  * g =
              dynamic_cast<const gsTHBSplineBasis<d,T> *>( ptr ) )
             return gsXml< gsTHBSplineBasis<d,T> >::put(*g,data);
-        
+
         gsWarn<<"gsXmlUtils put: getBasis: No known basis \""<<obj<<"\". Error.\n";
         return NULL;
     }

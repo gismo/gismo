@@ -20,94 +20,6 @@
 namespace gismo
 {
 
-/*
-  Internal function which accumulates the local element matrices to
-  the global sparse matrix and right-hand side
- */
-template<class T, bool left, bool right>
-void gsAccumulateLocalToGlobal(
-    gsSparseMatrix<T> & matrix_out,
-    gsMatrix<T> & rhs_out,
-    const gsMatrix<T> & localMat,
-    const gsMatrix<T> & localRhs,
-    const expr::gsFeSpace<T> & v, //rowvar
-    const expr::gsFeSpace<T> & u, //colvar
-    const index_t patchInd)
-{
-    GISMO_ASSERT(!left  || v.isValid(), "The row space is not valid");
-    GISMO_ASSERT(!right || u.isValid(), "The column space is not valid");
-
-    const index_t cd            = u.dim();
-    const index_t rd            = v.dim();
-    const gsDofMapper  & colMap = u.mapper();
-    const gsDofMapper  & rowMap = v.mapper();
-    gsMatrix<unsigned> & colInd0 = const_cast<gsMatrix<unsigned>&>(u.data().actives);
-    gsMatrix<unsigned> & rowInd0 = const_cast<gsMatrix<unsigned>&>(v.data().actives);
-    const gsMatrix<T>  & fixedDofs = u.fixedPart();
-
-    gsMatrix<unsigned> rowInd, colInd;
-    //if (&colMap==&rowMap) && (&rowInd==&colInd)
-    if (left)
-        colMap.localToGlobal(colInd0, patchInd, colInd);
-    rowMap.localToGlobal(rowInd0, patchInd, rowInd);
-
-    //gsDebugVar( localMat.dim() );
-    // colMap.print();
-    // rowMap.print();
-
-    //GISMO_STATIC_ASSERT(left || right, "Nothing to do.");
-    GISMO_ASSERT( !left || colMap.boundarySize()==fixedDofs.rows(),
-                  "Invalid values for fixed part");
-
-    for (index_t r = 0; r != rd; ++r)
-    {
-        const index_t rls = r * rowInd.rows();     //local stride
-        const index_t rgs = r * rowMap.freeSize(); //global stride
-
-        for (index_t i = 0; i != rowInd.rows(); ++i) // **
-        {
-            const int ii = rgs + rowInd.at(i); // N_i
-
-            if ( rowMap.is_free_index(rowInd.at(i)) )
-            {
-                if (right)
-                {
-                    rhs_out.row(ii) += localRhs.row(rls+i);
-                }
-
-                if (left)
-                    for (index_t c = 0; c != cd; ++c)
-                    {
-                        const index_t cls = c * colInd.rows();     //local stride
-                        const index_t cgs = c * colMap.freeSize(); //global stride
-
-                        for (index_t j = 0; j != colInd.rows(); ++j)
-                        {
-                            if ( 0 == localMat(rls+i,cls+j) ) continue;
-
-                            const int jj = cgs + colInd.at(j); // N_j
-
-                            if ( colMap.is_free_index(colInd.at(j)) )
-                            {
-                                // If matrix is symmetric, we could
-                                // store only lower triangular part
-                                //if ( (!symm) || jj <= ii )
-                                matrix_out.coeffRef(ii, jj) += localMat(rls+i,cls+j);
-                            }
-                            else // colMap.is_boundary_index(jj) )
-                            {
-                                // Symmetric treatment of eliminated BCs
-                                // GISMO_ASSERT(1==rhs_out.cols(), "-");
-                                rhs_out.at(ii) -= localMat(rls+i,cls+j) *
-                                    fixedDofs(colMap.global_to_bindex(colInd.at(j)), c);
-                            }
-                        }
-                    }
-            }
-        }
-    }
-}
-
 /**
    Assembler class for generating matrices and right-hand sides based
    on isogeometric expressions
@@ -155,6 +67,11 @@ public:
     */
 public:
 
+    void cleanUp()
+    {
+        m_exprdata->clean();
+    }
+
     /// Constructor
     /// \param _rBlocks Number of spaces for test functions
     /// \param _cBlocks Number of spaces for solution variables
@@ -175,7 +92,7 @@ public:
         GISMO_ASSERT( m_vcol.back()->mapper().isFinalized(),
                       "gsExprAssembler::numDofs() says: initSystem() has not been called.");
         return m_vcol.back()->mapper().firstIndex() +
-            m_vcol.back()->dim() * m_vcol.back()->mapper().freeSize();
+	  m_vcol.back()->mapper().freeSize();
     }
 
     /// Returns the number of test functions (after initialization)
@@ -184,7 +101,7 @@ public:
         GISMO_ASSERT( m_vrow.back()->mapper().isFinalized(),
                       "initSystem() has not been called.");
         return m_vrow.back()->mapper().firstIndex() +
-            m_vrow.back()->dim() * m_vrow.back()->mapper().freeSize();
+	  m_vrow.back()->mapper().freeSize();
     }
 
     /// Returns the number of blocks in the matrix, corresponding to
@@ -205,6 +122,13 @@ public:
 
     /// @brief Writes the resulting matrix in \a out. The internal matrix is moved.
     void matrix_into(gsSparseMatrix<T> & out) { out = give(m_matrix); }
+
+    EIGEN_STRONG_INLINE gsSparseMatrix<T> giveMatrix()
+    {
+         gsSparseMatrix<T> rvo;
+         rvo.swap(m_matrix);
+          return rvo;
+    }
 
     /// @brief Returns the right-hand side vector(s)
     const gsMatrix<T> & rhs() const { return m_rhs; }
@@ -519,7 +443,6 @@ private:
                                 space rvar, space cvar,
                                 const ifContainer & iFaces);
 
-// /*
 #if __cplusplus >= 201103L || _MSC_VER >= 1600 // c++11
     template <class op, class E1>
     void _apply(op _op, const expr::_expr<E1> & firstArg) {_op(firstArg);}
@@ -586,54 +509,46 @@ private:
                                           const expr::gsFeSpace<T> & u,
                                           const index_t patchInd)
         {
+
+            // gsInfo<<"expression: "; u.print(gsInfo); gsInfo<<"\n";
+            // gsInfo<<"expression: "; v.print(gsInfo); gsInfo<<"\n";
+
+            // gsDebugVar(u.isValid());
+            // gsDebugVar(v.isValid());
+
             GISMO_ASSERT(v.isValid(), "The row space is not valid");
             GISMO_ASSERT(!isMatrix || u.isValid(), "The column space is not valid");
             GISMO_ASSERT(isMatrix || (0!=m_rhs.size()), "The right-hand side vector is not initialized");
 
             const index_t cd            = u.dim();
             const index_t rd            = v.dim();
-            const gsDofMapper  & colMap = u.mapper();
-            const gsDofMapper  & rowMap = v.mapper();
-            gsMatrix<unsigned> & colInd0 = const_cast<gsMatrix<unsigned>&>(u.data().actives);
-            gsMatrix<unsigned> & rowInd0 = const_cast<gsMatrix<unsigned>&>(v.data().actives);
-            const gsMatrix<T>  & fixedDofs = u.fixedPart();
-
-            gsMatrix<unsigned> rowInd, colInd;
-            rowMap.localToGlobal(rowInd0, patchInd, rowInd);
-            if (isMatrix)
-            {
-                //if (&rowInd0!=&colInd0)
-                colMap.localToGlobal(colInd0, patchInd, colInd);
-
-                GISMO_ASSERT( colMap.boundarySize()==fixedDofs.rows(),
-                              "Invalid values for fixed part");
-            }
+            const gsDofMapper  & colMap = static_cast<const expr::gsFeSpace<T>&>(u).mapper();
+            const gsDofMapper  & rowMap = static_cast<const expr::gsFeSpace<T>&>(v).mapper();
+            const gsMatrix<unsigned> & colInd0 = u.data().actives;
+            const gsMatrix<unsigned> & rowInd0 = v.data().actives;
+            const gsMatrix<T>  & fixedDofs = static_cast<const expr::gsFeSpace<T>&>(u).fixedPart();
 
             for (index_t r = 0; r != rd; ++r)
             {
-                const index_t rls = r * rowInd.rows();     //local stride
-                const index_t rgs = r * rowMap.freeSize(); //global stride
-
-                for (index_t i = 0; i != rowInd.rows(); ++i)
+                const index_t rls = r * rowInd0.rows();     //local stride
+                for (index_t i = 0; i != rowInd0.rows(); ++i)
                 {
-                    const index_t ii = rgs + rowInd.at(i); // N_i
-
-                    if ( rowMap.is_free_index(rowInd.at(i)) )
+		            const index_t ii = rowMap.index(rowInd0.at(i),patchInd,r); // N_i
+                    if ( rowMap.is_free_index(ii) )
                     {
                         for (index_t c = 0; c != cd; ++c)
                         {
                             if (isMatrix)
                             {
-                                const index_t cls = c * colInd.rows();     //local stride
-                                const index_t cgs = c * colMap.freeSize(); //global stride
+                                const index_t cls = c * colInd0.rows();     //local stride
 
-                                for (index_t j = 0; j != colInd.rows(); ++j)
+                                for (index_t j = 0; j != colInd0.rows(); ++j)
                                 {
                                     if ( 0 == localMat(rls+i,cls+j) ) continue;
 
-                                    const index_t jj = cgs + colInd.at(j); // N_j
-
-                                    if ( colMap.is_free_index(colInd.at(j)) )
+                                    const index_t jj = colMap.index(colInd0.at(j),patchInd,c); // N_j
+                                    // gsInfo<<"Component = "<<c<<"\tActive = "<<colInd0.at(j)<<"\tIndex jj = "<<jj<<"\tFree: "<<colMap.is_free(colInd0.at(j),patchInd,c)<<"Boundary: "<<colMap.is_boundary(colInd0.at(j),patchInd,c)<<"\n";
+                                    if ( colMap.is_free_index(jj) )
                                     {
                                         // If matrix is symmetric, we could
                                         // store only lower triangular part
@@ -645,7 +560,7 @@ private:
                                         // Symmetric treatment of eliminated BCs
                                         // GISMO_ASSERT(1==m_rhs.cols(), "-");
                                         m_rhs.at(ii) -= localMat(rls+i,cls+j) *
-                                            fixedDofs(colMap.global_to_bindex(colInd.at(j)), c);
+                                            fixedDofs(colMap.global_to_bindex(jj), c);
                                     }
                                 }
                             }
@@ -660,7 +575,6 @@ private:
         }//push
 
     };
-//*/
 
 }; // gsExprAssembler
 
@@ -799,12 +713,12 @@ template<class T> void gsExprAssembler<T>::resetSpaces()
 {
     for (size_t i = 0; i!=m_vcol.size(); ++i)
     {
-        GISMO_ASSERT(NULL!=m_vcol[i], "Not set.");
+        GISMO_ASSERT(NULL!=m_vcol[i], "The assembler spaces where not set.");
         m_vcol[i]->reset();
 
         if ( m_vcol[i] != m_vrow[i] )
         {
-            GISMO_ASSERT(NULL!=m_vrow[i], "Not set.");
+            GISMO_ASSERT(NULL!=m_vrow[i], "The assembler spaces where not set.");
             m_vrow[i]->reset();
         }
     }
@@ -959,10 +873,9 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
     if (left ) exprLhs.setFlag();
     if (right) exprRhs.setFlag();
 
-    // Local matrix and local rhs
-    gsMatrix<T> localMat, localRhs;
     gsVector<T> quWeights;// quadrature weights
     gsQuadRule<T>  QuRule;
+    _eval ee(m_matrix, m_rhs, quWeights);
 
     for (typename bcContainer::const_iterator it = BCs.begin(); it!= BCs.end(); ++it)
     {
@@ -988,17 +901,8 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(it->patch());
 
-            if (left)  localMat = quWeights[0] * exprLhs.eval(0);
-            if (right) localRhs = quWeights[0] * exprRhs.eval(0);
-            for (index_t k = 1; k != quWeights.rows(); ++k)
-            {
-                if (left ) localMat += quWeights[k] * exprLhs.eval(k);
-                if (right) localRhs += quWeights[k] * exprRhs.eval(k);
-            }
-
-            // Add contributions to the system matrix and right-hand side
-            gsAccumulateLocalToGlobal<T,left,right>(m_matrix, m_rhs,
-                                  localMat, localRhs, rvar, cvar, it->patch() );
+	    ee(exprLhs);
+	    ee(exprRhs);
         }
     }
 
@@ -1025,12 +929,11 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
     //m_exprdata->parse(exprLhs,exprRhs);
     //m_exprdata->parse(exprRhs);
 
-    // Local matrix
-    gsMatrix<T> localMat, localRhs;
     gsVector<T> quWeights;// quadrature weights
     gsQuadRule<T>  QuRule;
+    _eval ee(m_matrix, m_rhs, quWeights);
 
-    gsMatrix<T> tmp;
+    //gsMatrix<T> tmp;
 
     for (gsBoxTopology::const_iiterator it = iFaces.begin();
          it != iFaces.end(); ++it )
@@ -1066,17 +969,8 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
 //            m_exprdata->points().swap(tmp);
 //            m_exprdata->precompute(patch2);
 
-            if (left ) localMat = quWeights[0] * exprLhs.eval(0);
-            if (right) localRhs = quWeights[0] * exprRhs.eval(0);
-            for (index_t k = 1; k != quWeights.rows(); ++k)
-            {
-                if (left ) localMat += quWeights[k] * exprLhs.eval(k);
-                if (right) localRhs += quWeights[k] * exprRhs.eval(k);
-            }
-
-            // Add contributions to the system matrix and right-hand side
-            gsAccumulateLocalToGlobal<T,left,right>(m_matrix, m_rhs,
-                                          localMat, localRhs, rvar, cvar, patch1);
+	    ee(exprLhs);
+	    ee(exprRhs);
         }
     }
 
@@ -1174,8 +1068,7 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u
         // Save corresponding boundary dofs
         for (index_t l=0; l!= boundary.size(); ++l)
         {
-            const int ii = mapper.bindex( boundary.at(l) , it->patch() );
-
+	    const int ii = mapper.bindex( boundary.at(l) , it->patch());
             fixedDofs.row(ii) = dVals.row(l);
         }
     }

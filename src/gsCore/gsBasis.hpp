@@ -540,6 +540,10 @@ gsBasis<T>& gsBasis<T>::component(unsigned i)
 { return const_cast<gsBasis<T>&>(const_cast<const gsBasis<T>*>(this)->component(i));}
 
 template<class T>
+std::vector<unsigned> gsBasis<T>::asElements(gsMatrix<T> const &, int) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsBasis<T>::refine(gsMatrix<T> const &, int)
 { GISMO_NO_IMPLEMENTATION }
 

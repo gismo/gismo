@@ -51,6 +51,7 @@ int main(int argc, char *argv[])
 
     gsBoundaryConditions<> bc;
     fd.getId(2, bc); // id=2: boundary conditions
+    // bc.setMap(mp);
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
     gsOptionList Aopt;
@@ -95,6 +96,7 @@ int main(int argc, char *argv[])
 
     // Set the discretization space
     space u = A.getSpace(dbasis);
+
     u.setInterfaceCont(0);
     u.addBc( bc.get("Dirichlet") );
 
@@ -123,12 +125,19 @@ int main(int argc, char *argv[])
     {
         dbasis.uniformRefine();
 
+        //Treat labels: Dirichlet, CornerValues, Collapsed, Clamped
+        // u.setup(bc.get("Dirichlet"), dirichlet::interpolation, 0); // def=-1
+        //u.setupAsInteriorOnly(0); // def=-1
+
         // Initialize the system
         A.initSystem();
 
         gsInfo<< A.numDofs() <<std::flush;
 
         // Compute the system matrix and right-hand side
+
+        //A.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
+
         A.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
 
         // Enforce Neumann conditions to right-hand side

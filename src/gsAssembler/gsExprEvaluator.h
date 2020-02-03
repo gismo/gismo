@@ -557,7 +557,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
     m_exprdata->points() = pt;
     m_exprdata->precompute(patchInd);
 
-    expr.printDetail(gsInfo); //
+    // expr.printDetail(gsInfo); //
 
     m_value = expr.val().eval(0);
     return gsAsConstMatrix<T>(&m_value,1,1);
@@ -573,7 +573,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
     m_exprdata->points() = pt;
     m_exprdata->precompute(patchInd);
 
-    expr.printDetail(gsInfo); //after precompute
+    // expr.printDetail(gsInfo); //after precompute
 
     gsMatrix<T> tmp = expr.eval(0);
     // const index_t r = expr.rows();

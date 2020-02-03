@@ -33,15 +33,19 @@ private:
     typedef std::map<const gsFunctionSet<T>*,gsFuncData<T> > FunctionTable;
     typedef typename FunctionTable::iterator ftIterator;
     typedef typename FunctionTable::const_iterator const_ftIterator;
+    typedef std::deque<gsDofMapper>    DofMappers;
 
     // variable/space list
     std::deque<expr::gsFeVariable<T> > m_vlist;
     std::deque<expr::gsFeSpace<T> >    m_slist;
 
     // background functions
-    FunctionTable m_itable;
-    FunctionTable m_ptable;
+    FunctionTable m_itable; // for functions defined with a geometry map
+    FunctionTable m_ptable; // for functions defined without a geometry map
+    FunctionTable m_stable; // for spaces
     //FunctionTable i_map;
+
+    DofMappers m_mappers;
 
     // geometry map
     expr::gsGeometryMap<T> mapVar, mapVar2;
@@ -81,6 +85,7 @@ public:
     {
         m_ptable.clear();
         m_itable.clear();
+        m_stable.clear();
         points().clear();
         m_vlist .clear();
         m_slist .clear();
@@ -93,6 +98,10 @@ public:
         if ( mapVar.isValid() ) // list ?
         {
             gsInfo << "mapVar: "<< &mapData <<"\n";
+        }
+        if ( mapVar2.isValid() ) // list ?
+        {
+            gsInfo << "mapVar2: "<< &mapData2 <<"\n";
         }
 
         if ( mutVar.isValid() && 0!=mutData.flags)
@@ -111,6 +120,12 @@ public:
         {
             gsInfo << " * "<< &it->first <<" --> "<< &it->second <<"\n";
         }
+
+        gsInfo << "stable:\n";
+        for (const_ftIterator it = m_stable.begin(); it != m_stable.end(); ++it)
+        {
+            gsInfo << " * "<< &it->first <<" --> "<< &it->second <<"\n";
+        }
     }
 
     void cleanUp()
@@ -122,6 +137,27 @@ public:
             it->second.clear();
         for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
             it->second.clear();
+        for (ftIterator it = m_stable.begin(); it != m_stable.end(); ++it)
+            it->second.clear();
+    }
+
+    void clean(bool space=false)
+    {
+        m_ptable.clear();
+        m_itable.clear();
+
+        m_vlist.clear();
+
+        if (space)
+        {
+            m_stable.clear();
+            m_slist.clear();
+        }
+
+        // for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
+        //     it->second.clear();
+        // for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
+        //     it->second.clear();
     }
 
     void setMultiBasis(const gsMultiBasis<T> & mesh) { mesh_ptr = &mesh; }
@@ -194,11 +230,28 @@ public:
         return var;
     }
 
+    /*
+    nonConstVariable searchVar(const gsFunctionSet<T> & mp)
+    {
+    // Search in the variable list and get back the first object which source \a mp
+        GISMO_UNUSED(G);
+        GISMO_ASSERT(&G==&mapVar, "geometry map not known");
+        m_vlist.push_back( expr::gsFeVariable<T>() );
+        expr::gsFeVariable<T> & var = m_vlist.back();
+        gsFuncData<T> & fd = m_itable[&mp];
+        //fd.dim = mp.dimensions();
+        //gsDebugVar(&fd);
+        var.registerData(mp, fd, 1, mapData);
+        return var;
+    }
+    */
+
+
     nonConstSpace getSpace(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
         m_slist.push_back( expr::gsFeSpace<T>() );
         expr::gsFeSpace<T> & var = m_slist.back();
-        gsFuncData<T> & fd = m_ptable[&mp];
+        gsFuncData<T> & fd = m_stable[&mp];
         //fd.dim = mp.dimensions();
         var.registerData(mp, fd, dim);
         return var;
@@ -235,6 +288,11 @@ public:
         if ( testExpr.isMatrix() )
             GISMO_ENSURE(m_ptable.find(&testExpr.colVar().source())!=m_ptable.end(), "Check failed");
 
+        if ( testExpr.isVector() )
+            GISMO_ENSURE(m_stable.find(&testExpr.rowVar().source())!=m_stable.end(), "Check failed");
+        if ( testExpr.isMatrix() )
+            GISMO_ENSURE(m_stable.find(&testExpr.colVar().source())!=m_stable.end(), "Check failed");
+
         // todo: varlist ?
     }
 
@@ -247,6 +305,8 @@ public:
         for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
             it->second.flags = fflag | NEED_ACTIVE;
         for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
+            it->second.flags = fflag | NEED_ACTIVE;
+        for (ftIterator it = m_stable.begin(); it != m_stable.end(); ++it)
             it->second.flags = fflag | NEED_ACTIVE;
     }
 
@@ -293,25 +353,23 @@ public:
                 .compute( mutParametric ? mapData.points : mapData.values[0], mutData);
         }
 
+        // this->print();
+
+        // Parametric Variables
         for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
         {
-            //gsDebugVar("-------");
-            //gsDebugVar(&it->second);
-            //gsDebugVar(it->second.dim.first);
             it->first->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
-            //gsDebugVar(&it->second);
-            //gsDebugVar(it->second.dim.first);
-            //gsDebugVar("-------");
             it->second.patchId = patchIndex;
-
-            // gsDebugVar(it->second.actives.transpose());
-            // gsDebugVar(it->second.values.size());
-            // gsDebugIf(it->second.values.size(),it->second.values.back().rows()/it->second.deriv2Size());
-            // gsDebugIf(it->second.values.size(),it->second.values.back().cols());
+        }
+        // Spaces
+        for (ftIterator it = m_stable.begin(); it != m_stable.end(); ++it)
+        {
+            it->first->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
+            it->second.patchId = patchIndex;
         }
 
         GISMO_ASSERT( m_itable.empty() || 0!=mapData.values.size(), "Map values not computed");
-
+        // Physical Variables
         if ( 0!=mapData.values.size() && 0!= mapData.values[0].rows() ) // avoid left-over from previous expr.
         for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
         {

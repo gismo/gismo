@@ -153,7 +153,7 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   # Note: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53431
   # affects -Wno-ignored-attributes in Eigen
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -Wunused-variable")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -Wunused-variable -fmax-errors=5")
   if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}") #-ftrack-macro-expansion=0 -Wno-ignored-attributes
   endif()
