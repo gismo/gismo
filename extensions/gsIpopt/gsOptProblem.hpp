@@ -229,14 +229,7 @@ class gsIpOptTNLP : public Ipopt::TNLP
                                IpoptCalculatedQuantities* ip_cq)
         {
             m_op.m_curDesign = gsAsConstVector<T>(x,n);
-            m_op.m_lambda = gsAsConstVector<T>(lambda,n);
-
-            if (status == SolverReturn::SUCCESS || status == SolverReturn::STOP_AT_ACCEPTABLE_POINT){
-                m_op.m_status = true;
-            } else {
-                m_op.m_status = false;
-            }
-
+            m_op.m_lambda = gsAsConstVector<T>(lambda,m);
 
             //m_op.finalize();
         }

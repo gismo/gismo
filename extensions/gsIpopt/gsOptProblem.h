@@ -116,8 +116,6 @@ public:
 
     const gsMatrix<T> & lambda() const { return m_lambda; }
 
-    const bool status() const { return m_status; }
-
     T currentObjValue() const
     {
         gsAsConstVector<T> tmp(m_curDesign.data(), m_numDesignVars);
@@ -183,13 +181,8 @@ protected:
     /// Current design variables (and starting point )
     gsMatrix<T> m_curDesign;
 
-    /// Current Lagrange multiplier
+    /// Lagrange multipliers (set in the finalize_solution method)
     gsMatrix<T> m_lambda;
-
-    /// SolverReturn status. 
-	/// True in the case of SolverReturn::SUCCES or SolverReturn::STOP_AT_ACCEPTABLE_POINT
-    bool m_status = false;
-
 
 protected:
 

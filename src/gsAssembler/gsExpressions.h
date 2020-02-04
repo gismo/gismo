@@ -422,9 +422,16 @@ public:
     {
         GISMO_ASSERT(NULL!=m_fs, "FeVariable: Function member not registered");
         GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        // return m_fs->targetDim();
+        return m_fs->targetDim();
+        /*
+        gsDebugVar(m_fd->flags & NEED_VALUE);
+        gsDebugVar(m_fd->values[0].rows());
+        gsDebugVar(m_fd->flags & NEED_ACTIVE);
+        gsDebugVar(m_fd->actives.rows());
+        gsDebugVar(m_fd->flags & NEED_DERIV);
+        */
 
-	 	// HV: NOT NEDED SINCE CARDINALITY IMPLEMENTATION
+	/* HV: NOT NEDED SINCE CARDINALITY IMPLEMENTATION
         // note: precomputation is needed
         if (m_fd->flags & NEED_VALUE)
         {return m_d * m_fd->values[0].rows();}
@@ -433,7 +440,7 @@ public:
         if (m_fd->flags & NEED_DERIV)
         {return m_d * m_fd->values[0].rows();}
         GISMO_ERROR("Cannot deduce row size.");
-
+	*/
     }
 
     index_t cols() const { return m_d; }
@@ -1172,17 +1179,17 @@ public:
 
     index_t rows() const
     {
-        if (ColBlocks) // note: sq. blocks assumed
-            return _u.rows();
-        else
+        // if (ColBlocks) // note: sq. blocks assumed
+        //     return _u.rows();
+        // else
             return _u.cols();
     }
 
     index_t cols() const
     {
-        if (ColBlocks) // note: sq. blocks assumed
-            return _u.cols();
-        else
+        // if (ColBlocks) // note: sq. blocks assumed
+        //     return _u.cols();
+        // else
             return _u.rows();
     }
     void setFlag() const { _u.setFlag(); }
@@ -1190,13 +1197,13 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); }
 
-    const gsFeSpace<Scalar> & rowVar() const { return ColBlocks ? _u.rowVar() : _u.colVar(); }
-    const gsFeSpace<Scalar> & colVar() const { return ColBlocks ? _u.colVar() : _u.rowVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.colVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.rowVar(); }
 
     index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
-    static constexpr bool rowSpan() {return ColBlocks ? E::rowSpan() : E::colSpan();}
-    static bool colSpan() {return ColBlocks ? E::colSpan() : E::rowSpan();}
+    static constexpr bool rowSpan() {return E::colSpan();}
+    static bool colSpan() {return E::rowSpan();}
 
     void print(std::ostream &os) const { os<<"("; _u.print(os); os <<")'"; }
 private:
@@ -1851,8 +1858,6 @@ public:
     static constexpr bool rowSpan() {return E2::rowSpan();}
     static bool colSpan() {return E2::colSpan();}
 
-    index_t cardinality_impl() const { return  _v.cardinality(); }
-
     void print(std::ostream &os) const { os << "matrix_by_space("; _u.print(os); os<<")"; }
 };
 
@@ -1911,8 +1916,6 @@ public:
 
     static constexpr bool rowSpan() {return E2::rowSpan();}
     static bool colSpan() {return E2::colSpan();}
-
-    index_t cardinality_impl() const { return  _v.cardinality(); }
 
     void print(std::ostream &os) const { os << "matrix_by_space_tr("; _u.print(os); os<<")"; }
 };
@@ -2027,6 +2030,77 @@ public:
     static constexpr bool colSpan() {return false;}
 
     void print(std::ostream &os) const { os << "grad("; _u.print(os); os <<")"; }
+};
+
+/*
+   Expression for the derivative of the jacobian of a spline geometry map,
+   with respect to the coordinate c.
+
+   It returns a matrix with the gradient of u in row d.
+ */
+template<class E>
+class dJacdc_expr : public _expr<dJacdc_expr<E> >
+{
+    typename E::Nested_t _u;
+public:
+    enum{ Space = E::Space, ScalarValued = 0, ColBlocks = E::rowSpan()};
+
+    typedef typename E::Scalar Scalar;
+
+    mutable gsMatrix<Scalar> res;
+    index_t _c;
+
+    dJacdc_expr(const E & u, index_t c) : _u(u), _c(c)
+    { GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");}
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        index_t dd = _u.source().domainDim();
+        index_t n = _u.rows();
+        res.setZero(dd, dd*n);
+
+        gsMatrix<Scalar> grad = _u.data().values[1].reshapeCol(k, dd, n);
+        for(index_t i = 0; i < n; i++){
+            res.row(_c).segment(i*dd,dd) = grad.col(i);
+        }
+        return res;
+    }
+
+    index_t rows() const
+    {
+        //return _u.data().values[0].rows();
+        return _u.source().domainDim();
+    }
+    //index_t rows() const { return _u.data().actives.size(); }
+    //index_t rows() const { return _u.rows(); }
+
+    //index_t rows() const { return _u.source().targetDim() is wrong }
+    index_t cols() const { return _u.source().domainDim()*_u.rows(); }
+
+    void setFlag() const
+    {
+        _u.data().flags |= NEED_GRAD;
+        if (_u.composed() )
+            _u.mapData().flags |= NEED_VALUE;
+    }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+        evList.push_sorted_unique(&_u.source());
+        _u.data().flags |= NEED_GRAD;
+        if (_u.composed() )
+            _u.mapData().flags |= NEED_VALUE;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const
+    {return gsNullExpr<Scalar>::get();}
+
+    static constexpr bool rowSpan() {return E::rowSpan(); }
+    static constexpr bool colSpan() {return false;}
+
+    void print(std::ostream &os) const { os << "dJacdc("; _u.print(os); os <<")"; }
 };
 
 
@@ -2502,8 +2576,8 @@ public:
     index_t rows() const { return m_fev.dim(); }
     index_t cols() const
     {   //bug: Should return the column size of each BLOCK contained
-        return m_fev.dim() * m_fev.data().actives.rows() * m_fev.data().dim.first;
-        //return m_fev.data().dim.first;
+        // return m_fev.dim() * m_fev.data().actives.rows() * m_fev.data().dim.first;
+        return m_fev.data().dim.first;
     }
 
     index_t cardinality_impl() const
@@ -2546,7 +2620,7 @@ public:
     fjac_expr(const gsFeVariable<T> & _u)
     : m_fev(_u)
     {
-        // gsInfo<<"(!) fjac(u) \n";
+        gsInfo<<"(!) fjac(u) \n";
     }
 
     MatExprType eval(const index_t k) const
@@ -3018,7 +3092,7 @@ public:
             //gsInfo<<"cols = "<<res.cols()<<"; rows = "<<res.rows()<<"\n";
             for (index_t i = 0; i!=nb; ++i)
                 res.middleCols(i*vc,vc).noalias()
-                    = tmpA.middleCols(i*ur,ur) * tmpB;
+                    = tmpA.middleCols(i*uc,uc) * tmpB;
         }
         // both are ColBlocks: [A1 A2 A3] * [B1 B2 B3] = [A1*B1  A2*B2  A3*B3]
         //                                               [A2*B1 ..           ]
@@ -3046,7 +3120,8 @@ public:
         return _u.rows();
     }
     index_t cols() const {
-        // return _v.cols() * (_u.cols()/_u.rows());
+        // DEBUG changed by asgl, perhaps there was a bug here?
+        //return _v.cols() * (_u.cols()/_u.rows());
         return _u.cols();
     }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
@@ -3732,6 +3807,10 @@ solGrad_expr<T> grad(const gsFeSolution<T> & u) { return solGrad_expr<T>(u); }
 template<class E> EIGEN_STRONG_INLINE
 grad_expr<E> grad(const E & u) { return grad_expr<E>(u); }
 
+/// The derivative of the jacobian of a geometry map with respect to a coordinate.
+template<class E> EIGEN_STRONG_INLINE
+dJacdc_expr<E> dJacdc(const E & u, index_t c) { return dJacdc_expr<E>(u,c); }
+
 /// The curl of a finite element variable
 template<class T> EIGEN_STRONG_INLINE
 curl_expr<T> curl(const gsFeVariable<T> & u) { return curl_expr<T>(u); }
@@ -3948,11 +4027,6 @@ GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace() )
 
 template<class T> EIGEN_STRONG_INLINE trace_expr<hess_expr<gsGeometryMap<T> > >
 GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )
-
-template<class T> EIGEN_STRONG_INLINE
-mult_expr<tr_expr<jacG_expr<T> >,jacG_expr<T>, 0>
-GISMO_SHORTCUT_MAP_EXPRESSION(fform, jac(G).tr()*jac(G))
-
 
 #endif
 #undef GISMO_SHORTCUT_PHY_EXPRESSION
