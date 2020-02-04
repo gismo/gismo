@@ -118,8 +118,6 @@ configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
 
-include_directories(${PROJECT_BINARY_DIR})
-
 ## #################################################################
 ## Collect headers and sources
 ## #################################################################
@@ -135,9 +133,8 @@ unset(gismo_TMPL_HEADERS         CACHE)
 set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 
-set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
-           "${PROJECT_SOURCE_DIR}/external"
-      "${PROJECT_SOURCE_DIR}/extensions"
+set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/external"
+     "${PROJECT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/extensions"
      CACHE INTERNAL "${PROJECT_NAME} include directories" )
 
 #first time

@@ -1,8 +1,8 @@
 ######################################################################
 ## gsIntall.cmake ---
 ## This file is part of the G+Smo library.
-## 
-## Author: Angelos Mantzaflaris 
+##
+## Author: Angelos Mantzaflaris
 ## Author: Harald Weiner
 ## Copyright (C) 2012-2015 - RICAM-Linz.
 ######################################################################
@@ -57,8 +57,7 @@ export(PACKAGE gismo)
 # Create the gismoConfig.cmake and gismoConfigVersion.cmake files
 
 # ... for the build tree
-set(CONF_INCLUDE_DIRS "${GISMO_INCLUDE_DIRS}"
-                      "${PROJECT_BINARY_DIR}" )
+set(CONF_INCLUDE_DIRS "${GISMO_INCLUDE_DIRS}")
 set(CONF_LIB_DIRS     "${CMAKE_BINARY_DIR}/lib")
 set(CONF_MODULE_PATH  "${gismo_SOURCE_DIR}/cmake")
 set(CONF_USE_FILE     "${CMAKE_BINARY_DIR}/gismoUse.cmake")
@@ -95,7 +94,7 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/Eigen
 
 # For gsCmdLine.h
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap
-        DESTINATION include/${PROJECT_NAME} 
+        DESTINATION include/${PROJECT_NAME}
         FILES_MATCHING
         PATTERN "*.h"
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
@@ -106,7 +105,7 @@ install(FILES ${PROJECT_SOURCE_DIR}/external/eiquadprog.hpp
 
 # For gsXmlUtils.h
 install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
-              ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml_print.hpp  
+              ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml_print.hpp
         DESTINATION include/${PROJECT_NAME}/rapidxml/ )
 
 
@@ -133,7 +132,7 @@ install(FILES
         "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake"
         "${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake"
         DESTINATION "${CMAKE_INSTALL_DIR}" COMPONENT devel)
- 
+
 # Install the export set for use with the install-tree
 #install(EXPORT gismoTargets DESTINATION
 #  "${CMAKE_INSTALL_DIR}" COMPONENT devel)
@@ -149,7 +148,7 @@ set(DOC_SRC_DIR "${PROJECT_BINARY_DIR}/doc/html/")
 set(TMP_VERSION "${gismo_VERSION}")
 string(REGEX REPLACE "[a-zA-Z]+" "" TMP_VERSION ${TMP_VERSION})
 #message("TMP_VERSION='${TMP_VERSION}'")
-set(DOC_INSTALL_DIR share/doc/gismo-${TMP_VERSION} CACHE PATH 
+set(DOC_INSTALL_DIR share/doc/gismo-${TMP_VERSION} CACHE PATH
     "Installation directory for documentation")
 #message("DOC_INSTALL_DIR='${DOC_INSTALL_DIR}'")
 
@@ -157,7 +156,7 @@ install(DIRECTORY "${DOC_SRC_DIR}"
         COMPONENT doc
         DESTINATION "${DOC_INSTALL_DIR}/"
         USE_SOURCE_PERMISSIONS
-        OPTIONAL 
+        OPTIONAL
         FILES_MATCHING
         PATTERN "*.css"
         PATTERN "*.html"

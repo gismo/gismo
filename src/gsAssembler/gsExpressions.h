@@ -193,7 +193,7 @@ public:
     { return sqNorm_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the square root of the expression (component-wise)
-    mult_expr<E,E,0> sqr() const { return (*this)*(*this); }
+    mult_expr<E,E,0> (sqr)() const { return (*this)*(*this); }
 
     symm_expr<E> symm() const
     { return symm_expr<E>(static_cast<E const&>(*this)); }
