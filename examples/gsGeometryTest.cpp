@@ -20,8 +20,6 @@
 namespace gismo{
 namespace expr{
 
-    // Comments for var1:
-// - TODO: dimensionm indep. later on
 template<class T>
 class otangent_expr : public _expr<otangent_expr<T> >
 {
@@ -40,15 +38,8 @@ public:
 
         gsMatrix<T> Jacobian = _G.data().jacobian(k);
 
-        gsDebugVar(Jacobian);
-
         onormal = _G.data().outNormal(k);
         normal =  _G.data().normal(k);
-
-        gsDebugVar(Jacobian.transpose() * onormal);
-
-        // gsDebugVar(onormal);
-        // gsDebugVar(normal);
 
         return normal.cross(onormal);
 
