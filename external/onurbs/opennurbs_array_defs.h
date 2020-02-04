@@ -40,7 +40,6 @@
 #endif
 
 #if defined(__GNUC__) && (!defined( __INTEL_COMPILER)) // G+smo
- 	#pragma GCC diagnostic push 
  	#pragma GCC diagnostic ignored "-Wstrict-overflow" 
 #endif 
 

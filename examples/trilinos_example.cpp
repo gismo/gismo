@@ -39,7 +39,7 @@ void poissonDiscretization(gsSparseMatrix<> & mat, gsVector<> & rhs, index_t N);
  *
  *  To get an overview of the command line arguments run
  *
- *  ./gsTrilinos_test -s <SOLVER> -p <PRECONDITIONER> --verbose
+ *  ./trilinos_example -s <SOLVER> -p <PRECONDITIONER> --verbose
  *
  *  where <SOLVER> is one of "Amesos", "Aztec", and "Belos" and
  *  <PRECONDITIONER> is either "" or "ML". This will run the selected
@@ -51,20 +51,22 @@ void poissonDiscretization(gsSparseMatrix<> & mat, gsVector<> & rhs, index_t N);
  *  Many solvers can be further controlled by passing a specific typer
  *  type, again using the particular default option, e.g.
  *
- *  ./gsTrilinos_test -s "Belos:BiCGStab"
+ *  ./trilinos_example -s "Belos:BiCGStab"
  *
  *  which selects the BiCGStab solver from the Belos package.
  *
  *  More fine-grained control is possible by passing solver-specific
  *  parameters, e.g.
  *
- *  ./gsTrilinos_test -s "Belos:BiCGStab" -B "Convergence Tolerance:DOUBLE=1e-12"
+ *  ./trilinos_example -s "Belos:BiCGStab" -B "Convergence Tolerance:DOUBLE=1e-12"
  *
  *  This will set the convergence tolerance to 1e-12 of type
  *  double. The expression follows the CMake pattern
  *  NAME:TYPE=VALUE. Multiple parameters can be separated by ";", e.g.
  *
- *  ./gsTrilinos_test -s "Belos:BiCGStab" -B "Convergence Tolerance:DOUBLE=1e-12;Maximum Iterations:INT=100"
+ *  ./trilinos_example -s "Belos:BiCGStab" -B "Convergence Tolerance:DOUBLE=1e-12;Maximum Iterations:INT=100"
+ *
+ * To test MPI on several nodes try: mpirun -np 3 ./bin/trilinos_example
  */
 int main(int argc, char**argv)
 {
@@ -72,8 +74,8 @@ int main(int argc, char**argv)
     bool verbose = false;
     bool status = false;
     bool timing = false;
-    std::string solver = "";
-    std::string preconditioner = "";
+    std::string solver = "Aztec:Gmres";
+    std::string preconditioner = "ML:DD";
     std::string amesos_options = "";
     std::string aztec_options = "";
     std::string belos_options = "";

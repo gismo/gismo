@@ -462,8 +462,10 @@ public:
     /// @name Evaluation functions
     /// @{
 
-    /** \brief Returns the indices of active (non-zero) basis functions
-     * at points <em>u</em>, as a list of indices, in <em>result</em>.
+    /** \brief Returns the indices of active basis functions at points
+     * <em>u</em>, as a list of indices, in <em>result</em>. A
+     * function is said to be <em>active</em> in a point if this point
+     * lies in the closure of the function's support.
      *
      * \param[in] u  gsMatrix containing evaluation points. Each column represents one evaluation point.
      * \param[out]  result For every column \a i of \a u, a column containing the indices of the

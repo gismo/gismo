@@ -125,14 +125,6 @@ endif()
 #set(CTEST_BUILD_JOBS 8)
 #set(CTEST_TEST_JOBS 10)
 
-# The Generator for CMake
-# ("Unix Makefiles", "Ninja", "Xcode", "NMake Makefiles", "NMake Makefiles JOM",
-#  "MinGW Makefiles", "Visual Studio 12 2013", "Visual Studio 14 2015",
-#  "Visual Studio 14 2015 Win64", and so on)
-if (NOT DEFINED CTEST_CMAKE_GENERATOR)
-  set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
-endif()
-
 # Tip fot C/C++ compilers
 # e.g. "cc/g++", "icc/icpc", "clang/clang++", "mpicc/mpic++", cl.exe/cl.exe
 #set(CNAME cc)
@@ -246,6 +238,19 @@ if(EMPTY_BINARY_DIRECTORY)
   ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
 endif()
 
+# The Generator for CMake
+# ("Unix Makefiles", "Ninja", "Xcode", "NMake Makefiles", "NMake Makefiles JOM",
+#  "MinGW Makefiles", "Visual Studio 12 2013", "Visual Studio 14 2015",
+#  "Visual Studio 14 2015 Win64", and so on)
+if (NOT DEFINED CTEST_CMAKE_GENERATOR)
+  file(WRITE ${CTEST_BINARY_DIRECTORY}/cgtest/CMakeLists.txt "message(\"\${CMAKE_GENERATOR}\")\n")
+  execute_process(COMMAND ${CMAKE_COMMAND} -Wno-dev .
+    ERROR_VARIABLE CTEST_CMAKE_GENERATOR
+    OUTPUT_QUIET
+    WORKING_DIRECTORY ${CTEST_BINARY_DIRECTORY}/cgtest/
+    ERROR_STRIP_TRAILING_WHITESPACE)
+endif()
+
 # Cleanup previous tests, settings and test data
 file(REMOVE_RECURSE ${CTEST_BINARY_DIRECTORY}/bin)
 file(REMOVE ${CTEST_BINARY_DIRECTORY}/CMakeCache.txt)
@@ -304,11 +309,12 @@ if (NOT DEFINED UPDATE_TYPE)
   set(UPDATE_TYPE git)
 endif()
 
-if (NOT DEFINED GISMO_BRANCH)
+if (NOT DEFINED GISMO_BRANCH) #for initial checkout
   set(GISMO_BRANCH stable)
 endif()
 
-# Update modules with fetch HEAD commits for all initialized submodules
+# Update modules with fetch HEAD commits for all initialized
+# submodules
 if (NOT DEFINED UPDATE_MODULES)
   set(UPDATE_MODULES OFF)
 endif()
@@ -428,10 +434,11 @@ endif()
 
 # Name of this build
 if(NOT DEFINED CTEST_BUILD_NAME)
-  find_program(UNAME NAMES uname)
-  execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname OUTPUT_STRIP_TRAILING_WHITESPACE)
-  execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu" OUTPUT_STRIP_TRAILING_WHITESPACE)
-  set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CNAME}")
+#  find_program(UNAME NAMES uname)
+#  execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname OUTPUT_STRIP_TRAILING_WHITESPACE)
+#  execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu" OUTPUT_STRIP_TRAILING_WHITESPACE)
+  #  set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CNAME}")
+    set(CTEST_BUILD_NAME "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CNAME}")
 endif()
 
 if(NOT CTEST_BUILD_JOBS)
@@ -549,7 +556,10 @@ macro(run_ctests)
 
   else() # No subprojects
 
-    ctest_build(TARGET gsUnitTest APPEND) # for older versions of ninja
+
+    if("x${CTEST_CMAKE_GENERATOR}" STREQUAL "xNinja")
+      ctest_build(TARGET UnitTestPP APPEND) # for older versions of ninja
+    endif()
     ctest_submit(PARTS Build)
     ctest_build(APPEND)
     ctest_submit(PARTS Build)

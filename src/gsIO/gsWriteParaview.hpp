@@ -761,16 +761,18 @@ void gsWriteParaview(const gsGeometrySlice<T> & Geo,
 
 /// Export a multipatch Geometry without scalar information
 template<class T>
-void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo, std::string const & fn,
+void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
+                      std::string const & fn,
                       unsigned npts, bool mesh, bool ctrlNet)
 {
     const size_t n = Geo.size();
 
     gsParaviewCollection collection(fn);
+    std::string fnBase;
 
     for ( size_t i=0; i<n ; i++)
     {
-        std::string fnBase = fn + util::to_string(i);
+        fnBase = fn + "_" + util::to_string(i);
 
         if ( Geo.at(i)->domainDim() == 1 )
         {
