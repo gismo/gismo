@@ -62,6 +62,8 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiB
         m_side1 = bi.first();
         m_side2 = bi.second();
 
+        m_doReparameterization = checkIfMeshAgree();
+
         std::vector<boxCorner> corners;
         gsMatrix<T> inversCorners;
 
@@ -181,7 +183,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiB
     }
 
     constructReparam();
-    if(!m_isMatching)
+    if(m_doReparameterization || !m_isMatching)
         constructBreaks();
 }
 
@@ -479,7 +481,7 @@ void gsRemapInterface<T>::constructReparam()
     const int numGeometries = 2;
 
 
-    if(m_isMatching)
+    if(!m_doReparameterization && m_isMatching)
     {
         boundaryInterface iFace(m_side1, m_side2, domainDim());
 
@@ -689,7 +691,7 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
 
     index_t fixedDir = m_side1.direction();
 
-    if(m_isMatching)
+    if(!m_doReparameterization && m_isMatching)
     {
         m_fittedInterface->eval_into(u, result);
 
@@ -768,7 +770,7 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
 template<class T>
 memory::unique_ptr< gsDomainIterator<T> > gsRemapInterface<T>::makeDomainIterator() const
 {
-    if (m_isMatching) return m_b1.makeDomainIterator(m_side1);
+    if (!m_doReparameterization && m_isMatching) return m_b1.makeDomainIterator(m_side1);
 
     gsTensorDomainBoundaryIterator<T> * tdi = new gsTensorDomainBoundaryIterator<T> (m_b1, m_side1);
 
@@ -1361,6 +1363,43 @@ bool gsRemapInterface<T>::checkIfMatching()
         return true;
     else
         return false;
+}
+
+template<class T>
+bool gsRemapInterface<T>::checkIfMeshAgree()
+{
+    const gsTensorBSplineBasis<2,T>& basis1 = dynamic_cast<const gsTensorBSplineBasis<2,T>& >(m_b1);
+    const gsTensorBSplineBasis<2,T>& basis2 = dynamic_cast<const gsTensorBSplineBasis<2,T>& >(m_b2);
+
+    index_t comp1 = m_side1.direction() == 0 ? 1 : 0;
+    index_t comp2 = m_side2.direction() == 0 ? 1 : 0;
+
+    int numEl1 = basis1.component(comp1).numElements();
+    int numEl2 = basis2.component(comp2).numElements();
+
+    if(numEl1 != numEl2)
+    {
+        // If the spaces would be nested an affine transformation would be sufficient
+        return true;
+    }
+    else
+    {
+        if(numEl1 == numEl2)
+        {
+            std::vector<T> breaks1 = basis1.component(comp1).knots().unique();
+            std::vector<T> breaks2 = basis2.component(comp2).knots().unique();
+
+            //gsInfo << "interval"<<basis1.component(comp1).knots().minIntervalLength() << "\n";
+
+            for(size_t i = 0; i < breaks1.size(); ++i)
+            {
+                if((fabs(breaks1[i] - breaks2[i]) > 1e-10) || (fabs(breaks2[i] - breaks1[i]) > 1e-10))
+                    return true;
+            }
+            return false;
+
+        }
+    }
 }
 
 template <class T>

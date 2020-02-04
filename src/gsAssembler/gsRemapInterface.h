@@ -67,9 +67,9 @@ public:
     /// Returns a domain iterator
     domainIterUPtr makeDomainIterator() const;
 
-    /// @brief Returns true iff the discretization is matching.
+    /// @brief Returns true iff the patches are matching.
     ///
-    /// In this case, the mapping is only affine-linear.
+    /// In this case, the mapping is affine-linear if in addition the meshes agree.
     bool isMatching() const { return m_isMatching; }
 
     /// Returns the break points
@@ -79,6 +79,9 @@ private:
     // flag if the interfaces are matching
     // if true then an affine map is created -> faster since no inversions etc. must be performed
     bool m_isMatching;
+
+    //flag if a reparameterization should be computed, necessary e.g. for non-matching meshes
+    bool m_doReparameterization;
 
     // flag which says whether the orientation of the second side is fliped
     // this is important for reparameterization, especially for constructing the breakpoints
@@ -112,6 +115,9 @@ private:
 
     // Check if the incoming patches are matching or not
     bool checkIfMatching();
+
+    // Check if the incoming discretization bases have non-matching meshes
+    bool checkIfMeshAgree();
 
     // Check if the incoming evaluation points are out of bounds because of rounding errors
     gsMatrix<T> checkIfInBound(const gsMatrix<T> & u) const;
