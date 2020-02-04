@@ -509,13 +509,6 @@ private:
                                           const expr::gsFeSpace<T> & u,
                                           const index_t patchInd)
         {
-
-            // gsInfo<<"expression: "; u.print(gsInfo); gsInfo<<"\n";
-            // gsInfo<<"expression: "; v.print(gsInfo); gsInfo<<"\n";
-
-            // gsDebugVar(u.isValid());
-            // gsDebugVar(v.isValid());
-
             GISMO_ASSERT(v.isValid(), "The row space is not valid");
             GISMO_ASSERT(!isMatrix || u.isValid(), "The column space is not valid");
             GISMO_ASSERT(isMatrix || (0!=m_rhs.size()), "The right-hand side vector is not initialized");

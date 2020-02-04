@@ -1439,7 +1439,7 @@ int main(int argc, char *argv[])
             bc.addCondition(boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
             bc.addCondition(boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z
         }
-        tmp << 0,0,-1;
+        tmp << 0,1,0;
     }
 
     //! [Problem setup]
@@ -1535,7 +1535,7 @@ int main(int argc, char *argv[])
 
     // TO FIX
     // auto E_f_der = pow(Gcon(G).norm(),2)*( cn(G).tr()*deriv2(u) + deriv2(G).tr()*var1(u,G) ); //[checked]
-    auto E_f_der = pow(Gcon(G).norm(),2)*( cn(G).tr()*deriv2(u).tr() + deriv2(G).tr()*var1(u,G) ); //[checked]
+    auto E_f_der = pow(Gcon(G).norm(),2)*( cn(G).tr()*deriv2(u) + deriv2(G).tr()*var1(u,G) ); //[checked]
     auto S_f_der = Emod.val() * pow(Gcon(G).norm(),2) * E_f_der;
     auto M_der   = I0 * S_f_der;
 
@@ -1553,65 +1553,25 @@ int main(int argc, char *argv[])
     // auto S_m2 = (tt.val() * E_m * C ) * Ttilde;
     // auto S_f2 = (pow(tt.val(),3)/12.0 * E_f * C ) * Ttilde;
 
+
     gsVector<> pt(1); pt.setConstant(0.7);
-    // evaluateFunction(ev, G, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, jac(u), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, jac(u).tr(), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, cn(G), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, bn(G), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, var1(u,G), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, var1(u,G).tr(), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, deriv2(G), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, deriv2(G).tr(), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, deriv2(u), pt); // evaluates an expression on a point
-
-    // evaluateFunction(ev, deriv2(u).tr()*cn(G), pt);
-    // evaluateFunction(ev, cn(G).tr()*deriv2(u), pt);
+    evaluateFunction(ev, E_m_der*E_m_der.tr(), pt); // evaluates an expression on a point
+    evaluateFunction(ev, E_f_der*E_f_der.tr(), pt); // evaluates an expression on a point
 
 
-
-
-
-    // evaluateFunction(ev, E_m, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, E_m_der, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, E_m_der.tr(), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, N_der, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, N_der.tr(), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, N_der.tr() * E_m_der, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, N_der * E_m_der.tr(), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, E_m_der, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, E_m_der.tr(), pt); // evaluates an expression on a point
-
-    evaluateFunction(ev, (jac(defG).tr() * jac(u)) * (jac(defG).tr() * jac(u)).tr(), pt); // evaluates an expression on a point
-
-
-
-    gsDebugVar(((jac(defG).tr() * jac(u)) * (jac(defG).tr() * jac(u)).tr()).isMatrix());
-    gsDebugVar(((jac(defG).tr() * jac(u)) * (jac(defG).tr() * jac(u)).tr()).colSpan());
-    gsDebugVar(((jac(defG).tr() * jac(u)) * (jac(defG).tr() * jac(u)).tr()).rowSpan());
-    gsDebugVar((jac(defG).tr() * jac(u)).colSpan());
-    gsDebugVar((jac(defG).tr() * jac(u)).rowSpan());
-    gsDebugVar(((jac(defG).tr() * jac(u)).tr()).colSpan());
-    gsDebugVar(((jac(defG).tr() * jac(u)).tr()).rowSpan());
-
-    // evaluateFunction(ev, E_f, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, E_f_der, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, E_f_der.tr(), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, M_der, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, M_der.tr(), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, M_der.tr() * E_f_der, pt); // evaluates an expression on a point
 
     // ! [Solve linear problem]
 
     // assemble system
     A.assemble(
+        meas(G) *
         (
-            E_m_der.tr() * E_m_der
-            // +
-            // M_der * E_f_der.tr()
-            ) //* meas(G)
-        // ,
-        // u * F  * meas(G)
+            N_der * E_m_der.tr()
+            +
+            M_der * E_f_der.tr()
+            )
+        ,
+        u * F  * meas(G)
         );
 
     // // For Neumann (same for Dirichlet/Nitsche) conditions
@@ -1739,6 +1699,7 @@ int main(int argc, char *argv[])
 
     // // gsInfo<< A.rhs().transpose() <<"\n";
     // // gsInfo<< A.matrix().toDense()<<"\n";
+    gsWriteParaview<>( mp, "mp", 1000);
 
 
     //! [Export visualization in ParaView]
@@ -1757,7 +1718,7 @@ int main(int argc, char *argv[])
         for (index_t k = 0; k != mp_def.nPatches(); ++k)
             deformation.patch(k).coefs() -= mp.patch(k).coefs();
 
-        gsField<> solField(mp, deformation);
+        gsField<> solField(mp_def, deformation);
         gsInfo<<"Plotting in Paraview...\n";
         gsWriteParaview<>( solField, "solution", 1000, true);
 

@@ -760,7 +760,7 @@ protected:
     mutable bcRefList m_bcs;
 
     gsDofMapper m_mapper;
-    gsMatrix<T> m_fixedDofs;
+    mutable gsMatrix<T> m_fixedDofs;
 
 public:
     static constexpr bool rowSpan() {return true; }
@@ -930,7 +930,11 @@ public:
             {
                 const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId, c);
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
+                {
+                    // gsDebugVar(_Sv->at(ii));
+                    // gsDebugVar(_u.data().values[0](i,k));
                     res.at(c) += _Sv->at(ii) * _u.data().values[0](i,k);
+                }
                 else
                     res.noalias() += _u.data().values[0](i,k) *
                         _u.fixedPart().row( map.global_to_bindex(ii) ).transpose();//head(_u.dim());
@@ -987,6 +991,28 @@ public:
     {
         // GISMO_ASSERT(NULL!=_Sv, "Solution vector not set, call setSolutionVector"); // wd4702 ?
         _u.getCoeffs(*_Sv, result, p);
+    }
+
+    /// Extracts ALL the coefficients in a solution vector; including coupled and boundary DoFs
+    void extractFull(gsMatrix<T> & result) const
+    {
+        index_t offset, ii, bi;
+        result.resize(_u.mapper().mapSize(),1);
+        for (index_t c=0; c!=_u.m_d; c++)
+            for (size_t j=0; j!=_u.mapper().numPatches(); j++)
+                for (size_t i=0; i!=_u.mapper().patchSize(j); i++) // loop over all DoFs (free and eliminated)
+                {
+                    offset = _u.mapper().offset(j);
+
+                    ii = _u.mapper().index(i,j,c); // global index
+                    if (_u.mapper().is_boundary(i,j))
+                    {
+                        bi = _u.mapper().bindex(i,j,c); // boundary index
+                        result(i+offset,0) = _u.fixedPart()(bi,0);
+                    }
+                    else
+                        result(i+offset,0) = _Sv->at(ii);
+                }
     }
 
     /// Extract this variable as a multipatch object
@@ -3043,12 +3069,18 @@ public:
         // gsInfo<<"expression: "; _u.print(gsInfo); gsInfo<<"\n";
         // gsInfo<<"expression: "; _v.print(gsInfo); gsInfo<<"\n";
 
+        // gsDebugVar(tmpA);
+        // gsDebugVar(tmpB);
+
+
+        // gsDebugVar(_u.ColBlocks);
+        // gsDebugVar(_v.ColBlocks);
+
         //gsDebugVar(_v.cols());
         //gsDebugVar(ur);
 
         //GISMO_ASSERT(uc==vr, "Assumption for product failed");
         const index_t vc = _v.cols();
-
         // gsDebugVar( _u.cardinality() );
         // gsDebugVar( _v.cardinality() );
 
@@ -3536,6 +3568,8 @@ public:
 
     static constexpr bool rowSpan() { return E1::rowSpan(); }
     static bool colSpan() { return E1::colSpan(); }
+
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }
