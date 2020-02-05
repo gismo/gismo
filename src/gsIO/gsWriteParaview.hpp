@@ -28,7 +28,7 @@
 //#include <gsUtils/gsMesh/gsHeMesh.h>
 
 
-#define PLOT_PRECISION 5
+#define PLOT_PRECISION 12
 
 namespace gismo
 {
@@ -279,9 +279,8 @@ void gsWriteParaviewTPgrid(const gsMatrix<T> & eval_geo  ,
                            std::string const & fn)
 {
     const int n = eval_geo.rows();
-    GISMO_ASSERT(eval_geo.cols()==eval_field.cols()
-                 && static_cast<index_t>(np.prod())==eval_geo.cols(),
-                 "Data do not match");
+    GISMO_ASSERT(eval_geo.cols()==eval_field.cols(), "problem1.");
+    GISMO_ASSERT(static_cast<index_t>(np.prod())==eval_geo.cols(), "Data do not match");
 
     std::string mfn(fn);
     mfn.append(".vts");
