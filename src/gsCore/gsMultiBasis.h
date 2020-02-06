@@ -205,7 +205,7 @@ public:
 
     /// Dimension of the parameter domain (must match for all bases).
     short_t dim() const
-    { return m_bases[0]->dim();}
+    { gsInfo<<m_topology.dim()<<"\n"; return m_bases[0]->dim();}
 
     /// @brief Returns the polynomial degree of basis \a i in component \a j,
     /// if the basis is of polynomial or piecewise polynomial type.
@@ -438,7 +438,7 @@ public:
         gsMatrix<unsigned>& indices,
         bool no_lower = true
     ) const;
-    
+
     /// @brief Returns the bases that correspond to the components
     ///
     /// @param pc        The components

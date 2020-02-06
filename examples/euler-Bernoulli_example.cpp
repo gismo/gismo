@@ -20,6 +20,158 @@
 namespace gismo{
 namespace expr{
 
+// Comments for normal:
+// - TODO: dimensionm indep. later on
+template<class E>
+class Gcon_expr : public _expr<Gcon_expr<E> >
+{
+public:
+    typedef E Scalar;
+
+private:
+
+    typename gsGeometryMap<Scalar>::Nested_t _G;
+
+public:
+    Gcon_expr(const gsGeometryMap<Scalar> & G) : _G(G) { }
+
+    mutable gsVector<Scalar,3> Gcov;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    MatExprType eval(const index_t k) const
+    {
+        Gcov = _G.data().values[1].col(k);
+        return Gcov/(Gcov.norm()*Gcov.norm());
+    }
+
+    index_t rows() const { return 3; }
+    index_t cols() const { return 1; }
+
+    void setFlag() const
+    {
+        _G.data().flags |= NEED_DERIV;
+    }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        evList.push_sorted_unique(&_G.source());
+        _G.data().flags |= NEED_DERIV;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const { return gsNullExpr<Scalar>::get(); }
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+    index_t cardinality_impl() const { return 1; }
+
+    static constexpr bool rowSpan() {return false; }
+    static constexpr bool colSpan() {return false;}
+
+    void print(std::ostream &os) const { os << "Gcon("; _G.print(os); os <<")"; }
+};
+
+template<class E>
+class curveNormal_expr : public _expr<curveNormal_expr<E> >
+{
+public:
+    typedef E Scalar;
+
+private:
+
+    typename gsGeometryMap<Scalar>::Nested_t _G;
+
+public:
+    curveNormal_expr(const gsGeometryMap<Scalar> & G) : _G(G) { }
+
+    mutable gsVector<Scalar,3> cDer1, cDer2, b;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    MatExprType eval(const index_t k) const
+    {
+        const size_t domainDim = _G.data().dim.first;
+        const size_t targetDim = _G.data().dim.second;
+
+        cDer1 = _G.data().values[1].reshapeCol(k,targetDim,domainDim); // gives a vector of 3 rows and 1 column for a 3D domain
+        cDer2 = _G.data().values[2].reshapeCol(k,targetDim,domainDim); // gives a vector of 3 rows and 1 column for a 3D domain
+        b = cDer1.cross(cDer2).normalized();
+        return b.cross(cDer1).normalized();
+    }
+
+    index_t rows() const { return 3; }
+    index_t cols() const { return 1; }
+
+    void setFlag() const
+    {
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER;
+    }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        evList.push_sorted_unique(&_G.source());
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const { return gsNullExpr<Scalar>::get(); }
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+    index_t cardinality_impl() const { return 1; }
+
+    static constexpr bool rowSpan() {return false; }
+    static constexpr bool colSpan() {return false;}
+
+    void print(std::ostream &os) const { os << "normal("; _G.print(os); os <<")"; }
+};
+
+
+// Comments for normal:
+// - TODO: dimensionm indep. later on
+template<class E>
+class curveBinormal_expr : public _expr<curveBinormal_expr<E> >
+{
+public:
+    typedef E Scalar;
+
+private:
+
+    typename gsGeometryMap<Scalar>::Nested_t _G;
+
+public:
+    curveBinormal_expr(const gsGeometryMap<Scalar> & G) : _G(G) { }
+
+    mutable gsVector<Scalar,3> cDer1, cDer2;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    MatExprType eval(const index_t k) const
+    {
+        const size_t domainDim = _G.data().dim.first;
+        const size_t targetDim = _G.data().dim.second;
+
+        cDer1 = _G.data().values[1].reshapeCol(k,targetDim,domainDim); // gives a vector of 3 rows and 1 column for a 3D domain
+        cDer2 = _G.data().values[2].reshapeCol(k,targetDim,domainDim); // gives a vector of 3 rows and 1 column for a 3D domain
+        return cDer1.cross(cDer2).normalized();
+    }
+
+    index_t rows() const { return 3; }
+    index_t cols() const { return 1; }
+
+    void setFlag() const
+    {
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER;
+    }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        evList.push_sorted_unique(&_G.source());
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const { return gsNullExpr<Scalar>::get(); }
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+    index_t cardinality_impl() const { return 1; }
+
+    static constexpr bool rowSpan() {return false; }
+    static constexpr bool colSpan() {return false;}
+
+    void print(std::ostream &os) const { os << "binormal("; _G.print(os); os <<")"; }
+};
+
 // Comments for var1:
 // - TODO: dimensionm indep. later on
 template<class E>
@@ -34,14 +186,16 @@ private:
     typename gsGeometryMap<Scalar>::Nested_t _G;
 
 public:
+    enum {ColBlocks = E::rowSpan() };
     enum{ Space = E::Space };
 
     var1_expr(const E & u, const gsGeometryMap<Scalar> & G) : _u(u), _G(G) { }
 
     mutable gsMatrix<Scalar> res;
 
-    mutable gsMatrix<Scalar> bGrads, cJac;
-    mutable gsVector<Scalar,3> m_v, normal;
+    mutable gsMatrix<Scalar> bGrads, bDer2s;//, cJac, cDer2;
+    mutable gsVector<Scalar,3> cDer1, cDer2, normal, b, b_der, n_der;
+    mutable gsMatrix<Scalar,3,3> eye, A, B;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     // helper function
@@ -54,48 +208,61 @@ public:
 
     MatExprType eval(const index_t k) const
     {
-        const index_t A = _u.cardinality()/_u.targetDim();
-        res.resize(A*_u.targetDim(), cols()); // rows()*
+        const index_t numAct = _u.cardinality()/_u.targetDim();
+        const size_t domainDim = _G.data().dim.first;
+        const size_t targetDim = _G.data().dim.second;
+        res.resize(rows(), _u.cardinality()); // rows()*
 
-        normal = _G.data().normal(k);// not normalized to unit length
-        normal.normalize();
-        bGrads = _u.data().values[1].col(k);
-        cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
-        const Scalar measure =  _G.data().measures.at(k);
+        bGrads = _u.data().values[1].reshapeCol(k, _u.data().dim.first, numAct ); // gives a vector of 1 row (since we have scalar basis function), and numAct columns
+        bDer2s = _u.data().values[2].reshapeCol(k, _u.data().dim.first, numAct ); // gives a vector of 1 row (since we have scalar basis function), and numAct columns
+        cDer1 = _G.data().values[1].reshapeCol(k,targetDim,domainDim); // gives a vector of 3 rows and 1 column for a 3D domain
+        cDer2 = _G.data().values[2].reshapeCol(k,targetDim,domainDim); // gives a vector of 3 rows and 1 column for a 3D domain
 
-        // gsDebugVar(_G.data().values[0].col(k).transpose());
+        // gsDebugVar(measure);
+        // gsVector<Scalar,3> Gcov = cDer1;
+        // gsVector<Scalar,3> Gcon = Gcov/(Gcov.norm()*Gcov.norm());
 
-        for (index_t d = 0; d!= cols(); ++d) // for all basis function components
+        // gsDebugVar(math::pow(Gcon.norm(),2));
+
+        eye.setIdentity();
+        b = cDer1.cross(cDer2).normalized();
+        normal = b.cross(cDer1).normalized();
+
+        A = (eye - normal*normal.transpose()) / (b.cross(cDer1)).norm();
+        B = (eye - b*b.transpose()) / (cDer1.cross(cDer2)).norm();
+
+        for (index_t d = 0; d!= _u.dim(); ++d) // for all basis function components
         {
-            const short_t s = d*A;
-            for (index_t j = 0; j!= A; ++j) // for all actives
+            const short_t s = d*numAct;
+            for (index_t j = 0; j!= numAct; ++j) // for all actives
             {
-                // Jac(u) ~ Jac(G) with alternating signs ?..
-                m_v.noalias() = (vecFun(d, bGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
-                              - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() )) / measure;
+                // Bi-normal vector
+                b_der = B * ( vecFun(d, bGrads.at(2*j  ) ).cross(cDer2) + cDer1.cross(vecFun(d, bDer2s.at(2*j  ) ) ));
 
                 // ---------------  First variation of the normal
+                n_der = A * ( b_der.cross(cDer1) + b.cross(vecFun(d, bGrads.at(2*j)) ) );
+
                 // res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
-                res.row(s+j).noalias() = (m_v - ( normal*m_v.transpose() ) * normal).transpose(); // outer-product version
+                res.col(s+j).noalias() = n_der; // outer-product version
             }
         }
         return res;
     }
 
-    index_t rows() const { return 1; }
-    index_t cols() const { return _u.dim(); }
+    index_t rows() const { return _u.dim(); }
+    index_t cols() const { return 1; }
 
     void setFlag() const
     {
-        _u.data().flags |= NEED_GRAD | NEED_ACTIVE;
-        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
+        _u.data().flags |= NEED_GRAD | NEED_2ND_DER;
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER;
     }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     {
         evList.push_sorted_unique(&_u.source());
-        _u.data().flags |= NEED_GRAD;
-        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
+        _u.data().flags |= NEED_GRAD | NEED_2ND_DER;
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER;
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -300,8 +467,6 @@ private:
             Here, we multiply the hessian of the geometry map by a vector, which possibly has multiple actives.
             The hessian of the geometry map c has the form: hess(c)
             [d11 c1, d11 c2, d11 c3]
-            [d22 c1, d22 c2, d22 c3]
-            [d12 c1, d12 c2, d12 c3]
             And we want to compute [d11 c .v; d22 c .v;  d12 c .v] ( . denotes a dot product and c and v are both vectors)
             So we simply evaluate for every active basis function v_k the product hess(c).v_k
         */
@@ -332,6 +497,7 @@ private:
 
         for (index_t i = 0; i!=_u.dim(); i++)
             res.block(i*numAct, 0, numAct, cols() ) = tmp * vEv.at(i);
+
         return res;
     }
 
@@ -339,25 +505,69 @@ private:
 
 
 /*
-    The deriv2_expr computes the hessian of a basis.
-    It assumes that the vector of basis functions is of the form v = u*e_i where u
-    is the scalar basis function u: [0,1]^3 -> R^1 and e_i is the unit vector with a 1 on index i and a 0 elsewhere.
-    Let us define the following blocks
-    hess1(u) =              hess2(u) =              hess3(u) =
-    [d11 u , 0 , 0 ]    |   [0 , d11 u , 0 ]     |  [0 , 0 , d11 u ]
-    [d22 u , 0 , 0 ]    |   [0 , d22 u , 0 ]     |  [0 , 0 , d22 u ]
-    [d12 u , 0 , 0 ]    |   [0 , d12 u , 0 ]     |  [0 , 0 , d12 u ]
+    DESCRIPTION
+**/
+template<class E>
+class deriv2G_expr : public _expr<deriv2G_expr<E> >
+{
+        typename gsGeometryMap<E>::Nested_t _G;
+public:
+    typedef E Scalar;
 
-    Then the deriv2(u) is defined as follows (for k number of actives)
-    [hess1(u)_1]
-    ...
-    [hess1(u)_k]
-    [hess2(u)_1]
-    ...
-    [hess2(u)_k]
-    [hess3(u)_1]
-    ...
-    [hess3(u)_k]
+public:
+
+    deriv2G_expr(const gsGeometryMap<E> & G) : _G(G) { }
+
+    mutable gsMatrix<Scalar> res, tmp;
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        /*
+            Here, we compute the hessian of the geometry map.
+            The hessian of the geometry map c has the form: hess(c)
+            [d11 c1, d11 c2, d11 c3]
+            [d22 c1, d22 c2, d22 c3]
+            [d12 c1, d12 c2, d12 c3]
+
+            The geometry map has components c=[c1,c2,c3]
+        */
+        // evaluate the geometry map of U
+        res = _G.data().values[2].reshapeCol(k, rows(), cols());
+        return res;
+    }
+
+    index_t rows() const //(components)
+    {
+        return _G.source().targetDim(); // number of derivatives
+    }
+
+    index_t cols() const
+    {
+        return 1; // number of components
+    }
+
+    void setFlag() const
+    {
+        _G.data().flags |= NEED_DERIV2|NEED_ACTIVE;
+    }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        evList.push_sorted_unique(&_G.source());
+        _G.data().flags |= NEED_DERIV2;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const { return gsNullExpr<Scalar>::get(); }
+    const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
+
+    static constexpr bool rowSpan() {return false;}
+    static constexpr bool colSpan() {return false;}
+
+    void print(std::ostream &os) const { os << "deriv2("; _G.print(os); os <<")"; }
+};
+
+/*
+    DESCRIPTION
 **/
 template<class E>
 class deriv2_expr : public _expr<deriv2_expr<E> >
@@ -377,18 +587,39 @@ public:
 
     mutable gsMatrix<Scalar> res, tmp;
 
-    const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        /*
+            HOW IS IT STRUCTURED?
+        */
+        const index_t numAct = _u.data().values[0].rows();
+
+        res.resize(rows(),_u.cardinality());
+        res.setZero();
+
+        tmp = _u.data().values[2].reshapeCol(k, 1, numAct ); // put everything in 1 row, since we only have 1 derivative per active
+        for (index_t d = 0; d != _u.dim(); ++d)
+        {
+            const index_t s = d*numAct;
+            for (index_t j = 0; j != numAct; ++j)
+                    res(d,s+j) = tmp(0,j);
+        }
+
+        // res = _u.data().values[2].col(k).transpose().blockDiag(_u.targetDim()); // analoguous to jacobian..
+        // res = res.transpose();
+        // gsDebugVar(res);
+        return res;
+
+    }
 
     index_t rows() const //(components)
     {
-        // return _u.data().values[2].rows() / _u.data().values[0].rows(); // numHessian dimensions
-        // return _u.source().targetDim(); // no. dimensions should be 3
-        return 3; // _u.dim() for space or targetDim() for geometry
+        return _u.dim(); // number of components
     }
 
     index_t cols() const
     {
-        return _u.source().domainDim() * ( _u.source().domainDim() + 1 ) / 2;
+        return 1; // number of derivatives
     }
 
     void setFlag() const
@@ -411,69 +642,7 @@ public:
     static constexpr bool colSpan() {return E::colSpan();}
 
     void print(std::ostream &os) const { os << "deriv2("; _u.print(os); os <<")"; }
-
-    private:
-        template<class U> inline
-        typename util::enable_if< util::is_same<U,gsGeometryMap<Scalar> >::value, const gsMatrix<Scalar> & >::type
-        eval_impl(const U & u, const index_t k)  const
-        {
-            /*
-                Here, we compute the hessian of the geometry map.
-                The hessian of the geometry map c has the form: hess(c)
-                [d11 c1, d11 c2, d11 c3]
-                [d22 c1, d22 c2, d22 c3]
-                [d12 c1, d12 c2, d12 c3]
-
-                The geometry map has components c=[c1,c2,c3]
-            */
-            // evaluate the geometry map of U
-            res = _u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second );
-            return res;
-        }
-
-        template<class U> inline
-        typename util::enable_if<util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
-        eval_impl(const U & u, const index_t k) const
-        {
-            /*
-                Here, we compute the hessian of the basis with n actives.
-                The hessian of the basis u has the form: hess(u)
-                    active 1                active 2                        active n = cardinality
-                [d11 u1, d11 u2, d11 u3] [d11 u1, d11 u2, d11 u3] ... [d11 u1, d11 u2, d11 u3]
-                [d22 u1, d22 u2, d22 u3] [d22 u1, d22 u2, d22 u3] ... [d22 u1, d22 u2, d22 u3]
-                [d12 u1, d12 u2, d12 u3] [d12 u1, d12 u2, d12 u3] ... [d12 u1, d12 u2, d12 u3]
-
-                Here, the basis function has components u = [u1,u2,u3]. Since they are evaluated for scalars
-                we use blockDiag to make copies for all components ui
-
-                    active 1     active 2     active k = cardinality/dim   active 1           active 2k       active 1           active 2k
-                [d11 u, 0, 0] [d11 u, 0, 0] ... [d11 u, 0, 0]            [0, d11 u, 0]  ... [0, d11 u, 0]  [0, d11 u, 0]  ... [0, d11 u, 0]
-                [d22 u, 0, 0] [d22 u, 0, 0] ... [d22 u, 0, 0]            [0, d22 u, 0]  ... [0, d22 u, 0]  [0, d22 u, 0]  ... [0, d22 u, 0]
-                [d12 u, 0, 0] [d12 u, 0, 0] ... [d12 u, 0, 0]            [0, d12 u, 0]  ... [0, d12 u, 0]  [0, d12 u, 0]  ... [0, d12 u, 0]
-
-            */
-            const index_t numAct = u.data().values[0].rows();   // number of actives of a basis function
-            const index_t cardinality = u.cardinality();        // total number of actives (=3*numAct)
-
-            res.resize(rows(), _u.dim() *_u.cardinality()); // (3 x 3*cardinality)
-            res.setZero();
-
-            tmp = _u.data().values[2].reshapeCol(k, cols(), numAct );
-            for (index_t d = 0; d != cols(); ++d)
-            {
-                const index_t s = d*(cardinality + 1);
-                for (index_t i = 0; i != numAct; ++i)
-                    res.col(s+i*_u.cols()) = tmp.col(i);
-            }
-
-            // res = _u.data().values[2].col(k).transpose().blockDiag(_u.targetDim()); // analoguous to jacobian..
-            // res = res.transpose();
-            // gsDebugVar(res);
-            return res;
-        }
-
 };
-
 
 
 // template<class E1, class E2>
@@ -713,7 +882,7 @@ public:
 };
 
 /*
-   Expression for the transformation matrix FROM local covariant TO local cartesian bases, based on a geometry map
+   Expression for the transformation matrix between local cartesian and covariant bases, based on a geometry map
  */
 template<class T> class cartcovinv_expr ;
 
@@ -838,7 +1007,7 @@ public:
 
 
 /*
-   Expression for the transformation matrix FROM local contravariant TO local cartesian bases, based on a geometry map
+   Expression for the transformation matrix between local cartesian and contravariant bases, based on a geometry map
  */
 template<class T> class cartconinv_expr ;
 
@@ -961,6 +1130,15 @@ public:
 };
 
 template<class E> EIGEN_STRONG_INLINE
+Gcon_expr<E> Gcon(const gsGeometryMap<E> & G) { return Gcon_expr<E>(G); }
+
+template<class E> EIGEN_STRONG_INLINE
+curveBinormal_expr<E> bn(const gsGeometryMap<E> & G) { return curveBinormal_expr<E>(G); }
+
+template<class E> EIGEN_STRONG_INLINE
+curveNormal_expr<E> cn(const gsGeometryMap<E> & G) { return curveNormal_expr<E>(G); }
+
+template<class E> EIGEN_STRONG_INLINE
 var1_expr<E> var1(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return var1_expr<E>(u, G); }
 
 template<class E1, class E2, class E3> EIGEN_STRONG_INLINE
@@ -972,6 +1150,9 @@ var2_expr<E1,E2,E3> var2(const E1 & u, const E2 & v, const gsGeometryMap<typenam
 
 template<class E> EIGEN_STRONG_INLINE
 deriv2_expr<E> deriv2(const E & u) { return deriv2_expr<E>(u); }
+
+template<class E> EIGEN_STRONG_INLINE
+deriv2G_expr<E> deriv2(const gsGeometryMap<E> & G) { return deriv2G_expr<E>(G); }
 
 template<class E1, class E2> EIGEN_STRONG_INLINE
 deriv2dot_expr<E1, E2> deriv2(const E1 & u, const E2 & v) { return deriv2dot_expr<E1, E2>(u,v); }
@@ -1002,361 +1183,6 @@ template <class T>
 void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsMatrix<T> pt);
 template <class T>
 void constructSolution(gsExprAssembler<T> assembler, gsMultiPatch<T> mp_def);
-
-// To Do:
-// * struct for material model
-// Input is parametric coordinates of the surface \a mp
-template <class T>
-class gsMaterialMatrix : public gismo::gsFunction<T>
-{
-  // Computes the material matrix for different material models
-  //
-protected:
-    const gsFunctionSet<T> * _mp;
-    const gsFunction<T> * _YoungsModulus;
-    const gsFunction<T> * _PoissonRatio;
-    mutable gsMapData<T> _tmp;
-    mutable gsMatrix<real_t,3,3> F0;
-    mutable gsMatrix<T> Emat,Nmat;
-    mutable real_t lambda, mu, E, nu, C_constant;
-
-public:
-    /// Shared pointer for gsMaterialMatrix
-    typedef memory::shared_ptr< gsMaterialMatrix > Ptr;
-
-    /// Unique pointer for gsMaterialMatrix
-    typedef memory::unique_ptr< gsMaterialMatrix > uPtr;
-
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-    gsMaterialMatrix(const gsFunctionSet<T> & mp, const gsFunction<T> & YoungsModulus,
-                   const gsFunction<T> & PoissonRatio) :
-    _mp(&mp), _YoungsModulus(&YoungsModulus), _PoissonRatio(&PoissonRatio), _mm_piece(nullptr)
-    {
-        _tmp.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
-    }
-
-    ~gsMaterialMatrix() { delete _mm_piece; }
-
-    GISMO_CLONE_FUNCTION(gsMaterialMatrix)
-
-    short_t domainDim() const {return 2;}
-
-    short_t targetDim() const {return 9;}
-
-    mutable gsMaterialMatrix<T> * _mm_piece; // todo: improve the way pieces are accessed
-
-    const gsFunction<T> & piece(const index_t k) const
-    {
-        delete _mm_piece;
-        _mm_piece = new gsMaterialMatrix(_mp->piece(k), *_YoungsModulus, *_PoissonRatio);
-        return *_mm_piece;
-    }
-
-    //class .. matMatrix_z
-    // should contain eval_into(thickness variable)
-
-    // Input is parametric coordinates of the surface \a mp
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        // NOTE 1: if the input \a u is considered to be in physical coordinates
-        // then we first need to invert the points to parameter space
-        // _mp.patch(0).invertPoints(u, _tmp.points, 1e-8)
-        // otherwise we just use the input paramteric points
-        _tmp.points = u;
-
-        static_cast<const gsFunction<T>&>(_mp->piece(0)).computeMap(_tmp); // the piece(0) here implies that if you call class.eval_into, it will be evaluated on piece(0). Hence, call class.piece(k).eval_into()
-
-        // NOTE 2: in the case that parametric value is needed it suffices
-        // to evaluate Youngs modulus and Poisson's ratio at
-        // \a u instead of _tmp.values[0].
-        _YoungsModulus->eval_into(_tmp.values[0], Emat);
-        _PoissonRatio->eval_into(_tmp.values[0], Nmat);
-
-        result.resize( targetDim() , u.cols() );
-        for( index_t i=0; i< u.cols(); ++i )
-        {
-            gsAsMatrix<T, Dynamic, Dynamic> C = result.reshapeCol(i,3,3);
-
-            F0.leftCols(2) = _tmp.jacobian(i);
-            F0.col(2)      = _tmp.normal(i).normalized();
-            F0 = F0.inverse();
-            F0 = F0 * F0.transpose(); //3x3
-
-            // Evaluate material properties on the quadrature point
-            E = Emat(0,i);
-            nu = Nmat(0,i);
-            lambda = E * nu / ( (1. + nu)*(1.-2.*nu)) ;
-            mu     = E / (2.*(1. + nu)) ;
-
-            C_constant = 2*lambda*mu/(lambda+2*mu);
-
-            C(0,0) = C_constant*F0(0,0)*F0(0,0) + 1*mu*(2*F0(0,0)*F0(0,0));
-            C(1,1) = C_constant*F0(1,1)*F0(1,1) + 1*mu*(2*F0(1,1)*F0(1,1));
-            C(2,2) = C_constant*F0(0,1)*F0(0,1) + 1*mu*(F0(0,0)*F0(1,1) + F0(0,1)*F0(0,1));
-            C(1,0) =
-            C(0,1) = C_constant*F0(0,0)*F0(1,1) + 1*mu*(2*F0(0,1)*F0(0,1));
-            C(2,0) =
-            C(0,2) = C_constant*F0(0,0)*F0(0,1) + 1*mu*(2*F0(0,0)*F0(0,1));
-            C(2,1) = C(1,2) = C_constant*F0(0,1)*F0(1,1) + 1*mu*(2*F0(0,1)*F0(1,1));
-
-            //gsDebugVar(C);
-        }
-    }
-
-    // piece(k) --> for patch k
-
-}; //! [Include namespace]
-
-template <class T>
-class gsMaterialMatrixD : public gismo::gsFunction<T>
-{
-  // Computes the material matrix for different material models
-  //
-protected:
-    const gsFunctionSet<T> * _mp;
-    const gsFunction<T> * _YoungsModulus;
-    const gsFunction<T> * _PoissonRatio;
-    mutable gsMapData<T> _tmp;
-    mutable gsMatrix<T> Emat,Nmat;
-    mutable real_t E, nu, D_constant;
-
-public:
-    /// Shared pointer for gsMaterialMatrixD
-    typedef memory::shared_ptr< gsMaterialMatrixD > Ptr;
-
-    /// Unique pointer for gsMaterialMatrixD
-    typedef memory::unique_ptr< gsMaterialMatrixD > uPtr;
-
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-    gsMaterialMatrixD(const gsFunctionSet<T> & mp, const gsFunction<T> & YoungsModulus,
-                   const gsFunction<T> & PoissonRatio) :
-    _mp(&mp), _YoungsModulus(&YoungsModulus), _PoissonRatio(&PoissonRatio), _mm_piece(nullptr)
-    {
-        _tmp.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
-    }
-
-    ~gsMaterialMatrixD() { delete _mm_piece; }
-
-    GISMO_CLONE_FUNCTION(gsMaterialMatrixD)
-
-    short_t domainDim() const {return 2;}
-
-    short_t targetDim() const {return 9;}
-
-    mutable gsMaterialMatrixD<T> * _mm_piece; // todo: improve the way pieces are accessed
-
-    const gsFunction<T> & piece(const index_t k) const
-    {
-        delete _mm_piece;
-        _mm_piece = new gsMaterialMatrixD(_mp->piece(k), *_YoungsModulus, *_PoissonRatio);
-        return *_mm_piece;
-    }
-
-    //class .. matMatrix_z
-    // should contain eval_into(thickness variable)
-
-    // Input is parametric coordinates of the surface \a mp
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        // NOTE 1: if the input \a u is considered to be in physical coordinates
-        // then we first need to invert the points to parameter space
-        // _mp.patch(0).invertPoints(u, _tmp.points, 1e-8)
-        // otherwise we just use the input paramteric points
-        _tmp.points = u;
-
-        static_cast<const gsFunction<T>*>(_mp)->computeMap(_tmp);
-
-        // NOTE 2: in the case that parametric value is needed it suffices
-        // to evaluate Youngs modulus and Poisson's ratio at
-        // \a u instead of _tmp.values[0].
-        _YoungsModulus->eval_into(_tmp.values[0], Emat);
-        _PoissonRatio->eval_into(_tmp.values[0], Nmat);
-
-        result.resize( targetDim() , u.cols() );
-        for( index_t i=0; i< u.cols(); ++i )
-        {
-            gsAsMatrix<T, Dynamic, Dynamic> D = result.reshapeCol(i,3,3);
-
-            // Evaluate material properties on the quadrature point
-            E = Emat(0,i);
-            nu = Nmat(0,i);
-
-            D_constant = E/(1-nu*nu);
-            D(0,0) = D(1,1) = 1;
-            D(2,2) = (1-nu)/2;
-            D(0,1) = D(1,0) = nu;
-            D(2,0) = D(0,2) = D(2,1) = D(1,2) = 0;
-            D *= D_constant;
-
-            //gsDebugVar(C);
-        }
-    }
-
-    // piece(k) --> for patch k
-
-}; //! [Include namespace]
-
-/*
-    Todo:
-        * Improve for mu, E, phi as gsFunction instead of reals!!
-*/
-template <class T, int mat>
-class gsMaterialMatrixComp : public gismo::gsFunction<T>
-{
-  // Computes the material matrix for different material models
-  // NOTE: This material matrix is in local Cartesian coordinates and should be transformed!
-  // NOTE: To make this efficient, we can output all matrices stacked and use expressions to pick the 1st, second and third
-protected:
-    // const gsFunctionSet<T> * _mp;
-    const std::vector<std::pair<T,T>> _YoungsModuli;
-    const std::vector<T> _ShearModuli;
-    const std::vector<std::pair<T,T>> _PoissonRatios;
-    const std::vector<T> _thickness;
-    const std::vector<T> _phi;
-    mutable gsMapData<T> _tmp;
-    mutable real_t E1, E2, G12, nu12, nu21, t, t_tot, t_temp, z, z_mid, phi;
-    mutable gsMatrix<T> Tmat, Dmat;
-
-public:
-    /// Shared pointer for gsMaterialMatrixComp
-    typedef memory::shared_ptr< gsMaterialMatrixComp > Ptr;
-
-    /// Unique pointer for gsMaterialMatrixComp
-    typedef memory::unique_ptr< gsMaterialMatrixComp > uPtr;
-
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-    gsMaterialMatrixComp(  //const gsFunctionSet<T> & mp,
-                        const std::vector<std::pair<T,T>> & YoungsModuli,
-                        const std::vector<T> & ShearModuli,
-                        const std::vector<std::pair<T,T>> & PoissonRatios,
-                        const std::vector<T> thickness,
-                        const std::vector<T> phi) :
-    // _mp(&mp),
-    _YoungsModuli(YoungsModuli),
-    _ShearModuli(ShearModuli),
-    _PoissonRatios(PoissonRatios),
-    _thickness(thickness),
-    _phi(phi)//,
-    // _mm_piece(nullptr)
-    {
-        _tmp.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
-    }
-
-    // ~gsMaterialMatrixComp() { delete _mm_piece; }
-
-    GISMO_CLONE_FUNCTION(gsMaterialMatrixComp)
-
-    short_t domainDim() const {return 2;}
-
-    short_t targetDim() const {return 9;}
-
-    // mutable gsMaterialMatrixComp<T> * _mm_piece; // todo: improve the way pieces are accessed
-
-    // const gsFunction<T> & piece(const index_t k) const
-    // {
-    //     delete _mm_piece;
-    //     _mm_piece = new gsMaterialMatrixComp(_mp->piece(k), _YoungsModuli, _ShearModuli, _PoissonRatios, _thickness, _phi);
-    //     return *_mm_piece;
-    // }
-
-    // Input is parametric coordinates of the surface \a mp
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        // static_cast<const gsFunction<T>*>(_mp)->computeMap(_tmp);
-        GISMO_ASSERT(_YoungsModuli.size()==_PoissonRatios.size(),"Size of vectors of Youngs Moduli and Poisson Ratios is not equal: " << _YoungsModuli.size()<<" & "<<_PoissonRatios.size());
-        GISMO_ASSERT(_YoungsModuli.size()==_ShearModuli.size(),"Size of vectors of Youngs Moduli and Shear Moduli is not equal: " << _YoungsModuli.size()<<" & "<<_ShearModuli.size());
-        GISMO_ASSERT(_thickness.size()==_phi.size(),"Size of vectors of thickness and angles is not equal: " << _thickness.size()<<" & "<<_phi.size());
-        GISMO_ASSERT(_YoungsModuli.size()==_thickness.size(),"Size of vectors of material properties and laminate properties is not equal: " << _YoungsModuli.size()<<" & "<<_thickness.size());
-        GISMO_ASSERT(_YoungsModuli.size()!=0,"No laminates defined");
-
-        // Compute total thickness (sum of entries)
-        t_tot = std::accumulate(_thickness.begin(), _thickness.end(), 0.0);
-
-        // compute mid-plane height of total plate
-        z_mid = t_tot / 2.0;
-
-        // now we use t_temp to add the thickness of all plies iteratively
-        t_temp = 0.0;
-
-        // Initialize material matrix and result
-        Dmat.resize(3,3);
-        result.resize( targetDim(), 1 );
-
-        // Initialize transformation matrix
-        Tmat.resize(3,3);
-
-
-        for (size_t i = 0; i != _phi.size(); ++i) // loop over laminates
-        {
-            // Compute all quantities
-            E1 = _YoungsModuli[i].first;
-            E2 = _YoungsModuli[i].second;
-            G12 = _ShearModuli[i];
-            nu12 = _PoissonRatios[i].first;
-            nu21 = _PoissonRatios[i].second;
-            t = _thickness[i];
-            phi = _phi[i];
-
-            GISMO_ASSERT(nu21*E1 == nu12*E2, "No symmetry in material properties for ply "<<i<<". nu12*E2!=nu21*E1:\n"<<
-                    "\tnu12 = "<<nu12<<"\t E2 = "<<E2<<"\t nu12*E2 = "<<nu12*E2<<"\n"
-                  <<"\tnu21 = "<<nu21<<"\t E1 = "<<E1<<"\t nu21*E1 = "<<nu21*E1);
-
-            // Fill material matrix
-            Dmat(0,0) = E1 / (1-nu12*nu21);
-            Dmat(1,1) = E2 / (1-nu12*nu21);;
-            Dmat(2,2) = G12;
-            Dmat(0,1) = nu21*E1 / (1-nu12*nu21);
-            Dmat(1,0) = nu12*E2 / (1-nu12*nu21);
-            Dmat(2,0) = Dmat(0,2) = Dmat(2,1) = Dmat(1,2) = 0.0;
-
-            // Make transformation matrix
-            Tmat(0,0) = Tmat(1,1) = math::pow(math::cos(phi),2);
-            Tmat(0,1) = Tmat(1,0) = math::pow(math::sin(phi),2);
-            Tmat(2,0) = Tmat(0,2) = Tmat(2,1) = Tmat(1,2) = math::sin(phi) * math::cos(phi);
-            Tmat(2,0) *= -2.0;
-            Tmat(2,1) *= 2.0;
-            Tmat(1,2) *= -1.0;
-            Tmat(2,2) = math::pow(math::cos(phi),2) - math::pow(math::sin(phi),2);
-
-            // Compute laminate stiffness matrix
-            Dmat = Tmat.transpose() * Dmat * Tmat;
-
-            z = math::abs(z_mid - (t/2.0 + t_temp) ); // distance from mid-plane of plate
-
-            // Make matrices A, B and C
-            // [NOTE: HOW TO DO THIS NICELY??]
-            // result.reshape(3,3) += Dmat * t; // A
-            // result.reshape(3,3) += Dmat * t*z; // B
-            // result.reshape(3,3) += Dmat * ( t*z*z + t*t*t/12.0 ); // D
-            switch (mat)
-            {
-                case 0:
-                    result.reshape(3,3) += Dmat * t; // A
-                    break;
-                case 1:
-                    result.reshape(3,3) += Dmat * t; // A
-                    break;
-                case 2:
-                    result.reshape(3,3) += Dmat * t; // A
-                    break;
-            }
-
-            t_temp += t;
-        }
-
-        GISMO_ASSERT(t_tot==t_temp,"Total thickness after loop is wrong. t_temp = "<<t_temp<<" and sum(thickness) = "<<t_tot);
-
-        // Replicate for all points since the quantities are equal over the whole domain
-        result.replicate(1, u.cols());
-    }
-
-    // piece(k) --> for patch k
-
-};
-
 
 template <typename T1, typename T2, typename T3 > using var2_t = gismo::expr::var2_expr<T1,T2,T3>;
 template <typename T1, typename T2, typename T3 > using flatdot_t = gismo::expr::flatdot_expr<T1,T2,T3 >;
@@ -1553,8 +1379,7 @@ int main(int argc, char *argv[])
     std::string fn("pde/poisson2d_bvp.xml");
 
     real_t E_modulus = 1.0;
-    real_t PoissonRatio = 0.0;
-    real_t thickness = 1.0;
+    real_t Radius = 0.0;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
@@ -1573,30 +1398,11 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp_def;
     if (testCase==1)
     {
-        // Unit square
-        mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
-        mp.addAutoBoundaries();
-        mp.embed(3);
-        E_modulus = 1.0;
-        thickness = 1.0;
-
-    }
-    else if (testCase == 2  || testCase == 3)
-    {
-        thickness = 0.25;
-        E_modulus = 4.32E8;
-        fn = "../extensions/unsupported/filedata/scordelis_lo_roof.xml";
+        fn = "curves3d/quarter_circle.xml";
         gsReadFile<>(fn, mp);
-    }
-    else if (testCase==9)
-    {
-        gsFileData<> fd(fn);
-        gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
-        // Annulus
-        fd.getId(0, mp); // id=0: Multipatch domain
-        mp.embed(3);
+        // mp.embed(3);
         E_modulus = 1.0;
-        thickness = 1.0;
+
     }
     //! [Read input file]
 
@@ -1630,74 +1436,11 @@ int main(int argc, char *argv[])
     {
         for (index_t i=0; i!=3; ++i)
         {
-            bc.addCondition(boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
             bc.addCondition(boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
-            bc.addCondition(boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z
             bc.addCondition(boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z
         }
-        // tmp << 0,0,0;
-        tmp << 0,0,-1;
-
-        // Point loads
-        gsVector<> point(2);
-        gsVector<> load (3);
-        // point<< 0.5, 0.5 ; load << 0.0, 1.0, 0.0 ;
-        // pLoads.addLoad(point, load, 0 );
+        tmp << 0,1,0;
     }
-    else if (testCase == 2)
-    {
-        // Diaphragm conditions
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
-
-        // ORIGINAL
-        // bc.addCornerValue(boundary::southwest, 0.0, 0, 0); // (corner,value, patch, unknown)
-
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
-
-        // NOT ORIGINAL
-        // bc.addCondition(boundary::west, condition_type::dirichlet, &displ, 0 ); // unknown 1 - x
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
-
-        // Surface forces
-        tmp << 0, 0, -90;
-    }
-    else if (testCase == 3)
-    {
-        neu << 0, 0, -90;
-        neuData.setValue(neu,3);
-        // Diaphragm conditions
-        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
-        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
-        bc.addCondition(boundary::west, condition_type::neumann, &neuData );
-
-        // ORIGINAL
-        // bc.addCornerValue(boundary::southwest, 0.0, 0, 0); // (corner,value, patch, unknown)
-
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
-
-        // NOT ORIGINAL
-        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
-
-        // Surface forces
-        tmp << 0, 0, 0;
-    }
-    else if (testCase == 9)
-    {
-        for (index_t i=0; i!=3; ++i)
-        {
-            bc.add(0,boundary::north,std::string("dirichlet weak"), 0, i);
-            bc.add(0,boundary::east, std::string("dirichlet weak"), 0, i);
-            bc.add(0,boundary::south,std::string("dirichlet weak"), 0, i);
-            bc.add(0,boundary::west, std::string("dirichlet weak"), 0, i);
-        }
-        tmp << 0,0,-1;
-    }
-    //! [Refinement]
 
     //! [Problem setup]
     gsExprAssembler<> A;
@@ -1729,20 +1472,10 @@ int main(int argc, char *argv[])
     // gsFunctionExpr<> materialMat("1","0","0","0","1","0","0","0","1",3);
     // variable mm = A.getCoeff(materialMat, G);
     gsFunctionExpr<> E(std::to_string(E_modulus),3);
-    gsFunctionExpr<> nu(std::to_string(PoissonRatio),3);
-    gsMaterialMatrix materialMat(mp, E, nu);
-    variable mm = A.getCoeff(materialMat); // evaluates in the parametric domain, but the class transforms E and nu to physical
-    gsMaterialMatrixD materialMatD(mp, E, nu);
-    variable mmD = A.getCoeff(materialMatD); // evaluates in the parametric domain, but the class transforms E and nu to physical
+    variable Emod = A.getCoeff(E, G); // evaluates in the physical domain
 
-
-    gsFunctionExpr<> mult2t("1","0","0","0","1","0","0","0","2",3);
-    variable m2 = A.getCoeff(mult2t, G); // evaluates in the physical domain
-
-    gsFunctionExpr<> t(std::to_string(thickness), 3);
-    variable tt = A.getCoeff(t, G); // evaluates in the physical domain
-    // TEMPORARILY!!
-    // real_t tt = thickness;
+    gsFunctionExpr<> R(std::to_string(Radius),3);
+    variable Radi = A.getCoeff(R, G); // evaluates in the physical domain
 
     // gsFunctionExpr<> force("0","0","1", 3);
     gsConstantFunction<> force(tmp,3);
@@ -1755,12 +1488,12 @@ int main(int argc, char *argv[])
     //! [Solver loop]
 
     // Set Dirichlet values
-    //A.options().setInt("DirichletValues", dirichlet::homogeneous);
+    A.options().setInt("DirichletValues", dirichlet::homogeneous);
 
-    // Initialize the system
+    // // Initialize the system
     A.initSystem();
 
-    gsInfo<<"Number of degrees of freedom: "<< A.numDofs() <<"\n"<<std::flush;
+    gsInfo<< A.numDofs() <<"\n"<<std::flush;
 
     /*
         We provide the following functions:                         checked with previous assembler
@@ -1778,138 +1511,107 @@ int main(int argc, char *argv[])
             m2      an auxillary matrix to multiply the last row of a tensor with 2
     **/
 
-    mult_t< real_t, flat_t< jacG_t<real_t> >> E_mtest = 0.5 * flat(jac(G));
+    // mult_t< real_t, flat_t< jacG_t<real_t> >> E_mtest = 0.5 * flat(jac(G));
 
-    // Membrane components
-    auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ; //[checked]
-    // auto E_m = 0.5 * ( flat(jac(u_sol).tr()*jac(u_sol)) ) ; //[checked]
-    auto S_m = E_m * reshape(mm,3,3);
-    auto N       = tt.val() * S_m;
+    // // Membrane components
+    auto A0 = 3.1415926536*pow(Radi.val(),2);
+    auto I0 = 3.1415926536/4*pow(Radi.val(),4);
 
-    auto E_m_der = flat( jac(defG).tr() * jac(u) ) ; //[checked]
-    auto S_m_der = E_m_der * reshape(mm,3,3);
-    auto N_der   = tt.val() * S_m_der;
 
-    auto E_m_der2 = flatdot( jac(u),jac(u).tr(), N ); //[checked]
+    auto E_m = 0.5 * ( jac(defG).tr()*jac(defG) - jac(G).tr()* jac(G) ) * pow(Gcon(G).norm(),2); //[checked]
+    auto S_m = E_m * Emod.val() * pow(Gcon(G).norm(),2);
+    auto N       = A0 * S_m;
+
+    auto E_m_der = pow(Gcon(G).norm(),2) * (jac(defG).tr() * jac(u)); //[checked]
+    auto S_m_der = Emod.val() * pow(Gcon(G).norm(),2) * E_m_der;
+    auto N_der   = S_m_der;
+
+    // auto E_m_der2 = flatdot( jac(u),jac(u).tr(), N ); //[checked]
 
     // Flexural components
-    auto E_f = ( deriv2(G,sn(G).normalized().tr()) - deriv2(defG,sn(defG).normalized().tr()) ) * reshape(m2,3,3) ; //[checked]
-    auto S_f = E_f * reshape(mm,3,3);
-    auto M   = tt.val() * tt.val() * tt.val() / 12.0 * S_f;
+    auto E_f = pow(Gcon(G).norm(),2)*( deriv2(defG).tr()*cn(defG) - deriv2(defG).tr()*cn(defG)); //[checked]
+    auto S_f = Emod.val() * pow(Gcon(G).norm(),2) * E_f;
+    auto M   = I0 * S_f;
 
-    auto E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,defG) ) ) * reshape(m2,3,3); //[checked]
-    auto S_f_der = E_f_der * reshape(mm,3,3);
-    auto M_der   = tt.val() * tt.val() * tt.val() / 12.0 * S_f_der;
+    // TO FIX
+    // auto E_f_der = pow(Gcon(G).norm(),2)*( cn(G).tr()*deriv2(u) + deriv2(G).tr()*var1(u,G) ); //[checked]
+    auto E_f_der = pow(Gcon(G).norm(),2)*( cn(G).tr()*deriv2(u) + deriv2(G).tr()*var1(u,G) ); //[checked]
+    auto S_f_der = Emod.val() * pow(Gcon(G).norm(),2) * E_f_der;
+    auto M_der   = I0 * S_f_der;
 
-    auto E_f_der2 = flatdot2( deriv2(u), var1(u,defG).tr(), M  ).symmetrize() + var2(u,u,defG, M );
+    // auto E_f_der2 = flatdot2( deriv2(u), var1(u,defG).tr(), M  ).symmetrize() + var2(u,u,defG, M );
 
     auto F        = ff;
 
-    auto That       = cartcon(G);
-    auto That_def   = cartcon(defG);
-    auto Ttilde     = cartcov(G).inv(); // IS INVERTED
-    auto D = Ttilde*reshape(mmD,3,3)*That; // NOTE: That = Ttilde.inv()
+    // auto That       = cartcon(G);
+    // auto Ttilde     = cartcov(G).inv(); // IS INVERTED
+    // // auto TtildeInv  = cartcov(G).inv(); // DOES NOT WORK!!
+    // auto D = Ttilde*reshape(mmD,3,3)*That; // NOTE: That = Ttilde.inv()
 
-    auto C = reshape(mm,3,3);
+    // auto C = reshape(mm,3,3);
 
-    auto S_m2 = (tt.val() * E_m * C ) * Ttilde;
-    auto S_f2 = (pow(tt.val(),3)/12.0 * E_f * C ) * Ttilde;
-
-    // NOTE: var1(u,G) in E_F_der2 should be var1(u,defG)
-
-    // gsInfo<<"E_m_test: "<<typeid(E_mtest).name()<<"\n";
-    // gsInfo<<"E_m: "<<typeid(E_m).name()<<"\n";
-    // gsInfo<<"E_m_der: "<<typeid(E_m_der).name()<<"\n";
-    // gsInfo<<"E_m_der2: "<<typeid(E_m_der2).name()<<"\n";
-    // gsInfo<<"E_f: "<<typeid(E_f).name()<<"\n";
-    // gsInfo<<"E_f_der: "<<typeid(E_f_der).name()<<"\n";
-    // gsInfo<<"E_f_der2: "<<typeid(E_f_der2).name()<<"\n";
+    // auto S_m2 = (tt.val() * E_m * C ) * Ttilde;
+    // auto S_f2 = (pow(tt.val(),3)/12.0 * E_f * C ) * Ttilde;
 
 
-    gsVector<> pt(2); pt.setConstant(0.1);
-    gsVector<> pt2(3); pt2.setConstant(2);
-    // gsMatrix<> pt(7,2);
-    // pt<<0,0,
-    // 0,0.5,
-    // 0,1.0,
-    // 0.5,0,
-    // 1.0,0,
-    // 0.5,0.5,
-    // 1.0,1.0;
-    // pt = pt.transpose();
-    gsDebugVar(pt);
-    evaluateFunction(ev, cartcov(G).inv()*F, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, Ttilde, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, TtildeInv, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, C, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, D, pt); // evaluates an expression on a point
+    gsVector<> pt(1); pt.setConstant(0.7);
+    evaluateFunction(ev, E_m_der*E_m_der.tr(), pt); // evaluates an expression on a point
+    evaluateFunction(ev, E_f_der*E_f_der.tr(), pt); // evaluates an expression on a point
+
+
 
     // ! [Solve linear problem]
 
-    // assemble mass
-    A.assemble(u*u.tr());
-    gsDebugVar(A.matrix().toDense());
-    gsDebugVar(A.matrix().rows());
-    gsDebugVar(A.matrix().cols());
-
-
     // assemble system
     A.assemble(
-        (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
-        // (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
+        meas(G) *
+        (
+            N_der * E_m_der.tr()
+            +
+            M_der * E_f_der.tr()
+            )
         ,
-        u * cartcon(G) * cartcon(G) * F  * meas(G)
+        u * F  * meas(G)
         );
 
-    // evaluateFunction(ev, N_der * cartcon(G) * (E_m_der * cartcon(G)).tr(), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr()).tr(), pt); // evaluates an expression on a point
+    // // For Neumann (same for Dirichlet/Nitsche) conditions
+    // variable g_N = A.getBdrFunction();
+    // A.assembleRhsBc(u * g_N, bc.container("Neumann") );
 
-    // gsDebugVar((jac(defG).tr() * jac(u) * jac(defG) * jac(u).tr()).isMatrix());
-    // gsDebugVar((jac(defG).tr() * jac(u) * jac(defG) * jac(u).tr()).colSpan());
-    // gsDebugVar((jac(defG).tr() * jac(u) * jac(defG) * jac(u).tr()).rowSpan());
-    // gsDebugVar((jac(defG).tr() * jac(u)).colSpan());
-    // gsDebugVar((jac(defG).tr() * jac(u)).rowSpan());
-    // gsDebugVar(((jac(defG).tr() * jac(u)).tr()).colSpan());
-    // gsDebugVar(((jac(defG).tr() * jac(u)).tr()).rowSpan());
+    // // for weak dirichlet (DOES THIS HANDLE COMPONENTS?)
+    // real_t alpha_d = 1e3;
+    // A.assembleLhsRhsBc
+    // (
+    //     alpha_d * u * u.tr()
+    //     ,
+    //     alpha_d * u * (defG - G - g_N).tr()
+    //     ,
+    //     bc.container("dirichlet weak")
+    // );
 
-    // For Neumann (same for Dirichlet/Nitsche) conditions
-    variable g_N = A.getBdrFunction();
-    A.assembleRhsBc(u * g_N, bc.container("Neumann") );
-
-    // for weak dirichlet (DOES THIS HANDLE COMPONENTS?)
-    real_t alpha_d = 1e3;
-    A.assembleLhsRhsBc
-    (
-        alpha_d * u * u.tr()
-        ,
-        alpha_d * u * (defG - G - g_N).tr()
-        ,
-        bc.container("dirichlet weak")
-    );
-
-    // for weak clamped
-    real_t alpha_r = 1e3;
-    A.assembleLhsRhsBc
-    (
-        // alpha_r * ( sn(defG).tr()*sn(G) - 1.0 ) * ( flatdot2??? )
-        // +
-        alpha_r * ( var1(u,defG) * sn(G).tr() ).symmetrize()
-        ,
-        alpha_r * ( sn(defG)*sn(G).tr() - sn(G)*sn(G).tr() ) * ( var1(u,defG) * sn(G).tr() )
-        ,
-        bc.container("clamped weak")
-    );
-
-
-    gsDebugVar(A.matrix().toDense());
-    gsDebugVar(A.matrix().rows());
-    gsDebugVar(A.matrix().cols());
+    // // for weak clamped
+    // real_t alpha_r = 1e3;
+    // A.assembleLhsRhsBc
+    // (
+    //     // alpha_r * ( sn(defG).tr()*sn(G) - 1.0 ) * ( flatdot2??? )
+    //     // +
+    //     alpha_r * ( var1(u,defG) * sn(G).tr() ).symmetrize()
+    //     ,
+    //     alpha_r * ( sn(defG)*sn(G).tr() - sn(G)*sn(G).tr() ) * ( var1(u,defG) * sn(G).tr() )
+    //     ,
+    //     bc.container("clamped weak")
+    // );
 
 
 
     // solve system
     solver.compute( A.matrix() );
     gsMatrix<> solVector = solver.solve(A.rhs());
+
+    gsInfo<<A.matrix().toDense()<<"\n";
+    gsInfo<<A.rhs()<<"\n";
+    gsInfo<<solVector<<"\n";
+
 
     // update deformed patch
     gsMatrix<> cc;
@@ -1923,84 +1625,81 @@ int main(int argc, char *argv[])
     }
     /*Something with Dirichlet homogenization*/
 
-    auto sol1 = G + u_sol;
-    auto sol2 = defG;
+    // auto sol1 = G + u_sol;
+    // auto sol2 = defG;
 
-    auto nsol1= sn(G);
-    // defG.registerData(G.source(), G.data())
-    auto nsol2= sn(defG);
+    // auto nsol1= sn(G);
+    // // defG.registerData(G.source(), G.data())
+    // auto nsol2= sn(defG);
 
     // evaluateFunction(ev, sol1, pt); // evaluates an expression on a point
     // evaluateFunction(ev, sol2, pt); // evaluates an expression on a point
     // evaluateFunction(ev, nsol1, pt); // evaluates an expression on a point
     // evaluateFunction(ev, nsol2, pt); // evaluates an expression on a point
 
-    // ! [Solve linear problem]
+    // // ! [Solve linear problem]
 
-    // ! [Solve nonlinear problem]
-    real_t residual = A.rhs().norm();
-    if (nonlinear)
-    {
-        index_t itMax = 10;
-        real_t tol = 1e-8;
-        for (index_t it = 0; it != itMax; ++it)
-        {
-            A.initSystem();
-            // assemble system
-            A.assemble(
-                ( N_der * E_m_der.tr() + E_m_der2 + M_der * E_f_der.tr() - E_f_der2 ) * meas(G)
-                , u * F * meas(G) - ( ( N * E_m_der.tr() - M * E_f_der.tr() ) * meas(G) ).tr()
-                );
+    // // ! [Solve nonlinear problem]
+    // real_t residual = A.rhs().norm();
+    // if (nonlinear)
+    // {
+    //     index_t itMax = 10;
+    //     real_t tol = 1e-8;
+    //     for (index_t it = 0; it != itMax; ++it)
+    //     {
+    //         A.initSystem();
+    //         // assemble system
+    //         A.assemble(
+    //             ( N_der * E_m_der.tr() + E_m_der2 + M_der * E_f_der.tr() - E_f_der2 ) * meas(G)
+    //             , u * F * meas(G) - ( ( N * E_m_der.tr() - M * E_f_der.tr() ) * meas(G) ).tr()
+    //             );
 
-            // For Neumann (same for Dirichlet/Nitche) conditions
-            variable g_N = A.getBdrFunction();
-            A.assembleRhsBc(u * g_N, bc.neumannSides() );
+    //         // For Neumann (same for Dirichlet/Nitche) conditions
+    //         variable g_N = A.getBdrFunction();
+    //         A.assembleRhsBc(u * g_N, bc.neumannSides() );
 
-            // A.assemble(tt.val() * tt.val() * tt.val() / 3.0 * E_f_der2);
-            // solve system
-            solver.compute( A.matrix() );
-            gsMatrix<> updateVector = solver.solve(A.rhs()); // this is the UPDATE
-            solVector += updateVector;
-            residual = A.rhs().norm();
+    //         // A.assemble(tt.val() * tt.val() * tt.val() / 3.0 * E_f_der2);
+    //         // solve system
+    //         solver.compute( A.matrix() );
+    //         gsMatrix<> updateVector = solver.solve(A.rhs()); // this is the UPDATE
+    //         solVector += updateVector;
+    //         residual = A.rhs().norm();
 
-            gsInfo<<"Iteration: "<< it
-                   <<", residue: "<< residual
-                   <<", update norm: "<<updateVector.norm()
-                   <<"\n";
+    //         gsInfo<<"Iteration: "<< it
+    //                <<", residue: "<< residual
+    //                <<", update norm: "<<updateVector.norm()
+    //                <<"\n";
 
-            // update deformed patch
-            u_sol.setSolutionVector(updateVector);
-            for ( size_t k =0; k!=mp_def.nPatches(); ++k) // Deform the geometry
-            {
-                // // extract deformed geometry
-                u_sol.extract(cc, k);
-                mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
-            }
-
-
-            if (residual < tol)
-                break;
-        }
-    }
-
-    evaluateFunction(ev, defG, pt); // evaluates an expression on a point
-    evaluateFunction(ev, cartcov(defG).inv()*F, pt); // evaluates an expression on a point
+    //         // update deformed patch
+    //         u_sol.setSolutionVector(updateVector);
+    //         for ( size_t k =0; k!=mp_def.nPatches(); ++k) // Deform the geometry
+    //         {
+    //             // // extract deformed geometry
+    //             u_sol.extract(cc, k);
+    //             mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
+    //         }
 
 
+    //         if (residual < tol)
+    //             break;
+    //     }
+    // }
 
-    // ! [Solve nonlinear problem]
 
-    // Penalize the matrix? (we need values for the DoFs to be enforced..
-    // function/call:  penalize_matrix(DoF_indices, DoF_values)
-    // otherwise: should we tag the DoFs inside "u" ?
+    // // ! [Solve nonlinear problem]
 
-    // gsInfo<<"RHS rows = "<<A.rhs().rows()<<"\n";
-    // gsInfo<<"RHS cols = "<<A.rhs().cols()<<"\n";
-    // gsInfo<<"MAT rows = "<<A.matrix().rows()<<"\n";
-    // gsInfo<<"MAT cols = "<<A.matrix().cols()<<"\n";
+    // // Penalize the matrix? (we need values for the DoFs to be enforced..
+    // // function/call:  penalize_matrix(DoF_indices, DoF_values)
+    // // otherwise: should we tag the DoFs inside "u" ?
 
-    // gsInfo<< A.rhs().transpose() <<"\n";
-    // gsInfo<< A.matrix().toDense()<<"\n";
+    // // gsInfo<<"RHS rows = "<<A.rhs().rows()<<"\n";
+    // // gsInfo<<"RHS cols = "<<A.rhs().cols()<<"\n";
+    // // gsInfo<<"MAT rows = "<<A.matrix().rows()<<"\n";
+    // // gsInfo<<"MAT cols = "<<A.matrix().cols()<<"\n";
+
+    // // gsInfo<< A.rhs().transpose() <<"\n";
+    // // gsInfo<< A.matrix().toDense()<<"\n";
+    gsWriteParaview<>( mp, "mp", 1000);
 
 
     //! [Export visualization in ParaView]
@@ -2019,13 +1718,13 @@ int main(int argc, char *argv[])
         for (index_t k = 0; k != mp_def.nPatches(); ++k)
             deformation.patch(k).coefs() -= mp.patch(k).coefs();
 
-        gsField<> solField(mp, deformation);
+        gsField<> solField(mp_def, deformation);
         gsInfo<<"Plotting in Paraview...\n";
         gsWriteParaview<>( solField, "solution", 1000, true);
 
-        ev.options().setSwitch("plot.elements", true);
-        ev.writeParaview( S_f2, G, "stress");
-        evaluateFunction(ev, S_f2[0], pt); // evaluates an expression on a point
+        // ev.options().setSwitch("plot.elements", true);
+        // ev.writeParaview( S_f2, G, "stress");
+        // evaluateFunction(ev, S_f2[0], pt); // evaluates an expression on a point
 
         // gsFileManager::open("solution.pvd");
     }
@@ -2038,7 +1737,7 @@ template <class T>
 void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsVector<T> pt)
 {
     gsMatrix<T> evresult = ev.eval( expression,pt );
-    gsInfo << "Eval on point ("<<pt.at(0)<<" , "<<pt.at(1)<<") :\n"<< evresult;
+    gsInfo << "Eval on point ("<<pt.at(0)<<") :\n"<< evresult;
     gsInfo << "\nEnd ("<< evresult.rows()<< " x "<<evresult.cols()<<")\n";
 };
 
