@@ -312,6 +312,10 @@ if(GISMO_EXASTENCILS)
   gismo_fetch_module(gsExaStencils)
 endif()
 
+if(GISMO_TIDALFLOW)
+  gismo_fetch_module(gsTidalFlow)
+endif()
+
 if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
   gismo_fetch_module(unsupported)
 endif()
