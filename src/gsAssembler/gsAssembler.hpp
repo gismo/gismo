@@ -69,11 +69,11 @@ bool gsAssembler<T>::check()
     const gsBoundaryConditions<T> & m_bConditions = m_pde_ptr->bc();
 
     // Check if boundary conditions are OK
-    const int np = m_bases.front().nBases();
+    const size_t np = m_bases.front().nBases();
     for (typename gsBoundaryConditions<T>::const_iterator it =
          m_bConditions.dirichletBegin() ; it != m_bConditions.dirichletEnd(); ++it )
     {
-        GISMO_ENSURE( it->ps.patch < np && it->ps.patch > -1,
+        GISMO_ENSURE( it->ps.patch < np && it->ps.patch >= 0,
                       "Problem: a Dirichlet boundary condition is set "
                       "on a patch id which does not exist.");
     }
@@ -81,7 +81,7 @@ bool gsAssembler<T>::check()
     for (typename gsBoundaryConditions<T>::const_iterator it =
          m_bConditions.neumannBegin() ; it != m_bConditions.neumannEnd(); ++it )
     {
-        GISMO_ENSURE( it->ps.patch < np && it->ps.patch > -1,
+        GISMO_ENSURE( it->ps.patch < np && it->ps.patch >= 0,
                       "Problem: a Neumann boundary condition is set "
                       "on a patch id which does not exist.");
     }
@@ -561,7 +561,7 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     // to do: test unknown_dim == dim
 
     gsMatrix<T> coeffs;
-    for (index_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
+    for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
     {
         // Reconstruct solution coefficients on patch p
         const int sz  = m_bases[m_system.colBasis(unk)][p].size();
@@ -610,7 +610,7 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     for(index_t unk = 0; unk<dim;++unk)
         basisIndices[unk] = m_system.colBasis(unknowns[unk]);
 
-    for (index_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
+    for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
     {
         const int sz  = m_bases[basisIndices[0]][p].size(); //must be equal for all unk
         coeffs.resize(sz, dim);
@@ -655,8 +655,9 @@ void gsAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
                                     gsMultiPatch<T>& result, T theta) const
 {
     // GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
+    unsigned idx;
 
-    for (index_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
+    for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
     {
         // Update solution coefficients on patch p
         const int sz  = m_bases[0][p].size();
@@ -670,7 +671,8 @@ void gsAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
             {
                 if ( mapper.is_free(i, p) ) // DoF value is in the solVector
                 {
-                    coeffs(i,j) += theta* solVector( mapper.index(i, p), 0);
+                    m_system.mapToGlobalColIndex(i,p,idx,j);
+                    coeffs(i,j) += theta * solVector(idx,0);
                 }
             }
         }

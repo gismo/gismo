@@ -321,6 +321,15 @@ template <typename T> int getSign(T val)
     return (T(0) < val) - (val < T(0));
 }
 
+/// Return smallest difference between two (integer)T numbers as unsigned T
+/// especially the case abs_diff(INT32_MAX, INT32_MIN) := UINT32_MAX is correct
+template <typename T>
+inline typename util::make_unsigned<T>::type abs_diff(T a, T b)
+{
+    typedef typename util::make_unsigned<T>::type unsignedT;
+    return a > b ? unsignedT(a) - unsignedT(b) : unsignedT(b) - unsignedT(a);
+}
+
 /// integer power
 inline int ipow(int x, unsigned exp)
 {

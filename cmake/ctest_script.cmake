@@ -28,7 +28,7 @@
 ##   -D CTEST_CONFIGURATION_TYPE=Release -D CTEST_BUILD_JOBS=8 \
 ##   -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=gcc -D CXXNAME=g++ \
 ##   -D CTEST_TEST_TIMEOUT=100 -D CTEST_MEMORYCHECK_TYPE=Valgrind \
-##   -D test_coverage=TRUE
+##   -D DO_COVERAGE=TRUE
 ##
 ## Different dashboard projects and subprojects are possible:
 ##
@@ -74,6 +74,7 @@
 ##   DROP_SITE
 ##   EMPTY_BINARY_DIRECTORY
 ##   GISMO_BRANCH
+##   GISMO_SUBMODULES
 ##   LABELS_FOR_SUBPROJECTS
 ##   PROJECT_NAME
 ##   UPDATE_MODULES
@@ -85,6 +86,26 @@
 ##   LDFLAGS
 ##
 ######################################################################
+
+cmake_minimum_required(VERSION 2.8.8)
+
+if (POLICY CMP0048)# CMake 3.0
+  cmake_policy(SET CMP0011 NEW)
+  cmake_policy(SET CMP0042 NEW)
+  cmake_policy(SET CMP0048 NEW)
+endif()
+
+if (POLICY CMP0054)# CMake 3.1
+  cmake_policy(SET CMP0054 NEW)
+endif()
+
+if (POLICY CMP0053)# CMake 3.1.3
+  cmake_policy(SET CMP0053 NEW)
+endif()
+
+if (POLICY CMP0063)# CMake 3.3
+  cmake_policy(SET CMP0063 NEW)
+endif()
 
 ## #################################################################
 ## Configuration
@@ -103,14 +124,6 @@ endif()
 # Number of jobs for build/test (later on)
 #set(CTEST_BUILD_JOBS 8)
 #set(CTEST_TEST_JOBS 10)
-
-# The Generator for CMake
-# ("Unix Makefiles", "Ninja", "Xcode", "NMake Makefiles", "NMake Makefiles JOM",
-#  "MinGW Makefiles", "Visual Studio 12 2013", "Visual Studio 14 2015",
-#  "Visual Studio 14 2015 Win64", and so on)
-if (NOT DEFINED CTEST_CMAKE_GENERATOR)
-  set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
-endif()
 
 # Tip fot C/C++ compilers
 # e.g. "cc/g++", "icc/icpc", "clang/clang++", "mpicc/mpic++", cl.exe/cl.exe
@@ -225,6 +238,19 @@ if(EMPTY_BINARY_DIRECTORY)
   ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
 endif()
 
+# The Generator for CMake
+# ("Unix Makefiles", "Ninja", "Xcode", "NMake Makefiles", "NMake Makefiles JOM",
+#  "MinGW Makefiles", "Visual Studio 12 2013", "Visual Studio 14 2015",
+#  "Visual Studio 14 2015 Win64", and so on)
+if (NOT DEFINED CTEST_CMAKE_GENERATOR)
+  file(WRITE ${CTEST_BINARY_DIRECTORY}/cgtest/CMakeLists.txt "message(\"\${CMAKE_GENERATOR}\")\n")
+  execute_process(COMMAND ${CMAKE_COMMAND} -Wno-dev .
+    ERROR_VARIABLE CTEST_CMAKE_GENERATOR
+    OUTPUT_QUIET
+    WORKING_DIRECTORY ${CTEST_BINARY_DIRECTORY}/cgtest/
+    ERROR_STRIP_TRAILING_WHITESPACE)
+endif()
+
 # Cleanup previous tests, settings and test data
 file(REMOVE_RECURSE ${CTEST_BINARY_DIRECTORY}/bin)
 file(REMOVE ${CTEST_BINARY_DIRECTORY}/CMakeCache.txt)
@@ -283,11 +309,12 @@ if (NOT DEFINED UPDATE_TYPE)
   set(UPDATE_TYPE git)
 endif()
 
-if (NOT DEFINED GISMO_BRANCH)
+if (NOT DEFINED GISMO_BRANCH) #for initial checkout
   set(GISMO_BRANCH stable)
 endif()
 
-# Update modules with fetch HEAD commits for all initialized submodules
+# Update modules with fetch HEAD commits for all initialized
+# submodules
 if (NOT DEFINED UPDATE_MODULES)
   set(UPDATE_MODULES OFF)
 endif()
@@ -314,10 +341,13 @@ find_program(CTEST_UPDATE_COMMAND NAMES ${UPDATE_TYPE} ${UPDATE_TYPE}.exe)
 if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
   if("x${UPDATE_TYPE}" STREQUAL "xgit")
     if("x${UPDATE_PROT}" STREQUAL "xhttps")
-      set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch ${GISMO_BRANCH} https://github.com/gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
+      set(gismo_url https://github.com/gismo/gismo.git)
     else() #ssh
-      set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch ${GISMO_BRANCH} git@github.com:gismo/gismo.git ${CTEST_SOURCE_DIRECTORY}")
+      set(gismo_url git@github.com:gismo/gismo.git)
     endif()
+    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} clone --depth 1 --branch ${GISMO_BRANCH} ${gismo_url} ${CTEST_SOURCE_DIRECTORY})
+    unset(CTEST_CHECKOUT_COMMAND)
+
   elseif("x${UPDATE_TYPE}" STREQUAL "xsvn")
     if("x${GISMO_BRANCH}" STREQUAL "xstable") # stable
       set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} checkout https://github.com/gismo/gismo.git/trunk ${CTEST_SOURCE_DIRECTORY}")
@@ -335,6 +365,47 @@ if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
       COMMAND ${CMAKE_COMMAND} -E create_symlink gismo-${GISMO_BRANCH} ${CTEST_SOURCE_DIRECTORY}
       WORKING_DIRECTORY ${CTEST_SCRIPT_DIRECTORY} )
     set(CTEST_CHECKOUT_COMMAND "${CMAKE_COMMAND} --version")
+  endif()
+endif()
+
+if("x${UPDATE_TYPE}" STREQUAL "xgit")
+
+  if (NOT "x${GISMO_SUBMODULES}" STREQUAL "x")
+    foreach (submod ${GISMO_SUBMODULES})
+      #string(TOUPPER ${submod} csubmod)
+      #set(SUBM_ARGS ${SUBM_ARGS} -D${csubmod}=ON)
+      if ("x${submod}" STREQUAL "xunsupported")
+	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_UNSUPPORTED=ON)
+      endif()
+      if ("x${submod}" STREQUAL "xmotor")
+	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_MOTOR=ON)
+      endif()
+      if ("x${submod}" STREQUAL "xgsElasticity")
+	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_ELASTICITY=ON)#GSELASTICITY=ON
+      endif()
+      if ("x${submod}" STREQUAL "xgsExastencils")
+	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_EXASTENCILS=ON)
+      endif()
+    endforeach()
+  endif()
+
+  foreach (submodule ${GISMO_SUBMODULES})
+    if( NOT EXISTS "${CTEST_SOURCE_DIRECTORY}/extensions/${submodule}/.git" )
+      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule update --init extensions/${submodule}
+	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY})
+    endif()
+    if( NOT EXISTS "${CTEST_SOURCE_DIRECTORY}/extensions/${submodule}/.git" )
+      message(SEND_ERROR "Problem fetching ${submodule}")
+    endif()
+
+    if(${UPDATE_MODULES})
+      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
+	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
+    endif()
+  endforeach()
+  if(${UPDATE_MODULES})
+    set(CTEST_GIT_UPDATE_CUSTOM ${CTEST_UPDATE_COMMAND} pull)
+    unset(CTEST_GIT_UPDATE_OPTIONS)
   endif()
 endif()
 
@@ -363,10 +434,11 @@ endif()
 
 # Name of this build
 if(NOT DEFINED CTEST_BUILD_NAME)
-  find_program(UNAME NAMES uname)
-  execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname OUTPUT_STRIP_TRAILING_WHITESPACE)
-  execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu" OUTPUT_STRIP_TRAILING_WHITESPACE)
-  set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CNAME}")
+#  find_program(UNAME NAMES uname)
+#  execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname OUTPUT_STRIP_TRAILING_WHITESPACE)
+#  execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu" OUTPUT_STRIP_TRAILING_WHITESPACE)
+  #  set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CNAME}")
+    set(CTEST_BUILD_NAME "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CNAME}")
 endif()
 
 if(NOT CTEST_BUILD_JOBS)
@@ -396,16 +468,40 @@ endif()
 
 set(ENV{CTEST_USE_LAUNCHERS_DEFAULT} 1)
 
-function(update_gismo updcount)
-  ctest_update(RETURN_VALUE updcount)
-  if(UPDATE_MODULES)
-    execute_process(COMMAND "${CTEST_UPDATE_COMMAND}" "submodule" "update" "--remote"
-      WORKING_DIRECTORY ${gismo_SOURCE_DIR}
-      #RESULT_VARIABLE gresult
-      #OUTPUT_QUIET
-      )
+macro(get_git_status res)
+  if(EXISTS "${CTEST_SOURCE_DIRECTORY}/.git" )
+    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} rev-parse --verify HEAD
+      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      OUTPUT_VARIABLE gitHash)
+    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule
+      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      OUTPUT_VARIABLE submoduleHashes)
+    set(${res} " ${gitHash} gismo\n${submoduleHashes}\n")
   endif()
-endfunction(update_gismo)
+endmacro(get_git_status)
+
+macro(update_gismo ug_ucount)
+  ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY} RETURN_VALUE ${ug_ucount})
+  set(ug_updlog " ${${ug_ucount}} gismo\n")
+  if(${UPDATE_MODULES})
+    foreach (submodule ${GISMO_SUBMODULES})
+      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
+	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
+      ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule} RETURN_VALUE ug_upd_sm)
+      set(ug_updlog "${ug_updlog} ${${ug_upd_sm}} extensions/${submodule}\n")
+      if (${ug_upd_sm} GREATER 0)
+	math(EXPR ${ug_ucount} "${${ug_ucount}} + ${ug_upd_sm}")
+      endif()
+      if(${ug_upd_sm} LESS 0)
+        message(SEND_ERROR "Git update submodule error")
+      endif()
+    endforeach()
+  endif()
+  get_git_status(gitstatus)
+  file(WRITE ${CTEST_BINARY_DIRECTORY}/gitstatus.txt "Commit:\n${gitstatus}Updates:\n${ug_updlog}")
+endmacro(update_gismo)
 
 macro(run_ctests)
   # Reset CTestConfig variables
@@ -426,9 +522,9 @@ macro(run_ctests)
   endif()
   #set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS}) #!Dangerous!
 
-  ctest_configure(OPTIONS "${CMAKE_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}")
+  ctest_configure(OPTIONS "${CMAKE_ARGS};${SUBM_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}")
 
-  ctest_submit(PARTS Configure Update)
+  ctest_submit(PARTS Configure Update Notes)
 
   #"${CMAKE_VERSION}" VERSION_LESS "3.10"
   if(NOT "x${LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
@@ -460,7 +556,10 @@ macro(run_ctests)
 
   else() # No subprojects
 
-    ctest_build(TARGET gsUnitTest APPEND) # for older versions of ninja
+
+    if("x${CTEST_CMAKE_GENERATOR}" STREQUAL "xNinja")
+      ctest_build(TARGET UnitTestPP APPEND) # for older versions of ninja
+    endif()
     ctest_submit(PARTS Build)
     ctest_build(APPEND)
     ctest_submit(PARTS Build)
@@ -486,12 +585,13 @@ endmacro(run_ctests)
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
 
+set(CTEST_NOTES_FILES ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
+
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
   ctest_start(${CTEST_TEST_MODEL})
   if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
-    #update_gismo()
-    ctest_update()
+    update_gismo(updcount)
   endif()
   run_ctests()
 
@@ -500,7 +600,7 @@ else() #continuous model
   while(${CTEST_ELAPSED_TIME} LESS ${test_runtime})
     set(START_TIME ${CTEST_ELAPSED_TIME})
     ctest_start(${CTEST_TEST_MODEL})
-    ctest_update(RETURN_VALUE updcount)
+    update_gismo(updcount)
     if( ${updcount} GREATER 0 )
       run_ctests()
     endif()

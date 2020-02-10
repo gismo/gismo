@@ -76,9 +76,9 @@ public:
     }
 
     /// Computes the number of points below the error threshold (or zero if not fitted)
-    std::size_t numPointsBelow(T threshold) const 
+    size_t numPointsBelow(T threshold) const
     { 
-        const std::size_t result= 
+        const size_t result=
             std::count_if(m_pointErrors.begin(), m_pointErrors.end(), 
                           std::bind2nd(std::less<T>(), threshold));
         return result; 

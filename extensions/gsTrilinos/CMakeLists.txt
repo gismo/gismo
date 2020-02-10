@@ -8,16 +8,16 @@ cmake_minimum_required(VERSION 2.8.11)
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
-cmake_policy(SET CMP0042 OLD)
-cmake_policy(SET CMP0048 OLD)
+cmake_policy(SET CMP0042 NEW)
+cmake_policy(SET CMP0048 NEW)
 endif()
 
 if(POLICY CMP0054)# CMake 3.1
-cmake_policy(SET CMP0054 OLD)
+cmake_policy(SET CMP0054 NEW)
 endif()
 
 if(POLICY CMP0053)# CMake 3.1.3
-cmake_policy(SET CMP0053 OLD)
+cmake_policy(SET CMP0053 NEW)
 endif()
 
 if(POLICY CMP0063)# CMake 3.3
@@ -92,10 +92,10 @@ ExternalProject_Add(Trilinos
                        -DTrilinos_ENABLE_Belos=${Trilinos_ENABLE_CXX11}
                        -DTrilinos_ENABLE_ML=ON # multilevel solver
                        -DTrilinos_ENABLE_Ifpack=ON # Ifpack
-                       
+
                        # Eigenvalue solvers
                        -DTrilinos_ENABLE_Anasazi=ON
-                       
+
                        # Nonlinear solvers
                        -DTrilinos_ENABLE_NOX=ON
 
@@ -107,7 +107,7 @@ ExternalProject_Add(Trilinos
                        -DNOX_ENABLE_ThyraCore=ON
                        -DNOX_ENABLE_ThyraEpetraAdapters=ON
                        -DNOX_ENABLE_ThyraEpetraExtAdapters=ON
-                       
+
                        # Note: we disable all optional packages by default
                        -DTrilinos_ENABLE_ALL_OPTIONAL_PACKAGES=OFF
                        # and enable individual packages below
@@ -118,7 +118,7 @@ ExternalProject_Add(Trilinos
                        #-DTPL_MPI_LIBRARIES=${MPI_CXX_LIBRARIES} # bug ? 2 elements
                        # Note: this must be ON, otherwise Trilinos compilation fails.
                        # Must be OFF on MS Windows
-                       
+
                        ## Point to specific paths (! no space after "=")
                        -DTPL_LAPACK_LIBRARIES=${LAPACK_LIBRARIES}
                        -DTPL_BLAS_LIBRARIES=${LAPACK_LIBRARIES}
@@ -136,7 +136,7 @@ ExternalProject_Add(Trilinos
 
                        # Taucs solvers
                        -DTPL_ENABLE_TAUCS=${GISMO_WITH_TAUCS}
-                       
+
                        #-DTPL_ENABLE_Pthread=OFF # Note: MS Win might not have Pthread
                        UPDATE_COMMAND ""
       )
@@ -169,7 +169,7 @@ ExternalProject_Add(Trilinos
 endif(NOT TRILINOS_FOUND)
 
 #include_directories(${EPETRA_INCLUDE_PATH})
-include_directories(${TRILINOS_INCLUDE_DIR})
+include_directories(${TRILINOS_INCLUDE_DIR} ${TPL_MPI_INCLUDE_DIRS})
 
 # Compile statically the extension
 add_library(${PROJECT_NAME} OBJECT

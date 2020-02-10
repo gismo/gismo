@@ -20,6 +20,6 @@ set(GISMO_CONFIG_DIR "${CMAKE_BINARY_DIR}/config/")
 
 # Set default search paths
 if (NOT DEFINED GISMO_SEARCH_PATHS)
-	set(GISMO_SEARCH_PATHS "${GISMO_DATA_DIR}" CACHE string
+	set(GISMO_SEARCH_PATHS "${GISMO_DATA_DIR}" CACHE STRING
 		"Define paths where files should be searched; seperated by semicolon.")
 endif()

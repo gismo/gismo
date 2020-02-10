@@ -189,10 +189,6 @@ namespace internal
 #include <gsAutoDiff.h>
 #endif
 
-#ifdef GISMO_WITH_FDBB
-#include <gsFdbb/gsFdbb.h>
-#endif
-
 /*
 #if defined(gismo_EXPORTS) || defined(gismo_dev_EXPORTS)
 #  ifdef _MSC_VER

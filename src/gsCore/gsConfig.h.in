@@ -28,6 +28,9 @@
 /** Define default index type. */
 #define index_t          @GISMO_INDEX_TYPE@
 
+/** Define default dimension type. */
+#define short_t          short
+
 /** Define the file data directory. */
 #define GISMO_DATA_DIR "@GISMO_DATA_DIR@"
 
@@ -40,7 +43,6 @@
 /* Enabled Extensions */
 #cmakedefine GISMO_WITH_ADIFF
 #cmakedefine GISMO_WITH_CODIPACK
-#cmakedefine GISMO_WITH_FDBB
 #cmakedefine GISMO_WITH_IPOPT
 #cmakedefine GISMO_WITH_MPFR
 #cmakedefine GISMO_WITH_MPI

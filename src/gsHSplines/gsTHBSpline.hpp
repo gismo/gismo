@@ -24,7 +24,7 @@ namespace gismo{
 // Public member functions
 // ************************************************
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
 {
     GISMO_ASSERT(d==2,"Not implemented for d!=2");
@@ -53,7 +53,7 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
     delete newGeo;
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTHBSpline<d, T>::increaseMultiplicity(index_t lvl, int dir, T knotValue, int mult)
 {
     gsWarn<<"gsTHBSpline<d, T>::increaseMultiplicity: This code is not working properly!"<<std::endl;
@@ -77,7 +77,7 @@ void gsTHBSpline<d, T>::increaseMultiplicity(index_t lvl, int dir, T knotValue, 
 // \returns b2 top right corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
 // \returns level levels of the boxes (level[i]: level of the i-th box,)
 // \returns bpatches list of B-spline patches associated with the boxes
-template<unsigned d, class T>
+template<short_t d, class T>
 //void gsTHBSplineBasis<d,T>::getBsplinePatches(gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level, gsMatrix<unsigned>& nvertices) const
 //void gsTHBSpline<d,T>::getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level, std::vector< gsTensorBSpline<2> >& bpatches) const
 void gsTHBSpline<d, T>::getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level) const
@@ -198,7 +198,7 @@ void gsTHBSpline<d, T>::getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsig
 // \returns cp control control points of the B-spline patch
 // \returns k1 knot vector of the B-spline patch (first dimension)
 // \returns k2 knot vector of the B-spline patch (second dimension)
-/*template<unsigned d, class T>
+/*template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVector<unsigned> b2, unsigned level, gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsCompactKnotVector<T>& k1, gsCompactKnotVector<T>& k2) const
 {
     // check if the indices in b1, and b2 are correct with respect to the given level
@@ -250,7 +250,7 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVecto
 //
 // Function called by getBsplinePatchGlobal
 // \param level
-/*template<unsigned d, class T>
+/*template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs)const
 {
     //coeffs.resize(this->m_bases[0]->component(1).knots().size()-this->m_deg[1]-1,this->m_bases[0]->component(0).knots().size()-this->m_deg[0]-1);
@@ -304,7 +304,7 @@ void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs)cons
 // Initializes the m_cmatrix up to given level with the coeffs of the geometry
 // \param col dimension (0, 1, 2 = x, y, z)
 // \param c_level level
-/*template<unsigned d, class T>
+/*template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::initialize_cmatrix(gsMatrix<T>&geom_coeff, int col, int c_level) const{
     int counter = 0;
     for(int i = 0; i <= c_level; i++){
@@ -322,7 +322,7 @@ void gsTHBSplineBasis<d,T>::initialize_cmatrix(gsMatrix<T>&geom_coeff, int col, 
 // \param mat
 // \param direction dimension (0, 1, 2 = x, y, z)
 // \returns cp the column direction of cp is updated with the related coordinate of the control points
-/*template<unsigned d, class T>
+/*template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::return_cp_1D(const gsMatrix<T> & mat, int direction, gsMatrix<T>& cp)const{
     GISMO_ASSERT((mat.cols()*mat.rows() == cp.rows()), "Wrong matrix dimension.");
     int counter = 0;
@@ -334,7 +334,7 @@ void gsTHBSplineBasis<d,T>::return_cp_1D(const gsMatrix<T> & mat, int direction,
     }
 }*/
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTHBSpline<d,T>::slice(index_t dir_fixed,T par,
                              typename gsTHBSpline<d,T>::BoundaryGeometryType & result) const
 {
@@ -374,7 +374,7 @@ void gsTHBSpline<d,T>::slice(index_t dir_fixed,T par,
 namespace internal
 {
 /// Get a THBSpline from XML data
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsXml< gsTHBSpline<d,T> >
 {
 private:

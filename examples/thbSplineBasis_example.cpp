@@ -190,8 +190,8 @@ int main(int argc, char *argv[])
     //! [Plot in Paraview]
     else
     {
-        gsInfo<<"Quitting.. No output created, re-run with --plot to get a ParaView "
-                "file containing Plotting image data.\n";
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+                  "file containing the solution.\n";
     }
     return EXIT_SUCCESS;
 }

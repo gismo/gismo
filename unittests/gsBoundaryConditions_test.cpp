@@ -95,8 +95,8 @@ gsFunctionExpr<real_t> getFunctionExpr(boundary_condition<real_t> bc)
 }
 
 void checkBoundaryCondition(boundary_condition<real_t> bc, bool parametric,
-        std::string label, gismo::condition_type::type conditionType, int patch,
-        int index, int unknown, int unkcomp, int domainDim,
+        std::string label, gismo::condition_type::type conditionType, size_t patch,
+        index_t index, int unknown, int unkcomp, short_t domainDim,
         std::string funcName)
 {
     // check boundary condition itself
@@ -125,7 +125,7 @@ void checkGsBoundaryCondition(const gsBoundaryConditions<real_t> & sut)
     gismo::corner_value<real_t> cv1 = c1[0];
     CHECK_EQUAL(0, cv1.corner);
     CHECK_EQUAL(0, cv1.corner.m_index);
-    CHECK_EQUAL(0, cv1.patch);
+    CHECK_EQUAL(size_t(0), cv1.patch);
     CHECK_EQUAL(0.0, cv1.value);
     CHECK_EQUAL(0, cv1.unknown);
 
@@ -146,7 +146,7 @@ void checkGsBoundaryCondition(const gsBoundaryConditions<real_t> & sut)
     { 1, 3, 1, 2 };
     int unknown = 0;
     int unkcomp = 0;
-    int domainDim = 2;
+    short_t domainDim = 2;
     for (int i = 0; i < 4; i++)
     {
         checkBoundaryCondition(bcc0[i], false, label1,
@@ -223,7 +223,7 @@ SUITE(gsBoundaryConditions_test)
         int dim1 = 1;
         std::string funcName1 = "tan(x)";
         gsFunctionExpr<real_t> func1 = gsFunctionExpr<real_t>(funcName1, dim1);
-        int domainDim1 = func1.domainDim();
+        short_t domainDim1 = func1.domainDim();
         CHECK_EQUAL(dim1, domainDim1);
         std::string expectedName1 = getFunctionExprExpectedString(funcName1);
         std::string actualName1 = getFunctionExprActualString(func1);
@@ -231,7 +231,7 @@ SUITE(gsBoundaryConditions_test)
         int dim2 = 2;
         std::string funcName2 = "sin(x)*sin(y)";
         gsFunctionExpr<real_t> func2 = gsFunctionExpr<real_t>(funcName2, dim2);
-        int domainDim2 = func2.domainDim();
+        short_t domainDim2 = func2.domainDim();
         CHECK_EQUAL(dim2, domainDim2);
         std::string expectedName2 = getFunctionExprExpectedString(funcName2);
         std::string actualName2 = getFunctionExprActualString(func2);
@@ -258,8 +258,8 @@ SUITE(gsBoundaryConditions_test)
     {
         int dim1 = 1;
         std::string funcName1 = "tan(x)";
-        int index1 = 1;
-        int index2 = 2;
+        index_t index1 = 1; // Eigen Index
+        size_t index2 = 2;  // std::size_t
         gismo::boxSide boxSide1 = gismo::boxSide(index1);
         gismo::boundary_condition<real_t>::function_ptr funcPtr1 =
                 gismo::memory::make_shared(
@@ -293,7 +293,7 @@ SUITE(gsBoundaryConditions_test)
     {
         int index1 = 3;
         gismo::boxCorner c1 = gismo::boxCorner(index1);
-        int p1 = 2;
+        size_t p1 = 2;
         real_t v1 = 3.0;
         int u1 = 4;
         gismo::corner_value<real_t> cornerVal1 = gismo::corner_value<real_t>(p1, c1,

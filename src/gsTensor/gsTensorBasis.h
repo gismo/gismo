@@ -29,8 +29,8 @@ namespace gismo
  *   \ingroup Tensor
  */
 
-template<unsigned d, class T>
-class gsTensorBasis : public gsBasis<T>  
+template<short_t d, class T>
+class gsTensorBasis : public gsBasis<T>
 {
 public: 
     typedef memory::shared_ptr< gsTensorBasis > Ptr;
@@ -46,7 +46,7 @@ public:
     typedef T Scalar_t;
 
     /// Dimension of the parameter domain
-    static const int Dim = d;
+    static const short_t Dim = d;
 
     /// Iterators on coordinate bases
     typedef Basis_t** iterator;
@@ -93,20 +93,20 @@ public:
     /// Constructor nD (takes ownership of the passed bases)
     explicit gsTensorBasis(iterator it) 
     {
-        for (unsigned i = 0; i < d; ++i)
+        for (short_t i = 0; i < d; ++i)
             m_bases[i] = *(it++);
     }
     
 public:
 
     // Returns the dimension of the basis
-    int domainDim() const { return Dim; }
+    short_t domainDim() const { return Dim; }
 
     /// Returns the number of elements in the basis
     index_t size() const 
     {
-        unsigned r=1;
-        for (unsigned i = 0; i < d; ++i)
+        index_t r=1;
+        for (short_t i = 0; i < d; ++i)
             r *= m_bases[i]->size();
         return r; 
     }
@@ -115,7 +115,7 @@ public:
     int numElements() const 
     {
         int nElem = m_bases[0]->numElements();
-        for (unsigned dim = 1; dim < d; ++dim)
+        for (short_t dim = 1; dim < d; ++dim)
             nElem *= m_bases[dim]->numElements();
         return nElem;
     }
@@ -123,9 +123,9 @@ public:
     // Look at gsBasis class for a description
     int numElements(boxSide const & s) const
     {
-        const unsigned dir =  s.direction();
+        const index_t dir =  s.direction();
         int nElem = 1;
-        for (unsigned dim = 0; dim < d; ++dim)
+        for (short_t dim = 0; dim < d; ++dim)
         {
             if(dim == dir)
                 continue;
@@ -140,7 +140,7 @@ public:
         GISMO_ASSERT( u.rows() == d, "Wrong vector dimension");
 
         int ElIndex = m_bases[d-1]->elementIndex( u.col(d-1) );
-        for ( int i=d-2; i>=0; --i )
+        for ( short_t i=d-2; i>=0; --i )
             ElIndex = ElIndex * m_bases[i]->numElements() 
                     + m_bases[i]->elementIndex( u.col(i) );
 
@@ -151,7 +151,7 @@ public:
     void numElements_cwise(gsVector<unsigned>& result) const
     {
         result.resize(d);
-        for (unsigned dim = 0; dim < d; ++dim)
+        for (short_t dim = 0; dim < d; ++dim)
             result(dim) = static_cast<unsigned>(m_bases[dim]->numElements());
     }
 
@@ -163,9 +163,12 @@ public:
 
     // TODO: Why is this documentation not in gsBasis?
     /**
-     * \brief Returns the indices of active (non-zero) basis functions
-     * at points <em>u</em>, as a list of indices, in <em>result</em>.
+     * \brief Returns the indices of active basis functions at points
+     * <em>u</em>, as a list of indices, in <em>result</em>. A
+     * function is said to be <em>active</em> in a point if this point
+     * lies in the closure of the function's support.
      *
+     * \par Tensor indexing in result
      * Assume that the parameter domain is three dimensional.
      * Let <em>n1</em>, <em>n2</em>, and <em>n3</em> denote the number of \em univariate basis
      * functions in the first, second and third coordinate direction, respectively.\n
@@ -313,7 +316,7 @@ public:
     // Look at gsBasis class for documentation 
     virtual void uniformRefine(int numKnots = 1, int mul=1)
     {
-        for (unsigned j = 0; j < d; ++j)
+        for (short_t j = 0; j < d; ++j)
             m_bases[j]->uniformRefine(numKnots,mul);
     }
 
@@ -344,7 +347,7 @@ public:
     // Look at gsBasis class for documentation 
     virtual void uniformCoarsen(int numKnots = 1)
     {
-        for (unsigned j = 0; j < d; ++j)
+        for (short_t j = 0; j < d; ++j)
             m_bases[j]->uniformCoarsen(numKnots);
     }
 
@@ -352,60 +355,60 @@ public:
     void uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots=1);
 
     // Look at gsBasis class for documentation 
-    virtual void degreeElevate(int const & i = 1, int const dir = -1)
+    virtual void degreeElevate(short_t const & i = 1, short_t const dir = -1)
     { 
         if (dir == -1)
         {
-            for (unsigned j = 0; j < d; ++j)
+            for (short_t j = 0; j < d; ++j)
                 m_bases[j]->degreeElevate(i);
         }
         else 
         {
-            GISMO_ASSERT( static_cast<int>(dir) < this->dim(),
+            GISMO_ASSERT( dir < this->dim(),
                           "Invalid basis component requested" );
             m_bases[dir]->degreeElevate(i);
         }
     }
 
     // Look at gsBasis class for documentation
-    virtual void degreeIncrease(int const & i = 1, int const dir = -1)
+    virtual void degreeIncrease(short_t const & i = 1, short_t const dir = -1)
     {
         if (dir == -1)
         {
-            for (unsigned j = 0; j < d; ++j)
+            for (short_t j = 0; j < d; ++j)
                 m_bases[j]->degreeIncrease(i);
         }
         else
         {
-            GISMO_ASSERT( static_cast<int>(dir) < this->dim(),
+            GISMO_ASSERT( dir < this->dim(),
                           "Invalid basis component requested" );
             m_bases[dir]->degreeIncrease(i);
         }
     }
 
     // Look at gsBasis class for documentation
-    virtual void degreeDecrease(int const & i = 1, int const dir = -1)
+    virtual void degreeDecrease(short_t const & i = 1, short_t const dir = -1)
     {
         if (dir == -1)
         {
-            for (unsigned j = 0; j < d; ++j)
+            for (short_t j = 0; j < d; ++j)
                 m_bases[j]->degreeDecrease(i);
         }
         else
         {
-            GISMO_ASSERT( static_cast<int>(dir) < this->dim(),
+            GISMO_ASSERT( dir < this->dim(),
                           "Invalid basis component requested" );
             m_bases[dir]->degreeDecrease(i);
         }
     }
 
     // Look at gsBasis class for documentation 
-    virtual void degreeReduce(int const & i = 1, int const dir = -1)
+    virtual void degreeReduce(short_t const & i = 1, short_t const dir = -1)
     {
         GISMO_UNUSED(dir);
-        GISMO_ASSERT( static_cast<int>(dir) < this->dim(),
+        GISMO_ASSERT( dir < this->dim(),
                       "Invalid basis component requested" );
-        for (unsigned j = 0; j < d; ++j)
+        for (short_t j = 0; j < d; ++j)
             m_bases[j]->degreeReduce(i);
     }
 
@@ -437,7 +440,7 @@ public:
     void size_cwise(gsVector<index_t,s> & result) const
     {
         result.resize(d);
-        for ( unsigned k = 0; k!=d; ++k )
+        for ( short_t k = 0; k!=d; ++k )
             result[k] = m_bases[k]->size(); 
     }
     
@@ -458,33 +461,33 @@ public:
     gsMatrix<unsigned> coefSlice(int dir, int k) const;
 
     /// Returns the degree of the basis wrt variable \a i 
-    int degree(int i) const 
+    short_t degree(short_t i) const
     { 
         return m_bases[i]->degree(0); 
     }
 
-    int maxDegree() const 
+    short_t maxDegree() const
     { 
-        int td = m_bases[0]->degree(0);
+        short_t td = m_bases[0]->degree(0);
         // take maximum of coordinate bases degrees
-        for (unsigned k=1; k!=d; ++k)
+        for (short_t k=1; k!=d; ++k)
             td = math::max(td, m_bases[k]->degree(0));
         return td;
     }
     
-    int minDegree() const 
+    short_t minDegree() const
     { 
-        int td = m_bases[0]->degree(0);
+        short_t td = m_bases[0]->degree(0);
         // take minimum of coordinate bases degrees
-        for (unsigned k=1; k!=d; ++k)
+        for (short_t k=1; k!=d; ++k)
             td = math::min(td, m_bases[k]->degree(0));
         return td;
     }
     
-    int totalDegree() const 
+    short_t totalDegree() const
     { 
-        int td = 0;
-        for (unsigned k=0; k!=d; ++k)
+        short_t td = 0;
+        for (short_t k=0; k!=d; ++k)
             td = + m_bases[k]->degree(0);
         return td;
     }
@@ -492,7 +495,7 @@ public:
     gsVector<int> cwiseDegree() const
     {
         gsVector<int> deg(d);
-        for (unsigned k=0; k!=d; ++k)
+        for (short_t k=0; k!=d; ++k)
             deg[k] = m_bases[k]->degree(0);
         return deg;
     }
@@ -502,14 +505,14 @@ public:
     inline unsigned index(unsigned i, unsigned j, unsigned k=0) const;
 
     /// Returns the stride for dimension dir
-    inline unsigned stride(int dir) const;
+    inline unsigned stride(short_t dir) const;
 
     /// Returns the strides for all dimensions
     void stride_cwise(gsVector<index_t,d> & result) const 
     { 
         //result.resize(d);
         result[0] = 1;
-        for ( unsigned i=1; i != d; ++i )
+        for ( short_t i=1; i != d; ++i )
             result[i] = result[i-1] * m_bases[i-1]->size();
     }
 
@@ -524,7 +527,7 @@ public:
     {
         gsVector<unsigned, d> ind;
         int mm = m;
-        for (unsigned i = 0; i<d; ++i )
+        for (short_t i = 0; i<d; ++i )
         {
             ind(i)= mm % size(i);
             mm -= ind(i);
@@ -544,7 +547,7 @@ public:
     /// \em ind is on the boundary
     inline bool indexOnBoundary(const gsVector<unsigned, d> & ind) const 
     {
-        for ( unsigned i = 0; i < d; ++i )
+        for ( short_t i = 0; i < d; ++i )
             if ( ind[i] == static_cast<unsigned>(size(i)-1) )
                 return true;
         return ( (ind.array() == 0).any() );
@@ -631,7 +634,7 @@ public:
     typedef memory::shared_ptr< gsTensorBasis<1,T> > Ptr;
     typedef memory::unique_ptr< gsTensorBasis<1,T> > uPtr;
 
-    static const int Dim = 1;
+    static const short_t Dim = 1;
 
     typedef gsBasis<T> Base;
 
@@ -711,7 +714,7 @@ public:
     
 public:
 
-    int dim() const { return 1;}
+    short_t dim() const { return 1;}
 
     /// Returns a box with the coordinate-wise active functions
     /// \param u evaluation points
@@ -807,7 +810,7 @@ public:
     { GISMO_ERROR("The basis is 1D"); }
 
     /// Returns the stride for dimension dir
-    inline unsigned stride(int dir) const 
+    inline unsigned stride(short_t dir) const
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT(dir==0,"Invalid direction");
@@ -859,7 +862,7 @@ private:
 /* ******************************************** */
 /* ******************************************** */
 
-template<unsigned d, class Basis_t >
+template<short_t d, class Basis_t >
 inline unsigned gsTensorBasis<d,Basis_t>::index(gsVector<unsigned,d> const & v) const
 {
     unsigned ind;
@@ -870,20 +873,20 @@ inline unsigned gsTensorBasis<d,Basis_t>::index(gsVector<unsigned,d> const & v) 
     return ind;
 }
 
-template<unsigned d, class Basis_t > 
+template<short_t d, class Basis_t >
 inline unsigned gsTensorBasis<d,Basis_t>::index(unsigned i, unsigned j, unsigned k ) const
 {
     return size(0) * (size(1) * k + j) + i;
 }
 
 
-template<unsigned d, class Basis_t >
-inline unsigned gsTensorBasis<d,Basis_t>::stride(int dir) const
+template<short_t d, class Basis_t >
+inline unsigned gsTensorBasis<d,Basis_t>::stride(short_t dir) const
 {
     GISMO_ASSERT( dir>=0 &&  dir< this->dim(), 
                   "Something went wrong with requested direction." );
     unsigned s(1);
-    for ( int i=0; i<dir; ++i )
+    for ( short_t i=0; i<dir; ++i )
         s *= size(i);
     return s;
 }

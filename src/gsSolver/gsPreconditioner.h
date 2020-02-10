@@ -205,8 +205,8 @@ public:
     /// Set damping parameter
     void setDamping(const T tau) { m_tau = tau;  }
 
-    /// Get scaling parameter
-    void getDamping()            { return m_tau; }
+    /// Get damping parameter
+    T getDamping() const         { return m_tau; }
 
     /// Get the default options as gsOptionList object
     static gsOptionList defaultOptions()

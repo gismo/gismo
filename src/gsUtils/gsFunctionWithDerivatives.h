@@ -98,11 +98,11 @@ public:
 
     GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsFunction<T>, clone)
  
-    int targetDim () const
+    short_t targetDim () const
     {
         return m_values->targetDim();
     }
-    int domainDim () const
+    short_t domainDim () const
     {
         return m_values->domainDim();
     }
@@ -130,8 +130,8 @@ private:
     {
         bool ok=true;
 
-        const int parDim=m_values->domainDim();
-        const int tarDim=m_values->targetDim();
+        const short_t parDim=m_values->domainDim();
+        const short_t tarDim=m_values->targetDim();
 
         if (m_derivs)
         {

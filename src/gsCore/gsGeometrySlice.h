@@ -52,7 +52,7 @@ public:
     /// \brief Gives back the domain dimension of this slice
     /// Note that this is one less than the domain dimension of the
     /// underlying geometry.
-    int domainDim() const
+    short_t domainDim() const
     {
         return m_geo->domainDim()-1;
     }
@@ -60,7 +60,7 @@ public:
     /// \brief Gives back the target dimension of this slice
     /// Note that this is the same as the target dimension of the
     /// underlying geometry.
-    int targetDim() const
+    short_t targetDim() const
     {
         return m_geo->targetDim();
     }

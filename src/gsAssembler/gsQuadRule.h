@@ -127,13 +127,13 @@ public:
      * corresponding Gauss quadrature weights.\n Length of the vector
      * \a weights = number of quadrature nodes.
      */
-    inline void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
+    virtual inline void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
                        gsMatrix<T> & nodes, gsVector<T> & weights ) const;
 
     /**\brief Maps a univariate quadrature rule (i.e., points and
      * weights) from the reference interval to an arbitrary interval.
      */
-    void mapTo( T startVal, T endVal,
+    virtual void mapTo( T startVal, T endVal,
                 gsMatrix<T> & nodes, gsVector<T> & weights ) const;
 
     /**\brief Maps a univariate quadrature rule (i.e., points and

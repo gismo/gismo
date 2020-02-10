@@ -85,7 +85,7 @@ protected:
 
     /// \brief Resolves the configuration of the input boundaries and
     /// creates a patch filled with the boundary coefficients
-    template<unsigned d> void preparePatch(gsTensorBSplineBasis<d,T> & resultBasis, 
+    template<short_t d> void preparePatch(gsTensorBSplineBasis<d,T> & resultBasis,
                                            gsMatrix<T> & coefs);
 
 protected:
@@ -101,7 +101,7 @@ protected:
 
 
 
-template <typename T> template <unsigned d>
+template <typename T> template <short_t d>
 void gsPatchGenerator<T>::preparePatch(gsTensorBSplineBasis<d,T> & resultBasis, gsMatrix<T> & coefs)
 {
     GISMO_ASSERT(m_boundary.nPatches()  == 2*d, 
@@ -284,7 +284,7 @@ void gsPatchGenerator<T>::preparePatch(gsTensorBSplineBasis<d,T> & resultBasis, 
     coefs.setZero(resultBasis.size(), m_boundary.geoDim());
     
     // Fill in boundary coefficients
-    for ( unsigned i = 0; i<d; i++ )
+    for ( short_t i = 0; i<d; i++ )
     {
         for ( int s = 0; s<2; s++ )
         {

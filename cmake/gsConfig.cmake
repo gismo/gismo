@@ -48,9 +48,9 @@ if(NOT GISMO_INDEX_TYPE)
    set (GISMO_INDEX_TYPE "int" CACHE STRING
    #math(EXPR BITSZ_VOID_P "8*${CMAKE_SIZEOF_VOID_P}")
    #set (GISMO_INDEX_TYPE "int${BITSZ_VOID_P}_t" CACHE STRING
-   "Index type(int, int32_t, int64_t, unsigned, size_t)" FORCE)
+   "Index type(int, int32_t, int64_t, long, long long)" FORCE)
    set_property(CACHE GISMO_INDEX_TYPE PROPERTY STRINGS
-   "int" "int32_t" "int64_t" "unsigned" "size_t" )
+   "int" "int32_t" "int64_t" "long" "long long" )
 endif()
 
 # Set a default build type if none was specified
@@ -155,7 +155,7 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   # affects -Wno-ignored-attributes in Eigen
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -Wunused-variable")
   if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftrack-macro-expansion=0 -Wno-ignored-attributes")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}") #-ftrack-macro-expansion=0 -Wno-ignored-attributes
   endif()
   if ("x${CMAKE_CXX_STANDARD}" STREQUAL "x98"
       AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.2)

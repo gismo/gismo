@@ -46,7 +46,6 @@ public:
 public:
 
     /// Type definitions
-    typedef typename BasisContainer::size_type size_t;
     typedef typename BasisContainer::iterator iterator;
     typedef typename BasisContainer::const_iterator const_iterator;
 
@@ -189,9 +188,9 @@ public:
 
 public:
 
-    int domainDim () const {return m_bases.front()->domainDim();}
+    short_t domainDim () const {return m_bases.front()->domainDim();}
 
-    int targetDim () const {return m_bases.front()->targetDim();}
+    short_t targetDim () const {return m_bases.front()->targetDim();}
 
     /// Swap with another gsMultiBasis.
     void swap(gsMultiBasis& other)
@@ -205,12 +204,12 @@ public:
     std::ostream& print( std::ostream& os ) const;
 
     /// Dimension of the parameter domain (must match for all bases).
-    int dim() const
+    short_t dim() const
     { return m_bases[0]->dim();}
 
     /// @brief Returns the polynomial degree of basis \a i in component \a j,
     /// if the basis is of polynomial or piecewise polynomial type.
-    int degree(size_t i = 0, int comp = 0) const
+    short_t degree(size_t i = 0, short_t comp = 0) const
     {
         GISMO_ASSERT( i < m_bases.size(),
                       "Invalid patch index "<<i<<" requested from gsMultiBasis" );
@@ -218,16 +217,16 @@ public:
     }
 
     /// @brief Maximum degree with respect to variable \a k.
-    int maxDegree(int k) const;
+    short_t maxDegree(short_t k) const;
 
     /// @brief Minimum degree with respect to variable \a k.
-    int minDegree(int k) const;
+    short_t minDegree(short_t k) const;
 
     /// @brief Maximum degree with respect to all variables
-    int maxCwiseDegree() const;
+    short_t maxCwiseDegree() const;
 
     /// @brief Minimum degree with respect to all variables
-    int minCwiseDegree() const;
+    short_t minCwiseDegree() const;
 
     /// @brief The number of basis functions in basis \a i.
     int size(size_t i) const
@@ -265,7 +264,7 @@ public:
     size_t nBases() const          { return m_bases.size(); }
 
     /// Return the \a i-th basis block.
-    const gsBasis<T> & basis(const  std::size_t i ) const
+    const gsBasis<T> & basis(const  size_t i ) const
     {
         GISMO_ASSERT( i < m_bases.size(),
                       "Invalid patch index"<<i<<" requested from gsMultiBasis" );
@@ -283,7 +282,7 @@ public:
     index_t nPieces() const { return static_cast<index_t>(m_bases.size()); }
 
     /// Return the \a i-th basis block.
-    gsBasis<T> & basis(const std::size_t i )
+    gsBasis<T> & basis(const size_t i )
     {
         GISMO_ASSERT( i < m_bases.size(),
                       "Invalid patch index"<<i<<" requested from gsMultiBasis" );
@@ -422,6 +421,38 @@ public:
         int numKnots = 1
         );
 
+    /// @brief Returns the basis that corresponds to the component
+    typename gsBasis<T>::uPtr componentBasis(patchComponent p) const
+    { return m_bases[p.patch()]->componentBasis(p); }
+
+    /// @brief Returns the basis that corresponds to the component
+    ///
+    /// @param pc        The component
+    /// @param dm        The dof mapper to be used
+    /// @param indices   The row vector where the indices are stored to
+    /// @param no_lower  If true, the transfer matrix does not include parts belonging to lower-order
+    ///                  components (i.e., edges without corners or faces without corners and edges)
+    typename gsBasis<T>::uPtr componentBasis_withIndices(
+        patchComponent pc,
+        const gsDofMapper& dm,
+        gsMatrix<unsigned>& indices,
+        bool no_lower = true
+    ) const;
+    
+    /// @brief Returns the bases that correspond to the components
+    ///
+    /// @param pc        The components
+    /// @param dm        The dof mapper to be used
+    /// @param indices   The row vector where the indices are stored to
+    /// @param no_lower  If true, the transfer matrix does not include parts belonging to lower-order
+    ///                  components (i.e., edges without corners or faces without corners and edges)
+    std::vector<typename gsBasis<T>::uPtr> componentBasis_withIndices(
+        const std::vector<patchComponent>& pc,
+        const gsDofMapper& dm,
+        gsMatrix<unsigned>& indices,
+        bool no_lower = true
+    ) const;
+
     /** @brief Checks if the interfaces \em bivec are fully matching, and if not, repairs them, i.e., makes them fully matching.
     *
     * \remarks Designed for gsHTensorBasis and derived bases.
@@ -496,7 +527,7 @@ public:
                                       std::vector<unsigned> & refEltsSecond );
 
     /// @brief Elevate the degree of every basis by the given amount. (keeping the smoothness)
-    void degreeElevate(int const i = 1, int const dir = -1)
+    void degreeElevate(short_t const i = 1, short_t const dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeElevate(i,dir);
@@ -504,7 +535,7 @@ public:
 
     /// @brief Increase the degree of every basis by the given
     /// amount. (keeping the multiplicity)
-    void degreeIncrease(int const i = 1, int const dir = -1)
+    void degreeIncrease(short_t const i = 1, short_t const dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeIncrease(i,dir);
@@ -512,21 +543,21 @@ public:
 
     /// @brief Increase the degree of every basis by the given
     /// amount. (keeping the multiplicity)
-    void degreeDecrease(int const i = 1, int const dir = -1)
+    void degreeDecrease(short_t const i = 1, short_t const dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeDecrease(i,dir);
     }
 
     /// Reduce the degree of the basis by the given amount.
-    void degreeReduce(int const i = 1)
+    void degreeReduce(short_t const i = 1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeReduce(i);
     }
 
     /// Set the degree of the basis.
-    void setDegree(int const& i)
+    void setDegree(short_t const& i)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->setDegree(i);

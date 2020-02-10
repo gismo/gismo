@@ -150,15 +150,18 @@ int main(int argc, char *argv[])
         }
     }
 
-    gsInfo<<"----------------\nFinished.\n";
+    gsInfo<<"----------------\n";
 
     if ( save )
     {
-        gsInfo<<"Writing fitting_out.xml"<<"\n";
+        gsInfo<<"Done. Writing solution to file fitting_out.xml\n";
         fd << *ref.result() ;
 
         fd.dump("fitting_out");
     }
+    else
+        gsInfo << "Done. No output created, re-run with --save to get a xml "
+                  "file containing the solution.\n";
 
     return 0;
 }

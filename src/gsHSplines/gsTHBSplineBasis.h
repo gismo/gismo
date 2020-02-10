@@ -31,7 +31,7 @@ namespace gismo
  * \ingroup basis
  * \ingroup HSplines
  */
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsTHBSplineBasis : public gsHTensorBasis<d,T>
 {
 public:
@@ -497,7 +497,7 @@ private:
 public:
 
   /// @brief Returns the dimension of the parameter space
-  int domainDim() const { return d; }
+  short_t domainDim() const { return d; }
 
     GISMO_CLONE_FUNCTION(gsTHBSplineBasis)
 

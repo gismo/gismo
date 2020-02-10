@@ -20,10 +20,10 @@ namespace gismo
 {
 
 template<class T> void
-gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, int fixDir)
+gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, short_t fixDir)
 //const unsigned digits)
 {
-    const int d  = basis.dim();
+    const short_t d  = basis.dim();
     GISMO_ASSERT( fixDir < d && fixDir>-2, "Invalid input fixDir = "<<fixDir);
 
     std::vector<gsVector<T> > nodes(d);
@@ -40,7 +40,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, int f
 
     //if (digits <= 30 )
     //{
-    int i;
+    short_t i;
     for(i=0; i!=fixDir; ++i )
     {
         //note: +0.5 for rounding
@@ -73,7 +73,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, int f
 template<class T>
 gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, 
                             const T quA, const int quB,
-                            const int fixDir)
+                            const short_t fixDir)
 //const unsigned digits)
 {
     init(basis, quA, quB, fixDir);
@@ -82,7 +82,7 @@ gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis,
 template<class T>
 gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, 
                             const gsOptionList & options,
-                            const int fixDir)
+                            const short_t fixDir)
 //const unsigned digits)
 {
     const T       quA = options.getReal("quA");
@@ -95,7 +95,7 @@ template<class T> void
 gsGaussRule<T>::setNodes( gsVector<index_t> const & numNodes, 
                           unsigned digits)
 {
-    const int d = numNodes.rows();
+    const index_t d = numNodes.rows();
 
     // Get base rule nodes and weights
     std::vector<gsVector<T> > nodes(d);
@@ -103,7 +103,7 @@ gsGaussRule<T>::setNodes( gsVector<index_t> const & numNodes,
 
     if (digits == 0)
     {
-        for (int i = 0; i < d; ++i)
+        for (index_t i = 0; i < d; ++i)
         {
             if (!lookupReference(numNodes[i], nodes[i], weights[i]))
                 computeReference(numNodes[i], nodes[i], weights[i], REAL_DIG);
@@ -111,7 +111,7 @@ gsGaussRule<T>::setNodes( gsVector<index_t> const & numNodes,
     }
     else
     {
-        for (int i = 0; i < d; ++i)
+        for (index_t i = 0; i < d; ++i)
             computeReference(numNodes[i], nodes[i], weights[i], digits);
     }
 
@@ -376,7 +376,8 @@ gsGaussRule<T>::lookupReference(index_t n,       // Number of points
         w << 0.016017228257774333324224616858, 0.036953789770852493799950668299, 0.057134425426857208283635826472, 0.076100113628379302017051653300, 0.093444423456033861553289741114, 0.108797299167148377663474578070, 0.12183141605372853419536717713, 0.13226893863333746178105257450, 0.13988739479107315472213342387, 0.14452440398997005906382716655, 0.14608113364969042719198514768, 0.14452440398997005906382716655, 0.13988739479107315472213342387, 0.13226893863333746178105257450, 0.12183141605372853419536717713, 0.108797299167148377663474578070, 0.093444423456033861553289741114, 0.076100113628379302017051653300, 0.057134425426857208283635826472, 0.036953789770852493799950668299, 0.016017228257774333324224616858;
         return true;
     }
-/*
+#ifndef _MSC_VER
+// /*
     case 22 :
     {
         x << -0.99429458548239929207303142, -0.97006049783542872712395099, -0.92695677218717400052069294, -0.86581257772030013653642564, -0.78781680597920816200427796, -0.69448726318668278005068984, -0.58764040350691159295887693, -0.46935583798675702640633071, -0.34193582089208422515814742, -0.20786042668822128547884653, -0.06973927331972222121384180, 0.06973927331972222121384180, 0.20786042668822128547884653, 0.34193582089208422515814742, 0.46935583798675702640633071, 0.58764040350691159295887693, 0.69448726318668278005068984, 0.78781680597920816200427796, 0.86581257772030013653642564, 0.92695677218717400052069294, 0.97006049783542872712395099, 0.99429458548239929207303142;
@@ -525,6 +526,7 @@ gsGaussRule<T>::lookupReference(index_t n,       // Number of points
         return true;
     }
 // */
+#endif
     default:
     {
         //gsWarn << "  Illegal value of N = " << n << "\n";

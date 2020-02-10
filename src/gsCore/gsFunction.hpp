@@ -34,7 +34,7 @@ void gsFunction<T>::jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
     deriv_into(u, result);
 
     // Reshape the matrix to get one Jacobian block per evaluation point
-    const index_t d = domainDim();     // dimension of domain
+    const short_t d = domainDim();     // dimension of domain
     result.resize(d, result.size()/d); //transposed Jacobians
     result.blockTransposeInPlace( targetDim() );
 }
@@ -277,7 +277,7 @@ gsFunction<T>::hess(const gsMatrix<T>& u, unsigned coord) const
     return hessian;
 }
 
-template <typename T, int domDim, int tarDim>
+template <typename T, short_t domDim, short_t tarDim>
 inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
 {
     //GISMO_ASSERT( domDim*tarDim == 1, "Both domDim and tarDim must have the same sign");
@@ -403,7 +403,7 @@ void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
     this->compute(InOut.points, InOut);
     
     // Fill extra data
-    typename gsFunctionSet<T>::dim_t Dim = this->dimensions();
+    std::pair<short_t, short_t> Dim = this->dimensions();
 
     GISMO_ASSERT(Dim.first<10,             "Domain dimension is too big");
     GISMO_ASSERT(Dim.first<=Dim.second, "Singular map: target dimension is lower then the domain dimension");

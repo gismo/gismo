@@ -70,7 +70,7 @@ struct lvl_coef
  *    \ingroup HSplines
  */
 
-template<unsigned d, class T>
+template<short_t d, class T>
 class GISMO_DEFAULT_VIS gsHTensorBasis: public gsBasis<T>
 {
 public:
@@ -133,9 +133,9 @@ public:
         GISMO_ASSERT( (boxes.size()%(2*d+1))==0,
                       "The points did not define boxes properly. The basis was created without any domain structure.");
 
-        for( unsigned i = 0; i < (boxes.size()/(2*d+1)); i++)
+        for( size_t i = 0; i < (boxes.size()/(2*d+1)); i++)
         {
-            for( unsigned int j = 0; j < d; j++)
+            for( short_t j = 0; j < d; j++)
             {
                 i1[j] = boxes[(2*d+1)*i+j+1];
                 i2[j] = boxes[(2*d+1)*i+j+d+1];
@@ -169,13 +169,13 @@ public:
 
         for(index_t i = 0; i < boxes.cols()/2; i++)
         {
-            for(unsigned j = 0; j < d; j++)
+            for(short_t j = 0; j < d; j++)
             {
                 k1[j] = this->m_bases.back()->knots(j).uFind(boxes(j,2*i)).uIndex();
                 k2[j] = this->m_bases.back()->knots(j).uFind(boxes(j,2*i+1)).uIndex()+1;
             }
             int level = m_tree.query3(k1,k2,m_bases.size()-1);
-            for(unsigned j = 0; j < d; j++)
+            for(short_t j = 0; j < d; j++)
             {
                 k1[j] = this->m_bases[level+1]->knots(j).uFind(boxes(j,2*i)).uIndex();
                 k2[j] = this->m_bases[level+1]->knots(j).uFind(boxes(j,2*i+1)).uIndex()+1;
@@ -214,7 +214,7 @@ public:
 
         for(index_t i = 0; i < boxes.cols()/2; i++)
         {
-            for(unsigned j = 0; j < d; j++)
+            for(short_t j = 0; j < d; j++)
             {
                 k1[j] = m_bases[levels[i]]->knots(j).uFind(boxes(j,2*i)).uIndex();
                 k2[j] = m_bases[levels[i]]->knots(j).uFind(boxes(j,2*i+1)).uIndex()+1;
@@ -359,13 +359,13 @@ public:
         unsigned k(0);
 
         gsVector<unsigned, d> ind;
-        for(std::size_t i = 0; i < m_xmatrix.size(); i++)
+        for(size_t i = 0; i < m_xmatrix.size(); i++)
         {
             for( CMatrix::const_iterator it =
                      m_xmatrix[i].begin(); it != m_xmatrix[i].end(); it++)
             {
                 ind = m_bases[i]->tensorIndex(*it);
-                for ( unsigned r = 0; r!=d; ++r )
+                for ( short_t r = 0; r!=d; ++r )
                     result(r,k) = m_bases[i]->knots(r).greville( ind[r] );
                 k++;
             }
@@ -545,20 +545,20 @@ public:
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const;
 
-    int maxDegree() const
+    short_t maxDegree() const
     {
-        int td = m_bases[0]->degree(0);
+        short_t td = m_bases[0]->degree(0);
         // take maximum of coordinate bases degrees
-        for (unsigned k=1; k!=d; ++k)
+        for (short_t k=1; k!=d; ++k)
             td = math::max(td, m_bases[0]->degree(k));
         return td;
     }
 
-    int minDegree() const
+    short_t minDegree() const
     {
-        int td = m_bases[0]->degree(0);
+        short_t td = m_bases[0]->degree(0);
         // take maximum of coordinate bases degrees
-        for (unsigned k=1; k!=d; ++k)
+        for (short_t k=1; k!=d; ++k)
             td = math::min(td, m_bases[0]->degree(k));
         return td;
     }
@@ -566,7 +566,7 @@ public:
     /// @brief If the basis is a tensor product of (piecewise)
     /// polynomial bases, then this function returns the polynomial
     /// degree of the \a i-th component.
-    virtual inline int degree(int i) const
+    virtual inline short_t degree(short_t i) const
     { return m_bases[0]->degree(i);}
 
 
@@ -603,9 +603,6 @@ public:
     {
         return m_tree.getMaxInsLevel();
     }
-
-    /// Returns the level of \a function, which is a hier. Id index
-    int get_level(unsigned function) const;
 
     /// Returns the level of the function indexed \a i (in continued indices)
     inline int levelOf(unsigned i) const

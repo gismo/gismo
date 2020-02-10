@@ -245,7 +245,7 @@ public:
          *
          * @return list of vertex indices
          */
-        const std::list<std::size_t> getVertexIndices() const;
+        const std::list<size_t> getVertexIndices() const;
 
         /**
          * @brief Get shortest distance between vertices
@@ -431,7 +431,7 @@ private:
          *
          * @return list of vertex indices
          */
-        const std::list<std::size_t > getVertexIndices() const { return m_boundary.getVertexIndices(); }
+        const std::list<size_t > getVertexIndices() const { return m_boundary.getVertexIndices(); }
 
         /**
          * @brief Get distance between vertices

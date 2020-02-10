@@ -174,7 +174,7 @@ public:
         std::string label;                              ///< Label
         std::string desc;                               ///< Description
         std::string val;                                ///< Value (as string)
-        std::ostream & print(std::ostream & os) const;
+        std::ostream & print(std::ostream & os, index_t label_slot = 19) const;
     };
 
     /// Provides a list of all entries as vector of gsOptionList::OptionListEntry structs

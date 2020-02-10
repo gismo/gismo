@@ -27,7 +27,7 @@ namespace gismo
 {
 
 /// @brief Traits for BSplineBasis in more dimensions
-template<unsigned d, class T>
+template<short_t d, class T>
 struct gsBSplineTraits
 {
     typedef gsKnotVector<T> KnotVectorType;
@@ -88,7 +88,7 @@ public:
     typedef typename gsBSplineTraits<0,T>::Basis BoundaryBasisType;
 
     /// @brief Dimension of the parameter domain
-    static const int Dim = 1;
+    static const short_t Dim = 1;
 
     /// @brief Smart pointer for gsTensorBSplineBasis
     typedef memory::shared_ptr< Self_t > Ptr;
@@ -109,7 +109,7 @@ public:
     //     const gsTensorBSplineBasis * a;
     //     if ( ( a = dynamic_cast<const gsTensorBSplineBasis *>( &o )) )
     //     {
-    //         m_p        = a->degree() ; 
+    //         m_p        = a->degree() ;
     //         m_knots    = KnotVectorType( a->knots() );
     //         m_periodic = a->m_periodic;
     //     }
@@ -155,7 +155,7 @@ public:
 /* Virtual member functions required by the base class */
 
     // Look at gsBasis class for a description
-    int domainDim() const { return Dim; }
+    short_t domainDim() const { return Dim; }
 
     // Unhide/forward gsTensorBasis<1,T>::size(k), since the overload
     // with size() automatically hides it in this class
@@ -308,23 +308,23 @@ public:
                                         int n, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description
-    int degree(int i) const 
+    short_t degree(short_t i) const
     {
         GISMO_UNUSED(i);
         GISMO_ASSERT(i==0,"Asked for degree(i) in 1D basis.");
         return m_p; 
     }
 
-    int degree() const {return m_p;}
+    short_t degree() const {return m_p;}
 
     // Look at gsBasis class for a description
-    int maxDegree()   const { return m_p; }
+    short_t maxDegree()   const { return m_p; }
 
     // Look at gsBasis class for a description
-    int minDegree()   const { return m_p; }
+    short_t minDegree()   const { return m_p; }
 
     // Look at gsBasis class for a description
-    int totalDegree() const { return m_p; }
+    short_t totalDegree() const { return m_p; }
  
     /// @brief Returns the order of the B-spline  basis
     inline unsigned order() const { return m_p+1; }
@@ -454,15 +454,15 @@ public:
     }
 
     /// @brief p-refinement (essentially degree elevation)
-    void refine_p(int const & i = 1)
+    void refine_p(short_t const & i = 1)
     { degreeElevate(i); }
 
     /// @brief Uniform h-refinement (placing \a i new knots inside each knot-span
-    void refine_h(int const & i = 1)
+    void refine_h(short_t const & i = 1)
     { uniformRefine(i); }
   
     /// @brief Elevate the degree of the basis and preserve the smoothness
-    void degreeElevate(int const & i = 1, int const dir = -1)
+    void degreeElevate(short_t const & i = 1, short_t const dir = -1)
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
@@ -470,7 +470,7 @@ public:
     }
 
     // Look at gsBasis for documentation
-    void degreeReduce (int const & i = 1, int const dir = -1) 
+    void degreeReduce (short_t const & i = 1, short_t const dir = -1)
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
@@ -480,7 +480,7 @@ public:
     }
 
     // Look at gsBasis for documentation
-    void degreeIncrease(int const & i = 1, int const dir = -1)
+    void degreeIncrease(short_t const & i = 1, short_t const dir = -1)
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
@@ -488,7 +488,7 @@ public:
     }
 
     // Look at gsBasis for documentation
-    void degreeDecrease(int const & i = 1, int const dir = -1)
+    void degreeDecrease(short_t const & i = 1, short_t const dir = -1)
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
@@ -644,7 +644,7 @@ public:
 protected:
 
     /// @brief Degree
-    int m_p;
+    short_t m_p;
 
     /// @brief Knot vector
     KnotVectorType m_knots;
@@ -791,7 +791,7 @@ private:
 #endif
 namespace gismo
 {
-template<class T> const int gsTensorBSplineBasis<1,T>::Dim; //-O3 (SLE11) fix
+template<class T> const short_t gsTensorBSplineBasis<1,T>::Dim; //-O3 (SLE11) fix
 EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<1,real_t>;
 EXTERN_CLASS_TEMPLATE gsBSplineBasis<real_t>;
 }

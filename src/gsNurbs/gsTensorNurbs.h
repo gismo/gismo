@@ -36,7 +36,7 @@ namespace gismo
     \ingroup Nurbs
 */
 
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsTensorNurbs : public gsGeoTraits<d,T>::GeometryBase
 {
 
@@ -265,7 +265,7 @@ public:
     gsMatrix<T> & weights() { return this->basis().weights(); }
     
     /// Returns the degree of the basis wrt direction i 
-    unsigned degree(unsigned i) const 
+    short_t degree(unsigned i) const
     { return this->basis().source().component(i).degree(); }
 
 /// Toggle orientation wrt coordinate k

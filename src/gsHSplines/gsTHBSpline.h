@@ -33,7 +33,7 @@ namespace gismo
     \ingroup HSplines
 */
 
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsTHBSpline : public gsGeoTraits<d,T>::GeometryBase
 {
 public:

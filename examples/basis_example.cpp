@@ -53,14 +53,14 @@ int main(int argc, char* argv[])
     }
     else
     {
-        gsInfo << "Input file doesn't have a basis inside." << "\n";
+        gsInfo << "Input file doesn't have a basis inside.\n";
         return -1;
     }
 
 
     if (!pBasis)
     {
-        gsInfo << "Didn't find any basis." << "\n";
+        gsInfo << "Didn't find any basis.\n";
         return -1;
     }
 
@@ -87,7 +87,7 @@ int main(int argc, char* argv[])
     // (dim x 2 matrix, the parametric domain)
     gsMatrix<> support = pBasis->support();
     gsInfo << "Support: \n"
-           << support << "\n" << "\n";
+           << support << "\n\n";
 
 
 
@@ -101,21 +101,21 @@ int main(int argc, char* argv[])
     // ----------------------------------------------------------------------
 
     gsMatrix<> u = 0.3 * support.col(0) + 0.7 * support.col(1);
-    gsInfo << "u " << size(u) << ": \n" << u << "\n" << "\n";
+    gsInfo << "u " << size(u) << ": \n" << u << "\n\n";
 
     // indices of active (nonzero) functions at parameter u
     gsMatrix<unsigned> active = pBasis->active(u);
     gsInfo << "Active functions at u " << size(active) << ": \n"
-           << active << "\n" << "\n";
+           << active << "\n\n";
 
     gsInfo << "Is number 2 active at the point ? " <<pBasis->isActive(0,u.col(0)) << ": \n"
-           << active << "\n" << "\n";
+           << active << "\n\n";
 
 
     // values of all active functions at u
     gsMatrix<> values = pBasis->eval(u);
     gsInfo << "Values at u " << size(values) << ": \n"
-           << values << "\n" << "\n";
+           << values << "\n\n";
 
     // values of single basis functions
     for (index_t i = 0; i != active.rows(); i++)
@@ -135,7 +135,7 @@ int main(int argc, char* argv[])
 
     gsMatrix<> derivs = pBasis->deriv(u);
     gsInfo << "Derivatives at u " << size(derivs) << ": \n"
-           << derivs << "\n" << "\n";
+           << derivs << "\n\n";
 
 
     // derivatives of single basis function
@@ -161,7 +161,7 @@ int main(int argc, char* argv[])
 
     gsMatrix<> derivs2 = pBasis->deriv2(u);
     gsInfo << "Second derivatives at u " << size(derivs2) << ": \n"
-           << derivs2 << "\n" << "\n";
+           << derivs2 << "\n\n";
 
     for (index_t i = 0; i != active.rows(); i++)
     {
@@ -178,7 +178,7 @@ int main(int argc, char* argv[])
 
     gsInfo << "\nFor more information about evaluation "
            << "(and order of derivatives) look at doxygen documentation."
-           << "\n" << "\n";
+           << "\n\n";
 
 
 
@@ -189,8 +189,13 @@ int main(int argc, char* argv[])
     if (output != "")
     {
         gsInfo << "Writing the basis to a paraview file: " << output
-               << "\n" << "\n";
+               << "\n\n";
         gsWriteParaview(*pBasis, output);
+    }
+    else
+    {
+        gsInfo << "Done. No output created, re-run with --output <filename> to get a ParaView "
+                  "file containing the solution.\n";
     }
 
     return 0;

@@ -59,7 +59,7 @@ public:
 
     GISMO_UPTR_FUNCTION_PURE(gsBulk, clone)
 
-    int domainDim() const { return 4; }
+    short_t domainDim() const { return 4; }
 
 }; // class gsBulk
 

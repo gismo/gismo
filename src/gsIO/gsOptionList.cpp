@@ -413,9 +413,8 @@ std::vector<gsOptionList::OptionListEntry> gsOptionList::getAllEntries() const
     return result;
 }
 
-std::ostream & gsOptionList::OptionListEntry::print(std::ostream & os) const
+std::ostream & gsOptionList::OptionListEntry::print(std::ostream & os, index_t slot_label) const
 {
-    const index_t slot_label = 19;
     const index_t slot_val = 8;
     const index_t sz_label = label.size();
     const index_t sz_val = val.size();
@@ -434,8 +433,12 @@ std::ostream & gsOptionList::print(std::ostream & os) const
     DataTable data = getAllEntries();
     os<<"Options ("<<data.size()<<"):\n";
     std::sort( data.begin(), data.end() );
+    index_t slot_label = 15;
     for ( DataTable::const_iterator it = data.begin(); it != data.end(); it++ )
-        it->print(os);
+        slot_label = std::max( slot_label, (index_t)it->label.size() );
+    slot_label = std::min( slot_label, (index_t)35 );
+    for ( DataTable::const_iterator it = data.begin(); it != data.end(); it++ )
+        it->print(os, slot_label);
     return os;
 }
 

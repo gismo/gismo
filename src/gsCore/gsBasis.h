@@ -406,7 +406,7 @@ public:
 
     /// @}
 
-    inline int dim() const {return this->domainDim();}
+    inline short_t dim() const {return this->domainDim();}
 
     /*
       Member functions that need to be redefined in the derived class.
@@ -462,8 +462,10 @@ public:
     /// @name Evaluation functions
     /// @{
 
-    /** \brief Returns the indices of active (non-zero) basis functions
-     * at points <em>u</em>, as a list of indices, in <em>result</em>.
+    /** \brief Returns the indices of active basis functions at points
+     * <em>u</em>, as a list of indices, in <em>result</em>. A
+     * function is said to be <em>active</em> in a point if this point
+     * lies in the closure of the function's support.
      *
      * \param[in] u  gsMatrix containing evaluation points. Each column represents one evaluation point.
      * \param[out]  result For every column \a i of \a u, a column containing the indices of the
@@ -514,11 +516,22 @@ public:
 #endif
     GISMO_UPTR_FUNCTION_DEC(gsBasis<T>, boundaryBasis, boxSide const &)
 
+    /// @brief Returns the basis that corresponds to the component
+    virtual uPtr componentBasis(boxComponent b) const;
+
+    /// @brief Returns the basis that corresponds to the component
+    ///
+    /// @param b           The component
+    /// @param indices     The row vector where the indices are stored to
+    /// @param noBoundary  If true, the transfer matrix does not include parts belonging to lower-order
+    ///                    components (i.e., edges without corners or faces without corners and edges)
+    virtual uPtr componentBasis_withIndices(boxComponent b, gsMatrix<unsigned>& indices, bool noBoundary = true) const;
+
     /// @brief Returns (a bounding box for) the domain of the whole basis.
     ///
     /// Returns a dx2 matrix, containing the two diagonally extreme
     /// corners of a hypercube.
-    virtual gsMatrix<T> support() const ;
+    virtual gsMatrix<T> support() const;
 
     /// @brief Returns (a bounding box for) the support of the i-th basis function.
     ///
@@ -847,24 +860,24 @@ public:
                                              int numKnots = 1);
 
     /// @brief Elevate the degree of the basis by the given amount, preserve smoothness.
-    virtual void degreeElevate(int const & i = 1, int const dir = -1);
+    virtual void degreeElevate(short_t const & i = 1, short_t const dir = -1);
 
     /// @brief Reduce the degree of the basis by the given amount, preserve smoothness.
-    virtual void degreeReduce(int const & i = 1, int const dir = -1);
+    virtual void degreeReduce(short_t const & i = 1, short_t const dir = -1);
 
     /// @brief Elevate the degree of the basis by the given amount, preserve knots multiplicity.
-    virtual void degreeIncrease(int const & i = 1, int const dir = -1);
+    virtual void degreeIncrease(short_t const & i = 1, short_t const dir = -1);
 
     /// @brief Lower the degree of the basis by the given amount, preserving knots multiplicity.
-    virtual void degreeDecrease(int const & i = 1, int const dir = -1);
+    virtual void degreeDecrease(short_t const & i = 1, short_t const dir = -1);
 
     /// @brief Set the degree of the basis (either elevate or
     /// reduce) in order to have degree equal to \a i wrt to each variable
-    void setDegree(int const& i);
+    void setDegree(short_t const& i);
 
     /// @brief Set the degree of the basis (either increase or
     /// decrecee) in order to have degree equal to \a i
-    void setDegreePreservingMultiplicity(int const& i);
+    void setDegreePreservingMultiplicity(short_t const& i);
 
     /// @brief Elevates the continuity of the basis along element boundaries
     virtual void elevateContinuity(int const & i = 1);
@@ -878,21 +891,21 @@ public:
 
     /// @brief If the basis is of polynomial or piecewise polynomial
     /// type, then this function returns the maximum polynomial degree.
-    virtual int maxDegree() const;
+    virtual short_t maxDegree() const;
 
     /// @brief If the basis is of polynomial or piecewise polynomial
     /// type, then this function returns the minimum polynomial degree.
-    virtual int minDegree() const;
+    virtual short_t minDegree() const;
 
     /// @brief If the basis is of polynomial or piecewise polynomial
     /// type, then this function returns the total polynomial degree.
-    virtual int totalDegree() const;
+    virtual short_t totalDegree() const;
 
     /// @brief Degree with respect to the i-th variable.
     /// If the basis is a tensor product of (piecewise)
     /// polynomial bases, then this function returns the polynomial
     /// degree of the \a i-th component.
-    virtual int degree(int i) const;
+    virtual short_t degree(short_t i) const;
 
     /// @brief Applies interpolation given the parameter values \a pts
     /// and values \a vals.

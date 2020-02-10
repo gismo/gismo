@@ -20,8 +20,7 @@ namespace gismo
 {
 
 template<class T>
-int
-gsCurve<T>::degree() const
+short_t gsCurve<T>::degree() const
 {
     return this->basis().degree(0);
 }

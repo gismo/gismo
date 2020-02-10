@@ -27,7 +27,7 @@ namespace gismo {
     \ingroup HSplines
 */
 
-template <unsigned d, class T>
+template <short_t d, class T>
 class gsHFitting : public gsFitting<T>
 {
 public:
@@ -181,7 +181,7 @@ protected:
 
 
 
-template<unsigned d, class T>
+template<short_t d, class T>
 bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold)
 {
     // INVARIANT
@@ -218,7 +218,7 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold)
     return true;
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsHFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_threshold)
 {
     // INVARIANT:
@@ -248,7 +248,7 @@ void gsHFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_thr
     }
 }
 
-template <unsigned d, class T>
+template <short_t d, class T>
 std::vector<unsigned> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
                                                  const T threshold)
 {
@@ -259,7 +259,7 @@ std::vector<unsigned> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
     // format: { level lower-corners  upper-corners ... }
     std::vector<unsigned> boxes;
 
-    for (std::size_t index = 0; index != errors.size(); index++)
+    for (size_t index = 0; index != errors.size(); index++)
     {
         if (threshold <= errors[index])
         {
@@ -270,7 +270,7 @@ std::vector<unsigned> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
     return boxes;
 }
 
-template <unsigned d, class T>
+template <short_t d, class T>
 void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
                                   std::vector<unsigned>& cells,
                                   const gsVector<T>& parameter)
@@ -329,12 +329,12 @@ void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
 }
 
 
-template <unsigned d, class T>
+template <short_t d, class T>
 bool gsHFitting<d, T>::isCellAlreadyInserted(const gsVector<unsigned, d>& a_cell,
                                              const std::vector<unsigned>& cells)
 {
 
-    for (std::size_t i = 0; i != cells.size(); i += a_cell.rows())
+    for (size_t i = 0; i != cells.size(); i += a_cell.rows())
     {
         int commonEntries = 0;
         for (index_t col = 0; col != a_cell.rows(); col++)
@@ -354,11 +354,11 @@ bool gsHFitting<d, T>::isCellAlreadyInserted(const gsVector<unsigned, d>& a_cell
     return false;
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 T gsHFitting<d, T>::setRefineThreshold(const std::vector<T>& errors )
 {
     std::vector<T> errorsCopy = errors;
-    const std::size_t i = cast<T,std::size_t>(errorsCopy.size() * (1.0 - m_ref));
+    const size_t i = cast<T,size_t>(errorsCopy.size() * (1.0 - m_ref));
     typename std::vector<T>::iterator pos = errorsCopy.begin() + i;
     std::nth_element(errorsCopy.begin(), pos, errorsCopy.end());
     return *pos;

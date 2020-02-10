@@ -29,8 +29,8 @@ int main(int argc, char* argv[])
     std::string output("");
 
     gsCmdLine cmd("Tutorial on gsTensorBSpline class.");
-    cmd.addInt   ("n", "n", "Number of basis function in one direction"  , n);
-    cmd.addInt   ("m", "m", "Number of basis function in other direction", m);
+    cmd.addInt   ("n", "dof1", "Number of basis function in one direction"  , n);
+    cmd.addInt   ("m", "dof2", "Number of basis function in other direction", m);
     cmd.addInt   ("d", "degree", "Degree of a surface", degree);
     cmd.addString("o", "output", "Name of the output file.", output);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -95,6 +95,11 @@ int main(int argc, char* argv[])
         gsMesh<> mesh;
         surface.controlNet(mesh);
         gsWriteParaview(mesh, out);
+    }
+    else
+    {
+        gsInfo << "Done. No output created, re-run with --output <filename> to get a ParaView "
+                  "file containing the solution.\n";
     }
 
     return 0;

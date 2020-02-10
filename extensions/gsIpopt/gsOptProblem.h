@@ -86,6 +86,12 @@ public:
     //void evalSingleCon_into(int k, gsMatrix<T> & result);
     //void hassObj_into( gsMatrix<T> & result);
 
+
+    /// @brief Callback function is executed after every
+    ///    iteration. Returning false causes premature termination of
+    ///    the optimization
+    virtual bool intermediateCallback() { return true;}
+            
 public:
 
     int numDesignVars () const { return m_curDesign.size(); }

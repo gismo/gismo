@@ -26,6 +26,10 @@ if(POLICY CMP0063)# CMake 3.3
 cmake_policy(SET CMP0063 NEW)
 endif()
 
+if(POLICY CMP0077)# CMake 3.13
+cmake_policy(SET CMP0077 NEW)
+endif()
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -89,9 +93,9 @@ message( "                          version ${${PROJECT_NAME}_VERSION}" )
 ## #################################################################
 
 include( gsOptions )
+include(CTest)
 # Note: clean cache to reset to OFF
 set(BUILD_TESTING "Enable testing" ${GISMO_BUILD_UNITTESTS})
-include(CTest)
 
 ## #################################################################
 ## Preprocessor definitions
@@ -114,8 +118,6 @@ configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
 
-include_directories(${PROJECT_BINARY_DIR})
-
 ## #################################################################
 ## Collect headers and sources
 ## #################################################################
@@ -131,9 +133,8 @@ unset(gismo_TMPL_HEADERS         CACHE)
 set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 
-set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
-           "${PROJECT_SOURCE_DIR}/external"
-      "${PROJECT_SOURCE_DIR}/extensions"
+set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/external"
+     "${PROJECT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/extensions"
      CACHE INTERNAL "${PROJECT_NAME} include directories" )
 
 #first time
@@ -159,13 +160,6 @@ if(GISMO_WITH_CODIPACK)
   CACHE INTERNAL "${PROJECT_NAME} include directories")
   #include_directories(${CODIPACK_INCLUDE_DIR})
 endif(GISMO_WITH_CODIPACK)
-
-if(GISMO_WITH_FDBB)
-  add_subdirectory(extensions/gsFdbb)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${FDBB_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${FDBB_INCLUDE_DIR})
-endif(GISMO_WITH_FDBB)
 
 if(GISMO_WITH_IPOPT)
   add_subdirectory(extensions/gsIpopt)
@@ -214,11 +208,11 @@ if(GISMO_WITH_ONURBS)
   add_subdirectory(extensions/gsOpennurbs)
 endif(GISMO_WITH_ONURBS)
 
-if(GISMO_WITH_PARDISO)
-endif(GISMO_WITH_PARDISO)
+#if(GISMO_WITH_PARDISO)
+#endif(GISMO_WITH_PARDISO)
 
-if(GISMO_WITH_PASTIX)
-endif(GISMO_WITH_PASTIX)
+#if(GISMO_WITH_PASTIX)
+#endif(GISMO_WITH_PASTIX)
 
 if(GISMO_WITH_PSOLID)
   add_subdirectory(extensions/gsParasolid)
@@ -286,10 +280,6 @@ if(GISMO_WITH_SMESH)
   #include_directories(${SMESH_INCLUDE_DIR})
 endif()
 
-## #################################################################
-## Build G+Smo library instantized for GISMO_COEFF_TYPE number type
-## #################################################################
-
 #second time
 include_directories(${GISMO_INCLUDE_DIRS})
 
@@ -305,6 +295,34 @@ if(GISMO_BUILD_LIB)
     set(gismo_SOURCES ${gismo_SOURCES} ${PROJECT_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
   endif()
 endif()
+
+## #################################################################
+## Submodules
+## #################################################################
+
+if(GISMO_COMPFLOW)
+  gismo_fetch_module(gsCompFlow)
+endif()
+
+if(GISMO_ELASTICITY)
+  gismo_fetch_module(gsElasticity)
+endif()
+
+if(GISMO_EXASTENCILS)
+  gismo_fetch_module(gsExaStencils)
+endif()
+
+if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
+  gismo_fetch_module(unsupported)
+endif()
+
+if(GISMO_MOTOR)
+  gismo_fetch_module(motor)
+endif()
+
+## #################################################################
+## Shared and static library
+## #################################################################
 
 include(gsLibrary)
 
@@ -373,25 +391,7 @@ if (NOT gismo_optionals STREQUAL "")
   message(STATUS "Optional compile list: ${gismo_optionals}")
 endif()
 
-## #################################################################
-## Submodules
-## #################################################################
-
-if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
-  gismo_fetch_module(unsupported)
-endif()
-
-if(GISMO_MOTOR)
-  gismo_fetch_module(motor)
-endif()
-
-if(GISMO_ELASTICITY)
-  gismo_fetch_module(gsElasticity)
-endif()
-
-if(GISMO_EXASTENCILS)
-  gismo_fetch_module(gsExaStencils)
-endif()
-
 unset(GISMO_UNAME CACHE)
 unset(GISMO_PASS CACHE)
+
+#message("GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS}")

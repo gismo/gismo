@@ -163,7 +163,7 @@ void gsBSpline<T>::swapDirections(const unsigned i, const unsigned j)
 
 
 template<class T>
-void gsBSpline<T>::degreeElevate(int const i, int const dir)
+void gsBSpline<T>::degreeElevate(short_t const i, short_t const dir)
 {
     GISMO_UNUSED(dir);
     GISMO_ASSERT( (dir == -1) || (dir == 0),

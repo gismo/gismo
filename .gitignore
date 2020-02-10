@@ -19,3 +19,16 @@ build/
 
 # QtCreator user file
 CMakeLists.txt.user
+
+# Visual Studio
+/CMakeSettings.json*
+/.vs
+/build*
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+
+# Patch Files
+*.patch
+*.rej

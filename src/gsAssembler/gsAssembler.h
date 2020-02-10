@@ -28,6 +28,7 @@
 
 #include <gsAssembler/gsQuadRule.h>
 #include <gsAssembler/gsSparseSystem.h>
+#include <gsAssembler/gsRemapInterface.h>
 
 
 
@@ -66,7 +67,7 @@ void normal(const gsMapData<T> & md, index_t k, gsVector<T> & result)
 
     T alt_sgn(1.0);
     typename gsMatrix<T>::RowMinorMatrixType minor;
-    for (int i = 0; i <= md.dim.first; ++i) // for all components of the normal vector
+    for (short_t i = 0; i <= md.dim.first; ++i) // for all components of the normal vector
     {
         Jk.rowMinor(i, minor);
         result[i] = alt_sgn * minor.determinant();
@@ -105,7 +106,7 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
           alt_sgn = -alt_sgn;
           }
           gsDebugVar(result.transpose()); // result 2
-        */
+        //*/
     }
     else // planar case
     {
@@ -122,7 +123,7 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
 
         T alt_sgn = sgn;
         typename gsMatrix<T>::FirstMinorMatrixType minor;
-        for (int i = 0; i != md.dim.first; ++i) // for all components of the normal
+        for (short_t i = 0; i != md.dim.first; ++i) // for all components of the normal
         {
             Jk.firstMinor(i, dir, minor);
             result[i] = alt_sgn * minor.determinant();
@@ -134,7 +135,7 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
 template<typename T>
 void secDerToHessian(typename gsMatrix<T>::constRef & secDers,
                      gsMatrix<T> & hessian,
-                     int parDim)
+                     short_t parDim)
 {
     switch (parDim)
     {
@@ -169,7 +170,7 @@ void secDerToHessian(typename gsMatrix<T>::constRef & secDers,
 template<typename T>
 void hessianToSecDer (const gsMatrix<T> & hessian,
                       typename gsMatrix<T>::Row secDers,
-                      int parDim)
+                      short_t parDim)
 {
     switch (parDim)
     {
@@ -197,10 +198,10 @@ void hessianToSecDer (const gsMatrix<T> & hessian,
 template<typename T>
 void secDerToTensor(typename Eigen::DenseBase<Eigen::Map<const Eigen::Matrix<T, -1, -1>, 0, Eigen::Stride<0, 0> > >::ConstColXpr & secDers,
                     gsMatrix<T> * a,
-                    int parDim, int geoDim)
+                    short_t parDim, short_t geoDim)
 {
-    const int dim = parDim * (parDim + 1) / 2;
-    for (int i = 0; i < geoDim; ++i)
+    const index_t dim = parDim * (parDim + 1) / 2;
+    for (short_t i = 0; i < geoDim; ++i)
         secDerToHessian<T>(secDers.segment(i * dim, dim), a[i], parDim);
 }
 
@@ -212,16 +213,16 @@ void transformDeriv2Hgrad(const gsMapData<T> & md,
                           gsMatrix<T> &        result)
 {
     //todo: check me
-    const int ParDim = md.dim.first;
-    const int GeoDim = md.dim.second;
+    const short_t ParDim = md.dim.first;
+    const short_t GeoDim = md.dim.second;
     GISMO_ASSERT(
         (ParDim == 1 && (GeoDim == 1 || GeoDim == 2 || GeoDim == 3))
         || (ParDim == 2 && (GeoDim == 2 || GeoDim == 3))
         || (ParDim == 3 && GeoDim == 3), "No implementation for this case");
 
     // important sizes
-    const int parSecDirSize = ParDim * (ParDim + 1) / 2;
-    const int fisSecDirSize = GeoDim * (GeoDim + 1) / 2;
+    const index_t parSecDirSize = ParDim * (ParDim + 1) / 2;
+    const index_t fisSecDirSize = GeoDim * (GeoDim + 1) / 2;
 
     // allgrads
     const index_t numGrads = funcGrad.rows() / ParDim;
@@ -244,7 +245,7 @@ void transformDeriv2Hgrad(const gsMapData<T> & md,
     std::vector<gsMatrix<T> > DDG(GeoDim);
     secDerToTensor<T>(secDer.col(0), DDG.data(), ParDim, GeoDim);
     gsMatrix<T> HGT(GeoDim, fisSecDirSize);
-    for (int i = 0; i < GeoDim; ++i)
+    for (short_t i = 0; i < GeoDim; ++i)
         hessianToSecDer<T>(JM1 * DDG[i] * JMT, HGT.row(i), GeoDim);
 
     // Lastpart: substract part2 from part1
@@ -370,7 +371,7 @@ public:
 
         m_bases.clear();
         m_bases.reserve(basis.size());
-        for(std::size_t c=0;c<basis.size();c++)
+        for(size_t c=0;c<basis.size();c++)
             m_bases.push_back(gsMultiBasis<T>(basis[c]));
 
         m_options = opt;
@@ -390,7 +391,7 @@ public:
     */
     T penalty(int k) const
     {
-        const int deg = m_bases[0][k].maxDegree();
+        const short_t deg = m_bases[0][k].maxDegree();
         return (deg + m_bases[0][k].dim()) * (deg + 1) * T(2.0);
     }
 
@@ -425,7 +426,7 @@ public: /* Element visitors */
     template<class ElementVisitor>
     void push()
     {
-        for (index_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
+        for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
         {
             ElementVisitor visitor(*m_pde_ptr);
             //Assemble (fill m_matrix and m_rhs) on patch np
@@ -452,7 +453,7 @@ public: /* Element visitors */
     template<class ElementVisitor>
     void push(const ElementVisitor & visitor)
     {
-        for (index_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
+        for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
         {
             ElementVisitor curVisitor = visitor;
             //Assemble (fill m_matrix and m_rhs) on patch np
@@ -462,10 +463,11 @@ public: /* Element visitors */
 
     /// @brief Applies the \a BElementVisitor to the boundary condition \a BC
     template<class BElementVisitor>
-    void push( BElementVisitor & visitor, const boundary_condition<T> & BC)
+    void push(const BElementVisitor & visitor, const boundary_condition<T> & BC)
     {
+        BElementVisitor curVisitor = visitor;
         //Assemble (fill m_matrix and m_rhs) contribution from this BC
-        apply(visitor, BC.patch(), BC.side());
+        apply(curVisitor, BC.patch(), BC.side());
     }
 
     /// @brief Iterates over all elements of interfaces and
@@ -518,7 +520,7 @@ public:  /* Dirichlet degrees of freedom computation */
     {
         if(unk==-1)
         {
-            for(std::size_t i=0;i<m_ddof.size();++i)
+            for(size_t i=0;i<m_ddof.size();++i)
                 m_ddof[i].setZero();
         }
         else
@@ -605,7 +607,7 @@ public: // *** Accessors ***
     gsMultiBasis<T> & multiBasis(index_t k = 0) { return m_bases[k]; }
 
     /// @brief Returns the number of multi-bases
-    std::size_t numMultiBasis() const {return m_bases.size(); }
+    size_t numMultiBasis() const {return m_bases.size(); }
 
     /// @brief Returns the left-hand global matrix
     const gsSparseMatrix<T> & matrix() const { return m_system.matrix(); }
@@ -651,7 +653,7 @@ protected:
     /// integrals.
     template<class ElementVisitor>
     void apply(ElementVisitor & visitor,
-               int patchIndex = 0,
+               size_t patchIndex = 0,
                boxSide side = boundary::none);
 
     /// @brief Generic assembly routine for patch-interface integrals
@@ -663,7 +665,7 @@ protected:
 template <class T>
 template<class ElementVisitor>
 void gsAssembler<T>::apply(ElementVisitor & visitor,
-                           int patchIndex,
+                           size_t patchIndex,
                            boxSide side)
 {
     //gsDebug<< "Apply to patch "<< patchIndex <<"("<< side <<")\n";
@@ -724,9 +726,7 @@ template<class InterfaceVisitor>
 void gsAssembler<T>::apply(InterfaceVisitor & visitor,
                            const boundaryInterface & bi)
 {
-    //gsDebug<<"Apply DG on "<< bi <<".\n";
-
-    const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
+    gsRemapInterface<T> interfaceMap(m_pde_ptr->patches(), m_bases[0], bi);
 
     const int patchIndex1      = bi.first().patch;
     const int patchIndex2      = bi.second().patch;
@@ -736,14 +736,7 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
     gsQuadRule<T> quRule ; // Quadrature rule
     gsMatrix<T> quNodes1, quNodes2;// Mapped nodes
     gsVector<T> quWeights;         // Mapped weights
-
-    const int bSize1      = B1.numElements( bi.first() .side() );
-    const int bSize2      = B2.numElements( bi.second().side() );
-    const int ratio = bSize1 / bSize2;
-    GISMO_ASSERT(bSize1 >= bSize2 && bSize1%bSize2==0,
-                 "DG assumes nested interfaces. Got bSize1="<<
-                 bSize1<<", bSize2="<<bSize2<<"." );
-
+    
     // Initialize
     visitor.initialize(B1, B2, bi, m_options, quRule);
 
@@ -751,38 +744,28 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
     const gsGeometry<T> & patch2 = m_pde_ptr->patches()[patchIndex2];
 
     // Initialize domain element iterators
-    typename gsBasis<T>::domainIter domIt1 = B1.makeDomainIterator( bi.first() .side() );
-    typename gsBasis<T>::domainIter domIt2 = B2.makeDomainIterator( bi.second().side() );
-
-    //typename gsBasis<T>::domainIter domIt = B2.makeDomainIterator(B2, bi);
-
+    typename gsBasis<T>::domainIter domIt = interfaceMap.makeDomainIterator();
     int count = 0;
+
     // iterate over all boundary grid cells on the "left"
-    for (; domIt1->good(); domIt1->next() )
+    for (; domIt->good(); domIt->next() )
     {
         count++;
-        // Get the element of the other side in domIter2
-        //domIter1->adjacent( bi.orient, *domIter2 );
 
         // Compute the quadrature rule on both sides
-        quRule.mapTo( domIt1->lowerCorner(), domIt1->upperCorner(), quNodes1, quWeights);
+        quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes1, quWeights);
         interfaceMap.eval_into(quNodes1,quNodes2);
 
         // Perform required evaluations on the quadrature nodes
         visitor.evaluate(B1, patch1, B2, patch2, quNodes1, quNodes2);
 
         // Assemble on element
-        visitor.assemble(*domIt1,*domIt2, quWeights);
+        visitor.assemble(*domIt,*domIt, quWeights);
 
         // Push to global patch matrix (m_rhs is filled in place)
         visitor.localToGlobal(patchIndex1, patchIndex2, m_ddof, m_system);
-
-        if ( count % ratio == 0 ) // next master element ?
-        {
-            domIt2->next();
-        }
-
     }
+
 }
 
 

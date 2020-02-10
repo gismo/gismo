@@ -48,8 +48,6 @@ public:
     typedef gsAsConstMatrix<T, -1, -1>                  matrixView;
     typedef Eigen::Transpose<typename matrixView::Base> matrixTransposeView;
 
-    typedef typename gsFunctionSet<T>::dim_t dim_t;
-
 public:
     mutable unsigned flags;
     int      patchId; // move to mapdata
@@ -68,7 +66,7 @@ public:
     /// \brief Dimension of the (source) domain and the target (image) space.
     /// dim.first refers to ParDim, dim.second refers to GeoDim
     /// @return For \f$f:\mathbb{R}^n\rightarrow\mathbb{R}^m\f$ returns \f$n\f$.
-    dim_t dim;
+    std::pair<short_t, short_t> dim;
 
 public:
     /**

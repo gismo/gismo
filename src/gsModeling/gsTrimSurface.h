@@ -85,7 +85,7 @@ public:
     
     gsBasis<T> & basis() const { return m_surface->basis(); }
 
-    int geoDim() const { return m_surface->geoDim(); }
+    short_t geoDim() const { return m_surface->geoDim(); }
 
     //bool isProjective() const { return m_surface->isProjective(); }
     
@@ -191,7 +191,7 @@ public:
     /// \param loopId specifies the loop
     /// \param curveId specifies the curve in the loop
     /// \param lengthRatio   the ratio of the lengths of the first new curve and of the original curve
-    gsMatrix<T> splitCurve(std::size_t loopId, std::size_t curveId, T lengthRatio=.5)
+    gsMatrix<T> splitCurve(size_t loopId, size_t curveId, T lengthRatio=.5)
     {return m_domain->splitCurve(loopId,curveId,lengthRatio);}
     
     /// Compute the partial derivatives of the surface parametrization at a corner point of a trimmed patch 

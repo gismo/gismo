@@ -537,7 +537,7 @@ gsParametrization<T>::LocalParametrization::LocalParametrization(const gsHalfEdg
                 length = (*meshInfo.getVertex(indices.front()) - *meshInfo.getVertex(m_vertexIndex)).norm();
                 //length =  (meshInfo.getVertex(indices.front()) - meshInfo.getVertex(m_vertexIndex) ).norm();
                 nextAngle = angles.front()*thetaInv * 2 * EIGEN_PI;
-                nextVector = ((Eigen::Rotation2D<T>(nextAngle) * actualVector).normalized()*length) + p;
+                nextVector = (Eigen::Rotation2D<T>(nextAngle).operator*(actualVector).normalized()*length) + p;
                 nextPoint = Point2D(nextVector[0], nextVector[1], indices.front());
                 points.push_back(nextPoint);
                 actualVector = nextPoint - p;

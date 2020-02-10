@@ -125,7 +125,7 @@ void gsDeboorDeriv(
 // =============================================================================
 
 
-template<unsigned d, typename T, typename KnotVectorType, typename Mat>
+template<short_t d, typename T, typename KnotVectorType, typename Mat>
 inline
 void gsTensorDeboor( //LC
         const gsMatrix<T>& u,
@@ -161,7 +161,7 @@ void gsTensorDeboor( //LC
 // ===== derivatives for BSpline
 // =============================================================================
 
-template<unsigned d, typename T, typename KnotVectorType, typename Mat>
+template<short_t d, typename T, typename KnotVectorType, typename Mat>
 inline //LC
 void gsTensorDeriv_into(const gsMatrix<T>& u,
                         const gsTensorBSplineBasis<d, T>& base,
@@ -194,7 +194,7 @@ void gsTensorDeriv_into(const gsMatrix<T>& u,
 // ===== second derivatives for BSpline
 // =============================================================================
 
-template<unsigned d, typename T, typename KnotVectorType, typename Mat>
+template<short_t d, typename T, typename KnotVectorType, typename Mat>
 inline
 void gsTensorDeriv2_into(const gsMatrix<T>& u,
                         const gsTensorBSplineBasis<d, T>& base,
@@ -222,7 +222,7 @@ void gsTensorDeriv2_into(const gsMatrix<T>& u,
 // other version of evaluation via knot insertion
 // =============================================================================
 
-template<unsigned d, typename T, typename KnotVectorType, typename Mat>
+template<short_t d, typename T, typename KnotVectorType, typename Mat>
 inline
 void gsTensorDeboor_v2(
         const gsMatrix<T>& u,

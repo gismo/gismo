@@ -92,8 +92,11 @@ int main(int argc, char *argv[])
          <<" ("<< ( (sizeof(real_t)+sizeof(unsigned))*kcount >> 20) <<"MB)\n";
 
     // Output paraview plot of the basis
-    if ( plot)
+    if ( plot )
         gsWriteParaview( thb , "thb_refined", 1000, true);
+    else
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+                  "file containing the solution.\n";
 
     return 0;
 }

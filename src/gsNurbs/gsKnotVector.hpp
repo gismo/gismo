@@ -632,14 +632,14 @@ void gsKnotVector<T>::initUniform( T first,
 
     const T h = (last-first) / (interior+1);
 
-    for(unsigned i = m_deg - mult_ends + 1; i!= 0; --i)
+    for(unsigned i = m_deg - mult_ends + 1, j=0; i!= 0; --i, ++j)
     {   // add left ghost knots
         m_repKnots.push_back(first-i*h);
-        m_multSum .push_back(1);
+        m_multSum .push_back(j);
     }
 
-    m_repKnots.insert(m_repKnots.begin(), mult_ends, first);
-    m_multSum .push_back(mult_ends);
+    m_repKnots.insert(m_repKnots.end(), mult_ends, first);
+    m_multSum .push_back(mult_ends + (m_multSum.empty() ? 0 : m_multSum.back()));
 
     for( unsigned i=1; i<=interior; ++i)
     {
@@ -653,7 +653,7 @@ void gsKnotVector<T>::initUniform( T first,
     for(unsigned i = 1; i!=m_deg - mult_ends + 2; ++i)
     {   // add right ghost knots
         m_repKnots.push_back(last+i*h);
-        m_multSum .push_back(1);
+        m_multSum .push_back(m_multSum.back() + 1);
     }
 
     GISMO_ASSERT( check(), "Unsorted knots or invalid multiplicities." );

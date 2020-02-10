@@ -40,7 +40,7 @@ public:
     /// Unique pointer for gsConstantBasis
     typedef memory::unique_ptr< gsConstantBasis > uPtr;
 
-    gsConstantBasis(T x , int domainDim  = 1)
+    gsConstantBasis(T x , short_t domainDim  = 1)
     : m_val(x), m_domainDim(domainDim)
     { }
 
@@ -65,7 +65,7 @@ public:
 
 public:
 
-    int domainDim() const   { return m_domainDim; }
+    short_t domainDim() const   { return m_domainDim; }
 
     index_t size() const   { return 1; }
 
@@ -113,7 +113,7 @@ private:
 
     T m_val;
 
-    int m_domainDim;
+    short_t m_domainDim;
 };
 
 
