@@ -1578,8 +1578,8 @@ int main(int argc, char *argv[])
         mp.addAutoBoundaries();
         mp.embed(3);
         E_modulus = 1.0;
-        thickness = 1.0;
-
+        thickness = 1.0e-1;
+        PoissonRatio = 0.499;
     }
     else if (testCase == 2  || testCase == 3)
     {
@@ -1587,6 +1587,9 @@ int main(int argc, char *argv[])
         E_modulus = 4.32E8;
         fn = "../extensions/unsupported/filedata/scordelis_lo_roof.xml";
         gsReadFile<>(fn, mp);
+        // PoissonRatio = 0.0;
+        PoissonRatio = 0.499;
+
     }
     else if (testCase==9)
     {
@@ -1646,23 +1649,32 @@ int main(int argc, char *argv[])
     }
     else if (testCase == 2)
     {
-        // Diaphragm conditions
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
+        // // Diaphragm conditions
+        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
+        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
 
-        // ORIGINAL
-        // bc.addCornerValue(boundary::southwest, 0.0, 0, 0); // (corner,value, patch, unknown)
+        // // ORIGINAL
+        // // bc.addCornerValue(boundary::southwest, 0.0, 0, 0); // (corner,value, patch, unknown)
 
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
+        // bc.addCondition(boundary::east, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
+        // bc.addCondition(boundary::east, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
 
-        // NOT ORIGINAL
-        // bc.addCondition(boundary::west, condition_type::dirichlet, &displ, 0 ); // unknown 1 - x
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
+        // // NOT ORIGINAL
+        // // bc.addCondition(boundary::west, condition_type::dirichlet, &displ, 0 ); // unknown 1 - x
+        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
+        // bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
 
-        // Surface forces
-        tmp << 0, 0, -90;
+        // // Surface forces
+        // tmp << 0, 0, -90;
+
+        for (index_t i=0; i!=3; ++i)
+        {
+            bc.addCondition(boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
+            bc.addCondition(boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
+            bc.addCondition(boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z
+            bc.addCondition(boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z
+        }
+        tmp << 0,0,-90;
     }
     else if (testCase == 3)
     {
@@ -1838,7 +1850,7 @@ int main(int argc, char *argv[])
     // 1.0,1.0;
     // pt = pt.transpose();
     gsDebugVar(pt);
-    evaluateFunction(ev, cartcov(G).inv()*F, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, cartcov(G).inv()*F, pt); // evaluates an expression on a point
     // evaluateFunction(ev, Ttilde, pt); // evaluates an expression on a point
     // evaluateFunction(ev, TtildeInv, pt); // evaluates an expression on a point
     // evaluateFunction(ev, C, pt); // evaluates an expression on a point
@@ -1847,18 +1859,19 @@ int main(int argc, char *argv[])
     // ! [Solve linear problem]
 
     // assemble mass
-    A.assemble(u*u.tr());
-    gsDebugVar(A.matrix().toDense());
-    gsDebugVar(A.matrix().rows());
-    gsDebugVar(A.matrix().cols());
+    // A.assemble(u*u.tr());
+    // gsDebugVar(A.matrix().toDense());
+    // gsDebugVar(A.matrix().rows());
+    // gsDebugVar(A.matrix().cols());
 
 
     // assemble system
     A.assemble(
-        (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
-        // (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
+        // (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
+        (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
         ,
-        u * cartcon(G) * cartcon(G) * F  * meas(G)
+        // u * cartcon(G) * cartcon(G) * F  * meas(G)
+        u * F  * meas(G)
         );
 
     // evaluateFunction(ev, N_der * cartcon(G) * (E_m_der * cartcon(G)).tr(), pt); // evaluates an expression on a point
@@ -1901,10 +1914,32 @@ int main(int argc, char *argv[])
     );
 
 
-    gsDebugVar(A.matrix().toDense());
-    gsDebugVar(A.matrix().rows());
-    gsDebugVar(A.matrix().cols());
+    // gsDebugVar(A.matrix().toDense());
+    // gsDebugVar(A.matrix().rows());
+    // gsDebugVar(A.matrix().cols());
 
+
+    // evaluateFunction(ev, E_m.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, S_m.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, N.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, E_m_der.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, S_m_der.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, N_der.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, E_m_der2, pt); // evaluates an expression on a point
+
+    // evaluateFunction(ev, E_f.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, S_f.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, M.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, E_f_der.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, S_f_der.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, M_der.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, E_f_der2, pt); // evaluates an expression on a point
+
+    // evaluateFunction(ev, deriv2(u,sn(defG).normalized().tr() ), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, deriv2(defG,var1(u,defG) ), pt); // evaluates an expression on a point
+
+    // evaluateFunction(ev, flatdot2( deriv2(u), var1(u,defG).tr(), M  ).symmetrize(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, var2(u,u,defG, M ), pt); // evaluates an expression on a point
 
 
     // solve system
@@ -1935,13 +1970,37 @@ int main(int argc, char *argv[])
     // evaluateFunction(ev, nsol1, pt); // evaluates an expression on a point
     // evaluateFunction(ev, nsol2, pt); // evaluates an expression on a point
 
+    // evaluateFunction(ev, E_m.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, S_m.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, N.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, E_m_der.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, S_m_der.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, N_der.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, E_m_der2, pt); // evaluates an expression on a point
+
+    // evaluateFunction(ev, E_f.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, S_f.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, M.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, E_f_der.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, S_f_der.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, M_der.tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, E_f_der2, pt); // evaluates an expression on a point
+
+    // evaluateFunction(ev, deriv2(u,sn(defG).normalized().tr() ), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, deriv2(defG,var1(u,defG) ), pt); // evaluates an expression on a point
+
+    // evaluateFunction(ev, flatdot2( deriv2(u), var1(u,defG).tr(), M  ).symmetrize(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, var2(u,u,defG, M ), pt); // evaluates an expression on a point
+
     // ! [Solve linear problem]
 
     // ! [Solve nonlinear problem]
     real_t residual = A.rhs().norm();
+    real_t residual0 = residual;
+    real_t residualOld = residual;
     if (nonlinear)
     {
-        index_t itMax = 10;
+        index_t itMax = 100;
         real_t tol = 1e-8;
         for (index_t it = 0; it != itMax; ++it)
         {
@@ -1951,6 +2010,11 @@ int main(int argc, char *argv[])
                 ( N_der * E_m_der.tr() + E_m_der2 + M_der * E_f_der.tr() - E_f_der2 ) * meas(G)
                 , u * F * meas(G) - ( ( N * E_m_der.tr() - M * E_f_der.tr() ) * meas(G) ).tr()
                 );
+
+            // gsVector<> pt3(2);
+            // pt3.setConstant(0.5);
+            // gsExprEvaluator<> evaluator(A);
+            // gsDebug<<"\n"<<evaluator.eval(reshape(mm,3,3),pt3)<<"\n";
 
             // For Neumann (same for Dirichlet/Nitche) conditions
             variable g_N = A.getBdrFunction();
@@ -1966,7 +2030,12 @@ int main(int argc, char *argv[])
             gsInfo<<"Iteration: "<< it
                    <<", residue: "<< residual
                    <<", update norm: "<<updateVector.norm()
+                   <<", log(Ri/R0): "<< math::log10(residualOld/residual0)
+                   <<", log(Ri+1/R0): "<< math::log10(residual/residual0)
                    <<"\n";
+
+            residualOld = residual;
+
 
             // update deformed patch
             u_sol.setSolutionVector(updateVector);
@@ -1978,7 +2047,7 @@ int main(int argc, char *argv[])
             }
 
 
-            if (residual < tol)
+            if (updateVector.norm() < tol)
                 break;
         }
     }
