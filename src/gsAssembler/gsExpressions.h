@@ -996,6 +996,7 @@ public:
     /// Extracts ALL the coefficients in a solution vector; including coupled and boundary DoFs
     void extractFull(gsMatrix<T> & result) const
     {
+        GISMO_ASSERT(&result != _Sv,"Same vector as solution vector! Both have memory adress "<<&result);
         index_t offset, ii, bi;
         result.resize(_u.mapper().mapSize(),1);
         for (index_t c=0; c!=_u.m_d; c++)
@@ -2959,12 +2960,14 @@ public:
     const Temporary_t &
     eval(const index_t k) const
     {
+        // gsDebugVar( _u.eval(k) );
+        // gsDebugVar( _v.eval(k) );
+
         GISMO_ASSERT(0==_u.cols()*_v.rows() || _u.cols() == _v.rows(),
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.rows()<<" in * operation:\n"
                      << _u <<" times \n" << _v );
         // Note: a * b * c --> (a*b).eval()*c
-        // gsDebugVar( _u.eval(k) );
-        // gsDebugVar( _v.eval(k) );
+
 
         tmp = _u.eval(k) * _v.eval(k);
         // gsDebugVar(_u.eval(k));
