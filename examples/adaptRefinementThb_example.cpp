@@ -22,7 +22,7 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
    //! [Parse command line]
-  bool plot = false, thb = false;
+    bool plot = false, tb = false, thb = false;
    // Number of refinement loops to be done
    int numElevate = 1, numRefinementLoops = 4;
    // Number of initial uniform refinement steps:
@@ -33,13 +33,14 @@ int main(int argc, char *argv[])
    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
    cmd.addSwitch("tbnp", "Use truncated HB splines", thb );
-    cmd.addReal( "a", "adaptiveParam",
+   cmd.addSwitch("tb", "Use tensor product splines", tb );
+   cmd.addReal( "a", "adaptiveParam",
                 "Refinement parameter)", adaptRefParam );
 
-    cmd.addInt( "e", "degreeElevation",
-                "Number of degree elevation steps)", numElevate );
-    cmd.addInt( "u", "urefine",
-                "Number of a priori uniform refinement steps)", numInitUniformRefine );
+   cmd.addInt( "e", "degreeElevation",
+               "Number of degree elevation steps)", numElevate );
+   cmd.addInt( "u", "urefine",
+               "Number of a priori uniform refinement steps)", numInitUniformRefine );
    cmd.addInt( "r", "refine",
                 "Number of adaptive refinement loops)", numRefinementLoops );
    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -133,6 +134,45 @@ int main(int argc, char *argv[])
    for (int i = 0; i < numInitUniformRefine; ++i)
      basesTens.uniformRefine();
 
+   // Just do one solve using tensor-product splines
+   if (tb)
+   {
+       gsInfo<< "Degree: "<< basesTens.degree() <<std::endl;
+       gsInfo<< "dofs: 3x"<< basesTens.basis(0).size() <<std::endl;
+       
+       gsPoissonAssembler<real_t> PoissonAssembler(patchesTens,basesTens,bcInfo,f);
+       PoissonAssembler.options().setInt("DirichletValues", dirichlet::l2Projection);
+
+       // Generate system matrix and load vector
+       PoissonAssembler.assemble();
+
+       // Initialize the conjugate gradient solver
+
+       gsSparseSolver<>::CGDiagonal solver( PoissonAssembler.matrix() );
+       solver.setMaxIterations(5*PoissonAssembler.matrix().rows());
+       solver.setTolerance(1e-9);
+       gsMatrix<> solVector = solver.solve( PoissonAssembler.rhs() );
+
+       // Solve directly
+       //gsMatrix<> solVector =  PoissonAssembler.matrix().toDense().fullPivLu().solve( PoissonAssembler.rhs() );
+
+       // Construct the isogeometric solution
+       gsMultiPatch<> sol;
+       PoissonAssembler.constructSolution(solVector, sol);
+       // Associate the solution to the patches (isogeometric field)
+       gsField<> solField(patchesTens, sol);
+
+              gsExprEvaluator<> ev;
+       ev.setIntegrationElements(basesTens);
+       gsExprEvaluator<>::variable is = ev.getVariable(sol);
+       real_t val = ev.eval(is, pt  ,1).value();
+       gsInfo << std::fixed << "-Value: "<< std::setprecision(16) 
+              << val <<"\n";
+	   gsInfo <<"Ref.  : 1.02679192610\n"<<std::flush;
+
+       return 0;
+   }
+   
    gsTensorBSplineBasis<2> & p0 = 
      const_cast<gsTensorBSplineBasis<2>&>(
      dynamic_cast<const gsTensorBSplineBasis<2>&>(basesTens.piece(0)) );
