@@ -1508,6 +1508,7 @@ public:
         for (index_t i = 0; i<numActives; ++i)
         {
             tmp(0,2*i+1) += tmp(1,2*i);
+            // GISMO_ASSERT(tmp(0,2*i+1)==tmp(1,2*i),"ALERT!, tmp(0,2*i+1) = "<<tmp(0,2*i+1)<<", tmp(1,2*i) = "<<tmp(1,2*i));
             std::swap(tmp(1,2*i), tmp(1,2*i+1));
         }
 
