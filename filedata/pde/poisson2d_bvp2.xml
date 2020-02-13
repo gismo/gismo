@@ -30,6 +30,12 @@
   <!-- The manufactured exact solution (for reference) -->
   <Function type="FunctionExpr" id="3" dim="2">sin(pi*x) * sin(pi*y)</Function>
   <Function type="FunctionExpr" id="9" dim="2">
+w:= -(1/2)*x^2+(1/2)*x;
+for (t := 1; t &lt; 100; t += 2)
+{ w += 2*sin(pi*x*t)*(-2)*(exp(pi*t*(3*y-1))-exp(pi*t*(3*y-2))-exp(pi*t*(y-1))+exp(pi*y*t))*exp(-2*pi*t*(y-1))/(t*t*t*pi^3*(exp(2*t*pi)-1)) }
+  </Function>
+
+<Function type="FunctionExpr" id="19" dim="2">
 2*sin(pi*x*1)*(-1+(-1)^1)*(exp(pi*1*(3*y-1))-exp(pi*1*(3*y-2))-exp(pi*1*(y-1))+exp(pi*y*1))*exp(-2*pi*1*(y-1))/(1^3*pi^3*(exp(2*1*pi)-1)) +
 2*sin(pi*x*2)*(-1+(-1)^2)*(exp(pi*2*(3*y-1))-exp(pi*2*(3*y-2))-exp(pi*2*(y-1))+exp(pi*y*2))*exp(-2*pi*2*(y-1))/(2^3*pi^3*(exp(2*2*pi)-1)) +
 2*sin(pi*x*3)*(-1+(-1)^3)*(exp(pi*3*(3*y-1))-exp(pi*3*(3*y-2))-exp(pi*3*(y-1))+exp(pi*y*3))*exp(-2*pi*3*(y-1))/(3^3*pi^3*(exp(2*3*pi)-1)) +
