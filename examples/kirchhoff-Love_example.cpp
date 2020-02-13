@@ -545,7 +545,7 @@ public:
 // };
 
 /*
-    Evaluates: 
+    Evaluates:
     [C1111,C1112,C1121,C1122][A11, A12] with input [C1111,C1122,C1112] (Hence assumes symmetry of C)
     [C1211,C1212,C1221,C1222][A21, A22]            [C2211,C2222,C2212]
     [C2111,C2112,C2121,C2122]                      [C1211,C1222,C1212]
@@ -1446,191 +1446,6 @@ public:
 
 };
 
-
-template <typename T1, typename T2, typename T3 > using var2_t = gismo::expr::var2_expr<T1,T2,T3>;
-template <typename T1, typename T2, typename T3 > using flatdot_t = gismo::expr::flatdot_expr<T1,T2,T3 >;
-template <typename T1, typename T2, typename T3 > using flatdot2_t= gismo::expr::flatdot2_expr<T1,T2,T3 >;
-template <typename T1, typename T2  > using mult_t = gismo::expr::mult_expr<T1,T2,false >;
-template <typename T1, typename T2  > using divide_t= gismo::expr::divide_expr<T1,T2 >;
-template <typename T1, typename T2  > using add_t  = gismo::expr::add_expr<T1,T2>;
-template <typename T1, typename T2  > using sub_t  = gismo::expr::sub_expr<T1,T2>;
-template <typename T1, typename T2  > using der2d_t= gismo::expr::deriv2dot_expr<T1,T2>;
-
-template <typename T> using jacG_t      = gismo::expr::jacG_expr<T>;
-template <typename T> using jac_t       = gismo::expr::jac_expr<T>;
-template <typename T> using sn_t        = gismo::expr::normal_expr<T>;
-template <typename T> using var1_t      = gismo::expr::var1_expr<T>;
-template <typename T> using der2_t      = gismo::expr::deriv2_expr<T>;
-template <typename T> using normalized_t= gismo::expr::normalized_expr<T>;
-template <typename T> using symmetrize_t= gismo::expr::symmetrize_expr<T>;
-template <typename T> using flat_t      = gismo::expr::flat_expr<T>;
-template <typename T> using tr_t        = gismo::expr::tr_expr<T>;
-template <typename T> using u_t         = gismo::expr::gsFeSpace<T>;
-template <typename T> using G_t         = gismo::expr::gsGeometryMap<T>;
-template <typename T> using var_t       = gismo::expr::gsFeVariable<T>;
-template <typename T> using val_t       = gismo::expr::value_expr<T>;
-template <typename T> using reshape_t   = gismo::expr::reshape_expr<T>;
-
-template <typename T> using E_m_t  =
-mult_t
-< T,
-    sub_t
-    <
-        flat_t
-        <
-            mult_t< tr_t< jacG_t<T> >, jacG_t<T> >
-        >
-        ,
-        flat_t
-        <
-            mult_t< tr_t< jacG_t<T> >, jacG_t<T> >
-        >
-    >
->;
-
-template <typename T> using S_m_t  =
-mult_t
-<
-    E_m_t<T>
-    ,
-    reshape_t< var_t <T> >
->;
-
-template <typename T> using N_t  =
-mult_t< val_t<var_t<T>>, S_m_t<T> >;
-
-template <typename T> using E_m_der_t  =
-flat_t
-<
-    mult_t< tr_t< jacG_t<T> >, jac_t<u_t<T>> >
->;
-
-template <typename T> using S_m_der_t  =
-mult_t
-<
-    E_m_der_t<T>
-    ,
-    reshape_t< var_t <T> >
->;
-
-template <typename T> using N_der_t  =
-mult_t< val_t<var_t<T>>, S_m_der_t<T> >;
-
-template <typename T> using E_m_der2_t  =
-flatdot_t
-<
-    jac_t< u_t<T> >,
-    tr_t< jac_t< u_t<T> > >,
-    N_t<T>
->;
-
-template <typename T> using E_f_t  =
-mult_t
-<
-    sub_t
-    <
-        der2d_t<G_t<T>, tr_t< normalized_t< sn_t<T> > > >
-        ,
-        der2d_t<G_t<T>, tr_t< normalized_t< sn_t<T> > > >
-    >
-    ,
-    reshape_t< var_t<T> >
->;
-
-template <typename T> using S_f_t  =
-mult_t
-<
-    E_f_t<T>
-    ,
-    reshape_t< var_t <T> >
->;
-
-template <typename T> using M_t  =
-mult_t
-<
-    divide_t
-    <
-        mult_t
-        <
-            mult_t
-            <
-                val_t<var_t<T>>
-                ,
-                val_t<var_t<T>>
-            >
-            ,
-            val_t<var_t<T>>
-        >
-    ,
-    T
-    >
-    ,
-    S_f_t<T>
->;
-
-template <typename T> using E_f_der_t  =
-mult_t
-<
-    add_t
-    <
-        der2d_t<u_t<T>, tr_t< normalized_t< sn_t<T> > > >
-        ,
-        der2d_t<G_t<T>, var1_t< u_t<T> > >
-    >
-    ,
-    reshape_t< var_t<T> >
->;
-
-template <typename T> using S_f_der_t  =
-mult_t
-<
-    E_f_der_t<T>
-    ,
-    reshape_t< var_t <T> >
->;
-
-template <typename T> using M_der_t  =
-mult_t
-<
-    divide_t
-    <
-        mult_t
-        <
-            mult_t
-            <
-                val_t<var_t<T>>
-                ,
-                val_t<var_t<T>>
-            >
-            ,
-            val_t<var_t<T>>
-        >
-    ,
-    T
-    >
-    ,
-    S_f_der_t<T>
->;
-
-
-template <typename T> using E_f_der2_t  =
-add_t
-<
-    symmetrize_t
-    <
-        flatdot2_t
-        <
-            der2_t< u_t<T> >,
-            tr_t< var1_t<u_t<T> > >,
-            M_t<T>
-        >
-    >
-    ,
-    var2_t< u_t<T>, u_t<T>, M_t<T> >
->;
-
-template <typename T> using force_t = var_t<T>;
-
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
@@ -1666,8 +1481,8 @@ int main(int argc, char *argv[])
         mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
         mp.addAutoBoundaries();
         mp.embed(3);
-        E_modulus = 1e9;
-        thickness = 1e-3;
+        E_modulus = 1e0;
+        thickness = 1e0;
         PoissonRatio = 0.499;
     }
     else if (testCase == 2  || testCase == 3)
@@ -1877,7 +1692,6 @@ int main(int argc, char *argv[])
             m2      an auxillary matrix to multiply the last row of a tensor with 2
     **/
 
-    mult_t< real_t, flat_t< jacG_t<real_t> >> E_mtest = 0.5 * flat(jac(G));
 
     // Membrane components
     auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ; //[checked]
