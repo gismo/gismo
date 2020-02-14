@@ -125,8 +125,8 @@ int main(int argc, char *argv[])
     {
         dbasis.uniformRefine();
 
-        //Treat labels: Dirichlet, CornerValues, Collapsed, Clamped
-        u.setup(bc.get("Dirichlet"), dirichlet::interpolation, 0); // def=-1
+        //labels: Dirichlet, CornerValues, Collapsed, Clamped
+        u.setup(bc.get("Dirichlet"), dirichlet::interpolation, 0);
         //u.setupAsInteriorOnly(0); // def=-1
 
         // Initialize the system

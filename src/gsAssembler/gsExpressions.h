@@ -888,6 +888,70 @@ public:
         //this->mapper().print();
     }
 
+    void setup(bcRefList bc, const index_t dir_values, const index_t _icont = -1)
+    {
+        this->setInterfaceCont(_icont);
+        
+        m_mapper = gsDofMapper(); //reset ?
+
+        if (const gsMultiBasis<T> * mb =
+            dynamic_cast<const gsMultiBasis<T>*>(&this->source()) )
+        {
+            m_mapper = gsDofMapper(*mb, this->dim() );
+            //m_mapper.init(*mb, this->dim()); //bug
+            if ( 0==this->interfaceCont() ) // Conforming boundaries ?
+            {
+                for ( gsBoxTopology::const_iiterator it = mb->topology().iBegin();
+                      it != mb->topology().iEnd(); ++it )
+                {
+                    mb->matchInterface(*it, m_mapper);
+                }
+            }
+
+            gsMatrix<unsigned> bnd;
+            for (typename bcRefList::const_iterator
+                     it = this->bc().begin() ; it != this->bc().end(); ++it )
+            {
+                const index_t cc = it->unkComponent();
+                //if (it->unkown() == -1 || it->unkown() == this->id())
+
+                GISMO_ASSERT(static_cast<size_t>(it->get().ps.patch) < this->mapper().numPatches(),
+                              "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                bnd = mb->basis(it->get().ps.patch).boundary( it->get().ps.side() );
+
+                if (cc==-1)
+                    for (index_t c=0; c!= this->dim(); c++) // for all components
+                        m_mapper.markBoundary(it->get().ps.patch, bnd, cc);
+                else
+                    m_mapper.markBoundary(it->get().ps.patch, bnd, cc);
+        }
+        else if (const gsBasis<T> * b =
+                 dynamic_cast<const gsBasis<T>*>(&this->source()) )
+        {
+            m_mapper = gsDofMapper(*b);
+            gsMatrix<unsigned> bnd;
+            for (typename bcRefList::const_iterator
+                     it = this->bc().begin() ; it != this->bc().end(); ++it )
+            {
+                GISMO_ASSERT( it->get().ps.patch == 0,
+                              "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                bnd = b->boundary( it->get().ps.side() );
+                //const index_t cc = it->unkComponent();
+                m_mapper.markBoundary(0, bnd, 0);
+            }
+        }
+        else
+        {
+            GISMO_ASSERT( 0 == this->bc().size(), "Problem: BCs are ignored.");
+            m_mapper.setIdentity(this->source().nPieces(), this->source().size());
+        }
+
+        m_mapper.finalize();
+        //this->mapper().print();
+    }
+
 protected:
     friend class gismo::gsExprHelper<T>;
     explicit gsFeSpace(index_t _d = 1) : Base(_d), m_id(-1), m_r(-1)
