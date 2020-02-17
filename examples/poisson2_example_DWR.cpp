@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     basisL.setDegree( basisL.maxCwiseDegree() + numElevate);
-    basisH.setDegree( basisH.maxCwiseDegree() + numElevate+1);
+    basisH.setDegree( basisH.maxCwiseDegree() + numElevate);
 
     // h-refine each basis
     for (int r =0; r < numRefine-1; ++r)
@@ -160,6 +160,7 @@ int main(int argc, char *argv[])
         basisL.uniformRefine();
         basisH.uniformRefine();
     }
+    basisH.degreeElevate(1);
 
     numRefine = 0;
 
