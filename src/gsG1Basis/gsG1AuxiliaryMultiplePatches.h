@@ -30,7 +30,7 @@ public:
     }
 
 
-    // Compute topology 2
+    // Compute topology 3
     gsMultiPatch<> computeAuxTopology(){
         gsMultiPatch<> auxTop;
         for(unsigned i = 0; i <  auxGeom.size(); i++){
