@@ -368,7 +368,7 @@ public:
     /// Returns true if the variable is a composition
     bool composed() const {return NULL!=m_md;}
 
-    index_t cardinality_impl() const { return m_d * m_fd->actives.rows(); }
+    index_t cardinality_impl() const { gsDebugVar(m_fd->actives.rows()); return m_d * m_fd->actives.rows(); }
 
 private:
 
@@ -1261,13 +1261,13 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); }
 
-    const gsFeSpace<Scalar> & rowVar() const { return _u.colVar(); }
-    const gsFeSpace<Scalar> & colVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return ColBlocks ? _u.rowVar() : _u.colVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return ColBlocks ? _u.colVar() : _u.rowVar(); }
 
     index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
-    static constexpr bool rowSpan() {return E::colSpan();}
-    static bool colSpan() {return E::rowSpan();}
+    static constexpr bool rowSpan() {return ColBlocks ? E::rowSpan() : E::colSpan();}
+    static bool colSpan() {return ColBlocks ? E::colSpan() : E::rowSpan();}
 
     void print(std::ostream &os) const { os<<"("; _u.print(os); os <<")'"; }
 private:
@@ -1414,10 +1414,10 @@ public:
     {
         // Assume mat ??
         MatExprType tmp = _u.eval(k);
-        const index_t cb = _u.rows();
-        const index_t r  = _u.cols() / cb;
-        res.resize(_u.rows(),_u.cols());
-        for (index_t i = 0; i!=r; ++i){
+        const index_t cb = _u.cols();
+        const index_t nb  = _u.cardinality();
+        res.resize(_u.rows(),_u.cols()*nb);
+        for (index_t i = 0; i!=nb; ++i){
             res.middleCols(i*cb,cb) = tmp.middleCols(i*cb,cb).adjugate();
         }
         return res;
@@ -1435,6 +1435,8 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+
+	index_t cardinality_impl() const { return _u.cardinality(); }
 
     static constexpr bool rowSpan() {return E::rowSpan();}
     static bool colSpan() {return E::colSpan();}
@@ -2019,6 +2021,8 @@ public:
     static constexpr bool rowSpan() {return false;}
     static bool colSpan() {return false;}
 
+	index_t cardinality_impl() const { return 1; }
+
     const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
 
@@ -2097,76 +2101,6 @@ public:
     void print(std::ostream &os) const { os << "grad("; _u.print(os); os <<")"; }
 };
 
-/*
-   Expression for the derivative of the jacobian of a spline geometry map,
-   with respect to the coordinate c.
-
-   It returns a matrix with the gradient of u in row d.
- */
-template<class E>
-class dJacdc_expr : public _expr<dJacdc_expr<E> >
-{
-    typename E::Nested_t _u;
-public:
-    enum{ Space = E::Space, ScalarValued = 0, ColBlocks = E::rowSpan()};
-
-    typedef typename E::Scalar Scalar;
-
-    mutable gsMatrix<Scalar> res;
-    index_t _c;
-
-    dJacdc_expr(const E & u, index_t c) : _u(u), _c(c)
-    { GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");}
-
-    const gsMatrix<Scalar> & eval(const index_t k) const
-    {
-        index_t dd = _u.source().domainDim();
-        index_t n = _u.rows();
-        res.setZero(dd, dd*n);
-
-        gsMatrix<Scalar> grad = _u.data().values[1].reshapeCol(k, dd, n);
-        for(index_t i = 0; i < n; i++){
-            res.row(_c).segment(i*dd,dd) = grad.col(i);
-        }
-        return res;
-    }
-
-    index_t rows() const
-    {
-        //return _u.data().values[0].rows();
-        return _u.source().domainDim();
-    }
-    //index_t rows() const { return _u.data().actives.size(); }
-    //index_t rows() const { return _u.rows(); }
-
-    //index_t rows() const { return _u.source().targetDim() is wrong }
-    index_t cols() const { return _u.source().domainDim()*_u.rows(); }
-
-    void setFlag() const
-    {
-        _u.data().flags |= NEED_GRAD;
-        if (_u.composed() )
-            _u.mapData().flags |= NEED_VALUE;
-    }
-
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
-    {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_u.source());
-        _u.data().flags |= NEED_GRAD;
-        if (_u.composed() )
-            _u.mapData().flags |= NEED_VALUE;
-    }
-
-    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const
-    {return gsNullExpr<Scalar>::get();}
-
-    static constexpr bool rowSpan() {return E::rowSpan(); }
-    static constexpr bool colSpan() {return false;}
-
-    void print(std::ostream &os) const { os << "dJacdc("; _u.print(os); os <<")"; }
-};
 
 
 /*
@@ -2827,7 +2761,8 @@ public:
     }
     index_t cols() const
     {
-        return 2*_u.data().values[2].rows() / (1+_u.data().dim.first);
+        //return 2*_u.data().values[2].rows() / (1+_u.data().dim.first);
+        return _u.data().dim.first;
     }
 
     void setFlag() const { _u.data().flags |= NEED_2ND_DER; }
@@ -2839,6 +2774,9 @@ public:
 
     static constexpr bool rowSpan() {return E::rowSpan(); }
     static bool colSpan() {return false;}
+
+	index_t cardinality_impl() const { gsInfo << "_u : " << _u << "\n"; return _u.cardinality(); }
+	
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
@@ -3059,7 +2997,8 @@ public:
     static           bool colSpan() { return 0==E2::Space ? E1::colSpan() : E2::colSpan(); }
 
     index_t cardinality_impl() const
-    { return 0==E1::Space ? _v.cardinality(): _u.cardinality(); }
+    { 
+		return 0==E1::Space ? _v.cardinality(): _u.cardinality(); }
 
     const gsFeSpace<Scalar> & rowVar() const
     { return 0==E1::Space ? _v.rowVar() : _u.rowVar(); }
@@ -3146,8 +3085,8 @@ public:
 
         //GISMO_ASSERT(uc==vr, "Assumption for product failed");
         const index_t vc = _v.cols();
-        // gsDebugVar( _u.cardinality() );
-        // gsDebugVar( _v.cardinality() );
+         gsDebugVar( _u.cardinality() );
+         gsDebugVar( _v.cardinality() );
 
         // either _v.cardinality()==1 or _v.cardinality()==_u.cardinality()
         if (  1 == _v.cardinality() ) //second is not ColBlocks
@@ -3269,6 +3208,8 @@ public:
     static constexpr bool rowSpan() { return E2::rowSpan(); }
     static bool colSpan() { return E2::colSpan(); }
 
+	index_t cardinality_impl() const { return _v.cardinality(); }
+
     const gsFeSpace<Scalar> & rowVar() const { return _v.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }
 
@@ -3384,26 +3325,41 @@ public:
     const gsMatrix<Scalar> & eval(const index_t k) const //todo: specialize for nb==1
     {
         // assert _u.size()==_v.size()
-        const index_t rb = _u.rows(); //==cb
-        const index_t nb = _u.cols() / rb;
+        const index_t cb = _u.cols(); //==cb
+        const index_t unb = _u.cardinality();
+        const index_t vnb = _v.cardinality();
+
+		gsInfo << "_u = " << _u << "\n";
+		gsInfo << "_v = " << _v << "\n";
+
         MatExprType A = _u.eval(k);
         MatExprType B = _v.eval(k);
-        res.resize(nb, nb);
-        for (index_t i = 0; i!=nb; ++i) // all with all
-            for (index_t j = 0; j!=nb; ++j)
+		//gsDebugVar(A.rows());
+		//gsDebugVar(A.cols());
+		//gsDebugVar(B.rows());
+		//gsDebugVar(B.cols());
+		//gsDebugVar(cb);
+		//gsDebugVar(unb);
+		//gsDebugVar(vnb);
+
+        res.resize(unb, vnb);
+        for (index_t i = 0; i!=unb; ++i) // all with all
+            for (index_t j = 0; j!=vnb; ++j)
                 res(i,j) =
-                (A.middleCols(i*rb,rb).array() * B.middleCols(j*rb,rb).array()).sum();
+                (A.middleCols(i*cb,cb).array() * B.middleCols(j*cb,cb).array()).sum();
         return res;
     }
 
-    index_t rows() const { return _u.cols() / _u.rows(); }
-    index_t cols() const { return _u.cols() / _u.rows(); }
+    index_t rows() const { return _u.cardinality(); }
+    index_t cols() const { return _v.cardinality(); }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
     static constexpr bool rowSpan() { return E1::rowSpan(); }
     static bool colSpan() { return E2::rowSpan(); }
+
+	index_t cardinality_impl() const { return _u.cardinality(); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
@@ -3449,16 +3405,26 @@ public:
         // assert _u.size()==_v.size()
         MatExprType A = _u.eval(k);
         MatExprType B = _v.eval(k);
-        const index_t rb = A.rows(); //==cb
-        const index_t nb = A.cols() / rb;
+
+		//gsInfo << "_u : " << _u << "\n";
+
+        const index_t cb = _u.cols(); //==cb
+        const index_t nb = _u.cardinality();
+		//gsDebugVar(A.rows());
+		//gsDebugVar(A.cols());
+		//gsDebugVar(B.rows());
+		//gsDebugVar(B.cols());
+		//gsDebugVar(cb);
+		//gsDebugVar(nb);
+
         res.resize(nb, 1);
         for (index_t i = 0; i!=nb; ++i) // all with all
                 res(i,0) =
-                (A.middleCols(i*rb,rb).array() * B.array()).sum();
+                (A.middleCols(i*cb,cb).array() * B.array()).sum();
         return res;
     }
 
-    index_t rows() const { return _u.cols() / _u.rows(); }
+    index_t rows() const { return _u.cardinality(); }
     index_t cols() const { return 1; }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
@@ -3466,6 +3432,8 @@ public:
 
     static constexpr bool rowSpan() { return E1::rowSpan(); }
     static bool colSpan() { return E2::rowSpan(); }
+
+	index_t cardinality_impl() const { return _u.cardinality(); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
@@ -3871,10 +3839,6 @@ solGrad_expr<T> grad(const gsFeSolution<T> & u) { return solGrad_expr<T>(u); }
 /// The gradient of a variable
 template<class E> EIGEN_STRONG_INLINE
 grad_expr<E> grad(const E & u) { return grad_expr<E>(u); }
-
-/// The derivative of the jacobian of a geometry map with respect to a coordinate.
-template<class E> EIGEN_STRONG_INLINE
-dJacdc_expr<E> dJacdc(const E & u, index_t c) { return dJacdc_expr<E>(u,c); }
 
 /// The curl of a finite element variable
 template<class T> EIGEN_STRONG_INLINE
