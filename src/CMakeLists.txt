@@ -46,7 +46,7 @@ FOREACH(subdir ${SUBDIRS})
     ${${subdir}_H}
     ${${subdir}_HPP}
     ${${subdir}_CPP}
-    )
+          gsG1Basis/gsG1OptionList.h)
 
   set_target_properties(${GM_NAME} PROPERTIES
     COMPILE_DEFINITIONS gismo_EXPORTS

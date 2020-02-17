@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <Geometry type="TensorNurbs2" id="1">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2" parDim="2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1</notVector>
+    </Basis>
+   </Basis>
+   <weights>1 0.92387953 1 1 1 1 1 1 1 1 1 1</weights> 
+  </Basis>
+  <coefs geoDim="2">
+    -1 0 
+    -1 0.41421356
+    -0.70710678118  0.70710678118
+    
+    -4/3 0
+    -4/3 2/3
+    -4/3 4/3
+    
+    -5/3 0
+    -5/3 2/3
+    -5/3 5/3
+    
+    -2 0 
+    -2 1
+    -2 2 
+    </coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2" id="2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2" parDim="2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1</notVector>
+    </Basis>
+   </Basis>
+  <weights>1 0.92387953 1 1 1 1 1 1 1 1 1 1 </weights> 
+   
+  </Basis>
+  <coefs geoDim="2">
+    -0.70710678118  0.70710678118
+    -0.41421356 1
+    0 1
+    
+    -4/3 4/3
+    -2/3 4/3
+    0 4/3
+    
+   -5/3 5/3
+    -2/3 5/3
+    0 5/3
+    
+    -2 2
+    -1 2
+    0 2
+    </coefs>
+ </Geometry>
+<MultiPatch parDim="2" id="0">
+  <patches type="id_range">1 2</patches>
+ </MultiPatch>
+ </xml>
