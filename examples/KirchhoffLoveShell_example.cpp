@@ -43,12 +43,12 @@ int main(int argc, char *argv[])
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
-    gsFileData<> fileSrc("KirchhoffLoveGeo/square_curvedInterface.xml");
+    gsFileData<> fileSrc("KirchhoffLoveGeo/geo_fivePatch.xml");
     gsInfo << "Loaded file " << fileSrc.lastPath() << "\n";
 
     gsMultiPatch<> geo;
     gsInfo << "Geometry taken correctly \n";
-    fileSrc.getId(2, geo);
+    fileSrc.getId(5, geo);
     geo.computeTopology();
     gsInfo << "Geometry computed correctly\n";
     gsMultiBasis<> basis(geo);
@@ -62,25 +62,69 @@ int main(int argc, char *argv[])
 //        basis.uniformRefine();
 
 
-    for (const boundaryInterface &  item : geo.interfaces() )
-    {
+//    for (const boundaryInterface &  item : geo.interfaces() )
+//    {
+    gsInfo << "Old: " << basis << "\n\n";
+        std::vector<unsigned> v;
+        v.push_back(0);
+        v.push_back(4);
+        v.push_back(1);
+        v.push_back(2);
+        v.push_back(3);
+        gsG1AuxiliaryMultiplePatches a(geo, v);
 
-        gsG1AuxiliaryMultiplePatches a(geo, item.first().patch, item.second().patch);
-        gsMultiPatch<> test(a.reparametrizeG1Interface());
+        gsMultiPatch<> test(a.computeAuxTopology());
         gsMultiBasis<> testb(test);
         gsInfo << "New: " << testb << "\n";
-    }
+//    }
+
+
+
+
+
+
+
+
+    //    std::vector<std::vector<patchCorner>> allcornerLists;
+//    for (unsigned n = 0; n < geo.nPatches(); ++n)
+//    {
+//        for(unsigned j=1;j<=4;++j)
+//        {
+//            std::vector<patchCorner> cornerLists;
+//            patchCorner start(n, j);
+//            geo.getCornerList(start, cornerLists);
+//            bool alreadyReached = false;
+//            for(size_t k = 0;k<allcornerLists.size();++k)
+//                for(size_t l = 0;l<allcornerLists[k].size();++l)
+//                    if(allcornerLists[k][l].patch==n && allcornerLists[k][l].m_index==j)
+//                        alreadyReached = true;
+//            if (cornerLists.size() > 0 && !alreadyReached)
+//                allcornerLists.push_back(cornerLists);
+//        }
+//    }
+//    for (std::vector<std::vector<patchCorner>>::iterator it = allcornerLists.begin(); it!=allcornerLists.end(); ++it)
+//    {
+//        gsInfo << "Corner in " << it->at(0).m_index << " in Patch " << it->at(0).patch << "\n";
+//        for (std::vector<patchCorner>::iterator it_corner = it->begin(); it_corner!=it->end(); ++it_corner)
+//        {
+//            gsInfo << "Corner : " << it_corner->patch << " : " << it_corner->m_index << "\n";
+//        }
+//    }
+
+
+
+
 
 
 
 
 //    gsWriteParaview(newgeom1, "Geometry", 1000);
 
-//    // Write file .xml of the new geometry
-//    gsFileData<> fd;
-//    fd << geo;
-//    // output is a string. The extention .xml is added automatically
-//    fd.save("newGeo");
+    // Write file .xml of the new geometry
+    gsFileData<> fd;
+    fd << test;
+    // output is a string. The extention .xml is added automatically
+    fd.save("newGeo");
 
 
     //Setting up oundary conditions

@@ -25,12 +25,15 @@ public:
 
     // Constructor for n patches around a common vertex
     gsG1AuxiliaryMultiplePatches(const gsMultiPatch<> & mp, const std::vector<unsigned> patchesAroundVertex){
-        for(unsigned i = 0; i < patchesAroundVertex.size(); i++ )
-        auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(i), patchesAroundVertex[i]));
+        for(const unsigned i : patchesAroundVertex)
+        auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(i), i));
     }
 
 
-    // Compute topology 3
+    // Compute topology
+    // After computeTopology() the patches will have the same patch-index as the position-index inside auxGeom
+    // EXAMPLE: global patch-index inside auxGeom: [2, 3, 4, 1, 0]
+    //          in auxTop: 2->0, 3->1, 4->2, 1->3, 0->4
     gsMultiPatch<> computeAuxTopology(){
         gsMultiPatch<> auxTop;
         for(unsigned i = 0; i <  auxGeom.size(); i++){
