@@ -2054,7 +2054,7 @@ public:
     grad_expr(const E & u) : _u(u)
     { GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");}
 
-    const gsMatrix<Scalar> eval(const index_t k) const
+    const gsMatrix<Scalar> & eval(const index_t k) const
     {
         tmp = _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
         return tmp;
