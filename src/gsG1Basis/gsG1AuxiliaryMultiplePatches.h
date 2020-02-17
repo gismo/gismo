@@ -42,8 +42,6 @@ public:
         }
         // After computeTopology() the patch with initial bigger patch-index will have index zero and vice-versa
         auxTop.computeTopology();
-        gsMultiBasis<> testbo(auxTop);
-        gsInfo << "CAT Old param: " << testbo << "\n";
         return auxTop;
     }
 
