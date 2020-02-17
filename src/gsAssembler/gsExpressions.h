@@ -758,8 +758,7 @@ protected:
 
     typedef typename gsBoundaryConditions<T>::bcRefList bcRefList;
     mutable bcRefList m_bcs;
-
-    gsDofMapper m_mapper;
+    mutable gsDofMapper m_mapper;
     gsMatrix<T> m_fixedDofs;
 
 public:
@@ -812,21 +811,15 @@ public:
         const int sz  = mb[p].size();
         result.resize(sz, dim); // (!)
 
-        for (index_t i = 0; i < sz; ++i)
+        for (index_t c = 0; c!=dim; c++) // for all components
         {
-            const int ii = m_mapper.index(i, p);
-
-            if ( m_mapper.is_free_index(ii) ) // DoF value is in the solVector
+            for (index_t i = 0; i < sz; ++i) // loop over all basis functions (even the eliminated ones)
             {
-                for (index_t k = 0; k != dim; ++k)
-                {
-                    const index_t cgs = k * m_mapper.freeSize(); //global stride
-                    result(i,k) = solVector.at( cgs + ii );
-                }
-            }
-            else // eliminated DoF: fill with Dirichlet data
-            {
-                result.row(i) = m_fixedDofs.row( m_mapper.global_to_bindex(ii) ).head(dim);
+                const int ii = m_mapper.index(i, p, c);
+                if ( m_mapper.is_free_index(ii) ) // DoF value is in the solVector
+                    result(i,c) = solVector.at(ii );
+                else // eliminated DoF: fill with Dirichlet data
+                    result.row(i) = m_fixedDofs.row( m_mapper.global_to_bindex(ii) ).head(dim);
             }
         }
     }
@@ -841,7 +834,7 @@ public:
         if (const gsMultiBasis<T> * mb =
             dynamic_cast<const gsMultiBasis<T>*>(&this->source()) )
         {
-            m_mapper = gsDofMapper(*mb);
+            m_mapper = gsDofMapper(*mb, this->dim());
             //m_mapper.init(*mb); //bug
             if ( 0==this->interfaceCont() ) // Conforming boundaries ?
             {
@@ -860,7 +853,8 @@ public:
                               "Problem: a boundary condition is set on a patch id which does not exist.");
 
                 bnd = mb->basis(it->get().ps.patch).boundary( it->get().ps.side() );
-                m_mapper.markBoundary(it->get().ps.patch, bnd);
+                for (index_t c=0; c!= this->dim(); c++) // for all components
+                    m_mapper.markBoundary(it->get().ps.patch, bnd, c);
             }
         }
         else if (const gsBasis<T> * b =
@@ -888,7 +882,7 @@ public:
         //this->mapper().print();
     }
 
-    void setup(bcRefList bc, const index_t dir_values, const index_t _icont = -1)
+    void setup(bcRefList bc, const index_t dir_values, const index_t _icont = -1) const
     {
         this->setInterfaceCont(_icont);
         
@@ -912,8 +906,8 @@ public:
             for (typename bcRefList::const_iterator
                      it = this->bc().begin() ; it != this->bc().end(); ++it )
             {
-                const index_t cc = it->unkComponent();
-                //if (it->unkown() == -1 || it->unkown() == this->id())
+                const index_t cc = it->get().unkComponent();
+                //if (it->unknown() == -1 || it->unkown() == this->id())
 
                 GISMO_ASSERT(static_cast<size_t>(it->get().ps.patch) < this->mapper().numPatches(),
                               "Problem: a boundary condition is set on a patch id which does not exist.");
@@ -925,6 +919,7 @@ public:
                         m_mapper.markBoundary(it->get().ps.patch, bnd, cc);
                 else
                     m_mapper.markBoundary(it->get().ps.patch, bnd, cc);
+            }
         }
         else if (const gsBasis<T> * b =
                  dynamic_cast<const gsBasis<T>*>(&this->source()) )
@@ -992,21 +987,21 @@ public:
 
         res.setZero(_u.dim(), 1);
         const gsDofMapper & map = _u.mapper();
-        for (index_t i = 0; i!=_u.data().actives.size(); ++i)
+
+        for (index_t c = 0; c!=_u.dim(); c++) // for all components
         {
-            const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId);
-            if ( map.is_free_index(ii) ) // DoF value is in the solVector
+            for (index_t i = 0; i!=_u.data().actives.size(); ++i)
             {
-                for (index_t r = 0; r != res.rows(); ++r)
+                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId, c);
+                if ( map.is_free_index(ii) ) // DoF value is in the solVector
                 {
-                    const index_t cgs = r * map.freeSize();
-                    res.at(r) += _Sv->at(cgs+ii) * _u.data().values[0](i,k);
+                    // gsDebugVar(_Sv->at(ii));
+                    // gsDebugVar(_u.data().values[0](i,k));
+                    res.at(c) += _Sv->at(ii) * _u.data().values[0](i,k);
                 }
-            }
-            else
-            {
-                res.noalias() += _u.data().values[0](i,k) *
-                    _u.fixedPart().row( map.global_to_bindex(ii) ).transpose();//head(_u.dim());
+                else
+                    res.noalias() += _u.data().values[0](i,k) *
+                        _u.fixedPart().row( map.global_to_bindex(ii) ).transpose();//head(_u.dim());
             }
         }
         return res;
@@ -1062,6 +1057,28 @@ public:
         _u.getCoeffs(*_Sv, result, p);
     }
 
+    /// Extracts ALL the coefficients in a solution vector; including coupled and boundary DoFs
+    void extractFull(gsMatrix<T> & result) const
+    {
+        index_t offset, ii, bi;
+        result.resize(_u.mapper().mapSize(),1);
+        for (index_t c=0; c!=_u.m_d; c++)
+            for (size_t j=0; j!=_u.mapper().numPatches(); j++)
+                for (size_t i=0; i!=_u.mapper().patchSize(j); i++) // loop over all DoFs (free and eliminated)
+                {
+                    offset = _u.mapper().offset(j);
+
+                    ii = _u.mapper().index(i,j,c); // global index
+                    if (_u.mapper().is_boundary(i,j))
+                    {
+                        bi = _u.mapper().bindex(i,j,c); // boundary index
+                        result(i+offset,0) = _u.fixedPart()(bi,0);
+                    }
+                    else
+                        result(i+offset,0) = _Sv->at(ii);
+                }
+    }
+
     /// Extract this variable as a multipatch object
     void extract(gsMultiPatch<T> & result) const
     {
@@ -1095,23 +1112,20 @@ public:
         gsMatrix<T> & sol = *_Sv;
         //gsMatrix<T> & fixedPart = _u.fixedPart();
         const gsDofMapper & mapper = _u.mapper();
-        for (index_t i = 0; i != cf.rows(); ++i)
+        for (index_t c = 0; c!=_u.dim(); c++) // for all components
         {
-            const index_t ii = mapper.index(i, p);
-            if ( mapper.is_free_index(ii) ) // DoF value is in the solVector
+            for (index_t i = 0; i != cf.rows(); ++i)
             {
-                for (index_t k = 0; k != dim; ++k)
-                {
-                    const index_t cgs = k * mapper.freeSize();
-                    sol.at(cgs+ii) = cf(i, k);
-                }
+                const index_t ii = mapper.index(i, p, c);
+                if ( mapper.is_free_index(ii) ) // DoF value is in the solVector
+                    sol.at(ii) = cf(i, c);
+                /*
+                  else
+                  {
+                  fixedPart.row(m_mapper.global_to_bindex(ii)) = cf.row(i);
+                  }
+                */
             }
-            /*
-              else
-              {
-              fixedPart.row(m_mapper.global_to_bindex(ii)) = cf.row(i);
-              }
-            */
         }
     }
 };
@@ -1137,26 +1151,25 @@ public:
 
         res.setZero(_u.dim(), _u.parDim());
         const gsDofMapper & map = _u.mapper();
-        for (index_t i = 0; i!=_u.data().actives.size(); ++i)
+        for (index_t c = 0; c!= _u.dim(); c++)
         {
-            const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId);
-            if ( map.is_free_index(ii) ) // DoF value is in the solVector
+            for (index_t i = 0; i!=_u.data().actives.size(); ++i)
             {
-                for (index_t r = 0; r != res.rows(); ++r)
+                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,c);
+                if ( map.is_free_index(ii) ) // DoF value is in the solVector
                 {
-                    const index_t cgs = r * map.freeSize();
-                    res.row(r) += _u.coefs().at(cgs+ii) *
-                        _u.data().values[1]
-                        //.block(i*_u.parDim(),k,_u.parDim(),1).transpose();
-                        .col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
+                        res.row(c) += _u.coefs().at(ii) *
+                            _u.data().values[1]
+                            //.block(i*_u.parDim(),k,_u.parDim(),1).transpose();
+                            .col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
                 }
-            }
-            else
-            {
-                res.noalias() +=
-                    _u.fixedPart().row( map.global_to_bindex(ii) ).asDiagonal() *
-                    _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim())
-                    .transpose().replicate(_u.dim(),1);
+                else
+                {
+                    res.noalias() +=
+                        _u.fixedPart().row( map.global_to_bindex(ii) ).asDiagonal() *
+                        _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim())
+                        .transpose().replicate(_u.dim(),1);
+                }
             }
         }
         return res;
@@ -1559,6 +1572,7 @@ public:
         for (index_t i = 0; i<numActives; ++i)
         {
             tmp(0,2*i+1) += tmp(1,2*i);
+            // GISMO_ASSERT(tmp(0,2*i+1)==tmp(1,2*i),"ALERT!, tmp(0,2*i+1) = "<<tmp(0,2*i+1)<<", tmp(1,2*i) = "<<tmp(1,2*i));
             std::swap(tmp(1,2*i), tmp(1,2*i+1));
         }
 
@@ -2035,14 +2049,15 @@ public:
     enum{ Space = E::Space };
 
     typedef typename E::Scalar Scalar;
+    mutable gsMatrix<Scalar> tmp;
 
     grad_expr(const E & u) : _u(u)
     { GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");}
 
-    const gsMatrix<Scalar> & eval(const index_t k) const
+    const gsMatrix<Scalar> eval(const index_t k) const
     {
-        // numActive x dim
-        return _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
+        tmp = _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
+        return tmp;
     }
 
     index_t rows() const
@@ -3040,9 +3055,8 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    static constexpr bool rowSpan()
-    { return 0==E1::Space ? E2::rowSpan() : E1::rowSpan(); }
-    static bool colSpan() { return 0==E2::Space ? E1::colSpan() : E2::colSpan(); }
+    static constexpr bool rowSpan() { return 0==E1::Space ? E2::rowSpan() : E1::rowSpan(); }
+    static           bool colSpan() { return 0==E2::Space ? E1::colSpan() : E2::colSpan(); }
 
     index_t cardinality_impl() const
     { return 0==E1::Space ? _v.cardinality(): _u.cardinality(); }
@@ -3103,14 +3117,35 @@ public:
         const MatExprType tmpA = _u.eval(k);
         const MatExprType tmpB = _v.eval(k);
 
+        // gsDebugVar(_u.eval(k));
+        // gsDebugVar(_v.eval(k));
+        // gsDebugVar(E1::rowSpan());
+        // gsDebugVar(E1::colSpan());
+        // gsDebugVar(E2::rowSpan());
+        // gsDebugVar(E2::colSpan());
+        // gsDebugVar(rowSpan());
+        // gsDebugVar(colSpan());
+        // gsDebugVar(rowVar());
+        // gsDebugVar(colVar());
+        // gsDebugVar(_u.rowVar());
+        // gsDebugVar(_u.colVar());
+        // gsDebugVar(_v.rowVar());
+        // gsDebugVar(_v.colVar());
+        // gsInfo<<"expression: "; _u.print(gsInfo); gsInfo<<"\n";
+        // gsInfo<<"expression: "; _v.print(gsInfo); gsInfo<<"\n";
+
         // gsDebugVar(tmpA);
         // gsDebugVar(tmpB);
+
+
+        // gsDebugVar(_u.ColBlocks);
+        // gsDebugVar(_v.ColBlocks);
+
         //gsDebugVar(_v.cols());
         //gsDebugVar(ur);
 
         //GISMO_ASSERT(uc==vr, "Assumption for product failed");
         const index_t vc = _v.cols();
-
         // gsDebugVar( _u.cardinality() );
         // gsDebugVar( _v.cardinality() );
 
@@ -3158,10 +3193,18 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    static constexpr bool rowSpan() { return E1::rowSpan(); }
+    // static constexpr bool rowSpan() { return E1::rowSpan(); }
 
-    static bool colSpan() { return E1::colSpan(); }
-/*
+    static constexpr bool rowSpan()
+    {
+        if ( E1::rowSpan() )
+            return E1::rowSpan();
+        else
+            return E2::rowSpan();
+    }
+
+    // static bool colSpan() { return E1::colSpan(); }
+
     static bool colSpan()
     {
         // if ( (!E1::colSpan()) && (E2::colSpan()) )
@@ -3170,7 +3213,7 @@ public:
         else
             return E1::colSpan();
     }
-*/
+
 
     index_t cardinality_impl() const { return  _u.cardinality(); }
 
@@ -3214,6 +3257,7 @@ public:
     EIGEN_STRONG_INLINE AutoReturn_t eval(const index_t k) const
     {
         return ( _c * _v.eval(k) );
+
     }
 
     index_t rows() const { return _v.rows(); }
@@ -3589,6 +3633,8 @@ public:
 
     static constexpr bool rowSpan() { return E1::rowSpan(); }
     static bool colSpan() { return E1::colSpan(); }
+
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }
@@ -4012,8 +4058,11 @@ GISMO_SHORTCUT_VAR_EXPRESSION(fform, jac(u).tr()*jac(u) )
 name(const gsFeVariable<T> & u) { return impl; }
 #define GISMO_SHORTCUT_MAP_EXPRESSION(name,impl) \
 name(const gsGeometryMap<T> & G) { return impl; }
-#define GISMO_SHORTCUT_PHY_EXPRESSION(name,impl)  \
-name(const gsFeVariable<T> & u, const gsGeometryMap<T> & G) { return impl; }
+
+//#define GISMO_SHORTCUT_PHY_EXPRESSION(name,impl) name(const gsFeVariable<T> & u, const gsGeometryMap<T> & G) { return impl; }
+#define GISMO_SHORTCUT_PHY_EXPRESSION(name,impl) \
+name(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return impl; }
+
 
 template<class T> EIGEN_STRONG_INLINE trace_expr<jac_expr<T> >
 GISMO_SHORTCUT_VAR_EXPRESSION(div, jac(u).trace() )
@@ -4021,28 +4070,33 @@ GISMO_SHORTCUT_VAR_EXPRESSION(div, jac(u).trace() )
 template<class T> EIGEN_STRONG_INLINE normalized_expr<onormal_expr<T> >
 GISMO_SHORTCUT_MAP_EXPRESSION(unv, nv(G).normalized() )
 
-template<class T> EIGEN_STRONG_INLINE
-mult_expr<grad_expr<gsFeVariable<T> >,jacGinv_expr<T>, 0>
+//template<class T> EIGEN_STRONG_INLINE
+template<class E> EIGEN_STRONG_INLINE
+mult_expr<grad_expr<E>,jacGinv_expr<typename E::Scalar>, 0>
 GISMO_SHORTCUT_PHY_EXPRESSION(igrad, grad(u)*jac(G).ginv())
 
 template<class T> EIGEN_STRONG_INLINE grad_expr<gsFeVariable<T> > // u is presumed to be defined over G
 GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u))
 
-template<class T> EIGEN_STRONG_INLINE mult_expr<jac_expr<T>,jacGinv_expr<T>, 1>
+template<class E> EIGEN_STRONG_INLINE
+mult_expr<jac_expr<E>,jacGinv_expr<typename E::Scalar>, 1>
 GISMO_SHORTCUT_PHY_EXPRESSION(ijac, jac(u) * jac(G).ginv() )
 
-template<class T> EIGEN_STRONG_INLINE trace_expr<mult_expr<jac_expr<T>,jacGinv_expr<T>, 1> >
+template<class E> EIGEN_STRONG_INLINE
+trace_expr<mult_expr<jac_expr<E>,jacGinv_expr<typename E::Scalar>, 1> >
 GISMO_SHORTCUT_PHY_EXPRESSION(idiv, ijac(u,G).trace() )
 
-template<class T> EIGEN_STRONG_INLINE
-mult_expr<mult_expr<tr_expr<jacGinv_expr<T> >,sub_expr<hess_expr<gsFeVariable<T> >,summ_expr<mult_expr<grad_expr<gsFeVariable<T> >, jacGinv_expr<T>, 0>, hess_expr<gsGeometryMap<T> > > >, 0>, jacGinv_expr<T>, 0>
+template<class E> EIGEN_STRONG_INLINE
+mult_expr<mult_expr<tr_expr<jacGinv_expr<typename E::Scalar> >,sub_expr<hess_expr<E>,summ_expr<mult_expr<grad_expr<E>, jacGinv_expr<typename E::Scalar>, 0>, hess_expr<gsGeometryMap<typename E::Scalar> > > >, 0>, jacGinv_expr<typename E::Scalar>, 0>
 GISMO_SHORTCUT_PHY_EXPRESSION(ihess, jac(G).ginv().tr()*(hess(u)-summ(igrad(u,G),hess(G)))*jac(G).ginv() )
+
+template<class E> EIGEN_STRONG_INLINE trace_expr<
+mult_expr<mult_expr<tr_expr<jacGinv_expr<typename E::Scalar> >,sub_expr<hess_expr<E>,summ_expr<mult_expr<grad_expr<E>, jacGinv_expr<typename E::Scalar>, 0>, hess_expr<gsGeometryMap<typename E::Scalar> > > >, 0>, jacGinv_expr<typename E::Scalar>, 0>
+    >
+GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace() )
 
 template<class T> EIGEN_STRONG_INLINE hess_expr<gsFeVariable<T> >
 GISMO_SHORTCUT_VAR_EXPRESSION(ihess, hess(u) )
-
-template<class T> EIGEN_STRONG_INLINE trace_expr< mult_expr<mult_expr<tr_expr<jacGinv_expr<T> >, sub_expr<hess_expr<T>, summ_expr<mult_expr<grad_expr<gsFeVariable<T> >, jacGinv_expr<T>, 0>, hess_expr<gsGeometryMap<T> > > >, 0>, jacGinv_expr<T>, 1> >
-GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace() )
 
 template<class T> EIGEN_STRONG_INLINE trace_expr<hess_expr<gsGeometryMap<T> > >
 GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )

@@ -126,7 +126,7 @@ public:
      * @param basis
      */
     template<class T>
-    gsDofMapper(const gsBasis<T> & basis, index_t nComp = 1) 
+    gsDofMapper(const gsBasis<T> & basis, index_t nComp = 1)
       : m_shift(0), m_bshift(0)
     {
       initSingle(basis, nComp);
@@ -278,7 +278,7 @@ public:
      */
     void localToGlobal(const gsMatrix<unsigned>& locals,
                        index_t patchIndex,
-                       gsMatrix<unsigned>& globals, 
+                       gsMatrix<unsigned>& globals,
 		       index_t comp = 0) const;
 
     /** \brief Computes the global indices of the input local indices
@@ -291,7 +291,7 @@ public:
     void localToGlobal2(const gsMatrix<unsigned>& locals,
                         index_t patchIndex,
                         gsMatrix<unsigned>& globals,
-                        index_t & numFree, 
+                        index_t & numFree,
 		        index_t comp = 0) const;
 
     /** \brief Returns the index associated to local dof \a i of patch \a k without shifts.
@@ -313,7 +313,7 @@ public:
      //in place
      //while (gl >= m_numFreeDofs[c]+m_numElimDofs[c]) { ++c; }
      //elim
-     return (gl<m_numFreeDofs.back() ? 
+     return (gl<m_numFreeDofs.back() ?
        std::distance(m_numFreeDofs.begin(), std::upper_bound(m_numFreeDofs.begin(), m_numFreeDofs.end(), gl))
 	     : std::distance(m_numElimDofs.begin(),std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(), gl-m_numFreeDofs.back())) ) - 1;
      //while (gl >= m_numFreeDofs[c] + m_shift) { ++c; } return c-1;

@@ -515,7 +515,6 @@ private:
 
             const index_t cd            = u.dim();
             const index_t rd            = v.dim();
-<<<<<<< HEAD
             const gsDofMapper  & colMap = u.mapper();
             const gsDofMapper  & rowMap = v.mapper();
             gsMatrix<unsigned> & colInd0 = const_cast<gsMatrix<unsigned>&>(u.data().actives);
@@ -532,21 +531,12 @@ private:
                 GISMO_ASSERT( colMap.boundarySize()==fixedDofs.rows(),
                               "Invalid values for fixed part");
             }
-
-=======
-            const gsDofMapper  & colMap = static_cast<const expr::gsFeSpace<T>&>(u).mapper();
-            const gsDofMapper  & rowMap = static_cast<const expr::gsFeSpace<T>&>(v).mapper();
-            const gsMatrix<unsigned> & colInd0 = u.data().actives;
-            const gsMatrix<unsigned> & rowInd0 = v.data().actives;
-            const gsMatrix<T>  & fixedDofs = static_cast<const expr::gsFeSpace<T>&>(u).fixedPart();
-
->>>>>>> origin/stable
             for (index_t r = 0; r != rd; ++r)
             {
                 const index_t rls = r * rowInd0.rows();     //local stride
                 for (index_t i = 0; i != rowInd0.rows(); ++i)
                 {
-		  const index_t ii = rowMap.index(rowInd0.at(i),patchInd,r); // N_i
+                    const index_t ii = rowMap.index(rowInd0.at(i),patchInd,r); // N_i
                     if ( rowMap.is_free_index(ii) )
                     {
                         for (index_t c = 0; c != cd; ++c)

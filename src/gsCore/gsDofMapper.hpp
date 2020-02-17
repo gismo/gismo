@@ -13,7 +13,7 @@
 
 #include <gsCore/gsMultiBasis.h>
 
-namespace gismo 
+namespace gismo
 {
 
 template<class T>

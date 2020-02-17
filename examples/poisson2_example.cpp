@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
 
     gsBoundaryConditions<> bc;
     fd.getId(2, bc); // id=2: boundary conditions
-    bc.setMap(mp);
+    bc.setGeoMap(mp);
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
     gsOptionList Aopt;
@@ -97,8 +97,9 @@ int main(int argc, char *argv[])
     // Set the discretization space
     space u = A.getSpace(dbasis);
 
-    // u.setInterfaceCont(0);
-    // u.addBc( bc.get("Dirichlet") );
+    //next two done at setup phase
+     u.setInterfaceCont(0);
+     u.addBc( bc.get("Dirichlet") );
 
     // Set the source term
     variable ff = A.getCoeff(f, G);
@@ -126,9 +127,10 @@ int main(int argc, char *argv[])
         dbasis.uniformRefine();
 
         //labels: Dirichlet, CornerValues, Collapsed, Clamped
-        u.setup(bc.get("Dirichlet"), dirichlet::interpolation, 0);
-        //u.setupAsInteriorOnly(0); // def=-1
+        //u.setup(bc.get("Dirichlet"), dirichlet::interpolation, 0);
 
+        // CornerValues
+            
         // Initialize the system
         A.initSystem();
 
