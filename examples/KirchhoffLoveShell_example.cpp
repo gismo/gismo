@@ -13,6 +13,8 @@
 
 # include <gismo.h>
 # include <gsAssembler/gsKirchhoffLoveShellAssembler.h>
+# include <gsG1Basis/gsG1AuxiliaryMultiplePatches.h>
+
 
 using namespace gismo;
 
@@ -41,38 +43,59 @@ int main(int argc, char *argv[])
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
-    std::string fileSrc( "KirchhoffLoveGeo/square.xml" );
+    gsFileData<> fileSrc("KirchhoffLoveGeo/square_curvedInterface.xml");
+    gsInfo << "Loaded file " << fileSrc.lastPath() << "\n";
+
     gsMultiPatch<> geo;
-    gsReadFile<>( fileSrc, geo);
-    gsInfo << "The domain is a "<< geo;
-
-    //! [computeTopology]
-    // Get all interfaces and boundaries:
+    gsInfo << "Geometry taken correctly \n";
+    fileSrc.getId(2, geo);
     geo.computeTopology();
+    gsInfo << "Geometry computed correctly\n";
+    gsMultiBasis<> basis(geo);
 
-    gsMultiBasis<> basis( geo );
+//    p-refine to get equal polynomial degree s,t directions
+//    basis.degreeElevate(1,0);
 
-    //p-refine to get equal polynomial degree s,t directions
-    basis.degreeElevate(1,0);
+//    for (int i = 0; i < numDegree; ++i)
+//        basis.degreeElevate();
+//    for (int i = 0; i < numRefine; ++i)
+//        basis.uniformRefine();
 
-    for (int i = 0; i < numDegree; ++i)
-        basis.degreeElevate();
-    for (int i = 0; i < numRefine; ++i)
-        basis.uniformRefine();
+
+
+    for (const boundaryInterface &  item : geo.interfaces() )
+    {
+
+        gsG1AuxiliaryMultiplePatches a(geo, item.first().patch, item.second().patch);
+        gsMultiPatch<> test(a.reparametrizeG1Interface());
+        gsMultiBasis<> testb(test);
+        gsInfo << "New: " << testb << "\n";
+    }
+
+
+
+
+//    gsWriteParaview(newgeom1, "Geometry", 1000);
+
+//    // Write file .xml of the new geometry
+//    gsFileData<> fd;
+//    fd << geo;
+//    // output is a string. The extention .xml is added automatically
+//    fd.save("newGeo");
 
 
     //Setting up oundary conditions
     gsBoundaryConditions<> bcInfo;
-    bcInfo.addCondition( boundary::west,  condition_type::dirichlet, &solution);//Annulus: small arch lenght
-    bcInfo.addCondition( boundary::east,  condition_type::dirichlet, &solution);//Annulus: Large arch lenght
-    bcInfo.addCondition( boundary::north, condition_type::dirichlet, &solution);
-    bcInfo.addCondition( boundary::south, condition_type::dirichlet, &solution);
-    //Neumann condition of second kind
     gsBoundaryConditions<> bcInfo2;
-    bcInfo2.addCondition( boundary::west,  condition_type::neumann, &laplace);
-    bcInfo2.addCondition( boundary::east,  condition_type::neumann, &laplace);
-    bcInfo2.addCondition( boundary::north, condition_type::neumann, &laplace);
-    bcInfo2.addCondition( boundary::south, condition_type::neumann, &laplace);
+    for (gsMultiPatch<>::const_biterator
+             bit = geo.bBegin(); bit != geo.bEnd(); ++bit)
+    {
+        bcInfo.addCondition( *bit, condition_type::dirichlet, &solution );
+        bcInfo2.addCondition( *bit,  condition_type::neumann, &laplace);
+    }
+
+
+
 
     //Initilize solver
     gsKirchhoffLoveShellAssembler<real_t> KirchhoffLoveShellAssembler( geo,basis,bcInfo,bcInfo2,source,

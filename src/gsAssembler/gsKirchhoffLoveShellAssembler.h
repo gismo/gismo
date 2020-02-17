@@ -18,8 +18,8 @@
 
 #include <gsAssembler/gsVisitorKirchhoffLoveShell.h>
 #include <gsAssembler/gsVisitorNeumann.h>
-//#include <gsAssembler/gsVisitorNeumannBiharmonic.h>
-//#include <gsAssembler/gsVisitorNitscheBiharmonic.h>
+#include <gsAssembler/gsVisitorNeumannBiharmonic.h>
+#include <gsAssembler/gsVisitorNitscheBiharmonic.h>
 
 namespace gismo
 {
@@ -113,8 +113,8 @@ void gsKirchhoffLoveShellAssembler<T,bhVisitor>::assemble()
         m_ppde.bcFirstKind().neumannSides() );
 
     // Newman conditions of second kind
-   // Base::template push<gsVisitorNeumannBiharmonic<T> >(
-    //    m_ppde.bcSecondKind().neumannSides() );
+   Base::template push<gsVisitorNeumannBiharmonic<T> >(
+        m_ppde.bcSecondKind().neumannSides() );
 
     if ( m_options.getInt("InterfaceStrategy") == iFace::dg )
         gsWarn <<"DG option ignored.\n";

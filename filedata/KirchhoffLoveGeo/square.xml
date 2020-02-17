@@ -18,7 +18,7 @@
     </coefs>
   </Geometry>
 
-  <MultiPatch parDim="2" id="1">
+  <MultiPatch parDim="2" id="2">
     <patches type="id_range">0 0</patches>
     <boundary>
     0 4
