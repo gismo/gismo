@@ -24,17 +24,21 @@ public:
     }
 
     // Constructor for n patches around a common vertex
-    gsG1AuxiliaryMultiplePatches(const gsMultiPatch<> & mp, const std::vector<unsigned> patchesAroundVertex){
-        for(unsigned i = 0; i < patchesAroundVertex.size(); i++ )
-        auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(i), patchesAroundVertex[i]));
+    gsG1AuxiliaryMultiplePatches(const gsMultiPatch<> & mp, const std::vector<size_t> patchesAroundVertex){
+        for(const unsigned i : patchesAroundVertex)
+        auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(i), i));
     }
 
 
     // Compute topology
+    // After computeTopology() the patches will have the same patch-index as the position-index inside auxGeom
+    // EXAMPLE: global patch-index-order inside auxGeom: [2, 3, 4, 1, 0]
+    //          in auxTop: 2->0, 3->1, 4->2, 1->3, 0->4
+
     gsMultiPatch<> computeAuxTopology(){
         gsMultiPatch<> auxTop;
         for(unsigned i = 0; i <  auxGeom.size(); i++){
-            if(auxGeom[i].getPatch().orientation() != 1)
+            if(auxGeom[i].getPatch().orientation() == -1)
             {
                 auxGeom[i].swapAxis();
                 gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
@@ -50,7 +54,7 @@ public:
         gsMultiPatch<> repTop(this->computeAuxTopology());
         if(repTop.interfaces()[0].second().side().index() == 3 && repTop.interfaces()[0].first().side().index() == 1)
             return repTop;
-
+        
         switch (repTop.interfaces()[0].second().side().index())
         {
             case 3:

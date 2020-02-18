@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
-    gsFileData<> fileSrc("KirchhoffLoveGeo/square_curvedInterface.xml");
+    gsFileData<> fileSrc("KirchhoffLoveGeo/square_LinearParam.xml");
     gsInfo << "Loaded file " << fileSrc.lastPath() << "\n";
 
     gsMultiPatch<> geo;
@@ -64,8 +64,15 @@ int main(int argc, char *argv[])
 
     for (const boundaryInterface &  item : geo.interfaces() )
     {
-
+    gsInfo << "Old: " << basis << "\n\n";
+        std::vector<size_t> v;
+//        v.push_back(0);
+//        v.push_back(4);
+//        v.push_back(1);
+//        v.push_back(2);
+//        v.push_back(3);
         gsG1AuxiliaryMultiplePatches a(geo, item.first().patch, item.second().patch);
+
         gsMultiPatch<> test(a.reparametrizeG1Interface());
         gsMultiBasis<> testb(test);
         gsInfo << "New: " << testb << "\n";
@@ -73,12 +80,39 @@ int main(int argc, char *argv[])
 
 
 
+    std::vector<std::vector<patchCorner>> allcornerLists = geo.vertices();
+
+    for(size_t i=0; i < allcornerLists.size(); i++){
+        std::vector<size_t> patchVertIndex;
+
+        for(size_t j = 0; j < allcornerLists[i].size(); j++)
+        {
+            patchVertIndex.push_back(allcornerLists[i][j].patch);
+            gsInfo << "Patch: " << allcornerLists[i][j].patch << "\t Index: " << allcornerLists[i][j].m_index << "\n";
+        }
+        gsInfo << "\n";
+
+        gsG1AuxiliaryMultiplePatches a(geo, patchVertIndex);
+    }
+
+
+//    for (const std::vector<patchCorner> & it : allcornerLists)
+//    {
+//        gsInfo << "Dimension of the vector: " << it.size() << "\n";
+//        gsInfo << "Corner " << it.at(0).m_index << " in Patch " << it.at(0).patch << "\n";
+//        for (const patchCorner & it_corner : it)
+//        {
+//            gsInfo << "Patch : " << it_corner.patch << "\t Corner: " << it_corner.m_index << "\n";
+//        }
+//    }
+
+
 
 //    gsWriteParaview(newgeom1, "Geometry", 1000);
 
 //    // Write file .xml of the new geometry
 //    gsFileData<> fd;
-//    fd << geo;
+//    fd << test;
 //    // output is a string. The extention .xml is added automatically
 //    fd.save("newGeo");
 

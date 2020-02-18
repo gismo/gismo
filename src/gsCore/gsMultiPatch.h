@@ -44,6 +44,8 @@ public:
 
     typedef std::vector<gsGeometry<T> *> PatchContainer;
 
+    typedef std::vector<std::vector<patchCorner>> allCornerList;
+
     typedef typename PatchContainer::iterator iterator;
     typedef typename PatchContainer::const_iterator const_iterator;
 
@@ -306,6 +308,27 @@ public:
     /// \param pid2 vector containing for each point the patch id where it belongs (or -1 if not found)
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
     void locatePoints(const gsMatrix<T> & points, index_t pid1, gsVector<index_t> & pid2, gsMatrix<T> & preim) const;
+
+    allCornerList vertices() const {
+        allCornerList allcorners;
+        for (size_t n = 0; n < this->nPatches(); ++n)
+        {
+            for(index_t j=1;j<=4;++j)
+            {
+                std::vector<patchCorner> cornerLists;
+                patchCorner start(n, j);
+                this->getCornerList(start, cornerLists);
+                bool alreadyReached = false;
+                for(size_t k = 0;k<allcorners.size();++k)
+                    for(size_t l = 0;l<allcorners[k].size();++l)
+                        if(allcorners[k][l].patch==n && allcorners[k][l].m_index==j)
+                            alreadyReached = true;
+                if (cornerLists.size() > 0 && !alreadyReached)
+                    allcorners.push_back(cornerLists);
+            }
+        }
+        return allcorners;
+    }
     
 protected:
 
