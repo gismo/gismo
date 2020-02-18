@@ -15,6 +15,7 @@
 
 #include <gsCore/gsFuncData.h>
 #include <gsUtils/gsSortedVector.h>
+#include <gsAssembler/gsDirichletValues.h>
 
 namespace gismo
 {
@@ -756,7 +757,8 @@ protected:
     // C^r coupling
     mutable index_t m_r; // iFace::handling
 
-    typedef typename gsBoundaryConditions<T>::bcRefList bcRefList;
+    typedef gsBoundaryConditions<T> bcList;
+    typedef typename bcList::bcRefList bcRefList;
     mutable bcRefList m_bcs;
     mutable gsDofMapper m_mapper;
     gsMatrix<T> m_fixedDofs;
@@ -882,12 +884,14 @@ public:
         //this->mapper().print();
     }
 
-    void setup(bcRefList bc, const index_t dir_values, const index_t _icont = -1) const
+    void setup(const gsBoundaryConditions<T> & bc, const index_t dir_values, const index_t _icont = -1) const
     {
         this->setInterfaceCont(_icont);
         
         m_mapper = gsDofMapper(); //reset ?
 
+        const gsMultiBasis<T> * smb = static_cast<const gsMultiBasis<T>*>(&this->source());
+                    
         if (const gsMultiBasis<T> * mb =
             dynamic_cast<const gsMultiBasis<T>*>(&this->source()) )
         {
@@ -903,48 +907,71 @@ public:
             }
 
             gsMatrix<unsigned> bnd;
-            for (typename bcRefList::const_iterator
-                     it = this->bc().begin() ; it != this->bc().end(); ++it )
+            for (typename bcList::const_iterator
+                     it = bc.begin("Dirichlet") ; it != bc.end("Dirichlet"); ++it )
             {
-                const index_t cc = it->get().unkComponent();
+                const index_t cc = it->unkComponent();
                 //if (it->unknown() == -1 || it->unkown() == this->id())
 
-                GISMO_ASSERT(static_cast<size_t>(it->get().ps.patch) < this->mapper().numPatches(),
+                GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
                               "Problem: a boundary condition is set on a patch id which does not exist.");
 
-                bnd = mb->basis(it->get().ps.patch).boundary( it->get().ps.side() );
-
+                bnd = mb->basis(it->ps.patch).boundary( it->ps.side() );
                 if (cc==-1)
                     for (index_t c=0; c!= this->dim(); c++) // for all components
-                        m_mapper.markBoundary(it->get().ps.patch, bnd, cc);
+                        m_mapper.markBoundary(it->ps.patch, bnd, cc);
                 else
-                    m_mapper.markBoundary(it->get().ps.patch, bnd, cc);
+                    m_mapper.markBoundary(it->ps.patch, bnd, cc);
             }
+
+            // corners
+            for (typename gsBoundaryConditions<T>::const_citerator
+                     it = bc.cornerBegin() ; it != bc.cornerEnd(); ++it )
+            {
+                //assumes (unk == -1 || it->unknown == unk)
+                GISMO_ASSERT(it->patch < smb->nBases(),
+                             "Problem: a corner boundary condition is set on a patch id which does not exist.");
+                m_mapper.eliminateDof(smb->basis(it->patch).functionAtCorner(it->corner), it->patch);
+            }
+
         }
         else if (const gsBasis<T> * b =
                  dynamic_cast<const gsBasis<T>*>(&this->source()) )
         {
             m_mapper = gsDofMapper(*b);
             gsMatrix<unsigned> bnd;
-            for (typename bcRefList::const_iterator
-                     it = this->bc().begin() ; it != this->bc().end(); ++it )
+            for (typename bcList::const_iterator
+                     it = bc.begin("Dirichlet") ; it != bc.end("Dirichlet"); ++it )
             {
-                GISMO_ASSERT( it->get().ps.patch == 0,
+                GISMO_ASSERT( it->ps.patch == 0,
                               "Problem: a boundary condition is set on a patch id which does not exist.");
 
-                bnd = b->boundary( it->get().ps.side() );
+                bnd = b->boundary( it->ps.side() );
                 //const index_t cc = it->unkComponent();
                 m_mapper.markBoundary(0, bnd, 0);
             }
         }
         else
         {
-            GISMO_ASSERT( 0 == this->bc().size(), "Problem: BCs are ignored.");
+            GISMO_ASSERT( 0 == bc.size(), "Problem: BCs are ignored.");
             m_mapper.setIdentity(this->source().nPieces(), this->source().size());
         }
 
         m_mapper.finalize();
-        //this->mapper().print();
+        
+        // No more BCs
+        //m_bcs = bc.get("Dirichlet");
+        gsDirichletValues(bc, dir_values, *this);
+
+        // corner values (overrides edge BCs)
+        gsMatrix<T> & fixedDofs = const_cast<gsMatrix<T> &>(m_fixedDofs);
+        for ( typename gsBoundaryConditions<T>::const_citerator
+                  it = bc.cornerBegin(); it != bc.cornerEnd(); ++it )
+        {
+            const int i  = smb->basis(it->patch).functionAtCorner(it->corner);
+            const int ii = m_mapper.bindex( i , it->patch );
+            fixedDofs(ii,0) = it->value; //note: it does not support components (=0 for now)! Todo.
+        }
     }
 
 protected:

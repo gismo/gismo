@@ -97,9 +97,9 @@ int main(int argc, char *argv[])
     // Set the discretization space
     space u = A.getSpace(dbasis);
 
-    //next two done at setup phase
-     u.setInterfaceCont(0);
-     u.addBc( bc.get("Dirichlet") );
+    //next two steps are now moved to setup(.)
+    // u.setInterfaceCont(0);
+    // u.addBc( bc.get("Dirichlet") );
 
     // Set the source term
     variable ff = A.getCoeff(f, G);
@@ -127,19 +127,14 @@ int main(int argc, char *argv[])
         dbasis.uniformRefine();
 
         //labels: Dirichlet, CornerValues, Collapsed, Clamped
-        //u.setup(bc.get("Dirichlet"), dirichlet::interpolation, 0);
+        u.setup(bc, dirichlet::interpolation, 0);
 
-        // CornerValues
-            
         // Initialize the system
-        A.initSystem();
+        A.initSystem(false);
 
         gsInfo<< A.numDofs() <<std::flush;
 
         // Compute the system matrix and right-hand side
-
-        //A.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
-
         A.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
 
         // Enforce Neumann conditions to right-hand side
