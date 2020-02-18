@@ -43,12 +43,12 @@ int main(int argc, char *argv[])
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
-    gsFileData<> fileSrc("KirchhoffLoveGeo/geo_fivePatch.xml");
+    gsFileData<> fileSrc("KirchhoffLoveGeo/square_LinearParam.xml");
     gsInfo << "Loaded file " << fileSrc.lastPath() << "\n";
 
     gsMultiPatch<> geo;
     gsInfo << "Geometry taken correctly \n";
-    fileSrc.getId(5, geo);
+    fileSrc.getId(2, geo);
     geo.computeTopology();
     gsInfo << "Geometry computed correctly\n";
     gsMultiBasis<> basis(geo);
@@ -62,69 +62,59 @@ int main(int argc, char *argv[])
 //        basis.uniformRefine();
 
 
-//    for (const boundaryInterface &  item : geo.interfaces() )
-//    {
+    for (const boundaryInterface &  item : geo.interfaces() )
+    {
     gsInfo << "Old: " << basis << "\n\n";
-        std::vector<unsigned> v;
-        v.push_back(0);
-        v.push_back(4);
-        v.push_back(1);
-        v.push_back(2);
-        v.push_back(3);
-        gsG1AuxiliaryMultiplePatches a(geo, v);
+        std::vector<size_t> v;
+//        v.push_back(0);
+//        v.push_back(4);
+//        v.push_back(1);
+//        v.push_back(2);
+//        v.push_back(3);
+        gsG1AuxiliaryMultiplePatches a(geo, item.first().patch, item.second().patch);
 
-        gsMultiPatch<> test(a.computeAuxTopology());
+        gsMultiPatch<> test(a.reparametrizeG1Interface());
         gsMultiBasis<> testb(test);
         gsInfo << "New: " << testb << "\n";
-//    }
+    }
 
 
 
+    std::vector<std::vector<patchCorner>> allcornerLists = geo.vertices();
+
+    for(size_t i=0; i < allcornerLists.size(); i++){
+        std::vector<size_t> patchVertIndex;
+
+        for(size_t j = 0; j < allcornerLists[i].size(); j++)
+        {
+            patchVertIndex.push_back(allcornerLists[i][j].patch);
+            gsInfo << "Patch: " << allcornerLists[i][j].patch << "\t Index: " << allcornerLists[i][j].m_index << "\n";
+        }
+        gsInfo << "\n";
+
+        gsG1AuxiliaryMultiplePatches a(geo, patchVertIndex);
+    }
 
 
-
-
-
-    //    std::vector<std::vector<patchCorner>> allcornerLists;
-//    for (unsigned n = 0; n < geo.nPatches(); ++n)
+//    for (const std::vector<patchCorner> & it : allcornerLists)
 //    {
-//        for(unsigned j=1;j<=4;++j)
+//        gsInfo << "Dimension of the vector: " << it.size() << "\n";
+//        gsInfo << "Corner " << it.at(0).m_index << " in Patch " << it.at(0).patch << "\n";
+//        for (const patchCorner & it_corner : it)
 //        {
-//            std::vector<patchCorner> cornerLists;
-//            patchCorner start(n, j);
-//            geo.getCornerList(start, cornerLists);
-//            bool alreadyReached = false;
-//            for(size_t k = 0;k<allcornerLists.size();++k)
-//                for(size_t l = 0;l<allcornerLists[k].size();++l)
-//                    if(allcornerLists[k][l].patch==n && allcornerLists[k][l].m_index==j)
-//                        alreadyReached = true;
-//            if (cornerLists.size() > 0 && !alreadyReached)
-//                allcornerLists.push_back(cornerLists);
+//            gsInfo << "Patch : " << it_corner.patch << "\t Corner: " << it_corner.m_index << "\n";
 //        }
 //    }
-//    for (std::vector<std::vector<patchCorner>>::iterator it = allcornerLists.begin(); it!=allcornerLists.end(); ++it)
-//    {
-//        gsInfo << "Corner in " << it->at(0).m_index << " in Patch " << it->at(0).patch << "\n";
-//        for (std::vector<patchCorner>::iterator it_corner = it->begin(); it_corner!=it->end(); ++it_corner)
-//        {
-//            gsInfo << "Corner : " << it_corner->patch << " : " << it_corner->m_index << "\n";
-//        }
-//    }
-
-
-
-
-
 
 
 
 //    gsWriteParaview(newgeom1, "Geometry", 1000);
 
-    // Write file .xml of the new geometry
-    gsFileData<> fd;
-    fd << test;
-    // output is a string. The extention .xml is added automatically
-    fd.save("newGeo");
+//    // Write file .xml of the new geometry
+//    gsFileData<> fd;
+//    fd << test;
+//    // output is a string. The extention .xml is added automatically
+//    fd.save("newGeo");
 
 
     //Setting up oundary conditions
