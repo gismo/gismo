@@ -1483,7 +1483,7 @@ int main(int argc, char *argv[])
         mp.embed(3);
         E_modulus = 1e0;
         thickness = 1e0;
-        PoissonRatio = 0.499;
+        // PoissonRatio = 0.499;
     }
     else if (testCase == 2  || testCase == 3)
     {
@@ -1544,8 +1544,8 @@ int main(int argc, char *argv[])
         tmp << 0,0,-1;
 
         // Point loads
-        gsVector<> point(2);
-        gsVector<> load (3);
+        // gsVector<> point(2);
+        // gsVector<> load (3);
         // point<< 0.5, 0.5 ; load << 0.0, 1.0, 0.0 ;
         // pLoads.addLoad(point, load, 0 );
     }
@@ -1633,8 +1633,8 @@ int main(int argc, char *argv[])
 
     // Set the discretization space
     space u = A.getSpace(dbasis, 3);
-    u.setInterfaceCont(0); // todo: 1 (smooth basis)
-    u.addBc( bc.get("Dirichlet") ); // (!) must be called only once
+    // u.setInterfaceCont(0); // todo: 1 (smooth basis)
+    // u.addBc( bc.get("Dirichlet") ); // (!) must be called only once
 
     // Solution vector and solution variable
     gsMatrix<> random;
@@ -1671,6 +1671,7 @@ int main(int argc, char *argv[])
     // Set Dirichlet values
     //A.options().setInt("DirichletValues", dirichlet::homogeneous);
 
+    u.setup(bc, dirichlet::interpolation, 0);
     // Initialize the system
     A.initSystem();
 
@@ -1774,6 +1775,12 @@ int main(int argc, char *argv[])
         u * F  * meas(G)
         );
 
+
+    gsDebugVar(A.matrix().toDense());
+    // gsDebugVar(A.matrix().rows());
+    // gsDebugVar(A.matrix().cols());
+    gsDebugVar(A.rhs().transpose());
+
     // evaluateFunction(ev, N_der * cartcon(G) * (E_m_der * cartcon(G)).tr(), pt); // evaluates an expression on a point
     // evaluateFunction(ev, (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr()).tr(), pt); // evaluates an expression on a point
 
@@ -1814,9 +1821,6 @@ int main(int argc, char *argv[])
     );
 
 
-    // gsDebugVar(A.matrix().toDense());
-    // gsDebugVar(A.matrix().rows());
-    // gsDebugVar(A.matrix().cols());
 
 
 
@@ -1879,37 +1883,6 @@ int main(int argc, char *argv[])
             solVector += updateVector;
             residual = A.rhs().norm();
 
-            gsInfo<<"Total:\n"<<A.matrix().toDense()<<"\n";
-
-            A.initSystem();
-            A.assemble( ( N_der * E_m_der.tr()  ) * meas(G) );
-            gsInfo<<"Linear membrane:\n"<<A.matrix().toDense()<<"\n";
-
-            A.initSystem();
-            A.assemble( ( E_m_der2  ) * meas(G) );
-            gsInfo<<"Nonlinear membrane:\n"<<A.matrix().toDense()<<"\n";
-
-            A.initSystem();
-            A.assemble( ( M_der * E_f_der.tr()  ) * meas(G) );
-            gsInfo<<"Linear bending:\n"<<A.matrix().toDense()<<"\n";
-
-            A.initSystem();
-            A.assemble( ( -E_f_der2  ) * meas(G) );
-            gsInfo<<"Nonlinear bending:\n"<<A.matrix().toDense()<<"\n";
-
-            A.initSystem();
-            A.assemble( ( u * F  ) * meas(G) );
-            gsInfo<<"External force:\n"<<A.rhs().transpose()<<"\n";
-
-            A.initSystem();
-            A.assemble( ( ( N * E_m_der.tr()  ).tr() * meas(G) ) );
-            gsInfo<<"Internal force membrane:\n"<<A.rhs().transpose()<<"\n";
-
-            A.initSystem();
-            A.assemble( ( ( -M * E_f_der.tr()  ).tr() * meas(G) ) );
-            gsInfo<<"Internal force bending:\n"<<A.rhs().transpose()<<"\n";
-
-
             gsInfo<<"Iteration: "<< it
                    <<", residue: "<< residual
                    <<", update norm: "<<updateVector.norm()
@@ -1953,31 +1926,57 @@ int main(int argc, char *argv[])
     // gsInfo<< A.rhs().transpose() <<"\n";
     // gsInfo<< A.matrix().toDense()<<"\n";
 
+    u_sol.setSolutionVector(solVector);
+    mp_def = mp;
+    for ( size_t k =0; k!=mp.nPatches(); ++k) // Deform the geometry
+    {
+        // // extract deformed geometry
+        u_sol.extract(cc, k);
+        mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
+    }
+
+    gsMultiPatch<> deformation = mp_def;
+    for (index_t k = 0; k != mp_def.nPatches(); ++k)
+        deformation.patch(k).coefs() -= mp.patch(k).coefs();
+
+    //gsInfo <<"Deformation norm       : "<< deformation.patch(0).coefs().norm() <<".\n";
+    gsInfo <<"Maximum deformation coef: "
+           << deformation.patch(0).coefs().colwise().maxCoeff() <<".\n";
+    gsInfo <<"Minimum deformation coef: "
+           << deformation.patch(0).coefs().colwise().minCoeff() <<".\n";
+
+    gsMatrix<> coords(2,1);
+    if (testCase==1)
+      coords<<0,0;
+    else if (testCase==2)
+      coords<<0.5,0;
+    else if (testCase==3)
+      coords<<0,0;
+    else if (testCase==4)
+      coords<<1,1;
+    else
+      coords<<0,0;
+
+    gsMatrix<> res(3,1);
+    mp.patch(0).eval_into(coords,res);
+    real_t x=res.at(0);
+    real_t y=res.at(1);
+    real_t z=res.at(2);
+
+    deformation.patch(0).eval_into(coords,res);
+    real_t ux=res.at(0);
+    real_t uy=res.at(1);
+    real_t uz=res.at(2);
+
+    gsInfo<<"Deformation on point ("<<x<<","<<y<<","<<z<<"):\n";
+    gsInfo<<std::setprecision(20)<<"("<<ux<<","<<uy<<","<<uz<<")"<<"\n";
 
     //! [Export visualization in ParaView]
     if (plot)
     {
-        u_sol.setSolutionVector(solVector);
-        mp_def = mp;
-        for ( size_t k =0; k!=mp.nPatches(); ++k) // Deform the geometry
-        {
-            // // extract deformed geometry
-            u_sol.extract(cc, k);
-            mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
-        }
-
-        gsMultiPatch<> deformation = mp_def;
-        for (index_t k = 0; k != mp_def.nPatches(); ++k)
-            deformation.patch(k).coefs() -= mp.patch(k).coefs();
-
         gsField<> solField(mp, deformation);
         gsInfo<<"Plotting in Paraview...\n";
         gsWriteParaview<>( solField, "solution", 1000, true);
-
-        ev.options().setSwitch("plot.elements", true);
-        ev.writeParaview( S_f2, G, "stress");
-        evaluateFunction(ev, S_f2[0], pt); // evaluates an expression on a point
-
         // gsFileManager::open("solution.pvd");
     }
 

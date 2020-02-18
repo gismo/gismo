@@ -20,7 +20,7 @@ void gsDirichletValues(
     // eg. not penalize
     const gsDofMapper & mapper = u.mapper();
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
-    
+
     switch ( dir_values )
     {
     case dirichlet::homogeneous :
@@ -97,7 +97,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             {
                 for (index_t i=0; i!= boundary.size(); ++i)
                 {
-                    const int ii = u.mapper().bindex( boundary.at(i) , k, com );
+                    const int ii = u.mapper().bindex( boundary.at(i) , k, r );
                     fixedDofs.at(ii) = 0;
                 }
                 continue;
@@ -172,7 +172,7 @@ gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
 
     const gsFunctionSet<T> & gmap = bc.geoMap();
     std::vector< gsVector<T> > rr;
-    
+
     gsVector<T> b(1);
     gsMatrix<T> fpts, tmp;
 

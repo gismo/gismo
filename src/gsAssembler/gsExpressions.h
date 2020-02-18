@@ -887,11 +887,11 @@ public:
     void setup(const gsBoundaryConditions<T> & bc, const index_t dir_values, const index_t _icont = -1) const
     {
         this->setInterfaceCont(_icont);
-        
+
         m_mapper = gsDofMapper(); //reset ?
 
         const gsMultiBasis<T> * smb = static_cast<const gsMultiBasis<T>*>(&this->source());
-                    
+
         if (const gsMultiBasis<T> * mb =
             dynamic_cast<const gsMultiBasis<T>*>(&this->source()) )
         {
@@ -919,7 +919,7 @@ public:
                 bnd = mb->basis(it->ps.patch).boundary( it->ps.side() );
                 if (cc==-1)
                     for (index_t c=0; c!= this->dim(); c++) // for all components
-                        m_mapper.markBoundary(it->ps.patch, bnd, cc);
+                        m_mapper.markBoundary(it->ps.patch, bnd, c);
                 else
                     m_mapper.markBoundary(it->ps.patch, bnd, cc);
             }
@@ -958,7 +958,7 @@ public:
         }
 
         m_mapper.finalize();
-        
+
         // No more BCs
         //m_bcs = bc.get("Dirichlet");
         gsDirichletValues(bc, dir_values, *this);

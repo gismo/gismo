@@ -98,12 +98,12 @@ public:
      * @param bases
      */
     template<class T>
-    gsDofMapper(const gsMultiBasis<T> & bases, index_t nComp = 1) 
+    gsDofMapper(const gsMultiBasis<T> & bases, index_t nComp = 1)
       : m_shift(0), m_bshift(0)
     {
       init(bases, nComp);
     }
-    
+
     /**
      * @brief construct a dof mapper that identifies the degrees
      * of freedom for a vector of multibasis
@@ -138,7 +138,7 @@ public:
      *
      * @param patchDofSizes
      */
-    gsDofMapper(const gsVector<index_t> &patchDofSizes, index_t nComp = 1) 
+    gsDofMapper(const gsVector<index_t> &patchDofSizes, index_t nComp = 1)
       : m_shift(0), m_bshift(0)
     {
         initPatchDofs(patchDofSizes, nComp);
@@ -349,7 +349,7 @@ public:
     inline index_t cindex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
-        return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs[c+1] 
+        return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs[c+1]
 	  + m_numCpldDofs[c+1];
     }
 
@@ -427,7 +427,7 @@ public:
     inline index_t size(index_t comp) const
     {
         GISMO_ENSURE(m_curElimId>=0, "finalize() was not called on gsDofMapper");
-        return m_numFreeDofs[comp+1]-m_numFreeDofs[comp] 
+        return m_numFreeDofs[comp+1]-m_numFreeDofs[comp]
 	  + m_numElimDofs[comp+1]-m_numElimDofs[comp];
     }
 
@@ -439,7 +439,7 @@ public:
 
     inline index_t freeSize(index_t comp) const
     {
-      return m_numFreeDofs[comp+1]-m_numFreeDofs[comp] + 
+      return m_numFreeDofs[comp+1]-m_numFreeDofs[comp] +
 	(allFree() ? m_numElimDofs[comp+1]-m_numElimDofs[comp] : 0 );
     }
 
