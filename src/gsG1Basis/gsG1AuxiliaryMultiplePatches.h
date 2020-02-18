@@ -29,7 +29,7 @@ public:
         auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(i), patchesAroundVertex[i]));
     }
 
-    
+
     // Compute topology
     gsMultiPatch<> computeAuxTopology(){
         gsMultiPatch<> auxTop;
