@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xml>
  <!-- Geometry input: two planar 2D-Patches-->    
-    <Geometry type="TensorBSpline2" id="1">
+    <Geometry type="TensorBSpline2" id="2">
         <Basis type="TensorBSplineBasis2">
         <Basis type="BSplineBasis" index="0">
             <KnotVector degree="1">0 0 1 1 </KnotVector>
@@ -16,7 +16,7 @@
         0.5 1
         </coefs>
     </Geometry>
-    <Geometry type="TensorBSpline2" id="2">
+    <Geometry type="TensorBSpline2" id="1">
         <Basis type="TensorBSplineBasis2">
         <Basis type="BSplineBasis" index="0">
             <KnotVector degree="1">0 0 1 1 </KnotVector>
@@ -25,10 +25,10 @@
             <KnotVector degree="1">0 0 1 1 </KnotVector>
         </Basis>
         </Basis>
-        <coefs geoDim="2">0.5 0
-            1 0
-            0.5 1
+        <coefs geoDim="2">0.5 1
+            0.5 0
             1 1
+            1 0
         </coefs>
     </Geometry>
     <MultiPatch parDim="2" id="0">

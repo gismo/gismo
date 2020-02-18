@@ -6,7 +6,7 @@
 
 #include <gismo.h>
 #include <gsCore/gsMultiPatch.h>
-#include "gsG1Basis/gsG1AuxiliaryPatch.h"
+#include <gsG1Basis/gsG1AuxiliaryPatch.h>
 
 namespace gismo
 {
@@ -30,7 +30,7 @@ public:
     }
 
 
-    // Compute topology 4
+    // Compute topology
     gsMultiPatch<> computeAuxTopology(){
         gsMultiPatch<> auxTop;
         for(unsigned i = 0; i <  auxGeom.size(); i++){
@@ -49,9 +49,6 @@ public:
     gsMultiPatch<> reparametrizeG1Interface(){
         gsMultiPatch<> repTop(this->computeAuxTopology());
         if(repTop.interfaces()[0].second().side().index() == 3 && repTop.interfaces()[0].first().side().index() == 1)
-            return repTop;
-
-        if(repTop.interfaces()[0].second().side().index() == 1 && repTop.interfaces()[0].first().side().index() == 3)
             return repTop;
 
         switch (repTop.interfaces()[0].second().side().index())

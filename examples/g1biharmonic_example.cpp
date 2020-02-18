@@ -12,6 +12,7 @@
 */
 # include <gismo.h>
 # include <gsG1Basis/gsG1AuxiliaryMultiplePatches.h>
+# include <gsG1Basis/gsG1BasisEdge.h>
 
 using namespace gismo;
 
@@ -114,24 +115,31 @@ int main(int argc, char *argv[])
     gsMultiPatch<> multiPatch;
     fd.getId(0, multiPatch); // id=0: Multipatch domain
     multiPatch.computeTopology();
-
+    gsMultiBasis<> mb(multiPatch);
+    gsInfo << "Old: " << mb << "\n";
 
     gsWriteParaview(multiPatch,"geometry",5000,true);
 
 
     for (const boundaryInterface &  item : multiPatch.interfaces() )
     {
+        gsInfo << item.first().patch << " : " << item.second().patch << "test \n";
+        //gsInfo << multiPatch.patch(0).coefs() << "test \n";
+        //gsInfo << multiPatch.patch( item.first().patch).coefs() << "test \n";
 
         gsG1AuxiliaryMultiplePatches a(multiPatch, item.first().patch, item.second().patch);
-        gsMultiPatch<> test(a.reparametrizeG1Interface());
-        gsMultiBasis<> testb(test);
-        gsInfo << "New: " << testb << "\n";
+        gsMultiPatch<> test_mp(a.reparametrizeG1Interface());
+        gsMultiBasis<> test_mb(test_mp);
+        gsInfo << "New: " << test_mb << "\n";
 
         gsOptionList optionList;
         optionList.addInt("p_tilde","Grad",p_tilde);
         optionList.addInt("r_tilde","Reg",r_tilde);
+        optionList.addSwitch("local","Local projection for gluing data",local);
 
-        gsInfo << "p_tilde : " << optionList << "\n";
+        //gsInfo << "p_tilde : " << optionList << "\n";
+        gsG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, optionList);
+
     }
 
 
