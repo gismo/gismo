@@ -30,7 +30,9 @@ struct condition_type
         unknownType = -1,
         dirichlet = 0, ///< Dirichlet type
         neumann   = 1, ///< Neumann type
-        robin     = 2  ///< Robin type
+        robin     = 2, ///< Robin type
+        clamped   = 3, ///< Robin type
+        collapsed = 4  ///< Robin type
         //mixed BD means: there are both dirichlet and neumann sides
         //robin: a linear combination of value and derivative
         //cauchy: there are 2 conditions (value+deriv) defined on the same side
@@ -56,6 +58,16 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
     case condition_type::robin:
     {
         os<< "Robin";
+        break;
+    }
+    case condition_type::clamped:
+    {
+        os<< "Clamped";
+        break;
+    }
+    case condition_type::collapsed:
+    {
+        os<< "Collapsed";
         break;
     }
     default:
@@ -90,6 +102,8 @@ struct boundary_condition
         if (m_label == "Dirichlet") m_type = condition_type::dirichlet;
         else if (m_label == "Neumann")   m_type = condition_type::neumann;
         else if (m_label == "Robin")     m_type = condition_type::robin;
+        else if (m_label == "Clamped")   m_type = condition_type::clamped;
+        else if (m_label == "Collapsed") m_type = condition_type::collapsed;
         else m_type = condition_type::unknownType;
     }
 
@@ -117,6 +131,58 @@ struct boundary_condition
         case condition_type::robin:
         {
             m_label = "Robin";
+            break;
+        }
+        case condition_type::clamped:
+        {
+            m_label = "clamped";
+            break;
+        }
+        case condition_type::collapsed:
+        {
+            m_label = "collapsed";
+            break;
+        }
+        default:
+            m_label = "Unknown";
+            break;
+        };
+    }
+
+    boundary_condition( int p, boxSide s, const function_ptr & f_shptr,
+                        condition_type::type t, int unknown, int unkcomp, bool parametric)
+    : ps(p, s),
+      m_function(f_shptr),
+      m_type(t),
+      m_unknown(unknown),
+      m_unkcomp(unkcomp),
+      m_parametric(parametric)
+    {
+        switch (t)
+        {
+        case condition_type::dirichlet:
+        {
+            m_label = "Dirichlet";
+            break;
+        }
+        case condition_type::neumann:
+        {
+            m_label = "Neumann";
+            break;
+        }
+        case condition_type::robin:
+        {
+            m_label = "Robin";
+            break;
+        }
+        case condition_type::clamped:
+        {
+            m_label = "Clamped";
+            break;
+        }
+        case condition_type::collapsed:
+        {
+            m_label = "Collapsed";
             break;
         }
         default:
@@ -452,26 +518,33 @@ public:
      * is defined in parametric coordinates.
      */
     void addCondition(int p, boxSide s, condition_type::type t,
-                      gsFunction<T> * f, int unknown = 0, bool parametric = false)
+                      gsFunction<T> * f, int unknown = 0, bool parametric = false, int comp = -1)
     {
         function_ptr fun = memory::make_shared_not_owned(f);
-        addCondition(p,s,t,fun,unknown,parametric);
+        addCondition(p,s,t,fun,unknown,parametric,comp);
     }
 
     void addCondition(int p, boxSide s, condition_type::type t,
                       const function_ptr & f_shptr, int unknown = 0,
-                      bool parametric = false)
+                      bool parametric = false, int comp = -1)
     {
         switch (t)
         {
         case condition_type::dirichlet :
-            m_bc["Dirichlet"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
+            // this->add(p,s,f_shptr,"Dirichlet",unknown,comp,parametric);
+            m_bc["Dirichlet"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
             break;
         case condition_type::neumann :
             m_bc["Neumann"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
             break;
         case condition_type::robin :
             m_bc["Robin"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
+            break;
+        case condition_type::clamped :
+            m_bc["Clapmed"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
+            break;
+        case condition_type::collapsed :
+            m_bc["Collapsed"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
             break;
         default:
             gsWarn<<"gsBoundaryConditions: Unknown boundary condition.\n";
@@ -480,35 +553,35 @@ public:
 
     void addCondition(int p, boxSide s, condition_type::type t,
                       const gsFunction<T> & func, int unknown = 0,
-                      bool parametric = false)
+                      bool parametric = false, int comp = -1)
     {
         function_ptr fun(func.clone().release());
-        addCondition(p,s,t,fun,unknown,parametric);
+        addCondition(p,s,t,fun,unknown,parametric,comp);
     }
 
     void addCondition( boxSide s, condition_type::type t,
-                       gsFunction<T> * f, int unknown = 0, bool parametric = false)
+                       gsFunction<T> * f, int unknown = 0, bool parametric = false, int comp = -1)
     {
         // for single-patch only
-        addCondition(0,s,t,f,unknown,parametric);
+        addCondition(0,s,t,f,unknown,parametric,comp);
     }
 
     void addCondition(const patchSide& ps, condition_type::type t,
-                      gsFunction<T> * f, int unknown = 0, bool parametric = false)
+                      gsFunction<T> * f, int unknown = 0, bool parametric = false, int comp = -1)
     {
-        addCondition(ps.patch, ps.side(), t, f, unknown,parametric);
+        addCondition(ps.patch, ps.side(), t, f, unknown,parametric,comp);
     }
 
     void addCondition(const patchSide& ps, condition_type::type t,
-                      const function_ptr & f_shptr, int unknown = 0, bool parametric = false)
+                      const function_ptr & f_shptr, int unknown = 0, bool parametric = false, int comp = -1)
     {
-        addCondition(ps.patch, ps.side(), t, f_shptr, unknown,parametric);
+        addCondition(ps.patch, ps.side(), t, f_shptr, unknown,parametric,comp);
     }
 
     void addCondition(const patchSide& ps, condition_type::type t,
-                      const gsFunction<T> & func, int unknown = 0, bool parametric = false)
+                      const gsFunction<T> & func, int unknown = 0, bool parametric = false, int comp = -1)
     {
-        addCondition(ps.patch, ps.side(), t, func, unknown,parametric);
+        addCondition(ps.patch, ps.side(), t, func, unknown,parametric,comp);
     }
 
     void addCornerValue(boxCorner c, T value, int p = 0, int unknown = 0)

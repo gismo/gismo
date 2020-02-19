@@ -906,6 +906,7 @@ public:
                 }
             }
 
+            // DIRICHLET
             gsMatrix<unsigned> bnd;
             for (typename bcList::const_iterator
                      it = bc.begin("Dirichlet") ; it != bc.end("Dirichlet"); ++it )
@@ -922,6 +923,65 @@ public:
                         m_mapper.markBoundary(it->ps.patch, bnd, c);
                 else
                     m_mapper.markBoundary(it->ps.patch, bnd, cc);
+            }
+// todo
+            // CLAMPED
+            for (typename bcList::const_iterator
+                     it = bc.begin("Clamped") ; it != bc.end("Clamped"); ++it )
+            {
+                const index_t cc = it->unkComponent();
+                //if (it->unknown() == -1 || it->unkown() == this->id())
+
+                GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
+                              "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                bnd = mb->basis(it->ps.patch).boundary( it->ps.side() );
+
+                // Cast to tensor b-spline basis
+                /////////// FIX THIS
+                const gsTensorBSplineBasis<2,T> * tp =
+                    dynamic_cast<const gsTensorBSplineBasis<2,T> *>(&m_bases[0][cur.patch]);
+                /////////// FIX THIS
+
+                if ( mb != NULL) // clamp adjacent dofs
+                {
+                /////////// FIX THIS
+                    const int str = mb->basis(it->ps.patch).stride( it->ps.direction() );
+                /////////// FIX THIS
+                    
+                    if ( it->ps.parameter() )
+                    {
+                        for ( index_t k=0; k<bnd.size(); ++k)
+                            m_mapper.matchDof( it->ps.patch, (bnd)(k,0),
+                                               it->ps.patch, (bnd)(k,0) - str );
+                    }
+                    else
+                    {
+                        for ( index_t k=0; k<bnd.size(); ++k)
+                            m_mapper.matchDof( it->ps.patch, (bnd)(k,0),
+                                             it->ps.patch, (bnd)(k,0) + str );
+                    }
+                }
+                else
+                    gsWarn<<"Unable to apply clamped condition.\n";
+            }
+// todo
+            // COLLAPSED
+            for (typename bcList::const_iterator
+                     it = bc.begin("Collapsed") ; it != bc.end("Collapsed"); ++it )
+            {
+                const index_t cc = it->unkComponent();
+                //if (it->unknown() == -1 || it->unkown() == this->id())
+
+                GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
+                              "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                // bnd = mb->basis(it->ps.patch).boundary( it->ps.side() );
+                // if (cc==-1)
+                //     for (index_t c=0; c!= this->dim(); c++) // for all components
+                //         m_mapper.markBoundary(it->ps.patch, bnd, c);
+                // else
+                //     m_mapper.markBoundary(it->ps.patch, bnd, cc);
             }
 
             // corners
@@ -949,6 +1009,30 @@ public:
                 bnd = b->boundary( it->ps.side() );
                 //const index_t cc = it->unkComponent();
                 m_mapper.markBoundary(0, bnd, 0);
+            }
+// todo
+            m_mapper = gsDofMapper(*b);
+            for (typename bcList::const_iterator
+                     it = bc.begin("Clamped") ; it != bc.end("Clamped"); ++it )
+            {
+                GISMO_ASSERT( it->ps.patch == 0,
+                              "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                bnd = b->boundary( it->ps.side() );
+                //const index_t cc = it->unkComponent();
+                // m_mapper.markBoundary(0, bnd, 0);
+            }
+// todo
+            m_mapper = gsDofMapper(*b);
+            for (typename bcList::const_iterator
+                     it = bc.begin("Collapsed") ; it != bc.end("Collapsed"); ++it )
+            {
+                GISMO_ASSERT( it->ps.patch == 0,
+                              "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                bnd = b->boundary( it->ps.side() );
+                //const index_t cc = it->unkComponent();
+                // m_mapper.markBoundary(0, bnd, 0);
             }
         }
         else

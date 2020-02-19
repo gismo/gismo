@@ -1535,11 +1535,12 @@ int main(int argc, char *argv[])
     {
         for (index_t i=0; i!=3; ++i)
         {
-            bc.addCondition(boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
-            bc.addCondition(boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
-            bc.addCondition(boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z
-            bc.addCondition(boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z
+            bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0 ,false,i);
+            // bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ,false,i);
+            bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0 ,false,i);
+            // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ,false,i);
         }
+
         // tmp << 0,0,0;
         tmp << 0,0,-1;
 
@@ -1551,31 +1552,14 @@ int main(int argc, char *argv[])
     }
     else if (testCase == 2)
     {
-        // // Diaphragm conditions
-        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
-        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
+        // Diaphragm conditions
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
+        bc.addCornerValue(boundary::southwest, 0.0, 0, 0); // (corner,value, patch, unknown)
 
-        // // ORIGINAL
-        // // bc.addCornerValue(boundary::southwest, 0.0, 0, 0); // (corner,value, patch, unknown)
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
 
-        // bc.addCondition(boundary::east, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
-        // bc.addCondition(boundary::east, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
-
-        // // NOT ORIGINAL
-        // // bc.addCondition(boundary::west, condition_type::dirichlet, &displ, 0 ); // unknown 1 - x
-        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
-        // bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
-
-        // // Surface forces
-        // tmp << 0, 0, -90;
-
-        for (index_t i=0; i!=3; ++i)
-        {
-            bc.addCondition(boundary::north, condition_type::dirichlet, 0, i ); // unknown 0 - x
-            bc.addCondition(boundary::east, condition_type::dirichlet, 0, i ); // unknown 1 - y
-            bc.addCondition(boundary::south, condition_type::dirichlet, 0, i ); // unknown 2 - z
-            bc.addCondition(boundary::west, condition_type::dirichlet, 0, i ); // unknown 2 - z
-        }
         tmp << 0,0,-90;
     }
     else if (testCase == 3)
@@ -1673,7 +1657,7 @@ int main(int argc, char *argv[])
 
     u.setup(bc, dirichlet::interpolation, 0);
     // Initialize the system
-    A.initSystem();
+    A.initSystem(false);
 
     gsInfo<<"Number of degrees of freedom: "<< A.numDofs() <<"\n"<<std::flush;
 
