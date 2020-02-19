@@ -1,4 +1,4 @@
-/** @file gsG1Basis_mp.h
+/** @file gsG1BasisEdge.h
 
     @brief Provides assembler for a G1 Basis for multiPatch.
 
@@ -32,9 +32,35 @@ public:
     {
         // Computing the gluing data
         gsGluingData<T> gluingData(m_mp,m_mb,m_optionList);
-        //m_gD = gluingData;
+        m_gD = gluingData;
 
         // Computing the G1 - basis function at the edge
+        // Spaces for computing the g1 basis
+        index_t m_r = m_optionList.getInt("regularity");
+
+        gsBSplineBasis<> basis_1 = dynamic_cast<gsBSplineBasis<> &>(m_mb.basis(0).component(1)); // v
+        gsBSplineBasis<> basis_2 = dynamic_cast<gsBSplineBasis<> &>(m_mb.basis(1).component(0)); // u
+
+        index_t m_p; // Minimum degree at the interface
+        if (basis_1.degree() >= basis_2.degree())
+            m_p = basis_2.maxDegree();
+        else
+            m_p = basis_1.maxDegree();
+
+        // first,last,interior,mult_ends,mult_interior
+        gsKnotVector<T> kv_tilde(0,1,0,m_p+1,m_p-1-m_r); // p,r+1 //-1 bc r+1
+        gsBSplineBasis<> basis_plus(kv_tilde);
+
+        if (basis_1.numElements() <= basis_2.numElements()) //
+            for (size_t i = basis_1.degree()+1; i < basis_1.knots().size() - (basis_1.degree()+1); i = i+(basis_1.degree()-m_r))
+                basis_plus.insertKnot(basis_1.knot(i),m_p-1-m_r);
+        else
+            for (size_t i = basis_2.degree()+1; i < basis_2.knots().size() - (basis_2.degree()+1); i = i+(basis_2.degree()-m_r))
+                basis_plus.insertKnot(basis_2.knot(i),m_p-1-m_r);
+
+        m_basis_plus = basis_plus;
+
+
         // TODO
 
     }
@@ -54,6 +80,12 @@ protected:
     // Gluing data
     gsGluingData<T> m_gD;
 
+    // Basis for getting the G1 Basis
+    gsBSplineBasis<> m_basis_plus;
+    gsBSplineBasis<> m_basis_minus;
+
+    // Basis for the G1 Basis
+    gsMultiBasis<> m_basis_g1;
 
 }; // class gsG1BasisEdge
 
