@@ -43,12 +43,12 @@ int main(int argc, char *argv[])
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
-    gsFileData<> fileSrc("KirchhoffLoveGeo/square_LinearParam.xml");
+    gsFileData<> fileSrc("KirchhoffLoveGeo/geo_fivePatchDiffParam.xml");
     gsInfo << "Loaded file " << fileSrc.lastPath() << "\n";
 
     gsMultiPatch<> geo;
     gsInfo << "Geometry taken correctly \n";
-    fileSrc.getId(2, geo);
+    fileSrc.getId(5, geo);
     geo.computeTopology();
     gsInfo << "Geometry computed correctly\n";
     gsMultiBasis<> basis(geo);
@@ -61,39 +61,52 @@ int main(int argc, char *argv[])
 //    for (int i = 0; i < numRefine; ++i)
 //        basis.uniformRefine();
 
+    gsInfo << "Old: " << basis << "\n";
+
+    // Interface loop
 
     for (const boundaryInterface &  item : geo.interfaces() )
     {
-    gsInfo << "Old: " << basis << "\n\n";
-        std::vector<size_t> v;
-//        v.push_back(0);
-//        v.push_back(4);
-//        v.push_back(1);
-//        v.push_back(2);
-//        v.push_back(3);
+
+
         gsG1AuxiliaryMultiplePatches a(geo, item.first().patch, item.second().patch);
 
         gsMultiPatch<> test(a.reparametrizeG1Interface());
         gsMultiBasis<> testb(test);
+        gsInfo << "New: " << item.first().patch << " : " << item.second().patch << "\n";
         gsInfo << "New: " << testb << "\n";
     }
 
 
 
-    std::vector<std::vector<patchCorner>> allcornerLists = geo.vertices();
 
-    for(size_t i=0; i < allcornerLists.size(); i++){
-        std::vector<size_t> patchVertIndex;
+    // Vertices loop
 
-        for(size_t j = 0; j < allcornerLists[i].size(); j++)
-        {
-            patchVertIndex.push_back(allcornerLists[i][j].patch);
-            gsInfo << "Patch: " << allcornerLists[i][j].patch << "\t Index: " << allcornerLists[i][j].m_index << "\n";
-        }
-        gsInfo << "\n";
+//    std::vector<std::vector<patchCorner>> allcornerLists = geo.vertices();
+//
+//    for(size_t i=0; i < allcornerLists.size(); i++){
+//        std::vector<size_t> patchIndex;
+//        std::vector<size_t> vertIndex;
+//
+//        for(size_t j = 0; j < allcornerLists[i].size(); j++)
+//        {
+//            patchIndex.push_back(allcornerLists[i][j].patch);
+//            vertIndex.push_back(allcornerLists[i][j].m_index);
+//            gsInfo << "Patch: " << allcornerLists[i][j].patch << "\t Index: " << allcornerLists[i][j].m_index << "\n";
+//        }
+//        gsInfo << "\n";
+//
+//        gsG1AuxiliaryMultiplePatches a(geo, patchIndex, vertIndex);
+//    }
 
-        gsG1AuxiliaryMultiplePatches a(geo, patchVertIndex);
-    }
+
+
+
+
+
+
+
+
 
 
 //    for (const std::vector<patchCorner> & it : allcornerLists)

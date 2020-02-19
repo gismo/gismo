@@ -1,7 +1,7 @@
  <?xml version="1.0" encoding="UTF-8"?>
 <xml>
   <!-- Patch 0 -->
-  <Geometry type="TensorBSpline2" id="1">
+  <Geometry type="TensorBSpline2" id="0">
     <Basis type="TensorBSplineBasis2">
       <Basis type="BSplineBasis" index="0">
 	<KnotVector degree="1">0 0 1 1 </KnotVector>
@@ -11,10 +11,10 @@
       </Basis>
     </Basis>
     <coefs geoDim="2">
-      0.0 0.0 
-      5.0 1.0 
-      1.0 5.0 
       4.0 4.0 
+      1.0 5.0 
+      5.0 1.0 
+      0.0 0.0 
     </coefs>
   </Geometry>
   <!-- Patch 1 -->
@@ -28,10 +28,10 @@
       </Basis>
     </Basis>
     <coefs geoDim="2">
-      0.0 0.0 
       3.0 -4.0 
-      5.0 1.0 
       5.0 -2.0 
+      0.0 0.0 
+      5.0 1.0 
     </coefs>
   </Geometry>
   <!-- Patch 2 -->
@@ -46,13 +46,13 @@
     </Basis>
     <coefs geoDim="2">
       0.0 0.0 
-      -4.0 -3.0 
       3.0 -4.0 
+      -4.0 -3.0 
       0.0 -5.0 
     </coefs>
   </Geometry>
   <!-- Patch 3 -->
-   <Geometry type="TensorBSpline2" id="0">
+   <Geometry type="TensorBSpline2" id="1">
     <Basis type="TensorBSplineBasis2">
       <Basis type="BSplineBasis" index="0">
 	<KnotVector degree="1">0 0 1 1 </KnotVector>
@@ -62,10 +62,10 @@
       </Basis>
     </Basis>
     <coefs geoDim="2">
-      0.0 0.0 
       -4.0 3.0 
-      -4.0 -3.0 
+      0.0 0.0 
       -5.0 1.0 
+      -4.0 -3.0 
     </coefs>
   </Geometry>
   <!-- Patch 4 -->
@@ -79,10 +79,10 @@
       </Basis>
     </Basis>
     <coefs geoDim="2">
-      0.0 0.0
-      1.0 5.0 
-      -4.0 3.0 
-      -2.0 5.0
+      -4.0 3.0
+      0.0 0.0 
+      -2.0 5.0 
+      1.0 5.0
     </coefs>
   </Geometry>
 

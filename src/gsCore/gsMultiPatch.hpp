@@ -342,7 +342,6 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
     for (size_t p=0; p<np; ++p)
     {
         supp = m_patches[p]->parameterRange(); // the parameter domain of patch i
-
         // Corners' parametric coordinates
         for (boxCorner c=boxCorner::getFirst(m_dim); c<boxCorner::getEnd(m_dim); ++c)
         {
@@ -408,8 +407,9 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
                 dirOr (side.direction()) = !( side.parameter() == pSide[other].parameter() );
                 BaseA::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
                 // done with pSide[other], remove it from candidate list
-                std::swap( pSide[other], pSide.back() );
-                pSide.pop_back();
+                //std::swap( pSide[other], pSide.back() );
+                pSide.erase(pSide.begin()+other);
+                //pSide.pop_back();
                 done=true;
                 break;//for (size_t other=0..)
             }
