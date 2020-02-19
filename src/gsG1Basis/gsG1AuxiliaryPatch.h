@@ -105,7 +105,7 @@ public:
         // The number of cols has to match the dimension of the space
         gsMatrix<> mpar(dimU * dimV, auxPatch.targetDim());
 
-        for (index_t i = 0; i < (dimU * dimV ); i++)
+        for (index_t i = 0; i < ( dimU * dimV ); i++)
         {
             mpar.row(i) = auxPatch.patch(0).coefs().row((dimU * dimV - 1) - i);
         }
