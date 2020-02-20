@@ -64,19 +64,25 @@ public:
 
         gsMatrix<> temp;
 
-        temp = alpha_tilde_L.eval(points).cwiseProduct(beta_tilde_R.eval(points))
-            + alpha_tilde_R.eval(points).cwiseProduct(beta_tilde_L.eval(points))
+        temp = alpha_tilde_0.eval(points).cwiseProduct(beta_tilde_1.eval(points))
+            + alpha_tilde_1.eval(points).cwiseProduct(beta_tilde_0.eval(points))
             - beta_bar.eval(points);
 
         gsInfo << "Conditiontest gluing data : " << temp.array().abs().maxCoeff() << "\n\n";
 
     } // Conditiontest
 
-    const gsBSpline<T> get_alpha_tilde_L() const {return alpha_tilde_L; }
-    const gsBSpline<T> get_alpha_tilde_R() const {return alpha_tilde_R; }
-    const gsBSpline<T> get_beta_tilde_L() const {return beta_tilde_L; }
-    const gsBSpline<T> get_beta_tilde_R() const {return beta_tilde_R; }
+    const gsBSpline<T> get_alpha_tilde_0() const {return alpha_tilde_0; }
+    const gsBSpline<T> get_alpha_tilde_1() const {return alpha_tilde_1; }
+    const gsBSpline<T> get_beta_tilde_0() const {return beta_tilde_0; }
+    const gsBSpline<T> get_beta_tilde_1() const {return beta_tilde_1; }
     const gsBSpline<T> get_beta_bar() const {return beta_bar; }
+
+    void eval_into_alpha_0(const gsMatrix<T> & points, gsMatrix<T>& result);
+    void eval_into_alpha_1(const gsMatrix<T> & points, gsMatrix<T>& result);
+    void eval_into_beta_0(const gsMatrix<T> & points, gsMatrix<T>& result);
+    void eval_into_beta_1(const gsMatrix<T> & points, gsMatrix<T>& result);
+
 protected:
     // The geometry for a single interface in the right parametrizations
     gsMultiPatch<T> m_mp;
@@ -94,8 +100,8 @@ protected:
 protected:
     // Global Gluing data
     gsBSpline<T> beta_bar;
-    gsBSpline<T> alpha_tilde_L, alpha_tilde_R;
-    gsBSpline<T> beta_tilde_L, beta_tilde_R;
+    gsBSpline<T> alpha_tilde_0, alpha_tilde_1;
+    gsBSpline<T> beta_tilde_0, beta_tilde_1;
 
 }; // class gsGluingData
 
@@ -106,18 +112,18 @@ void gsGluingData<T>::beta_exact()
     index_t m_k, m_p;
 
     // Assume for now only uniform refinement TODO: Do it for general knotvectors
-    gsBasis<T> & basis_first = m_mb.basis(0).component(0); // interface at u-direction
-    gsBasis<T> & basis_second = m_mb.basis(1).component(1); // interface at v-direction
-    if (basis_first.numElements() >= basis_second.numElements())
-        m_k = basis_second.numElements()-1;
+    gsBasis<T> & basis_0 = m_mb.basis(0).component(1); // patch 0 interface at v-direction
+    gsBasis<T> & basis_1 = m_mb.basis(1).component(0); // patch 1 interface at u-direction
+    if (basis_0.numElements() >= basis_1.numElements())
+        m_k = basis_1.numElements()-1;
     else
-        m_k = basis_first.numElements()-1;
+        m_k = basis_0.numElements()-1;
 
     // Need that for beta_exact
-    if (basis_first.maxDegree() >= basis_second.maxDegree())
-        m_p = basis_second.maxDegree();
+    if (basis_0.maxDegree() >= basis_1.maxDegree())
+        m_p = basis_1.maxDegree();
     else
-        m_p = basis_first.maxDegree();
+        m_p = basis_0.maxDegree();
 
     // first,last,interior,mult_ends,mult_interior,degree
     gsKnotVector<T> kv(0, 1, m_k, 2 * m_p + 1, 2 * m_p - m_r );
@@ -133,12 +139,11 @@ void gsGluingData<T>::beta_exact()
 
     // Set points for Patch 0
     uv0.setZero(2,greville.cols());
-    uv0.topRows(1) = greville;
+    uv0.bottomRows(1) = greville; // v
 
     // Set points for Patch 1
     uv1.setZero(2,greville.cols());
-    uv1.bottomRows(1) = greville;
-
+    uv1.topRows(1) = greville; // u
 
     const gsGeometry<> & P0 = m_mp.patch(0);
     const gsGeometry<> & P1 = m_mp.patch(1);
@@ -150,8 +155,8 @@ void gsGluingData<T>::beta_exact()
         P0.jacobian_into(uv0.col(i),ev0);
         P1.jacobian_into(uv1.col(i),ev1);
 
-        D0.col(1) = ev0.col(1); // (DuFL, *)
-        D0.col(0) = ev1.col(0); // (*,DuFR)
+        D0.col(0) = ev0.col(0); // (DuFL, *)
+        D0.col(1) = ev1.col(1); // (*,DuFR)
 
         uv1(0,i) =  m_gamma * D0.determinant();
     }
@@ -188,53 +193,142 @@ void gsGluingData<T>::setGlobalGluingData()
     globalGdAssembler.assemble();
 
     gsSparseSolver<real_t>::CGDiagonal solver;
-    gsVector<> sol_a_L, sol_a_R, sol_b_L, sol_b_R;
+    gsVector<> sol_a_0, sol_a_1, sol_b_0, sol_b_1;
 
     // alpha^S
-    solver.compute(globalGdAssembler.matrix_alpha_L());
-    sol_a_L = solver.solve(globalGdAssembler.rhs_alpha_L());
+    solver.compute(globalGdAssembler.matrix_alpha_0());
+    sol_a_0 = solver.solve(globalGdAssembler.rhs_alpha_0());
 
     gsGeometry<>::uPtr tilde_temp;
-    tilde_temp = bsp_gD.makeGeometry(sol_a_L);
+    tilde_temp = bsp_gD.makeGeometry(sol_a_0);
     gsBSpline<T> alpha_tilde_L_2 = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-    alpha_tilde_L = alpha_tilde_L_2;
+    alpha_tilde_0 = alpha_tilde_L_2;
 
 
     // beta^S
-    solver.compute(globalGdAssembler.matrix_beta_L());
-    sol_b_L = solver.solve(globalGdAssembler.rhs_beta_L());
+    solver.compute(globalGdAssembler.matrix_beta_0());
+    sol_b_0 = solver.solve(globalGdAssembler.rhs_beta_0());
 
-    tilde_temp = bsp_gD.makeGeometry(sol_b_L);
+    tilde_temp = bsp_gD.makeGeometry(sol_b_0);
     gsBSpline<T> beta_tilde_L_2 = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-    beta_tilde_L = beta_tilde_L_2;
+    beta_tilde_0 = beta_tilde_L_2;
 
 
 
 
 
-    solver.compute(globalGdAssembler.matrix_alpha_R());
-    sol_a_R = solver.solve(globalGdAssembler.rhs_alpha_R());
+    solver.compute(globalGdAssembler.matrix_alpha_1());
+    sol_a_1 = solver.solve(globalGdAssembler.rhs_alpha_1());
 
-    solver.compute(globalGdAssembler.matrix_beta_R());
-    sol_b_R = solver.solve(globalGdAssembler.rhs_beta_R());
+    solver.compute(globalGdAssembler.matrix_beta_1());
+    sol_b_1 = solver.solve(globalGdAssembler.rhs_beta_1());
 
-    tilde_temp = bsp_gD.makeGeometry(sol_b_R);
+    tilde_temp = bsp_gD.makeGeometry(sol_b_1);
     gsBSpline<T> beta_tilde_R_2 = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-    beta_tilde_R = beta_tilde_R_2;
+    beta_tilde_1 = beta_tilde_R_2;
 
-    tilde_temp = bsp_gD.makeGeometry(sol_a_R);
+    tilde_temp = bsp_gD.makeGeometry(sol_a_1);
     gsBSpline<T> alpha_tilde_R_2 = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-    alpha_tilde_R = alpha_tilde_R_2;
+    alpha_tilde_1 = alpha_tilde_R_2;
 
     if (m_optionList.getSwitch("plot"))
     {
-        gsWriteParaview(alpha_tilde_L,"alpha_tilde_L",5000);
-        gsWriteParaview(alpha_tilde_R,"alpha_tilde_R",5000);
+        gsWriteParaview(alpha_tilde_0,"alpha_tilde_L",5000);
+        gsWriteParaview(alpha_tilde_1,"alpha_tilde_R",5000);
 
-        gsWriteParaview(beta_tilde_L,"beta_tilde_L",5000);
-        gsWriteParaview(beta_tilde_R,"beta_tilde_R",5000);
+        gsWriteParaview(beta_tilde_0,"beta_tilde_L",5000);
+        gsWriteParaview(beta_tilde_1,"beta_tilde_R",5000);
     }
 } // setGlobalGluingData
+
+
+template<class T>
+void gsGluingData<T>::eval_into_alpha_0(const gsMatrix<T> & points, gsMatrix<T> & result)
+{
+    // ======== Determine bar{alpha^(L)} == Patch 0 ========
+    const gsGeometry<> & PL = m_mp.patch(0); // iFace.second().patch = 0 = Left
+
+    gsMatrix<T> points_L(2,points.cols());
+    points_L.setZero();
+    points_L.row(1) = points.bottomRows(1);
+
+    gsMatrix<T> ev2;
+    result.resize(1,points.cols());
+
+    for (index_t i = 0; i < points_L.cols(); i++)
+    {
+        PL.jacobian_into(points_L.col(i), ev2);
+        result(0, i) = - m_gamma * ev2.determinant();
+    }
+
+} // eval_into_alpha_L
+
+template<class T>
+void gsGluingData<T>::eval_into_alpha_1(const gsMatrix<T> & points, gsMatrix<T> & result)
+{
+    // ======== Determine bar{alpha^(R)} == Patch 1 ========
+    const gsGeometry<> & PR = m_mp.patch(1); // iFace.first().patch = 1 = Right
+
+    gsMatrix<T> points_R(2,points.cols());
+    points_R.setZero();
+    points_R.row(1) = points.topRows(1);
+
+    gsMatrix<T> ev1;
+    result.resize(1,points.cols());
+
+    for (index_t i = 0; i < points_R.cols(); i++)
+    {
+        PR.jacobian_into(points_R.col(i), ev1);
+        result(0, i) = m_gamma * ev1.determinant(); // erste spalte: alphaL an stelle zweiter spalte
+    }
+
+} // eval_into_alpha_R
+
+template<class T>
+void gsGluingData<T>::eval_into_beta_0(const gsMatrix<T> & points, gsMatrix<T> & result)
+{
+    // ======== Determine bar{beta}^L ========
+    const gsGeometry<> & PL = m_mp.patch(0); // iFace.second().patch = 0 = Left
+
+    gsMatrix<T> points_L(2,points.cols());
+    points_L.setZero();
+    points_L.row(1) = points.bottomRows(1);
+
+    gsMatrix<T> ev2, D0;
+    result.resize(1,points.cols());
+
+    for(index_t i = 0; i < points_L.cols(); i++)
+    {
+        PL.jacobian_into(points_L.col(i),ev2);
+        D0 = ev2.col(1);
+        real_t D1 = 1/ D0.norm();
+        result(0,i) = m_gamma * D1 * D1 * ev2.col(0).transpose() * ev2.col(1);
+    }
+
+} // eval_into_beta_L
+
+template<class T>
+void gsGluingData<T>::eval_into_beta_1(const gsMatrix<T> & points, gsMatrix<T> & result)
+{
+    // ======== Determine bar{beta}^R ========
+    const gsGeometry<> & P1 = m_mp.patch(1); // iFace.first().patch = 1 = Right
+
+    gsMatrix<T> points_R(2,points.cols());
+    points_R.setZero();
+    points_R.row(1) = points.topRows(1);
+
+    gsMatrix<T> ev1, D0;
+    result.resize(1,points.cols());
+
+    for(index_t i = 0; i < points_R.cols(); i++)
+    {
+        P1.jacobian_into(points_R.col(i),ev1);
+        D0 = ev1.col(0);
+        real_t D1 = 1/ D0.norm();
+        points_R(0,i) = m_gamma * D1 * D1 * ev1.col(0).transpose() * ev1.col(1);
+    }
+
+} // eval_into_beta_R
 
 } // namespace gismo
 

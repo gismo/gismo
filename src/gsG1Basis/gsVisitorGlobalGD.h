@@ -65,10 +65,11 @@ public:
         gsMatrix<> uv0, uv1, ev0, ev1;
 
         uv0.setZero(2,md.points.cols());
-        uv0.topRows(1) = md.points;
+        uv0.bottomRows(1) = md.points; // v
 
         uv1.setZero(2,md.points.cols());
-        uv1.bottomRows(1) = md.points;
+        uv1.topRows(1) = md.points; // u
+
 
         // ======== Determine bar{alpha^(L)} == Patch 0 ========
         const gsGeometry<> & P0 = mp.patch(0); // iFace.second().patch = 0
@@ -86,16 +87,17 @@ public:
         for (index_t i = 0; i < uv1.cols(); i++)
         {
             P1.jacobian_into(uv1.col(i), ev1);
-            uv1(0, i) = gamma * ev1.determinant(); // erste spalte: alphaL an stelle zweiter spalte
+            uv1(0, i) =  gamma * ev1.determinant(); // erste spalte: alphaL an stelle zweiter spalte
         }
         rhsVals_alpha_R = uv1.row(0);
 
         // beta^S
         uv0.setZero(2,md.points.cols());
-        uv0.topRows(1) = md.points;
+        uv0.bottomRows(1) = md.points; // v
 
         uv1.setZero(2,md.points.cols());
-        uv1.bottomRows(1) = md.points;
+        uv1.topRows(1) = md.points; // u
+
 
         const index_t d = mp.parDim();
         gsVector<> D0(d);
@@ -104,9 +106,9 @@ public:
         for(index_t i = 0; i < uv0.cols(); i++)
         {
             P0.jacobian_into(uv0.col(i),ev0);
-            D0 = ev0.col(0);
+            D0 = ev0.col(1);
             real_t D1 = 1/ D0.norm();
-            uv0(0,i) = gamma * D1 * D1 * ev0.col(1).transpose() * ev0.col(0);
+            uv0(0,i) = gamma * D1 * D1 * ev0.col(0).transpose() * ev0.col(1);
         }
         rhsVals_beta_L = uv0.row(0);
 
@@ -114,7 +116,7 @@ public:
         for(index_t i = 0; i < uv1.cols(); i++)
         {
             P1.jacobian_into(uv1.col(i),ev1);
-            D0 = ev1.col(1);
+            D0 = ev1.col(0);
             real_t D1 = 1/ D0.norm();
             uv1(0,i) = gamma * D1 * D1 * ev1.col(0).transpose() * ev1.col(1);
         }

@@ -138,20 +138,22 @@ int main(int argc, char *argv[])
 
         index_t maxDegree = test_mb.minCwiseDegree();
         test_mb.uniformRefine(numRefine,maxDegree-regularity);
-        gsInfo << "GEO : " << test_mb << "\n";
-        gsInfo << "Patch : " << test.patch(0).coefs() << "\n";
-        gsInfo << "Patch : " << test.patch(1).coefs() << "\n";
 
         gsOptionList optionList;
         optionList.addInt("p_tilde","Grad",p_tilde);
         optionList.addInt("r_tilde","Reg",r_tilde);
         optionList.addInt("regularity","Regularity of the initial geometry",regularity);
         optionList.addSwitch("local","Local projection for gluing data",local);
+        optionList.addSwitch("direct","Local projection for gluing data",direct);
         optionList.addSwitch("plot","Plot in Paraview",plot);
 
         //gsInfo << "p_tilde : " << optionList << "\n";
         gsG1BasisEdge<real_t> g1BasisEdge(test, test_mb, optionList);
+        gsMultiPatch<> g1Basis_0, g1Basis_1;
+        g1BasisEdge.constructSolution(g1Basis_0,g1Basis_1);
 
+        g1BasisEdge.plotG1Basis(g1Basis_0,g1Basis_1,"g1Basis");
+        g1BasisEdge.g1Condition();
     }
 
 

@@ -46,19 +46,19 @@ public:
                       boxSide side = boundary::none);
 
     /// @brief Returns the left-hand global matrix
-    const gsSparseMatrix<T> & matrix_alpha_L() const { return m_system_alpha_L.matrix(); }
-    const gsMatrix<T> & rhs_alpha_L() const { return m_system_alpha_L.rhs(); }
+    const gsSparseMatrix<T> & matrix_alpha_0() const { return m_system_alpha_0.matrix(); }
+    const gsMatrix<T> & rhs_alpha_0() const { return m_system_alpha_0.rhs(); }
 
     /// @brief Returns the left-hand global matrix
-    const gsSparseMatrix<T> & matrix_alpha_R() const { return m_system_alpha_R.matrix(); }
-    const gsMatrix<T> & rhs_alpha_R() const { return m_system_alpha_R.rhs(); }
+    const gsSparseMatrix<T> & matrix_alpha_1() const { return m_system_alpha_1.matrix(); }
+    const gsMatrix<T> & rhs_alpha_1() const { return m_system_alpha_1.rhs(); }
 
-    const gsSparseMatrix<T> & matrix_beta_L() const { return m_system_beta_L.matrix(); }
-    const gsMatrix<T> & rhs_beta_L() const { return m_system_beta_L.rhs(); }
+    const gsSparseMatrix<T> & matrix_beta_0() const { return m_system_beta_0.matrix(); }
+    const gsMatrix<T> & rhs_beta_0() const { return m_system_beta_0.rhs(); }
 
     /// @brief Returns the left-hand global matrix
-    const gsSparseMatrix<T> & matrix_beta_R() const { return m_system_beta_R.matrix(); }
-    const gsMatrix<T> & rhs_beta_R() const { return m_system_beta_R.rhs(); }
+    const gsSparseMatrix<T> & matrix_beta_1() const { return m_system_beta_1.matrix(); }
+    const gsMatrix<T> & rhs_beta_1() const { return m_system_beta_1.rhs(); }
 
 protected:
     // interface + geometry for computing alpha and beta
@@ -72,10 +72,10 @@ protected:
     //using Base::m_system;
     using Base::m_ddof;
 
-    gsSparseSystem<T> m_system_alpha_L;
-    gsSparseSystem<T> m_system_alpha_R;
-    gsSparseSystem<T> m_system_beta_L;
-    gsSparseSystem<T> m_system_beta_R;
+    gsSparseSystem<T> m_system_alpha_0;
+    gsSparseSystem<T> m_system_alpha_1;
+    gsSparseSystem<T> m_system_beta_0;
+    gsSparseSystem<T> m_system_beta_1;
 
 }; // class gsG1BasisAssembler
 
@@ -96,10 +96,10 @@ void gsGlobalGDAssembler<T, bhVisitor>::refresh()
     map_beta_R.finalize();
 
     // 2. Create the sparse system
-    m_system_alpha_L = gsSparseSystem<T>(map_alpha_L);
-    m_system_alpha_R = gsSparseSystem<T>(map_alpha_R);
-    m_system_beta_L = gsSparseSystem<T>(map_beta_L);
-    m_system_beta_R = gsSparseSystem<T>(map_beta_R);
+    m_system_alpha_0 = gsSparseSystem<T>(map_alpha_L);
+    m_system_alpha_1 = gsSparseSystem<T>(map_alpha_R);
+    m_system_beta_0 = gsSparseSystem<T>(map_beta_L);
+    m_system_beta_1 = gsSparseSystem<T>(map_beta_R);
 
 } // refresh()
 
@@ -110,17 +110,17 @@ void gsGlobalGDAssembler<T, bhVisitor>::assemble()
 
     // Reserve sparse system
     const index_t nz = gsAssemblerOptions::numColNz(m_basis[0][0],2,1,0.333333);
-    m_system_alpha_L.reserve(nz, 1);
-    m_system_alpha_R.reserve(nz, 1);
-    m_system_beta_L.reserve(nz, 1);
-    m_system_beta_R.reserve(nz, 1);
+    m_system_alpha_0.reserve(nz, 1);
+    m_system_alpha_1.reserve(nz, 1);
+    m_system_beta_0.reserve(nz, 1);
+    m_system_beta_1.reserve(nz, 1);
 
 
     if(m_ddof.size()==0)
         m_ddof.resize(4); // One for L, one for R, x2 for beta, alpha
 
-    const gsDofMapper & mapper_L = m_system_alpha_L.colMapper(0);
-    const gsDofMapper & mapper_R = m_system_alpha_R.colMapper(0);
+    const gsDofMapper & mapper_L = m_system_alpha_0.colMapper(0);
+    const gsDofMapper & mapper_R = m_system_alpha_1.colMapper(0);
 
     m_ddof[0].setZero(mapper_L.boundarySize(), 1 ); // tilde
     m_ddof[1].setZero(mapper_R.boundarySize(), 1 ); // bar
@@ -131,10 +131,10 @@ void gsGlobalGDAssembler<T, bhVisitor>::assemble()
     bhVisitor visitor;
     apply(visitor);
 
-    m_system_alpha_L.matrix().makeCompressed();
-    m_system_alpha_R.matrix().makeCompressed();
-    m_system_beta_L.matrix().makeCompressed();
-    m_system_beta_R.matrix().makeCompressed();
+    m_system_alpha_0.matrix().makeCompressed();
+    m_system_alpha_1.matrix().makeCompressed();
+    m_system_beta_0.matrix().makeCompressed();
+    m_system_beta_1.matrix().makeCompressed();
 
 }
 
@@ -187,8 +187,8 @@ inline void gsGlobalGDAssembler<T, bhVisitor>::apply(bhVisitor & visitor,
 
             // Push to global matrix and right-hand side vector
 #pragma omp critical(localToGlobal)
-            visitor_.localToGlobal(patchIndex, m_ddof, m_system_alpha_L, m_system_alpha_R,
-                                   m_system_beta_L, m_system_beta_R); // omp_locks inside
+            visitor_.localToGlobal(patchIndex, m_ddof, m_system_alpha_0, m_system_alpha_1,
+                                   m_system_beta_0, m_system_beta_1); // omp_locks inside
 
         }
 
