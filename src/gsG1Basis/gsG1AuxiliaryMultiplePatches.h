@@ -52,6 +52,7 @@ public:
     //          in auxTop: 2->0, 3->1, 4->2, 1->3, 0->4
 
     gsMultiPatch<> computeAuxTopology(){
+        
         gsMultiPatch<> auxTop;
         for(unsigned i = 0; i <  auxGeom.size(); i++){
             auxTop.addPatch(auxGeom[i].getPatch());
@@ -102,6 +103,12 @@ public:
         }
        return this->computeAuxTopology();
     }
+
+    void parametrizeBack(){
+
+    }
+
+
 
 
     void reparametrizeG1Vertex(size_t patchInd, size_t vertexIndex){

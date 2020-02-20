@@ -22,7 +22,6 @@ public:
     };
 
 
-
     void rotateParamAntiClock(){
         gsMultiBasis<> auxBase(auxPatch);
         gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(auxBase.basis(0));
@@ -184,10 +183,14 @@ protected:
 
     gsMultiPatch<> auxPatch;
 
+    // Global patch index in the initial geometry
     index_t patchIndex;
-    // Stores the orientation of the axis(0 -> x , y while 1 -> -x , y / x , -y)
-    index_t axisOrientation;
+    // Stores the changing of the axis
+    // 0 -> axis not changed
+    // 1 -> axis swapped (x, y --> y, x)
+    bool axisOrientation;
     // How many rotation of the axis has been executed
+    // Positive -> anticlockwise    Negative -> clockwise
     index_t rotationNum;
 
 };
