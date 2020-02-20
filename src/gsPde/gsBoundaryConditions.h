@@ -535,16 +535,16 @@ public:
             m_bc["Dirichlet"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
             break;
         case condition_type::neumann :
-            m_bc["Neumann"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
+            m_bc["Neumann"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
             break;
         case condition_type::robin :
-            m_bc["Robin"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
+            m_bc["Robin"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
             break;
         case condition_type::clamped :
-            m_bc["Clapmed"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
+            m_bc["Clamped"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
             break;
         case condition_type::collapsed :
-            m_bc["Collapsed"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
+            m_bc["Collapsed"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
             break;
         default:
             gsWarn<<"gsBoundaryConditions: Unknown boundary condition.\n";

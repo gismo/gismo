@@ -1531,24 +1531,56 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> displ("1",3);
 
     gsConstantFunction<> neuData(neu,3);
+    // if (testCase == 1)
+    // {
+    //     for (index_t i=0; i!=3; ++i)
+    //     {
+    //         bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0 ,false,i);
+    //         bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ,false,i);
+    //         bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0 ,false,i);
+    //         bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ,false,i);
+    //     }
+
+    //     bc.addCondition(boundary::north, condition_type::clamped, 0, 0 ,false,2);
+    //     bc.addCondition(boundary::east, condition_type::clamped, 0, 0 ,false,2);
+    //     bc.addCondition(boundary::south, condition_type::clamped, 0, 0 ,false,2);
+    //     bc.addCondition(boundary::west, condition_type::clamped, 0, 0 ,false,2);
+
+    //     gsDebug<<bc<<"\n";
+
+    //     // tmp << 0,0,0;
+    //     tmp << 0,0,-1;
+
+    //     // Point loads
+    //     // gsVector<> point(2);
+    //     // gsVector<> load (3);
+    //     // point<< 0.5, 0.5 ; load << 0.0, 1.0, 0.0 ;
+    //     // pLoads.addLoad(point, load, 0 );
+    // }
     if (testCase == 1)
     {
-        for (index_t i=0; i!=3; ++i)
-        {
-            bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0 ,false,i);
-            // bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ,false,i);
-            bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0 ,false,i);
-            // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ,false,i);
-        }
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0,false,0 ); // unknown 0 - x
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0,false,1 ); // unknown 1 - y
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0,false,2 ); // unknown 2 - z
+        bc.addCondition(boundary::west, condition_type::clamped, 0, 0 ,false,2);
 
-        // tmp << 0,0,0;
-        tmp << 0,0,-1;
+        // bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0,false,0 ); // unknown 1 - y
+        // bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0,false,1 ); // unknown 1 - y
+        // bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0,false,2 ); // unknown 2 - z
 
-        // Point loads
-        // gsVector<> point(2);
-        // gsVector<> load (3);
-        // point<< 0.5, 0.5 ; load << 0.0, 1.0, 0.0 ;
-        // pLoads.addLoad(point, load, 0 );
+        // bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0,false,1 ); // unknown 1 - y
+        // bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0,false,2 ); // unknown 2 - z
+
+        // bc.addCondition(boundary::east, condition_type::collapsed, 0, 0 ,false,0);
+
+
+        // tmp << 0,1,0;
+
+        neu << 0, 0, -1;
+        neuData.setValue(neu,3);
+
+        bc.addCondition(boundary::east, condition_type::neumann, &neuData );
+
     }
     else if (testCase == 2)
     {
@@ -1735,11 +1767,11 @@ int main(int argc, char *argv[])
     // 1.0,1.0;
     // pt = pt.transpose();
     gsDebugVar(pt);
-    evaluateFunction(ev, cartcov(G).inv()*F, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, cartcov(G).inv()*F, pt); // evaluates an expression on a point
     // evaluateFunction(ev, Ttilde, pt); // evaluates an expression on a point
     // evaluateFunction(ev, TtildeInv, pt); // evaluates an expression on a point
-    evaluateFunction(ev, C, pt); // evaluates an expression on a point
-    evaluateFunction(ev, D, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, C, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, D, pt); // evaluates an expression on a point
 
     // ! [Solve linear problem]
 
@@ -1760,11 +1792,6 @@ int main(int argc, char *argv[])
         );
 
 
-    gsDebugVar(A.matrix().toDense());
-    // gsDebugVar(A.matrix().rows());
-    // gsDebugVar(A.matrix().cols());
-    gsDebugVar(A.rhs().transpose());
-
     // evaluateFunction(ev, N_der * cartcon(G) * (E_m_der * cartcon(G)).tr(), pt); // evaluates an expression on a point
     // evaluateFunction(ev, (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr()).tr(), pt); // evaluates an expression on a point
 
@@ -1778,34 +1805,37 @@ int main(int argc, char *argv[])
 
     // For Neumann (same for Dirichlet/Nitsche) conditions
     variable g_N = A.getBdrFunction();
-    A.assembleRhsBc(u * g_N, bc.container("Neumann") );
+    A.assembleRhsBc(u * g_N * meas(G), bc.container("Neumann") );
 
-    // for weak dirichlet (DOES THIS HANDLE COMPONENTS?)
-    real_t alpha_d = 1e3;
-    A.assembleLhsRhsBc
-    (
-        alpha_d * u * u.tr()
-        ,
-        alpha_d * u * (defG - G - g_N).tr()
-        ,
-        bc.container("dirichlet weak")
-    );
+    // // for weak dirichlet (DOES THIS HANDLE COMPONENTS?)
+    // real_t alpha_d = 1e3;
+    // A.assembleLhsRhsBc
+    // (
+    //     alpha_d * u * u.tr()
+    //     ,
+    //     alpha_d * u * (defG - G - g_N).tr()
+    //     ,
+    //     bc.container("dirichlet weak")
+    // );
 
-    // for weak clamped
-    real_t alpha_r = 1e3;
-    A.assembleLhsRhsBc
-    (
-        // alpha_r * ( sn(defG).tr()*sn(G) - 1.0 ) * ( flatdot2??? )
-        // +
-        alpha_r * ( var1(u,defG) * sn(G).tr() ).symmetrize()
-        ,
-        alpha_r * ( sn(defG)*sn(G).tr() - sn(G)*sn(G).tr() ) * ( var1(u,defG) * sn(G).tr() )
-        ,
-        bc.container("clamped weak")
-    );
+    // // for weak clamped
+    // real_t alpha_r = 1e3;
+    // A.assembleLhsRhsBc
+    // (
+    //     // alpha_r * ( sn(defG).tr()*sn(G) - 1.0 ) * ( flatdot2??? )
+    //     // +
+    //     alpha_r * ( var1(u,defG) * sn(G).tr() ).symmetrize()
+    //     ,
+    //     alpha_r * ( sn(defG)*sn(G).tr() - sn(G)*sn(G).tr() ) * ( var1(u,defG) * sn(G).tr() )
+    //     ,
+    //     bc.container("clamped weak")
+    // );
 
 
-
+    gsDebugVar(A.matrix().toDense());
+    // gsDebugVar(A.matrix().rows());
+    // gsDebugVar(A.matrix().cols());
+    gsDebugVar(A.rhs().transpose());
 
 
     // solve system
@@ -1849,7 +1879,7 @@ int main(int argc, char *argv[])
         real_t tol = 1e-8;
         for (index_t it = 0; it != itMax; ++it)
         {
-            A.initSystem();
+            A.initSystem(false);
             // assemble system
             A.assemble(
                 ( N_der * E_m_der.tr() + E_m_der2 + M_der * E_f_der.tr() - E_f_der2 ) * meas(G)

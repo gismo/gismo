@@ -924,8 +924,8 @@ public:
                 else
                     m_mapper.markBoundary(it->ps.patch, bnd, cc);
             }
-// todo
             // CLAMPED
+            gsMatrix<unsigned> bnd1;
             for (typename bcList::const_iterator
                      it = bc.begin("Clamped") ; it != bc.end("Clamped"); ++it )
             {
@@ -934,38 +934,29 @@ public:
 
                 GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
                               "Problem: a boundary condition is set on a patch id which does not exist.");
-
-                bnd = mb->basis(it->ps.patch).boundary( it->ps.side() );
-
+                
+                bnd  = mb->basis(it->ps.patch).boundaryOffset( it->ps.side(), 0);
+                bnd1 = mb->basis(it->ps.patch).boundaryOffset( it->ps.side(), 1);
                 // Cast to tensor b-spline basis
-                /////////// FIX THIS
-                const gsTensorBSplineBasis<2,T> * tp =
-                    dynamic_cast<const gsTensorBSplineBasis<2,T> *>(&m_bases[0][cur.patch]);
-                /////////// FIX THIS
-
                 if ( mb != NULL) // clamp adjacent dofs
                 {
-                /////////// FIX THIS
-                    const int str = mb->basis(it->ps.patch).stride( it->ps.direction() );
-                /////////// FIX THIS
-                    
-                    if ( it->ps.parameter() )
-                    {
-                        for ( index_t k=0; k<bnd.size(); ++k)
-                            m_mapper.matchDof( it->ps.patch, (bnd)(k,0),
-                                               it->ps.patch, (bnd)(k,0) - str );
-                    }
+                gsDebugVar(cc);
+                    if ( ! it->ps.parameter() )
+                        bnd.swap(bnd1);
+                    if (cc==-1)
+                        for (index_t c=0; c!= this->dim(); c++) // for all components
+                            for ( index_t k=0; k<bnd.size(); ++k)
+                                m_mapper.matchDof( it->ps.patch, (bnd)(k,0),
+                                                   it->ps.patch, (bnd1)(k,0) , c);
                     else
-                    {
                         for ( index_t k=0; k<bnd.size(); ++k)
-                            m_mapper.matchDof( it->ps.patch, (bnd)(k,0),
-                                             it->ps.patch, (bnd)(k,0) + str );
-                    }
+                                    m_mapper.matchDof( it->ps.patch, (bnd)(k,0),
+                                                   it->ps.patch, (bnd1)(k,0) , cc);
                 }
                 else
                     gsWarn<<"Unable to apply clamped condition.\n";
             }
-// todo
+
             // COLLAPSED
             for (typename bcList::const_iterator
                      it = bc.begin("Collapsed") ; it != bc.end("Collapsed"); ++it )
@@ -976,12 +967,24 @@ public:
                 GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
                               "Problem: a boundary condition is set on a patch id which does not exist.");
 
-                // bnd = mb->basis(it->ps.patch).boundary( it->ps.side() );
-                // if (cc==-1)
-                //     for (index_t c=0; c!= this->dim(); c++) // for all components
-                //         m_mapper.markBoundary(it->ps.patch, bnd, c);
-                // else
-                //     m_mapper.markBoundary(it->ps.patch, bnd, cc);
+                bnd = mb->basis(it->ps.patch).boundary( it->ps.side() );
+                gsDebugVar(bnd);
+                gsDebugVar(cc);
+
+                // Cast to tensor b-spline basis
+                if ( mb != NULL) // clamp adjacent dofs
+                {
+                    // match all DoFs to the first one of the side
+                    if (cc==-1)
+                        for (index_t c=0; c!= this->dim(); c++) // for all components
+                            for ( index_t k=0; k<bnd.size()-1; ++k)
+                                m_mapper.matchDof( it->ps.patch, (bnd)(0,0),
+                                                   it->ps.patch, (bnd)(k+1,0) , c);
+                    else
+                        for ( index_t k=0; k<bnd.size()-1; ++k)
+                                m_mapper.matchDof( it->ps.patch, (bnd)(0,0),
+                                                   it->ps.patch, (bnd)(k+1,0) , cc);
+                }
             }
 
             // corners
@@ -1042,6 +1045,8 @@ public:
         }
 
         m_mapper.finalize();
+            gsDebugVar(m_mapper);
+
 
         // No more BCs
         //m_bcs = bc.get("Dirichlet");
