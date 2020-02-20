@@ -128,18 +128,32 @@ int main(int argc, char *argv[])
         //gsInfo << multiPatch.patch( item.first().patch).coefs() << "test \n";
 
         gsG1AuxiliaryMultiplePatches a(multiPatch, item.first().patch, item.second().patch);
-        gsMultiPatch<> test_mp(a.reparametrizeG1Interface());
-        gsMultiBasis<> test_mb(test_mp);
-        gsInfo << "New: " << test_mb << "\n";
+
+        gsMultiPatch<> test;
+        test = a.reparametrizeG1Interface();
+        test.computeTopology();
+
+        gsMultiBasis<> test_mb(test);
+        test_mb.degreeElevate(numDegree);
+
+        index_t maxDegree = test_mb.minCwiseDegree();
+        test_mb.uniformRefine(numRefine,maxDegree-regularity);
 
         gsOptionList optionList;
         optionList.addInt("p_tilde","Grad",p_tilde);
         optionList.addInt("r_tilde","Reg",r_tilde);
+        optionList.addInt("regularity","Regularity of the initial geometry",regularity);
         optionList.addSwitch("local","Local projection for gluing data",local);
+        optionList.addSwitch("direct","Local projection for gluing data",direct);
+        optionList.addSwitch("plot","Plot in Paraview",plot);
 
         //gsInfo << "p_tilde : " << optionList << "\n";
-        gsG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, optionList);
+        gsG1BasisEdge<real_t> g1BasisEdge(test, test_mb, optionList);
+        gsMultiPatch<> g1Basis_0, g1Basis_1;
+        g1BasisEdge.constructSolution(g1Basis_0,g1Basis_1);
 
+        g1BasisEdge.plotG1Basis(g1Basis_0,g1Basis_1,"g1Basis");
+        g1BasisEdge.g1Condition();
     }
 
 
