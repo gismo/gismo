@@ -90,153 +90,231 @@ public:
         real_t p = basis_geo.maxDegree();
         real_t tau_1 = bsp_temp.knots().at(p + 2);
 
-        gsMatrix<T> alpha_0, alpha_1, beta_0, beta_1,
-                    N_0_patch0, N_1_patch0, N_0_patch1, N_1_patch1,
-                    N_j_minus_patch0, N_i_plus_patch0, N_j_minus_patch1, N_i_plus_patch1,
-                    der_N_i_plus_patch0, der_N_i_plus_patch1;
+        gsMatrix<T> alpha, beta,
+                    N_0, N_1,
+                    N_j_minus, N_i_plus,
+                    der_N_i_plus;
 
-        gsMatrix<T> temp_0, temp_1;
-
-        if (optionList.getSwitch("direct"))
+        if (geo.id() == 0) // Patch 0
         {
-            gluingData.eval_into_alpha_0(md.points,alpha_0);
-            gluingData.eval_into_alpha_1(md.points,alpha_1);
-
-            gluingData.eval_into_beta_0(md.points,beta_0);
-            gluingData.eval_into_beta_1(md.points,beta_1);
-        }
-        else
-        {
-
-            gluingData.get_alpha_tilde_0().eval_into(md.points.bottomRows(1),alpha_0); // v
-            gluingData.get_beta_tilde_0().eval_into(md.points.bottomRows(1),beta_0);
-
-            gluingData.get_alpha_tilde_1().eval_into(md.points.topRows(1),alpha_1); // u
-            gluingData.get_beta_tilde_1().eval_into(md.points.topRows(1),beta_1);
-        }
-
-        basis_geo.evalSingle_into(0,md.points.topRows(1),N_0_patch0); // u
-        basis_geo.evalSingle_into(1,md.points.topRows(1),N_1_patch0); // u
-
-        basis_geo.evalSingle_into(0,md.points.bottomRows(1),N_0_patch1); // v
-        basis_geo.evalSingle_into(1,md.points.bottomRows(1),N_1_patch1); // v
-
-        // Initialize local matrix/rhs
-        for (index_t i = 0; i < n_plus; i++)
-        {
-            basis_plus.evalSingle_into(i,md.points.bottomRows(1),N_i_plus_patch0); // v
-            basis_plus.derivSingle_into(i,md.points.bottomRows(1),der_N_i_plus_patch0);
-
-            basis_plus.evalSingle_into(i,md.points.topRows(1),N_i_plus_patch1); // u
-            basis_plus.derivSingle_into(i,md.points.topRows(1),der_N_i_plus_patch1);
-
-            if (optionList.getSwitch("local"))
+            if (optionList.getSwitch("direct"))
             {
-
-            }
-
-            temp_0 = beta_0.cwiseProduct(N_1_patch0);
-            temp_1 = beta_1.cwiseProduct(N_1_patch1);
-
-            if  ( i == 1 || i == n_plus -2 || i == n_plus -3 || i == 2 )
-            {
-                gsMatrix<T> lambda_L, lambda_R;
-
-                gsMatrix<T> nulleins(1,1);
-                index_t ii = 0;
-                if (i == 1 || i == 2)
-                {
-                    ii = i;
-                    nulleins << 0.0;
-                }
-                if (i == n_plus -3 || i == n_plus -2 )
-                {
-                    if ( i == n_plus -3)
-                        ii = n_minus -3;
-                    if ( i == n_plus -2)
-                        ii = n_minus -2;
-                    nulleins << 1.0;
-                }
-                if (optionList.getSwitch("direct"))
-                {
-
-                }
-                else if (optionList.getSwitch("local"))
-                {
-
-                }
-                else
-                {
-                    lambda_L = gluingData.get_beta_tilde_0().eval(nulleins) * 1
-                        / (gluingData.get_alpha_tilde_0().eval(nulleins)(0, 0));
-                    lambda_R = gluingData.get_beta_tilde_1().eval(nulleins) * 1
-                        / (gluingData.get_alpha_tilde_1().eval(nulleins)(0, 0));
-                }
-
-                if ( i == 1 || i == n_plus -2 ) // MODIFY
-                {
-                    gsMatrix<T> temp_L_tt = (beta_0 - lambda_L * alpha_0).cwiseProduct(N_1_patch0);
-                    gsMatrix<T> temp_R_tt = (beta_1 - lambda_R * alpha_1).cwiseProduct(N_1_patch1); // lambda_L == lambda_R
-
-                    if (geo.id() == 0) // left
-                        rhsVals_tilde.at(i) =
-                            N_i_plus_patch0.cwiseProduct(N_0_patch0 + N_1_patch0) - temp_L_tt.cwiseProduct(der_N_i_plus_patch0) * tau_1 / p;
-                    if (geo.id() == 1) // right
-                        rhsVals_tilde.at(i) =
-                            N_i_plus_patch1.cwiseProduct(N_0_patch1 + N_1_patch1) - temp_R_tt.cwiseProduct(der_N_i_plus_patch1) * tau_1 / p;
-                }
-                else
-                {
-                    if (geo.id() == 0) // left
-                        rhsVals_tilde.at(i) =
-                            N_i_plus_patch0.cwiseProduct(N_0_patch0 + N_1_patch0) - temp_0.cwiseProduct(der_N_i_plus_patch0) * tau_1 / p;
-                    if (geo.id() == 1) // right
-                        rhsVals_tilde.at(i) =
-                            N_i_plus_patch1.cwiseProduct(N_0_patch1 + N_1_patch1) - temp_1.cwiseProduct(der_N_i_plus_patch1) * tau_1 / p;
-                }
+                gluingData.eval_into_alpha_0(md.points,alpha);
+                gluingData.eval_into_beta_0(md.points,beta);
             }
             else
             {
-                // MINUS für lineare interfaces!!!
-                if (geo.id() == 0) // left
-                    rhsVals_tilde.at(i) = N_i_plus_patch0.cwiseProduct(N_0_patch0 + N_1_patch0) - temp_0.cwiseProduct(der_N_i_plus_patch0) * tau_1 / p;
-                if (geo.id() == 1) // right
-                    rhsVals_tilde.at(i) = N_i_plus_patch1.cwiseProduct(N_0_patch1 + N_1_patch1) - temp_1.cwiseProduct(der_N_i_plus_patch1) * tau_1 / p;
+                gluingData.get_alpha_tilde_0().eval_into(md.points.bottomRows(1),alpha); // v
+                gluingData.get_beta_tilde_0().eval_into(md.points.bottomRows(1),beta);
             }
+            basis_geo.evalSingle_into(0,md.points.topRows(1),N_0); // u
+            basis_geo.evalSingle_into(1,md.points.topRows(1),N_1); // u
 
-            localMat_tilde.at(i).setZero(numActive, numActive);
-            localRhs_tilde.at(i).setZero(numActive, rhsVals_tilde.at(i).rows());//multiple right-hand sides
+            // Initialize local matrix/rhs
+            for (index_t i = 0; i < n_plus; i++)
+            {
+                basis_plus.evalSingle_into(i,md.points.bottomRows(1),N_i_plus); // v
+                basis_plus.derivSingle_into(i,md.points.bottomRows(1),der_N_i_plus);
 
-            localMat_tilde.at(i).setZero(numActive, numActive);
-            localRhs_tilde.at(i).setZero(numActive, rhsVals_tilde.at(i).rows());//multiple right-hand sides
+                if (optionList.getSwitch("local"))
+                {
 
-        } // n_tilde
+                }
 
-        // Initialize local matrix/rhs
-        for (index_t i = 0; i < n_minus; i++)
-        {
+                gsMatrix<T> temp = beta.cwiseProduct(N_1);
 
-            basis_minus.evalSingle_into(i,md.points.bottomRows(1),N_j_minus_patch0); // v
-            basis_minus.evalSingle_into(i,md.points.topRows(1),N_j_minus_patch1); // u
+                if  ( i == 1 || i == n_plus -2 || i == n_plus -3 || i == 2 )
+                {
+                    gsMatrix<T> lambda_0;
 
-            if (optionList.getSwitch("local"))
+                    gsMatrix<T> nulleins(1,1);
+                    index_t ii = 0;
+                    if (i == 1 || i == 2)
+                    {
+                        ii = i;
+                        nulleins << 0.0;
+                    }
+                    if (i == n_plus -3 || i == n_plus -2 )
+                    {
+                        if ( i == n_plus -3)
+                            ii = n_minus -3;
+                        if ( i == n_plus -2)
+                            ii = n_minus -2;
+                        nulleins << 1.0;
+                    }
+                    if (optionList.getSwitch("direct"))
+                    {
+
+                    }
+                    else if (optionList.getSwitch("local"))
+                    {
+
+                    }
+                    else
+                    {
+                        lambda_0 = gluingData.get_beta_tilde_0().eval(nulleins) * 1
+                            / (gluingData.get_alpha_tilde_0().eval(nulleins)(0, 0));
+                    }
+
+                    if ( i == 1 || i == n_plus -2 ) // MODIFY
+                    {
+                        gsMatrix<T> temp_tt = (beta - lambda_0 * alpha).cwiseProduct(N_1);
+
+                        rhsVals_tilde.at(i) =
+                            N_i_plus.cwiseProduct(N_0 + N_1) - temp_tt.cwiseProduct(der_N_i_plus) * tau_1 / p;
+
+                    }
+                    else
+                    {
+                        rhsVals_tilde.at(i) =
+                            N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
+
+                    }
+                }
+                else
+                {
+                    rhsVals_tilde.at(i) = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
+                }
+
+                localMat_tilde.at(i).setZero(numActive, numActive);
+                localRhs_tilde.at(i).setZero(numActive, rhsVals_tilde.at(i).rows());//multiple right-hand sides
+
+                localMat_tilde.at(i).setZero(numActive, numActive);
+                localRhs_tilde.at(i).setZero(numActive, rhsVals_tilde.at(i).rows());//multiple right-hand sides
+
+            } // n_plus
+
+            // Initialize local matrix/rhs
+            for (index_t i = 0; i < n_minus; i++)
             {
 
+                basis_minus.evalSingle_into(i,md.points.bottomRows(1),N_j_minus); // v
+
+                if (optionList.getSwitch("local"))
+                {
+
+                }
+
+                rhsVals_bar.at(i) = alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p;
+
+                localMat_bar.at(i).setZero(numActive, numActive);
+                localRhs_bar.at(i).setZero(numActive, rhsVals_bar.at(i).rows());//multiple right-hand sides
+
+                localMat_bar.at(i).setZero(numActive, numActive);
+                localRhs_bar.at(i).setZero(numActive, rhsVals_bar.at(i).rows());//multiple right-hand sides
+            } // n_minus
+
+        } // Patch 0
+        else if (geo.id() == 1) // Patch 1
+        {
+            if (optionList.getSwitch("direct"))
+            {
+                gluingData.eval_into_alpha_1(md.points,alpha);
+                gluingData.eval_into_beta_1(md.points,beta);
+            }
+            else
+            {
+                gluingData.get_alpha_tilde_1().eval_into(md.points.topRows(1),alpha); // u
+                gluingData.get_beta_tilde_1().eval_into(md.points.topRows(1),beta);
             }
 
-            if (geo.id() == 0) // left
-                rhsVals_bar.at(i) = alpha_0.cwiseProduct(N_j_minus_patch0.cwiseProduct(N_1_patch0)) * tau_1 / p;
-            if (geo.id() == 1) // right
-                rhsVals_bar.at(i) = - alpha_1.cwiseProduct(N_j_minus_patch1.cwiseProduct(N_1_patch1)) * tau_1 / p;
+            basis_geo.evalSingle_into(0,md.points.bottomRows(1),N_0); // v
+            basis_geo.evalSingle_into(1,md.points.bottomRows(1),N_1); // v
 
-            localMat_bar.at(i).setZero(numActive, numActive);
-            localRhs_bar.at(i).setZero(numActive, rhsVals_bar.at(i).rows());//multiple right-hand sides
+            // Initialize local matrix/rhs
+            for (index_t i = 0; i < n_plus; i++)
+            {
+                basis_plus.evalSingle_into(i,md.points.topRows(1),N_i_plus); // u
+                basis_plus.derivSingle_into(i,md.points.topRows(1),der_N_i_plus);
 
-            localMat_bar.at(i).setZero(numActive, numActive);
-            localRhs_bar.at(i).setZero(numActive, rhsVals_bar.at(i).rows());//multiple right-hand sides
-        } // n_bar
+                if (optionList.getSwitch("local"))
+                {
 
-    }
+                }
+
+                gsMatrix<> temp = beta.cwiseProduct(N_1);
+
+                if  ( i == 1 || i == n_plus -2 || i == n_plus -3 || i == 2 )
+                {
+                    gsMatrix<T> lambda_1;
+
+                    gsMatrix<T> nulleins(1,1);
+                    index_t ii = 0;
+                    if (i == 1 || i == 2)
+                    {
+                        ii = i;
+                        nulleins << 0.0;
+                    }
+                    if (i == n_plus -3 || i == n_plus -2 )
+                    {
+                        if ( i == n_plus -3)
+                            ii = n_minus -3;
+                        if ( i == n_plus -2)
+                            ii = n_minus -2;
+                        nulleins << 1.0;
+                    }
+                    if (optionList.getSwitch("direct"))
+                    {
+
+                    }
+                    else if (optionList.getSwitch("local"))
+                    {
+
+                    }
+                    else
+                    {
+                        lambda_1 = gluingData.get_beta_tilde_1().eval(nulleins) * 1
+                            / (gluingData.get_alpha_tilde_1().eval(nulleins)(0, 0));
+                    }
+
+                    if ( i == 1 || i == n_plus -2 ) // MODIFY
+                    {
+                        gsMatrix<T> temp_R_tt = (beta - lambda_1 * alpha).cwiseProduct(N_1); // lambda_L == lambda_R
+
+                        rhsVals_tilde.at(i) =
+                                N_i_plus.cwiseProduct(N_0 + N_1) - temp_R_tt.cwiseProduct(der_N_i_plus) * tau_1 / p;
+                    }
+                    else
+                    {
+                        rhsVals_tilde.at(i) =
+                                N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
+                    }
+                }
+                else
+                {
+                    rhsVals_tilde.at(i) = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
+                }
+
+                localMat_tilde.at(i).setZero(numActive, numActive);
+                localRhs_tilde.at(i).setZero(numActive, rhsVals_tilde.at(i).rows());//multiple right-hand sides
+
+                localMat_tilde.at(i).setZero(numActive, numActive);
+                localRhs_tilde.at(i).setZero(numActive, rhsVals_tilde.at(i).rows());//multiple right-hand sides
+
+            } // n_tilde
+
+            // Initialize local matrix/rhs
+            for (index_t i = 0; i < n_minus; i++)
+            {
+
+                basis_minus.evalSingle_into(i,md.points.topRows(1),N_j_minus); // u
+
+                if (optionList.getSwitch("local"))
+                {
+
+                }
+
+                rhsVals_bar.at(i) = - alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p;
+
+                localMat_bar.at(i).setZero(numActive, numActive);
+                localRhs_bar.at(i).setZero(numActive, rhsVals_bar.at(i).rows());//multiple right-hand sides
+
+                localMat_bar.at(i).setZero(numActive, numActive);
+                localRhs_bar.at(i).setZero(numActive, rhsVals_bar.at(i).rows());//multiple right-hand sides
+            } // n_bar
+
+        } // Patch 1
+    } // evaluate
 
     inline void assemble(gsDomainIterator<T>    & element,
                          const gsVector<T>      & quWeights)
