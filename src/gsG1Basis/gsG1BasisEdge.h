@@ -94,7 +94,8 @@ public:
     index_t get_n_plus() { return n_plus; }
     index_t get_n_minus() { return n_minus; }
 
-    void plotG1Basis(gsMultiPatch<T> & basisG1_L, gsMultiPatch<T> & basisG1_R, std::string baseName)
+    void plotG1Basis(gsMultiPatch<T> & basisG1_L, gsMultiPatch<T> & basisG1_R,
+                     const gsMultiPatch<> & patch, std::string baseName)
     {
 
         const std::string baseName1(baseName + "_0");
@@ -109,7 +110,7 @@ public:
 
             fileName = baseName1 + "_" + util::to_string(i);
 
-            gsField<> temp_field_L(m_mp.patch(0),basisG1_L.patch(i));
+            gsField<> temp_field_L(patch.patch(0), basisG1_L.patch(i));  // Left
             gsWriteParaview(temp_field_L,fileName,5000);
             collection1.addTimestep(fileName,i,"0.vts");
 
@@ -119,7 +120,7 @@ public:
 
             fileName2 = baseName2 + "_" + util::to_string(i);
 
-            gsField<> temp_field_R(m_mp.patch(1),basisG1_R.patch(i));
+            gsField<> temp_field_R(patch.patch(1),basisG1_R.patch(i));  // Right
             gsWriteParaview(temp_field_R,fileName2,5000);
             collection2.addTimestep(fileName2,i,"0.vts");
 

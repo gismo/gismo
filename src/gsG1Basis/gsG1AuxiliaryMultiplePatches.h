@@ -16,6 +16,8 @@
 #include <gismo.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsG1Basis/gsG1AuxiliaryPatch.h>
+# include <gsG1Basis/gsG1BasisEdge.h>
+
 
 namespace gismo
 {
@@ -59,7 +61,6 @@ public:
     // After computeTopology() the patches will have the same patch-index as the position-index inside auxGeom
     // EXAMPLE: global patch-index-order inside auxGeom: [2, 3, 4, 1, 0]
     //          in auxTop: 2->0, 3->1, 4->2, 1->3, 0->4
-
     gsMultiPatch<> computeAuxTopology(){
         
         gsMultiPatch<> auxTop;
@@ -70,6 +71,7 @@ public:
         auxTop.computeTopology();
         return auxTop;
     }
+
 
     gsMultiPatch<> reparametrizeG1Interface(){
         gsMultiPatch<> repTop(this->computeAuxTopology());
@@ -112,13 +114,6 @@ public:
         }
        return this->computeAuxTopology();
     }
-
-    void parametrizeBack(){
-
-    }
-
-
-
 
     void reparametrizeG1Vertex(size_t patchInd, size_t vertexIndex){
         if(auxGeom[patchInd].getOrient() == 0)
@@ -163,6 +158,39 @@ public:
             }
         }
     }
+
+    void computeG1EdgeBasis(gsOptionList optionList){
+
+        gsMultiPatch<> mp_init;
+        mp_init.addPatch(auxGeom[0].getPatch());// Left -> 0 = v along the interface
+        mp_init.addPatch(auxGeom[1].getPatch()); // Right -> 1 = u along the interface
+
+
+        gsMultiPatch<> test_mp(this->reparametrizeG1Interface());
+        gsMultiBasis<> test_mb(test_mp);
+
+        gsInfo << test_mb << "\n";
+
+//        test_mb.degreeElevate(1);
+
+        index_t maxDegree = test_mb.minCwiseDegree();
+        test_mb.uniformRefine(3,maxDegree-1);
+
+//      gsInfo << "p_tilde : " << optionList << "\n";
+        gsG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, optionList);
+        gsMultiPatch<> g1Basis_0, g1Basis_1;
+        g1BasisEdge.constructSolution(g1Basis_0,g1Basis_1);
+//      g1BasisEdge.plotG1Basis(g1Basis_0,g1Basis_1, test_mp, test_mp, "G1Basis_old");
+
+//        Patch 0 -> Left
+        auxGeom[0].parametrizeBasisBack(g1Basis_0);
+
+//        Patch 1 -> Right
+        auxGeom[1].parametrizeBasisBack(g1Basis_1);
+        g1BasisEdge.plotG1Basis(auxGeom[0].getG1Basis(),auxGeom[1].getG1Basis(), mp_init, "G1Basis");
+        g1BasisEdge.g1Condition();
+    }
+
 
     gsG1AuxiliaryPatch & getSinglePatch(const unsigned i){
         return auxGeom[i];

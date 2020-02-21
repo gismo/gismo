@@ -14,6 +14,7 @@
 # include <gismo.h>
 # include <gsAssembler/gsKirchhoffLoveShellAssembler.h>
 # include <gsG1Basis/gsG1AuxiliaryMultiplePatches.h>
+# include <gsG1Basis/gsG1BasisEdge.h>
 
 
 using namespace gismo;
@@ -43,12 +44,12 @@ int main(int argc, char *argv[])
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
-    gsFileData<> fileSrc("KirchhoffLoveGeo/geo_fivePatchDiffParam.xml");
+    gsFileData<> fileSrc("KirchhoffLoveGeo/square_diffParam.xml");
     gsInfo << "Loaded file " << fileSrc.lastPath() << "\n";
 
     gsMultiPatch<> geo;
     gsInfo << "Geometry taken correctly \n";
-    fileSrc.getId(5, geo);
+    fileSrc.getId(2, geo);
     geo.computeTopology();
     gsInfo << "Geometry computed correctly\n";
     gsMultiBasis<> basis(geo);
@@ -63,25 +64,41 @@ int main(int argc, char *argv[])
 
     gsInfo << "Old: " << basis << "\n";
 
-    // Interface loop
 
+    gsOptionList optionList;
+    optionList.addInt("p_tilde","Grad",1);
+    optionList.addInt("r_tilde","Reg",0);
+    optionList.addInt("regularity","Regularity of the initial geometry",1);
+    optionList.addSwitch("local","Local projection for gluing data",false);
+    optionList.addSwitch("direct","Local projection for gluing data",false);
+    optionList.addSwitch("plot","Plot in Paraview",false);
+
+    // Interface loop
     for (const boundaryInterface &  item : geo.interfaces() )
     {
 
 
         gsG1AuxiliaryMultiplePatches a(geo, item.first().patch, item.second().patch);
 
-        gsMultiPatch<> test(a.reparametrizeG1Interface());
-        gsMultiBasis<> testb(test);
-        gsInfo << "New: " << item.first().patch << " : " << item.second().patch << "\n";
-        gsInfo << "New: " << testb << "\n";
+//        test_mb.degreeElevate(numDegree);
+//
+//        index_t maxDegree = test_mb.minCwiseDegree();
+//        test_mb.uniformRefine(numRefine,maxDegree-1);
+
+        a.computeG1EdgeBasis(optionList);
+
     }
 
 
 
+//     Loop over the boundary edges
+//    for (gsMultiPatch<>::const_biterator
+//             bit = geo.bBegin(); bit != geo.bEnd(); ++bit)
+//    {
+//    }
+
 
     // Vertices loop
-
 //    std::vector<std::vector<patchCorner>> allcornerLists = geo.vertices();
 //
 //    for(size_t i=0; i < allcornerLists.size(); i++){
