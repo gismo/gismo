@@ -123,12 +123,13 @@ public:
 
                 gsMatrix<T> temp = beta.cwiseProduct(N_1);
 
+                // THIS CAN BE DELETE IF WE HAVE VERTICES SPACE
                 if  ( i == 1 || i == n_plus -2 || i == n_plus -3 || i == 2 )
                 {
                     gsMatrix<T> lambda_0;
 
                     gsMatrix<T> nulleins(1,1);
-                    index_t ii = 0;
+                    index_t ii = 0; // HI ANDREA
                     if (i == 1 || i == 2)
                     {
                         ii = i;
@@ -170,7 +171,7 @@ public:
                             N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
 
                     }
-                }
+                } // END : THIS CAN BE DELETE IF WE HAVE VERTICES SPACE
                 else
                 {
                     rhsVals_tilde.at(i) = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;

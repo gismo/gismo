@@ -13,6 +13,7 @@
 # include <gismo.h>
 # include <gsG1Basis/gsG1AuxiliaryMultiplePatches.h>
 # include <gsG1Basis/gsG1BasisEdge.h>
+# include <gsAssembler/gsG1BiharmonicAssembler.h>
 
 using namespace gismo;
 
@@ -116,11 +117,11 @@ int main(int argc, char *argv[])
     fd.getId(0, multiPatch); // id=0: Multipatch domain
     multiPatch.computeTopology();
     gsMultiBasis<> mb(multiPatch);
-    gsInfo << "Old: " << mb << "\n";
+
 
     gsWriteParaview(multiPatch,"geometry",5000,true);
 
-
+    gsMultiPatch<> g1Basis_0, g1Basis_1;
     for (const boundaryInterface &  item : multiPatch.interfaces() )
     {
         gsInfo << item.first().patch << " : " << item.second().patch << "test \n";
@@ -134,7 +135,10 @@ int main(int argc, char *argv[])
         test.computeTopology();
 
         gsMultiBasis<> test_mb(test);
+
+
         test_mb.degreeElevate(numDegree);
+
 
         index_t maxDegree = test_mb.minCwiseDegree();
         test_mb.uniformRefine(numRefine,maxDegree-regularity);
@@ -148,14 +152,29 @@ int main(int argc, char *argv[])
         optionList.addSwitch("plot","Plot in Paraview",plot);
 
         //gsInfo << "p_tilde : " << optionList << "\n";
-        gsG1BasisEdge<real_t> g1BasisEdge(test, test_mb, optionList);
-        gsMultiPatch<> g1Basis_0, g1Basis_1;
-        g1BasisEdge.constructSolution(g1Basis_0,g1Basis_1);
+        gsG1BasisEdge<real_t> g1BasisEdge(test, test_mb, 0, false, optionList);
+        g1BasisEdge.constructSolution(g1Basis_0);
 
-        g1BasisEdge.plotG1Basis(g1Basis_0,g1Basis_1,"g1Basis");
+        gsG1BasisEdge<real_t> g1BasisEdge1(test, test_mb, 1, false, optionList);
+        g1BasisEdge1.constructSolution(g1Basis_1);
+
+        g1BasisEdge.plotG1Basis(g1Basis_0,g1Basis_1,test,"g1Basis");
         g1BasisEdge.g1Condition();
     }
 
+// NEW NEW NEW NEW NEW NEW NEW NEW NEW
 
+    gsBoundaryConditions<> bcInfo, bcInfo2;
+    for (gsMultiPatch<>::const_biterator bit = multiPatch.bBegin(); bit != multiPatch.bEnd(); ++bit)
+    {
+        bcInfo.addCondition( *bit, condition_type::dirichlet, &solVal ); // = 0
+        bcInfo2.addCondition(*bit, condition_type::neumann, &laplace ); // = 0
+    }
+
+    // BiharmonicAssembler
+    //gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
+    //g1BiharmonicAssembler.assemble();
+
+    // TODO g1BiharmonicAssembler.computeDirichletDofsL2Proj(basisG1, n_tilde, n_bar );
 
 } // main
