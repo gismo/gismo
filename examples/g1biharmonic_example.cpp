@@ -121,45 +121,30 @@ int main(int argc, char *argv[])
 
     gsWriteParaview(multiPatch,"geometry",5000,true);
 
-    gsMultiPatch<> g1Basis_0, g1Basis_1;
+    gsOptionList optionList;
+    optionList.addInt("p_tilde","Grad",p_tilde);
+    optionList.addInt("r_tilde","Reg",r_tilde);
+    optionList.addInt("regularity","Regularity of the initial geometry",regularity);
+    optionList.addSwitch("local","Local projection for gluing data",local);
+    optionList.addSwitch("direct","Local projection for gluing data",direct);
+    optionList.addSwitch("plot","Plot in Paraview",plot);
+    optionList.addInt("refine","Refinement",numRefine);
+    optionList.addInt("degree","Degree",numDegree);
+
+    // Interface loop
     for (const boundaryInterface &  item : multiPatch.interfaces() )
     {
-        gsInfo << item.first().patch << " : " << item.second().patch << "test \n";
-        //gsInfo << multiPatch.patch(0).coefs() << "test \n";
-        //gsInfo << multiPatch.patch( item.first().patch).coefs() << "test \n";
+
 
         gsG1AuxiliaryMultiplePatches a(multiPatch, item.first().patch, item.second().patch);
 
-        gsMultiPatch<> test;
-        test = a.reparametrizeG1Interface();
-        test.computeTopology();
+//        test_mb.degreeElevate(numDegree);
+//
+//        index_t maxDegree = test_mb.minCwiseDegree();
+//        test_mb.uniformRefine(numRefine,maxDegree-1);
 
-        gsMultiBasis<> test_mb(test);
+        a.computeG1EdgeBasis(optionList);
 
-
-        test_mb.degreeElevate(numDegree);
-
-
-        index_t maxDegree = test_mb.minCwiseDegree();
-        test_mb.uniformRefine(numRefine,maxDegree-regularity);
-
-        gsOptionList optionList;
-        optionList.addInt("p_tilde","Grad",p_tilde);
-        optionList.addInt("r_tilde","Reg",r_tilde);
-        optionList.addInt("regularity","Regularity of the initial geometry",regularity);
-        optionList.addSwitch("local","Local projection for gluing data",local);
-        optionList.addSwitch("direct","Local projection for gluing data",direct);
-        optionList.addSwitch("plot","Plot in Paraview",plot);
-
-        //gsInfo << "p_tilde : " << optionList << "\n";
-        gsG1BasisEdge<real_t> g1BasisEdge(test, test_mb, 0, false, optionList);
-        g1BasisEdge.constructSolution(g1Basis_0);
-
-        gsG1BasisEdge<real_t> g1BasisEdge1(test, test_mb, 1, false, optionList);
-        g1BasisEdge1.constructSolution(g1Basis_1);
-
-        g1BasisEdge.plotG1Basis(g1Basis_0,g1Basis_1,test,"g1Basis");
-        g1BasisEdge.g1Condition();
     }
 
 // NEW NEW NEW NEW NEW NEW NEW NEW NEW
