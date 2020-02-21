@@ -71,6 +71,8 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
     gsMatrix<T> fpts, tmp;
 
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
+    fixedDofs.resize(u.mapper().boundarySize(), u.dim() );
+    fixedDofs.setZero();
 
     // Iterate over all patch-sides with Boundary conditions
     typedef gsBoundaryConditions<T> bcList;
@@ -84,7 +86,6 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
         for (index_t r = 0; r!=u.dim(); ++r)
         {
             if (com!=-1 && r!=com) continue;
-            fixedDofs.resize(u.mapper().boundarySize(), u.dim() );
 
             const int k = it->patch();
             const gsBasis<T> & basis = mbasis[k];
@@ -98,7 +99,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
                 for (index_t i=0; i!= boundary.size(); ++i)
                 {
                     const int ii = u.mapper().bindex( boundary.at(i) , k, r );
-                    fixedDofs.at(ii) = 0;
+                    fixedDofs(ii,r) = 0;
                 }
                 continue;
             }
@@ -153,7 +154,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             for (index_t l=0; l!= boundary.size(); ++l)
             {
                 const int ii = u.mapper().bindex( boundary.at(l) , k, com );
-                fixedDofs.at(ii) = dVals.at(l);
+                fixedDofs(ii,r) = dVals.at(l);
             }
         }
     }

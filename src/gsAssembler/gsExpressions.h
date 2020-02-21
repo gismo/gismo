@@ -940,7 +940,6 @@ public:
                 // Cast to tensor b-spline basis
                 if ( mb != NULL) // clamp adjacent dofs
                 {
-                gsDebugVar(cc);
                     if ( ! it->ps.parameter() )
                         bnd.swap(bnd1);
                     if (cc==-1)
@@ -950,8 +949,8 @@ public:
                                                    it->ps.patch, (bnd1)(k,0) , c);
                     else
                         for ( index_t k=0; k<bnd.size(); ++k)
-                                    m_mapper.matchDof( it->ps.patch, (bnd)(k,0),
-                                                   it->ps.patch, (bnd1)(k,0) , cc);
+                            m_mapper.matchDof( it->ps.patch, (bnd)(k,0),
+                                           it->ps.patch, (bnd1)(k,0) , cc);
                 }
                 else
                     gsWarn<<"Unable to apply clamped condition.\n";
@@ -1045,8 +1044,6 @@ public:
         }
 
         m_mapper.finalize();
-            gsDebugVar(m_mapper);
-
 
         // No more BCs
         //m_bcs = bc.get("Dirichlet");
