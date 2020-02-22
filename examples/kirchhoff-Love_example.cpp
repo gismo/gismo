@@ -1475,17 +1475,7 @@ int main(int argc, char *argv[])
     //! [Read input file]
     gsMultiPatch<> mp;
     gsMultiPatch<> mp_def;
-    if (testCase==1)
-    {
-        // Unit square
-        mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
-        mp.addAutoBoundaries();
-        mp.embed(3);
-        E_modulus = 1e0;
-        thickness = 1e0;
-        // PoissonRatio = 0.499;
-    }
-    else if (testCase == 2  || testCase == 3)
+    if (testCase == 2  || testCase == 3)
     {
         thickness = 0.25;
         E_modulus = 4.32E8;
@@ -1493,16 +1483,17 @@ int main(int argc, char *argv[])
         gsReadFile<>(fn, mp);
         PoissonRatio = 0.0;
     }
-    else if (testCase==9)
+    else
     {
-        gsFileData<> fd(fn);
-        gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
-        // Annulus
-        fd.getId(0, mp); // id=0: Multipatch domain
+        // Unit square
+        mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
+        mp.addAutoBoundaries();
         mp.embed(3);
-        E_modulus = 1.0;
-        thickness = 1.0;
+        E_modulus = 1e0;
+        thickness = 1e0;
+        PoissonRatio = 0.499;
     }
+
     //! [Read input file]
 
     // p-refine
@@ -1531,6 +1522,7 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> displ("1",3);
 
     gsConstantFunction<> neuData(neu,3);
+
     if (testCase == 1)
     {
         for (index_t i=0; i!=3; ++i)
@@ -1540,46 +1532,8 @@ int main(int argc, char *argv[])
             bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0 ,false,i);
             bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ,false,i);
         }
-
-        // bc.addCondition(boundary::north, condition_type::clamped, 0, 0 ,false,2);
-        // bc.addCondition(boundary::east, condition_type::clamped, 0, 0 ,false,2);
-        // bc.addCondition(boundary::south, condition_type::clamped, 0, 0 ,false,2);
-        // bc.addCondition(boundary::west, condition_type::clamped, 0, 0 ,false,2);
-
-        // tmp << 0,0,0;
         tmp << 0,0,-1;
-
-        // Point loads
-        // gsVector<> point(2);
-        // gsVector<> load (3);
-        // point<< 0.5, 0.5 ; load << 0.0, 1.0, 0.0 ;
-        // pLoads.addLoad(point, load, 0 );
     }
-    // if (testCase == 1)
-    // {
-    //     bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0,false,0 ); // unknown 0 - x
-    //     bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0,false,1 ); // unknown 1 - y
-    //     bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0,false,2 ); // unknown 2 - z
-    //     bc.addCondition(boundary::west, condition_type::clamped, 0, 0 ,false,2);
-
-    //     // bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0,false,0 ); // unknown 1 - y
-    //     // bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0,false,1 ); // unknown 1 - y
-    //     // bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0,false,2 ); // unknown 2 - z
-
-    //     // bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0,false,1 ); // unknown 1 - y
-    //     // bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0,false,2 ); // unknown 2 - z
-
-    //     // bc.addCondition(boundary::east, condition_type::collapsed, 0, 0 ,false,0);
-
-
-    //     // tmp << 0,1,0;
-
-    //     neu << 0, 0, -1;
-    //     neuData.setValue(neu,3);
-
-    //     bc.addCondition(boundary::east, condition_type::neumann, &neuData );
-
-    // }
     else if (testCase == 2)
     {
         // Diaphragm conditions
@@ -1614,16 +1568,44 @@ int main(int argc, char *argv[])
         // Surface forces
         tmp << 0, 0, 0;
     }
-    else if (testCase == 9)
+    // else if (testCase == 10)
+    // {
+    //     for (index_t i=0; i!=3; ++i)
+    //     {
+    //         bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, i ); // unknown 0 - x
+    //         bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, i ); // unknown 1 - y
+    //         bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+    //         bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+    //     }
+
+
+    // }
+    else if (testCase == 11)
     {
         for (index_t i=0; i!=3; ++i)
         {
-            bc.add(0,boundary::north,std::string("dirichlet weak"), 0, i);
-            bc.add(0,boundary::east, std::string("dirichlet weak"), 0, i);
-            bc.add(0,boundary::south,std::string("dirichlet weak"), 0, i);
-            bc.add(0,boundary::west, std::string("dirichlet weak"), 0, i);
+            bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, i ); // unknown 1 - y
+            bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
         }
-        tmp << 0,0,-1;
+
+        bc.addCondition(boundary::east, condition_type::clamped, 0, 0 ,false,2);
+        bc.addCondition(boundary::west, condition_type::clamped, 0, 0 ,false,2);
+
+        tmp<<0,0,-1;
+    }
+    else if (testCase == 12)
+    {
+        for (index_t i=0; i!=3; ++i)
+        {
+            bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+        }
+
+        bc.addCondition(boundary::west, condition_type::clamped, 0, 0 ,false,2);
+
+        neu << 0, 0, -1;
+        neuData.setValue(neu,3);
+
+        bc.addCondition(boundary::east, condition_type::neumann, &neuData );
     }
     //! [Refinement]
 
@@ -1724,11 +1706,11 @@ int main(int argc, char *argv[])
     auto S_f = E_f * reshape(mm,3,3);
     auto M   = tt.val() * tt.val() * tt.val() / 12.0 * S_f;
 
-    auto E_f_der = ( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,defG) ) ) * reshape(m2,3,3); //[checked]
+    auto E_f_der = -( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,defG) ) ) * reshape(m2,3,3); //[checked]
     auto S_f_der = E_f_der * reshape(mm,3,3);
     auto M_der   = tt.val() * tt.val() * tt.val() / 12.0 * S_f_der;
 
-    auto E_f_der2 = flatdot2( deriv2(u), var1(u,defG).tr(), M  ).symmetrize() + var2(u,u,defG, M );
+    auto E_f_der2 = - (flatdot2( deriv2(u), var1(u,defG).tr(), M  ).symmetrize() + var2(u,u,defG, M ));
 
     auto F        = ff;
 
@@ -1844,7 +1826,7 @@ int main(int argc, char *argv[])
     gsDebugVar(A.rhs().transpose());
 
     // gsDebugVar(solVector.transpose());
-    
+
 
     // update deformed patch
     gsMatrix<> cc;
@@ -1858,7 +1840,7 @@ int main(int argc, char *argv[])
     }
     // gsDebugVar(mp.patch(0).coefs());
     // gsDebugVar(mp_def.patch(0).coefs());
-    
+
     // gsMatrix<> result;
     // u_sol.extractFull(result);
     // gsDebugVar(result.transpose());
@@ -1893,8 +1875,8 @@ int main(int argc, char *argv[])
             A.initSystem(false);
             // assemble system
             A.assemble(
-                ( N_der * E_m_der.tr() + E_m_der2 + M_der * E_f_der.tr() - E_f_der2 ) * meas(G)
-                , u * F * meas(G) - ( ( N * E_m_der.tr() - M * E_f_der.tr() ) * meas(G) ).tr()
+                ( N_der * E_m_der.tr() + E_m_der2 + M_der * E_f_der.tr() + E_f_der2 ) * meas(G)
+                , u * F * meas(G) - ( ( N * E_m_der.tr() + M * E_f_der.tr() ) * meas(G) ).tr()
                 );
 
             // For Neumann (same for Dirichlet/Nitche) conditions
