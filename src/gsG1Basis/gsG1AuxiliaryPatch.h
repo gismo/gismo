@@ -352,7 +352,7 @@ public:
     }
 
     void checkOrientation(){
-        axisOrientation == 0 ? axisOrientation=1 : axisOrientation=0;
+        axisOrientation = ( axisOrientation == 0 ? 1 : 0 );
     }
 
 protected:

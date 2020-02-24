@@ -14,7 +14,6 @@
 # include <gismo.h>
 # include <gsAssembler/gsKirchhoffLoveShellAssembler.h>
 # include <gsG1Basis/gsG1AuxiliaryMultiplePatches.h>
-# include <gsG1Basis/gsG1BasisEdge.h>
 
 
 using namespace gismo;
