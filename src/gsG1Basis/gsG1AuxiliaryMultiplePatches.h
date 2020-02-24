@@ -175,26 +175,29 @@ public:
         gsMultiPatch<> test_mp(this->reparametrizeG1Interface()); // auxGeom contains now the reparametrized geometry
         gsMultiBasis<> test_mb(test_mp);
 
+
+
+        test_mb.degreeElevate(optionList.getInt("degree"));
         gsInfo << test_mb << "\n";
 
-//        test_mb.degreeElevate(1);
-
         index_t maxDegree = test_mb.minCwiseDegree();
-        test_mb.uniformRefine(3,maxDegree-1);
+        test_mb.uniformRefine(optionList.getInt("refine"),maxDegree-optionList.getInt("regularity"));
 
 //      gsInfo << "p_tilde : " << optionList << "\n";
-        gsG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, optionList);
+        gsG1BasisEdge<real_t> g1BasisEdge_0(test_mp, test_mb, 0, false, optionList);
+        gsG1BasisEdge<real_t> g1BasisEdge_1(test_mp, test_mb, 1, false, optionList);
         gsMultiPatch<> g1Basis_0, g1Basis_1;
-        g1BasisEdge.constructSolution(g1Basis_0,g1Basis_1);
-//      g1BasisEdge.plotG1Basis(g1Basis_0,g1Basis_1, test_mp, test_mp, "G1Basis_old");
+        g1BasisEdge_0.constructSolution(g1Basis_0);
+        g1BasisEdge_1.constructSolution(g1Basis_1);
+        g1BasisEdge_0.plotG1Basis(g1Basis_0,g1Basis_1, test_mp, "G1Basis_old");
 
 //      Patch 0 -> Right
         auxGeom[0].parametrizeBasisBack(g1Basis_0);
 
 //      Patch 1 -> Left
         auxGeom[1].parametrizeBasisBack(g1Basis_1);
-        g1BasisEdge.plotG1Basis(auxGeom[0].getG1Basis(),auxGeom[1].getG1Basis(), mp_init, "G1Basis");
-        g1BasisEdge.g1Condition();
+        g1BasisEdge_0.plotG1Basis(auxGeom[0].getG1Basis(),auxGeom[1].getG1Basis(), mp_init, "G1Basis");
+        g1BasisEdge_0.g1Condition();
     }
 
 

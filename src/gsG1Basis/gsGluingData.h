@@ -28,8 +28,10 @@ public:
 
     gsGluingData(gsMultiPatch<T> const & mp,
                  gsMultiBasis<T> const & mb,
+                 index_t patchId_local,
+                 bool isBoundary,
                  gsOptionList const & optionList)
-        : m_mp(mp), m_mb(mb), m_optionList(optionList)
+        : m_mp(mp), m_mb(mb), m_patchId_local(patchId_local), m_isBoundary(isBoundary), m_optionList(optionList)
     {
         m_gamma = 1.0;
 
@@ -87,6 +89,8 @@ protected:
     // The geometry for a single interface in the right parametrizations
     gsMultiPatch<T> m_mp;
     gsMultiBasis<T> m_mb;
+    index_t m_patchId_local;
+    bool m_isBoundary;
     gsOptionList m_optionList;
 
     real_t m_gamma;

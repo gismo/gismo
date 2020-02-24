@@ -145,7 +145,7 @@ public:
             index_t dimU = temp_L.size(0);
             index_t dimV = temp_L.size(1);
 
-            gsInfo << " dimU: " << dimU << "\t dimV: " << dimV << "\n";
+            //gsInfo << " dimU: " << dimU << "\t dimV: " << dimV << "\n";
 
             // The number of cols has to match the dimension of the space
             gsMatrix<> mpar(dimU * dimV, G1repBasis.patch(np).targetDim());
@@ -297,7 +297,8 @@ public:
 
     void parametrizeBasisBack(const gsMultiPatch<> & g1Basis){
         G1repBasis = g1Basis;
-//        gsInfo << "Patch " << patchIndex << " old: " << G1repBasis.patch(0).coefs()<< "\n";
+
+        //gsInfo << "Patch " << patchIndex << " old: " << G1repBasis.patch(0).coefs()<< "\n";
         if(axisOrientation)
             this->swapBasisAxis();
 
@@ -317,8 +318,7 @@ public:
             default:
                 break;
         }
-//        gsInfo << "Patch " << patchIndex << " new: " << G1repBasis.patch(0).coefs() << "\n";
-
+        //gsInfo << "Patch " << patchIndex << " new: " << G1repBasis.patch(0).coefs() << "\n";
     }
 
 
