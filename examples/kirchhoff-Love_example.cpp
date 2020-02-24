@@ -1446,6 +1446,11 @@ public:
 
 };
 
+template <class T>
+gsMultiPatch<T> RectangularDomain(int n, int m, int p, int q, T L, T B);
+template <class T>
+gsMultiPatch<T> RectangularDomain(int n, int p, T L, T B);
+
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
@@ -1460,11 +1465,16 @@ int main(int argc, char *argv[])
     real_t PoissonRatio = 0.0;
     real_t thickness = 1.0;
 
+    index_t MaterialLaw = 0;
+    index_t Compressibility = 0;
+
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
     cmd.addInt( "t", "testCase", "Test case to run: 1 = unit square; 2 = Scordelis Lo Roof",  testCase );
+    cmd.addInt( "l", "law", "MaterialLaw", MaterialLaw );
+    cmd.addInt( "c", "comp", "Compressibility", Compressibility );
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("nl", "Solve nonlinear problem", nonlinear);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
@@ -1475,6 +1485,7 @@ int main(int argc, char *argv[])
     //! [Read input file]
     gsMultiPatch<> mp;
     gsMultiPatch<> mp_def;
+
     if (testCase == 2  || testCase == 3)
     {
         thickness = 0.25;
@@ -1491,9 +1502,9 @@ int main(int argc, char *argv[])
         mp.embed(3);
         E_modulus = 1e0;
         thickness = 1e0;
-        PoissonRatio = 0.499;
+        PoissonRatio = 0.0;
+        // PoissonRatio = 0.499;
     }
-
     //! [Read input file]
 
     // p-refine
@@ -1527,24 +1538,48 @@ int main(int argc, char *argv[])
     {
         for (index_t i=0; i!=3; ++i)
         {
-            bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0 ,false,i);
-            bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ,false,i);
-            bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0 ,false,i);
-            bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ,false,i);
+            bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, i ); // unknown 0 - x
+            bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, i ); // unknown 1 - y
+            bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+            bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
         }
+        // tmp << 0,0,0;
         tmp << 0,0,-1;
+
+        // Point loads
+        gsVector<> point(2);
+        gsVector<> load (3);
+        // point<< 0.5, 0.5 ; load << 0.0, 1.0, 0.0 ;
+        // pLoads.addLoad(point, load, 0 );
     }
     else if (testCase == 2)
     {
         // Diaphragm conditions
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0,false,1 ); // unknown 1 - y
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0,false,2 ); // unknown 2 - z
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
+
+        // ORIGINAL
         bc.addCornerValue(boundary::southwest, 0.0, 0, 0); // (corner,value, patch, unknown)
 
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0,false,1 ); // unknown 1 - y
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0,false,2 ); // unknown 2 - z
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
 
-        tmp << 0,0,-90;
+        // NOT ORIGINAL
+        // bc.addCondition(boundary::west, condition_type::dirichlet, &displ, 0 ); // unknown 1 - x
+        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
+        // bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
+
+        // Surface forces
+        tmp << 0, 0, -90;
+
+        // for (index_t i=0; i!=3; ++i)
+        // {
+        //     bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, i ); // unknown 0 - x
+        //     bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, i ); // unknown 1 - y
+        //     bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+        //     bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+        // }
+        // tmp << 0,0,-90;
     }
     else if (testCase == 3)
     {
@@ -1558,12 +1593,12 @@ int main(int argc, char *argv[])
         // ORIGINAL
         // bc.addCornerValue(boundary::southwest, 0.0, 0, 0); // (corner,value, patch, unknown)
 
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, 1 ); // unknown 1 - y
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, 2 ); // unknown 2 - z
 
         // NOT ORIGINAL
         // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ); // unknown 1 - x
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, 0 ); // unknown 1 - x
 
         // Surface forces
         tmp << 0, 0, 0;
@@ -1607,6 +1642,23 @@ int main(int argc, char *argv[])
 
         bc.addCondition(boundary::east, condition_type::neumann, &neuData );
     }
+    else if (testCase == 13)
+    {
+        for (index_t i=0; i!=3; ++i)
+        {
+            bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, i ); // unknown 0 - x
+            bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, i ); // unknown 1 - y
+            bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+            bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+        }
+
+        bc.addCondition(boundary::north, condition_type::clamped, 0, 0 ,false,2);
+        bc.addCondition(boundary::east, condition_type::clamped, 0, 0 ,false,2);
+        bc.addCondition(boundary::south, condition_type::clamped, 0, 0 ,false,2);
+        bc.addCondition(boundary::west, condition_type::clamped, 0, 0 ,false,2);
+
+        tmp << 0,0,-1;
+    }
     //! [Refinement]
 
     //! [Problem setup]
@@ -1632,6 +1684,10 @@ int main(int argc, char *argv[])
     // u.setInterfaceCont(0); // todo: 1 (smooth basis)
     // u.addBc( bc.get("Dirichlet") ); // (!) must be called only once
 
+    u.setup(bc, dirichlet::interpolation, 0);
+
+    gsDebug<<u.mapper()<<"\n";
+
     // Solution vector and solution variable
     gsMatrix<> random;
     solution u_sol = A.getSolution(u,random);
@@ -1645,14 +1701,11 @@ int main(int argc, char *argv[])
     gsMaterialMatrixD materialMatD(mp, E, nu);
     variable mmD = A.getCoeff(materialMatD); // evaluates in the parametric domain, but the class transforms E and nu to physical
 
+    gsFunctionExpr<> t(std::to_string(thickness), 3);
+    variable tt = A.getCoeff(t, G); // evaluates in the physical domain
 
     gsFunctionExpr<> mult2t("1","0","0","0","1","0","0","0","2",3);
     variable m2 = A.getCoeff(mult2t, G); // evaluates in the physical domain
-
-    gsFunctionExpr<> t(std::to_string(thickness), 3);
-    variable tt = A.getCoeff(t, G); // evaluates in the physical domain
-    // TEMPORARILY!!
-    // real_t tt = thickness;
 
     // gsFunctionExpr<> force("0","0","1", 3);
     gsConstantFunction<> force(tmp,3);
@@ -1667,7 +1720,6 @@ int main(int argc, char *argv[])
     // Set Dirichlet values
     //A.options().setInt("DirichletValues", dirichlet::homogeneous);
 
-    u.setup(bc, dirichlet::interpolation, 0);
     // Initialize the system
     A.initSystem(false);
 
@@ -1714,26 +1766,6 @@ int main(int argc, char *argv[])
 
     auto F        = ff;
 
-    auto That       = cartcon(G);
-    auto That_def   = cartcon(defG);
-    auto Ttilde     = cartcov(G).inv(); // IS INVERTED
-    auto D = Ttilde*reshape(mmD,3,3)*That; // NOTE: That = Ttilde.inv()
-
-    auto C = reshape(mm,3,3);
-
-    auto S_m2 = (tt.val() * E_m * C ) * Ttilde;
-    auto S_f2 = (pow(tt.val(),3)/12.0 * E_f * C ) * Ttilde;
-
-    // NOTE: var1(u,G) in E_F_der2 should be var1(u,defG)
-
-    // gsInfo<<"E_m_test: "<<typeid(E_mtest).name()<<"\n";
-    // gsInfo<<"E_m: "<<typeid(E_m).name()<<"\n";
-    // gsInfo<<"E_m_der: "<<typeid(E_m_der).name()<<"\n";
-    // gsInfo<<"E_m_der2: "<<typeid(E_m_der2).name()<<"\n";
-    // gsInfo<<"E_f: "<<typeid(E_f).name()<<"\n";
-    // gsInfo<<"E_f_der: "<<typeid(E_f_der).name()<<"\n";
-    // gsInfo<<"E_f_der2: "<<typeid(E_f_der2).name()<<"\n";
-
 
     gsVector<> pt(2); pt.setConstant(0.1);
     gsVector<> pt2(3); pt2.setConstant(2);
@@ -1747,11 +1779,6 @@ int main(int argc, char *argv[])
     // 1.0,1.0;
     // pt = pt.transpose();
     gsDebugVar(pt);
-    // evaluateFunction(ev, cartcov(G).inv()*F, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, Ttilde, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, TtildeInv, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, C, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, D, pt); // evaluates an expression on a point
 
     // ! [Solve linear problem]
 
@@ -1771,6 +1798,13 @@ int main(int argc, char *argv[])
         u * F  * meas(G)
         );
 
+    // evaluateFunction(ev, reshape(mmA,3,3), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, reshape(mmB,3,3), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, reshape(mmC,3,3), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, reshape(mmD,3,3), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, S0, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, S1, pt); // evaluates an expression on a point
+
 
     // evaluateFunction(ev, N_der * cartcon(G) * (E_m_der * cartcon(G)).tr(), pt); // evaluates an expression on a point
     // evaluateFunction(ev, (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr()).tr(), pt); // evaluates an expression on a point
@@ -1785,48 +1819,43 @@ int main(int argc, char *argv[])
 
     // For Neumann (same for Dirichlet/Nitsche) conditions
     variable g_N = A.getBdrFunction();
-    A.assembleRhsBc(u * g_N, bc.neumannSides() );
+    A.assembleRhsBc(u * g_N, bc.container("Neumann") );
 
-    // // for weak dirichlet (DOES THIS HANDLE COMPONENTS?)
-    // real_t alpha_d = 1e3;
-    // A.assembleLhsRhsBc
-    // (
-    //     alpha_d * u * u.tr()
-    //     ,
-    //     alpha_d * u * (defG - G - g_N).tr()
-    //     ,
-    //     bc.container("dirichlet weak")
-    // );
+    // for weak dirichlet (DOES THIS HANDLE COMPONENTS?)
+    real_t alpha_d = 1e3;
+    A.assembleLhsRhsBc
+    (
+        alpha_d * u * u.tr()
+        ,
+        alpha_d * u * (defG - G - g_N).tr()
+        ,
+        bc.container("dirichlet weak")
+    );
 
-    // // for weak clamped
-    // real_t alpha_r = 1e3;
-    // A.assembleLhsRhsBc
-    // (
-    //     // alpha_r * ( sn(defG).tr()*sn(G) - 1.0 ) * ( flatdot2??? )
-    //     // +
-    //     alpha_r * ( var1(u,defG) * sn(G).tr() ).symmetrize()
-    //     ,
-    //     alpha_r * ( sn(defG)*sn(G).tr() - sn(G)*sn(G).tr() ) * ( var1(u,defG) * sn(G).tr() )
-    //     ,
-    //     bc.container("clamped weak")
-    // );
+    // for weak clamped
+    real_t alpha_r = 1e3;
+    A.assembleLhsRhsBc
+    (
+        // alpha_r * ( sn(defG).tr()*sn(G) - 1.0 ) * ( flatdot2??? )
+        // +
+        alpha_r * ( var1(u,defG) * sn(G).tr() ).symmetrize()
+        ,
+        alpha_r * ( sn(defG)*sn(G).tr() - sn(G)*sn(G).tr() ) * ( var1(u,defG) * sn(G).tr() )
+        ,
+        bc.container("clamped weak")
+    );
 
 
-    // gsDebugVar(A.matrix().toDense());
+    gsDebugVar(A.matrix().toDense());
     // gsDebugVar(A.matrix().rows());
     // gsDebugVar(A.matrix().cols());
-    // gsDebugVar(A.rhs().transpose());
+    gsDebugVar(A.rhs().transpose());
+
 
 
     // solve system
     solver.compute( A.matrix() );
     gsMatrix<> solVector = solver.solve(A.rhs());
-
-    gsDebugVar(A.matrix().toDense());
-    gsDebugVar(A.rhs().transpose());
-
-    // gsDebugVar(solVector.transpose());
-
 
     // update deformed patch
     gsMatrix<> cc;
@@ -1838,12 +1867,11 @@ int main(int argc, char *argv[])
         u_sol.extract(cc, k);
         mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
     }
-    // gsDebugVar(mp.patch(0).coefs());
-    // gsDebugVar(mp_def.patch(0).coefs());
 
-    // gsMatrix<> result;
-    // u_sol.extractFull(result);
-    // gsDebugVar(result.transpose());
+    gsDebugVar(mp_def.patch(0).coefs().transpose());
+
+    gsMatrix<> result;
+    u_sol.extractFull(result);
 
     /*Something with Dirichlet homogenization*/
 
@@ -1875,7 +1903,15 @@ int main(int argc, char *argv[])
             A.initSystem(false);
             // assemble system
             A.assemble(
-                ( N_der * E_m_der.tr() + E_m_der2 + M_der * E_f_der.tr() + E_f_der2 ) * meas(G)
+                (
+                  N_der * E_m_der.tr()
+                    +
+                  E_m_der2
+                    +
+                  M_der * E_f_der.tr()
+                    +
+                  E_f_der2
+                  ) * meas(G)
                 , u * F * meas(G) - ( ( N * E_m_der.tr() + M * E_f_der.tr() ) * meas(G) ).tr()
                 );
 
@@ -1887,11 +1923,12 @@ int main(int argc, char *argv[])
             // solve system
             solver.compute( A.matrix() );
             gsMatrix<> updateVector = solver.solve(A.rhs()); // this is the UPDATE
-            solVector += updateVector;
-            residual = A.rhs().norm();
 
-            gsDebugVar(A.matrix().toDense());
-            gsDebugVar(A.rhs().transpose());
+            // gsDebugVar(A.matrix().toDense());
+            // gsDebugVar(A.rhs().transpose());
+
+            solVector += updateVector; // WHY??
+            residual = A.rhs().norm();
 
             gsInfo<<"Iteration: "<< it
                    <<", residue: "<< residual
@@ -1903,14 +1940,13 @@ int main(int argc, char *argv[])
             residualOld = residual;
 
             // update deformed patch
-            u_sol.setSolutionVector(updateVector);
+            u_sol.setSolutionVector(updateVector); // WHY?>
             for ( size_t k =0; k!=mp_def.nPatches(); ++k) // Deform the geometry
             {
                 // // extract deformed geometry
                 u_sol.extract(cc, k);
                 mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
             }
-
 
             if (residual < tol)
                 break;
@@ -2014,6 +2050,70 @@ void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsMatrix<T> pt)
         gsInfo<<evresult<<"\n";
     }
 };
+
+template <class T>
+gsMultiPatch<T> RectangularDomain(int n, int p, T L, T B)
+{
+  int q = p;
+  int m = n;
+  gsMultiPatch<T> mp = RectangularDomain(n, m, p, q, L, B);
+  return mp;
+}
+
+template <class T>
+gsMultiPatch<T> RectangularDomain(int n, int m, int p, int q, T L, T B)
+{
+  // -------------------------------------------------------------------------
+  // --------------------------Make beam geometry-----------------------------
+  // -------------------------------------------------------------------------
+  int dim = 3; //physical dimension
+  gsKnotVector<> kv0;
+  kv0.initUniform(0,1,0,p+1,1);
+  gsKnotVector<> kv1;
+  kv1.initUniform(0,1,0,q+1,1);
+
+  for(index_t i = 0; i< n; ++i)
+      kv0.uniformRefine();
+  for(index_t i = 0; i< m; ++i)
+      kv1.uniformRefine();
+
+  // Make basis
+  gsTensorBSplineBasis<2,T> basis(kv0,kv1);
+
+  // Initiate coefficient matrix
+  gsMatrix<> coefs(basis.size(),dim);
+  // Number of control points needed per component
+  size_t len0 = basis.component(0).size();
+  size_t len1 = basis.component(1).size();
+  gsVector<> coefvec0(len0);
+  // Uniformly distribute control points per component
+  coefvec0.setLinSpaced(len0,0.0,L);
+  gsVector<> coefvec1(basis.component(1).size());
+  coefvec1.setLinSpaced(len1,0.0,B);
+
+  // Z coordinate is zero
+  coefs.col(2).setZero();
+
+  // Define a matrix with ones
+  gsVector<> temp(len0);
+  temp.setOnes();
+  for (index_t k = 0; k < len1; k++)
+  {
+    // First column contains x-coordinates (length)
+    coefs.col(0).segment(k*len0,len0) = coefvec0;
+    // Second column contains y-coordinates (width)
+    coefs.col(1).segment(k*len0,len0) = temp*coefvec1.at(k);
+  }
+  // Create gsGeometry-derived object for the patch
+  gsTensorBSpline<2,real_t> shape(basis,coefs);
+
+  gsMultiPatch<T> mp;
+  mp.addPatch(shape);
+  mp.addAutoBoundaries();
+
+  return mp;
+}
+
 
 /*
 template<class T>
