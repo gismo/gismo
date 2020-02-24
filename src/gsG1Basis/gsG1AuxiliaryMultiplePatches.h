@@ -32,6 +32,7 @@ public:
     gsG1AuxiliaryMultiplePatches(const gsMultiPatch<> & mp, const size_t firstPatch, const size_t secondPatch){
         auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(firstPatch), firstPatch));
         auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(secondPatch), secondPatch));
+
         for(unsigned i = 0; i <  auxGeom.size(); i++){
             if(auxGeom[i].getPatch().orientation() == -1)
             {
@@ -58,7 +59,7 @@ public:
 
 
     // Compute topology
-    // After computeTopology() the patches will have the same patch-index as the position-index inside auxGeom
+    // After computeTopology() the patches will have the same patch-index as the position-index in auxGeom
     // EXAMPLE: global patch-index-order inside auxGeom: [2, 3, 4, 1, 0]
     //          in auxTop: 2->0, 3->1, 4->2, 1->3, 0->4
     gsMultiPatch<> computeAuxTopology(){
@@ -67,7 +68,7 @@ public:
         for(unsigned i = 0; i <  auxGeom.size(); i++){
             auxTop.addPatch(auxGeom[i].getPatch());
         }
-        // After computeTopology() the patch with initial bigger patch-index will have index zero and vice-versa
+
         auxTop.computeTopology();
         return auxTop;
     }
@@ -78,6 +79,7 @@ public:
         if(repTop.interfaces()[0].second().side().index() == 1 && repTop.interfaces()[0].first().side().index() == 3)
             return repTop;
 
+        // Right patch along the interface. Patch 0 -> v coordinate. Edge west along interface
         switch (repTop.interfaces()[0].second().side().index())
         {
             case 1:
@@ -95,6 +97,8 @@ public:
             default:
                 break;
         }
+
+        // Left patch along the interface. Patch 1 -> u coordinate. Edge south along interface
         switch (repTop.interfaces()[0].first().side().index())
         {
             case 3:
@@ -116,6 +120,7 @@ public:
     }
 
     void reparametrizeG1Vertex(size_t patchInd, size_t vertexIndex){
+
         if(auxGeom[patchInd].getOrient() == 0)
         {
             switch (vertexIndex)
@@ -137,6 +142,7 @@ public:
                     break;
             }
         }
+        // If the orientation is changed
         else{
             switch (vertexIndex)
             {
@@ -162,11 +168,11 @@ public:
     void computeG1EdgeBasis(gsOptionList optionList){
 
         gsMultiPatch<> mp_init;
-        mp_init.addPatch(auxGeom[0].getPatch());// Left -> 0 = v along the interface
-        mp_init.addPatch(auxGeom[1].getPatch()); // Right -> 1 = u along the interface
+        mp_init.addPatch(auxGeom[0].getPatch());// Right -> 0 = v along the interface
+        mp_init.addPatch(auxGeom[1].getPatch()); // Left -> 1 = u along the interface
 
 
-        gsMultiPatch<> test_mp(this->reparametrizeG1Interface());
+        gsMultiPatch<> test_mp(this->reparametrizeG1Interface()); // auxGeom contains now the reparametrized geometry
         gsMultiBasis<> test_mb(test_mp);
 
         gsInfo << test_mb << "\n";
@@ -182,10 +188,10 @@ public:
         g1BasisEdge.constructSolution(g1Basis_0,g1Basis_1);
 //      g1BasisEdge.plotG1Basis(g1Basis_0,g1Basis_1, test_mp, test_mp, "G1Basis_old");
 
-//        Patch 0 -> Left
+//      Patch 0 -> Right
         auxGeom[0].parametrizeBasisBack(g1Basis_0);
 
-//        Patch 1 -> Right
+//      Patch 1 -> Left
         auxGeom[1].parametrizeBasisBack(g1Basis_1);
         g1BasisEdge.plotG1Basis(auxGeom[0].getG1Basis(),auxGeom[1].getG1Basis(), mp_init, "G1Basis");
         g1BasisEdge.g1Condition();

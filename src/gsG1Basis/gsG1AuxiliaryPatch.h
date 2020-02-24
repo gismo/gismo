@@ -297,7 +297,7 @@ public:
 
     void parametrizeBasisBack(const gsMultiPatch<> & g1Basis){
         G1repBasis = g1Basis;
-        gsInfo << "Patch " << patchIndex << " old: " << G1repBasis.patch(0).coefs()<< "\n";
+//        gsInfo << "Patch " << patchIndex << " old: " << G1repBasis.patch(0).coefs()<< "\n";
         if(axisOrientation)
             this->swapBasisAxis();
 
@@ -317,7 +317,7 @@ public:
             default:
                 break;
         }
-        gsInfo << "Patch " << patchIndex << " new: " << G1repBasis.patch(0).coefs() << "\n";
+//        gsInfo << "Patch " << patchIndex << " new: " << G1repBasis.patch(0).coefs() << "\n";
 
     }
 
