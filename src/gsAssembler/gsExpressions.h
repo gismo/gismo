@@ -819,9 +819,9 @@ public:
             {
                 const int ii = m_mapper.index(i, p, c);
                 if ( m_mapper.is_free_index(ii) ) // DoF value is in the solVector
-                    result(i,c) = solVector.at(ii );
+                        result(i,c) = solVector.at(ii );
                 else // eliminated DoF: fill with Dirichlet data
-                    result.row(i) = m_fixedDofs.row( m_mapper.global_to_bindex(ii) ).head(dim);
+                    result(i,c) = m_fixedDofs( m_mapper.global_to_bindex(ii),c ); // [HMV] is this correct?
             }
         }
     }
@@ -934,7 +934,7 @@ public:
 
                 GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
                               "Problem: a boundary condition is set on a patch id which does not exist.");
-                
+
                 bnd  = mb->basis(it->ps.patch).boundaryOffset( it->ps.side(), 0);
                 bnd1 = mb->basis(it->ps.patch).boundaryOffset( it->ps.side(), 1);
                 // Cast to tensor b-spline basis
@@ -967,8 +967,6 @@ public:
                               "Problem: a boundary condition is set on a patch id which does not exist.");
 
                 bnd = mb->basis(it->ps.patch).boundary( it->ps.side() );
-                gsDebugVar(bnd);
-                gsDebugVar(cc);
 
                 // Cast to tensor b-spline basis
                 if ( mb != NULL) // clamp adjacent dofs
@@ -1044,6 +1042,8 @@ public:
         }
 
         m_mapper.finalize();
+
+        gsDebug<<m_mapper<<"\n";
 
         // No more BCs
         //m_bcs = bc.get("Dirichlet");
