@@ -177,11 +177,6 @@ public:
         gsMultiPatch<> test_mp(this->reparametrizeG1Interface()); // auxGeom contains now the reparametrized geometry
         gsMultiBasis<> test_mb(test_mp);
 
-        test_mb.degreeElevate(optionList.getInt("degree"));
-        gsInfo << test_mb << "\n";
-
-        index_t maxDegree = test_mb.minCwiseDegree();
-        test_mb.uniformRefine(optionList.getInt("refine"),maxDegree-optionList.getInt("regularity"));
 
 //      gsInfo << "p_tilde : " << optionList << "\n";
         gsG1BasisEdge<real_t> g1BasisEdge_0(test_mp, test_mb, 0, false, optionList);

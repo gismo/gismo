@@ -818,6 +818,8 @@ public:
     /// \sa gsBasis::uniformRefine
     virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1);
 
+    virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, std::vector<int> mul = {1});
+
     /// @brief Refine the basis uniformly
     ///
     /// The function writes a sparse matrix into the variable \a transfer that indicates

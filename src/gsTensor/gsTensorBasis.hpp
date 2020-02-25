@@ -831,6 +831,16 @@ void gsTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnot
     coefs = transfer * coefs;
 }
 
+template<short_t d, class T>
+void gsTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, std::vector<int> mul)
+{
+    // Simple implementation: get the transfer matrix and apply it.
+    // Could be done more efficiently if needed.
+    gsSparseMatrix<T, RowMajor> transfer;
+    this->uniformRefine_withTransfer( transfer, numKnots, mul );
+    coefs = transfer * coefs;
+}
+
 
 template<short_t d, class T>
 void gsTensorBasis<d,T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots, int mul)
@@ -841,6 +851,23 @@ void gsTensorBasis<d,T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> &
     for (short_t i = 0; i < d; ++i)
     {
         m_bases[i]->uniformRefine_withTransfer( B[i], numKnots, mul );
+    }
+
+    tensorCombineTransferMatrices<d, T>( B, transfer );
+}
+
+template<short_t d, class T>
+void gsTensorBasis<d,T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots, std::vector<int> mul)
+{
+    GISMO_ASSERT (mul.size() == d,
+                  "Expecting as many values as the dimension of the basis functions." );
+
+    gsSparseMatrix<T,RowMajor> B[d];
+
+    // refine component bases and obtain their transfer matrices
+    for (short_t i = 0; i < d; ++i)
+    {
+        m_bases[i]->uniformRefine_withTransfer( B[i], numKnots, mul[i] );
     }
 
     tensorCombineTransferMatrices<d, T>( B, transfer );
