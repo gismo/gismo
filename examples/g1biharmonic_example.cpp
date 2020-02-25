@@ -116,7 +116,6 @@ int main(int argc, char *argv[])
     gsMultiPatch<> multiPatch;
     fd.getId(0, multiPatch); // id=0: Multipatch domain
     multiPatch.computeTopology();
-    gsMultiBasis<> mb(multiPatch);
 
 
     gsWriteParaview(multiPatch,"geometry",5000,true);
@@ -130,6 +129,13 @@ int main(int argc, char *argv[])
     optionList.addSwitch("plot","Plot in Paraview",plot);
     optionList.addInt("refine","Refinement",numRefine);
     optionList.addInt("degree","Degree",numDegree);
+
+
+    multiPatch.degreeElevate(optionList.getInt("degree"));
+    index_t maxDegree = multiPatch.basis(0).minDegree();
+    multiPatch.uniformRefine(optionList.getInt("refine"),maxDegree-optionList.getInt("regularity"));
+
+    gsMultiBasis<> mb(multiPatch);
 
     // Interface loop
     for (const boundaryInterface &  item : multiPatch.interfaces() )
@@ -157,8 +163,8 @@ int main(int argc, char *argv[])
     }
 
     // BiharmonicAssembler
-    //gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
-    //g1BiharmonicAssembler.assemble();
+    gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
+    g1BiharmonicAssembler.assemble();
 
     // TODO g1BiharmonicAssembler.computeDirichletDofsL2Proj(basisG1, n_tilde, n_bar );
 

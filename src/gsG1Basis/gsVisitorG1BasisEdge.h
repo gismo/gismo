@@ -64,6 +64,7 @@ public:
                          const gsGeometry<T>    & geo, // patch
                          gsMatrix<T>            & quNodes,
                          gsGluingData<T>  & gluingData,
+                         bool & isBoundary,
                          gsOptionList optionList)
     {
         md.points = quNodes;
@@ -121,61 +122,11 @@ public:
 
                 }
 
+                beta = isBoundary ? beta.setZero() : beta; // For the boundary, only on Patch 0
+
                 gsMatrix<T> temp = beta.cwiseProduct(N_1);
+                rhsVals_tilde.at(i) = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
 
-                // THIS CAN BE DELETE IF WE HAVE VERTICES SPACE
-                if  ( i == 1 || i == n_plus -2 || i == n_plus -3 || i == 2 )
-                {
-                    gsMatrix<T> lambda_0;
-
-                    gsMatrix<T> nulleins(1,1);
-                    index_t ii = 0; // HI ANDREA
-                    if (i == 1 || i == 2)
-                    {
-                        ii = i;
-                        nulleins << 0.0;
-                    }
-                    if (i == n_plus -3 || i == n_plus -2 )
-                    {
-                        if ( i == n_plus -3)
-                            ii = n_minus -3;
-                        if ( i == n_plus -2)
-                            ii = n_minus -2;
-                        nulleins << 1.0;
-                    }
-                    if (optionList.getSwitch("direct"))
-                    {
-
-                    }
-                    else if (optionList.getSwitch("local"))
-                    {
-
-                    }
-                    else
-                    {
-                        lambda_0 = gluingData.get_beta_tilde_0().eval(nulleins) * 1
-                            / (gluingData.get_alpha_tilde_0().eval(nulleins)(0, 0));
-                    }
-
-                    if ( i == 1 || i == n_plus -2 ) // MODIFY
-                    {
-                        gsMatrix<T> temp_tt = (beta - lambda_0 * alpha).cwiseProduct(N_1);
-
-                        rhsVals_tilde.at(i) =
-                            N_i_plus.cwiseProduct(N_0 + N_1) - temp_tt.cwiseProduct(der_N_i_plus) * tau_1 / p;
-
-                    }
-                    else
-                    {
-                        rhsVals_tilde.at(i) =
-                            N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
-
-                    }
-                } // END : THIS CAN BE DELETE IF WE HAVE VERTICES SPACE
-                else
-                {
-                    rhsVals_tilde.at(i) = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
-                }
 
                 localMat_tilde.at(i).setZero(numActive, numActive);
                 localRhs_tilde.at(i).setZero(numActive, rhsVals_tilde.at(i).rows());//multiple right-hand sides
@@ -196,7 +147,9 @@ public:
 
                 }
 
-                rhsVals_bar.at(i) = alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p;
+                alpha = isBoundary ? alpha.setOnes() : alpha; // For the boundary, only on Patch 0
+
+                rhsVals_bar.at(i) = alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1));
 
                 localMat_bar.at(i).setZero(numActive, numActive);
                 localRhs_bar.at(i).setZero(numActive, rhsVals_bar.at(i).rows());//multiple right-hand sides
@@ -234,57 +187,7 @@ public:
                 }
 
                 gsMatrix<> temp = beta.cwiseProduct(N_1);
-
-                if  ( i == 1 || i == n_plus -2 || i == n_plus -3 || i == 2 )
-                {
-                    gsMatrix<T> lambda_0;
-
-                    gsMatrix<T> nulleins(1,1);
-                    index_t ii = 0;
-                    if (i == 1 || i == 2)
-                    {
-                        ii = i;
-                        nulleins << 0.0;
-                    }
-                    if (i == n_plus -3 || i == n_plus -2 )
-                    {
-                        if ( i == n_plus -3)
-                            ii = n_minus -3;
-                        if ( i == n_plus -2)
-                            ii = n_minus -2;
-                        nulleins << 1.0;
-                    }
-                    if (optionList.getSwitch("direct"))
-                    {
-
-                    }
-                    else if (optionList.getSwitch("local"))
-                    {
-
-                    }
-                    else
-                    {
-                        lambda_0 = gluingData.get_beta_tilde_0().eval(nulleins) * 1
-                            / (gluingData.get_alpha_tilde_0().eval(nulleins)(0, 0));
-                    }
-
-                    if ( i == 1 || i == n_plus -2 ) // MODIFY
-                    {
-                        gsMatrix<T> temp_R_tt = (beta - lambda_0 * alpha).cwiseProduct(N_1); // lambda_L == lambda_R
-
-                        rhsVals_tilde.at(i) =
-                                N_i_plus.cwiseProduct(N_0 + N_1) - temp_R_tt.cwiseProduct(der_N_i_plus) * tau_1 / p;
-                    }
-                    else
-                    {
-                        rhsVals_tilde.at(i) =
-                                N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
-                    }
-                }
-                else
-                {
-                    rhsVals_tilde.at(i) = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
-                }
+                rhsVals_tilde.at(i) = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
 
                 localMat_tilde.at(i).setZero(numActive, numActive);
                 localRhs_tilde.at(i).setZero(numActive, rhsVals_tilde.at(i).rows());//multiple right-hand sides
@@ -305,7 +208,7 @@ public:
 
                 }
 
-                rhsVals_bar.at(i) = - alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p;
+                rhsVals_bar.at(i) = - alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1));
 
                 localMat_bar.at(i).setZero(numActive, numActive);
                 localRhs_bar.at(i).setZero(numActive, rhsVals_bar.at(i).rows());//multiple right-hand sides
