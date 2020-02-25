@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 {
     index_t numRefine = 5;
     index_t numDegree = 1;
-    bool plot = false;
+    bool plot = true;
 
     gsCmdLine cmd("Example for solving the Kirchhoff-Love problem.");
     cmd.addInt("r", "refine", "Number of refinement steps", numRefine);
@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
-    gsFileData<> fileSrc("KirchhoffLoveGeo/square_diffParam.xml");
+    gsFileData<> fileSrc("KirchhoffLoveGeo/square_diffParam1.xml");
     gsInfo << "Loaded file " << fileSrc.lastPath() << "\n";
 
     gsMultiPatch<> geo;
@@ -68,33 +68,48 @@ int main(int argc, char *argv[])
     optionList.addInt("p_tilde","Grad",1);
     optionList.addInt("r_tilde","Reg",0);
     optionList.addInt("regularity","Regularity of the initial geometry",1);
+    optionList.addInt("refine","Plot in Paraview",numRefine);
+    optionList.addInt("degree","Degree",numDegree);
     optionList.addSwitch("local","Local projection for gluing data",false);
     optionList.addSwitch("direct","Local projection for gluing data",false);
     optionList.addSwitch("plot","Plot in Paraview",false);
 
     // Interface loop
-    for (const boundaryInterface &  item : geo.interfaces() )
-    {
-
-
-        gsG1AuxiliaryMultiplePatches a(geo, item.first().patch, item.second().patch);
-
-//        test_mb.degreeElevate(numDegree);
+//    for (const boundaryInterface &  item : geo.interfaces() )
+//    {
 //
-//        index_t maxDegree = test_mb.minCwiseDegree();
-//        test_mb.uniformRefine(numRefine,maxDegree-1);
+//
+//        gsG1AuxiliaryMultiplePatches a(geo, item.first().patch, item.second().patch);
+//
+//        a.computeG1InterfaceBasis(optionList);
+//
+//    }
 
-        a.computeG1EdgeBasis(optionList);
+
+    for ( auto & it : geo.boundaries()){
+        gsInfo << "Patch: " << it.patch << "\n";
+        gsInfo << "m_index: " << it.m_index << "\n";
 
     }
 
 
 
+
+
 //     Loop over the boundary edges
-//    for (gsMultiPatch<>::const_biterator
-//             bit = geo.bBegin(); bit != geo.bEnd(); ++bit)
+//    for (gsMultiPatch<>::const_biterator bit = geo.bBegin(); bit != geo.bEnd(); ++bit)
 //    {
+//
 //    }
+
+
+
+
+
+
+
+
+
 
 
     // Vertices loop

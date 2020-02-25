@@ -60,16 +60,6 @@ B-splines meeting along one side
        of the two patches above -->
   <MultiPatch parDim="2" id="2">
     <patches type="id_range">0 1</patches>
-    <interfaces> 0 1 1 1 0 1 0 1
-    </interfaces>
-    <boundary>
-    1 4
-    1 3
-    0 4
-    0 2
-    0 3
-    1 2
-    </boundary>
   </MultiPatch>
 
 </xml>

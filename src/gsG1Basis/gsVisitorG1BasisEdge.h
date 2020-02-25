@@ -196,7 +196,7 @@ public:
 
                 }
 
-                rhsVals_bar.at(i) = alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p;
+                rhsVals_bar.at(i) = alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1));
 
                 localMat_bar.at(i).setZero(numActive, numActive);
                 localRhs_bar.at(i).setZero(numActive, rhsVals_bar.at(i).rows());//multiple right-hand sides
@@ -305,7 +305,7 @@ public:
 
                 }
 
-                rhsVals_bar.at(i) = - alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p;
+                rhsVals_bar.at(i) = - alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1));
 
                 localMat_bar.at(i).setZero(numActive, numActive);
                 localRhs_bar.at(i).setZero(numActive, rhsVals_bar.at(i).rows());//multiple right-hand sides

@@ -250,7 +250,7 @@ public:
         }
 
         // Create a new geometry starting from kntot vectors and the matrix of the coefficients reparametrized
-        gsTensorBSpline<2, real_t> newgeom1(temp_basisLU.knots(), temp_basisLV.knots(), mpar);
+        gsTensorBSpline<2, real_t> newgeom1(temp_basisLV.knots(), temp_basisLU.knots(), mpar);
 
         // Create a new single-patch object
         gsMultiPatch<> newpatch;
@@ -287,7 +287,7 @@ public:
             }
 
             // Create a new geometry starting from kntot vectors and the matrix of the coefficients reparametrized
-            gsTensorBSpline<2, real_t> newgeom1(temp_basisLU.knots(), temp_basisLV.knots(), mpar);
+            gsTensorBSpline<2, real_t> newgeom1(temp_basisLV.knots(), temp_basisLU.knots(), mpar);
 
             newpatch.addPatch(newgeom1);
         }
@@ -299,7 +299,9 @@ public:
         G1repBasis = g1Basis;
 
         //gsInfo << "Patch " << patchIndex << " old: " << G1repBasis.patch(0).coefs()<< "\n";
+        gsInfo << axisOrientation << "\n";
         if(axisOrientation)
+
             this->swapBasisAxis();
 
         switch (rotationNum)
@@ -318,6 +320,7 @@ public:
             default:
                 break;
         }
+
         //gsInfo << "Patch " << patchIndex << " new: " << G1repBasis.patch(0).coefs() << "\n";
     }
 

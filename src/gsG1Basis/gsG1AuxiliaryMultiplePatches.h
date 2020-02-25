@@ -28,18 +28,15 @@ class gsG1AuxiliaryMultiplePatches
 
 public:
 
+    // Constructor for one patch and it's boundary
+    gsG1AuxiliaryMultiplePatches(const gsMultiPatch<> & sp, const size_t patchInd){
+        auxGeom.push_back(gsG1AuxiliaryPatch(sp.patch(patchInd), patchInd));
+    }
+
     // Constructor for two patches along the common interface
     gsG1AuxiliaryMultiplePatches(const gsMultiPatch<> & mp, const size_t firstPatch, const size_t secondPatch){
         auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(firstPatch), firstPatch));
         auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(secondPatch), secondPatch));
-
-        for(unsigned i = 0; i <  auxGeom.size(); i++){
-            if(auxGeom[i].getPatch().orientation() == -1)
-            {
-                auxGeom[i].swapAxis();
-                gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
-            }
-        }
     }
 
     // Constructor for n patches around a common vertex
@@ -63,12 +60,15 @@ public:
     // EXAMPLE: global patch-index-order inside auxGeom: [2, 3, 4, 1, 0]
     //          in auxTop: 2->0, 3->1, 4->2, 1->3, 0->4
     gsMultiPatch<> computeAuxTopology(){
-        
         gsMultiPatch<> auxTop;
         for(unsigned i = 0; i <  auxGeom.size(); i++){
+            if(auxGeom[i].getPatch().orientation() == -1)
+            {
+                auxGeom[i].swapAxis();
+                gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
+            }
             auxTop.addPatch(auxGeom[i].getPatch());
         }
-
         auxTop.computeTopology();
         return auxTop;
     }
@@ -76,6 +76,7 @@ public:
 
     gsMultiPatch<> reparametrizeG1Interface(){
         gsMultiPatch<> repTop(this->computeAuxTopology());
+
         if(repTop.interfaces()[0].second().side().index() == 1 && repTop.interfaces()[0].first().side().index() == 3)
             return repTop;
 
@@ -118,6 +119,28 @@ public:
         }
        return this->computeAuxTopology();
     }
+
+
+    gsMultiPatch<> reparametrizeG1Boundary(const int bInd){
+        gsMultiPatch<> repTop(this->computeAuxTopology());
+        switch (bInd)
+        {
+            case 1:
+                gsInfo << "Patch: " << repTop.patch(0) << " not rotated\n";
+                break;
+            case 4: auxGeom[0].rotateParamClock();
+                gsInfo << "Patch: " << repTop.patch(0) << " rotated clockwise\n";
+                break;
+            case 2: auxGeom[0].rotateParamAntiClockTwice();
+                gsInfo << "Patch: " << repTop.patch(0) << " rotated twice anticlockwise\n";
+                break;
+            case 3: auxGeom[0].rotateParamAntiClock();
+                gsInfo << "Patch: " << repTop.patch(0) << " rotated anticlockwise\n";
+                break;
+        }
+        return this->computeAuxTopology();
+    }
+
 
     void reparametrizeG1Vertex(size_t patchInd, size_t vertexIndex){
 
@@ -165,23 +188,21 @@ public:
         }
     }
 
-    void computeG1EdgeBasis(gsOptionList optionList){
+    void computeG1InterfaceBasis(gsOptionList optionList){
 
         gsMultiPatch<> mp_init;
         mp_init.addPatch(auxGeom[0].getPatch());// Right -> 0 = v along the interface
         mp_init.addPatch(auxGeom[1].getPatch()); // Left -> 1 = u along the interface
 
-
         gsMultiPatch<> test_mp(this->reparametrizeG1Interface()); // auxGeom contains now the reparametrized geometry
         gsMultiBasis<> test_mb(test_mp);
 
-
+        gsInfo << optionList << "\n";
 
         test_mb.degreeElevate(optionList.getInt("degree"));
-        gsInfo << test_mb << "\n";
-
         index_t maxDegree = test_mb.minCwiseDegree();
         test_mb.uniformRefine(optionList.getInt("refine"),maxDegree-optionList.getInt("regularity"));
+        gsInfo << test_mb << "\n";
 
 //      gsInfo << "p_tilde : " << optionList << "\n";
         gsG1BasisEdge<real_t> g1BasisEdge_0(test_mp, test_mb, 0, false, optionList);
@@ -200,6 +221,15 @@ public:
         g1BasisEdge_0.g1Condition();
     }
 
+
+    void computeG1BoundaryBasis(gsOptionList optionList, const int boundaryInd){
+        gsMultiPatch<> mp_init;
+        mp_init.addPatch(auxGeom[0].getPatch());
+
+        gsMultiPatch<> test_mp(this->reparametrizeG1Boundary(boundaryInd));
+        gsMultiBasis<> test_mb(test_mp);
+
+    }
 
     gsG1AuxiliaryPatch & getSinglePatch(const unsigned i){
         return auxGeom[i];
