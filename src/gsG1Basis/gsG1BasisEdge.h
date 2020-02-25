@@ -379,7 +379,7 @@ void gsG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, boxS
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_gD, m_optionList);
+            visitor_.evaluate(basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_gD, m_isBoundary, m_optionList);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);
