@@ -299,7 +299,6 @@ public:
         G1repBasis = g1Basis;
 
         //gsInfo << "Patch " << patchIndex << " old: " << G1repBasis.patch(0).coefs()<< "\n";
-        gsInfo << axisOrientation << "\n";
         if(axisOrientation)
 
             this->swapBasisAxis();

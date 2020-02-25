@@ -65,9 +65,7 @@ int main(int argc, char *argv[])
     optionList.addSwitch("plot","Plot in Paraview",false);
 
     geo.degreeElevate(optionList.getInt("degree"));
-    index_t maxDegree = geo.basis(0).minDegree();
-    geo.uniformRefine(optionList.getInt("refine"),maxDegree-optionList.getInt("regularity"));
-
+    geo.uniformRefine_withSameRegularity(optionList.getInt("refine"),optionList.getInt("regularity"));
     gsMultiBasis<> basis(geo);
     gsInfo << "Old: " << basis << "\n";
 
@@ -88,12 +86,12 @@ int main(int argc, char *argv[])
 
 
     //     Loop over the boundary edges
-    for ( auto & it : geo.boundaries()){
-        gsInfo << "Patch: " << it.patch << "\n";
-        gsInfo << "m_index: " << it.m_index << "\n";
-        gsG1AuxiliaryEdgeMultiplePatches a(geo, it.patch);
-        a.computeG1BoundaryBasis(optionList, it.m_index);
-    }
+   // for ( auto & it : geo.boundaries()){
+        gsInfo << "Patch: " << geo.boundaries()[0].patch << "\n";
+        gsInfo << "m_index: " << geo.boundaries()[0].m_index << "\n";
+        gsG1AuxiliaryEdgeMultiplePatches a(geo, geo.boundaries()[0].patch);
+        a.computeG1BoundaryBasis(optionList, geo.boundaries()[0].m_index);
+    //}
 
 
 

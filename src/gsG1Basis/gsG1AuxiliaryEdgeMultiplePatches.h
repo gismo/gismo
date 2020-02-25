@@ -135,7 +135,7 @@ public:
 
         gsMultiPatch<> test_mp(this->reparametrizeG1Interface()); // auxGeom contains now the reparametrized geometry
         gsMultiBasis<> test_mb(test_mp);
-        
+
 //      gsInfo << "p_tilde : " << optionList << "\n";
         gsG1BasisEdge<real_t> g1BasisEdge_0(test_mp, test_mb, 0, false, optionList);
         gsG1BasisEdge<real_t> g1BasisEdge_1(test_mp, test_mb, 1, false, optionList);
