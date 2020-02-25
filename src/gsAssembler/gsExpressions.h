@@ -2355,7 +2355,7 @@ public:
 };
 
 
-/**
+/*
    Expression for the Laplacian of a finite element variable
  */
 template<class T>
@@ -2393,6 +2393,72 @@ public:
     }
 
     void print(std::ostream &os) const { os << "lap("; _u.print(os); os <<")"; }
+};
+
+/*
+   Expression for the Laplacian of a finite element variable
+ */
+template<class T>
+class solLapl_expr : public _expr<solLapl_expr<T> >
+{
+protected:
+    const gsFeSolution<T> & _u;
+
+public:
+    typedef T Scalar;
+
+    solLapl_expr(const gsFeSolution<T> & u) : _u(u) { }
+
+    mutable gsMatrix<T> res;
+    const gsMatrix<T> eval(const index_t k) const
+    {
+        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
+
+        res.setZero(_u.dim(), 1); //  scalar, but per component
+        const gsDofMapper & map = _u.mapper();
+
+        index_t numActs = _u.data().values[0].rows();
+        index_t numDers = _u.parDim() * (_u.parDim() + 1) / 2;
+        gsMatrix<T> deriv2;
+
+        for (index_t c = 0; c!= _u.dim(); c++)
+        {
+            index_t offset = c * numDers * numActs;
+            for (index_t i = 0; i!=numActs; ++i)
+            {
+                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,c);
+                if ( map.is_free_index(ii) ) // DoF value is in the solVector
+                {
+                    deriv2 = _u.data().values[2].block(offset + i*numDers,k,_u.parDim(),1); // this only takes d11, d22, d33 part. For all the derivatives [d11, d22, d33, d12, d13, d23]: col.block(i*numDers,k,numDers,1)
+                    res.at(c) += _u.coefs().at(ii) * deriv2.sum();
+                }
+                else
+                {
+                    deriv2 = _u.data().values[2].block(offset + i*numDers,k,_u.parDim(),1); // this only takes d11, d22, d33 part. For all the derivatives [d11, d22, d33, d12, d13, d23]: col.block(i*numDers,k,numDers,1)
+                    res.at(c) +=_u.fixedPart().at( map.global_to_bindex(ii) ) * deriv2.sum();
+                }
+            }
+        }
+        return res;
+
+    }
+
+    index_t rows() const { return _u.dim(); }
+    index_t cols() const { return 1; }
+
+    static constexpr bool rowSpan() {return true; }
+    static bool colSpan() {return false;}
+
+    void setFlag() const { _u.data().flags |= NEED_DERIV2; }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+        evList.push_sorted_unique(&_u.source());
+        _u.data().flags |= NEED_DERIV2;
+    }
+
+    void print(std::ostream &os) const { os << "lap(s)"; }
 };
 
 
@@ -3836,6 +3902,10 @@ tangent_expr<T> tv(const gsGeometryMap<T> & u) { return tangent_expr<T>(u); }
 /// The laplacian of a finite element variable
 template<class T> EIGEN_STRONG_INLINE
 lapl_expr<T> lapl(const gsFeVariable<T> & u) { return lapl_expr<T>(u); }
+
+/// The laplacian of a solution variable
+template<class T> EIGEN_STRONG_INLINE
+solLapl_expr<T> lapl(const gsFeSolution<T> & u) { return solLapl_expr<T>(u); }
 
 /// The first fundamental form of \a G //fform is buggy ?
 // template<class T> EIGEN_STRONG_INLINE fform_expr<T> fform(const gsGeometryMap<T> & G) { return fform_expr<T>(G); }

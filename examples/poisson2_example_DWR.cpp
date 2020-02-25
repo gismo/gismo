@@ -474,7 +474,7 @@ int main(int argc, char *argv[])
         gsInfo<<"Objective function errors J(u)-J(u_h)\n";
 
         real_t error = evL.integral((primal_exL)*meas(G)) - evL.integral((uL)*meas(G));
-        real_t errest = evH.integral( (zH-zLp) * gg * meas(H)-((grad(zH)*jac(H).ginv()* (grad(uLp)*jac(H).ginv()).tr() - grad(zLp)*jac(H).ginv()* (grad(uLp)*jac(H).ginv()).tr()) ) * meas(H));
+        real_t errest = evH.integral( (zH-zLp) * gg * meas(H)-(((igrad(zH) - igrad(zLp))*igrad(uLp).tr()) ) * meas(H));
         // gsInfo<<"\t exact: "<<ev.integral(u_ex*meas(G))-ev.integral(u_sol*meas(G))<<"\n";
         gsInfo<<"\texact:\t"   <<error<<"\n";
 
@@ -507,6 +507,12 @@ int main(int argc, char *argv[])
 
 
 
+        gsInfo<<evH.integralElWise((ff - lapl(uLp)) * (zH - zLp)*meas(H))<<"\n";
+        // gsInfo<<evH.eval( hess(uLp),pt)<<"\n";
+        // gsInfo<<evH.eval( grad(uLp),pt)<<"\n";
+        // gsInfo<<evH.eval( lapl(uLp),pt)<<"\n";
+        // gsInfo<<evH.eval( zH,pt)<<"\n";
+        gsInfo<<evH.eval( (ff - lapl(uLp)) * (zH - zLp)*meas(H),pt)<<"\n";
 
 
     }
