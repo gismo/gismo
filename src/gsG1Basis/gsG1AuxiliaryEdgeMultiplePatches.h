@@ -193,16 +193,9 @@ public:
         gsMultiPatch<> mp_init;
         mp_init.addPatch(auxGeom[0].getPatch());// Right -> 0 = v along the interface
         mp_init.addPatch(auxGeom[1].getPatch()); // Left -> 1 = u along the interface
-        gsMultiBasis<> mb_init(mp_init);
-
 
         gsMultiPatch<> test_mp(this->reparametrizeG1Interface()); // auxGeom contains now the reparametrized geometry
         gsMultiBasis<> test_mb(test_mp);
-
-        test_mb.degreeElevate(optionList.getInt("degree"));
-        index_t maxDegree = test_mb.minCwiseDegree();
-        test_mb.uniformRefine(optionList.getInt("refine"),maxDegree-optionList.getInt("regularity"));
-        gsInfo << test_mb << "\n";
 
 //      gsInfo << "p_tilde : " << optionList << "\n";
         gsG1BasisEdge<real_t> g1BasisEdge_0(test_mp, test_mb, 0, false, optionList);
@@ -215,11 +208,6 @@ public:
 //      Patch 0 -> Right
         auxGeom[0].parametrizeBasisBack(g1Basis_0);
 
-
-        // Edge
-        gsG1BasisEdge<real_t> g1BasisEdge_edge(mp_init, mb_init, 0, true, optionList);
-        g1BasisEdge_edge.constructSolution(g1Basis_edge);
-
 //      Patch 1 -> Left
         auxGeom[1].parametrizeBasisBack(g1Basis_1);
 
@@ -231,9 +219,18 @@ public:
     void computeG1BoundaryBasis(gsOptionList optionList, const int boundaryInd){
         gsMultiPatch<> mp_init;
         mp_init.addPatch(auxGeom[0].getPatch());
+        mp_init.addPatch(auxGeom[0].getPatch());
 
         gsMultiPatch<> test_mp(this->reparametrizeG1Boundary(boundaryInd));
         gsMultiBasis<> test_mb(test_mp);
+
+        gsG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 0, true, optionList);
+        gsMultiPatch<> g1Basis_edge;
+        g1BasisEdge.constructSolution(g1Basis_edge);
+
+        auxGeom[0].parametrizeBasisBack(g1Basis_edge);
+
+        g1BasisEdge.plotG1Basis(auxGeom[0].getG1Basis(),auxGeom[0].getG1Basis(), mp_init, "G1BasisBoundary");
 
     }
 
