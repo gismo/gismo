@@ -483,6 +483,12 @@ public:
         this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul);
     }
 
+    /// Refine the geometry uniformly, inserting \a numKnots new knots into each knot span
+    virtual void uniformRefine(int numKnots = 1, std::vector<int> mul={1}) // todo: int dir = -1
+    {
+        this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul);
+    }
+
     /** \brief Refines the basis and adjusts the coefficients to keep the geometry the same.
      *
      * The syntax of \em boxes depends on the implementation in the

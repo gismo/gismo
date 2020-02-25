@@ -256,7 +256,25 @@ void gsMultiPatch<T>::uniformRefine(int numKnots, int mul)
     for ( typename PatchContainer::const_iterator it = m_patches.begin();
           it != m_patches.end(); ++it )
     {
+        gsInfo << "war hier Multipatch\n";
         ( *it )->uniformRefine(numKnots, mul);
+    }
+}
+
+template<class T>
+void gsMultiPatch<T>::uniformRefine_withSameRegularity(int numKnots, int reg)
+{
+    std::vector<std::vector<index_t>> mul;
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        std::vector<int> patch_mul;
+        for (index_t i = 0; i < (*it)->parDim(); i++)
+        {
+            index_t deg = ( *it )->degree(i);
+            patch_mul.push_back(deg-reg);
+        }
+        ( *it )->uniformRefine(numKnots, patch_mul);
     }
 }
 

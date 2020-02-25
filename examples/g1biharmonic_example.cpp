@@ -130,12 +130,14 @@ int main(int argc, char *argv[])
     optionList.addInt("refine","Refinement",numRefine);
     optionList.addInt("degree","Degree",numDegree);
 
-
+    //multiPatch.patch(0).degreeElevate(1,0);
     multiPatch.degreeElevate(optionList.getInt("degree"));
-    index_t maxDegree = multiPatch.basis(0).minDegree();
-    multiPatch.uniformRefine(optionList.getInt("refine"),maxDegree-optionList.getInt("regularity"));
 
+    multiPatch.uniformRefine_withSameRegularity(optionList.getInt("refine"), optionList.getInt("regularity"));
     gsMultiBasis<> mb(multiPatch);
+
+    gsInfo << "basis : " << mb.basis(0) << "\n";
+    gsInfo << "basis : " << mb.basis(1) << "\n";
 
     // Interface loop
     for (const boundaryInterface &  item : multiPatch.interfaces() )
