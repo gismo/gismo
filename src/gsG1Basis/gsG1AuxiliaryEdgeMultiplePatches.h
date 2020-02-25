@@ -158,18 +158,22 @@ public:
     void computeG1BoundaryBasis(gsOptionList optionList, const int boundaryInd){
         gsMultiPatch<> mp_init;
         mp_init.addPatch(auxGeom[0].getPatch());
-        mp_init.addPatch(auxGeom[0].getPatch());
 
         gsMultiPatch<> test_mp(this->reparametrizeG1Boundary(boundaryInd));
         gsMultiBasis<> test_mb(test_mp);
 
+        gsInfo << "Basis : " << test_mb.basis(0) << "\n";
+
         gsG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 0, true, optionList);
         gsMultiPatch<> g1Basis_edge;
         g1BasisEdge.constructSolution(g1Basis_edge);
+        //std::string basename_old = "G1BasisBoundary_Old_" + util::to_string(auxGeom[0].getGlobalPatchIndex()) + "_" + util::to_string(boundaryInd);
+        //g1BasisEdge.plotG1BasisBoundary(g1Basis_edge, mp_init, basename_old);
 
         auxGeom[0].parametrizeBasisBack(g1Basis_edge);
 
-        g1BasisEdge.plotG1Basis(auxGeom[0].getG1Basis(),auxGeom[0].getG1Basis(), mp_init, "G1BasisBoundary");
+        std::string basename = "G1BasisBoundary_" + util::to_string(auxGeom[0].getGlobalPatchIndex()) + "_" + util::to_string(boundaryInd);
+        g1BasisEdge.plotG1BasisBoundary(auxGeom[0].getG1Basis(), mp_init, basename);
 
     }
 

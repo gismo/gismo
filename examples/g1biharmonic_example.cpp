@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
     optionList.addInt("refine","Refinement",numRefine);
     optionList.addInt("degree","Degree",numDegree);
 
-    //multiPatch.patch(0).degreeElevate(1,0);
+    multiPatch.patch(1).degreeElevate(1,0);
     multiPatch.degreeElevate(optionList.getInt("degree"));
 
     multiPatch.uniformRefine_withSameRegularity(optionList.getInt("refine"), optionList.getInt("regularity"));
@@ -140,21 +140,19 @@ int main(int argc, char *argv[])
     gsInfo << "basis : " << mb.basis(1) << "\n";
 
     // Interface loop
-    for (const boundaryInterface &  item : multiPatch.interfaces() )
+//    for (const boundaryInterface &  item : multiPatch.interfaces() )
+//    {
+//        gsG1AuxiliaryEdgeMultiplePatches a(multiPatch, item.first().patch, item.second().patch);
+//        a.computeG1InterfaceBasis(optionList);
+//    }
+
+    for (gsMultiPatch<>::const_biterator bit = multiPatch.bBegin(); bit != multiPatch.bEnd(); ++bit)
     {
-
-
-        gsG1AuxiliaryEdgeMultiplePatches a(multiPatch, item.first().patch, item.second().patch);
-
-//        test_mb.degreeElevate(numDegree);
-//
-//        index_t maxDegree = test_mb.minCwiseDegree();
-//        test_mb.uniformRefine(numRefine,maxDegree-1);
-
-        a.computeG1InterfaceBasis(optionList);
-
+        gsInfo << "Patch: " << bit->patch << "\n";
+        gsInfo << "m_index: " << bit->m_index << "\n";
+        gsG1AuxiliaryEdgeMultiplePatches a(multiPatch, bit->patch);
+        a.computeG1BoundaryBasis(optionList, bit->m_index);
     }
-
 // NEW NEW NEW NEW NEW NEW NEW NEW NEW
 
     gsBoundaryConditions<> bcInfo, bcInfo2;

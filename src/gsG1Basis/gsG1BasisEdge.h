@@ -40,7 +40,7 @@ public:
 
         // Computing the G1 - basis function at the edge
         // Spaces for computing the g1 basis
-        index_t m_r = m_optionList.getInt("regularity");
+        index_t m_r = m_optionList.getInt("regularity"); // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
 
         gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(m_patchIdLocal).component(1-m_patchIdLocal)); // 0 -> v, 1 -> u
         index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
@@ -63,6 +63,7 @@ public:
 
         m_basis_plus = basis_plus;
         n_plus = m_basis_plus.size();
+        gsInfo << "Basis plus : " << basis_plus << "\n";
 
         gsKnotVector<T> kv_minus(0,1,0,m_p+1-1,m_p-1-m_r); // p-1,r //-1 bc p-1
         gsBSplineBasis<> basis_minus(kv_minus);
@@ -132,6 +133,22 @@ public:
         }
         collection1.save();
         collection2.save();
+    }
+
+    void plotG1BasisBoundary(gsMultiPatch<T> & basisG1_boundary, gsMultiPatch<T> & mp, std::string baseName)
+    {
+        gsParaviewCollection collection1(baseName);
+        std::string fileName;
+        for (unsigned i = 0; i < basisG1_boundary.nPatches(); i++)
+        {
+
+            fileName = baseName + "_" + util::to_string(i);
+            gsField<> temp_field_L(mp.patch(0),basisG1_boundary.patch(i));
+            gsWriteParaview(temp_field_L,fileName,5000);
+            collection1.addTimestep(fileName,i,"0.vts");
+
+        }
+        collection1.save();
     }
 
     void g1Condition()
@@ -235,7 +252,6 @@ void gsG1BasisEdge<T,bhVisitor>::constructSolution(gsMultiPatch<T> & result)
                 coeffs.row(i) = m_ddof[0].row( mapper.bindex(i, 0) ).head(dim); // = 0
             }
         }
-
         result.addPatch(m_basis_g1.basis(0).makeGeometry(give(coeffs)));
     }
 

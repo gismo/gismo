@@ -222,11 +222,9 @@ public:
             gsTensorBSpline<2, real_t> newgeom1(temp_basisLU.knots(), temp_basisLV.knots(), mpar);
 
             // Create a new single-patch object
-            gsMultiPatch<> newpatch;
-
             newpatch.addPatch(newgeom1);
         }
-        G1repBasis = newpatch;
+        G1repBasis.swap(newpatch);
     }
 
 
@@ -298,7 +296,6 @@ public:
     void parametrizeBasisBack(const gsMultiPatch<> & g1Basis){
         G1repBasis = g1Basis;
 
-        //gsInfo << "Patch " << patchIndex << " old: " << G1repBasis.patch(0).coefs()<< "\n";
         if(axisOrientation)
 
             this->swapBasisAxis();
