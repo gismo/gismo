@@ -43,7 +43,6 @@ public:
         index_t m_r = m_optionList.getInt("regularity");
 
         gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(m_patchIdLocal).component(1-m_patchIdLocal)); // 0 -> v, 1 -> u
-
         index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
 
         // first,last,interior,mult_ends,mult_interior

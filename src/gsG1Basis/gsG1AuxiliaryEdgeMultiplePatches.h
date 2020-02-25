@@ -1,4 +1,4 @@
-/** @file gsG1AuxiliaryMultiplePatches.h
+/** @file gsG1AuxiliaryEdgeMultiplePatches.h
  *
     @brief Reparametrize the Geometry for one Interface
 
@@ -23,35 +23,20 @@ namespace gismo
 {
 
 
-class gsG1AuxiliaryMultiplePatches
+class gsG1AuxiliaryEdgeMultiplePatches
 {
 
 public:
 
     // Constructor for one patch and it's boundary
-    gsG1AuxiliaryMultiplePatches(const gsMultiPatch<> & sp, const size_t patchInd){
+    gsG1AuxiliaryEdgeMultiplePatches(const gsMultiPatch<> & sp, const size_t patchInd){
         auxGeom.push_back(gsG1AuxiliaryPatch(sp.patch(patchInd), patchInd));
     }
 
     // Constructor for two patches along the common interface
-    gsG1AuxiliaryMultiplePatches(const gsMultiPatch<> & mp, const size_t firstPatch, const size_t secondPatch){
+    gsG1AuxiliaryEdgeMultiplePatches(const gsMultiPatch<> & mp, const size_t firstPatch, const size_t secondPatch){
         auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(firstPatch), firstPatch));
         auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(secondPatch), secondPatch));
-    }
-
-    // Constructor for n patches around a common vertex
-    gsG1AuxiliaryMultiplePatches(const gsMultiPatch<> & mp, const std::vector<size_t> patchesAroundVertex, std::vector<size_t> vertexIndices){
-        for(size_t i = 0; i < patchesAroundVertex.size(); i++)
-        {
-            auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(patchesAroundVertex[i]), patchesAroundVertex[i]));
-            if(auxGeom[i].getPatch().orientation() == -1)
-            {
-                auxGeom[i].swapAxis();
-                gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
-            }
-            this->reparametrizeG1Vertex(i, vertexIndices[i]);
-        }
-        gsInfo << "\n";
     }
 
 
@@ -141,52 +126,6 @@ public:
         return this->computeAuxTopology();
     }
 
-
-    void reparametrizeG1Vertex(size_t patchInd, size_t vertexIndex){
-
-        if(auxGeom[patchInd].getOrient() == 0)
-        {
-            switch (vertexIndex)
-            {
-                case 1:
-                    gsInfo << "Patch: " << patchInd << " not rotated\n";
-                    break;
-                case 4:
-                    auxGeom[patchInd].rotateParamAntiClockTwice();
-                    gsInfo << "Patch: " << patchInd << " rotated twice anticlockwise\n";
-                    break;
-                case 2:
-                    auxGeom[patchInd].rotateParamAntiClock();
-                    gsInfo << "Patch: " << patchInd << " rotated anticlockwise\n";
-                    break;
-                case 3:
-                    auxGeom[patchInd].rotateParamClock();
-                    gsInfo << "Patch: " << patchInd << " rotated clockwise\n";
-                    break;
-            }
-        }
-        // If the orientation is changed
-        else{
-            switch (vertexIndex)
-            {
-                case 1:
-                    gsInfo << "Patch: " << patchInd << " not rotated\n";
-                    break;
-                case 4:
-                    auxGeom[patchInd].rotateParamAntiClockTwice();
-                    gsInfo << "Patch: " << patchInd << " rotated twice anticlockwise\n";
-                    break;
-                case 3:
-                    auxGeom[patchInd].rotateParamAntiClock();
-                    gsInfo << "Patch: " << patchInd << " rotated anticlockwise\n";
-                    break;
-                case 2:
-                    auxGeom[patchInd].rotateParamClock();
-                    gsInfo << "Patch: " << patchInd << " rotated clockwise\n";
-                    break;
-            }
-        }
-    }
 
     void computeG1InterfaceBasis(gsOptionList optionList){
 

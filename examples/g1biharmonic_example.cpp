@@ -11,7 +11,7 @@
     Author(s): P. Weinmueller
 */
 # include <gismo.h>
-# include <gsG1Basis/gsG1AuxiliaryMultiplePatches.h>
+# include <gsG1Basis/gsG1AuxiliaryEdgeMultiplePatches.h>
 # include <gsG1Basis/gsG1BasisEdge.h>
 # include <gsAssembler/gsG1BiharmonicAssembler.h>
 
@@ -142,14 +142,14 @@ int main(int argc, char *argv[])
     {
 
 
-        gsG1AuxiliaryMultiplePatches a(multiPatch, item.first().patch, item.second().patch);
+        gsG1AuxiliaryEdgeMultiplePatches a(multiPatch, item.first().patch, item.second().patch);
 
 //        test_mb.degreeElevate(numDegree);
 //
 //        index_t maxDegree = test_mb.minCwiseDegree();
 //        test_mb.uniformRefine(numRefine,maxDegree-1);
 
-        a.computeG1EdgeBasis(optionList);
+        a.computeG1InterfaceBasis(optionList);
 
     }
 

@@ -33,6 +33,10 @@ public:
         gsInfo << "\n";
     }
 
+    // Compute topology
+    // After computeTopology() the patches will have the same patch-index as the position-index in auxGeom
+    // EXAMPLE: global patch-index-order inside auxGeom: [2, 3, 4, 1, 0]
+    //          in auxTop: 2->0, 3->1, 4->2, 1->3, 0->4
     gsMultiPatch<> computeAuxTopology(){
         gsMultiPatch<> auxTop;
         for(unsigned i = 0; i <  auxGeom.size(); i++){

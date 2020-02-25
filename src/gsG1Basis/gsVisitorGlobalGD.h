@@ -43,6 +43,7 @@ public:
     // Evaluate on element.
     inline void evaluate(gsBasis<T>       & basis, //
                          gsMatrix<T>      & quNodes,
+                         index_t idPatch_local,
                          gsMultiPatch<T> & mp,
                          index_t & gamma)
     {
@@ -62,82 +63,69 @@ public:
         // ++++++++++++++++++++++++++++++++
 
         // alpha^S
-        gsMatrix<> uv0, uv1, ev0, ev1;
+        gsMatrix<> uv, ev;
 
-        uv0.setZero(2,md.points.cols());
-        uv0.bottomRows(1) = md.points; // v
-
-        uv1.setZero(2,md.points.cols());
-        uv1.topRows(1) = md.points; // u
+        if (idPatch_local==0)
+        {
+            uv.setZero(2,md.points.cols());
+            uv.bottomRows(1) = md.points; // v
+        }
+        else if (idPatch_local==1)
+        {
+            uv.setZero(2,md.points.cols());
+            uv.topRows(1) = md.points; // u
+        }
 
 
         // ======== Determine bar{alpha^(L)} == Patch 0 ========
-        const gsGeometry<> & P0 = mp.patch(0); // iFace.second().patch = 0
+        const gsGeometry<> & P0 = mp.patch(idPatch_local); // iFace.second().patch = 0
 
-        for (index_t i = 0; i < uv0.cols(); i++)
+        for (index_t i = 0; i < uv.cols(); i++)
         {
-            P0.jacobian_into(uv0.col(i), ev0);
-            uv0(0, i) = gamma * ev0.determinant();
+            P0.jacobian_into(uv.col(i), ev);
+            uv(0, i) = gamma * ev.determinant();
         }
-        rhsVals_alpha_L = uv0.row(0);
+        rhsVals_alpha = uv.row(0);
 
-        // ======== Determine bar{alpha^(R)} == Patch 1 ========
-        const gsGeometry<> & P1 = mp.patch(1); // iFace.first().patch = 1
-
-        for (index_t i = 0; i < uv1.cols(); i++)
-        {
-            P1.jacobian_into(uv1.col(i), ev1);
-            uv1(0, i) =  gamma * ev1.determinant(); // erste spalte: alphaL an stelle zweiter spalte
-        }
-        rhsVals_alpha_R = uv1.row(0);
 
         // beta^S
-        uv0.setZero(2,md.points.cols());
-        uv0.bottomRows(1) = md.points; // v
-
-        uv1.setZero(2,md.points.cols());
-        uv1.topRows(1) = md.points; // u
-
+        if (idPatch_local==0)
+        {
+            uv.setZero(2,md.points.cols());
+            uv.bottomRows(1) = md.points; // v
+        }
+        else if (idPatch_local==1)
+        {
+            uv.setZero(2,md.points.cols());
+            uv.topRows(1) = md.points; // u
+        }
 
         const index_t d = mp.parDim();
         gsVector<> D0(d);
 
         // ======== Determine bar{beta}^L ========
-        for(index_t i = 0; i < uv0.cols(); i++)
+        for(index_t i = 0; i < uv.cols(); i++)
         {
-            P0.jacobian_into(uv0.col(i),ev0);
-            D0 = ev0.col(1);
+            P0.jacobian_into(uv.col(i),ev);
+            D0 = ev.col(1-idPatch_local);
             real_t D1 = 1/ D0.norm();
-            uv0(0,i) = gamma * D1 * D1 * ev0.col(0).transpose() * ev0.col(1);
+            uv(0,i) = gamma * D1 * D1 * ev.col(0).transpose() * ev.col(1);
         }
-        rhsVals_beta_L = uv0.row(0);
+        rhsVals_beta = uv.row(0);
 
-        // ======== Determine bar{beta}^R ========
-        for(index_t i = 0; i < uv1.cols(); i++)
-        {
-            P1.jacobian_into(uv1.col(i),ev1);
-            D0 = ev1.col(0);
-            real_t D1 = 1/ D0.norm();
-            uv1(0,i) = gamma * D1 * D1 * ev1.col(0).transpose() * ev1.col(1);
-        }
-        rhsVals_beta_R = uv1.row(0);
 
         // ++++++++++++++++++++++++++++++++
         // ================================
         // ++++++++++++++++++++++++++++++++
 
         // Initialize local matrix/rhs
-        localMat_L.setZero(numActive, numActive      );
-        localRhs_L.setZero(numActive, rhsVals_alpha_L.rows() );//multiple right-hand sides
+        localMat.setZero(numActive, numActive      );
+        localRhs.setZero(numActive, rhsVals_alpha.rows() );//multiple right-hand sides
 
-        localMat_R.setZero(numActive, numActive      );
-        localRhs_R.setZero(numActive, rhsVals_alpha_R.rows() );//multiple right-hand sides
 
-        localMat_b_L.setZero(numActive, numActive      );
-        localRhs_b_L.setZero(numActive, rhsVals_beta_L.rows() );//multiple right-hand sides
+        localMat_b.setZero(numActive, numActive      );
+        localRhs_b.setZero(numActive, rhsVals_beta.rows() );//multiple right-hand sides
 
-        localMat_b_R.setZero(numActive, numActive      );
-        localRhs_b_R.setZero(numActive, rhsVals_beta_R.rows() );//multiple right-hand sides
 
     }
 
@@ -147,28 +135,24 @@ public:
         gsMatrix<T> & basisVals  = basisData;
 
         // ( u, v)
-        localMat_L.noalias() =
+        localMat.noalias() =
             basisData * quWeights.asDiagonal() * basisData.transpose();
 
-        localMat_R.noalias() =
-            basisData * quWeights.asDiagonal() * basisData.transpose(); // Jacobi == 1
 
-        localMat_b_L.noalias() =
+
+        localMat_b.noalias() =
             basisData * quWeights.asDiagonal() * basisData.transpose();
 
-        localMat_b_R.noalias() =
-            basisData * quWeights.asDiagonal() * basisData.transpose();
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply weight by the geometry measure
             const T weight = quWeights[k];
 
-            localRhs_L.noalias() += weight * (basisVals.col(k) * rhsVals_alpha_L.col(k).transpose());
-            localRhs_R.noalias() += weight * (basisVals.col(k) * rhsVals_alpha_R.col(k).transpose());
+            localRhs.noalias() += weight * (basisVals.col(k) * rhsVals_alpha.col(k).transpose());
 
-            localRhs_b_L.noalias() += weight * (basisVals.col(k) * rhsVals_beta_L.col(k).transpose());
-            localRhs_b_R.noalias() += weight * (basisVals.col(k) * rhsVals_beta_R.col(k).transpose());
+            localRhs_b.noalias() += weight * (basisVals.col(k) * rhsVals_beta.col(k).transpose());
+
         }
 
     }
@@ -176,32 +160,19 @@ public:
     inline void localToGlobal(const int patchIndex,
                               const std::vector<gsMatrix<T> >    & eliminatedDofs,
                               gsSparseSystem<T>     & system_alpha_L,
-                              gsSparseSystem<T>     & system_alpha_R,
-                              gsSparseSystem<T>     & system_beta_L,
-                              gsSparseSystem<T>     & system_beta_R)
+                              gsSparseSystem<T>     & system_beta_L)
     {
         gsMatrix<unsigned> actives_temp;
 
         // Map patch-local DoFs to global DoFs
         system_alpha_L.mapColIndices(actives, patchIndex, actives_temp);
         // Add contributions to the system matrix and right-hand side
-        system_alpha_L.push(localMat_L, localRhs_L, actives_temp, eliminatedDofs[0], 0, 0);
-
-        // Map patch-local DoFs to global DoFs
-        system_alpha_R.mapColIndices(actives, patchIndex, actives_temp);
-        // Add contributions to the system matrix and right-hand side
-        system_alpha_R.push(localMat_R, localRhs_R, actives_temp, eliminatedDofs[1], 0, 0);
+        system_alpha_L.push(localMat, localRhs, actives_temp, eliminatedDofs[0], 0, 0);
 
         // Map patch-local DoFs to global DoFs
         system_beta_L.mapColIndices(actives, patchIndex, actives_temp);
         // Add contributions to the system matrix and right-hand side
-        system_beta_L.push(localMat_b_L, localRhs_b_L, actives_temp, eliminatedDofs[2], 0, 0);
-
-        // Map patch-local DoFs to global DoFs
-        system_beta_R.mapColIndices(actives, patchIndex, actives_temp);
-        // Add contributions to the system matrix and right-hand side
-        system_beta_R.push(localMat_b_R, localRhs_b_R, actives_temp, eliminatedDofs[3], 0, 0);
-
+        system_beta_L.push(localMat_b, localRhs_b, actives_temp, eliminatedDofs[2], 0, 0);
 
     }
 
@@ -212,22 +183,16 @@ protected:
 
 protected:
     // Local values of the right hand side
-    gsMatrix<T>  rhsVals_alpha_L, rhsVals_alpha_R;
-    gsMatrix<T>  rhsVals_beta_L, rhsVals_beta_R;
+    gsMatrix<T>  rhsVals_alpha;
+    gsMatrix<T>  rhsVals_beta;
 
 protected:
     // Local matrices
-    gsMatrix<T> localMat_L;
-    gsMatrix<T>  localRhs_L;
+    gsMatrix<T> localMat;
+    gsMatrix<T>  localRhs;
 
-    gsMatrix<T>  localMat_R;
-    gsMatrix<T>  localRhs_R;
-
-    gsMatrix<T> localMat_b_L;
-    gsMatrix<T>  localRhs_b_L;
-
-    gsMatrix<T>  localMat_b_R;
-    gsMatrix<T>  localRhs_b_R;
+    gsMatrix<T> localMat_b;
+    gsMatrix<T>  localRhs_b;
 
     gsMapData<T> md;
 

@@ -45,9 +45,9 @@ public:
         else
             setGlobalGluingData();
 
-        beta_exact();
+        //beta_exact();
 
-        conditionTest();
+        //conditionTest();
     }
 
     // Not exact!!! Interpolation via Greville abscissae // But only necessary for condition test!
@@ -57,7 +57,7 @@ public:
     void setGlobalGluingData();
 
     void conditionTest()
-    {
+    { /*
         gsMatrix<> points(1,1000);
         points.setRandom();
         points = points.array().abs();
@@ -71,14 +71,14 @@ public:
             - beta_bar.eval(points);
 
         gsInfo << "Conditiontest gluing data : " << temp.array().abs().maxCoeff() << "\n\n";
-
+*/
     } // Conditiontest
 
-    const gsBSpline<T> get_alpha_tilde_0() const {return alpha_tilde_0; }
-    const gsBSpline<T> get_alpha_tilde_1() const {return alpha_tilde_1; }
-    const gsBSpline<T> get_beta_tilde_0() const {return beta_tilde_0; }
-    const gsBSpline<T> get_beta_tilde_1() const {return beta_tilde_1; }
-    const gsBSpline<T> get_beta_bar() const {return beta_bar; }
+    const gsBSpline<T> get_alpha_tilde_0() const {return alpha_tilde; }
+    const gsBSpline<T> get_alpha_tilde_1() const {return alpha_tilde; }
+    const gsBSpline<T> get_beta_tilde_0() const {return beta_tilde; }
+    const gsBSpline<T> get_beta_tilde_1() const {return beta_tilde; }
+    //const gsBSpline<T> get_beta_bar() const {return beta_bar; }
 
     void eval_into_alpha_0(const gsMatrix<T> & points, gsMatrix<T>& result);
     void eval_into_alpha_1(const gsMatrix<T> & points, gsMatrix<T>& result);
@@ -103,15 +103,15 @@ protected:
 
 protected:
     // Global Gluing data
-    gsBSpline<T> beta_bar;
-    gsBSpline<T> alpha_tilde_0, alpha_tilde_1;
-    gsBSpline<T> beta_tilde_0, beta_tilde_1;
+    //gsBSpline<T> beta_bar;
+    gsBSpline<T> alpha_tilde;
+    gsBSpline<T> beta_tilde;
 
 }; // class gsGluingData
 
 template <class T>
 void gsGluingData<T>::beta_exact()
-{
+{ /*
     // Spline space for beta
     index_t m_k, m_p;
 
@@ -166,7 +166,7 @@ void gsGluingData<T>::beta_exact()
     }
 
     beta_temp = bsp.interpolateData(uv1.topRows(1), greville);
-    beta_bar = dynamic_cast<gsBSpline<T> &> (*beta_temp);
+    beta_bar = dynamic_cast<gsBSpline<T> &> (*beta_temp);*/
 } // beta_exact
 
 template<class T>
@@ -176,9 +176,9 @@ void gsGluingData<T>::setGlobalGluingData()
     gsKnotVector<T> kv(0,1,0,p_tilde+1,p_tilde-r_tilde); // first,last,interior,mult_ends,mult_interior
     gsBSplineBasis<T> bsp_gD(kv);
 
-    gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mb.basis(0).component(0)); // u
-    gsBSplineBasis<> temp_basis_second = dynamic_cast<gsBSplineBasis<> &>(m_mb.basis(1).component(1)); // v
-
+    gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mb.basis(m_patchId_local).component(m_patchId_local)); // u
+    //gsBSplineBasis<> temp_basis_second = dynamic_cast<gsBSplineBasis<> &>(m_mb.basis(1).component(1)); // v
+/*
     if (temp_basis_first.numElements() >= temp_basis_second.numElements())
     {
         index_t degree = temp_basis_second.maxDegree();
@@ -192,56 +192,46 @@ void gsGluingData<T>::setGlobalGluingData()
             bsp_gD.insertKnot(temp_basis_first.knot(i),p_tilde-r_tilde);
 
     }
+*/
 
-    gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD,m_mp,m_gamma);
+    index_t degree = temp_basis_first.maxDegree();
+    for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i = i+(degree-m_r))
+        bsp_gD.insertKnot(temp_basis_first.knot(i),p_tilde-r_tilde);
+
+
+    gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD,m_patchId_local,m_mp,m_gamma);
     globalGdAssembler.assemble();
 
     gsSparseSolver<real_t>::CGDiagonal solver;
-    gsVector<> sol_a_0, sol_a_1, sol_b_0, sol_b_1;
+    gsVector<> sol_a, sol_b;
 
     // alpha^S
-    solver.compute(globalGdAssembler.matrix_alpha_0());
-    sol_a_0 = solver.solve(globalGdAssembler.rhs_alpha_0());
+    solver.compute(globalGdAssembler.matrix_alpha());
+    sol_a = solver.solve(globalGdAssembler.rhs_alpha());
 
     gsGeometry<>::uPtr tilde_temp;
-    tilde_temp = bsp_gD.makeGeometry(sol_a_0);
+    tilde_temp = bsp_gD.makeGeometry(sol_a);
     gsBSpline<T> alpha_tilde_L_2 = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-    alpha_tilde_0 = alpha_tilde_L_2;
+    alpha_tilde = alpha_tilde_L_2;
 
 
     // beta^S
-    solver.compute(globalGdAssembler.matrix_beta_0());
-    sol_b_0 = solver.solve(globalGdAssembler.rhs_beta_0());
+    solver.compute(globalGdAssembler.matrix_beta());
+    sol_b = solver.solve(globalGdAssembler.rhs_beta());
 
-    tilde_temp = bsp_gD.makeGeometry(sol_b_0);
+    tilde_temp = bsp_gD.makeGeometry(sol_b);
     gsBSpline<T> beta_tilde_L_2 = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-    beta_tilde_0 = beta_tilde_L_2;
+    beta_tilde = beta_tilde_L_2;
 
+    gsWriteParaview(alpha_tilde,"alpha_tilde_L",5000);
 
-
-
-
-    solver.compute(globalGdAssembler.matrix_alpha_1());
-    sol_a_1 = solver.solve(globalGdAssembler.rhs_alpha_1());
-
-    solver.compute(globalGdAssembler.matrix_beta_1());
-    sol_b_1 = solver.solve(globalGdAssembler.rhs_beta_1());
-
-    tilde_temp = bsp_gD.makeGeometry(sol_b_1);
-    gsBSpline<T> beta_tilde_R_2 = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-    beta_tilde_1 = beta_tilde_R_2;
-
-    tilde_temp = bsp_gD.makeGeometry(sol_a_1);
-    gsBSpline<T> alpha_tilde_R_2 = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-    alpha_tilde_1 = alpha_tilde_R_2;
+    gsWriteParaview(beta_tilde,"beta_tilde_L",5000);
 
     if (m_optionList.getSwitch("plot"))
     {
-        gsWriteParaview(alpha_tilde_0,"alpha_tilde_L",5000);
-        gsWriteParaview(alpha_tilde_1,"alpha_tilde_R",5000);
+        gsWriteParaview(alpha_tilde,"alpha_tilde_L",5000);
 
-        gsWriteParaview(beta_tilde_0,"beta_tilde_L",5000);
-        gsWriteParaview(beta_tilde_1,"beta_tilde_R",5000);
+        gsWriteParaview(beta_tilde,"beta_tilde_L",5000);
     }
 } // setGlobalGluingData
 

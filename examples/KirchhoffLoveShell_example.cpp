@@ -13,7 +13,8 @@
 
 # include <gismo.h>
 # include <gsAssembler/gsKirchhoffLoveShellAssembler.h>
-# include <gsG1Basis/gsG1AuxiliaryMultiplePatches.h>
+# include <gsG1Basis/gsG1AuxiliaryEdgeMultiplePatches.h>
+# include <gsG1Basis/gsG1AuxiliaryVertexMultiplePatches.h>
 
 
 using namespace gismo;
@@ -51,17 +52,6 @@ int main(int argc, char *argv[])
     fileSrc.getId(2, geo);
     geo.computeTopology();
     gsInfo << "Geometry computed correctly\n";
-    gsMultiBasis<> basis(geo);
-
-//    p-refine to get equal polynomial degree s,t directions
-//    basis.degreeElevate(1,0);
-
-//    for (int i = 0; i < numDegree; ++i)
-//        basis.degreeElevate();
-//    for (int i = 0; i < numRefine; ++i)
-//        basis.uniformRefine();
-
-    gsInfo << "Old: " << basis << "\n";
 
 
     gsOptionList optionList;
@@ -74,35 +64,36 @@ int main(int argc, char *argv[])
     optionList.addSwitch("direct","Local projection for gluing data",false);
     optionList.addSwitch("plot","Plot in Paraview",false);
 
-    // Interface loop
+    geo.degreeElevate(optionList.getInt("degree"));
+    index_t maxDegree = geo.basis(0).minDegree();
+    geo.uniformRefine(optionList.getInt("refine"),maxDegree-optionList.getInt("regularity"));
+
+    gsMultiBasis<> basis(geo);
+    gsInfo << "Old: " << basis << "\n";
+
+
+
+
+//     Interface loop
 //    for (const boundaryInterface &  item : geo.interfaces() )
 //    {
 //
 //
-//        gsG1AuxiliaryMultiplePatches a(geo, item.first().patch, item.second().patch);
+//        gsG1AuxiliaryEdgeMultiplePatches a(geo, item.first().patch, item.second().patch);
 //
 //        a.computeG1InterfaceBasis(optionList);
 //
 //    }
 
 
+
+    //     Loop over the boundary edges
     for ( auto & it : geo.boundaries()){
         gsInfo << "Patch: " << it.patch << "\n";
         gsInfo << "m_index: " << it.m_index << "\n";
-
+        gsG1AuxiliaryEdgeMultiplePatches a(geo, it.patch);
+        a.computeG1BoundaryBasis(optionList, it.m_index);
     }
-
-
-
-
-
-//     Loop over the boundary edges
-//    for (gsMultiPatch<>::const_biterator bit = geo.bBegin(); bit != geo.bEnd(); ++bit)
-//    {
-//
-//    }
-
-
 
 
 
@@ -127,14 +118,8 @@ int main(int argc, char *argv[])
 //        }
 //        gsInfo << "\n";
 //
-//        gsG1AuxiliaryMultiplePatches a(geo, patchIndex, vertIndex);
+//        gsG1AuxiliaryVertexMultiplePatches a(geo, patchIndex, vertIndex);
 //    }
-
-
-
-
-
-
 
 
 
