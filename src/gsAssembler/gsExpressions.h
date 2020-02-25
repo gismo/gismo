@@ -821,7 +821,7 @@ public:
                 if ( m_mapper.is_free_index(ii) ) // DoF value is in the solVector
                         result(i,c) = solVector.at(ii );
                 else // eliminated DoF: fill with Dirichlet data
-                    result(i,c) = m_fixedDofs( m_mapper.global_to_bindex(ii),c ); // [HMV] is this correct?
+                    result(i,c) =  m_fixedDofs.at( m_mapper.global_to_bindex(ii) ); // [HMV] is this correct?
             }
         }
     }
@@ -1185,7 +1185,7 @@ public:
                     if (_u.mapper().is_boundary(i,j))
                     {
                         bi = _u.mapper().bindex(i,j,c); // boundary index
-                        result(i+offset,0) = _u.fixedPart()(bi,0);
+                        result(i+offset,0) = _u.fixedPart().at(bi);
                     }
                     else
                         result(i+offset,0) = _Sv->at(ii);
