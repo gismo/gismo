@@ -19,16 +19,11 @@ class gsG1AuxiliaryVertexMultiplePatches
 public:
 
 // Constructor for n patches around a common vertex
-    gsG1AuxiliaryVertexMultiplePatches(const gsMultiPatch<> & mp, const std::vector<size_t> patchesAroundVertex, std::vector<size_t> vertexIndices){
+    gsG1AuxiliaryVertexMultiplePatches(const gsMultiPatch<> & mp, const std::vector<size_t> patchesAroundVertex, const std::vector<size_t> vertexIndices){
         for(size_t i = 0; i < patchesAroundVertex.size(); i++)
         {
             auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(patchesAroundVertex[i]), patchesAroundVertex[i]));
-            if(auxGeom[i].getPatch().orientation() == -1)
-            {
-                auxGeom[i].swapAxis();
-                gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
-            }
-            this->reparametrizeG1Vertex(i, vertexIndices[i]);
+            auxVertexIndices.push_back(vertexIndices[i]);
         }
         gsInfo << "\n";
     }
@@ -39,62 +34,62 @@ public:
     //          in auxTop: 2->0, 3->1, 4->2, 1->3, 0->4
     gsMultiPatch<> computeAuxTopology(){
         gsMultiPatch<> auxTop;
-        for(unsigned i = 0; i <  auxGeom.size(); i++){
-            if(auxGeom[i].getPatch().orientation() == -1)
-            {
-                auxGeom[i].swapAxis();
-                gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
-            }
+        for(unsigned i = 0; i <  auxGeom.size(); i++)
+        {
             auxTop.addPatch(auxGeom[i].getPatch());
         }
         auxTop.computeTopology();
         return auxTop;
     }
 
-    void reparametrizeG1Vertex(size_t patchInd, size_t vertexIndex){
-
-        if(auxGeom[patchInd].getOrient() == 0)
+    void reparametrizeG1Vertex()
+    {
+        for(size_t i = 0; i < auxGeom.size(); i++)
         {
-            switch (vertexIndex)
+            if (auxGeom[i].getPatch().orientation() == -1)
+            {
+                auxGeom[i].swapAxis();
+                gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
+                if(auxVertexIndices[i] == 2)
+                    auxVertexIndices[i] = 3;
+                else
+                if(auxVertexIndices[i] == 3)
+                    auxVertexIndices[i] = 2;
+            }
+
+            switch (auxVertexIndices[i])
             {
                 case 1:
-                    gsInfo << "Patch: " << patchInd << " not rotated\n";
+                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " not rotated\n";
                     break;
                 case 4:
-                    auxGeom[patchInd].rotateParamAntiClockTwice();
-                    gsInfo << "Patch: " << patchInd << " rotated twice anticlockwise\n";
+                    auxGeom[i].rotateParamAntiClockTwice();
+                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex()
+                           << " rotated twice anticlockwise\n";
                     break;
                 case 2:
-                    auxGeom[patchInd].rotateParamAntiClock();
-                    gsInfo << "Patch: " << patchInd << " rotated anticlockwise\n";
+                    auxGeom[i].rotateParamAntiClock();
+                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated anticlockwise\n";
                     break;
                 case 3:
-                    auxGeom[patchInd].rotateParamClock();
-                    gsInfo << "Patch: " << patchInd << " rotated clockwise\n";
+                    auxGeom[i].rotateParamClock();
+                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated clockwise\n";
                     break;
             }
         }
-            // If the orientation is changed
-        else{
-            switch (vertexIndex)
-            {
-                case 1:
-                    gsInfo << "Patch: " << patchInd << " not rotated\n";
-                    break;
-                case 4:
-                    auxGeom[patchInd].rotateParamAntiClockTwice();
-                    gsInfo << "Patch: " << patchInd << " rotated twice anticlockwise\n";
-                    break;
-                case 3:
-                    auxGeom[patchInd].rotateParamAntiClock();
-                    gsInfo << "Patch: " << patchInd << " rotated anticlockwise\n";
-                    break;
-                case 2:
-                    auxGeom[patchInd].rotateParamClock();
-                    gsInfo << "Patch: " << patchInd << " rotated clockwise\n";
-                    break;
-            }
-        }
+        gsInfo << "-----------------------------------------------------------------\n";
+    }
+
+
+    void computeG1InternalVertexBasis(){
+
+//        gsMultiPatch<> test_mp(this->computeAuxTopology());
+//        gsMultiBasis<> test_mb(test_mp);
+
+
+            this->reparametrizeG1Vertex();
+
+
     }
 
 
@@ -104,6 +99,7 @@ public:
 
 protected:
     std::vector<gsG1AuxiliaryPatch> auxGeom;
+    std::vector<size_t> auxVertexIndices;
 
 };
 

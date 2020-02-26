@@ -60,6 +60,7 @@ public:
         newpatch.addPatch(newgeom1);
 
         auxPatch.swap(newpatch);
+        auxPatch.computeTopology();
 
         // Update the number of rotation of the axis
         rotationNum++;
@@ -126,6 +127,7 @@ public:
         newpatch.addPatch(newgeom1);
 
         auxPatch.swap(newpatch);
+        auxPatch.computeTopology();
 
         // Update the number of rotation of the axis
         rotationNum--;
@@ -192,6 +194,7 @@ public:
         newpatch.addPatch(newgeom1);
 
         auxPatch.swap(newpatch);
+        auxPatch.computeTopology();
 
         // Update the number of rotation of the axis (anti-clockwise)
         rotationNum+=2;
@@ -258,6 +261,7 @@ public:
         newpatch.addPatch(newgeom1);
 
         auxPatch.swap(newpatch);
+        auxPatch.computeTopology();
 
         checkOrientation();
     }
@@ -323,6 +327,9 @@ public:
         //gsInfo << "Patch " << patchIndex << " new: " << G1repBasis.patch(0).coefs() << "\n";
     }
 
+    void computeTopology(){
+        this->auxPatch.computeTopology();
+    }
 
     gsGeometry<>& getPatch(){
         return auxPatch.patch(0);
