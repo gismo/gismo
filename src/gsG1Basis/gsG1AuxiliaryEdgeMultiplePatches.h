@@ -69,16 +69,16 @@ public:
         switch (repTop.interfaces()[0].second().side().index())
         {
             case 1:
-                gsInfo << "Global patch: " << "Local patch: " << repTop.interfaces()[0].second().patch << " not rotated\n";
+                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << "\tLocal patch: " << repTop.interfaces()[0].second().patch << " not rotated\n";
                 break;
             case 4: auxGeom[0].rotateParamClock();
-                gsInfo << "Global patch: " << "Local patch: " << repTop.interfaces()[0].second().patch << " rotated clockwise\n";
+                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].second().patch << " rotated clockwise\n";
                 break;
             case 3: auxGeom[0].rotateParamAntiClock();
-                gsInfo << "Global patch: " << "Local patch: " << repTop.interfaces()[0].second().patch << " rotated anticlockwise\n";
+                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].second().patch << " rotated anticlockwise\n";
                 break;
             case 2: auxGeom[0].rotateParamAntiClockTwice();
-                gsInfo << "Global patch: " << "Local patch: " << repTop.interfaces()[0].second().patch << " rotated twice anticlockwise\n";
+                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].second().patch << " rotated twice anticlockwise\n";
                 break;
             default:
                 break;
@@ -88,16 +88,16 @@ public:
         switch (repTop.interfaces()[0].first().side().index())
         {
             case 3:
-                gsInfo << "Global patch: " << "Local patch: " << repTop.interfaces()[0].first().patch << " not rotated\n";
+                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " not rotated\n";
                 break;
             case 4: auxGeom[1].rotateParamAntiClockTwice();
-                gsInfo << "Global patch: " << "Local patch: " << repTop.interfaces()[0].first().patch << " rotated twice anticlockwise\n";
+                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " rotated twice anticlockwise\n";
                 break;
             case 2: auxGeom[1].rotateParamAntiClock();
-                gsInfo << "Global patch: " << "Local patch: " << repTop.interfaces()[0].first().patch << " rotated anticlockwise\n";
+                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " rotated anticlockwise\n";
                 break;
             case 1: auxGeom[1].rotateParamClock();
-                gsInfo << "Global patch: " << "Local patch: " << repTop.interfaces()[0].first().patch << " rotated clockwise\n";
+                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " rotated clockwise\n";
                 break;
             default:
                 break;
