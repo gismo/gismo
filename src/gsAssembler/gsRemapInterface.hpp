@@ -1384,21 +1384,17 @@ bool gsRemapInterface<T>::checkIfMeshAgree()
     }
     else
     {
-        if(numEl1 == numEl2)
+        std::vector<T> breaks1 = basis1.component(comp1).knots().unique();
+        std::vector<T> breaks2 = basis2.component(comp2).knots().unique();
+
+        //gsInfo << "interval"<<basis1.component(comp1).knots().minIntervalLength() << "\n";
+
+        for(size_t i = 0; i < breaks1.size(); ++i)
         {
-            std::vector<T> breaks1 = basis1.component(comp1).knots().unique();
-            std::vector<T> breaks2 = basis2.component(comp2).knots().unique();
-
-            //gsInfo << "interval"<<basis1.component(comp1).knots().minIntervalLength() << "\n";
-
-            for(size_t i = 0; i < breaks1.size(); ++i)
-            {
-                if((fabs(breaks1[i] - breaks2[i]) > 1e-10) || (fabs(breaks2[i] - breaks1[i]) > 1e-10))
-                    return true;
-            }
-            return false;
-
+             if((fabs(breaks1[i] - breaks2[i]) > 1e-10) || (fabs(breaks2[i] - breaks1[i]) > 1e-10))
+                 return true;
         }
+        return false;
     }
 }
 
