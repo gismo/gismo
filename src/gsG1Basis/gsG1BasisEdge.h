@@ -26,23 +26,23 @@ public:
     typedef gsAssembler<T> Base;
 
 public:
-    gsG1BasisEdge(gsMultiPatch<> & geo,
-                 gsMultiBasis<> & basis,
-                 index_t patchId_local,
+    gsG1BasisEdge(gsMultiPatch<> geo, // single patch
+                 gsMultiBasis<> basis, // single basis
+                 index_t uv, // !!! 0 == v; 1 == u !!!
                  bool isBoundary,
                  gsOptionList & optionList)
-        : m_geo(geo), m_basis(basis), m_patchIdLocal(patchId_local), m_isBoundary(isBoundary), m_optionList(optionList)
+        : m_geo(geo), m_basis(basis), m_uv(uv), m_isBoundary(isBoundary), m_optionList(optionList)
     {
 
         // Computing the gluing data
-        gsGluingData<T> gluingData(m_geo,m_basis,m_patchIdLocal,m_isBoundary,m_optionList);
+        gsGluingData<T> gluingData(m_geo,m_basis,m_uv,m_isBoundary,m_optionList);
         m_gD = gluingData;
 
         // Computing the G1 - basis function at the edge
         // Spaces for computing the g1 basis
         index_t m_r = m_optionList.getInt("regularity"); // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
 
-        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(m_patchIdLocal).component(1-m_patchIdLocal)); // 0 -> v, 1 -> u
+        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(0).component(m_uv)); // 0 -> v, 1 -> u
         index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
 
         // first,last,interior,mult_ends,mult_interior
@@ -84,7 +84,7 @@ public:
         n_minus = m_basis_minus.size();
 
         // Basis for the G1 basis
-        m_basis_g1 = m_basis.basis(m_patchIdLocal);
+        m_basis_g1 = m_basis.basis(0);
 
         refresh();
         assemble();
@@ -191,7 +191,7 @@ protected:
     // Input
     gsMultiPatch<T> m_geo;
     gsMultiBasis<T> m_basis;
-    index_t m_patchIdLocal;
+    index_t m_uv;
     bool m_isBoundary;
     gsOptionList m_optionList;
 
@@ -236,7 +236,7 @@ void gsG1BasisEdge<T,bhVisitor>::constructSolution(gsMultiPatch<T> & result)
 
         // Reconstruct solution coefficients on patch p
         index_t sz;
-        sz = m_basis.basis(m_patchIdLocal).size();
+        sz = m_basis.basis(0).size();
 
         coeffs.resize(sz, dim);
 
@@ -261,7 +261,7 @@ void gsG1BasisEdge<T,bhVisitor>::constructSolution(gsMultiPatch<T> & result)
 
         // Reconstruct solution coefficients on patch p
         index_t sz;
-        sz = m_basis.basis(m_patchIdLocal).size();
+        sz = m_basis.basis(0).size();
 
         coeffs.resize(sz, dim);
 
@@ -293,13 +293,13 @@ template <class T, class bhVisitor>
 void gsG1BasisEdge<T,bhVisitor>::refresh()
 {
     // 1. Obtain a map from basis functions to matrix columns and rows
-    gsDofMapper map(m_basis.basis(m_patchIdLocal));
+    gsDofMapper map(m_basis.basis(0));
 
     gsMatrix<unsigned> act;
 
-    for (index_t i = 2; i < m_basis.basis(m_patchIdLocal).component(m_patchIdLocal).size(); i++) // only the first two u/v-columns are Dofs (0/1)
+    for (index_t i = 2; i < m_basis.basis(0).component(1-m_uv).size(); i++) // only the first two u/v-columns are Dofs (0/1)
     {
-        act = m_basis.basis(m_patchIdLocal).boundaryOffset(m_patchIdLocal == 0 ? 1 : 3, i); // WEST
+        act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, i); // WEST
         map.markBoundary(0, act); // Patch 0
     }
 
@@ -371,14 +371,14 @@ void gsG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, boxS
         gsBasis<T> & basis_g1 = m_basis_g1.basis(0); // basis for construction
 
         // Same for all patches
-        gsBasis<T> & basis_geo = m_basis.basis(m_patchIdLocal).component(m_patchIdLocal);
+        gsBasis<T> & basis_geo = m_basis.basis(0).component(1-m_uv);
         gsBasis<T> & basis_plus = m_basis_plus;
         gsBasis<T> & basis_minus = m_basis_minus;
 
         // Initialize reference quadrature rule and visitor data
         visitor_.initialize(basis_g1, basis_plus, basis_minus, quRule);
 
-        const gsGeometry<T> & patch = m_geo.patch(m_patchIdLocal);
+        const gsGeometry<T> & patch = m_geo.patch(0);
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt = basis_g1.makeDomainIterator(boundary::none);
@@ -394,7 +394,7 @@ void gsG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, boxS
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_gD, m_isBoundary, m_optionList);
+            visitor_.evaluate(basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_uv, m_gD, m_isBoundary, m_optionList);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);

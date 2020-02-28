@@ -28,10 +28,10 @@ public:
 
     gsGluingData(gsMultiPatch<T> const & mp,
                  gsMultiBasis<T> const & mb,
-                 index_t patchId_local,
+                 index_t uv,
                  bool isBoundary,
                  gsOptionList const & optionList)
-        : m_mp(mp), m_mb(mb), m_patchId_local(patchId_local), m_isBoundary(isBoundary), m_optionList(optionList)
+        : m_mp(mp), m_mb(mb), m_uv(uv), m_isBoundary(isBoundary), m_optionList(optionList)
     {
         m_gamma = 1.0;
 
@@ -74,10 +74,8 @@ public:
 */
     } // Conditiontest
 
-    const gsBSpline<T> get_alpha_tilde_0() const {return alpha_tilde; }
-    const gsBSpline<T> get_alpha_tilde_1() const {return alpha_tilde; }
-    const gsBSpline<T> get_beta_tilde_0() const {return beta_tilde; }
-    const gsBSpline<T> get_beta_tilde_1() const {return beta_tilde; }
+    const gsBSpline<T> get_alpha_tilde() const {return alpha_tilde; }
+    const gsBSpline<T> get_beta_tilde() const {return beta_tilde; }
     //const gsBSpline<T> get_beta_bar() const {return beta_bar; }
 
     void eval_into_alpha_0(const gsMatrix<T> & points, gsMatrix<T>& result);
@@ -89,7 +87,7 @@ protected:
     // The geometry for a single interface in the right parametrizations
     gsMultiPatch<T> m_mp;
     gsMultiBasis<T> m_mb;
-    index_t m_patchId_local;
+    index_t m_uv;
     bool m_isBoundary;
     gsOptionList m_optionList;
 
@@ -176,7 +174,7 @@ void gsGluingData<T>::setGlobalGluingData()
     gsKnotVector<T> kv(0,1,0,p_tilde+1,p_tilde-r_tilde); // first,last,interior,mult_ends,mult_interior
     gsBSplineBasis<T> bsp_gD(kv);
 
-    gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mb.basis(m_patchId_local).component(m_patchId_local)); // u
+    gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mb.basis(0).component(m_uv)); // u
     //gsBSplineBasis<> temp_basis_second = dynamic_cast<gsBSplineBasis<> &>(m_mb.basis(1).component(1)); // v
 /*
     if (temp_basis_first.numElements() >= temp_basis_second.numElements())
@@ -199,7 +197,7 @@ void gsGluingData<T>::setGlobalGluingData()
         bsp_gD.insertKnot(temp_basis_first.knot(i),p_tilde-r_tilde);
 
 
-    gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD,m_patchId_local,m_mp,m_gamma);
+    gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD,m_uv,m_mp,m_gamma,m_isBoundary);
     globalGdAssembler.assemble();
 
     gsSparseSolver<real_t>::CGDiagonal solver;
@@ -230,7 +228,6 @@ void gsGluingData<T>::setGlobalGluingData()
     if (m_optionList.getSwitch("plot"))
     {
         gsWriteParaview(alpha_tilde,"alpha_tilde_L",5000);
-
         gsWriteParaview(beta_tilde,"beta_tilde_L",5000);
     }
 } // setGlobalGluingData
