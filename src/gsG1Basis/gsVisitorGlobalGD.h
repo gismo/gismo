@@ -43,9 +43,10 @@ public:
     // Evaluate on element.
     inline void evaluate(gsBasis<T>       & basis, //
                          gsMatrix<T>      & quNodes,
-                         index_t idPatch_local,
+                         index_t m_uv,
                          gsMultiPatch<T> & mp,
-                         index_t & gamma)
+                         index_t & gamma,
+                         bool & isBoundary)
     {
         md.points = quNodes;
 
@@ -65,12 +66,12 @@ public:
         // alpha^S
         gsMatrix<> uv, ev;
 
-        if (idPatch_local==0)
+        if (m_uv==1)
         {
             uv.setZero(2,md.points.cols());
             uv.bottomRows(1) = md.points; // v
         }
-        else if (idPatch_local==1)
+        else if (m_uv==0)
         {
             uv.setZero(2,md.points.cols());
             uv.topRows(1) = md.points; // u
@@ -78,23 +79,25 @@ public:
 
 
         // ======== Determine bar{alpha^(L)} == Patch 0 ========
-        const gsGeometry<> & P0 = mp.patch(idPatch_local); // iFace.second().patch = 0
+        const gsGeometry<> & P0 = mp.patch(0); // iFace.second().patch = 0
 
         for (index_t i = 0; i < uv.cols(); i++)
         {
             P0.jacobian_into(uv.col(i), ev);
             uv(0, i) = gamma * ev.determinant();
         }
+        if (isBoundary)
+            uv.setOnes();
         rhsVals_alpha = uv.row(0);
 
 
         // beta^S
-        if (idPatch_local==0)
+        if (m_uv==1)
         {
             uv.setZero(2,md.points.cols());
             uv.bottomRows(1) = md.points; // v
         }
-        else if (idPatch_local==1)
+        else if (m_uv==0)
         {
             uv.setZero(2,md.points.cols());
             uv.topRows(1) = md.points; // u
@@ -107,10 +110,12 @@ public:
         for(index_t i = 0; i < uv.cols(); i++)
         {
             P0.jacobian_into(uv.col(i),ev);
-            D0 = ev.col(1-idPatch_local);
+            D0 = ev.col(m_uv);
             real_t D1 = 1/ D0.norm();
             uv(0,i) = gamma * D1 * D1 * ev.col(0).transpose() * ev.col(1);
         }
+        if (isBoundary)
+            uv.setZero();
         rhsVals_beta = uv.row(0);
 
 

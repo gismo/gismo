@@ -137,12 +137,13 @@ public:
         gsMultiBasis<> test_mb(test_mp);
 
 //      gsInfo << "p_tilde : " << optionList << "\n";
-        gsG1BasisEdge<real_t> g1BasisEdge_0(test_mp, test_mb, 0, false, optionList);
-        gsG1BasisEdge<real_t> g1BasisEdge_1(test_mp, test_mb, 1, false, optionList);
+        gsG1BasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), test_mb.basis(0), 1, false, optionList);
+        gsG1BasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, optionList);
         gsMultiPatch<> g1Basis_0, g1Basis_1, g1Basis_edge;
         g1BasisEdge_0.constructSolution(g1Basis_0);
         g1BasisEdge_1.constructSolution(g1Basis_1);
-        g1BasisEdge_0.plotG1Basis(g1Basis_0,g1Basis_1, test_mp, "G1Basis_old");
+        if (optionList.getSwitch("plot"))
+            g1BasisEdge_0.plotG1Basis(g1Basis_0,g1Basis_1, test_mp, "G1Basis_old");
 
 //      Patch 0 -> Right
         auxGeom[0].parametrizeBasisBack(g1Basis_0);
@@ -150,8 +151,9 @@ public:
 //      Patch 1 -> Left
         auxGeom[1].parametrizeBasisBack(g1Basis_1);
 
-        g1BasisEdge_0.plotG1Basis(auxGeom[0].getG1Basis(),auxGeom[1].getG1Basis(), mp_init, "G1Basis");
-        g1BasisEdge_0.g1Condition();
+        if (optionList.getSwitch("plot"))
+            g1BasisEdge_0.plotG1Basis(auxGeom[0].getG1Basis(),auxGeom[1].getG1Basis(), mp_init, "G1Basis");
+        //g1BasisEdge_0.g1Condition();
     }
 
 
@@ -164,7 +166,7 @@ public:
 
         gsInfo << "Basis : " << test_mb.basis(0) << "\n";
 
-        gsG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 0, true, optionList);
+        gsG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, optionList);
         gsMultiPatch<> g1Basis_edge;
         g1BasisEdge.constructSolution(g1Basis_edge);
         //std::string basename_old = "G1BasisBoundary_Old_" + util::to_string(auxGeom[0].getGlobalPatchIndex()) + "_" + util::to_string(boundaryInd);
@@ -173,7 +175,8 @@ public:
         auxGeom[0].parametrizeBasisBack(g1Basis_edge);
 
         std::string basename = "G1BasisBoundary_" + util::to_string(auxGeom[0].getGlobalPatchIndex()) + "_" + util::to_string(boundaryInd);
-        g1BasisEdge.plotG1BasisBoundary(auxGeom[0].getG1Basis(), mp_init, basename);
+        if (optionList.getSwitch("plot"))
+            g1BasisEdge.plotG1BasisBoundary(auxGeom[0].getG1Basis(), mp_init, basename);
 
     }
 

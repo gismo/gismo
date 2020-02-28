@@ -27,10 +27,11 @@ public:
 
 public:
     gsGlobalGDAssembler(gsBasis<T> const & basis,
-                           index_t const & idPatch_local,
+                           index_t const & uv,
                            gsMultiPatch<T> const & mp,
-                           index_t const & gamma)
-        : m_idPatch_local(idPatch_local), m_mp(mp), m_gamma(gamma)
+                           index_t const & gamma,
+                           bool & isBoundary)
+        : m_uv(uv), m_mp(mp), m_gamma(gamma), m_isBoundary(isBoundary)
     {
 
         m_basis.push_back(basis); // Basis for alpha and beta
@@ -54,12 +55,13 @@ public:
     const gsMatrix<T> & rhs_beta() const { return m_system_beta_S.rhs(); }
 
 protected:
-    index_t m_idPatch_local;
+    index_t m_uv;
 
     // interface + geometry for computing alpha and beta
     gsMultiPatch<T> m_mp;
 
     index_t m_gamma;
+    bool m_isBoundary;
 
     // Space for phi_0,i, phi_1,j
     std::vector< gsMultiBasis<T> > m_basis;
@@ -162,7 +164,7 @@ inline void gsGlobalGDAssembler<T, bhVisitor>::apply(bhVisitor & visitor,
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(basis, quNodes, m_idPatch_local, m_mp, m_gamma);
+            visitor_.evaluate(basis, quNodes, m_uv, m_mp, m_gamma, m_isBoundary);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);
