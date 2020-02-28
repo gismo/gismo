@@ -63,6 +63,7 @@ public:
                          gsBasis<T>       & basis_minus,
                          const gsGeometry<T>    & geo, // patch
                          gsMatrix<T>            & quNodes,
+                         index_t & uv,
                          gsGluingData<T>  & gluingData,
                          bool & isBoundary,
                          gsOptionList optionList)
@@ -81,10 +82,6 @@ public:
 
         numActive = actives.rows();
 
-        gsMatrix<unsigned> actives_plus, actives_minus;
-        basis_plus.active_into(md.points.col(0), actives_plus);
-        basis_minus.active_into(md.points.col(0), actives_minus);
-
         // tau/p
         gsBSplineBasis<T> bsp_temp = dynamic_cast<gsBSplineBasis<> & >(basis_geo);
 
@@ -96,7 +93,7 @@ public:
                     N_j_minus, N_i_plus,
                     der_N_i_plus;
 
-        if (geo.id() == 0) // Patch 0
+        if (uv == 1) // edge is in v-direction
         {
             if (optionList.getSwitch("direct"))
             {
@@ -105,8 +102,8 @@ public:
             }
             else
             {
-                gluingData.get_alpha_tilde_0().eval_into(md.points.bottomRows(1),alpha); // v
-                gluingData.get_beta_tilde_0().eval_into(md.points.bottomRows(1),beta);
+                gluingData.get_alpha_tilde().eval_into(md.points.bottomRows(1),alpha); // v
+                gluingData.get_beta_tilde().eval_into(md.points.bottomRows(1),beta);
             }
             basis_geo.evalSingle_into(0,md.points.topRows(1),N_0); // u
             basis_geo.evalSingle_into(1,md.points.topRows(1),N_1); // u
@@ -159,7 +156,7 @@ public:
             } // n_minus
 
         } // Patch 0
-        else if (geo.id() == 1) // Patch 1
+        else if (uv == 0) // edge is in u-direction
         {
             if (optionList.getSwitch("direct"))
             {
@@ -168,8 +165,8 @@ public:
             }
             else
             {
-                gluingData.get_alpha_tilde_1().eval_into(md.points.topRows(1),alpha); // u
-                gluingData.get_beta_tilde_1().eval_into(md.points.topRows(1),beta);
+                gluingData.get_alpha_tilde().eval_into(md.points.topRows(1),alpha); // u
+                gluingData.get_beta_tilde().eval_into(md.points.topRows(1),beta);
             }
 
             basis_geo.evalSingle_into(0,md.points.bottomRows(1),N_0); // v

@@ -12,7 +12,7 @@
 */
 # include <gismo.h>
 # include <gsG1Basis/gsG1AuxiliaryEdgeMultiplePatches.h>
-# include <gsG1Basis/gsG1BasisEdge.h>
+# include <gsG1Basis/gsG1BasisVertex.h>
 # include <gsAssembler/gsG1BiharmonicAssembler.h>
 
 using namespace gismo;
@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
     optionList.addInt("refine","Refinement",numRefine);
     optionList.addInt("degree","Degree",numDegree);
 
-    multiPatch.patch(1).degreeElevate(1,0);
+    //multiPatch.patch(1).degreeElevate(1,0);
     multiPatch.degreeElevate(optionList.getInt("degree"));
 
     multiPatch.uniformRefine_withSameRegularity(optionList.getInt("refine"), optionList.getInt("regularity"));
@@ -139,12 +139,13 @@ int main(int argc, char *argv[])
     gsInfo << "basis : " << mb.basis(0) << "\n";
     gsInfo << "basis : " << mb.basis(1) << "\n";
 
+/*
     // Interface loop
-//    for (const boundaryInterface &  item : multiPatch.interfaces() )
-//    {
-//        gsG1AuxiliaryEdgeMultiplePatches a(multiPatch, item.first().patch, item.second().patch);
-//        a.computeG1InterfaceBasis(optionList);
-//    }
+    for (const boundaryInterface &  item : multiPatch.interfaces() )
+    {
+        gsG1AuxiliaryEdgeMultiplePatches a(multiPatch, item.first().patch, item.second().patch);
+        a.computeG1InterfaceBasis(optionList);
+    }
 
     for (gsMultiPatch<>::const_biterator bit = multiPatch.bBegin(); bit != multiPatch.bEnd(); ++bit)
     {
@@ -153,6 +154,43 @@ int main(int argc, char *argv[])
         gsG1AuxiliaryEdgeMultiplePatches a(multiPatch, bit->patch);
         a.computeG1BoundaryBasis(optionList, bit->m_index);
     }
+*/
+
+// Sigma start
+    gsBSplineBasis<> bsp_temp = dynamic_cast<gsBSplineBasis<> & >(mb.basis(0).component(0)); // TODO for all components
+    real_t p = bsp_temp.maxDegree(); // p_max
+    real_t h_geo = bsp_temp.knots().at(p + 2); // h_max (?)
+    real_t val = 2; // TODO Change
+
+    gsMatrix<> zero;
+    zero.setZero(2,1);
+    real_t sigma = 0.0;
+    for (index_t i = 0; i < val; i++)
+        sigma += multiPatch.patch(i).deriv(zero).lpNorm<Eigen::Infinity>();
+    sigma *= h_geo/(val*p);
+    sigma = 1 / sigma;
+
+    gsInfo << "SIGMA : " << sigma << "\n";
+    optionList.addReal("sigma","Sigma for the Vertex",sigma);
+// Sigma end
+
+// input we need
+    std::vector<bool> isBoundary_0, isBoundary_1;
+    isBoundary_0.push_back(false); // interface at u
+    isBoundary_0.push_back(false); // boundary at v
+    isBoundary_1.push_back(false); // boundary at u
+    isBoundary_1.push_back(false); // interface at v
+// input end
+
+// Start g1 basis at vertex (we need a loop)
+    gsG1BasisVertex<real_t> g1BasisVertex_0(multiPatch.patch(0),mb.basis(0),isBoundary_0,optionList);
+    gsG1BasisVertex<real_t> g1BasisVertex_1(multiPatch.patch(1),mb.basis(1),isBoundary_1,optionList);
+    gsMultiPatch<> g1Basis_0, g1Basis_1;
+    g1BasisVertex_1.constructSolution(g1Basis_1);
+    g1BasisVertex_1.plotG1BasisBoundary(g1Basis_1,multiPatch.patch(1),"BasisVertex");
+    g1BasisVertex_0.constructSolution(g1Basis_0);
+    g1BasisVertex_0.plotG1BasisBoundary(g1Basis_0,multiPatch.patch(0),"BasisVertex0");
+
 // NEW NEW NEW NEW NEW NEW NEW NEW NEW
 
     gsBoundaryConditions<> bcInfo, bcInfo2;
