@@ -156,6 +156,7 @@ int main(int argc, char *argv[])
     }
 */
 
+// Sigma start
     gsBSplineBasis<> bsp_temp = dynamic_cast<gsBSplineBasis<> & >(mb.basis(0).component(0)); // TODO for all components
     real_t p = bsp_temp.maxDegree(); // p_max
     real_t h_geo = bsp_temp.knots().at(p + 2); // h_max (?)
@@ -171,12 +172,17 @@ int main(int argc, char *argv[])
 
     gsInfo << "SIGMA : " << sigma << "\n";
     optionList.addReal("sigma","Sigma for the Vertex",sigma);
+// Sigma end
+
+// input we need
     std::vector<bool> isBoundary_0, isBoundary_1;
     isBoundary_0.push_back(false); // interface at u
     isBoundary_0.push_back(false); // boundary at v
     isBoundary_1.push_back(false); // boundary at u
     isBoundary_1.push_back(false); // interface at v
+// input end
 
+// Start g1 basis at vertex (we need a loop)
     gsG1BasisVertex<real_t> g1BasisVertex_0(multiPatch.patch(0),mb.basis(0),isBoundary_0,optionList);
     gsG1BasisVertex<real_t> g1BasisVertex_1(multiPatch.patch(1),mb.basis(1),isBoundary_1,optionList);
     gsMultiPatch<> g1Basis_0, g1Basis_1;
