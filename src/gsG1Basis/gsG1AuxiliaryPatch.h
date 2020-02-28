@@ -272,8 +272,7 @@ public:
         for(size_t np = 0; np < G1repBasis.nPatches(); np++)
         {
             gsMultiBasis<> auxBase(G1repBasis.patch(np));
-            gsTensorBSplineBasis<2, real_t>
-                & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(auxBase.basis(0));
+            gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(auxBase.basis(0));
             gsBSplineBasis<> temp_basisLU = dynamic_cast<gsBSplineBasis<> &>(temp_L.component(0));
             gsBSplineBasis<> temp_basisLV = dynamic_cast<gsBSplineBasis<> &>(temp_L.component(1));
             index_t dimU = temp_L.size(0);

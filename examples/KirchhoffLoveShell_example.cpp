@@ -98,25 +98,33 @@ int main(int argc, char *argv[])
 
 
 //     Vertices loop
-//    std::vector<std::vector<patchCorner>> allcornerLists = geo.vertices();
-//
-//    for(size_t i=0; i < allcornerLists.size(); i++)
-//    {
-//        std::vector<size_t> patchIndex;
-//        std::vector<size_t> vertIndex;
-//
-//        for(size_t j = 0; j < allcornerLists[i].size(); j++)
-//        {
-//            patchIndex.push_back(allcornerLists[i][j].patch);
-//            vertIndex.push_back(allcornerLists[i][j].m_index);
-//            gsInfo << "Patch: " << allcornerLists[i][j].patch << "\t Index: " << allcornerLists[i][j].m_index << "\n";
-//        }
-//        gsInfo << "\n";
-//
-//        gsG1AuxiliaryVertexMultiplePatches a(geo, patchIndex, vertIndex);
-//        a.computeG1InternalVertexBasis();
-//    }
+    std::vector<std::vector<patchCorner>> allcornerLists = geo.vertices();
+    for(size_t i=0; i < allcornerLists.size(); i++)
+    {
+        std::vector<size_t> patchIndex;
+        std::vector<size_t> vertIndex;
+        for(size_t j = 0; j < allcornerLists[i].size(); j++)
+        {
+            patchIndex.push_back(allcornerLists[i][j].patch);
+            vertIndex.push_back(allcornerLists[i][j].m_index);
+            gsInfo << "Patch: " << allcornerLists[i][j].patch << "\t Index: " << allcornerLists[i][j].m_index << "\n";
 
+
+            gsInfo << "Is a Boundary? "<< geo.isBoundary(allcornerLists[i][j].patch, 1) << "\n";
+
+
+        }
+        gsInfo << "\n";
+//
+        //gsG1AuxiliaryVertexMultiplePatches a(geo, patchIndex, vertIndex);
+        //a.computeG1InternalVertexBasis(optionList);
+    }
+    std::vector<size_t> patchIndex;
+    std::vector<size_t> vertIndex;
+    patchIndex.push_back(0);
+    vertIndex.push_back(1);
+    gsG1AuxiliaryVertexMultiplePatches a(geo, patchIndex, vertIndex);
+    a.computeG1InternalVertexBasis(optionList);
 
 
 

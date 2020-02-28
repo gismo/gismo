@@ -8,6 +8,7 @@
 #include <gsCore/gsMultiPatch.h>
 #include <gsG1Basis/gsG1AuxiliaryPatch.h>
 # include <gsG1Basis/gsG1BasisEdge.h>
+# include <gsG1Basis/gsG1BasisVertex.h>
 
 
 namespace gismo
@@ -19,12 +20,14 @@ class gsG1AuxiliaryVertexMultiplePatches
 public:
 
 // Constructor for n patches around a common vertex
-    gsG1AuxiliaryVertexMultiplePatches(const gsMultiPatch<> & mp, const std::vector<size_t> patchesAroundVertex, const std::vector<size_t> vertexIndices){
+    gsG1AuxiliaryVertexMultiplePatches(const gsMultiPatch<> & mp, const std::vector<size_t> patchesAroundVertex, const std::vector<size_t> vertexIndices)
+    {
         for(size_t i = 0; i < patchesAroundVertex.size(); i++)
         {
             auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(patchesAroundVertex[i]), patchesAroundVertex[i]));
             auxVertexIndices.push_back(vertexIndices[i]);
         }
+        sigma = 0.0;
         gsInfo << "\n";
     }
 
@@ -46,16 +49,7 @@ public:
     {
         for(size_t i = 0; i < auxGeom.size(); i++)
         {
-            if (auxGeom[i].getPatch().orientation() == -1)
-            {
-                auxGeom[i].swapAxis();
-                gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
-                if(auxVertexIndices[i] == 2)
-                    auxVertexIndices[i] = 3;
-                else
-                if(auxVertexIndices[i] == 3)
-                    auxVertexIndices[i] = 2;
-            }
+            checkOrientation(i);
 
             switch (auxVertexIndices[i])
             {
@@ -80,16 +74,88 @@ public:
         gsInfo << "-----------------------------------------------------------------\n";
     }
 
+    void checkOrientation(size_t i)
+    {
+        if (auxGeom[i].getPatch().orientation() == -1)
+        {
+            auxGeom[i].swapAxis();
+            gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
+            if(auxVertexIndices[i] == 2)
+                auxVertexIndices[i] = 3;
+            else
+            if(auxVertexIndices[i] == 3)
+                auxVertexIndices[i] = 2;
+        }
+    }
 
-    void computeG1InternalVertexBasis(){
+
+    void computeSigma()
+    {
+        real_t p = 0;
+        real_t h_geo = 0;
+        for(size_t i = 0; i < auxGeom.size(); i++)
+        {
+            gsTensorBSplineBasis<2, real_t> & bsp_temp = dynamic_cast<gsTensorBSplineBasis<2, real_t> & >(auxGeom[i].getPatch().basis());
+            real_t p_temp = bsp_temp.maxDegree();
+            p = (p < p_temp ? p_temp : p);
+
+            for(index_t j = 0; j < auxGeom[i].getPatch().parDim(); j++)
+            {
+               real_t h_geo_temp = bsp_temp.component(j).knots().at(p + 2);
+               h_geo = (h_geo < h_geo_temp ? h_geo_temp : h_geo);
+            }
+
+        }
+        real_t val = auxGeom.size();
+
+        gsMatrix<> zero;
+        zero.setZero(2,1);
+        for (index_t i = 0; i < val; i++)
+            sigma += auxGeom[i].getPatch().deriv(zero).lpNorm<Eigen::Infinity>();
+        sigma *= h_geo/(val*p);
+        sigma = 1 / sigma;
+    }
+
+
+    void isBoundary()
+    {
+        for(size_t i = 0; i < auxGeom.size(); i++)
+        {
+
+        }
+
+    }
+
+    void checkBoundary(size_t i)
+    {
+        //switch (isBdy)
+    }
+
+    void computeG1InternalVertexBasis(gsOptionList optionList){
 
 //        gsMultiPatch<> test_mp(this->computeAuxTopology());
 //        gsMultiBasis<> test_mb(test_mp);
 
+        this->reparametrizeG1Vertex();
 
-            this->reparametrizeG1Vertex();
+        std::vector<bool> isBdy;
+        isBdy.push_back(true); // interface at u
+        isBdy.push_back(true); // boundary at v
 
+        this->computeSigma();
+        optionList.addReal("sigma","Sigma for the Vertex",sigma);
 
+        for(size_t i = 0; i < auxGeom.size(); i++)
+        {
+            gsInfo << auxGeom[i].getPatch().basis() << "\n";
+            //std::vector<bool> isBdy(isBoundary(i));
+            gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy, optionList);
+            gsMultiPatch<> g1Basis;
+            g1BasisVertex_0.constructSolution(g1Basis);
+
+            auxGeom[i].parametrizeBasisBack(g1Basis);
+            g1BasisVertex_0.plotG1BasisBoundary(auxGeom[i].getG1Basis(), auxGeom[i].getPatch(),"BasisVertex0");
+        }
     }
 
 
@@ -100,6 +166,9 @@ public:
 protected:
     std::vector<gsG1AuxiliaryPatch> auxGeom;
     std::vector<size_t> auxVertexIndices;
+    std::vector< std::vector<bool>> isBdy;
+    real_t sigma;
+
 
 };
 
