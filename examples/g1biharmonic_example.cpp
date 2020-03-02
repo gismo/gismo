@@ -139,6 +139,10 @@ int main(int argc, char *argv[])
     gsInfo << "basis : " << mb.basis(0) << "\n";
     gsInfo << "basis : " << mb.basis(1) << "\n";
 
+    gsWriteParaview(mb.basis(0),"basis",5000);
+
+    multiPatch.isBoundary(1,1);
+
 /*
     // Interface loop
     for (const boundaryInterface &  item : multiPatch.interfaces() )
