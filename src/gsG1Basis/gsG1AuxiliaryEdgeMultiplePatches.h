@@ -164,8 +164,6 @@ public:
         gsMultiPatch<> test_mp(this->reparametrizeG1Boundary(boundaryInd));
         gsMultiBasis<> test_mb(test_mp);
 
-        gsInfo << "Basis : " << test_mb.basis(0) << "\n";
-
         gsG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, optionList);
         gsMultiPatch<> g1Basis_edge;
         g1BasisEdge.constructSolution(g1Basis_edge);
