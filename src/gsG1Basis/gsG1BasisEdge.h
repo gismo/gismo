@@ -63,7 +63,7 @@ public:
 
         m_basis_plus = basis_plus;
         n_plus = m_basis_plus.size();
-        gsInfo << "Basis plus : " << basis_plus << "\n";
+        //gsInfo << "Basis plus : " << basis_plus << "\n";
 
         gsKnotVector<T> kv_minus(0,1,0,m_p+1-1,m_p-1-m_r); // p-1,r //-1 bc p-1
         gsBSplineBasis<> basis_minus(kv_minus);

@@ -178,7 +178,8 @@ public:
             g1BasisVertex_0.constructSolution(g1Basis);
 
             auxGeom[i].parametrizeBasisBack(g1Basis);
-            g1BasisVertex_0.plotG1BasisBoundary(auxGeom[i].getG1Basis(), auxGeom[i].getPatch(),"BasisVertex0");
+
+            //g1BasisVertex_0.plotG1BasisBoundary(auxGeom[i].getG1Basis(), auxGeom[i].getPatch(),"BasisVertex0");
         }
     }
 

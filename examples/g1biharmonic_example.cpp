@@ -12,8 +12,9 @@
 */
 # include <gismo.h>
 # include <gsG1Basis/gsG1AuxiliaryEdgeMultiplePatches.h>
-# include <gsG1Basis/gsG1BasisVertex.h>
+# include <gsG1Basis/gsG1AuxiliaryVertexMultiplePatches.h>
 # include <gsAssembler/gsG1BiharmonicAssembler.h>
+# include <gsG1Basis/gsG1System.h>
 
 using namespace gismo;
 
@@ -136,60 +137,57 @@ int main(int argc, char *argv[])
     multiPatch.uniformRefine_withSameRegularity(optionList.getInt("refine"), optionList.getInt("regularity"));
     gsMultiBasis<> mb(multiPatch);
 
-    gsInfo << "basis : " << mb.basis(0) << "\n";
-    gsInfo << "basis : " << mb.basis(1) << "\n";
 
-/*
+    gsWriteParaview(mb.basis(0),"basis",5000);
+
+
     // Interface loop
+    std::vector<gsG1AuxiliaryPatch> g1_interface;
     for (const boundaryInterface &  item : multiPatch.interfaces() )
     {
         gsG1AuxiliaryEdgeMultiplePatches a(multiPatch, item.first().patch, item.second().patch);
         a.computeG1InterfaceBasis(optionList);
+        g1_interface.push_back(a.getSinglePatch(0));
+        g1_interface.push_back(a.getSinglePatch(1));
     }
 
+    std::vector<gsG1AuxiliaryPatch> g1_boundaries;
     for (gsMultiPatch<>::const_biterator bit = multiPatch.bBegin(); bit != multiPatch.bEnd(); ++bit)
     {
         gsInfo << "Patch: " << bit->patch << "\n";
         gsInfo << "m_index: " << bit->m_index << "\n";
         gsG1AuxiliaryEdgeMultiplePatches a(multiPatch, bit->patch);
         a.computeG1BoundaryBasis(optionList, bit->m_index);
+        g1_boundaries.push_back(a.getSinglePatch(0));
     }
-*/
 
-// Sigma start
-    gsBSplineBasis<> bsp_temp = dynamic_cast<gsBSplineBasis<> & >(mb.basis(0).component(0)); // TODO for all components
-    real_t p = bsp_temp.maxDegree(); // p_max
-    real_t h_geo = bsp_temp.knots().at(p + 2); // h_max (?)
-    real_t val = 2; // TODO Change
 
-    gsMatrix<> zero;
-    zero.setZero(2,1);
-    real_t sigma = 0.0;
-    for (index_t i = 0; i < val; i++)
-        sigma += multiPatch.patch(i).deriv(zero).lpNorm<Eigen::Infinity>();
-    sigma *= h_geo/(val*p);
-    sigma = 1 / sigma;
+//     Vertices loop
+    std::vector<gsG1AuxiliaryPatch> g1_vertices;
+    std::vector<std::vector<patchCorner>> allcornerLists = multiPatch.vertices();
+    for(size_t i=0; i < allcornerLists.size(); i++)
+    {
+        std::vector<size_t> patchIndex;
+        std::vector<size_t> vertIndex;
+        for(size_t j = 0; j < allcornerLists[i].size(); j++)
+        {
+            patchIndex.push_back(allcornerLists[i][j].patch);
+            vertIndex.push_back(allcornerLists[i][j].m_index);
+            gsInfo << "Patch: " << allcornerLists[i][j].patch << "\t Index: " << allcornerLists[i][j].m_index << "\n";
 
-    gsInfo << "SIGMA : " << sigma << "\n";
-    optionList.addReal("sigma","Sigma for the Vertex",sigma);
-// Sigma end
+        }
+        gsInfo << "\n";
 
-// input we need
-    std::vector<bool> isBoundary_0, isBoundary_1;
-    isBoundary_0.push_back(false); // interface at u
-    isBoundary_0.push_back(false); // boundary at v
-    isBoundary_1.push_back(false); // boundary at u
-    isBoundary_1.push_back(false); // interface at v
-// input end
+        gsG1AuxiliaryVertexMultiplePatches a(multiPatch, patchIndex, vertIndex);
+        a.computeG1InternalVertexBasis(optionList);
+        for (size_t j = 0; j < vertIndex.size(); j++)
+            g1_vertices.push_back(a.getSinglePatch(j));
+    }
 
-// Start g1 basis at vertex (we need a loop)
-    gsG1BasisVertex<real_t> g1BasisVertex_0(multiPatch.patch(0),mb.basis(0),isBoundary_0,optionList);
-    gsG1BasisVertex<real_t> g1BasisVertex_1(multiPatch.patch(1),mb.basis(1),isBoundary_1,optionList);
-    gsMultiPatch<> g1Basis_0, g1Basis_1;
-    g1BasisVertex_1.constructSolution(g1Basis_1);
-    g1BasisVertex_1.plotG1BasisBoundary(g1Basis_1,multiPatch.patch(1),"BasisVertex");
-    g1BasisVertex_0.constructSolution(g1Basis_0);
-    g1BasisVertex_0.plotG1BasisBoundary(g1Basis_0,multiPatch.patch(0),"BasisVertex0");
+
+    gsG1System<real_t> g1System;
+    g1System.plotParaview(multiPatch,g1_interface,g1_boundaries,g1_vertices,"BasisFunctions");
+
 
 // NEW NEW NEW NEW NEW NEW NEW NEW NEW
 
