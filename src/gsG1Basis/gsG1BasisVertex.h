@@ -32,7 +32,7 @@ public:
                   gsOptionList & optionList)
         : m_geo(geo), m_basis(basis), m_isBoundary(isBoundary), m_optionList(optionList)
     {
-        for (index_t uv = 0; uv < 2; uv++) // For the TWO interface
+        for (index_t uv = 0; uv < 2; uv++) // For the TWO directions
         {
             // Computing the gluing data
             gsGluingData<T> gluingData(m_geo,m_basis,uv,m_isBoundary[uv],m_optionList);
