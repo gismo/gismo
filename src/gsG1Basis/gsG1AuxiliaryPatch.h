@@ -224,9 +224,6 @@ public:
             // Create a new geometry starting from kntot vectors and the matrix of the coefficients reparametrized
             gsTensorBSpline<2, real_t> newgeom1(temp_basisLU.knots(), temp_basisLV.knots(), mpar);
 
-            // Create a new single-patch object
-            gsMultiPatch<> newpatch;
-
             newpatch.addPatch(newgeom1);
         }
         G1repBasis = newpatch;

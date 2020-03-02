@@ -83,8 +83,9 @@ public:
             auxGeom[i].swapAxis();
             gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
 
-            this->swapBdy(i); //Swap boundary edge indices
+            this->swapBdy(i); //Swap boundary edge bool-value
 
+            // Swap vertices index after swapping axis
             if(auxVertexIndices[i] == 2)
                 auxVertexIndices[i] = 3;
             else
@@ -185,6 +186,7 @@ public:
     gsG1AuxiliaryPatch & getSinglePatch(const unsigned i){
         return auxGeom[i];
     }
+
 
 protected:
     std::vector<gsG1AuxiliaryPatch> auxGeom;

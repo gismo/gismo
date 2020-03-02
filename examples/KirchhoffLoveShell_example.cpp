@@ -44,12 +44,14 @@ int main(int argc, char *argv[])
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
-    gsFileData<> fileSrc("KirchhoffLoveGeo/geo_fivePatchDiffParam.xml");
+    //gsFileData<> fileSrc("KirchhoffLoveGeo/geo_fivePatchDiffParam.xml");
+    gsFileData<> fileSrc("KirchhoffLoveGeo/square_diffParam1.xml");
+
     gsInfo << "Loaded file " << fileSrc.lastPath() << "\n";
 
     gsMultiPatch<> geo;
     gsInfo << "Geometry taken correctly \n";
-    fileSrc.getId(5, geo);
+    fileSrc.getId(2, geo);
     geo.computeTopology();
     gsInfo << "Geometry computed correctly\n";
 
@@ -97,7 +99,8 @@ int main(int argc, char *argv[])
 
 //     Vertices loop
     std::vector<std::vector<patchCorner>> allcornerLists = geo.vertices();
-    for(size_t i=0; i < allcornerLists.size(); i++)
+    size_t i = 1;
+//    for(size_t i=0; i < allcornerLists.size(); i++)
     {
         std::vector<size_t> patchIndex;
         std::vector<size_t> vertIndex;
