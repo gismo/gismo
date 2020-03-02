@@ -26,6 +26,7 @@ public:
         {
             auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(patchesAroundVertex[i]), patchesAroundVertex[i]));
             auxVertexIndices.push_back(vertexIndices[i]);
+            checkBoundary(mp, patchesAroundVertex[i], i);
         }
         sigma = 0.0;
         gsInfo << "\n";
@@ -49,7 +50,7 @@ public:
     {
         for(size_t i = 0; i < auxGeom.size(); i++)
         {
-            checkOrientation(i);
+            checkOrientation(i); // Check if the orientation is correct. If not, modifies vertex and edge vectors
 
             switch (auxVertexIndices[i])
             {
@@ -74,12 +75,16 @@ public:
         gsInfo << "-----------------------------------------------------------------\n";
     }
 
+
     void checkOrientation(size_t i)
     {
         if (auxGeom[i].getPatch().orientation() == -1)
         {
             auxGeom[i].swapAxis();
             gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
+
+            this->swapBdy(i); //Swap boundary edge indices
+
             if(auxVertexIndices[i] == 2)
                 auxVertexIndices[i] = 3;
             else
@@ -117,19 +122,43 @@ public:
     }
 
 
-    void isBoundary()
+    void checkBoundary(const gsMultiPatch<> & mpTmp, size_t  patchInd, size_t Ind)
     {
-        for(size_t i = 0; i < auxGeom.size(); i++)
+        std::vector<bool> tmp;
+        switch (auxVertexIndices[Ind])
         {
+            case 1: tmp.push_back(mpTmp.isBoundary(patchInd,3));
+                    tmp.push_back(mpTmp.isBoundary(patchInd,1));
+                    gsInfo << "Edge 3: " << mpTmp.isBoundary(patchInd, 3) << "\t Edge 1: " << mpTmp.isBoundary(patchInd, 1) << "\n";
+                break;
+            case 2: tmp.push_back(mpTmp.isBoundary(patchInd, 2));
+                    tmp.push_back(mpTmp.isBoundary(patchInd, 3));
+                    gsInfo << "Edge 2: " << mpTmp.isBoundary(patchInd, 2) << "\t Edge 3: " << mpTmp.isBoundary(patchInd, 3) << "\n";
 
+                break;
+            case 3: tmp.push_back(mpTmp.isBoundary(patchInd, 1));
+                    tmp.push_back(mpTmp.isBoundary(patchInd, 4));
+                    gsInfo << "Edge 1: " << mpTmp.isBoundary(patchInd, 1) << "\t Edge 4: " << mpTmp.isBoundary(patchInd, 4) << "\n";
+
+                break;
+            case 4: tmp.push_back(mpTmp.isBoundary(patchInd, 4));
+                    tmp.push_back(mpTmp.isBoundary(patchInd, 2));
+                    gsInfo << "Edge 4: " << mpTmp.isBoundary(patchInd, 4) << "\t Edge 2: " << mpTmp.isBoundary(patchInd, 2) << "\n";
+                break;
+            default:
+                break;
         }
-
+        isBdy.push_back(tmp);
     }
 
-    void checkBoundary(size_t i)
+
+    void swapBdy(size_t i)
     {
-        //switch (isBdy)
+        bool tmp = isBdy[i][0];
+        isBdy[i][0] = isBdy[i][1];
+        isBdy[i][1] = tmp;
     }
+
 
     void computeG1InternalVertexBasis(gsOptionList optionList){
 
@@ -138,18 +167,12 @@ public:
 
         this->reparametrizeG1Vertex();
 
-        std::vector<bool> isBdy;
-        isBdy.push_back(true); // interface at u
-        isBdy.push_back(true); // boundary at v
-
         this->computeSigma();
         optionList.addReal("sigma","Sigma for the Vertex",sigma);
 
         for(size_t i = 0; i < auxGeom.size(); i++)
         {
-            gsInfo << auxGeom[i].getPatch().basis() << "\n";
-            //std::vector<bool> isBdy(isBoundary(i));
-            gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy, optionList);
+            gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], optionList);
             gsMultiPatch<> g1Basis;
             g1BasisVertex_0.constructSolution(g1Basis);
 

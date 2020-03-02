@@ -211,7 +211,7 @@ public:
     }
 
     /// Returns true if side \a s on patch \a p is a boundary.
-    bool isBoundary( int p, boxSide s )
+    bool isBoundary( int p, boxSide s ) const
     {
         return isBoundary( patchSide(p,s) );
     }
