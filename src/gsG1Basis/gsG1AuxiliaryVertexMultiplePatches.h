@@ -79,15 +79,15 @@ public:
     index_t kindOfVertex()
     {
         if(auxGeom.size() == 1)
-            return -1;
+            return -1; // Boundary vertex
 
         gsMultiPatch<> top(computeAuxTopology());
         size_t nInt = top.interfaces().size();
         
         if(auxGeom.size() == nInt)
-            return 0;
+            return 0; // Internal vertex
         else
-            return 1;
+            return 1; // Interface-Boundary vertex
     }
 
 
