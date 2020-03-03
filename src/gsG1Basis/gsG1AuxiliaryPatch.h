@@ -30,6 +30,14 @@ public:
         gsInfo << "Single patch created: " << patchIndex << "\n";
     };
 
+    void setPlusMinus(index_t plus, index_t minus)
+    {
+        m_plus = plus;
+        m_minus = minus;
+    }
+
+    index_t get_n_plus() { return m_plus; }
+    index_t get_n_minus() { return m_minus; }
 
     void rotateParamAntiClock(){
         gsMultiBasis<> auxBase(auxPatch);
@@ -374,6 +382,8 @@ protected:
     // How many rotation of the axis has been executed
     // Positive -> anticlockwise    Negative -> clockwise
     index_t rotationNum;
+
+    index_t m_plus, m_minus;
 
 };
 

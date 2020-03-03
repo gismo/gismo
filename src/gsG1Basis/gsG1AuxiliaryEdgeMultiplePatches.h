@@ -193,6 +193,7 @@ public:
         //g1BasisEdge.plotG1BasisBoundary(g1Basis_edge, mp_init, basename_old);
 
         auxGeom[0].parametrizeBasisBack(g1Basis_edge);
+        auxGeom[0].setPlusMinus(g1BasisEdge.get_n_plus(), g1BasisEdge.get_n_minus());
 
         //std::string basename = "G1BasisBoundary_" + util::to_string(auxGeom[0].getGlobalPatchIndex()) + "_" + util::to_string(boundaryInd);
         //if (optionList.getSwitch("plot"))

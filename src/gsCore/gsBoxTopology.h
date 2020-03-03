@@ -216,6 +216,12 @@ public:
         return isBoundary( patchSide(p,s) );
     }
 
+    /// Returns true if side \a s on patch \a p is an interface?
+    bool isInterface(int p, boxSide s ) const
+    {
+        return isInterface(patchSide(p,s));
+    }
+
     /// Is the given patch side \a ps set to an interface?
     bool isInterface(const patchSide& ps) const;
 

@@ -18,6 +18,8 @@
 #include <gsAssembler/gsVisitorNeumannBiharmonic.h>
 //#include <gsAssembler/gsVisitorNitscheBiharmonic.h>
 
+# include <gsG1Basis/gsG1Mapper.h>
+
 namespace gismo
 {
 
@@ -129,6 +131,8 @@ public:
     void computeDirichletDofsL2Proj(std::multimap<index_t, std::map<index_t, std::map<index_t, gsMultiPatch<real_t>>>> & basisG1,
                                     std::vector<index_t> n_tilde, std::vector<index_t> n_bar,
                                     size_t unk = 0);
+
+    void computeDirichletDofsL2Proj(std::vector<gsG1AuxiliaryPatch> g1_edges, std::vector<gsG1AuxiliaryPatch> g1_vertices, gsG1Mapper<real_t> g1Mapper);
 
     gsDofMapper get_mapper_boundary() { return map_boundary; };
     gsDofMapper get_mapper_interface() { return map_interface; };
@@ -683,6 +687,214 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::multi
     m_g1_ddof = solver.compute( globProjMat ).solve ( globProjRhs );
 
 }
+
+
+template <class T, class bhVisitor>
+void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vector<gsG1AuxiliaryPatch> g1_edges,
+                                                                      std::vector<gsG1AuxiliaryPatch> g1_vertices,
+                                                                      gsG1Mapper<real_t> g1Mapper)
+{
+    size_t unk_ = 0;
+/*
+    m_g1_ddof.resize( map_boundary.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
+
+    // Set up matrix, right-hand-side and solution vector/matrix for
+    // the L2-projection
+    gsSparseEntries<T> projMatEntries;
+    gsMatrix<T>        globProjRhs;
+    globProjRhs.setZero( map_boundary.boundarySize() + num_boundary, m_system.unkSize(unk_)*m_system.rhs().cols() );
+
+    // Temporaries
+    gsVector<T> quWeights;
+
+    gsMatrix<T> rhsVals;
+    gsMatrix<unsigned> globIdxAct, locIdxAct;
+    gsMatrix<T> basisVals;
+
+    gsMapData<T> md(NEED_MEASURE);
+
+
+
+    // Iterate over all patch-sides with Dirichlet-boundary conditions
+    for ( typename gsBoundaryConditions<T>::const_iterator
+              iter = m_pde_ptr->bc().dirichletBegin();
+          iter != m_pde_ptr->bc().dirichletEnd(); ++iter )
+    {
+        if (iter->isHomogeneous() )
+            continue;
+
+        GISMO_ASSERT(iter->function()->targetDim() == m_system.unkSize(unk_)*m_system.rhs().cols(),
+                     "Given Dirichlet boundary function does not match problem dimension."
+                         <<iter->function()->targetDim()<<" != "<<m_system.unkSize(unk_)<<"\n");
+
+        const size_t unk = iter->unknown();
+        if(unk!=unk_)
+            continue;
+        const int patchIdx   = iter->patch();
+        const gsBasis<T> & basis = (m_bases[unk])[patchIdx];
+
+        const gsGeometry<T> & patch = m_pde_ptr->patches()[patchIdx];
+
+        // Set up quadrature to degree+1 Gauss points per direction,
+        // all lying on iter->side() except from the direction which
+        // is NOT along the element
+
+        gsGaussRule<T> bdQuRule(basis, 1.0, 1, iter->side().direction());
+
+        // Create the iterator along the given part boundary.
+        typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(iter->side());
+
+        for(; bdryIter->good(); bdryIter->next() )
+        {
+            bdQuRule.mapTo( bdryIter->lowerCorner(), bdryIter->upperCorner(),
+                            md.points, quWeights);
+
+            //geoEval->evaluateAt( md.points );
+            patch.computeMap(md);
+
+            // the values of the boundary condition are stored
+            // to rhsVals. Here, "rhs" refers to the right-hand-side
+            // of the L2-projection, not of the PDE.
+            rhsVals = iter->function()->eval( m_pde_ptr->domain()[patchIdx].eval( md.points ) );
+
+            basis.eval_into( md.points, basisVals);
+
+            index_t temp_i = basisVals.rows();
+            basisVals.conservativeResize(basisVals.rows() + num_boundary,basisVals.cols());
+
+            if (patchIdx == 0)
+            {
+                basisVals.row(temp_i) = basisG1_L.patch(0).eval(md.points);
+                basisVals.row(temp_i+1) = basisG1_L.patch(n_tilde-1).eval(md.points);
+                basisVals.row(temp_i+2) = basisG1_L.patch(n_tilde).eval(md.points);
+                basisVals.row(temp_i+3) = basisG1_L.patch(n_tilde+n_bar-1).eval(md.points);
+
+                basisVals.row(temp_i+4) = basisG1_L.patch(1).eval(md.points);
+                basisVals.row(temp_i+5) = basisG1_L.patch(n_tilde-2).eval(md.points);
+            }
+            if (patchIdx == 1)
+            {
+                basisVals.row(temp_i) = basisG1_R.patch(0).eval(md.points);
+                basisVals.row(temp_i+1) = basisG1_R.patch(n_tilde-1).eval(md.points);
+                basisVals.row(temp_i+2) = basisG1_R.patch(n_tilde).eval(md.points);
+                basisVals.row(temp_i+3) = basisG1_R.patch(n_tilde+n_bar-1).eval(md.points);
+
+                basisVals.row(temp_i+4) = basisG1_R.patch(1).eval(md.points);
+                basisVals.row(temp_i+5) = basisG1_R.patch(n_tilde-2).eval(md.points);
+            }
+
+
+            // Indices involved here:
+            // --- Local index:
+            // Index of the basis function/DOF on the patch.
+            // Does not take into account any boundary or interface conditions.
+            // --- Global Index:
+            // Each DOF has a unique global index that runs over all patches.
+            // This global index includes a re-ordering such that all eliminated
+            // DOFs come at the end.
+            // The global index also takes care of glued interface, i.e., corresponding
+            // DOFs on different patches will have the same global index, if they are
+            // glued together.
+            // --- Boundary Index (actually, it's a "Dirichlet Boundary Index"):
+            // The eliminated DOFs, which come last in the global indexing,
+            // have their own numbering starting from zero.
+
+            // Get the global indices (second line) of the local
+            // active basis (first line) functions/DOFs:
+            basis.active_into(md.points.col(0), locIdxAct );
+
+            map_boundary.localToGlobal( locIdxAct, patchIdx, globIdxAct);
+            // Out of the active functions/DOFs on this element, collect all those
+            // which correspond to a boundary DOF.
+            // This is checked by calling mapper.is_boundary_index( global Index )
+
+            // eltBdryFcts stores the row in basisVals/globIdxAct, i.e.,
+            // something like a "element-wise index"
+            std::vector<index_t> eltBdryFcts;
+            eltBdryFcts.reserve(map_boundary.boundarySize());
+            for( index_t i=0; i < globIdxAct.rows(); i++)
+                if( map_boundary.is_boundary_index( globIdxAct(i,0)) )
+                    if (!(map_interface.is_boundary(locIdxAct(i), patchIdx)))
+                        eltBdryFcts.push_back( i );
+
+            if (patchIdx == 0)
+            {
+                eltBdryFcts.push_back( globIdxAct.rows());
+                eltBdryFcts.push_back( globIdxAct.rows()+1);
+                eltBdryFcts.push_back( globIdxAct.rows()+2);
+                eltBdryFcts.push_back( globIdxAct.rows()+3);
+
+                if (bInt.at(0))
+                    eltBdryFcts.push_back( globIdxAct.rows()+4);
+                if (bInt.at(1))
+                    eltBdryFcts.push_back( globIdxAct.rows()+5);
+            }
+            if (patchIdx == 1)
+            {
+                eltBdryFcts.push_back( globIdxAct.rows());
+                eltBdryFcts.push_back( globIdxAct.rows()+1);
+                eltBdryFcts.push_back( globIdxAct.rows()+2);
+                eltBdryFcts.push_back( globIdxAct.rows()+3);
+
+                if (bInt.at(0))
+                    eltBdryFcts.push_back( globIdxAct.rows()+4);
+                if (bInt.at(1))
+                    eltBdryFcts.push_back( globIdxAct.rows()+5);
+            }
+
+
+            // Do the actual assembly:
+            for( index_t k=0; k < md.points.cols(); k++ )
+            {
+                const T weight_k = quWeights[k] * md.measure(k);
+
+                // Only run through the active boundary functions on the element:
+                for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
+                {
+                    unsigned ii, jj;
+                    // Each active boundary function/DOF in eltBdryFcts has...
+                    // ...the above-mentioned "element-wise index"
+                    const index_t i = eltBdryFcts[i0];
+                    // ...the boundary index.
+                    if ( i < globIdxAct.rows())
+                        ii = map_boundary.global_to_bindex( globIdxAct( i ));
+                    else
+                        ii = map_boundary.boundarySize() + i - globIdxAct.rows();
+
+                    for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
+                    {
+                        const index_t j = eltBdryFcts[j0];
+                        if ( j < globIdxAct.rows())
+                            jj = map_boundary.global_to_bindex( globIdxAct( j ));
+                        else
+                            jj = map_boundary.boundarySize() + j - globIdxAct.rows();
+
+                        // Use the "element-wise index" to get the needed
+                        // function value.
+                        // Use the boundary index to put the value in the proper
+                        // place in the global projection matrix.
+                        projMatEntries.add(ii, jj, weight_k * basisVals(i,k) * basisVals(j,k));
+                    } // for j
+                    globProjRhs.row(ii) += weight_k *  basisVals(i,k) * rhsVals.col(k).transpose();
+                } // for i
+            } // for k
+        } // bdryIter
+    } // boundaryConditions-Iterator
+
+    gsSparseMatrix<T> globProjMat( map_boundary.boundarySize()+ num_boundary,
+                                   map_boundary.boundarySize()+ num_boundary);
+    globProjMat.setFrom( projMatEntries );
+    globProjMat.makeCompressed();
+
+    // Solve the linear system:
+    // The position in the solution vector already corresponds to the
+    // numbering by the boundary index. Hence, we can simply take them
+    // for the values of the eliminated Dirichlet DOFs.
+    typename gsSparseSolver<T>::CGDiagonal solver;
+    m_g1_ddof = solver.compute( globProjMat ).solve ( globProjRhs );
+    */
+}
+
 
 template <class T, class bhVisitor>
 void gsG1BiharmonicAssembler<T,bhVisitor>::writeParaview(const gsField<T> & field,

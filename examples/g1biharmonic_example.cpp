@@ -15,6 +15,7 @@
 # include <gsG1Basis/gsG1AuxiliaryVertexMultiplePatches.h>
 # include <gsAssembler/gsG1BiharmonicAssembler.h>
 # include <gsG1Basis/gsG1System.h>
+# include <gsG1Basis/gsG1Mapper.h>
 
 using namespace gismo;
 
@@ -161,16 +162,21 @@ int main(int argc, char *argv[])
         g1_boundaries.push_back(a.getSinglePatch(0));
     }
 */
+    gsG1Mapper<real_t> g1Mapper(multiPatch);
+
     std::vector<gsG1AuxiliaryPatch> g1_edges;
-    for (index_t np = 0; np < multiPatch.nPatches(); np++)
+    for (size_t np = 0; np < multiPatch.nPatches(); np++)
     {
         for (index_t side_index = 1; side_index < 5; side_index++)
         {
             gsG1AuxiliaryEdgeMultiplePatches a(multiPatch, np);
             a.computeG1EdgeBasis(optionList,side_index,multiPatch.isBoundary(np,side_index));
+            g1Mapper.markGlobalIndex_Edge(g1_edges.size(),side_index,np,multiPatch.isBoundary(np,side_index)); // This case is the same
             g1_edges.push_back(a.getSinglePatch(0));
         }
     }
+
+    g1Mapper.markBoundary_Edge(g1_edges);
 
 //     Vertices loop
     std::vector<gsG1AuxiliaryPatch> g1_vertices;
@@ -191,9 +197,12 @@ int main(int argc, char *argv[])
         gsG1AuxiliaryVertexMultiplePatches a(multiPatch, patchIndex, vertIndex);
         a.computeG1InternalVertexBasis(optionList);
         for (size_t j = 0; j < vertIndex.size(); j++)
+        {
+            g1Mapper.markGlobalIndex_Vertex(g1_vertices.size(),vertIndex.at(j),patchIndex.at(j),true); // TODO
             g1_vertices.push_back(a.getSinglePatch(j));
-    }
+        }
 
+    }
 
     gsG1System<real_t> g1System;
     //if (plot)
@@ -214,7 +223,7 @@ int main(int argc, char *argv[])
     gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
     g1BiharmonicAssembler.assemble();
 
-    //g1BiharmonicAssembler.computeDirichletDofsL2Proj(basisG1, n_tilde, n_bar );
+    g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1_edges, g1_vertices, g1Mapper );
 
 
 
