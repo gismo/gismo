@@ -76,6 +76,22 @@ public:
     }
 
 
+    index_t kindOfVertex()
+    {
+        if(auxGeom.size() == 1)
+            return -1;
+
+        gsMultiPatch<> top(computeAuxTopology());
+        size_t nInt = top.interfaces().size();
+        
+        if(auxGeom.size() == nInt)
+            return 0;
+        else
+            return 1;
+    }
+
+
+
     void checkOrientation(size_t i)
     {
         if (auxGeom[i].getPatch().orientation() == -1)

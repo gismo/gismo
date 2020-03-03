@@ -120,19 +120,6 @@ int main(int argc, char *argv[])
 
 
 
-
-//    for (const std::vector<patchCorner> & it : allcornerLists)
-//    {
-//        gsInfo << "Dimension of the vector: " << it.size() << "\n";
-//        gsInfo << "Corner " << it.at(0).m_index << " in Patch " << it.at(0).patch << "\n";
-//        for (const patchCorner & it_corner : it)
-//        {
-//            gsInfo << "Patch : " << it_corner.patch << "\t Corner: " << it_corner.m_index << "\n";
-//        }
-//    }
-
-
-
 //    gsWriteParaview(newgeom1, "Geometry", 1000);
 
 //    // Write file .xml of the new geometry
@@ -151,8 +138,6 @@ int main(int argc, char *argv[])
         bcInfo.addCondition( *bit, condition_type::dirichlet, &solution );
         bcInfo2.addCondition( *bit,  condition_type::neumann, &laplace);
     }
-
-
 
 
     //Initilize solver
