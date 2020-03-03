@@ -63,11 +63,10 @@ public:
 
         Base::initialize(m_ppde, bases, m_options);
 
-        const gsMultiBasis<T> & mbasis = m_bases[m_system.colBasis(0)];
         const gsDofMapper & mapper =
             dirichlet::elimination == m_options.getInt("DirichletStrategy") ?
             m_system.colMapper(0) :
-            mbasis.getMapper(dirichlet::elimination,
+            bases.getMapper(dirichlet::elimination,
                              static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
                              m_pde_ptr->bc(), 0);
         map_boundary = mapper;
@@ -87,9 +86,6 @@ public:
             gsBasis<> & B1 = m_bases[0].basis(iFace.first().patch);
             gsBasis<> & B2 = m_bases[0].basis(iFace.second().patch);
 
-            // glue interface
-            //B1.matchWith(iFace, B2, act1, act2);
-
             // mark dofs
             act1 = B1.boundaryOffset(iFace.first().side(), 0);
             mapper_interface.markBoundary(iFace.first().patch, act1);//interface
@@ -102,9 +98,8 @@ public:
             mapper_interface.markBoundary(iFace.second().patch, act2);//second adj. face
         }
         mapper_interface.finalize();
-        //mapper_interface.print();
+        mapper_interface.print();
         map_interface = mapper_interface;
-
         // END
     }
 

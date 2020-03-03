@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
 
     gsWriteParaview(mb.basis(0),"basis",5000);
 
-
+/*
     // Interface loop
     std::vector<gsG1AuxiliaryPatch> g1_interface;
     for (const boundaryInterface &  item : multiPatch.interfaces() )
@@ -160,7 +160,17 @@ int main(int argc, char *argv[])
         a.computeG1BoundaryBasis(optionList, bit->m_index);
         g1_boundaries.push_back(a.getSinglePatch(0));
     }
-
+*/
+    std::vector<gsG1AuxiliaryPatch> g1_edges;
+    for (index_t np = 0; np < multiPatch.nPatches(); np++)
+    {
+        for (index_t side_index = 1; side_index < 5; side_index++)
+        {
+            gsG1AuxiliaryEdgeMultiplePatches a(multiPatch, np);
+            a.computeG1EdgeBasis(optionList,side_index,multiPatch.isBoundary(np,side_index));
+            g1_edges.push_back(a.getSinglePatch(0));
+        }
+    }
 
 //     Vertices loop
     std::vector<gsG1AuxiliaryPatch> g1_vertices;
@@ -186,7 +196,9 @@ int main(int argc, char *argv[])
 
 
     gsG1System<real_t> g1System;
-    g1System.plotParaview(multiPatch,g1_interface,g1_boundaries,g1_vertices,"BasisFunctions");
+    //if (plot)
+    //g1System.plotParaview(multiPatch,g1_interface,g1_boundaries,g1_vertices,"BasisFunctions");
+    g1System.plotParaview(multiPatch,g1_edges,g1_vertices,"BasisFunctions");
 
 
 // NEW NEW NEW NEW NEW NEW NEW NEW NEW
@@ -202,6 +214,23 @@ int main(int argc, char *argv[])
     gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
     g1BiharmonicAssembler.assemble();
 
-    // TODO g1BiharmonicAssembler.computeDirichletDofsL2Proj(basisG1, n_tilde, n_bar );
+    //g1BiharmonicAssembler.computeDirichletDofsL2Proj(basisG1, n_tilde, n_bar );
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 } // main

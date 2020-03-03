@@ -32,6 +32,11 @@ public:
                       std::vector<gsG1AuxiliaryPatch> & vertices,
                       std::string basename);
 
+    void plotParaview(gsMultiPatch<T> & mp,
+                      std::vector<gsG1AuxiliaryPatch> & edges,
+                      std::vector<gsG1AuxiliaryPatch> & vertices,
+                      std::string basename);
+
 }; // class gsG1System
 
 template<class T>
@@ -56,6 +61,41 @@ void gsG1System<T>::plotParaview(gsMultiPatch<T> & mp,
         }
     }
     for (std::vector<gsG1AuxiliaryPatch>::iterator auxGeo = boundaries.begin(); auxGeo != boundaries.end(); ++auxGeo)
+    {
+        for (size_t i = 0; i < auxGeo->getG1Basis().nPatches(); i++)
+        {
+            fileName = basename + "_" + util::to_string(iter);
+            gsField<> temp_field(mp.patch(auxGeo->getGlobalPatchIndex()),auxGeo->getG1Basis().patch(i));
+            gsWriteParaview(temp_field,fileName,5000);
+            collection.addTimestep(fileName,iter,"0.vts");
+            iter ++;
+        }
+    }
+    for (std::vector<gsG1AuxiliaryPatch>::iterator auxGeo = vertices.begin(); auxGeo != vertices.end(); ++auxGeo)
+    {
+        for (size_t i = 0; i < auxGeo->getG1Basis().nPatches(); i++)
+        {
+            fileName = basename + "_" + util::to_string(iter);
+            gsField<> temp_field(mp.patch(auxGeo->getGlobalPatchIndex()),auxGeo->getG1Basis().patch(i));
+            gsWriteParaview(temp_field,fileName,5000);
+            collection.addTimestep(fileName,iter,"0.vts");
+            iter ++;
+        }
+    }
+
+    collection.save();
+}
+
+template<class T>
+void gsG1System<T>::plotParaview(gsMultiPatch<T> & mp,
+                                 std::vector<gsG1AuxiliaryPatch> & edges,
+                                 std::vector<gsG1AuxiliaryPatch> & vertices,
+                                 std::string basename)
+{
+    gsParaviewCollection collection(basename);
+    std::string fileName;
+    index_t iter = 0;
+    for (std::vector<gsG1AuxiliaryPatch>::iterator auxGeo = edges.begin(); auxGeo != edges.end(); ++auxGeo)
     {
         for (size_t i = 0; i < auxGeo->getG1Basis().nPatches(); i++)
         {
