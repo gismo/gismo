@@ -83,7 +83,6 @@ public:
 
         gsMultiPatch<> top(computeAuxTopology());
         size_t nInt = top.interfaces().size();
-        
         if(auxGeom.size() == nInt)
             return 0; // Internal vertex
         else

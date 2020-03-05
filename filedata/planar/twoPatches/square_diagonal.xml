@@ -10,10 +10,10 @@
             <KnotVector degree="1">0 0 1 1 </KnotVector>
         </Basis>
         </Basis>
-        <coefs geoDim="2">0.2 0.0
-        0.7 1.0 
-        0.0 0.0
-        0.0 1.0
+        <coefs geoDim="2">0 0.0
+        0.2 0 
+        0.0 1
+        0.7 1.0
         </coefs>
     </Geometry>
     <Geometry type="TensorBSpline2" id="2">
@@ -25,8 +25,8 @@
             <KnotVector degree="1">0 0 1 1 </KnotVector>
         </Basis>
         </Basis>
-        <coefs geoDim="2">0.2 0.0
-            1.0 0.0
+        <coefs geoDim="2">0.2 0
+            1 0.0
             0.7 1
             1 1
         </coefs>

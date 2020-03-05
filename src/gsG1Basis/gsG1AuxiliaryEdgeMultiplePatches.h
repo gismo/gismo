@@ -178,6 +178,29 @@ public:
 
     }
 
+    void computeG1EdgeBasis(gsOptionList optionList, const int edgeInd, bool isboundary){
+        gsMultiPatch<> mp_init;
+        mp_init.addPatch(auxGeom[0].getPatch());
+
+        gsMultiPatch<> test_mp;
+        test_mp = this->reparametrizeG1Boundary(edgeInd);
+        gsMultiBasis<> test_mb(test_mp);
+
+        gsG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, isboundary, optionList);
+        gsMultiPatch<> g1Basis_edge;
+        g1BasisEdge.constructSolution(g1Basis_edge);
+        //std::string basename_old = "G1BasisBoundary_Old_" + util::to_string(auxGeom[0].getGlobalPatchIndex()) + "_" + util::to_string(boundaryInd);
+        //g1BasisEdge.plotG1BasisBoundary(g1Basis_edge, mp_init, basename_old);
+
+        auxGeom[0].parametrizeBasisBack(g1Basis_edge);
+        auxGeom[0].setPlusMinus(g1BasisEdge.get_n_plus(), g1BasisEdge.get_n_minus());
+
+        //std::string basename = "G1BasisBoundary_" + util::to_string(auxGeom[0].getGlobalPatchIndex()) + "_" + util::to_string(boundaryInd);
+        //if (optionList.getSwitch("plot"))
+        //   g1BasisEdge.plotG1BasisBoundary(auxGeom[0].getG1Basis(), mp_init, basename);
+
+    }
+
     gsG1AuxiliaryPatch & getSinglePatch(const unsigned i){
         return auxGeom[i];
     }
