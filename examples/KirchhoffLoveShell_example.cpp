@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
     //gsFileData<> fileSrc("KirchhoffLoveGeo/geo_fivePatchDiffParam.xml");
-    gsFileData<> fileSrc("KirchhoffLoveGeo/square_diffParam1.xml");
+    gsFileData<> fileSrc("KirchhoffLoveGeo/square_diffParam.xml");
 
     gsInfo << "Loaded file " << fileSrc.lastPath() << "\n";
 
@@ -72,8 +72,18 @@ int main(int argc, char *argv[])
     gsInfo << "Old: " << basis << "\n";
 
 
+    size_t degU = basis.basis(0).component(0).maxDegree();
+    size_t degV = basis.basis(0).component(1).maxDegree();
 
+    gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(basis.basis(0));
+    gsBSplineBasis<> temp_basisLU = dynamic_cast<gsBSplineBasis<> &>(temp_L.component(0));
+    gsBSplineBasis<> temp_basisLV = dynamic_cast<gsBSplineBasis<> &>(temp_L.component(1));
 
+    gsInfo << "maxDeg patch 0 along u: " << degU << "\n";
+    gsInfo << "maxDeg patch 0 along v: " << degV << "\n";
+
+//    gsInfo << "NumElem patch 0 along u: " << elemU << "\n";
+//    gsInfo << "NumElem patch 0 along v: " << elemV << "\n";
 //     Interface loop
 //    for (const boundaryInterface &  item : geo.interfaces() )
 //    {
@@ -115,6 +125,7 @@ int main(int argc, char *argv[])
 
         gsG1AuxiliaryVertexMultiplePatches a(geo, patchIndex, vertIndex);
         a.computeG1InternalVertexBasis(optionList);
+        gsInfo << a.getSinglePatch(0).getG1Basis().patch(0).coefs() << "\n";
     }
 
 
