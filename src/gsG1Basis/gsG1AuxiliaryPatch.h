@@ -300,6 +300,8 @@ public:
             newpatch.addPatch(newgeom1);
         }
         G1repBasis.swap(newpatch);
+
+        checkOrientation();
     }
 
 

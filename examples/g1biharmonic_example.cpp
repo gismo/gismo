@@ -15,7 +15,7 @@
 # include <gsG1Basis/gsG1AuxiliaryVertexMultiplePatches.h>
 # include <gsAssembler/gsG1BiharmonicAssembler.h>
 # include <gsG1Basis/gsG1System.h>
-# include <gsG1Basis/gsG1Mapper.h>
+# include <gsG1Basis/gsG1Mapper_pascal.h>
 
 using namespace gismo;
 
@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     // ======= Solution =========
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+    gsFunctionExpr<> solVal("x",2);
     gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
                              "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
     gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
         g1_boundaries.push_back(a.getSinglePatch(0));
     }
 */
-    gsG1Mapper<real_t> g1Mapper(multiPatch);
+    gsG1Mapper_pascal<real_t> g1Mapper(multiPatch);
 
     std::vector<gsG1AuxiliaryPatch> g1_edges;
     for (size_t np = 0; np < multiPatch.nPatches(); np++)
@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    g1Mapper.markBoundary_Edge(g1_edges);
+    g1Mapper.markBoundary_Edge(g1_edges, multiPatch);
 
 //     Vertices loop
     std::vector<gsG1AuxiliaryPatch> g1_vertices;
@@ -196,15 +196,22 @@ int main(int argc, char *argv[])
 
         gsG1AuxiliaryVertexMultiplePatches a(multiPatch, patchIndex, vertIndex);
         a.computeG1InternalVertexBasis(optionList);
+        index_t kindBdr = a.kindOfVertex();
         for (size_t j = 0; j < vertIndex.size(); j++)
         {
-            g1Mapper.markGlobalIndex_Vertex(g1_vertices.size(),vertIndex.at(j),patchIndex.at(j),true); // TODO
+            g1Mapper.markGlobalIndex_Vertex(g1_vertices.size(),vertIndex.at(j),patchIndex.at(j),kindBdr); // TODO
             g1_vertices.push_back(a.getSinglePatch(j));
         }
+        g1Mapper.coupleVertex(patchIndex, vertIndex);
 
     }
 
-    gsG1System<real_t> g1System;
+    gsDofMapper map_global(mb);
+    map_global.finalize();
+
+    g1Mapper.markBoundary_Vertex(multiPatch,g1_vertices);
+
+    gsG1System<real_t> g1System(mb, g1_edges, g1_vertices, g1Mapper);
     //if (plot)
     //g1System.plotParaview(multiPatch,g1_interface,g1_boundaries,g1_vertices,"BasisFunctions");
     g1System.plotParaview(multiPatch,g1_edges,g1_vertices,"BasisFunctions");
@@ -224,10 +231,11 @@ int main(int argc, char *argv[])
     g1BiharmonicAssembler.assemble();
 
     g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1_edges, g1_vertices, g1Mapper );
+    g1BiharmonicAssembler.constructDirichletSolution(g1_edges, g1_vertices, g1Mapper );
 
-
-
-
+    g1System.setGlobalMapper(g1BiharmonicAssembler.get_mapper());
+    g1System.initialize();
+    g1System.assemble();
 
 
 
