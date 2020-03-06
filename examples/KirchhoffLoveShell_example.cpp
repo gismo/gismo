@@ -102,25 +102,21 @@ int main(int argc, char *argv[])
 
 
 
-//     Interface loop
-//    for (const boundaryInterface &  item : geo.interfaces() )
-//    {
-//
-//        gsG1AuxiliaryEdgeMultiplePatches a(geo, item.first().patch, item.second().patch);
-//
-//        a.computeG1InterfaceBasis(optionList);
-//
-//    }
-
-
-
-    //     Loop over the boundary edges
-   // for ( auto & it : geo.boundaries()){
-//        gsInfo << "Patch: " << geo.boundaries()[0].patch << "\n";
-//        gsInfo << "m_index: " << geo.boundaries()[0].m_index << "\n";
-//        gsG1AuxiliaryEdgeMultiplePatches a(geo, geo.boundaries()[0].patch);
-//        a.computeG1BoundaryBasis(optionList, geo.boundaries()[0].m_index);
-    //}
+//     Edges loop
+    std::vector<gsMultiPatch<>> g1_edges;
+    std::vector<size_t> numG1Bas;
+    std::vector<index_t> nPlusDimen;
+    for (size_t np = 0; np < geo.nPatches(); np++)
+    {
+        for (index_t side_index = 1; side_index < 5; side_index++)
+        {
+            gsG1AuxiliaryEdgeMultiplePatches edge(geo, np);
+            edge.computeG1EdgeBasis(optionList, side_index, geo.isBoundary(np, side_index));
+            g1_edges.push_back(edge.getSinglePatch(0).getG1Basis());
+            numG1Bas.push_back(edge.getSinglePatch(0).getG1Basis().nPatches());
+            nPlusDimen.push_back(edge.getSinglePatch(0).get_n_plus());
+        }
+    }
 
 
 
