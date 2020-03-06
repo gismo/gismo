@@ -179,7 +179,8 @@ int main(int argc, char *argv[])
     g1Mapper.markBoundary_Edge(g1_edges, multiPatch);
 
 //     Vertices loop
-    std::vector<gsG1AuxiliaryPatch> g1_vertices;
+    gsG1AuxiliaryPatch init;
+    std::vector<gsG1AuxiliaryPatch> g1_vertices(4*multiPatch.nPatches(),init);
     std::vector<std::vector<patchCorner>> allcornerLists = multiPatch.vertices();
     for(size_t i=0; i < allcornerLists.size(); i++)
     {
@@ -199,16 +200,12 @@ int main(int argc, char *argv[])
         index_t kindBdr = a.kindOfVertex();
         for (size_t j = 0; j < vertIndex.size(); j++)
         {
-            g1Mapper.markGlobalIndex_Vertex(g1_vertices.size(),vertIndex.at(j),patchIndex.at(j),kindBdr); // TODO
-            g1_vertices.push_back(a.getSinglePatch(j));
+            g1Mapper.markGlobalIndex_Vertex(patchIndex.at(j)*4 + vertIndex.at(j) -1,vertIndex.at(j),patchIndex.at(j),kindBdr); // TODO
+            g1_vertices.at(patchIndex.at(j)*4 + vertIndex.at(j) -1) = a.getSinglePatch(j);
         }
         g1Mapper.coupleVertex(patchIndex, vertIndex);
 
     }
-
-    gsDofMapper map_global(mb);
-    map_global.finalize();
-
     g1Mapper.markBoundary_Vertex(multiPatch,g1_vertices);
 
     gsG1System<real_t> g1System(mb, g1_edges, g1_vertices, g1Mapper);

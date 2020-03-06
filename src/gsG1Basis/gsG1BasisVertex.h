@@ -29,20 +29,21 @@ public:
     gsG1BasisVertex(gsMultiPatch<> geo, // Single Patch
                   gsMultiBasis<> basis, // Single Basis
                   std::vector<bool> isBoundary,
+                  real_t sigma,
                   gsOptionList & optionList)
-        : m_geo(geo), m_basis(basis), m_isBoundary(isBoundary), m_optionList(optionList)
+        : m_geo(geo), m_basis(basis), m_isBoundary(isBoundary), m_sigma(sigma), m_optionList(optionList)
     {
-        for (index_t uv = 0; uv < 2; uv++) // For the TWO directions
+        for (index_t dir = 0; dir < geo.parDim(); dir++) // For the TWO directions
         {
             // Computing the gluing data
-            gsGluingData<T> gluingData(m_geo,m_basis,uv,m_isBoundary[uv],m_optionList);
+            gsGluingData<T> gluingData(m_geo,m_basis,dir,m_isBoundary[dir],m_optionList);
             m_gD.push_back(gluingData);
 
             // Computing the G1 - basis function at the edge
             // Spaces for computing the g1 basis
             index_t m_r = m_optionList.getInt("regularity"); // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
 
-            gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(0).component(uv)); // 0 -> u, 1 -> v
+            gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(0).component(dir)); // 0 -> u, 1 -> v
             index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
 
             // first,last,interior,mult_ends,mult_interior
@@ -169,6 +170,7 @@ protected:
     gsMultiPatch<T> m_geo;
     gsMultiBasis<T> m_basis;
     std::vector<bool> m_isBoundary;
+    real_t m_sigma;
     gsOptionList m_optionList;
 
     // Gluing data
@@ -327,7 +329,7 @@ void gsG1BasisVertex<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, bo
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 #pragma omp critical(evaluate)
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(basis_g1, basis_geo, m_basis_plus, m_basis_minus, patch, quNodes, m_gD, m_isBoundary, m_optionList);
+            visitor_.evaluate(basis_g1, basis_geo, m_basis_plus, m_basis_minus, patch, quNodes, m_gD, m_isBoundary, m_sigma, m_optionList);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);

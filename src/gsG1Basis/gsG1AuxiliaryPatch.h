@@ -23,6 +23,9 @@ class gsG1AuxiliaryPatch
 {
 public:
 
+    gsG1AuxiliaryPatch()
+    {}
+
     gsG1AuxiliaryPatch(const gsGeometry<> & singlePatch, const size_t globalPatchIndex):
     auxPatch(singlePatch), patchIndex(globalPatchIndex){
         rotationNum = 0;

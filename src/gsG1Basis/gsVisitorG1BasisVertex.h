@@ -54,6 +54,7 @@ public:
                          gsMatrix<T>            & quNodes,
                          std::vector<gsGluingData<T>>  & gluingData,
                          std::vector<bool> & isBoundary,
+                         real_t sigma,
                          gsOptionList optionList)
     {
         md.points = quNodes;
@@ -74,11 +75,11 @@ public:
         gsMatrix<> Phi(6,6);
         Phi.setIdentity();
 
-        Phi.row(1) *= optionList.getReal("sigma");
-        Phi.row(2) *= optionList.getReal("sigma");
-        Phi.row(3) *= optionList.getReal("sigma") * optionList.getReal("sigma");
-        Phi.row(4) *= optionList.getReal("sigma") * optionList.getReal("sigma");
-        Phi.row(5) *= optionList.getReal("sigma") * optionList.getReal("sigma");
+        Phi.row(1) *= sigma;
+        Phi.row(2) *= sigma;
+        Phi.row(3) *= sigma * sigma;
+        Phi.row(4) *= sigma * sigma;
+        Phi.row(5) *= sigma * sigma;
 
         // Computing c, c+ and c-
         std::vector<gsMatrix<>> c_0, c_1;

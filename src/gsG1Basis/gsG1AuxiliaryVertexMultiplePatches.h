@@ -184,11 +184,10 @@ public:
         this->reparametrizeG1Vertex();
 
         this->computeSigma();
-        optionList.addReal("sigma","Sigma for the Vertex",sigma);
 
         for(size_t i = 0; i < auxGeom.size(); i++)
         {
-            gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], optionList);
+            gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, optionList);
             gsMultiPatch<> g1Basis;
             g1BasisVertex_0.constructSolution(g1Basis);
 

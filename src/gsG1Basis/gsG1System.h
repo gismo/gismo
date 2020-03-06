@@ -125,30 +125,26 @@ void gsG1System<T>::assemble()
         {
             gsMatrix<unsigned > localDof(1,1), globalDof(1,1);
             localDof << j;
-
             m_map_vertex.localToGlobal(localDof,i,globalDof);
-            gsInfo << globalDof << "\n";
-            if (m_map_vertex.is_coupled(j,i))
+            gsInfo << globalDof << " : ";
+            for (size_t k = 0; k < m_vertices.at(i).getG1Basis().basis(j).size(); k++)
             {
-                m_map_vertex.localToGlobal(localDof,i,globalDof);
-                gsInfo << " Coupled " << globalDof << "\n";
-            }
-            else
-            {
-                for (size_t k = 0; k < m_vertices.at(i).getG1Basis().basis(j).size(); k++)
+                if (m_vertices.at(i).getG1Basis().patch(j).coefs().at(k) * m_vertices.at(i).getG1Basis().patch(j).coefs().at(k) > 10e-30)
                 {
-                    if (m_vertices.at(i).getG1Basis().patch(j).coefs().at(k) * m_vertices.at(i).getG1Basis().patch(j).coefs().at(k) > 10e-30)
-                    {
-                        gsMatrix<unsigned > localDof_BF(1,1), globalDof_BF;
-                        localDof_BF << k;
-                        map_global.localToGlobal(localDof_BF,m_vertices.at(i).getGlobalPatchIndex(),globalDof_BF);
-                        D_sparse.insert(dim_I + globalDof.at(0),globalDof_BF.at(0)) = m_vertices.at(i).getG1Basis().patch(j).coefs().at(k);
-                    }
-
+                    gsMatrix<unsigned > localDof_BF(1,1), globalDof_BF;
+                    localDof_BF << k;
+                    map_global.localToGlobal(localDof_BF,m_vertices.at(i).getGlobalPatchIndex(),globalDof_BF);
+                    //gsInfo << globalDof_BF << " \n";
+                    D_sparse.insert(dim_I + globalDof.at(0),globalDof_BF.at(0)) = m_vertices.at(i).getG1Basis().patch(j).coefs().at(k);
                 }
+
             }
+            gsInfo << "\n";
+
         }
     } // vertex
+
+
 
 }
 

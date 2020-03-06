@@ -64,45 +64,6 @@ public:
         m_options.setInt("InterfaceStrategy", intStrategy);
 
         Base::initialize(m_ppde, bases, m_options);
-
-        const gsDofMapper & mapper =
-            dirichlet::elimination == m_options.getInt("DirichletStrategy") ?
-            m_system.colMapper(0) :
-            bases.getMapper(dirichlet::elimination,
-                             static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
-                             m_pde_ptr->bc(), 0);
-        map_boundary = mapper;
-
-        // For interface:
-        // 1. Obtain a map from basis functions to matrix columns and rows
-        gsVector<index_t> sz(m_ppde.patches().nPatches()); // n Patches
-        for (index_t i = 0; i < sz.size(); i++)
-            sz[i] = m_bases[0].basis(i).size();
-        gsDofMapper mapper_interface(sz);
-
-        gsMatrix<unsigned> act1, act2;
-        for (unsigned i = 0 ; i < m_ppde.patches().interfaces().size(); i++)  // Iterate over the interfaces
-        {
-            const boundaryInterface & iFace = m_ppde.patches().interfaces()[i];// assume one single interface
-
-            gsBasis<> & B1 = m_bases[0].basis(iFace.first().patch);
-            gsBasis<> & B2 = m_bases[0].basis(iFace.second().patch);
-
-            // mark dofs
-            act1 = B1.boundaryOffset(iFace.first().side(), 0);
-            mapper_interface.markBoundary(iFace.first().patch, act1);//interface
-            act2 = B2.boundaryOffset(iFace.second().side(), 0);
-            mapper_interface.markBoundary(iFace.second().patch, act2);//interface
-
-            act1 = B1.boundaryOffset(iFace.first().side(), 1);
-            mapper_interface.markBoundary(iFace.first().patch, act1); //first adj. face
-            act2 = B2.boundaryOffset(iFace.second().side(), 1);
-            mapper_interface.markBoundary(iFace.second().patch, act2);//second adj. face
-        }
-        mapper_interface.finalize();
-        mapper_interface.print();
-        map_interface = mapper_interface;
-        // END
     }
 
     void refresh();
@@ -112,25 +73,12 @@ public:
     void constructSolution(const gsMatrix<T>& solVector,
                            gsMultiPatch<T>& result, int unk = 0);
 
-    void writeParaview(const gsField<T> & field,
-                       std::string const & fn, gsMultiPatch<T> mp_L,
-                       gsMultiPatch<T> mp_R,
-                       unsigned npts = 1000, bool mesh = false);
-
-    void writeParaview(const gsField<T> & field,
-                       std::string const & fn,
-                       std::multimap<index_t, std::map<index_t, std::map<index_t, gsMultiPatch<real_t>>>> mp_g1,
-                       unsigned npts = 1000, bool mesh = false);
-
 
     void computeDirichletDofsL2Proj(std::vector<gsG1AuxiliaryPatch> & g1_edges, std::vector<gsG1AuxiliaryPatch> & g1_vertices, gsG1Mapper_pascal<real_t> &  g1Mapper);
     void constructDirichletSolution(std::vector<gsG1AuxiliaryPatch> & g1_edges, std::vector<gsG1AuxiliaryPatch> & g1_vertices, gsG1Mapper_pascal<real_t> & g1Mapper);
 
-    gsDofMapper get_mapper_boundary() { return map_boundary; };
-    gsDofMapper get_mapper_interface() { return map_interface; };
     gsDofMapper get_mapper() { return m_system.colMapper(0); };
 
-    gsMatrix<T> get_g1dofs() { return m_g1_ddof; };
 
 
 protected:
@@ -148,8 +96,6 @@ protected:
 protected:
 
     gsMatrix<T> m_g1_ddof;
-
-    gsDofMapper map_boundary, map_interface;
 
 };
 
@@ -301,50 +247,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructDirichletSolution(std::vecto
 }
 
 template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::constructSolution(const gsMatrix<T> & solVector,
-                                                             gsMultiPatch<T> & result,
-                                                             int unk)
-{
-    const gsDofMapper & mapper = m_system.colMapper(unk); // unknown = 0
-    result.clear();
-
-    const index_t dim = ( 0!=solVector.cols() ? solVector.cols() :  m_ddof[unk].cols() );
-
-    gsMatrix<T> coeffs;
-    for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
-    {
-        // Reconstruct solution coefficients on patch p
-        const int sz  = m_bases[m_system.colBasis(unk)][p].size();
-        coeffs.resize(sz, dim);
-
-        for (index_t i = 0; i < sz; ++i)
-        {
-            if (map_boundary.is_free(i, p)) // DoF value is in the solVector
-            {
-                //gsInfo << "mapper index: " << i << " : " << mapper.index(i, p) << " : " << solVector.row( mapper.index(i, p) ) << "\n";
-                coeffs.row(i) = solVector.row( mapper.index(i, p) );
-            }
-            else // eliminated DoF: fill with Dirichlet data
-            {
-                if (map_interface.is_free(i,p))
-                {
-                    //gsInfo << "mapper index dirichlet: " << i << " : " << map_boundary.bindex(i, p) << " : " << m_g1_ddof.row( map_boundary.bindex(i, p) ) << "\n";
-                    //coeffs.row(i) = m_ddof[unk].row( mapper.bindex(i, p) ).head(dim);
-                    coeffs.row(i) = m_g1_ddof.row( map_boundary.bindex(i, p) );
-                }
-                else // For interface boundary
-                {
-                    //gsInfo << "mapper index dirichlet: " << i << " : " << mapper.index(i, p) << " : " << solVector.row( mapper.index(i, p) ) << "\n";
-                    coeffs.row(i) = solVector.row( mapper.index(i, p) ); // == 0
-                }
-            }
-        }
-
-        result.addPatch( m_bases[m_system.colBasis(unk)][p].makeGeometry( give(coeffs) ) );
-    }
-}
-
-template <class T, class bhVisitor>
 void gsG1BiharmonicAssembler<T,bhVisitor>::refresh()
 {
     // We use predefined helper which initializes the system matrix
@@ -400,6 +302,11 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vecto
 
     gsDofMapper map_edge(g1Mapper.getMapper_Edges());
     gsDofMapper map_vertex(g1Mapper.getMapper_Vertex());
+
+    gsInfo << " : " << map_vertex.asVector() << "\n";
+    gsInfo << " : " << map_vertex.global_to_bindex(19) << "\n";
+    gsInfo << " : " << map_vertex.global_to_bindex(30) << "\n";
+    gsInfo << " : " << map_vertex.global_to_bindex(31) << "\n";
 
     m_g1_ddof.resize( map_edge.boundarySize() + map_vertex.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
 
@@ -585,209 +492,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vecto
     // for the values of the eliminated Dirichlet DOFs.
     typename gsSparseSolver<T>::CGDiagonal solver;
     m_g1_ddof = solver.compute( globProjMat ).solve ( globProjRhs );
-}
-
-
-template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::writeParaview(const gsField<T> & field,
-                                                         std::string const & fn,
-                                                         gsMultiPatch<T> mp_L,
-                                                         gsMultiPatch<T> mp_R,
-                                                         unsigned npts,
-                                                         bool mesh)
-{
-    const unsigned n = field.nPieces();
-    gsParaviewCollection collection(fn);
-    std::string fileName;
-
-    for ( unsigned i=0; i < n; ++i ) // Patches
-    {
-        //const gsBasis<T> & dom = field.isParametrized() ?
-        //                         field.igaFunction(i).basis() : field.patch(i).basis();
-
-        fileName = fn + util::to_string(i);
-        //writeSinglePatchField( field, i, fileName, npts );
-
-        const gsFunction<T> & geometry = field.patch(i);
-        const gsFunction<T> & parField = field.function(i);
-
-        const int n = geometry.targetDim();
-        const int d = geometry.domainDim();
-
-        gsMatrix<T> ab = geometry.support();
-        gsVector<T> a = ab.col(0);
-        gsVector<T> b = ab.col(1);
-
-        gsVector<unsigned> np = uniformSampleCount(a, b, npts);
-        gsMatrix<T> pts = gsPointGrid(a, b, np);
-
-        gsMatrix<T> eval_geo = geometry.eval(pts);//pts
-        gsMatrix<T> eval_field = field.isParametric() ? parField.eval(pts) : parField.eval(eval_geo);
-
-        // Hier g1 basis dazu addieren!!!
-        if (i == 0)
-        {
-            for (unsigned j = 0; j < mp_L.nPatches(); j++)
-            {
-                gsField<> solField(m_ppde.patches().patch(i),mp_L.patch(j));
-                eval_field += solField.value(pts);
-            }
-
-        }
-        if (i == 1)
-        {
-            for (unsigned j = 0; j < mp_R.nPatches(); j++)
-            {
-                gsField<> solField(m_ppde.patches().patch(i),mp_R.patch(j));
-                eval_field += solField.value(pts);
-            }
-
-        }
-
-        //gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
-        //gsField<> exact( field.patch(i), solVal, false );
-        //eval_field -= exact.value(pts);
-
-        if ( 3 - d > 0 )
-        {
-            np.conservativeResize(3);
-            np.bottomRows(3-d).setOnes();
-        }
-        else if (d > 3)
-        {
-            gsWarn<< "Cannot plot 4D data.\n";
-            return;
-        }
-
-        if ( 3 - n > 0 )
-        {
-            eval_geo.conservativeResize(3,eval_geo.cols() );
-            eval_geo.bottomRows(3-n).setZero();
-        }
-        else if (n > 3)
-        {
-            gsWarn<< "Data is more than 3 dimensions.\n";
-        }
-
-        if ( eval_field.rows() == 2)
-        {
-            eval_field.conservativeResize(3,eval_geo.cols() );
-            eval_field.bottomRows(1).setZero(); // 3-field.dim()
-        }
-
-        gsWriteParaviewTPgrid(eval_geo, eval_field, np.template cast<index_t>(), fileName);
-
-
-        collection.addPart(fileName, ".vts");
-        if ( mesh )
-        {
-            fileName+= "_mesh";
-            //writeSingleCompMesh(dom, field.patch(i), fileName);
-            collection.addPart(fileName, ".vtp");
-        }
-
-    }
-    collection.save();
-}
-
-template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::writeParaview(const gsField<T> & field,
-                                                         std::string const & fn,
-                                                         std::multimap<index_t, std::map<index_t, std::map<index_t, gsMultiPatch<real_t>>>> mp_g1,
-                                                         unsigned npts,
-                                                         bool mesh)
-{
-    const unsigned n = field.nPieces();
-    gsParaviewCollection collection(fn);
-    std::string fileName;
-
-    for ( unsigned i=0; i < n; ++i ) // Patches
-    {
-        //const gsBasis<T> & dom = field.isParametrized() ?
-        //                         field.igaFunction(i).basis() : field.patch(i).basis();
-
-        fileName = fn + util::to_string(i);
-        //writeSinglePatchField( field, i, fileName, npts );
-
-        const gsFunction<T> & geometry = field.patch(i);
-        const gsFunction<T> & parField = field.function(i);
-
-        const int n = geometry.targetDim();
-        const int d = geometry.domainDim();
-
-        gsMatrix<T> ab = geometry.support();
-        gsVector<T> a = ab.col(0);
-        gsVector<T> b = ab.col(1);
-
-        gsVector<unsigned> np = uniformSampleCount(a, b, npts);
-        gsMatrix<T> pts = gsPointGrid(a, b, np);
-
-        gsMatrix<T> eval_geo = geometry.eval(pts);//pts
-        gsMatrix<T> eval_field = field.isParametric() ? parField.eval(pts) : parField.eval(eval_geo);
-
-        // Hier g1 basis dazu addieren!!!
-        std::multimap<index_t, std::map<index_t, std::map<index_t, gsMultiPatch<real_t>>>>::iterator i_face;
-        for (i_face=mp_g1.equal_range(i).first; i_face!=mp_g1.equal_range(i).second; ++i_face)
-        {
-            std::map<index_t, std::map<index_t, gsMultiPatch<real_t>>>::iterator i_side;
-            for (i_side = i_face->second.begin(); i_side != i_face->second.end(); ++i_side)
-            {
-                for (std::map<index_t, gsMultiPatch<real_t>>::iterator i_mp = i_side->second.begin();
-                     i_mp != i_side->second.end(); ++i_mp)
-                {
-                    gsMultiPatch<real_t> mp_side = i_mp->second;
-                    for (unsigned j = 0; j < mp_side.nPatches(); j++)
-                    {
-                        gsField<> solField(m_ppde.patches().patch(i),mp_side.patch(j));
-                        eval_field += solField.value(pts);
-                    }
-                }
-            }
-        }
-        //gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
-        //gsField<> exact( field.patch(i), solVal, false );
-        //eval_field -= exact.value(pts);
-
-        if ( 3 - d > 0 )
-        {
-            np.conservativeResize(3);
-            np.bottomRows(3-d).setOnes();
-        }
-        else if (d > 3)
-        {
-            gsWarn<< "Cannot plot 4D data.\n";
-            return;
-        }
-
-        if ( 3 - n > 0 )
-        {
-            eval_geo.conservativeResize(3,eval_geo.cols() );
-            eval_geo.bottomRows(3-n).setZero();
-        }
-        else if (n > 3)
-        {
-            gsWarn<< "Data is more than 3 dimensions.\n";
-        }
-
-        if ( eval_field.rows() == 2)
-        {
-            eval_field.conservativeResize(3,eval_geo.cols() );
-            eval_field.bottomRows(1).setZero(); // 3-field.dim()
-        }
-
-        gsWriteParaviewTPgrid(eval_geo, eval_field, np.template cast<index_t>(), fileName);
-
-
-        collection.addPart(fileName, ".vts");
-        if ( mesh )
-        {
-            fileName+= "_mesh";
-            //writeSingleCompMesh(dom, field.patch(i), fileName);
-            //collection.addPart(fileName, ".vtp");
-        }
-
-    }
-    collection.save();
 }
 
 } // namespace gismo
