@@ -45,16 +45,18 @@ public:
     }
 
 
-    gsG1Mapper( const std::vector<size_t> numG1B, std::vector<index_t> nP )
+    gsG1Mapper( const gsMultiPatch<> & geo, const std::vector<size_t> numG1B, std::vector<index_t> nP )
     {
-        index_t num = 0;
-        for(size_t i = 0; i < numG1B.size(); i++)
-                num += numG1B[i];
 
-        std::vector<index_t> aux(num, 0);
-        reducedG1BasisMap = aux;
-        numG1Basis = numG1B;
-        nPlusDimension = nP;
+
+        std::vector<index_t> aux(numG1B[numG1B.size()-1], 0);
+        reducedG1BasisEdgeMap = aux;
+        numG1EdgeBasis = numG1B;
+        nPlusEdgeDimension = nP;
+
+
+        this->reducedBasisEdgeMapper(geo);
+
     }
 
 
@@ -235,6 +237,68 @@ public:
     }
 
 
+    void reducedBasisEdgeMapper(const gsMultiPatch<> & geo)
+    {
+        index_t count = 1;
+
+        for(size_t i = 0; i < numG1EdgeBasis.size(); i++)
+        {
+
+            for(const boundaryInterface &  item : geo.interfaces() )
+            {
+                if( ( item.second().patch * 4 + item.second().side() -1) ==  i )
+                {
+                    if( i == 0)
+                    {
+                        for (size_t pi = 0; pi < numG1EdgeBasis[i]; pi++)
+                        {
+                            reducedG1BasisEdgeMap[pi] = count;
+                            reducedG1BasisEdgeMap[numG1EdgeBasis[item.first().patch * 4 + item.first().side() - 1] + pi] = count;
+                            count++;
+                        }
+                    }
+                    else
+                    {
+                        for (size_t pi = 0; pi < numG1EdgeBasis[i] - numG1EdgeBasis[i-1]; pi++)
+                        {
+                            reducedG1BasisEdgeMap[numG1EdgeBasis[i-1] + pi] = count;
+                            reducedG1BasisEdgeMap[numG1EdgeBasis[item.first().patch * 4 + item.first().side() - 2] + pi] = count;
+                            count++;
+                        }
+                    }
+                }
+            }
+            if(reducedG1BasisEdgeMap[numG1EdgeBasis[i-1]] == 0 || i == 0)
+            {
+                if( i == 0)
+                {
+                    for (size_t pi = 0; pi < numG1EdgeBasis[i]; pi++)
+                    {
+                        reducedG1BasisEdgeMap[pi] = count;
+                        count++;
+                    }
+                }
+                else
+                {
+                    for (size_t pi = 0; pi < numG1EdgeBasis[i] - numG1EdgeBasis[i-1]; pi++)
+                    {
+                        reducedG1BasisEdgeMap[numG1EdgeBasis[i-1] + pi] = count;
+                        count++;
+                    }
+                }
+
+            }
+        }
+
+    }
+
+    void printReducedBasisEdgeMapper()
+    {
+        for(size_t i = 0; i < reducedG1BasisEdgeMap.size(); i++)
+            gsInfo << "Reduced Basis mapper: " << reducedG1BasisEdgeMap[i] << "\n";
+    }
+
+
 protected:
 
     std::vector<index_t> basisPerPatch;
@@ -256,9 +320,9 @@ protected:
     std::vector<index_t> reducedAllBoundaryVertexMap;
 
 
-    std::vector<index_t> reducedG1BasisMap;
-    std::vector<size_t> numG1Basis;
-    std::vector<index_t> nPlusDimension;
+    std::vector<index_t> reducedG1BasisEdgeMap;
+    std::vector<size_t> numG1EdgeBasis;
+    std::vector<index_t> nPlusEdgeDimension;
 
 
 };

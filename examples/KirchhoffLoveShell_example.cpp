@@ -22,7 +22,7 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    index_t numRefine = 5;
+    index_t numRefine = 1;
     index_t numDegree = 1;
     bool plot = true;
 
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 
 //     Edges loop
     std::vector<gsMultiPatch<>> g1_edges;
-    std::vector<size_t> numG1Bas;
+    std::vector<size_t> numG1Bas(geo.nPatches() * 4, 0);
     std::vector<index_t> nPlusDimen;
     for (size_t np = 0; np < geo.nPatches(); np++)
     {
@@ -113,10 +113,21 @@ int main(int argc, char *argv[])
             gsG1AuxiliaryEdgeMultiplePatches edge(geo, np);
             edge.computeG1EdgeBasis(optionList, side_index, geo.isBoundary(np, side_index));
             g1_edges.push_back(edge.getSinglePatch(0).getG1Basis());
-            numG1Bas.push_back(edge.getSinglePatch(0).getG1Basis().nPatches());
+            numG1Bas[np*4 + side_index-1] =  edge.getSinglePatch(0).getG1Basis().nPatches();
             nPlusDimen.push_back(edge.getSinglePatch(0).get_n_plus());
+
         }
     }
+    for (size_t i = 1; i < g1_edges.size(); i++ )
+    {
+        numG1Bas[i] += numG1Bas[i-1];
+        gsInfo << numG1Bas.at(i-1) << "\n";
+    }
+
+
+    gsG1Mapper a(geo, numG1Bas, nPlusDimen);
+    a.printReducedBasisEdgeMapper();
+
 
 
 
@@ -140,10 +151,10 @@ int main(int argc, char *argv[])
 //    }
 
 
-gsG1Mapper a(geo);
-    a.printInterfaceEdgeMapper();
-    a.printReducedEdgeMapper();
-    a.printReducedBoundaryEdgeMapper();
+//gsG1Mapper a(geo);
+//    a.printInterfaceEdgeMapper();
+//    a.printReducedEdgeMapper();
+//    a.printReducedBoundaryEdgeMapper();
 
 
 
