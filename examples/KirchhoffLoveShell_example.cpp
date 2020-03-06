@@ -15,6 +15,7 @@
 # include <gsAssembler/gsKirchhoffLoveShellAssembler.h>
 # include <gsG1Basis/gsG1AuxiliaryEdgeMultiplePatches.h>
 # include <gsG1Basis/gsG1AuxiliaryVertexMultiplePatches.h>
+# include <gsG1Basis/gsG1Mapper.h>
 
 
 using namespace gismo;
@@ -44,14 +45,14 @@ int main(int argc, char *argv[])
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
-    //gsFileData<> fileSrc("KirchhoffLoveGeo/geo_fivePatchDiffParam.xml");
-    gsFileData<> fileSrc("KirchhoffLoveGeo/square_diffParam.xml");
+    gsFileData<> fileSrc("KirchhoffLoveGeo/geo_fivePatchDiffParam.xml");
+//    gsFileData<> fileSrc("KirchhoffLoveGeo/square_diffParam.xml");
 
     gsInfo << "Loaded file " << fileSrc.lastPath() << "\n";
 
     gsMultiPatch<> geo;
     gsInfo << "Geometry taken correctly \n";
-    fileSrc.getId(2, geo);
+    fileSrc.getId(5, geo);
     geo.computeTopology();
     gsInfo << "Geometry computed correctly\n";
 
@@ -82,12 +83,28 @@ int main(int argc, char *argv[])
     gsInfo << "maxDeg patch 0 along u: " << degU << "\n";
     gsInfo << "maxDeg patch 0 along v: " << degV << "\n";
 
+    for(size_t i = 0; i < basis.nBases();i++)
+    {
+        gsInfo << "Basis patch "<< i << ": " << basis.basis(i).size() << "\n" ;
+        gsTensorBSplineBasis<2, real_t> & temp = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(basis.basis(i));
+        gsInfo << temp.size(0) << " " << temp.size(1) << "\n";
+    }
+
+
+//    gsInfo << "Basis number:" << basis.nBases() << "\n";
+//    gsInfo << "Coefs number:" << geo.patch(0).coefs().size() /2 << "\n";
+//    gsInfo << "dimU * dimV number:" << temp_L.size(0) * temp_L.size(1) << "\n";
+
 //    gsInfo << "NumElem patch 0 along u: " << elemU << "\n";
 //    gsInfo << "NumElem patch 0 along v: " << elemV << "\n";
+
+
+
+
+
 //     Interface loop
 //    for (const boundaryInterface &  item : geo.interfaces() )
 //    {
-//
 //
 //        gsG1AuxiliaryEdgeMultiplePatches a(geo, item.first().patch, item.second().patch);
 //
@@ -108,25 +125,30 @@ int main(int argc, char *argv[])
 
 
 //     Vertices loop
-    std::vector<std::vector<patchCorner>> allcornerLists = geo.vertices();
-    size_t i = 1;
+//    std::vector<std::vector<patchCorner>> allcornerLists = geo.vertices();
 //    for(size_t i=0; i < allcornerLists.size(); i++)
-    {
-        std::vector<size_t> patchIndex;
-        std::vector<size_t> vertIndex;
-        for(size_t j = 0; j < allcornerLists[i].size(); j++)
-        {
-            patchIndex.push_back(allcornerLists[i][j].patch);
-            vertIndex.push_back(allcornerLists[i][j].m_index);
-            gsInfo << "Patch: " << allcornerLists[i][j].patch << "\t Index: " << allcornerLists[i][j].m_index << "\n";
+//    {
+//        std::vector<size_t> patchIndex;
+//        std::vector<size_t> vertIndex;
+//        for(size_t j = 0; j < allcornerLists[i].size(); j++)
+//        {
+//            patchIndex.push_back(allcornerLists[i][j].patch);
+//            vertIndex.push_back(allcornerLists[i][j].m_index);
+//            gsInfo << "Patch: " << allcornerLists[i][j].patch << "\t Index: " << allcornerLists[i][j].m_index << "\n";
+//
+//        }
+//        gsInfo << "\n";
+//
+//        gsG1AuxiliaryVertexMultiplePatches a(geo, patchIndex, vertIndex);
+//        a.computeG1InternalVertexBasis(optionList);
+//    }
 
-        }
-        gsInfo << "\n";
 
-        gsG1AuxiliaryVertexMultiplePatches a(geo, patchIndex, vertIndex);
-        a.computeG1InternalVertexBasis(optionList);
-        gsInfo << a.getSinglePatch(0).getG1Basis().patch(0).coefs() << "\n";
-    }
+gsG1Mapper a(geo);
+    a.printInterfaceEdgeMapper();
+    a.printReducedEdgeMapper();
+    a.printReducedBoundaryEdgeMapper();
+
 
 
 
