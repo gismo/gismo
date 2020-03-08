@@ -129,11 +129,19 @@ void gsGeometry<T>::evaluateMesh(gsMesh<T>& mesh) const
 
     // For all vertices of the mesh, push forward the value by the
     // geometry mapping
-    for (size_t i = 0; i!= mesh.numVertices(); ++i)
-    {
-        eval_into( mesh.vertex(i).topRows(pDim), tmp );
-        mesh.vertex(i).topRows( gDim ) = tmp;
-    }
+    if (1==gDim && 3>pDim) // Plot a graph
+        for (size_t i = 0; i!= mesh.numVertices(); ++i)
+        {
+            eval_into( mesh.vertex(i).topRows(pDim), tmp );
+            mesh.vertex(i).middleRows(pDim, gDim) = tmp;
+        }
+    else // Plot mesh on a mapping
+        for (size_t i = 0; i!= mesh.numVertices(); ++i)
+        {
+            eval_into( mesh.vertex(i).topRows(pDim), tmp );
+            mesh.vertex(i).topRows(gDim) = tmp;
+        }
+
 }
 template<class T>
 std::vector<gsGeometry<T>* > gsGeometry<T>::uniformSplit(index_t) const

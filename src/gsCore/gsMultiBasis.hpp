@@ -415,7 +415,8 @@ void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper &
                                          b1, b2);
 
     // Match the dofs on the interface
-    mapper.matchDofs(bi.first().patch, b1, bi.second().patch, b2 );
+    for (size_t i = 0; i!=mapper.componentsSize(); ++i)
+        mapper.matchDofs(bi.first().patch, b1, bi.second().patch, b2, i );
 }
 
 template<class T>
