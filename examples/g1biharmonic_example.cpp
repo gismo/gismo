@@ -194,7 +194,8 @@ int main(int argc, char *argv[])
 
         }
         gsInfo << "\n";
-
+        //patchIndex.push_back(0);
+        //vertIndex.push_back(3);
         gsG1AuxiliaryVertexMultiplePatches a(multiPatch, patchIndex, vertIndex);
         a.computeG1InternalVertexBasis(optionList);
         index_t kindBdr = a.kindOfVertex();

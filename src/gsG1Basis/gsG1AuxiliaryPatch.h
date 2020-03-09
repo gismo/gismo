@@ -269,7 +269,7 @@ public:
         newpatch.addPatch(newgeom1);
 
         auxPatch.swap(newpatch);
-        auxPatch.computeTopology();
+        //auxPatch.computeTopology();
 
         checkOrientation();
     }
@@ -321,16 +321,17 @@ public:
             case 2:
                 this->rotateBasisAntiClockTwice();
                 break;
-            case -1:
+            case 1:
                 this->rotateBasisAntiClock();
                 break;
-            case 1:
+            case -1:
                 this->rotateBasisClock();
                 break;
             case 0:
                 break;
             default:
                 break;
+
         }
 
         //gsInfo << "Patch " << patchIndex << " new: " << G1repBasis.patch(0).coefs() << "\n";

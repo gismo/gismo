@@ -204,6 +204,7 @@ void gsG1System<T>::plotParaview(gsMultiPatch<T> & mp,
     gsParaviewCollection collection(basename);
     std::string fileName;
     index_t iter = 0;
+    /*
     for (std::vector<gsG1AuxiliaryPatch>::iterator auxGeo = edges.begin(); auxGeo != edges.end(); ++auxGeo)
     {
         for (size_t i = 0; i < auxGeo->getG1Basis().nPatches(); i++)
@@ -215,6 +216,7 @@ void gsG1System<T>::plotParaview(gsMultiPatch<T> & mp,
             iter ++;
         }
     }
+     */
     for (std::vector<gsG1AuxiliaryPatch>::iterator auxGeo = vertices.begin(); auxGeo != vertices.end(); ++auxGeo)
     {
         for (size_t i = 0; i < auxGeo->getG1Basis().nPatches(); i++)

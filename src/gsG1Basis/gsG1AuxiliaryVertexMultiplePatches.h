@@ -106,6 +106,7 @@ public:
             else
             if(auxVertexIndices[i] == 3)
                 auxVertexIndices[i] = 2;
+
         }
     }
 
@@ -178,8 +179,8 @@ public:
 
     void computeG1InternalVertexBasis(gsOptionList optionList){
 
-//        gsMultiPatch<> test_mp(this->computeAuxTopology());
-//        gsMultiBasis<> test_mb(test_mp);
+        //gsMultiPatch<> test_mp(this->computeAuxTopology());
+        //gsMultiBasis<> test_mb(test_mp);
 
         this->reparametrizeG1Vertex();
 
@@ -190,10 +191,10 @@ public:
             gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, optionList);
             gsMultiPatch<> g1Basis;
             g1BasisVertex_0.constructSolution(g1Basis);
-
+            //g1BasisVertex_0.plotG1BasisBoundary(g1Basis, auxGeom[i].getPatch(),"BasisVertex0");
             auxGeom[i].parametrizeBasisBack(g1Basis);
 
-            //g1BasisVertex_0.plotG1BasisBoundary(auxGeom[i].getG1Basis(), auxGeom[i].getPatch(),"BasisVertex0");
+            //g1BasisVertex_0.plotG1BasisBoundary(auxGeom[i].getG1Basis(), test_mp.patch(0),"BasisVertex_new");
         }
     }
 
