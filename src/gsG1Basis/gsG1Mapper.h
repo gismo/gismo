@@ -272,7 +272,7 @@ public:
 
             if( i == 0)
             {
-                if(reducedG1BasisEdgeMap[numG1EdgeBasis[0]] == 0 )
+                if(reducedG1BasisEdgeMap[0] == 0 )
                 {
                     for (size_t pi = 0; pi < numG1EdgeBasis[i]; pi++)
                     {
