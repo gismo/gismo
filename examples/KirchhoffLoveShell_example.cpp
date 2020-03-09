@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
     gsInfo << numG1Bas.back() << "\n";
 
     gsG1Mapper a(geo, numG1Bas, nPlusDimen);
-    a.printReducedBoundaryBasisEdgeMapper();
+    a.printReducedBasisVertexMapper();
 
 
 
