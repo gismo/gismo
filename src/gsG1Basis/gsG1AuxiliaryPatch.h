@@ -319,10 +319,10 @@ public:
             case 2:
                 this->rotateBasisAntiClockTwice();
                 break;
-            case -1:
+            case 1:
                 this->rotateBasisAntiClock();
                 break;
-            case 1:
+            case -1:
                 this->rotateBasisClock();
                 break;
             case 0:

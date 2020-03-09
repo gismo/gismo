@@ -194,6 +194,8 @@ public:
 
         for(size_t i = 0; i < auxGeom.size(); i++)
         {
+
+
             gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, optionList);
             gsMultiPatch<> g1Basis;
             g1BasisVertex_0.constructSolution(g1Basis);
@@ -202,7 +204,7 @@ public:
 
             fileName = basename + "_" + util::to_string(i);
             gsField<> temp_field(auxGeom[i].getPatch(),g1Basis.patch(0));
-            gsWriteParaview(temp_field,fileName,5000);
+            gsWriteParaview(temp_field,fileName,50000);
             collection.addPart(fileName,"0.vts");
 
 

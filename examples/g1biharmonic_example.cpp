@@ -107,6 +107,10 @@ int main(int argc, char *argv[])
             string_geo = "planar/twoPatches/square_diagonal.xml";
             numDegree = 2; // 2 == degree 3
             break;
+        case 10:
+            string_geo = "KirchhoffLoveGeo/geo_fivePatchDiffParam.xml";
+            numDegree = 2; // 2 == degree 3
+            break;
         default:
             gsInfo << "No geometry is used! \n";
             break;
@@ -116,7 +120,7 @@ int main(int argc, char *argv[])
     gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
 
     gsMultiPatch<> multiPatch;
-    fd.getId(0, multiPatch); // id=0: Multipatch domain
+    fd.getId(5, multiPatch); // id=0: Multipatch domain
     multiPatch.computeTopology();
 
 
@@ -182,7 +186,8 @@ int main(int argc, char *argv[])
     gsG1AuxiliaryPatch init;
     std::vector<gsG1AuxiliaryPatch> g1_vertices(4*multiPatch.nPatches(),init);
     std::vector<std::vector<patchCorner>> allcornerLists = multiPatch.vertices();
-    for(size_t i=0; i < allcornerLists.size(); i++)
+    //for(size_t i=0; i < allcornerLists.size(); i++)
+    for(size_t i=0; i < 1; i++)
     {
         std::vector<size_t> patchIndex;
         std::vector<size_t> vertIndex;
@@ -194,8 +199,17 @@ int main(int argc, char *argv[])
 
         }
         gsInfo << "\n";
-        //patchIndex.push_back(0);
-        //vertIndex.push_back(3);
+        patchIndex.push_back(0);
+        patchIndex.push_back(1);
+        patchIndex.push_back(2);
+        patchIndex.push_back(3);
+        patchIndex.push_back(4);
+
+        vertIndex.push_back(4);
+        vertIndex.push_back(2);
+        vertIndex.push_back(1);
+        vertIndex.push_back(3);
+        vertIndex.push_back(2);
         gsG1AuxiliaryVertexMultiplePatches a(multiPatch, patchIndex, vertIndex);
         a.computeG1InternalVertexBasis(optionList);
         index_t kindBdr = a.kindOfVertex();

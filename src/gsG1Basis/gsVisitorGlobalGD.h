@@ -112,7 +112,7 @@ public:
             P0.jacobian_into(uv.col(i),ev);
             D0 = ev.col(m_uv);
             real_t D1 = 1/ D0.norm();
-            uv(0,i) = gamma * D1 * D1 * ev.col(0).transpose() * ev.col(1);
+            uv(0,i) = - gamma * D1 * D1 * ev.col(0).transpose() * ev.col(1);
         }
         if (isBoundary)
             uv.setZero();
