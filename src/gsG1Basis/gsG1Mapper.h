@@ -49,7 +49,7 @@ public:
     {
 
 
-        std::vector<index_t> aux(numG1B[numG1B.size()-1], 0);
+        std::vector<index_t> aux(numG1B[numG1B.size() - 1], 0);
         reducedG1BasisEdgeMap = aux;
         numG1EdgeBasis = numG1B;
         nPlusEdgeDimension = nP;
@@ -241,14 +241,14 @@ public:
     {
         index_t count = 1;
 
-        for(size_t i = 0; i < numG1EdgeBasis.size(); i++)
+        for(size_t i = 0; i < numG1EdgeBasis.size(); i++) // Loop around global edges ( index - 1 )
         {
 
             for(const boundaryInterface &  item : geo.interfaces() )
             {
-                if( ( item.second().patch * 4 + item.second().side() -1) ==  i )
+                if( ( item.second().patch * 4 + item.second().side() - 1) ==  i ) // If the global edge is an interface
                 {
-                    if( i == 0)
+                    if( i == 0) // If the first edge of the 0-patch is an interface
                     {
                         for (size_t pi = 0; pi < numG1EdgeBasis[i]; pi++)
                         {
@@ -268,9 +268,11 @@ public:
                     }
                 }
             }
-            if(reducedG1BasisEdgeMap[numG1EdgeBasis[i-1]] == 0 || i == 0)
+
+
+            if( i == 0)
             {
-                if( i == 0)
+                if(reducedG1BasisEdgeMap[numG1EdgeBasis[0]] == 0 )
                 {
                     for (size_t pi = 0; pi < numG1EdgeBasis[i]; pi++)
                     {
@@ -278,7 +280,9 @@ public:
                         count++;
                     }
                 }
-                else
+            }
+            else
+                if(reducedG1BasisEdgeMap[numG1EdgeBasis[i-1]] == 0 )
                 {
                     for (size_t pi = 0; pi < numG1EdgeBasis[i] - numG1EdgeBasis[i-1]; pi++)
                     {
@@ -287,7 +291,7 @@ public:
                     }
                 }
 
-            }
+
         }
 
     }

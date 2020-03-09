@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
             gsG1AuxiliaryEdgeMultiplePatches edge(geo, np);
             edge.computeG1EdgeBasis(optionList, side_index, geo.isBoundary(np, side_index));
             g1_edges.push_back(edge.getSinglePatch(0).getG1Basis());
-            numG1Bas[np*4 + side_index-1] =  edge.getSinglePatch(0).getG1Basis().nPatches();
+            numG1Bas[np * 4 + side_index-1] =  edge.getSinglePatch(0).getG1Basis().nPatches();
             nPlusDimen.push_back(edge.getSinglePatch(0).get_n_plus());
 
         }
@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
         numG1Bas[i] += numG1Bas[i-1];
         gsInfo << numG1Bas.at(i-1) << "\n";
     }
-
+    gsInfo << numG1Bas.back() << "\n";
 
     gsG1Mapper a(geo, numG1Bas, nPlusDimen);
     a.printReducedBasisEdgeMapper();
