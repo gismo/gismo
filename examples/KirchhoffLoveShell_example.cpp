@@ -22,7 +22,7 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    index_t numRefine = 1;
+    index_t numRefine = 5;
     index_t numDegree = 1;
     bool plot = true;
 
@@ -132,23 +132,48 @@ int main(int argc, char *argv[])
 
 
 //     Vertices loop
-//    std::vector<std::vector<patchCorner>> allcornerLists = geo.vertices();
-//    for(size_t i=0; i < allcornerLists.size(); i++)
-//    {
-//        std::vector<size_t> patchIndex;
-//        std::vector<size_t> vertIndex;
-//        for(size_t j = 0; j < allcornerLists[i].size(); j++)
-//        {
-//            patchIndex.push_back(allcornerLists[i][j].patch);
-//            vertIndex.push_back(allcornerLists[i][j].m_index);
-//            gsInfo << "Patch: " << allcornerLists[i][j].patch << "\t Index: " << allcornerLists[i][j].m_index << "\n";
-//
-//        }
-//        gsInfo << "\n";
-//
-//        gsG1AuxiliaryVertexMultiplePatches a(geo, patchIndex, vertIndex);
-//        a.computeG1InternalVertexBasis(optionList);
-//    }
+
+    std::vector<std::vector<patchCorner>> allcornerLists = geo.vertices();
+    //for(size_t i=0; i < allcornerLists.size(); i++)
+    for(size_t i=0; i < 1; i++)
+    {
+        std::vector<size_t> patchIndex;
+        std::vector<size_t> vertIndex;
+        for(size_t j = 0; j < allcornerLists[i].size(); j++)
+        {
+            //patchIndex.push_back(allcornerLists[i][j].patch);
+            //vertIndex.push_back(allcornerLists[i][j].m_index);
+            gsInfo << "Patch: " << allcornerLists[i][j].patch << "\t Index: " << allcornerLists[i][j].m_index << "\n";
+
+        }
+        gsInfo << "\n";
+        patchIndex.push_back(0);
+        patchIndex.push_back(1);
+        patchIndex.push_back(2);
+        patchIndex.push_back(3);
+        patchIndex.push_back(4);
+
+        vertIndex.push_back(4);
+        vertIndex.push_back(2);
+        vertIndex.push_back(1);
+        vertIndex.push_back(3);
+        vertIndex.push_back(2);
+
+        gsMultiPatch<> onebasisfunction;
+
+
+        gsG1AuxiliaryVertexMultiplePatches a(geo, patchIndex, vertIndex);
+        a.computeG1InternalVertexBasis(optionList);
+        index_t kindBdr = a.kindOfVertex();
+        for (size_t j = 0; j < vertIndex.size(); j++)
+        {
+            onebasisfunction.addPatch(a.getSinglePatch(j).getG1Basis().patch(0));
+        }
+
+        gsWriteParaview(onebasisfunction,"geo",5000);
+
+
+    }
 
 
 //gsG1Mapper a(geo);

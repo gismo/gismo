@@ -106,7 +106,7 @@ void gsG1System<T>::assemble()
 
             for (size_t k = 0; k < m_edges.at(i).getG1Basis().basis(j).size(); k++)
             {
-                if (m_edges.at(i).getG1Basis().patch(j).coefs().at(k) * m_edges.at(i).getG1Basis().patch(j).coefs().at(k) > 10e-30)
+                if (m_edges.at(i).getG1Basis().patch(j).coefs().at(k) * m_edges.at(i).getG1Basis().patch(j).coefs().at(k) > 10e-25)
                 {
                     gsMatrix<unsigned > localDof_BF(1,1), globalDof_BF;
                     localDof_BF << k;

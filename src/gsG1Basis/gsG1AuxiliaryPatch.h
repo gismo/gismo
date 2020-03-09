@@ -271,7 +271,7 @@ public:
         auxPatch.swap(newpatch);
         //auxPatch.computeTopology();
 
-        checkOrientation();
+        axisOrientation = 1;
     }
 
 
@@ -304,7 +304,6 @@ public:
         }
         G1repBasis.swap(newpatch);
 
-        checkOrientation();
     }
 
 
@@ -313,7 +312,6 @@ public:
 
         //gsInfo << "Patch " << patchIndex << " old: " << G1repBasis.patch(0).coefs()<< "\n";
         if(axisOrientation)
-
             this->swapBasisAxis();
 
         switch (rotationNum)
@@ -321,10 +319,10 @@ public:
             case 2:
                 this->rotateBasisAntiClockTwice();
                 break;
-            case 1:
+            case -1:
                 this->rotateBasisAntiClock();
                 break;
-            case -1:
+            case 1:
                 this->rotateBasisClock();
                 break;
             case 0:
