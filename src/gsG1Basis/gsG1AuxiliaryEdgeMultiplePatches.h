@@ -199,9 +199,9 @@ public:
 
         auxGeom[0].parametrizeBasisBack(g1Basis_edge);
 
-        std::string basename = "G1BasisBoundary_" + util::to_string(auxGeom[0].getGlobalPatchIndex()) + "_" + util::to_string(boundaryInd);
-        if (optionList.getSwitch("plot"))
-            g1BasisEdge.plotG1BasisBoundary(auxGeom[0].getG1Basis(), mp_init, basename);
+        //std::string basename = "G1BasisBoundary_" + util::to_string(auxGeom[0].getGlobalPatchIndex()) + "_" + util::to_string(boundaryInd);
+        //if (optionList.getSwitch("plot"))
+        //    g1BasisEdge.plotG1BasisBoundary(auxGeom[0].getG1Basis(), mp_init, basename);
 
     }
 

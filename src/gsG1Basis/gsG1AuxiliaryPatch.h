@@ -331,6 +331,7 @@ public:
 
         if(axisOrientation)
             this->swapBasisAxis();
+
         //gsInfo << "Patch " << patchIndex << " new: " << G1repBasis.patch(0).coefs() << "\n";
     }
 
