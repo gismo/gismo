@@ -327,7 +327,6 @@ public:
                 break;
             default:
                 break;
-
         }
 
         if(axisOrientation)

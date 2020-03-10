@@ -102,31 +102,44 @@ int main(int argc, char *argv[])
 
 
 
-//     Edges loop
-    std::vector<gsMultiPatch<>> g1_edges;
-    std::vector<size_t> numG1Bas(geo.nPatches() * 4, 0);
-    std::vector<index_t> nPlusDimen;
-    for (size_t np = 0; np < geo.nPatches(); np++)
-    {
-        for (index_t side_index = 1; side_index < 5; side_index++)
-        {
-            gsG1AuxiliaryEdgeMultiplePatches edge(geo, np);
-            edge.computeG1EdgeBasis(optionList, side_index, geo.isBoundary(np, side_index));
-            g1_edges.push_back(edge.getSinglePatch(0).getG1Basis());
-            numG1Bas[np * 4 + side_index-1] =  edge.getSinglePatch(0).getG1Basis().nPatches();
-            nPlusDimen.push_back(edge.getSinglePatch(0).get_n_plus());
-
-        }
-    }
-    for (size_t i = 1; i < g1_edges.size(); i++ )
-    {
-        numG1Bas[i] += numG1Bas[i-1];
-        gsInfo << numG1Bas.at(i-1) << "\n";
-    }
-    gsInfo << numG1Bas.back() << "\n";
-
-    gsG1Mapper a(geo, numG1Bas, nPlusDimen);
-    a.printReducedBasisVertexMapper();
+    // ########### EDGE FUNCTIONS ###########
+    // Interface loop
+//    for (index_t numInt = 0; numInt < geo.interfaces().size(); numInt++ )
+//    {
+//        const boundaryInterface & item = geo.interfaces()[numInt];
+//
+//        std::string fileName;
+//        std::string basename = "InterfaceBasisFunctions" + util::to_string(numInt);
+//        gsParaviewCollection collection(basename);
+//
+//        /*
+//        gsG1AuxiliaryEdgeMultiplePatches first(multiPatch, item.first().patch);
+//        first.computeG1EdgeBasis(optionList,item.first().m_index,false);
+//
+//        gsG1AuxiliaryEdgeMultiplePatches second(multiPatch, item.second().patch);
+//        second.computeG1EdgeBasis(optionList,item.second().m_index,false);
+//        */
+//        gsG1AuxiliaryEdgeMultiplePatches singleInt(geo, item.first().patch, item.second().patch);
+//        singleInt.computeG1InterfaceBasis(optionList);
+//
+//        for (index_t i = 0; i < singleInt.getSinglePatch(0).getG1Basis().nPatches(); i++)
+//        {
+//            gsMultiPatch<> edgeSingleBF;
+//
+//            edgeSingleBF.addPatch(singleInt.getSinglePatch(0).getG1Basis().patch(i));
+//            edgeSingleBF.addPatch(singleInt.getSinglePatch(1).getG1Basis().patch(i));
+//
+//            fileName = basename + "_0_" + util::to_string(i);
+//            gsField<> temp_field(geo.patch(item.first().patch),edgeSingleBF.patch(0));
+//            gsWriteParaview(temp_field,fileName,5000);
+//            collection.addTimestep(fileName,i,"0.vts");
+//            fileName = basename + "_1_" + util::to_string(i);
+//            gsField<> temp_field_1(geo.patch(item.second().patch),edgeSingleBF.patch(1));
+//            gsWriteParaview(temp_field_1,fileName,5000);
+//            collection.addTimestep(fileName,i,"0.vts");
+//        }
+//        collection.save();
+//    }
 
 
 
@@ -164,7 +177,7 @@ int main(int argc, char *argv[])
 
         gsG1AuxiliaryVertexMultiplePatches a(geo, patchIndex, vertIndex);
         a.computeG1InternalVertexBasis(optionList);
-        index_t kindBdr = a.kindOfVertex();
+//        index_t kindBdr = a.kindOfVertex();
         for (size_t j = 0; j < vertIndex.size(); j++)
         {
             onebasisfunction.addPatch(a.getSinglePatch(j).getG1Basis().patch(0));

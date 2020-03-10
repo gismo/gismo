@@ -179,8 +179,8 @@ public:
 
     void computeG1InternalVertexBasis(gsOptionList optionList){
 
-        //gsMultiPatch<> test_mp(this->computeAuxTopology());
-        //gsMultiBasis<> test_mb(test_mp);
+        gsMultiPatch<> test_mp(this->computeAuxTopology());
+        gsMultiBasis<> test_mb(test_mp);
 
         this->reparametrizeG1Vertex();
 
@@ -202,15 +202,18 @@ public:
             //g1BasisVertex_0.plotG1BasisBoundary(g1Basis, auxGeom[i].getPatch(),"BasisVertex0");
 
 
-            fileName = basename + "_" + util::to_string(i);
-            gsField<> temp_field(auxGeom[i].getPatch(),g1Basis.patch(0));
-            gsWriteParaview(temp_field,fileName,50000);
-            collection.addPart(fileName,"0.vts");
 
+//            fileName = basename + "_" + util::to_string(i);
+//            gsField<> temp_field(auxGeom[i].getPatch(),g1Basis.patch(0));
+//            gsWriteParaview(temp_field,fileName,5000);
+//            collection.addPart(fileName,"0.vts");
 
             auxGeom[i].parametrizeBasisBack(g1Basis);
 
-
+            fileName = basename + "_" + util::to_string(i);
+            gsField<> temp_field(test_mp.patch(auxGeom[i].getGlobalPatchIndex()),auxGeom[i].getG1Basis().patch(5));
+            gsWriteParaview(temp_field,fileName,5000);
+            collection.addPart(fileName,"0.vts");
 
 
             //g1BasisVertex_0.plotG1BasisBoundary(auxGeom[i].getG1Basis(), test_mp.patch(0),"BasisVertex_new");
