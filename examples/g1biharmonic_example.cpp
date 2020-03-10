@@ -142,81 +142,12 @@ int main(int argc, char *argv[])
     multiPatch.uniformRefine_withSameRegularity(optionList.getInt("refine"), optionList.getInt("regularity"));
     gsMultiBasis<> mb(multiPatch);
 
-    // Number of the patches
-    index_t numPatches = multiPatch.nPatches();
 
-    // Get the dimension of the basis functions for each patch
-    gsVector<> numBasisFunctions, numEdgeFunctions;
-    numBasisFunctions.setZero(numPatches);
-    numEdgeFunctions.setZero(4*(numPatches));
-    numBasisFunctions[0] = mb.basis(0).size();
-    {
-        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(0).component(0)); // 0 -> u, 1 -> v
-        index_t m_p = basis_edge.maxDegree();
-        index_t m_r = 1; // Here fixed to 1 TODO MORE GENERAL
-        index_t m_n = basis_edge.numElements();
-        // ATTENTION: With the first and the last interface basis functions
-        numEdgeFunctions[0] = 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
-        numEdgeFunctions[1] = numEdgeFunctions[0] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
-
-        basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(0).component(1)); // 0 -> u, 1 -> v
-        m_p = basis_edge.maxDegree();
-        m_r = 1; // Here fixed to 1 TODO MORE GENERAL
-        m_n = basis_edge.numElements();
-        numEdgeFunctions[2] = numEdgeFunctions[1] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
-        numEdgeFunctions[3] = numEdgeFunctions[2] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
-    }
-    for (size_t i = 1; i < mb.nBases(); i++ )
-    {
-        numBasisFunctions[i] = numBasisFunctions[i-1] + mb.basis(i).size();
-
-        // Get the dimension for the spaces at the edges
-        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(i).component(0)); // 0 -> u, 1 -> v
-        index_t m_p = basis_edge.maxDegree();
-        index_t m_r = 1; // Here fixed to 1 TODO MORE GENERAL
-        index_t m_n = basis_edge.numElements();
-        // ATTENTION: With the first and the last interface basis functions
-        numEdgeFunctions[4*i + 0] = numEdgeFunctions[4*i - 1] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
-        numEdgeFunctions[4*i + 1] = numEdgeFunctions[4*i + 0] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
-
-        basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(i).component(1)); // 0 -> u, 1 -> v
-        m_p = basis_edge.maxDegree();
-        m_r = 1; // Here fixed to 1 TODO MORE GENERAL
-        m_n = basis_edge.numElements();
-        numEdgeFunctions[4*i + 2] = numEdgeFunctions[4*i + 1] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
-        numEdgeFunctions[4*i + 3] = numEdgeFunctions[4*i + 2] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
-    }
-    gsInfo << "Num Basis Functions " << numBasisFunctions << "\n";
-    gsInfo << "Num Edge Functions " << numEdgeFunctions << "\n";
-
-    // Set up the dimension
-    index_t dim_K, dim_E, dim_V;
-    dim_K = numBasisFunctions.last(); // interior basis
-    dim_E = numEdgeFunctions.last();
-    dim_V = 6 * 4 * numPatches;
-
-    // Set up the system
-    gsSparseMatrix<real_t> D_sparse, D_0_sparse, D_boundary_sparse;
-
-    // Full matrix
-    D_sparse.resize(dim_E + dim_V + dim_K, dim_K);
-    D_sparse.reserve(3*dim_K);
-    D_sparse.setZero();
-
-    // Without boundary
-    D_0_sparse.resize(dim_E + dim_V + dim_K, dim_K);
-    D_0_sparse.reserve(3*dim_K);
-    D_0_sparse.setZero();
-
-    // Only boundary
-    D_boundary_sparse.resize(dim_E + dim_V + dim_K , dim_K);
-    D_boundary_sparse.reserve(3*dim_K);
-    D_boundary_sparse.setZero();
-
+    gsG1System<real_t> g1System(multiPatch, mb);
 
     // ########### EDGE FUNCTIONS ###########
     // Interface loop
-    for (index_t numInt = 0; numInt < multiPatch.interfaces().size(); numInt++ )
+    for (size_t numInt = 0; numInt < multiPatch.interfaces().size(); numInt++ )
     {
         const boundaryInterface & item = multiPatch.interfaces()[numInt];
 
@@ -234,7 +165,7 @@ int main(int argc, char *argv[])
         gsG1AuxiliaryEdgeMultiplePatches singleInt(multiPatch, item.first().patch, item.second().patch);
         singleInt.computeG1InterfaceBasis(optionList);
 
-        for (index_t i = 0; i < numEdgeFunctions[item.first().patch*4 + item.first().m_index -1] - numEdgeFunctions[item.first().patch*4 + item.first().m_index -2]; i++)
+        for (size_t i = 0; i < singleInt.getSinglePatch(0).getG1Basis().nPatches(); i++)
         {
             gsMultiPatch<> edgeSingleBF;
 
@@ -253,7 +184,7 @@ int main(int argc, char *argv[])
         collection.save();
     }
     // Boundaries loop
-    for (index_t numBdy = 0; numBdy < multiPatch.boundaries().size(); numBdy++ )
+    for (size_t numBdy = 0; numBdy < multiPatch.boundaries().size(); numBdy++ )
     {
         const patchSide & bit = multiPatch.boundaries()[numBdy];
 
@@ -266,7 +197,7 @@ int main(int argc, char *argv[])
         gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatch, bit.patch);
         singleBdy.computeG1BoundaryBasis(optionList, bit.m_index);
 
-        for (index_t i = 0; i < singleBdy.getSinglePatch(0).getG1Basis().nPatches(); i++)
+        for (size_t i = 0; i < singleBdy.getSinglePatch(0).getG1Basis().nPatches(); i++)
         {
             gsMultiPatch<> edgeSingleBF;
 
@@ -279,74 +210,6 @@ int main(int argc, char *argv[])
         }
         collection.save();
     }
-
-
-
-
-
-    gsG1Mapper_pascal<real_t> g1Mapper(multiPatch);
-
-    std::vector<gsG1AuxiliaryPatch> g1_edges;
-    for (size_t np = 0; np < multiPatch.nPatches(); np++)
-    {
-        for (index_t side_index = 1; side_index < 5; side_index++)
-        {
-            gsG1AuxiliaryEdgeMultiplePatches a(multiPatch, np);
-            a.computeG1EdgeBasis(optionList,side_index,multiPatch.isBoundary(np,side_index));
-            g1Mapper.markGlobalIndex_Edge(g1_edges.size(),side_index,np,multiPatch.isBoundary(np,side_index)); // This case is the same
-            g1_edges.push_back(a.getSinglePatch(0));
-            gsInfo << "PLUS : " << a.getSinglePatch(0).get_n_plus() << " MINUS : " << a.getSinglePatch(0).get_n_minus() << "\n";
-        }
-    }
-
-    g1Mapper.markBoundary_Edge(g1_edges, multiPatch);
-
-//     Vertices loop
-    gsG1AuxiliaryPatch init;
-    std::vector<gsG1AuxiliaryPatch> g1_vertices(4*multiPatch.nPatches(),init);
-    std::vector<std::vector<patchCorner>> allcornerLists = multiPatch.vertices();
-    //for(size_t i=0; i < allcornerLists.size(); i++)
-    for(size_t i=0; i < 1; i++)
-    {
-        std::vector<size_t> patchIndex;
-        std::vector<size_t> vertIndex;
-        for(size_t j = 0; j < allcornerLists[i].size(); j++)
-        {
-            patchIndex.push_back(allcornerLists[i][j].patch);
-            vertIndex.push_back(allcornerLists[i][j].m_index);
-            gsInfo << "Patch: " << allcornerLists[i][j].patch << "\t Index: " << allcornerLists[i][j].m_index << "\n";
-
-        }
-        gsInfo << "\n";
-        patchIndex.push_back(0);
-        patchIndex.push_back(1);
-        patchIndex.push_back(2);
-        patchIndex.push_back(3);
-        patchIndex.push_back(4);
-
-        vertIndex.push_back(4);
-        vertIndex.push_back(2);
-        vertIndex.push_back(1);
-        vertIndex.push_back(3);
-        vertIndex.push_back(2);
-        gsG1AuxiliaryVertexMultiplePatches a(multiPatch, patchIndex, vertIndex);
-        a.computeG1InternalVertexBasis(optionList);
-        index_t kindBdr = a.kindOfVertex();
-        for (size_t j = 0; j < vertIndex.size(); j++)
-        {
-            g1Mapper.markGlobalIndex_Vertex(patchIndex.at(j)*4 + vertIndex.at(j) -1,vertIndex.at(j),patchIndex.at(j),kindBdr); // TODO
-            g1_vertices.at(patchIndex.at(j)*4 + vertIndex.at(j) -1) = a.getSinglePatch(j);
-        }
-        g1Mapper.coupleVertex(patchIndex, vertIndex);
-
-    }
-    g1Mapper.markBoundary_Vertex(multiPatch,g1_vertices);
-
-    //gsG1System<real_t> g1System(mb, g1_edges, g1_vertices, g1Mapper);
-    //if (plot)
-    //g1System.plotParaview(multiPatch,g1_interface,g1_boundaries,g1_vertices,"BasisFunctions");
-    //g1System.plotParaview(multiPatch,g1_edges,g1_vertices,"BasisFunctions");
-
 
 // NEW NEW NEW NEW NEW NEW NEW NEW NEW
 

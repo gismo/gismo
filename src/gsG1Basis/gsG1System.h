@@ -21,215 +21,121 @@ class gsG1System
 {
 public:
 
-    gsG1System(gsMultiBasis<> & interior,
-               std::vector<gsG1AuxiliaryPatch> & edges,
-               std::vector<gsG1AuxiliaryPatch> & vertices,
-               gsG1Mapper_pascal<T> & g1Mapper):
-        m_edges(edges), m_vertices(vertices), m_g1Mapper(g1Mapper)
+    gsG1System(gsMultiPatch<> & mp,
+               gsMultiBasis<> & mb)
     {
-        m_map_edge = m_g1Mapper.getMapper_Edges();
-        m_map_vertex = m_g1Mapper.getMapper_Edges();
 
-        dim_K = interior.size();
-        dim_I = m_map_edge.freeSize() + m_map_edge.boundarySize();
-        dim_D = m_map_edge.freeSize() + m_map_edge.boundarySize() + m_map_vertex.freeSize() + m_map_vertex.boundarySize();
+    initialize(mp, mb);
     }
 
-    void setGlobalMapper(gsDofMapper global) { map_global = global; };
-
-    void initialize();
-    void assemble();
-
-    void plotParaview(gsMultiPatch<T> & mp,
-                      std::vector<gsG1AuxiliaryPatch> & interface,
-                      std::vector<gsG1AuxiliaryPatch> & boundaries,
-                      std::vector<gsG1AuxiliaryPatch> & vertices,
-                      std::string basename);
-
-    void plotParaview(gsMultiPatch<T> & mp,
-                      std::vector<gsG1AuxiliaryPatch> & edges,
-                      std::vector<gsG1AuxiliaryPatch> & vertices,
-                      std::string basename);
+    void initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb);
+    void insertInterfaceEdge(gsMultiPatch<> & mp, index_t iID, index_t pID_0, index_t pdID_1);
 
 protected:
-    std::vector<gsG1AuxiliaryPatch> & m_edges, m_vertices;
+    index_t dim_K, dim_E, dim_V;
 
-    gsG1Mapper_pascal<T> m_g1Mapper;
-    gsDofMapper m_map_edge;
-    gsDofMapper m_map_vertex;
-
-    index_t dim_K, dim_I, dim_D;
-
-    gsDofMapper map_global;
+    gsVector<> numBasisFunctions, numEdgeFunctions;
 
     gsSparseMatrix<T> D_sparse, D_0_sparse, D_boundary_sparse;
 
-    gsMatrix<T> m_dofs, m_g;
 
 }; // class gsG1System
 
 template<class T>
-void gsG1System<T>::initialize()
+void gsG1System<T>::initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb)
 {
+    // Number of the patches
+    index_t numPatches = mp.nPatches();
+
+    // Get the dimension of the basis functions for each patch
+    numBasisFunctions.setZero(numPatches);
+    numEdgeFunctions.setZero(4*(numPatches));
+    numBasisFunctions[0] = mb.basis(0).size();
+    {
+        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(0).component(0)); // 0 -> u, 1 -> v
+        index_t m_p = basis_edge.maxDegree();
+        index_t m_r = 1; // Here fixed to 1 TODO MORE GENERAL
+        index_t m_n = basis_edge.numElements();
+        // ATTENTION: With the first and the last interface basis functions
+        numEdgeFunctions[0] = 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+        numEdgeFunctions[1] = numEdgeFunctions[0] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+
+        basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(0).component(1)); // 0 -> u, 1 -> v
+        m_p = basis_edge.maxDegree();
+        m_r = 1; // Here fixed to 1 TODO MORE GENERAL
+        m_n = basis_edge.numElements();
+        numEdgeFunctions[2] = numEdgeFunctions[1] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+        numEdgeFunctions[3] = numEdgeFunctions[2] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+    }
+    for (size_t i = 1; i < mb.nBases(); i++ )
+    {
+        numBasisFunctions[i] = numBasisFunctions[i-1] + mb.basis(i).size();
+
+        // Get the dimension for the spaces at the edges
+        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(i).component(0)); // 0 -> u, 1 -> v
+        index_t m_p = basis_edge.maxDegree();
+        index_t m_r = 1; // Here fixed to 1 TODO MORE GENERAL
+        index_t m_n = basis_edge.numElements();
+        // ATTENTION: With the first and the last interface basis functions
+        numEdgeFunctions[4*i + 0] = numEdgeFunctions[4*i - 1] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+        numEdgeFunctions[4*i + 1] = numEdgeFunctions[4*i + 0] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+
+        basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(i).component(1)); // 0 -> u, 1 -> v
+        m_p = basis_edge.maxDegree();
+        m_r = 1; // Here fixed to 1 TODO MORE GENERAL
+        m_n = basis_edge.numElements();
+        numEdgeFunctions[4*i + 2] = numEdgeFunctions[4*i + 1] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+        numEdgeFunctions[4*i + 3] = numEdgeFunctions[4*i + 2] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+    }
+    gsInfo << "Num Basis Functions " << numBasisFunctions << "\n";
+    gsInfo << "Num Edge Functions " << numEdgeFunctions << "\n";
+
+    dim_K = numBasisFunctions.last(); // interior basis
+    dim_E = numEdgeFunctions.last();
+    dim_V = 6 * 4 * numPatches;
+
     // Full matrix
-    D_sparse.resize(dim_D, dim_K);
+    D_sparse.resize(dim_E + dim_V + dim_K, dim_K);
     D_sparse.reserve(3*dim_K);
     D_sparse.setZero();
 
     // Without boundary
-    D_0_sparse.resize(dim_D, dim_K);
+    D_0_sparse.resize(dim_E + dim_V + dim_K, dim_K);
     D_0_sparse.reserve(3*dim_K);
     D_0_sparse.setZero();
 
     // Only boundary
-    D_boundary_sparse.resize(dim_D , dim_K);
+    D_boundary_sparse.resize(dim_E + dim_V + dim_K , dim_K);
     D_boundary_sparse.reserve(3*dim_K);
     D_boundary_sparse.setZero();
 
-    m_g.resize(dim_D,1);
-    m_g.setZero();
 }
 
 template<class T>
-void gsG1System<T>::assemble()
+void gsG1System<T>::insertInterfaceEdge(gsMultiPatch<> & mp, index_t iID ,index_t pID_0, index_t pdID_1)
 {
 
 
-    // First insert all coefficients of the g1 Basis
-    for (size_t i = 0; i < m_edges.size(); ++i) // which edge
+    // Insert all coefficients of the g1 Basis at the interface
+    for (size_t np = 0; np < 2; ++np) // two interface patches
     {
-        for (size_t j = 0; j < m_edges.at(i).getG1Basis().nPatches(); j++) // which basis functions
+        for (size_t j = 0; j < mp.patch(np).coefs().size(); j++) // all the coefs
         {
-            gsMatrix<unsigned > localDof(1,1), globalDof(1,1);
-            localDof << j;
-            m_map_edge.localToGlobal(localDof,i,globalDof);
-
-            for (size_t k = 0; k < m_edges.at(i).getG1Basis().basis(j).size(); k++)
+            if (mp.patch(np).coefs().at(j) * mp.patch(np).coefs().at(j)  > 10e-25)
             {
-                if (m_edges.at(i).getG1Basis().patch(j).coefs().at(k) * m_edges.at(i).getG1Basis().patch(j).coefs().at(k) > 10e-25)
-                {
-                    gsMatrix<unsigned > localDof_BF(1,1), globalDof_BF;
-                    localDof_BF << k;
-                    map_global.localToGlobal(localDof_BF,m_edges.at(i).getGlobalPatchIndex(),globalDof_BF);
-                    D_sparse.insert(globalDof.at(0),globalDof_BF.at(0)) = m_edges.at(i).getG1Basis().patch(j).coefs().at(k);
-                }
-
+                index_t jj;
+                pID_0 == 0 ? jj = 0 : jj = numBasisFunctions[pID_0 -1 ];
+                D_sparse.insert(iID,jj) = mp.patch(np).coefs().at(j); // TODO falsch
             }
+
+
 
         }
     } // edges
 
-    for (size_t i = 0; i < m_vertices.size(); ++i) // which vertex
-    {
-        for (size_t j = 0; j < m_vertices.at(i).getG1Basis().nPatches(); j++) // which basis functions
-        {
-            gsMatrix<unsigned > localDof(1,1), globalDof(1,1);
-            localDof << j;
-            m_map_vertex.localToGlobal(localDof,i,globalDof);
-            gsInfo << globalDof << " : ";
-            for (size_t k = 0; k < m_vertices.at(i).getG1Basis().basis(j).size(); k++)
-            {
-                if (m_vertices.at(i).getG1Basis().patch(j).coefs().at(k) * m_vertices.at(i).getG1Basis().patch(j).coefs().at(k) > 10e-30)
-                {
-                    gsMatrix<unsigned > localDof_BF(1,1), globalDof_BF;
-                    localDof_BF << k;
-                    map_global.localToGlobal(localDof_BF,m_vertices.at(i).getGlobalPatchIndex(),globalDof_BF);
-                    //gsInfo << globalDof_BF << " \n";
-                    D_sparse.insert(dim_I + globalDof.at(0),globalDof_BF.at(0)) = m_vertices.at(i).getG1Basis().patch(j).coefs().at(k);
-                }
-
-            }
-            gsInfo << "\n";
-
-        }
-    } // vertex
 
 
 
-}
-
-template<class T>
-void gsG1System<T>::plotParaview(gsMultiPatch<T> & mp,
-                                 std::vector<gsG1AuxiliaryPatch> & interface,
-                                 std::vector<gsG1AuxiliaryPatch> & boundaries,
-                                 std::vector<gsG1AuxiliaryPatch> & vertices,
-                                 std::string basename)
-{
-    gsParaviewCollection collection(basename);
-    std::string fileName;
-    index_t iter = 0;
-    for (std::vector<gsG1AuxiliaryPatch>::iterator auxGeo = interface.begin(); auxGeo != interface.end(); ++auxGeo)
-    {
-        for (size_t i = 2; i < auxGeo->getG1Basis().nPatches()-2; i++)
-        {
-            fileName = basename + "_" + util::to_string(iter);
-            gsField<> temp_field(mp.patch(auxGeo->getGlobalPatchIndex()),auxGeo->getG1Basis().patch(i));
-            gsWriteParaview(temp_field,fileName,5000);
-            collection.addTimestep(fileName,iter,"0.vts");
-            iter ++;
-        }
-    }
-    for (std::vector<gsG1AuxiliaryPatch>::iterator auxGeo = boundaries.begin(); auxGeo != boundaries.end(); ++auxGeo)
-    {
-        for (size_t i = 0; i < auxGeo->getG1Basis().nPatches(); i++)
-        {
-            fileName = basename + "_" + util::to_string(iter);
-            gsField<> temp_field(mp.patch(auxGeo->getGlobalPatchIndex()),auxGeo->getG1Basis().patch(i));
-            gsWriteParaview(temp_field,fileName,5000);
-            collection.addTimestep(fileName,iter,"0.vts");
-            iter ++;
-        }
-    }
-    for (std::vector<gsG1AuxiliaryPatch>::iterator auxGeo = vertices.begin(); auxGeo != vertices.end(); ++auxGeo)
-    {
-        for (size_t i = 0; i < auxGeo->getG1Basis().nPatches(); i++)
-        {
-            fileName = basename + "_" + util::to_string(iter);
-            gsField<> temp_field(mp.patch(auxGeo->getGlobalPatchIndex()),auxGeo->getG1Basis().patch(i));
-            gsWriteParaview(temp_field,fileName,5000);
-            collection.addTimestep(fileName,iter,"0.vts");
-            iter ++;
-        }
-    }
-
-    collection.save();
-}
-
-template<class T>
-void gsG1System<T>::plotParaview(gsMultiPatch<T> & mp,
-                                 std::vector<gsG1AuxiliaryPatch> & edges,
-                                 std::vector<gsG1AuxiliaryPatch> & vertices,
-                                 std::string basename)
-{
-    gsParaviewCollection collection(basename);
-    std::string fileName;
-    index_t iter = 0;
-    /*
-    for (std::vector<gsG1AuxiliaryPatch>::iterator auxGeo = edges.begin(); auxGeo != edges.end(); ++auxGeo)
-    {
-        for (size_t i = 0; i < auxGeo->getG1Basis().nPatches(); i++)
-        {
-            fileName = basename + "_" + util::to_string(iter);
-            gsField<> temp_field(mp.patch(auxGeo->getGlobalPatchIndex()),auxGeo->getG1Basis().patch(i));
-            gsWriteParaview(temp_field,fileName,5000);
-            collection.addTimestep(fileName,iter,"0.vts");
-            iter ++;
-        }
-    }
-     */
-    for (std::vector<gsG1AuxiliaryPatch>::iterator auxGeo = vertices.begin(); auxGeo != vertices.end(); ++auxGeo)
-    {
-        for (size_t i = 0; i < auxGeo->getG1Basis().nPatches(); i++)
-        {
-            fileName = basename + "_" + util::to_string(iter);
-            gsField<> temp_field(mp.patch(auxGeo->getGlobalPatchIndex()),auxGeo->getG1Basis().patch(i));
-            gsWriteParaview(temp_field,fileName,5000);
-            collection.addTimestep(fileName,iter,"0.vts");
-            iter ++;
-        }
-    }
-
-    collection.save();
 }
 
 } // namespace

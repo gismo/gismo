@@ -158,8 +158,8 @@ public:
 
 
     void computeG1BoundaryBasis(gsOptionList optionList, const int boundaryInd){
-        gsMultiPatch<> mp_init;
-        mp_init.addPatch(auxGeom[0].getPatch());
+        //gsMultiPatch<> mp_init;
+        //mp_init.addPatch(auxGeom[0].getPatch());
 
         gsMultiPatch<> test_mp(this->reparametrizeG1Boundary(boundaryInd));
         gsMultiBasis<> test_mb(test_mp);
@@ -207,8 +207,6 @@ public:
 
 protected:
     std::vector<gsG1AuxiliaryPatch> auxGeom;
-
-
 };
 }
 
