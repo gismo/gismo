@@ -209,10 +209,12 @@ public:
 //            collection.addPart(fileName,"0.vts");
 
             auxGeom[i].parametrizeBasisBack(g1Basis);
+            this->swapOrderBasis();
+
 
             fileName = basename + "_" + util::to_string(i);
-            gsField<> temp_field(test_mp.patch(auxGeom[i].getGlobalPatchIndex()),auxGeom[i].getG1Basis().patch(5));
-            gsWriteParaview(temp_field,fileName,5000);
+            gsField<> temp_field(test_mp.patch(auxGeom[i].getGlobalPatchIndex()),auxGeom[i].getG1Basis().patch(1));
+            gsWriteParaview(temp_field,fileName,15000);
             collection.addPart(fileName,"0.vts");
 
 
@@ -220,6 +222,16 @@ public:
         }
 
         collection.save();
+    }
+
+    void swapOrderBasis()
+    {
+    for(size_t i = 0; i < auxGeom.size(); i++)
+        if(auxGeom[i].getOrient())
+        {
+            gsInfo << auxGeom[i].getG1Basis().size() ;
+            auxGeom[i].swap();
+        }
     }
 
 
