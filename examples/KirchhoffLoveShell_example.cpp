@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 
         gsG1AuxiliaryVertexMultiplePatches a(geo, patchIndex, vertIndex);
         a.computeG1InternalVertexBasis(optionList);
-        index_t kindBdr = a.kindOfVertex();
+//        index_t kindBdr = a.kindOfVertex();
         for (size_t j = 0; j < vertIndex.size(); j++)
         {
             onebasisfunction.addPatch(a.getSinglePatch(j).getG1Basis().patch(0));
