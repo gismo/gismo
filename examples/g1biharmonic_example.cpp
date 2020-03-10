@@ -252,34 +252,37 @@ int main(int argc, char *argv[])
         }
         collection.save();
     }
-
-
-
-
-
-/*
-    // Interface loop
-    std::vector<gsG1AuxiliaryPatch> g1_interface;
-    for (const boundaryInterface &  item : multiPatch.interfaces() )
+    // Boundaries loop
+    for (index_t numBdy = 0; numBdy < multiPatch.boundaries().size(); numBdy++ )
     {
-        gsG1AuxiliaryEdgeMultiplePatches a(multiPatch, item.first().patch, item.second().patch);
-        a.computeG1InterfaceBasis(optionList);
-        g1_interface.push_back(a.getSinglePatch(0));
-        g1_interface.push_back(a.getSinglePatch(1));
-        gsInfo << "PLUS : " << a.getSinglePatch(0).get_n_plus() << " MINUS : " << a.getSinglePatch(0).get_n_minus() << "\n";
+        const patchSide & bit = multiPatch.boundaries()[numBdy];
+
+        std::string fileName;
+        std::string basename = "BoundaryBasisFunctions" + util::to_string(numBdy);
+        gsParaviewCollection collection(basename);
+
+        gsInfo << "Patch: " << bit.patch << "\n";
+        gsInfo << "m_index: " << bit.m_index << "\n";
+        gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatch, bit.patch);
+        singleBdy.computeG1BoundaryBasis(optionList, bit.m_index);
+
+        for (index_t i = 0; i < singleBdy.getSinglePatch(0).getG1Basis().nPatches(); i++)
+        {
+            gsMultiPatch<> edgeSingleBF;
+
+            edgeSingleBF.addPatch(singleBdy.getSinglePatch(0).getG1Basis().patch(i));
+
+            fileName = basename + "_0_" + util::to_string(i);
+            gsField<> temp_field(multiPatch.patch(bit.patch),edgeSingleBF.patch(0));
+            gsWriteParaview(temp_field,fileName,5000);
+            collection.addTimestep(fileName,i,"0.vts");
+        }
+        collection.save();
     }
 
-    std::vector<gsG1AuxiliaryPatch> g1_boundaries;
-    for (gsMultiPatch<>::const_biterator bit = multiPatch.bBegin(); bit != multiPatch.bEnd(); ++bit)
-    {
-        gsInfo << "Patch: " << bit->patch << "\n";
-        gsInfo << "m_index: " << bit->m_index << "\n";
-        gsG1AuxiliaryEdgeMultiplePatches a(multiPatch, bit->patch);
-        a.computeG1BoundaryBasis(optionList, bit->m_index);
-        g1_boundaries.push_back(a.getSinglePatch(0));
-        gsInfo << "PLUS : " << a.getSinglePatch(0).get_n_plus() << " MINUS : " << a.getSinglePatch(0).get_n_minus() << "\n";
-    }
-*/
+
+
+
 
     gsG1Mapper_pascal<real_t> g1Mapper(multiPatch);
 
