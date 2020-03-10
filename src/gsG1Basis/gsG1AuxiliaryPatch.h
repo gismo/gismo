@@ -307,7 +307,7 @@ public:
     }
 
 
-    void parametrizeBasisBack(const gsMultiPatch<> & g1Basis){
+    void parametrizeBasisBack( gsMultiPatch<>  g1Basis){
         G1repBasis = g1Basis;
 
         //gsInfo << "Patch " << patchIndex << " old: " << G1repBasis.patch(0).coefs()<< "\n";
@@ -370,6 +370,18 @@ public:
 
     void checkOrientation(){
         axisOrientation = ( axisOrientation == 0 ? 1 : 0 );
+    }
+
+    void swap()
+    {
+        gsMultiPatch<> aux;
+        aux.addPatch(G1repBasis.patch(0));
+        aux.addPatch(G1repBasis.patch(2));
+        aux.addPatch(G1repBasis.patch(1));
+        aux.addPatch(G1repBasis.patch(5));
+        aux.addPatch(G1repBasis.patch(4));
+        aux.addPatch(G1repBasis.patch(3));
+        G1repBasis.swap(aux);
     }
 
 protected:
