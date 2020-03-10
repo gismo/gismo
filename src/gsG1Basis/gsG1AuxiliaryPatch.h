@@ -372,17 +372,7 @@ public:
         axisOrientation = ( axisOrientation == 0 ? 1 : 0 );
     }
 
-    void swap()
-    {
-        gsMultiPatch<> aux;
-        aux.addPatch(G1repBasis.patch(0));
-        aux.addPatch(G1repBasis.patch(2));
-        aux.addPatch(G1repBasis.patch(1));
-        aux.addPatch(G1repBasis.patch(5));
-        aux.addPatch(G1repBasis.patch(4));
-        aux.addPatch(G1repBasis.patch(3));
-        G1repBasis.swap(aux);
-    }
+
 
 protected:
 
