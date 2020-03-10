@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
     gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
 
     gsMultiPatch<> multiPatch;
-    fd.getId(5, multiPatch); // id=0: Multipatch domain
+    fd.getId(0, multiPatch); // id=0: Multipatch domain
     multiPatch.computeTopology();
 
 
@@ -142,8 +142,120 @@ int main(int argc, char *argv[])
     multiPatch.uniformRefine_withSameRegularity(optionList.getInt("refine"), optionList.getInt("regularity"));
     gsMultiBasis<> mb(multiPatch);
 
+    // Number of the patches
+    index_t numPatches = multiPatch.nPatches();
 
-    gsWriteParaview(mb.basis(0),"basis",5000);
+    // Get the dimension of the basis functions for each patch
+    gsVector<> numBasisFunctions, numEdgeFunctions;
+    numBasisFunctions.setZero(numPatches);
+    numEdgeFunctions.setZero(4*(numPatches));
+    numBasisFunctions[0] = mb.basis(0).size();
+    {
+        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(0).component(0)); // 0 -> u, 1 -> v
+        index_t m_p = basis_edge.maxDegree();
+        index_t m_r = 1; // Here fixed to 1 TODO MORE GENERAL
+        index_t m_n = basis_edge.numElements();
+        // ATTENTION: With the first and the last interface basis functions
+        numEdgeFunctions[0] = 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+        numEdgeFunctions[1] = numEdgeFunctions[0] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+
+        basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(0).component(1)); // 0 -> u, 1 -> v
+        m_p = basis_edge.maxDegree();
+        m_r = 1; // Here fixed to 1 TODO MORE GENERAL
+        m_n = basis_edge.numElements();
+        numEdgeFunctions[2] = numEdgeFunctions[1] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+        numEdgeFunctions[3] = numEdgeFunctions[2] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+    }
+    for (size_t i = 1; i < mb.nBases(); i++ )
+    {
+        numBasisFunctions[i] = numBasisFunctions[i-1] + mb.basis(i).size();
+
+        // Get the dimension for the spaces at the edges
+        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(i).component(0)); // 0 -> u, 1 -> v
+        index_t m_p = basis_edge.maxDegree();
+        index_t m_r = 1; // Here fixed to 1 TODO MORE GENERAL
+        index_t m_n = basis_edge.numElements();
+        // ATTENTION: With the first and the last interface basis functions
+        numEdgeFunctions[4*i + 0] = numEdgeFunctions[4*i - 1] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+        numEdgeFunctions[4*i + 1] = numEdgeFunctions[4*i + 0] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+
+        basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(i).component(1)); // 0 -> u, 1 -> v
+        m_p = basis_edge.maxDegree();
+        m_r = 1; // Here fixed to 1 TODO MORE GENERAL
+        m_n = basis_edge.numElements();
+        numEdgeFunctions[4*i + 2] = numEdgeFunctions[4*i + 1] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+        numEdgeFunctions[4*i + 3] = numEdgeFunctions[4*i + 2] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1;
+    }
+    gsInfo << "Num Basis Functions " << numBasisFunctions << "\n";
+    gsInfo << "Num Edge Functions " << numEdgeFunctions << "\n";
+
+    // Set up the dimension
+    index_t dim_K, dim_E, dim_V;
+    dim_K = numBasisFunctions.last(); // interior basis
+    dim_E = numEdgeFunctions.last();
+    dim_V = 6 * 4 * numPatches;
+
+    // Set up the system
+    gsSparseMatrix<real_t> D_sparse, D_0_sparse, D_boundary_sparse;
+
+    // Full matrix
+    D_sparse.resize(dim_E + dim_V + dim_K, dim_K);
+    D_sparse.reserve(3*dim_K);
+    D_sparse.setZero();
+
+    // Without boundary
+    D_0_sparse.resize(dim_E + dim_V + dim_K, dim_K);
+    D_0_sparse.reserve(3*dim_K);
+    D_0_sparse.setZero();
+
+    // Only boundary
+    D_boundary_sparse.resize(dim_E + dim_V + dim_K , dim_K);
+    D_boundary_sparse.reserve(3*dim_K);
+    D_boundary_sparse.setZero();
+
+
+    // ########### EDGE FUNCTIONS ###########
+    // Interface loop
+    for (index_t numInt = 0; numInt < multiPatch.interfaces().size(); numInt++ )
+    {
+        const boundaryInterface & item = multiPatch.interfaces()[numInt];
+
+        std::string fileName;
+        std::string basename = "InterfaceBasisFunctions" + util::to_string(numInt);
+        gsParaviewCollection collection(basename);
+
+        /*
+        gsG1AuxiliaryEdgeMultiplePatches first(multiPatch, item.first().patch);
+        first.computeG1EdgeBasis(optionList,item.first().m_index,false);
+
+        gsG1AuxiliaryEdgeMultiplePatches second(multiPatch, item.second().patch);
+        second.computeG1EdgeBasis(optionList,item.second().m_index,false);
+        */
+        gsG1AuxiliaryEdgeMultiplePatches singleInt(multiPatch, item.first().patch, item.second().patch);
+        singleInt.computeG1InterfaceBasis(optionList);
+
+        for (index_t i = 0; i < numEdgeFunctions[item.first().patch*4 + item.first().m_index -1] - numEdgeFunctions[item.first().patch*4 + item.first().m_index -2]; i++)
+        {
+            gsMultiPatch<> edgeSingleBF;
+
+            edgeSingleBF.addPatch(singleInt.getSinglePatch(0).getG1Basis().patch(i));
+            edgeSingleBF.addPatch(singleInt.getSinglePatch(1).getG1Basis().patch(i));
+
+            fileName = basename + "_0_" + util::to_string(i);
+            gsField<> temp_field(multiPatch.patch(item.first().patch),edgeSingleBF.patch(0));
+            gsWriteParaview(temp_field,fileName,5000);
+            collection.addTimestep(fileName,i,"0.vts");
+            fileName = basename + "_1_" + util::to_string(i);
+            gsField<> temp_field_1(multiPatch.patch(item.second().patch),edgeSingleBF.patch(1));
+            gsWriteParaview(temp_field_1,fileName,5000);
+            collection.addTimestep(fileName,i,"0.vts");
+        }
+        collection.save();
+    }
+
+
+
+
 
 /*
     // Interface loop
@@ -154,6 +266,7 @@ int main(int argc, char *argv[])
         a.computeG1InterfaceBasis(optionList);
         g1_interface.push_back(a.getSinglePatch(0));
         g1_interface.push_back(a.getSinglePatch(1));
+        gsInfo << "PLUS : " << a.getSinglePatch(0).get_n_plus() << " MINUS : " << a.getSinglePatch(0).get_n_minus() << "\n";
     }
 
     std::vector<gsG1AuxiliaryPatch> g1_boundaries;
@@ -164,8 +277,10 @@ int main(int argc, char *argv[])
         gsG1AuxiliaryEdgeMultiplePatches a(multiPatch, bit->patch);
         a.computeG1BoundaryBasis(optionList, bit->m_index);
         g1_boundaries.push_back(a.getSinglePatch(0));
+        gsInfo << "PLUS : " << a.getSinglePatch(0).get_n_plus() << " MINUS : " << a.getSinglePatch(0).get_n_minus() << "\n";
     }
 */
+
     gsG1Mapper_pascal<real_t> g1Mapper(multiPatch);
 
     std::vector<gsG1AuxiliaryPatch> g1_edges;
@@ -177,6 +292,7 @@ int main(int argc, char *argv[])
             a.computeG1EdgeBasis(optionList,side_index,multiPatch.isBoundary(np,side_index));
             g1Mapper.markGlobalIndex_Edge(g1_edges.size(),side_index,np,multiPatch.isBoundary(np,side_index)); // This case is the same
             g1_edges.push_back(a.getSinglePatch(0));
+            gsInfo << "PLUS : " << a.getSinglePatch(0).get_n_plus() << " MINUS : " << a.getSinglePatch(0).get_n_minus() << "\n";
         }
     }
 
@@ -223,10 +339,10 @@ int main(int argc, char *argv[])
     }
     g1Mapper.markBoundary_Vertex(multiPatch,g1_vertices);
 
-    gsG1System<real_t> g1System(mb, g1_edges, g1_vertices, g1Mapper);
+    //gsG1System<real_t> g1System(mb, g1_edges, g1_vertices, g1Mapper);
     //if (plot)
     //g1System.plotParaview(multiPatch,g1_interface,g1_boundaries,g1_vertices,"BasisFunctions");
-    g1System.plotParaview(multiPatch,g1_edges,g1_vertices,"BasisFunctions");
+    //g1System.plotParaview(multiPatch,g1_edges,g1_vertices,"BasisFunctions");
 
 
 // NEW NEW NEW NEW NEW NEW NEW NEW NEW
@@ -242,12 +358,12 @@ int main(int argc, char *argv[])
     gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
     g1BiharmonicAssembler.assemble();
 
-    g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1_edges, g1_vertices, g1Mapper );
-    g1BiharmonicAssembler.constructDirichletSolution(g1_edges, g1_vertices, g1Mapper );
+    //g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1_edges, g1_vertices, g1Mapper );
+    //g1BiharmonicAssembler.constructDirichletSolution(g1_edges, g1_vertices, g1Mapper );
 
-    g1System.setGlobalMapper(g1BiharmonicAssembler.get_mapper());
-    g1System.initialize();
-    g1System.assemble();
+    //g1System.setGlobalMapper(g1BiharmonicAssembler.get_mapper());
+    //g1System.initialize();
+    //g1System.assemble();
 
 
 

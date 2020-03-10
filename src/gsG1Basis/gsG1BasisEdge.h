@@ -28,7 +28,7 @@ public:
 public:
     gsG1BasisEdge(gsMultiPatch<> geo, // single patch
                  gsMultiBasis<> basis, // single basis
-                 index_t uv, // !!! 0 == v; 1 == u !!!
+                 index_t uv, // !!! 0 == u; 1 == v !!!
                  bool isBoundary,
                  gsOptionList & optionList)
         : m_geo(geo), m_basis(basis), m_uv(uv), m_isBoundary(isBoundary), m_optionList(optionList)
