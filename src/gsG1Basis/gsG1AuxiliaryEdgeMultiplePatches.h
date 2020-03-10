@@ -108,20 +108,47 @@ public:
 
     gsMultiPatch<> reparametrizeG1Boundary(const int bInd){
         gsMultiPatch<> repTop(this->computeAuxTopology());
-        switch (bInd)
+        if(auxGeom[0].getOrient())
         {
-            case 1:
-                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " not rotated\n";
-                break;
-            case 4: auxGeom[0].rotateParamClock();
-                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated clockwise\n";
-                break;
-            case 2: auxGeom[0].rotateParamAntiClockTwice();
-                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated twice anticlockwise\n";
-                break;
-            case 3: auxGeom[0].rotateParamAntiClock();
-                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated anticlockwise\n";
-                break;
+            switch (bInd)
+            {
+                case 3:
+                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " not rotated\n";
+                    break;
+                case 2:
+                    auxGeom[0].rotateParamClock();
+                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated clockwise\n";
+                    break;
+                case 4:
+                    auxGeom[0].rotateParamAntiClockTwice();
+                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated twice anticlockwise\n";
+                    break;
+                case 1:
+                    auxGeom[0].rotateParamAntiClock();
+                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated anticlockwise\n";
+                    break;
+            }
+        }
+        else
+        {
+            switch (bInd)
+            {
+                case 1:
+                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " not rotated\n";
+                    break;
+                case 4:
+                    auxGeom[0].rotateParamClock();
+                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated clockwise\n";
+                    break;
+                case 2:
+                    auxGeom[0].rotateParamAntiClockTwice();
+                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated twice anticlockwise\n";
+                    break;
+                case 3:
+                    auxGeom[0].rotateParamAntiClock();
+                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated anticlockwise\n";
+                    break;
+            }
         }
         return this->computeAuxTopology();
     }
