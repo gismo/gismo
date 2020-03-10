@@ -83,6 +83,8 @@ public:
         m_basis_minus = basis_minus;
         n_minus = m_basis_minus.size();
 
+        gsInfo << "Plus " << n_plus <<  " Minus " << n_minus << "\n";
+
         // Basis for the G1 basis
         m_basis_g1 = m_basis.basis(0);
 
@@ -217,6 +219,8 @@ protected:
     std::vector<gsMatrix<>> solVec_t, solVec_b;
     gsMultiPatch<T> g1Basis;
 
+    index_t reduced_minus, reduced_plus;
+
 }; // class gsG1BasisEdge
 
 
@@ -309,7 +313,7 @@ void gsG1BasisEdge<T,bhVisitor>::refresh()
 
     // 2. Create the sparse system
     gsSparseSystem<T> m_system = gsSparseSystem<T>(map);
-    for (index_t i = 0; i < m_basis_plus.size(); i++)
+    for (index_t i = 0; i < m_basis_plus.size() ; i++)
         m_f_0.push_back(m_system);
     for (index_t i = 0; i < m_basis_minus.size(); i++)
         m_f_1.push_back(m_system);

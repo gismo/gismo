@@ -228,6 +228,16 @@ public:
 
     }
 
+    void deleteBasisFunctions(size_t pID, size_t nPlus)
+    {
+        gsMultiPatch<> temp_mp;
+        for (size_t i = 0; i < auxGeom[pID].getG1Basis().nPatches(); i++)
+            if ((i > 2 && i < nPlus - 3) || (i > nPlus + 1 && i < nPlus + nPlus - 1 - 2))
+                temp_mp.addPatch(auxGeom[pID].getG1Basis().patch(i));
+
+        auxGeom[pID].getG1Basis().swap(temp_mp);
+    }
+
     gsG1AuxiliaryPatch & getSinglePatch(const unsigned i){
         return auxGeom[i];
     }

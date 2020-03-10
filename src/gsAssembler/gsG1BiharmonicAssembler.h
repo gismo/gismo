@@ -20,6 +20,8 @@
 
 # include <gsG1Basis/gsG1Mapper_pascal.h>
 
+# include <gsG1Basis/gsG1System.h>
+
 namespace gismo
 {
 
@@ -76,6 +78,8 @@ public:
 
     void computeDirichletDofsL2Proj(std::vector<gsG1AuxiliaryPatch> & g1_edges, std::vector<gsG1AuxiliaryPatch> & g1_vertices, gsG1Mapper_pascal<real_t> &  g1Mapper);
     void constructDirichletSolution(std::vector<gsG1AuxiliaryPatch> & g1_edges, std::vector<gsG1AuxiliaryPatch> & g1_vertices, gsG1Mapper_pascal<real_t> & g1Mapper);
+
+    void computeDirichletDofsL2Proj(gsG1System<real_t> &  g1System);
 
     gsDofMapper get_mapper() { return m_system.colMapper(0); };
 
@@ -292,6 +296,31 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
     Base::finalize();
 }
 
+
+template <class T, class bhVisitor>
+void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System<real_t> &  g1System)
+{
+    size_t unk_ = 0;
+
+    m_g1_ddof.resize( g1System.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
+
+    // Set up matrix, right-hand-side and solution vector/matrix for
+    // the L2-projection
+    gsSparseEntries<T> projMatEntries;
+    gsMatrix<T>        globProjRhs;
+    globProjRhs.setZero( g1System.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols() );
+
+    // Temporaries
+    gsVector<T> quWeights;
+
+    gsMatrix<T> rhsVals;
+    gsMatrix<unsigned> globIdxAct, locIdxAct;
+    gsMatrix<unsigned> globIdxAct_0;
+    gsMatrix<unsigned> globIdxAct_1;
+    gsMatrix<T> basisVals;
+
+    gsMapData<T> md(NEED_MEASURE);
+}
 
 template <class T, class bhVisitor>
 void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vector<gsG1AuxiliaryPatch> & g1_edges,

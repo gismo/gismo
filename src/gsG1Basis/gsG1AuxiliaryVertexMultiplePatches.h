@@ -209,7 +209,7 @@ public:
 //            collection.addPart(fileName,"0.vts");
 
             auxGeom[i].parametrizeBasisBack(g1Basis);
-            this->swapOrderBasis();
+            //this->swapOrderBasis(i);
 
 
             fileName = basename + "_" + util::to_string(i);
@@ -224,9 +224,8 @@ public:
         collection.save();
     }
 
-    void swapOrderBasis()
+    void swapOrderBasis(index_t i)
     {
-    for(size_t i = 0; i < auxGeom.size(); i++)
         if(auxGeom[i].getOrient())
         {
             gsInfo << auxGeom[i].getG1Basis().size() ;

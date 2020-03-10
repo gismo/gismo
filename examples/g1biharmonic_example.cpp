@@ -164,6 +164,8 @@ int main(int argc, char *argv[])
         */
         gsG1AuxiliaryEdgeMultiplePatches singleInt(multiPatch, item.first().patch, item.second().patch);
         singleInt.computeG1InterfaceBasis(optionList);
+        singleInt.deleteBasisFunctions(0,g1System.sizePlusInterface(numInt));
+        singleInt.deleteBasisFunctions(1,g1System.sizePlusInterface(numInt));
 
         for (size_t i = 0; i < singleInt.getSinglePatch(0).getG1Basis().nPatches(); i++)
         {
@@ -171,6 +173,8 @@ int main(int argc, char *argv[])
 
             edgeSingleBF.addPatch(singleInt.getSinglePatch(0).getG1Basis().patch(i));
             edgeSingleBF.addPatch(singleInt.getSinglePatch(1).getG1Basis().patch(i));
+
+            g1System.insertInterfaceEdge(edgeSingleBF,item,numInt,i);
 
             fileName = basename + "_0_" + util::to_string(i);
             gsField<> temp_field(multiPatch.patch(item.first().patch),edgeSingleBF.patch(0));
@@ -197,11 +201,13 @@ int main(int argc, char *argv[])
         gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatch, bit.patch);
         singleBdy.computeG1BoundaryBasis(optionList, bit.m_index);
 
-        for (size_t i = 0; i < singleBdy.getSinglePatch(0).getG1Basis().nPatches(); i++)
+        for (size_t i = 2; i < singleBdy.getSinglePatch(0).getG1Basis().nPatches() -2; i++)
         {
             gsMultiPatch<> edgeSingleBF;
 
             edgeSingleBF.addPatch(singleBdy.getSinglePatch(0).getG1Basis().patch(i));
+
+            g1System.insertBoundaryEdge(edgeSingleBF,bit,numBdy,i);
 
             fileName = basename + "_0_" + util::to_string(i);
             gsField<> temp_field(multiPatch.patch(bit.patch),edgeSingleBF.patch(0));
@@ -209,6 +215,52 @@ int main(int argc, char *argv[])
             collection.addTimestep(fileName,i,"0.vts");
         }
         collection.save();
+    }
+
+    // Vertices
+    std::vector<std::vector<patchCorner>> allcornerLists = multiPatch.vertices();
+    for(size_t numVer=0; numVer < allcornerLists.size(); numVer++)
+    {
+        std::vector<size_t> patchIndex;
+        std::vector<size_t> vertIndex;
+        for(size_t j = 0; j < allcornerLists[numVer].size(); j++)
+        {
+            //patchIndex.push_back(allcornerLists[i][j].patch);
+            //vertIndex.push_back(allcornerLists[i][j].m_index);
+            gsInfo << "Patch: " << allcornerLists[numVer][j].patch << "\t Index: " << allcornerLists[numVer][j].m_index << "\n";
+
+        }
+        gsInfo << "\n";
+        /*
+        patchIndex.push_back(0);
+        patchIndex.push_back(1);
+        patchIndex.push_back(2);
+        patchIndex.push_back(3);
+        patchIndex.push_back(4);
+
+        vertIndex.push_back(4);
+        vertIndex.push_back(2);
+        vertIndex.push_back(1);
+        vertIndex.push_back(3);
+        vertIndex.push_back(2);
+*/
+        patchIndex.push_back(0);
+        patchIndex.push_back(1);
+
+        vertIndex.push_back(3);
+        vertIndex.push_back(2);
+
+        gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatch, patchIndex, vertIndex);
+        singleVertex.computeG1InternalVertexBasis(optionList);
+        index_t kindBdr = singleVertex.kindOfVertex();
+        gsMultiPatch<> singleBasisFunction;
+        for (size_t np = 0; np < vertIndex.size(); np++)
+        {
+            singleBasisFunction.addPatch(singleVertex.getSinglePatch(np).getG1Basis().patch(0));
+        }
+
+
+
     }
 
 // NEW NEW NEW NEW NEW NEW NEW NEW NEW
@@ -224,7 +276,7 @@ int main(int argc, char *argv[])
     gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
     g1BiharmonicAssembler.assemble();
 
-    //g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1_edges, g1_vertices, g1Mapper );
+    g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System);
     //g1BiharmonicAssembler.constructDirichletSolution(g1_edges, g1_vertices, g1Mapper );
 
     //g1System.setGlobalMapper(g1BiharmonicAssembler.get_mapper());
