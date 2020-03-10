@@ -311,8 +311,6 @@ public:
         G1repBasis = g1Basis;
 
         //gsInfo << "Patch " << patchIndex << " old: " << G1repBasis.patch(0).coefs()<< "\n";
-        if(axisOrientation)
-            this->swapBasisAxis();
 
         switch (rotationNum)
         {
@@ -329,9 +327,10 @@ public:
                 break;
             default:
                 break;
-
         }
 
+        if(axisOrientation)
+            this->swapBasisAxis();
         //gsInfo << "Patch " << patchIndex << " new: " << G1repBasis.patch(0).coefs() << "\n";
     }
 

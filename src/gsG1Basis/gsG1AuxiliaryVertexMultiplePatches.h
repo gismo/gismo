@@ -203,12 +203,15 @@ public:
 
 
 
-
+//            fileName = basename + "_" + util::to_string(i);
+//            gsField<> temp_field(auxGeom[i].getPatch(),g1Basis.patch(0));
+//            gsWriteParaview(temp_field,fileName,5000);
+//            collection.addPart(fileName,"0.vts");
 
             auxGeom[i].parametrizeBasisBack(g1Basis);
 
             fileName = basename + "_" + util::to_string(i);
-            gsField<> temp_field(auxGeom[i].getPatch(),g1Basis.patch(0));
+            gsField<> temp_field(test_mp.patch(auxGeom[i].getGlobalPatchIndex()),auxGeom[i].getG1Basis().patch(5));
             gsWriteParaview(temp_field,fileName,5000);
             collection.addPart(fileName,"0.vts");
 
