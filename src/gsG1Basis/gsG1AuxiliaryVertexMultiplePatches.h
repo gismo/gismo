@@ -221,7 +221,7 @@ public:
 
         collection.save();
     }
-    
+
     gsG1AuxiliaryPatch & getSinglePatch(const unsigned i){
         return auxGeom[i];
     }
