@@ -10,12 +10,15 @@
 
     Author(s): P. Weinmueller
 */
+# include <omp.h>
+
 # include <gismo.h>
 # include <gsG1Basis/gsG1AuxiliaryEdgeMultiplePatches.h>
 # include <gsG1Basis/gsG1AuxiliaryVertexMultiplePatches.h>
 # include <gsAssembler/gsG1BiharmonicAssembler.h>
 # include <gsG1Basis/gsG1System.h>
 # include <gsG1Basis/gsG1Mapper_pascal.h>
+# include <gsG1Basis/gsNormL2.h>
 
 using namespace gismo;
 
@@ -55,7 +58,7 @@ int main(int argc, char *argv[])
     // ======= Solution =========
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-    gsFunctionExpr<> solVal("x",2);
+    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
     gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
                              "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
     gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
@@ -142,6 +145,8 @@ int main(int argc, char *argv[])
     multiPatch.uniformRefine_withSameRegularity(optionList.getInt("refine"), optionList.getInt("regularity"));
     gsMultiBasis<> mb(multiPatch);
 
+    omp_set_num_threads(threads);
+    omp_set_nested(1);
 
     gsG1System<real_t> g1System(multiPatch, mb);
 
@@ -200,8 +205,9 @@ int main(int argc, char *argv[])
         gsInfo << "m_index: " << bit.m_index << "\n";
         gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatch, bit.patch);
         singleBdy.computeG1BoundaryBasis(optionList, bit.m_index);
+        singleBdy.deleteBasisFunctions(0,g1System.sizePlusBoundary(numBdy));
 
-        for (size_t i = 2; i < singleBdy.getSinglePatch(0).getG1Basis().nPatches() -2; i++)
+        for (size_t i = 0; i < singleBdy.getSinglePatch(0).getG1Basis().nPatches(); i++)
         {
             gsMultiPatch<> edgeSingleBF;
 
@@ -218,49 +224,31 @@ int main(int argc, char *argv[])
     }
 
     // Vertices
-    std::vector<std::vector<patchCorner>> allcornerLists = multiPatch.vertices();
-    for(size_t numVer=0; numVer < allcornerLists.size(); numVer++)
+    for(size_t numVer=0; numVer < multiPatch.vertices().size(); numVer++)
     {
+        std::vector<patchCorner> allcornerLists = multiPatch.vertices()[numVer];
         std::vector<size_t> patchIndex;
         std::vector<size_t> vertIndex;
-        for(size_t j = 0; j < allcornerLists[numVer].size(); j++)
+        for(size_t j = 0; j < allcornerLists.size(); j++)
         {
-            //patchIndex.push_back(allcornerLists[i][j].patch);
-            //vertIndex.push_back(allcornerLists[i][j].m_index);
-            gsInfo << "Patch: " << allcornerLists[numVer][j].patch << "\t Index: " << allcornerLists[numVer][j].m_index << "\n";
+            patchIndex.push_back(allcornerLists[j].patch);
+            vertIndex.push_back(allcornerLists[j].m_index);
+            gsInfo << "Patch: " << allcornerLists[j].patch << "\t Index: " << allcornerLists[j].m_index << "\n";
 
         }
         gsInfo << "\n";
-        /*
-        patchIndex.push_back(0);
-        patchIndex.push_back(1);
-        patchIndex.push_back(2);
-        patchIndex.push_back(3);
-        patchIndex.push_back(4);
-
-        vertIndex.push_back(4);
-        vertIndex.push_back(2);
-        vertIndex.push_back(1);
-        vertIndex.push_back(3);
-        vertIndex.push_back(2);
-*/
-        patchIndex.push_back(0);
-        patchIndex.push_back(1);
-
-        vertIndex.push_back(3);
-        vertIndex.push_back(2);
 
         gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatch, patchIndex, vertIndex);
         singleVertex.computeG1InternalVertexBasis(optionList);
-        index_t kindBdr = singleVertex.kindOfVertex();
-        gsMultiPatch<> singleBasisFunction;
-        for (size_t np = 0; np < vertIndex.size(); np++)
+        for (index_t i = 0; i < 6; i++)
         {
-            singleBasisFunction.addPatch(singleVertex.getSinglePatch(np).getG1Basis().patch(0));
+            gsMultiPatch<> singleBasisFunction;
+            for (size_t np = 0; np < vertIndex.size(); np++)
+            {
+                singleBasisFunction.addPatch(singleVertex.getSinglePatch(np).getG1Basis().patch(i));
+            }
+            g1System.insertVertex(singleBasisFunction,patchIndex,numVer,i);
         }
-
-
-
     }
 
 // NEW NEW NEW NEW NEW NEW NEW NEW NEW
@@ -277,18 +265,26 @@ int main(int argc, char *argv[])
     g1BiharmonicAssembler.assemble();
 
     g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System);
-    //g1BiharmonicAssembler.constructDirichletSolution(g1_edges, g1_vertices, g1Mapper );
-
-    //g1System.setGlobalMapper(g1BiharmonicAssembler.get_mapper());
-    //g1System.initialize();
-    //g1System.assemble();
 
 
+    g1System.finalize(multiPatch,mb,g1BiharmonicAssembler.get_bValue());
+    gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
+
+    // construct solution: INTERIOR
+    gsMultiPatch<> mpsol;
+    g1BiharmonicAssembler.constructSolution(solVector.bottomRows(g1BiharmonicAssembler.matrix().dim().first),mpsol);
+    gsField<> solField(multiPatch, mpsol);
+
+    gsInfo<<"Plotting in Paraview...\n";
+    std::vector<gsMultiPatch<>> g1Basis;
+    g1BiharmonicAssembler.constructG1Solution(solVector, solField, g1Basis, g1System);
 
 
 
 
-
+    gsNormL2<real_t> error(solField, solVal, g1Basis);
+    error.compute();
+    gsInfo << error.value() << "\n";
 
 
 
