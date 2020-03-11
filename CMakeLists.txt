@@ -314,6 +314,8 @@ endif()
 
 if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
   gismo_fetch_module(unsupported)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GISMO_DEV_INCLUDE_DIRS}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
 endif()
 
 if(GISMO_MOTOR)
@@ -347,9 +349,9 @@ if(GISMO_BUILD_MEX)
   add_subdirectory(plugins/gsMex)
 endif(GISMO_BUILD_MEX)
 
-if(GISMO_BUILD_PVIEW)
-  add_subdirectory(plugins/gsParaview)
-endif(GISMO_BUILD_PVIEW)
+#if(GISMO_BUILD_PVIEW)
+#  add_subdirectory(plugins/gsParaview)
+#endif(GISMO_BUILD_PVIEW)
 
 if(GISMO_BUILD_RHINOPLUGINS)
   add_subdirectory(plugins/RhinoTHBSplines)

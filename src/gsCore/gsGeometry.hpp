@@ -139,7 +139,8 @@ void gsGeometry<T>::evaluateMesh(gsMesh<T>& mesh) const
         for (size_t i = 0; i!= mesh.numVertices(); ++i)
         {
             eval_into( mesh.vertex(i).topRows(pDim), tmp );
-            mesh.vertex(i).topRows(gDim) = tmp;
+            const index_t gd = math::min(3,gDim);
+            mesh.vertex(i).topRows(gd) = tmp.topRows(gd);
         }
 
 }
