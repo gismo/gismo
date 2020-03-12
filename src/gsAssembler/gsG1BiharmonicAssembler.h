@@ -126,6 +126,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructSolution(const gsMatrix<T> &
 template <class T, class bhVisitor>
 void gsG1BiharmonicAssembler<T,bhVisitor>::constructG1Solution(const gsMatrix<T> &solVector, gsField<> &solField_interior, std::vector<gsMultiPatch<T>> &result, gsG1System<real_t> & g1System)
 {
+
     gsMultiPatch<T> init_edge;
     std::vector<gsMultiPatch<T>> g1Basis(m_pde_ptr->domain().nPatches(), init_edge);
     for ( index_t rowEdge = 0; rowEdge < m_pde_ptr->domain().boundaries().size(); rowEdge++ )
@@ -190,9 +191,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructG1Solution(const gsMatrix<T>
 
     for ( unsigned pp =0; pp < m_pde_ptr->domain().nPatches(); ++pp ) // Patches
     {
-        const gsBasis<T> & dom = solField_interior.isParametrized() ?
-                                 solField_interior.igaFunction(pp).basis() : solField_interior.patch(pp).basis();
-
         fileName2 = fn + util::to_string(pp);
         //writeSinglePatchField( field, i, fileName, npts );
 
@@ -213,6 +211,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructG1Solution(const gsMatrix<T>
         gsMatrix<T> eval_field = solField_interior.isParametric() ? parField.eval(pts) : parField.eval(eval_geo);
 
         // Here add g1 basis
+        //eval_field.setZero();
         for (size_t i = 0; i < g1Basis[pp].nPatches(); i++)
         {
             gsField<> temp_field(m_pde_ptr->domain().patch(pp),g1Basis[pp].patch(i));

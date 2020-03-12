@@ -15,7 +15,7 @@
 
 #include <gsG1Basis/gsGluingData.h>
 #include <gsG1Basis/gsVisitorG1BasisEdge.h>
-
+# include <gsAssembler/gsAssembler.h>
 
 namespace gismo
 {
@@ -103,6 +103,9 @@ public:
 
     index_t get_n_plus() { return n_plus; }
     index_t get_n_minus() { return n_minus; }
+
+    gsBSpline<> get_alpha() { return m_gD.get_alpha_tilde(); }
+    gsBSpline<> get_beta() { return m_gD.get_beta_tilde(); }
 
 
     void plotG1Basis(gsMultiPatch<T> & basisG1_L, gsMultiPatch<T> & basisG1_R, gsMultiPatch<T> & mp, std::string baseName)

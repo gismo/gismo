@@ -23,7 +23,14 @@ class gsVisitorNormL2
 {
 
 public:
-
+    gsVisitorNormL2(const std::vector<gsMultiPatch<>> & g1,
+                    index_t p = 2):
+        m_G1Basis(g1)
+    {
+        f2param = false;
+        g1basis = true;
+        m_p = p;
+    }
 
     void initialize(const gsBasis<T> & basis,
                     gsQuadRule<T> & rule,
@@ -114,7 +121,7 @@ private:
 protected:
 
     std::vector< gsMultiPatch<>> m_G1Basis;
-    typedef_g1 m_G1Basis_mp;
+
 };
 
 

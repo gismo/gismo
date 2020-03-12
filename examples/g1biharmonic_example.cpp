@@ -56,14 +56,22 @@ int main(int argc, char *argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // ======= Solution =========
-    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
-    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
-    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
-                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
-                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
+//    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+//    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+//    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+//    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+//                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
+//    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
+//                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
+//                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
+    gsFunctionExpr<> source  ("0",2);
+    gsFunctionExpr<> laplace ("0",2);
+    gsFunctionExpr<> solVal("1",2);
+    gsFunctionExpr<>sol1der ("0",
+                             "0",2);
+    gsFunctionExpr<>sol2der ("0",
+                             "0",
+                             " 0", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
     // ======= Geometry =========
@@ -226,6 +234,10 @@ int main(int argc, char *argv[])
     // Vertices
     for(size_t numVer=0; numVer < multiPatch.vertices().size(); numVer++)
     {
+        std::string fileName;
+        std::string basename = "VerticesBasisFunctions" + util::to_string(numVer);
+        gsParaviewCollection collection(basename);
+
         std::vector<patchCorner> allcornerLists = multiPatch.vertices()[numVer];
         std::vector<size_t> patchIndex;
         std::vector<size_t> vertIndex;
@@ -246,9 +258,14 @@ int main(int argc, char *argv[])
             for (size_t np = 0; np < vertIndex.size(); np++)
             {
                 singleBasisFunction.addPatch(singleVertex.getSinglePatch(np).getG1Basis().patch(i));
+                fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
+                gsField<> temp_field(multiPatch.patch(patchIndex[np]),singleBasisFunction.patch(np));
+                gsWriteParaview(temp_field,fileName,50000);
+                collection.addTimestep(fileName,i,"0.vts");
             }
             g1System.insertVertex(singleBasisFunction,patchIndex,numVer,i);
         }
+        collection.save();
     }
 
 // NEW NEW NEW NEW NEW NEW NEW NEW NEW

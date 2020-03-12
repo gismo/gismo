@@ -76,11 +76,11 @@ public:
         {
 #ifdef _OPENMP
             // Create thread-private visitor
-        Visitor visitor(m_G1Basis_mp);
+        Visitor visitor(m_G1Basis);
         const int tid = omp_get_thread_num();
         const int nt  = omp_get_num_threads();
 #else
-            Visitor visitor(m_G1Basis_mp);
+            Visitor visitor(m_G1Basis);
 #endif
             gsMatrix<T> quNodes; // Temp variable for mapped nodes
             gsVector<T> quWeights; // Temp variable for mapped weights
