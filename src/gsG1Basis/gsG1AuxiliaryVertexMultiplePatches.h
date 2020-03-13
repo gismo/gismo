@@ -106,6 +106,7 @@ public:
             else
             if(auxVertexIndices[i] == 3)
                 auxVertexIndices[i] = 2;
+
         }
     }
 
@@ -178,25 +179,46 @@ public:
 
     void computeG1InternalVertexBasis(gsOptionList optionList){
 
-//        gsMultiPatch<> test_mp(this->computeAuxTopology());
-//        gsMultiBasis<> test_mb(test_mp);
+        gsMultiPatch<> test_mp(this->computeAuxTopology());
+        gsMultiBasis<> test_mb(test_mp);
 
         this->reparametrizeG1Vertex();
 
         this->computeSigma();
+
+        std::string fileName;
+        std::string basename = "singelFunktions";
+
+        gsParaviewCollection collection(basename);
+
 
         for(size_t i = 0; i < auxGeom.size(); i++)
         {
             gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, optionList);
             gsMultiPatch<> g1Basis;
             g1BasisVertex_0.constructSolution(g1Basis);
+            //g1BasisVertex_0.plotG1BasisBoundary(g1Basis, auxGeom[i].getPatch(),"BasisVertex0");
+
+
+
+//            fileName = basename + "_" + util::to_string(i);
+//            gsField<> temp_field(auxGeom[i].getPatch(),g1Basis.patch(0));
+//            gsWriteParaview(temp_field,fileName,5000);
+//            collection.addPart(fileName,"0.vts");
 
             auxGeom[i].parametrizeBasisBack(g1Basis);
 
-            //g1BasisVertex_0.plotG1BasisBoundary(auxGeom[i].getG1Basis(), auxGeom[i].getPatch(),"BasisVertex0");
-        }
-    }
+//            fileName = basename + "_" + util::to_string(i);
+//            gsField<> temp_field(test_mp.patch(auxGeom[i].getGlobalPatchIndex()),auxGeom[i].getG1Basis().patch(1));
+//            gsWriteParaview(temp_field,fileName,15000);
+//            collection.addPart(fileName,"0.vts");
 
+
+            //g1BasisVertex_0.plotG1BasisBoundary(auxGeom[i].getG1Basis(), test_mp.patch(0),"BasisVertex_new");
+        }
+
+        collection.save();
+    }
 
     gsG1AuxiliaryPatch & getSinglePatch(const unsigned i){
         return auxGeom[i];

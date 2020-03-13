@@ -269,9 +269,9 @@ public:
         newpatch.addPatch(newgeom1);
 
         auxPatch.swap(newpatch);
-        auxPatch.computeTopology();
+        //auxPatch.computeTopology();
 
-        checkOrientation();
+        axisOrientation = 1;
     }
 
 
@@ -304,17 +304,13 @@ public:
         }
         G1repBasis.swap(newpatch);
 
-        checkOrientation();
     }
 
 
-    void parametrizeBasisBack(const gsMultiPatch<> & g1Basis){
+    void parametrizeBasisBack( gsMultiPatch<>  g1Basis){
         G1repBasis = g1Basis;
 
         //gsInfo << "Patch " << patchIndex << " old: " << G1repBasis.patch(0).coefs()<< "\n";
-        if(axisOrientation)
-
-            this->swapBasisAxis();
 
         switch (rotationNum)
         {
@@ -332,6 +328,9 @@ public:
             default:
                 break;
         }
+
+        if(axisOrientation)
+            this->swapBasisAxis();
 
         //gsInfo << "Patch " << patchIndex << " new: " << G1repBasis.patch(0).coefs() << "\n";
     }
@@ -372,6 +371,8 @@ public:
     void checkOrientation(){
         axisOrientation = ( axisOrientation == 0 ? 1 : 0 );
     }
+
+
 
 protected:
 

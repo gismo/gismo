@@ -44,12 +44,13 @@ public:
             gsInfo << "Is not yet implemented \n";
         else
             setGlobalGluingData();
-
     }
 
 
     // Computed the gluing data globally
     void setGlobalGluingData();
+
+    void beta_exact();
 
     const gsBSpline<T> get_alpha_tilde() const {return alpha_tilde; }
     const gsBSpline<T> get_beta_tilde() const {return beta_tilde; }
@@ -76,6 +77,7 @@ protected:
     gsBSpline<T> beta_tilde;
 
 }; // class gsGluingData
+
 
 template<class T>
 void gsGluingData<T>::setGlobalGluingData()

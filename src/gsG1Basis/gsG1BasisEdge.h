@@ -15,7 +15,7 @@
 
 #include <gsG1Basis/gsGluingData.h>
 #include <gsG1Basis/gsVisitorG1BasisEdge.h>
-
+# include <gsAssembler/gsAssembler.h>
 
 namespace gismo
 {
@@ -28,7 +28,7 @@ public:
 public:
     gsG1BasisEdge(gsMultiPatch<> geo, // single patch
                  gsMultiBasis<> basis, // single basis
-                 index_t uv, // !!! 0 == v; 1 == u !!!
+                 index_t uv, // !!! 0 == u; 1 == v !!!
                  bool isBoundary,
                  gsOptionList & optionList)
         : m_geo(geo), m_basis(basis), m_uv(uv), m_isBoundary(isBoundary), m_optionList(optionList)
@@ -83,6 +83,8 @@ public:
         m_basis_minus = basis_minus;
         n_minus = m_basis_minus.size();
 
+        gsInfo << "Plus " << n_plus <<  " Minus " << n_minus << "\n";
+
         // Basis for the G1 basis
         m_basis_g1 = m_basis.basis(0);
 
@@ -101,6 +103,9 @@ public:
 
     index_t get_n_plus() { return n_plus; }
     index_t get_n_minus() { return n_minus; }
+
+    gsBSpline<> get_alpha() { return m_gD.get_alpha_tilde(); }
+    gsBSpline<> get_beta() { return m_gD.get_beta_tilde(); }
 
 
     void plotG1Basis(gsMultiPatch<T> & basisG1_L, gsMultiPatch<T> & basisG1_R, gsMultiPatch<T> & mp, std::string baseName)
@@ -217,6 +222,8 @@ protected:
     std::vector<gsMatrix<>> solVec_t, solVec_b;
     gsMultiPatch<T> g1Basis;
 
+    index_t reduced_minus, reduced_plus;
+
 }; // class gsG1BasisEdge
 
 
@@ -309,7 +316,7 @@ void gsG1BasisEdge<T,bhVisitor>::refresh()
 
     // 2. Create the sparse system
     gsSparseSystem<T> m_system = gsSparseSystem<T>(map);
-    for (index_t i = 0; i < m_basis_plus.size(); i++)
+    for (index_t i = 0; i < m_basis_plus.size() ; i++)
         m_f_0.push_back(m_system);
     for (index_t i = 0; i < m_basis_minus.size(); i++)
         m_f_1.push_back(m_system);
