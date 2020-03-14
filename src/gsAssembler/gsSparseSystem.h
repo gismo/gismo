@@ -364,9 +364,9 @@ public:
         const T bdO       = opt.getReal("bdO");
         const gsBasis<T> & b = mb[0];
         T nz = 1;
-        for (index_t i = 0; i != b.dim(); ++i)
+        for (short_t i = 0; i != b.dim(); ++i)
             nz *= bdA * b.degree(i) + bdB;
-        return cast<T,index_t>(nz*(1.0+bdO));
+        return cast<T,short_t>(nz*(1.0+bdO));
     }
 
     /// @brief set everything to zero
