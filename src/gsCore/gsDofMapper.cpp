@@ -274,10 +274,10 @@ void gsDofMapper::finalizeComp(const index_t comp)
     alldofs.erase( std::unique( alldofs.begin(), alldofs.end() ), alldofs.end() );
     const index_t numCoupled =
     std::count_if( alldofs.begin(), alldofs.end(),
-                          std::bind2nd(std::greater<index_t>(), 0) );
+                          GS_BIND2ND(std::greater<index_t>(), 0) );
     const index_t numBoundary =
     std::count_if( alldofs.begin(), alldofs.end(),
-                          std::bind2nd(std::less<index_t>(), 0) );
+                          GS_BIND2ND(std::less<index_t>(), 0) );
     */
 
     for (size_t k = 0; k < dofs.size(); ++k)
@@ -523,7 +523,7 @@ index_t gsDofMapper::boundarySizeWithDuplicates() const
     index_t res = 0;
     for (size_t i = 0; i!= m_dofs.size(); ++i)
       res += std::count_if(m_dofs[i].begin(), m_dofs[i].end(),
-			   std::bind2nd(std::greater<index_t>(),
+			   GS_BIND2ND(std::greater<index_t>(),
 					freeSize(i) - 1) );
     return res;
 }
@@ -545,7 +545,7 @@ index_t gsDofMapper::coupledSize() const
 
     // Count the number of freeDoFs that appear more than once
     return std::count_if( CountMap.begin(), CountMap.end(),
-                          std::bind2nd(std::greater<index_t>(), 1) );
+                          GS_BIND2ND(std::greater<index_t>(), 1) );
 */
 }
 

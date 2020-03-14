@@ -261,7 +261,7 @@ void gsRefineMarkedElements(gsMultiBasis<T> & basis,
         const int numEl = basis[pn].numElements();
         numMarked = std::count_if(elMarked.begin() + poffset,
                                   elMarked.begin() + poffset + numEl,
-                                  std::bind2nd(std::equal_to<bool>(), true) );
+                                  GS_BIND2ND(std::equal_to<bool>(), true) );
         poffset += numEl;
         refBoxes.resize(dim, 2*numMarked);
         //gsDebugVar(numMarked);
