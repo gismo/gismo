@@ -264,76 +264,224 @@ int main(int argc, char *argv[])
         size_t dimU = temp_L.size(0);
         size_t dimV = temp_L.size(1);
 
-        gsMatrix<> BigMatrix;
+
+     //Lower left single patch boundary vertex
+
+
+//        gsMatrix<> BigMatrix;
+//        BigMatrix.setZero( 2 * (dimU + dimV - 2),6);
+//
+//        for(size_t bf = 0; bf < 6; bf++)
+//        {
+//            for (size_t i = 0; i < 2 * dimU; i++)
+//            {
+//                BigMatrix(i, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i);
+//                gsInfo << "Index: " << i << "\n";
+//
+//            }
+//
+//            for (size_t i = 1; i < dimV - 1; i++)
+//            {
+//                for(size_t j = i; j < i + 2; j++)
+//                {
+//                    BigMatrix(i + j + (2 * dimU ) - 2, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at((i + 1) * dimU + j - i);
+//                    gsInfo << "Index: " << (i + 1) * dimU + j - i << "\n";
+//                }
+//            }
+//
+//            gsInfo << "-------------------------------------------------------------------\n";
+//        }
+//
+//        Eigen::FullPivLU<gsMatrix<>> lu(BigMatrix);
+//        gsInfo << lu.kernel() << "\n";
+//
+//        gsMatrix<> SmallMatrix;
+//        SmallMatrix.setZero((dimU + dimV - 1),6);
+//
+//        for(size_t bf = 0; bf < 6; bf++)
+//        {
+//            for (size_t i = 0; i < dimU; i++)
+//            {
+//                SmallMatrix(i, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i);
+//            }
+//
+//            for (size_t i = 1; i < dimV; i++)
+//            {
+//                SmallMatrix(i + dimU -1, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i * dimU);
+//            }
+//        }
+//
+//
+//
+//        Eigen::FullPivLU<gsMatrix<>> lu2(SmallMatrix);
+//        gsInfo << lu2.kernel() << "\n";
+
+
+
+    //Lower right single patch boundary vertex
+
+//    gsMatrix<> BigMatrix;
+//        BigMatrix.setZero( 2 * (dimU + dimV - 2),6);
+//
+//        for(size_t bf = 0; bf < 6; bf++)
+//        {
+//            for (size_t i = 0; i < 2 * dimU; i++)
+//            {
+//                BigMatrix(i, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i);
+//                gsInfo << "Index: " << i << "\n";
+//
+//            }
+//
+//            for (size_t i = 1; i < dimV - 1; i++)
+//            {
+//                for(size_t j = i; j < i + 2; j++)
+//                {
+//                    BigMatrix(i + j + (2 * dimU ) - 2, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at((i + 2) * dimU + j - i - 2);
+//                    gsInfo << "Index: " << (i + 2) * dimU + j - i - 2 << "\n";
+//                }
+//            }
+//
+//            gsInfo << "-------------------------------------------------------------------\n";
+//        }
+//
+//        Eigen::FullPivLU<gsMatrix<>> lu(BigMatrix);
+//        gsInfo << lu.kernel() << "\n";
+//
+//
+//        gsMatrix<> SmallMatrix;
+//        SmallMatrix.setZero((dimU + dimV - 1),6);
+//
+//        for(size_t bf = 0; bf < 6; bf++)
+//        {
+//            for (size_t i = 0; i < dimU; i++)
+//            {
+//                SmallMatrix(i, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i);
+//                gsInfo << "Index: " << i << "\n";
+//            }
+//
+//            for (size_t i = 2; i < dimV + 1; i++)
+//            {
+//                SmallMatrix(i + dimU - 2, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i * dimU - 1);
+//                gsInfo << "Index: " << i * dimU - 1 << "\n";
+//            }
+//        }
+//        Eigen::FullPivLU<gsMatrix<>> lu2(SmallMatrix);
+//        gsInfo << lu2.kernel() << "\n";
+
+
+    // Upper Left single patch boundary vertex
+//
+//
+//    gsMatrix<> BigMatrix;
+//        BigMatrix.setZero( 2 * (dimU + dimV - 2),6);
+//
+//        for(size_t bf = 0; bf < 6; bf++)
+//        {
+//            for (size_t i = 0; i < dimV - 2; i++)
+//            {
+//                for(size_t j = i; j < i + 2; j++)
+//                {
+//                    BigMatrix(i + j, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i * dimU + j - i );
+//                    gsInfo << "Index: " << i * dimU + j - i << "\n";
+//                }
+//            }
+//
+//            for (size_t i = 0; i < 2 * dimU; i++)
+//            {
+//                BigMatrix( (dimV - 2) * 2 + i, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at( (dimV - 2) * dimU + i);
+//                gsInfo << "Index: " << (dimV - 2) * dimU + i << "\n";
+//
+//            }
+//
+//            gsInfo << "-------------------------------------------------------------------\n";
+//        }
+//
+//        Eigen::FullPivLU<gsMatrix<>> lu(BigMatrix);
+//        gsInfo << lu.kernel() << "\n";
+//
+//
+//        gsMatrix<> SmallMatrix;
+//        SmallMatrix.setZero((dimU + dimV - 1),6);
+//
+//        for(size_t bf = 0; bf < 6; bf++)
+//        {
+//            for (size_t i = 0; i < dimV - 1; i++)
+//            {
+//                SmallMatrix(i, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i * dimU);
+//                gsInfo << "Index: " << i * dimU << "\n";
+//            }
+//
+//            for (size_t i = 0 ; i < dimU; i++)
+//            {
+//                SmallMatrix(dimV + i -1, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at((dimV - 1) * dimU + i);
+//                gsInfo << "Index: " << (dimV - 1) * dimU + i << "\n";
+//            }
+//        }
+//        Eigen::FullPivLU<gsMatrix<>> lu2(SmallMatrix);
+//        gsInfo << lu2.kernel() << "\n";
+
+
+
+    // Upper Right single patch boundary vertex
+
+
+    gsMatrix<> BigMatrix;
     BigMatrix.setZero( 2 * (dimU + dimV - 2),6);
 
-        for(size_t bf = 0; bf < 6; bf++)
+    for(size_t bf = 0; bf < 6; bf++)
+    {
+        for (size_t i = 0; i < dimV - 2; i++)
         {
-            for (size_t i = 0; i < 2 * dimU; i++)
+            for(size_t j = i; j < i + 2; j++)
             {
-                BigMatrix(i, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i);
-                gsInfo << "Index: " << i << "\n";
-
+                BigMatrix(i + j, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at((i + 1) * dimU + j - i - 2);
+                gsInfo << "Index: " << (i + 1) * dimU + j - i - 2 << "\n";
             }
-
-            for (size_t i = 1; i < dimV - 1; i++)
-            {
-                for(size_t j = i; j < i + 2; j++)
-                {
-                    BigMatrix(i + j + (2 * dimU ) - 2, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at((i + 1) * dimU + j - i);
-                    gsInfo << "Index: " << (i + 1) * dimU + j - i << "\n";
-                }
-            }
-
-            gsInfo << "-------------------------------------------------------------------\n";
         }
 
+        for (size_t i = 0; i < 2 * dimU; i++)
+        {
+            BigMatrix( (dimV - 2) * 2 + i, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at( (dimV - 2) * dimU + i);
+            gsInfo << "Index: " << (dimV - 2) * dimU + i << "\n";
 
+        }
 
+        gsInfo << "-------------------------------------------------------------------\n";
+    }
 
     Eigen::FullPivLU<gsMatrix<>> lu(BigMatrix);
     gsInfo << lu.kernel() << "\n";
-//    gsInfo << lu.rank() << "\n";
+
 
     gsMatrix<> SmallMatrix;
     SmallMatrix.setZero((dimU + dimV - 1),6);
 
     for(size_t bf = 0; bf < 6; bf++)
     {
-        for (size_t i = 0; i < dimU; i++)
+        for (size_t i = 0; i < dimV - 1; i++)
         {
-            SmallMatrix(i, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i);
+            SmallMatrix(i, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at((i + 1) * dimU - 1);
+            gsInfo << "Index: " << (i + 1) * dimU - 1 << "\n";
         }
 
-        for (size_t i = 1; i < dimV; i++)
+        for (size_t i = 0 ; i < dimU; i++)
         {
-            SmallMatrix(i + dimU -1, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i * dimU);
+            SmallMatrix(dimV + i -1, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at((dimV - 1) * dimU + i);
+            gsInfo << "Index: " << (dimV - 1) * dimU + i << "\n";
         }
     }
-
-
-
     Eigen::FullPivLU<gsMatrix<>> lu2(SmallMatrix);
     gsInfo << lu2.kernel() << "\n";
-//
-//    gsMatrix<> matrix3;
-//    matrix3.setZero((dimU + dimV - 5),6);
-//
-//    for(index_t bf = 0; bf < 6; bf++)
-//    {
-//        for (size_t i = 2; i < dimU; i++)
-//        {
-//            matrix3(i-2, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i +dimU);
-//        }
-//
-//        for (size_t i = 1; i < dimV -2 ; i++)
-//        {
-//            matrix3(i + dimU -3, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i * dimU + 2);
-//        }
-//    }
-//
-//    Eigen::FullPivLU<gsMatrix<>> lu3(matrix3);
-//    gsInfo << lu3.kernel() << "\n";
+
+
+
+
+
+
+
+
+
+
 
         for (index_t i = 0; i < 6; i++)
         {
