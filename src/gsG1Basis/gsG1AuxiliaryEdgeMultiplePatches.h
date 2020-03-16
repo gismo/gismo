@@ -298,8 +298,6 @@ public:
         points.setRandom();
         points = points.array().abs();
 
-        real_t g1Error = 0;
-
         gsMatrix<> temp;
         temp = alpha_1.eval(points).cwiseProduct(beta_0.eval(points))
             + alpha_0.eval(points).cwiseProduct(beta_1.eval(points))

@@ -153,8 +153,8 @@ int main(int argc, char *argv[])
     multiPatch.uniformRefine_withSameRegularity(optionList.getInt("refine"), optionList.getInt("regularity"));
     gsMultiBasis<> mb(multiPatch);
 
-    omp_set_num_threads(threads);
-    omp_set_nested(1);
+    //omp_set_num_threads(threads);
+    //omp_set_nested(1);
 
     gsG1System<real_t> g1System(multiPatch, mb);
 
@@ -261,13 +261,13 @@ int main(int argc, char *argv[])
 
         gsMultiBasis<> bas(multiPatch.patch(patchIndex[0]));
         gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
-        index_t dimU = temp_L.size(0);
-        index_t dimV = temp_L.size(1);
+        size_t dimU = temp_L.size(0);
+        size_t dimV = temp_L.size(1);
 
         gsMatrix<> BigMatrix;
     BigMatrix.setZero( 2 * (dimU + dimV - 2),6);
 
-        for(index_t bf = 0; bf < 6; bf++)
+        for(size_t bf = 0; bf < 6; bf++)
         {
             for (size_t i = 0; i < 2 * dimU; i++)
             {
@@ -298,7 +298,7 @@ int main(int argc, char *argv[])
     gsMatrix<> SmallMatrix;
     SmallMatrix.setZero((dimU + dimV - 1),6);
 
-    for(index_t bf = 0; bf < 6; bf++)
+    for(size_t bf = 0; bf < 6; bf++)
     {
         for (size_t i = 0; i < dimU; i++)
         {
