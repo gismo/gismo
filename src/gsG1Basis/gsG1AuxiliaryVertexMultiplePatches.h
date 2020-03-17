@@ -177,8 +177,76 @@ public:
     }
 
 
-    void computeG1InternalVertexBasis(gsOptionList optionList){
+    gsMatrix<> computeBigSystemMatrix( index_t np)
+    {
+        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
+        size_t dimU = temp_L.size(0);
+        size_t dimV = temp_L.size(1);
 
+        gsInfo << "dimU: " << dimU << "\t dimV: " << dimV << "\n";
+
+        gsMatrix<> BigMatrix;
+        BigMatrix.setZero( 2 * (dimU + dimV - 2),6);
+
+        for(size_t bf = 0; bf < 6; bf++)
+        {
+            for (size_t i = 0; i < 2 * dimU; i++)
+            {
+                BigMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
+            }
+
+            for (size_t i = 1; i < dimV - 1; i++)
+            {
+                for(size_t j = i; j < i + 2; j++)
+                {
+                    BigMatrix(i + j + (2 * dimU ) - 2, bf) = auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i);
+                }
+            }
+        }
+
+
+        Eigen::FullPivLU<gsMatrix<>> lu(BigMatrix);
+        gsInfo << lu.kernel() << "\n";
+
+        return BigMatrix;
+    }
+
+
+    gsMatrix<> computeSmallSystemMatrix( index_t np)
+    {
+        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
+        size_t dimU = temp_L.size(0);
+        size_t dimV = temp_L.size(1);
+
+        gsMatrix<> SmallMatrix;
+        SmallMatrix.setZero((dimU + dimV - 1),6);
+
+        for(size_t bf = 0; bf < 6; bf++)
+        {
+            for (size_t i = 0; i < dimU; i++)
+            {
+                SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
+            }
+
+            for (size_t i = 1; i < dimV; i++)
+            {
+                SmallMatrix(i + dimU -1, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i * dimU);
+            }
+        }
+
+        Eigen::FullPivLU<gsMatrix<>> luSmall(SmallMatrix);
+        gsInfo << luSmall.kernel() << "\n";
+
+        return SmallMatrix;
+    }
+
+
+
+
+    void computeG1InternalVertexBasis(gsOptionList optionList)
+    {
         gsMultiPatch<> test_mp(this->computeAuxTopology());
         gsMultiBasis<> test_mb(test_mp);
 
@@ -191,31 +259,45 @@ public:
 
         gsParaviewCollection collection(basename);
 
+        std::vector<gsMultiPatch<>> g1BasisVector;
+
 
         for(size_t i = 0; i < auxGeom.size(); i++)
         {
             gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, optionList);
             gsMultiPatch<> g1Basis;
             g1BasisVertex_0.constructSolution(g1Basis);
-            //g1BasisVertex_0.plotG1BasisBoundary(g1Basis, auxGeom[i].getPatch(),"BasisVertex0");
-
-
-
-//            fileName = basename + "_" + util::to_string(i);
-//            gsField<> temp_field(auxGeom[i].getPatch(),g1Basis.patch(0));
-//            gsWriteParaview(temp_field,fileName,5000);
-//            collection.addPart(fileName,"0.vts");
-
-            auxGeom[i].parametrizeBasisBack(g1Basis);
-
-//            fileName = basename + "_" + util::to_string(i);
-//            gsField<> temp_field(test_mp.patch(auxGeom[i].getGlobalPatchIndex()),auxGeom[i].getG1Basis().patch(1));
-//            gsWriteParaview(temp_field,fileName,15000);
-//            collection.addPart(fileName,"0.vts");
-
-
-            //g1BasisVertex_0.plotG1BasisBoundary(auxGeom[i].getG1Basis(), test_mp.patch(0),"BasisVertex_new");
+            g1BasisVector.push_back(g1Basis);
+            auxGeom[i].setG1Basis(g1Basis);
         }
+
+        if (this->kindOfVertex() == 1)
+        {
+            gsMatrix<> bigMatrix;
+            gsMatrix<> smalMatrix;
+            for (size_t i = 0; i < auxGeom.size(); i++)
+            {
+                Eigen::FullPivLU<gsMatrix<>> BigLU(computeBigSystemMatrix(i));
+                Eigen::FullPivLU<gsMatrix<>> SmallLU(computeSmallSystemMatrix(i));
+            }
+        }
+
+        else
+            if(this->kindOfVertex() == -1)
+        {
+
+            Eigen::FullPivLU<gsMatrix<>> BigLU(computeBigSystemMatrix(0));
+            Eigen::FullPivLU<gsMatrix<>> SmallLU(computeSmallSystemMatrix(0));
+        }
+
+
+
+
+        for (size_t i = 0; i < auxGeom.size(); i++)
+        {
+            auxGeom[i].parametrizeBasisBack(g1BasisVector[i]);
+        }
+
 
         collection.save();
     }
