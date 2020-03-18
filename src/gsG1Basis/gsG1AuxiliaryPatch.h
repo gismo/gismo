@@ -335,6 +335,11 @@ public:
         //gsInfo << "Patch " << patchIndex << " new: " << G1repBasis.patch(0).coefs() << "\n";
     }
 
+    void setG1Basis(gsMultiPatch<>  g1Ba)
+    {
+        G1repBasis = g1Ba;
+    }
+
     void computeTopology(){
         this->auxPatch.computeTopology();
     }

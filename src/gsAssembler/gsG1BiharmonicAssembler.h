@@ -109,7 +109,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructSolution(const gsMatrix<T> &
 
     gsMatrix<T> coeffs;
     index_t globalID = 0;
-    for (index_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
+    for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
     {
         // Reconstruct solution coefficients on patch p
         const int sz = m_bases[m_system.colBasis(unk)][p].size();
@@ -129,36 +129,36 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructG1Solution(const gsMatrix<T>
 
     gsMultiPatch<T> init_edge;
     std::vector<gsMultiPatch<T>> g1Basis(m_pde_ptr->domain().nPatches(), init_edge);
-    for ( index_t rowEdge = 0; rowEdge < m_pde_ptr->domain().boundaries().size(); rowEdge++ )
+    for ( size_t rowEdge = 0; rowEdge < m_pde_ptr->domain().boundaries().size(); rowEdge++ )
     {
         index_t patchIdx = m_pde_ptr->domain().boundaries()[rowEdge].patch;
         gsTensorBSplineBasis<2,real_t> temp_basis = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(m_bases[0].basis(patchIdx));
-        for (index_t i = 0; i < g1System.numBoundaryEdgeFcts(rowEdge); i++) // each boundary edge
+        for (size_t i = 0; i < g1System.numBoundaryEdgeFcts(rowEdge); i++) // each boundary edge
             g1Basis.at(patchIdx).addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(g1System.interfaceSize() + g1System.getAllBoundaryEdgeFunctions()[rowEdge] + i, patchIdx).transpose() *
                 m_g1_ddof.at(g1System.getAllBoundaryEdgeFunctions()[rowEdge] + i)));
-        for (index_t i = 0; i < g1System.numEdgeFcts(rowEdge); i++) // each edge
+        for (size_t i = 0; i < g1System.numEdgeFcts(rowEdge); i++) // each edge
             g1Basis.at(patchIdx).addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(g1System.interfaceSize() + g1System.boundarySize_Edge() + g1System.getAllEdgeFunctions()[rowEdge] + i, patchIdx).transpose() *
                 solVector.at(g1System.interfaceSize() + g1System.boundarySize_Edge() + g1System.getAllEdgeFunctions()[rowEdge] + i)));
     }
 
-    for ( index_t rowInt = 0; rowInt < m_pde_ptr->domain().interfaces().size(); rowInt++ ) // each interface edge
+    for ( size_t rowInt = 0; rowInt < m_pde_ptr->domain().interfaces().size(); rowInt++ ) // each interface edge
     {
         index_t patchIdx = m_pde_ptr->domain().interfaces()[rowInt].first().patch;
         gsTensorBSplineBasis<2,real_t> temp_basis = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(m_bases[0].basis(patchIdx));
-        for (index_t i = 0; i < g1System.numInterfaceFcts(rowInt); i++)
+        for (size_t i = 0; i < g1System.numInterfaceFcts(rowInt); i++)
             g1Basis.at(patchIdx).addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(g1System.getAllInterfaceFunctions()[rowInt] + i, patchIdx).transpose() *
                 solVector.at(g1System.getAllInterfaceFunctions()[rowInt] + i)));
 
         patchIdx = m_pde_ptr->domain().interfaces()[rowInt].second().patch;
         temp_basis = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(m_bases[0].basis(patchIdx));
-        for (index_t i = 0; i < g1System.numInterfaceFcts(rowInt); i++)
+        for (size_t i = 0; i < g1System.numInterfaceFcts(rowInt); i++)
             g1Basis.at(patchIdx).addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(g1System.getAllInterfaceFunctions()[rowInt] + i, patchIdx).transpose() *
                 solVector.at(g1System.getAllInterfaceFunctions()[rowInt] + i)));
     }
 
 
 
-    for ( index_t rowVertex = 0; rowVertex < m_pde_ptr->domain().vertices().size(); rowVertex++ )
+    for ( size_t rowVertex = 0; rowVertex < m_pde_ptr->domain().vertices().size(); rowVertex++ )
     {
         std::vector<patchCorner> allcornerLists = m_pde_ptr->domain().vertices()[rowVertex];
 
@@ -167,12 +167,12 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructG1Solution(const gsMatrix<T>
             index_t patchIdx = m_pde_ptr->domain().vertices()[rowVertex][j].patch;
             gsTensorBSplineBasis<2, real_t>
                 temp_basis = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(m_bases[0].basis(patchIdx));
-            for (index_t i = 0; i < g1System.numBoundaryVertexFcts(rowVertex); i++) // each boundary vertex
+            for (size_t i = 0; i < g1System.numBoundaryVertexFcts(rowVertex); i++) // each boundary vertex
                 g1Basis.at(patchIdx).addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(
                     g1System.interfaceSize() + g1System.edge_size() + g1System.boundarySize_Edge() +
                         g1System.getAllBoundaryVertexFunctions()[rowVertex] + i, patchIdx).transpose() * m_g1_ddof
                     .at(g1System.boundarySize_Edge() + g1System.getAllBoundaryVertexFunctions()[rowVertex] + i)));
-            for (index_t i = 0; i < g1System.numVertexFcts(rowVertex); i++) // each dofs vertex
+            for (size_t i = 0; i < g1System.numVertexFcts(rowVertex); i++) // each dofs vertex
                 g1Basis.at(patchIdx).addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(
                     g1System.interfaceSize() + g1System.edge_size() + g1System.boundarySize_Edge() +
                         g1System.boundarySize_Vertex() + g1System.getAllVertexFunctions()[rowVertex] + i, patchIdx).transpose() * solVector
@@ -189,7 +189,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructG1Solution(const gsMatrix<T>
     gsParaviewCollection collection2(fn);
     std::string fileName2;
 
-    for ( unsigned pp =0; pp < m_pde_ptr->domain().nPatches(); ++pp ) // Patches
+    for ( size_t pp =0; pp < m_pde_ptr->domain().nPatches(); ++pp ) // Patches
     {
         fileName2 = fn + util::to_string(pp);
         //writeSinglePatchField( field, i, fileName, npts );
@@ -344,7 +344,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
         const size_t unk = iter->unknown();
         if(unk!=unk_)
             continue;
-        const index_t patchIdx = iter->patch();
+        const size_t patchIdx = iter->patch();
         const index_t sideIdx = iter->side();
 
         size_t row_Edge = 0;
@@ -354,7 +354,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
 
         gsMultiPatch<T> multiPatch_Edges;
         gsTensorBSplineBasis<2,real_t> temp_basis = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(m_bases[unk_].basis(patchIdx));
-        for (index_t i = 0; i < g1System.numBoundaryEdgeFcts(row_Edge); i++)
+        for (size_t i = 0; i < g1System.numBoundaryEdgeFcts(row_Edge); i++)
             multiPatch_Edges.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(g1System.interfaceSize() +
                        g1System.getAllBoundaryEdgeFunctions()[row_Edge] + i, patchIdx).transpose()));
 
@@ -403,11 +403,11 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
 
 
         gsMultiPatch<T> multiPatch_Vertex_0, multiPatch_Vertex_1;
-        for (index_t i = 0; i < g1System.numBoundaryVertexFcts(row_Vertex_0); i++)
+        for (size_t i = 0; i < g1System.numBoundaryVertexFcts(row_Vertex_0); i++)
             multiPatch_Vertex_0.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(g1System.interfaceSize() +
                           g1System.boundarySize_Edge() + g1System.edge_size() + g1System.getAllBoundaryVertexFunctions()[row_Vertex_0] + i, patchIdx).transpose()));
 
-        for (index_t i = 0; i < g1System.numBoundaryVertexFcts(row_Vertex_1); i++)
+        for (size_t i = 0; i < g1System.numBoundaryVertexFcts(row_Vertex_1); i++)
             multiPatch_Vertex_1.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(g1System.interfaceSize() +
                 g1System.boundarySize_Edge() + g1System.edge_size() + g1System.getAllBoundaryVertexFunctions()[row_Vertex_1] + i, patchIdx).transpose()));
 

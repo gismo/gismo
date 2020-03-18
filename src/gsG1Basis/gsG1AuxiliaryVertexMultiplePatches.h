@@ -177,8 +177,301 @@ public:
     }
 
 
-    void computeG1InternalVertexBasis(gsOptionList optionList){
+    gsMatrix<> computeBigSystemMatrix( index_t np)
+    {
+        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
+        size_t dimU = temp_L.size(0);
+        size_t dimV = temp_L.size(1);
 
+        gsMatrix<> BigMatrix;
+        BigMatrix.setZero( 2 * (dimU + dimV - 2),6);
+
+        for(size_t bf = 0; bf < 6; bf++)
+        {
+            for (size_t i = 0; i < 2 * dimU; i++)
+            {
+                BigMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
+            }
+
+            for (size_t i = 1; i < dimV - 1; i++)
+            {
+                for(size_t j = i; j < i + 2; j++)
+                {
+                    BigMatrix(i + j + (2 * dimU ) - 2, bf) = auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i);
+                }
+            }
+        }
+        return BigMatrix;
+    }
+
+
+    gsMatrix<> computeSmallSystemMatrix( index_t np)
+    {
+        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
+        size_t dimU = temp_L.size(0);
+        size_t dimV = temp_L.size(1);
+
+        gsMatrix<> SmallMatrix;
+        SmallMatrix.setZero((dimU + dimV - 1),6);
+
+        for(size_t bf = 0; bf < 6; bf++)
+        {
+            for (size_t i = 0; i < dimU; i++)
+            {
+                SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
+            }
+
+            for (size_t i = 1; i < dimV; i++)
+            {
+                SmallMatrix(i + dimU -1, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i * dimU);
+            }
+        }
+        return SmallMatrix;
+    }
+
+
+    gsMatrix<> leftBoundaryBigSystem(index_t np)
+    {
+        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
+        size_t dimU = temp_L.size(0);
+        size_t dimV = temp_L.size(1);
+
+        gsMatrix<> BigMatrix;
+        BigMatrix.setZero( 2 * dimV,6);
+
+        for(size_t bf = 0; bf < 6; bf++)
+        {
+            for (size_t i = 0; i < dimV ; i++)
+            {
+                for(size_t j = i; j < i + 2; j++)
+                {
+                    BigMatrix(i + j, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i  * dimU + j - i);
+                }
+            }
+        }
+        return BigMatrix;
+    }
+
+
+    gsMatrix<> leftBoundarySmallSystem( index_t np)
+    {
+        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
+        size_t dimU = temp_L.size(0);
+        size_t dimV = temp_L.size(1);
+
+        gsMatrix<> SmallMatrix;
+        SmallMatrix.setZero(dimV,6);
+
+        for(size_t bf = 0; bf < 6; bf++)
+        {
+            for (size_t i = 0; i < dimV; i++)
+            {
+                SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i * dimU);
+            }
+        }
+        return SmallMatrix;
+    }
+
+
+    gsMatrix<> rightBoundaryBigSystem( index_t np)
+    {
+        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
+        size_t dimU = temp_L.size(0);
+
+        gsMatrix<> BigMatrix;
+        BigMatrix.setZero( 2 * dimU ,6);
+
+        for(size_t bf = 0; bf < 6; bf++)
+        {
+            for (size_t i = 0; i < 2 * dimU; i++)
+            {
+                BigMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
+            }
+        }
+        return BigMatrix;
+    }
+
+
+    gsMatrix<> rightBoundarySmallSystem( index_t np)
+    {
+        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
+        size_t dimU = temp_L.size(0);
+
+        gsMatrix<> SmallMatrix;
+        SmallMatrix.setZero( dimU, 6);
+
+        for(size_t bf = 0; bf < 6; bf++)
+        {
+            for (size_t i = 0; i < dimU; i++)
+            {
+                SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
+            }
+        }
+        return SmallMatrix;
+    }
+
+
+    gsMatrix<> bigInternalBoundaryPatchSystem( index_t np)
+    {
+        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
+        size_t dimU = temp_L.size(0);
+
+        gsMatrix<> Matrix;
+        Matrix.setZero( 3 ,6);
+
+        for(size_t bf = 0; bf < 6; bf++)
+        {
+            Matrix(0, bf) = auxGeom[np].getG1BasisCoefs(bf).at(0);
+            Matrix(1, bf) = auxGeom[np].getG1BasisCoefs(bf).at(1);
+            Matrix(2, bf) = auxGeom[np].getG1BasisCoefs(bf).at(dimU);
+
+        }
+        return Matrix;
+    }
+
+    gsMatrix<> smallInternalBoundaryPatchSystem( index_t np)
+    {
+        gsMatrix<> Matrix;
+        Matrix.setZero( 1 ,6);
+
+        for(size_t bf = 0; bf < 6; bf++)
+        {
+            Matrix(0, bf) = auxGeom[np].getG1BasisCoefs(bf).at(0);
+        }
+        return Matrix;
+    }
+
+
+    std::pair<gsMatrix<>, gsMatrix<>> createSinglePatchSystem(index_t np)
+    {
+        if(isBdy[np][1] == 1)
+            return std::make_pair(leftBoundaryBigSystem(np), leftBoundarySmallSystem(np));
+        else
+        {
+        if (isBdy[np][0] == 1)
+            return std::make_pair(rightBoundaryBigSystem(np), rightBoundarySmallSystem(np));
+        else
+            return std::make_pair(bigInternalBoundaryPatchSystem(np), smallInternalBoundaryPatchSystem(np));
+        }
+    }
+
+
+    std::pair<gsMatrix<>, std::vector<index_t>> selectVertexBoundaryBasisFunction(gsMatrix<> bigKernel, index_t bigKerDim, gsMatrix<> smallKernel, index_t smallKerDim)
+    {
+        gsMatrix<> basisVect;
+        std::vector<index_t> numberPerType;
+
+        numberPerType.push_back(bigKerDim); // Number of basis which has to be moved to the internal
+        numberPerType.push_back(smallKerDim - bigKerDim); // Number of basis which are boundary function of FIRST TYPE
+        numberPerType.push_back(6 - smallKerDim); // Number of basis which are boundary function of SECOND TYPE
+
+        gsMatrix<> vertBas;
+        vertBas.setIdentity(6, 6);
+
+
+        if(bigKerDim != 0)
+        {
+            for(index_t bk = 0; bk < bigKerDim; bk++ )
+            {
+                for(index_t r=0; r < 6; r++)
+                {
+                    if( abs(bigKernel(r, bk) )  < (10e-10) )
+                        bigKernel(r, bk) = 0;
+                }
+            }
+
+            for(index_t bk = 0; bk < smallKerDim; bk++ )
+            {
+                for(index_t r=0; r < 6; r++)
+                {
+                    if( abs( smallKernel(r, bk)) < (10e-10))
+                        smallKernel(r, bk) = 0;
+                }
+            }
+
+            basisVect = bigKernel;
+
+            for(index_t i=0; i < smallKerDim; i++)
+            {
+                basisVect.conservativeResize(basisVect.rows(), basisVect.cols() + 1);
+                basisVect.col(basisVect.cols()-1) = smallKernel.col(i);
+
+                Eigen::FullPivLU<gsMatrix<>> ker(basisVect);
+                if(ker.dimensionOfKernel() != 0)
+                {
+                    basisVect = basisVect.block(0, 0, basisVect.rows(), basisVect.cols()-1);
+                }
+            }
+
+            size_t count=0;
+            while (basisVect.cols() < 6)
+            {
+                basisVect.conservativeResize(basisVect.rows(), basisVect.cols() + 1);
+                basisVect.col(basisVect.cols()-1) = vertBas.col(count);
+
+                Eigen::FullPivLU<gsMatrix<>> ker(basisVect);
+                if(ker.dimensionOfKernel() != 0)
+                {
+                    basisVect = basisVect.block(0, 0, basisVect.rows(), basisVect.cols()-1);
+                }
+                count++;
+            }
+        }
+        else
+        {
+            for(index_t bk = 0; bk < smallKerDim; bk++ )
+            {
+                for(index_t r=0; r < 6; r++)
+                {
+                    if( ( abs(smallKernel(r, bk) )) < (10e-10))
+                        smallKernel(r, bk) = 0;
+
+                }
+
+            }
+
+            basisVect = smallKernel;
+
+            size_t count=0;
+            while (basisVect.cols() < 6)
+            {
+                basisVect.conservativeResize(basisVect.rows(), basisVect.cols() + 1);
+                basisVect.col(basisVect.cols()-1) = vertBas.col(count);
+
+                Eigen::FullPivLU<gsMatrix<>> ker(basisVect);
+                if(ker.dimensionOfKernel() != 0)
+                {
+                    basisVect = basisVect.block(0, 0, basisVect.rows(), basisVect.cols()-1);
+                }
+                count++;
+            }
+        }
+
+
+        gsInfo << "Big kernel:\n";
+        gsInfo << bigKernel << "\n ";
+
+        gsInfo << "Small kernel:\n";
+        gsInfo << smallKernel << "\n ";
+
+        gsInfo << "Basis:\n";
+        gsInfo << basisVect << "\n";
+
+
+
+        return std::make_pair(basisVect, numberPerType);
+    }
+
+
+    void computeG1InternalVertexBasis(gsOptionList optionList)
+    {
         gsMultiPatch<> test_mp(this->computeAuxTopology());
         gsMultiBasis<> test_mb(test_mp);
 
@@ -191,31 +484,57 @@ public:
 
         gsParaviewCollection collection(basename);
 
+        std::vector<gsMultiPatch<>> g1BasisVector;
+
+        std::pair<gsMatrix<>, std::vector<index_t>> vertexBoundaryBasis;
+
 
         for(size_t i = 0; i < auxGeom.size(); i++)
         {
             gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, optionList);
             gsMultiPatch<> g1Basis;
             g1BasisVertex_0.constructSolution(g1Basis);
-            //g1BasisVertex_0.plotG1BasisBoundary(g1Basis, auxGeom[i].getPatch(),"BasisVertex0");
-
-
-
-//            fileName = basename + "_" + util::to_string(i);
-//            gsField<> temp_field(auxGeom[i].getPatch(),g1Basis.patch(0));
-//            gsWriteParaview(temp_field,fileName,5000);
-//            collection.addPart(fileName,"0.vts");
-
-            auxGeom[i].parametrizeBasisBack(g1Basis);
-
-//            fileName = basename + "_" + util::to_string(i);
-//            gsField<> temp_field(test_mp.patch(auxGeom[i].getGlobalPatchIndex()),auxGeom[i].getG1Basis().patch(1));
-//            gsWriteParaview(temp_field,fileName,15000);
-//            collection.addPart(fileName,"0.vts");
-
-
-            //g1BasisVertex_0.plotG1BasisBoundary(auxGeom[i].getG1Basis(), test_mp.patch(0),"BasisVertex_new");
+            g1BasisVector.push_back(g1Basis);
+            auxGeom[i].setG1Basis(g1Basis);
         }
+
+
+        if (this->kindOfVertex() == 1)
+        {
+            gsMatrix<> bigMatrix;
+            gsMatrix<> smallMatrix;
+            for (size_t i = 0; i < auxGeom.size(); i++)
+            {
+                std::pair<gsMatrix<>, gsMatrix<>> tmp(createSinglePatchSystem(i));
+                bigMatrix.conservativeResize(bigMatrix.rows() + tmp.first.rows(), 6);
+                smallMatrix.conservativeResize(smallMatrix.rows() + tmp.second.rows(), 6);
+
+                bigMatrix.block(bigMatrix.rows(), 0, tmp.first.rows(), 6) = tmp.first;
+                smallMatrix.block(smallMatrix.rows(), 0, tmp.second.rows(), 6) = tmp.second;
+            }
+            Eigen::FullPivLU<gsMatrix<>> BigLU(bigMatrix);
+            Eigen::FullPivLU<gsMatrix<>> SmallLU(smallMatrix);
+
+            vertexBoundaryBasis = selectVertexBoundaryBasisFunction(BigLU.kernel(), BigLU.dimensionOfKernel(), SmallLU.kernel(), SmallLU.dimensionOfKernel());
+
+        }
+
+        else
+            if(this->kindOfVertex() == -1)
+        {
+            Eigen::FullPivLU<gsMatrix<>> BigLU(computeBigSystemMatrix(0));
+            Eigen::FullPivLU<gsMatrix<>> SmallLU(computeSmallSystemMatrix(0));
+            vertexBoundaryBasis = selectVertexBoundaryBasisFunction(BigLU.kernel(), BigLU.dimensionOfKernel(), SmallLU.kernel(), SmallLU.dimensionOfKernel());
+        }
+
+
+
+
+        for (size_t i = 0; i < auxGeom.size(); i++)
+        {
+            auxGeom[i].parametrizeBasisBack(g1BasisVector[i]);
+        }
+
 
         collection.save();
     }

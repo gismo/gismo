@@ -169,9 +169,9 @@ void gsG1System<T>::initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb)
     gsInfo << "Size of plus space Bdy  " << sizePlusBdy << "\n";
     gsInfo << "Size of plus space Int  " << sizePlusInt << "\n";
 
-    dim_K = numBasisFunctions.last(); // interior basis
-    dim_E = numInterfaceFunctions.last() + numBoundaryEdgeFunctions.last() + numEdgeFunctions.last() ;
-    dim_V = numVertexFunctions.last() + numBoundaryVertexFunctions.last();
+    dim_K = numBasisFunctions.last(); // interior basis dimension
+    dim_E = numInterfaceFunctions.last() + numBoundaryEdgeFunctions.last() + numEdgeFunctions.last() ; // edges basis dimension
+    dim_V = numVertexFunctions.last() + numBoundaryVertexFunctions.last(); // vertex basis dimension
 
     // Full matrix
     D_sparse.resize(dim_E + dim_V + dim_K, dim_K);

@@ -1,6 +1,6 @@
 /** @file KirchhoffLoveShell_example.cpp
 
-    @brief A Kirchhoff-Love example.
+    @brief A Biharmonic example for ONLY TWO-PATCHES
 
     This file is part of the G+Smo library.
 
@@ -10,255 +10,317 @@
 
     Author(s): A. Farahat
 */
+# include <omp.h>
 
 # include <gismo.h>
-# include <gsAssembler/gsKirchhoffLoveShellAssembler.h>
 # include <gsG1Basis/gsG1AuxiliaryEdgeMultiplePatches.h>
 # include <gsG1Basis/gsG1AuxiliaryVertexMultiplePatches.h>
-# include <gsG1Basis/gsG1Mapper.h>
+# include <gsAssembler/gsG1BiharmonicAssembler.h>
+# include <gsG1Basis/gsG1System.h>
 
+# include <gsG1Basis/gsNormL2.h>
 
 using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    index_t numRefine = 5;
-    index_t numDegree = 1;
-    bool plot = true;
+    // Geometry data
+    index_t geometry = 0; // Which geometry
 
-    gsCmdLine cmd("Example for solving the Kirchhoff-Love problem.");
-    cmd.addInt("r", "refine", "Number of refinement steps", numRefine);
-    cmd.addInt("p", "degree", "Polynomial degree", numDegree);
+    index_t numRefine = 4;
+    index_t numDegree = 0;
+    index_t regularity = 1;
+
+    // For the spline space of the gluing data
+    index_t p_tilde = 1;
+    index_t r_tilde = 0;
+
+    index_t threads = 1;
+
+    bool plot = false;
+    bool direct = false;
+    bool local = false;
+    bool loop = false;
+    bool local_g1 = false;
+
+    gsCmdLine cmd("Example for solving the biharmonic problem.");
+    cmd.addInt("k", "refine", "Number of refinement steps", numRefine);
+    cmd.addInt("p", "p_tilde", "Polynomial degree for tilde{p}", p_tilde);
+    cmd.addInt("r", "r_tilde", "Regularity for tilde{r}", r_tilde);
     cmd.addSwitch( "plot", "Plot result in ParaView format", plot );
+    cmd.addSwitch( "direct", "Construction of the G1 basis functions", direct );
+    cmd.addSwitch( "loop", "If you want to solve several levels", loop );
+    cmd.addSwitch( "local_g1", "If you want to solve several levels", local_g1 );
+    cmd.addInt("g", "geometry", "Geometry", geometry);
+    cmd.addInt("t", "threads", "Threads", threads);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    dirichlet::strategy dirStrategy = dirichlet::elimination;
-    iFace::strategy intStrategy = iFace::glue;
-
-    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
-    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
-    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
-                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
-                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
+    // ======= Solution =========
+//    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+//    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+//    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+//    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+//                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
+//    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
+//                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
+//                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
+    gsFunctionExpr<> source  ("0",2);
+    gsFunctionExpr<> laplace ("0",2);
+    gsFunctionExpr<> solVal("1",2);
+    gsFunctionExpr<>sol1der ("0",
+                             "0",2);
+    gsFunctionExpr<>sol2der ("0",
+                             "0",
+                             " 0", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
-    gsFileData<> fileSrc("KirchhoffLoveGeo/geo_fivePatchDiffParam.xml");
-//    gsFileData<> fileSrc("KirchhoffLoveGeo/square_diffParam.xml");
-
-    gsInfo << "Loaded file " << fileSrc.lastPath() << "\n";
-
-    gsMultiPatch<> geo;
-    gsInfo << "Geometry taken correctly \n";
-    fileSrc.getId(5, geo);
-    geo.computeTopology();
-    gsInfo << "Geometry computed correctly\n";
-
-
-    gsOptionList optionList;
-    optionList.addInt("p_tilde","Grad",1);
-    optionList.addInt("r_tilde","Reg",0);
-    optionList.addInt("regularity","Regularity of the initial geometry",1);
-    optionList.addInt("refine","Plot in Paraview",numRefine);
-    optionList.addInt("degree","Degree",numDegree);
-    optionList.addSwitch("local","Local projection for gluing data",false);
-    optionList.addSwitch("direct","Local projection for gluing data",false);
-    optionList.addSwitch("plot","Plot in Paraview",false);
-
-    geo.degreeElevate(optionList.getInt("degree"));
-    geo.uniformRefine_withSameRegularity(optionList.getInt("refine"),optionList.getInt("regularity"));
-    gsMultiBasis<> basis(geo);
-    gsInfo << "Old: " << basis << "\n";
-
-
-    size_t degU = basis.basis(0).component(0).maxDegree();
-    size_t degV = basis.basis(0).component(1).maxDegree();
-
-    gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(basis.basis(0));
-    gsBSplineBasis<> temp_basisLU = dynamic_cast<gsBSplineBasis<> &>(temp_L.component(0));
-    gsBSplineBasis<> temp_basisLV = dynamic_cast<gsBSplineBasis<> &>(temp_L.component(1));
-
-    gsInfo << "maxDeg patch 0 along u: " << degU << "\n";
-    gsInfo << "maxDeg patch 0 along v: " << degV << "\n";
-
-    for(size_t i = 0; i < basis.nBases();i++)
+    // ======= Geometry =========
+    std::string string_geo;
+    switch(geometry)
     {
-        gsInfo << "Basis patch "<< i << ": " << basis.basis(i).size() << "\n" ;
-        gsTensorBSplineBasis<2, real_t> & temp = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(basis.basis(i));
-        gsInfo << temp.size(0) << " " << temp.size(1) << "\n";
+        case 0:
+            string_geo = "planar/multiPatches/4_square_diagonal.xml";
+            numDegree = 2; // 2 == degree 3
+            break;
+        case 1:
+            string_geo = "planar/multiPatches/6_square_diagonal.xml";
+            numDegree = 2; // 2 == degree 3
+            break;
+        case 2:
+            string_geo = "planar/multiPatches/square_curved.xml";
+            numDegree = 0; // 0 == degree 3
+            break;
+        case 3:
+            string_geo = "planar/twoPatches/square_curved.xml";
+            numDegree = 0; // 0 == degree 3
+            break;
+        case 4:
+            string_geo = "planar/twoPatches/square_curved_deg_5.xml";
+            numDegree = 0; // 0 == degree 3
+            break;
+        case 5:
+            string_geo = "planar/twoPatches/square_curved_deg_7.xml";
+            numDegree = 0; // 0 == degree 3
+            break;
+        case 6:
+            string_geo = "planar/twoPatches/square_non_conform.xml";
+            numDegree = 2; // 0 == degree 3
+            break;
+        case 7:
+            string_geo = "planar/twoPatches/square_bent.xml";
+            numDegree = 0; // 0 == degree 3
+            break;
+        case 8:
+            string_geo = "planar/twoPatches/square_complex_bent.xml";
+            numDegree = 0; // 0 == degree 3
+            break;
+        case 9:
+            string_geo = "planar/twoPatches/square_diagonal.xml";
+            numDegree = 2; // 2 == degree 3
+            break;
+        case 10:
+            string_geo = "KirchhoffLoveGeo/geo_fivePatchDiffParam.xml";
+            numDegree = 2; // 2 == degree 3
+            break;
+        default:
+            gsInfo << "No geometry is used! \n";
+            break;
     }
 
+    gsFileData<> fd(string_geo);
+    gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
 
-//    gsInfo << "Basis number:" << basis.nBases() << "\n";
-//    gsInfo << "Coefs number:" << geo.patch(0).coefs().size() /2 << "\n";
-//    gsInfo << "dimU * dimV number:" << temp_L.size(0) * temp_L.size(1) << "\n";
-
-//    gsInfo << "NumElem patch 0 along u: " << elemU << "\n";
-//    gsInfo << "NumElem patch 0 along v: " << elemV << "\n";
-
+    gsMultiPatch<> multiPatch;
+    fd.getId(0, multiPatch); // id=0: Multipatch domain
+    multiPatch.computeTopology();
 
 
+    gsWriteParaview(multiPatch,"geometry",5000,true);
 
+    gsOptionList optionList;
+    optionList.addInt("p_tilde","Grad",p_tilde);
+    optionList.addInt("r_tilde","Reg",r_tilde);
+    optionList.addInt("regularity","Regularity of the initial geometry",regularity);
+    optionList.addSwitch("local","Local projection for gluing data",local);
+    optionList.addSwitch("direct","Local projection for gluing data",direct);
+    optionList.addSwitch("plot","Plot in Paraview",plot);
+    optionList.addInt("refine","Refinement",numRefine);
+    optionList.addInt("degree","Degree",numDegree);
+
+    //multiPatch.patch(1).degreeElevate(1,0);
+    multiPatch.degreeElevate(optionList.getInt("degree"));
+
+    multiPatch.uniformRefine_withSameRegularity(optionList.getInt("refine"), optionList.getInt("regularity"));
+    gsMultiBasis<> mb(multiPatch);
+
+    //omp_set_num_threads(threads);
+    //omp_set_nested(1);
+
+    gsG1System<real_t> g1System(multiPatch, mb);
 
     // ########### EDGE FUNCTIONS ###########
     // Interface loop
-//    for (index_t numInt = 0; numInt < geo.interfaces().size(); numInt++ )
+    for (size_t numInt = 0; numInt < multiPatch.interfaces().size(); numInt++ )
+    {
+        const boundaryInterface & item = multiPatch.interfaces()[numInt];
+
+        std::string fileName;
+        std::string basename = "InterfaceBasisFunctions" + util::to_string(numInt);
+        gsParaviewCollection collection(basename);
+
+        /*
+        gsG1AuxiliaryEdgeMultiplePatches first(multiPatch, item.first().patch);
+        first.computeG1EdgeBasis(optionList,item.first().m_index,false);
+
+        gsG1AuxiliaryEdgeMultiplePatches second(multiPatch, item.second().patch);
+        second.computeG1EdgeBasis(optionList,item.second().m_index,false);
+        */
+        gsG1AuxiliaryEdgeMultiplePatches singleInt(multiPatch, item.first().patch, item.second().patch);
+        singleInt.computeG1InterfaceBasis(optionList);
+        singleInt.deleteBasisFunctions(0,g1System.sizePlusInterface(numInt)); // TODO
+        singleInt.deleteBasisFunctions(1,g1System.sizePlusInterface(numInt));
+
+        for (size_t i = 0; i < singleInt.getSinglePatch(0).getG1Basis().nPatches(); i++)
+        {
+            gsMultiPatch<> edgeSingleBF;
+
+            edgeSingleBF.addPatch(singleInt.getSinglePatch(0).getG1Basis().patch(i));
+            edgeSingleBF.addPatch(singleInt.getSinglePatch(1).getG1Basis().patch(i));
+
+            g1System.insertInterfaceEdge(edgeSingleBF,item,numInt,i);
+
+            fileName = basename + "_0_" + util::to_string(i);
+            gsField<> temp_field(multiPatch.patch(item.first().patch),edgeSingleBF.patch(0));
+            gsWriteParaview(temp_field,fileName,5000);
+            collection.addTimestep(fileName,i,"0.vts");
+            fileName = basename + "_1_" + util::to_string(i);
+            gsField<> temp_field_1(multiPatch.patch(item.second().patch),edgeSingleBF.patch(1));
+            gsWriteParaview(temp_field_1,fileName,5000);
+            collection.addTimestep(fileName,i,"0.vts");
+        }
+        collection.save();
+    }
+    // Boundaries loop
+    for (size_t numBdy = 0; numBdy < multiPatch.boundaries().size(); numBdy++ )
+    {
+        const patchSide & bit = multiPatch.boundaries()[numBdy];
+
+        std::string fileName;
+        std::string basename = "BoundaryBasisFunctions" + util::to_string(numBdy);
+        gsParaviewCollection collection(basename);
+
+        gsInfo << "Patch: " << bit.patch << "\n";
+        gsInfo << "m_index: " << bit.m_index << "\n";
+        gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatch, bit.patch);
+        singleBdy.computeG1BoundaryBasis(optionList, bit.m_index);
+        singleBdy.deleteBasisFunctions(0,g1System.sizePlusBoundary(numBdy));
+
+        for (size_t i = 0; i < singleBdy.getSinglePatch(0).getG1Basis().nPatches(); i++)
+        {
+            gsMultiPatch<> edgeSingleBF;
+
+            edgeSingleBF.addPatch(singleBdy.getSinglePatch(0).getG1Basis().patch(i));
+
+            g1System.insertBoundaryEdge(edgeSingleBF,bit,numBdy,i);
+
+            fileName = basename + "_0_" + util::to_string(i);
+            gsField<> temp_field(multiPatch.patch(bit.patch),edgeSingleBF.patch(0));
+            gsWriteParaview(temp_field,fileName,5000);
+            collection.addTimestep(fileName,i,"0.vts");
+        }
+        collection.save();
+    }
+
+    // Vertices
+//    for(size_t numVer=0; numVer < multiPatch.vertices().size(); numVer++)
 //    {
-//        const boundaryInterface & item = geo.interfaces()[numInt];
-//
 //        std::string fileName;
-//        std::string basename = "InterfaceBasisFunctions" + util::to_string(numInt);
+//        std::string basename = "VerticesBasisFunctions" + util::to_string(numVer);
 //        gsParaviewCollection collection(basename);
 //
-//        /*
-//        gsG1AuxiliaryEdgeMultiplePatches first(multiPatch, item.first().patch);
-//        first.computeG1EdgeBasis(optionList,item.first().m_index,false);
-//
-//        gsG1AuxiliaryEdgeMultiplePatches second(multiPatch, item.second().patch);
-//        second.computeG1EdgeBasis(optionList,item.second().m_index,false);
-//        */
-//        gsG1AuxiliaryEdgeMultiplePatches singleInt(geo, item.first().patch, item.second().patch);
-//        singleInt.computeG1InterfaceBasis(optionList);
-//
-//        for (index_t i = 0; i < singleInt.getSinglePatch(0).getG1Basis().nPatches(); i++)
+//        std::vector<patchCorner> allcornerLists = multiPatch.vertices()[numVer];
+        size_t numVer=0; // TODO DELETE
+        std::vector<size_t> patchIndex;
+        std::vector<size_t> vertIndex;
+//        for(size_t j = 0; j < allcornerLists.size(); j++)
 //        {
-//            gsMultiPatch<> edgeSingleBF;
+//            patchIndex.push_back(allcornerLists[j].patch);
+//            vertIndex.push_back(allcornerLists[j].m_index);
+//            gsInfo << "Patch: " << allcornerLists[j].patch << "\t Index: " << allcornerLists[j].m_index << "\n";
 //
-//            edgeSingleBF.addPatch(singleInt.getSinglePatch(0).getG1Basis().patch(i));
-//            edgeSingleBF.addPatch(singleInt.getSinglePatch(1).getG1Basis().patch(i));
-//
-//            fileName = basename + "_0_" + util::to_string(i);
-//            gsField<> temp_field(geo.patch(item.first().patch),edgeSingleBF.patch(0));
-//            gsWriteParaview(temp_field,fileName,5000);
-//            collection.addTimestep(fileName,i,"0.vts");
-//            fileName = basename + "_1_" + util::to_string(i);
-//            gsField<> temp_field_1(geo.patch(item.second().patch),edgeSingleBF.patch(1));
-//            gsWriteParaview(temp_field_1,fileName,5000);
-//            collection.addTimestep(fileName,i,"0.vts");
 //        }
+//        gsInfo << "\n";
+
+        patchIndex.push_back(0);
+        vertIndex.push_back(1);
+
+        gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatch, patchIndex, vertIndex);
+        singleVertex.computeG1InternalVertexBasis(optionList);
+
+
+
+
+
+
+
+
+    for (index_t i = 0; i < 6; i++)
+        {
+            gsMultiPatch<> singleBasisFunction;
+            for (size_t np = 0; np < vertIndex.size(); np++)
+            {
+                singleBasisFunction.addPatch(singleVertex.getSinglePatch(np).getG1Basis().patch(i));
+//                fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
+//                gsField<> temp_field(multiPatch.patch(patchIndex[np]),singleBasisFunction.patch(np));
+//                gsWriteParaview(temp_field,fileName,50000);
+//                collection.addTimestep(fileName,i,"0.vts");
+            }
+
+            g1System.insertVertex(singleBasisFunction,patchIndex,numVer,i);
+        }
+
 //        collection.save();
 //    }
 
+// NEW NEW NEW NEW NEW NEW NEW NEW NEW
 
-
-
-//     Vertices loop
-
-    std::vector<std::vector<patchCorner>> allcornerLists = geo.vertices();
-    //for(size_t i=0; i < allcornerLists.size(); i++)
-    for(size_t i=0; i < 1; i++)
+    gsBoundaryConditions<> bcInfo, bcInfo2;
+    for (gsMultiPatch<>::const_biterator bit = multiPatch.bBegin(); bit != multiPatch.bEnd(); ++bit)
     {
-        std::vector<size_t> patchIndex;
-        std::vector<size_t> vertIndex;
-        for(size_t j = 0; j < allcornerLists[i].size(); j++)
-        {
-            //patchIndex.push_back(allcornerLists[i][j].patch);
-            //vertIndex.push_back(allcornerLists[i][j].m_index);
-            gsInfo << "Patch: " << allcornerLists[i][j].patch << "\t Index: " << allcornerLists[i][j].m_index << "\n";
-
-        }
-        gsInfo << "\n";
-        patchIndex.push_back(0);
-        patchIndex.push_back(1);
-        patchIndex.push_back(2);
-        patchIndex.push_back(3);
-        patchIndex.push_back(4);
-
-        vertIndex.push_back(4);
-        vertIndex.push_back(2);
-        vertIndex.push_back(1);
-        vertIndex.push_back(3);
-        vertIndex.push_back(2);
-
-        gsMultiPatch<> onebasisfunction;
-
-
-        gsG1AuxiliaryVertexMultiplePatches a(geo, patchIndex, vertIndex);
-        a.computeG1InternalVertexBasis(optionList);
-//        index_t kindBdr = a.kindOfVertex();
-        for (size_t j = 0; j < vertIndex.size(); j++)
-        {
-            onebasisfunction.addPatch(a.getSinglePatch(j).getG1Basis().patch(0));
-        }
-
-        gsWriteParaview(onebasisfunction,"geo",5000);
-
-
+        bcInfo.addCondition( *bit, condition_type::dirichlet, &solVal ); // = 0
+        bcInfo2.addCondition(*bit, condition_type::neumann, &laplace ); // = 0
     }
 
+    // BiharmonicAssembler
+    gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
+    g1BiharmonicAssembler.assemble();
 
-//gsG1Mapper a(geo);
-//    a.printInterfaceEdgeMapper();
-//    a.printReducedEdgeMapper();
-//    a.printReducedBoundaryEdgeMapper();
-
-
+    g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System);
 
 
+    g1System.finalize(multiPatch,mb,g1BiharmonicAssembler.get_bValue());
+    gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
 
-//    gsWriteParaview(newgeom1, "Geometry", 1000);
-
-//    // Write file .xml of the new geometry
-//    gsFileData<> fd;
-//    fd << test;
-//    // output is a string. The extention .xml is added automatically
-//    fd.save("newGeo");
-
-
-    //Setting up oundary conditions
-    gsBoundaryConditions<> bcInfo;
-    gsBoundaryConditions<> bcInfo2;
-    for (gsMultiPatch<>::const_biterator
-             bit = geo.bBegin(); bit != geo.bEnd(); ++bit)
-    {
-        bcInfo.addCondition( *bit, condition_type::dirichlet, &solution );
-        bcInfo2.addCondition( *bit,  condition_type::neumann, &laplace);
-    }
-
-
-    //Initilize solver
-    gsKirchhoffLoveShellAssembler<real_t> KirchhoffLoveShellAssembler( geo,basis,bcInfo,bcInfo2,source,
-                                                       dirStrategy, intStrategy);
-
-    gsInfo<<"Assembling..." << "\n";
-    KirchhoffLoveShellAssembler.assemble();
-
-    gsInfo<<"Solving with direct solver, "<< KirchhoffLoveShellAssembler.numDofs()<< " DoFs..."<< "\n";
-    gsSparseSolver<real_t>::LU solver;
-    solver.analyzePattern(KirchhoffLoveShellAssembler.matrix() );
-    solver.factorize(KirchhoffLoveShellAssembler.matrix());
-    gsMatrix<> solVector= solver.solve(KirchhoffLoveShellAssembler.rhs());
-
-    //Reconstruct solution
+    // construct solution: INTERIOR
     gsMultiPatch<> mpsol;
-    KirchhoffLoveShellAssembler.constructSolution(solVector, mpsol);
-    gsField<> solField(KirchhoffLoveShellAssembler.patches(), mpsol);
+    g1BiharmonicAssembler.constructSolution(solVector.bottomRows(g1BiharmonicAssembler.matrix().dim().first),mpsol);
+    gsField<> solField(multiPatch, mpsol);
 
-    //Contruct the H2 norm, part by part.
-    real_t errorH2Semi = solField.distanceH2(solution, false);
-    real_t errorH1Semi = solField.distanceH1(solution, false);
-    real_t errorL2 = solField.distanceL2(solution, false);
-    real_t errorH1 = math::sqrt(errorH1Semi*errorH1Semi + errorL2*errorL2);
-    real_t errorH2 = math::sqrt(errorH2Semi*errorH2Semi + errorH1Semi*errorH1Semi + errorL2*errorL2);
+    gsInfo<<"Plotting in Paraview...\n";
+    std::vector<gsMultiPatch<>> g1Basis;
+    g1BiharmonicAssembler.constructG1Solution(solVector, solField, g1Basis, g1System);
 
-    gsInfo << "The L2 error of the solution is : " << errorL2 << "\n";
-    gsInfo << "The H1 error of the solution is : " << errorH1 << "\n";
-    gsInfo << "The H2 error of the solution is : " << errorH2 << "\n";
 
-    // Plot solution in paraview
-    if (plot)
-    {
-        // Write approximate and exact solution to paraview files
-        gsInfo<<"Plotting in ParaView...\n";
-        gsWriteParaview<>(solField, "KirchhoffLoveShell2d", 5000);
-        const gsField<> exact( geo, solution, false );
-        gsWriteParaview<>( exact, "KirchhoffLoveShell2d_exact", 5000);
-    }
-    else
-        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                  "file containing the solution.\n";
 
-    return  0;
-}
+
+    gsNormL2<real_t> error(solField, solVal, g1Basis);
+    error.compute();
+    gsInfo << error.value() << "\n";
+
+
+
+
+
+
+
+} // main

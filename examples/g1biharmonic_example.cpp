@@ -17,7 +17,7 @@
 # include <gsG1Basis/gsG1AuxiliaryVertexMultiplePatches.h>
 # include <gsAssembler/gsG1BiharmonicAssembler.h>
 # include <gsG1Basis/gsG1System.h>
-# include <gsG1Basis/gsG1Mapper_pascal.h>
+
 # include <gsG1Basis/gsNormL2.h>
 
 using namespace gismo;
