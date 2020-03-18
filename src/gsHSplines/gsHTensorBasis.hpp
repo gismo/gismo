@@ -385,6 +385,8 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
             k2[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
                                       boxes(j,2*i+1) ) - 1).uIndex();
 
+            gsInfo << "refine() : " << (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
+                                                         boxes(j,2*i+1) ) - 1).uIndex() << "\n";
             // Trivial boxes trigger some refinement
             if ( k1[j] == k2[j])
             {

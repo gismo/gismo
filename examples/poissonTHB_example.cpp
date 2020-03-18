@@ -133,10 +133,11 @@ int main(int argc, char *argv[])
     gsInfo << "\nCoarse discretization basis:\n" << tbb << "\n";
 
     // With this gsTensorBSplineBasis, it's possible to call the THB-Spline constructor
-    gsTHBSplineBasis<2,real_t> THB( tbb );
+    //gsTHBSplineBasis<2,real_t> THB( tbb );
+    gsHBSplineBasis<2,real_t> HB( tbb );
 
     // Finally, create a vector (of length one) of this gsTHBSplineBasis
-    gsMultiBasis<real_t> bases(THB);
+    gsMultiBasis<real_t> bases(HB);
 
     for (int i = 0; i < initUnifRef; ++i)
         bases.uniformRefine();
@@ -153,7 +154,7 @@ int main(int argc, char *argv[])
     {
         gsInfo << "\n ====== Loop " << RefineLoop << " of " << RefineLoopMax << " ======" << "\n" << "\n";
 
-        gsInfo <<"Basis: "<< pa.multiBasis() <<"\n";
+        gsInfo <<"Basis: "<< pa.multiBasis().basis(0) <<"\n";
 
         // Assemble matrix and rhs
         gsInfo << "Assembling... " << std::flush;
@@ -190,10 +191,12 @@ int main(int argc, char *argv[])
         std::vector<bool> elMarked( elErrEst.size() );
         gsMarkElementsForRef( elErrEst, refCriterion, refParameter, elMarked);
 
-        gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true);
+        gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) << "\n";
 
         // Refine the elements of the mesh, based on elMarked.
         gsRefineMarkedElements( pa.multiBasis(), elMarked);
+
+        gsInfo << "Basis :" << pa.multiBasis().basis(0).component(0) << "\n";
 
         // Refresh the assembler, since basis is now changed
         pa.refresh();
@@ -211,7 +214,7 @@ int main(int argc, char *argv[])
             gsInfo<<"Plotting in Paraview...\n";
             gsWriteParaview<>(sol, "p2d_adaRef_sol", 5001, true);
             // Run paraview and plot the last mesh
-            gsFileManager::open("p2d_adaRef_sol.pvd");
+            //gsFileManager::open("p2d_adaRef_sol.pvd");
         }
 
     }

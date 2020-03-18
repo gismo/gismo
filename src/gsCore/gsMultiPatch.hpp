@@ -256,7 +256,6 @@ void gsMultiPatch<T>::uniformRefine(int numKnots, int mul)
     for ( typename PatchContainer::const_iterator it = m_patches.begin();
           it != m_patches.end(); ++it )
     {
-        gsInfo << "war hier Multipatch\n";
         ( *it )->uniformRefine(numKnots, mul);
     }
 }

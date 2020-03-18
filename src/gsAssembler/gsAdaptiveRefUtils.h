@@ -277,11 +277,16 @@ void gsRefineMarkedElements(gsMultiBasis<T> & basis,
                 // corners equal to the center
                 refBoxes.col(2*numMarked  ) =
                         refBoxes.col(2*numMarked+1) = domIt->centerPoint();
+                refBoxes.col(2*numMarked  )[0] = 0.125;
+                refBoxes.col(2*numMarked+1)[0] = 0.125;
+                refBoxes.col(2*numMarked  )[1] = 0;
+                refBoxes.col(2*numMarked+1)[1] = 0;
 
                 // Advance marked cells counter
                 numMarked++;
             }
         }
+        gsInfo << "RefBoxes " << refBoxes << "\n";
         // Refine all of the found refBoxes in this patch
         basis.refine( pn, refBoxes, refExtension );
     }
