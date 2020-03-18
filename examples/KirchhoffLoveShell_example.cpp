@@ -258,81 +258,13 @@ int main(int argc, char *argv[])
         singleVertex.computeG1InternalVertexBasis(optionList);
 
 
-//
-//        gsMultiBasis<> bas(multiPatch.patch(patchIndex[0]));
-//        gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
-//        size_t dimU = temp_L.size(0);
-//        size_t dimV = temp_L.size(1);
-//
-//
-//
-//     //Lower left single patch boundary vertex
-//
-//
-//        gsMatrix<> BigMatrix;
-//        BigMatrix.setZero( 2 * (dimU + dimV - 2),6);
-//
-//        for(size_t bf = 0; bf < 6; bf++)
-//        {
-//            for (size_t i = 0; i < 2 * dimU; i++)
-//            {
-//                BigMatrix(i, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i);
-//                gsInfo << "Index: " << i << "\n";
-//
-//            }
-//
-//            for (size_t i = 1; i < dimV - 1; i++)
-//            {
-//                for(size_t j = i; j < i + 2; j++)
-//                {
-//                    BigMatrix(i + j + (2 * dimU ) - 2, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at((i + 1) * dimU + j - i);
-//                    gsInfo << "Index: " << (i + 1) * dimU + j - i << "\n";
-//                }
-//            }
-//
-//            gsInfo << "-------------------------------------------------------------------\n";
-//        }
-//
-//        Eigen::FullPivLU<gsMatrix<>> luBig(BigMatrix);
-//        gsInfo << luBig.kernel() << "\n";
-//        gsInfo << "-------------------------------------------------------------------\n";
-//
-//
-//    gsMatrix<> SmallMatrix;
-//        SmallMatrix.setZero((dimU + dimV - 1),6);
-//
-//        for(size_t bf = 0; bf < 6; bf++)
-//        {
-//            for (size_t i = 0; i < dimU; i++)
-//            {
-//                SmallMatrix(i, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i);
-//            }
-//
-//            for (size_t i = 1; i < dimV; i++)
-//            {
-//                SmallMatrix(i + dimU -1, bf) = singleVertex.getSinglePatch(0).getG1Basis().patch(bf).coefs().at(i * dimU);
-//            }
-//        }
-//
-//
-//
-//        Eigen::FullPivLU<gsMatrix<>> luSmall(SmallMatrix);
-//        gsInfo << luSmall.kernel() << "\n";
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-        for (index_t i = 0; i < 6; i++)
+    for (index_t i = 0; i < 6; i++)
         {
             gsMultiPatch<> singleBasisFunction;
             for (size_t np = 0; np < vertIndex.size(); np++)
@@ -346,6 +278,7 @@ int main(int argc, char *argv[])
 
             g1System.insertVertex(singleBasisFunction,patchIndex,numVer,i);
         }
+
 //        collection.save();
 //    }
 
