@@ -32,7 +32,7 @@ public:
     gsMatrix<> solve(gsSparseMatrix<real_t> K, gsMatrix<> f);
 
     void insertInterfaceEdge(gsMultiPatch<> & mp, boundaryInterface item, index_t iID ,index_t bfID);
-    void insertBoundaryEdge(gsMultiPatch<> & mp, patchSide item, index_t bID ,index_t bfID);
+    void insertBoundaryEdge(gsMultiPatch<> & mp, patchSide item, index_t bID ,size_t bfID);
     void insertVertex(gsMultiPatch<> & mp, std::vector<size_t> patchIndex, index_t vID ,index_t bfID);
 
     index_t interfaceSize() {return numInterfaceFunctions.last(); };
@@ -210,7 +210,7 @@ void gsG1System<T>::insertInterfaceEdge(gsMultiPatch<> & mp, boundaryInterface i
 }
 
 template<class T>
-void gsG1System<T>::insertBoundaryEdge(gsMultiPatch<> & mp, patchSide item, index_t bID ,index_t bfID)
+void gsG1System<T>::insertBoundaryEdge(gsMultiPatch<> & mp, patchSide item, index_t bID ,size_t bfID)
 {
     // Insert all coefficients of the g1 Basis at the interface
     for (index_t j = 0; j < mp.patch(0).coefs().size(); j++) // all the coefs
@@ -237,7 +237,7 @@ void gsG1System<T>::insertVertex(gsMultiPatch<> & mp, std::vector<size_t> patchI
         for (index_t j = 0; j < mp.patch(np).coefs().size(); j++) // all the coefs
             if (mp.patch(np).coefs().at(j) * mp.patch(np).coefs().at(j)  > 10e-25)
             {
-                index_t jj, ii;
+                index_t jj, ii = -1;
                 if (kindOfVertex[vID] == 0) // interior vertex
                     ii = dim_E + numBoundaryVertexFunctions.last() + numVertexFunctions[vID] + bfID; // all six belongs to Dofs
                 else if (kindOfVertex[vID] == -1) // boundary

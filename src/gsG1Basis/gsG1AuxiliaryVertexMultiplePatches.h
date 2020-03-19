@@ -191,14 +191,16 @@ public:
         {
             for (size_t i = 0; i < 2 * dimU; i++)
             {
-                BigMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > 10e-25)
+                    BigMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
             }
 
             for (size_t i = 1; i < dimV - 1; i++)
             {
                 for(size_t j = i; j < i + 2; j++)
                 {
-                    BigMatrix(i + j + (2 * dimU ) - 2, bf) = auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i);
+                    if (auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i) * auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i) > 10e-25)
+                        BigMatrix(i + j + (2 * dimU ) - 2, bf) = auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i);
                 }
             }
         }
@@ -220,14 +222,17 @@ public:
         {
             for (size_t i = 0; i < dimU; i++)
             {
-                SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > 10e-25)
+                    SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
             }
 
             for (size_t i = 1; i < dimV; i++)
             {
-                SmallMatrix(i + dimU -1, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i * dimU);
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) > 10e-25)
+                    SmallMatrix(i + dimU -1, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i * dimU);
             }
         }
+        //gsInfo << SmallMatrix << "\n";
         return SmallMatrix;
     }
 
@@ -248,7 +253,8 @@ public:
             {
                 for(size_t j = i; j < i + 2; j++)
                 {
-                    BigMatrix(i + j, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i  * dimU + j - i);
+                    if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU + j - i) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU + j - i) > 10e-25)
+                        BigMatrix(i + j, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i  * dimU + j - i);
                 }
             }
         }
@@ -270,7 +276,8 @@ public:
         {
             for (size_t i = 0; i < dimV; i++)
             {
-                SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i * dimU);
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) > 10e-25)
+                    SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i * dimU);
             }
         }
         return SmallMatrix;
@@ -290,7 +297,8 @@ public:
         {
             for (size_t i = 0; i < 2 * dimU; i++)
             {
-                BigMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > 10e-25)
+                    BigMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
             }
         }
         return BigMatrix;
@@ -310,7 +318,8 @@ public:
         {
             for (size_t i = 0; i < dimU; i++)
             {
-                SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i ) * auxGeom[np].getG1BasisCoefs(bf).at(i ) > 10e-25)
+                    SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
             }
         }
         return SmallMatrix;
@@ -375,7 +384,6 @@ public:
         gsMatrix<> vertBas;
         vertBas.setIdentity(6, 6);
 
-
         if(bigKerDim != 0)
         {
             for(index_t bk = 0; bk < bigKerDim; bk++ )
@@ -436,8 +444,10 @@ public:
                 }
 
             }
-
-            basisVect = smallKernel;
+            if (smallKerDim != 0)
+                basisVect = smallKernel;
+            else
+                basisVect = vertBas.col(0);
 
             size_t count=0;
             while (basisVect.cols() < 6)
@@ -452,6 +462,7 @@ public:
                 }
                 count++;
             }
+
         }
 
 
@@ -472,17 +483,12 @@ public:
 
     void computeG1InternalVertexBasis(gsOptionList optionList)
     {
-        gsMultiPatch<> test_mp(this->computeAuxTopology());
-        gsMultiBasis<> test_mb(test_mp);
+        //gsMultiPatch<> test_mp(this->computeAuxTopology());
+        //gsMultiBasis<> test_mb(test_mp);
 
         this->reparametrizeG1Vertex();
-
         this->computeSigma();
 
-        std::string fileName;
-        std::string basename = "singelFunktions";
-
-        gsParaviewCollection collection(basename);
 
         std::vector<gsMultiPatch<>> g1BasisVector;
 
@@ -498,50 +504,73 @@ public:
             auxGeom[i].setG1Basis(g1Basis);
         }
 
+        gsInfo << "Index " << auxVertexIndices[0] << " Patch " << auxGeom[0].getGlobalPatchIndex() <<  "\n";
 
-        if (this->kindOfVertex() == 1)
+        if (this->kindOfVertex() == 1) // Interface-Boundary vertex
         {
-            gsMatrix<> bigMatrix;
-            gsMatrix<> smallMatrix;
+            gsMatrix<> bigMatrix(0,0);
+            gsMatrix<> smallMatrix(0,0);
             for (size_t i = 0; i < auxGeom.size(); i++)
             {
-                std::pair<gsMatrix<>, gsMatrix<>> tmp(createSinglePatchSystem(i));
+                std::pair<gsMatrix<>, gsMatrix<>> tmp;
+                tmp = createSinglePatchSystem(i);
+                size_t row_bigMatrix = bigMatrix.rows();
+                size_t row_smallMatrix = smallMatrix.rows();
+
                 bigMatrix.conservativeResize(bigMatrix.rows() + tmp.first.rows(), 6);
                 smallMatrix.conservativeResize(smallMatrix.rows() + tmp.second.rows(), 6);
 
-                bigMatrix.block(bigMatrix.rows(), 0, tmp.first.rows(), 6) = tmp.first;
-                smallMatrix.block(smallMatrix.rows(), 0, tmp.second.rows(), 6) = tmp.second;
+                bigMatrix.block(row_bigMatrix, 0, tmp.first.rows(), 6) = tmp.first;
+                smallMatrix.block(row_smallMatrix, 0, tmp.second.rows(), 6) = tmp.second;
             }
+
+
+
             Eigen::FullPivLU<gsMatrix<>> BigLU(bigMatrix);
             Eigen::FullPivLU<gsMatrix<>> SmallLU(smallMatrix);
 
+            dim_kernel = SmallLU.dimensionOfKernel();
+
             vertexBoundaryBasis = selectVertexBoundaryBasisFunction(BigLU.kernel(), BigLU.dimensionOfKernel(), SmallLU.kernel(), SmallLU.dimensionOfKernel());
 
         }
-
-        else
-            if(this->kindOfVertex() == -1)
+        else if(this->kindOfVertex() == -1) // Boundary vertex
         {
             Eigen::FullPivLU<gsMatrix<>> BigLU(computeBigSystemMatrix(0));
             Eigen::FullPivLU<gsMatrix<>> SmallLU(computeSmallSystemMatrix(0));
+
+            dim_kernel = SmallLU.dimensionOfKernel();
+
             vertexBoundaryBasis = selectVertexBoundaryBasisFunction(BigLU.kernel(), BigLU.dimensionOfKernel(), SmallLU.kernel(), SmallLU.dimensionOfKernel());
         }
-
 
 
 
         for (size_t i = 0; i < auxGeom.size(); i++)
         {
+            /*
+            for (size_t bf = 0; bf < 6; bf++)
+            {
+                gsMatrix<> coef_bf = auxGeom[i].getG1BasisCoefs(bf);
+                coef_bf.setZero();
+                for (size_t lambda = 0; lambda < 6; lambda++)
+                    coef_bf += auxGeom[i].getG1BasisCoefs(lambda) * vertexBoundaryBasis.first(lambda,bf);
+
+                auxGeom[i].getG1Basis().patch(bf).setCoefs(coef_bf);
+            }
+             */
             auxGeom[i].parametrizeBasisBack(g1BasisVector[i]);
         }
 
 
-        collection.save();
+
     }
 
     gsG1AuxiliaryPatch & getSinglePatch(const unsigned i){
         return auxGeom[i];
     }
+
+    size_t get_internalDofs() { return dim_kernel; }
 
 
 protected:
@@ -549,6 +578,7 @@ protected:
     std::vector<size_t> auxVertexIndices;
     std::vector< std::vector<bool>> isBdy;
     real_t sigma;
+    size_t dim_kernel;
 
 
 };

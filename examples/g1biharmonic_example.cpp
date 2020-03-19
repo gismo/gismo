@@ -56,22 +56,22 @@ int main(int argc, char *argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // ======= Solution =========
-//    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-//    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-//    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
-//    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-//                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
-//    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
-//                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
-//                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
-    gsFunctionExpr<> source  ("0",2);
-    gsFunctionExpr<> laplace ("0",2);
-    gsFunctionExpr<> solVal("1",2);
-    gsFunctionExpr<>sol1der ("0",
-                             "0",2);
-    gsFunctionExpr<>sol2der ("0",
-                             "0",
-                             " 0", 2);
+    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
+    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
+                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
+                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
+//    gsFunctionExpr<> source  ("0",2);
+//    gsFunctionExpr<> laplace ("0",2);
+//    gsFunctionExpr<> solVal("1",2);
+//    gsFunctionExpr<>sol1der ("0",
+//                             "0",2);
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             " 0", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
     // ======= Geometry =========
@@ -260,7 +260,7 @@ int main(int argc, char *argv[])
                 singleBasisFunction.addPatch(singleVertex.getSinglePatch(np).getG1Basis().patch(i));
                 fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
                 gsField<> temp_field(multiPatch.patch(patchIndex[np]),singleBasisFunction.patch(np));
-                gsWriteParaview(temp_field,fileName,50000);
+                gsWriteParaview(temp_field,fileName,5000);
                 collection.addTimestep(fileName,i,"0.vts");
             }
             g1System.insertVertex(singleBasisFunction,patchIndex,numVer,i);
