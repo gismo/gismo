@@ -32,6 +32,7 @@ public:
         gsInfo << "\n";
     }
 
+
     // Compute topology
     // After computeTopology() the patches will have the same patch-index as the position-index in auxGeom
     // EXAMPLE: global patch-index-order inside auxGeom: [2, 3, 4, 1, 0]
@@ -45,6 +46,7 @@ public:
         auxTop.computeTopology();
         return auxTop;
     }
+
 
     void reparametrizeG1Vertex()
     {
@@ -88,7 +90,6 @@ public:
         else
             return 1; // Interface-Boundary vertex
     }
-
 
 
     void checkOrientation(size_t i)
@@ -345,6 +346,7 @@ public:
         return Matrix;
     }
 
+
     gsMatrix<> smallInternalBoundaryPatchSystem( index_t np)
     {
         gsMatrix<> Matrix;
@@ -403,6 +405,7 @@ public:
             count++;
         }
     }
+
 
     void addSmallKerBasis(gsMatrix<> & basisV, gsMatrix<> & smallK, index_t smallKDim)
     {
