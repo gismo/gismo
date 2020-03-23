@@ -1,0 +1,104 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+<!--
+This is a simple example of two squares, parametrized by linear 
+B-splines meeting along one side
+-->
+<xml>
+  <!-- Patch 0 -->
+  <Geometry type="TensorBSpline2" id="1">
+    <Basis type="TensorBSplineBasis2">
+      <Basis type="BSplineBasis" index="0">
+	<KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+      </Basis>
+      <Basis type="BSplineBasis" index="1">
+	<KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+      </Basis>
+    </Basis>
+    <coefs geoDim="3">
+     -0.367 -0.367 1.0 
+     -0.25 -0.5 1.0
+     0.0 -0.5 1.0
+     -0.5 -0.25 1.0
+     -0.25 -0.25 0.3
+     0.0 -0.25 0.3
+     -0.5 0.0 1.0
+     -0.25 0.0 0.3
+     0.0 0.0 0.3
+    </coefs>
+  </Geometry>
+
+  <!-- Patch 1 -->
+  <Geometry type="TensorBSpline2" id="2">
+    <Basis type="TensorBSplineBasis2">
+      <Basis type="BSplineBasis" index="0">
+	<KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+      </Basis>
+      <Basis type="BSplineBasis" index="1">
+	<KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+      </Basis>
+    </Basis>
+    <coefs geoDim="3">
+     0.0 -0.5 1.0
+     0.25 -0.5 1.0
+     0.367 -0.367 1.0
+     0.0 -0.25 0.3
+     0.25 -0.25 0.3
+     0.5 -0.25 1.0
+     0.0 0.0 0.3
+     0.25 0.0 0.3
+     0.5 0.0 1.0 
+    </coefs>
+  </Geometry>
+
+    <!-- Patch 3 -->
+  <Geometry type="TensorBSpline2" id="3">
+    <Basis type="TensorBSplineBasis2">
+      <Basis type="BSplineBasis" index="0">
+	<KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+      </Basis>
+      <Basis type="BSplineBasis" index="1">
+	<KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+      </Basis>
+    </Basis>
+    <coefs geoDim="3">
+     -0.5 0.0 1.0 
+     -0.25 0.0 0.3
+     0.0 0.0 0.3
+     -0.5 0.25 1.0
+     -0.25 0.25 0.3
+     0.0 0.25 0.3
+     -0.367 0.367 1.0
+     -0.25 0.5 1.0
+     -0.0 0.5 1.0
+    </coefs>
+  </Geometry>
+
+  <!-- Patch 4 -->
+  <Geometry type="TensorBSpline2" id="4">
+    <Basis type="TensorBSplineBasis2">
+      <Basis type="BSplineBasis" index="0">
+	<KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+      </Basis>
+      <Basis type="BSplineBasis" index="1">
+	<KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+      </Basis>
+    </Basis>
+    <coefs geoDim="3">
+     0.0 0.0 0.3
+     0.25 0.0 0.3
+     0.5 0.0 1.0
+     0.0 0.25 0.3
+     0.25 0.25 0.3
+     0.5 0.25 1.0
+     0.0 0.5 1.0
+     0.25 0.5 1.0
+     0.367 0.367 1.0 
+    </coefs>
+  </Geometry>
+  <!-- A multipatch section describes the configuration
+       of the two patches above -->
+  <MultiPatch parDim="2" id="0">
+    <patches type="id_range">1 4</patches>
+  </MultiPatch>
+
+</xml>
