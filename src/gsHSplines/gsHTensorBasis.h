@@ -121,6 +121,14 @@ public:
         update_structure();
     }
 
+    // S.Imperatore
+    gsHTensorBasis( gsBasis<T> const&  tbasis, bool & periodic)
+    {
+        initialize_class(tbasis);
+        // Build the characteristic matrices
+        update_structure_periodic();
+    }
+
     gsHTensorBasis( gsTensorBSplineBasis<d,T> const&  tbasis,
                     const std::vector<unsigned> & boxes)
     {
@@ -225,6 +233,40 @@ public:
 
             // Build the characteristic matrices (note: call is non-vritual)
             update_structure();
+        }
+    }
+
+    //S.Imperatore
+    gsHTensorBasis( gsTensorBSplineBasis<d,T> const& tbasis,
+                    gsMatrix<T> const & boxes,
+                    const std::vector<unsigned int> & levels,
+                    bool & periodic)
+    {
+        GISMO_ASSERT(boxes.rows() == d, "Points in boxes need to be of dimension d.");
+        GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied gsHTensorBasis constructor with them.");
+        GISMO_ASSERT(unsigned (boxes.cols()/2) <= levels.size(), "We don't have enough levels for the boxes.");
+
+        initialize_class(tbasis);
+
+        gsVector<unsigned,d> k1;
+        gsVector<unsigned,d> k2;
+
+        const size_t mLevel = *std::max_element(levels.begin(), levels.end() );
+        needLevel( mLevel );
+
+        for(index_t i = 0; i < boxes.cols()/2; i++)
+        {
+            for(short_t j = 0; j < d; j++)
+            {
+                k1[j] = m_bases[levels[i]]->knots(j).uFind(boxes(j,2*i)).uIndex();
+                k2[j] = m_bases[levels[i]]->knots(j).uFind(boxes(j,2*i+1)).uIndex()+1;
+            }
+
+            /* m_boxHistory.push_back( box(k1,k2,levels[i]) );  */
+            this->m_tree.insertBox(k1,k2, levels[i]);
+
+            // Build the characteristic matrices (note: call is non-vritual)
+            update_structure_periodic();
         }
     }
 
@@ -676,6 +718,8 @@ public:
      * See description above for details on the format.
      */
     virtual void refineElements(std::vector<unsigned> const & boxes);
+    //S.Imperatore
+    virtual void refineElements(std::vector<unsigned> const & boxes, bool & periodic);
 
     /// Refines all the cells on the side \a side up to level \a lvl
     void refineSide(const boxSide side, index_t lvl);
@@ -820,6 +864,10 @@ protected:
     /// @brief Updates the basis structure (eg. charact. matrices, etc), to
     /// be called after any modifications.
     virtual void update_structure(); // to do: rename as updateCharMatrices
+
+    //S.Imperatpre
+    virtual void set_activ1_periodic(int level);
+    virtual void update_structure_periodic();
 
     /// @brief Makes sure that there are \a numLevels grids computed
     /// in the hierarachy

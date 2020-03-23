@@ -87,6 +87,11 @@ public:
     : gsHTensorBasis<d,T>(tbasis) 
     { representBasis(); }
 
+    //S.Imperatore
+    gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, bool & periodic)
+    : gsHTensorBasis<d,T>(tbasis, periodic)
+    { representBasis(); }
+
     gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, 
                      const std::vector<unsigned> & boxes) 
     : gsHTensorBasis<d,T>(tbasis, boxes)
@@ -603,6 +608,13 @@ private:
     void update_structure() 
     {
         gsHTensorBasis<d,T>::update_structure(); 
+        representBasis();
+    }
+
+    //S.Imperatore
+    void update_structure_periodic()
+    {
+        gsHTensorBasis<d,T>::update_structure_periodic();
         representBasis();
     }
 

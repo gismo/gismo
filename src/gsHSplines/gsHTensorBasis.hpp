@@ -439,6 +439,30 @@ void gsHTensorBasis<d,T>::refineElements(std::vector<unsigned> const & boxes)
     update_structure();
 }
 
+//S.Imperatore
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::refineElements(std::vector<unsigned> const & boxes,
+                                         bool & periodic)
+{
+    gsVector<unsigned int, d> i1;
+    gsVector<unsigned int, d> i2;
+
+    GISMO_ASSERT( (boxes.size()%(2*d + 1))==0,
+                  "The points did not define boxes properly. The boxes were not added to the basis.");
+    for( unsigned int i = 0; i < (boxes.size())/(2*d+1); i++)
+    {
+        for( unsigned j = 0; j < d; j++ )
+        {
+            i1[j] = boxes[(i*(2*d+1))+j+1];
+            i2[j] = boxes[(i*(2*d+1))+d+j+1];
+        }
+        insert_box(i1,i2,boxes[i*(2*d+1)]);
+    }
+
+    update_structure_periodic();
+}
+
+
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refineSide(const boxSide side, index_t lvl)
 {
@@ -601,6 +625,72 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     cmat.sort();
 
 }
+
+// S.Imperatore
+// Construct the characteristic matrix of level \a level ; i.e., set
+// all the matrix entries corresponding to active functions to one and
+// the rest to zero.
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::set_activ1_periodic(int level)
+{
+    typedef typename gsKnotVector<T>::smart_iterator knotIter;
+    
+    unsigned restriction = m_deg[0]*pow(2, level);
+    //std::cout << " level: " << level << std::endl;
+    //std::cout << " left restriction: " << restriction << std::endl;
+    //std::cout << " right restriction: " << m_bases[level]->component(0).size() - restriction << std::endl;
+
+    //gsDebug<<" Setting level "<< level <<"\n";
+    gsVector<unsigned,d> low, upp;
+
+    CMatrix & cmat = m_xmatrix[level];
+    
+    // Clear previous entries
+    cmat.clear();
+
+    // If a level is to be checked which is larger than
+    // the maximum inserted level, nothing need so to be done
+    if ( level > static_cast<int>(m_tree.getMaxInsLevel() ) )
+        return;
+
+
+    gsVector<knotIter,d> starts, ends, curr;
+    gsVector<unsigned,d> ind;
+    ind[0] = 0; // for d==1: warning: may be used uninitialized in this function (snap-ci)
+
+    for(unsigned i = 0; i != d; ++i)
+    {
+        // beginning of the iteration in i-th direction
+        starts[i] = m_bases[level]->knots(i).sbegin() ;
+        // end of the iteration in i-th direction
+        ends  [i] = m_bases[level]->knots(i).send()-m_deg[i]-1;
+    }
+
+    curr = starts;// start iteration
+    do
+    {
+        for(unsigned i = 0; i != d; ++i)
+        {
+            low[i]  = curr[i].uIndex();  // lower left corner of the support of the function
+            upp[i]  = (curr[i]+m_deg[i]+1).uIndex(); // upper right corner of the support
+            ind[i]  = curr[i].index(); // index of the function in the matrix
+        }
+
+        if ( (m_tree.query3(low, upp,level) == level) && (restriction <= ind[0]) && (ind[0] < m_bases[level]->component(0).size() - restriction)) //if active for periodic case
+        {
+            //std::cout << " fun: " << ind[0] << std::endl;
+            cmat.push_unsorted( m_bases[level]->index( ind ) );
+        }
+        
+        cmat.sort();
+
+    }
+    while (  nextLexicographic(curr,starts,ends) ); // while there are some functions (i.e., some combinations of iterators) left
+
+    cmat.sort();
+
+}
+
 
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::functionOverlap(const point & boxLow, const point & boxUpp,
@@ -847,6 +937,37 @@ void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateHook
 
     for(size_t i = 0; i != m_xmatrix.size(); i ++)
         set_activ1(i);
+
+    // Store all indices of active basis functions to m_matrix
+    //setActive();
+
+    // Compute offsets
+    m_xmatrix_offset.clear();
+    m_xmatrix_offset.reserve(m_xmatrix.size()+1);
+    m_xmatrix_offset.push_back(0);
+    for (size_t i = 0; i != m_xmatrix.size(); i++)
+    {
+        m_xmatrix_offset.push_back(
+            m_xmatrix_offset.back() + m_xmatrix[i].size() );
+    }
+}
+
+// S.Imperatore
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::update_structure_periodic()
+{
+    // Make sure we have computed enough levels
+    needLevel( m_tree.getMaxInsLevel() );
+
+    // Setup the characteristic matrices
+    m_xmatrix.clear();
+    m_xmatrix.resize( m_bases.size() );
+
+    // Compress the tree
+    m_tree.makeCompressed();
+
+    for(size_t i = 0; i != m_xmatrix.size(); i ++)
+        set_activ1_periodic(i);
 
     // Store all indices of active basis functions to m_matrix
     //setActive();
