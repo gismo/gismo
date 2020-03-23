@@ -635,7 +635,7 @@ void gsKnotVector<T>::initUniform( T first,
     for(unsigned i = m_deg - mult_ends + 1, j=0; i!= 0; --i, ++j)
     {   // add left ghost knots
         m_repKnots.push_back(first-i*h);
-        m_multSum .push_back(j);
+        m_multSum .push_back(j+1);
     }
 
     m_repKnots.insert(m_repKnots.end(), mult_ends, first);
@@ -695,7 +695,7 @@ typename gsKnotVector<T>::uiterator
 gsKnotVector<T>::uFind( const T u ) const
 {
     GISMO_ASSERT(size()>1,"Not enough knots."); // todo: check() --> size() > 2*m_deg+1
-    GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
+    //GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
 
     // The last element is closed from both sides.
     uiterator dend = domainUEnd();
