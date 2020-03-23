@@ -71,59 +71,68 @@ protected:
 }; // class gsGluingData
 
 
-template<class T>
-void gsG1ASGluingData<T>::setGlobalGluingData()
-{
-    // ======== Space for gluing data : S^(p_tilde, r_tilde) _k ========
-    gsKnotVector<T> kv(0,1,0,p_tilde+1,p_tilde-r_tilde); // first,last,interior,mult_ends,mult_interior
-    gsBSplineBasis<T> bsp_gD(kv);
+    template<class T>
+    void gsG1ASGluingData<T>::setGlobalGluingData()
+    {
+        // ======== Space for gluing data : S^(p_tilde, r_tilde) _k ========
+        gsKnotVector<T> kv(0,1,0,p_tilde+1,p_tilde-r_tilde); // first,last,interior,mult_ends,mult_interior
+        gsBSplineBasis<T> bsp_gD(kv);
 
-    gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mb.basis(0).component(m_uv)); // u
-    //gsBSplineBasis<> temp_basis_second = dynamic_cast<gsBSplineBasis<> &>(m_mb.basis(1).component(1)); // v
-/*
-    if (temp_basis_first.numElements() >= temp_basis_second.numElements())
-    {
-        index_t degree = temp_basis_second.maxDegree();
-        for (size_t i = degree+1; i < temp_basis_second.knots().size() - (degree+1); i = i+(degree-m_r))
-            bsp_gD.insertKnot(temp_basis_second.knot(i),p_tilde-r_tilde);
-    }
-    else
-    {
+        gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mb.basis(0).component(m_uv)); // u
+        //gsBSplineBasis<> temp_basis_second = dynamic_cast<gsBSplineBasis<> &>(m_mb.basis(1).component(1)); // v
+    /*
+        if (temp_basis_first.numElements() >= temp_basis_second.numElements())
+        {
+            index_t degree = temp_basis_second.maxDegree();
+            for (size_t i = degree+1; i < temp_basis_second.knots().size() - (degree+1); i = i+(degree-m_r))
+                bsp_gD.insertKnot(temp_basis_second.knot(i),p_tilde-r_tilde);
+        }
+        else
+        {
+            index_t degree = temp_basis_first.maxDegree();
+            for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i = i+(degree-m_r))
+                bsp_gD.insertKnot(temp_basis_first.knot(i),p_tilde-r_tilde);
+
+        }
+    */
+
         index_t degree = temp_basis_first.maxDegree();
+//        for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i = i+(degree-m_r))
+//            bsp_gD.insertKnot(temp_basis_first.knot(i),p_tilde-r_tilde);
+
+        bsp_gD.insertKnot(temp_basis_first.knot(0),1); // Increase multiplicity of the first knot by one
+        bsp_gD.insertKnot(temp_basis_first.knot(temp_basis_first.knots().size() - 1 ),1); // Increase multiplicity of the last knot by one
+
+        if(temp_basis_first.knots().size() != (2 * (degree + 1)))  // If we have inner knots
+        {
         for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i = i+(degree-m_r))
-            bsp_gD.insertKnot(temp_basis_first.knot(i),p_tilde-r_tilde);
+            bsp_gD.insertKnot(temp_basis_first.knot(i),2); // Increase the multiplicity of the inner knots by two
+        }
 
-    }
-*/
+        gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD,m_uv,m_mp,m_gamma,m_isBoundary);
+        globalGdAssembler.assemble();
 
-    index_t degree = temp_basis_first.maxDegree();
-    for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i = i+(degree-m_r))
-        bsp_gD.insertKnot(temp_basis_first.knot(i),p_tilde-r_tilde);
+        gsSparseSolver<real_t>::CGDiagonal solver;
+        gsVector<> sol_a, sol_b;
 
-    gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD,m_uv,m_mp,m_gamma,m_isBoundary);
-    globalGdAssembler.assemble();
+        // alpha^S
+        solver.compute(globalGdAssembler.matrix_alpha());
+        sol_a = solver.solve(globalGdAssembler.rhs_alpha());
 
-    gsSparseSolver<real_t>::CGDiagonal solver;
-    gsVector<> sol_a, sol_b;
+        gsGeometry<>::uPtr tilde_temp;
+        tilde_temp = bsp_gD.makeGeometry(sol_a);
+        gsBSpline<T> alpha_tilde_L_2 = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
+        alpha_tilde = alpha_tilde_L_2;
 
-    // alpha^S
-    solver.compute(globalGdAssembler.matrix_alpha());
-    sol_a = solver.solve(globalGdAssembler.rhs_alpha());
+        // beta^S
+        solver.compute(globalGdAssembler.matrix_beta());
+        sol_b = solver.solve(globalGdAssembler.rhs_beta());
 
-    gsGeometry<>::uPtr tilde_temp;
-    tilde_temp = bsp_gD.makeGeometry(sol_a);
-    gsBSpline<T> alpha_tilde_L_2 = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-    alpha_tilde = alpha_tilde_L_2;
+        tilde_temp = bsp_gD.makeGeometry(sol_b);
+        gsBSpline<T> beta_tilde_L_2 = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
+        beta_tilde = beta_tilde_L_2;
 
-    // beta^S
-    solver.compute(globalGdAssembler.matrix_beta());
-    sol_b = solver.solve(globalGdAssembler.rhs_beta());
-
-    tilde_temp = bsp_gD.makeGeometry(sol_b);
-    gsBSpline<T> beta_tilde_L_2 = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-    beta_tilde = beta_tilde_L_2;
-
-} // setGlobalGluingData
+    } // setGlobalGluingData
 
 } // namespace gismo
 
