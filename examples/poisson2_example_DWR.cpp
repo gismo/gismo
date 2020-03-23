@@ -13,6 +13,7 @@
 
 //! [Include namespace]
 #include <gismo.h>
+#include <gsAssembler/gsAdaptiveRefUtils.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -89,11 +90,62 @@ public:
     }
 };
 
+template<typename T>
+class gsElementErrorPlotter : public gsFunction<T>
+{
+public:
+    gsElementErrorPlotter(const gsBasis<T>& mp, const std::vector<T>& errors ) : m_mp(mp),m_errors(errors)
+    {
+
+    }
+
+    virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& res) const
+    {
+        // Initialize domain element iterator -- using unknown 0
+        res.setZero(1,u.cols());
+        for(index_t i=0; i<u.cols();++i)
+        {
+            int iter =0;
+            // Start iteration over elements
+
+            typename gsBasis<T>::domainIter domIt = m_mp.makeDomainIterator();
+            for (; domIt->good(); domIt->next() )
+            {
+                 bool flag = true;
+                const gsVector<T>& low = domIt->lowerCorner();
+                const gsVector<T>& upp = domIt->upperCorner();
+
+
+                for(int d=0; d<domainDim();++d )
+                {
+                    if(low(d)> u(d,i) || u(d,i) > upp(d))
+                    {
+                        flag = false;
+                        break;
+                    }
+                }
+                if(flag)
+                {
+                     res(0,i) = m_errors.at(iter);
+                     break;
+                }
+                iter++;
+            }
+        }
+    }
+
+    short_t domainDim() const { return m_mp.dim();}
+
+private:
+    const gsBasis<T>& m_mp;
+    const std::vector<T>& m_errors;
+};
+
 
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
-    bool fullL2 = false;
+    bool fullL2 = true;
     bool plot = false;
     index_t numRefine  = 5;
     index_t numElevate = 0;
@@ -131,6 +183,17 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp;
     fd.getId(0, mp); // id=0: Multipatch domain
 
+    // // Cast all patches of the mp object to THB splines
+    // gsMultiPatch<> mpBspline;
+    // // gsTensorBSpline<2,real_t> *geo;
+    // gsTHBSpline<2,real_t> thb;
+    // for (index_t k=0; k!=mpBspline.nPatches(); ++k)
+    // {
+    //     gsTensorBSpline<2,real_t> *geo = dynamic_cast< gsTensorBSpline<2,real_t> * > (&mpBspline.patch(k));
+    //     thb = gsTHBSpline<2,real_t>(*geo);
+    //     mp.addPatch(thb);
+    // }
+
     gsFunctionExpr<> f;
     fd.getId(1, f); // id=1: source function
     gsInfo<<"Source function "<< f << "\n";
@@ -153,14 +216,14 @@ int main(int argc, char *argv[])
     // where p is the highest degree in the bases
     basisL.setDegree( basisL.maxCwiseDegree() + numElevate);
     basisH.setDegree( basisH.maxCwiseDegree() + numElevate);
-
     // h-refine each basis
     for (int r =0; r < numRefine-1; ++r)
     {
         basisL.uniformRefine();
         basisH.uniformRefine();
     }
-    basisH.degreeElevate(1);
+    // Set the degree of the higher-order basis one higher.
+    basisH.setDegree( basisH.maxCwiseDegree() + 1);
 
     numRefine = 0;
 
@@ -421,17 +484,6 @@ int main(int argc, char *argv[])
     exM.assemble(w2_n * meas(GM)* w2_n.tr()); // * meas(G));
     gsSparseMatrix<> M_LL = exM.matrix();
 
-    // gsDebugVar(M_HH.toDense());
-    // gsDebugVar(M_LL.toDense());
-    // gsDebugVar(M_LH.toDense());
-    // gsDebugVar(M_HL.toDense());
-
-
-    gsDebug<<"M_HH "<<M_HH.rows()<<"x"<<M_HH.cols()<<"\n";
-    gsDebug<<"M_LL "<<M_LL.rows()<<"x"<<M_LL.cols()<<"\n";
-    gsDebug<<"M_LH "<<M_LH.rows()<<"x"<<M_LH.cols()<<"\n";
-    gsDebug<<"M_HL "<<M_HL.rows()<<"x"<<M_HL.cols()<<"\n";
-
     gsMatrix<> dualL0, primalL0;
     if (fullL2)
     {
@@ -507,14 +559,39 @@ int main(int argc, char *argv[])
 
 
 
-        gsInfo<<evH.integralElWise((ff - lapl(uLp)) * (zH - zLp)*meas(H))<<"\n";
+        evH.integralElWise((gg - slapl(uLp)) * (zH - zLp)*meas(H));
+        gsVector<> elementNorms = evH.allValues().transpose();
+        std::vector<real_t> errors;
+        errors.resize(elementNorms.size());
+        gsVector<>::Map(&errors[0],elementNorms.size() ) = elementNorms;
+
+        // gsInfo<< "  Result (elwise): "<< elementNorms <<"\n";
+        gsInfo<< "  Result (global)    : "<< elementNorms.sum() <<"\n";
+
+        gsElementErrorPlotter<real_t> err_eh(basisH.basis(0),errors);
+        // gsInfo<<evH.integralElWise((slapl(uLp)) * (zH-zLp))<<"\n";
+        // gsInfo<<evH.integral((gg))<<"\n";
         // gsInfo<<evH.eval( hess(uLp),pt)<<"\n";
         // gsInfo<<evH.eval( grad(uLp),pt)<<"\n";
         // gsInfo<<evH.eval( lapl(uLp),pt)<<"\n";
         // gsInfo<<evH.eval( zH,pt)<<"\n";
-        gsInfo<<evH.eval( (ff - lapl(uLp)) * (zH - zLp)*meas(H),pt)<<"\n";
+        // gsInfo<<evH.eval( (gg - slapl(uLp)) * (zH - zLp)*meas(H),pt)<<"\n";
+
+        const gsField<> elemError_eh( mp, err_eh, false );
+        gsWriteParaview<>( elemError_eh, "error_elem_eh", 1000);
 
 
+        MarkingStrategy adaptRefCrit = PUCA;
+        const real_t adaptRefParam = 0.9;
+        std::vector<bool> elMarked( errors.size() );
+
+        gsMarkElementsForRef( errors, adaptRefCrit, adaptRefParam, elMarked);
+        for (std::vector<bool>::const_iterator i = elMarked.begin(); i != elMarked.end(); ++i)
+            gsInfo << *i << ' ';
+        gsInfo<<"\n";
+
+        // Refine the marked elements with a 1-ring of cells around marked elements
+        gsRefineMarkedElements( basisH, elMarked, 1 );
     }
     else
     {

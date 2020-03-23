@@ -3905,7 +3905,7 @@ lapl_expr<T> lapl(const gsFeVariable<T> & u) { return lapl_expr<T>(u); }
 
 /// The laplacian of a solution variable
 template<class T> EIGEN_STRONG_INLINE
-solLapl_expr<T> lapl(const gsFeSolution<T> & u) { return solLapl_expr<T>(u); }
+solLapl_expr<T> slapl(const gsFeSolution<T> & u) { return solLapl_expr<T>(u); }
 
 /// The first fundamental form of \a G //fform is buggy ?
 // template<class T> EIGEN_STRONG_INLINE fform_expr<T> fform(const gsGeometryMap<T> & G) { return fform_expr<T>(G); }
