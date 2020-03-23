@@ -28,7 +28,7 @@
 //#include <gsUtils/gsMesh/gsHeMesh.h>
 
 
-#define PLOT_PRECISION 5
+#define PLOT_PRECISION 12
 
 namespace gismo
 {
