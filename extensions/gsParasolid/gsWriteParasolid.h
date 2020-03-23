@@ -73,7 +73,8 @@ namespace extensions {
     /// Converts \a tp into a PK_SHEET and writes it to filename.xmt_txt.
     template<class T>
     bool gsWritePK_SHEET(const gsTensorBSpline<2, T>& tp, const std::string& filename);
-
+    template<class T>
+    bool gsWritePK_SHEET2(const gsTensorBSpline<2, T>& tp, const std::string& filename);
 
     /// Translates a gsTensorBSpline to a PK_BSURF_t
     /// \param[in] bsp B-spline surface
