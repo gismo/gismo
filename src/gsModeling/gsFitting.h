@@ -51,6 +51,9 @@ public:
     /// Computes the least squares fit for a gsBasis
     void compute(T lambda = 0);
 
+    /// Can be removed.
+    void my_compute(T & lambda = 0);
+
     /// Computes the euclidean error for each point
     void computeErrors();
 
@@ -90,6 +93,9 @@ public:
     /// Adds to the matrix A_mat terms for minimization of second derivative, weighted
     /// with parameter lambda.
     void applySmoothing(T lambda, gsSparseMatrix<T> & A_mat);
+
+    /// Can probably be removed.
+    void my_applySmoothing(T& lambda, gsSparseMatrix<T> & A_mat);
     
     /// Assembles system for the least square fit.
     void assembleSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& B);

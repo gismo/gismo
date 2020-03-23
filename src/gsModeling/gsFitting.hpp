@@ -101,6 +101,66 @@ void gsFitting<T>::compute(T lambda)
     m_result = m_basis->makeGeometry( give(x) ).release();
 }
 
+template<class T>
+void gsFitting<T>::my_compute(T& lambda)
+{
+    // Wipe out previous result
+    if ( m_result )
+        delete m_result;
+
+    const int num_basis=m_basis->size();
+    const int dimension=m_points.cols();
+
+    //left side matrix
+    //gsMatrix<T> A_mat(num_basis,num_basis);
+    gsSparseMatrix<T> A_mat(num_basis, num_basis);
+    //gsMatrix<T>A_mat(num_basis,num_basis);
+    //To optimize sparse matrix an estimation of nonzero elements per
+    //column can be given here
+    int nonZerosPerCol = 1;
+    for (int i = 0; i < m_basis->dim(); ++i) // to do: improve
+        // nonZerosPerCol *= m_basis->degree(i) + 1;
+        nonZerosPerCol *= ( 2 * m_basis->degree(i) + 1 ) * 4;
+    A_mat.reservePerColumn( nonZerosPerCol );
+
+    //right side vector (more dimensional!)
+    gsMatrix<T> m_B(num_basis, dimension);
+    m_B.setZero(); // enusure that all entries are zero in the beginning
+
+    // building the matrix A and the vector b of the system of linear
+    // equations A*x==b
+
+    assembleSystem(A_mat, m_B);
+
+    // --- Smoothing matrix computation
+    //test degree >=3
+    if(lambda > 0)
+      my_applySmoothing(lambda, A_mat);
+    
+
+    //Solving the system of linear equations A*x=b (works directly for a right side which has a dimension with higher than 1)
+
+    //gsDebugVar( A_mat.nonZerosPerCol().maxCoeff() );
+    //gsDebugVar( A_mat.nonZerosPerCol().minCoeff() );
+    A_mat.makeCompressed();
+
+    typename gsSparseSolver<T>::BiCGSTABILUT solver( A_mat );
+
+    if ( solver.preconditioner().info() != Eigen::Success )
+    {
+        gsWarn<<  "The preconditioner failed. Aborting.\n";
+        m_result = NULL;
+        return;
+    }
+    // Solves for many right hand side  columns
+    gsMatrix<T> x;
+    x = solver.solve(m_B); //toDense()
+    //gsMatrix<T> x (m_B.rows(), m_B.cols());
+    //x=A_mat.fullPivHouseholderQr().solve( m_B);
+    // Solves for many right hand side  columns
+    // finally generate the B-spline curve
+    m_result = m_basis->makeGeometry( give(x) ).release();
+}
 
 template <class T>
 void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
@@ -130,6 +190,101 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
             m_B.row(ii) += value.at(i) * m_points.row(k);
             for (index_t j = 0; j != numActive; ++j)
                 A_mat(ii, actives.at(j)) += value.at(i) * value.at(j);
+        }
+    }
+}
+
+
+template<class T>
+void gsFitting<T>::my_applySmoothing(T& lambda, gsSparseMatrix<T> & A_mat)
+{
+    const int dim = m_basis->dim();
+    const int stride = dim*(dim+1)/2;
+
+    gsVector<int> numNodes(dim);
+    for ( int i = 0; i!= dim; ++i )
+        numNodes[i] = this->m_basis->degree(i);//+1;
+    gsGaussRule<T> QuRule( numNodes ); // Reference Quadrature rule
+    gsMatrix<T> quNodes, der2, localA;
+    gsVector<T> quWeights;
+    gsMatrix<unsigned> actives;
+
+    typename gsBasis<T>::domainIter domIt = m_basis->makeDomainIterator();
+
+    for (; domIt->good(); domIt->next() )
+    {
+        // Map the Quadrature rule to the element and compute basis derivatives
+        QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
+        m_basis->deriv2_into(quNodes, der2);
+        m_basis->active_into(domIt->center, actives);
+        const index_t numActive = actives.rows();
+        localA.setZero(numActive, numActive );
+
+        // perform the quadrature
+        for (index_t k = 0; k < quWeights.rows(); ++k)
+        {
+            //const T weight = quWeights[k] * lambda;
+            const T weight = quWeights[k];
+
+            for (index_t i=0; i!=numActive; ++i)
+                for (index_t j=0; j!=numActive; ++j)
+                {
+                    T localAij = 0; // temporary variable
+
+                    for (int s = 0; s < stride; s++)
+                    {
+                        // The pure second derivatives
+                        // d^2u N_i * d^2u N_j + ...
+                        if (s < dim)
+                        {
+                            localAij += der2(i * stride + s, k) *
+                                        der2(j * stride + s, k);
+                        }
+                        // Mixed derivatives 2 * dudv N_i * dudv N_j + ...
+                        else
+                        {
+                            localAij += 2 * der2(i * stride + s, k) *
+                                            der2(j * stride + s, k);
+                        }
+                    }
+
+                    localA(i, j) += weight * localAij;
+
+                    // old code, just for the case if I break something
+
+//                    localA(i,j) += weight * (
+//                            // der2.template block<3,1>(i*stride,k)
+//                            der2(i*stride  , k) * der2(j*stride  , k) +  // d^2u N_i * d^2u N_j
+//                            der2(i*stride+1, k) * der2(j*stride+1, k) +  // d^2v N_i * d^2v N_j
+//                            2 * der2(i*stride+2, k) * der2(j*stride+2, k)// dudv N_i * dudv N_j
+//                            );
+                }
+        }
+        
+        real_t tmpSum = 0;
+        
+        for (index_t i=0; i!=numActive; ++i)
+        {
+            const int ii = actives(i,0);
+            for (index_t j=0; j!=numActive; ++j)
+                tmpSum += pow(A_mat( ii, actives(j,0) ),2);
+        }
+        
+        //lambda = sqrt(tmpSum)/localA.norm();
+        //std::cout << "lambda: " << lambda << std::endl;
+        lambda = A_mat.norm()/localA.norm();
+        if(false)
+        {
+            std::cout << A_mat.norm() << "/" << localA.norm() << " = " << lambda << "\n";
+            std::cout << "dimension A: " << A_mat.rows() << " x " << A_mat.cols() << "\n";
+            std::cout << "dimension E: " << localA.rows() << " x " << localA.cols() << std::endl;
+        }
+
+        for (index_t i=0; i!=numActive; ++i)
+        {
+            const int ii = actives(i,0);
+            for (index_t j=0; j!=numActive; ++j)
+                A_mat( ii, actives(j,0) ) += lambda * localA(i,j);
         }
     }
 }
