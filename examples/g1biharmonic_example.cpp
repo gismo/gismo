@@ -64,14 +64,17 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
-//    gsFunctionExpr<> source  ("0",2);
-//    gsFunctionExpr<> laplace ("0",2);
-//    gsFunctionExpr<> solVal("1",2);
-//    gsFunctionExpr<>sol1der ("0",
-//                             "0",2);
-//    gsFunctionExpr<>sol2der ("0",
-//                             "0",
-//                             " 0", 2);
+/*
+    gsFunctionExpr<> source  ("0",2);
+    gsFunctionExpr<> laplace ("0",2);
+    gsFunctionExpr<> solVal("y",2);
+    gsFunctionExpr<>sol1der ("0",
+                             "1",2);
+    gsFunctionExpr<>sol2der ("0",
+                             "0",
+                             " 0", 2);
+
+*/
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
     // ======= Geometry =========
@@ -260,7 +263,7 @@ int main(int argc, char *argv[])
                 singleBasisFunction.addPatch(singleVertex.getSinglePatch(np).getG1Basis().patch(i));
                 fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
                 gsField<> temp_field(multiPatch.patch(patchIndex[np]),singleBasisFunction.patch(np));
-                gsWriteParaview(temp_field,fileName,5000);
+                gsWriteParaview(temp_field,fileName,50000);
                 collection.addTimestep(fileName,i,"0.vts");
             }
             g1System.insertVertex(singleBasisFunction,patchIndex,numVer,i);
@@ -282,7 +285,6 @@ int main(int argc, char *argv[])
     g1BiharmonicAssembler.assemble();
 
     g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System);
-
 
     g1System.finalize(multiPatch,mb,g1BiharmonicAssembler.get_bValue());
     gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());

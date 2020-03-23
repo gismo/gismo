@@ -219,9 +219,9 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructG1Solution(const gsMatrix<T>
         }
 
 
-
-        //gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
-        //gsField<> exact( field.patch(i), solVal, false );
+        gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+        //gsFunctionExpr<> solVal("y",2);
+        gsField<> exact(m_pde_ptr->domain().patch(pp), solVal, false );
         //eval_field -= exact.value(pts);
 
         if ( 3 - d > 0 )

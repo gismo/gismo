@@ -39,6 +39,11 @@ public:
             gsGluingData<T> gluingData(m_geo,m_basis,dir,m_isBoundary[dir],m_optionList);
             m_gD.push_back(gluingData);
 
+            gsMatrix<> points(1,5);
+            points << 0,0.1,0.5,0.8,1;
+            gsInfo << "alpha : " << m_gD[dir].get_alpha_tilde().eval(points) << "\n";
+            gsInfo << "beta : " << m_gD[dir].get_beta_tilde().eval(points) << "\n";
+
             // Computing the G1 - basis function at the edge
             // Spaces for computing the g1 basis
             index_t m_r = m_optionList.getInt("regularity"); // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
@@ -80,6 +85,7 @@ public:
 
     void constructSolution(gsMultiPatch<T> & result);
 
+    gsBSpline<> get_alpha(size_t i) { return m_gD.at(i).get_alpha_tilde(); }
 
     void plotG1Basis(gsMultiPatch<T> & basisG1_L, gsMultiPatch<T> & basisG1_R, gsMultiPatch<T> & mp, std::string baseName)
     {
@@ -345,6 +351,7 @@ template <class T, class bhVisitor>
 void gsG1BasisVertex<T,bhVisitor>::solve()
 {
     gsSparseSolver<real_t>::CGDiagonal solver;
+
 
     for (index_t i = 0; i < 6; i++) // Tilde
     {

@@ -84,7 +84,7 @@ public:
         for (index_t i = 0; i < uv.cols(); i++)
         {
             P0.jacobian_into(uv.col(i), ev);
-            uv(0, i) = gamma * ev.determinant();
+            uv(0, i) = 1 * ev.determinant();
         }
         if (isBoundary)
             uv.setOnes();

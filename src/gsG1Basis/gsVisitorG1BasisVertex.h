@@ -115,7 +115,7 @@ public:
             c_1.push_back((h_geo / p) * b_1);
 
             c_0_minus.push_back(b_0_minus + b_1_minus);
-            c_1_minus.push_back(h_geo/ p * b_1_minus);
+            c_1_minus.push_back(h_geo/ (p-1) * b_1_minus);
 
             c_0_plus.push_back(b_0_plus + b_1_plus + b_2_plus);
             c_1_plus.push_back((h_geo / p) * (b_1_plus + 2*b_2_plus));
@@ -158,6 +158,8 @@ public:
             gluingData.at(1).get_beta_tilde().eval(zero.row(0))(0,0) * geo_deriv2_22))*gluingData.at(1).get_alpha_tilde().eval(zero.row(0))(0,0) -
             (geo.jacobian(zero).col(0) + gluingData.at(1).get_beta_tilde().eval(zero.row(0))(0,0) * geo.jacobian(zero).col(1)) *
             gluingData.at(1).get_alpha_tilde().deriv(zero.row(0))(0,0));
+
+        //gsInfo << "DD :" << dd_ik_minus_deriv << " : " << dd_ik_plus_deriv << "\n";
 
         // Comupute d_(0,0)^(i_k), d_(1,0)^(i_k), d_(0,1)^(i_k), d_(1,1)^(i_k) ; i_k == 2
         std::vector<gsMatrix<>> d_ik;

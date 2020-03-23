@@ -123,7 +123,7 @@ void gsG1System<T>::initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb)
         index_t m_r = 1; // Here fixed to 1 TODO MORE GENERAL
         index_t m_n = basis_edge.numElements();
 
-        numBoundaryEdgeFunctions[i+1] = numBoundaryEdgeFunctions[i] + (m_p - m_r - 1) * (m_n - 1) + m_p + 1 - 6 ;
+        numBoundaryEdgeFunctions[i+1] = numBoundaryEdgeFunctions[i] + (m_p - m_r - 1) * (m_n - 1) + m_p + 1 - 6;
         numEdgeFunctions[i+1] = numEdgeFunctions[i] + (m_p - m_r - 1) * (m_n - 1) + m_p - 4;
         sizePlusBdy[i] = (m_p - m_r - 1) * (m_n - 1) + m_p + 1;
     }
@@ -359,6 +359,12 @@ gsMatrix<> gsG1System<T>::solve(gsSparseMatrix<real_t> K, gsMatrix<> f)
     gsVector<real_t> F = D_0_sparse * f - D_0_sparse * K * D_boundary_sparse.transpose() * m_g1;
 
     //gsInfo << "System finished with " << A.dim() << " non-zeros!\n";
+
+    //Eigen::JacobiSVD<Eigen::MatrixXd> svd(A);
+    //real_t cond = svd.singularValues()(0)
+    //    / svd.singularValues()(svd.singularValues().size()-1);
+
+    //gsInfo << "Conditionnumber : " << svd.singularValues()(svd.singularValues().size()-1) << "\n";
 
     gsSparseSolver<real_t>::CGDiagonal solver;
     //gsSparseSolver<real_t>::LU solver;

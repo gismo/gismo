@@ -14,7 +14,7 @@
             0 0
             0.2 0
             0 1
-            0.5 1
+            0.7 1
         </coefs>
     </Geometry>
     <Geometry type="TensorBSpline2" id="2">
@@ -29,7 +29,7 @@
         <coefs geoDim="2">
             0.2 0
             1 0
-            0.5 1
+            0.7 1
             1 1
         </coefs>
     </Geometry>
