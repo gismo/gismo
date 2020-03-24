@@ -209,29 +209,41 @@ int main(int argc, char *argv[])
     //! [Read input file]
 
     //! [Refinement]
-    gsMultiBasis<> basisL(mp);
-    gsMultiBasis<> basisH(mp);
 
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    basisL.setDegree( basisL.maxCwiseDegree() + numElevate);
-    basisH.setDegree( basisH.maxCwiseDegree() + numElevate);
+    mp.degreeElevate(numElevate);
     // h-refine each basis
     for (int r =0; r < numRefine-1; ++r)
-    {
-        basisL.uniformRefine();
-        basisH.uniformRefine();
-    }
+        mp.uniformRefine();
     // Set the degree of the higher-order basis one higher.
-    basisH.setDegree( basisH.maxCwiseDegree() + 1);
+    gsMultiPatch<> mpH0 = mp;
+    mpH0    .degreeElevate(1);
+
+    // Cast all patches of the mp object to THB splines
+    gsMultiPatch<> mpL, mpH;
+    // gsTensorBSpline<2,real_t> *geo;
+    gsTHBSpline<2,real_t> thb;
+    for (index_t k=0; k!=mp.nPatches(); ++k)
+    {
+        gsTensorBSpline<2,real_t> *geoL = dynamic_cast< gsTensorBSpline<2,real_t> * > (&mp.patch(k));
+        thb = gsTHBSpline<2,real_t>(*geoL);
+        mpL.addPatch(thb);
+
+        gsTensorBSpline<2,real_t> *geoH = dynamic_cast< gsTensorBSpline<2,real_t> * > (&mpH0.patch(k));
+        thb = gsTHBSpline<2,real_t>(*geoH);
+        mpH.addPatch(thb);
+    }
 
     numRefine = 0;
 
+    gsMultiBasis<> basisL(mpL);
+    gsMultiBasis<> basisH(mpH);
     gsInfo<<"Basis Primal: "<<basisL.basis(0)<<"\n";
     gsInfo<<"Basis Dual:   "<<basisH.basis(0)<<"\n";
 
 
-    gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< basisL.minCwiseDegree() <<"\n";
+    gsInfo << "Patches: "<< mpH.nPatches() <<", degree: "<< basisL.minCwiseDegree() <<"\n";
     //! [Refinement]
 
     //! [Problem setup]
@@ -591,7 +603,11 @@ int main(int argc, char *argv[])
         gsInfo<<"\n";
 
         // Refine the marked elements with a 1-ring of cells around marked elements
-        gsRefineMarkedElements( basisH, elMarked, 1 );
+        gsRefineMarkedElements( mpH, elMarked, 1 );
+        gsRefineMarkedElements( mpL, elMarked, 1 );
+
+        gsWriteParaview(mpH,"mpH",1000,true);
+        gsWriteParaview(mpL,"mpL",1000,true);
     }
     else
     {
