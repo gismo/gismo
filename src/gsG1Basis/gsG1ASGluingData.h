@@ -105,8 +105,8 @@ protected:
 
         if(temp_basis_first.knots().size() != (2 * (degree + 1)))  // If we have inner knots
         {
-        for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i = i+(degree-m_r))
-            bsp_gD.insertKnot(temp_basis_first.knot(i),2); // Increase the multiplicity of the inner knots by two
+            for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i = i+(degree-m_r))
+                bsp_gD.insertKnot(temp_basis_first.knot(i),2); // Increase the multiplicity of the inner knots by two
         }
 
         gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD,m_uv,m_mp,m_gamma,m_isBoundary);
