@@ -120,8 +120,8 @@ void gsG1System<T>::initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb)
         if (mp.vertices()[i].size() == 1)
         {
             kindOfVertex[i] = -1; // Boundary vertex
-            numVertexFunctions[i+1] = numVertexFunctions[i] + 1;
-            numBoundaryVertexFunctions[i+1] = numBoundaryVertexFunctions[i] + 6;
+            numVertexFunctions[i+1] = numVertexFunctions[i] + 1; // TODO
+            numBoundaryVertexFunctions[i+1] = numBoundaryVertexFunctions[i] + 6; // TODO
         }
         else
         {
@@ -140,8 +140,8 @@ void gsG1System<T>::initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb)
             else
             {
                 kindOfVertex[i] = 1; // Interface-Boundary vertex
-                numVertexFunctions[i+1] = numVertexFunctions[i] + 3;
-                numBoundaryVertexFunctions[i+1] = numBoundaryVertexFunctions[i] + 6;
+                numVertexFunctions[i+1] = numVertexFunctions[i] + 3; // TODO
+                numBoundaryVertexFunctions[i+1] = numBoundaryVertexFunctions[i] + 6; // TODO
             }
         }
     }
@@ -150,7 +150,7 @@ void gsG1System<T>::initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb)
     numBoundaryEdgeFunctions = numBoundaryEdgeFunctions.array() + numVertexFunctions.last();
     numBoundaryVertexFunctions = numBoundaryVertexFunctions.array() + numBoundaryEdgeFunctions.last();
 
-
+    /*
     gsInfo << "Num Basis Functions " << numBasisFunctions << "\n";
     gsInfo << "Num Interface Functions " << numInterfaceFunctions << "\n";
     gsInfo << "Num Edges Functions " << numEdgeFunctions << "\n";
@@ -160,6 +160,7 @@ void gsG1System<T>::initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb)
     gsInfo << "Kind of Vertex Functions " << kindOfVertex << "\n";
     gsInfo << "Size of plus space Bdy  " << sizePlusBdy << "\n";
     gsInfo << "Size of plus space Int  " << sizePlusInt << "\n";
+    */
 
     // Setting the final matrix
     dim_K = numBasisFunctions.last(); // interior basis dimension
@@ -289,13 +290,10 @@ void gsG1System<T>::insertBoundaryEdge(gsMultiPatch<> & mp, patchSide item, inde
         {
             index_t jj, ii;
             if (bfID < sizePlusBdy[bID] - 6)
-            {
                 ii = numBoundaryEdgeFunctions[bID] + bfID;
-            }
+
             else
-            {
                 ii = numEdgeFunctions[bID] + bfID - sizePlusBdy[bID] + 6;
-            }
 
             jj = numBasisFunctions[item.patch] + j;
             D_sparse.insert(ii,jj) = mp.patch(0).coefs().at(j);
@@ -389,28 +387,13 @@ void gsG1System<T>::finalize(gsMultiPatch<> & mp, gsMultiBasis<> & mb, gsMatrix<
 template<class T>
 gsMatrix<> gsG1System<T>::solve(gsSparseMatrix<real_t> K, gsMatrix<> f)
 {
-    gsInfo << "Solving system... \n";
     gsSparseMatrix<real_t> A = D_0_sparse * K * D_0_sparse.transpose();
     gsVector<real_t> F = D_0_sparse * f - D_0_sparse * K * D_boundary_sparse.transpose() * m_g1;
 
-    //gsInfo << "System finished with " << A.dim() << " non-zeros!\n";
-
-    //Eigen::JacobiSVD<Eigen::MatrixXd> svd(A);
-    //real_t cond = svd.singularValues()(0)
-    //    / svd.singularValues()(svd.singularValues().size()-1);
-
-    //gsInfo << "Conditionnumber : " << svd.singularValues()(svd.singularValues().size()-1) << "\n";
-
     gsSparseSolver<real_t>::CGDiagonal solver;
-    //gsSparseSolver<real_t>::LU solver;
-    //solver.analyzePattern(BiharmonicAssembler.matrix() );
-    //solver.factorize(BiharmonicAssembler.matrix());
-    //gsInfo << "matrix: " << K_sparse.dim() << "\n";
-    //gsInfo << "rhs: " << F << "\n";
     solver.compute(A);
     gsMatrix<> solVector = solver.solve(F);
-    //gsInfo << "rhs: " << F << "\n";
-    gsInfo << "Solving finished! \n";
+
     return solVector;
 }
 

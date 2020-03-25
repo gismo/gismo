@@ -1,4 +1,4 @@
-/** @file biharmonic_multiPatch.cpp
+/** @file g1biharmonic_example.cpp
 
     @brief A Biharmonic example only for AS geometries
 
@@ -29,17 +29,17 @@ int main(int argc, char *argv[])
     // Geometry data
     index_t geometry = 0; // Which geometry
 
-    index_t numRefine = 4;
-    index_t numDegree = 0;
-    index_t regularity = 1;
+    index_t numRefine = 4; // Initial refinement
+    index_t numDegree = 0; // Degree
+    index_t regularity = 1; // Regularity
 
     // For the spline space of the gluing data
     index_t p_tilde = 1;
     index_t r_tilde = 0;
 
-    index_t threads = 1;
+    index_t threads = 1; // For parallel computing
 
-    index_t loop = 1;
+    index_t loop = 1; // Number of refinement steps
 
     bool plot = false;
     bool direct = false;
@@ -51,12 +51,12 @@ int main(int argc, char *argv[])
     cmd.addInt("k", "refine", "Number of refinement steps", numRefine);
     cmd.addInt("p", "p_tilde", "Polynomial degree for tilde{p}", p_tilde);
     cmd.addInt("r", "r_tilde", "Regularity for tilde{r}", r_tilde);
-    cmd.addSwitch( "plot", "Plot result in ParaView format", plot );
-    cmd.addSwitch( "direct", "Construction of the G1 basis functions", direct );
-    cmd.addInt( "l", "loop", "The number of refinement steps", loop);
-    cmd.addSwitch( "local_g1", "If you want to solve several levels", local_g1 );
     cmd.addInt("g", "geometry", "Geometry", geometry);
     cmd.addInt("t", "threads", "Threads", threads);
+    cmd.addInt( "l", "loop", "The number of refinement steps", loop);
+    cmd.addSwitch( "plot", "Plot result in ParaView format", plot );
+    cmd.addSwitch( "direct", "Construction of the G1 basis functions", direct );
+    cmd.addSwitch( "local_g1", "If you want to solve several levels", local_g1 );
     cmd.addSwitch("latex","Print the rate and error latex-ready",latex);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -81,12 +81,12 @@ int main(int argc, char *argv[])
 /*
     gsFunctionExpr<> source  ("0",2);
     gsFunctionExpr<> laplace ("0",2);
-    gsFunctionExpr<> solVal("x",2);
-    gsFunctionExpr<>sol1der ("1",
-                             "0",2);
-    gsFunctionExpr<>sol2der ("0",
-                             "0",
-                             " 0", 2);
+    gsFunctionExpr<> solVal("-4*cos(x/2)*sin(y/2)",2);
+    gsFunctionExpr<>sol1der ("2*sin(x/2)*sin(y/2)",
+                             "-2*cos(x/2)*cos(y/2)",2);
+    gsFunctionExpr<>sol2der ("cos(x/2)*sin(y/2)",
+                             "cos(x/2)*sin(y/2)",
+                             "cos(x/2)*sin(y/2)", 2);
 */
 
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
@@ -286,18 +286,22 @@ int main(int argc, char *argv[])
         g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System); // Compute boundary values (Type 1)
 
         g1System.finalize(multiPatch,mb,g1BiharmonicAssembler.get_bValue());
+
+        gsInfo << "Solving system... \n";
         gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
+        gsInfo << "Solving finished! \n";
 
         // construct solution: INTERIOR
         gsMultiPatch<> mpsol;
         g1BiharmonicAssembler.constructSolution(solVector.bottomRows(g1BiharmonicAssembler.matrix().dim().first),mpsol);
         gsField<> solField(multiPatch, mpsol);
 
+        // construct solution: G1 Basis
         std::vector<gsMultiPatch<>> g1Basis;
         g1System.constructG1Solution(solVector,g1Basis, multiPatch);
         g1BiharmonicAssembler.constructG1Solution(solField, g1Basis);
 
-        omp_set_num_threads(1);
+        omp_set_num_threads(1); // Set to 1 because of memmory problems :/
         omp_set_nested(1);
 #pragma omp parallel for
         for (index_t e = 0; e < 4; ++e)
@@ -328,29 +332,35 @@ int main(int argc, char *argv[])
     {
         gsMatrix<> rate(loop + 1,3);
         rate.setZero();
-        printf("|%-5s|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s\n", "k","L2-error", "Rate", "Semi-H1-error", "Rate", "Semi-H2-error", "Rate");
-        printf("|%-5s|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s\n", "-----", "--------------", "-----", "--------------", "-----", "--------------", "-----");
-        printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[0], l2Error_vec[0], rate(0,0),h1SemiError_vec[0], rate(0,1),h2SemiError_vec[0], rate(0,2));
+        printf("|%-5s|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s\n", "k","L2-error", "Rate", "Semi-H1-error",
+            "Rate", "Semi-H2-error", "Rate");
+        printf("|%-5s|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s\n", "-----", "--------------", "-----", "--------------",
+            "-----", "--------------", "-----");
+        printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[0], l2Error_vec[0],
+            rate(0,0),h1SemiError_vec[0], rate(0,1),h2SemiError_vec[0], rate(0,2));
         for (index_t i = 1; i < loop; i++)
         {
             rate(i,0) = log2(l2Error_vec[i-1] / l2Error_vec[i]);
             rate(i,1) = log2(h1SemiError_vec[i-1] / h1SemiError_vec[i]);
             rate(i,2) = log2(h2SemiError_vec[i-1] / h2SemiError_vec[i]);
-            printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[i], l2Error_vec[i], rate(i,0),h1SemiError_vec[i], rate(i,1),h2SemiError_vec[i], rate(i,2));
+            printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[i], l2Error_vec[i],
+                rate(i,0),h1SemiError_vec[i], rate(i,1),h2SemiError_vec[i], rate(i,2));
         }
         if (latex)
         {
-            printf("%-5d & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\ \n", num_knots[0], l2Error_vec[0], rate(0,0),h1SemiError_vec[0], rate(0,1),h2SemiError_vec[0], rate(0,2));
+            printf("%-5d & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\ \n", num_knots[0],
+                l2Error_vec[0], rate(0,0),h1SemiError_vec[0], rate(0,1), h2SemiError_vec[0], rate(0,2));
             for (index_t i = 1; i < loop; i++)
             {
                 rate(i,0) = log2(l2Error_vec[i-1] / l2Error_vec[i]);
                 rate(i,1) = log2(h1SemiError_vec[i-1] / h1SemiError_vec[i]);
                 rate(i,2) = log2(h2SemiError_vec[i-1] / h2SemiError_vec[i]);
-                printf("%-5d & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\ \n", num_knots[i], l2Error_vec[i], rate(i,0),h1SemiError_vec[i], rate(i,1),h2SemiError_vec[i], rate(i,2));
+                printf("%-5d & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\ \n", num_knots[i],
+                    l2Error_vec[i], rate(i,0),h1SemiError_vec[i], rate(i,1),h2SemiError_vec[i], rate(i,2));
             }
         }
 
-   }
+    }
     else
     {
         gsInfo << "L2 Error: " << l2Error_vec[0] << "\n";
