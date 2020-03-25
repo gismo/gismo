@@ -297,17 +297,28 @@ int main(int argc, char *argv[])
         g1System.constructG1Solution(solVector,g1Basis, multiPatch);
         g1BiharmonicAssembler.constructG1Solution(solField, g1Basis);
 
-        gsNormL2<real_t> errorL2(solField, solVal, g1Basis);
-        errorL2.compute();
-        l2Error_vec[refinement_level] = errorL2.value();
-
-        gsSeminormH1<real_t> errorSemiH1(solField, solVal, g1Basis);
-        errorSemiH1.compute();
-        h1SemiError_vec[refinement_level] = errorSemiH1.value();
-
-        gsSeminormH2<real_t> errorSemiH2(solField, solVal, g1Basis);
-        errorSemiH2.compute();
-        h2SemiError_vec[refinement_level] = errorSemiH2.value();
+#pragma omp parallel for
+        for (index_t e = 0; e < 4; ++e)
+        {
+            if (e == 0)
+            {
+                gsNormL2<real_t> errorL2(solField, solVal, g1Basis);
+                errorL2.compute();
+                l2Error_vec[refinement_level] = errorL2.value();
+            }
+            else if (e == 1)
+            {
+                gsSeminormH1<real_t> errorSemiH1(solField, solVal, g1Basis);
+                errorSemiH1.compute();
+                h1SemiError_vec[refinement_level] = errorSemiH1.value();
+            }
+            else if (e == 2)
+            {
+                gsSeminormH2<real_t> errorSemiH2(solField, solVal, g1Basis);
+                errorSemiH2.compute();
+                h2SemiError_vec[refinement_level] = errorSemiH2.value();
+            }
+        }
     }
 
     gsInfo << "===============================================================\n";
