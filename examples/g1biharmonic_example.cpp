@@ -297,6 +297,8 @@ int main(int argc, char *argv[])
         g1System.constructG1Solution(solVector,g1Basis, multiPatch);
         g1BiharmonicAssembler.constructG1Solution(solField, g1Basis);
 
+        omp_set_num_threads(1);
+        omp_set_nested(1);
 #pragma omp parallel for
         for (index_t e = 0; e < 4; ++e)
         {

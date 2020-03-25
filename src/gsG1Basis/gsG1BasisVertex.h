@@ -81,90 +81,8 @@ public:
 
     void constructSolution(gsMultiPatch<T> & result);
 
-    gsBSpline<> get_alpha(size_t i) { return m_gD.at(i).get_alpha_tilde(); }
-    gsBSpline<> get_beta(size_t i) { return m_gD.at(i).get_beta_tilde(); }
-
-    void plotG1Basis(gsMultiPatch<T> & basisG1_L, gsMultiPatch<T> & basisG1_R, gsMultiPatch<T> & mp, std::string baseName)
-    {
-
-        const std::string baseName1(baseName + "_0");
-        gsParaviewCollection collection1(baseName1);
-
-        const std::string baseName2(baseName + "_1");
-        gsParaviewCollection collection2(baseName2);
-
-        std::string fileName, fileName2;
-        for (unsigned i = 0; i < basisG1_L.nPatches(); i++)
-        {
-
-            fileName = baseName1 + "_" + util::to_string(i);
-            gsField<> temp_field_L(mp.patch(0),basisG1_L.patch(i));
-            gsWriteParaview(temp_field_L,fileName,5000);
-            collection1.addTimestep(fileName,i,"0.vts");
-
-        }
-        for (unsigned i = 0; i < basisG1_R.nPatches(); i++)
-        {
-
-            fileName2 = baseName2 + "_" + util::to_string(i);
-            gsField<> temp_field_R(mp.patch(1),basisG1_R.patch(i));
-            gsWriteParaview(temp_field_R,fileName2,5000);
-            collection2.addTimestep(fileName2,i,"0.vts");
-
-        }
-        collection1.save();
-        collection2.save();
-    }
-
-    void plotG1BasisBoundary(gsMultiPatch<T> & basisG1_boundary, gsMultiPatch<T> mp, std::string baseName)
-    {
-        gsParaviewCollection collection1(baseName);
-        std::string fileName;
-        for (unsigned i = 0; i < basisG1_boundary.nPatches(); i++)
-        {
-
-            fileName = baseName + "_" + util::to_string(i);
-            gsField<> temp_field_L(mp.patch(0),basisG1_boundary.patch(i));
-            gsWriteParaview(temp_field_L,fileName,5000);
-            collection1.addTimestep(fileName,i,"0.vts");
-
-        }
-        collection1.save();
-    }
-
-    void g1Condition()
-    {
-        gsMatrix<> points(1,1000);
-        points.setRandom();
-        points = points.array().abs();
-
-        gsMatrix<> points2d_L(2, 1000);
-        gsMatrix<> points2d_R(2, 1000);
-
-        points2d_L.setZero();
-        points2d_R.setZero();
-        points2d_L.row(1) = points; // v
-        points2d_R.row(0) = points; // u
-
-        real_t g1Error = 0;
-        /*
-        for (size_t i = 0; i < g1Basis.nPatches(); i++)
-        {
-            gsMatrix<> temp;
-            temp = m_gD.get_alpha_tilde_1().eval(points).cwiseProduct(g1Basis_L.patch(i).deriv(points2d_L).topRows(1))
-                + m_gD.get_alpha_tilde_0().eval(points).cwiseProduct(g1Basis_R.patch(i).deriv(points2d_R).bottomRows(1))
-                + m_gD.get_beta_bar().eval(points).cwiseProduct(g1Basis_L.patch(i).deriv(points2d_L).bottomRows(1));
-
-            if (temp.array().abs().maxCoeff() > g1Error)
-                g1Error = temp.array().abs().maxCoeff();
-        }
-        */
-        gsInfo << "Conditiontest G1 continuity: \n" << g1Error << "\n\n";
-
-
-        //gsInfo << "\nConditiontest G1 continuity: \n" << g1Basis_L.patch(0).coefs() << "\n\n";
-
-    }
+    gsBSpline<> get_alpha_tilde(size_t i) { return m_gD.at(i).get_alpha_tilde(); }
+    gsBSpline<> get_beta_tilde(size_t i) { return m_gD.at(i).get_beta_tilde(); }
 
 
 protected:
@@ -193,7 +111,6 @@ protected:
     using Base::m_ddof;
 
     std::vector<gsMatrix<>> solVec;
-    gsMultiPatch<T> g1Basis;
 
 }; // class gsG1BasisEdge
 
@@ -232,10 +149,6 @@ void gsG1BasisVertex<T,bhVisitor>::constructSolution(gsMultiPatch<T> & result)
         }
         result.addPatch(m_basis_g1.basis(0).makeGeometry(give(coeffs)));
     }
-
-    g1Basis = result;
-
-    //g1Condition();
 }
 
 template <class T, class bhVisitor>

@@ -512,26 +512,26 @@ public:
             g1BasisVector.push_back(g1Basis);
             auxGeom[i].setG1Basis(g1Basis);
             if (isBdy[i][0])
-                alpha.push_back(g1BasisVertex_0.get_alpha(1));
+                alpha.push_back(g1BasisVertex_0.get_alpha_tilde(1));
             else if (isBdy[i][1])
-                alpha.push_back(g1BasisVertex_0.get_alpha(0));
+                alpha.push_back(g1BasisVertex_0.get_alpha_tilde(0));
             if (isBdy[i][0])
-                beta_S.push_back(g1BasisVertex_0.get_beta(1));
+                beta_S.push_back(g1BasisVertex_0.get_beta_tilde(1));
             else if (isBdy[i][1])
-                beta_S.push_back(g1BasisVertex_0.get_beta(0));
+                beta_S.push_back(g1BasisVertex_0.get_beta_tilde(0));
         }
 
 
         if (auxGeom.size() == 2)
         {
             if (auxGeom[0].getGlobalPatchIndex() == 0 && isBdy[0][1])
-                g1ConditionInit(alpha[1], alpha[0], beta_S[1], beta_S[0], auxGeom[1].getG1Basis(),  auxGeom[0].getG1Basis());
+                g1ConditionRep(alpha[1], alpha[0], beta_S[1], beta_S[0], auxGeom[1].getG1Basis(),  auxGeom[0].getG1Basis());
             else if (auxGeom[0].getGlobalPatchIndex() == 0 && isBdy[0][0])
-                g1ConditionInit(alpha[0], alpha[1], beta_S[0], beta_S[1], auxGeom[0].getG1Basis(),  auxGeom[1].getG1Basis());
+                g1ConditionRep(alpha[0], alpha[1], beta_S[0], beta_S[1], auxGeom[0].getG1Basis(),  auxGeom[1].getG1Basis());
             else if (auxGeom[0].getGlobalPatchIndex() == 1 && isBdy[0][1])
-                g1ConditionInit(alpha[1], alpha[0], beta_S[1], beta_S[0], auxGeom[1].getG1Basis(),  auxGeom[0].getG1Basis());
+                g1ConditionRep(alpha[1], alpha[0], beta_S[1], beta_S[0], auxGeom[1].getG1Basis(),  auxGeom[0].getG1Basis());
             else if (auxGeom[0].getGlobalPatchIndex() == 1 && isBdy[0][0])
-                g1ConditionInit(alpha[0], alpha[1], beta_S[0], beta_S[1],  auxGeom[0].getG1Basis(),  auxGeom[1].getG1Basis());
+                g1ConditionRep(alpha[0], alpha[1], beta_S[0], beta_S[1],  auxGeom[0].getG1Basis(),  auxGeom[1].getG1Basis());
 
         }
 
@@ -603,106 +603,7 @@ public:
 
     size_t get_internalDofs() { return dim_kernel; }
 
-    void g1Condition(gsBSpline<> alpha_0, gsBSpline<> alpha_1, gsMultiPatch<> g1Basis_0,  gsMultiPatch<> g1Basis_1)
-    {
-        // BETA
-        // first,last,interior,mult_ends,mult_interior,degree
-        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(auxGeom[0].getPatch().basis().component(1)); // 0 -> v, 1 -> u
-        index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
-
-        gsKnotVector<> kv(0, 1, basis_edge.numElements()-1, 2 * m_p  + 1, 2 * m_p - 1 );
-        gsBSplineBasis<> bsp(kv);
-
-        gsMatrix<> greville = bsp.anchors();
-        gsMatrix<> uv1, uv0, ev1, ev0;
-
-        const index_t d = 2;
-        gsMatrix<> D0(d,d);
-
-        gsGeometry<>::Ptr beta_temp;
-
-        uv0.setZero(2,greville.cols());
-        uv0.bottomRows(1) = greville;
-
-        uv1.setZero(2,greville.cols());
-        uv1.topRows(1) = greville;
-
-        const gsGeometry<> & P0 = auxGeom[0].getPatch(); // iFace.first().patch = 1
-        const gsGeometry<> & P1 = auxGeom[1].getPatch(); // iFace.second().patch = 0
-        // ======================================
-
-        // ======== Determine bar{beta} ========
-        for(index_t i = 0; i < uv1.cols(); i++)
-        {
-            P0.jacobian_into(uv0.col(i),ev0);
-            P1.jacobian_into(uv1.col(i),ev1);
-
-            D0.col(1) = ev0.col(0); // (DuFL, *)
-            D0.col(0) = ev1.col(1); // (*,DuFR)
-
-            uv0(0,i) = D0.determinant();
-        }
-
-        beta_temp = bsp.interpolateData(uv0.topRows(1), uv0.bottomRows(1));
-        gsBSpline<> beta = dynamic_cast<gsBSpline<> &> (*beta_temp);
-
-
-        index_t p_size = 1000;
-        gsMatrix<> points(1, p_size);
-        points.setRandom();
-        points = points.array().abs();
-
-        gsVector<> vec;
-        vec.setLinSpaced(p_size,0,1);
-        points = vec.transpose();
-
-        gsMatrix<> points2d_0(2, p_size);
-        gsMatrix<> points2d_1(2, p_size);
-
-        points2d_0.setOnes();
-        points2d_1.setZero();
-
-        points2d_0.row(1) = points; // v
-        points2d_1.row(1) = points; // v
-
-        points = points2d_0.row(0) - points;
-
-        gsVector<> g1Error(6);
-        g1Error.setZero();
-/*
-        gsInfo << "POINTS : " << points << "\n";
-        gsInfo << "ALPHA 0 : " << alpha_0.eval(points) << "\n";
-        gsInfo << "ALPHA 1 : " << alpha_1.eval(points) << "\n";
-        gsInfo << "BETA : " << beta.eval(points) << "\n";
-*/
-        for (size_t i = 0; i < g1Basis_0.nPatches(); i++)
-        {
-            /*
-            gsInfo << " ======================== " << i << " ========================= \n";
-            gsInfo << "DERIV : " << g1Basis_0.patch(i).eval(points2d_0) << "\n";
-            gsInfo << "DERIV : " << g1Basis_1.patch(i).eval(points2d_1) << "\n";
-
-            gsInfo << " ======================== " << i << " ========================= \n";
-            gsInfo << "DERIV : " << g1Basis_0.patch(i).deriv(points2d_0) << "\n";
-            gsInfo << "DERIV : " << g1Basis_1.patch(i).deriv(points2d_1) << "\n";
-
-            gsInfo << "DERIV : " << alpha_1.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).topRows(1)) << "\n";
-            gsInfo << "DERIV : " << alpha_0.eval(points).cwiseProduct(g1Basis_1.patch(i).deriv(points2d_1).topRows(1)) << "\n";
-            gsInfo << "BETA : " << beta.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).bottomRows(1)) << "\n";
-*/
-            gsMatrix<> temp;
-            temp = alpha_1.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).topRows(1))
-                - alpha_0.eval(points).cwiseProduct(g1Basis_1.patch(i).deriv(points2d_1).topRows(1))
-                + beta.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).bottomRows(1));
-
-            if (temp.array().abs().maxCoeff() > g1Error[i])
-                g1Error[i] = temp.array().abs().maxCoeff();
-        }
-
-        gsInfo << "Conditiontest G1 continuity VERTEX: \n" << g1Error << "\n\n";
-    }
-
-    void g1ConditionInit(gsBSpline<> alpha_0, gsBSpline<> alpha_1, gsBSpline<> beta_0, gsBSpline<> beta_1, gsMultiPatch<> g1Basis_0,  gsMultiPatch<> g1Basis_1)
+    void g1ConditionRep(gsBSpline<> alpha_0, gsBSpline<> alpha_1, gsBSpline<> beta_0, gsBSpline<> beta_1, gsMultiPatch<> g1Basis_0,  gsMultiPatch<> g1Basis_1)
     {
         // BETA
         // first,last,interior,mult_ends,mult_interior,degree
