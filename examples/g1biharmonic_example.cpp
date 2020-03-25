@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
     h1SemiError_vec.setZero();
     h2SemiError_vec.setZero();
 
-    gsVector<> num_knots(loop);
+    gsVector<index_t> num_knots(loop);
     num_knots[0] = optionList.getInt("refine");
     for (index_t i = 1; i < loop; i++)
         num_knots[i] = num_knots[i-1]*2 + 1;
@@ -321,30 +321,30 @@ int main(int argc, char *argv[])
         }
     }
 
-    gsInfo << "===============================================================\n";
+    gsInfo << "=====================================================================\n";
     if (loop > 1)
     {
         gsMatrix<> rate(loop + 1,3);
         rate.setZero();
-        printf("|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s\n", "L2-error", "Rate", "Semi-H1-error", "Rate", "Semi-H2-error", "Rate");
-        printf("|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s\n", "--------------", "-----", "--------------", "-----", "--------------", "-----");
-        printf("|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", l2Error_vec[0], rate(0,0),h1SemiError_vec[0], rate(0,1),h2SemiError_vec[0], rate(0,2));
+        printf("|%-5s|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s\n", "k","L2-error", "Rate", "Semi-H1-error", "Rate", "Semi-H2-error", "Rate");
+        printf("|%-5s|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s\n", "-----", "--------------", "-----", "--------------", "-----", "--------------", "-----");
+        printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[0], l2Error_vec[0], rate(0,0),h1SemiError_vec[0], rate(0,1),h2SemiError_vec[0], rate(0,2));
         for (index_t i = 1; i < loop; i++)
         {
             rate(i,0) = log2(l2Error_vec[i-1] / l2Error_vec[i]);
             rate(i,1) = log2(h1SemiError_vec[i-1] / h1SemiError_vec[i]);
             rate(i,2) = log2(h2SemiError_vec[i-1] / h2SemiError_vec[i]);
-            printf("|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", l2Error_vec[i], rate(i,0),h1SemiError_vec[i], rate(i,1),h2SemiError_vec[i], rate(i,2));
+            printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[i], l2Error_vec[i], rate(i,0),h1SemiError_vec[i], rate(i,1),h2SemiError_vec[i], rate(i,2));
         }
         if (latex)
         {
-            printf("%-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\ \n", l2Error_vec[0], rate(0,0),h1SemiError_vec[0], rate(0,1),h2SemiError_vec[0], rate(0,2));
+            printf("%-5d & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\ \n", num_knots[0], l2Error_vec[0], rate(0,0),h1SemiError_vec[0], rate(0,1),h2SemiError_vec[0], rate(0,2));
             for (index_t i = 1; i < loop; i++)
             {
                 rate(i,0) = log2(l2Error_vec[i-1] / l2Error_vec[i]);
                 rate(i,1) = log2(h1SemiError_vec[i-1] / h1SemiError_vec[i]);
                 rate(i,2) = log2(h2SemiError_vec[i-1] / h2SemiError_vec[i]);
-                printf("%-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\ \n", l2Error_vec[i], rate(i,0),h1SemiError_vec[i], rate(i,1),h2SemiError_vec[i], rate(i,2));
+                printf("%-5d & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\ \n", num_knots[i], l2Error_vec[i], rate(i,0),h1SemiError_vec[i], rate(i,1),h2SemiError_vec[i], rate(i,2));
             }
         }
 
@@ -355,7 +355,7 @@ int main(int argc, char *argv[])
         gsInfo << "H1 Semi-error: " << h1SemiError_vec[0] << "\n";
         gsInfo << "H2 Semi-error: " << h2SemiError_vec[0] << "\n";
     }
-    gsInfo << "===============================================================\n";
+    gsInfo << "=====================================================================\n";
 
 
 } // main
