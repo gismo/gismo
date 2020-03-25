@@ -169,6 +169,8 @@ public:
 
                 }
 
+                beta = isBoundary ? beta.setZero() : beta; // For the boundary, only on Patch 0
+
                 gsMatrix<> temp = beta.cwiseProduct(N_1);
                 rhsVals_tilde.at(i) = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
 
@@ -190,6 +192,8 @@ public:
                 {
 
                 }
+
+                alpha = isBoundary ? alpha.setOnes() : alpha; // For the boundary, only on Patch 0
 
                 rhsVals_bar.at(i) = - alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1));
 

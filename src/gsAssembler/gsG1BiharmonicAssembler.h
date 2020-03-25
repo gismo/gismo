@@ -77,7 +77,7 @@ public:
 
     void computeDirichletDofsL2Proj(gsG1System<real_t> &  g1System);
 
-    void constructG1Solution(const gsMatrix<T> &solVector, gsField<> &solField_interior, std::vector<gsMultiPatch<T>> &result, gsG1System<real_t> & g1System);
+    void constructG1Solution(gsField<> &solField_interior, std::vector<gsMultiPatch<T>> &result);
 
 
 
@@ -124,68 +124,11 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructSolution(const gsMatrix<T> &
 }
 
 template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::constructG1Solution(const gsMatrix<T> &solVector, gsField<> &solField_interior, std::vector<gsMultiPatch<T>> &result, gsG1System<real_t> & g1System)
+void gsG1BiharmonicAssembler<T,bhVisitor>::constructG1Solution(gsField<> &solField_interior, std::vector<gsMultiPatch<T>> &g1Basis)
 {
 
-    gsMultiPatch<T> init_edge;
-    std::vector<gsMultiPatch<T>> g1Basis(m_pde_ptr->domain().nPatches(), init_edge);
-    for ( size_t rowEdge = 0; rowEdge < m_pde_ptr->domain().boundaries().size(); rowEdge++ )
-    {
-        index_t patchIdx = m_pde_ptr->domain().boundaries()[rowEdge].patch;
-        gsTensorBSplineBasis<2,real_t> temp_basis = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(m_bases[0].basis(patchIdx));
-        for (size_t i = 0; i < g1System.numBoundaryEdgeFcts(rowEdge); i++) // each boundary edge
-            g1Basis.at(patchIdx).addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(g1System.interfaceSize() + g1System.getAllBoundaryEdgeFunctions()[rowEdge] + i, patchIdx).transpose() *
-                m_g1_ddof.at(g1System.getAllBoundaryEdgeFunctions()[rowEdge] + i)));
-        for (size_t i = 0; i < g1System.numEdgeFcts(rowEdge); i++) // each edge
-            g1Basis.at(patchIdx).addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(g1System.interfaceSize() + g1System.boundarySize_Edge() + g1System.getAllEdgeFunctions()[rowEdge] + i, patchIdx).transpose() *
-                solVector.at(g1System.interfaceSize() + g1System.boundarySize_Edge() + g1System.getAllEdgeFunctions()[rowEdge] + i)));
-    }
-
-    for ( size_t rowInt = 0; rowInt < m_pde_ptr->domain().interfaces().size(); rowInt++ ) // each interface edge
-    {
-        index_t patchIdx = m_pde_ptr->domain().interfaces()[rowInt].first().patch;
-        gsTensorBSplineBasis<2,real_t> temp_basis = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(m_bases[0].basis(patchIdx));
-        for (size_t i = 0; i < g1System.numInterfaceFcts(rowInt); i++)
-            g1Basis.at(patchIdx).addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(g1System.getAllInterfaceFunctions()[rowInt] + i, patchIdx).transpose() *
-                solVector.at(g1System.getAllInterfaceFunctions()[rowInt] + i)));
-
-        patchIdx = m_pde_ptr->domain().interfaces()[rowInt].second().patch;
-        temp_basis = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(m_bases[0].basis(patchIdx));
-        for (size_t i = 0; i < g1System.numInterfaceFcts(rowInt); i++)
-            g1Basis.at(patchIdx).addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(g1System.getAllInterfaceFunctions()[rowInt] + i, patchIdx).transpose() *
-                solVector.at(g1System.getAllInterfaceFunctions()[rowInt] + i)));
-    }
-
-
-
-    for ( size_t rowVertex = 0; rowVertex < m_pde_ptr->domain().vertices().size(); rowVertex++ )
-    {
-        std::vector<patchCorner> allcornerLists = m_pde_ptr->domain().vertices()[rowVertex];
-
-        for(size_t j = 0; j < allcornerLists.size(); j++)
-        {
-            index_t patchIdx = m_pde_ptr->domain().vertices()[rowVertex][j].patch;
-            gsTensorBSplineBasis<2, real_t>
-                temp_basis = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(m_bases[0].basis(patchIdx));
-            for (size_t i = 0; i < g1System.numBoundaryVertexFcts(rowVertex); i++) // each boundary vertex
-                g1Basis.at(patchIdx).addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(
-                    g1System.interfaceSize() + g1System.edge_size() + g1System.boundarySize_Edge() +
-                        g1System.getAllBoundaryVertexFunctions()[rowVertex] + i, patchIdx).transpose() * m_g1_ddof
-                    .at(g1System.boundarySize_Edge() + g1System.getAllBoundaryVertexFunctions()[rowVertex] + i)));
-            for (size_t i = 0; i < g1System.numVertexFcts(rowVertex); i++) // each dofs vertex
-                g1Basis.at(patchIdx).addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(
-                    g1System.interfaceSize() + g1System.edge_size() + g1System.boundarySize_Edge() +
-                        g1System.boundarySize_Vertex() + g1System.getAllVertexFunctions()[rowVertex] + i, patchIdx).transpose() * solVector
-                    .at(g1System.interfaceSize() + g1System.edge_size() + g1System.boundarySize_Edge() + g1System.boundarySize_Vertex() + g1System.getAllVertexFunctions()[rowVertex] + i)));
-        }
-    }
-
-
-    result = g1Basis;
-
-
     std::string fn = "G1Biharmonic";
-    index_t npts = 5000;
+    index_t npts = 2000;
     gsParaviewCollection collection2(fn);
     std::string fileName2;
 
@@ -310,15 +253,19 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
 template <class T, class bhVisitor>
 void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System<real_t> &  g1System)
 {
+    gsVector<> numBoundaryVertexFunctions = g1System.get_numBoundaryVertexFunctions();
+    gsVector<> numBoundaryEdgeFunctions = g1System.get_numBoundaryEdgeFunctions();
+
     size_t unk_ = 0;
 
-    m_g1_ddof.resize( g1System.boundarySize_Edge() + g1System.boundarySize_Vertex(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
+    m_g1_ddof.resize( g1System.boundary_size(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
+    m_g1_ddof.setZero();
 
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
     gsSparseEntries<T> projMatEntries;
     gsMatrix<T>        globProjRhs;
-    globProjRhs.setZero( g1System.boundarySize_Edge() + g1System.boundarySize_Vertex() , m_system.unkSize(unk_)*m_system.rhs().cols() );
+    globProjRhs.setZero( g1System.boundary_size(), m_system.unkSize(unk_)*m_system.rhs().cols() );
 
     // Temporaries
     gsVector<T> quWeights;
@@ -354,20 +301,11 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
 
         gsMultiPatch<T> multiPatch_Edges;
         gsTensorBSplineBasis<2,real_t> temp_basis = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(m_bases[unk_].basis(patchIdx));
-        for (size_t i = 0; i < g1System.numBoundaryEdgeFcts(row_Edge); i++)
-            multiPatch_Edges.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(g1System.interfaceSize() +
-                       g1System.getAllBoundaryEdgeFunctions()[row_Edge] + i, patchIdx).transpose()));
-
-
-
-        if (patchIdx == 0 && sideIdx == 2)
+        for (size_t i = 0; i < numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge]; i++)
         {
-            gsField<> fiel(m_pde_ptr->domain().patch(0),multiPatch_Edges.patch(0));
-            gsWriteParaview(fiel,"test",5000);
-            gsField<> field(m_pde_ptr->domain().patch(0),multiPatch_Edges.patch(1));
-            gsWriteParaview(field,"test1",5000);
+            index_t ii = numBoundaryEdgeFunctions[row_Edge] + i;
+            multiPatch_Edges.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
         }
-
 
 
         // VERTEX
@@ -403,14 +341,18 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
 
 
         gsMultiPatch<T> multiPatch_Vertex_0, multiPatch_Vertex_1;
-        for (size_t i = 0; i < g1System.numBoundaryVertexFcts(row_Vertex_0); i++)
-            multiPatch_Vertex_0.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(g1System.interfaceSize() +
-                          g1System.boundarySize_Edge() + g1System.edge_size() + g1System.getAllBoundaryVertexFunctions()[row_Vertex_0] + i, patchIdx).transpose()));
+        for (size_t i = 0; i < numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0]; i++)
+        {
+            index_t ii =  numBoundaryVertexFunctions[row_Vertex_0] + i;
+            multiPatch_Vertex_0.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
+        }
 
-        for (size_t i = 0; i < g1System.numBoundaryVertexFcts(row_Vertex_1); i++)
-            multiPatch_Vertex_1.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(g1System.interfaceSize() +
-                g1System.boundarySize_Edge() + g1System.edge_size() + g1System.getAllBoundaryVertexFunctions()[row_Vertex_1] + i, patchIdx).transpose()));
 
+        for (size_t i = 0; i < numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1]; i++)
+        {
+            index_t ii =  numBoundaryVertexFunctions[row_Vertex_1] + i;
+            multiPatch_Vertex_1.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
+        }
 
 //        if (patchIdx == 0 && sideIdx == 3)
 //            gsWriteParaview(multiPatch_Vertex_0.patch(0),"test",5000);
@@ -441,16 +383,17 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
             // of the L2-projection, not of the PDE.
             rhsVals = iter->function()->eval( m_pde_ptr->domain()[patchIdx].eval( md.points ) );
 
-            basisVals.setZero(g1System.numBoundaryEdgeFcts(row_Edge) + g1System.numBoundaryVertexFcts(row_Vertex_0) +
-                g1System.numBoundaryVertexFcts(row_Vertex_1),md.points.dim().second);
-            for (size_t i = 0; i < g1System.numBoundaryEdgeFcts(row_Edge); i++) // Edge
+            basisVals.setZero(numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] +
+                numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0] +
+                numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1], md.points.dim().second);
+            for (size_t i = 0; i < numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge]; i++) // Edge
                 basisVals.row(i) += multiPatch_Edges.patch(i).eval(md.points);
 
-            for (size_t i = 0; i < g1System.numBoundaryVertexFcts(row_Vertex_0); i++) // Left vertex
-                basisVals.row(g1System.numBoundaryEdgeFcts(row_Edge) + i) += multiPatch_Vertex_0.patch(i).eval(md.points);
+            for (size_t i = 0; i < numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0]; i++) // Left vertex
+                basisVals.row(numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] + i) += multiPatch_Vertex_0.patch(i).eval(md.points);
 
-            for (size_t i = 0; i < g1System.numBoundaryVertexFcts(row_Vertex_1); i++) // Right vertex
-                basisVals.row(g1System.numBoundaryEdgeFcts(row_Edge) + g1System.numBoundaryVertexFcts(row_Vertex_0) + i) += multiPatch_Vertex_1.patch(i).eval(md.points);
+            for (size_t i = 0; i < numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1]; i++) // Right vertex
+                basisVals.row(numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] + numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0] + i) += multiPatch_Vertex_1.patch(i).eval(md.points);
 
             // Indices involved here:
             // --- Local index:
@@ -471,35 +414,42 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
             // active basis (first line) functions/DOFs:
             globIdxAct.setZero(multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches() + multiPatch_Vertex_1.nPatches(),1);
             gsVector<unsigned> vec;
-            if (g1System.numBoundaryEdgeFcts(row_Edge) == 2)
+            if (numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] == 2)
             {
                 vec.resize(2);
-                vec.at(0) = g1System.getAllBoundaryEdgeFunctions()[row_Edge];
-                vec.at(1) = g1System.getAllBoundaryEdgeFunctions()[row_Edge] +1;
+                vec.at(0) = numBoundaryEdgeFunctions[row_Edge] - numBoundaryEdgeFunctions[0];
+                vec.at(1) = numBoundaryEdgeFunctions[row_Edge] +1 - numBoundaryEdgeFunctions[0];
             }
             else
-                vec.setLinSpaced(g1System.numBoundaryEdgeFcts(row_Edge),g1System.getAllBoundaryEdgeFunctions()[row_Edge],g1System.getAllBoundaryEdgeFunctions()[row_Edge+1]);
+                vec.setLinSpaced(numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge], numBoundaryEdgeFunctions[row_Edge] - numBoundaryEdgeFunctions[0],
+                                 numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[0]);
 
             globIdxAct.block(0,0,multiPatch_Edges.nPatches(),1) = vec;
 
-            if (g1System.numBoundaryVertexFcts(row_Vertex_0) == 2)
+            if (numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0] == 2)
             {
                 vec.resize(2);
-                vec.at(0) = g1System.getAllBoundaryVertexFunctions()[row_Vertex_0] + g1System.boundarySize_Edge();
-                vec.at(1) = g1System.getAllBoundaryVertexFunctions()[row_Vertex_0] +1 + g1System.boundarySize_Edge();
+                vec.at(0) = numBoundaryVertexFunctions[row_Vertex_0] - numBoundaryEdgeFunctions[0];
+                vec.at(1) = numBoundaryVertexFunctions[row_Vertex_0] - numBoundaryEdgeFunctions[0] + 1;
             }
             else
-                vec.setLinSpaced(g1System.numBoundaryVertexFcts(row_Vertex_0),g1System.getAllBoundaryVertexFunctions()[row_Vertex_0] + g1System.boundarySize_Edge(),g1System.getAllBoundaryVertexFunctions()[row_Vertex_0+1] + g1System.boundarySize_Edge());
+                vec.setLinSpaced(numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0],
+                                 numBoundaryVertexFunctions[row_Vertex_0] - numBoundaryEdgeFunctions[0],
+                                 numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryEdgeFunctions[0]);
+
             globIdxAct.block(multiPatch_Edges.nPatches(),0,multiPatch_Vertex_0.nPatches(),1) = vec;
 
-            if (g1System.numBoundaryVertexFcts(row_Vertex_1) == 2)
+            if (numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1] == 2)
             {
                 vec.resize(2);
-                vec.at(0) = g1System.getAllBoundaryVertexFunctions()[row_Vertex_1] + g1System.boundarySize_Edge();
-                vec.at(1) = g1System.getAllBoundaryVertexFunctions()[row_Vertex_1] +1 + g1System.boundarySize_Edge();
+                vec.at(0) = numBoundaryVertexFunctions[row_Vertex_1] - numBoundaryEdgeFunctions[0];
+                vec.at(1) = numBoundaryVertexFunctions[row_Vertex_1] - numBoundaryEdgeFunctions[0] + 1;
             }
             else
-                vec.setLinSpaced(g1System.numBoundaryVertexFcts(row_Vertex_1),g1System.getAllBoundaryVertexFunctions()[row_Vertex_1] + g1System.boundarySize_Edge(),g1System.getAllBoundaryVertexFunctions()[row_Vertex_1+1] + g1System.boundarySize_Edge());
+                vec.setLinSpaced(numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1],
+                                 numBoundaryVertexFunctions[row_Vertex_1] - numBoundaryEdgeFunctions[0],
+                                 numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryEdgeFunctions[0]);
+
             globIdxAct.block(multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches(),0,multiPatch_Vertex_1.nPatches(),1) = vec;
 
             // Out of the active functions/DOFs on this element, collect all those
@@ -509,7 +459,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
             // eltBdryFcts stores the row in basisVals/globIdxAct, i.e.,
             // something like a "element-wise index"
             std::vector<index_t> eltBdryFcts;
-            eltBdryFcts.reserve(g1System.boundarySize_Edge() + g1System.boundarySize_Vertex());
+            eltBdryFcts.reserve(g1System.boundary_size());
             for( size_t i=0; i < multiPatch_Edges.nPatches(); i++)
                 eltBdryFcts.push_back( i );
             for( size_t i=0; i < multiPatch_Vertex_0.nPatches(); i++)
@@ -550,8 +500,8 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
         } // bdryIter
 
     } // boundaryConditions-Iterator
-    gsSparseMatrix<T> globProjMat( g1System.boundarySize_Edge() + g1System.boundarySize_Vertex() ,
-                                   g1System.boundarySize_Edge() + g1System.boundarySize_Vertex());
+    gsSparseMatrix<T> globProjMat( g1System.boundary_size(),
+                                   g1System.boundary_size());
     globProjMat.setFrom( projMatEntries );
     globProjMat.makeCompressed();
 

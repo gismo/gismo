@@ -117,13 +117,15 @@ public:
             c_0_minus.push_back(b_0_minus + b_1_minus);
             c_1_minus.push_back(h_geo/ (p-1) * b_1_minus);
 
+            // TODO IF CASE
+            // WORKS ONLY FOR p=3 AND r=1
             c_0_plus.push_back(b_0_plus + b_1_plus + b_2_plus);
-            c_1_plus.push_back((h_geo / p) * (b_1_plus + 2*b_2_plus));
-            c_2_plus.push_back((h_geo * h_geo / (p * (p-1))) * b_2_plus);
+            c_1_plus.push_back((h_geo / p) * (b_1_plus + 3 * b_2_plus));
+            c_2_plus.push_back((h_geo * h_geo / (p * (p-1))) * 2 * b_2_plus);
 
             c_0_plus_deriv.push_back(b_0_plus_deriv + b_1_plus_deriv + b_2_plus_deriv);
-            c_1_plus_deriv.push_back((h_geo / p) * (b_1_plus_deriv + 2*b_2_plus_deriv));
-            c_2_plus_deriv.push_back((h_geo * h_geo / (p * (p-1))) * b_2_plus_deriv);
+            c_1_plus_deriv.push_back((h_geo / p) * (b_1_plus_deriv + 3 * b_2_plus_deriv));
+            c_2_plus_deriv.push_back((h_geo * h_geo / (p * (p-1))) * 2 * b_2_plus_deriv);
         }
 
         // Compute dd^^(i_k) and dd^^(i_k-1)

@@ -39,8 +39,8 @@ public:
         m_minus = minus;
     }
 
-    index_t get_n_plus() { return m_plus; }
-    index_t get_n_minus() { return m_minus; }
+    size_t get_n_plus() { return m_plus; }
+    size_t get_n_minus() { return m_minus; }
 
     void rotateParamAntiClock(){
         gsMultiBasis<> auxBase(auxPatch);
