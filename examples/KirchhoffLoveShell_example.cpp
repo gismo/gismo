@@ -122,6 +122,18 @@ int main(int argc, char *argv[])
             string_geo = "KirchhoffLoveGeo/geo_fivePatchDiffParam.xml";
             numDegree = 2; // 2 == degree 3
             break;
+        case 11:
+            string_geo = "KirchhoffLoveGeo/parabola_surfaceRoundedBoundary.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
+        case 12:
+            string_geo = "KirchhoffLoveGeo/parabola_surfaceSquareBoundary.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
+        case 13:
+            string_geo = "KirchhoffLoveGeo/flag_surface.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
         default:
             gsInfo << "No geometry is used! \n";
             break;

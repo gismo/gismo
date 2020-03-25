@@ -22,12 +22,8 @@ public:
 // Constructor for n patches around a common vertex
     gsG1AuxiliaryVertexMultiplePatches(const gsMultiPatch<> & mp, const std::vector<size_t> patchesAroundVertex, const std::vector<size_t> vertexIndices)
     {
-
-
         for(size_t i = 0; i < patchesAroundVertex.size(); i++)
         {
-            gsInfo << "PATCHES: " << patchesAroundVertex[i] << "\n";
-
             auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(patchesAroundVertex[i]), patchesAroundVertex[i]));
             auxVertexIndices.push_back(vertexIndices[i]);
             checkBoundary(mp, patchesAroundVertex[i], vertexIndices[i]);
@@ -37,6 +33,7 @@ public:
 
         gsInfo << "\n";
     }
+
 
     // Compute topology
     // After computeTopology() the patches will have the same patch-index as the position-index in auxGeom
@@ -51,6 +48,7 @@ public:
         auxTop.computeTopology();
         return auxTop;
     }
+
 
     void reparametrizeG1Vertex()
     {
@@ -94,7 +92,6 @@ public:
         else
             return 1; // Interface-Boundary vertex
     }
-
 
 
     void checkOrientation(size_t i)
@@ -351,6 +348,7 @@ public:
         return Matrix;
     }
 
+
     gsMatrix<> smallInternalBoundaryPatchSystem( index_t np)
     {
         gsMatrix<> Matrix;
@@ -378,6 +376,55 @@ public:
     }
 
 
+    void checkValues(gsMatrix<> & mat)
+    {
+        for(index_t bk = 0; bk < mat.cols(); bk++ )
+        {
+            for(index_t r=0; r < mat.rows(); r++)
+            {
+                if( abs( mat(r, bk) * mat(r, bk) )   < (10e-24) )
+                    mat(r, bk) = 0;
+            }
+        }
+    }
+
+
+    void addVertexBasis(gsMatrix<> & basisV)
+    {
+        gsMatrix<> vertBas;
+        vertBas.setIdentity(6, 6);
+        size_t count = 0;
+        while (basisV.cols() < 6)
+        {
+            basisV.conservativeResize(basisV.rows(), basisV.cols() + 1);
+            basisV.col(basisV.cols() - 1) = vertBas.col(count);
+
+            Eigen::FullPivLU<gsMatrix<>> ker(basisV);
+            if (ker.dimensionOfKernel() != 0)
+            {
+                basisV = basisV.block(0, 0, basisV.rows(), basisV.cols() - 1);
+            }
+            count++;
+        }
+    }
+
+
+    void addSmallKerBasis(gsMatrix<> & basisV, gsMatrix<> & smallK, index_t smallKDim)
+    {
+        for(index_t i=0; i < smallKDim; i++)
+        {
+            basisV.conservativeResize(basisV.rows(), basisV.cols() + 1);
+            basisV.col(basisV.cols()-1) = smallK.col(i);
+
+            Eigen::FullPivLU<gsMatrix<>> ker(basisV);
+            if(ker.dimensionOfKernel() != 0)
+            {
+                basisV = basisV.block(0, 0, basisV.rows(), basisV.cols()-1);
+            }
+        }
+    }
+
+
     std::pair<gsMatrix<>, std::vector<index_t>> selectVertexBoundaryBasisFunction(gsMatrix<> bigKernel, index_t bigKerDim, gsMatrix<> smallKernel, index_t smallKerDim)
     {
         gsMatrix<> basisVect;
@@ -387,91 +434,33 @@ public:
         numberPerType.push_back(smallKerDim - bigKerDim); // Number of basis which are boundary function of FIRST TYPE
         numberPerType.push_back(6 - smallKerDim); // Number of basis which are boundary function of SECOND TYPE
 
-        gsMatrix<> vertBas;
-        vertBas.setIdentity(6, 6);
-
         if(bigKerDim != 0)
         {
-            for(index_t bk = 0; bk < bigKerDim; bk++ )
-            {
-                for(index_t r=0; r < 6; r++)
-                {
-                    if( abs(bigKernel(r, bk) )  < (10e-10) )
-                        bigKernel(r, bk) = 0;
-                }
-            }
-
-            for(index_t bk = 0; bk < smallKerDim; bk++ )
-            {
-                for(index_t r=0; r < 6; r++)
-                {
-                    if( abs( smallKernel(r, bk)) < (10e-10))
-                        smallKernel(r, bk) = 0;
-                }
-            }
+            checkValues(bigKernel);
+            checkValues(smallKernel);
 
             basisVect = bigKernel;
-
-            for(index_t i=0; i < smallKerDim; i++)
-            {
-                basisVect.conservativeResize(basisVect.rows(), basisVect.cols() + 1);
-                basisVect.col(basisVect.cols()-1) = smallKernel.col(i);
-
-                Eigen::FullPivLU<gsMatrix<>> ker(basisVect);
-                if(ker.dimensionOfKernel() != 0)
-                {
-                    basisVect = basisVect.block(0, 0, basisVect.rows(), basisVect.cols()-1);
-                }
-            }
-
-            size_t count=0;
-            while (basisVect.cols() < 6)
-            {
-                basisVect.conservativeResize(basisVect.rows(), basisVect.cols() + 1);
-                basisVect.col(basisVect.cols()-1) = vertBas.col(count);
-
-                Eigen::FullPivLU<gsMatrix<>> ker(basisVect);
-                if(ker.dimensionOfKernel() != 0)
-                {
-                    basisVect = basisVect.block(0, 0, basisVect.rows(), basisVect.cols()-1);
-                }
-                count++;
-            }
+            addSmallKerBasis(basisVect, smallKernel, smallKerDim);
+            addVertexBasis(basisVect);
         }
         else
         {
-            for(index_t bk = 0; bk < smallKerDim; bk++ )
-            {
-                for(index_t r=0; r < 6; r++)
-                {
-                    if( ( abs(smallKernel(r, bk) )) < (10e-10))
-                        smallKernel(r, bk) = 0;
-
-                }
-
-            }
             if (smallKerDim != 0)
-                basisVect = smallKernel;
-            else
-                basisVect = vertBas.col(0);
-
-            size_t count=0;
-            while (basisVect.cols() < 6)
             {
-                basisVect.conservativeResize(basisVect.rows(), basisVect.cols() + 1);
-                basisVect.col(basisVect.cols()-1) = vertBas.col(count);
+                checkValues(smallKernel);
 
-                Eigen::FullPivLU<gsMatrix<>> ker(basisVect);
-                if(ker.dimensionOfKernel() != 0)
-                {
-                    basisVect = basisVect.block(0, 0, basisVect.rows(), basisVect.cols()-1);
-                }
-                count++;
+                basisVect = smallKernel;
+                addVertexBasis(basisVect);
+            }
+            else
+            {
+                gsMatrix<> vertBas;
+                vertBas.setIdentity(6, 6);
+                basisVect = vertBas;
             }
 
         }
-
-
+        
         gsInfo << "Big kernel:\n";
         gsInfo << bigKernel << "\n ";
 
@@ -480,8 +469,6 @@ public:
 
         gsInfo << "Basis:\n";
         gsInfo << basisVect << "\n";
-
-
 
         return std::make_pair(basisVect, numberPerType);
     }
@@ -576,7 +563,6 @@ public:
         if (this->kindOfVertex() != 0)
             for (size_t i = 0; i < auxGeom.size(); i++)
             {
-
                 gsMultiPatch<> temp_mp_g1 = g1BasisVector[i];
                 for (size_t bf = 0; bf < 6; bf++)
                 {
@@ -593,7 +579,6 @@ public:
         else
             for (size_t i = 0; i < auxGeom.size(); i++)
                 auxGeom[i].parametrizeBasisBack(g1BasisVector[i]);
-
 
     }
 
