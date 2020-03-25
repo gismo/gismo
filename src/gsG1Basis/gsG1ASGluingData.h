@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <gsG1Basis/gsGlobalGDAssembler.h>
+#include <gsG1Basis/gsG1ASGluingDataAssembler.h>
 
 
 namespace gismo
