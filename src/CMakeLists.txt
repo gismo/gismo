@@ -45,7 +45,7 @@ FOREACH(subdir ${SUBDIRS})
   add_library(${GM_NAME} OBJECT
     ${${subdir}_H}
     ${${subdir}_HPP}
-    ${${subdir}_CPP} gsG1Basis/gsG1ASGluingData.h gsG1Basis/gsG1ASGluingDataAssembler.h gsG1Basis/gsG1ASGluingDataVisitorGlobal.h)
+    ${${subdir}_CPP} gsG1Basis/gsG1ASGluingData.h gsG1Basis/gsG1ASGluingDataAssembler.h gsG1Basis/gsG1ASGluingDataVisitorGlobal.h gsG1Basis/gsGluingData.h)
 
   set_target_properties(${GM_NAME} PROPERTIES
     COMPILE_DEFINITIONS gismo_EXPORTS

@@ -13,11 +13,11 @@
 
 #pragma once
 
+#include <gsG1Basis/gsGluingData.h>
 #include <gsG1Basis/gsApproxGluingData.h>
 #include <gsG1Basis/gsG1ASGluingData.h>
 #include <gsG1Basis/gsVisitorG1BasisEdge.h>
 # include <gsAssembler/gsAssembler.h>
-
 # include <gsG1Basis/gsG1OptionList.h>
 
 namespace gismo
