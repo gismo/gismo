@@ -37,10 +37,6 @@ public:
         : m_geo(geo), m_basis(basis), m_uv(uv), m_isBoundary(isBoundary), m_g1OptionList(g1OptionList)
     {
 
-        // Computing the gluing data
-        gsApproxGluingData<T> gluingData(m_geo, m_basis, m_uv, m_isBoundary, m_g1OptionList);
-        m_gD = gluingData;
-
         // Computing the G1 - basis function at the edge
         // Spaces for computing the g1 basis
         index_t m_r = m_g1OptionList.getInt("regularity"); // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
@@ -86,7 +82,14 @@ public:
         m_basis_minus = basis_minus;
         n_minus = m_basis_minus.size();
 
-        gsInfo << "Plus " << n_plus <<  " Minus " << n_minus << "\n";
+        // Computing the gluing data
+        gsApproxGluingData<T> gluingData(m_geo, m_basis, m_uv, m_isBoundary, m_g1OptionList);
+        if (g1OptionList.getInt("gluingData") == gluingData::local)
+            gluingData.setLocalGluingData(basis_plus, basis_minus);
+        else if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
+            gluingData.setGlobalGluingData();
+
+        m_gD.push_back(gluingData);
 
         // Basis for the G1 basis
         m_basis_g1 = m_basis.basis(0);
@@ -104,13 +107,8 @@ public:
 
     void constructSolution(gsMultiPatch<T> & result);
 
-    index_t get_n_plus() { return n_plus; }
-    index_t get_n_minus() { return n_minus; }
-
-    gsBSpline<> get_alpha() { return m_gD.get_alpha_tilde(); }
-    gsBSpline<> get_beta() { return m_gD.get_beta_tilde(); }
-
-
+    gsBSpline<> get_alpha() { return m_gD[0].get_alpha_tilde(); }
+    gsBSpline<> get_beta() { return m_gD[0].get_beta_tilde(); }
 
 protected:
 
@@ -122,7 +120,7 @@ protected:
     gsG1OptionList m_g1OptionList;
 
     // Gluing data
-    gsApproxGluingData<T> m_gD;
+    std::vector<gsApproxGluingData<T>> m_gD;
 
     // Basis for getting the G1 Basis
     gsBSplineBasis<> m_basis_plus;
@@ -322,7 +320,7 @@ void gsG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, boxS
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_uv, m_gD, m_isBoundary, m_g1OptionList);
+            visitor_.evaluate(basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_uv, m_gD[0], m_isBoundary, m_g1OptionList);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);

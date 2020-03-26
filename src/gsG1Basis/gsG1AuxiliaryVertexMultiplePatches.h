@@ -499,18 +499,21 @@ public:
             g1BasisVertex_0.constructSolution(g1Basis);
             g1BasisVector.push_back(g1Basis);
             auxGeom[i].setG1Basis(g1Basis);
-            if (isBdy[i][0])
-                alpha.push_back(g1BasisVertex_0.get_alpha_tilde(1));
-            else if (isBdy[i][1])
-                alpha.push_back(g1BasisVertex_0.get_alpha_tilde(0));
-            if (isBdy[i][0])
-                beta_S.push_back(g1BasisVertex_0.get_beta_tilde(1));
-            else if (isBdy[i][1])
-                beta_S.push_back(g1BasisVertex_0.get_beta_tilde(0));
+            if (g1OptionList.getInt("gluingData")==gluingData::l2projection)
+            {
+                if (isBdy[i][0])
+                    alpha.push_back(g1BasisVertex_0.get_alpha_tilde(1));
+                else if (isBdy[i][1])
+                    alpha.push_back(g1BasisVertex_0.get_alpha_tilde(0));
+                if (isBdy[i][0])
+                    beta_S.push_back(g1BasisVertex_0.get_beta_tilde(1));
+                else if (isBdy[i][1])
+                    beta_S.push_back(g1BasisVertex_0.get_beta_tilde(0));
+            }
         }
 
 
-        if (auxGeom.size() == 2)
+        if (auxGeom.size() == 2 && g1OptionList.getInt("gluingData")==gluingData::l2projection)
         {
             if (auxGeom[0].getGlobalPatchIndex() == 0 && isBdy[0][1])
                 g1ConditionRep(alpha[1], alpha[0], beta_S[1], beta_S[0], auxGeom[1].getG1Basis(),  auxGeom[0].getG1Basis());

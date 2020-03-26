@@ -96,8 +96,11 @@ public:
 
         if (uv == 1) // edge is in v-direction
         {
-            gluingData.get_alpha_tilde().eval_into(md.points.bottomRows(1),alpha); // v
-            gluingData.get_beta_tilde().eval_into(md.points.bottomRows(1),beta);
+            if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
+            {
+                gluingData.get_alpha_tilde().eval_into(md.points.bottomRows(1),alpha); // v
+                gluingData.get_beta_tilde().eval_into(md.points.bottomRows(1),beta);
+            }
 
             basis_geo.evalSingle_into(0,md.points.topRows(1),N_0); // u
             basis_geo.evalSingle_into(1,md.points.topRows(1),N_1); // u
@@ -109,9 +112,8 @@ public:
                 basis_plus.derivSingle_into(i,md.points.bottomRows(1),der_N_i_plus);
 
                 if (g1OptionList.getInt("gluingData") == gluingData::local)
-                {
+                    gluingData.get_local_beta_tilde(i).eval_into(md.points.bottomRows(1),beta);
 
-                }
 
                 beta = isBoundary ? beta.setZero() : beta; // For the boundary, only on Patch 0
 
@@ -134,9 +136,7 @@ public:
                 basis_minus.evalSingle_into(i,md.points.bottomRows(1),N_j_minus); // v
 
                 if (g1OptionList.getInt("gluingData") == gluingData::local)
-                {
-
-                }
+                    gluingData.get_local_alpha_tilde(i).eval_into(md.points.bottomRows(1),alpha);
 
                 alpha = isBoundary ? alpha.setOnes() : alpha; // For the boundary, only on Patch 0
 
@@ -153,8 +153,11 @@ public:
         else if (uv == 0) // edge is in u-direction
         {
 
-            gluingData.get_alpha_tilde().eval_into(md.points.topRows(1),alpha); // u
-            gluingData.get_beta_tilde().eval_into(md.points.topRows(1),beta);
+            if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
+            {
+                gluingData.get_alpha_tilde().eval_into(md.points.topRows(1),alpha); // u
+                gluingData.get_beta_tilde().eval_into(md.points.topRows(1),beta);
+            }
 
             basis_geo.evalSingle_into(0,md.points.bottomRows(1),N_0); // v
             basis_geo.evalSingle_into(1,md.points.bottomRows(1),N_1); // v
@@ -166,9 +169,7 @@ public:
                 basis_plus.derivSingle_into(i,md.points.topRows(1),der_N_i_plus);
 
                 if (g1OptionList.getInt("gluingData") == gluingData::local)
-                {
-
-                }
+                    gluingData.get_local_beta_tilde(i).eval_into(md.points.topRows(1),beta);
 
                 beta = isBoundary ? beta.setZero() : beta; // For the boundary, only on Patch 0
 
@@ -190,9 +191,7 @@ public:
                 basis_minus.evalSingle_into(i,md.points.topRows(1),N_j_minus); // u
 
                 if (g1OptionList.getInt("gluingData") == gluingData::local)
-                {
-
-                }
+                    gluingData.get_local_alpha_tilde(i).eval_into(md.points.topRows(1),alpha);
 
                 alpha = isBoundary ? alpha.setOnes() : alpha; // For the boundary, only on Patch 0
 

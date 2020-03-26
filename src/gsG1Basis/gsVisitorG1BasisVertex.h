@@ -128,16 +128,52 @@ public:
             c_2_plus_deriv.push_back((h_geo * h_geo / (p * (p-1))) * 2 * b_2_plus_deriv);
         }
 
-        // Compute dd^^(i_k) and dd^^(i_k-1)
+        // Point zero
         gsMatrix<> zero;
         zero.setZero(2,1);
 
-        gsMatrix<> dd_ik_plus, dd_ik_minus, dd_ik_minus_deriv, dd_ik_plus_deriv;
-        dd_ik_minus = -1/(gluingData.at(0).get_alpha_tilde().eval(zero.row(0))(0,0)) * (geo.jacobian(zero).col(1) +
-            gluingData.at(0).get_beta_tilde().eval(zero.row(0))(0,0) * geo.jacobian(zero).col(0));
+        std::vector<gsMatrix<>> alpha, beta, alpha_0, beta_0, alpha_deriv, beta_deriv;
+        if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
+        {
+            alpha.push_back(gluingData[0].get_alpha_tilde().eval(md.points.row(0))); // u
+            alpha.push_back(gluingData[1].get_alpha_tilde().eval(md.points.row(1))); // v
+            alpha_0.push_back(gluingData[0].get_alpha_tilde().eval(zero.row(0))); // u
+            alpha_0.push_back(gluingData[1].get_alpha_tilde().eval(zero.row(0))); // v
+            alpha_deriv.push_back(gluingData[0].get_alpha_tilde().deriv(zero.row(0))); // u
+            alpha_deriv.push_back(gluingData[1].get_alpha_tilde().deriv(zero.row(0))); // v
 
-        dd_ik_plus = 1/(gluingData.at(1).get_alpha_tilde().eval(zero.row(0))(0,0)) * (geo.jacobian(zero).col(0) +
-            gluingData.at(1).get_beta_tilde().eval(zero.row(0))(0,0) * geo.jacobian(zero).col(1));
+            beta.push_back(gluingData[0].get_beta_tilde().eval(md.points.row(0))); // u
+            beta.push_back(gluingData[1].get_beta_tilde().eval(md.points.row(1))); // v
+            beta_0.push_back(gluingData[0].get_beta_tilde().eval(zero.row(0))); // u
+            beta_0.push_back(gluingData[1].get_beta_tilde().eval(zero.row(0))); // v
+            beta_deriv.push_back(gluingData[0].get_beta_tilde().deriv(zero.row(0))); // u
+            beta_deriv.push_back(gluingData[1].get_beta_tilde().deriv(zero.row(0))); // v
+
+        }
+        else if (g1OptionList.getInt("gluingData") == gluingData::local)
+        {
+            alpha.push_back(gluingData[0].get_local_alpha_tilde(0).eval(md.points.row(0))); // u
+            alpha.push_back(gluingData[1].get_local_alpha_tilde(0).eval(md.points.row(1))); // v
+            alpha_0.push_back(gluingData[0].get_local_alpha_tilde(0).eval(zero.row(0))); // u
+            alpha_0.push_back(gluingData[1].get_local_alpha_tilde(0).eval(zero.row(0))); // v
+            alpha_deriv.push_back(gluingData[0].get_local_alpha_tilde(0).deriv(zero.row(0))); // u
+            alpha_deriv.push_back(gluingData[1].get_local_alpha_tilde(0).deriv(zero.row(0))); // v
+
+            beta.push_back(gluingData[0].get_local_beta_tilde(0).eval(md.points.row(0))); // u
+            beta.push_back(gluingData[1].get_local_beta_tilde(0).eval(md.points.row(1))); // v
+            beta_0.push_back(gluingData[0].get_local_beta_tilde(0).eval(zero.row(0))); // u
+            beta_0.push_back(gluingData[1].get_local_beta_tilde(0).eval(zero.row(0))); // v
+            beta_deriv.push_back(gluingData[0].get_local_beta_tilde(0).deriv(zero.row(0))); // u
+            beta_deriv.push_back(gluingData[1].get_local_beta_tilde(0).deriv(zero.row(0))); // v
+        }
+
+        // Compute dd^^(i_k) and dd^^(i_k-1)
+        gsMatrix<> dd_ik_plus, dd_ik_minus, dd_ik_minus_deriv, dd_ik_plus_deriv;
+        dd_ik_minus = -1/(alpha_0[0](0,0)) * (geo.jacobian(zero).col(1) +
+            beta_0[0](0,0) * geo.jacobian(zero).col(0));
+
+        dd_ik_plus = 1/(alpha_0[1](0,0)) * (geo.jacobian(zero).col(0) +
+            beta_0[1](0,0) * geo.jacobian(zero).col(1));
 
         gsMatrix<> geo_deriv2_12(2,1), geo_deriv2_11(2,1), geo_deriv2_22(2,1);
         geo_deriv2_12.row(0) = geo.deriv2(zero).row(2);
@@ -146,20 +182,20 @@ public:
         geo_deriv2_11.row(1) = geo.deriv2(zero).row(3);
         geo_deriv2_22.row(0) = geo.deriv2(zero).row(1);
         geo_deriv2_22.row(1) = geo.deriv2(zero).row(4);
-        gsMatrix<> alpha_squared_u = gluingData.at(0).get_alpha_tilde().eval(zero.row(0))*gluingData.at(0).get_alpha_tilde().eval(zero.row(0));
-        gsMatrix<> alpha_squared_v = gluingData.at(1).get_alpha_tilde().eval(zero.row(0))*gluingData.at(1).get_alpha_tilde().eval(zero.row(0));
+        gsMatrix<> alpha_squared_u = alpha_0[0]*alpha_0[0];
+        gsMatrix<> alpha_squared_v = alpha_0[1]*alpha_0[1];
 
         dd_ik_minus_deriv = -1/(alpha_squared_u(0,0)) * // N^2
-            ((geo_deriv2_12 + (gluingData.at(0).get_beta_tilde().deriv(zero.row(0))(0,0) * geo.jacobian(zero).col(0) +
-             gluingData.at(0).get_beta_tilde().eval(zero.row(0))(0,0) * geo_deriv2_11))*gluingData.at(0).get_alpha_tilde().eval(zero.row(0))(0,0) -
-            (geo.jacobian(zero).col(1) + gluingData.at(0).get_beta_tilde().eval(zero.row(0))(0,0) * geo.jacobian(zero).col(0)) *
-            gluingData.at(0).get_alpha_tilde().deriv(zero.row(0))(0,0));
+            ((geo_deriv2_12 + (beta_deriv[0](0,0) * geo.jacobian(zero).col(0) +
+                beta_0[0](0,0) * geo_deriv2_11))*alpha_0[0](0,0) -
+            (geo.jacobian(zero).col(1) + beta_0[0](0,0) * geo.jacobian(zero).col(0)) *
+                alpha_deriv[0](0,0));
 
         dd_ik_plus_deriv = 1/(alpha_squared_v(0,0)) *
-            ((geo_deriv2_12 + (gluingData.at(1).get_beta_tilde().deriv(zero.row(0))(0,0) * geo.jacobian(zero).col(1) +
-            gluingData.at(1).get_beta_tilde().eval(zero.row(0))(0,0) * geo_deriv2_22))*gluingData.at(1).get_alpha_tilde().eval(zero.row(0))(0,0) -
-            (geo.jacobian(zero).col(0) + gluingData.at(1).get_beta_tilde().eval(zero.row(0))(0,0) * geo.jacobian(zero).col(1)) *
-            gluingData.at(1).get_alpha_tilde().deriv(zero.row(0))(0,0));
+            ((geo_deriv2_12 + (beta_deriv[1](0,0) * geo.jacobian(zero).col(1) +
+                beta_0[1](0,0) * geo_deriv2_22))*alpha_0[0](0,0) -
+            (geo.jacobian(zero).col(0) + beta_0[1](0,0) * geo.jacobian(zero).col(1)) *
+                alpha_deriv[1](0,0));
 
         // Comupute d_(0,0)^(i_k), d_(1,0)^(i_k), d_(0,1)^(i_k), d_(1,1)^(i_k) ; i_k == 2
         std::vector<gsMatrix<>> d_ik;
@@ -200,22 +236,22 @@ public:
         for (index_t i = 0; i < 6; i++)
         {
             rhsVals.at(i) = d_ilik_minus.at(0)(i,0) * (c_0_plus.at(0).cwiseProduct(c_0.at(1)) -
-                gluingData.at(0).get_beta_tilde().eval(md.points.row(0)).cwiseProduct(c_0_plus_deriv.at(0).cwiseProduct(c_1.at(1)))) +
+                beta[0].cwiseProduct(c_0_plus_deriv.at(0).cwiseProduct(c_1.at(1)))) +
                 d_ilik_minus.at(1)(i,0) * (c_1_plus.at(0).cwiseProduct(c_0.at(1)) -
-                gluingData.at(0).get_beta_tilde().eval(md.points.row(0)).cwiseProduct(c_1_plus_deriv.at(0).cwiseProduct(c_1.at(1)))) +
+                beta[0].cwiseProduct(c_1_plus_deriv.at(0).cwiseProduct(c_1.at(1)))) +
                 d_ilik_minus.at(2)(i,0) * (c_2_plus.at(0).cwiseProduct(c_0.at(1)) -
-                gluingData.at(0).get_beta_tilde().eval(md.points.row(0)).cwiseProduct(c_2_plus_deriv.at(0).cwiseProduct(c_1.at(1)))) -
-                d_ilik_minus.at(3)(i,0) * gluingData.at(0).get_alpha_tilde().eval(md.points.row(0)).cwiseProduct(c_0_minus.at(0).cwiseProduct(c_1.at(1))) -
-                d_ilik_minus.at(4)(i,0) * gluingData.at(0).get_alpha_tilde().eval(md.points.row(0)).cwiseProduct(c_1_minus.at(0).cwiseProduct(c_1.at(1))); // f*_(ik-1,ik)
+                beta[0].cwiseProduct(c_2_plus_deriv.at(0).cwiseProduct(c_1.at(1)))) -
+                d_ilik_minus.at(3)(i,0) * alpha[0].cwiseProduct(c_0_minus.at(0).cwiseProduct(c_1.at(1))) -
+                d_ilik_minus.at(4)(i,0) * alpha[0].cwiseProduct(c_1_minus.at(0).cwiseProduct(c_1.at(1))); // f*_(ik-1,ik)
 
             rhsVals.at(i) += d_ilik_plus.at(0)(i,0) * (c_0_plus.at(1).cwiseProduct(c_0.at(0)) -
-                gluingData.at(1).get_beta_tilde().eval(md.points.row(1)).cwiseProduct(c_0_plus_deriv.at(1).cwiseProduct(c_1.at(0)))) +
+                beta[1].cwiseProduct(c_0_plus_deriv.at(1).cwiseProduct(c_1.at(0)))) +
                 d_ilik_plus.at(1)(i,0) * (c_1_plus.at(1).cwiseProduct(c_0.at(0)) -
-                gluingData.at(1).get_beta_tilde().eval(md.points.row(1)).cwiseProduct(c_1_plus_deriv.at(1).cwiseProduct(c_1.at(0)))) +
+                beta[1].cwiseProduct(c_1_plus_deriv.at(1).cwiseProduct(c_1.at(0)))) +
                 d_ilik_plus.at(2)(i,0) * (c_2_plus.at(1).cwiseProduct(c_0.at(0)) -
-                gluingData.at(1).get_beta_tilde().eval(md.points.row(1)).cwiseProduct(c_2_plus_deriv.at(1).cwiseProduct(c_1.at(0)))) +
-                d_ilik_plus.at(3)(i,0) * gluingData.at(1).get_alpha_tilde().eval(md.points.row(1)).cwiseProduct(c_0_minus.at(1).cwiseProduct(c_1.at(0))) +
-                d_ilik_plus.at(4)(i,0) * gluingData.at(1).get_alpha_tilde().eval(md.points.row(1)).cwiseProduct(c_1_minus.at(1).cwiseProduct(c_1.at(0))); // f*_(ik+1,ik)
+                beta[1].cwiseProduct(c_2_plus_deriv.at(1).cwiseProduct(c_1.at(0)))) +
+                d_ilik_plus.at(3)(i,0) * alpha[1].cwiseProduct(c_0_minus.at(1).cwiseProduct(c_1.at(0))) +
+                d_ilik_plus.at(4)(i,0) * alpha[1].cwiseProduct(c_1_minus.at(1).cwiseProduct(c_1.at(0))); // f*_(ik+1,ik)
 
             rhsVals.at(i) -= d_ik.at(0)(i,0) * c_0.at(0).cwiseProduct(c_0.at(1)) + d_ik.at(2)(i,0) * c_0.at(0).cwiseProduct(c_1.at(1)) +
                 d_ik.at(1)(i,0) * c_1.at(0).cwiseProduct(c_0.at(1)) + d_ik.at(3)(i,0) * c_1.at(0).cwiseProduct(c_1.at(1)); // f*_(ik)

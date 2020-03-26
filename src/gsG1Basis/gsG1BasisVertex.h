@@ -36,10 +36,6 @@ public:
 
         for (index_t dir = 0; dir < geo.parDim(); dir++) // For the TWO directions
         {
-            // Computing the gluing data
-            gsApproxGluingData<T> gluingData(m_geo,m_basis,dir,m_isBoundary[dir],m_g1OptionList);
-            m_gD.push_back(gluingData);
-
             // Computing the G1 - basis function at the edge
             // Spaces for computing the g1 basis
             index_t m_r = m_g1OptionList.getInt("regularity"); // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
@@ -63,6 +59,15 @@ public:
                 basis_minus.insertKnot(basis_edge.knot(i),m_p-1-m_r);
 
             m_basis_minus.push_back(basis_minus);
+
+            // Computing the gluing data
+            gsApproxGluingData<T> gluingData(m_geo, m_basis, dir, m_isBoundary[dir], m_g1OptionList);
+            if (g1OptionList.getInt("gluingData") == gluingData::local)
+                gluingData.setLocalGluingData(basis_plus, basis_minus);
+            else if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
+                gluingData.setGlobalGluingData();
+
+            m_gD.push_back(gluingData);
         }
 
         // Basis for the G1 basis
