@@ -109,7 +109,7 @@ protected:
                 bsp_gD.insertKnot(temp_basis_first.knot(i),2); // Increase the multiplicity of the inner knots by two
         }
 
-        gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD,m_uv,m_mp,m_gamma,m_isBoundary);
+        gsG1ASGluingDataAssembler<T> globalGdAssembler(bsp_gD,m_uv,m_mp,m_gamma,m_isBoundary);
         globalGdAssembler.assemble();
 
         gsSparseSolver<real_t>::CGDiagonal solver;
