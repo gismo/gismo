@@ -13,6 +13,7 @@
 
 //! [Include namespace]
 #include <gismo.h>
+#include <gsAssembler/gsAdaptiveRefUtils.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -89,11 +90,62 @@ public:
     }
 };
 
+template<typename T>
+class gsElementErrorPlotter : public gsFunction<T>
+{
+public:
+    gsElementErrorPlotter(const gsBasis<T>& mp, const std::vector<T>& errors ) : m_mp(mp),m_errors(errors)
+    {
+
+    }
+
+    virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& res) const
+    {
+        // Initialize domain element iterator -- using unknown 0
+        res.setZero(1,u.cols());
+        for(index_t i=0; i<u.cols();++i)
+        {
+            int iter =0;
+            // Start iteration over elements
+
+            typename gsBasis<T>::domainIter domIt = m_mp.makeDomainIterator();
+            for (; domIt->good(); domIt->next() )
+            {
+                 bool flag = true;
+                const gsVector<T>& low = domIt->lowerCorner();
+                const gsVector<T>& upp = domIt->upperCorner();
+
+
+                for(int d=0; d<domainDim();++d )
+                {
+                    if(low(d)> u(d,i) || u(d,i) > upp(d))
+                    {
+                        flag = false;
+                        break;
+                    }
+                }
+                if(flag)
+                {
+                     res(0,i) = m_errors.at(iter);
+                     break;
+                }
+                iter++;
+            }
+        }
+    }
+
+    short_t domainDim() const { return m_mp.dim();}
+
+private:
+    const gsBasis<T>& m_mp;
+    const std::vector<T>& m_errors;
+};
+
 
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
-    bool fullL2 = false;
+    bool fullL2 = true;
     bool plot = false;
     index_t numRefine  = 5;
     index_t numElevate = 0;
@@ -131,6 +183,17 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp;
     fd.getId(0, mp); // id=0: Multipatch domain
 
+    // // Cast all patches of the mp object to THB splines
+    // gsMultiPatch<> mpBspline;
+    // // gsTensorBSpline<2,real_t> *geo;
+    // gsTHBSpline<2,real_t> thb;
+    // for (index_t k=0; k!=mpBspline.nPatches(); ++k)
+    // {
+    //     gsTensorBSpline<2,real_t> *geo = dynamic_cast< gsTensorBSpline<2,real_t> * > (&mpBspline.patch(k));
+    //     thb = gsTHBSpline<2,real_t>(*geo);
+    //     mp.addPatch(thb);
+    // }
+
     gsFunctionExpr<> f;
     fd.getId(1, f); // id=1: source function
     gsInfo<<"Source function "<< f << "\n";
@@ -146,28 +209,41 @@ int main(int argc, char *argv[])
     //! [Read input file]
 
     //! [Refinement]
-    gsMultiBasis<> basisL(mp);
-    gsMultiBasis<> basisH(mp);
 
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    basisL.setDegree( basisL.maxCwiseDegree() + numElevate);
-    basisH.setDegree( basisH.maxCwiseDegree() + numElevate+1);
-
+    mp.degreeElevate(numElevate);
     // h-refine each basis
     for (int r =0; r < numRefine-1; ++r)
+        mp.uniformRefine();
+    // Set the degree of the higher-order basis one higher.
+    gsMultiPatch<> mpH0 = mp;
+    mpH0    .degreeElevate(1);
+
+    // Cast all patches of the mp object to THB splines
+    gsMultiPatch<> mpL, mpH;
+    // gsTensorBSpline<2,real_t> *geo;
+    gsTHBSpline<2,real_t> thb;
+    for (index_t k=0; k!=mp.nPatches(); ++k)
     {
-        basisL.uniformRefine();
-        basisH.uniformRefine();
+        gsTensorBSpline<2,real_t> *geoL = dynamic_cast< gsTensorBSpline<2,real_t> * > (&mp.patch(k));
+        thb = gsTHBSpline<2,real_t>(*geoL);
+        mpL.addPatch(thb);
+
+        gsTensorBSpline<2,real_t> *geoH = dynamic_cast< gsTensorBSpline<2,real_t> * > (&mpH0.patch(k));
+        thb = gsTHBSpline<2,real_t>(*geoH);
+        mpH.addPatch(thb);
     }
 
     numRefine = 0;
 
+    gsMultiBasis<> basisL(mpL);
+    gsMultiBasis<> basisH(mpH);
     gsInfo<<"Basis Primal: "<<basisL.basis(0)<<"\n";
     gsInfo<<"Basis Dual:   "<<basisH.basis(0)<<"\n";
 
 
-    gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< basisL.minCwiseDegree() <<"\n";
+    gsInfo << "Patches: "<< mpH.nPatches() <<", degree: "<< basisL.minCwiseDegree() <<"\n";
     //! [Refinement]
 
     //! [Problem setup]
@@ -237,15 +313,15 @@ int main(int argc, char *argv[])
     solution phiL = exL.getSolution(u, phiVectorL);
     solution phiH = exH.getSolution(v, phiVectorH);
 
+    // Point of solution evaluation
+    gsVector<> point(2);
+    point<<0.25,0.25;
+
     gsSparseSolver<>::CGDiagonal solver;
 
     exL.initSystem();
     exH.initSystem();
 
-
-    // Point of solution evaluation
-    gsVector<> point(2);
-    point<<0.25,0.25;
 
 
     //! [Problem setup]
@@ -287,7 +363,7 @@ int main(int argc, char *argv[])
 
     gsInfo<<"Objective function errors J(u)-J(u_h)\n";
     // gsInfo<<"\t exact: "<<ev.integral(u_ex*meas(G))-ev.integral(u_sol*meas(G))<<"\n";
-    gsInfo<<"\t exact: "<<evL.eval((primal_exL-uL),point)<<"\n";
+    gsInfo<<"\t exact: "<<evL.integral((primal_exL-uL)*meas(G))<<"\n";
     // [!ORIGINAL PROBLEM]
 
 
@@ -358,7 +434,7 @@ int main(int argc, char *argv[])
 
     // [DUAL PROBLEM]
     // Compute the system matrix and right-hand side
-    exH.assemble( igrad(v, H) * igrad(v, H).tr() * meas(H));
+    exH.assemble( igrad(v, H) * igrad(v, H).tr() * meas(H) );
 
     // MAKE RHS FOR POINT
     gsVector<> rhsH(exH.numDofs()); rhsH.setZero();
@@ -462,23 +538,21 @@ int main(int argc, char *argv[])
     exM.assemble(w2_n * meas(GM)* w2_n.tr()); // * meas(G));
     gsSparseMatrix<> M_LL = exM.matrix();
 
-    // gsDebugVar(M_HH.toDense());
-    // gsDebugVar(M_LL.toDense());
-    // gsDebugVar(M_LH.toDense());
-    // gsDebugVar(M_HL.toDense());
-
-
-    gsDebug<<"M_HH "<<M_HH.rows()<<"x"<<M_HH.cols()<<"\n";
-    gsDebug<<"M_LL "<<M_LL.rows()<<"x"<<M_LL.cols()<<"\n";
-    gsDebug<<"M_LH "<<M_LH.rows()<<"x"<<M_LH.cols()<<"\n";
-    gsDebug<<"M_HL "<<M_HL.rows()<<"x"<<M_HL.cols()<<"\n";
-
     gsMatrix<> dualL0, primalL0;
     if (fullL2)
     {
         zL.extractFull(dualL0);
         uL.extractFull(primalL0);
     }
+
+    gsDebugVar(M_HH.rows());
+    gsDebugVar(M_HH.cols());
+    gsDebugVar(M_HL.rows());
+    gsDebugVar(M_HL.cols());
+    gsDebugVar(M_LH.rows());
+    gsDebugVar(M_LH.cols());
+    gsDebugVar(dualL0.rows());
+    gsDebugVar(primalL0.rows());
 
     solver.compute(M_HH);
     dualLp = solver.solve(M_LH*dualL0);
@@ -499,24 +573,15 @@ int main(int argc, char *argv[])
         }
         gsVector<> pt(2);
         pt.setConstant(0.5);
-        // gsInfo<<evH.eval( (igrad(zH, H)),pt)<<"\n\n";
-        // gsInfo<<evH.eval( (grad(zH)*jac(H).ginv()),pt)<<"\n\n";
-        // gsInfo<<evH.eval( igrad(uLp, H).tr(),pt )<<"\n\n";
-        // gsInfo<<evH.eval( (igrad(zH, H) - igrad(zLp, H)) * igrad(uLp, H).tr() ,pt)<<"\n\n";
-        // gsInfo<<evH.eval( (igrad(zH, H) - igrad(zLp, H)) * igrad(uLp, H).tr() * meas(H),pt )<<"\n\n";
-        // gsInfo<<evH.eval( (zH-zLp) * ff * meas(H) ,pt)<<"\n\n";
-        // // gsInfo<<evH.integral( (igrad(zH, G) - igrad(zLp, G)) * igrad(uLp, G).tr()  )<<"\n";
-        // gsInfo<<evH.integral( grad(uLp)*jac(H).ginv() * (grad(uLp)*jac(H).ginv()).tr()  )<<"\n";
-        // gsInfo<<evH.integral( (grad(zH)*jac(H).ginv() - grad(zLp)*jac(H).ginv()) * (grad(zH)*jac(H).ginv() - grad(zLp)*jac(H).ginv()).tr()  )<<"\n";
-        // // gsInfo<<evH.integral( (zH-zLp)  )<<"\n";
-
-        // variable g_H = exH.getBdrFunction();
 
         gsInfo<<"Objective function errors J(u)-J(u_h)\n";
 
-        gsMatrix<> err =  evL.eval((primal_exL-uL),point);
-        real_t error = err(0,0);
-        real_t errest = evH.integral( (zH-zLp) * gg * meas(H)-((grad(zH)*jac(H).ginv()* (grad(uLp)*jac(H).ginv()).tr() - grad(zLp)*jac(H).ginv()* (grad(uLp)*jac(H).ginv()).tr()) ) * meas(H));
+        // gsInfo<<evL.eval(primal_exL.val() - uL,point.val())<<"\n";
+        gsMatrix<> errorMat = evL.eval(primal_exL - uL,point);
+        real_t error = errorMat(0,0);
+
+        real_t errest = evH.integral( (zH-zLp) * gg * meas(H)-(((igrad(zH) - igrad(zLp))*igrad(uLp).tr()) ) * meas(H));
+        // gsInfo<<"\t exact: "<<ev.integral(u_ex*meas(G))-ev.integral(u_sol*meas(G))<<"\n";
         gsInfo<<"\texact:\t"   <<error<<"\n";
 
         // gsInfo<<evH.integral( (zH-zLp) * gg * meas(H)-((grad(zH) - grad(zLp)) * (grad(uLp)).tr()) * meas(H))<<"\n";
@@ -524,10 +589,6 @@ int main(int argc, char *argv[])
 
         gsInfo<<"\teff:\t"<<errest/error<<"\n";
                     // - evH.integralBdr(uLp * g_H.val() * nv(H).norm())<<"\n"; //, bc.neumannSides()
-
-        // gsInfo<<evH.eval(jac(H).ginv().tr()*( hess(uLp) - summ(grad(uLp)*jac(H).ginv(),hess(H)) ) * jac(H).ginv(),pt);
-        // gsInfo<<evH.eval(ilapl,pt);
-        // gsInfo<<evH.integralElWise( gg - lapl*meas(H))<<"\n";
 
         gsInfo<<"Computation errors (L2-norm)\n";
         // gsInfo<<"\t exact: "<<ev.integral(u_ex*meas(G))-ev.integral(u_sol*meas(G))<<"\n";
@@ -548,8 +609,36 @@ int main(int argc, char *argv[])
 
 
 
+        evH.integralElWise((gg - slapl(uLp)) * (zH - zLp)*meas(H));
+        gsVector<> elementNorms = evH.allValues().transpose();
+        std::vector<real_t> errors;
+        errors.resize(elementNorms.size());
+        gsVector<>::Map(&errors[0],elementNorms.size() ) = elementNorms;
+
+        // gsInfo<< "  Result (elwise): "<< elementNorms <<"\n";
+        gsInfo<< "  Result (global)    : "<< elementNorms.sum() <<"\n";
+
+        gsElementErrorPlotter<real_t> err_eh(basisH.basis(0),errors);
+
+        const gsField<> elemError_eh( mp, err_eh, false );
+        gsWriteParaview<>( elemError_eh, "error_elem_eh", 1000);
 
 
+        MarkingStrategy adaptRefCrit = PUCA;
+        const real_t adaptRefParam = 0.9;
+        std::vector<bool> elMarked( errors.size() );
+
+        gsMarkElementsForRef( errors, adaptRefCrit, adaptRefParam, elMarked);
+        for (std::vector<bool>::const_iterator i = elMarked.begin(); i != elMarked.end(); ++i)
+            gsInfo << *i << ' ';
+        gsInfo<<"\n";
+
+        // Refine the marked elements with a 1-ring of cells around marked elements
+        gsRefineMarkedElements( mpH, elMarked, 1 );
+        gsRefineMarkedElements( mpL, elMarked, 1 );
+
+        gsWriteParaview(mpH,"mpH",1000,true);
+        gsWriteParaview(mpL,"mpL",1000,true);
     }
     else
     {
