@@ -7,7 +7,7 @@
 #include <gismo.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsG1Basis/gsG1AuxiliaryPatch.h>
-# include <gsG1Basis/gsG1BasisEdge.h>
+
 # include <gsG1Basis/gsG1BasisVertex.h>
 
 # include <gsG1Basis/gsG1OptionList.h>
