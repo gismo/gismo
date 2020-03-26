@@ -44,10 +44,10 @@ int main(int argc, char *argv[])
     index_t loop = 1; // Number of refinement steps
 
     bool plot = false;
-    bool direct = false;
-    gluingData::strategy gluingData_strategy = gluingData::l2projection;
-    bool local_g1 = false;
     bool latex = false;
+    bool local = false;
+
+    gluingData::strategy gluingData_strategy = gluingData::l2projection;
 
     gsCmdLine cmd("Example for solving the biharmonic problem.");
     cmd.addInt("k", "refine", "Number of refinement steps", numRefine);
@@ -57,8 +57,7 @@ int main(int argc, char *argv[])
     cmd.addInt("t", "threads", "Threads", threads);
     cmd.addInt( "l", "loop", "The number of refinement steps", loop);
     cmd.addSwitch( "plot", "Plot result in ParaView format", plot );
-    cmd.addSwitch( "direct", "Construction of the G1 basis functions", direct );
-    cmd.addSwitch( "local_g1", "If you want to solve several levels", local_g1 );
+    cmd.addSwitch( "local", "To compute the gluing data with local support", local );
     cmd.addSwitch("latex","Print the rate and error latex-ready",latex);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -134,6 +133,9 @@ int main(int argc, char *argv[])
     g1OptionList.addSwitch("plot","Plot in Paraview",plot);
     g1OptionList.addInt("refine","Refinement",numRefine);
     g1OptionList.addInt("degree","Degree",numDegree);
+
+    if (local)
+        gluingData_strategy = gluingData::local;
 
     g1OptionList.addInt("gluingData","The strategy for the gluing data",gluingData_strategy);
     g1OptionList.addInt("user", "User ID", user::pascal); // Set the user
