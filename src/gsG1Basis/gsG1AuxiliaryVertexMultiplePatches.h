@@ -10,6 +10,7 @@
 # include <gsG1Basis/gsG1BasisEdge.h>
 # include <gsG1Basis/gsG1BasisVertex.h>
 
+# include <gsG1Basis/gsG1OptionList.h>
 
 namespace gismo
 {
@@ -474,7 +475,7 @@ public:
     }
 
 
-    void computeG1InternalVertexBasis(gsOptionList optionList)
+    void computeG1InternalVertexBasis(gsG1OptionList g1OptionList)
     {
         //gsMultiPatch<> test_mp(this->computeAuxTopology());
         //gsMultiBasis<> test_mb(test_mp);
@@ -492,7 +493,7 @@ public:
         {
             gsInfo << "Index " << auxVertexIndices[i] << " Patch " << auxGeom[i].getGlobalPatchIndex() <<  "\n";
 
-            gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, optionList);
+            gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, g1OptionList);
 
             gsMultiPatch<> g1Basis;
             g1BasisVertex_0.constructSolution(g1Basis);
@@ -658,29 +659,9 @@ public:
             - beta.eval(points);
 
         gsInfo << "Conditiontest Gluing data: \n" << temp.array().abs().maxCoeff() << "\n\n";
-/*
-        gsInfo << "POINTS : " << points << "\n";
-        gsInfo << "ALPHA 0 : " << alpha_0.eval(points) << "\n";
-        gsInfo << "ALPHA 1 : " << alpha_1.eval(points) << "\n";
-        gsInfo << "ALPHA 0 : " << beta_0.eval(points) << "\n";
-        gsInfo << "ALPHA 1 : " << beta_1.eval(points) << "\n";
-        gsInfo << "BETA : " << beta.eval(points) << "\n";
-*/
+
         for (size_t i = 0; i < g1Basis_0.nPatches(); i++)
         {
-/*
-            gsInfo << " ======================== " << i << " ========================= \n";
-            gsInfo << "DERIV : " << g1Basis_0.patch(i).eval(points2d_0) << "\n";
-            gsInfo << "DERIV : " << g1Basis_1.patch(i).eval(points2d_1) << "\n";
-
-            gsInfo << " ======================== " << i << " ========================= \n";
-            gsInfo << "DERIV : " << g1Basis_0.patch(i).deriv(points2d_0) << "\n";
-            gsInfo << "DERIV : " << g1Basis_1.patch(i).deriv(points2d_1) << "\n";
-
-            gsInfo << "DERIV : " << alpha_1.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).topRows(1)) << "\n";
-            gsInfo << "DERIV : " << alpha_0.eval(points).cwiseProduct(g1Basis_1.patch(i).deriv(points2d_1).bottomRows(1)) << "\n";
-            gsInfo << "BETA : " << beta.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).bottomRows(1)) << "\n";
-*/
             gsMatrix<> temp;
             temp = alpha_1.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).topRows(1))
                 + alpha_0.eval(points).cwiseProduct(g1Basis_1.patch(i).deriv(points2d_1).bottomRows(1))

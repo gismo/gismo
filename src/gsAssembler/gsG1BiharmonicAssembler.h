@@ -77,7 +77,7 @@ public:
 
     void computeDirichletDofsL2Proj(gsG1System<real_t> &  g1System);
 
-    void constructG1Solution(gsField<> &solField_interior, std::vector<gsMultiPatch<T>> &result);
+    void plotParaview(gsField<> &solField_interior, std::vector<gsMultiPatch<T>> &result);
 
 
 
@@ -124,7 +124,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructSolution(const gsMatrix<T> &
 }
 
 template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::constructG1Solution(gsField<> &solField_interior, std::vector<gsMultiPatch<T>> &g1Basis)
+void gsG1BiharmonicAssembler<T,bhVisitor>::plotParaview(gsField<> &solField_interior, std::vector<gsMultiPatch<T>> &g1Basis)
 {
 
     std::string fn = "G1Biharmonic";
@@ -393,25 +393,10 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
                 basisVals.row(numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] + i) += multiPatch_Vertex_0.patch(i).eval(md.points);
 
             for (size_t i = 0; i < numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1]; i++) // Right vertex
-                basisVals.row(numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] + numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0] + i) += multiPatch_Vertex_1.patch(i).eval(md.points);
+                basisVals.row(numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] + numBoundaryVertexFunctions[row_Vertex_0+1] -
+                      numBoundaryVertexFunctions[row_Vertex_0] + i) += multiPatch_Vertex_1.patch(i).eval(md.points);
 
-            // Indices involved here:
-            // --- Local index:
-            // Index of the basis function/DOF on the patch.
-            // Does not take into account any boundary or interface conditions.
-            // --- Global Index:
-            // Each DOF has a unique global index that runs over all patches.
-            // This global index includes a re-ordering such that all eliminated
-            // DOFs come at the end.
-            // The global index also takes care of glued interface, i.e., corresponding
-            // DOFs on different patches will have the same global index, if they are
-            // glued together.
-            // --- Boundary Index (actually, it's a "Dirichlet Boundary Index"):
-            // The eliminated DOFs, which come last in the global indexing,
-            // have their own numbering starting from zero.
 
-            // Get the global indices (second line) of the local
-            // active basis (first line) functions/DOFs:
             globIdxAct.setZero(multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches() + multiPatch_Vertex_1.nPatches(),1);
             gsVector<unsigned> vec;
             if (numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] == 2)
@@ -452,12 +437,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
 
             globIdxAct.block(multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches(),0,multiPatch_Vertex_1.nPatches(),1) = vec;
 
-            // Out of the active functions/DOFs on this element, collect all those
-            // which correspond to a boundary DOF.
-            // This is checked by calling mapper.is_boundary_index( global Index )
 
-            // eltBdryFcts stores the row in basisVals/globIdxAct, i.e.,
-            // something like a "element-wise index"
             std::vector<index_t> eltBdryFcts;
             eltBdryFcts.reserve(g1System.boundary_size());
             for( size_t i=0; i < multiPatch_Edges.nPatches(); i++)

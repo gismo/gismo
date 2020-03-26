@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "gsG1Basis/gsGluingData.h"
+#include "gsG1Basis/gsApproxGluingData.h"
 
 namespace gismo
 {
@@ -52,10 +52,10 @@ public:
                          std::vector<gsBSplineBasis<T>>      & basis_minus,
                          const gsGeometry<T>    & geo, // patch
                          gsMatrix<T>            & quNodes,
-                         std::vector<gsGluingData<T>>  & gluingData,
+                         std::vector<gsApproxGluingData<T>>  & gluingData,
                          std::vector<bool> & isBoundary,
                          real_t sigma,
-                         gsOptionList optionList)
+                         gsG1OptionList g1OptionList)
     {
         md.points = quNodes;
 

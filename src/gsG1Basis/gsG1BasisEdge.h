@@ -13,10 +13,12 @@
 
 #pragma once
 
-#include <gsG1Basis/gsGluingData.h>
+#include <gsG1Basis/gsApproxGluingData.h>
 #include <gsG1Basis/gsG1ASGluingData.h>
 #include <gsG1Basis/gsVisitorG1BasisEdge.h>
 # include <gsAssembler/gsAssembler.h>
+
+# include <gsG1Basis/gsG1OptionList.h>
 
 namespace gismo
 {
@@ -31,17 +33,17 @@ public:
                  gsMultiBasis<> basis, // single basis
                  index_t uv, // !!! 0 == u; 1 == v !!!
                  bool isBoundary,
-                 gsOptionList & optionList)
-        : m_geo(geo), m_basis(basis), m_uv(uv), m_isBoundary(isBoundary), m_optionList(optionList)
+                 gsG1OptionList & g1OptionList)
+        : m_geo(geo), m_basis(basis), m_uv(uv), m_isBoundary(isBoundary), m_g1OptionList(g1OptionList)
     {
 
         // Computing the gluing data
-        gsGluingData<T> gluingData(m_geo,m_basis,m_uv,m_isBoundary,m_optionList);
+        gsApproxGluingData<T> gluingData(m_geo, m_basis, m_uv, m_isBoundary, m_g1OptionList);
         m_gD = gluingData;
 
         // Computing the G1 - basis function at the edge
         // Spaces for computing the g1 basis
-        index_t m_r = m_optionList.getInt("regularity"); // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
+        index_t m_r = m_g1OptionList.getInt("regularity"); // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
 
         gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(0).component(m_uv)); // 0 -> v, 1 -> u
         index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
@@ -109,88 +111,6 @@ public:
     gsBSpline<> get_beta() { return m_gD.get_beta_tilde(); }
 
 
-    void plotG1Basis(gsMultiPatch<T> & basisG1_L, gsMultiPatch<T> & basisG1_R, gsMultiPatch<T> & mp, std::string baseName)
-    {
-
-        const std::string baseName1(baseName + "_0");
-        gsParaviewCollection collection1(baseName1);
-
-        const std::string baseName2(baseName + "_1");
-        gsParaviewCollection collection2(baseName2);
-
-        std::string fileName, fileName2;
-        for (unsigned i = 0; i < basisG1_L.nPatches(); i++)
-        {
-
-            fileName = baseName1 + "_" + util::to_string(i);
-            gsField<> temp_field_L(mp.patch(0),basisG1_L.patch(i));
-            gsWriteParaview(temp_field_L,fileName,5000);
-            collection1.addTimestep(fileName,i,"0.vts");
-
-        }
-        for (unsigned i = 0; i < basisG1_R.nPatches(); i++)
-        {
-
-            fileName2 = baseName2 + "_" + util::to_string(i);
-            gsField<> temp_field_R(mp.patch(1),basisG1_R.patch(i));
-            gsWriteParaview(temp_field_R,fileName2,5000);
-            collection2.addTimestep(fileName2,i,"0.vts");
-
-        }
-        collection1.save();
-        collection2.save();
-    }
-
-    void plotG1BasisBoundary(gsMultiPatch<T> & basisG1_boundary, gsMultiPatch<T> & mp, std::string baseName)
-    {
-        gsParaviewCollection collection1(baseName);
-        std::string fileName;
-        for (unsigned i = 0; i < basisG1_boundary.nPatches(); i++)
-        {
-
-            fileName = baseName + "_" + util::to_string(i);
-            gsField<> temp_field_L(mp.patch(0),basisG1_boundary.patch(i));
-            gsWriteParaview(temp_field_L,fileName,5000);
-            collection1.addTimestep(fileName,i,"0.vts");
-
-        }
-        collection1.save();
-    }
-
-    void g1Condition()
-    {
-        gsMatrix<> points(1,1000);
-        points.setRandom();
-        points = points.array().abs();
-
-        gsMatrix<> points2d_L(2, 1000);
-        gsMatrix<> points2d_R(2, 1000);
-
-        points2d_L.setZero();
-        points2d_R.setZero();
-        points2d_L.row(1) = points; // v
-        points2d_R.row(0) = points; // u
-
-        real_t g1Error = 0;
-        /*
-        for (size_t i = 0; i < g1Basis.nPatches(); i++)
-        {
-            gsMatrix<> temp;
-            temp = m_gD.get_alpha_tilde_1().eval(points).cwiseProduct(g1Basis_L.patch(i).deriv(points2d_L).topRows(1))
-                + m_gD.get_alpha_tilde_0().eval(points).cwiseProduct(g1Basis_R.patch(i).deriv(points2d_R).bottomRows(1))
-                + m_gD.get_beta_bar().eval(points).cwiseProduct(g1Basis_L.patch(i).deriv(points2d_L).bottomRows(1));
-
-            if (temp.array().abs().maxCoeff() > g1Error)
-                g1Error = temp.array().abs().maxCoeff();
-        }
-        */
-        gsInfo << "Conditiontest G1 continuity: \n" << g1Error << "\n\n";
-
-
-        //gsInfo << "\nConditiontest G1 continuity: \n" << g1Basis_L.patch(0).coefs() << "\n\n";
-
-    }
-
 
 protected:
 
@@ -199,10 +119,10 @@ protected:
     gsMultiBasis<T> m_basis;
     index_t m_uv;
     bool m_isBoundary;
-    gsOptionList m_optionList;
+    gsG1OptionList m_g1OptionList;
 
     // Gluing data
-    gsGluingData<T> m_gD;
+    gsApproxGluingData<T> m_gD;
 
     // Basis for getting the G1 Basis
     gsBSplineBasis<> m_basis_plus;
@@ -402,7 +322,7 @@ void gsG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, boxS
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_uv, m_gD, m_isBoundary, m_optionList);
+            visitor_.evaluate(basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_uv, m_gD, m_isBoundary, m_g1OptionList);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);

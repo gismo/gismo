@@ -13,7 +13,8 @@
 
 #pragma once
 
-#include "gsG1Basis/gsGluingData.h"
+# include "gsG1Basis/gsApproxGluingData.h"
+# include <gsG1Basis/gsG1OptionList.h>
 
 namespace gismo
 {
@@ -64,9 +65,9 @@ public:
                          const gsGeometry<T>    & geo, // patch
                          gsMatrix<T>            & quNodes,
                          index_t & uv,
-                         gsGluingData<T>  & gluingData,
+                         gsApproxGluingData<T>  & gluingData,
                          bool & isBoundary,
-                         gsOptionList optionList)
+                         gsG1OptionList & g1OptionList)
     {
         md.points = quNodes;
 
@@ -107,7 +108,7 @@ public:
                 basis_plus.evalSingle_into(i,md.points.bottomRows(1),N_i_plus); // v
                 basis_plus.derivSingle_into(i,md.points.bottomRows(1),der_N_i_plus);
 
-                if (optionList.getSwitch("local"))
+                if (g1OptionList.getInt("gluingData") == gluingData::local)
                 {
 
                 }
@@ -132,7 +133,7 @@ public:
 
                 basis_minus.evalSingle_into(i,md.points.bottomRows(1),N_j_minus); // v
 
-                if (optionList.getSwitch("local"))
+                if (g1OptionList.getInt("gluingData") == gluingData::local)
                 {
 
                 }
@@ -164,7 +165,7 @@ public:
                 basis_plus.evalSingle_into(i,md.points.topRows(1),N_i_plus); // u
                 basis_plus.derivSingle_into(i,md.points.topRows(1),der_N_i_plus);
 
-                if (optionList.getSwitch("local"))
+                if (g1OptionList.getInt("gluingData") == gluingData::local)
                 {
 
                 }
@@ -188,7 +189,7 @@ public:
 
                 basis_minus.evalSingle_into(i,md.points.topRows(1),N_j_minus); // u
 
-                if (optionList.getSwitch("local"))
+                if (g1OptionList.getInt("gluingData") == gluingData::local)
                 {
 
                 }

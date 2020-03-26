@@ -18,6 +18,7 @@
 #include <gsG1Basis/gsG1AuxiliaryPatch.h>
 # include <gsG1Basis/gsG1BasisEdge.h>
 
+# include <gsG1Basis/gsG1OptionList.h>
 
 namespace gismo
 {
@@ -154,7 +155,7 @@ public:
     }
 
 
-    void computeG1InterfaceBasis(gsOptionList optionList){
+    void computeG1InterfaceBasis(gsG1OptionList g1OptionList){
 
         gsMultiPatch<> mp_init;
         mp_init.addPatch(auxGeom[0].getPatch());// Right -> 0 = v along the interface
@@ -164,19 +165,15 @@ public:
         gsMultiBasis<> test_mb(test_mp);
 
 //      gsInfo << "p_tilde : " << optionList << "\n";
-        gsG1BasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), test_mb.basis(0), 1, false, optionList);
-        gsG1BasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, optionList);
+
+        gsG1BasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), test_mb.basis(0), 1, false, g1OptionList);
+        gsG1BasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, g1OptionList);
 
         gluingDataCondition(g1BasisEdge_0.get_alpha(),g1BasisEdge_1.get_alpha(),g1BasisEdge_0.get_beta(),g1BasisEdge_1.get_beta());
 
         gsMultiPatch<> g1Basis_0, g1Basis_1;
         g1BasisEdge_0.constructSolution(g1Basis_0);
         g1BasisEdge_1.constructSolution(g1Basis_1);
-
-
-
-        if (optionList.getSwitch("plot"))
-            g1BasisEdge_0.plotG1Basis(g1Basis_0,g1Basis_1, test_mp, "G1Basis_old");
 
 //      Patch 0 -> Right
         auxGeom[0].parametrizeBasisBack(g1Basis_0);
@@ -186,57 +183,18 @@ public:
 
         g1ConditionRep(g1BasisEdge_0.get_alpha(),g1BasisEdge_1.get_alpha(),g1Basis_0,g1Basis_1);
 
-        g1Condition(g1BasisEdge_1.get_alpha(),g1BasisEdge_0.get_alpha(),auxGeom[1].getG1Basis(),auxGeom[0].getG1Basis());
-
-
-        if (optionList.getSwitch("plot"))
-            g1BasisEdge_0.plotG1Basis(auxGeom[0].getG1Basis(),auxGeom[1].getG1Basis(), mp_init, "G1Basis");
-        //g1BasisEdge_0.g1Condition();
     }
 
 
-    void computeG1BoundaryBasis(gsOptionList optionList, const int boundaryInd){
-        //gsMultiPatch<> mp_init;
-        //mp_init.addPatch(auxGeom[0].getPatch());
-
+    void computeG1BoundaryBasis(gsG1OptionList g1OptionList, const int boundaryInd){
         gsMultiPatch<> test_mp(this->reparametrizeG1Boundary(boundaryInd));
         gsMultiBasis<> test_mb(test_mp);
 
-        gsG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, optionList);
+        gsG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, g1OptionList);
         gsMultiPatch<> g1Basis_edge;
         g1BasisEdge.constructSolution(g1Basis_edge);
-        //std::string basename_old = "G1BasisBoundary_Old_" + util::to_string(auxGeom[0].getGlobalPatchIndex()) + "_" + util::to_string(boundaryInd);
-        //g1BasisEdge.plotG1BasisBoundary(g1Basis_edge, mp_init, basename_old);
 
         auxGeom[0].parametrizeBasisBack(g1Basis_edge);
-
-        //std::string basename = "G1BasisBoundary_" + util::to_string(auxGeom[0].getGlobalPatchIndex()) + "_" + util::to_string(boundaryInd);
-        //if (optionList.getSwitch("plot"))
-        //    g1BasisEdge.plotG1BasisBoundary(auxGeom[0].getG1Basis(), mp_init, basename);
-
-    }
-
-    void computeG1EdgeBasis(gsOptionList optionList, const int edgeInd, bool isboundary){
-        gsMultiPatch<> mp_init;
-        mp_init.addPatch(auxGeom[0].getPatch());
-
-        gsMultiPatch<> test_mp;
-        test_mp = this->reparametrizeG1Boundary(edgeInd);
-        gsMultiBasis<> test_mb(test_mp);
-
-        gsG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, isboundary, optionList);
-        gsMultiPatch<> g1Basis_edge;
-        g1BasisEdge.constructSolution(g1Basis_edge);
-        //std::string basename_old = "G1BasisBoundary_Old_" + util::to_string(auxGeom[0].getGlobalPatchIndex()) + "_" + util::to_string(boundaryInd);
-        //g1BasisEdge.plotG1BasisBoundary(g1Basis_edge, mp_init, basename_old);
-
-        auxGeom[0].parametrizeBasisBack(g1Basis_edge);
-        auxGeom[0].setPlusMinus(g1BasisEdge.get_n_plus(), g1BasisEdge.get_n_minus());
-
-        //std::string basename = "G1BasisBoundary_" + util::to_string(auxGeom[0].getGlobalPatchIndex()) + "_" + util::to_string(boundaryInd);
-        //if (optionList.getSwitch("plot"))
-        //   g1BasisEdge.plotG1BasisBoundary(auxGeom[0].getG1Basis(), mp_init, basename);
-
     }
 
     void deleteBasisFunctions(size_t pID, size_t nPlus)
@@ -315,84 +273,6 @@ public:
         gsInfo << "Conditiontest Gluing data: \n" << temp.array().abs().maxCoeff() << "\n\n";
 
 
-    }
-
-    void g1Condition(gsBSpline<> alpha_0, gsBSpline<> alpha_1, gsMultiPatch<> g1Basis_0,  gsMultiPatch<> g1Basis_1)
-    {
-        // BETA
-        // first,last,interior,mult_ends,mult_interior,degree
-        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(auxGeom[0].getPatch().basis().component(1)); // 0 -> v, 1 -> u
-        index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
-
-        gsKnotVector<> kv(0, 1, basis_edge.numElements()-1, 2 * m_p  + 1, 2 * m_p - 1 );
-        gsBSplineBasis<> bsp(kv);
-
-        gsMatrix<> greville = bsp.anchors();
-        gsMatrix<> uv1, uv0, ev1, ev0;
-
-        const index_t d = 2;
-        gsMatrix<> D0(d,d);
-
-        gsGeometry<>::Ptr beta_temp;
-
-        uv0.setZero(2,greville.cols());
-        uv0.bottomRows(1) = greville;
-
-        uv1.setZero(2,greville.cols());
-        uv1.topRows(1) = greville;
-
-        const gsGeometry<> & P0 = auxGeom[0].getPatch(); // iFace.first().patch = 1
-        const gsGeometry<> & P1 = auxGeom[1].getPatch(); // iFace.second().patch = 0
-        // ======================================
-
-        // ======== Determine bar{beta} ========
-        for(index_t i = 0; i < uv1.cols(); i++)
-        {
-            P0.jacobian_into(uv0.col(i),ev0);
-            P1.jacobian_into(uv1.col(i),ev1);
-
-            D0.col(1) = ev0.col(0); // (DuFL, *)
-            D0.col(0) = ev1.col(1); // (*,DuFR)
-
-            uv0(0,i) = D0.determinant();
-        }
-
-        beta_temp = bsp.interpolateData(uv0.topRows(1), uv0.bottomRows(1));
-        gsBSpline<> beta = dynamic_cast<gsBSpline<> &> (*beta_temp);
-
-
-
-        index_t p_size = 1000;
-        gsMatrix<> points(1, p_size);
-        points.setRandom();
-        points = points.array().abs();
-
-        gsVector<> vec;
-        vec.setLinSpaced(p_size,0,1);
-        points = vec.transpose();
-
-        gsMatrix<> points2d_0(2, p_size);
-        gsMatrix<> points2d_1(2, p_size);
-
-        points2d_0.setOnes();
-        points2d_1.setZero();
-        points2d_0.row(1) = points; // v
-        points2d_1.row(1) = points; // u
-
-        real_t g1Error = 0;
-
-        for (size_t i = 0; i < g1Basis_0.nPatches(); i++)
-        {
-            gsMatrix<> temp;
-            temp = - alpha_1.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).topRows(1))
-                + alpha_0.eval(points).cwiseProduct(g1Basis_1.patch(i).deriv(points2d_1).topRows(1))
-                + beta.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).bottomRows(1));
-
-            if (temp.array().abs().maxCoeff() > g1Error)
-                g1Error = temp.array().abs().maxCoeff();
-        }
-
-        gsInfo << "Conditiontest G1 continuity: \n" << g1Error << "\n\n";
     }
 
     void g1ConditionRep(gsBSpline<> alpha_0, gsBSpline<> alpha_1, gsMultiPatch<> g1Basis_0,  gsMultiPatch<> g1Basis_1)

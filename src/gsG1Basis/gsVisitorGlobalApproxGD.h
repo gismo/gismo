@@ -18,11 +18,11 @@ namespace gismo
 
 
 template <class T>
-class gsVisitorGlobalGD
+class gsVisitorGlobalApproxGD
 {
 public:
 
-    gsVisitorGlobalGD()
+    gsVisitorGlobalApproxGD()
     {
     }
 
