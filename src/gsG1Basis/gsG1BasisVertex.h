@@ -13,9 +13,9 @@
 
 #pragma once
 
-#include <gsG1Basis/gsGluingData.h>
+#include <gsG1Basis/gsApproxGluingData.h>
 #include <gsG1Basis/gsVisitorG1BasisVertex.h>
-
+#include <gsG1Basis/gsG1OptionList.h>
 
 namespace gismo
 {
@@ -30,19 +30,19 @@ public:
                   gsMultiBasis<> basis, // Single Basis
                   std::vector<bool> isBoundary,
                   real_t sigma,
-                  gsOptionList & optionList)
-        : m_geo(geo), m_basis(basis), m_isBoundary(isBoundary), m_sigma(sigma), m_optionList(optionList)
+                  gsG1OptionList & g1OptionList)
+        : m_geo(geo), m_basis(basis), m_isBoundary(isBoundary), m_sigma(sigma), m_g1OptionList(g1OptionList)
     {
 
         for (index_t dir = 0; dir < geo.parDim(); dir++) // For the TWO directions
         {
             // Computing the gluing data
-            gsGluingData<T> gluingData(m_geo,m_basis,dir,m_isBoundary[dir],m_optionList);
+            gsApproxGluingData<T> gluingData(m_geo,m_basis,dir,m_isBoundary[dir],m_g1OptionList);
             m_gD.push_back(gluingData);
 
             // Computing the G1 - basis function at the edge
             // Spaces for computing the g1 basis
-            index_t m_r = m_optionList.getInt("regularity"); // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
+            index_t m_r = m_g1OptionList.getInt("regularity"); // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
 
             gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(0).component(dir)); // 0 -> u, 1 -> v
             index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
@@ -92,10 +92,10 @@ protected:
     gsMultiBasis<T> m_basis;
     std::vector<bool> m_isBoundary;
     real_t m_sigma;
-    gsOptionList m_optionList;
+    gsG1OptionList m_g1OptionList;
 
     // Gluing data
-    std::vector<gsGluingData<T>> m_gD;
+    std::vector<gsApproxGluingData<T>> m_gD;
 
     // Basis for getting the G1 Basis
     std::vector<gsBSplineBasis<>> m_basis_plus;
@@ -245,7 +245,7 @@ void gsG1BasisVertex<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, bo
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 #pragma omp critical(evaluate)
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(basis_g1, basis_geo, m_basis_plus, m_basis_minus, patch, quNodes, m_gD, m_isBoundary, m_sigma, m_optionList);
+            visitor_.evaluate(basis_g1, basis_geo, m_basis_plus, m_basis_minus, patch, quNodes, m_gD, m_isBoundary, m_sigma, m_g1OptionList);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);

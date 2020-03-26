@@ -13,36 +13,36 @@
 
 #pragma once
 
-#include <gsG1Basis/gsGlobalGDAssembler.h>
-
+# include <gsG1Basis/gsGlobalGDAssembler.h>
+# include <gsG1Basis/gsG1OptionList.h>
 
 namespace gismo
 {
 
 template<class T>
-class gsGluingData
+class gsApproxGluingData
 {
 public:
-    gsGluingData()
+    gsApproxGluingData()
     { }
 
-    gsGluingData(gsMultiPatch<T> const & mp,
+    gsApproxGluingData(gsMultiPatch<T> const & mp,
                  gsMultiBasis<T> const & mb,
                  index_t uv,
                  bool isBoundary,
-                 gsOptionList const & optionList)
-        : m_mp(mp), m_mb(mb), m_uv(uv), m_isBoundary(isBoundary), m_optionList(optionList)
+                 gsG1OptionList & g1OptionList)
+        : m_mp(mp), m_mb(mb), m_uv(uv), m_isBoundary(isBoundary)
     {
         m_gamma = 1.0;
 
-        p_tilde = m_optionList.getInt("p_tilde");
-        r_tilde = m_optionList.getInt("r_tilde");
+        p_tilde = g1OptionList.getInt("p_tilde");
+        r_tilde = g1OptionList.getInt("r_tilde");
 
-        m_r = m_optionList.getInt("regularity");
+        m_r = g1OptionList.getInt("regularity");
 
-        if (m_optionList.getSwitch("local"))
+        if (g1OptionList.getInt("gluingData") == gluingData::local)
             gsInfo << "Is not yet implemented \n";
-        else
+        else if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
             setGlobalGluingData();
     }
 
@@ -61,7 +61,6 @@ protected:
     gsMultiBasis<T> m_mb;
     index_t m_uv;
     bool m_isBoundary;
-    gsOptionList m_optionList;
 
     real_t m_gamma;
 
@@ -80,7 +79,7 @@ protected:
 
 
 template<class T>
-void gsGluingData<T>::setGlobalGluingData()
+void gsApproxGluingData<T>::setGlobalGluingData()
 {
     // ======== Space for gluing data : S^(p_tilde, r_tilde) _k ========
     gsKnotVector<T> kv(0,1,0,p_tilde+1,p_tilde-r_tilde); // first,last,interior,mult_ends,mult_interior

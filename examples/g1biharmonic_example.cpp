@@ -18,6 +18,8 @@
 # include <gsAssembler/gsG1BiharmonicAssembler.h>
 # include <gsG1Basis/gsG1System.h>
 
+# include <gsG1Basis/gsG1OptionList.h>
+
 # include <gsG1Basis/gsNormL2.h>
 # include <gsG1Basis/gsSeminormH1.h>
 # include <gsG1Basis/gsSeminormH2.h>
@@ -43,7 +45,7 @@ int main(int argc, char *argv[])
 
     bool plot = false;
     bool direct = false;
-    bool local = false;
+    gluingData::strategy gluingData_strategy = gluingData::l2projection;
     bool local_g1 = false;
     bool latex = false;
 
@@ -79,8 +81,9 @@ int main(int argc, char *argv[])
                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
 /*
-    gsFunctionExpr<> source  ("0",2);
-    gsFunctionExpr<> laplace ("0",2);
+    // Solution of Marios paper
+    gsFunctionExpr<> source  ("-1*cos(x/2)*sin(y/2)",2);
+    gsFunctionExpr<> laplace ("2*cos(x/2)*sin(y/2)",2);
     gsFunctionExpr<> solVal("-4*cos(x/2)*sin(y/2)",2);
     gsFunctionExpr<>sol1der ("2*sin(x/2)*sin(y/2)",
                              "-2*cos(x/2)*cos(y/2)",2);
@@ -123,20 +126,30 @@ int main(int argc, char *argv[])
     fd.getId(0, multiPatch_init); // id=0: Multipatch domain
     multiPatch_init.computeTopology();
 
-    gsOptionList optionList;
-    optionList.addInt("p_tilde","Grad",p_tilde);
-    optionList.addInt("r_tilde","Reg",r_tilde);
-    optionList.addInt("regularity","Regularity of the initial geometry",regularity);
-    optionList.addSwitch("local","Local projection for gluing data",local);
-    optionList.addSwitch("direct","Local projection for gluing data",direct);
-    optionList.addSwitch("plot","Plot in Paraview",plot);
-    optionList.addInt("refine","Refinement",numRefine);
-    optionList.addInt("degree","Degree",numDegree);
 
-    gsInfo << "========== Optionlist ============" << optionList << "\n==================================\n";
+    gsG1OptionList g1OptionList;
+    g1OptionList.addInt("p_tilde","Grad",p_tilde);
+    g1OptionList.addInt("r_tilde","Reg",r_tilde);
+    g1OptionList.addInt("regularity","Regularity of the initial geometry",regularity);
+    g1OptionList.addSwitch("plot","Plot in Paraview",plot);
+    g1OptionList.addInt("refine","Refinement",numRefine);
+    g1OptionList.addInt("degree","Degree",numDegree);
+
+    g1OptionList.addInt("gluingData","The strategy for the gluing data",gluingData_strategy);
+    g1OptionList.addInt("user", "User ID", user::pascal); // Set the user
+
+    if (g1OptionList.getInt("user") == user::pascal)
+        gsInfo << "User is pascal!\n";
+    else if (g1OptionList.getInt("user") == user::andrea)
+        gsInfo << "User is andrea!\n";
+
+    user::name pascal_id = user::pascal;
+    if (pascal_id == g1OptionList.getInt("user"))
+        gsInfo << "User is pascal!\n";
+
 
     //multiPatch.patch(1).degreeElevate(1,0);
-    multiPatch_init.degreeElevate(optionList.getInt("degree"));
+    multiPatch_init.degreeElevate(g1OptionList.getInt("degree"));
 
     gsVector<real_t> l2Error_vec(loop + 1);
     gsVector<real_t> h1SemiError_vec(loop + 1);
@@ -146,14 +159,14 @@ int main(int argc, char *argv[])
     h2SemiError_vec.setZero();
 
     gsVector<index_t> num_knots(loop);
-    num_knots[0] = optionList.getInt("refine");
+    num_knots[0] = g1OptionList.getInt("refine");
     for (index_t i = 1; i < loop; i++)
         num_knots[i] = num_knots[i-1]*2 + 1;
 
     for (index_t refinement_level = 0; refinement_level < loop; refinement_level++)
     {
         gsMultiPatch<> multiPatch(multiPatch_init);
-        multiPatch.uniformRefine_withSameRegularity(num_knots[refinement_level], optionList.getInt("regularity"));
+        multiPatch.uniformRefine_withSameRegularity(num_knots[refinement_level], g1OptionList.getInt("regularity"));
 
         gsInfo << "###### Level: " << refinement_level << " with " << num_knots[refinement_level] << " inner knots ###### " << "\n";
 
@@ -175,7 +188,7 @@ int main(int argc, char *argv[])
             gsParaviewCollection collection(basename);
 
             gsG1AuxiliaryEdgeMultiplePatches singleInt(multiPatch, item.first().patch, item.second().patch);
-            singleInt.computeG1InterfaceBasis(optionList);
+            singleInt.computeG1InterfaceBasis(g1OptionList);
             singleInt.deleteBasisFunctions(0,g1System.sizePlusInterface(numInt));
             singleInt.deleteBasisFunctions(1,g1System.sizePlusInterface(numInt));
 
@@ -214,7 +227,7 @@ int main(int argc, char *argv[])
             gsParaviewCollection collection(basename);
 
             gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatch, bit.patch);
-            singleBdy.computeG1BoundaryBasis(optionList, bit.m_index);
+            singleBdy.computeG1BoundaryBasis(g1OptionList, bit.m_index);
             singleBdy.deleteBasisFunctions(0,g1System.sizePlusBoundary(numBdy));
 
             for (size_t i = 0; i < singleBdy.getSinglePatch(0).getG1Basis().nPatches(); i++)
@@ -253,7 +266,7 @@ int main(int argc, char *argv[])
             }
 
             gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatch, patchIndex, vertIndex);
-            singleVertex.computeG1InternalVertexBasis(optionList);
+            singleVertex.computeG1InternalVertexBasis(g1OptionList);
             for (index_t i = 0; i < 6; i++)
             {
                 gsMultiPatch<> singleBasisFunction;
@@ -299,7 +312,8 @@ int main(int argc, char *argv[])
         // construct solution: G1 Basis
         std::vector<gsMultiPatch<>> g1Basis;
         g1System.constructG1Solution(solVector,g1Basis, multiPatch);
-        g1BiharmonicAssembler.constructG1Solution(solField, g1Basis);
+
+        g1BiharmonicAssembler.plotParaview(solField, g1Basis);
 
         omp_set_num_threads(1); // Set to 1 because of memmory problems :/
         omp_set_nested(1);

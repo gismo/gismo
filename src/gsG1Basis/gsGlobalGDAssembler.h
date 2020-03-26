@@ -14,12 +14,12 @@
 
 #pragma once
 
-#include <gsG1Basis/gsVisitorGlobalGD.h>
+#include <gsG1Basis/gsVisitorGlobalApproxGD.h>
 
 namespace gismo
 {
 
-template <class T, class bhVisitor = gsVisitorGlobalGD<T> >
+template <class T, class bhVisitor = gsVisitorGlobalApproxGD<T> >
 class gsGlobalGDAssembler : public gsAssembler<T>
 {
 public:
