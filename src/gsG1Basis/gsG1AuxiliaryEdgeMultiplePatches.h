@@ -16,8 +16,7 @@
 #include <gismo.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsG1Basis/gsG1AuxiliaryPatch.h>
-# include <gsG1Basis/gsG1BasisEdge.h>
-
+# include <gsG1Basis/gsApproxG1BasisEdge.h>
 # include <gsG1Basis/gsG1OptionList.h>
 
 namespace gismo
@@ -164,16 +163,16 @@ public:
         gsMultiPatch<> test_mp(this->reparametrizeG1Interface()); // auxGeom contains now the reparametrized geometry
         gsMultiBasis<> test_mb(test_mp);
 
-//      gsInfo << "p_tilde : " << optionList << "\n";
-        gsG1BasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), test_mb.basis(0), 1, false, g1OptionList);
-        gsG1BasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, g1OptionList);
+        gsApproxG1BasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), test_mb.basis(0), 1, false, g1OptionList);
+        gsApproxG1BasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, g1OptionList);
+        gsMultiPatch<> g1Basis_0, g1Basis_1;
+         g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
+         g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
 
         if (g1OptionList.getInt("gluingData")==gluingData::l2projection)
             gluingDataCondition(g1BasisEdge_0.get_alpha(),g1BasisEdge_1.get_alpha(),g1BasisEdge_0.get_beta(),g1BasisEdge_1.get_beta());
 
-        gsMultiPatch<> g1Basis_0, g1Basis_1;
-        g1BasisEdge_0.constructSolution(g1Basis_0);
-        g1BasisEdge_1.constructSolution(g1Basis_1);
+
 
 //      Patch 0 -> Right
         auxGeom[0].parametrizeBasisBack(g1Basis_0);
@@ -191,9 +190,9 @@ public:
         gsMultiPatch<> test_mp(this->reparametrizeG1Boundary(boundaryInd));
         gsMultiBasis<> test_mb(test_mp);
 
-        gsG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, g1OptionList);
+        gsApproxG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, g1OptionList);
         gsMultiPatch<> g1Basis_edge;
-        g1BasisEdge.constructSolution(g1Basis_edge);
+        g1BasisEdge.setG1BasisEdge(g1Basis_edge);
 
         auxGeom[0].parametrizeBasisBack(g1Basis_edge);
     }

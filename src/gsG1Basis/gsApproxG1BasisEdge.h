@@ -1,4 +1,4 @@
-/** @file gsG1BasisEdge.h
+/** @file gsApproxG1BasisEdge.h
 
     @brief Provides assembler for a G1 Basis for multiPatch.
 
@@ -16,24 +16,24 @@
 #include <gsG1Basis/gsGluingData.h>
 #include <gsG1Basis/gsApproxGluingData.h>
 #include <gsG1Basis/gsG1ASGluingData.h>
-#include <gsG1Basis/gsVisitorG1BasisEdge.h>
+#include <gsG1Basis/gsVisitorApproxG1BasisEdge.h>
 # include <gsAssembler/gsAssembler.h>
 # include <gsG1Basis/gsG1OptionList.h>
 
 namespace gismo
 {
-template<class T, class bhVisitor = gsVisitorG1BasisEdge<T>>
-class gsG1BasisEdge : public gsAssembler<T>
+template<class T, class bhVisitor = gsVisitorApproxG1BasisEdge<T>>
+class gsApproxG1BasisEdge : public gsAssembler<T>
 {
 public:
     typedef gsAssembler<T> Base;
 
 public:
-    gsG1BasisEdge(gsMultiPatch<> geo, // single patch
-                 gsMultiBasis<> basis, // single basis
-                 index_t uv, // !!! 0 == u; 1 == v !!!
-                 bool isBoundary,
-                 gsG1OptionList & g1OptionList)
+    gsApproxG1BasisEdge(gsMultiPatch<> geo, // single patch
+                  gsMultiBasis<> basis, // single basis
+                  index_t uv, // !!! 0 == u; 1 == v !!!
+                  bool isBoundary,
+                  gsG1OptionList & g1OptionList)
         : m_geo(geo), m_basis(basis), m_uv(uv), m_isBoundary(isBoundary), m_g1OptionList(g1OptionList)
     {
 
@@ -61,7 +61,6 @@ public:
             basis_plus.insertKnot(basis_edge.knot(i),m_p-1-m_r);
 
         m_basis_plus = basis_plus;
-        n_plus = m_basis_plus.size();
         //gsInfo << "Basis plus : " << basis_plus << "\n";
 
         gsKnotVector<T> kv_minus(0,1,0,m_p+1-1,m_p-1-m_r); // p-1,r //-1 bc p-1
@@ -80,7 +79,6 @@ public:
             basis_minus.insertKnot(basis_edge.knot(i),m_p-1-m_r);
 
         m_basis_minus = basis_minus;
-        n_minus = m_basis_minus.size();
 
         // Computing the gluing data
         gsApproxGluingData<T> gluingData(m_geo, m_basis, m_uv, m_isBoundary, m_g1OptionList);
@@ -93,19 +91,17 @@ public:
 
         // Basis for the G1 basis
         m_basis_g1 = m_basis.basis(0);
-
-        refresh();
-        assemble();
-        solve();
     }
 
+    // Computed the gluing data globally
+    void setG1BasisEdge(gsMultiPatch<T> & result);
 
     void refresh();
-    void assemble();
-    inline void apply(bhVisitor & visitor, int patchIndex, boxSide side = boundary::none);
+    void assemble(index_t i, std::string typeBf); // i == number of bf
+    inline void apply(bhVisitor & visitor, index_t i, std::string typeBf); // i == number of bf
     void solve();
 
-    void constructSolution(gsMultiPatch<T> & result);
+    void constructSolution(const gsMatrix<> & solVector, gsMultiPatch<T> & result);
 
     gsBSpline<> get_alpha() { return m_gD[0].get_alpha_tilde(); }
     gsBSpline<> get_beta() { return m_gD[0].get_beta_tilde(); }
@@ -129,87 +125,85 @@ protected:
     // Basis for the G1 Basis
     gsMultiBasis<T> m_basis_g1;
 
-    // Size of the basis
-    index_t n_plus, n_minus;
-
-    // System
-    std::vector<gsSparseSystem<T> > m_f_0, m_f_1;
-
     // For Dirichlet boundary
     using Base::m_ddof;
+    using Base::m_system;
 
-    std::vector<gsMatrix<>> solVec_t, solVec_b;
 
 }; // class gsG1BasisEdge
 
-
 template <class T, class bhVisitor>
-void gsG1BasisEdge<T,bhVisitor>::constructSolution(gsMultiPatch<T> & result)
+void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 {
-
     result.clear();
 
+    index_t n_plus = m_basis_plus.size();
+    index_t n_minus = m_basis_minus.size();
+
+    gsMultiPatch<> g1EdgeBasis;
+
+    for (index_t i = 0; i < n_plus; i++)
+    {
+        refresh();
+
+        assemble(i,"plus"); // i == number of bf
+
+        gsSparseSolver<real_t>::CGDiagonal solver;
+        gsMatrix<> sol;
+        solver.compute(m_system.matrix());
+        sol = solver.solve(m_system.rhs());
+
+        constructSolution(sol,g1EdgeBasis);
+    }
+    for (index_t i = 0; i < n_minus; i++)
+    {
+        refresh();
+        assemble(i,"minus"); // i == number of bf
+
+        gsSparseSolver<real_t>::CGDiagonal solver;
+        gsMatrix<> sol;
+        solver.compute(m_system.matrix());
+        sol = solver.solve(m_system.rhs());
+
+        constructSolution(sol,g1EdgeBasis);
+    }
+
+    result = g1EdgeBasis;
+} // setG1BasisEdge
+
+template <class T, class bhVisitor>
+void gsApproxG1BasisEdge<T,bhVisitor>::constructSolution(const gsMatrix<> & solVector, gsMultiPatch<T> & result)
+{
     // Dim is the same for all basis functions
-    const index_t dim = ( 0!=solVec_t.at(0).cols() ? solVec_t.at(0).cols() :  m_ddof[0].cols() );
+    const index_t dim = ( 0!=solVector.cols() ? solVector.cols() :  m_ddof[0].cols() );
 
     gsMatrix<T> coeffs;
-    for (index_t p = 0; p < m_basis_plus.size(); ++p)
+    const gsDofMapper & mapper = m_system.colMapper(0); // unknown = 0
+
+    // Reconstruct solution coefficients on patch p
+    index_t sz;
+    sz = m_basis.basis(0).size();
+
+    coeffs.resize(sz, dim);
+
+    for (index_t i = 0; i < sz; ++i)
     {
-        const gsDofMapper & mapper = m_f_0.at(p).colMapper(0); // unknown = 0
-
-        // Reconstruct solution coefficients on patch p
-        index_t sz;
-        sz = m_basis.basis(0).size();
-
-        coeffs.resize(sz, dim);
-
-        for (index_t i = 0; i < sz; ++i)
+        if (mapper.is_free(i, 0)) // DoF value is in the solVector // 0 = unitPatch
         {
-            if (mapper.is_free(i, 0)) // DoF value is in the solVector // 0 = unitPatch
-            {
-                coeffs.row(i) = solVec_t.at(p).row(mapper.index(i, 0));
-            }
-            else // eliminated DoF: fill with Dirichlet data
-            {
-                //gsInfo << "mapper index dirichlet: " << m_ddof[unk].row( mapper.bindex(i, p) ).head(dim) << "\n";
-                coeffs.row(i) = m_ddof[0].row( mapper.bindex(i, 0) ).head(dim); // = 0
-            }
+            coeffs.row(i) = solVector.row(mapper.index(i, 0));
         }
-        result.addPatch(m_basis_g1.basis(0).makeGeometry(give(coeffs)));
-    }
-
-    for (index_t p = 0; p < m_basis_minus.size(); ++p)
-    {
-        const gsDofMapper & mapper = m_f_1.at(p).colMapper(0); // unknown = 0
-
-        // Reconstruct solution coefficients on patch p
-        index_t sz;
-        sz = m_basis.basis(0).size();
-
-        coeffs.resize(sz, dim);
-
-        for (index_t i = 0; i < sz; ++i)
+        else // eliminated DoF: fill with Dirichlet data
         {
-            if (mapper.is_free(i, 0)) // DoF value is in the solVector // 0 = unitPatch
-            {
-                //gsInfo << "mapper index: " << mapper.index(i, p) << "\n";
-                coeffs.row(i) = solVec_b.at(p).row(mapper.index(i, 0));
-            }
-            else // eliminated DoF: fill with Dirichlet data
-            {
-                //gsInfo << "mapper index dirichlet: " << m_ddof[unk].row( mapper.bindex(i, p) ).head(dim) << "\n";
-                coeffs.row(i) = m_ddof[0].row( mapper.bindex(i, 0) ).head(dim); // = 0
-            }
+            //gsInfo << "mapper index dirichlet: " << m_ddof[unk].row( mapper.bindex(i, p) ).head(dim) << "\n";
+            coeffs.row(i) = m_ddof[0].row( mapper.bindex(i, 0) ).head(dim); // = 0
         }
-
-        result.addPatch(m_basis_g1.basis(0).makeGeometry(give(coeffs)));
-
     }
+    result.addPatch(m_basis_g1.basis(0).makeGeometry(give(coeffs)));
 
 }
 
 template <class T, class bhVisitor>
-void gsG1BasisEdge<T,bhVisitor>::refresh()
+void gsApproxG1BasisEdge<T,bhVisitor>::refresh()
 {
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper map(m_basis.basis(0));
@@ -223,52 +217,36 @@ void gsG1BasisEdge<T,bhVisitor>::refresh()
     }
 
     map.finalize();
-    //gsInfo << "map : " << map.asVector() << "\n";
-    //map.print();
 
     // 2. Create the sparse system
-    gsSparseSystem<T> m_system = gsSparseSystem<T>(map);
-    for (index_t i = 0; i < m_basis_plus.size() ; i++)
-        m_f_0.push_back(m_system);
-    for (index_t i = 0; i < m_basis_minus.size(); i++)
-        m_f_1.push_back(m_system);
-
+    m_system = gsSparseSystem<T>(map);
 
 } // refresh()
 
 template <class T, class bhVisitor>
-void gsG1BasisEdge<T,bhVisitor>::assemble()
+void gsApproxG1BasisEdge<T,bhVisitor>::assemble(index_t i, std::string typeBf)
 {
     // Reserve sparse system
     const index_t nz = gsAssemblerOptions::numColNz(m_basis[0],2,1,0.333333);
-    for (index_t i = 0; i < m_basis_plus.size(); i++)
-        m_f_0.at(i).reserve(nz, 1);
-
-    for (index_t i = 0; i < m_basis_minus.size(); i++)
-        m_f_1.at(i).reserve(nz, 1);
+    m_system.reserve(nz, 1);
 
     if(m_ddof.size()==0)
-        m_ddof.resize(2); // 0,1
+        m_ddof.resize(1); // 0,1
 
-    const gsDofMapper & map_0 = m_f_0.at(0).colMapper(0); // Map same for every 0
-    const gsDofMapper & map_1 = m_f_1.at(0).colMapper(0); // Map same for every 1
+    const gsDofMapper & map = m_system.colMapper(0); // Map same for every functions
 
-    m_ddof[0].setZero(map_0.boundarySize(), 1 ); // plus
-    m_ddof[1].setZero(map_1.boundarySize(), 1 ); // minus
+    m_ddof[0].setZero(map.boundarySize(), 1 );
 
     // Assemble volume integrals
     bhVisitor visitor;
-    apply(visitor,0); // patch 0
+    apply(visitor, i, typeBf); // basis function i
 
-    for (index_t i = 0; i < m_basis_plus.size(); i++)
-        m_f_0.at(i).matrix().makeCompressed();
-    for (index_t i = 0; i < m_basis_minus.size(); i++)
-        m_f_1.at(i).matrix().makeCompressed();
+    m_system.matrix().makeCompressed();
 
 } // assemble()
 
 template <class T, class bhVisitor>
-void gsG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, boxSide side)
+void gsApproxG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, std::string typeBf)
 {
 #pragma omp parallel
     {
@@ -295,7 +273,7 @@ void gsG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, boxS
         gsBasis<T> & basis_minus = m_basis_minus;
 
         // Initialize reference quadrature rule and visitor data
-        visitor_.initialize(basis_g1, basis_plus, basis_minus, quRule);
+        visitor_.initialize(basis_g1, quRule);
 
         const gsGeometry<T> & patch = m_geo.patch(0);
 
@@ -313,33 +291,16 @@ void gsG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, boxS
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_uv, m_gD[0], m_isBoundary, m_g1OptionList);
+            visitor_.evaluate(bf_index, typeBf, basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_uv, m_gD[0], m_isBoundary, m_g1OptionList);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);
 
             // Push to global matrix and right-hand side vector
 #pragma omp critical(localToGlobal)
-            visitor_.localToGlobal(patchIndex, m_ddof, m_f_0, m_f_1); // omp_locks inside // patchIndex == 0
+            visitor_.localToGlobal(0, m_ddof, m_system); // omp_locks inside // patchIndex == 0
         }
     }//omp parallel
 } // apply
-
-template <class T, class bhVisitor>
-void gsG1BasisEdge<T,bhVisitor>::solve()
-{
-    gsSparseSolver<real_t>::CGDiagonal solver;
-
-    for (index_t i = 0; i < m_basis_plus.size(); i++) // Tilde
-    {
-        solver.compute(m_f_0.at(i).matrix());
-        solVec_t.push_back(solver.solve(m_f_0.at(i).rhs()));
-    }
-    for (index_t i = 0; i < m_basis_minus.size(); i++)
-    {
-        solver.compute(m_f_1.at(i).matrix());
-        solVec_b.push_back(solver.solve(m_f_1.at(i).rhs()));
-    }
-} // solve
 
 } // namespace gismo

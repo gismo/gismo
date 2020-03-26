@@ -24,10 +24,18 @@ struct gluingData
     enum strategy
     {
         approximate  = 0,
-        l2projection = 1,
-        local = 2
+        l2projection = 1, // global L2-projection
+        local = 2 // local L2-projection
     };
+};
 
+struct g1BasisEdge
+{
+    enum strategy
+    {
+        l2projection = 0, // global L2-projection
+        local = 1 // local L2-projection
+    };
 };
 
 struct user
