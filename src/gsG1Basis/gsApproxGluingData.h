@@ -179,7 +179,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
 
             // The first basis (bsp_geo) is for the gd, the second for the integral
             gsLocalGDAssembler<T>
-                localGdAssembler(bsp_geo, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "alpha");
+                localGdAssembler(bsp_gD, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "alpha");
             localGdAssembler.assemble();
 
             gsSparseSolver<real_t>::CGDiagonal solver;
@@ -190,7 +190,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
             sol = solver.solve(localGdAssembler.rhs());
 
             gsGeometry<>::uPtr tilde_temp;
-            tilde_temp = bsp_geo.makeGeometry(sol);
+            tilde_temp = bsp_gD.makeGeometry(sol);
             gsBSpline<T> a_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
             alpha_minus_tilde.at(i) = a_t;
         }
@@ -217,7 +217,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
 
             // The first basis (bsp_geo) is for the gd, the second for the integral
             gsLocalGDAssembler<T>
-                localGdAssembler(bsp_geo, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "beta");
+                localGdAssembler(bsp_gD, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "beta");
             localGdAssembler.assemble();
 
             gsSparseSolver<real_t>::CGDiagonal solver;
@@ -228,7 +228,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
             sol = solver.solve(localGdAssembler.rhs());
 
             gsGeometry<>::uPtr tilde_temp;
-            tilde_temp = bsp_geo.makeGeometry(sol);
+            tilde_temp = bsp_gD.makeGeometry(sol);
             gsBSpline<T> b_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
             beta_plus_tilde.at(i) = b_t;
         }
