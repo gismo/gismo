@@ -170,11 +170,12 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
             if (m_uv == 1)
                 bsp_geo_local.swap(temp_basis);
             m_geo = bsp_geo_local; // Basis for Integration
+            gsInfo << "BIN HIER \n";
         }
         else if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::l2projection)
             m_geo = m_basis_g1; // Basis for Integration
 
-
+        gsInfo << "BIN HIER \n";
         refresh();
 
         assemble(bfID,"plus"); // i == number of bf
@@ -211,10 +212,12 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
             if (m_uv == 1)
                 bsp_geo_local.swap(temp_basis);
             m_geo = bsp_geo_local; // Basis for Integration
+            gsInfo << "BIN HIER \n";
         }
         else if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::l2projection)
             m_geo = m_basis_g1; // Basis for Integration
 
+        gsInfo << "BIN HIER \n";
         refresh();
 
         assemble(bfID,"minus"); // i == number of bf
@@ -350,7 +353,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, 
 
             gsInfo << domIt->lowerCorner() << " : " << domIt->upperCorner() << "\n";
             gsInfo << m_geo.basis(0) << " :  " << bf_index << "\n";
-            
+
             // Perform required evaluations on the quadrature nodes
             visitor_.evaluate(bf_index, typeBf, basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_uv, m_gD[0], m_isBoundary, m_g1OptionList);
 
