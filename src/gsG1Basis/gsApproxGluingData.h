@@ -190,7 +190,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
             sol = solver.solve(localGdAssembler.rhs());
 
             gsGeometry<>::uPtr tilde_temp;
-            tilde_temp = bsp_geo.makeGeometry(sol);
+            tilde_temp = bsp_gD.makeGeometry(sol);
             gsBSpline<T> a_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
             alpha_minus_tilde.at(i) = a_t;
         }
@@ -228,7 +228,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
             sol = solver.solve(localGdAssembler.rhs());
 
             gsGeometry<>::uPtr tilde_temp;
-            tilde_temp = bsp_geo.makeGeometry(sol);
+            tilde_temp = bsp_gD.makeGeometry(sol);
             gsBSpline<T> b_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
             beta_plus_tilde.at(i) = b_t;
         }
