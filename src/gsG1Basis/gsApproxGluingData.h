@@ -290,7 +290,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
         gsBSpline<T> b_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp2);
         beta_plus_tilde.at(0) = b_t;
     }
-    gsInfo << "finished \n";
+
 } // setLocalGluingData
 
 

@@ -157,8 +157,6 @@ int main(int argc, char *argv[])
     g1OptionList.addInt("g1BasisVertex","The strategy for the g1 basis vertex",g1BasisVertex_strategy);
     g1OptionList.addInt("user", "User ID", user::pascal); // Set the user
 
-    gsInfo << "TEST : " << g1OptionList.getInt("g1BasisEdge") << " : " << g1BasisEdge::local << "\n";
-
     if (g1OptionList.getInt("user") == user::pascal)
         gsInfo << "User is pascal!\n";
     else if (g1OptionList.getInt("user") == user::andrea)
