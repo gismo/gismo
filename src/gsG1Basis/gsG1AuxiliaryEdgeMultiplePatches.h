@@ -168,7 +168,7 @@ public:
         gsMultiPatch<> g1Basis_0, g1Basis_1;
         g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
         g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
-
+        gsInfo << "war hier \n";
         if (g1OptionList.getInt("gluingData")==gluingData::l2projection)
             gluingDataCondition(g1BasisEdge_0.get_alpha(),g1BasisEdge_1.get_alpha(),g1BasisEdge_0.get_beta(),g1BasisEdge_1.get_beta());
 

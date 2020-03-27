@@ -145,7 +145,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 
     gsMultiPatch<> g1EdgeBasis;
 
-    for (index_t i = 0; i < n_plus; i++)
+    for (index_t bfID = 0; bfID < n_plus; bfID++)
     {
 
         if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
@@ -153,7 +153,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
             gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(m_uv)); // u
             index_t degree = temp_basis_first.maxDegree();
 
-            gsMatrix<T> ab = m_basis_plus.support(i);
+            gsMatrix<T> ab = m_basis_plus.support(bfID);
 
             gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
 
@@ -177,7 +177,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 
         refresh();
 
-        assemble(i,"plus"); // i == number of bf
+        assemble(bfID,"plus"); // i == number of bf
 
         gsSparseSolver<real_t>::CGDiagonal solver;
         gsMatrix<> sol;
@@ -186,14 +186,14 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 
         constructSolution(sol,g1EdgeBasis);
     }
-    for (index_t i = 0; i < n_minus; i++)
+    for (index_t bfID = 0; bfID < n_minus; bfID++)
     {
         if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
         {
             gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(m_uv)); // u
             index_t degree = temp_basis_first.maxDegree();
 
-            gsMatrix<T> ab = m_basis_minus.support(i);
+            gsMatrix<T> ab = m_basis_minus.support(bfID);
 
             gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
 
@@ -217,7 +217,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 
         refresh();
 
-        assemble(i,"minus"); // i == number of bf
+        assemble(bfID,"minus"); // i == number of bf
 
         gsSparseSolver<real_t>::CGDiagonal solver;
         gsMatrix<> sol;
