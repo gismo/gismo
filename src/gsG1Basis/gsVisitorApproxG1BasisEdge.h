@@ -99,7 +99,7 @@ public:
                 if (g1OptionList.getInt("gluingData") == gluingData::local)
                 {
                     gsMatrix<> ab = gluingData.get_local_beta_tilde(bfID).support();
-                    if (md.points(0,0) >= ab(0) && md.points(0,0) <= ab(1))
+                    if ((md.points(1,0) >= ab(0)) && (md.points(1,0) <= ab(1)))
                         gluingData.get_local_beta_tilde(bfID).eval_into(md.points.bottomRows(1),beta);
                     else
                         beta.setZero(1,md.points.cols());
@@ -121,7 +121,7 @@ public:
                 if (g1OptionList.getInt("gluingData") == gluingData::local)
                 {
                     gsMatrix<> ab = gluingData.get_local_alpha_tilde(bfID).support();
-                    if (md.points(0,0) >= ab(0) && md.points(0,0) <= ab(1))
+                    if ((md.points(1,0) >= ab(0)) && (md.points(1,0) <= ab(1)))
                         gluingData.get_local_alpha_tilde(bfID).eval_into(md.points.bottomRows(1),alpha);
                     else
                         alpha.setZero(1,md.points.cols());
@@ -155,7 +155,7 @@ public:
                 if (g1OptionList.getInt("gluingData") == gluingData::local)
                 {
                     gsMatrix<> ab = gluingData.get_local_beta_tilde(bfID).support();
-                    if (md.points(0,0) >= ab(0) && md.points(0,0) <= ab(1))
+                    if ((md.points(0,0) >= ab(0)) && (md.points(0,0) <= ab(1)))
                         gluingData.get_local_beta_tilde(bfID).eval_into(md.points.topRows(1),beta);
                     else
                         beta.setZero(1,md.points.cols());
@@ -178,7 +178,7 @@ public:
                 if (g1OptionList.getInt("gluingData") == gluingData::local)
                 {
                     gsMatrix<> ab = gluingData.get_local_alpha_tilde(bfID).support();
-                    if (md.points(0,0) >= ab(0) && md.points(0,0) <= ab(1))
+                    if ((md.points(0,0) >= ab(0)) && (md.points(0,0) <= ab(1)))
                         gluingData.get_local_alpha_tilde(bfID).eval_into(md.points.topRows(1),alpha);
                     else
                         alpha.setZero(1,md.points.cols());
