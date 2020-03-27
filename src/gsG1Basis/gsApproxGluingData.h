@@ -95,7 +95,6 @@ void gsApproxGluingData<T>::setGlobalGluingData()
     for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i = i+(degree-m_r))
         bsp_gD.insertKnot(temp_basis_first.knot(i),p_tilde-r_tilde);
 
-
     gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary);
 
     globalGdAssembler.assemble();
@@ -156,9 +155,9 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
     if (edgeVertex == "edge")
     {
         // Compute alpha_minus
-        for (index_t i = 0; i < n_minus; i++)
+        for (index_t bfID = 0; bfID < n_minus; bfID++)
         {
-            gsMatrix<T> ab = basis_minus.support(i);
+            gsMatrix<T> ab = basis_minus.support(bfID);
 
             gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, p_tilde + 1);
 
@@ -192,11 +191,11 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
             gsGeometry<>::uPtr tilde_temp;
             tilde_temp = bsp_gD.makeGeometry(sol);
             gsBSpline<T> a_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-            alpha_minus_tilde.at(i) = a_t;
+            alpha_minus_tilde.at(bfID) = a_t;
         }
-        for (index_t i = 0; i < n_plus; i++)
+        for (index_t bfID = 0; bfID < n_plus; bfID++)
         {
-            gsMatrix<T> ab = basis_plus.support(i);
+            gsMatrix<T> ab = basis_plus.support(bfID);
 
             gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, p_tilde + 1);
 
@@ -230,7 +229,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
             gsGeometry<>::uPtr tilde_temp;
             tilde_temp = bsp_gD.makeGeometry(sol);
             gsBSpline<T> b_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-            beta_plus_tilde.at(i) = b_t;
+            beta_plus_tilde.at(bfID) = b_t;
         }
     } // edge
     else if (edgeVertex == "vertex")

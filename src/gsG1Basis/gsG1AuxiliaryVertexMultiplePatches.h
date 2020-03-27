@@ -601,13 +601,13 @@ public:
         if (auxGeom.size() == 2 && g1OptionList.getInt("gluingData")==gluingData::l2projection)
         {
             if (auxGeom[0].getGlobalPatchIndex() == 0 && isBdy[0][1])
-                g1ConditionRep(alpha[1], alpha[0], beta_S[1], beta_S[0], g1BasisVector[1],  g1BasisVector[0]);
+                g1ConditionRep(alpha[3], alpha[0], beta_S[3], beta_S[0], g1BasisVector[1],  g1BasisVector[0]);
             else if (auxGeom[0].getGlobalPatchIndex() == 0 && isBdy[0][0])
-                g1ConditionRep(alpha[0], alpha[1], beta_S[0], beta_S[1], g1BasisVector[0],  g1BasisVector[1]);
+                g1ConditionRep(alpha[1], alpha[2], beta_S[1], beta_S[2], g1BasisVector[0],  g1BasisVector[1]);
             else if (auxGeom[0].getGlobalPatchIndex() == 1 && isBdy[0][1])
-                g1ConditionRep(alpha[1], alpha[0], beta_S[1], beta_S[0], g1BasisVector[1],  g1BasisVector[0]);
+                g1ConditionRep(alpha[3], alpha[1], beta_S[3], beta_S[1], g1BasisVector[1],  g1BasisVector[0]);
             else if (auxGeom[0].getGlobalPatchIndex() == 1 && isBdy[0][0])
-                g1ConditionRep(alpha[0], alpha[1], beta_S[0], beta_S[1],  g1BasisVector[0],  g1BasisVector[1]);
+                g1ConditionRep(alpha[1], alpha[2], beta_S[1], beta_S[2],  g1BasisVector[0],  g1BasisVector[1]);
 
         }
 
@@ -745,6 +745,12 @@ public:
         temp = alpha_1.eval(points).cwiseProduct(beta_0.eval(points))
             + alpha_0.eval(points).cwiseProduct(beta_1.eval(points))
             - beta.eval(points);
+
+        gsInfo << "alpha : " << alpha_0.eval(points) << "\n";
+        gsInfo << "alpha : " << alpha_1.eval(points) << "\n";
+        gsInfo << "alpha : " << beta_0.eval(points) << "\n";;
+        gsInfo << "alpha : " << beta_1.eval(points) << "\n";;
+        gsInfo << "alpha : " << beta.eval(points) << "\n";
 
         gsInfo << "Conditiontest Gluing data: \n" << temp.array().abs().maxCoeff() << "\n\n";
 

@@ -202,7 +202,7 @@ public:
 
         dd_ik_plus_deriv = 1/(alpha_squared_v(0,0)) *
             ((geo_deriv2_12 + (beta_deriv[1](0,0) * geo.jacobian(zero).col(1) +
-                beta_0[1](0,0) * geo_deriv2_22))*alpha_0[0](0,0) -
+                beta_0[1](0,0) * geo_deriv2_22))*alpha_0[1](0,0) -
             (geo.jacobian(zero).col(0) + beta_0[1](0,0) * geo.jacobian(zero).col(1)) *
                 alpha_deriv[1](0,0));
 
