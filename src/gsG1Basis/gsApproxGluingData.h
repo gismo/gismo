@@ -236,7 +236,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
     else if (edgeVertex == "vertex")
     {
         // ALPHA
-        gsMatrix<T> ab = basis_minus.support(0); // FIXED TO SUPP(b_0^-)
+        gsMatrix<T> ab = basis_minus.support(1); // FIXED TO SUPP(b_0^-)
 
         gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, p_tilde + 1);
 
@@ -265,7 +265,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
         alpha_minus_tilde.at(0) = a_t;
 
         // BETA
-        ab = basis_plus.support(0); // FIXED TO SUPP(b_0^+)
+        ab = basis_plus.support(2); // FIXED TO SUPP(b_0^+)
 
         gsKnotVector<T> kv2(ab.at(0), ab.at(1), 0, p_tilde + 1);
 
