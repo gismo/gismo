@@ -283,7 +283,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh()
 } // refresh()
 
 template <class T, class bhVisitor>
-void gsApproxG1BasisEdge<T,bhVisitor>::assemble(index_t i, std::string typeBf)
+void gsApproxG1BasisEdge<T,bhVisitor>::assemble(index_t bfID, std::string typeBf)
 {
     // Reserve sparse system
     const index_t nz = gsAssemblerOptions::numColNz(m_basis[0],2,1,0.333333);
@@ -298,7 +298,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::assemble(index_t i, std::string typeBf)
 
     // Assemble volume integrals
     bhVisitor visitor;
-    apply(visitor, i, typeBf); // basis function i
+    apply(visitor, bfID, typeBf); // basis function i
 
     m_system.matrix().makeCompressed();
 
@@ -348,6 +348,9 @@ void gsApproxG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, 
             // Map the Quadrature rule to the element
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
+            gsInfo << domIt->lowerCorner() << " : " << domIt->upperCorner() << "\n";
+            gsInfo << m_geo.basis(0) << " :  " << bf_index << "\n";
+            
             // Perform required evaluations on the quadrature nodes
             visitor_.evaluate(bf_index, typeBf, basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_uv, m_gD[0], m_isBoundary, m_g1OptionList);
 
