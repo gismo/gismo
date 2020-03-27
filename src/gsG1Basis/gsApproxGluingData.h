@@ -179,7 +179,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
 
             // The first basis (bsp_geo) is for the gd, the second for the integral
             gsLocalGDAssembler<T>
-                localGdAssembler(bsp_geo, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "alpha");
+                localGdAssembler(bsp_gD, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "alpha");
             localGdAssembler.assemble();
 
             gsSparseSolver<real_t>::CGDiagonal solver;
@@ -217,7 +217,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
 
             // The first basis (bsp_geo) is for the gd, the second for the integral
             gsLocalGDAssembler<T>
-                localGdAssembler(bsp_geo, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "beta");
+                localGdAssembler(bsp_gD, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "beta");
             localGdAssembler.assemble();
 
             gsSparseSolver<real_t>::CGDiagonal solver;
