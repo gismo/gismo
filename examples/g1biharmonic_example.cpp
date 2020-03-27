@@ -45,9 +45,13 @@ int main(int argc, char *argv[])
 
     bool plot = false;
     bool latex = false;
-    bool local = false;
+    bool localGd = false;
+    bool localEdge = false;
+    bool localVertex = false;
 
     gluingData::strategy gluingData_strategy = gluingData::l2projection;
+    g1BasisEdge::strategy g1BasisEdge_strategy = g1BasisEdge::l2projection;
+    g1BasisVertex::strategy g1BasisVertex_strategy = g1BasisVertex::global;
 
     gsCmdLine cmd("Example for solving the biharmonic problem.");
     cmd.addInt("k", "refine", "Number of refinement steps", numRefine);
@@ -57,7 +61,9 @@ int main(int argc, char *argv[])
     cmd.addInt("t", "threads", "Threads", threads);
     cmd.addInt( "l", "loop", "The number of refinement steps", loop);
     cmd.addSwitch( "plot", "Plot result in ParaView format", plot );
-    cmd.addSwitch( "local", "To compute the gluing data with local support", local );
+    cmd.addSwitch( "localGd", "To compute the gluing data with local support", localGd );
+    cmd.addSwitch( "localEdge", "To compute the G1 edge basis functions with local support", localEdge );
+    cmd.addSwitch( "localVertex", "To compute the G1 vertex basis functions with the average dd_ik", localVertex );
     cmd.addSwitch("latex","Print the rate and error latex-ready",latex);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -113,6 +119,10 @@ int main(int argc, char *argv[])
             string_geo = "KirchhoffLoveGeo/geo_fivePatchDiffParam.xml";
             numDegree = 2; // 2 == degree 3
             break;
+        case 4:
+            string_geo = "planar/multiPatches/4_square_curved.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
         default:
             gsInfo << "No geometry is used! \n";
             break;
@@ -134,10 +144,17 @@ int main(int argc, char *argv[])
     g1OptionList.addInt("refine","Refinement",numRefine);
     g1OptionList.addInt("degree","Degree",numDegree);
 
-    if (local)
+    if (localGd)
         gluingData_strategy = gluingData::local;
+    if (localEdge)
+        g1BasisEdge_strategy = g1BasisEdge::local;
+    if (localVertex)
+        g1BasisVertex_strategy = g1BasisVertex::local;
+
 
     g1OptionList.addInt("gluingData","The strategy for the gluing data",gluingData_strategy);
+    g1OptionList.addInt("g1BasisEdge","The strategy for the g1 basis edge",g1BasisEdge_strategy);
+    g1OptionList.addInt("g1BasisVertex","The strategy for the g1 basis vertex",g1BasisVertex_strategy);
     g1OptionList.addInt("user", "User ID", user::pascal); // Set the user
 
     if (g1OptionList.getInt("user") == user::pascal)

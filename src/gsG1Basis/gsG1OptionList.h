@@ -38,6 +38,15 @@ struct g1BasisEdge
     };
 };
 
+struct g1BasisVertex
+{
+    enum strategy
+    {
+        local = 0, // local transversal vector
+        global = 1 // global transversal vetor
+    };
+};
+
 struct user
 {
     enum name

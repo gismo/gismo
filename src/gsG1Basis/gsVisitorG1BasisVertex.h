@@ -46,7 +46,9 @@ public:
     }
 
     // Evaluate on element.
-    inline void evaluate(gsBasis<T>       & basis, //
+    inline void evaluate(gsMatrix<> dd_ik_minus_2,
+                         gsMatrix<> dd_ik_plus_2,
+                         gsBasis<T>       & basis, //
                          gsBasis<T>       & basis_geo,
                          std::vector<gsBSplineBasis<T>>       & basis_plus,
                          std::vector<gsBSplineBasis<T>>      & basis_minus,
@@ -168,12 +170,19 @@ public:
         }
 
         // Compute dd^^(i_k) and dd^^(i_k-1)
-        gsMatrix<> dd_ik_plus, dd_ik_minus, dd_ik_minus_deriv, dd_ik_plus_deriv;
+        gsMatrix<> dd_ik_plus, dd_ik_minus;
+        gsMatrix<> dd_ik_minus_deriv, dd_ik_plus_deriv;
         dd_ik_minus = -1/(alpha_0[0](0,0)) * (geo.jacobian(zero).col(1) +
             beta_0[0](0,0) * geo.jacobian(zero).col(0));
 
         dd_ik_plus = 1/(alpha_0[1](0,0)) * (geo.jacobian(zero).col(0) +
             beta_0[1](0,0) * geo.jacobian(zero).col(1));
+
+        if (g1OptionList.getInt("g1BasisVertex")==g1BasisVertex::local)
+        {
+            dd_ik_minus = dd_ik_minus_2;
+            dd_ik_plus = dd_ik_plus_2;
+        }
 
         gsMatrix<> geo_deriv2_12(2,1), geo_deriv2_11(2,1), geo_deriv2_22(2,1);
         geo_deriv2_12.row(0) = geo.deriv2(zero).row(2);
@@ -196,6 +205,11 @@ public:
                 beta_0[1](0,0) * geo_deriv2_22))*alpha_0[0](0,0) -
             (geo.jacobian(zero).col(0) + beta_0[1](0,0) * geo.jacobian(zero).col(1)) *
                 alpha_deriv[1](0,0));
+
+        //if (isBoundary[0] == false)
+        //    gsInfo << dd_ik_minus_deriv << "\n";
+        //if (isBoundary[1] == false)
+        //    gsInfo << dd_ik_plus_deriv << "\n";
 
         // Comupute d_(0,0)^(i_k), d_(1,0)^(i_k), d_(0,1)^(i_k), d_(1,1)^(i_k) ; i_k == 2
         std::vector<gsMatrix<>> d_ik;

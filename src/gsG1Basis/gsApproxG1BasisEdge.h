@@ -29,12 +29,12 @@ public:
     typedef gsAssembler<T> Base;
 
 public:
-    gsApproxG1BasisEdge(gsMultiPatch<> geo, // single patch
+    gsApproxG1BasisEdge(gsMultiPatch<> mp, // single patch
                   gsMultiBasis<> basis, // single basis
                   index_t uv, // !!! 0 == u; 1 == v !!!
                   bool isBoundary,
                   gsG1OptionList & g1OptionList)
-        : m_geo(geo), m_basis(basis), m_uv(uv), m_isBoundary(isBoundary), m_g1OptionList(g1OptionList)
+        : m_mp(mp), m_basis(basis), m_uv(uv), m_isBoundary(isBoundary), m_g1OptionList(g1OptionList)
     {
 
         // Computing the G1 - basis function at the edge
@@ -81,9 +81,9 @@ public:
         m_basis_minus = basis_minus;
 
         // Computing the gluing data
-        gsApproxGluingData<T> gluingData(m_geo, m_basis, m_uv, m_isBoundary, m_g1OptionList);
+        gsApproxGluingData<T> gluingData(m_mp, m_basis, m_uv, m_isBoundary, m_g1OptionList);
         if (g1OptionList.getInt("gluingData") == gluingData::local)
-            gluingData.setLocalGluingData(basis_plus, basis_minus);
+            gluingData.setLocalGluingData(basis_plus, basis_minus, "edge");
         else if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
             gluingData.setGlobalGluingData();
 
@@ -109,7 +109,7 @@ public:
 protected:
 
     // Input
-    gsMultiPatch<T> m_geo;
+    gsMultiPatch<T> m_mp;
     gsMultiBasis<T> m_basis;
     index_t m_uv;
     bool m_isBoundary;
@@ -124,6 +124,9 @@ protected:
 
     // Basis for the G1 Basis
     gsMultiBasis<T> m_basis_g1;
+
+    // Basis for Integration
+    gsMultiBasis<T> m_geo;
 
     // For Dirichlet boundary
     using Base::m_ddof;
@@ -144,6 +147,34 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 
     for (index_t i = 0; i < n_plus; i++)
     {
+
+        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
+        {
+            gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(m_uv)); // u
+            index_t degree = temp_basis_first.maxDegree();
+
+            gsMatrix<T> ab = m_basis_plus.support(i);
+
+            gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
+
+            for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1);
+                 i = i + (degree - m_g1OptionList.getInt("regularity")))
+                if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
+                    kv.insert(temp_basis_first.knot(i), 1);
+
+            temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(1 - m_uv)); // v
+            ab = temp_basis_first.support(1);
+            gsKnotVector<T> kv2(ab.at(0), ab.at(1), 1, 1, 1);
+            gsTensorBSplineBasis<2, T> bsp_geo_local(kv, kv2);
+            gsTensorBSplineBasis<2, T> temp_basis(kv2, kv);
+            if (m_uv == 1)
+                bsp_geo_local.swap(temp_basis);
+            m_geo = bsp_geo_local; // Basis for Integration
+        }
+        else if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::l2projection)
+            m_geo = m_basis_g1; // Basis for Integration
+
+
         refresh();
 
         assemble(i,"plus"); // i == number of bf
@@ -157,7 +188,35 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
     }
     for (index_t i = 0; i < n_minus; i++)
     {
+        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
+        {
+            gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(m_uv)); // u
+            index_t degree = temp_basis_first.maxDegree();
+
+            gsMatrix<T> ab = m_basis_minus.support(i);
+
+            gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
+
+            for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1);
+                 i = i + (degree - m_g1OptionList.getInt("regularity")))
+                if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
+                    kv.insert(temp_basis_first.knot(i), 1);
+
+
+            temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(1 - m_uv)); // v
+            ab = temp_basis_first.support(1);
+            gsKnotVector<T> kv2(ab.at(0), ab.at(1), 1, 1, 1);
+            gsTensorBSplineBasis<2, T> bsp_geo_local(kv, kv2);
+            gsTensorBSplineBasis<2, T> temp_basis(kv2, kv);
+            if (m_uv == 1)
+                bsp_geo_local.swap(temp_basis);
+            m_geo = bsp_geo_local; // Basis for Integration
+        }
+        else if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::l2projection)
+            m_geo = m_basis_g1; // Basis for Integration
+
         refresh();
+
         assemble(i,"minus"); // i == number of bf
 
         gsSparseSolver<real_t>::CGDiagonal solver;
@@ -275,10 +334,10 @@ void gsApproxG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, 
         // Initialize reference quadrature rule and visitor data
         visitor_.initialize(basis_g1, quRule);
 
-        const gsGeometry<T> & patch = m_geo.patch(0);
+        const gsGeometry<T> & patch = m_mp.patch(0);
 
         // Initialize domain element iterator
-        typename gsBasis<T>::domainIter domIt = basis_g1.makeDomainIterator(boundary::none);
+        typename gsBasis<T>::domainIter domIt = m_geo.basis(0).makeDomainIterator(boundary::none);
 
 #ifdef _OPENMP
         for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
@@ -286,7 +345,6 @@ void gsApproxG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, 
         for (; domIt->good(); domIt->next() )
 #endif
         {
-
             // Map the Quadrature rule to the element
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
