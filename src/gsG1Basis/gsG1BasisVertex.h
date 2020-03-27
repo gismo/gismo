@@ -27,15 +27,15 @@ public:
     typedef gsAssembler<T> Base;
 
 public:
-    gsG1BasisVertex(gsMultiPatch<> geo, // Single Patch
+    gsG1BasisVertex(gsMultiPatch<> mp, // Single Patch
                   gsMultiBasis<> basis, // Single Basis
                   std::vector<bool> isBoundary,
                   real_t sigma,
                   gsG1OptionList & g1OptionList)
-        : m_geo(geo), m_basis(basis), m_isBoundary(isBoundary), m_sigma(sigma), m_g1OptionList(g1OptionList)
+        : m_mp(mp), m_basis(basis), m_isBoundary(isBoundary), m_sigma(sigma), m_g1OptionList(g1OptionList)
     {
 
-        for (index_t dir = 0; dir < geo.parDim(); dir++) // For the TWO directions
+        for (index_t dir = 0; dir < m_mp.parDim(); dir++) // For the TWO directions
         {
             // Computing the G1 - basis function at the edge
             // Spaces for computing the g1 basis
@@ -62,7 +62,7 @@ public:
             m_basis_minus.push_back(basis_minus);
 
             // Computing the gluing data
-            gsApproxGluingData<T> gluingData(m_geo, m_basis, dir, m_isBoundary[dir], m_g1OptionList);
+            gsApproxGluingData<T> gluingData(m_mp, m_basis, dir, m_isBoundary[dir], m_g1OptionList);
             if (g1OptionList.getInt("gluingData") == gluingData::local)
                 gluingData.setLocalGluingData(basis_plus, basis_minus, "vertex");
             else if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
@@ -104,7 +104,7 @@ public:
 protected:
 
     // Input
-    gsMultiPatch<T> m_geo;
+    gsMultiPatch<T> m_mp;
     gsMultiBasis<T> m_basis;
     std::vector<bool> m_isBoundary;
     real_t m_sigma;
@@ -246,7 +246,7 @@ void gsG1BasisVertex<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, gs
         // Initialize reference quadrature rule and visitor data
         visitor_.initialize(basis_g1, quRule);
 
-        const gsGeometry<T> & patch = m_geo.patch(0);
+        const gsGeometry<T> & patch = m_mp.patch(0);
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt = basis_g1.makeDomainIterator(boundary::none);
