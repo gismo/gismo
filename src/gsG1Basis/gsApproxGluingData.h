@@ -175,8 +175,6 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
     for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i += temp_basis_first.knots().multiplicityIndex(i))
         bsp_gD.insertKnot(temp_basis_first.knot(i),p_tilde-r_tilde);
 
-    gsInfo << bsp_gD << "\n";
-
     if (edgeVertex == "edge")
     {
         // Compute alpha_minus

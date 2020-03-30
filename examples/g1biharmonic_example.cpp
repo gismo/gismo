@@ -338,7 +338,7 @@ int main(int argc, char *argv[])
 
         g1BiharmonicAssembler.plotParaview(solField, g1Basis);
 
-        //omp_set_num_threads(1); // Set to 1 because of memmory problems :/
+        omp_set_num_threads(1); // Set to 1 because of memmory problems :/
         omp_set_nested(1);
 #pragma omp parallel for
         for (index_t e = 0; e < 4; ++e)
