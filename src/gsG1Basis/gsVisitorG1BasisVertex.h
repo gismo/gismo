@@ -135,7 +135,7 @@ public:
         zero.setZero(2,1);
 
         std::vector<gsMatrix<>> alpha, beta, alpha_0, beta_0, alpha_deriv, beta_deriv;
-        if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
+        if (g1OptionList.getInt("gluingData") == gluingData::global)
         {
             alpha.push_back(gluingData[0].get_alpha_tilde().eval(md.points.row(0))); // u
             alpha.push_back(gluingData[1].get_alpha_tilde().eval(md.points.row(1))); // v

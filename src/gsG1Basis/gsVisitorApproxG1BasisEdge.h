@@ -82,7 +82,7 @@ public:
 
         if (uv == 1) // edge is in v-direction
         {
-            if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
+            if (g1OptionList.getInt("gluingData") == gluingData::global)
             {
                 gluingData.get_alpha_tilde().eval_into(md.points.bottomRows(1),alpha); // v
                 gluingData.get_beta_tilde().eval_into(md.points.bottomRows(1),beta);
@@ -138,7 +138,7 @@ public:
         } // Patch 0
         else if (uv == 0) // edge is in u-direction
         {
-            if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
+            if (g1OptionList.getInt("gluingData") == gluingData::global)
             {
                 gluingData.get_alpha_tilde().eval_into(md.points.topRows(1),alpha); // u
                 gluingData.get_beta_tilde().eval_into(md.points.topRows(1),beta);

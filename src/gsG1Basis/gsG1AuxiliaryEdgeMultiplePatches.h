@@ -166,13 +166,14 @@ public:
         gsApproxG1BasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), test_mb.basis(0), 1, false, g1OptionList);
         gsApproxG1BasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, g1OptionList);
         gsMultiPatch<> g1Basis_0, g1Basis_1;
+
         g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
         g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
-        gsInfo << "war hier \n";
-        if (g1OptionList.getInt("gluingData")==gluingData::l2projection)
+
+        if (g1OptionList.getInt("gluingData")==gluingData::global)
             gluingDataCondition(g1BasisEdge_0.get_alpha(),g1BasisEdge_1.get_alpha(),g1BasisEdge_0.get_beta(),g1BasisEdge_1.get_beta());
 
-
+        g1BasisEdge_0.plotGluingData(0);
 
 //      Patch 0 -> Right
         auxGeom[0].parametrizeBasisBack(g1Basis_0);
@@ -180,7 +181,7 @@ public:
 //      Patch 1 -> Left
         auxGeom[1].parametrizeBasisBack(g1Basis_1);
 
-        if (g1OptionList.getInt("gluingData")==gluingData::l2projection)
+        if (g1OptionList.getInt("gluingData")==gluingData::global)
             g1ConditionRep(g1BasisEdge_0.get_alpha(),g1BasisEdge_1.get_alpha(),g1Basis_0,g1Basis_1);
 
     }

@@ -65,7 +65,7 @@ public:
             gsApproxGluingData<T> gluingData(m_mp, m_basis, dir, m_isBoundary[dir], m_g1OptionList);
             if (g1OptionList.getInt("gluingData") == gluingData::local)
                 gluingData.setLocalGluingData(basis_plus, basis_minus, "vertex");
-            else if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
+            else if (g1OptionList.getInt("gluingData") == gluingData::global)
                 gluingData.setGlobalGluingData();
 
             m_gD.push_back(gluingData);

@@ -39,9 +39,6 @@ public:
     {
         p_tilde = this->m_optionList.getInt("p_tilde");
         r_tilde = this->m_optionList.getInt("r_tilde");
-
-        m_r = this->m_optionList.getInt("regularity");
-
     }
 
     // Computed the gluing data globally
@@ -53,17 +50,58 @@ public:
     const gsBSpline<T> get_local_alpha_tilde(index_t i) const {return alpha_minus_tilde[i]; }
     const gsBSpline<T> get_local_beta_tilde(index_t i) const {return beta_plus_tilde[i]; }
 
+    void plotGluingData(index_t nummGd = 0);
+
 protected:
 
     // Spline space for the gluing data (p_tilde,r_tilde,k)
     index_t p_tilde, r_tilde;
 
-    // Regularity of the geometry
-    index_t m_r;
-
     std::vector<gsBSpline<T>> alpha_minus_tilde, beta_plus_tilde;
 
 }; // class gsGluingData
+
+template<class T>
+void gsApproxGluingData<T>::plotGluingData(index_t numGd)
+{
+    if (this->m_optionList.getInt("gluingData") == gluingData::global)
+    {
+        std::string fileName;
+        std::string basename = "ApproxGluingDataGlobal" + util::to_string(numGd);
+        gsParaviewCollection collection(basename);
+
+        // Alpha
+        fileName = basename + "_alpha_" + util::to_string(0);
+        gsWriteParaview(this->alpha_tilde,fileName,1000);
+        collection.addPart(fileName,".vtp");
+        // Beta
+        fileName = basename + "_beta_" + util::to_string(0);
+        gsWriteParaview(this->beta_tilde,fileName,1000);
+        collection.addPart(fileName,".vtp");
+
+        collection.save();
+    }
+    else if (this->m_optionList.getInt("gluingData") == gluingData::local)
+    {
+        std::string fileName;
+        std::string basename = "ApproxGluingDataLocal2" + util::to_string(numGd);
+        gsParaviewCollection collection(basename);
+
+        for (size_t i = 0; i < alpha_minus_tilde.size(); i++)
+        {
+            fileName = basename + "_alpha_" + util::to_string(i);
+            gsWriteParaview(alpha_minus_tilde[i],fileName,1000);
+            collection.addTimestep(fileName,i,".vtp");
+        }
+        for (size_t i = 0; i < beta_plus_tilde.size(); i++)
+        {
+            fileName = basename + "_beta_" + util::to_string(i);
+            gsWriteParaview(beta_plus_tilde[i],fileName,5000);
+            collection.addTimestep(fileName,i,".vtp");
+        }
+        collection.save();
+    }
+}
 
 
 template<class T>
@@ -73,27 +111,12 @@ void gsApproxGluingData<T>::setGlobalGluingData()
     gsKnotVector<T> kv(0,1,0,p_tilde+1,p_tilde-r_tilde); // first,last,interior,mult_ends,mult_interior
     gsBSplineBasis<T> bsp_gD(kv);
 
-    gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(this->m_mb.basis(0).component(this->m_uv)); // u
-    //gsBSplineBasis<> temp_basis_second = dynamic_cast<gsBSplineBasis<> &>(m_mb.basis(1).component(1)); // v
-/*
-    if (temp_basis_first.numElements() >= temp_basis_second.numElements())
-    {
-        index_t degree = temp_basis_second.maxDegree();
-        for (size_t i = degree+1; i < temp_basis_second.knots().size() - (degree+1); i = i+(degree-m_r))
-            bsp_gD.insertKnot(temp_basis_second.knot(i),p_tilde-r_tilde);
-    }
-    else
-    {
-        index_t degree = temp_basis_first.maxDegree();
-        for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i = i+(degree-m_r))
-            bsp_gD.insertKnot(temp_basis_first.knot(i),p_tilde-r_tilde);
-
-    }
-*/
+    gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(this->m_mb.basis(0).component(this->m_uv));
 
     index_t degree = temp_basis_first.maxDegree();
-    for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i = i+(degree-m_r))
+    for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i += temp_basis_first.knots().multiplicityIndex(i))
         bsp_gD.insertKnot(temp_basis_first.knot(i),p_tilde-r_tilde);
+
 
     gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary);
 
@@ -149,8 +172,10 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
     gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(this->m_mb.basis(0).component(this->m_uv)); // u
 
     index_t degree = temp_basis_first.maxDegree();
-    for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i = i+(degree-m_r))
+    for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i += temp_basis_first.knots().multiplicityIndex(i))
         bsp_gD.insertKnot(temp_basis_first.knot(i),p_tilde-r_tilde);
+
+    gsInfo << bsp_gD << "\n";
 
     if (edgeVertex == "edge")
     {
@@ -162,23 +187,15 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
             gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, p_tilde + 1);
 
             index_t degree = temp_basis_first.maxDegree();
-            for (size_t ii = degree + 1; ii < temp_basis_first.knots().size() - (degree + 1); ii = ii + (degree - m_r))
+            for (size_t ii = degree + 1; ii < temp_basis_first.knots().size() - (degree + 1); ii += temp_basis_first.knots().multiplicityIndex(ii))
                 if ((temp_basis_first.knot(ii) > ab.at(0)) && (temp_basis_first.knot(ii) < ab.at(1)))
-                    kv.insert(temp_basis_first.knot(ii), p_tilde - r_tilde);
-            /*
-            real_t span = bsp_gD.getMaxCellLength();
-            real_t temp_knot = ab.at(0) + span;
-            while (temp_knot < ab.at(1))
-            {
-                kv.insert(temp_knot,p_tilde-r_tilde);
-                temp_knot += span;
-            }
-             */
+                    kv.insert(temp_basis_first.knot(ii), 1);
+
             gsBSplineBasis<T> bsp_geo(kv);
 
             // The first basis (bsp_geo) is for the gd, the second for the integral
             gsLocalGDAssembler<T>
-                localGdAssembler(bsp_geo, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "alpha");
+                localGdAssembler(bsp_gD, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "alpha");
             localGdAssembler.assemble();
 
             gsSparseSolver<real_t>::CGDiagonal solver;
@@ -189,7 +206,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
             sol = solver.solve(localGdAssembler.rhs());
 
             gsGeometry<>::uPtr tilde_temp;
-            tilde_temp = bsp_geo.makeGeometry(sol);
+            tilde_temp = bsp_gD.makeGeometry(sol);
             gsBSpline<T> a_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
             alpha_minus_tilde.at(bfID) = a_t;
         }
@@ -200,23 +217,15 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
             gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, p_tilde + 1);
 
             index_t degree = temp_basis_first.maxDegree();
-            for (size_t ii = degree + 1; ii < temp_basis_first.knots().size() - (degree + 1); ii = ii + (degree - m_r))
+            for (size_t ii = degree + 1; ii < temp_basis_first.knots().size() - (degree + 1); ii += temp_basis_first.knots().multiplicityIndex(ii))
                 if ((temp_basis_first.knot(ii) > ab.at(0)) && (temp_basis_first.knot(ii) < ab.at(1)))
-                    kv.insert(temp_basis_first.knot(ii), p_tilde - r_tilde);
-            /*
-            real_t span = bsp_gD.getMaxCellLength();
-            real_t temp_knot = ab.at(0) + span;
-            while (temp_knot < ab.at(1))
-            {
-                kv.insert(temp_knot,p_tilde-r_tilde);
-                temp_knot += span;
-            }
-             */
+                    kv.insert(temp_basis_first.knot(ii), 1);
+
             gsBSplineBasis<T> bsp_geo(kv);
 
             // The first basis (bsp_geo) is for the gd, the second for the integral
             gsLocalGDAssembler<T>
-                localGdAssembler(bsp_geo, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "beta");
+                localGdAssembler(bsp_gD, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "beta");
             localGdAssembler.assemble();
 
             gsSparseSolver<real_t>::CGDiagonal solver;
@@ -227,7 +236,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
             sol = solver.solve(localGdAssembler.rhs());
 
             gsGeometry<>::uPtr tilde_temp;
-            tilde_temp = bsp_geo.makeGeometry(sol);
+            tilde_temp = bsp_gD.makeGeometry(sol);
             gsBSpline<T> b_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
             beta_plus_tilde.at(bfID) = b_t;
         }
@@ -240,15 +249,15 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
         gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, p_tilde + 1);
 
         index_t degree = temp_basis_first.maxDegree();
-        for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i = i + (degree - m_r))
+        for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
             if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
-                kv.insert(temp_basis_first.knot(i), p_tilde - r_tilde);
+                kv.insert(temp_basis_first.knot(i), 1);
 
         gsBSplineBasis<T> bsp_geo(kv);
 
         // The first basis (bsp_geo) is for the gd, the second for the integral
         gsLocalGDAssembler<T>
-            localGdAssembler(bsp_geo, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "alpha");
+            localGdAssembler(bsp_gD, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "alpha");
         localGdAssembler.assemble();
 
         gsSparseSolver<real_t>::CGDiagonal solver;
@@ -259,7 +268,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
         sol = solver.solve(localGdAssembler.rhs());
 
         gsGeometry<>::uPtr tilde_temp;
-        tilde_temp = bsp_geo.makeGeometry(sol);
+        tilde_temp = bsp_gD.makeGeometry(sol);
         gsBSpline<T> a_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
         alpha_minus_tilde.at(0) = a_t;
 
@@ -269,15 +278,15 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
         gsKnotVector<T> kv2(ab.at(0), ab.at(1), 0, p_tilde + 1);
 
         degree = temp_basis_first.maxDegree();
-        for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i = i + (degree - m_r))
+        for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
             if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
-                kv2.insert(temp_basis_first.knot(i), p_tilde - r_tilde);
+                kv2.insert(temp_basis_first.knot(i), 1);
 
         gsBSplineBasis<T> bsp_geo2(kv2);
 
         // The first basis (bsp_geo) is for the gd, the second for the integral
         gsLocalGDAssembler<T>
-            localGdAssembler2(bsp_geo2, bsp_geo2, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "beta");
+            localGdAssembler2(bsp_gD, bsp_geo2, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "beta");
         localGdAssembler2.assemble();
 
         // alpha^S
@@ -285,7 +294,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
         sol = solver.solve(localGdAssembler2.rhs());
 
         gsGeometry<>::uPtr tilde_temp2;
-        tilde_temp2 = bsp_geo.makeGeometry(sol);
+        tilde_temp2 = bsp_gD.makeGeometry(sol);
         gsBSpline<T> b_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp2);
         beta_plus_tilde.at(0) = b_t;
     }

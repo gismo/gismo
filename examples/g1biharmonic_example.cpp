@@ -43,13 +43,15 @@ int main(int argc, char *argv[])
 
     index_t loop = 1; // Number of refinement steps
 
+    real_t threshold = 1e-5;
+
     bool plot = false;
     bool latex = false;
     bool localGd = false;
     bool localEdge = false;
     bool localVertex = false;
 
-    gluingData::strategy gluingData_strategy = gluingData::l2projection;
+    gluingData::strategy gluingData_strategy = gluingData::global;
     g1BasisEdge::strategy g1BasisEdge_strategy = g1BasisEdge::l2projection;
     g1BasisVertex::strategy g1BasisVertex_strategy = g1BasisVertex::global;
 
@@ -65,6 +67,7 @@ int main(int argc, char *argv[])
     cmd.addSwitch( "localEdge", "To compute the G1 edge basis functions with local support", localEdge );
     cmd.addSwitch( "localVertex", "To compute the G1 vertex basis functions with the average dd_ik", localVertex );
     cmd.addSwitch("latex","Print the rate and error latex-ready",latex);
+    cmd.addReal("e","threshold", "The threshold for computing the kernel", threshold);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // ======= Solution =========
@@ -143,6 +146,7 @@ int main(int argc, char *argv[])
     g1OptionList.addSwitch("plot","Plot in Paraview",plot);
     g1OptionList.addInt("refine","Refinement",numRefine);
     g1OptionList.addInt("degree","Degree",numDegree);
+    g1OptionList.addReal("threshold","Threshold",threshold);
 
     if (localGd)
         gluingData_strategy = gluingData::local;

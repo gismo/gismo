@@ -84,7 +84,7 @@ public:
         gsApproxGluingData<T> gluingData(m_mp, m_basis, m_uv, m_isBoundary, m_g1OptionList);
         if (g1OptionList.getInt("gluingData") == gluingData::local)
             gluingData.setLocalGluingData(basis_plus, basis_minus, "edge");
-        else if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
+        else if (g1OptionList.getInt("gluingData") == gluingData::global)
             gluingData.setGlobalGluingData();
 
         m_gD.push_back(gluingData);
@@ -105,6 +105,8 @@ public:
 
     gsBSpline<> get_alpha() { return m_gD[0].get_alpha_tilde(); }
     gsBSpline<> get_beta() { return m_gD[0].get_beta_tilde(); }
+
+    void plotGluingData(index_t numGd) { m_gD[0].plotGluingData(numGd); }
 
 protected:
 

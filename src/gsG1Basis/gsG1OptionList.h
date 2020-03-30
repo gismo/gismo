@@ -24,7 +24,7 @@ struct gluingData
     enum strategy
     {
         approximate  = 0,
-        l2projection = 1, // global L2-projection
+        global = 1, // global L2-projection
         local = 2 // local L2-projection
     };
 };

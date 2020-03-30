@@ -496,7 +496,7 @@ public:
             g1BasisVertexVector.push_back(g1BasisVertex_0);
 
 
-            if (g1OptionList.getInt("gluingData")==gluingData::l2projection)
+            if (g1OptionList.getInt("gluingData")==gluingData::global)
             {
                 alpha.push_back(g1BasisVertex_0.get_alpha_tilde(0));
                 beta_S.push_back(g1BasisVertex_0.get_beta_tilde(0));
@@ -598,7 +598,7 @@ public:
         }
 
 
-        if (auxGeom.size() == 2 && g1OptionList.getInt("gluingData")==gluingData::l2projection)
+        if (auxGeom.size() == 2 && g1OptionList.getInt("gluingData")==gluingData::global)
         {
             if (auxGeom[0].getGlobalPatchIndex() == 0 && isBdy[0][1])
                 g1ConditionRep(alpha[3], alpha[0], beta_S[3], beta_S[0], g1BasisVector[1],  g1BasisVector[0]);
@@ -632,7 +632,7 @@ public:
 
             Eigen::FullPivLU<gsMatrix<>> BigLU(bigMatrix);
             Eigen::FullPivLU<gsMatrix<>> SmallLU(smallMatrix);
-            SmallLU.setThreshold(1e-3);
+            SmallLU.setThreshold(g1OptionList.getReal("threshold"));
             dim_kernel = SmallLU.dimensionOfKernel();
 
             vertexBoundaryBasis = selectVertexBoundaryBasisFunction(BigLU.kernel(), BigLU.dimensionOfKernel(), SmallLU.kernel(), SmallLU.dimensionOfKernel());
