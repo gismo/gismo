@@ -78,6 +78,9 @@ protected:
                 bsp_gD.insertKnot(temp_basis_first.knot(i),2); // Increase the multiplicity of the inner knots by two
         }
 
+        gsKnotVector<T> newKV = bsp_gD.knots();
+        gsMatrix<> grevPoints = newKV.greville();
+
         gsG1ASGluingDataAssembler<T> globalGdAssembler(bsp_gD, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary);
         globalGdAssembler.assemble();
 
