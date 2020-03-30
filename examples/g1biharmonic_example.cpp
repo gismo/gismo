@@ -138,6 +138,7 @@ int main(int argc, char *argv[])
     fd.getId(0, multiPatch_init); // id=0: Multipatch domain
     multiPatch_init.computeTopology();
 
+    gsWriteParaview(multiPatch_init.patch(0),"geoemtry_init",2000,true);
 
     gsG1OptionList g1OptionList;
     g1OptionList.addInt("p_tilde","Grad",p_tilde);
@@ -338,7 +339,9 @@ int main(int argc, char *argv[])
 
         g1BiharmonicAssembler.plotParaview(solField, g1Basis);
 
-        omp_set_num_threads(1); // Set to 1 because of memmory problems :/
+        if (num_knots[refinement_level] > 78)
+            omp_set_num_threads(1); // Set to 1 because of memmory problems :/
+
         omp_set_nested(1);
 #pragma omp parallel for
         for (index_t e = 0; e < 4; ++e)
