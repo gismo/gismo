@@ -195,7 +195,7 @@ public:
         {
             for (size_t i = 0; i < 2 * dimU; i++)
             {
-                if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > 10e-25)
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > m_zero*m_zero)
                     BigMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
             }
 
@@ -203,7 +203,7 @@ public:
             {
                 for(size_t j = i; j < i + 2; j++)
                 {
-                    if (auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i) * auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i) > 10e-25)
+                    if (auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i) * auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i) > m_zero*m_zero)
                         BigMatrix(i + j + (2 * dimU ) - 2, bf) = auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i);
                 }
             }
@@ -226,17 +226,16 @@ public:
         {
             for (size_t i = 0; i < dimU; i++)
             {
-                if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > 10e-25)
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > m_zero*m_zero)
                     SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
             }
 
             for (size_t i = 1; i < dimV; i++)
             {
-                if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) > 10e-25)
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) > m_zero*m_zero)
                     SmallMatrix(i + dimU -1, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i * dimU);
             }
         }
-        //gsInfo << SmallMatrix << "\n";
         return SmallMatrix;
     }
 
@@ -257,7 +256,7 @@ public:
             {
                 for(size_t j = i; j < i + 2; j++)
                 {
-                    if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU + j - i) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU + j - i) > 10e-25)
+                    if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU + j - i) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU + j - i) > m_zero*m_zero)
                         BigMatrix(i + j, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i  * dimU + j - i);
                 }
             }
@@ -280,7 +279,7 @@ public:
         {
             for (size_t i = 0; i < dimV; i++)
             {
-                if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) > 10e-25)
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) > m_zero*m_zero)
                     SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i * dimU);
             }
         }
@@ -301,7 +300,7 @@ public:
         {
             for (size_t i = 0; i < 2 * dimU; i++)
             {
-                if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > 10e-25)
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > m_zero*m_zero)
                     BigMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
             }
         }
@@ -322,7 +321,7 @@ public:
         {
             for (size_t i = 0; i < dimU; i++)
             {
-                if (auxGeom[np].getG1BasisCoefs(bf).at(i ) * auxGeom[np].getG1BasisCoefs(bf).at(i ) > 10e-25)
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i ) * auxGeom[np].getG1BasisCoefs(bf).at(i ) > m_zero*m_zero)
                     SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
             }
         }
@@ -383,7 +382,7 @@ public:
         {
             for(index_t r=0; r < mat.rows(); r++)
             {
-                if( abs( mat(r, bk) * mat(r, bk) )   < (10e-24) )
+                if( abs( mat(r, bk) * mat(r, bk) )   < (m_zero*m_zero) )
                     mat(r, bk) = 0;
             }
         }
@@ -479,6 +478,7 @@ public:
     {
         //gsMultiPatch<> test_mp(this->computeAuxTopology());
         //gsMultiBasis<> test_mb(test_mp);
+        m_zero = g1OptionList.getReal("zero");
 
         this->reparametrizeG1Vertex();
         this->computeSigma();
@@ -630,6 +630,8 @@ public:
                 smallMatrix.block(row_smallMatrix, 0, tmp.second.rows(), 6) = tmp.second;
             }
 
+            //gsInfo << smallMatrix << "\n";
+
             Eigen::FullPivLU<gsMatrix<>> BigLU(bigMatrix);
             Eigen::FullPivLU<gsMatrix<>> SmallLU(smallMatrix);
             SmallLU.setThreshold(g1OptionList.getReal("threshold"));
@@ -776,6 +778,8 @@ protected:
     std::vector< std::vector<bool>> isBdy;
     real_t sigma;
     size_t dim_kernel;
+
+    real_t m_zero;
 
 
 };

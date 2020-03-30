@@ -33,7 +33,7 @@ struct g1BasisEdge
 {
     enum strategy
     {
-        l2projection = 0, // global L2-projection
+        global = 0, // global L2-projection
         local = 1 // local L2-projection
     };
 };

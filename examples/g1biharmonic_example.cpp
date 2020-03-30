@@ -43,7 +43,8 @@ int main(int argc, char *argv[])
 
     index_t loop = 1; // Number of refinement steps
 
-    real_t threshold = 1e-5;
+    real_t threshold = 1e-5; // For computing the kernel
+    real_t zero = 1e-12; // For setting the matrix for the kernel
 
     bool plot = false;
     bool latex = false;
@@ -52,7 +53,7 @@ int main(int argc, char *argv[])
     bool localVertex = false;
 
     gluingData::strategy gluingData_strategy = gluingData::global;
-    g1BasisEdge::strategy g1BasisEdge_strategy = g1BasisEdge::l2projection;
+    g1BasisEdge::strategy g1BasisEdge_strategy = g1BasisEdge::global;
     g1BasisVertex::strategy g1BasisVertex_strategy = g1BasisVertex::global;
 
     gsCmdLine cmd("Example for solving the biharmonic problem.");
@@ -68,6 +69,7 @@ int main(int argc, char *argv[])
     cmd.addSwitch( "localVertex", "To compute the G1 vertex basis functions with the average dd_ik", localVertex );
     cmd.addSwitch("latex","Print the rate and error latex-ready",latex);
     cmd.addReal("e","threshold", "The threshold for computing the kernel", threshold);
+    cmd.addReal("z","zero", "When the value should be set to zero", zero);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // ======= Solution =========
@@ -126,6 +128,10 @@ int main(int argc, char *argv[])
             string_geo = "planar/multiPatches/4_square_curved.xml";
             numDegree = 0; // 2 == degree 3
             break;
+        case 5:
+            string_geo = "planar/multiPatches/3_patch_curved.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
         default:
             gsInfo << "No geometry is used! \n";
             break;
@@ -138,7 +144,7 @@ int main(int argc, char *argv[])
     fd.getId(0, multiPatch_init); // id=0: Multipatch domain
     multiPatch_init.computeTopology();
 
-    gsWriteParaview(multiPatch_init.patch(0),"geoemtry_init",2000,true);
+    gsWriteParaview(multiPatch_init,"geoemtry_init",2000,true);
 
     gsG1OptionList g1OptionList;
     g1OptionList.addInt("p_tilde","Grad",p_tilde);
@@ -148,6 +154,7 @@ int main(int argc, char *argv[])
     g1OptionList.addInt("refine","Refinement",numRefine);
     g1OptionList.addInt("degree","Degree",numDegree);
     g1OptionList.addReal("threshold","Threshold",threshold);
+    g1OptionList.addReal("zero","Zero",zero);
 
     if (localGd)
         gluingData_strategy = gluingData::local;

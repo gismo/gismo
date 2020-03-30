@@ -158,21 +158,24 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 
             gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
 
-            for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1);
-                 i = i + (degree - m_g1OptionList.getInt("regularity")))
+            for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
                 if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
                     kv.insert(temp_basis_first.knot(i), 1);
 
             temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(1 - m_uv)); // v
             ab = temp_basis_first.support(1);
-            gsKnotVector<T> kv2(ab.at(0), ab.at(1), 1, 1, 1);
+            gsKnotVector<T> kv2(ab.at(0), ab.at(1), 0, 1);
+            for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
+                if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
+                    kv2.insert(temp_basis_first.knot(i), 1);
+
             gsTensorBSplineBasis<2, T> bsp_geo_local(kv, kv2);
             gsTensorBSplineBasis<2, T> temp_basis(kv2, kv);
             if (m_uv == 1)
                 bsp_geo_local.swap(temp_basis);
             m_geo = bsp_geo_local; // Basis for Integration
         }
-        else if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::l2projection)
+        else if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::global)
             m_geo = m_basis_g1; // Basis for Integration
 
         refresh();
@@ -197,15 +200,17 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 
             gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
 
-            for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1);
-                 i = i + (degree - m_g1OptionList.getInt("regularity")))
+            for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
                 if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
                     kv.insert(temp_basis_first.knot(i), 1);
 
 
             temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(1 - m_uv)); // v
             ab = temp_basis_first.support(1);
-            gsKnotVector<T> kv2(ab.at(0), ab.at(1), 1, 1, 1);
+            gsKnotVector<T> kv2(ab.at(0), ab.at(1), 0, 1);
+            for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
+                if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
+                    kv2.insert(temp_basis_first.knot(i), 1);
             gsTensorBSplineBasis<2, T> bsp_geo_local(kv, kv2);
             gsTensorBSplineBasis<2, T> temp_basis(kv2, kv);
             if (m_uv == 1)
@@ -213,7 +218,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
             m_geo = bsp_geo_local; // Basis for Integration
 
         }
-        else if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::l2projection)
+        else if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::global)
             m_geo = m_basis_g1; // Basis for Integration
 
         refresh();
