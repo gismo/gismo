@@ -24,7 +24,7 @@ struct gluingData
     enum strategy
     {
         approximate  = 0,
-        l2projection = 1, // global L2-projection
+        global = 1, // global L2-projection
         local = 2 // local L2-projection
     };
 };
@@ -33,8 +33,17 @@ struct g1BasisEdge
 {
     enum strategy
     {
-        l2projection = 0, // global L2-projection
+        global = 0, // global L2-projection
         local = 1 // local L2-projection
+    };
+};
+
+struct g1BasisVertex
+{
+    enum strategy
+    {
+        local = 0, // local transversal vector
+        global = 1 // global transversal vetor
     };
 };
 

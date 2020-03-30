@@ -82,7 +82,7 @@ public:
 
         if (uv == 1) // edge is in v-direction
         {
-            if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
+            if (g1OptionList.getInt("gluingData") == gluingData::global)
             {
                 gluingData.get_alpha_tilde().eval_into(md.points.bottomRows(1),alpha); // v
                 gluingData.get_beta_tilde().eval_into(md.points.bottomRows(1),beta);
@@ -97,7 +97,13 @@ public:
                 basis_plus.derivSingle_into(bfID,md.points.bottomRows(1),der_N_i_plus);
 
                 if (g1OptionList.getInt("gluingData") == gluingData::local)
-                    gluingData.get_local_beta_tilde(bfID).eval_into(md.points.bottomRows(1),beta);
+                {
+                    gsMatrix<> ab = gluingData.get_local_beta_tilde(bfID).support();
+                    if ((md.points(1,0) >= ab(0)) && (md.points(1,0) <= ab(1)))
+                        gluingData.get_local_beta_tilde(bfID).eval_into(md.points.bottomRows(1),beta);
+                    else
+                        beta.setZero(1,md.points.cols());
+                }
 
                 beta = isBoundary ? beta.setZero() : beta; // For the boundary, only on Patch 0
 
@@ -113,7 +119,13 @@ public:
                 basis_minus.evalSingle_into(bfID,md.points.bottomRows(1),N_j_minus); // v
 
                 if (g1OptionList.getInt("gluingData") == gluingData::local)
-                    gluingData.get_local_alpha_tilde(bfID).eval_into(md.points.bottomRows(1),alpha);
+                {
+                    gsMatrix<> ab = gluingData.get_local_alpha_tilde(bfID).support();
+                    if ((md.points(1,0) >= ab(0)) && (md.points(1,0) <= ab(1)))
+                        gluingData.get_local_alpha_tilde(bfID).eval_into(md.points.bottomRows(1),alpha);
+                    else
+                        alpha.setZero(1,md.points.cols());
+                }
 
                 alpha = isBoundary ? alpha.setOnes() : alpha; // For the boundary, only on Patch 0
 
@@ -126,7 +138,7 @@ public:
         } // Patch 0
         else if (uv == 0) // edge is in u-direction
         {
-            if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
+            if (g1OptionList.getInt("gluingData") == gluingData::global)
             {
                 gluingData.get_alpha_tilde().eval_into(md.points.topRows(1),alpha); // u
                 gluingData.get_beta_tilde().eval_into(md.points.topRows(1),beta);
@@ -141,7 +153,14 @@ public:
                 basis_plus.derivSingle_into(bfID,md.points.topRows(1),der_N_i_plus);
 
                 if (g1OptionList.getInt("gluingData") == gluingData::local)
-                    gluingData.get_local_beta_tilde(bfID).eval_into(md.points.topRows(1),beta);
+                {
+                    gsMatrix<> ab = gluingData.get_local_beta_tilde(bfID).support();
+                    if ((md.points(0,0) >= ab(0)) && (md.points(0,0) <= ab(1)))
+                        gluingData.get_local_beta_tilde(bfID).eval_into(md.points.topRows(1),beta);
+                    else
+                        beta.setZero(1,md.points.cols());
+                }
+
 
                 beta = isBoundary ? beta.setZero() : beta; // For the boundary, only on Patch 0
 
@@ -157,7 +176,13 @@ public:
                 basis_minus.evalSingle_into(bfID,md.points.topRows(1),N_j_minus); // u
 
                 if (g1OptionList.getInt("gluingData") == gluingData::local)
-                    gluingData.get_local_alpha_tilde(bfID).eval_into(md.points.topRows(1),alpha);
+                {
+                    gsMatrix<> ab = gluingData.get_local_alpha_tilde(bfID).support();
+                    if ((md.points(0,0) >= ab(0)) && (md.points(0,0) <= ab(1)))
+                        gluingData.get_local_alpha_tilde(bfID).eval_into(md.points.topRows(1),alpha);
+                    else
+                        alpha.setZero(1,md.points.cols());
+                }
 
                 alpha = isBoundary ? alpha.setOnes() : alpha; // For the boundary, only on Patch 0
 

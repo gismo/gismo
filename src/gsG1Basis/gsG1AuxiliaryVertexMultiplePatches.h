@@ -195,7 +195,7 @@ public:
         {
             for (size_t i = 0; i < 2 * dimU; i++)
             {
-                if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > 10e-25)
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > m_zero*m_zero)
                     BigMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
             }
 
@@ -203,7 +203,7 @@ public:
             {
                 for(size_t j = i; j < i + 2; j++)
                 {
-                    if (auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i) * auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i) > 10e-25)
+                    if (auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i) * auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i) > m_zero*m_zero)
                         BigMatrix(i + j + (2 * dimU ) - 2, bf) = auxGeom[np].getG1BasisCoefs(bf).at((i + 1) * dimU + j - i);
                 }
             }
@@ -226,17 +226,16 @@ public:
         {
             for (size_t i = 0; i < dimU; i++)
             {
-                if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > 10e-25)
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > m_zero*m_zero)
                     SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
             }
 
             for (size_t i = 1; i < dimV; i++)
             {
-                if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) > 10e-25)
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) > m_zero*m_zero)
                     SmallMatrix(i + dimU -1, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i * dimU);
             }
         }
-        //gsInfo << SmallMatrix << "\n";
         return SmallMatrix;
     }
 
@@ -257,7 +256,7 @@ public:
             {
                 for(size_t j = i; j < i + 2; j++)
                 {
-                    if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU + j - i) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU + j - i) > 10e-25)
+                    if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU + j - i) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU + j - i) > m_zero*m_zero)
                         BigMatrix(i + j, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i  * dimU + j - i);
                 }
             }
@@ -280,7 +279,7 @@ public:
         {
             for (size_t i = 0; i < dimV; i++)
             {
-                if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) > 10e-25)
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) > m_zero*m_zero)
                     SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i * dimU);
             }
         }
@@ -301,7 +300,7 @@ public:
         {
             for (size_t i = 0; i < 2 * dimU; i++)
             {
-                if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > 10e-25)
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > m_zero*m_zero)
                     BigMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
             }
         }
@@ -322,7 +321,7 @@ public:
         {
             for (size_t i = 0; i < dimU; i++)
             {
-                if (auxGeom[np].getG1BasisCoefs(bf).at(i ) * auxGeom[np].getG1BasisCoefs(bf).at(i ) > 10e-25)
+                if (auxGeom[np].getG1BasisCoefs(bf).at(i ) * auxGeom[np].getG1BasisCoefs(bf).at(i ) > m_zero*m_zero)
                     SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
             }
         }
@@ -383,7 +382,7 @@ public:
         {
             for(index_t r=0; r < mat.rows(); r++)
             {
-                if( abs( mat(r, bk) * mat(r, bk) )   < (10e-24) )
+                if( abs( mat(r, bk) * mat(r, bk) )   < (m_zero*m_zero) )
                     mat(r, bk) = 0;
             }
         }
@@ -479,50 +478,136 @@ public:
     {
         //gsMultiPatch<> test_mp(this->computeAuxTopology());
         //gsMultiBasis<> test_mb(test_mp);
+        m_zero = g1OptionList.getReal("zero");
 
         this->reparametrizeG1Vertex();
         this->computeSigma();
 
 
         std::vector<gsMultiPatch<>> g1BasisVector;
-
         std::pair<gsMatrix<>, std::vector<index_t>> vertexBoundaryBasis;
-
         std::vector<gsBSpline<>> alpha, beta_S;
+        std::vector<gsG1BasisVertex<real_t>> g1BasisVertexVector;
         for(size_t i = 0; i < auxGeom.size(); i++)
         {
             gsInfo << "Index " << auxVertexIndices[i] << " Patch " << auxGeom[i].getGlobalPatchIndex() <<  "\n";
 
             gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, g1OptionList);
+            g1BasisVertexVector.push_back(g1BasisVertex_0);
 
+
+            if (g1OptionList.getInt("gluingData")==gluingData::global)
+            {
+                alpha.push_back(g1BasisVertex_0.get_alpha_tilde(0));
+                beta_S.push_back(g1BasisVertex_0.get_beta_tilde(0));
+
+                alpha.push_back(g1BasisVertex_0.get_alpha_tilde(1));
+                beta_S.push_back(g1BasisVertex_0.get_beta_tilde(1));
+            }
+            else if (g1OptionList.getInt("gluingData")==gluingData::local)
+            {
+                alpha.push_back(g1BasisVertex_0.get_local_alpha_tilde(0));
+                beta_S.push_back(g1BasisVertex_0.get_local_beta_tilde(0));
+
+                alpha.push_back(g1BasisVertex_0.get_local_alpha_tilde(1));
+                beta_S.push_back(g1BasisVertex_0.get_local_beta_tilde(1));
+
+            }
+        }
+        // COMPUTE MODIFIED TRANSVERSAL VEKTOR
+        // Point zero
+        gsMatrix<> zero;
+        zero.setZero(2,1);
+
+        std::vector<gsMatrix<>> dd_ik_plus, dd_ik_minus;
+        dd_ik_minus.resize(auxGeom.size());
+        dd_ik_plus.resize(auxGeom.size());
+        if (auxGeom.size() > 1)
+        {
+            gsMatrix<> dd_tilde(2,1);
+            dd_tilde.setZero();
+            for (size_t i = 0; i < auxGeom.size(); i++)
+            {
+                gsMatrix<> temp_minus, temp_plus;
+
+                temp_minus = -1/(alpha[2*i].eval(zero.row(0))(0,0)) * (auxGeom[i].getPatch().jacobian(zero).col(1) +
+                    beta_S[2*i].eval(zero.row(0))(0,0) * auxGeom[i].getPatch().jacobian(zero).col(0));
+
+                temp_plus = 1/(alpha[2*i + 1].eval(zero.row(0))(0,0)) * (auxGeom[i].getPatch().jacobian(zero).col(0) +
+                    beta_S[2*i + 1].eval(zero.row(0))(0,0) * auxGeom[i].getPatch().jacobian(zero).col(1));
+
+                if (isBdy[i][0] == false) // Does not work in case of 3 patches in a single boundary vertex
+                {
+                    dd_tilde += temp_minus;
+                    //dd_ik_minus[i] = temp_minus;
+                    dd_ik_plus[i] = temp_plus;
+                }
+                else
+                {
+                    dd_ik_minus[i] = temp_minus;
+                    dd_tilde += temp_plus;
+                    //dd_ik_plus[i] = temp_plus;
+                }
+            }
+
+            dd_tilde /= auxGeom.size();
+
+            for (size_t i = 0; i < auxGeom.size(); i++)
+            {
+                if (isBdy[i][0] == false) // Does not work in case of 3 patches in a single boundary vertex
+                {
+                    dd_ik_minus[i] = dd_tilde;
+                }
+                else
+                {
+                    dd_ik_plus[i] = dd_tilde;
+                }
+            }
+
+        }
+        else
+        {
+            dd_ik_minus[0] = -1 * auxGeom[0].getPatch().jacobian(zero).col(1);
+            dd_ik_plus[0] = auxGeom[0].getPatch().jacobian(zero).col(0);
+        }
+
+        for (size_t i = 0; i < auxGeom.size(); i++)
+        {
             gsMultiPatch<> g1Basis;
-            g1BasisVertex_0.constructSolution(g1Basis);
+            g1BasisVertexVector[i].setG1BasisVertex(g1Basis, dd_ik_minus[i], dd_ik_plus[i]);
+
             g1BasisVector.push_back(g1Basis);
             auxGeom[i].setG1Basis(g1Basis);
-            if (g1OptionList.getInt("gluingData")==gluingData::l2projection)
-            {
-                if (isBdy[i][0])
-                    alpha.push_back(g1BasisVertex_0.get_alpha_tilde(1));
-                else if (isBdy[i][1])
-                    alpha.push_back(g1BasisVertex_0.get_alpha_tilde(0));
-                if (isBdy[i][0])
-                    beta_S.push_back(g1BasisVertex_0.get_beta_tilde(1));
-                else if (isBdy[i][1])
-                    beta_S.push_back(g1BasisVertex_0.get_beta_tilde(0));
-            }
         }
 
 
-        if (auxGeom.size() == 2 && g1OptionList.getInt("gluingData")==gluingData::l2projection)
+        // Plot alpha
+        if (alpha.size() == 2)
+        {
+            std::string fileName;
+            std::string basename = "GluingData";
+            gsParaviewCollection collection(basename);
+            for (size_t i = 0; i < alpha.size(); i++)
+            {
+                // First Interface Side
+                fileName = basename + "_0_" + util::to_string(i);
+                gsWriteParaview(alpha[i],fileName,5000);
+                collection.addPart(fileName,"0.vts");
+            }
+            collection.save();
+        }
+
+
+        if (auxGeom.size() == 2 && g1OptionList.getInt("gluingData")==gluingData::global)
         {
             if (auxGeom[0].getGlobalPatchIndex() == 0 && isBdy[0][1])
-                g1ConditionRep(alpha[1], alpha[0], beta_S[1], beta_S[0], auxGeom[1].getG1Basis(),  auxGeom[0].getG1Basis());
+                g1ConditionRep(alpha[3], alpha[0], beta_S[3], beta_S[0], g1BasisVector[1],  g1BasisVector[0]);
             else if (auxGeom[0].getGlobalPatchIndex() == 0 && isBdy[0][0])
-                g1ConditionRep(alpha[0], alpha[1], beta_S[0], beta_S[1], auxGeom[0].getG1Basis(),  auxGeom[1].getG1Basis());
+                g1ConditionRep(alpha[1], alpha[2], beta_S[1], beta_S[2], g1BasisVector[0],  g1BasisVector[1]);
             else if (auxGeom[0].getGlobalPatchIndex() == 1 && isBdy[0][1])
-                g1ConditionRep(alpha[1], alpha[0], beta_S[1], beta_S[0], auxGeom[1].getG1Basis(),  auxGeom[0].getG1Basis());
+                g1ConditionRep(alpha[3], alpha[1], beta_S[3], beta_S[1], g1BasisVector[1],  g1BasisVector[0]);
             else if (auxGeom[0].getGlobalPatchIndex() == 1 && isBdy[0][0])
-                g1ConditionRep(alpha[0], alpha[1], beta_S[0], beta_S[1],  auxGeom[0].getG1Basis(),  auxGeom[1].getG1Basis());
+                g1ConditionRep(alpha[1], alpha[2], beta_S[1], beta_S[2],  g1BasisVector[0],  g1BasisVector[1]);
 
         }
 
@@ -545,9 +630,11 @@ public:
                 smallMatrix.block(row_smallMatrix, 0, tmp.second.rows(), 6) = tmp.second;
             }
 
+            //gsInfo << smallMatrix << "\n";
+
             Eigen::FullPivLU<gsMatrix<>> BigLU(bigMatrix);
             Eigen::FullPivLU<gsMatrix<>> SmallLU(smallMatrix);
-            SmallLU.setThreshold(1e-5);
+            SmallLU.setThreshold(g1OptionList.getReal("threshold"));
             dim_kernel = SmallLU.dimensionOfKernel();
 
             vertexBoundaryBasis = selectVertexBoundaryBasisFunction(BigLU.kernel(), BigLU.dimensionOfKernel(), SmallLU.kernel(), SmallLU.dimensionOfKernel());
@@ -661,6 +748,12 @@ public:
             + alpha_0.eval(points).cwiseProduct(beta_1.eval(points))
             - beta.eval(points);
 
+        gsInfo << "alpha : " << alpha_0.eval(points) << "\n";
+        gsInfo << "alpha : " << alpha_1.eval(points) << "\n";
+        gsInfo << "alpha : " << beta_0.eval(points) << "\n";;
+        gsInfo << "alpha : " << beta_1.eval(points) << "\n";;
+        gsInfo << "alpha : " << beta.eval(points) << "\n";
+
         gsInfo << "Conditiontest Gluing data: \n" << temp.array().abs().maxCoeff() << "\n\n";
 
         for (size_t i = 0; i < g1Basis_0.nPatches(); i++)
@@ -685,6 +778,8 @@ protected:
     std::vector< std::vector<bool>> isBdy;
     real_t sigma;
     size_t dim_kernel;
+
+    real_t m_zero;
 
 
 };

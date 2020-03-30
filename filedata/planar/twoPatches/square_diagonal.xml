@@ -11,9 +11,9 @@
         </Basis>
         </Basis>
         <coefs geoDim="2">
-            0 -0.2
+            0 0
             0.3 0
-            0 1.2
+            0 1
             0.7 1
         </coefs>
     </Geometry>
@@ -28,9 +28,9 @@
         </Basis>
         <coefs geoDim="2">
             0.3 0
-            1 -0.3
+            1 0
             0.7 1
-            1 1.1
+            1 1
         </coefs>
     </Geometry>
     <MultiPatch parDim="2" id="0">

@@ -27,15 +27,15 @@ public:
     typedef gsAssembler<T> Base;
 
 public:
-    gsG1BasisVertex(gsMultiPatch<> geo, // Single Patch
+    gsG1BasisVertex(gsMultiPatch<> mp, // Single Patch
                   gsMultiBasis<> basis, // Single Basis
                   std::vector<bool> isBoundary,
                   real_t sigma,
                   gsG1OptionList & g1OptionList)
-        : m_geo(geo), m_basis(basis), m_isBoundary(isBoundary), m_sigma(sigma), m_g1OptionList(g1OptionList)
+        : m_mp(mp), m_basis(basis), m_isBoundary(isBoundary), m_sigma(sigma), m_g1OptionList(g1OptionList)
     {
 
-        for (index_t dir = 0; dir < geo.parDim(); dir++) // For the TWO directions
+        for (index_t dir = 0; dir < m_mp.parDim(); dir++) // For the TWO directions
         {
             // Computing the G1 - basis function at the edge
             // Spaces for computing the g1 basis
@@ -62,10 +62,10 @@ public:
             m_basis_minus.push_back(basis_minus);
 
             // Computing the gluing data
-            gsApproxGluingData<T> gluingData(m_geo, m_basis, dir, m_isBoundary[dir], m_g1OptionList);
+            gsApproxGluingData<T> gluingData(m_mp, m_basis, dir, m_isBoundary[dir], m_g1OptionList);
             if (g1OptionList.getInt("gluingData") == gluingData::local)
-                gluingData.setLocalGluingData(basis_plus, basis_minus);
-            else if (g1OptionList.getInt("gluingData") == gluingData::l2projection)
+                gluingData.setLocalGluingData(basis_plus, basis_minus, "vertex");
+            else if (g1OptionList.getInt("gluingData") == gluingData::global)
                 gluingData.setGlobalGluingData();
 
             m_gD.push_back(gluingData);
@@ -74,27 +74,37 @@ public:
         // Basis for the G1 basis
         m_basis_g1 = m_basis.basis(0);
 
-        refresh();
-        assemble();
-        solve();
+
     }
 
 
     void refresh();
-    void assemble();
-    inline void apply(bhVisitor & visitor, int patchIndex, boxSide side = boundary::none);
+    void assemble(gsMatrix<> dd_ik_minus, gsMatrix<> dd_ik_plus);
+    inline void apply(bhVisitor & visitor, int patchIndex, gsMatrix<> dd_ik_minus, gsMatrix<> dd_ik_plus);
     void solve();
 
     void constructSolution(gsMultiPatch<T> & result);
 
+    void setG1BasisVertex(gsMultiPatch<T> & result, gsMatrix<> dd_ik_minus, gsMatrix<> dd_ik_plus)
+    {
+        refresh();
+        assemble(dd_ik_minus, dd_ik_plus);
+        solve();
+
+        constructSolution(result);
+    }
+
     gsBSpline<> get_alpha_tilde(size_t i) { return m_gD.at(i).get_alpha_tilde(); }
     gsBSpline<> get_beta_tilde(size_t i) { return m_gD.at(i).get_beta_tilde(); }
+
+    gsBSpline<> get_local_alpha_tilde(size_t i) { return m_gD.at(i).get_local_alpha_tilde(0); }
+    gsBSpline<> get_local_beta_tilde(size_t i) { return m_gD.at(i).get_local_beta_tilde(0); }
 
 
 protected:
 
     // Input
-    gsMultiPatch<T> m_geo;
+    gsMultiPatch<T> m_mp;
     gsMultiBasis<T> m_basis;
     std::vector<bool> m_isBoundary;
     real_t m_sigma;
@@ -184,7 +194,7 @@ void gsG1BasisVertex<T,bhVisitor>::refresh()
 } // refresh()
 
 template <class T, class bhVisitor>
-void gsG1BasisVertex<T,bhVisitor>::assemble()
+void gsG1BasisVertex<T,bhVisitor>::assemble(gsMatrix<> dd_ik_minus, gsMatrix<> dd_ik_plus)
 {
     // Reserve sparse system
     const index_t nz = gsAssemblerOptions::numColNz(m_basis[0],2,1,0.333333);
@@ -201,7 +211,7 @@ void gsG1BasisVertex<T,bhVisitor>::assemble()
 
     // Assemble volume integrals
     bhVisitor visitor;
-    apply(visitor,0); // patch 0
+    apply(visitor,0, dd_ik_minus, dd_ik_plus); // patch 0
 
     for (unsigned i = 0; i < m_f.size(); i++)
         m_f.at(i).matrix().makeCompressed();
@@ -209,7 +219,7 @@ void gsG1BasisVertex<T,bhVisitor>::assemble()
 } // assemble()
 
 template <class T, class bhVisitor>
-void gsG1BasisVertex<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, boxSide side)
+void gsG1BasisVertex<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, gsMatrix<> dd_ik_minus, gsMatrix<> dd_ik_plus)
 {
 #pragma omp parallel
     {
@@ -236,7 +246,7 @@ void gsG1BasisVertex<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, bo
         // Initialize reference quadrature rule and visitor data
         visitor_.initialize(basis_g1, quRule);
 
-        const gsGeometry<T> & patch = m_geo.patch(0);
+        const gsGeometry<T> & patch = m_mp.patch(0);
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt = basis_g1.makeDomainIterator(boundary::none);
@@ -251,7 +261,7 @@ void gsG1BasisVertex<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, bo
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 #pragma omp critical(evaluate)
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(basis_g1, basis_geo, m_basis_plus, m_basis_minus, patch, quNodes, m_gD, m_isBoundary, m_sigma, m_g1OptionList);
+            visitor_.evaluate(dd_ik_minus, dd_ik_plus, basis_g1, basis_geo, m_basis_plus, m_basis_minus, patch, quNodes, m_gD, m_isBoundary, m_sigma, m_g1OptionList);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);
