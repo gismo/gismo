@@ -43,11 +43,18 @@ int main(int argc, char *argv[])
 
     index_t loop = 1; // Number of refinement steps
 
+    real_t threshold = 1e-5; // For computing the kernel
+    real_t zero = 1e-12; // For setting the matrix for the kernel
+
     bool plot = false;
-    bool direct = false;
-    gluingData::strategy gluingData_strategy = gluingData::l2projection;
-    bool local_g1 = false;
     bool latex = false;
+    bool localGd = false;
+    bool localEdge = false;
+    bool localVertex = false;
+
+    gluingData::strategy gluingData_strategy = gluingData::global;
+    g1BasisEdge::strategy g1BasisEdge_strategy = g1BasisEdge::global;
+    g1BasisVertex::strategy g1BasisVertex_strategy = g1BasisVertex::global;
 
     gsCmdLine cmd("Example for solving the biharmonic problem.");
     cmd.addInt("k", "refine", "Number of refinement steps", numRefine);
@@ -57,9 +64,12 @@ int main(int argc, char *argv[])
     cmd.addInt("t", "threads", "Threads", threads);
     cmd.addInt( "l", "loop", "The number of refinement steps", loop);
     cmd.addSwitch( "plot", "Plot result in ParaView format", plot );
-    cmd.addSwitch( "direct", "Construction of the G1 basis functions", direct );
-    cmd.addSwitch( "local_g1", "If you want to solve several levels", local_g1 );
+    cmd.addSwitch( "localGd", "To compute the gluing data with local support", localGd );
+    cmd.addSwitch( "localEdge", "To compute the G1 edge basis functions with local support", localEdge );
+    cmd.addSwitch( "localVertex", "To compute the G1 vertex basis functions with the average dd_ik", localVertex );
     cmd.addSwitch("latex","Print the rate and error latex-ready",latex);
+    cmd.addReal("e","threshold", "The threshold for computing the kernel", threshold);
+    cmd.addReal("z","zero", "When the value should be set to zero", zero);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // ======= Solution =========
@@ -146,6 +156,7 @@ int main(int argc, char *argv[])
     fd.getId(0, multiPatch_init); // id=0: Multipatch domain
     multiPatch_init.computeTopology();
 
+    gsWriteParaview(multiPatch_init,"geoemtry_init",2000,true);
 
     gsG1OptionList g1OptionList;
     g1OptionList.addInt("p_tilde","Grad",p_tilde);
@@ -154,8 +165,20 @@ int main(int argc, char *argv[])
     g1OptionList.addSwitch("plot","Plot in Paraview",plot);
     g1OptionList.addInt("refine","Refinement",numRefine);
     g1OptionList.addInt("degree","Degree",numDegree);
+    g1OptionList.addReal("threshold","Threshold",threshold);
+    g1OptionList.addReal("zero","Zero",zero);
+
+    if (localGd)
+        gluingData_strategy = gluingData::local;
+    if (localEdge)
+        g1BasisEdge_strategy = g1BasisEdge::local;
+    if (localVertex)
+        g1BasisVertex_strategy = g1BasisVertex::local;
+
 
     g1OptionList.addInt("gluingData","The strategy for the gluing data",gluingData_strategy);
+    g1OptionList.addInt("g1BasisEdge","The strategy for the g1 basis edge",g1BasisEdge_strategy);
+    g1OptionList.addInt("g1BasisVertex","The strategy for the g1 basis vertex",g1BasisVertex_strategy);
     g1OptionList.addInt("user", "User ID", user::pascal); // Set the user
 
     if (g1OptionList.getInt("user") == user::pascal)
