@@ -24,6 +24,8 @@
 # include <gsG1Basis/gsSeminormH1.h>
 # include <gsG1Basis/gsSeminormH2.h>
 
+# include <chrono>
+
 using namespace gismo;
 
 int main(int argc, char *argv[])
@@ -128,9 +130,10 @@ int main(int argc, char *argv[])
 
         gsMultiBasis<> mb(multiPatch);
 
+#ifdef _OPENMP
         omp_set_num_threads( g1OptionList.getInt("threads"));
         omp_set_nested(1);
-
+#endif
         gsG1System<real_t> g1System(multiPatch, mb);
 
         // ########### EDGE FUNCTIONS ###########
@@ -265,38 +268,51 @@ int main(int argc, char *argv[])
         g1BiharmonicAssembler.constructSolution(solVector.bottomRows(g1BiharmonicAssembler.matrix().dim().first),mpsol);
         gsField<> solField(multiPatch, mpsol);
 
+        if (g1OptionList.getSwitch("plot"))
+        {
+            // construct solution for plotting
+            std::vector<gsMultiPatch<>> g1Basis;
+            g1System.constructG1Solution(solVector,g1Basis, multiPatch);
+
+            g1BiharmonicAssembler.plotParaview(solField, g1Basis);
+        }
+
         // construct solution: G1 Basis
-        std::vector<gsMultiPatch<>> g1Basis;
-        g1System.constructG1Solution(solVector,g1Basis, multiPatch);
+        gsSparseMatrix<real_t> Sol_sparse;
+        g1System.constructSparseG1Solution(solVector,Sol_sparse);
 
-        g1BiharmonicAssembler.plotParaview(solField, g1Basis);
-
-        if (num_knots[refinement_level] > 78)
-            omp_set_num_threads(1); // Set to 1 because of memmory problems :/
-
+#ifdef _OPENMP
+        omp_set_num_threads(g1OptionList.getInt("threads"));
         omp_set_nested(1);
+#endif
+        auto t1 = std::chrono::high_resolution_clock::now();
 #pragma omp parallel for
         for (index_t e = 0; e < 4; ++e)
         {
             if (e == 0)
             {
-                gsNormL2<real_t> errorL2(solField, solVal, g1Basis);
-                errorL2.compute();
+                gsNormL2<real_t> errorL2(solField, solVal);
+                errorL2.compute(Sol_sparse, g1System.get_numBasisFunctions(), mb);
                 l2Error_vec[refinement_level] = errorL2.value();
             }
+
             else if (e == 1)
             {
-                gsSeminormH1<real_t> errorSemiH1(solField, solVal, g1Basis);
-                errorSemiH1.compute();
+                gsSeminormH1<real_t> errorSemiH1(solField, solVal);
+                errorSemiH1.compute(Sol_sparse, g1System.get_numBasisFunctions());
                 h1SemiError_vec[refinement_level] = errorSemiH1.value();
             }
             else if (e == 2)
             {
-                gsSeminormH2<real_t> errorSemiH2(solField, solVal, g1Basis);
-                errorSemiH2.compute();
+                gsSeminormH2<real_t> errorSemiH2(solField, solVal);
+                errorSemiH2.compute(Sol_sparse, g1System.get_numBasisFunctions());
                 h2SemiError_vec[refinement_level] = errorSemiH2.value();
             }
         }
+        auto t2 = std::chrono::high_resolution_clock::now();
+        std::cout << "f() took "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
+                  << " milliseconds\n";
     }
 
     gsInfo << "=====================================================================\n";

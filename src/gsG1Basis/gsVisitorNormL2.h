@@ -23,12 +23,10 @@ class gsVisitorNormL2
 {
 
 public:
-    gsVisitorNormL2(const std::vector<gsMultiPatch<>> & g1,
-                    index_t p = 2):
-        m_G1Basis(g1)
+
+    gsVisitorNormL2(index_t p = 2)
     {
         f2param = false;
-        g1basis = true;
         m_p = p;
     }
 
@@ -53,20 +51,25 @@ public:
     void evaluate(gsGeometryEvaluator<T> & geoEval,
                   const gsFunction<T>    & _func1,
                   const gsFunction<T>    & _func2,
+                  const gsBasis<T>       & basis,
+                  const gsSparseMatrix<T> & sol_sparse,
+                  const gsVector<> & numBasisFunctions,
                   gsMatrix<T>            & quNodes)
     {
         // Evaluate first function
         _func1.eval_into(quNodes, f1vals);
 
-        if (g1basis)
-        {
-            index_t n = m_G1Basis.at(geoEval.id()).nPatches();
+        gsMatrix<unsigned> actives;
+        gsMatrix<T> basisData;
 
-            for (index_t i = 0; i < n; i++)
-            {
-                f1vals += m_G1Basis.at(geoEval.id()).patch(i).eval(quNodes);
-            }
-        }
+        basis.active_into(quNodes.col(0), actives);
+
+        // Evaluate basis functions on element
+        basis.eval_into(quNodes,basisData);
+
+        for (index_t i = 0; i < sol_sparse.rows(); i++)
+            for (index_t j = 0; j < actives.rows(); j++)
+                f1vals += sol_sparse.at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * basisData.row(j);
 
         // Compute geometry related values
         geoEval.evaluateAt(quNodes);
@@ -104,7 +107,6 @@ public:
                     //sum += weight * ( f1vals.col(k) - f2vals.col(k) ).template lpNorm<p>().squared();
             }
         }
-
         accumulated += sum;
         return sum;
     }
@@ -116,11 +118,6 @@ private:
     gsMatrix<T> f1vals, f2vals;
 
     bool f2param;
-    bool g1basis;
-
-protected:
-
-    std::vector< gsMultiPatch<>> m_G1Basis;
 
 };
 

@@ -58,7 +58,7 @@ public:
     /// @brief Returns the computed norm value
     T value() const { return m_value; }
 
-    void compute(bool storeElWise = false)
+    void compute(const gsSparseMatrix<T> & sol_sparse, gsVector<> numBasisFunctions, bool storeElWise = false)
     {
         boxSide side = boundary::none;
 
@@ -70,11 +70,11 @@ public:
         {
 #ifdef _OPENMP
             // Create thread-private visitor
-            Visitor visitor(m_G1Basis);
+            Visitor visitor;
             const int tid = omp_get_thread_num();
             const int nt  = omp_get_num_threads();
 #else
-            Visitor visitor(m_G1Basis);
+            Visitor visitor;
 #endif
 
             gsMatrix<T> quNodes; // Temp variable for mapped nodes
@@ -115,7 +115,7 @@ public:
                     QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
 
                     // Evaluate on quadrature points
-                    visitor.evaluate(*geoEval, func1, func2p, quNodes);
+                    visitor.evaluate(*geoEval, func1, func2p, dom, sol_sparse, numBasisFunctions, quNodes);
 
                     // Accumulate value from the current element (squared)
 #pragma omp critical(compute)

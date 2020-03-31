@@ -36,6 +36,8 @@ public:
     void insertVertex(gsMultiPatch<> & mp, std::vector<size_t> patchIndex, index_t vID, index_t nDofs, index_t bfID);
 
     void constructG1Solution(const gsMatrix<T> &solVector, std::vector<gsMultiPatch<>> & result, const gsMultiPatch<> & geo);
+    void constructSparseG1Solution(const gsMatrix<T> &solVector, gsSparseMatrix<T> & result);
+    gsVector<> get_numBasisFunctions() { return numBasisFunctions; }
 
     size_t boundary_size() { return numBoundaryVertexFunctions.last() - numBoundaryEdgeFunctions[0]; }
 
@@ -189,6 +191,18 @@ void gsG1System<T>::initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb)
 
 }
 
+template<class T>
+void gsG1System<T>::constructSparseG1Solution(const gsMatrix<T> & solVector,
+                                              gsSparseMatrix<T> & result)
+{
+    result.clear();
+    result = D_sparse.block(0,0,dim_G1_Dofs + dim_G1_Bdy, dim_K);
+
+    for (size_t i = 0; i < dim_G1_Dofs; i++)
+        result.row(i) *= solVector.at(i);
+    for (size_t i = dim_G1_Dofs; i < dim_G1_Dofs + dim_G1_Bdy; i++)
+        result.row(i) *= m_g1.at(i);
+}
 
 template<class T>
 void gsG1System<T>::constructG1Solution(const gsMatrix<T> & solVector, std::vector<gsMultiPatch<>> & result, const gsMultiPatch<> & geo)
