@@ -323,13 +323,14 @@ int main(int argc, char *argv[])
         gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
         gsInfo << "Solving finished! \n";
 
-        // construct solution: INTERIOR
-        gsMultiPatch<> mpsol;
-        g1BiharmonicAssembler.constructSolution(solVector.bottomRows(g1BiharmonicAssembler.matrix().dim().first),mpsol);
-        gsField<> solField(multiPatch, mpsol);
 
         if (g1OptionList.getSwitch("plot"))
         {
+            // construct solution: INTERIOR
+            gsMultiPatch<> mpsol;
+            g1BiharmonicAssembler.constructSolution(solVector.bottomRows(g1BiharmonicAssembler.matrix().dim().first),mpsol);
+            gsField<> solField(multiPatch, mpsol);
+
             // construct solution for plotting
             std::vector<gsMultiPatch<>> g1Basis;
             g1System.constructG1Solution(solVector,g1Basis, multiPatch);
@@ -351,21 +352,21 @@ int main(int argc, char *argv[])
         {
             if (e == 0)
             {
-                gsNormL2<real_t> errorL2(solField, solVal);
-                errorL2.compute(Sol_sparse, g1System.get_numBasisFunctions(), mb);
+                gsNormL2<real_t> errorL2(multiPatch, Sol_sparse, solVal);
+                errorL2.compute(g1System.get_numBasisFunctions());
                 l2Error_vec[refinement_level] = errorL2.value();
             }
 
             else if (e == 1)
             {
-                gsSeminormH1<real_t> errorSemiH1(solField, solVal);
-                errorSemiH1.compute(Sol_sparse, g1System.get_numBasisFunctions());
+                gsSeminormH1<real_t> errorSemiH1(multiPatch, Sol_sparse, solVal);
+                errorSemiH1.compute(g1System.get_numBasisFunctions());
                 h1SemiError_vec[refinement_level] = errorSemiH1.value();
             }
             else if (e == 2)
             {
-                gsSeminormH2<real_t> errorSemiH2(solField, solVal);
-                errorSemiH2.compute(Sol_sparse, g1System.get_numBasisFunctions());
+                gsSeminormH2<real_t> errorSemiH2(multiPatch, Sol_sparse, solVal);
+                errorSemiH2.compute(g1System.get_numBasisFunctions());
                 h2SemiError_vec[refinement_level] = errorSemiH2.value();
             }
         }

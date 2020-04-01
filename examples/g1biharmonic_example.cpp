@@ -183,7 +183,6 @@ int main(int argc, char *argv[])
             collection.save();
         }
         // Boundaries loop
-#pragma omp parallel for
         for (size_t numBdy = 0; numBdy < multiPatch.boundaries().size(); numBdy++ )
         {
             const patchSide & bit = multiPatch.boundaries()[numBdy];
@@ -201,7 +200,6 @@ int main(int argc, char *argv[])
 
                 edgeSingleBF.addPatch(singleBdy.getSinglePatch(0).getG1Basis().patch(i));
 
-#pragma omp critical(insertBoundaryEdge)
                 g1System.insertBoundaryEdge(edgeSingleBF,bit,numBdy,i);
 
                 if (g1OptionList.getSwitch("plot"))
@@ -216,7 +214,6 @@ int main(int argc, char *argv[])
         }
 
         // Vertices
-#pragma omp parallel for
         for(size_t numVer=0; numVer < multiPatch.vertices().size(); numVer++)
         {
             std::string fileName;
@@ -248,7 +245,6 @@ int main(int argc, char *argv[])
                         collection.addTimestep(fileName,i,"0.vts");
                     }
                 }
-#pragma omp critical(insertVertex)
                 g1System.insertVertex(singleBasisFunction,patchIndex,numVer,singleVertex.get_internalDofs(),i);
             }
             collection.save();
