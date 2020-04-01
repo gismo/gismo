@@ -285,7 +285,7 @@ int main(int argc, char *argv[])
         omp_set_num_threads(g1OptionList.getInt("threads"));
         omp_set_nested(1);
 #endif
-        auto t1 = std::chrono::high_resolution_clock::now();
+
 #pragma omp parallel for
         for (index_t e = 0; e < 4; ++e)
         {
@@ -309,10 +309,6 @@ int main(int argc, char *argv[])
                 h2SemiError_vec[refinement_level] = errorSemiH2.value();
             }
         }
-        auto t2 = std::chrono::high_resolution_clock::now();
-        std::cout << "f() took "
-                  << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
-                  << " milliseconds\n";
     }
 
     gsInfo << "=====================================================================\n";
