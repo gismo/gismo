@@ -196,12 +196,17 @@ void gsG1System<T>::constructSparseG1Solution(const gsMatrix<T> & solVector,
                                               gsSparseMatrix<T> & result)
 {
     result.clear();
-    result = D_sparse.block(0,0,dim_G1_Dofs + dim_G1_Bdy, dim_K);
+    result = D_sparse.block(0,0,dim_G1_Dofs + dim_G1_Bdy + 1, dim_K); // + 1 for the interior solution
 
+    // G1 solution
     for (size_t i = 0; i < dim_G1_Dofs; i++)
         result.row(i) *= solVector.at(i);
     for (size_t i = dim_G1_Dofs; i < dim_G1_Dofs + dim_G1_Bdy; i++)
         result.row(i) *= m_g1.at(i);
+    for (size_t i = 0; i < dim_K; i++)
+        result.insert(dim_G1_Dofs + dim_G1_Bdy,i) = solVector.at(dim_G1_Dofs + dim_G1_Bdy + i); // Interior solution
+
+    result.makeCompressed();
 }
 
 template<class T>
@@ -405,6 +410,8 @@ gsMatrix<> gsG1System<T>::solve(gsSparseMatrix<real_t> K, gsMatrix<> f)
     gsVector<real_t> F = D_0_sparse * f - D_0_sparse * K * D_boundary_sparse.transpose() * m_g1;
 
     gsSparseSolver<real_t>::CGDiagonal solver;
+    //gsSparseSolver<real_t>::BiCGSTABILUT solver;
+
     solver.compute(A);
     gsMatrix<> solVector = solver.solve(F);
 

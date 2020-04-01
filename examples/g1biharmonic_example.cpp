@@ -76,18 +76,26 @@ int main(int argc, char *argv[])
             numDegree = 2;
             break;
         case 1:
-            string_geo = "planar/multiPatches/4_square_diagonal.xml";
-            numDegree = 2;
-            break;
-        case 2:
             string_geo = "planar/twoPatches/square_curved.xml";
             numDegree = 0;
             break;
-        case 3:
+        case 2:
+            string_geo = "planar/twoPatches/2patch_curved.xml";
+            numDegree = 0;
+            break;
+
+
+
+
+        case 10:
+            string_geo = "planar/multiPatches/4_square_diagonal.xml";
+            numDegree = 2;
+            break;
+        case 11:
             string_geo = "planar/multiPatches/4_square_curved.xml";
             numDegree = 0;
             break;
-        case 4:
+        case 12:
             string_geo = "planar/multiPatches/3_patch_curved.xml";
             numDegree = 0;
             break;
@@ -148,8 +156,6 @@ int main(int argc, char *argv[])
 
             gsG1AuxiliaryEdgeMultiplePatches singleInt(multiPatch, item.first().patch, item.second().patch);
             singleInt.computeG1InterfaceBasis(g1OptionList);
-            singleInt.deleteBasisFunctions(0,g1System.sizePlusInterface(numInt));
-            singleInt.deleteBasisFunctions(1,g1System.sizePlusInterface(numInt));
 
             for (size_t i = 0; i < singleInt.getSinglePatch(0).getG1Basis().nPatches(); i++)
             {
@@ -177,6 +183,7 @@ int main(int argc, char *argv[])
             collection.save();
         }
         // Boundaries loop
+#pragma omp parallel for
         for (size_t numBdy = 0; numBdy < multiPatch.boundaries().size(); numBdy++ )
         {
             const patchSide & bit = multiPatch.boundaries()[numBdy];
@@ -187,7 +194,6 @@ int main(int argc, char *argv[])
 
             gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatch, bit.patch);
             singleBdy.computeG1BoundaryBasis(g1OptionList, bit.m_index);
-            singleBdy.deleteBasisFunctions(0,g1System.sizePlusBoundary(numBdy));
 
             for (size_t i = 0; i < singleBdy.getSinglePatch(0).getG1Basis().nPatches(); i++)
             {
@@ -195,6 +201,7 @@ int main(int argc, char *argv[])
 
                 edgeSingleBF.addPatch(singleBdy.getSinglePatch(0).getG1Basis().patch(i));
 
+#pragma omp critical(insertBoundaryEdge)
                 g1System.insertBoundaryEdge(edgeSingleBF,bit,numBdy,i);
 
                 if (g1OptionList.getSwitch("plot"))
@@ -209,6 +216,7 @@ int main(int argc, char *argv[])
         }
 
         // Vertices
+#pragma omp parallel for
         for(size_t numVer=0; numVer < multiPatch.vertices().size(); numVer++)
         {
             std::string fileName;
@@ -240,6 +248,7 @@ int main(int argc, char *argv[])
                         collection.addTimestep(fileName,i,"0.vts");
                     }
                 }
+#pragma omp critical(insertVertex)
                 g1System.insertVertex(singleBasisFunction,patchIndex,numVer,singleVertex.get_internalDofs(),i);
             }
             collection.save();
@@ -263,13 +272,13 @@ int main(int argc, char *argv[])
         gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
         gsInfo << "Solving finished! \n";
 
-        // construct solution: INTERIOR
-        gsMultiPatch<> mpsol;
-        g1BiharmonicAssembler.constructSolution(solVector.bottomRows(g1BiharmonicAssembler.matrix().dim().first),mpsol);
-        gsField<> solField(multiPatch, mpsol);
-
         if (g1OptionList.getSwitch("plot"))
         {
+            // construct solution: INTERIOR
+            gsMultiPatch<> mpsol;
+            g1BiharmonicAssembler.constructSolution(solVector.bottomRows(g1BiharmonicAssembler.matrix().dim().first),mpsol);
+            gsField<> solField(multiPatch, mpsol);
+
             // construct solution for plotting
             std::vector<gsMultiPatch<>> g1Basis;
             g1System.constructG1Solution(solVector,g1Basis, multiPatch);
@@ -291,21 +300,21 @@ int main(int argc, char *argv[])
         {
             if (e == 0)
             {
-                gsNormL2<real_t> errorL2(solField, solVal);
-                errorL2.compute(Sol_sparse, g1System.get_numBasisFunctions(), mb);
+                gsNormL2<real_t> errorL2(multiPatch, Sol_sparse, solVal);
+                errorL2.compute(g1System.get_numBasisFunctions());
                 l2Error_vec[refinement_level] = errorL2.value();
             }
 
             else if (e == 1)
             {
-                gsSeminormH1<real_t> errorSemiH1(solField, solVal);
-                errorSemiH1.compute(Sol_sparse, g1System.get_numBasisFunctions());
+                gsSeminormH1<real_t> errorSemiH1(multiPatch, Sol_sparse, solVal);
+                errorSemiH1.compute(g1System.get_numBasisFunctions());
                 h1SemiError_vec[refinement_level] = errorSemiH1.value();
             }
             else if (e == 2)
             {
-                gsSeminormH2<real_t> errorSemiH2(solField, solVal);
-                errorSemiH2.compute(Sol_sparse, g1System.get_numBasisFunctions());
+                gsSeminormH2<real_t> errorSemiH2(multiPatch, Sol_sparse, solVal);
+                errorSemiH2.compute(g1System.get_numBasisFunctions());
                 h2SemiError_vec[refinement_level] = errorSemiH2.value();
             }
         }

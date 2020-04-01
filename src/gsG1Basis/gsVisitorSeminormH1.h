@@ -48,16 +48,12 @@ public:
 
     // Evaluate on element.
     void evaluate(gsGeometryEvaluator<T> & geoEval,
-                  const gsFunction<T>    & _func1,
                   const gsFunction<T>    & _func2,
                   const gsBasis<T> & basis,
-                  const gsSparseMatrix<T> & sol_sparse,
+                  const gsSparseMatrix<T> * sol_sparse,
                   const gsVector<T> & numBasisFunctions,
                   gsMatrix<T>            & quNodes)
     {
-        // Evaluate first function
-        _func1.deriv_into(quNodes, f1ders);
-
         gsMatrix<unsigned> actives;
         gsMatrix<T> bGrads;
 
@@ -66,12 +62,10 @@ public:
         // Evaluate basis functions on element
         basis.deriv_into(quNodes,bGrads);
 
-        gsMatrix<> f1_new = f1ders;
-
-        for (index_t i = 0; i < sol_sparse.rows(); i++)
+        f1ders.setZero(2,actives.rows());
+        for (index_t i = 0; i < sol_sparse->rows(); i++)
             for (index_t j = 0; j < actives.rows(); j++)
-                f1ders += sol_sparse.at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f1ders.dim().second);
-
+                f1ders += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f1ders.dim().second);
 
 
         // Evaluate second function

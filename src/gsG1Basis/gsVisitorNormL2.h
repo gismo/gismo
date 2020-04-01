@@ -49,16 +49,12 @@ public:
 
     // Evaluate on element.
     void evaluate(gsGeometryEvaluator<T> & geoEval,
-                  const gsFunction<T>    & _func1,
                   const gsFunction<T>    & _func2,
                   const gsBasis<T>       & basis,
-                  const gsSparseMatrix<T> & sol_sparse,
+                  const gsSparseMatrix<T> * sol_sparse,
                   const gsVector<> & numBasisFunctions,
                   gsMatrix<T>            & quNodes)
     {
-        // Evaluate first function
-        _func1.eval_into(quNodes, f1vals);
-
         gsMatrix<unsigned> actives;
         gsMatrix<T> basisData;
 
@@ -67,9 +63,11 @@ public:
         // Evaluate basis functions on element
         basis.eval_into(quNodes,basisData);
 
-        for (index_t i = 0; i < sol_sparse.rows(); i++)
+        f1vals.setZero(1,actives.rows());
+        for (index_t i = 0; i < sol_sparse->rows(); i++) // -1 bcs of interior solution
             for (index_t j = 0; j < actives.rows(); j++)
-                f1vals += sol_sparse.at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * basisData.row(j);
+                f1vals += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * basisData.row(j);
+
 
         // Compute geometry related values
         geoEval.evaluateAt(quNodes);

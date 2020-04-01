@@ -30,35 +30,20 @@ class gsSeminormH1
 
 public:
 
-    gsSeminormH1(const gsField<T> & _field1,
-                 const gsFunction<T> & _func2,
-                 const std::vector< gsMultiPatch<>> & _field2,
-                 bool _f2param = false)
-        : patchesPtr( &_field1.patches() ),
-          field1(&_field1), func2(&_func2), f2param(_f2param), m_G1Basis(_field2)
-    {
-        g1basis = true;
-    }
-
-    gsSeminormH1(const gsField<T> & _field1,
+    gsSeminormH1(const gsMultiPatch<T> & multiPatch,
+                 const gsSparseMatrix<T> & _field1,
                  const gsFunction<T> & _func2,
                  bool _f2param = false)
-        : patchesPtr( &_field1.patches() ),
-          field1(&_field1), func2(&_func2), f2param(_f2param)
+        : patchesPtr( &multiPatch ),
+          sparseMatrix(&_field1), func2(&_func2), f2param(_f2param)
     {
-        g1basis = false;
     }
-
-    gsSeminormH1(const gsField<T> & _field1)
-        : patchesPtr( &_field1.patches() ),
-          field1(&_field1), f2param(false)
-    { }
 
 public:
     /// @brief Returns the computed norm value
     T value() const { return m_value; }
 
-    void compute(const gsSparseMatrix<T> & sol_sparse, gsVector<> numBasisFunctions, bool storeElWise = false)
+    void compute(gsVector<> numBasisFunctions, bool storeElWise = false)
     {
         boxSide side = boundary::none;
 
@@ -86,13 +71,10 @@ public:
 
             for (size_t pn = 0; pn < patchesPtr->nPatches(); ++pn)// for all patches
             {
-
-                const gsFunction<T> & func1 = field1->function(pn);
                 const gsFunction<T> & func2p = func2->function(pn);
 
                 // Obtain an integration domain
-                const gsBasis<T> & dom = field1->isParametrized() ?
-                                         field1->igaFunction(pn).basis() : field1->patch(pn).basis();
+                const gsBasis<T> & dom = patchesPtr->patch(pn).basis();
 
                 // Initialize visitor
                 visitor.initialize(dom, QuRule, evFlags);
@@ -115,7 +97,7 @@ public:
                     QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
 
                     // Evaluate on quadrature points
-                    visitor.evaluate(*geoEval, func1, func2p, dom, sol_sparse, numBasisFunctions, quNodes);
+                    visitor.evaluate(*geoEval, func2p, dom, sparseMatrix, numBasisFunctions, quNodes);
 
                     // Accumulate value from the current element (squared)
 #pragma omp critical(compute)
@@ -142,7 +124,7 @@ protected:
 
     const gsMultiPatch<T> * patchesPtr;
 
-    const gsField<T>    * field1;
+    const gsSparseMatrix<T>    * sparseMatrix;
 
     const gsFunctionSet<T> * func2;
 
@@ -150,19 +132,10 @@ private:
 
     bool f2param;
 
-    gsMatrix<T> f1ders, f2ders;
-    gsMatrix<T> f1pders, f2pders; // f2pders only needed if f2param = true
-
-    bool g1basis;
-
-protected:
-    std::vector< gsMultiPatch<>> m_G1Basis;
-
 protected:
 
     std::vector<T> m_elWise;    // vector of the element-wise values of the norm
     T              m_value;     // the total value of the norm
-
 
 
 };

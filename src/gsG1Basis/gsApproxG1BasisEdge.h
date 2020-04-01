@@ -147,7 +147,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 
     gsMultiPatch<> g1EdgeBasis;
 
-    for (index_t bfID = 0; bfID < n_plus; bfID++)
+    for (index_t bfID = 3; bfID < n_plus - 3; bfID++) // first 3 and last 3 bf are eliminated
     {
         if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
         {
@@ -189,7 +189,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 
         constructSolution(sol,g1EdgeBasis);
     }
-    for (index_t bfID = 0; bfID < n_minus; bfID++)
+    for (index_t bfID = 2; bfID < n_minus-2; bfID++)  // first 2 and last 2 bf are eliminated
     {
         if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
         {

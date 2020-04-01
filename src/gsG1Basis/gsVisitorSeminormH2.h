@@ -47,17 +47,12 @@ public:
 
     // Evaluate on element.
     void evaluate(gsGeometryEvaluator<T> & geoEval,
-                  const gsFunction<T>    & _func1,
                   const gsFunction<T>    & _func2,
                   const gsBasis<T> & basis,
-                  const gsSparseMatrix<T> & sol_sparse,
+                  const gsSparseMatrix<T> * sol_sparse,
                   const gsVector<T> & numBasisFunctions,
                   gsMatrix<T>            & quNodes)
     {
-        // Evaluate first function
-        _func1.deriv_into(quNodes, f1ders);
-        _func1.deriv2_into(quNodes, f1ders2);
-
         gsMatrix<unsigned> actives;
         gsMatrix<T> derivData, deriv2Data;
 
@@ -67,11 +62,13 @@ public:
         basis.deriv_into(quNodes,derivData);
         basis.deriv2_into(quNodes,deriv2Data);
 
-        for (index_t i = 0; i < sol_sparse.rows(); i++)
+        f1ders.setZero(2,actives.rows());
+        f1ders2.setZero(3,actives.rows());
+        for (index_t i = 0; i < sol_sparse->rows(); i++)
             for (index_t j = 0; j < actives.rows(); j++)
             {
-                f1ders += sol_sparse.at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * derivData.block(2*j,0,2,f1ders.dim().second);
-                f1ders2 += sol_sparse.at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * deriv2Data.block(3*j,0,3,f1ders.dim().second);
+                f1ders += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * derivData.block(2*j,0,2,f1ders.dim().second);
+                f1ders2 += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * deriv2Data.block(3*j,0,3,f1ders.dim().second);
             }
 
 
