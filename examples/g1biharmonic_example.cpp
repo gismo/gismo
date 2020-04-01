@@ -83,7 +83,10 @@ int main(int argc, char *argv[])
             string_geo = "planar/twoPatches/2patch_curved.xml";
             numDegree = 0;
             break;
-
+        case 3:
+            string_geo = "planar/twoPatches/2patch_C1curved.xml";
+            numDegree = 0;
+            break;
 
 
 
