@@ -23,11 +23,9 @@ class gsVisitorSeminormH1
 {
 public:
 
-    gsVisitorSeminormH1(std::vector<gsMultiPatch<>> & g1):
-        m_G1Basis(g1)
+    gsVisitorSeminormH1()
     {
         f2param = false;
-        g1basis = true;
 
     }
 
@@ -52,20 +50,29 @@ public:
     void evaluate(gsGeometryEvaluator<T> & geoEval,
                   const gsFunction<T>    & _func1,
                   const gsFunction<T>    & _func2,
+                  const gsBasis<T> & basis,
+                  const gsSparseMatrix<T> & sol_sparse,
+                  const gsVector<T> & numBasisFunctions,
                   gsMatrix<T>            & quNodes)
     {
         // Evaluate first function
         _func1.deriv_into(quNodes, f1ders);
 
-        if (g1basis)
-        {
-            index_t n = m_G1Basis.at(geoEval.id()).nPatches();
+        gsMatrix<unsigned> actives;
+        gsMatrix<T> bGrads;
 
-            for (index_t i = 0; i < n; i++)
-            {
-                f1ders += m_G1Basis.at(geoEval.id()).patch(i).deriv(quNodes);
-            }
-        }
+        basis.active_into(quNodes.col(0), actives);
+
+        // Evaluate basis functions on element
+        basis.deriv_into(quNodes,bGrads);
+
+        gsMatrix<> f1_new = f1ders;
+
+        for (index_t i = 0; i < sol_sparse.rows(); i++)
+            for (index_t j = 0; j < actives.rows(); j++)
+                f1ders += sol_sparse.at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f1ders.dim().second);
+
+
 
         // Evaluate second function
         geoEval.evaluateAt(quNodes);
@@ -117,11 +124,7 @@ protected:
     gsMatrix<T> f1pders, f2pders; // f2pders only needed if f2param = true
 
     bool f2param;
-    bool g1basis;
 
-protected:
-
-    std::vector< gsMultiPatch<>> m_G1Basis;
 };
 
 

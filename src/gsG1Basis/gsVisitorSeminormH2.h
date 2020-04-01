@@ -23,11 +23,8 @@ class gsVisitorSeminormH2
 {
 public:
 
-    gsVisitorSeminormH2(const std::vector< gsMultiPatch<>> & g1):
-        m_G1Basis(g1)
+    gsVisitorSeminormH2()
     {
-        f2param = false;
-        g1basis = true;
 
     }
 
@@ -52,22 +49,31 @@ public:
     void evaluate(gsGeometryEvaluator<T> & geoEval,
                   const gsFunction<T>    & _func1,
                   const gsFunction<T>    & _func2,
+                  const gsBasis<T> & basis,
+                  const gsSparseMatrix<T> & sol_sparse,
+                  const gsVector<T> & numBasisFunctions,
                   gsMatrix<T>            & quNodes)
     {
         // Evaluate first function
         _func1.deriv_into(quNodes, f1ders);
         _func1.deriv2_into(quNodes, f1ders2);
 
-        if (g1basis)
-        {
-            index_t n = m_G1Basis.at(geoEval.id()).nPatches();
+        gsMatrix<unsigned> actives;
+        gsMatrix<T> derivData, deriv2Data;
 
-            for (index_t i = 0; i < n; i++)
+        basis.active_into(quNodes.col(0), actives);
+
+        // Evaluate basis functions on element
+        basis.deriv_into(quNodes,derivData);
+        basis.deriv2_into(quNodes,deriv2Data);
+
+        for (index_t i = 0; i < sol_sparse.rows(); i++)
+            for (index_t j = 0; j < actives.rows(); j++)
             {
-                f1ders += m_G1Basis.at(geoEval.id()).patch(i).deriv(quNodes);
-                f1ders2 += m_G1Basis.at(geoEval.id()).patch(i).deriv2(quNodes);
+                f1ders += sol_sparse.at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * derivData.block(2*j,0,2,f1ders.dim().second);
+                f1ders2 += sol_sparse.at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * deriv2Data.block(3*j,0,3,f1ders.dim().second);
             }
-        }
+
 
         // get the gradients to columns
         f1ders.resize(quNodes.rows(), quNodes.cols() );
@@ -108,12 +114,6 @@ private:
     gsMatrix<T> f1ders, f1ders2, f2ders2;
     gsMatrix<T> f1pders2;
 
-    bool f2param;
-    bool g1basis;
-
-protected:
-
-    std::vector< gsMultiPatch<>> m_G1Basis;
 };
 
 }

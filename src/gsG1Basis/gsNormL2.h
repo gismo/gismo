@@ -17,6 +17,8 @@
 #include <gsG1Basis/gsNorm.h>
 #include <gsG1Basis/gsVisitorNormL2.h>
 
+# include<chrono>
+
 namespace gismo
 {
 
@@ -64,7 +66,7 @@ public:
     /// @brief Returns the computed norm value
     T value() const { return m_value; }
 
-    void compute(bool storeElWise = false)
+    void compute(gsSparseMatrix<T> & sol_sparse, gsVector<> numBasisFunctions, gsMultiBasis<> mb, bool storeElWise = false)
     {
         boxSide side = boundary::none;
 
@@ -72,15 +74,16 @@ public:
             m_elWise.clear();
 
         m_value = T(0.0);
+
 #pragma omp parallel
         {
 #ifdef _OPENMP
             // Create thread-private visitor
-        Visitor visitor(m_G1Basis);
+        Visitor visitor;
         const int tid = omp_get_thread_num();
         const int nt  = omp_get_num_threads();
 #else
-            Visitor visitor(m_G1Basis);
+            Visitor visitor;
 #endif
             gsMatrix<T> quNodes; // Temp variable for mapped nodes
             gsVector<T> quWeights; // Temp variable for mapped weights
@@ -119,23 +122,20 @@ public:
                     QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
 
                     // Evaluate on quadrature points
-                    visitor.evaluate(*geoEval, func1, func2p, quNodes);
+                    visitor.evaluate(*geoEval, func1, func2p, dom, sol_sparse, numBasisFunctions, quNodes);
 
-                    // Accumulate value from the current element (squared)
                     #pragma omp critical(compute)
                     visitor.compute(*domIt, *geoEval, quWeights, m_value);
                     //const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
-
                     //if (storeElWise)
                     //   m_elWise.push_back(takeRoot(result));
                 }
             }
+
         }//omp parallel
         m_value = takeRoot(m_value);
 
     }
-
-
 
 protected:
 
@@ -154,6 +154,7 @@ protected:
     }
 
 
+
 protected:
 
     const gsMultiPatch<T> * patchesPtr;
@@ -163,8 +164,6 @@ protected:
     const gsFunctionSet<T> * func2;
 
 private:
-
-    gsMatrix<T> f1vals, f2vals;
 
     bool f2param;
     bool g1basis;
@@ -177,7 +176,6 @@ protected:
 
     std::vector<T> m_elWise;    // vector of the element-wise values of the norm
     T              m_value;     // the total value of the norm
-
 
 
 };

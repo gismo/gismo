@@ -20,6 +20,7 @@ using namespace gismo;
 int main(int argc, char* argv[])
 {
     bool save      = false;
+    bool plot      = false;
     index_t method = 0;
     real_t tol = 1e-4;
     std::string fn = "curves3d/curve_boundary.xml";
@@ -30,6 +31,7 @@ int main(int argc, char* argv[])
     cmd.addInt("m","method" ,"Method: 0 Coons' patch (default), 1 Spring patch, 2: Cross-Ap. patch", method);
     cmd.addReal  ("t","tolerance","Tolerance for identifing patch interfaces", tol);
     cmd.addSwitch("save", "Save result in XML format", save);
+    cmd.addSwitch("plot", "Plot result in paraview", plot);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // Load XML file
@@ -64,9 +66,13 @@ int main(int argc, char* argv[])
         gsInfo<<"Using Coons' patch construction.\n";
         gsCoonsPatch<real_t> coons(boundary);
         gsInfo<<"Created a " << coons.compute() <<"\n";
+        if (plot)
+            gsWriteParaview(coons.result(),"Result_patch",1000, true);
+
         if (save) gsWrite(coons.result(), "result_patch");
         break;
     }
+
 
     if (save)
         gsInfo << "Result saved to result_patch.xml\n";
