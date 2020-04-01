@@ -173,7 +173,7 @@ public:
         if (g1OptionList.getInt("gluingData")==gluingData::global)
             gluingDataCondition(g1BasisEdge_0.get_alpha(),g1BasisEdge_1.get_alpha(),g1BasisEdge_0.get_beta(),g1BasisEdge_1.get_beta());
 
-        g1BasisEdge_0.plotGluingData(0);
+        //g1BasisEdge_0.plotGluingData(0);
 
 //      Patch 0 -> Right
         auxGeom[0].parametrizeBasisBack(g1Basis_0);
