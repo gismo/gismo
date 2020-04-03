@@ -96,7 +96,7 @@ public:
     // Computed the gluing data globally
     void setG1BasisEdge(gsMultiPatch<T> & result);
 
-    void refresh();
+    void refresh(index_t bfID, std::string typeBf);
     void assemble(index_t i, std::string typeBf); // i == number of bf
     inline void apply(bhVisitor & visitor, index_t i, std::string typeBf); // i == number of bf
     void solve();
@@ -149,40 +149,59 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 
     for (index_t bfID = 3; bfID < n_plus - 3; bfID++) // first 3 and last 3 bf are eliminated
     {
-        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
+        gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(m_uv)); // u
+        index_t degree = temp_basis_first.maxDegree();
+
+        gsMatrix<T> ab = m_basis_plus.support(bfID);
+
+        gsMatrix<T> ab_temp = ab;
+        for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
-            gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(m_uv)); // u
-            index_t degree = temp_basis_first.maxDegree();
-
-            gsMatrix<T> ab = m_basis_plus.support(bfID);
-
-            gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
-
-            for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
-                if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
-                    kv.insert(temp_basis_first.knot(i), 1);
-
-            temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(1 - m_uv)); // v
-            ab = temp_basis_first.support(1);
-            gsKnotVector<T> kv2(ab.at(0), ab.at(1), 0, 1);
-            for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
-                if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
-                    kv2.insert(temp_basis_first.knot(i), 1);
-
-            gsTensorBSplineBasis<2, T> bsp_geo_local(kv, kv2);
-            gsTensorBSplineBasis<2, T> temp_basis(kv2, kv);
-            if (m_uv == 1)
-                bsp_geo_local.swap(temp_basis);
-            m_geo = bsp_geo_local; // Basis for Integration
+            gsMatrix<T> xy = temp_basis_first.support(i);
+            if ( (xy[0] < ab[0]) && (xy[1] > ab[0]))
+                ab_temp[0] = xy[0];
+            if ( (xy[0] < ab[1]) && (xy[1] > ab[1]))
+                ab_temp[1] = xy[1];
         }
-        else if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::global)
-            m_geo = m_basis_g1; // Basis for Integration
+        ab = ab_temp;
 
-        refresh();
+        ab_temp = ab;
+        for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+        {
+            gsMatrix<T> xy = temp_basis_first.support(i);
+            if ( (xy[0] < ab[0]) && (xy[1] > ab[0]))
+                ab_temp[0] = xy[0];
+            if ( (xy[0] < ab[1]) && (xy[1] > ab[1]))
+                ab_temp[1] = xy[1];
+        }
+        ab = ab_temp;
+
+        gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
+        for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
+            if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
+                kv.insert(temp_basis_first.knot(i), 1);
+
+        temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(1 - m_uv)); // v
+        ab = temp_basis_first.support(1);
+        gsKnotVector<T> kv2(ab.at(0), ab.at(1), 0, 1);
+        for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
+            if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
+                kv2.insert(temp_basis_first.knot(i), 1);
+
+        gsTensorBSplineBasis<2, T> bsp_geo_local(kv, kv2);
+        gsTensorBSplineBasis<2, T> temp_basis(kv2, kv);
+        if (m_uv == 1)
+            bsp_geo_local.swap(temp_basis);
+        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
+            m_geo = bsp_geo_local; // Basis for Integration
+        else
+            m_geo = m_basis_g1;
+
+        refresh(bfID,"plus");
 
         assemble(bfID,"plus"); // i == number of bf
 
-        gsSparseSolver<real_t>::CGDiagonal solver;
+        gsSparseSolver<real_t>::BiCGSTABILUT solver;
         gsMatrix<> sol;
         solver.compute(m_system.matrix());
         sol = solver.solve(m_system.rhs());
@@ -191,37 +210,55 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
     }
     for (index_t bfID = 2; bfID < n_minus-2; bfID++)  // first 2 and last 2 bf are eliminated
     {
-        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
+        gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(m_uv)); // u
+        index_t degree = temp_basis_first.maxDegree();
+
+        gsMatrix<T> ab = m_basis_minus.support(bfID);
+
+        gsMatrix<T> ab_temp = ab;
+        for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
-            gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(m_uv)); // u
-            index_t degree = temp_basis_first.maxDegree();
-
-            gsMatrix<T> ab = m_basis_minus.support(bfID);
-
-            gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
-
-            for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
-                if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
-                    kv.insert(temp_basis_first.knot(i), 1);
-
-
-            temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(1 - m_uv)); // v
-            ab = temp_basis_first.support(1);
-            gsKnotVector<T> kv2(ab.at(0), ab.at(1), 0, 1);
-            for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
-                if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
-                    kv2.insert(temp_basis_first.knot(i), 1);
-            gsTensorBSplineBasis<2, T> bsp_geo_local(kv, kv2);
-            gsTensorBSplineBasis<2, T> temp_basis(kv2, kv);
-            if (m_uv == 1)
-                bsp_geo_local.swap(temp_basis);
-            m_geo = bsp_geo_local; // Basis for Integration
-
+            gsMatrix<T> xy = temp_basis_first.support(i);
+            if ( (xy[0] < ab[0]) && (xy[1] > ab[0]))
+                ab_temp[0] = xy[0];
+            if ( (xy[0] < ab[1]) && (xy[1] > ab[1]))
+                ab_temp[1] = xy[1];
         }
-        else if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::global)
-            m_geo = m_basis_g1; // Basis for Integration
+        ab = ab_temp;
 
-        refresh();
+        ab_temp = ab;
+        for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+        {
+            gsMatrix<T> xy = temp_basis_first.support(i);
+            if ( (xy[0] < ab[0]) && (xy[1] > ab[0]))
+                ab_temp[0] = xy[0];
+            if ( (xy[0] < ab[1]) && (xy[1] > ab[1]))
+                ab_temp[1] = xy[1];
+        }
+        ab = ab_temp;
+
+        gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
+        for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
+            if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
+                kv.insert(temp_basis_first.knot(i), 1);
+
+
+        temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(1 - m_uv)); // v
+        ab = temp_basis_first.support(1);
+        gsKnotVector<T> kv2(ab.at(0), ab.at(1), 0, 1);
+        for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
+            if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
+                kv2.insert(temp_basis_first.knot(i), 1);
+        gsTensorBSplineBasis<2, T> bsp_geo_local(kv, kv2);
+        gsTensorBSplineBasis<2, T> temp_basis(kv2, kv);
+        if (m_uv == 1)
+            bsp_geo_local.swap(temp_basis);
+        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
+            m_geo = bsp_geo_local; // Basis for Integration
+        else
+            m_geo = m_basis_g1;
+
+        refresh(bfID,"minus");
 
         assemble(bfID,"minus"); // i == number of bf
 
@@ -259,7 +296,6 @@ void gsApproxG1BasisEdge<T,bhVisitor>::constructSolution(const gsMatrix<> & solV
         }
         else // eliminated DoF: fill with Dirichlet data
         {
-            //gsInfo << "mapper index dirichlet: " << m_ddof[unk].row( mapper.bindex(i, p) ).head(dim) << "\n";
             coeffs.row(i) = m_ddof[0].row( mapper.bindex(i, 0) ).head(dim); // = 0
         }
     }
@@ -268,7 +304,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::constructSolution(const gsMatrix<> & solV
 }
 
 template <class T, class bhVisitor>
-void gsApproxG1BasisEdge<T,bhVisitor>::refresh()
+void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
 {
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper map(m_basis.basis(0));
@@ -279,6 +315,57 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh()
     {
         act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, i); // WEST
         map.markBoundary(0, act); // Patch 0
+    }
+
+    if (typeBf == "plus")
+    {
+        gsMatrix<T> ab = m_basis_plus.support(bfID);
+
+        gsMatrix<T> ab_temp = ab;
+        for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++) // only the first two u/v-columns are Dofs (0/1)
+        {
+            gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+            if ( (xy[0] < ab[0]) && (xy[1] > ab[0]))
+                ab_temp[0] = xy[0];
+            if ( (xy[0] < ab[1]) && (xy[1] > ab[1]))
+                ab_temp[1] = xy[1];
+        }
+        ab = ab_temp;
+
+        for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++) // only the first two u/v-columns are Dofs (0/1)
+        {
+            gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+            if ( (xy[1] < ab[0] + 1e-10) || (xy[0] > ab[1] - 1e-10) ) //|| (xy[0] < ab[0] - 1e-10) || (xy[1] > ab[1] + 1e-10))
+            {
+                act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
+                map.markBoundary(0, act); // Patch 0
+            }
+        }
+    }
+    else if (typeBf == "minus")
+    {
+        gsMatrix<T> ab = m_basis_minus.support(bfID);
+
+        gsMatrix<T> ab_temp = ab;
+        for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++) // only the first two u/v-columns are Dofs (0/1)
+        {
+            gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+            if ( (xy[0] < ab[0]) && (xy[1] > ab[0]))
+                ab_temp[0] = xy[0];
+            if ( (xy[0] < ab[1]) && (xy[1] > ab[1]))
+                ab_temp[1] = xy[1];
+        }
+        ab = ab_temp;
+
+        for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++) // only the first two u/v-columns are Dofs (0/1)
+        {
+            gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+            if ( (xy[1] < ab[0] + 1e-10) || (xy[0] > ab[1] - 1e-10) ) //|| (xy[0] < ab[0] - 1e-10) || (xy[1] > ab[1] + 1e-10))
+            {
+                act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
+                map.markBoundary(0, act); // Patch 0
+            }
+        }
     }
 
     map.finalize();
@@ -345,12 +432,15 @@ void gsApproxG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt = m_geo.basis(0).makeDomainIterator(boundary::none);
 
+
 #ifdef _OPENMP
         for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
 #else
         for (; domIt->good(); domIt->next() )
 #endif
         {
+
+
             // Map the Quadrature rule to the element
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 

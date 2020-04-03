@@ -61,6 +61,8 @@ public:
 
             m_basis_minus.push_back(basis_minus);
 
+            g1OptionList.setInt("gluingData",gluingData::global);
+
             // Computing the gluing data
             gsApproxGluingData<T> gluingData(m_mp, m_basis, dir, m_isBoundary[dir], m_g1OptionList);
             if (g1OptionList.getInt("gluingData") == gluingData::local)
@@ -87,6 +89,75 @@ public:
 
     void setG1BasisVertex(gsMultiPatch<T> & result, gsMatrix<> dd_ik_minus, gsMatrix<> dd_ik_plus)
     {
+
+        gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(0)); // u
+        index_t degree = temp_basis_first.maxDegree();
+
+        gsMatrix<T> ab = m_basis_plus[0].support(2);
+
+        gsMatrix<T> ab_temp = ab;
+        for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+        {
+            gsMatrix<T> xy = temp_basis_first.support(i);
+            if ( (xy[0] < ab[0]) && (xy[1] > ab[0]))
+                ab_temp[0] = xy[0];
+            if ( (xy[0] < ab[1]) && (xy[1] > ab[1]))
+                ab_temp[1] = xy[1];
+        }
+        ab = ab_temp;
+ /*       ab_temp = ab;
+        for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+        {
+            gsMatrix<T> xy = temp_basis_first.support(i);
+            if ( (xy[0] < ab[0]) && (xy[1] > ab[0]))
+                ab_temp[0] = xy[0];
+            if ( (xy[0] < ab[1]) && (xy[1] > ab[1]))
+                ab_temp[1] = xy[1];
+        }
+        ab = ab_temp;
+*/
+        gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
+        for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
+            if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
+                kv.insert(temp_basis_first.knot(i), 1);
+
+        // #### v ####
+
+        temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(1)); // v
+        degree = temp_basis_first.maxDegree();
+
+        ab = m_basis_plus[1].support(2);
+
+        ab_temp = ab;
+        for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+        {
+            gsMatrix<T> xy = temp_basis_first.support(i);
+            if ( (xy[0] < ab[0]) && (xy[1] > ab[0]))
+                ab_temp[0] = xy[0];
+            if ( (xy[0] < ab[1]) && (xy[1] > ab[1]))
+                ab_temp[1] = xy[1];
+        }
+        ab = ab_temp;
+/*        ab_temp = ab;
+        for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+        {
+            gsMatrix<T> xy = temp_basis_first.support(i);
+            if ( (xy[0] < ab[0]) && (xy[1] > ab[0]))
+                ab_temp[0] = xy[0];
+            if ( (xy[0] < ab[1]) && (xy[1] > ab[1]))
+                ab_temp[1] = xy[1];
+        }
+        ab = ab_temp;
+*/
+        gsKnotVector<T> kv2(ab.at(0), ab.at(1), 0, 1);
+        for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
+            if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
+                kv2.insert(temp_basis_first.knot(i), 1);
+
+        gsTensorBSplineBasis<2, T> bsp_geo_local(kv, kv2);
+        m_geo = bsp_geo_local; // Basis for Integration
+        //m_geo = m_basis_g1;
+
         refresh();
         assemble(dd_ik_minus, dd_ik_plus);
         solve();
@@ -120,6 +191,9 @@ protected:
     // Basis for the G1 Basis
     gsMultiBasis<T> m_basis_g1;
 
+    // Basis for Integration
+    gsMultiBasis<T> m_geo;
+
     // System
     std::vector<gsSparseSystem<T> > m_f;
 
@@ -127,7 +201,6 @@ protected:
     using Base::m_ddof;
 
     std::vector<gsMatrix<>> solVec;
-
 }; // class gsG1BasisEdge
 
 
@@ -182,6 +255,36 @@ void gsG1BasisVertex<T,bhVisitor>::refresh()
     vec.block(0,0,vec.size()-3,1) = vec.block(3,0,vec.size()-3,1); // 0,1,2
     act = vec.block(0,0,vec.size()-6,1);
     //map.markBoundary(0,act); // TODO TODO TODO TODO is wrong, need bigger support!!!!!!
+
+    for (index_t dir = 0; dir < 2; dir++)
+    {
+        gsMatrix<T> ab = m_basis_plus[dir].support(2);
+/*
+        gsMatrix<T> ab_temp = ab;
+        for (index_t i = 0; i < m_basis.basis(0).component(dir).size(); i++) // only the first two u/v-columns are Dofs (0/1)
+        {
+            gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
+            if ( (xy[0] < ab[0]) && (xy[1] > ab[0]))
+                ab_temp[0] = xy[0];
+            if ( (xy[0] < ab[1]) && (xy[1] > ab[1]))
+                ab_temp[1] = xy[1];
+        }
+        ab = ab_temp;
+*/
+        for (index_t i = 3; i < m_basis.basis(0).component(dir).size(); i++) // only the first two u/v-columns are Dofs (0/1)
+        {
+            gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
+            if ( (xy[0] > ab[1] - 1e-10) ) //|| (xy[0] < ab[0] - 1e-10) || (xy[1] > ab[1] + 1e-10))
+            {
+                act = m_basis.basis(0).boundaryOffset(dir == 0 ? 1 : 3, i); // WEST
+                map.markBoundary(0, act); // Patch 0
+            }
+        }
+    }
+
+
+
+
     map.finalize();
     //gsInfo << "map : " << map.asVector() << "\n";
     //map.print();
@@ -249,7 +352,7 @@ void gsG1BasisVertex<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, gs
         const gsGeometry<T> & patch = m_mp.patch(0);
 
         // Initialize domain element iterator
-        typename gsBasis<T>::domainIter domIt = basis_g1.makeDomainIterator(boundary::none);
+        typename gsBasis<T>::domainIter domIt = m_geo.basis(0).makeDomainIterator(boundary::none);
 
 #ifdef _OPENMP
         for ( domIt->next(tid); domIt->good(); domIt->next(nt) )

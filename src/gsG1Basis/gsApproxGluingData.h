@@ -182,7 +182,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
         {
             gsMatrix<T> ab = basis_minus.support(bfID);
 
-            gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, p_tilde + 1);
+            gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
 
             index_t degree = temp_basis_first.maxDegree();
             for (size_t ii = degree + 1; ii < temp_basis_first.knots().size() - (degree + 1); ii += temp_basis_first.knots().multiplicityIndex(ii))
@@ -212,7 +212,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
         {
             gsMatrix<T> ab = basis_plus.support(bfID);
 
-            gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, p_tilde + 1);
+            gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
 
             index_t degree = temp_basis_first.maxDegree();
             for (size_t ii = degree + 1; ii < temp_basis_first.knots().size() - (degree + 1); ii += temp_basis_first.knots().multiplicityIndex(ii))
@@ -244,7 +244,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
         // ALPHA
         gsMatrix<T> ab = basis_minus.support(1); // FIXED TO SUPP(b_0^-)
 
-        gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, p_tilde + 1);
+        gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
 
         index_t degree = temp_basis_first.maxDegree();
         for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
