@@ -61,8 +61,6 @@ public:
 
             m_basis_minus.push_back(basis_minus);
 
-            g1OptionList.setInt("gluingData",gluingData::global);
-
             // Computing the gluing data
             gsApproxGluingData<T> gluingData(m_mp, m_basis, dir, m_isBoundary[dir], m_g1OptionList);
             if (g1OptionList.getInt("gluingData") == gluingData::local)

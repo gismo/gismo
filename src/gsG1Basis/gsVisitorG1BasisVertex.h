@@ -134,8 +134,6 @@ public:
         gsMatrix<> zero;
         zero.setZero(2,1);
 
-        g1OptionList.setInt("gluingData",gluingData::global);
-
         std::vector<gsMatrix<>> alpha, beta, alpha_0, beta_0, alpha_deriv, beta_deriv;
         if (g1OptionList.getInt("gluingData") == gluingData::global)
         {
