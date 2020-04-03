@@ -103,7 +103,7 @@ public:
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
- /*       ab_temp = ab;
+        ab_temp = ab;
         for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
             gsMatrix<T> xy = temp_basis_first.support(i);
@@ -113,7 +113,7 @@ public:
                 ab_temp(1,0) = xy(1,0);
         }
         ab = ab_temp;
-*/
+
         gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
         for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
             if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
@@ -136,7 +136,7 @@ public:
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
-/*        ab_temp = ab;
+        ab_temp = ab;
         for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
             gsMatrix<T> xy = temp_basis_first.support(i);
@@ -146,7 +146,7 @@ public:
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
-*/
+
         gsKnotVector<T> kv2(ab.at(0), ab.at(1), 0, 1);
         for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
             if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
@@ -257,7 +257,7 @@ void gsG1BasisVertex<T,bhVisitor>::refresh()
     for (index_t dir = 0; dir < 2; dir++)
     {
         gsMatrix<T> ab = m_basis_plus[dir].support(2);
-/*
+
         gsMatrix<T> ab_temp = ab;
         for (index_t i = 0; i < m_basis.basis(0).component(dir).size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
@@ -268,7 +268,7 @@ void gsG1BasisVertex<T,bhVisitor>::refresh()
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
-*/
+
         for (index_t i = 3; i < m_basis.basis(0).component(dir).size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
             gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
