@@ -99,7 +99,7 @@ public:
             gsMatrix<T> xy = temp_basis_first.support(i);
             if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
                 ab_temp(0,0) = xy(0,0);
-            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(1,0)))
+            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
@@ -132,7 +132,7 @@ public:
             gsMatrix<T> xy = temp_basis_first.support(i);
             if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
                 ab_temp(0,0) = xy(0,0);
-            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(1,0)))
+            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
@@ -140,10 +140,10 @@ public:
         for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
             gsMatrix<T> xy = temp_basis_first.support(i);
-            if ( (xy(0,0) < ab(0,0)) && (xy(1,0) > ab(0,0)))
+            if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
                 ab_temp(0,0) = xy(0,0);
-            if ( (xy(0,0) < ab(1,0)) && (xy(1,0) > ab[1]))
-                ab_temp(1,0) = xy(1,0);
+            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
+                ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
 */
@@ -264,7 +264,7 @@ void gsG1BasisVertex<T,bhVisitor>::refresh()
             gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
             if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
                 ab_temp(0,0) = xy(0,0);
-            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(1,0)))
+            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;

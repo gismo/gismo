@@ -160,7 +160,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
             gsMatrix<T> xy = temp_basis_first.support(i);
             if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
                 ab_temp(0,0) = xy(0,0);
-            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(1,0)))
+            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
@@ -171,7 +171,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
             gsMatrix<T> xy = temp_basis_first.support(i);
             if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
                 ab_temp(0,0) = xy(0,0);
-            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(1,0)))
+            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
@@ -221,7 +221,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
             gsMatrix<T> xy = temp_basis_first.support(i);
             if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
                 ab_temp(0,0) = xy(0,0);
-            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(1,0)))
+            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
@@ -232,7 +232,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
             gsMatrix<T> xy = temp_basis_first.support(i);
             if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
                 ab_temp(0,0) = xy(0,0);
-            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(1,0)))
+            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
@@ -327,7 +327,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
             gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
             if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
                 ab_temp(0,0) = xy(0,0);
-            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(1,0)))
+            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
@@ -352,7 +352,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
             gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
             if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
                 ab_temp(0,0) = xy(0,0);
-            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(1,0)))
+            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
