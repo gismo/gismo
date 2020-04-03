@@ -662,6 +662,10 @@ public:
                     for (size_t lambda = 0; lambda < 6; lambda++)
                         coef_bf += temp_mp_g1.patch(lambda).coefs() * vertexBoundaryBasis.first(lambda,bf);
 
+                    for (index_t ii = 0; ii < coef_bf.dim().first; ii++)
+                        if (coef_bf.at(ii) * coef_bf.at(ii) < m_zero*m_zero)
+                            coef_bf.at(ii) *= 0;
+
                     g1BasisVector[i].patch(bf).setCoefs(coef_bf);
                 }
 
