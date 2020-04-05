@@ -17,6 +17,7 @@
 #include <gsCore/gsMultiPatch.h>
 #include <gsG1Basis/gsG1AuxiliaryPatch.h>
 # include <gsG1Basis/gsApproxG1BasisEdge.h>
+# include <gsG1Basis/gsG1ASGluingData.h>
 # include <gsG1Basis/gsG1OptionList.h>
 
 namespace gismo
@@ -169,6 +170,8 @@ public:
 
         g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
         g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
+
+        gsG1ASGluingData<real_t> g1BasisEdge(test_mp, test_mb);
 
         if (g1OptionList.getInt("gluingData")==gluingData::global)
             gluingDataCondition(g1BasisEdge_0.get_alpha(),g1BasisEdge_1.get_alpha(),g1BasisEdge_0.get_beta(),g1BasisEdge_1.get_beta());

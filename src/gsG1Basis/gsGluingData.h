@@ -20,6 +20,12 @@ public:
     gsGluingData()
     { }
 
+    gsGluingData(gsMultiPatch<T> const & mp, gsMultiBasis<T> & mb)
+        : m_mp(mp), m_mb(mb)
+    {
+    }
+
+
     gsGluingData(gsMultiPatch<T> const & mp, gsMultiBasis<T> const & mb, index_t uv, bool isBoundary, gsG1OptionList const & optionList)
         : m_mp(mp), m_mb(mb), m_uv(uv), m_isBoundary(isBoundary), m_optionList(optionList)
     {

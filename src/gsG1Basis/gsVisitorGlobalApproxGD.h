@@ -85,6 +85,7 @@ public:
         {
             P0.jacobian_into(uv.col(i), ev);
             uv(0, i) = 1 * ev.determinant();
+
         }
         if (isBoundary)
             uv.setOnes();

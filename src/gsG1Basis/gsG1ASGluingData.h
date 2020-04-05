@@ -7,6 +7,7 @@
 
 #include <gsG1Basis/gsG1ASGluingDataAssembler.h>
 #include <gsG1Basis/gsGluingData.h>
+#include <gsG1Basis/gsG1ASGluingDataVisitorGlobal.h>
 # include <gsG1Basis/gsG1OptionList.h>
 
 
@@ -14,7 +15,7 @@
 namespace gismo
 {
 
-template<class T>
+template<class T, class Visitor = gsG1ASGluingDataVisitorGlobal<T>>
 class gsG1ASGluingData : public gsGluingData<T>
 {
 public:
@@ -22,89 +23,119 @@ public:
     { }
 
     gsG1ASGluingData(gsMultiPatch<T> const & mp,
-                 gsMultiBasis<T> const & mb,
-                 index_t uv,
-                 bool isBoundary,
-                     gsG1OptionList const & optionList)
-        : gsGluingData<T>(mp, mb, uv, isBoundary, optionList)
+                 gsMultiBasis<T> & mb)
+        : gsGluingData<T>(mp, mb)
     {
-        p_tilde = this->m_optionList.getInt("p_tilde");
-        r_tilde = this->m_optionList.getInt("r_tilde");
-
-        m_r = this->m_optionList.getInt("regularity");
-
-        if (this->m_optionList.getSwitch("local"))
-            gsInfo << "Is not yet implemented \n";
-        else
-            setGlobalGluingData();
+        refresh();
+        assemble();
+        solve();
     }
 
 
-    // Computed the gluing data globally
-    void setGlobalGluingData();
 
 
 
 protected:
 
-    // Spline space for the gluing data (p_tilde,r_tilde,k)
-    index_t p_tilde, r_tilde;
-
-    // Regularity of the geometry
-    index_t m_r;
-
-}; // class gsGluingData
+gsSparseSystem<> mSys;
+gsMatrix<> dirichletDofs;
 
 
-    template<class T>
-    void gsG1ASGluingData<T>::setGlobalGluingData()
+void refresh()
+{
+    gsVector<> size(1);
+    size << 6;
+
+    gsDofMapper map(size);
+    map.finalize();
+
+    gsSparseSystem<> sys(map);
+    mSys = sys;
+}
+
+
+void assemble()
+{
+    mSys.reserve(36, 1); // Reserve for the matrix 6x6 values
+
+    dirichletDofs.setZero(mSys.colMapper(0).boundarySize());
+
+    // Assemble volume integrals
+    Visitor visitor;
+    apply(visitor);
+
+    mSys.matrix().makeCompressed();
+
+}
+
+
+void apply(Visitor visitor)
+{
+#pragma omp parallel
     {
-        // ======== Space for gluing data : S^(p_tilde, r_tilde) _k ========
-        gsKnotVector<T> kv(0,1,0,p_tilde+1,p_tilde-r_tilde); // first,last,interior,mult_ends,mult_interior
-        gsBSplineBasis<T> bsp_gD(kv);
+        Visitor
+#ifdef _OPENMP
+        // Create thread-private visitor
+        visitor_(visitor);
+        const int tid = omp_get_thread_num();
+        const int nt  = omp_get_num_threads();
+#else
+            &visitor_ = visitor;
+#endif
 
+        gsQuadRule<T> quRule ; // Quadrature rule
+        gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
+        gsVector<T> quWeights; // Temp variable for mapped weights
 
-        gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(this->m_mb.basis(0).component(this->m_uv)); // u
+        const gsBasis<T> & basis = this->m_mb[0].basis(0).component(1); // = 0
 
+        // Initialize reference quadrature rule and visitor data
+        visitor_.initialize(basis,quRule);
 
-        index_t degree = temp_basis_first.maxDegree();
+        //const gsGeometry<T> & patch = m_geo.patch(patchIndex); // 0 = patchindex
 
-        bsp_gD.insertKnot(temp_basis_first.knot(0),1); // Increase multiplicity of the first knot by one
-        bsp_gD.insertKnot(temp_basis_first.knot(temp_basis_first.knots().size() - 1 ),1); // Increase multiplicity of the last knot by one
+        // Initialize domain element iterator -- using unknown 0
+        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator(boundary::none);
 
-        if(temp_basis_first.knots().size() != (2 * (degree + 1)))  // If we have inner knots
+#ifdef _OPENMP
+        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#else
+        for (; domIt->good(); domIt->next() )
+#endif
         {
-            for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i = i+(degree-m_r))
-                bsp_gD.insertKnot(temp_basis_first.knot(i),2); // Increase the multiplicity of the inner knots by two
+            // Map the Quadrature rule to the element
+            quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
+
+            // Perform required evaluations on the quadrature nodes
+            visitor_.evaluate(quNodes, this->m_mp);
+
+            // Assemble on element
+            visitor_.assemble(*domIt, quWeights);
+
+            // Push to global matrix and right-hand side vector
+#pragma omp critical(localToGlobal)
+            visitor_.localToGlobal( dirichletDofs, mSys); // omp_locks inside
+
         }
 
-        gsKnotVector<T> newKV = bsp_gD.knots();
-        gsMatrix<> grevPoints = newKV.greville();
+    }//omp parallel
 
-        gsG1ASGluingDataAssembler<T> globalGdAssembler(bsp_gD, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary);
-        globalGdAssembler.assemble();
+}
 
-        gsSparseSolver<real_t>::CGDiagonal solver;
-        gsVector<> sol_a, sol_b;
+void solve()
+{
+    gsSparseSolver<>::CGDiagonal solver;
+    gsMatrix<> sol;
 
-        // alpha^S
-        solver.compute(globalGdAssembler.matrix_alpha());
-        sol_a = solver.solve(globalGdAssembler.rhs_alpha());
+    solver.compute(mSys.matrix());
+    sol = solver.solve(mSys.rhs()); // My solution
 
-        gsGeometry<>::uPtr tilde_temp;
-        tilde_temp = bsp_gD.makeGeometry(sol_a);
-        gsBSpline<T> alpha_tilde_L_2 = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-        this->alpha_tilde = alpha_tilde_L_2;
+    gsInfo << "Solution: " << sol << "\n";
+}
 
-        // beta^S
-        solver.compute(globalGdAssembler.matrix_beta());
-        sol_b = solver.solve(globalGdAssembler.rhs_beta());
 
-        tilde_temp = bsp_gD.makeGeometry(sol_b);
-        gsBSpline<T> beta_tilde_L_2 = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-        this->beta_tilde = beta_tilde_L_2;
 
-    } // setGlobalGluingData
+}; // class gsGluingData
 
 } // namespace gismo
 
