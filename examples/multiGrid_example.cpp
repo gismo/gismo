@@ -18,7 +18,7 @@ using namespace gismo;
 gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(const gsSparseMatrix<>&, const gsMultiBasis<>&, const gsBoundaryConditions<>&, const gsOptionList&);
 
 gsPreconditionerOp<>::Ptr setupMacroGsSmoother(const gsSparseMatrix<>& matrix, const gsMultiBasis<>& mb,
-    const gsBoundaryConditions<>& bc, const gsOptionList& opt, index_t innerSize, index_t overlapSize );
+                                               const gsBoundaryConditions<>& bc, const gsOptionList& opt, index_t innerSize, index_t overlapSize, bool optimize = true);
 
 int main(int argc, char *argv[])
 {
@@ -34,6 +34,7 @@ int main(int argc, char *argv[])
     index_t presmooth = 1;
     index_t postsmooth = 1;
     bool extrasmooth = false;
+    bool optimize = false;
     std::string smoother("GaussSeidel");
     real_t damping = -1;
     real_t scaling = 0.12;
@@ -51,6 +52,7 @@ int main(int argc, char *argv[])
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addSwitch("",  "NonMatching",           "Set up a non-matching multi-patch discretization", nonMatching);
     cmd.addSwitch("",  "DG",                    "Use a discontinuous Galerkin discretization", dg);
+    cmd.addSwitch("",  "optimize",              "Uses and optimized implementation, for testing purposes", optimize);
     cmd.addInt   ("l", "MG.Levels",             "Number of levels to use for multigrid iteration", levels);
     cmd.addInt   ("c", "MG.Cycles",             "Number of multi-grid cycles", cycles);
     cmd.addInt   ("",  "MG.Presmooth",          "Number of pre-smoothing steps", presmooth);
@@ -223,7 +225,7 @@ int main(int argc, char *argv[])
         else if ( smoother == "GaussSeidel" || smoother == "gs" )
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
         else if ( smoother == "MacroGaussSeidel" || smoother == "mgs" )
-            smootherOp = setupMacroGsSmoother(mg->matrix(i),multiBases[i], bc, opt.getGroup("MG"),innerSize,overlapSize);
+            smootherOp = setupMacroGsSmoother(mg->matrix(i),multiBases[i], bc, opt.getGroup("MG"),innerSize,overlapSize,optimize);
         else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" || smoother == "Hybrid" || smoother == "hyb" )
         {
             if (multiBases[i].nBases() == 1)
@@ -429,12 +431,13 @@ gsSparseMatrix<> makeTransfer(gsVector<index_t> begin, gsVector<index_t> end, gs
 }
     
 std::pair< std::vector< gsSparseMatrix<> >, std::vector< gsLinearOperator<>::Ptr > >
-macroGsInit(const gsSparseMatrix<>& A, std::vector<index_t>& dims_v, index_t innerSize, index_t overlapSize )
-{   
+macroGsInit(const gsSparseMatrix<>& A, std::vector<index_t>& dims_v, index_t innerSize, index_t overlapSize)
+{
     const index_t d = dims_v.size();
     index_t totalDim = 1;
     for (index_t i=0; i<d; ++i)
         totalDim *= dims_v[i];
+    
     GISMO_ENSURE( totalDim == A.rows() && A.rows() == A.cols(), "Err" );
 
     gsVector<index_t> dims(d);
@@ -484,11 +487,11 @@ gsPreconditionerOp<>::Ptr setupMacroGsSmoother(
     const gsBoundaryConditions<>& bc,
     const gsOptionList& opt,
     index_t innerSize,
-    index_t overlapSize
+    index_t overlapSize,
+    bool optimize
 )
 {
     //const short_t dim = mb.topology().dim();
-
     // Setup dof mapper
     gsDofMapper dm;
     mb.getMapper(
@@ -499,7 +502,6 @@ gsPreconditionerOp<>::Ptr setupMacroGsSmoother(
        0
     );
     const index_t nTotalDofs = dm.freeSize();
-
     // Decompose the whole domain into components
     std::vector< std::vector<patchComponent> > components = mb.topology().allComponents(true);
     const index_t nr_components = components.size();
@@ -539,8 +541,12 @@ gsPreconditionerOp<>::Ptr setupMacroGsSmoother(
                 );
             for (size_t i=0; i<local.first.size(); ++i)
                 result->addOperator(transfer*local.first[i], local.second[i]);
+
         }
     }
-
+    if (optimize)
+    {
+        result->initOptimize();
+    }
     return result;
 }
