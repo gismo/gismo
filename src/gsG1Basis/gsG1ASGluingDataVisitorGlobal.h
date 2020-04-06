@@ -54,11 +54,10 @@ public:
             pointU.setZero();
             pointU.row(0) = md.points;
 
-            gsMatrix<> DuFR = FR.jacobian(pointV).col(0);
-            gsMatrix<> DvFR = FR.jacobian(pointV).col(1); // Same as DuFL
+            DuFR = FR.jacobian(pointV).col(0);
+            DvFR = FR.jacobian(pointV).col(1); // Same as DuFL
 
-            gsMatrix<> DuFL = FL.jacobian(pointU).col(0); // Same as DvFR
-            gsMatrix<> DvFL = FL.jacobian(pointU).col(1);
+            DvFL = FL.jacobian(pointU).col(1);
 
             gsMatrix<> ones(1, md.points.cols());
             ones.setOnes();
@@ -82,8 +81,9 @@ public:
             basisData.row(5) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(md.points) * DvFR.transpose() * DuFR;
             basisData.row(30) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(md.points) * DvFR.transpose() * DuFR;
 
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-            basisData.row(7) = 2 * (md.points.cwiseProduct(md.points) - 2 * md.points + ones) * DuFR.norm() * DuFR.norm();
+            basisData.row(7) = 2 * (md.points.cwiseProduct(md.points) - 2 * md.points + ones) * DvFL.norm() * DvFL.norm();
 
             basisData.row(8) = 2 * md.points.cwiseProduct(ones - md.points) * DvFL.norm() * DvFL.norm();
             basisData.row(13) = 2 * md.points.cwiseProduct(ones - md.points) * DvFL.norm() * DvFL.norm();
@@ -97,6 +97,7 @@ public:
             basisData.row(11) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points) * DvFL.transpose() * DvFR;
             basisData.row(31) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points) * DvFL.transpose() * DvFR;
 
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
             basisData.row(14) = 2 * md.points.cwiseProduct(md.points) * DvFL.norm() * DvFL.norm();
 
@@ -107,8 +108,9 @@ public:
             basisData.row(26) = 4 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points) * DvFL.transpose() * DvFR;
 
             basisData.row(17) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(md.points) * DvFL.transpose() * DvFR;
-            basisData.row(32) = 2* md.points.cwiseProduct(md.points).cwiseProduct(md.points) * DvFL.transpose() * DvFR;
+            basisData.row(32) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(md.points) * DvFL.transpose() * DvFR;
 
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
             basisData.row(21) = 2 * ( ones - 4 * md.points + 6 * md.points.cwiseProduct(md.points) - 4 * md.points.cwiseProduct(md.points).cwiseProduct(md.points) +
                                 md.points.cwiseProduct(md.points).cwiseProduct(md.points).cwiseProduct(md.points) ) * DvFR.norm() * DvFR.norm();
@@ -119,12 +121,14 @@ public:
             basisData.row(23) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points).cwiseProduct(ones - md.points) * DvFR.norm() * DvFR.norm();
             basisData.row(33) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points).cwiseProduct(ones - md.points) * DvFR.norm() * DvFR.norm();
 
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
             basisData.row(28) = 8 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points).cwiseProduct(ones - md.points) * DvFR.norm() * DvFR.norm();
 
             basisData.row(29) = 4 * md.points.cwiseProduct(md.points).cwiseProduct(md.points).cwiseProduct(ones - md.points) * DvFR.norm() * DvFR.norm();
             basisData.row(34) = 4 * md.points.cwiseProduct(md.points).cwiseProduct(md.points).cwiseProduct(ones - md.points) * DvFR.norm() * DvFR.norm();
 
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
             basisData.row(35) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(md.points).cwiseProduct(md.points) * DvFR.norm() * DvFR.norm();
 
@@ -144,12 +148,9 @@ public:
             rhsVals.row(5) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points) * DvFR.transpose() * DuFR;
 
 
-        // Initialize local matrix/rhs
+            // Initialize local matrix/rhs
             localMat.setZero(numActive, numActive);
-            localRhs.setZero(numActive, rhsVals.rows() );//multiple right-hand sides
-
-
-
+            localRhs.setZero(numActive, rhsVals.rows() ); //multiple right-hand sides
     }
 
     inline void assemble(gsDomainIterator<T>    & element,
@@ -203,7 +204,10 @@ protected:
 
     gsMapData<T> md;
 
+    gsMatrix<> DuFR;
+    gsMatrix<> DvFR;
 
+    gsMatrix<> DvFL;
 }; // class gsVisitorGluingData
 
 } // namespace gismo
