@@ -62,8 +62,8 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>sol2der ("cos(x/2)*sin(y/2)",
                              "cos(x/2)*sin(y/2)",
                              "cos(x/2)*sin(y/2)", 2);
-*/
 
+*/
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
     // ======= Geometry =========

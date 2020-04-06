@@ -258,6 +258,8 @@ public:
                 {
                     if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU + j - i) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU + j - i) > m_zero*m_zero)
                         BigMatrix(i + j, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i  * dimU + j - i);
+                    else
+                        auxGeom[np].getG1BasisCoefs(bf).at(i) *= 0;
                 }
             }
         }
@@ -281,6 +283,8 @@ public:
             {
                 if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) > m_zero*m_zero)
                     SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i * dimU);
+                else
+                    auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) *= 0;
             }
         }
         return SmallMatrix;
@@ -302,6 +306,8 @@ public:
             {
                 if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > m_zero*m_zero)
                     BigMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
+                else
+                    auxGeom[np].getG1BasisCoefs(bf).at(i) *= 0;
             }
         }
         return BigMatrix;
@@ -323,6 +329,8 @@ public:
             {
                 if (auxGeom[np].getG1BasisCoefs(bf).at(i ) * auxGeom[np].getG1BasisCoefs(bf).at(i ) > m_zero*m_zero)
                     SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
+                else
+                    auxGeom[np].getG1BasisCoefs(bf).at(i) *= 0;
             }
         }
         return SmallMatrix;
@@ -662,10 +670,6 @@ public:
                     coef_bf.setZero(temp_mp_g1.patch(bf).coefs().dim().first,1);
                     for (size_t lambda = 0; lambda < 6; lambda++)
                         coef_bf += temp_mp_g1.patch(lambda).coefs() * vertexBoundaryBasis.first(lambda,bf);
-
-                    for (index_t ii = 0; ii < coef_bf.dim().first; ii++)
-                        if (coef_bf.at(ii) * coef_bf.at(ii) < 1e-9)
-                            coef_bf.at(ii) *= 0;
 
                     g1BasisVector[i].patch(bf).setCoefs(coef_bf);
                 }

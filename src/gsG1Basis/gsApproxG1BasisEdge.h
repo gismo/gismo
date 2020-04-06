@@ -375,13 +375,13 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
         map.markBoundary(0, act); // Patch 0
         act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3,  m_basis.basis(0).component(m_uv).size() -1); // WEST
         map.markBoundary(0, act); // Patch 0
-/*
+
         if (m_isBoundary)
         {
             act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, 0); // WEST
             map.markBoundary(0, act); // Patch 0
         }
-*/
+
     }
 
     map.finalize();
