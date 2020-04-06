@@ -92,7 +92,7 @@ public:
         index_t degree = temp_basis_first.maxDegree();
 
         gsMatrix<T> ab = m_basis_plus[0].support(2);
-
+/*
         gsMatrix<T> ab_temp = ab;
         for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
@@ -113,7 +113,7 @@ public:
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
-
+*/
         gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
         for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
             if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
@@ -125,7 +125,7 @@ public:
         degree = temp_basis_first.maxDegree();
 
         ab = m_basis_plus[1].support(2);
-
+/*
         ab_temp = ab;
         for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
@@ -146,7 +146,7 @@ public:
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
-
+*/
         gsKnotVector<T> kv2(ab.at(0), ab.at(1), 0, 1);
         for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
             if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
@@ -214,6 +214,9 @@ void gsG1BasisVertex<T,bhVisitor>::constructSolution(gsMultiPatch<T> & result)
     gsMatrix<T> coeffs;
     for (index_t p = 0; p < 6; ++p)
     {
+
+        //gsInfo << "SOL: " << solVec[p] << "\n";
+
         const gsDofMapper & mapper = m_f.at(p).colMapper(0); // unknown = 0
 
         // Reconstruct solution coefficients on patch p
@@ -244,20 +247,12 @@ void gsG1BasisVertex<T,bhVisitor>::refresh()
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper map(m_basis.basis(0));
 
-    gsMatrix<unsigned> act(m_basis.basis(0).size()-6,1);
-    gsVector<unsigned> vec;
-    index_t dimU = m_basis.basis(0).component(0).size();
-    vec.setLinSpaced(m_basis.basis(0).size(),0,m_basis.basis(0).size());
-    vec.block(2*dimU,0,vec.size()-2*dimU-1,1) = vec.block(2*dimU +1,0,vec.size()-2*dimU-1,1); // 2*dim U
-    vec.block(dimU,0,vec.size()-dimU-2,1) = vec.block(dimU +2,0,vec.size()-dimU-2,1); // dim U, dimU+1
-    vec.block(0,0,vec.size()-3,1) = vec.block(3,0,vec.size()-3,1); // 0,1,2
-    act = vec.block(0,0,vec.size()-6,1);
-    //map.markBoundary(0,act); // TODO TODO TODO TODO is wrong, need bigger support!!!!!!
+    gsMatrix<unsigned> act;
 
     for (index_t dir = 0; dir < 2; dir++)
     {
         gsMatrix<T> ab = m_basis_plus[dir].support(2);
-
+/*
         gsMatrix<T> ab_temp = ab;
         for (index_t i = 0; i < m_basis.basis(0).component(dir).size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
@@ -268,15 +263,18 @@ void gsG1BasisVertex<T,bhVisitor>::refresh()
                 ab_temp(0,1) = xy(0,1);
         }
         ab = ab_temp;
-
-        for (index_t i = 3; i < m_basis.basis(0).component(dir).size(); i++) // only the first two u/v-columns are Dofs (0/1)
+*/
+        gsInfo << "ab: " << ab << "\n";
+        for (index_t i = 0; i < m_basis.basis(0).component(dir).size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
             gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
-            if ( (xy(0,0) > ab(0,1) - 1e-10) ) //|| (xy[0] < ab[0] - 1e-10) || (xy[1] > ab[1] + 1e-10))
+            if  ( (xy(0,1) < ab(0,0) + 1e-10) || (xy(0,0) > ab(0,1) - 1e-10) || (xy(0,0) < ab(0,0) - 1e-10) || (xy(0,1) > ab(0,1) + 1e-10))
             {
                 act = m_basis.basis(0).boundaryOffset(dir == 0 ? 1 : 3, i); // WEST
                 map.markBoundary(0, act); // Patch 0
             }
+            else
+                gsInfo << "xy: " << xy << "\n";
         }
     }
 
@@ -285,7 +283,7 @@ void gsG1BasisVertex<T,bhVisitor>::refresh()
 
     map.finalize();
     //gsInfo << "map : " << map.asVector() << "\n";
-    //map.print();
+    map.print();
 
     // 2. Create the sparse system
     gsSparseSystem<T> m_system = gsSparseSystem<T>(map);

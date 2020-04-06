@@ -235,7 +235,6 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
             if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
                 ab_temp(0,1) = xy(0,1);
         }
-        ab = ab_temp;
 
         gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
         for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
@@ -341,6 +340,11 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                 map.markBoundary(0, act); // Patch 0
             }
         }
+
+        act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, 0); // WEST
+        map.markBoundary(0, act); // Patch 0
+        act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3,  m_basis.basis(0).component(m_uv).size() -1); // WEST
+        map.markBoundary(0, act); // Patch 0
     }
     else if (typeBf == "minus")
     {
@@ -366,6 +370,18 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                 map.markBoundary(0, act); // Patch 0
             }
         }
+
+        act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, 0); // WEST
+        map.markBoundary(0, act); // Patch 0
+        act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3,  m_basis.basis(0).component(m_uv).size() -1); // WEST
+        map.markBoundary(0, act); // Patch 0
+/*
+        if (m_isBoundary)
+        {
+            act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, 0); // WEST
+            map.markBoundary(0, act); // Patch 0
+        }
+*/
     }
 
     map.finalize();

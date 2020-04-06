@@ -84,7 +84,7 @@ void gsApproxGluingData<T>::plotGluingData(index_t numGd)
     else if (this->m_optionList.getInt("gluingData") == gluingData::local)
     {
         std::string fileName;
-        std::string basename = "ApproxGluingDataLocal2" + util::to_string(numGd);
+        std::string basename = "ApproxGluingDataLocal" + util::to_string(numGd);
         gsParaviewCollection collection(basename);
 
         for (size_t i = 0; i < alpha_minus_tilde.size(); i++)
@@ -203,8 +203,11 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
             solver.compute(localGdAssembler.matrix());
             sol = solver.solve(localGdAssembler.rhs());
 
+            gsMatrix<T> coeffs;
+            localGdAssembler.constructSolution(sol,coeffs);
+
             gsGeometry<>::uPtr tilde_temp;
-            tilde_temp = bsp_gD.makeGeometry(sol);
+            tilde_temp = bsp_gD.makeGeometry(coeffs);
             gsBSpline<T> a_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
             alpha_minus_tilde.at(bfID) = a_t;
         }
@@ -229,12 +232,15 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
             gsSparseSolver<real_t>::CGDiagonal solver;
             gsVector<> sol;
 
-            // alpha^S
+            // beta^S
             solver.compute(localGdAssembler.matrix());
             sol = solver.solve(localGdAssembler.rhs());
 
+            gsMatrix<T> coeffs;
+            localGdAssembler.constructSolution(sol,coeffs);
+
             gsGeometry<>::uPtr tilde_temp;
-            tilde_temp = bsp_gD.makeGeometry(sol);
+            tilde_temp = bsp_gD.makeGeometry(coeffs);
             gsBSpline<T> b_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
             beta_plus_tilde.at(bfID) = b_t;
         }
@@ -265,8 +271,11 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
         solver.compute(localGdAssembler.matrix());
         sol = solver.solve(localGdAssembler.rhs());
 
+        gsMatrix<T> coeffs;
+        localGdAssembler.constructSolution(sol,coeffs);
+
         gsGeometry<>::uPtr tilde_temp;
-        tilde_temp = bsp_gD.makeGeometry(sol);
+        tilde_temp = bsp_gD.makeGeometry(coeffs);
         gsBSpline<T> a_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
         alpha_minus_tilde.at(0) = a_t;
 
@@ -291,8 +300,11 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
         solver.compute(localGdAssembler2.matrix());
         sol = solver.solve(localGdAssembler2.rhs());
 
+        gsMatrix<T> coeffs2;
+        localGdAssembler2.constructSolution(sol,coeffs2);
+
         gsGeometry<>::uPtr tilde_temp2;
-        tilde_temp2 = bsp_gD.makeGeometry(sol);
+        tilde_temp2 = bsp_gD.makeGeometry(coeffs2);
         gsBSpline<T> b_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp2);
         beta_plus_tilde.at(0) = b_t;
     }

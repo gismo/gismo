@@ -182,10 +182,13 @@ int main(int argc, char *argv[])
                     gsWriteParaview(temp_field_1,fileName,5000);
                     collection.addTimestep(fileName,i,"0.vts");
                 }
+
             }
+
             collection.save();
         }
         // Boundaries loop
+
         for (size_t numBdy = 0; numBdy < multiPatch.boundaries().size(); numBdy++ )
         {
             const patchSide & bit = multiPatch.boundaries()[numBdy];
@@ -212,9 +215,11 @@ int main(int argc, char *argv[])
                     gsWriteParaview(temp_field,fileName,5000);
                     collection.addTimestep(fileName,i,"0.vts");
                 }
+
             }
             collection.save();
         }
+
 
         // Vertices
         for(size_t numVer=0; numVer < multiPatch.vertices().size(); numVer++)
@@ -249,9 +254,39 @@ int main(int argc, char *argv[])
                     }
                 }
                 g1System.insertVertex(singleBasisFunction,patchIndex,numVer,singleVertex.get_internalDofs(),i);
+
+                if ( i < 3 && vertIndex.size() == 2)
+                {
+                    real_t g1Error = 0;
+                    index_t p_size = 10000;
+                    gsMatrix<> points(2, p_size);
+                    points.setOnes();
+
+                    gsVector<> vec;
+                    vec.setLinSpaced(p_size,0,1);
+                    points.row(0) = vec.transpose();
+
+                    gsMatrix<> temp;
+                    temp = singleBasisFunction.patch(0).eval(points);
+
+                    if (temp.array().abs().maxCoeff() > g1Error)
+                        g1Error = temp.array().abs().maxCoeff();
+
+                    gsInfo << "NON ZERO ERROR AT BOUNDARY: \n" << g1Error << "\n\n";
+
+                    g1Error = 0;
+                    temp = singleBasisFunction.patch(1).eval(points);
+
+                    if (temp.array().abs().maxCoeff() > g1Error)
+                        g1Error = temp.array().abs().maxCoeff();
+
+                    gsInfo << "NON ZERO ERROR AT BOUNDARY: \n" << g1Error << "\n\n";
+
+                }
             }
             collection.save();
         }
+
 
         gsBoundaryConditions<> bcInfo, bcInfo2;
         for (gsMultiPatch<>::const_biterator bit = multiPatch.bBegin(); bit != multiPatch.bEnd(); ++bit)
@@ -290,8 +325,9 @@ int main(int argc, char *argv[])
         g1System.constructSparseG1Solution(solVector,Sol_sparse);
 
 #ifdef _OPENMP
-        omp_set_num_threads(g1OptionList.getInt("threads"));
-        omp_set_nested(1);
+        //omp_set_num_threads(g1OptionList.getInt("threads"));
+        omp_set_num_threads(1);
+        //omp_set_nested(1);
 #endif
 
 #pragma omp parallel for
@@ -300,8 +336,27 @@ int main(int argc, char *argv[])
             if (e == 0)
             {
                 gsNormL2<real_t> errorL2(multiPatch, Sol_sparse, solVal);
-                errorL2.compute(g1System.get_numBasisFunctions());
+                errorL2.compute(g1System.get_numBasisFunctions(), true);
                 l2Error_vec[refinement_level] = errorL2.value();
+
+                std::vector<real_t> elWise_error = errorL2.elWise_value();
+                gsVector<real_t> max_el(10);
+                max_el.setZero();
+                gsVector<size_t> max_i(10);
+                max_i.setZero();
+                for (size_t i = 0; i< elWise_error.size(); i++)
+                {
+                    for (index_t ii = 0; ii < 10; ii++)
+                        if (max_el(ii) < elWise_error[i])
+                        {
+                            max_el(ii) = elWise_error[i];
+                            max_i(ii) = i;
+                            break;
+                        }
+                }
+                gsInfo << "EL ERROR: " << max_i.transpose() << " : " << max_el.transpose() << "\n";
+
+                errorL2.plotElWiseError(elWise_error);
             }
 
             else if (e == 1)
