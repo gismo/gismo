@@ -17,7 +17,7 @@ public:
     {
     }
 
-    void initialize(const gsBasis<T>       & basis,
+    void initialize(const gsBasis<T> & basis,
                     gsQuadRule<T>    & rule)
     {
         gsVector<index_t> numQuadNodes( basis.dim() );
@@ -32,98 +32,125 @@ public:
     }
 
     // Evaluate on element.
-    inline void evaluate(gsBasis<T>       & basis, //
-                         gsMatrix<T>      & quNodes,
-                         index_t m_uv,
-                         gsMultiPatch<T> & mp,
-                         index_t & gamma,
-                         bool & isBoundary)
+    inline void evaluate(gsMatrix<T>  & quNodes,
+                         gsMultiPatch<T> & mp)
     {
         md.points = quNodes;
-
-        // Compute the active basis functions
-        // Assumes actives are the same for all quadrature points on the elements
-        basis.active_into(md.points.col(0), actives);
-
-        // Evaluate basis functions on element
-        basis.eval_into(md.points,basisData);
-
+        actives.setZero(6, 1);
+        actives << 0, 1, 2, 3, 4, 5;
         numActive = actives.rows();
 
-        // ++++++++++++++++++++++++++++++++
-        // Compute alpha^S and beta^S exact
-        // ++++++++++++++++++++++++++++++++
+        basisData.setZero(36, md.points.cols());
+        rhsVals.setZero(6, md.points.cols());
 
-        // alpha^S
-        gsMatrix<> uv, ev;
+        gsGeometry<> & FR = mp.patch(0);
+        gsGeometry<> & FL = mp.patch(1);
 
-        if (m_uv==1)
-        {
-            uv.setZero(2,md.points.cols());
-            uv.bottomRows(1) = md.points; // v
-        }
-        else if (m_uv==0)
-        {
-            uv.setZero(2,md.points.cols());
-            uv.topRows(1) = md.points; // u
-        }
+            gsMatrix<> pointV(FR.parDim(), md.points.cols());
+            pointV.setZero();
+            pointV.row(1) = md.points;
+
+            gsMatrix<> pointU(FL.parDim(), md.points.cols());
+            pointU.setZero();
+            pointU.row(0) = md.points;
+
+            DuFR = FR.jacobian(pointV).col(0);
+            DvFR = FR.jacobian(pointV).col(1); // Same as DuFL
+
+            DvFL = FL.jacobian(pointU).col(1);
+
+            gsMatrix<> ones(1, md.points.cols());
+            ones.setOnes();
+
+            // Set Matrix 6x6 values
+
+            basisData.row(0) = 2 * md.points.cwiseProduct(md.points) * DuFR.norm() * DuFR.norm();
+
+            basisData.row(1) = 2 * md.points.cwiseProduct(ones - md.points) * DvFL.transpose() * DuFR;
+            basisData.row(6) = 2 * md.points.cwiseProduct(ones - md.points) * DvFL.transpose() * DuFR;
+
+            basisData.row(2) = 2 * md.points.cwiseProduct(md.points) * DvFL.transpose() * DuFR;
+            basisData.row(12) = 2 * md.points.cwiseProduct(md.points) * DvFL.transpose() * DuFR;
+
+            basisData.row(3) = 2 * md.points.cwiseProduct(ones - md.points).cwiseProduct(ones - md.points) * DuFR.transpose() * DvFR;
+            basisData.row(18) = 2 * md.points.cwiseProduct(ones - md.points).cwiseProduct(ones - md.points) * DuFR.transpose() * DvFR;
+
+            basisData.row(4) = 4 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points) * DvFR.transpose() * DuFR;
+            basisData.row(24) = 4 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points) * DvFR.transpose() * DuFR;
+
+            basisData.row(5) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(md.points) * DvFR.transpose() * DuFR;
+            basisData.row(30) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(md.points) * DvFR.transpose() * DuFR;
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+            basisData.row(7) = 2 * (md.points.cwiseProduct(md.points) - 2 * md.points + ones) * DvFL.norm() * DvFL.norm();
+
+            basisData.row(8) = 2 * md.points.cwiseProduct(ones - md.points) * DvFL.norm() * DvFL.norm();
+            basisData.row(13) = 2 * md.points.cwiseProduct(ones - md.points) * DvFL.norm() * DvFL.norm();
+
+            basisData.row(9) = 2 * (ones - 3 * md.points + 3 * md.points.cwiseProduct(md.points) - md.points.cwiseProduct(md.points).cwiseProduct(md.points)) * DvFL.transpose() * DvFR;
+            basisData.row(19) = 2 * (ones - 3 * md.points+ 3 * md.points.cwiseProduct(md.points) - md.points.cwiseProduct(md.points).cwiseProduct(md.points)) * DvFL.transpose() * DvFR;
+
+            basisData.row(10) = 4 * md.points.cwiseProduct(ones - md.points).cwiseProduct(ones - md.points) * DvFL.transpose() * DvFR;
+            basisData.row(25) = 4 * md.points.cwiseProduct(ones - md.points).cwiseProduct(ones - md.points) * DvFL.transpose() * DvFR;
+
+            basisData.row(11) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points) * DvFL.transpose() * DvFR;
+            basisData.row(31) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points) * DvFL.transpose() * DvFR;
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+            basisData.row(14) = 2 * md.points.cwiseProduct(md.points) * DvFL.norm() * DvFL.norm();
+
+            basisData.row(15) = 2 * md.points.cwiseProduct(ones - md.points).cwiseProduct(ones - md.points) * DvFL.transpose() * DvFR;
+            basisData.row(20) = 2 * md.points.cwiseProduct(ones - md.points).cwiseProduct(ones - md.points) * DvFL.transpose() * DvFR;
+
+            basisData.row(16) = 4 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points) * DvFL.transpose() * DvFR;
+            basisData.row(26) = 4 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points) * DvFL.transpose() * DvFR;
+
+            basisData.row(17) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(md.points) * DvFL.transpose() * DvFR;
+            basisData.row(32) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(md.points) * DvFL.transpose() * DvFR;
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+            basisData.row(21) = 2 * ( ones - 4 * md.points + 6 * md.points.cwiseProduct(md.points) - 4 * md.points.cwiseProduct(md.points).cwiseProduct(md.points) +
+                                md.points.cwiseProduct(md.points).cwiseProduct(md.points).cwiseProduct(md.points) ) * DvFR.norm() * DvFR.norm();
+
+            basisData.row(22) = 4 * md.points.cwiseProduct(ones - md.points).cwiseProduct(ones - md.points).cwiseProduct(ones - md.points) * DvFR.norm() * DvFR.norm();
+            basisData.row(27) = 4 * md.points.cwiseProduct(ones - md.points).cwiseProduct(ones - md.points).cwiseProduct(ones - md.points) * DvFR.norm() * DvFR.norm();
+
+            basisData.row(23) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points).cwiseProduct(ones - md.points) * DvFR.norm() * DvFR.norm();
+            basisData.row(33) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points).cwiseProduct(ones - md.points) * DvFR.norm() * DvFR.norm();
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+            basisData.row(28) = 8 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points).cwiseProduct(ones - md.points) * DvFR.norm() * DvFR.norm();
+
+            basisData.row(29) = 4 * md.points.cwiseProduct(md.points).cwiseProduct(md.points).cwiseProduct(ones - md.points) * DvFR.norm() * DvFR.norm();
+            basisData.row(34) = 4 * md.points.cwiseProduct(md.points).cwiseProduct(md.points).cwiseProduct(ones - md.points) * DvFR.norm() * DvFR.norm();
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+            basisData.row(35) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(md.points).cwiseProduct(md.points) * DvFR.norm() * DvFR.norm();
 
 
-        // ======== Determine bar{alpha^(L)} == Patch 0 ========
-        const gsGeometry<> & P0 = mp.patch(0); // iFace.second().patch = 0
+            // Set RHS 6x1 values
 
-        for (index_t i = 0; i < uv.cols(); i++)
-        {
-            P0.jacobian_into(uv.col(i), ev);
-            uv(0, i) = 1 * ev.determinant();
-        }
-        if (isBoundary)
-            uv.setOnes();
-        rhsVals_alpha = uv.row(0);
+            rhsVals.row(0) = 2 * md.points.cwiseProduct(ones - md.points) * DuFR.norm() * DuFR.norm();
 
+            rhsVals.row(1) = 2 * (md.points.cwiseProduct(md.points) - 2 * md.points + ones) * DvFL.transpose() * DuFR;
 
-        // beta^S
-        if (m_uv==1)
-        {
-            uv.setZero(2,md.points.cols());
-            uv.bottomRows(1) = md.points; // v
-        }
-        else if (m_uv==0)
-        {
-            uv.setZero(2,md.points.cols());
-            uv.topRows(1) = md.points; // u
-        }
+            rhsVals.row(2) = 2 * md.points.cwiseProduct(ones - md.points) * DvFL.transpose() * DuFR;
 
-        const index_t d = mp.parDim();
-        gsVector<> D0(d);
+            rhsVals.row(3) = 2 * (ones - 3 * md.points + 3 * md.points.cwiseProduct(md.points) - md.points.cwiseProduct(md.points).cwiseProduct(md.points)) * DvFR.transpose() * DuFR;
 
-        // ======== Determine bar{beta}^L ========
-        for(index_t i = 0; i < uv.cols(); i++)
-        {
-            P0.jacobian_into(uv.col(i),ev);
-            D0 = ev.col(m_uv);
-            real_t D1 = 1/ D0.norm();
-            uv(0,i) = - gamma * D1 * D1 * ev.col(1).transpose() * ev.col(0);
+            rhsVals.row(4) = 4 * md.points.cwiseProduct(ones - md.points).cwiseProduct(ones - md.points) * DvFR.transpose() * DuFR;
 
-        }
-        if (isBoundary)
-            uv.setZero();
-        rhsVals_beta = uv.row(0);
+            rhsVals.row(5) = 2 * md.points.cwiseProduct(md.points).cwiseProduct(ones - md.points) * DvFR.transpose() * DuFR;
 
 
-        // ++++++++++++++++++++++++++++++++
-        // ================================
-        // ++++++++++++++++++++++++++++++++
-
-        // Initialize local matrix/rhs
-        localMat.setZero(numActive, numActive      );
-        localRhs.setZero(numActive, rhsVals_alpha.rows() );//multiple right-hand sides
-
-
-        localMat_b.setZero(numActive, numActive      );
-        localRhs_b.setZero(numActive, rhsVals_beta.rows() );//multiple right-hand sides
-
-
+            // Initialize local matrix/rhs
+            localMat.setZero(numActive, numActive);
+            localRhs.setZero(numActive, rhsVals.rows() ); //multiple right-hand sides
     }
 
     inline void assemble(gsDomainIterator<T>    & element,
@@ -131,45 +158,33 @@ public:
     {
         gsMatrix<T> & basisVals  = basisData;
 
-        // ( u, v)
-        localMat.noalias() =
-            basisData * quWeights.asDiagonal() * basisData.transpose();
-
-
-
-        localMat_b.noalias() =
-            basisData * quWeights.asDiagonal() * basisData.transpose();
-
-
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply weight by the geometry measure
             const T weight = quWeights[k];
 
-            localRhs.noalias() += weight * (basisVals.col(k) * rhsVals_alpha.col(k).transpose());
 
-            localRhs_b.noalias() += weight * (basisVals.col(k) * rhsVals_beta.col(k).transpose());
-
+            for(index_t i = 0; i < 6; i++)
+            {
+                localRhs(i, 0) += weight * rhsVals(i,k);
+                for(index_t j = i; j < 6; j++)
+                {
+                    localMat(i, j) += weight * basisData(i*6 + j, k);
+                    localMat(j, i) += weight * basisData(i*6 + j, k);
+                }
+            }
         }
-
     }
 
-    inline void localToGlobal(const int patchIndex,
-                              const std::vector<gsMatrix<T> >    & eliminatedDofs,
-                              gsSparseSystem<T>     & system_alpha_L,
-                              gsSparseSystem<T>     & system_beta_L)
+    inline void localToGlobal(const gsMatrix<T>    & eliminatedDofs,
+                              gsSparseSystem<T>     & system)
     {
         gsMatrix<unsigned> actives_temp;
 
         // Map patch-local DoFs to global DoFs
-        system_alpha_L.mapColIndices(actives, patchIndex, actives_temp);
+        system.mapColIndices(actives, 0, actives_temp);
         // Add contributions to the system matrix and right-hand side
-        system_alpha_L.push(localMat, localRhs, actives_temp, eliminatedDofs[0], 0, 0);
-
-        // Map patch-local DoFs to global DoFs
-        system_beta_L.mapColIndices(actives, patchIndex, actives_temp);
-        // Add contributions to the system matrix and right-hand side
-        system_beta_L.push(localMat_b, localRhs_b, actives_temp, eliminatedDofs[2], 0, 0);
+        system.push(localMat, localRhs, actives_temp, eliminatedDofs, 0, 0);
 
     }
 
@@ -180,20 +195,19 @@ protected:
 
 protected:
     // Local values of the right hand side
-    gsMatrix<T>  rhsVals_alpha;
-    gsMatrix<T>  rhsVals_beta;
+    gsMatrix<T>  rhsVals;
 
 protected:
     // Local matrices
     gsMatrix<T> localMat;
     gsMatrix<T>  localRhs;
 
-    gsMatrix<T> localMat_b;
-    gsMatrix<T>  localRhs_b;
-
     gsMapData<T> md;
 
+    gsMatrix<> DuFR;
+    gsMatrix<> DvFR;
 
+    gsMatrix<> DvFL;
 }; // class gsVisitorGluingData
 
 } // namespace gismo

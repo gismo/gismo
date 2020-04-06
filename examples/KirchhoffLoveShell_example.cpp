@@ -28,39 +28,9 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    // Geometry data
-    index_t geometry = 0; // Which geometry
 
-    index_t numRefine = 4; // Initial refinement
-    index_t numDegree = 0; // Degree
-    index_t regularity = 1; // Regularity
-
-    // For the spline space of the gluing data
-    index_t p_tilde = 1;
-    index_t r_tilde = 0;
-
-    index_t threads = 1; // For parallel computing
-
-    index_t loop = 1; // Number of refinement steps
-
-    bool plot = false;
-    bool direct = false;
-    gluingData::strategy gluingData_strategy = gluingData::l2projection;
-    bool local_g1 = false;
-    bool latex = false;
-
-    gsCmdLine cmd("Example for solving the biharmonic problem.");
-    cmd.addInt("k", "refine", "Number of refinement steps", numRefine);
-    cmd.addInt("p", "p_tilde", "Polynomial degree for tilde{p}", p_tilde);
-    cmd.addInt("r", "r_tilde", "Regularity for tilde{r}", r_tilde);
-    cmd.addInt("g", "geometry", "Geometry", geometry);
-    cmd.addInt("t", "threads", "Threads", threads);
-    cmd.addInt( "l", "loop", "The number of refinement steps", loop);
-    cmd.addSwitch( "plot", "Plot result in ParaView format", plot );
-    cmd.addSwitch( "direct", "Construction of the G1 basis functions", direct );
-    cmd.addSwitch( "local_g1", "If you want to solve several levels", local_g1 );
-    cmd.addSwitch("latex","Print the rate and error latex-ready",latex);
-    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+    gsG1OptionList g1OptionList;
+    g1OptionList.initialize(argc, argv);
 
     // ======= Solution =========
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
@@ -76,7 +46,8 @@ int main(int argc, char *argv[])
 
     // ======= Geometry =========
     std::string string_geo;
-    switch(geometry)
+    index_t numDegree = 0;
+    switch(g1OptionList.getInt("geometry"))
     {
         case 0:
             string_geo = "planar/multiPatches/4_square_diagonal.xml";
@@ -134,10 +105,16 @@ int main(int argc, char *argv[])
             string_geo = "KirchhoffLoveGeo/flag_surface.xml";
             numDegree = 0; // 2 == degree 3
             break;
+        case 14:
+            string_geo = "KirchhoffLoveGeo/square_diffParam.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
+
         default:
             gsInfo << "No geometry is used! \n";
             break;
     }
+    g1OptionList.addInt("degree","Degree", numDegree);
 
     gsFileData<> fd(string_geo);
     gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
@@ -146,43 +123,25 @@ int main(int argc, char *argv[])
     fd.getId(0, multiPatch_init); // id=0: Multipatch domain
     multiPatch_init.computeTopology();
 
+    gsWriteParaview(multiPatch_init,"geoemtry_init",2000,true);
 
-    gsG1OptionList g1OptionList;
-    g1OptionList.addInt("p_tilde","Grad",p_tilde);
-    g1OptionList.addInt("r_tilde","Reg",r_tilde);
-    g1OptionList.addInt("regularity","Regularity of the initial geometry",regularity);
-    g1OptionList.addSwitch("plot","Plot in Paraview",plot);
-    g1OptionList.addInt("refine","Refinement",numRefine);
-    g1OptionList.addInt("degree","Degree",numDegree);
-
-    g1OptionList.addInt("gluingData","The strategy for the gluing data",gluingData_strategy);
-    g1OptionList.addInt("user", "User ID", user::pascal); // Set the user
-
-    if (g1OptionList.getInt("user") == user::pascal)
-        gsInfo << "User is pascal!\n";
-    else if (g1OptionList.getInt("user") == user::andrea)
-        gsInfo << "User is andrea!\n";
-
-    user::name pascal_id = user::pascal;
-    if (pascal_id == g1OptionList.getInt("user"))
-        gsInfo << "User is pascal!\n";
 
     //multiPatch.patch(1).degreeElevate(1,0);
     multiPatch_init.degreeElevate(g1OptionList.getInt("degree"));
 
-    gsVector<real_t> l2Error_vec(loop + 1);
-    gsVector<real_t> h1SemiError_vec(loop + 1);
-    gsVector<real_t> h2SemiError_vec(loop + 1);
+    gsVector<real_t> l2Error_vec(g1OptionList.getInt("loop") + 1);
+    gsVector<real_t> h1SemiError_vec(g1OptionList.getInt("loop") + 1);
+    gsVector<real_t> h2SemiError_vec(g1OptionList.getInt("loop") + 1);
     l2Error_vec.setZero();
     h1SemiError_vec.setZero();
     h2SemiError_vec.setZero();
 
-    gsVector<index_t> num_knots(loop);
-    num_knots[0] = g1OptionList.getInt("refine");
-    for (index_t i = 1; i < loop; i++)
+    gsVector<index_t> num_knots(g1OptionList.getInt("loop"));
+    num_knots[0] = g1OptionList.getInt("numRefine");
+    for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
         num_knots[i] = num_knots[i-1]*2 + 1;
 
-    for (index_t refinement_level = 0; refinement_level < loop; refinement_level++)
+    for (index_t refinement_level = 0; refinement_level < g1OptionList.getInt("loop"); refinement_level++)
     {
         gsMultiPatch<> multiPatch(multiPatch_init);
         multiPatch.uniformRefine_withSameRegularity(num_knots[refinement_level], g1OptionList.getInt("regularity"));
@@ -191,8 +150,10 @@ int main(int argc, char *argv[])
 
         gsMultiBasis<> mb(multiPatch);
 
-        omp_set_num_threads(threads);
+#ifdef _OPENMP
+        omp_set_num_threads( g1OptionList.getInt("threads"));
         omp_set_nested(1);
+#endif
 
         gsG1System<real_t> g1System(multiPatch, mb);
 
@@ -208,8 +169,7 @@ int main(int argc, char *argv[])
 
             gsG1AuxiliaryEdgeMultiplePatches singleInt(multiPatch, item.first().patch, item.second().patch);
             singleInt.computeG1InterfaceBasis(g1OptionList);
-            singleInt.deleteBasisFunctions(0,g1System.sizePlusInterface(numInt));
-            singleInt.deleteBasisFunctions(1,g1System.sizePlusInterface(numInt));
+
 
             for (size_t i = 0; i < singleInt.getSinglePatch(0).getG1Basis().nPatches(); i++)
             {
@@ -220,7 +180,7 @@ int main(int argc, char *argv[])
 
                 g1System.insertInterfaceEdge(edgeSingleBF,item,numInt,i);
 
-                if (plot)
+                if (g1OptionList.getSwitch("plot"))
                 {
                     // First Interface Side
                     fileName = basename + "_0_" + util::to_string(i);
@@ -236,6 +196,7 @@ int main(int argc, char *argv[])
             }
             collection.save();
         }
+
         // Boundaries loop
         for (size_t numBdy = 0; numBdy < multiPatch.boundaries().size(); numBdy++ )
         {
@@ -247,7 +208,7 @@ int main(int argc, char *argv[])
 
             gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatch, bit.patch);
             singleBdy.computeG1BoundaryBasis(g1OptionList, bit.m_index);
-            singleBdy.deleteBasisFunctions(0,g1System.sizePlusBoundary(numBdy));
+
 
             for (size_t i = 0; i < singleBdy.getSinglePatch(0).getG1Basis().nPatches(); i++)
             {
@@ -257,7 +218,7 @@ int main(int argc, char *argv[])
 
                 g1System.insertBoundaryEdge(edgeSingleBF,bit,numBdy,i);
 
-                if (plot)
+                if (g1OptionList.getSwitch("plot"))
                 {
                     fileName = basename + "_0_" + util::to_string(i);
                     gsField<> temp_field(multiPatch.patch(bit.patch),edgeSingleBF.patch(0));
@@ -292,7 +253,7 @@ int main(int argc, char *argv[])
                 for (size_t np = 0; np < vertIndex.size(); np++)
                 {
                     singleBasisFunction.addPatch(singleVertex.getSinglePatch(np).getG1Basis().patch(i));
-                    if (plot)
+                    if (g1OptionList.getSwitch("plot"))
                     {
                         fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
                         gsField<> temp_field(multiPatch.patch(patchIndex[np]),singleBasisFunction.patch(np));
@@ -343,7 +304,11 @@ int main(int argc, char *argv[])
         g1System.constructSparseG1Solution(solVector,Sol_sparse);
 
 #ifdef _OPENMP
+<<<<<<< HEAD
         omp_set_num_threads(g1OptionList.getInt("threads"));
+=======
+        omp_set_num_threads( g1OptionList.getInt("threads"));
+>>>>>>> farahat_G1_multipatch
         omp_set_nested(1);
 #endif
 
@@ -373,9 +338,9 @@ int main(int argc, char *argv[])
     }
 
     gsInfo << "=====================================================================\n";
-    if (loop > 1)
+    if (g1OptionList.getInt("loop") > 1)
     {
-        gsMatrix<> rate(loop + 1,3);
+        gsMatrix<> rate(g1OptionList.getInt("loop") + 1,3);
         rate.setZero();
         printf("|%-5s|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s\n", "k","L2-error", "Rate", "Semi-H1-error",
                "Rate", "Semi-H2-error", "Rate");
@@ -383,7 +348,7 @@ int main(int argc, char *argv[])
                "-----", "--------------", "-----");
         printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[0], l2Error_vec[0],
                rate(0,0),h1SemiError_vec[0], rate(0,1),h2SemiError_vec[0], rate(0,2));
-        for (index_t i = 1; i < loop; i++)
+        for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
         {
             rate(i,0) = log2(l2Error_vec[i-1] / l2Error_vec[i]);
             rate(i,1) = log2(h1SemiError_vec[i-1] / h1SemiError_vec[i]);
@@ -391,11 +356,11 @@ int main(int argc, char *argv[])
             printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[i], l2Error_vec[i],
                    rate(i,0),h1SemiError_vec[i], rate(i,1),h2SemiError_vec[i], rate(i,2));
         }
-        if (latex)
+        if (g1OptionList.getSwitch("latex"))
         {
             printf("%-5d & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\ \n", num_knots[0],
                    l2Error_vec[0], rate(0,0),h1SemiError_vec[0], rate(0,1), h2SemiError_vec[0], rate(0,2));
-            for (index_t i = 1; i < loop; i++)
+            for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
             {
                 rate(i,0) = log2(l2Error_vec[i-1] / l2Error_vec[i]);
                 rate(i,1) = log2(h1SemiError_vec[i-1] / h1SemiError_vec[i]);
