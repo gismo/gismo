@@ -108,6 +108,7 @@ public:
 
     void plotGluingData(index_t numGd) { m_gD[0].plotGluingData(numGd); }
 
+    index_t get_plus() { return m_basis_plus.size(); }
 protected:
 
     // Input

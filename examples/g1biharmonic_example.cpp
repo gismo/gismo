@@ -255,34 +255,6 @@ int main(int argc, char *argv[])
                 }
                 g1System.insertVertex(singleBasisFunction,patchIndex,numVer,singleVertex.get_internalDofs(),i);
 
-                if ( i < 3 && vertIndex.size() == 2)
-                {
-                    real_t g1Error = 0;
-                    index_t p_size = 10000;
-                    gsMatrix<> points(2, p_size);
-                    points.setOnes();
-
-                    gsVector<> vec;
-                    vec.setLinSpaced(p_size,0,1);
-                    points.row(0) = vec.transpose();
-
-                    gsMatrix<> temp;
-                    temp = singleBasisFunction.patch(0).eval(points);
-
-                    if (temp.array().abs().maxCoeff() > g1Error)
-                        g1Error = temp.array().abs().maxCoeff();
-
-                    gsInfo << "NON ZERO ERROR AT BOUNDARY: \n" << g1Error << "\n\n";
-
-                    g1Error = 0;
-                    temp = singleBasisFunction.patch(1).eval(points);
-
-                    if (temp.array().abs().maxCoeff() > g1Error)
-                        g1Error = temp.array().abs().maxCoeff();
-
-                    gsInfo << "NON ZERO ERROR AT BOUNDARY: \n" << g1Error << "\n\n";
-
-                }
             }
             collection.save();
         }

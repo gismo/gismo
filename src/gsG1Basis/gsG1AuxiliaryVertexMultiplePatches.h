@@ -500,6 +500,7 @@ public:
         for(size_t i = 0; i < auxGeom.size(); i++)
         {
             gsInfo << "Index " << auxVertexIndices[i] << " Patch " << auxGeom[i].getGlobalPatchIndex() <<  "\n";
+            gsInfo << isBdy[i][0] << " : " << isBdy[i][1] << "\n";
 
             gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, g1OptionList);
             g1BasisVertexVector.push_back(g1BasisVertex_0);
@@ -590,24 +591,7 @@ public:
         }
 
 
-        // Plot alpha
-        if (alpha.size() == 2)
-        {
-            std::string fileName;
-            std::string basename = "GluingData";
-            gsParaviewCollection collection(basename);
-            for (size_t i = 0; i < alpha.size(); i++)
-            {
-                // First Interface Side
-                fileName = basename + "_0_" + util::to_string(i);
-                gsWriteParaview(alpha[i],fileName,5000);
-                collection.addPart(fileName,"0.vts");
-            }
-            collection.save();
-        }
-
-
-        if (auxGeom.size() == 2 && g1OptionList.getInt("gluingData")==gluingData::global)
+        if (auxGeom.size() == 2)
         {
             if (auxGeom[0].getGlobalPatchIndex() == 0 && isBdy[0][1])
                 g1ConditionRep(alpha[3], alpha[0], beta_S[3], beta_S[0], g1BasisVector[1],  g1BasisVector[0]);
@@ -617,7 +601,8 @@ public:
                 g1ConditionRep(alpha[3], alpha[1], beta_S[3], beta_S[1], g1BasisVector[1],  g1BasisVector[0]);
             else if (auxGeom[0].getGlobalPatchIndex() == 1 && isBdy[0][0])
                 g1ConditionRep(alpha[1], alpha[2], beta_S[1], beta_S[2],  g1BasisVector[0],  g1BasisVector[1]);
-
+            else if (auxGeom[0].getGlobalPatchIndex() == 2 && isBdy[0][0])
+                g1ConditionRep(alpha[1], alpha[2], beta_S[1], beta_S[2],  g1BasisVector[0],  g1BasisVector[1]);
         }
 
 
@@ -671,7 +656,37 @@ public:
                     for (size_t lambda = 0; lambda < 6; lambda++)
                         coef_bf += temp_mp_g1.patch(lambda).coefs() * vertexBoundaryBasis.first(lambda,bf);
 
+                    for (index_t ii = 0; ii < coef_bf.size(); ii++)
+                        if (coef_bf.at(ii) * coef_bf.at(ii) < 1e-6)
+                            coef_bf.at(ii) *= 0;
+
                     g1BasisVector[i].patch(bf).setCoefs(coef_bf);
+                }
+
+                for ( size_t bf = 0; bf < 3; bf++)
+                {
+                    real_t g1Error = 0;
+                    index_t p_size = 10000;
+                    gsMatrix<> points(2, p_size);
+
+                    points.setZero();
+
+                    gsVector<> vec;
+                    vec.setLinSpaced(p_size,0,1);
+
+                    if (isBdy[i][0])
+                        points.row(0) = vec.transpose();
+                    else if (isBdy[i][1])
+                        points.row(1) = vec.transpose();
+
+                    gsMatrix<> temp;
+                    temp = g1BasisVector[i].patch(bf).eval(points);
+
+                    if (temp.array().abs().maxCoeff() > g1Error)
+                        g1Error = temp.array().abs().maxCoeff();
+
+                    gsInfo << "NON ZERO ERROR AT BOUNDARY: \n" << g1Error << "\n\n";
+
                 }
 
                 auxGeom[i].parametrizeBasisBack(g1BasisVector[i]);

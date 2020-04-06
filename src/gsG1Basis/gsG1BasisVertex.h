@@ -215,8 +215,6 @@ void gsG1BasisVertex<T,bhVisitor>::constructSolution(gsMultiPatch<T> & result)
     for (index_t p = 0; p < 6; ++p)
     {
 
-        //gsInfo << "SOL: " << solVec[p] << "\n";
-
         const gsDofMapper & mapper = m_f.at(p).colMapper(0); // unknown = 0
 
         // Reconstruct solution coefficients on patch p
@@ -264,7 +262,7 @@ void gsG1BasisVertex<T,bhVisitor>::refresh()
         }
         ab = ab_temp;
 */
-        gsInfo << "ab: " << ab << "\n";
+
         for (index_t i = 0; i < m_basis.basis(0).component(dir).size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
             gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
@@ -273,8 +271,6 @@ void gsG1BasisVertex<T,bhVisitor>::refresh()
                 act = m_basis.basis(0).boundaryOffset(dir == 0 ? 1 : 3, i); // WEST
                 map.markBoundary(0, act); // Patch 0
             }
-            else
-                gsInfo << "xy: " << xy << "\n";
         }
     }
 
