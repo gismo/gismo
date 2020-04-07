@@ -25,6 +25,8 @@
 # include <gsG1Basis/gsSeminormH2.h>
 
 # include <chrono>
+#include <iostream>
+#include <fstream>
 
 using namespace gismo;
 
@@ -62,8 +64,8 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>sol2der ("cos(x/2)*sin(y/2)",
                              "cos(x/2)*sin(y/2)",
                              "cos(x/2)*sin(y/2)", 2);
-
 */
+
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
     // ======= Geometry =========
@@ -316,6 +318,12 @@ int main(int argc, char *argv[])
                 max_el.setZero();
                 gsVector<size_t> max_i(10);
                 max_i.setZero();
+
+                std::ofstream myfile;
+                myfile.open ("elwiseError.txt");
+
+
+
                 for (size_t i = 0; i< elWise_error.size(); i++)
                 {
                     for (index_t ii = 0; ii < 10; ii++)
@@ -325,10 +333,14 @@ int main(int argc, char *argv[])
                             max_i(ii) = i;
                             break;
                         }
+
+                    myfile << elWise_error[i] << "\n";
                 }
                 gsInfo << "EL ERROR: " << max_i.transpose() << " : " << max_el.transpose() << "\n";
 
-                errorL2.plotElWiseError(elWise_error);
+                myfile.close();
+
+                //errorL2.plotElWiseError(elWise_error);
             }
 
             else if (e == 1)

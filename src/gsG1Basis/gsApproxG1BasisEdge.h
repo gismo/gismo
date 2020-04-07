@@ -109,6 +109,7 @@ public:
     void plotGluingData(index_t numGd) { m_gD[0].plotGluingData(numGd); }
 
     index_t get_plus() { return m_basis_plus.size(); }
+
 protected:
 
     // Input
@@ -335,7 +336,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
         for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
             gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
-            if ( (xy(0,1) < ab(0,0) + 1e-10) || (xy(0,0) > ab(0,1) - 1e-10) ) //|| (xy[0] < ab[0] - 1e-10) || (xy[1] > ab[1] + 1e-10))
+            if ( (xy(0,1) < ab(0,0) + 1e-10) || (xy(0,0) > ab(0,1) - 1e-10) ) // || (xy[0] < ab[0] - 1e-10) || (xy[1] > ab[1] + 1e-10))
             {
                 act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
                 map.markBoundary(0, act); // Patch 0
@@ -377,12 +378,12 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
         act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3,  m_basis.basis(0).component(m_uv).size() -1); // WEST
         map.markBoundary(0, act); // Patch 0
 
-        if (m_isBoundary)
+/*        if (m_isBoundary)
         {
             act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, 0); // WEST
             map.markBoundary(0, act); // Patch 0
         }
-
+*/
     }
 
     map.finalize();

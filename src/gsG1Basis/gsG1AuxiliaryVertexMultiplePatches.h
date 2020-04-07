@@ -492,6 +492,7 @@ public:
         this->computeSigma();
 
         //g1OptionList.setInt("gluingData",gluingData::global);
+        g1OptionList.setInt("p_tilde",3);
 
         std::vector<gsMultiPatch<>> g1BasisVector;
         std::pair<gsMatrix<>, std::vector<index_t>> vertexBoundaryBasis;
@@ -504,7 +505,6 @@ public:
 
             gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, g1OptionList);
             g1BasisVertexVector.push_back(g1BasisVertex_0);
-
 
             if (g1OptionList.getInt("gluingData")==gluingData::global)
             {
@@ -655,11 +655,11 @@ public:
                     coef_bf.setZero(temp_mp_g1.patch(bf).coefs().dim().first,1);
                     for (size_t lambda = 0; lambda < 6; lambda++)
                         coef_bf += temp_mp_g1.patch(lambda).coefs() * vertexBoundaryBasis.first(lambda,bf);
-
+/*
                     for (index_t ii = 0; ii < coef_bf.size(); ii++)
-                        if (coef_bf.at(ii) * coef_bf.at(ii) < 1e-6)
+                        if (coef_bf.at(ii) * coef_bf.at(ii) < 1e-8)
                             coef_bf.at(ii) *= 0;
-
+*/
                     g1BasisVector[i].patch(bf).setCoefs(coef_bf);
                 }
 

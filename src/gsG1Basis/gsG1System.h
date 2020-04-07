@@ -206,6 +206,7 @@ void gsG1System<T>::constructSparseG1Solution(const gsMatrix<T> & solVector,
     for (size_t i = 0; i < dim_K; i++)
         result.insert(dim_G1_Dofs + dim_G1_Bdy,i) = solVector.at(dim_G1_Dofs + dim_G1_Bdy + i); // Interior solution
 
+
     result.makeCompressed();
 }
 
