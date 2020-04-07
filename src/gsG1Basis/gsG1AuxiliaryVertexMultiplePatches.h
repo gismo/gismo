@@ -492,7 +492,7 @@ public:
         this->computeSigma();
 
         //g1OptionList.setInt("gluingData",gluingData::global);
-        g1OptionList.setInt("p_tilde",3);
+        //g1OptionList.setInt("p_tilde",1);
 
         std::vector<gsMultiPatch<>> g1BasisVector;
         std::pair<gsMatrix<>, std::vector<index_t>> vertexBoundaryBasis;

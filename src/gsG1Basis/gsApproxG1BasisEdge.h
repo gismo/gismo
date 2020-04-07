@@ -317,7 +317,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
         act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, i); // WEST
         map.markBoundary(0, act); // Patch 0
     }
-
+/*
     if (typeBf == "plus")
     {
         gsMatrix<T> ab = m_basis_plus.support(bfID);
@@ -378,14 +378,14 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
         act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3,  m_basis.basis(0).component(m_uv).size() -1); // WEST
         map.markBoundary(0, act); // Patch 0
 
-/*        if (m_isBoundary)
+        if (m_isBoundary)
         {
             act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, 0); // WEST
             map.markBoundary(0, act); // Patch 0
         }
-*/
-    }
 
+    }
+*/
     map.finalize();
 
     // 2. Create the sparse system
