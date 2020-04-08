@@ -82,11 +82,12 @@ public:
             typename gsBasis<T>::domainIter domIt = dom_L.makeDomainIterator(side_R);
             for (; domIt->good(); domIt->next())
             {
+                gsInfo << "wra hier 8\n";
                 // Map the Quadrature rule to the element
                 gsMatrix<T> domItCorner(2,2);
                 domItCorner.col(0) = domIt->lowerCorner();
                 domItCorner.col(1) = domIt->upperCorner();
-
+                gsInfo << "wra hier 7\n";
                 QuRule_R.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes_R, quWeights);
                 ifaceMap.eval_into(domItCorner,domItCorner);
                 if (domItCorner(1-side_L.direction(),0) > domItCorner(1-side_L.direction(),1)) // integral border switched
@@ -97,10 +98,10 @@ public:
                 }
                 QuRule_L.mapTo(domItCorner.col(0), domItCorner.col(1), quNodes_L, quWeights);
 
-
+                gsInfo << "wra hier 6\n";
                 // Evaluate on quadrature points
                 evaluateb(*geoEval_L, quNodes_L, dom_L, *geoEval_R, quNodes_R, dom_R, numBasisFunctions, numInterfaceFunctions, numInt, m_sparse);
-
+                gsInfo << "wra hier 9\n";
                 // Accumulate value from the current element (squared)
                 computeb(*geoEval_L, side_L, *geoEval_R, quWeights, value);
 
