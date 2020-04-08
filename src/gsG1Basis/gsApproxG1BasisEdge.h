@@ -178,6 +178,16 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
                     ab_temp(0,1) = xy(0,1);
             }
             ab = ab_temp;
+
+            for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+            {
+                gsMatrix<T> xy = temp_basis_first.support(i);
+                if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
+                    ab_temp(0,0) = xy(0,0);
+                if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
+                    ab_temp(0,1) = xy(0,1);
+            }
+            ab = ab_temp;
         }
 
         gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
@@ -222,6 +232,16 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
         if (!m_isBoundary)
         {
             gsMatrix<T> ab_temp = ab;
+            for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+            {
+                gsMatrix<T> xy = temp_basis_first.support(i);
+                if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
+                    ab_temp(0,0) = xy(0,0);
+                if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
+                    ab_temp(0,1) = xy(0,1);
+            }
+            ab = ab_temp;
+
             for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
             {
                 gsMatrix<T> xy = temp_basis_first.support(i);
@@ -319,128 +339,159 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
 
     gsMatrix<unsigned> act;
 
-    for (index_t i = 2; i < m_basis.basis(0).component(1-m_uv).size(); i++) // only the first two u/v-columns are Dofs (0/1)
+    if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
     {
-        act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, i); // WEST
-        map.markBoundary(0, act); // Patch 0
+        for (index_t i = 2; i < m_basis.basis(0).component(1 - m_uv).size();
+             i++) // only the first two u/v-columns are Dofs (0/1)
+        {
+            act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, i); // WEST
+            map.markBoundary(0, act); // Patch 0
+        }
+        if (m_isBoundary)
+        {
+            if (typeBf == "plus")
+            {
+                gsMatrix<T> ab = m_basis_plus.support(bfID);
+
+                for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size();
+                     i++) // only the first two u/v-columns are Dofs (0/1)
+                {
+                    gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+                    if ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
+                    {
+                        act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
+                        map.markBoundary(0, act); // Patch 0
+                    }
+                }
+            }
+            else if (typeBf == "minus")
+            {
+                gsMatrix<T> ab = m_basis_minus.support(bfID);
+
+                for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size();
+                     i++) // only the first two u/v-columns are Dofs (0/1)
+                {
+                    gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+                    if ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
+                    {
+                        act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
+                        map.markBoundary(0, act); // Patch 0
+                    }
+                }
+            }
+        }
+        else if (!m_isBoundary)
+        {
+            if (typeBf == "plus")
+            {
+                gsMatrix<T> ab = m_basis_plus.support(bfID);
+
+                gsMatrix<T> ab_temp = ab;
+                for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size();
+                     i++) // only the first two u/v-columns are Dofs (0/1)
+                {
+                    gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+                    if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                        ab_temp(0, 0) = xy(0, 0);
+                    if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                        ab_temp(0, 1) = xy(0, 1);
+                }
+                ab = ab_temp;
+
+                for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size();
+                     i++) // only the first two u/v-columns are Dofs (0/1)
+                {
+                    gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+                    if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                        ab_temp(0, 0) = xy(0, 0);
+                    if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                        ab_temp(0, 1) = xy(0, 1);
+                }
+                ab = ab_temp;
+
+                for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size();
+                     i++) // only the first two u/v-columns are Dofs (0/1)
+                {
+                    gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+                    if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                        ab_temp(0, 0) = xy(0, 0);
+                    if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                        ab_temp(0, 1) = xy(0, 1);
+                }
+                ab = ab_temp;
+
+                for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++)
+                {
+                    gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+                    if ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
+                    {
+                        act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
+                        map.markBoundary(0, act); // Patch 0
+                    }
+                }
+
+                act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, 0); // WEST
+                map.markBoundary(0, act); // Patch 0
+                act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, m_basis.basis(0).component(m_uv).size() - 1);
+                map.markBoundary(0, act); // Patch 0
+
+            }
+            else if (typeBf == "minus")
+            {
+                gsMatrix<T> ab = m_basis_minus.support(bfID);
+
+                gsMatrix<T> ab_temp = ab;
+                for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size();
+                     i++) // only the first two u/v-columns are Dofs (0/1)
+                {
+                    gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+                    if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                        ab_temp(0, 0) = xy(0, 0);
+                    if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                        ab_temp(0, 1) = xy(0, 1);
+                }
+                ab = ab_temp;
+
+                for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size();
+                     i++) // only the first two u/v-columns are Dofs (0/1)
+                {
+                    gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+                    if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                        ab_temp(0, 0) = xy(0, 0);
+                    if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                        ab_temp(0, 1) = xy(0, 1);
+                }
+                ab = ab_temp;
+
+                for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size();
+                     i++) // only the first two u/v-columns are Dofs (0/1)
+                {
+                    gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+                    if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                        ab_temp(0, 0) = xy(0, 0);
+                    if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                        ab_temp(0, 1) = xy(0, 1);
+                }
+                ab = ab_temp;
+
+                for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++)
+                {
+                    gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+                    if ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
+                    {
+                        act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
+                        map.markBoundary(0, act); // Patch 0
+                    }
+                }
+
+                act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, 0); // WEST
+                map.markBoundary(0, act); // Patch 0
+                act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, m_basis.basis(0).component(m_uv).size() - 1);
+                map.markBoundary(0, act); // Patch 0
+
+            }
+        }
     }
-    if (m_isBoundary)
-    {
-        if (typeBf == "plus")
-        {
-            gsMatrix<T> ab = m_basis_plus.support(bfID);
-
-            for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++) // only the first two u/v-columns are Dofs (0/1)
-            {
-                gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
-                if ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
-                {
-                    act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
-                    map.markBoundary(0, act); // Patch 0
-                }
-            }
-        }
-        else if (typeBf == "minus")
-        {
-            gsMatrix<T> ab = m_basis_minus.support(bfID);
-
-            for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++) // only the first two u/v-columns are Dofs (0/1)
-            {
-                gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
-                if ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
-                {
-                    act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
-                    map.markBoundary(0, act); // Patch 0
-                }
-            }
-        }
-    }
-    else if (!m_isBoundary)
-    {
-        if (typeBf == "plus")
-        {
-            gsMatrix<T> ab = m_basis_plus.support(bfID);
-
-            gsMatrix<T> ab_temp = ab;
-            for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++) // only the first two u/v-columns are Dofs (0/1)
-            {
-                gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
-                if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
-                    ab_temp(0,0) = xy(0,0);
-                if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
-                    ab_temp(0,1) = xy(0,1);
-            }
-            ab = ab_temp;
-
-            for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++) // only the first two u/v-columns are Dofs (0/1)
-            {
-                gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
-                if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
-                    ab_temp(0,0) = xy(0,0);
-                if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
-                    ab_temp(0,1) = xy(0,1);
-            }
-            ab = ab_temp;
-
-            for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++)
-            {
-                gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
-                if ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
-                {
-                    act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
-                    map.markBoundary(0, act); // Patch 0
-                }
-            }
-
-            act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, 0); // WEST
-            map.markBoundary(0, act); // Patch 0
-            act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, m_basis.basis(0).component(m_uv).size() - 1);
-            map.markBoundary(0, act); // Patch 0
-
-        }
-        else if (typeBf == "minus")
-        {
-            gsMatrix<T> ab = m_basis_minus.support(bfID);
-
-            gsMatrix<T> ab_temp = ab;
-            for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++) // only the first two u/v-columns are Dofs (0/1)
-            {
-                gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
-                if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
-                    ab_temp(0,0) = xy(0,0);
-                if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
-                    ab_temp(0,1) = xy(0,1);
-            }
-            ab = ab_temp;
-
-            for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++) // only the first two u/v-columns are Dofs (0/1)
-            {
-                gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
-                if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
-                    ab_temp(0,0) = xy(0,0);
-                if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
-                    ab_temp(0,1) = xy(0,1);
-            }
-            ab = ab_temp;
-
-            for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++)
-            {
-                gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
-                if ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
-                {
-                    act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
-                    map.markBoundary(0, act); // Patch 0
-                }
-            }
-
-            act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, 0); // WEST
-            map.markBoundary(0, act); // Patch 0
-            act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, m_basis.basis(0).component(m_uv).size() - 1);
-            map.markBoundary(0, act); // Patch 0
-
-        }
-    }
-
     map.finalize();
 
     // 2. Create the sparse system

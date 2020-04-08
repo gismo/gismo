@@ -250,48 +250,50 @@ void gsG1BasisVertex<T,bhVisitor>::refresh(index_t kindOfVertex)
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper map(m_basis.basis(0));
 
-    gsMatrix<unsigned> act;
-
-    for (index_t dir = 0; dir < 2; dir++)
+    if ((m_g1OptionList.getInt("g1BasisVertex") == g1BasisVertex::local))
     {
-        gsMatrix<T> ab = m_basis_plus[dir].support(2);
-        if (kindOfVertex == 0)
+        gsMatrix<unsigned> act;
+        for (index_t dir = 0; dir < 2; dir++)
         {
-            gsMatrix<T> ab_temp = ab;
-            for (index_t i = 0; i < m_basis.basis(0).component(dir).size();
-                 i++) // only the first two u/v-columns are Dofs (0/1)
+            gsMatrix<T> ab = m_basis_plus[dir].support(2);
+            if (kindOfVertex == 0)
             {
-                gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
-                if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
-                    ab_temp(0, 0) = xy(0, 0);
-                if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
-                    ab_temp(0, 1) = xy(0, 1);
+                gsMatrix<T> ab_temp = ab;
+                for (index_t i = 0; i < m_basis.basis(0).component(dir).size();
+                     i++) // only the first two u/v-columns are Dofs (0/1)
+                {
+                    gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
+                    if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                        ab_temp(0, 0) = xy(0, 0);
+                    if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                        ab_temp(0, 1) = xy(0, 1);
+                }
+                ab = ab_temp;
+
+                for (index_t i = 0; i < m_basis.basis(0).component(dir).size();
+                     i++) // only the first two u/v-columns are Dofs (0/1)
+                {
+                    gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
+                    if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                        ab_temp(0, 0) = xy(0, 0);
+                    if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                        ab_temp(0, 1) = xy(0, 1);
+                }
+                ab = ab_temp;
             }
-            ab = ab_temp;
 
             for (index_t i = 0; i < m_basis.basis(0).component(dir).size();
                  i++) // only the first two u/v-columns are Dofs (0/1)
             {
                 gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
-                if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
-                    ab_temp(0, 0) = xy(0, 0);
-                if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
-                    ab_temp(0, 1) = xy(0, 1);
-            }
-            ab = ab_temp;
-        }
-
-        for (index_t i = 0; i < m_basis.basis(0).component(dir).size(); i++) // only the first two u/v-columns are Dofs (0/1)
-        {
-            gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
-            if  ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
-            {
-                act = m_basis.basis(0).boundaryOffset(dir == 0 ? 1 : 3, i); // WEST
-                map.markBoundary(0, act); // Patch 0
+                if ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
+                {
+                    act = m_basis.basis(0).boundaryOffset(dir == 0 ? 1 : 3, i); // WEST
+                    map.markBoundary(0, act); // Patch 0
+                }
             }
         }
     }
-
 
     map.finalize();
     //gsInfo << "map : " << map.asVector() << "\n";
