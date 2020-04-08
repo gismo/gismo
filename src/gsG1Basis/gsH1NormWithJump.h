@@ -160,8 +160,9 @@ protected:
         basis.deriv_into(quNodes,bGrads);
         gsInfo << "wra hier 10\n" << sol_sparse->dim() << "\n";
         gsInfo << "wra hier 10\n" << bGrads.dim() << "\n";
-        gsInfo << "wra hier 10\n" << f1ders.dim().second << "\n";
+
         f1ders.setZero(2,actives.rows());
+        gsInfo << "wra hier 10\n" << f1ders.dim().second << "\n";
         for (index_t i = numInterfaceFunctions[numInt]; i < numInterfaceFunctions[numInt+1]; i++)
             for (index_t j = 0; j < actives.rows(); j++)
             {
