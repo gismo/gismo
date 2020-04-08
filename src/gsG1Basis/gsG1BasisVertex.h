@@ -92,7 +92,6 @@ public:
         index_t degree = temp_basis_first.maxDegree();
 
         gsMatrix<T> ab = m_basis_plus[0].support(2);
-
         if (kindOfVertex == 0)
         {
             gsMatrix<T> ab_temp = ab;
@@ -140,7 +139,6 @@ public:
                     ab_temp(0, 1) = xy(0, 1);
             }
             ab = ab_temp;
-            ab_temp = ab;
             for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
             {
                 gsMatrix<T> xy = temp_basis_first.support(i);
@@ -158,8 +156,10 @@ public:
                 kv2.insert(temp_basis_first.knot(i), 1);
 
         gsTensorBSplineBasis<2, T> bsp_geo_local(kv, kv2);
-        m_geo = bsp_geo_local; // Basis for Integration
-        //m_geo = m_basis_g1;
+        if (m_g1OptionList.getInt("g1BasisVertex") == g1BasisVertex::local)
+            m_geo = bsp_geo_local; // Basis for Integration
+        else
+            m_geo = m_basis_g1;
 
         refresh(kindOfVertex);
         assemble();
@@ -268,28 +268,27 @@ void gsG1BasisVertex<T,bhVisitor>::refresh(index_t kindOfVertex)
                     ab_temp(0, 1) = xy(0, 1);
             }
             ab = ab_temp;
+
+            for (index_t i = 0; i < m_basis.basis(0).component(dir).size();
+                 i++) // only the first two u/v-columns are Dofs (0/1)
+            {
+                gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
+                if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                    ab_temp(0, 0) = xy(0, 0);
+                if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                    ab_temp(0, 1) = xy(0, 1);
+            }
+            ab = ab_temp;
         }
 
         for (index_t i = 0; i < m_basis.basis(0).component(dir).size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
             gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
-            if (kindOfVertex == 0)
+            if  ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
             {
-                if  ( (xy(0,1) < ab(0,0) + 1e-10) || (xy(0,0) > ab(0,1) - 1e-10) ) //|| (xy(0,0) < ab(0,0) - 1e-10) || (xy(0,1) > ab(0,1) + 1e-10))
-                {
-                    act = m_basis.basis(0).boundaryOffset(dir == 0 ? 1 : 3, i); // WEST
-                    map.markBoundary(0, act); // Patch 0
-                }
+                act = m_basis.basis(0).boundaryOffset(dir == 0 ? 1 : 3, i); // WEST
+                map.markBoundary(0, act); // Patch 0
             }
-            else if (kindOfVertex != 0)
-            {
-                if  ( (xy(0,1) < ab(0,0) + 1e-10) || (xy(0,0) > ab(0,1) - 1e-10) || (xy(0,0) < ab(0,0) - 1e-10) || (xy(0,1) > ab(0,1) + 1e-10))
-                {
-                    act = m_basis.basis(0).boundaryOffset(dir == 0 ? 1 : 3, i); // WEST
-                    map.markBoundary(0, act); // Patch 0
-                }
-            }
-
         }
     }
 

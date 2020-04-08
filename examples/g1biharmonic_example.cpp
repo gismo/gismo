@@ -410,6 +410,7 @@ int main(int argc, char *argv[])
         for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
             gsInfo << "=====================";
 
+        gsInfo << "\n";
     }
     else
     {

@@ -42,8 +42,8 @@ struct g1BasisVertex
 {
     enum strategy
     {
-        local = 0, // local transversal vector
-        global = 1 // global transversal vetor
+        global = 0, // global L2-projection
+        local = 1 // local L2-projection
     };
 };
 
