@@ -332,13 +332,9 @@ int main(int argc, char *argv[])
             }
             else if (e == 3)
             {
-                gsInfo << "wra hier 1\n";
                 gsH1NormWithJump<real_t> errorJump(multiPatch, Sol_sparse);
-                gsInfo << "wra hier 2\n";
                 errorJump.compute(g1System.get_numBasisFunctions(), g1System.get_numInterfaceFunctions());
-                gsInfo << "wra hier 3\n";
                 h1SemiError_jump.row(refinement_level) = errorJump.value().transpose();
-                gsInfo << "wra hier 4\n";
             }
         }
     }
