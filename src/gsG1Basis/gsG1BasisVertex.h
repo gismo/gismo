@@ -78,42 +78,45 @@ public:
     }
 
 
-    void refresh();
-    void assemble(gsMatrix<> dd_ik_minus, gsMatrix<> dd_ik_plus);
-    inline void apply(bhVisitor & visitor, int patchIndex, gsMatrix<> dd_ik_minus, gsMatrix<> dd_ik_plus);
+    void refresh(index_t kindOfVertex);
+    void assemble();
+    inline void apply(bhVisitor & visitor, int patchIndex);
     void solve();
 
     void constructSolution(gsMultiPatch<T> & result);
 
-    void setG1BasisVertex(gsMultiPatch<T> & result, gsMatrix<> dd_ik_minus, gsMatrix<> dd_ik_plus)
+    void setG1BasisVertex(gsMultiPatch<T> & result, index_t kindOfVertex)
     {
 
         gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(0)); // u
         index_t degree = temp_basis_first.maxDegree();
 
         gsMatrix<T> ab = m_basis_plus[0].support(2);
-/*
-        gsMatrix<T> ab_temp = ab;
-        for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+
+        if (kindOfVertex == 0)
         {
-            gsMatrix<T> xy = temp_basis_first.support(i);
-            if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
-                ab_temp(0,0) = xy(0,0);
-            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
-                ab_temp(0,1) = xy(0,1);
+            gsMatrix<T> ab_temp = ab;
+            for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+            {
+                gsMatrix<T> xy = temp_basis_first.support(i);
+                if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                    ab_temp(0, 0) = xy(0, 0);
+                if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                    ab_temp(0, 1) = xy(0, 1);
+            }
+            ab = ab_temp;
+            ab_temp = ab;
+            for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+            {
+                gsMatrix<T> xy = temp_basis_first.support(i);
+                if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                    ab_temp(0, 0) = xy(0, 0);
+                if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                    ab_temp(0, 1) = xy(0, 1);
+            }
+            ab = ab_temp;
         }
-        ab = ab_temp;
-        ab_temp = ab;
-        for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
-        {
-            gsMatrix<T> xy = temp_basis_first.support(i);
-            if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
-                ab_temp(0,0) = xy(0,0);
-            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
-                ab_temp(0,1) = xy(0,1);
-        }
-        ab = ab_temp;
-*/
+
         gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
         for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
             if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
@@ -125,28 +128,30 @@ public:
         degree = temp_basis_first.maxDegree();
 
         ab = m_basis_plus[1].support(2);
-/*
-        ab_temp = ab;
-        for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+        if (kindOfVertex == 0)
         {
-            gsMatrix<T> xy = temp_basis_first.support(i);
-            if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
-                ab_temp(0,0) = xy(0,0);
-            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
-                ab_temp(0,1) = xy(0,1);
+            gsMatrix<T> ab_temp = ab;
+            for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+            {
+                gsMatrix<T> xy = temp_basis_first.support(i);
+                if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                    ab_temp(0, 0) = xy(0, 0);
+                if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                    ab_temp(0, 1) = xy(0, 1);
+            }
+            ab = ab_temp;
+            ab_temp = ab;
+            for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+            {
+                gsMatrix<T> xy = temp_basis_first.support(i);
+                if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                    ab_temp(0, 0) = xy(0, 0);
+                if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                    ab_temp(0, 1) = xy(0, 1);
+            }
+            ab = ab_temp;
         }
-        ab = ab_temp;
-        ab_temp = ab;
-        for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
-        {
-            gsMatrix<T> xy = temp_basis_first.support(i);
-            if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
-                ab_temp(0,0) = xy(0,0);
-            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
-                ab_temp(0,1) = xy(0,1);
-        }
-        ab = ab_temp;
-*/
+
         gsKnotVector<T> kv2(ab.at(0), ab.at(1), 0, 1);
         for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
             if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
@@ -156,8 +161,8 @@ public:
         m_geo = bsp_geo_local; // Basis for Integration
         //m_geo = m_basis_g1;
 
-        refresh();
-        assemble(dd_ik_minus, dd_ik_plus);
+        refresh(kindOfVertex);
+        assemble();
         solve();
 
         constructSolution(result);
@@ -240,7 +245,7 @@ void gsG1BasisVertex<T,bhVisitor>::constructSolution(gsMultiPatch<T> & result)
 }
 
 template <class T, class bhVisitor>
-void gsG1BasisVertex<T,bhVisitor>::refresh()
+void gsG1BasisVertex<T,bhVisitor>::refresh(index_t kindOfVertex)
 {
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper map(m_basis.basis(0));
@@ -250,36 +255,47 @@ void gsG1BasisVertex<T,bhVisitor>::refresh()
     for (index_t dir = 0; dir < 2; dir++)
     {
         gsMatrix<T> ab = m_basis_plus[dir].support(2);
-/*
-        gsMatrix<T> ab_temp = ab;
-        for (index_t i = 0; i < m_basis.basis(0).component(dir).size(); i++) // only the first two u/v-columns are Dofs (0/1)
+        if (kindOfVertex == 0)
         {
-            gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
-            if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
-                ab_temp(0,0) = xy(0,0);
-            if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
-                ab_temp(0,1) = xy(0,1);
+            gsMatrix<T> ab_temp = ab;
+            for (index_t i = 0; i < m_basis.basis(0).component(dir).size();
+                 i++) // only the first two u/v-columns are Dofs (0/1)
+            {
+                gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
+                if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                    ab_temp(0, 0) = xy(0, 0);
+                if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                    ab_temp(0, 1) = xy(0, 1);
+            }
+            ab = ab_temp;
         }
-        ab = ab_temp;
-*/
 
         for (index_t i = 0; i < m_basis.basis(0).component(dir).size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
             gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
-            if  ( (xy(0,1) < ab(0,0) + 1e-10) || (xy(0,0) > ab(0,1) - 1e-10) || (xy(0,0) < ab(0,0) - 1e-10) || (xy(0,1) > ab(0,1) + 1e-10))
+            if (kindOfVertex == 0)
             {
-                act = m_basis.basis(0).boundaryOffset(dir == 0 ? 1 : 3, i); // WEST
-                map.markBoundary(0, act); // Patch 0
+                if  ( (xy(0,1) < ab(0,0) + 1e-10) || (xy(0,0) > ab(0,1) - 1e-10) ) //|| (xy(0,0) < ab(0,0) - 1e-10) || (xy(0,1) > ab(0,1) + 1e-10))
+                {
+                    act = m_basis.basis(0).boundaryOffset(dir == 0 ? 1 : 3, i); // WEST
+                    map.markBoundary(0, act); // Patch 0
+                }
             }
+            else if (kindOfVertex != 0)
+            {
+                if  ( (xy(0,1) < ab(0,0) + 1e-10) || (xy(0,0) > ab(0,1) - 1e-10) || (xy(0,0) < ab(0,0) - 1e-10) || (xy(0,1) > ab(0,1) + 1e-10))
+                {
+                    act = m_basis.basis(0).boundaryOffset(dir == 0 ? 1 : 3, i); // WEST
+                    map.markBoundary(0, act); // Patch 0
+                }
+            }
+
         }
     }
 
 
-
-
     map.finalize();
     //gsInfo << "map : " << map.asVector() << "\n";
-    map.print();
 
     // 2. Create the sparse system
     gsSparseSystem<T> m_system = gsSparseSystem<T>(map);
@@ -289,7 +305,7 @@ void gsG1BasisVertex<T,bhVisitor>::refresh()
 } // refresh()
 
 template <class T, class bhVisitor>
-void gsG1BasisVertex<T,bhVisitor>::assemble(gsMatrix<> dd_ik_minus, gsMatrix<> dd_ik_plus)
+void gsG1BasisVertex<T,bhVisitor>::assemble()
 {
     // Reserve sparse system
     const index_t nz = gsAssemblerOptions::numColNz(m_basis[0],2,1,0.333333);
@@ -306,7 +322,7 @@ void gsG1BasisVertex<T,bhVisitor>::assemble(gsMatrix<> dd_ik_minus, gsMatrix<> d
 
     // Assemble volume integrals
     bhVisitor visitor;
-    apply(visitor,0, dd_ik_minus, dd_ik_plus); // patch 0
+    apply(visitor,0); // patch 0
 
     for (unsigned i = 0; i < m_f.size(); i++)
         m_f.at(i).matrix().makeCompressed();
@@ -314,7 +330,7 @@ void gsG1BasisVertex<T,bhVisitor>::assemble(gsMatrix<> dd_ik_minus, gsMatrix<> d
 } // assemble()
 
 template <class T, class bhVisitor>
-void gsG1BasisVertex<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, gsMatrix<> dd_ik_minus, gsMatrix<> dd_ik_plus)
+void gsG1BasisVertex<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex)
 {
 #pragma omp parallel
     {
@@ -356,7 +372,7 @@ void gsG1BasisVertex<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex, gs
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 #pragma omp critical(evaluate)
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(dd_ik_minus, dd_ik_plus, basis_g1, basis_geo, m_basis_plus, m_basis_minus, patch, quNodes, m_gD, m_isBoundary, m_sigma, m_g1OptionList);
+            visitor_.evaluate(basis_g1, basis_geo, m_basis_plus, m_basis_minus, patch, quNodes, m_gD, m_isBoundary, m_sigma, m_g1OptionList);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);

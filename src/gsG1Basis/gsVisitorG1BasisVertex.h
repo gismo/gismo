@@ -46,9 +46,7 @@ public:
     }
 
     // Evaluate on element.
-    inline void evaluate(gsMatrix<> dd_ik_minus_2,
-                         gsMatrix<> dd_ik_plus_2,
-                         gsBasis<T>       & basis, //
+    inline void evaluate(gsBasis<T>       & basis, //
                          gsBasis<T>       & basis_geo,
                          std::vector<gsBSplineBasis<T>>       & basis_plus,
                          std::vector<gsBSplineBasis<T>>      & basis_minus,
@@ -177,12 +175,6 @@ public:
 
         dd_ik_plus = 1/(alpha_0[1](0,0)) * (geo.jacobian(zero).col(0) +
             beta_0[1](0,0) * geo.jacobian(zero).col(1));
-
-        if (g1OptionList.getInt("g1BasisVertex")==g1BasisVertex::local)
-        {
-            dd_ik_minus = dd_ik_minus_2;
-            dd_ik_plus = dd_ik_plus_2;
-        }
 
         gsMatrix<> geo_deriv2_12(2,1), geo_deriv2_11(2,1), geo_deriv2_22(2,1);
         geo_deriv2_12.row(0) = geo.deriv2(zero).row(2);

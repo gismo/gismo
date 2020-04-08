@@ -38,6 +38,7 @@ public:
     void constructG1Solution(const gsMatrix<T> &solVector, std::vector<gsMultiPatch<>> & result, const gsMultiPatch<> & geo);
     void constructSparseG1Solution(const gsMatrix<T> &solVector, gsSparseMatrix<T> & result);
     gsVector<> get_numBasisFunctions() { return numBasisFunctions; }
+    gsVector<> get_numInterfaceFunctions() { return numInterfaceFunctions; }
 
     size_t boundary_size() { return numBoundaryVertexFunctions.last() - numBoundaryEdgeFunctions[0]; }
 

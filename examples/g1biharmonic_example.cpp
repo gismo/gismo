@@ -23,8 +23,8 @@
 # include <gsG1Basis/gsNormL2.h>
 # include <gsG1Basis/gsSeminormH1.h>
 # include <gsG1Basis/gsSeminormH2.h>
+# include <gsG1Basis/gsH1NormWithJump.h>
 
-# include <chrono>
 #include <iostream>
 
 using namespace gismo;
@@ -124,9 +124,11 @@ int main(int argc, char *argv[])
     gsVector<real_t> l2Error_vec(g1OptionList.getInt("loop") + 1);
     gsVector<real_t> h1SemiError_vec(g1OptionList.getInt("loop") + 1);
     gsVector<real_t> h2SemiError_vec(g1OptionList.getInt("loop") + 1);
+    gsMatrix<real_t> h1SemiError_jump(g1OptionList.getInt("loop") + 1, multiPatch_init.interfaces().size());
     l2Error_vec.setZero();
     h1SemiError_vec.setZero();
     h2SemiError_vec.setZero();
+    h1SemiError_jump.setZero();
 
     gsVector<index_t> num_knots(g1OptionList.getInt("loop"));
     num_knots[0] = g1OptionList.getInt("numRefine");
@@ -150,6 +152,7 @@ int main(int argc, char *argv[])
 
         // ########### EDGE FUNCTIONS ###########
         // Interface loop
+        gsInfo << "Computing Interface basis functions ... \n";
         for (size_t numInt = 0; numInt < multiPatch.interfaces().size(); numInt++ )
         {
             const boundaryInterface & item = multiPatch.interfaces()[numInt];
@@ -189,7 +192,7 @@ int main(int argc, char *argv[])
             collection.save();
         }
         // Boundaries loop
-
+        gsInfo << "Computing Boundary basis functions ... \n";
         for (size_t numBdy = 0; numBdy < multiPatch.boundaries().size(); numBdy++ )
         {
             const patchSide & bit = multiPatch.boundaries()[numBdy];
@@ -223,6 +226,7 @@ int main(int argc, char *argv[])
 
 
         // Vertices
+        gsInfo << "Computing Vertex basis functions ... \n";
         for(size_t numVer=0; numVer < multiPatch.vertices().size(); numVer++)
         {
             std::string fileName;
@@ -269,6 +273,7 @@ int main(int argc, char *argv[])
         }
 
         // BiharmonicAssembler
+        gsInfo << "Computing Internal basis functions ... \n";
         gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
         g1BiharmonicAssembler.assemble();
         g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System); // Compute boundary values (Type 1)
@@ -311,35 +316,6 @@ int main(int argc, char *argv[])
                 gsNormL2<real_t> errorL2(multiPatch, Sol_sparse, solVal);
                 errorL2.compute(g1System.get_numBasisFunctions(), true);
                 l2Error_vec[refinement_level] = errorL2.value();
-
-                std::vector<real_t> elWise_error = errorL2.elWise_value();
-                gsVector<real_t> max_el(10);
-                max_el.setZero();
-                gsVector<size_t> max_i(10);
-                max_i.setZero();
-
-                std::ofstream myfile;
-                myfile.open ("elwiseError.txt");
-
-
-
-                for (size_t i = 0; i< elWise_error.size(); i++)
-                {
-                    for (index_t ii = 0; ii < 10; ii++)
-                        if (max_el(ii) < elWise_error[i])
-                        {
-                            max_el(ii) = elWise_error[i];
-                            max_i(ii) = i;
-                            break;
-                        }
-
-                    myfile << elWise_error[i] << "\n";
-                }
-                gsInfo << "EL ERROR: " << max_i.transpose() << " : " << max_el.transpose() << "\n";
-
-                myfile.close();
-
-                //errorL2.plotElWiseError(elWise_error);
             }
 
             else if (e == 1)
@@ -354,12 +330,19 @@ int main(int argc, char *argv[])
                 errorSemiH2.compute(g1System.get_numBasisFunctions());
                 h2SemiError_vec[refinement_level] = errorSemiH2.value();
             }
+            else if (e == 3)
+            {
+                gsH1NormWithJump<real_t> errorJump(multiPatch, Sol_sparse);
+                errorJump.compute(g1System.get_numBasisFunctions(), g1System.get_numInterfaceFunctions());
+                h1SemiError_jump.row(refinement_level) = errorJump.value().transpose();
+            }
         }
     }
 
-    gsInfo << "=====================================================================\n";
     if (g1OptionList.getInt("loop") > 1)
     {
+        gsInfo << "=====================================================================\n";
+
         gsMatrix<> rate(g1OptionList.getInt("loop") + 1,3);
         rate.setZero();
         printf("|%-5s|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s\n", "k","L2-error", "Rate", "Semi-H1-error",
@@ -389,15 +372,55 @@ int main(int argc, char *argv[])
                     l2Error_vec[i], rate(i,0),h1SemiError_vec[i], rate(i,1),h2SemiError_vec[i], rate(i,2));
             }
         }
+        gsInfo << "=====================================================================\n\n";
+
+        // JUMP
+        rate.setZero(g1OptionList.getInt("loop") + 1,multiPatch_init.interfaces().size());
+        gsInfo << "======";
+        for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
+            gsInfo << "=====================";
+
+        gsInfo << "\n";
+        printf("|%-5s", "k");
+        for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
+            printf("|%-14s|%-5s", ("IFace " + std::to_string(i)).c_str(), "Rate");
+        gsInfo << "\n";
+        printf("|%-5s","-----");
+        for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
+            printf("|%-14s|%-5s", "--------------", "-----");
+        gsInfo << "\n";
+
+        printf("|%-5d",num_knots[0]);
+        for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
+            printf("|%-14.6e|%-5.2f", h1SemiError_jump(0,i), rate(0,i));
+        printf("\n");
+
+        for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
+        {
+            printf("|%-5d",num_knots[i]);
+            for (size_t j = 0; j < multiPatch_init.interfaces().size(); j++)
+            {
+                rate(i,j) = log2(h1SemiError_jump(i-1,j) / h1SemiError_jump(i,j));
+                printf("|%-14.6e|%-5.2f", h1SemiError_jump(i,j), rate(i,j));
+            }
+            printf("\n");
+        }
+
+        gsInfo << "======";
+        for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
+            gsInfo << "=====================";
 
     }
     else
     {
+        gsInfo << "=====================================================================\n";
         gsInfo << "L2 Error: " << l2Error_vec[0] << "\n";
         gsInfo << "H1 Semi-error: " << h1SemiError_vec[0] << "\n";
         gsInfo << "H2 Semi-error: " << h2SemiError_vec[0] << "\n";
+        gsInfo << "Jump error: " << h1SemiError_jump.row(0) << "\n";
+        gsInfo << "=====================================================================\n";
+
     }
-    gsInfo << "=====================================================================\n";
 
 
 } // main
