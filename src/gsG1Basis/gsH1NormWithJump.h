@@ -106,7 +106,7 @@ public:
 
             }
 
-
+            gsInfo << "wra hier 5\n";
             m_value(numInt) = takeRoot(value);
         }
 
