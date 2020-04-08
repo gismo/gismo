@@ -176,10 +176,10 @@ protected:
         // Evaluate basis functions on element
         basis_R.deriv_into(quNodes_R,bGrads2);
 
-        f2ders.setZero(2,actives2.rows());
+        f2ders.setZero(2,bGrads2.cols());
         for (index_t i = numInterfaceFunctions[numInt]; i < numInterfaceFunctions[numInt+1]; i++)
             for (index_t j = 0; j < actives2.rows(); j++)
-                f2ders += sol_sparse->at(i,numBasisFunctions[geoEval_R.id()] + actives2.at(j)) * bGrads2.block(2*j,0,2,f2ders.dim().second);
+                f2ders += sol_sparse->at(i,numBasisFunctions[geoEval_R.id()] + actives2.at(j)) * bGrads2.block(2*j,0,2,bGrads2.cols());
 
         geoEval_R.evaluateAt(quNodes_R);
     }
