@@ -32,7 +32,8 @@ public:
                      const gsSparseMatrix<T> & _field1)
         : m_mp(multiPatch) , m_sparse(&_field1)
     {
-        m_value.setZero(m_mp.interfaces().size(),1);
+        m_value.resize(m_mp.interfaces().size());
+        m_value.setZero();
     }
 
 
@@ -106,7 +107,7 @@ public:
             }
 
 
-            m_value[numInt] = takeRoot(value);
+            m_value(numInt) = takeRoot(value);
         }
 
     }

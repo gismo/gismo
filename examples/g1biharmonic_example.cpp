@@ -334,7 +334,9 @@ int main(int argc, char *argv[])
             {
                 gsH1NormWithJump<real_t> errorJump(multiPatch, Sol_sparse);
                 errorJump.compute(g1System.get_numBasisFunctions(), g1System.get_numInterfaceFunctions());
+                gsInfo << "wra hier \n";
                 h1SemiError_jump.row(refinement_level) = errorJump.value().transpose();
+                gsInfo << "wra hier \n";
             }
         }
     }
