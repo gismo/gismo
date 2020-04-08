@@ -178,16 +178,6 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
                     ab_temp(0,1) = xy(0,1);
             }
             ab = ab_temp;
-
-            for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
-            {
-                gsMatrix<T> xy = temp_basis_first.support(i);
-                if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
-                    ab_temp(0,0) = xy(0,0);
-                if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
-                    ab_temp(0,1) = xy(0,1);
-            }
-            ab = ab_temp;
         }
 
         gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
@@ -251,17 +241,6 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
                     ab_temp(0,1) = xy(0,1);
             }
             ab = ab_temp;
-
-            for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
-            {
-                gsMatrix<T> xy = temp_basis_first.support(i);
-                if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
-                    ab_temp(0,0) = xy(0,0);
-                if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
-                    ab_temp(0,1) = xy(0,1);
-            }
-            ab = ab_temp;
-
         }
 
 
@@ -409,17 +388,6 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                 }
                 ab = ab_temp;
 
-                for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size();
-                     i++) // only the first two u/v-columns are Dofs (0/1)
-                {
-                    gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
-                    if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
-                        ab_temp(0, 0) = xy(0, 0);
-                    if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
-                        ab_temp(0, 1) = xy(0, 1);
-                }
-                ab = ab_temp;
-
                 for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size(); i++)
                 {
                     gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
@@ -441,17 +409,6 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                 gsMatrix<T> ab = m_basis_minus.support(bfID);
 
                 gsMatrix<T> ab_temp = ab;
-                for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size();
-                     i++) // only the first two u/v-columns are Dofs (0/1)
-                {
-                    gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
-                    if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
-                        ab_temp(0, 0) = xy(0, 0);
-                    if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
-                        ab_temp(0, 1) = xy(0, 1);
-                }
-                ab = ab_temp;
-
                 for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size();
                      i++) // only the first two u/v-columns are Dofs (0/1)
                 {
