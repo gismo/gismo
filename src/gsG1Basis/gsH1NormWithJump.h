@@ -158,12 +158,18 @@ protected:
 
         // Evaluate basis functions on element
         basis.deriv_into(quNodes,bGrads);
-        gsInfo << "wra hier 10\n" << numInterfaceFunctions[numInt] << "\n";
-        gsInfo << "wra hier 10\n" << numInterfaceFunctions[numInt+1] << "\n";
+        gsInfo << "wra hier 10\n" << bGrads.dim() << "\n";
+        gsInfo << "wra hier 10\n" << numBasisFunctions[geoEval.id()] << "\n";
+        gsInfo << "wra hier 10\n" << actives.rows() << "\n";
         f1ders.setZero(2,actives.rows());
         for (index_t i = numInterfaceFunctions[numInt]; i < numInterfaceFunctions[numInt+1]; i++)
             for (index_t j = 0; j < actives.rows(); j++)
+            {
+                gsInfo << "i" << i << " : " << j << "\n";
                 f1ders += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f1ders.dim().second);
+
+            }
+
         gsInfo << "wra hier 11\n";
         geoEval.evaluateAt(quNodes);
 
