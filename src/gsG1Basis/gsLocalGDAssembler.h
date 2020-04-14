@@ -120,25 +120,15 @@ void gsLocalGDAssembler<T, bhVisitor>::refresh()
 
     gsMatrix<T> ab = m_basis_geo.support();
 
-    gsMatrix<T> ab_temp = ab;
     for (index_t i = 0; i < m_basis[0].basis(0).size(); i++) // only the first two u/v-columns are Dofs (0/1)
     {
         gsMatrix<T> xy = m_basis[0].basis(0).support(i);
-        if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
-            ab_temp(0,0) = xy(0,0);
-        if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
-            ab_temp(0,1) = xy(0,1);
-    }
-    ab = ab_temp;
-
-    for (index_t i = 0; i < m_basis[0].basis(0).size(); i++) // only the first two u/v-columns are Dofs (0/1)
-    {
-        gsMatrix<T> xy = m_basis[0].basis(0).support(i);
-        if ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
+        if ( (xy(0, 1) < ab(0, 0)+1e-10) || (xy(0, 0) > ab(0, 1)-1e-10) )
         {
             act << i;
             map.markBoundary(0, act); // Patch 0
         }
+
     }
 
     map.finalize();
