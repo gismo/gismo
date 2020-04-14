@@ -217,7 +217,7 @@ protected:
         f2ders.setZero(2,bGrads2.cols());
         if (typeOfnorm == "edge")
         {
-            for (index_t i = numInterfaceFunctions[numInt.at(0); i < numInterfaceFunctions[numInt.at(0) + 1]; i++)
+            for (index_t i = numInterfaceFunctions[numInt.at(0)]; i < numInterfaceFunctions[numInt.at(0) + 1]; i++)
                 for (index_t j = 0; j < actives2.rows(); j++)
                     f2ders += sol_sparse->at(i, numBasisFunctions[geoEval_R.id()] + actives2.at(j))
                         * bGrads2.block(2 * j, 0, 2, bGrads2.cols());
