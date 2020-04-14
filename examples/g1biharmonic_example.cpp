@@ -355,6 +355,7 @@ int main(int argc, char *argv[])
         }
     }
 
+    gsInfo << "war hier \n";
     for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
     {
         h2SemiError_vec[i] = math::sqrt(h2SemiError_vec[i]*h2SemiError_vec(i) +
