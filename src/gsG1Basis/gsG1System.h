@@ -39,14 +39,15 @@ public:
     void constructSparseG1Solution(const gsMatrix<T> &solVector, gsSparseMatrix<T> & result);
     gsVector<> get_numBasisFunctions() { return numBasisFunctions; }
     gsVector<> get_numInterfaceFunctions() { return numInterfaceFunctions; }
+    gsVector<> get_numBoundaryEdgeFunctions() {return numBoundaryEdgeFunctions; };
+    gsVector<> get_numBoundaryVertexFunctions() {return numBoundaryVertexFunctions; };
+    gsVector<> get_numVertexFunctions() {return numVertexFunctions; };
 
     size_t boundary_size() { return numBoundaryVertexFunctions.last() - numBoundaryEdgeFunctions[0]; }
 
     size_t sizePlusInterface(index_t i) { return  sizePlusInt[i]; };
     size_t sizePlusBoundary(index_t i) { return  sizePlusBdy[i]; };
 
-    gsVector<> get_numBoundaryEdgeFunctions() {return numBoundaryEdgeFunctions; };
-    gsVector<> get_numBoundaryVertexFunctions() {return numBoundaryVertexFunctions; };
 
     gsMatrix<> getSingleBasis(index_t global_row, index_t patchIdx) { return D_sparse.block(global_row, numBasisFunctions[patchIdx], 1, numBasisFunctions[patchIdx+1] - numBasisFunctions[patchIdx]); };
 

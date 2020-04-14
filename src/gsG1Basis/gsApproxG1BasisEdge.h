@@ -318,15 +318,15 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
 
     gsMatrix<unsigned> act;
 
-    for (index_t i = 2; i < m_basis.basis(0).component(1 - m_uv).size();
-         i++) // only the first two u/v-columns are Dofs (0/1)
-    {
-        act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, i); // WEST
-        map.markBoundary(0, act); // Patch 0
-    }
-
     if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
     {
+        for (index_t i = 2; i < m_basis.basis(0).component(1 - m_uv).size();
+             i++) // only the first two u/v-columns are Dofs (0/1)
+        {
+            act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, i); // WEST
+            map.markBoundary(0, act); // Patch 0
+        }
+
         if (m_isBoundary)
         {
             if (typeBf == "plus")

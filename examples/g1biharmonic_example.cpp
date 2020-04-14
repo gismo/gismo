@@ -124,11 +124,15 @@ int main(int argc, char *argv[])
     gsVector<real_t> l2Error_vec(g1OptionList.getInt("loop") + 1);
     gsVector<real_t> h1SemiError_vec(g1OptionList.getInt("loop") + 1);
     gsVector<real_t> h2SemiError_vec(g1OptionList.getInt("loop") + 1);
-    gsMatrix<real_t> h1SemiError_jump(g1OptionList.getInt("loop") + 1, multiPatch_init.interfaces().size());
+    gsMatrix<real_t> h1SemiError_jump_edge(g1OptionList.getInt("loop") + 1, multiPatch_init.interfaces().size());
+    gsMatrix<real_t> h1SemiError_jump_vertex(g1OptionList.getInt("loop") + 1, multiPatch_init.interfaces().size());
+    gsMatrix<real_t> h1SemiError_jump_all(g1OptionList.getInt("loop") + 1, multiPatch_init.interfaces().size());
     l2Error_vec.setZero();
     h1SemiError_vec.setZero();
     h2SemiError_vec.setZero();
-    h1SemiError_jump.setZero();
+    h1SemiError_jump_edge.setZero();
+    h1SemiError_jump_vertex.setZero();
+    h1SemiError_jump_all.setZero();
 
     gsVector<index_t> num_knots(g1OptionList.getInt("loop"));
     num_knots[0] = g1OptionList.getInt("numRefine");
@@ -309,7 +313,7 @@ int main(int argc, char *argv[])
 #endif
 
 #pragma omp parallel for
-        for (index_t e = 0; e < 4; ++e)
+        for (index_t e = 0; e < 6; ++e)
         {
             if (e == 0)
             {
@@ -333,10 +337,30 @@ int main(int argc, char *argv[])
             else if (e == 3)
             {
                 gsH1NormWithJump<real_t> errorJump(multiPatch, Sol_sparse);
-                errorJump.compute(g1System.get_numBasisFunctions(), g1System.get_numInterfaceFunctions());
-                h1SemiError_jump.row(refinement_level) = errorJump.value().transpose();
+                errorJump.compute(g1System.get_numBasisFunctions(), g1System.get_numInterfaceFunctions(), "edge");
+                h1SemiError_jump_edge.row(refinement_level) = errorJump.value().transpose();
+            }
+            else if (e == 4)
+            {
+                gsH1NormWithJump<real_t> errorJump(multiPatch, Sol_sparse);
+                errorJump.compute(g1System.get_numBasisFunctions(), g1System.get_numVertexFunctions(), "vertex");
+                h1SemiError_jump_vertex.row(refinement_level) = errorJump.value().transpose();
+            }
+            else if (e == 5)
+            {
+                gsH1NormWithJump<real_t> errorJump(multiPatch, Sol_sparse);
+                errorJump.compute(g1System.get_numBasisFunctions(), g1System.get_numVertexFunctions(), "all");
+                h1SemiError_jump_all.row(refinement_level) = errorJump.value().transpose();
             }
         }
+    }
+
+    for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
+    {
+        h2SemiError_vec[i] = math::sqrt(h2SemiError_vec[i]*h2SemiError_vec(i) +
+            h1SemiError_vec[i]*h1SemiError_vec[i] + l2Error_vec[i]*l2Error_vec[i]);
+        h1SemiError_vec[i] = math::sqrt(h1SemiError_vec[i]*h1SemiError_vec[i] +
+            l2Error_vec[i]*l2Error_vec[i]);
     }
 
     if (g1OptionList.getInt("loop") > 1)
@@ -345,8 +369,8 @@ int main(int argc, char *argv[])
 
         gsMatrix<> rate(g1OptionList.getInt("loop") + 1,3);
         rate.setZero();
-        printf("|%-5s|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s\n", "k","L2-error", "Rate", "Semi-H1-error",
-            "Rate", "Semi-H2-error", "Rate");
+        printf("|%-5s|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s\n", "k","L2-error", "Rate", "H1-error",
+            "Rate", "H2-error", "Rate");
         printf("|%-5s|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s\n", "-----", "--------------", "-----", "--------------",
             "-----", "--------------", "-----");
         printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[0], l2Error_vec[0],
@@ -356,6 +380,7 @@ int main(int argc, char *argv[])
             rate(i,0) = log2(l2Error_vec[i-1] / l2Error_vec[i]);
             rate(i,1) = log2(h1SemiError_vec[i-1] / h1SemiError_vec[i]);
             rate(i,2) = log2(h2SemiError_vec[i-1] / h2SemiError_vec[i]);
+
             printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[i], l2Error_vec[i],
                 rate(i,0),h1SemiError_vec[i], rate(i,1),h2SemiError_vec[i], rate(i,2));
         }
@@ -365,9 +390,6 @@ int main(int argc, char *argv[])
                 l2Error_vec[0], rate(0,0),h1SemiError_vec[0], rate(0,1), h2SemiError_vec[0], rate(0,2));
             for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
             {
-                rate(i,0) = log2(l2Error_vec[i-1] / l2Error_vec[i]);
-                rate(i,1) = log2(h1SemiError_vec[i-1] / h1SemiError_vec[i]);
-                rate(i,2) = log2(h2SemiError_vec[i-1] / h2SemiError_vec[i]);
                 printf("%-5d & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\ \n", num_knots[i],
                     l2Error_vec[i], rate(i,0),h1SemiError_vec[i], rate(i,1),h2SemiError_vec[i], rate(i,2));
             }
@@ -376,23 +398,29 @@ int main(int argc, char *argv[])
 
         // JUMP
         rate.setZero(g1OptionList.getInt("loop") + 1,multiPatch_init.interfaces().size());
+        gsMatrix<> rate_vertex(g1OptionList.getInt("loop") + 1,multiPatch_init.interfaces().size());
+        rate_vertex.setZero();
+        gsMatrix<> rate_all(g1OptionList.getInt("loop") + 1,multiPatch_init.interfaces().size());
+        rate_all.setZero();
         gsInfo << "======";
         for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
-            gsInfo << "=====================";
+            gsInfo << "===============================================================";
 
         gsInfo << "\n";
         printf("|%-5s", "k");
         for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
-            printf("|%-14s|%-5s", ("IFace " + std::to_string(i)).c_str(), "Rate");
+            printf("|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s", ("Single E. " + std::to_string(i)).c_str(), "Rate",
+                ("Single V. " + std::to_string(i)).c_str(), "Rate", ("IFace " + std::to_string(i)).c_str(), "Rate");
         gsInfo << "\n";
         printf("|%-5s","-----");
         for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
-            printf("|%-14s|%-5s", "--------------", "-----");
+            printf("|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s", "--------------", "-----", "--------------", "-----", "--------------", "-----");
         gsInfo << "\n";
 
         printf("|%-5d",num_knots[0]);
         for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
-            printf("|%-14.6e|%-5.2f", h1SemiError_jump(0,i), rate(0,i));
+            printf("|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f", h1SemiError_jump_edge(0,i), rate(0,i),
+                h1SemiError_jump_vertex(0,i), rate_vertex(0,i), h1SemiError_jump_all(0,i), rate_all(0,i));
         printf("\n");
 
         for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
@@ -400,17 +428,43 @@ int main(int argc, char *argv[])
             printf("|%-5d",num_knots[i]);
             for (size_t j = 0; j < multiPatch_init.interfaces().size(); j++)
             {
-                rate(i,j) = log2(h1SemiError_jump(i-1,j) / h1SemiError_jump(i,j));
-                printf("|%-14.6e|%-5.2f", h1SemiError_jump(i,j), rate(i,j));
+                rate(i,j) = log2(h1SemiError_jump_edge(i-1,j) / h1SemiError_jump_edge(i,j));
+                rate_vertex(i,j) = log2(h1SemiError_jump_vertex(i-1,j) / h1SemiError_jump_vertex(i,j));
+                rate_all(i,j) = log2(h1SemiError_jump_all(i-1,j) / h1SemiError_jump_all(i,j));
+                printf("|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f", h1SemiError_jump_edge(i,j), rate(i,j),
+                    h1SemiError_jump_vertex(i,j), rate_vertex(i,j), h1SemiError_jump_all(i,j), rate_all(i,j));
             }
             printf("\n");
         }
 
         gsInfo << "======";
         for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
-            gsInfo << "=====================";
+            gsInfo << "===============================================================";
 
         gsInfo << "\n";
+
+        if (g1OptionList.getSwitch("latex"))
+        {
+            for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
+                printf("%-5d & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\", num_knots[0],
+                   h1SemiError_jump_edge[0], rate(0,i),h1SemiError_jump_vertex[0], rate_vertex(0,i), h1SemiError_jump_all[0], rate_all(0,i));
+            printf("\n");
+            for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
+            {
+                printf("%-5d & ",num_knots[i]);
+                for (size_t j = 0; j < multiPatch_init.interfaces().size(); j++)
+                {
+                    printf("%-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\",
+                           h1SemiError_jump_edge[i],
+                           rate(i, j),
+                           h1SemiError_jump_vertex[i],
+                           rate_vertex(i, j),
+                           h1SemiError_jump_all[i],
+                           rate_all(i, j));
+                }
+                printf("\n");
+            }
+        }
     }
     else
     {
@@ -418,7 +472,9 @@ int main(int argc, char *argv[])
         gsInfo << "L2 Error: " << l2Error_vec[0] << "\n";
         gsInfo << "H1 Semi-error: " << h1SemiError_vec[0] << "\n";
         gsInfo << "H2 Semi-error: " << h2SemiError_vec[0] << "\n";
-        gsInfo << "Jump error: " << h1SemiError_jump.row(0) << "\n";
+        gsInfo << "Jump error Edge: " << h1SemiError_jump_edge.row(0) << "\n";
+        gsInfo << "Jump error Vertex: " << h1SemiError_jump_vertex.row(0) << "\n";
+        gsInfo << "Jump error Vertex: " << h1SemiError_jump_all.row(0) << "\n";
         gsInfo << "=====================================================================\n";
 
     }

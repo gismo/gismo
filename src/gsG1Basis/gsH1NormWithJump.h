@@ -39,7 +39,7 @@ public:
 
 public:
 
-    void compute(gsVector<> numBasisFunctions, gsVector<> numInterfaceFunctions)
+    void compute(gsVector<> numBasisFunctions, gsVector<> numInterfaceFunctions, std::string typeOfnorm)
     {
 
         for (size_t numInt = 0; numInt < m_mp.interfaces().size(); numInt++ )
@@ -58,8 +58,33 @@ public:
 
             boundaryInterface & iFace = m_mp.interfaces()[numInt];
 
-            index_t L = iFace.second().patch;
-            index_t R = iFace.first().patch;
+            size_t L = iFace.second().patch;
+            size_t R = iFace.first().patch;
+
+            std::vector<size_t> numInt_vector;
+            if (typeOfnorm == "edge")
+                numInt_vector.push_back(numInt);
+            else if (typeOfnorm == "vertex")
+            {
+                for(size_t numVer=0; numVer < m_mp.vertices().size(); numVer++)
+                {
+                    std::vector<patchCorner> allcornerLists = m_mp.vertices()[numVer];
+                    std::vector<size_t> patchIndex;
+                    std::vector<size_t> vertIndex;
+
+                    bool patch_L = false, patch_R = false;
+                    for (size_t j = 0; j < allcornerLists.size(); j++)
+                    {
+                        if (allcornerLists[j].patch == L)
+                            patch_L = true;
+                        if (allcornerLists[j].patch == R)
+                            patch_R = true;
+                    }
+                    if (patch_L && patch_R)
+                        numInt_vector.push_back(numVer);
+                }
+            }
+
 
             // Obtain an integration domain
             const gsBasis<T> & dom_L = m_mp.patch(L).basis();
@@ -98,7 +123,7 @@ public:
                 QuRule_L.mapTo(domItCorner.col(0), domItCorner.col(1), quNodes_L, quWeights);
 
                 // Evaluate on quadrature points
-                evaluateb(*geoEval_L, quNodes_L, dom_L, *geoEval_R, quNodes_R, dom_R, numBasisFunctions, numInterfaceFunctions, numInt, m_sparse);
+                evaluateb(*geoEval_L, quNodes_L, dom_L, *geoEval_R, quNodes_R, dom_R, numBasisFunctions, numInterfaceFunctions, numInt_vector, m_sparse, typeOfnorm);
 
                 // Accumulate value from the current element (squared)
                 computeb(*geoEval_L, side_L, *geoEval_R, quWeights, value);
@@ -142,8 +167,9 @@ protected:
                    const gsBasis<T> & basis_R,
                    const gsVector<T> & numBasisFunctions,
                    const gsVector<T> & numInterfaceFunctions,
-                   size_t numInt,
-                   const gsSparseMatrix<T> * sol_sparse)
+                   std::vector<size_t> numInt,
+                   const gsSparseMatrix<T> * sol_sparse,
+                   std::string typeOfnorm)
     {
 
         // Evaluate first function
@@ -156,9 +182,25 @@ protected:
         basis.deriv_into(quNodes,bGrads);
 
         f1ders.setZero(2,bGrads.cols());
-        for (index_t i = numInterfaceFunctions[numInt]; i < numInterfaceFunctions[numInt+1]; i++)
-            for (index_t j = 0; j < actives.rows(); j++)
-                f1ders += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,bGrads.cols());
+        if (typeOfnorm == "edge")
+        {
+            for (index_t i = numInterfaceFunctions[numInt[0]]; i < numInterfaceFunctions[numInt[0]+1]; i++)
+                for (index_t j = 0; j < actives.rows(); j++)
+                    f1ders += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,bGrads.cols());
+        }
+        else if (typeOfnorm == "vertex")
+        {
+            for (size_t num = 0; num < numInt.size(); num++)
+                for (index_t i = numInterfaceFunctions[numInt[num]]; i < numInterfaceFunctions[numInt[num]+1]; i++)
+                    for (index_t j = 0; j < actives.rows(); j++)
+                        f1ders += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,bGrads.cols());
+        }
+        else if (typeOfnorm == "all")
+        {
+            for (index_t i = 0; i < sol_sparse->rows(); i++)
+                for (index_t j = 0; j < actives.rows(); j++)
+                    f1ders += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,bGrads.cols());
+        }
 
         geoEval.evaluateAt(quNodes);
 
@@ -173,9 +215,26 @@ protected:
         basis_R.deriv_into(quNodes_R,bGrads2);
 
         f2ders.setZero(2,bGrads2.cols());
-        for (index_t i = numInterfaceFunctions[numInt]; i < numInterfaceFunctions[numInt+1]; i++)
-            for (index_t j = 0; j < actives2.rows(); j++)
-                f2ders += sol_sparse->at(i,numBasisFunctions[geoEval_R.id()] + actives2.at(j)) * bGrads2.block(2*j,0,2,bGrads2.cols());
+        if (typeOfnorm == "edge")
+        {
+            for (index_t i = numInterfaceFunctions[numInt[0]]; i < numInterfaceFunctions[numInt[0] + 1]; i++)
+                for (index_t j = 0; j < actives2.rows(); j++)
+                    f2ders += sol_sparse->at(i, numBasisFunctions[geoEval_R.id()] + actives2.at(j))
+                        * bGrads2.block(2 * j, 0, 2, bGrads2.cols());
+        }
+        else if (typeOfnorm == "vertex")
+        {
+            for (size_t num = 0; num < numInt.size(); num++)
+                for (index_t i = numInterfaceFunctions[numInt[num]]; i < numInterfaceFunctions[numInt[num]+1]; i++)
+                    for (index_t j = 0; j < actives2.rows(); j++)
+                        f2ders += sol_sparse->at(i,numBasisFunctions[geoEval_R.id()] + actives2.at(j)) * bGrads2.block(2*j,0,2,bGrads2.cols());
+        }
+        else if (typeOfnorm == "all")
+        {
+            for (index_t i = 0; i < sol_sparse->rows(); i++)
+                for (index_t j = 0; j < actives2.rows(); j++)
+                    f2ders += sol_sparse->at(i,numBasisFunctions[geoEval_R.id()] + actives2.at(j)) * bGrads2.block(2*j,0,2,bGrads2.cols());
+        }
 
         geoEval_R.evaluateAt(quNodes_R);
     }
