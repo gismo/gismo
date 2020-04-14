@@ -61,7 +61,7 @@ public:
 
             m_basis_minus.push_back(basis_minus);
 
-            g1OptionList.setInt("p_tilde",3);
+            g1OptionList.setInt("p_tilde",1);
 
             // Computing the gluing data
             gsApproxGluingData<T> gluingData(m_mp, m_basis, dir, m_isBoundary[dir], m_g1OptionList);
@@ -94,7 +94,7 @@ public:
         index_t degree = temp_basis_first.maxDegree();
 
         gsMatrix<T> ab = m_basis_plus[0].support(2);
-        if (kindOfVertex == 0)
+/*        if (kindOfVertex == 0)
         {
             gsMatrix<T> ab_temp = ab;
             for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
@@ -117,7 +117,7 @@ public:
             }
             ab = ab_temp;
         }
-
+*/
         gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
         for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
             if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
@@ -129,7 +129,7 @@ public:
         degree = temp_basis_first.maxDegree();
 
         ab = m_basis_plus[1].support(2);
-        if (kindOfVertex == 0)
+/*        if (kindOfVertex == 0)
         {
             gsMatrix<T> ab_temp = ab;
             for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
@@ -151,7 +151,7 @@ public:
             }
             ab = ab_temp;
         }
-
+*/
         gsKnotVector<T> kv2(ab.at(0), ab.at(1), 0, 1);
         for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
             if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
@@ -258,7 +258,7 @@ void gsG1BasisVertex<T,bhVisitor>::refresh(index_t kindOfVertex)
         for (index_t dir = 0; dir < 2; dir++)
         {
             gsMatrix<T> ab = m_basis_plus[dir].support(2);
-            if (kindOfVertex == 0)
+/*            if (kindOfVertex == 0)
             {
                 gsMatrix<T> ab_temp = ab;
                 for (index_t i = 0; i < m_basis.basis(0).component(dir).size();
@@ -283,7 +283,7 @@ void gsG1BasisVertex<T,bhVisitor>::refresh(index_t kindOfVertex)
                 }
                 ab = ab_temp;
             }
-
+*/
             for (index_t i = 0; i < m_basis.basis(0).component(dir).size();
                  i++) // only the first two u/v-columns are Dofs (0/1)
             {

@@ -155,7 +155,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
         index_t degree = temp_basis_first.maxDegree();
 
         gsMatrix<T> ab = m_basis_plus.support(bfID);
-
+/*
         if (!m_isBoundary)
         {
             gsMatrix<T> ab_temp = ab;
@@ -179,7 +179,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
             }
             ab = ab_temp;
         }
-
+*/
         gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
         for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
             if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
@@ -218,7 +218,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
         index_t degree = temp_basis_first.maxDegree();
 
         gsMatrix<T> ab = m_basis_minus.support(bfID);
-
+/*
         if (!m_isBoundary)
         {
             gsMatrix<T> ab_temp = ab;
@@ -242,8 +242,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
             }
             ab = ab_temp;
         }
-
-
+*/
         gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
         for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
             if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
@@ -327,8 +326,8 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
             map.markBoundary(0, act); // Patch 0
         }
 
-        if (m_isBoundary)
-        {
+//        if (m_isBoundary)
+//        {
             if (typeBf == "plus")
             {
                 gsMatrix<T> ab = m_basis_plus.support(bfID);
@@ -338,7 +337,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                 {
                     gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
                     if ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
-                    {
+                        {
                         act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
                         map.markBoundary(0, act); // Patch 0
                     }
@@ -359,7 +358,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                     }
                 }
             }
-        }
+/*        }
         else if (!m_isBoundary)
         {
             if (typeBf == "plus")
@@ -448,8 +447,8 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                 map.markBoundary(0, act); // Patch 0
 
             }
-        }
-    }
+       }
+*/    }
     map.finalize();
 
     // 2. Create the sparse system
