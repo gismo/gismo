@@ -184,14 +184,14 @@ protected:
         f1ders.setZero(2,bGrads.cols());
         if (typeOfnorm == "edge")
         {
-            for (index_t i = numInterfaceFunctions[numInt.at(0)]; i < numInterfaceFunctions[numInt.at(0)+1]; i++)
+            for (index_t i = numInterfaceFunctions[numInt[0]]; i < numInterfaceFunctions[numInt[0]+1]; i++)
                 for (index_t j = 0; j < actives.rows(); j++)
                     f1ders += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,bGrads.cols());
         }
         else if (typeOfnorm == "vertex")
         {
             for (size_t num = 0; num < numInt.size(); num++)
-                for (index_t i = numInterfaceFunctions[numInt.at(num)]; i < numInterfaceFunctions[numInt.at(num)+1]; i++)
+                for (index_t i = numInterfaceFunctions[numInt[num]]; i < numInterfaceFunctions[numInt[num]+1]; i++)
                     for (index_t j = 0; j < actives.rows(); j++)
                         f1ders += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,bGrads.cols());
         }
@@ -217,7 +217,7 @@ protected:
         f2ders.setZero(2,bGrads2.cols());
         if (typeOfnorm == "edge")
         {
-            for (index_t i = numInterfaceFunctions[numInt.at(0)]; i < numInterfaceFunctions[numInt.at(0) + 1]; i++)
+            for (index_t i = numInterfaceFunctions[numInt[0]]; i < numInterfaceFunctions[numInt[0] + 1]; i++)
                 for (index_t j = 0; j < actives2.rows(); j++)
                     f2ders += sol_sparse->at(i, numBasisFunctions[geoEval_R.id()] + actives2.at(j))
                         * bGrads2.block(2 * j, 0, 2, bGrads2.cols());
@@ -225,7 +225,7 @@ protected:
         else if (typeOfnorm == "vertex")
         {
             for (size_t num = 0; num < numInt.size(); num++)
-                for (index_t i = numInterfaceFunctions[numInt.at(num)]; i < numInterfaceFunctions[numInt.at(num)+1]; i++)
+                for (index_t i = numInterfaceFunctions[numInt[num]]; i < numInterfaceFunctions[numInt[num]+1]; i++)
                     for (index_t j = 0; j < actives2.rows(); j++)
                         f2ders += sol_sparse->at(i,numBasisFunctions[geoEval_R.id()] + actives2.at(j)) * bGrads2.block(2*j,0,2,bGrads2.cols());
         }

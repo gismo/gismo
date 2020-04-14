@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 
     //multiPatch.patch(1).degreeElevate(1,0);
     multiPatch_init.degreeElevate(g1OptionList.getInt("degree"));
-    gsInfo << "war hier \n";
+
     gsVector<real_t> l2Error_vec(g1OptionList.getInt("loop") + 1);
     gsVector<real_t> h1SemiError_vec(g1OptionList.getInt("loop") + 1);
     gsVector<real_t> h2SemiError_vec(g1OptionList.getInt("loop") + 1);
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
     h1SemiError_jump_edge.setZero();
     h1SemiError_jump_vertex.setZero();
     h1SemiError_jump_all.setZero();
-    gsInfo << "war hier \n";
+
     gsVector<index_t> num_knots(g1OptionList.getInt("loop"));
     num_knots[0] = g1OptionList.getInt("numRefine");
     for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
@@ -448,7 +448,7 @@ int main(int argc, char *argv[])
         {
             for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
                 printf("%-5d & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\", num_knots[0],
-                   h1SemiError_jump_edge[0], rate(0,i),h1SemiError_jump_vertex[0], rate_vertex(0,i), h1SemiError_jump_all[0], rate_all(0,i));
+                   h1SemiError_jump_edge(0,i), rate(0,i),h1SemiError_jump_vertex(0,i), rate_vertex(0,i), h1SemiError_jump_all(0,i), rate_all(0,i));
             printf("\n");
             for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
             {
@@ -456,11 +456,11 @@ int main(int argc, char *argv[])
                 for (size_t j = 0; j < multiPatch_init.interfaces().size(); j++)
                 {
                     printf("%-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\",
-                           h1SemiError_jump_edge[i],
+                           h1SemiError_jump_edge(i,j),
                            rate(i, j),
-                           h1SemiError_jump_vertex[i],
+                           h1SemiError_jump_vertex(i,j),
                            rate_vertex(i, j),
-                           h1SemiError_jump_all[i],
+                           h1SemiError_jump_all(i,j),
                            rate_all(i, j));
                 }
                 printf("\n");
