@@ -490,7 +490,7 @@ public:
         this->reparametrizeG1Vertex();
         this->computeSigma();
 
-        //g1OptionList.setInt("gluingData",gluingData::global);
+        g1OptionList.setInt("gluingData",gluingData::global);
         //g1OptionList.setInt("p_tilde",2);
 
         std::vector<gsMultiPatch<>> g1BasisVector;

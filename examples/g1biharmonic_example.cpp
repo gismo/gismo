@@ -474,7 +474,7 @@ int main(int argc, char *argv[])
         gsInfo << "H2 Semi-error: " << h2SemiError_vec[0] << "\n";
         gsInfo << "Jump error Edge: " << h1SemiError_jump_edge.row(0) << "\n";
         gsInfo << "Jump error Vertex: " << h1SemiError_jump_vertex.row(0) << "\n";
-        gsInfo << "Jump error Vertex: " << h1SemiError_jump_all.row(0) << "\n";
+        gsInfo << "Jump error all: " << h1SemiError_jump_all.row(0) << "\n";
         gsInfo << "=====================================================================\n";
 
     }
