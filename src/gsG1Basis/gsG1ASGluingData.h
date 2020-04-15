@@ -29,162 +29,316 @@ public:
         refresh();
         assemble();
         solve();
-//        AScondition(mp);
+        AScondition(mp);
+
+        refreshBeta();
+        assembleBeta();
+
     }
 
 
+    gsMatrix<> evalAlpha_R(gsMatrix<> points)
+    {
+        gsMatrix<> ones(1, points.cols());
+        ones.setOnes();
+        return sol.row(0) * ( ones - points ) + sol.row(1) * points;
+    }
 
+    gsMatrix<> evalAlpha_L(gsMatrix<> points)
+    {
+        gsMatrix<> ones(1, points.cols());
+        ones.setOnes();
+        return sol.row(2) * ( ones - points ) + sol.row(3) * points;
+    }
+
+
+    gsMatrix<> evalBeta_R(gsMatrix<> points)
+    {
+        gsMatrix<> ones(1, points.cols());
+        ones.setOnes();
+        return solBeta.row(0) * ( ones - points ) + solBeta.row(1) * points;
+    }
+
+    gsMatrix<> evalBeta_L(gsMatrix<> points)
+    {
+        gsMatrix<> ones(1, points.cols());
+        ones.setOnes();
+        return solBeta.row(2) * ( ones - points ) + solBeta.row(3) * points;
+    }
 
 
 protected:
 
-gsSparseSystem<> mSys;
-gsMatrix<> dirichletDofs;
-
-gsMapData<T> t;
-
-
-gsMatrix<> sol; // In order, it contains: alpha_1L, alpha_0R, alpha_1R, beta_0, beta_1, beta_2 (alpha_0L already setted to zero in the system)
-                // to construct the linear combination of the GD:
-                // alpha_L = ( 1 - t ) * 1 + alpha_1L * t
-                // alpha_R = ( 1 - t ) * alpha_0R + alpha_1R * t
-                //beta = ( 1 - t )^2 * beta_0 + 2 * t * ( 1 - t ) * beta_1 + t^2 * beta_2
+    gsSparseSystem<> mSys;
+    gsSparseSystem<> mSysBeta;
+    gsMatrix<> dirichletDofs;
+    gsMatrix<> dirichletDofsBeta;
 
 
 
-void refresh()
-{
-    gsVector<> size(1);
-    size << 6;
+    gsMatrix<> sol; // In order, it contains: alpha_0L, alpha_1L, alpha_0R, alpha_1R, beta_0, beta_1, beta_2
+                    // to construct the linear combination of the GD:
+                    // alpha_L = ( 1 - t ) * alpha_0L + alpha_1L * t
+                    // alpha_R = ( 1 - t ) * alpha_0R + alpha_1R * t
+                    //beta = ( 1 - t )^2 * beta_0 + 2 * t * ( 1 - t ) * beta_1 + t^2 * beta_2
 
-    gsDofMapper map(size);
-    map.finalize();
+    gsMatrix<> solBeta;
 
-    gsSparseSystem<> sys(map);
-    mSys = sys;
-}
-
-
-void assemble()
-{
-    mSys.reserve(36, 1); // Reserve for the matrix 6x6 values
-
-    dirichletDofs.setZero(mSys.colMapper(0).boundarySize());
-
-    // Assemble volume integrals
-    Visitor visitor;
-    apply(visitor);
-
-    mSys.matrix().makeCompressed();
-
-}
-
-
-void apply(Visitor visitor)
-{
-#pragma omp parallel
+    void refresh()
     {
-        Visitor
-#ifdef _OPENMP
-        // Create thread-private visitor
-        visitor_(visitor);
-        const int tid = omp_get_thread_num();
-        const int nt  = omp_get_num_threads();
-#else
-            &visitor_ = visitor;
-#endif
+        gsVector<> size(1);
+        size << 7;
 
-        gsQuadRule<T> quRule ; // Quadrature rule
-        gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
-        gsVector<T> quWeights; // Temp variable for mapped weights
+        gsDofMapper map(size);
+        map.finalize();
 
-        const gsBasis<T> & basis = this->m_mb[0].basis(0).component(1); // = 0
+        gsSparseSystem<> sys(map);
+        mSys = sys;
+    }
 
-        // Initialize reference quadrature rule and visitor data
-        visitor_.initialize(basis,quRule);
+    void refreshBeta()
+    {
+        gsVector<> size(1);
+        size << 4;
 
-        //const gsGeometry<T> & patch = m_geo.patch(patchIndex); // 0 = patchindex
+        gsDofMapper mapBeta(size);
+        mapBeta.finalize();
 
-        // Initialize domain element iterator -- using unknown 0
-        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator(boundary::none);
+        gsSparseSystem<> sysBeta(mapBeta);
+        mSysBeta = sysBeta;
 
-#ifdef _OPENMP
-        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
-#else
-        for (; domIt->good(); domIt->next() )
-#endif
+
+    }
+
+
+    void assemble()
+    {
+        mSys.reserve(49, 1); // Reserve for the matrix 7x7 values
+
+        dirichletDofs.setZero(mSys.colMapper(0).boundarySize());
+
+        // Assemble volume integrals
+        Visitor visitor;
+        apply(visitor);
+
+        mSys.matrix().makeCompressed();
+
+    }
+
+    void assembleBeta()
+    {
+        mSysBeta.reserve(16, 1); // Reserve for the matrix 7x7 values
+
+        dirichletDofsBeta.setZero(mSysBeta.colMapper(0).boundarySize());
+
+
+        // Assemble volume integrals
+        Visitor visitorBeta;
+        applyBeta(visitorBeta);
+
+        mSysBeta.matrix().makeCompressed();
+
+
+
+    }
+
+    void apply(Visitor visitor)
+    {
+    #pragma omp parallel
         {
-            // Map the Quadrature rule to the element
-            quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
+            Visitor
+    #ifdef _OPENMP
+            // Create thread-private visitor
+            visitor_(visitor);
+            const int tid = omp_get_thread_num();
+            const int nt  = omp_get_num_threads();
+    #else
+                &visitor_ = visitor;
+    #endif
 
-            // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(quNodes, this->m_mp);
+            gsQuadRule<T> quRule ; // Quadrature rule
+            gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
+            gsVector<T> quWeights; // Temp variable for mapped weights
 
-            // Assemble on element
-            visitor_.assemble(*domIt, quWeights);
+            const gsBasis<T> & basis = this->m_mb[0].basis(0).component(1); // = 0
 
-            // Push to global matrix and right-hand side vector
+            // Initialize reference quadrature rule and visitor data
+            visitor_.initialize(basis,quRule);
+
+            // Initialize domain element iterator -- using unknown 0
+            typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator(boundary::none);
+
+    #ifdef _OPENMP
+            for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+    #else
+            for (; domIt->good(); domIt->next() )
+    #endif
+            {
+                // Map the Quadrature rule to the element
+                quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
+
+                // Perform required evaluations on the quadrature nodes
+                visitor_.evaluate(quNodes, this->m_mp);
+
+                // Assemble on element
+                visitor_.assemble(*domIt, quWeights);
+
+                // Push to global matrix and right-hand side vector
+    #pragma omp critical(localToGlobal)
+                visitor_.localToGlobal( dirichletDofs, mSys); // omp_locks inside
+
+            }
+
+        }//omp parallel
+
+    }
+
+    void applyBeta(Visitor visitorBeta)
+    {
+#pragma omp parallel
+        {
+            Visitor
+#ifdef _OPENMP
+            // Create thread-private visitor
+            visitor_Beta(visitorBeta);
+            const int tid = omp_get_thread_num();
+            const int nt  = omp_get_num_threads();
+#else
+                &visitor_Beta = visitorBeta;
+#endif
+
+            gsQuadRule<T> quRule ; // Quadrature rule
+            gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
+            gsVector<T> quWeights; // Temp variable for mapped weights
+
+            const gsBasis<T> & basis = this->m_mb[0].basis(0).component(1); // = 0
+
+            // Initialize reference quadrature rule and visitor data
+            visitor_Beta.initialize(basis,quRule);
+
+            // Initialize domain element iterator -- using unknown 0
+            typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator(boundary::none);
+
+
+
+#ifdef _OPENMP
+            for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#else
+
+            for (; domIt->good(); domIt->next() )
+#endif
+            {
+
+                // Map the Quadrature rule to the element
+                quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
+
+                // Perform required evaluations on the quadrature nodes
+                visitor_Beta.evaluateBeta(quNodes, this->m_mp, sol);
+
+                // Assemble on element
+                visitor_Beta.assembleBeta(*domIt, quWeights);
+
+                // Push to global matrix and right-hand side vector
 #pragma omp critical(localToGlobal)
-            visitor_.localToGlobal( dirichletDofs, mSys); // omp_locks inside
+                visitor_Beta.localToGlobalBeta( dirichletDofsBeta, mSysBeta); // omp_locks inside
+
+            }
+
+        }//omp parallel
+
+    }
+
+    void solve()
+    {
+        gsSparseSolver<>::CGDiagonal solver;
+
+        gsInfo << "Matrix: " << mSys.matrix() << "\n";
+
+        solver.compute(mSys.matrix());
+        sol = solver.solve(mSys.rhs()); // My solution
+
+
+        gsInfo << "Solution: " << sol << "\n";
+        gsInfo << "Rhs: " << mSys.rhs() << "\n";
+
+    }
+
+
+    void solveBeta()
+    {
+        gsSparseSolver<>::CGDiagonal solver;
+
+        gsInfo << "Matrix Beta: " << mSysBeta.matrix() << "\n";
+
+        solver.compute(mSysBeta.matrix());
+        solBeta = solver.solve(mSysBeta.rhs()); // My solution
+
+
+        gsInfo << "Solution Beta: " << solBeta << "\n";
+        gsInfo << "Rhs Beta: " << mSysBeta.rhs() << "\n";
+
+    }
+
+
+
+    void AScondition(gsMultiPatch<T> const & mp)
+    {
+        index_t p_size = 10;
+        gsMatrix<> points(1, p_size);
+
+        gsVector<> vec;
+        vec.setLinSpaced(p_size,0,1);
+        points = vec.transpose();
+
+        gsGeometry<> & FR = mp.patch(0);
+        gsGeometry<> & FL = mp.patch(1);
+
+        gsMatrix<> DuFR, DvFR, DvFL;
+
+        gsMatrix<> ones(1, points.cols());
+        ones.setOnes();
+
+        gsMatrix<> pointV(FR.parDim(), points.cols());
+        pointV.setZero();
+        pointV.row(1) = points;
+
+        gsMatrix<> pointU(FL.parDim(), points.cols());
+        pointU.setZero();
+        pointU.row(0) = points;
+
+        gsMatrix<> cond(FR.targetDim(), p_size);
+
+        gsMatrix<> alpha_R = sol.row(0) * ( ones - points ) + sol.row(1) * points;
+        gsMatrix<> alpha_L = sol.row(2) * ( ones - points ) + sol.row(3) * points;
+        gsMatrix<> beta = sol.row(4) * ( points.cwiseProduct(points) - 2 * points + ones ) + 2 * sol.row(5) * points.cwiseProduct( ones - points ) + sol.row(6) * points.cwiseProduct(points);
+
+
+        refreshBeta();
+        assembleBeta();
+        solveBeta();
+
+        gsMatrix<> beta_R = solBeta.row(0) * ( ones - points ) + solBeta.row(1) * points;
+        gsMatrix<> beta_L = solBeta.row(2) * ( ones - points ) + solBeta.row(3) * points;
+
+
+
+        for(index_t i = 0; i < points.cols(); i++)
+        {
+            DuFR = FR.jacobian(pointV.col(i)).col(0);
+            DvFR = FR.jacobian(pointV.col(i)).col(1); // Same as DuFL
+
+            DvFL = FL.jacobian(pointU.col(i)).col(1);
+
+            cond.col(i) = alpha_R.col(i).cwiseProduct(DvFL) + alpha_L.col(i).cwiseProduct(DuFR) + beta.col(i).cwiseProduct(DvFR) ;
+
+            gsInfo << "Condition col " << i << ": " << cond.col(i) << "\n";
 
         }
 
-    }//omp parallel
-
-}
-
-void solve()
-{
-    gsSparseSolver<>::CGDiagonal solver;
+    }
 
 
-    solver.compute(mSys.matrix());
-    sol = solver.solve(mSys.rhs()); // My solution
-
-    gsInfo << "Solution: " << sol << "\n";
-}
-
-
-void AScondition(gsMultiPatch<T> const & mp)
-{
-    index_t p_size = 10000;
-    gsMatrix<> points(1, p_size);
-    points.setRandom();
-
-    gsVector<> vec;
-    vec.setLinSpaced(p_size,0,1);
-    points = vec.transpose();
-
-    gsGeometry<> & FR = mp.patch(0);
-    gsGeometry<> & FL = mp.patch(1);
-
-    gsMatrix<> pointV(FR.parDim(), points.cols());
-    pointV.setZero();
-    pointV.row(1) = points;
-
-    gsMatrix<> pointU(FL.parDim(), points.cols());
-    pointU.setZero();
-    pointU.row(0) = points;
-
-    gsMatrix<> DuFR = FR.jacobian(pointV).col(0);
-    gsMatrix<> DvFR = FR.jacobian(pointV).col(1); // Same as DuFL
-
-    gsMatrix<> DvFL = FL.jacobian(pointU).col(1);
-
-    gsMatrix<> ones(1, points.cols());
-    ones.setOnes();
-
-    gsMatrix<> alpha_L = ( ones - points ) + sol.row(0) * points;
-    gsMatrix<> alpha_R = sol.row(1) * ( ones - points ) + sol.row(2) * points;
-    gsMatrix<> beta = sol.row(3) * ( points.cwiseProduct(points) - 2 * points + ones ) + 2 * sol.row(4) * points.cwiseProduct( ones - points ) + sol.row(5) * points.cwiseProduct(points);
-
-    gsMatrix<> cond = alpha_R * DvFL + alpha_L * DuFR + beta * DvFR;
-
-    gsInfo << "Condition 1: " << cond << "\n";
-}
-
-
-}; // class gsGluingData
+    }; // class gsGluingData
 
 } // namespace gismo
 

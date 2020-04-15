@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
             break;
         case 14:
             string_geo = "KirchhoffLoveGeo/square_diffParam.xml";
-            numDegree = 0; // 2 == degree 3
+            numDegree = 2; // 2 == degree 3
             break;
 
         default:
@@ -304,11 +304,7 @@ int main(int argc, char *argv[])
         g1System.constructSparseG1Solution(solVector,Sol_sparse);
 
 #ifdef _OPENMP
-<<<<<<< HEAD
         omp_set_num_threads(g1OptionList.getInt("threads"));
-=======
-        omp_set_num_threads( g1OptionList.getInt("threads"));
->>>>>>> farahat_G1_multipatch
         omp_set_nested(1);
 #endif
 
