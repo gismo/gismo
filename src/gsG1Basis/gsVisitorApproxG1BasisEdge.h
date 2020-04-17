@@ -87,6 +87,11 @@ public:
                 gluingData.get_alpha_tilde().eval_into(md.points.bottomRows(1),alpha); // v
                 gluingData.get_beta_tilde().eval_into(md.points.bottomRows(1),beta);
             }
+            else if (g1OptionList.getInt("gluingData") == gluingData::exact)
+            {
+                gluingData.eval_alpha_into(md.points.bottomRows(1),alpha); // v
+                gluingData.eval_beta_into(md.points.bottomRows(1),beta);
+            }
             basis_geo.evalSingle_into(0,md.points.topRows(1),N_0); // u
             basis_geo.evalSingle_into(1,md.points.topRows(1),N_1); // u
 
@@ -142,6 +147,11 @@ public:
             {
                 gluingData.get_alpha_tilde().eval_into(md.points.topRows(1),alpha); // u
                 gluingData.get_beta_tilde().eval_into(md.points.topRows(1),beta);
+            }
+            else if (g1OptionList.getInt("gluingData") == gluingData::exact)
+            {
+                gluingData.eval_alpha_into(md.points.topRows(1),alpha); // v
+                gluingData.eval_beta_into(md.points.topRows(1),beta);
             }
             basis_geo.evalSingle_into(0,md.points.bottomRows(1),N_0); // v
             basis_geo.evalSingle_into(1,md.points.bottomRows(1),N_1); // v
