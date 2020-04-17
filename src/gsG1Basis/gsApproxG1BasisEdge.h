@@ -99,7 +99,6 @@ public:
     void refresh(index_t bfID, std::string typeBf);
     void assemble(index_t i, std::string typeBf); // i == number of bf
     inline void apply(bhVisitor & visitor, index_t i, std::string typeBf); // i == number of bf
-    void solve();
 
     void constructSolution(const gsMatrix<> & solVector, gsMultiPatch<T> & result);
 
@@ -196,7 +195,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
         gsTensorBSplineBasis<2, T> temp_basis(kv2, kv);
         if (m_uv == 1)
             bsp_geo_local.swap(temp_basis);
-        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
+        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local && m_isBoundary)
             m_geo = bsp_geo_local; // Basis for Integration
         else
             m_geo = m_basis_g1;
@@ -259,7 +258,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
         gsTensorBSplineBasis<2, T> temp_basis(kv2, kv);
         if (m_uv == 1)
             bsp_geo_local.swap(temp_basis);
-        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
+        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local && m_isBoundary)
             m_geo = bsp_geo_local; // Basis for Integration
         else
             m_geo = m_basis_g1;
@@ -317,7 +316,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
 
     gsMatrix<unsigned> act;
 
-    if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
+    if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local && m_isBoundary)
     {
         for (index_t i = 2; i < m_basis.basis(0).component(1 - m_uv).size();
              i++) // only the first two u/v-columns are Dofs (0/1)

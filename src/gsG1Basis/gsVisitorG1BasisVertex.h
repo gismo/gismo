@@ -166,6 +166,39 @@ public:
             beta_deriv.push_back(gluingData[0].get_local_beta_tilde(0).deriv(zero.row(0))); // u
             beta_deriv.push_back(gluingData[1].get_local_beta_tilde(0).deriv(zero.row(0))); // v
         }
+        else if (g1OptionList.getInt("gluingData") == gluingData::exact)
+        {
+            gsMatrix < T > temp_mat;
+            gluingData[0].eval_alpha_into(md.points.row(0), temp_mat);
+            alpha.push_back(temp_mat); // u
+            gluingData[1].eval_alpha_into(md.points.row(1), temp_mat);
+            alpha.push_back(temp_mat); // v
+
+            gluingData[0].eval_alpha_into(zero.row(0), temp_mat);
+            alpha_0.push_back(temp_mat); // u
+            gluingData[1].eval_alpha_into(zero.row(0), temp_mat);
+            alpha_0.push_back(temp_mat); // v
+
+            gluingData[0].deriv_alpha_into(zero.row(0), temp_mat);
+            alpha_deriv.push_back(temp_mat); // u
+            gluingData[1].deriv_alpha_into(zero.row(0), temp_mat);
+            alpha_deriv.push_back(temp_mat); // v
+
+            gluingData[0].eval_beta_into(md.points.row(0), temp_mat);
+            beta.push_back(temp_mat); // u
+            gluingData[1].eval_beta_into(md.points.row(1), temp_mat);
+            beta.push_back(temp_mat); // v
+
+            gluingData[0].eval_beta_into(zero.row(0), temp_mat);
+            beta_0.push_back(temp_mat); // u
+            gluingData[1].eval_beta_into(zero.row(0), temp_mat);
+            beta_0.push_back(temp_mat); // v
+
+            gluingData[0].deriv_beta_into(zero.row(0), temp_mat);
+            beta_deriv.push_back(temp_mat); // u
+            gluingData[1].deriv_beta_into(zero.row(0), temp_mat);
+            beta_deriv.push_back(temp_mat); // v
+        }
 
         // Compute dd^^(i_k) and dd^^(i_k-1)
         gsMatrix<> dd_ik_plus, dd_ik_minus;
@@ -261,9 +294,6 @@ public:
 
             rhsVals.at(i) -= d_ik.at(0)(i,0) * c_0.at(0).cwiseProduct(c_0.at(1)) + d_ik.at(2)(i,0) * c_0.at(0).cwiseProduct(c_1.at(1)) +
                 d_ik.at(1)(i,0) * c_1.at(0).cwiseProduct(c_0.at(1)) + d_ik.at(3)(i,0) * c_1.at(0).cwiseProduct(c_1.at(1)); // f*_(ik)
-
-            localMat.at(i).setZero(numActive, numActive);
-            localRhs.at(i).setZero(numActive, rhsVals.at(i).rows());//multiple right-hand sides
 
             localMat.at(i).setZero(numActive, numActive);
             localRhs.at(i).setZero(numActive, rhsVals.at(i).rows());//multiple right-hand sides

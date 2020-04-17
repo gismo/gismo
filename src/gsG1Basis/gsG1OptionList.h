@@ -23,7 +23,7 @@ struct gluingData
 {
     enum strategy
     {
-        approximate  = 0,
+        exact  = 0,
         global = 1, // global L2-projection
         local = 2 // local L2-projection
     };
@@ -118,6 +118,7 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     bool plot = false;
     bool latex = false;
     bool localGd = false;
+    bool exactGd = false;
     bool localEdge = false;
     bool localVertex = false;
 
@@ -134,6 +135,7 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     cmd.addInt( "l", "loop", "The number of refinement steps", loop);
     cmd.addSwitch( "plot", "Plot result in ParaView format", plot );
     cmd.addSwitch( "localGd", "To compute the gluing data with local support", localGd );
+    cmd.addSwitch( "exactGd", "To compute the gluing data exact", exactGd );
     cmd.addSwitch( "localEdge", "To compute the G1 edge basis functions with local support", localEdge );
     cmd.addSwitch( "localVertex", "To compute the G1 vertex basis functions with the average dd_ik", localVertex );
     cmd.addSwitch("latex","Print the rate and error latex-ready",latex);
@@ -158,6 +160,8 @@ void gsG1OptionList::initialize(int argc, char *argv[])
 
     if (localGd)
         gluingData_strategy = gluingData::local;
+    else if (exactGd)
+        gluingData_strategy = gluingData::exact;
     if (localEdge)
         g1BasisEdge_strategy = g1BasisEdge::local;
     if (localVertex)

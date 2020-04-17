@@ -156,7 +156,7 @@ public:
                 kv2.insert(temp_basis_first.knot(i), 1);
 
         gsTensorBSplineBasis<2, T> bsp_geo_local(kv, kv2);
-        if (m_g1OptionList.getInt("g1BasisVertex") == g1BasisVertex::local)
+        if (m_g1OptionList.getInt("g1BasisVertex") == g1BasisVertex::local && kindOfVertex == -1)
             m_geo = bsp_geo_local; // Basis for Integration
         else
             m_geo = m_basis_g1;
@@ -250,7 +250,7 @@ void gsG1BasisVertex<T,bhVisitor>::refresh(index_t kindOfVertex)
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper map(m_basis.basis(0));
 
-    if ((m_g1OptionList.getInt("g1BasisVertex") == g1BasisVertex::local))
+    if ((m_g1OptionList.getInt("g1BasisVertex") == g1BasisVertex::local) && kindOfVertex == -1)
     {
         gsMatrix<unsigned> act;
         for (index_t dir = 0; dir < 2; dir++)

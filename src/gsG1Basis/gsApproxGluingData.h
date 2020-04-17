@@ -52,6 +52,153 @@ public:
 
     void plotGluingData(index_t nummGd = 0);
 
+    void eval_alpha_into(gsMatrix<T> const points, gsMatrix<> & result)
+    {
+        result.clear();
+
+        gsMatrix<> uv, ev;
+        // alpha^S
+        if (this->m_uv==1)
+        {
+            uv.setZero(2,points.cols());
+            uv.bottomRows(1) = points; // v
+        }
+        else if (this->m_uv==0)
+        {
+            uv.setZero(2,points.cols());
+            uv.topRows(1) = points; // u
+        }
+
+        // ======== Determine bar{alpha^(L)} == Patch 0 ========
+        const gsGeometry<> & P0 = this->m_mp.patch(0); // iFace.second().patch = 0
+
+        for (index_t i = 0; i < uv.cols(); i++)
+        {
+            P0.jacobian_into(uv.col(i), ev);
+            uv(0, i) = this->m_gamma * ev.determinant();
+        }
+        if (this->m_isBoundary)
+            uv.setOnes();
+        result = uv.row(0);
+    }
+
+    void eval_beta_into(gsMatrix<T> const points, gsMatrix<> & result)
+    {
+        result.clear();
+
+        gsMatrix<> uv, ev;
+        // beta^S
+        if (this->m_uv==1)
+        {
+            uv.setZero(2,points.cols());
+            uv.bottomRows(1) = points; // v
+        }
+        else if (this->m_uv==0)
+        {
+            uv.setZero(2,points.cols());
+            uv.topRows(1) = points; // u
+        }
+
+        const index_t d = this->m_mp.parDim();
+        gsVector<> D0(d);
+
+        // ======== Determine bar{beta}^L ========
+        const gsGeometry<> & P0 = this->m_mp.patch(0); // iFace.second().patch = 0
+
+        for(index_t i = 0; i < uv.cols(); i++)
+        {
+            P0.jacobian_into(uv.col(i),ev);
+            D0 = ev.col(this->m_uv);
+            real_t D1 = 1/ D0.norm();
+            uv(0,i) = - this->m_gamma * D1 * D1 * ev.col(1).transpose() * ev.col(0);
+
+        }
+        if (this->m_isBoundary)
+            uv.setZero();
+        result = uv.row(0);
+    }
+
+    void deriv_alpha_into(gsMatrix<T> const points, gsMatrix<> & result)
+    {
+        result.clear();
+
+        gsMatrix<> uv, ev, ev2;
+        // alpha^S
+        if (this->m_uv==1)
+        {
+            uv.setZero(2,points.cols());
+            uv.bottomRows(1) = points; // v
+        }
+        else if (this->m_uv==0)
+        {
+            uv.setZero(2,points.cols());
+            uv.topRows(1) = points; // u
+        }
+
+        // ======== Determine bar{alpha^(L)} == Patch 0 ========
+        const gsGeometry<> & P0 = this->m_mp.patch(0); // iFace.second().patch = 0
+
+        for (index_t i = 0; i < uv.cols(); i++)
+        {
+            P0.jacobian_into(uv.col(i), ev);
+            P0.deriv2_into(uv.col(i), ev2);
+            if (this->m_uv == 1)
+                uv(0, i) = this->m_gamma * (ev2(2,0)*ev(1,1) + ev2(4,0)*ev(0,0) -
+                    ev2(1,0)*ev(1,0) - ev2(5,0)*ev(0,1));
+            else if (this->m_uv == 0)
+                uv(0, i) = this->m_gamma * (ev2(0,0)*ev(1,1) + ev2(5,0)*ev(0,0) -
+                    ev2(2,0)*ev(1,0) - ev2(3,0)*ev(0,1));
+        }
+        if (this->m_isBoundary)
+            uv.setZero();
+        result = uv.row(0);
+    }
+
+    void deriv_beta_into(gsMatrix<T> const points, gsMatrix<> & result)
+    {
+        result.clear();
+
+        gsMatrix<> uv, ev, ev2;
+        // beta^S
+        if (this->m_uv==1)
+        {
+            uv.setZero(2,points.cols());
+            uv.bottomRows(1) = points; // v
+        }
+        else if (this->m_uv==0)
+        {
+            uv.setZero(2,points.cols());
+            uv.topRows(1) = points; // u
+        }
+
+        const index_t d = this->m_mp.parDim();
+        gsVector<> D0(d);
+
+        // ======== Determine bar{beta}^L ========
+        const gsGeometry<> & P0 = this->m_mp.patch(0); // iFace.second().patch = 0
+
+        for(index_t i = 0; i < uv.cols(); i++)
+        {
+            P0.jacobian_into(uv.col(i),ev);
+            P0.deriv2_into(uv.col(i), ev2);
+            D0 = ev.col(this->m_uv);
+            real_t D1 = 1/ D0.squaredNorm();
+            real_t D2 = D0.squaredNorm();
+            if (this->m_uv == 1)
+                uv(0,i) = - this->m_gamma * D1 * D1 * (D2*(ev2(2,0)*ev(0,1) + ev2(1,0)*ev(0,0)+
+                    ev2(5,0)*ev(1,1) + ev2(4,0)*ev(1,0)) -
+                    (ev.col(1).transpose() * ev.col(0))(0,0) * 2.0 * (ev2(1,0)*ev(0,1) + ev2(4,0)*ev(1,1)));
+            else if (this->m_uv == 0)
+                uv(0,i) = - this->m_gamma * D1 * D1 * (D2*(ev2(0,0)*ev(0,1) + ev2(2,0)*ev(0,0)+
+                    ev2(3,0)*ev(1,1) + ev2(5,0)*ev(1,0)) -
+                    (ev.col(1).transpose() * ev.col(0))(0,0) * 2.0 * (ev2(0,0)*ev(0,0) + ev2(3,0)*ev(1,0)));
+
+        }
+        if (this->m_isBoundary)
+            uv.setZero();
+        result = uv.row(0);
+    }
+
 protected:
 
     // Spline space for the gluing data (p_tilde,r_tilde,k)
