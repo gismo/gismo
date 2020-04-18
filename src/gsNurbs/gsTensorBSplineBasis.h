@@ -363,7 +363,7 @@ public:
     /// \brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
     template <int _Rows>
-    void elementSupport_into(const unsigned& i, gsMatrix<index_t, _Rows, 2> & result) const
+    void elementSupport_into(const index_t i, gsMatrix<index_t, _Rows, 2> & result) const
     {
         result.resize(d,2);
         gsMatrix<index_t> tmp_vec;
@@ -378,7 +378,7 @@ public:
 
     /// \brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
-    gsMatrix<index_t, d, 2> elementSupport(const unsigned & i) const
+    gsMatrix<index_t, d, 2> elementSupport(const index_t & i) const
     {
         gsMatrix<index_t, d, 2> result(d, 2);
         elementSupport_into(i, result);
@@ -389,7 +389,7 @@ public:
     /// given input element box
     template <int _Rows>
     void elementActive_into(const gsMatrix<unsigned,_Rows,2> & box,
-                             gsMatrix<unsigned> & result) const
+                             gsMatrix<index_t> & result) const
     {
         GISMO_ASSERT( box.rows() == static_cast<index_t>(d), "Invalid input box");
         gsMatrix<index_t,d,2> tmp;
@@ -410,8 +410,7 @@ public:
         for (unsigned dm = 1; dm != d; ++dm)
             cact = cact.replicate(1,sz[dm]) + 
                    gsVector<unsigned>::Constant(cact.rows(), str[dm] )
-                 * gsVector<unsigned>::LinSpaced(sz[dm], tmp(dm,0), tmp(dm,1)).transpose()
-            ;        
+                 * gsVector<unsigned>::LinSpaced(sz[dm], tmp(dm,0), tmp(dm,1)).transpose();
     }
 
     /// Tells, whether there is a coordinate direction in which the basis is periodic.
@@ -439,8 +438,8 @@ public:
         const index_t sz = this->size(dir) - numPeriodic;
         for( index_t i = 0; i < numPeriodic; i++ )
         {
-            gsMatrix<unsigned> currentSourceSlice = this->coefSlice(dir,i);
-            gsMatrix<unsigned> currentTargetSlice = this->coefSlice(dir, sz  + i );
+            gsMatrix<index_t> currentSourceSlice = this->coefSlice(dir,i);
+            gsMatrix<index_t> currentTargetSlice = this->coefSlice(dir, sz  + i );
 
             for( index_t j = 0; j != currentSourceSlice.size(); j++ )
             {

@@ -128,7 +128,7 @@ void gsHTensorBasis<d, T>::addConnectivity(int lvl, gsMesh<T> & mesh) const
         do // Insert all edges normal to axis i
         {
             k = bb.index(v);
-            for (unsigned j = 0; j != end[i]; ++j)
+            for (index_t j = 0; j != end[i]; ++j)
             {
                 if (cmat.bContains(k) && cmat.bContains(k + s))
                 {
@@ -798,9 +798,9 @@ void gsHTensorBasis<d,T>::flatTensorIndexesToHierachicalIndexes(gsSortedVector< 
 }
 
 template<short_t d, class T>
-int gsHTensorBasis<d,T>::flatTensorIndexToHierachicalIndex(unsigned index,const int level) const
+int gsHTensorBasis<d,T>::flatTensorIndexToHierachicalIndex(index_t index,const int level) const
 {
-    if( m_xmatrix.size()<=static_cast<unsigned>(level) )
+    if( m_xmatrix.size()<=static_cast<size_t>(level) )
         return -1;
     CMatrix::const_iterator it = std::lower_bound(m_xmatrix[level].begin(), m_xmatrix[level].end(), index );
     if(it == m_xmatrix[level].end() || *it != index)
@@ -1049,7 +1049,7 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
     GISMO_UNUSED(numKnots);
     GISMO_ASSERT(numKnots == 1, "Only implemented for numKnots = 1");
 
-    GISMO_ASSERT( m_tree.getMaxInsLevel() < static_cast<index_t>(m_bases.size()),
+    GISMO_ASSERT( m_tree.getMaxInsLevel() < static_cast<unsigned>(m_bases.size()),
                   "Problem with max inserted levels: "<< m_tree.getMaxInsLevel()
                   <<"<" << m_bases.size() <<"\n");
 

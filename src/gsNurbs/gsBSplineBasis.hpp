@@ -211,22 +211,22 @@ gsMatrix<T> gsTensorBSplineBasis<1,T>::support(const index_t & i) const
     // support has two connected components, so probably one should
     // call this function with twice for the two twins
 
-    GISMO_ASSERT( i < static_cast<unsigned>(m_knots.size()-m_p-1),
+    GISMO_ASSERT( static_cast<size_t>(i) < m_knots.size()-m_p-1,
                   "Invalid index of basis function." );
     gsMatrix<T> res(1,2);
-    res << ( i > static_cast<unsigned>(m_p) ? m_knots[i] : m_knots[m_p] ),
-        ( i < static_cast<unsigned>(m_knots.size()-2*m_p-2) ? m_knots[i+m_p+1] :
+    res << ( i > m_p ? m_knots[i] : m_knots[m_p] ),
+        ( static_cast<size_t>(i) < (m_knots.size()-2*m_p-2) ? m_knots[i+m_p+1] :
           m_knots[m_knots.size()-m_p-1] );
     return res ;
 }
 
 template <class T>
-unsigned gsTensorBSplineBasis<1,T>::twin(unsigned i) const
+index_t gsTensorBSplineBasis<1,T>::twin(index_t i) const
 {
     if( m_periodic == 0 )
         return i;
-    const unsigned s = size();
-    if ( i < static_cast<unsigned>(m_periodic) )
+    const index_t s = size();
+    if ( i < static_cast<index_t>(m_periodic) )
         i += s;
     else if ( i > s )
         i -= s;
@@ -355,7 +355,7 @@ void gsTensorBSplineBasis<1,T>::evalSingle_into(index_t i,
                                                 const gsMatrix<T> & u,
                                                 gsMatrix<T>& result) const
 {
-    GISMO_ASSERT( i < unsigned(m_knots.size()-m_p-1),"Invalid index of basis function." );
+    GISMO_ASSERT( static_cast<size_t>(i) < m_knots.size()-m_p-1,"Invalid index of basis function." );
 
     result.resize(1, u.cols() );
     STACK_ARRAY(T, N, m_p + 1);
@@ -378,7 +378,7 @@ void gsTensorBSplineBasis<1,T>::evalSingle_into(index_t i,
         }
 
         // Special case of C^{-1} on right end of support
-        if ( (i== unsigned(m_knots.size()-m_p-2)) &&
+        if ( (static_cast<size_t>(i) == m_knots.size()-m_p-2) &&
              (u(0,s) == m_knots.last()) &&  (u(0,s)== m_knots[m_knots.size()-m_p-1]) )
         {
             result(0,s)= T(1.0);
@@ -655,7 +655,7 @@ void gsTensorBSplineBasis<1,T>::derivSingle_into(index_t i,
 
     for (index_t j = 0; j < u.cols(); ++j)
     {
-        const unsigned first = firstActive(u(0,j));
+        const index_t first = firstActive(u(0,j));
         if ( (i>= first) && (i<= first + m_p) )
             result(0,j) = tmp(i-first,j);
         else
@@ -826,7 +826,7 @@ void gsTensorBSplineBasis<1,T>::deriv2Single_into(index_t i, const gsMatrix<T> &
 
     for (index_t j = 0; j < u.cols(); ++j)
     {
-        const unsigned first = firstActive(u(0,j));
+        const index_t first = firstActive(u(0,j));
         if ( (i>= first) && (i<= first + m_p) )
             result(0,j) = tmp(i-first,j);
         else

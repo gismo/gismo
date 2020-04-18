@@ -738,11 +738,11 @@ bool gsMultiBasis<T>::repairInterface2d( const boundaryInterface & bi )
     // numbering on level "indexLevelUse"
 
     // get upper corners, but w.r.t. level "indexLevelUse"
-    gsVector<unsigned,2> upperCorn0 = bas0->tree().upperCorner();
+    gsVector<index_t,2> upperCorn0 = bas0->tree().upperCorner();
     upperCorn0[0] = upperCorn0[0] << indexLevelDiff0;
     upperCorn0[1] = upperCorn0[1] << indexLevelDiff0;
 
-    gsVector<unsigned,2> upperCorn1 = bas1->tree().upperCorner();
+    gsVector<index_t,2> upperCorn1 = bas1->tree().upperCorner();
     upperCorn1[0] = upperCorn1[0] << indexLevelDiff1;
     upperCorn1[1] = upperCorn1[1] << indexLevelDiff1;
 
@@ -751,7 +751,7 @@ bool gsMultiBasis<T>::repairInterface2d( const boundaryInterface & bi )
         // flip the knot indices
         for( index_t i=0; i < lo.rows(); i++)
         {
-            unsigned tmp = upperCorn1[dir1] - intfc1(i, 1);
+            const index_t tmp = upperCorn1[dir1] - intfc1(i, 1);
             intfc1(i,1)  = upperCorn1[dir1] - intfc1(i, 0);
             intfc1(i,0)  = tmp;
         }

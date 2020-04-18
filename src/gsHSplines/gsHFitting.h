@@ -238,7 +238,7 @@ void gsHFitting<d, T>::setConstraints(const std::vector<boxSide>& fixedSides,
     for(size_t s=0; s<fixedSides.size(); s++)
     {
 	gsMatrix<T> coefsThisSide = fixedCurves[s].coefs();
-	gsMatrix<unsigned> indicesThisSide = m_basis->boundaryOffset(fixedSides[s],0);
+	gsMatrix<index_t> indicesThisSide = m_basis->boundaryOffset(fixedSides[s],0);
 	GISMO_ASSERT(coefsThisSide.rows() == indicesThisSide.rows(),
 		     "Coef number mismatch between prescribed curve and basis side.");
 

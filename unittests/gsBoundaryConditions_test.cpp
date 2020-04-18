@@ -293,7 +293,7 @@ SUITE(gsBoundaryConditions_test)
     {
         int index1 = 3;
         gismo::boxCorner c1 = gismo::boxCorner(index1);
-        size_t p1 = 2;
+        index_t p1 = 2;
         real_t v1 = 3.0;
         int u1 = 4;
         gismo::corner_value<real_t> cornerVal1 = gismo::corner_value<real_t>(p1, c1,

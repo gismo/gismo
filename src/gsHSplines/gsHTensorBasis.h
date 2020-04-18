@@ -472,7 +472,7 @@ public:
 
     gsMatrix<T> support(const index_t & i) const;
 
-    void elementSupport_into(const unsigned& i, gsMatrix<index_t, d, 2>& result) const
+    void elementSupport_into(const index_t i, gsMatrix<index_t, d, 2>& result) const
     {
         unsigned lvl = levelOf(i);
 
@@ -701,13 +701,13 @@ public:
     /// with respect to the tensor-product basis
     /// of the corresponding level.
     inline
-    unsigned flatTensorIndexOf(const unsigned i) const
+    index_t flatTensorIndexOf(const index_t i) const
     {
 
         const int level = this->levelOf(i);
 
-        const unsigned offset = this->m_xmatrix_offset[level];
-        const unsigned ind_in_level = this->m_xmatrix[level][i - offset];
+        const index_t offset = this->m_xmatrix_offset[level];
+        const index_t ind_in_level = this->m_xmatrix[level][i - offset];
 
         return ind_in_level;
     }
@@ -779,7 +779,7 @@ public:
     /// @param[in] index flat tensor index of the function in level
     /// @param level Level of the basis.
     /// @return hierachical index, or -1 if it was not found
-    int flatTensorIndexToHierachicalIndex(unsigned index,const int level) const;
+    int flatTensorIndexToHierachicalIndex(index_t index,const int level) const;
 
     /// Fills the vector actives with booleans, that determine if a function
     /// of the given level is active. The functions on the boundary are ordered

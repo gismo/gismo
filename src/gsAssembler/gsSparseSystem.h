@@ -155,7 +155,7 @@ public:
         //Calculate the map for blocks to mappers
         index_t k=0;
         for(index_t i=0;i<d;++i)
-            for(unsigned j=0; j<dims[i];++j)
+            for(index_t j=0; j<dims[i];++j)
             {
                 m_row[k]=i;
                 ++k;

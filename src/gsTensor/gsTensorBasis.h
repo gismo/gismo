@@ -545,17 +545,17 @@ public:
 
     /// \brief Returns true iff the basis function with multi-index
     /// \em ind is on the boundary
-    inline bool indexOnBoundary(const gsVector<unsigned, d> & ind) const 
+    inline bool indexOnBoundary(const gsVector<index_t, d> & ind) const 
     {
         for ( short_t i = 0; i < d; ++i )
-            if ( ind[i] == static_cast<unsigned>(size(i)-1) )
+            if ( ind[i] == size(i)-1 )
                 return true;
         return ( (ind.array() == 0).any() );
     }
 
     /// \brief Returns true iff the basis function indexed \a m is on
     /// the boundary
-    inline bool indexOnBoundary(const unsigned m) const 
+    inline bool indexOnBoundary(const index_t m) const 
     {
         return ( indexOnBoundary( tensorIndex(m) ) );
     }

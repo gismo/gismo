@@ -35,7 +35,7 @@ struct gsQuadrature
     static gsQuadRule<T> get(const gsBasis<T> & basis,
                              const gsOptionList & options, short_t fixDir = -1)
     {
-        const rule    qu  = static_cast<rule>(options.askInt("quRule", GaussLegendre));
+        const index_t qu  = options.askInt("quRule", GaussLegendre);
         const T       quA = options.getReal("quA");
         const index_t quB = options.getInt ("quB");
         const gsVector<index_t> nnodes = numNodes(basis,quA,quB,fixDir);
@@ -44,7 +44,7 @@ struct gsQuadrature
 
     /// Constructs a quadrature rule based on input \a options
     template<class T>
-    static inline gsQuadRule<T> get(rule qu, gsVector<index_t> const & numNodes, unsigned digits = 0)
+    static inline gsQuadRule<T> get(index_t qu, gsVector<index_t> const & numNodes, unsigned digits = 0)
     {
         switch (qu)
         {

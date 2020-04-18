@@ -176,7 +176,7 @@ public:
 
     /// @brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
-    void elementSupport_into(const unsigned & i, gsMatrix<index_t,1,2>& result) const
+    void elementSupport_into(const index_t i, gsMatrix<index_t,1,2>& result) const
     {
         gsMatrix<index_t> tmp_vec;
         m_knots.supportIndex_into(i, tmp_vec);
@@ -233,7 +233,7 @@ public:
     /// @brief Only meaningfull for periodic basis: For basis members that have
     /// a twin, this function returns the other twin index, otherwise it
     /// returns the same index as the argument
-    unsigned twin(unsigned i) const ;
+    index_t twin(index_t i) const ;
 
     // Look at gsBasis class for a description
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
@@ -343,7 +343,7 @@ public:
 
     /// @brief Returns the index of the first active (ie. non-zero) basis function at point u
     /// Takes into account non-clamped knots.
-    inline unsigned firstActive(T u) const { 
+    inline index_t firstActive(T u) const { 
         return ( inDomain(u) ? (m_knots.iFind(u)-m_knots.begin()) - m_p : 0 );
     }
 

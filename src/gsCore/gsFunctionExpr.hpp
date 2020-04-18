@@ -609,7 +609,7 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
 
     const PrivateData_t & expr =
 #   ifdef _OPENMP
-        short_tomp_in_parallel() ? PrivateData_t(*my) :
+        omp_in_parallel() ? PrivateData_t(*my) :
 #   endif
         *my;
 
