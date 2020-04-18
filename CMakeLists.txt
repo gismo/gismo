@@ -26,6 +26,10 @@ if(POLICY CMP0063)# CMake 3.3
 cmake_policy(SET CMP0063 NEW)
 endif()
 
+if(POLICY CMP0074)# CMake 3.12
+cmake_policy(SET CMP0074 NEW)
+endif()
+
 if(POLICY CMP0077)# CMake 3.13
 cmake_policy(SET CMP0077 NEW)
 endif()
@@ -278,6 +282,13 @@ if(GISMO_WITH_SMESH)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SMESH_INCLUDE_DIRS}
   CACHE INTERNAL "${PROJECT_NAME} include directories")
   #include_directories(${SMESH_INCLUDE_DIR})
+endif()
+
+if (EIGEN_USE_MKL_ALL)
+  # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
+  find_package(MKL REQUIRED)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MKL_INCLUDE_DIR}
+    CACHE INTERNAL "${PROJECT_NAME} include directories")
 endif()
 
 #second time
