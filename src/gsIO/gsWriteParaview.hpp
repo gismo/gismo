@@ -717,13 +717,14 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
 	// If not using default, compute the resolution from npts.
 	if(npts!=8)
 	{
-	    real_t evalPtsPerElem = npts * (1.0 / Geo.basis().numElements());
+	    const T evalPtsPerElem = npts * (1.0 / Geo.basis().numElements());
 
 	    // The following complicated formula should ensure similar
 	    // resolution of the mesh edges and the surface. The
 	    // additional multiplication by deg - 1 ensures quadratic
 	    // elements to be approximated by at least two lines etc.
-	    ptsPerEdge = std::max(Geo.basis().maxDegree() - 1, 1) * math::pow(evalPtsPerElem, 1.0/Geo.domainDim());
+	    ptsPerEdge = cast<T,int>(
+            math::max(Geo.basis().maxDegree()-1, 1) * math::pow(evalPtsPerElem, T(1.0)/Geo.domainDim()) );
 	}
 	else
 	{

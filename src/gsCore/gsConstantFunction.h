@@ -135,7 +135,8 @@ public:
     virtual short_t domainDim() const   { return m_domainDim ; }
 
     // Documentation in gsFunction class
-    virtual short_t targetDim() const   { return m_coefs.cols(); }
+    virtual short_t targetDim() const
+    { return static_cast<short_t>(m_coefs.cols()); }
 
     const gsVector<T> value() const { return m_coefs.transpose();}
 

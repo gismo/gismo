@@ -13,6 +13,8 @@ namespace internal
     CLASS_TEMPLATE_INST gsXml< gsMatrix<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsMatrix<int> >;
     CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<real_t> >;
+    // CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<index_t> >;
+    // CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<bool> >;
 
     CLASS_TEMPLATE_INST gsXml< gsGeometry<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsCurve<real_t> >;

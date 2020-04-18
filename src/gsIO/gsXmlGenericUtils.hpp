@@ -277,7 +277,7 @@ Object * getGeometryFromXml ( gsXmlNode * node)
 
     tmp = node->first_node("coefs");
     GISMO_ASSERT( tmp, "Did not find any coefficients for "<< gsXml<Object>::type().c_str() );
-    gsXmlAttribute * at_geodim = tmp->first_attribute("geoDim"); 
+    gsXmlAttribute * at_geodim = tmp->first_attribute("geoDim");
     GISMO_ASSERT( at_geodim , "geoDim attribute not found in Geometry XML tag");
     unsigned geoDim = atoi(at_geodim->value() ) ;
 
@@ -285,6 +285,14 @@ Object * getGeometryFromXml ( gsXmlNode * node)
 
     gsMatrix<typename Object::Scalar_t> c; 
     getMatrixFromXml<typename Object::Scalar_t>( tmp, b->size(), geoDim, c );
+
+    gsXmlAttribute * coef_order = tmp->first_attribute("order");
+    if ( nullptr != coef_order )
+        if ( !strcmp( coef_order->value(),"coordinates") )
+        {
+            c.transposeInPlace();
+            c.resize(b->size(),geoDim);
+        }
 
     // Looking for transformations
     tmp = node->first_node("transform");

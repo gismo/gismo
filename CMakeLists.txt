@@ -26,6 +26,10 @@ if(POLICY CMP0063)# CMake 3.3
 cmake_policy(SET CMP0063 NEW)
 endif()
 
+if(POLICY CMP0074)# CMake 3.12
+cmake_policy(SET CMP0074 NEW)
+endif()
+
 if(POLICY CMP0077)# CMake 3.13
 cmake_policy(SET CMP0077 NEW)
 endif()
@@ -280,6 +284,13 @@ if(GISMO_WITH_SMESH)
   #include_directories(${SMESH_INCLUDE_DIR})
 endif()
 
+if (EIGEN_USE_MKL_ALL)
+  # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
+  find_package(MKL REQUIRED)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MKL_INCLUDE_DIR}
+    CACHE INTERNAL "${PROJECT_NAME} include directories")
+endif()
+
 #second time
 include_directories(${GISMO_INCLUDE_DIRS})
 
@@ -314,6 +325,8 @@ endif()
 
 if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
   gismo_fetch_module(unsupported)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GISMO_DEV_INCLUDE_DIRS}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
 endif()
 
 if(GISMO_MOTOR)
@@ -347,9 +360,9 @@ if(GISMO_BUILD_MEX)
   add_subdirectory(plugins/gsMex)
 endif(GISMO_BUILD_MEX)
 
-if(GISMO_BUILD_PVIEW)
-  add_subdirectory(plugins/gsParaview)
-endif(GISMO_BUILD_PVIEW)
+#if(GISMO_BUILD_PVIEW)
+#  add_subdirectory(plugins/gsParaview)
+#endif(GISMO_BUILD_PVIEW)
 
 if(GISMO_BUILD_RHINOPLUGINS)
   add_subdirectory(plugins/RhinoTHBSplines)

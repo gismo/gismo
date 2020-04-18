@@ -729,7 +729,7 @@ public: // things required by gsKnotVector
 
         // update multiplicity sum
         std::transform(m_multSum.begin(), m_multSum.end(), m_multSum.begin(),
-                       std::bind2nd(std::plus<mult_t>(), i) );
+                       GS_BIND2ND(std::plus<mult_t>(), i) );
         m_multSum.back() += i;
 
         m_deg += i;

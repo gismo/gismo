@@ -366,7 +366,7 @@ public:
         T nz = 1;
         for (short_t i = 0; i != b.dim(); ++i)
             nz *= bdA * b.degree(i) + bdB;
-        return cast<T,index_t>(nz*(1.0+bdO));
+        return cast<T,short_t>(nz*(1.0+bdO));
     }
 
     /// @brief set everything to zero

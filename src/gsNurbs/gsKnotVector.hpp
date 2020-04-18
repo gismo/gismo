@@ -329,7 +329,7 @@ void gsKnotVector<T>::remove( uiterator uit, mult_t mult )
     if( toRemove ==  knotMult )
         upos = m_multSum.erase( upos );
 
-    std::transform(upos, m_multSum.end(), upos, std::bind2nd(std::minus<mult_t>(),toRemove));
+    std::transform(upos, m_multSum.end(), upos, GS_BIND2ND(std::minus<mult_t>(),toRemove));
 }
 
 template<typename T>
@@ -353,7 +353,7 @@ void gsKnotVector<T>::erase(const mult_t first, const mult_t last)
     const mult_t numKnots = last - first;
     *fpos = m_multSum.back() - numKnots;
     lpos  = m_multSum.erase(fpos + 1, lpos);
-    std::transform(lpos, m_multSum.end(), lpos, std::bind2nd(std::minus<mult_t>(),numKnots));
+    std::transform(lpos, m_multSum.end(), lpos, GS_BIND2ND(std::minus<mult_t>(),numKnots));
 }
 
 template<typename T>
@@ -366,7 +366,7 @@ void gsKnotVector<T>::trimLeft(const mult_t numKnots)
     nonConstMultIterator upos =
         std::upper_bound(m_multSum.begin(), m_multSum.end(), numKnots);
     upos = m_multSum.erase(m_multSum.begin(), upos);
-    std::transform(upos, m_multSum.end(), upos, std::bind2nd(std::minus<mult_t>(),numKnots));
+    std::transform(upos, m_multSum.end(), upos, GS_BIND2ND(std::minus<mult_t>(),numKnots));
 }
 
 template<typename T>
@@ -995,7 +995,7 @@ void gsKnotVector<T>::supportIndex_into(const mult_t& i,
     T suppEnd=*(this->begin()+i+m_deg+1);
     uiterator ubeg   = this->ubegin();
     uiterator indBeg = uFind(suppBeg);
-    uiterator indEnd = std::find_if(indBeg, this->uend(), std::bind2nd(std::greater_equal<T>(), suppEnd));
+    uiterator indEnd = std::find_if(indBeg, this->uend(), GS_BIND2ND(std::greater_equal<T>(), suppEnd));
     result.resize(1,2);
     result<<indBeg-ubeg,indEnd-ubeg;
 }

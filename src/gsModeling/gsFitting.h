@@ -79,7 +79,7 @@ public:
     { 
         const size_t result=
             std::count_if(m_pointErrors.begin(), m_pointErrors.end(), 
-                          std::bind2nd(std::less<T>(), threshold));
+                          GS_BIND2ND(std::less<T>(), threshold));
         return result; 
     }
 
