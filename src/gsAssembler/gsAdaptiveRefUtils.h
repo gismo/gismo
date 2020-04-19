@@ -191,7 +191,7 @@ void gsMarkFraction( const std::vector<T> & elError, T refParameter, std::vector
  * \ingroup Assembler
  */
 template <class T>
-void gsMarkElementsForRef( const std::vector<T> & elError, MarkingStrategy refCriterion, T refParameter, std::vector<bool> & elMarked)
+void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T refParameter, std::vector<bool> & elMarked)
 {
     switch (refCriterion)
     {

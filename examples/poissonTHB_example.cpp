@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
         // Mark elements for refinement, based on the computed local errors and
         // refCriterion and refParameter.
         std::vector<bool> elMarked( elErrEst.size() );
-        gsMarkElementsForRef( elErrEst, static_cast<MarkingStrategy>(refCriterion), refParameter, elMarked);
+        gsMarkElementsForRef( elErrEst, refCriterion, refParameter, elMarked);
 
         gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true);
 
