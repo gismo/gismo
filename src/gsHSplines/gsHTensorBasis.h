@@ -604,7 +604,7 @@ public:
     }
 
     /// Returns the level of the function indexed \a i (in continued indices)
-    inline int levelOf(unsigned i) const
+    inline index_t levelOf(index_t i) const
     {
         return std::upper_bound(m_xmatrix_offset.begin(),
                                 m_xmatrix_offset.end(), i)

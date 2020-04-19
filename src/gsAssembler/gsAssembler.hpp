@@ -318,7 +318,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
                                                const gsMultiBasis<T> & mbasis,
                                                const short_t unk_)
 {
-    m_ddof[unk_].resize(mapper.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols());
+    m_ddof[unk_].resize(mapper.boundarySize(), m_system.unkSize(unk_)); //*m_system.rhs().cols()
 
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     for ( typename gsBoundaryConditions<T>::const_iterator
@@ -367,7 +367,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
             }
         }
 
-        GISMO_ASSERT(it->function()->targetDim() == m_system.unkSize(unk_)*m_system.rhs().cols(),
+        GISMO_ASSERT(it->function()->targetDim() == m_system.unkSize(unk_),
                      "Given Dirichlet boundary function does not match problem dimension."
                      <<it->function()->targetDim()<<" != "<<m_system.unkSize(unk_) << " * " << m_system.rhs().cols()<<"\n");
 
@@ -405,7 +405,7 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
     // the L2-projection
     gsSparseEntries<T> projMatEntries;
     gsMatrix<T>        globProjRhs;
-    globProjRhs.setZero( mapper.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols() );
+    globProjRhs.setZero( mapper.boundarySize(), m_system.unkSize(unk_) ); //*m_system.rhs().cols()
 
     // Temporaries
     gsVector<T> quWeights;
@@ -424,9 +424,9 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
         if (iter->isHomogeneous() )
             continue;
 
-        GISMO_ASSERT(iter->function()->targetDim() == m_system.unkSize(unk_)*m_system.rhs().cols(),
+        GISMO_ASSERT(iter->function()->targetDim() == m_system.unkSize(unk_),
                      "Given Dirichlet boundary function does not match problem dimension."
-                     <<iter->function()->targetDim()<<" != "<<m_system.unkSize(unk_)<<"\n");
+                     <<iter->function()->targetDim()<<" != "<<m_system.unkSize(unk_)<<"x"<<m_system.rhs().cols()<<"\n");
 
         const short_t unk = iter->unknown();
         if(unk!=unk_)
