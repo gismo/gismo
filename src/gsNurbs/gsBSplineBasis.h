@@ -343,7 +343,7 @@ public:
 
     /// @brief Returns the index of the first active (ie. non-zero) basis function at point u
     /// Takes into account non-clamped knots.
-    inline index_t firstActive(T u) const { 
+    inline index_t firstActive(T u) const {
         return ( inDomain(u) ? (m_knots.iFind(u)-m_knots.begin()) - m_p : 0 );
     }
 

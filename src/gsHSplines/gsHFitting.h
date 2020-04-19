@@ -207,7 +207,7 @@ void gsHFitting<d, T>::setConstraints(const std::vector<boxSide>& fixedSides)
 
     for(std::vector<boxSide>::const_iterator it=fixedSides.begin(); it!=fixedSides.end(); ++it)
     {
-	gsMatrix<unsigned> ind = this->m_basis->boundary(*it);
+	gsMatrix<index_t> ind = this->m_basis->boundary(*it);
 	for(index_t r=0; r<ind.rows(); r++)
 	{
 	    index_t fix = ind(r,0);
