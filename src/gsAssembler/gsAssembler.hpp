@@ -264,7 +264,7 @@ void gsAssembler<T>::computeDirichletDofs(short_t unk)
     case dirichlet::homogeneous:
         // If we have a homogeneous Dirichlet problem fill boundary
         // DoFs with zeros
-        m_ddof[unk].setZero(mapper.boundarySize(), m_system.unkSize(unk)*m_system.rhs().cols() );
+        m_ddof[unk].setZero(mapper.boundarySize(), m_system.unkSize(unk) * m_pde_ptr->numRhs() );
         break;
     case dirichlet::interpolation:
         computeDirichletDofsIntpl(mapper, mbasis,unk);
@@ -274,8 +274,8 @@ void gsAssembler<T>::computeDirichletDofs(short_t unk)
         break;
     case dirichlet::user :
          // Assuming that the DoFs are already set by the user
-        GISMO_ENSURE( m_ddof[unk].size() == mapper.boundarySize()*m_system.unkSize(unk)*m_system.rhs().cols(), "The Dirichlet DoFs are not set.");
-        m_ddof[unk].resize(mapper.boundarySize(), m_system.unkSize(unk)*m_system.rhs().cols());
+        GISMO_ENSURE( m_ddof[unk].size() == mapper.boundarySize()*m_system.unkSize(unk)* m_pde_ptr->numRhs(), "The Dirichlet DoFs are not set.");
+        m_ddof[unk].resize(mapper.boundarySize(), m_system.unkSize(unk)* m_pde_ptr->numRhs());
             break;
     default:
         GISMO_ERROR("Something went wrong with Dirichlet values.");
@@ -318,8 +318,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
                                                const gsMultiBasis<T> & mbasis,
                                                const short_t unk_)
 {
-    m_ddof[unk_].resize(mapper.boundarySize(), m_system.unkSize(unk_)); //*m_system.rhs().cols()
-
+    m_ddof[unk_].resize(mapper.boundarySize(), m_system.unkSize(unk_) * m_pde_ptr->numRhs() );
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     for ( typename gsBoundaryConditions<T>::const_iterator
           it = m_pde_ptr->bc().dirichletBegin();
@@ -367,7 +366,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
             }
         }
 
-        GISMO_ASSERT(it->function()->targetDim() == m_system.unkSize(unk_),
+        GISMO_ASSERT(it->function()->targetDim() == m_system.unkSize(unk_) * m_pde_ptr->numRhs(),
                      "Given Dirichlet boundary function does not match problem dimension."
                      <<it->function()->targetDim()<<" != "<<m_system.unkSize(unk_) << " * " << m_system.rhs().cols()<<"\n");
 
@@ -397,15 +396,13 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
                                                 const gsMultiBasis<T> & ,
                                                 const short_t unk_)
 {
-    m_ddof[unk_].resize( mapper.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
-
-
+    m_ddof[unk_].resize( mapper.boundarySize(), m_system.unkSize(unk_)* m_pde_ptr->numRhs());
 
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
     gsSparseEntries<T> projMatEntries;
     gsMatrix<T>        globProjRhs;
-    globProjRhs.setZero( mapper.boundarySize(), m_system.unkSize(unk_) ); //*m_system.rhs().cols()
+    globProjRhs.setZero( mapper.boundarySize(), m_system.unkSize(unk_)* m_pde_ptr->numRhs() );
 
     // Temporaries
     gsVector<T> quWeights;
@@ -424,7 +421,7 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
         if (iter->isHomogeneous() )
             continue;
 
-        GISMO_ASSERT(iter->function()->targetDim() == m_system.unkSize(unk_),
+        GISMO_ASSERT(iter->function()->targetDim() == m_system.unkSize(unk_)* m_pde_ptr->numRhs(),
                      "Given Dirichlet boundary function does not match problem dimension."
                      <<iter->function()->targetDim()<<" != "<<m_system.unkSize(unk_)<<"x"<<m_system.rhs().cols()<<"\n");
 
