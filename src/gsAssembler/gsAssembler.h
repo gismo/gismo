@@ -83,13 +83,12 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
 
     const T sgn = sideOrientation(s) * m_orientation; // TODO: fix me
     const short_t dir = s.direction();
-    gsMatrix<T,3,1> Jk;
 
     // assumes points u on boundary "s"
     result.resize(md.dim.second);
     if (md.dim.first + 1 == md.dim.second) // surface case GeoDim == 3
     {
-        Jk = md.jacobian(k).col(!dir);
+        const gsMatrix<T,3,1> Jk = md.jacobian(k).col(!dir);
         // fixme: generalize to nD
         normal(md, k, result);
         result = result.template head<3>().normalized().cross(sgn * Jk);
@@ -119,8 +118,7 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
             return;
         } // 1D case
 
-        const gsMatrix<T> Jk =
-            md.jacobian(k);
+        const gsMatrix<T> Jk = md.jacobian(k);
 
         T alt_sgn = sgn;
         typename gsMatrix<T>::FirstMinorMatrixType minor;
