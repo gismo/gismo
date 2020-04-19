@@ -53,10 +53,10 @@ void gsTHBSplineBasis<d,T>::representBasis()
     this->m_is_truncated.resize(this->size());
     m_presentation.clear();
 
-    for (unsigned j = 0; j < static_cast<index_t>(this->size()); ++j)
+    for (index_t j = 0; j < this->size(); ++j)
     {
-        unsigned level = static_cast<index_t>(this->levelOf(j));
-        unsigned tensor_index = this->flatTensorIndexOf(j, level);
+        unsigned level = this->levelOf(j);
+        index_t tensor_index = this->flatTensorIndexOf(j, level);
 
         // element indices
         gsMatrix<index_t, d, 2> element_ind(d, 2);
@@ -590,14 +590,14 @@ void gsTHBSplineBasis<d,T>::getConnectedComponents(
     }
 
     // identify holes
-    for(unsigned int l = 0; l < aabb.size();l++) //level
+    for(size_t l = 0; l < aabb.size();l++) //level
     {
-        for(unsigned int i = 0; i < aabb[l].size(); i++) //bb
+        for(size_t i = 0; i < aabb[l].size(); i++) //bb
         {
             int closest_box = -1;
-            for(unsigned int j = 0; j < boxes.size(); j++)
+            for(size_t j = 0; j < boxes.size(); j++)
             {
-                if(l == boxes[j][4])
+                if(l == static_cast<size_t>(boxes[j][4]) )
                 {
                     if(     (aabb[l][i][0] > boxes[j][0]) &&
                             (aabb[l][i][1] > boxes[j][1]) &&
@@ -762,14 +762,14 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
 
     }
     // identify holes
-    for(unsigned int l = 0; l < aabb.size();l++) //level
+    for(size_t l = 0; l < aabb.size();l++) //level
     {
-        for(unsigned int i = 0; i < aabb[l].size(); i++) //bb
+        for(size_t i = 0; i < aabb[l].size(); i++) //bb
         {
             int closest_box = -1;
-            for(unsigned int j = 0; j < boxes.size(); j++)
+            for(size_t j = 0; j < boxes.size(); j++)
             {
-                if(l == boxes[j][4])
+                if(l == static_cast<size_t>(boxes[j][4]) )
                 {
                     if(     (aabb[l][i][0] > boxes[j][0]) &&
                             (aabb[l][i][1] > boxes[j][1]) &&
@@ -841,13 +841,13 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
     std::vector< std::vector< std::vector<index_t > > > aabb;//axis aligned bounding box
     std::vector< std::vector<index_t > > boxes;
     aabb = this->domainBoundariesParams(res);
-    for(unsigned int i = 0; i < aabb.size(); i++)//level
+    for(size_t i = 0; i < aabb.size(); i++)//level
     {
         //compare every aabb with the others
-        for(unsigned int j = 0; j < aabb[i].size(); j++)//aabb
+        for(size_t j = 0; j < aabb[i].size(); j++)//aabb
         {
             bool is_boundary = true;
-            for(unsigned int k = 0; k < aabb[i].size(); k++)//aabb
+            for(size_t k = 0; k < aabb[i].size(); k++)//aabb
             {
                 if(j!=k)
                 {
@@ -908,14 +908,14 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
 
     }
     // identify holes
-    for(unsigned int l = 0; l < aabb.size();l++) //level
+    for(size_t l = 0; l < aabb.size();l++) //level
     {
-        for(unsigned int i = 0; i < aabb[l].size(); i++) //bb
+        for(size_t i = 0; i < aabb[l].size(); i++) //bb
         {
             int closest_box = -1;
-            for(unsigned int j = 0; j < boxes.size(); j++)
+            for(size_t j = 0; j < boxes.size(); j++)
             {
-                if(l == boxes[j][4])
+                if(l == static_cast<size_t>(boxes[j][4]) )
                 {
                     if(     (aabb[l][i][0] > boxes[j][0]) &&
                             (aabb[l][i][1] > boxes[j][1]) &&

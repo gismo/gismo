@@ -71,7 +71,7 @@ template<class T>
 class gsTrimData
 {
 public:
-    gsTrimData(unsigned level,std::vector<unsigned>& AABBBox,std::vector<std::vector<std::vector<T> > >polylines)
+    gsTrimData(unsigned level,std::vector<index_t>& AABBBox,std::vector<std::vector<std::vector<T> > >polylines)
         : m_level(level),m_AABBBox(AABBBox),m_Polylines(polylines)
     { }
 
@@ -80,7 +80,7 @@ public:
 
 public:
     unsigned m_level;
-    std::vector<unsigned> m_AABBBox;
+    std::vector<index_t> m_AABBBox;
     std::vector<std::vector<std::vector<T> > > m_Polylines;
 };
 
@@ -110,7 +110,7 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
 
 template <class T>
 void getTrimCurvesAndBoundingBoxes(const gsTHBSpline<2, T>& surface,
-                                   std::vector<unsigned>& boxes,
+                                   std::vector<index_t>& boxes,
                                    gsTHBSplineBasis<2>::TrimmingCurves& trimCurves,
                                    gsTHBSplineBasis<2>::AxisAlignedBoundingBox& boundaryAABB);
 
@@ -503,7 +503,7 @@ bool exportMesh(const gsMesh<T>& mesh,
     gsBSpline<T> bspl(kv, coefs);
 
     gsMatrix<T> newCoefs(2, 3);
-    for (int i = 0; i != mesh.numEdges(); ++i)
+    for (size_t i = 0; i != mesh.numEdges(); ++i)
     {
         newCoefs.row(0) = mesh.edges()[i].source->transpose();
         newCoefs.row(1) = mesh.edges()[i].target->transpose();
@@ -760,7 +760,7 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
     B.setZero();
 
     gsMatrix<> value;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     for (index_t k = 0; k != params.cols(); k++)
     {
@@ -837,10 +837,10 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
     err = PK_ASSEMBLY_create_empty(&assembly);
     PARASOLID_ERROR(PK_ASSEMBLY_create_empty, err);
 
-    for (unsigned box = 0;box<trimData.size();++box)
+    for (size_t box = 0;box<trimData.size();++box)
     {
         unsigned level = trimData[box].m_level;
-        std::vector<unsigned> AABBBox = trimData[box].m_AABBBox;
+        std::vector<index_t> AABBBox = trimData[box].m_AABBBox;
         std::vector<std::vector<std::vector<T> > > polylines = trimData[box].m_Polylines;
 
         gsTensorBSpline<2, T> bspline =
@@ -1028,7 +1028,7 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
 
 template <class T>
 bool getParBoxAsIndexBoxInLevel(const gsTHBSplineBasis<2, T>& basis,unsigned lvl,const std::vector<real_t>& par_box,
-                                std::vector<unsigned>& index_box)
+                                std::vector<index_t>& index_box)
 {
     T lowU=par_box[0];
     T lowV=par_box[1];
@@ -1137,9 +1137,9 @@ bool getTrimCurvesAndBoundingBoxes(const gsTHBSpline<2, T>& surface,
     const gsTHBSplineBasis<2, T>* basis = static_cast< const gsTHBSplineBasis<2,T>* > (&surface.basis());
     unsigned maxLevel = basis->tree().getMaxInsLevel();
     unsigned lvl;
-    std::vector<std::vector<unsigned> >aabbBoxesForCheck;
+    std::vector<std::vector<index_t> >aabbBoxesForCheck;
     std::vector<T> par_box;
-    std::vector<unsigned> index_box;
+    std::vector<index_t> index_box;
     unsigned d=2;
     unsigned boxSize=2*d;
     bool success;
@@ -1156,9 +1156,9 @@ bool getTrimCurvesAndBoundingBoxes(const gsTHBSpline<2, T>& surface,
         if(!success)
             return false;
 
-        gsVector<unsigned,2>lower;
+        gsVector<index_t,2>lower;
         lower << index_box[1],index_box[2];
-        gsVector<unsigned,2>upper;
+        gsVector<index_t,2>upper;
         upper << index_box[3],index_box[4];
         lvl=basis->tree().query4(lower, upper, index_box[0]);
 
@@ -1170,7 +1170,7 @@ bool getTrimCurvesAndBoundingBoxes(const gsTHBSpline<2, T>& surface,
         //std::cout << "el-box: "<< index_box[1] << " "<< index_box[2] << " "
         //          << index_box[3] << " " << index_box[4] << " in level: " << lvl << std::endl;
 
-        std::vector<unsigned> aabb_box;
+        std::vector<index_t> aabb_box;
         aabb_box.push_back(index_box[1]<<(maxLevel-lvl));
         aabb_box.push_back(index_box[2]<<(maxLevel-lvl));
         aabb_box.push_back(index_box[3]<<(maxLevel-lvl));
