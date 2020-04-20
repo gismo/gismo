@@ -508,14 +508,14 @@ bool gsMultiBasis<T>::repairInterfaceFindElements(
 
     // Compute the indices on the same level (indexLevelUse)
     idxExponent = ( indexLevelUse - bas0->tree().getMaxInsLevel());
-    for( index_t i=0; i < index_t( lo0.rows() ); i++)
+    for( index_t i=0; i < lo0.rows(); i++)
         for( short_t j=0; j < d; j++)
         {
             lo0(i,j) = lo0(i,j) << idxExponent;
             up0(i,j) = up0(i,j) << idxExponent;
         }
     idxExponent = ( indexLevelUse - bas1->tree().getMaxInsLevel());
-    for( index_t i=0; i < index_t( lo1.rows() ); i++)
+    for( index_t i=0; i < lo1.rows(); i++)
         for( short_t jj=0; jj < d; jj++)
         {
             // Computation done via dirMap, because...
@@ -575,8 +575,8 @@ bool gsMultiBasis<T>::repairInterfaceFindElements(
     // If so, their overlap is a box of the merged
     // interface mesh.
     std::vector< std::vector<unsigned> > iU;
-    for( index_t i0 = 0; i0 < index_t( lo0.rows() ); i0++)
-        for( index_t i1 = 0; i1 < index_t( lo1.rows() ); i1++)
+    for( index_t i0 = 0; i0 < lo0.rows(); i0++)
+        for( index_t i1 = 0; i1 < lo1.rows(); i1++)
         {
             if(     lo0(i0,a0) < up1(i1,a1) &&
                     lo0(i0,b0) < up1(i1,b1) &&

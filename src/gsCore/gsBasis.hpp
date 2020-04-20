@@ -166,7 +166,7 @@ void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
     result.setZero();
 
     for ( index_t pt = 0; pt < numPts; ++pt ) // For pt, i.e., for every column of u
-        for ( index_t i = 0; i < index_t( actives.rows() ); ++i )  // for all nonzero basis functions
+        for ( index_t i = 0; i < actives.rows(); ++i )  // for all nonzero basis functions
             for ( index_t c = 0; c < tarDim; ++c )      // for all components of the geometry
             {
                 result.block( stride * c, pt, stride, 1).noalias() +=
