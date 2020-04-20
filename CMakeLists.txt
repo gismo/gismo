@@ -311,17 +311,17 @@ endif()
 ## Submodules
 ## #################################################################
 
-option(GISMO_UNSUPPORTED "Enable compflow module" OFF)
+option(GISMO_COMPFLOW "Enable compflow module" OFF)
 if(GISMO_COMPFLOW)
   gismo_fetch_module(gsCompFlow)
 endif()
 
-option(GISMO_UNSUPPORTED "Enable elasticity module" OFF)
+option(GISMO_ELASTICITY "Enable elasticity module" OFF)
 if(GISMO_ELASTICITY)
   gismo_fetch_module(gsElasticity)
 endif()
 
-option(GISMO_UNSUPPORTED "Enable exastenciles module" OFF)
+option(GISMO_EXASTENCILS "Enable exastenciles module" OFF)
 if(GISMO_EXASTENCILS)
   gismo_fetch_module(gsExaStencils)
 endif()
