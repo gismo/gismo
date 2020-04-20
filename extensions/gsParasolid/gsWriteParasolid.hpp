@@ -96,7 +96,7 @@ void getInterval(const bool directionU,
                  const PK_CURVE_t line,
                  PK_INTERVAL_t& result);
 
-bool validMultiplicities(const std::vector<int>& mult,
+bool validMultiplicities(const std::vector<index_t>& mult,
                          const int deg);
 
 template <class T>
@@ -351,12 +351,15 @@ bool createPK_BSURF(const gsTensorBSpline< 2, T> & bsp,
                     bool closed_u,
                     bool closed_v)
 {
+    typedef typename gsKnotVector<T>::mult_t mult_t;
+    std::vector<mult_t> mult;
+
     // Gismo and Parasolid store the coefficients in different order.
     // Therefore we create the BSURF with u and v swapped and then transpose it.
     for (index_t dim = 0; dim != 2; dim++)
     {
         const int deg = bsp.basis().degree(dim);
-        std::vector<int> mult = bsp.basis().knots(dim).multiplicities();
+        mult = bsp.basis().knots(dim).multiplicities();
 
         if (!validMultiplicities(mult, deg))
         {
@@ -374,14 +377,14 @@ bool createPK_BSURF(const gsTensorBSpline< 2, T> & bsp,
 
     // Knots in u-direction
     std::vector<T> gknot0 = bsp.basis().knots(1).unique();
-    std::vector<int> gmult0 = bsp.basis().knots(1).multiplicities();
+    std::vector<mult_t> gmult0 = bsp.basis().knots(1).multiplicities();
     sform.n_u_knots     = gknot0.size();
     sform.u_knot        = gknot0.data();
     sform.u_knot_mult   = gmult0.data();
 
     // Knots in v-direction
     std::vector<T> gknot1 = bsp.basis().knots(0).unique();
-    std::vector<int> gmult1 = bsp.basis().knots(0).multiplicities();
+    std::vector<mult_t> gmult1 = bsp.basis().knots(0).multiplicities();
     sform.n_v_knots     = gknot1.size();
     sform.v_knot        = gknot1.data();
     sform.v_knot_mult   = gmult1.data();
@@ -443,6 +446,8 @@ template<class T>
 bool createPK_BCURVE( const gsBSpline<T>& curve,
                       PK_BCURVE_t& bcurve)
 {
+    typedef typename gsKnotVector<T>::mult_t mult_t;
+    
     PK_BCURVE_sf_t sform; // B-curve data holder (standard form)
 
     // Degree
@@ -450,7 +455,7 @@ bool createPK_BCURVE( const gsBSpline<T>& curve,
 
     // Knots
     std::vector<T> knots = curve.basis().knots().unique();
-    std::vector<int> mult = curve.basis().knots().multiplicities();
+    std::vector<mult_t> mult = curve.basis().knots().multiplicities();
     sform.n_knots = knots.size();
     sform.knot = knots.data();
     sform.knot_mult = mult.data();
@@ -577,7 +582,7 @@ bool exportTHBsurface(const gsTHBSpline<2, T>& surface,
 
 // returns true la all multiplicities in muls are less (<) than deg + 1
 // parasolid restriction
-bool validMultiplicities(const std::vector<int>& mult,
+bool validMultiplicities(const std::vector<index_t>& mult,
                          const int deg)
 {
     for (size_t i = 1; i != mult.size() - 1; i++)
@@ -808,12 +813,14 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
 template <class T>
 bool exportCheck(const gsTHBSpline<2, T>& surface)
 {
+    typedef typename gsKnotVector<T>::mult_t mult_t;
+    
     for (index_t dim = 0; dim != 2; dim++)
     {
         typedef std::vector< gsTensorBSplineBasis< 2, real_t>* > Bases;
         const Bases& bases = surface.basis().getBases();
         const int deg = (bases[0])->degree(dim);
-        std::vector<int> mult = (bases[0])->knots(dim).multiplicities();
+        std::vector<mult_t> mult = (bases[0])->knots(dim).multiplicities();
 
         if (!validMultiplicities(mult, deg))
         {

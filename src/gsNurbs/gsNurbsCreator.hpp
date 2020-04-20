@@ -344,7 +344,7 @@ gsNurbsCreator<T>::BSplineSquare( gsMatrix<T> const & Box)
 
 // The unit square represented as a tensor B-spline of degree \a deg
 template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
-gsNurbsCreator<T>::BSplineSquare(short_t deg, T scale)
+gsNurbsCreator<T>::BSplineSquareDeg(short_t deg, T scale)
 {
     GISMO_ASSERT(deg>0,"Degree must be at least one.");
     TensorBSpline2Ptr res = BSplineSquare(scale, 0.0, 0.0);

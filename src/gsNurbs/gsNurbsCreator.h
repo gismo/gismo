@@ -81,9 +81,6 @@ public:
     // Rectangle described by the identity mapping over the given parameter domain, using tensor product B-splines.
     static TensorBSpline2Ptr BSplineRectangleWithPara( T low_x = 0, T low_y = 0, T upp_x = 1, T upp_y = 1);
 
-/// Square of side \a r, with lower left corner at (x,y)
-    static TensorBSpline2Ptr BSplineSquare( T const & r = 1, T const & x = 0, T const & y = 0  );
-
 /// Creates a \em n X \em m rectangle multipatch consisting of B-splines squares
 /// with lower left corner at at (lx,ly).
 /// The numbering of the patches are (for \em n = 4 and \em m = 3):
@@ -105,8 +102,11 @@ public:
     // Note: this can probably be removed once we have degree elevation for tensor B-splines.
     //
     /// The unit square represented as a tensor B-spline of degree \a deg
-    static TensorBSpline2Ptr BSplineSquare(short_t deg, T scale = 1.0);
-    
+    static TensorBSpline2Ptr BSplineSquareDeg(short_t deg, T scale = 1.0);
+
+    /// Square of side \a r, with lower left corner at (x,y)
+    static TensorBSpline2Ptr BSplineSquare( T const & r = 1, T const & x = 0, T const & y = 0  );
+
     static TensorBSpline3Ptr BSplineCube( T const & r = 1, T const & x = 0,
                                                T const & y = 0, T const & z = 0  );
 
