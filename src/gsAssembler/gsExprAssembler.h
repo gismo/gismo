@@ -500,7 +500,7 @@ private:
                 const index_t rls = r * rowInd0.rows();     //local stride
                 for (index_t i = 0; i != rowInd0.rows(); ++i)
                 {
-		  const index_t ii = rowMap.index(rowInd0.at(i),patchInd,r); // N_i
+                    const index_t ii = rowMap.index(rowInd0.at(i),patchInd,r); // N_i
                     if ( rowMap.is_free_index(ii) )
                     {
                         for (index_t c = 0; c != cd; ++c)
@@ -531,7 +531,9 @@ private:
                                 }
                             }
                             else
+                            {
                                 m_rhs.row(ii) += localMat.row(rls+i);
+                            }
                         }
                     }
                 }
@@ -1045,7 +1047,7 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl3(const expr::gsFeSpace<T> & u
     fixedDofs.resize(bsz, u.dim() );
     gsMatrix<T> pt, val, rhs;
     rhs.resize(bsz, u.dim() );
-    gsMatrix<unsigned> act;
+    gsMatrix<index_t> act;
     gsSparseMatrix<T> cmat(bsz, bsz);
     // todo: reserve
 
@@ -1230,14 +1232,14 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
                 {
                     // Each active boundary function/DOF in eltBdryFcts has...
                     // ...the above-mentioned "element-wise index"
-                    const unsigned i = eltBdryFcts[i0];
+                    const index_t i = eltBdryFcts[i0];
                     // ...the boundary index.
-                    const unsigned ii = mapper.global_to_bindex(globIdxAct(i));
+                    const index_t ii = mapper.global_to_bindex(globIdxAct(i));
 
                     for (size_t j0 = 0; j0 < eltBdryFcts.size(); j0++)
                     {
-                        const unsigned j = eltBdryFcts[j0];
-                        const unsigned jj = mapper.global_to_bindex(globIdxAct(j));
+                        const index_t j = eltBdryFcts[j0];
+                        const index_t jj = mapper.global_to_bindex(globIdxAct(j));
 
                         // Use the "element-wise index" to get the needed
                         // function value.
