@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     gsInfo<<"Source function is: "<< f << "\n";
 
     // Define Geometry, must be a gsMultiPatch object
-    gsMultiPatch<> patches(*gsNurbsCreator<>::BSplineSquare(2));
+    gsMultiPatch<> patches(*gsNurbsCreator<>::BSplineSquareDeg(2));
     patches.computeTopology();
 
     // Boundary conditions

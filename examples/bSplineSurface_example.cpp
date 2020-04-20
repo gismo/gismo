@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // Adjust values to the minimum required
-    degree = math::max(index_t(0), degree    );
+    degree = math::max( (index_t)(0), degree    );
     n      = math::max(n, degree + 1);
     m      = math::max(m, degree + 1);
 

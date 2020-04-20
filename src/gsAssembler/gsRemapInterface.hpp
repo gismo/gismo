@@ -34,10 +34,13 @@ namespace gismo {
 
 
 template <class T>
-gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & basis, const boundaryInterface & bi) : m_g1(mp[bi.first().patch]),
-                                                                                                            m_g2(mp[bi.second().patch]),
-                                                                                                            m_b1(basis[bi.first().patch]),
-                                                                                                            m_b2(basis[bi.second().patch])// in most cases they are just the other way around
+gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
+                                      const gsMultiBasis<T>   & basis,
+                                      const boundaryInterface & bi)
+                                      : m_g1(mp[bi.first().patch]),
+                                        m_g2(mp[bi.second().patch]),
+                                        m_b1(basis[bi.first().patch]),
+                                        m_b2(basis[bi.second().patch])// in most cases they are just the other way around
 {
     //gsInfo << "patches: " << bi.first().patch << " and " << bi.second().patch << "\n";
     m_flipSide2 = false;
@@ -189,20 +192,10 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiB
 template<class T>
 const std::vector<T> gsRemapInterface<T>::getPointsOnInterface() const
 {
-    index_t fixedDir = m_side1.direction();
+    const short_t fixedDir = m_side1.direction();
     std::vector<T> vec(m_breakpoints.cols());
 
-    if(fixedDir == 1)
-    {
-        for(index_t i = 0; i < m_breakpoints.cols(); i++)
-            vec[i] = m_breakpoints.row(0)[i];
-    }
-    else
-    {
-        for(index_t i = 0; i < m_breakpoints.cols(); i++)
-            vec[i] = m_breakpoints.row(1)[i];
-
-    }
+    Eigen::Map<Eigen::Matrix<T, 1, -1> >(&vec[0], m_breakpoints.cols()) = m_breakpoints.row(fixedDir == 1 ? 0 : 1);
 
     return vec;
 }
@@ -248,13 +241,13 @@ void gsRemapInterface<T>::constructBreaks() {
 
 
     // Compute interface knots in physical domain by evaluating left and right geometry maps at the knot values
-    int numelP1 = domIt1->numElements();
-    int numelP2 = domIt2->numElements();
+    size_t numelP1 = domIt1->numElements();
+    size_t numelP2 = domIt2->numElements();
     gsMatrix <T> physicalKnotsP1(m_g1.geoDim(), numelP1 + 1), physicalKnotsP2(m_g2.geoDim(), numelP2 + 1), dummy;
 
     domIt1->reset();
     domIt2->reset();
-    int numBreaksPatch1 = 1, numBreaksPatch2 = 1; // vars to count the entries in the physical breakpoints
+    index_t numBreaksPatch1 = 1, numBreaksPatch2 = 1; // vars to count the entries in the physical breakpoints
 
     // evaluate the first point of the interface
     m_g1.eval_into(startPatch1, dummy);
@@ -334,7 +327,7 @@ void gsRemapInterface<T>::constructBreaks() {
     m_g2.eval_into(startPatch2, dummy);
     physicalKnotsP2.col(0) = dummy;
 
-    for (; domIt2->good(); domIt2->next()) // for (int i = 0; i < numelP2; i++)
+    for (; domIt2->good(); domIt2->next()) // for (index_t i = 0; i < numelP2; i++)
     {
         if(m_side2.index() == 3 || m_side2.index() == 4)
         {
@@ -387,10 +380,10 @@ void gsRemapInterface<T>::constructBreaks() {
     /// store all the physical points in one vector
     gsMatrix<T> physicalBreaks(domainDim(), numBreaksPatch1+numBreaksPatch2); // Assume m_g1.geoDim() == m_g2.geoDim()
 
-    for(int c = 0; c < numBreaksPatch1; c++)
+    for(index_t c = 0; c < numBreaksPatch1; c++)
         physicalBreaks.col(c) = physicalKnotsP1.col(c);
 
-    for(int c = 0; c < numBreaksPatch2; c++)
+    for(index_t c = 0; c < numBreaksPatch2; c++)
         physicalBreaks.col(numBreaksPatch1+c) = physicalKnotsP2.col(c);
 
     // compute the corresponding parameter values in one patch, here of patch1
@@ -403,7 +396,7 @@ void gsRemapInterface<T>::constructBreaks() {
         index_t fixedDir = patchSide1.direction();
 
         gsMatrix<T> G2_parametric_LC;
-        for (int i = 0; i < physicalBreaks.cols(); i++) {
+        for (index_t i = 0; i < physicalBreaks.cols(); i++) {
             // computes the preimages of the breakpoints for each of the two patches
             m_g1.invertPoints(physicalBreaks.col(i), G2_parametric_LC); // not exact, we have rounding errors
             // taking care of the rounding errors by iterating over the vector and checking the absolute value between the current
@@ -412,7 +405,7 @@ void gsRemapInterface<T>::constructBreaks() {
                 if (parameterBreaks.size() == 0)
                     parameterBreaks.push_sorted_unique(G2_parametric_LC(0, 0)); // sort w.r.t. u direction
                 else {
-                    int j = 0;
+                    index_t j = 0;
                     gsVector<bool> roundingError = gsVector<bool>::Constant(parameterBreaks.size(), true);
 
                     for (typename gsSortedVector<T>::iterator it = parameterBreaks.begin();
@@ -432,7 +425,7 @@ void gsRemapInterface<T>::constructBreaks() {
                 if (parameterBreaks.size() == 0)
                     parameterBreaks.push_sorted_unique(G2_parametric_LC(1, 0)); // sort w.r.t. v direction
                 else {
-                    int j = 0;
+                    index_t j = 0;
                     gsVector<bool> roundingError = gsVector<bool>::Constant(parameterBreaks.size(), true);
 
                     for (typename gsSortedVector<T>::iterator it = parameterBreaks.begin();
@@ -474,8 +467,8 @@ void gsRemapInterface<T>::constructBreaks() {
 template<class T>
 void gsRemapInterface<T>::constructReparam()
 {
-    const unsigned numIntervals = 11; // ?
-    const int numGeometries = 2;
+    const index_t numIntervals = 11; // ?
+    const index_t numGeometries = 2;
 
 
     if(m_isMatching)
@@ -566,7 +559,7 @@ void gsRemapInterface<T>::constructReparam()
 
         gsMatrix<T> B(numIntervals, m_g1.geoDim());
 
-        for (int i = 0; i < t_vals.cols(); i++) {
+        for (index_t i = 0; i < t_vals.cols(); i++) {
             // find a suitable start value for the Newton iteration
             find_start_value = (samples_right.colwise()) - samples_left.col(i);
 
@@ -603,7 +596,7 @@ void gsRemapInterface<T>::constructReparam()
         m_fittedInterface = fit.curve().clone();
         std::cout << "Hi, I'm the resulting curve: \n" << *m_fittedInterface << std::endl;
 
-        int errorInterval = 10;
+        unsigned errorInterval = 10;
         gsVector<unsigned > errorSamples(1);
         errorSamples << errorInterval;
 
@@ -631,7 +624,7 @@ void gsRemapInterface<T>::constructReparam()
 
         // do test
         /*
-        for(int c = 0; c < eval_fit.cols(); c++)
+        for(index_t c = 0; c < eval_fit.cols(); c++)
         {
             if(std::isnan(eval_orig.col(c).squaredNorm()))
             {
@@ -666,7 +659,7 @@ void gsRemapInterface<T>::constructReparam()
 
         T error = 0;
 
-        for (int i = 0; i < eval_points.cols(); i++)
+        for (index_t i = 0; i < eval_points.cols(); i++)
             error += (id.col(i) - eval_fit.col(i)).squaredNorm();
             //error += (eval_orig.col(i) - B2.col(i)).squaredNorm();
 
@@ -698,11 +691,13 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
         //gsInfo << "the patches: " << m_g1.id() << " and " << m_g2.id() << "\n";
         m_fittedInterface->eval_into(checkIfInBound(u.row(!fixedDir)), result); /// ????
 
+        const short_t m_side2dir = m_side2.direction();
+
         //gsInfo << "result before: \n" << result << "\n";
         // need here the second basis since result store points in the second geometry
         if(const gsTensorBSplineBasis<2, T> *tb = dynamic_cast<const gsTensorBSplineBasis<2, T> * >(&m_g2.basis()))
         {
-            if(m_side2.direction() == 1 && m_side2.parameter() == 0) // v = 0
+            /*if(m_side2.direction() == 1 && m_side2.parameter() == 0) // v = 0
                 result.row(1).setConstant(tb->knots(1).first());
 
             if(m_side2.direction() == 1 && m_side2.parameter() == 1) // v = 1
@@ -712,14 +707,20 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
                 result.row(0).setConstant(tb->knots(0).first());
 
             if(m_side2.direction() == 0 && m_side2.parameter() == 1) // u = 1
-                result.row(0).setConstant(tb->knots(0).last());
+                result.row(0).setConstant(tb->knots(0).last());*/
+            if(m_side2dir == 0 || m_side2dir == 1)
+            {
+                result.row(m_side2dir).setConstant(m_side2.parameter() ?
+                                                   tb->knots(m_side2dir).last() :
+                                                   tb->knots(m_side2dir).first());
+            }
 
             return;
         }
 
         if(const gsTensorNurbsBasis<2, T> * ntb = dynamic_cast<const gsTensorNurbsBasis<2, T> * >(&(m_g2.basis())))
         {
-            if(m_side2.direction() == 1 && m_side2.parameter() == 0) // v = 0
+            /*if(m_side2.direction() == 1 && m_side2.parameter() == 0) // v = 0
                 result.row(1).setConstant(ntb->source().knots(1).first());
 
             if(m_side2.direction() == 1 && m_side2.parameter() == 1) // v = 1
@@ -729,7 +730,13 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
                 result.row(0).setConstant(ntb->source().knots(0).first());
 
             if(m_side2.direction() == 0 && m_side2.parameter() == 1) // u = 1
-                result.row(0).setConstant(ntb->source().knots(0).last());
+                result.row(0).setConstant(ntb->source().knots(0).last());*/
+            if(m_side2dir == 0 || m_side2dir == 1)
+            {
+                result.row(m_side2dir).setConstant(m_side2.parameter() ?
+                                                   ntb->source().knots(m_side2dir).last() :
+                                                   ntb->source().knots(m_side2dir).first());
+            }
 
             return;
         }
@@ -774,7 +781,10 @@ memory::unique_ptr< gsDomainIterator<T> > gsRemapInterface<T>::makeDomainIterato
 // only works for 2d at the moment!!
 // TODO: Generalize for arbitrary dimensions
 template<class T>
-void gsRemapInterface<T>::enrichToVector(const int boundarySide, const gsGeometry<T> & geo, const gsMatrix<T> & intervals, gsMatrix <T> &pts)
+void gsRemapInterface<T>::enrichToVector(const short_t         boundarySide,
+                                         const gsGeometry<T> & geo,
+                                         const gsMatrix<T>   & intervals,
+                                               gsMatrix <T>  & pts)
 {
     pts.resize(geo.geoDim(), intervals.cols());
 
@@ -857,7 +867,7 @@ void gsRemapInterface<T>::findInterface()
     gsVector<index_t > boundaryPatch1, boundaryPatch2;
 
     // first find the sides of the patches which belong to the interface
-    const int nCorners = 1<<m_g1.geoDim();
+    const index_t nCorners = 1<<m_g1.geoDim();
     gsMatrix<T> inversMaps(m_g1.geoDim(), 4); // matrix to store the preimages of the corresponding verices on the interface
     gsVector<index_t> corners(2); // vector to store the index of the corner which lies on the other patch, 0-th entry is the index of the corner for the first patch and vice versa
     corners.setZero();
@@ -876,7 +886,7 @@ void gsRemapInterface<T>::findInterface()
     gsVector<bool> onGeo;
 
     // this is the case if there are no matching corners
-    for(int i = 1; i <= nCorners; i++)
+    for(index_t i = 1; i <= nCorners; i++)
     {
         c = m_g1.coefAtCorner(i).transpose();
 
@@ -911,7 +921,7 @@ void gsRemapInterface<T>::findInterface()
     }
 
     // do the same for the first patch, i.e., finding the side for patch1 and the corner(s) for patch2
-    for(int i = 1; i <= nCorners; i++)
+    for(index_t i = 1; i <= nCorners; i++)
     {
         c = m_g2.coefAtCorner(i).transpose();
 
@@ -951,7 +961,7 @@ void gsRemapInterface<T>::findInterface()
     {
         m_g1.invertPoints(m_g1.coefAtCorner(corners(0)).transpose(), parIm);
 
-        int bound = 0;
+        index_t bound = 0;
         if(parIm.isApprox(inversMaps.col(0), 1e-6))
             bound = 2;
 
@@ -1010,7 +1020,7 @@ void gsRemapInterface<T>::findInterface()
     {
         m_g2.invertPoints(m_g2.coefAtCorner(corners(1)).transpose(), parIm);
 
-        int bound = 1;
+        index_t bound = 1;
         if(parIm.isApprox(inversMaps.col(1), 1e-6))
             bound = 3;
 
@@ -1091,7 +1101,7 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
     gsVector<index_t> boundaryPatch1, boundaryPatch2;
 
     // first find the sides of the patches which belong to the interface
-    const int nCorners = 1 << m_g1.geoDim();
+    const index_t nCorners = 1 << m_g1.geoDim();
     gsMatrix<T> inversMaps = gsMatrix<T>::Zero(m_g1.geoDim(), 4); // matrix to store the preimages of the corresponding verices on the interface
     gsVector<index_t> corners(2); // vector to store the index of the corner which lies on the other patch, 0-th entry is the index of the corner for the first patch and vice versa
     corners.setZero();
@@ -1110,7 +1120,7 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
     gsVector<bool> onGeo;
 
     // this is the case if there are no matching corners
-    for (int i = 1; i <= nCorners; i++) {
+    for (index_t i = 1; i <= nCorners; i++) {
         c = m_g1.coefAtCorner(i).transpose();
 
         // Be aware of two matching vertices-> due to rounding errors on of the vertices can be on two sides maybe!
@@ -1139,7 +1149,7 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
     }
 
     // do the same for the first patch, i.e., finding the side for patch1 and the corner(s) for patch2
-    for (int i = 1; i <= nCorners; i++) {
+    for (index_t i = 1; i <= nCorners; i++) {
         c = m_g2.coefAtCorner(i).transpose();
 
         gsMatrix<T> parLoc;
@@ -1173,7 +1183,7 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
     {
         m_g1.invertPoints(m_g1.coefAtCorner(corners(0)).transpose(), parIm);
 
-        int bound = 0;
+        index_t bound = 0;
         if (parIm.isApprox(inversMaps.col(0), 1e-6))
             bound = 2;
 
@@ -1244,7 +1254,7 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
     {
         m_g2.invertPoints(m_g2.coefAtCorner(corners(1)).transpose(), parIm);
 
-        int bound = 1;
+        index_t bound = 1;
         if (parIm.isApprox(inversMaps.col(1), 1e-6))
             bound = 3;
 
@@ -1316,22 +1326,21 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
 template<class T>
 bool gsRemapInterface<T>::checkIfMatching()
 {
-    int sameCorners = 0;
+    short_t sameCorners = 0;
 
-    for(int i = 1; i <= 1<<domainDim(); i++)
+    for(short_t i = 1; i <= 1<<domainDim(); i++)
     {
         gsMatrix<T> c1 = m_g1.coefAtCorner(i).transpose();
 
-        for(int j = 1; j <= 1<<domainDim(); j++)
+        for(short_t j = 1; j <= 1<<domainDim(); j++)
         {
             gsMatrix<T> c2 = m_g2.coefAtCorner(j).transpose();
-            if(((c1-c2).squaredNorm() < 1.e-6))
+            if((c1-c2).squaredNorm() < 1.e-6)
                 sameCorners++;
         }
-
     }
 
-    if(sameCorners == 1<< (domainDim()-1))
+    if(sameCorners == 1 << (domainDim()-1))
         return true;
     else
         return false;
@@ -1346,14 +1355,14 @@ gsMatrix<T> gsRemapInterface<T>::checkIfInBound(const gsMatrix<T> & u) const
     T begin = m_parameterbounds.first(!m_side1.direction(), 0);
     T end = m_parameterbounds.first(!m_side1.direction(), 1);
 
-    for(int c = 0; c < u.cols(); c++)
+    for(index_t c = 0; c < u.cols(); c++)
         if(u(0,c) - begin < 0)
             evalpts(0,c) += (begin - u(0,c));
         else
             break;
 
 
-    for(int c = u.cols()-1; c > -1; c--)
+    for(index_t c = u.cols()-1; c > -1; c--)
         if(u(0, c) - end > 0)
             evalpts(0, c) -= (u(0, c) - end);
         else

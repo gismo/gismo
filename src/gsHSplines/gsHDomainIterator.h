@@ -39,13 +39,13 @@ class gsHDomainIterator: public gsDomainIterator<T>
 {
 public:
 
-    typedef kdnode<d, unsigned> node;
+    typedef kdnode<d, index_t> node;
 
     typedef typename node::point point;
 
     typedef typename std::vector<T>::const_iterator  uiter;
 
-    typedef gsHDomain<d,unsigned> hDomain;
+    typedef gsHDomain<d,index_t> hDomain;
 
     typedef typename hDomain::const_literator leafIterator;
 

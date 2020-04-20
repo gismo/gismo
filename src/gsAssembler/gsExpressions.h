@@ -741,12 +741,12 @@ public:
         GISMO_ASSERT( dynamic_cast<const gsMultiBasis<T>*>(&this->source()), "error");
 
         // Reconstruct solution coefficients on patch p
-        const int sz  = mb[p].size();
+        const index_t sz  = mb[p].size();
         result.resize(sz, dim); // (!)
 
         for (index_t i = 0; i < sz; ++i)
         {
-            const int ii = m_mapper.index(i, p);
+            const index_t ii = m_mapper.index(i, p);
 
             if ( m_mapper.is_free_index(ii) ) // DoF value is in the solVector
             {
@@ -784,7 +784,7 @@ public:
                 }
             }
 
-            gsMatrix<unsigned> bnd;
+            gsMatrix<index_t> bnd;
             for (typename bcRefList::const_iterator
                      it = this->bc().begin() ; it != this->bc().end(); ++it )
             {
@@ -799,7 +799,7 @@ public:
                  dynamic_cast<const gsBasis<T>*>(&this->source()) )
         {
             m_mapper = gsDofMapper(*b);
-            gsMatrix<unsigned> bnd;
+            gsMatrix<index_t> bnd;
             for (typename bcRefList::const_iterator
                      it = this->bc().begin() ; it != this->bc().end(); ++it )
             {

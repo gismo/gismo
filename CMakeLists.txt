@@ -141,9 +141,6 @@ set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/exter
      "${PROJECT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/extensions"
      CACHE INTERNAL "${PROJECT_NAME} include directories" )
 
-#first time
-include_directories(${GISMO_INCLUDE_DIRS})
-
 # Offer the user the choice of overriding the installation directories
 set(LIB_INSTALL_DIR     lib     CACHE STRING "Installation directory for libraries")
 set(BIN_INSTALL_DIR     bin     CACHE STRING "Installation directory for executables")
@@ -152,6 +149,16 @@ set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header 
 ## #################################################################
 ## Extensions
 ## #################################################################
+
+if (EIGEN_USE_MKL_ALL)
+  # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
+  find_package(MKL REQUIRED)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MKL_INCLUDE_DIR}
+    CACHE INTERNAL "${PROJECT_NAME} include directories")
+endif()
+
+#first time
+include_directories(${GISMO_INCLUDE_DIRS})
 
 include(gsFetch)
 
@@ -284,13 +291,6 @@ if(GISMO_WITH_SMESH)
   #include_directories(${SMESH_INCLUDE_DIR})
 endif()
 
-if (EIGEN_USE_MKL_ALL)
-  # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
-  find_package(MKL REQUIRED)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MKL_INCLUDE_DIR}
-    CACHE INTERNAL "${PROJECT_NAME} include directories")
-endif()
-
 #second time
 include_directories(${GISMO_INCLUDE_DIRS})
 
@@ -311,18 +311,23 @@ endif()
 ## Submodules
 ## #################################################################
 
+option(GISMO_COMPFLOW "Enable compflow module" OFF)
 if(GISMO_COMPFLOW)
   gismo_fetch_module(gsCompFlow)
 endif()
 
+option(GISMO_ELASTICITY "Enable elasticity module" OFF)
 if(GISMO_ELASTICITY)
   gismo_fetch_module(gsElasticity)
 endif()
 
+option(GISMO_EXASTENCILS "Enable exastenciles module" OFF)
 if(GISMO_EXASTENCILS)
   gismo_fetch_module(gsExaStencils)
 endif()
 
+option(GISMO_UNSUPPORTED "Enable unsupported module" OFF)
+option(GISMO_MOTOR "Enable motor module" OFF)
 if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
   gismo_fetch_module(unsupported)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GISMO_DEV_INCLUDE_DIRS}

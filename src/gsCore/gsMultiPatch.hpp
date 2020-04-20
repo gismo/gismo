@@ -186,10 +186,10 @@ std::vector<gsBasis<T> *> gsMultiPatch<T>::basesCopy(bool NoRational) const
 }
 
 template<class T>
-void gsMultiPatch<T>::permute(const std::vector<int> & perm)
+void gsMultiPatch<T>::permute(const std::vector<short_t> & perm)
 {
     gsAsVector<gsGeometry<T>*> a (m_patches);
-    a = gsVector<>::Permutation(gsAsConstVector<int>(perm)) * a;
+    a = Eigen::PermutationMatrix<-1,-1,short_t>(gsAsConstVector<short_t>(perm)) * a;
 }
 
 template<class T>
@@ -433,7 +433,7 @@ bool gsMultiPatch<T>::matchVerticesOnSide (
     const bool computeOrientation = !(start&(start-1)) && (start != 0); // true if start is a power of 2
     const bool setReference       = start==0;          // if we search for the first point then we set the reference
 
-    const int dim = cc1.rows();
+    const short_t dim = static_cast<short_t>(cc1.rows());
 
     index_t o_dir = 0, d_dir = 0;
 
@@ -496,7 +496,7 @@ template<class T>
 void gsMultiPatch<T>::closeGaps(T tol)
 {
     const T tol2 = tol*tol;
-    gsMatrix<unsigned> bdr1, bdr2; // indices of the boundary control points
+    gsMatrix<index_t> bdr1, bdr2; // indices of the boundary control points
 
     // Create a map which assigns to all meeting patch-local indices a
     // unique global id
@@ -602,8 +602,8 @@ void gsMultiPatch<T>::repairInterfaces()
         {
             changed = false;
 
-            std::vector<unsigned> refEltsFirst;
-            std::vector<unsigned> refEltsSecond;
+            std::vector<index_t> refEltsFirst;
+            std::vector<index_t> refEltsSecond;
 
             // For each interface, find the areas/elements that do not match...
             switch( this->dim() )

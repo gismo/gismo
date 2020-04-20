@@ -211,9 +211,9 @@ public:
 
     /// \brief Couples dofs \a b1 of patch \a u with dofs \a b2 of patch
     /// \a v one by one such that they refer to the same global dof.
-    void matchDofs(index_t u, const gsMatrix<unsigned> & b1,
-                   index_t v, const gsMatrix<unsigned> & b2,
-		   index_t comp = 0);
+    void matchDofs(index_t u, const gsMatrix<index_t> & b1,
+                   index_t v, const gsMatrix<index_t> & b2,
+		           index_t comp = 0);
 
     /// Mark the local dof \a i of patch \a k as coupled.
     void markCoupled(index_t i, index_t k, index_t comp = 0);
@@ -226,7 +226,7 @@ public:
 
     /// Mark the local dofs \a boundaryDofs of patch \a k as eliminated.
     // to do: put k at the end
-    void markBoundary(index_t k, const gsMatrix<unsigned> & boundaryDofs, index_t comp = 0);
+    void markBoundary(index_t k, const gsMatrix<index_t> & boundaryDofs, index_t comp = 0);
 
     /// Mark the local dof \a i of patch \a k as eliminated.
     void eliminateDof(index_t i, index_t k, index_t comp = 0);
@@ -273,10 +273,10 @@ public:
      * \param[in] patchIndex the index of the patch where the local indices belong to
      * \param[out] globals the global indices of the patch
      */
-    void localToGlobal(const gsMatrix<unsigned>& locals,
+    void localToGlobal(const gsMatrix<index_t>& locals,
                        index_t patchIndex,
-                       gsMatrix<unsigned>& globals, 
-		       index_t comp = 0) const;
+                       gsMatrix<index_t>& globals, 
+		               index_t comp = 0) const;
 
     /** \brief Computes the global indices of the input local indices
      *
@@ -285,11 +285,11 @@ public:
      * \param[out] globals the local-global correspondance
      * \param[out] numFree the number of free indices in \a local
      */
-    void localToGlobal2(const gsMatrix<unsigned>& locals,
+    void localToGlobal2(const gsMatrix<index_t>& locals,
                         index_t patchIndex,
-                        gsMatrix<unsigned>& globals,
+                        gsMatrix<index_t>& globals,
                         index_t & numFree, 
-		        index_t comp = 0) const;
+		                index_t comp = 0) const;
 
     /** \brief Returns the index associated to local dof \a i of patch \a k without shifts.
      *

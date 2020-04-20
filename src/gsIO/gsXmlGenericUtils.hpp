@@ -127,7 +127,7 @@ Object * getHTensorBasisFromXml ( gsXmlNode * node)
     
     // Insert all boxes
     unsigned c;
-    std::vector<unsigned int> all_boxes;
+    std::vector<index_t> all_boxes;
     for (tmp = node->first_node("box"); 
          tmp; tmp = tmp->next_sibling("box"))
     {
@@ -164,7 +164,7 @@ gsXmlNode * putHTensorBasisToXml ( Object const & obj, gsXmlTree & data)
     tp_node->append_node(tmp);
     
     //Output boxes
-    gsMatrix<unsigned> box(1,2*d);
+    gsMatrix<index_t> box(1,2*d);
 
     for( typename Object::hdomain_type::const_literator lIter = 
              obj.tree().beginLeafIterator(); lIter.good() ; lIter.next() )

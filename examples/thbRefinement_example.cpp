@@ -18,7 +18,7 @@
 using namespace gismo;
 
 void refineMode(int rf, int lvl, unsigned meshSize,
-                unsigned extent, std::vector<unsigned> & boxes);
+                unsigned extent, std::vector<index_t> & boxes);
 
 int main(int argc, char *argv[])
 {
@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     gsInfo<< "Coarsest level: "<< tp <<"\n";
 
     // Get refinement boxes based on pattern requested
-    std::vector<unsigned> boxes;
+    std::vector<index_t> boxes;
     refineMode(refmode, refLevels, numknots+1, degree, boxes);
     //gsInfo<< "boxes: "<< boxes.size()/5 <<"\n";
 
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
     if (numTr < 1000)
         gsInfo <<"\nCoefficient count for each truncated function: \n";
     unsigned ccount = 0;
-    typedef std::map<unsigned, gsSparseVector<> >::const_iterator trIter;
+    typedef std::map<index_t, gsSparseVector<> >::const_iterator trIter;
     for( trIter it = thb.truncatedBegin(); it != thb.truncatedEnd(); ++it)
     {
         const int lvl = thb.levelOf(it->first);
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
     gsInfo <<"Total coeffs stored: "<< ccount
          <<" ("<< (sizeof(real_t)*ccount >> 20) <<"MB)\n";
     gsInfo <<"Total knots stored : "<< kcount
-         <<" ("<< ( (sizeof(real_t)+sizeof(unsigned))*kcount >> 20) <<"MB)\n";
+         <<" ("<< ( (sizeof(real_t)+sizeof(index_t))*kcount >> 20) <<"MB)\n";
 
     // Output paraview plot of the basis
     if ( plot )
@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
 
 // Provides boxes for refinement
 void refineMode(int rf, int lvl, unsigned meshSize,
-                unsigned extent, std::vector<unsigned> & boxes)
+                unsigned extent, std::vector<index_t> & boxes)
 {
     boxes.clear();
     const unsigned nb  = meshSize*(1<<lvl);

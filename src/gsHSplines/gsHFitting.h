@@ -140,7 +140,7 @@ public:
     }
 
     /// Returns boxes which define refinment area.
-    std::vector<unsigned> getBoxes(const std::vector<T>& errors,
+    std::vector<index_t> getBoxes(const std::vector<T>& errors,
                                    const T threshold);
 
     /// Sets constraints in such a way that the previous values at \a
@@ -156,20 +156,20 @@ public:
 protected:
     /// Appends a box around parameter to the boxes only if the box is not
     /// already in boxes
-    virtual void appendBox(std::vector<unsigned>& boxes,
-                   std::vector<unsigned>& cells,
+    virtual void appendBox(std::vector<index_t>& boxes,
+                   std::vector<index_t>& cells,
                    const gsVector<T>& parameter);
 
     /// Identifies the threshold from where we should refine
     T setRefineThreshold(const std::vector<T>& errors);
 
     /// Checks if a_cell is already inserted in container of cells
-    static bool isCellAlreadyInserted(const gsVector<unsigned, d>& a_cell,
-                                      const std::vector<unsigned>& cells);
+    static bool isCellAlreadyInserted(const gsVector<index_t, d>& a_cell,
+                                      const std::vector<index_t>& cells);
 
     /// Appends a box to the end of boxes (This function also works for cells)
-    static void append(std::vector<unsigned>& boxes,
-                       const gsVector<unsigned>& box)
+    static void append(std::vector<index_t>& boxes,
+                       const gsVector<index_t>& box)
     {
         for (index_t col = 0; col != box.rows(); col++)
             boxes.push_back(box[col]);
@@ -207,7 +207,7 @@ void gsHFitting<d, T>::setConstraints(const std::vector<boxSide>& fixedSides)
 
     for(std::vector<boxSide>::const_iterator it=fixedSides.begin(); it!=fixedSides.end(); ++it)
     {
-	gsMatrix<unsigned> ind = this->m_basis->boundary(*it);
+	gsMatrix<index_t> ind = this->m_basis->boundary(*it);
 	for(index_t r=0; r<ind.rows(); r++)
 	{
 	    index_t fix = ind(r,0);
@@ -238,7 +238,7 @@ void gsHFitting<d, T>::setConstraints(const std::vector<boxSide>& fixedSides,
     for(size_t s=0; s<fixedSides.size(); s++)
     {
 	gsMatrix<T> coefsThisSide = fixedCurves[s].coefs();
-	gsMatrix<unsigned> indicesThisSide = m_basis->boundaryOffset(fixedSides[s],0);
+	gsMatrix<index_t> indicesThisSide = m_basis->boundaryOffset(fixedSides[s],0);
 	GISMO_ASSERT(coefsThisSide.rows() == indicesThisSide.rows(),
 		     "Coef number mismatch between prescribed curve and basis side.");
 
@@ -279,7 +279,7 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
             // if err_treshold is -1 we refine the m_ref percent of the whole domain
             T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
 
-            std::vector<unsigned> boxes = getBoxes(m_pointErrors, threshold);
+            std::vector<index_t> boxes = getBoxes(m_pointErrors, threshold);
             if(boxes.size()==0)
                 return false;
 
@@ -340,15 +340,15 @@ void gsHFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_thr
 }
 
 template <short_t d, class T>
-std::vector<unsigned> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
+std::vector<index_t> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
                                                  const T threshold)
 {
     // cells contains lower corners of elements marked for refinment from maxLevel
-    std::vector<unsigned> cells;
+    std::vector<index_t> cells;
 
     // boxes contains elements marked for refinement from differnet levels,
     // format: { level lower-corners  upper-corners ... }
-    std::vector<unsigned> boxes;
+    std::vector<index_t> boxes;
 
     for (size_t index = 0; index != errors.size(); index++)
     {
@@ -362,8 +362,8 @@ std::vector<unsigned> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
 }
 
 template <short_t d, class T>
-void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
-                                  std::vector<unsigned>& cells,
+void gsHFitting<d, T>::appendBox(std::vector<index_t>& boxes,
+                                  std::vector<index_t>& cells,
                                   const gsVector<T>& parameter)
 {
     gsTHBSplineBasis<d, T>* basis = static_cast< gsTHBSplineBasis<d,T>* > (this->m_basis);
@@ -371,12 +371,12 @@ void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
     const tensorBasis & tBasis = *(basis->getBases()[maxLvl]);
 
     // get a cell
-    gsVector<unsigned, d> a_cell;
+    gsVector<index_t, d> a_cell;
 
-    for (unsigned dim = 0; dim != d; dim++)
+    for (short_t dim = 0; dim != d; dim++)
     {
         const gsKnotVector<T> & kv = tBasis.component(dim).knots();
-        a_cell(dim) = static_cast<unsigned>(kv.uFind(parameter(dim)).uIndex());
+        a_cell(dim) = kv.uFind(parameter(dim)).uIndex();
     }
 
     if (!isCellAlreadyInserted(a_cell, cells))
@@ -384,13 +384,13 @@ void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
         append(cells, a_cell);
 
         // get level of a cell
-        gsVector<unsigned, d> a_cell_upp = a_cell + gsVector<unsigned, d>::Ones();
+        gsVector<index_t, d> a_cell_upp = a_cell + gsVector<index_t, d>::Ones();
         const int cell_lvl = basis->tree().query3(a_cell, a_cell_upp, maxLvl) + 1;
 
         // get the box
-        gsVector<unsigned> box(2 * d + 1);
+        gsVector<index_t> box(2 * d + 1);
         box[0] = cell_lvl;
-        for (unsigned dim = 0; dim != d; dim++)
+        for (short_t dim = 0; dim != d; dim++)
         {
             const unsigned numBreaks = basis->numBreaks(cell_lvl, dim) - 1 ;
 
@@ -407,8 +407,8 @@ void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
             }
 
             // apply extensions
-            unsigned low = ( (lowIndex > m_ext[dim]) ? (lowIndex - m_ext[dim]) : 0 );
-            unsigned upp = ( (lowIndex + m_ext[dim] + 1 < numBreaks) ?
+            index_t low = ( (lowIndex > m_ext[dim]) ? (lowIndex - m_ext[dim]) : 0 );
+            index_t upp = ( (lowIndex + m_ext[dim] + 1 < numBreaks) ?
                              (lowIndex + m_ext[dim] + 1) : numBreaks );
 
             box[1 + dim    ] = low;
@@ -421,13 +421,13 @@ void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
 
 
 template <short_t d, class T>
-bool gsHFitting<d, T>::isCellAlreadyInserted(const gsVector<unsigned, d>& a_cell,
-                                             const std::vector<unsigned>& cells)
+bool gsHFitting<d, T>::isCellAlreadyInserted(const gsVector<index_t, d>& a_cell,
+                                             const std::vector<index_t>& cells)
 {
 
     for (size_t i = 0; i != cells.size(); i += a_cell.rows())
     {
-        int commonEntries = 0;
+        index_t commonEntries = 0;
         for (index_t col = 0; col != a_cell.rows(); col++)
         {
             if (cells[i + col] == a_cell[col])

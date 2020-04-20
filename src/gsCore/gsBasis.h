@@ -119,13 +119,13 @@ public:
     //
     /// Note that the gsBasisFun object only holds a reference to the current
     /// basis, so it is invalidated when the basis is destroyed.
-    gsBasisFun<T> function(unsigned i) const;
+    gsBasisFun<T> function(index_t i) const;
 
     /// @name Evaluation functions
     /// @{
 
     /// Evaluate a single basis function \a i at points \a u.
-    gsMatrix<T> evalSingle(unsigned i, const gsMatrix<T> & u) const
+    gsMatrix<T> evalSingle(index_t i, const gsMatrix<T> & u) const
     {
         gsMatrix<T> result;
         this->evalSingle_into(i, u, result);
@@ -133,7 +133,7 @@ public:
     }
 
     /// Evaluate a single basis function \a i derivative at points \a u.
-    gsMatrix<T> derivSingle(unsigned i, const gsMatrix<T> & u) const
+    gsMatrix<T> derivSingle(index_t i, const gsMatrix<T> & u) const
     {
         gsMatrix<T> result;
         this->derivSingle_into(i, u, result);
@@ -141,7 +141,7 @@ public:
     }
 
     /// Evaluate the second derivative of a single basis function \a i at points \a u.
-    gsMatrix<T> deriv2Single(unsigned i, const gsMatrix<T> & u) const
+    gsMatrix<T> deriv2Single(index_t i, const gsMatrix<T> & u) const
     {
         gsMatrix<T> result;
         this->deriv2Single_into(i, u, result);
@@ -154,9 +154,9 @@ public:
      *  element, assuming that this number doesn't change for different
      *  parameters inside the element.
      */
-    gsVector<unsigned> numActive(const gsMatrix<T> & u) const
+    gsVector<index_t> numActive(const gsMatrix<T> & u) const
     {
-        gsVector<unsigned> result;
+        gsVector<index_t> result;
         this->numActive_into(u, result);
         return result;
     }
@@ -400,7 +400,7 @@ public:
      * @param[out] result gsMatrix of size \em stride x \em numPts
      */
     static void linearCombination_into(const gsMatrix<T> & coefs,
-                                       const gsMatrix<unsigned> & actives,
+                                       const gsMatrix<index_t> & actives,
                                        const gsMatrix<T> & values,
                                        gsMatrix<T> & result);
 
@@ -429,7 +429,7 @@ public:
         return result;
     }
 
-    gsMatrix<T> anchor(unsigned i) const
+    gsMatrix<T> anchor(index_t i) const
     {
         gsMatrix<T> result;
         this->anchor_into(i, result);
@@ -449,7 +449,7 @@ public:
     virtual void anchors_into(gsMatrix<T>& result) const;
 
     /// Returns the anchor point for member \a i of the basis.
-    virtual void anchor_into(unsigned i, gsMatrix<T>& result) const;
+    virtual void anchor_into(index_t i, gsMatrix<T>& result) const;
 
     /// Returns the connectivity structure of the basis
     /// The returned mesh has the anchor points as vertices
@@ -471,14 +471,14 @@ public:
      * \param[out]  result For every column \a i of \a u, a column containing the indices of the
      *   active basis functions at evaluation point <em>u</em>.col(<em>i</em>).
      */
-    virtual void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
+    virtual void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
 
     /// \brief Returns the number of active (nonzero) basis functions at points \a u in \a result.
-    virtual void numActive_into(const gsMatrix<T> & u, gsVector<unsigned>& result) const;
+    virtual void numActive_into(const gsMatrix<T> & u, gsVector<index_t>& result) const;
 
     /// \brief Returns true if there the point \a u with non-zero
     /// value or derivatives when evaluated at the basis function \a i
-    virtual bool isActive(const unsigned i, const gsVector<T> & u) const;
+    virtual bool isActive(const index_t i, const gsVector<T> & u) const;
 
     /** \brief Returns the matrix <em>result</em> of active
      * coefficients at points <em>u</em>, each row being one
@@ -496,19 +496,19 @@ public:
     /// @}
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary.
-    virtual gsMatrix<unsigned> allBoundary( ) const;
+    virtual gsMatrix<index_t> allBoundary( ) const;
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary.
     /// If an offset is provided (the default is zero), it will return the indizes of the basis
     /// functions having this offset to the provided boxSide. Note that the offset cannot be
     /// bigger than the size of the basis in the direction orthogonal to boxSide.
-    virtual gsMatrix<unsigned> boundaryOffset(boxSide const & s, unsigned offset) const;
+    virtual gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const;
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary as single-column-matrix.
-    gsMatrix<unsigned> boundary(boxSide const & s) const
+    gsMatrix<index_t> boundary(boxSide const & s) const
     { return this->boundaryOffset(s,0); }
 
-    virtual unsigned functionAtCorner(boxCorner const & c) const;
+    virtual index_t functionAtCorner(boxCorner const & c) const;
 
 #ifdef __DOXYGEN__
     /// @brief Returns the boundary basis for side s.
@@ -525,7 +525,7 @@ public:
     /// @param indices     The row vector where the indices are stored to
     /// @param noBoundary  If true, the transfer matrix does not include parts belonging to lower-order
     ///                    components (i.e., edges without corners or faces without corners and edges)
-    virtual uPtr componentBasis_withIndices(boxComponent b, gsMatrix<unsigned>& indices, bool noBoundary = true) const;
+    virtual uPtr componentBasis_withIndices(boxComponent b, gsMatrix<index_t>& indices, bool noBoundary = true) const;
 
     /// @brief Returns (a bounding box for) the domain of the whole basis.
     ///
@@ -537,13 +537,13 @@ public:
     ///
     /// Returns a dx2 matrix, containing the two diagonally extreme
     /// corners of a hypercube.
-    virtual gsMatrix<T> support(const unsigned & i) const;
+    virtual gsMatrix<T> support(const index_t & i) const;
 
     /// \brief Returns an interval that contains the parameter values in
     /// direction \a dir.
     ///
     /// Returns a 1x2 matrix, containing the two endpoints of the interval.
-    gsMatrix<T> supportInterval(unsigned dir) const;
+    gsMatrix<T> supportInterval(index_t dir) const;
 
     /// @name Evaluation functions
     /// @{
@@ -575,7 +575,7 @@ public:
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
     /// Evaluate the \a i-th basis function at points \a u into \a result.
-    virtual void evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
+    virtual void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
     /**
     \brief Evaluates the first partial derivatives of the nonzero basis function.
@@ -611,7 +611,7 @@ public:
     /// See deriv_into() for detailed documentation.
     ///
     /// \todo rename grad_into
-    virtual void derivSingle_into(unsigned i,
+    virtual void derivSingle_into(index_t i,
                                   const gsMatrix<T> & u,
                                   gsMatrix<T>& result ) const;
 
@@ -654,7 +654,7 @@ public:
     /// @brief Evaluate the (partial) derivatives of the \a i-th basis function
     /// at points \a u into \a result.
     // hessianSingle_into
-    virtual void deriv2Single_into(unsigned i,
+    virtual void deriv2Single_into(index_t i,
                                    const gsMatrix<T> & u,
                                    gsMatrix<T>& result ) const;
 
@@ -679,12 +679,12 @@ public:
 
     /// @brief Evaluate the basis function \a i and its derivatives up
     /// to order \a n at points \a u into \a result.
-    virtual void evalAllDersSingle_into(unsigned i, const gsMatrix<T> & u,
+    virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u,
                                         int n, gsMatrix<T>& result) const;
 
     /// @brief Evaluate the (partial) derivative(s) of order \a n the
     /// \a i-th basis function at points \a u into \a result.
-    virtual void evalDerSingle_into(unsigned i, const
+    virtual void evalDerSingle_into(index_t i, const
                                     gsMatrix<T> & u, int n,
                                     gsMatrix<T>& result) const;
 
@@ -744,22 +744,22 @@ public:
     */
 
     /// @brief The number of elements.
-    virtual int numElements() const;
+    virtual size_t numElements() const;
 
     /// @brief The number of elements on side \a s.
     // fixme: default arg = none
-    virtual int numElements(boxSide const & s) const;
+    virtual size_t numElements(boxSide const & s) const;
 
     /// @brief Returns an index for the element which contains point \a u
-    virtual int elementIndex(const gsVector<T> & u ) const;
+    virtual size_t elementIndex(const gsVector<T> & u ) const;
 
     /// @brief For a tensor product basis, return the (const) 1-d
     /// basis for the \a i-th parameter component.
-    virtual const gsBasis<T> & component(unsigned i) const;
+    virtual const gsBasis<T> & component(short_t i) const;
 
     /// @brief For a tensor product basis, return the 1-d basis for
     /// the \a i-th parameter component.
-    virtual gsBasis<T> & component(unsigned i);
+    virtual gsBasis<T> & component(short_t i);
 
     /** @brief Refine the basis on the area defined by the matrix \a boxes.
      *
@@ -790,14 +790,14 @@ public:
      * gsHTensorBasis::refineElements()
      *
      */
-    virtual void refineElements(std::vector<unsigned> const & boxes);
+    virtual void refineElements(std::vector<index_t> const & boxes);
 
     /** @brief Refine basis and geometry coefficients to levels.
      *
      * Refines the basis as well as the coefficients. The refinement and the format of the
      * input depend on the implementation of refineElements().
      */
-    virtual void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
+    virtual void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
 
     /// @brief Refine the basis uniformly by inserting \a numKnots new
     /// knots with multiplicity \a mul on each knot span
@@ -936,7 +936,7 @@ public:
     /// The output is two lists of indices \a bndThis and \a bndOther,
     /// with indices that match one-to-one on the boundary \a bi.
     virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-                           gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const;
+                           gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const;
 
 
     /// Get the minimum mesh size, as expected for inverse inequalities

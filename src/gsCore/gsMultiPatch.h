@@ -201,7 +201,7 @@ public:
     }
 
     ///\brief Permutes the patches according to \a perm
-    void permute(const std::vector<int> & perm);
+    void permute(const std::vector<short_t> & perm);
 
     ///\brief Return the basis of the \a i-th patch.
     gsBasis<T> & basis( size_t i ) const;

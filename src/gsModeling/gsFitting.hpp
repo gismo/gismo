@@ -49,7 +49,7 @@ void gsFitting<T>::compute(T lambda)
         delete m_result;
 
     const int num_basis=m_basis->size();
-    const int dimension=m_points.cols();
+    const short_t dimension=m_points.cols();
 
     //left side matrix
     //gsMatrix<T> A_mat(num_basis,num_basis);
@@ -118,7 +118,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
     //for computing the value of the basis function
     gsMatrix<T> value, curr_point;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     for(index_t k = 0; k != num_points; ++k)
     {
@@ -134,7 +134,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
         for (index_t i = 0; i != numActive; ++i)
         {
-            const int ii = actives.at(i);
+            const index_t ii = actives.at(i);
             m_B.row(ii) += value.at(i) * m_points.row(k);
             for (index_t j = 0; j != numActive; ++j)
                 A_mat(ii, actives.at(j)) += value.at(i) * value.at(j);
@@ -169,16 +169,16 @@ void gsFitting<T>::extendSystem(gsSparseMatrix<T>& A_mat,
 template<class T>
 void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 {
-    const int dim = m_basis->dim();
-    const int stride = dim*(dim+1)/2;
+    const short_t dim = m_basis->dim();
+    const short_t stride = dim*(dim+1)/2;
 
-    gsVector<int> numNodes(dim);
-    for ( int i = 0; i!= dim; ++i )
+    gsVector<index_t> numNodes(dim);
+    for ( short_t i = 0; i!= dim; ++i )
         numNodes[i] = this->m_basis->degree(i);//+1;
     gsGaussRule<T> QuRule( numNodes ); // Reference Quadrature rule
     gsMatrix<T> quNodes, der2, localA;
     gsVector<T> quWeights;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     typename gsBasis<T>::domainIter domIt = m_basis->makeDomainIterator();
 
@@ -201,7 +201,7 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
                 {
                     T localAij = 0; // temporary variable
 
-                    for (int s = 0; s < stride; s++)
+                    for (short_t s = 0; s < stride; s++)
                     {
                         // The pure second derivatives
                         // d^2u N_i * d^2u N_j + ...

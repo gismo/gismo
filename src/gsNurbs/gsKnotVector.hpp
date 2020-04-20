@@ -256,7 +256,7 @@ typename gsKnotVector<T>::reverse_smart_iterator gsKnotVector<T>::rsend()   cons
 
 
 template<typename T>
-gsKnotVector<T>::gsKnotVector( knotContainer knots, int degree)
+gsKnotVector<T>::gsKnotVector( knotContainer knots, short_t degree)
 {
     knots.swap(m_repKnots);
     rebuildMultSum();
@@ -564,7 +564,7 @@ gsKnotVector<T>::gsKnotVector( T first,
                                unsigned interior,
                                mult_t mult_ends,
                                mult_t mult_interior,
-                               int degree)
+                               short_t degree)
 {
     initUniform( first, last, interior, mult_ends, mult_interior, degree );
 }
@@ -615,7 +615,7 @@ void gsKnotVector<T>::initUniform( T first,
                                    unsigned interior,
                                    unsigned mult_ends,
                                    unsigned mult_interior,
-                                   int degree)
+                                   short_t degree)
 {
     m_deg = (degree == - 1 ? mult_ends-1 : degree);
 
@@ -859,14 +859,14 @@ void gsKnotVector<T>::reduceMultiplicity(const mult_t i, bool boundary)
 }
 
 template<typename T>
-void gsKnotVector<T>::degreeElevate(int const & i)
+void gsKnotVector<T>::degreeElevate(const short_t & i)
 {
     increaseMultiplicity(i,true);
     m_deg += i;
 }
 
 template<typename T>
-void gsKnotVector<T>::degreeReduce(int const & i)
+void gsKnotVector<T>::degreeReduce(const short_t & i)
 {
     reduceMultiplicity(i,true);
     m_deg -= i;
@@ -989,7 +989,7 @@ void gsKnotVector<T>::getUniformRefinementKnots(mult_t knotsPerSpan, knotContain
 
 template< typename T>
 void gsKnotVector<T>::supportIndex_into(const mult_t& i,
-                                        gsMatrix<unsigned>& result) const
+                                        gsMatrix<index_t>& result) const
 {
     T suppBeg=*(this->begin()+i);
     T suppEnd=*(this->begin()+i+m_deg+1);

@@ -144,7 +144,7 @@ public:
      *
     **/
     GISMO_DEPRECATED
-    int dim() const
+    short_t dim() const
     {
         return m_domain.dim();
     }

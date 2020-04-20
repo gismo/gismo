@@ -17,8 +17,8 @@ namespace gismo
 template<class T>
 bool gsMinimalResidual<T>::initIteration( const typename gsMinimalResidual<T>::VectorType& rhs, typename gsMinimalResidual<T>::VectorType& x )
 {
-    if (Base::initIteration(rhs,x))
-        return true;
+    Base::initIteration(rhs,x);
+    //if (Base::initIteration(rhs,x)) return true; // z will not be initialized!
 
     int n = m_mat->cols();
     int m = 1; // = rhs.cols();

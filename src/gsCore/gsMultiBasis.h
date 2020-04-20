@@ -377,7 +377,7 @@ public:
     /// on patch \em k.
     ///
     /// See gsHTensorBasis::refineElements() for further documentation.
-    void refineElements(int k, std::vector<unsigned> const & boxes)
+    void refineElements(int k, std::vector<index_t> const & boxes)
     {
         m_bases[k]->refineElements(boxes);
     }
@@ -435,7 +435,7 @@ public:
     typename gsBasis<T>::uPtr componentBasis_withIndices(
         patchComponent pc,
         const gsDofMapper& dm,
-        gsMatrix<unsigned>& indices,
+        gsMatrix<index_t>& indices,
         bool no_lower = true
     ) const;
     
@@ -449,7 +449,7 @@ public:
     std::vector<typename gsBasis<T>::uPtr> componentBasis_withIndices(
         const std::vector<patchComponent>& pc,
         const gsDofMapper& dm,
-        gsMatrix<unsigned>& indices,
+        gsMatrix<index_t>& indices,
         bool no_lower = true
     ) const;
 
@@ -521,10 +521,10 @@ public:
      *
      * Is called by repairInterface(), templated over dimension.
      */
-    template<int d>
+    template<short_t d>
     bool repairInterfaceFindElements( const boundaryInterface & bi,
-                                      std::vector<unsigned> & refEltsFirst,
-                                      std::vector<unsigned> & refEltsSecond );
+                                      std::vector<index_t> & refEltsFirst,
+                                      std::vector<index_t> & refEltsSecond );
 
     /// @brief Elevate the degree of every basis by the given amount. (keeping the smoothness)
     void degreeElevate(short_t const i = 1, short_t const dir = -1)
