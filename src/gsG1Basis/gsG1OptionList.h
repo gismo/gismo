@@ -155,6 +155,8 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     optionList.addSwitch("plot","Plot in Paraview",plot);
     optionList.addSwitch("latex","Latex output",latex);
 
+    optionList.addSwitch("twoPatch", "For the two-patch paper",false);
+
     optionList.addReal("threshold","Threshold",threshold);
     optionList.addReal("zero","Zero",zero);
 
