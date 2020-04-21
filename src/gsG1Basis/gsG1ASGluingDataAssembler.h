@@ -31,10 +31,18 @@ public:
     }
 
     void refresh();
+    void refreshBeta();
+
 
     void assemble();
+    void assembleBeta();
+
 
     inline void apply(bhVisitor & visitor,
+                      int patchIndex = 0,
+                      boxSide side = boundary::none);
+
+    inline void applyBeta(bhVisitor & visitor,
                       int patchIndex = 0,
                       boxSide side = boundary::none);
 
@@ -84,6 +92,8 @@ void gsG1ASGluingDataAssembler<T, bhVisitor>::refresh()
 
 } // refresh()
 
+
+
 template <class T, class bhVisitor>
 void gsG1ASGluingDataAssembler<T, bhVisitor>::assemble()
 {
@@ -112,6 +122,8 @@ void gsG1ASGluingDataAssembler<T, bhVisitor>::assemble()
     m_system_beta_S.matrix().makeCompressed();
 
 }
+
+
 
 template <class T, class bhVisitor>
 inline void gsG1ASGluingDataAssembler<T, bhVisitor>::apply(bhVisitor & visitor,
@@ -168,6 +180,5 @@ inline void gsG1ASGluingDataAssembler<T, bhVisitor>::apply(bhVisitor & visitor,
 
     }//omp parallel
 }
-
 
 } // namespace gismo

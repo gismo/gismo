@@ -17,6 +17,7 @@
 #include <gsCore/gsMultiPatch.h>
 #include <gsG1Basis/gsG1AuxiliaryPatch.h>
 # include <gsG1Basis/gsApproxG1BasisEdge.h>
+# include <gsG1Basis/gsG1ASBasisEdge.h>
 # include <gsG1Basis/gsG1ASGluingData.h>
 # include <gsG1Basis/gsG1OptionList.h>
 
@@ -158,35 +159,36 @@ public:
     void computeG1InterfaceBasis(gsG1OptionList g1OptionList){
 
         gsMultiPatch<> mp_init;
-        mp_init.addPatch(auxGeom[0].getPatch());// Right -> 0 = v along the interface
-        mp_init.addPatch(auxGeom[1].getPatch()); // Left -> 1 = u along the interface
+        mp_init.addPatch(auxGeom[0].getPatch());// Right -> 0 ====> v along the interface
+        mp_init.addPatch(auxGeom[1].getPatch()); // Left -> 1 ====> u along the interface
 
         gsMultiPatch<> test_mp(this->reparametrizeG1Interface()); // auxGeom contains now the reparametrized geometry
         gsMultiBasis<> test_mb(test_mp);
-
-        gsApproxG1BasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), test_mb.basis(0), 1, false, g1OptionList);
-        gsApproxG1BasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, g1OptionList);
         gsMultiPatch<> g1Basis_0, g1Basis_1;
 
-        g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
-        g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
 
-        //gsG1ASGluingData<real_t> g1BasisEdge(test_mp, test_mb);
-
-//        if (g1OptionList.getInt("gluingData")==gluingData::global)
-//            gluingDataCondition(g1BasisEdge_0.get_alpha(),g1BasisEdge_1.get_alpha(),g1BasisEdge_0.get_beta(),g1BasisEdge_1.get_beta());
-
-
-        g1BasisEdge_0.plotGluingData(0);
+        if(g1OptionList.getInt("user") == user::name::pascal)
+        {
+            gsApproxG1BasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), test_mb.basis(0), 1, false, g1OptionList);
+            gsApproxG1BasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, g1OptionList);
+            g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
+            g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
+        }
+        else
+        if(g1OptionList.getInt("user") == user::name::andrea)
+        {
+            gsG1ASGluingData<real_t> g1BasisEdge(test_mp, test_mb);
+            gsG1ASBasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), test_mb.basis(0), 1, false, g1OptionList, g1BasisEdge);
+            gsG1ASBasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, g1OptionList, g1BasisEdge);
+            g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
+            g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
+        }
 
 //      Patch 0 -> Right
         auxGeom[0].parametrizeBasisBack(g1Basis_0);
 
 //      Patch 1 -> Left
         auxGeom[1].parametrizeBasisBack(g1Basis_1);
-
-//        if (g1OptionList.getInt("gluingData")==gluingData::global)
-//            g1ConditionRep(g1BasisEdge_0.get_alpha(),g1BasisEdge_1.get_alpha(),g1Basis_0,g1Basis_1);
 
     }
 
@@ -303,7 +305,6 @@ public:
         {
             P0.jacobian_into(uv0.col(i),ev0);
             P1.jacobian_into(uv1.col(i),ev1);
-
             D0.col(1) = ev0.col(0); // (DuFL, *)
             D0.col(0) = ev1.col(1); // (*,DuFR)
 

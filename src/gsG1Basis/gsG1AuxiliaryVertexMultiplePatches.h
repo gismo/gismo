@@ -9,6 +9,7 @@
 #include <gsG1Basis/gsG1AuxiliaryPatch.h>
 
 # include <gsG1Basis/gsG1BasisVertex.h>
+# include <gsG1Basis/gsG1ASBasisVertex.h>
 
 # include <gsG1Basis/gsG1OptionList.h>
 
@@ -100,6 +101,7 @@ public:
         {
             auxGeom[i].swapAxis();
 //            gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
+
 
             this->swapBdy(i); //Swap boundary edge bool-value
 
@@ -467,7 +469,7 @@ public:
             }
 
         }
-        
+
 //        gsInfo << "Big kernel:\n";
 //        gsInfo << bigKernel << "\n ";
 
@@ -480,11 +482,46 @@ public:
         return std::make_pair(basisVect, numberPerType);
     }
 
+    gsG1ASGluingData<real_t> selectGD(index_t i)
+    {
+        if( (isBdy[i][0] == 1 && isBdy[i][1] == 0 ) || (isBdy[i][0] == 0 && isBdy[i][1] == 1) ) // If the boundary it´s along u and along v there is an interface (Right Patch) or viceversa
+        {
+            gsMultiPatch<> tmp(this->computeAuxTopology());
+            for(auto iter : tmp.interfaces())
+            {
+                if(auxGeom[i].getGlobalPatchIndex() == iter.first().patch || auxGeom[i].getGlobalPatchIndex() == iter.second().patch )
+                {
+                    gsMultiPatch<> aux;
+                    aux.addPatch(tmp.patch(iter.first().patch));
+                    aux.addPatch(tmp.patch(iter.second().patch));
+                    aux.computeTopology();
+                    gsMultiBasis<> auxB(aux);
+                    gsG1ASGluingData<real_t> ret(aux, auxB);
+                    return ret;
+                }
+            }
+        }
+        else
+        if( isBdy[i][0] == 1 && isBdy[i][1] == 1 ) // Single patch corner
+        {
+
+        }
+        else
+        if( isBdy[i][0] == 0 && isBdy[i][1] == 0 ) // Internal vertex -> Two interfaces
+        {
+            gsMultiPatch<> tmp(this->computeAuxTopology());
+            for(auto iter : tmp.interfaces())
+            {
+
+            }
+        }
+    }
+
+
 
     void computeG1InternalVertexBasis(gsG1OptionList g1OptionList)
     {
-        //gsMultiPatch<> test_mp(this->computeAuxTopology());
-        //gsMultiBasis<> test_mb(test_mp);
+
         m_zero = g1OptionList.getReal("zero");
 
         this->reparametrizeG1Vertex();
@@ -500,6 +537,7 @@ public:
         for(size_t i = 0; i < auxGeom.size(); i++)
         {
 //            gsInfo << "Index " << auxVertexIndices[i] << " Patch " << auxGeom[i].getGlobalPatchIndex() <<  "\n";
+
 
             gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, g1OptionList);
             g1BasisVertexVector.push_back(g1BasisVertex_0);

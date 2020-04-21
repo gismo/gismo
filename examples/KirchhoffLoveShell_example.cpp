@@ -32,6 +32,9 @@ int main(int argc, char *argv[])
     gsG1OptionList g1OptionList;
     g1OptionList.initialize(argc, argv);
 
+    g1OptionList.addInt("user", "User defined gluingData", user::name::andrea);
+
+
     // ======= Solution =========
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
@@ -107,7 +110,7 @@ int main(int argc, char *argv[])
             break;
         case 14:
             string_geo = "KirchhoffLoveGeo/square_diffParam.xml";
-            numDegree = 0; // 2 == degree 3
+            numDegree = 2; // 2 == degree 3
             break;
 
         default:
@@ -304,11 +307,7 @@ int main(int argc, char *argv[])
         g1System.constructSparseG1Solution(solVector,Sol_sparse);
 
 #ifdef _OPENMP
-<<<<<<< HEAD
         omp_set_num_threads(g1OptionList.getInt("threads"));
-=======
-        omp_set_num_threads( g1OptionList.getInt("threads"));
->>>>>>> farahat_G1_multipatch
         omp_set_nested(1);
 #endif
 
