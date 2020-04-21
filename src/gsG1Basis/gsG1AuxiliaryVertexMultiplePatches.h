@@ -482,8 +482,10 @@ public:
         return std::make_pair(basisVect, numberPerType);
     }
 
-    gsG1ASGluingData<real_t> selectGD(index_t i)
+    gsMatrix<> selectGD(index_t i)
     {
+        gsMatrix<> coefs(4, 2);
+
         if( (isBdy[i][0] == 1 && isBdy[i][1] == 0 ) || (isBdy[i][0] == 0 && isBdy[i][1] == 1) ) // If the boundary it´s along u and along v there is an interface (Right Patch) or viceversa
         {
             gsMultiPatch<> tmp(this->computeAuxTopology());
@@ -497,14 +499,46 @@ public:
                     aux.computeTopology();
                     gsMultiBasis<> auxB(aux);
                     gsG1ASGluingData<real_t> ret(aux, auxB);
-                    return ret;
+
+                    gsMatrix<> sol = ret.getSol();
+                    gsMatrix<> solBeta = ret.getSolBeta();
+
+                    if( (auxGeom[i].getGlobalPatchIndex() == iter.first().patch && iter.first().index() == 3 ) || (auxGeom[i].getGlobalPatchIndex() == iter.second().patch && iter.second().index() == 3 ) )
+                    {
+                        coefs(0, 0) = sol(2, 0);
+                        coefs(0, 1) = 1;
+                        coefs(1, 0) = sol(3, 0);
+                        coefs(1, 1) = 1;
+                        coefs(2, 0) = solBeta(2, 0);
+                        coefs(2, 1) = 0;
+                        coefs(3, 0) = solBeta(3, 0);
+                        coefs(3, 1) = 0;
+                    }
+                    else
+                    if( (auxGeom[i].getGlobalPatchIndex() == iter.first().patch && iter.first().index() == 1 ) || (auxGeom[i].getGlobalPatchIndex() == iter.second().patch && iter.second().index() == 1 ) )
+                    {
+                        coefs(0, 0) = 1;
+                        coefs(0, 1) = sol(0, 0);
+                        coefs(1, 0) = 1;
+                        coefs(1, 1) = sol(1, 0);
+                        coefs(2, 0) = 0;
+                        coefs(2, 1) = solBeta(0, 0);
+                        coefs(3, 0) = 0;
+                        coefs(3, 1) = solBeta(1, 0);
+                    }
+                    return coefs;
                 }
             }
         }
         else
         if( isBdy[i][0] == 1 && isBdy[i][1] == 1 ) // Single patch corner
         {
-
+            coefs.setZero();
+            coefs(0, 0) = 1;
+            coefs(0, 1) = 1;
+            coefs(1, 0) = 1;
+            coefs(1, 1) = 1;
+            return coefs;
         }
         else
         if( isBdy[i][0] == 0 && isBdy[i][1] == 0 ) // Internal vertex -> Two interfaces
@@ -512,8 +546,37 @@ public:
             gsMultiPatch<> tmp(this->computeAuxTopology());
             for(auto iter : tmp.interfaces())
             {
+                if(auxGeom[i].getGlobalPatchIndex() == iter.first().patch || auxGeom[i].getGlobalPatchIndex() == iter.second().patch )
+                {
+                    gsMultiPatch<> aux;
+                    aux.addPatch(tmp.patch(iter.first().patch));
+                    aux.addPatch(tmp.patch(iter.second().patch));
+                    aux.computeTopology();
+                    gsMultiBasis<> auxB(aux);
+                    gsG1ASGluingData<real_t> ret(aux, auxB);
 
+                    gsMatrix<> sol = ret.getSol();
+                    gsMatrix<> solBeta = ret.getSolBeta();
+
+                    if ((auxGeom[i].getGlobalPatchIndex() == iter.first().patch && iter.first().index() == 3)
+                        || (auxGeom[i].getGlobalPatchIndex() == iter.second().patch && iter.second().index() == 3))
+                    {
+                        coefs(0, 0) = sol(2, 0);
+                        coefs(1, 0) = sol(3, 0);
+                        coefs(2, 0) = solBeta(2, 0);
+                        coefs(3, 0) = solBeta(3, 0);
+                    }
+                    else if ((auxGeom[i].getGlobalPatchIndex() == iter.first().patch && iter.first().index() == 1)
+                        || (auxGeom[i].getGlobalPatchIndex() == iter.second().patch && iter.second().index() == 1))
+                    {
+                        coefs(0, 1) = sol(0, 0);
+                        coefs(1, 1) = sol(1, 0);
+                        coefs(2, 1) = solBeta(0, 0);
+                        coefs(3, 1) = solBeta(1, 0);
+                    }
+                }
             }
+            return coefs;
         }
     }
 
@@ -533,32 +596,18 @@ public:
         std::vector<gsMultiPatch<>> g1BasisVector;
         std::pair<gsMatrix<>, std::vector<index_t>> vertexBoundaryBasis;
         std::vector<gsBSpline<>> alpha, beta_S;
-        std::vector<gsG1BasisVertex<real_t>> g1BasisVertexVector;
+        std::vector<gsG1ASBasisVertex<real_t>> g1BasisVertexVector;
+
         for(size_t i = 0; i < auxGeom.size(); i++)
         {
 //            gsInfo << "Index " << auxVertexIndices[i] << " Patch " << auxGeom[i].getGlobalPatchIndex() <<  "\n";
 
+            gsMatrix<> gdCoefs(selectGD(i));
 
-            gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, g1OptionList);
+            gsG1ASBasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, g1OptionList, gdCoefs);
             g1BasisVertexVector.push_back(g1BasisVertex_0);
 
-            if (g1OptionList.getInt("gluingData")==gluingData::global)
-            {
-                alpha.push_back(g1BasisVertex_0.get_alpha_tilde(0));
-                beta_S.push_back(g1BasisVertex_0.get_beta_tilde(0));
 
-                alpha.push_back(g1BasisVertex_0.get_alpha_tilde(1));
-                beta_S.push_back(g1BasisVertex_0.get_beta_tilde(1));
-            }
-            else if (g1OptionList.getInt("gluingData")==gluingData::local)
-            {
-                alpha.push_back(g1BasisVertex_0.get_local_alpha_tilde(0));
-                beta_S.push_back(g1BasisVertex_0.get_local_beta_tilde(0));
-
-                alpha.push_back(g1BasisVertex_0.get_local_alpha_tilde(1));
-                beta_S.push_back(g1BasisVertex_0.get_local_beta_tilde(1));
-
-            }
         }
 
         for (size_t i = 0; i < auxGeom.size(); i++)

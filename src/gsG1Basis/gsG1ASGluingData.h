@@ -67,6 +67,16 @@ public:
     }
 
 
+    gsMatrix<> getSol()
+    {
+        return sol;
+    }
+
+    gsMatrix<> getSolBeta()
+    {
+        return solBeta;
+    }
+
 protected:
 
     gsSparseSystem<> mSys;

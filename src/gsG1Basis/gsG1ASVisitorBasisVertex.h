@@ -47,7 +47,7 @@ public:
                          std::vector<gsBSplineBasis<T>>      & basis_minus,
                          const gsGeometry<T>    & geo, // patch
                          gsMatrix<T>            & quNodes,
-                         gsG1ASGluingData<T>  & gluingData,
+                         gsMatrix<>  & gluingData,
                          std::vector<bool> & isBoundary,
                          real_t sigma,
                          gsG1OptionList g1OptionList)
@@ -128,39 +128,59 @@ public:
         zero.setZero(2,1);
 
         std::vector<gsMatrix<>> alpha, beta, alpha_0, beta_0, alpha_deriv, beta_deriv;
-        if (g1OptionList.getInt("gluingData") == gluingData::global)
-        {
-            alpha.push_back(gluingData[0].get_alpha_tilde().eval(md.points.row(0))); // u
-            alpha.push_back(gluingData[1].get_alpha_tilde().eval(md.points.row(1))); // v
-            alpha_0.push_back(gluingData[0].get_alpha_tilde().eval(zero.row(0))); // u
-            alpha_0.push_back(gluingData[1].get_alpha_tilde().eval(zero.row(0))); // v
-            alpha_deriv.push_back(gluingData[0].get_alpha_tilde().deriv(zero.row(0))); // u
-            alpha_deriv.push_back(gluingData[1].get_alpha_tilde().deriv(zero.row(0))); // v
+//        if (g1OptionList.getInt("gluingData") == gluingData::global)
+//        {
+//            alpha.push_back(gluingData[0].get_alpha_tilde().eval(md.points.row(0))); // u
+//            alpha.push_back(gluingData[1].get_alpha_tilde().eval(md.points.row(1))); // v
+//            alpha_0.push_back(gluingData[0].get_alpha_tilde().eval(zero.row(0))); // u
+//            alpha_0.push_back(gluingData[1].get_alpha_tilde().eval(zero.row(0))); // v
+//            alpha_deriv.push_back(gluingData[0].get_alpha_tilde().deriv(zero.row(0))); // u
+//            alpha_deriv.push_back(gluingData[1].get_alpha_tilde().deriv(zero.row(0))); // v
+//
+//            beta.push_back(gluingData[0].get_beta_tilde().eval(md.points.row(0))); // u
+//            beta.push_back(gluingData[1].get_beta_tilde().eval(md.points.row(1))); // v
+//            beta_0.push_back(gluingData[0].get_beta_tilde().eval(zero.row(0))); // u
+//            beta_0.push_back(gluingData[1].get_beta_tilde().eval(zero.row(0))); // v
+//            beta_deriv.push_back(gluingData[0].get_beta_tilde().deriv(zero.row(0))); // u
+//            beta_deriv.push_back(gluingData[1].get_beta_tilde().deriv(zero.row(0))); // v
+//
+//        }
+//        else if (g1OptionList.getInt("gluingData") == gluingData::local)
+//        {
+//            alpha.push_back(gluingData[0].get_local_alpha_tilde(0).eval(md.points.row(0))); // u
+//            alpha.push_back(gluingData[1].get_local_alpha_tilde(0).eval(md.points.row(1))); // v
+//            alpha_0.push_back(gluingData[0].get_local_alpha_tilde(0).eval(zero.row(0))); // u
+//            alpha_0.push_back(gluingData[1].get_local_alpha_tilde(0).eval(zero.row(0))); // v
+//            alpha_deriv.push_back(gluingData[0].get_local_alpha_tilde(0).deriv(zero.row(0))); // u
+//            alpha_deriv.push_back(gluingData[1].get_local_alpha_tilde(0).deriv(zero.row(0))); // v
+//
+//            beta.push_back(gluingData[0].get_local_beta_tilde(0).eval(md.points.row(0))); // u
+//            beta.push_back(gluingData[1].get_local_beta_tilde(0).eval(md.points.row(1))); // v
+//            beta_0.push_back(gluingData[0].get_local_beta_tilde(0).eval(zero.row(0))); // u
+//            beta_0.push_back(gluingData[1].get_local_beta_tilde(0).eval(zero.row(0))); // v
+//            beta_deriv.push_back(gluingData[0].get_local_beta_tilde(0).deriv(zero.row(0))); // u
+//            beta_deriv.push_back(gluingData[1].get_local_beta_tilde(0).deriv(zero.row(0))); // v
+//        }
 
-            beta.push_back(gluingData[0].get_beta_tilde().eval(md.points.row(0))); // u
-            beta.push_back(gluingData[1].get_beta_tilde().eval(md.points.row(1))); // v
-            beta_0.push_back(gluingData[0].get_beta_tilde().eval(zero.row(0))); // u
-            beta_0.push_back(gluingData[1].get_beta_tilde().eval(zero.row(0))); // v
-            beta_deriv.push_back(gluingData[0].get_beta_tilde().deriv(zero.row(0))); // u
-            beta_deriv.push_back(gluingData[1].get_beta_tilde().deriv(zero.row(0))); // v
 
-        }
-        else if (g1OptionList.getInt("gluingData") == gluingData::local)
-        {
-            alpha.push_back(gluingData[0].get_local_alpha_tilde(0).eval(md.points.row(0))); // u
-            alpha.push_back(gluingData[1].get_local_alpha_tilde(0).eval(md.points.row(1))); // v
-            alpha_0.push_back(gluingData[0].get_local_alpha_tilde(0).eval(zero.row(0))); // u
-            alpha_0.push_back(gluingData[1].get_local_alpha_tilde(0).eval(zero.row(0))); // v
-            alpha_deriv.push_back(gluingData[0].get_local_alpha_tilde(0).deriv(zero.row(0))); // u
-            alpha_deriv.push_back(gluingData[1].get_local_alpha_tilde(0).deriv(zero.row(0))); // v
 
-            beta.push_back(gluingData[0].get_local_beta_tilde(0).eval(md.points.row(0))); // u
-            beta.push_back(gluingData[1].get_local_beta_tilde(0).eval(md.points.row(1))); // v
-            beta_0.push_back(gluingData[0].get_local_beta_tilde(0).eval(zero.row(0))); // u
-            beta_0.push_back(gluingData[1].get_local_beta_tilde(0).eval(zero.row(0))); // v
-            beta_deriv.push_back(gluingData[0].get_local_beta_tilde(0).deriv(zero.row(0))); // u
-            beta_deriv.push_back(gluingData[1].get_local_beta_tilde(0).deriv(zero.row(0))); // v
-        }
+
+        gsMatrix<> ones(1, md.points.cols());
+        ones.setOnes();
+
+        alpha.push_back(gluingData(0, 0) * ( ones - md.points.row(0) ) + gluingData(1, 0) * md.points.row(0)); // u
+        alpha.push_back(gluingData(0, 1) * ( ones - md.points.row(1) ) + gluingData(1, 1) * md.points.row(1)); // v
+        alpha_0.push_back(gluingData(0, 0) * ( ones - zero.row(0) ) + gluingData(1, 0) * zero.row(0)); // u
+        alpha_0.push_back(gluingData(0, 1) * ( ones - zero.row(0) ) + gluingData(1, 1) * zero.row(0)); // v
+        alpha_deriv.push_back( (gluingData(1, 0) - gluingData(0, 0)) * ones.col(0) ); // u
+        alpha_deriv.push_back( (gluingData(1, 1) - gluingData(0, 1)) * ones.col(0) ); // v
+
+        beta.push_back(gluingData(2, 0) * ( ones - md.points.row(0) ) + gluingData(3, 0) * md.points.row(0)); // u
+        beta.push_back(gluingData(2, 1) * ( ones - md.points.row(1) ) + gluingData(3, 1) * md.points.row(1)); // v
+        beta_0.push_back(gluingData(2, 0) * ( ones - zero.row(0) ) + gluingData(3, 0) * zero.row(0)); // u
+        beta_0.push_back(gluingData(2, 1) * ( ones - zero.row(0) ) + gluingData(3, 1) * zero.row(0)); // v
+        beta_deriv.push_back( (gluingData(3, 0) - gluingData(2, 0)) * ones.col(0) ); // u
+        beta_deriv.push_back( (gluingData(3, 1) - gluingData(2, 1)) * ones.col(0) ); // v
 
         // Compute dd^^(i_k) and dd^^(i_k-1)
         gsMatrix<> dd_ik_plus, dd_ik_minus;

@@ -23,7 +23,7 @@ public:
                     std::vector<bool> isBoundary,
                     real_t sigma,
                     gsG1OptionList & g1OptionList,
-                    gsG1ASGluingData<real_t> gluingD)
+                    gsMatrix<> gluingD)
         : m_mp(mp), m_basis(basis), m_isBoundary(isBoundary), m_sigma(sigma), m_g1OptionList(g1OptionList), m_gD(gluingD)
     {
 
@@ -79,11 +79,6 @@ public:
         constructSolution(result);
     }
 
-    gsBSpline<> get_alpha_tilde(size_t i) { return m_gD.at(i).get_alpha_tilde(); }
-    gsBSpline<> get_beta_tilde(size_t i) { return m_gD.at(i).get_beta_tilde(); }
-
-    gsBSpline<> get_local_alpha_tilde(size_t i) { return m_gD.at(i).get_local_alpha_tilde(0); }
-    gsBSpline<> get_local_beta_tilde(size_t i) { return m_gD.at(i).get_local_beta_tilde(0); }
 
 
 protected:
@@ -96,7 +91,7 @@ protected:
     gsG1OptionList m_g1OptionList;
 
     // Gluing data
-    gsG1ASGluingData<T> m_gD;
+    gsMatrix<> m_gD;
 
     // Basis for getting the G1 Basis
     std::vector<gsBSplineBasis<>> m_basis_plus;
