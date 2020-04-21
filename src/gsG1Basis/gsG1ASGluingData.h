@@ -107,7 +107,6 @@ protected:
         gsSparseSystem<> sysBeta(mapBeta);
         mSysBeta = sysBeta;
 
-
     }
 
 
