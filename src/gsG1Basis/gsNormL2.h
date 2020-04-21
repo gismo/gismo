@@ -47,8 +47,86 @@ public:
 
 public:
 
+    void plotElWiseError(std::vector<real_t> &elWiseError)
+    {
+
+        std::string fn = "ElWiseError";
+        index_t npts = elWiseError.size() / 2;
+        gsParaviewCollection collection2(fn);
+        std::string fileName2;
+
+        for ( size_t pp =0; pp < patchesPtr->nPatches(); ++pp ) // Patches
+        {
+            fileName2 = fn + util::to_string(pp);
+            //writeSinglePatchField( field, i, fileName, npts );
+
+            const gsFunction<T> & geometry = patchesPtr->patch(pp);
+
+            const int n = geometry.targetDim();
+            const int d = geometry.domainDim();
+
+            gsMatrix<T> ab = geometry.support();
+            gsVector<T> a = ab.col(0);
+            gsVector<T> b = ab.col(1);
+
+            gsVector<unsigned> np = uniformSampleCount(a, b, npts);
+
+            gsMatrix<T> pts = gsPointGrid(a, b, np);
+            gsMatrix<T> eval_geo = geometry.eval(pts);//pts
+
+            gsMatrix<T> eval_field(1,npts);
+            for (index_t i = 0; i < npts; i++)
+            {
+                eval_field(0,i) = elWiseError[pp*npts + i];
+            }
+
+            // Here add g1 basis
+            //eval_field.setZero();
+
+            if ( 3 - d > 0 )
+            {
+                np.conservativeResize(3);
+                np.bottomRows(3-d).setOnes();
+            }
+            else if (d > 3)
+            {
+                gsWarn<< "Cannot plot 4D data.\n";
+                return;
+            }
+
+            if ( 3 - n > 0 )
+            {
+                eval_geo.conservativeResize(3,eval_geo.cols() );
+                eval_geo.bottomRows(3-n).setZero();
+            }
+            else if (n > 3)
+            {
+                gsWarn<< "Data is more than 3 dimensions.\n";
+            }
+
+            if ( eval_field.rows() == 2)
+            {
+                eval_field.conservativeResize(3,eval_geo.cols() );
+                eval_field.bottomRows(1).setZero(); // 3-field.dim()
+            }
+            if ( eval_field.rows() == 1)
+            {
+                eval_field.conservativeResize(3,eval_geo.cols() );
+                eval_field.bottomRows(2).setZero(); // 3-field.dim()
+            }
+
+            gsWriteParaviewTPgrid(eval_geo, eval_field, np.template cast<index_t>(), fileName2);
+
+
+            collection2.addPart(fileName2, ".vts");
+        }
+        collection2.save();
+    }
+
     /// @brief Returns the computed norm value
     T value() const { return m_value; }
+
+    std::vector<T> elWise_value() const { return m_elWise; }
 
     void compute(gsVector<> numBasisFunctions, bool storeElWise = false)
     {
@@ -106,11 +184,13 @@ public:
                     // Evaluate on quadrature points
                     visitor.evaluate(*geoEval, func2p, dom, sparseMatrix, numBasisFunctions, quNodes);
 
-                    #pragma omp critical(compute)
-                    visitor.compute(*domIt, *geoEval, quWeights, m_value);
-                    //const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
-                    //if (storeElWise)
-                    //   m_elWise.push_back(takeRoot(result));
+                    #pragma omp critical
+                    {
+                    //visitor.compute(*domIt, *geoEval, quWeights, m_value);
+                    const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
+                    if (storeElWise)
+                        m_elWise.push_back(takeRoot(result));
+                    };
                 }
             }
 
@@ -157,6 +237,8 @@ protected:
 
     std::vector<T> m_elWise;    // vector of the element-wise values of the norm
     T              m_value;     // the total value of the norm
+
+
 
 
 };

@@ -49,9 +49,7 @@ public:
                       int patchIndex = 0,
                       boxSide side = boundary::none);
 
-    void constructSolution(const std::vector<gsMatrix<T>>& solVector,
-                           const std::vector<gsMatrix<T>>& solVector_b,
-                           gsMultiPatch<T>& result, int unk = 0);
+    void constructSolution(const gsMatrix<> & solVector, gsMatrix<T> & coeffs);
 
     /// @brief Returns the left-hand global matrix
     const gsSparseMatrix<T> & matrix() const { return m_system.matrix(); }
@@ -85,10 +83,53 @@ protected:
 
 
 template <class T, class bhVisitor>
+void gsLocalGDAssembler<T,bhVisitor>::constructSolution(const gsMatrix<> & solVector, gsMatrix<T> & coeffs)
+{
+    // Dim is the same for all basis functions
+    const index_t dim = ( 0!=solVector.cols() ? solVector.cols() :  m_ddof[0].cols() );
+
+    const gsDofMapper & mapper = m_system.colMapper(0); // unknown = 0
+
+    // Reconstruct solution coefficients on patch p
+    index_t sz;
+    sz = m_basis[0].basis(0).size();
+
+    coeffs.resize(sz, dim);
+
+    for (index_t i = 0; i < sz; ++i)
+    {
+        if (mapper.is_free(i, 0)) // DoF value is in the solVector // 0 = unitPatch
+        {
+            coeffs.row(i) = solVector.row(mapper.index(i, 0));
+        }
+        else // eliminated DoF: fill with Dirichlet data
+        {
+            coeffs.row(i) = m_ddof[0].row( mapper.bindex(i, 0) ).head(dim); // = 0
+        }
+    }
+
+}
+
+template <class T, class bhVisitor>
 void gsLocalGDAssembler<T, bhVisitor>::refresh()
 {
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper map(m_basis[0]);
+
+    gsMatrix<unsigned> act(1,1);
+
+    gsMatrix<T> ab = m_basis_geo.support();
+
+    for (index_t i = 0; i < m_basis[0].basis(0).size(); i++) // only the first two u/v-columns are Dofs (0/1)
+    {
+        gsMatrix<T> xy = m_basis[0].basis(0).support(i);
+        if ( (xy(0, 1) < ab(0, 0)+1e-10) || (xy(0, 0) > ab(0, 1)-1e-10) )
+        {
+            act << i;
+            map.markBoundary(0, act); // Patch 0
+        }
+
+    }
 
     map.finalize();
     //map_L.print();

@@ -30,7 +30,7 @@ public:
     auxPatch(singlePatch), patchIndex(globalPatchIndex){
         rotationNum = 0;
         axisOrientation = 0;
-        gsInfo << "Single patch created: " << patchIndex << "\n";
+//        gsInfo << "Single patch created: " << patchIndex << "\n";
     };
 
     void setPlusMinus(index_t plus, index_t minus)

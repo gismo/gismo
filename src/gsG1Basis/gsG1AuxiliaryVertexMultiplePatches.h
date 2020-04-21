@@ -32,7 +32,7 @@ public:
         sigma = 0.0;
 
 
-        gsInfo << "\n";
+//        gsInfo << "\n";
     }
 
 
@@ -60,24 +60,23 @@ public:
             switch (auxVertexIndices[i])
             {
                 case 1:
-                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " not rotated\n";
+//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " not rotated\n";
                     break;
                 case 4:
                     auxGeom[i].rotateParamAntiClockTwice();
-                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex()
-                           << " rotated twice anticlockwise\n";
+//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated twice anticlockwise\n";
                     break;
                 case 2:
                     auxGeom[i].rotateParamAntiClock();
-                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated anticlockwise\n";
+//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated anticlockwise\n";
                     break;
                 case 3:
                     auxGeom[i].rotateParamClock();
-                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated clockwise\n";
+//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated clockwise\n";
                     break;
             }
         }
-        gsInfo << "-----------------------------------------------------------------\n";
+//        gsInfo << "-----------------------------------------------------------------\n";
     }
 
 
@@ -100,7 +99,7 @@ public:
         if (auxGeom[i].getPatch().orientation() == -1)
         {
             auxGeom[i].swapAxis();
-            gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
+//            gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
 
             this->swapBdy(i); //Swap boundary edge bool-value
 
@@ -150,21 +149,21 @@ public:
         {
             case 1: tmp.push_back(mpTmp.isBoundary(patchInd,3));
                     tmp.push_back(mpTmp.isBoundary(patchInd,1));
-                    gsInfo << "Edge 3: " << mpTmp.isBoundary(patchInd, 3) << "\t Edge 1: " << mpTmp.isBoundary(patchInd, 1) << "\n";
+//                    gsInfo << "Edge 3: " << mpTmp.isBoundary(patchInd, 3) << "\t Edge 1: " << mpTmp.isBoundary(patchInd, 1) << "\n";
                 break;
             case 2: tmp.push_back(mpTmp.isBoundary(patchInd, 2));
                     tmp.push_back(mpTmp.isBoundary(patchInd, 3));
-                    gsInfo << "Edge 2: " << mpTmp.isBoundary(patchInd, 2) << "\t Edge 3: " << mpTmp.isBoundary(patchInd, 3) << "\n";
+//                    gsInfo << "Edge 2: " << mpTmp.isBoundary(patchInd, 2) << "\t Edge 3: " << mpTmp.isBoundary(patchInd, 3) << "\n";
 
                 break;
             case 3: tmp.push_back(mpTmp.isBoundary(patchInd, 1));
                     tmp.push_back(mpTmp.isBoundary(patchInd, 4));
-                    gsInfo << "Edge 1: " << mpTmp.isBoundary(patchInd, 1) << "\t Edge 4: " << mpTmp.isBoundary(patchInd, 4) << "\n";
+//                    gsInfo << "Edge 1: " << mpTmp.isBoundary(patchInd, 1) << "\t Edge 4: " << mpTmp.isBoundary(patchInd, 4) << "\n";
 
                 break;
             case 4: tmp.push_back(mpTmp.isBoundary(patchInd, 4));
                     tmp.push_back(mpTmp.isBoundary(patchInd, 2));
-                    gsInfo << "Edge 4: " << mpTmp.isBoundary(patchInd, 4) << "\t Edge 2: " << mpTmp.isBoundary(patchInd, 2) << "\n";
+//                    gsInfo << "Edge 4: " << mpTmp.isBoundary(patchInd, 4) << "\t Edge 2: " << mpTmp.isBoundary(patchInd, 2) << "\n";
                 break;
             default:
                 break;
@@ -258,6 +257,8 @@ public:
                 {
                     if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU + j - i) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU + j - i) > m_zero*m_zero)
                         BigMatrix(i + j, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i  * dimU + j - i);
+                    else
+                        auxGeom[np].getG1BasisCoefs(bf).at(i) *= 0;
                 }
             }
         }
@@ -281,6 +282,8 @@ public:
             {
                 if (auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) * auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) > m_zero*m_zero)
                     SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i * dimU);
+                else
+                    auxGeom[np].getG1BasisCoefs(bf).at(i * dimU) *= 0;
             }
         }
         return SmallMatrix;
@@ -302,6 +305,8 @@ public:
             {
                 if (auxGeom[np].getG1BasisCoefs(bf).at(i) * auxGeom[np].getG1BasisCoefs(bf).at(i) > m_zero*m_zero)
                     BigMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
+                else
+                    auxGeom[np].getG1BasisCoefs(bf).at(i) *= 0;
             }
         }
         return BigMatrix;
@@ -323,6 +328,8 @@ public:
             {
                 if (auxGeom[np].getG1BasisCoefs(bf).at(i ) * auxGeom[np].getG1BasisCoefs(bf).at(i ) > m_zero*m_zero)
                     SmallMatrix(i, bf) = auxGeom[np].getG1BasisCoefs(bf).at(i);
+                else
+                    auxGeom[np].getG1BasisCoefs(bf).at(i) *= 0;
             }
         }
         return SmallMatrix;
@@ -461,14 +468,14 @@ public:
 
         }
         
-        gsInfo << "Big kernel:\n";
-        gsInfo << bigKernel << "\n ";
+//        gsInfo << "Big kernel:\n";
+//        gsInfo << bigKernel << "\n ";
 
-        gsInfo << "Small kernel:\n";
-        gsInfo << smallKernel << "\n ";
+//        gsInfo << "Small kernel:\n";
+//        gsInfo << smallKernel << "\n ";
 
-        gsInfo << "Basis:\n";
-        gsInfo << basisVect << "\n";
+//        gsInfo << "Basis:\n";
+//        gsInfo << basisVect << "\n";
 
         return std::make_pair(basisVect, numberPerType);
     }
@@ -483,6 +490,8 @@ public:
         this->reparametrizeG1Vertex();
         this->computeSigma();
 
+        //g1OptionList.setInt("gluingData",gluingData::global);
+        //g1OptionList.setInt("p_tilde",2);
 
         std::vector<gsMultiPatch<>> g1BasisVector;
         std::pair<gsMatrix<>, std::vector<index_t>> vertexBoundaryBasis;
@@ -490,11 +499,10 @@ public:
         std::vector<gsG1BasisVertex<real_t>> g1BasisVertexVector;
         for(size_t i = 0; i < auxGeom.size(); i++)
         {
-            gsInfo << "Index " << auxVertexIndices[i] << " Patch " << auxGeom[i].getGlobalPatchIndex() <<  "\n";
+//            gsInfo << "Index " << auxVertexIndices[i] << " Patch " << auxGeom[i].getGlobalPatchIndex() <<  "\n";
 
             gsG1BasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, g1OptionList);
             g1BasisVertexVector.push_back(g1BasisVertex_0);
-
 
             if (g1OptionList.getInt("gluingData")==gluingData::global)
             {
@@ -514,91 +522,18 @@ public:
 
             }
         }
-        // COMPUTE MODIFIED TRANSVERSAL VEKTOR
-        // Point zero
-        gsMatrix<> zero;
-        zero.setZero(2,1);
-
-        std::vector<gsMatrix<>> dd_ik_plus, dd_ik_minus;
-        dd_ik_minus.resize(auxGeom.size());
-        dd_ik_plus.resize(auxGeom.size());
-        if (auxGeom.size() > 1)
-        {
-            gsMatrix<> dd_tilde(2,1);
-            dd_tilde.setZero();
-            for (size_t i = 0; i < auxGeom.size(); i++)
-            {
-                gsMatrix<> temp_minus, temp_plus;
-
-                temp_minus = -1/(alpha[2*i].eval(zero.row(0))(0,0)) * (auxGeom[i].getPatch().jacobian(zero).col(1) +
-                    beta_S[2*i].eval(zero.row(0))(0,0) * auxGeom[i].getPatch().jacobian(zero).col(0));
-
-                temp_plus = 1/(alpha[2*i + 1].eval(zero.row(0))(0,0)) * (auxGeom[i].getPatch().jacobian(zero).col(0) +
-                    beta_S[2*i + 1].eval(zero.row(0))(0,0) * auxGeom[i].getPatch().jacobian(zero).col(1));
-
-                if (isBdy[i][0] == false) // Does not work in case of 3 patches in a single boundary vertex
-                {
-                    dd_tilde += temp_minus;
-                    //dd_ik_minus[i] = temp_minus;
-                    dd_ik_plus[i] = temp_plus;
-                }
-                else
-                {
-                    dd_ik_minus[i] = temp_minus;
-                    dd_tilde += temp_plus;
-                    //dd_ik_plus[i] = temp_plus;
-                }
-            }
-
-            dd_tilde /= auxGeom.size();
-
-            for (size_t i = 0; i < auxGeom.size(); i++)
-            {
-                if (isBdy[i][0] == false) // Does not work in case of 3 patches in a single boundary vertex
-                {
-                    dd_ik_minus[i] = dd_tilde;
-                }
-                else
-                {
-                    dd_ik_plus[i] = dd_tilde;
-                }
-            }
-
-        }
-        else
-        {
-            dd_ik_minus[0] = -1 * auxGeom[0].getPatch().jacobian(zero).col(1);
-            dd_ik_plus[0] = auxGeom[0].getPatch().jacobian(zero).col(0);
-        }
 
         for (size_t i = 0; i < auxGeom.size(); i++)
         {
             gsMultiPatch<> g1Basis;
-            g1BasisVertexVector[i].setG1BasisVertex(g1Basis, dd_ik_minus[i], dd_ik_plus[i]);
+            g1BasisVertexVector[i].setG1BasisVertex(g1Basis, this->kindOfVertex());
 
             g1BasisVector.push_back(g1Basis);
             auxGeom[i].setG1Basis(g1Basis);
         }
 
-
-        // Plot alpha
-        if (alpha.size() == 2)
-        {
-            std::string fileName;
-            std::string basename = "GluingData";
-            gsParaviewCollection collection(basename);
-            for (size_t i = 0; i < alpha.size(); i++)
-            {
-                // First Interface Side
-                fileName = basename + "_0_" + util::to_string(i);
-                gsWriteParaview(alpha[i],fileName,5000);
-                collection.addPart(fileName,"0.vts");
-            }
-            collection.save();
-        }
-
-
-        if (auxGeom.size() == 2 && g1OptionList.getInt("gluingData")==gluingData::global)
+/*
+        if (auxGeom.size() == 2)
         {
             if (auxGeom[0].getGlobalPatchIndex() == 0 && isBdy[0][1])
                 g1ConditionRep(alpha[3], alpha[0], beta_S[3], beta_S[0], g1BasisVector[1],  g1BasisVector[0]);
@@ -608,9 +543,10 @@ public:
                 g1ConditionRep(alpha[3], alpha[1], beta_S[3], beta_S[1], g1BasisVector[1],  g1BasisVector[0]);
             else if (auxGeom[0].getGlobalPatchIndex() == 1 && isBdy[0][0])
                 g1ConditionRep(alpha[1], alpha[2], beta_S[1], beta_S[2],  g1BasisVector[0],  g1BasisVector[1]);
-
+            else if (auxGeom[0].getGlobalPatchIndex() == 2 && isBdy[0][0])
+                g1ConditionRep(alpha[1], alpha[2], beta_S[1], beta_S[2],  g1BasisVector[0],  g1BasisVector[1]);
         }
-
+*/
 
         if (this->kindOfVertex() == 1) // Interface-Boundary vertex
         {
@@ -661,10 +597,40 @@ public:
                     coef_bf.setZero(temp_mp_g1.patch(bf).coefs().dim().first,1);
                     for (size_t lambda = 0; lambda < 6; lambda++)
                         coef_bf += temp_mp_g1.patch(lambda).coefs() * vertexBoundaryBasis.first(lambda,bf);
-
+/*
+                    for (index_t ii = 0; ii < coef_bf.size(); ii++)
+                        if (coef_bf.at(ii) * coef_bf.at(ii) < 1e-8)
+                            coef_bf.at(ii) *= 0;
+*/
                     g1BasisVector[i].patch(bf).setCoefs(coef_bf);
                 }
+/*
+                for ( size_t bf = 0; bf < 3; bf++)
+                {
+                    real_t g1Error = 0;
+                    index_t p_size = 10000;
+                    gsMatrix<> points(2, p_size);
 
+                    points.setZero();
+
+                    gsVector<> vec;
+                    vec.setLinSpaced(p_size,0,1);
+
+                    if (isBdy[i][0])
+                        points.row(0) = vec.transpose();
+                    else if (isBdy[i][1])
+                        points.row(1) = vec.transpose();
+
+                    gsMatrix<> temp;
+                    temp = g1BasisVector[i].patch(bf).eval(points);
+
+                    if (temp.array().abs().maxCoeff() > g1Error)
+                        g1Error = temp.array().abs().maxCoeff();
+
+                    gsInfo << "NON ZERO ERROR AT BOUNDARY: \n" << g1Error << "\n\n";
+
+                }
+*/
                 auxGeom[i].parametrizeBasisBack(g1BasisVector[i]);
             }
         else

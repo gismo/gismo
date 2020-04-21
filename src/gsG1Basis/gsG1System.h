@@ -38,14 +38,16 @@ public:
     void constructG1Solution(const gsMatrix<T> &solVector, std::vector<gsMultiPatch<>> & result, const gsMultiPatch<> & geo);
     void constructSparseG1Solution(const gsMatrix<T> &solVector, gsSparseMatrix<T> & result);
     gsVector<> get_numBasisFunctions() { return numBasisFunctions; }
+    gsVector<> get_numInterfaceFunctions() { return numInterfaceFunctions; }
+    gsVector<> get_numBoundaryEdgeFunctions() {return numBoundaryEdgeFunctions; };
+    gsVector<> get_numBoundaryVertexFunctions() {return numBoundaryVertexFunctions; };
+    gsVector<> get_numVertexFunctions() {return numVertexFunctions; };
 
     size_t boundary_size() { return numBoundaryVertexFunctions.last() - numBoundaryEdgeFunctions[0]; }
 
     size_t sizePlusInterface(index_t i) { return  sizePlusInt[i]; };
     size_t sizePlusBoundary(index_t i) { return  sizePlusBdy[i]; };
 
-    gsVector<> get_numBoundaryEdgeFunctions() {return numBoundaryEdgeFunctions; };
-    gsVector<> get_numBoundaryVertexFunctions() {return numBoundaryVertexFunctions; };
 
     gsMatrix<> getSingleBasis(index_t global_row, index_t patchIdx) { return D_sparse.block(global_row, numBasisFunctions[patchIdx], 1, numBasisFunctions[patchIdx+1] - numBasisFunctions[patchIdx]); };
 
@@ -205,6 +207,7 @@ void gsG1System<T>::constructSparseG1Solution(const gsMatrix<T> & solVector,
         result.row(i) *= m_g1.at(i);
     for (size_t i = 0; i < dim_K; i++)
         result.insert(dim_G1_Dofs + dim_G1_Bdy,i) = solVector.at(dim_G1_Dofs + dim_G1_Bdy + i); // Interior solution
+
 
     result.makeCompressed();
 }

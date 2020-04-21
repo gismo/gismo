@@ -51,7 +51,7 @@ public:
             if(auxGeom[i].getPatch().orientation() == -1)
             {
                 auxGeom[i].swapAxis();
-                gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
+//                gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
             }
             auxTop.addPatch(auxGeom[i].getPatch());
         }
@@ -70,16 +70,16 @@ public:
         switch (repTop.interfaces()[0].second().side().index())
         {
             case 1:
-                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << "\tLocal patch: " << repTop.interfaces()[0].second().patch << " not rotated\n";
+//                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << "\tLocal patch: " << repTop.interfaces()[0].second().patch << " not rotated\n";
                 break;
             case 4: auxGeom[0].rotateParamClock();
-                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].second().patch << " rotated clockwise\n";
+//                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].second().patch << " rotated clockwise\n";
                 break;
             case 3: auxGeom[0].rotateParamAntiClock();
-                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].second().patch << " rotated anticlockwise\n";
+//                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].second().patch << " rotated anticlockwise\n";
                 break;
             case 2: auxGeom[0].rotateParamAntiClockTwice();
-                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].second().patch << " rotated twice anticlockwise\n";
+//                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].second().patch << " rotated twice anticlockwise\n";
                 break;
             default:
                 break;
@@ -89,16 +89,16 @@ public:
         switch (repTop.interfaces()[0].first().side().index())
         {
             case 3:
-                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " not rotated\n";
+//                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " not rotated\n";
                 break;
             case 4: auxGeom[1].rotateParamAntiClockTwice();
-                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " rotated twice anticlockwise\n";
+//                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " rotated twice anticlockwise\n";
                 break;
             case 2: auxGeom[1].rotateParamAntiClock();
-                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " rotated anticlockwise\n";
+//                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " rotated anticlockwise\n";
                 break;
             case 1: auxGeom[1].rotateParamClock();
-                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " rotated clockwise\n";
+//                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " rotated clockwise\n";
                 break;
             default:
                 break;
@@ -114,19 +114,19 @@ public:
             switch (bInd)
             {
                 case 3:
-                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " not rotated\n";
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " not rotated\n";
                     break;
                 case 2:
                     auxGeom[0].rotateParamClock();
-                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated clockwise\n";
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated clockwise\n";
                     break;
                 case 4:
                     auxGeom[0].rotateParamAntiClockTwice();
-                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated twice anticlockwise\n";
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated twice anticlockwise\n";
                     break;
                 case 1:
                     auxGeom[0].rotateParamAntiClock();
-                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated anticlockwise\n";
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated anticlockwise\n";
                     break;
             }
         }
@@ -135,19 +135,19 @@ public:
             switch (bInd)
             {
                 case 1:
-                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " not rotated\n";
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " not rotated\n";
                     break;
                 case 4:
                     auxGeom[0].rotateParamClock();
-                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated clockwise\n";
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated clockwise\n";
                     break;
                 case 2:
                     auxGeom[0].rotateParamAntiClockTwice();
-                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated twice anticlockwise\n";
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated twice anticlockwise\n";
                     break;
                 case 3:
                     auxGeom[0].rotateParamAntiClock();
-                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated anticlockwise\n";
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated anticlockwise\n";
                     break;
             }
         }
@@ -171,12 +171,13 @@ public:
         g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
         g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
 
-        gsG1ASGluingData<real_t> g1BasisEdge(test_mp, test_mb);
+        //gsG1ASGluingData<real_t> g1BasisEdge(test_mp, test_mb);
 
-        if (g1OptionList.getInt("gluingData")==gluingData::global)
-            gluingDataCondition(g1BasisEdge_0.get_alpha(),g1BasisEdge_1.get_alpha(),g1BasisEdge_0.get_beta(),g1BasisEdge_1.get_beta());
+//        if (g1OptionList.getInt("gluingData")==gluingData::global)
+//            gluingDataCondition(g1BasisEdge_0.get_alpha(),g1BasisEdge_1.get_alpha(),g1BasisEdge_0.get_beta(),g1BasisEdge_1.get_beta());
 
-        //g1BasisEdge_0.plotGluingData(0);
+
+        g1BasisEdge_0.plotGluingData(0);
 
 //      Patch 0 -> Right
         auxGeom[0].parametrizeBasisBack(g1Basis_0);
@@ -184,8 +185,8 @@ public:
 //      Patch 1 -> Left
         auxGeom[1].parametrizeBasisBack(g1Basis_1);
 
-        if (g1OptionList.getInt("gluingData")==gluingData::global)
-            g1ConditionRep(g1BasisEdge_0.get_alpha(),g1BasisEdge_1.get_alpha(),g1Basis_0,g1Basis_1);
+//        if (g1OptionList.getInt("gluingData")==gluingData::global)
+//            g1ConditionRep(g1BasisEdge_0.get_alpha(),g1BasisEdge_1.get_alpha(),g1Basis_0,g1Basis_1);
 
     }
 
