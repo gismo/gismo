@@ -13,8 +13,10 @@ include(gsConfig)
 # Collect source file names
 file(GLOB snippets_SRCS "*.cxx")
 
+set(CMAKE_DIRECTORY_LABELS "${PROJECT_NAME}")
+
 add_custom_target(${PROJECT_NAME})
-set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "unittests")
+set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "${PROJECT_NAME}")
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
 
@@ -30,7 +32,7 @@ foreach(snippet_src ${snippets_SRCS})
 
   add_executable(${snippet_target}  ${CMAKE_CURRENT_BINARY_DIR}/${snippet_target}.cpp)
   add_test(${snippet_target} ${EXECUTABLE_OUTPUT_PATH}/${snippet_target})
-  set_target_properties(${snippet_target} PROPERTIES LABELS "${PROJECT_NAME};unittests" FOLDER "unittests")
+  set_property(TEST ${snippet_target} PROPERTY LABELS "${PROJECT_NAME}")
 
   if(GISMO_BUILD_LIB)
     target_link_libraries(${snippet_target} gismo)
