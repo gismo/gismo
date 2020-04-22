@@ -261,14 +261,14 @@ protected:
     {
         gsSparseSolver<>::CGDiagonal solver;
 
-        gsInfo << "Matrix: " << mSys.matrix() << "\n";
+//        gsInfo << "Matrix: " << mSys.matrix() << "\n";
 
         solver.compute(mSys.matrix());
         sol = solver.solve(mSys.rhs()); // My solution
 
 
-        gsInfo << "Solution: " << sol << "\n";
-        gsInfo << "Rhs: " << mSys.rhs() << "\n";
+//        gsInfo << "Solution: " << sol << "\n";
+//        gsInfo << "Rhs: " << mSys.rhs() << "\n";
 
     }
 
@@ -277,14 +277,14 @@ protected:
     {
         gsSparseSolver<>::CGDiagonal solver;
 
-        gsInfo << "Matrix Beta: " << mSysBeta.matrix() << "\n";
+//        gsInfo << "Matrix Beta: " << mSysBeta.matrix() << "\n";
 
         solver.compute(mSysBeta.matrix());
         solBeta = solver.solve(mSysBeta.rhs()); // My solution
 
 
-        gsInfo << "Solution Beta: " << solBeta << "\n";
-        gsInfo << "Rhs Beta: " << mSysBeta.rhs() << "\n";
+//        gsInfo << "Solution Beta: " << solBeta << "\n";
+//        gsInfo << "Rhs Beta: " << mSysBeta.rhs() << "\n";
 
     }
 
@@ -331,18 +331,18 @@ protected:
 
 
 
-        for(index_t i = 0; i < points.cols(); i++)
-        {
-            DuFR = FR.jacobian(pointV.col(i)).col(0);
-            DvFR = FR.jacobian(pointV.col(i)).col(1); // Same as DuFL
-
-            DvFL = FL.jacobian(pointU.col(i)).col(1);
-
-            cond.col(i) = alpha_R.col(i).cwiseProduct(DvFL) + alpha_L.col(i).cwiseProduct(DuFR) + beta.col(i).cwiseProduct(DvFR) ;
-
-            gsInfo << "Condition col " << i << ": " << cond.col(i) << "\n";
-
-        }
+//        for(index_t i = 0; i < points.cols(); i++)
+//        {
+//            DuFR = FR.jacobian(pointV.col(i)).col(0);
+//            DvFR = FR.jacobian(pointV.col(i)).col(1); // Same as DuFL
+//
+//            DvFL = FL.jacobian(pointU.col(i)).col(1);
+//
+//            cond.col(i) = alpha_R.col(i).cwiseProduct(DvFL) + alpha_L.col(i).cwiseProduct(DuFR) + beta.col(i).cwiseProduct(DvFR) ;
+//
+//            gsInfo << "Condition col " << i << ": " << cond.col(i) << "\n";
+//
+//        }
 
     }
 

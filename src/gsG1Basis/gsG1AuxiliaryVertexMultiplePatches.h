@@ -485,13 +485,14 @@ public:
     gsMatrix<> selectGD(index_t i)
     {
         gsMatrix<> coefs(4, 2);
+        coefs.setZero();
 
-        if( (isBdy[i][0] == 1 && isBdy[i][1] == 0 ) || (isBdy[i][0] == 0 && isBdy[i][1] == 1) ) // If the boundary it´s along u and along v there is an interface (Right Patch) or viceversa
+        if( kindOfVertex() == 1 ) // If the boundary it´s along u and along v there is an interface (Right Patch) or viceversa
         {
             gsMultiPatch<> tmp(this->computeAuxTopology());
             for(auto iter : tmp.interfaces())
             {
-                if(auxGeom[i].getGlobalPatchIndex() == iter.first().patch || auxGeom[i].getGlobalPatchIndex() == iter.second().patch )
+                if( i == iter.first().patch || i == iter.second().patch )
                 {
                     gsMultiPatch<> aux;
                     aux.addPatch(tmp.patch(iter.first().patch));
@@ -503,7 +504,11 @@ public:
                     gsMatrix<> sol = ret.getSol();
                     gsMatrix<> solBeta = ret.getSolBeta();
 
-                    if( (auxGeom[i].getGlobalPatchIndex() == iter.first().patch && iter.first().index() == 3 ) || (auxGeom[i].getGlobalPatchIndex() == iter.second().patch && iter.second().index() == 3 ) )
+                    gsInfo << "Sol" << sol << "\n";
+                    gsInfo << "SolBeta" << solBeta << "\n";
+
+
+                    if( (i == iter.first().patch && iter.first().index() == 3 ) || (i == iter.second().patch && iter.second().index() == 3 ) )
                     {
                         coefs(0, 0) = sol(2, 0);
                         coefs(0, 1) = 1;
@@ -515,7 +520,7 @@ public:
                         coefs(3, 1) = 0;
                     }
                     else
-                    if( (auxGeom[i].getGlobalPatchIndex() == iter.first().patch && iter.first().index() == 1 ) || (auxGeom[i].getGlobalPatchIndex() == iter.second().patch && iter.second().index() == 1 ) )
+                    if( (i == iter.first().patch && iter.first().index() == 1 ) || (i == iter.second().patch && iter.second().index() == 1 ) )
                     {
                         coefs(0, 0) = 1;
                         coefs(0, 1) = sol(0, 0);
@@ -531,9 +536,8 @@ public:
             }
         }
         else
-        if( isBdy[i][0] == 1 && isBdy[i][1] == 1 ) // Single patch corner
+        if( kindOfVertex() == -1 ) // Single patch corner
         {
-            coefs.setZero();
             coefs(0, 0) = 1;
             coefs(0, 1) = 1;
             coefs(1, 0) = 1;
@@ -541,12 +545,12 @@ public:
             return coefs;
         }
         else
-        if( isBdy[i][0] == 0 && isBdy[i][1] == 0 ) // Internal vertex -> Two interfaces
+        if( kindOfVertex() == 0 ) // Internal vertex -> Two interfaces
         {
             gsMultiPatch<> tmp(this->computeAuxTopology());
             for(auto iter : tmp.interfaces())
             {
-                if(auxGeom[i].getGlobalPatchIndex() == iter.first().patch || auxGeom[i].getGlobalPatchIndex() == iter.second().patch )
+                if(i == iter.first().patch || i == iter.second().patch )
                 {
                     gsMultiPatch<> aux;
                     aux.addPatch(tmp.patch(iter.first().patch));
@@ -558,16 +562,19 @@ public:
                     gsMatrix<> sol = ret.getSol();
                     gsMatrix<> solBeta = ret.getSolBeta();
 
-                    if ((auxGeom[i].getGlobalPatchIndex() == iter.first().patch && iter.first().index() == 3)
-                        || (auxGeom[i].getGlobalPatchIndex() == iter.second().patch && iter.second().index() == 3))
+                    gsInfo << "Sol" << sol << "\n";
+                    gsInfo << "SolBeta" << solBeta << "\n";
+
+                    if ((i == iter.first().patch && iter.first().index() == 3)
+                        || (i == iter.second().patch && iter.second().index() == 3))
                     {
                         coefs(0, 0) = sol(2, 0);
                         coefs(1, 0) = sol(3, 0);
                         coefs(2, 0) = solBeta(2, 0);
                         coefs(3, 0) = solBeta(3, 0);
                     }
-                    else if ((auxGeom[i].getGlobalPatchIndex() == iter.first().patch && iter.first().index() == 1)
-                        || (auxGeom[i].getGlobalPatchIndex() == iter.second().patch && iter.second().index() == 1))
+                    else if ((i == iter.first().patch && iter.first().index() == 1)
+                        || (i == iter.second().patch && iter.second().index() == 1))
                     {
                         coefs(0, 1) = sol(0, 0);
                         coefs(1, 1) = sol(1, 0);
@@ -600,14 +607,10 @@ public:
 
         for(size_t i = 0; i < auxGeom.size(); i++)
         {
-//            gsInfo << "Index " << auxVertexIndices[i] << " Patch " << auxGeom[i].getGlobalPatchIndex() <<  "\n";
-
             gsMatrix<> gdCoefs(selectGD(i));
-
             gsG1ASBasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, g1OptionList, gdCoefs);
             g1BasisVertexVector.push_back(g1BasisVertex_0);
-
-
+            gsInfo << "Coefs : " << gdCoefs << "\n";
         }
 
         for (size_t i = 0; i < auxGeom.size(); i++)
@@ -619,6 +622,7 @@ public:
             auxGeom[i].setG1Basis(g1Basis);
         }
 
+        gsInfo << "Pascal  \n";
 /*
         if (auxGeom.size() == 2)
         {
