@@ -165,6 +165,12 @@ include(gsFetch)
 # Add externals directory
 add_subdirectory(external)
 
+if(GISMO_BUILD_UNITTESTS) # Unittests
+  add_subdirectory(unittests)
+else()
+  add_custom_target(unittests COMMAND "" COMMENT "Set CMake argument GISMO_BUILD_UNITTESTS=ON to enable unittests")
+endif(GISMO_BUILD_UNITTESTS)
+
 if(GISMO_WITH_CODIPACK)
   add_subdirectory(extensions/gsCoDiPack)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
@@ -393,14 +399,8 @@ else()
 endif(GISMO_BUILD_EXAMPLES)
 
 ## #################################################################
-## Unittests
+## Misc
 ## #################################################################
-
-if(GISMO_BUILD_UNITTESTS)
-  add_subdirectory(unittests)
-else()
-  add_custom_target(unittests COMMAND "" COMMENT "Set CMake argument GISMO_BUILD_UNITTESTS=ON to enable unittests")
-endif(GISMO_BUILD_UNITTESTS)
 
 add_subdirectory(optional)
 
