@@ -482,7 +482,8 @@ public:
         return std::make_pair(basisVect, numberPerType);
     }
 
-    gsMatrix<> selectGD(index_t i)
+
+    gsMatrix<> selectGD(size_t i)
     {
         gsMatrix<> coefs(4, 2);
         coefs.setZero();
@@ -497,7 +498,7 @@ public:
                     gsMultiPatch<> aux;
                     aux.addPatch(tmp.patch(iter.first().patch));
                     aux.addPatch(tmp.patch(iter.second().patch));
-                    aux.computeTopology();
+//                    aux.computeTopology();
                     gsMultiBasis<> auxB(aux);
                     gsG1ASGluingData<real_t> ret(aux, auxB);
 
@@ -555,7 +556,7 @@ public:
                     gsMultiPatch<> aux;
                     aux.addPatch(tmp.patch(iter.first().patch));
                     aux.addPatch(tmp.patch(iter.second().patch));
-                    aux.computeTopology();
+//                    aux.computeTopology();
                     gsMultiBasis<> auxB(aux);
                     gsG1ASGluingData<real_t> ret(aux, auxB);
 
