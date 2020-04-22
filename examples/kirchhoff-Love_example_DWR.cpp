@@ -1737,8 +1737,8 @@ int main(int argc, char *argv[])
     real_t load = 1.0;
     real_t D = E_modulus * math::pow(thickness,3) / ( 12 * ( 1- math::pow(PoissonRatio,2) ) );
 
-    gsFunctionExpr<> u_ex( "0","0","w:= 0; for (u := 1; u < 10; u += 2) { for (v := 1; v < 10; v += 2) { w += -16.0 * " + std::to_string(load) + " / ( pi^6*" + std::to_string(D) + " ) * 1 / (v * u * ( v^2 + u^2 )^2 ) * sin( v * pi * x) * sin(u * pi * y) } }",3);
-    gsFunctionExpr<> z_ex( "0","0","w:= 0; for (u := 1; u < 10; u += 2) { for (v := 1; v < 10; v += 2) { w += 16.0 * 1 / ( pi^6*" + std::to_string(D) + " ) * 1 / (v * u * ( v^2 + u^2 )^2 ) * sin( v * pi * x) * sin(u * pi * y) } }",3);
+    gsFunctionExpr<> u_ex( "0","0","w:= 0; for (u := 1; u < 100; u += 2) { for (v := 1; v < 100; v += 2) { w += -16.0 * " + std::to_string(load) + " / ( pi^6*" + std::to_string(D) + " ) * 1 / (v * u * ( v^2 + u^2 )^2 ) * sin( v * pi * x) * sin(u * pi * y) } }",3);
+    gsFunctionExpr<> z_ex( "0","0","w:= 0; for (u := 1; u < 100; u += 2) { for (v := 1; v < 100; v += 2) { w += 16.0 * 1 / ( pi^6*" + std::to_string(D) + " ) * 1 / (v * u * ( v^2 + u^2 )^2 ) * sin( v * pi * x) * sin(u * pi * y) } }",3);
 
     gsConstantFunction<> neuData(neu,3);
 
@@ -1962,7 +1962,7 @@ int main(int argc, char *argv[])
         geometryMap G_L = exL.getMap(mpL);
         exL.assemble(
                 // (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
-                (N_derL * (E_m_derL).tr() + M_derL * (E_f_derL).tr()) * meas(G_L)
+                (0*N_derL * (E_m_derL).tr() + M_derL * (E_f_derL).tr()) * meas(G_L)
                 ,
                 uL * F_L  * meas(G_L)
             );
@@ -2002,7 +2002,7 @@ int main(int argc, char *argv[])
         geometryMap G_H = exH.getMap(mpH);
         exH.assemble(
                 // (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
-                (N_derH * (E_m_derH).tr() + M_derH * (E_f_derH).tr()) * meas(G_H)
+                (0*N_derH * (E_m_derH).tr() + M_derH * (E_f_derH).tr()) * meas(G_H)
                 ,
                 zH * gismo::expr::uv(2,3) * meas(G_H)
             );
@@ -2092,10 +2092,15 @@ int main(int argc, char *argv[])
 
         // gsDebug<<"Vol =  "<<evL.integral( defL.tr() * gismo::expr::uv(2,3) * meas(mapL) )<<"\n";
         // gsDebug<<"Vol =  "<<evH0.integral( defH0.tr() * gismo::expr::uv(2,3) * meas(mapH0)  )<<"\n";
-        gsDebug<<"Fint = "<<evH0.integral( Fint  )<<"\n";
-        gsDebug<<"Fext = "<<evH0.integral( Fext  )<<"\n";
-        real_t approx = evH0.integral( Fext-Fint  );
-        gsDebug<<"R = "<<approx<<"\n";
+
+        real_t Fi = evH0.integral( Fint  );
+        real_t Fe = evH0.integral( Fext  );
+        gsDebug<<"Fint = "<<Fi<<"\n";
+        gsDebug<<"Fext = "<<Fe<<"\n";
+        // real_t Res = evH0.integral( Fext-0*Fint  );
+        // gsDebug<<"R = "<<res<<"\n";
+
+        real_t approx = Fe;
         real_t exact = evL.integral(((primal_exL - uL_sol).tr() * gismo::expr::uv(2,3))*meas(mapL));
         gsDebug<<"Exact = "<<exact<<"\n";
         gsDebug<<"Efficiency = "<<approx/exact<<"\n";
