@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     gsG1OptionList g1OptionList;
     g1OptionList.initialize(argc, argv);
 
-    g1OptionList.setInt("user",user::pascal);
+    g1OptionList.addInt("user","Pascal",user::pascal);
 
     // ======= Solution =========
 /*    gsFunctionExpr<> source  ("4096*pi*pi*pi*pi*(4*cos(8*pi*x)*cos(8*pi*y) - cos(8*pi*x) - cos(8*pi*y))",2);

@@ -597,7 +597,7 @@ public:
         this->reparametrizeG1Vertex();
         this->computeSigma();
 
-        
+
         std::vector<gsMultiPatch<>> g1BasisVector;
         std::pair<gsMatrix<>, std::vector<index_t>> vertexBoundaryBasis;
 

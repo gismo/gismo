@@ -197,9 +197,14 @@ public:
         gsMultiPatch<> test_mp(this->reparametrizeG1Boundary(boundaryInd));
         gsMultiBasis<> test_mb(test_mp);
 
-        gsApproxG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, g1OptionList);
-        gsMultiPatch<> g1Basis_edge;
-        g1BasisEdge.setG1BasisEdge(g1Basis_edge);
+//        if(g1OptionList.getInt("user") == user::pascal)
+//        {
+            gsApproxG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, g1OptionList);
+            gsMultiPatch<> g1Basis_edge;
+            g1BasisEdge.setG1BasisEdge(g1Basis_edge);
+//        }
+//          else if(g1OptionList.getInt("user") == user::andrea)
+//        {   }
 
         auxGeom[0].parametrizeBasisBack(g1Basis_edge);
     }
