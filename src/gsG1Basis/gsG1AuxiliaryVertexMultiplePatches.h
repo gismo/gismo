@@ -598,47 +598,49 @@ public:
         this->reparametrizeG1Vertex();
         this->computeSigma();
 
-        //g1OptionList.setInt("gluingData",gluingData::global);
-        //g1OptionList.setInt("p_tilde",2);
 
         std::vector<gsMultiPatch<>> g1BasisVector;
         std::pair<gsMatrix<>, std::vector<index_t>> vertexBoundaryBasis;
-        std::vector<gsBSpline<>> alpha, beta_S;
-        std::vector<gsG1ASBasisVertex<real_t>> g1BasisVertexVector;
 
-        for(size_t i = 0; i < auxGeom.size(); i++)
+        if(g1OptionList.getInt("user") == user::pascal)
         {
-            gsMatrix<> gdCoefs(selectGD(i));
-            gsG1ASBasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(),auxGeom[i].getPatch().basis(), isBdy[i], sigma, g1OptionList, gdCoefs);
-            g1BasisVertexVector.push_back(g1BasisVertex_0);
-            gsInfo << "Coefs : " << gdCoefs << "\n";
+            //g1OptionList.setInt("gluingData",gluingData::global);
+            //g1OptionList.setInt("p_tilde",2);
+
+            for(size_t i = 0; i < auxGeom.size(); i++)
+            {
+                gsMultiPatch<> g1Basis;
+
+                gsG1BasisVertex<real_t> g1BasisVertex_0
+                    (auxGeom[i].getPatch(), auxGeom[i].getPatch().basis(), isBdy[i], sigma, g1OptionList);
+
+                g1BasisVertex_0.setG1BasisVertex(g1Basis, this->kindOfVertex());
+
+                g1BasisVector.push_back(g1Basis);
+                auxGeom[i].setG1Basis(g1Basis);
+            }
+        }
+        else if(g1OptionList.getInt("user") == user::andrea)
+        {
+
+            for(size_t i = 0; i < auxGeom.size(); i++)
+            {
+                gsMatrix<> gdCoefs(selectGD(i));
+                gsMultiPatch<> g1Basis;
+
+                gsG1ASBasisVertex<real_t> g1BasisVertex_0
+                    (auxGeom[i].getPatch(), auxGeom[i].getPatch().basis(), isBdy[i], sigma, g1OptionList, gdCoefs);
+
+                g1BasisVertex_0.setG1BasisVertex(g1Basis, this->kindOfVertex());
+
+                g1BasisVector.push_back(g1Basis);
+                auxGeom[i].setG1Basis(g1Basis);
+            }
+
+            gsInfo << "Andrea  \n";
         }
 
-        for (size_t i = 0; i < auxGeom.size(); i++)
-        {
-            gsMultiPatch<> g1Basis;
-            g1BasisVertexVector[i].setG1BasisVertex(g1Basis, this->kindOfVertex());
 
-            g1BasisVector.push_back(g1Basis);
-            auxGeom[i].setG1Basis(g1Basis);
-        }
-
-        gsInfo << "Pascal  \n";
-/*
-        if (auxGeom.size() == 2)
-        {
-            if (auxGeom[0].getGlobalPatchIndex() == 0 && isBdy[0][1])
-                g1ConditionRep(alpha[3], alpha[0], beta_S[3], beta_S[0], g1BasisVector[1],  g1BasisVector[0]);
-            else if (auxGeom[0].getGlobalPatchIndex() == 0 && isBdy[0][0])
-                g1ConditionRep(alpha[1], alpha[2], beta_S[1], beta_S[2], g1BasisVector[0],  g1BasisVector[1]);
-            else if (auxGeom[0].getGlobalPatchIndex() == 1 && isBdy[0][1])
-                g1ConditionRep(alpha[3], alpha[1], beta_S[3], beta_S[1], g1BasisVector[1],  g1BasisVector[0]);
-            else if (auxGeom[0].getGlobalPatchIndex() == 1 && isBdy[0][0])
-                g1ConditionRep(alpha[1], alpha[2], beta_S[1], beta_S[2],  g1BasisVector[0],  g1BasisVector[1]);
-            else if (auxGeom[0].getGlobalPatchIndex() == 2 && isBdy[0][0])
-                g1ConditionRep(alpha[1], alpha[2], beta_S[1], beta_S[2],  g1BasisVector[0],  g1BasisVector[1]);
-        }
-*/
 
         if (this->kindOfVertex() == 1) // Interface-Boundary vertex
         {
@@ -696,33 +698,7 @@ public:
 */
                     g1BasisVector[i].patch(bf).setCoefs(coef_bf);
                 }
-/*
-                for ( size_t bf = 0; bf < 3; bf++)
-                {
-                    real_t g1Error = 0;
-                    index_t p_size = 10000;
-                    gsMatrix<> points(2, p_size);
 
-                    points.setZero();
-
-                    gsVector<> vec;
-                    vec.setLinSpaced(p_size,0,1);
-
-                    if (isBdy[i][0])
-                        points.row(0) = vec.transpose();
-                    else if (isBdy[i][1])
-                        points.row(1) = vec.transpose();
-
-                    gsMatrix<> temp;
-                    temp = g1BasisVector[i].patch(bf).eval(points);
-
-                    if (temp.array().abs().maxCoeff() > g1Error)
-                        g1Error = temp.array().abs().maxCoeff();
-
-                    gsInfo << "NON ZERO ERROR AT BOUNDARY: \n" << g1Error << "\n\n";
-
-                }
-*/
                 auxGeom[i].parametrizeBasisBack(g1BasisVector[i]);
             }
         else
@@ -736,98 +712,6 @@ public:
     }
 
     size_t get_internalDofs() { return dim_kernel; }
-
-    void g1ConditionRep(gsBSpline<> alpha_0, gsBSpline<> alpha_1, gsBSpline<> beta_0, gsBSpline<> beta_1, gsMultiPatch<> g1Basis_0,  gsMultiPatch<> g1Basis_1)
-    {
-        // BETA
-        // first,last,interior,mult_ends,mult_interior,degree
-        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(auxGeom[0].getPatch().basis().component(1)); // 0 -> v, 1 -> u
-        index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
-
-        gsKnotVector<> kv(0, 1, basis_edge.numElements()-1, 2 * m_p  + 1, 2 * m_p - 1 );
-        gsBSplineBasis<> bsp(kv);
-
-        gsMatrix<> greville = bsp.anchors();
-        gsMatrix<> uv1, uv0, ev1, ev0;
-
-        const index_t d = 2;
-        gsMatrix<> D0(d,d);
-
-        gsGeometry<>::Ptr beta_temp;
-
-        uv0.setZero(2,greville.cols());
-        uv0.bottomRows(1) = greville;
-
-        uv1.setZero(2,greville.cols());
-        uv1.topRows(1) = greville;
-
-        const gsGeometry<> & P0 = auxGeom[0].getPatch(); // iFace.first().patch = 1
-        const gsGeometry<> & P1 = auxGeom[1].getPatch(); // iFace.second().patch = 0
-        // ======================================
-
-        // ======== Determine bar{beta} ========
-        for(index_t i = 0; i < uv1.cols(); i++)
-        {
-            P0.jacobian_into(uv0.col(i),ev0);
-            P1.jacobian_into(uv1.col(i),ev1);
-
-            D0.col(1) = ev0.col(0); // (DuFL, *)
-            D0.col(0) = ev1.col(1); // (*,DuFR)
-
-            uv0(0,i) = D0.determinant();
-        }
-
-        beta_temp = bsp.interpolateData(uv0.topRows(1), uv0.bottomRows(1));
-        gsBSpline<> beta = dynamic_cast<gsBSpline<> &> (*beta_temp);
-
-
-        index_t p_size = 8;
-        gsMatrix<> points(1, p_size);
-        points.setRandom();
-        points = points.array().abs();
-
-        gsVector<> vec;
-        vec.setLinSpaced(p_size,0,1);
-        points = vec.transpose();
-
-        gsMatrix<> points2d_0(2, p_size);
-        gsMatrix<> points2d_1(2, p_size);
-
-        points2d_0.setZero();
-        points2d_1.setZero();
-        points2d_0.row(1) = points; // v
-        points2d_1.row(0) = points; // u
-
-        gsVector<> g1Error(6);
-        g1Error.setZero();
-
-        gsMatrix<> temp;
-        temp = alpha_1.eval(points).cwiseProduct(beta_0.eval(points))
-            + alpha_0.eval(points).cwiseProduct(beta_1.eval(points))
-            - beta.eval(points);
-
-        gsInfo << "alpha : " << alpha_0.eval(points) << "\n";
-        gsInfo << "alpha : " << alpha_1.eval(points) << "\n";
-        gsInfo << "alpha : " << beta_0.eval(points) << "\n";;
-        gsInfo << "alpha : " << beta_1.eval(points) << "\n";;
-        gsInfo << "alpha : " << beta.eval(points) << "\n";
-
-        gsInfo << "Conditiontest Gluing data: \n" << temp.array().abs().maxCoeff() << "\n\n";
-
-        for (size_t i = 0; i < g1Basis_0.nPatches(); i++)
-        {
-            gsMatrix<> temp;
-            temp = alpha_1.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).topRows(1))
-                + alpha_0.eval(points).cwiseProduct(g1Basis_1.patch(i).deriv(points2d_1).bottomRows(1))
-                + beta.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).bottomRows(1));
-
-            if (temp.array().abs().maxCoeff() > g1Error[i])
-                g1Error[i] = temp.array().abs().maxCoeff();
-        }
-
-        gsInfo << "Conditiontest G1 continuity VERTEX: \n" << g1Error << "\n\n";
-    }
-
 
 
 protected:

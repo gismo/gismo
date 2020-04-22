@@ -72,6 +72,9 @@ public:
 
     void setG1BasisVertex(gsMultiPatch<T> & result, index_t kinfOfVertex)
     {
+        // SIMPLIFY THE m_geo
+        m_geo = m_basis_g1; // INTEGRATION AREA
+
         refresh();
         assemble();
         solve();
@@ -99,6 +102,9 @@ protected:
 
     // Basis for the G1 Basis
     gsMultiBasis<T> m_basis_g1;
+
+    // Basis for Integration
+    gsMultiBasis<T> m_geo;
 
     // System
     std::vector<gsSparseSystem<T> > m_f;
@@ -153,18 +159,11 @@ void gsG1ASBasisVertex<T,bhVisitor>::refresh()
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper map(m_basis.basis(0));
 
-    gsMatrix<unsigned> act(m_basis.basis(0).size()-6,1);
-    gsVector<unsigned> vec;
-    index_t dimU = m_basis.basis(0).component(0).size();
-    vec.setLinSpaced(m_basis.basis(0).size(),0,m_basis.basis(0).size());
-    vec.block(2*dimU,0,vec.size()-2*dimU-1,1) = vec.block(2*dimU +1,0,vec.size()-2*dimU-1,1); // 2*dim U
-    vec.block(dimU,0,vec.size()-dimU-2,1) = vec.block(dimU +2,0,vec.size()-dimU-2,1); // dim U, dimU+1
-    vec.block(0,0,vec.size()-3,1) = vec.block(3,0,vec.size()-3,1); // 0,1,2
-    act = vec.block(0,0,vec.size()-6,1);
-    //map.markBoundary(0,act); // TODO TODO TODO TODO is wrong, need bigger support!!!!!!
+    // SET THE DOFS
+
+
     map.finalize();
-    //gsInfo << "map : " << map.asVector() << "\n";
-    //map.print();
+
 
     // 2. Create the sparse system
     gsSparseSystem<T> m_system = gsSparseSystem<T>(map);
@@ -229,7 +228,7 @@ void gsG1ASBasisVertex<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex)
         const gsGeometry<T> & patch = m_mp.patch(0);
 
         // Initialize domain element iterator
-        typename gsBasis<T>::domainIter domIt = basis_g1.makeDomainIterator(boundary::none);
+        typename gsBasis<T>::domainIter domIt = m_geo.basis(0).makeDomainIterator(boundary::none);
 
 #ifdef _OPENMP
         for ( domIt->next(tid); domIt->good(); domIt->next(nt) )

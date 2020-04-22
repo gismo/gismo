@@ -168,12 +168,6 @@ public:
         constructSolution(result);
     }
 
-    gsBSpline<> get_alpha_tilde(size_t i) { return m_gD.at(i).get_alpha_tilde(); }
-    gsBSpline<> get_beta_tilde(size_t i) { return m_gD.at(i).get_beta_tilde(); }
-
-    gsBSpline<> get_local_alpha_tilde(size_t i) { return m_gD.at(i).get_local_alpha_tilde(0); }
-    gsBSpline<> get_local_beta_tilde(size_t i) { return m_gD.at(i).get_local_beta_tilde(0); }
-
 
 protected:
 

@@ -167,7 +167,7 @@ public:
         gsMultiPatch<> g1Basis_0, g1Basis_1;
 
 
-        if(g1OptionList.getInt("user") == user::name::pascal)
+        if(g1OptionList.getInt("user") == user::pascal)
         {
             gsApproxG1BasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), test_mb.basis(0), 1, false, g1OptionList);
             gsApproxG1BasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, g1OptionList);
@@ -175,7 +175,7 @@ public:
             g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
         }
         else
-        if(g1OptionList.getInt("user") == user::name::andrea)
+        if(g1OptionList.getInt("user") == user::andrea)
         {
             gsG1ASGluingData<real_t> g1BasisEdge(test_mp, test_mb);
             gsG1ASBasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), test_mb.basis(0), 1, false, g1OptionList, g1BasisEdge);
@@ -197,156 +197,20 @@ public:
         gsMultiPatch<> test_mp(this->reparametrizeG1Boundary(boundaryInd));
         gsMultiBasis<> test_mb(test_mp);
 
-        gsApproxG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, g1OptionList);
-        gsMultiPatch<> g1Basis_edge;
-        g1BasisEdge.setG1BasisEdge(g1Basis_edge);
+//        if(g1OptionList.getInt("user") == user::pascal)
+//        {
+            gsApproxG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, g1OptionList);
+            gsMultiPatch<> g1Basis_edge;
+            g1BasisEdge.setG1BasisEdge(g1Basis_edge);
+//        }
+//          else if(g1OptionList.getInt("user") == user::andrea)
+//        {   }
 
         auxGeom[0].parametrizeBasisBack(g1Basis_edge);
     }
 
     gsG1AuxiliaryPatch & getSinglePatch(const unsigned i){
         return auxGeom[i];
-    }
-
-    void gluingDataCondition(gsBSpline<> alpha_0, gsBSpline<> alpha_1, gsBSpline<> beta_0, gsBSpline<> beta_1)
-    {
-        // BETA
-        // first,last,interior,mult_ends,mult_interior,degree
-        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(auxGeom[0].getPatch().basis().component(1)); // 0 -> v, 1 -> u
-        index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
-
-        gsKnotVector<> kv(0, 1, basis_edge.numElements()-1, 2 * m_p  + 1, 2 * m_p - 1 );
-        gsBSplineBasis<> bsp(kv);
-
-        gsMatrix<> greville = bsp.anchors();
-        gsMatrix<> uv1, uv0, ev1, ev0;
-
-        const index_t d = 2;
-        gsMatrix<> D0(d,d);
-
-        gsGeometry<>::Ptr beta_temp;
-
-        uv0.setZero(2,greville.cols());
-        uv0.bottomRows(1) = greville;
-
-        uv1.setZero(2,greville.cols());
-        uv1.topRows(1) = greville;
-
-        const gsGeometry<> & P0 = auxGeom[0].getPatch(); // iFace.first().patch = 1
-        const gsGeometry<> & P1 = auxGeom[1].getPatch(); // iFace.second().patch = 0
-        // ======================================
-
-        // ======== Determine bar{beta} ========
-        for(index_t i = 0; i < uv1.cols(); i++)
-        {
-            P0.jacobian_into(uv0.col(i),ev0);
-            P1.jacobian_into(uv1.col(i),ev1);
-
-            D0.col(1) = ev0.col(0); // (DuFL, *)
-            D0.col(0) = ev1.col(1); // (*,DuFR)
-
-            uv0(0,i) = D0.determinant();
-        }
-
-        beta_temp = bsp.interpolateData(uv0.topRows(1), uv0.bottomRows(1));
-        gsBSpline<> beta = dynamic_cast<gsBSpline<> &> (*beta_temp);
-
-
-        index_t p_size = 10000;
-        gsMatrix<> points(1, p_size);
-        points.setRandom();
-        points = points.array().abs();
-
-        gsVector<> vec;
-        vec.setLinSpaced(p_size,0,1);
-        points = vec.transpose();
-
-        gsMatrix<> temp;
-        temp = alpha_1.eval(points).cwiseProduct(beta_0.eval(points))
-            + alpha_0.eval(points).cwiseProduct(beta_1.eval(points))
-            - beta.eval(points);
-
-
-        gsInfo << "Conditiontest Gluing data: \n" << temp.array().abs().maxCoeff() << "\n\n";
-
-
-    }
-
-    void g1ConditionRep(gsBSpline<> alpha_0, gsBSpline<> alpha_1, gsMultiPatch<> g1Basis_0,  gsMultiPatch<> g1Basis_1)
-    {
-        // BETA
-        // first,last,interior,mult_ends,mult_interior,degree
-        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(auxGeom[0].getPatch().basis().component(1)); // 0 -> v, 1 -> u
-        index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
-
-        gsKnotVector<> kv(0, 1, basis_edge.numElements()-1, 2 * m_p  + 1, 2 * m_p - 1 );
-        gsBSplineBasis<> bsp(kv);
-
-        gsMatrix<> greville = bsp.anchors();
-        gsMatrix<> uv1, uv0, ev1, ev0;
-
-        const index_t d = 2;
-        gsMatrix<> D0(d,d);
-
-        gsGeometry<>::Ptr beta_temp;
-
-        uv0.setZero(2,greville.cols());
-        uv0.bottomRows(1) = greville;
-
-        uv1.setZero(2,greville.cols());
-        uv1.topRows(1) = greville;
-
-        const gsGeometry<> & P0 = auxGeom[0].getPatch(); // iFace.first().patch = 1
-        const gsGeometry<> & P1 = auxGeom[1].getPatch(); // iFace.second().patch = 0
-        // ======================================
-
-        // ======== Determine bar{beta} ========
-        for(index_t i = 0; i < uv1.cols(); i++)
-        {
-            P0.jacobian_into(uv0.col(i),ev0);
-            P1.jacobian_into(uv1.col(i),ev1);
-            D0.col(1) = ev0.col(0); // (DuFL, *)
-            D0.col(0) = ev1.col(1); // (*,DuFR)
-
-            uv0(0,i) = D0.determinant();
-        }
-
-        beta_temp = bsp.interpolateData(uv0.topRows(1), uv0.bottomRows(1));
-        gsBSpline<> beta = dynamic_cast<gsBSpline<> &> (*beta_temp);
-
-
-
-        index_t p_size = 10000;
-        gsMatrix<> points(1, p_size);
-        points.setRandom();
-        points = points.array().abs();
-
-        gsVector<> vec;
-        vec.setLinSpaced(p_size,0,1);
-        points = vec.transpose();
-
-        gsMatrix<> points2d_0(2, p_size);
-        gsMatrix<> points2d_1(2, p_size);
-
-        points2d_0.setZero();
-        points2d_1.setZero();
-        points2d_0.row(1) = points; // v
-        points2d_1.row(0) = points; // u
-
-        real_t g1Error = 0;
-
-        for (size_t i = 0; i < g1Basis_0.nPatches(); i++)
-        {
-            gsMatrix<> temp;
-            temp = alpha_1.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).topRows(1))
-                + alpha_0.eval(points).cwiseProduct(g1Basis_1.patch(i).deriv(points2d_1).bottomRows(1))
-                + beta.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).bottomRows(1));
-
-            if (temp.array().abs().maxCoeff() > g1Error)
-                g1Error = temp.array().abs().maxCoeff();
-        }
-
-        gsInfo << "Conditiontest G1 continuity Rep: \n" << g1Error << "\n\n";
     }
 
 
