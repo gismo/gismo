@@ -532,7 +532,7 @@ macro(run_ctests)
   if(NOT "x${LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
 
     foreach(subproject ${LABELS_FOR_SUBPROJECTS})
-      message("Subproject ${subproject}")
+      #message("Subproject ${subproject}")
       if ("${CMAKE_VERSION}" VERSION_LESS "3.10")
 	set_property(GLOBAL PROPERTY SubProject ${subproject})
 	set_property(GLOBAL PROPERTY Label ${subproject})
