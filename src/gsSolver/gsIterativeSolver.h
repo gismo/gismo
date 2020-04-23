@@ -269,6 +269,7 @@ template <class SolverType>
 class gsIterativeSolverOp GISMO_FINAL : public gsLinearOperator<typename SolverType::ScalarType>
 {
     typedef typename SolverType::ScalarType T;
+    typedef typename gsLinearOperator<T>::Ptr LinOpPtr;
 public:
     /// Shared pointer for gsIterativeSolverOp
     typedef memory::shared_ptr<gsIterativeSolverOp> Ptr;
@@ -276,24 +277,14 @@ public:
     /// Unique pointer for gsIterativeSolverOp
     typedef memory::unique_ptr<gsIterativeSolverOp> uPtr;
 
-    /// Constructor taking the underlying matrix/operator
-    template<class MatrixType>
-    gsIterativeSolverOp(const MatrixType& matrix)
-        : m_solver(matrix) {}
-
     /// Constructor taking the underlying matrix/operator and the preconditioner
-    template<class MatrixType, class PreconditionerType>
-    gsIterativeSolverOp(const MatrixType& matrix, const PreconditionerType& preconditioner)
+    template<class MatrixType>
+    gsIterativeSolverOp(const MatrixType& matrix, const LinOpPtr& preconditioner = LinOpPtr())
         : m_solver(matrix, preconditioner) {}
 
-    /// Make function taking the underlying matrix/operator
-    template<class MatrixType>
-    static uPtr make(const MatrixType& matrix)
-    { return uPtr( new gsIterativeSolverOp(matrix) ); }
-
     /// Make function taking the underlying matrix/operator and the preconditioner
-    template<class MatrixType, class PreconditionerType>
-    static uPtr make(const MatrixType& matrix, const PreconditionerType& preconditioner)
+    template<class MatrixType>
+    static uPtr make(const MatrixType& matrix, const LinOpPtr& preconditioner = LinOpPtr())
     { return uPtr( new gsIterativeSolverOp(matrix,preconditioner) ); }
 
     /// Make function taking a matrix OR a shared pointer
