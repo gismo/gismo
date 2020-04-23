@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <gsG1Basis/gsG1ASGluingDataAssembler.h>
+//#include <gsG1Basis/gsG1ASGluingDataAssembler.h>
 #include <gsG1Basis/gsGluingData.h>
 #include <gsG1Basis/gsG1ASGluingDataVisitorGlobal.h>
 # include <gsG1Basis/gsG1OptionList.h>
@@ -20,7 +20,7 @@ class gsG1ASGluingData : public gsGluingData<T>
 {
 public:
     gsG1ASGluingData()
-    { }
+    { setGDEdge(); }
 
     gsG1ASGluingData(gsMultiPatch<T> const & mp,
                  gsMultiBasis<T> & mb)
@@ -288,6 +288,28 @@ protected:
 
     }
 
+    void setGDEdge()
+    {
+        gsMatrix<> solTMP(7, 1);
+        gsMatrix<> solBetaTMP(4, 1);
+
+        solTMP(0, 0) = 1;
+        solTMP(1, 0) = 1;
+        solTMP(2, 0) = 1;
+        solTMP(3, 0) = 1;
+        solTMP(4, 0) = 0;
+        solTMP(5, 0) = 0;
+        solTMP(6, 0) = 0;
+
+        solBetaTMP(0, 0) = 0;
+        solBetaTMP(1, 0) = 0;
+        solBetaTMP(2, 0) = 0;
+        solBetaTMP(3, 0) = 0;
+
+        sol = solTMP;
+        solBeta = solBetaTMP;
+    }
+
 
 
     void AScondition(gsMultiPatch<T> const & mp)
@@ -338,12 +360,14 @@ protected:
 //
 //            DvFL = FL.jacobian(pointU.col(i)).col(1);
 //
-//            cond.col(i) = alpha_R.col(i).cwiseProduct(DvFL) + alpha_L.col(i).cwiseProduct(DuFR) + beta.col(i).cwiseProduct(DvFR) ;
+////            cond.col(i) = alpha_R.col(i).cwiseProduct(DvFL) + alpha_L.col(i).cwiseProduct(DuFR) + beta.col(i).cwiseProduct(DvFR) ;
+//
+//            cond.col(i) = beta.col(i) - (alpha_R.col(i).cwiseProduct(beta_L.col(i)) + alpha_L.col(i).cwiseProduct(beta_R.col(i)));
+//
 //
 //            gsInfo << "Condition col " << i << ": " << cond.col(i) << "\n";
 //
 //        }
-
     }
 
 

@@ -112,6 +112,10 @@ int main(int argc, char *argv[])
             string_geo = "KirchhoffLoveGeo/square_diffParam.xml";
             numDegree = 2; // 2 == degree 3
             break;
+        case 15:
+            string_geo = "KirchhoffLoveGeo/square_multipatch.xml";
+            numDegree = 2; // 2 == degree 3
+            break;
 
         default:
             gsInfo << "No geometry is used! \n";

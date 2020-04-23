@@ -193,18 +193,24 @@ public:
     }
 
 
-    void computeG1BoundaryBasis(gsG1OptionList g1OptionList, const int boundaryInd){
+    void computeG1BoundaryBasis(gsG1OptionList g1OptionList, const int boundaryInd)
+    {
         gsMultiPatch<> test_mp(this->reparametrizeG1Boundary(boundaryInd));
         gsMultiBasis<> test_mb(test_mp);
+        gsMultiPatch<> g1Basis_edge;
 
-//        if(g1OptionList.getInt("user") == user::pascal)
-//        {
+        if(g1OptionList.getInt("user") == user::pascal)
+        {
             gsApproxG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, g1OptionList);
-            gsMultiPatch<> g1Basis_edge;
             g1BasisEdge.setG1BasisEdge(g1Basis_edge);
-//        }
-//          else if(g1OptionList.getInt("user") == user::andrea)
-//        {   }
+        }
+        else
+        if(g1OptionList.getInt("user") == user::andrea)
+        {
+            gsG1ASGluingData<real_t> bdyGD; // Empty constructor creates the sol and solBeta in a suitable way to manage the GD on the boundary
+            gsG1ASBasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, g1OptionList, bdyGD);
+            g1BasisEdge.setG1BasisEdge(g1Basis_edge);
+        }
 
         auxGeom[0].parametrizeBasisBack(g1Basis_edge);
     }

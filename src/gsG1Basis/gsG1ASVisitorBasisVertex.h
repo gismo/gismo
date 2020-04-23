@@ -166,19 +166,19 @@ public:
         gsMatrix<> ones(1, md.points.cols());
         ones.setOnes();
 
-        alpha.push_back(gluingData(0, 0) * ( ones - md.points.row(0) ) + gluingData(1, 0) * md.points.row(0)); // u
-        alpha.push_back(gluingData(0, 1) * ( ones - md.points.row(1) ) + gluingData(1, 1) * md.points.row(1)); // v
-        alpha_0.push_back(gluingData(0, 0) * ( ones - zero.row(0) ) + gluingData(1, 0) * zero.row(0)); // u
-        alpha_0.push_back(gluingData(0, 1) * ( ones - zero.row(0) ) + gluingData(1, 1) * zero.row(0)); // v
-        alpha_deriv.push_back( (gluingData(1, 0) - gluingData(0, 0)) * ones.col(0) ); // u
-        alpha_deriv.push_back( (gluingData(1, 1) - gluingData(0, 1)) * ones.col(0) ); // v
+        alpha.push_back( gluingData(0, 0) * ( ones - md.points.row(0) ) + gluingData(1, 0) * md.points.row(0) ); // u
+        alpha.push_back( gluingData(0, 1) * ( ones - md.points.row(1) ) + gluingData(1, 1) * md.points.row(1) ); // v
+        alpha_0.push_back( gluingData(0, 0) * ( ones - zero.row(0) ) + gluingData(1, 0) * zero.row(0) ); // u
+        alpha_0.push_back( gluingData(0, 1) * ( ones - zero.row(0) ) + gluingData(1, 1) * zero.row(0) ); // v
+        alpha_deriv.push_back( ( gluingData(1, 0) - gluingData(0, 0) ) * ones.col(0) ); // u
+        alpha_deriv.push_back( ( gluingData(1, 1) - gluingData(0, 1) ) * ones.col(0) ); // v
 
-        beta.push_back(gluingData(2, 0) * ( ones - md.points.row(0) ) + gluingData(3, 0) * md.points.row(0)); // u
-        beta.push_back(gluingData(2, 1) * ( ones - md.points.row(1) ) + gluingData(3, 1) * md.points.row(1)); // v
-        beta_0.push_back(gluingData(2, 0) * ( ones - zero.row(0) ) + gluingData(3, 0) * zero.row(0)); // u
-        beta_0.push_back(gluingData(2, 1) * ( ones - zero.row(0) ) + gluingData(3, 1) * zero.row(0)); // v
-        beta_deriv.push_back( (gluingData(3, 0) - gluingData(2, 0)) * ones.col(0) ); // u
-        beta_deriv.push_back( (gluingData(3, 1) - gluingData(2, 1)) * ones.col(0) ); // v
+        beta.push_back( gluingData(2, 0) * ( ones - md.points.row(0) ) + gluingData(3, 0) * md.points.row(0) ); // u
+        beta.push_back( gluingData(2, 1) * ( ones - md.points.row(1) ) + gluingData(3, 1) * md.points.row(1) ); // v
+        beta_0.push_back( gluingData(2, 0) * ( ones - zero.row(0) ) + gluingData(3, 0) * zero.row(0) ); // u
+        beta_0.push_back( gluingData(2, 1) * ( ones - zero.row(0) ) + gluingData(3, 1) * zero.row(0) ); // v
+        beta_deriv.push_back( ( gluingData(3, 0) - gluingData(2, 0) ) * ones.col(0) ); // u
+        beta_deriv.push_back( ( gluingData(3, 1) - gluingData(2, 1) ) * ones.col(0) ); // v
 
         // Compute dd^^(i_k) and dd^^(i_k-1)
         gsMatrix<> dd_ik_plus, dd_ik_minus;
