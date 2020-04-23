@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
     gsG1OptionList g1OptionList;
     g1OptionList.initialize(argc, argv);
 
+    g1OptionList.addInt("user","Pascal",user::pascal);
     g1OptionList.setSwitch("twoPatch",true);
 
     // ======= Solution =========
