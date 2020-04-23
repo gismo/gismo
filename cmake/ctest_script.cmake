@@ -521,7 +521,9 @@ macro(run_ctests)
   if(DEFINED DROP_METHOD)
     set(CTEST_DROP_METHOD ${DROP_METHOD})
   endif()
-  set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS}) #labels treated as subprojects
+  if ("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.10")
+    set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS}) #labels/subprojects
+  endif()
 
   ctest_configure(OPTIONS "${CMAKE_ARGS};${SUBM_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}")
   ctest_submit(PARTS Configure Update Notes  RETRY_COUNT 3)
@@ -531,7 +533,10 @@ macro(run_ctests)
 
     foreach(subproject ${LABELS_FOR_SUBPROJECTS})
       message("Subproject ${subproject}")
-      set_property(GLOBAL PROPERTY SubProject ${subproject}) #cdash subproject
+      if ("${CMAKE_VERSION}" VERSION_LESS "3.10")
+	set_property(GLOBAL PROPERTY SubProject ${subproject})
+	set_property(GLOBAL PROPERTY Label ${subproject})
+      endif()
       ctest_build(TARGET ${subproject} APPEND)
       ctest_submit(PARTS Build  RETRY_COUNT 3)
       ctest_test(INCLUDE_LABEL "${subproject}" PARALLEL_LEVEL ${CTEST_TEST_JOBS})
