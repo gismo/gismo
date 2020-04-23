@@ -28,10 +28,9 @@ class gsIterativeSolver
 public:
     typedef memory::shared_ptr<gsIterativeSolver> Ptr;
     typedef memory::unique_ptr<gsIterativeSolver> uPtr;
-
-    typedef gsMatrix<T>    VectorType;
-
-    typedef typename gsLinearOperator<T>::Ptr LinOpPtr;
+    typedef T                                     ScalarType;
+    typedef gsMatrix<T>                           VectorType;
+    typedef typename gsLinearOperator<T>::Ptr     LinOpPtr;
 
     /// @brief Contructor using a linear operator to be solved for and
     ///  a preconditioner
@@ -211,6 +210,12 @@ public:
     /// Set the preconditionner
     void setPreconditioner(const LinOpPtr & precond)           { m_precond = precond; }
 
+    /// Get the preconditioner
+    LinOpPtr preconditioner() const                            { return m_precond; }
+
+    /// Get the underlying matrix/operator to be solved for
+    LinOpPtr underlying() const                                { return m_mat; }
+
     /// Set the maximum number of iterations (default: 1000)
     void setMaxIterations(index_t max_iters)                   { m_max_iters = max_iters; }
 
@@ -258,6 +263,61 @@ protected:
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsIterativeSolver<T>& b)
 {return b.print(os); }
+
+/// \brief This wrapper class allows \a gsIterativeSolver to be used as \a gsLinearOperator
+template <class SolverType>
+class gsIterativeSolverOp GISMO_FINAL : public gsLinearOperator<typename SolverType::ScalarType>
+{
+    typedef typename SolverType::ScalarType T;
+public:
+    /// Shared pointer for gsIterativeSolverOp
+    typedef memory::shared_ptr<gsIterativeSolverOp> Ptr;
+
+    /// Unique pointer for gsIterativeSolverOp
+    typedef memory::unique_ptr<gsIterativeSolverOp> uPtr;
+
+    /// Constructor taking the underlying matrix/operator
+    template<class MatrixType>
+    gsIterativeSolverOp(const MatrixType& matrix)
+        : m_solver(matrix) {}
+
+    /// Constructor taking the underlying matrix/operator and the preconditioner
+    template<class MatrixType, class PreconditionerType>
+    gsIterativeSolverOp(const MatrixType& matrix, const PreconditionerType& preconditioner)
+        : m_solver(matrix, preconditioner) {}
+
+    /// Make function taking the underlying matrix/operator
+    template<class MatrixType>
+    static uPtr make(const MatrixType& matrix)
+    { return uPtr( new gsIterativeSolverOp(matrix) ); }
+
+    /// Make function taking the underlying matrix/operator and the preconditioner
+    template<class MatrixType, class PreconditionerType>
+    static uPtr make(const MatrixType& matrix, const PreconditionerType& preconditioner)
+    { return uPtr( new gsIterativeSolverOp(matrix,preconditioner) ); }
+
+    /// Make function taking a matrix OR a shared pointer
+    static uPtr make(SolverType solver) { return memory::make_unique( new gsIterativeSolverOp(solver) ); }
+
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & res) const
+    {
+        res.setZero(input.rows(), input.cols());
+        m_solver.solve(input, res);
+    }
+
+    index_t rows() const { return m_solver.underlying()->rows(); }
+
+    index_t cols() const { return m_solver.underlying()->cols(); }
+
+    /// Access the solver class
+    SolverType& solver()                { return m_solver; }
+
+    /// Access the solver class
+    const SolverType& solver() const    { return m_solver; }
+
+private:
+    mutable SolverType m_solver;  // The iterative solvers change their state during solving
+};
 
 
 } // namespace gismo
