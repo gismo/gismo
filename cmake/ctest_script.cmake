@@ -220,6 +220,7 @@ if(NOT DEFINED CMAKE_ARGS)
     -DGISMO_EXTRA_DEBUG=OFF
     -DGISMO_BUILD_PCH=OFF
     #-DGISMO_PLAINDOX=ON
+    -DNOSNIPPETS=ON
     )
 endif()
 
@@ -520,36 +521,35 @@ macro(run_ctests)
   if(DEFINED DROP_METHOD)
     set(CTEST_DROP_METHOD ${DROP_METHOD})
   endif()
-  #set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS}) #!Dangerous!
+  if ("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.10")
+    set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS}) #labels/subprojects
+  endif()
 
   ctest_configure(OPTIONS "${CMAKE_ARGS};${SUBM_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}")
-
-  ctest_submit(PARTS Configure Update Notes)
+  ctest_submit(PARTS Configure Update Notes  RETRY_COUNT 3)
 
   #"${CMAKE_VERSION}" VERSION_LESS "3.10"
   if(NOT "x${LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
 
     foreach(subproject ${LABELS_FOR_SUBPROJECTS})
       #message("Subproject ${subproject}")
-      set_property(GLOBAL PROPERTY SubProject ${subproject}) #cdash subproject
-      set_property(GLOBAL PROPERTY Label ${subproject})      #test selection
-      ctest_build(TARGET ${subproject} APPEND)
-      ctest_submit(PARTS Build)
-      if ("${subproject}" STREQUAL "gismo")
-        ctest_build(TARGET doc-snippets APPEND)
-        ctest_submit(PARTS Build)
+      if ("${CMAKE_VERSION}" VERSION_LESS "3.10")
+	set_property(GLOBAL PROPERTY SubProject ${subproject})
+	set_property(GLOBAL PROPERTY Label ${subproject})
       endif()
+      ctest_build(TARGET ${subproject} APPEND)
+      ctest_submit(PARTS Build  RETRY_COUNT 3)
       ctest_test(INCLUDE_LABEL "${subproject}" PARALLEL_LEVEL ${CTEST_TEST_JOBS})
-      ctest_submit(PARTS Test)
+      ctest_submit(PARTS Test  RETRY_COUNT 3)
 
       if(DO_COVERAGE)
         ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" LABELS "${subproject}" APPEND)
-        ctest_submit(PARTS Coverage)
+        ctest_submit(PARTS Coverage  RETRY_COUNT 3)
       endif()
 
       if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
         ctest_memcheck(INCLUDE_LABEL "${subproject}" APPEND)
-        ctest_submit(PARTS MemCheck)
+        ctest_submit(PARTS MemCheck  RETRY_COUNT 3)
       endif()
 
     endforeach()
@@ -560,24 +560,24 @@ macro(run_ctests)
     if("x${CTEST_CMAKE_GENERATOR}" STREQUAL "xNinja")
       ctest_build(TARGET UnitTestPP APPEND) # for older versions of ninja
     endif()
-    ctest_submit(PARTS Build)
+    ctest_submit(PARTS Build  RETRY_COUNT 3)
     ctest_build(APPEND)
-    ctest_submit(PARTS Build)
+    ctest_submit(PARTS Build  RETRY_COUNT 3)
     ctest_build(TARGET unittests APPEND)
-    ctest_submit(PARTS Build)
+    ctest_submit(PARTS Build  RETRY_COUNT 3)
     ctest_test(PARALLEL_LEVEL ${CTEST_TEST_JOBS})
-    ctest_submit(PARTS Test)
+    ctest_submit(PARTS Test  RETRY_COUNT 3)
 
     if(DO_COVERAGE)
       #message("Running coverage..")
       ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" APPEND)
-      ctest_submit(PARTS Coverage)
+      ctest_submit(PARTS Coverage  RETRY_COUNT 3)
     endif()
 
     if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
       #message("Running memcheck..")
       ctest_memcheck()
-      ctest_submit(PARTS MemCheck)
+      ctest_submit(PARTS MemCheck  RETRY_COUNT 3)
     endif()
 
   endif()
