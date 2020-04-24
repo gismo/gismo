@@ -942,8 +942,8 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
         // Check if the point is in the domain
         if ( ! inDomain( u(0,v) ) )
         {
-            gsWarn<< "Point "<< u(0,v) <<" not in the BSpline domain ["
-                  << *(m_knots.begin()+m_p)<< ", "<<*(m_knots.end()-m_p-1)<<"].\n";
+            //gsDebug<< "Point "<< u(0,v) <<" not in the BSpline domain ["
+            //      << *(m_knots.begin()+m_p)<< ", "<<*(m_knots.end()-m_p-1)<<"].\n";
             for(int k=0; k<=n; k++)
                 result[k].col(v).setZero();
             continue;
