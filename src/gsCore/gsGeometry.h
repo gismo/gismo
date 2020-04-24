@@ -452,8 +452,7 @@ public:
     void scale(gsVector<T> const & v)
     {
         GISMO_ASSERT( v.rows() == this->m_coefs.cols(), "Sizes do not agree." );
-        for (index_t i=0; i!=m_coefs.cols(); ++i)
-            this->m_coefs.col(i) *= v[i];
+        this->m_coefs.array().rowwise() *= v.array().transpose();
     }
 
     /// Apply translation by vector v
