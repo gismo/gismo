@@ -451,9 +451,8 @@ public:
     /// Apply Scaling coord-wise by a vector v
     void scale(gsVector<T> const & v)
     {
-        this->m_coefs.col(0) *= v[0];
-        this->m_coefs.col(1) *= v[1];
-        this->m_coefs.col(2) *= v[2];
+        GISMO_ASSERT( v.rows() == this->m_coefs.cols(), "Sizes do not agree." );
+        this->m_coefs.array().rowwise() *= v.array().transpose();
     }
 
     /// Apply translation by vector v
