@@ -513,7 +513,7 @@ macro(update_gismo ug_ucount)
   if(DEFINED DROP_METHOD)
     set(CTEST_DROP_METHOD ${DROP_METHOD})
   endif()
-  if ("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.10")
+  if ("${CMAKE_VERSION}" VERSION_GREATER "3.9.99")
     set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS}) #labels/subprojects
   endif()
 
@@ -557,7 +557,7 @@ macro(run_ctests)
   if(DEFINED DROP_METHOD)
     set(CTEST_DROP_METHOD ${DROP_METHOD})
   endif()
-  if ("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.10")
+  if ("${CMAKE_VERSION}" VERSION_GREATER "3.9.99")
     set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS}) #labels/subprojects
   endif()
   
