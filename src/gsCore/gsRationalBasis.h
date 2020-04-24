@@ -182,7 +182,7 @@ public:
      * @param boxes See the function gsBasis::refineElements() of the underlying
      * basis for syntax.
      */
-    void refineElements( std::vector<unsigned> const & boxes)
+    void refineElements( std::vector<index_t> const & boxes)
     {
         // call the refineElements_withCoefs-function of the underlying
         // basis, where the weights are used as coefficients
