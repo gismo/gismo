@@ -451,8 +451,8 @@ public:
     /// Apply Scaling coord-wise by a vector v
     void scale(gsVector<T> const & v)
     {
-        GISMO_ASSERT( this->m_coefs.cols() == v.rows(), "Sizes do not agree" );
-        for (index_t i=0; i!=v.rows(); ++i)
+        GISMO_ASSERT( v.rows() == this->m_coefs.cols(), "Sizes do not agree." );
+        for (index_t i=0; i!=m_coefs.cols(); ++i)
             this->m_coefs.col(i) *= v[i];
     }
 
