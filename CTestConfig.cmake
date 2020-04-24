@@ -6,7 +6,7 @@
 ######################################################################
 
 set(CTEST_PROJECT_NAME "Gismo")
-set(CTEST_NIGHTLY_START_TIME "00:00:01 UTC")
+set(CTEST_NIGHTLY_START_TIME "00:00:01 CET")
 set(CTEST_DROP_METHOD "https")
 set(CTEST_CURL_OPTIONS "CURLOPT_SSL_VERIFYPEER_OFF" "CURLOPT_SSL_VERIFYHOST_OFF")
 set(CTEST_DROP_SITE "cdash-ci.inria.fr")
