@@ -188,16 +188,21 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
     if (withSupport)
         supp = support();
 
-    int iter = 0;
+    int cnt = 0, iter = 0;
 
     do {
-        if (withSupport)
+        //gsDebugVar(arg.transpose());
+        if ( withSupport &&
+             ((arg.array()<supp.col(0).array()).any() ||
+              (arg.array()>supp.col(1).array()).any() ) )
         {
-            //arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
-            if ( (arg.array()<supp.col(0).array()).any() ||
-                 (arg.array()>supp.col(1).array()).any() )
-                return -1;
+                if ( ++cnt > 3 ) 
+                    return -1;
+                else
+                    arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
         }
+        else
+            cnt = 0;
 
         // compute residual: value - f(arg)
         eval_into (arg, delta);
