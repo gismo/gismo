@@ -267,9 +267,11 @@ int main(int argc, char *argv[])
         // BiharmonicAssembler
         gsInfo << "Computing Internal basis functions ... \n";
         gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
+        gsInfo << "assembling...\n";
         g1BiharmonicAssembler.assemble();
+        gsInfo << "computeDirichletDofsL2Proj...\n";
         g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System); // Compute boundary values (Type 1)
-
+        gsInfo << "finalize...\n";
         g1System.finalize(multiPatch,mb, g1BiharmonicAssembler.get_bValue());
 
         gsInfo << "Solving system... \n";
