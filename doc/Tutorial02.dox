@@ -75,7 +75,7 @@ visualization in Paraview as follows:
 
 \subsection crgeo02 Creating simple geometries
 
-- The class gsNurbsCreator has severl functions which allow us to create
+- The class gsNurbsCreator has several functions which allow us to create
 (compute) the B-spline basis and the control points of some standard
 geometries.
 

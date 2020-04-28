@@ -233,7 +233,11 @@ public:
 
     gsDomain<T> * domain() const { return m_src->domain(); }
 
-    void anchors_into(gsMatrix<T> & result) const { return m_src->anchors_into(result) ;}
+    void anchors_into(gsMatrix<T> & result) const
+    { return m_src->anchors_into(result); }
+
+    void anchor_into(index_t i, gsMatrix<T> & result) const
+    { return m_src->anchor_into(i,result); }
 
     // Look at gsBasis class for documentation 
     void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const
