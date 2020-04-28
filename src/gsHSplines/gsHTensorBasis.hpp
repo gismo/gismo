@@ -347,8 +347,8 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
         this->refineElements( refVector );
     }
 
-    // Update the basis
-    update_structure();
+    // Update the basis (already done by now)
+    //update_structure();
 }
 
 template<short_t d, class T>
@@ -407,6 +407,29 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
 
     // Update the basis
     update_structure();
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::refineBasisFunction(const index_t i)
+{
+    // Get current level
+    const index_t lvl = this->levelOf(i);
+    // Get the support endpoints
+    gsMatrix<index_t, d, 2>	elements;
+    m_bases[lvl]->elementSupport_into(m_xmatrix[lvl][ i - m_xmatrix_offset[lvl] ],
+                                          elements);
+    point low = elements.col(0);
+    point upp = elements.col(1);
+    // Advance the indices to one level deeper
+    for ( short_t i = 0; i!=d; ++i )
+    {
+        low[i] = low[i] << 1;
+        upp[i] = upp[i] << 1;
+    }
+    // Insert the domain to the lvl+1 nested domain
+    m_tree.insertBox(low,upp,lvl+1);
+    // Make sure we have enough levels
+    needLevel( m_tree.getMaxInsLevel() );
 }
 
 

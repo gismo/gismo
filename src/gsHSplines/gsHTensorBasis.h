@@ -676,6 +676,9 @@ public:
     /// Refines all the cells on the side \a side up to level \a lvl
     void refineSide(const boxSide side, index_t lvl);
 
+    /// Refines the basis function with (hierarchical) index \a i
+    void refineBasisFunction(const index_t i);
+
     // Look at gsBasis.h for the documentation of this function
     //virtual void uniformRefine(int numKnots = 1);
 
