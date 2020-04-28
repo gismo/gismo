@@ -19,7 +19,7 @@
 
 #include <gsCore/gsGeometrySlice.h>
 
-#include <gsCore/gsMinimizer.h>
+//#include <gsCore/gsMinimizer.h>
 
 namespace gismo
 {
