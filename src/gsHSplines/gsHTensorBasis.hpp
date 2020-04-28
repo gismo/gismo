@@ -428,8 +428,8 @@ void gsHTensorBasis<d,T>::refineBasisFunction(const index_t i)
     }
     // Insert the domain to the lvl+1 nested domain
     m_tree.insertBox(low,upp,lvl+1);
-    // Make sure we have enough levels
-    needLevel( m_tree.getMaxInsLevel() );
+    // Update the basis
+    update_structure();
 }
 
 
