@@ -19,6 +19,8 @@
 # include <gsG1Basis/gsVisitorApproxProjection.h>
 # include <gsG1Basis/gsApproxGluingData.h>
 
+# include <gsG1Basis/gsApproxBetaSAssembler.h>
+
 namespace gismo
 {
 
@@ -68,6 +70,10 @@ public:
 
         m_gluingData.push_back(gluingData);
 
+        // Compute beta S via projection
+        //gsApproxBetaSAssembler<real_t> approxBetaSAssembler(m_mp, m_mp.basis(0), m_optionList);
+
+
         gsMatrix<T> ab = m_basis_plus.support(m_optionList.getInt("basisID"));
 
         gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
@@ -82,6 +88,7 @@ public:
             m_basis_geo = bsp_geo_local;
         else
             m_basis_geo = m_basis_target;
+
 
         refresh();
         assemble();

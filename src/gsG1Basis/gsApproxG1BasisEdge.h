@@ -20,6 +20,8 @@
 # include <gsAssembler/gsAssembler.h>
 # include <gsG1Basis/gsG1OptionList.h>
 
+# include <gsG1Basis/gsApproxSingleEdgeAssembler.h>
+
 namespace gismo
 {
 template<class T, class bhVisitor = gsVisitorApproxG1BasisEdge<T>>
@@ -105,6 +107,8 @@ public:
     gsBSpline<> get_alpha() { return m_gD[0].get_alpha_tilde(); }
     gsBSpline<> get_beta() { return m_gD[0].get_beta_tilde(); }
 
+    void set_beta_tilde(gsBSpline<T> beta_t) { m_gD[0].set_beta_tilde(beta_t); }
+
     void plotGluingData(index_t numGd) { m_gD[0].plotGluingData(numGd); }
 
     index_t get_plus() { return m_basis_plus.size(); }
@@ -135,6 +139,8 @@ protected:
     using Base::m_ddof;
     using Base::m_system;
 
+    // For special projection
+    gsBSpline<> result_singleEdge;
 
 }; // class gsG1BasisEdge
 
@@ -199,16 +205,29 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
         if (m_uv == 1)
             bsp_geo_local.swap(temp_basis);
 
-        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local && m_isBoundary)
+        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
             m_geo = bsp_geo_local; // Basis for Integration
         else
             m_geo = m_basis_g1;
+
+//// NEUNEUNEU
+/*
+        // Compute the assembler
+        gsApproxSingleEdgeAssembler<real_t> approxSingleEdgeAssembler(m_mp, m_gD[0], m_g1OptionList, m_uv, bfID);
+
+        gsSparseSolver<real_t>::CGDiagonal solver2;
+        gsMatrix<> sol2;
+        solver2.compute(approxSingleEdgeAssembler.matrix());
+        sol2 = solver2.solve(approxSingleEdgeAssembler.rhs());
+        approxSingleEdgeAssembler.constructSolution(sol2, result_singleEdge);
+*/
+//// NEUNEUNEU
 
         refresh(bfID,"plus");
 
         assemble(bfID,"plus"); // i == number of bf
 
-        gsSparseSolver<real_t>::BiCGSTABILUT solver;
+        gsSparseSolver<real_t>::CGDiagonal solver;
         gsMatrix<> sol;
         solver.compute(m_system.matrix());
         sol = solver.solve(m_system.rhs());
@@ -268,7 +287,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
         if (m_uv == 1)
             bsp_geo_local.swap(temp_basis);
 
-        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local && m_isBoundary)
+        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
             m_geo = bsp_geo_local; // Basis for Integration
         else
             m_geo = m_basis_g1;
@@ -326,7 +345,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
 
     gsMatrix<unsigned> act;
 
-    if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local && m_isBoundary)
+    if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
     {
         for (index_t i = 2; i < m_basis.basis(0).component(1 - m_uv).size();
              i++) // only the first two u/v-columns are Dofs (0/1)
@@ -346,7 +365,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                 {
                     gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
                     if ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
-                        {
+                    {
                         act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
                         map.markBoundary(0, act); // Patch 0
                     }
@@ -535,7 +554,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, 
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(bf_index, typeBf, basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_uv, m_gD[0], m_isBoundary, m_g1OptionList);
+            visitor_.evaluate(bf_index, typeBf, basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_uv, m_gD[0], m_isBoundary, m_g1OptionList, result_singleEdge);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);

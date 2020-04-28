@@ -100,8 +100,8 @@ public:
         else if (optionList.getInt("gluingData") == 1) // local
             gluingData.get_local_alpha_tilde(optionList.getInt("basisID")).eval_into(md.points,alpha);
 
-        //rhsVals = b_plus + beta.cwiseProduct(der_b_plus);
-        rhsVals = b_plus + beta.cwiseProduct(der_b_plus);
+        rhsVals = beta.cwiseProduct(der_b_plus);
+        //rhsVals = beta;
 
 
         // ++++++++++++++++++++++++++++++++

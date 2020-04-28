@@ -20,6 +20,7 @@
 # include <gsG1Basis/gsG1ASBasisEdge.h>
 # include <gsG1Basis/gsG1ASGluingData.h>
 # include <gsG1Basis/gsG1OptionList.h>
+# include <gsG1Basis/gsApproxBetaSAssembler.h>
 
 namespace gismo
 {
@@ -169,10 +170,15 @@ public:
 
         if(g1OptionList.getInt("user") == user::pascal)
         {
+            //gsApproxBetaSAssembler<real_t> approxBetaSAssembler(test_mp, test_mb, g1OptionList);
             gsApproxG1BasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), test_mb.basis(0), 1, false, g1OptionList);
             gsApproxG1BasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, g1OptionList);
+            //g1BasisEdge_0.set_beta_tilde(approxBetaSAssembler.get_beta_1());
+            //g1BasisEdge_1.set_beta_tilde(approxBetaSAssembler.get_beta_0());
             g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
             g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
+
+            //gluingDataCondition(g1BasisEdge_0.get_alpha(), g1BasisEdge_1.get_alpha(), g1BasisEdge_0.get_beta(), g1BasisEdge_1.get_beta());
         }
         else
         if(g1OptionList.getInt("user") == user::andrea)
@@ -201,8 +207,27 @@ public:
 
         if(g1OptionList.getInt("user") == user::pascal)
         {
-            gsApproxG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, g1OptionList);
-            g1BasisEdge.setG1BasisEdge(g1Basis_edge);
+            if (g1OptionList.getSwitch("twoPatch"))
+            {
+                gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(test_mp.basis(0).component(1)); // 0 -> u, 1 -> v
+                for (index_t j = 0; j < 2; j++) // u
+                {
+                    for (index_t i = 2; i < basis_edge.size()-2; i++) // v
+                    {
+                        gsMatrix<> coefs;
+                        coefs.setZero(test_mb.basis(0).size(),1);
+
+                        coefs(i*(test_mb.basis(0).size()/basis_edge.size()) + j,0) = 1;
+
+                        g1Basis_edge.addPatch(test_mb.basis(0).makeGeometry(coefs));
+                    }
+                }
+            }
+            else
+            {
+                gsApproxG1BasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, g1OptionList);
+                g1BasisEdge.setG1BasisEdge(g1Basis_edge);
+            }
         }
         else
         if(g1OptionList.getInt("user") == user::andrea)
@@ -219,6 +244,77 @@ public:
         return auxGeom[i];
     }
 
+
+    void gluingDataCondition(gsBSpline<> alpha_0, gsBSpline<> alpha_1, gsBSpline<> beta_0, gsBSpline<> beta_1)
+{
+    // BETA
+    // first,last,interior,mult_ends,mult_interior,degree
+    gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(auxGeom[0].getPatch().basis().component(1)); // 0 -> v, 1 -> u
+    index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
+
+    gsKnotVector<> kv(0, 1, basis_edge.numElements()-1, 2 * m_p  + 1, 2 * m_p - 1 );
+    gsBSplineBasis<> bsp(kv);
+
+    gsMatrix<> greville = bsp.anchors();
+    gsMatrix<> uv1, uv0, ev1, ev0;
+
+    const index_t d = 2;
+    gsMatrix<> D0(d,d);
+
+    gsGeometry<>::Ptr beta_temp;
+
+    uv0.setZero(2,greville.cols());
+    uv0.bottomRows(1) = greville;
+
+    uv1.setZero(2,greville.cols());
+    uv1.topRows(1) = greville;
+
+    const gsGeometry<> & P0 = auxGeom[0].getPatch(); // iFace.first().patch = 1
+    const gsGeometry<> & P1 = auxGeom[1].getPatch(); // iFace.second().patch = 0
+    // ======================================
+
+    // ======== Determine bar{beta} ========
+    for(index_t i = 0; i < uv1.cols(); i++)
+    {
+        P0.jacobian_into(uv0.col(i),ev0);
+        P1.jacobian_into(uv1.col(i),ev1);
+
+        D0.col(1) = ev0.col(0); // (DuFL, *)
+        D0.col(0) = ev1.col(1); // (*,DuFR)
+
+        uv0(0,i) = D0.determinant();
+    }
+
+    beta_temp = bsp.interpolateData(uv0.topRows(1), uv0.bottomRows(1));
+    gsBSpline<> beta = dynamic_cast<gsBSpline<> &> (*beta_temp);
+
+
+    index_t p_size = 8;
+    gsMatrix<> points(1, p_size);
+    points.setRandom();
+    points = points.array().abs();
+
+    gsVector<> vec;
+    vec.setLinSpaced(p_size,0,1);
+    points = vec.transpose();
+
+    gsInfo << "Points 2: " << points << " \n";
+    gsInfo << "Beta 2: " << beta.eval(points) << " \n";
+    gsInfo << "alpha1 2: " << alpha_1.eval(points) << " \n";
+    gsInfo << "alpha0 2: " << alpha_0.eval(points) << " \n";
+    gsInfo << "beta_0 2: " << beta_0.eval(points) << " \n";
+    gsInfo << "beta_1 2: " << beta_1.eval(points) << " \n";
+
+    gsMatrix<> temp;
+    temp = alpha_1.eval(points).cwiseProduct(beta_0.eval(points))
+        + alpha_0.eval(points).cwiseProduct(beta_1.eval(points))
+        - beta.eval(points);
+
+
+    gsInfo << "Conditiontest Gluing data: \n" << temp.array().abs().maxCoeff() << "\n\n";
+
+
+}
 
 protected:
     std::vector<gsG1AuxiliaryPatch> auxGeom;
