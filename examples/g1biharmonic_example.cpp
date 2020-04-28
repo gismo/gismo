@@ -307,8 +307,8 @@ int main(int argc, char *argv[])
         g1System.constructSparseG1Solution(solVector,Sol_sparse);
 
 #ifdef _OPENMP
-        omp_set_num_threads(g1OptionList.getInt("threads"));
-        //omp_set_num_threads(1);
+        // omp_set_num_threads(g1OptionList.getInt("threads"));
+        omp_set_num_threads(1);
         omp_set_nested(1);
 #endif
 
