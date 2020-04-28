@@ -32,12 +32,14 @@ In the gismo/examples sub-directory we find:
 
 - \subpage inputOutput_example
 
+- \subpage fileIo_example
+
 - \subpage gsInterpolateMap
 
 - \subpage knotVector_example
 
 - \subpage linearAlgebra_example
-
+  
 - \subpage linearSolvers_example
 
 - \subpage mpi_example
