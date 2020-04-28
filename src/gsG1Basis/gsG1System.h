@@ -22,11 +22,17 @@ class gsG1System
 public:
 
     gsG1System(gsMultiPatch<> & mp,
-               gsMultiBasis<> & mb)
+               gsMultiBasis<> & mb,
+               bool twoPatch = false)
+               : m_twoPatch(twoPatch)
     {
-        initialize(mp, mb);
+        if (m_twoPatch)
+            initialize_twoPatch(mp,mb);
+        else
+            initialize(mp, mb);
     }
 
+    void initialize_twoPatch(gsMultiPatch<> & mp, gsMultiBasis<> mb);
     void initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb);
     void finalize(gsMultiPatch<> & mp, gsMultiBasis<> & mb, gsMatrix<> g1);
     gsMatrix<> solve(gsSparseMatrix<real_t> K, gsMatrix<> f);
@@ -52,6 +58,8 @@ public:
     gsMatrix<> getSingleBasis(index_t global_row, index_t patchIdx) { return D_sparse.block(global_row, numBasisFunctions[patchIdx], 1, numBasisFunctions[patchIdx+1] - numBasisFunctions[patchIdx]); };
 
 protected:
+    bool m_twoPatch;
+
     size_t dim_K, dim_G1_Dofs, dim_G1_Bdy;
 
     gsVector<> numBasisFunctions, numInterfaceFunctions, numEdgeFunctions, numBoundaryEdgeFunctions, numVertexFunctions, numBoundaryVertexFunctions;
@@ -62,6 +70,125 @@ protected:
     gsMatrix<> m_g1;
 
 }; // class gsG1System
+
+template<class T>
+void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, gsMultiBasis<> mb)
+{
+    // Number of the patches
+    index_t numPatches = mp.nPatches();
+
+    // Dimension of Basis plus at the edge
+    sizePlusInt.setZero(mp.interfaces().size());
+    sizePlusBdy.setZero(mp.boundaries().size());
+
+    // Kind of vertex
+    // -1 Boundary vertex
+    // 0 Internal vertex
+    // 1 Interface boundary vertey
+    kindOfVertex.setZero(mp.vertices().size());
+
+    // Get the dimension of the basis functions for each patch
+    numBasisFunctions.setZero(numPatches+1);
+
+    numInterfaceFunctions.setZero(mp.interfaces().size()+1);
+
+    numEdgeFunctions.setZero(mp.boundaries().size()+1);
+    numBoundaryEdgeFunctions.setZero(mp.boundaries().size()+1);
+
+    numVertexFunctions.setZero(mp.vertices().size()+1);
+    numBoundaryVertexFunctions.setZero(mp.vertices().size()+1);
+
+    for (size_t i = 0; i < mb.nBases(); i++ )
+        numBasisFunctions[i+1] = numBasisFunctions[i] + mb.basis(i).size();
+
+    for (size_t i = 0; i < mp.interfaces().size(); i++)
+    {
+        // Get the dimension for the spaces at the edges
+        index_t dir = mp.interfaces()[i].first().m_index < 3 ? 1 : 0;
+        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(mp.interfaces()[i].first().patch).component(dir)); // If the interface matches!!!
+        index_t m_p = basis_edge.maxDegree();
+        index_t m_r = 1; // Here fixed to 1 TODO MORE GENERAL
+        index_t m_n = basis_edge.numElements();
+
+        numInterfaceFunctions[i+1] = numInterfaceFunctions[i] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p +1;
+        sizePlusInt[i] = (m_p - m_r - 1) * (m_n - 1) + m_p + 1;
+    }
+    for (size_t i = 0; i < mp.boundaries().size(); i++)
+    {
+        // Get the dimension for the spaces at the edges
+        index_t dir = mp.boundaries()[i].m_index < 3 ? 1 : 0;
+        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(mp.boundaries()[i].patch).component(dir)); // 0 -> u, 1 -> v
+
+        numBoundaryEdgeFunctions[i+1] = numBoundaryEdgeFunctions[i] + basis_edge.size();
+        numEdgeFunctions[i+1] = numEdgeFunctions[i] + basis_edge.size();
+        sizePlusBdy[i] = basis_edge.size();
+    }
+
+    for (size_t i = 0; i < mp.vertices().size(); i++)
+    {
+        if (mp.vertices()[i].size() == 1)
+        {
+            // |  o  o  o
+            // |  x  x  o
+            // |  x  x  o
+            // |__________
+            kindOfVertex[i] = -1; // Boundary vertex
+            numVertexFunctions[i+1] = numVertexFunctions[i] + 1; // TODO
+            numBoundaryVertexFunctions[i+1] = numBoundaryVertexFunctions[i] + 3; // TODO
+        }
+        else
+        {
+            gsMultiPatch<> temp_mp;
+            for (size_t j = 0; j < mp.vertices()[i].size(); j++)
+                temp_mp.addPatch(mp.patch(mp.vertices()[i][j].patch));
+
+            temp_mp.computeTopology();
+            if (mp.vertices()[i].size() == temp_mp.interfaces().size())
+            {
+                kindOfVertex[i] = 0; // Internal vertex
+                numVertexFunctions[i+1] = numVertexFunctions[i] + 0;
+                numBoundaryVertexFunctions[i+1] = numBoundaryVertexFunctions[i];
+            }
+
+            else
+            {
+                kindOfVertex[i] = 1; // Interface-Boundary vertex
+                numVertexFunctions[i+1] = numVertexFunctions[i] + 0; // TODO
+                numBoundaryVertexFunctions[i+1] = numBoundaryVertexFunctions[i] + 0; // TODO
+            }
+        }
+    }
+    numEdgeFunctions = numEdgeFunctions.array() + numInterfaceFunctions.last();
+    numVertexFunctions = numVertexFunctions.array() + numEdgeFunctions.last();
+    numBoundaryEdgeFunctions = numBoundaryEdgeFunctions.array() + numVertexFunctions.last();
+    numBoundaryVertexFunctions = numBoundaryVertexFunctions.array() + numBoundaryEdgeFunctions.last();
+
+    // Setting the final matrix
+    dim_K = numBasisFunctions.last(); // interior basis dimension
+    dim_G1_Dofs = numVertexFunctions.last() ; // edges basis dimension
+    dim_G1_Bdy = numBoundaryVertexFunctions.last() - numBoundaryEdgeFunctions[0]; // vertex basis dimension
+
+    // Full matrix
+    D_sparse.resize(dim_G1_Dofs + dim_G1_Bdy + dim_K, dim_K);
+    D_sparse.reserve(3*dim_K);
+    D_sparse.setZero();
+
+    // Without boundary
+    D_0_sparse.resize(dim_G1_Dofs + dim_G1_Bdy + dim_K, dim_K);
+    D_0_sparse.reserve(3*dim_K);
+    D_0_sparse.setZero();
+
+    // Only boundary
+    D_boundary_sparse.resize(dim_G1_Dofs + dim_G1_Bdy + dim_K , dim_K);
+    D_boundary_sparse.reserve(3*dim_K);
+    D_boundary_sparse.setZero();
+
+    // Boundary values
+    m_g1.resize(dim_G1_Dofs + dim_G1_Bdy + dim_K, 1);
+    m_g1.setZero();
+
+
+}
 
 template<class T>
 void gsG1System<T>::initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb)
@@ -304,7 +431,7 @@ void gsG1System<T>::insertInterfaceEdge(gsMultiPatch<> & mp, boundaryInterface i
 }
 
 template<class T>
-void gsG1System<T>::insertBoundaryEdge(gsMultiPatch<> & mp, patchSide item, index_t bID ,size_t bfID)
+void gsG1System<T>::insertBoundaryEdge(gsMultiPatch<> & mp, patchSide item, index_t bID, size_t bfID)
 {
     // Insert all coefficients of the g1 Basis at the interface
     for (index_t j = 0; j < mp.patch(0).coefs().size(); j++) // all the coefs

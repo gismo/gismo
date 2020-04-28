@@ -1,29 +1,21 @@
-/** @file gsVisitorG1Basis.h
+//
+// Created by afarahat on 4/15/20.
+//
 
-    @brief Visitor for the G1 Basis.
-
-    This file is part of the G+Smo library.
-
-    This Source Code Form is subject to the terms of the Mozilla Public
-    License, v. 2.0. If a copy of the MPL was not distributed with this
-    file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-    Author(s): P. Weinmüller
-*/
 
 #pragma once
 
-# include "gsG1Basis/gsApproxGluingData.h"
+# include "gsG1Basis/gsG1ASGluingData.h"
 # include <gsG1Basis/gsG1OptionList.h>
 
 namespace gismo
 {
 template <class T>
-class gsVisitorApproxG1BasisEdge
+class gsG1ASVisitorBasisEdge
 {
 public:
 
-    gsVisitorApproxG1BasisEdge()
+    gsG1ASVisitorBasisEdge()
     {
     }
 
@@ -51,10 +43,9 @@ public:
                          const gsGeometry<T>    & geo, // patch
                          gsMatrix<T>            & quNodes,
                          index_t & uv,
-                         gsApproxGluingData<T>  & gluingData,
+                         gsG1ASGluingData<T>  & gluingData,
                          bool & isBoundary,
-                         gsG1OptionList & g1OptionList,
-                         gsBSpline<T> & result_singleEdge)
+                         gsG1OptionList & g1OptionList)
     {
         md.points = quNodes;
 
@@ -84,16 +75,10 @@ public:
 
         if (uv == 1) // edge is in v-direction
         {
-            if (g1OptionList.getInt("gluingData") == gluingData::global)
-            {
-                gluingData.get_alpha_tilde().eval_into(md.points.bottomRows(1),alpha); // v
-                gluingData.get_beta_tilde().eval_into(md.points.bottomRows(1),beta);
-            }
-            else if (g1OptionList.getInt("gluingData") == gluingData::exact)
-            {
-                gluingData.eval_alpha_into(md.points.bottomRows(1),alpha); // v
-                gluingData.eval_beta_into(md.points.bottomRows(1),beta);
-            }
+
+            alpha = gluingData.evalAlpha_R(md.points.bottomRows(1));
+            beta = gluingData.evalBeta_R(md.points.bottomRows(1));
+
             basis_geo.evalSingle_into(0,md.points.topRows(1),N_0); // u
             basis_geo.evalSingle_into(1,md.points.topRows(1),N_1); // u
 
@@ -103,21 +88,11 @@ public:
                 basis_plus.evalSingle_into(bfID,md.points.bottomRows(1),N_i_plus); // v
                 basis_plus.derivSingle_into(bfID,md.points.bottomRows(1),der_N_i_plus);
 
-                if (g1OptionList.getInt("gluingData") == gluingData::local)
-                {
-                    gsMatrix<> ab = gluingData.get_local_beta_tilde(bfID).support();
-                    if ((md.points(1,0) >= ab(0)) && (md.points(1,0) <= ab(1)))
-                        gluingData.get_local_beta_tilde(bfID).eval_into(md.points.bottomRows(1),beta);
-                    else
-                        beta.setZero(1,md.points.cols());
-                }
 
                 beta = isBoundary ? beta.setZero() : beta; // For the boundary, only on Patch 0
 
-                gsMatrix<T> temp = beta.cwiseProduct(der_N_i_plus);
-                //gsInfo << "uv = 1 : " << temp - result_singleEdge.eval(md.points.bottomRows(1)) << "\n";
-                //temp = result_singleEdge.eval(md.points.bottomRows(1));
-                rhsVals = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(N_1) * tau_1 / p;
+                gsMatrix<T> temp = beta.cwiseProduct(N_1);
+                rhsVals = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
 
                 localMat.setZero(numActive, numActive);
                 localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
@@ -127,14 +102,6 @@ public:
             {
                 basis_minus.evalSingle_into(bfID,md.points.bottomRows(1),N_j_minus); // v
 
-                if (g1OptionList.getInt("gluingData") == gluingData::local)
-                {
-                    gsMatrix<> ab = gluingData.get_local_alpha_tilde(bfID).support();
-                    if ((md.points(1,0) >= ab(0)) && (md.points(1,0) <= ab(1)))
-                        gluingData.get_local_alpha_tilde(bfID).eval_into(md.points.bottomRows(1),alpha);
-                    else
-                        alpha.setZero(1,md.points.cols());
-                }
 
                 alpha = isBoundary ? alpha.setOnes() : alpha; // For the boundary, only on Patch 0
 
@@ -147,16 +114,10 @@ public:
         } // Patch 0
         else if (uv == 0) // edge is in u-direction
         {
-            if (g1OptionList.getInt("gluingData") == gluingData::global)
-            {
-                gluingData.get_alpha_tilde().eval_into(md.points.topRows(1),alpha); // u
-                gluingData.get_beta_tilde().eval_into(md.points.topRows(1),beta);
-            }
-            else if (g1OptionList.getInt("gluingData") == gluingData::exact)
-            {
-                gluingData.eval_alpha_into(md.points.topRows(1),alpha); // v
-                gluingData.eval_beta_into(md.points.topRows(1),beta);
-            }
+
+            alpha = gluingData.evalAlpha_L(md.points.topRows(1));
+            beta = gluingData.evalBeta_L(md.points.topRows(1));
+
             basis_geo.evalSingle_into(0,md.points.bottomRows(1),N_0); // v
             basis_geo.evalSingle_into(1,md.points.bottomRows(1),N_1); // v
 
@@ -166,22 +127,10 @@ public:
                 basis_plus.evalSingle_into(bfID,md.points.topRows(1),N_i_plus); // u
                 basis_plus.derivSingle_into(bfID,md.points.topRows(1),der_N_i_plus);
 
-                if (g1OptionList.getInt("gluingData") == gluingData::local)
-                {
-                    gsMatrix<> ab = gluingData.get_local_beta_tilde(bfID).support();
-                    if ((md.points(0,0) >= ab(0)) && (md.points(0,0) <= ab(1)))
-                        gluingData.get_local_beta_tilde(bfID).eval_into(md.points.topRows(1),beta);
-                    else
-                        beta.setZero(1,md.points.cols());
-                }
-
-
                 beta = isBoundary ? beta.setZero() : beta; // For the boundary, only on Patch 0
 
-                gsMatrix<> temp = beta.cwiseProduct(der_N_i_plus);
-                //gsInfo << "uv = 0 : " << temp - result_singleEdge.eval(md.points.topRows(1)) << "\n";
-                //temp = result_singleEdge.eval(md.points.topRows(1));
-                rhsVals = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(N_1) * tau_1 / p;
+                gsMatrix<> temp = beta.cwiseProduct(N_1);
+                rhsVals = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
 
                 localMat.setZero(numActive, numActive);
                 localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
@@ -191,14 +140,6 @@ public:
             {
                 basis_minus.evalSingle_into(bfID,md.points.topRows(1),N_j_minus); // u
 
-                if (g1OptionList.getInt("gluingData") == gluingData::local)
-                {
-                    gsMatrix<> ab = gluingData.get_local_alpha_tilde(bfID).support();
-                    if ((md.points(0,0) >= ab(0)) && (md.points(0,0) <= ab(1)))
-                        gluingData.get_local_alpha_tilde(bfID).eval_into(md.points.topRows(1),alpha);
-                    else
-                        alpha.setZero(1,md.points.cols());
-                }
 
                 alpha = isBoundary ? alpha.setOnes() : alpha; // For the boundary, only on Patch 0
 

@@ -20,6 +20,8 @@
 # include <gsAssembler/gsAssembler.h>
 # include <gsG1Basis/gsG1OptionList.h>
 
+# include <gsG1Basis/gsApproxSingleEdgeAssembler.h>
+
 namespace gismo
 {
 template<class T, class bhVisitor = gsVisitorApproxG1BasisEdge<T>>
@@ -105,6 +107,8 @@ public:
     gsBSpline<> get_alpha() { return m_gD[0].get_alpha_tilde(); }
     gsBSpline<> get_beta() { return m_gD[0].get_beta_tilde(); }
 
+    void set_beta_tilde(gsBSpline<T> beta_t) { m_gD[0].set_beta_tilde(beta_t); }
+
     void plotGluingData(index_t numGd) { m_gD[0].plotGluingData(numGd); }
 
     index_t get_plus() { return m_basis_plus.size(); }
@@ -135,6 +139,8 @@ protected:
     using Base::m_ddof;
     using Base::m_system;
 
+    // For special projection
+    gsBSpline<> result_singleEdge;
 
 }; // class gsG1BasisEdge
 
@@ -147,8 +153,11 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
     index_t n_minus = m_basis_minus.size();
 
     gsMultiPatch<> g1EdgeBasis;
+    index_t bfID_init = 3;
+    if (m_g1OptionList.getSwitch("twoPatch"))
+        bfID_init = 0;
 
-    for (index_t bfID = 3; bfID < n_plus - 3; bfID++) // first 3 and last 3 bf are eliminated
+    for (index_t bfID = bfID_init; bfID < n_plus - bfID_init; bfID++) // first 3 and last 3 bf are eliminated
     {
         gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(m_uv)); // u
         index_t degree = temp_basis_first.maxDegree();
@@ -195,23 +204,42 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
         gsTensorBSplineBasis<2, T> temp_basis(kv2, kv);
         if (m_uv == 1)
             bsp_geo_local.swap(temp_basis);
-        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local && m_isBoundary)
+
+        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
             m_geo = bsp_geo_local; // Basis for Integration
         else
             m_geo = m_basis_g1;
+
+//// NEUNEUNEU
+/*
+        // Compute the assembler
+        gsApproxSingleEdgeAssembler<real_t> approxSingleEdgeAssembler(m_mp, m_gD[0], m_g1OptionList, m_uv, bfID);
+
+        gsSparseSolver<real_t>::CGDiagonal solver2;
+        gsMatrix<> sol2;
+        solver2.compute(approxSingleEdgeAssembler.matrix());
+        sol2 = solver2.solve(approxSingleEdgeAssembler.rhs());
+        approxSingleEdgeAssembler.constructSolution(sol2, result_singleEdge);
+*/
+//// NEUNEUNEU
 
         refresh(bfID,"plus");
 
         assemble(bfID,"plus"); // i == number of bf
 
-        gsSparseSolver<real_t>::BiCGSTABILUT solver;
+        gsSparseSolver<real_t>::CGDiagonal solver;
         gsMatrix<> sol;
         solver.compute(m_system.matrix());
         sol = solver.solve(m_system.rhs());
 
         constructSolution(sol,g1EdgeBasis);
     }
-    for (index_t bfID = 2; bfID < n_minus-2; bfID++)  // first 2 and last 2 bf are eliminated
+
+    bfID_init = 2;
+    if (m_g1OptionList.getSwitch("twoPatch"))
+        bfID_init = 0;
+
+    for (index_t bfID = bfID_init; bfID < n_minus-bfID_init; bfID++)  // first 2 and last 2 bf are eliminated
     {
         gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(m_uv)); // u
         index_t degree = temp_basis_first.maxDegree();
@@ -258,7 +286,8 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
         gsTensorBSplineBasis<2, T> temp_basis(kv2, kv);
         if (m_uv == 1)
             bsp_geo_local.swap(temp_basis);
-        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local && m_isBoundary)
+
+        if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
             m_geo = bsp_geo_local; // Basis for Integration
         else
             m_geo = m_basis_g1;
@@ -316,7 +345,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
 
     gsMatrix<unsigned> act;
 
-    if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local && m_isBoundary)
+    if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
     {
         for (index_t i = 2; i < m_basis.basis(0).component(1 - m_uv).size();
              i++) // only the first two u/v-columns are Dofs (0/1)
@@ -336,7 +365,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                 {
                     gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
                     if ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
-                        {
+                    {
                         act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
                         map.markBoundary(0, act); // Patch 0
                     }
@@ -525,7 +554,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, 
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(bf_index, typeBf, basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_uv, m_gD[0], m_isBoundary, m_g1OptionList);
+            visitor_.evaluate(bf_index, typeBf, basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_uv, m_gD[0], m_isBoundary, m_g1OptionList, result_singleEdge);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);
@@ -536,5 +565,149 @@ void gsApproxG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, 
         }
     }//omp parallel
 } // apply
+
+
+
+
+//void gluingDataCondition(gsBSpline<> alpha_0, gsBSpline<> alpha_1, gsBSpline<> beta_0, gsBSpline<> beta_1)
+//{
+//    // BETA
+//    // first,last,interior,mult_ends,mult_interior,degree
+//    gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(auxGeom[0].getPatch().basis().component(1)); // 0 -> v, 1 -> u
+//    index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
+//
+//    gsKnotVector<> kv(0, 1, basis_edge.numElements()-1, 2 * m_p  + 1, 2 * m_p - 1 );
+//    gsBSplineBasis<> bsp(kv);
+//
+//    gsMatrix<> greville = bsp.anchors();
+//    gsMatrix<> uv1, uv0, ev1, ev0;
+//
+//    const index_t d = 2;
+//    gsMatrix<> D0(d,d);
+//
+//    gsGeometry<>::Ptr beta_temp;
+//
+//    uv0.setZero(2,greville.cols());
+//    uv0.bottomRows(1) = greville;
+//
+//    uv1.setZero(2,greville.cols());
+//    uv1.topRows(1) = greville;
+//
+//    const gsGeometry<> & P0 = auxGeom[0].getPatch(); // iFace.first().patch = 1
+//    const gsGeometry<> & P1 = auxGeom[1].getPatch(); // iFace.second().patch = 0
+//    // ======================================
+//
+//    // ======== Determine bar{beta} ========
+//    for(index_t i = 0; i < uv1.cols(); i++)
+//    {
+//        P0.jacobian_into(uv0.col(i),ev0);
+//        P1.jacobian_into(uv1.col(i),ev1);
+//
+//        D0.col(1) = ev0.col(0); // (DuFL, *)
+//        D0.col(0) = ev1.col(1); // (*,DuFR)
+//
+//        uv0(0,i) = D0.determinant();
+//    }
+//
+//    beta_temp = bsp.interpolateData(uv0.topRows(1), uv0.bottomRows(1));
+//    gsBSpline<> beta = dynamic_cast<gsBSpline<> &> (*beta_temp);
+//
+//
+//    index_t p_size = 10000;
+//    gsMatrix<> points(1, p_size);
+//    points.setRandom();
+//    points = points.array().abs();
+//
+//    gsVector<> vec;
+//    vec.setLinSpaced(p_size,0,1);
+//    points = vec.transpose();
+//
+//    gsMatrix<> temp;
+//    temp = alpha_1.eval(points).cwiseProduct(beta_0.eval(points))
+//        + alpha_0.eval(points).cwiseProduct(beta_1.eval(points))
+//        - beta.eval(points);
+//
+//
+//    gsInfo << "Conditiontest Gluing data: \n" << temp.array().abs().maxCoeff() << "\n\n";
+//
+//
+//}
+//
+//void g1ConditionRep(gsBSpline<> alpha_0, gsBSpline<> alpha_1, gsMultiPatch<> g1Basis_0,  gsMultiPatch<> g1Basis_1)
+//{
+//    // BETA
+//    // first,last,interior,mult_ends,mult_interior,degree
+//    gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(auxGeom[0].getPatch().basis().component(1)); // 0 -> v, 1 -> u
+//    index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
+//
+//    gsKnotVector<> kv(0, 1, basis_edge.numElements()-1, 2 * m_p  + 1, 2 * m_p - 1 );
+//    gsBSplineBasis<> bsp(kv);
+//
+//    gsMatrix<> greville = bsp.anchors();
+//    gsMatrix<> uv1, uv0, ev1, ev0;
+//
+//    const index_t d = 2;
+//    gsMatrix<> D0(d,d);
+//
+//    gsGeometry<>::Ptr beta_temp;
+//
+//    uv0.setZero(2,greville.cols());
+//    uv0.bottomRows(1) = greville;
+//
+//    uv1.setZero(2,greville.cols());
+//    uv1.topRows(1) = greville;
+//
+//    const gsGeometry<> & P0 = auxGeom[0].getPatch(); // iFace.first().patch = 1
+//    const gsGeometry<> & P1 = auxGeom[1].getPatch(); // iFace.second().patch = 0
+//    // ======================================
+//
+//    // ======== Determine bar{beta} ========
+//    for(index_t i = 0; i < uv1.cols(); i++)
+//    {
+//        P0.jacobian_into(uv0.col(i),ev0);
+//        P1.jacobian_into(uv1.col(i),ev1);
+//        D0.col(1) = ev0.col(0); // (DuFL, *)
+//        D0.col(0) = ev1.col(1); // (*,DuFR)
+//
+//        uv0(0,i) = D0.determinant();
+//    }
+//
+//    beta_temp = bsp.interpolateData(uv0.topRows(1), uv0.bottomRows(1));
+//    gsBSpline<> beta = dynamic_cast<gsBSpline<> &> (*beta_temp);
+//
+//
+//
+//    index_t p_size = 10000;
+//    gsMatrix<> points(1, p_size);
+//    points.setRandom();
+//    points = points.array().abs();
+//
+//    gsVector<> vec;
+//    vec.setLinSpaced(p_size,0,1);
+//    points = vec.transpose();
+//
+//    gsMatrix<> points2d_0(2, p_size);
+//    gsMatrix<> points2d_1(2, p_size);
+//
+//    points2d_0.setZero();
+//    points2d_1.setZero();
+//    points2d_0.row(1) = points; // v
+//    points2d_1.row(0) = points; // u
+//
+//    real_t g1Error = 0;
+//
+//    for (size_t i = 0; i < g1Basis_0.nPatches(); i++)
+//    {
+//        gsMatrix<> temp;
+//        temp = alpha_1.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).topRows(1))
+//            + alpha_0.eval(points).cwiseProduct(g1Basis_1.patch(i).deriv(points2d_1).bottomRows(1))
+//            + beta.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).bottomRows(1));
+//
+//        if (temp.array().abs().maxCoeff() > g1Error)
+//            g1Error = temp.array().abs().maxCoeff();
+//    }
+//
+//    gsInfo << "Conditiontest G1 continuity Rep: \n" << g1Error << "\n\n";
+//}
 
 } // namespace gismo
