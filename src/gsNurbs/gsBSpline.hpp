@@ -144,10 +144,10 @@ void gsBSpline<T>::setOriginCorner(gsMatrix<T> const &v)
 template<class T>    
 void gsBSpline<T>::setFurthestCorner(gsMatrix<T> const &v)
 {
-    if ((v - m_coefs.row(0)).squaredNorm() < 1e-3)
-        this->reverse();
-    else if ((v - m_coefs.bottomRows(1)).squaredNorm() < 1e-3)
+    if ((v - m_coefs.bottomRows(1)).squaredNorm() < 1e-3)
         return;
+    else if ((v - m_coefs.row(0)).squaredNorm() < 1e-3)
+        this->reverse();
     else
         gsWarn<<"Point "<< v <<" is not an endpoint of the curve.\n";
 }

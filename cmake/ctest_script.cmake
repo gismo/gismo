@@ -125,7 +125,7 @@ endif()
 #set(CTEST_BUILD_JOBS 8)
 #set(CTEST_TEST_JOBS 10)
 
-# Tip fot C/C++ compilers
+# Tip for C/C++ compilers
 # e.g. "cc/g++", "icc/icpc", "clang/clang++", "mpicc/mpic++", cl.exe/cl.exe
 #set(CNAME cc)
 #set(CXXNAME g++)
@@ -220,6 +220,7 @@ if(NOT DEFINED CMAKE_ARGS)
     -DGISMO_EXTRA_DEBUG=OFF
     -DGISMO_BUILD_PCH=OFF
     #-DGISMO_PLAINDOX=ON
+    -DNOSNIPPETS=ON
     )
 endif()
 
@@ -437,10 +438,15 @@ if(NOT DEFINED CTEST_BUILD_NAME)
 #  find_program(UNAME NAMES uname)
 #  execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname OUTPUT_STRIP_TRAILING_WHITESPACE)
 #  execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu" OUTPUT_STRIP_TRAILING_WHITESPACE)
-  #  set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CNAME}")
-    set(CTEST_BUILD_NAME "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CNAME}")
-endif()
-
+#  set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CNAME}")
+  if(${UPDATE_MODULES})
+    set(smHead "(head)")
+  endif()
+  get_filename_component(cxxnamewe ${CXXNAME} NAME_WE)
+  set(CTEST_BUILD_NAME "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${cxxnamewe}${smHead}")
+  endif()
+  message("NAME: ${CTEST_BUILD_NAME}")
+  
 if(NOT CTEST_BUILD_JOBS)
   include(ProcessorCount)
   ProcessorCount(NPROC)
@@ -470,40 +476,27 @@ set(ENV{CTEST_USE_LAUNCHERS_DEFAULT} 1)
 
 macro(get_git_status res)
   if(EXISTS "${CTEST_SOURCE_DIRECTORY}/.git" )
-    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} rev-parse --verify HEAD
+#    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} rev-parse --verify HEAD
+#      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+#      OUTPUT_STRIP_TRAILING_WHITESPACE
+#      OUTPUT_VARIABLE gitHash)
+    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} log -1
       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
       OUTPUT_STRIP_TRAILING_WHITESPACE
-      OUTPUT_VARIABLE gitHash)
-    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule
+      OUTPUT_VARIABLE commitMessage)
+    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule status
       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
       OUTPUT_STRIP_TRAILING_WHITESPACE
       OUTPUT_VARIABLE submoduleHashes)
-    set(${res} " ${gitHash} gismo\n${submoduleHashes}\n")
+    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule summary
+      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      OUTPUT_VARIABLE submoduleSummary)
+    set(${res} "${commitMessage}\n\nSubmodule status:\n${submoduleHashes}\n\nSubmodule summary:\n${submoduleSummary}\n")
   endif()
 endmacro(get_git_status)
 
 macro(update_gismo ug_ucount)
-  ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY} RETURN_VALUE ${ug_ucount})
-  set(ug_updlog " ${${ug_ucount}} gismo\n")
-  if(${UPDATE_MODULES})
-    foreach (submodule ${GISMO_SUBMODULES})
-      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
-	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
-      ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule} RETURN_VALUE ug_upd_sm)
-      set(ug_updlog "${ug_updlog} ${${ug_upd_sm}} extensions/${submodule}\n")
-      if (${ug_upd_sm} GREATER 0)
-	math(EXPR ${ug_ucount} "${${ug_ucount}} + ${ug_upd_sm}")
-      endif()
-      if(${ug_upd_sm} LESS 0)
-        message(SEND_ERROR "Git update submodule error")
-      endif()
-    endforeach()
-  endif()
-  get_git_status(gitstatus)
-  file(WRITE ${CTEST_BINARY_DIRECTORY}/gitstatus.txt "Commit:\n${gitstatus}Updates:\n${ug_updlog}")
-endmacro(update_gismo)
-
-macro(run_ctests)
   # Reset CTestConfig variables
   if(DEFINED PROJECT_NAME)
     set(CTEST_PROJECT_NAME ${PROJECT_NAME})
@@ -520,36 +513,80 @@ macro(run_ctests)
   if(DEFINED DROP_METHOD)
     set(CTEST_DROP_METHOD ${DROP_METHOD})
   endif()
-  #set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS}) #!Dangerous!
+  if ("${CMAKE_VERSION}" VERSION_GREATER "3.9.99")
+    set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS}) #labels/subprojects
+  endif()
 
+  set(ug_updlog "0")
+  ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY} RETURN_VALUE ${ug_ucount})
+  ctest_submit(PARTS Update RETRY_COUNT 3 RETRY_DELAY 3)
+  set(ug_updlog " ${${ug_ucount}} gismo\n")
+  if(${UPDATE_MODULES})
+    foreach (submodule ${GISMO_SUBMODULES})
+      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
+	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
+      ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule} RETURN_VALUE ug_upd_sm)
+      set(ug_updlog "${ug_updlog} ${ug_upd_sm} extensions/${submodule}\n")
+      if (${ug_upd_sm} GREATER 0)
+	math(EXPR ${ug_ucount} "${${ug_ucount}} + ${ug_upd_sm}")
+      endif()
+      if(${ug_upd_sm} LESS 0)
+        message(SEND_ERROR "Git update submodule error")
+      endif()
+    endforeach()
+  endif()
+  get_git_status(gitstatus)
+  file(WRITE ${CTEST_BINARY_DIRECTORY}/gitstatus.txt "Revision:\n${gitstatus}\nUpdates:\n${ug_updlog}")
+endmacro(update_gismo)
+
+macro(run_ctests)
+
+  # Reset CTestConfig variables
+  if(DEFINED PROJECT_NAME)
+    set(CTEST_PROJECT_NAME ${PROJECT_NAME})
+    if(NOT DEFINED DROP_LOCATION)
+      set(DROP_LOCATION "/submit.php?project=${PROJECT_NAME}")
+    endif()
+  endif()
+  if(DEFINED DROP_LOCATION)
+    set(CTEST_DROP_LOCATION ${DROP_LOCATION})
+  endif()
+  if(DEFINED DROP_SITE)
+    set(CTEST_DROP_SITE ${DROP_SITE})
+  endif()
+  if(DEFINED DROP_METHOD)
+    set(CTEST_DROP_METHOD ${DROP_METHOD})
+  endif()
+  if ("${CMAKE_VERSION}" VERSION_GREATER "3.9.99")
+    set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS}) #labels/subprojects
+  endif()
+  
   ctest_configure(OPTIONS "${CMAKE_ARGS};${SUBM_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}")
-
-  ctest_submit(PARTS Configure Update Notes)
+  #ctest_submit(PARTS Configure Update  RETRY_COUNT 3 RETRY_DELAY 3)
+  ctest_submit(PARTS Configure Notes RETRY_COUNT 3 RETRY_DELAY 3)
 
   #"${CMAKE_VERSION}" VERSION_LESS "3.10"
   if(NOT "x${LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
 
     foreach(subproject ${LABELS_FOR_SUBPROJECTS})
-      #message("Subproject ${subproject}")
-      set_property(GLOBAL PROPERTY SubProject ${subproject}) #cdash subproject
-      set_property(GLOBAL PROPERTY Label ${subproject})      #test selection
-      ctest_build(TARGET ${subproject} APPEND)
-      ctest_submit(PARTS Build)
-      if ("${subproject}" STREQUAL "gismo")
-        ctest_build(TARGET doc-snippets APPEND)
-        ctest_submit(PARTS Build)
+      message("Subproject ${subproject}")
+      if ("${CMAKE_VERSION}" VERSION_LESS "3.10")
+        set_property(GLOBAL PROPERTY SubProject ${subproject})
+        set_property(GLOBAL PROPERTY Label ${subproject})
       endif()
+      ctest_build(TARGET ${subproject} APPEND)
+      ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
       ctest_test(INCLUDE_LABEL "${subproject}" PARALLEL_LEVEL ${CTEST_TEST_JOBS})
-      ctest_submit(PARTS Test)
+      ctest_submit(PARTS Test  RETRY_COUNT 3 RETRY_DELAY 3)
 
       if(DO_COVERAGE)
         ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" LABELS "${subproject}" APPEND)
-        ctest_submit(PARTS Coverage)
+        ctest_submit(PARTS Coverage  RETRY_COUNT 3 RETRY_DELAY 3)
       endif()
 
       if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
         ctest_memcheck(INCLUDE_LABEL "${subproject}" APPEND)
-        ctest_submit(PARTS MemCheck)
+        ctest_submit(PARTS MemCheck  RETRY_COUNT 3 RETRY_DELAY 3)
       endif()
 
     endforeach()
@@ -560,24 +597,24 @@ macro(run_ctests)
     if("x${CTEST_CMAKE_GENERATOR}" STREQUAL "xNinja")
       ctest_build(TARGET UnitTestPP APPEND) # for older versions of ninja
     endif()
-    ctest_submit(PARTS Build)
+    ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
     ctest_build(APPEND)
-    ctest_submit(PARTS Build)
+    ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
     ctest_build(TARGET unittests APPEND)
-    ctest_submit(PARTS Build)
+    ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
     ctest_test(PARALLEL_LEVEL ${CTEST_TEST_JOBS})
-    ctest_submit(PARTS Test)
+    ctest_submit(PARTS Test  RETRY_COUNT 3 RETRY_DELAY 3)
 
     if(DO_COVERAGE)
       #message("Running coverage..")
       ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" APPEND)
-      ctest_submit(PARTS Coverage)
+      ctest_submit(PARTS Coverage  RETRY_COUNT 3 RETRY_DELAY 3)
     endif()
 
     if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
       #message("Running memcheck..")
       ctest_memcheck()
-      ctest_submit(PARTS MemCheck)
+      ctest_submit(PARTS MemCheck  RETRY_COUNT 3 RETRY_DELAY 3)
     endif()
 
   endif()

@@ -95,7 +95,7 @@ gsFunctionExpr<real_t> getFunctionExpr(boundary_condition<real_t> bc)
 }
 
 void checkBoundaryCondition(boundary_condition<real_t> bc, bool parametric,
-        std::string label, gismo::condition_type::type conditionType, size_t patch,
+        std::string label, gismo::condition_type::type conditionType, index_t patch,
         index_t index, int unknown, int unkcomp, short_t domainDim,
         std::string funcName)
 {
@@ -125,7 +125,7 @@ void checkGsBoundaryCondition(const gsBoundaryConditions<real_t> & sut)
     gismo::corner_value<real_t> cv1 = c1[0];
     CHECK_EQUAL(0, cv1.corner);
     CHECK_EQUAL(0, cv1.corner.m_index);
-    CHECK_EQUAL(size_t(0), cv1.patch);
+    CHECK_EQUAL(0, cv1.patch);
     CHECK_EQUAL(0.0, cv1.value);
     CHECK_EQUAL(0, cv1.unknown);
 
@@ -259,7 +259,7 @@ SUITE(gsBoundaryConditions_test)
         int dim1 = 1;
         std::string funcName1 = "tan(x)";
         index_t index1 = 1; // Eigen Index
-        size_t index2 = 2;  // std::size_t
+        index_t index2 = 2; // index_t
         gismo::boxSide boxSide1 = gismo::boxSide(index1);
         gismo::boundary_condition<real_t>::function_ptr funcPtr1 =
                 gismo::memory::make_shared(
@@ -293,7 +293,7 @@ SUITE(gsBoundaryConditions_test)
     {
         int index1 = 3;
         gismo::boxCorner c1 = gismo::boxCorner(index1);
-        size_t p1 = 2;
+        index_t p1 = 2;
         real_t v1 = 3.0;
         int u1 = 4;
         gismo::corner_value<real_t> cornerVal1 = gismo::corner_value<real_t>(p1, c1,

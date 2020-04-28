@@ -160,7 +160,7 @@ public: // constructors
     /// Constructs knot vector from the given \a knots (repeated
     /// according to multiplicities) and deduces the degree from the
     /// multiplicity of the endknots.
-    explicit gsKnotVector(knotContainer knots, int degree = -1 );
+    explicit gsKnotVector(knotContainer knots, short_t degree = -1 );
 
     /// Swaps with \a other knot vector.
     void swap( gsKnotVector& other );
@@ -409,7 +409,7 @@ private: // members
 public: // Deprecated functions required by gsKnotVector.
 
     /// Sets the degree and leaves the knots uninitialized.
-    explicit gsKnotVector(int degree)
+    explicit gsKnotVector(short_t degree)
     {
         m_deg = degree;
     }
@@ -425,7 +425,7 @@ public: // Deprecated functions required by gsKnotVector.
                   unsigned interior,
                   mult_t mult_ends=1,
                   mult_t mult_interior=1,
-                  int degree = -1 );
+                  short_t degree = -1 );
 
     /// Constructs knot vector from the given degree and iterators marking its endpoints.
     /// \param deg Degree of the knot.
@@ -434,7 +434,7 @@ public: // Deprecated functions required by gsKnotVector.
     /// The knots between \a begOfKnots and \a endOfKnots are assumed to be repeated
     /// according to their multiplicities and sorted.
     template<typename iterType>
-    gsKnotVector(int deg, const iterType begOfKnots, const iterType endOfKnots)
+    gsKnotVector(short_t deg, const iterType begOfKnots, const iterType endOfKnots)
     {
         insert(begOfKnots,endOfKnots);
         m_deg = deg;
@@ -452,7 +452,7 @@ public:
                       unsigned interior,
                       unsigned mult_ends,
                       unsigned mult_interior,
-                      int degree=-1);
+                      short_t degree=-1);
 
     /// Resets the knot vector so that it has \a numKnots knots
     /// between 0 and 1, each repeated \a mult_interior times (whereas
@@ -461,7 +461,7 @@ public:
     void initUniform( unsigned numKnots,
                       unsigned mult_ends,
                       unsigned mult_interior = 1,
-                      int degree = - 1)
+                      short_t degree = - 1)
     {
         initUniform(0.0, 1.0, numKnots - 2, mult_ends, mult_interior, degree );
     }
@@ -595,14 +595,14 @@ public:
     }
 
     /// Sets the degree to \a p.
-    void set_degree(int p)
+    void set_degree(short_t p)
     {
         m_deg = p;
     }
 
     /// Writes unique indices of the knots of the endpoints of \a
     /// i - th B-spline defined on this knot vector to \a result.
-    void supportIndex_into(const mult_t &i, gsMatrix<unsigned>& result) const;
+    void supportIndex_into(const mult_t &i, gsMatrix<index_t>& result) const;
     // TODO: If the function stays, make a unit test from what is in unifiedKnotVector.cpp.
 
     /// Inserts \a numKnots (and each of them \a mult - times) between
@@ -729,7 +729,7 @@ public: // things required by gsKnotVector
 
         // update multiplicity sum
         std::transform(m_multSum.begin(), m_multSum.end(), m_multSum.begin(),
-                       std::bind2nd(std::plus<mult_t>(), i) );
+                       GS_BIND2ND(std::plus<mult_t>(), i) );
         m_multSum.back() += i;
 
         m_deg += i;
@@ -877,10 +877,10 @@ public: // others
 
     /// Elevate the degree. I.e., increase the multiplicity of all the
     /// knots by one and increment the degree.
-    void degreeElevate(int const & i = 1);
+    void degreeElevate(const short_t & i = 1);
 
     /// Converse to degreeElevate.
-    void degreeReduce(int const & i);
+    void degreeReduce(const short_t & i);
 
     /// Coarsen the knot vector: for each group of \a knotRemove
     /// consecutive interior unique knots, reduce their multiplicity
@@ -895,7 +895,7 @@ public: // others
 public: // members
 
     // TODO remove!
-    int m_deg;
+    short_t m_deg;
 };
 
 template<typename T>

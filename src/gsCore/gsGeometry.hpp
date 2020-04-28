@@ -63,7 +63,7 @@ template<class T>
 boxSide gsGeometry<T>::sideOf( const gsVector<T> & u,  )
 {
     // get the indices of the coefficients which lie on the boundary
-    gsMatrix<unsigned > allBnd = m_basis->allBoundary();
+    gsMatrix<index_t > allBnd = m_basis->allBoundary();
     gsMatrix<T> bndCoeff(allBnd.rows(), m_coefs.rows());
 
     // extract the indices of the boundary coefficients
@@ -81,7 +81,7 @@ boxSide gsGeometry<T>::sideOf( const gsVector<T> & u,  )
         int contained = 0;
         side.m_index = index;
 
-        gsMatrix<unsigned> bnd = m_basis->boundary(side);
+        gsMatrix<index_t> bnd = m_basis->boundary(side);
 
         for(size_t i = 0; i < interfaceIndicesPatch1.size(); i++)
         {
@@ -105,7 +105,7 @@ template<class T>
 typename gsGeometry<T>::uPtr
 gsGeometry<T>::boundary(boxSide const& s) const
 {
-    gsMatrix<unsigned> ind = this->basis().boundary(s); // get indices of the boundary DOF
+    gsMatrix<index_t> ind = this->basis().boundary(s); // get indices of the boundary DOF
     gsMatrix<T> coeffs (ind.size(), geoDim()); // create matrix for boundary coefficients
 
     for (index_t i=0; i != ind.size(); i++ )
@@ -139,7 +139,8 @@ void gsGeometry<T>::evaluateMesh(gsMesh<T>& mesh) const
         for (size_t i = 0; i!= mesh.numVertices(); ++i)
         {
             eval_into( mesh.vertex(i).topRows(pDim), tmp );
-            mesh.vertex(i).topRows(gDim) = tmp;
+            const index_t gd = math::min(3,gDim);
+            mesh.vertex(i).topRows(gd) = tmp.topRows(gd);
         }
 
 }
@@ -252,7 +253,7 @@ gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
     static const unsigned d = this->m_basis->dim();
 
     gsMatrix<T> B, DD(d,d), tmp(d,d);
-    gsMatrix<unsigned> ind;
+    gsMatrix<index_t> ind;
 
     // coefficient matrix row k = coef. of basis function k
     const gsMatrix<T>& C = this->m_coefs;
@@ -284,7 +285,7 @@ gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
 
 
 template <typename T>
-void extractRows( const gsMatrix<T> &in, typename gsMatrix<unsigned>::constColumn actives, gsMatrix<T> &out)
+void extractRows( const gsMatrix<T> &in, typename gsMatrix<index_t>::constColumn actives, gsMatrix<T> &out)
 {
     out.resize(actives.rows(), in.cols());
     for (index_t r=0; r<actives.rows();++r)

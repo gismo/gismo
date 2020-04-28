@@ -22,12 +22,12 @@ gsDofMapper::gsDofMapper() :
   m_numCpldDofs(1,0), m_curElimId(-1)
 { }
 
-void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
+void gsDofMapper::localToGlobal(const gsMatrix<index_t>& locals,
                                 index_t patchIndex,
-                                gsMatrix<unsigned>& globals,
-				index_t comp) const
+                                gsMatrix<index_t>& globals,
+                                index_t comp) const
 {
-    GISMO_ASSERT( locals.cols() == 1, "localToGlobal: Expecting one column of locals");
+    GISMO_ASSERT( locals.cols() == 1, "localToGlobal: Expecting one column of locals, got " << locals.cols() << ".");
     const index_t numActive = locals.rows();
     globals.resize(numActive,1);
 
@@ -44,10 +44,11 @@ void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
         globals(i,0) = index(locals(i,0), patchIndex, comp);
 }
 
-void gsDofMapper::localToGlobal2(const gsMatrix<unsigned>& locals,
-                                index_t patchIndex,
-                                gsMatrix<unsigned>& globals,
-                                index_t & numFree, index_t comp) const
+void gsDofMapper::localToGlobal2(const gsMatrix<index_t>& locals,
+                                 index_t patchIndex,
+                                 gsMatrix<index_t>& globals,
+                                 index_t & numFree,
+                                 index_t comp) const
 {
     GISMO_ASSERT( locals.cols() == 1, "localToGlobal: Expecting one column of locals");
     GISMO_ASSERT( &locals != &globals, "localToGlobal: Inplace not supported");
@@ -145,9 +146,9 @@ void gsDofMapper::matchDof(index_t u, index_t i,
         --m_numFreeDofs[1+comp];
 }
 
-void gsDofMapper::matchDofs(index_t u, const gsMatrix<unsigned> & b1,
-                            index_t v,const gsMatrix<unsigned> & b2,
-			    index_t comp)
+void gsDofMapper::matchDofs(index_t u, const gsMatrix<index_t> & b1,
+                            index_t v,const gsMatrix<index_t> & b2,
+			                index_t comp)
 {
     const index_t sz = b1.size();
     GISMO_ASSERT( sz == b2.size(), "Waiting for same number of DoFs");
@@ -160,7 +161,7 @@ void gsDofMapper::markCoupled(index_t i, index_t k, index_t comp)
     matchDof(k,i,k,i,comp);
 }
 
-  void gsDofMapper::markTagged( index_t i, index_t k, index_t comp)
+void gsDofMapper::markTagged( index_t i, index_t k, index_t comp)
 {
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
 
@@ -172,7 +173,8 @@ void gsDofMapper::markCoupled(index_t i, index_t k, index_t comp)
         m_tagged.insert(pos, t);
 }
 
-  void gsDofMapper::markBoundary(index_t k, const gsMatrix<unsigned> & boundaryDofs, index_t comp)
+
+void gsDofMapper::markBoundary(index_t k, const gsMatrix<index_t> & boundaryDofs, index_t comp)
 {
     for (index_t i = 0; i < boundaryDofs.rows(); ++i)
       eliminateDof( boundaryDofs.at(i), k, comp );
@@ -274,10 +276,10 @@ void gsDofMapper::finalizeComp(const index_t comp)
     alldofs.erase( std::unique( alldofs.begin(), alldofs.end() ), alldofs.end() );
     const index_t numCoupled =
     std::count_if( alldofs.begin(), alldofs.end(),
-                          std::bind2nd(std::greater<index_t>(), 0) );
+                          GS_BIND2ND(std::greater<index_t>(), 0) );
     const index_t numBoundary =
     std::count_if( alldofs.begin(), alldofs.end(),
-                          std::bind2nd(std::less<index_t>(), 0) );
+                          GS_BIND2ND(std::less<index_t>(), 0) );
     */
 
     for (size_t k = 0; k < dofs.size(); ++k)
@@ -523,7 +525,7 @@ index_t gsDofMapper::boundarySizeWithDuplicates() const
     index_t res = 0;
     for (size_t i = 0; i!= m_dofs.size(); ++i)
       res += std::count_if(m_dofs[i].begin(), m_dofs[i].end(),
-			   std::bind2nd(std::greater<index_t>(),
+			   GS_BIND2ND(std::greater<index_t>(),
 					freeSize(i) - 1) );
     return res;
 }
@@ -545,7 +547,7 @@ index_t gsDofMapper::coupledSize() const
 
     // Count the number of freeDoFs that appear more than once
     return std::count_if( CountMap.begin(), CountMap.end(),
-                          std::bind2nd(std::greater<index_t>(), 1) );
+                          GS_BIND2ND(std::greater<index_t>(), 1) );
 */
 }
 

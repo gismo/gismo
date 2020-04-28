@@ -810,7 +810,7 @@ public:
         GISMO_ASSERT( dynamic_cast<const gsMultiBasis<T>*>(&this->source()), "error");
 
         // Reconstruct solution coefficients on patch p
-        const int sz  = mb[p].size();
+        const index_t sz  = mb[p].size();
         result.resize(sz, dim); // (!)
 
         for (index_t c = 0; c!=dim; c++) // for all components
@@ -847,7 +847,7 @@ public:
                 }
             }
 
-            gsMatrix<unsigned> bnd;
+            gsMatrix<index_t> bnd;
             for (typename bcRefList::const_iterator
                      it = this->bc().begin() ; it != this->bc().end(); ++it )
             {
@@ -863,7 +863,7 @@ public:
                  dynamic_cast<const gsBasis<T>*>(&this->source()) )
         {
             m_mapper = gsDofMapper(*b);
-            gsMatrix<unsigned> bnd;
+            gsMatrix<index_t> bnd;
             for (typename bcRefList::const_iterator
                      it = this->bc().begin() ; it != this->bc().end(); ++it )
             {

@@ -82,7 +82,7 @@ public:
     /// Returns the scalar function giving the i-th coordinate of this function
     gsFuncCoordinate<T> coord(const index_t c) const;
 
-    void active_into (const gsMatrix<T>  & u, gsMatrix<unsigned> &result) const
+    void active_into (const gsMatrix<T>  & u, gsMatrix<index_t> &result) const
     { result.setConstant(1,u.cols(),0); }
     
     /**

@@ -50,7 +50,7 @@ public:
     typedef memory::unique_ptr< gsTHBSpline > uPtr;
 
     typedef typename
-    util::conditional<d==1, gsConstantFunction<T>, gsTHBSpline<d-1,T>
+    util::conditional<d==1, gsConstantFunction<T>, gsTHBSpline<static_cast<short_t>(d-1),T>
                       >::type BoundaryGeometryType;
 
     typedef typename gsTHBSplineBasis<d,T>::BoundaryBasisType BoundaryBasisType;
@@ -94,9 +94,9 @@ public:
     \param[out] b2 top right corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
     \param[out] level levels of the boxes (level[i]: level of the i-th box,)
     */
-    void getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level) const;
+    void getBsplinePatches(gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level) const;
     //\param[out] bpatches list of B-spline patches associated with the boxes
-    //void getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level, std::vector< gsTensorBSpline<2> > & bpatches) const;
+    //void getBsplinePatches(gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level, std::vector< gsTensorBSpline<2> > & bpatches) const;
 
     /// Refines the whole domain to the finest level present in the mesh. Returns the refined geometry as result.
 //    void convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVector<T> >& result );
@@ -111,7 +111,7 @@ public:
 private:
 
     ///get B-spline control points on a given box of a certain level by refining eveywhere
-    void getBsplinePatchGlobal(gsVector<unsigned> b1, gsVector<unsigned> b2, unsigned l, gsTensorBSpline<2> geo) const;
+    void getBsplinePatchGlobal(gsVector<index_t> b1, gsVector<index_t> b2, unsigned l, gsTensorBSpline<2> geo) const;
     ///function for getBsplinePatchGlobal
     void globalRefinement(int level)const;
 

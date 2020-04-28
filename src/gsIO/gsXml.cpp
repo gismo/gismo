@@ -232,7 +232,7 @@ void getInterfaces(gsXmlNode* node,
     std::istringstream iss;
     iss.str( node->value() );
     
-    gsVector<int> p(4); // { patch, side, patch, side }
+    gsVector<short_t> p(4); // { patch, side, patch, side }
     
     // Read interface (groups or size 4 + 2*d)
     while ( iss >> std::ws >> p[0] ) // While there are more ints (groups or size 4+d-1)

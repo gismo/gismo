@@ -19,9 +19,9 @@ namespace gismo
 {
 
 template<class T>
-bool gsParametrization<T>::rangeCheck(const std::vector<int> &corners, const size_t minimum, const size_t maximum)
+bool gsParametrization<T>::rangeCheck(const std::vector<index_t> &corners, const size_t minimum, const size_t maximum)
 {
-    for (std::vector<int>::const_iterator it = corners.begin(); it != corners.end(); it++)
+    for (std::vector<index_t>::const_iterator it = corners.begin(); it != corners.end(); it++)
     {
         if ((size_t)*it < minimum || (size_t)*it > maximum)
         { return false; }
@@ -35,7 +35,7 @@ gsOptionList gsParametrization<T>::defaultOptions()
     gsOptionList opt;
     opt.addInt("boundaryMethod", "boundary methodes: {1:chords, 2:corners, 3:smallest, 4:restrict, 5:opposite, 6:distributed}", 4);
     opt.addInt("parametrizationMethod", "parametrization methods: {1:shape, 2:uniform, 3:distance}", 1);
-    std::vector<int> corners;
+    std::vector<index_t> corners;
     opt.addMultiInt("corners", "vector for corners", corners);
     opt.addReal("range", "in case of restrict or opposite", 0.1);
     opt.addInt("number", "number of corners, in case of corners", 4);
@@ -52,7 +52,7 @@ gsParametrization<T>::gsParametrization(gsMesh<T> &mesh, const gsOptionList & li
 template<class T>
 void gsParametrization<T>::calculate(const size_t boundaryMethod,
                                      const size_t paraMethod,
-                                     const std::vector<int> &cornersInput,
+                                     const std::vector<index_t> &cornersInput,
                                      const T rangeInput,
                                      const size_t numberInput)
 {
@@ -66,7 +66,7 @@ void gsParametrization<T>::calculate(const size_t boundaryMethod,
 
     T w = 0;
     std::vector<T> halfedgeLengths = m_mesh.getBoundaryChordLengths();
-    std::vector<int> corners;
+    std::vector<index_t> corners;
     std::vector<T> lengths;
 
     switch (boundaryMethod)
@@ -219,7 +219,7 @@ gsParametrization<T>& gsParametrization<T>::compute()
 template<class T>
 T gsParametrization<T>::findLengthOfPositionPart(const size_t position,
                                                       const size_t numberOfPositions,
-                                                      const std::vector<int> &bounds,
+                                                      const std::vector<index_t> &bounds,
                                                       const std::vector<T> &lengths)
 {
     GISMO_UNUSED(numberOfPositions);
@@ -267,10 +267,10 @@ const std::vector<T>& gsParametrization<T>::Neighbourhood::getLambdas(const size
 }
 
 template<class T>
-const std::vector<int> gsParametrization<T>::Neighbourhood::getBoundaryCorners(const size_t method, const T range, const size_t number) const
+const std::vector<index_t> gsParametrization<T>::Neighbourhood::getBoundaryCorners(const size_t method, const T range, const size_t number) const
 {
     std::vector<std::pair<T , size_t> > angles;
-    std::vector<int> corners;
+    std::vector<index_t> corners;
     angles.reserve(m_localBoundaryNeighbourhoods.size());
     for(typename std::vector<LocalNeighbourhood>::const_iterator it=m_localBoundaryNeighbourhoods.begin(); it!=m_localBoundaryNeighbourhoods.end(); it++)
     {
@@ -282,7 +282,7 @@ const std::vector<int> gsParametrization<T>::Neighbourhood::getBoundaryCorners(c
         this->takeCornersWithSmallestAngles(4, angles, corners);
         std::sort(corners.begin(), corners.end());
         gsDebug << "According to the method 'smallest inner angles' the following corners were chosen:\n";
-        for(std::vector<int>::iterator it=corners.begin(); it!=corners.end(); it++)
+        for(std::vector<index_t>::iterator it=corners.begin(); it!=corners.end(); it++)
         {
             gsDebug << (*it) << "\n";
         }
@@ -305,7 +305,7 @@ const std::vector<int> gsParametrization<T>::Neighbourhood::getBoundaryCorners(c
         while(corners.size() < 4)
         {
             flag = true;
-            for(std::vector<int>::iterator it=corners.begin(); it!=corners.end(); it++)
+            for(std::vector<index_t>::iterator it=corners.begin(); it!=corners.end(); it++)
             {
                 if(m_basicInfos.getShortestBoundaryDistanceBetween(angles.front().second, *it) < range*m_basicInfos.getBoundaryLength())
                     flag = false;
@@ -324,7 +324,7 @@ const std::vector<int> gsParametrization<T>::Neighbourhood::getBoundaryCorners(c
     {
         T oldDifference = 0;
         T newDifference = 0;
-        std::vector<int> newCorners;
+        std::vector<index_t> newCorners;
         std::vector<T> lengths;
         angles.erase(angles.begin()+number, angles.end());
         gsDebug << "Angles:\n";
@@ -396,7 +396,7 @@ const typename gsParametrization<T>::Point2D gsParametrization<T>::Neighbourhood
 //*****************************************************************************************************
 
 template<class T>
-void gsParametrization<T>::Neighbourhood::takeCornersWithSmallestAngles(size_t number, std::vector<std::pair<T , size_t> >& sortedAngles, std::vector<int>& corners) const
+void gsParametrization<T>::Neighbourhood::takeCornersWithSmallestAngles(size_t number, std::vector<std::pair<T , size_t> >& sortedAngles, std::vector<index_t>& corners) const
 {
     sortedAngles.erase(sortedAngles.begin()+number, sortedAngles.end());
 
@@ -420,7 +420,7 @@ std::vector<T> gsParametrization<T>::Neighbourhood::midpoints(const size_t numbe
 }
 
 template<class T>
-void gsParametrization<T>::Neighbourhood::searchAreas(const T range, std::vector<std::pair<T, size_t> >& sortedAngles, std::vector<int>& corners) const
+void gsParametrization<T>::Neighbourhood::searchAreas(const T range, std::vector<std::pair<T, size_t> >& sortedAngles, std::vector<index_t>& corners) const
 {
     T l = m_basicInfos.getBoundaryLength();
     std::vector<T> h = m_basicInfos.getBoundaryChordLengths();

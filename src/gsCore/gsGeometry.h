@@ -300,7 +300,7 @@ public:
     short_t targetDim() const { return this->coefDim(); }
 
     /// Dimension \em n of the coefficients (control points)
-    short_t coefDim() const { return m_coefs.cols(); }
+    short_t coefDim() const { return static_cast<short_t>(m_coefs.cols()); }
 
     /// Dimension \em n of the absent physical space
     short_t geoDim() const { return this->coefDim(); }
@@ -451,9 +451,8 @@ public:
     /// Apply Scaling coord-wise by a vector v
     void scale(gsVector<T> const & v)
     {
-        this->m_coefs.col(0) *= v[0];
-        this->m_coefs.col(1) *= v[1];
-        this->m_coefs.col(2) *= v[2];
+        GISMO_ASSERT( v.rows() == this->m_coefs.cols(), "Sizes do not agree." );
+        this->m_coefs.array().rowwise() *= v.array().transpose();
     }
 
     /// Apply translation by vector v
@@ -488,7 +487,7 @@ public:
      * The syntax of \em boxes depends on the implementation in the
      * underlying basis. See gsBasis::refineElements_withCoefs() for details.
      */
-    void refineElements( std::vector<unsigned> const & boxes )
+    void refineElements( std::vector<index_t> const & boxes )
     {
         this->basis().refineElements_withCoefs(this->m_coefs, boxes );
     }

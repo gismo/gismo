@@ -115,11 +115,13 @@ SUITE(gsIterativeSolvers_test)
         opt.setInt ("MaxIterations", N  );
         opt.setReal("Tolerance"    , tol);
 
-        gsConjugateGradient<> solver(mat);
-        solver.setOptions(opt);
+        // This test checks also that we can use our iterative solver
+        // as a linear operator
+        gsIterativeSolverOp< gsConjugateGradient<> >::uPtr solverOp
+            = gsIterativeSolverOp< gsConjugateGradient<> >::make(mat);
 
-        x.setZero(N,1);
-        solver.solve(rhs,x);
+        solverOp->solver().setOptions(opt);
+        solverOp->apply(rhs,x);
 
         CHECK( (mat*x-rhs).norm()/rhs.norm() <= tol );
     }

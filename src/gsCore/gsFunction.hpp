@@ -7,7 +7,7 @@
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -199,9 +199,13 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
     int iter = 0;
 
     do {
-        // clamp x to the support of the function
         if (withSupport)
-            arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
+        {
+            //arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
+            if ( (arg.array()<supp.col(0).array()).any() ||
+                 (arg.array()>supp.col(1).array()).any() )
+                return -1;
+        }
 
         // compute residual: value - f(arg)
         eval_into (arg, delta);
@@ -246,7 +250,7 @@ void gsFunction<T>::eval_component_into(const gsMatrix<T>&,
 { GISMO_NO_IMPLEMENTATION }
 
 template <class T> gsMatrix<T>
-gsFunction<T>::hess(const gsMatrix<T>& u, unsigned coord) const    
+gsFunction<T>::hess(const gsMatrix<T>& u, unsigned coord) const
 {
     gsMatrix<T> hessian, secDers;
     this->deriv2_into(u, secDers);
@@ -323,7 +327,7 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
 			else
 				InOut.measures(0,p) = math::sqrt( ( jac.transpose()*jac  ).determinant() );
 
-            
+
         }
     }
 
@@ -334,7 +338,7 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
 
         typename gsMatrix<T,domDim,tarDim>::ColMinorMatrixType   minor;
         InOut.normals.resize(tarDim, numPts);
-        
+
         for (index_t p = 0; p != numPts; ++p) // for all points
         {
             const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
@@ -409,7 +413,7 @@ void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
         InOut.flags = InOut.flags | NEED_GRAD;
 
     this->compute(InOut.points, InOut);
-    
+
     // Fill extra data
     std::pair<short_t, short_t> Dim = this->dimensions();
 

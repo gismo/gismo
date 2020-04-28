@@ -104,9 +104,9 @@ T gsHalfEdgeMesh<T>::getBoundaryLength() const
 }
 
 template<class T>
-bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const size_t maximum)
+bool rangeCheck(const std::vector<index_t> &corners, const size_t minimum, const size_t maximum)
 {
-    for (std::vector<int>::const_iterator it = corners.begin(); it != corners.end(); it++)
+    for (std::vector<index_t>::const_iterator it = corners.begin(); it != corners.end(); it++)
     {
         if ((size_t)*it < minimum || (size_t)*it > maximum)
         { return false; }
@@ -115,7 +115,7 @@ bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const siz
 }
 
 template<class T>
-std::vector<T> gsHalfEdgeMesh<T>::getCornerLengths(std::vector<int> &corners) const
+std::vector<T> gsHalfEdgeMesh<T>::getCornerLengths(std::vector<index_t> &corners) const
 {
     GISMO_ASSERT(rangeCheck<T>(corners, 1, getNumberOfBoundaryVertices()), "The corners must be <= number of boundary vertices.");
 
@@ -154,7 +154,7 @@ T gsHalfEdgeMesh<T>::getHalfedgeLength(size_t originVertexIndex, size_t endVerte
 }
 
 template<class T>
-int gsHalfEdgeMesh<T>::isTriangleVertex(size_t vertexIndex, size_t triangleIndex) const
+short_t gsHalfEdgeMesh<T>::isTriangleVertex(size_t vertexIndex, size_t triangleIndex) const
 {
     if (vertexIndex > this->m_vertex.size())
     {

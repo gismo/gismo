@@ -243,14 +243,14 @@ void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T r
 template <class T>
 void gsRefineMarkedElements(gsMultiBasis<T> & basis,
                             const std::vector<bool> & elMarked,
-                            int refExtension = 0)
+                            index_t refExtension = 0)
 {
-    const int dim = basis.dim();
+    const short_t dim = basis.dim();
 
     // numMarked: Number of marked cells on current patch, also currently marked cell
     // poffset  : offset index for the first element on a patch
     // globalCount: counter for the current global element index
-    int numMarked, poffset = 0, globalCount = 0;
+    index_t numMarked, poffset = 0, globalCount = 0;
 
     // refBoxes: contains marked boxes on a given patch
     gsMatrix<T> refBoxes;
@@ -258,10 +258,10 @@ void gsRefineMarkedElements(gsMultiBasis<T> & basis,
     for (size_t pn=0; pn < basis.nBases(); ++pn )// for all patches
     {
         // Get number of elements to be refined on this patch
-        const int numEl = basis[pn].numElements();
+        const size_t numEl = basis[pn].numElements();
         numMarked = std::count_if(elMarked.begin() + poffset,
                                   elMarked.begin() + poffset + numEl,
-                                  std::bind2nd(std::equal_to<bool>(), true) );
+                                  GS_BIND2ND(std::equal_to<bool>(), true) );
         poffset += numEl;
         refBoxes.resize(dim, 2*numMarked);
         //gsDebugVar(numMarked);
