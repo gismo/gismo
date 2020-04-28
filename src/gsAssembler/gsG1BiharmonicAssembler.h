@@ -307,8 +307,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
             multiPatch_Edges.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
         }
 
-
-        gsInfo << "vertex...\n";
         // VERTEX
         std::pair<index_t,index_t> vertex_pair;
         switch (sideIdx)
@@ -371,7 +369,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
         // Create the iterator along the given part boundary.
         typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(iter->side());
 
-        gsInfo << "element...\n";
         for(; bdryIter->good(); bdryIter->next() )
         {
             bdQuRule.mapTo( bdryIter->lowerCorner(), bdryIter->upperCorner(),
@@ -449,9 +446,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
             for( size_t i=0; i < multiPatch_Vertex_1.nPatches(); i++)
                 eltBdryFcts.push_back( multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches() + i );
 
-            gsInfo << "eltBdryFcts.size(): " << eltBdryFcts.size() << "\n";
-            gsInfo << "globIdxAct.size(): " << globIdxAct.size() << "\n";
-            gsInfo << "basisVals.size(): " << basisVals.rows() << "\n";
             // Do the actual assembly:
             for( index_t k=0; k < md.points.cols(); k++ )
             {
@@ -471,7 +465,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
                     {
                         const index_t j = eltBdryFcts[j0];
                         jj = globIdxAct.at(j);
-
+                        //gsInfo << "HIER: " << jj << " : " << ii << " : " << i <<" : " << j << " : " << k << "\n";
                         // Use the "element-wise index" to get the needed
                         // function value.
                         // Use the boundary index to put the value in the proper
@@ -482,8 +476,9 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
                 } // for i
             } // for k
         } // bdryIter
-
     } // boundaryConditions-Iterator
+
+
     gsSparseMatrix<T> globProjMat( g1System.boundary_size(),
                                    g1System.boundary_size());
     globProjMat.setFrom( projMatEntries );
