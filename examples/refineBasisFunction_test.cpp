@@ -26,11 +26,13 @@ int main(int argc, char *argv[])
     index_t numRefine  = 0;
     index_t numElevate = 0;
     bool last = false;
+    int function = 0;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
+    cmd.addInt( "i", "function", "Function to refine",  function );
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
 
@@ -71,6 +73,8 @@ int main(int argc, char *argv[])
     numRefine = 0;
 
     gsMultiBasis<> basis(mp);
+    gsWriteParaview<>(basis.basis(0), "oldBasis", 1000, true);
+
     gsInfo<<"Basis Primal: "<<basis.basis(0)<<"\n";
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< basis.minCwiseDegree() <<"\n";
 
@@ -78,10 +82,10 @@ int main(int argc, char *argv[])
     gsTensorBSplineBasis<2,real_t> *basis0 = dynamic_cast< gsTensorBSplineBasis<2,real_t> * > (&mp0.basis(0));
 
 
-    gsTHBSplineBasis<2,real_t> THBbasis(*basis0);
-    THBbasis.refineBassFunction(0);
+    gsHBSplineBasis<2,real_t> THBbasis(*basis0);
+    THBbasis.refineBasisFunction(function);
 
-    gsWriteParaview<>(*basis0, "bases", 1000, true);
+    gsWriteParaview<>(THBbasis, "newBasis", 1000, true);
 
 
 
