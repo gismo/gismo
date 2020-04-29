@@ -507,7 +507,7 @@ public:
     }
 
     /// Returns the tensor basis member of level i
-    tensorBasis & tensorLevel(unsigned i) const
+    tensorBasis & tensorLevel(index_t i) const
     {
         needLevel( i );
         return *this->m_bases[i];
@@ -660,9 +660,9 @@ public:
      */
     virtual void refine(gsMatrix<T> const & boxes, int refExt);
 
-    std::vector<unsigned> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
+    std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
 
-    // std::vector<unsigned> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
+    // std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
 
     /** @brief Refine the basis to levels and in the areas defined by \a boxes.
      *
@@ -750,11 +750,11 @@ public:
     /// with respect to the tensor-product basis
     /// of \em level.
     inline
-    unsigned flatTensorIndexOf(const unsigned i, const unsigned level) const
+    index_t flatTensorIndexOf(const index_t i, const index_t level) const
     {
 
-        const unsigned offset = this->m_xmatrix_offset[level];
-        const unsigned ind_in_level = this->m_xmatrix[level][i - offset];
+        const index_t offset = this->m_xmatrix_offset[level];
+        const index_t ind_in_level = this->m_xmatrix[level][i - offset];
 
         return ind_in_level;
     }
@@ -882,12 +882,12 @@ private:
                                          const std::vector<CMatrix>& n,
                                          const gsSparseMatrix<T,RowMajor> & transfer) const = 0;
 
-    virtual gsSparseMatrix<T> coarsening_direct(const std::vector<gsSortedVector<unsigned> >& old,
-                                                const std::vector<gsSortedVector<unsigned> >& n,
+    virtual gsSparseMatrix<T> coarsening_direct(const std::vector<gsSortedVector<index_t> >& old,
+                                                const std::vector<gsSortedVector<index_t> >& n,
                                                 const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const = 0;
 
-    virtual gsSparseMatrix<T> coarsening_direct2(const std::vector<gsSortedVector<unsigned> >& old,
-                                                 const std::vector<gsSortedVector<unsigned> >& n,
+    virtual gsSparseMatrix<T> coarsening_direct2(const std::vector<gsSortedVector<index_t> >& old,
+                                                 const std::vector<gsSortedVector<index_t> >& n,
                                                  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const = 0;
 
     /// \brief Implementation of the features common to domainBoundariesParams and domainBoundariesIndices. It takes both
@@ -910,12 +910,12 @@ public:
 
 
 //    void local2globalIndex( gsVector<index_t,d> const & index,
-//                            unsigned lvl,
+//                            index_t lvl,
 //                            gsVector<index_t,d> & result
 //        ) const;
 
 //    void global2localIndex( gsVector<index_t,d> const & index,
-//                            unsigned lvl,
+//                            index_t lvl,
 //                            gsVector<index_t,d> & result
 //        ) const;
 

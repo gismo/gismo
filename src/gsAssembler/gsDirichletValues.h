@@ -66,7 +66,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
     const gsFunctionSet<T> & gmap = bc.geoMap();
 
     std::vector< gsVector<T> > rr;
-    gsMatrix<unsigned> boundary;
+    gsMatrix<index_t> boundary;
     gsVector<T> b(1);
     gsMatrix<T> fpts, tmp;
 
@@ -164,7 +164,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
 template<class T> void
 gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
                                  const boundary_condition<T> & bc,
-                                 gsMatrix<unsigned> & boundary,
+                                 gsMatrix<index_t> & boundary,
                                  gsMatrix<T> & values)
 {
     const index_t parDim = u.source().domainDim();
@@ -263,7 +263,7 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
     // Temporaries
     gsVector<T> quWeights;
     gsMatrix<T> basisVals, rhsVals;
-    gsMatrix<unsigned> globIdxAct;
+    gsMatrix<index_t> globIdxAct;
 
     gsMapData<T> md(NEED_MEASURE | SAME_ELEMENT);
 
@@ -351,14 +351,14 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
                 {
                     // Each active boundary function/DOF in eltBdryFcts has...
                     // ...the above-mentioned "element-wise index"
-                    const unsigned i = eltBdryFcts[i0];
+                    const index_t i = eltBdryFcts[i0];
                     // ...the boundary index.
-                    const unsigned ii = mapper.global_to_bindex(globIdxAct(i));
+                    const index_t ii = mapper.global_to_bindex(globIdxAct(i));
 
                     for (size_t j0 = 0; j0 < eltBdryFcts.size(); j0++)
                     {
-                        const unsigned j = eltBdryFcts[j0];
-                        const unsigned jj = mapper.global_to_bindex(globIdxAct(j));
+                        const index_t j = eltBdryFcts[j0];
+                        const index_t jj = mapper.global_to_bindex(globIdxAct(j));
 
                         // Use the "element-wise index" to get the needed
                         // function value.

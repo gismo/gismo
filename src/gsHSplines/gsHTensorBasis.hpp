@@ -113,12 +113,12 @@ void gsHTensorBasis<d, T>::addConnectivity(int lvl, gsMesh<T> & mesh) const
 
     // Last tensor-index in level lvl
     gsVector<index_t, d> end(d);
-    for (unsigned i = 0; i < d; ++i)
+    for (index_t i = 0; i < d; ++i)
         end(i) = bb.component(i).size() - 1;
 
-    unsigned k, s;
+    index_t k, s;
     gsVector<index_t, d> v, upp;
-    for (unsigned i = 0; i < d; ++i) // For all axes
+    for (index_t i = 0; i < d; ++i) // For all axes
     {
         s = bb.stride(i);
         v = low;
@@ -174,7 +174,7 @@ void gsHTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes, gsMesh<T> & me
         mesh.addVertex( nodes.row(i).transpose() );
 
     // For all levels
-    for(unsigned lvl = 0; lvl <= maxLevel(); lvl++)
+    for(size_t lvl = 0; lvl <= maxLevel(); lvl++)
     {
         addConnectivity(lvl, mesh);
     }
@@ -296,7 +296,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
     else
     {
         // Make an element vector
-        std::vector<unsigned> refVector = this->asElements(boxes, refExt);
+        std::vector<index_t> refVector = this->asElements(boxes, refExt);
         // ...and refine
         this->refineElements( refVector );
     }
@@ -505,18 +505,18 @@ void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
         for( index_t i=0; i < bndThis.rows(); i++)
         {
             // get the level of the basis function on side first()
-            unsigned L = this->levelOf( bndThis(i,0) );
+            index_t L = this->levelOf( bndThis(i,0) );
             // get the flat tensor index
             // (i.e., the single-number-index on level L)...
-            unsigned flat0 = this->flatTensorIndexOf( bndThis(i,0) );
+            index_t flat0 = this->flatTensorIndexOf( bndThis(i,0) );
             // ... and change it to the tensor-index.
             tens0 = this->tensorLevel(L).tensorIndex( flat0 );
 
             // ...flat1 the corresponding flat index
             // (single-number on level)...
-            unsigned flat1 = 0;
+            index_t flat1 = 0;
             // ...and cont1 the corresponding continued (global) index.
-            unsigned cont1 = 0;
+            index_t cont1 = 0;
 
             // get the sizes of the components of the tensor-basis on this level,
             // i.e., the sizes of the univariate bases corresponding
@@ -668,7 +668,7 @@ void gsHTensorBasis<d,T>::setActive()
 
         do
         {
-            const unsigned gi = m_bases[lvl]->index( curr );
+            const index_t gi = m_bases[lvl]->index( curr );
 
             // Get element support
             m_bases[lvl]->elementSupport_into(gi, elSupp);
@@ -713,7 +713,7 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level,
         // Clear previous entries
         x_matrix_lvl[j].clear();
 
-        for(unsigned i = 0; i != d; ++i)
+        for(index_t i = 0; i != d; ++i)
         {
             // beginning of the iteration in i-th direction
             starts[i] = m_bases[j]->knots(i).sbegin() ;
@@ -724,7 +724,7 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level,
         curr = starts; // set start of iteration
         do
         {
-            for(unsigned i = 0; i != d; ++i)
+            for(index_t i = 0; i != d; ++i)
             {
                 low[i]  = curr[i].uIndex(); // lower left corner of the support of the function
                 upp[i]  = (curr[i]+m_deg[i]+1).uIndex(); // upper right corner of the support
@@ -789,7 +789,7 @@ void gsHTensorBasis<d,T>::flatTensorIndexesToHierachicalIndexes(gsSortedVector< 
     CMatrix::const_iterator xmat_end = m_xmatrix[level].end();
     gsSortedVector< int >::iterator ind_pointer = indexes.begin();
     gsSortedVector< int >::iterator ind_end = indexes.end();
-    unsigned index = 0;
+    index_t index = 0;
     while(ind_pointer!=ind_end&&xmat_pointer!=xmat_end)
     {
         if(*ind_pointer<static_cast<int>(*xmat_pointer))
@@ -847,7 +847,7 @@ void gsHTensorBasis<d,T>::activeBoundaryFunctionsOfLevel(const unsigned level,co
     }
     actives.resize(indexes.size(),false);
     std::fill (actives.begin(),actives.end(),false);
-    for(unsigned i = 0;i<indexes.size();i++)
+    for(size_t i = 0;i<indexes.size();i++)
         if(indexes[i]!=-1)
             actives[i]=true;
 }
@@ -902,7 +902,7 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
     // Degrees
     //m_deg = tbasis.cwiseDegree();
     m_deg.resize(d);
-    for( unsigned i = 0; i < d; i++)
+    for( index_t i = 0; i < d; i++)
         m_deg[i] = tbasis.degree(i);
 
     // Construct the initial basis
@@ -918,14 +918,14 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
 
     // Initialize the binary tree
     point upp;
-    for ( unsigned i = 0; i!=d; ++i )
+    for ( index_t i = 0; i!=d; ++i )
         upp[i] = m_bases[0]->knots(i).uSize()-1;
 
     m_tree.init(upp);
 
     // Produce a couple of tensor-product spaces by dyadic refinement
     m_bases.reserve(3);
-    for(unsigned int i = 1; i <= 2; i++)
+    for(index_t i = 1; i <= 2; i++)
     {
         tensorBasis* next_basis = m_bases[i-1]->clone().release();
         next_basis->uniformRefine(1);
