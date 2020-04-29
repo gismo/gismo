@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 
 
     gsTHBSplineBasis<2,real_t> THBbasis(*basis0);
-    THBbasis.refineBassFunction(0);
+    THBbasis.refineBasisFunction(0);
 
     gsWriteParaview<>(*basis0, "bases", 1000, true);
 
