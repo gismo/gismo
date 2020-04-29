@@ -51,8 +51,8 @@ public:
             basis_plus.insertKnot(basis_edge.knot(i),m_p-1-m_r);
 
         m_basis_plus = basis_plus;
-/*
-        gsMatrix<T> ab = m_basis_plus.support(m_optionList.getInt("basisID"));
+
+        gsMatrix<T> ab = m_basis_plus.support(m_bfID);
 
         gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
         for (size_t i = m_p + 1; i < basis_edge.knots().size() - (m_p + 1); i += basis_edge.knots().multiplicityIndex(i))
@@ -60,9 +60,10 @@ public:
                 kv.insert(basis_edge.knot(i), 1);
 
         gsBSplineBasis<T> bsp_geo_local(kv);
-*/
+
 
         m_basis_target = basis_edge;
+        //m_basis_geo = bsp_geo_local;
         m_basis_geo = basis_edge;
 
         refresh();
@@ -150,6 +151,21 @@ void gsApproxSingleEdgeAssembler<T, bhVisitor>::refresh()
 {
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper map(m_basis_target);
+
+    gsMatrix<T> ab = m_basis_geo.support();
+
+    gsMatrix<unsigned> act(1,1);
+
+    for (index_t i = 0; i < m_basis_target.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+    {
+        gsMatrix<T> xy = m_basis_target.support(i);
+        // if ( (xy(0, 1) < ab(0, 0)+1e-10) || (xy(0, 0) > ab(0, 1)-1e-10) ) // all non-empty set
+        if ( (xy(0, 0) < ab(0, 0)-1e-10) || (xy(0, 1) > ab(0, 1)+1e-10) ) // only subsets
+        {
+            act << i;
+            //map.markBoundary(0, act); // Patch 0
+        }
+    }
 
     map.finalize();
     //map_L.print();

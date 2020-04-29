@@ -47,16 +47,6 @@ public:
     {
         md.points = quNodes;
 
-        const boundaryInterface & item = mp.interfaces()[0];
-        index_t uv_L = item.first().index() < 3 ? 1 : 0;
-        index_t L = item.first().patch;
-
-        index_t uv_R = item.second().index() < 3 ? 1 : 0;
-        index_t R = item.second().patch;
-
-        gsInfo << "L:" << L << ": R : " << R << "\n";
-        gsInfo << "L:" << uv_L << ": R : " << uv_R << "\n";
-
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the elements
         basis.active_into(md.points.col(0), actives);
@@ -82,21 +72,13 @@ public:
         // ++++++++++++++++++++++++++++++++
 
         // alpha^S
-        gsMatrix<> uv, ev, alpha_L, alpha_R;
+        gsMatrix<> uv, ev, alpha_L, alpha_R; // LEFT == u and patch 1
 
-        if (uv_L==1)
-        {
-            uv.setZero(2,md.points.cols()); // TODO
-            uv.bottomRows(1) = md.points; // v
-        }
-        else if (uv_L==0)
-        {
-            uv.setZero(2,md.points.cols());
-            uv.topRows(1) = md.points; // u
-        }
+        uv.setZero(2,md.points.cols());
+        uv.topRows(1) = md.points; // u
 
         // ======== Determine bar{alpha^(L)} == Patch 0 ========
-        const gsGeometry<> & PL = mp.patch(L); // iFace.second().patch = 0
+        const gsGeometry<> & PL = mp.patch(1); // iFace.second().patch = 0
 
         for (index_t i = 0; i < uv.cols(); i++)
         {
@@ -106,19 +88,13 @@ public:
         }
         alpha_L = uv.row(0);
 
-        if (uv_R==1)
-        {
-            uv.setZero(2,md.points.cols());
-            uv.bottomRows(1) = md.points; // v
-        }
-        else if (uv_R==0)
-        {
-            uv.setZero(2,md.points.cols());
-            uv.topRows(1) = md.points; // u
-        }
+        // RIGHT == v and patch 0
+        uv.setZero(2,md.points.cols());
+        uv.bottomRows(1) = md.points; // v
+
 
         // ======== Determine bar{alpha^(L)} == Patch 0 ========
-        const gsGeometry<> & PR = mp.patch(R); // iFace.second().patch = 0
+        const gsGeometry<> & PR = mp.patch(0); // iFace.second().patch = 0
 
         for (index_t i = 0; i < uv.cols(); i++)
         {
@@ -137,30 +113,16 @@ public:
 
         gsGeometry<>::Ptr beta_temp;
 
-        if (uv_R==1)
-        {
-            uv0.setZero(2,md.points.cols());
-            uv0.bottomRows(1) = md.points; // v
-        }
-        else if (uv_R==0)
-        {
-            uv0.setZero(2,md.points.cols());
-            uv0.topRows(1) = md.points; // u
-        }
 
-        if (uv_L==1)
-        {
-            uv1.setZero(2,md.points.cols());
-            uv1.bottomRows(1) = md.points; // v
-        }
-        else if (uv_L==0)
-        {
-            uv1.setZero(2,md.points.cols());
-            uv1.topRows(1) = md.points; // u
-        }
+        uv0.setZero(2,md.points.cols());
+        uv0.bottomRows(1) = md.points; // v
 
-        const gsGeometry<> & P0 = mp.patch(R); // iFace.first().patch = 1
-        const gsGeometry<> & P1 = mp.patch(L); // iFace.second().patch = 0
+        uv1.setZero(2,md.points.cols());
+        uv1.topRows(1) = md.points; // u
+
+
+        const gsGeometry<> & P0 = mp.patch(0); // iFace.first().patch = 1
+        const gsGeometry<> & P1 = mp.patch(1); // iFace.second().patch = 0
         // ======================================
 
         // ======== Determine bar{beta} ========
@@ -169,18 +131,21 @@ public:
             P0.jacobian_into(uv0.col(i),ev0);
             P1.jacobian_into(uv1.col(i),ev1);
 
-            D0.col(uv_R) = ev0.col(1-uv_R); // (DuFL, *)
-            D0.col(uv_L) = ev1.col(1-uv_L); // (*,DuFR)
+            D0.col(1) = ev0.col(0); // (DuFL, *)
+            D0.col(0) = ev1.col(1); // (*,DuFR)
 
             uv0(0,i) = D0.determinant();
         }
 
         beta = uv0.row(0);
 
-        real_t lambda = 1/100000;
+        real_t lambda = 1/1000;
+
+        gsInfo << "alpha L " << alpha_L << "\n";
 
         rhsVals1 = alpha_R.cwiseProduct(beta);
         rhsVals2 = alpha_L.cwiseProduct(beta);
+
 
         gsMatrix<> ones(1, md.points.cols());
         ones.setOnes();
@@ -210,27 +175,13 @@ public:
     {
         gsMatrix<T> & basisVals  = basisData;
 
-/*
-        localMat.block(actives.rows()/2,actives.rows()/2,actives.rows()/2,actives.rows()/2) =
-            basisData * quWeights.asDiagonal() * basisData.transpose();
-
-        gsInfo << "actives 2: " << localMat << "\n";
-
-
-        localMat.block(0,actives.rows()/2,actives.rows()/2,actives.rows()/2).noalias() =
-            basisData * quWeights.asDiagonal() * basisData.transpose();
-
-        localMat.block(actives.rows()/2,0,actives.rows()/2,actives.rows()/2).noalias() =
-            basisData * quWeights.asDiagonal() * block21.asDiagonal() * basisData.transpose();
-*/
-
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply weight by the geometry measure
             const T weight = quWeights[k];
 
             localRhs.block(0,0,actives.rows()/2,rhsVals1.rows()).noalias() += weight * (basisVals.col(k) * rhsVals1.col(k).transpose());
-            localRhs.block(actives.rows()/2,0,actives.rows()/2,rhsVals1.rows()).noalias() += weight * (basisVals.col(k) * rhsVals2.col(k).transpose());
+            localRhs.block(actives.rows()/2,0,actives.rows()/2,rhsVals2.rows()).noalias() += weight * (basisVals.col(k) * rhsVals2.col(k).transpose());
 
             localMat.block(0,0,actives.rows()/2,actives.rows()/2).noalias() += weight * block11(0,k) * (basisVals.col(k) * basisVals.col(k).transpose());
 

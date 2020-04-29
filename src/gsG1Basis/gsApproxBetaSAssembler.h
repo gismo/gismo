@@ -74,7 +74,8 @@ public:
         solver.compute(m_system.matrix());
         sol = solver.solve(m_system.rhs());
         
-        gsInfo << "sol: "<< sol << "\n";
+        gsInfo << "sol: "<< m_system.matrix() << "\n";
+        gsInfo << "rhs: "<< m_system.rhs() << "\n";
 
         gsGeometry<>::uPtr tilde_temp;
         tilde_temp = m_basis_betaS.makeGeometry(sol.topRows(m_basis_betaS.size()));
@@ -209,7 +210,7 @@ void gsApproxBetaSAssembler<T, bhVisitor>::refresh()
 {
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsVector<index_t> size(1);
-    size.at(0) = 2* m_basis_betaS.size(); // 4 * beta_S
+    size.at(0) = 2* m_basis_betaS.size(); // 2 * beta_S
 
     gsDofMapper map(size);
 

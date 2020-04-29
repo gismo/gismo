@@ -188,6 +188,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
             ab = ab_temp;
         }
 */
+
         gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
         for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
             if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
@@ -210,6 +211,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
         else
             m_geo = m_basis_g1;
 
+        //m_geo = m_basis_g1;
 //// NEUNEUNEU
 /*
         // Compute the assembler
@@ -364,7 +366,8 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                      i++) // only the first two u/v-columns are Dofs (0/1)
                 {
                     gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
-                    if ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
+                    if ( (xy(0, 0) < ab(0, 0)-1e-10) || (xy(0, 1) > ab(0, 1)+1e-10) ) // only subsets
+                    //if ( (xy(0, 1) < ab(0, 0)+1e-10) || (xy(0, 0) > ab(0, 1)-1e-10) ) // all non-empty set
                     {
                         act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
                         map.markBoundary(0, act); // Patch 0
@@ -379,7 +382,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                      i++) // only the first two u/v-columns are Dofs (0/1)
                 {
                     gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
-                    if ((xy(0, 0) < ab(0, 0)) || (xy(0, 1) > ab(0, 1)))
+                    if ( (xy(0, 0) < ab(0, 0)-1e-10) || (xy(0, 1) > ab(0, 1)+1e-10) ) // only subsets
                     {
                         act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
                         map.markBoundary(0, act); // Patch 0
