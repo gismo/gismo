@@ -219,11 +219,13 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
 
     // Reserve sparse system
     const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0], 2, 1, 0.333333);
+
     m_system.reserve(nz, this->pde().numRhs());
 
     // Compute the Dirichlet Degrees of freedom (if needed by m_options)
     m_ddof.resize(m_system.numUnknowns());
     m_ddof[0].setZero(m_system.colMapper(0).boundarySize(), m_system.unkSize(0) * m_system.rhs().cols());
+
 
     // Assemble volume integrals
     Base::template push<bhVisitor>();
@@ -233,8 +235,8 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
     //    m_ppde.bcFirstKind().neumannSides() );
 
     // Neuman conditions of second kind
-    Base::template push<gsVisitorNeumannBiharmonic<T> >(
-        m_ppde.bcSecondKind().neumannSides());
+    Base::template push<gsVisitorNeumannBiharmonic<T> >(m_ppde.bcSecondKind().neumannSides());
+
 
     if (m_options.getInt("InterfaceStrategy") == iFace::dg)
         gsWarn << "DG option ignored.\n";

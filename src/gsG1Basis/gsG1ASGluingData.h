@@ -19,21 +19,26 @@ template<class T, class Visitor = gsG1ASGluingDataVisitorGlobal<T>>
 class gsG1ASGluingData : public gsGluingData<T>
 {
 public:
+
+    //Empty constructor will set the gluing data for the boundary edges
     gsG1ASGluingData()
     { setGDEdge(); }
+
 
     gsG1ASGluingData(gsMultiPatch<T> const & mp,
                  gsMultiBasis<T> & mb)
         : gsGluingData<T>(mp, mb)
     {
+    // Solve the system for alpha_L and alpha_R (also for beta, which will be splitted)
         refresh();
         assemble();
         solve();
-        AScondition(mp);
-
+    // Solve the system for beta_L and beta_R
         refreshBeta();
         assembleBeta();
+        solveBeta();
 
+        AScondition(mp);
     }
 
 
@@ -267,7 +272,7 @@ protected:
         sol = solver.solve(mSys.rhs()); // My solution
 
 
-//        gsInfo << "Solution: " << sol << "\n";
+        gsInfo << "Solution: " << sol << "\n";
 //        gsInfo << "Rhs: " << mSys.rhs() << "\n";
 
     }
@@ -283,7 +288,7 @@ protected:
         solBeta = solver.solve(mSysBeta.rhs()); // My solution
 
 
-//        gsInfo << "Solution Beta: " << solBeta << "\n";
+        gsInfo << "Solution Beta: " << solBeta << "\n";
 //        gsInfo << "Rhs Beta: " << mSysBeta.rhs() << "\n";
 
     }
@@ -353,21 +358,21 @@ protected:
 
 
 
-//        for(index_t i = 0; i < points.cols(); i++)
-//        {
-//            DuFR = FR.jacobian(pointV.col(i)).col(0);
-//            DvFR = FR.jacobian(pointV.col(i)).col(1); // Same as DuFL
-//
-//            DvFL = FL.jacobian(pointU.col(i)).col(1);
-//
-////            cond.col(i) = alpha_R.col(i).cwiseProduct(DvFL) + alpha_L.col(i).cwiseProduct(DuFR) + beta.col(i).cwiseProduct(DvFR) ;
-//
-//            cond.col(i) = beta.col(i) - (alpha_R.col(i).cwiseProduct(beta_L.col(i)) + alpha_L.col(i).cwiseProduct(beta_R.col(i)));
-//
-//
-//            gsInfo << "Condition col " << i << ": " << cond.col(i) << "\n";
-//
-//        }
+        for(index_t i = 0; i < points.cols(); i++)
+        {
+            DuFR = FR.jacobian(pointV.col(i)).col(0);
+            DvFR = FR.jacobian(pointV.col(i)).col(1); // Same as DuFL
+
+            DvFL = FL.jacobian(pointU.col(i)).col(1);
+
+//            cond.col(i) = alpha_R.col(i).cwiseProduct(DvFL) + alpha_L.col(i).cwiseProduct(DuFR) + beta.col(i).cwiseProduct(DvFR) ;
+
+            cond.col(i) = beta.col(i) - (alpha_R.col(i).cwiseProduct(beta_L.col(i)) + alpha_L.col(i).cwiseProduct(beta_R.col(i)));
+
+
+            gsInfo << "Condition col " << i << ": " << cond.col(i) << "\n";
+
+        }
     }
 
 

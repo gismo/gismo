@@ -88,10 +88,25 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
     result.resize(md.dim.second);
     if (md.dim.first + 1 == md.dim.second) // surface case GeoDim == 3
     {
+        gsInfo << "Outer normal Surface case \n";
+
         const gsMatrix<T> Jk = md.jacobian(k);
         // fixme: generalize to nD
         normal(md, k, result);
+        gsInfo << "Result : " << result << "\n";
+        gsInfo << "Jacobian : " << Jk << "\n";
+        gsInfo << "Dir : " << dir << "\n";
+        gsInfo << "Not Dir : " << !dir << "\n";
+
+        gsInfo << "md.dim.first : " << md.dim.first << "\n";
+        gsInfo << "md.dim.second : " << md.dim.second << "\n";
+
+        gsInfo << "Result Normalized: " << result.normalized() << "\n";
+
         result = result.normalized().cross(sgn * Jk.block(0, !dir, md.dim.first, 1));
+
+
+        gsInfo << "Outer normal here 2\n";
 
         /*
           gsDebugVar(result.transpose()); // result 1

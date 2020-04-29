@@ -33,12 +33,14 @@ public:
     // Constructor for one patch and it's boundary
     gsG1AuxiliaryEdgeMultiplePatches(const gsMultiPatch<> & sp, const size_t patchInd){
         auxGeom.push_back(gsG1AuxiliaryPatch(sp.patch(patchInd), patchInd));
+
     }
 
     // Constructor for two patches along the common interface
     gsG1AuxiliaryEdgeMultiplePatches(const gsMultiPatch<> & mp, const size_t firstPatch, const size_t secondPatch){
         auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(firstPatch), firstPatch));
         auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(secondPatch), secondPatch));
+
     }
 
 
@@ -104,6 +106,7 @@ public:
             default:
                 break;
         }
+
        return this->computeAuxTopology();
     }
 
@@ -156,8 +159,8 @@ public:
     }
 
 
-    void computeG1InterfaceBasis(gsG1OptionList g1OptionList){
-
+    void computeG1InterfaceBasis(gsG1OptionList g1OptionList)
+    {
         gsMultiPatch<> mp_init;
         mp_init.addPatch(auxGeom[0].getPatch());// Right -> 0 ====> v along the interface
         mp_init.addPatch(auxGeom[1].getPatch()); // Left -> 1 ====> u along the interface
@@ -165,7 +168,6 @@ public:
         gsMultiPatch<> test_mp(this->reparametrizeG1Interface()); // auxGeom contains now the reparametrized geometry
         gsMultiBasis<> test_mb(test_mp);
         gsMultiPatch<> g1Basis_0, g1Basis_1;
-
 
         if(g1OptionList.getInt("user") == user::pascal)
         {
@@ -183,13 +185,10 @@ public:
             g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
             g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
         }
-
 //      Patch 0 -> Right
         auxGeom[0].parametrizeBasisBack(g1Basis_0);
-
 //      Patch 1 -> Left
         auxGeom[1].parametrizeBasisBack(g1Basis_1);
-
     }
 
 
@@ -215,7 +214,9 @@ public:
         auxGeom[0].parametrizeBasisBack(g1Basis_edge);
     }
 
-    gsG1AuxiliaryPatch & getSinglePatch(const unsigned i){
+
+    gsG1AuxiliaryPatch & getSinglePatch(const unsigned i)
+    {
         return auxGeom[i];
     }
 
