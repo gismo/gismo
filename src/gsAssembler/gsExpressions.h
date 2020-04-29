@@ -989,7 +989,7 @@ public:
                      it = bc.cornerBegin() ; it != bc.cornerEnd(); ++it )
             {
                 //assumes (unk == -1 || it->unknown == unk)
-                GISMO_ASSERT(it->patch < smb->nBases(),
+                GISMO_ASSERT(static_cast<size_t>(it->patch) < smb->nBases(),
                              "Problem: a corner boundary condition is set on a patch id which does not exist.");
                 m_mapper.eliminateDof(smb->basis(it->patch).functionAtCorner(it->corner), it->patch);
             }
