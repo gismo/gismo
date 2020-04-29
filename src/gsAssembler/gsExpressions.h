@@ -907,7 +907,7 @@ public:
             }
 
             // DIRICHLET
-            gsMatrix<unsigned> bnd;
+            gsMatrix<index_t> bnd;
             for (typename bcList::const_iterator
                      it = bc.begin("Dirichlet") ; it != bc.end("Dirichlet"); ++it )
             {
@@ -925,7 +925,7 @@ public:
                     m_mapper.markBoundary(it->ps.patch, bnd, cc);
             }
             // CLAMPED
-            gsMatrix<unsigned> bnd1;
+            gsMatrix<index_t> bnd1;
             for (typename bcList::const_iterator
                      it = bc.begin("Clamped") ; it != bc.end("Clamped"); ++it )
             {
@@ -999,7 +999,7 @@ public:
                  dynamic_cast<const gsBasis<T>*>(&this->source()) )
         {
             m_mapper = gsDofMapper(*b);
-            gsMatrix<unsigned> bnd;
+            gsMatrix<index_t> bnd;
             for (typename bcList::const_iterator
                      it = bc.begin("Dirichlet") ; it != bc.end("Dirichlet"); ++it )
             {
