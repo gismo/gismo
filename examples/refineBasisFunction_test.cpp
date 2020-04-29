@@ -50,9 +50,11 @@ int main(int argc, char *argv[])
     // where p is the highest degree in the bases
     mp0.degreeElevate(numElevate);
     // h-refine each basis
-    for (int r =0; r < numRefine-1; ++r)
+    for (int r =0; r < numRefine; ++r)
         mp0.uniformRefine();
 
+    gsInfo<<"Original : "<< mp0.basis(0)<<"\n";
+    
     // gsWriteParaview<>(mp0, "mp", 1000, true);
 
     // Cast all patches of the mp object to THB splines
@@ -68,9 +70,7 @@ int main(int argc, char *argv[])
         mp.addPatch(thb);
     }
 
-    gsWriteParaview<>(mp, "mp", 1000, true);
-
-    numRefine = 0;
+    //gsWriteParaview<>(mp, "mp", 1000, true);
 
     gsMultiBasis<> basis(mp);
     gsWriteParaview<>(basis.basis(0), "oldBasis", 1000, true);
@@ -85,121 +85,10 @@ int main(int argc, char *argv[])
     gsHBSplineBasis<2,real_t> THBbasis(*basis0);
     THBbasis.refineBasisFunction(function);
 
+    gsInfo<<"Basis After: "<<THBbasis<<"\n";
+    
     gsWriteParaview<>(THBbasis, "newBasis", 1000, true);
 
-
-
-
-
-
-
-
-
-   // // --------------- set up adaptive refinement loop ---------------
-
-   // //! [adaptRefSettings]
-   // // Number of refinement loops to be done
-   // int numRefinementLoops = 4;
-
-   // // Specify cell-marking strategy...
-   // MarkingStrategy adaptRefCrit = PUCA;
-   // //MarkingStrategy adaptRefCrit = GARU;
-   // //MarkingStrategy adaptRefCrit = errorFraction;
-
-   // // ... and parameter.
-   // const real_t adaptRefParam = 0.9;
-   // //! [adaptRefSettings]
-
-
-   // // --------------- adaptive refinement loop ---------------
-
-   // //! [beginRefLoop]
-   // for( int refLoop = 0; refLoop <= numRefinementLoops; refLoop++)
-   // {
-   // //! [beginRefLoop]
-
-   //     // --------------- solving ---------------
-
-   //     //! [solverPart]
-   //     // Construct assembler
-   //     gsPoissonAssembler<real_t> PoissonAssembler(patches,bases,bcInfo,f);
-   //     PoissonAssembler.options().setInt("DirichletValues", dirichlet::l2Projection);
-
-   //     // Generate system matrix and load vector
-   //     PoissonAssembler.assemble();
-
-   //     // Initialize the conjugate gradient solver
-   //     gsSparseSolver<>::CGDiagonal solver( PoissonAssembler.matrix() );
-
-   //     // Solve the linear system
-   //     gsMatrix<> solVector = solver.solve( PoissonAssembler.rhs() );
-
-   //     // Construct the isogeometric solution
-   //     gsMultiPatch<> sol;
-   //     PoissonAssembler.constructSolution(solVector, sol);
-   //     // Associate the solution to the patches (isogeometric field)
-   //     gsField<> solField(patches, sol);
-   //     //! [solverPart]
-
-   //     // --------------- error estimation/computation ---------------
-
-   //     //! [errorComputation]
-   //     // Compute the error in the H1-seminorm ( = energy norm in this example )
-   //     // using the known exact solution.
-   //     gsExprEvaluator<> ev;
-   //     ev.setIntegrationElements(PoissonAssembler.multiBasis());
-   //     gsExprEvaluator<>::geometryMap Gm = ev.getMap(patches);
-   //     gsExprEvaluator<>::variable is = ev.getVariable(sol);
-   //     gsExprEvaluator<>::variable ms = ev.getVariable(g, Gm);
-
-   //     // Get the element-wise norms.
-   //     ev.integralElWise( ( igrad(is,Gm) - igrad(ms)).sqNorm()*meas(Gm) );
-   //     const std::vector<real_t> & eltErrs  = ev.elementwise();
-   //     //! [errorComputation]
-
-   //     // --------------- adaptive refinement ---------------
-
-   //     //! [adaptRefinementPart]
-   //     // Mark elements for refinement, based on the computed local errors and
-   //     // the refinement-criterion and -parameter.
-   //     std::vector<bool> elMarked( eltErrs.size() );
-   //     gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
-
-   //     // Refine the marked elements with a 1-ring of cells around marked elements
-   //     gsRefineMarkedElements( bases, elMarked, 1 );
-   //     //! [adaptRefinementPart]
-
-
-   //     //! [repairInterfaces]
-   //     // Call repair interfaces to make sure that the new meshes
-   //     // match along patch interfaces.
-   //     bases.repairInterfaces( patches.interfaces() );
-   //     //! [repairInterfaces]
-
-
-   //     //! [Export to Paraview]
-   //     // Export the final solution
-   //     if( plot && refLoop == numRefinementLoops )
-   //     {
-   //         // Write the computed solution to paraview files
-   //         gsWriteParaview<>(solField, "adaptRef", 1000, true);
-   //     }
-   //     //! [Export to Paraview]
-
-   // }
-
-   // //! [Plot in Paraview]
-   // if( plot )
-   // {
-   //     // Run paraview
-   //     gsFileManager::open("adaptRef.pvd");
-   // }
-   // //! [Plot in Paraview]
-   // else
-   // {
-   //     gsInfo<<"Done. No output created, re-run with --plot to get a ParaView "
-   //             "file containing Plotting image data.\n";
-   // }
 
    return EXIT_SUCCESS;
 
