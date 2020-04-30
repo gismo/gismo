@@ -22,7 +22,10 @@ public:
 
     //Empty constructor will set the gluing data for the boundary edges
     gsG1ASGluingData()
-    { setGDEdge(); }
+    {   setGDEdge();
+        gsInfo << "Solution: " << sol << "\n";
+        gsInfo << "Solution Beta: " << solBeta << "\n";
+    }
 
 
     gsG1ASGluingData(gsMultiPatch<T> const & mp,
@@ -38,7 +41,10 @@ public:
         assembleBeta();
         solveBeta();
 
-        AScondition(mp);
+        gsInfo << "Solution: " << sol << "\n";
+        gsInfo << "Solution Beta: " << solBeta << "\n";
+
+//        AScondition(mp);
     }
 
 
@@ -272,7 +278,6 @@ protected:
         sol = solver.solve(mSys.rhs()); // My solution
 
 
-        gsInfo << "Solution: " << sol << "\n";
 //        gsInfo << "Rhs: " << mSys.rhs() << "\n";
 
     }
@@ -288,7 +293,6 @@ protected:
         solBeta = solver.solve(mSysBeta.rhs()); // My solution
 
 
-        gsInfo << "Solution Beta: " << solBeta << "\n";
 //        gsInfo << "Rhs Beta: " << mSysBeta.rhs() << "\n";
 
     }
