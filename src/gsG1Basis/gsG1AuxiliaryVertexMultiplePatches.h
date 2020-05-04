@@ -29,13 +29,9 @@ public:
             auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(patchesAroundVertex[i]), patchesAroundVertex[i]));
             auxVertexIndices.push_back(vertexIndices[i]);
             checkBoundary(mp, patchesAroundVertex[i], vertexIndices[i]);
-
-            gsInfo << "Patch :" << patchesAroundVertex[i] << " vertex :" << vertexIndices[i] << "\n";
         }
+//        gsInfo <<  patchesAroundVertex.size() << " patch constructed \n";
         sigma = 0.0;
-
-
-//        gsInfo << "\n";
     }
 
 
@@ -79,7 +75,6 @@ public:
                     break;
             }
         }
-//        gsInfo << "-----------------------------------------------------------------\n";
     }
 
 
@@ -104,7 +99,6 @@ public:
             auxGeom[i].swapAxis();
 //            gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
 
-
             this->swapBdy(i); //Swap boundary edge bool-value
 
             // Swap vertices index after swapping axis
@@ -113,7 +107,6 @@ public:
             else
             if(auxVertexIndices[i] == 3)
                 auxVertexIndices[i] = 2;
-
         }
     }
 
@@ -133,7 +126,6 @@ public:
                real_t h_geo_temp = bsp_temp.component(j).knots().at(p + 2);
                h_geo = (h_geo < h_geo_temp ? h_geo_temp : h_geo);
             }
-
         }
         real_t val = auxGeom.size();
 
@@ -143,6 +135,8 @@ public:
             sigma += auxGeom[i].getPatch().deriv(zero).lpNorm<Eigen::Infinity>();
         sigma *= h_geo/(val*p);
         sigma = 1 / sigma;
+
+
     }
 
 
@@ -158,12 +152,10 @@ public:
             case 2: tmp.push_back(mpTmp.isBoundary(patchInd, 2));
                     tmp.push_back(mpTmp.isBoundary(patchInd, 3));
 //                    gsInfo << "Edge 2: " << mpTmp.isBoundary(patchInd, 2) << "\t Edge 3: " << mpTmp.isBoundary(patchInd, 3) << "\n";
-
                 break;
             case 3: tmp.push_back(mpTmp.isBoundary(patchInd, 1));
                     tmp.push_back(mpTmp.isBoundary(patchInd, 4));
 //                    gsInfo << "Edge 1: " << mpTmp.isBoundary(patchInd, 1) << "\t Edge 4: " << mpTmp.isBoundary(patchInd, 4) << "\n";
-
                 break;
             case 4: tmp.push_back(mpTmp.isBoundary(patchInd, 4));
                     tmp.push_back(mpTmp.isBoundary(patchInd, 2));
@@ -488,7 +480,6 @@ public:
     gsMatrix<> selectGD(size_t i)
     {
         gsMatrix<> coefs(4, 2);
-//        coefs.setZero();
 
         if( kindOfVertex() == 1 ) // If the boundary it´s along u and along v there is an interface (Right Patch) or viceversa
         {
@@ -508,22 +499,17 @@ public:
                         aux.addPatch(tmp.patch(iter.second().patch));
                         aux.addPatch(tmp.patch(iter.first().patch));
                     }
+
                     aux.computeTopology();
-
                     gsMultiBasis<> auxB(aux);
-
-//                    gsInfo << "Aux bas :" << auxB << "\n";
                     gsG1ASGluingData<real_t> ret(aux, auxB);
-
                     gsMatrix<> sol = ret.getSol();
                     gsMatrix<> solBeta = ret.getSolBeta();
 
-//                    gsInfo << "Sol :" << sol << "\n";
-//                    gsInfo << "SolBeta :" << solBeta << "\n";
-
                     if( (isBdy[i][0] == 0) && (isBdy[i][1] == 0))
                     {
-                        if ( (i == iter.first().patch && iter.first().index() == 3) || (i == iter.second().patch && iter.second().index() == 3) )
+                        if ( (i == iter.first().patch && iter.first().index() == 3)
+                            || (i == iter.second().patch && iter.second().index() == 3) )
                         {
                             coefs(0, 0) = sol(2, 0);
                             coefs(1, 0) = sol(3, 0);
@@ -531,7 +517,8 @@ public:
                             coefs(3, 0) = solBeta(3, 0);
                         }
                         else
-                        if ( (i == iter.first().patch && iter.first().index() == 1) || (i == iter.second().patch && iter.second().index() == 1))
+                        if ( (i == iter.first().patch && iter.first().index() == 1)
+                            || (i == iter.second().patch && iter.second().index() == 1))
                         {
                             coefs(0, 1) = sol(0, 0);
                             coefs(1, 1) = sol(1, 0);
@@ -569,22 +556,19 @@ public:
                 }
             }
 //            gsInfo << "Coeffs boundary interface:" << coefs << "\n";
-            return coefs;
         }
+
         else
         if( kindOfVertex() == -1 ) // Single patch corner
         {
+            coefs.setZero();
             coefs(0, 0) = 1;
             coefs(0, 1) = 1;
             coefs(1, 0) = 1;
             coefs(1, 1) = 1;
-            coefs(2, 0) = 0;
-            coefs(2, 1) = 0;
-            coefs(3, 0) = 0;
-            coefs(3, 1) = 0;
 //            gsInfo << "Coeffs boundary corner:" << coefs << "\n";
-            return coefs;
         }
+
         else
         if( kindOfVertex() == 0 ) // Internal vertex -> Two interfaces
         {
@@ -607,17 +591,12 @@ public:
 
                     aux.computeTopology();
                     gsMultiBasis<> auxB(aux);
-//                    gsInfo << "Aux bas :" << auxB << "\n";
-
                     gsG1ASGluingData<real_t> ret(aux, auxB);
-
                     gsMatrix<> sol = ret.getSol();
                     gsMatrix<> solBeta = ret.getSolBeta();
 
-//                    gsInfo << "Sol :" << sol << "\n";
-//                    gsInfo << "SolBeta :" << solBeta << "\n";
-
-                    if ( (i == iter.first().patch && iter.first().index() == 3) || (i == iter.second().patch && iter.second().index() == 3) )
+                    if ( (i == iter.first().patch && iter.first().index() == 3)
+                        || (i == iter.second().patch && iter.second().index() == 3) )
                     {
                         coefs(0, 0) = sol(2, 0);
                         coefs(1, 0) = sol(3, 0);
@@ -625,7 +604,8 @@ public:
                         coefs(3, 0) = solBeta(3, 0);
                     }
                     else
-                    if ( (i == iter.first().patch && iter.first().index() == 1) || (i == iter.second().patch && iter.second().index() == 1))
+                    if ( (i == iter.first().patch && iter.first().index() == 1)
+                        || (i == iter.second().patch && iter.second().index() == 1))
                     {
                         coefs(0, 1) = sol(0, 0);
                         coefs(1, 1) = sol(1, 0);
@@ -635,8 +615,8 @@ public:
                 }
             }
 //            gsInfo << "Coeffs internal:" << coefs << "\n";
-            return coefs;
         }
+        return coefs;
     }
 
 
@@ -647,7 +627,6 @@ public:
 
         this->reparametrizeG1Vertex();
         this->computeSigma();
-
 
         std::vector<gsMultiPatch<>> g1BasisVector;
         std::pair<gsMatrix<>, std::vector<index_t>> vertexBoundaryBasis;
@@ -686,8 +665,6 @@ public:
                 g1BasisVector.push_back(g1Basis);
                 auxGeom[i].setG1Basis(g1Basis);
             }
-
-            gsInfo << "Andrea  \n";
         }
 
 

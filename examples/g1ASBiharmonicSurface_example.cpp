@@ -1,6 +1,6 @@
-/** @file KirchhoffLoveShell_example.cpp
+/** @file g1BiharmonicSurface_example.cpp
 
-    @brief A Kirchhoff-Love Shell example
+    @brief A Biharmonic Surface example
 
     This file is part of the G+Smo library.
 
@@ -36,15 +36,22 @@ int main(int argc, char *argv[])
 
 
     // ======= Solution =========
+    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(z - 1)*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
+    gsFunctionExpr<> laplace ("-16*pi*pi*(z - 1)*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
+    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1) * (z - 1)",3);
+    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x) * (z - 1)",
+                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y) * (z - 1)",
+                             "(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
+    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x) * (z - 1)",
+                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y) * (z - 1) ",
+                             "-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y) * (z - 1) ",
+                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y) * (z - 1)",
+                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
+                             "-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
+                             "0 * z", 3);
 
-    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
-    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
-    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
-                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
-                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
 
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
@@ -54,56 +61,20 @@ int main(int argc, char *argv[])
     switch(g1OptionList.getInt("geometry"))
     {
         case 0:
-            string_geo = "planar/multiPatches/4_square_diagonal.xml";
-            numDegree = 2; // 2 == degree 3
+            string_geo = "KirchhoffLoveGeo/parabola_surfaceRoundedBoundary.xml";
+            numDegree = 0; // 2 == degree 3
             break;
         case 1:
-            string_geo = "planar/multiPatches/6_square_diagonal.xml";
-            numDegree = 2; // 2 == degree 3
+            string_geo = "KirchhoffLoveGeo/parabola_surfaceSquareBoundary.xml";
+            numDegree = 0; // 2 == degree 3
             break;
         case 2:
-            string_geo = "planar/multiPatches/square_curved.xml";
-            numDegree = 0; // 0 == degree 3
+            string_geo = "KirchhoffLoveGeo/flag_surface.xml";
+            numDegree = 0; // 2 == degree 3
             break;
         case 3:
-            string_geo = "planar/twoPatches/square_curved.xml";
-            numDegree = 0; // 0 == degree 3
-            break;
-        case 4:
-            string_geo = "planar/twoPatches/square_curved_deg_5.xml";
-            numDegree = 0; // 0 == degree 3
-            break;
-        case 5:
-            string_geo = "planar/twoPatches/square_curved_deg_7.xml";
-            numDegree = 0; // 0 == degree 3
-            break;
-        case 6:
-            string_geo = "planar/twoPatches/square_non_conform.xml";
-            numDegree = 2; // 0 == degree 3
-            break;
-        case 7:
-            string_geo = "planar/twoPatches/square_bent.xml";
-            numDegree = 0; // 0 == degree 3
-            break;
-        case 8:
-            string_geo = "planar/twoPatches/square_complex_bent.xml";
-            numDegree = 0; // 0 == degree 3
-            break;
-        case 9:
-            string_geo = "planar/twoPatches/square_diagonal.xml";
-            numDegree = 2; // 2 == degree 3
-            break;
-        case 10:
-            string_geo = "KirchhoffLoveGeo/geo_fivePatchDiffParam.xml";
-            numDegree = 2; // 2 == degree 3
-            break;
-        case 11:
-            string_geo = "KirchhoffLoveGeo/square_diffParam.xml";
-            numDegree = 2; // 2 == degree 3
-            break;
-        case 12:
-            string_geo = "KirchhoffLoveGeo/square_multipatch.xml";
-            numDegree = 2; // 2 == degree 3
+            string_geo = "KirchhoffLoveGeo/parabola_surfaceTwoPatchRoundBoundary.xml";
+            numDegree = 1; // 2 == degree 3
             break;
 
         default:

@@ -8,38 +8,49 @@ B-splines meeting along one side
   <Geometry type="TensorBSpline2" id="1">
     <Basis type="TensorBSplineBasis2">
       <Basis type="BSplineBasis" index="0">
-	<KnotVector degree="1">0 0 1 1 </KnotVector>
+	<KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
       </Basis>
       <Basis type="BSplineBasis" index="1">
-	<KnotVector degree="1">0 0 1 1 </KnotVector>
+	<KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
       </Basis>
     </Basis>
-    <coefs geoDim="2">
-     -0.5 -0.3
-     -0.2 0.0
-     -0.5 1.1
-     0.0 1.0
+    <coefs geoDim="3">
+    -0.367 -0.367 1.0 
+     0.0 -0.5 1.0
+     0.367 -0.367 1.0
+    -0.5 -0.25 1.0
+     0.0 -0.25 0.3
+     0.5 -0.25 1.0
+    -0.5 0.0 1.0
+     0.0 0.0 0.3
+     0.5 0.0 1.0 
     </coefs>
   </Geometry>
 
-  <!-- Patch 1 -->
+    <!-- Patch 1 -->
   <Geometry type="TensorBSpline2" id="2">
     <Basis type="TensorBSplineBasis2">
       <Basis type="BSplineBasis" index="0">
-	<KnotVector degree="1">0 0 1 1 </KnotVector>
+	<KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
       </Basis>
       <Basis type="BSplineBasis" index="1">
-	<KnotVector degree="1">0 0 1 1 </KnotVector>
+	<KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
       </Basis>
     </Basis>
-    <coefs geoDim="2">
-     -0.2 0.0
-     0.5 -0.3
-     0.0 1.0
-     0.5 1.3 
+    <coefs geoDim="3">
+    -0.5 0.0 1.0 
+     0.0 0.0 0.3
+     0.5 0.0 1.0
+    -0.5 0.25 1.0
+     0.0 0.25 0.3
+     0.5 0.25 1.0
+    -0.367 0.367 1.0
+    -0.0 0.5 1.0
+     0.367 0.367 1.0 
     </coefs>
   </Geometry>
 
+ 
   <!-- A multipatch section describes the configuration
        of the two patches above -->
   <MultiPatch parDim="2" id="0">

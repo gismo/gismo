@@ -66,7 +66,7 @@ public:
                               side.direction() );
 
         // Set Geometry evaluation flags
-        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_OUTER_NORMAL;
     }
 
     // Evaluate on element.
@@ -83,10 +83,8 @@ public:
 
         // Evaluate basis gradients on element
         basis.deriv_into( md.points, basisGrads);
-
         // Compute geometry related values
         geo.computeMap(md);
-
         // Evaluate the Neumann data
         neudata_ptr->eval_into(md.values[0], neuData);
 
