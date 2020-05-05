@@ -63,8 +63,6 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
     const gsMultiBasis<T> & mbasis =
         *dynamic_cast<const gsMultiBasis<T>*>(&u.source());
 
-    const gsFunctionSet<T> & gmap = bc.geoMap();
-
     std::vector< gsVector<T> > rr;
     gsMatrix<index_t> boundary;
     gsVector<T> b(1);
@@ -133,7 +131,11 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             if ( it->parametric() )
                 fpts = it->function()->piece(it->patch()).eval( gsPointGrid<T>( rr ) );
             else
+            {
+                const gsFunctionSet<T> & gmap = bc.geoMap();
+                gsDebugVar(it->function()->piece(it->patch()).eval(  gmap.piece(it->patch()).eval(  gsPointGrid<T>( rr ) )  ));
                 fpts = it->function()->piece(it->patch()).eval(  gmap.piece(it->patch()).eval(  gsPointGrid<T>( rr ) )  );
+            }
 
             if ( fpts.rows() != u.dim() )
             {
@@ -141,6 +143,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
                 tmp.resize(u.dim(), fpts.cols());
                 tmp.setZero();
                 gsDebugVar(!dir);
+                gsDebugVar(dir);
                 tmp.row(!dir) = (param ? 1 : -1) * fpts; // normal !
                 fpts.swap(tmp);
             }
@@ -150,11 +153,15 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
             const gsMatrix<T> & dVals =  geo->coefs();
 
+            gsDebugVar(fpts);
+
             // Save corresponding boundary dofs
+            gsDebugVar(boundary.size());
             for (index_t l=0; l!= boundary.size(); ++l)
             {
                 const int ii = u.mapper().bindex( boundary.at(l) , k, com );
                 fixedDofs(ii,r) = dVals.at(l);
+                gsDebugVar(dVals.at(l));
             }
         }
     }
@@ -224,7 +231,10 @@ gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
         if ( bc.parametric() )
             fpts = bc.function()->eval( gsPointGrid<T>( rr ) );
         else
+        {
+            const gsFunctionSet<T> & gmap = bc.geoMap();
             fpts = bc.function()->eval(  gmap.piece(bc.patch()).eval(  gsPointGrid<T>( rr ) )  );
+        }
 
         if ( fpts.rows() != u.dim() )
         {

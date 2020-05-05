@@ -747,15 +747,18 @@ public:
         return m_trMatrix;
     }
 
-    void setGeoMap(const gsFunctionSet<T> & gm) 
-    { 
+    void setGeoMap(const gsFunctionSet<T> & gm)
+    {
       //GISMO_ASSERT
-      m_patches = &gm; 
+      m_patches = &gm;
     }
 
     const gsFunctionSet<T> & geoMap() const
-    { return *m_patches; }
-    
+    {
+        GISMO_ASSERT(nullptr!=m_patches, "Geometry map was not provided in BC.");
+        return *m_patches;
+    }
+
 private: // Data members
     struct patchSideComparison
     {
