@@ -1494,6 +1494,15 @@ int main(int argc, char *argv[])
         gsReadFile<>(fn, mp);
         PoissonRatio = 0.0;
     }
+    else if (testCase == 6)
+    {
+        thickness = 0.1;
+        real_t mu = 4.225e5;
+        PoissonRatio = 0.3;
+        E_modulus = (2+PoissonRatio)*mu;
+        fn = "../extensions/unsupported/filedata/quarter_sphere.xml";
+        gsReadFile<>(fn, mp);
+    }
     else
     {
         // Unit square
@@ -1524,6 +1533,7 @@ int main(int argc, char *argv[])
     gsInfo << dbasis.basis(0)<<"\n";
 
     gsBoundaryConditions<> bc;
+    bc.setGeoMap(mp);
     gsVector<> tmp(3);
     tmp << 0, 0, 0;
 
@@ -1534,6 +1544,7 @@ int main(int argc, char *argv[])
 
     gsConstantFunction<> neuData(neu,3);
 
+    real_t pressure = 0.0;
     if (testCase == 1)
     {
         for (index_t i=0; i!=3; ++i)
@@ -1547,8 +1558,8 @@ int main(int argc, char *argv[])
         tmp << 0,0,-1;
 
         // Point loads
-        gsVector<> point(2);
-        gsVector<> load (3);
+        // gsVector<> point(2);
+        // gsVector<> load (3);
         // point<< 0.5, 0.5 ; load << 0.0, 1.0, 0.0 ;
         // pLoads.addLoad(point, load, 0 );
     }
@@ -1603,18 +1614,52 @@ int main(int argc, char *argv[])
         // Surface forces
         tmp << 0, 0, 0;
     }
-    // else if (testCase == 10)
-    // {
-    //     for (index_t i=0; i!=3; ++i)
-    //     {
-    //         bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, i ); // unknown 0 - x
-    //         bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, i ); // unknown 1 - y
-    //         bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
-    //         bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
-    //     }
+    else if (testCase == 4)
+    {
+        for (index_t i=0; i!=3; ++i)
+        {
+            bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, i ); // unknown 0 - x
+            bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, i ); // unknown 1 - y
+            bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+            bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+        }
+        pressure = -1.0;
+    }
 
+    else if (testCase == 6)
+    {
+        // bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, 0 ); // unknown 0 - x
+        // bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, 1 ); // unknown 1 - y
+        // bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, 2 ); // unknown 2 - z
 
-    // }
+        // bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, 0 ); // unknown 0 - x
+        // bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, 1 ); // unknown 1 - y
+        bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, 2 ); // unknown 2 - z
+
+        // Symmetry in x-direction:
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, 0 );
+        bc.addCondition(boundary::east, condition_type::clamped, 0, 0, false, 1 );
+        bc.addCondition(boundary::east, condition_type::clamped, 0, 0, false, 2 );
+
+        // Symmetry in y-direction:
+        bc.addCondition(boundary::west, condition_type::clamped, 0, 0, false, 0 );
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, 1 );
+        bc.addCondition(boundary::west, condition_type::clamped, 0, 0, false, 2 );
+
+        // Pressure
+        pressure = 5e3;
+    }
+
+    else if (testCase == 10)
+    {
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, 0 ); // unknown 0 - x
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, 1 ); // unknown 1 - y
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, 2 ); // unknown 2 - z
+        bc.addCondition(boundary::east, condition_type::dirichlet, &displ, 0, false, 1 ); // unknown 0 - x
+
+        // Surface forces
+        tmp.setZero();
+    }
     else if (testCase == 11)
     {
         for (index_t i=0; i!=3; ++i)
@@ -1767,7 +1812,7 @@ int main(int argc, char *argv[])
     auto F        = ff;
 
 
-    gsVector<> pt(2); pt.setConstant(0.1);
+    gsVector<> pt(2); pt.setConstant(0.25);
     gsVector<> pt2(3); pt2.setConstant(2);
     // gsMatrix<> pt(7,2);
     // pt<<0,0,
@@ -1778,7 +1823,7 @@ int main(int argc, char *argv[])
     // 0.5,0.5,
     // 1.0,1.0;
     // pt = pt.transpose();
-    gsDebugVar(pt);
+    // gsDebugVar(pt);
 
     // ! [Solve linear problem]
 
@@ -1795,7 +1840,7 @@ int main(int argc, char *argv[])
         (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
         ,
         // u * cartcon(G) * cartcon(G) * F  * meas(G)
-        u * F  * meas(G)
+        u * F  * meas(G) + pressure * u * sn(defG).normalized() * meas(G)
         );
 
     // evaluateFunction(ev, reshape(mmA,3,3), pt); // evaluates an expression on a point
@@ -1846,10 +1891,10 @@ int main(int argc, char *argv[])
     );
 
 
-    gsDebugVar(A.matrix().toDense());
+    // gsDebugVar(A.matrix().toDense());
     // gsDebugVar(A.matrix().rows());
     // gsDebugVar(A.matrix().cols());
-    gsDebugVar(A.rhs().transpose());
+    // gsDebugVar(A.rhs().transpose());
 
 
 
@@ -1868,7 +1913,7 @@ int main(int argc, char *argv[])
         mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
     }
 
-    gsDebugVar(mp_def.patch(0).coefs().transpose());
+    // gsDebugVar(mp_def.patch(0).coefs().transpose());
 
     gsMatrix<> result;
     u_sol.extractFull(result);
@@ -1887,6 +1932,18 @@ int main(int argc, char *argv[])
     // evaluateFunction(ev, nsol1, pt); // evaluates an expression on a point
     // evaluateFunction(ev, nsol2, pt); // evaluates an expression on a point
 
+    // evaluateFunction(ev, pressure * u * var1(u,defG) .tr(), pt); // evaluates an expression on a point
+    // evaluateFunction(ev, N_der * E_m_der.tr(), pt); // evaluates an expression on a point
+
+    gsVector<> pt3(2);
+    pt3.setConstant(0.5);
+    gsDebug<<ev.integral(meas(G))<<"\n";
+    gsDebug<<ev.integral(meas(defG))<<"\n";
+    gsDebug<<ev.eval(G,pt3)<<"\n";
+    gsDebug<<ev.eval(defG,pt3)<<"\n";
+
+
+
     // ! [Solve linear problem]
 
     // ! [Solve nonlinear problem]
@@ -1900,6 +1957,7 @@ int main(int argc, char *argv[])
         real_t tol = 1e-8;
         for (index_t it = 0; it != itMax; ++it)
         {
+
             A.initSystem(false);
             // assemble system
             A.assemble(
@@ -1912,7 +1970,9 @@ int main(int argc, char *argv[])
                     +
                   E_f_der2
                   ) * meas(G)
-                , u * F * meas(G) - ( ( N * E_m_der.tr() + M * E_f_der.tr() ) * meas(G) ).tr()
+                    -
+                  pressure * u * var1(u,defG) .tr() * meas(defG)
+                , u * F * meas(G) + pressure * u * sn(defG).normalized() * meas(defG) - ( ( N * E_m_der.tr() + M * E_f_der.tr() ) * meas(G) ).tr()
                 );
 
             // For Neumann (same for Dirichlet/Nitche) conditions
