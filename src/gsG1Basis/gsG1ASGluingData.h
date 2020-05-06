@@ -266,8 +266,6 @@ protected:
         solver.compute(mSys.matrix());
         sol = solver.solve(mSys.rhs()); // My solution
 
-
-//        gsInfo << "Solution: " << sol << "\n";
 //        gsInfo << "Rhs: " << mSys.rhs() << "\n";
 
     }
@@ -277,14 +275,14 @@ protected:
     {
         gsSparseSolver<>::CGDiagonal solver;
 
-//        gsInfo << "Matrix Beta: " << mSysBeta.matrix() << "\n";
+        gsInfo << "Matrix Beta: " << mSysBeta.matrix() << "\n";
 
         solver.compute(mSysBeta.matrix());
         solBeta = solver.solve(mSysBeta.rhs()); // My solution
 
 
-//        gsInfo << "Solution Beta: " << solBeta << "\n";
-//        gsInfo << "Rhs Beta: " << mSysBeta.rhs() << "\n";
+        gsInfo << "Solution Beta: " << solBeta << "\n";
+        gsInfo << "Rhs Beta: " << mSysBeta.rhs() << "\n";
 
     }
 

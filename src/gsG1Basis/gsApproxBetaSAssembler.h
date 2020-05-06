@@ -28,8 +28,9 @@ public:
 public:
     gsApproxBetaSAssembler(gsMultiPatch<T> const & mp,
                            gsMultiBasis<T> mb,
-                           gsG1OptionList optionList)
-        : m_mp(mp), m_mb(mb), m_optionList(optionList)
+                           gsG1OptionList optionList,
+                           gsG1ASGluingData<T> gd_andrea)
+        : m_mp(mp), m_mb(mb), m_optionList(optionList), m_gd_andrea(gd_andrea)
     {
 
         index_t p_tilde = m_optionList.getInt("p_tilde");
@@ -74,14 +75,16 @@ public:
         solver.compute(m_system.matrix());
         sol = solver.solve(m_system.rhs());
         
-        gsInfo << "sol: "<< sol << "\n";
+        //gsInfo << "matrix: " << std::setprecision(19) << m_system.matrix() << "\n";
+        //gsInfo << "rhs: " << std::setprecision(19) << m_system.rhs() << "\n";
+        gsInfo << "sol: " << std::setprecision(19) << sol << "\n";
 
         gsGeometry<>::uPtr tilde_temp;
         tilde_temp = m_basis_betaS.makeGeometry(sol.topRows(m_basis_betaS.size()));
-        beta_L = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
+        beta_R = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
 
         tilde_temp = m_basis_betaS.makeGeometry(sol.bottomRows(m_basis_betaS.size()));
-        beta_R = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
+        beta_L = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
 
         gsWriteParaview(beta_L,"beta_L",5000);
         gsWriteParaview(beta_R,"beta_R",5000);
@@ -173,6 +176,12 @@ public:
         gsInfo << "beta_L: " << beta_L.eval(points) << " \n";
         gsInfo << "beta_R: " << beta_R.eval(points) << " \n";
 
+        gsMatrix<> ones(1, points.cols());
+        ones.setOnes();
+
+        gsMatrix<> sol_andrea = m_gd_andrea.getSol();
+        gsMatrix<> beta_andrea = sol_andrea.row(4) * ( points.cwiseProduct(points) - 2 * points + ones ) + 2 * sol_andrea.row(5) * points.cwiseProduct( ones - points ) + sol_andrea.row(6) * points.cwiseProduct(points);
+
         gsMatrix<> temp;
         temp = alpha1.eval(points).cwiseProduct(beta_L.eval(points))
             + alpha0.eval(points).cwiseProduct(beta_R.eval(points))
@@ -181,6 +190,18 @@ public:
 
         gsInfo << "Conditiontest Gluing data: \n" << temp.array().abs().maxCoeff() << "\n\n";
 
+
+        gsMatrix<> alpha_L = m_gd_andrea.evalAlpha_L(points);
+        gsMatrix<> alpha_R = m_gd_andrea.evalAlpha_R(points);
+        //gsMatrix<> beta_andrea = sol_andrea.row(4) * ( points.cwiseProduct(points) - 2 * points + ones ) + 2 * sol_andrea.row(5) * points.cwiseProduct( ones - points ) + sol_andrea.row(6) * points.cwiseProduct(points);
+
+        temp = alpha_R.cwiseProduct(beta_L.eval(points))
+            + alpha_L.cwiseProduct(beta_R.eval(points))
+            - beta_andrea;
+
+        gsInfo << "beta andrea " << beta_andrea << "\n";
+
+        gsInfo << "Conditiontest Gluing data: \n" << temp.array().abs().maxCoeff() << "\n\n";
     }
 
 
@@ -191,6 +212,8 @@ protected:
     gsMultiBasis<T>  m_mb;
 
     gsG1OptionList m_optionList;
+
+    gsG1ASGluingData<T> m_gd_andrea;
 
     gsBSplineBasis<> m_basis_betaS;
 
@@ -209,7 +232,7 @@ void gsApproxBetaSAssembler<T, bhVisitor>::refresh()
 {
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsVector<index_t> size(1);
-    size.at(0) = 2* m_basis_betaS.size(); // 4 * beta_S
+    size.at(0) = 2* m_basis_betaS.size(); // 2 * beta_S
 
     gsDofMapper map(size);
 
@@ -267,7 +290,7 @@ inline void gsApproxBetaSAssembler<T, bhVisitor>::apply(bhVisitor & visitor,
         gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
         gsVector<T> quWeights; // Temp variable for mapped weights
 
-        gsBasis<T> & basis = m_basis_betaS; // = 0
+        gsBasis<T> & basis = m_mp.basis(0).component(1); // = v == interface
 
         // Initialize reference quadrature rule and visitor data
         visitor_.initialize(basis,quRule);
@@ -288,7 +311,7 @@ inline void gsApproxBetaSAssembler<T, bhVisitor>::apply(bhVisitor & visitor,
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(m_basis_betaS, quNodes, m_mp);
+            visitor_.evaluate(m_basis_betaS, quNodes, m_mp, m_gd_andrea);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);

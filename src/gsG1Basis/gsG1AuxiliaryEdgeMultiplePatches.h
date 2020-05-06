@@ -21,6 +21,9 @@
 # include <gsG1Basis/gsG1ASGluingData.h>
 # include <gsG1Basis/gsG1OptionList.h>
 # include <gsG1Basis/gsApproxBetaSAssembler.h>
+# include <gsG1Basis/gsApproxGluingData2.h>
+# include <gsG1Basis/gsApproxGluingData3.h>
+# include <gsG1Basis/gsApproxGluingData4.h>
 
 namespace gismo
 {
@@ -170,13 +173,35 @@ public:
 
         if(g1OptionList.getInt("user") == user::pascal)
         {
-            //gsApproxBetaSAssembler<real_t> approxBetaSAssembler(test_mp, test_mb, g1OptionList);
+            // Compute alpha^S and beta
+            //gsApproxGluingData3
+
+            //gsG1ASGluingData<real_t> gd_andrea(test_mp, test_mb);
+            //gsApproxBetaSAssembler<real_t> approxBetaSAssembler(test_mp, test_mb, g1OptionList, gd_andrea); // Here compute new beta and alpha
+
+            //gsApproxGluingData2<real_t> approxGluingData2(test_mp, test_mb, g1OptionList);
+            //approxGluingData2.setGlobalGluingData();
+
+            //gsApproxGluingData3<real_t> approxGluingData3(test_mp, test_mb, g1OptionList);
+            //approxGluingData3.setGlobalGluingData();
+            //approxGluingData3.setGlobalGluingDataWithLambda();
+
+            //gsApproxGluingData4<real_t> approxGluingData4(test_mp, test_mb, g1OptionList);
+            //approxGluingData4.setGlobalGluingData();
+
             gsApproxG1BasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), test_mb.basis(0), 1, false, g1OptionList);
             gsApproxG1BasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, g1OptionList);
-            //g1BasisEdge_0.set_beta_tilde(approxBetaSAssembler.get_beta_1());
-            //g1BasisEdge_1.set_beta_tilde(approxBetaSAssembler.get_beta_0());
+
+            //g1BasisEdge_0.set_beta_tilde(approxGluingData4.get_beta_tilde(1));
+            //g1BasisEdge_1.set_beta_tilde(approxGluingData4.get_beta_tilde(0));
+
             g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
             g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
+
+            //gsWriteParaview(g1BasisEdge_0.get_alpha(),"alpha_R_formula",2000);
+            //gsWriteParaview(g1BasisEdge_1.get_alpha(),"alpha_L_formula",2000);
+            //gsWriteParaview(g1BasisEdge_0.get_beta(),"beta_R_formula",2000);
+            //gsWriteParaview(g1BasisEdge_1.get_beta(),"beta_L_formula",2000);
 
             //gluingDataCondition(g1BasisEdge_0.get_alpha(), g1BasisEdge_1.get_alpha(), g1BasisEdge_0.get_beta(), g1BasisEdge_1.get_beta());
         }
@@ -288,6 +313,19 @@ public:
     beta_temp = bsp.interpolateData(uv0.topRows(1), uv0.bottomRows(1));
     gsBSpline<> beta = dynamic_cast<gsBSpline<> &> (*beta_temp);
 
+    uv0.setZero(2,greville.cols());
+    uv0.bottomRows(1) = greville;
+
+    // ======== Determine bar{alpha^(L)} == Patch 0 ========
+    for (index_t i = 0; i < uv0.cols(); i++)
+    {
+        P0.jacobian_into(uv0.col(i), ev0);
+        uv0(0, i) = 1 * ev0.determinant();
+
+    }
+
+    beta_temp = bsp.interpolateData(uv0.topRows(1), uv0.bottomRows(1));
+    gsBSpline<> alpha0 = dynamic_cast<gsBSpline<> &> (*beta_temp);
 
     index_t p_size = 8;
     gsMatrix<> points(1, p_size);
@@ -302,6 +340,7 @@ public:
     gsInfo << "Beta 2: " << beta.eval(points) << " \n";
     gsInfo << "alpha1 2: " << alpha_1.eval(points) << " \n";
     gsInfo << "alpha0 2: " << alpha_0.eval(points) << " \n";
+    gsInfo << "alpha0 formula 2: " << alpha_0.eval(points) - alpha0.eval(points) << " \n";
     gsInfo << "beta_0 2: " << beta_0.eval(points) << " \n";
     gsInfo << "beta_1 2: " << beta_1.eval(points) << " \n";
 

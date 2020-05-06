@@ -143,6 +143,9 @@ int main(int argc, char *argv[])
 
     for (index_t refinement_level = 0; refinement_level < g1OptionList.getInt("loop"); refinement_level++)
     {
+        real_t old_lambda = g1OptionList.getReal("lambda");
+        g1OptionList.setReal("lambda",old_lambda/4);
+
         gsMultiPatch<> multiPatch(multiPatch_init);
         multiPatch.uniformRefine_withSameRegularity(num_knots[refinement_level], g1OptionList.getInt("regularity"));
 

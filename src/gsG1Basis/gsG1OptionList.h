@@ -115,6 +115,8 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     real_t threshold = 1e-5; // For computing the kernel
     real_t zero = 1e-12; // For setting the matrix for the kernel
 
+    real_t lambda = 1e-12; // lambda value
+
     bool plot = false;
     bool latex = false;
     bool localGd = false;
@@ -141,6 +143,7 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     cmd.addSwitch("latex","Print the rate and error latex-ready",latex);
     cmd.addReal("e","threshold", "The threshold for computing the kernel", threshold);
     cmd.addReal("z","zero", "When the value should be set to zero", zero);
+    cmd.addReal("", "lambda", "The lambda value for the minimization", lambda);
     try { cmd.getValues(argc,argv); } catch (int rv) {  }
 
     optionList.addInt("loop","Loop", loop);
@@ -159,6 +162,8 @@ void gsG1OptionList::initialize(int argc, char *argv[])
 
     optionList.addReal("threshold","Threshold",threshold);
     optionList.addReal("zero","Zero",zero);
+
+    optionList.addReal("lambda","lambda for the minimization problem", lambda);
 
     if (localGd)
         gluingData_strategy = gluingData::local;
