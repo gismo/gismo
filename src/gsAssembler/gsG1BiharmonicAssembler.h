@@ -233,9 +233,9 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
     // Neuman conditions of first kind
     //Base::template push<gsVisitorNeumann<T> >(
     //    m_ppde.bcFirstKind().neumannSides() );
-
     // Neuman conditions of second kind
     Base::template push<gsVisitorNeumannBiharmonic<T> >(m_ppde.bcSecondKind().neumannSides());
+
 
 
     if (m_options.getInt("InterfaceStrategy") == iFace::dg)

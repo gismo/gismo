@@ -36,17 +36,17 @@ int main(int argc, char *argv[])
 
 
     // ======= Solution =========
-    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(z - 1)*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
-    gsFunctionExpr<> laplace ("-16*pi*pi*(z - 1)*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
-    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1) * (z - 1)",3);
-    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x) * (z - 1)",
-                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y) * (z - 1)",
+    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(z-1)*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
+    gsFunctionExpr<> laplace ("-16*pi*pi*(z-1)*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
+    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1) * (z-1)",3);
+    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x) * (z-1)",
+                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y) * (z-1)",
                              "(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
-    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x) * (z - 1)",
-                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y) * (z - 1) ",
+    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x) * (z-1)",
+                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y) * (z-1) ",
                              "-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y) * (z - 1) ",
-                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y) * (z - 1)",
+                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y) * (z-1) ",
+                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y) * (z-1)",
                              "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
                              "-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
                              "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
@@ -250,9 +250,11 @@ int main(int argc, char *argv[])
         }
 
 
+
         // BiharmonicAssembler
         gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
         g1BiharmonicAssembler.assemble();
+        gsInfo << "Assembling ended \n";
 
         g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System); // Compute boundary values (Type 1)
 

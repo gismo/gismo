@@ -23,8 +23,8 @@ public:
     //Empty constructor will set the gluing data for the boundary edges
     gsG1ASGluingData()
     {   setGDEdge();
-        gsInfo << "Solution: " << sol << "\n";
-        gsInfo << "Solution Beta: " << solBeta << "\n";
+//        gsInfo << "Solution: " << sol << "\n";
+//        gsInfo << "Solution Beta: " << solBeta << "\n";
     }
 
 
@@ -41,8 +41,8 @@ public:
         assembleBeta();
         solveBeta();
 
-        gsInfo << "Solution: " << sol << "\n";
-        gsInfo << "Solution Beta: " << solBeta << "\n";
+//        gsInfo << "Solution: " << sol << "\n";
+//        gsInfo << "Solution Beta: " << solBeta << "\n";
 
 //        AScondition(mp);
     }
