@@ -51,7 +51,8 @@ public:
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM  ;
+
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_OUTER_NORMAL;
 
     }
 
@@ -98,8 +99,9 @@ public:
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Compute the outer normal vector on the side
-            outerNormal(md, k, side, unormal);
-            
+//            outerNormal(md, k, side, unormal);
+            unormal = md.outNormals;
+
             // Multiply quadrature weight by the measure of normal
             const T weight = quWeights[k] * unormal.norm();
 
