@@ -265,7 +265,6 @@ public:
 
         basisDataBeta.row(3) = 2 * md.points.cwiseProduct(ones - md.points).cwiseProduct(alpha_R_L);
         basisDataBeta.row(12) = 2 * md.points.cwiseProduct(ones - md.points).cwiseProduct(alpha_R_L);
-
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         // beta_1R
 

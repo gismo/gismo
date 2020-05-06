@@ -43,7 +43,8 @@ public:
     // Evaluate on element.
     inline void evaluate(gsBSplineBasis<>  & basis, //
                          gsMatrix<T>      & quNodes,
-                         gsMultiPatch<T> & mp)
+                         gsMultiPatch<T> & mp,
+                         gsG1ASGluingData<T> gd_andrea)
     {
         md.points = quNodes;
 
@@ -139,22 +140,47 @@ public:
 
         beta = uv0.row(0);
 
-        real_t lambda = 1/1000;
+        /*
+#pragma omp critical
+        {
+            gsMatrix<> sol_andrea(7,1);
+            sol_andrea << 1.4337782823995119940718723228, 0.8300821382872851650347456598, 0.45277209114169275627759247982, 0.98100616960476005878888372536, 0.56596511177547570436985324704, 0.13205851945361074539775358971, -0.37731006523260224305715837545;
 
-        gsInfo << "alpha L " << alpha_L << "\n";
+            gsMatrix<> ones(1, md.points.cols());
+            ones.setOnes();
+            //alpha_R = sol_andrea.row(0) * ( ones - md.points ) + sol_andrea.row(1) * md.points;
+            //alpha_L = sol_andrea.row(2) * ( ones - md.points ) + sol_andrea.row(3) * md.points;
 
-        rhsVals1 = alpha_R.cwiseProduct(beta);
-        rhsVals2 = alpha_L.cwiseProduct(beta);
+            gsMatrix<> beta_andrea = sol_andrea.row(4) * ( md.points.cwiseProduct(md.points) - 2 * md.points + ones ) + 2 * sol_andrea.row(5) * md.points.cwiseProduct( ones - md.points ) + sol_andrea.row(6) * md.points.cwiseProduct(md.points);
+            //beta = beta_andrea;
 
-
+        }
+*/
         gsMatrix<> ones(1, md.points.cols());
         ones.setOnes();
 
-        block11 = lambda * ones + alpha_R.cwiseProduct(alpha_R);
-        block22 = lambda * ones - alpha_L.cwiseProduct(alpha_L);
+        //alpha_L = gd_andrea.evalAlpha_L(md.points);
+        //alpha_R = gd_andrea.evalAlpha_R(md.points);
+        gsMatrix<> sol = gd_andrea.getSol();
+        //beta = sol.row(4) * ( md.points.cwiseProduct(md.points) - 2 * md.points + ones ) + 2 * sol.row(5) * md.points.cwiseProduct( ones - md.points ) + sol.row(6) * md.points.cwiseProduct(md.points);
+
+
+        real_t lambda = 1/1000000000;
+
+        rhsVals1 = alpha_L.cwiseProduct(beta);
+        rhsVals2 = alpha_R.cwiseProduct(beta);
+
+
+
+
+
+        block11 = alpha_L.cwiseProduct(alpha_L) + lambda * ones;
+        block22 = alpha_R.cwiseProduct(alpha_R) + lambda * ones;
+        //block11 = alpha_L.cwiseProduct(alpha_L);
+        //block22 = alpha_R.cwiseProduct(alpha_R);
 
         block12 = alpha_L.cwiseProduct(alpha_R);
-        block21 = block12;
+        block21 = alpha_L.cwiseProduct(alpha_R);
 
 //#pragma omp critical
 //        {
@@ -180,18 +206,25 @@ public:
             // Multiply weight by the geometry measure
             const T weight = quWeights[k];
 
-            localRhs.block(0,0,actives.rows()/2,rhsVals1.rows()).noalias() += weight * (basisVals.col(k) * rhsVals1.col(k).transpose());
-            localRhs.block(actives.rows()/2,0,actives.rows()/2,rhsVals2.rows()).noalias() += weight * (basisVals.col(k) * rhsVals2.col(k).transpose());
+            localRhs.block(0, 0, actives.rows() / 2, rhsVals1.rows()).noalias() +=
+                weight * (basisVals.col(k) * rhsVals1.col(k).transpose());
+            localRhs.block(actives.rows() / 2, 0, actives.rows() / 2, rhsVals2.rows()).noalias() +=
+                weight * (basisVals.col(k) * rhsVals2.col(k).transpose());
 
-            localMat.block(0,0,actives.rows()/2,actives.rows()/2).noalias() += weight * block11(0,k) * (basisVals.col(k) * basisVals.col(k).transpose());
 
-            localMat.block(actives.rows()/2,actives.rows()/2,actives.rows()/2,actives.rows()/2).noalias() += weight * block22(0,k) * (basisVals.col(k) * basisVals.col(k).transpose());
+            localMat.block(0, 0, actives.rows() / 2, actives.rows() / 2).noalias() +=
+                weight * block11(0, k) * (basisVals.col(k) * basisVals.col(k).transpose());
 
-            localMat.block(0,actives.rows()/2,actives.rows()/2,actives.rows()/2).noalias() += weight * block12(0,k) * (basisVals.col(k) * basisVals.col(k).transpose());
+            localMat.block(actives.rows() / 2, actives.rows() / 2, actives.rows() / 2, actives.rows() / 2).noalias() +=
+                weight * block22(0, k) * (basisVals.col(k) * basisVals.col(k).transpose());
 
-            localMat.block(actives.rows()/2,0,actives.rows()/2,actives.rows()/2).noalias() += weight * block21(0,k) * (basisVals.col(k) * basisVals.col(k).transpose());
+            localMat.block(0, actives.rows() / 2, actives.rows() / 2, actives.rows() / 2).noalias() +=
+                weight * block12(0, k) * (basisVals.col(k) * basisVals.col(k).transpose());
+
+            localMat.block(actives.rows() / 2, 0, actives.rows() / 2, actives.rows() / 2).noalias() +=
+                weight * block21(0, k) * (basisVals.col(k) * basisVals.col(k).transpose());
+
         }
-
     }
 
     inline void localToGlobal(const int patchIndex,
@@ -211,7 +244,7 @@ protected:
     gsMatrix<T> basisData;
     index_t numActive;
 
-    gsVector<T> block11, block12, block21, block22;
+    gsMatrix<T> block11, block12, block21, block22;
 
 protected:
     // Local values of the right hand side
