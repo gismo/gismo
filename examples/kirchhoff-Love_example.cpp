@@ -1682,7 +1682,7 @@ int main(int argc, char *argv[])
 
         bc.addCondition(boundary::west, condition_type::clamped, 0, 0 ,false,2);
 
-        neu << 0, 0, -1;
+        neu << 0, 0, -0.1;
         neuData.setValue(neu,3);
 
         bc.addCondition(boundary::east, condition_type::neumann, &neuData );
@@ -1971,8 +1971,8 @@ int main(int argc, char *argv[])
                   E_f_der2
                   ) * meas(G)
                     -
-                  pressure * u * var1(u,defG) .tr() * meas(defG)
-                , u * F * meas(G) + pressure * u * sn(defG).normalized() * meas(defG) - ( ( N * E_m_der.tr() + M * E_f_der.tr() ) * meas(G) ).tr()
+                  pressure * u * var1(u,defG) .tr() * meas(G)
+                , u * F * meas(G) + pressure * u * sn(defG).normalized() * meas(G) - ( ( N * E_m_der.tr() + M * E_f_der.tr() ) * meas(G) ).tr()
                 );
 
             // For Neumann (same for Dirichlet/Nitche) conditions
@@ -2013,10 +2013,8 @@ int main(int argc, char *argv[])
         }
     }
 
-    evaluateFunction(ev, defG, pt); // evaluates an expression on a point
+    // evaluateFunction(ev, defG, pt); // evaluates an expression on a point
     // evaluateFunction(ev, cartcov(defG).inv()*F, pt); // evaluates an expression on a point
-
-
 
     // ! [Solve nonlinear problem]
 
@@ -2050,6 +2048,8 @@ int main(int argc, char *argv[])
            << deformation.patch(0).coefs().colwise().maxCoeff() <<".\n";
     gsInfo <<"Minimum deformation coef: "
            << deformation.patch(0).coefs().colwise().minCoeff() <<".\n";
+    gsInfo <<"Area (undeformed) = "<<ev.integral(meas(G))<<"\tArea (undeformed) = "<<ev.integral(meas(defG))<<"\n";
+
 
     gsMatrix<> coords(2,1);
     if (testCase==1)
