@@ -67,7 +67,7 @@ public:
                               side.direction() );
 
         // Set Geometry evaluation flags
-        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM ;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_OUTER_NORMAL;
     }
 
     // Evaluate on element.
@@ -107,11 +107,9 @@ public:
 
             unormal.normalize();
             //Get gradients of the physical space
-            gsInfo << "Normalizing error \n";
 
             transformGradients(md, k, basisGrads, physBasisGrad);
 
-            gsInfo << "Transform gradient error \n";
 
             localRhs.noalias() += weight *(( physBasisGrad.transpose() * unormal )* neuData.col(k).transpose());
         }

@@ -439,12 +439,9 @@ public: /* Element visitors */
     template<class BElementVisitor>
     void push(const bcContainer & BCs)
     {
-        gsInfo << "Push BC \n";
-
         for (typename bcContainer::const_iterator it
              = BCs.begin(); it!= BCs.end(); ++it)
         {
-            gsInfo << "What \n";
 
             BElementVisitor visitor(*m_pde_ptr, *it);
             //Assemble (fill m_matrix and m_rhs) contribution from this BC
@@ -457,8 +454,6 @@ public: /* Element visitors */
     template<class ElementVisitor>
     void push(const ElementVisitor & visitor)
     {
-        gsInfo << "Push Visitor \n";
-
         for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
         {
             ElementVisitor curVisitor = visitor;
@@ -471,8 +466,6 @@ public: /* Element visitors */
     template<class BElementVisitor>
     void push(const BElementVisitor & visitor, const boundary_condition<T> & BC)
     {
-        gsInfo << "Push BC + Visitor \n";
-
         BElementVisitor curVisitor = visitor;
         //Assemble (fill m_matrix and m_rhs) contribution from this BC
         apply(curVisitor, BC.patch(), BC.side());

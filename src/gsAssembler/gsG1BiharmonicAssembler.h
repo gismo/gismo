@@ -13,7 +13,7 @@
 
 #include <gsPde/gsBiharmonicPde.h>
 
-#include <gsAssembler/gsVisitorBiharmonic.h>
+#include <gsAssembler/gsG1ASVisitorBiharmonic.h>
 #include <gsAssembler/gsVisitorNeumann.h>
 #include <gsAssembler/gsVisitorNeumannBiharmonic.h>
 //#include <gsAssembler/gsVisitorNitscheBiharmonic.h>
@@ -32,7 +32,7 @@ namespace gismo
     Dirichlet boundary can only be enforced strongly (i.e Nitsche is
     not implemented).
 */
-template <class T, class bhVisitor = gsVisitorBiharmonic<T> >
+template <class T, class bhVisitor = gsG1ASVisitorBiharmonic<T> >
 class gsG1BiharmonicAssembler : public gsAssembler<T>
 {
 public:
@@ -228,17 +228,13 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
 
 
     // Assemble volume integrals
-
-    gsInfo << "First push \n";
     Base::template push<bhVisitor>();
 
     // Neuman conditions of first kind
     //Base::template push<gsVisitorNeumann<T> >(
     //    m_ppde.bcFirstKind().neumannSides() );
     // Neuman conditions of second kind
-    gsInfo << "Second push \n";
     Base::template push<gsVisitorNeumannBiharmonic<T> >(m_ppde.bcSecondKind().neumannSides());
-    gsInfo << "End push \n";
 
 
     if (m_options.getInt("InterfaceStrategy") == iFace::dg)

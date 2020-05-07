@@ -276,7 +276,6 @@ int main(int argc, char *argv[])
         // BiharmonicAssembler
         gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
         g1BiharmonicAssembler.assemble();
-        gsInfo << "Assembling ended \n";
 
         g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System); // Compute boundary values (Type 1)
 
