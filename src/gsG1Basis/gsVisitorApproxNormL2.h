@@ -88,12 +88,13 @@ public:
             P0.jacobian_into(uv.col(i),ev);
             D0 = ev.col(1);
             real_t D1 = 1/ D0.norm();
+            //uv(0,i) = - ev.col(1).transpose() * ev.col(0);
             uv(0,i) = - D1 * D1 * ev.col(1).transpose() * ev.col(0);
 
         }
 
         // alpha:
-        /*
+/*
         uv.setZero(2,quNodes.cols());
         uv.bottomRows(1) = quNodes; // v
         for (index_t i = 0; i < uv.cols(); i++)
@@ -101,7 +102,7 @@ public:
             P0.jacobian_into(uv.col(i), ev);
             uv(0, i) = ev.determinant();
         }
-        */
+*/
 
 
         index_t m_r = optionList.getInt("regularity");
@@ -129,8 +130,8 @@ public:
         basis_plus.derivSingle_into(optionList.getInt("basisID"),quNodes,der_b_plus);
         basis_minus.evalSingle_into(optionList.getInt("basisID"),quNodes,b_minus);
 
-        //f2vals = b_plus + uv.row(0).cwiseProduct(der_b_plus);
-        f2vals = b_plus + uv.row(0).cwiseProduct(der_b_plus);
+        f2vals = uv.row(0).cwiseProduct(der_b_plus);
+        //f2vals = uv.row(0).cwiseProduct(b_minus);
     }
 
     // assemble on element

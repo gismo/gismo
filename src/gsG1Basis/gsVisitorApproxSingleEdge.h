@@ -1,4 +1,4 @@
-/** @file gsVisitorApproxProjection.h
+/** @file gsVisitorApproxSingleEdge.h
 
     @brief Visitor for the local approximate gluing data.
 
@@ -19,11 +19,11 @@ namespace gismo
 
 
 template <class T>
-class gsVisitorApproxProjection
+class gsVisitorApproxSingleEdge
 {
 public:
 
-    gsVisitorApproxProjection()
+    gsVisitorApproxSingleEdge()
     {
     }
 
@@ -46,9 +46,10 @@ public:
                          gsMatrix<T>      & quNodes,
                          gsMultiPatch<T> & mp,
                          gsBSplineBasis<T> & basis_plus,
-                         gsBSplineBasis<T> & basis_minus,
                          gsApproxGluingData<T> & gluingData,
-                         gsOptionList optionList)
+                         gsG1OptionList optionList,
+                         index_t m_uv,
+                         index_t bfID)
     {
         md.points = quNodes;
 
@@ -61,44 +62,15 @@ public:
 
         numActive = actives.rows();
 
-        // ++++++++++++++++++++++++++++++++
-        // Compute alpha^S and beta^S exact
-        // ++++++++++++++++++++++++++++++++
-        // alpha^S
-        gsMatrix<> uv, ev;
+        gsMatrix<> der_b_plus, b_plus, beta;
+        //basis_plus.evalSingle_into(bfID,md.points,b_plus);
+        basis_plus.derivSingle_into(bfID,md.points,der_b_plus);
 
-        uv.setZero(2,md.points.cols());
-        uv.bottomRows(1) = md.points; // v
 
-        const index_t d = mp.parDim();
-        gsVector<> D0(d);
-
-        // ======== Determine bar{beta}^L ========
-        const gsGeometry<> & P0 = mp.patch(0); // iFace.second().patch = 0
-
-        for(index_t i = 0; i < uv.cols(); i++)
-        {
-            P0.jacobian_into(uv.col(i),ev);
-            D0 = ev.col(1);
-            real_t D1 = 1/ D0.norm();
-            uv(0,i) = - D1 * D1 * ev.col(1).transpose() * ev.col(0);
-
-        }
-
-        gsMatrix<> der_b_plus, b_plus, b_minus, beta, alpha;
-        basis_plus.evalSingle_into(optionList.getInt("basisID"),md.points,b_plus);
-        basis_plus.derivSingle_into(optionList.getInt("basisID"),md.points,der_b_plus);
-        basis_minus.evalSingle_into(optionList.getInt("basisID"),md.points,b_minus);
-
-        if (optionList.getInt("gluingData") == 0) // global
+        if (optionList.getInt("gluingData") == gluingData::global) // global
             gluingData.get_beta_tilde().eval_into(md.points,beta);
-        else if (optionList.getInt("gluingData") == 1) // local
-            gluingData.get_local_beta_tilde(optionList.getInt("basisID")).eval_into(md.points,beta);
-
-        if (optionList.getInt("gluingData") == 0) // global
-            gluingData.get_alpha_tilde().eval_into(md.points,alpha);
-        else if (optionList.getInt("gluingData") == 1) // local
-            gluingData.get_local_alpha_tilde(optionList.getInt("basisID")).eval_into(md.points,alpha);
+        else if (optionList.getInt("gluingData") == gluingData::local) // local
+            gluingData.get_local_beta_tilde(bfID).eval_into(md.points,beta);
 
         rhsVals = beta.cwiseProduct(der_b_plus);
         //rhsVals = beta;

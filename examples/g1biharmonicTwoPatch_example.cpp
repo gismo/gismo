@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
         omp_set_num_threads( g1OptionList.getInt("threads"));
         omp_set_nested(1);
 #endif
-        gsG1System<real_t> g1System(multiPatch, mb);
+        gsG1System<real_t> g1System(multiPatch, mb, true);
 
         // ########### EDGE FUNCTIONS ###########
         // Interface loop
@@ -181,7 +181,81 @@ int main(int argc, char *argv[])
 
             collection.save();
         }
+        // Boundaries loop
+        gsInfo << "Computing Boundary basis functions ... \n";
+        for (size_t numBdy = 0; numBdy < multiPatch.boundaries().size(); numBdy++ )
+        {
+            const patchSide & bit = multiPatch.boundaries()[numBdy];
 
+            index_t dir = multiPatch.boundaries()[numBdy].m_index < 3 ? 1 : 0;
+            gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(multiPatch.boundaries()[numBdy].patch).component(dir)); // 0 -> u, 1 -> v
+
+            std::string fileName;
+            std::string basename = "BoundaryBasisFunctions" + util::to_string(numBdy);
+            gsParaviewCollection collection(basename);
+
+            gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatch, bit.patch);
+            singleBdy.computeG1BoundaryBasis(g1OptionList, bit.m_index);
+
+            for (size_t i = 0; i < singleBdy.getSinglePatch(0).getG1Basis().nPatches(); i++)
+            {
+                gsMultiPatch<> edgeSingleBF;
+
+                edgeSingleBF.addPatch(singleBdy.getSinglePatch(0).getG1Basis().patch(i));
+
+                g1System.insertBoundaryEdge(edgeSingleBF,bit,numBdy,i);
+
+                if (g1OptionList.getSwitch("plot"))
+                {
+                    fileName = basename + "_0_" + util::to_string(i);
+                    gsField<> temp_field(multiPatch.patch(bit.patch),edgeSingleBF.patch(0));
+                    gsWriteParaview(temp_field,fileName,5000);
+                    collection.addTimestep(fileName,i,"0.vts");
+                }
+
+            }
+            collection.save();
+        }
+        // Vertices
+        gsInfo << "Computing Vertex basis functions ... \n";
+        for(size_t numVer=0; numVer < multiPatch.vertices().size(); numVer++)
+        {
+            std::string fileName;
+            std::string basename = "VerticesBasisFunctions" + util::to_string(numVer);
+            gsParaviewCollection collection(basename);
+
+            std::vector<patchCorner> allcornerLists = multiPatch.vertices()[numVer];
+            std::vector<size_t> patchIndex;
+            std::vector<size_t> vertIndex;
+            for(size_t j = 0; j < allcornerLists.size(); j++)
+            {
+                patchIndex.push_back(allcornerLists[j].patch);
+                vertIndex.push_back(allcornerLists[j].m_index);
+            }
+            if (patchIndex.size() == 1)
+            {
+                gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatch, patchIndex, vertIndex);
+                singleVertex.computeG1InternalVertexBasis(g1OptionList);
+                for (index_t i = 0; i < 4; i++)
+                {
+                    gsMultiPatch<> singleBasisFunction;
+                    for (size_t np = 0; np < vertIndex.size(); np++)
+                    {
+                        singleBasisFunction.addPatch(singleVertex.getSinglePatch(np).getG1Basis().patch(i));
+                        if (g1OptionList.getSwitch("plot"))
+                        {
+                            fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
+                            gsField<> temp_field(multiPatch.patch(patchIndex[np]), singleBasisFunction.patch(np));
+                            gsWriteParaview(temp_field, fileName, 5000);
+                            collection.addTimestep(fileName, i, "0.vts");
+                        }
+                    }
+                    g1System.insertVertex(singleBasisFunction, patchIndex, numVer, singleVertex.get_internalDofs(), i);
+
+                }
+            }
+            collection.save();
+        }
 
         gsBoundaryConditions<> bcInfo, bcInfo2;
         for (gsMultiPatch<>::const_biterator bit = multiPatch.bBegin(); bit != multiPatch.bEnd(); ++bit)
@@ -194,9 +268,9 @@ int main(int argc, char *argv[])
         gsInfo << "Computing Internal basis functions ... \n";
         gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
         g1BiharmonicAssembler.assemble();
-        g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System); // Compute boundary values (Type 1)
+        g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System); // Compute boundary values (Type 1) // maybe too much memmory!!!
 
-        g1System.finalize(multiPatch,mb,g1BiharmonicAssembler.get_bValue());
+        g1System.finalize(multiPatch,mb, g1BiharmonicAssembler.get_bValue());
 
         gsInfo << "Solving system... \n";
         gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
@@ -255,6 +329,7 @@ int main(int argc, char *argv[])
                 h1SemiError_jump_edge.row(refinement_level) = errorJump.value().transpose();
             }
         }
+
     }
 
     for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
@@ -343,7 +418,7 @@ int main(int argc, char *argv[])
         if (g1OptionList.getSwitch("latex"))
         {
             for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
-                printf("%-5d & %-14.6e \\\\", num_knots[0],
+                printf("%-5d & %-14.6e & %-5.2f \\\\", num_knots[0],
                        h1SemiError_jump_edge(0,i), rate(0,i));
             printf("\n");
             for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)

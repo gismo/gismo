@@ -50,6 +50,8 @@ public:
     const gsBSpline<T> get_local_alpha_tilde(index_t i) const {return alpha_minus_tilde[i]; }
     const gsBSpline<T> get_local_beta_tilde(index_t i) const {return beta_plus_tilde[i]; }
 
+    void set_beta_tilde(gsBSpline<T> beta_t) { this->beta_tilde = beta_t; }
+
     void plotGluingData(index_t nummGd = 0);
 
     void eval_alpha_into(gsMatrix<T> const points, gsMatrix<> & result)
@@ -291,6 +293,7 @@ void gsApproxGluingData<T>::setGlobalGluingData()
     gsBSpline<T> beta_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
     this->beta_tilde = beta_t;
 
+    gsWriteParaview(beta_t, "beta_t",1000);
 
 } // setGlobalGluingData
 
