@@ -53,7 +53,8 @@ public:
                          index_t & uv,
                          gsApproxGluingData<T>  & gluingData,
                          bool & isBoundary,
-                         gsG1OptionList & g1OptionList)
+                         gsG1OptionList & g1OptionList,
+                         gsBSpline<T> & result_singleEdge)
     {
         md.points = quNodes;
 
@@ -112,9 +113,30 @@ public:
                 }
 
                 beta = isBoundary ? beta.setZero() : beta; // For the boundary, only on Patch 0
+/*
+                gsMatrix<T> temp;
+                if (g1OptionList.getSwitch("twoPatch") && bfID == 1 && g1OptionList.getInt("gluingData") == gluingData::global)
+                {
+                    gsMatrix<> lambda, null(1,1);
+                    null << 0.0;
+                    lambda = gluingData.get_beta_tilde().eval(null) * 1/(gluingData.get_alpha_tilde().eval(null)(0, 0));
+                    temp = (beta - lambda * alpha).cwiseProduct(der_N_i_plus);
+                }
+                else if (g1OptionList.getSwitch("twoPatch") && bfID == basis_plus.size()-2 && g1OptionList.getInt("gluingData") == gluingData::global)
+                {
+                    gsMatrix<> lambda, one(1,1);
+                    one << 1.0;
+                    lambda = gluingData.get_beta_tilde().eval(one) * 1/(gluingData.get_alpha_tilde().eval(one)(0, 0));
+                    temp = (beta - lambda * alpha).cwiseProduct(der_N_i_plus);
+                }
+                else
+                    temp = beta.cwiseProduct(der_N_i_plus);
+*/
 
-                gsMatrix<T> temp = beta.cwiseProduct(N_1);
-                rhsVals = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
+                gsMatrix<> temp = beta.cwiseProduct(der_N_i_plus);
+                //gsInfo << "uv = 1 : " << temp - result_singleEdge.eval(md.points.bottomRows(1)) << "\n";
+                //temp = result_singleEdge.eval(md.points.bottomRows(1));
+                rhsVals = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(N_1) * tau_1 / p;
 
                 localMat.setZero(numActive, numActive);
                 localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
@@ -174,9 +196,31 @@ public:
 
 
                 beta = isBoundary ? beta.setZero() : beta; // For the boundary, only on Patch 0
+/*
+                gsMatrix<T> temp;
+                if (g1OptionList.getSwitch("twoPatch") && bfID == 1 && g1OptionList.getInt("gluingData") == gluingData::global)
+                {
+                    gsMatrix<> lambda, null(1,1);
+                    null << 0.0;
+                    lambda = gluingData.get_beta_tilde().eval(null) * 1/(gluingData.get_alpha_tilde().eval(null)(0, 0));
+                    temp = (beta - lambda * alpha).cwiseProduct(der_N_i_plus);
+                }
+                else if (g1OptionList.getSwitch("twoPatch") && bfID == basis_plus.size()-2 && g1OptionList.getInt("gluingData") == gluingData::global)
+                {
+                    gsMatrix<> lambda, one(1,1);
+                    one << 1.0;
+                    lambda = gluingData.get_beta_tilde().eval(one) * 1/(gluingData.get_alpha_tilde().eval(one)(0, 0));
+                    temp = (beta - lambda * alpha).cwiseProduct(der_N_i_plus);
+                }
+                else
+                    temp = beta.cwiseProduct(der_N_i_plus);
+*/
 
-                gsMatrix<> temp = beta.cwiseProduct(N_1);
-                rhsVals = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(der_N_i_plus) * tau_1 / p;
+                gsMatrix<T> temp = beta.cwiseProduct(der_N_i_plus);
+
+                //gsInfo << "uv = 0 : " << temp - result_singleEdge.eval(md.points.topRows(1)) << "\n";
+                //temp = result_singleEdge.eval(md.points.topRows(1));
+                rhsVals = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(N_1) * tau_1 / p;
 
                 localMat.setZero(numActive, numActive);
                 localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
