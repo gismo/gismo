@@ -114,14 +114,30 @@ public:
             // Compute physical laplacian at k as a 1 x numActive matrix
             transformLaplaceHgrad(md, k, basisGrads, basis2ndDerivs, physBasisLaplace);
 
-            const gsMatrix<T> F = md.jacobian(k);
-            const gsMatrix<T> G = F.transpose() * F;
-            const real_t g = sqrt(G.determinant());
 
-            // (\Delta u, \Delta v)
+//            const gsMatrix<T> F = md.jacobian(k); // Jacobian
+//            const gsMatrix<T> G = F.transpose() * F; // First fundamental form
+//            const gsMatrix<T> G_inv = G.inverse(); // Inverse of the first fundamental form
+//            const real_t g = sqrt(G.determinant()); // Determinant of the first fundamental form
+//
+//            const gsMatrix<T> first = g * G_inv * basisGrads.col(k);
+//            const gsMatrix<T> second = g * G_inv * basisGrads.col(k);
+
+
+
+
+
+            // Each function or operator is computed in the parameter space
+            // ( \Nabla(g G_inv \Nabla u ) , \Nabla(g G_inv \Nabla v ) )
+//            localMat.noalias() += weight * (1 / g ) * ( first.gradient().transpose() * second.gradient() );
+//            localRhs.noalias() += weight * g * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
+
+
             localMat.noalias() += weight * (physBasisLaplace.transpose() * physBasisLaplace);
 
             localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
+
+
         }
     }
 
