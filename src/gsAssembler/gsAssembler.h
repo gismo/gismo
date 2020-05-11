@@ -442,6 +442,7 @@ public: /* Element visitors */
         for (typename bcContainer::const_iterator it
              = BCs.begin(); it!= BCs.end(); ++it)
         {
+
             BElementVisitor visitor(*m_pde_ptr, *it);
             //Assemble (fill m_matrix and m_rhs) contribution from this BC
             apply(visitor, it->patch(), it->side());

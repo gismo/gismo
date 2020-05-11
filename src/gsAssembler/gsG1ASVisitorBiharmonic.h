@@ -1,4 +1,4 @@
-/** @file gsVisitorBiharmonic.h
+/** @file gsG1ASVisitorBiharmonic.h
 
     @brief Visitor for a simple Biharmonic equation.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): J. Sogn
+    Author(s): A. Farahat
 */
 
 #pragma once
@@ -25,20 +25,20 @@ namespace gismo
  */
 
 template <class T>
-class gsVisitorBiharmonic
+class gsG1ASVisitorBiharmonic
 {
 public:
 
-    gsVisitorBiharmonic(const gsPde<T> & pde)
-    { 
+    gsG1ASVisitorBiharmonic(const gsPde<T> & pde)
+    {
         rhs_ptr = static_cast<const gsBiharmonicPde<T>&>(pde).rhs() ;
     }
 
-    /** \brief Constructor for gsVisitorBiharmonic.
+    /** \brief Constructor for gsG1ASVisitorBiharmonic.
      *
      * \param[in] rhs Given right-hand-side function/source term that, for
      */
-    gsVisitorBiharmonic(const gsFunction<T> & rhs) :
+    gsG1ASVisitorBiharmonic(const gsFunction<T> & rhs) :
         rhs_ptr(&rhs)
     {
         GISMO_ASSERT( rhs.targetDim() == 1 ,"Not yet tested for multiple right-hand-sides");
@@ -60,7 +60,7 @@ public:
 
     void initialize(const gsBasis<T> & basis,
                     const index_t ,
-                    const gsOptionList & options, 
+                    const gsOptionList & options,
                     gsQuadRule<T>    & rule)
     {
         // Setup Quadrature
@@ -113,10 +113,31 @@ public:
 
             // Compute physical laplacian at k as a 1 x numActive matrix
             transformLaplaceHgrad(md, k, basisGrads, basis2ndDerivs, physBasisLaplace);
-            // (\Delta u, \Delta v)
+
+
+//            const gsMatrix<T> F = md.jacobian(k); // Jacobian
+//            const gsMatrix<T> G = F.transpose() * F; // First fundamental form
+//            const gsMatrix<T> G_inv = G.inverse(); // Inverse of the first fundamental form
+//            const real_t g = sqrt(G.determinant()); // Determinant of the first fundamental form
+//
+//            const gsMatrix<T> first = g * G_inv * basisGrads.col(k);
+//            const gsMatrix<T> second = g * G_inv * basisGrads.col(k);
+
+
+
+
+
+            // Each function or operator is computed in the parameter space
+            // ( \Nabla(g G_inv \Nabla u ) , \Nabla(g G_inv \Nabla v ) )
+//            localMat.noalias() += weight * (1 / g ) * ( first.gradient().transpose() * second.gradient() );
+//            localRhs.noalias() += weight * g * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
+
+
             localMat.noalias() += weight * (physBasisLaplace.transpose() * physBasisLaplace);
 
             localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
+
+
         }
     }
 

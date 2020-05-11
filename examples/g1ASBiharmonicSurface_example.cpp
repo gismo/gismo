@@ -74,6 +74,7 @@ int main(int argc, char *argv[])
                              "0", 3);
 
 
+
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
     // ======= Geometry =========
@@ -269,6 +270,7 @@ int main(int argc, char *argv[])
             bcInfo.addCondition( *bit, condition_type::dirichlet, &solVal );
             bcInfo2.addCondition( *bit, condition_type::neumann, &laplace );
         }
+
 
 
         // BiharmonicAssembler
