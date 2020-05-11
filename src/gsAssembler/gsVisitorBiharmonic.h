@@ -113,11 +113,6 @@ public:
 
             // Compute physical laplacian at k as a 1 x numActive matrix
             transformLaplaceHgrad(md, k, basisGrads, basis2ndDerivs, physBasisLaplace);
-
-//            const gsMatrix<T> F = md.jacobian(k); // Jacobian
-//            const gsMatrix<T> G = F.transpose() * F; // First fundamental form
-//
-//            gsInfo << "First fundamental form: " << G << "\n";
             // (\Delta u, \Delta v)
             localMat.noalias() += weight * (physBasisLaplace.transpose() * physBasisLaplace);
 

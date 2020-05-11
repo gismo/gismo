@@ -99,7 +99,7 @@ public:
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Compute the outer normal vector on the side
-            outerNormal(md, k, side, unormal);
+//            outerNormal(md, k, side, unormal);
             unormal = md.outNormals;
 
             // Multiply quadrature weight by the measure of normal
