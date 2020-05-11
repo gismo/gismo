@@ -229,7 +229,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
 
     // Assemble volume integrals
 
-    gsInfo << "First push \n";
     Base::template push<bhVisitor>();
 
     // Neuman conditions of first kind
@@ -237,9 +236,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
     //    m_ppde.bcFirstKind().neumannSides() );
 
     // Neuman conditions of second kind
-    gsInfo << "Second push \n";
     Base::template push<gsVisitorNeumannBiharmonic<T> >(m_ppde.bcSecondKind().neumannSides());
-    gsInfo << "End push \n";
 
     if (m_options.getInt("InterfaceStrategy") == iFace::dg)
         gsWarn << "DG option ignored.\n";

@@ -286,7 +286,7 @@ protected:
     {
         gsSparseSolver<>::CGDiagonal solver;
 
-        gsInfo << "Matrix Beta: " << mSysBeta.matrix() << "\n";
+//        gsInfo << "Matrix Beta: " << mSysBeta.matrix() << "\n";
 
         solver.compute(mSysBeta.matrix());
         solBeta = solver.solve(mSysBeta.rhs()); // My solution

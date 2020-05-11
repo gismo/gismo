@@ -281,9 +281,6 @@ int main(int argc, char *argv[])
 
         gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
 
-        gsInfo << "Sol vec: " << solVector.transpose() << "\n";
-
-
 
         if (g1OptionList.getSwitch("plot"))
         {
