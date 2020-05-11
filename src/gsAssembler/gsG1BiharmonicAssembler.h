@@ -312,7 +312,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
             multiPatch_Edges.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
         }
 
-
         // VERTEX
         std::pair<index_t,index_t> vertex_pair;
         switch (sideIdx)
@@ -452,7 +451,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
             for( size_t i=0; i < multiPatch_Vertex_1.nPatches(); i++)
                 eltBdryFcts.push_back( multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches() + i );
 
-
             // Do the actual assembly:
             for( index_t k=0; k < md.points.cols(); k++ )
             {
@@ -472,7 +470,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
                     {
                         const index_t j = eltBdryFcts[j0];
                         jj = globIdxAct.at(j);
-
+                        //gsInfo << "HIER: " << jj << " : " << ii << " : " << i <<" : " << j << " : " << k << "\n";
                         // Use the "element-wise index" to get the needed
                         // function value.
                         // Use the boundary index to put the value in the proper
@@ -483,8 +481,9 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
                 } // for i
             } // for k
         } // bdryIter
-
     } // boundaryConditions-Iterator
+
+
     gsSparseMatrix<T> globProjMat( g1System.boundary_size(),
                                    g1System.boundary_size());
     globProjMat.setFrom( projMatEntries );

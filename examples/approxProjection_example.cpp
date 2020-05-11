@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 
     // Which basis function should computed
     index_t basisID = 0;
-    index_t degree_target = 3;
+    index_t degree_target = 0;
 
     index_t threads = 4; // For parallel computing
 
@@ -52,6 +52,7 @@ int main(int argc, char *argv[])
     cmd.addInt("b", "basisID", "Which basis functions should computed", basisID);
     cmd.addInt( "d", "degree_target", "degree_target", degree_target);
     cmd.addInt( "a", "gluingData", "gluingData", gluingData);
+    cmd.addInt( "t", "threads", "threads", threads);
     cmd.addSwitch( "plot", "Plot result in ParaView format", plot );
     cmd.addSwitch( "localApprox", "localApprox", localApprox );
     try { cmd.getValues(argc,argv); } catch (int rv) {  }
@@ -106,7 +107,7 @@ int main(int argc, char *argv[])
     multiPatch_init.computeTopology();
 
     //multiPatch.patch(1).degreeElevate(1,0);
-    multiPatch_init.degreeElevate(numDegree);
+    multiPatch_init.degreeElevate(numDegree + degree_target);
     //optionList.setInt("regularity",2);
 
     gsVector<index_t> num_knots(optionList.getInt("loop"));
