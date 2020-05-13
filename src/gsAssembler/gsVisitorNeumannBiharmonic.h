@@ -96,20 +96,20 @@ public:
     inline void assemble(gsDomainIterator<T>    & ,
                          gsVector<T> const      & quWeights)
     {
+        gsInfo << "Rows: " << quWeights.rows() << " \n";
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Compute the outer normal vector on the side
-//            outerNormal(md, k, side, unormal);
-            unormal = md.outNormals;
-
+            gsInfo << "side: " << side << "\n";
+            outerNormal(md, k, side, unormal);
             // Multiply quadrature weight by the measure of normal
             const T weight = quWeights[k] * unormal.norm();
 
             unormal.normalize();
+            gsInfo << "Result: " << unormal << "\n";
+
             //Get gradients of the physical space
-
             transformGradients(md, k, basisGrads, physBasisGrad);
-
 
             localRhs.noalias() += weight *(( physBasisGrad.transpose() * unormal )* neuData.col(k).transpose());
         }

@@ -12,8 +12,8 @@
 #include <gsAssembler/gsAssembler.h>
 
 #include <gsPde/gsBiharmonicPde.h>
-#include <gsAssembler/gsVisitorBiharmonic.h>
-//#include <gsAssembler/gsG1ASVisitorBiharmonic.h>
+//#include <gsAssembler/gsVisitorBiharmonic.h>
+#include <gsAssembler/gsG1ASVisitorBiharmonic.h>
 #include <gsAssembler/gsVisitorNeumann.h>
 #include <gsAssembler/gsVisitorNeumannBiharmonic.h>
 //#include <gsAssembler/gsVisitorNitscheBiharmonic.h>
@@ -32,8 +32,8 @@ namespace gismo
     Dirichlet boundary can only be enforced strongly (i.e Nitsche is
     not implemented).
 */
-//template <class T, class bhVisitor = gsG1ASVisitorBiharmonic<T> >
-template <class T, class bhVisitor = gsVisitorBiharmonic<T> >
+template <class T, class bhVisitor = gsG1ASVisitorBiharmonic<T> >
+//template <class T, class bhVisitor = gsVisitorBiharmonic<T> >
 class gsG1BiharmonicAssembler : public gsAssembler<T>
 {
 public:

@@ -78,21 +78,40 @@ void normal(const gsMapData<T> & md, index_t k, gsVector<T> & result)
 template <class T>
 void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & result)
 {
-    //todo: fix and check me
-    int m_orientation = md.jacobian(k).determinant() >= 0 ? 1 : -1;
-
-    const T sgn = sideOrientation(s) * m_orientation; // TODO: fix me
-    const int dir = s.direction();
-
-    // assumes points u on boundary "s"
-    result.resize(md.dim.second);
 
     if (md.dim.first + 1 == md.dim.second) // surface case GeoDim == 3
     {
         const gsMatrix<T> Jk = md.jacobian(k);
+        gsMatrix<> G = Jk.transpose() * Jk;
+        int m_orientation = G.determinant() >= 0 ? 1 : -1;
+
+        const T sgn = sideOrientation(s) * m_orientation; // TODO: fix me
+        const int dir = s.direction();
+
+        result.resize(md.dim.second);
+
+
+
         // fixme: generalize to nD
+
+        //Eigen::Vector3d signJk = sgn * Jk.block(0, !dir, md.dim.first, 1);
+        Eigen::Vector3d signJk = sgn * Jk.col(!dir);
+
         normal(md, k, result);
-        result = result.normalized().cross(sgn * Jk.block(0, !dir, md.dim.first, 1));
+        Eigen::Vector3d normalizedRes = result.normalized();
+//
+//        Eigen::Vector3d t1 = Jk.block(0, 0, md.dim.first, 0);
+//        Eigen::Vector3d t2 = Jk.block(0, 1, md.dim.first, 1);
+//        Eigen::Vector3d n = t1.cross(t2);
+//        n = n / n.norm();
+//
+//        gsInfo << "Normal Andrea: " << n << "\n";
+
+        result = normalizedRes.cross(signJk);
+
+//        result = n;
+
+
         /*
           gsDebugVar(result.transpose()); // result 1
           normal(k,result);
@@ -110,6 +129,12 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
     }
     else // planar case
     {
+        int m_orientation = md.jacobian(k).determinant() >= 0 ? 1 : -1;
+
+        const T sgn = sideOrientation(s) * m_orientation; // TODO: fix me
+        const int dir = s.direction();
+        result.resize(md.dim.second);
+
         GISMO_ASSERT(md.dim.first == md.dim.second, "Codim different than zero/one");
 
         if (1 == md.dim.second)

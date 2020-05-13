@@ -98,6 +98,10 @@ int main(int argc, char *argv[])
             string_geo = "KirchhoffLoveGeo/parabola_surfaceTwoPatchRoundBoundary.xml";
             numDegree = 1; // 2 == degree 3
             break;
+        case 4:
+            string_geo = "KirchhoffLoveGeo/square3d.xml";
+            numDegree = 2; // 2 == degree 3
+            break;
 
         default:
             gsInfo << "No geometry is used! \n";
@@ -282,8 +286,6 @@ int main(int argc, char *argv[])
         g1System.finalize(multiPatch,mb,g1BiharmonicAssembler.get_bValue());
 
         gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
-
-        gsInfo << "Sol vec: " << solVector.transpose() << "\n";
 
 
 

@@ -44,7 +44,7 @@ public:
 //        gsInfo << "Solution: " << sol << "\n";
 //        gsInfo << "Solution Beta: " << solBeta << "\n";
 
-        AScondition(mp);
+//        AScondition(mp);
     }
 
 
