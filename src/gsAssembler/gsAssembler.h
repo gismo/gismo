@@ -84,8 +84,8 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
         const gsMatrix<T> Jk = md.jacobian(k);
         gsMatrix<> G = Jk.transpose() * Jk;
         int m_orientation = G.determinant() >= 0 ? 1 : -1;
-
-        const T sgn = sideOrientation(s) * m_orientation; // TODO: fix me
+        gsInfo << "Orientation: " << m_orientation << "\n";
+        const T sgn = sideOrientation(s) * m_orientation ; // TODO: fix me
         const int dir = s.direction();
 
         result.resize(md.dim.second);
@@ -97,17 +97,18 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
         //Eigen::Vector3d signJk = sgn * Jk.block(0, !dir, md.dim.first, 1);
         Eigen::Vector3d signJk = sgn * Jk.col(!dir);
 
+
         normal(md, k, result);
         Eigen::Vector3d normalizedRes = result.normalized();
 //
-//        Eigen::Vector3d t1 = Jk.block(0, 0, md.dim.first, 0);
-//        Eigen::Vector3d t2 = Jk.block(0, 1, md.dim.first, 1);
-//        Eigen::Vector3d n = t1.cross(t2);
+        Eigen::Vector3d t1 = Jk.col(0);
+        Eigen::Vector3d t2 = Jk.col(1);
+        Eigen::Vector3d n = t1.cross(t2);
 //        n = n / n.norm();
 //
 //        gsInfo << "Normal Andrea: " << n << "\n";
 
-        result = normalizedRes.cross(signJk);
+        result = signJk.cross(n);
 
 //        result = n;
 
