@@ -287,8 +287,6 @@ int main(int argc, char *argv[])
 
         gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
 
-
-
         if (g1OptionList.getSwitch("plot"))
         {
             // construct solution: INTERIOR

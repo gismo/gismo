@@ -100,8 +100,17 @@ public:
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Compute the outer normal vector on the side
+<<<<<<< HEAD
             gsInfo << "side: " << side << "\n";
             outerNormal(md, k, side, unormal);
+=======
+            outerNormal(md, k, side, unormal);
+            gsInfo << "Out normal 1: " << unormal << "\n";
+            unormal = md.outNormal(k);
+
+            gsInfo << "Out normal 2: " << unormal << "\n";
+
+>>>>>>> cb22e9692484449f2be47e4ea46e60a3ca1c56d3
             // Multiply quadrature weight by the measure of normal
             const T weight = quWeights[k] * unormal.norm();
 

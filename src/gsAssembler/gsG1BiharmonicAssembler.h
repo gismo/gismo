@@ -237,7 +237,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
     // Neuman conditions of second kind
     Base::template push<gsVisitorNeumannBiharmonic<T> >(m_ppde.bcSecondKind().neumannSides());
 
-
     if (m_options.getInt("InterfaceStrategy") == iFace::dg)
         gsWarn << "DG option ignored.\n";
 
