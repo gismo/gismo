@@ -99,7 +99,11 @@ int main(int argc, char *argv[])
             numDegree = 1; // 2 == degree 3
             break;
         case 4:
-            string_geo = "KirchhoffLoveGeo/square3d.xml";
+            string_geo = "KirchhoffLoveGeo/square3dPositiveOrientation.xml";
+            numDegree = 2; // 2 == degree 3
+            break;
+        case 5:
+            string_geo = "KirchhoffLoveGeo/square3dNegativeOrientation.xml";
             numDegree = 2; // 2 == degree 3
             break;
 
