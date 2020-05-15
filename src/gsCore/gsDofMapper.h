@@ -368,11 +368,11 @@ public:
     {
         GISMO_ASSERT( is_boundary_index( gl ),
                       "global_to_bindex(): dof "<<gl<<" is not on the boundary");
-
-	gl -= m_numFreeDofs.back() + m_shift;
+        return gl - m_numFreeDofs.back() - m_shift + m_bshift;
+    //gl -= m_numFreeDofs.back() + m_shift;
 	//const index_t c = std::distance(m_numElimDofs.begin(),
     //    std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(),gl)) -1;
-	return gl + m_bshift; // - m_numElimDofs[c]
+ 	//return gl + m_bshift; // - m_numElimDofs[c]
     }
 
     /// Returns true if global dof \a gl is not eliminated.

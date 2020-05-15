@@ -254,8 +254,9 @@ public:
         initMatrix(resetFirst);
         m_rhs.setZero(numDofs(), 1);
 
-        for (size_t i = 0; i!= m_vcol.size(); ++i)
-            computeDirichletDofs2(i);
+        // USE setup and gsDirichletValues instead
+        //for (size_t i = 0; i!= m_vcol.size(); ++i)
+        // computeDirichletDofs2(i);
     }
 
     /// \brief Initializes the sparse matrix only
@@ -527,7 +528,7 @@ private:
             {
                 //if (&rowInd0!=&colInd0)
                 colMap.localToGlobal(colInd0, patchInd, colInd);
-                GISMO_ASSERT( colMap.boundarySize()==fixedDofs.rows(),
+                GISMO_ASSERT( colMap.boundarySize()==fixedDofs.size(),
                               "Invalid values for fixed part");
             }
             for (index_t r = 0; r != rd; ++r)
@@ -561,7 +562,7 @@ private:
                                         // Symmetric treatment of eliminated BCs
                                         // GISMO_ASSERT(1==m_rhs.cols(), "-");
                                         m_rhs.at(ii) -= localMat(rls+i,cls+j) *
-                                            fixedDofs(colMap.global_to_bindex(jj), c);
+                                            fixedDofs.at(colMap.global_to_bindex(jj));
                                     }
                                 }
                             }
@@ -620,8 +621,7 @@ void gsExprAssembler<T>::computeDirichletDofs2(short_t unk)
         break;
     case dirichlet::user :
         // Assuming that the DoFs are already set by the user
-        GISMO_ENSURE( u.fixedPart().rows() == mapper.boundarySize() &&
-                      u.fixedPart().cols() == u.dim(),
+        GISMO_ENSURE( u.fixedPart().size() == mapper.boundarySize(),
                       "The Dirichlet DoFs are not set.");
         break;
     default:
@@ -653,8 +653,7 @@ void gsExprAssembler<T>::setFixedDofVector(gsMatrix<T> & vals, short_t unk)
     fixedDofs.swap(vals);
     vals.resize(0, 0);
     // Assuming that the DoFs are already set by the user
-    GISMO_ENSURE( fixedDofs.rows() == u.mapper().boundarySize() &&
-                  fixedDofs.cols() == u.dim(),
+    GISMO_ENSURE( fixedDofs.size() == u.mapper().boundarySize(),
                      "The Dirichlet DoFs were not provided correctly.");
 }
 
@@ -677,8 +676,7 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t un
 //                           bbc, u.id()) ;
 
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>& >(u).fixedPart();
-    GISMO_ASSERT(fixedDofs.rows() == mapper.boundarySize() &&
-                 fixedDofs.cols() == u.dim(),
+    GISMO_ASSERT(fixedDofs.size() == mapper.boundarySize(),
                  "Fixed DoFs were not initialized.");
 
     // for every side with a Dirichlet BC
@@ -689,6 +687,7 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t un
     for ( typename bcRefList::const_iterator it =  u.bc().dirichletBegin();
           it != u.bc().dirichletEnd()  ; ++it )
     {
+        const index_t com = it->unkComponent();
         const index_t k = it->patch();
         if ( k == patch )
         {
@@ -702,9 +701,9 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t un
             {
                 // Note: boundary.at(i) is the patch-local index of a
                 // control point on the patch
-                const index_t ii  = mapper.bindex( boundary.at(i) , k );
+                const index_t ii  = mapper.bindex( boundary.at(i) , k, com );
 
-                fixedDofs.row(ii) = coefMatrix.row(boundary.at(i));
+                fixedDofs.at(ii) = coefMatrix(boundary.at(i), com);
             }
         }
     }
@@ -996,6 +995,7 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u
           iit != u.bc().end()  ; ++iit )
     {
         const boundary_condition<T> * it = &iit->get();
+        const index_t com = it->unkComponent();
 
         const index_t k = it->patch();
         if( it->unknown()!=u.id() )
@@ -1010,8 +1010,8 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u
         {
             for (index_t i=0; i!= boundary.size(); ++i)
             {
-                const index_t ii= mapper.bindex( boundary.at(i) , k );
-                fixedDofs.row(ii).setZero();
+                const index_t ii= mapper.bindex( boundary.at(i) , k, com );
+                fixedDofs.at(ii) = 0;
             }
             continue;
         }
@@ -1050,7 +1050,7 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u
             fpts = it->function()->eval(
                 m_exprdata->getMap().source().piece(it->patch()).eval(  gsPointGrid<T>( rr ) ) );
 
-
+        /*
         if ( fpts.rows() != u.dim() )
         {
             // assume scalar
@@ -1060,6 +1060,7 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u
             tmp.row(!dir) = (param ? 1 : -1) * fpts; // normal !
             fpts.swap(tmp);
         }
+        */
 
         // Interpolate dirichlet boundary
         typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
@@ -1069,8 +1070,8 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u
         // Save corresponding boundary dofs
         for (index_t l=0; l!= boundary.size(); ++l)
         {
-            const index_t ii = mapper.bindex( boundary.at(l) , it->patch());
-            fixedDofs.row(ii) = dVals.row(l);
+            const index_t ii = mapper.bindex( boundary.at(l) , it->patch(), com);
+            fixedDofs.at(ii) = dVals.at(l);
         }
     }
 }

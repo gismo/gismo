@@ -1115,8 +1115,8 @@ public:
                     res.at(c) += _Sv->at(ii) * _u.data().values[0](i,k);
                 }
                 else
-                    res.noalias() += _u.data().values[0](i,k) *
-                        _u.fixedPart().row( map.global_to_bindex(ii) ).transpose();//head(_u.dim());
+                    res.at(c) += _u.data().values[0](i,k) *
+                        _u.fixedPart().at( map.global_to_bindex(ii) );
             }
         }
         return res;
@@ -1184,9 +1184,9 @@ public:
                     offset = _u.mapper().offset(j);
 
                     ii = _u.mapper().index(i,j,c); // global index
-                    if (_u.mapper().is_boundary(i,j))
+                    if (_u.mapper().is_boundary(i,j,c))
                     {
-                        bi = _u.mapper().bindex(i,j,c); // boundary index
+                        bi = _u.mapper().global_to_bindex(ii); // boundary index
                         result(i+offset,0) = _u.fixedPart().at(bi);
                     }
                     else
@@ -1280,10 +1280,10 @@ public:
                 }
                 else
                 {
-                    res.noalias() +=
-                        _u.fixedPart().row( map.global_to_bindex(ii) ).asDiagonal() *
+                    res.row(c) +=
+                        _u.fixedPart().at( map.global_to_bindex(ii) ) *
                         _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim())
-                        .transpose().replicate(_u.dim(),1);
+                        .transpose();
                 }
             }
         }
