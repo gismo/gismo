@@ -819,9 +819,11 @@ public:
             {
                 const int ii = m_mapper.index(i, p, c);
                 if ( m_mapper.is_free_index(ii) ) // DoF value is in the solVector
-                        result(i,c) = solVector.at(ii );
+                        result(i,c) = solVector.at(ii);
                 else // eliminated DoF: fill with Dirichlet data
-                    result(i,c) =  m_fixedDofs.at( m_mapper.global_to_bindex(ii)) ; // [HMV] is this correct?
+                {
+                    result(i,c) =  m_fixedDofs.at( m_mapper.global_to_bindex(ii) );
+                }
             }
         }
     }
@@ -1055,8 +1057,8 @@ public:
                   it = bc.cornerBegin(); it != bc.cornerEnd(); ++it )
         {
             const int i  = smb->basis(it->patch).functionAtCorner(it->corner);
-            const int ii = m_mapper.bindex( i , it->patch );
-            fixedDofs(ii,0) = it->value; //note: it does not support components (=0 for now)! Todo.
+            const int ii = m_mapper.bindex( i , it->patch, 0 );//component=0 for now! Todo.
+            fixedDofs.at(ii) = it->value;
         }
     }
 

@@ -69,7 +69,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
     gsMatrix<T> fpts, tmp;
 
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
-    fixedDofs.resize(u.mapper().boundarySize(), u.dim() );
+    fixedDofs.resize(u.mapper().boundarySize(), 1 );
     fixedDofs.setZero();
 
     // Iterate over all patch-sides with Boundary conditions
@@ -97,19 +97,14 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
                 for (index_t i=0; i!= boundary.size(); ++i)
                 {
                     const int ii = u.mapper().bindex( boundary.at(i) , k, r );
-                    fixedDofs(ii,r) = 0;
+                    fixedDofs.at(ii) = 0;
                 }
                 continue;
             }
 
             // Get the side information
-            int dir = it->side().direction( );
-            gsDebugVar(dir);
-            gsDebugVar(com);
-            gsDebugVar(r);
-
-
-            index_t param = (it->side().parameter() ? 1 : 0);
+            const int dir = it->side().direction( );
+            const index_t param = (it->side().parameter() ? 1 : 0);
 
             // Compute grid of points on the face ("face anchors")
             rr.clear();
@@ -117,7 +112,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
 
             for ( int i=0; i < parDim; ++i)
             {
-                if ( i==com )
+                if ( i==dir )
                 {
                     b[0] = ( basis.component(i).support() ) (0, param);
                     rr.push_back(b);
@@ -138,7 +133,6 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             else
             {
                 const gsFunctionSet<T> & gmap = bc.geoMap();
-                gsDebugVar(it->function()->piece(it->patch()).eval(  gmap.piece(it->patch()).eval(  gsPointGrid<T>( rr ) )  ));
                 fpts = it->function()->piece(it->patch()).eval(  gmap.piece(it->patch()).eval(  gsPointGrid<T>( rr ) )  );
             }
 
@@ -148,14 +142,11 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             const gsMatrix<T> & dVals =  geo->coefs();
 
             // Save corresponding boundary dofs
-            gsDebugVar(boundary.size());
             for (index_t l=0; l!= boundary.size(); ++l)
             {
                 const int ii = u.mapper().bindex( boundary.at(l) , k, com );
                 fixedDofs.at(ii) = dVals.at(l);
             }
-            gsDebugVar(fixedDofs);
-
         }
     }
 }
@@ -229,6 +220,7 @@ gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
             fpts = bc.function()->eval(  gmap.piece(bc.patch()).eval(  gsPointGrid<T>( rr ) )  );
         }
 
+        /*
         if ( fpts.rows() != u.dim() )
         {
             // assume scalar
@@ -238,6 +230,7 @@ gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
             tmp.row(!dir) = (param ? 1 : -1) * fpts; // normal !
             fpts.swap(tmp);
         }
+        */
 
         // Interpolate dirichlet boundary
         typename gsBasis<T>::uPtr h = basis.boundaryBasis(bc.side());

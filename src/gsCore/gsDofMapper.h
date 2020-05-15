@@ -338,7 +338,8 @@ public:
     {
         GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
         return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs.back()
-	  - m_numElimDofs[c] + m_bshift;
+            //- m_numElimDofs[c]
+            + m_bshift;
     }
 
     /// Returns true iff all DoFs are considered as free
@@ -369,10 +370,9 @@ public:
                       "global_to_bindex(): dof "<<gl<<" is not on the boundary");
 
 	gl -= m_numFreeDofs.back() + m_shift;
-	const index_t c = std::distance(m_numElimDofs.begin(),
-        std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(),
-	gl)) -1;
-	return gl - m_numElimDofs[c] + m_bshift;
+	//const index_t c = std::distance(m_numElimDofs.begin(),
+    //    std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(),gl)) -1;
+	return gl + m_bshift; // - m_numElimDofs[c]
     }
 
     /// Returns true if global dof \a gl is not eliminated.
