@@ -117,7 +117,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
 
             for ( int i=0; i < parDim; ++i)
             {
-                if ( i==dir )
+                if ( i==com )
                 {
                     b[0] = ( basis.component(i).support() ) (0, param);
                     rr.push_back(b);
@@ -142,30 +142,20 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
                 fpts = it->function()->piece(it->patch()).eval(  gmap.piece(it->patch()).eval(  gsPointGrid<T>( rr ) )  );
             }
 
-            if ( fpts.rows() != u.dim() )
-            {
-                // assume scalar
-                tmp.resize(u.dim(), fpts.cols());
-                tmp.setZero();
-                tmp.row(!dir) = (param ? 1 : -1) * fpts; // normal !
-                fpts.swap(tmp);
-            }
-
             // Interpolate dirichlet boundary
             typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
             typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
             const gsMatrix<T> & dVals =  geo->coefs();
-
-            gsDebugVar(fpts);
 
             // Save corresponding boundary dofs
             gsDebugVar(boundary.size());
             for (index_t l=0; l!= boundary.size(); ++l)
             {
                 const int ii = u.mapper().bindex( boundary.at(l) , k, com );
-                fixedDofs(ii,r) = dVals.at(l);
-                gsDebugVar(fixedDofs(ii,r));
+                fixedDofs.at(ii) = dVals.at(l);
             }
+            gsDebugVar(fixedDofs);
+
         }
     }
 }

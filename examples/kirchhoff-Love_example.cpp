@@ -1655,7 +1655,7 @@ int main(int argc, char *argv[])
         bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, 0 ); // unknown 0 - x
         bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, 1 ); // unknown 1 - y
         bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, 2 ); // unknown 2 - z
-        bc.addCondition(boundary::east, condition_type::dirichlet, &displ, 0, false, 1 ); // unknown 0 - x
+        bc.addCondition(boundary::east, condition_type::dirichlet, &displ, 0, false, 2 ); // unknown 0 - x
 
         // Surface forces
         tmp.setZero();
