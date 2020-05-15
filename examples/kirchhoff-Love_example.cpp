@@ -2036,6 +2036,7 @@ int main(int argc, char *argv[])
     {
         // // extract deformed geometry
         u_sol.extract(cc, k);
+        gsDebugVar(cc);
         mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
     }
 

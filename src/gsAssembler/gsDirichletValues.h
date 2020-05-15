@@ -104,6 +104,11 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
 
             // Get the side information
             int dir = it->side().direction( );
+            gsDebugVar(dir);
+            gsDebugVar(com);
+            gsDebugVar(r);
+
+
             index_t param = (it->side().parameter() ? 1 : 0);
 
             // Compute grid of points on the face ("face anchors")
@@ -142,8 +147,6 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
                 // assume scalar
                 tmp.resize(u.dim(), fpts.cols());
                 tmp.setZero();
-                gsDebugVar(!dir);
-                gsDebugVar(dir);
                 tmp.row(!dir) = (param ? 1 : -1) * fpts; // normal !
                 fpts.swap(tmp);
             }
@@ -161,7 +164,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             {
                 const int ii = u.mapper().bindex( boundary.at(l) , k, com );
                 fixedDofs(ii,r) = dVals.at(l);
-                gsDebugVar(dVals.at(l));
+                gsDebugVar(fixedDofs(ii,r));
             }
         }
     }
