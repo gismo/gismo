@@ -82,30 +82,28 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
     if (md.dim.first + 1 == md.dim.second) // surface case GeoDim == 3
     {
         const gsMatrix<T> Jk = md.jacobian(k);
-        gsMatrix<T> blo = Jk.block(0, 0, 2, 2);
-        int m_orientation = blo.determinant() >= 0 ? 1 : -1;
-        gsInfo << "Orientation: " << m_orientation << "\n";
-        gsInfo << "sideOrientation: " << sideOrientation(s) << "\n";
-
-        T sgn = sideOrientation(s) * m_orientation ; // TODO: fix me
-        if(m_orientation == -1 && (s.index() == 3 || s.index() == 4))
-            sgn = -sgn;
-
         const int dir = s.direction();
+        std::vector<index_t> sign{-1, 1, 1, -1};
 
         result.resize(md.dim.second);
 
-
-
         // fixme: generalize to nD
 
-        Eigen::Vector3d signJk = sgn * Jk.col(!dir);
+        // Computing the tangent vector to the boundary
+        Eigen::Vector3d JkTg = Jk.col(!dir);
+        Eigen::Vector3d bdyTan = sign[s.index() -1 ] * JkTg.normalized();
 
+        // Computing the normal vector to the tangent plane along the boundary curve
+        Eigen::Vector3d t1 = Jk.col(0);
+        Eigen::Vector3d t2 = Jk.col(1);
+        Eigen::Vector3d normal = t1.cross(t2);
+        normal = normal.normalized();
 
-        normal(md, k, result);
-        Eigen::Vector3d normalizedRes = result.normalized();
+//        normal(md, k, result);
+//        result = bdyTan.cross(result.normalized());
 
-        result = signJk.cross(normalizedRes);
+        result = bdyTan.cross(normal); //The normal vector to the boudnary (result) is given in a general reference frame, is not
+                                      // related to the parmetrization of the surface
 
         /*
           gsDebugVar(result.transpose()); // result 1
