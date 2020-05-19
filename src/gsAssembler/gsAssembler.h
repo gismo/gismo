@@ -244,11 +244,25 @@ void transformDeriv2Hgrad(const gsMapData<T> & md,
 
     // allgrads
     const index_t numGrads = funcGrad.rows() / ParDim;
-
+//    gsInfo << "Num grads: " << numGrads << "\n";
+//    gsInfo << "Dimension func sec dir: " << funcSecDir.dim() << "\n";
+//    gsInfo << "Func sec dir: " << funcSecDir << "\n";
     result.resize(numGrads, fisSecDirSize);
 
-    gsMatrix<T> JMT = md.jacobian(k).cramerInverse();  // m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
+    gsMatrix<T> JMT;
+
+    if(ParDim == GeoDim)
+    JMT = md.jacobian(k).cramerInverse();  // m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
+
+    else
+    if(ParDim + 1 == GeoDim)
+        JMT = md.jacobian(k).completeOrthogonalDecomposition().pseudoInverse();  // m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
+
     typename gsMatrix<T>::Tr JM1 = JMT.transpose();           // m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim);
+
+
+//    gsInfo << "Jacobian matrix: " << md.jacobian(k) << "\n";
+    gsInfo << "Inverse Jacobian matrix: " << JMT << "\n";
 
     // First part: J^-T H(u) J^-1
     gsMatrix<T> parFuncHessian;
@@ -256,6 +270,10 @@ void transformDeriv2Hgrad(const gsMapData<T> & md,
     {
         secDerToHessian<T>(funcSecDir.block(i * parSecDirSize, k, parSecDirSize, 1), parFuncHessian, ParDim);
         hessianToSecDer<T>(JM1 * parFuncHessian * JMT, result.row(i), GeoDim);
+
+//        gsInfo << "Parametric Hessian: " << parFuncHessian << "\n";
+        gsInfo << "Result: " << result << "\n";
+
     }
 
     // Second part: sum_i[  J^-T H(G_i) J^-1 ( e_i^T J^-T grad(u) ) ]

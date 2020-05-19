@@ -114,20 +114,15 @@ public:
             // Compute physical laplacian at k as a 1 x numActive matrix
             transformLaplaceHgrad(md, k, basisGrads, basis2ndDerivs, physBasisLaplace);
 
-            gsInfo << "First bilinear form: " << physBasisLaplace.transpose() * physBasisLaplace << "\n";
+//            gsInfo << "First bilinear form: " << physBasisLaplace.transpose() * physBasisLaplace << "\n";
 
-            const gsMatrix<T> F = md.jacobian(k); // Jacobian
-            const gsMatrix<T> G = F.transpose() * F; // First fundamental form
-            const gsMatrix<T> G_inv = G.inverse(); // Inverse of the first fundamental form
-            const real_t g = sqrt(G.determinant()); // Determinant of the first fundamental form
+//            const gsMatrix<T> F = md.jacobian(k); // Jacobian
+//            const gsMatrix<T> G = F.transpose() * F; // First fundamental form
+//            const gsMatrix<T> G_inv = G.inverse(); // Inverse of the first fundamental form
+//            const real_t g = sqrt(G.determinant()); // Determinant of the first fundamental form
+//
+//            const gsMatrix<T> first = g * G_inv * basisGrads.col(k);
 
-            const gsMatrix<T> first = g * G_inv * basisGrads.col(k);
-
-//             Each function or operator is computed in the parameter space
-//             ( \Nabla(g G_inv \Nabla u ) , \Nabla(g G_inv \Nabla v ) )
-            transformLaplaceHgrad(md, k, first, basis2ndDerivs, physBasisLaplace);
-
-            gsInfo << "Second bilinear form: " << physBasisLaplace.transpose() * physBasisLaplace << "\n";
 
             localMat.noalias() += weight * (physBasisLaplace.transpose() * physBasisLaplace);
 
