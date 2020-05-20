@@ -75,6 +75,7 @@ public:
                          const gsGeometry<T>    & geo,
                          gsMatrix<T>            & quNodes)
     {
+        mp = geo;
         md.points = quNodes;
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the elements
@@ -105,6 +106,12 @@ public:
         gsMatrix<T> & basisVals  = basisData[0];
         gsMatrix<T> & basisGrads = basisData[1];
         gsMatrix<T> & basis2ndDerivs = basisData[2];
+        const index_t numGrads = basisGrads.rows() / md.dim.first;
+
+        gsInfo << "Grad dim: " << basisGrads.dim() << "\n";
+        gsInfo << "Sec der dim: " << basis2ndDerivs.dim() << "\n";
+        gsInfo << "Num grads: " << numGrads << "\n";
+
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
@@ -114,15 +121,20 @@ public:
             // Compute physical laplacian at k as a 1 x numActive matrix
             transformLaplaceHgrad(md, k, basisGrads, basis2ndDerivs, physBasisLaplace);
 
-//            gsInfo << "First bilinear form: " << physBasisLaplace.transpose() * physBasisLaplace << "\n";
+            if(md.dim.first + 1 == md.dim.second)
+            {
+                const gsMatrix<T> F = md.jacobian(k); // Jacobian
+                const gsMatrix<T> G = F.transpose() * F; // First fundamental form
+                const gsMatrix<T> G_inv = G.inverse(); // Inverse of the first fundamental form
+                const real_t g = sqrt(G.determinant()); // Determinant of the first fundamental form
 
-//            const gsMatrix<T> F = md.jacobian(k); // Jacobian
-//            const gsMatrix<T> G = F.transpose() * F; // First fundamental form
-//            const gsMatrix<T> G_inv = G.inverse(); // Inverse of the first fundamental form
-//            const real_t g = sqrt(G.determinant()); // Determinant of the first fundamental form
-//
+                for (index_t i = 0; i < numGrads; ++i)
+                {
+//                    basisGrads.block(i * md.dim.first, 0, md.dim.first, 0);
+                    gsInfo << "grad k: " << basisGrads.block(i * md.dim.first, k, md.dim.first, 1) << "\n";
+                }
 //            const gsMatrix<T> first = g * G_inv * basisGrads.col(k);
-
+            }
 
             localMat.noalias() += weight * (physBasisLaplace.transpose() * physBasisLaplace);
 
@@ -186,7 +198,9 @@ protected:
 
 protected:
     // Basis values
+    gsMultiPatch<> mp;
     std::vector<gsMatrix<T> > basisData;
+    std::vector<gsMatrix<T> > basisDataSurf;
     gsMatrix<T>        physBasisLaplace;
     gsMatrix<unsigned> actives;
     index_t numActive;
