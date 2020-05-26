@@ -56,6 +56,7 @@ public:
 
         // Set Geometry evaluation flags
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
+
     }
 
     void initialize(const gsBasis<T> & basis,
@@ -75,9 +76,8 @@ public:
                          const gsGeometry<T>    & geo,
                          gsMatrix<T>            & quNodes)
     {
-        geoMapDeriv1 = geo.deriv(md.points);
-        geoMapDeriv2 = geo.deriv2(md.points);
         md.points = quNodes;
+
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the elements
         basis.active_into(md.points.col(0), actives);
@@ -92,6 +92,67 @@ public:
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geo.computeMap(md);
 
+        if(md.dim.first +1 == md.dim.second)
+        {
+            gsMatrix<T> geoMapDeriv1 = geo.deriv(md.points); // First derivative of the geometric mapping with respect to the parameter coordinates
+            gsMatrix<T> geoMapDeriv2 = geo.deriv2(md.points); // Second derivative of the geometric mapping with respect to the parameter coordinates
+
+            // Inverse of the First fundamental form
+            gsMatrix<T> G11_inv = ( geoMapDeriv1.row(1).cwiseProduct(geoMapDeriv1.row(1)) +
+                                    geoMapDeriv1.row(3).cwiseProduct(geoMapDeriv1.row(3)) +
+                                    geoMapDeriv1.row(5).cwiseProduct(geoMapDeriv1.row(5)));
+
+            gsMatrix<T> G12_inv = - ( geoMapDeriv1.row(0).cwiseProduct(geoMapDeriv1.row(1)) +
+                                      geoMapDeriv1.row(2).cwiseProduct(geoMapDeriv1.row(3)) +
+                                      geoMapDeriv1.row(4).cwiseProduct(geoMapDeriv1.row(5)));
+
+
+            gsMatrix<T> G21_inv = - ( geoMapDeriv1.row(0).cwiseProduct(geoMapDeriv1.row(1)) +
+                                      geoMapDeriv1.row(2).cwiseProduct(geoMapDeriv1.row(3)) +
+                                      geoMapDeriv1.row(4).cwiseProduct(geoMapDeriv1.row(5)));
+
+            gsMatrix<T> G22_inv = ( geoMapDeriv1.row(0).cwiseProduct(geoMapDeriv1.row(0)) +
+                                    geoMapDeriv1.row(2).cwiseProduct(geoMapDeriv1.row(2)) +
+                                    geoMapDeriv1.row(4).cwiseProduct(geoMapDeriv1.row(4)));
+
+
+            // Derivative of the inverse of the first fundamental form
+            gsMatrix<T> DuG11_inv = 2 * (geoMapDeriv2.row(2) + geoMapDeriv2.row(5) + geoMapDeriv2.row(8));
+
+            gsMatrix<T> DuG12_inv = - ( geoMapDeriv2.row(0).cwiseProduct(geoMapDeriv1.row(1)) +
+                                        geoMapDeriv2.row(2).cwiseProduct(geoMapDeriv1.row(0)) +
+                                        geoMapDeriv2.row(3).cwiseProduct(geoMapDeriv1.row(3)) +
+                                        geoMapDeriv2.row(5).cwiseProduct(geoMapDeriv1.row(2)) +
+                                        geoMapDeriv2.row(6).cwiseProduct(geoMapDeriv1.row(5)) +
+                                        geoMapDeriv2.row(8).cwiseProduct(geoMapDeriv1.row(4)) );
+
+            gsMatrix<T> DvG21_inv = - ( geoMapDeriv2.row(2).cwiseProduct(geoMapDeriv1.row(1)) +
+                                        geoMapDeriv2.row(1).cwiseProduct(geoMapDeriv1.row(0)) +
+                                        geoMapDeriv2.row(5).cwiseProduct(geoMapDeriv1.row(3)) +
+                                        geoMapDeriv2.row(4).cwiseProduct(geoMapDeriv1.row(2)) +
+                                        geoMapDeriv2.row(8).cwiseProduct(geoMapDeriv1.row(5)) +
+                                        geoMapDeriv2.row(7).cwiseProduct(geoMapDeriv1.row(4)) );
+
+            gsMatrix<T> DvG22_inv = 2 * (geoMapDeriv2.row(2) + geoMapDeriv2.row(5) + geoMapDeriv2.row(8));
+
+            gsMatrix<T> & basisGrads = basisData[1];
+            gsMatrix<T> & basis2ndDerivs = basisData[2];
+
+            surfParametricLaplace.resize(numActive, md.points.cols());
+
+            for(index_t i = 0; i < numActive - 1; i++)
+            {
+                surfParametricLaplace.row(i) = DuG11_inv.cwiseProduct(basisGrads.row(i * 2)) +
+                                               G11_inv.cwiseProduct(basis2ndDerivs.row(i * 3)) +
+                                               DuG12_inv.cwiseProduct(basisGrads.row(i * 2 + 1)) +
+                                               G12_inv.cwiseProduct(basis2ndDerivs.row(i * 3 + 2)) +
+                                               DvG21_inv.cwiseProduct(basisGrads.row(i * 2)) +
+                                               G21_inv.cwiseProduct(basis2ndDerivs.row(i * 3 + 2)) +
+                                               DvG22_inv.cwiseProduct(basisGrads.row(i *2 + 1)) +
+                                               G22_inv.cwiseProduct(basis2ndDerivs.row(i * 2 + 1));
+            }
+
+        }
         // Evaluate right-hand side at the geometry points
         rhs_ptr->eval_into(md.values[0], rhsVals); // Dim: 1 X NumPts
 
@@ -108,58 +169,29 @@ public:
         gsMatrix<T> & basisGrads = basisData[1];
         gsMatrix<T> & basis2ndDerivs = basisData[2];
 
-
-
-//        const index_t numGrads = basisGrads.rows() / md.dim.first;
-//        physBasisLaplace.resize(numGrads, 1);
-//        gsInfo << "Num grads: " << numGrads << "\n";
-
-
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply weight by the geometry measure
             const T weight = quWeights[k] * md.measure(k);
 
             // Compute physical laplacian at k as a 1 x numActive matrix
-            if(md.dim.first + 1 == md.dim.second)
+            if(md.dim.first == md.dim.second)
             {
-            transformLaplaceHgrad(md, k, basisGrads, basis2ndDerivs, physBasisLaplace);
+                transformLaplaceHgrad(md, k, basisGrads, basis2ndDerivs, physBasisLaplace);
+
+                localMat.noalias() += weight * (physBasisLaplace.transpose() * physBasisLaplace);
+                localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
+
             }
             else
             if(md.dim.first + 1 == md.dim.second)
             {
-                gsMatrix<T> DuG11_inv = 2 * (geoMapDeriv2.row(2) + geoMapDeriv2.row(5) + geoMapDeriv2.row(8));
-
-                gsMatrix<T> DuG12_inv = - ( geoMapDeriv2.row(0).cwiseProduct(geoMapDeriv1.row(1)) +
-                                            geoMapDeriv2.row(2).cwiseProduct(geoMapDeriv1.row(0)) +
-                                            geoMapDeriv2.row(3).cwiseProduct(geoMapDeriv1.row(3)) +
-                                            geoMapDeriv2.row(5).cwiseProduct(geoMapDeriv1.row(2)) +
-                                            geoMapDeriv2.row(6).cwiseProduct(geoMapDeriv1.row(5)) +
-                                            geoMapDeriv2.row(8).cwiseProduct(geoMapDeriv1.row(4)) );
-
-                gsMatrix<T> DuG21_inv = - ( geoMapDeriv2.row(2).cwiseProduct(geoMapDeriv1.row(1)) +
-                                            geoMapDeriv2.row(1).cwiseProduct(geoMapDeriv1.row(0)) +
-                                            geoMapDeriv2.row(5).cwiseProduct(geoMapDeriv1.row(3)) +
-                                            geoMapDeriv2.row(4).cwiseProduct(geoMapDeriv1.row(2)) +
-                                            geoMapDeriv2.row(8).cwiseProduct(geoMapDeriv1.row(5)) +
-                                            geoMapDeriv2.row(7).cwiseProduct(geoMapDeriv1.row(4)) );
-
-                gsMatrix<T> DuG22_inv = 2 * (geoMapDeriv2.row(2) + geoMapDeriv2.row(5) + geoMapDeriv2.row(8));
-
+                localMat.noalias() += weight * (surfParametricLaplace.col(k) * surfParametricLaplace.col(k).transpose());
+                localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
             }
 
-//            gsInfo << "Deriv: " << md.deriv(md.points) << "\n";
-
-
-            gsInfo << "physBasisLaplace: " << physBasisLaplace.dim() << "\n";
-
-            localMat.noalias() += weight * (physBasisLaplace.transpose() * physBasisLaplace);
-            gsInfo << "localMat: " << localMat.dim() << "\n";
-
-            localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
-
-
         }
+
     }
 
     inline void localToGlobal(const int patchIndex,
@@ -216,10 +248,11 @@ protected:
 
 protected:
     // Basis values
-    gsMatrix<T> geoMapDeriv1;
-    gsMatrix<T> geoMapDeriv2;
+
     std::vector<gsMatrix<T> > basisData;
     gsMatrix<T>        physBasisLaplace;
+    gsMatrix<T>        surfParametricLaplace;
+
     gsMatrix<unsigned> actives;
     index_t numActive;
 
