@@ -57,7 +57,7 @@ public:
             gsMatrix<> ones(1, md.points.cols());
             ones.setOnes();
 
-            gsMatrix<> lam = ones / 1000000000;
+            gsMatrix<> lam = ones / 100000000;
 
             gsMatrix<> DuFR(FR.targetDim(), md.points.cols());
             gsMatrix<> DvFR(FR.targetDim(), md.points.cols());
@@ -244,7 +244,7 @@ public:
 
         gsMatrix<> alpha_R_L = alpha_R.cwiseProduct(alpha_L);
 
-        gsMatrix<> lamB = ones / 1000000000;
+        gsMatrix<> lamB = ones / 100000000;
 
 
         basisDataBeta.setZero(16, md.points.cols());

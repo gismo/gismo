@@ -13,25 +13,25 @@
 
 #pragma once
 
-#include <gsG1Basis/gsApproxGluingData.h>
-#include <gsG1Basis/gsG1ASGluingData.h>
-#include <gsG1Basis/gsVisitorG1BasisVertex.h>
+#include <gsG1Basis/ApproxG1Basis/gsApproxGluingData.h>
+
+#include <gsG1Basis/ApproxG1Basis/gsVisitorApproxG1BasisVertex.h>
 #include <gsG1Basis/gsG1OptionList.h>
 
 namespace gismo
 {
 template<class T, class bhVisitor = gsVisitorG1BasisVertex<T>>
-class gsG1BasisVertex : public gsAssembler<T>
+class gsApproxG1BasisVertex : public gsAssembler<T>
 {
 public:
     typedef gsAssembler<T> Base;
 
 public:
-    gsG1BasisVertex(gsMultiPatch<> mp, // Single Patch
+    gsApproxG1BasisVertex(gsMultiPatch<> mp, // Single Patch
                   gsMultiBasis<> basis, // Single Basis
                   std::vector<bool> isBoundary,
-                  real_t sigma,
-                  gsG1OptionList & g1OptionList)
+                          real_t sigma,
+                          gsG1OptionList & g1OptionList)
         : m_mp(mp), m_basis(basis), m_isBoundary(isBoundary), m_sigma(sigma), m_g1OptionList(g1OptionList)
     {
 
@@ -202,7 +202,7 @@ protected:
 
 
 template <class T, class bhVisitor>
-void gsG1BasisVertex<T,bhVisitor>::constructSolution(gsMultiPatch<T> & result)
+void gsApproxG1BasisVertex<T, bhVisitor>::constructSolution(gsMultiPatch<T> & result)
 {
 
     result.clear();
@@ -239,7 +239,7 @@ void gsG1BasisVertex<T,bhVisitor>::constructSolution(gsMultiPatch<T> & result)
 }
 
 template <class T, class bhVisitor>
-void gsG1BasisVertex<T,bhVisitor>::refresh(index_t kindOfVertex)
+void gsApproxG1BasisVertex<T, bhVisitor>::refresh(index_t kindOfVertex)
 {
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper map(m_basis.basis(0));
@@ -300,7 +300,7 @@ void gsG1BasisVertex<T,bhVisitor>::refresh(index_t kindOfVertex)
 } // refresh()
 
 template <class T, class bhVisitor>
-void gsG1BasisVertex<T,bhVisitor>::assemble()
+void gsApproxG1BasisVertex<T, bhVisitor>::assemble()
 {
     // Reserve sparse system
     const index_t nz = gsAssemblerOptions::numColNz(m_basis[0],2,1,0.333333);
@@ -325,7 +325,7 @@ void gsG1BasisVertex<T,bhVisitor>::assemble()
 } // assemble()
 
 template <class T, class bhVisitor>
-void gsG1BasisVertex<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex)
+void gsApproxG1BasisVertex<T, bhVisitor>::apply(bhVisitor & visitor, int patchIndex)
 {
 #pragma omp parallel
     {
@@ -380,7 +380,7 @@ void gsG1BasisVertex<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex)
 } // apply
 
 template <class T, class bhVisitor>
-void gsG1BasisVertex<T,bhVisitor>::solve()
+void gsApproxG1BasisVertex<T, bhVisitor>::solve()
 {
     gsSparseSolver<real_t>::CGDiagonal solver;
 

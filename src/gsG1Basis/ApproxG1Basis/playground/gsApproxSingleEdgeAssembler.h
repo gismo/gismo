@@ -16,8 +16,8 @@
 
 # include <gsAssembler/gsAssembler.h>
 
-# include <gsG1Basis/gsVisitorApproxSingleEdge.h>
-# include <gsG1Basis/gsApproxGluingData.h>
+# include <gsG1Basis/ApproxG1Basis/playground/gsVisitorApproxSingleEdge.h>
+# include <gsG1Basis/ApproxG1Basis/gsApproxGluingData.h>
 
 
 namespace gismo

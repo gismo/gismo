@@ -19,6 +19,17 @@ int main(int argc, char *argv[])
 {
     index_t numRefine = 4;
 
+    bool save     = false;
+    index_t numURef   = 3;
+    index_t iter      = 2;
+    index_t deg_x     = 2;
+    index_t deg_y     = 2;
+    real_t lambda = 1e-07;
+    real_t threshold = 1e-02;
+    real_t tolerance = 1e-02;
+    index_t extension = 2;
+    real_t refPercent = 0.1;
+
     // Options with default values
     gsCmdLine cmd("Example for solving the biharmonic problem.");
     cmd.addInt("k", "refine", "Number of refinement steps", numRefine);

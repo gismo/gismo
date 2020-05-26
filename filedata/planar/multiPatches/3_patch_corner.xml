@@ -1,4 +1,4 @@
- <?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
 This is a simple example of two squares, parametrized by linear 
 B-splines meeting along one side
@@ -15,10 +15,10 @@ B-splines meeting along one side
       </Basis>
     </Basis>
     <coefs geoDim="2">
-     -0.5 -0.3
-     -0.2 0.0
-     -0.5 1.1
-     0.0 1.0
+     -0.3 0.0 
+     0.2 0.0
+     -0.2 1.0 
+     0.1 0.8
     </coefs>
   </Geometry>
 
@@ -33,17 +33,35 @@ B-splines meeting along one side
       </Basis>
     </Basis>
     <coefs geoDim="2">
-     -0.2 0.0
-     0.5 -0.3
-     0.0 1.0
-     0.5 1.3 
+     0.2 0.0 
+     0.1 0.8 
+     0.5 0.8 
+     0.2 1.3
     </coefs>
   </Geometry>
+  
+  <!-- Patch 2 -->
+  <Geometry type="TensorBSpline2" id="3">
+    <Basis type="TensorBSplineBasis2">
+      <Basis type="BSplineBasis" index="0">
+	<KnotVector degree="1">0 0 1 1 </KnotVector>
+      </Basis>
+      <Basis type="BSplineBasis" index="1">
+	<KnotVector degree="1">0 0 1 1 </KnotVector>
+      </Basis>
+    </Basis>
+    <coefs geoDim="2">
+     0.2 0.0 
+     0.5 0.8
+     0.7 -0.1 
+     0.8 0.8
+    </coefs>
+  </Geometry>3
 
   <!-- A multipatch section describes the configuration
        of the two patches above -->
   <MultiPatch parDim="2" id="0">
-    <patches type="id_range">1 2</patches>
+    <patches type="id_range">1 3</patches>
   </MultiPatch>
 
 </xml>

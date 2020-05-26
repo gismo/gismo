@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gsG1Basis/gsVisitorGlobalApproxGD.h>
+#include <gsG1Basis/ApproxG1Basis/gsVisitorGlobalApproxGD.h>
 
 namespace gismo
 {

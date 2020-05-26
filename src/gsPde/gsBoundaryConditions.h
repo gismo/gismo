@@ -30,7 +30,8 @@ struct condition_type
         unknownType = -1,
         dirichlet = 0, ///< Dirichlet type
         neumann   = 1, ///< Neumann type
-        robin     = 2  ///< Robin type
+        robin     = 2,  ///< Robin type
+        laplace   = 3 ///< Laplace type (for biharmonic)
         //mixed BD means: there are both dirichlet and neumann sides
         //robin: a linear combination of value and derivative
         //cauchy: there are 2 conditions (value+deriv) defined on the same side
@@ -56,6 +57,11 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
     case condition_type::robin:
     {
         os<< "Robin";
+        break;
+    }
+    case condition_type::laplace:
+    {
+        os<< "Laplace";
         break;
     }
     default:
@@ -90,6 +96,7 @@ struct boundary_condition
         if (m_label == "Dirichlet") m_type = condition_type::dirichlet;
         else if (m_label == "Neumann")   m_type = condition_type::neumann;
         else if (m_label == "Robin")     m_type = condition_type::robin;
+        else if (m_label == "Laplace")     m_type = condition_type::laplace;
         else m_type = condition_type::unknownType;
     }
 
@@ -117,6 +124,11 @@ struct boundary_condition
         case condition_type::robin:
         {
             m_label = "Robin";
+            break;
+        }
+        case condition_type::laplace:
+        {
+            m_label = "Laplace";
             break;
         }
         default:
@@ -289,6 +301,9 @@ public:
     /// Return a reference to the Robin sides
     const bcContainer & robinSides()     const {return m_bc["Robin"]; }
 
+    /// Return a reference to the Robin sides
+    const bcContainer & laplaceSides()     const {return m_bc["Laplace"]; }
+
     const cornerContainer & cornerValues() const  {return corner_values;  }
 
     /// Extracts the BC, comming from a certain component.
@@ -381,16 +396,6 @@ public:
     const_iterator robinEnd() const
     { return m_bc["Robin"].end(); }
 
-    /// Get an iterator to the beginning of the corner values
-    /// \return an iterator to the beginning of the corner values
-    const_citerator cornerBegin() const
-    { return corner_values.begin(); }
-
-    /// Get an iterator to the end of corner values
-    /// \return an iterator to the end of the corner values
-    const_citerator cornerEnd() const
-    { return corner_values.end(); }
-
     /// Get an iterator to the beginning of the Robin sides
     /// \return an iterator to the beginning of the Robin sides
     iterator robinBegin()
@@ -400,6 +405,36 @@ public:
     /// \return an iterator to the end of the Robin sides
     iterator robinEnd()
     { return m_bc["Robin"].end(); }
+
+    /// Get a const-iterator to the beginning of the Laplace sides
+    /// \return an iterator to the beginning of the Laplace sides
+    const_iterator laplaceBegin() const
+    { return m_bc["Laplace"].begin(); }
+
+    /// Get a const-iterator to the end of the Laplace sides
+    /// \return an iterator to the end of the Laplace sides
+    const_iterator laplaceEnd() const
+    { return m_bc["Laplace"].end(); }
+
+    /// Get an iterator to the beginning of the Laplace sides
+    /// \return an iterator to the beginning of the Laplace sides
+    iterator laplaceBegin()
+    { return m_bc["Laplace"].begin(); }
+
+    /// Get an iterator to the end of the Laplace sides
+    /// \return an iterator to the end of the Laplace sides
+    iterator laplaceEnd()
+    { return m_bc["Laplace"].end(); }
+
+    /// Get an iterator to the beginning of the corner values
+    /// \return an iterator to the beginning of the corner values
+    const_citerator cornerBegin() const
+    { return corner_values.begin(); }
+
+    /// Get an iterator to the end of corner values
+    /// \return an iterator to the end of the corner values
+    const_citerator cornerEnd() const
+    { return corner_values.end(); }
 
     /// Get an iterator to the beginning of the corner values
     /// \return an iterator to the beginning of the corner values
@@ -472,6 +507,9 @@ public:
             break;
         case condition_type::robin :
             m_bc["Robin"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
+            break;
+        case condition_type::laplace :
+            m_bc["Laplace"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
             break;
         default:
             gsWarn<<"gsBoundaryConditions: Unknown boundary condition.\n";
@@ -562,6 +600,12 @@ public:
         cur = std::find_if(beg,end,psRef);
         if (cur != end)
             return &(*cur);
+        beg = laplaceBegin();
+        end = laplaceEnd();
+        cur = std::find_if(beg,end,psRef);
+
+        if (cur != end)
+            return &(*cur);
 
         return NULL;
     }
@@ -591,6 +635,12 @@ public:
 
         beg = robinBegin();
         end = robinEnd();
+        for(cur=beg; cur!=end; cur++)
+            if(cur->ps == ps)
+                result.push_back(*cur);
+
+        beg = laplaceBegin();
+        end = laplaceEnd();
         for(cur=beg; cur!=end; cur++)
             if(cur->ps == ps)
                 result.push_back(*cur);

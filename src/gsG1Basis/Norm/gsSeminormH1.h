@@ -11,7 +11,7 @@
     Author(s): A. Mantzaflaris & P. Weinmueller
 */
 
-#include<gsG1Basis/gsVisitorSeminormH1.h>
+#include<gsG1Basis/Norm/gsVisitorSeminormH1.h>
 
 
 #pragma once

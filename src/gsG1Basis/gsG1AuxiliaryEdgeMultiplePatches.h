@@ -13,17 +13,22 @@
 
 #pragma once
 
-#include <gismo.h>
-#include <gsCore/gsMultiPatch.h>
-#include <gsG1Basis/gsG1AuxiliaryPatch.h>
-# include <gsG1Basis/gsApproxG1BasisEdge.h>
+# include <gismo.h>
+
+# include <gsG1Basis/gsG1AuxiliaryPatch.h>
+# include <gsG1Basis/gsG1OptionList.h>
+
+// Andrea
 # include <gsG1Basis/gsG1ASBasisEdge.h>
 # include <gsG1Basis/gsG1ASGluingData.h>
-# include <gsG1Basis/gsG1OptionList.h>
-# include <gsG1Basis/gsApproxBetaSAssembler.h>
-# include <gsG1Basis/gsApproxGluingData2.h>
-# include <gsG1Basis/gsApproxGluingData3.h>
-# include <gsG1Basis/gsApproxGluingData4.h>
+
+// Pascal
+# include <gsG1Basis/ApproxG1Basis/gsApproxG1BasisEdge.h>
+
+//# include <gsG1Basis/ApproxG1Basis/gsApproxBetaSAssembler.h>
+//# include <gsG1Basis/gsApproxGluingData2.h>
+//# include <gsG1Basis/gsApproxGluingData3.h>
+//# include <gsG1Basis/gsApproxGluingData4.h>
 
 namespace gismo
 {
@@ -37,12 +42,14 @@ public:
     // Constructor for one patch and it's boundary
     gsG1AuxiliaryEdgeMultiplePatches(const gsMultiPatch<> & sp, const size_t patchInd){
         auxGeom.push_back(gsG1AuxiliaryPatch(sp.patch(patchInd), patchInd));
+
     }
 
     // Constructor for two patches along the common interface
     gsG1AuxiliaryEdgeMultiplePatches(const gsMultiPatch<> & mp, const size_t firstPatch, const size_t secondPatch){
         auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(firstPatch), firstPatch));
         auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(secondPatch), secondPatch));
+
     }
 
 
@@ -108,6 +115,7 @@ public:
             default:
                 break;
         }
+
        return this->computeAuxTopology();
     }
 
@@ -160,8 +168,8 @@ public:
     }
 
 
-    void computeG1InterfaceBasis(gsG1OptionList g1OptionList){
-
+    void computeG1InterfaceBasis(gsG1OptionList g1OptionList)
+    {
         gsMultiPatch<> mp_init;
         mp_init.addPatch(auxGeom[0].getPatch());// Right -> 0 ====> v along the interface
         mp_init.addPatch(auxGeom[1].getPatch()); // Left -> 1 ====> u along the interface
@@ -169,7 +177,6 @@ public:
         gsMultiPatch<> test_mp(this->reparametrizeG1Interface()); // auxGeom contains now the reparametrized geometry
         gsMultiBasis<> test_mb(test_mp);
         gsMultiPatch<> g1Basis_0, g1Basis_1;
-
 
         if(g1OptionList.getInt("user") == user::pascal)
         {
@@ -198,6 +205,18 @@ public:
             g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
             g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
 
+/*
+            index_t p_size = 8;
+            gsMatrix<> points(1, p_size), pointsV(2, p_size);
+            pointsV.setZero();
+
+            gsVector<> vec;
+            vec.setLinSpaced(p_size,0,1);
+            points = vec.transpose();
+*/
+            //gsInfo << "Alpha : " << g1BasisEdge_0.get_alpha().eval(points) << "\n";
+            //gsInfo << "Beta : " << g1BasisEdge_0.get_beta().coefs().transpose() << "\n";
+
             //gsWriteParaview(g1BasisEdge_0.get_alpha(),"alpha_R_formula",2000);
             //gsWriteParaview(g1BasisEdge_1.get_alpha(),"alpha_L_formula",2000);
             //gsWriteParaview(g1BasisEdge_0.get_beta(),"beta_R_formula",2000);
@@ -214,13 +233,10 @@ public:
             g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
             g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
         }
-
 //      Patch 0 -> Right
         auxGeom[0].parametrizeBasisBack(g1Basis_0);
-
 //      Patch 1 -> Left
         auxGeom[1].parametrizeBasisBack(g1Basis_1);
-
     }
 
 
@@ -265,7 +281,9 @@ public:
         auxGeom[0].parametrizeBasisBack(g1Basis_edge);
     }
 
-    gsG1AuxiliaryPatch & getSinglePatch(const unsigned i){
+
+    gsG1AuxiliaryPatch & getSinglePatch(const unsigned i)
+    {
         return auxGeom[i];
     }
 

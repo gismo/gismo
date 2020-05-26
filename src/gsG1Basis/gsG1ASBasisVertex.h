@@ -73,8 +73,43 @@ public:
     void setG1BasisVertex(gsMultiPatch<T> & result, index_t kinfOfVertex)
     {
         // SIMPLIFY THE m_geo
-        m_geo = m_basis_g1; // INTEGRATION AREA
+        std::vector<gsKnotVector<T>> knots;
+        for (index_t dir = 0; dir < m_mp.parDim(); dir++) // For the TWO directions
+        {
+            gsMatrix<unsigned> act;
+            gsMatrix<T> ab = m_basis_plus[dir].support(2);
 
+            gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(dir)); // u
+            index_t degree = temp_basis_first.maxDegree();
+
+            gsMatrix<T> ab_temp = ab;
+            for (index_t pp = 0; pp < degree; pp++)
+            {
+                for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+                {
+                    gsMatrix<T> xy = temp_basis_first.support(i);
+                    if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                        ab_temp(0, 0) = xy(0, 0);
+                    if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                        ab_temp(0, 1) = xy(0, 1);
+                }
+                ab = ab_temp;
+            }
+
+            gsKnotVector<T> kv(ab.at(0), ab.at(1), 0, 1);
+            for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
+                if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
+                    kv.insert(temp_basis_first.knot(i), 1);
+
+            knots.push_back(kv);
+
+        }
+        gsTensorBSplineBasis<2, T> bsp_geo_local(knots[0], knots[1]);
+
+        if (m_g1OptionList.getInt("g1BasisVertex") == g1BasisVertex::local)
+            m_geo = bsp_geo_local; // Basis for Integration
+        else
+            m_geo = m_basis_g1;
         refresh();
         assemble();
         solve();
@@ -160,6 +195,44 @@ void gsG1ASBasisVertex<T,bhVisitor>::refresh()
     gsDofMapper map(m_basis.basis(0));
 
     // SET THE DOFS
+    if (m_g1OptionList.getInt("g1BasisVertex") == g1BasisVertex::local)
+    {
+        for (index_t dir = 0; dir < m_mp.parDim(); dir++) // For the TWO directions
+        {
+            gsMatrix<unsigned> act;
+            gsMatrix<T> ab = m_basis_plus[dir].support(2);
+
+            gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(dir)); // u
+            index_t degree = temp_basis_first.maxDegree();
+
+            gsMatrix<T> ab_temp = ab;
+            for (index_t pp = 0; pp < degree; pp++)
+            {
+                for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
+                {
+                    gsMatrix<T> xy = temp_basis_first.support(i);
+                    if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
+                        ab_temp(0, 0) = xy(0, 0);
+                    if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
+                        ab_temp(0, 1) = xy(0, 1);
+                }
+                ab = ab_temp;
+            }
+
+
+            for (index_t i = 0; i < m_basis.basis(0).component(dir).size();
+                 i++) // only the first two u/v-columns are Dofs (0/1)
+            {
+                gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
+                if ((xy(0, 0) < ab(0, 0) - 1e-10) || (xy(0, 1) > ab(0, 1) + 1e-10)) // only subsets
+                    //if ( (xy(0, 1) < ab(0, 0)+1e-10) || (xy(0, 0) > ab(0, 1)-1e-10) ) // all non-empty set
+                {
+                    act = m_basis.basis(0).boundaryOffset(dir == 0 ? 1 : 3, i); // WEST
+                    map.markBoundary(0, act); // Patch 0
+                }
+            }
+        }
+    }
 
 
     map.finalize();

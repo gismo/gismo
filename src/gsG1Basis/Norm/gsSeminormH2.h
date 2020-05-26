@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include <gsG1Basis/gsNorm.h>
-# include <gsG1Basis/gsVisitorSeminormH2.h>
+#include <gsG1Basis/Norm/gsNorm.h>
+# include <gsG1Basis/Norm/gsVisitorSeminormH2.h>
 
 
 namespace gismo

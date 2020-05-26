@@ -14,10 +14,9 @@
 
 #pragma once
 
-#include <gsG1Basis/gsNorm.h>
-#include <gsG1Basis/gsVisitorNormL2.h>
+#include <gsG1Basis/Norm/gsNorm.h>
+#include <gsG1Basis/Norm/gsVisitorNormL2.h>
 
-# include<chrono>
 
 namespace gismo
 {
