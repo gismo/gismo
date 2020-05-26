@@ -8,7 +8,7 @@
 #include <gsCore/gsMultiPatch.h>
 #include <gsG1Basis/gsG1AuxiliaryPatch.h>
 
-# include <gsG1Basis/gsG1BasisVertex.h>
+# include <gsG1Basis/ApproxG1Basis/gsApproxG1BasisVertex.h>
 # include <gsG1Basis/gsG1ASBasisVertex.h>
 
 # include <gsG1Basis/gsG1OptionList.h>
@@ -313,7 +313,9 @@ public:
     {
         gsMultiBasis<> bas(auxGeom[np].getPatch());
         gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
+        //size_t dimU = temp_L.size(0);
         size_t dimU = temp_L.size(0);
+
 
         gsMatrix<> SmallMatrix;
         SmallMatrix.setZero( dimU, 6);
@@ -404,6 +406,7 @@ public:
             basisV.col(basisV.cols() - 1) = vertBas.col(count);
 
             Eigen::FullPivLU<gsMatrix<>> ker(basisV);
+            ker.setThreshold(m_g1OptionList.getReal("threshold"));
             if (ker.dimensionOfKernel() != 0)
             {
                 basisV = basisV.block(0, 0, basisV.rows(), basisV.cols() - 1);
@@ -421,6 +424,7 @@ public:
             basisV.col(basisV.cols()-1) = smallK.col(i);
 
             Eigen::FullPivLU<gsMatrix<>> ker(basisV);
+            ker.setThreshold(m_g1OptionList.getReal("threshold"));
             if(ker.dimensionOfKernel() != 0)
             {
                 basisV = basisV.block(0, 0, basisV.rows(), basisV.cols()-1);
@@ -465,14 +469,14 @@ public:
 
         }
 
-//        gsInfo << "Big kernel:\n";
-//        gsInfo << bigKernel << "\n ";
-//
-//        gsInfo << "Small kernel:\n";
-//        gsInfo << smallKernel << "\n ";
-//
-//        gsInfo << "Basis:\n";
-//        gsInfo << basisVect << "\n";
+        gsInfo << "Big kernel:\n";
+        gsInfo << bigKernel << "\n ";
+
+        gsInfo << "Small kernel:\n";
+        gsInfo << smallKernel << "\n ";
+
+        gsInfo << "Basis:\n";
+        gsInfo << basisVect << "\n";
 
         return std::make_pair(basisVect, numberPerType);
     }
@@ -624,6 +628,8 @@ public:
 
     void computeG1InternalVertexBasis(gsG1OptionList g1OptionList)
     {
+        m_g1OptionList = g1OptionList;
+
         m_zero = g1OptionList.getReal("zero");
 
         this->reparametrizeG1Vertex();
@@ -667,13 +673,18 @@ public:
                 {
                     gsMultiPatch<> g1Basis;
 
-                    gsG1BasisVertex<real_t> g1BasisVertex_0
+                    gsApproxG1BasisVertex<real_t> g1BasisVertex_0
                         (auxGeom[i].getPatch(), auxGeom[i].getPatch().basis(), isBdy[i], sigma, g1OptionList);
 
                     g1BasisVertex_0.setG1BasisVertex(g1Basis, this->kindOfVertex());
 
                     g1BasisVector.push_back(g1Basis);
                     auxGeom[i].setG1Basis(g1Basis);
+
+//                    if (this->kindOfVertex() == 1)
+//                    {
+//                        gsInfo << "coefs: " << g1Basis.patch(5).coefs().reshape(auxGeom[i].getPatch().basis().component(0).size(), auxGeom[i].getPatch().basis().component(1).size()) << "\n";
+//                    }
                 }
             }
         }
@@ -714,12 +725,15 @@ public:
                 smallMatrix.block(row_smallMatrix, 0, tmp.second.rows(), 6) = tmp.second;
             }
 
-            //gsInfo << smallMatrix << "\n";
-
             Eigen::FullPivLU<gsMatrix<>> BigLU(bigMatrix);
             Eigen::FullPivLU<gsMatrix<>> SmallLU(smallMatrix);
             SmallLU.setThreshold(g1OptionList.getReal("threshold"));
-            dim_kernel = SmallLU.dimensionOfKernel();
+            BigLU.setThreshold(g1OptionList.getReal("threshold"));
+
+            if (!g1OptionList.getSwitch("neumann"))
+                dim_kernel = SmallLU.dimensionOfKernel();
+            else
+                dim_kernel = BigLU.dimensionOfKernel();
 
             vertexBoundaryBasis = selectVertexBoundaryBasisFunction(BigLU.kernel(), BigLU.dimensionOfKernel(), SmallLU.kernel(), SmallLU.dimensionOfKernel());
 
@@ -729,9 +743,15 @@ public:
             Eigen::FullPivLU<gsMatrix<>> BigLU(computeBigSystemMatrix(0));
             Eigen::FullPivLU<gsMatrix<>> SmallLU(computeSmallSystemMatrix(0));
             SmallLU.setThreshold(g1OptionList.getReal("threshold"));
-            dim_kernel = SmallLU.dimensionOfKernel();
+            BigLU.setThreshold(g1OptionList.getReal("threshold"));
+
+            if (!g1OptionList.getSwitch("neumann"))
+                dim_kernel = SmallLU.dimensionOfKernel();
+            else
+                dim_kernel = BigLU.dimensionOfKernel();
 
             vertexBoundaryBasis = selectVertexBoundaryBasisFunction(BigLU.kernel(), BigLU.dimensionOfKernel(), SmallLU.kernel(), SmallLU.dimensionOfKernel());
+
         }
 
 
@@ -776,6 +796,8 @@ protected:
     size_t dim_kernel;
 
     real_t m_zero;
+
+    gsG1OptionList m_g1OptionList;
 
 
 };

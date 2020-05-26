@@ -1,4 +1,4 @@
-/** @file gsVisitorNeumannBiharmonic.h
+/** @file gsVisitorLaplaceBoundaryBiharmonic.h
 
     @brief Neumann conditions visitor for 4th order problems.
 
@@ -26,15 +26,15 @@ namespace gismo
  * Where v is the test function and \f[ \Gamma \f] is the boundary.
  */
 template <class T>
-class gsVisitorNeumannBiharmonic
+class gsVisitorLaplaceBoundaryBiharmonic
 {
 public:
 
-    gsVisitorNeumannBiharmonic(const gsPde<T> & , const boundary_condition<T> & s)
+    gsVisitorLaplaceBoundaryBiharmonic(const gsPde<T> & , const boundary_condition<T> & s)
     : neudata_ptr( s.function().get() ), side(s.side())
     { }
 
-    gsVisitorNeumannBiharmonic(const gsFunction<T> & neudata, boxSide s) :
+    gsVisitorLaplaceBoundaryBiharmonic(const gsFunction<T> & neudata, boxSide s) :
     neudata_ptr(&neudata), side(s)
     { }
 
@@ -66,7 +66,7 @@ public:
                               side.direction() );
 
         // Set Geometry evaluation flags
-        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_OUTER_NORMAL;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
     }
 
     // Evaluate on element.
@@ -146,7 +146,6 @@ public:
 
 protected:
 
-    
     // Neumann function
     const gsFunction<T> * neudata_ptr;
     boxSide side;

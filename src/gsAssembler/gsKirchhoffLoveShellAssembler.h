@@ -18,7 +18,7 @@
 
 #include <gsAssembler/gsVisitorKirchhoffLoveShell.h>
 #include <gsAssembler/gsVisitorNeumann.h>
-#include <gsAssembler/gsVisitorNeumannBiharmonic.h>
+#include <gsAssembler/gsVisitorLaplaceBoundaryBiharmonic.h>
 #include <gsAssembler/gsVisitorNitscheBiharmonic.h>
 
 namespace gismo

@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "gsG1Basis/gsApproxGluingData.h"
+#include "gsG1Basis/ApproxG1Basis/gsApproxGluingData.h"
 
 namespace gismo
 {

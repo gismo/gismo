@@ -13,8 +13,8 @@
 
 #pragma once
 
-# include <gsG1Basis/gsGlobalGDAssembler.h>
-# include <gsG1Basis/gsLocalGDAssembler.h>
+# include <gsG1Basis/ApproxG1Basis/gsGlobalGDAssembler.h>
+# include <gsG1Basis/ApproxG1Basis/gsLocalGDAssembler.h>
 
 # include <gsG1Basis/gsGluingData.h>
 

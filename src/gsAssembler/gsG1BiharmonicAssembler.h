@@ -15,10 +15,8 @@
 
 #include <gsAssembler/gsVisitorBiharmonic.h>
 #include <gsAssembler/gsVisitorNeumann.h>
-#include <gsAssembler/gsVisitorNeumannBiharmonic.h>
+#include <gsAssembler/gsVisitorLaplaceBoundaryBiharmonic.h>
 //#include <gsAssembler/gsVisitorNitscheBiharmonic.h>
-
-# include <gsG1Basis/gsG1Mapper_pascal.h>
 
 # include <gsG1Basis/gsG1System.h>
 
@@ -76,6 +74,8 @@ public:
                            gsMultiPatch<T>& result, int unk = 0);
 
     void computeDirichletDofsL2Proj(gsG1System<real_t> &  g1System);
+    void computeDirichletAndNeumannDofsL2Proj(gsG1System<real_t> &  g1System);
+
 
     void plotParaview(gsField<> &solField_interior, std::vector<gsMultiPatch<T>> &result);
 
@@ -231,12 +231,12 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
     Base::template push<bhVisitor>();
 
     // Neuman conditions of first kind
-    //Base::template push<gsVisitorNeumann<T> >(
-    //    m_ppde.bcFirstKind().neumannSides() );
+    Base::template push<gsVisitorNeumann<T> >(
+        m_ppde.bcFirstKind().neumannSides() );
 
-    // Neuman conditions of second kind
-    Base::template push<gsVisitorNeumannBiharmonic<T> >(m_ppde.bcSecondKind().neumannSides());
-
+    // Laplace conditions of second kind
+    Base::template push<gsVisitorLaplaceBoundaryBiharmonic<T> >(
+        m_ppde.bcSecondKind().laplaceSides() );
 
     if (m_options.getInt("InterfaceStrategy") == iFace::dg)
         gsWarn << "DG option ignored.\n";
@@ -355,8 +355,8 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
             multiPatch_Vertex_1.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
         }
 
-//        if (patchIdx == 0 && sideIdx == 3)
-//            gsWriteParaview(multiPatch_Vertex_0.patch(0),"test",5000);
+        if (patchIdx == 0 && sideIdx == 3)
+            gsWriteParaview(multiPatch_Vertex_1.patch(0),"test",5000);
 
         const gsBasis<T> & basis = m_bases[unk_].basis(patchIdx); // Assume that the basis is the same for all the basis functions
 
@@ -495,5 +495,218 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
 
 }
 
+template <class T, class bhVisitor>
+void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(gsG1System<real_t> &  g1System)
+{
+    gsDofMapper mapper(m_bases[0]);
+
+    gsMatrix<unsigned> act;
+    for (typename gsBoundaryConditions<T>::bcContainer::const_iterator it
+        = m_ppde.bcFirstKind().dirichletSides().begin(); it!= m_ppde.bcFirstKind().dirichletSides().end(); ++it)
+    {
+        act = m_bases[0].basis(it->patch()).boundaryOffset(it->side().index(), 0); // First
+        mapper.markBoundary(it->patch(), act);
+    }
+
+    for (typename gsBoundaryConditions<T>::bcContainer::const_iterator it
+        = m_ppde.bcSecondKind().neumannSides().begin(); it!= m_ppde.bcSecondKind().neumannSides().end(); ++it)
+    {
+        act = m_bases[0].basis(it->patch()).boundaryOffset(it->side().index(), 1); // Second
+        mapper.markBoundary(it->patch(), act);
+
+    }
+
+    // TODO FIX HERE
+    for (size_t p = 0; p < m_ppde.domain().nPatches(); p++)
+    {
+        for (index_t i = 0; i < 10; i++)
+        {
+            act = m_bases[0].basis(p).boundaryOffset(3, i); // Second
+            mapper.markBoundary(p, act);
+            act = m_bases[0].basis(p).boundaryOffset(4, i); // Second
+            mapper.markBoundary(p, act);
+        }
+    }
+
+    mapper.finalize();
+
+    m_g1_ddof.resize( g1System.boundary_size(), m_system.unkSize(0)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
+
+    // Set up matrix, right-hand-side and solution vector/matrix for
+    // the L2-projection
+    gsSparseEntries<T> projMatEntries;
+    gsMatrix<T>        globProjRhs;
+    globProjRhs.setZero( mapper.boundarySize(), m_system.unkSize(0)*m_system.rhs().cols() );
+
+    // Temporaries
+    gsVector<T> quWeights;
+
+    gsMatrix<T> rhsVals, rhsVals2;
+    gsMatrix<unsigned> globIdxAct;
+    gsMatrix<T> basisVals, basisGrads, physBasisGrad;
+
+    gsVector<T> unormal;
+
+    real_t lambda = 0.01;
+
+    gsMapData<T> md(NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM);
+
+
+    typename gsBoundaryConditions<T>::const_iterator
+        iter_dir = m_pde_ptr->bc().dirichletBegin();
+
+    for ( typename gsBoundaryConditions<T>::const_iterator
+              iter = m_ppde.bcSecondKind().neumannBegin();
+          iter != m_ppde.bcSecondKind().neumannEnd(); ++iter )
+    {
+
+        GISMO_ASSERT(iter->function()->targetDim() == m_system.unkSize(0)*m_system.rhs().cols(),
+                     "Given Dirichlet boundary function does not match problem dimension."
+                         <<iter->function()->targetDim()<<" != "<<m_system.unkSize(0)<<"\n");
+
+        const int unk = iter->unknown();
+
+        const int patchIdx   = iter->patch();
+        const gsBasis<T> & basis = (m_bases[unk])[patchIdx];
+
+        GISMO_ASSERT(iter_dir->patch() == patchIdx && iter_dir->side().index() == iter->side().index(),
+                     "Given Dirichlet boundary edge does not match the neumann edge."
+                         <<iter_dir->patch()<<" != "<<patchIdx<<" and "
+                         <<iter_dir->side().index()<<" != "<<iter->side().index()<<"\n");
+
+        const gsGeometry<T> & patch = m_pde_ptr->patches()[patchIdx];
+
+        // Set up quadrature to degree+1 Gauss points per direction,
+        // all lying on iter->side() except from the direction which
+        // is NOT along the element
+
+        gsGaussRule<T> bdQuRule(basis, 1.0, 1, iter->side().direction());
+
+        // Create the iterator along the given part boundary.
+        typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(iter->side());
+
+        for(; bdryIter->good(); bdryIter->next() )
+        {
+            bdQuRule.mapTo( bdryIter->lowerCorner(), bdryIter->upperCorner(),
+                            md.points, quWeights);
+
+            //geoEval->evaluateAt( md.points );
+            patch.computeMap(md);
+
+            // the values of the boundary condition are stored
+            // to rhsVals. Here, "rhs" refers to the right-hand-side
+            // of the L2-projection, not of the PDE.
+            rhsVals = iter_dir->function()->eval( m_pde_ptr->domain()[patchIdx].eval( md.points ) );
+            rhsVals2 = iter->function()->eval( m_pde_ptr->domain()[patchIdx].eval( md.points ) );
+
+            basis.eval_into( md.points, basisVals);
+            basis.deriv_into( md.points, basisGrads);
+
+            // Indices involved here:
+            // --- Local index:
+            // Index of the basis function/DOF on the patch.
+            // Does not take into account any boundary or interface conditions.
+            // --- Global Index:
+            // Each DOF has a unique global index that runs over all patches.
+            // This global index includes a re-ordering such that all eliminated
+            // DOFs come at the end.
+            // The global index also takes care of glued interface, i.e., corresponding
+            // DOFs on different patches will have the same global index, if they are
+            // glued together.
+            // --- Boundary Index (actually, it's a "Dirichlet Boundary Index"):
+            // The eliminated DOFs, which come last in the global indexing,
+            // have their own numbering starting from zero.
+
+            // Get the global indices (second line) of the local
+            // active basis (first line) functions/DOFs:
+            basis.active_into(md.points.col(0), globIdxAct );
+            mapper.localToGlobal( globIdxAct, patchIdx, globIdxAct);
+
+            // Out of the active functions/DOFs on this element, collect all those
+            // which correspond to a boundary DOF.
+            // This is checked by calling mapper.is_boundary_index( global Index )
+
+            // eltBdryFcts stores the row in basisVals/globIdxAct, i.e.,
+            // something like a "element-wise index"
+            std::vector<index_t> eltBdryFcts;
+            eltBdryFcts.reserve(mapper.boundarySize());
+            for( index_t i=0; i < globIdxAct.rows(); i++)
+                if( mapper.is_boundary_index(globIdxAct(i,0)) )
+                    eltBdryFcts.push_back( i );
+
+            // Do the actual assembly:
+            for( index_t k=0; k < md.points.cols(); k++ )
+            {
+                // Compute the outer normal vector on the side
+                outerNormal(md, k, iter->side(), unormal);
+
+                // Multiply quadrature weight by the measure of normal
+                //const T weight_k = quWeights[k] * md.measure(k);
+                const T weight_k = quWeights[k] * unormal.norm();
+
+                unormal.normalize();
+
+                transformGradients(md, k, basisGrads, physBasisGrad);
+
+                // Only run through the active boundary functions on the element:
+                for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
+                {
+                    // Each active boundary function/DOF in eltBdryFcts has...
+                    // ...the above-mentioned "element-wise index"
+                    const unsigned i = eltBdryFcts[i0];
+                    // ...the boundary index.
+                    const unsigned ii = mapper.global_to_bindex( globIdxAct( i ));
+
+                    for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
+                    {
+                        const unsigned j = eltBdryFcts[j0];
+                        const unsigned jj = mapper.global_to_bindex( globIdxAct( j ));
+
+                        // Use the "element-wise index" to get the needed
+                        // function value.
+                        // Use the boundary index to put the value in the proper
+                        // place in the global projection matrix.
+                        projMatEntries.add(ii, jj, weight_k * (basisVals(i,k) * basisVals(j,k) + lambda *
+                            ((physBasisGrad.col(i).transpose() * unormal)(0,0) * (physBasisGrad.col(j).transpose() * unormal )(0,0))));
+                    } // for j
+
+                    globProjRhs.row(ii) += weight_k * ( basisVals(i,k) * rhsVals.col(k).transpose() + lambda *
+                        ( physBasisGrad.col(i).transpose() * unormal ) * (rhsVals2.col(k).transpose() * unormal));
+
+                } // for i
+            } // for k
+        } // bdryIter
+        iter_dir++;
+    } // boundaryConditions-Iterator
+
+    gsSparseMatrix<T> globProjMat( mapper.boundarySize(), mapper.boundarySize() );
+    globProjMat.setFrom( projMatEntries );
+    globProjMat.makeCompressed();
+
+    gsSparseMatrix<T> B_0_sparse;
+    B_0_sparse.resize(g1System.boundary_size(), mapper.boundarySize());
+    B_0_sparse.setZero();
+
+    for(size_t i = 0; i < g1System.boundary_size(); i++)
+    {
+        for (size_t patchIdx = 0; patchIdx < m_ppde.domain().nPatches(); patchIdx++)
+            for(index_t j = 0; j < (m_bases[0])[patchIdx].size(); j++)
+            {
+               if (mapper.is_boundary(j,patchIdx))
+               {
+                   index_t jj = mapper.bindex(j,patchIdx);
+                   B_0_sparse.insert(i,jj) = (g1System.getSingleBoundaryBasis(i,patchIdx))(0,j);
+               }
+            }
+    }
+    B_0_sparse.makeCompressed();
+
+    // Solve the linear system:
+    // The position in the solution vector already corresponds to the
+    // numbering by the boundary index. Hence, we can simply take them
+    // for the values of the eliminated Dirichlet DOFs.
+    typename gsSparseSolver<T>::CGDiagonal solver;
+    m_g1_ddof = solver.compute( B_0_sparse * globProjMat * B_0_sparse.transpose() ).solve ( B_0_sparse * globProjRhs );
+}
 
 } // namespace gismo

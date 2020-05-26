@@ -13,17 +13,22 @@
 
 #pragma once
 
-#include <gismo.h>
-#include <gsCore/gsMultiPatch.h>
-#include <gsG1Basis/gsG1AuxiliaryPatch.h>
-# include <gsG1Basis/gsApproxG1BasisEdge.h>
+# include <gismo.h>
+
+# include <gsG1Basis/gsG1AuxiliaryPatch.h>
+# include <gsG1Basis/gsG1OptionList.h>
+
+// Andrea
 # include <gsG1Basis/gsG1ASBasisEdge.h>
 # include <gsG1Basis/gsG1ASGluingData.h>
-# include <gsG1Basis/gsG1OptionList.h>
-# include <gsG1Basis/gsApproxBetaSAssembler.h>
-# include <gsG1Basis/gsApproxGluingData2.h>
-# include <gsG1Basis/gsApproxGluingData3.h>
-# include <gsG1Basis/gsApproxGluingData4.h>
+
+// Pascal
+# include <gsG1Basis/ApproxG1Basis/gsApproxG1BasisEdge.h>
+
+//# include <gsG1Basis/ApproxG1Basis/gsApproxBetaSAssembler.h>
+//# include <gsG1Basis/gsApproxGluingData2.h>
+//# include <gsG1Basis/gsApproxGluingData3.h>
+//# include <gsG1Basis/gsApproxGluingData4.h>
 
 namespace gismo
 {
@@ -199,6 +204,18 @@ public:
 
             g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
             g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
+
+/*
+            index_t p_size = 8;
+            gsMatrix<> points(1, p_size), pointsV(2, p_size);
+            pointsV.setZero();
+
+            gsVector<> vec;
+            vec.setLinSpaced(p_size,0,1);
+            points = vec.transpose();
+*/
+            //gsInfo << "Alpha : " << g1BasisEdge_0.get_alpha().eval(points) << "\n";
+            //gsInfo << "Beta : " << g1BasisEdge_0.get_beta().coefs().transpose() << "\n";
 
             //gsWriteParaview(g1BasisEdge_0.get_alpha(),"alpha_R_formula",2000);
             //gsWriteParaview(g1BasisEdge_1.get_alpha(),"alpha_L_formula",2000);

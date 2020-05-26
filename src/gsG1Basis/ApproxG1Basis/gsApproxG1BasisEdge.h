@@ -13,14 +13,13 @@
 
 #pragma once
 
-#include <gsG1Basis/gsGluingData.h>
-#include <gsG1Basis/gsApproxGluingData.h>
-#include <gsG1Basis/gsG1ASGluingData.h>
-#include <gsG1Basis/gsVisitorApproxG1BasisEdge.h>
-# include <gsAssembler/gsAssembler.h>
+
+#include <gsG1Basis/ApproxG1Basis/gsApproxGluingData.h>
+#include <gsG1Basis/ApproxG1Basis/gsVisitorApproxG1BasisEdge.h>
+
 # include <gsG1Basis/gsG1OptionList.h>
 
-# include <gsG1Basis/gsApproxSingleEdgeAssembler.h>
+//# include <gsG1Basis/gsApproxSingleEdgeAssembler.h>
 
 namespace gismo
 {
@@ -163,31 +162,6 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
         index_t degree = temp_basis_first.maxDegree();
 
         gsMatrix<T> ab = m_basis_plus.support(bfID);
-/*
-        if (!m_isBoundary)
-        {
-            gsMatrix<T> ab_temp = ab;
-            for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
-            {
-                gsMatrix<T> xy = temp_basis_first.support(i);
-                if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
-                    ab_temp(0,0) = xy(0,0);
-                if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
-                    ab_temp(0,1) = xy(0,1);
-            }
-            ab = ab_temp;
-
-            for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
-            {
-                gsMatrix<T> xy = temp_basis_first.support(i);
-                if ( (xy(0,0) < ab(0,0)) && (xy(0,1) > ab(0,0)))
-                    ab_temp(0,0) = xy(0,0);
-                if ( (xy(0,0) < ab(0,1)) && (xy(0,1) > ab(0,1)))
-                    ab_temp(0,1) = xy(0,1);
-            }
-            ab = ab_temp;
-        }
-*/
 
         gsMatrix<T> ab_temp = ab;
         for (index_t pp = 0; pp < degree; pp++)
@@ -453,6 +427,11 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                         map.markBoundary(0, act); // Patch 0
                     }
                 }
+
+                // set first row to zero
+                act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, 0); // WEST
+                map.markBoundary(0, act); // Patch 0
+
             }
 /*        }
         else if (!m_isBoundary)

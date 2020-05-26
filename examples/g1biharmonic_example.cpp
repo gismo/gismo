@@ -13,17 +13,19 @@
 # include <omp.h>
 
 # include <gismo.h>
+
 # include <gsG1Basis/gsG1AuxiliaryEdgeMultiplePatches.h>
 # include <gsG1Basis/gsG1AuxiliaryVertexMultiplePatches.h>
 # include <gsAssembler/gsG1BiharmonicAssembler.h>
+
 # include <gsG1Basis/gsG1System.h>
 
 # include <gsG1Basis/gsG1OptionList.h>
 
-# include <gsG1Basis/gsNormL2.h>
-# include <gsG1Basis/gsSeminormH1.h>
-# include <gsG1Basis/gsSeminormH2.h>
-# include <gsG1Basis/gsH1NormWithJump.h>
+# include <gsG1Basis/Norm/gsNormL2.h>
+# include <gsG1Basis/Norm/gsSeminormH1.h>
+# include <gsG1Basis/Norm/gsSeminormH2.h>
+# include <gsG1Basis/Norm/gsH1NormWithJump.h>
 
 #include <iostream>
 
@@ -46,7 +48,16 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>sol2der ("-64*pi^2*(cos(8*pi*y) - 1)*cos(8*pi*x)",
                              "-64*pi^2*(cos(8*pi*x) - 1)*cos(8*pi*y)",
                              " 64*pi^2*sin(8*pi*x)*sin(8*pi*y)", 2);
-*/
+
+    gsFunctionExpr<> source  ("0",2);
+    gsFunctionExpr<> laplace ("0",2);
+    gsFunctionExpr<> solVal("1",2);
+    gsFunctionExpr<>sol1der ("0",
+                             "0",2);
+    gsFunctionExpr<>sol2der ("0",
+                             "0",
+                             " 0", 2);
+    */
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
@@ -105,6 +116,20 @@ int main(int argc, char *argv[])
             string_geo = "planar/multiPatches/3_patch_curved.xml";
             numDegree = 0;
             break;
+        case 13:
+            string_geo = "planar/multiPatches/6_square_diagonal.xml";
+            numDegree = 2;
+            break;
+        case 14:
+            string_geo = "planar/multiPatches/4_patch_linear.xml";
+            numDegree = 2;
+            break;
+        case 15:
+            string_geo = "planar/multiPatches/3_patch_corner.xml";
+            numDegree = 2;
+            break;
+
+
         default:
             gsInfo << "No geometry is used! \n";
             break;
@@ -157,7 +182,7 @@ int main(int argc, char *argv[])
         omp_set_num_threads( g1OptionList.getInt("threads"));
         omp_set_nested(1);
 #endif
-        gsG1System<real_t> g1System(multiPatch, mb);
+        gsG1System<real_t> g1System(multiPatch, mb, g1OptionList.getSwitch("neumann"));
 
         // ########### EDGE FUNCTIONS ###########
         // Interface loop
@@ -268,7 +293,6 @@ int main(int argc, char *argv[])
                     }
                 }
                 g1System.insertVertex(singleBasisFunction,patchIndex,numVer,singleVertex.get_internalDofs(),i);
-
             }
             collection.save();
         }
@@ -278,14 +302,21 @@ int main(int argc, char *argv[])
         for (gsMultiPatch<>::const_biterator bit = multiPatch.bBegin(); bit != multiPatch.bEnd(); ++bit)
         {
             bcInfo.addCondition( *bit, condition_type::dirichlet, &solVal );
-            bcInfo2.addCondition(*bit, condition_type::neumann, &laplace );
+            if (!g1OptionList.getSwitch("neumann"))
+                bcInfo2.addCondition( *bit, condition_type::laplace, &laplace);
+            else
+                bcInfo2.addCondition(*bit, condition_type::neumann, &sol1der );
         }
 
         // BiharmonicAssembler
         gsInfo << "Computing Internal basis functions ... \n";
         gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
         g1BiharmonicAssembler.assemble();
-        g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System); // Compute boundary values (Type 1)
+        gsInfo << "Computing Boundary data ... \n";
+        if (!g1OptionList.getSwitch("neumann"))
+            g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System); // Compute boundary values with laplace
+        else
+            g1BiharmonicAssembler.computeDirichletAndNeumannDofsL2Proj(g1System); // Compute boundary values with neumann
 
         g1System.finalize(multiPatch,mb,g1BiharmonicAssembler.get_bValue());
 

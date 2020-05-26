@@ -400,7 +400,6 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
     m_ddof[unk_].resize( mapper.boundarySize(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
 
 
-
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
     gsSparseEntries<T> projMatEntries;

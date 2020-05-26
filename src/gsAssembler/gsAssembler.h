@@ -105,7 +105,6 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
 
         result = result.normalized().cross(sgn * Jk.block(0, !dir, md.dim.first, 1));
 
-
         gsInfo << "Outer normal here 2\n";
 
         /*

@@ -31,7 +31,6 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-
     gsG1OptionList g1OptionList;
     g1OptionList.initialize(argc, argv);
 
@@ -57,6 +56,15 @@ int main(int argc, char *argv[])
                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
 /*
+    gsFunctionExpr<> source  ("0",2);
+    gsFunctionExpr<> laplace ("0",2);
+    gsFunctionExpr<> solVal("1",2);
+    gsFunctionExpr<>sol1der ("0",
+                             "0",2);
+    gsFunctionExpr<>sol2der ("0",
+                             "0",
+                             " 0", 2);
+
     // Solution of Marios paper
     gsFunctionExpr<> source  ("-1*cos(x/2)*sin(y/2)",2);
     gsFunctionExpr<> laplace ("2*cos(x/2)*sin(y/2)",2);
@@ -138,7 +146,8 @@ int main(int argc, char *argv[])
         omp_set_num_threads( g1OptionList.getInt("threads"));
         omp_set_nested(1);
 #endif
-        gsG1System<real_t> g1System(multiPatch, mb, true);
+        gsG1System<real_t> g1System(multiPatch, mb,g1OptionList.getSwitch("neumann"),g1OptionList.getSwitch("twoPatch"));
+
 
         // ########### EDGE FUNCTIONS ###########
         // Interface loop
@@ -161,6 +170,62 @@ int main(int argc, char *argv[])
                 edgeSingleBF.addPatch(singleInt.getSinglePatch(0).getG1Basis().patch(i));
                 edgeSingleBF.addPatch(singleInt.getSinglePatch(1).getG1Basis().patch(i));
 
+                index_t m_r = g1OptionList.getInt("regularity"); // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
+
+                gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(multiPatch.basis(1).component(1)); // 0 -> v, 1 -> u
+                index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
+
+                // first,last,interior,mult_ends,mult_interior
+                gsKnotVector<real_t> kv_plus(0,1,0,m_p+1,m_p-1-m_r); // p,r+1 //-1 bc r+1
+                gsBSplineBasis<> basis_plus(kv_plus);
+/*
+                for (size_t ii = m_p+1; ii < basis_edge.knots().size() - (m_p+1); ii = ii+(m_p-m_r))
+                    basis_plus.insertKnot(basis_edge.knot(ii),m_p-1-m_r);
+
+                gsMatrix<> coefs_plus;
+                coefs_plus.setZero(basis_plus.size(),1);
+                coefs_plus.at(i) = 1;
+                gsGeometry<>::uPtr temp = basis_plus.makeGeometry(coefs_plus);
+
+
+                index_t p_size = 8;
+                gsMatrix<> points(1, p_size), pointsV(2, p_size);
+                pointsV.setZero();
+
+                gsVector<> vec;
+                vec.setLinSpaced(p_size,0,1);
+                points = vec.transpose();
+                pointsV.row(1) = vec.transpose();
+
+                gsInfo << "Plus : " << temp->eval(points) << "\n";
+
+
+                gsKnotVector<real_t> kv_minus(0,1,0,m_p+1-1,m_p-1-m_r); // p-1,r //-1 bc p-1
+                gsBSplineBasis<> basis_minus(kv_minus);
+
+                for (size_t i = m_p+1; i < basis_edge.knots().size() - (m_p+1); i = i+(m_p-m_r))
+                    basis_minus.insertKnot(basis_edge.knot(i),m_p-1-m_r);
+
+
+
+                coefs_plus.setZero(basis_minus.size(),1);
+                coefs_plus.at(i) = 1;
+                temp = basis_minus.makeGeometry(coefs_plus);
+
+                //gsInfo << "Minus : " << temp->eval(points) << "\n";
+
+
+                gsInfo << "Basis : " << singleInt.getSinglePatch(0).getG1Basis().patch(i).eval(pointsV) << "\n";
+
+                gsMatrix<> m = singleInt.getSinglePatch(0).getG1Basis().patch(i).coefs();
+                m = m.reshape(multiPatch.basis(0).component(0).size(), multiPatch.basis(0).component(1).size());
+                //gsMatrix<> alpha_coefs = m.block(1,0,1,multiPatch.basis(0).component(0).size());
+                //temp = basis_edge.makeGeometry(alpha_coefs.transpose());
+                //gsInfo << "basis alpha : " << temp->eval(points) << "\n";
+                gsInfo << "basis " << i << " : " << m.block(0,0,2,multiPatch.basis(0).component(0).size()) << "\n";
+                */
+
+
                 g1System.insertInterfaceEdge(edgeSingleBF,item,numInt,i);
 
                 if (g1OptionList.getSwitch("plot"))
@@ -176,7 +241,6 @@ int main(int argc, char *argv[])
                     gsWriteParaview(temp_field_1,fileName,5000);
                     collection.addTimestep(fileName,i,"0.vts");
                 }
-
             }
 
             collection.save();
@@ -212,7 +276,6 @@ int main(int argc, char *argv[])
                     gsWriteParaview(temp_field,fileName,5000);
                     collection.addTimestep(fileName,i,"0.vts");
                 }
-
             }
             collection.save();
         }
@@ -250,6 +313,7 @@ int main(int argc, char *argv[])
                             collection.addTimestep(fileName, i, "0.vts");
                         }
                     }
+
                     g1System.insertVertex(singleBasisFunction, patchIndex, numVer, singleVertex.get_internalDofs(), i);
 
                 }
@@ -261,7 +325,7 @@ int main(int argc, char *argv[])
         for (gsMultiPatch<>::const_biterator bit = multiPatch.bBegin(); bit != multiPatch.bEnd(); ++bit)
         {
             bcInfo.addCondition( *bit, condition_type::dirichlet, &solVal );
-            bcInfo2.addCondition(*bit, condition_type::neumann, &laplace );
+            bcInfo2.addCondition( *bit, condition_type::laplace, &laplace);
         }
 
         // BiharmonicAssembler
@@ -275,6 +339,7 @@ int main(int argc, char *argv[])
         gsInfo << "Solving system... \n";
         gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
         gsInfo << "Solving finished! \n";
+
 
         if (g1OptionList.getSwitch("plot"))
         {

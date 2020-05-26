@@ -20,9 +20,9 @@
 
 # include <gsG1Basis/gsG1OptionList.h>
 
-# include <gsG1Basis/gsNormL2.h>
-# include <gsG1Basis/gsSeminormH1.h>
-# include <gsG1Basis/gsSeminormH2.h>
+# include <gsG1Basis/Norm/gsNormL2.h>
+# include <gsG1Basis/Norm/gsSeminormH1.h>
+# include <gsG1Basis/Norm/gsSeminormH2.h>
 
 using namespace gismo;
 
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
         omp_set_nested(1);
 #endif
 
-        gsG1System<real_t> g1System(multiPatch, mb);
+        gsG1System<real_t> g1System(multiPatch, mb, g1OptionList.getSwitch("neumann"));
 
         // ########### EDGE FUNCTIONS ###########
         // Interface loop
@@ -275,7 +275,10 @@ int main(int argc, char *argv[])
         for (gsMultiPatch<>::const_biterator bit = multiPatch.bBegin(); bit != multiPatch.bEnd(); ++bit)
         {
             bcInfo.addCondition( *bit, condition_type::dirichlet, &solVal );
-            bcInfo2.addCondition( *bit, condition_type::neumann, &laplace );
+            if (!g1OptionList.getSwitch("neumann"))
+                bcInfo2.addCondition( *bit, condition_type::laplace, &laplace);
+            else
+                bcInfo2.addCondition(*bit, condition_type::neumann, &sol1der );
         }
 
 
@@ -283,7 +286,10 @@ int main(int argc, char *argv[])
         gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
         g1BiharmonicAssembler.assemble();
 
-        g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System); // Compute boundary values (Type 1)
+        if (!g1OptionList.getSwitch("neumann"))
+            g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System); // Compute boundary values with laplace
+        else
+            g1BiharmonicAssembler.computeDirichletAndNeumannDofsL2Proj(g1System); // Compute boundary values with neumann
 
         g1System.finalize(multiPatch,mb,g1BiharmonicAssembler.get_bValue());
 
