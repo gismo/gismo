@@ -541,7 +541,6 @@ gsMatrix<> gsG1System<T>::solve(gsSparseMatrix<real_t> K, gsMatrix<> f)
 
     gsVector<real_t> F = D_0_sparse * f - D_0_sparse * K * D_boundary_sparse.transpose() * m_g1;
 
-    gsInfo << "Vector F: " << f << "\n";
 
     gsSparseSolver<real_t>::CGDiagonal solver;
 //    gsSparseSolver<real_t>::BiCGSTABILUT solver;
