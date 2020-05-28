@@ -23,8 +23,8 @@ public:
     //Empty constructor will set the gluing data for the boundary edges
     gsG1ASGluingData()
     {   setGDEdge();
-        gsInfo << "Solution: " << sol << "\n";
-        gsInfo << "Solution Beta: " << solBeta << "\n";
+//        gsInfo << "Solution: " << sol << "\n";
+//        gsInfo << "Solution Beta: " << solBeta << "\n";
     }
 
 
@@ -41,8 +41,8 @@ public:
         assembleBeta();
         solveBeta();
 
-        gsInfo << "Solution: " << sol << "\n";
-        gsInfo << "Solution Beta: " << solBeta << "\n";
+//        gsInfo << "Solution: " << sol << "\n";
+//        gsInfo << "Solution Beta: " << solBeta << "\n";
 
 //        AScondition(mp);
     }
@@ -286,7 +286,7 @@ protected:
     {
         gsSparseSolver<>::CGDiagonal solver;
 
-        gsInfo << "Matrix Beta: " << mSysBeta.matrix() << "\n";
+//        gsInfo << "Matrix Beta: " << mSysBeta.matrix() << "\n";
 
         solver.compute(mSysBeta.matrix());
         solBeta = solver.solve(mSysBeta.rhs()); // My solution
@@ -342,7 +342,7 @@ protected:
         pointU.setZero();
         pointU.row(0) = points;
 
-        gsMatrix<> cond(FR.targetDim(), p_size);
+        gsMatrix<> cond(1, p_size);
 
         gsMatrix<> alpha_R = sol.row(0) * ( ones - points ) + sol.row(1) * points;
         gsMatrix<> alpha_L = sol.row(2) * ( ones - points ) + sol.row(3) * points;
@@ -365,12 +365,14 @@ protected:
 
             DvFL = FL.jacobian(pointU.col(i)).col(1);
 
-//            cond.col(i) = alpha_R.col(i).cwiseProduct(DvFL) + alpha_L.col(i).cwiseProduct(DuFR) + beta.col(i).cwiseProduct(DvFR) ;
+            cond.col(i) = alpha_R.col(i).cwiseProduct(DvFL) + alpha_L.col(i).cwiseProduct(DuFR) + beta.col(i).cwiseProduct(DvFR) ;
 
-            cond.col(i) = beta.col(i) - (alpha_R.col(i).cwiseProduct(beta_L.col(i)) + alpha_L.col(i).cwiseProduct(beta_R.col(i)));
+//            cond.col(i) = beta.col(i) - (alpha_R.col(i).cwiseProduct(beta_L.col(i)) + alpha_L.col(i).cwiseProduct(beta_R.col(i)));
 
+//            gsInfo << "cond dim: " << cond.dim() << "\n";
 
             gsInfo << "Condition col " << i << ": " << cond.col(i) << "\n";
+
 
         }
     }

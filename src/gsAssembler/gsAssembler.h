@@ -78,34 +78,29 @@ void normal(const gsMapData<T> & md, index_t k, gsVector<T> & result)
 template <class T>
 void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & result)
 {
-    //todo: fix and check me
-    int m_orientation = md.jacobian(k).determinant() >= 0 ? 1 : -1;
 
-    const T sgn = sideOrientation(s) * m_orientation; // TODO: fix me
-    const int dir = s.direction();
-
-    // assumes points u on boundary "s"
-    result.resize(md.dim.second);
     if (md.dim.first + 1 == md.dim.second) // surface case GeoDim == 3
     {
-        gsInfo << "Outer normal Surface case \n";
-
         const gsMatrix<T> Jk = md.jacobian(k);
+        const int dir = s.direction();
+        std::vector<index_t> sign{-1, 1, 1, -1};
+
+        result.resize(md.dim.second);
+
         // fixme: generalize to nD
-        normal(md, k, result);
-        gsInfo << "Result : " << result << "\n";
-        gsInfo << "Jacobian : " << Jk << "\n";
-        gsInfo << "Dir : " << dir << "\n";
-        gsInfo << "Not Dir : " << !dir << "\n";
 
-        gsInfo << "md.dim.first : " << md.dim.first << "\n";
-        gsInfo << "md.dim.second : " << md.dim.second << "\n";
+        // Computing the tangent vector to the boundary
+        Eigen::Vector3d JkTg = Jk.col(!dir);
+        Eigen::Vector3d bdyTan = sign[s.index() -1 ] * JkTg.normalized();
 
-        gsInfo << "Result Normalized: " << result.normalized() << "\n";
+        // Computing the normal vector to the tangent plane along the boundary curve
+        Eigen::Vector3d t1 = Jk.col(0);
+        Eigen::Vector3d t2 = Jk.col(1);
+        Eigen::Vector3d normal = t1.cross(t2);
+        normal = normal.normalized();
 
-        result = result.normalized().cross(sgn * Jk.block(0, !dir, md.dim.first, 1));
-
-        gsInfo << "Outer normal here 2\n";
+        result = bdyTan.cross(normal); //The normal vector to the boudnary (result) is given in a general reference frame, is not
+                                      // related to the parmetrization of the surface
 
         /*
           gsDebugVar(result.transpose()); // result 1
@@ -124,6 +119,12 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
     }
     else // planar case
     {
+        int m_orientation = md.jacobian(k).determinant() >= 0 ? 1 : -1;
+
+        const T sgn = sideOrientation(s) * m_orientation; // TODO: fix me
+        const int dir = s.direction();
+        result.resize(md.dim.second);
+
         GISMO_ASSERT(md.dim.first == md.dim.second, "Codim different than zero/one");
 
         if (1 == md.dim.second)
@@ -240,8 +241,8 @@ void transformDeriv2Hgrad(const gsMapData<T> & md,
 
     // allgrads
     const index_t numGrads = funcGrad.rows() / ParDim;
-
     result.resize(numGrads, fisSecDirSize);
+
 
     gsMatrix<T> JMT = md.jacobian(k).cramerInverse();  // m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
     typename gsMatrix<T>::Tr JM1 = JMT.transpose();           // m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim);
@@ -252,6 +253,7 @@ void transformDeriv2Hgrad(const gsMapData<T> & md,
     {
         secDerToHessian<T>(funcSecDir.block(i * parSecDirSize, k, parSecDirSize, 1), parFuncHessian, ParDim);
         hessianToSecDer<T>(JM1 * parFuncHessian * JMT, result.row(i), GeoDim);
+
     }
 
     // Second part: sum_i[  J^-T H(G_i) J^-1 ( e_i^T J^-T grad(u) ) ]
@@ -266,6 +268,7 @@ void transformDeriv2Hgrad(const gsMapData<T> & md,
     const gsAsConstMatrix<T> grads_k(funcGrad.col(k).data(), ParDim, numGrads);
     result.noalias() -= grads_k.transpose() * JMT * HGT;
     // 1 x d * d x d * d x d * d * s -> 1 x s
+
 }
 
 /** @brief The assembler class provides generic routines for volume
@@ -456,6 +459,7 @@ public: /* Element visitors */
         for (typename bcContainer::const_iterator it
              = BCs.begin(); it!= BCs.end(); ++it)
         {
+
             BElementVisitor visitor(*m_pde_ptr, *it);
             //Assemble (fill m_matrix and m_rhs) contribution from this BC
             apply(visitor, it->patch(), it->side());

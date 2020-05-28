@@ -113,7 +113,6 @@ public:
 
             // Compute physical laplacian at k as a 1 x numActive matrix
             transformLaplaceHgrad(md, k, basisGrads, basis2ndDerivs, physBasisLaplace);
-
             // (\Delta u, \Delta v)
             localMat.noalias() += weight * (physBasisLaplace.transpose() * physBasisLaplace);
 
