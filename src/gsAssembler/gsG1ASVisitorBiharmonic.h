@@ -97,18 +97,24 @@ public:
             gsMatrix<T> geoMapDeriv1 = geo.deriv(md.points); // First derivative of the geometric mapping with respect to the parameter coordinates
             gsMatrix<T> geoMapDeriv2 = geo.deriv2(md.points); // Second derivative of the geometric mapping with respect to the parameter coordinates
 
-            // Inverse of the First fundamental form
+//            FIRST FUNDAMENTAL FORM: G = J^T * J
+//
+//            G = | G11   G12|
+//                | G21   G22|
+//
+//            INVERSE OF THE FIRST FUNDAMENTAL FORM
+//
+//                      1    | G22  -G12|      1
+//            G^-1 = ------- |          | = ------- G* ^-1
+//                    det(G) | -G21  G11|    det(G)
+
+            // First fundamental form
             gsMatrix<T> G11 = ( geoMapDeriv1.row(0).cwiseProduct(geoMapDeriv1.row(0)) +
                                 geoMapDeriv1.row(2).cwiseProduct(geoMapDeriv1.row(2)) +
                                 geoMapDeriv1.row(4).cwiseProduct(geoMapDeriv1.row(4)));
 
-
+//          G12 = G21
             gsMatrix<T> G12 = ( geoMapDeriv1.row(0).cwiseProduct(geoMapDeriv1.row(1)) +
-                                geoMapDeriv1.row(2).cwiseProduct(geoMapDeriv1.row(3)) +
-                                geoMapDeriv1.row(4).cwiseProduct(geoMapDeriv1.row(5)));
-
-
-            gsMatrix<T> G21 = ( geoMapDeriv1.row(0).cwiseProduct(geoMapDeriv1.row(1)) +
                                 geoMapDeriv1.row(2).cwiseProduct(geoMapDeriv1.row(3)) +
                                 geoMapDeriv1.row(4).cwiseProduct(geoMapDeriv1.row(5)));
 
@@ -116,19 +122,8 @@ public:
                                 geoMapDeriv1.row(3).cwiseProduct(geoMapDeriv1.row(3)) +
                                 geoMapDeriv1.row(5).cwiseProduct(geoMapDeriv1.row(5)));
 
-            gsMatrix<T> detG = G11.cwiseProduct(G22) - G12.cwiseProduct(G21);
-            gsMatrix<T> sqrtDetG_inv;
-            sqrtDetG_inv.resize(1, numActive);
-            gsMatrix<T> sqrtDetG_inv_derivative;
-            sqrtDetG_inv_derivative.resize(1, numActive);
 
-            for(index_t k = 0; k < md.points.cols(); k++)
-            {
-                sqrtDetG_inv(0, k) = 1 / sqrt(detG(0, k));
-                sqrtDetG_inv_derivative(0, k) = 1 / (2 * detG(0, k) * sqrt(detG(0, k)) );
-            }
-
-            // Derivative of the inverse of the first fundamental form
+            // Derivative of the first fundamental form
             gsMatrix<T> DuG11 = 2 * ( geoMapDeriv2.row(0).cwiseProduct(geoMapDeriv1.row(0)) +
                                       geoMapDeriv2.row(3).cwiseProduct(geoMapDeriv1.row(2)) +
                                       geoMapDeriv2.row(6).cwiseProduct(geoMapDeriv1.row(4)) );
@@ -137,19 +132,21 @@ public:
                                       geoMapDeriv2.row(5).cwiseProduct(geoMapDeriv1.row(2)) +
                                       geoMapDeriv2.row(8).cwiseProduct(geoMapDeriv1.row(4)) );
 
-            gsMatrix<T> DuG12 = ( geoMapDeriv2.row(0).cwiseProduct(geoMapDeriv1.row(1)) +
-                                  geoMapDeriv2.row(2).cwiseProduct(geoMapDeriv1.row(0)) +
-                                  geoMapDeriv2.row(3).cwiseProduct(geoMapDeriv1.row(3)) +
-                                  geoMapDeriv2.row(5).cwiseProduct(geoMapDeriv1.row(2)) +
-                                  geoMapDeriv2.row(6).cwiseProduct(geoMapDeriv1.row(5)) +
-                                  geoMapDeriv2.row(8).cwiseProduct(geoMapDeriv1.row(4)) );
+//          DuG12 = DuG21
+            gsMatrix<T> DuG12 = (     geoMapDeriv2.row(0).cwiseProduct(geoMapDeriv1.row(1)) +
+                                      geoMapDeriv2.row(2).cwiseProduct(geoMapDeriv1.row(0)) +
+                                      geoMapDeriv2.row(3).cwiseProduct(geoMapDeriv1.row(3)) +
+                                      geoMapDeriv2.row(5).cwiseProduct(geoMapDeriv1.row(2)) +
+                                      geoMapDeriv2.row(6).cwiseProduct(geoMapDeriv1.row(5)) +
+                                      geoMapDeriv2.row(8).cwiseProduct(geoMapDeriv1.row(4)) );
 
-            gsMatrix<T> DvG21 = ( geoMapDeriv2.row(2).cwiseProduct(geoMapDeriv1.row(1)) +
-                                  geoMapDeriv2.row(1).cwiseProduct(geoMapDeriv1.row(0)) +
-                                  geoMapDeriv2.row(5).cwiseProduct(geoMapDeriv1.row(3)) +
-                                  geoMapDeriv2.row(4).cwiseProduct(geoMapDeriv1.row(2)) +
-                                  geoMapDeriv2.row(8).cwiseProduct(geoMapDeriv1.row(5)) +
-                                  geoMapDeriv2.row(7).cwiseProduct(geoMapDeriv1.row(4)) );
+//          DvG12 = DvG21
+            gsMatrix<T> DvG21 = (     geoMapDeriv2.row(2).cwiseProduct(geoMapDeriv1.row(1)) +
+                                      geoMapDeriv2.row(1).cwiseProduct(geoMapDeriv1.row(0)) +
+                                      geoMapDeriv2.row(5).cwiseProduct(geoMapDeriv1.row(3)) +
+                                      geoMapDeriv2.row(4).cwiseProduct(geoMapDeriv1.row(2)) +
+                                      geoMapDeriv2.row(8).cwiseProduct(geoMapDeriv1.row(5)) +
+                                      geoMapDeriv2.row(7).cwiseProduct(geoMapDeriv1.row(4)) );
 
 
             gsMatrix<T> DuG22 = 2 * ( geoMapDeriv2.row(2).cwiseProduct(geoMapDeriv1.row(1)) +
@@ -160,41 +157,56 @@ public:
                                       geoMapDeriv2.row(4).cwiseProduct(geoMapDeriv1.row(3)) +
                                       geoMapDeriv2.row(7).cwiseProduct(geoMapDeriv1.row(5)) );
 
+            gsMatrix<T> detG = G11.cwiseProduct(G22) - G12.cwiseProduct(G12);
+
+//          1 / sqrt( det( G ) )
+            gsMatrix<T> sqrtDetG_inv;
+            sqrtDetG_inv.resize(1, numActive);
+
+//          1 / ( 2 * det( G )^( 3/2 ) )
+            gsMatrix<T> sqrtDetG_inv_derivative;
+            sqrtDetG_inv_derivative.resize(1, numActive);
+
+            for(index_t k = 0; k < md.points.cols(); k++)
+            {
+                sqrtDetG_inv(0, k) = 1 / sqrt(detG(0, k));
+                sqrtDetG_inv_derivative(0, k) = 1 / (2 * detG(0, k) * sqrt(detG(0, k)) );
+            }
+
             gsMatrix<T> & basisGrads = basisData[1];
             gsMatrix<T> & basis2ndDerivs = basisData[2];
 
+//          div ( sqrt( det( G ) ) * ( 1 / det( G ) * G* ^-1 * grad( u ) ) )
             surfParametricLaplace.resize(numActive, md.points.cols());
 
             for(index_t i = 0; i < numActive - 1; i++)
             {
+//              Du( 1 / sqrt( det( G ) ) ) * G* ^-1 * grad( u ) ) +
+//              Dv( 1 / sqrt( det( G ) ) ) * G* ^-1 * grad( u ) ) +
+//              1 / sqrt( det( G ) ) * ( div ( G* ^-1 * grad( u ) ) )
                 surfParametricLaplace.row(i) = sqrtDetG_inv_derivative.cwiseProduct(
-                                               2 * G12.cwiseProduct(DuG12) -
-                                               G22.cwiseProduct(DuG11) -
-                                               G11.cwiseProduct(DuG22)
-                                               ).cwiseProduct(
-                                               G22.cwiseProduct(basisGrads.row(i * 2)) -
-                                               G12.cwiseProduct(basisGrads.row(i * 2 + 1))
-                                               )
+                                               2 * G12.cwiseProduct( DuG12 ) -
+                                               G22.cwiseProduct( DuG11 ) -
+                                               G11.cwiseProduct( DuG22 ) ).cwiseProduct(
+                                               G22.cwiseProduct( basisGrads.row( i * 2 ) ) -
+                                               G12.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) )
                                                +
                                                sqrtDetG_inv_derivative.cwiseProduct(
-                                               2 * G21.cwiseProduct(DvG21) -
-                                               G22.cwiseProduct(DvG11) -
-                                               G11.cwiseProduct(DvG22)
-                                               ).cwiseProduct(
-                                               G11.cwiseProduct(basisGrads.row(i * 2 + 1)) -
-                                               G21.cwiseProduct(basisGrads.row(i * 2))
-                                               )
+                                               2 * G12.cwiseProduct( DvG21 ) -
+                                               G22.cwiseProduct( DvG11 ) -
+                                               G11.cwiseProduct( DvG22 ) ).cwiseProduct(
+                                               G11.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) -
+                                               G12.cwiseProduct( basisGrads.row( i * 2 ) ) )
                                                +
                                                sqrtDetG_inv.cwiseProduct(
-                                               DuG22.cwiseProduct(basisGrads.row(i * 2)) +
-                                               G22.cwiseProduct(basis2ndDerivs.row(i * 3)) -
-                                               DuG12.cwiseProduct(basisGrads.row(i * 2 + 1)) -
-                                               G12.cwiseProduct(basis2ndDerivs.row(i * 3 + 2)) +
-                                               DvG11.cwiseProduct(basisGrads.row(i *2 + 1)) +
-                                               G11.cwiseProduct(basis2ndDerivs.row(i * 2 + 1)) -
-                                               DvG21.cwiseProduct(basisGrads.row(i * 2)) -
-                                               G21.cwiseProduct(basis2ndDerivs.row(i * 3 + 2))
-                                               );
+                                               DuG22.cwiseProduct( basisGrads.row( i * 2 ) ) +
+                                               G22.cwiseProduct( basis2ndDerivs.row( i * 3 ) ) -
+                                               DuG12.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) -
+                                               G12.cwiseProduct( basis2ndDerivs.row( i * 3 + 2 ) ) +
+                                               DvG11.cwiseProduct( basisGrads.row( i *2 + 1 ) ) +
+                                               G11.cwiseProduct( basis2ndDerivs.row( i * 2 + 1 ) ) -
+                                               DvG21.cwiseProduct( basisGrads.row( i * 2 ) ) -
+                                               G12.cwiseProduct( basis2ndDerivs.row( i * 3 + 2 ) ) );
             }
 
         }
