@@ -1045,8 +1045,6 @@ public:
 
         m_mapper.finalize();
 
-        gsDebug<<m_mapper<<"\n";
-
         // No more BCs
         //m_bcs = bc.get("Dirichlet");
         gsDirichletValues(bc, dir_values, *this);
@@ -1280,10 +1278,10 @@ public:
                 }
                 else
                 {
-                    res.row(c) +=
-                        _u.fixedPart().at( map.global_to_bindex(ii) ) *
+                    res.noalias() +=
+                        _u.fixedPart().row( map.global_to_bindex(ii) ).asDiagonal() *
                         _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim())
-                        .transpose();
+                        .transpose().replicate(_u.dim(),1);
                 }
             }
         }
@@ -1311,6 +1309,7 @@ public:
 
     void print(std::ostream &os) const { os << "grad(s)"; }
 };
+
 
 //template<class T>
 //class gsFeMutVariable  : public _expr<gsFeMutVariable<T> >
@@ -2573,6 +2572,125 @@ public:
 
     void print(std::ostream &os) const { os << "lap("; _u.print(os); os <<")"; }
 };
+
+/*
+   Expression for the Laplacian of a finite element solution
+ */
+template<class T>
+class solLapl_expr : public _expr<solLapl_expr<T> >
+{
+protected:
+    const gsFeSolution<T> & _u;
+
+public:
+    typedef T Scalar;
+
+    solLapl_expr(const gsFeSolution<T> & u) : _u(u) { }
+
+    mutable gsMatrix<T> res;
+    const gsMatrix<T> eval(const index_t k) const
+    {
+        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
+
+        res.setZero(_u.dim(), 1); //  scalar, but per component
+        const gsDofMapper & map = _u.mapper();
+
+        index_t numActs = _u.data().values[0].rows();
+        index_t numDers = _u.parDim() * (_u.parDim() + 1) / 2;
+        gsMatrix<T> deriv2;
+
+        for (index_t c = 0; c!= _u.dim(); c++)
+            for (index_t i = 0; i!=numActs; ++i)
+            {
+                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,c);
+                deriv2 = _u.data().values[2].block(i*numDers,k,_u.parDim(),1); // this only takes d11, d22, d33 part. For all the derivatives [d11, d22, d33, d12, d13, d23]: col.block(i*numDers,k,numDers,1)
+                if ( map.is_free_index(ii) ) // DoF value is in the solVector
+                    res.at(c) += _u.coefs().at(ii) * deriv2.sum();
+                else
+                    res.at(c) +=_u.fixedPart().at( map.global_to_bindex(ii) ) * deriv2.sum();
+            }
+        return res;
+    }
+
+    index_t rows() const { return _u.dim(); }
+    index_t cols() const { return 1; }
+
+    static constexpr bool rowSpan() {return true; }
+    static bool colSpan() {return false;}
+
+    void setFlag() const { _u.data().flags |= NEED_DERIV2; }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+        evList.push_sorted_unique(&_u.source());
+        _u.data().flags |= NEED_DERIV2;
+    }
+
+    void print(std::ostream &os) const { os << "lap(s)"; }
+};
+
+template<class T>
+class solHess_expr : public _expr<solHess_expr<T> >
+{
+protected:
+    const gsFeSolution<T> & _u;
+
+public:
+    typedef T Scalar;
+
+    solHess_expr(const gsFeSolution<T> & u) : _u(u) { }
+
+    mutable gsMatrix<T> res;
+    const gsMatrix<T> eval(const index_t k) const
+    {
+        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
+
+        const gsDofMapper & map = _u.mapper();
+
+        index_t numActs = _u.data().values[0].rows();
+        index_t numDers = cols();
+        gsMatrix<T> deriv2;
+
+        res.setZero(rows(), cols());
+        for (index_t c = 0; c!= _u.dim(); c++)
+            for (index_t i = 0; i!=numActs; ++i)
+            {
+                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,c);
+                deriv2 = _u.data().values[2].block(i*numDers,k,numDers,1).transpose(); // start row, start col, rows, cols
+                if ( map.is_free_index(ii) ) // DoF value is in the solVector
+                    res.row(c) += _u.coefs().at(ii) * deriv2;
+                else
+                    res.row(c) +=_u.fixedPart().at( map.global_to_bindex(ii) ) * deriv2;
+            }
+        return res;
+
+    }
+
+    index_t rows() const
+    {
+        return _u.dim(); //  number of components
+    }
+    index_t cols() const
+    {// second derivatives in the columns; i.e. [d11, d22, d33, d12, d13, d23]
+        return _u.parDim() * (_u.parDim() + 1) / 2;
+    }
+
+    static constexpr bool rowSpan() {return true; }
+    static bool colSpan() {return false;}
+
+    void setFlag() const { _u.data().flags |= NEED_DERIV2; }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+        evList.push_sorted_unique(&_u.source());
+        _u.data().flags |= NEED_DERIV2;
+    }
+
+    void print(std::ostream &os) const { os << "hess(s)"; }
+};
+
 
 
 /*
@@ -4013,6 +4131,13 @@ tangent_expr<T> tv(const gsGeometryMap<T> & u) { return tangent_expr<T>(u); }
 /// The laplacian of a finite element variable
 template<class T> EIGEN_STRONG_INLINE
 lapl_expr<T> lapl(const gsFeVariable<T> & u) { return lapl_expr<T>(u); }
+
+template<class T> EIGEN_STRONG_INLINE
+solLapl_expr<T> slapl(const gsFeSolution<T> & u) { return solLapl_expr<T>(u); }
+
+/// The hessian of a solution variable
+template<class T> EIGEN_STRONG_INLINE
+solHess_expr<T> shess(const gsFeSolution<T> & u) { return solHess_expr<T>(u); }
 
 /// The first fundamental form of \a G //fform is buggy ?
 // template<class T> EIGEN_STRONG_INLINE fform_expr<T> fform(const gsGeometryMap<T> & G) { return fform_expr<T>(G); }

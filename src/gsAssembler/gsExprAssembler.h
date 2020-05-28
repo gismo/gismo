@@ -611,7 +611,7 @@ void gsExprAssembler<T>::computeDirichletDofs2(short_t unk)
     case dirichlet::homogeneous:
         // If we have a homogeneous Dirichlet problem fill boundary
         // DoFs with zeros
-        u.fixedPart().setZero(mapper.boundarySize(), u.dim() );
+        u.fixedPart().setZero(mapper.boundarySize(), 1 );
         break;
     case dirichlet::interpolation:
         computeDirichletDofsIntpl2(u);
