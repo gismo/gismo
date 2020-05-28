@@ -52,10 +52,40 @@ public:
         return result;
     }
 
-    MatExprType eval(const index_t k) const
+    const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
+
+    index_t rows() const { return 1; }
+    index_t cols() const { return _u.dim(); }
+
+    void setFlag() const
+    {
+        _u.data().flags |= NEED_GRAD | NEED_ACTIVE;
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
+    }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        evList.push_sorted_unique(&_u.source());
+        _u.data().flags |= NEED_GRAD;
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+    static constexpr bool rowSpan() {return E::rowSpan(); }
+    static constexpr bool colSpan() {return false;}
+
+    void print(std::ostream &os) const { os << "var1("; _u.print(os); os <<")"; }
+
+private:
+    template<class U> inline
+    typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
+    eval_impl(const U & u, const index_t k)  const
     {
         const index_t A = _u.cardinality()/_u.targetDim();
-        res.resize(A*_u.targetDim(), cols()); // rows()*
+        res.resize(_u.cardinality(), cols()); // rows()*
 
         normal = _G.data().normal(k);// not normalized to unit length
         normal.normalize();
@@ -82,30 +112,30 @@ public:
         return res;
     }
 
-    index_t rows() const { return 1; }
-    index_t cols() const { return _u.dim(); }
-
-    void setFlag() const
+    template<class U> inline
+    typename util::enable_if< util::is_same<U,gsFeSolution<Scalar> >::value, const gsMatrix<Scalar> & >::type
+    eval_impl(const U & u, const index_t k)  const
     {
-        _u.data().flags |= NEED_GRAD | NEED_ACTIVE;
-        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
+        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
+        solGrad_expr<Scalar> sGrad =  solGrad_expr(_u);
+        res.resize(rows(), cols()); // rows()*
+
+        normal = _G.data().normal(k);// not normalized to unit length
+        normal.normalize();
+        bGrads = sGrad.eval(k);
+        cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
+        const Scalar measure =  _G.data().measures.at(k);
+
+        // gsDebugVar(_G.data().values[0].col(k).transpose());
+
+        m_v.noalias() = ( ( bGrads.col(0).template head<3>() ).cross( cJac.col(1).template head<3>() )
+                      -   ( bGrads.col(1).template head<3>() ).cross( cJac.col(0).template head<3>() ) ) / measure;
+
+        // ---------------  First variation of the normal
+        // res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
+        res = (m_v - ( normal*m_v.transpose() ) * normal).transpose(); // outer-product version
+        return res;
     }
-
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
-    {
-        evList.push_sorted_unique(&_u.source());
-        _u.data().flags |= NEED_GRAD;
-        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
-    }
-
-    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
-    index_t cardinality_impl() const { return _u.cardinality_impl(); }
-
-    static constexpr bool rowSpan() {return E::rowSpan(); }
-    static constexpr bool colSpan() {return false;}
-
-    void print(std::ostream &os) const { os << "var1("; _u.print(os); os <<")"; }
 };
 
 // Comments for var2:
@@ -268,7 +298,7 @@ public:
 
     index_t cols() const
     {
-        return _u.source().domainDim() * ( _u.source().domainDim() + 1 ) / 2;
+        return cols_impl(_u);
     }
 
     void setFlag() const
@@ -322,7 +352,7 @@ private:
             We assume that the basis has the form v*e_i where e_i is the unit vector with 1 on index i and 0 elsewhere
             This implies that hess(v) = [hess(v_1), hess(v_2), hess(v_3)] only has nonzero entries in column i. Hence,
             hess(v) . normal = hess(v_i) * n_i (vector-scalar multiplication. The result is then of the form
-            [hess(v_1)*n_1 .., hess(v_1)*n_1 .., hess(v_1)*n_1 ..]. Here, the dots .. represent the active basis functions.
+            [hess(v_1)*n_1 .., hess(v_2)*n_2 .., hess(v_3)*n_3 ..]. Here, the dots .. represent the active basis functions.
         */
         const index_t numAct = u.data().values[0].rows();   // number of actives of a basis function
         const index_t cardinality = u.cardinality();        // total number of actives (=3*numAct)
@@ -332,7 +362,50 @@ private:
 
         for (index_t i = 0; i!=_u.dim(); i++)
             res.block(i*numAct, 0, numAct, cols() ) = tmp * vEv.at(i);
+
         return res;
+    }
+
+    template<class U> inline
+    typename util::enable_if<util::is_same<U,gsFeSolution<Scalar> >::value, const gsMatrix<Scalar> & >::type
+    eval_impl(const U & u, const index_t k) const
+    {
+        /*
+            Here, we multiply the hessian of the geometry map by a vector, which possibly has multiple actives.
+            The hessian of the geometry map c has the form: hess(c)
+            [d11 c1, d22 c1, d12 c1]
+            [d11 c2, d22 c2, d12 c2]
+            [d11 c3, d22 c3, d12 c3]
+            And we want to compute [d11 c .v; d22 c .v;  d12 c .v] ( . denotes a dot product and c and v are both vectors)
+            So we simply evaluate for every active basis function v_k the product hess(c).v_k
+        */
+
+        solHess_expr<Scalar> sHess = solHess_expr(_u);
+        tmp = sHess.eval(k);
+        vEv = _v.eval(k);
+        res = vEv * tmp;
+        return res;
+    }
+
+    template<class U> inline
+    typename util::enable_if< util::is_same<U,gsGeometryMap<Scalar> >::value, index_t >::type
+    cols_impl(const U & u)  const
+    {
+        return _u.data().dim.second;
+    }
+
+    template<class U> inline
+    typename util::enable_if<util::is_same<U,gsFeSpace<Scalar> >::value, index_t >::type
+    cols_impl(const U & u) const
+    {
+        return _u.dim();
+    }
+
+    template<class U> inline
+    typename util::enable_if<util::is_same<U,gsFeSolution<Scalar> >::value, index_t >::type
+    cols_impl(const U & u) const
+    {
+        return _u.dim();
     }
 
 };
@@ -1894,7 +1967,8 @@ int main(int argc, char *argv[])
     // gsDebugVar(A.matrix().toDense());
     // gsDebugVar(A.matrix().rows());
     // gsDebugVar(A.matrix().cols());
-    // gsDebugVar(A.rhs().transpose());
+    gsDebugVar(A.rhs().transpose());
+    gsVector<> Force = A.rhs();
 
 
 
@@ -2036,7 +2110,6 @@ int main(int argc, char *argv[])
     {
         // // extract deformed geometry
         u_sol.extract(cc, k);
-        gsDebugVar(cc);
         mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
     }
 
@@ -2086,6 +2159,17 @@ int main(int argc, char *argv[])
         gsWriteParaview<>( solField, "solution", 1000, true);
         // gsFileManager::open("solution.pvd");
     }
+
+    gsDebugVar(Force.sum());
+
+    A.initSystem(false);
+    A.assemble(u * F * meas(G) + pressure * u * sn(defG).normalized() * meas(G) - ( ( N * E_m_der.tr() + M * E_f_der.tr() ) * meas(G) ).tr());
+    gsVector<real_t> Fint = -(A.rhs() - Force);
+    gsDebugVar(Fint.sum());
+
+    // A.initSystem(false);
+    // A.assemble(u * meas(G) );
+    // gsVector<real_t> Sum = A.rhs();
 
     return EXIT_SUCCESS;
 
