@@ -92,6 +92,9 @@ public:
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geo.computeMap(md);
 
+        // Evaluate right-hand side at the geometry points
+        rhs_ptr->eval_into(md.values[0], rhsVals); // Dim: 1 X NumPts
+
         if(md.dim.first +1 == md.dim.second)
         {
             gsMatrix<T> geoMapDeriv1 = geo.deriv(md.points); // First derivative of the geometric mapping with respect to the parameter coordinates
@@ -208,10 +211,8 @@ public:
                                                DvG21.cwiseProduct( basisGrads.row( i * 2 ) ) -
                                                G12.cwiseProduct( basis2ndDerivs.row( i * 3 + 2 ) ) );
             }
-
+            rhsVals = rhsVals.cwiseProduct( detG.cwiseProduct( sqrtDetG_inv ) );
         }
-        // Evaluate right-hand side at the geometry points
-        rhs_ptr->eval_into(md.values[0], rhsVals); // Dim: 1 X NumPts
 
         // Initialize local matrix/rhs
         localMat.setZero(numActive, numActive);
