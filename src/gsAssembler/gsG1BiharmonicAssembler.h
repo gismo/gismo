@@ -467,6 +467,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
                     {
                         const index_t j = eltBdryFcts[j0];
                         jj = globIdxAct.at(j);
+
                         //gsInfo << "HIER: " << jj << " : " << ii << " : " << i <<" : " << j << " : " << k << "\n";
                         // Use the "element-wise index" to get the needed
                         // function value.

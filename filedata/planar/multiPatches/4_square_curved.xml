@@ -121,7 +121,7 @@
         </coefs>
     </Geometry>
     <MultiPatch parDim="2" id="0">
-        <patches type="id_range">1 4</patches>
+        <patches type="id_range">3 4</patches>
     </MultiPatch>
 
 </xml>

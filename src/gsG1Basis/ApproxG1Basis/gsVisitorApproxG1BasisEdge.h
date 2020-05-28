@@ -53,7 +53,7 @@ public:
                          index_t & uv,
                          gsApproxGluingData<T>  & gluingData,
                          bool & isBoundary,
-                         gsG1OptionList & g1OptionList,
+                         gsG1OptionList g1OptionList,
                          gsBSpline<T> & result_singleEdge)
     {
         md.points = quNodes;
@@ -202,6 +202,10 @@ public:
                     gsMatrix<> lambda, null(1,1);
                     null << 0.0;
                     lambda = gluingData.get_beta_tilde().eval(null) * 1/(gluingData.get_alpha_tilde().eval(null)(0, 0));
+
+                    lambda(0,0) = -g1OptionList.getReal("lambda");
+                    gsInfo << "new lambda : " << lambda << "\n";
+
                     temp = (beta - lambda * alpha).cwiseProduct(der_N_i_plus);
                 }
                 else if (g1OptionList.getSwitch("twoPatch") && bfID == basis_plus.size()-2 && g1OptionList.getInt("gluingData") == gluingData::global)
@@ -209,6 +213,9 @@ public:
                     gsMatrix<> lambda, one(1,1);
                     one << 1.0;
                     lambda = gluingData.get_beta_tilde().eval(one) * 1/(gluingData.get_alpha_tilde().eval(one)(0, 0));
+
+                    lambda(0,0) = -g1OptionList.getReal("lambda2");
+                    gsInfo << "new lambda : " << lambda << "\n";
                     temp = (beta - lambda * alpha).cwiseProduct(der_N_i_plus);
                 }
                 else

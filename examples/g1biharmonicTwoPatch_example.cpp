@@ -20,10 +20,10 @@
 
 # include <gsG1Basis/gsG1OptionList.h>
 
-# include <gsG1Basis/gsNormL2.h>
-# include <gsG1Basis/gsSeminormH1.h>
-# include <gsG1Basis/gsSeminormH2.h>
-# include <gsG1Basis/gsH1NormWithJump.h>
+# include <gsG1Basis/Norm/gsNormL2.h>
+# include <gsG1Basis/Norm/gsSeminormH1.h>
+# include <gsG1Basis/Norm/gsSeminormH2.h>
+# include <gsG1Basis/Norm/gsH1NormWithJump.h>
 
 #include <iostream>
 
@@ -36,9 +36,9 @@ int main(int argc, char *argv[])
 
     g1OptionList.addInt("user","Pascal",user::pascal);
     g1OptionList.setSwitch("twoPatch",true);
-
+/*
     // ======= Solution =========
-/*    gsFunctionExpr<> source  ("4096*pi*pi*pi*pi*(4*cos(8*pi*x)*cos(8*pi*y) - cos(8*pi*x) - cos(8*pi*y))",2);
+   gsFunctionExpr<> source  ("4096*pi*pi*pi*pi*(4*cos(8*pi*x)*cos(8*pi*y) - cos(8*pi*x) - cos(8*pi*y))",2);
     gsFunctionExpr<> laplace ("-64*pi*pi*(2*cos(8*pi*x)*cos(8*pi*y) - cos(8*pi*x) - cos(8*pi*y))",2);
     gsFunctionExpr<> solVal("(cos(8*pi*x) - 1) * (cos(8*pi*y) - 1)",2);
     gsFunctionExpr<>sol1der ("-8*pi*(cos(8*pi*y) - 1)*sin(8*pi*x)",
@@ -58,12 +58,12 @@ int main(int argc, char *argv[])
 /*
     gsFunctionExpr<> source  ("0",2);
     gsFunctionExpr<> laplace ("0",2);
-    gsFunctionExpr<> solVal("1",2);
-    gsFunctionExpr<>sol1der ("0",
+    gsFunctionExpr<> solVal("x",2);
+    gsFunctionExpr<>sol1der ("1",
                              "0",2);
     gsFunctionExpr<>sol2der ("0",
                              "0",
-                             " 0", 2);
+                             "0", 2);
 
     // Solution of Marios paper
     gsFunctionExpr<> source  ("-1*cos(x/2)*sin(y/2)",2);
@@ -99,7 +99,27 @@ int main(int argc, char *argv[])
             string_geo = "planar/twoPatches/2patch_C1curved.xml";
             numDegree = 0;
             break;
+        case 4:
+            string_geo = "planar/twoPatches/square_complex_bent.xml";
+            numDegree = 0;
+            break;
+        case 5:
+            string_geo = "planar/twoPatches/2patch_C1curved_complex.xml";
+            numDegree = 0;
+            break;
+        case 6:
+            string_geo = "planar/twoPatches/2patch_puzzle.xml";
+            numDegree = 0;
+            break;
 
+        case 11:
+            string_geo = "planar/multiPatches/4_square_curved.xml";
+            numDegree = 0;
+            break;
+        case 12:
+            string_geo = "planar/multiPatches/3_patch_curved.xml";
+            numDegree = 0;
+            break;
 
         default:
             gsInfo << "No geometry is used! \n";
@@ -332,6 +352,7 @@ int main(int argc, char *argv[])
         gsInfo << "Computing Internal basis functions ... \n";
         gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
         g1BiharmonicAssembler.assemble();
+        gsInfo << "Computing Boundary dofs ... \n";
         g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System); // Compute boundary values (Type 1) // maybe too much memmory!!!
 
         g1System.finalize(multiPatch,mb, g1BiharmonicAssembler.get_bValue());
@@ -390,12 +411,12 @@ int main(int argc, char *argv[])
             else if (e == 3)
             {
                 gsH1NormWithJump<real_t> errorJump(multiPatch, Sol_sparse);
-                errorJump.compute(g1System.get_numBasisFunctions(), g1System.get_numInterfaceFunctions(), "edge");
+                errorJump.compute(g1System.get_numBasisFunctions(), g1System.get_numInterfaceFunctions(), "all");
                 h1SemiError_jump_edge.row(refinement_level) = errorJump.value().transpose();
             }
         }
 
-    }
+    } // refinement_level
 
     for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
     {

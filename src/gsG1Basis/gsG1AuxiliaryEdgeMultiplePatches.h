@@ -197,10 +197,21 @@ public:
             //approxGluingData4.setGlobalGluingData();
 
             gsApproxG1BasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), test_mb.basis(0), 1, false, g1OptionList);
+
+            gsMatrix<> lambda, null(1,1);
+            null << 0.0;
+            lambda = g1BasisEdge_0.get_beta().eval(null) * 1/(g1BasisEdge_0.get_alpha().eval(null)(0, 0));
+            g1OptionList.setReal("lambda",lambda(0,0));
+
+            null << 1.0;
+            lambda = g1BasisEdge_0.get_beta().eval(null) * 1/(g1BasisEdge_0.get_alpha().eval(null)(0, 0));
+            g1OptionList.setReal("lambda2",lambda(0,0));
+
             gsApproxG1BasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, g1OptionList);
 
             //g1BasisEdge_0.set_beta_tilde(approxGluingData4.get_beta_tilde(1));
             //g1BasisEdge_1.set_beta_tilde(approxGluingData4.get_beta_tilde(0));
+
 
             g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
             g1BasisEdge_1.setG1BasisEdge(g1Basis_1);

@@ -170,6 +170,7 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     optionList.addReal("zero","Zero",zero);
 
     optionList.addReal("lambda","lambda for the minimization problem", lambda);
+    optionList.addReal("lambda2","lambda for the minimization problem", lambda);
 
     if (localGd)
         gluingData_strategy = gluingData::local;

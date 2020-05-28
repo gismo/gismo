@@ -349,6 +349,9 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
 
     gsMatrix<unsigned> act;
 
+    //index_t n_plus = m_basis_plus.size();
+    //index_t n_minus = m_basis_minus.size();
+
     if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
     {
         for (index_t i = 2; i < m_basis.basis(0).component(1 - m_uv).size();
@@ -394,7 +397,16 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                         map.markBoundary(0, act); // Patch 0
                     }
                 }
-
+/*
+                if (bfID > 0 && bfID < n_plus - 1)
+                {
+                    // set first row to zero
+                    act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, 0); // WEST
+                    map.markBoundary(0, act); // Patch 0
+                    act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 2 : 4, 0); // WEST
+                    map.markBoundary(0, act); // Patch 0
+                }
+*/
             }
             else if (typeBf == "minus")
             {
@@ -431,6 +443,16 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                 // set first row to zero
                 act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, 0); // WEST
                 map.markBoundary(0, act); // Patch 0
+/*
+                if (bfID > 0 && bfID < n_minus - 1)
+                {
+                    // set first row to zero
+                    act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, 0); // WEST
+                    map.markBoundary(0, act); // Patch 0
+                    act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 2 : 4, 0); // WEST
+                    map.markBoundary(0, act); // Patch 0
+                }
+*/
 
             }
 /*        }

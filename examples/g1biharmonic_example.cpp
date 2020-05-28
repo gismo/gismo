@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>sol2der ("-64*pi^2*(cos(8*pi*y) - 1)*cos(8*pi*x)",
                              "-64*pi^2*(cos(8*pi*x) - 1)*cos(8*pi*y)",
                              " 64*pi^2*sin(8*pi*x)*sin(8*pi*y)", 2);
-
+*/
     gsFunctionExpr<> source  ("0",2);
     gsFunctionExpr<> laplace ("0",2);
     gsFunctionExpr<> solVal("1",2);
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>sol2der ("0",
                              "0",
                              " 0", 2);
-    */
+/*
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
-/*
+
     // Solution of Marios paper
     gsFunctionExpr<> source  ("-1*cos(x/2)*sin(y/2)",2);
     gsFunctionExpr<> laplace ("2*cos(x/2)*sin(y/2)",2);

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+   <Geometry type="TensorBSpline2" id="1">
+        <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+            <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1 </KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+            <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1 </KnotVector>
+        </Basis>
+        </Basis>
+        <coefs geoDim="2">0 1/5
+            1/5 1/5
+            2/5 1/5
+            3/5 1/5
+            4/5 1/5
+        
+            1/5 3/5
+            2/5 3/5
+            3/5 3/5
+            4/5 3/5
+            6/5 3/5
+        
+            -2/5 5/5
+            -1/5 5/5
+            0 5/5
+            1/5 5/5
+            2/5 5/5
+        
+            2/5 7/5
+            3/5 7/5
+            4/5 7/5
+            5/5 7/5
+            6/5 7/5
+            
+            0 9/5
+            1/5 9/5
+            2/5 9/5
+            3/5 9/5
+            4/5 9/5
+        </coefs>
+    </Geometry>
+    <Geometry type="TensorBSpline2" id="2">
+        <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+            <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1 </KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+            <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1 </KnotVector>
+        </Basis>
+        </Basis>
+        <coefs geoDim="2">4/5 1/5
+            6/5 1/5
+            7/5 1/5
+            8/5 1/5
+            9/5 1/5
+        
+            6/5 3/5
+            7/5 3/5
+            8/5 3/5
+            9/5 3/5
+            10/5 3/5
+        
+            2/5 5/5
+            3/5 5/5
+            4/5 5/5
+            5/5 5/5
+            6/5 5/5
+        
+            6/5 7/5
+            7/5 7/5
+            8/5 7/5
+            9/5 7/5
+            10/5 7/5
+            
+            4/5 9/5
+            6/5 9/5
+            7/5 9/5
+            8/5 9/5
+            9/5 9/5
+        </coefs>
+    </Geometry>
+    <MultiPatch parDim="2" id="0">
+        <patches type="id_range">1 2</patches>
+    </MultiPatch>
+
+</xml>
