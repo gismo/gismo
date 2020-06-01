@@ -1,0 +1,25 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+<xml>
+  <!-- Patch 0 -->
+  <Geometry type="TensorBSpline2" id="1">
+    <Basis type="TensorBSplineBasis2">
+      <Basis type="BSplineBasis" index="0">
+	<KnotVector degree="1">0 0 1 1 </KnotVector>
+      </Basis>
+      <Basis type="BSplineBasis" index="1">
+	<KnotVector degree="1">0 0 1 1 </KnotVector>
+      </Basis>
+    </Basis>
+    <coefs geoDim="2">
+      0.0 0.0
+      1.0 0.0
+      0.0 1.0
+      1.0 1.0
+    </coefs>
+  </Geometry>
+
+  <MultiPatch parDim="2" id="0">
+    <patches type="id_range">1 1</patches>
+  </MultiPatch>
+
+</xml>

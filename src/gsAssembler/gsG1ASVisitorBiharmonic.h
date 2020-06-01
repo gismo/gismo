@@ -206,8 +206,8 @@ public:
                                                G22.cwiseProduct( basis2ndDerivs.row( i * 3 ) ) -
                                                DuG12.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) -
                                                G12.cwiseProduct( basis2ndDerivs.row( i * 3 + 2 ) ) +
-                                               DvG11.cwiseProduct( basisGrads.row( i *2 + 1 ) ) +
-                                               G11.cwiseProduct( basis2ndDerivs.row( i * 2 + 1 ) ) -
+                                               DvG11.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) +
+                                               G11.cwiseProduct( basis2ndDerivs.row( i * 3 + 1 ) ) -
                                                DvG21.cwiseProduct( basisGrads.row( i * 2 ) ) -
                                                G12.cwiseProduct( basis2ndDerivs.row( i * 3 + 2 ) ) );
             }
