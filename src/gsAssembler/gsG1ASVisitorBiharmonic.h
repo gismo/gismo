@@ -162,6 +162,10 @@ public:
 
             gsMatrix<T> detG = G11.cwiseProduct(G22) - G12.cwiseProduct(G12);
 
+//          1 / sqrt^4( det( G ) )
+            gsMatrix<T> sqrt4DetG_inv;
+            sqrt4DetG_inv.resize(1, numActive);
+
 //          1 / sqrt( det( G ) )
             gsMatrix<T> sqrtDetG_inv;
             sqrtDetG_inv.resize(1, numActive);
@@ -170,34 +174,46 @@ public:
             gsMatrix<T> sqrtDetG_inv_derivative;
             sqrtDetG_inv_derivative.resize(1, numActive);
 
+//          Creating the vector of the determinant of the first fundamental form
             for(index_t k = 0; k < md.points.cols(); k++)
             {
-                sqrtDetG_inv(0, k) = 1 / sqrt(detG(0, k));
-                sqrtDetG_inv_derivative(0, k) = 1 / (2 * detG(0, k) * sqrt(detG(0, k)) );
+                sqrtDetG_inv(0, k) = 1 / sqrt( detG(0, k) );
+                sqrt4DetG_inv(0, k) = sqrt( sqrtDetG_inv(0, k) );
+                sqrtDetG_inv_derivative(0, k) = 1 / (2 * detG(0, k) * sqrt( detG(0, k) ) );
             }
 
             gsMatrix<T> & basisGrads = basisData[1];
             gsMatrix<T> & basis2ndDerivs = basisData[2];
+
+            gsMatrix<T> Du_SqrtDetGinv = sqrtDetG_inv_derivative.cwiseProduct(
+                                         2 * G12.cwiseProduct( DuG12 ) -
+                                         G22.cwiseProduct( DuG11 ) -
+                                         G11.cwiseProduct( DuG22 ) );
+
+            gsMatrix<T> Dv_SqrtDetGinv = sqrtDetG_inv_derivative.cwiseProduct(
+                                         2 * G12.cwiseProduct( DvG21 ) -
+                                         G22.cwiseProduct( DvG11 ) -
+                                         G11.cwiseProduct( DvG22 ) );
+
+
 
 //          div ( sqrt( det( G ) ) * ( 1 / det( G ) * G* ^-1 * grad( u ) ) )
             surfParametricLaplace.resize(numActive, md.points.cols());
 
             for(index_t i = 0; i < numActive - 1; i++)
             {
+//              1 / sqrt^4( det( G ) ) *
+//              [
 //              Du( 1 / sqrt( det( G ) ) ) * G* ^-1 * grad( u ) ) +
 //              Dv( 1 / sqrt( det( G ) ) ) * G* ^-1 * grad( u ) ) +
 //              1 / sqrt( det( G ) ) * ( div ( G* ^-1 * grad( u ) ) )
-                surfParametricLaplace.row(i) = sqrtDetG_inv_derivative.cwiseProduct(
-                                               2 * G12.cwiseProduct( DuG12 ) -
-                                               G22.cwiseProduct( DuG11 ) -
-                                               G11.cwiseProduct( DuG22 ) ).cwiseProduct(
+//              ]
+
+                surfParametricLaplace.row(i) = Du_SqrtDetGinv.cwiseProduct(
                                                G22.cwiseProduct( basisGrads.row( i * 2 ) ) -
                                                G12.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) )
                                                +
-                                               sqrtDetG_inv_derivative.cwiseProduct(
-                                               2 * G12.cwiseProduct( DvG21 ) -
-                                               G22.cwiseProduct( DvG11 ) -
-                                               G11.cwiseProduct( DvG22 ) ).cwiseProduct(
+                                               Dv_SqrtDetGinv.cwiseProduct(
                                                G11.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) -
                                                G12.cwiseProduct( basisGrads.row( i * 2 ) ) )
                                                +
@@ -210,8 +226,10 @@ public:
                                                G11.cwiseProduct( basis2ndDerivs.row( i * 3 + 1 ) ) -
                                                DvG21.cwiseProduct( basisGrads.row( i * 2 ) ) -
                                                G12.cwiseProduct( basis2ndDerivs.row( i * 3 + 2 ) ) );
+
+                surfParametricLaplace.row(i) = sqrtDetG_inv.cwiseProduct(surfParametricLaplace.row(i));
             }
-            rhsVals = rhsVals.cwiseProduct( detG.cwiseProduct( sqrtDetG_inv ) );
+            rhsVals = rhsVals.cwiseProduct( detG.cwiseProduct(sqrtDetG_inv) );
         }
 
         // Initialize local matrix/rhs
