@@ -33,7 +33,7 @@ public:
     friend class gsKnotVector<T>;
     friend class gsKnotIterator<T>;
 
-    typedef typename gsKnotVector<T>::mult_t mult_t;
+    typedef typename gsKnotVector<T>::mult_t mult_t;    //index_t, gsKnotVector.h:85
     typedef std::random_access_iterator_tag iterator_category; 
     typedef const gsKnotVector<T> knotVector;
     typedef T value_type;

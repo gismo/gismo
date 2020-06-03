@@ -77,7 +77,7 @@ public:
     TCLAP::CmdLine cmd;
 
     // Stores integer arguments
-    std::vector<TCLAP::ValueArg<intVal_t>*>         intVals;
+    std::vector<TCLAP::ValueArg<intVal_t>*>    intVals;
     std::vector<intVal_t*>                     intRes;
 
     // Stores multi integer arguments
@@ -325,8 +325,8 @@ bool gsCmdLine::getExceptionHandling() const
 #define ADD_OPTION_LIST_ENTRY(res,vals,addFct)                                      \
 {                                                                                   \
     std::string nm = (vals)->getName() + ".";                                       \
-    size_t sz = (res).size();                                                  \
-    for ( size_t j=0; j<sz; ++j )                                              \
+    index_t sz = static_cast<index_t>((res).size());                                \
+    for ( index_t j=0; j<sz; ++j )                                                  \
     { result.addFct( nm+util::to_string(j), (vals)->getDescription(), (res)[j] ); } \
     result.addInt( nm+"Size", (vals)->getDescription(), sz );                       \
 }

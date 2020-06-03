@@ -31,7 +31,7 @@ std::string gsOptionList::getString(const std::string & label) const
     return it->second.first;
 }
 
-int gsOptionList::getInt(const std::string & label) const
+index_t gsOptionList::getInt(const std::string & label) const
 {
     IntTable::const_iterator it = m_ints.find(label);
     GISMO_ENSURE(it!=m_ints.end(), "Invalid request (getInt): "<<label<<" is not not an int; it is "<<getInfo(label)<<".");
@@ -58,20 +58,20 @@ std::vector<std::string> gsOptionList::getMultiString(const std::string & gn) co
 
     std::vector<std::string> result;
     const std::string search = gn + ".";
-    int sz = getInt(search + "Size");
+    size_t sz = static_cast<size_t>(getInt(search + "Size"));
     result.reserve(sz);
     // add strings to vector
-    for (int i = 0; i < sz; ++i)
+    for (size_t i = 0; i < sz; ++i)
         result.push_back(getString(search + util::to_string(i)));
 
     return result;
 }
 
-std::vector<int> gsOptionList::getMultiInt(const std::string & gn) const
+std::vector<index_t> gsOptionList::getMultiInt(const std::string & gn) const
 {
     GISMO_ASSERT(hasGroup(gn), "Invalid request (getMultiInt): The group " + gn + " does not exist.");
 
-    std::vector<int> result;
+    std::vector<index_t> result;
 
     const std::string search = gn + ".";
 
@@ -110,8 +110,8 @@ std::string gsOptionList::askString(const std::string & label,
     return ( it == m_strings.end() ? value : it->second.first);
 }
 
-int gsOptionList::askInt(const std::string & label,
-                         const int & value) const
+index_t gsOptionList::askInt(const std::string & label,
+                         const index_t & value) const
 {
     IntTable::const_iterator it = m_ints.find(label);
 #if defined(GISMO_EXTRA_DEBUG)
@@ -152,7 +152,7 @@ void gsOptionList::setString(const std::string & label,
 }
 
 void gsOptionList::setInt(const std::string & label,
-                          const int & value)
+                          const index_t & value)
 {
     IntTable::iterator it = m_ints.find(label);
     GISMO_ENSURE(it!=m_ints.end(), "Invalid request (setInt): "<<label<<" is not a int; it is "<<getInfo(label)<<".");
@@ -188,7 +188,7 @@ void gsOptionList::addString(const std::string & label,
 
 void gsOptionList::addInt(const std::string & label,
                           const std::string & desc,
-                          const int & value)
+                          const index_t & value)
 {
     GISMO_ENSURE( !( isString(label) || isReal(label) || isSwitch(label) ),
         "Invalid request (addInt): Option "<<label<<" already exists, but not as an int; it is "<<getInfo(label)<<"." );
@@ -208,7 +208,7 @@ void gsOptionList::addReal(const std::string & label,
 
 void gsOptionList::addMultiInt(const std::string & label,
                                const std::string & desc,
-                               const std::vector<int> & values)
+                               const std::vector<index_t> & values)
 {
     GISMO_ENSURE( !( isString(label) || isReal(label) || isSwitch(label) ),
                   "Invalid request (addMultiInt): Option "<<label<<" already exists, but not as an multiint; it is "<<getInfo(label)<<"." );
@@ -517,7 +517,7 @@ void gsXml<gsOptionList>::get_into(gsXmlNode * node, gsOptionList & result)
         {
             std::istringstream str;
             str.str( val );
-            int myVal;
+            index_t myVal;
             gsGetInt(str, myVal);
             result.addInt(label, desc, myVal);
         }
@@ -533,7 +533,7 @@ void gsXml<gsOptionList>::get_into(gsXmlNode * node, gsOptionList & result)
         {
             std::istringstream str;
             str.str( val );
-            int myVal;
+            index_t myVal;
             gsGetInt(str, myVal);
             result.addSwitch(label, desc, (0 != myVal) );
         }

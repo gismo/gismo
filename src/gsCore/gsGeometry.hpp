@@ -19,8 +19,63 @@
 
 #include <gsCore/gsGeometrySlice.h>
 
+//#include <gsCore/gsMinimizer.h>
+
 namespace gismo
 {
+
+/// Squared distance function from a fixed point to a gsGeometry
+template<class T>
+class gsSquaredDistance GISMO_FINAL : public gsFunction<T>
+{
+public:
+    gsSquaredDistance(const gsGeometry<T> & g, const gsVector<T> & pt)
+    : m_g(g), m_pt(pt) { }
+
+    // f  = (1/2)*||x-pt||^2
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        m_g.eval_into(u,value);
+        result.resize(1, u.cols());
+        result.at(0) = 0.5 * (value-m_pt).squaredNorm();
+    }
+
+    // f' = x'*(x-pt)
+    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        result.resize(u.rows(), u.cols());
+        for ( index_t i=0; i != u.cols(); i++ )
+        {
+            tmp = u.col(i);
+            m_g.eval_into(tmp,value);
+            m_g.jacobian_into(tmp,jac);
+            result.col(i).noalias() = jac.transpose() * (value - m_pt);
+        }
+    }
+
+    // f' = tr(x')*x' + sum_i[ (x_i-pt_i) * x_i'']
+    void hessian_into(const gsMatrix<T>& u, gsMatrix<T>& result,
+                      index_t) const
+    {
+        m_g.eval_into(u,value);
+        m_g.jacobian_into(u,jac);
+        result.noalias() = jac.transpose() * jac;
+        for ( index_t k=0; k < m_g.coefs().cols(); ++k )
+        {
+            tmp = m_g.hessian(u,k);
+            result.noalias() += (value.at(k)-m_pt.at(k))*tmp;
+        }
+    }
+
+    gsMatrix<T> support() const {return m_g.support()  ;}
+    short_t domainDim ()  const {return m_g.domainDim();}
+    short_t targetDim ()  const {return 1;}
+
+private:
+    const gsGeometry<T> & m_g;
+    const gsVector<T> & m_pt;
+    mutable gsMatrix<T> tmp, value, jac;
+};
 
 template<class T>
 gsMatrix<T> gsGeometry<T>::parameterCenter( const boxCorner& bc )
@@ -63,7 +118,7 @@ template<class T>
 boxSide gsGeometry<T>::sideOf( const gsVector<T> & u,  )
 {
     // get the indices of the coefficients which lie on the boundary
-    gsMatrix<unsigned > allBnd = m_basis->allBoundary();
+    gsMatrix<index_t > allBnd = m_basis->allBoundary();
     gsMatrix<T> bndCoeff(allBnd.rows(), m_coefs.rows());
 
     // extract the indices of the boundary coefficients
@@ -81,7 +136,7 @@ boxSide gsGeometry<T>::sideOf( const gsVector<T> & u,  )
         int contained = 0;
         side.m_index = index;
 
-        gsMatrix<unsigned> bnd = m_basis->boundary(side);
+        gsMatrix<index_t> bnd = m_basis->boundary(side);
 
         for(size_t i = 0; i < interfaceIndicesPatch1.size(); i++)
         {
@@ -105,7 +160,7 @@ template<class T>
 typename gsGeometry<T>::uPtr
 gsGeometry<T>::boundary(boxSide const& s) const
 {
-    gsMatrix<unsigned> ind = this->basis().boundary(s); // get indices of the boundary DOF
+    gsMatrix<index_t> ind = this->basis().boundary(s); // get indices of the boundary DOF
     gsMatrix<T> coeffs (ind.size(), geoDim()); // create matrix for boundary coefficients
 
     for (index_t i=0; i != ind.size(); i++ )
@@ -129,11 +184,20 @@ void gsGeometry<T>::evaluateMesh(gsMesh<T>& mesh) const
 
     // For all vertices of the mesh, push forward the value by the
     // geometry mapping
-    for (size_t i = 0; i!= mesh.numVertices(); ++i)
-    {
-        eval_into( mesh.vertex(i).topRows(pDim), tmp );
-        mesh.vertex(i).topRows( gDim ) = tmp;
-    }
+    if (1==gDim && 3>pDim) // Plot a graph
+        for (size_t i = 0; i!= mesh.numVertices(); ++i)
+        {
+            eval_into( mesh.vertex(i).topRows(pDim), tmp );
+            mesh.vertex(i).middleRows(pDim, gDim) = tmp;
+        }
+    else // Plot mesh on a mapping
+        for (size_t i = 0; i!= mesh.numVertices(); ++i)
+        {
+            eval_into( mesh.vertex(i).topRows(pDim), tmp );
+            const index_t gd = math::min(3,gDim);
+            mesh.vertex(i).topRows(gd) = tmp.topRows(gd);
+        }
+
 }
 template<class T>
 std::vector<gsGeometry<T>* > gsGeometry<T>::uniformSplit(index_t) const
@@ -162,21 +226,75 @@ gsGeometry<T>::coefAtCorner(boxCorner const & c) const
 }
 
 template<class T>
+void gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
+                                   gsVector<T> & result,
+                                   const T accuracy,
+                                   const bool useInitialPoint) const
+{
+    GISMO_ASSERT( pt.rows() == targetDim(), "Invalid input point." <<
+                  pt.rows() <<"!="<< targetDim() );
+#if false
+    gsSquaredDistance<T> dist2(*this, pt);
+    gsMinimizer<T> fmin(dist2);
+    fmin.solve();
+    result = fmin.currentDesign();
+    return;
+#else
+    gsSquaredDistance<T> dist2(*this, pt);
+    result = dist2.argMin(accuracy*accuracy, 10);
+#endif
+}
+
+template<class T>
 void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,
                                  gsMatrix<T> & result,
-                                 const T accuracy) const
+                                 const T accuracy, const bool useInitialPoint) const
 {
     result.resize(parDim(), points.cols() );
     gsVector<T> arg;
     for ( index_t i = 0; i!= points.cols(); ++i)
     {
-        arg = parameterCenter();
-        //int iter =
+        if (useInitialPoint)
+            arg = result.col(i);
+        else
+            arg = parameterCenter();
+
+        //const int iter =
         this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
+        //gsInfo<< "Iterations: "<< iter <<"\n";
+        //  if (-1==iter)
+        //    gsWarn<< "Inversion failed for: "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
         result.col(i) = arg;
+        if ( (this->eval(arg)-points.col(i)).norm()<=accuracy )
+            result.col(i) = arg;
+        else
+        {
+            //gsDebugVar((this->eval(arg)-points.col(i)).norm());
+            result.col(i).setConstant( std::numeric_limits<T>::infinity() );
+        }
     }
 }
+/* // alternative impl using closestPointTo
+{
+    result.resize(parDim(), points.cols() );
+    gsVector<T> pt, arg;
+    for ( index_t i = 0; i!= points.cols(); ++i )
+    {
+        pt = points.col(i);
+        if (useInitialPoint)
+            arg = result.col(i);
 
+        this->closestPointTo(pt, arg, accuracy, useInitialPoint);
+        if ( (this->eval(arg)-pt).norm()<=accuracy )
+            result.col(i) = arg;
+        else
+        {
+            //result.col(i) = arg;
+            result.col(i).setConstant( std::numeric_limits<T>::infinity() );
+        }
+    }
+}
+//*/
 
 template<class T>
 void gsGeometry<T>::merge(gsGeometry *)
@@ -237,14 +355,15 @@ void gsGeometry<T>::degreeReduce(short_t const i, short_t const dir)
     g->coefs().swap(this->coefs());
 }
 
-template<class T>
-gsMatrix<T>
-gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
+template<class T> void
+gsGeometry<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
+                            index_t coord) const
 {
-    static const unsigned d = this->m_basis->dim();
+    const unsigned d = this->domainDim();
+    GISMO_ASSERT( coord<targetDim(),"Invalid coordinate function "<<coord);
 
-    gsMatrix<T> B, DD(d,d), tmp(d,d);
-    gsMatrix<unsigned> ind;
+    gsMatrix<T> B, tmp(d,d);
+    gsMatrix<index_t> ind;
 
     // coefficient matrix row k = coef. of basis function k
     const gsMatrix<T>& C = this->m_coefs;
@@ -252,31 +371,30 @@ gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
     m_basis->deriv2_into(u, B) ;
     // col j = indices of active functions at column point u(..,j)
     m_basis->active_into(u, ind);
-
-    DD.setZero();
-    unsigned j=0;// just one column
+    
+    result.setZero(d,d);
+    static const index_t j = 0;// just one column
     //for ( unsigned j=0; j< u.cols(); j++ ) // for all points (columns of u)
+
     for ( index_t i=0; i< ind.rows() ; i++ ) // for all non-zero basis functions)
     {
-        unsigned m=i*d;
-        unsigned r= ind.rows()*d + i*d*(d-1)/2;
+        unsigned r = i*d*(d+1)/2;
+        unsigned m = d;
         //construct the Hessian of basis function ind(i,0)
         for (unsigned k=0; k<d; ++k ) // for all rows
         {
-            tmp(k,k) = B(m+k,j);
+            tmp(k,k) = B(r+k,j);
             for (unsigned l=k+1; l<d; ++l ) // for all cols
-                tmp(k,l) = tmp(l,k) = B(r++,0);
+                tmp(k,l) = tmp(l,k) = B(r + m++,0);
         }
-        DD += C(ind(i,j), coord) * tmp;
+        result += C(ind(i,j), coord) * tmp;
     }
-
-    return DD;
 }
 
 
 
 template <typename T>
-void extractRows( const gsMatrix<T> &in, typename gsMatrix<unsigned>::constColumn actives, gsMatrix<T> &out)
+void extractRows( const gsMatrix<T> &in, typename gsMatrix<index_t>::constColumn actives, gsMatrix<T> &out)
 {
     out.resize(actives.rows(), in.cols());
     for (index_t r=0; r<actives.rows();++r)

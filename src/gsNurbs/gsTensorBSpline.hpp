@@ -174,7 +174,7 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
         }
 
         // construct the object
-        //result = gsTensorBSpline<d-1,T>(*tbasis, give(coefs) );
+        //result = gsTensorBSpline<static_cast<short_t>(d-1),T>(*tbasis, give(coefs) );
         //result = BoundaryGeometry(*tbasis, give(coefs) );
         result = BoundaryGeometryType(*tbasis, coefs );
     }
@@ -288,7 +288,7 @@ void gsTensorBSpline<d,T>::degreeElevate(short_t const i, short_t const dir)
     this->basis().size_cwise(sz);
 
     swapTensorDirection(0, dir, sz, this->m_coefs);
-    this->m_coefs.resize( sz[0], n * sz.template tail<d-1>().prod() );
+    this->m_coefs.resize( sz[0], n * sz.template tail<static_cast<short_t>(d-1)>().prod() );
 
     bspline::degreeElevateBSpline(this->basis().component(dir), this->m_coefs, i);
     sz[0] = this->m_coefs.rows();
@@ -312,7 +312,7 @@ void gsTensorBSpline<d,T>::insertKnot( T knot, int dir, int i)
     this->basis().size_cwise(sz);
 
     swapTensorDirection(0, dir, sz, this->m_coefs);
-    this->m_coefs.resize( sz[0], n * sz.template tail<d-1>().prod() );
+    this->m_coefs.resize( sz[0], n * sz.template tail<static_cast<short_t>(d-1)>().prod() );
 
     gsBoehm( this->basis().component(dir).knots(), this->coefs() , knot, i);
     sz[0] = this->m_coefs.rows();

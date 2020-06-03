@@ -128,11 +128,11 @@ public:
         }
     }
     
-    void localToGlobal(const gsDofMapper     & mapper,
-                       const gsMatrix<T>     & eliminatedDofs,
-                       const int               patchIndex,
-                       gsSparseMatrix<T>     & sysMatrix,
-                       gsMatrix<T>           & rhsMatrix )
+    void localToGlobal(const gsDofMapper & mapper,
+                       const gsMatrix<T> & eliminatedDofs,
+                       const index_t       patchIndex,
+                       gsSparseMatrix<T> & sysMatrix,
+                       gsMatrix<T>       & rhsMatrix )
     {
         // Local DoFs to global DoFs
         mapper.localToGlobal(actives, patchIndex, actives);
@@ -165,10 +165,10 @@ private:
 
 private:
     // Basis values
-    gsMatrix<T>      basisData;
-    gsMatrix<T>      physBasisGrads;
-    gsMatrix<T>      physBasisLaplace;
-    gsMatrix<unsigned> actives;
+    gsMatrix<T>       basisData;
+    gsMatrix<T>       physBasisGrads;
+    gsMatrix<T>       physBasisLaplace;
+    gsMatrix<index_t> actives;
 
     // Normal and Neumann values
     gsVector<T> unormal;

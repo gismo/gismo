@@ -145,9 +145,9 @@ void gsTensorBasis<d,T>::anchors_into(gsMatrix<T>& result) const
 }
 
 template<short_t d, class T>
-void gsTensorBasis<d,T>::anchor_into(unsigned i, gsMatrix<T>& result) const
+void gsTensorBasis<d,T>::anchor_into(index_t i, gsMatrix<T>& result) const
 {
-    gsVector<unsigned, d> ti = tensorIndex(i);
+    gsVector<index_t, d> ti = tensorIndex(i);
 
     gsMatrix<T> gr;
     result.resize(d, 1);
@@ -171,15 +171,15 @@ void gsTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes,
         mesh.addVertex( nodes.row(i).transpose() );
 
     // Starting from lower corner
-    const gsVector<unsigned,d> low = gsVector<unsigned,d>::Zero();    
+    const gsVector<index_t,d> low = gsVector<index_t,d>::Zero();
 
     // Last tensor-index
-    gsVector<unsigned, d> end;
+    gsVector<index_t, d> end;
     for (short_t i = 0; i < d; ++i)
         end(i) = this->size(i) - 1;
 
     unsigned k, s;
-    gsVector<unsigned,d> v, upp;
+    gsVector<index_t,d> v, upp;
     for (short_t i = 0; i < d; ++i) // For all axes
     {
         s      = stride(i);
@@ -190,7 +190,7 @@ void gsTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes,
         do // Insert all edges normal to axis i 
         {
             k = index(v);
-            for (unsigned j = 0; j != end[i]; ++j)
+            for (index_t j = 0; j != end[i]; ++j)
             {
                 mesh.addEdge(k, k + s );
                 k += s;
@@ -201,15 +201,15 @@ void gsTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes,
 }
 
 template<short_t d, class T>
-void gsTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
+void gsTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
 {
     //gsWarn<<"genericActive "<< *this;
 
-    gsMatrix<unsigned> act[d];
-    gsVector<unsigned, d> v, size;
+    gsMatrix<index_t> act[d];
+    gsVector<index_t, d> v, size;
  
     // Get component active basis functions
-    unsigned nb = 1;
+    index_t nb = 1;
     for (short_t i = 0; i < d; ++i)
     {
         m_bases[i]->active_into(u.row(i), act[i]);
@@ -227,7 +227,7 @@ void gsTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& 
         for ( index_t j=0; j<u.cols(); ++j)
         {
             nb = act[d-1]( v(d-1) ,j) ;//compute global index in the tensor product
-            for ( int i=d-2; i>=0; --i ) // to do: strides
+            for ( short_t i=d-2; i>=0; --i ) // to do: strides
                 nb = nb * m_bases[i]->size() + act[i](v(i), j) ;
             result(r, j) = nb;
         }
@@ -236,10 +236,10 @@ void gsTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& 
 }
 
 template<short_t d, class T>
-bool gsTensorBasis<d,T>::isActive(const unsigned i, const gsVector<T>& u) const
+bool gsTensorBasis<d,T>::isActive(const index_t i, const gsVector<T>& u) const
 {
     GISMO_ASSERT( u.rows() == static_cast<index_t>(d), "Invalid input.");
-    const gsVector<unsigned, d> ti = tensorIndex(i);
+    const gsVector<index_t, d> ti = tensorIndex(i);
     for (short_t k = 0; k < d; ++k)
         if (  ! m_bases[k]->isActive(ti[k], u.row(k)) )
             return false;
@@ -247,13 +247,13 @@ bool gsTensorBasis<d,T>::isActive(const unsigned i, const gsVector<T>& u) const
 }
 
 template<short_t d, class T>
-gsMatrix<unsigned> gsTensorBasis<d,T>::coefSlice(int dir, int k) const
+gsMatrix<index_t> gsTensorBasis<d,T>::coefSlice(short_t dir, index_t k) const
 {
     GISMO_ASSERT( dir>=0 &&  dir < this->dim(), "Invalid slice direction requested" );
     GISMO_ASSERT( k >=0 &&  k < this->size(dir), "Invalid slice position requested" );
 
-    unsigned sliceSize = 1, r = 0;
-    gsVector<unsigned, d> low, upp;
+    index_t sliceSize = 1, r = 0;
+    gsVector<index_t, d> low, upp;
 
     // Set low and upp to point to the range of indices
     for (short_t i = 0; i < d; ++i)
@@ -266,10 +266,10 @@ gsMatrix<unsigned> gsTensorBasis<d,T>::coefSlice(int dir, int k) const
     upp(dir) = k + 1;
     low(dir) = k;
 
-    gsMatrix<unsigned> res(sliceSize,1);
+    gsMatrix<index_t> res(sliceSize,1);
 
     // iterate over all tensor product basis indices
-    gsVector<unsigned,d> v = low;
+    gsVector<index_t,d> v = low;
     r = 0;
     do {
         res(r++,0) = this->index(v);
@@ -280,10 +280,10 @@ gsMatrix<unsigned> gsTensorBasis<d,T>::coefSlice(int dir, int k) const
 
 
 template<short_t d, class T>
-gsMatrix<unsigned> gsTensorBasis<d,T>::allBoundary() const
+gsMatrix<index_t> gsTensorBasis<d,T>::allBoundary() const
 {
-    gsMatrix<unsigned> bd;
-    std::set<unsigned> bdofs;
+    gsMatrix<index_t> bd;
+    std::set<index_t> bdofs;
 
     for (short_t k = 0; k != d; ++k)
     {
@@ -296,32 +296,32 @@ gsMatrix<unsigned> gsTensorBasis<d,T>::allBoundary() const
             bdofs.insert( bd(i) );
     }
 
-    return makeMatrix<unsigned>(bdofs.begin(), bdofs.size(), 1 );
+    return makeMatrix<index_t>(bdofs.begin(), static_cast<index_t>(bdofs.size()), 1 );
 }
 
 
 template<short_t d, class T>
-gsMatrix<unsigned> gsTensorBasis<d,T>::boundaryOffset(boxSide const& s,unsigned offset) const
+gsMatrix<index_t> gsTensorBasis<d,T>::boundaryOffset(boxSide const& s,index_t offset) const
 {
     //get m_bases index and start or end case
-    int k = s.direction();
-    int r = s.parameter();
-    GISMO_ASSERT(static_cast<int>(offset) < size(k),"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
+    short_t k = s.direction();
+    bool r = s.parameter();
+    GISMO_ASSERT(offset < size(k),"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
     return (this->coefSlice(k, (r ? size(k) - 1 -offset : offset) ));
 }
 
 template<short_t d, class T>
-unsigned gsTensorBasis<d,T>::functionAtCorner(boxCorner const & c) const
+index_t gsTensorBasis<d,T>::functionAtCorner(boxCorner const & c) const
 {
     gsVector<bool> position(d);
     c.parameters_into(d, position);
     
-    unsigned index = 0;
-    unsigned str   = 1;
+    index_t index = 0;
+    index_t str   = 1;
     
     for(short_t i = 0; i!=d; ++i)
     {
-        const unsigned sz_i = size(i);
+        const index_t sz_i = size(i);
         if ( position[i] )
             index+= str * ( sz_i - 1 );
         str *= sz_i;
@@ -397,23 +397,23 @@ gsMatrix<T> gsTensorBasis<d,T>::support() const
 
 template<short_t d, class T>
 gsMatrix<T>
-gsTensorBasis<d,T>::support(const unsigned & i) const
+gsTensorBasis<d,T>::support(const index_t & i) const
 {
     gsMatrix<T> res(d,2);
-    gsVector<unsigned, d> ti = tensorIndex(i);
+    gsVector<index_t, d> ti = tensorIndex(i);
     for (short_t j = 0; j < d; ++j)
         res.row(j) =  m_bases[j]->support( ti[j] );
     return res;
 }
 
 template<short_t d, class T>
-void gsTensorBasis<d,T>::evalSingle_into(unsigned i,
+void gsTensorBasis<d,T>::evalSingle_into(index_t i,
                                                const gsMatrix<T> & u,
                                                gsMatrix<T>& result) const
 {
     result.resize(1,u.cols() );
     gsMatrix<T> ev;
-    gsVector<unsigned, d> ti;
+    gsVector<index_t, d> ti;
     ti = tensorIndex(i);
 
     // Evaluate univariate basis functions and compute the product
@@ -426,11 +426,11 @@ void gsTensorBasis<d,T>::evalSingle_into(unsigned i,
 }
 
 template<short_t d, class T>
-void gsTensorBasis<d,T>::derivSingle_into(unsigned i,
+void gsTensorBasis<d,T>::derivSingle_into(index_t i,
                                const gsMatrix<T> & u,
                                       gsMatrix<T>& result) const
 {
-    gsVector<unsigned, d> ti;
+    gsVector<index_t, d> ti;
     ti.noalias() = tensorIndex(i);
     gsMatrix<T> ev, dev;
     result.setOnes(d, u.cols() );
@@ -451,11 +451,11 @@ void gsTensorBasis<d,T>::derivSingle_into(unsigned i,
 }
 
 template<short_t d, class T>
-void gsTensorBasis<d,T>::deriv2Single_into(unsigned i,
+void gsTensorBasis<d,T>::deriv2Single_into(index_t i,
                                 const gsMatrix<T> & u,
                                        gsMatrix<T>& result) const
 {
-    gsVector<unsigned, d> ti;
+    gsVector<index_t, d> ti;
     ti.noalias() = tensorIndex(i);
     gsMatrix<T> ev[d], dev[d], ddev;
     result.setOnes( d*(d + 1)/2, u.cols() );
@@ -558,7 +558,7 @@ void gsTensorBasis<d,T>::eval_into(const gsMatrix<T> & u,
         
         m_bases[0]->eval_into(uu.row(0), cc, e0);
         
-        for ( unsigned i=1; i< d ; ++i )
+        for ( short_t i=1; i< d ; ++i )
         {
             sz /= m_bases[i]->size();
             e0.resize( m_bases[i]->size(),  n * sz );
@@ -576,7 +576,7 @@ void gsTensorBasis<d,T>::eval_into(const gsMatrix<T> & u,
     // Basis_t:: eval_into(u,coefs,result);
     result.resize( coefs.cols(), u.cols() ) ;
     gsMatrix<T> B ;
-    gsMatrix<unsigned> ind;
+    gsMatrix<index_t> ind;
     
     this->eval_into(u, B);   // col j = nonzero basis functions at column point u(..,j)
     this->active_into(u,ind);// col j = indices of active functions at column point u(..,j)
@@ -793,19 +793,19 @@ void gsTensorBasis<d,T>::deriv2_tp(const std::vector< gsMatrix<T> > values[],
 
 
 template<short_t d, class T>
-void gsTensorBasis<d,T>::refineElements(std::vector<unsigned> const & elements)
+void gsTensorBasis<d,T>::refineElements(std::vector<index_t> const & elements)
 {
-    gsSortedVector<unsigned> elIndices[d];
-    unsigned tmp, mm;
+    gsSortedVector<index_t> elIndices[d];
+    index_t tmp, mm;
     
     // Get coordinate wise element indices
-    for ( typename  std::vector<unsigned>::const_iterator
+    for ( typename  std::vector<index_t>::const_iterator
               it = elements.begin(); it != elements.end(); ++it )
     {
         mm = *it;
             for (short_t i = 0; i<d; ++i )
             {
-                const unsigned nEl_i = m_bases[i]->numElements();
+                const index_t nEl_i = m_bases[i]->numElements();
                 tmp = mm % nEl_i;
                 mm = (mm - tmp) / nEl_i;
                 elIndices[i].push_sorted_unique(tmp);
@@ -952,8 +952,8 @@ gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
 template<short_t d, class T>
 void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
                                    const gsBasis<T> & other,
-                                   gsMatrix<unsigned> & bndThis,
-                                   gsMatrix<unsigned> & bndOther) const
+                                   gsMatrix<index_t> & bndThis,
+                                   gsMatrix<index_t> & bndOther) const
 {
     if ( const Self_t * _other = dynamic_cast<const Self_t*>(&other) )
     {
@@ -1000,7 +1000,7 @@ void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
     
         // Apply permutation to bndThis and bndOther so that they
         // finally match on both sides
-        permuteTensorVector<unsigned,-1>(bPerm, bSize, bndThis);
+        permuteTensorVector<index_t,-1>(bPerm, bSize, bndThis);
 
         return;
     }
