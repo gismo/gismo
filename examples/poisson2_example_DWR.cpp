@@ -506,6 +506,8 @@ int main(int argc, char *argv[])
 
     solution zLp = exH.getSolution(v0, dualLp);
     solution uLp = exH.getSolution(v0, primalLp);
+    exH.initSystem();
+
     if (plot)
     {
         gsInfo<<"Plotting in Paraview...\n";
@@ -533,8 +535,6 @@ int main(int argc, char *argv[])
     solution zH0 = exH.getSolution(v0,dualH0);
 
     zH.extractFull(dualH0);
-    exH.initSystem();
-
     if (plot)
     {
         gsInfo<<"Plotting in Paraview...\n";

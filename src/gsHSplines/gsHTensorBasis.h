@@ -664,6 +664,8 @@ public:
      */
     virtual void refine(gsMatrix<T> const & boxes, int refExt);
 
+    std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
+
     /** @brief Refine the basis to levels and in the areas defined by \a boxes.
      *
      * \param[in] boxes gsMatrix of size \em d x \em n, where\n
