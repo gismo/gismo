@@ -67,6 +67,11 @@ public:
     */
 public:
 
+    void cleanUp()
+    {
+        m_exprdata->clean();
+    }
+
     /// Constructor
     /// \param _rBlocks Number of spaces for test functions
     /// \param _cBlocks Number of spaces for solution variables
@@ -136,6 +141,11 @@ public:
     void setIntegrationElements(const gsMultiBasis<T> & mesh)
     { m_exprdata->setMultiBasis(mesh); }
 
+#if EIGEN_HAS_RVALUE_REFERENCES
+    void setIntegrationElements(const gsMultiBasis<T> &&) = delete;
+    //const gsMultiBasis<T> * c++98
+#endif
+
     /// \brief Returns the domain of integration
     const gsMultiBasis<T> & integrationElements() const
     { return m_exprdata->multiBasis(); }
@@ -173,10 +183,13 @@ public:
     ///Use this function after calling gsExprAssembler::getSpace when
     /// a distinct test space is requred (eg. Petrov-Galerkin
     /// methods).
-    space getTestSpace(variable u, const gsFunctionSet<T> & mp)
+    ///
+    /// \note The dimension is set to the same as \a u, unless the caller
+    /// sets as a third argument a new value.
+    space getTestSpace(space u, const gsFunctionSet<T> & mp, index_t dim = -1)
     {
         //GISMO_ASSERT(0!=u.mapper(), "Not a space"); // done on initSystem
-        expr::gsFeSpace<T> & s = m_exprdata->getSpace(mp,u.dim());
+        expr::gsFeSpace<T> & s = m_exprdata->getSpace(mp,(-1 == dim ? u.dim() : dim));
         space uu = static_cast<space>(u);
         s.setId(uu.id());
         m_vrow[s.id()] = &s;
@@ -191,7 +204,7 @@ public:
     }
 
     /// Return the trial space of a pre-existing test space \a v
-    space trialSpace(variable v) const { return trialSpace(v.id()); }
+    space trialSpace(space v) const { return trialSpace(v.id()); }
 
     /// Return the variable (previously created by getTrialSpace) with the given \a id
     space testSpace(const index_t id)
@@ -201,7 +214,7 @@ public:
     }
 
     /// Return the test space of a pre-existing trial space \a u
-    space testSpace(variable u) const { return testSpace(u.id()); }
+    space testSpace(space u) const { return testSpace(u.id()); }
 
     /// Registers \a func as a variable and returns a handle to it
     variable getCoeff(const gsFunctionSet<T> & func)
@@ -235,10 +248,10 @@ public:
     void setFixedDofs(const gsMatrix<T> & coefMatrix, short_t unk = 0, size_t patch = 0);
 
     /// \brief Initializes the sparse system (sparse matrix and rhs)
-    void initSystem()
+    void initSystem(bool resetFirst = true)
     {
         // Check spaces.nPatches==mesh.patches
-        initMatrix();
+        initMatrix(resetFirst);
         m_rhs.setZero(numDofs(), 1);
 
         for (size_t i = 0; i!= m_vcol.size(); ++i)
@@ -246,8 +259,10 @@ public:
     }
 
     /// \brief Initializes the sparse matrix only
-    void initMatrix()
+    void initMatrix(bool resetFirst = true)
     {
+        if (resetFirst)
+            resetSpaces();
         resetDimensions();
         m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
 
@@ -269,8 +284,10 @@ public:
     }
 
     /// \brief Initializes the right-hand side vector only
-    void initVector(const index_t numRhs = 1)
+    void initVector(const index_t numRhs = 1, bool resetFirst = true)
     {
+        if (resetFirst)
+            resetSpaces();
         resetDimensions();
         m_rhs.setZero(numDofs(), numRhs);
     }
@@ -407,6 +424,8 @@ private:
     /// Called internally by the init* functions
     void resetDimensions();
 
+    void resetSpaces();
+
     // template<bool left, bool right, class E1, class E2>
     // void assembleLhsRhs_impl(const expr::_expr<E1> & exprLhs,
     //                          const expr::_expr<E2> & exprRhs,
@@ -474,18 +493,26 @@ private:
             //  ------- Accumulate  -------
             if (E::isMatrix())
                 push<true>(ee.rowVar(), ee.colVar(), m_patchInd);
-            else
+            else if (E::isVector())
                 push<false>(ee.rowVar(), ee.colVar(), m_patchInd);
+            else
+            {
+                GISMO_ERROR("Something went wrong at this point (rowspan: "<< ee.rowSpan()<< ", colSpan: "<< ee.colSpan() <<")");
+                //GISMO_ASSERTrowSpan() && (!colSpan())
+            }
+
         }// operator()
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
 
-        template<bool isMatrix> void push(const expr::gsFeVariable<T> & v,
-                                          const expr::gsFeVariable<T> & u,
-                                          //const expr::gsFeSpace<T> & v,
-                                          //const expr::gsFeSpace<T> & u,
+        template<bool isMatrix> void push(const expr::gsFeSpace<T> & v,
+                                          const expr::gsFeSpace<T> & u,
                                           const index_t patchInd)
         {
+            GISMO_ASSERT(v.isValid(), "The row space is not valid");
+            GISMO_ASSERT(!isMatrix || u.isValid(), "The column space is not valid");
+            GISMO_ASSERT(isMatrix || (0!=m_rhs.size()), "The right-hand side vector is not initialized");
+
             const index_t cd            = u.dim();
             const index_t rd            = v.dim();
             const gsDofMapper  & colMap = static_cast<const expr::gsFeSpace<T>&>(u).mapper();
@@ -675,7 +702,7 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t un
     }
 } // setFixedDofs
 
-template<class T> void gsExprAssembler<T>::resetDimensions()
+template<class T> void gsExprAssembler<T>::resetSpaces()
 {
     for (size_t i = 0; i!=m_vcol.size(); ++i)
     {
@@ -688,6 +715,10 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
             m_vrow[i]->reset();
         }
     }
+}
+
+template<class T> void gsExprAssembler<T>::resetDimensions()
+{
     for (size_t i = 1; i!=m_vcol.size(); ++i)
     {
         m_vcol[i]->mapper().setShift(m_vcol[i-1]->mapper().firstIndex() +

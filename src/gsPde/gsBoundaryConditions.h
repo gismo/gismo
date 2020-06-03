@@ -674,8 +674,16 @@ public:
         return m_trMatrix;
     }
 
-    // Data members
-private:
+    void setGeoMap(const gsFunctionSet<T> & gm) 
+    { 
+      //GISMO_ASSERT
+      m_patches = &gm; 
+    }
+
+    const gsFunctionSet<T> & geoMap() const
+    { return *m_patches; }
+    
+private: // Data members
     struct patchSideComparison
     {
         const patchSide m_ps;
@@ -697,7 +705,7 @@ private:
     gsMatrix<T> m_trMatrix;
 
     // Pointer to associated multipatch domain
-    //gsMultiPatch<T> * m_patches;
+    const gsFunctionSet<T> * m_patches;
 
 }; // class gsBoundaryConditions
 

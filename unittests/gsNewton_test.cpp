@@ -11,6 +11,8 @@
     Author(s):
  **/
 
+//#define TEST_INFO
+
 #include "gismo_unittest.h"
 
 SUITE(gsNewton_test)
@@ -24,6 +26,7 @@ SUITE(gsNewton_test)
         gsVector<> x = gsVector<>::vec(0.5, 0.5),
                 y = gsVector<>::vec(0.1, 1.9);
 
+        gsTestInfo << "fx= "<< f->eval(x).transpose()  <<"\n";
         // For any function
         int iter = f->newtonRaphson(y, x, true);
 

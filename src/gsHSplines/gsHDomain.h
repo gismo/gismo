@@ -107,7 +107,7 @@ public:
 
     gsHDomain() : m_indexLevel(0)
     {
-        m_root=NULL;
+        m_root = nullptr;
         m_maxInsLevel = 0;
         m_maxPath = 0;
     }
@@ -153,6 +153,28 @@ public:
 
         return *this;
     }
+
+#if EIGEN_HAS_RVALUE_REFERENCES
+    gsHDomain(gsHDomain&& o) :
+    m_root(o.m_root),
+    m_upperIndex(std::move(o.m_upperIndex)),
+    m_indexLevel(o.m_indexLevel),
+    m_maxInsLevel(o.m_maxInsLevel),
+    m_maxPath(o.m_maxPath)
+    {
+        o.m_root = nullptr;
+    }
+
+    gsHDomain & operator=(gsHDomain&& o)
+    {
+        delete m_root; m_root = o.m_root; o.m_root = nullptr;
+        m_upperIndex  = std::move(o.m_upperIndex);
+        m_indexLevel  = o.m_indexLevel;
+        m_maxInsLevel = o.m_maxInsLevel;
+        m_maxPath     = o.m_maxPath;
+        return *this;
+    }
+#endif
 
     /// Initialize the tree
     void init(point const & upp, unsigned index_level = 13)

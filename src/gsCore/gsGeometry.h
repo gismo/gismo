@@ -161,6 +161,7 @@ public:
         m_coefs.swap(other.m_coefs); other.m_coefs.clear();
         delete m_basis;
         m_basis = other.m_basis; other.m_basis = NULL;
+        m_id = std::move(other.m_id);
         return *this;
     }
 #endif
@@ -492,6 +493,8 @@ public:
         this->basis().refineElements_withCoefs(this->m_coefs, boxes );
     }
 
+    typename gsGeometry::uPtr coord(const index_t c) const {return this->basis().makeGeometry( this->coefs().col(c) ); }
+    
     /// Embeds coefficients in 3D
     void embed3d()
     {
@@ -534,7 +537,8 @@ public:
     
     /// Compute the Hessian matrix of the coordinate \a coord
     /// evaluated at points \a u
-    virtual gsMatrix<T> hessian(const gsMatrix<T>& u, unsigned coord) const;
+    virtual void hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
+                              index_t coord) const;
     
     /// Return the control net of the geometry
     void controlNet( gsMesh<T> & mesh) const
@@ -592,7 +596,14 @@ public:
     /// parameter values.  If the point cannot be inverted (eg. is not
     /// part of the geometry) the corresponding parameter values will be undefined
     virtual void invertPoints(const gsMatrix<T> & points, gsMatrix<T> & result,
-                              const T accuracy = 1e-6) const;
+                              const T accuracy = 1e-6,
+                              const bool useInitialPoint = false) const;
+
+    /// Returns the parameters of closest point to \a pt
+    void closestPointTo(const gsVector<T> & pt,
+                        gsVector<T> & result,
+                        const T accuracy = 1e-6,
+                        const bool useInitialPoint = false) const;
 
     /// Sets the patch index for this patch
     void setId(const size_t i) { m_id = i; }

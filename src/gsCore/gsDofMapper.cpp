@@ -173,7 +173,6 @@ void gsDofMapper::markTagged( index_t i, index_t k, index_t comp)
         m_tagged.insert(pos, t);
 }
 
-
 void gsDofMapper::markBoundary(index_t k, const gsMatrix<index_t> & boundaryDofs, index_t comp)
 {
     for (index_t i = 0; i < boundaryDofs.rows(); ++i)
@@ -559,6 +558,11 @@ index_t gsDofMapper::taggedSize() const
 void gsDofMapper::setShift (index_t shift)
 {
     m_shift=shift;
+}
+
+void gsDofMapper::addShift (index_t shift)
+{
+    m_shift+=shift;
 }
 
 void gsDofMapper::setBoundaryShift (index_t shift)

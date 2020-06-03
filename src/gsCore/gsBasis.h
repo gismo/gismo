@@ -783,6 +783,8 @@ public:
      */
     virtual void refine(gsMatrix<T> const & boxes, int refExt = 0);
 
+    virtual std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
+
     /** @brief Refinement function, with different sytax for different basis.
      *
      * See documentation of\n

@@ -250,6 +250,9 @@ public:
     ///\brief Set the shift amount for the global numbering
     void setShift(index_t shift);
 
+    ///\brief Add a shift amount to the global numbering
+    void addShift(index_t shift);
+
     /// \brief Permutes the mapped free indices according to permutation, i.e.,  dofs_perm[idx] = dofs_old[permutation[idx]]
     ///
     /// \warning Applying a permutation makes the functions regarding coupled dofs (cindex, is_coupled_index,.. ) invalid.
@@ -436,14 +439,17 @@ public:
 
     inline index_t freeSize(index_t comp) const
     {
-      return m_numFreeDofs[comp+1]-m_numFreeDofs[comp] + 
+      return m_numFreeDofs[comp+1]-m_numFreeDofs[comp] +
 	(allFree() ? m_numElimDofs[comp+1]-m_numElimDofs[comp] : 0 );
     }
+
+    /// Returns the vector of tagged (not eliminated) dofs.
+    const std::vector<index_t> & getTagged() const { return m_tagged; }
 
     /// Returns the number of coupled (not eliminated) dofs.
     index_t coupledSize() const;
 
-    /// Returns the number of tagged (not eliminated) dofs.
+    /// Returns the number of tagged dofs.
     index_t taggedSize() const;
 
     /// Returns the number of eliminated dofs.

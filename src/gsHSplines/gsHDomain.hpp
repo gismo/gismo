@@ -194,7 +194,7 @@ gsHDomain<d,T>::isDegenerate(box const & someBox)
 
 template<short_t d, class T > void
 gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
-                             node *_node, int lvl)
+                            node *_node, int lvl) // CONSTRAINT: lvl is "minimum level"
 {
     GISMO_ENSURE( lvl <= static_cast<int>(m_indexLevel), "Max index level reached..");
 

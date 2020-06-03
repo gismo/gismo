@@ -231,14 +231,41 @@ public:
     /// Copy constructor
     gsHTensorBasis( const gsHTensorBasis & o) : gsBasis<T>(o)
     {
-        m_xmatrix_offset = o.m_xmatrix_offset;
-        m_deg            = o.m_deg;
-        m_tree           = o.m_tree;
-        m_xmatrix        = o.m_xmatrix;
-
-        m_bases.resize( o.m_bases.size() );
-        cloneAll(o.m_bases.begin(), o.m_bases.end(), m_bases.begin());
+        this->operator=(o);
     }
+
+    gsHTensorBasis& operator=(const gsHTensorBasis & o)
+    {
+        if ( this != &o )
+        {
+            m_xmatrix_offset = o.m_xmatrix_offset;
+            m_deg            = o.m_deg;
+            m_tree           = o.m_tree;
+            m_xmatrix        = o.m_xmatrix;
+
+            freeAll( m_bases );
+            m_bases.resize( o.m_bases.size() );
+            cloneAll(o.m_bases.begin(), o.m_bases.end(), m_bases.begin());
+        }
+        return *this;
+    }
+
+#if EIGEN_HAS_RVALUE_REFERENCES
+    gsHTensorBasis(gsHTensorBasis&& other)
+    {
+        this->operator=(other);
+    }
+
+    gsHTensorBasis & operator=(gsHTensorBasis&& other)
+    {
+        m_deg     = std::move(other.m_deg);
+        m_bases   = std::move(other.m_bases);
+        m_xmatrix = std::move(other.m_xmatrix);
+        m_tree    = std::move(other.m_tree);
+        m_xmatrix_offset = std::move(other.m_xmatrix_offset);
+        return *this;
+    }
+#endif
 
     /// Destructor
     virtual ~gsHTensorBasis()
@@ -636,6 +663,8 @@ public:
      *
      */
     virtual void refine(gsMatrix<T> const & boxes, int refExt);
+
+    std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
 
     /** @brief Refine the basis to levels and in the areas defined by \a boxes.
      *
