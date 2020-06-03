@@ -53,8 +53,9 @@ int main(int argc, char *argv[])
     for (int r =0; r < numRefine; ++r)
         mp0.uniformRefine();
 
-    gsInfo<<"Original : "<< mp0.basis(0)<<"\n";
-    
+    gsInfo  <<"Original : "<< mp0.basis(0)<<"\t"
+            <<"size = "<< mp0.basis(0).size()<<"\n";
+
     // gsWriteParaview<>(mp0, "mp", 1000, true);
 
     // Cast all patches of the mp object to THB splines
@@ -85,10 +86,29 @@ int main(int argc, char *argv[])
     gsHBSplineBasis<2,real_t> THBbasis(*basis0);
     THBbasis.refineBasisFunction(function);
 
-    gsInfo<<"Basis After: "<<THBbasis<<"\n";
-    
-    gsWriteParaview<>(THBbasis, "newBasis", 1000, true);
+    std::vector<bool> funMarked( mp.basis(0).size() );
+    for(std::vector<bool>::iterator i = funMarked.begin(); i!=  funMarked.end(); ++i)
+        *i = false;
+    funMarked[function] = true;
+    funMarked[function+11] = true;
 
+    // PRINT
+    for (std::vector<bool>::const_iterator i = funMarked.begin(); i != funMarked.end(); ++i)
+        gsInfo << *i << ' ';
+    gsInfo<<"\n";
+    // ! PRINT
+
+    gsRefineMarkedFunctions(mp,funMarked,0);
+
+
+    gsInfo<<"Basis After: "<<mp.basis(0)<<"\n";
+    gsInfo  <<"Original : "<< mp.basis(0)<<"\t"
+            <<"size = "<< mp.basis(0).size()<<"\n";
+
+    gsWriteParaview<>(mp.basis(0), "newBasis", 1000, true);
+
+    mp0.basis(0).uniformRefine();
+    gsWriteParaview<>(mp0.basis(0), "uniformRefine", 1000, true);
 
    return EXIT_SUCCESS;
 
