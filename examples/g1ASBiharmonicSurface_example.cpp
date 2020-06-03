@@ -36,42 +36,42 @@ int main(int argc, char *argv[])
 
 
     // ======= Solution =========
-//    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(z - 1)*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
-//    gsFunctionExpr<> laplace ("-16*pi*pi*(z - 1)*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
-//    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1) * (z - 1)",3);
-//    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x) * (z - 1)",
-//                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y) * (z - 1)",
-//                             "(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
-//    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x) * (z - 1)",
-//                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y) * (z - 1) ",
-//                             "-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-//                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y) * (z - 1) ",
-//                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y) * (z - 1)",
-//                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
-//                             "-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-//                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
-//                             "0", 3);
-
-
-    gsFunctionExpr<> source  ("0",3);
-
-    gsFunctionExpr<> laplace ("0",3);
-
-    gsFunctionExpr<> solVal("1",3);
-
-    gsFunctionExpr<>sol1der ("0",
-                             "0",
+    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
+    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
+    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
+    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
                              "0",3);
-
-    gsFunctionExpr<>sol2der ("0",
+    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
+                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
                              "0",
-                             "0",
-                             "0",
-                             "0",
+                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
+                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
                              "0",
                              "0",
                              "0",
                              "0", 3);
+
+
+//    gsFunctionExpr<> source  ("0",3);
+//
+//    gsFunctionExpr<> laplace ("0",3);
+//
+//    gsFunctionExpr<> solVal("1",3);
+//
+//    gsFunctionExpr<>sol1der ("0",
+//                             "0",
+//                             "0",3);
+//
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
 
 
 

@@ -115,7 +115,7 @@ public:
             gsMatrix<T> G11 = ( geoMapDeriv1.row(0).cwiseProduct(geoMapDeriv1.row(0)) +
                                 geoMapDeriv1.row(2).cwiseProduct(geoMapDeriv1.row(2)) +
                                 geoMapDeriv1.row(4).cwiseProduct(geoMapDeriv1.row(4)));
-
+//            gsInfo << "G11: " << G11 << "\n";
 //          G12 = G21
             gsMatrix<T> G12 = ( geoMapDeriv1.row(0).cwiseProduct(geoMapDeriv1.row(1)) +
                                 geoMapDeriv1.row(2).cwiseProduct(geoMapDeriv1.row(3)) +
@@ -125,11 +125,11 @@ public:
                                 geoMapDeriv1.row(3).cwiseProduct(geoMapDeriv1.row(3)) +
                                 geoMapDeriv1.row(5).cwiseProduct(geoMapDeriv1.row(5)));
 
-
             // Derivative of the first fundamental form
             gsMatrix<T> DuG11 = 2 * ( geoMapDeriv2.row(0).cwiseProduct(geoMapDeriv1.row(0)) +
                                       geoMapDeriv2.row(3).cwiseProduct(geoMapDeriv1.row(2)) +
                                       geoMapDeriv2.row(6).cwiseProduct(geoMapDeriv1.row(4)) );
+
 
             gsMatrix<T> DvG11 = 2 * ( geoMapDeriv2.row(2).cwiseProduct(geoMapDeriv1.row(0)) +
                                       geoMapDeriv2.row(5).cwiseProduct(geoMapDeriv1.row(2)) +
@@ -200,7 +200,9 @@ public:
 //          div ( sqrt( det( G ) ) * ( 1 / det( G ) * G* ^-1 * grad( u ) ) )
             surfParametricLaplace.resize(numActive, md.points.cols());
 
-            for(index_t i = 0; i < numActive - 1; i++)
+
+
+            for(index_t i = 0; i < numActive; i++)
             {
 //              1 / sqrt^4( det( G ) ) *
 //              [
@@ -245,6 +247,7 @@ public:
         gsMatrix<T> & basisGrads = basisData[1];
         gsMatrix<T> & basis2ndDerivs = basisData[2];
 
+        gsInfo << "quWeights.rows(): " << quWeights.rows() << "\n";
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply weight by the geometry measure
@@ -260,10 +263,14 @@ public:
 
             }
             else
+            // Compute parametric laplacian at k as a 1 x numActive matrix
             if(md.dim.first + 1 == md.dim.second)
             {
                 localMat.noalias() += weight * (surfParametricLaplace.col(k) * surfParametricLaplace.col(k).transpose());
                 localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
+
+                gsInfo << "surfParametricLaplace: " << surfParametricLaplace.col(k) << "\n";
+
             }
 
         }
