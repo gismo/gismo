@@ -331,7 +331,7 @@ void gsRefineMarkedElements(gsMultiPatch<T> & mp,
             }
         }
         // Refine all of the found refBoxes in this patch
-        std::vector<unsigned> elements = mp.patch(pn).basis().asElements(refBoxes, refExtension);
+        std::vector<index_t> elements = mp.patch(pn).basis().asElements(refBoxes, refExtension);
         mp.patch(pn).refineElements( elements );
     }
 }
