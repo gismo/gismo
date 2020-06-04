@@ -229,7 +229,7 @@ public:
                                                DvG21.cwiseProduct( basisGrads.row( i * 2 ) ) -
                                                G12.cwiseProduct( basis2ndDerivs.row( i * 3 + 2 ) ) );
 
-                surfParametricLaplace.row(i) = sqrtDetG_inv.cwiseProduct(surfParametricLaplace.row(i));
+                surfParametricLaplace.row(i) = sqrt4DetG_inv.cwiseProduct(surfParametricLaplace.row(i));
             }
             rhsVals = rhsVals.cwiseProduct( detG.cwiseProduct(sqrtDetG_inv) );
         }
@@ -247,7 +247,6 @@ public:
         gsMatrix<T> & basisGrads = basisData[1];
         gsMatrix<T> & basis2ndDerivs = basisData[2];
 
-        gsInfo << "quWeights.rows(): " << quWeights.rows() << "\n";
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply weight by the geometry measure
@@ -268,9 +267,6 @@ public:
             {
                 localMat.noalias() += weight * (surfParametricLaplace.col(k) * surfParametricLaplace.col(k).transpose());
                 localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
-
-                gsInfo << "surfParametricLaplace: " << surfParametricLaplace.col(k) << "\n";
-
             }
 
         }

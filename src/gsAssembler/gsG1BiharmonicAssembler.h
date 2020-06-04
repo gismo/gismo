@@ -231,19 +231,17 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
     // Assemble volume integrals
     Base::template push<bhVisitor>();
 
-//
-//    // Neuman conditions of first kind
-//    Base::template push<gsVisitorNeumann<T> >(
-//        m_ppde.bcFirstKind().neumannSides() );
-//
-//    // Laplace conditions of second kind
-//    Base::template push<gsVisitorLaplaceBoundaryBiharmonic<T> >(
-//        m_ppde.bcSecondKind().laplaceSides() );
-//
-//    gsInfo << "rhs: " << m_system.rhs() << "\n";
-//
-//    if (m_options.getInt("InterfaceStrategy") == iFace::dg)
-//        gsWarn << "DG option ignored.\n";
+
+    // Neuman conditions of first kind
+    Base::template push<gsVisitorNeumann<T> >(
+        m_ppde.bcFirstKind().neumannSides() );
+
+    // Laplace conditions of second kind
+    Base::template push<gsVisitorLaplaceBoundaryBiharmonic<T> >(
+        m_ppde.bcSecondKind().laplaceSides() );
+
+    if (m_options.getInt("InterfaceStrategy") == iFace::dg)
+        gsWarn << "DG option ignored.\n";
 
     /*
     // If requested, force Dirichlet boundary conditions by Nitsche's method
