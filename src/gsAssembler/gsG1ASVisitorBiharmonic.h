@@ -164,15 +164,15 @@ public:
 
 //          1 / sqrt^4( det( G ) )
             gsMatrix<T> sqrt4DetG_inv;
-            sqrt4DetG_inv.resize(1, numActive);
+            sqrt4DetG_inv.resize(1, md.points.cols());
 
 //          1 / sqrt( det( G ) )
             gsMatrix<T> sqrtDetG_inv;
-            sqrtDetG_inv.resize(1, numActive);
+            sqrtDetG_inv.resize(1, md.points.cols());
 
 //          1 / ( 2 * det( G )^( 3/2 ) )
             gsMatrix<T> sqrtDetG_inv_derivative;
-            sqrtDetG_inv_derivative.resize(1, numActive);
+            sqrtDetG_inv_derivative.resize(1, md.points.cols());
 
 //          Creating the vector of the determinant of the first fundamental form
             for(index_t k = 0; k < md.points.cols(); k++)
