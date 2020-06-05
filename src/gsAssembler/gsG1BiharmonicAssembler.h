@@ -641,58 +641,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
             {
                 gsMatrix<T> geoMapDeriv1 = patch.deriv(md.points); // First derivative of the geometric mapping with respect to the parameter coordinates
 
-    //            FIRST FUNDAMENTAL FORM: G = J^T * J
-    //
-    //            G = | G11   G12|
-    //                | G21   G22|
-    //
-    //            INVERSE OF THE FIRST FUNDAMENTAL FORM
-    //
-    //                      1    | G22  -G12|      1
-    //            G^-1 = ------- |          | = ------- G* ^-1
-    //                    det(G) | -G21  G11|    det(G)
-
-                // First fundamental form
-                gsMatrix<T> G11 = ( geoMapDeriv1.row(0).cwiseProduct(geoMapDeriv1.row(0)) +
-                    geoMapDeriv1.row(2).cwiseProduct(geoMapDeriv1.row(2)) +
-                    geoMapDeriv1.row(4).cwiseProduct(geoMapDeriv1.row(4)));
-    //            gsInfo << "G11: " << G11 << "\n";
-    //          G12 = G21
-                gsMatrix<T> G12 = ( geoMapDeriv1.row(0).cwiseProduct(geoMapDeriv1.row(1)) +
-                    geoMapDeriv1.row(2).cwiseProduct(geoMapDeriv1.row(3)) +
-                    geoMapDeriv1.row(4).cwiseProduct(geoMapDeriv1.row(5)));
-
-                gsMatrix<T> G22 = ( geoMapDeriv1.row(1).cwiseProduct(geoMapDeriv1.row(1)) +
-                    geoMapDeriv1.row(3).cwiseProduct(geoMapDeriv1.row(3)) +
-                    geoMapDeriv1.row(5).cwiseProduct(geoMapDeriv1.row(5)));
-
-                gsMatrix<T> detG = G11.cwiseProduct(G22) - G12.cwiseProduct(G12);
-
-    //          sqrt( det( G ) )
-                gsMatrix<T> sqrtDetG;
-                sqrtDetG.resize(1, md.points.cols());
-
-    //          1 / sqrt^4( det( G ) )
-                gsMatrix<T> sqrt4DetG_inv;
-                sqrt4DetG_inv.resize(1, md.points.cols());
-
-    //          1 / sqrt( det( G ) )
-                gsMatrix<T> sqrtDetG_inv;
-                sqrtDetG_inv.resize(1, md.points.cols());
-
-    //          1 / ( 2 * det( G )^( 3/2 ) )
-                gsMatrix<T> sqrtDetG_inv_derivative;
-                sqrtDetG_inv_derivative.resize(1, md.points.cols());
-
-    //          Creating the vector of the determinant of the first fundamental form
-                for(index_t k = 0; k < md.points.cols(); k++)
-                {
-                    sqrtDetG(0, k) = sqrt( detG(0, k) );
-                    sqrtDetG_inv(0, k) = 1 / sqrt( detG(0, k) );
-                    sqrt4DetG_inv(0, k) = sqrt( sqrtDetG_inv(0, k) );
-                    sqrtDetG_inv_derivative(0, k) = 1 / (2 * detG(0, k) * sqrt( detG(0, k) ) );
-                }
-
                 for( index_t k=0; k < md.points.cols(); k++ )
                 {
                     // Compute the outer normal vector on the side
@@ -714,11 +662,11 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
                         const unsigned ii = mapper.global_to_bindex( globIdxAct( i ));
 
                         gsMatrix<T> Jk = md.jacobian(k);
-                        gsMatrix<T> G_inv(2, 2);
-                        G_inv(0, 0) = G22(0, k);
-                        G_inv(0, 0) = -G12(0, k);
-                        G_inv(1, 0) = -G12(0, k);
-                        G_inv(1, 1) = G11(0, k);
+                        gsMatrix<T> G = Jk.transpose() * Jk;
+                        gsMatrix<T> G_inv = G.cramerInverse();
+
+                        real_t detG = G.determinant();
+                        real_t sqrtDetG = sqrt(detG);
 
                         for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
                         {
@@ -729,14 +677,13 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
                             // function value.
                             // Use the boundary index to put the value in the proper
                             // place in the global projection matrix.
-                            projMatEntries.add(ii, jj, weight_k * sqrtDetG(0, k) * (basisVals(i,k) * basisVals(j,k)  +
-                            lambda * (((Jk * ( 1 / detG(0, k) ) * G_inv * basisGrads.block(2*i,k,2,1)).transpose() * unormal)(0,0) *
-                            ((Jk * ( 1 / detG(0, k) ) * G_inv * basisGrads.block(2*j,k,2,1)).transpose() * unormal )(0,0))));
+                            projMatEntries.add(ii, jj, weight_k * (basisVals(i,k) * basisVals(j,k)  +
+                            lambda * (((Jk * ( 1 / detG ) * G_inv * basisGrads.block(2*i, k, 2, 1)).transpose() * unormal)(0,0) *
+                            ((Jk * ( 1 / detG ) * G_inv * basisGrads.block(2*j, k, 2, 1)).transpose() * unormal )(0,0))));
                         } // for j
 
-                        globProjRhs.row(ii) += weight_k * sqrtDetG(0, k) * ( basisVals(i,k) * rhsVals.col(k).transpose() + lambda *
-                            ( (Jk * ( 1 / detG(0, k) ) * G_inv * basisGrads.block(2*i,k,2,1)).transpose() * unormal ) *
-                            (rhsVals2.col(k).transpose() * unormal) );
+                        globProjRhs.row(ii) += weight_k * ( basisVals(i,k) * rhsVals.col(k).transpose() + lambda *
+                            ( (Jk * ( 1 / detG ) * G_inv * basisGrads.block(2*i,k,2,1)).transpose() * unormal ) * (rhsVals2.col(k).transpose() * unormal) );
 
                     } // for i
                 } // for k
