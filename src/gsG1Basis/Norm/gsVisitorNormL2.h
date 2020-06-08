@@ -85,7 +85,20 @@ public:
         T sum(0.0);
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
-            const T weight = quWeights[k] * geoEval.measure(k);
+            T weight = quWeights[k];
+
+            if(geoEval.parDim() + 1 == geoEval.jacobian(k).rows())
+            {
+                gsMatrix<T> Jk = geoEval.jacobian(k);
+                gsMatrix<T> G = Jk.transpose() * Jk;
+                real_t detG = G.determinant();
+
+                weight *= sqrt(detG);
+            }
+            else
+            {
+                weight *= geoEval.measure(k);
+            }
             switch (m_p)
             {
                 case 0: // infinity norm

@@ -43,11 +43,11 @@ int main(int argc, char *argv[])
                              "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
                              "0",3);
     gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
-                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
+                             "-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
                              "0",
-                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
-                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
+                             "16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
                              "0",
+                             "16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
                              "0",
                              "0",
                              "0", 3);
@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
             break;
         case 4:
             string_geo = "KirchhoffLoveGeo/square3dPositiveOrientation.xml";
-            numDegree = 2; // 2 == degree 3
+            numDegree = 1; // 2 == degree 3
             break;
         case 5:
             string_geo = "KirchhoffLoveGeo/square3dNegativeOrientation.xml";
@@ -114,6 +114,7 @@ int main(int argc, char *argv[])
         default:
             gsInfo << "No geometry is used! \n";
             break;
+
     }
     g1OptionList.addInt("degree","Degree", numDegree);
 
