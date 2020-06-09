@@ -166,6 +166,8 @@ int main(int argc, char *argv[])
         gsMultiPatch<> multiPatch(multiPatch_init);
         multiPatch.uniformRefine_withSameRegularity(num_knots[refinement_level], g1OptionList.getInt("regularity"));
 
+        gsInfo << "Knot vector: " << multiPatch.patch(0).basis() << "\n";
+
         gsInfo << "###### Level: " << refinement_level << " with " << num_knots[refinement_level] << " inner knots ###### " << "\n";
 
         gsMultiBasis<> mb(multiPatch);

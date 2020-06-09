@@ -244,7 +244,7 @@ public:
 
                 surfParametricLaplace.row(i) = sqrt4DetG_inv.cwiseProduct(surfParametricLaplace.row(i));
             }
-            rhsVals = rhsVals.cwiseProduct( detG.cwiseProduct(sqrtDetG_inv) );
+//            rhsVals = rhsVals.cwiseProduct( detG.cwiseProduct(sqrtDetG_inv) );
         }
 
         // Initialize local matrix/rhs
@@ -262,12 +262,11 @@ public:
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
-            // Multiply weight by the geometry measure
-            const T weight = quWeights[k] * md.measure(k);
-
             // Compute physical laplacian at k as a 1 x numActive matrix
             if(md.dim.first == md.dim.second)
             {
+                // Multiply weight by the geometry measure
+                const T weight = quWeights[k] * md.measure(k);
                 transformLaplaceHgrad(md, k, basisGrads, basis2ndDerivs, physBasisLaplace);
 
                 localMat.noalias() += weight * (physBasisLaplace.transpose() * physBasisLaplace);
@@ -277,8 +276,9 @@ public:
             else
             if(md.dim.first + 1 == md.dim.second)
             {
+                const T weight = quWeights[k];
                 localMat.noalias() += weight * (surfParametricLaplace.col(k) * surfParametricLaplace.col(k).transpose() );
-                localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
+                localRhs.noalias() += weight * md.measure(k) * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
             }
 
         }

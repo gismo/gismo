@@ -89,11 +89,12 @@ public:
 
             if(geoEval.parDim() + 1 == geoEval.jacobian(k).rows())
             {
+                gsInfo << "Here \n";
                 gsMatrix<T> Jk = geoEval.jacobian(k);
                 gsMatrix<T> G = Jk.transpose() * Jk;
                 real_t detG = G.determinant();
 
-                weight *= sqrt(detG);
+//                weight *= sqrt(detG);
             }
             else
             {
