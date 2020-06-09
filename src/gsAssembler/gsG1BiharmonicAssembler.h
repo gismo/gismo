@@ -701,7 +701,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
 
 //                  Multiply quadrature weight by the measure of normal
 //                  const T weight_k = quWeights[k] * md.measure(k);
-                    const T weight_k = quWeights[k] ;
+                    const T weight_k = 1000000000;//quWeights[k] ;
 
 
                     unormal.normalize();
