@@ -703,6 +703,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
 //                  const T weight_k = quWeights[k] * md.measure(k);
                     const T weight_k = quWeights[k] ;
 
+
                     unormal.normalize();
 
                     // Only run through the active boundary functions on the element:
