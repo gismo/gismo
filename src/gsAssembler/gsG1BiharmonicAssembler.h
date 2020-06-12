@@ -517,16 +517,76 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
 
     }
 
-    // TODO FIX HERE
-    for (size_t p = 0; p < m_ppde.domain().nPatches(); p++)
+    // Corner boundary dofs
+    for(size_t numVer=0; numVer < m_ppde.domain().vertices().size(); numVer++)
     {
-        for (index_t i = 0; i < 10; i++)
+        std::vector<patchCorner> allcornerLists = m_ppde.domain().vertices()[numVer];
+        std::vector<size_t> patchIndex;
+        std::vector<size_t> vertIndex;
+        for(size_t j = 0; j < allcornerLists.size(); j++)
         {
-            act = m_bases[0].basis(p).boundaryOffset(3, i); // Second
-            mapper.markBoundary(p, act);
-            act = m_bases[0].basis(p).boundaryOffset(4, i); // Second
-            mapper.markBoundary(p, act);
+            patchIndex.push_back(allcornerLists[j].patch);
+            vertIndex.push_back(allcornerLists[j].m_index);
         }
+
+        if(g1System.get_kindOfVertex()[numVer] == 0) // Internal vertex
+            continue;
+
+        for(size_t numPat=0; numPat < patchIndex.size(); numPat++)
+        {
+            size_t pID = patchIndex[numPat];
+            size_t vID = vertIndex[numPat];
+            index_t dim_u = m_bases[0].basis(pID).component(0).size();
+            index_t dim_v = m_bases[0].basis(pID).component(1).size();
+
+            index_t supp_size = 3; // TODO FIX SUPPORT SIZE
+
+            index_t start_u = 0, start_v = 0, end_u = 0, end_v = 0;
+            switch (vID)
+            {
+                case 1:
+                    start_u = 0;
+                    start_v = 0;
+                    end_u = supp_size;
+                    end_v = supp_size;
+                    break;
+                case 2:
+                    start_u = dim_u - supp_size;
+                    start_v = 0;
+                    end_u = dim_u;
+                    end_v = supp_size;
+                    break;
+                case 3:
+                    start_u = 0;
+                    start_v = dim_v - supp_size;
+                    end_u = supp_size;
+                    end_v = dim_v;
+                    break;
+                case 4:
+                    start_u = dim_u - supp_size;
+                    start_v = dim_v - supp_size;
+                    end_u = dim_u;
+                    end_v = dim_v;
+                    break;
+                default:
+                    break;
+            }
+
+            gsMatrix<unsigned> bfID((end_u - start_u) * (end_v - start_v),1);
+            bfID.setZero();
+
+            index_t ii = 0;
+            for(index_t j = start_v; j < end_v; j++)
+                for(index_t i = start_u; i < end_u; i++)
+                {
+                    bfID(ii,0) = j*dim_u + i;
+                    ii += 1;
+                }
+
+            mapper.markBoundary(pID,bfID);
+        }
+
+
     }
 
     mapper.finalize();
@@ -696,7 +756,8 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
                if (mapper.is_boundary(j,patchIdx))
                {
                    index_t jj = mapper.bindex(j,patchIdx);
-                   B_0_sparse.insert(i,jj) = (g1System.getSingleBoundaryBasis(i,patchIdx))(0,j);
+                   if ((g1System.getSingleBoundaryBasis(i,patchIdx))(0,j) * (g1System.getSingleBoundaryBasis(i,patchIdx))(0,j) > 10e-25)
+                       B_0_sparse.insert(i,jj) = (g1System.getSingleBoundaryBasis(i,patchIdx))(0,j);
                }
             }
     }

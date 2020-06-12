@@ -68,7 +68,6 @@ public:
             for (index_t j = 0; j < actives.rows(); j++)
                 f1vals += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * basisData.row(j);
 
-
         // Compute geometry related values
         geoEval.evaluateAt(quNodes);
 
@@ -80,7 +79,7 @@ public:
     T compute(gsDomainIterator<T>    & ,
               gsGeometryEvaluator<T> & geoEval,
               gsVector<T> const      & quWeights,
-              T & accumulated)
+              T & accumulated )
     {
         T sum(0.0);
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes

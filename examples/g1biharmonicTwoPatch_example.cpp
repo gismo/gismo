@@ -55,12 +55,12 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
-/*
-    gsFunctionExpr<> source  ("0",2);
+
+/*    gsFunctionExpr<> source  ("0",2);
     gsFunctionExpr<> laplace ("0",2);
-    gsFunctionExpr<> solVal("x",2);
-    gsFunctionExpr<>sol1der ("1",
-                             "0",2);
+    gsFunctionExpr<> solVal("x*y",2);
+    gsFunctionExpr<>sol1der ("y",
+                             "x",2);
     gsFunctionExpr<>sol2der ("0",
                              "0",
                              "0", 2);
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
     gsWriteParaview(multiPatch_init,"geoemtry_init",2000,true);
 
     //multiPatch.patch(1).degreeElevate(1,0);
-    multiPatch_init.degreeElevate(g1OptionList.getInt("degree"));
+    multiPatch_init.degreeElevate(g1OptionList.getInt("degree") + g1OptionList.getInt("q_tilde"));
 
     gsVector<real_t> l2Error_vec(g1OptionList.getInt("loop") + 1);
     gsVector<real_t> h1SemiError_vec(g1OptionList.getInt("loop") + 1);
@@ -190,6 +190,7 @@ int main(int argc, char *argv[])
                 edgeSingleBF.addPatch(singleInt.getSinglePatch(0).getG1Basis().patch(i));
                 edgeSingleBF.addPatch(singleInt.getSinglePatch(1).getG1Basis().patch(i));
 
+/*
                 index_t m_r = g1OptionList.getInt("regularity"); // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
 
                 gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(multiPatch.basis(1).component(1)); // 0 -> v, 1 -> u
@@ -198,7 +199,7 @@ int main(int argc, char *argv[])
                 // first,last,interior,mult_ends,mult_interior
                 gsKnotVector<real_t> kv_plus(0,1,0,m_p+1,m_p-1-m_r); // p,r+1 //-1 bc r+1
                 gsBSplineBasis<> basis_plus(kv_plus);
-/*
+
                 for (size_t ii = m_p+1; ii < basis_edge.knots().size() - (m_p+1); ii = ii+(m_p-m_r))
                     basis_plus.insertKnot(basis_edge.knot(ii),m_p-1-m_r);
 
@@ -243,8 +244,11 @@ int main(int argc, char *argv[])
                 //temp = basis_edge.makeGeometry(alpha_coefs.transpose());
                 //gsInfo << "basis alpha : " << temp->eval(points) << "\n";
                 gsInfo << "basis " << i << " : " << m.block(0,0,2,multiPatch.basis(0).component(0).size()) << "\n";
-                */
 
+                gsMatrix<> m = singleInt.getSinglePatch(0).getG1Basis().patch(i).coefs();
+                m = m.reshape(multiPatch.basis(0).component(0).size(), multiPatch.basis(0).component(1).size());
+                gsInfo << "basis " << i << " : " << m.block(0,0,2,multiPatch.basis(0).component(0).size()) << "\n";
+*/
 
                 g1System.insertInterfaceEdge(edgeSingleBF,item,numInt,i);
 

@@ -16,10 +16,10 @@
 
 # include <gsAssembler/gsAssembler.h>
 
-# include <gsG1Basis/gsVisitorApproxProjection.h>
-# include <gsG1Basis/gsApproxGluingData.h>
+# include <gsG1Basis/ApproxG1Basis/playground/gsVisitorApproxProjection.h>
+# include <gsG1Basis/ApproxG1Basis/gsApproxGluingData.h>
 
-# include <gsG1Basis/gsApproxBetaSAssembler.h>
+//# include <gsG1Basis/ApproxG1Basis/playground/gsApproxBetaSAssembler.h>
 
 namespace gismo
 {
