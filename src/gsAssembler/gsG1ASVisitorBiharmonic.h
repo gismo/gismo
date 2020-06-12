@@ -237,6 +237,7 @@ public:
 
                 surfParametricLaplace.row(i) = sqrt4DetG_inv.cwiseProduct(surfParametricLaplace.row(i));
             }
+            rhsVals = rhsVals.cwiseProduct( detG.cwiseProduct( sqrtDetG_inv ) );
         }
 
         // Initialize local matrix/rhs
@@ -270,7 +271,7 @@ public:
             {
                 const T weight = quWeights[k];
                 localMat.noalias() += weight * (surfParametricLaplace.col(k) * surfParametricLaplace.col(k).transpose() );
-                localRhs.noalias() += weight * md.measure(k) * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
+                localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
             }
 
         }

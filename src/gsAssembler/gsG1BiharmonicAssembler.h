@@ -660,9 +660,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
                     real_t detG = G.determinant();
 
 //                  Multiply quadrature weight by the measure of normal
-//                  const T weight_k = quWeights[k] * md.measure(k);
                     const T weight_k = quWeights[k] * sqrt(detG);
-
 
                     unormal.normalize();
 
