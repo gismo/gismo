@@ -208,13 +208,6 @@ public:
 //          div ( sqrt( det( G ) ) * ( 1 / det( G ) * G* ^-1 * grad( u ) ) )
             surfParametricLaplace.resize(numActive, md.points.cols());
 
-            gsInfo << "geo Map der dim: " << geoMapDeriv1.dim() << "\n";
-            gsInfo << "geo Map secopnd der dim: " << geoMapDeriv2.dim() << "\n";
-            gsInfo << "Basis vals dim: " << basisData[0].dim() << "\n";
-            gsInfo << "Basis grad dim: " << basisGrads.dim() << "\n";
-            gsInfo << "Basis secopnd der dim: " << basis2ndDerivs.dim() << "\n";
-            gsInfo << "Num active: " << numActive << "\n";
-
             for(index_t i = 0; i < numActive; i++)
             {
 //              1 / sqrt^4( det( G ) ) *
@@ -244,7 +237,6 @@ public:
 
                 surfParametricLaplace.row(i) = sqrt4DetG_inv.cwiseProduct(surfParametricLaplace.row(i));
             }
-//            rhsVals = rhsVals.cwiseProduct( detG.cwiseProduct(sqrtDetG_inv) );
         }
 
         // Initialize local matrix/rhs

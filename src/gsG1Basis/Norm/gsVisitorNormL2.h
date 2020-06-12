@@ -68,12 +68,18 @@ public:
             for (index_t j = 0; j < actives.rows(); j++)
                 f1vals += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * basisData.row(j);
 
-
+//        gsInfo << "f1vals:" << f1vals.transpose() << "\n";
         // Compute geometry related values
         geoEval.evaluateAt(quNodes);
 
         // Evaluate second function
         _func2.eval_into( f2param ? quNodes : geoEval.values() , f2vals);
+
+//        gsInfo << "f2vals:" << f2vals.transpose() << "\n";
+
+
+//        gsInfo << "Abs (f1 - f2): " << (f1vals.transpose() - f2vals.transpose()).array().abs() << "\n";
+
     }
 
     // assemble on element
@@ -89,12 +95,11 @@ public:
 
             if(geoEval.parDim() + 1 == geoEval.jacobian(k).rows())
             {
-                gsInfo << "Here \n";
                 gsMatrix<T> Jk = geoEval.jacobian(k);
                 gsMatrix<T> G = Jk.transpose() * Jk;
                 real_t detG = G.determinant();
 
-//                weight *= sqrt(detG);
+                weight *= sqrt(detG);
             }
             else
             {

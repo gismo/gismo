@@ -36,7 +36,6 @@ int main(int argc, char *argv[])
 
 
     // ======= Solution =========
-
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
@@ -45,6 +44,20 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
+
+
+//    gsFunctionExpr<> source  ("0",2);
+//
+//    gsFunctionExpr<> laplace ("0",2);
+//
+//    gsFunctionExpr<> solVal("(x - 1) * (y - 1)",2);
+//
+//    gsFunctionExpr<>sol1der ("(y - 1)",
+//                             "(x - 1)",2);
+//
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0", 2);
 
 
 //    gsFunctionExpr<> source  ("0",2);
@@ -165,9 +178,6 @@ int main(int argc, char *argv[])
     {
         gsMultiPatch<> multiPatch(multiPatch_init);
         multiPatch.uniformRefine_withSameRegularity(num_knots[refinement_level], g1OptionList.getInt("regularity"));
-
-        gsInfo << "Knot vector: " << multiPatch.patch(0).basis() << "\n";
-
         gsInfo << "###### Level: " << refinement_level << " with " << num_knots[refinement_level] << " inner knots ###### " << "\n";
 
         gsMultiBasis<> mb(multiPatch);

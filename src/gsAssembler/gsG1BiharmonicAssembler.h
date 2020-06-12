@@ -444,57 +444,18 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
             std::vector<index_t> eltBdryFcts;
             eltBdryFcts.reserve(g1System.boundary_size());
             for( size_t i=0; i < multiPatch_Edges.nPatches(); i++)
-                eltBdryFcts.push_back( i );
-            for( size_t i=0; i < multiPatch_Vertex_0.nPatches(); i++)
-                eltBdryFcts.push_back( multiPatch_Edges.nPatches() + i );
-            for( size_t i=0; i < multiPatch_Vertex_1.nPatches(); i++)
-                eltBdryFcts.push_back( multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches() + i );
-
-            if(md.dim.first + 1 == md.dim.second )
-            {
-                for( index_t k=0; k < md.points.cols(); k++ )
                 {
-                    gsMatrix<T> Jk = md.jacobian(k);
-                    gsMatrix<T> G = Jk.transpose() * Jk;
-                    gsMatrix<T> G_inv = G.cramerInverse();
+                eltBdryFcts.push_back( i );
+                }
+            for( size_t i=0; i < multiPatch_Vertex_0.nPatches(); i++)
+                {
+                eltBdryFcts.push_back( multiPatch_Edges.nPatches() + i );
+                }
+            for( size_t i=0; i < multiPatch_Vertex_1.nPatches(); i++)
+                {
+                eltBdryFcts.push_back( multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches() + i );
+                }
 
-                    real_t detG = G.determinant();
-                    real_t sqrtDetG = sqrt(detG);
-
-                    const T weight_k = quWeights[k] * sqrtDetG;
-
-                    // Only run through the active boundary functions on the element:
-                    for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
-                    {
-                        unsigned ii, jj;
-                        // Each active boundary function/DOF in eltBdryFcts has...
-                        // ...the above-mentioned "element-wise index"
-                        const index_t i = eltBdryFcts[i0];
-                        // ...the boundary index.
-                        ii = globIdxAct.at(i);
-
-                        for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
-                        {
-                            const index_t j = eltBdryFcts[j0];
-                            jj = globIdxAct.at(j);
-
-                            //gsInfo << "HIER: " << jj << " : " << ii << " : " << i <<" : " << j << " : " << k << "\n";
-                            // Use the "element-wise index" to get the needed
-                            // function value.
-                            // Use the boundary index to put the value in the proper
-                            // place in the global projection matrix.
-                            projMatEntries.add(ii, jj, weight_k * basisVals(i,k) * basisVals(j,k));
-
-//                            gsInfo << "basisVals i * basisVals j: " << basisVals(i,k) * basisVals(j,k) << "\n";
-                            gsInfo << "weight k: " << weight_k << "\n";
-
-                        } // for j
-                        globProjRhs.row(ii) += weight_k *  basisVals(i,k) * rhsVals.col(k).transpose();
-                    } // for i
-                } // for k
-            }
-            else
-            {
                 // Do the actual assembly:
                 for( index_t k=0; k < md.points.cols(); k++ )
                 {
@@ -525,7 +486,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
                         globProjRhs.row(ii) += weight_k *  basisVals(i,k) * rhsVals.col(k).transpose();
                     } // for i
                 } // for k
-            }
         } // bdryIter
     } // boundaryConditions-Iterator
 
@@ -701,7 +661,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
 
 //                  Multiply quadrature weight by the measure of normal
 //                  const T weight_k = quWeights[k] * md.measure(k);
-                    const T weight_k = 1000000000;//quWeights[k] ;
+                    const T weight_k = quWeights[k] * sqrt(detG);
 
 
                     unormal.normalize();
@@ -725,11 +685,11 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
                             // Use the boundary index to put the value in the proper
                             // place in the global projection matrix.
                             projMatEntries.add(ii, jj, weight_k * (basisVals(i,k) * basisVals(j,k)  +
-                            lambda * ( ( (Jk * ( 1 / detG ) * G_inv * basisGrads.block(2*i, k, 2, 1)).transpose() * unormal)(0,0) *
-                            ( (Jk * ( 1 / detG ) * G_inv * basisGrads.block(2*j, k, 2, 1)).transpose() * unormal )(0,0) ) ) );
+                            lambda * ( ( (Jk * G_inv * basisGrads.block(2*i, k, 2, 1)).transpose() * unormal)(0,0) *
+                            ( (Jk * G_inv * basisGrads.block(2*j, k, 2, 1)).transpose() * unormal )(0,0) ) ) );
                         } // for j
-                        globProjRhs.row(ii) += weight_k * sqrt(detG) * ( basisVals(i,k) * rhsVals.col(k).transpose() + lambda *
-                            ( (Jk * ( 1 / detG ) * G_inv * basisGrads.block(2*i,k,2,1)).transpose() * unormal ) * (rhsVals2.col(k).transpose() * unormal) );
+                        globProjRhs.row(ii) += weight_k * ( basisVals(i,k) * rhsVals.col(k).transpose() + lambda *
+                            ( (Jk * G_inv * basisGrads.block(2*i,k,2,1)).transpose() * unormal ) * (rhsVals2.col(k).transpose() * unormal) );
 
                     } // for i
                 } // for k

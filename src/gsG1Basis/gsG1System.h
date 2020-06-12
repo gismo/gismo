@@ -712,7 +712,7 @@ gsMatrix<> gsG1System<T>::solve(gsSparseMatrix<real_t> K, gsMatrix<> f)
     solver.compute(A);
     gsMatrix<> solVector = solver.solve(F);
 
-    gsInfo << "f: " << f << "\n";
+//    gsInfo << "f: " << f << "\n";
 
     gsInfo << "Sol: " << solVector << "\n";
     return solVector;
