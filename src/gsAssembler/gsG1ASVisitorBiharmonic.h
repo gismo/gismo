@@ -95,6 +95,9 @@ public:
         // Evaluate right-hand side at the geometry points
         rhs_ptr->eval_into(md.values[0], rhsVals); // Dim: 1 X NumPts
 
+//        gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y)) + 0*z",3);
+//        source.eval_into(md.points, rhsVals);
+
         if(md.dim.first +1 == md.dim.second)
         {
             gsMatrix<T> geoMapDeriv1 = geo.deriv(md.points); // First derivative of the geometric mapping with respect to the parameter coordinates
