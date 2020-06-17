@@ -276,13 +276,6 @@ if(GISMO_WITH_UNUM)
   #include_directories(${UNUM_INCLUDE_DIR})
 endif(GISMO_WITH_UNUM)
 
-if(GISMO_WITH_TRILINOS)
-  add_subdirectory(extensions/gsTrilinos)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TRILINOS_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${TRILINOS_INCLUDE_DIR})
-endif(GISMO_WITH_TRILINOS)
-
 if(GISMO_WITH_OCC)
   add_subdirectory(extensions/gsOpenCascade)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${OCC_INCLUDE_DIR}
@@ -298,6 +291,16 @@ if(GISMO_WITH_SMESH)
 endif()
 
 #second time
+include_directories(${GISMO_INCLUDE_DIRS})
+
+if(GISMO_WITH_TRILINOS)
+  add_subdirectory(extensions/gsTrilinos)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TRILINOS_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  #include_directories(${TRILINOS_INCLUDE_DIR})
+endif(GISMO_WITH_TRILINOS)
+
+#third time
 include_directories(${GISMO_INCLUDE_DIRS})
 
 # external inclusion paths
