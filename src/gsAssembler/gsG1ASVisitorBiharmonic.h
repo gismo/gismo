@@ -272,7 +272,8 @@ public:
             else
             if(md.dim.first + 1 == md.dim.second)
             {
-                const T weight = quWeights[k];
+                gsMatrix<T> Jk = md.jacobian(k);
+                const T weight = quWeights[k]; // * (sqrt( (Jk.transpose() * Jk).determinant() ) );
                 localMat.noalias() += weight * (surfParametricLaplace.col(k) * surfParametricLaplace.col(k).transpose() );
                 localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
             }
