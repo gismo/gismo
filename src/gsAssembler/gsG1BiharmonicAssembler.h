@@ -659,8 +659,11 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
 
                     real_t detG = G.determinant();
 
+
+
+
 //                  Multiply quadrature weight by the square route of the first foundamental form
-                    const T weight_k = quWeights[k] * sqrt(detG);
+                    const T weight_k = quWeights[k] * unormal.norm() * sqrt(detG);
 
                     unormal.normalize();
 
@@ -673,6 +676,8 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
                         // ...the boundary index.
                         const unsigned ii = mapper.global_to_bindex( globIdxAct( i ));
 
+//                        gsInfo << "ii: " << ii << "\n";
+
                         for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
                         {
                             const unsigned j = eltBdryFcts[j0];
@@ -682,16 +687,15 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
                             // function value.
                             // Use the boundary index to put the value in the proper
                             // place in the global projection matrix.
-                            projMatEntries.add(ii, jj, weight_k * (basisVals(i,k) * basisVals(j,k)  +
-                            lambda * ( ( (Jk * G_inv * basisGrads.block(2*i, k, 2, 1)).transpose() * unormal)(0,0) *
-                            ( ( Jk * G_inv * basisGrads.block(2*j, k, 2, 1)).transpose() * unormal )(0,0) ) ) );
-                            gsInfo << "projMatEntries: " << weight_k * (basisVals(i,k) * basisVals(j,k)  +
-                                lambda * ( ( (Jk * G_inv * basisGrads.block(2*i, k, 2, 1)).transpose() * unormal)(0,0) *
-                                    ( ( Jk * G_inv * basisGrads.block(2*j, k, 2, 1)).transpose() * unormal )(0,0) ) ) << "\n";
+                            projMatEntries.add(ii, jj, weight_k * ( basisVals(i,k) * basisVals(j,k)   +
+                            lambda * ( ( (Jk * G_inv * basisGrads.block(2*i, k, 2, 1) ).transpose() * unormal )(0,0) *
+                            ( ( Jk * G_inv * basisGrads.block(2*j, k, 2, 1) ).transpose() * unormal )(0,0) ) ) );
+
                         } // for j
                         globProjRhs.row(ii) += weight_k * ( basisVals(i,k) * rhsVals.col(k).transpose() +
                             lambda * ( (Jk * G_inv * basisGrads.block(2*i,k,2,1)).transpose() * unormal ) *
                             ( rhsVals2.col(k).transpose() * unormal ) );
+
 
                     } // for i
                 } // for k
@@ -705,8 +709,8 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
                     outerNormal(md, k, iter->side(), unormal);
 
                     // Multiply quadrature weight by the measure of normal
-                    //const T weight_k = quWeights[k] * md.measure(k);
-                    const T weight_k = quWeights[k] * unormal.norm();
+                    const T weight_k = quWeights[k] * md.measure(k);
+//                    const T weight_k = quWeights[k] * unormal.norm();
 
                     unormal.normalize();
 
@@ -731,10 +735,8 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
                             // Use the boundary index to put the value in the proper
                             // place in the global projection matrix.
                             projMatEntries.add(ii, jj, weight_k * (basisVals(i,k) * basisVals(j,k) + lambda *
-                                ((physBasisGrad.col(i).transpose() * unormal)(0,0) * (physBasisGrad.col(j).transpose() * unormal )(0,0))));
+                                ( ( physBasisGrad.col(i).transpose() * unormal)(0,0) * (physBasisGrad.col(j).transpose() * unormal )(0,0))));
 
-                            gsInfo << "projMatEntries: " << weight_k * (basisVals(i,k) * basisVals(j,k) + lambda *
-                                ((physBasisGrad.col(i).transpose() * unormal)(0,0) * (physBasisGrad.col(j).transpose() * unormal )(0,0))) << "\n";
                         } // for j
 
                         globProjRhs.row(ii) += weight_k * ( basisVals(i,k) * rhsVals.col(k).transpose() + lambda *
@@ -774,6 +776,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
     // for the values of the eliminated Dirichlet DOFs.
     typename gsSparseSolver<T>::CGDiagonal solver;
     m_g1_ddof = solver.compute( B_0_sparse * globProjMat * B_0_sparse.transpose() ).solve ( B_0_sparse * globProjRhs );
+
 }
 
 } // namespace gismo

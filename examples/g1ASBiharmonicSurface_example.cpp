@@ -78,6 +78,26 @@ int main(int argc, char *argv[])
 //
 //    gsFunctionExpr<> laplace ("0",3);
 //
+//    gsFunctionExpr<> solVal("(x - 1) * (z - 1)",3);
+//
+//    gsFunctionExpr<>sol1der ("(z - 1)",
+//                             "0",
+//                             "(x - 1)",3);
+//
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
+
+//    gsFunctionExpr<> source  ("0",3);
+//
+//    gsFunctionExpr<> laplace ("0",3);
+//
 //    gsFunctionExpr<> solVal("1",3);
 //
 //    gsFunctionExpr<>sol1der ("0",
