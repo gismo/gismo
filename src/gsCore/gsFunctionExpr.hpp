@@ -385,6 +385,24 @@ gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string1,
 
 template<typename T>
 gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string1,
+                                  const std::string & expression_string2,
+                                  const std::string & expression_string3,
+                                  const std::string & expression_string4,
+                                  const std::string & expression_string5,
+                                  const std::string & expression_string6,
+                                  int ddim)
+    : my(new PrivateData_t(ddim))
+{
+    my->addComponent(expression_string1);
+    my->addComponent(expression_string2);
+    my->addComponent(expression_string3);
+    my->addComponent(expression_string4);
+    my->addComponent(expression_string5);
+    my->addComponent(expression_string6);
+}
+
+template<typename T>
+gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string1,
                    const std::string & expression_string2,
                    const std::string & expression_string3,
                    const std::string & expression_string4,

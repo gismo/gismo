@@ -101,6 +101,8 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     index_t loop = 1; // Number of refinement steps
     index_t geometry = 0; // Which geometry
 
+    index_t q = 0; // geometry degree elevate
+
     index_t numRefine = 4; // Initial refinement
     index_t regularity = 1; // Regularity
 
@@ -134,6 +136,7 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     gsCmdLine cmd("Example for solving the biharmonic problem.");
     cmd.addInt("k", "refine", "Number of refinement steps", numRefine);
     cmd.addInt("p", "p_tilde", "Polynomial degree for tilde{p}", p_tilde);
+    cmd.addInt("q", "q_tilde", "Polynomial degree for geometry", q);
     cmd.addInt("r", "r_tilde", "Regularity for tilde{r}", r_tilde);
     cmd.addInt("g", "geometry", "Geometry", geometry);
     cmd.addInt("t", "threads", "Threads", threads);
@@ -158,6 +161,8 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     optionList.addInt("p_tilde","Grad",p_tilde);
     optionList.addInt("r_tilde","Reg",r_tilde);
     optionList.addInt("regularity","Regularity of the initial geometry",regularity);
+
+    optionList.addInt("q_tilde","Grad", q);
 
     optionList.addSwitch("plot","Plot in Paraview",plot);
     optionList.addSwitch("latex","Latex output",latex);

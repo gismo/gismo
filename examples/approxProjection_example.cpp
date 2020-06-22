@@ -14,8 +14,8 @@
 
 # include <gismo.h>
 
-# include <gsG1Basis/gsApproxProjectionAssembler.h>
-# include <gsG1Basis/gsApproxNormL2.h>
+# include <gsG1Basis/ApproxG1Basis/playground/gsApproxProjectionAssembler.h>
+# include <gsG1Basis/Norm/gsApproxNormL2.h>
 
 using namespace gismo;
 
@@ -28,9 +28,12 @@ int main(int argc, char *argv[])
     index_t numRefine = 4; // Initial refinement
     index_t regularity = 1; // Regularity
 
+    index_t q = 0; // geometry degree elevate
+
     // For the spline space of the gluing data
     index_t p_tilde = 1;
     index_t r_tilde = 0;
+
 
     // Which basis function should computed
     index_t basisID = 0;
@@ -46,6 +49,7 @@ int main(int argc, char *argv[])
     gsCmdLine cmd("Example for solving the biharmonic problem.");
     cmd.addInt("k", "refine", "Number of refinement steps", numRefine);
     cmd.addInt("p", "p_tilde", "Polynomial degree for tilde{p}", p_tilde);
+    cmd.addInt("q", "q_tilde", "Polynomial degree for geometry", q);
     cmd.addInt("r", "r_tilde", "Regularity for tilde{r}", r_tilde);
     cmd.addInt("g", "geometry", "Geometry", geometry);
     cmd.addInt( "l", "loop", "The number of refinement steps", loop);
@@ -64,6 +68,7 @@ int main(int argc, char *argv[])
 
     optionList.addInt("numRefine","Number of refinement", numRefine);
 
+    optionList.addInt("q_tilde","Grad", q);
     optionList.addInt("p_tilde","Grad",p_tilde);
     optionList.addInt("r_tilde","Reg",r_tilde);
     optionList.addInt("regularity","Regularity of the initial geometry",regularity);
@@ -93,7 +98,18 @@ int main(int argc, char *argv[])
             string_geo = "planar/twoPatches/2patch_C1curved.xml";
             numDegree = 0;
             break;
-
+        case 4:
+            string_geo = "planar/twoPatches/square_complex_bent.xml";
+            numDegree = 0;
+            break;
+        case 5:
+            string_geo = "planar/twoPatches/2patch_C1curved_complex.xml";
+            numDegree = 0;
+            break;
+        case 6:
+            string_geo = "planar/twoPatches/2patch_puzzle.xml";
+            numDegree = 0;
+            break;
 
         default:
             gsInfo << "No geometry is used! \n";

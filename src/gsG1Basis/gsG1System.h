@@ -90,6 +90,10 @@ public:
     gsVector<> get_numBoundaryVertexFunctions() {return numBasisFunctions[4]; };
     gsVector<> get_numVertexFunctions() {return numBasisFunctions[2]; };
 
+    gsVector<> get_kindOfVertex() {return kindOfVertex; };
+
+
+
     size_t boundary_size() { return numBasisFunctions[4].last() - numBasisFunctions[3][0]; }
 
     size_t sizePlusInterface(index_t i) { return  sizePlusInt[i]; };
@@ -242,7 +246,7 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, gsMultiBasis<> mb)
     numBasisFunctions[2] = numBasisFunctions[2].array() + numBasisFunctions[1].last();
     numBasisFunctions[3] = numBasisFunctions[3].array() + numBasisFunctions[2].last();
     numBasisFunctions[4] = numBasisFunctions[4].array() + numBasisFunctions[3].last();
-
+/*
     gsInfo << "Num Basis Functions " << numBasisFunctions[5] << "\n";
     gsInfo << "Num Interface Functions " << numBasisFunctions[0] << "\n";
     gsInfo << "Num Edges Functions " << numBasisFunctions[1] << "\n";
@@ -252,7 +256,7 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, gsMultiBasis<> mb)
     gsInfo << "Kind of Vertex Functions " << kindOfVertex << "\n";
     gsInfo << "Size of plus space Bdy  " << sizePlusBdy << "\n";
     gsInfo << "Size of plus space Int  " << sizePlusInt << "\n";
-
+*/
     // Setting the final matrix
     dim_K = numBasisFunctions[5].last(); // interior basis dimension
     dim_G1_Dofs = numBasisFunctions[2].last() ; // edges basis dimension
@@ -499,18 +503,12 @@ void gsG1System<T>::constructG1Solution(const gsMatrix<T> & solVector, std::vect
                 index_t ii = numBasisFunctions[4][rowVertex] + i;
                 g1Basis.at(patchIdx).addPatch(temp_basis.makeGeometry(D_sparse.block(ii,numBasisFunctions[5][patchIdx],1,temp_basis.size()).transpose() *
                     m_g1.at(ii)));
-
-                if (rowVertex == 1)
-                    gsInfo << "Vertex: " << m_g1.at(ii) << "\n";
             }
             for (size_t i = 0; i < numBasisFunctions[2][rowVertex+1] - numBasisFunctions[2][rowVertex]; i++) // each dofs vertex
             {
                 index_t ii = numBasisFunctions[2][rowVertex] + i;
                 g1Basis.at(patchIdx).addPatch(temp_basis.makeGeometry(D_sparse.block(ii,numBasisFunctions[5][patchIdx],1,temp_basis.size()).transpose() *
                     solVector.at(ii)));
-
-                if (rowVertex == 1)
-                    gsInfo << "Vertex interior: " << solVector.at(ii) << "\n";
             }
         }
     }

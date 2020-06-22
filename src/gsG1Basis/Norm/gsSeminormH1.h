@@ -100,10 +100,13 @@ public:
                     visitor.evaluate(*geoEval, func2p, dom, sparseMatrix, numBasisFunctions, quNodes);
 
                     // Accumulate value from the current element (squared)
-#pragma omp critical(compute)
-                    visitor.compute(*domIt, *geoEval, quWeights, m_value);
-                    //const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
-
+                    T temp = 0.0;
+                    //visitor.compute(*domIt, *geoEval, quWeights, m_value);
+                    const T result = visitor.compute(*domIt, *geoEval, quWeights, temp);
+#pragma omp critical
+                    {
+                        m_value += result;
+                    }
                     //if (storeElWise)
                     //   m_elWise.push_back(takeRoot(result));
                 }

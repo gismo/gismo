@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gsG1Basis/gsVisitorApproxBetaS.h>
+#include <gsG1Basis/ApproxG1Basis/playground/gsVisitorApproxBetaS.h>
 
 namespace gismo
 {

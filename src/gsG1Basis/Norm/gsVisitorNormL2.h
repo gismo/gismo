@@ -11,7 +11,6 @@
     Author(s): P. Weinmüller
 */
 
-
 #pragma once
 
 namespace gismo
@@ -44,7 +43,7 @@ public:
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_MEASURE| NEED_VALUE;
+        evFlags = NEED_MEASURE| NEED_VALUE | NEED_JACOBIAN;
     }
 
     // Evaluate on element.
@@ -68,7 +67,6 @@ public:
             for (index_t j = 0; j < actives.rows(); j++)
                 f1vals += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * basisData.row(j);
 
-
         // Compute geometry related values
         geoEval.evaluateAt(quNodes);
 
@@ -80,12 +78,20 @@ public:
     T compute(gsDomainIterator<T>    & ,
               gsGeometryEvaluator<T> & geoEval,
               gsVector<T> const      & quWeights,
-              T & accumulated)
+              T & accumulated )
     {
         T sum(0.0);
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
-            const T weight = quWeights[k] * geoEval.measure(k);
+            gsMatrix<T> Jk = geoEval.jacobian(k);
+            gsMatrix<T> G = Jk.transpose() * Jk;
+            gsMatrix<T> G_inv = G.cramerInverse();
+
+            real_t detG = G.determinant();
+
+
+            //const T weight = quWeights[k] * geoEval.measure(k);
+            const T weight = quWeights[k] * sqrt(detG);
             switch (m_p)
             {
                 case 0: // infinity norm

@@ -183,10 +183,13 @@ public:
                     // Evaluate on quadrature points
                     visitor.evaluate(*geoEval, func2p, dom, sparseMatrix, numBasisFunctions, quNodes);
 
-                    #pragma omp critical
-                    {
+
                     //visitor.compute(*domIt, *geoEval, quWeights, m_value);
-                    const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
+                    T temp = 0.0;
+                    const T result = visitor.compute(*domIt, *geoEval, quWeights, temp);
+#pragma omp critical
+                    {
+                    m_value += result;
                     if (storeElWise)
                         m_elWise.push_back(takeRoot(result));
                     };

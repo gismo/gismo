@@ -100,10 +100,11 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
         normal = normal.normalized();
 
         result = bdyTan.cross(normal); //The normal vector to the boudnary (result) is given in a general reference frame, is not
-                                      // related to the parmetrization of the surface
 
-        /*
-          gsDebugVar(result.transpose()); // result 1
+        // related to the parmetrization of the surface
+
+
+/*          gsDebugVar(result.transpose()); // result 1
           normal(k,result);
           Jk.col(dir) = result.normalized();
           gsMatrix<T, ParDim, md.dim.first> minor;

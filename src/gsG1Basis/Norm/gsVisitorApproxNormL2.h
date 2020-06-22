@@ -130,8 +130,8 @@ public:
         basis_plus.derivSingle_into(optionList.getInt("basisID"),quNodes,der_b_plus);
         basis_minus.evalSingle_into(optionList.getInt("basisID"),quNodes,b_minus);
 
-        f2vals = uv.row(0).cwiseProduct(der_b_plus);
-        //f2vals = uv.row(0).cwiseProduct(b_minus);
+        //f2vals = uv.row(0).cwiseProduct(der_b_plus);
+        f2vals = uv.row(0);
     }
 
     // assemble on element

@@ -12,7 +12,7 @@
 */
 
 #pragma once
-# include <gsG1Basis/gsApproxGluingData.h>
+# include <gsG1Basis/ApproxG1Basis/gsApproxGluingData.h>
 
 namespace gismo
 {
@@ -100,8 +100,8 @@ public:
         else if (optionList.getInt("gluingData") == 1) // local
             gluingData.get_local_alpha_tilde(optionList.getInt("basisID")).eval_into(md.points,alpha);
 
-        rhsVals = beta.cwiseProduct(der_b_plus);
-        //rhsVals = beta;
+        //rhsVals = beta.cwiseProduct(der_b_plus);
+        rhsVals = beta;
 
 
         // ++++++++++++++++++++++++++++++++
