@@ -67,11 +67,21 @@ public:
             for (index_t j = 0; j < actives.rows(); j++)
                 f1vals += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * basisData.row(j);
 
+<<<<<<< HEAD
+=======
+//        gsInfo << "f1vals:" << f1vals.transpose() << "\n";
+>>>>>>> farahat_G1_multipatch
         // Compute geometry related values
         geoEval.evaluateAt(quNodes);
 
         // Evaluate second function
         _func2.eval_into( f2param ? quNodes : geoEval.values() , f2vals);
+
+//        gsInfo << "f2vals:" << f2vals.transpose() << "\n";
+
+
+//        gsInfo << "Abs (f1 - f2): " << (f1vals.transpose() - f2vals.transpose()).array().abs() << "\n";
+
     }
 
     // assemble on element
@@ -83,6 +93,7 @@ public:
         T sum(0.0);
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
+<<<<<<< HEAD
             gsMatrix<T> Jk = geoEval.jacobian(k);
             gsMatrix<T> G = Jk.transpose() * Jk;
             gsMatrix<T> G_inv = G.cramerInverse();
@@ -92,6 +103,22 @@ public:
 
             //const T weight = quWeights[k] * geoEval.measure(k);
             const T weight = quWeights[k] * sqrt(detG);
+=======
+            T weight = quWeights[k];
+
+            if(geoEval.parDim() + 1 == geoEval.jacobian(k).rows())
+            {
+                gsMatrix<T> Jk = geoEval.jacobian(k);
+                gsMatrix<T> G = Jk.transpose() * Jk;
+                real_t detG = G.determinant();
+
+                weight *= sqrt(detG);
+            }
+            else
+            {
+                weight *= geoEval.measure(k);
+            }
+>>>>>>> farahat_G1_multipatch
             switch (m_p)
             {
                 case 0: // infinity norm

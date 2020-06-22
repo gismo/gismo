@@ -231,6 +231,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
     // Assemble volume integrals
     Base::template push<bhVisitor>();
 
+
     // Neuman conditions of first kind
     Base::template push<gsVisitorNeumann<T> >(
         m_ppde.bcFirstKind().neumannSides() );
@@ -443,42 +444,48 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
             std::vector<index_t> eltBdryFcts;
             eltBdryFcts.reserve(g1System.boundary_size());
             for( size_t i=0; i < multiPatch_Edges.nPatches(); i++)
-                eltBdryFcts.push_back( i );
-            for( size_t i=0; i < multiPatch_Vertex_0.nPatches(); i++)
-                eltBdryFcts.push_back( multiPatch_Edges.nPatches() + i );
-            for( size_t i=0; i < multiPatch_Vertex_1.nPatches(); i++)
-                eltBdryFcts.push_back( multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches() + i );
-
-            // Do the actual assembly:
-            for( index_t k=0; k < md.points.cols(); k++ )
-            {
-                const T weight_k = quWeights[k] * md.measure(k);
-
-                // Only run through the active boundary functions on the element:
-                for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
                 {
-                    unsigned ii, jj;
-                    // Each active boundary function/DOF in eltBdryFcts has...
-                    // ...the above-mentioned "element-wise index"
-                    const index_t i = eltBdryFcts[i0];
-                    // ...the boundary index.
-                    ii = globIdxAct.at(i);
+                eltBdryFcts.push_back( i );
+                }
+            for( size_t i=0; i < multiPatch_Vertex_0.nPatches(); i++)
+                {
+                eltBdryFcts.push_back( multiPatch_Edges.nPatches() + i );
+                }
+            for( size_t i=0; i < multiPatch_Vertex_1.nPatches(); i++)
+                {
+                eltBdryFcts.push_back( multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches() + i );
+                }
 
-                    for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
+                // Do the actual assembly:
+                for( index_t k=0; k < md.points.cols(); k++ )
+                {
+                    const T weight_k = quWeights[k] * md.measure(k);
+
+                    // Only run through the active boundary functions on the element:
+                    for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
                     {
-                        const index_t j = eltBdryFcts[j0];
-                        jj = globIdxAct.at(j);
+                        unsigned ii, jj;
+                        // Each active boundary function/DOF in eltBdryFcts has...
+                        // ...the above-mentioned "element-wise index"
+                        const index_t i = eltBdryFcts[i0];
+                        // ...the boundary index.
+                        ii = globIdxAct.at(i);
 
-                        //gsInfo << "HIER: " << jj << " : " << ii << " : " << i <<" : " << j << " : " << k << "\n";
-                        // Use the "element-wise index" to get the needed
-                        // function value.
-                        // Use the boundary index to put the value in the proper
-                        // place in the global projection matrix.
-                        projMatEntries.add(ii, jj, weight_k * basisVals(i,k) * basisVals(j,k));
-                    } // for j
-                    globProjRhs.row(ii) += weight_k *  basisVals(i,k) * rhsVals.col(k).transpose();
-                } // for i
-            } // for k
+                        for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
+                        {
+                            const index_t j = eltBdryFcts[j0];
+                            jj = globIdxAct.at(j);
+
+                            //gsInfo << "HIER: " << jj << " : " << ii << " : " << i <<" : " << j << " : " << k << "\n";
+                            // Use the "element-wise index" to get the needed
+                            // function value.
+                            // Use the boundary index to put the value in the proper
+                            // place in the global projection matrix.
+                            projMatEntries.add(ii, jj, weight_k * basisVals(i,k) * basisVals(j,k));
+                        } // for j
+                        globProjRhs.row(ii) += weight_k *  basisVals(i,k) * rhsVals.col(k).transpose();
+                    } // for i
+                } // for k
         } // bdryIter
     } // boundaryConditions-Iterator
 
@@ -611,7 +618,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
 
     real_t lambda = 0.01;
 
-    gsMapData<T> md(NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM);
+    gsMapData<T> md(NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_JACOBIAN);
 
 
     typename gsBoundaryConditions<T>::const_iterator
@@ -696,47 +703,107 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
                 if( mapper.is_boundary_index(globIdxAct(i,0)) )
                     eltBdryFcts.push_back( i );
 
-            // Do the actual assembly:
-            for( index_t k=0; k < md.points.cols(); k++ )
+//          Surface case
+            if(md.dim.first + 1 == md.dim.second)
             {
-                // Compute the outer normal vector on the side
-                outerNormal(md, k, iter->side(), unormal);
+                gsMatrix<T> geoMapDeriv1 = patch.deriv(md.points); // First derivative of the geometric mapping with respect to the parameter coordinates
 
-                // Multiply quadrature weight by the measure of normal
-                //const T weight_k = quWeights[k] * md.measure(k);
-                const T weight_k = quWeights[k] * unormal.norm();
-
-                unormal.normalize();
-
-                transformGradients(md, k, basisGrads, physBasisGrad);
-
-                // Only run through the active boundary functions on the element:
-                for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
+                for( index_t k=0; k < md.points.cols(); k++ )
                 {
-                    // Each active boundary function/DOF in eltBdryFcts has...
-                    // ...the above-mentioned "element-wise index"
-                    const unsigned i = eltBdryFcts[i0];
-                    // ...the boundary index.
-                    const unsigned ii = mapper.global_to_bindex( globIdxAct( i ));
+                    // Compute the outer normal vector on the side
+                    outerNormal(md, k, iter->side(), unormal);
 
-                    for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
+                    gsMatrix<T> Jk = md.jacobian(k);
+                    gsMatrix<T> G = Jk.transpose() * Jk;
+                    gsMatrix<T> G_inv = G.cramerInverse();
+
+                    real_t detG = G.determinant();
+
+
+
+
+//                  Multiply quadrature weight by the square route of the first foundamental form
+                    const T weight_k = quWeights[k] * sqrt(detG);
+
+                    unormal.normalize();
+
+                    // Only run through the active boundary functions on the element:
+                    for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
                     {
-                        const unsigned j = eltBdryFcts[j0];
-                        const unsigned jj = mapper.global_to_bindex( globIdxAct( j ));
+                        // Each active boundary function/DOF in eltBdryFcts has...
+                        // ...the above-mentioned "element-wise index"
+                        const unsigned i = eltBdryFcts[i0];
+                        // ...the boundary index.
+                        const unsigned ii = mapper.global_to_bindex( globIdxAct( i ));
 
-                        // Use the "element-wise index" to get the needed
-                        // function value.
-                        // Use the boundary index to put the value in the proper
-                        // place in the global projection matrix.
-                        projMatEntries.add(ii, jj, weight_k * (basisVals(i,k) * basisVals(j,k) + lambda *
-                            ((physBasisGrad.col(i).transpose() * unormal)(0,0) * (physBasisGrad.col(j).transpose() * unormal )(0,0))));
-                    } // for j
+//                        gsInfo << "ii: " << ii << "\n";
 
-                    globProjRhs.row(ii) += weight_k * ( basisVals(i,k) * rhsVals.col(k).transpose() + lambda *
-                        ( physBasisGrad.col(i).transpose() * unormal ) * (rhsVals2.col(k).transpose() * unormal));
+                        for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
+                        {
+                            const unsigned j = eltBdryFcts[j0];
+                            const unsigned jj = mapper.global_to_bindex( globIdxAct( j ));
 
-                } // for i
-            } // for k
+                            // Use the "element-wise index" to get the needed
+                            // function value.
+                            // Use the boundary index to put the value in the proper
+                            // place in the global projection matrix.
+                            projMatEntries.add(ii, jj, weight_k * ( basisVals(i,k) * basisVals(j,k)   +
+                            lambda * ( ( (Jk * G_inv * basisGrads.block(2*i, k, 2, 1) ).transpose() * unormal )(0,0) *
+                            ( ( Jk * G_inv * basisGrads.block(2*j, k, 2, 1) ).transpose() * unormal )(0,0) ) ) );
+
+                        } // for j
+                        globProjRhs.row(ii) += weight_k * ( basisVals(i,k) * rhsVals.col(k).transpose() +
+                            lambda * ( (Jk * G_inv * basisGrads.block(2*i,k,2,1)).transpose() * unormal ) *
+                            ( rhsVals2.col(k).transpose() * unormal ) );
+
+
+                    } // for i
+                } // for k
+            }
+            else
+            {
+                // Do the actual assembly:
+                for( index_t k=0; k < md.points.cols(); k++ )
+                {
+                    // Compute the outer normal vector on the side
+                    outerNormal(md, k, iter->side(), unormal);
+
+                    // Multiply quadrature weight by the measure of normal
+                    const T weight_k = quWeights[k] * md.measure(k);
+//                    const T weight_k = quWeights[k] * unormal.norm();
+
+                    unormal.normalize();
+
+                    transformGradients(md, k, basisGrads, physBasisGrad);
+
+                    // Only run through the active boundary functions on the element:
+                    for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
+                    {
+                        // Each active boundary function/DOF in eltBdryFcts has...
+                        // ...the above-mentioned "element-wise index"
+                        const unsigned i = eltBdryFcts[i0];
+                        // ...the boundary index.
+                        const unsigned ii = mapper.global_to_bindex( globIdxAct( i ));
+
+                        for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
+                        {
+                            const unsigned j = eltBdryFcts[j0];
+                            const unsigned jj = mapper.global_to_bindex( globIdxAct( j ));
+
+                            // Use the "element-wise index" to get the needed
+                            // function value.
+                            // Use the boundary index to put the value in the proper
+                            // place in the global projection matrix.
+                            projMatEntries.add(ii, jj, weight_k * (basisVals(i,k) * basisVals(j,k) + lambda *
+                                ( ( physBasisGrad.col(i).transpose() * unormal)(0,0) * (physBasisGrad.col(j).transpose() * unormal )(0,0))));
+
+                        } // for j
+
+                        globProjRhs.row(ii) += weight_k * ( basisVals(i,k) * rhsVals.col(k).transpose() + lambda *
+                            ( physBasisGrad.col(i).transpose() * unormal ) * (rhsVals2.col(k).transpose() * unormal));
+                    } // for i
+                } // for k
+            }
         } // bdryIter
         iter_dir++;
     } // boundaryConditions-Iterator
@@ -770,6 +837,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
     // for the values of the eliminated Dirichlet DOFs.
     typename gsSparseSolver<T>::CGDiagonal solver;
     m_g1_ddof = solver.compute( B_0_sparse * globProjMat * B_0_sparse.transpose() ).solve ( B_0_sparse * globProjRhs );
+
 }
 
 } // namespace gismo

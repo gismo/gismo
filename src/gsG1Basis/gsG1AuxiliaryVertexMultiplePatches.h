@@ -469,14 +469,14 @@ public:
 
         }
 
-        gsInfo << "Big kernel:\n";
-        gsInfo << bigKernel << "\n ";
-
-        gsInfo << "Small kernel:\n";
-        gsInfo << smallKernel << "\n ";
-
-        gsInfo << "Basis:\n";
-        gsInfo << basisVect << "\n";
+//        gsInfo << "Big kernel:\n";
+//        gsInfo << bigKernel << "\n ";
+//
+//        gsInfo << "Small kernel:\n";
+//        gsInfo << smallKernel << "\n ";
+//
+//        gsInfo << "Basis:\n";
+//        gsInfo << basisVect << "\n";
 
         return std::make_pair(basisVect, numberPerType);
     }
@@ -761,6 +761,7 @@ public:
                 gsMultiPatch<> temp_mp_g1 = g1BasisVector[i];
                 for (size_t bf = 0; bf < temp_mp_g1.nPatches(); bf++)
                 {
+                    gsInfo << "coeffbf: " << temp_mp_g1.patch(bf).coefs().transpose() << "\n";
                     gsMatrix<> coef_bf;
                     coef_bf.setZero(temp_mp_g1.patch(bf).coefs().dim().first,1);
                     for (size_t lambda = 0; lambda < temp_mp_g1.nPatches(); lambda++)
@@ -770,6 +771,7 @@ public:
                         if (coef_bf.at(ii) * coef_bf.at(ii) < 1e-8)
                             coef_bf.at(ii) *= 0;
 */
+
                     g1BasisVector[i].patch(bf).setCoefs(coef_bf);
                 }
 

@@ -246,17 +246,17 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, gsMultiBasis<> mb)
     numBasisFunctions[2] = numBasisFunctions[2].array() + numBasisFunctions[1].last();
     numBasisFunctions[3] = numBasisFunctions[3].array() + numBasisFunctions[2].last();
     numBasisFunctions[4] = numBasisFunctions[4].array() + numBasisFunctions[3].last();
-/*
-    gsInfo << "Num Basis Functions " << numBasisFunctions[5] << "\n";
-    gsInfo << "Num Interface Functions " << numBasisFunctions[0] << "\n";
-    gsInfo << "Num Edges Functions " << numBasisFunctions[1] << "\n";
-    gsInfo << "Num Boundary Edges Functions " << numBasisFunctions[3] << "\n";
-    gsInfo << "Num Vertex Functions " << numBasisFunctions[2] << "\n";
-    gsInfo << "Num Boundary Vertex Functions " << numBasisFunctions[4] << "\n";
-    gsInfo << "Kind of Vertex Functions " << kindOfVertex << "\n";
-    gsInfo << "Size of plus space Bdy  " << sizePlusBdy << "\n";
-    gsInfo << "Size of plus space Int  " << sizePlusInt << "\n";
-*/
+
+//    gsInfo << "Num Basis Functions " << numBasisFunctions[5] << "\n";
+//    gsInfo << "Num Interface Functions " << numBasisFunctions[0] << "\n";
+//    gsInfo << "Num Edges Functions " << numBasisFunctions[1] << "\n";
+//    gsInfo << "Num Boundary Edges Functions " << numBasisFunctions[3] << "\n";
+//    gsInfo << "Num Vertex Functions " << numBasisFunctions[2] << "\n";
+//    gsInfo << "Num Boundary Vertex Functions " << numBasisFunctions[4] << "\n";
+//    gsInfo << "Kind of Vertex Functions " << kindOfVertex << "\n";
+//    gsInfo << "Size of plus space Bdy  " << sizePlusBdy << "\n";
+//    gsInfo << "Size of plus space Int  " << sizePlusInt << "\n";
+
     // Setting the final matrix
     dim_K = numBasisFunctions[5].last(); // interior basis dimension
     dim_G1_Dofs = numBasisFunctions[2].last() ; // edges basis dimension
@@ -385,15 +385,15 @@ void gsG1System<T>::initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb)
     numBasisFunctions[4] = numBasisFunctions[4].array() + numBasisFunctions[3].last();
 
 
-    gsInfo << "Num Basis Functions " << numBasisFunctions[5] << "\n";
-    gsInfo << "Num Interface Functions " << numBasisFunctions[0] << "\n";
-    gsInfo << "Num Edges Functions " << numBasisFunctions[1] << "\n";
-    gsInfo << "Num Boundary Edges Functions " << numBasisFunctions[3] << "\n";
-    gsInfo << "Num Vertex Functions " << numBasisFunctions[2] << "\n";
-    gsInfo << "Num Boundary Vertex Functions " << numBasisFunctions[4] << "\n";
-    gsInfo << "Kind of Vertex Functions " << kindOfVertex << "\n";
-    gsInfo << "Size of plus space Bdy  " << sizePlusBdy << "\n";
-    gsInfo << "Size of plus space Int  " << sizePlusInt << "\n";
+//    gsInfo << "Num Basis Functions " << numBasisFunctions[5] << "\n";
+//    gsInfo << "Num Interface Functions " << numBasisFunctions[0] << "\n";
+//    gsInfo << "Num Edges Functions " << numBasisFunctions[1] << "\n";
+//    gsInfo << "Num Boundary Edges Functions " << numBasisFunctions[3] << "\n";
+//    gsInfo << "Num Vertex Functions " << numBasisFunctions[2] << "\n";
+//    gsInfo << "Num Boundary Vertex Functions " << numBasisFunctions[4] << "\n";
+//    gsInfo << "Kind of Vertex Functions " << kindOfVertex << "\n";
+//    gsInfo << "Size of plus space Bdy  " << sizePlusBdy << "\n";
+//    gsInfo << "Size of plus space Int  " << sizePlusInt << "\n";
 
 
     // Setting the final matrix
@@ -699,10 +699,10 @@ gsMatrix<> gsG1System<T>::solve(gsSparseMatrix<real_t> K, gsMatrix<> f)
 {
 
     gsSparseMatrix<real_t> A = D_0_sparse * K * D_0_sparse.transpose();
-    gsInfo << "Matrix A: " << A << "\n";
 
     gsVector<real_t> F = D_0_sparse * f - D_0_sparse * K * D_boundary_sparse.transpose() * m_g1;
-
+    gsInfo << "F: " << F << "\n";
+    gsInfo << "m_g1: " << m_g1 << "\n";
 
     gsSparseSolver<real_t>::CGDiagonal solver;
 //    gsSparseSolver<real_t>::BiCGSTABILUT solver;
@@ -710,6 +710,8 @@ gsMatrix<> gsG1System<T>::solve(gsSparseMatrix<real_t> K, gsMatrix<> f)
     solver.compute(A);
     gsMatrix<> solVector = solver.solve(F);
 
+
+//    gsInfo << "Sol: " << solVector << "\n";
     return solVector;
 }
 

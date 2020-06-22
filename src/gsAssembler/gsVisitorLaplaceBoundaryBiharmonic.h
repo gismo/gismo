@@ -102,9 +102,18 @@ public:
 //            gsInfo << "side: " << side << "\n";
             outerNormal(md, k, side, unormal);
 
-            // Multiply quadrature weight by the measure of normal
-            const T weight = quWeights[k] * unormal.norm();
+            T weight = quWeights[k];
 
+            if(md.dim.first + 1 == md.dim.second)
+            {
+                gsMatrix<T> Jk = md.jacobian(k);
+                weight *=  ( sqrt( (Jk.transpose() * Jk).determinant() ) );
+            }
+            else
+            {
+                // Multiply quadrature weight by the measure of normal
+                weight *= unormal.norm();
+            }
             unormal.normalize();
 //            gsInfo << "Out normal normalized: " << unormal << "\n";
             //Get gradients of the physical space

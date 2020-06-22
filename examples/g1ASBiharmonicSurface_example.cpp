@@ -36,31 +36,32 @@ int main(int argc, char *argv[])
 
 
     // ======= Solution =========
-//    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(z - 1)*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
-//    gsFunctionExpr<> laplace ("-16*pi*pi*(z - 1)*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
-//    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1) * (z - 1)",3);
-//    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x) * (z - 1)",
-//                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y) * (z - 1)",
+//    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y)) + 0*z",3);
+//    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
+//    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
+//    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+//                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
 //                             "(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
-//    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x) * (z - 1)",
-//                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y) * (z - 1) ",
-//                             "-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-//                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y) * (z - 1) ",
-//                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y) * (z - 1)",
-//                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
-//                             "-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-//                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
+//    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
+//                             "-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
+//                             "0",
+//                             "16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
+//                             "0",
+//                             "16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
+//                             "0",
+//                             "0",
 //                             "0", 3);
+
 
 
     gsFunctionExpr<> source  ("0",3);
 
     gsFunctionExpr<> laplace ("0",3);
 
-    gsFunctionExpr<> solVal("1",3);
+    gsFunctionExpr<> solVal("(x - 1) * (y - 1)",3);
 
-    gsFunctionExpr<>sol1der ("0",
-                             "0",
+    gsFunctionExpr<>sol1der ("(y - 1)",
+                             "(x - 1)",
                              "0",3);
 
     gsFunctionExpr<>sol2der ("0",
@@ -73,7 +74,86 @@ int main(int argc, char *argv[])
                              "0",
                              "0", 3);
 
+//    gsFunctionExpr<> source  ("0",3);
+//
+//    gsFunctionExpr<> laplace ("0",3);
+//
+//    gsFunctionExpr<> solVal("(x - 1) * (z - 1)",3);
+//
+//    gsFunctionExpr<>sol1der ("(z - 1)",
+//                             "0",
+//                             "(x - 1)",3);
+//
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
 
+//    gsFunctionExpr<> source  ("0",3);
+//
+//    gsFunctionExpr<> laplace ("0",3);
+//
+//    gsFunctionExpr<> solVal("1",3);
+//
+//    gsFunctionExpr<>sol1der ("0",
+//                             "0",
+//                             "0",3);
+//
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
+
+
+//    gsFunctionExpr<> source  ("0",3);
+//
+//    gsFunctionExpr<> laplace ("0",3);
+//
+//    gsFunctionExpr<> solVal("x * y",3);
+//
+//    gsFunctionExpr<>sol1der ("y",
+//                             "x",
+//                             "0",3);
+//
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
+
+//    gsFunctionExpr<> source  ("24",3);
+//
+//    gsFunctionExpr<> laplace ("12 * x * x",3);
+//
+//    gsFunctionExpr<> solVal("x * x * x * x ",3);
+//
+//    gsFunctionExpr<>sol1der ("4 * x * x * x",
+//                             "0",
+//                             "0",3);
+//
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
 
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
@@ -84,15 +164,15 @@ int main(int argc, char *argv[])
     {
         case 0:
             string_geo = "KirchhoffLoveGeo/parabola_surfaceRoundedBoundary.xml";
-            numDegree = 0; // 2 == degree 3
+            numDegree = 1; // 2 == degree 3
             break;
         case 1:
             string_geo = "KirchhoffLoveGeo/parabola_surfaceSquareBoundary.xml";
-            numDegree = 0; // 2 == degree 3
+            numDegree = 1; // 2 == degree 3
             break;
         case 2:
             string_geo = "KirchhoffLoveGeo/flag_surface.xml";
-            numDegree = 0; // 2 == degree 3
+            numDegree = 1; // 2 == degree 3
             break;
         case 3:
             string_geo = "KirchhoffLoveGeo/parabola_surfaceTwoPatchRoundBoundary.xml";
@@ -100,20 +180,21 @@ int main(int argc, char *argv[])
             break;
         case 4:
             string_geo = "KirchhoffLoveGeo/square3dPositiveOrientation.xml";
-            numDegree = 2; // 2 == degree 3
+            numDegree = 1; // 2 == degree 3
             break;
         case 5:
             string_geo = "KirchhoffLoveGeo/square3dNegativeOrientation.xml";
-            numDegree = 2; // 2 == degree 3
+            numDegree = 1; // 2 == degree 3
             break;
         case 6:
             string_geo = "KirchhoffLoveGeo/squareSurface3d.xml";
-            numDegree = 2; // 2 == degree 3
+            numDegree = 1; // 2 == degree 3
             break;
 
         default:
             gsInfo << "No geometry is used! \n";
             break;
+
     }
     g1OptionList.addInt("degree","Degree", numDegree);
 
@@ -152,7 +233,6 @@ int main(int argc, char *argv[])
     {
         gsMultiPatch<> multiPatch(multiPatch_init);
         multiPatch.uniformRefine_withSameRegularity(num_knots[refinement_level], g1OptionList.getInt("regularity"));
-
         gsInfo << "###### Level: " << refinement_level << " with " << num_knots[refinement_level] << " inner knots ###### " << "\n";
 
         gsMultiBasis<> mb(multiPatch);
