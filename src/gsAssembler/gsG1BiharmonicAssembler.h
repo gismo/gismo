@@ -663,7 +663,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
 
 
 //                  Multiply quadrature weight by the square route of the first foundamental form
-                    const T weight_k = quWeights[k] * unormal.norm() * sqrt(detG);
+                    const T weight_k = quWeights[k] * sqrt(detG);
 
                     unormal.normalize();
 
