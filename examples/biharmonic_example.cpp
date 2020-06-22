@@ -36,7 +36,19 @@ int main(int argc, char *argv[])
 
     dirichlet::strategy dirStrategy = dirichlet::elimination;
     iFace::strategy intStrategy = iFace::glue;
+
+
+    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+    gsFunctionExpr<> sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+                              "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
+    gsFunctionExpr<> sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
+                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
+                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)",2);
+
 /*
+
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
     gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
@@ -45,18 +57,42 @@ int main(int argc, char *argv[])
                               "0",3);
     gsFunctionExpr<> sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
                               "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
-                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 3);
-*/
-    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*(2*x/sqrt(2)))*cos(4*pi*(2*y/sqrt(2))) - cos(4*pi*(2*x/sqrt(2))) - cos(4*pi*(2*y/sqrt(2))))",3);
+                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
+                              "0",
+                              "0",
+                              "0",
+                              3);
+
+    //gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*(x/cos(45)))*cos(4*pi*y) - cos(4*pi*(x/cos(45))) - cos(4*pi*y))",3);
+    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(-cos(4*pi*x/cos(45))*1/(cos(45)*cos(45)*cos(45)*cos(45)) + cos(4*pi*y) * "
+                              "(-1 + cos(4*pi*x/cos(45)) * (1+1/(cos(45)*cos(45))) * (1+1/(cos(45)*cos(45))) ))",3);
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
-    gsFunctionExpr<> solVal("(cos(4*pi*(2*x/sqrt(2))) - 1) * (cos(4*pi*(2*y/sqrt(2))) - 1)",3);
-    gsFunctionExpr<> sol1der ("-4*pi*(cos(4*pi*(2*y/sqrt(2))) - 1)*sin(4*pi*(2*x/sqrt(2)))",
-                              "-4*pi*(cos(4*pi*(2*x/sqrt(2))) - 1)*sin(4*pi*(2*y/sqrt(2)))",
+    gsFunctionExpr<> solVal("(cos(4*pi*(x/cos(45))) - 1) * (cos(4*pi*y) - 1) ",3);
+    gsFunctionExpr<> sol1der ("-4*pi*1/cos(45) * (cos(4*pi*y) - 1)*sin(4*pi*(x/cos(45)))",
+                              "-4*pi*(cos(4*pi*(x/cos(45))) - 1)*sin(4*pi*y)",
+                              "1",3);
+    gsFunctionExpr<> sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
+                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
+                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
+                              "0",
+                              "0",
+                              "0",
+                              3);
+
+    gsFunctionExpr<> source  ("0",3);
+    gsFunctionExpr<> laplace ("0",3);
+    gsFunctionExpr<> solVal("(x/cos(45)-1)*(y-1)",3);
+    gsFunctionExpr<> sol1der ("y-1",
+                              "x/cos(45)-1",
                               "0",3);
     gsFunctionExpr<> sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
                               "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
-                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 3);
-/*
+                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
+                              "0",
+                              "0",
+                              "0",
+                              3);
+
     gsFunctionExpr<> source  ("0",3);
     gsFunctionExpr<> laplace ("0",3);
     gsFunctionExpr<> solVal("1",3);
@@ -64,6 +100,9 @@ int main(int argc, char *argv[])
                             "0",
                              "0",3);
     gsFunctionExpr<>sol2der ("0",
+                             "0",
+                             "0",
+                             "0",
                              "0",
                              "0", 3);
 
@@ -112,10 +151,10 @@ int main(int argc, char *argv[])
 
     //Setting up boundary conditions
     gsBoundaryConditions<> bcInfo;
-    bcInfo.addCondition( boundary::west,  condition_type::dirichlet, &solution);
-    bcInfo.addCondition( boundary::east,  condition_type::dirichlet, &solution);
-    bcInfo.addCondition( boundary::north, condition_type::dirichlet, &solution);
-    bcInfo.addCondition( boundary::south, condition_type::dirichlet, &solution);
+    bcInfo.addCondition( boundary::west,  condition_type::dirichlet, &solVal);
+    bcInfo.addCondition( boundary::east,  condition_type::dirichlet, &solVal);
+    bcInfo.addCondition( boundary::north, condition_type::dirichlet, &solVal);
+    bcInfo.addCondition( boundary::south, condition_type::dirichlet, &solVal);
 
     // Second boundary condition
     gsBoundaryConditions<> bcInfo2;
@@ -163,7 +202,6 @@ int main(int argc, char *argv[])
 //        solver.factorize(BiharmonicAssembler.matrix());
 //        gsMatrix<> solVector = solver.solve(BiharmonicAssembler.rhs());
 
-        gsInfo << "rhs: " << BiharmonicAssembler.rhs() << "\n";
 
         //gsInfo << "rhs: " << BiharmonicAssembler.matrix().toDense() << "\n";
 
@@ -185,15 +223,31 @@ int main(int argc, char *argv[])
 #pragma omp parallel for
         for (index_t e = 0; e < 3; ++e)
         {
-            if (e == 0)
-                errorH2Semi = solField.distanceH2(solution, false);
-            else if (e == 1)
-                errorH1Semi = solField.distanceH1(solution, false);
-            else if (e == 2)
-                l2err[r] = solField.distanceL2(solution, false);
+            if(geo.dimensions().first+1 == geo.dimensions().second) // TODO
+            {
+                if (e == 2)
+                    l2err[r] = solField.distanceL2(solution, false);
+
+                h1err.setOnes();
+                h2err.setOnes();
+            }
+            else
+            {
+                if (e == 0)
+                    errorH2Semi = solField.distanceH2(solution, false);
+                else if (e == 1)
+                    errorH1Semi = solField.distanceH1(solution, false);
+                else if (e == 2)
+                    l2err[r] = solField.distanceL2(solution, false);
+            }
         }
-        h1err[r] = math::sqrt(errorH1Semi * errorH1Semi + l2err[r] * l2err[r]);
-        h2err[r] = math::sqrt(errorH2Semi * errorH2Semi + errorH1Semi * errorH1Semi + l2err[r] * l2err[r]);
+
+        if(geo.dimensions().first == geo.dimensions().second)
+        {
+            h1err[r] = math::sqrt(errorH1Semi * errorH1Semi + l2err[r] * l2err[r]);
+            h2err[r] = math::sqrt(errorH2Semi * errorH2Semi + errorH1Semi * errorH1Semi + l2err[r] * l2err[r]);
+
+        }
 
         gsInfo<< ". " <<std::flush; // Error computations done
 
@@ -203,7 +257,7 @@ int main(int argc, char *argv[])
             // Write approximate and exact solution to paraview files
             gsInfo<<"Plotting in ParaView...\n";
             gsWriteParaview<>(solField, "Biharmonic2d", 5000);
-            const gsField<> exact( geo, solution, false );
+            const gsField<> exact( geo, solVal, false );
             gsWriteParaview<>( exact, "Biharmonic2d_exact", 5000);
         }
         else if (r == numRefine)

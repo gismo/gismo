@@ -93,13 +93,17 @@ public:
         // Evaluate right-hand side at the geometry points
         rhs_ptr->eval_into(md.values[0], rhsVals); // Dim: 1 X NumPts
 
-        gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y)) + 0*z",3);
+        gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*(x/cos(45)))*cos(4*pi*y) - cos(4*pi*(x/cos(45))) - cos(4*pi*y))",3);
+        gsFunctionExpr<> source_planar  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+        /*
+#pragma omp critical
+        {
+        gsInfo << "Source: " << source.eval(md.values[0]) << " : " << source_planar.eval(md.points) << "\n";
 
-        gsInfo << "Source: " << source.eval(md.points) << " : " << rhsVals << "\n";
 
-
-        gsInfo << "point: " << md.points.col(1) << " = " << md.values[0].col(1) * sqrt(2) * 1/2 << "\n";
-
+        gsInfo << "point: " << md.points << " = " << md.values[0] << "\n";
+        }
+        */
         if(md.dim.first +1 == md.dim.second)
         {
             gsMatrix<T> geoMapDeriv1 = geo.deriv(md.points); // First derivative of the geometric mapping with respect to the parameter coordinates

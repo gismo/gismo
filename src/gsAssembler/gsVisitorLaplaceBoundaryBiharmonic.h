@@ -99,7 +99,7 @@ public:
         {
             // Compute the outer normal vector on the side
             outerNormal(md, k, side, unormal);
-            
+
             // Multiply quadrature weight by the measure of normal
             const T weight = quWeights[k] * unormal.norm();
             unormal.normalize();

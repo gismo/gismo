@@ -139,11 +139,10 @@ void gsBiharmonicAssembler<T,bhVisitor>::assemble()
     // Assemble volume integrals
     Base::template push<bhVisitor >();
 
-
     // Neuman conditions of first kind
     Base::template push<gsVisitorNeumann<T> >(
         m_ppde.bcFirstKind().neumannSides() );
-    
+
     // Laplace conditions of second kind
     Base::template push<gsVisitorLaplaceBoundaryBiharmonic<T> >(
         m_ppde.bcSecondKind().laplaceSides() );
@@ -210,13 +209,13 @@ void gsBiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofs()
         if (iter->isHomogeneous() )
             continue;
 
-        GISMO_ASSERT(iter->function()->targetDim() == m_system.unkSize(0)*m_system.rhs().cols(),
-                     "Given Dirichlet boundary function does not match problem dimension."
-                         <<iter->function()->targetDim()<<" != "<<m_system.unkSize(0)<<"\n");
+        GISMO_ASSERT(iter_dir->function()->targetDim() == m_system.unkSize(0)*m_system.rhs().cols(),
+                     "Given Dirichlet boundary function does not match problem dimension. "
+                         << iter_dir->function()->targetDim()<<" != "<<m_system.unkSize(0)<<"\n");
 
-        const int unk = iter->unknown();
+        const int unk = iter_dir->unknown();
 
-        const int patchIdx   = iter->patch();
+        const int patchIdx   = iter_dir->patch();
         const gsBasis<T> & basis = (m_bases[unk])[patchIdx];
 
         GISMO_ASSERT(iter_dir->patch() == patchIdx && iter_dir->side().index() == iter->side().index(),
@@ -249,8 +248,6 @@ void gsBiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofs()
             rhsVals = iter_dir->function()->eval( m_pde_ptr->domain()[patchIdx].eval( md.points ) );
             rhsVals2 = iter->function()->eval( m_pde_ptr->domain()[patchIdx].eval( md.points ) );
 
-            //gsInfo << "rhsVals2: " << rhsVals2  << "\n";
-
             basis.eval_into( md.points, basisVals);
             basis.deriv_into( md.points, basisGrads);
 
@@ -272,7 +269,7 @@ void gsBiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofs()
             // Get the global indices (second line) of the local
             // active basis (first line) functions/DOFs:
             basis.active_into(md.points.col(0), globIdxAct );
-            gsMatrix<> localIdx = globIdxAct;
+            gsMatrix<unsigned > localIdx = globIdxAct;
             mapper.localToGlobal( globIdxAct, patchIdx, globIdxAct);
 
             // Out of the active functions/DOFs on this element, collect all those
@@ -301,10 +298,12 @@ void gsBiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofs()
                     gsMatrix<T> G = Jk.transpose() * Jk;
                     gsMatrix<T> G_inv = G.cramerInverse();
 
+                    //gsInfo << "rhsVals3: " << Jk * G_inv  << "\n";
+
                     real_t detG = G.determinant();
 
 //                  Multiply quadrature weight by the measure of normal
-                    const T weight_k = quWeights[k];
+                    const T weight_k = sqrt(detG) * quWeights[k] ;
 
                     unormal.normalize();
 
@@ -326,16 +325,13 @@ void gsBiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofs()
                             // function value.
                             // Use the boundary index to put the value in the proper
                             // place in the global projection matrix.
-                            projMatEntries.add(ii, jj, weight_k * (sqrt(detG) * basisVals(i,k) * basisVals(j,k)  +
+                            projMatEntries.add(ii, jj, weight_k * (basisVals(i,k) * basisVals(j,k)  +
                                 lambda * ( ( (Jk * G_inv * basisGrads.block(2*i, k, 2, 1)).transpose() * unormal)(0,0) *
                                     ( (Jk * G_inv * basisGrads.block(2*j, k, 2, 1)).transpose() * unormal )(0,0) ) ) );
                         } // for j
-                        globProjRhs.row(ii) += weight_k * (sqrt(detG) * basisVals(i,k) * rhsVals.col(k).transpose() + lambda *
-                            ( (Jk * G_inv * basisGrads.block(2*i,k,2,1)).transpose() * unormal ) * (rhsVals2.col(k).transpose() * unormal) );
-
-                        //gsInfo << "rhsVals: " << sqrt(detG) * basisVals(i,k) * rhsVals.col(k).transpose()  << "\n";
-                        //gsInfo << "rhsVals2: " << (Jk * G_inv * basisGrads.block(2*i,k,2,1)).transpose() * unormal  << "\n";
-                        //gsInfo << "rhsVals3: " << unormal  << "\n";
+                        globProjRhs.row(ii) += weight_k * ( sqrt(detG) * basisVals(i,k) * rhsVals.col(k).transpose() );
+                        globProjRhs.row(ii) += weight_k * ( lambda * ( (Jk * G_inv * basisGrads.block(2*i,k,2,1)).transpose() * unormal ) *
+                            ( rhsVals2.col(k).transpose() * unormal) ); // unormal is different from planar, everthing else is the same! Does that makes sense?
 
                     } // for i
                 } // for k
@@ -398,8 +394,7 @@ void gsBiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofs()
     typename gsSparseSolver<T>::CGDiagonal solver;
 
     m_ddof[0] = solver.compute( globProjMat ).solve ( globProjRhs );
-    m_ddof[0].setZero();
-    //gsInfo << "dofs: " << m_ddof[0] << "\n";
+    //m_ddof[0].setZero();
 }
 // End
 
