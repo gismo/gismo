@@ -18,7 +18,9 @@
 
 #include <gsPde/gsBiharmonicPde.h>
 
-#include <gsAssembler/gsVisitorBiharmonic.h>
+#include <gsAssembler/gsG1ASVisitorBiharmonic.h>
+//#include <gsAssembler/gsVisitorBiharmonic.h>
+
 #include <gsAssembler/gsVisitorNeumann.h>
 #include <gsAssembler/gsVisitorLaplaceBoundaryBiharmonic.h>
 //#include <gsAssembler/gsVisitorNitscheBiharmonic.h>
@@ -34,7 +36,7 @@ namespace gismo
     Dirichlet boundary can only be enforced strongly (i.e Nitsche is
     not implemented).
 */
-template <class T, class bhVisitor = gsVisitorBiharmonic<T> >
+template <class T, class bhVisitor = gsG1ASVisitorBiharmonic<T> >
 class gsBiharmonicAssembler : public gsAssembler<T>
 {
 public:
@@ -329,9 +331,9 @@ void gsBiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofs()
                                 lambda * ( ( (Jk * G_inv * basisGrads.block(2*i, k, 2, 1)).transpose() * unormal)(0,0) *
                                     ( (Jk * G_inv * basisGrads.block(2*j, k, 2, 1)).transpose() * unormal )(0,0) ) ) );
                         } // for j
-                        globProjRhs.row(ii) += weight_k * ( sqrt(detG) * basisVals(i,k) * rhsVals.col(k).transpose() );
-                        globProjRhs.row(ii) += weight_k * ( lambda * ( (Jk * G_inv * basisGrads.block(2*i,k,2,1)).transpose() * unormal ) *
-                            ( rhsVals2.col(k).transpose() * unormal) ); // unormal is different from planar, everthing else is the same! Does that makes sense?
+                        globProjRhs.row(ii) += weight_k * ( (basisVals(i,k) * rhsVals.col(k).transpose()) +
+                            ( lambda * ( (Jk * G_inv * basisGrads.block(2*i,k,2,1)).transpose() * unormal ) *
+                            ( rhsVals2.col(k).transpose() * unormal) ) ); // unormal is different from planar, everthing else is the same! Does that makes sense?
 
                     } // for i
                 } // for k
@@ -395,6 +397,7 @@ void gsBiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofs()
 
     m_ddof[0] = solver.compute( globProjMat ).solve ( globProjRhs );
     //m_ddof[0].setZero();
+
 }
 // End
 

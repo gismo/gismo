@@ -45,19 +45,33 @@ int main(int argc, char *argv[])
 //                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
 //                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
 
-
-    gsFunctionExpr<> source  ("0",2);
+    gsFunctionExpr<> source  ("24 * (2 - y) * (2 - y) * y * y + 24 * (2 - x) * (2 - x) * x * x",2);
 
     gsFunctionExpr<> laplace ("0",2);
 
-    gsFunctionExpr<> solVal("(x - 1) * (y - 1)",2);
+    gsFunctionExpr<> solVal("(2 - x) * (2 - x) * x * x * (2 - y) * (2 - y) * y * y",2);
 
-    gsFunctionExpr<>sol1der ("(y - 1)",
-                             "(x - 1)",2);
+    gsFunctionExpr<>sol1der ("(2 - x) * (2 - x) * 2 * x * (2 - y) * (2 - y) * y * y - 2 * (2 - x) * x * x * (2 - y) * (2 - y) * y * y",
+                             "(2 - y) * (2 - y) * 2 * y * (2 - x) * (2 - x) * x * x - 2 * (2 - y) * y * y * (2 - x) * (2 - x) * x * x",
+                             2);
 
     gsFunctionExpr<>sol2der ("0",
                              "0",
                              "0", 2);
+
+
+//    gsFunctionExpr<> source  ("0",2);
+//
+//    gsFunctionExpr<> laplace ("0",2);
+//
+//    gsFunctionExpr<> solVal("(x - 1) * (y - 1)",2);
+//
+//    gsFunctionExpr<>sol1der ("(y - 1)",
+//                             "(x - 1)",2);
+//
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0", 2);
 
 
 //    gsFunctionExpr<> source  ("0",2);

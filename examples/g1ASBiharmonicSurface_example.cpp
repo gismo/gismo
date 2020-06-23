@@ -53,15 +53,14 @@ int main(int argc, char *argv[])
 //                             "0", 3);
 
 
-
-    gsFunctionExpr<> source  ("0",3);
+    gsFunctionExpr<> source  ("8 * ( 16 - 12 * x * x * x + 3 * x * x * x * x + 36 * x * x * ( y - 1 ) * ( y - 1 ) - 48 * y + 36 * y * y - 12 * y * y * y + 3 * y * y * y * y - 24 * x * ( 2 - 6 * y + 3 * y * y) )",3);
 
     gsFunctionExpr<> laplace ("0",3);
 
-    gsFunctionExpr<> solVal("(x - 1) * (y - 1)",3);
+    gsFunctionExpr<> solVal("(2 - x) * (2 - x) * x * x * (2 - y) * (2 - y) * y * y",3);
 
-    gsFunctionExpr<>sol1der ("(y - 1)",
-                             "(x - 1)",
+    gsFunctionExpr<>sol1der ("(2 - x) * (2 - x) * 2 * x * (2 - y) * (2 - y) * y * y - 2 * (2 - x) * x * x * (2 - y) * (2 - y) * y * y",
+                             "(2 - y) * (2 - y) * 2 * y * (2 - x) * (2 - x) * x * x - 2 * (2 - y) * y * y * (2 - x) * (2 - x) * x * x",
                              "0",3);
 
     gsFunctionExpr<>sol2der ("0",
@@ -73,6 +72,27 @@ int main(int argc, char *argv[])
                              "0",
                              "0",
                              "0", 3);
+
+
+//    gsFunctionExpr<> source  ("0",3);
+//
+//    gsFunctionExpr<> laplace ("0",3);
+//
+//    gsFunctionExpr<> solVal("(x - 1) * (y - 1)",3);
+//
+//    gsFunctionExpr<>sol1der ("(y - 1)",
+//                             "(x - 1)",
+//                             "0",3);
+//
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
 
 //    gsFunctionExpr<> source  ("0",3);
 //

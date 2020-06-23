@@ -358,6 +358,8 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(patchInd);
 
+
+
             // Compute on element
             elVal = _op::init();
             for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quadrature nodes

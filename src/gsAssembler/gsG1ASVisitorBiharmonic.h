@@ -95,15 +95,10 @@ public:
         // Evaluate right-hand side at the geometry points
         rhs_ptr->eval_into(md.values[0], rhsVals); // Dim: 1 X NumPts
 
-//        gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y)) + 0*z",3);
-//        source.eval_into(md.points, rhsVals);
-
         if(md.dim.first +1 == md.dim.second)
         {
             gsMatrix<T> geoMapDeriv1 = geo.deriv(md.points); // First derivative of the geometric mapping with respect to the parameter coordinates
             gsMatrix<T> geoMapDeriv2 = geo.deriv2(md.points); // Second derivative of the geometric mapping with respect to the parameter coordinates
-            gsMatrix<> coeff(1, md.points.cols());
-            coeff.setConstant(2);
 
 //            FIRST FUNDAMENTAL FORM: G = J^T * J
 //
@@ -131,14 +126,12 @@ public:
                                 geoMapDeriv1.row(5).cwiseProduct(geoMapDeriv1.row(5)));
 
             // Derivative of the first fundamental form
-            gsMatrix<T> DuG11 = coeff.cwiseProduct(
-                                      geoMapDeriv2.row(0).cwiseProduct(geoMapDeriv1.row(0)) +
+            gsMatrix<T> DuG11 = 2 * ( geoMapDeriv2.row(0).cwiseProduct(geoMapDeriv1.row(0)) +
                                       geoMapDeriv2.row(3).cwiseProduct(geoMapDeriv1.row(2)) +
                                       geoMapDeriv2.row(6).cwiseProduct(geoMapDeriv1.row(4)) );
 
 
-            gsMatrix<T> DvG11 = coeff.cwiseProduct(
-                                      geoMapDeriv2.row(2).cwiseProduct(geoMapDeriv1.row(0)) +
+            gsMatrix<T> DvG11 = 2 * ( geoMapDeriv2.row(2).cwiseProduct(geoMapDeriv1.row(0)) +
                                       geoMapDeriv2.row(5).cwiseProduct(geoMapDeriv1.row(2)) +
                                       geoMapDeriv2.row(8).cwiseProduct(geoMapDeriv1.row(4)) );
 
@@ -159,13 +152,11 @@ public:
                                       geoMapDeriv2.row(7).cwiseProduct(geoMapDeriv1.row(4)) );
 
 
-            gsMatrix<T> DuG22 = coeff.cwiseProduct(
-                                      geoMapDeriv2.row(2).cwiseProduct(geoMapDeriv1.row(1)) +
+            gsMatrix<T> DuG22 = 2 * ( geoMapDeriv2.row(2).cwiseProduct(geoMapDeriv1.row(1)) +
                                       geoMapDeriv2.row(5).cwiseProduct(geoMapDeriv1.row(3)) +
                                       geoMapDeriv2.row(8).cwiseProduct(geoMapDeriv1.row(5)) );
 
-            gsMatrix<T> DvG22 = coeff.cwiseProduct(
-                                      geoMapDeriv2.row(1).cwiseProduct(geoMapDeriv1.row(1)) +
+            gsMatrix<T> DvG22 = 2 *(  geoMapDeriv2.row(1).cwiseProduct(geoMapDeriv1.row(1)) +
                                       geoMapDeriv2.row(4).cwiseProduct(geoMapDeriv1.row(3)) +
                                       geoMapDeriv2.row(7).cwiseProduct(geoMapDeriv1.row(5)) );
 
@@ -195,14 +186,12 @@ public:
             gsMatrix<T> & basis2ndDerivs = basisData[2];
 
             gsMatrix<T> Du_SqrtDetGinv = sqrtDetG_inv_derivative.cwiseProduct(
-                                         coeff.cwiseProduct(
-                                         G12.cwiseProduct( DuG12 ) ) -
+                                         2 * G12.cwiseProduct( DuG12 )  -
                                          G22.cwiseProduct( DuG11 ) -
                                          G11.cwiseProduct( DuG22 ) );
 
             gsMatrix<T> Dv_SqrtDetGinv = sqrtDetG_inv_derivative.cwiseProduct(
-                                         coeff.cwiseProduct(
-                                         G12.cwiseProduct( DvG21 ) ) -
+                                         2 * G12.cwiseProduct( DvG21 )  -
                                          G22.cwiseProduct( DvG11 ) -
                                          G11.cwiseProduct( DvG22 ) );
 
@@ -241,6 +230,8 @@ public:
                 surfParametricLaplace.row(i) = sqrt4DetG_inv.cwiseProduct(surfParametricLaplace.row(i));
             }
             rhsVals = rhsVals.cwiseProduct( detG.cwiseProduct( sqrtDetG_inv ) );
+
+
         }
 
         // Initialize local matrix/rhs
@@ -275,7 +266,7 @@ public:
                 gsMatrix<T> Jk = md.jacobian(k);
                 const T weight = quWeights[k]; // * (sqrt( (Jk.transpose() * Jk).determinant() ) );
                 localMat.noalias() += weight * (surfParametricLaplace.col(k) * surfParametricLaplace.col(k).transpose() );
-                localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
+                localRhs.noalias() += weight  *( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
             }
 
         }

@@ -59,7 +59,7 @@ public:
 
         basis.active_into(quNodes.col(0), actives);
 
-        // Evaluate basis functions on element
+       // Evaluate basis functions on element
         basis.eval_into(quNodes,basisData);
 
         f1vals.setZero(1,actives.rows());
@@ -67,10 +67,6 @@ public:
             for (index_t j = 0; j < actives.rows(); j++)
                 f1vals += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * basisData.row(j);
 
-<<<<<<< HEAD
-=======
-//        gsInfo << "f1vals:" << f1vals.transpose() << "\n";
->>>>>>> farahat_G1_multipatch
         // Compute geometry related values
         geoEval.evaluateAt(quNodes);
 
@@ -93,17 +89,7 @@ public:
         T sum(0.0);
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
-<<<<<<< HEAD
-            gsMatrix<T> Jk = geoEval.jacobian(k);
-            gsMatrix<T> G = Jk.transpose() * Jk;
-            gsMatrix<T> G_inv = G.cramerInverse();
 
-            real_t detG = G.determinant();
-
-
-            //const T weight = quWeights[k] * geoEval.measure(k);
-            const T weight = quWeights[k] * sqrt(detG);
-=======
             T weight = quWeights[k];
 
             if(geoEval.parDim() + 1 == geoEval.jacobian(k).rows())
@@ -118,7 +104,6 @@ public:
             {
                 weight *= geoEval.measure(k);
             }
->>>>>>> farahat_G1_multipatch
             switch (m_p)
             {
                 case 0: // infinity norm

@@ -30,6 +30,9 @@ T gsField<T>::distanceL2(gsFunctionSet<T> const & func,
     gsExprEvaluator<T> ev;
     ev.setIntegrationElements(B);
     typename gsExprEvaluator<T>::geometryMap G = ev.getMap(this->patches());
+
+
+
     typename gsExprEvaluator<T>::variable f1   =
         (m_parametric ? ev.getVariable(*m_fields) : ev.getVariable(*m_fields, G) );
     typename gsExprEvaluator<T>::variable f2   =

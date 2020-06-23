@@ -14,6 +14,8 @@
 # include <gismo.h>
 # include <gsAssembler/gsBiharmonicAssembler.h>
 
+#include "gsG1Basis/biharmonic/gsNormL2.h"
+
 using namespace gismo;
 
 int main(int argc, char *argv[])
@@ -38,32 +40,66 @@ int main(int argc, char *argv[])
     iFace::strategy intStrategy = iFace::glue;
 
 
-    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
-    gsFunctionExpr<> sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-                              "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
-    gsFunctionExpr<> sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
-                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
-                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)",2);
+    gsFunctionExpr<> source  ("8 * ( 16 - 12 * x * x * x + 3 * x * x * x * x + 36 * x * x * ( y - 1 ) * ( y - 1 ) - 48 * y + 36 * y * y - 12 * y * y * y + 3 * y * y * y * y - 24 * x * ( 2 - 6 * y + 3 * y * y) )",3);
+
+    gsFunctionExpr<> laplace ("0",3);
+
+    gsFunctionExpr<> solVal("(2 - x) * (2 - x) * x * x * (2 - y) * (2 - y) * y * y + 0 * z",3);
+
+    gsFunctionExpr<>sol1der ("(2 - x) * (2 - x) * 2 * x * (2 - y) * (2 - y) * y * y - 2 * (2 - x) * x * x * (2 - y) * (2 - y) * y * y",
+                             "(2 - y) * (2 - y) * 2 * y * (2 - x) * (2 - x) * x * x - 2 * (2 - y) * y * y * (2 - x) * (2 - x) * x * x",
+                             "0",3);
+
+    gsFunctionExpr<>sol2der ("0",
+                             "0",
+                             "0",
+                             "0",
+                             "0",
+                             "0", 3);
+
+
+//  gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*z) - cos(4*pi*x) - cos(4*pi*z))",3);
+//    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*z) - cos(4*pi*x) - cos(4*pi*z))",3);
+//    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*z) - 1)",3);
+//    gsFunctionExpr<> sol1der ("-4*pi*(cos(4*pi*z) - 1)*sin(4*pi*x)",
+//                              "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*z)",
+//                              "0",3);
+//    gsFunctionExpr<> sol2der ("-16*pi^2*(cos(4*pi*z) - 1)*cos(4*pi*x)",
+//                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*z)",
+//                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*z)",
+//                              "0",
+//                              "0",
+//                              "0",
+//                              3);
+
+//    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+//    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+//    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+//    gsFunctionExpr<> sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+//                              "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
+//    gsFunctionExpr<> sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
+//                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
+//                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)",2);
+
+
+//   gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
+//    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
+//    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
+//    gsFunctionExpr<> sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+//                              "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
+//                              "0",3);
+//    gsFunctionExpr<> sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
+//                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
+//                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
+//                              "0",
+//                              "0",
+//                              "0",
+//                              3);
 
 /*
 
-    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
-    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
-    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
-    gsFunctionExpr<> sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-                              "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
-                              "0",3);
-    gsFunctionExpr<> sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
-                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
-                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
-                              "0",
-                              "0",
-                              "0",
-                              3);
 
-    //gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*(x/cos(45)))*cos(4*pi*y) - cos(4*pi*(x/cos(45))) - cos(4*pi*y))",3);
+    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*(x/cos(45)))*cos(4*pi*y) - cos(4*pi*(x/cos(45))) - cos(4*pi*y))",3);
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(-cos(4*pi*x/cos(45))*1/(cos(45)*cos(45)*cos(45)*cos(45)) + cos(4*pi*y) * "
                               "(-1 + cos(4*pi*x/cos(45)) * (1+1/(cos(45)*cos(45))) * (1+1/(cos(45)*cos(45))) ))",3);
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
@@ -121,6 +157,12 @@ int main(int argc, char *argv[])
             break;
         case 1: // surface
             string_geo = "KirchhoffLoveGeo/squareSurface3d.xml";
+            break;
+        case 2:
+            string_geo = "KirchhoffLoveGeo/square3dPositiveOrientation.xml";
+            break;
+        case 3:
+            string_geo = "KirchhoffLoveGeo/square3dNegativeOrientation.xml";
             break;
 
         default:
@@ -226,7 +268,12 @@ int main(int argc, char *argv[])
             if(geo.dimensions().first+1 == geo.dimensions().second) // TODO
             {
                 if (e == 2)
-                    l2err[r] = solField.distanceL2(solution, false);
+                {
+
+                    //l2err[r] = solField.distanceL2(solution, false);
+                    gsNormL2<real_t> normL2(solField, solVal);
+                    l2err[r] = normL2.compute();
+                }
 
                 h1err.setOnes();
                 h2err.setOnes();
