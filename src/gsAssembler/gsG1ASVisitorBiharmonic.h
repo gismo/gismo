@@ -88,12 +88,17 @@ public:
 
         // Evaluate basis functions on element
         basis.evalAllDers_into(md.points, 2, basisData);
-
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geo.computeMap(md);
 
         // Evaluate right-hand side at the geometry points
+//        rhs_ptr->eval_into(md.values[0], rhsVals); // Dim: 1 X NumPts
         rhs_ptr->eval_into(md.values[0], rhsVals); // Dim: 1 X NumPts
+
+//        gsInfo << "md.points: " << md.values[0].transpose() << "\n";
+//        gsInfo << "rhsVals: " << rhsVals.transpose() << "\n";
+
+
 
         if(md.dim.first +1 == md.dim.second)
         {
@@ -256,16 +261,15 @@ public:
                 const T weight = quWeights[k] * md.measure(k);
                 transformLaplaceHgrad(md, k, basisGrads, basis2ndDerivs, physBasisLaplace);
 
-                localMat.noalias() += weight * (physBasisLaplace.transpose() * physBasisLaplace);
+                localMat.noalias() += weight * ( physBasisLaplace.transpose() * physBasisLaplace );
                 localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
 
             }
             else
             if(md.dim.first + 1 == md.dim.second)
             {
-                gsMatrix<T> Jk = md.jacobian(k);
-                const T weight = quWeights[k]; // * (sqrt( (Jk.transpose() * Jk).determinant() ) );
-                localMat.noalias() += weight * (surfParametricLaplace.col(k) * surfParametricLaplace.col(k).transpose() );
+                const T weight = quWeights[k];
+                localMat.noalias() += weight * ( surfParametricLaplace.col(k) * surfParametricLaplace.col(k).transpose() );
                 localRhs.noalias() += weight  *( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
             }
 

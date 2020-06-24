@@ -58,6 +58,19 @@ int main(int argc, char *argv[])
                              "0", 3);
 
 
+//    gsFunctionExpr<> source  ("0",3);
+//    gsFunctionExpr<> laplace ("0",3);
+//    gsFunctionExpr<> solVal("y",3);
+//    gsFunctionExpr<>sol1der ("0",
+//                             "1",
+//                             "0",3);
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
+
 //  gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*z) - cos(4*pi*x) - cos(4*pi*z))",3);
 //    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*z) - cos(4*pi*x) - cos(4*pi*z))",3);
 //    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*z) - 1)",3);

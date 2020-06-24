@@ -57,11 +57,11 @@ int main(int argc, char *argv[])
 
     gsFunctionExpr<> laplace ("0",3);
 
-    gsFunctionExpr<> solVal("(2 - x) * (2 - x) * x * x * (2 - y) * (2 - y) * y * y",3);
+    gsFunctionExpr<> solVal("(2 - x) * (2 - x) * x * x * (2 - y) * (2 - y) * y * y + z",3);
 
-    gsFunctionExpr<>sol1der ("(2 - x) * (2 - x) * 2 * x * (2 - y) * (2 - y) * y * y - 2 * (2 - x) * x * x * (2 - y) * (2 - y) * y * y",
-                             "(2 - y) * (2 - y) * 2 * y * (2 - x) * (2 - x) * x * x - 2 * (2 - y) * y * y * (2 - x) * (2 - x) * x * x",
-                             "0",3);
+    gsFunctionExpr<>sol1der ("(2 - x) * (2 - x) * 2 * x * (2 - y) * (2 - y) * y * y - 2 * (2 - x) * x * x * (2 - y) * (2 - y) * y * y +z",
+                             "(2 - y) * (2 - y) * 2 * y * (2 - x) * (2 - x) * x * x - 2 * (2 - y) * y * y * (2 - x) * (2 - x) * x * x +z",
+                             "1",3);
 
     gsFunctionExpr<>sol2der ("0",
                              "0",
@@ -72,6 +72,7 @@ int main(int argc, char *argv[])
                              "0",
                              "0",
                              "0", 3);
+
 
 
 //    gsFunctionExpr<> source  ("0",3);
