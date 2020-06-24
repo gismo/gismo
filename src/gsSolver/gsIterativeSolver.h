@@ -287,6 +287,9 @@ public:
     static uPtr make(const MatrixType& matrix, const LinOpPtr& preconditioner = LinOpPtr())
     { return uPtr( new gsIterativeSolverOp(matrix,preconditioner) ); }
 
+    /// Make function taking a matrix OR a shared pointer
+    static uPtr make(SolverType solver) { return memory::make_unique( new gsIterativeSolverOp(solver) ); }
+
     void apply(const gsMatrix<T> & input, gsMatrix<T> & res) const
     {
         res.setZero(input.rows(), input.cols());
