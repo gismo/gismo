@@ -262,6 +262,7 @@ private:
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
+    index_t est = 0;
     bool plot = false;
     index_t numRefine  = 5;
     index_t numElevate = 0;
@@ -272,6 +273,8 @@ int main(int argc, char *argv[])
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
+    cmd.addInt( "E", "errorEstimation",
+                "Error estimation method; 0 = strong, 1 = weak", est );
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
@@ -280,6 +283,9 @@ int main(int argc, char *argv[])
     //! [Parse command line]
 
     //! [Read input file]
+
+    gsVector<> pt(2);
+    pt.setConstant(0.5);
 
     gsFileData<> fd(fn);
     gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
@@ -431,10 +437,6 @@ int main(int argc, char *argv[])
     exH.initSystem();
 
     //! [Problem setup]
-
-    // Initialize the system
-    exL.initSystem();
-
     gsInfo<< "NumDofs Primal: "<<exL.numDofs() <<std::flush;
 
     // [ORIGINAL PROBLEM]
@@ -468,9 +470,6 @@ int main(int argc, char *argv[])
     gsInfo<<"\t exact: "<<evL.integral((primal_exL-uL)*meas(G))<<"\n";
     // [!ORIGINAL PROBLEM]
 
-
-
-
     // [Low-order Dual PROBLEM]
     // Compute the system matrix and right-hand side
     exL.initSystem();
@@ -496,6 +495,7 @@ int main(int argc, char *argv[])
 
     // [ Project solutions ]
     space v0 = exH.getSpace(basisH);
+    space u0 = exL.getSpace(basisL);
     gsMatrix<> dualL0, primalL0;
     zL.extractFull(dualL0);
     uL.extractFull(primalL0);
@@ -543,8 +543,31 @@ int main(int argc, char *argv[])
     }
     // [!DUAL PROBLEM]
 
-    gsVector<> pt(2);
-    pt.setConstant(0.5);
+    gsDebug<<"zL "<<evL.eval(zL,pt)<<"\n";
+    gsDebug<<"zL "<<evH.eval(zL,pt)<<"\n";
+    gsDebug<<"zH "<<evL.eval(zH,pt)<<"\n"; // CHANGE QUADRATURE POINTS
+    gsDebug<<"zH "<<evH.eval(zH,pt)<<"\n"; // Different from the above
+    gsDebug<<"\n";
+    gsDebug<<"grad zL "<<evL.eval(grad(zL),pt)<<"\n";
+    gsDebug<<"grad zL "<<evH.eval(grad(zL),pt)<<"\n";
+    gsDebug<<"grad zH "<<evL.eval(grad(zH),pt)<<"\n"; //
+    gsDebug<<"grad zH "<<evH.eval(grad(zH),pt)<<"\n"; // Different from the above
+    gsDebug<<"\n";
+
+    // Integrals via the assembler and partition of unity.
+    exL.initSystem();
+    exL.assemble(zL.val() * u0);
+    gsDebug<<"int zL "<<evL.integral(zL.val())<<"; "<<exL.rhs().sum()<<"\n";
+
+    // exL.assemble(zH.val() * u0);
+    // gsDebug<<"int zL "<<evH.integral(zL.temp())<<"\n"; // NOT WORKING
+
+    exH.initSystem();
+    // exH.assemble(zL.val() * v0);
+    // gsDebug<<"int zH "<<evL.integral(zH.val())<<"\n"; // NOT WORKING
+
+    exH.assemble(zH.val() * v0);
+    gsDebug<<"int zH "<<evH.integral(zH.val())<<"; "<<exH.rhs().sum()<<"\n";
 
     gsInfo<<"Objective function errors J(u)-J(u_h)\n";
     real_t error = evL.integral((0.5*primal_exL*primal_exL)*meas(G)) - evL.integral((0.5*uL*uL)*meas(G));
@@ -568,33 +591,189 @@ int main(int argc, char *argv[])
             "\t ((1)-(2)/(1)      : "<<(err1-err2)/err1<<"\n"
             "\t dual (H) exact: "<<math::sqrt(evH.integral((dual_exH-zH).sqNorm()*meas(H)))<<"\n";
 
-    evH.integralElWise((gg - slapl(uLp)) * (zH - zLp)*meas(H));
-    // evH.integralElWise( (zH-zLp) * gg * meas(H)-(((igrad(zH) - igrad(zLp))*igrad(uLp).tr()) ) * meas(H));
-    gsVector<> elementNorms = evH.allValues().transpose();
-    std::vector<real_t> errors;
-    errors.resize(elementNorms.size());
-    gsVector<>::Map(&errors[0],elementNorms.size() ) = elementNorms;
+    // ELEMENT WISE ERROR ESTIMATION
+    if (est==0)
+    {
+        gsInfo<<evL.eval((ff - slapl(uL)) * (zH.val() - zL.val())*meas(G),pt)<<"\n";
+        gsInfo<<evH.eval((gg - slapl(uLp)) * (zH.val() - zLp.val())*meas(H),pt)<<"\n";
 
-    gsInfo<< "  Result (global)    : "<< elementNorms.sum() <<"\n";
-
-    gsElementErrorPlotter<real_t> err_eh(basisH.basis(0),errors);
-
-    const gsField<> elemError_eh( mp, err_eh, false );
-    gsWriteParaview<>( elemError_eh, "error_elem_eh", 1000);
+    return 0;
 
 
-    MarkingStrategy adaptRefCrit = PUCA;
-    const real_t adaptRefParam = 0.9;
-    std::vector<bool> elMarked( errors.size() );
+        evL.integralElWise((ff - slapl(uL)) * (zH.val() - zL.val())*meas(G));
 
-    gsMarkElementsForRef( errors, adaptRefCrit, adaptRefParam, elMarked);
-    for (std::vector<bool>::const_iterator i = elMarked.begin(); i != elMarked.end(); ++i)
-        gsInfo << *i << ' ';
-    gsInfo<<"\n";
+        // evH.integralElWise((gg - slapl(uLp)) * (zH - zLp)*meas(H));
+        // evH.integralElWise( (zH-zLp) * gg * meas(H)-(((igrad(zH) - igrad(zLp))*igrad(uLp).tr()) ) * meas(H));
+        gsVector<> elementNorms = evL.allValues().transpose();
+        std::vector<real_t> errors;
+        errors.resize(elementNorms.size());
+        gsVector<>::Map(&errors[0],elementNorms.size() ) = elementNorms;
 
-    // Refine the marked elements with a 1-ring of cells around marked elements
-    gsRefineMarkedElements( mpH, elMarked, 1 );
-    gsRefineMarkedElements( mpL, elMarked, 1 );
+        gsInfo<< "  Result (global)    : "<< elementNorms.sum() <<"\n";
+
+        gsElementErrorPlotter<real_t> err_eh(basisH.basis(0),errors);
+
+        const gsField<> elemError_eh( mp, err_eh, false );
+        gsWriteParaview<>( elemError_eh, "error_elem_eh", 1000);
+
+
+        MarkingStrategy adaptRefCrit = PUCA;
+        const real_t adaptRefParam = 0.9;
+        std::vector<bool> elMarked( errors.size() );
+
+        gsMarkElementsForRef( errors, adaptRefCrit, adaptRefParam, elMarked);
+        for (std::vector<bool>::const_iterator i = elMarked.begin(); i != elMarked.end(); ++i)
+            gsInfo << *i << ' ';
+        gsInfo<<"\n";
+
+        // Refine the marked elements with a 1-ring of cells around marked elements
+        gsRefineMarkedElements( mpH, elMarked, 1 );
+        gsRefineMarkedElements( mpL, elMarked, 1 );
+
+        gsDebugVar(mpH.basis(0));
+        gsDebugVar(mpL.basis(0));
+
+
+    }
+    // FUNCTION WISE ERROR ESTIMATION
+    else if (est==1)
+    {
+        exH.initSystem(true);
+        // exH.assemble( grad(uLp) * ( grad(v0) * (zH - zLp) + v0 * ( grad(zH) - grad(zLp) ) ) - gg * v0 * (zH - zLp)  );
+
+        auto lhs = ((zH - zLp) * grad(uLp) * grad(v0).tr()).tr(); // + v0 * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
+        auto lhs2 = v0 * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
+        auto rhs = gg.val() * (zH - zLp).val() * v0;
+
+        gsDebug<<evH.eval(zH,pt);
+
+
+        gsMatrix<> res;
+        exH.assemble(lhs*meas(H));
+        res = exH.rhs();
+
+        exH.assemble(lhs2*meas(H));
+        res += exH.rhs();
+
+        exH.assemble(rhs*meas(H));
+        res += exH.rhs();
+
+        gsDebugVar(res);
+
+        gsInfo<< "  Result (global)    : "<< res.sum()<<"\n";
+
+        MarkingStrategy adaptRefCrit = PUCA;
+        const real_t adaptRefParam = 0.9;
+        std::vector<bool> funMarked( res.size() );
+
+        std::vector<real_t> errors( res.size() );
+        gsVector<>::Map(&errors[0],res.size() ) = res;
+
+
+        for (std::vector<real_t>::const_iterator i = errors.begin(); i != errors.end(); ++i)
+            gsInfo << *i << "\n";
+        gsInfo<<"\n";
+
+        gsMarkElementsForRef( errors, adaptRefCrit, adaptRefParam, funMarked);
+        for (std::vector<bool>::const_iterator i = funMarked.begin(); i != funMarked.end(); ++i)
+            gsInfo << *i << ' ';
+        gsInfo<<"\n";
+
+        // Refine the marked elements with a 1-ring of cells around marked elements
+        gsRefineMarkedFunctions( mpH, funMarked, 1 );
+        gsDebugVar(mpH.basis(0));
+    gsWriteParaview(mpH,"mpH",1000,true);
+
+
+        gsMultiPatch<> tmp = mpH;
+        tmp.patch(0).degreeReduce(1);
+        mpL = tmp;
+        // gsRefineMarkedFunctions( mpL, funMarked, 1 );
+        gsDebugVar(mpL.basis(0));
+
+    }
+    // FUNCTION WISE ERROR ESTIMATION
+    else if (est==2)
+    {
+        exL.initSystem(true);
+        exH.initSystem(true);
+
+
+        // exH.assemble( grad(uLp) * ( grad(v0) * (zH - zLp) + v0 * ( grad(zH) - grad(zLp) ) ) - gg * v0 * (zH - zLp)  );
+
+        auto lhs = ((zH - zL) * grad(uL) * grad(u0).tr()).tr(); // + v0 * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
+        auto lhs2 = u0 * ( grad(zH) - grad(zL) ) * grad(uL).tr();
+        auto rhs = ff.val() * (zH - zL).val() * u0;
+
+        gsDebug<<evL.eval(zL,pt)<<"\n";
+
+        gsDebug<<evL.eval(zH,pt)<<"\n";
+
+        gsDebug<<evH.integral(zH)<<"\n";
+
+        exL.assemble(zH.val() * u0 * meas(G));
+        gsDebugVar(exL.rhs().sum());
+        gsDebug<<evH.integral(zH)<<"\n";
+        exH.assemble(zH.val() * v0 * meas(H));
+        gsDebugVar(exH.rhs().sum());
+
+        exL.assemble(zL.val() * u0 * meas(G));
+        gsDebugVar(exL.rhs().sum());
+
+
+    //     gsDebug<<evL.eval(zL,pt)<<"\n";
+    //     gsDebug<<evL.eval(zH.temp(),pt)<<"\n";
+    //     gsDebug<<evH.eval(zH,pt)<<"\n";
+
+    //     gsMatrix<> res;
+    //     exL.assemble(lhs*meas(G));
+    //     res = exL.rhs();
+
+    //     exL.assemble(lhs2*meas(G));
+    //     res += exL.rhs();
+
+    //     exL.assemble(rhs*meas(G));
+    //     res += exL.rhs();
+
+    //     gsDebugVar(res);
+
+    //     gsInfo<< "  Result (global)    : "<< res.sum()<<"\n";
+
+    //     MarkingStrategy adaptRefCrit = PUCA;
+    //     const real_t adaptRefParam = 0.9;
+    //     std::vector<bool> funMarked( res.size() );
+
+    //     std::vector<real_t> errors( res.size() );
+    //     gsVector<>::Map(&errors[0],res.size() ) = res;
+
+
+    //     for (std::vector<real_t>::const_iterator i = errors.begin(); i != errors.end(); ++i)
+    //         gsInfo << *i << "\n";
+    //     gsInfo<<"\n";
+
+    //     gsMarkElementsForRef( errors, adaptRefCrit, adaptRefParam, funMarked);
+    //     for (std::vector<bool>::const_iterator i = funMarked.begin(); i != funMarked.end(); ++i)
+    //         gsInfo << *i << ' ';
+    //     gsInfo<<"\n";
+
+    //     // Refine the marked elements with a 1-ring of cells around marked elements
+    //     gsRefineMarkedFunctions( mpL, funMarked, 1 );
+    //     gsDebugVar(mpL.basis(0));
+    // gsWriteParaview(mpL,"mpH",1000,true);
+
+
+    //     gsMultiPatch<> tmp = mpH;
+    //     tmp.patch(0).degreeReduce(1);
+    //     mpL = tmp;
+    //     // gsRefineMarkedFunctions( mpL, funMarked, 1 );
+    //     gsDebugVar(mpL.basis(0));
+
+    }
+    else
+        GISMO_ERROR("Estimation method unknown");
+
+
+
 
     gsWriteParaview(mpH,"mpH",1000,true);
     gsWriteParaview(mpL,"mpL",1000,true);
