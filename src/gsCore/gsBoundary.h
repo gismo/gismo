@@ -391,6 +391,10 @@ public:
     patchCorner(index_t p, boxCorner c)
         : boxCorner(c), patch (p) { }
 
+    // Accessors
+    boxCorner& corner()       {return *this;}
+    const boxCorner& corner() const {return *this;}
+
     /**
      * @brief returns a vector of patchSides that contain this corner
      * @param dim is the ambient dimension
