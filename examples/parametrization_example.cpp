@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): L. Groiss, J. Vogl
+    Author(s): L. Groiss, J. Vogl, D. Mokris
 */
 
 #include <gismo.h>
@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
     // distributed: choose the smallest inner angle corners (number for how much to choose) and choose four corners s.t. they are as evenly distributed as possible, input number n=6 for choosing 6 boundary vertices with smallest inner angles and then find 4 of them s.t. evenly distributed
     std::string filenameIn("stl/norm.stl");
     std::string filenameOut("flatMesh");
+    std::string filenameV0, filenameV1, filenameOverlap;
     real_t range = 0.1; // in case of restrict or opposite
     index_t number = 4; // number of corners, in case of distributed
     std::vector<index_t> corners; // in case of corners
@@ -51,6 +52,9 @@ int main(int argc, char *argv[])
                   boundaryMethod);
     cmd.addString("f", "filenameIn", "input file name", filenameIn);
     cmd.addString("o", "filenameOut", "output file name", filenameOut);
+    cmd.addString("d", "v0", "file name to v=0", filenameV0);
+    cmd.addString("t", "v1", "file name to v=1", filenameV1);
+    cmd.addString("l", "overlap", "file name to overlap", filenameOverlap);
     cmd.addReal("r", "range", "in case of restrict or opposite", range);
     cmd.addInt("n", "number", "number of corners, in case of corners", number);
     cmd.addMultiInt("c", "corners", "vector for corners, call it every time for an entry (-c 3 -c 1 -c 2 => {3,1,2})", corners);
@@ -69,21 +73,31 @@ int main(int argc, char *argv[])
 
     gsInfo << "creating gsParametrization<real_t>       ";
     stopwatch.restart();
-    gsParametrization<real_t> pm(*mm);
+    gsParametrization<real_t> pm(*mm, ol);
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
+    gsInfo << "Input had " << ol.getMultiInt("corners").size() << " corners." << std::endl;
     pm.setOptions(ol);
 
+    std::vector<size_t> left, right;
     gsInfo << "gsParametrization::compute()             ";
     stopwatch.restart();
-    pm.compute();
+
+    // TODO: Decide according to the method (normal, periodic, iterative).
+    pm.compute_periodic(filenameV0, filenameV1, filenameOverlap, left, right);
+
+    //pm.compute();
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
     gsInfo << "gsParametrization::createFlatMesh()      ";
     stopwatch.restart();
-    gsMesh<> mesh = pm.createFlatMesh();
+    gsMesh<> mMesh = pm.createFlatMesh(true, left, right);
+    gsMesh<> lMesh = pm.createFlatMesh(true, left, right, -1);
+    gsMesh<> rMesh = pm.createFlatMesh(true, left, right, 1);
+    gsMesh<> mid = pm.createMidMesh(left, right);
+    //std::vector<gsMesh<> > meshes = pm.createThreeFlatMeshes(left, right);
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
@@ -99,14 +113,26 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    gsInfo << mesh << "\n";
-    gsInfo << uv << "\n";
-    gsInfo << xyz << "\n";
-
     if(paraview)
     {
-        gsWriteParaview(mesh, ol.getString("filenameOut"));
-        gsFileManager::open(ol.getString("filenameOut") + ".pvd");
+	pm.restrictMatrices(uv, xyz);
+	//pm.writeTexturedMesh("mesh.vtk");
+	
+	//gsWriteParaview(lMesh, "lMesh");
+	gsWriteParaview(mMesh, "mMesh");
+	//gsWriteParaview(rMesh, "rMesh");
+
+	pm.writeSTL(mMesh, "mMesh");
+
+	gsFileData<> output;
+	output << uv;
+	output << xyz;
+	output.save("fitting");
+        // gsWriteParaview(meshes[0], "left" + ol.getString("filenameOut"));
+        // gsWriteParaview(meshes[1], "mid" + ol.getString("filenameOut"));
+        // gsWriteParaview(meshes[2], "right" + ol.getString("filenameOut"));
+
+        //gsFileManager::open(ol.getString("filenameOut") + ".pvd");
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "

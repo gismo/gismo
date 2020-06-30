@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): L. Groiss, J. Vogl
+    Author(s): L. Groiss, J. Vogl, D. Mokris
 */
 
 #pragma once
@@ -59,13 +59,22 @@ private:
 public:
 
     /// Constructor using the input mesh and (possibly) options
-    explicit gsParametrization(gsMesh<T> &mesh, const gsOptionList & list = defaultOptions());
+    explicit gsParametrization(gsMesh<T> &mesh,
+			       const gsOptionList & list = defaultOptions(),
+			       bool periodic = false);
 
     /// @brief Returns the list of default options for gsParametrization
     static gsOptionList defaultOptions();
 
     /// Main function which performs the computation
     gsParametrization<T>& compute();
+
+    /// Analogous main function for periodic parametrizations.
+    gsParametrization<T>& compute_periodic(std::string bottomFile,
+					   std::string topFile,
+					   std::string overlapFile,
+					   std::vector<size_t>& left,
+					   std::vector<size_t>& right);
 
     /**
      * Parametric Coordinates u,v from 0..1
@@ -79,11 +88,57 @@ public:
      */
     gsMatrix<T> createXYZmatrix();
 
+    void restrictMatrices(gsMatrix<T>& uv, gsMatrix<T>& xyz,
+			  real_t uMin = 0, real_t uMax = 1, real_t vMin = 0, real_t vMax = 1)
+    {
+	std::vector<index_t> goodCols;
+	for(index_t j=0; j<uv.cols(); j++)
+	{
+	    if(uv(0, j) >= uMin && uv(0, j) <= uMax && uv(1, j) >= vMin && uv(1, j) <= vMax)
+		goodCols.push_back(j);
+	}
+
+	// The following is possible, because j <= goodCols[j].
+	size_t newSize = goodCols.size();
+	for(size_t j=0; j<newSize; j++)
+	{
+	    uv.col(j)  =  uv.col(goodCols[j]);
+	    xyz.col(j) = xyz.col(goodCols[j]);
+	}
+
+	gsInfo << newSize << " points remain." << std::endl;
+
+	uv.conservativeResize(2, newSize);
+	xyz.conservativeResize(3, newSize);
+    }
+
     /**
      * Creates a flat mesh
      * @return
      */
-    gsMesh<T> createFlatMesh();
+    gsMesh<T> createFlatMesh() const;
+
+    gsMesh<T> createFlatMesh(bool flatten,
+			     const std::vector<size_t>& left,
+			     const std::vector<size_t>& right,
+			     real_t shift = 0) const;
+
+    void writeTexturedMesh(std::string filename) const;
+
+    void writeSTL (const gsMesh<T>& mesh, std::string filename) const;
+
+    std::vector<gsMesh<T> > createThreeFlatMeshes(const std::vector<std::pair<size_t, size_t> >& twins) const;
+
+    /// For demonstration purposes creates three flat meshes next to each other.
+    std::vector<gsMesh<T> > createThreeFlatMeshes(const std::vector<size_t>& right,
+						  const std::vector<size_t>& left) const;
+
+    // Copied from the three meshes.
+    gsMesh<T> createMidMesh(const std::vector<std::pair<size_t, size_t> >& twins) const;
+
+    // Copied from the three meshes.
+    gsMesh<T> createMidMesh(const std::vector<size_t>& right,
+			    const std::vector<size_t>& left) const;
 
     gsOptionList& options() { return m_options; }
 
@@ -350,13 +405,47 @@ private:
     * @param[in] n const int - number of inner vertices and therefore size of the square matrix
     * @param[in] N const int - number of the vertices and therefore N-n is the size of the right-hand-side vector
     */
-    void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood, const size_t n, const size_t N);
+    void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
+					 const size_t n,
+					 const size_t N);
+
+    /** Similar to @a constructAndSolveEquationSystem but using the NxN system. */
+    void constructAndSolveEquationSystem_2(const Neighbourhood &neighbourhood,
+					   const size_t n,
+					   const size_t N);
+
+    /** Similar to @a _2 but does the periodic thing through the twin trick.*/
+    void constructAndSolveEquationSystem_3(const Neighbourhood &neighbourhood,
+					   const size_t n,
+					   const size_t N,
+					   const std::vector<std::pair<size_t, size_t> >& twins);
+
+    /// Helper function to _3.
+    void updateLambdasWithTwins(std::vector<T>& lambdas,
+				const std::vector<std::pair<size_t, size_t> >& twins,
+				size_t vertexId);
+
+    void constructTwins(std::vector<std::pair<size_t, size_t> >& twins,
+			const gsMesh<T>& overlapMesh,
+			typename gsMesh<T>::gsVertexHandle u0vMin,
+			typename gsMesh<T>::gsVertexHandle u0vMax,
+			typename gsMesh<T>::gsVertexHandle u1vMin,
+			typename gsMesh<T>::gsVertexHandle u1vMax);
 
     void calculate(const size_t boundaryMethod,
                    const size_t paraMethod,
-                   const std::vector<int> &cornersInput,
+                   const std::vector<int>& cornersInput,
                    const T rangeInput,
                    const size_t numberInput);
+
+    void calculate_periodic(const size_t paraMethod,
+			    const std::vector<size_t>& indicesU0,
+			    const std::vector<T>& valuesU0,
+			    const std::vector<size_t>& indicesU1,
+			    const std::vector<T>& valuesU1,
+			    const gsMesh<T>& overlapMesh,	
+			    std::vector<size_t>& left,
+			    std::vector<size_t>& right);
 
     T findLengthOfPositionPart(const size_t position,
                                     const size_t numberOfPositions,
@@ -364,6 +453,23 @@ private:
                                     const std::vector<T> &lengths);
 
     bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const size_t maximum);
+
+    real_t correspondingV(const typename gsMesh<T>::VertexHandle& v0,
+			  const typename gsMesh<T>::VertexHandle& v1,
+			  real_t u) const;
+
+    void addOneFlatTriangle(gsMesh<T>& mesh,
+			    const typename gsMesh<T>::VertexHandle& v0,
+			    const typename gsMesh<T>::VertexHandle& v1,
+			    const typename gsMesh<T>::VertexHandle& v2,
+			    real_t shift = 0) const;
+
+    void addTwoFlatTriangles(gsMesh<T>& mesh,
+			     const typename gsMesh<T>::VertexHandle& v0,
+			     const typename gsMesh<T>::VertexHandle& v1,
+			     const typename gsMesh<T>::VertexHandle& v2,
+			     real_t shift = 0) const;
+
 
 }; // class gsParametrization
 

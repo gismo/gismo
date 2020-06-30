@@ -32,13 +32,15 @@ namespace gismo
 //};
 
 template<class T>
-gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision)
+gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision, bool periodic)
     : gsMesh<T>(mesh), m_precision(precision)
 {
     //this->cleanMesh();
     //std::sort(this->m_vertex.begin(), this->m_vertex.end(), less_than_ptr());
     //typename std::vector<gsVertex<T> *, std::allocator<gsVertex<T> *> >::iterator
     //last = std::unique(this->m_vertex.begin(), this->m_vertex.end(), equal_ptr());
+
+    // gsInfo << "Constructor of gsHalfEdgeMesh, there are " << this->m_vertex.size() << " vertices.\n";
 
     m_halfedges.reserve(3*this->m_face.size());
     for (size_t i = 0; i < this->m_face.size(); i++)
@@ -49,8 +51,15 @@ gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision)
     }
 
     m_boundary = Boundary(m_halfedges);
-    m_n = this->m_vertex.size() - m_boundary.getNumberOfVertices();
+    // The -1 is because of periodicity.
+    // gsInfo << "vertices: " << this->m_vertex.size() << std::endl;
+    // gsInfo << "boundary: " << m_boundary.getNumberOfVertices() << std::endl;
+    m_n = this->m_vertex.size() - m_boundary.getNumberOfVertices(); // +- periodic?
     sortVertices();
+    
+    // gsInfo << "mesh 4:\n";
+    // print();
+    // gsInfo << std::endl;
 }
 
 template<class T>
@@ -90,6 +99,13 @@ size_t gsHalfEdgeMesh<T>::getVertexIndex(const gsMesh<T>::gsVertexHandle &vertex
 {
     return m_inverseSorting[getInternVertexIndex(vertex)];
 }*/
+
+ // Dominik's version
+template<class T>
+size_t gsHalfEdgeMesh<T>::getVertexIndex(const typename gsMesh<T>::gsVertexHandle &vertex) const
+{
+    return m_inverseSorting[findVertex(vertex)];
+}
 
 template<class T>
 size_t gsHalfEdgeMesh<T>::getGlobalVertexIndex(size_t localVertexIndex, size_t triangleIndex) const
@@ -309,41 +325,63 @@ template<class T>
 gsHalfEdgeMesh<T>::Boundary::Boundary(const std::vector<typename gsHalfEdgeMesh<T>::Halfedge> &halfedges)
 {
     std::list<Halfedge> unsortedNonTwinHalfedges = findNonTwinHalfedges(halfedges);
-    m_boundary.appendNextHalfedge(unsortedNonTwinHalfedges.front());
-    unsortedNonTwinHalfedges.pop_front();
-    std::queue<Halfedge> nonFittingHalfedges;
-    while (!unsortedNonTwinHalfedges.empty())
+
+    while(!unsortedNonTwinHalfedges.empty())
     {
-        if (m_boundary.isAppendableAsNext(unsortedNonTwinHalfedges.front()))
-        {
-            m_boundary.appendNextHalfedge(unsortedNonTwinHalfedges.front());
-            unsortedNonTwinHalfedges.pop_front();
-            while (!nonFittingHalfedges.empty())
-            {
-                unsortedNonTwinHalfedges.push_back(nonFittingHalfedges.front());
-                nonFittingHalfedges.pop();
-            }
-        }
-        else if (m_boundary.isAppendableAsPrev(unsortedNonTwinHalfedges.front()))
-        {
-            m_boundary.appendPrevHalfedge(unsortedNonTwinHalfedges.front());
-            unsortedNonTwinHalfedges.pop_front();
-            while (!nonFittingHalfedges.empty())
-            {
-                unsortedNonTwinHalfedges.push_back(nonFittingHalfedges.front());
-                nonFittingHalfedges.pop();
-            }
-        }
-        else
-        {
-            nonFittingHalfedges.push(unsortedNonTwinHalfedges.front());
-            unsortedNonTwinHalfedges.pop_front();
-        }
+	// Start a new connected component.
+	Chain component;
+	component.appendNextHalfedge(unsortedNonTwinHalfedges.front());
+	unsortedNonTwinHalfedges.pop_front();
+	std::queue<Halfedge> nonFittingHalfedges;
+	while (!unsortedNonTwinHalfedges.empty())
+	{
+	    if (component.isAppendableAsNext(unsortedNonTwinHalfedges.front()))
+	    {
+		component.appendNextHalfedge(unsortedNonTwinHalfedges.front());
+		unsortedNonTwinHalfedges.pop_front();
+		while (!nonFittingHalfedges.empty())
+		{
+		    unsortedNonTwinHalfedges.push_back(nonFittingHalfedges.front());
+		    nonFittingHalfedges.pop();
+		}
+	    }
+	    else if (component.isAppendableAsPrev(unsortedNonTwinHalfedges.front()))
+	    {
+		component.appendPrevHalfedge(unsortedNonTwinHalfedges.front());
+		unsortedNonTwinHalfedges.pop_front();
+		while (!nonFittingHalfedges.empty())
+		{
+		    unsortedNonTwinHalfedges.push_back(nonFittingHalfedges.front());
+		    nonFittingHalfedges.pop();
+		}
+	    }
+	    else
+	    {
+		nonFittingHalfedges.push(unsortedNonTwinHalfedges.front());
+		unsortedNonTwinHalfedges.pop_front();
+	    }
+	}
+
+	// gsInfo << "Pushing back a component with " << component.getNumberOfVertices() << " vertices, "
+	//        << nonFittingHalfedges.size() << " halfedges remain." << std::endl;
+
+	m_boundary.push_back(component);
+
+	// // Collect the remaining half edges for the next connected component.
+	while(!nonFittingHalfedges.empty())
+	{
+	    unsortedNonTwinHalfedges.push_back( nonFittingHalfedges.front() );
+	    nonFittingHalfedges.pop();	// Start a new connected component.
+	}
+	// gsInfo << "Closed: " << m_boundary.isClosed() << ", has "
+	//        << m_boundary.getNumberOfVertices() << std::endl;
     }
-    if (!m_boundary.isClosed())
-        gsWarn << "gsHalfEdgeMesh::Boundary::Boundary: Boundary is not closed although it should be. End points are:\n"
-                  << m_boundary.getFirstHalfedge().getOrigin() << "\n and "
-                  << m_boundary.getLastHalfedge().getEnd() << "\n";
+    // if (!m_boundary.isClosed())
+    //     gsWarn << "gsHalfEdgeMesh::Boundary::Boundary: Boundary is not closed although it should be. End points are:\n"
+    //               << m_boundary.getFirstHalfedge().getOrigin() << "\n and "
+    //               << m_boundary.getLastHalfedge().getEnd() << "\n";
+
+    // Even here, print() returns nothing.
 }
 /// @endcond
 // private
@@ -619,9 +657,10 @@ void gsHalfEdgeMesh<T>::Chain::appendPrevHalfedge(const typename gsHalfEdgeMesh<
 }
 
 template<class T>
-void gsHalfEdgeMesh<T>::Chain::appendNextHalfedge(const typename gsHalfEdgeMesh<T>::Halfedge &nextHalfedge)
+void gsHalfEdgeMesh<T>::Chain::appendNextHalfedge(const typename gsHalfEdgeMesh<T>::Halfedge &nextHalfedge,
+						  bool ignoreWarning)
 {
-    if (!isAppendableAsNext(nextHalfedge))
+    if (!ignoreWarning && !isAppendableAsNext(nextHalfedge))
     {
         gsWarn << "gsHalfEdgeMesh::Chain::appendNextHalfedge: This halfedge is not appendable at the end.\n";
         gsInfo << "The last halfedge of the chain has end " << this->getLastHalfedge().getEnd()
