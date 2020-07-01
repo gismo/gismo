@@ -23,6 +23,7 @@ int main(int argc, char *argv[])
     /************** Define command line options *************/
 
     std::string geometry("domain2d/yeti_mp2.xml");
+    index_t splitPatches = 0;
     real_t stretchGeometry = 1;
     index_t xRefine = 0;
     index_t refinements = 3;
@@ -46,6 +47,7 @@ int main(int argc, char *argv[])
 
     gsCmdLine cmd("Solves a PDE with an isogeometric discretization using a multigrid solver.");
     cmd.addString("g", "Geometry",              "Geometry file", geometry);
+    cmd.addInt   ("",  "SplitPatches",          "Split every patch that many times in 2^d patches", splitPatches);
     cmd.addReal  ("",  "StretchGeometry",       "Stretch geometry in x-direction by the given factor", stretchGeometry);
     cmd.addInt   ("",  "XRefine",               "Refine in x-direction by adding that many knots to every knot span", xRefine);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
@@ -101,6 +103,12 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
     gsMultiPatch<>& mp = *mpPtr;
+
+    for (index_t i=0; i<splitPatches; ++i)
+    {
+        gsInfo << "split patches uniformly... " << std::flush;
+        mp = mp.uniformSplit();
+    }
 
     if (stretchGeometry!=1)
     {
