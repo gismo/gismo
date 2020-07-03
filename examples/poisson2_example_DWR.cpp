@@ -431,6 +431,10 @@ int main(int argc, char *argv[])
         // Dual solution projection on high-order mesh
     solution zH = exH.getSolution(v, dualH);
 
+    // zH2
+    gsMultiPatch<> zH2_mp(mpL);//just initialize for not being empty
+    variable zH2 = exL.getCoeff(zH2_mp);
+    
     gsSparseSolver<>::CGDiagonal solver;
 
     exL.initSystem();
@@ -543,14 +547,16 @@ int main(int argc, char *argv[])
     }
     // [!DUAL PROBLEM]
 
+    zH.extract(zH2_mp);// this updates zH2 variable
+    
     gsDebug<<"zL "<<evL.eval(zL,pt)<<"\n";
     gsDebug<<"zL "<<evH.eval(zL,pt)<<"\n";
-    gsDebug<<"zH "<<evL.eval(zH,pt)<<"\n"; // CHANGE QUADRATURE POINTS
+    gsDebug<<"zH "<<evL.eval(zH2,pt)<<"\n";
     gsDebug<<"zH "<<evH.eval(zH,pt)<<"\n"; // Different from the above
     gsDebug<<"\n";
     gsDebug<<"grad zL "<<evL.eval(grad(zL),pt)<<"\n";
     gsDebug<<"grad zL "<<evH.eval(grad(zL),pt)<<"\n";
-    gsDebug<<"grad zH "<<evL.eval(grad(zH),pt)<<"\n"; //
+    gsDebug<<"grad zH "<<evL.eval(grad(zH2),pt)<<"\n"; //
     gsDebug<<"grad zH "<<evH.eval(grad(zH),pt)<<"\n"; // Different from the above
     gsDebug<<"\n";
 
