@@ -76,6 +76,11 @@ public:
 					   std::vector<size_t>& left,
 					   std::vector<size_t>& right);
 
+    /// Periodic parametrization using Pierre's trick.
+    gsParametrization<T>& compute_periodic_2(std::string bottomFile,
+					     std::string topFile,
+					     std::string stitchFile);
+
     /**
      * Parametric Coordinates u,v from 0..1
      * @return
@@ -342,6 +347,12 @@ private:
         explicit Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
                                const size_t parametrizationMethod = 2);
 
+	/// Can be probably integrated into the standard constructor.
+        explicit Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
+			       const std::vector<size_t>& stitchIndices,
+			       std::vector<std::vector<size_t> >& corrections,
+                               const size_t parametrizationMethod = 2);
+
         /**
          * @brief Get vector of lambdas
          *
@@ -374,6 +385,9 @@ private:
         void takeCornersWithSmallestAngles(size_t number,
                                            std::vector<std::pair<T, size_t> > &sortedAngles,
                                            std::vector<int> &corners) const;
+
+	std::vector<size_t> computeCorrections(const std::vector<size_t>& stitchIndices,
+					       const LocalNeighbourhood& localNeighbourhood) const;
 
         const gsHalfEdgeMesh<T> & m_basicInfos;
         std::vector<LocalParametrization> m_localParametrizations;
@@ -420,6 +434,11 @@ private:
 					   const size_t N,
 					   const std::vector<std::pair<size_t, size_t> >& twins);
 
+    void constructAndSolveEquationSystem_4(const Neighbourhood &neighbourhood,
+					   const size_t n,
+					   const size_t N,
+					   const std::vector<std::vector<size_t> >& corrections);
+
     /// Helper function to _3.
     void updateLambdasWithTwins(std::vector<T>& lambdas,
 				const std::vector<std::pair<size_t, size_t> >& twins,
@@ -446,6 +465,13 @@ private:
 			    const gsMesh<T>& overlapMesh,	
 			    std::vector<size_t>& left,
 			    std::vector<size_t>& right);
+
+    void calculate_periodic_2(const size_t paraMethod,
+			      const std::vector<size_t>& indicesV0,
+			      const std::vector<T>& valuesV0,
+			      const std::vector<size_t>& indicesV1,
+			      const std::vector<T>& valuesV1,
+			      const std::vector<size_t>& stitchIndices);
 
     T findLengthOfPositionPart(const size_t position,
                                     const size_t numberOfPositions,

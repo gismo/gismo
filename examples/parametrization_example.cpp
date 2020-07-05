@@ -86,6 +86,7 @@ int main(int argc, char *argv[])
 
     // TODO: Decide according to the method (normal, periodic, iterative).
     pm.compute_periodic(filenameV0, filenameV1, filenameOverlap, left, right);
+    //pm.compute_periodic_2(filenameV0, filenameV1, filenameOverlap); // TODO: Rename the file.
 
     //pm.compute();
     stopwatch.stop();
@@ -93,9 +94,9 @@ int main(int argc, char *argv[])
 
     gsInfo << "gsParametrization::createFlatMesh()      ";
     stopwatch.restart();
-    gsMesh<> mMesh = pm.createFlatMesh(true, left, right);
-    gsMesh<> lMesh = pm.createFlatMesh(true, left, right, -1);
-    gsMesh<> rMesh = pm.createFlatMesh(true, left, right, 1);
+    //gsMesh<> mMesh = pm.createFlatMesh(true, left, right);
+    //gsMesh<> lMesh = pm.createFlatMesh(true, left, right, -1);
+    //gsMesh<> rMesh = pm.createFlatMesh(true, left, right, 1);
     gsMesh<> mid = pm.createMidMesh(left, right);
     //std::vector<gsMesh<> > meshes = pm.createThreeFlatMeshes(left, right);
     stopwatch.stop();
@@ -119,10 +120,11 @@ int main(int argc, char *argv[])
 	//pm.writeTexturedMesh("mesh.vtk");
 	
 	//gsWriteParaview(lMesh, "lMesh");
-	gsWriteParaview(mMesh, "mMesh");
+	//gsWriteParaview(mMesh, "mMesh");
 	//gsWriteParaview(rMesh, "rMesh");
 
-	pm.writeSTL(mMesh, "mMesh");
+	//pm.writeSTL(mMesh, "mMesh");
+	gsWriteParaview(mid, "mMesh");
 
 	gsFileData<> output;
 	output << uv;

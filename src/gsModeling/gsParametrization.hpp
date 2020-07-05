@@ -580,8 +580,6 @@ gsMesh<T> gsParametrization<T>::createMidMesh(const std::vector<size_t>& right,
 	    
 	    for (size_t j=0; j<3; ++j)
 	    {
-		// TODO tomorrow: work here. Restrict based on the situation.
-		// Later the 3D parametrized surface can be made.
 		if(std::find(rVert.begin(), rVert.end(), j) != rVert.end())
 		{
 		    mvLft[j] = midMesh.addVertex(getParameterPoint(vInd[j])[0],
@@ -663,6 +661,7 @@ T gsParametrization<T>::findLengthOfPositionPart(const size_t position,
 //******************************************************************************************
 //******************************* nested class Neighbourhood *******************************
 //******************************************************************************************
+
 template<class T>
 gsParametrization<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo,
 						   const size_t parametrizationMethod)
@@ -678,7 +677,99 @@ gsParametrization<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & mes
     m_localBoundaryNeighbourhoods.reserve(meshInfo.getNumberOfVertices() - meshInfo.getNumberOfInnerVertices());
     for(size_t i=meshInfo.getNumberOfInnerVertices()+1; i<= meshInfo.getNumberOfVertices(); i++)
     {
+
         m_localBoundaryNeighbourhoods.push_back(LocalNeighbourhood(meshInfo, i, 0));
+    }
+}
+
+template<class T>
+std::vector<size_t> gsParametrization<T>::Neighbourhood::computeCorrections(
+    const std::vector<size_t>& stitchIndices,
+    const LocalNeighbourhood& localNeighbourhood) const
+{
+    //gsInfo << "vertex index: " << localNeighbourhood.getVertexIndex() << std::endl;
+    auto indexIt = std::find(stitchIndices.begin(), stitchIndices.end(), localNeighbourhood.getVertexIndex());
+
+    if(indexIt == stitchIndices.end()) // Not on the stitch, nothing to do.
+	return std::vector<size_t>();
+
+    std::list<size_t> result;
+    std::list<size_t> neighbours = localNeighbourhood.getVertexIndicesOfNeighbours();
+
+    if(indexIt == stitchIndices.begin()) // In the beginning of the stitch.
+    {
+	auto nextOnStitch = std::find(neighbours.begin(), neighbours.end(), *std::next(indexIt));
+	// (Assuming that the stitch has at least two vertices.)
+	for(auto it=nextOnStitch; it!=neighbours.end(); ++it)
+	    result.push_back(*it);
+	gsInfo << "O1: " << result.size() << std::endl;
+    }
+    else if(std::next(indexIt) == stitchIndices.end()) // In the end of the stitch.
+    {
+	auto prevOnStitch = std::find(neighbours.begin(), neighbours.end(), *std::prev(indexIt));
+	// (Again assuming the stitch to have at least two vertices.)
+	for(auto it=neighbours.begin(); it!=prevOnStitch; ++it)
+	    result.push_back(*it);
+	gsInfo << "O2: " << result.size() << std::endl;
+    }
+    else // In the middle of the stitch.
+    {
+	while(neighbours.front() != *std::next(indexIt))
+	{
+	    neighbours.push_back(neighbours.front());
+	    neighbours.pop_front();
+	}
+
+	auto prevOnStitch = std::find(neighbours.begin(), neighbours.end(), *std::prev(indexIt));
+	for(auto it=neighbours.begin(); it!=prevOnStitch; ++it)
+	    result.push_back(*it);
+	gsInfo << "O3: " << result.size() << std::endl;
+    }
+
+    // Other stitch vertices can still be present in the neighbourhood.
+    for(auto it=stitchIndices.begin(); it!=stitchIndices.end(); ++it)
+	result.remove(*it);
+
+    std::vector<size_t> finalResult;
+    finalResult.reserve(result.size());
+    gsInfo << localNeighbourhood.getVertexIndex() << ":";
+    for(auto it=result.begin(); it!=result.end(); ++it)
+    {
+	gsInfo << " " << *it;
+	finalResult.push_back(*it);
+    }
+    gsInfo << std::endl;
+    return finalResult;
+}
+
+template<class T>
+gsParametrization<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo,
+						   const std::vector<size_t>& stitchIndices,
+						   std::vector<std::vector<size_t> >& corrections,
+						   const size_t parametrizationMethod)
+    : m_basicInfos(meshInfo)
+{
+    GISMO_ASSERT(corrections.size() == meshInfo.getNumberOfVertices(), "corrections not properly initialized.");
+    m_localParametrizations.reserve(meshInfo.getNumberOfInnerVertices());
+    for(size_t i=1; i <= meshInfo.getNumberOfInnerVertices(); i++)
+    {
+	std::vector<size_t> locCorrections;
+	LocalNeighbourhood localNeighbourhood(meshInfo, i);
+
+        m_localParametrizations.push_back(LocalParametrization(meshInfo, localNeighbourhood,
+							       parametrizationMethod));
+
+	corrections[i-1] = computeCorrections(stitchIndices, localNeighbourhood);
+    }
+
+    m_localBoundaryNeighbourhoods.reserve(meshInfo.getNumberOfVertices() - meshInfo.getNumberOfInnerVertices());
+    for(size_t i=meshInfo.getNumberOfInnerVertices()+1; i<= meshInfo.getNumberOfVertices(); i++)
+    {
+	std::vector<size_t> locCorrections;
+	LocalNeighbourhood localNeighbourhood(meshInfo, i, 0);
+
+        m_localBoundaryNeighbourhoods.push_back(localNeighbourhood);
+	corrections[i-1] = computeCorrections(stitchIndices, localNeighbourhood);
     }
 }
 
@@ -1298,6 +1389,66 @@ gsParametrization<T>& gsParametrization<T>::compute_periodic(std::string bottomF
     return *this;
 }
 
+template <class T>
+gsParametrization<T>& gsParametrization<T>::compute_periodic_2(std::string bottomFile,
+							       std::string topFile,
+							       std::string stitchFile)
+{
+    gsFileData<> fd_v0(bottomFile);
+    gsMatrix<> pars, pts;
+    fd_v0.getId<gsMatrix<> >(0, pars);
+    fd_v0.getId<gsMatrix<> >(1, pts);
+
+    GISMO_ASSERT(pars.cols() == pts.cols(), "The numbers of parameters and points of v0 differ.");
+    
+    std::vector<size_t> indicesV0;
+    std::vector<T> valuesV0;
+
+    for(index_t c=0; c<pts.cols(); c++)
+    {
+	indicesV0.push_back(m_mesh.findVertex(pts(0, c), pts(1, c), pts(2, c), true));
+	valuesV0.push_back(pars(0, c));
+    }
+
+    gsFileData<> fd_v1(topFile);
+    fd_v1.getId<gsMatrix<> >(0, pars);
+    fd_v1.getId<gsMatrix<> >(1, pts);
+
+    GISMO_ASSERT(pars.cols() == pts.cols(), "The numbers of parameters and points of v1 differ.");
+
+    std::vector<size_t> indicesV1;
+    std::vector<T> valuesV1;
+
+    for(index_t c=0; c<pts.cols(); c++)
+    {
+	indicesV1.push_back(m_mesh.findVertex(pts(0, c), pts(1, c), pts(2, c), true));
+	valuesV1.push_back(pars(0, c));
+    }
+
+    gsFileData<> fd_overlap(stitchFile);
+    // TODO: Read the indices.
+    std::vector<size_t> stitchIndices;
+
+    // The right-hand side of powerplant-overlap.stl.
+    bool indexing = true;
+    stitchIndices.push_back(m_mesh.findVertex(-0.307507, -0.089105,  0.75,     indexing));
+    stitchIndices.push_back(m_mesh.findVertex(-0.25,     -0.0744296, 0.578768, indexing));
+    stitchIndices.push_back(m_mesh.findVertex(-0.202487, -0.164435,  0.578768, indexing));
+    stitchIndices.push_back(m_mesh.findVertex(-0.255694, -0.0359812, 0.389171, indexing));
+    stitchIndices.push_back(m_mesh.findVertex(-0.222461, -0.131092,  0.389171, indexing));
+    stitchIndices.push_back(m_mesh.findVertex(-0.320775, -0.032778,  0.199575, indexing));
+    stitchIndices.push_back(m_mesh.findVertex(-0.419029, -0.0970307, 0,        indexing));
+
+    gsInfo << "\nStitch indices:\n";
+    for(auto it=stitchIndices.begin(); it!=stitchIndices.end(); ++it)
+	gsInfo << *it << " ";
+    gsInfo << std::endl;
+    
+    calculate_periodic_2(m_options.getInt("parametrizationMethod"),
+			 indicesV0, valuesV0, indicesV1, valuesV1, stitchIndices);
+    return *this;
+}
+
 template<class T>
 void gsParametrization<T>::calculate_periodic(const size_t paraMethod,
 					      const std::vector<size_t>& indicesV0,
@@ -1353,6 +1504,56 @@ void gsParametrization<T>::calculate_periodic(const size_t paraMethod,
 	else
 	    right.push_back(it->second);
     }
+}
+
+template<class T>
+void gsParametrization<T>::calculate_periodic_2(const size_t paraMethod,
+						const std::vector<size_t>& indicesV0,
+						const std::vector<T>& valuesV0,
+						const std::vector<size_t>& indicesV1,
+						const std::vector<T>& valuesV1,
+						const std::vector<size_t>& stitchIndices)
+{
+    size_t n = m_mesh.getNumberOfInnerVertices();
+    size_t N = m_mesh.getNumberOfVertices();
+
+    std::vector<std::vector<size_t> > corrections(N);
+    Neighbourhood neighbourhood(m_mesh, stitchIndices, corrections, paraMethod);
+
+    m_parameterPoints.reserve(N);
+    for (size_t i = 1; i <= n; i++)
+    {
+	m_parameterPoints.push_back(Point2D(0, 0, i));
+    }
+
+    // Add the parameters of the boundary points.
+    GISMO_ASSERT(indicesV0.size() == valuesV0.size(), "Different sizes of u0.");
+    GISMO_ASSERT(indicesV1.size() == valuesV1.size(), "Different sizes of u1.");
+    GISMO_ASSERT(indicesV0.size() + indicesV1.size() == m_mesh.getNumberOfBoundaryVertices(),
+		 "Not prescribing all boundary points.");
+
+    size_t numPtsSoFar = n;
+    m_parameterPoints.resize(n + indicesV0.size() + indicesV1.size());
+
+    for(size_t i=0; i<indicesV0.size(); i++)
+    	m_parameterPoints[indicesV0[i]-1] = Point2D(valuesV0[i], 0, numPtsSoFar++);
+
+    for(size_t i=0; i<indicesV1.size(); i++)
+	m_parameterPoints[indicesV1[i]-1] = Point2D(valuesV1[i], 1, numPtsSoFar++);
+
+    /*
+    gsInfo << "71: " << *m_mesh.getVertex(71) << std::endl;
+    gsInfo << "72: " << *m_mesh.getVertex(72) << std::endl;
+    gsInfo << "42: " << *m_mesh.getVertex(42) << std::endl;
+    gsInfo << "43: " << *m_mesh.getVertex(43) << std::endl;
+    gsInfo << "70: " << *m_mesh.getVertex(70) << std::endl;
+    */
+
+    // for(size_t i=1; i<=N; i++)
+    // 	gsInfo << i << ": " << *m_mesh.getVertex(i) << std::endl;
+
+    /// Solve.
+    constructAndSolveEquationSystem_4(neighbourhood, n, N, corrections);
 }
 
 template <class T>
@@ -1491,6 +1692,61 @@ void gsParametrization<T>::constructAndSolveEquationSystem_3(const Neighbourhood
     // gsWriteParaview(meshes[0], "mid_"   + std::to_string(i));
     // gsWriteParaview(meshes[0], "right_" + std::to_string(i));
     // }
+}
+
+template <class T>
+void gsParametrization<T>::constructAndSolveEquationSystem_4(const Neighbourhood &neighbourhood,
+							     const size_t n,
+							     const size_t N,
+							     const std::vector<std::vector<size_t> >& corrections)
+{
+    std::vector<T> lambdas;
+    gsMatrix<T> LHS(N, N);
+    gsMatrix<T> RHS(N, 2);
+
+    // interior points
+    for (size_t i = 0; i < n; i++)
+    {
+        lambdas = neighbourhood.getLambdas(i);
+	//gsInfo << i << ":";
+        for (size_t j = 0; j < N; j++)
+        {
+            LHS(i, j) = ( i==j ? T(1) : -lambdas[j] );
+
+	    // if(lambdas[j] > 0)
+	    // 	gsInfo << j << "(" << lambdas[j] << ")";						    
+        }
+
+	//gsInfo << std::endl;
+	for (size_t j = 0; j < corrections[i].size(); j++)
+	{
+	    index_t corr = corrections[i][j] - 1;
+	    //gsInfo << "corr: " << corr << ", lambda: " << lambdas[corr] << std::endl;
+	    RHS(i, 0) += lambdas[corr];
+	}
+    }
+
+    // points on the lower and upper boundary
+    for (size_t i=n; i<N; i++)
+    {
+	LHS(i, i) = T(1);
+	RHS.row(i) = m_parameterPoints[i];
+    }
+
+    gsMatrix<T> sol;
+    Eigen::PartialPivLU<typename gsMatrix<T>::Base> LU = LHS.partialPivLu();
+    sol = LU.solve(RHS);
+    for (size_t i = 0; i < n; i++)
+    {
+	real_t u = sol(i, 0);
+	real_t v = sol(i, 1);
+	while(u < 0)
+	    u += 1;
+
+	while(u > 1)
+	    u -= 1;
+    	m_parameterPoints[i] << u, v;
+    }
 }
 
 
