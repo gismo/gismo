@@ -5,7 +5,7 @@
 # seamless integration of Computer-aided Design (CAD) and Finite
 # Element Analysis (FEA).
 #
-# http://gs.jku.at/gismo
+# https://github.com/gismo
 #
 # The docker containers provide all prerequisite software tools,
 # compilers and libraries and a complete build of the G+Smo library.
