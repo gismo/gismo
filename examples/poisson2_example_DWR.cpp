@@ -380,7 +380,7 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::solution    solution;
 
     // Elements used for numerical integration
-    exL.setIntegrationElements(basisL);
+    exL.setIntegrationElements(basisH);
     gsExprEvaluator<> evL(exL);
 
     exH.setIntegrationElements(basisH);
@@ -434,7 +434,10 @@ int main(int argc, char *argv[])
     // zH2
     gsMultiPatch<> zH2_mp(mpL);//just initialize for not being empty
     variable zH2 = exL.getCoeff(zH2_mp);
-    
+    // zH2
+    gsMultiPatch<> zL2_mp(mpL);//just initialize for not being empty
+    variable zL2 = exH.getCoeff(zL2_mp);
+
     gsSparseSolver<>::CGDiagonal solver;
 
     exL.initSystem();
@@ -548,36 +551,45 @@ int main(int argc, char *argv[])
     // [!DUAL PROBLEM]
 
     zH.extract(zH2_mp);// this updates zH2 variable
-    
+    zL.extract(zL2_mp);// this updates zH2 variable
+
     gsDebug<<"zL "<<evL.eval(zL,pt)<<"\n";
     gsDebug<<"zL "<<evH.eval(zL,pt)<<"\n";
     gsDebug<<"zH "<<evL.eval(zH2,pt)<<"\n";
     gsDebug<<"zH "<<evH.eval(zH,pt)<<"\n"; // Different from the above
     gsDebug<<"\n";
     gsDebug<<"grad zL "<<evL.eval(grad(zL),pt)<<"\n";
-    gsDebug<<"grad zL "<<evH.eval(grad(zL),pt)<<"\n";
-    gsDebug<<"grad zH "<<evL.eval(grad(zH2),pt)<<"\n"; //
-    gsDebug<<"grad zH "<<evH.eval(grad(zH),pt)<<"\n"; // Different from the above
+    gsDebug<<"grad zL "<<evH.eval(grad(zL2),pt)<<"\n";
+    gsDebug<<"grad zH "<<evL.eval(grad(zH2),pt)<<"\n";
+    gsDebug<<"grad zH "<<evH.eval(grad(zH),pt)<<"\n";
     gsDebug<<"\n";
-
+    gsDebug<<"lapl zL "<<evL.eval(slapl(zL),pt)<<"\n";
+    gsDebug<<"lapl zL "<<evH.eval(lapl(zL2),pt)<<"\n";
+    gsDebug<<"lapl zH "<<evL.eval(lapl(zH2),pt)<<"\n";
+    gsDebug<<"lapl zH "<<evH.eval(slapl(zH),pt)<<"\n";
+    gsDebug<<"\n";
     // Integrals via the assembler and partition of unity.
+
     exL.initSystem();
     exL.assemble(zL.val() * u0);
     gsDebug<<"int zL "<<evL.integral(zL.val())<<"; "<<exL.rhs().sum()<<"\n";
 
-    // exL.assemble(zH.val() * u0);
-    // gsDebug<<"int zL "<<evH.integral(zL.temp())<<"\n"; // NOT WORKING
+    exH.initSystem();
+    exH.assemble(zL2.val() * v0);
+    gsDebug<<"int zH "<<evH.integral(zL2)<<"; "<<exH.rhs().sum()<<"\n";
+
+    exL.initSystem();
+    exL.assemble(zH2.val() * u0);
+    gsDebug<<"int zH "<<evL.integral(zH2)<<"; "<<exL.rhs().sum()<<"\n";
 
     exH.initSystem();
-    // exH.assemble(zL.val() * v0);
-    // gsDebug<<"int zH "<<evL.integral(zH.val())<<"\n"; // NOT WORKING
-
     exH.assemble(zH.val() * v0);
     gsDebug<<"int zH "<<evH.integral(zH.val())<<"; "<<exH.rhs().sum()<<"\n";
 
     gsInfo<<"Objective function errors J(u)-J(u_h)\n";
     real_t error = evL.integral((0.5*primal_exL*primal_exL)*meas(G)) - evL.integral((0.5*uL*uL)*meas(G));
     real_t errest = evH.integral( (zH-zLp) * gg * meas(H)-(((igrad(zH) - igrad(zLp))*igrad(uLp).tr()) ) * meas(H));
+    // real_t errest = evL.integral( (zH2-zL) * ff * meas(G)-(((igrad(zH2) - igrad(zL))*igrad(uL).tr()) ) * meas(G));
     gsInfo<<"\texact:\t"   <<error<<"\n"
             "\testimate:\t"<<errest<<"\n"
             "\teff:\t"<<errest/error<<"\n";
@@ -600,13 +612,13 @@ int main(int argc, char *argv[])
     // ELEMENT WISE ERROR ESTIMATION
     if (est==0)
     {
-        gsInfo<<evL.eval((ff - slapl(uL)) * (zH.val() - zL.val())*meas(G),pt)<<"\n";
+        gsInfo<<evL.eval((ff - slapl(uL)) * (zH2.val() - zL.val())*meas(G),pt)<<"\n";
         gsInfo<<evH.eval((gg - slapl(uLp)) * (zH.val() - zLp.val())*meas(H),pt)<<"\n";
 
-    return 0;
 
 
-        evL.integralElWise((ff - slapl(uL)) * (zH.val() - zL.val())*meas(G));
+        evL.integralElWise((ff - slapl(uL)) * (zH2.val() - zL.val())*meas(G));
+        // evH.integralElWise((gg - slapl(uL)) * (zH2.val() - zL.val())*meas(G));
 
         // evH.integralElWise((gg - slapl(uLp)) * (zH - zLp)*meas(H));
         // evH.integralElWise( (zH-zLp) * gg * meas(H)-(((igrad(zH) - igrad(zLp))*igrad(uLp).tr()) ) * meas(H));
@@ -616,6 +628,7 @@ int main(int argc, char *argv[])
         gsVector<>::Map(&errors[0],elementNorms.size() ) = elementNorms;
 
         gsInfo<< "  Result (global)    : "<< elementNorms.sum() <<"\n";
+    return 0;
 
         gsElementErrorPlotter<real_t> err_eh(basisH.basis(0),errors);
 
