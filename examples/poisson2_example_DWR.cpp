@@ -563,11 +563,13 @@ int main(int argc, char *argv[])
     gsDebug<<"grad zH "<<evL.eval(grad(zH2),pt)<<"\n";
     gsDebug<<"grad zH "<<evH.eval(grad(zH),pt)<<"\n";
     gsDebug<<"\n";
-    gsDebug<<"lapl zL "<<evL.eval(slapl(zL),pt)<<"\n";
-    gsDebug<<"lapl zL "<<evH.eval(lapl(zL2),pt)<<"\n";
-    gsDebug<<"lapl zH "<<evL.eval(lapl(zH2),pt)<<"\n";
-    gsDebug<<"lapl zH "<<evH.eval(slapl(zH),pt)<<"\n";
+    gsDebug<<"grad uL "<<evL.eval(grad(zH2),pt)<<"\n";
     gsDebug<<"\n";
+    // gsDebug<<"lapl zL "<<evL.eval(slapl(zL),pt)<<"\n";
+    // gsDebug<<"lapl zL "<<evH.eval(lapl(zL2),pt)<<"\n";
+    // gsDebug<<"lapl zH "<<evL.eval(lapl(zH2),pt)<<"\n";
+    // gsDebug<<"lapl zH "<<evH.eval(slapl(zH),pt)<<"\n";
+    // gsDebug<<"\n";
     // Integrals via the assembler and partition of unity.
 
     exL.initSystem();
@@ -585,6 +587,16 @@ int main(int argc, char *argv[])
     exH.initSystem();
     exH.assemble(zH.val() * v0);
     gsDebug<<"int zH "<<evH.integral(zH.val())<<"; "<<exH.rhs().sum()<<"\n";
+
+    exL.initSystem();
+    exL.assemble(u0 * grad(zH2)*grad(uL).tr());
+    gsDebug<<"int grad-norm "<<evL.integral(grad(zH2)*grad(uL).tr())<<"; "<<exL.rhs().sum()<<"\n";
+
+    // exL.initSystem();
+    // exL.assemble(u0 * grad(zH2)*grad(zH2).tr());
+    // gsDebug<<"int grad-norm "<<evL.integral(grad(zH2)*grad(zH2).tr())<<"; "<<exL.rhs().sum()<<"\n";
+
+
 
     gsInfo<<"Objective function errors J(u)-J(u_h)\n";
     real_t error = evL.integral((0.5*primal_exL*primal_exL)*meas(G)) - evL.integral((0.5*uL*uL)*meas(G));
@@ -657,30 +669,29 @@ int main(int argc, char *argv[])
     // FUNCTION WISE ERROR ESTIMATION
     else if (est==1)
     {
-        exH.initSystem(true);
+        exL.initSystem(true);
         // exH.assemble( grad(uLp) * ( grad(v0) * (zH - zLp) + v0 * ( grad(zH) - grad(zLp) ) ) - gg * v0 * (zH - zLp)  );
 
-        auto lhs = ((zH - zLp) * grad(uLp) * grad(v0).tr()).tr(); // + v0 * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
-        auto lhs2 = v0 * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
-        auto rhs = gg.val() * (zH - zLp).val() * v0;
-
-        gsDebug<<evH.eval(zH,pt);
-
+        auto lhs = ((zH2 - zL) * grad(uL) * grad(u0).tr()).tr(); // + v0 * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
+        auto lhs2 = u0 * ( fjac(zH2).tr() * grad(uL).tr() - grad(zL) * grad(uL).tr() ) ;
+        auto rhs = ff.val() * (zH2.val() - zL.val()) * u0;
 
         gsMatrix<> res;
-        exH.assemble(lhs*meas(H));
-        res = exH.rhs();
+        exL.assemble(lhs*meas(G));
+        res = exL.rhs();
+        gsDebugVar(res);
 
-        exH.assemble(lhs2*meas(H));
-        res += exH.rhs();
+        exL.assemble(lhs2*meas(G));
+        res += exL.rhs();
+        gsDebugVar(res);
 
-        exH.assemble(rhs*meas(H));
-        res += exH.rhs();
-
+        exL.assemble(rhs*meas(G));
+        res += exL.rhs();
         gsDebugVar(res);
 
         gsInfo<< "  Result (global)    : "<< res.sum()<<"\n";
 
+        return 0;
         MarkingStrategy adaptRefCrit = PUCA;
         const real_t adaptRefParam = 0.9;
         std::vector<bool> funMarked( res.size() );
@@ -701,7 +712,7 @@ int main(int argc, char *argv[])
         // Refine the marked elements with a 1-ring of cells around marked elements
         gsRefineMarkedFunctions( mpH, funMarked, 1 );
         gsDebugVar(mpH.basis(0));
-    gsWriteParaview(mpH,"mpH",1000,true);
+        gsWriteParaview(mpH,"mpH",1000,true);
 
 
         gsMultiPatch<> tmp = mpH;
@@ -720,9 +731,9 @@ int main(int argc, char *argv[])
 
         // exH.assemble( grad(uLp) * ( grad(v0) * (zH - zLp) + v0 * ( grad(zH) - grad(zLp) ) ) - gg * v0 * (zH - zLp)  );
 
-        auto lhs = ((zH - zL) * grad(uL) * grad(u0).tr()).tr(); // + v0 * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
-        auto lhs2 = u0 * ( grad(zH) - grad(zL) ) * grad(uL).tr();
-        auto rhs = ff.val() * (zH - zL).val() * u0;
+        auto lhs = ((zH2 - zL) * grad(uL) * grad(u0).tr()).tr(); // + v0 * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
+        auto lhs2 = u0 * ( grad(zH2) - grad(zL) ) * grad(uL).tr();
+        auto rhs = ff.val() * (zH2 - zL).val() * u0;
 
         gsDebug<<evL.eval(zL,pt)<<"\n";
 
