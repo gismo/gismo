@@ -1,0 +1,26 @@
+#!/bin/bash
+# hooks/build
+# https://docs.docker.com/docker-cloud/builds/advanced/
+
+## requires to be an architecture+variant as defined by the manifest
+DEFAULT_ARCH="amd64"
+
+## $IMAGE_NAME var is injected into the build so the tag is correct.
+echo "[***] Build hook starting..."
+
+# $(echo "index.docker.io/user/respository" | cut -d '/' -f 3) = "repository"
+APPLICATION=$(echo "${DOCKER_REPO}" | cut -d '/' -f 3)
+
+echo "[---] DOCKERFILE_PATH: ${DOCKERFILE_PATH}"
+echo "[---] DOCKER_REPO: ${DOCKER_REPO}"
+echo "[---] IMAGE_NAME: ${IMAGE_NAME}"
+echo "[---] APPLICATION: ${APPLICATION}"
+
+#docker build --build-arg CC=gcc-5 \
+#             --build-arg CXX=g++-5 \
+#             --build-arg CMAKE_BUILD_TYPE=Release \
+#             --build-arg CMAKE_CXX_STANDARD=98 \
+#             -t $DOCKERHUB_USERNAME/gismo:latest-ubuntu16.04-gcc5-release ubuntu16.04/
+#docker build --build-arg BUILD_DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"` \
+#             --build-arg VCS_REF=`git rev-parse --short HEAD` \
+#             -t $IMAGE_NAME .
