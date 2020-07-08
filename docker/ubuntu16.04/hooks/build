@@ -16,6 +16,18 @@ echo "[---] DOCKER_REPO: ${DOCKER_REPO}"
 echo "[---] IMAGE_NAME: ${IMAGE_NAME}"
 echo "[---] APPLICATION: ${APPLICATION}"
 
+# $(echo "index.docker.io/user/respository" | cut -d '/' -f 2-3) = "user/repository"
+GITHUB_USERREPO=$(echo "${DOCKER_REPO}" | cut -d '/' -f 2-3)
+
+# Set description from github
+DESCRIPTION=$(curl -s https://api.github.com/repos/${GITHUB_USERREPO} \
+    | grep '"description".*' \
+    | head -n 1 \
+    | cut -d '"' -f 4)
+
+echo "[---] GITHUB_USERREPO: ${GITHUB_USERREPO}"
+echo "[---] DESCRIPTION: ${DESCRIPTION}"
+
 # Compiler setting
 case "$IMAGE_NAME" in
     *:*-clang3.5-*)
@@ -170,17 +182,46 @@ case "$IMAGE_NAME" in
         ;;
 esac
 
+
+## Build the prime image at the end.
 if [ -z "$FC" ]
 then
-    docker build --build-arg CC=$CC --build-arg CXX=$CXX --build-arg FC=$FC --build-arg CMAKE_BUILD_TYPE=$GISMO_BUILD_TYPE --build-arg CMAKE_CXX_STANDARD=$CMAKE_CXX_STANDARD --build-arg GISMO_WITH_MPI=$GISMO_WITH_MPI --build-arg GISMO_WITH_TRILINOS=$GISMO_WITH_TRILINOS -t $IMAGE_NAME .
+    docker build \
+           --file "${DOCKERFILE_PATH}" \
+           --build-arg APPLICATION=${APPLICATION} \
+           --build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+           --build-arg COMMIT=$(git rev-parse --short HEAD) \
+           --build-arg DESCRIPTION="${DESCRIPTION}" \
+           --build-arg VERSION=$(git describe --tags --always) \
+           --build-arg CC=${CC} \
+           --build-arg CXX=${CXX} \
+           --build-arg FC=${FC} \
+           --build-arg CMAKE_BUILD_TYPE=${GISMO_BUILD_TYPE} \
+           --build-arg CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
+           --build-arg GISMO_WITH_MPI=${GISMO_WITH_MPI} \
+           --build-arg GISMO_WITH_TRILINOS=${GISMO_WITH_TRILINOS} \
+           -t ${IMAGE_NAME}_${DEFAULT_ARCH} \
+           .
 else
-    docker build --build-arg CC=$CC --build-arg CXX=$CXX --build-arg CMAKE_BUILD_TYPE=$GISMO_BUILD_TYPE --build-arg CMAKE_CXX_STANDARD=$CMAKE_CXX_STANDARD  -t $IMAGE_NAME .
+    docker build \
+           --file "${DOCKERFILE_PATH}" \
+           --build-arg APPLICATION=${APPLICATION} \
+           --build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+           --build-arg COMMIT=$(git rev-parse --short HEAD) \
+           --build-arg DESCRIPTION="${DESCRIPTION}" \
+           --build-arg VERSION=$(git describe --tags --always) \
+           --build-arg CC=${CC} \
+           --build-arg CXX=${CXX} \
+           --build-arg CMAKE_BUILD_TYPE=${GISMO_BUILD_TYPE} \
+           --build-arg CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
+           -t ${IMAGE_NAME}_${DEFAULT_ARCH} \
+           .
 fi
 
 ## Push the default arch image so manifest-tool can find it
-#docker push ${IMAGE_NAME}
+docker push ${IMAGE_NAME}_${DEFAULT_ARCH}
 
-## Tag the image so dockerhub can push it.
-#docker tag ${IMAGE_NAME} ${IMAGE_NAME}
+## Tag the default image so dockerhub can push it.
+docker tag ${IMAGE_NAME}_${DEFAULT_ARCH} ${IMAGE_NAME}
 
 echo "[***] ...build hook complete."
