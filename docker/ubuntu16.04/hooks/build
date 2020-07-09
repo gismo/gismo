@@ -187,7 +187,6 @@ esac
 if [ -z "$FC" ]
 then
     docker build \
-           --file "${DOCKERFILE_PATH}" \
            --build-arg APPLICATION=${APPLICATION} \
            --build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
            --build-arg COMMIT=$(git rev-parse --short HEAD) \
@@ -204,7 +203,6 @@ then
            .
 else
     docker build \
-           --file "${DOCKERFILE_PATH}" \
            --build-arg APPLICATION=${APPLICATION} \
            --build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
            --build-arg COMMIT=$(git rev-parse --short HEAD) \
