@@ -182,11 +182,70 @@ case "$IMAGE_NAME" in
         ;;
 esac
 
+## Build all variant images.
+for FILE in ${DOCKERFILE_PATH}.*
+do
+    TARGET_ARCH=$(echo "${FILE}" | cut -d '.' -f 2)
+
+    ## FUDGE Factor because Docker Hub does not respect "32" in os/arch model
+    case "$TARGET_ARCH" in
+        *arm32v5)
+            BUILD_ARCH="armv5"
+            ;;
+        *arm32v6)
+            BUILD_ARCH="armv6"
+            ;;
+        *arm32v7)
+            BUILD_ARCH="armv7"
+            ;;
+        *)
+            BUILD_ARCH="${TARGET_ARCH}"
+            ;;
+    esac
+
+    # Not exactly sure this needs to run EVERY time, but for good measure.
+    docker run --rm --privileged multiarch/qemu-user-static:register --reset
+
+    if [ -z "$FC" ]
+    then
+        docker build \
+               --file "${DOCKERFILE_PATH}.${TARGET_ARCH}" \
+               --build-arg APPLICATION=${APPLICATION} \
+               --build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+               --build-arg COMMIT=$(git rev-parse --short HEAD) \
+               --build-arg DESCRIPTION="${DESCRIPTION}" \
+               --build-arg VERSION=$(git describe --tags --always) \
+               --build-arg CC=${CC} \
+               --build-arg CXX=${CXX} \
+               --build-arg FC=${FC} \
+               --build-arg CMAKE_BUILD_TYPE=${GISMO_BUILD_TYPE} \
+               --build-arg CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
+               --build-arg GISMO_WITH_MPI=${GISMO_WITH_MPI} \
+               --build-arg GISMO_WITH_TRILINOS=${GISMO_WITH_TRILINOS} \
+               -t ${IMAGE_NAME}_${BUILD_ARCH} \
+               .
+    else
+        docker build \
+               --file "${DOCKERFILE_PATH}.${TARGET_ARCH}" \
+               --build-arg APPLICATION=${APPLICATION} \
+               --build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+               --build-arg COMMIT=$(git rev-parse --short HEAD) \
+               --build-arg DESCRIPTION="${DESCRIPTION}" \
+               --build-arg VERSION=$(git describe --tags --always) \
+               --build-arg CC=${CC} \
+               --build-arg CXX=${CXX} \
+               --build-arg CMAKE_BUILD_TYPE=${GISMO_BUILD_TYPE} \
+               --build-arg CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
+               -t ${IMAGE_NAME}_${BUILD_ARCH} \
+               .
+    fi
+done
 
 ## Build the prime image at the end.
 if [ -z "$FC" ]
 then
     docker build \
+           --file "${DOCKERFILE_PATH}" \
            --build-arg APPLICATION=${APPLICATION} \
            --build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
            --build-arg COMMIT=$(git rev-parse --short HEAD) \
@@ -203,6 +262,7 @@ then
            .
 else
     docker build \
+           --file "${DOCKERFILE_PATH}" \
            --build-arg APPLICATION=${APPLICATION} \
            --build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
            --build-arg COMMIT=$(git rev-parse --short HEAD) \

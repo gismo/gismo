@@ -9,8 +9,11 @@
 #
 # The docker containers provide all prerequisite software tools,
 # compilers and libraries and a complete build of the G+Smo library.
-FROM ubuntu:16.04
+FROM arm64v8/ubuntu:16.04
 MAINTAINER Matthias Moller <m.moller@tudelft.nl>
+
+# Copy downloaded architecture emulation static binary
+COPY qemu-aarch64-static /usr/bin/
 
 ARG BUILD_RFC3339="1970-01-01T00:00:00Z"
 ARG COMMIT="local"
