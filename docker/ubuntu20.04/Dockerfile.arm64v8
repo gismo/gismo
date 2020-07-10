@@ -9,7 +9,7 @@
 #
 # The docker containers provide all prerequisite software tools,
 # compilers and libraries and a complete build of the G+Smo library.
-FROM ubuntu:18.04
+FROM arm64v8/ubuntu:20.04
 MAINTAINER Matthias Moller <m.moller@tudelft.nl>
 
 ARG BUILD_RFC3339="1970-01-01T00:00:00Z"
@@ -35,16 +35,16 @@ ENV VERSION "$VERSION"
 
 # This file accepts the following build-time arguments:
 
-# C compiler              : {clang-3.9,clang-4.0,clang-5.0,clang-6.0,clang-7,clang-8,clang-9,gcc-4.8,gcc-5,gcc-6,gcc-7,gcc-8}
-ARG CC=gcc-7
-# C++ compiler            : {clang++-3.9,clang++-4.0,clang++-5.0,clang++-6.0,clang++-7,clang++-8,clang++-9,g++-4.8,g++-5,g++-6,g++-7,g++-8}
-ARG CXX=g++-7
+# C compiler              : {clang-6.0,clang-7,clang-8,clang-9,clang-10,gcc-7,gcc-8,gcc-9,gcc-10}
+ARG CC=gcc-9
+# C++ compiler            : {clang++-6.0,clang++-7,clang++-8,clang++-9,clang++-10,g++-7,g++-8,g++-9,g++-10}
+ARG CXX=g++-9
 
-# Fortran compiler        : {gfortran-4.8,gfortran-5,gfortran-5,gfortran-6,gfortran-7,gfortran-8}
+# Fortran compiler        : {gfortran-7,gfortran-8,gfortran-9,gfortran-10}
 ARG FC=na
 
 # CMAKE_CXX_STANDARD      : {98,11,14}
-ARG CMAKE_CXX_STANDARD=11
+ARG CMAKE_CXX_STANDARD=14
 
 # CMAKE_BUILD_TYPE        : {Release,Debug,RelWithDebInfo}
 ARG CMAKE_BUILD_TYPE=Release
@@ -147,36 +147,6 @@ RUN if [ "$GISMO_WITH_UMFPACK" = "ON" ] ;          \
     fi
 ENV CMAKE_INCLUDE_PATH=$CMAKE_INCLUDE_PATH:/usr/include/suitesparse
 
-# Install Clang C/C++ compiler version 3.9 (if required)
-RUN if [ "$CC" = "clang-3.9" ] || [ "$CXX" = "clang++-3.9" ] ; \
-    then                                               \
-    apt-get update -q &&                               \
-    apt-get install --no-install-recommends -yq        \
-        clang-3.9 &&                                   \
-    apt-get clean &&                                   \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*;     \
-    fi
-
-# Install Clang C/C++ compiler version 4.0 (if required)
-RUN if [ "$CC" = "clang-4.0" ] || [ "$CXX" = "clang++-4.0" ] ; \
-    then                                               \
-    apt-get update -q &&                               \
-    apt-get install --no-install-recommends -yq        \
-        clang-4.0 &&                                   \
-    apt-get clean &&                                   \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*;     \
-    fi
-
-# Install Clang C/C++ compiler version 5.0 (if required)
-RUN if [ "$CC" = "clang-5.0" ] || [ "$CXX" = "clang++-5.0" ] ; \
-    then                                               \
-    apt-get update -q &&                               \
-    apt-get install --no-install-recommends -yq        \
-        clang-5.0 &&                                   \
-    apt-get clean &&                                   \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*;     \
-    fi
-
 # Install Clang C/C++ compiler version 6.0 (if required)
 RUN if [ "$CC" = "clang-6.0" ] || [ "$CXX" = "clang++-6.0" ] ; \
     then                                               \
@@ -217,34 +187,14 @@ RUN if [ "$CC" = "clang-9" ] || [ "$CXX" = "clang++-9" ] ; \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*;     \
     fi
 
-# Install GCC C compiler version 4.8 (if required)
-RUN if [ "$CC" = "gcc-4.8" ] ; then                \
-    apt-get update -q &&                           \
-    apt-get install --no-install-recommends -yq    \
-        gcc-4.8 &&                                 \
-    ln -nsf /usr/bin/gcc-4.8 /usr/bin/gcc &&         \
-    apt-get clean &&                               \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
-    fi
-
-# Install GCC C compiler version 5 (if required)
-RUN if [ "$CC" = "gcc-5" ] ; then                  \
-    apt-get update -q &&                           \
-    apt-get install --no-install-recommends -yq    \
-        gcc-5 &&                                   \
-    ln -nsf /usr/bin/gcc-5 /usr/bin/gcc &&           \
-    apt-get clean &&                               \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
-    fi
-
-# Install GCC C compiler version 6 (if required)
-RUN if [ "$CC" = "gcc-6" ] ; then                  \
-    apt-get update -q &&                           \
-    apt-get install --no-install-recommends -yq    \
-        gcc-6 &&                                   \
-    ln -nsf /usr/bin/gcc-6 /usr/bin/gcc &&           \
-    apt-get clean &&                               \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
+# Install Clang C/C++ compiler version 10 (if required)
+RUN if [ "$CC" = "clang-10" ] || [ "$CXX" = "clang++-10" ] ; \
+    then                                               \
+    apt-get update -q &&                               \
+    apt-get install --no-install-recommends -yq        \
+        clang-10 &&                                    \
+    apt-get clean &&                                   \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*;     \
     fi
 
 # Install GCC C compiler version 7 (if required)
@@ -252,7 +202,6 @@ RUN if [ "$CC" = "gcc-7" ] ; then                  \
     apt-get update -q &&                           \
     apt-get install --no-install-recommends -yq    \
         gcc-7 &&                                   \
-    ln -nsf /usr/bin/gcc-7 /usr/bin/gcc &&           \
     apt-get clean &&                               \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     fi
@@ -262,37 +211,24 @@ RUN if [ "$CC" = "gcc-8" ] ; then                  \
     apt-get update -q &&                           \
     apt-get install --no-install-recommends -yq    \
         gcc-8 &&                                   \
-    ln -nsf /usr/bin/gcc-8 /usr/bin/gcc &&           \
     apt-get clean &&                               \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     fi
 
-# Install GCC C++ compiler version 4.8 (if required)
-RUN if [ "$CXX" = "g++-4.8" ] ; then               \
+# Install GCC C compiler version 9 (if required)
+RUN if [ "$CC" = "gcc-9" ] ; then                  \
     apt-get update -q &&                           \
     apt-get install --no-install-recommends -yq    \
-        g++-4.8 &&                                 \
-    ln -nsf /usr/bin/g++-4.8 /usr/bin/g++ &&         \
+        gcc-9 &&                                   \
     apt-get clean &&                               \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     fi
 
-# Install GCC C++ compiler version 5 (if required)
-RUN if [ "$CXX" = "g++-5" ] ; then                 \
+# Install GCC C compiler version 10 (if required)
+RUN if [ "$CC" = "gcc-10" ] ; then                 \
     apt-get update -q &&                           \
     apt-get install --no-install-recommends -yq    \
-        g++-5 &&                                   \
-    ln -nsf /usr/bin/g++-5 /usr/bin/g++ &&           \
-    apt-get clean &&                               \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
-    fi
-
-# Install GCC C++ compiler version 6 (if required)
-RUN if [ "$CXX" = "g++-6" ] ; then                 \
-    apt-get update -q &&                           \
-    apt-get install --no-install-recommends -yq    \
-        g++-6 &&                                   \
-    ln -nsf /usr/bin/g++-6 /usr/bin/g++ &&           \
+        gcc-10 &&                                  \
     apt-get clean &&                               \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     fi
@@ -302,7 +238,6 @@ RUN if [ "$CXX" = "g++-7" ] ; then                 \
     apt-get update -q &&                           \
     apt-get install --no-install-recommends -yq    \
         g++-7 &&                                   \
-    ln -nsf /usr/bin/g++-7 /usr/bin/g++ &&           \
     apt-get clean &&                               \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     fi
@@ -312,37 +247,24 @@ RUN if [ "$CXX" = "g++-8" ] ; then                 \
     apt-get update -q &&                           \
     apt-get install --no-install-recommends -yq    \
         g++-8 &&                                   \
-    ln -nsf /usr/bin/g++-8 /usr/bin/g++ &&           \
     apt-get clean &&                               \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     fi
 
-# Install GCC Fortran compiler version 4.8 (if required)
-RUN if [ "$FC" = "gfortran-4.8" ] ; then             \
-    apt-get update -q &&                             \
-    apt-get install --no-install-recommends -yq      \
-        gfortran-4.8 &&                              \
-    ln -nsf /usr/bin/gfortran-4.8 /usr/bin/gfortran && \
-    apt-get clean &&                                 \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*;   \
-    fi
-
-# Install GCC Fortran compiler version 5 (if required)
-RUN if [ "$FC" = "gfortran-5" ] ; then             \
+# Install GCC C++ compiler version 9 (if required)
+RUN if [ "$CXX" = "g++-9" ] ; then                 \
     apt-get update -q &&                           \
     apt-get install --no-install-recommends -yq    \
-        gfortran-5 &&                              \
-    ln -nsf /usr/bin/gfortran-5 /usr/bin/gfortran && \
+        g++-9 &&                                   \
     apt-get clean &&                               \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     fi
 
-# Install GCC Fortran compiler version 6 (if required)
-RUN if [ "$FC" = "gfortran-6" ] ; then             \
+# Install GCC C++ compiler version 10 (if required)
+RUN if [ "$CXX" = "g++-10" ] ; then                \
     apt-get update -q &&                           \
     apt-get install --no-install-recommends -yq    \
-        gfortran-6 &&                              \
-    ln -nsf /usr/bin/gfortran-6 /usr/bin/gfortran && \
+        g++-10 &&                                  \
     apt-get clean &&                               \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     fi
@@ -363,6 +285,25 @@ RUN if [ "$FC" = "gfortran-8" ] ; then             \
     apt-get install --no-install-recommends -yq    \
         gfortran-8 &&                              \
     ln -nsf /usr/bin/gfortran-8 /usr/bin/gfortran && \
+    apt-get clean &&                               \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
+    fi
+
+# Install GCC Fortran compiler version 9 (if required)
+RUN if [ "$FC" = "gfortran-9" ] ; then             \
+    apt-get update -q &&                           \
+    apt-get install --no-install-recommends -yq    \
+        gfortran-9 &&                              \
+    ln -nsf /usr/bin/gfortran-9 /usr/bin/gfortran && \
+    apt-get clean &&                               \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
+    fi
+
+# Install GCC Fortran compiler version 10 (if required)
+RUN if [ "$FC" = "gfortran-10" ] ; then            \
+    apt-get update -q &&                           \
+    apt-get install --no-install-recommends -yq    \
+        gfortran-10 &&                             \
     apt-get clean &&                               \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     fi

@@ -9,7 +9,7 @@
 #
 # The docker containers provide all prerequisite software tools,
 # compilers and libraries and a complete build of the G+Smo library.
-FROM ubuntu:18.04
+FROM arm64v8/ubuntu:18.04
 MAINTAINER Matthias Moller <m.moller@tudelft.nl>
 
 ARG BUILD_RFC3339="1970-01-01T00:00:00Z"

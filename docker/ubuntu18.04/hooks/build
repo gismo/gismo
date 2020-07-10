@@ -1,0 +1,285 @@
+#!/bin/bash
+# hooks/build
+# https://docs.docker.com/docker-cloud/builds/advanced/
+
+## requires to be an architecture+variant as defined by the manifest
+DEFAULT_ARCH="amd64"
+
+## $IMAGE_NAME var is injected into the build so the tag is correct.
+echo "[***] Build hook starting..."
+
+# $(echo "index.docker.io/user/respository" | cut -d '/' -f 3) = "repository"
+APPLICATION=$(echo "${DOCKER_REPO}" | cut -d '/' -f 3)
+
+echo "[---] DOCKERFILE_PATH: ${DOCKERFILE_PATH}"
+echo "[---] DOCKER_REPO: ${DOCKER_REPO}"
+echo "[---] IMAGE_NAME: ${IMAGE_NAME}"
+echo "[---] APPLICATION: ${APPLICATION}"
+
+# $(echo "index.docker.io/user/respository" | cut -d '/' -f 2-3) = "user/repository"
+GITHUB_USERREPO=$(echo "${DOCKER_REPO}" | cut -d '/' -f 2-3)
+
+# Set description from github
+DESCRIPTION=$(curl -s https://api.github.com/repos/${GITHUB_USERREPO} \
+    | grep '"description".*' \
+    | head -n 1 \
+    | cut -d '"' -f 4)
+
+echo "[---] GITHUB_USERREPO: ${GITHUB_USERREPO}"
+echo "[---] DESCRIPTION: ${DESCRIPTION}"
+
+# Compiler setting
+case "$IMAGE_NAME" in
+    *:*-clang3.5-*)
+        CC=clang-3.5
+        CXX=clang++-3.5
+        ;;
+    *:*-clang3.6-*)
+        CC=clang-3.6
+        CXX=clang++-3.6
+        ;;
+    *:*-clang3.7-*)
+        CC=clang-3.7
+        CXX=clang++-3.7
+        ;;
+    *:*-clang3.8-*)
+        CC=clang-3.8
+        CXX=clang++-3.8
+        ;;
+    *:*-clang3.9-*)
+        CC=clang-3.9
+        CXX=clang++-3.9
+        ;;
+    *:*-clang4.0-*)
+        CC=clang-4.0
+        CXX=clang++-4.0
+        ;;
+    *:*-clang5.0-*)
+        CC=clang-5.0
+        CXX=clang++-5.0
+        ;;
+    *:*-clang6.0-*)
+        CC=clang-6.0
+        CXX=clang++-6.0
+        ;;
+    *:*-clang7-*)
+        CC=clang-7
+        CXX=clang++-7
+        ;;
+    *:*-clang8-*)
+        CC=clang-8
+        CXX=clang++-8
+        ;;
+    *:*-clang9-*)
+        CC=clang-9
+        CXX=clang++-9
+        ;;
+    *:*-clang10-*)
+        CC=clang-10
+        CXX=clang++-10
+        ;;
+    *:*-gcc4.7-*)
+        CC=gcc-4.7
+        CXX=g++-4.7
+        FC=gfortran-4.7
+        ;;
+    *:*-gcc4.8-*)
+        CC=gcc-4.8
+        CXX=g++-4.8
+        FC=gfortran-4.8
+        ;;
+    *:*-gcc4.9-*)
+        CC=gcc-4.9
+        CXX=g++-4.9
+        FC=gfortran-4.9
+        ;;
+    *:*-gcc5-*)
+        CC=gcc-5
+        CXX=g++-5
+        FC=gfortran-5
+        ;;
+    *:*-gcc6-*)
+        CC=gcc-6
+        CXX=g++-6
+        FC=gfortran-6
+        ;;    
+    *:*-gcc7-*)
+        CC=gcc-7
+        CXX=g++-7
+        FC=gfortran-7
+        ;;
+    *:*-gcc8-*)
+        CC=gcc-8
+        CXX=g++-8
+        FC=gfortran-8
+        ;;
+    *:*-gcc9-*)
+        CC=gcc-9
+        CXX=g++-9
+        FC=gfortran-9
+        ;;
+    *:*-gcc10-*)
+        CC=gcc-10
+        CXX=g++-10
+        FC=gfortran-10
+        ;;
+    *)
+        echo "Unsupported compiler"
+        ;;
+esac
+
+# C++ standard
+case "$IMAGE_NAME" in
+    *:*-cxx11-*)
+        CMAKE_CXX_STANDARD=11
+        ;;
+    *:*-cxx14-*)
+        CMAKE_CXX_STANDARD=14
+        ;;
+    *:*-cxx17-*)
+        CMAKE_CXX_STANDARD=17
+        ;;
+    *:*-cxx20-*)
+        CMAKE_CXX_STANDARD=20
+        ;;
+    *)
+        CMAKE_CXX_STANDARD=98
+        ;;
+esac
+
+# Build type
+case "$IMAGE_NAME" in
+    *:*-release)
+        CMAKE_BUILD_TYPE=Release
+        ;;
+    *:*-debug)
+        CMAKE_BUILD_TYPE=Debug
+        ;;
+    *)
+        echo "Unsupported build type"
+        ;;
+esac
+
+# Build with OpenMP support
+case "$IMAGE_NAME" in
+    *:*-clang*-*)
+        GISMO_WITH_OPENMP=OFF
+        ;;
+    *)
+        GISMO_WITH_OPENMP=ON
+        ;;
+esac
+
+# Build with Trilinos support
+case "$IMAGE_NAME" in
+    *:*-trilinos-*)
+        GISMO_WITH_OPENMPI=ON
+        GISMO_WITH_TRILINOS=ON
+        ;;
+    *)
+        GISMO_WITH_OPENMPI=OFF
+        GISMO_WITH_TRILINOS=OFF
+        ;;
+esac
+
+## Build all variant images.
+for FILE in ${DOCKERFILE_PATH}.*
+do
+    TARGET_ARCH=$(echo "${FILE}" | cut -d '.' -f 2)
+
+    ## FUDGE Factor because Docker Hub does not respect "32" in os/arch model
+    case "$TARGET_ARCH" in
+        *arm32v5)
+            BUILD_ARCH="armv5"
+            ;;
+        *arm32v6)
+            BUILD_ARCH="armv6"
+            ;;
+        *arm32v7)
+            BUILD_ARCH="armv7"
+            ;;
+        *)
+            BUILD_ARCH="${TARGET_ARCH}"
+            ;;
+    esac
+
+    # Not exactly sure this needs to run EVERY time, but for good measure.
+    docker run --rm --privileged multiarch/qemu-user-static:register --reset
+
+    if [ -z "$FC" ]
+    then
+        docker build \
+               --file "${DOCKERFILE_PATH}.${TARGET_ARCH}" \
+               --build-arg APPLICATION=${APPLICATION} \
+               --build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+               --build-arg COMMIT=$(git rev-parse --short HEAD) \
+               --build-arg DESCRIPTION="${DESCRIPTION}" \
+               --build-arg VERSION=$(git describe --tags --always) \
+               --build-arg CC=${CC} \
+               --build-arg CXX=${CXX} \
+               --build-arg FC=${FC} \
+               --build-arg CMAKE_BUILD_TYPE=${GISMO_BUILD_TYPE} \
+               --build-arg CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
+               --build-arg GISMO_WITH_MPI=${GISMO_WITH_MPI} \
+               --build-arg GISMO_WITH_TRILINOS=${GISMO_WITH_TRILINOS} \
+               -t ${IMAGE_NAME}_${BUILD_ARCH} \
+               .
+    else
+        docker build \
+               --file "${DOCKERFILE_PATH}.${TARGET_ARCH}" \
+               --build-arg APPLICATION=${APPLICATION} \
+               --build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+               --build-arg COMMIT=$(git rev-parse --short HEAD) \
+               --build-arg DESCRIPTION="${DESCRIPTION}" \
+               --build-arg VERSION=$(git describe --tags --always) \
+               --build-arg CC=${CC} \
+               --build-arg CXX=${CXX} \
+               --build-arg CMAKE_BUILD_TYPE=${GISMO_BUILD_TYPE} \
+               --build-arg CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
+               -t ${IMAGE_NAME}_${BUILD_ARCH} \
+               .
+    fi
+done
+
+## Build the prime image at the end.
+if [ -z "$FC" ]
+then
+    docker build \
+           --file "${DOCKERFILE_PATH}" \
+           --build-arg APPLICATION=${APPLICATION} \
+           --build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+           --build-arg COMMIT=$(git rev-parse --short HEAD) \
+           --build-arg DESCRIPTION="${DESCRIPTION}" \
+           --build-arg VERSION=$(git describe --tags --always) \
+           --build-arg CC=${CC} \
+           --build-arg CXX=${CXX} \
+           --build-arg FC=${FC} \
+           --build-arg CMAKE_BUILD_TYPE=${GISMO_BUILD_TYPE} \
+           --build-arg CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
+           --build-arg GISMO_WITH_MPI=${GISMO_WITH_MPI} \
+           --build-arg GISMO_WITH_TRILINOS=${GISMO_WITH_TRILINOS} \
+           -t ${IMAGE_NAME}_${DEFAULT_ARCH} \
+           .
+else
+    docker build \
+           --file "${DOCKERFILE_PATH}" \
+           --build-arg APPLICATION=${APPLICATION} \
+           --build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+           --build-arg COMMIT=$(git rev-parse --short HEAD) \
+           --build-arg DESCRIPTION="${DESCRIPTION}" \
+           --build-arg VERSION=$(git describe --tags --always) \
+           --build-arg CC=${CC} \
+           --build-arg CXX=${CXX} \
+           --build-arg CMAKE_BUILD_TYPE=${GISMO_BUILD_TYPE} \
+           --build-arg CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
+           -t ${IMAGE_NAME}_${DEFAULT_ARCH} \
+           .
+fi
+
+## Push the default arch image so manifest-tool can find it
+docker push ${IMAGE_NAME}_${DEFAULT_ARCH}
+
+## Tag the default image so dockerhub can push it.
+docker tag ${IMAGE_NAME}_${DEFAULT_ARCH} ${IMAGE_NAME}
+
+echo "[***] ...build hook complete."
