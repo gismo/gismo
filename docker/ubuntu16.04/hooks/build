@@ -257,6 +257,7 @@ then
            --build-arg CMAKE_BUILD_TYPE=${GISMO_BUILD_TYPE} \
            --build-arg CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
            --build-arg GISMO_WITH_MPI=${GISMO_WITH_MPI} \
+           --build-arg GISMO_WITH_OPENMP=${GISMO_WITH_OPENMP} \
            --build-arg GISMO_WITH_TRILINOS=${GISMO_WITH_TRILINOS} \
            -t ${IMAGE_NAME}_${DEFAULT_ARCH} \
            .
@@ -272,6 +273,7 @@ else
            --build-arg CXX=${CXX} \
            --build-arg CMAKE_BUILD_TYPE=${GISMO_BUILD_TYPE} \
            --build-arg CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
+           --build-arg GISMO_WITH_OPENMP=${GISMO_WITH_OPENMP} \
            -t ${IMAGE_NAME}_${DEFAULT_ARCH} \
            .
 fi
