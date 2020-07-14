@@ -18,195 +18,6 @@
 using namespace gismo;
 //! [Include namespace]
 
-template<class T>
-class gsDWRHelper
-{
-    public:
-        /// Shared pointer for solutionFunction
-        typedef memory::shared_ptr< gsDWRHelper > Ptr;
-
-        /// Unique pointer for solutionFunction
-        typedef memory::unique_ptr< gsDWRHelper > uPtr;
-
-    gsDWRHelper(const gsMultiBasis<>& basisL,
-                const gsMultiBasis<>& basisH,
-                const gsMultiPatch<> & mp
-                ) : m_basisL(basisL), m_basisH(basisH), m_patches(mp) { this->initialize(); }
-
-    protected:
-        void initialize()
-        {
-            gsExprAssembler<> assembler(1,1);
-            assembler.setIntegrationElements(m_basisH); //  is this correct?
-            assembler.getSpace(m_basisH);
-            assembler.initSystem();
-            m_nH = assembler.numDofs();
-
-            assembler.setIntegrationElements(m_basisL); //  is this correct?
-            assembler.getSpace(m_basisL);
-            assembler.initSystem();
-            m_nL = assembler.numDofs();
-        }
-
-        void computeFromTo(const gsMultiBasis<>& basis1, const gsMultiBasis<>& basis2, gsSparseMatrix<T> & result)
-        {
-            gsExprAssembler<> assembler(1,1);
-            geometryMap G = assembler.getMap(m_patches);
-
-            assembler.setIntegrationElements(basis1); //  is this correct?
-            space u1 = assembler.getSpace(basis1);
-            space u2 = assembler.getTestSpace(u1 , basis2);
-            assembler.initSystem();
-            assembler.assemble(u2 * u1.tr() * meas(G));
-            result = assembler.matrix();
-        }
-
-    public:
-        void computeLL()
-        {
-            if ((m_matrixLL.rows()==0) || (m_matrixLL.cols()==0))
-                computeFromTo(m_basisL, m_basisL, m_matrixLL);
-            // else
-            //     gsInfo<<"LL matrix already computed\n";
-        }
-        void computeHH()
-        {
-            if ((m_matrixHH.rows()==0) || (m_matrixHH.cols()==0))
-                computeFromTo(m_basisH, m_basisH, m_matrixHH);
-            // else
-            //     gsInfo<<"HH matrix already computed\n";
-        }
-        void computeHL()
-        {
-            if ((m_matrixLH.rows()==0) || (m_matrixLH.cols()==0))
-                computeFromTo(m_basisH, m_basisL, m_matrixHL);
-            else
-                m_matrixHL = m_matrixLH.transpose();
-        }
-        void computeLH()
-        {
-            if ((m_matrixHL.rows()==0) || (m_matrixHL.cols()==0))
-                computeFromTo(m_basisL, m_basisH, m_matrixLH);
-            else
-                m_matrixLH = m_matrixHL.transpose();
-        }
-
-        const gsSparseMatrix<T> & matrixLL() {this->computeLL(); return m_matrixLL; }
-        const gsSparseMatrix<T> & matrixHH() {this->computeHH(); return m_matrixHH; }
-        const gsSparseMatrix<T> & matrixHL() {this->computeHL(); return m_matrixHL; }
-        const gsSparseMatrix<T> & matrixLH() {this->computeLH(); return m_matrixLH; }
-
-        void projectVector(const gsMatrix<T> & vectorIn, gsMatrix<T> & vectorOut)
-        {
-            size_t rows = vectorIn.rows();
-            if ( rows == m_nL ) // from low to high
-            {
-                this->computeHH();
-                this->computeLH();
-                m_solver.compute(m_matrixHH);
-                vectorOut = m_solver.solve(m_matrixLH*vectorIn);
-            }
-            else if (rows == m_nH) // from high to low
-            {
-                this->computeLL();
-                this->computeHL();
-                m_solver.compute(m_matrixLL);
-                vectorOut = m_solver.solve(m_matrixHL*vectorIn);
-            }
-            else
-                gsInfo<<"WARNING: cannot project vector, size mismatch; rows = "<<rows<<"; numDofs L = "<<m_nL<<"; numDofs H = "<<m_nL<<"\n";
-        }
-
-
-    protected:
-        const gsMultiBasis<T> & m_basisL;
-        const gsMultiBasis<T> & m_basisH;
-        const gsMultiPatch<T> & m_patches;
-        gsSparseMatrix<T> m_matrixHH, m_matrixLL, m_matrixHL, m_matrixLH;
-        gsSparseSolver<>::CGDiagonal m_solver;
-
-        size_t m_nL, m_nH;
-
-        typedef gsExprAssembler<>::geometryMap geometryMap;
-        typedef gsExprAssembler<>::variable    variable;
-        typedef gsExprAssembler<>::space       space;
-        typedef gsExprAssembler<>::solution    solution;
-
-
-}; // class definition ends
-
-template<class T>
-class solutionFunction : public gismo::gsFunction<T>
-{
-  // Computes pressure and optionally (to do) traction on any point on a geometry
-  //
-protected:
-    const gsMultiPatch<> & _mp;
-    const gsExprAssembler<> & _A; // Expression Assembler
-    const gsExprAssembler<>::solution & _soln;
-    mutable index_t m_pIndex;
-
-public:
-    /// Shared pointer for solutionFunction
-    typedef memory::shared_ptr< solutionFunction > Ptr;
-
-    /// Unique pointer for solutionFunction
-    typedef memory::unique_ptr< solutionFunction > uPtr;
-
-    solutionFunction(   const gsMultiPatch<> & mp,
-                        const gsExprAssembler<> & A,
-                     gsExprAssembler<>::solution & soln
-                     ) : _mp(mp), _A(A), _soln(soln), _mm_piece(nullptr){ }
-
-    GISMO_CLONE_FUNCTION(solutionFunction)
-
-    short_t domainDim() const {return 2;}
-
-    short_t targetDim() const {return 1;}
-
-    mutable solutionFunction<T> * _mm_piece; // todo: improve the way pieces are accessed
-
-    const gsFunction<T> & piece(const index_t p) const
-    {
-        // delete m_piece;
-        // m_piece = new gsMaterialMatrix(m_patches->piece(k), *m_thickness, *m_YoungsModulus, *m_PoissonRatio);
-        _mm_piece = new solutionFunction(*this);
-        _mm_piece->setPatch(p);
-        return *_mm_piece;
-    }
-
-    ~solutionFunction() { delete _mm_piece; }
-
-    void setPatch(index_t p) {m_pIndex = p; }
-
-    void eval_into(const gsMatrix<>& u, gsMatrix<>& res) const
-    {
-        // u is an d x n matrix of points with dimension d and n points
-        // res2 is temporary vector for pressure components
-        // res3 is vector with pressure and traction.
-        // Data is stored as: [ tractionX1,tractionX2,tractionX3,...
-        //                      tractionY1,tractionY2,tractionY3,...
-        //                      pressure1, pressure2, pressure3 ,... ]
-
-        gsExprEvaluator<T> _ev(_A);
-
-        // Pre-allocate memory for pressure.
-        res.resize(this->targetDim(), u.cols());
-        res.setZero();
-        // Create objects for parametric points (v) and for pressure-ONLY result (res2)
-        gsVector <T> v;
-        gsVector <index_t> patches;
-        gsMatrix<T> points;
-        _mp.locatePoints(u, patches, points);
-
-        for( index_t k = 0; k != u.cols(); k++)
-        {
-            v = points.col(k);
-            res.col(k) = _ev.eval(_soln, v, patches.at(k));
-        }
-    }
-};
-
 template<typename T>
 class gsElementErrorPlotter : public gsFunction<T>
 {
@@ -380,7 +191,7 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::solution    solution;
 
     // Elements used for numerical integration
-    exL.setIntegrationElements(basisH);
+    exL.setIntegrationElements(basisL);
     gsExprEvaluator<> evL(exL);
 
     exH.setIntegrationElements(basisH);
@@ -434,9 +245,13 @@ int main(int argc, char *argv[])
     // zH2
     gsMultiPatch<> zH2_mp(mpL);//just initialize for not being empty
     variable zH2 = exL.getCoeff(zH2_mp);
-    // zH2
+    // zL2
     gsMultiPatch<> zL2_mp(mpL);//just initialize for not being empty
     variable zL2 = exH.getCoeff(zL2_mp);
+    // uL2
+    gsMultiPatch<> uL2_mp(mpL);//just initialize for not being empty
+    variable uL2 = exH.getCoeff(uL2_mp);
+
 
     gsSparseSolver<>::CGDiagonal solver;
 
@@ -464,11 +279,16 @@ int main(int argc, char *argv[])
     solver.compute( exL.matrix() );
     primalL = solver.solve(exL.rhs());
 
+    uL.extract(uL2_mp);// this updates uL2 variable
+
     if (plot)
     {
         gsInfo<<"Plotting in Paraview...\n";
         // ev.options().setSwitch("plot.elements", true);
+        gsWriteParaview( mpL, "mp",1000,true,true);
+        gsWriteParaview( mpL.basis(0), "basis");
         evL.writeParaview( uL   , G, "solution");
+        evH.writeParaview( uL2   ,H, "solution2");
         evL.writeParaview( primal_exL   , G, "solution_exact");
     }
 
@@ -489,41 +309,18 @@ int main(int argc, char *argv[])
     solver.compute( exL.matrix() );
     dualL = solver.solve(exL.rhs());
 
+    zL.extract(zL2_mp);// this updates zL2 variable
+
     if (plot)
     {
         gsInfo<<"Plotting in Paraview...\n";
         // ev.options().setSwitch("plot.elements", true);
         evL.writeParaview( zL   , G, "dualL");
+        evH.writeParaview( zL2   ,H, "dualL2");
         evL.writeParaview( dual_exL   , G, "dual_exact");
-
     }
 
     // [!Low-order Dual PROBLEM]
-
-    // [ Project solutions ]
-    space v0 = exH.getSpace(basisH);
-    space u0 = exL.getSpace(basisL);
-    gsMatrix<> dualL0, primalL0;
-    zL.extractFull(dualL0);
-    uL.extractFull(primalL0);
-
-    gsDWRHelper<real_t> L2projector(basisL,basisH,mp);
-    L2projector.projectVector(dualL0,dualLp);
-    L2projector.projectVector(primalL0,primalLp);
-
-    solution zLp = exH.getSolution(v0, dualLp);
-    solution uLp = exH.getSolution(v0, primalLp);
-    exH.initSystem();
-
-    if (plot)
-    {
-        gsInfo<<"Plotting in Paraview...\n";
-        // ev.options().setSwitch("plot.elements", true);
-        evH.writeParaview( zLp   , H, "dualLp");
-        evH.writeParaview( uLp   , H, "primalLp");
-    }
-    // [! Project solutions ]
-
     // Initialize the system
     exH.initSystem();
 
@@ -531,7 +328,7 @@ int main(int argc, char *argv[])
 
     // [DUAL PROBLEM]
     // Compute the system matrix and right-hand side
-    exH.assemble( igrad(v, H) * igrad(v, H).tr() * meas(H), v * uLp * meas(H) );
+    exH.assemble( igrad(v, H) * igrad(v, H).tr() * meas(H), v * uL2 * meas(H) );
 
     gsInfo<< ".\n" <<std::flush;// Assemblying done
 
@@ -539,7 +336,7 @@ int main(int argc, char *argv[])
     dualH = solver.solve(exH.rhs());
 
     gsMatrix<> dualH0;
-    solution zH0 = exH.getSolution(v0,dualH0);
+    solution zH0 = exH.getSolution(v,dualH0);
 
     zH.extractFull(dualH0);
     if (plot)
@@ -551,7 +348,6 @@ int main(int argc, char *argv[])
     // [!DUAL PROBLEM]
 
     zH.extract(zH2_mp);// this updates zH2 variable
-    zL.extract(zL2_mp);// this updates zH2 variable
 
     gsDebug<<"zL "<<evL.eval(zL,pt)<<"\n";
     gsDebug<<"zL "<<evH.eval(zL,pt)<<"\n";
@@ -571,6 +367,8 @@ int main(int argc, char *argv[])
     // gsDebug<<"lapl zH "<<evH.eval(slapl(zH),pt)<<"\n";
     // gsDebug<<"\n";
     // Integrals via the assembler and partition of unity.
+    space v0 = exH.getSpace(basisH); // full basis
+    space u0 = exL.getSpace(basisL); // full basis
 
     exL.initSystem();
     exL.assemble(zL.val() * u0);
@@ -593,47 +391,30 @@ int main(int argc, char *argv[])
     gsDebug<<"int grad-norm "<<evL.integral(grad(zH2)*grad(uL).tr())<<"; "<<exL.rhs().sum()<<"\n";
 
     // exL.initSystem();
-    // exL.assemble(u0 * grad(zH2)*grad(zH2).tr());
+    // exL.assemble(u * grad(zH2)*grad(zH2).tr());
     // gsDebug<<"int grad-norm "<<evL.integral(grad(zH2)*grad(zH2).tr())<<"; "<<exL.rhs().sum()<<"\n";
 
 
 
     gsInfo<<"Objective function errors J(u)-J(u_h)\n";
     real_t error = evL.integral((0.5*primal_exL*primal_exL)*meas(G)) - evL.integral((0.5*uL*uL)*meas(G));
-    real_t errest = evH.integral( (zH-zLp) * gg * meas(H)-(((igrad(zH) - igrad(zLp))*igrad(uLp).tr()) ) * meas(H));
+    real_t errest = evL.integral( (zH2-zL) * ff * meas(G)-(((igrad(zH2) - igrad(zL))*igrad(uL).tr()) ) * meas(G));
     // real_t errest = evL.integral( (zH2-zL) * ff * meas(G)-(((igrad(zH2) - igrad(zL))*igrad(uL).tr()) ) * meas(G));
     gsInfo<<"\texact:\t"   <<error<<"\n"
             "\testimate:\t"<<errest<<"\n"
             "\teff:\t"<<errest/error<<"\n";
 
-    gsInfo<<"Computation errors (L2-norm)\n";
-    real_t err1, err2;
-    err1 = math::sqrt(evL.integral((primal_exL-uL).sqNorm()*meas(G)));
-    err2 = math::sqrt(evH.integral((primal_exH-uLp).sqNorm()*meas(H)));
-    gsInfo<<"\t (1) primal exact: "<<err1<<"\n"
-            "\t (2) primal proje: "<<err2<<"\n"
-            "\t ((1)-(2)/(1)    : "<<(err1-err2)/err1<<"\n";
-
-    err1 = math::sqrt(evL.integral((dual_exL-zL).sqNorm()*meas(G)));
-    err2 = math::sqrt(evH.integral((dual_exH-zLp).sqNorm()*meas(H)));
-    gsInfo<<"\t (1) dual (L) exact: "<<err1<<"\n"
-            "\t (2) dual (L) proje: "<<err2<<"\n"
-            "\t ((1)-(2)/(1)      : "<<(err1-err2)/err1<<"\n"
-            "\t dual (H) exact: "<<math::sqrt(evH.integral((dual_exH-zH).sqNorm()*meas(H)))<<"\n";
-
     // ELEMENT WISE ERROR ESTIMATION
     if (est==0)
     {
-        gsInfo<<evL.eval((ff - slapl(uL)) * (zH2.val() - zL.val())*meas(G),pt)<<"\n";
-        gsInfo<<evH.eval((gg - slapl(uLp)) * (zH.val() - zLp.val())*meas(H),pt)<<"\n";
+        // gsInfo<<evL.eval((ff - slapl(uL)) * (zH2.val() - zL.val())*meas(G),pt)<<"\n";
+        gsInfo<<evH.eval((gg - lapl(uL2)) * (zH.val() - zL2.val())*meas(H),pt)<<"\n";
 
 
 
         evL.integralElWise((ff - slapl(uL)) * (zH2.val() - zL.val())*meas(G));
         // evH.integralElWise((gg - slapl(uL)) * (zH2.val() - zL.val())*meas(G));
 
-        // evH.integralElWise((gg - slapl(uLp)) * (zH - zLp)*meas(H));
-        // evH.integralElWise( (zH-zLp) * gg * meas(H)-(((igrad(zH) - igrad(zLp))*igrad(uLp).tr()) ) * meas(H));
         gsVector<> elementNorms = evL.allValues().transpose();
         std::vector<real_t> errors;
         errors.resize(elementNorms.size());
@@ -649,7 +430,7 @@ int main(int argc, char *argv[])
 
 
         MarkingStrategy adaptRefCrit = PUCA;
-        const real_t adaptRefParam = 0.9;
+        const real_t adaptRefParam = 0.8;
         std::vector<bool> elMarked( errors.size() );
 
         gsMarkElementsForRef( errors, adaptRefCrit, adaptRefParam, elMarked);
@@ -670,56 +451,57 @@ int main(int argc, char *argv[])
     else if (est==1)
     {
         exL.initSystem(true);
-        // exH.assemble( grad(uLp) * ( grad(v0) * (zH - zLp) + v0 * ( grad(zH) - grad(zLp) ) ) - gg * v0 * (zH - zLp)  );
+        // exH.assemble( grad(uLp) * ( grad(v) * (zH - zLp) + v * ( grad(zH) - grad(zLp) ) ) - gg * v * (zH - zLp)  );
 
-        auto lhs = ((zH2 - zL) * grad(uL) * grad(u0).tr()).tr(); // + v0 * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
+        auto lhs = ((zH2 - zL) * grad(uL) * grad(u0).tr()).tr(); // + v * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
         auto lhs2 = u0 * ( fjac(zH2).tr() * grad(uL).tr() - grad(zL) * grad(uL).tr() ) ;
         auto rhs = ff.val() * (zH2.val() - zL.val()) * u0;
 
         gsMatrix<> res;
         exL.assemble(lhs*meas(G));
         res = exL.rhs();
-        gsDebugVar(res);
 
         exL.assemble(lhs2*meas(G));
         res += exL.rhs();
-        gsDebugVar(res);
 
         exL.assemble(rhs*meas(G));
         res += exL.rhs();
-        gsDebugVar(res);
 
         gsInfo<< "  Result (global)    : "<< res.sum()<<"\n";
 
-        return 0;
         MarkingStrategy adaptRefCrit = PUCA;
         const real_t adaptRefParam = 0.9;
         std::vector<bool> funMarked( res.size() );
-
         std::vector<real_t> errors( res.size() );
         gsVector<>::Map(&errors[0],res.size() ) = res;
 
+        for(index_t k = 0; k < errors.size(); k++)
+            if(errors[k] < 0)
+                errors[k] *= -1;
 
-        for (std::vector<real_t>::const_iterator i = errors.begin(); i != errors.end(); ++i)
-            gsInfo << *i << "\n";
-        gsInfo<<"\n";
 
         gsMarkElementsForRef( errors, adaptRefCrit, adaptRefParam, funMarked);
-        for (std::vector<bool>::const_iterator i = funMarked.begin(); i != funMarked.end(); ++i)
-            gsInfo << *i << ' ';
-        gsInfo<<"\n";
+        gsInfo<<"index\terror\trefined?\n";
+        for (index_t k=0; k!= errors.size(); k++)
+        {
+            gsInfo << k<<"\t"<<errors[k] <<"\t"<<funMarked[k] << "\n";
 
-        // Refine the marked elements with a 1-ring of cells around marked elements
-        gsRefineMarkedFunctions( mpH, funMarked, 1 );
-        gsDebugVar(mpH.basis(0));
+        }
+        // Refine the marked elements with a 1-ring of cells around marked supports
+        gsWriteParaview(mpL,"mpL_old",1000,true);
+        gsWriteParaview(mpL.basis(0),"basisL_old",1000);
+        gsRefineMarkedFunctions( mpL, funMarked, 0 );
+        gsWriteParaview(mpL,"mpL",1000,true);
+        gsWriteParaview(mpL.basis(0),"basisL",1000);
+
+        gsWriteParaview(mpH,"mpH_old",1000,true);
+        gsWriteParaview(mpH.basis(0),"basisH_old",1000);
+        mpH = mpL;
+        // mpH.uniformRefine();
+        mpH.degreeElevate();
         gsWriteParaview(mpH,"mpH",1000,true);
+        gsWriteParaview(mpH.basis(0),"basisH",1000);
 
-
-        gsMultiPatch<> tmp = mpH;
-        tmp.patch(0).degreeReduce(1);
-        mpL = tmp;
-        // gsRefineMarkedFunctions( mpL, funMarked, 1 );
-        gsDebugVar(mpL.basis(0));
 
     }
     // FUNCTION WISE ERROR ESTIMATION
@@ -729,11 +511,11 @@ int main(int argc, char *argv[])
         exH.initSystem(true);
 
 
-        // exH.assemble( grad(uLp) * ( grad(v0) * (zH - zLp) + v0 * ( grad(zH) - grad(zLp) ) ) - gg * v0 * (zH - zLp)  );
+        // exH.assemble( grad(uLp) * ( grad(v) * (zH - zLp) + v * ( grad(zH) - grad(zLp) ) ) - gg * v * (zH - zLp)  );
 
-        auto lhs = ((zH2 - zL) * grad(uL) * grad(u0).tr()).tr(); // + v0 * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
-        auto lhs2 = u0 * ( grad(zH2) - grad(zL) ) * grad(uL).tr();
-        auto rhs = ff.val() * (zH2 - zL).val() * u0;
+        auto lhs = ((zH2 - zL) * grad(uL) * grad(u).tr()).tr(); // + v * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
+        auto lhs2 = u * ( grad(zH2) - grad(zL) ) * grad(uL).tr();
+        auto rhs = ff.val() * (zH2 - zL).val() * u;
 
         gsDebug<<evL.eval(zL,pt)<<"\n";
 
@@ -741,13 +523,13 @@ int main(int argc, char *argv[])
 
         gsDebug<<evH.integral(zH)<<"\n";
 
-        exL.assemble(zH.val() * u0 * meas(G));
+        exL.assemble(zH.val() * u * meas(G));
         gsDebugVar(exL.rhs().sum());
         gsDebug<<evH.integral(zH)<<"\n";
-        exH.assemble(zH.val() * v0 * meas(H));
+        exH.assemble(zH.val() * v * meas(H));
         gsDebugVar(exH.rhs().sum());
 
-        exL.assemble(zL.val() * u0 * meas(G));
+        exL.assemble(zL.val() * u * meas(G));
         gsDebugVar(exL.rhs().sum());
 
 
