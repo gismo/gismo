@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
 
     gsMultiBasis<> basis(mp);
     gsWriteParaview<>(basis.basis(0), "oldBasis", 1000, true);
+    gsWriteParaview<>(mp, "mp", 1000, true);
 
     gsInfo<<"Basis Primal: "<<basis.basis(0)<<"\n";
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< basis.minCwiseDegree() <<"\n";
@@ -90,7 +91,6 @@ int main(int argc, char *argv[])
     for(std::vector<bool>::iterator i = funMarked.begin(); i!=  funMarked.end(); ++i)
         *i = false;
     funMarked[function] = true;
-    funMarked[function+11] = true;
 
     // PRINT
     for (std::vector<bool>::const_iterator i = funMarked.begin(); i != funMarked.end(); ++i)
@@ -105,7 +105,13 @@ int main(int argc, char *argv[])
     gsInfo  <<"Original : "<< mp.basis(0)<<"\t"
             <<"size = "<< mp.basis(0).size()<<"\n";
 
-    gsWriteParaview<>(mp.basis(0), "newBasis", 1000, true);
+    gsWriteParaview<>(mp.basis(0), "newBasisL", 1000, true);
+    gsWriteParaview<>(mp, "mpL", 1000, true);
+
+    mp.degreeElevate(1);
+    gsWriteParaview<>(mp.basis(0), "newBasisH", 1000, true);
+    gsWriteParaview<>(mp, "mpH", 1000, true);
+
 
     mp0.basis(0).uniformRefine();
     gsWriteParaview<>(mp0.basis(0), "uniformRefine", 1000, true);
