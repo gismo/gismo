@@ -431,13 +431,6 @@ int main(int argc, char *argv[])
         // Dual solution projection on high-order mesh
     solution zH = exH.getSolution(v, dualH);
 
-    // zH2
-    gsMultiPatch<> zH2_mp(mpL);//just initialize for not being empty
-    variable zH2 = exL.getCoeff(zH2_mp);
-    // zH2
-    gsMultiPatch<> zL2_mp(mpL);//just initialize for not being empty
-    variable zL2 = exH.getCoeff(zL2_mp);
-
     gsSparseSolver<>::CGDiagonal solver;
 
     exL.initSystem();
@@ -550,58 +543,9 @@ int main(int argc, char *argv[])
     }
     // [!DUAL PROBLEM]
 
-    zH.extract(zH2_mp);// this updates zH2 variable
-    zL.extract(zL2_mp);// this updates zH2 variable
-
-    gsDebug<<"zL "<<evL.eval(zL,pt)<<"\n";
-    gsDebug<<"zL "<<evH.eval(zL,pt)<<"\n";
-    gsDebug<<"zH "<<evL.eval(zH2,pt)<<"\n";
-    gsDebug<<"zH "<<evH.eval(zH,pt)<<"\n"; // Different from the above
-    gsDebug<<"\n";
-    gsDebug<<"grad zL "<<evL.eval(grad(zL),pt)<<"\n";
-    gsDebug<<"grad zL "<<evH.eval(grad(zL2),pt)<<"\n";
-    gsDebug<<"grad zH "<<evL.eval(grad(zH2),pt)<<"\n";
-    gsDebug<<"grad zH "<<evH.eval(grad(zH),pt)<<"\n";
-    gsDebug<<"\n";
-    gsDebug<<"grad uL "<<evL.eval(grad(zH2),pt)<<"\n";
-    gsDebug<<"\n";
-    // gsDebug<<"lapl zL "<<evL.eval(slapl(zL),pt)<<"\n";
-    // gsDebug<<"lapl zL "<<evH.eval(lapl(zL2),pt)<<"\n";
-    // gsDebug<<"lapl zH "<<evL.eval(lapl(zH2),pt)<<"\n";
-    // gsDebug<<"lapl zH "<<evH.eval(slapl(zH),pt)<<"\n";
-    // gsDebug<<"\n";
-    // Integrals via the assembler and partition of unity.
-
-    exL.initSystem();
-    exL.assemble(zL.val() * u0);
-    gsDebug<<"int zL "<<evL.integral(zL.val())<<"; "<<exL.rhs().sum()<<"\n";
-
-    exH.initSystem();
-    exH.assemble(zL2.val() * v0);
-    gsDebug<<"int zH "<<evH.integral(zL2)<<"; "<<exH.rhs().sum()<<"\n";
-
-    exL.initSystem();
-    exL.assemble(zH2.val() * u0);
-    gsDebug<<"int zH "<<evL.integral(zH2)<<"; "<<exL.rhs().sum()<<"\n";
-
-    exH.initSystem();
-    exH.assemble(zH.val() * v0);
-    gsDebug<<"int zH "<<evH.integral(zH.val())<<"; "<<exH.rhs().sum()<<"\n";
-
-    exL.initSystem();
-    exL.assemble(u0 * grad(zH2)*grad(uL).tr());
-    gsDebug<<"int grad-norm "<<evL.integral(grad(zH2)*grad(uL).tr())<<"; "<<exL.rhs().sum()<<"\n";
-
-    // exL.initSystem();
-    // exL.assemble(u0 * grad(zH2)*grad(zH2).tr());
-    // gsDebug<<"int grad-norm "<<evL.integral(grad(zH2)*grad(zH2).tr())<<"; "<<exL.rhs().sum()<<"\n";
-
-
-
     gsInfo<<"Objective function errors J(u)-J(u_h)\n";
     real_t error = evL.integral((0.5*primal_exL*primal_exL)*meas(G)) - evL.integral((0.5*uL*uL)*meas(G));
     real_t errest = evH.integral( (zH-zLp) * gg * meas(H)-(((igrad(zH) - igrad(zLp))*igrad(uLp).tr()) ) * meas(H));
-    // real_t errest = evL.integral( (zH2-zL) * ff * meas(G)-(((igrad(zH2) - igrad(zL))*igrad(uL).tr()) ) * meas(G));
     gsInfo<<"\texact:\t"   <<error<<"\n"
             "\testimate:\t"<<errest<<"\n"
             "\teff:\t"<<errest/error<<"\n";
@@ -624,17 +568,12 @@ int main(int argc, char *argv[])
     // ELEMENT WISE ERROR ESTIMATION
     if (est==0)
     {
-        gsInfo<<evL.eval((ff - slapl(uL)) * (zH2.val() - zL.val())*meas(G),pt)<<"\n";
-        gsInfo<<evH.eval((gg - slapl(uLp)) * (zH.val() - zLp.val())*meas(H),pt)<<"\n";
-
-
-
-        evL.integralElWise((ff - slapl(uL)) * (zH2.val() - zL.val())*meas(G));
-        // evH.integralElWise((gg - slapl(uL)) * (zH2.val() - zL.val())*meas(G));
+        // evL.integralElWise((ff - slapl(uL)) * (zH2.val() - zL.val())*meas(G));
+        evH.integralElWise((gg - slapl(uLp)) * (zH.val() - zLp.val())*meas(H));
 
         // evH.integralElWise((gg - slapl(uLp)) * (zH - zLp)*meas(H));
         // evH.integralElWise( (zH-zLp) * gg * meas(H)-(((igrad(zH) - igrad(zLp))*igrad(uLp).tr()) ) * meas(H));
-        gsVector<> elementNorms = evL.allValues().transpose();
+        gsVector<> elementNorms = evH.allValues().transpose();
         std::vector<real_t> errors;
         errors.resize(elementNorms.size());
         gsVector<>::Map(&errors[0],elementNorms.size() ) = elementNorms;
@@ -669,25 +608,22 @@ int main(int argc, char *argv[])
     // FUNCTION WISE ERROR ESTIMATION
     else if (est==1)
     {
-        exL.initSystem(true);
+        exH.initSystem(true);
         // exH.assemble( grad(uLp) * ( grad(v0) * (zH - zLp) + v0 * ( grad(zH) - grad(zLp) ) ) - gg * v0 * (zH - zLp)  );
 
-        auto lhs = ((zH2 - zL) * grad(uL) * grad(u0).tr()).tr(); // + v0 * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
-        auto lhs2 = u0 * ( fjac(zH2).tr() * grad(uL).tr() - grad(zL) * grad(uL).tr() ) ;
-        auto rhs = ff.val() * (zH2.val() - zL.val()) * u0;
+        auto lhs = ((zH - zLp) * grad(uLp) * grad(v0).tr()).tr(); // + v0 * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
+        auto lhs2 = v0 * ( grad(zH) * grad(uLp).tr() - grad(zLp) * grad(uLp).tr() ) ;
+        auto rhs = gg.val() * (zH.val() - zLp.val()) * v0;
 
         gsMatrix<> res;
-        exL.assemble(lhs*meas(G));
-        res = exL.rhs();
-        gsDebugVar(res);
+        exH.assemble(lhs*meas(H));
+        res = exH.rhs();
 
-        exL.assemble(lhs2*meas(G));
-        res += exL.rhs();
-        gsDebugVar(res);
+        exH.assemble(lhs2*meas(H));
+        res += exH.rhs();
 
-        exL.assemble(rhs*meas(G));
-        res += exL.rhs();
-        gsDebugVar(res);
+        exH.assemble(rhs*meas(H));
+        res += exH.rhs();
 
         gsInfo<< "  Result (global)    : "<< res.sum()<<"\n";
 
@@ -720,83 +656,6 @@ int main(int argc, char *argv[])
         mpL = tmp;
         // gsRefineMarkedFunctions( mpL, funMarked, 1 );
         gsDebugVar(mpL.basis(0));
-
-    }
-    // FUNCTION WISE ERROR ESTIMATION
-    else if (est==2)
-    {
-        exL.initSystem(true);
-        exH.initSystem(true);
-
-
-        // exH.assemble( grad(uLp) * ( grad(v0) * (zH - zLp) + v0 * ( grad(zH) - grad(zLp) ) ) - gg * v0 * (zH - zLp)  );
-
-        auto lhs = ((zH2 - zL) * grad(uL) * grad(u0).tr()).tr(); // + v0 * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
-        auto lhs2 = u0 * ( grad(zH2) - grad(zL) ) * grad(uL).tr();
-        auto rhs = ff.val() * (zH2 - zL).val() * u0;
-
-        gsDebug<<evL.eval(zL,pt)<<"\n";
-
-        gsDebug<<evL.eval(zH,pt)<<"\n";
-
-        gsDebug<<evH.integral(zH)<<"\n";
-
-        exL.assemble(zH.val() * u0 * meas(G));
-        gsDebugVar(exL.rhs().sum());
-        gsDebug<<evH.integral(zH)<<"\n";
-        exH.assemble(zH.val() * v0 * meas(H));
-        gsDebugVar(exH.rhs().sum());
-
-        exL.assemble(zL.val() * u0 * meas(G));
-        gsDebugVar(exL.rhs().sum());
-
-
-    //     gsDebug<<evL.eval(zL,pt)<<"\n";
-    //     gsDebug<<evL.eval(zH.temp(),pt)<<"\n";
-    //     gsDebug<<evH.eval(zH,pt)<<"\n";
-
-    //     gsMatrix<> res;
-    //     exL.assemble(lhs*meas(G));
-    //     res = exL.rhs();
-
-    //     exL.assemble(lhs2*meas(G));
-    //     res += exL.rhs();
-
-    //     exL.assemble(rhs*meas(G));
-    //     res += exL.rhs();
-
-    //     gsDebugVar(res);
-
-    //     gsInfo<< "  Result (global)    : "<< res.sum()<<"\n";
-
-    //     MarkingStrategy adaptRefCrit = PUCA;
-    //     const real_t adaptRefParam = 0.9;
-    //     std::vector<bool> funMarked( res.size() );
-
-    //     std::vector<real_t> errors( res.size() );
-    //     gsVector<>::Map(&errors[0],res.size() ) = res;
-
-
-    //     for (std::vector<real_t>::const_iterator i = errors.begin(); i != errors.end(); ++i)
-    //         gsInfo << *i << "\n";
-    //     gsInfo<<"\n";
-
-    //     gsMarkElementsForRef( errors, adaptRefCrit, adaptRefParam, funMarked);
-    //     for (std::vector<bool>::const_iterator i = funMarked.begin(); i != funMarked.end(); ++i)
-    //         gsInfo << *i << ' ';
-    //     gsInfo<<"\n";
-
-    //     // Refine the marked elements with a 1-ring of cells around marked elements
-    //     gsRefineMarkedFunctions( mpL, funMarked, 1 );
-    //     gsDebugVar(mpL.basis(0));
-    // gsWriteParaview(mpL,"mpH",1000,true);
-
-
-    //     gsMultiPatch<> tmp = mpH;
-    //     tmp.patch(0).degreeReduce(1);
-    //     mpL = tmp;
-    //     // gsRefineMarkedFunctions( mpL, funMarked, 1 );
-    //     gsDebugVar(mpL.basis(0));
 
     }
     else
