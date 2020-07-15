@@ -40,16 +40,31 @@ int main(int argc, char *argv[])
     iFace::strategy intStrategy = iFace::glue;
 
 
-    gsFunctionExpr<> source  ("8 * ( 16 - 12 * x * x * x + 3 * x * x * x * x + 36 * x * x * ( y - 1 ) * ( y - 1 ) - 48 * y + 36 * y * y - 12 * y * y * y + 3 * y * y * y * y - 24 * x * ( 2 - 6 * y + 3 * y * y) )",3);
+//    gsFunctionExpr<> source  ("8 * ( 16 - 12 * x * x * x + 3 * x * x * x * x + 36 * x * x * ( y - 1 ) * ( y - 1 ) - 48 * y + 36 * y * y - 12 * y * y * y + 3 * y * y * y * y - 24 * x * ( 2 - 6 * y + 3 * y * y) )",3);
+//
+//    gsFunctionExpr<> laplace ("0",3);
+//
+//    gsFunctionExpr<> solVal("(2 - x) * (2 - x) * x * x * (2 - y) * (2 - y) * y * y + 0 * z",3);
+//
+//    gsFunctionExpr<>sol1der ("(2 - x) * (2 - x) * 2 * x * (2 - y) * (2 - y) * y * y - 2 * (2 - x) * x * x * (2 - y) * (2 - y) * y * y",
+//                             "(2 - y) * (2 - y) * 2 * y * (2 - x) * (2 - x) * x * x - 2 * (2 - y) * y * y * (2 - x) * (2 - x) * x * x",
+//                             "0",3);
+//
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
 
+
+    gsFunctionExpr<> source  ("(4 * x * (1 - 15 * y^2 - 10 * y^4 + 6 * y^6 + x^4 * (1 + 15 * y^2) + \n"
+                              "   x^2 * (2 - 35 * y^4))) / (1 + x^2 + y^2)^5 ",3);
     gsFunctionExpr<> laplace ("0",3);
-
-    gsFunctionExpr<> solVal("(2 - x) * (2 - x) * x * x * (2 - y) * (2 - y) * y * y + 0 * z",3);
-
-    gsFunctionExpr<>sol1der ("(2 - x) * (2 - x) * 2 * x * (2 - y) * (2 - y) * y * y - 2 * (2 - x) * x * x * (2 - y) * (2 - y) * y * y",
-                             "(2 - y) * (2 - y) * 2 * y * (2 - x) * (2 - x) * x * x - 2 * (2 - y) * y * y * (2 - x) * (2 - x) * x * x",
+    gsFunctionExpr<> solVal("x",3);
+    gsFunctionExpr<>sol1der ("1",
+                             "0",
                              "0",3);
-
     gsFunctionExpr<>sol2der ("0",
                              "0",
                              "0",
@@ -57,12 +72,13 @@ int main(int argc, char *argv[])
                              "0",
                              "0", 3);
 
-
-//    gsFunctionExpr<> source  ("0",3);
+//    gsFunctionExpr<> source  ("(8 * (3 * x^10 + 3 * (1 + y^2)^3 + 12 * x^2 * (1 + y^2)^2 * (1 + 5 y^2) + \n"
+//                              "   x^8 * (14 + 15 * y^2) + x^6 * (25 + 36 * y^2 + 5 * y^4) + \n"
+//                              "   x^4 * (23 + 96 * y^2 + 178 * y^4 + 105 * y^6))) / (1 + x^2 + y^2)^5 ",3);
 //    gsFunctionExpr<> laplace ("0",3);
-//    gsFunctionExpr<> solVal("y",3);
-//    gsFunctionExpr<>sol1der ("0",
-//                             "1",
+//    gsFunctionExpr<> solVal("x^4",3);
+//    gsFunctionExpr<>sol1der ("4*x^3",
+//                             "0",
 //                             "0",3);
 //    gsFunctionExpr<>sol2der ("0",
 //                             "0",
@@ -176,6 +192,9 @@ int main(int argc, char *argv[])
             break;
         case 3:
             string_geo = "KirchhoffLoveGeo/square3dNegativeOrientation.xml";
+            break;
+        case 4:
+            string_geo = "KirchhoffLoveGeo/bentSquareSurface.xml";
             break;
 
         default:
