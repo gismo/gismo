@@ -682,7 +682,10 @@ public:
     ///                  and l will be  written to boundary[k][l]
     void partition(std::vector<gsVector<index_t> > & interior,
                    std::vector<gsVector<index_t> > & boundary,
-                   std::vector<std::vector<gsVector<index_t> > >& interface);
+                   std::vector<std::vector<gsVector<index_t> > >& interface,
+                   std::vector<gsMatrix<unsigned> > & global_interior,
+                   std::vector<gsMatrix<unsigned> > & global_boundary,
+                   std::vector<std::vector<gsMatrix<unsigned> > >& global_interface);
 private:
 
     BasisContainer m_bases;

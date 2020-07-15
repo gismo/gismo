@@ -224,7 +224,7 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
     // Get fine mapper
     gsDofMapper fineMapper;
     this->getMapper(
-            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
+            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",12),
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
             boundaryConditions,
             fineMapper,
@@ -241,7 +241,7 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
     // Get coarse mapper
     gsDofMapper coarseMapper;
     this->getMapper(
-            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
+            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",12),
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
             boundaryConditions,
             coarseMapper,
@@ -686,14 +686,16 @@ template<class T>
 void gsMultiBasis<T>::partition(
     std::vector<gsVector<index_t> > & interior,
     std::vector<gsVector<index_t> > & boundary,
-    std::vector<std::vector<gsVector<index_t> > >& interface)
+    std::vector<std::vector<gsVector<index_t> > >& interface,
+    std::vector<gsMatrix<unsigned> > & global_interior,
+    std::vector<gsMatrix<unsigned> > & global_boundary,
+    std::vector<std::vector<gsMatrix<unsigned> > >& global_interface
+    )
 {
     gsDofMapper dm;
-    getMapper(true,dm,false);
-    for ( gsBoxTopology::biterator it = m_topology.bBegin(); it != m_topology.bEnd(); ++it )
-        dm.markBoundary(it->patch, basis(it->patch).boundary(it->side()) );
+    this->getMapper(true,dm,false);
     dm.finalize();
-
+   
     const index_t sz = this->nBases();
     interior.resize(sz);
     boundary.resize(sz);
@@ -701,10 +703,27 @@ void gsMultiBasis<T>::partition(
     for ( index_t k = 0; k!= sz; ++k ) // for all patches
     {
         interior[k] = dm.findFreeUncoupled(k);
-        boundary[k] = dm.findBoundary(k);
+        boundary[k] = dm.findBoundary(k);  
         interface[k].resize(sz);
         for ( index_t j = 0; j!= sz; ++j )
+        {    
             interface[k][j]= dm.findCoupled(k,j);
+        }
+    }
+
+    // Determine the global index of DOF
+    global_interior.resize(sz);
+    global_boundary.resize(sz);
+    global_interface.resize(sz);
+    for ( index_t k = 0; k!= sz; ++k ) // for all patches
+    {
+          dm.localToGlobal(interior[k].cast<unsigned> (),k,global_interior[k]);
+          dm.localToGlobal(boundary[k].cast<unsigned> (),k,global_boundary[k]);
+          global_interface[k].resize(sz);
+          for ( index_t j = 0; j!= sz; ++j )
+          {
+              dm.localToGlobal(interface[k][j].cast<unsigned> (),k,global_interface[k][j]);
+          }    
     }
 }
 
