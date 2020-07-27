@@ -149,14 +149,14 @@ int main(int argc, char *argv[])
  */
 
 
-        gsFunctionExpr<> source  ("(8 * (3 * x^10 + 3 * (1 + y^2)^3 + 12 * x^2 * (1 + y^2)^2 * (1 + 5 y^2) + \n"
+    gsFunctionExpr<> source  ("(8 * (3 * x^10 + 3 * (1 + y^2)^3 + 12 * x^2 * (1 + y^2)^2 * (1 + 5 y^2) + \n"
                               "   x^8 * (14 + 15 * y^2) + x^6 * (25 + 36 * y^2 + 5 * y^4) + \n"
-                              "   x^4 * (23 + 96 * y^2 + 178 * y^4 + 105 * y^6))) / (1 + x^2 + y^2)^5 ",3);
+                              "   x^4 * (23 + 96 * y^2 + 178 * y^4 + 105 * y^6))) / (1 + x^2 + y^2)^5 ", 3);
     gsFunctionExpr<> laplace ("0",3);
     gsFunctionExpr<> solVal("x^4",3);
-    gsFunctionExpr<>sol1der ("4*x^3",
-                             "0",
-                             "0",3);
+    gsFunctionExpr<>sol1der ("(4 * x^3 * (1 + x^2)) / (1 + x^2 + y^2)",
+                             "-((4 * x^4 * y) / (1 + x^2 + y^2))",
+                             "-((4 * x^5 * y) / (1 + x^2 + y^2)) + (4 * x^3 * (1 + x^2) * y) / (1 + x^2 + y^2)", 3);
     gsFunctionExpr<>sol2der ("0",
                              "0",
                              "0",
@@ -561,7 +561,7 @@ int main(int argc, char *argv[])
 
             else if (e == 1)
             {
-                gsSeminormH1<real_t> errorSemiH1(multiPatch, Sol_sparse, solVal);
+                gsSeminormH1<real_t> errorSemiH1(multiPatch, Sol_sparse, sol1der);
                 errorSemiH1.compute(g1System.get_numBasisFunctions());
                 h1SemiError_vec[refinement_level] = errorSemiH1.value();
             }

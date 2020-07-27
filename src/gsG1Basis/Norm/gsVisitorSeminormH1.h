@@ -92,44 +92,39 @@ public:
 
             T weight = quWeights[k];
 
-// Surface error computation -> if (paramDim + 1 == targetDim)
+            // Surface error computation -> if (paramDim + 1 == targetDim)
             if( Jk.dim().second +1 == Jk.dim().first )
             {
                 gsMatrix<T> G = Jk.transpose() * Jk;
                 gsMatrix<T> G_inv = G.cramerInverse();
 
-                f1pders = Jk * G_inv * f1ders.col(k);
-//                f2pders = Jk * G_inv * f2ders.col(k);
-                f2pders =  f2ders.col(k);
+                f1pders = Jk * G_inv * f1ders.col(k); // Computed gradient
 
-//                gsInfo << "f1pders: " << f1pders.dim() << "\n";
-//                gsInfo << "f2ders: " << f2ders.dim() << "\n";
-//                gsInfo << "f1pders -  f2ders: " << f1pders - f2ders.col(k) << "\n";
-
+                f2pders =  f2ders.col(k); // Exact gradient
 
                 weight *= sqrt(G.determinant());
             }
             else
             {
-            // Transform the gradients
+                // Transform the gradients
                 geoEval.transformGradients(k, f1ders, f1pders);
 
-            // Transform the gradients, if func2 is defined on the parameter space (f2param = true)
+                // Transform the gradients, if func2 is defined on the parameter space (f2param = true)
                 if(f2param)
                     geoEval.transformGradients(k, f2ders, f2pders);
 
-            // old
-            //if ( f2param )
-            //f2ders.col(k)=geoEval.gradTransforms().block(0, k*d,d,d) * f2ders.col(k);// to do: generalize
+                // old
+                //if ( f2param )
+                //f2ders.col(k)=geoEval.gradTransforms().block(0, k*d,d,d) * f2ders.col(k);// to do: generalize
 
                 weight *= geoEval.measure(k);
             }
 
-                // for each k: put the gradients into the columns (as in f1pders)
-                gsMatrix<T> f2dersk = f2ders.col(k);
-                f2dersk.resize(Jk.dim().first, 1); // pardim(), targetDim() // TODO
+            // for each k: put the gradients into the columns (as in f1pders)
+            gsMatrix<T> f2dersk = f2ders.col(k);
+            f2dersk.resize(Jk.dim().first, 1); // pardim(), targetDim() // TODO
 
-                sum += weight * (f1pders - f2dersk).squaredNorm();
+            sum += weight * (f1pders - f2dersk).squaredNorm();
 
         }
         accumulated += sum;
