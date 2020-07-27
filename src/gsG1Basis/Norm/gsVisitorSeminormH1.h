@@ -70,8 +70,7 @@ public:
         // Evaluate second function
         geoEval.evaluateAt(quNodes);
 
-        _func2.deriv_into( geoEval.values(), f2ders);
-        gsInfo << "f2ders: " << f2ders.dim() << "\n";
+        _func2.eval_into( geoEval.values(), f2ders);
 
 //        _func2.deriv_into( f2param ? quNodes : geoEval.values() , f2ders); // Not working and useless
 

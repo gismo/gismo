@@ -107,7 +107,7 @@ protected:
 
     void refresh()
     {
-        gsVector<> size(1);
+        gsVector<index_t> size(1);
         size << 7;
 
         gsDofMapper map(size);
@@ -119,7 +119,7 @@ protected:
 
     void refreshBeta()
     {
-        gsVector<> size(1);
+        gsVector<index_t> size(1);
         size << 4;
 
         gsDofMapper mapBeta(size);
@@ -135,7 +135,9 @@ protected:
     {
         mSys.reserve(49, 1); // Reserve for the matrix 7x7 values
 
-        dirichletDofs.setZero(mSys.colMapper(0).boundarySize());
+        dirichletDofs.setZero
+                         (mSys.colMapper(0)
+        .boundarySize(),1);
 
         // Assemble volume integrals
         Visitor visitor;
