@@ -719,9 +719,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
 
                     real_t detG = G.determinant();
 
-
-
-
 //                  Multiply quadrature weight by the square route of the first foundamental form
                     const T weight_k = quWeights[k] * sqrt(detG);
 

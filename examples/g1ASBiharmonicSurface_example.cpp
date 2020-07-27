@@ -73,8 +73,16 @@ int main(int argc, char *argv[])
 //                             "0",
 //                             "0", 3);
 
-//    gsFunctionExpr<> source  ("(4 * x * (1 - 15 * y^2 - 10 * y^4 + 6 * y^6 + x^4 * (1 + 15 * y^2) + \n"
-//                              "   x^2 * (2 - 35 * y^4))) / (1 + x^2 + y^2)^5 ",3);
+
+// ==============================================================================================================================================
+/*
+ *  SURFACE (u^2, v, u^2 * v^2)
+ */
+
+//    gsFunctionExpr<> source  ("(4 * x^2 * (-1 + 99 * y^4 - 137 * y^8 - 207 * y^12 + 30 * y^16 + \n"
+//                              "   64 * x^8 * y^4 * (-1 - 3 * y^4 + 30 * y^8) - \n"
+//                              "   12 * x^4 * y^2 * (-3 + 14 * y^4 - 83 * y^8 + 76 * y^12) ) ) / (1 + 4 * x^4 * y^2 + \n"
+//                              "  y^4 )^5 ",3);
 //    gsFunctionExpr<> laplace ("0",3);
 //    gsFunctionExpr<> solVal("x",3);
 //    gsFunctionExpr<>sol1der ("1",
@@ -86,6 +94,60 @@ int main(int argc, char *argv[])
 //                             "0",
 //                             "0",
 //                             "0", 3);
+
+
+// ==============================================================================================================================================
+
+
+// ==============================================================================================================================================
+/*
+ *  BIQUADRATIC SURFACE (u, v, u^2 * v^2)
+ */
+
+
+//    gsFunctionExpr<> source  ("(1 / ( (1 + 4 * x^4 * y^2 + \n"
+//                              "  4 * x^2 * y^4 )^5 ) ) * 8 * (3 - 60 * x^2 * y^4 + 3072 * x^20 * y^10 + \n"
+//                              "   15360 * x^18 * y^12 + 1024 * x^16 * y^8 * (3 + 5 * y^6) - \n"
+//                              "   4 * x^4 * y^2 * (27 + 16 * y^6) + 32 * x^8 * y^4 * (47 + 346 * y^6) + \n"
+//                              "   4 * x^6 * (-1 + 844 * y^6) + 256 * x^12 * (y^6 + 164 * y^12) + \n"
+//                              "   256 * x^14 * y^4 * (-1 + 40 * y^6 + 420 * y^12) + \n"
+//                              "   16 * x^10 * y^2 * (9 - 68 * y^6 + 640 * y^12) ) ",3);
+//    gsFunctionExpr<> laplace ("0",3);
+//    gsFunctionExpr<> solVal("x^4",3);
+//    gsFunctionExpr<>sol1der ("4*x^3",
+//                             "0",
+//                             "0",3);
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
+
+
+//    gsFunctionExpr<> source  ("(8 * (7680 * u^15 * v^12 + u * v^2 * (-9 + 26 * v^6) - 8 * u^9 * v^6 * (55 + 32 * v^6) - \n"
+//                              "   128 * u^13 * v^8 * (3 + 140 * v^6) + u^5 * (394 * v^4 - 712 * v^10) + \n"
+//                              "   u^3 * (-1 + 328 * v^6 - 120 * v^12) - \n"
+//                              "   4 * u^7 * v^2 * (-9 + 938 * v^6 + 32 * v^12) + \n"
+//                              "   64 * u^11 * v^4 * (-1 + 10 * v^6 + 48 * v^12) ) ) / (1 + 4 * u^4 * v^2 + 4 * u^2 * v^4)^5 ",3);
+//    gsFunctionExpr<> laplace ("0",3);
+//    gsFunctionExpr<> solVal("x",3);
+//    gsFunctionExpr<>sol1der ("1",
+//                             "0",
+//                             "0",3);
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
+
+
+// ==============================================================================================================================================
+/*
+ *  QUADRATIC SURFACE (u, v, u * v)
+ */
+
 
         gsFunctionExpr<> source  ("(8 * (3 * x^10 + 3 * (1 + y^2)^3 + 12 * x^2 * (1 + y^2)^2 * (1 + 5 y^2) + \n"
                               "   x^8 * (14 + 15 * y^2) + x^6 * (25 + 36 * y^2 + 5 * y^4) + \n"
@@ -101,6 +163,25 @@ int main(int argc, char *argv[])
                              "0",
                              "0",
                              "0", 3);
+
+
+//    gsFunctionExpr<> source  ("(4 * x * (1 - 15 * y^2 - 10 * y^4 + 6 * y^6 + x^4 * (1 + 15 * y^2) + \n"
+//                              "   x^2 * (2 - 35 * y^4))) / (1 + x^2 + y^2)^5 ",3);
+//    gsFunctionExpr<> laplace ("0",3);
+//    gsFunctionExpr<> solVal("x",3);
+//    gsFunctionExpr<>sol1der ("1",
+//                             "0",
+//                             "0",3);
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
+
+
+// ==============================================================================================================================================
+
 
 //    gsFunctionExpr<> source  ("0",3);
 //
@@ -242,7 +323,18 @@ int main(int argc, char *argv[])
             string_geo = "KirchhoffLoveGeo/bentSquareSurface.xml";
             numDegree = 1; // 2 == degree 3
             break;
-
+        case 8:
+            string_geo = "KirchhoffLoveGeo/surface_fourPatch.xml";
+            numDegree = 1; // 2 == degree 3
+            break;
+        case 9:
+            string_geo = "KirchhoffLoveGeo/singlePatch_quadraticParamSurf.xml";
+            numDegree = 1; // 2 == degree 3
+            break;
+        case 10:
+            string_geo = "KirchhoffLoveGeo/singlePatch_firstCoordSquared.xml";
+            numDegree = 1; // 2 == degree 3
+            break;
 
         default:
             gsInfo << "No geometry is used! \n";

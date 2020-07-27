@@ -761,7 +761,7 @@ public:
                 gsMultiPatch<> temp_mp_g1 = g1BasisVector[i];
                 for (size_t bf = 0; bf < temp_mp_g1.nPatches(); bf++)
                 {
-                    gsInfo << "coeffbf: " << temp_mp_g1.patch(bf).coefs().transpose() << "\n";
+//                    gsInfo << "coeffbf: " << temp_mp_g1.patch(bf).coefs().transpose() << "\n";
                     gsMatrix<> coef_bf;
                     coef_bf.setZero(temp_mp_g1.patch(bf).coefs().dim().first,1);
                     for (size_t lambda = 0; lambda < temp_mp_g1.nPatches(); lambda++)
