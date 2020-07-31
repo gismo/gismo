@@ -142,7 +142,7 @@ namespace internal
 #include <gsAssembler/gsAssembler.h>
 #include <gsAssembler/gsGenericAssembler.h>
 #include <gsAssembler/gsPoissonAssembler.h>
-#include <gsAssembler/gsLinpLapAssembler.h>
+#include <gsAssembler/gsLinPLapAssembler.h>
 #include <gsAssembler/gsCDRAssembler.h>
 #include <gsAssembler/gsHeatEquation.h>
 

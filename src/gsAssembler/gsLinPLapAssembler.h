@@ -103,7 +103,7 @@ namespace gismo
 			m_options.setInt("DirichletStrategy", dirStrategy);
 			m_options.setInt("InterfaceStrategy", intStrategy);
 
-			typename gsPde<T>::Ptr pde(new gsLinpLapPde<T>(patches, bconditions, rhs, eps, p, w))
+			typename gsPde<T>::Ptr pde(new gsLinpLapPde<T>(patches, bconditions, rhs, eps, p, w));
 			Base::initialize(pde, basis, m_options);
 		}
 
