@@ -126,6 +126,7 @@ namespace internal
 #include <gsPde/gsConvDiffRePde.h>
 #include <gsPde/gsEulerBernoulliBeamPde.h>
 #include <gsPde/gsPoissonPde.h>
+#include <gsPde/gsLinpLapPde.h>
 #include <gsPde/gsStokesPde.h>
 //#include <gsPde/gsNewtonIterator.h>
 
@@ -141,6 +142,7 @@ namespace internal
 #include <gsAssembler/gsAssembler.h>
 #include <gsAssembler/gsGenericAssembler.h>
 #include <gsAssembler/gsPoissonAssembler.h>
+#include <gsAssembler/gsLinpLapAssembler.h>
 #include <gsAssembler/gsCDRAssembler.h>
 #include <gsAssembler/gsHeatEquation.h>
 
