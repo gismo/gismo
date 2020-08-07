@@ -1584,8 +1584,8 @@ int main(int argc, char *argv[])
         mp.embed(3);
         E_modulus = 1e0;
         thickness = 1e0;
-        PoissonRatio = 0.0;
-        // PoissonRatio = 0.499;
+        // PoissonRatio = 0.0;
+        PoissonRatio = 0.4999;
     }
     //! [Read input file]
 
@@ -1598,6 +1598,7 @@ int main(int argc, char *argv[])
         mp.uniformRefine();
 
     mp_def = mp;
+    gsWriteParaview(mp,"mp",1000,true);
 
     //! [Refinement]
     gsMultiBasis<> dbasis(mp);
@@ -1614,10 +1615,30 @@ int main(int argc, char *argv[])
     neu << 0, 0, 0;
 
     gsFunctionExpr<> displ("1",3);
+    gsConstantFunction<> displx(0.09317696,3);
+
 
     gsConstantFunction<> neuData(neu,3);
 
     real_t pressure = 0.0;
+    if (testCase == -1)
+    {
+        for (index_t i=0; i!=3; ++i)
+        {
+            bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, i ); // unknown 0 - x
+            bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, i ); // unknown 1 - y
+            bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+            bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+        }
+        // tmp << 0,0,0;
+        tmp << 0,0,-1;
+
+        // Point loads
+        // gsVector<> point(2);
+        // gsVector<> load (3);
+        // point<< 0.5, 0.5 ; load << 0.0, 1.0, 0.0 ;
+        // pLoads.addLoad(point, load, 0 );
+    }
     if (testCase == 1)
     {
         for (index_t i=0; i!=3; ++i)
@@ -1725,10 +1746,23 @@ int main(int argc, char *argv[])
 
     else if (testCase == 10)
     {
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, 0 ); // unknown 0 - x
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, 1 ); // unknown 1 - y
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, 2 ); // unknown 2 - z
-        bc.addCondition(boundary::east, condition_type::dirichlet, &displ, 0, false, 2 ); // unknown 0 - x
+        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, 0 ); // unknown 0 - x
+        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, 1 ); // unknown 1 - y
+        // bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, 2 ); // unknown 2 - z
+        // bc.addCondition(boundary::east, condition_type::dirichlet, &displ, 0, false, 2 ); // unknown 0 - x
+
+        for (index_t i=0; i!=3; ++i)
+        {
+            bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+        }
+        bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, 2 ); // unknown 2 - z
+        bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, 2 ); // unknown 2 - z
+
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ,false,1);
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ,false,2);
+        // bc.addCondition(boundary::east, condition_type::collapsed, 0, 0 ,false,0);
+        bc.addCondition(boundary::east, condition_type::dirichlet, &displx, 0 ,false,0);
+
 
         // Surface forces
         tmp.setZero();
@@ -1802,9 +1836,8 @@ int main(int argc, char *argv[])
     // u.setInterfaceCont(0); // todo: 1 (smooth basis)
     // u.addBc( bc.get("Dirichlet") ); // (!) must be called only once
 
+    gsDebugVar(bc);
     u.setup(bc, dirichlet::interpolation, 0);
-
-    gsDebug<<u.mapper()<<"\n";
 
     // Solution vector and solution variable
     gsMatrix<> random;
@@ -1883,6 +1916,11 @@ int main(int argc, char *argv[])
     auto E_f_der2 = - (flatdot2( deriv2(u), var1(u,defG).tr(), M  ).symmetrize() + var2(u,u,defG, M ));
 
     auto F        = ff;
+
+    auto That   = cartcon(G);
+    auto Ttilde = cartcov(G);
+    auto E_m_plot = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) * That; //[checked]
+    auto S_m_plot = E_m_plot * reshape(mm,3,3) * Ttilde; //[checked]
 
 
     gsVector<> pt(2); pt.setConstant(0.25);
@@ -1967,7 +2005,7 @@ int main(int argc, char *argv[])
     // gsDebugVar(A.matrix().toDense());
     // gsDebugVar(A.matrix().rows());
     // gsDebugVar(A.matrix().cols());
-    gsDebugVar(A.rhs().transpose());
+    // gsDebugVar(A.rhs().transpose());
     gsVector<> Force = A.rhs();
 
 
@@ -2010,13 +2048,15 @@ int main(int argc, char *argv[])
     // evaluateFunction(ev, N_der * E_m_der.tr(), pt); // evaluates an expression on a point
 
     gsVector<> pt3(2);
-    pt3.setConstant(0.5);
+    pt3.setConstant(0.25);
     gsDebug<<ev.integral(meas(G))<<"\n";
     gsDebug<<ev.integral(meas(defG))<<"\n";
     gsDebug<<ev.eval(G,pt3)<<"\n";
     gsDebug<<ev.eval(defG,pt3)<<"\n";
 
-
+    ev.options().setInt("plot.npts", 5000);
+    ev.writeParaview(S_m_plot,defG,"stress");
+    gsDebug<<"Stresses\n"<<ev.eval(E_m_plot,pt3)<<"\n";
 
     // ! [Solve linear problem]
 
