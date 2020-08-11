@@ -635,8 +635,10 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
 
         const int unk = iter->unknown();
 
-        const int patchIdx   = iter->patch();
+        const size_t patchIdx   = iter->patch();
         const gsBasis<T> & basis = (m_bases[unk])[patchIdx];
+
+
 
         GISMO_ASSERT(iter_dir->patch() == patchIdx && iter_dir->side().index() == iter->side().index(),
                      "Given Dirichlet boundary edge does not match the neumann edge."

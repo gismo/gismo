@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include <gismo.h>
 
 namespace gismo
 {
@@ -40,8 +41,8 @@ public:
         actives << 0, 1, 2, 3, 4, 5, 6;
         numActive = actives.rows();
 
-        basisData.setZero(49, md.points.cols());
-        rhsVals.setZero(7, md.points.cols());
+        basisData.setZero(numActive * numActive, md.points.cols());
+        rhsVals.setZero(numActive, md.points.cols());
 
         gsGeometry<> & FR = mp.patch(0);
         gsGeometry<> & FL = mp.patch(1);
@@ -217,7 +218,7 @@ public:
 
         // Initialize local matrix/rhs
             localMat.setZero(numActive, numActive);
-            localRhs.setZero(numActive, rhsVals.rows() ); //multiple right-hand sides
+            localRhs.setZero(numActive, 1 ); //multiple right-hand sides
     }
 
 
@@ -227,9 +228,9 @@ public:
                              gsMatrix<> sol)
     {
         md.points = quNodes;
-        actives.setZero(4, 1);
-        actives << 0, 1, 2, 3;
-        numActive = actives.rows();
+        activesBeta.setZero(4, 1);
+        activesBeta << 0, 1, 2, 3;
+        numActiveBeta = activesBeta.rows();
 
         gsMatrix<> ones(1, md.points.cols());
         ones.setOnes();
@@ -247,8 +248,8 @@ public:
         gsMatrix<> lamB = ones / 100000000;
 
 
-        basisDataBeta.setZero(16, md.points.cols());
-        rhsValsBeta.setZero(4, md.points.cols());
+        basisDataBeta.setZero(numActiveBeta * numActiveBeta, md.points.cols());
+        rhsValsBeta.setZero(numActiveBeta, md.points.cols());
 
 
         // Set Matrix 4x4 values
@@ -303,25 +304,26 @@ public:
 
         rhsValsBeta.row(3) = 2 * beta.cwiseProduct(md.points).cwiseProduct(alpha_R);
 
-        // Initialize local matrix/rhs
-        localMatBeta.setZero(numActive, numActive);
-        localRhsBeta.setZero(numActive, rhsValsBeta.rows() ); //multiple right-hand sides
+        // Initialize local matrix/rhs for beta
+        localMatBeta.setZero(numActiveBeta, numActiveBeta);
+        localRhsBeta.setZero(numActiveBeta, 1 ); //multiple right-hand sides
     }
 
 
     inline void assemble(gsDomainIterator<T>    & element,
                          const gsVector<T>      & quWeights)
     {
+
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply weight by the geometry measure
             const T weight = quWeights[k];
 
-            for(index_t i = 0; i < 7; i++)
+            for(index_t i = 0; i < numActive; i++)
             {
                 localRhs(i, 0) += weight * rhsVals(i,k);
 
-                for(index_t j = 0; j < 7; j++)
+                for(index_t j = 0; j < numActive; j++)
                 {
                     localMat(i, j) += weight * basisData(i*7 + j, k);
                 }
@@ -339,13 +341,13 @@ public:
             // Multiply weight by the geometry measure
             const T weight = quWeights[k];
 
-            for(index_t i = 0; i < 4; i++)
+            for(index_t i = 0; i < numActiveBeta; i++)
             {
                 localRhsBeta(i, 0) += weight * rhsValsBeta(i,k);
 
-                for(index_t j = 0; j < 4; j++)
+                for(index_t j = 0; j < numActiveBeta; j++)
                 {
-                    localMatBeta(i, j) += weight * basisDataBeta(i*4 + j, k);
+                    localMatBeta(i, j) += weight * basisDataBeta(i*numActiveBeta + j, k);
                 }
             }
         }
@@ -371,7 +373,7 @@ public:
         gsMatrix<unsigned> actives_temp;
 
         // Map patch-local DoFs to global DoFs
-        system.mapColIndices(actives, 0, actives_temp);
+        system.mapColIndices(activesBeta, 0, actives_temp);
         // Add contributions to the system matrix and right-hand side
         system.push(localMatBeta, localRhsBeta, actives_temp, eliminatedDofs, 0, 0);
 
@@ -379,9 +381,12 @@ public:
 
 protected:
     gsMatrix<unsigned> actives;
+    gsMatrix<unsigned> activesBeta;
     gsMatrix<T> basisData;
     gsMatrix<T> basisDataBeta;
     index_t numActive;
+    index_t numActiveBeta;
+
 
 protected:
     // Local values of the right hand side

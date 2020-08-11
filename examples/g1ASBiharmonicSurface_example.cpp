@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 //    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
 //    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
 //                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
-//                             "(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
+//                             "0",3);
 //    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
 //                             "-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
 //                             "0",
@@ -59,8 +59,8 @@ int main(int argc, char *argv[])
 //
 //    gsFunctionExpr<> solVal("(2 - x) * (2 - x) * x * x * (2 - y) * (2 - y) * y * y + z",3);
 //
-//    gsFunctionExpr<>sol1der ("(2 - x) * (2 - x) * 2 * x * (2 - y) * (2 - y) * y * y - 2 * (2 - x) * x * x * (2 - y) * (2 - y) * y * y +z",
-//                             "(2 - y) * (2 - y) * 2 * y * (2 - x) * (2 - x) * x * x - 2 * (2 - y) * y * y * (2 - x) * (2 - x) * x * x +z",
+//    gsFunctionExpr<>sol1der ("(2 - x) * (2 - x) * 2 * x * (2 - y) * (2 - y) * y * y - 2 * (2 - x) * x * x * (2 - y) * (2 - y) * y * y + z",
+//                             "(2 - y) * (2 - y) * 2 * y * (2 - x) * (2 - x) * x * x - 2 * (2 - y) * y * y * (2 - x) * (2 - x) * x * x + z",
 //                             "1",3);
 //
 //    gsFunctionExpr<>sol2der ("0",

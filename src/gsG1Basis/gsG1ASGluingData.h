@@ -135,9 +135,7 @@ protected:
     {
         mSys.reserve(49, 1); // Reserve for the matrix 7x7 values
 
-        dirichletDofs.setZero
-                         (mSys.colMapper(0)
-        .boundarySize(),1);
+        dirichletDofs.setZero(mSys.colMapper(0).boundarySize(),1);
 
         // Assemble volume integrals
         Visitor visitor;
@@ -149,9 +147,9 @@ protected:
 
     void assembleBeta()
     {
-        mSysBeta.reserve(16, 1); // Reserve for the matrix 7x7 values
+        mSysBeta.reserve(16, 1); // Reserve for the matrix 4x4 values
 
-        dirichletDofsBeta.setZero(mSysBeta.colMapper(0).boundarySize());
+        dirichletDofsBeta.setZero(mSysBeta.colMapper(0).boundarySize(), 1);
 
 
         // Assemble volume integrals

@@ -92,12 +92,7 @@ public:
         geo.computeMap(md);
 
         // Evaluate right-hand side at the geometry points
-//        rhs_ptr->eval_into(md.values[0], rhsVals); // Dim: 1 X NumPts
         rhs_ptr->eval_into(md.values[0], rhsVals); // Dim: 1 X NumPts
-
-//        gsInfo << "md.points: " << md.values[0].transpose() << "\n";
-//        gsInfo << "rhsVals: " << rhsVals.transpose() << "\n";
-
 
 
         if(md.dim.first +1 == md.dim.second)

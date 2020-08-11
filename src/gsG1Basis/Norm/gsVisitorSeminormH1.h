@@ -92,7 +92,7 @@ public:
             T weight = quWeights[k];
 
             // Surface error computation -> if (paramDim + 1 == targetDim)
-            if( Jk.dim().second +1 == Jk.dim().first )
+            if( Jk.dim().second + 1 == Jk.dim().first )
             {
                 gsMatrix<T> G = Jk.transpose() * Jk;
                 gsMatrix<T> G_inv = G.cramerInverse();

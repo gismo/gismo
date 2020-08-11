@@ -754,6 +754,14 @@ public:
 
         }
 
+//        if (this->kindOfVertex() != 0 && auxGeom.size() == 2)
+//        {
+//            gsField<> temp_field(auxGeom[0].getPatch(),auxGeom[0].getG1Basis().patch(1));
+//            gsWriteParaview(temp_field,"test_bf",5000);
+//            gsField<> temp_field2(auxGeom[1].getPatch(),auxGeom[1].getG1Basis().patch(2));
+//            gsWriteParaview(temp_field2,"test_bf2",5000);
+//        }
+
 
         if (this->kindOfVertex() != 0)
             for (size_t i = 0; i < auxGeom.size(); i++)
