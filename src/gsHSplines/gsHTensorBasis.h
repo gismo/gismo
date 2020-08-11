@@ -476,6 +476,9 @@ public:
     // Look at gsBasis.h for the documentation of this function
     virtual gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const;
 
+    virtual index_t functionAtCorner(boxCorner const & c) const;
+
+
     // Look at gsBasis.h for the documentation of this function
     // /// \todo impl. evalAllDers_into
     //void evalAllDers_into(const gsMatrix<T> & u, int n,
