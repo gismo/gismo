@@ -399,6 +399,14 @@ public:
         }
     }
 
+    virtual void anchor_into(index_t i, gsMatrix<T> & result) const
+    {
+        index_t lvl = levelOf(i);
+        index_t ind = flatTensorIndexOf(i);
+
+        m_bases[lvl]->anchor_into(ind,result);
+    }
+
     virtual void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const;
     void connectivity(const gsMatrix<T> & nodes, int level, gsMesh<T> & mesh) const;
 
