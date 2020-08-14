@@ -290,8 +290,9 @@ public:
     inline void setFlag() const {/* gsInfo<<"gsNullExpr emtpy flag\n"; */ }
     void parse(gsSortedVector<const gsFunctionSet<T>*> &) const { }
 
-    const gsFeVariable<T> & rowVar() const { GISMO_ERROR("gsNullExpr"); }
-    const gsFeVariable<T> & colVar() const { GISMO_ERROR("gsNullExpr"); }
+    const gsFeVariable<T> & rowVar() const {return gsNullExpr<T>::get();}
+    const gsFeVariable<T> & colVar() const {return gsNullExpr<T>::get();}
+
     static bool rowSpan() {return false; }
     static bool colSpan() {return false;}
 
@@ -1641,8 +1642,11 @@ public:
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return 1; }
 
-    static bool rowSpan() {GISMO_ERROR("onormal");}
-    static bool colSpan() {GISMO_ERROR("onormal");}
+    const gsFeSpace<T> & rowVar() const {return gsNullExpr<T>::get();}
+    const gsFeSpace<T> & colVar() const {return gsNullExpr<T>::get();}
+
+    static constexpr bool rowSpan() {return false;}
+    static bool colSpan() {return false;}
 
     void setFlag() const { _G.data().flags |= NEED_OUTER_NORMAL; }
 
@@ -1659,7 +1663,6 @@ public:
 
     void print(std::ostream &os) const { os << "nv("; _G.print(os); os <<")"; }
 };
-
 /**
    Expression for the tangent vector of a geometry map. This
    expression is valid only at the boundaries of a geometric patch
@@ -2219,7 +2222,8 @@ public:
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.rows()<<" in * operation:\n"
                      << _u <<" times \n" << _v );
         // Note: a * b * c --> (a*b).eval()*c
-        tmp = _u.eval(k) * _v.eval(k); return tmp; // assume result not scalarvalued
+        tmp = _u.eval(k) * _v.eval(k);
+        return tmp; // assume result not scalarvalued
         //return ( _u.eval(k) * _v.eval(k) );
     }
 

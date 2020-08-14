@@ -80,10 +80,12 @@ int main(int argc, char* argv[])
     gsInfo << dbasis.basis(0) << "\n";
 
 
-    //gsFunction<> *boundCond;
-    //gsFunction<> test(1);
-    //boundCond = &test;
+    gsConstantFunction<> fun(1,2);
+    // gsFunctionExpr<> fun("sin(x)",2);
+
     gsBoundaryConditions<> bc;
+    gsBoundaryConditions<> bcEps;
+    // bc.addCondition(boundary::north, condition_type::dirichlet, &fun, 0);
     bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0);
     bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0);
     bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0);
@@ -94,11 +96,17 @@ int main(int argc, char* argv[])
     bc.addCondition(boundary::west, condition_type::dirichlet, 0, 1);
     gsInfo << "Boundary conditions:\n" << bc << "\n";
 
+    bcEps.addCondition(boundary::north, condition_type::dirichlet, 0, 0);
+    bcEps.addCondition(boundary::east, condition_type::dirichlet, 0, 0);
+    bcEps.addCondition(boundary::south, condition_type::dirichlet, 0, 0);
+    bcEps.addCondition(boundary::west, condition_type::dirichlet, 0, 0);
+
+
     //! [Refinement]
 
     //! [Problem setup]
-    gsExprAssembler<> A(2, 2);
-    gsExprAssembler<> EpsA(1,1);
+    gsExprAssembler<> A(2, 2);                              // velocity assembler
+    gsExprAssembler<> EpsA(1,1);                            // strain assembler
     gsOptionList opt = gsAssembler<>::defaultOptions();
     //opt.setInt("DirichletValues", dirichlet::l2projection);
     opt.setInt("DirichletStrategy", dirichlet::nitsche);
@@ -115,6 +123,9 @@ int main(int argc, char* argv[])
     typedef gsExprAssembler<>::variable    variable;
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
+
+    typedef typename gsExprHelper<real_t>::nullExpr    nullExpr;
+
 
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
@@ -134,17 +145,39 @@ int main(int argc, char* argv[])
 
     gsFunctionExpr<> firstComp("1","0",2);
     variable firstCoeff = A.getCoeff(firstComp, G);
+    variable firstCoeff_Eps = EpsA.getCoeff(firstComp, EpsG);
     gsInfo << "firstcomp: " << firstComp << "\n";
     gsFunctionExpr<> secondComp("0","1",2);
     variable secondCoeff = A.getCoeff(secondComp, G);
+    variable secondCoeff_Eps = EpsA.getCoeff(secondComp, EpsG);
     gsInfo << "secondcomp: " << secondComp << "\n";
 
     EpsA.initSystem();
     //EpsA.assemble(eps * eps.tr() * meas(EpsG));
     //gsMatrix<> MassEps = EpsA.matrix();
     //gsInfo << "MassEps: \n" << MassEps << "\n";
+
+
+    gsVector<> pt(2);
+    pt<<0,0.5;
+    // pt.setConstant(0.25);
+
     EpsA.initSystem();
-    EpsA.assemble(eps * eps.tr() * (nv(EpsG)*firstCoeff) * nv(EpsG).norm());
+    variable fff = EpsA.getCoeff(f, EpsG);
+
+    // // EpsA.assemble(eps * eps.tr() * (nv(EpsG)*firstCoeff) * nv(EpsG).norm());
+
+    // gsDebug<<"(firstCoeff) = \n"<<evEps.eval(firstCoeff_Eps,pt)<<"\n";
+    // gsDebug<<"(nv(EpsG)) = \n"<<evEps.eval(nv(EpsG).normalized(),pt)<<"\n";
+    // gsDebug<<"(nv(EpsG)*firstCoeff) = \n"<<evEps.eval(nv(EpsG).tr()*firstCoeff_Eps,pt)<<"\n";
+
+    EpsA.assembleLhsRhsBc(eps * eps.tr()* (nv(EpsG).tr()*firstCoeff_Eps) * nv(EpsG).norm(),
+                            0*eps,
+                            bcEps.allConditions());
+
+    // gsDebugVar(EpsA.matrix().toDense());
+
+    // EpsA.matrix
 
     u.setInterfaceCont(0); // todo: 1 (smooth basis)
     u.addBc(bc.get("Dirichlet",0)); // (!) must be called only once
@@ -159,7 +192,10 @@ int main(int argc, char* argv[])
     //Sxx
     A.initSystem();
     real_t a = 2.0;
-    A.assemble((igrad(u,G)*firstCoeff)*(igrad(u,G)*firstCoeff).tr()*meas(G));
+
+    auto Sxx = (igrad(u,G)*firstCoeff)*(igrad(u,G)*firstCoeff).tr()*meas(G);
+    auto Syy = (igrad(u,G)*secondCoeff)*(igrad(u,G)*secondCoeff).tr()*meas(G);
+    A.assemble(Sxx);
     //A.assemble((igrad(u,G)*firstCoeff)*(igrad(u,G)*firstCoeff).tr()*meas(G));//will sum this to precedent values
     gsMatrix<> Temp;
     gsMatrix<> Temp2;
@@ -167,13 +203,15 @@ int main(int argc, char* argv[])
     //gsInfo << "Temp: " << Temp.toDense() << "\n";
     //Syy
     A.initSystem();
-    A.assemble((igrad(u,G)*secondCoeff)*(igrad(u,G)*secondCoeff).tr()*meas(G));
+    A.assemble(Syy);
     Temp2 = A.matrix();
 
     A.initSystem();
     A.assemble(igrad(u,G)*igrad(u,G).tr()*meas(G));
     gsInfo << "Diff: " << (Temp+Temp2-A.matrix().toDense()).norm() << "\n";
 
+    gsExprEvaluator<> evA(A);
+    // gsDebug<<"\n"<<evA.eval(Sxx,pt)<<"\n";
 
     //Ix
     A.initSystem();
@@ -200,7 +238,7 @@ int main(int argc, char* argv[])
 
 
     gsSparseSolver<>::CGDiagonal solver;
-    
+
     gsInfo << "Number of degrees of freedom: " << A.numDofs() << "\n";
 
     A.assemble(u * u.tr() * meas(G));
@@ -223,7 +261,7 @@ int main(int argc, char* argv[])
     if (plot){
     gsInfo << "Plotting in Paraview...\n";
 
-    
+
     ev.options().setSwitch("plot.elements", true);
     ev.writeParaview(u_sol, G, "solutionU");
     ev.writeParaview(v_sol, G, "solutionV");
