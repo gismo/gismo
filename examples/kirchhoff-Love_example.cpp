@@ -20,6 +20,43 @@
 namespace gismo{
 namespace expr{
 
+class unitVec_expr : public _expr<unitVec_expr >
+{
+public:
+    typedef real_t Scalar;
+private:
+    index_t _dim;
+    index_t _index;
+
+public:
+    unitVec_expr(const index_t index, const index_t dim) : _index(index), _dim(dim) { }
+
+public:
+    enum{ Space = 0 };
+
+    gsMatrix<Scalar> eval(const index_t) const
+    {
+        gsMatrix<Scalar> vec = gsMatrix<Scalar>::Zero(_dim,1);
+        // vec.setZero();
+        vec(_index,0) = 1;
+        return vec;
+    }
+
+    index_t rows() const { return _dim; }
+    index_t cols() const { return  1; }
+    void setFlag() const { }
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & ) const {  }
+
+    static constexpr bool rowSpan() {return false;}
+    static bool colSpan() {return false;}
+
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+
+    void print(std::ostream &os) const { os << "uv("<<_dim <<")";}
+};
+
+
 // Comments for var1:
 // - TODO: dimensionm indep. later on
 template<class E>
@@ -960,6 +997,9 @@ public:
     void print(std::ostream &os) const { os << "cartconinv("; _G.print(os); os <<")"; }
 };
 
+EIGEN_STRONG_INLINE
+unitVec_expr uv(const index_t index, const index_t dim) { return unitVec_expr(index,dim); }
+
 template<class E> EIGEN_STRONG_INLINE
 var1_expr<E> var1(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return var1_expr<E>(u, G); }
 
@@ -1578,8 +1618,8 @@ int main(int argc, char *argv[])
         mp.addAutoBoundaries();
         mp.embed(3);
         E_modulus = 1.0;
-        thickness = 1.0e-1;
-        PoissonRatio = 0.499;
+        thickness = 1.0;
+        PoissonRatio = 00;
     }
     else if (testCase == 2  || testCase == 3)
     {
@@ -2098,6 +2138,10 @@ int main(int argc, char *argv[])
 
         // gsFileManager::open("solution.pvd");
     }
+
+    u_sol.setSolutionVector(solVector);
+    gsDebug<<ev.integral(((u_sol).tr() * gismo::expr::uv(2,3))*meas(G))<<"\n";
+
 
     return EXIT_SUCCESS;
 

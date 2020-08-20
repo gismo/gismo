@@ -1114,7 +1114,7 @@ void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsVector<T> pt);
 template <class T>
 void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsMatrix<T> pt);
 template <class T>
-void constructSolution(gsExprAssembler<T> assembler, gsMultiPatch<T> mp_def);
+void constructSolution(gsExprAssembler<T> assembler, gsMultiPatch<T> mpL_def);
 
 // To Do:
 // * struct for material model
@@ -1691,8 +1691,7 @@ int main(int argc, char *argv[])
     mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
     mp.addAutoBoundaries();
     mp.embed(3);
-    E_modulus = 1.0;
-    thickness = 1.0;
+
 
     // p-refine
     if (numElevate!=0)
@@ -1737,9 +1736,6 @@ int main(int argc, char *argv[])
     real_t load = 1.0;
     real_t D = E_modulus * math::pow(thickness,3) / ( 12 * ( 1- math::pow(PoissonRatio,2) ) );
 
-    gsFunctionExpr<> u_ex( "0","0","w:= 0; for (u := 1; u < 100; u += 2) { for (v := 1; v < 100; v += 2) { w += -16.0 * " + std::to_string(load) + " / ( pi^6*" + std::to_string(D) + " ) * 1 / (v * u * ( v^2 + u^2 )^2 ) * sin( v * pi * x) * sin(u * pi * y) } }",3);
-    gsFunctionExpr<> z_ex( "0","0","w:= 0; for (u := 1; u < 100; u += 2) { for (v := 1; v < 100; v += 2) { w += 16.0 * 1 / ( pi^6*" + std::to_string(D) + " ) * 1 / (v * u * ( v^2 + u^2 )^2 ) * sin( v * pi * x) * sin(u * pi * y) } }",3);
-
     gsConstantFunction<> neuData(neu,3);
 
     for (index_t i=0; i!=3; ++i)
@@ -1778,14 +1774,6 @@ int main(int argc, char *argv[])
     geometryMap defL = exL.getMap(mpL_def);
     geometryMap defH = exH.getMap(mpH_def);
     geometryMap defH0 = exH0.getMap(mpH_def);
-
-    variable primal_exL = evL.getVariable(u_ex, mapL);
-    variable primal_exH = evH.getVariable(u_ex, mapH);
-    variable primal_exH0 = evH0.getVariable(u_ex, mapH0);
-
-    variable dual_exL = evL.getVariable(z_ex, mapL);
-    variable dual_exH = evH.getVariable(z_ex, mapH);
-    variable dual_exH0 = evH0.getVariable(z_ex, mapH0);
 
     // Set the discretization spaces
     space uL = exL.getSpace(basisL, 3); //primal space on L
@@ -1959,29 +1947,80 @@ int main(int argc, char *argv[])
         exL.initSystem(true);
         gsInfo << "Assembling primal, size ="<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
 
-        geometryMap G_L = exL.getMap(mpL);
         exL.assemble(
                 // (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
-                (0*N_derL * (E_m_derL).tr() + M_derL * (E_f_derL).tr()) * meas(G_L)
+                (N_derL * (E_m_derL).tr() + M_derL * (E_f_derL).tr()) * meas(mapL)
                 ,
-                uL * F_L  * meas(G_L)
+                uL * F_L  * meas(mapL)
             );
         gsInfo << "done." << "\n";
 
         // Solve system
-        gsInfo << "Solving primal, size ="<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
+        gsInfo << "Solving primal (linear), size ="<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
         solver.compute(exL.matrix());
         solVectorL = solver.solve(exL.rhs());
 
+        gsInfo << "done." << " --> \n";
+
+        gsInfo << "Solving primal (nonlinear), size ="<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
+        gsMatrix<> cc;
+        for ( size_t k =0; k!=mpL_def.nPatches(); ++k) // Deform the geometry
+        {
+            // // extract deformed geometry
+            uL_sol.extract(cc, k);
+            mpL_def.patch(k).coefs() += cc;  // defG points to mpL_def, therefore updated
+        }
+
+        index_t itMax = 100;
+        real_t tol = 1e-8;
+        real_t residual = exL.rhs().norm();
+        real_t residual0 = residual;
+        real_t residualOld = residual;
+        for (index_t it = 0; it != itMax; ++it)
+        {
+            exL.initSystem();
+            // assemble system
+            exL.assemble(
+                ( N_derL * E_m_derL.tr() + E_m_der2_L + M_derL * E_f_derL.tr() - E_f_der2_L ) * meas(mapL)
+                , uL * F_L * meas(mapL) - ( ( N_L * E_m_derL.tr() - M_L * E_f_derL.tr() ) * meas(mapL) ).tr()
+                );
+            solver.compute( exL.matrix() );
+            gsMatrix<> updateVectorL = solver.solve(exL.rhs()); // this is the UPDATE
+            solVectorL += updateVectorL;
+            residual = exL.rhs().norm();
+
+            gsInfo<<"Iteration: "<< it
+                   <<", residue: "<< residual
+                   <<", update norm: "<<updateVectorL.norm()
+                   <<", log(Ri/R0): "<< math::log10(residualOld/residual0)
+                   <<", log(Ri+1/R0): "<< math::log10(residual/residual0)
+                   <<"\n";
+
+            residualOld = residual;
+
+
+            // update deformed patch
+            uL_sol.setSolutionVector(updateVectorL);
+            for ( size_t k =0; k!=mpL_def.nPatches(); ++k) // Deform the geometry
+            {
+                // // extract deformed geometry
+                uL_sol.extract(cc, k);
+                mpL_def.patch(k).coefs() += cc;  // defG points to mpL_def, therefore updated
+            }
+
+
+            if (updateVectorL.norm() < tol)
+                break;
+        }
+
         gsInfo << "done." << " --> ";
-        gsInfo <<"Primal error: \t"<<evL.integral(((primal_exL - uL_sol).norm()*meas(mapL)))<<"\n";
 
 
         // Assemble matrix and rhs
         exL.initVector(1,false);
         gsInfo << "Assembling dual (low), size = "<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
         // NOTE, we assume that the matrix in space uL is equal to that in space zL, hence it is not re-assembled!
-        exL.assemble( uL * gismo::expr::uv(2,3) * meas(G_L) );
+        exL.assemble( uL * gismo::expr::uv(2,3) * meas(mapL) );
         gsInfo << "done." << "\n";
 
         // Solve system
@@ -1990,32 +2029,6 @@ int main(int argc, char *argv[])
         solVectorDualL = solver.solve(exL.rhs());
 
         gsInfo << "done." << " --> ";
-        gsInfo <<"Dual L error: \t"<<evL.integral(((dual_exL - zL_sol).norm()*meas(mapL)))<<"\n";
-
-        space zH = exH.getSpace(basisH, 3); // dual space on H
-        zH.setInterfaceCont(0); //
-        zH.addBc( bc.get("Dirichlet") ); //
-        // Assemble matrix and rhs
-        exH.initSystem(true);
-        gsInfo << "Assembling dual (high), size = "<<exH.matrix().rows()<<","<<exH.matrix().cols()<<"... "<< std::flush;
-
-        geometryMap G_H = exH.getMap(mpH);
-        exH.assemble(
-                // (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
-                (0*N_derH * (E_m_derH).tr() + M_derH * (E_f_derH).tr()) * meas(G_H)
-                ,
-                zH * gismo::expr::uv(2,3) * meas(G_H)
-            );
-        gsInfo << "done." << "\n";
-
-        // Solve system
-        gsInfo << "Solving dual (high), size = "<<exH.matrix().rows()<<","<<exH.matrix().cols()<<"... "<< std::flush;
-        solver.compute(exH.matrix());
-        solVectorDualH = solver.solve(exH.rhs());
-
-        zH_sol.setSolutionVector(solVectorDualH);
-        gsInfo << "done." << " --> ";
-        gsInfo <<"Dual H error: \t"<<evH.integral(((dual_exH - zH_sol).norm()*meas(mapH)))<<"\n";
 
         // --------------------------------------------------------------------------------------------------------------------------------- //
         // ---------------------------------------------------------Project quantities evaluated on basisL to basisH------------------------ //
@@ -2028,6 +2041,47 @@ int main(int argc, char *argv[])
         L2projector.projectVector(solVectorDualLp,solVectorDualLp);
         L2projector.projectVector(solVectorLp,solVectorLp);
 
+        solution zLp_sol = exH0.getSolution(zH0, solVectorDualLp);
+        solution uLp_sol = exH0.getSolution(zH0, solVectorLp);
+
+        // --------------------------------------------------------------------------------------------------------------------------------- //
+        // ---------------------------------------------------------Assemble and solve the higher-order dual system------------------------ //
+        // --------------------------------------------------------------------------------------------------------------------------------- //
+        for ( size_t k =0; k!=mpH.nPatches(); ++k) // Deform the geometry
+        {
+            // extract deformed geometry
+            uLp_sol.extract(cc, k);
+            mpH_def.patch(k).coefs() += cc;  // defG points to mpL_def, therefore updated
+        }
+        gsWriteParaview<>( mpH_def, "mpH_def", 1000, true);
+
+
+        space zH = exH.getSpace(basisH, 3); // dual space on H
+        zH.setInterfaceCont(0); //
+        zH.addBc( bc.get("Dirichlet") ); //
+        // Assemble matrix and rhs
+        exH.initSystem(true);
+        gsInfo << "Assembling dual (high), size = "<<exH.matrix().rows()<<","<<exH.matrix().cols()<<"... "<< std::flush;
+
+        exH.assemble(
+                // (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
+                // (N_derH * (E_m_derH).tr() + M_derH * (E_f_derH).tr()) * meas(mapH)
+                ( N_derH * E_m_derH.tr() + E_m_der2_H + M_derL * E_f_derH.tr() - E_f_der2_H ) * meas(mapL)
+                ,
+                zH * gismo::expr::uv(2,3) * meas(mapH)
+            );
+        gsInfo << "done." << "\n";
+
+        // Solve system
+        gsInfo << "Solving dual (high), size = "<<exH.matrix().rows()<<","<<exH.matrix().cols()<<"... "<< std::flush;
+        solver.compute(exH.matrix());
+        solVectorDualH = solver.solve(exH.rhs());
+
+        zH_sol.setSolutionVector(solVectorDualH);
+        gsInfo << "done." << " --> ";
+
+////////////////////////////////////////
+
         // Make new basis in the higher-order assembler
         space zH0 = exH0.getSpace(basisH,3);
         zH_sol.extractFull(solVectorDualH);
@@ -2035,8 +2089,6 @@ int main(int argc, char *argv[])
 
         // Assign solutions with this new basis
         solution zH_sol  = exH0.getSolution(zH0, solVectorDualH);
-        solution zLp_sol = exH0.getSolution(zH0, solVectorDualLp);
-        solution uLp_sol = exH0.getSolution(zH0, solVectorLp);
 
 
         gsInfo<<"done.\n";
@@ -2045,21 +2097,20 @@ int main(int argc, char *argv[])
         // ---------------------------------------------------------Computing DWR error estimate-------------------------------------------- //
         // --------------------------------------------------------------------------------------------------------------------------------- //
 
-        // Deform mps
-        gsMatrix<> cc;
-        for ( size_t k =0; k!=mpL.nPatches(); ++k) // Deform the geometry
-        {
-            // extract deformed geometry
-            uL_sol.extract(cc, k);
-            mpL_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
-        }
-        gsWriteParaview<>( mpL_def, "mpL_def", 1000, true);
+        // // Deform mps
+        // for ( size_t k =0; k!=mpL.nPatches(); ++k) // Deform the geometry
+        // {
+        //     // extract deformed geometry
+        //     uL_sol.extract(cc, k);
+        //     mpL_def.patch(k).coefs() += cc;  // defG points to mpL_def, therefore updated
+        // }
+        // gsWriteParaview<>( mpL_def, "mpL_def", 1000, true);
 
         for ( size_t k =0; k!=mpH.nPatches(); ++k) // Deform the geometry
         {
             // extract deformed geometry
             uLp_sol.extract(cc, k);
-            mpH_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
+            mpH_def.patch(k).coefs() += cc;  // defG points to mpL_def, therefore updated
         }
         gsWriteParaview<>( mpH_def, "mpH_def", 1000, true);
 
@@ -2101,10 +2152,6 @@ int main(int argc, char *argv[])
         // gsDebug<<"R = "<<res<<"\n";
 
         real_t approx = Fe;
-        real_t exact = evL.integral(((primal_exL - uL_sol).tr() * gismo::expr::uv(2,3))*meas(mapL));
-        gsDebug<<evL.integral(((primal_exL).tr() * gismo::expr::uv(2,3))*meas(mapL))<<"\n";
-        gsDebug<<"Exact = "<<exact<<"\n";
-        gsDebug<<"Efficiency = "<<approx/exact<<"\n";
 
 
 
@@ -2165,9 +2212,9 @@ int main(int argc, char *argv[])
         {
             // extract deformed geometry
             uL_sol.extract(cc, k);
-            mpL_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
+            mpL_def.patch(k).coefs() += cc;  // defG points to mpL_def, therefore updated
         }
-        gsWriteParaview<>( mpL_def, "mp_def", 1000, true);
+        gsWriteParaview<>( mpL_def, "mpL_def", 1000, true);
 
         gsMultiPatch<> deformation = mpL_def;
         for (index_t k = 0; k != mpL_def.nPatches(); ++k)
@@ -2177,7 +2224,6 @@ int main(int argc, char *argv[])
         gsInfo<<"Plotting in Paraview...\n";
         gsWriteParaview<>( solField, "solution", 1000, true);
 
-        evL.writeParaview( primal_exL   , mapL, "solution_exact");
         evL.writeParaview( zL_sol   , mapL, "solution_dualL");
 
         // ev.options().setSwitch("plot.elements", true);
