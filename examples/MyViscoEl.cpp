@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
     gsFunctionExpr<> f1("if ( (x<=7.5) and (x>=4.5) and (y<=7.5) and (y>=4.5), -sgn(x-6), 0)", 2);
     gsFunctionExpr<> f2("0", 2);
     //gsFunctionExpr<> f("0", 2);
-    
+
 
     gsInfo << "Source function for first velocity component: " << f1 << "\n";
     gsInfo << "Source function for second velocity component: " << f2 << "\n";
@@ -120,7 +120,7 @@ int main(int argc, char* argv[])
     opt.setInt("bdB", 1);
     //gsInfo << "Assembler " << opt;
     A.setOptions(opt);
-    
+
 
     //gsInfo << "Active options:\n" << A.options() << "\n";
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -165,14 +165,14 @@ int main(int argc, char* argv[])
     gsVector<> pt(2);
     pt<<0.25,0.25;
     // pt.setConstant(0.25);
-    
+
     variable ff1 = A.getCoeff(f1, G);
     variable ff2 = A.getCoeff(f2, G);
 
     // Solution vector and solution variable
 
     //Sxx_u
-    
+
     // A.assemble(Sxx);
     // //A.assemble((igrad(u,G)*firstCoeff)*(igrad(u,G)*firstCoeff).tr()*meas(G));//will sum this to precedent values
     // gsMatrix<> Temp;
@@ -242,7 +242,7 @@ int main(int argc, char* argv[])
     index_t displ_dof = displ1.size();
     gsMatrix<> oldMass;
     gsMatrix<> u_aux;
-    gsMatrix<> v_aux; 
+    gsMatrix<> v_aux;
     u.getCoeffs(solVector,u_aux);
     v.getCoeffs(solVector,v_aux);
     real_t half = 0.5;
@@ -256,7 +256,20 @@ int main(int argc, char* argv[])
     auto Sxx_v = (igrad(v,G)*firstCoeff)*(igrad(v,G)*firstCoeff).tr()*meas(G);
     auto Syy_v = (igrad(v,G)*secondCoeff)*(igrad(v,G)*secondCoeff).tr()*meas(G);
 
-    for(index_t it = 1; it <= 1; ++it){
+    solution u_old = A.getSolution(u, solVector);
+    solution v_old = A.getSolution(v, solVector);
+
+    gsParaviewCollection collectionU("solutionU");
+    gsParaviewCollection collectionV("solutionV");
+    gsParaviewCollection collectionE11("solutionE11");
+    gsParaviewCollection collectionE22("solutionE22");
+    gsParaviewCollection collectionE12("solutionE12");
+    ev.options().setSwitch("plot.elements", true);
+
+
+    for(index_t it = 1; it <= numSteps; ++it){
+
+        // Update geometry
 
         auto start = std::chrono::high_resolution_clock::now();
         A.initSystem();
@@ -277,21 +290,29 @@ int main(int argc, char* argv[])
         displ2 = displ2 + dt * v_aux;
         displVec.segment(0,displ_dof) = displ1;
         displVec.segment(displ_dof, displ_dof) = displ2;
-        
+
+        // ! Update geometry
+
+        // Compute strains
+
         //gsInfo << "displVec:" << displVec << "\n";
         A.initSystem();
         A.assemble(eps11*(igrad(eps11,G)*firstCoeff).tr()*meas(G));
-        
+
         A.assemble(eps22*(igrad(eps22,G)*secondCoeff).tr()*meas(G));
 
         A.assemble((half*eps12)*(igrad(eps11,G)*secondCoeff).tr()*meas(G) +
                     (half*eps12)*(igrad(eps22,G)*firstCoeff).tr()*meas(G));
-        
-        
+
+
         displContrib = A.matrix() * displVec;
 
+        // ! Compute strains
+
         //gsInfo << "displContrib:\n" << displContrib << "\n";
-        
+
+        // Linear matrix
+
         A.initSystem();
         damp = 4.2*(1-exp(-4*(dt*it-0.1)/(20-0.1)));
         //gsInfo << "damp: " << damp << "\n";
@@ -307,11 +328,11 @@ int main(int argc, char* argv[])
         //eps11-->u
         //A.assemble((-dt)*G_tilde*(1-nu)/(1-2*nu)*(u*(nv(G).tr()*firstCoeff)) * eps11.tr() * nv(G).norm());
         A.assemble((dt)*G_tilde*(1-nu)/(1-2*nu)*((igrad(u,G)*firstCoeff))*eps11.tr()*meas(G));
-        
+
         //eps22-->u
         //A.assemble((-dt)*G_tilde*(nu)/(1-2*nu)*(u*(nv(G).tr()*firstCoeff)) * eps22.tr() * nv(G).norm());
         A.assemble((dt)*G_tilde*(nu)/(1-2*nu)*((igrad(u,G)*firstCoeff))*eps22.tr()*meas(G));
-        
+
         //eps12-->u
         //A.assemble((-dt)*G_tilde*(u*(nv(G).tr()*secondCoeff)) * eps12.tr() * nv(G).norm());
         A.assemble((dt)*G_tilde*((igrad(u,G)*secondCoeff))*eps12.tr()*meas(G));
@@ -334,7 +355,7 @@ int main(int argc, char* argv[])
 
 
         //Velocity contributions
-       
+
         //u-->u
         A.assemble(dt*(mu1+mu2)*Sxx_u);
         A.assemble(dt*mu1/2*Syy_u);
@@ -351,37 +372,105 @@ int main(int argc, char* argv[])
         A.assemble(dt*mu1/2*(igrad(v,G)*firstCoeff)*(igrad(u,G)*secondCoeff).tr()*meas(G));
         A.assemble(dt*mu2*(igrad(v,G)*secondCoeff)*(igrad(u,G)*firstCoeff).tr()*meas(G));
 
-        auto finish = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = finish - start;
-        gsInfo << "Elapsed time: " << elapsed.count() << " s\n";
-        //gsInfo << "A.matrix():\n" << A.matrix() << "\n";
-        solver.compute(A.matrix());
-        F = prevTimestep + displContrib + dt*A.rhs();
+        // ! Linear matrix
 
-        //gsInfo << "F: " << F << "\n";
-        solVector = solver.solve(F);
+        gsSparseMatrix<> M_L = A.matrix();
+
+        // index_t itMax = 100;
+        // real_t tol = 1e-8;
+        // for (index_t it = 0; it != itMax; ++it)
+        // {
+            A.initSystem();
+
+            A.assemble(eps12 * eps12.tr() * ( grad(u_old)*firstCoeff + grad(v_old) * secondCoeff ).val() * meas(G) );
+            // A.assemble();
+            // A.assemble();
+            // A.assemble();
+            // A.assemble();
+            // A.assemble();
+
+
+
+            auto finish = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = finish - start;
+            gsInfo << "Elapsed time: " << elapsed.count() << " s\n";
+            //gsInfo << "A.matrix():\n" << A.matrix() << "\n";
+            solver.compute(M_L + A.matrix());
+            F = prevTimestep + displContrib + dt*A.rhs(); /// ADD TERMS !!!
+
+            //gsInfo << "F: " << F << "\n";
+            solVector = solver.solve(F);
+
+
+
+
+
+        //     if (updateVector.norm() < tol)
+        //         break;
+
+        //     // ADD DIRICHLET HOMOGENIZE
+        // }
+
+
+
+
+        // auto finish = std::chrono::high_resolution_clock::now();
+        // std::chrono::duration<double> elapsed = finish - start;
+        // gsInfo << "Elapsed time: " << elapsed.count() << " s\n";
+        // //gsInfo << "A.matrix():\n" << A.matrix() << "\n";
+        // solver.compute(A.matrix());
+        // F = prevTimestep + displContrib + dt*A.rhs();
+
+        // //gsInfo << "F: " << F << "\n";
+        // solVector = solver.solve(F);
+
+
         real_t zero = 0;
 
-        A.initSystem();
-        A.assembleLhsRhsBc((eps11*(nv(G).tr()*firstCoeff)) * eps11.tr(),
-                              zero*eps11,
-                              bc.dirichletSides());
-        gsInfo << "BndMatrix: \n" << A.matrix().toDense() << "\n";
+        // A.initSystem();
+        // A.assembleLhsRhsBc((eps11*(nv(G).tr()*firstCoeff)) * eps11.tr(),
+        //                       zero*eps11,
+        //                       bc.dirichletSides());
+        // gsInfo << "BndMatrix: \n" << A.matrix().toDense() << "\n";
+
         //gsInfo << "solVector: \n" << solVector << "\n";
         gsInfo << "Finished t= " << dt*it << "\n";
         //gsInfo << "dof: " << ndof << "\n";
+
+        ev.writeParaview(u_sol, G, "solutionU_"+ util::to_string(it));
+        ev.writeParaview(v_sol, G, "solutionV" + util::to_string(it));
+        ev.writeParaview(eps11_sol, G, "solutionEps11" + util::to_string(it));
+        ev.writeParaview(eps22_sol, G, "solutionEps22" + util::to_string(it));
+        ev.writeParaview(eps12_sol, G, "solutionEps12" + util::to_string(it));
+
+        collectionU.addTimestep("solutionU_" + util::to_string(it),it,"0.vts");
+        collectionU.addTimestep("solutionU_" + util::to_string(it),it,"0_mesh.vtp");
+
+        collectionV.addTimestep("solutionV_" + util::to_string(it),it,"0.vts");
+        collectionV.addTimestep("solutionV_" + util::to_string(it),it,"0_mesh.vtp");
+
+        collectionE11.addTimestep("solutionEps11_" + util::to_string(it),it,"0.vts");
+        collectionE11.addTimestep("solutionEps11_" + util::to_string(it),it,"0_mesh.vtp");
+
+        collectionE22.addTimestep("solutionEps22_" + util::to_string(it),it,"0.vts");
+        collectionE22.addTimestep("solutionEps22_" + util::to_string(it),it,"0_mesh.vtp");
+
+        collectionE12.addTimestep("solutionEps12_" + util::to_string(it),it,"0.vts");
+        collectionE12.addTimestep("solutionEps12_" + util::to_string(it),it,"0_mesh.vtp");
     }
+
+      collectionU.save();
+      collectionV.save();
+      collectionE11.save();
+      collectionE22.save();
+      collectionE12.save();
+
 
     if (plot){
     gsInfo << "Plotting in Paraview...\n";
 
 
-    ev.options().setSwitch("plot.elements", true);
-    ev.writeParaview(u_sol, G, "solutionU");
-    ev.writeParaview(v_sol, G, "solutionV");
-    ev.writeParaview(eps11_sol, G, "solutionEps11");
-    ev.writeParaview(eps22_sol, G, "solutionEps22");
-    ev.writeParaview(eps12_sol, G, "solutionEps12");
+
     //ev.writeParaview( u_ex    , G, "solution_ex");
     //ev.writeParaview( u, G, "aa");
     //gsFileManager::open("solution.pvd");

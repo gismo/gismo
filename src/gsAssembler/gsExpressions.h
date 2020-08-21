@@ -1642,11 +1642,11 @@ public:
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return 1; }
 
-    const gsFeSpace<T> & rowVar() const {return gsNullExpr<T>::get();}
-    const gsFeSpace<T> & colVar() const {return gsNullExpr<T>::get();}
+    static bool rowSpan() {GISMO_ERROR("onormal");}
+    static bool colSpan() {GISMO_ERROR("onormal");}
 
-    static constexpr bool rowSpan() {return false;}
-    static bool colSpan() {return false;}
+    // static constexpr bool rowSpan() {return false;}
+    // static bool colSpan() {return false;}
 
     void setFlag() const { _G.data().flags |= NEED_OUTER_NORMAL; }
 
