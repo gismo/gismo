@@ -395,7 +395,7 @@ int main(int argc, char* argv[])
             std::chrono::duration<double> elapsed = finish - start;
             gsInfo << "Elapsed time: " << elapsed.count() << " s\n";
             //gsInfo << "A.matrix():\n" << A.matrix() << "\n";
-            solver.compute(M_L + A.matrix());
+            solver.compute(A.matrix());
             F = prevTimestep + displContrib + dt*A.rhs(); /// ADD TERMS !!!
 
             //gsInfo << "F: " << F << "\n";
@@ -427,11 +427,12 @@ int main(int argc, char* argv[])
 
         real_t zero = 0;
 
-        // A.initSystem();
-        // A.assembleLhsRhsBc((eps11*(nv(G).tr()*firstCoeff)) * eps11.tr(),
-        //                       zero*eps11,
-        //                       bc.dirichletSides());
-        // gsInfo << "BndMatrix: \n" << A.matrix().toDense() << "\n";
+        A.initSystem();
+        gsDebug<<ev.eval(nv(G).tr()/nv(G).norm(),pt)<<"\n";
+        A.assembleLhsRhsBc((eps11*(nv(G).tr()/nv(G).norm()*firstCoeff)) * eps11.tr(),
+                              zero*eps11,
+                              bc.dirichletSides());
+        gsInfo << "BndMatrix: \n" << A.matrix().toDense() << "\n";
 
         //gsInfo << "solVector: \n" << solVector << "\n";
         gsInfo << "Finished t= " << dt*it << "\n";
