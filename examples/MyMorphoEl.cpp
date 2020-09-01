@@ -11,21 +11,6 @@
 
 using namespace gismo;
 //! [Include namespace]
-void writeToCSVfile(std::string name, gsMatrix<> matrix)
-{
-    std::ofstream file(name.c_str());
-    for(int  i = 0; i < matrix.rows(); i++){
-        for(int j = 0; j < matrix.cols(); j++){
-           std::string str = std::to_string(matrix(i,j));
-           if(j+1 == matrix.cols()){
-               file<<str;
-           }else{
-               file<<str<<',';
-           }
-        }
-        file<<'\n';
-    }
-  }
 
 int main(int argc, char* argv[])
 {
@@ -35,7 +20,7 @@ int main(int argc, char* argv[])
     index_t numElevate = 0;
     bool last = false;
 
-    real_t endTime = 5.0;
+    real_t endTime = 10.0;
     index_t numSteps = 50;
     real_t dt = endTime / numSteps;
 
@@ -51,23 +36,26 @@ int main(int argc, char* argv[])
 
     //! [Read input file]
     real_t nu = 0.48;
-    real_t E = 31.0;
-    real_t mu1 = 100.0;
-    real_t mu2 = 100.0;
+    real_t E = 10.0;
+    real_t mu1 = 10.0;
+    real_t mu2 = 10.0;
     real_t rho = 1.02;
     real_t G_tilde = E*sqrt(rho)/(1+nu);
-    real_t zero = 0;
+    real_t zeta = 0.3;
+    real_t t_ap = 5;
+    real_t tau_c = 20;
+    real_t tau_r = 2;
 
     // Define Geometry, must be a gsMultiPatch object
     gsMultiPatch<> patch;
 
-    // Create one patch as the unit square [0,12]^2
-    patch = gsNurbsCreator<>::BSplineSquareGrid(1, 1, 12);
+    // Create one patch as the unit square [0,2]^2
+    patch = gsNurbsCreator<>::BSplineSquareGrid(1, 1, 2);
     gsInfo << "The domain is a " << patch << "\n";
 
     //Source function for velocities
-    gsFunctionExpr<> f1("if ((abs(x-6)<=1.5) and (abs(y-6)<=1.5), -sgn(x-6), 0)", 2);
-    gsFunctionExpr<> f2("0", 2);
+    gsFunctionExpr<> f1("-sgn(x-1)", 2);
+    gsFunctionExpr<> f2("-sgn(y-1)", 2);
     //gsFunctionExpr<> f("0", 2);
     
 
@@ -179,7 +167,7 @@ int main(int argc, char* argv[])
 
 
     gsVector<> pt(2);
-    pt<<0,0.25;
+    pt<<0.25,0.25;
     // pt.setConstant(0.25);
     
     variable ff1 = A.getCoeff(f1, G);
@@ -187,51 +175,9 @@ int main(int argc, char* argv[])
 
     // Solution vector and solution variable
 
-    //Sxx_u
-    
-    // A.assemble(Sxx);
-    // //A.assemble((igrad(u,G)*firstCoeff)*(igrad(u,G)*firstCoeff).tr()*meas(G));//will sum this to precedent values
-    // gsMatrix<> Temp;
-    // gsMatrix<> Temp2;
-    // Temp = A.matrix();
-    // //gsInfo << "Temp: " << Temp.toDense() << "\n";
-    // //Syy
-    // A.initSystem();
-    // A.assemble(Syy);
-    // Temp2 = A.matrix();
-
-    // A.initSystem();
-    // A.assemble(igrad(u,G)*igrad(u,G).tr()*meas(G));
-    // gsInfo << "Diff: " << (Temp+Temp2-A.matrix().toDense()).norm() << "\n";
-
-    // gsExprEvaluator<> evA(A);
-    // // gsDebug<<"\n"<<evA.eval(Sxx,pt)<<"\n";
-
-    // //Ix
-    // A.initSystem();
-    // A.assemble(u*(igrad(u,G)*firstCoeff).tr()*meas(G));////this should be transpose of Ix
-    // Temp = A.matrix();
-    // //gsInfo << "Temp: " << Temp << "\n";
-    // A.initSystem();
-    // A.assemble((igrad(u,G)*firstCoeff)*u.tr()*meas(G));//should be this
-    // Temp2 = A.matrix();
-    // //gsInfo << "Temp2: " << Temp2 << "\n";
-    // gsInfo << "Norm of difference: "<< (Temp-Temp2.transpose()).norm() << "\n";
-
-
-    // //Iy
-    // A.initSystem();
-    // A.assemble(u*(igrad(u,G)*secondCoeff).tr()*meas(G));//this should be transpose of Iy
-    // Temp = A.matrix();
-    // //gsInfo << "Temp: " << Temp << "\n";
-    // A.initSystem();
-    // A.assemble((igrad(u,G)*secondCoeff)*u.tr()*meas(G));//should be this
-    // Temp2 = A.matrix();
-    // //gsInfo << "Temp2: " << Temp2 << "\n";
-    // gsInfo << "Norm of difference: "<< (Temp-Temp2.transpose()).norm() << "\n";
     A.initSystem();
 
-    gsSparseSolver<>::BiCGSTABILUT solver;
+    gsSparseSolver<>::BiCGSTABDiagonal solver;
 
     gsInfo << "Number of degrees of freedom: " << A.numDofs() << "\n";
 
@@ -249,21 +195,20 @@ int main(int argc, char* argv[])
     gsVector<> displ1;
     gsVector<> displ2;
     gsMatrix<> prevTimestep;
-    gsMatrix<> displContrib;
-    gsVector<> displVec;
-    displVec.setZero(ndof);
-    gsMatrix<> RHS;
+
     eps11.getCoeffs(solVector,aux);
     displ1.setZero(aux.size());
     displ2 = displ1;
     index_t displ_dof = displ1.size();
-    gsMatrix<> oldMass;
+    gsSparseMatrix<> oldMass;
     gsMatrix<> u_aux;
     gsMatrix<> v_aux; 
     u.getCoeffs(solVector,u_aux);
     v.getCoeffs(solVector,v_aux);
     real_t half = 0.5;
+    real_t zero = 0;
     real_t damp;
+    real_t tol = pow(10,-4);
 
     gsMatrix<> F;
     gsSparseMatrix<> solveMat;
@@ -273,10 +218,32 @@ int main(int argc, char* argv[])
     auto Sxx_v = (igrad(v,G)*firstCoeff)*(igrad(v,G)*firstCoeff).tr()*meas(G);
     auto Syy_v = (igrad(v,G)*secondCoeff)*(igrad(v,G)*secondCoeff).tr()*meas(G);
 
+    gsSparseMatrix<> M_Linear;
+    gsMatrix<> picardVector;
+    picardVector = solVector;
+    solution u_old = A.getSolution(u, picardVector);
+    solution v_old = A.getSolution(v, picardVector);
+    real_t diff;
+
+    
+    gsParaviewCollection collectionU("solutionU");
+    gsParaviewCollection collectionV("solutionV");
+    gsParaviewCollection collectionE11("solutionE11");
+    gsParaviewCollection collectionE22("solutionE22");
+    gsParaviewCollection collectionE12("solutionE12");
+    ev.options().setSwitch("plot.elements", true);
+    
+
+
+
     for(index_t it = 1; it <= numSteps; ++it){
+
 
         auto start = std::chrono::high_resolution_clock::now();
         A.initSystem();
+        A.assemble(eps11 * eps11.tr() * meas(G));
+        A.assemble(eps22 * eps22.tr() * meas(G));
+        A.assemble(eps12 * eps12.tr() * meas(G));
         A.assemble(rho * u * u.tr() * meas(G));
         A.assemble(rho * v * v.tr() * meas(G));
         oldMass = A.matrix();
@@ -285,20 +252,12 @@ int main(int argc, char* argv[])
         u.getCoeffs(solVector,u_aux);
         v.getCoeffs(solVector,v_aux);
 
-        //gsInfo << "u_aux: \n" << u_aux << "\n";
-
         patch.patch(0).coefs().col(0) += dt*u_aux;
         patch.patch(0).coefs().col(1) += dt*v_aux;
 
-        //gsInfo << "u_aux:\n" << u_aux << "\n";
-        //gsInfo << "v_aux:\n" << v_aux << "\n";
-
         displ1 = displ1 + dt * u_aux;
         displ2 = displ2 + dt * v_aux;
-        displVec.segment(0,displ_dof) = displ1;
-        displVec.segment(displ_dof, displ_dof) = displ2;
         
-        //gsInfo << "displVec:" << displVec << "\n";
         A.initSystem();
         A.assemble(eps11*(igrad(eps11,G)*firstCoeff).tr()*meas(G));
         
@@ -307,21 +266,32 @@ int main(int argc, char* argv[])
         A.assemble((half*eps12)*(igrad(eps11,G)*secondCoeff).tr()*meas(G) +
                     (half*eps12)*(igrad(eps22,G)*firstCoeff).tr()*meas(G));
         
-        
-        displContrib = A.matrix() * displVec;
-
-        //gsInfo << "displContrib:\n" << displContrib << "\n";
-        
         A.initSystem();
-        damp = 4.2*(1-exp(-4*(dt*it-0.1)/(20-0.1)));
-        //gsInfo << "damp: " << damp << "\n";
+        
+        damp=0;
+        if(dt*it < t_ap){
+            damp=1;
+        }
+        
 
         //Mass matrices for strains and velocity components
-        A.assemble(eps11 * eps11.tr() * meas(G));
-        A.assemble(eps22 * eps22.tr() * meas(G));
-        A.assemble(eps12 * eps12.tr() * meas(G));
-        A.assemble(rho * u * u.tr() * meas(G), damp * u * ff1 * meas(G));
-        A.assemble(rho * v * v.tr() * meas(G), damp * v * ff2 * meas(G));
+        A.assemble((1 + zeta * dt) * eps11 * eps11.tr() * meas(G));
+        A.assemble((1 + zeta * dt) * eps22 * eps22.tr() * meas(G));
+        A.assemble((1 + zeta * dt) * eps12 * eps12.tr() * meas(G));
+        A.assemble(rho * u * u.tr() * meas(G), damp * tau_c * u * ff1 * meas(G));
+        A.assemble(rho * v * v.tr() * meas(G), damp * tau_c * v * ff2 * meas(G));
+
+        //Vel comps contributions to strain
+        //u-->eps11
+        A.assemble((-dt)*eps11*(igrad(u,G)*firstCoeff).tr()*meas(G));
+
+        //v-->eps22
+        A.assemble((-dt)*eps22*(igrad(v,G)*secondCoeff).tr()*meas(G));
+
+        //u,v-->eps12
+        A.assemble((-dt/2)*eps12*(igrad(u,G)*secondCoeff).tr()*meas(G));
+        A.assemble((-dt/2)*eps12*(igrad(v,G)*firstCoeff).tr()*meas(G));
+
 
         //Strain contributions to vel comps
         //eps11-->u
@@ -409,48 +379,109 @@ int main(int argc, char* argv[])
                                zero*v,
                                bc.reducedContainer(bc.dirichletSides(), 4));
 
-
         auto finish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = finish - start;
         gsInfo << "Elapsed time: " << elapsed.count() << " s\n";
         //gsInfo << "A.matrix():\n" << A.matrix() << "\n";
-
-        solveMat = A.matrix();
-        solveMat.makeCompressed();
-        solver.compute(solveMat);
         
-        RHS = A.rhs();
-        //gsInfo << "rhs:\n " << RHS << "\n";
+        M_Linear = A.matrix();
+        F = prevTimestep + dt*A.rhs();
 
-        /*for(index_t row=0; row<RHS.rows(); ++row){
-            if(abs(RHS(row))<pow(10,-14)){
-                RHS(row)=0;
+        // ! Linear assembly
+        //gsInfo << "F: " << A.rhs() << "\n";
+        
+
+        // Picard loop
+        for(index_t pic=0; pic < 5; ++pic){
+
+            gsInfo << "Picard iteration: " << pic+1 << "\n";
+
+            A.initSystem();
+            //eps11
+            A.assemble((-dt) * eps11 * eps11.tr() * ( grad(v_old)*secondCoeff ).val() * meas(G) );
+            A.assemble((dt) * eps11 * eps22.tr() * ( grad(u_old)*firstCoeff ).val() * meas(G) );
+            A.assemble((-dt) * eps11 * eps12.tr() * ( grad(u_old)*secondCoeff - grad(v_old) * firstCoeff).val() * meas(G) );
+            
+            //eps22
+            A.assemble((-dt) * eps22 * eps22.tr() * ( grad(u_old)*firstCoeff ).val() * meas(G) );
+            A.assemble((dt) * eps22 * eps11.tr() * ( grad(v_old)*secondCoeff ).val() * meas(G) );
+            A.assemble((-dt) * eps22 * eps12.tr() * ( grad(v_old)*firstCoeff - grad(u_old) * secondCoeff).val() * meas(G) );
+
+            //eps12
+            A.assemble((-dt) * eps12 * eps12.tr() * ( grad(u_old)*firstCoeff + grad(v_old) * secondCoeff ).val() * meas(G) );
+            A.assemble((dt) * eps12 * eps11.tr() * ( grad(u_old)*secondCoeff ).val() * meas(G) );
+            A.assemble((dt) * eps12 * eps22.tr() * ( grad(v_old)*firstCoeff ).val() * meas(G) );
+
+            solveMat = M_Linear + A.matrix();
+            //gsInfo << "Mat to solve: " << solveMat << "\n"; //check if sum remains sparse
+            solver.compute(solveMat);
+
+            picardVector = solver.solve(F);
+
+            diff = ((solVector-picardVector).cwiseAbs()).maxCoeff();
+
+            solVector = picardVector; //update solution to last picard iteration
+
+            if(diff<tol){
+                gsInfo << "Stopped at picard iteration: " << pic+1 << "\n";
+                gsInfo << "Diff = " << diff << "\n";
+                break;
             }
-        }*/
-        F = prevTimestep + displContrib + dt*RHS;
-        //gsInfo << "rhs:\n " << RHS << "\n";
-        //writeToCSVfile("matrix.csv",A.matrix().toDense());
-        solVector = solver.solve(F);
-        
+        }
+
+        // A.initSystem();
+        // gsDebug << "nv(G)/nv(G).norm()" << ev.eval(nv(G).norm(), pt) << "\n";
+        // A.assembleLhsRhsBc((eps11*((nv(G)/nv(G).norm()).tr()*firstCoeff)) * eps11.tr(),
+        //                       zero*eps11,
+        //                       bc.dirichletSides());
+        // gsInfo << "BndMatrix: \n" << A.matrix().toDense() << "\n";
         //gsInfo << "solVector: \n" << solVector << "\n";
         gsInfo << "Finished t= " << dt*it << "\n";
         //gsInfo << "dof: " << ndof << "\n";
+
+
+        if(plot){
+            ev.writeParaview(u_sol, G, "solutionU_"+ util::to_string(it));
+            ev.writeParaview(v_sol, G, "solutionV_" + util::to_string(it));
+            ev.writeParaview(eps11_sol, G, "solutionEps11_" + util::to_string(it));
+            ev.writeParaview(eps22_sol, G, "solutionEps22_" + util::to_string(it));
+            ev.writeParaview(eps12_sol, G, "solutionEps12_" + util::to_string(it));
+
+            collectionU.addTimestep("solutionU_" + util::to_string(it),it,"0.vts");
+            collectionU.addTimestep("solutionU_" + util::to_string(it),it,"0_mesh.vtp");
+
+            collectionV.addTimestep("solutionV_" + util::to_string(it),it,"0.vts");
+            collectionV.addTimestep("solutionV_" + util::to_string(it),it,"0_mesh.vtp");
+
+            collectionE11.addTimestep("solutionEps11_" + util::to_string(it),it,"0.vts");
+            collectionE11.addTimestep("solutionEps11_" + util::to_string(it),it,"0_mesh.vtp");
+
+            collectionE22.addTimestep("solutionEps22_" + util::to_string(it),it,"0.vts");
+            collectionE22.addTimestep("solutionEps22_" + util::to_string(it),it,"0_mesh.vtp");
+
+            collectionE12.addTimestep("solutionEps12_" + util::to_string(it),it,"0.vts");
+            collectionE12.addTimestep("solutionEps12_" + util::to_string(it),it,"0_mesh.vtp");
+        }
     }
 
-    if (plot){
-    gsInfo << "Plotting in Paraview...\n";
-
-
-    ev.options().setSwitch("plot.elements", true);
-    ev.writeParaview(u_sol, G, "solutionU");
-    ev.writeParaview(v_sol, G, "solutionV");
-    ev.writeParaview(eps11_sol, G, "solutionEps11");
-    ev.writeParaview(eps22_sol, G, "solutionEps22");
-    ev.writeParaview(eps12_sol, G, "solutionEps12");
-    //ev.writeParaview( u_ex    , G, "solution_ex");
-    //ev.writeParaview( u, G, "aa");
-    //gsFileManager::open("solution.pvd");
+    if(plot){
+        collectionU.save();
+        collectionV.save();
+        collectionE11.save();
+        collectionE22.save();
+        collectionE12.save();
     }
+
+    // gsInfo << "Plotting in Paraview...\n";
+
+
+    // ev.options().setSwitch("plot.elements", true);
+    // ev.writeParaview(u_sol, G, "solutionU");
+    // ev.writeParaview(v_sol, G, "solutionV");
+    // ev.writeParaview(eps11_sol, G, "solutionEps11");
+    // ev.writeParaview(eps22_sol, G, "solutionEps22");
+    // ev.writeParaview(eps12_sol, G, "solutionEps12");
+
     return EXIT_SUCCESS;
 
 }// end main
