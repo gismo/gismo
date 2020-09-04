@@ -107,17 +107,23 @@ public:
             if(md.dim.first + 1 == md.dim.second)
             {
                 gsMatrix<T> Jk = md.jacobian(k);
-                weight *=  ( sqrt( (Jk.transpose() * Jk).determinant() ) );
+                gsMatrix<T> G = Jk.transpose() * Jk;
+                gsMatrix<T> G_inv = G.cramerInverse();
+                weight *=  ( sqrt( G.determinant() ) );
+                const index_t numGrads = basisGrads.rows() / md.dim.first;
+                const gsAsConstMatrix<T> grads_k(basisGrads.col(k).data(), md.dim.first, numGrads);
+                physBasisGrad = Jk * G_inv * grads_k;
+
             }
             else
             {
                 // Multiply quadrature weight by the measure of normal
                 weight *= unormal.norm();
+                transformGradients(md, k, basisGrads, physBasisGrad);
             }
             unormal.normalize();
 //            gsInfo << "Out normal normalized: " << unormal << "\n";
             //Get gradients of the physical space
-            transformGradients(md, k, basisGrads, physBasisGrad);
 
             localRhs.noalias() += weight *(( physBasisGrad.transpose() * unormal )* neuData.col(k).transpose());
         }

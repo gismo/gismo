@@ -36,28 +36,28 @@ int main(int argc, char *argv[])
 
 
     // ======= Solution =========
-//    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-//    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-//    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
-//    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-//                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
-//    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
-//                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
-//                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
+    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
+    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
+                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
+                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
 
-    gsFunctionExpr<> source  ("24 * (2 - y) * (2 - y) * y * y + 24 * (2 - x) * (2 - x) * x * x",2);
-
-    gsFunctionExpr<> laplace ("0",2);
-
-    gsFunctionExpr<> solVal("(2 - x) * (2 - x) * x * x * (2 - y) * (2 - y) * y * y",2);
-
-    gsFunctionExpr<>sol1der ("(2 - x) * (2 - x) * 2 * x * (2 - y) * (2 - y) * y * y - 2 * (2 - x) * x * x * (2 - y) * (2 - y) * y * y",
-                             "(2 - y) * (2 - y) * 2 * y * (2 - x) * (2 - x) * x * x - 2 * (2 - y) * y * y * (2 - x) * (2 - x) * x * x",
-                             2);
-
-    gsFunctionExpr<>sol2der ("0",
-                             "0",
-                             "0", 2);
+//    gsFunctionExpr<> source  ("24 * (2 - y) * (2 - y) * y * y + 24 * (2 - x) * (2 - x) * x * x",2);
+//
+//    gsFunctionExpr<> laplace ("0",2);
+//
+//    gsFunctionExpr<> solVal("(2 - x) * (2 - x) * x * x * (2 - y) * (2 - y) * y * y",2);
+//
+//    gsFunctionExpr<>sol1der ("(2 - x) * (2 - x) * 2 * x * (2 - y) * (2 - y) * y * y - 2 * (2 - x) * x * x * (2 - y) * (2 - y) * y * y",
+//                             "(2 - y) * (2 - y) * 2 * y * (2 - x) * (2 - x) * x * x - 2 * (2 - y) * y * y * (2 - x) * (2 - x) * x * x",
+//                             2);
+//
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0", 2);
 
 
 //    gsFunctionExpr<> source  ("0",2);
@@ -78,9 +78,9 @@ int main(int argc, char *argv[])
 //
 //    gsFunctionExpr<> laplace ("0",2);
 //
-//    gsFunctionExpr<> solVal("1",2);
+//    gsFunctionExpr<> solVal("x",2);
 //
-//    gsFunctionExpr<>sol1der ("0",
+//    gsFunctionExpr<>sol1der ("1",
 //                             "0",2);
 //
 //    gsFunctionExpr<>sol2der ("0",
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
             break;
         case 12:
             string_geo = "KirchhoffLoveGeo/square_multipatch.xml";
-            numDegree = 2; // 2 == degree 3
+            numDegree = 1; // 2 == degree 3
             break;
         case 13:
             string_geo = "KirchhoffLoveGeo/square3dPositiveOrientation2d.xml";
@@ -339,6 +339,7 @@ int main(int argc, char *argv[])
 
         gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
 
+//        gsInfo << "Sol: " << solVector << "\n";
 
         if (g1OptionList.getSwitch("plot"))
         {
@@ -374,13 +375,13 @@ int main(int argc, char *argv[])
 
             else if (e == 1)
             {
-                gsSeminormH1<real_t> errorSemiH1(multiPatch, Sol_sparse, solVal);
+                gsSeminormH1<real_t> errorSemiH1(multiPatch, Sol_sparse, sol1der);
                 errorSemiH1.compute(g1System.get_numBasisFunctions());
                 h1SemiError_vec[refinement_level] = errorSemiH1.value();
             }
             else if (e == 2)
             {
-                gsSeminormH2<real_t> errorSemiH2(multiPatch, Sol_sparse, solVal);
+                gsSeminormH2<real_t> errorSemiH2(multiPatch, Sol_sparse, sol2der);
                 errorSemiH2.compute(g1System.get_numBasisFunctions());
                 h2SemiError_vec[refinement_level] = errorSemiH2.value();
             }

@@ -36,21 +36,18 @@ int main(int argc, char *argv[])
 
 
     // ======= Solution =========
-//    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y)) + 0*z",3);
-//    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
-//    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
-//    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-//                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
-//                             "0",3);
-//    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
-//                             "-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
-//                             "0",
-//                             "16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
-//                             "0",
-//                             "16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
-//                             "0",
-//                             "0",
-//                             "0", 3);
+    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
+    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
+    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
+    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
+                             "0",3);
+    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
+                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
+                             "0",
+                             "16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
+                             "0",
+                             "0", 3);
 
 
 //    gsFunctionExpr<> source  ("8 * ( 16 - 12 * x * x * x + 3 * x * x * x * x + 36 * x * x * ( y - 1 ) * ( y - 1 ) - 48 * y + 36 * y * y - 12 * y * y * y + 3 * y * y * y * y - 24 * x * ( 2 - 6 * y + 3 * y * y) )",3);
@@ -149,24 +146,25 @@ int main(int argc, char *argv[])
  */
 
 
-    gsFunctionExpr<> source  ("(8 * (3 * x^10 + 3 * (1 + y^2)^3 + 12 * x^2 * (1 + y^2)^2 * (1 + 5 y^2) + \n"
-                              "   x^8 * (14 + 15 * y^2) + x^6 * (25 + 36 * y^2 + 5 * y^4) + \n"
-                              "   x^4 * (23 + 96 * y^2 + 178 * y^4 + 105 * y^6))) / (1 + x^2 + y^2)^5 ", 3);
-    gsFunctionExpr<> laplace ("0",3);
-    gsFunctionExpr<> solVal("x^4",3);
-    gsFunctionExpr<>sol1der ("(4 * x^3 * (1 + x^2)) / (1 + x^2 + y^2)",
-                             "-((4 * x^4 * y) / (1 + x^2 + y^2))",
-                             "-((4 * x^5 * y) / (1 + x^2 + y^2)) + (4 * x^3 * (1 + x^2) * y) / (1 + x^2 + y^2)", 3);
-    gsFunctionExpr<>sol2der ("0",
-                             "0",
-                             "0",
-                             "0",
-                             "0",
-                             "0", 3);
+//    gsFunctionExpr<> source  ("(8 * (3 * x^10 + 3 * (1 + y^2)^3 + 12 * x^2 * (1 + y^2)^2 * (1 + 5 y^2) + \n"
+//                              "   x^8 * (14 + 15 * y^2) + x^6 * (25 + 36 * y^2 + 5 * y^4) + \n"
+//                              "   x^4 * (23 + 96 * y^2 + 178 * y^4 + 105 * y^6))) / (1 + x^2 + y^2)^5 ", 3);
+//    gsFunctionExpr<> laplace ("0",3);
+//    gsFunctionExpr<> solVal("x^4",3);
+//    gsFunctionExpr<>sol1der ("(4 * x^3 * (1 + x^2)) / (1 + x^2 + y^2)",
+//                             "-((4 * x^4 * y) / (1 + x^2 + y^2))",
+//                             "-((4 * x^5 * y) / (1 + x^2 + y^2)) + (4 * x^3 * (1 + x^2) * y) / (1 + x^2 + y^2)", 3);
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
 
 
 //    gsFunctionExpr<> source  ("(4 * x * (1 - 15 * y^2 - 10 * y^4 + 6 * y^6 + x^4 * (1 + 15 * y^2) + \n"
 //                              "   x^2 * (2 - 35 * y^4))) / (1 + x^2 + y^2)^5 ",3);
+////    gsFunctionExpr<> source  ("0 ",3);
 //    gsFunctionExpr<> laplace ("0",3);
 //    gsFunctionExpr<> solVal("x",3);
 //    gsFunctionExpr<>sol1der ("1",
@@ -223,6 +221,8 @@ int main(int argc, char *argv[])
 //                             "0",
 //                             "0", 3);
 
+
+
 //    gsFunctionExpr<> source  ("0",3);
 //
 //    gsFunctionExpr<> laplace ("0",3);
@@ -264,25 +264,7 @@ int main(int argc, char *argv[])
 //                             "0",
 //                             "0", 3);
 
-//    gsFunctionExpr<> source  ("24",3);
-//
-//    gsFunctionExpr<> laplace ("12 * x * x",3);
-//
-//    gsFunctionExpr<> solVal("x * x * x * x ",3);
-//
-//    gsFunctionExpr<>sol1der ("4 * x * x * x",
-//                             "0",
-//                             "0",3);
-//
-//    gsFunctionExpr<>sol2der ("0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0", 3);
+
 
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
@@ -333,6 +315,10 @@ int main(int argc, char *argv[])
             break;
         case 10:
             string_geo = "KirchhoffLoveGeo/singlePatch_firstCoordSquared.xml";
+            numDegree = 1; // 2 == degree 3
+            break;
+        case 11:
+            string_geo = "KirchhoffLoveGeo/square_TwoPatch3d.xml";
             numDegree = 1; // 2 == degree 3
             break;
 
@@ -527,8 +513,13 @@ int main(int argc, char *argv[])
 
         gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
 
+//        gsInfo << "Sol: " << solVector << "\n";
+
         if (g1OptionList.getSwitch("plot"))
         {
+            gsField<> exactField(multiPatch,solVal);
+            gsWriteParaview(exactField,"G1Biharmonic_exact",2000);
+
             // construct solution: INTERIOR
             gsMultiPatch<> mpsol;
             g1BiharmonicAssembler.constructSolution(solVector.bottomRows(g1BiharmonicAssembler.matrix().dim().first),mpsol);
@@ -567,7 +558,7 @@ int main(int argc, char *argv[])
             }
             else if (e == 2)
             {
-                gsSeminormH2<real_t> errorSemiH2(multiPatch, Sol_sparse, solVal);
+                gsSeminormH2<real_t> errorSemiH2(multiPatch, Sol_sparse, sol2der);
                 errorSemiH2.compute(g1System.get_numBasisFunctions());
                 h2SemiError_vec[refinement_level] = errorSemiH2.value();
             }

@@ -107,7 +107,7 @@ public:
                     // Accumulate value from the current element (squared)
                     T temp = 0.0;
                     //visitor.compute(*domIt, *geoEval, quWeights, m_value);
-                    const T result = visitor.compute(*domIt, *geoEval, quWeights, temp);
+                    const T result = visitor.compute(*domIt, *geoEval, quWeights, temp, patchesPtr->patch(pn));
 #pragma omp critical
                     {
                         m_value += result;

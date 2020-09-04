@@ -97,7 +97,8 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
         Eigen::Vector3d t1 = Jk.col(0);
         Eigen::Vector3d t2 = Jk.col(1);
         Eigen::Vector3d normal = t1.cross(t2);
-        normal = normal.normalized();
+
+//        normal = normal.normalized();
 
         result = bdyTan.cross(normal); //The normal vector to the boudnary (result) is given in a general reference frame, is not
 

@@ -735,8 +735,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
                         // ...the boundary index.
                         const unsigned ii = mapper.global_to_bindex( globIdxAct( i ));
 
-//                        gsInfo << "ii: " << ii << "\n";
-
                         for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
                         {
                             const unsigned j = eltBdryFcts[j0];

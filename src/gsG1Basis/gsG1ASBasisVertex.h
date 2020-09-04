@@ -21,10 +21,10 @@ public:
     gsG1ASBasisVertex(gsMultiPatch<> mp, // Single Patch
                     gsMultiBasis<> basis, // Single Basis
                     std::vector<bool> isBoundary,
-                    real_t sigma,
+                    gsMatrix<T> &Phi,
                     gsG1OptionList & g1OptionList,
                     gsMatrix<> gluingD)
-        : m_mp(mp), m_basis(basis), m_isBoundary(isBoundary), m_sigma(sigma), m_g1OptionList(g1OptionList), m_gD(gluingD)
+        : m_mp(mp), m_basis(basis), m_isBoundary(isBoundary), m_Phi(Phi), m_g1OptionList(g1OptionList), m_gD(gluingD)
     {
 
         for (index_t dir = 0; dir < m_mp.parDim(); dir++) // For the TWO directions
@@ -125,7 +125,7 @@ protected:
     gsMultiPatch<T> m_mp;
     gsMultiBasis<T> m_basis;
     std::vector<bool> m_isBoundary;
-    real_t m_sigma;
+    gsMatrix<T> m_Phi;
     gsG1OptionList m_g1OptionList;
 
     // Gluing data
@@ -313,7 +313,7 @@ void gsG1ASBasisVertex<T,bhVisitor>::apply(bhVisitor & visitor, int patchIndex)
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 #pragma omp critical(evaluate)
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(basis_g1, basis_geo, m_basis_plus, m_basis_minus, patch, quNodes, m_gD, m_isBoundary, m_sigma, m_g1OptionList);
+            visitor_.evaluate(basis_g1, basis_geo, m_basis_plus, m_basis_minus, patch, quNodes, m_gD, m_isBoundary, m_Phi, m_g1OptionList);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);
@@ -330,6 +330,7 @@ void gsG1ASBasisVertex<T,bhVisitor>::solve()
 {
     gsSparseSolver<real_t>::CGDiagonal solver;
 
+//    gsInfo << "rhs: " << m_f.at(4).rhs() << "\n";
 
     for (index_t i = 0; i < 6; i++) // Tilde
     {
