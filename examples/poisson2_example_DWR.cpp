@@ -226,9 +226,6 @@ int main(int argc, char *argv[])
     // Solutions and their projections
         // PDE solution on low-order mesh
     solution uL = exL.getSolution(u, primalL);
-        // PDE solution projection on high-order mesh
-    solution uH = exH.getSolution(v, primalH);
-
         // Dual solution on low-order mesh
     solution zL = exL.getSolution(u, dualL);
         // Dual solution projection on high-order mesh
@@ -445,14 +442,14 @@ int main(int argc, char *argv[])
         auto rhs = ff.val() * (zH2.val() - zL.val()) * u0;
 
         gsMatrix<> res;
-        // exL.assemble(lhs*meas(G));
-        // res = exL.rhs();
-
-        // exL.assemble(lhs2*meas(G));
-        // res += exL.rhs();
-
-        exL.assemble((lhs + lhs2)*meas(G));
+        exL.assemble(lhs*meas(G));
         res = exL.rhs();
+
+        exL.assemble(lhs2*meas(G));
+        res += exL.rhs();
+
+        // exL.assemble((lhs + lhs2)*meas(G));
+        // res = exL.rhs();
 
         exL.assemble(rhs*meas(G));
         res += exL.rhs();
