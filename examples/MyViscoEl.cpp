@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
     real_t mu2 = 100.0;
     real_t rho = 1.02;
     real_t G_tilde = E*sqrt(rho)/(1+nu);
-    real_t zero = 0;
+    real_t zero = 0.0;
 
     // Define Geometry, must be a gsMultiPatch object
     gsMultiPatch<> patch;
@@ -66,24 +66,13 @@ int main(int argc, char* argv[])
     gsInfo << "The domain is a " << patch << "\n";
 
     //Source function for velocities
-    gsFunctionExpr<> f1("if ((abs(x-6)<=1.5) and (abs(y-6)<=1.5), -sgn(x-6), 0)", 2);
-    gsFunctionExpr<> f2("0", 2);
-    //gsFunctionExpr<> f("0", 2);
+    gsFunctionExpr<> f1("if ((abs(x-6.0)<=1.5) and (abs(y-6.0)<=1.5), -sgn(x-6.0), 0.0)", 2);
+    gsFunctionExpr<> f2("0.0", 2);
+    
     
 
     gsInfo << "Source function for first velocity component: " << f1 << "\n";
     gsInfo << "Source function for second velocity component: " << f2 << "\n";
-
-    // Assembler options
-    //gsOptionList opt = gsAssembler<>::defaultOptions();
-    //opt.setInt("DirichletValues", 101);
-    //opt.setInt("DirichletStrategy", dirichlet::nitsche);
-    //opt.setReal("quA", 1.0);
-    //opt.setInt("quB", 1);
-    //opt.setReal("bdA", 2.0);
-    //opt.setInt("bdB", 1);
-    //opt.setInt("quRule", 1);
-    //gsInfo << "Assembler " << opt << "\n";
 
 
     //! [Refinement]
@@ -187,48 +176,6 @@ int main(int argc, char* argv[])
 
     // Solution vector and solution variable
 
-    //Sxx_u
-    
-    // A.assemble(Sxx);
-    // //A.assemble((igrad(u,G)*firstCoeff)*(igrad(u,G)*firstCoeff).tr()*meas(G));//will sum this to precedent values
-    // gsMatrix<> Temp;
-    // gsMatrix<> Temp2;
-    // Temp = A.matrix();
-    // //gsInfo << "Temp: " << Temp.toDense() << "\n";
-    // //Syy
-    // A.initSystem();
-    // A.assemble(Syy);
-    // Temp2 = A.matrix();
-
-    // A.initSystem();
-    // A.assemble(igrad(u,G)*igrad(u,G).tr()*meas(G));
-    // gsInfo << "Diff: " << (Temp+Temp2-A.matrix().toDense()).norm() << "\n";
-
-    // gsExprEvaluator<> evA(A);
-    // // gsDebug<<"\n"<<evA.eval(Sxx,pt)<<"\n";
-
-    // //Ix
-    // A.initSystem();
-    // A.assemble(u*(igrad(u,G)*firstCoeff).tr()*meas(G));////this should be transpose of Ix
-    // Temp = A.matrix();
-    // //gsInfo << "Temp: " << Temp << "\n";
-    // A.initSystem();
-    // A.assemble((igrad(u,G)*firstCoeff)*u.tr()*meas(G));//should be this
-    // Temp2 = A.matrix();
-    // //gsInfo << "Temp2: " << Temp2 << "\n";
-    // gsInfo << "Norm of difference: "<< (Temp-Temp2.transpose()).norm() << "\n";
-
-
-    // //Iy
-    // A.initSystem();
-    // A.assemble(u*(igrad(u,G)*secondCoeff).tr()*meas(G));//this should be transpose of Iy
-    // Temp = A.matrix();
-    // //gsInfo << "Temp: " << Temp << "\n";
-    // A.initSystem();
-    // A.assemble((igrad(u,G)*secondCoeff)*u.tr()*meas(G));//should be this
-    // Temp2 = A.matrix();
-    // //gsInfo << "Temp2: " << Temp2 << "\n";
-    // gsInfo << "Norm of difference: "<< (Temp-Temp2.transpose()).norm() << "\n";
     A.initSystem();
 
     gsSparseSolver<>::BiCGSTABILUT solver;
@@ -298,22 +245,22 @@ int main(int argc, char* argv[])
         displVec.segment(0,displ_dof) = displ1;
         displVec.segment(displ_dof, displ_dof) = displ2;
         
-        //gsInfo << "displVec:" << displVec << "\n";
+        //gsInfo << "displDof:" << displ_dof << "\n";
         A.initSystem();
         A.assemble(eps11*(igrad(eps11,G)*firstCoeff).tr()*meas(G));
         
         A.assemble(eps22*(igrad(eps22,G)*secondCoeff).tr()*meas(G));
 
-        A.assemble((half*eps12)*(igrad(eps11,G)*secondCoeff).tr()*meas(G) +
-                    (half*eps12)*(igrad(eps22,G)*firstCoeff).tr()*meas(G));
+        A.assemble((half*eps12)*(igrad(eps11,G)*secondCoeff).tr()*meas(G));
+        A.assemble((half*eps12)*(igrad(eps22,G)*firstCoeff).tr()*meas(G));
         
         
         displContrib = A.matrix() * displVec;
 
-        //gsInfo << "displContrib:\n" << displContrib << "\n";
+        //gsInfo << "mat:\n" << A.matrix() << "\n";
         
         A.initSystem();
-        damp = 4.2*(1-exp(-4*(dt*it-0.1)/(20-0.1)));
+        damp = 4.2*(1.0-exp(-4.0*(dt*it-0.1)/(20.0-0.1)));
         //gsInfo << "damp: " << damp << "\n";
 
         //Mass matrices for strains and velocity components
@@ -422,15 +369,13 @@ int main(int argc, char* argv[])
         RHS = A.rhs();
         //gsInfo << "rhs:\n " << RHS << "\n";
 
-        /*for(index_t row=0; row<RHS.rows(); ++row){
-            if(abs(RHS(row))<pow(10,-14)){
-                RHS(row)=0;
-            }
-        }*/
+        
         F = prevTimestep + displContrib + dt*RHS;
         //gsInfo << "rhs:\n " << RHS << "\n";
         //writeToCSVfile("matrix.csv",A.matrix().toDense());
+        
         solVector = solver.solve(F);
+        //solVector = (solveMat.toDense()).colPivHouseholderQr().solve(F); //dense linear algebra
         
         //gsInfo << "solVector: \n" << solVector << "\n";
         gsInfo << "Finished t= " << dt*it << "\n";
