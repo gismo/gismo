@@ -148,34 +148,26 @@ int main(int argc, char *argv[])
     // h-refine each basis
     for (int r =0; r < numRefine-1; ++r)
         mp.uniformRefine();
-    // Set the degree of the higher-order basis one higher.
-    gsMultiPatch<> mpH0 = mp;
-    mpH0    .degreeElevate(1);
 
-    // Cast all patches of the mp object to THB splines
-    gsMultiPatch<> mpL, mpH;
     // gsTensorBSpline<2,real_t> *geo;
     gsTHBSpline<2,real_t> thb;
     for (index_t k=0; k!=mp.nPatches(); ++k)
     {
-        gsTensorBSpline<2,real_t> *geoL = dynamic_cast< gsTensorBSpline<2,real_t> * > (&mp.patch(k));
-        thb = gsTHBSpline<2,real_t>(*geoL);
-        mpL.addPatch(thb);
-
-        gsTensorBSpline<2,real_t> *geoH = dynamic_cast< gsTensorBSpline<2,real_t> * > (&mpH0.patch(k));
-        thb = gsTHBSpline<2,real_t>(*geoH);
-        mpH.addPatch(thb);
+        gsTensorBSpline<2,real_t> *geo = dynamic_cast< gsTensorBSpline<2,real_t> * > (&mp.patch(k));
+        thb = gsTHBSpline<2,real_t>(*geo);
+        mp.patch(k) = thb;
     }
 
     numRefine = 0;
 
-    gsMultiBasis<> basisL(mpL);
-    gsMultiBasis<> basisH(mpH);
+    gsMultiBasis<> basisL(mp);
+    gsMultiBasis<> basisH = basisL;
+    basisH.degreeElevate();
     gsInfo<<"Basis Primal: "<<basisL.basis(0)<<"\n";
     gsInfo<<"Basis Dual:   "<<basisH.basis(0)<<"\n";
 
 
-    gsInfo << "Patches: "<< mpH.nPatches() <<", degree: "<< basisL.minCwiseDegree() <<"\n";
+    gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< basisL.minCwiseDegree() <<"\n";
     //! [Refinement]
 
     //! [Problem setup]
@@ -243,13 +235,13 @@ int main(int argc, char *argv[])
     solution zH = exH.getSolution(v, dualH);
 
     // zH2
-    gsMultiPatch<> zH2_mp(mpL);//just initialize for not being empty
+    gsMultiPatch<> zH2_mp(mp);//just initialize for not being empty
     variable zH2 = exL.getCoeff(zH2_mp);
     // zL2
-    gsMultiPatch<> zL2_mp(mpL);//just initialize for not being empty
+    gsMultiPatch<> zL2_mp(mp);//just initialize for not being empty
     variable zL2 = exH.getCoeff(zL2_mp);
     // uL2
-    gsMultiPatch<> uL2_mp(mpL);//just initialize for not being empty
+    gsMultiPatch<> uL2_mp(mp);//just initialize for not being empty
     variable uL2 = exH.getCoeff(uL2_mp);
 
 
@@ -285,8 +277,8 @@ int main(int argc, char *argv[])
     {
         gsInfo<<"Plotting in Paraview...\n";
         // ev.options().setSwitch("plot.elements", true);
-        gsWriteParaview( mpL, "mp",1000,true,true);
-        gsWriteParaview( mpL.basis(0), "basis");
+        gsWriteParaview( mp, "mp",1000,true,true);
+        gsWriteParaview( basisL.basis(0), "basis");
         evL.writeParaview( uL   , G, "solution");
         evH.writeParaview( uL2   ,H, "solution2");
         evL.writeParaview( primal_exL   , G, "solution_exact");
@@ -343,7 +335,7 @@ int main(int argc, char *argv[])
     {
         gsInfo<<"Plotting in Paraview...\n";
         // ev.options().setSwitch("plot.elements", true);
-        evH.writeParaview( zH0   , H, "dualH");
+        evH.writeParaview( zH   , H, "dualH");
     }
     // [!DUAL PROBLEM]
 
@@ -439,12 +431,7 @@ int main(int argc, char *argv[])
         gsInfo<<"\n";
 
         // Refine the marked elements with a 1-ring of cells around marked elements
-        gsRefineMarkedElements( mpH, elMarked, 1 );
-        gsRefineMarkedElements( mpL, elMarked, 1 );
-
-        gsDebugVar(mpH.basis(0));
-        gsDebugVar(mpL.basis(0));
-
+        gsRefineMarkedElements( mp, elMarked, 1 );
 
     }
     // FUNCTION WISE ERROR ESTIMATION
@@ -458,19 +445,23 @@ int main(int argc, char *argv[])
         auto rhs = ff.val() * (zH2.val() - zL.val()) * u0;
 
         gsMatrix<> res;
-        exL.assemble(lhs*meas(G));
-        res = exL.rhs();
+        // exL.assemble(lhs*meas(G));
+        // res = exL.rhs();
 
-        exL.assemble(lhs2*meas(G));
-        res += exL.rhs();
+        // exL.assemble(lhs2*meas(G));
+        // res += exL.rhs();
+
+        exL.assemble((lhs + lhs2)*meas(G));
+        res = exL.rhs();
 
         exL.assemble(rhs*meas(G));
         res += exL.rhs();
 
+
         gsInfo<< "  Result (global)    : "<< res.sum()<<"\n";
 
         MarkingStrategy adaptRefCrit = PUCA;
-        const real_t adaptRefParam = 0.9;
+        const real_t adaptRefParam = 0.8;
         std::vector<bool> funMarked( res.size() );
         std::vector<real_t> errors( res.size() );
         gsVector<>::Map(&errors[0],res.size() ) = res;
@@ -488,20 +479,16 @@ int main(int argc, char *argv[])
 
         }
         // Refine the marked elements with a 1-ring of cells around marked supports
-        gsWriteParaview(mpL,"mpL_old",1000,true);
-        gsWriteParaview(mpL.basis(0),"basisL_old",1000);
-        gsRefineMarkedFunctions( mpL, funMarked, 0 );
-        gsWriteParaview(mpL,"mpL",1000,true);
-        gsWriteParaview(mpL.basis(0),"basisL",1000);
+        gsWriteParaview(mp,"mp_old",1000,true);
+        gsWriteParaview(mp.basis(0),"basisL_old",1000);
+        gsRefineMarkedFunctions( mp, funMarked, 0 );
+        basisL = gsMultiBasis<>(mp);
+        gsWriteParaview(basisL.basis(0),"basisL",1000);
 
-        gsWriteParaview(mpH,"mpH_old",1000,true);
-        gsWriteParaview(mpH.basis(0),"basisH_old",1000);
-        mpH = mpL;
-        // mpH.uniformRefine();
-        mpH.degreeElevate();
-        gsWriteParaview(mpH,"mpH",1000,true);
-        gsWriteParaview(mpH.basis(0),"basisH",1000);
-
+        gsWriteParaview(basisH.basis(0),"basisH_old",1000);
+        basisH = basisL;
+        basisH.degreeElevate();
+        gsWriteParaview(basisH.basis(0),"basisH",1000);
 
     }
     // FUNCTION WISE ERROR ESTIMATION
@@ -583,12 +570,6 @@ int main(int argc, char *argv[])
     }
     else
         GISMO_ERROR("Estimation method unknown");
-
-
-
-
-    gsWriteParaview(mpH,"mpH",1000,true);
-    gsWriteParaview(mpL,"mpL",1000,true);
 
     return EXIT_SUCCESS;
 
