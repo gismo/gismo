@@ -79,7 +79,7 @@ int main(int argc, char* argv[])
     gsFunctionExpr<> f1("if ((abs(x-6)<=1.5) and (abs(y-6)<=1.5), -sgn(x-6), 0)", 2);
     gsFunctionExpr<> f2("0", 2);
     //gsFunctionExpr<> f("0", 2);
-    
+
 
     gsInfo << "Source function for first velocity component: " << f1 << "\n";
     gsInfo << "Source function for second velocity component: " << f2 << "\n";
@@ -152,13 +152,13 @@ int main(int argc, char* argv[])
     bc_bio.addCondition(boundary::east, condition_type::dirichlet, &rho_bar, 3);
     bc_bio.addCondition(boundary::south, condition_type::dirichlet, &rho_bar, 3);
     bc_bio.addCondition(boundary::west, condition_type::dirichlet, &rho_bar, 3);
-    
+
     gsInfo << "Boundary conditions:\n" << bc << "\n";
     gsInfo << "Boundary conditions:\n" << bc_bio << "\n";
 
     //! [Problem setup]
     gsExprAssembler<> A(5, 5);                              // velocity+strain assembler
-    gsExprAssembler<> B(5, 5);                              // cell constituents assembler
+    gsExprAssembler<> B(4, 4);                              // cell constituents assembler
 
     gsOptionList opt = gsAssembler<>::defaultOptions();
     //opt.setInt("DirichletValues", dirichlet::l2projection);
@@ -170,7 +170,7 @@ int main(int argc, char* argv[])
     //gsInfo << "Assembler " << opt;
     A.setOptions(opt);
     B.setOptions(opt);
-    
+
 
     //gsInfo << "Active options:\n" << A.options() << "\n";
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -234,9 +234,15 @@ int main(int argc, char* argv[])
     gsVector<> pt(2);
     pt<<0,0.25;
     // pt.setConstant(0.25);
-    
+
     variable ff1 = A.getCoeff(f1, G);
     variable ff2 = A.getCoeff(f2, G);
+
+    gsConstantFunction<> a_c_fun(a_c_I,2);
+    variable a_c = B.getCoeff(a_c_fun, G_bio);
+
+    gsConstantFunction<> one_fun(1,2);
+    variable one1 = B.getCoeff(one_fun, G_bio);
 
     // Solution vector and solution variable
 
@@ -252,7 +258,7 @@ int main(int argc, char* argv[])
 
     gsMatrix<> solVector;
     gsMatrix<> solVector_bio;
-    
+
     solution u_sol = A.getSolution(u, solVector);
     solution v_sol = A.getSolution(v, solVector);
     solution eps11_sol = A.getSolution(eps11, solVector);
@@ -263,7 +269,7 @@ int main(int argc, char* argv[])
     solution M_sol = A.getSolution(M, solVector_bio);
     solution c_sol = A.getSolution(c, solVector_bio);
     solution rho_sol = A.getSolution(rho, solVector_bio);
-    
+
 
     //Initial conditions
     solVector.setZero(ndof,1);
@@ -279,7 +285,7 @@ int main(int argc, char* argv[])
     displ2 = displ1;
     gsSparseMatrix<> oldMass;
     gsMatrix<> u_aux;
-    gsMatrix<> v_aux; 
+    gsMatrix<> v_aux;
     u.getCoeffs(solVector,u_aux);
     v.getCoeffs(solVector,v_aux);
     real_t half = 0.5;
@@ -330,21 +336,31 @@ int main(int argc, char* argv[])
 
         B.initSystem();
         //N fluxes: diffusive and convective
-        B.assemble(-D_F*(N_old+M_old)*igrad(N,G_bio)*igrad(N,G_bio)*meas(G_bio)); //diffusive
-        B.assemble(chi_F*(igrad(N,G_bio)*grad(c_old).tr())*N.tr()*meas(G_bio)); //convective
+        // B.assemble(-D_F*(N_old+M_old)*igrad(N,G_bio)*igrad(N,G_bio)*meas(G_bio)); //diffusive
+        // B.assemble(chi_F*(igrad(N,G_bio)*grad(c_old).tr())*N.tr()*meas(G_bio)); //convective
 
         //N bndFluxes
-        B.assembleLhsRhsBc(-D_F*(N_old+M_old)*N*(igrad(N,G_bio)*nv(G_bio)).tr(),
-                              zero*N,
-                              bc_bio.reducedContainer(bc_bio.dirichletSides(), 0)); //diffusive
-        B.assembleLhsRhsBc(chi_F*(N*(grad(c_old)*nv(G_bio)))*N.tr(),
-                              zero*N,
-                              bc_bio.reducedContainer(bc_bio.dirichletSides(), 0)); //diffusive
+        // B.assembleLhsRhsBc(-D_F*(N_old+M_old)*N*(igrad(N,G_bio)*nv(G_bio)).tr(),
+        //                       zero*N,
+        //                       bc_bio.reducedContainer(bc_bio.dirichletSides(), 0)); //diffusive
+        // B.assembleLhsRhsBc(chi_F*(N*(grad(c_old)*nv(G_bio)))*N.tr(),
+        //                       zero*N,
+        //                       bc_bio.reducedContainer(bc_bio.dirichletSides(), 0)); //diffusive
 
-        //N Forcing
-        B.assemble(r_F*(one+(r_F_max*c_old)/(a_c_I+c_old.val()))*(-kappa_F*pow((N_old.val()),1.0+q))*N*N.tr()*meas(G_bio),
-                    r_F*(one+(r_F_max*c_old)/(a_c_I+c_old.val()))*pow((N_old.val()),1.0+q)*N.tr()*meas(G_bio)+
-                    r_F*(one+(r_F_max*c_old)/(a_c_I+c_old.val()))*(-kappa_F*M_old*pow((N_old.val()),1.0+q))*N.tr()*meas(G_bio));
+
+        gsDebug<<evB.eval((a_c_I+c_old).val()*M*M.tr(),pt)<<"\n";
+        gsDebug<<evB.eval(1/(a_c_I+c_old).val()*M*M.tr(),pt)<<"\n";
+        gsDebug<<evB.eval(pow(N_old,q)*M*M.tr(),pt)<<"\n";
+        B.assemble((a_c_I+c_old).val()*M*M.tr());
+        B.assemble( 1 / (a_c_I+c_old).val()*M*M.tr());
+        B.assemble( pow(N_old,q)*M*M.tr());
+
+        // gsDebug<<ev.eval( pow((N_old),1.0+q) ,pt);
+
+        // // N Forcing
+        // B.assemble(r_F*(one1+(r_F_max*c_old)/(a_c_I+c_old))*(-kappa_F*pow((N_old),1.0+q))*N*N.tr()*meas(G_bio),
+        //             r_F*(one1+(r_F_max*c_old)/(a_c_I+c_old))*pow((N_old.val()),1.0+q)*N.tr()*meas(G_bio)+
+        //             r_F*(one1+(r_F_max*c_old)/(a_c_I+c_old))*(-kappa_F*M_old*pow((N_old),1.0+q))*N.tr()*meas(G_bio));
 
 
 
@@ -366,22 +382,22 @@ int main(int argc, char* argv[])
 
         displ1 = displ1 + dt * u_aux;
         displ2 = displ2 + dt * v_aux;
-        
+
         A.initSystem();
         A.assemble(eps11*(igrad(eps11,G)*firstCoeff).tr()*meas(G));
-        
+
         A.assemble(eps22*(igrad(eps22,G)*secondCoeff).tr()*meas(G));
 
         A.assemble((half*eps12)*(igrad(eps11,G)*secondCoeff).tr()*meas(G) +
                     (half*eps12)*(igrad(eps22,G)*firstCoeff).tr()*meas(G));
-        
+
         A.initSystem();
-        
+
         damp=0;
         if(dt*it < t_ap){
             damp=1;
         }
-        
+
 
         //Mass matrices for strains and velocity components
         A.assemble((1 + zeta * dt) * eps11 * eps11.tr() * meas(G));
@@ -408,13 +424,13 @@ int main(int argc, char* argv[])
                               zero*u,
                               bc.reducedContainer(bc.dirichletSides(), 3));
         A.assemble((dt)*G_tilde*(1-nu)/(1-2*nu)*((igrad(u,G)*firstCoeff))*eps11.tr()*meas(G));
-        
+
         //eps22-->u
         A.assembleLhsRhsBc((-dt)*G_tilde*(nu)/(1-2*nu)*(u*(nv(G).tr()*firstCoeff)) * eps22.tr(),
                                zero*u,
                                bc.reducedContainer(bc.dirichletSides(), 3));
         A.assemble((dt)*G_tilde*(nu)/(1-2*nu)*((igrad(u,G)*firstCoeff))*eps22.tr()*meas(G));
-        
+
         //eps12-->u
         A.assembleLhsRhsBc((-dt)*G_tilde*(u*(nv(G).tr()*secondCoeff)) * eps12.tr(),
                                zero*u,
@@ -445,7 +461,7 @@ int main(int argc, char* argv[])
 
 
         //Velocity contributions
-       
+
         //u,u
         A.assemble(dt*(mu1+mu2)*Sxx_u);
         A.assemble(dt*mu1/2*Syy_u);
@@ -491,12 +507,12 @@ int main(int argc, char* argv[])
         //auto finish = std::chrono::high_resolution_clock::now();
         //std::chrono::duration<double> elapsed = finish - start;
         //gsInfo << "Elapsed time: " << elapsed.count() << " s\n";
-        
+
         M_Linear = A.matrix();
         F = prevTimestep + dt*A.rhs();
 
         // ! Linear assembly
-             
+
 
         // Picard loop
         for(index_t pic=0; pic < 5; ++pic){
@@ -508,7 +524,7 @@ int main(int argc, char* argv[])
             A.assemble((-dt) * eps11 * eps11.tr() * ( grad(v_old)*secondCoeff ).val() * meas(G) );
             A.assemble((dt) * eps11 * eps22.tr() * ( grad(u_old)*firstCoeff ).val() * meas(G) );
             A.assemble((-dt) * eps11 * eps12.tr() * ( grad(u_old)*secondCoeff - grad(v_old) * firstCoeff).val() * meas(G) );
-            
+
             //eps22
             A.assemble((-dt) * eps22 * eps22.tr() * ( grad(u_old)*firstCoeff ).val() * meas(G) );
             A.assemble((dt) * eps22 * eps11.tr() * ( grad(v_old)*secondCoeff ).val() * meas(G) );
