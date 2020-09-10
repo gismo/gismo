@@ -2768,12 +2768,7 @@ public:
     add_expr(Scalar const & c, _expr<E2> const& v)
     : _c(c), _v(v) { }
 
-    EIGEN_STRONG_INLINE AutoReturn_t eval(const index_t k) const
-    {
-        gsMatrix<Scalar> ones(_v.eval(k).rows(),_v.eval(k).cols());
-        ones.setOnes();
-        return ( _c*ones + _v.eval(k) );
-    }
+    EIGEN_STRONG_INLINE AutoReturn_t eval(const index_t k) const {return eval_impl(_c,_v,k); }
 
     index_t rows() const { return _v.rows(); }
     index_t cols() const { return _v.cols(); }
@@ -2788,6 +2783,25 @@ public:
     const gsFeVariable<Scalar> & colVar() const { return _v.colVar(); }
 
     void print(std::ostream &os) const { os << _c <<"+";_v.print(os); }
+
+private:
+    template<class U> static inline
+    typename util::enable_if< U::ScalarValued, Scalar >::type
+    eval_impl(const Scalar & c, const U & v, const index_t k)
+    {
+        return c + v.eval(k);
+    }
+
+
+    template<class U> static inline
+    typename util::enable_if< !U::ScalarValued, gsMatrix<Scalar> >::type
+    eval_impl(const Scalar & c, const U & v, const index_t k)
+    {
+        gsMatrix<Scalar> ones(v.eval(k).rows(),v.eval(k).cols());
+        ones.setOnes();
+        return c*ones + v.eval(k);
+    }
+
 };
 /*// testing, |, ^, &, <<, >>, ||, &&,  unary ~
 template <typename E1, typename E2> add_expr<E1,E2> const

@@ -348,12 +348,16 @@ int main(int argc, char* argv[])
         //                       bc_bio.reducedContainer(bc_bio.dirichletSides(), 0)); //diffusive
 
 
-        gsDebug<<evB.eval((a_c_I+c_old).val()*M*M.tr(),pt)<<"\n";
-        gsDebug<<evB.eval(1/(a_c_I+c_old).val()*M*M.tr(),pt)<<"\n";
-        gsDebug<<evB.eval(pow(N_old,q)*M*M.tr(),pt)<<"\n";
-        B.assemble((a_c_I+c_old).val()*M*M.tr());
-        B.assemble( 1 / (a_c_I+c_old).val()*M*M.tr());
-        B.assemble( pow(N_old,q)*M*M.tr());
+        auto test1 = (a_c_I+c_old.val())*M*M.tr();
+        auto test2 = 1/((a_c_I+c_old.val()))*M*M.tr();
+        auto test3 = pow(N_old,q)*M*M.tr();
+
+        gsDebug<<evB.eval(test1,pt)<<"\n";
+        gsDebug<<evB.eval(test2,pt)<<"\n";
+        gsDebug<<evB.eval(test3,pt)<<"\n";
+        B.assemble(test1);
+        B.assemble(test2);
+        B.assemble(test3);
 
         // gsDebug<<ev.eval( pow((N_old),1.0+q) ,pt);
 
