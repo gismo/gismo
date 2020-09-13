@@ -12,6 +12,27 @@
 FROM ubuntu:20.04
 MAINTAINER Matthias Moller <m.moller@tudelft.nl>
 
+ARG BUILD_RFC3339="1970-01-01T00:00:00Z"
+ARG COMMIT="local"
+ARG VERSION="dirty"
+
+STOPSIGNAL SIGKILL
+
+LABEL org.opencontainers.image.ref.name="gismo/gismo" \
+      org.opencontainers.image.created=$BUILD_RFC3339 \
+      org.opencontainers.image.authors="Matthias Moller <m.moller@tudelft.nl>" \
+      org.opencontainers.image.documentation="https://github.com/gismo/gismo/README.md" \
+      org.opencontainers.image.description="G+Smo docker image" \
+      org.opencontainers.image.licenses="MPL-2.0" \
+      org.opencontainers.image.source="https://github.com/gismo/gismo" \
+      org.opencontainers.image.revision=$COMMIT \
+      org.opencontainers.image.version=$VERSION \
+      org.opencontainers.image.url="https://hub.docker.com/r/mmoelle1/gismo/"
+
+ENV BUILD_RFC3339 "$BUILD_RFC3339"
+ENV COMMIT "$COMMIT"
+ENV VERSION "$VERSION"
+
 # This file accepts the following build-time arguments:
 
 # C compiler              : {clang-6.0,clang-7,clang-8,clang-9,clang-10,gcc-7,gcc-8,gcc-9,gcc-10}
