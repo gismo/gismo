@@ -24,7 +24,7 @@ jobs:
 
   macos_build: #OS SEED plan!
     macos:
-      xcode: "9.0"
+      xcode: "9.4.1"
     filters:
       branches:
         - only: stable
