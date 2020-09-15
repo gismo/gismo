@@ -51,50 +51,50 @@ int main(int argc, char* argv[])
 
     //! [Read input file]
     real_t nu = 0.48;
-    real_t E = 10.0;
-    real_t mu1 = 10.0;
-    real_t mu2 = 10.0;
+    real_t E = 32.0;
+    real_t mu1 = 100.0;
+    real_t mu2 = 100.0;
     real_t rho_t = 1.02;
-    real_t G_tilde = E*sqrt(rho_t)/(1+nu); // TO BE CHANGED TO rho
-    real_t zeta = 0.3;
-    real_t t_ap = 5.0;
-    real_t tau_c = 20.0;
-    real_t D_F = 1.0;
-    real_t chi_F = 1.0;
-    real_t q = 0.42;
-    real_t r_F = 1.0;
-    real_t r_F_max = 1.0;
+    real_t G_tilde = E/(1.0+nu); 
+    real_t zeta = 9.0*pow(10,-2);
+    
+    
+    real_t D_F = pow(10,1);
+    real_t chi_F = 2*pow(10,-3);
+    real_t q = -0.42;
+    real_t r_F = 0.924*pow(10000,1.0+q);
+    real_t r_F_max = 2.0;
     real_t a_c_I = 1.0;
-    real_t kappa_F = 1.0;
-    real_t k_F = 1.0;
-    real_t delta_N = 1.0;
-    real_t delta_M = 1.0;
-    real_t D_c = 1.0;
+    real_t kappa_F = pow(10,-2);
+    real_t k_F = 1.08*pow(10,3);
+    real_t delta_N = 2.0*pow(10,2);
+    real_t delta_M = 6.0*pow(10,2);
+    real_t D_c = 2.9*pow(10,-11);
     real_t a_c_II = 1.0;
-    real_t a_c_III = 1.0;
-    real_t a_c_IV = 1.0;
-    real_t eta_I = 1.0;
-    real_t eta_II = 1.0;
-    real_t delta_c = 1.0;
-    real_t delta_rho = 1.0;
-    real_t k_rho = 1.0;
-    real_t k_rho_max = 1.0;
-    real_t k_c = 1.0;
-    real_t xi = 1.0;
-    real_t R = 1.0;
+    real_t a_c_III = 2.0;
+    real_t a_c_IV = 0.1;
+    real_t eta_I = 2.0;
+    real_t eta_II = 0.5;
+    real_t delta_c = 0.5;
+    real_t delta_rho = 6.0*pow(10,-4);
+    real_t k_rho = 6.0*pow(10,-4);
+    real_t k_rho_max = 10.0;
+    real_t k_c = 4.0*pow(10,-9);
+    real_t xi = 5.0*pow(10,3);
+    real_t R = 9.95;
 
     // Define Geometry, must be a gsMultiPatch object
     gsMultiPatch<> patch;
 
     // Create one patch as the unit square [0,12]^2
-    patch = gsNurbsCreator<>::BSplineSquareGrid(1, 1, 12);
+    patch = gsNurbsCreator<>::BSplineSquareGrid(1, 1, 8);
     gsInfo << "The domain is a " << patch << "\n";
 
     //Source function for velocities
-    gsFunctionExpr<> f1("if ((abs(x-6)<=1.5) and (abs(y-6)<=1.5), -sgn(x-6), 0)", 2);
-    gsFunctionExpr<> f2("0", 2);
-    //gsFunctionExpr<> f("0", 2);
-
+    gsFunctionExpr<> f1("1-(1-0.2)*(0.5+0.5*tanh(3*(x-3)))*(0.5-0.5*tanh(3*(x-5)))*(0.5+0.5*tanh(3*(y-3)))*(0.5-0.5*tanh(3*(y-5)))", 2);
+    gsFunctionExpr<> f2("(0.5+0.5*tanh(3*(x-3)))*(0.5-0.5*tanh(3*(x-5)))*(0.5+0.5*tanh(3*(y-3)))*(0.5-0.5*tanh(3*(y-5)))", 2);
+    gsFunctionExpr<> f3("1", 2);
+        
 
     gsInfo << "Source function for first velocity component: " << f1 << "\n";
     gsInfo << "Source function for second velocity component: " << f2 << "\n";
@@ -145,10 +145,10 @@ int main(int argc, char* argv[])
     bc.addCondition(boundary::south, condition_type::dirichlet, 0, 4);
     bc.addCondition(boundary::west, condition_type::dirichlet, 0, 4);
 
-    gsFunctionExpr<> N_bar("10000",2);
-    gsFunctionExpr<> M_bar("0",2);
-    gsFunctionExpr<> c_bar("0",2);
-    gsFunctionExpr<> rho_bar("0.1",2);
+    gsFunctionExpr<> N_bar("1.0",2);
+    gsFunctionExpr<> M_bar("0.0",2);
+    gsFunctionExpr<> c_bar("0.0",2);
+    //gsFunctionExpr<> rho_bar("0.1",2);
 
 
     bc_bio.addCondition(boundary::north, condition_type::dirichlet, &N_bar, 0);
@@ -163,11 +163,11 @@ int main(int argc, char* argv[])
     bc_bio.addCondition(boundary::east, condition_type::dirichlet, &c_bar, 2);
     bc_bio.addCondition(boundary::south, condition_type::dirichlet, &c_bar, 2);
     bc_bio.addCondition(boundary::west, condition_type::dirichlet, &c_bar, 2);
-    bc_bio.addCondition(boundary::north, condition_type::dirichlet, &rho_bar, 3);
+    /*bc_bio.addCondition(boundary::north, condition_type::dirichlet, &rho_bar, 3);
     bc_bio.addCondition(boundary::east, condition_type::dirichlet, &rho_bar, 3);
     bc_bio.addCondition(boundary::south, condition_type::dirichlet, &rho_bar, 3);
-    bc_bio.addCondition(boundary::west, condition_type::dirichlet, &rho_bar, 3);
-
+    bc_bio.addCondition(boundary::west, condition_type::dirichlet, &rho_bar, 3);*/
+    
     gsInfo << "Boundary conditions:\n" << bc << "\n";
     gsInfo << "Boundary conditions:\n" << bc_bio << "\n";
 
@@ -185,7 +185,7 @@ int main(int argc, char* argv[])
     //gsInfo << "Assembler " << opt;
     A.setOptions(opt);
     B.setOptions(opt);
-
+    
 
     //gsInfo << "Active options:\n" << A.options() << "\n";
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -231,12 +231,12 @@ int main(int argc, char* argv[])
     M.addBc(bc.get("Dirichlet",1)); // (!) must be called only once
     c.setInterfaceCont(0); // todo: 1 (smooth basis)
     c.addBc(bc.get("Dirichlet",2)); // (!) must be called only once
-    rho.setInterfaceCont(0); // todo: 1 (smooth basis)
-    rho.addBc(bc.get("Dirichlet",3)); // (!) must be called only once
+    //rho.setInterfaceCont(0); // todo: 1 (smooth basis)
+    //rho.addBc(bc.get("Dirichlet",3)); // (!) must be called only once
 
     gsFunctionExpr<> firstComp("1","0",2);
     variable firstCoeff = A.getCoeff(firstComp, G);
-    variable firstCoeff_bio = B.getCoeff(firstComp, G_bio);
+    
     gsInfo << "firstcomp: " << firstComp << "\n";
     gsFunctionExpr<> secondComp("0","1",2);
     variable secondCoeff = A.getCoeff(secondComp, G);
@@ -250,25 +250,27 @@ int main(int argc, char* argv[])
     gsVector<> pt(2);
     pt<<0,0.25;
     // pt.setConstant(0.25);
-
-    variable ff1 = A.getCoeff(f1, G);
-    variable ff2 = A.getCoeff(f2, G);
+    
+    variable N_initCond = B.getCoeff(f1, G_bio);
+    variable c_initCond = B.getCoeff(f2, G_bio);
+    variable rho_initCond = B.getCoeff(f3, G_bio);
 
     // Solution vector and solution variable
 
     A.initSystem();
     B.initSystem();
 
-    gsSparseSolver<>::BiCGSTABILUT solver;
+    gsSparseSolver<>::LU solver;
 
     gsInfo << "Number of degrees of freedom: " << A.numDofs() << "\n";
 
     index_t ndof = A.numDofs();
-    index_t ndof_bio = B.numDofs();
 
     gsMatrix<> solVector;
     gsMatrix<> solVector_bio;
-
+    gsSparseMatrix<> oldMass;
+    gsSparseMatrix<> newMass;
+    
     solution u_sol = A.getSolution(u, solVector);
     solution v_sol = A.getSolution(v, solVector);
     solution eps11_sol = A.getSolution(eps11, solVector);
@@ -283,19 +285,39 @@ int main(int argc, char* argv[])
     // MPs to evaluate soln from B onto A
     gsMultiPatch<> N_solA_mp(patch);//just initialize for not being empty
     variable N_solA = A.getCoeff(N_solA_mp);
-    // gsMultiPatch<> N_solA_mp(patch);//just initialize for not being empty
-    // variable N_solA = A.getCoeff(N_solA_mp);
-    // gsMultiPatch<> N_solA_mp(patch);//just initialize for not being empty
-    // variable N_solA = A.getCoeff(N_solA_mp);
-    // gsMultiPatch<> N_solA_mp(patch);//just initialize for not being empty
-    // variable N_solA = A.getCoeff(N_solA_mp);
-
-    // end of MPs
+    gsMultiPatch<> M_solA_mp(patch);//just initialize for not being empty
+    variable M_solA = A.getCoeff(M_solA_mp);
+    gsMultiPatch<> rho_solA_mp(patch);//just initialize for not being empty
+    variable rho_solA = A.getCoeff(rho_solA_mp);
+    gsMultiPatch<> c_solA_mp(patch);//just initialize for not being empty
+    variable c_solA = A.getCoeff(c_solA_mp);
+    
 
     //Initial conditions
     solVector.setZero(ndof,1);
-    solVector_bio.setZero(ndof_bio,1); //TO DO!!!!!!!!!!!!!!!!!!!!
+    //L2 projection
+    B.initSystem();
+    B.assemble(N * N.tr() * meas(G_bio),N*N_initCond*meas(G_bio));
+    B.assemble(M * M.tr() * meas(G_bio));
+    B.assemble(c * c.tr() * meas(G_bio),c*c_initCond*meas(G_bio));
+    B.assemble(rho * rho.tr() * meas(G_bio),rho*rho_initCond*meas(G_bio));
 
+    oldMass = B.matrix();
+    solver.compute(oldMass);
+    solVector_bio = solver.solve(B.rhs());
+
+    gsInfo << "Plotting initial conditions in Paraview...\n";
+
+
+    evB.options().setSwitch("plot.elements", true);
+    evB.writeParaview(N_sol, G_bio, "initCond_N");
+    evB.writeParaview(M_sol, G_bio, "initCond_M");
+    evB.writeParaview(c_sol, G_bio, "initCond_c");
+    evB.writeParaview(rho_sol, G_bio, "initCond_rho");
+    
+
+
+    /////////////////////////////////////
     gsMatrix<> aux;
     gsVector<> displ1;
     gsVector<> displ2;
@@ -305,15 +327,14 @@ int main(int argc, char* argv[])
     eps11.getCoeffs(solVector,aux);
     displ1.setZero(aux.size());
     displ2 = displ1;
-    gsSparseMatrix<> oldMass;
     gsMatrix<> u_aux;
-    gsMatrix<> v_aux;
+    gsMatrix<> v_aux; 
     u.getCoeffs(solVector,u_aux);
     v.getCoeffs(solVector,v_aux);
     real_t half = 0.5;
     real_t zero = 0.0;
     real_t one = 1.0;
-    real_t damp;
+    
     real_t tol = pow(10,-4);
 
     gsMatrix<> F;
@@ -343,16 +364,22 @@ int main(int argc, char* argv[])
     gsParaviewCollection collectionE11("solutionE11");
     gsParaviewCollection collectionE22("solutionE22");
     gsParaviewCollection collectionE12("solutionE12");
+
+    gsParaviewCollection collectionN("solutionN");
+    gsParaviewCollection collectionM("solutionM");
+    gsParaviewCollection collectionC("solutionC");
+    gsParaviewCollection collectionRHO("solutionRHO");
+    
     ev.options().setSwitch("plot.elements", true);
     //! plotting
 
-    for(index_t it = 1; it <= 1; ++it){
+    for(index_t it = 1; it <= 2; ++it){
 
         B.initSystem();
-        B.assemble(N * N.tr() * meas(G_bio));
-        B.assemble(M * M.tr() * meas(G_bio));
-        B.assemble(c * c.tr() * meas(G_bio));
-        B.assemble(rho * rho.tr() * meas(G_bio));
+        B.assemble(pow(10,4) * N * N.tr() * meas(G_bio));
+        B.assemble(pow(10,4) * M * M.tr() * meas(G_bio));
+        B.assemble(pow(10,-8) * c * c.tr() * meas(G_bio));
+        B.assemble(pow(10,-1) * rho * rho.tr() * meas(G_bio));
         oldMass = B.matrix();
         prevTimestep_bio = oldMass * solVector_bio;
 
@@ -376,20 +403,27 @@ int main(int argc, char* argv[])
         displ2 = displ2 + dt * v_aux;
 
         B.initSystem();
+        B.assemble(pow(10,4) * N * N.tr() * meas(G_bio));
+        B.assemble(pow(10,4) * M * M.tr() * meas(G_bio));
+        B.assemble(pow(10,-8) * c * c.tr() * meas(G_bio));
+        B.assemble(pow(10,-1) * rho * rho.tr() * meas(G_bio));
+        newMass = B.matrix();
+
+        B.initSystem();
         //N fluxes: diffusive and convective
         B.assemble(-D_F*(N_old+M_old).val()*igrad(N,G_bio)*igrad(N,G_bio).tr()*meas(G_bio)); //diffusive
         B.assemble(chi_F*(igrad(N,G_bio)*grad(c_old).tr())*N.tr()*meas(G_bio)); //convective
 
-        gsInfo << "first\n";
+        
         //N bndFluxes
-        B.assembleLhsRhsBc(-D_F*(N_old+M_old).val()*N*(igrad(N,G_bio)*nv(G_bio)).tr(),
+        B.assembleLhsRhsBc(D_F*(N_old+M_old).val()*N*(igrad(N,G_bio)*nv(G_bio)).tr(),
                               zero*N,
                               bc_bio.reducedContainer(bc_bio.dirichletSides(), 0)); //diffusive
-        B.assembleLhsRhsBc(chi_F*(N*(grad(c_old)*nv(G_bio)))*N.tr(),
+        B.assembleLhsRhsBc(-chi_F*(N*(grad(c_old)*nv(G_bio)))*N.tr(),
                               zero*N,
                               bc_bio.reducedContainer(bc_bio.dirichletSides(), 0)); //convective
 
-        gsInfo << "second\n";
+        
         //N Forcing
         B.assemble(r_F*(one+(r_F_max*c_old.val()/(a_c_I+c_old.val())))*(-kappa_F*pow(N_old,1.0+q))*N*N.tr()*meas(G_bio),
                     r_F*(one+(r_F_max*c_old.val()/(a_c_I+c_old.val())))*pow(N_old,1.0+q)*N*meas(G_bio)+
@@ -402,33 +436,33 @@ int main(int argc, char* argv[])
         B.assemble(-D_F*(N_old+M_old).val()*igrad(M,G_bio)*igrad(M,G_bio).tr()*meas(G_bio)); //diffusive
         B.assemble(chi_F*(igrad(M,G_bio)*grad(c_old).tr())*M.tr()*meas(G_bio)); //convective
 
-        gsInfo << "third\n";
+        
         //M bndFluxes
-        B.assembleLhsRhsBc(-D_F*(N_old+M_old).val()*M*(igrad(M,G_bio)*nv(G_bio)).tr(),
+        B.assembleLhsRhsBc(D_F*(N_old+M_old).val()*M*(igrad(M,G_bio)*nv(G_bio)).tr(),
                               zero*M,
                               bc_bio.reducedContainer(bc_bio.dirichletSides(), 1)); //diffusive
-        B.assembleLhsRhsBc(chi_F*(M*(grad(c_old)*nv(G_bio)))*M.tr(),
+        B.assembleLhsRhsBc(-chi_F*(M*(grad(c_old)*nv(G_bio)))*M.tr(),
                               zero*M,
                               bc_bio.reducedContainer(bc_bio.dirichletSides(), 1)); //convective
 
-        gsInfo << "fourth\n";
+        
 
         //M Forcing
         B.assemble(r_F*(one+r_F_max)*c_old.val()/(a_c_I+c_old.val())*(-kappa_F*pow(M_old,1.0+q))*M*M.tr()*meas(G_bio),
                     r_F*(one+r_F_max)*c_old.val()/(a_c_I+c_old.val())*pow(M_old,1.0+q)*M*meas(G_bio)+
                     r_F*(one+r_F_max)*c_old.val()/(a_c_I+c_old.val())*(-kappa_F*N_old.val()*pow(M_old,1.0+q))*M*meas(G_bio));
 
-        B.assemble(-delta_M*M*M.tr()*meas(G_bio),-k_F*(c_old*N_old).val()*M*meas(G_bio));
+        B.assemble(-delta_M*M*M.tr()*meas(G_bio),k_F*(c_old*N_old).val()*M*meas(G_bio));
 
         //c fluxes
         B.assemble(-D_c*igrad(c,G_bio)*igrad(c,G_bio).tr()*meas(G_bio));
 
         //c bndFluxes
-        B.assembleLhsRhsBc(-D_c*c*(igrad(c,G_bio)*nv(G_bio)).tr()*meas(G_bio),
+        B.assembleLhsRhsBc(D_c*c*(igrad(c,G_bio)*nv(G_bio)).tr()*meas(G_bio),
                               zero*c,
                               bc_bio.reducedContainer(bc_bio.dirichletSides(), 2)); //diffusive
 
-        gsInfo << "fifth\n";
+        
         //c Forcing
         B.assemble(k_c/(a_c_II+c_old.val())*(N_old.val()+eta_I*M_old.val())*c*c.tr()*meas(G_bio));
         B.assemble(-delta_c*(N_old.val()+eta_II*M_old.val())*rho_old.val()/(one+a_c_III*c_old.val())*c*c.tr()*meas(G_bio));
@@ -437,48 +471,56 @@ int main(int argc, char* argv[])
         B.assemble(-delta_rho*(N_old.val()+eta_II*M_old.val())*rho_old.val()/(one+a_c_III*c_old.val())*rho*rho.tr()*meas(G_bio),
                     k_rho*(1+k_rho_max*c_old.val()/(a_c_IV+c_old.val()))*(N_old.val()+eta_I*M_old.val())*rho*meas(G_bio));
 
+        F = prevTimestep_bio + dt*B.rhs();
+        solveMat = newMass - dt*B.matrix();
+        //gsInfo << "Mat to solve: " << solveMat << "\n"; //check if sum remains sparse
+        solver.compute(solveMat);
 
+        aux_bio = solver.solve(F);
+
+        solVector_bio=aux_bio;
+
+        //index_t infsum=0;
+        //gsInfo << "solVector_bio has nan?:\n" << solVector_bio.hasNaN() << "\n";
+        //for(index_t m=0; m<solVector_bio.size(); ++m){
+        //    if(std::isinf(solVector_bio(m,0))){
+        //        infsum+=infsum;
+        //    }
+        //}
+        //gsInfo << "solVector_bio is inf?:\n" << infsum << "\n";
 
         //////////////////////////////////////////////////////////////////////////////////
 
+        N_sol.extract(N_solA_mp);// this updates zH2 variable
+        M_sol.extract(M_solA_mp);// this updates zH2 variable
+        c_sol.extract(c_solA_mp);// this updates zH2 variable
+        rho_sol.extract(rho_solA_mp);// this updates zH2 variable
 
 
         //Mechanical solution asembly
         A.initSystem();
         A.assemble(eps11*(igrad(eps11,G)*firstCoeff).tr()*meas(G));
-
+        
         A.assemble(eps22*(igrad(eps22,G)*secondCoeff).tr()*meas(G));
 
         A.assemble((half*eps12)*(igrad(eps11,G)*secondCoeff).tr()*meas(G) +
                     (half*eps12)*(igrad(eps22,G)*firstCoeff).tr()*meas(G));
-
+        
         A.initSystem();
-
-        damp=0;
-        if(dt*it < t_ap){
-            damp=1;
-        }
-
+        
 
         //Mass matrices for strains and velocity components
-        A.assemble((1 + zeta * dt * (N_sol.val()+eta_II*M_sol.val())*c_sol.val()/(one+a_c_III*c_sol.val())) * eps11 * eps11.tr() * meas(G));
-        A.assemble((1 + zeta * dt * (N_sol.val()+eta_II*M_sol.val())*c_sol.val()/(one+a_c_III*c_sol.val())) * eps22 * eps22.tr() * meas(G));
-        A.assemble((1 + zeta * dt * (N_sol.val()+eta_II*M_sol.val())*c_sol.val()/(one+a_c_III*c_sol.val())) * eps12 * eps12.tr() * meas(G));
-        gsInfo << "sixth\n";
+        A.assemble((1 + zeta * dt * (N_solA.val()+eta_II*M_solA.val())*c_solA.val()/(one+a_c_III*c_solA.val())) * eps11 * eps11.tr() * meas(G));
+        A.assemble((1 + zeta * dt * (N_solA.val()+eta_II*M_solA.val())*c_solA.val()/(one+a_c_III*c_solA.val())) * eps22 * eps22.tr() * meas(G));
+        A.assemble((1 + zeta * dt * (N_solA.val()+eta_II*M_solA.val())*c_solA.val()/(one+a_c_III*c_solA.val())) * eps12 * eps12.tr() * meas(G));
+        
+        A.assemble(rho_t * u * u.tr() * meas(G), u * xi * ((grad(M_solA)*firstCoeff).val()*rho_solA.val()/(R*R+rho_solA.val()*rho_solA.val()) + 
+            M_solA.val()*((grad(rho_solA)*firstCoeff).val()*(R*R+rho_solA.val()*rho_solA.val())+2.0*rho_solA.val()*(grad(rho_solA)*firstCoeff).val()/((R*R+rho_solA.val()*rho_solA.val())*(R*R+rho_solA.val()*rho_solA.val()))))* meas(G));
+        A.assemble(rho_t * v * v.tr() * meas(G), v * xi * ((grad(M_solA)*secondCoeff).val()*rho_solA.val()/(R*R+rho_solA.val()*rho_solA.val()) + 
+            M_solA.val()*((grad(rho_solA)*secondCoeff).val()*(R*R+rho_solA.val()*rho_solA.val())+2.0*rho_solA.val()*(grad(rho_solA)*secondCoeff).val()/((R*R+rho_solA.val()*rho_solA.val())*(R*R+rho_solA.val()*rho_solA.val()))))* meas(G));
 
-        N_sol.extract(N_solA_mp);// this updates zH2 variable
-        // rho_sol.extract(rho_solA_mp);// this updates zH2 variable
-
-
-        gsDebug<<ev.eval(grad(N_solA),pt)<<"\n";
-        A.assemble(rho_t * u * u.tr() * meas(G), u * xi * N_solA.val() *(grad(N_solA)*firstCoeff).val()* meas(G));
-
-        // A.assemble(rho_t * u * u.tr() * meas(G), u * xi * rho_sol.val() *(grad(M_sol)*firstCoeff).val()* meas(G));
-
-        //A.assemble(rho_t * v * v.tr() * meas(G), xi * ((grad(M_sol)*firstCoeff)*rho_sol.val()/(R*R+rho_sol*rho_sol).val() +
-        //    M_sol.val()*((grad(rho_sol)*firstCoeff)*(R*R+rho_sol*rho_sol).val()+2.0*rho_sol.val()*(grad(rho_sol)*firstCoeff)/((R*R+rho_sol*rho_sol).val()*(R*R+rho_sol*rho_sol).val()))).val() * u * meas(G));
-
-
+        gsInfo << "A.rhs() has nan:" << A.rhs().hasNaN() << "\n";
+        gsInfo << "A.rhs() sum:" << A.rhs().sum() << "\n";
         //Vel comps contributions to strain
         //u-->eps11
         A.assemble((-dt)*eps11*(igrad(u,G)*firstCoeff).tr()*meas(G));
@@ -493,48 +535,49 @@ int main(int argc, char* argv[])
 
         //Strain contributions to vel comps
         //eps11-->u
-        A.assembleLhsRhsBc((-dt)*G_tilde*(1-nu)/(1-2*nu)*(u*(nv(G).tr()*firstCoeff)) * eps11.tr(),
+        A.assembleLhsRhsBc((-dt)*G_tilde*sqrt(0.1)*pow(rho_sol,0.5)*(1-nu)/(1-2*nu)*(u*(nv(G).tr()*firstCoeff)) * eps11.tr(),
                               zero*u,
                               bc.reducedContainer(bc.dirichletSides(), 3));
-        A.assemble((dt)*G_tilde*(1-nu)/(1-2*nu)*((igrad(u,G)*firstCoeff))*eps11.tr()*meas(G));
-
+        A.assemble((dt)*G_tilde*sqrt(0.1)*pow(rho_sol,0.5)*(1-nu)/(1-2*nu)*((igrad(u,G)*firstCoeff))*eps11.tr()*meas(G));
+        
         //eps22-->u
-        A.assembleLhsRhsBc((-dt)*G_tilde*(nu)/(1-2*nu)*(u*(nv(G).tr()*firstCoeff)) * eps22.tr(),
+        A.assembleLhsRhsBc((-dt)*G_tilde*sqrt(0.1)*pow(rho_sol,0.5)*(nu)/(1-2*nu)*(u*(nv(G).tr()*firstCoeff)) * eps22.tr(),
                                zero*u,
                                bc.reducedContainer(bc.dirichletSides(), 3));
-        A.assemble((dt)*G_tilde*(nu)/(1-2*nu)*((igrad(u,G)*firstCoeff))*eps22.tr()*meas(G));
-
+        A.assemble((dt)*G_tilde*sqrt(0.1)*pow(rho_sol,0.5)*(nu)/(1-2*nu)*((igrad(u,G)*firstCoeff))*eps22.tr()*meas(G));
+        
         //eps12-->u
-        A.assembleLhsRhsBc((-dt)*G_tilde*(u*(nv(G).tr()*secondCoeff)) * eps12.tr(),
+        A.assembleLhsRhsBc((-dt)*G_tilde*sqrt(0.1)*pow(rho_sol,0.5)*(u*(nv(G).tr()*secondCoeff)) * eps12.tr(),
                                zero*u,
                                bc.reducedContainer(bc.dirichletSides(), 3));
-        A.assemble((dt)*G_tilde*((igrad(u,G)*secondCoeff))*eps12.tr()*meas(G));
+        A.assemble((dt)*G_tilde*sqrt(0.1)*pow(rho_sol,0.5)*((igrad(u,G)*secondCoeff))*eps12.tr()*meas(G));
 
         //eps11-->v
-        A.assembleLhsRhsBc((-dt)*G_tilde*(nu)/(1-2*nu)*(v*(nv(G).tr()*secondCoeff)) * eps11.tr(),
+        A.assembleLhsRhsBc((-dt)*G_tilde*sqrt(0.1)*pow(rho_sol,0.5)*(nu)/(1-2*nu)*(v*(nv(G).tr()*secondCoeff)) * eps11.tr(),
                                zero*v,
                                bc.reducedContainer(bc.dirichletSides(), 4));
-        A.assemble((dt)*G_tilde*(nu)/(1-2*nu)*((igrad(v,G)*secondCoeff))*eps11.tr()*meas(G));
+        A.assemble((dt)*G_tilde*sqrt(0.1)*pow(rho_sol,0.5)*(nu)/(1-2*nu)*((igrad(v,G)*secondCoeff))*eps11.tr()*meas(G));
 
         //eps22-->v
-        A.assembleLhsRhsBc((-dt)*G_tilde*(1-nu)/(1-2*nu)*(v*(nv(G).tr()*secondCoeff)) * eps22.tr(),
+        A.assembleLhsRhsBc((-dt)*G_tilde*sqrt(0.1)*pow(rho_sol,0.5)*(1-nu)/(1-2*nu)*(v*(nv(G).tr()*secondCoeff)) * eps22.tr(),
                                zero*v,
                                bc.reducedContainer(bc.dirichletSides(), 4));
-        A.assemble((dt)*G_tilde*(1-nu)/(1-2*nu)*((igrad(v,G)*secondCoeff))*eps22.tr()*meas(G));
+        A.assemble((dt)*G_tilde*sqrt(0.1)*pow(rho_sol,0.5)*(1-nu)/(1-2*nu)*((igrad(v,G)*secondCoeff))*eps22.tr()*meas(G));
 
+        gsInfo << "pow rho_sol" << ev.eval(sqrt(0.1)*pow(rho_sol,0.5),pt) << "\n";
         //eps12-->v
-        A.assembleLhsRhsBc((-dt)*G_tilde*(v*(nv(G).tr()*firstCoeff)) * eps12.tr(),
+        A.assembleLhsRhsBc((-dt)*G_tilde*sqrt(0.1)*pow(rho_sol,0.5)*(v*(nv(G).tr()*firstCoeff)) * eps12.tr(),
                                zero*v,
                                bc.reducedContainer(bc.dirichletSides(), 4));
-        A.assemble((dt)*G_tilde*((igrad(v,G)*firstCoeff))*eps12.tr()*meas(G));
+        A.assemble((dt)*G_tilde*sqrt(0.1)*pow(rho_sol,0.5)*((igrad(v,G)*firstCoeff))*eps12.tr()*meas(G));
 
-
+        
         //gsDebug<<"igrad(v,G) = \n"<<ev.eval(igrad(v,G),pt)<<"\n";
         //gsDebug<<"(nv(G).tr()*firstCoeff/nv(G).norm()) = \n"<<ev.eval(nv(G).tr()*firstCoeff/nv(G).norm(),pt)<<"\n";
 
 
         //Velocity contributions
-
+       
         //u,u
         A.assemble(dt*(mu1+mu2)*Sxx_u);
         A.assemble(dt*mu1/2*Syy_u);
@@ -580,12 +623,14 @@ int main(int argc, char* argv[])
         //auto finish = std::chrono::high_resolution_clock::now();
         //std::chrono::duration<double> elapsed = finish - start;
         //gsInfo << "Elapsed time: " << elapsed.count() << " s\n";
-
+        
         M_Linear = A.matrix();
         F = prevTimestep + dt*A.rhs();
 
-        // ! Linear assembly
+        //gsInfo<<"A.rhs()" << A.rhs() << "\n";
 
+        // ! Linear assembly
+             
 
         // Picard loop
         for(index_t pic=0; pic < 5; ++pic){
@@ -597,7 +642,7 @@ int main(int argc, char* argv[])
             A.assemble((-dt) * eps11 * eps11.tr() * ( grad(v_old)*secondCoeff ).val() * meas(G) );
             A.assemble((dt) * eps11 * eps22.tr() * ( grad(u_old)*firstCoeff ).val() * meas(G) );
             A.assemble((-dt) * eps11 * eps12.tr() * ( grad(u_old)*secondCoeff - grad(v_old) * firstCoeff).val() * meas(G) );
-
+            
             //eps22
             A.assemble((-dt) * eps22 * eps22.tr() * ( grad(u_old)*firstCoeff ).val() * meas(G) );
             A.assemble((dt) * eps22 * eps11.tr() * ( grad(v_old)*secondCoeff ).val() * meas(G) );
@@ -617,6 +662,7 @@ int main(int argc, char* argv[])
             diff = ((solVector-picardVector).cwiseAbs()).maxCoeff();
 
             solVector = picardVector; //update solution to last picard iteration
+            gsInfo << "Diff = " << diff << "\n";
 
             if(diff<tol){
                 gsInfo << "Stopped at picard iteration: " << pic+1 << "\n";
@@ -657,6 +703,24 @@ int main(int argc, char* argv[])
 
             collectionE12.addTimestep("solutionEps12_" + util::to_string(it),it,"0.vts");
             collectionE12.addTimestep("solutionEps12_" + util::to_string(it),it,"0_mesh.vtp");
+
+            evB.writeParaview(N_sol, G_bio, "solutionN_"+ util::to_string(it));
+            evB.writeParaview(M_sol, G_bio, "solutionM_" + util::to_string(it));
+            evB.writeParaview(c_sol, G_bio, "solutionC_" + util::to_string(it));
+            evB.writeParaview(rho_sol, G_bio, "solutionRho_" + util::to_string(it));
+
+            collectionN.addTimestep("solutionN_" + util::to_string(it),it,"0.vts");
+            collectionN.addTimestep("solutionN_" + util::to_string(it),it,"0_mesh.vtp");
+
+            collectionM.addTimestep("solutionM_" + util::to_string(it),it,"0.vts");
+            collectionM.addTimestep("solutionM_" + util::to_string(it),it,"0_mesh.vtp");
+
+            collectionC.addTimestep("solutionC_" + util::to_string(it),it,"0.vts");
+            collectionC.addTimestep("solutionC_" + util::to_string(it),it,"0_mesh.vtp");
+
+            collectionRHO.addTimestep("solutionRho_" + util::to_string(it),it,"0.vts");
+            collectionRHO.addTimestep("solutionRho_" + util::to_string(it),it,"0_mesh.vtp");
+
         }
     }
 
@@ -666,6 +730,11 @@ int main(int argc, char* argv[])
         collectionE11.save();
         collectionE22.save();
         collectionE12.save();
+
+        collectionN.save();
+        collectionM.save();
+        collectionC.save();
+        collectionRHO.save();
     }
 
     // gsInfo << "Plotting in Paraview...\n";
