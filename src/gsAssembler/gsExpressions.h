@@ -1404,7 +1404,6 @@ class pow_expr : public _expr<pow_expr<E> >
 public:
     typedef typename E::Scalar Scalar;
     enum {ScalarValued = 1 };
-    enum {Space = E::Space};
 
     Scalar _q;// power
 
@@ -1437,7 +1436,51 @@ public:
 // Call as pow(a,b)
 template<class E>
 pow_expr<E> pow(_expr<E> const& u, real_t q) { return pow_expr<E>(u,q); }
+template<class E>
+pow_expr<E> sqrt(_expr<E> const& u) { return pow_expr<E>(u,0.5); }
 
+template<class T>
+class varpow_expr : public _expr<varpow_expr<T> >
+{
+    const gsFeVariable<T> & _u;
+
+public:
+    typedef T Scalar;
+    enum {ScalarValued = 1 };
+
+    Scalar _q;// power
+
+    varpow_expr(const gsFeVariable<T> & u, Scalar q) : _u(u), _q(q) { }
+
+    Scalar eval(const index_t k) const
+    {
+        const Scalar v = _u.val().eval(k);
+        return math::pow(v,_q);
+    }
+
+    static index_t rows() { return 0; }
+    static index_t cols() { return 0; }
+
+    void setFlag() const { _u.setFlag(); }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & ) const {  }
+
+    static bool isScalar() { return true; }
+
+    static bool rowSpan() {return false;}
+    static bool colSpan() {return false;}
+
+    // const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+    // const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+
+    void print(std::ostream &os) const { os<<"pow("; _u.print(os); os <<")"; }
+};
+
+// Call as pow(a,b)
+template<class T> EIGEN_STRONG_INLINE
+varpow_expr<T> pow(const gsFeVariable<T> & u, T q) { return varpow_expr<T>(u,q); }
+template<class T> EIGEN_STRONG_INLINE
+varpow_expr<T> sqrt(const gsFeVariable<T> & u) { return varpow_expr<T>(u,0.5); }
 
 template<class T>
 class solpow_expr : public _expr<solpow_expr<T> >
@@ -1476,7 +1519,8 @@ public:
 // Call as pow(a,b)
 template<class T> EIGEN_STRONG_INLINE
 solpow_expr<T> pow(const gsFeSolution<T> & u, T q) { return solpow_expr<T>(u,q); }
-
+template<class T> EIGEN_STRONG_INLINE
+solpow_expr<T> sqrt(const gsFeSolution<T> & u) { return solpow_expr<T>(u,0.5); }
 
 
 /*
