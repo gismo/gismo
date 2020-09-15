@@ -170,11 +170,11 @@ esac
 # Build with Trilinos support
 case "$IMAGE_NAME" in
     *:*-trilinos-*)
-        GISMO_WITH_OPENMPI=ON
+        GISMO_WITH_MPI=ON
         GISMO_WITH_TRILINOS=ON
         ;;
     *)
-        GISMO_WITH_OPENMPI=OFF
+        GISMO_WITH_MPI=OFF
         GISMO_WITH_TRILINOS=OFF
         ;;
 esac
