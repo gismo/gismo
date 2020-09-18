@@ -2386,25 +2386,26 @@ public:
     MatExprType eval(const index_t k) const
     {
         // numActive x 1
-        return _u.data().laplacians.col(k);
+        // return _u.data().laplacians.col(k);
+        return _u.data().values[2];
         //todo: replace by
         // NEED_DERIV2
         // ..nabla2.sum()
     }
 
-    index_t rows() const { return _u.data().laplacians.rows(); }
+    index_t rows() const { return _u.data().values[2].rows(); }
     index_t cols() const { return 1; }
 
     static constexpr bool rowSpan() {return true; }
     static bool colSpan() {return false;}
 
-    void setFlag() const { _u.data().flags |= NEED_LAPLACIAN; }
+    void setFlag() const { _u.data().flags |= NEED_DERIV2; }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         evList.push_sorted_unique(&_u.source());
-        _u.data().flags |= NEED_LAPLACIAN;
+        _u.data().flags |= NEED_DERIV2;
     }
 
     void print(std::ostream &os) const { os << "lap("; _u.print(os); os <<")"; }
@@ -2830,7 +2831,7 @@ public:
     fjac_expr(const gsFeVariable<T> & _u)
     : m_fev(_u)
     {
-        gsInfo<<"(!) fjac(u) \n";
+        // gsInfo<<"(!) fjac(u) \n";
     }
 
     MatExprType eval(const index_t k) const
@@ -2841,8 +2842,8 @@ public:
     const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>::get(); }
     const gsFeSpace<T> & colVar() const { return gsNullExpr<T>::get(); }
 
-    index_t rows() const { return m_fev.data().dim.first; }
-    index_t cols() const {return m_fev.data().dim.second; }
+    index_t rows() const { return m_fev.data().dim.second; }
+    index_t cols() const {return m_fev.data().dim.first; }
 
     static constexpr bool rowSpan() {return true; }
     static bool colSpan() {return false;}

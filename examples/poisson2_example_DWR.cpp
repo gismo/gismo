@@ -397,7 +397,7 @@ int main(int argc, char *argv[])
     if (est==0)
     {
         // gsInfo<<evL.eval((ff - slapl(uL)) * (zH2.val() - zL.val())*meas(G),pt)<<"\n";
-        gsInfo<<evH.eval((gg - lapl(uL2)) * (zH.val() - zL2.val())*meas(H),pt)<<"\n";
+        gsInfo<<evL.eval((ff - slapl(uL)) * (zH2.val() - zL.val())*meas(G),pt)<<"\n";
 
 
 
@@ -410,7 +410,6 @@ int main(int argc, char *argv[])
         gsVector<>::Map(&errors[0],elementNorms.size() ) = elementNorms;
 
         gsInfo<< "  Result (global)    : "<< elementNorms.sum() <<"\n";
-    return 0;
 
         gsElementErrorPlotter<real_t> err_eh(basisH.basis(0),errors);
 
@@ -429,6 +428,9 @@ int main(int argc, char *argv[])
 
         // Refine the marked elements with a 1-ring of cells around marked elements
         gsRefineMarkedElements( mp, elMarked, 1 );
+        gsWriteParaview(basisL.basis(0),"basisL",1000);
+        gsWriteParaview(mp,"mp",1000,true);
+
 
     }
     // FUNCTION WISE ERROR ESTIMATION
@@ -486,6 +488,8 @@ int main(int argc, char *argv[])
         basisH = basisL;
         basisH.degreeElevate();
         gsWriteParaview(basisH.basis(0),"basisH",1000);
+
+        gsWriteParaview(mp,"mp",1000,true);
 
     }
     // FUNCTION WISE ERROR ESTIMATION
