@@ -439,6 +439,11 @@ int main(int argc, char *argv[])
         exL.initSystem(true);
         // exH.assemble( grad(uLp) * ( grad(v) * (zH - zLp) + v * ( grad(zH) - grad(zLp) ) ) - gg * v * (zH - zLp)  );
 
+        /*
+            Note: this expression is separated because u is not colblocks but all expressions are.
+            The add_expr gives an error when you add one colBlocks=true expression with one colBlocks=false expression.
+        */
+
         auto lhs = ((zH2 - zL) * grad(uL) * grad(u0).tr()).tr(); // + v * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
         auto lhs2 = u0 * ( fjac(zH2).tr() * grad(uL).tr() - grad(zL) * grad(uL).tr() ) ;
         auto rhs = ff.val() * (zH2.val() - zL.val()) * u0;

@@ -931,8 +931,6 @@ public:
                 const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId, c);
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                 {
-                    // gsDebugVar(_Sv->at(ii));
-                    // gsDebugVar(_u.data().values[0](i,k));
                     res.at(c) += _Sv->at(ii) * _u.data().values[0](i,k);
                 }
                 else

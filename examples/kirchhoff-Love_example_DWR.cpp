@@ -445,7 +445,6 @@ private:
         index_t nDers = _u.source().domainDim() * (_u.source().domainDim() + 1) / 2;
         index_t dim = _u.source().targetDim();
         tmp.transpose() = vLapl.eval(k).reshape(dim,nDers);
-
         vEv = _v.eval(k);
         res = vEv * tmp;
         return res;
@@ -574,6 +573,23 @@ public:
     private:
         template<class U> inline
         typename util::enable_if< util::is_same<U,gsGeometryMap<Scalar> >::value, const gsMatrix<Scalar> & >::type
+        eval_impl(const U & u, const index_t k)  const
+        {
+            /*
+                Here, we compute the hessian of the geometry map.
+                The hessian of the geometry map c has the form: hess(c)
+                [d11 c1, d11 c2, d11 c3]
+                [d22 c1, d22 c2, d22 c3]
+                [d12 c1, d12 c2, d12 c3]
+
+                The geometry map has components c=[c1,c2,c3]
+            */
+            // evaluate the geometry map of U
+            res = _u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second );
+            return res;
+        }
+        template<class U> inline
+        typename util::enable_if< util::is_same<U,gsFeVariable<Scalar> >::value, const gsMatrix<Scalar> & >::type
         eval_impl(const U & u, const index_t k)  const
         {
             /*
@@ -1742,6 +1758,8 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp;
     gsMultiPatch<> mp_def;
     gsMultiPatch<> mp_ex;
+    gsReadFile<>("deformed_plate_lin.xml",mp_ex);
+    gsMultiBasis<> basisR(mp_ex);
 
     // Unit square
     mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
@@ -1761,13 +1779,6 @@ int main(int argc, char *argv[])
     gsMultiBasis<> dbasis(mp);
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
     gsInfo << dbasis.basis(0)<<"\n";
-
-
-    mp_ex = mp;
-    mp_ex.uniformRefine();
-    mp_ex.degreeElevate(2);
-    gsMultiBasis<> basisH2(mp_ex);
-
 
     // Cast all patches of the mp object to THB splines
     gsTHBSpline<2,real_t> thb;
@@ -1816,7 +1827,7 @@ int main(int argc, char *argv[])
     //! [Problem setup]
     gsExprAssembler<> exL;
     gsExprAssembler<> exH;
-    gsExprAssembler<> exH2; // for the solution mapping
+    gsExprAssembler<> exRef;
 
     //gsInfo<<"Active options:\n"<< A.options() <<"\n";
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -1825,26 +1836,23 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::solution    solution;
 
     // Elements used for numerical integration
-    exL.setIntegrationElements(basisL);
+    exL.setIntegrationElements(basisH);
     exH.setIntegrationElements(basisH);
-    exH2.setIntegrationElements(basisH2);
+    exRef.setIntegrationElements(basisR);
     gsExprEvaluator<> evL(exL);
     gsExprEvaluator<> evH(exH);
-    gsExprEvaluator<> evH2(exH2);
+    gsExprEvaluator<> evRef(exRef);
 
     // Set the geometry map
     geometryMap mapL = exL.getMap(mp); // the last map counts
     geometryMap mapH = exH.getMap(mp); // the last map counts
-    geometryMap mapH2 = exH2.getMap(mp); // the last map counts
-    geometryMap defExL = exL.getMap(mp_ex);
-    geometryMap defExH = exH.getMap(mp_ex);
     geometryMap defL = exL.getMap(mp_def);
     geometryMap defH = exH.getMap(mp_def);
-
+    geometryMap mapRef = exRef.getMap(mp);
+    geometryMap defRef = exRef.getMap(mp_ex);
 
     variable primal_exL = evL.getVariable(u_ex, mapL);
     variable primal_exH = evH.getVariable(u_ex, mapH);
-    variable primal_exH2 = evH2.getVariable(u_ex, mapH2);
 
     variable dual_exL = evL.getVariable(z_ex, mapL);
     variable dual_exH = evH.getVariable(z_ex, mapH);
@@ -1852,7 +1860,6 @@ int main(int argc, char *argv[])
     // Set the discretization spaces
     space uL = exL.getSpace(basisL, 3); //primal space on L
     space zH = exH.getSpace(basisH, 3); // dual space on H
-    space uH2 = exH2.getSpace(basisH2, 3); // dual space on H
 
     uL.setInterfaceCont(0); //
     zH.setInterfaceCont(0); //
@@ -1882,10 +1889,12 @@ int main(int argc, char *argv[])
     gsMaterialMatrix materialMat(mp, E, nu);
     variable mmL = exL.getCoeff(materialMat); // evaluates in the parametric domain, but the class transforms E and nu to physical
     variable mmH = exH.getCoeff(materialMat); // evaluates in the parametric domain, but the class transforms E and nu to physical
+    variable mmRef = exRef.getCoeff(materialMat);
 
     gsFunctionExpr<> mult2t("1","0","0","0","1","0","0","0","2",3);
     variable m2L = exL.getCoeff(mult2t, mapL); // evaluates in the physical domain
     variable m2H = exH.getCoeff(mult2t, mapH); // evaluates in the physical domain
+    variable m2Ref = exRef.getCoeff(mult2t, mapRef);
 
     gsFunctionExpr<> t(std::to_string(thickness), 3);
     variable ttL = exL.getCoeff(t, mapL); // evaluates in the physical domain
@@ -1910,21 +1919,6 @@ int main(int argc, char *argv[])
     // Initialize the system
     exL.initSystem();
     exH.initSystem();
-    exH2.initSystem();
-
-    exH2.assemble(uH2*uH2.tr(),uH2 * primal_exH2);
-    solver.compute(exH2.matrix());
-    gsMatrix<> solVector = solver.solve(exH2.rhs());
-
-    solution uex_sol = exH2.getSolution(uH2,solVector);
-    variable uLex = exL.getCoeff(mp_ex);
-
-    uex_sol.extract(mp_ex);
-
-
-    gsDebug<<evH2.integral(uex_sol.tr() * gismo::expr::uv(2,3) * meas(mapH2))<<"\n";
-    gsDebug<<evH2.integral(primal_exH2.tr() * gismo::expr::uv(2,3) * meas(mapH2))<<"\n";
-
 
     gsInfo<<"Number of elements: "<<basisL.totalElements()<<"\n";
     gsInfo  <<"Lower order basis:\n"
@@ -2062,7 +2056,6 @@ int main(int argc, char *argv[])
             mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
         }
         gsWriteParaview<>( mp_def, "mp_def", 1000, true);
-        gsWriteParaview<>( mp_ex, "mp_ex", 1000, true);
 
 
         // Assemble matrix and rhs
@@ -2135,12 +2128,13 @@ int main(int argc, char *argv[])
         auto S_m_der = E_m_der * reshape(mmL,3,3);
         auto N_der   = ttL.val() * S_m_der;
 
-        auto E_f_der = ( deriv2(zH2,sn(defL).normalized().tr() ) - deriv2(zL_sol,sn(defL).normalized().tr() ) + deriv2(defL,var1(zH2,defL) ) - deriv2(defL,var1(zL_sol,defL) ) ) * reshape(m2L,3,3); //[checked]
+        auto E_f_der =  ( deriv2(zH2,sn(defL).normalized().tr() ) - deriv2(zL_sol,sn(defL).normalized().tr() ) + deriv2(defL,var1(zH2,defL) ) - deriv2(defL,var1(zL_sol,defL) ) ) * reshape(m2L,3,3); //[checked]
         auto S_f_der = E_f_der * reshape(mmL,3,3);
         auto M_der   = ttL.val() * ttL.val() * ttL.val() / 12.0 * S_f_der;
 
-        auto Fint = ( N_der * E_m_der.tr() + M_der * E_f_der.tr() ) * meas(mapL);
+        auto Fint = ( N * E_m_der.tr() - M * E_f_der.tr() ) * meas(mapL);
         // auto Fint = ( ( N * E_m_der.tr() ) * meas(mapL) ).tr();
+        // auto Fint = ( ( M * E_f_der.tr() ) * meas(mapL) ).tr();
         auto F_H        = ffL;
 
         auto Fext = (zH2-zL_sol).tr() * F_L * meas(mapL);
@@ -2148,24 +2142,41 @@ int main(int argc, char *argv[])
         // gsDebug<<"Vol =  "<<evL.integral( defL.tr() * gismo::expr::uv(2,3) * meas(mapL) )<<"\n";
         // gsDebug<<"Vol =  "<<evH.integral( defH.tr() * gismo::expr::uv(2,3) * meas(mapH)  )<<"\n";
 
+        gsDebug<<evL.eval(deriv2(zH2,sn(defL).normalized().tr()),pts)<<"\n";
+        gsDebug<<evL.eval(deriv2(zL_sol,sn(defL).normalized().tr()),pts)<<"\n";
+        gsDebug<<evL.integral(M * deriv2(zH2,sn(defL).normalized().tr()).tr())<<"\n";
+        gsDebug<<evL.integral(M * deriv2(zL_sol,sn(defL).normalized().tr()).tr())<<"\n";
+
+        // exL.initSystem(false);
+        // exL.assemble(M_L*E_f_derL*meas(ma))
+
+
+        gsDebug<<"Fint_m = "<<evL.integral(( N * E_m_der.tr() ) * meas(mapL) )<<"\n";
+        gsDebug<<"Fint_f = "<<evL.integral(( M * E_f_der.tr() ) * meas(mapL) )<<"\n";
+
         real_t Fi = evL.integral( Fint  );
         real_t Fe = evL.integral( Fext  );
         gsDebug<<"Fint = "<<Fi<<"\n";
         gsDebug<<"Fext = "<<Fe<<"\n";
-        real_t Res = evL.integral( Fext-Fint  );
-        gsDebug<<"R = "<<Res<<"\n";
+        // real_t Res = evL.integral( Fext-Fint  );
+        // gsDebug<<"R = "<<Res<<"\n";
 
         real_t approx = Fe;
         real_t exact = 0;
         if (goal==1)
-            exact = evL.integral(((primal_exL - uL_sol).tr() * gismo::expr::uv(2,3))*meas(mapL));
+        {
+            exact = evL.integral((primal_exL-uL_sol).tr() * gismo::expr::uv(2,3)*meas(mapL));
+            // exact = evRef.integral((defRef-mapRef).tr() * gismo::expr::uv(2,3)*meas(mapRef)) - evL.integral(uL_sol.tr() * gismo::expr::uv(2,3)*meas(mapL));
+        }
         else if (goal==2)
         {
-            auto E_mG = 0.5 * ( flat(fjac(uLex).tr()*fjac(uLex)) - flat(jac(mapL).tr()* jac(mapL)) ) ; //[checked]
-            auto E_fG = ( deriv2(mapL,sn(mapL).normalized().tr()) - deriv2(uLex,sn(defExL).normalized().tr()) ) * reshape(m2L,3,3) ; //[checked]
-            auto S_fG = E_fG * reshape(mmL,3,3);
+            auto E_mG = 0.5 * ( flat(jac(defRef).tr()*jac(defRef)) - flat(jac(mapRef).tr()* jac(mapRef)) ) ; //[checked]
+            auto E_fG = ( deriv2(mapRef,sn(mapRef).normalized().tr()) - deriv2(defRef,sn(defRef).normalized().tr()) ) * reshape(m2Ref,3,3) ; //[checked]
+            auto S_mG = E_mG * reshape(mmRef,3,3);
+            auto S_fG = E_fG * reshape(mmRef,3,3);
 
-            exact = evL.integral(((S_fG * gismo::expr::uv(0,3) - S_f * gismo::expr::uv(0,3)))*meas(mapL));
+
+            exact = evRef.integral(S_fG * gismo::expr::uv(0,3)*meas(mapRef) ) - evL.integral(S_f * gismo::expr::uv(0,3)*meas(mapL) );
         }
 
 
@@ -2173,8 +2184,40 @@ int main(int argc, char *argv[])
         gsDebug<<"Exact = "<<exact<<"\n";
         gsDebug<<"Efficiency = "<<approx/exact<<"\n";
 
+/*
+        auto zW = uL * (zH2-zL_sol).asDiag();
+        auto dzW1 = (zH2-zL_sol).asDiag() * jac(uL);
+        auto dzW2 = uL.tr().asDiag() * (fjac(zH2).tr() - jac(zL_sol)) ;
 
 
+
+        // weighted expressions
+        // auto FextW      = (zH2-zL_sol).asDiag() * u_L.tr() * F_L * meas(mapL);
+        // auto E_m_derW   = flat( jac(defL).tr() * (fjac(zH2).tr() - jac(zL_sol)) ) ; //[checked]
+        // auto E_f_derW   = ( deriv2(zH2,sn(defL).normalized().tr() ) - deriv2(zL_sol,sn(defL).normalized().tr() ) + deriv2(defL,var1(zH2,defL) ) - deriv2(defL,var1(zL_sol,defL) ) ) * reshape(m2L,3,3); //[checked]
+        // auto FintW      = ( ( N * E_m_derW.tr() - M * E_f_derW.tr() ) * meas(mapL));
+        // exL.assemble(FextW - FintW);
+        // gsDebugVar(exL.rhs().sum());
+
+        // gsDebug<<evL.eval((zH2 - zL_sol).asDiag(),pts)<<"\n";
+        // gsDebug<<evL.eval(  (zH2 - zL_sol).asDiag() * uL.tr(),pts)<<"\n";
+
+        gsDebug<<evL.eval(zW,pts)<<"\n";
+        gsDebug<<evL.eval(uL,pts)<<"\n";
+        gsDebug<<evL.eval(uL.tr(),pts)<<"\n";
+
+        gsDebug<<evL.eval(jac(uL),pts)<<"\n";
+        gsDebug<<evL.eval(dzW1,pts)<<"\n";
+        gsDebug<<evL.eval(uL.tr().asDiag(),pts)<<"\n";
+        gsDebug<<evL.eval((fjac(zH2).tr() - jac(zL_sol)),pts)<<"\n";
+
+        // gsDebug<<evL.eval(uL.tr().asDiag().rows(),pts)<<"\n";
+        // gsDebug<<evL.eval(uL.tr().asDiag().cols(),pts)<<"\n";
+
+
+
+        // gsDebug<<evL.eval(dzW2,pts)<<"\n";
+*/
 
         // exL.assemble((u * F * meas(G) - ( ( N * E_m_der.tr() - M * E_f_der.tr() ) * meas(G)) * meas(mapL));
         // gsDebugVar(exL.rhs().sum());

@@ -2136,6 +2136,7 @@ int main(int argc, char *argv[])
         ev.writeParaview( S_f2, G, "stress");
         evaluateFunction(ev, S_f2[0], pt); // evaluates an expression on a point
 
+        gsWrite(mp_def,"deformed_plate.xml");
         // gsFileManager::open("solution.pvd");
     }
 
