@@ -1,6 +1,6 @@
 /** @file gsNormL2.h
 
-    @brief Computes the Semi H1 norm, needs for the parallel computing.
+    @brief Computes the L2 norm, needs for the parallel computing.
 
     This file is part of the G+Smo library.
 
@@ -11,7 +11,6 @@
     Author(s): A. Farahat
 */
 
-
 #pragma once
 
 namespace gismo
@@ -19,14 +18,15 @@ namespace gismo
 
 
 template <class T>
-class gsG1ASVisitorResidualSeminormH1
+class gsG1ASVisitorResidualNormL2
 {
+
 public:
 
-    gsG1ASVisitorResidualSeminormH1()
+    gsG1ASVisitorResidualNormL2(index_t p = 2)
     {
         f2param = false;
-
+        m_p = p;
     }
 
     void initialize(const std::vector<gsMultiBasis<>> * basis,
@@ -43,7 +43,7 @@ public:
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_MEASURE|NEED_VALUE|NEED_GRAD_TRANSFORM;
+        evFlags = NEED_MEASURE| NEED_VALUE | NEED_JACOBIAN;
     }
 
     // Evaluate on element.
@@ -51,74 +51,65 @@ public:
                   const std::vector<gsSparseMatrix<>> * sol_sparse,
                   const std::vector<gsMultiBasis<>> * basis_vec,
                   std::vector<gsG1System<real_t>> & sys_vec,
-                  gsMatrix<T>            & quNodes)
+    gsMatrix<T>            & quNodes)
     {
         gsMatrix<unsigned> actives;
-        gsMatrix<T> bGrads;
+        gsMatrix<T> basisData;
 
         basis_vec->at(0).basis(geoEval.id()).active_into(quNodes.col(0), actives);
 
         // Evaluate basis functions on element
-        basis_vec->at(0).basis(geoEval.id()).deriv_into(quNodes,bGrads);
+        basis_vec->at(0).basis(geoEval.id()).eval_into(quNodes,basisData);
 
-        f1ders.setZero(2,actives.rows());
-        for (index_t i = 0; i < sol_sparse->at(0).rows(); i++)
+        f1vals.setZero(1,actives.rows());
+        for (index_t i = 0; i < sol_sparse->at(0).rows(); i++) // -1 bcs of interior solution
             for (index_t j = 0; j < actives.rows(); j++)
-                f1ders += sol_sparse->at(0).at(i,sys_vec.at(0).get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f1ders.dim().second);
+                f1vals += sol_sparse->at(0).at(i,sys_vec.at(0).get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * basisData.row(j);
 
-        // Evaluate second function
+        // Compute geometry related values
         geoEval.evaluateAt(quNodes);
 
         basis_vec->at(1).basis(geoEval.id()).active_into(quNodes.col(0), actives);
 
         // Evaluate basis functions on element
-        basis_vec->at(1).basis(geoEval.id()).deriv_into(quNodes,bGrads);
+        basis_vec->at(1).basis(geoEval.id()).eval_into(quNodes,basisData);
 
-        f2ders.setZero(2,actives.rows());
-        for (index_t i = 0; i < sol_sparse->at(1).rows(); i++)
+        f2vals.setZero(1,actives.rows());
+        for (index_t i = 0; i < sol_sparse->at(1).rows(); i++) // -1 bcs of interior solution
             for (index_t j = 0; j < actives.rows(); j++)
-                f2ders += sol_sparse->at(1).at(i,sys_vec.at(1).get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f2ders.dim().second);
+                f2vals += sol_sparse->at(1).at(i,sys_vec.at(1).get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * basisData.row(j);
 
-        // Evaluate second function
+        // Compute geometry related values
         geoEval.evaluateAt(quNodes);
-
-//        _func2.deriv_into( f2param ? quNodes : geoEval.values() , f2ders); // Not working and useless
-
     }
 
-
     // assemble on element
-    inline T compute(gsDomainIterator<T>    & geo,
-                     gsGeometryEvaluator<T> & geoEval,
-                     gsVector<T> const      & quWeights,
-                     T & accumulated)
+    T compute(gsDomainIterator<T>    & ,
+              gsGeometryEvaluator<T> & geoEval,
+              gsVector<T> const      & quWeights,
+              T & accumulated )
     {
         T sum(0.0);
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
 
+
             gsMatrix<T> Jk = geoEval.jacobian(k);
             gsMatrix<T> G = Jk.transpose() * Jk;
-            gsMatrix<T> G_inv = G.cramerInverse();
+            real_t detG = G.determinant();
+            T weight = quWeights[k] * sqrt(detG);
 
-            f1pders = f1ders.col(k); // Computed gradient
-
-            f2pders =  f2ders.col(k); // Exact gradient
-
-            const T weight = quWeights[k] * sqrt(G.determinant());
-
-            sum += weight * (f1pders - f2pders).squaredNorm();
-
+            sum += weight * ( f1vals.col(k) - f2vals.col(k) ).squaredNorm();
         }
         accumulated += sum;
         return sum;
     }
 
+private:
 
-protected:
+    index_t m_p;
 
-    gsMatrix<T> f1ders, f2ders;
-    gsMatrix<T> f1pders, f2pders; // f2pders only needed if f2param = true
+    gsMatrix<T> f1vals, f2vals;
 
     bool f2param;
 

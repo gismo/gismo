@@ -232,6 +232,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
     Base::template push<bhVisitor>();
 
 
+    // PASCAL
     // Neuman conditions of first kind
     //Base::template push<gsVisitorNeumann<T> >(
     //    m_ppde.bcFirstKind().neumannSides() );
@@ -264,7 +265,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
 
     m_g1_ddof.resize( g1System.boundary_size(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
     m_g1_ddof.setZero();
-/*
+/*  PASCAL
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
     gsSparseEntries<T> projMatEntries;

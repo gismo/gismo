@@ -1,6 +1,6 @@
-/** @file gsSeminormH1.h
+/** @file gsSeminormH2.h
 
-    @brief Computes the H1 norm, modified for G1 Basis functions.
+    @brief Computes the H2 seminorm, modified for g1 Basis functions.
 
     This file is part of the G+Smo library.
 
@@ -11,35 +11,39 @@
     Author(s): A. Farahat
 */
 
-#include<gsG1Basis/Norm/gsG1ASVisitorResidualSeminormH1.h>
-
 
 #pragma once
+
+#include <gsG1Basis/Norm/gsNorm.h>
+# include <gsG1Basis/Norm/gsG1ASVisitorResidualSeminormH2.h>
+
 
 namespace gismo
 {
 
-/** @brief The gsSeminormH1 class provides the functionality
- * to calculate the H1 - seminorm between two consecutive solutions in a residual fashion.
+/** @brief The gsSeminormH2 class provides the functionality
+ * to calculate the H2 - seminorm between a field and a function.
  *
  * \ingroup Assembler
 */
-template <class T, class Visitor = gsG1ASVisitorResidualSeminormH1<T> >
-class gsG1ASResidualSeminormH1
+template <class T, class Visitor = gsG1ASVisitorResidualSeminormH2<T> >
+class gsG1ASResidualSeminormH2
 {
 
 public:
 
-    gsG1ASResidualSeminormH1(const gsMultiPatch<T> & multiPatch,
+    gsG1ASResidualSeminormH2(const gsMultiPatch<T> & multiPatch,
                              std::vector<gsSparseMatrix<>> & _field1,
                              std::vector<gsMultiBasis<>> & _func2,
                              bool _f2param = false)
-                            : patchesPtr( &multiPatch ),
-                              sparseMatrix(&_field1), basisVec(&_func2), f2param(_f2param)
+        : patchesPtr( &multiPatch ),
+          sparseMatrix(&_field1), basisVec(&_func2), f2param(_f2param)
     {
     }
 
+
 public:
+
     /// @brief Returns the computed norm value
     T value() const { return m_value; }
 
@@ -71,8 +75,7 @@ public:
 
             for (size_t pn = 0; pn < patchesPtr->nPatches(); ++pn)// for all patches
             {
-
-                // Initialize visitor
+                // Obtain an integration domain
                 visitor.initialize(basisVec, QuRule, evFlags);
 
                 // Initialize geometry evaluator
@@ -114,10 +117,7 @@ public:
 
     }
 
-
-
     inline T takeRoot(const T v) { return math::sqrt(v);}
-
 
 
 
@@ -130,8 +130,7 @@ protected:
     const std::vector<gsMultiBasis<>> * basisVec;
 
 private:
-
-    bool f2param;
+    bool f2param;// not used yet
 
 protected:
 

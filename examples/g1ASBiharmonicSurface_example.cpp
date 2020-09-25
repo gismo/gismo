@@ -22,8 +22,11 @@
 
 # include <gsG1Basis/Norm/gsNormL2.h>
 # include <gsG1Basis/Norm/gsSeminormH1.h>
-# include <gsG1Basis/Norm/gsG1ASResidualSeminormH1.h>
 # include <gsG1Basis/Norm/gsSeminormH2.h>
+
+# include <gsG1Basis/Norm/gsG1ASResidualNormL2.h>
+# include <gsG1Basis/Norm/gsG1ASResidualSeminormH1.h>
+# include <gsG1Basis/Norm/gsG1ASResidualSeminormH2.h>
 
 using namespace gismo;
 
@@ -612,22 +615,49 @@ int main(int argc, char *argv[])
         {
             if (e == 0)
             {
-                gsNormL2<real_t> errorL2(multiPatch, Sol_sparse, solVal);
-                errorL2.compute(g1System.get_numBasisFunctions());
-                l2Error_vec[refinement_level] = errorL2.value();
+                if(g1OptionList.getSwitch("residual") == true && sol_vector.size() == 2)
+                {
+                    gsG1ASResidualNormL2<real_t> errorL2(multiPatch, sol_vector, sol_vec_basis);
+                    errorL2.compute(sol_vec_sys);
+                    l2Error_vec[refinement_level] = errorL2.value();
+                }
+                else
+                {
+                    gsNormL2<real_t> errorL2(multiPatch, Sol_sparse, solVal);
+                    errorL2.compute(g1System.get_numBasisFunctions());
+                    l2Error_vec[refinement_level] = errorL2.value();
+                }
             }
 
             else if (e == 1)
             {
-                gsSeminormH1<real_t> errorSemiH1(multiPatch, Sol_sparse, sol1der);
-                errorSemiH1.compute(g1System.get_numBasisFunctions());
-                h1SemiError_vec[refinement_level] = errorSemiH1.value();
+                if(g1OptionList.getSwitch("residual") == true && sol_vector.size() == 2)
+                {
+                    gsG1ASResidualSeminormH1<real_t> errorSemiH1(multiPatch, sol_vector, sol_vec_basis);
+                    errorSemiH1.compute(sol_vec_sys);
+                    h1SemiError_vec[refinement_level] = errorSemiH1.value();
+                }
+                else
+                {
+                    gsSeminormH1<real_t> errorSemiH1(multiPatch, Sol_sparse, sol1der);
+                    errorSemiH1.compute(g1System.get_numBasisFunctions());
+                    h1SemiError_vec[refinement_level] = errorSemiH1.value();
+                }
             }
             else if (e == 2)
             {
-                gsSeminormH2<real_t> errorSemiH2(multiPatch, Sol_sparse, sol2der);
-                errorSemiH2.compute(g1System.get_numBasisFunctions());
-                h2SemiError_vec[refinement_level] = errorSemiH2.value();
+                if(g1OptionList.getSwitch("residual") == true && sol_vector.size() == 2)
+                {
+                    gsG1ASResidualSeminormH2<real_t> errorSemiH2(multiPatch, sol_vector, sol_vec_basis);
+                    errorSemiH2.compute(sol_vec_sys);
+                    h2SemiError_vec[refinement_level] = errorSemiH2.value();
+                }
+                else
+                {
+                    gsSeminormH2<real_t> errorSemiH2(multiPatch, Sol_sparse, sol2der);
+                    errorSemiH2.compute(g1System.get_numBasisFunctions());
+                    h2SemiError_vec[refinement_level] = errorSemiH2.value();
+                }
             }
         }
     }

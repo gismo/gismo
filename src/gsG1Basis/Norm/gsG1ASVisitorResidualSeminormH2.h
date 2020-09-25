@@ -1,6 +1,6 @@
 /** @file gsNormL2.h
 
-    @brief Computes the Semi H1 norm, needs for the parallel computing.
+    @brief Computes the Semi H2 norm, needs for the parallel computing.
 
     This file is part of the G+Smo library.
 
@@ -19,14 +19,12 @@ namespace gismo
 
 
 template <class T>
-class gsG1ASVisitorResidualSeminormH1
+class gsG1ASVisitorResidualSeminormH2
 {
 public:
 
-    gsG1ASVisitorResidualSeminormH1()
+    gsG1ASVisitorResidualSeminormH2()
     {
-        f2param = false;
-
     }
 
     void initialize(const std::vector<gsMultiBasis<>> * basis,
@@ -43,7 +41,7 @@ public:
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_MEASURE|NEED_VALUE|NEED_GRAD_TRANSFORM;
+        evFlags = NEED_MEASURE|NEED_VALUE|NEED_GRAD_TRANSFORM|NEED_2ND_DER|NEED_JACOBIAN;
     }
 
     // Evaluate on element.
@@ -54,38 +52,44 @@ public:
                   gsMatrix<T>            & quNodes)
     {
         gsMatrix<unsigned> actives;
-        gsMatrix<T> bGrads;
+        gsMatrix<T> derivData, deriv2Data;
+
+        qN = quNodes;
 
         basis_vec->at(0).basis(geoEval.id()).active_into(quNodes.col(0), actives);
 
         // Evaluate basis functions on element
-        basis_vec->at(0).basis(geoEval.id()).deriv_into(quNodes,bGrads);
+        basis_vec->at(0).basis(geoEval.id()).deriv_into(quNodes,derivData);
+        basis_vec->at(0).basis(geoEval.id()).deriv2_into(quNodes,deriv2Data);
+        geoEval.evaluateAt(quNodes);
 
         f1ders.setZero(2,actives.rows());
+        f1ders2.setZero(3,actives.rows());
         for (index_t i = 0; i < sol_sparse->at(0).rows(); i++)
             for (index_t j = 0; j < actives.rows(); j++)
-                f1ders += sol_sparse->at(0).at(i,sys_vec.at(0).get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f1ders.dim().second);
-
-        // Evaluate second function
-        geoEval.evaluateAt(quNodes);
+            {
+                f1ders += sol_sparse->at(0).at(i,sys_vec.at(0).get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * derivData.block(2*j,0,2,f1ders.dim().second);
+                f1ders2 += sol_sparse->at(0).at(i,sys_vec.at(0).get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * deriv2Data.block(3*j,0,3,f1ders.dim().second);
+            }
 
         basis_vec->at(1).basis(geoEval.id()).active_into(quNodes.col(0), actives);
 
         // Evaluate basis functions on element
-        basis_vec->at(1).basis(geoEval.id()).deriv_into(quNodes,bGrads);
-
-        f2ders.setZero(2,actives.rows());
-        for (index_t i = 0; i < sol_sparse->at(1).rows(); i++)
-            for (index_t j = 0; j < actives.rows(); j++)
-                f2ders += sol_sparse->at(1).at(i,sys_vec.at(1).get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f2ders.dim().second);
-
-        // Evaluate second function
+        basis_vec->at(1).basis(geoEval.id()).deriv_into(quNodes,derivData);
+        basis_vec->at(1).basis(geoEval.id()).deriv2_into(quNodes,deriv2Data);
         geoEval.evaluateAt(quNodes);
 
-//        _func2.deriv_into( f2param ? quNodes : geoEval.values() , f2ders); // Not working and useless
+        f2ders.setZero(2,actives.rows());
+        f2ders2.setZero(3,actives.rows());
+        for (index_t i = 0; i < sol_sparse->at(1).rows(); i++)
+            for (index_t j = 0; j < actives.rows(); j++)
+            {
+                f2ders += sol_sparse->at(1).at(i,sys_vec.at(1).get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * derivData.block(2*j,0,2,f1ders.dim().second);
+                f2ders2 += sol_sparse->at(1).at(i,sys_vec.at(1).get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * deriv2Data.block(3*j,0,3,f1ders.dim().second);
+            }
+
 
     }
-
 
     // assemble on element
     inline T compute(gsDomainIterator<T>    & geo,
@@ -99,38 +103,30 @@ public:
 
             gsMatrix<T> Jk = geoEval.jacobian(k);
             gsMatrix<T> G = Jk.transpose() * Jk;
-            gsMatrix<T> G_inv = G.cramerInverse();
 
-            f1pders = f1ders.col(k); // Computed gradient
+            T weight = quWeights[k] * sqrt(G.determinant());
 
-            f2pders =  f2ders.col(k); // Exact gradient
 
-            const T weight = quWeights[k] * sqrt(G.determinant());
-
-            sum += weight * (f1pders - f2pders).squaredNorm();
+                sum += weight * ( (f1ders2 - f2ders2).squaredNorm());
 
         }
         accumulated += sum;
         return sum;
     }
 
+private:
 
-protected:
 
-    gsMatrix<T> f1ders, f2ders;
-    gsMatrix<T> f1pders, f2pders; // f2pders only needed if f2param = true
+    gsMatrix<T> f1ders, f1ders2, f2ders, f2ders2;
 
-    bool f2param;
-
+    std::vector<gsMatrix<T> > basisData;
+    gsMatrix<T> basisGrads;
+    gsMatrix<T> basis2ndDerivs;
+    index_t numActive;
+    gsMatrix<T> qN;
 };
 
-
-
-
-
-
 }
-
 
 
 

@@ -654,7 +654,7 @@ void gsG1System<T>::finalize(gsMultiPatch<> & mp, gsMultiBasis<> & mb, gsMatrix<
     B_boundary_sparse.setZero();
 
     // Add for the G1 Dofs to 1
-    //for(size_t i = 0; i < dim_G1_Dofs; i++)
+    //for(size_t i = 0; i < dim_G1_Dofs; i++) PASCAL
     for(size_t i = 0; i < dim_G1_Dofs+dim_G1_Bdy; i++)
         B_0_sparse.insert(i,i) = 1;
 
@@ -662,7 +662,7 @@ void gsG1System<T>::finalize(gsMultiPatch<> & mp, gsMultiBasis<> & mb, gsMatrix<
     for(size_t i = 0; i < dim_G1_Bdy; i++)
     {
         index_t ii = dim_G1_Dofs + i;
-        //B_boundary_sparse.insert(ii,ii) = 1;
+        //B_boundary_sparse.insert(ii,ii) = 1; PASCAL
     }
 
     // Add the identity to the end of D
@@ -701,7 +701,7 @@ gsMatrix<> gsG1System<T>::solve(gsSparseMatrix<real_t> K, gsMatrix<> f)
 
     gsSparseMatrix<real_t> A = D_0_sparse * K * D_0_sparse.transpose();
 
-    gsVector<real_t> F = D_0_sparse * f;  //- D_0_sparse * K * D_boundary_sparse.transpose() * m_g1;
+    gsVector<real_t> F = D_0_sparse * f;  //- D_0_sparse * K * D_boundary_sparse.transpose() * m_g1; PASCAL
 //    gsInfo << "F: " << F << "\n";
 //    gsInfo << "m_g1: " << m_g1 << "\n";
 

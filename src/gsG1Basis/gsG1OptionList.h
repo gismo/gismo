@@ -124,6 +124,8 @@ void gsG1OptionList::initialize(int argc, char *argv[])
 
     bool neumann_bdy = false;
 
+    bool residual_norm = false;
+
     bool localGd = false;
     bool exactGd = false;
     bool localEdge = false;
@@ -148,6 +150,7 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     cmd.addSwitch( "localVertex", "To compute the G1 vertex basis functions with the average dd_ik", localVertex );
     cmd.addSwitch("latex","Print the rate and error latex-ready",latex);
     cmd.addSwitch("neumann","Compute the biharmonic with neumann bdy",neumann_bdy);
+    cmd.addSwitch("residual","Compute the error using a residual approach",residual_norm);
     cmd.addReal("e","threshold", "The threshold for computing the kernel", threshold);
     cmd.addReal("z","zero", "When the value should be set to zero", zero);
     cmd.addReal("", "lambda", "The lambda value for the minimization", lambda);
@@ -170,6 +173,8 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     optionList.addSwitch("twoPatch", "For the two-patch paper",false);
 
     optionList.addSwitch("neumann", "For computing the neumann bdy",neumann_bdy);
+
+    optionList.addSwitch("residual", "For computing the error using a residual approach",residual_norm);
 
     optionList.addReal("threshold","Threshold",threshold);
     optionList.addReal("zero","Zero",zero);
