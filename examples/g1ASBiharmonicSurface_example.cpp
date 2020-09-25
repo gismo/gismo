@@ -22,6 +22,7 @@
 
 # include <gsG1Basis/Norm/gsNormL2.h>
 # include <gsG1Basis/Norm/gsSeminormH1.h>
+# include <gsG1Basis/Norm/gsG1ASResidualSeminormH1.h>
 # include <gsG1Basis/Norm/gsSeminormH2.h>
 
 using namespace gismo;
@@ -33,10 +34,14 @@ int main(int argc, char *argv[])
     g1OptionList.initialize(argc, argv);
 
     g1OptionList.addInt("user", "User defined gluingData", user::name::andrea);
+    g1OptionList.setSwitch("twoPatch",false);
+
 
 
     // ======= Solution =========
-    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
+//    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
+    gsFunctionExpr<> source  ("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3); // L2 approximation RHS
+
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
     gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
     gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
@@ -50,94 +55,71 @@ int main(int argc, char *argv[])
                              "0", 3);
 
 
-//    gsFunctionExpr<> source  ("8 * ( 16 - 12 * x * x * x + 3 * x * x * x * x + 36 * x * x * ( y - 1 ) * ( y - 1 ) - 48 * y + 36 * y * y - 12 * y * y * y + 3 * y * y * y * y - 24 * x * ( 2 - 6 * y + 3 * y * y) )",3);
+
+//    gsFunctionExpr<> source  ("(1 / ( (1 + x^2 + \n"
+//                                              "  y^2)^5) ) * 4 * (8 * x^10 - 12 * x^9 * (1 + y^2)^2 - \n"
+//                                              "   6 * x * (1 + y^2)^2 * (2 - 12 * y + 3 * y^2 + 14 * y^3 + y^4) + \n"
+//                                              "   x^8 * (35 - 6 * y + 33 * y^2 - 38 * y^3 - 30 * y^5) + (1 + y^2)^2 * (2 - \n"
+//                                              "      12 * y + 13 * y^2 - 10 * y^3 + 19 * y^4 - 12 * y^5 + 8 * y^6) + \n"
+//                                              "   2 * x^7 * (-17 - 42 * y + 17 * y^2 - 60 * y^3 + 73 * y^4 + 35 * y^6) + \n"
+//                                              "   x^6 * (59 - 30 * y + 104 * y^2 - 150 * y^3 + 39 * y^4 - 110 * y^5 + 70 * y^7) - \n"
+//                                              "   2 * x^5 * (22 + 48 * y + 21 * y^2 - 120 * y^3 + 39 * y^4 - 216 * y^5 + 55 * y^6 + \n"
+//                                              "      15 * y^8) - \n"
+//                                              "   2 * x^3 * (17 - 30 * y + 71 * y^2 - 210 * y^3 + 110 * y^4 - 120 * y^5 + 75 * y^6 + \n"
+//                                              "      60 * y^7 + 19 * y^8) + \n"
+//                                              "   x^2 * (17 - 42 * y + 72 * y^2 - 142 * y^3 + 126 * y^4 - 42 * y^5 + 104 * y^6 + \n"
+//                                              "      34 * y^7 + 33 * y^8 - 24 * y^9) + \n"
+//                                              "   x^4 * (47 - 54 * y + 126 * y^2 - 220 * y^3 + 118 * y^4 - 78 * y^5 + 39 * y^6 + \n"
+//                                              "      146 * y^7 - 12 * y^9))",3);
 //
-//    gsFunctionExpr<> laplace ("0",3);
+//    gsFunctionExpr<> laplace ("-((2 * (- ( -1 + y)^2 * y^2 + 6 * x * (-1 + y)^2 * y^2 + \n"
+//                                              "    x^3 * (2 - 12 * y + 8 * y^2 + 12 * y^3 - 6 * y^4) + \n"
+//                                              "    x^2 * (-1 + 6 * y - 10 * y^2 + 8 * y^3 - 5 * y^4) + \n"
+//                                              "    x^4 * (-1 + 6 * y - 5 * y^2 - 6 * y^3 + 4 * y^4) ) ) / (1 + x^2 + y^2))",3);
 //
-//    gsFunctionExpr<> solVal("(2 - x) * (2 - x) * x * x * (2 - y) * (2 - y) * y * y + z",3);
+//    gsFunctionExpr<> solVal("-( (2 * (- ( -1 + y)^2 * y^2 + 6 * x * (-1 + y)^2 * y^2 + \n"
+//                                            "    x^3 * (2 - 12 * y + 8 * y^2 + 12 * y^3 - 6 * y^4) + \n"
+//                                            "    x^2 * (-1 + 6 * y - 10 * y^2 + 8 * y^3 - 5 * y^4) + \n"
+//                                            "    x^4 * (-1 + 6 * y - 5 * y^2 - 6 * y^3 + 4 * y^4) ) ) / (1 + x^2 + y^2))",3);
 //
-//    gsFunctionExpr<>sol1der ("(2 - x) * (2 - x) * 2 * x * (2 - y) * (2 - y) * y * y - 2 * (2 - x) * x * x * (2 - y) * (2 - y) * y * y + z",
-//                             "(2 - y) * (2 - y) * 2 * y * (2 - x) * (2 - x) * x * x - 2 * (2 - y) * y * y * (2 - x) * (2 - x) * x * x + z",
-//                             "1",3);
+//    gsFunctionExpr<>sol1der ("(2 * (-1 + x) * x * (-1 + 2 * x) * (1 + x^2) * (-1 + y)^2 * y^2) / (1 + x^2 + y^2) - (\n"
+//                                            " 2 * (-1 + x)^2 * x^3 * (-1 + y) * y^2 * (-1 + 2 * y) ) / (1 + x^2 + y^2)",
+//                             "-( (2 * (-1 + x) * x^2 * (-1 + 2 * x) * (-1 + y)^2 * y^3) / (1 + x^2 + y^2)) + (\n"
+//                                            " 2 * (-1 + x)^2 * x^2 * (-1 + y) * y * (-1 + 2 * y) * (1 + y^2) ) / (1 + x^2 + y^2)",
+//                             "2 * (-1 + x) * x * (-1 + 2 * x) * (-1 + \n"
+//                                             "    y)^2 * y^2 * (-( ( x^2 * y) / (1 + x^2 + y^2)) + ( (1 + x^2) * y) / (\n"
+//                                             "    1 + x^2 + y^2) ) + \n"
+//                                             " 2 * (-1 + x)^2 * x^2 * (-1 + y) * y * (-1 + \n"
+//                                             "    2 * y) * (-( ( x * y^2) / (1 + x^2 + y^2)) + (x * (1 + y^2) ) / (1 + x^2 + y^2))",3);
 //
-//    gsFunctionExpr<>sol2der ("0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0", 3);
-
-
-// ==============================================================================================================================================
-/*
- *  SURFACE (u^2, v, u^2 * v^2)
- */
-
-//    gsFunctionExpr<> source  ("(4 * x^2 * (-1 + 99 * y^4 - 137 * y^8 - 207 * y^12 + 30 * y^16 + \n"
-//                              "   64 * x^8 * y^4 * (-1 - 3 * y^4 + 30 * y^8) - \n"
-//                              "   12 * x^4 * y^2 * (-3 + 14 * y^4 - 83 * y^8 + 76 * y^12) ) ) / (1 + 4 * x^4 * y^2 + \n"
-//                              "  y^4 )^5 ",3);
-//    gsFunctionExpr<> laplace ("0",3);
-//    gsFunctionExpr<> solVal("x",3);
-//    gsFunctionExpr<>sol1der ("1",
-//                             "0",
-//                             "0",3);
-//    gsFunctionExpr<>sol2der ("0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0", 3);
-
-
-// ==============================================================================================================================================
-
-
-// ==============================================================================================================================================
-/*
- *  BIQUADRATIC SURFACE (u, v, u^2 * v^2)
- */
-
-
-//    gsFunctionExpr<> source  ("(1 / ( (1 + 4 * x^4 * y^2 + \n"
-//                              "  4 * x^2 * y^4 )^5 ) ) * 8 * (3 - 60 * x^2 * y^4 + 3072 * x^20 * y^10 + \n"
-//                              "   15360 * x^18 * y^12 + 1024 * x^16 * y^8 * (3 + 5 * y^6) - \n"
-//                              "   4 * x^4 * y^2 * (27 + 16 * y^6) + 32 * x^8 * y^4 * (47 + 346 * y^6) + \n"
-//                              "   4 * x^6 * (-1 + 844 * y^6) + 256 * x^12 * (y^6 + 164 * y^12) + \n"
-//                              "   256 * x^14 * y^4 * (-1 + 40 * y^6 + 420 * y^12) + \n"
-//                              "   16 * x^10 * y^2 * (9 - 68 * y^6 + 640 * y^12) ) ",3);
-//    gsFunctionExpr<> laplace ("0",3);
-//    gsFunctionExpr<> solVal("x^4",3);
-//    gsFunctionExpr<>sol1der ("4*x^3",
-//                             "0",
-//                             "0",3);
-//    gsFunctionExpr<>sol2der ("0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0", 3);
-
-
-//    gsFunctionExpr<> source  ("(8 * (7680 * u^15 * v^12 + u * v^2 * (-9 + 26 * v^6) - 8 * u^9 * v^6 * (55 + 32 * v^6) - \n"
-//                              "   128 * u^13 * v^8 * (3 + 140 * v^6) + u^5 * (394 * v^4 - 712 * v^10) + \n"
-//                              "   u^3 * (-1 + 328 * v^6 - 120 * v^12) - \n"
-//                              "   4 * u^7 * v^2 * (-9 + 938 * v^6 + 32 * v^12) + \n"
-//                              "   64 * u^11 * v^4 * (-1 + 10 * v^6 + 48 * v^12) ) ) / (1 + 4 * u^4 * v^2 + 4 * u^2 * v^4)^5 ",3);
-//    gsFunctionExpr<> laplace ("0",3);
-//    gsFunctionExpr<> solVal("x",3);
-//    gsFunctionExpr<>sol1der ("1",
-//                             "0",
-//                             "0",3);
-//    gsFunctionExpr<>sol2der ("0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0", 3);
+//    gsFunctionExpr<>sol2der ("-( (2 * v^2 (4 * u^2 * (-1 + v) - (-1 + v)^2 + 6 * u * (-1 + v)^2 - \n"
+//                                             "    12 * u^3 * (-1 + v) * v - 2 * u^5 * (2 - 6 * v + 3 * v^2) + \n"
+//                                             "    u^6 * (1 - 6 * v + 4 * v^2) + u^4 * (-2 - 4 * v + 5 * v^2) ) ) / (1 + u^2 + v^2)^2\n"
+//                                             " )",
+//                             "-( ( 2 * u^2 * (-1 + 6 * v - 4 * v^2 - 2 * v^4 - 4 * v^5 + v^6 - \n"
+//                                             "    2 * u * (-1 + 6 * v - 2 * v^2 - 6 * v^3 + 2 * v^4 - 6 * v^5 + 3 * v^6) + \n"
+//                                             "    u^2 * (-1 + 6 * v - 12 * v^3 + 5 * v^4 - 6 * v^5 + 4 * v^6) ) ) / (1 + u^2 + \n"
+//                                             "   v^2)^2)",
+//                             "(2 * ( (-1 + v)^2 * v^4 - 6 * u * (-1 + v)^2 * v^4 - \n"
+//                                             "   12 * u^3 * v^2 * (1 - 3 * v + 2 * v^2) - 2 * u^5 * (1 - 6 * v + 6 * v^2) + \n"
+//                                             "   u^6 * (1 - 6 * v + 6 * v^2) + \n"
+//                                             "   2 * u^2 * v^2 * (2 - 6 * v + 7 * v^2 - 6 * v^3 + 3 * v^4) + \n"
+//                                             "   u^4 * (1 - 6 * v + 14 * v^2 - 24 * v^3 + 16 * v^4) ) ) / (1 + u^2 + v^2)^2",
+//                             "(2 * u * v * (2 - 6 * v + 5 * v^2 - 4 * v^3 + 3 * v^4 - \n"
+//                                             "   6 * u * (1 - 3 * v + 2 * v^2 - v^3 + v^4) - \n"
+//                                             "   2 * u^3 * (2 - 3 * v + 2 * v^2 - 6 * v^3 + 3 * v^4) + \n"
+//                                             "   u^2 * (5 - 12 * v + 6 * v^2 - 4 * v^3 + 3 * v^4) + \n"
+//                                             "   u^4 * (3 - 6 * v + 3 * v^2 - 6 * v^3 + 4 * v^4) ) ) / (1 + u^2 + v^2)^2",
+//                             "(2 * v * ( (-1 + v)^2 * v^2 - 6 * u * (-1 + v)^2 * v^2 + u^5 * (-4 + 6 * v) + \n"
+//                                             "   6 * u^3 * (-1 + v)^2 * (-1 + v + v^2) + u^6 * (3 - 6 * v + 2 * v^2) + \n"
+//                                             "   u^2 * (-1 + v)^2 * (2 - 2 * v + 3 * v^2) + \n"
+//                                             "   u^4 * (5 - 12 * v + 8 * v^2 - 2 * v^4) ) ) / (1 + u^2 + v^2)^2",
+//                             "-( (2 * u * (2 * u^3 * (1 - 6 * v + 4 * v^2 + 3 * v^3) + \n"
+//                                             "    v^2 * (-2 + 6 * v - 5 * v^2 + 4 * v^3 - 3 * v^4) + \n"
+//                                             "    6 * u * v^2 * (1 - 3 * v + 2 * v^2 - v^3 + v^4) + \n"
+//                                             "    u^4 * (-1 + 6 * v - 3 * v^2 - 6 * v^3 + 2 * v^4) - \n"
+//                                             "    u^2 * (1 - 6 * v + 9 * v^2 - 12 * v^3 + 8 * v^4 + 2 * v^6) ) ) / (1 + u^2 + v^2)^2\n"
+//                                             " )", 3);
 
 
 // ==============================================================================================================================================
@@ -149,11 +131,26 @@ int main(int argc, char *argv[])
 //    gsFunctionExpr<> source  ("(8 * (3 * x^10 + 3 * (1 + y^2)^3 + 12 * x^2 * (1 + y^2)^2 * (1 + 5 y^2) + \n"
 //                              "   x^8 * (14 + 15 * y^2) + x^6 * (25 + 36 * y^2 + 5 * y^4) + \n"
 //                              "   x^4 * (23 + 96 * y^2 + 178 * y^4 + 105 * y^6))) / (1 + x^2 + y^2)^5 ", 3);
-//    gsFunctionExpr<> laplace ("0",3);
+//    gsFunctionExpr<> laplace ("(12 * (x^2 + x^4) ) / (1 + x^2 + y^2)",3);
 //    gsFunctionExpr<> solVal("x^4",3);
 //    gsFunctionExpr<>sol1der ("(4 * x^3 * (1 + x^2)) / (1 + x^2 + y^2)",
 //                             "-((4 * x^4 * y) / (1 + x^2 + y^2))",
-//                             "-((4 * x^5 * y) / (1 + x^2 + y^2)) + (4 * x^3 * (1 + x^2) * y) / (1 + x^2 + y^2)", 3);
+//                             "4 * x^3 * ( -( (x^2 * y) / (1 + x^2 + y^2) ) + ( (1 + x^2) * y ) / (1 + x^2 + y^2) )", 3);
+//    gsFunctionExpr<>sol2der ("(12 * (x + x^3)^2 ) / (1 + x^2 + y^2)^2",
+//                             "(12 * x^4 * y^2) / (1 + x^2 + y^2)^2",
+//                             "(12 * x^2 * y^2) / (1 + x^2 + y^2)^2",
+//                             "-((12 * x^3 * (1 + x^2) y) / (1 + x^2 + y^2)^2)",
+//                             "(12 * x^2 * (1 + x^2) * y) / (1 + x^2 + y^2)^2",
+//                             "-((12 * x^3 * y^2) / (1 + x^2 + y^2)^2)", 3);
+
+
+//    gsFunctionExpr<> source  ("(4 * x * (1 - 15 * y^2 - 10 * y^4 + 6 * y^6 + x^4 * (1 + 15 * y^2) + \n"
+//                              "   x^2 * (2 - 35 * y^4))) / (1 + x^2 + y^2)^5 ",3);
+//    gsFunctionExpr<> laplace ("0",3);
+//    gsFunctionExpr<> solVal("x",3);
+//    gsFunctionExpr<>sol1der ("(1 + x^2) / (1 + x^2 + y^2)",
+//                             "-( (x * y) / (1 + x^2 + y^2) )",
+//                             "-( (x^2 * y) / (1 + x^2 + y^2) ) + ( (1 + x^2) * y) / (1 + x^2 + y^2)",3);
 //    gsFunctionExpr<>sol2der ("0",
 //                             "0",
 //                             "0",
@@ -162,15 +159,29 @@ int main(int argc, char *argv[])
 //                             "0", 3);
 
 
-//    gsFunctionExpr<> source  ("(4 * x * (1 - 15 * y^2 - 10 * y^4 + 6 * y^6 + x^4 * (1 + 15 * y^2) + \n"
-//                              "   x^2 * (2 - 35 * y^4))) / (1 + x^2 + y^2)^5 ",3);
-////    gsFunctionExpr<> source  ("0 ",3);
+// PLANAR SOLUTION
+
+//    gsFunctionExpr<> source  ("0 ",3);
 //    gsFunctionExpr<> laplace ("0",3);
 //    gsFunctionExpr<> solVal("x",3);
 //    gsFunctionExpr<>sol1der ("1",
 //                             "0",
 //                             "0",3);
 //    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
+
+
+//    gsFunctionExpr<> source  ("x^4 ",3);
+//    gsFunctionExpr<> laplace ("12 * x^2",3);
+//    gsFunctionExpr<> solVal("x^4",3);
+//    gsFunctionExpr<>sol1der ("4 * x^3",
+//                             "0",
+//                             "0",3);
+//    gsFunctionExpr<>sol2der ("12 * x^2",
 //                             "0",
 //                             "0",
 //                             "0",
@@ -244,25 +255,23 @@ int main(int argc, char *argv[])
 //                             "0", 3);
 
 
-//    gsFunctionExpr<> source  ("0",3);
+//    gsFunctionExpr<> source  ("(4 * x * y * ( 13 - 10 * x^4 + 3 * y^2 - 10 * y^4 + x^2 * (3 + 36 * y^2) ) ) / (1 + x^2 + y^2)^5",3);
 //
-//    gsFunctionExpr<> laplace ("0",3);
+//    gsFunctionExpr<> laplace ("-( (2 * x * y) / (1 + x^2 + y^2))",3);
 //
 //    gsFunctionExpr<> solVal("x * y",3);
 //
-//    gsFunctionExpr<>sol1der ("y",
-//                             "x",
-//                             "0",3);
+//    gsFunctionExpr<>sol1der ("-( (x^2 * y) / (1 + x^2 + y^2) ) + ((1 + x^2) * y) / (1 + x^2 + y^2)",
+//                             "-( (x * y^2) / (1 + x^2 + y^2) ) + (x * (1 + y^2))/(1 + x^2 + y^2)",
+//                             "y * (-( ( x^2 * y) / (1 + x^2 + y^2) ) + ( (1 + x^2) * y) / (1 + x^2 + y^2)) + \n"
+//                                             " x * (-( ( x * y^2) / (1 + x^2 + y^2)) + (x * (1 + y^2) ) / (1 + x^2 + y^2))",3);
 //
-//    gsFunctionExpr<>sol2der ("0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0", 3);
+//    gsFunctionExpr<>sol2der ("-( ( 2 * x * (1 + x^2) * y ) / (1 + x^2 + y^2)^2)",
+//                             "-( ( 2 * x * y * (1 + y^2) ) / (1 + x^2 + y^2)^2)",
+//                             "(2 * x * y ) / (1 + x^2 + y^2)^2",
+//                             "(1 + y^2 + x^2 * (1 + 2 * y^2) ) / (1 + x^2 + y^2)^2",
+//                             "(x * (1 + x^2 - y^2) ) / (1 + x^2 + y^2)^2",
+//                             "(y * (1 - x^2 + y^2) ) / (1 + x^2 + y^2)^2", 3);
 
 
 
@@ -275,15 +284,15 @@ int main(int argc, char *argv[])
     {
         case 0:
             string_geo = "KirchhoffLoveGeo/parabola_surfaceRoundedBoundary.xml";
-            numDegree = 1; // 2 == degree 3
+            numDegree = 1; // 1 == degree 3
             break;
         case 1:
-            string_geo = "KirchhoffLoveGeo/parabola_surfaceSquareBoundary.xml";
-            numDegree = 1; // 2 == degree 3
+            string_geo = "KirchhoffLoveGeo/parabola_surfaceSquaredBoundary.xml";
+            numDegree = 1; // 1 == degree 3
             break;
         case 2:
             string_geo = "KirchhoffLoveGeo/flag_surface.xml";
-            numDegree = 1; // 2 == degree 3
+            numDegree = 0; // 1 == degree 3
             break;
         case 3:
             string_geo = "KirchhoffLoveGeo/parabola_surfaceTwoPatchRoundBoundary.xml";
@@ -321,7 +330,10 @@ int main(int argc, char *argv[])
             string_geo = "KirchhoffLoveGeo/square_TwoPatch3d.xml";
             numDegree = 1; // 2 == degree 3
             break;
-
+        case 12:
+            string_geo = "KirchhoffLoveGeo/parabola_surfaceCubicParamSquaredBdy.xml";
+            numDegree = 0; // 1 == degree 3
+            break;
         default:
             gsInfo << "No geometry is used! \n";
             break;
@@ -360,6 +372,11 @@ int main(int argc, char *argv[])
     for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
         num_knots[i] = num_knots[i-1]*2 + 1;
 
+
+    std::vector<gsSparseMatrix<>> sol_vector;
+    std::vector<gsMultiBasis<>> sol_vec_basis;
+    std::vector<gsG1System<real_t>> sol_vec_sys;
+
     for (index_t refinement_level = 0; refinement_level < g1OptionList.getInt("loop"); refinement_level++)
     {
         gsMultiPatch<> multiPatch(multiPatch_init);
@@ -373,7 +390,7 @@ int main(int argc, char *argv[])
         omp_set_nested(1);
 #endif
 
-        gsG1System<real_t> g1System(multiPatch, mb, g1OptionList.getSwitch("neumann"));
+        gsG1System<real_t> g1System(multiPatch, mb, g1OptionList.getSwitch("neumann"), g1OptionList.getSwitch("twoPatch"));
 
         // ########### EDGE FUNCTIONS ###########
         // Interface loop
@@ -465,28 +482,55 @@ int main(int argc, char *argv[])
                 vertIndex.push_back(allcornerLists[j].m_index);
             }
 
-            gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatch, patchIndex, vertIndex);
-            singleVertex.computeG1InternalVertexBasis(g1OptionList);
-            for (index_t i = 0; i < 6; i++)
+            if(g1OptionList.getSwitch("twoPatch") == true)
             {
-                gsMultiPatch<> singleBasisFunction;
-                for (size_t np = 0; np < vertIndex.size(); np++)
+                if (patchIndex.size() == 1)
                 {
-                    singleBasisFunction.addPatch(singleVertex.getSinglePatch(np).getG1Basis().patch(i));
-                    if (g1OptionList.getSwitch("plot"))
-                    {
-                        fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
-                        gsField<> temp_field(multiPatch.patch(patchIndex[np]),singleBasisFunction.patch(np));
-                        gsWriteParaview(temp_field,fileName,5000);
-                        collection.addTimestep(fileName,i,"0.vts");
+                    gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatch, patchIndex, vertIndex);
+                    singleVertex.computeG1InternalVertexBasis(g1OptionList);
+                    for (index_t i = 0; i < 4; i++)
+                        {
+                        gsMultiPatch<> singleBasisFunction;
+                        for (size_t np = 0; np < vertIndex.size(); np++)
+                        {
+                            singleBasisFunction.addPatch(singleVertex.getSinglePatch(np).getG1Basis().patch(i));
+                            if (g1OptionList.getSwitch("plot"))
+                            {
+                                fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
+                                gsField<> temp_field(multiPatch.patch(patchIndex[np]), singleBasisFunction.patch(np));
+                                gsWriteParaview(temp_field, fileName, 5000);
+                                collection.addTimestep(fileName, i, "0.vts");
+                            }
+                        }
+                        g1System.insertVertex(singleBasisFunction, patchIndex, numVer, singleVertex.get_internalDofs(), i);
                     }
                 }
-                g1System.insertVertex(singleBasisFunction,patchIndex,numVer,singleVertex.get_internalDofs(),i);
+            }
+            else
+            {
+                gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatch, patchIndex, vertIndex);
+
+                singleVertex.computeG1InternalVertexBasis(g1OptionList);
+                //                for (index_t i = 0; i < (g1OptionList.get("twoPatch") ? 4 : 6); i++)
+                for (index_t i = 0; i < 6; i++)
+                {
+                    gsMultiPatch<> singleBasisFunction;
+                    for (size_t np = 0; np < vertIndex.size(); np++)
+                    {
+                        singleBasisFunction.addPatch(singleVertex.getSinglePatch(np).getG1Basis().patch(i));
+                        if (g1OptionList.getSwitch("plot"))
+                        {
+                            fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
+                            gsField<> temp_field(multiPatch.patch(patchIndex[np]), singleBasisFunction.patch(np));
+                            gsWriteParaview(temp_field, fileName, 5000);
+                            collection.addTimestep(fileName, i, "0.vts");
+                        }
+                    }
+                    g1System.insertVertex(singleBasisFunction, patchIndex, numVer, singleVertex.get_internalDofs(), i);}
             }
 //            gsInfo << "============================================================ \n";
             collection.save();
         }
-
         gsBoundaryConditions<> bcInfo, bcInfo2;
         for (gsMultiPatch<>::const_biterator bit = multiPatch.bBegin(); bit != multiPatch.bEnd(); ++bit)
         {
@@ -504,6 +548,7 @@ int main(int argc, char *argv[])
         g1BiharmonicAssembler.assemble();
 
         gsInfo << "Computing Boundary data ... \n";
+
         if (!g1OptionList.getSwitch("neumann"))
             g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System); // Compute boundary values with laplace
         else
@@ -511,10 +556,14 @@ int main(int argc, char *argv[])
 
         g1System.finalize(multiPatch,mb,g1BiharmonicAssembler.get_bValue());
 
+//        gsInfo << "Dir val: " << g1BiharmonicAssembler.get_bValue() << "\n";
+
+        gsInfo << "Solving the system ... \n";
         gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
 
 //        gsInfo << "Sol: " << solVector << "\n";
 
+        gsInfo << "Plotting the solution ... \n";
         if (g1OptionList.getSwitch("plot"))
         {
             gsField<> exactField(multiPatch,solVal);
@@ -531,15 +580,33 @@ int main(int argc, char *argv[])
         }
 
         // construct solution: G1 Basis
+        gsInfo << "Construct G1 solution ... \n";
         gsSparseMatrix<real_t> Sol_sparse;
         g1System.constructSparseG1Solution(solVector,Sol_sparse);
 
+        if(sol_vector.size() == 0 || sol_vector.size() == 1)
+        {
+            sol_vector.push_back(Sol_sparse);
+            sol_vec_basis.push_back(mb);
+            sol_vec_sys.push_back(g1System);
+        }
+        else
+        {
+            sol_vector.at(0) = sol_vector.at(1);
+            sol_vector.at(1) = Sol_sparse;
+
+            sol_vec_basis.at(0) = sol_vec_basis.at(1);
+            sol_vec_basis.at(1) = mb;
+
+            sol_vec_sys.at(0) = sol_vec_sys.at(1);
+            sol_vec_sys.at(1) = g1System;
+        }
 
 #ifdef _OPENMP
         omp_set_num_threads(g1OptionList.getInt("threads"));
         omp_set_nested(1);
 #endif
-
+        gsInfo << "Computing the error ... \n";
 #pragma omp parallel for
         for (index_t e = 0; e < 4; ++e)
         {

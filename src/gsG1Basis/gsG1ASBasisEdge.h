@@ -107,8 +107,11 @@ void gsG1ASBasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
     index_t n_minus = m_basis_minus.size();
 
     gsMultiPatch<> g1EdgeBasis;
+    index_t bfID_init = 3;
+    if (m_g1OptionList.getSwitch("twoPatch"))
+        bfID_init = 0;
 
-    for (index_t bfID = 3; bfID < n_plus - 3; bfID++) // first 3 and last 3 bf are eliminated
+    for (index_t bfID = bfID_init; bfID < n_plus - bfID_init; bfID++) // first 3 and last 3 bf are eliminated
     {
         m_geo = m_basis_g1; // Basis for Integration
 
@@ -123,7 +126,10 @@ void gsG1ASBasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 
         constructSolution(sol,g1EdgeBasis);
     }
-    for (index_t bfID = 2; bfID < n_minus-2; bfID++)  // first 2 and last 2 bf are eliminated
+    bfID_init = 2;
+    if (m_g1OptionList.getSwitch("twoPatch"))
+        bfID_init = 0;
+    for (index_t bfID = bfID_init; bfID < n_minus-bfID_init; bfID++)  // first 2 and last 2 bf are eliminated
     {
 
 

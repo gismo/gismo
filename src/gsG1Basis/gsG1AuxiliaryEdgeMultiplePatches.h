@@ -243,6 +243,7 @@ public:
             gsG1ASBasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, g1OptionList, g1BasisEdge);
             g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
             g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
+            this->g1ConditionRep(g1BasisEdge,g1Basis_0, g1Basis_1);
         }
 //      Patch 0 -> Right
         auxGeom[0].parametrizeBasisBack(g1Basis_0);
@@ -284,9 +285,29 @@ public:
         else
         if(g1OptionList.getInt("user") == user::andrea)
         {
-            gsG1ASGluingData<real_t> bdyGD; // Empty constructor creates the sol and solBeta in a suitable way to manage the GD on the boundary
-            gsG1ASBasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, g1OptionList, bdyGD);
-            g1BasisEdge.setG1BasisEdge(g1Basis_edge);
+            if (g1OptionList.getSwitch("twoPatch"))
+            {
+                gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(test_mp.basis(0).component(1)); // 0 -> u, 1 -> v
+                for (index_t j = 0; j < 2; j++) // u
+                {
+                    for (index_t i = 2; i < basis_edge.size()-2; i++) // v
+                    {
+                        gsMatrix<> coefs;
+                        coefs.setZero(test_mb.basis(0).size(),1);
+
+                        coefs(i*(test_mb.basis(0).size()/basis_edge.size()) + j,0) = 1;
+
+                        g1Basis_edge.addPatch(test_mb.basis(0).makeGeometry(coefs));
+                    }
+                }
+            }
+            else
+            {
+                gsG1ASGluingData<real_t> bdyGD; // Empty constructor creates the sol and solBeta in a suitable way to manage the GD on the boundary
+                gsG1ASBasisEdge<real_t> g1BasisEdge(test_mp, test_mb, 1, true, g1OptionList, bdyGD);
+                g1BasisEdge.setG1BasisEdge(g1Basis_edge);
+            }
+
         }
 
         auxGeom[0].parametrizeBasisBack(g1Basis_edge);
@@ -379,9 +400,87 @@ public:
         - beta.eval(points);
 
 
-    gsInfo << "Conditiontest Gluing data: \n" << temp.array().abs().maxCoeff() << "\n\n";
+//    gsInfo << "Conditiontest Gluing data: \n" << temp.array().abs().maxCoeff() << "\n\n";
+}
+
+void g1ConditionRep(gsG1ASGluingData<real_t> alpha, gsMultiPatch<> g1Basis_0,  gsMultiPatch<> g1Basis_1)
+{
+    // BETA
+    // first,last,interior,mult_ends,mult_interior,degree
+    gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(auxGeom[0].getPatch().basis().component(1)); // 0 -> v, 1 -> u
+    index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
+
+    gsKnotVector<> kv(0, 1, basis_edge.numElements()-1, 2 * m_p  + 1, 2 * m_p - 1 );
+    gsBSplineBasis<> bsp(kv);
+
+    gsMatrix<> greville = bsp.anchors();
+    gsMatrix<> uv1, uv0, ev1, ev0;
+
+    const index_t d = 2;
+    gsMatrix<> D0(d,d);
+
+    gsGeometry<>::Ptr beta_temp;
+
+    uv0.setZero(2,greville.cols());
+    uv0.bottomRows(1) = greville;
+
+    uv1.setZero(2,greville.cols());
+    uv1.topRows(1) = greville;
+
+    const gsGeometry<> & P0 = auxGeom[0].getPatch(); // iFace.first().patch = 1
+    const gsGeometry<> & P1 = auxGeom[1].getPatch(); // iFace.second().patch = 0
+    // ======================================
+
+    // ======== Determine bar{beta} ========
+    for(index_t i = 0; i < uv1.cols(); i++)
+    {
+        P0.jacobian_into(uv0.col(i),ev0);
+        P1.jacobian_into(uv1.col(i),ev1);
+        D0.col(1) = ev0.col(0); // (DuFL, *)
+        D0.col(0) = ev1.col(1); // (*,DuFR)
+
+        uv0(0,i) = D0.determinant();
+    }
+
+    beta_temp = bsp.interpolateData(uv0.topRows(1), uv0.bottomRows(1));
+    gsBSpline<> beta = dynamic_cast<gsBSpline<> &> (*beta_temp);
 
 
+
+    index_t p_size = 10;
+    gsMatrix<> points(1, p_size);
+    points.setRandom();
+    points = points.array().abs();
+
+    gsVector<> vec;
+    vec.setLinSpaced(p_size,0,1);
+    points = vec.transpose();
+
+    gsMatrix<> points2d_0(2, p_size);
+    gsMatrix<> points2d_1(2, p_size);
+
+    points2d_0.setZero();
+    points2d_1.setZero();
+    points2d_0.row(1) = points; // v
+    points2d_1.row(0) = points; // u
+
+    real_t g1Error = 0;
+
+    for (size_t i = 0; i < g1Basis_0.nPatches(); i++)
+    {
+//        gsInfo << " alpha R " << alpha.evalAlpha_R(points) << "\n";
+//        gsInfo << " alpja L " << alpha.evalAlpha_L(points) << "\n";
+
+        gsMatrix<> temp;
+        temp = alpha.evalAlpha_R(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).topRows(1))
+            + alpha.evalAlpha_L(points).cwiseProduct(g1Basis_1.patch(i).deriv(points2d_1).bottomRows(1))
+            + beta.eval(points).cwiseProduct(g1Basis_0.patch(i).deriv(points2d_0).bottomRows(1));
+
+        if (temp.array().abs().maxCoeff() > g1Error)
+            g1Error = temp.array().abs().maxCoeff();
+    }
+
+//    gsInfo << "Conditiontest G1 continuity Rep: \n" << g1Error << "\n\n";
 }
 
 protected:

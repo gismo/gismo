@@ -178,68 +178,77 @@ public:
                                      geoMapDeriv2(4, k) * (geoMapDeriv1(3, k)) +
                                      geoMapDeriv2(7, k) * (geoMapDeriv1(5, k)) );
 
+
+                gsMatrix<T> G = Jk.transpose() * Jk;
+                gsMatrix<T> G_inv = G.cramerInverse();
+
                 real_t detG = G11 * (G22) - G12 * (G12);
+                real_t detG_inv = 1 / ( detG );
 
-//          1 / sqrt( det( G ) )
-                real_t sqrtDetG_inv;
+                real_t Du_detG_Inv = detG_inv * detG_inv * ( 2 * G12 * DuG12 -
+                    G22 * DuG11 -
+                    G11 * DuG22 );
 
-//          1 / ( 2 * det( G )^( 3/2 ) )
-                real_t sqrtDetG_inv_derivative;
+                real_t Dv_detG_Inv = detG_inv * detG_inv * ( 2 * G12 * DvG21 -
+                    G22 * DvG11 -
+                    G11 * DvG22 );
 
 
-                sqrtDetG_inv = 1 / sqrt( detG );
-                sqrtDetG_inv_derivative = 1 / ( 2 * detG * sqrt( detG ) );
+//          Computing the divergence of the first fundamental form
+                gsMatrix<> div_G_inv(1, 2);
+                div_G_inv.setZero();
 
-                real_t Du_SqrtDetGinv = sqrtDetG_inv_derivative * (
-                                        2 * G12 * ( DuG12 )  -
-                                        G22 * ( DuG11 ) -
-                                        G11 * ( DuG22 ) );
+                div_G_inv(0, 0) = Du_detG_Inv * G22 - Dv_detG_Inv * G12;
+                div_G_inv(0, 0) += ( ( DuG22 - DvG21 ) / detG );
 
-                real_t Dv_SqrtDetGinv = sqrtDetG_inv_derivative * (
-                                        2 * G12 * ( DvG21 )  -
-                                        G22 * ( DvG11 ) -
-                                        G11 * ( DvG22 ) );
+                div_G_inv(0, 1) = Dv_detG_Inv * G11 - Du_detG_Inv * G12;
+                div_G_inv(0, 1) += ( ( DvG11 - DuG12 ) / detG );
 
-//          div ( sqrt( det( G ) ) * ( 1 / det( G ) * G* ^-1 * grad( u ) ) )
-                gsMatrix<T> surfParametricLaplace(1, 1);
+
+//          Computing the divergence of the jacobian
+                gsMatrix<> div_Jk_transpose(1, 3);
+                div_G_inv.setZero();
+
+                div_Jk_transpose(0, 0) = geoMapDeriv2(0, 0) + geoMapDeriv2(1, 0);
+                div_Jk_transpose(0, 1) = geoMapDeriv2(3, 0) + geoMapDeriv2(4, 0);
+                div_Jk_transpose(0, 2) = geoMapDeriv2(6, 0) + geoMapDeriv2(7, 0);
+
+                gsMatrix<T> surfParametricLaplace(6, 1);
                 surfParametricLaplace.setZero();
 
-                gsMatrix<T> exactLap(1, 1);
-                exactLap.setZero();
+//          Computing the transformation of the hessian matrix from parameter to surface
+                gsMatrix<> grad_par_first = f1ders.col(k);
 
-                for(index_t i = 0; i < numActive; i++)
-                {
-//              1 / sqrt^4( det( G ) ) *
-//              [
-//              Du( 1 / sqrt( det( G ) ) ) * G* ^-1 * grad( u ) ) +
-//              Dv( 1 / sqrt( det( G ) ) ) * G* ^-1 * grad( u ) ) +
-//              1 / sqrt( det( G ) ) * ( div ( G* ^-1 * grad( u ) ) )
-//              ]
-                    surfParametricLaplace(0, 0) += ( Du_SqrtDetGinv * (
-                                                    G22 * ( basisGrads( i * 2, k) ) -
-                                                    G12 * ( basisGrads( i * 2 + 1, k) ) )
-                                                    +
-                                                    Dv_SqrtDetGinv * (
-                                                    G11 * ( basisGrads( i * 2 + 1, k) ) -
-                                                    G12 * ( basisGrads( i * 2, k) ) )
-                                                    +
-                                                    sqrtDetG_inv * (
-                                                    DuG22 * ( basisGrads( i * 2, k) ) +
-                                                    G22 * ( basis2ndDerivs( i * 3, k) ) -
-                                                    DuG12 * ( basisGrads( i * 2 + 1, k) ) -
-                                                    G12 * ( basis2ndDerivs( i * 3 + 2, k) ) -
-                                                    G12 * ( basis2ndDerivs( i * 3 + 2, k) ) +
-                                                    DvG11 * ( basisGrads( i * 2 + 1, k) ) +
-                                                    G11 * ( basis2ndDerivs( i * 3 + 1, k) ) -
-                                                    DvG21 * ( basisGrads( i * 2, k) ) )
-                                                    ) * sqrtDetG_inv;
+                gsMatrix<> hessian_par_first(2, 2);
+                hessian_par_first.setZero();
+                hessian_par_first(0, 0) = f1ders2( 0, k);
+                hessian_par_first(1, 1) = f1ders2( 1, k);
+                hessian_par_first(0, 1) = f1ders2( 2, k);
+                hessian_par_first(1, 0) = f1ders2( 2, k);
 
-                }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+//          Computing the tranformartion of the gradient basis functions
+
+                gsMatrix<> hessian_fromGrad_first = Jk * G_inv * div_G_inv.transpose() * grad_par_first.transpose() * Jk.transpose();
+                hessian_fromGrad_first += Jk * G_inv * G_inv * grad_par_first * div_Jk_transpose;
+                hessian_fromGrad_first.setZero();
+
+//          Computing the tranformation of the hessian basis functions
+                gsMatrix<> hessian_phys_first = Jk * G_inv * hessian_par_first * G_inv * Jk.transpose();
+
+                surfParametricLaplace(0, 0) += (hessian_fromGrad_first(0, 0) + hessian_phys_first(0, 0));
+                surfParametricLaplace(1, 0) += (hessian_fromGrad_first(1, 1) + hessian_phys_first(1, 1));
+                surfParametricLaplace(2, 0) += (hessian_fromGrad_first(2, 2) + hessian_phys_first(2, 2));
+                surfParametricLaplace(3, 0) += (hessian_fromGrad_first(0, 1) + hessian_phys_first(0, 1));
+                surfParametricLaplace(4, 0) += (hessian_fromGrad_first(0, 2) + hessian_phys_first(0, 2));
+                surfParametricLaplace(5, 0) += (hessian_fromGrad_first(1, 2) + hessian_phys_first(1, 2));
 
                 weight *= sqrt(detG);
 
-                exactLap(0, 0) = f2ders2(0, k) + f2ders2(1, k) + f2ders2(2, k);
-                sum += weight * (surfParametricLaplace - exactLap).squaredNorm();
+                sum += weight * ( (surfParametricLaplace.topRows(3) - f2ders2.col(k).topRows(3)).squaredNorm()
+                                + 2 * (surfParametricLaplace.bottomRows(3) - f2ders2.col(k).bottomRows(3)).squaredNorm());
 
             }
             else
@@ -252,6 +261,7 @@ public:
                 short_t parDim = geoEval.parDim();
                 int rest = f1pders2.rows() - parDim;
                 weight *= geoEval.measure(k);
+
                 sum += weight * ((f1pders2.topRows(parDim) - f2ders2.col(k).topRows(parDim)).squaredNorm() +
                     2 * (f1pders2.bottomRows(rest) - f2ders2.col(k).bottomRows(rest)).squaredNorm());
             }

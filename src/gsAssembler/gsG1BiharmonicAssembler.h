@@ -163,9 +163,9 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::plotParaview(gsField<> &solField_inte
         }
 
 
-        gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
-        //gsFunctionExpr<> solVal("y",2);
-        gsField<> exact(m_pde_ptr->domain().patch(pp), solVal, false );
+//        gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+//        //gsFunctionExpr<> solVal("y",2);
+//        gsField<> exact(m_pde_ptr->domain().patch(pp), solVal, false );
         //eval_field -= exact.value(pts);
 
         if ( 3 - d > 0 )
@@ -233,12 +233,12 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
 
 
     // Neuman conditions of first kind
-    Base::template push<gsVisitorNeumann<T> >(
-        m_ppde.bcFirstKind().neumannSides() );
+    //Base::template push<gsVisitorNeumann<T> >(
+    //    m_ppde.bcFirstKind().neumannSides() );
 
     // Laplace conditions of second kind
-    Base::template push<gsVisitorLaplaceBoundaryBiharmonic<T> >(
-        m_ppde.bcSecondKind().laplaceSides() );
+    //Base::template push<gsVisitorLaplaceBoundaryBiharmonic<T> >(
+    //    m_ppde.bcSecondKind().laplaceSides() );
 
     if (m_options.getInt("InterfaceStrategy") == iFace::dg)
         gsWarn << "DG option ignored.\n";
@@ -264,7 +264,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
 
     m_g1_ddof.resize( g1System.boundary_size(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
     m_g1_ddof.setZero();
-
+/*
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
     gsSparseEntries<T> projMatEntries;
@@ -459,7 +459,18 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
                 // Do the actual assembly:
                 for( index_t k=0; k < md.points.cols(); k++ )
                 {
-                    const T weight_k = quWeights[k] * md.measure(k);
+                    T weight_k = quWeights[k];
+
+                    if(patch.jacobian(md.point(k)).cols() + 1 == patch.jacobian(md.point(k)).rows() )
+                    {
+                        gsMatrix<T> Jk = patch.jacobian(md.point(k));
+                        gsMatrix<T> G = Jk.transpose() * Jk;
+                        weight_k *= sqrt(G.determinant());
+                    }
+                    else
+                    {
+                        weight_k *= md.measure(k);
+                    }
 
                     // Only run through the active boundary functions on the element:
                     for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
@@ -501,7 +512,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
     // for the values of the eliminated Dirichlet DOFs.
     typename gsSparseSolver<T>::CGDiagonal solver;
     m_g1_ddof = solver.compute( globProjMat ).solve ( globProjRhs );
-
+*/
 }
 
 template <class T, class bhVisitor>
@@ -618,7 +629,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
 
     real_t lambda = 0.01;
 
-    gsMapData<T> md(NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_JACOBIAN);
+    gsMapData<T> md(NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_JACOBIAN | NEED_NORMAL);
 
 
     typename gsBoundaryConditions<T>::const_iterator
@@ -735,23 +746,26 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
                         // ...the boundary index.
                         const unsigned ii = mapper.global_to_bindex( globIdxAct( i ));
 
+                        const index_t numGrads = basisGrads.rows() / md.dim.first;
+                        const gsAsConstMatrix<T> grads_k(basisGrads.col(k).data(), md.dim.first, numGrads);
+                        gsMatrix<T> physBasisGrad = Jk * G_inv * grads_k;
+
                         for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
                         {
                             const unsigned j = eltBdryFcts[j0];
                             const unsigned jj = mapper.global_to_bindex( globIdxAct( j ));
 
-                            // Use the "element-wise index" to get the needed
-                            // function value.
-                            // Use the boundary index to put the value in the proper
-                            // place in the global projection matrix.
-                            projMatEntries.add(ii, jj, weight_k * ( basisVals(i,k) * basisVals(j,k)   +
-                            lambda * ( ( (Jk * G_inv * basisGrads.block(2*i, k, 2, 1) ).transpose() * unormal )(0,0) *
-                            ( ( Jk * G_inv * basisGrads.block(2*j, k, 2, 1) ).transpose() * unormal )(0,0) ) ) );
+
+                            projMatEntries.add(ii, jj, weight_k * ( basisVals(i,k) * basisVals(j,k) +
+                                                       lambda * ( ( physBasisGrad.col(i).transpose() * unormal )(0,0) *
+                                                       ( physBasisGrad.col(j).transpose() * unormal )(0,0) ) ) );
 
                         } // for j
+
+
                         globProjRhs.row(ii) += weight_k * ( basisVals(i,k) * rhsVals.col(k).transpose() +
-                            lambda * ( (Jk * G_inv * basisGrads.block(2*i,k,2,1)).transpose() * unormal ) *
-                            ( rhsVals2.col(k).transpose() * unormal ) );
+                                               lambda * ( physBasisGrad.col(i).transpose() * unormal ) *
+                                               ( rhsVals2.col(k).transpose() * unormal ) );
 
 
                     } // for i

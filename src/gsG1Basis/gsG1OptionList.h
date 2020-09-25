@@ -110,7 +110,7 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     index_t p_tilde = 1;
     index_t r_tilde = 0;
 
-    index_t threads = 1; // For parallel computing
+    index_t threads = 12; // For parallel computing
 
 
 

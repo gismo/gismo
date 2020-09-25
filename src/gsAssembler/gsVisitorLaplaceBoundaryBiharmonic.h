@@ -67,7 +67,7 @@ public:
                               side.direction() );
 
         // Set Geometry evaluation flags
-        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_OUTER_NORMAL;
     }
 
     // Evaluate on element.
@@ -84,6 +84,8 @@ public:
 
         // Evaluate basis gradients on element
         basis.deriv_into( md.points, basisGrads);
+//        basis.eval_into( md.points, basisGrads);
+
         // Compute geometry related values
         geo.computeMap(md);
         // Evaluate the Neumann data
@@ -113,7 +115,6 @@ public:
                 const index_t numGrads = basisGrads.rows() / md.dim.first;
                 const gsAsConstMatrix<T> grads_k(basisGrads.col(k).data(), md.dim.first, numGrads);
                 physBasisGrad = Jk * G_inv * grads_k;
-
             }
             else
             {
@@ -122,7 +123,6 @@ public:
                 transformGradients(md, k, basisGrads, physBasisGrad);
             }
             unormal.normalize();
-//            gsInfo << "Out normal normalized: " << unormal << "\n";
             //Get gradients of the physical space
 
             localRhs.noalias() += weight *(( physBasisGrad.transpose() * unormal )* neuData.col(k).transpose());

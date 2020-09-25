@@ -243,9 +243,9 @@ public:
         // Hessian
         if(geo.parDim() + 1 == geo.targetDim()) // In the surface case the dimension of the second derivative vector is 9x1
         {
-            d_ik.push_back( (geo.jacobian(zero)(0,0) * Phi.row(4).transpose() + geo.jacobian(zero)(1,0) * Phi.row(5).transpose() + geo.jacobian(zero)(2,0) * Phi.row(6).transpose()) * geo.jacobian(zero)(0,1) +
-                            (geo.jacobian(zero)(0,0) * Phi.row(5).transpose() + geo.jacobian(zero)(1,0) * Phi.row(7).transpose() + geo.jacobian(zero)(2,0) * Phi.row(8).transpose()) * geo.jacobian(zero)(1,1) +
-                            (geo.jacobian(zero)(0,0) * Phi.row(6).transpose() + geo.jacobian(zero)(1,0) * Phi.row(8).transpose() + geo.jacobian(zero)(2,0) * Phi.row(9).transpose()) * geo.jacobian(zero)(2,1) +
+            d_ik.push_back( (geo.jacobian(zero)(0,0) * Phi.row(4).transpose() + geo.jacobian(zero)(1,0) * Phi.row(7).transpose() + geo.jacobian(zero)(2,0) * Phi.row(10).transpose()) * geo.jacobian(zero)(0,1) +
+                            (geo.jacobian(zero)(0,0) * Phi.row(5).transpose() + geo.jacobian(zero)(1,0) * Phi.row(8).transpose() + geo.jacobian(zero)(2,0) * Phi.row(11).transpose()) * geo.jacobian(zero)(1,1) +
+                            (geo.jacobian(zero)(0,0) * Phi.row(6).transpose() + geo.jacobian(zero)(1,0) * Phi.row(9).transpose() + geo.jacobian(zero)(2,0) * Phi.row(12).transpose()) * geo.jacobian(zero)(2,1) +
                             Phi.block(1, 0, 1, 6).transpose() * geo.deriv2(zero).row(2) +
                             Phi.block(2, 0, 1, 6).transpose() * geo.deriv2(zero).row(5) +
                             Phi.block(3, 0, 1, 6).transpose() * geo.deriv2(zero).row(8) );
@@ -270,9 +270,9 @@ public:
 
         if(geo.parDim() + 1 == geo.targetDim()) // In the surface case the dimension of the second derivative vector is 9x1
         {
-            d_ilik_minus.push_back( (geo.jacobian(zero)(0,0) * Phi.row(4).transpose() + geo.jacobian(zero)(1,0) * Phi.row(5).transpose() + geo.jacobian(zero)(2,0) * Phi.row(6).transpose()) * geo.jacobian(zero)(0,0) +
-                                    (geo.jacobian(zero)(0,0) * Phi.row(5).transpose() + geo.jacobian(zero)(1,0) * Phi.row(7).transpose() + geo.jacobian(zero)(2,0) * Phi.row(8).transpose()) * geo.jacobian(zero)(1,0) +
-                                    (geo.jacobian(zero)(0,0) * Phi.row(6).transpose() + geo.jacobian(zero)(1,0) * Phi.row(8).transpose() + geo.jacobian(zero)(2,0) * Phi.row(9).transpose()) * geo.jacobian(zero)(2,0) +
+            d_ilik_minus.push_back( (geo.jacobian(zero)(0,0) * Phi.row(4).transpose() + geo.jacobian(zero)(1,0) * Phi.row(7).transpose() + geo.jacobian(zero)(2,0) * Phi.row(10).transpose()) * geo.jacobian(zero)(0,0) +
+                                    (geo.jacobian(zero)(0,0) * Phi.row(5).transpose() + geo.jacobian(zero)(1,0) * Phi.row(8).transpose() + geo.jacobian(zero)(2,0) * Phi.row(11).transpose()) * geo.jacobian(zero)(1,0) +
+                                    (geo.jacobian(zero)(0,0) * Phi.row(6).transpose() + geo.jacobian(zero)(1,0) * Phi.row(9).transpose() + geo.jacobian(zero)(2,0) * Phi.row(12).transpose()) * geo.jacobian(zero)(2,0) +
                                     Phi.block(1, 0, 1, 6).transpose() * geo.deriv2(zero).row(0) +
                                     Phi.block(2, 0, 1, 6).transpose() * geo.deriv2(zero).row(3) +
                                     Phi.block(3, 0, 1, 6).transpose() * geo.deriv2(zero).row(6) );
@@ -289,9 +289,9 @@ public:
 
         if(geo.parDim() + 1 == geo.targetDim()) // In the surface case the dimension of the second derivative vector is 9x1
         {
-            d_ilik_minus.push_back( (geo.jacobian(zero)(0,0) * Phi.row(4).transpose() + geo.jacobian(zero)(1,0) * Phi.row(5).transpose() + geo.jacobian(zero)(2,0) * Phi.row(6).transpose()) * dd_ik_minus(0,0) +
-                                    (geo.jacobian(zero)(0,0) * Phi.row(5).transpose() + geo.jacobian(zero)(1,0) * Phi.row(7).transpose() + geo.jacobian(zero)(2,0) * Phi.row(8).transpose()) * dd_ik_minus(1,0) +
-                                    (geo.jacobian(zero)(0,0) * Phi.row(6).transpose() + geo.jacobian(zero)(1,0) * Phi.row(8).transpose() + geo.jacobian(zero)(2,0) * Phi.row(9).transpose()) * dd_ik_minus(2,0) +
+            d_ilik_minus.push_back( (geo.jacobian(zero)(0,0) * Phi.row(4).transpose() + geo.jacobian(zero)(1,0) * Phi.row(7).transpose() + geo.jacobian(zero)(2,0) * Phi.row(10).transpose()) * dd_ik_minus(0,0) +
+                                    (geo.jacobian(zero)(0,0) * Phi.row(5).transpose() + geo.jacobian(zero)(1,0) * Phi.row(8).transpose() + geo.jacobian(zero)(2,0) * Phi.row(11).transpose()) * dd_ik_minus(1,0) +
+                                    (geo.jacobian(zero)(0,0) * Phi.row(6).transpose() + geo.jacobian(zero)(1,0) * Phi.row(9).transpose() + geo.jacobian(zero)(2,0) * Phi.row(12).transpose()) * dd_ik_minus(2,0) +
                                     Phi.block(1, 0, 1, 6).transpose() * dd_ik_minus_deriv.row(0) +
                                     Phi.block(2, 0, 1, 6).transpose() * dd_ik_minus_deriv.row(0) +
                                     Phi.block(3, 0, 1, 6).transpose() * dd_ik_minus_deriv.row(0) );
@@ -312,9 +312,9 @@ public:
 
         if(geo.parDim() + 1 == geo.targetDim()) // In the surface case the dimension of the second derivative vector is 9x1
         {
-            d_ilik_plus.push_back( (geo.jacobian(zero)(0,1) * Phi.row(4).transpose() + geo.jacobian(zero)(1,1) * Phi.row(5).transpose() + geo.jacobian(zero)(2,1) * Phi.row(6).transpose()) * geo.jacobian(zero)(0,1) +
-                                   (geo.jacobian(zero)(0,1) * Phi.row(5).transpose() + geo.jacobian(zero)(1,1) * Phi.row(7).transpose() + geo.jacobian(zero)(2,1) * Phi.row(8).transpose()) * geo.jacobian(zero)(1,1) +
-                                   (geo.jacobian(zero)(0,1) * Phi.row(6).transpose() + geo.jacobian(zero)(1,1) * Phi.row(8).transpose() + geo.jacobian(zero)(2,1) * Phi.row(9).transpose()) * geo.jacobian(zero)(2,1) +
+            d_ilik_plus.push_back( (geo.jacobian(zero)(0,1) * Phi.row(4).transpose() + geo.jacobian(zero)(1,1) * Phi.row(7).transpose() + geo.jacobian(zero)(2,1) * Phi.row(10).transpose()) * geo.jacobian(zero)(0,1) +
+                                   (geo.jacobian(zero)(0,1) * Phi.row(5).transpose() + geo.jacobian(zero)(1,1) * Phi.row(8).transpose() + geo.jacobian(zero)(2,1) * Phi.row(11).transpose()) * geo.jacobian(zero)(1,1) +
+                                   (geo.jacobian(zero)(0,1) * Phi.row(6).transpose() + geo.jacobian(zero)(1,1) * Phi.row(9).transpose() + geo.jacobian(zero)(2,1) * Phi.row(12).transpose()) * geo.jacobian(zero)(2,1) +
                                     Phi.block(1, 0, 1, 6).transpose() * geo.deriv2(zero).row(1) +
                                     Phi.block(2, 0, 1, 6).transpose() * geo.deriv2(zero).row(4) +
                                     Phi.block(3, 0, 1, 6).transpose() * geo.deriv2(zero).row(7) );
@@ -331,9 +331,9 @@ public:
 
         if(geo.parDim() + 1 == geo.targetDim()) // In the surface case the dimension of the second derivative vector is 9x1
         {
-            d_ilik_plus.push_back( (geo.jacobian(zero)(0,1) * Phi.row(4).transpose() + geo.jacobian(zero)(1,1) * Phi.row(5).transpose() + geo.jacobian(zero)(2,1) * Phi.row(6).transpose()) * dd_ik_plus(0,0) +
-                                   (geo.jacobian(zero)(0,1) * Phi.row(5).transpose() + geo.jacobian(zero)(1,1) * Phi.row(7).transpose() + geo.jacobian(zero)(2,1) * Phi.row(8).transpose()) * dd_ik_plus(1,0) +
-                                   (geo.jacobian(zero)(0,1) * Phi.row(6).transpose() + geo.jacobian(zero)(1,1) * Phi.row(8).transpose() + geo.jacobian(zero)(2,1) * Phi.row(9).transpose()) * dd_ik_plus(2,0) +
+            d_ilik_plus.push_back( (geo.jacobian(zero)(0,1) * Phi.row(4).transpose() + geo.jacobian(zero)(1,1) * Phi.row(7).transpose() + geo.jacobian(zero)(2,1) * Phi.row(10).transpose()) * dd_ik_plus(0,0) +
+                                   (geo.jacobian(zero)(0,1) * Phi.row(5).transpose() + geo.jacobian(zero)(1,1) * Phi.row(8).transpose() + geo.jacobian(zero)(2,1) * Phi.row(11).transpose()) * dd_ik_plus(1,0) +
+                                   (geo.jacobian(zero)(0,1) * Phi.row(6).transpose() + geo.jacobian(zero)(1,1) * Phi.row(9).transpose() + geo.jacobian(zero)(2,1) * Phi.row(12).transpose()) * dd_ik_plus(2,0) +
                                     Phi.block(1, 0, 1, 6).transpose() * dd_ik_plus_deriv.row(0) +
                                     Phi.block(2, 0, 1, 6).transpose() * dd_ik_plus_deriv.row(1) +
                                     Phi.block(3, 0, 1, 6).transpose() * dd_ik_plus_deriv.row(2) );

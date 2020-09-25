@@ -44,7 +44,7 @@ public:
 //        gsInfo << "Solution: " << sol << "\n";
 //        gsInfo << "Solution Beta: " << solBeta << "\n";
 
-//        AScondition(mp);
+        AScondition(mp);
     }
 
 
@@ -371,7 +371,7 @@ protected:
 
 //            gsInfo << "cond dim: " << cond.dim() << "\n";
 
-            gsInfo << "Condition col " << i << ": " << cond.col(i) << "\n";
+//            gsInfo << "Condition col " << i << ": " << cond.col(i) << "\n";
 
 
         }

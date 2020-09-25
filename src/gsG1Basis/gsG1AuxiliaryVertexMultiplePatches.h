@@ -690,30 +690,59 @@ public:
         }
         else if(g1OptionList.getInt("user") == user::andrea)
         {
-
-            gsMatrix<> Phi(6,6);
-            Phi.setIdentity();
-
-            Phi.col(1) *= sigma;
-            Phi.col(2) *= sigma;
-            Phi.col(3) *= sigma * sigma;
-            Phi.col(4) *= sigma * sigma;
-            Phi.col(5) *= sigma * sigma;
-
-            if(auxGeom[0].getPatch().parDim() + 1 == auxGeom[0].getPatch().targetDim())
+            if (g1OptionList.getSwitch("twoPatch"))
             {
-                gsMatrix<> zero;
-                zero.setZero(2,1);
-                gsMatrix<> Jk = auxGeom[0].getPatch().jacobian(zero);
-                gsMatrix<> G = Jk.transpose() * Jk; // Symmetric
-                gsMatrix<> G_inv = G.cramerInverse(); // Symmetric
+                gsMultiPatch<> test_mp(auxGeom[0].getPatch());
+                gsMultiBasis<> test_mb(auxGeom[0].getPatch().basis());
+
+                gsMultiPatch<> g1Basis;
+                gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(test_mp.basis(0).component(1)); // 0 -> u, 1 -> v
+
+                for (index_t j = 0; j < 2; j++) // u
+                {
+                    for (index_t i = 0; i < 2; i++) // v
+                    {
+                        gsMatrix<> coefs;
+                        coefs.setZero(test_mb.basis(0).size(),1);
+
+                        coefs(j*(test_mb.basis(0).size()/basis_edge.size()) + i,0) = 1;
+
+                        g1Basis.addPatch(test_mb.basis(0).makeGeometry(coefs));
+                    }
+                }
+
+                g1BasisVector.push_back(g1Basis);
+                auxGeom[0].setG1Basis(g1Basis);
+            }
+            else
+            {
+                gsMatrix<> Phi(6, 6);
+                Phi.setIdentity();
+
+//                Phi.col(1) *= sigma;
+//                Phi.col(2) *= sigma;
+                Phi.col(1) *= 1;
+                Phi.col(2) *= 1;
+                Phi.col(3) *= sigma * sigma;
+                Phi.col(4) *= sigma * sigma;
+                Phi.col(5) *= sigma * sigma;
+
+                if (auxGeom[0].getPatch().parDim() + 1 == auxGeom[0].getPatch().targetDim())
+                {
+                    gsMatrix<> zero;
+                    zero.setZero(2, 1);
+                    gsMatrix<> Jk = auxGeom[0].getPatch().jacobian(zero);
+                    gsMatrix<> G = Jk.transpose() * Jk; // Symmetric
+                    gsMatrix<> G_inv = G.cramerInverse(); // Symmetric
 
 
-                gsMatrix<> geoMapDeriv1 = auxGeom[0].getPatch().deriv(zero); // First derivative of the geometric mapping with respect to the parameter coordinates
-                gsMatrix<> geoMapDeriv2 = auxGeom[0].getPatch().deriv2(zero); // Second derivative of the geometric mapping with respect to the parameter coordinates
+                    gsMatrix<> geoMapDeriv1 = auxGeom[0].getPatch()
+                                                        .deriv(zero); // First derivative of the geometric mapping with respect to the parameter coordinates
+                    gsMatrix<> geoMapDeriv2 = auxGeom[0].getPatch()
+                                                        .deriv2(zero); // Second derivative of the geometric mapping with respect to the parameter coordinates
 
 
-                //            FIRST FUNDAMENTAL FORM: G = J^T * J
+                    //            FIRST FUNDAMENTAL FORM: G = J^T * J
 //
 //            G = | G11   G12|
 //                | G21   G22|
@@ -724,173 +753,183 @@ public:
 //            G^-1 = ------- |          | = ------- G* ^-1
 //                    det(G) | -G21  G11|    det(G)
 
-                // First fundamental form
-                real_t G11 = ( geoMapDeriv1(0, 0) * (geoMapDeriv1(0, 0)) +
-                    geoMapDeriv1(2, 0) * (geoMapDeriv1(2, 0)) +
-                    geoMapDeriv1(4, 0) * (geoMapDeriv1(4, 0)));
+                    // First fundamental form
+                    real_t G11 = (geoMapDeriv1(0, 0) * (geoMapDeriv1(0, 0)) +
+                                  geoMapDeriv1(2, 0) * (geoMapDeriv1(2, 0)) +
+                                  geoMapDeriv1(4, 0) * (geoMapDeriv1(4, 0)));
 
 //          G12 = G21
-                real_t G12 = ( geoMapDeriv1(0, 0) * (geoMapDeriv1(1, 0)) +
-                    geoMapDeriv1(2, 0) * (geoMapDeriv1(3, 0)) +
-                    geoMapDeriv1(4, 0) * (geoMapDeriv1(5, 0)));
+                    real_t G12 = (geoMapDeriv1(0, 0) * (geoMapDeriv1(1, 0)) +
+                                  geoMapDeriv1(2, 0) * (geoMapDeriv1(3, 0)) +
+                                  geoMapDeriv1(4, 0) * (geoMapDeriv1(5, 0)));
 
-                real_t G22 = ( geoMapDeriv1(1, 0) * (geoMapDeriv1(1, 0)) +
-                    geoMapDeriv1(3, 0) * (geoMapDeriv1(3, 0)) +
-                    geoMapDeriv1(5, 0) * (geoMapDeriv1(5, 0)));
+                    real_t G22 = (geoMapDeriv1(1, 0) * (geoMapDeriv1(1, 0)) +
+                                  geoMapDeriv1(3, 0) * (geoMapDeriv1(3, 0)) +
+                                  geoMapDeriv1(5, 0) * (geoMapDeriv1(5, 0)));
 
-                // Derivative of the first fundamental form
-                real_t DuG11 = 2 * ( geoMapDeriv2(0, 0) * (geoMapDeriv1(0, 0)) +
-                    geoMapDeriv2(3, 0) * (geoMapDeriv1(2, 0)) +
-                    geoMapDeriv2(6, 0) * (geoMapDeriv1(4, 0)) );
+                    // Derivative of the first fundamental form
+                    real_t DuG11 = 2 * (geoMapDeriv2(0, 0) * (geoMapDeriv1(0, 0)) +
+                                        geoMapDeriv2(3, 0) * (geoMapDeriv1(2, 0)) +
+                                        geoMapDeriv2(6, 0) * (geoMapDeriv1(4, 0)));
 
-
-                real_t DvG11 = 2 * ( geoMapDeriv2(2, 0) * (geoMapDeriv1(0, 0)) +
-                    geoMapDeriv2(5, 0) * (geoMapDeriv1(2, 0)) +
-                    geoMapDeriv2(8, 0) * (geoMapDeriv1(4, 0)) );
+                    real_t DvG11 = 2 * (geoMapDeriv2(2, 0) * (geoMapDeriv1(0, 0)) +
+                                        geoMapDeriv2(5, 0) * (geoMapDeriv1(2, 0)) +
+                                        geoMapDeriv2(8, 0) * (geoMapDeriv1(4, 0)));
 
 //          DuG12 = DuG21
-                real_t DuG12 = ( geoMapDeriv2(0, 0) * (geoMapDeriv1(1, 0)) +
-                    geoMapDeriv2(2, 0) * (geoMapDeriv1(0, 0)) +
-                    geoMapDeriv2(3, 0) * (geoMapDeriv1(3, 0)) +
-                    geoMapDeriv2(5, 0) * (geoMapDeriv1(2, 0)) +
-                    geoMapDeriv2(6, 0) * (geoMapDeriv1(5, 0)) +
-                    geoMapDeriv2(8, 0) * (geoMapDeriv1(4, 0)) );
+                    real_t DuG12 = (geoMapDeriv2(0, 0) * (geoMapDeriv1(1, 0)) +
+                                    geoMapDeriv2(2, 0) * (geoMapDeriv1(0, 0)) +
+                                    geoMapDeriv2(3, 0) * (geoMapDeriv1(3, 0)) +
+                                    geoMapDeriv2(5, 0) * (geoMapDeriv1(2, 0)) +
+                                    geoMapDeriv2(6, 0) * (geoMapDeriv1(5, 0)) +
+                                    geoMapDeriv2(8, 0) * (geoMapDeriv1(4, 0)));
 
 //          DvG12 = DvG21
-                real_t DvG21 = ( geoMapDeriv2(2, 0) * (geoMapDeriv1(1, 0)) +
-                    geoMapDeriv2(1, 0) * (geoMapDeriv1(0, 0)) +
-                    geoMapDeriv2(5, 0) * (geoMapDeriv1(3, 0)) +
-                    geoMapDeriv2(4, 0) * (geoMapDeriv1(2, 0)) +
-                    geoMapDeriv2(8, 0) * (geoMapDeriv1(5, 0)) +
-                    geoMapDeriv2(7, 0) * (geoMapDeriv1(4, 0)) );
+                    real_t DvG21 = (geoMapDeriv2(2, 0) * (geoMapDeriv1(1, 0)) +
+                                    geoMapDeriv2(1, 0) * (geoMapDeriv1(0, 0)) +
+                                    geoMapDeriv2(5, 0) * (geoMapDeriv1(3, 0)) +
+                                    geoMapDeriv2(4, 0) * (geoMapDeriv1(2, 0)) +
+                                    geoMapDeriv2(8, 0) * (geoMapDeriv1(5, 0)) +
+                                    geoMapDeriv2(7, 0) * (geoMapDeriv1(4, 0)));
+
+                    real_t DuG22 = 2 * (geoMapDeriv2(2, 0) * (geoMapDeriv1(1, 0)) +
+                                        geoMapDeriv2(5, 0) * (geoMapDeriv1(3, 0)) +
+                                        geoMapDeriv2(8, 0) * (geoMapDeriv1(5, 0)));
+
+                    real_t DvG22 = 2 * (geoMapDeriv2(1, 0) * (geoMapDeriv1(1, 0)) +
+                                        geoMapDeriv2(4, 0) * (geoMapDeriv1(3, 0)) +
+                                        geoMapDeriv2(7, 0) * (geoMapDeriv1(5, 0)));
 
 
-                real_t DuG22 = 2 * ( geoMapDeriv2(2, 0) * (geoMapDeriv1(1, 0)) +
-                    geoMapDeriv2(5, 0) * (geoMapDeriv1(3, 0)) +
-                    geoMapDeriv2(8, 0) * (geoMapDeriv1(5, 0)) );
+                    real_t detG = G.determinant();
+                    real_t detG_inv = 1 / (detG);
 
-                real_t DvG22 = 2 *( geoMapDeriv2(1, 0) * (geoMapDeriv1(1, 0)) +
-                    geoMapDeriv2(4, 0) * (geoMapDeriv1(3, 0)) +
-                    geoMapDeriv2(7, 0) * (geoMapDeriv1(5, 0)) );
+                    real_t Du_detG_Inv = detG_inv * detG_inv * (2 * G12 * DuG12 -
+                                                                    G22 * DuG11 -
+                                                                    G11 * DuG22);
 
-                real_t detG = G.determinant();
-                real_t detG_inv = 1 / ( detG );
-
-                real_t Du_detG_Inv = detG_inv * detG_inv * ( 2 * G12 * DuG12 -
-                    G22 * DuG11 -
-                    G11 * DuG22 );
-
-                real_t Dv_detG_Inv = detG_inv * detG_inv * ( 2 * G12 * DvG21 -
-                    G22 * DvG11 -
-                    G11 * DvG22 );
+                    real_t Dv_detG_Inv = detG_inv * detG_inv * (2 * G12 * DvG21 -
+                                                                    G22 * DvG11 -
+                                                                    G11 * DvG22);
 
 
 //          Computing the divergence of the first fundamental form
-                gsMatrix<> div_G_inv(1, 2);
-                div_G_inv.setZero();
+                    gsMatrix<> div_G_inv(1, 2);
+                    div_G_inv.setZero();
 
-                div_G_inv(0, 0) = Du_detG_Inv * G22 - Dv_detG_Inv * G12;
-                div_G_inv(0, 0) += ( ( DuG22 - DvG21 ) / detG );
+                    div_G_inv(0, 0) = Du_detG_Inv * G22 - Dv_detG_Inv * G12;
+                    div_G_inv(0, 0) += ((DuG22 - DvG21) / detG);
 
-                div_G_inv(0, 1) = Dv_detG_Inv * G11 - Du_detG_Inv * G12;
-                div_G_inv(0, 1) += ( ( DvG11 - DuG12 ) / detG );
+                    div_G_inv(0, 1) = Dv_detG_Inv * G11 - Du_detG_Inv * G12;
+                    div_G_inv(0, 1) += ((DvG11 - DuG12) / detG);
 
 
 //          Computing the divergence of the jacobian
-                gsMatrix<> div_Jk_transpose(1, 3);
-                div_G_inv.setZero();
+                    gsMatrix<> div_Jk_transpose(1, 3);
+                    div_G_inv.setZero();
 
-                div_Jk_transpose(0, 0) = geoMapDeriv2(0, 0) + geoMapDeriv2(1, 0);
-                div_Jk_transpose(0, 1) = geoMapDeriv2(3, 0) + geoMapDeriv2(4, 0);
-                div_Jk_transpose(0, 2) = geoMapDeriv2(6, 0) + geoMapDeriv2(7, 0);
+                    div_Jk_transpose(0, 0) = geoMapDeriv2(0, 0) + geoMapDeriv2(1, 0);
+                    div_Jk_transpose(0, 1) = geoMapDeriv2(3, 0) + geoMapDeriv2(4, 0);
+                    div_Jk_transpose(0, 2) = geoMapDeriv2(6, 0) + geoMapDeriv2(7, 0);
 
 
 //          Computing the transformation of the hessian matrix from parameter to surface
-                gsMatrix<> grad_par_first = Phi.block(1, 1, 2, 1);
-                gsMatrix<> grad_par_second = Phi.block(1, 2, 2, 1);
+                    gsMatrix<> grad_par_first = Phi.block(1, 1, 2, 1);
+                    gsMatrix<> grad_par_second = Phi.block(1, 2, 2, 1);
 
-                gsMatrix<> hessian_par_first(2, 2);
-                hessian_par_first.setZero();
-                hessian_par_first(0, 0) = sigma * sigma;
+                    gsMatrix<> hessian_par_first(2, 2);
+                    hessian_par_first.setZero();
+                    hessian_par_first(0, 0) = sigma * sigma;
 
-                gsMatrix<> hessian_par_second(2, 2);
-                hessian_par_second.setZero();
-                hessian_par_second(0, 1) = sigma * sigma;
-                hessian_par_second(1, 0) = sigma * sigma;
+                    gsMatrix<> hessian_par_second(2, 2);
+                    hessian_par_second.setZero();
+                    hessian_par_second(0, 1) = sigma * sigma;
+                    hessian_par_second(1, 0) = sigma * sigma;
 
-                gsMatrix<> hessian_par_third(2, 2);
-                hessian_par_third.setZero();
-                hessian_par_third(1, 1) = sigma * sigma;
+                    gsMatrix<> hessian_par_third(2, 2);
+                    hessian_par_third.setZero();
+                    hessian_par_third(1, 1) = sigma * sigma;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 //          Computing the tranformartion of the gradient basis functions
-                gsMatrix<> grad_phys_first = Jk * G_inv * grad_par_first;
-                gsMatrix<> hessian_fromGrad_first = Jk * G_inv * grad_par_first * div_G_inv * Jk.transpose();
-                hessian_fromGrad_first += Jk * G_inv * G_inv * grad_par_first * div_Jk_transpose;
+                    gsMatrix<> grad_phys_first = Jk * G_inv * grad_par_first;
+                    gsMatrix<> hessian_fromGrad_first = Jk * G_inv * grad_par_first * div_G_inv * Jk.transpose();
+                    hessian_fromGrad_first += Jk * G_inv * (grad_par_first.transpose() * G_inv).transpose() * div_Jk_transpose;
 
-                gsMatrix<> grad_phys_second = Jk * G_inv * grad_par_second;
-                gsMatrix<> hessian_fromGrad_second = Jk * G_inv * grad_par_second * div_G_inv * Jk.transpose();
-                hessian_fromGrad_second += Jk * G_inv * G_inv * grad_par_second * div_Jk_transpose;
-
+                    gsMatrix<> grad_phys_second = Jk * G_inv * grad_par_second;
+                    gsMatrix<> hessian_fromGrad_second = Jk * G_inv * grad_par_second * div_G_inv * Jk.transpose();
+                    hessian_fromGrad_second += Jk * G_inv * (grad_par_second.transpose() * G_inv).transpose() * div_Jk_transpose;
 
 //          Computing the tranformation of the hessian basis functions
-                gsMatrix<> hessian_phys_first = Jk * G_inv * hessian_par_first * G_inv * Jk.transpose();
+                    gsMatrix<> hessian_phys_first = Jk * G_inv * hessian_par_first * G_inv * Jk.transpose();
 
-                gsMatrix<> hessian_phys_second = Jk * G_inv * hessian_par_second * G_inv * Jk.transpose();
+                    gsMatrix<> hessian_phys_second = Jk * G_inv * hessian_par_second * G_inv * Jk.transpose();
 
-                gsMatrix<> hessian_phys_third = Jk * G_inv * hessian_par_third * G_inv * Jk.transpose();
+                    gsMatrix<> hessian_phys_third = Jk * G_inv * hessian_par_third * G_inv * Jk.transpose();
 
-                gsMatrix<> hess_firstGrad_col(6, 1);
-                gsMatrix<> hess_secondGrad_col(6, 1);
-                gsMatrix<> hess_first_col(6, 1);
-                gsMatrix<> hess_second_col(6, 1);
-                gsMatrix<> hess_third_col(6, 1);
+                    gsMatrix<> hess_firstGrad_col(9, 1);
+                    gsMatrix<> hess_secondGrad_col(9, 1);
+                    gsMatrix<> hess_first_col(9, 1);
+                    gsMatrix<> hess_second_col(9, 1);
+                    gsMatrix<> hess_third_col(9, 1);
 
-                int kk = 0;
-                for(index_t i = 0; i < 3; i++)
-                    for(index_t j = i; j < 3; j++)
-                    {
+                    int kk = 0;
+                    for (index_t i = 0; i < 3; i++)
+//                        If hessian is simmetric j starts from i
+                        for (index_t j = 0; j < 3; j++)
+                        {
 
-                        hess_firstGrad_col(kk, 0 ) = hessian_fromGrad_first(i, j);
-                        hess_secondGrad_col(kk, 0 ) = hessian_fromGrad_second(i, j);
+                            hess_firstGrad_col(kk, 0) = hessian_fromGrad_first(i, j);
+                            hess_secondGrad_col(kk, 0) = hessian_fromGrad_second(i, j);
 
-                        hess_first_col(kk, 0 ) = hessian_phys_first(i, j);
-                        hess_second_col(kk, 0 ) = hessian_phys_second(i, j);
-                        hess_third_col(kk, 0 ) = hessian_phys_third(i, j);
+                            hess_first_col(kk, 0) = hessian_phys_first(i, j);
+                            hess_second_col(kk, 0) = hessian_phys_second(i, j);
+                            hess_third_col(kk, 0) = hessian_phys_third(i, j);
 
-                        kk++;
-                    }
+                            kk++;
+                        }
 
-                Phi.resize(10, 6);
-                Phi.setZero();
+//                  Supposing that the hessian matrix is not symmetric
+                    Phi.resize(13, 6);
+                    Phi.setZero();
 
-                Phi(0, 0) = 1;
+                    Phi(0, 0) = 1;
+//                  If the hessian matrix is symmetric I just need 6 (not 9) components for the hessian part
+                    Phi.block(1, 1, 3, 1) = grad_phys_first;
+                    Phi.block(4, 1, 9, 1) = hess_firstGrad_col;
 
-                Phi.block(1, 1, 3, 1) = grad_phys_first;
-                Phi.block(4, 1, 6, 1) = hess_firstGrad_col;
+                    Phi.block(1, 2, 3, 1) = grad_phys_second;
+                    Phi.block(4, 2, 9, 1) = hess_secondGrad_col;
 
-                Phi.block(1, 2, 3, 1) = grad_phys_second;
-                Phi.block(4, 2, 6, 1) = hess_secondGrad_col;
+                    Phi.block(4, 3, 9, 1) = hess_first_col;
+                    Phi.block(4, 4, 9, 1) = hess_second_col;
+                    Phi.block(4, 5, 9, 1) = hess_third_col;
 
-                Phi.block(4, 3, 6, 1) = hess_first_col;
-                Phi.block(4, 4, 6, 1) = hess_second_col;
-                Phi.block(4, 5, 6, 1) = hess_third_col;
 
-            }
+//                    Phi.setZero();
+//                    Phi(0, 0) = 1;
+//                    Phi(1, 1) = 1;
+//                    Phi(2, 2) = 1;
+//                    Phi(4, 3) = 1;
+//                    Phi(5, 4) = 1;
+//                    Phi(12, 5) = 1;
 
-            for(size_t i = 0; i < auxGeom.size(); i++)
-            {
-                gsMatrix<> gdCoefs(selectGD(i));
-                gsMultiPatch<> g1Basis;
+                }
 
-                gsG1ASBasisVertex<real_t> g1BasisVertex_0
-                    (auxGeom[i].getPatch(), auxGeom[i].getPatch().basis(), isBdy[i], Phi, g1OptionList, gdCoefs);
+                for (size_t i = 0; i < auxGeom.size(); i++)
+                {
+                    gsMatrix<> gdCoefs(selectGD(i));
+                    gsMultiPatch<> g1Basis;
 
-                g1BasisVertex_0.setG1BasisVertex(g1Basis, this->kindOfVertex());
+                    gsG1ASBasisVertex<real_t> g1BasisVertex_0
+                        (auxGeom[i].getPatch(), auxGeom[i].getPatch().basis(), isBdy[i], Phi, g1OptionList, gdCoefs);
 
-                g1BasisVector.push_back(g1Basis);
-                auxGeom[i].setG1Basis(g1Basis);
+                    g1BasisVertex_0.setG1BasisVertex(g1Basis, this->kindOfVertex());
+
+                    g1BasisVector.push_back(g1Basis);
+                    auxGeom[i].setG1Basis(g1Basis);
+                }
             }
         }
 

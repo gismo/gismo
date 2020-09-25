@@ -96,25 +96,12 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
         // Computing the normal vector to the tangent plane along the boundary curve
         Eigen::Vector3d t1 = Jk.col(0);
         Eigen::Vector3d t2 = Jk.col(1);
+
         Eigen::Vector3d normal = t1.cross(t2);
 
 //        normal = normal.normalized();
 
-        result = bdyTan.cross(normal); //The normal vector to the boudnary (result) is given in a general reference frame, is not
-
-/*          gsDebugVar(result.transpose()); // result 1
-          normal(k,result);
-          Jk.col(dir) = result.normalized();
-          gsMatrix<T, ParDim, md.dim.first> minor;
-          T alt_sgn = sgn;
-          for (int i = 0; i != GeoDim; ++i) // for all components of the normal
-          {
-          Jk.rowMinor(i, minor);
-          result[i] = alt_sgn * minor.determinant();
-          alt_sgn = -alt_sgn;
-          }
-          gsDebugVar(result.transpose()); // result 2
-        //*/
+        result = bdyTan.cross(normal); //The normal vector to the boudnary (result) is given in a general reference frame
     }
     else // planar case
     {

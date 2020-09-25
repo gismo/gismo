@@ -105,10 +105,19 @@ public:
         {
             // Compute the outer normal vector on the side
             outerNormal(md, k, side, unormal);
-            
-            // Multiply quadrature weight by the measure of normal
-            const T weight = quWeights[k] * unormal.norm();
-            
+            T weight = quWeights[k];
+            if(md.dim.first + 1 == md.dim.second)
+            {
+                gsMatrix<T> Jk = md.jacobian(k);
+                gsMatrix<T> G = Jk.transpose() * Jk;
+                weight *= sqrt(G.determinant());
+            }
+            else
+            {
+                // Multiply quadrature weight by the measure of normal
+                weight *= unormal.norm();
+            }
+
             localRhs.noalias() += weight * basisData.col(k) * neuData.col(k).transpose() ;
         }
     }

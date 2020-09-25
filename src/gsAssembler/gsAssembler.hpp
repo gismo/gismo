@@ -494,7 +494,18 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
             // Do the actual assembly:
             for( index_t k=0; k < md.points.cols(); k++ )
             {
-                const T weight_k = quWeights[k] * md.measure(k);
+                T weight_k = quWeights[k];
+
+                if(md.dim.first +1 == md.dim.second)
+                {
+                    gsMatrix<T> Jk = md.jacobian(k);
+                    gsMatrix<T> G = Jk.transpose() * Jk;
+                    weight_k *= sqrt(G.determinant());
+                }
+                else
+                {
+                    weight_k *= md.measure(k);
+                }
 
                 // Only run through the active boundary functions on the element:
                 for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
