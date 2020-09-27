@@ -251,6 +251,111 @@ gsMesh<T> gsParametrization<T>::createFlatMesh() const
 }
 
 template<class T>
+gsMesh<T> gsParametrization<T>::createFlatMesh(const std::vector<std::vector<size_t> >& posCorrections,
+					       bool restrict) const
+{
+    gsMesh<T> mesh;
+    for (size_t i = 0; i < m_mesh.getNumberOfTriangles(); i++)
+    {
+	bool normalTriangle = false;
+
+	bool correctors[3];
+	correctors[0] = false;
+	correctors[1] = false;
+	correctors[2] = false;
+
+        for (size_t j = 1; j <= 3; ++j)
+        {
+	    // Note: globIndex is numbered from 1 and so are the contents of posCorrections.
+	    size_t globIndex = m_mesh.getGlobalVertexIndex(j, i);
+
+	    // If we find a vertex that is neither on a stitch nor in
+	    // a correction, we mark the triangle as normal.
+	    if(!normalTriangle)
+	    {
+		// If it's not on the stitch, we look whether it is in the corrections.
+		if(posCorrections[globIndex-1].size() == 0)
+		{
+		    bool isNearStitch = false;
+		    for(size_t k = 0; k < posCorrections.size(); k++)
+		    {
+			for(size_t l = 0; l < posCorrections[k].size(); l++)
+			{
+			    if(posCorrections[k][l] == globIndex)
+			    {
+				isNearStitch = true;
+				correctors[j-1] = true;
+			    }
+			}
+		    }
+		    if(!isNearStitch)
+			normalTriangle = true;
+		}
+	    }
+	}
+
+	// Normal triangle means it does not intersect the domain boundary.
+	if(normalTriangle)
+	{
+	    typename gsMesh<T>::VertexHandle v[3];
+	    for (size_t j = 1; j <= 3; ++j)
+	    {
+		v[j - 1] = mesh.addVertex(getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[0],
+					  getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[1]);
+	    }
+	    mesh.addFace( v[0],  v[1],  v[2]);
+	}
+	else
+	{
+	    typename gsMesh<T>::VertexHandle v[3];
+	    for (size_t j = 1; j <= 3; ++j)
+	    {
+		if(correctors[j-1])
+		{
+		    v[j - 1] = mesh.addVertex(getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[0]+1,
+					      getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[1]);
+		}
+		else
+		{
+		    v[j - 1] = mesh.addVertex(getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[0],
+					      getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[1]);
+		}
+	    }
+	    mesh.addFace( v[0],  v[1],  v[2]);
+	}	    
+    }
+
+    gsMesh<T> unfolded = mesh.cleanMesh();
+    if(restrict)
+    {
+	gsHalfEdgeMesh<T> unfoldedHEM(unfolded);
+	return createRestrictedFlatMesh(unfoldedHEM);
+    }
+    else
+	return unfolded;
+}
+
+template<class T>
+gsMesh<T> gsParametrization<T>::createShiftedCopy(const gsMesh<T>& original, real_t uShift) const
+{
+    gsHalfEdgeMesh<T> originalHEM(original);
+    gsMesh<T> result;
+    for(size_t i=0; i<originalHEM.getNumberOfTriangles(); i++)
+    {
+	typename gsMesh<T>::VertexHandle vh[3];
+	for(size_t j=1; j<=3; j++)
+	{
+	    vh[j-1] = originalHEM.getVertex(originalHEM.getGlobalVertexIndex(j ,i));
+	}
+	result.addFace(
+	    result.addVertex(vh[0]->x() + uShift, vh[0]->y()),
+	    result.addVertex(vh[1]->x() + uShift, vh[1]->y()),
+	    result.addVertex(vh[2]->x() + uShift, vh[2]->y()));
+    }
+    return result;
+}
+
+template<class T>
 real_t gsParametrization<T>::correspondingV(const typename gsMesh<T>::VertexHandle& h0,
 					    const typename gsMesh<T>::VertexHandle& h1,
 					    real_t u) const
@@ -265,294 +370,124 @@ real_t gsParametrization<T>::correspondingV(const typename gsMesh<T>::VertexHand
     return (1 - t) * v0 + t * v1;
 }
 
-// v1 is inside the domain, v0 and v2 outside.
-template<class T>
-void gsParametrization<T>::addOneFlatTriangle(gsMesh<T>& mesh,
-					      const typename gsMesh<T>::VertexHandle& v0,
-					      const typename gsMesh<T>::VertexHandle& v1,
-					      const typename gsMesh<T>::VertexHandle& v2,
-					      real_t shift) const
-{
-    typename gsMesh<T>::VertexHandle w1 = mesh.addVertex(v1->x() + shift, v1->y());
-
-    if(v0->x() < 0 && v2->x() < 0)
-    {
-	typename gsMesh<T>::VertexHandle w01 = mesh.addVertex(0 + shift, correspondingV(v0, v1, 0));
-	typename gsMesh<T>::VertexHandle w12 = mesh.addVertex(0 + shift, correspondingV(v2, v1, 0));
-	mesh.addFace(w01, w1, w12);
-    }
-    else if(v0->x() > 1 && v2->x() > 1)
-    {
-	typename gsMesh<T>::VertexHandle w01 = mesh.addVertex(1 + shift, correspondingV(v0, v1, 1));
-	typename gsMesh<T>::VertexHandle w12 = mesh.addVertex(1 + shift, correspondingV(v2, v1, 1));
-	mesh.addFace(w01, w1, w12);
-    }
-    else
-	gsWarn << "This situation of addOneFlatTriangle should not happen.";
-}
-
 // v1 is outside the domain, v0 and v2 inside.
 template<class T>
-void gsParametrization<T>::addTwoFlatTriangles(gsMesh<T>& mesh,
-					       const typename gsMesh<T>::VertexHandle& v0,
-					       const typename gsMesh<T>::VertexHandle& v1,
-					       const typename gsMesh<T>::VertexHandle& v2,
-					       real_t shift) const
+void gsParametrization<T>::addThreeFlatTrianglesOneOut(gsMesh<T>& mesh,
+						       const typename gsMesh<T>::VertexHandle& v0,
+						       const typename gsMesh<T>::VertexHandle& v1,
+						       const typename gsMesh<T>::VertexHandle& v2) const
 {
     // Note: v are in the input mesh, w in the output.
 
-    typename gsMesh<T>::VertexHandle w0 = mesh.addVertex(v0->x() + shift, v0->y());
-    typename gsMesh<T>::VertexHandle w2 = mesh.addVertex(v2->x() + shift, v2->y());
+    typename gsMesh<T>::VertexHandle w0 = mesh.addVertex(v0->x(), v0->y());
+    typename gsMesh<T>::VertexHandle w2 = mesh.addVertex(v2->x(), v2->y());
 
     if(v1->x() < 0)
     {
-	typename gsMesh<T>::VertexHandle w01 = mesh.addVertex(0 + shift, correspondingV(v0, v1, 0));
-	typename gsMesh<T>::VertexHandle w12 = mesh.addVertex(0 + shift, correspondingV(v1, v2, 0));
+	// Two triangles on the left.
+	typename gsMesh<T>::VertexHandle w01 = mesh.addVertex(0, correspondingV(v0, v1, 0));
+	typename gsMesh<T>::VertexHandle w12 = mesh.addVertex(0, correspondingV(v1, v2, 0));
 
 	mesh.addFace(w0, w01, w12);
 	mesh.addFace(w0, w12, w2);
+
+	// One triangle on the right.
+	typename gsMesh<T>::VertexHandle vvv01 = mesh.addVertex(1, correspondingV(v0, v1, 0));
+	typename gsMesh<T>::VertexHandle vvv12 = mesh.addVertex(1, correspondingV(v1, v2, 0));
+	typename gsMesh<T>::VertexHandle v1copy = mesh.addVertex(v1->x() + 1, v1->y());
+	mesh.addFace(vvv01, v1copy, vvv12);	
     }
     else if(v1->x() > 1)
     {
-	typename gsMesh<T>::VertexHandle w01 = mesh.addVertex(1 + shift, correspondingV(v0, v1, 1));
-	typename gsMesh<T>::VertexHandle w12 = mesh.addVertex(1 + shift, correspondingV(v1, v2, 1));
+	// Two triangles on the left.
+	typename gsMesh<T>::VertexHandle w01 = mesh.addVertex(1, correspondingV(v0, v1, 1));
+	typename gsMesh<T>::VertexHandle w12 = mesh.addVertex(1, correspondingV(v1, v2, 1));
 
 	mesh.addFace(w0, w01, w12);
 	mesh.addFace(w0, w12, w2);
+
+	// One triangle on the right.
+	typename gsMesh<T>::VertexHandle vvv01 = mesh.addVertex(0, correspondingV(v0, v1, 1));
+	typename gsMesh<T>::VertexHandle vvv12 = mesh.addVertex(0, correspondingV(v1, v2, 1));
+	typename gsMesh<T>::VertexHandle v1copy = mesh.addVertex(v1->x() - 1, v1->y());
+	mesh.addFace(vvv01, v1copy, vvv12);
     }
     else
-	gsWarn << "This situation of addTwoFlatTriangles should not happen." << std::endl;
+	gsWarn << "This situation of addThreeFlatTriangles should not happen, v1->x() = "
+	       << v1->x() << "." << std::endl;
+}
+
+// v1 is inside the domain, v0 and v2 outside.
+template<class T>
+void gsParametrization<T>::addThreeFlatTrianglesTwoOut(gsMesh<T>& mesh,
+						       const typename gsMesh<T>::VertexHandle& v0,
+						       const typename gsMesh<T>::VertexHandle& v1,
+						       const typename gsMesh<T>::VertexHandle& v2) const
+{
+    if(v0->x() < 0 && v2->x() < 0)
+    {
+	typename gsMesh<T>::VertexHandle w0 = mesh.addVertex(v0->x() + 1, v0->y());
+	typename gsMesh<T>::VertexHandle w1 = mesh.addVertex(v1->x() + 1, v1->y());
+	typename gsMesh<T>::VertexHandle w2 = mesh.addVertex(v2->x() + 1, v2->y());
+	addThreeFlatTrianglesOneOut(mesh, w0, w1, w2);
+    }
+    else if(v0->x() > 1 && v2->x() > 1)
+    {
+	typename gsMesh<T>::VertexHandle w0 = mesh.addVertex(v0->x() - 1, v0->y());
+	typename gsMesh<T>::VertexHandle w1 = mesh.addVertex(v1->x() - 1, v1->y());
+	typename gsMesh<T>::VertexHandle w2 = mesh.addVertex(v2->x() - 1, v2->y());
+	addThreeFlatTrianglesOneOut(mesh, w0, w1, w2);
+    }
+    else
+	gsWarn << "This situation of addThreeFlatTrianglesTwoOut should not happen, v1->x()="
+	       << v1->x() << "." << std::endl;
 }
 
 template<class T>
-gsMesh<T> gsParametrization<T>::createFlatMesh(bool restrict,
-					       const std::vector<size_t>& left,
-					       const std::vector<size_t>& right,
-					       real_t shift) const
+void gsParametrization<T>::addOneFlatTriangleNotIntersectingBoundary(gsMesh<T>& mesh,
+								     typename gsMesh<T>::VertexHandle& v0,
+								     typename gsMesh<T>::VertexHandle& v1,
+								     typename gsMesh<T>::VertexHandle& v2) const
 {
-    if(!restrict)
-	return createFlatMesh();
+    // Note: I wanted to solve this by modifying the x-coordinates of
+    // the vertex handles and recursion. However, this creates mess,
+    // as the vertex handles are shared among several triangles.
+    real_t v0x = v0->x();
+    real_t v1x = v1->x();
+    real_t v2x = v2->x();
 
-    gsHalfEdgeMesh<T> unfolded(createMidMesh(left, right));
-    gsMesh<T> result;
-
-    for(size_t i=0; i<unfolded.getNumberOfTriangles(); i++)
+    while(v0x > 1 && v1x > 1 && v2x > 1)
     {
-	// Remember the corners and which of them are inside the domain.
-	bool out[3];
-	typename gsMesh<T>::VertexHandle vh[3];
-	for(size_t j=1; j<=3; ++j)
-	{
-	    vh[j-1] = unfolded.getVertex(unfolded.getGlobalVertexIndex(j, i));
-	    real_t u = vh[j-1]->x();
-	    real_t v = vh[j-1]->y();
-
-	    if(u < 0 || u > 1 || v < 0 || v > 1)
-		out[j-1] = true;
-	    else
-		out[j-1] = false;
-	}
-	if( !out[0] && !out[1] && !out[2] )
-	{
-	    result.addFace(
-		result.addVertex(vh[0]->x() + shift, vh[0]->y()),
-		result.addVertex(vh[1]->x() + shift, vh[1]->y()),
-		result.addVertex(vh[2]->x() + shift, vh[2]->y()));
-	}
-
-	else if( out[0] && !out[1] && out[2] )
-	    addOneFlatTriangle(result, vh[0], vh[1], vh[2], shift);
-
-	else if( out[0] && out[1] && !out[2] )
-	    addOneFlatTriangle(result, vh[1], vh[2], vh[0], shift);
-
-	else if( !out[0] && out[1] && out[2] )
-	    addOneFlatTriangle(result, vh[2], vh[0], vh[1], shift);
-
-	else if( !out[0] && !out[1] && out[2] )
-	    addTwoFlatTriangles(result, vh[1], vh[2], vh[0], shift);
-
-	else if( !out[0] && out[1] && !out[2] )
-	    addTwoFlatTriangles(result, vh[0], vh[1], vh[2], shift);
-
-	else if( out[0] && !out[1] && !out[2] )
-	    addTwoFlatTriangles(result, vh[2], vh[0], vh[1], shift);
-
-    }
-    return result.cleanMesh();
-}
-
-template <class T>
-void gsParametrization<T>::writeTexturedMesh(std::string filename) const
-{
-    gsMatrix<T> params(m_mesh.numVertices(), 2);
-
-    for(size_t i=0; i<m_mesh.numVertices(); i++)
-    {
-	size_t index = m_mesh.unsorted(i);
-	params.row(i) = getParameterPoint(index);
-    }
-    gsWriteParaview(m_mesh, "mesh", params);
-}
-
-template <class T>
-void gsParametrization<T>::writeSTL(const gsMesh<T>& mesh, std::string filename) const
-{
-    std::string mfn(filename);
-    mfn.append(".stl");
-    std::ofstream file(mfn.c_str());
-
-    gsHalfEdgeMesh<T> hMesh(mesh);
-
-    if(!file.is_open())
-	gsWarn << "Opening file " << mfn << " for writing failed." << std::endl;
-
-    file << std::fixed;
-    file << std::setprecision(12);
-
-    file << "solid created by G+Smo" << std::endl;
-    for(size_t t=0; t<hMesh.getNumberOfTriangles(); t++)
-    {
-	file << " facet normal 0 0 -1" << std::endl;
-	file << "  outer loop" << std::endl;
-	for(size_t v=0; v<3; v++)
-	{
-	    typename gsMesh<T>::VertexHandle handle = hMesh.getVertex(hMesh.getGlobalVertexIndex(v+1, t));
-	    file << "   vertex " << handle->y() << " " << handle->x() << " " << handle->z() << std::endl;
-	}
-	file << "  endloop" << std::endl;
-	file << " endfacet" << std::endl;
-    }
-    file << "endsolid" << std::endl;
-}
-
-template<class T>
-std::vector<gsMesh<T> > gsParametrization<T>::createThreeFlatMeshes(const std::vector<std::pair<size_t, size_t> >& twins) const
-{
-    std::vector<size_t> left, right;
-    for(auto it=twins.begin(); it!=twins.end(); ++it)
-    {
-	if(it->first < it->second)
-	    left.push_back(it->first);
-	else
-	    right.push_back(it->second);
+	v0x -= 1;
+	v1x -= 1;
+	v2x -= 1;
     }
 
-    return createThreeFlatMeshes(left, right);
-}
-
-// TODO: Maybe we have left and right swapped here. Ditto in createMidMesh.
-template<class T>
-std::vector<gsMesh<T> > gsParametrization<T>::createThreeFlatMeshes(const std::vector<size_t>& right,
-								    const std::vector<size_t>& left) const
-{
-    gsMesh<T> lftMesh, midMesh, rgtMesh;
-    lftMesh.reserve(3 * m_mesh.getNumberOfTriangles(), m_mesh.getNumberOfTriangles(), 0);
-    midMesh.reserve(3 * m_mesh.getNumberOfTriangles(), m_mesh.getNumberOfTriangles(), 0);
-    rgtMesh.reserve(3 * m_mesh.getNumberOfTriangles(), m_mesh.getNumberOfTriangles(), 0);
-
-    size_t numDoubled = 0;
-    for (size_t i = 0; i < m_mesh.getNumberOfTriangles(); i++)
+    while(v0x < 0 && v1x < 0 && v2x < 0)
     {
-	size_t vInd[3];
-	std::vector<size_t> lVert, rVert;
-        for (size_t j = 1; j <= 3; ++j)
-	{
-	    vInd[j-1] = m_mesh.getGlobalVertexIndex(j, i);
-	    if(std::find(right.begin(), right.end(), vInd[j-1]) != right.end())
-		rVert.push_back(j-1);
-	    if(std::find(left.begin(),  left.end(),  vInd[j-1]) != left.end())
-		lVert.push_back(j-1);
-	}
-
-	if(lVert.size() > 0 && rVert.size() > 0 && lVert.size() + rVert.size() == 3)
-	{
-	    // Make two copies
-	    typename gsMesh<T>::VertexHandle lvLft[3], lvRgt[3], mvLft[3], mvRgt[3], rvLft[3], rvRgt[3];
-	    
-	    for (size_t j=0; j<3; ++j)
-	    {
-		if(std::find(rVert.begin(), rVert.end(), j) != rVert.end())
-		{
-		    lvLft[j] = lftMesh.addVertex(getParameterPoint(vInd[j])[0]-1,
-		    				 getParameterPoint(vInd[j])[1]);
-		    lvRgt[j] = lftMesh.addVertex(getParameterPoint(vInd[j])[0],
-		    				 getParameterPoint(vInd[j])[1]);
-		    mvLft[j] = midMesh.addVertex(getParameterPoint(vInd[j])[0],
-		    				 getParameterPoint(vInd[j])[1]);
-		    mvRgt[j] = midMesh.addVertex(getParameterPoint(vInd[j])[0]+1,
-		    				 getParameterPoint(vInd[j])[1]);
-		    rvLft[j] = rgtMesh.addVertex(getParameterPoint(vInd[j])[0]+1,
-		    				 getParameterPoint(vInd[j])[1]);
-		    rvRgt[j] = rgtMesh.addVertex(getParameterPoint(vInd[j])[0]+2,
-		    				 getParameterPoint(vInd[j])[1]);
-		}
-		else
-		{
-		    lvLft[j] = lftMesh.addVertex(getParameterPoint(vInd[j])[0]-2,
-		    				getParameterPoint(vInd[j])[1]);
-		    lvRgt[j] = lftMesh.addVertex(getParameterPoint(vInd[j])[0]-1,
-		    				 getParameterPoint(vInd[j])[1]);
-		    mvLft[j] = midMesh.addVertex(getParameterPoint(vInd[j])[0]-1,
-						getParameterPoint(vInd[j])[1]);
-		    mvRgt[j] = midMesh.addVertex(getParameterPoint(vInd[j])[0],
-						 getParameterPoint(vInd[j])[1]);
-		    rvLft[j] = rgtMesh.addVertex(getParameterPoint(vInd[j])[0],
-		    				getParameterPoint(vInd[j])[1]);
-		    rvRgt[j] = rgtMesh.addVertex(getParameterPoint(vInd[j])[0]+1,
-		    				 getParameterPoint(vInd[j])[1]);
-		}
-	    }
-	    lftMesh.addFace(lvLft[0], lvLft[1], lvLft[2]);
-	    lftMesh.addFace(lvRgt[0], lvRgt[1], lvRgt[2]);
-	    midMesh.addFace(mvLft[0], mvLft[1], mvLft[2]);
-	    midMesh.addFace(mvRgt[0], mvRgt[1], mvRgt[2]);
-	    rgtMesh.addFace(rvLft[0], rvLft[1], rvLft[2]);
-	    rgtMesh.addFace(rvRgt[0], rvRgt[1], rvRgt[2]);
-	}
-	else
-	{
-	    // Make just one triangle
-	    typename gsMesh<T>::VertexHandle lv[3], mv[3], rv[3];
-	    for (size_t j=0; j<3; ++j)
-	    {
-		lv[j] = lftMesh.addVertex(getParameterPoint(vInd[j])[0]-1,
-					  getParameterPoint(vInd[j])[1]);
-		mv[j] = midMesh.addVertex(getParameterPoint(vInd[j])[0],
-					  getParameterPoint(vInd[j])[1]);
-		rv[j] = rgtMesh.addVertex(getParameterPoint(vInd[j])[0]+1,
-					  getParameterPoint(vInd[j])[1]);
-	    }
-	    lftMesh.addFace(lv[0], lv[1], lv[2]);
-	    midMesh.addFace(mv[0], mv[1], mv[2]);
-	    rgtMesh.addFace(rv[0], rv[1], rv[2]);
-	}
-    }
-    gsInfo << "There were " << numDoubled << " doubled triangles." << std::endl;
-    std::vector<gsMesh<T> > result;
-    result.push_back(lftMesh.cleanMesh());
-    result.push_back(midMesh.cleanMesh());
-    result.push_back(rgtMesh.cleanMesh());
-    return result;
-}
-
-// Copied and simplified from the three meshes.
-template<class T>
-gsMesh<T> gsParametrization<T>::createMidMesh(const std::vector<std::pair<size_t, size_t> >& twins) const
-{
-    std::vector<size_t> left, right;
-    for(auto it=twins.begin(); it!=twins.end(); ++it)
-    {
-	if(it->first < it->second)
-	    left.push_back(it->first);
-	else
-	    right.push_back(it->second);
+	v0x += 1;
+	v1x += 1;
+	v2x += 1;
     }
 
-    return createMidMesh(left, right);
+    if(v0x >= 0 && v0x <= 1 &&
+       v1x >= 0 && v1x <= 1 &&
+       v2x >= 0 && v2x <= 1)
+    {
+	mesh.addFace(
+	    mesh.addVertex(v0x, v0->y()),
+	    mesh.addVertex(v1x, v1->y()),
+	    mesh.addVertex(v2x, v2->y()));
+    }
+    else
+    {
+	gsWarn << "This triangle does intersect the boundary.";
+	gsWarn << "v0: " << v0x << ", " << v0->y() << std::endl;
+	gsWarn << "v1: " << v1x << ", " << v1->y() << std::endl;
+	gsWarn << "v2: " << v2x << ", " << v2->y() << std::endl;
+    }
 }
 
-// Copied and simplified from the three meshes.
 template<class T>
 gsMesh<T> gsParametrization<T>::createMidMesh(const std::vector<size_t>& right,
 					      const std::vector<size_t>& left) const
@@ -613,6 +548,104 @@ gsMesh<T> gsParametrization<T>::createMidMesh(const std::vector<size_t>& right,
     return midMesh.cleanMesh();
 }
 
+template<class T>
+gsMesh<T> gsParametrization<T>::createFlatMesh(const std::vector<size_t>& left,
+					       const std::vector<size_t>& right,
+					       bool restrict) const
+{
+    if(!restrict)
+	return createFlatMesh();
+
+    gsHalfEdgeMesh<T> unfolded(createMidMesh(left, right));
+    return createRestrictedFlatMesh(unfolded);
+}
+
+template<class T>
+gsMesh<T> gsParametrization<T>::createRestrictedFlatMesh(const gsHalfEdgeMesh<T>& unfolded) const
+{
+    gsMesh<T> result;
+
+    for(size_t i=0; i<unfolded.getNumberOfTriangles(); i++)
+    {
+	// Remember the corners and which of them are inside the domain.
+	bool out[3];
+	typename gsMesh<T>::VertexHandle vh[3];
+	for(size_t j=1; j<=3; ++j)
+	{
+	    vh[j-1] = unfolded.getVertex(unfolded.getGlobalVertexIndex(j, i));
+	    real_t u = vh[j-1]->x();
+
+	    if(u < 0 || u > 1)
+		out[j-1] = true;
+	    else
+		out[j-1] = false;
+	}
+	if( !out[0] && !out[1] && !out[2] )
+	    addOneFlatTriangleNotIntersectingBoundary(result, vh[0], vh[1], vh[2]);
+
+	else if( out[0] && !out[1] && out[2] )
+	    addThreeFlatTrianglesTwoOut(result, vh[0], vh[1], vh[2]);
+	else if( out[0] && out[1] && !out[2] )
+	    addThreeFlatTrianglesTwoOut(result, vh[1], vh[2], vh[0]);
+	else if( !out[0] && out[1] && out[2] )
+	    addThreeFlatTrianglesTwoOut(result, vh[2], vh[0], vh[1]);
+
+	else if( !out[0] && !out[1] && out[2] )
+	    addThreeFlatTrianglesOneOut(result, vh[1], vh[2], vh[0]);
+	else if( !out[0] && out[1] && !out[2] )
+	    addThreeFlatTrianglesOneOut(result, vh[0], vh[1], vh[2]);
+	else if( out[0] && !out[1] && !out[2] )
+	    addThreeFlatTrianglesOneOut(result, vh[2], vh[0], vh[1]);
+
+	else
+	    addOneFlatTriangleNotIntersectingBoundary(result, vh[0], vh[1], vh[2]);
+    }
+    return result.cleanMesh();
+}
+
+template <class T>
+void gsParametrization<T>::writeTexturedMesh(std::string filename) const
+{
+    gsMatrix<T> params(m_mesh.numVertices(), 2);
+
+    for(size_t i=0; i<m_mesh.numVertices(); i++)
+    {
+	size_t index = m_mesh.unsorted(i);
+	params.row(i) = getParameterPoint(index);
+    }
+    gsWriteParaview(m_mesh, "mesh", params);
+}
+
+template <class T>
+void gsParametrization<T>::writeSTL(const gsMesh<T>& mesh, std::string filename) const
+{
+    std::string mfn(filename);
+    mfn.append(".stl");
+    std::ofstream file(mfn.c_str());
+
+    gsHalfEdgeMesh<T> hMesh(mesh);
+
+    if(!file.is_open())
+	gsWarn << "Opening file " << mfn << " for writing failed." << std::endl;
+
+    file << std::fixed;
+    file << std::setprecision(12);
+
+    file << "solid created by G+Smo" << std::endl;
+    for(size_t t=0; t<hMesh.getNumberOfTriangles(); t++)
+    {
+	file << " facet normal 0 0 -1" << std::endl;
+	file << "  outer loop" << std::endl;
+	for(size_t v=0; v<3; v++)
+	{
+	    typename gsMesh<T>::VertexHandle handle = hMesh.getVertex(hMesh.getGlobalVertexIndex(v+1, t));
+	    file << "   vertex " << handle->y() << " " << handle->x() << " " << handle->z() << std::endl;
+	}
+	file << "  endloop" << std::endl;
+	file << " endfacet" << std::endl;
+    }
+    file << "endsolid" << std::endl;
+}
 
 template<class T>
 gsParametrization<T>& gsParametrization<T>::setOptions(const gsOptionList& list)
@@ -691,7 +724,9 @@ std::vector<size_t> gsParametrization<T>::Neighbourhood::computeCorrections(
     auto indexIt = std::find(stitchIndices.begin(), stitchIndices.end(), localNeighbourhood.getVertexIndex());
 
     if(indexIt == stitchIndices.end()) // Not on the stitch, nothing to do.
+    {
 	return std::vector<size_t>();
+    }
 
     std::list<size_t> result;
     std::list<size_t> neighbours = localNeighbourhood.getVertexIndicesOfNeighbours();
@@ -702,7 +737,6 @@ std::vector<size_t> gsParametrization<T>::Neighbourhood::computeCorrections(
 	// (Assuming that the stitch has at least two vertices.)
 	for(auto it=nextOnStitch; it!=neighbours.end(); ++it)
 	    result.push_back(*it);
-	gsInfo << "O1: " << result.size() << std::endl;
     }
     else if(std::next(indexIt) == stitchIndices.end()) // In the end of the stitch.
     {
@@ -710,7 +744,6 @@ std::vector<size_t> gsParametrization<T>::Neighbourhood::computeCorrections(
 	// (Again assuming the stitch to have at least two vertices.)
 	for(auto it=neighbours.begin(); it!=prevOnStitch; ++it)
 	    result.push_back(*it);
-	gsInfo << "O2: " << result.size() << std::endl;
     }
     else // In the middle of the stitch.
     {
@@ -723,7 +756,6 @@ std::vector<size_t> gsParametrization<T>::Neighbourhood::computeCorrections(
 	auto prevOnStitch = std::find(neighbours.begin(), neighbours.end(), *std::prev(indexIt));
 	for(auto it=neighbours.begin(); it!=prevOnStitch; ++it)
 	    result.push_back(*it);
-	gsInfo << "O3: " << result.size() << std::endl;
     }
 
     // Other stitch vertices can still be present in the neighbourhood.
@@ -732,44 +764,50 @@ std::vector<size_t> gsParametrization<T>::Neighbourhood::computeCorrections(
 
     std::vector<size_t> finalResult;
     finalResult.reserve(result.size());
-    gsInfo << localNeighbourhood.getVertexIndex() << ":";
     for(auto it=result.begin(); it!=result.end(); ++it)
-    {
-	gsInfo << " " << *it;
-	finalResult.push_back(*it);
-    }
-    gsInfo << std::endl;
+    	finalResult.push_back(*it);
+
     return finalResult;
 }
 
 template<class T>
 gsParametrization<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo,
 						   const std::vector<size_t>& stitchIndices,
-						   std::vector<std::vector<size_t> >& corrections,
+						   std::vector<std::vector<size_t> >& posCorrections,
+						   std::vector<std::vector<size_t> >& negCorrections,
 						   const size_t parametrizationMethod)
     : m_basicInfos(meshInfo)
 {
-    GISMO_ASSERT(corrections.size() == meshInfo.getNumberOfVertices(), "corrections not properly initialized.");
+    // TODO: Now we have posCorrections for those on the stitch interacting with those to the left.
+    // We also need the posCorrections for those to the left interacting with the stitch.
+    GISMO_ASSERT(posCorrections.size() == meshInfo.getNumberOfVertices(), "posCorrections not properly initialized.");
     m_localParametrizations.reserve(meshInfo.getNumberOfInnerVertices());
+    gsInfo << "Positive correction\n";
     for(size_t i=1; i <= meshInfo.getNumberOfInnerVertices(); i++)
     {
-	std::vector<size_t> locCorrections;
 	LocalNeighbourhood localNeighbourhood(meshInfo, i);
 
         m_localParametrizations.push_back(LocalParametrization(meshInfo, localNeighbourhood,
 							       parametrizationMethod));
 
-	corrections[i-1] = computeCorrections(stitchIndices, localNeighbourhood);
+	posCorrections[i-1] = computeCorrections(stitchIndices, localNeighbourhood);
+	for(size_t j=0; j < posCorrections[i-1].size(); j++)
+	{
+	    negCorrections[posCorrections[i-1][j]-1].push_back(i);
+	}
     }
 
     m_localBoundaryNeighbourhoods.reserve(meshInfo.getNumberOfVertices() - meshInfo.getNumberOfInnerVertices());
     for(size_t i=meshInfo.getNumberOfInnerVertices()+1; i<= meshInfo.getNumberOfVertices(); i++)
     {
-	std::vector<size_t> locCorrections;
 	LocalNeighbourhood localNeighbourhood(meshInfo, i, 0);
 
         m_localBoundaryNeighbourhoods.push_back(localNeighbourhood);
-	corrections[i-1] = computeCorrections(stitchIndices, localNeighbourhood);
+	posCorrections[i-1] = computeCorrections(stitchIndices, localNeighbourhood);
+	for(size_t j=0; j < posCorrections[i-1].size(); j++)
+	{
+	    negCorrections[posCorrections[i-1][j]-1].push_back(i);
+	}
     }
 }
 
@@ -1277,7 +1315,6 @@ std::list<T> gsParametrization<T>::LocalNeighbourhood::getNeighbourDistances() c
     return m_neighbourDistances;
 }
 
-// Now I try to do that with the funny numbering, not the global one.
 template<class T>
 void gsParametrization<T>::constructTwins(std::vector<std::pair<size_t, size_t> >& twins,
 					  const gsMesh<T>& overlapMesh,
@@ -1286,6 +1323,7 @@ void gsParametrization<T>::constructTwins(std::vector<std::pair<size_t, size_t> 
 					  typename gsMesh<T>::gsVertexHandle uMinv1,
 					  typename gsMesh<T>::gsVertexHandle uMaxv1)
 {
+    // TODO: Remove the debugging messages instead of just commenting them out.
     size_t currentNrAllVertices = m_mesh.getNumberOfVertices();
 
     gsHalfEdgeMesh<T> overlapHEM(overlapMesh);
@@ -1344,12 +1382,13 @@ void gsParametrization<T>::constructTwins(std::vector<std::pair<size_t, size_t> 
 }
 
 template <class T>
-gsParametrization<T>& gsParametrization<T>::compute_periodic(std::string bottomFile,
-							     std::string topFile,
-							     std::string overlapFile,
-							     std::vector<size_t>& left,
-							     std::vector<size_t>& right)
+gsParametrization<T>& gsParametrization<T>::compute_periodic_overlap(std::string bottomFile,
+								     std::string topFile,
+								     std::string overlapFile,
+								     std::vector<size_t>& left,
+								     std::vector<size_t>& right)
 {
+    // TODO: Reading of pars and pts can be extracted into an inline function.
     gsFileData<> fd_v0(bottomFile);
     gsMatrix<> pars, pts;
     fd_v0.getId<gsMatrix<> >(0, pars);
@@ -1384,15 +1423,16 @@ gsParametrization<T>& gsParametrization<T>::compute_periodic(std::string bottomF
     gsFileData<> fd_overlap(overlapFile);
     gsMesh<real_t>::uPtr overlapMesh = fd_overlap.getFirst<gsMesh<real_t> >();
 
-    calculate_periodic(m_options.getInt("parametrizationMethod"),
-		       indicesV0, valuesV0, indicesV1, valuesV1, *overlapMesh, left, right);
+    calculate_periodic_overlap(m_options.getInt("parametrizationMethod"),
+			       indicesV0, valuesV0, indicesV1, valuesV1, *overlapMesh, left, right);
     return *this;
 }
 
 template <class T>
-gsParametrization<T>& gsParametrization<T>::compute_periodic_2(std::string bottomFile,
-							       std::string topFile,
-							       std::string stitchFile)
+gsParametrization<T>& gsParametrization<T>::compute_periodic_stitch(std::string bottomFile,
+								    std::string topFile,
+								    std::string stitchFile,
+								    std::vector<std::vector<size_t> >& posCorrections)
 {
     gsFileData<> fd_v0(bottomFile);
     gsMatrix<> pars, pts;
@@ -1407,7 +1447,7 @@ gsParametrization<T>& gsParametrization<T>::compute_periodic_2(std::string botto
     for(index_t c=0; c<pts.cols(); c++)
     {
 	indicesV0.push_back(m_mesh.findVertex(pts(0, c), pts(1, c), pts(2, c), true));
-	valuesV0.push_back(pars(0, c));
+	valuesV0.push_back(pars(0, c)); // pars.cols() - c - 1 used to be here.
     }
 
     gsFileData<> fd_v1(topFile);
@@ -1425,39 +1465,31 @@ gsParametrization<T>& gsParametrization<T>::compute_periodic_2(std::string botto
 	valuesV1.push_back(pars(0, c));
     }
 
+    // Read the stitch indices.
     gsFileData<> fd_overlap(stitchFile);
-    // TODO: Read the indices.
+    gsMatrix<> stitchPoints;
+    fd_overlap.getId<gsMatrix<> >(0, stitchPoints);
     std::vector<size_t> stitchIndices;
 
-    // The right-hand side of powerplant-overlap.stl.
-    bool indexing = true;
-    stitchIndices.push_back(m_mesh.findVertex(-0.307507, -0.089105,  0.75,     indexing));
-    stitchIndices.push_back(m_mesh.findVertex(-0.25,     -0.0744296, 0.578768, indexing));
-    stitchIndices.push_back(m_mesh.findVertex(-0.202487, -0.164435,  0.578768, indexing));
-    stitchIndices.push_back(m_mesh.findVertex(-0.255694, -0.0359812, 0.389171, indexing));
-    stitchIndices.push_back(m_mesh.findVertex(-0.222461, -0.131092,  0.389171, indexing));
-    stitchIndices.push_back(m_mesh.findVertex(-0.320775, -0.032778,  0.199575, indexing));
-    stitchIndices.push_back(m_mesh.findVertex(-0.419029, -0.0970307, 0,        indexing));
+    for(index_t c=0; c<stitchPoints.cols(); c++)
+	stitchIndices.push_back(m_mesh.findVertex(stitchPoints(0, c), stitchPoints(1, c), stitchPoints(2, c), true));
 
-    gsInfo << "\nStitch indices:\n";
-    for(auto it=stitchIndices.begin(); it!=stitchIndices.end(); ++it)
-	gsInfo << *it << " ";
-    gsInfo << std::endl;
-    
-    calculate_periodic_2(m_options.getInt("parametrizationMethod"),
-			 indicesV0, valuesV0, indicesV1, valuesV1, stitchIndices);
+    // Calculation itself.
+    calculate_periodic_stitch(m_options.getInt("parametrizationMethod"),
+			      indicesV0, valuesV0, indicesV1, valuesV1, stitchIndices,
+			      posCorrections);
     return *this;
 }
 
 template<class T>
-void gsParametrization<T>::calculate_periodic(const size_t paraMethod,
-					      const std::vector<size_t>& indicesV0,
-					      const std::vector<T>& valuesV0,
-					      const std::vector<size_t>& indicesV1,
-					      const std::vector<T>& valuesV1,
-					      const gsMesh<T>& overlapMesh,
-					      std::vector<size_t>& left,
-					      std::vector<size_t>& right)
+void gsParametrization<T>::calculate_periodic_overlap(const size_t paraMethod,
+						      const std::vector<size_t>& indicesV0,
+						      const std::vector<T>& valuesV0,
+						      const std::vector<size_t>& indicesV1,
+						      const std::vector<T>& valuesV1,
+						      const gsMesh<T>& overlapMesh,
+						      std::vector<size_t>& left,
+						      std::vector<size_t>& right)
 {
     size_t n = m_mesh.getNumberOfInnerVertices();
     size_t N = m_mesh.getNumberOfVertices();
@@ -1494,7 +1526,7 @@ void gsParametrization<T>::calculate_periodic(const size_t paraMethod,
 		   m_mesh.getVertex(indicesV1.back()));
 
     // Solve.
-    constructAndSolveEquationSystem_3(neighbourhood, n, N, twins);
+    constructAndSolveEquationSystem(neighbourhood, n, N, twins);
 
     // Remember the boundaries.
     for(auto it=twins.begin(); it!=twins.end(); ++it)
@@ -1507,18 +1539,21 @@ void gsParametrization<T>::calculate_periodic(const size_t paraMethod,
 }
 
 template<class T>
-void gsParametrization<T>::calculate_periodic_2(const size_t paraMethod,
-						const std::vector<size_t>& indicesV0,
-						const std::vector<T>& valuesV0,
-						const std::vector<size_t>& indicesV1,
-						const std::vector<T>& valuesV1,
-						const std::vector<size_t>& stitchIndices)
+void gsParametrization<T>::calculate_periodic_stitch(const size_t paraMethod,
+						     const std::vector<size_t>& indicesV0,
+						     const std::vector<T>& valuesV0,
+						     const std::vector<size_t>& indicesV1,
+						     const std::vector<T>& valuesV1,
+						     const std::vector<size_t>& stitchIndices,
+						     std::vector<std::vector<size_t> >& posCorrections)
 {
     size_t n = m_mesh.getNumberOfInnerVertices();
     size_t N = m_mesh.getNumberOfVertices();
 
-    std::vector<std::vector<size_t> > corrections(N);
-    Neighbourhood neighbourhood(m_mesh, stitchIndices, corrections, paraMethod);
+    //std::vector<std::vector<size_t> > posCorrections(N);
+    posCorrections = std::vector<std::vector<size_t> >(N);
+    std::vector<std::vector<size_t> > negCorrections(N);
+    Neighbourhood neighbourhood(m_mesh, stitchIndices, posCorrections, negCorrections, paraMethod);
 
     m_parameterPoints.reserve(N);
     for (size_t i = 1; i <= n; i++)
@@ -1541,25 +1576,14 @@ void gsParametrization<T>::calculate_periodic_2(const size_t paraMethod,
     for(size_t i=0; i<indicesV1.size(); i++)
 	m_parameterPoints[indicesV1[i]-1] = Point2D(valuesV1[i], 1, numPtsSoFar++);
 
-    /*
-    gsInfo << "71: " << *m_mesh.getVertex(71) << std::endl;
-    gsInfo << "72: " << *m_mesh.getVertex(72) << std::endl;
-    gsInfo << "42: " << *m_mesh.getVertex(42) << std::endl;
-    gsInfo << "43: " << *m_mesh.getVertex(43) << std::endl;
-    gsInfo << "70: " << *m_mesh.getVertex(70) << std::endl;
-    */
-
-    // for(size_t i=1; i<=N; i++)
-    // 	gsInfo << i << ": " << *m_mesh.getVertex(i) << std::endl;
-
     /// Solve.
-    constructAndSolveEquationSystem_4(neighbourhood, n, N, corrections);
+    constructAndSolveEquationSystem(neighbourhood, n, N, posCorrections, negCorrections);
 }
 
 template <class T>
 void gsParametrization<T>::updateLambdasWithTwins(std::vector<T>& lambdas,
 						  const std::vector<std::pair<size_t, size_t> >& twins,
-						  size_t vertexId)
+						  size_t vertexId) const
 {
     lambdas.reserve(lambdas.size() + twins.size());
     for(size_t i=0; i<twins.size(); i++)
@@ -1608,10 +1632,10 @@ void gsParametrization<T>::updateLambdasWithTwins(std::vector<T>& lambdas,
 // Every twin pair is a pair of vertices with (almost) the same coordinates.
 // The first in the pair has the u-coordinate smaller by one than the second.
 template <class T>
-void gsParametrization<T>::constructAndSolveEquationSystem_3(const Neighbourhood &neighbourhood,
-							     const size_t n,
-							     const size_t N,
-							     const std::vector<std::pair<size_t, size_t> >& twins)
+void gsParametrization<T>::constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
+							   const size_t n,
+							   const size_t N,
+							   const std::vector<std::pair<size_t, size_t> >& twins)
 {
     size_t numTwins = twins.size();
     gsMatrix<T> LHS(N + numTwins, N + numTwins);
@@ -1695,10 +1719,12 @@ void gsParametrization<T>::constructAndSolveEquationSystem_3(const Neighbourhood
 }
 
 template <class T>
-void gsParametrization<T>::constructAndSolveEquationSystem_4(const Neighbourhood &neighbourhood,
-							     const size_t n,
-							     const size_t N,
-							     const std::vector<std::vector<size_t> >& corrections)
+void gsParametrization<T>::constructAndSolveEquationSystem(
+    const Neighbourhood &neighbourhood,
+    const size_t n,
+    const size_t N,
+    const std::vector<std::vector<size_t> >& posCorrections,
+    const std::vector<std::vector<size_t> >& negCorrections)
 {
     std::vector<T> lambdas;
     gsMatrix<T> LHS(N, N);
@@ -1708,21 +1734,19 @@ void gsParametrization<T>::constructAndSolveEquationSystem_4(const Neighbourhood
     for (size_t i = 0; i < n; i++)
     {
         lambdas = neighbourhood.getLambdas(i);
-	//gsInfo << i << ":";
         for (size_t j = 0; j < N; j++)
         {
             LHS(i, j) = ( i==j ? T(1) : -lambdas[j] );
+	}
 
-	    // if(lambdas[j] > 0)
-	    // 	gsInfo << j << "(" << lambdas[j] << ")";						    
-        }
-
-	//gsInfo << std::endl;
-	for (size_t j = 0; j < corrections[i].size(); j++)
+	for (size_t j = 0; j < posCorrections[i].size(); j++)
 	{
-	    index_t corr = corrections[i][j] - 1;
-	    //gsInfo << "corr: " << corr << ", lambda: " << lambdas[corr] << std::endl;
-	    RHS(i, 0) += lambdas[corr];
+	    RHS(i, 0) += lambdas[ posCorrections[i][j] - 1 ];
+	}
+	// TODO: Actually, one can work directly with posCorrections.
+	for (size_t j = 0; j < negCorrections[i].size(); j++)
+	{
+	    RHS(i, 0) -= lambdas[ negCorrections[i][j] - 1];
 	}
     }
 
@@ -1733,19 +1757,11 @@ void gsParametrization<T>::constructAndSolveEquationSystem_4(const Neighbourhood
 	RHS.row(i) = m_parameterPoints[i];
     }
 
-    gsMatrix<T> sol;
     Eigen::PartialPivLU<typename gsMatrix<T>::Base> LU = LHS.partialPivLu();
-    sol = LU.solve(RHS);
+    gsMatrix<T> sol = LU.solve(RHS);
     for (size_t i = 0; i < n; i++)
     {
-	real_t u = sol(i, 0);
-	real_t v = sol(i, 1);
-	while(u < 0)
-	    u += 1;
-
-	while(u > 1)
-	    u -= 1;
-    	m_parameterPoints[i] << u, v;
+    	m_parameterPoints[i] << sol(i, 0), sol(i, 1);
     }
 }
 

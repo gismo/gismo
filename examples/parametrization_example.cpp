@@ -18,6 +18,7 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     bool paraview = false;
+    bool fitting = false;
     index_t parametrizationMethod(1); // 1:shape, 2:uniform, 3:distance
     // shape: best method, shape of the mesh is preserved, smooth surface fitting
     // uniform: the lambdas according to Floater's algorithm are set to 1/d, where d is the number of neighbours
@@ -31,7 +32,7 @@ int main(int argc, char *argv[])
     // distributed: choose the smallest inner angle corners (number for how much to choose) and choose four corners s.t. they are as evenly distributed as possible, input number n=6 for choosing 6 boundary vertices with smallest inner angles and then find 4 of them s.t. evenly distributed
     std::string filenameIn("stl/norm.stl");
     std::string filenameOut("flatMesh");
-    std::string filenameV0, filenameV1, filenameOverlap;
+    std::string filenameV0, filenameV1, filenameOverlap, filenameStitch;
     real_t range = 0.1; // in case of restrict or opposite
     index_t number = 4; // number of corners, in case of distributed
     std::vector<index_t> corners; // in case of corners
@@ -54,11 +55,13 @@ int main(int argc, char *argv[])
     cmd.addString("o", "filenameOut", "output file name", filenameOut);
     cmd.addString("d", "v0", "file name to v=0", filenameV0);
     cmd.addString("t", "v1", "file name to v=1", filenameV1);
-    cmd.addString("l", "overlap", "file name to overlap", filenameOverlap);
+    cmd.addString("l", "overlap", "file name of the overlap file, must not be combined with -s", filenameOverlap);
+    cmd.addString("s", "stitch", "file name of the stitch file, must not be combined with -l.", filenameStitch);
     cmd.addReal("r", "range", "in case of restrict or opposite", range);
     cmd.addInt("n", "number", "number of corners, in case of corners", number);
     cmd.addMultiInt("c", "corners", "vector for corners, call it every time for an entry (-c 3 -c 1 -c 2 => {3,1,2})", corners);
     cmd.addSwitch("plot","Plot with Paraview",paraview);
+    cmd.addSwitch("fit", "Create a .xml file suitable for surface fitting with G+Smo.", fitting);
     cmd.getValues(argc, argv);
 
     gsOptionList ol = cmd.getOptionList();
@@ -80,25 +83,41 @@ int main(int argc, char *argv[])
     gsInfo << "Input had " << ol.getMultiInt("corners").size() << " corners." << std::endl;
     pm.setOptions(ol);
 
+    enum periodic_options {none, overlap, stitch} periodicity;
+
+    if( ol.askString("overlap", "").compare("") > 0 )
+	periodicity = overlap;
+    else if( ol.askString("stitch", "").compare("") > 0 )
+	periodicity = stitch;
+    else
+    	periodicity = none;
+
     std::vector<size_t> left, right;
+    std::vector<std::vector<size_t> > corrections;
     gsInfo << "gsParametrization::compute()             ";
     stopwatch.restart();
 
-    // TODO: Decide according to the method (normal, periodic, iterative).
-    pm.compute_periodic(filenameV0, filenameV1, filenameOverlap, left, right);
-    //pm.compute_periodic_2(filenameV0, filenameV1, filenameOverlap); // TODO: Rename the file.
+    if( periodicity == overlap )
+	pm.compute_periodic_overlap(filenameV0, filenameV1, filenameOverlap, left, right);
+    else if( periodicity == stitch)
+    	pm.compute_periodic_stitch(filenameV0, filenameV1, filenameStitch, corrections);
+    else
+	pm.compute();
 
-    //pm.compute();
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
     gsInfo << "gsParametrization::createFlatMesh()      ";
+    gsMesh<> flatMesh;
+
     stopwatch.restart();
-    //gsMesh<> mMesh = pm.createFlatMesh(true, left, right);
-    //gsMesh<> lMesh = pm.createFlatMesh(true, left, right, -1);
-    //gsMesh<> rMesh = pm.createFlatMesh(true, left, right, 1);
-    gsMesh<> mid = pm.createMidMesh(left, right);
-    //std::vector<gsMesh<> > meshes = pm.createThreeFlatMeshes(left, right);
+    if( periodicity == overlap )
+	flatMesh = pm.createFlatMesh(left, right, true);
+    else if( periodicity == stitch )
+	flatMesh = pm.createFlatMesh(corrections, true);
+    else
+	flatMesh = pm.createFlatMesh();
+
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
@@ -114,31 +133,29 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
+    if( periodicity == stitch || periodicity == overlap )
+	pm.restrictMatrices_2(uv, xyz);
+
     if(paraview)
     {
-	pm.restrictMatrices(uv, xyz);
-	//pm.writeTexturedMesh("mesh.vtk");
-	
-	//gsWriteParaview(lMesh, "lMesh");
-	//gsWriteParaview(mMesh, "mMesh");
-	//gsWriteParaview(rMesh, "rMesh");
-
-	//pm.writeSTL(mMesh, "mMesh");
-	gsWriteParaview(mid, "mMesh");
-
-	gsFileData<> output;
-	output << uv;
-	output << xyz;
-	output.save("fitting");
-        // gsWriteParaview(meshes[0], "left" + ol.getString("filenameOut"));
-        // gsWriteParaview(meshes[1], "mid" + ol.getString("filenameOut"));
-        // gsWriteParaview(meshes[2], "right" + ol.getString("filenameOut"));
-
-        //gsFileManager::open(ol.getString("filenameOut") + ".pvd");
+	gsInfo << "Writing to Paraview." << std::endl;
+	gsWriteParaview(flatMesh, ol.getString("filenameOut"));
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
 
+    if(fitting)
+    {
+	gsInfo << "Writing to G+Smo XML." << std::endl;
+	gsFileData<> output;
+	output << uv;
+	output << xyz;
+	output.save(ol.getString("filenameOut"));
+    }
+
     return 0;
 }
+
+// TODO: Add the iterative method.
+// TODO: 

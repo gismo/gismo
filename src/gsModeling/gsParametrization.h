@@ -70,16 +70,17 @@ public:
     gsParametrization<T>& compute();
 
     /// Analogous main function for periodic parametrizations.
-    gsParametrization<T>& compute_periodic(std::string bottomFile,
-					   std::string topFile,
-					   std::string overlapFile,
-					   std::vector<size_t>& left,
-					   std::vector<size_t>& right);
+    gsParametrization<T>& compute_periodic_overlap(std::string bottomFile,
+						   std::string topFile,
+						   std::string overlapFile,
+						   std::vector<size_t>& left,
+						   std::vector<size_t>& right);
 
     /// Periodic parametrization using Pierre's trick.
-    gsParametrization<T>& compute_periodic_2(std::string bottomFile,
-					     std::string topFile,
-					     std::string stitchFile);
+    gsParametrization<T>& compute_periodic_stitch(std::string bottomFile,
+						  std::string topFile,
+						  std::string stitchFile,
+						  std::vector<std::vector<size_t> >& posCorrections);
 
     /**
      * Parametric Coordinates u,v from 0..1
@@ -117,33 +118,54 @@ public:
 	xyz.conservativeResize(3, newSize);
     }
 
+    /// For Pierre's way.
+    void restrictMatrices_2(gsMatrix<T>& uv, gsMatrix<T>& xyz,
+			    real_t uMin = 0, real_t uMax = 1)
+    {
+	real_t uLength = uMax - uMin;
+	for(index_t j=0; j<uv.cols(); j++)
+	{
+	    real_t u = uv(0, j);
+
+	    if(u < uMin)
+		uv(0, j) += uLength;
+	    else if(u > uMax)
+		uv(0 ,j) -= uLength;
+	}
+    }
+
     /**
      * Creates a flat mesh
      * @return
      */
     gsMesh<T> createFlatMesh() const;
 
-    gsMesh<T> createFlatMesh(bool flatten,
-			     const std::vector<size_t>& left,
+    /**
+     * Creates a flat mesh out of a periodic parametrization created by the overlap method.
+     * @param left Indices of the vertices on the left boundary of the parameter domain.
+     * @param right Indices of the vertices on the right boundary of the parameter domain.
+     */ // TODO: Clarify, which indexing!
+    gsMesh<T> createFlatMesh(const std::vector<size_t>& left,
 			     const std::vector<size_t>& right,
-			     real_t shift = 0) const;
+			     bool restrict = false) const;
+
+    /**
+     * Creates a flat mesh out of a periodic parametrization created by a the stitch method.
+     * @param posCorrections Positive corrections from the stitch algorithm.
+     * @param restrict If set to true, the mesh is restricted to [0, 1]^2.
+     */
+    gsMesh<T> createFlatMesh(const std::vector<std::vector<size_t> >& posCorrections,
+			     bool restrict = false) const;
+
+    /**
+     * Creates a copy of the mesh @a original with the u-coordinates shifted by @a uShift.
+     * Useful for demonstration purposes and debugging.
+     */
+    gsMesh<T> createShiftedCopy(const gsMesh<T>& original, real_t uShift) const;
 
     void writeTexturedMesh(std::string filename) const;
 
     void writeSTL (const gsMesh<T>& mesh, std::string filename) const;
-
-    std::vector<gsMesh<T> > createThreeFlatMeshes(const std::vector<std::pair<size_t, size_t> >& twins) const;
-
-    /// For demonstration purposes creates three flat meshes next to each other.
-    std::vector<gsMesh<T> > createThreeFlatMeshes(const std::vector<size_t>& right,
-						  const std::vector<size_t>& left) const;
-
-    // Copied from the three meshes.
-    gsMesh<T> createMidMesh(const std::vector<std::pair<size_t, size_t> >& twins) const;
-
-    // Copied from the three meshes.
-    gsMesh<T> createMidMesh(const std::vector<size_t>& right,
-			    const std::vector<size_t>& left) const;
 
     gsOptionList& options() { return m_options; }
 
@@ -350,7 +372,8 @@ private:
 	/// Can be probably integrated into the standard constructor.
         explicit Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
 			       const std::vector<size_t>& stitchIndices,
-			       std::vector<std::vector<size_t> >& corrections,
+			       std::vector<std::vector<size_t> >& posCorrections,
+			       std::vector<std::vector<size_t> >& negCorrections,
                                const size_t parametrizationMethod = 2);
 
         /**
@@ -428,21 +451,20 @@ private:
 					   const size_t n,
 					   const size_t N);
 
-    /** Similar to @a _2 but does the periodic thing through the twin trick.*/
-    void constructAndSolveEquationSystem_3(const Neighbourhood &neighbourhood,
-					   const size_t n,
-					   const size_t N,
-					   const std::vector<std::pair<size_t, size_t> >& twins);
+    /** Similar to @a _2 but does the periodic thing through the twin trick.*/     // TODO: Remove
+    void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
+					 const size_t n,
+					 const size_t N,
+					 const std::vector<std::pair<size_t, size_t> >& twins);
 
-    void constructAndSolveEquationSystem_4(const Neighbourhood &neighbourhood,
-					   const size_t n,
-					   const size_t N,
-					   const std::vector<std::vector<size_t> >& corrections);
-
-    /// Helper function to _3.
-    void updateLambdasWithTwins(std::vector<T>& lambdas,
-				const std::vector<std::pair<size_t, size_t> >& twins,
-				size_t vertexId);
+    /** Similar to @a constructAndSolveEquationSystem but works for periodic meshes using
+     * the corrections.
+     */ // TODO: Explain the parameters.
+    void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
+					 const size_t n,
+					 const size_t N,
+					 const std::vector<std::vector<size_t> >& posCorrections,
+					 const std::vector<std::vector<size_t> >& negCorrections);
 
     void constructTwins(std::vector<std::pair<size_t, size_t> >& twins,
 			const gsMesh<T>& overlapMesh,
@@ -457,21 +479,22 @@ private:
                    const T rangeInput,
                    const size_t numberInput);
 
-    void calculate_periodic(const size_t paraMethod,
-			    const std::vector<size_t>& indicesU0,
-			    const std::vector<T>& valuesU0,
-			    const std::vector<size_t>& indicesU1,
-			    const std::vector<T>& valuesU1,
-			    const gsMesh<T>& overlapMesh,	
-			    std::vector<size_t>& left,
-			    std::vector<size_t>& right);
+    void calculate_periodic_overlap(const size_t paraMethod,
+				    const std::vector<size_t>& indicesU0,
+				    const std::vector<T>& valuesU0,
+				    const std::vector<size_t>& indicesU1,
+				    const std::vector<T>& valuesU1,
+				    const gsMesh<T>& overlapMesh,
+				    std::vector<size_t>& left,
+				    std::vector<size_t>& right);
 
-    void calculate_periodic_2(const size_t paraMethod,
-			      const std::vector<size_t>& indicesV0,
-			      const std::vector<T>& valuesV0,
-			      const std::vector<size_t>& indicesV1,
-			      const std::vector<T>& valuesV1,
-			      const std::vector<size_t>& stitchIndices);
+    void calculate_periodic_stitch(const size_t paraMethod,
+				   const std::vector<size_t>& indicesV0,
+				   const std::vector<T>& valuesV0,
+				   const std::vector<size_t>& indicesV1,
+				   const std::vector<T>& valuesV1,
+				   const std::vector<size_t>& stitchIndices,
+				   std::vector<std::vector<size_t> >& posCorrections);
 
     T findLengthOfPositionPart(const size_t position,
                                     const size_t numberOfPositions,
@@ -480,22 +503,35 @@ private:
 
     bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const size_t maximum);
 
+    /// Helper function to constructAndSolveEquationSystem with twins.
+    void updateLambdasWithTwins(std::vector<T>& lambdas,
+				const std::vector<std::pair<size_t, size_t> >& twins,
+				size_t vertexId) const;
+
     real_t correspondingV(const typename gsMesh<T>::VertexHandle& v0,
 			  const typename gsMesh<T>::VertexHandle& v1,
 			  real_t u) const;
 
-    void addOneFlatTriangle(gsMesh<T>& mesh,
-			    const typename gsMesh<T>::VertexHandle& v0,
-			    const typename gsMesh<T>::VertexHandle& v1,
-			    const typename gsMesh<T>::VertexHandle& v2,
-			    real_t shift = 0) const;
+    void addThreeFlatTrianglesOneOut(gsMesh<T>& mesh,
+				     const typename gsMesh<T>::VertexHandle& v0,
+				     const typename gsMesh<T>::VertexHandle& v1,
+				     const typename gsMesh<T>::VertexHandle& v2) const;
 
-    void addTwoFlatTriangles(gsMesh<T>& mesh,
-			     const typename gsMesh<T>::VertexHandle& v0,
-			     const typename gsMesh<T>::VertexHandle& v1,
-			     const typename gsMesh<T>::VertexHandle& v2,
-			     real_t shift = 0) const;
+    void addThreeFlatTrianglesTwoOut(gsMesh<T>& mesh,
+				     const typename gsMesh<T>::VertexHandle& v0,
+				     const typename gsMesh<T>::VertexHandle& v1,
+				     const typename gsMesh<T>::VertexHandle& v2) const;
 
+    void addOneFlatTriangleNotIntersectingBoundary(gsMesh<T>& mesh,
+						   typename gsMesh<T>::VertexHandle& v0,
+						   typename gsMesh<T>::VertexHandle& v1,
+						   typename gsMesh<T>::VertexHandle& v2) const;
+
+    // TODO: Get rid of this function.
+    gsMesh<T> createMidMesh(const std::vector<size_t>& right,
+			    const std::vector<size_t>& left) const;
+
+    gsMesh<T> createRestrictedFlatMesh(const gsHalfEdgeMesh<T>& unfolded) const;
 
 }; // class gsParametrization
 
