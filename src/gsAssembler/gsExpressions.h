@@ -93,6 +93,7 @@ template<class E> class inv_expr;
 template<class E> class tr_expr;
 template<class T> class cdiam_expr;
 template<class E> class temp_expr;
+template<class E1, class E2, bool = E1::ColBlocks> class pow_expr;
 template<class E1, class E2, bool = E1::ColBlocks> class mult_expr
 {using E1::GISMO_ERROR_mult_expr_has_invalid_template_arguments;};
 
@@ -341,7 +342,7 @@ public:
     Expression for a constant value
  */
 template<class T>
-class _expr<T, true> : public _expr<_expr<T> >
+class _expr<T,true> : public _expr<_expr<T> >
 {
     const T _c;
 public:
@@ -2369,6 +2370,51 @@ public:
     void print(std::ostream &os) const { os << _c <<"*";_v.print(os); }
 };
 
+/*
+Expression for power operation 
+
+Scalar Exponent
+*/
+template <typename E2>
+class pow_expr<typename E2::Scalar, E2, false>
+	: public _expr<pow_expr<typename E2::Scalar, E2, false> >
+	// template <typename E> class scmult_expr : public _expr<scmult_expr<E> >
+{
+public:
+	typedef typename E2::Scalar Scalar;
+private:
+	Scalar const _c;
+	typename E2::Nested_t _v;
+
+	//pow_expr(const pow_expr&);
+public:
+	enum { ScalarValued = E2::ScalarValued, ColBlocks = E2::ColBlocks };
+
+	pow_expr(Scalar const & c, _expr<E2> const& v)
+		: _c(c), _v(v) { }
+
+	EIGEN_STRONG_INLINE AutoReturn_t eval(const index_t k) const
+	{
+		return (pow(_v.eval(k),_c));
+	}
+
+	index_t rows() const { return _v.rows(); }
+	index_t cols() const { return _v.cols(); }
+	void setFlag() const { _v.setFlag(); }
+	void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+	{
+		_v.parse(evList);
+	}
+
+	static bool rowSpan() { return E2::rowSpan(); }
+	static bool colSpan() { return E2::colSpan(); }
+
+	const gsFeVariable<Scalar> & rowVar() const { return _v.rowVar(); }
+	const gsFeVariable<Scalar> & colVar() const { return _v.colVar(); }
+
+	void print(std::ostream &os) const { _v.print(os); os << "^" << _c; }
+};
+
 
 /*
    Expression for the Frobenius matrix product (first version)
@@ -2922,6 +2968,14 @@ operator-(_expr<E1> const& u)
 { return mult_expr<typename E1::Scalar,E1, false>(-1, u); }
 //{ return mult_expr<_expr<typename E1::Scalar>,E1, false>(-1, u); }
 
+template <typename E1> EIGEN_STRONG_INLINE
+pow_expr<typename E1::Scalar, E1, false> const
+operator^(_expr<E1> const& v, typename E1::Scalar const& u)
+{
+	return pow_expr<typename E1::Scalar, E1, false>(u, v);
+}
+//{ return pow_expr<_expr<typename E1::Scalar>,E1, false>(u, v); }
+
 /*
 template <typename E1> mult_expr<gsMatrix<typename E1::Scalar>,E1,false> const
 operator*(gsMatrix<typename E1::Scalar> const& u, _expr<E1> const& v)
@@ -2952,6 +3006,22 @@ operator/(const typename E::Scalar u, _expr<E> const& v)
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
 add_expr<E1,E2> const operator+(_expr<E1> const& u, _expr<E2> const& v)
 { return add_expr<E1, E2>(u, v); }
+
+template <typename E2> EIGEN_STRONG_INLINE
+add_expr<_expr<typename E2::Scalar>, E2> const
+operator+(typename E2::Scalar const& s, _expr<E2> const& v)
+{
+	// assert E2::ScalarValued
+	return add_expr<_expr<typename E2::Scalar>, E2>(_expr<typename E2::Scalar>(s), v);
+}
+
+template <typename E2> EIGEN_STRONG_INLINE
+add_expr<_expr<typename E2::Scalar>, E2> const
+operator+(_expr<E2> const& v, typename E2::Scalar const& s)
+{
+	// assert E2::ScalarValued
+	return add_expr<_expr<typename E2::Scalar>, E2>(v, _expr<typename E2::Scalar>(s));
+}
 
 /// Matrix-summation operator for expressions
 template <typename E1, typename E2> EIGEN_STRONG_INLINE

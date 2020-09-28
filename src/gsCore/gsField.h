@@ -149,6 +149,23 @@ public:
                  bool isFunc_param = false,
                  int numEvals=1000) const;
 
+	/// Computes the Lp-distance between the two fields, on the physical domain
+	T distanceLp(gsField<T> const & field, T p, int numEvals = 1000) const;
+
+	/// Computes the Lp-distance between the field and a function \a func on the physical domain
+	T distanceLp(gsFunctionSet<T> const & func,
+		T p,
+		bool isFunc_param = false,
+		int numEvals = 1000) const;
+
+	/// Computes the Lp-distance between the field and a function \a
+	/// func on the physical domain, using mesh from B
+	T distanceLp(gsFunctionSet<T> const & func,
+		gsMultiBasis<T> const & B,
+		T p,
+		bool isFunc_param = false,
+		int numEvals = 1000) const;
+
     /// Computes the H1-seminorm of the diff. between the field and a function \a
     /// func on the physical domain
     T distanceH1(gsFunctionSet<T> const & func,

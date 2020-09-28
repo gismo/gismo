@@ -38,6 +38,24 @@ T gsField<T>::distanceL2(gsFunctionSet<T> const & func,
 }
 
 template <class T>
+T gsField<T>::distanceLp(gsFunctionSet<T> const & func,
+	gsMultiBasis<T> const & B,
+	T p,
+	bool isFunc_param,
+	int numEvals) const
+{
+	GISMO_UNUSED(numEvals);// todo: subdivided quadrature elements
+	gsExprEvaluator<T> ev;
+	ev.setIntegrationElements(B);
+	typename gsExprEvaluator<T>::geometryMap G = ev.getMap(this->patches());
+	typename gsExprEvaluator<T>::variable f1 =
+		(m_parametric ? ev.getVariable(*m_fields) : ev.getVariable(*m_fields, G));
+	typename gsExprEvaluator<T>::variable f2 =
+		(isFunc_param ? ev.getVariable(func) : ev.getVariable(func, G));
+	return math::pow(ev.integral((((f1 - f2).sqNorm()) ^ (p / 2)) * meas(G)), 1. / p);
+}
+
+template <class T>
 T gsField<T>::distanceH1(gsFunctionSet<T> const & func,
                          gsMultiBasis<T> const & B,
                          bool isFunc_param,
@@ -96,6 +114,12 @@ T gsField<T>::distanceL2(gsField<T> const & field, int numEvals) const
 }
 
 template <class T>
+T gsField<T>::distanceLp(gsField<T> const & field, T p, int numEvals) const
+{
+	return distanceLp(*field.m_fields, field.m_parametric, p, numEvals);
+}
+
+template <class T>
 T gsField<T>::distanceL2(gsFunctionSet<T> const & func,
                          bool isFunc_param,
                          int numEvals) const
@@ -104,6 +128,18 @@ T gsField<T>::distanceL2(gsFunctionSet<T> const & func,
         return distanceL2(func, gsMultiBasis<T>(*mp), isFunc_param, numEvals);
     gsMultiBasis<T> mb(this->patches());
     return distanceL2(func, mb, isFunc_param, numEvals);
+}
+
+template <class T>
+T gsField<T>::distanceLp(gsFunctionSet<T> const & func,
+	T p,
+	bool isFunc_param,
+	int numEvals) const
+{
+	if (const gsMultiPatch<T>* mp = dynamic_cast<const gsMultiPatch<T>*>(m_fields.get()))
+		return distanceLp(func, gsMultiBasis<T>(*mp), p, isFunc_param, numEvals);
+	gsMultiBasis<T> mb(this->patches());
+	return distanceLp(func, mb, p, isFunc_param, numEvals);
 }
 
 template <class T>
