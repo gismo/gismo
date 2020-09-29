@@ -489,6 +489,7 @@ public:
     virtual index_t levelAtCorner(boxCorner const & c) const;
 
     virtual index_t functionAtCorner(boxCorner const & c) const;
+    virtual index_t functionAtCorner(boxCorner const & c, index_t level) const;
 
 
     // Look at gsBasis.h for the documentation of this function

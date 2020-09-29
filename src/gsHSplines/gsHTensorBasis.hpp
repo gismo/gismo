@@ -1109,6 +1109,17 @@ functionAtCorner(boxCorner const & c) const
     return this->flatTensorIndexToHierachicalIndex(index,lvl);
 }
 
+template<short_t d, class T>
+index_t  gsHTensorBasis<d,T>::
+functionAtCorner(boxCorner const & c, index_t level) const
+{
+    // Get the index of the corner on the level
+    index_t index = m_bases[level]->functionAtCorner(c);
+
+    // Transform to (continuous) HBspline index.
+    return this->flatTensorIndexToHierachicalIndex(index,level);
+}
+
 /*
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
