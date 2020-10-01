@@ -1012,7 +1012,7 @@ public:
                 //const index_t cc = it->unkComponent();
                 m_mapper.markBoundary(0, bnd, 0);
             }
-// todo
+
             m_mapper = gsDofMapper(*b);
             for (typename bcList::const_iterator
                      it = bc.begin("Clamped") ; it != bc.end("Clamped"); ++it )
@@ -1024,7 +1024,7 @@ public:
                 //const index_t cc = it->unkComponent();
                 // m_mapper.markBoundary(0, bnd, 0);
             }
-// todo
+
             m_mapper = gsDofMapper(*b);
             for (typename bcList::const_iterator
                      it = bc.begin("Collapsed") ; it != bc.end("Collapsed"); ++it )

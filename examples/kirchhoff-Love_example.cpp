@@ -1532,6 +1532,7 @@ int main(int argc, char *argv[])
     index_t numElevate = 1;
     index_t testCase = 1;
     bool nonlinear = false;
+    bool weak = false;
     std::string fn("pde/poisson2d_bvp.xml");
 
     real_t E_modulus = 1.0;
@@ -1551,6 +1552,7 @@ int main(int argc, char *argv[])
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("nl", "Solve nonlinear problem", nonlinear);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("weak", "Weak BCs", weak);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -1619,6 +1621,7 @@ int main(int argc, char *argv[])
 
 
     gsConstantFunction<> neuData(neu,3);
+    gsConstantFunction<> weakBC(neu,3);
 
     real_t pressure = 0.0;
     if (testCase == -1)
@@ -1715,9 +1718,16 @@ int main(int argc, char *argv[])
             bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, i ); // unknown 0 - x
             bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, i ); // unknown 1 - y
             bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
-            bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+            if (!weak)
+                bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 0 - x
+
         }
-        pressure = -1.0;
+        if (weak)
+            bc.addCondition(boundary::west, condition_type::weak_dirichlet, &weakBC ); // unknown 2 - z
+
+        tmp << 0, 0, -1;
+
+        // pressure = -1.0;
     }
 
     else if (testCase == 6)
@@ -1761,7 +1771,15 @@ int main(int argc, char *argv[])
         bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ,false,1);
         bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0 ,false,2);
         // bc.addCondition(boundary::east, condition_type::collapsed, 0, 0 ,false,0);
-        bc.addCondition(boundary::east, condition_type::dirichlet, &displx, 0 ,false,0);
+
+        if (!weak)
+            bc.addCondition(boundary::east, condition_type::dirichlet, &displx, 0 ,false,0);
+        else
+        {
+            neu << -0.09317696, 0, 0;
+            weakBC.setValue(neu,3);
+            bc.addCondition(boundary::east, condition_type::weak_dirichlet, &weakBC);
+        }
 
 
         // Surface forces
@@ -1801,13 +1819,24 @@ int main(int argc, char *argv[])
             bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, i ); // unknown 0 - x
             bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, i ); // unknown 1 - y
             bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
-            bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+            bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 0 - x
         }
 
-        bc.addCondition(boundary::north, condition_type::clamped, 0, 0 ,false,2);
-        bc.addCondition(boundary::east, condition_type::clamped, 0, 0 ,false,2);
-        bc.addCondition(boundary::south, condition_type::clamped, 0, 0 ,false,2);
-        bc.addCondition(boundary::west, condition_type::clamped, 0, 0 ,false,2);
+        if (!weak)
+        {
+            bc.addCondition(boundary::north, condition_type::clamped, 0, 0 ,false,2);
+            bc.addCondition(boundary::east, condition_type::clamped, 0, 0 ,false,2);
+            bc.addCondition(boundary::south, condition_type::clamped, 0, 0 ,false,2);
+            bc.addCondition(boundary::west, condition_type::clamped, 0, 0 ,false,2);
+        }
+        else
+        {
+            bc.addCondition(boundary::north, condition_type::weak_clamped, &weakBC );
+            bc.addCondition(boundary::east, condition_type::weak_clamped, &weakBC );
+            bc.addCondition(boundary::south, condition_type::weak_clamped, &weakBC );
+            bc.addCondition(boundary::west, condition_type::weak_clamped, &weakBC ); // unknown 2 - z
+        }
+
 
         tmp << 0,0,-1;
     }
@@ -1836,7 +1865,6 @@ int main(int argc, char *argv[])
     // u.setInterfaceCont(0); // todo: 1 (smooth basis)
     // u.addBc( bc.get("Dirichlet") ); // (!) must be called only once
 
-    gsDebugVar(bc);
     u.setup(bc, dirichlet::interpolation, 0);
 
     // Solution vector and solution variable
@@ -1925,27 +1953,38 @@ int main(int argc, char *argv[])
 
     gsVector<> pt(2); pt.setConstant(0.25);
     gsVector<> pt2(3); pt2.setConstant(2);
-    // gsMatrix<> pt(7,2);
-    // pt<<0,0,
-    // 0,0.5,
-    // 0,1.0,
-    // 0.5,0,
-    // 1.0,0,
-    // 0.5,0.5,
-    // 1.0,1.0;
-    // pt = pt.transpose();
-    // gsDebugVar(pt);
 
-    // ! [Solve linear problem]
+    // // For Neumann (same for Dirichlet/Nitsche) conditions
+    variable g_N = A.getBdrFunction();
+    // A.assembleRhsBc(u * g_N, bc.container("Neumann") );
 
-    // assemble mass
-    // A.assemble(u*u.tr());
-    // gsDebugVar(A.matrix().toDense());
-    // gsDebugVar(A.matrix().rows());
-    // gsDebugVar(A.matrix().cols());
+    // for weak dirichlet (DOES THIS HANDLE COMPONENTS?)
 
+    real_t alpha_d = 1e3;
+    A.assembleLhsRhsBc
+    (
+        alpha_d * u * u.tr()
+        ,
+        // alpha_d * u * (g_N)
+        // alpha_d * (defG - G - g_N).tr() * u.tr()
+        alpha_d * (u * (defG - G) - u * (g_N) )
+        ,
+        bc.container("Weak Dirichlet")
+    );
 
-    // assemble system
+    // for weak clamped
+    real_t alpha_r = 1e3;
+    A.assembleLhsRhsBc
+    (
+        alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var2(u,u,defG,nv(G).tr()) )
+        +
+        alpha_r * ( ( var1(u,defG) * nv(G) ) * ( var1(u,defG) * nv(G) ).tr() )
+        ,
+        alpha_r * ( sn(defG).tr()*sn(G) - sn(G).tr()*sn(G) ).val() * ( var1(u,defG) * sn(G) )
+        ,
+        bc.container("Weak Clamped")
+    );
+
     A.assemble(
         // (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
         (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
@@ -1954,58 +1993,6 @@ int main(int argc, char *argv[])
         u * F  * meas(G) + pressure * u * sn(defG).normalized() * meas(G)
         );
 
-    // evaluateFunction(ev, reshape(mmA,3,3), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, reshape(mmB,3,3), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, reshape(mmC,3,3), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, reshape(mmD,3,3), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, S0, pt); // evaluates an expression on a point
-    // evaluateFunction(ev, S1, pt); // evaluates an expression on a point
-
-
-    // evaluateFunction(ev, N_der * cartcon(G) * (E_m_der * cartcon(G)).tr(), pt); // evaluates an expression on a point
-    // evaluateFunction(ev, (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr()).tr(), pt); // evaluates an expression on a point
-
-    // gsDebugVar((jac(defG).tr() * jac(u) * jac(defG) * jac(u).tr()).isMatrix());
-    // gsDebugVar((jac(defG).tr() * jac(u) * jac(defG) * jac(u).tr()).colSpan());
-    // gsDebugVar((jac(defG).tr() * jac(u) * jac(defG) * jac(u).tr()).rowSpan());
-    // gsDebugVar((jac(defG).tr() * jac(u)).colSpan());
-    // gsDebugVar((jac(defG).tr() * jac(u)).rowSpan());
-    // gsDebugVar(((jac(defG).tr() * jac(u)).tr()).colSpan());
-    // gsDebugVar(((jac(defG).tr() * jac(u)).tr()).rowSpan());
-
-    // For Neumann (same for Dirichlet/Nitsche) conditions
-    variable g_N = A.getBdrFunction();
-    A.assembleRhsBc(u * g_N, bc.container("Neumann") );
-
-    // for weak dirichlet (DOES THIS HANDLE COMPONENTS?)
-    real_t alpha_d = 1e3;
-    A.assembleLhsRhsBc
-    (
-        alpha_d * u * u.tr()
-        ,
-        alpha_d * u * (defG - G - g_N).tr()
-        ,
-        bc.container("dirichlet weak")
-    );
-
-    // for weak clamped
-    real_t alpha_r = 1e3;
-    A.assembleLhsRhsBc
-    (
-        // alpha_r * ( sn(defG).tr()*sn(G) - 1.0 ) * ( flatdot2??? )
-        // +
-        alpha_r * ( var1(u,defG) * sn(G).tr() ).symmetrize()
-        ,
-        alpha_r * ( sn(defG)*sn(G).tr() - sn(G)*sn(G).tr() ) * ( var1(u,defG) * sn(G).tr() )
-        ,
-        bc.container("clamped weak")
-    );
-
-
-    // gsDebugVar(A.matrix().toDense());
-    // gsDebugVar(A.matrix().rows());
-    // gsDebugVar(A.matrix().cols());
-    // gsDebugVar(A.rhs().transpose());
     gsVector<> Force = A.rhs();
 
 
@@ -2091,7 +2078,29 @@ int main(int argc, char *argv[])
 
             // For Neumann (same for Dirichlet/Nitche) conditions
             variable g_N = A.getBdrFunction();
-            A.assembleRhsBc(u * g_N, bc.neumannSides() );
+            // A.assembleRhsBc(u * g_N, bc.neumannSides() );
+
+            A.assembleLhsRhsBc
+            (
+                alpha_d * u * u.tr()
+                ,
+                // alpha_d * u * (g_N)
+                // alpha_d * (defG - G - g_N).tr() * u.tr()
+                -alpha_d * (u * (defG - G) - u * (g_N) )
+                ,
+                bc.container("Weak Dirichlet")
+            );
+            A.assembleLhsRhsBc
+            (
+                alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var2(u,u,defG,nv(G).tr()) )
+                +
+                alpha_r * ( ( var1(u,defG) * nv(G) ) * ( var1(u,defG) * nv(G) ).tr() )
+                ,
+                -alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var1(u,defG) * nv(G) )
+                ,
+                bc.container("Weak Clamped")
+            );
+
 
             // A.assemble(tt.val() * tt.val() * tt.val() / 3.0 * E_f_der2);
             // solve system

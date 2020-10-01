@@ -29,9 +29,11 @@ struct condition_type
     {
         unknownType = -1,
         dirichlet = 0, ///< Dirichlet type
+        weak_dirichlet = 10, ///< Dirichlet type
         neumann   = 1, ///< Neumann type
         robin     = 2, ///< Robin type
         clamped   = 3, ///< Robin type
+        weak_clamped = 30,
         collapsed = 4  ///< Robin type
         //mixed BD means: there are both dirichlet and neumann sides
         //robin: a linear combination of value and derivative
@@ -50,6 +52,11 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
         os<< "Dirichlet";
         break;
     }
+    case condition_type::weak_dirichlet:
+    {
+        os<< "Weak Dirichlet";
+        break;
+    }
     case condition_type::neumann:
     {
         os<< "Neumann";
@@ -63,6 +70,11 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
     case condition_type::clamped:
     {
         os<< "Clamped";
+        break;
+    }
+    case condition_type::weak_clamped:
+    {
+        os<< "Weak Clamped";
         break;
     }
     case condition_type::collapsed:
@@ -100,9 +112,11 @@ struct boundary_condition
       m_parametric(parametric)
     {
         if (m_label == "Dirichlet") m_type = condition_type::dirichlet;
+        else if (m_label == "Weak Dirichlet") m_type = condition_type::weak_dirichlet;
         else if (m_label == "Neumann")   m_type = condition_type::neumann;
         else if (m_label == "Robin")     m_type = condition_type::robin;
         else if (m_label == "Clamped")   m_type = condition_type::clamped;
+        else if (m_label == "Weak Clamped")   m_type = condition_type::weak_clamped;
         else if (m_label == "Collapsed") m_type = condition_type::collapsed;
         else m_type = condition_type::unknownType;
     }
@@ -123,6 +137,11 @@ struct boundary_condition
             m_label = "Dirichlet";
             break;
         }
+        case condition_type::weak_dirichlet:
+        {
+            m_label = "Weak Dirichlet";
+            break;
+        }
         case condition_type::neumann:
         {
             m_label = "Neumann";
@@ -135,12 +154,17 @@ struct boundary_condition
         }
         case condition_type::clamped:
         {
-            m_label = "clamped";
+            m_label = "Clamped";
+            break;
+        }
+        case condition_type::weak_clamped:
+        {
+            m_label = "weak Clamped";
             break;
         }
         case condition_type::collapsed:
         {
-            m_label = "collapsed";
+            m_label = "Collapsed";
             break;
         }
         default:
@@ -165,6 +189,11 @@ struct boundary_condition
             m_label = "Dirichlet";
             break;
         }
+        case condition_type::weak_dirichlet:
+        {
+            m_label = "Weak Dirichlet";
+            break;
+        }
         case condition_type::neumann:
         {
             m_label = "Neumann";
@@ -178,6 +207,11 @@ struct boundary_condition
         case condition_type::clamped:
         {
             m_label = "Clamped";
+            break;
+        }
+        case condition_type::weak_clamped:
+        {
+            m_label = "Weak Clamped";
             break;
         }
         case condition_type::collapsed:
@@ -349,6 +383,9 @@ public:
     /// Return a reference to the Dirichlet sides
     const bcContainer & dirichletSides() const {return m_bc["Dirichlet"]; }
 
+    /// Return a reference to the Weak Dirichlet sides
+    const bcContainer & weakDirichletSides() const {return m_bc["Weak Dirichlet"]; }
+
     /// Return a reference to the Neumann sides
     const bcContainer & neumannSides()   const {return m_bc["Neumann"]; }
 
@@ -416,6 +453,27 @@ public:
     /// \return an iterator to the end of the Dirichlet sides
     iterator dirichletEnd()
     { return m_bc["Dirichlet"].end(); }
+
+    /// Get a const-iterator to the beginning of the Weak Dirichlet sides
+    /// \return an iterator to the beginning of the Weak Dirichlet sides
+    const_iterator weakDirichletBegin() const
+    { return m_bc["Weak Dirichlet"].begin(); }
+
+    /// Get a const-iterator to the end of the Weak Dirichlet sides
+    /// \return an iterator to the end of the Weak Dirichlet sides
+    const_iterator weakDirichletEnd() const
+    { return m_bc["Weak Dirichlet"].end(); }
+
+    /// Get an iterator to the beginning of the Weak Dirichlet sides
+    /// \return an iterator to the beginning of the Weak Dirichlet sides
+    iterator weakDirichletBegin()
+    { return m_bc["Weak Dirichlet"].begin(); }
+
+    /// Get an iterator to the end of the Weak Dirichlet sides
+    /// \return an iterator to the end of the Weak Dirichlet sides
+    iterator weakDirichletEnd()
+    { return m_bc["Weak Dirichlet"].end(); }
+
 
     /// Get a const-iterator to the beginning of the Neumann sides
     /// \return an iterator to the beginning of the Neumann sides
@@ -534,6 +592,10 @@ public:
             // this->add(p,s,f_shptr,"Dirichlet",unknown,comp,parametric);
             m_bc["Dirichlet"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
             break;
+        case condition_type::weak_dirichlet :
+            // this->add(p,s,f_shptr,"Dirichlet",unknown,comp,parametric);
+            m_bc["Weak Dirichlet"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
+            break;
         case condition_type::neumann :
             m_bc["Neumann"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
             break;
@@ -542,6 +604,9 @@ public:
             break;
         case condition_type::clamped :
             m_bc["Clamped"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
+            break;
+        case condition_type::weak_clamped :
+            m_bc["Weak Clamped"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
             break;
         case condition_type::collapsed :
             m_bc["Collapsed"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
