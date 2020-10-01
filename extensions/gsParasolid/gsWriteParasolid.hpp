@@ -294,10 +294,9 @@ bool gsWritePK_SHEET(const gsTensorBSpline<2, T>& tp, const std::string& filenam
     createPK_BSURF<T>(tp, bsurf, false, false);
 
     PK_UVBOX_t uv_box;
-    uv_box.param[0] = 0;
-    uv_box.param[1] = 0;
-    uv_box.param[2] = 1;
-    uv_box.param[3] = 1;
+    err = PK_SURF_ask_uvbox(bsurf, &uv_box);
+    PARASOLID_ERROR(PK_SURF_ask_uvbox, err);
+
     PK_BODY_t body;
     err = PK_SURF_make_sheet_body(bsurf, uv_box, &body);
     PARASOLID_ERROR(PK_SURF_make_sheet_body, err);

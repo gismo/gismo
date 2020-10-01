@@ -1064,6 +1064,30 @@ void gsTHBSplineBasis<d,T>::deriv2Single_into(unsigned i,
 }
 
 template<short_t d, class T>
+void gsTHBSplineBasis<d,T>::deriv3Single_into(unsigned i,
+                                              const gsMatrix<T>& u,
+                                              gsMatrix<T>& result) const
+{
+
+    if (this->m_is_truncated[i] == -1) // basis function not truncated
+    {
+        const unsigned level = this->levelOf(i);
+        const unsigned fl_tensor_index = flatTensorIndexOf(i, level);
+        this->m_bases[level]->deriv3Single_into(fl_tensor_index, u, result);
+    }
+    else
+    {
+        const unsigned level = this->m_is_truncated[i];
+        const gsSparseVector<T>& coefs = this->getCoefs(i);
+        const gsTensorBSplineBasis<d, T> & base =
+            *this->m_bases[level];
+
+        gsTensorDeriv3_into<d, T, gsKnotVector<T>,
+                            gsSparseVector<T> >(u, base, coefs, result);
+    }
+}
+
+template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
     gsMatrix<unsigned> indices;
@@ -1107,6 +1131,33 @@ void gsTHBSplineBasis<d,T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& resul
                 break;
 
             this->deriv2Single_into(index, u.col(i), res);
+
+            result.template block<numDers, 1>(j * numDers, i) = res;
+        }
+    }
+}
+
+
+template<short_t d, class T>
+void gsTHBSplineBasis<d,T>::deriv3_into(const gsMatrix<T>& u, gsMatrix<T>& result)const
+{
+    gsMatrix<unsigned> indices;
+    this->active_into(u, indices);
+
+    static const unsigned numDers = (d*d*d + 3*d*d + 2*d)/6.0 ;
+    gsMatrix<T> res(numDers, 1); // result of deriv3Single_into
+
+    result.setZero(indices.rows() * numDers, u.cols());
+
+    for (int i = 0; i < indices.cols(); i++)
+    {
+        for (int j = 0; j < indices.rows(); j++)
+        {
+            const unsigned index = indices(j, i);
+            if (j != 0 && index == 0)
+                break;
+
+            this->deriv3Single_into(index, u.col(i), res);
 
             result.template block<numDers, 1>(j * numDers, i) = res;
         }

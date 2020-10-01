@@ -643,6 +643,16 @@ void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u,
     result.swap(ev[2]);
 }
 
+// ------------------------- Sandra 3.derivative ** CALLED
+template <class T> inline
+void gsTensorBSplineBasis<1,T>::deriv3_into(const gsMatrix<T> & u,
+                                            gsMatrix<T>& result ) const
+{
+    std::vector<gsMatrix<T> > ev;
+    this->evalAllDers_into(u, 3, ev);
+    result.swap(ev[3]);                         // Should be 3?
+}
+
 template <class T>  inline
 void gsTensorBSplineBasis<1,T>::derivSingle_into(unsigned i,
                                                  const gsMatrix<T> & u,
@@ -816,6 +826,17 @@ void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u, const gsMatri
         gsBasis<T>::deriv2Func_into(u, perCoefs(coefs), result);
 }
 
+// TODO: Later
+/*template <class T> inline
+void gsTensorBSplineBasis<1,T>::deriv3_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const
+{
+    // TO DO specialized computation for gsBSplineBasis
+    if( m_periodic == 0 )
+        gsBasis<T>::deriv3Func_into(u, coefs, result);
+    else
+        gsBasis<T>::deriv3Func_into(u, perCoefs(coefs), result);
+}*/
+
 template <class T>  inline
 void gsTensorBSplineBasis<1,T>::deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {
@@ -823,6 +844,24 @@ void gsTensorBSplineBasis<1,T>::deriv2Single_into(unsigned i, const gsMatrix<T> 
     result.resize(1, u.cols() );
     gsMatrix<T> tmp;
     gsTensorBSplineBasis<1,T>::deriv2_into(u, tmp);
+
+    for (index_t j = 0; j < u.cols(); ++j)
+    {
+        const unsigned first = firstActive(u(0,j));
+        if ( (i>= first) && (i<= first + m_p) )
+            result(0,j) = tmp(i-first,j);
+        else
+            result(0,j) = T(0.0);
+    }
+}
+
+template <class T>  inline
+void gsTensorBSplineBasis<1,T>::deriv3Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result ) const
+{
+    // \todo Redo an efficient implementation p. 76, Alg. A2.5 Nurbs book
+    result.resize(1, u.cols() );
+    gsMatrix<T> tmp;
+    gsTensorBSplineBasis<1,T>::deriv3_into(u, tmp);
 
     for (index_t j = 0; j < u.cols(); ++j)
     {

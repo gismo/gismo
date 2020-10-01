@@ -148,6 +148,13 @@ public:
         return result;
     }
 
+    gsMatrix<T> deriv3Single(unsigned i, const gsMatrix<T> & u) const
+    {
+        gsMatrix<T> result;
+        this->deriv3Single_into(i, u, result);
+        return result;
+    }
+
     /** \brief Number of active basis functions at an arbitrary parameter value.
      *
      *  Usually, this is used for getting the active functions on one
@@ -356,6 +363,8 @@ public:
      *
      */
     virtual void deriv2Func_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const;
+
+    //virtual void deriv3Func_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const;
 
     /**
      * @brief Evaluates all derivatives up to order \em n of the function described by \a coefs at points \a u.
@@ -651,10 +660,16 @@ public:
      */
     virtual void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
 
+    virtual void deriv3_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+
     /// @brief Evaluate the (partial) derivatives of the \a i-th basis function
     /// at points \a u into \a result.
     // hessianSingle_into
     virtual void deriv2Single_into(unsigned i,
+                                   const gsMatrix<T> & u,
+                                   gsMatrix<T>& result ) const;
+
+    virtual void deriv3Single_into(unsigned i,
                                    const gsMatrix<T> & u,
                                    gsMatrix<T>& result ) const;
 

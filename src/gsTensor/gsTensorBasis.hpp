@@ -499,6 +499,96 @@ void gsTensorBasis<d,T>::deriv2Single_into(unsigned i,
 }
 
 template<short_t d, class T>
+void gsTensorBasis<d,T>::deriv3Single_into(unsigned i,
+                                const gsMatrix<T> & u,
+                                       gsMatrix<T>& result) const
+{
+    gsVector<unsigned, d> ti;
+    ti.noalias() = tensorIndex(i);
+    gsMatrix<T> ev[d], dev[d], ddev[d], dddev;
+    result.setOnes( (d*d*d + 3*d*d + 2*d)/6.0 , u.cols() );  // number of third derivatives
+
+    // Precompute values and first and second derivatives
+    for (short_t k = 0; k != d; ++k)
+    {
+        m_bases[k]->evalSingle_into  ( ti[k], u.row(k),  ev[k]  );
+        m_bases[k]->derivSingle_into ( ti[k], u.row(k), dev[k]  );
+        m_bases[k]->deriv2Single_into( ti[k], u.row(k), ddev[k] );
+    }
+
+    index_t c = d;
+    for (short_t k = 0; k != d; ++k)
+    {
+        // Pure third derivatives
+        m_bases[k]->deriv3Single_into( ti[k], u.row(k), dddev );
+        result.row(k)                = result.row(k).cwiseProduct(dddev);
+
+        // Multiply values to all other third derivatives
+        result.topRows(k)            = result.topRows(k) * ev[k].asDiagonal();
+        result.middleRows(k+1,d-k-1) = result.middleRows(k+1, d-k-1) * ev[k].asDiagonal();
+
+        // Third mixed derivatives, second + first
+        for (short_t l = 0; l != d; ++l)
+        {
+            if (k != l)
+            {
+                // Multiply with k-th second derivative
+                result.row(c)     = result.row(c).cwiseProduct(ddev[k]);
+                // Multiply with l-th first derivative
+                result.row(c)     = result.row(c).cwiseProduct(dev[l]);
+
+                if (k<l)
+                {
+                    // Multiply with values
+                    for (short_t r = 0; r != k; ++r)
+                        result.row(c) = result.row(c).cwiseProduct(ev[r]);
+                    for (short_t r = k+1; r != l; ++r)
+                        result.row(c) = result.row(c).cwiseProduct(ev[r]);
+                    for (short_t r = l+1; r != d; ++r)
+                        result.row(c) = result.row(c).cwiseProduct(ev[r]);
+                    c++;
+                }
+                else if (l<k)
+                {
+                    // Multiply with values
+                    for (short_t r = 0; r != l; ++r)
+                        result.row(c) = result.row(c).cwiseProduct(ev[r]);
+                    for (short_t r = l+1; r != k; ++r)
+                        result.row(c) = result.row(c).cwiseProduct(ev[r]);
+                    for (short_t r = k+1; r != d; ++r)
+                        result.row(c) = result.row(c).cwiseProduct(ev[r]);
+                    c++;
+                }
+            }
+        }
+        // Third mixed derivatives, first + first + first
+        for (short_t l = k+1; l != d; ++l)
+        {
+            for (short_t m = l+1; m != d; ++m)
+            {
+                // Multiply with k-th second derivative
+                result.row(c)     = result.row(c).cwiseProduct(dev[k]);
+                // Multiply with l-th first derivative
+                result.row(c)     = result.row(c).cwiseProduct(dev[l]);
+                // Multiply with m-th first derivative
+                result.row(c)     = result.row(c).cwiseProduct(dev[m]);
+
+                // Multiply with values
+                for (short_t r = 0; r != k; ++r)
+                    result.row(c) = result.row(c).cwiseProduct(ev[r]);
+                for (short_t r = k+1; r != l; ++r)
+                    result.row(c) = result.row(c).cwiseProduct(ev[r]);
+                for (short_t r = l+1; r != m; ++r)
+                    result.row(c) = result.row(c).cwiseProduct(ev[r]);
+                for (short_t r = m+1; r != d; ++r)
+                    result.row(c) = result.row(c).cwiseProduct(ev[r]);
+                c++;
+            }
+        }
+    }
+}
+
+template<short_t d, class T>
 void gsTensorBasis<d,T>::eval_into(const gsMatrix<T> & u,
                                          gsMatrix<T>& result) const
 {
@@ -746,6 +836,24 @@ void gsTensorBasis<d,T>::deriv2_into(const gsMatrix<T> & u,
 }
 
 
+template<short_t d, class T>
+void gsTensorBasis<d,T>::deriv3_into(const gsMatrix<T> & u,
+                                           gsMatrix<T> & result ) const
+{
+    std::vector< gsMatrix<T> >values[d];
+    gsVector<unsigned, d> v, nb_cwise;
+
+    unsigned nb = 1;
+    for (short_t i = 0; i < d; ++i)
+    {
+        m_bases[i]->evalAllDers_into( u.row(i), 3, values[i]);
+        const int num_i = values[i].front().rows();
+        nb_cwise[i] = num_i;
+        nb     *= num_i;
+    }
+
+    deriv3_tp(values, nb_cwise, result);
+}
 
 template<short_t d, class T>
 void gsTensorBasis<d,T>::deriv2_tp(const std::vector< gsMatrix<T> > values[],
@@ -784,6 +892,90 @@ void gsTensorBasis<d,T>::deriv2_tp(const std::vector< gsMatrix<T> > values[],
                 for ( short_t i=l+1; i<d; ++i)
                     result.row(cur).array() *= values[i][0].row( v.at(i) ).array() ;
                 ++m;
+            }
+        }
+
+        r+= stride;
+    } while (nextLexicographic(v, nb_cwise));
+}
+
+
+template<short_t d, class T>
+void gsTensorBasis<d,T>::deriv3_tp(const std::vector< gsMatrix<T> > values[],
+                                   const gsVector<unsigned, d> & nb_cwise,
+                                   gsMatrix<T>& result)
+{
+    const unsigned nb = nb_cwise.prod();
+    const unsigned stride = d*(d+1)*(d+2)/(3*2*1);    // number third derivatives
+
+    result.resize( stride*nb, values[0][0].cols() );
+
+    gsVector<unsigned, d> v;
+    v.setZero();
+    unsigned r = 0; // r is a local index of a basis function times the stride
+    do
+    {
+        unsigned m = d;
+        for ( short_t k=0; k<d; ++k)// First compute the pure third derivatives
+        {
+            index_t cur = r + k;
+            result.row(cur) = values[k][3].row( v.at(k) ) ;// pure 3nd derivate w.r.t. k-th var
+            for ( short_t i=0; i<k; ++i)
+                result.row(cur).array() *= values[i][0].row( v.at(i) ).array();
+            for ( short_t i=k+1; i<d; ++i)
+                result.row(cur).array() *= values[i][0].row( v.at(i) ).array();
+
+            for (short_t l = 0; l != d; ++l)// Then all mixed derivatives follow in lex order (second+first)
+            {
+                if (k != l)
+                {
+                    cur = r + m;
+                    result.row(cur).noalias() =
+                        values[k][2].row( v.at(k) ).cwiseProduct( values[l][1].row( v.at(l) ) );
+
+                    if(k<l)
+                    {
+                        for ( short_t i=0; i<k; ++i)
+                            result.row(cur).array() *= values[i][0].row( v.at(i) ).array() ;
+                        for ( short_t i=k+1; i<l; ++i)
+                            result.row(cur).array() *= values[i][0].row( v.at(i) ).array();
+                        for ( short_t i=l+1; i<d; ++i)
+                            result.row(cur).array() *= values[i][0].row( v.at(i) ).array() ;
+                        ++m;
+                    }
+                    if(l<k)
+                    {
+                        for ( short_t i=0; i<l; ++i)
+                            result.row(cur).array() *= values[i][0].row( v.at(i) ).array() ;
+                        for ( short_t i=l+1; i<k; ++i)
+                            result.row(cur).array() *= values[i][0].row( v.at(i) ).array();
+                        for ( short_t i=k+1; i<d; ++i)
+                            result.row(cur).array() *= values[i][0].row( v.at(i) ).array() ;
+                        ++m;
+                    }
+                }
+            }
+            // Third mixed derivatives, first + first + first
+            for (short_t l = k+1; l != d; ++l)
+            {
+                for (short_t j = l+1; j != d; ++j)
+                {
+                    cur = r + m;
+                    // Multiply with k-th and l-th and j-th first derivative
+                    result.row(cur).noalias() =
+                        values[k][1].row( v.at(k) ).cwiseProduct( values[l][1].row( v.at(l) ) ).cwiseProduct( values[j][1].row( v.at(j) ) );
+
+                    // Multiply with values
+                    for ( short_t i=0; i<k; ++i)
+                        result.row(cur).array() *= values[i][0].row( v.at(i) ).array() ;
+                    for ( short_t i=k+1; i<l; ++i)
+                        result.row(cur).array() *= values[i][0].row( v.at(i) ).array() ;
+                    for ( short_t i=l+1; i<j; ++i)
+                        result.row(cur).array() *= values[i][0].row( v.at(i) ).array() ;
+                    for ( short_t i=j+1; i<d; ++i)
+                        result.row(cur).array() *= values[i][0].row( v.at(i) ).array() ;
+                    ++m;
+                }
             }
         }
 
