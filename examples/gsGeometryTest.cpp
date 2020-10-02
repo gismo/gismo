@@ -241,11 +241,13 @@ public:
             const short_t s = d*A;
             for (index_t j = 0; j!= A; ++j) // for all actives
             {
+                // VARIATION OF THE TANGENT
                 // The tangent vector is in column colIndex in cJac and thus in 2*j+colIndex in bGrads.
                 // Furthermore, as basis function for dimension d, it has a nonzero in entry d, and zeros elsewhere
                 dtan = vecFun(d, bGrads.at(2*j+colIndex));
                 tvar.noalias() = 1 / tangent.norm() * ( dtan - ( tangent.dot(dtan) ) * tangent / (tangent.norm() * tangent.norm()) );
 
+                // VARIATION OF THE NORMAL
                 // Jac(u) ~ Jac(G) with alternating signs ?..
                 mv.noalias() = (vecFun(d, bGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
                               - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() )) / measure;
@@ -253,6 +255,7 @@ public:
                 // ---------------  First variation of the normal
                 snvar.noalias() = mv - ( normal.dot(mv) ) * normal;
 
+                // VARIATION OF THE OUTER NORMAL
                 res.row(s+j).noalias() = tvar.cross(normal) + tangent.cross(snvar);
             }
         }
@@ -568,6 +571,13 @@ int main(int argc, char* argv[])
     evaluateFunction(ev, snor, pt); // evaluates an expression on a point
     evaluateFunction(ev, otan, pt); // evaluates an expression on a point
     evaluateFunction(ev, jac(G), pt); // evaluates an expression on a point
+
+    gsMatrix<> a = ev.eval( otan,pt );
+    gsMatrix<> b = ev.eval( snor,pt );
+    gsVector<real_t,3> vA = static_cast< gsVector<real_t,3> >(a);
+    gsVector<real_t,3> vB = static_cast< gsVector<real_t,3> >(b);
+    gsDebugVar(vA.cross(vB));
+
     // evaluateFunction(ev, tanv, pt); // evaluates an expression on a point
     // evaluateFunction(ev, tanv.tr()*onor, pt); // evaluates an expression on a point
     evaluateFunction(ev, otan.tr()*onor, pt); // evaluates an expression on a point
