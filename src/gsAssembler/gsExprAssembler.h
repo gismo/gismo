@@ -971,6 +971,7 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
 //            m_exprdata->points().swap(tmp);
 //            m_exprdata->precompute(patch2);
 
+        ee.setPatch(patch1);
 	    ee(exprLhs);
 	    ee(exprRhs);
         }
