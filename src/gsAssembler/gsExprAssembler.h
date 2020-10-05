@@ -524,6 +524,7 @@ private:
 
             gsMatrix<index_t> rowInd, colInd;
             rowMap.localToGlobal(rowInd0, patchInd, rowInd);
+
             if (isMatrix)
             {
                 //if (&rowInd0!=&colInd0)
@@ -901,8 +902,9 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(it->patch());
 
-	    ee(exprLhs);
-	    ee(exprRhs);
+            ee.setPatch(it->patch());
+    	    ee(exprLhs);
+	        ee(exprRhs);
         }
     }
 
