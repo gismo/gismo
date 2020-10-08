@@ -43,10 +43,10 @@ ARG CXX=g++-9
 # Fortran compiler        : {gfortran-7,gfortran-8,gfortran-9,gfortran-10}
 ARG FC=na
 
-# CMAKE_CXX_STANDARD      : {98,11,14}
+# CMAKE_CXX_STANDARD      : {98,11,14,17,20}
 ARG CMAKE_CXX_STANDARD=14
 
-# CMAKE_BUILD_TYPE        : {Release,Debug,RelWithDebInfo}
+# CMAKE_BUILD_TYPE        : {Release,Debug,RelWithDebInfo,MinSizeRel}
 ARG CMAKE_BUILD_TYPE=Release
 
 # CMAKE_INSTALL_PREFIX
