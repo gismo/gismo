@@ -332,13 +332,26 @@ shopt -u extglob;
 
 echo "[---] TARGET_ARCHITECTURE:    ${TARGET_ARCHITECTURE}"
 
+# Build with Trilinos support
+shopt -s extglob;
+case "$IMAGE_NAME" in
+    *?(\-)trilinos?(\-*))
+        GISMO_WITH_TRILINOS=ON
+        GISMO_WITH_MPI=ON
+        ;;
+    *)
+        GISMO_WITH_TRILINOS=OFF
+        ;;
+esac
+shopt -u extglob;
+
 # Build with OpenMP support
 shopt -s extglob;
 case "$IMAGE_NAME" in
     *?(\-)clang?(\-*)|*?(\-)noomp?(\-*))
         GISMO_WITH_OPENMP=OFF
         ;;
-    *?(\-)openmp?(\-*))
+    *?(\-)omp?(\-*))
         GISMO_WITH_OPENMP=ON
         ;;
     *)
@@ -346,7 +359,6 @@ case "$IMAGE_NAME" in
         ;;
 esac
 shopt -u extglob;
-
 
 # Build with MPI support
 shopt -s extglob;
@@ -358,29 +370,22 @@ case "$IMAGE_NAME" in
         GISMO_WITH_MPI=ON
         ;;
     *)
-        GISMO_WITH_MPI=OFF
+        if [ -z {GISMO_WITH_MPI+x} ]; then
+            GISMO_WITH_MPI=OFF
+        fi
         ;;
 esac
 shopt -u extglob;
 
-# Build with Trilinos support
-shopt -s extglob;
-case "$IMAGE_NAME" in
-    *?(\-)trilinos?(\-*))
-        GISMO_WITH_MPI=ON
-        GISMO_WITH_TRILINOS=ON
-        ;;
-    *)
-        GISMO_WITH_MPI=OFF
-        GISMO_WITH_TRILINOS=OFF
-        ;;
-esac
-shopt -u extglob;
+if [[ "${GISMO_WITH_TRILINOS}" == "ON" && "${GISMO_WITH_MPI}" != "ON" ]]; then
+    echo "[***] Compiling G+Smo with Trilinos support enabled requires GISMO_WITH_MPI=ON"
+    exit 1
+fi
 
 echo "[---] GISMO_WITH_OPENMP:      ${GISMO_WITH_OPENMP}"
 echo "[---] GISMO_WITH_MPI:         ${GISMO_WITH_MPI}"
 echo "[---] GISMO_WITH_TRILINOS:    ${GISMO_WITH_TRILINOS}"
-
+exit 1
 ## Build the prime image at the end.
 if [ -z "$FC" ]
 then
