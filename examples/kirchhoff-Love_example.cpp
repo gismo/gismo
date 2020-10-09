@@ -1618,7 +1618,7 @@ int main(int argc, char *argv[])
         mp.addAutoBoundaries();
         mp.embed(3);
         E_modulus = 1.0;
-        thickness = 1.0;
+        thickness = 1.0e-3;
         PoissonRatio = 00;
     }
     else if (testCase == 2  || testCase == 3)
@@ -2136,7 +2136,10 @@ int main(int argc, char *argv[])
         ev.writeParaview( S_f2, G, "stress");
         evaluateFunction(ev, S_f2[0], pt); // evaluates an expression on a point
 
+        if (nonlinear)
         gsWrite(mp_def,"deformed_plate.xml");
+        else
+        gsWrite(mp_def,"deformed_plate_lin.xml");
         // gsFileManager::open("solution.pvd");
     }
 
