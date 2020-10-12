@@ -2038,6 +2038,18 @@ int main(int argc, char *argv[])
             );
         gsInfo << "done." << "\n";
 
+        space zH = exH.getSpace(basisH, 3); // dual space on H
+        zH.setInterfaceCont(0); //
+        zH.addBc( bc.get("Dirichlet") ); //
+        exH.initSystem(true);
+        gsInfo << "Assembling dual matrix (high), size = "<<exH.matrix().rows()<<","<<exH.matrix().cols()<<"... "<< std::flush;
+
+        exH.assemble(
+                // (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
+                (N_derH * (E_m_derH).tr() + M_derH * (E_f_derH).tr()) * meas(mapH)
+                );
+        gsInfo << "done." << "\n";
+
         // Solve system
         gsInfo << "Solving primal, size ="<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
         solver.compute(exL.matrix());
@@ -2065,9 +2077,11 @@ int main(int argc, char *argv[])
         if (goal == 1)
             exL.assemble( uL * gismo::expr::uv(2,3) * meas(mapL) );
         else if (goal == 2)
-            exL.assemble( S_f_derL * gismo::expr::uv(0,3) * meas(mapL) );
-
-
+            exL.assemble( 2 * uL * uL_sol * meas(mapL) );
+        else if (goal == 3)
+            exL.assemble( 2 * E_m_derL * E_mL.tr() * meas(mapL) );
+        else if (goal == 4)
+            exL.assemble( S_m_derL * gismo::expr::uv(0,3) * meas(mapL) );
         gsInfo << "done." << "\n";
 
         // Solve system
@@ -2079,26 +2093,27 @@ int main(int argc, char *argv[])
         gsInfo << "done." << " --> ";
         gsInfo <<"Dual L error: \t"<<evL.integral(((dual_exL - zL_sol).norm()*meas(mapL)))<<"\n";
 
-        space zH = exH.getSpace(basisH, 3); // dual space on H
-        zH.setInterfaceCont(0); //
-        zH.addBc( bc.get("Dirichlet") ); //
         // Assemble matrix and rhs
-        exH.initSystem(true);
-        gsInfo << "Assembling dual (high), size = "<<exH.matrix().rows()<<","<<exH.matrix().cols()<<"... "<< std::flush;
+        exH.initVector(1,false);
+        gsInfo << "Assembling dual vector (high), size = "<<exH.rhs().rows()<<",1... "<< std::flush;
 
-        geometryMap G_H = exH.getMap(mp);
         if (goal == 1)
             exH.assemble(
-                    // (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
-                    (N_derH * (E_m_derH).tr() + M_derH * (E_f_derH).tr()) * meas(mapH),
                     zH * gismo::expr::uv(2,3) * meas(mapH)
                 );
         else if (goal == 2)
             exH.assemble(
-                    // (N_der * cartcon(G) * (E_m_der * cartcon(G)).tr() + M_der * cartcon(G) * (E_f_der * cartcon(G)).tr()) * meas(G)
-                    (N_derH * (E_m_derH).tr() + M_derH * (E_f_derH).tr()) * meas(mapH),
-                    S_f_derH * gismo::expr::uv(0,3) * meas(mapH)
+                    2 * zH * uL2 * meas(mapH)
                 );
+        else if (goal == 3)
+            exH.assemble(
+                    2*E_m_derH * E_mH.tr() * meas(mapH)
+                );
+        else if (goal == 4)
+            exH.assemble(
+                    S_m_derH * gismo::expr::uv(0,3) * meas(mapH)
+                );
+
         gsInfo << "done." << "\n";
 
         // Solve system
@@ -2139,16 +2154,10 @@ int main(int argc, char *argv[])
 
         auto Fext = (zH2-zL_sol).tr() * F_L * meas(mapL);
 
-        // gsDebug<<"Vol =  "<<evL.integral( defL.tr() * gismo::expr::uv(2,3) * meas(mapL) )<<"\n";
-        // gsDebug<<"Vol =  "<<evH.integral( defH.tr() * gismo::expr::uv(2,3) * meas(mapH)  )<<"\n";
-
-        gsDebug<<evL.eval(deriv2(zH2,sn(defL).normalized().tr()),pts)<<"\n";
-        gsDebug<<evL.eval(deriv2(zL_sol,sn(defL).normalized().tr()),pts)<<"\n";
-        gsDebug<<evL.integral(M * deriv2(zH2,sn(defL).normalized().tr()).tr())<<"\n";
-        gsDebug<<evL.integral(M * deriv2(zL_sol,sn(defL).normalized().tr()).tr())<<"\n";
-
-        // exL.initSystem(false);
-        // exL.assemble(M_L*E_f_derL*meas(ma))
+        auto E_mG = 0.5 * ( flat(jac(defRef).tr()*jac(defRef)) - flat(jac(mapRef).tr()* jac(mapRef)) ) ; //[checked]
+        auto E_fG = ( deriv2(mapRef,sn(mapRef).normalized().tr()) - deriv2(defRef,sn(defRef).normalized().tr()) ) * reshape(m2Ref,3,3) ; //[checked]
+        auto S_mG = E_mG * reshape(mmRef,3,3);
+        auto S_fG = E_fG * reshape(mmRef,3,3);
 
 
         gsDebug<<"Fint_m = "<<evL.integral(( N * E_m_der.tr() ) * meas(mapL) )<<"\n";
@@ -2163,20 +2172,27 @@ int main(int argc, char *argv[])
 
         real_t approx = Fe;
         real_t exact = 0;
+
         if (goal==1)
         {
-            exact = evL.integral((primal_exL-uL_sol).tr() * gismo::expr::uv(2,3)*meas(mapL));
-            // exact = evRef.integral((defRef-mapRef).tr() * gismo::expr::uv(2,3)*meas(mapRef)) - evL.integral(uL_sol.tr() * gismo::expr::uv(2,3)*meas(mapL));
+            // exact = evL.integral((primal_exL-uL_sol).tr() * gismo::expr::uv(2,3)*meas(mapL));
+            exact = evRef.integral((defRef-mapRef).tr() * gismo::expr::uv(2,3)*meas(mapRef)) - evL.integral(uL_sol.tr() * gismo::expr::uv(2,3)*meas(mapL));
         }
         else if (goal==2)
         {
-            auto E_mG = 0.5 * ( flat(jac(defRef).tr()*jac(defRef)) - flat(jac(mapRef).tr()* jac(mapRef)) ) ; //[checked]
-            auto E_fG = ( deriv2(mapRef,sn(mapRef).normalized().tr()) - deriv2(defRef,sn(defRef).normalized().tr()) ) * reshape(m2Ref,3,3) ; //[checked]
-            auto S_mG = E_mG * reshape(mmRef,3,3);
-            auto S_fG = E_fG * reshape(mmRef,3,3);
-
-
-            exact = evRef.integral(S_fG * gismo::expr::uv(0,3)*meas(mapRef) ) - evL.integral(S_f * gismo::expr::uv(0,3)*meas(mapL) );
+            // exact = evL.integral( (primal_exL.tr() * primal_exL - uL_sol.tr() * uL_sol) *meas(mapL) );
+            // exact = evRef.integral( (defRef - mapRef).tr() * (defRef - mapRef) * meas(mapRef)) - evL.integral(uL_sol.tr() * uL_sol * meas(mapL));
+            exact = evRef.integral( (defRef - mapRef).tr() * (defRef - mapRef) * meas(mapRef)) - evL.integral((defL - mapL).tr() * (defL - mapL) * meas(mapL));
+        }
+        else if (goal==3)
+        {
+            gsDebugVar(evRef.integral(E_mG * E_mG.tr() *meas(mapRef) ));
+            gsDebugVar(evL.integral(E_m * E_m.tr() *meas(mapL)));
+            exact = evRef.integral(E_mG * E_mG.tr() *meas(mapRef) ) - evL.integral(E_m * E_m.tr() *meas(mapL) );
+        }
+        else if (goal==4)
+        {
+            exact = evRef.integral(S_mG * gismo::expr::uv(0,3)*meas(mapRef) ) - evL.integral(S_m * gismo::expr::uv(0,3)*meas(mapL) );
         }
 
 
