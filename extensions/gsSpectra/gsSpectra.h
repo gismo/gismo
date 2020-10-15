@@ -17,13 +17,15 @@
 
 #include <gsCore/gsConfig.h>
 
-#include <SymEigsSolver.h>
-#include <SymGEigsSolver.h>
-#include <GenEigsSolver.h>
-#include <MatOp/SparseGenMatProd.h>
-//#include <MatOp/DenseSymMatProd.h> // included by SymEigsSolver.h
-#include <MatOp/SparseCholesky.h>
-#include <MatOp/DenseCholesky.h>
+#include <gsSpectra/SymEigsSolver.h>
+#include <gsSpectra/SymEigsShiftSolver.h>
+#include <gsSpectra/SymGEigsSolver.h>
+#include <gsSpectra/GenEigsSolver.h>
+#include <gsSpectra/GenEigsRealShiftSolver.h>
+#include <gsSpectra/MatOp/SparseGenMatProd.h>
+//#include <gsSpectra/MatOp/DenseSymMatProd.h> // included by SymEigsSolver.h
+#include <gsSpectra/MatOp/SparseCholesky.h>
+#include <gsSpectra/MatOp/DenseCholesky.h>
 
 namespace gismo {
 
@@ -41,7 +43,7 @@ public:
     int cols() const { return m_mat.cols(); }
     void perform_op(const Scalar* x_in, Scalar* y_out) const
     {
-        gsAsVector<Scalar>(y_out, m_mat.rows()).noalias() = 
+        gsAsVector<Scalar>(y_out, m_mat.rows()).noalias() =
             m_mat * gsAsConstVector<Scalar>(x_in,  m_mat.cols());
     }
 };
@@ -91,27 +93,27 @@ public:
 
 template <class MatrixType> class SpectraOps
 {
-protected:
+public:
     typedef Spectra::SparseCholesky<typename MatrixType::Scalar> InvOp;
     SpectraOps(const MatrixType & A, const MatrixType & B) : opA(A), opB(B) { }
     SpectraMatProd<MatrixType>                           opA;
     Spectra::SparseCholesky<typename MatrixType::Scalar> opB;
 };
 
-template<> template <class T> class SpectraOps<gsMatrix<T> >
-{
-public:
-    typedef Spectra::DenseCholesky<T> InvOp;
-    typedef gsMatrix<T> MatrixType;
-protected:
-    SpectraOps(const MatrixType & A, const MatrixType & B) : opA(A), opB(B) { }
-    SpectraMatProd<MatrixType>                          opA;
-    InvOp opB;
-};
+// template<> template <class T> class SpectraOps<gsMatrix<T> >
+// {
+// public:
+//     typedef Spectra::DenseCholesky<T> InvOp;
+//     typedef gsMatrix<T> MatrixType;
+// protected:
+//     SpectraOps(const MatrixType & A, const MatrixType & B) : opA(A), opB(B) { }
+//     SpectraMatProd<MatrixType>                          opA;
+//     InvOp opB;
+// };
 
 /// Generalized eigenvalue solver for real symmetric matrices
 template <class MatrixType, int SelRule = Spectra::SMALLEST_ALGE>
-class gsSpectraGenSymSolver : private SpectraOps<MatrixType>, 
+class gsSpectraGenSymSolver : private SpectraOps<MatrixType>,
 public Spectra::SymGEigsSolver<typename MatrixType::Scalar, SelRule,
 SpectraMatProd<MatrixType>, typename SpectraOps<MatrixType>::InvOp, Spectra::GEIGS_CHOLESKY>
 {
