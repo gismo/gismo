@@ -324,8 +324,6 @@ macro(OFA_AutodetectPpc)
       endif()
    elseif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
    endif()
-
-   message(WARNING "Architecture auto-detection for CMAKE_SYSTEM_PROCESSOR '${CMAKE_SYSTEM_PROCESSOR}' is preliminary")
 endmacro()
 
 macro(OFA_AutodetectHostArchitecture)
@@ -858,7 +856,7 @@ macro(OptimizeForArchitecture)
       #G+Smo
       set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Core2), \"penryn\" (45nm Core2), \"nehalem\", \"westmere\", \"sandybridge\", \"ivybridge\", \"haswell\", \"broadwell\", \"skylake\", \"skylake-xeon\", \"kabylake\", \"cannonlake\", \"cascadelake\", \"cooperlake\", \"icelake\", \"icelake-xeon\", \"tigerlake\", \"alderlake\", \"sapphirerapids\", \"bonnell\", \"silvermont\", \"goldmont\", \"goldmont-plus\", \"tremont\", \"knl\" (Knights Landing), \"knm\" (Knights Mill), \"atom\", \"k8\", \"k8-sse3\", \"barcelona\", \"istanbul\", \"magny-cours\", \"bulldozer\", \"interlagos\", \"piledriver\", \"steamroller\", \"excavator\", \"amd14h\", \"amd16h\", \"zen\", \"zen2\", \"zen3\"." )
    elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "^(arm.*|ARM.*|aarch64.*|AARCH64.*)")
-      set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. Other supported values are: \"none\", \"generic\", TODO...")
+      set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. Other supported values are: \"none\", \"generic\", \"power8\", \"power9\", \"power10\".")
    elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "^(powerpc|ppc)64.*")
       set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. Other supported values are: \"none\", \"generic\", TODO...")
    else()
