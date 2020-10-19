@@ -83,7 +83,7 @@ namespace gismo
 
 			// Compute penalty parameter
 			const int deg = basis.maxDegree();
-			penalty = (deg + basis.dim()) * (deg + 1) * T(2.5);
+			penalty = (deg + basis.dim()) * (deg + 1) * T(10);
 		}
 
 		// Evaluate on element.
@@ -151,11 +151,11 @@ namespace gismo
 				const T mu = penalty / (0 != h ? h : 1);
 
 				// Sum up quadrature point evaluations
-				localRhs.noalias() -= weight * ((pow(eps*eps + (wGrad.transpose()*wGrad).value(), (p - 2) / 2)*pGrads.transpose() * unormal - mu * bVals)
-					* dirData.col(k).transpose());
+				localRhs.noalias() -= weight * (0*pow(eps*eps + (wGrad.transpose()*wGrad).value(), (p - 2) / 2)*pGrads.transpose() * unormal - mu * bVals)
+					* dirData.col(k).transpose();
 
 				localMat.noalias() -= weight * (pow(eps*eps + (wGrad.transpose()*wGrad).value(), (p - 2) / 2) * bVals * unormal.transpose() * pGrads
-					+ (bVals * unormal.transpose() * pGrads).transpose()
+					+ 0*pow(eps*eps + (wGrad.transpose()*wGrad).value(), (p - 2) / 2)*(bVals * unormal.transpose() * pGrads).transpose()
 					- mu * bVals * bVals.transpose());
 			}
 		}
