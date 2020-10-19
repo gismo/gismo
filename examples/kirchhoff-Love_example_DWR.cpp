@@ -1784,6 +1784,7 @@ int main(int argc, char *argv[])
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
     cmd.addInt("R", "refine", "Maximum number of adaptive refinement steps to perform",
         RefineLoopMax);
+    cmd.addReal( "T", "thickness", "thickness",  thickness );
     cmd.addInt( "g", "goal", "Goal function to use", goal );
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("nl", "Solve nonlinear problem", nonlinear);
@@ -1799,7 +1800,7 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp;
     gsMultiPatch<> mp_def;
     gsMultiPatch<> mp_ex;
-    gsReadFile<>("deformed_plate_lin.xml",mp_ex);
+    gsReadFile<>("deformed_plate_lin_T=" + std::to_string(thickness) + ".xml",mp_ex);
     gsMultiBasis<> basisR(mp_ex);
 
     // Unit square
@@ -1807,7 +1808,7 @@ int main(int argc, char *argv[])
     mp.addAutoBoundaries();
     mp.embed(3);
     E_modulus = 1.0;
-    thickness = 1.0;
+    // thickness = 1.0;
 
     // p-refine
     if (numElevate!=0)
@@ -2041,19 +2042,6 @@ int main(int argc, char *argv[])
 
     // [Pre-work]
 
-    auto deriv2s = deriv2(zL_sol);
-    auto deriv2v = deriv2(zL2);
-    gsDebugVar(deriv2v.rows());
-    gsDebugVar(deriv2v.cols());
-    gsDebugVar(deriv2s.rows());
-    gsDebugVar(deriv2s.cols());
-
-    evL.eval(deriv2v,pt);
-    gsDebugVar(evL.allValues(3,3)); // *grid.numPoints()
-    evL.eval(deriv2s,pt);
-    gsDebugVar(evL.allValues(3,3)); //*grid.numPoints())
-
-
     gsMatrix<> solVectorL;
     uL_sol.setSolutionVector(solVectorL);
 
@@ -2225,6 +2213,8 @@ int main(int argc, char *argv[])
 
         real_t approx = Fe;
         real_t exact = 0;
+
+        gsWriteParaview(mp_ex,"mp_ex",1000);
 
         if (goal==1)
         {

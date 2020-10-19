@@ -1601,6 +1601,7 @@ int main(int argc, char *argv[])
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
     cmd.addInt( "t", "testCase", "Test case to run: 1 = unit square; 2 = Scordelis Lo Roof",  testCase );
+    cmd.addReal( "T", "thickness", "thickness",  thickness );
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("nl", "Solve nonlinear problem", nonlinear);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
@@ -1611,14 +1612,24 @@ int main(int argc, char *argv[])
     //! [Read input file]
     gsMultiPatch<> mp;
     gsMultiPatch<> mp_def;
-    if (testCase==1)
+    if (testCase==0)
     {
         // Unit square
         mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
         mp.addAutoBoundaries();
         mp.embed(3);
         E_modulus = 1.0;
-        thickness = 1.0e-3;
+        thickness = 1.0;
+        PoissonRatio = 00;
+    }
+    else if (testCase==1)
+    {
+        // Unit square
+        mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
+        mp.addAutoBoundaries();
+        mp.embed(3);
+        E_modulus = 1.0;
+        // thickness = 1.0;
         PoissonRatio = 00;
     }
     else if (testCase == 2  || testCase == 3)
@@ -1669,7 +1680,25 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> displ("1",3);
 
     gsConstantFunction<> neuData(neu,3);
-    if (testCase == 1)
+    if (testCase == 0)
+    {
+        neu << 1, 0, 0;
+        neuData.setValue(neu,3);
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0 ); // unknown 1 - y
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
+
+        bc.addCondition(boundary::north, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
+        bc.addCondition(boundary::north, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
+
+        bc.addCondition(boundary::south, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
+        bc.addCondition(boundary::south, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
+
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 1 ); // unknown 1 - y
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 2 ); // unknown 2 - z
+        bc.addCondition(boundary::east, condition_type::neumann, &neuData );
+    }
+    else if (testCase == 1)
     {
         for (index_t i=0; i!=3; ++i)
         {
@@ -2137,9 +2166,9 @@ int main(int argc, char *argv[])
         evaluateFunction(ev, S_f2[0], pt); // evaluates an expression on a point
 
         if (nonlinear)
-        gsWrite(mp_def,"deformed_plate.xml");
+        gsWrite(mp_def,"deformed_plate_T=" + std::to_string(thickness) + ".xml");
         else
-        gsWrite(mp_def,"deformed_plate_lin.xml");
+        gsWrite(mp_def,"deformed_plate_lin_T=" + std::to_string(thickness) + ".xml");
         // gsFileManager::open("solution.pvd");
     }
 

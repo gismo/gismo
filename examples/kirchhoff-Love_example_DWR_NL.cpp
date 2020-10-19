@@ -1899,6 +1899,7 @@ int main(int argc, char *argv[])
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
     cmd.addInt("R", "refine", "Maximum number of adaptive refinement steps to perform",
         RefineLoopMax);
+    cmd.addReal( "T", "thickness", "thickness",  thickness );
     cmd.addInt( "g", "goal", "Goal function to use", goal );
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("nl", "Solve nonlinear problem", nonlinear);
@@ -1911,7 +1912,7 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp;
     gsMultiPatch<> mp_def;
     gsMultiPatch<> mp_ex;
-    gsReadFile<>("deformed_plate.xml",mp_ex);
+    gsReadFile<>("deformed_plate_T=" + std::to_string(thickness) + ".xml",mp_ex);
     gsMultiBasis<> basisR(mp_ex);
 
     // Unit square
@@ -1919,7 +1920,7 @@ int main(int argc, char *argv[])
     mp.addAutoBoundaries();
     mp.embed(3);
     E_modulus = 1.0;
-    thickness = 1.0;
+    // thickness = 1.0;
 
     // p-refine
     if (numElevate!=0)
