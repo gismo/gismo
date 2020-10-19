@@ -441,12 +441,16 @@ private:
             So we simply evaluate for every active basis function v_k the product hess(c).v_k
         */
 
-        lapl_expr<Scalar> vLapl = lapl_expr(_u);
+        gsMatrix<> tmp2;
+        tmp =  u.data().values[2].col(k);
         index_t nDers = _u.source().domainDim() * (_u.source().domainDim() + 1) / 2;
         index_t dim = _u.source().targetDim();
-        tmp.transpose() = vLapl.eval(k).reshape(dim,nDers);
+        tmp2.resize(nDers,dim);
+        for (index_t comp = 0; comp != u.source().targetDim(); comp++)
+            tmp2.col(comp) = tmp.block(comp*nDers,0,nDers,1); //star,length
+
         vEv = _v.eval(k);
-        res = vEv * tmp;
+        res = vEv * tmp2;
         return res;
     }
 
@@ -464,8 +468,8 @@ private:
             So we simply evaluate for every active basis function v_k the product hess(c).v_k
         */
 
-        solHess_expr<Scalar> sHess = solHess_expr(_u);
-        tmp = sHess.eval(k);
+        solHess_expr<Scalar> sHess = solHess_expr(u);
+        tmp = sHess.eval(k).transpose();
         vEv = _v.eval(k);
         res = vEv * tmp;
         return res;
@@ -541,12 +545,12 @@ public:
     {
         // return _u.data().values[2].rows() / _u.data().values[0].rows(); // numHessian dimensions
         // return _u.source().targetDim(); // no. dimensions should be 3
-        return 3; // _u.dim() for space or targetDim() for geometry
+        return rows_impl(_u); // _u.dim() for space or targetDim() for geometry
     }
 
-    index_t cols() const
+    index_t cols() const // number of function components (targetiDim)
     {
-        return _u.source().domainDim() * ( _u.source().domainDim() + 1 ) / 2;
+        return 3;
     }
 
     void setFlag() const
@@ -588,6 +592,7 @@ public:
             res = _u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second );
             return res;
         }
+
         template<class U> inline
         typename util::enable_if< util::is_same<U,gsFeVariable<Scalar> >::value, const gsMatrix<Scalar> & >::type
         eval_impl(const U & u, const index_t k)  const
@@ -602,7 +607,29 @@ public:
                 The geometry map has components c=[c1,c2,c3]
             */
             // evaluate the geometry map of U
-            res = _u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second );
+            tmp =  _u.data().values[2];
+            res.resize(rows(),cols());
+            for (index_t comp = 0; comp != _u.source().targetDim(); comp++)
+                res.col(comp) = tmp.block(comp*rows(),0,rows(),1); //star,length
+            return res;
+        }
+
+        template<class U> inline
+        typename util::enable_if< util::is_same<U,gsFeSolution<Scalar> >::value, const gsMatrix<Scalar> & >::type
+        eval_impl(const U & u, const index_t k)  const
+        {
+            /*
+                Here, we compute the hessian of the geometry map.
+                The hessian of the geometry map c has the form: hess(c)
+                [d11 c1, d11 c2, d11 c3]
+                [d22 c1, d22 c2, d22 c3]
+                [d12 c1, d12 c2, d12 c3]
+
+                The geometry map has components c=[c1,c2,c3]
+            */
+            // evaluate the geometry map of U
+            solHess_expr<Scalar> sHess = solHess_expr(_u);
+            res = sHess.eval(k).transpose();
             return res;
         }
 
@@ -645,6 +672,20 @@ public:
             // res = res.transpose();
             // gsDebugVar(res);
             return res;
+        }
+
+        template<class U> inline
+        typename util::enable_if< util::is_same<U,gsFeVariable<Scalar> >::value || util::is_same<U,gsGeometryMap<Scalar> >::value || util::is_same<U,gsFeSpace<Scalar> >::value, index_t >::type
+        rows_impl(const U & u)  const
+        {
+            return _u.source().domainDim() * ( _u.source().domainDim() + 1 ) / 2;
+        }
+
+        template<class U> inline
+        typename util::enable_if< util::is_same<U,gsFeSolution<Scalar> >::value, index_t >::type
+        rows_impl(const U & u) const
+        {
+            return _u.dim();
         }
 
 };
@@ -2000,6 +2041,18 @@ int main(int argc, char *argv[])
 
     // [Pre-work]
 
+    auto deriv2s = deriv2(zL_sol);
+    auto deriv2v = deriv2(zL2);
+    gsDebugVar(deriv2v.rows());
+    gsDebugVar(deriv2v.cols());
+    gsDebugVar(deriv2s.rows());
+    gsDebugVar(deriv2s.cols());
+
+    evL.eval(deriv2v,pt);
+    gsDebugVar(evL.allValues(3,3)); // *grid.numPoints()
+    evL.eval(deriv2s,pt);
+    gsDebugVar(evL.allValues(3,3)); //*grid.numPoints())
+
 
     gsMatrix<> solVectorL;
     uL_sol.setSolutionVector(solVectorL);
@@ -2088,6 +2141,7 @@ int main(int argc, char *argv[])
         gsInfo << "Solving dual (low), size = "<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
         // solver.compute(exL.matrix()); // not needed
         solVectorDualL = solver.solve(exL.rhs());
+        zL_sol.setSolutionVector(solVectorDualL);
         zL_sol.extract(zL2_mp);
 
         gsInfo << "done." << " --> ";
@@ -2130,7 +2184,6 @@ int main(int argc, char *argv[])
         // ---------------------------------------------------------Computing DWR error estimate-------------------------------------------- //
         // --------------------------------------------------------------------------------------------------------------------------------- //
 
-        // HOW TO DEFORM H??????
         auto E_m = 0.5 * ( flat(jac(defL).tr()*jac(defL)) - flat(jac(mapL).tr()* jac(mapL)) ) ; //[checked]
         auto S_m = E_m * reshape(mmL,3,3);
         auto N   = ttL.val() * S_m;
@@ -2176,7 +2229,7 @@ int main(int argc, char *argv[])
         if (goal==1)
         {
             // exact = evL.integral((primal_exL-uL_sol).tr() * gismo::expr::uv(2,3)*meas(mapL));
-            exact = evRef.integral((defRef-mapRef).tr() * gismo::expr::uv(2,3)*meas(mapRef)) - evL.integral(uL_sol.tr() * gismo::expr::uv(2,3)*meas(mapL));
+            exact = evRef.integral((defRef-mapRef).tr() * gismo::expr::uv(2,3)*meas(mapRef)) - evL.integral((defL-mapL).tr() * gismo::expr::uv(2,3)*meas(mapL));
         }
         else if (goal==2)
         {
