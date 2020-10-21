@@ -2006,7 +2006,6 @@ int main(int argc, char *argv[])
     geometryMap mapRef = exRef.getMap(mp);
     geometryMap defRef = exRef.getMap(mp_ex);
 
-
     variable primal_exL = evL.getVariable(u_ex, mapL);
     variable primal_exH = evH.getVariable(u_ex, mapH);
 
@@ -2361,8 +2360,21 @@ int main(int argc, char *argv[])
         auto S_mG = E_mG * reshape(mmRef,3,3);
         auto S_fG = E_fG * reshape(mmRef,3,3);
 
-        // auto test = ( deriv2(zL_sol,sn(defL).normalized().tr() )) * reshape(m2L,3,3);
-        // auto test22 = ( deriv2(zL2,sn(defL).normalized().tr() ) ) * reshape(m2L,3,3);
+        // gsVector<> pt(2);
+        // pt.setConstant(0.25);
+
+        // auto test = jac(zL_sol);
+        // auto test2 = fjac(zL2);
+
+        // auto test12 = deriv2(zL_sol);
+        // auto test22 = deriv2(zL2);
+
+        // gsDebug<<evL.eval(test,pt)<<"\n";
+        // gsDebug<<evL.eval(test2,pt)<<"\n";
+
+        // gsDebug<<evL.eval(test12,pt)<<"\n";
+        // gsDebug<<evL.eval(test22,pt)<<"\n";
+
 
         gsDebug<<"Fint_m = "<<evL.integral(( N * E_m_der.tr() ) * meas(mapL) )<<"\n";
         gsDebug<<"Fint_f = "<<evL.integral(( M * E_f_der.tr() ) * meas(mapL) )<<"\n";
@@ -2469,12 +2481,10 @@ int main(int argc, char *argv[])
         for (index_t k = 0; k != mp_def.nPatches(); ++k)
             deformation.patch(k).coefs() -= mp.patch(k).coefs();
 
-        gsField<> solField(mp, deformation);
         gsInfo<<"Plotting in Paraview...\n";
-        gsWriteParaview<>( solField, "solution", 1000, true);
-
-        evL.writeParaview( primal_exL   , mapL, "solution_exact");
+        evL.writeParaview( defL-mapL   , mapL, "solution_primalL");
         evL.writeParaview( zL_sol   , mapL, "solution_dualL");
+        evRef.writeParaview( defRef-mapRef   , mapRef, "solution_dual_exact");
 
         // ev.options().setSwitch("plot.elements", true);
         // ev.writeParaview( S_f2, G, "stress");
