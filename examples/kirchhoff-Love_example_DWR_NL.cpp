@@ -2376,15 +2376,15 @@ int main(int argc, char *argv[])
         // gsDebug<<evL.eval(test22,pt)<<"\n";
 
 
-        gsDebug<<"Fint_m = "<<evL.integral(( N * E_m_der.tr() ) * meas(mapL) )<<"\n";
-        gsDebug<<"Fint_f = "<<evL.integral(( M * E_f_der.tr() ) * meas(mapL) )<<"\n";
+        gsInfo<<"Fint_m = "<<evL.integral(( N * E_m_der.tr() ) * meas(mapL) )<<"\n";
+        gsInfo<<"Fint_f = "<<evL.integral(( M * E_f_der.tr() ) * meas(mapL) )<<"\n";
 
         real_t Fi = evL.integral( Fint  );
         real_t Fe = evL.integral( Fext  );
-        gsDebug<<"Fint = "<<Fi<<"\n";
-        gsDebug<<"Fext = "<<Fe<<"\n";
+        gsInfo<<"Fint = "<<Fi<<"\n";
+        gsInfo<<"Fext = "<<Fe<<"\n";
         real_t Res = evL.integral( Fext-Fint  );
-        gsDebug<<"R = "<<Res<<"\n";
+        gsInfo<<"R = "<<Res<<"\n";
 
         real_t approx = Res;
         real_t exact = 0;
@@ -2407,8 +2407,8 @@ int main(int argc, char *argv[])
 
 
         // gsDebug<<evL.integral(((primal_exL).tr() * gismo::expr::uv(2,3))*meas(mapL))<<"\n";
-        gsDebug<<"Exact = "<<exact<<"\n";
-        gsDebug<<"Efficiency = "<<approx/exact<<"\n";
+        gsInfo<<"Exact = "<<exact<<"\n";
+        gsInfo<<"Efficiency = "<<approx/exact<<"\n";
 
 
 
