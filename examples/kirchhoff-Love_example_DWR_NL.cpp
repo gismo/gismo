@@ -2200,8 +2200,6 @@ int main(int argc, char *argv[])
         uL_sol.extract(uH2_mp);
 
         gsInfo << "done." << " --> ";
-        gsInfo <<"Primal error: \t"<<evL.integral(((primal_exL - uL_sol).norm()*meas(mapL)))<<"\n";
-
 
         gsInfo << "Solving primal (nonlinear), size ="<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< "\n";
 
@@ -2258,6 +2256,7 @@ int main(int argc, char *argv[])
 
         uL_sol.setSolutionVector(solVectorL);
         gsInfo << "done." << " --> ";
+        gsInfo <<"Primal error: \t"<<evL.integral(((primal_exL - uL_sol).norm()*meas(mapL)))<<"\n";
 
         gsWriteParaview<>( mp_def, "mp_def", 1000, true);
 
