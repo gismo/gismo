@@ -2243,32 +2243,49 @@ int main(int argc, char *argv[])
         gsInfo<<"Exact = "<<exact<<"\n";
         gsInfo<<"Efficiency = "<<approx/exact<<"\n";
 
+
+        // auto dzW1 = (zH2-zL_sol).asDiag() * jac(uL);
+        // auto dzW2 = uL.tr().asDiag() * (fjac(zH2).tr() - jac(zL_sol)) ;
+
 /*
-        auto zW = uL * (zH2-zL_sol).asDiag();
-        auto dzW1 = (zH2-zL_sol).asDiag() * jac(uL);
-        auto dzW2 = uL.tr().asDiag() * (fjac(zH2).tr() - jac(zL_sol)) ;
-
-
-
+        space uL0 = exL.getSpace(basisL,3);
+        exL.initSystem(true);
         // weighted expressions
-        // auto FextW      = (zH2-zL_sol).asDiag() * u_L.tr() * F_L * meas(mapL);
-        // auto E_m_derW   = flat( jac(defL).tr() * (fjac(zH2).tr() - jac(zL_sol)) ) ; //[checked]
-        // auto E_f_derW   = ( deriv2(zH2,sn(defL).normalized().tr() ) - deriv2(zL_sol,sn(defL).normalized().tr() ) + deriv2(defL,var1(zH2,defL) ) - deriv2(defL,var1(zL_sol,defL) ) ) * reshape(m2L,3,3); //[checked]
-        // auto FintW      = ( ( N * E_m_derW.tr() - M * E_f_derW.tr() ) * meas(mapL));
-        // exL.assemble(FextW - FintW);
-        // gsDebugVar(exL.rhs().sum());
+        auto zW = uL0 * (zH2-zL_sol).asDiag();
+        auto dzW1 = (zH2-zL_sol).asDiag() * jac(uL);
+        auto dzW2 = uL.tr().asDiag() * (fjac(zH2) - jac(zL_sol)) ; // THIS ONE IS IMPOSSIBLE AS LONG AS .asDiag() DOES NOT WORK WITH COLBLOCKS!!!
 
-        // gsDebug<<evL.eval((zH2 - zL_sol).asDiag(),pts)<<"\n";
+        auto FextW      = zW * F_L * meas(mapL);
+        auto E_m_derW   = flat( jac(defL).tr() * (fjac(zH2) - jac(zL_sol)) ) ;
+        // auto E_m_derW   = flat( jac(defL).tr() * (fjac(zH2).tr() - jac(zL_sol)) ) ;
+        auto E_f_derW   = ( deriv2(zH2,sn(defL).normalized().tr() ) - deriv2(zL_sol,sn(defL).normalized().tr() ) + deriv2(defL,var1(zH2,defL) ) - deriv2(defL,var1(zL_sol,defL) ) ) * reshape(m2L,3,3); //[checked]
+        auto FintW      = ( ( N * E_m_derW.tr() - M * E_f_derW.tr() ) * meas(mapL));
+        exL.assemble(FextW);
+
+        gsVector<> pt(2);
+        pt.setConstant(0.25);
+        gsDebugVar(exL.rhs().sum());
+
+        gsDebugVar((jac(uL0).rows()));
+        gsDebugVar((jac(uL0).cols()));
+        gsDebug<<evL.eval(dzW1,pts)<<"\n";
+        gsDebug<<evL.eval(dzW2,pts)<<"\n";
+        gsDebug<<evL.eval(E_m_derW,pts)<<"\n";
+
+        exL.initSystem(true);
+        exL.assemble(N * E_m_derW.tr() * meas(mapL));
+        gsDebugVar(exL.rhs().sum());
+
         // gsDebug<<evL.eval(  (zH2 - zL_sol).asDiag() * uL.tr(),pts)<<"\n";
 
-        gsDebug<<evL.eval(zW,pts)<<"\n";
-        gsDebug<<evL.eval(uL,pts)<<"\n";
-        gsDebug<<evL.eval(uL.tr(),pts)<<"\n";
+        // gsDebug<<evL.eval(zW,pts)<<"\n";
+        // gsDebug<<evL.eval(uL,pts)<<"\n";
+        // gsDebug<<evL.eval(uL.tr(),pts)<<"\n";
 
-        gsDebug<<evL.eval(jac(uL),pts)<<"\n";
-        gsDebug<<evL.eval(dzW1,pts)<<"\n";
-        gsDebug<<evL.eval(uL.tr().asDiag(),pts)<<"\n";
-        gsDebug<<evL.eval((fjac(zH2).tr() - jac(zL_sol)),pts)<<"\n";
+        // gsDebug<<evL.eval(jac(uL),pts)<<"\n";
+        // gsDebug<<evL.eval(dzW1,pts)<<"\n";
+        // gsDebug<<evL.eval(uL.tr().asDiag(),pts)<<"\n";
+        // gsDebug<<evL.eval((fjac(zH2).tr() - jac(zL_sol)),pts)<<"\n";
 
         // gsDebug<<evL.eval(uL.tr().asDiag().rows(),pts)<<"\n";
         // gsDebug<<evL.eval(uL.tr().asDiag().cols(),pts)<<"\n";
@@ -2276,7 +2293,7 @@ int main(int argc, char *argv[])
 
 
         // gsDebug<<evL.eval(dzW2,pts)<<"\n";
-*/
+
 
         // exL.assemble((u * F * meas(G) - ( ( N * E_m_der.tr() - M * E_f_der.tr() ) * meas(G)) * meas(mapL));
         // gsDebugVar(exL.rhs().sum());
@@ -2324,8 +2341,9 @@ int main(int argc, char *argv[])
         //     // Run paraview and plot the last mesh
         //     gsFileManager::open("p2d_adaRef_sol.pvd");
         // }
-
+*/
     }
+
 
     //! [Export visualization in ParaView]
     if (plot)
@@ -2350,8 +2368,12 @@ int main(int argc, char *argv[])
         gsInfo<<"Plotting in Paraview...\n";
         gsWriteParaview<>( solField, "solution", 1000, true);
 
-        evL.writeParaview( primal_exL   , mapL, "solution_exact");
+        gsInfo<<"Plotting in Paraview...\n";
+        evL.writeParaview( defL-mapL   , mapL, "solution_primalL");
         evL.writeParaview( zL_sol   , mapL, "solution_dualL");
+        evH.writeParaview( zH_sol   , mapH, "solution_dualH");
+        evL.writeParaview( zH2-zL_sol   , mapL, "solution_dual");
+        evRef.writeParaview( defRef-mapRef   , mapRef, "solution_dual_exact");
 
         // ev.options().setSwitch("plot.elements", true);
         // ev.writeParaview( S_f2, G, "stress");

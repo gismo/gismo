@@ -1950,9 +1950,6 @@ int main(int argc, char *argv[])
     gsMultiBasis<> basisH = basisL;
     basisH.degreeElevate(1);
 
-    // gsInfo<<"Basis Primal: "<<basisL.basis(0)<<"\n";
-    // gsInfo<<"Basis Dual:   "<<basisH.basis(0)<<"\n";
-
     gsBoundaryConditions<> bc;
     gsVector<> tmp(3);
     tmp << 0, 0, 0;
@@ -2078,7 +2075,6 @@ int main(int argc, char *argv[])
     exL.initSystem();
     exH.initSystem();
 
-    gsInfo<<"Number of elements: "<<basisL.totalElements()<<"\n";
     gsInfo  <<"Lower order basis:\n"
             <<"\t Order: "<<basisL.maxCwiseDegree()<<"\n"
             <<"\t Number of elements: "<<basisL.totalElements()<<"\n"
@@ -2267,6 +2263,8 @@ int main(int argc, char *argv[])
 
 
         // Assemble matrix and rhs
+        // exL.initSystem();
+        // exL.assemble( ( N_derL * E_m_derL.tr() + E_m_der2_L + M_derL * E_f_derL.tr() - E_f_der2_L ) * meas(mapL) );
         exL.initVector(1,false);
         gsInfo << "Assembling dual (low), size = "<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
         // NOTE, we assume that the matrix in space uL is equal to that in space zL, hence it is not re-assembled!
@@ -2283,7 +2281,9 @@ int main(int argc, char *argv[])
 
         // Solve system
         gsInfo << "Solving dual (low), size = "<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
-        solver.compute(exL.matrix()); // not needed
+        gsSparseMatrix<> matrixL = exL.matrix().transpose();
+        gsDebug<<"matrix is transposed\n";
+        solver.compute(matrixL); // not needed
         solVectorDualL = solver.solve(exL.rhs());
         zL_sol.setSolutionVector(solVectorDualL);
         zL_sol.extract(zL2_mp);
@@ -2295,32 +2295,28 @@ int main(int argc, char *argv[])
         zH.setInterfaceCont(0); //
         zH.addBc( bc.get("Dirichlet") ); //
         // Assemble matrix and rhs
+
         exH.initSystem(true);
         gsInfo << "Assembling dual (high), size = "<<exH.matrix().rows()<<","<<exH.matrix().cols()<<"... "<< std::flush;
-
         exH.assemble( ( N_derH * E_m_derH.tr() + E_m_der2_H + M_derH * E_f_derH.tr() - E_f_der2_H ) * meas(mapH) );
 
+
         if (goal == 1)
-            exH.assemble(
-                    zH * gismo::expr::uv(2,3) * meas(mapH)
-                );
+            exH.assemble( zH * gismo::expr::uv(2,3) * meas(mapH) );
         else if (goal == 2)
-            exH.assemble(
-                    2 * zH * uL2 * meas(mapH)
-                );
+            exH.assemble( 2 * zH * uL2 * meas(mapH) );
         else if (goal == 3)
-            exH.assemble(
-                    2*E_m_derH * E_mH.tr() * meas(mapH)
-                );
+            exH.assemble( 2*E_m_derH * E_mH.tr() * meas(mapH) );
         else if (goal == 4)
-            exH.assemble(
-                    S_m_derH * gismo::expr::uv(0,3) * meas(mapH)
-                );
+            exH.assemble( S_m_derH * gismo::expr::uv(0,3) * meas(mapH) );
+
         gsInfo << "done." << "\n";
 
         // Solve system
         gsInfo << "Solving dual (high), size = "<<exH.matrix().rows()<<","<<exH.matrix().cols()<<"... "<< std::flush;
-        solver.compute(exH.matrix());
+        gsSparseMatrix<> matrixH = exH.matrix().transpose();
+        gsDebug<<"matrix is transposed\n";
+        solver.compute(matrixH);
         solVectorDualH = solver.solve(exH.rhs());
 
         zH_sol.setSolutionVector(solVectorDualH);
@@ -2412,54 +2408,6 @@ int main(int argc, char *argv[])
 
 
 
-
-        // exL.assemble((u * F * meas(G) - ( ( N * E_m_der.tr() - M * E_f_der.tr() ) * meas(G)) * meas(mapL));
-        // gsDebugVar(exL.rhs().sum());
-
-
-
-        // // Construct the solution for plotting the mesh later
-        // pa.constructSolution(solVector, mpsol);
-        // gsField<> sol(pa.patches(), mpsol);
-
-        // // The vector with element-wise local error estimates.
-        // evL.maxElWise( uL_sol.norm() );
-        // const std::vector<real_t> & elErrEst = evL.elementwise();
-
-        // gsElementErrorPlotter<real_t> err_eh(basisL.basis(0),elErrEst);
-        // const gsField<> elemError_eh( mpL, err_eh, false );
-        // gsWriteParaview<>( elemError_eh, "error_elem_eh", 1000);
-
-        // Get the vector with element-wise local (known in this case) errors...
-        //gsExprEvaluator<>::variable gg = ev.getVariable(g, Gm);
-        //ev.integralElWise( (f1 - gg).sqNorm() * meas(Gm) );
-        //const std::vector<real_t> & elErrEst = ev.elementwise();
-
-        // // Mark elements for refinement, based on the computed local errors and
-        // // refCriterion and refParameter.
-        // elMarked.resize( elErrEst.size() );
-        // gsMarkElementsForRef( elErrEst, refCriterion, refParameter, elMarked);
-
-        // gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true)<<" elements\n";
-
-        // // Refine the elements of the mesh, based on elMarked.
-        // if (RefineLoop != RefineLoopMax)
-        // {
-        //     gsRefineMarkedElements( mpL, elMarked);
-        //     gsRefineMarkedElements( mpH, elMarked);
-        //     gsWriteParaview<>( mpL, "mp", 1000, true);
-        // }
-
-
-        // if ( (RefineLoop == RefineLoopMax) && plot)
-        // {
-        //     // Write approximate solution to paraview files
-        //     gsInfo<<"Plotting in Paraview...\n";
-        //     gsWriteParaview<>(sol, "p2d_adaRef_sol", 5001, true);
-        //     // Run paraview and plot the last mesh
-        //     gsFileManager::open("p2d_adaRef_sol.pvd");
-        // }
-
     }
 
     //! [Export visualization in ParaView]
@@ -2484,6 +2432,8 @@ int main(int argc, char *argv[])
         gsInfo<<"Plotting in Paraview...\n";
         evL.writeParaview( defL-mapL   , mapL, "solution_primalL");
         evL.writeParaview( zL_sol   , mapL, "solution_dualL");
+        evH.writeParaview( zH_sol   , mapH, "solution_dualH");
+        evL.writeParaview( zH2-zL_sol   , mapL, "solution_dual");
         evRef.writeParaview( defRef-mapRef   , mapRef, "solution_dual_exact");
 
         // ev.options().setSwitch("plot.elements", true);
