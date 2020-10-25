@@ -46,11 +46,17 @@ https://github.com/gismo/gismo/archive/stable.zip
 * Configuration: [CMake 2.8.8](https://cmake.org) or newer.
 
 * Compilers tested include recent versions of
-  - GNU GCC
-  - MS Visual C++
-  - Clang
-  - Intel C++ compiler
-  - Mingw64
+  - [AMD Optimizing C/C++ Compiler](https://developer.amd.com/amd-aocc/)
+  - [Clang](https://clang.llvm.org) also Apple Clang
+  - [GNU GCC](https://gcc.gnu.org)
+  - [Intel C++ compiler](https://software.intel.com/content/www/us/en/develop/tools/compilers/c-compilers.html)
+  - [Mingw64](http://mingw-w64.org/)
+  - [MS Visual Studio C++](https://visualstudio.microsoft.com)
+  - [PGI C/C++](https://www.pgroup.com/index.htm) only with `GISMO_WITH_OPENMP=OFF`
+  
+* Compilers known to not work
+  - [Oracle Developer Studio](https://www.oracle.com/application-development/technologies/developerstudio.html) fails to compile Eigen
+  - [IBM XLC C/C++](https://www.ibm.com/products/xl-cpp-linux-compiler-power) fails to compile Eigen
 
 * Recommended:
    - [Paraview](https://www.paraview.org) for visualization.
