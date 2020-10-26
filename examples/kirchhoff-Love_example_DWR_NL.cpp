@@ -1948,7 +1948,7 @@ int main(int argc, char *argv[])
 
     gsMultiBasis<> basisL(mp);
     gsMultiBasis<> basisH = basisL;
-    basisH.degreeElevate(1);
+    basisH.degreeElevate();
 
     gsBoundaryConditions<> bc;
     gsVector<> tmp(3);
@@ -1997,8 +1997,8 @@ int main(int argc, char *argv[])
 
     // Set the geometry map
     geometryMap mapL = exL.getMap(mp); // the last map counts
-    geometryMap mapH = exH.getMap(mp); // the last map counts
     geometryMap defL = exL.getMap(mp_def);
+    geometryMap mapH = exH.getMap(mp); // the last map counts
     geometryMap defH = exH.getMap(mp_def);
     geometryMap mapRef = exRef.getMap(mp);
     geometryMap defRef = exRef.getMap(mp_ex);
@@ -2196,8 +2196,6 @@ int main(int argc, char *argv[])
         gsInfo << "Solving primal, size ="<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
         solver.compute(exL.matrix());
         solVectorL = solver.solve(exL.rhs());
-        uL_sol.extract(uL2_mp);
-        uL_sol.extract(uH2_mp);
 
         gsInfo << "done." << " --> ";
 
@@ -2255,15 +2253,18 @@ int main(int argc, char *argv[])
         }
 
         uL_sol.setSolutionVector(solVectorL);
+        uL_sol.extract(uL2_mp);
+        uL_sol.extract(uH2_mp);
         gsInfo << "done." << " --> ";
         gsInfo <<"Primal error: \t"<<evL.integral(((primal_exL - uL_sol).norm()*meas(mapL)))<<"\n";
 
-        gsWriteParaview<>( mp_def, "mp_def", 1000, true);
+        // gsWriteParaview<>( mp_def, "mp_def", 1000, true);
+        evL.writeParaview(E_fL,mapL,"test_defL");
 
 
         // Assemble matrix and rhs
-        // exL.initSystem();
-        // exL.assemble( ( N_derL * E_m_derL.tr() + E_m_der2_L + M_derL * E_f_derL.tr() - E_f_der2_L ) * meas(mapL) );
+        exL.initSystem();
+        exL.assemble( ( N_derL * E_m_derL.tr() + E_m_der2_L + M_derL * E_f_derL.tr() - E_f_der2_L ) * meas(mapL) );
         exL.initVector(1,false);
         gsInfo << "Assembling dual (low), size = "<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
         // NOTE, we assume that the matrix in space uL is equal to that in space zL, hence it is not re-assembled!
@@ -2284,21 +2285,21 @@ int main(int argc, char *argv[])
         gsDebug<<"matrix is transposed\n";
         solver.compute(matrixL); // not needed
         solVectorDualL = solver.solve(exL.rhs());
+        // gsDebugVar(exL.rhs().transpose());
+        // gsDebugVar(exL.matrix().toDense());
+
         zL_sol.setSolutionVector(solVectorDualL);
         zL_sol.extract(zL2_mp);
 
         gsInfo << "done." << " --> ";
         gsInfo <<"Dual L error: \t"<<evL.integral(((dual_exL - zL_sol).norm()*meas(mapL)))<<"\n";
 
-        space zH = exH.getSpace(basisH, 3); // dual space on H
-        zH.setInterfaceCont(0); //
-        zH.addBc( bc.get("Dirichlet") ); //
-        // Assemble matrix and rhs
+        evH.writeParaview(E_fH,mapH,"test_defH");
 
-        exH.initSystem(true);
+        // Assemble matrix and rhs
+        exH.initSystem();
         gsInfo << "Assembling dual (high), size = "<<exH.matrix().rows()<<","<<exH.matrix().cols()<<"... "<< std::flush;
         exH.assemble( ( N_derH * E_m_derH.tr() + E_m_der2_H + M_derH * E_f_derH.tr() - E_f_der2_H ) * meas(mapH) );
-
 
         if (goal == 1)
             exH.assemble( zH * gismo::expr::uv(2,3) * meas(mapH) );
@@ -2317,6 +2318,8 @@ int main(int argc, char *argv[])
         gsDebug<<"matrix is transposed\n";
         solver.compute(matrixH);
         solVectorDualH = solver.solve(exH.rhs());
+        // gsDebugVar(exH.rhs().transpose());
+        // gsDebugVar(exH.matrix().toDense());
 
         zH_sol.setSolutionVector(solVectorDualH);
         zH_sol.extract(zH2_mp);
@@ -2429,11 +2432,19 @@ int main(int argc, char *argv[])
             deformation.patch(k).coefs() -= mp.patch(k).coefs();
 
         gsInfo<<"Plotting in Paraview...\n";
+        evL.options().setSwitch("plot.elements", true);
+        evH.options().setSwitch("plot.elements", true);
+
         evL.writeParaview( defL-mapL   , mapL, "solution_primalL");
         evL.writeParaview( zL_sol   , mapL, "solution_dualL");
         evH.writeParaview( zH_sol   , mapH, "solution_dualH");
+
         evL.writeParaview( zH2-zL_sol   , mapL, "solution_dual");
         evRef.writeParaview( defRef-mapRef   , mapRef, "solution_dual_exact");
+
+        gsWriteParaview<>( basisL.basis(0), "basisL", 1000);
+        gsWriteParaview<>( basisH.basis(0), "basisH", 1000);
+
 
         // ev.options().setSwitch("plot.elements", true);
         // ev.writeParaview( S_f2, G, "stress");

@@ -2369,6 +2369,8 @@ int main(int argc, char *argv[])
         gsWriteParaview<>( solField, "solution", 1000, true);
 
         gsInfo<<"Plotting in Paraview...\n";
+        evL.options().setSwitch("plot.elements", true);
+        evH.options().setSwitch("plot.elements", true);
         evL.writeParaview( defL-mapL   , mapL, "solution_primalL");
         evL.writeParaview( zL_sol   , mapL, "solution_dualL");
         evH.writeParaview( zH_sol   , mapH, "solution_dualH");
