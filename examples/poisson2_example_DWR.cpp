@@ -388,6 +388,7 @@ int main(int argc, char *argv[])
     gsInfo<<"Objective function errors J(u)-J(u_h)\n";
     real_t error = evL.integral((0.5*primal_exL*primal_exL)*meas(G)) - evL.integral((0.5*uL*uL)*meas(G));
     real_t errest = evL.integral( (zH2-zL) * ff * meas(G)-(((igrad(zH2) - igrad(zL))*igrad(uL).tr()) ) * meas(G));
+
     // real_t errest = evL.integral( (zH2-zL) * ff * meas(G)-(((igrad(zH2) - igrad(zL))*igrad(uL).tr()) ) * meas(G));
     gsInfo<<"\texact:\t"   <<error<<"\n"
             "\testimate:\t"<<errest<<"\n"
@@ -445,7 +446,7 @@ int main(int argc, char *argv[])
         */
 
         auto lhs = ((zH2 - zL) * grad(uL) * grad(u0).tr()).tr(); // + v * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
-        auto lhs2 = u0 * ( fjac(zH2).tr() * grad(uL).tr() - grad(zL) * grad(uL).tr() ) ;
+        auto lhs2 = u0 * ( fjac(zH2) * grad(uL).tr() - grad(zL) * grad(uL).tr() ) ;
         auto rhs = ff.val() * (zH2.val() - zL.val()) * u0;
 
         gsMatrix<> res;

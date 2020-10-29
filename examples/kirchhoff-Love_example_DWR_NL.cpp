@@ -563,7 +563,7 @@ private:
             tmp2.col(comp) = tmp.block(comp*nDers,0,nDers,1); //star,length
 
         vEv = _v.eval(k);
-        res = vEv * tmp2;
+        res = vEv * tmp2.transpose();
         return res;
     }
 
@@ -584,7 +584,7 @@ private:
         solHess_expr<Scalar> sHess = solHess_expr(u);
         tmp = sHess.eval(k).transpose();
         vEv = _v.eval(k);
-        res = vEv * tmp;
+        res = vEv * tmp.transpose();
         return res;
     }
 
@@ -1691,126 +1691,6 @@ public:
 
 };
 
-template<class T>
-class gsDWRHelper
-{
-    public:
-        /// Shared pointer for solutionFunction
-        typedef memory::shared_ptr< gsDWRHelper > Ptr;
-
-        /// Unique pointer for solutionFunction
-        typedef memory::unique_ptr< gsDWRHelper > uPtr;
-
-    gsDWRHelper(const gsMultiBasis<>& basisL,
-                const gsMultiBasis<>& basisH,
-                const gsMultiPatch<> & mp
-                ) : m_basisL(basisL), m_basisH(basisH), m_patches(mp) { this->initialize(); }
-
-    protected:
-        void initialize()
-        {
-            m_dim = m_patches.targetDim();
-
-            gsExprAssembler<> assembler(1,1);
-            assembler.setIntegrationElements(m_basisH); //  is this correct?
-            assembler.getSpace(m_basisH, m_dim);
-            assembler.initSystem();
-            m_nH = assembler.numDofs();
-
-            assembler.setIntegrationElements(m_basisL); //  is this correct?
-            assembler.getSpace(m_basisL, m_dim);
-            assembler.initSystem();
-            m_nL = assembler.numDofs();
-        }
-
-        void computeFromTo(const gsMultiBasis<>& basis1, const gsMultiBasis<>& basis2, gsSparseMatrix<T> & result)
-        {
-            gsExprAssembler<> assembler(1,1);
-            geometryMap G = assembler.getMap(m_patches);
-
-            assembler.setIntegrationElements(basis1); //  is this correct?
-            space u1 = assembler.getSpace(basis1, m_dim);
-            space u2 = assembler.getTestSpace(u1 , basis2);
-            assembler.initSystem();
-            assembler.assemble(u2 * u1.tr() * meas(G));
-            result = assembler.matrix();
-        }
-
-    public:
-        void computeLL()
-        {
-            if ((m_matrixLL.rows()==0) || (m_matrixLL.cols()==0))
-                computeFromTo(m_basisL, m_basisL, m_matrixLL);
-            // else
-            //     gsInfo<<"LL matrix already computed\n";
-        }
-        void computeHH()
-        {
-            if ((m_matrixHH.rows()==0) || (m_matrixHH.cols()==0))
-                computeFromTo(m_basisH, m_basisH, m_matrixHH);
-            // else
-            //     gsInfo<<"HH matrix already computed\n";
-        }
-        void computeHL()
-        {
-            if ((m_matrixLH.rows()==0) || (m_matrixLH.cols()==0))
-                computeFromTo(m_basisH, m_basisL, m_matrixHL);
-            else
-                m_matrixHL = m_matrixLH.transpose();
-        }
-        void computeLH()
-        {
-            if ((m_matrixHL.rows()==0) || (m_matrixHL.cols()==0))
-                computeFromTo(m_basisL, m_basisH, m_matrixLH);
-            else
-                m_matrixLH = m_matrixHL.transpose();
-        }
-
-        const gsSparseMatrix<T> & matrixLL() {this->computeLL(); return m_matrixLL; }
-        const gsSparseMatrix<T> & matrixHH() {this->computeHH(); return m_matrixHH; }
-        const gsSparseMatrix<T> & matrixHL() {this->computeHL(); return m_matrixHL; }
-        const gsSparseMatrix<T> & matrixLH() {this->computeLH(); return m_matrixLH; }
-
-        void projectVector(const gsMatrix<T> & vectorIn, gsMatrix<T> & vectorOut)
-        {
-            size_t rows = vectorIn.rows();
-            if ( rows == m_nL ) // from low to high
-            {
-                this->computeHH();
-                this->computeLH();
-                m_solver.compute(m_matrixHH);
-                vectorOut = m_solver.solve(m_matrixLH*vectorIn);
-            }
-            else if (rows == m_nH) // from high to low
-            {
-                this->computeLL();
-                this->computeHL();
-                m_solver.compute(m_matrixLL);
-                vectorOut = m_solver.solve(m_matrixHL*vectorIn);
-            }
-            else
-                gsInfo<<"WARNING: cannot project vector, size mismatch; rows = "<<rows<<"; numDofs L = "<<m_nL<<"; numDofs H = "<<m_nL<<"\n";
-        }
-
-
-    protected:
-        const gsMultiBasis<T> & m_basisL;
-        const gsMultiBasis<T> & m_basisH;
-        const gsMultiPatch<T> & m_patches;
-        gsSparseMatrix<T> m_matrixHH, m_matrixLL, m_matrixHL, m_matrixLH;
-        gsSparseMatrix<T> m_matrixHH_block, m_matrixLL_block, m_matrixHL_block, m_matrixLH_block;
-        gsSparseSolver<>::CGDiagonal m_solver;
-
-        size_t m_nL, m_nH, m_dim;
-
-        typedef gsExprAssembler<>::geometryMap geometryMap;
-        typedef gsExprAssembler<>::variable    variable;
-        typedef gsExprAssembler<>::space       space;
-        typedef gsExprAssembler<>::solution    solution;
-
-
-}; // class definition ends
-
 
 template<typename T>
 class gsElementErrorPlotter : public gsFunction<T>
@@ -1961,9 +1841,6 @@ int main(int argc, char *argv[])
     real_t load = 1.0;
     real_t D = E_modulus * math::pow(thickness,3) / ( 12 * ( 1- math::pow(PoissonRatio,2) ) );
 
-    gsFunctionExpr<> u_ex( "0","0","w:= 0; for (u := 1; u < 100; u += 2) { for (v := 1; v < 100; v += 2) { w += -16.0 * " + std::to_string(load) + " / ( pi^6*" + std::to_string(D) + " ) * 1 / (v * u * ( v^2 + u^2 )^2 ) * sin( v * pi * x) * sin(u * pi * y) } }",3);
-    gsFunctionExpr<> z_ex( "0","0","w:= 0; for (u := 1; u < 100; u += 2) { for (v := 1; v < 100; v += 2) { w += 16.0 * 1 / ( pi^6*" + std::to_string(D) + " ) * 1 / (v * u * ( v^2 + u^2 )^2 ) * sin( v * pi * x) * sin(u * pi * y) } }",3);
-
     gsConstantFunction<> neuData(neu,3);
 
     for (index_t i=0; i!=3; ++i)
@@ -2003,12 +1880,6 @@ int main(int argc, char *argv[])
     geometryMap mapRef = exRef.getMap(mp);
     geometryMap defRef = exRef.getMap(mp_ex);
 
-    variable primal_exL = evL.getVariable(u_ex, mapL);
-    variable primal_exH = evH.getVariable(u_ex, mapH);
-
-    variable dual_exL = evL.getVariable(z_ex, mapL);
-    variable dual_exH = evH.getVariable(z_ex, mapH);
-
     // Set the discretization spaces
     space uL = exL.getSpace(basisL, 3); //primal space on L
     space zH = exH.getSpace(basisH, 3); // dual space on H
@@ -2029,7 +1900,7 @@ int main(int argc, char *argv[])
     variable zH2 = exL.getCoeff(zH2_mp);
     // zL2
     gsMultiPatch<> zL2_mp(mp);//just initialize for not being empty
-    variable zL2 = exL.getCoeff(zL2_mp);
+    variable zL2 = exH.getCoeff(zL2_mp);
     // uL2
     gsMultiPatch<> uL2_mp(mp);//just initialize for not being empty
     variable uL2 = exH.getCoeff(uL2_mp);
@@ -2072,8 +1943,8 @@ int main(int argc, char *argv[])
     //A.options().setInt("DirichletValues", dirichlet::homogeneous);
 
     // Initialize the system
-    exL.initSystem();
-    exH.initSystem();
+    exL.initSystem(true);
+    exH.initSystem(true);
 
     gsInfo  <<"Lower order basis:\n"
             <<"\t Order: "<<basisL.maxCwiseDegree()<<"\n"
@@ -2211,13 +2082,13 @@ int main(int argc, char *argv[])
         }
 
         index_t itMax = 100;
-        real_t tol = 1e-8;
+        real_t tol = 1e-14;
         real_t residual = exL.rhs().norm();
         real_t residual0 = residual;
         real_t residualOld = residual;
         for (index_t it = 0; it != itMax; ++it)
         {
-            exL.initSystem();
+            exL.initSystem(false);
             // assemble system
             exL.assemble(
                 ( N_derL * E_m_derL.tr() + E_m_der2_L + M_derL * E_f_derL.tr() - E_f_der2_L ) * meas(mapL)
@@ -2256,14 +2127,9 @@ int main(int argc, char *argv[])
         uL_sol.extract(uL2_mp);
         uL_sol.extract(uH2_mp);
         gsInfo << "done." << " --> ";
-        gsInfo <<"Primal error: \t"<<evL.integral(((primal_exL - uL_sol).norm()*meas(mapL)))<<"\n";
-
-        // gsWriteParaview<>( mp_def, "mp_def", 1000, true);
-        evL.writeParaview(E_fL,mapL,"test_defL");
-
 
         // Assemble matrix and rhs
-        exL.initSystem();
+        exL.initSystem(false);
         exL.assemble( ( N_derL * E_m_derL.tr() + E_m_der2_L + M_derL * E_f_derL.tr() - E_f_der2_L ) * meas(mapL) );
         exL.initVector(1,false);
         gsInfo << "Assembling dual (low), size = "<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
@@ -2292,12 +2158,9 @@ int main(int argc, char *argv[])
         zL_sol.extract(zL2_mp);
 
         gsInfo << "done." << " --> ";
-        gsInfo <<"Dual L error: \t"<<evL.integral(((dual_exL - zL_sol).norm()*meas(mapL)))<<"\n";
-
-        evH.writeParaview(E_fH,mapH,"test_defH");
 
         // Assemble matrix and rhs
-        exH.initSystem();
+        exH.initSystem(false);
         gsInfo << "Assembling dual (high), size = "<<exH.matrix().rows()<<","<<exH.matrix().cols()<<"... "<< std::flush;
         exH.assemble( ( N_derH * E_m_derH.tr() + E_m_der2_H + M_derH * E_f_derH.tr() - E_f_der2_H ) * meas(mapH) );
 
@@ -2318,13 +2181,11 @@ int main(int argc, char *argv[])
         gsDebug<<"matrix is transposed\n";
         solver.compute(matrixH);
         solVectorDualH = solver.solve(exH.rhs());
-        // gsDebugVar(exH.rhs().transpose());
         // gsDebugVar(exH.matrix().toDense());
 
         zH_sol.setSolutionVector(solVectorDualH);
         zH_sol.extract(zH2_mp);
         gsInfo << "done." << " --> ";
-        gsInfo <<"Dual H error: \t"<<evH.integral(((dual_exH - zH_sol).norm()*meas(mapH)))<<"\n";
 
         // --------------------------------------------------------------------------------------------------------------------------------- //
         // ---------------------------------------------------------Computing DWR error estimate-------------------------------------------- //
@@ -2338,19 +2199,17 @@ int main(int argc, char *argv[])
         auto S_f = E_f * reshape(mmL,3,3);
         auto M   = ttL.val() * ttL.val() * ttL.val() / 12.0 * S_f;
 
-        auto E_m_der = flat( jac(defL).tr() * (fjac(zH2) - fjac(zL2)) ) ; //[checked]
+        auto E_m_der = flat( jac(defL).tr() * (fjac(zH2) - jac(zL_sol)) ) ; //[checked]
         auto S_m_der = E_m_der * reshape(mmL,3,3);
         auto N_der   = ttL.val() * S_m_der;
 
-        auto E_f_der = ( deriv2(zH2,sn(defL).normalized().tr() ) - deriv2(zL2,sn(defL).normalized().tr() ) + deriv2(defL,var1(zH2,defL) ) - deriv2(defL,var1(zL2,defL) ) ) * reshape(m2L,3,3); //[checked]
+        auto E_f_der = ( deriv2(zH2,sn(defL).normalized().tr() ) - deriv2(zL_sol,sn(defL).normalized().tr() ) + deriv2(defL,var1(zH2,defL) ) - deriv2(defL,var1(zL_sol,defL) ) ) * reshape(m2L,3,3); //[checked]
         auto S_f_der = E_f_der * reshape(mmL,3,3);
         auto M_der   = ttL.val() * ttL.val() * ttL.val() / 12.0 * S_f_der;
 
+        auto Fint_m = ( N * E_m_der.tr() ) * meas(mapL);
+        auto Fint_f = ( M * E_f_der.tr() ) * meas(mapL);
         auto Fint = ( N * E_m_der.tr() - M * E_f_der.tr() ) * meas(mapL);
-        // auto Fint = ( ( N * E_m_der.tr() ) * meas(mapL) ).tr();
-
-        // auto Fext = (zH2-zL2).tr() * ffL * meas(mapL);
-        // auto Fext = (zH2-zL_sol).tr() * ffL * meas(mapL);
         auto Fext = ( zH2.tr() * ffL - zL_sol.tr() * ffL ) * meas(mapL);
 
         auto E_mG = 0.5 * ( flat(jac(defRef).tr()*jac(defRef)) - flat(jac(mapRef).tr()* jac(mapRef)) ) ; //[checked]
@@ -2358,58 +2217,33 @@ int main(int argc, char *argv[])
         auto S_mG = E_mG * reshape(mmRef,3,3);
         auto S_fG = E_fG * reshape(mmRef,3,3);
 
-        // gsVector<> pt(2);
-        // pt.setConstant(0.25);
+        real_t fint_m = evL.integral(( N * E_m_der.tr() ) * meas(mapL) );
+        real_t fint_f = evL.integral(( M * E_f_der.tr() ) * meas(mapL) );
+        real_t fint = fint_m - fint_f;
+        real_t fext = evL.integral( Fext  );
 
-        // auto test = jac(zL_sol);
-        // auto test2 = fjac(zL2);
+        gsInfo<<"Fint_m = "<<fint_m<<"\n";
+        gsInfo<<"Fint_f = "<<fint_f<<"\n";
 
-        // auto test12 = deriv2(zL_sol);
-        // auto test22 = deriv2(zL2);
-
-        // gsDebug<<evL.eval(test,pt)<<"\n";
-        // gsDebug<<evL.eval(test2,pt)<<"\n";
-
-        // gsDebug<<evL.eval(test12,pt)<<"\n";
-        // gsDebug<<evL.eval(test22,pt)<<"\n";
-
-
-        gsInfo<<"Fint_m = "<<evL.integral(( N * E_m_der.tr() ) * meas(mapL) )<<"\n";
-        gsInfo<<"Fint_f = "<<evL.integral(( M * E_f_der.tr() ) * meas(mapL) )<<"\n";
-
-        real_t Fi = evL.integral( Fint  );
-        real_t Fe = evL.integral( Fext  );
-        gsInfo<<"Fint = "<<Fi<<"\n";
-        gsInfo<<"Fext = "<<Fe<<"\n";
-        real_t Res = evL.integral( Fext-Fint  );
+        gsInfo<<"Fint = "<<fint<<"\n";
+        gsInfo<<"Fext = "<<fext<<"\n";
+        real_t Res = fext-fint;
         gsInfo<<"R = "<<Res<<"\n";
 
         real_t approx = Res;
         real_t exact = 0;
         if (goal==1)
-        {
             exact = evRef.integral((defRef-mapRef).tr() * gismo::expr::uv(2,3)*meas(mapRef)) - evL.integral((defL-mapL).tr() * gismo::expr::uv(2,3)*meas(mapL));
-        }
         else if (goal==2)
-        {
             exact = evRef.integral( (defRef - mapRef).tr() * (defRef - mapRef) * meas(mapRef)) - evL.integral((defL - mapL).tr() * (defL - mapL) * meas(mapL));
-        }
         else if (goal==3)
-        {
             exact = evRef.integral(E_mG * E_mG.tr() *meas(mapRef) ) - evL.integral(E_m * E_m.tr() *meas(mapL) );
-        }
         else if (goal==4)
-        {
             exact = evRef.integral(S_mG * gismo::expr::uv(0,3)*meas(mapRef) ) - evL.integral(S_m * gismo::expr::uv(0,3)*meas(mapL) );
-        }
 
 
-        // gsDebug<<evL.integral(((primal_exL).tr() * gismo::expr::uv(2,3))*meas(mapL))<<"\n";
         gsInfo<<"Exact = "<<exact<<"\n";
         gsInfo<<"Efficiency = "<<approx/exact<<"\n";
-
-
-
     }
 
     //! [Export visualization in ParaView]
@@ -2440,7 +2274,6 @@ int main(int argc, char *argv[])
         evH.writeParaview( zH_sol   , mapH, "solution_dualH");
 
         evL.writeParaview( zH2-zL_sol   , mapL, "solution_dual");
-        evRef.writeParaview( defRef-mapRef   , mapRef, "solution_dual_exact");
 
         gsWriteParaview<>( basisL.basis(0), "basisL", 1000);
         gsWriteParaview<>( basisH.basis(0), "basisH", 1000);
