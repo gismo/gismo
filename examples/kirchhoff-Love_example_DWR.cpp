@@ -199,6 +199,119 @@ private:
     }
 };
 
+template<class E1, class E2>
+class var1dif_expr : public _expr<var1dif_expr<E1, E2> >
+{
+public:
+    typedef typename E1::Scalar Scalar;
+
+private:
+
+    typename E1::Nested_t _u;
+    typename E2::Nested_t _v;
+    typename gsGeometryMap<Scalar>::Nested_t _G;
+
+public:
+    enum{ Space = E1::Space };
+
+    var1dif_expr(const E1 & u, const E2 & v, const gsGeometryMap<Scalar> & G) : _u(u), _v(v), _G(G) { }
+
+    mutable gsMatrix<Scalar> res;
+
+    mutable gsMatrix<Scalar> bGrads, cJac;
+    mutable gsVector<Scalar,3> m_v, normal;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    // helper function
+    static inline gsVector<Scalar,3> vecFun(index_t pos, Scalar val)
+    {
+        gsVector<Scalar,3> result = gsVector<Scalar,3>::Zero();
+        result[pos] = val;
+        return result;
+    }
+
+    const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,_v,k); }
+
+    index_t rows() const { return 1; }
+    index_t cols() const { return 3; }
+
+    void setFlag() const
+    {
+        _u.data().flags |= NEED_GRAD | NEED_ACTIVE;
+        _v.data().flags |= NEED_GRAD | NEED_ACTIVE;
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
+    }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        evList.push_sorted_unique(&_u.source());
+        _u.data().flags |= NEED_GRAD;
+        _v.data().flags |= NEED_GRAD;
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+    static constexpr bool rowSpan() {return E1::rowSpan(); }
+    static constexpr bool colSpan() {return false;}
+
+    void print(std::ostream &os) const { os << "var1("; _u.print(os); os <<")"; }
+
+private:
+    template<class U, class V> inline
+    typename util::enable_if< util::is_same<U,gsFeVariable<Scalar> >::value && util::is_same<V,gsFeVariable<Scalar> >::value, const gsMatrix<Scalar> & >::type
+    eval_impl(const U & u, const V & v, const index_t k)  const
+    {
+        res.resize(rows(), cols()); // rows()*
+        normal = _G.data().normal(k);// not normalized to unit length
+        normal.normalize();
+        grad_expr<U> uGrad = grad_expr(_u);
+        grad_expr<V> vGrad = grad_expr(_v);
+
+        bGrads = uGrad.eval(k) - vGrad.eval(k);
+        cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
+        const Scalar measure =  _G.data().measures.at(k);
+
+        // gsDebugVar(_G.data().values[0].col(k).transpose());
+
+        m_v.noalias() = ( ( bGrads.col(0).template head<3>() ).cross( cJac.col(1).template head<3>() )
+                      -   ( bGrads.col(1).template head<3>() ).cross( cJac.col(0).template head<3>() ) ) / measure;
+
+        // ---------------  First variation of the normal
+        // res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
+        res = (m_v - ( normal*m_v.transpose() ) * normal).transpose(); // outer-product version
+        return res;
+    }
+
+    template<class U, class V> inline
+     typename util::enable_if< util::is_same<U,gsFeVariable<Scalar> >::value && util::is_same<V,gsFeSolution<Scalar> >::value, const gsMatrix<Scalar> & >::type
+    eval_impl(const U & u, const V & v, const index_t k)  const
+    {
+        GISMO_ASSERT(1==_v.data().actives.cols(), "Single actives expected");
+        grad_expr<U> uGrad = grad_expr(_u);
+        solGrad_expr<Scalar> vGrad =  solGrad_expr(_v);
+        res.resize(rows(), cols()); // rows()*
+
+        normal = _G.data().normal(k);// not normalized to unit length
+        normal.normalize();
+        bGrads = uGrad.eval(k) - vGrad.eval(k);
+        cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
+        const Scalar measure =  _G.data().measures.at(k);
+
+        // gsDebugVar(_G.data().values[0].col(k).transpose());
+
+        m_v.noalias() = ( ( bGrads.col(0).template head<3>() ).cross( cJac.col(1).template head<3>() )
+                      -   ( bGrads.col(1).template head<3>() ).cross( cJac.col(0).template head<3>() ) ) / measure;
+
+        // ---------------  First variation of the normal
+        // res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
+        res = (m_v - ( normal*m_v.transpose() ) * normal).transpose(); // outer-product version
+        return res;
+    }
+};
+
 // Comments for var2:
 // - TODO: dimensionm indep. later on
 // - TODO: how to structure this matrix
@@ -1181,6 +1294,8 @@ unitVec_expr uv(const index_t index, const index_t dim) { return unitVec_expr(in
 
 template<class E> EIGEN_STRONG_INLINE
 var1_expr<E> var1(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return var1_expr<E>(u, G); }
+template<class E1, class E2> EIGEN_STRONG_INLINE
+var1dif_expr<E1,E2> var1dif(const E1 & u,const E2 & v, const gsGeometryMap<typename E1::Scalar> & G) { return var1dif_expr<E1,E2>(u,v, G); }
 
 template<class E1, class E2, class E3> EIGEN_STRONG_INLINE
 var2_expr<E1,E2,E3> var2(const E1 & u, const E2 & v, const gsGeometryMap<typename E1::Scalar> & G, const E3 & Ef)
