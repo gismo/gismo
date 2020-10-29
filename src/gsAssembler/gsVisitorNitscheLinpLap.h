@@ -83,7 +83,7 @@ namespace gismo
 
 			// Compute penalty parameter
 			const int deg = basis.maxDegree();
-			penalty = (deg + basis.dim()) * (deg + 1) * T(10);
+			penalty = (deg + basis.dim()) * (deg + 1) * T(2.5);
 		}
 
 		// Evaluate on element.
@@ -145,17 +145,21 @@ namespace gismo
 
 				//Compute the Gradient of the approximative function w by multiplying the coefficients of w with the physical gradients
 				gsMatrix<T> wGrad = pGrads * w_;
+				gsMatrix<T> wVal = bVals.transpose()*w_;
 
 				// Get penalty parameter
 				const T h = element.getCellSize();
-				const T mu = penalty / (0 != h ? h : 1);
+				const T mu = penalty * pow(eps*eps + ((dirData.col(k) - wVal).transpose()*(dirData.col(k) - wVal)).value() / (0 != h ? (h*h) : 1), (p - 2) / 2) / (0 != h ? h : 1);
+				const T a = pow(eps*eps + (wGrad.transpose()*wGrad).value(), (p - 2) / 2);
+
+				//gsInfo << dirData.col(k).rows() << " x "<< dirData.col(k).cols() << "\n";
 
 				// Sum up quadrature point evaluations
-				localRhs.noalias() -= weight * (0*pow(eps*eps + (wGrad.transpose()*wGrad).value(), (p - 2) / 2)*pGrads.transpose() * unormal - mu * bVals)
+				localRhs.noalias() -= weight * (/*a*pGrads.transpose() * unormal*/ - mu * bVals)
 					* dirData.col(k).transpose();
 
-				localMat.noalias() -= weight * (pow(eps*eps + (wGrad.transpose()*wGrad).value(), (p - 2) / 2) * bVals * unormal.transpose() * pGrads
-					+ 0*pow(eps*eps + (wGrad.transpose()*wGrad).value(), (p - 2) / 2)*(bVals * unormal.transpose() * pGrads).transpose()
+				localMat.noalias() -= weight * (a * bVals * unormal.transpose() * pGrads
+					/*+ a*(bVals * unormal.transpose() * pGrads).transpose()*/
 					- mu * bVals * bVals.transpose());
 			}
 		}
