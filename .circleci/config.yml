@@ -1,7 +1,7 @@
 version: 2.0
 
 jobs:
-  centos7_gcc_cxx98
+  centos7_gcc_cxx98:
     docker:
       - image: centos:7
     filters:
@@ -22,7 +22,7 @@ jobs:
           name: Build and test G+Smo on CentOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
 
-  centos8_gcc_cxx11
+  centos8_gcc_cxx11:
     docker:
       - image: centos:8
     filters:
@@ -43,7 +43,7 @@ jobs:
           name: Build and test G+Smo on CentOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
 
-  macos_xcode11_cxx98
+  macos_xcode11_cxx98:
     macos:
       xcode: "11.7.0"
     filters:
@@ -64,7 +64,7 @@ jobs:
           name: Build and test G+Smo on MacOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
 
-  macos_xcode12_cxx11
+  macos_xcode12_cxx11:
     macos:
       xcode: "12.1.0"
     filters:
