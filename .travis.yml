@@ -50,6 +50,25 @@ matrix:
       env:
         - COMPILER=clang++
         - BUILD_TYPE=Release
+        - CXX_STANDARD=98
+   
+    - os: osx
+      if: branch = stable OR branch = cooverity_scan
+      osx_image: xcode10.3
+      compiler: clang
+      env:
+        - COMPILER=clang++
+        - BUILD_TYPE=Release
+        - CXX_STANDARD=11
+        
+    - os: osx
+      if: branch = stable OR branch = cooverity_scan
+      osx_image: xcode11.6
+      compiler: clang
+      env:
+        - COMPILER=clang++
+        - BUILD_TYPE=Release
+        - CXX_STANDARD=14
 
     - if: branch = stable
       compiler: gcc
@@ -66,6 +85,7 @@ matrix:
       env:
         - BUILD_TYPE=Release
         - TASK=Doxygen
+        - CXX_STANDARD=98
       #install:
         #- wget -q 'https://github.com/doxygen/doxygen/archive/master.tar.gz' -O doxygen.tar.gz
         #- tar -xzf doxygen.tar.gz; mv doxygen-* doxygen
@@ -97,7 +117,7 @@ matrix:
       before_install:
         - pip install --user cpp-coveralls
       before_script:
-        - mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_BRANCH/travis-cov" #-DGISMO_WITH_IPOPT=ON -DGISMO_BUILD_COVERAGE=ON
+        - mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_BRANCH/travis-cov" #-DGISMO_WITH_IPOPT=ON -DGISMO_BUILD_COVERAGE=ON
       after_success:
         - coveralls --exclude lib --exclude tests --gcov-options '\-lp'
 
