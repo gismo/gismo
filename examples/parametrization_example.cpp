@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     // distributed: choose the smallest inner angle corners (number for how much to choose) and choose four corners s.t. they are as evenly distributed as possible, input number n=6 for choosing 6 boundary vertices with smallest inner angles and then find 4 of them s.t. evenly distributed
     std::string filenameIn("stl/norm.stl");
     std::string filenameOut("flatMesh");
-    std::string filenameV0, filenameV1, filenameOverlap, filenameStitch;
+    std::string filenameV0, filenameV1, fileCorners, filenameOverlap, filenameStitch;
     real_t range = 0.1; // in case of restrict or opposite
     index_t number = 4; // number of corners, in case of distributed
     std::vector<index_t> corners; // in case of corners
@@ -55,6 +55,8 @@ int main(int argc, char *argv[])
     cmd.addString("o", "filenameOut", "output file name", filenameOut);
     cmd.addString("d", "v0", "file name to v=0", filenameV0);
     cmd.addString("t", "v1", "file name to v=1", filenameV1);
+    cmd.addString("x", "fileCorners", "file with 3D coordinates of the corners", fileCorners);
+    
     cmd.addString("l", "overlap", "file name of the overlap file, must not be combined with -s", filenameOverlap);
     cmd.addString("s", "stitch", "file name of the stitch file, must not be combined with -l.", filenameStitch);
     cmd.addReal("r", "range", "in case of restrict or opposite", range);
@@ -83,12 +85,15 @@ int main(int argc, char *argv[])
     gsInfo << "Input had " << ol.getMultiInt("corners").size() << " corners." << std::endl;
     pm.setOptions(ol);
 
-    enum periodic_options {none, overlap, stitch} periodicity;
+    // TODO: Rename.
+    enum periodic_options {none, overlap, stitch, free} periodicity;
 
     if( ol.askString("overlap", "").compare("") > 0 )
 	periodicity = overlap;
     else if( ol.askString("stitch", "").compare("") > 0 )
 	periodicity = stitch;
+    else if( ol.askString("fileCorners", "").compare("") > 0)
+	periodicity = free;
     else
     	periodicity = none;
 
@@ -99,8 +104,10 @@ int main(int argc, char *argv[])
 
     if( periodicity == overlap )
 	pm.compute_periodic_overlap(filenameV0, filenameV1, filenameOverlap, left, right);
-    else if( periodicity == stitch)
+    else if( periodicity == stitch )
     	pm.compute_periodic_stitch(filenameV0, filenameV1, filenameStitch, corrections);
+    else if( periodicity == free )
+	pm.compute_free_boundary();
     else
 	pm.compute();
 

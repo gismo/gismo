@@ -82,6 +82,8 @@ public:
 						  std::string stitchFile,
 						  std::vector<std::vector<size_t> >& posCorrections);
 
+    gsParametrization<T>& compute_free_boundary();
+
     /**
      * Parametric Coordinates u,v from 0..1
      * @return
@@ -466,6 +468,17 @@ private:
 					 const std::vector<std::vector<size_t> >& posCorrections,
 					 const std::vector<std::vector<size_t> >& negCorrections);
 
+    std::vector<size_t> readIndices(const std::string& filename) const;
+    
+    void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
+					 const size_t n,
+					 const size_t N,
+					 const std::vector<size_t>& corners,
+					 const std::vector<size_t>& botBoundary,
+					 const std::vector<size_t>& rgtBoundary,
+					 const std::vector<size_t>& topBoundary,
+					 const std::vector<size_t>& lftBoundary);
+
     void constructTwins(std::vector<std::pair<size_t, size_t> >& twins,
 			const gsMesh<T>& overlapMesh,
 			typename gsMesh<T>::gsVertexHandle u0vMin,
@@ -495,6 +508,11 @@ private:
 				   const std::vector<T>& valuesV1,
 				   const std::vector<size_t>& stitchIndices,
 				   std::vector<std::vector<size_t> >& posCorrections);
+
+    std::vector<size_t> getSide(const std::list<size_t>& boundary, size_t beg, size_t end) const;
+
+    void calculate_free_boundary(const size_t paraMethod,
+				 const std::string& fileCorners);
 
     T findLengthOfPositionPart(const size_t position,
                                     const size_t numberOfPositions,
