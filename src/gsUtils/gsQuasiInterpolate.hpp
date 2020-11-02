@@ -12,8 +12,6 @@
     Author(s): M. Haberleitner
 */
 
-// QI: 1. choose sub-interval, 2. choose app. method
-
 #pragma once
 
 #include<gsCore/gsLinearAlgebra.h>
@@ -29,25 +27,17 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
                                               const gsFunction<T> &fun,
                                               index_t i)
 {
-    const gsTensorBSplineBasis<2,T> & b =
-        dynamic_cast<const gsTensorBSplineBasis<2,T> &>(bb);
-    
-    //bb.midElement(i);
-    // Get a central element
-    gsMatrix<index_t,2,2> isup;
-    b.elementSupport_into(i,isup);
-    isup.col(0) = (isup.col(0)+isup.col(1))/2;
-    isup.col(1) = isup.col(0).array() + 1;
-    gsMatrix<T> bev, fev, pts, ab = b.elementDom(isup);
+    gsMatrix<T> bev, fev, pts, ab;
     gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,1.0,1);
     gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes);
-    
-    qRule.mapTo(ab, pts);
-    bb .eval_into(pts, bev);
-    fun.eval_into(pts, fev);
+
+    ab = bb.elementInSupportOf(i);// get one element inside the support of i
+    qRule.mapTo(ab, pts);//map points on element
+    bb .eval_into(pts, bev);//evaluate basis
+    fun.eval_into(pts, fev);//evaluate function
     bev.transposeInPlace();
     fev.transposeInPlace();
-    ab = bev.fullPivLu().solve(fev);
+    ab = bev.partialPivLu().solve(fev);//solve on element
 
     // find the i-th BS:
     gsMatrix<index_t> act = bb.active(pts.col(0));

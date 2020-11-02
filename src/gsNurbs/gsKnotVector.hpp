@@ -991,6 +991,14 @@ template< typename T>
 void gsKnotVector<T>::supportIndex_into(const mult_t& i,
                                         gsMatrix<index_t>& result) const
 {
+    /* todo: check. out-of-bounds cases?
+    result.resize(1,2);
+    smart_iterator it = sbegin()+i;
+    result.at(0) = it.uIndex();
+    it += m_deg+1;
+    result.at(1) = it.uIndex();
+    */
+
     T suppBeg=*(this->begin()+i);
     T suppEnd=*(this->begin()+i+m_deg+1);
     uiterator ubeg   = this->ubegin();

@@ -81,11 +81,11 @@ bool errorAnalysis(const gsFunction<T> &fun, const gsBasis<T> & bbasis, int type
 
         // int numInnerKnots = basis->knots().size() - 2*(basis->degree()+1);
         // real_t h = (b-a)/(numInnerKnots+1);
-        real_t h = math::pow((ab.col(1)-ab.col(0)).prod()/basis->numElements(),1.0/2);
+        real_t h = math::pow((ab.col(1)-ab.col(0)).prod()/basis->numElements(),
+                             1.0/basis->domainDim());
         //gsDebugVar(h);
         h_list.push_back(h);
         basis->uniformRefine();
-
     }
     //fit a linear curve to the errors vs meshsize and use the slope of the curve as convergence rate
     real_t convRateAvg = gsSolverUtils<>::convergenceRateLS(error_list,h_list);
@@ -287,8 +287,8 @@ bool qi_1D()
 
 // ---------  Convergence-rate test with gsMySinus (dim = 1)
 
-    //gsInfo<<"\nLocal interpolation-based error analysis (linear):\n";
-    //passed &= errorAnalysis<real_t>(mySinus, bas1, 4, numRef);
+    gsInfo<<"\nLocal interpolation-based error analysis (cubic):\n";
+    passed &= errorAnalysis<real_t>(mySinus, bas3, 4, numRef);
 
     gsInfo<<"\nSchoenberg error analysis (linear):\n";
     passed &= errorAnalysis<real_t>(mySinus, bas1, 1, numRef);
@@ -484,10 +484,62 @@ bool qi_2D()
 }
 
 
+bool qi_3D()
+{
+    gsInfo<<"\n******** Running QI-3D ********\n";
+    
+    gsFunctionExpr<real_t> mySinus("sin(x)*cos(y)*sin(z)",3);
+    int deg1 = 1;
+    int deg2 = 2;
+    int deg3 = 3;
+    real_t a = 0; // starting knot
+    real_t b = 1; // ending knot
+    unsigned interior = 1; // number of interior knots
+    unsigned multEnd1 = deg1+1; // multiplicity at the two end knots
+    unsigned multEnd2 = deg2+1; // multiplicity at the two end knots
+    unsigned multEnd3 = deg3+1; // multiplicity at the two end knots
+
+    gsKnotVector<> kv1(a, b, interior, multEnd1);
+    gsKnotVector<> kv2(a, b, interior, multEnd2);
+    gsKnotVector<> kv3(a, b, interior, multEnd3);
+
+    gsTensorBSplineBasis<3> bas1(kv1,kv1,kv1);
+    gsTensorBSplineBasis<3> bas2(kv2,kv2,kv2);
+    gsTensorBSplineBasis<3> bas3(kv3,kv3,kv3);
+
+    int numRef = 4;
+    bool passed = true;
+
+
+// ---------  Convergence-rate test for trigonometric function
+
+    gsInfo<<"\nLocal interpolation-based error analysis (linear):\n";
+    passed &= errorAnalysis<real_t>(mySinus, bas1, 4, numRef);
+
+    gsInfo<<"\nLocal interpolation-based error analysis (quadratic):\n";
+    passed &= errorAnalysis<real_t>(mySinus, bas2, 4, numRef);
+
+    gsInfo<<"\nLocal interpolation-based error analysis (cubic):\n";
+    passed &= errorAnalysis<real_t>(mySinus, bas3, 4, numRef);
+    
+    gsInfo<<"\nSchoenberg error analysis (linear):\n";
+    passed &= errorAnalysis<real_t>(mySinus, bas1, 1, numRef);
+
+    gsInfo<<"\nSchoenberg error analysis (quadratic):\n";
+    passed &= errorAnalysis(mySinus, bas2, 1, numRef);
+
+    gsInfo<<"\nSchoenberg error analysis (cubic):\n";
+    passed &= errorAnalysis(mySinus, bas3, 1, numRef);
+    
+    return passed;
+}
+
+
 int main(int argc, char* argv[])
 {
     bool passed = true;
     passed &=  qi_1D();
     passed &=  qi_2D();
+    passed &=  qi_3D();
     return passed ? 0 : 1;
 }

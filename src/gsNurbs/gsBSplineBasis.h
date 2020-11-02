@@ -174,6 +174,9 @@ public:
     // Same as gsBasis::elementIndex but argument is a value instead of a vector
     size_t elementIndex(T u ) const;
 
+    // Look at gsBasis class for a description
+    gsMatrix<T> elementInSupportOf(index_t j) const;
+    
     /// @brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
     void elementSupport_into(const index_t i, gsMatrix<index_t,1,2>& result) const
