@@ -392,6 +392,9 @@ public:
 
     // Look at gsBasis class for a description
     void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul=1);
+
+    void uniformRefine_withDifferentRegularity_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul=1,
+        size_t patchID = 0, int parDir = 0);
     
     // Look at gsBasis class for a description
     void uniformCoarsen(int numKnots = 1)

@@ -21,6 +21,8 @@
 
 //# include <gsG1Basis/gsApproxSingleEdgeAssembler.h>
 
+# include "gsG1Basis/Norm/gsNormL2BasisFunction.h"
+
 namespace gismo
 {
 template<class T, class bhVisitor = gsVisitorApproxG1BasisEdge<T>>
@@ -32,66 +34,31 @@ public:
 public:
     gsApproxG1BasisEdge(gsMultiPatch<> mp, // single patch
                   gsMultiBasis<> basis, // single basis
+                  std::vector<gsBSplineBasis<>> basis_pm,
+                  gsApproxGluingData<T> gluingData,
                   index_t uv, // !!! 0 == u; 1 == v !!!
                   bool isBoundary,
                   gsG1OptionList & g1OptionList)
         : m_mp(mp), m_basis(basis), m_uv(uv), m_isBoundary(isBoundary), m_g1OptionList(g1OptionList)
     {
 
-        // Computing the G1 - basis function at the edge
-        // Spaces for computing the g1 basis
-        index_t m_r = m_g1OptionList.getInt("regularity"); // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
-
-        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(0).component(m_uv)); // 0 -> v, 1 -> u
-        index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
-
-        // first,last,interior,mult_ends,mult_interior
-        gsKnotVector<T> kv_plus(0,1,0,m_p+1,m_p-1-m_r); // p,r+1 //-1 bc r+1
-        gsBSplineBasis<> basis_plus(kv_plus);
-
-        // TODO if interface basis are not the same DO NOT DELETE THE FOLLOWING LINES
-        /*
-        if (basis_1.numElements() <= basis_2.numElements()) //
-            for (size_t i = basis_1.degree()+1; i < basis_1.knots().size() - (basis_1.degree()+1); i = i+(basis_1.degree()-m_r))
-                basis_plus.insertKnot(basis_1.knot(i),m_p-1-m_r);
-        else
-            for (size_t i = basis_2.degree()+1; i < basis_2.knots().size() - (basis_2.degree()+1); i = i+(basis_2.degree()-m_r))
-                basis_plus.insertKnot(basis_2.knot(i),m_p-1-m_r);
-        */
-        for (size_t i = m_p+1; i < basis_edge.knots().size() - (m_p+1); i = i+(m_p-m_r))
-            basis_plus.insertKnot(basis_edge.knot(i),m_p-1-m_r);
-
-        m_basis_plus = basis_plus;
-        //gsInfo << "Basis plus : " << basis_plus << "\n";
-
-        gsKnotVector<T> kv_minus(0,1,0,m_p+1-1,m_p-1-m_r); // p-1,r //-1 bc p-1
-        gsBSplineBasis<> basis_minus(kv_minus);
-
-        // TODO if interface basis are not the same DO NOT DELETE THE FOLLOWING LINES
-        /*
-        if (basis_1.numElements() <= basis_2.numElements()) //
-            for (size_t i = basis_1.degree()+1; i < basis_1.knots().size() - (basis_1.degree()+1); i = i+(basis_1.degree()-m_r))
-                basis_minus.insertKnot(basis_1.knot(i),m_p-1-m_r);
-        else
-            for (size_t i = basis_2.degree()+1; i < basis_2.knots().size() - (basis_2.degree()+1); i = i+(basis_2.degree()-m_r))
-                basis_minus.insertKnot(basis_2.knot(i),m_p-1-m_r);
-        */
-        for (size_t i = m_p+1; i < basis_edge.knots().size() - (m_p+1); i = i+(m_p-m_r))
-            basis_minus.insertKnot(basis_edge.knot(i),m_p-1-m_r);
-
-        m_basis_minus = basis_minus;
+        m_basis_plus = basis_pm[0];
+        m_basis_minus = basis_pm[1];
 
         // Computing the gluing data
-        gsApproxGluingData<T> gluingData(m_mp, m_basis, m_uv, m_isBoundary, m_g1OptionList);
+/*        gsApproxGluingData<T> gluingData(m_mp, m_basis, m_uv, m_isBoundary, m_g1OptionList);
         if (g1OptionList.getInt("gluingData") == gluingData::local)
-            gluingData.setLocalGluingData(basis_plus, basis_minus, "edge");
+            gluingData.setLocalGluingData(m_basis_plus, m_basis_minus, "edge");
         else if (g1OptionList.getInt("gluingData") == gluingData::global)
             gluingData.setGlobalGluingData();
-
+*/
         m_gD.push_back(gluingData);
 
         // Basis for the G1 basis
         m_basis_g1 = m_basis.basis(0);
+        //m_basis_g1.degreeReduce(1);
+
+
     }
 
     // Computed the gluing data globally
@@ -101,16 +68,32 @@ public:
     void assemble(index_t i, std::string typeBf); // i == number of bf
     inline void apply(bhVisitor & visitor, index_t i, std::string typeBf); // i == number of bf
 
+    void computeDofsIntpl(index_t bfID, std::string typeBf);
+
     void constructSolution(const gsMatrix<> & solVector, gsMultiPatch<T> & result);
 
     gsBSpline<> get_alpha() { return m_gD[0].get_alpha_tilde(); }
     gsBSpline<> get_beta() { return m_gD[0].get_beta_tilde(); }
+
+    gsMatrix<> eval_beta(gsMatrix<> points) {
+        gsMatrix<> result;
+        m_gD[0].eval_beta_into(points,result);
+        return result;
+    }
+
+    gsMatrix<> eval_alpha(gsMatrix<> points) {
+        gsMatrix<> result;
+        m_gD[0].eval_alpha_into(points,result);
+        return result;
+    }
 
     void set_beta_tilde(gsBSpline<T> beta_t) { m_gD[0].set_beta_tilde(beta_t); }
 
     void plotGluingData(index_t numGd) { m_gD[0].plotGluingData(numGd); }
 
     index_t get_plus() { return m_basis_plus.size(); }
+
+    real_t get_error() { return m_error; }
 
 protected:
 
@@ -141,6 +124,8 @@ protected:
     // For special projection
     gsBSpline<> result_singleEdge;
 
+    real_t m_error;
+
 }; // class gsG1BasisEdge
 
 template <class T, class bhVisitor>
@@ -151,14 +136,31 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
     index_t n_plus = m_basis_plus.size();
     index_t n_minus = m_basis_minus.size();
 
-    gsMultiPatch<> g1EdgeBasis;
+    float progress = 0.0;
+    int barWidth = 50;
+
+    gsMultiPatch<> g1EdgeBasis, g1EdgeBasis2;
     index_t bfID_init = 3;
     if (m_g1OptionList.getSwitch("twoPatch"))
         bfID_init = 0;
 
     for (index_t bfID = bfID_init; bfID < n_plus - bfID_init; bfID++) // first 3 and last 3 bf are eliminated
     {
-        gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(m_uv)); // u
+        if (m_g1OptionList.getSwitch("info"))
+        {
+            std::cout << "[";
+            int pos = barWidth * progress;
+            for (int i = 0; i < barWidth; ++i) {
+                if (i < pos) std::cout << "=";
+                else if (i == pos) std::cout << ">";
+                else std::cout << " ";
+            }
+            std::cout << "] " << int(progress * 100.0) << " %\r";
+            std::cout.flush();
+        }
+
+
+        gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(0).component(m_uv)); // u
         index_t degree = temp_basis_first.maxDegree();
 
         gsMatrix<T> ab = m_basis_plus.support(bfID);
@@ -182,7 +184,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
             if ((temp_basis_first.knot(i) > ab.at(0)) && (temp_basis_first.knot(i) < ab.at(1)))
                 kv.insert(temp_basis_first.knot(i), 1);
 
-        temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(1 - m_uv)); // v
+        temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(0).component(1 - m_uv)); // v
         ab = temp_basis_first.support(1);
         gsKnotVector<T> kv2(ab.at(0), ab.at(1), 0, 1);
         for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
@@ -213,6 +215,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 */
 //// NEUNEUNEU
 
+
         refresh(bfID,"plus");
 
         assemble(bfID,"plus"); // i == number of bf
@@ -221,9 +224,23 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
         gsMatrix<> sol;
         solver.compute(m_system.matrix());
         sol = solver.solve(m_system.rhs());
+/*
+        if (bfID == 0)
+        {
+            //gsInfo << "Mat: " << m_system.matrix().toDense() << "\n";
+            gsInfo << "RHS: " << m_system.rhs() << "\n";
+            gsInfo << "sol: " << sol << "\n";
+        }
+*/
+
+        //std::cout << "#iterations:     " << solver.iterations() << std::endl;
+        //std::cout << "estimated error: " << solver.error()      << std::endl;
 
         constructSolution(sol,g1EdgeBasis);
+
+        progress += (float) 1.0 / (n_plus+n_minus); // for demonstration only
     }
+
 
     bfID_init = 2;
     if (m_g1OptionList.getSwitch("twoPatch"))
@@ -231,7 +248,21 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 
     for (index_t bfID = bfID_init; bfID < n_minus-bfID_init; bfID++)  // first 2 and last 2 bf are eliminated
     {
-        gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(m_uv)); // u
+        if (m_g1OptionList.getSwitch("info"))
+        {
+            std::cout << "[";
+            int pos = barWidth * progress;
+            for (int i = 0; i < barWidth; ++i)
+            {
+                if (i < pos) std::cout << "=";
+                else if (i == pos) std::cout << ">";
+                else std::cout << " ";
+            }
+            std::cout << "] " << int(progress * 100.0) << " %\r";
+            std::cout.flush();
+        }
+
+        gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(0).component(m_uv)); // u
         index_t degree = temp_basis_first.maxDegree();
 
         gsMatrix<T> ab = m_basis_minus.support(bfID);
@@ -280,7 +311,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
                 kv.insert(temp_basis_first.knot(i), 1);
 
 
-        temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(1 - m_uv)); // v
+        temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(0).component(1 - m_uv)); // v
         ab = temp_basis_first.support(1);
         gsKnotVector<T> kv2(ab.at(0), ab.at(1), 0, 1);
         for (size_t i = degree + 1; i < temp_basis_first.knots().size() - (degree + 1); i += temp_basis_first.knots().multiplicityIndex(i))
@@ -305,10 +336,40 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
         solver.compute(m_system.matrix());
         sol = solver.solve(m_system.rhs());
 
-        constructSolution(sol,g1EdgeBasis);
+        constructSolution(sol,g1EdgeBasis2);
+        g1EdgeBasis.addPatch(g1EdgeBasis2.patch(bfID));
+
+        progress += (float) 1.0 / (n_plus+n_minus); // for demonstration only
     }
 
+
     result = g1EdgeBasis;
+    /*
+    gsInfo << "BEfore: " << result.basis(0) << "\n";
+
+    gsMultiPatch<T> result_refined;
+    for ( size_t i = 0; i < result.nPatches(); i++ )
+    {
+
+        gsMatrix<T> iVals, iPts = m_basis.basis(0).anchors();
+        result.patch(i).eval_into(iPts, iVals);
+        typename gsGeometry<T>::uPtr g = m_basis.basis(0).interpolateData(iVals, iPts);
+        result_refined.addPatch(m_basis.basis(0).interpolateData(iVals, iPts));
+    }
+    result.swap(result_refined);
+    gsInfo << "result: " << result.basis(0) << "\n";
+    */
+
+    if (m_g1OptionList.getSwitch("info"))
+        std::cout << std::endl;
+
+
+    gsNormL2BasisFunction<T> normL2BasisFunction(g1EdgeBasis2, m_basis, m_basis_plus, m_basis_minus, m_gD[0], m_uv);
+    normL2BasisFunction.compute();
+
+    m_error = normL2BasisFunction.value();
+    if (m_g1OptionList.getSwitch("info"))
+        gsInfo << "\nVALUE: " << normL2BasisFunction.value() << "\n\n";
 } // setG1BasisEdge
 
 template <class T, class bhVisitor>
@@ -322,7 +383,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::constructSolution(const gsMatrix<> & solV
 
     // Reconstruct solution coefficients on patch p
     index_t sz;
-    sz = m_basis.basis(0).size();
+    sz = m_basis_g1.basis(0).size();
 
     coeffs.resize(sz, dim);
 
@@ -337,6 +398,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::constructSolution(const gsMatrix<> & solV
             coeffs.row(i) = m_ddof[0].row( mapper.bindex(i, 0) ).head(dim); // = 0
         }
     }
+
     result.addPatch(m_basis_g1.basis(0).makeGeometry(give(coeffs)));
 
 }
@@ -345,19 +407,26 @@ template <class T, class bhVisitor>
 void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
 {
     // 1. Obtain a map from basis functions to matrix columns and rows
-    gsDofMapper map(m_basis.basis(0));
+    gsDofMapper map(m_basis_g1.basis(0));
 
     gsMatrix<unsigned> act;
 
     //index_t n_plus = m_basis_plus.size();
     //index_t n_minus = m_basis_minus.size();
 
+    for (index_t i = 2; i < m_basis_g1.basis(0).component(1 - m_uv).size();
+         i++) // only the first two u/v-columns are Dofs (0/1)
+    {
+        act = m_basis_g1.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, i); // WEST
+        map.markBoundary(0, act); // Patch 0
+    }
+
     if (m_g1OptionList.getInt("g1BasisEdge") == g1BasisEdge::local)
     {
-        for (index_t i = 2; i < m_basis.basis(0).component(1 - m_uv).size();
+        for (index_t i = 2; i < m_basis_g1.basis(0).component(1 - m_uv).size();
              i++) // only the first two u/v-columns are Dofs (0/1)
         {
-            act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, i); // WEST
+            act = m_basis_g1.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, i); // WEST
             map.markBoundary(0, act); // Patch 0
         }
 
@@ -368,7 +437,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                 gsMatrix<T> ab = m_basis_plus.support(bfID);
 
 
-                gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(m_uv)); // u
+                gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(0).component(m_uv)); // u
                 index_t degree = temp_basis_first.maxDegree();
 
                 gsMatrix<T> ab_temp = ab;
@@ -386,14 +455,14 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                 }
 
 
-                for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size();
+                for (index_t i = 0; i < m_basis_g1.basis(0).component(m_uv).size();
                      i++) // only the first two u/v-columns are Dofs (0/1)
                 {
-                    gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+                    gsMatrix<T> xy = m_basis_g1.basis(0).component(m_uv).support(i);
                     if ( (xy(0, 0) < ab(0, 0)-1e-10) || (xy(0, 1) > ab(0, 1)+1e-10) ) // only subsets
                     //if ( (xy(0, 1) < ab(0, 0)+1e-10) || (xy(0, 0) > ab(0, 1)-1e-10) ) // all non-empty set
                     {
-                        act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
+                        act = m_basis_g1.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
                         map.markBoundary(0, act); // Patch 0
                     }
                 }
@@ -412,7 +481,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
             {
                 gsMatrix<T> ab = m_basis_minus.support(bfID);
 
-                gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(m_uv)); // u
+                gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(0).component(m_uv)); // u
                 index_t degree = temp_basis_first.maxDegree();
 
                 gsMatrix<T> ab_temp = ab;
@@ -429,19 +498,19 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
                     ab = ab_temp;
                 }
 
-                for (index_t i = 0; i < m_basis.basis(0).component(m_uv).size();
+                for (index_t i = 0; i < m_basis_g1.basis(0).component(m_uv).size();
                      i++) // only the first two u/v-columns are Dofs (0/1)
                 {
-                    gsMatrix<T> xy = m_basis.basis(0).component(m_uv).support(i);
+                    gsMatrix<T> xy = m_basis_g1.basis(0).component(m_uv).support(i);
                     if ( (xy(0, 0) < ab(0, 0)-1e-10) || (xy(0, 1) > ab(0, 1)+1e-10) ) // only subsets
                     {
-                        act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
+                        act = m_basis_g1.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, i); // WEST
                         map.markBoundary(0, act); // Patch 0
                     }
                 }
 
                 // set first row to zero
-                act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, 0); // WEST
+                act = m_basis_g1.basis(0).boundaryOffset(m_uv == 0 ? 3 : 1, 0); // WEST
                 map.markBoundary(0, act); // Patch 0
 /*
                 if (bfID > 0 && bfID < n_minus - 1)
@@ -546,6 +615,30 @@ void gsApproxG1BasisEdge<T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
             }
        }
 */    }
+
+
+    //act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, 0); // WEST
+    //map.markBoundary(0, act); // Patch 0
+    //act = m_basis.basis(0).boundaryOffset(m_uv == 0 ? 1 : 3, m_basis.basis(0).component(m_uv).size() - 1);
+    //map.markBoundary(0, act); // Patch 0
+
+    /*
+     * x x o
+     * x o o
+     * ...
+     * o o o
+     * x o o
+     * x x o
+     */
+    act.resize(6, 1);
+    act(0, 0) = (unsigned) 0;
+    act(1,0) = (unsigned) (m_uv == 0 ? m_basis.basis(0).component(m_uv).size() : 1);
+    act(2,0) = (unsigned) (m_uv == 0 ? 1 : m_basis.basis(0).component(m_uv).size());
+    act(3,0) = (unsigned) (m_uv == 0 ? (m_basis.basis(0).component(m_uv).size()* 2)-1: (m_basis.basis(0).component(m_uv).size()-1) * (m_basis.basis(0).component(1-m_uv).size()) +1);
+    act(4,0) = (unsigned) (m_uv == 0 ? m_basis.basis(0).component(m_uv).size() - 1 : (m_basis.basis(0).component(m_uv).size()-1) * (m_basis.basis(0).component(1-m_uv).size()));
+    act(5,0) = (unsigned) (m_uv == 0 ? m_basis.basis(0).component(m_uv).size() - 2 : (m_basis.basis(0).component(m_uv).size()-2) * (m_basis.basis(0).component(1-m_uv).size()));
+    //map.markBoundary(0, act);
+
     map.finalize();
 
     // 2. Create the sparse system
@@ -566,6 +659,11 @@ void gsApproxG1BasisEdge<T,bhVisitor>::assemble(index_t bfID, std::string typeBf
     const gsDofMapper & map = m_system.colMapper(0); // Map same for every functions
 
     m_ddof[0].setZero(map.boundarySize(), 1 );
+
+    //computeDofsIntpl(bfID, typeBf);
+
+    // Compute dirichlet value
+    // m_ddof[0].row(map.global_toBindex()) = value of function
 
     // Assemble volume integrals
     bhVisitor visitor;
@@ -634,6 +732,208 @@ void gsApproxG1BasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, 
         }
     }//omp parallel
 } // apply
+
+
+template <class T, class bhVisitor>
+void gsApproxG1BasisEdge<T,bhVisitor>::computeDofsIntpl(index_t bfID, std::string typeBf)
+
+{
+
+    gsVector<index_t> sides(2); // Two boundaries
+    sides.at(0) = m_uv == 1 ? 3 : 1;
+    sides.at(1) = m_uv == 1 ? 4 : 2;
+
+    const gsBasis<T> & basis = m_basis_g1.basis(0);
+
+    for (index_t side = 0; side < sides.rows(); side++)
+    {
+        // Get dofs on this boundary
+        gsMatrix<unsigned> boundary(3,1); // bottom boundary v = 0 or u = 0
+        //const gsMatrix<unsigned> boundary = m_basis_g1.basis(0).boundaryOffset(3,1); // bottom boundary v = 0 or u = 0
+        //gsInfo << "Boundary: " << boundary << "\n";
+        if (side == 0)
+        {
+            // Value
+            // D_(1-uv)
+            // D_uv
+            boundary(0, 0) = (unsigned) 0;
+            boundary(1, 0) = (unsigned) (m_uv == 0 ? basis.component(m_uv).size() : 1);
+            boundary(2, 0) = (unsigned) (m_uv == 0 ? 1 : basis.component(m_uv).size());
+        }
+        else
+        {
+            boundary(0, 0) =
+                (unsigned) (m_uv == 0 ? basis.component(m_uv).size() - 1 : (basis.component(m_uv).size() - 1)
+                    * (basis.component(1 - m_uv).size()));
+            boundary(1, 0) =
+                    (unsigned) (m_uv == 0 ? (basis.component(m_uv).size()* 2)-1: (basis.component(m_uv).size()-1) * (basis.component(1-m_uv).size()) +1);
+            boundary(2, 0) =
+                (unsigned) (m_uv == 0 ? basis.component(m_uv).size() - 2: (basis.component(m_uv).size() - 2)
+                    * (basis.component(1 - m_uv).size()));
+        }
+
+        gsMatrix<> points(2,1);
+        points.setZero();
+        points(m_uv,0) = side == 0 ? 0 : 1;
+
+        // #### Evaluate the points ####
+        // Same for all patches
+        gsBasis<T> & basis_geo = m_basis.basis(0).component(1 - m_uv);
+        gsBasis<T> & basis_plus = m_basis_plus;
+        gsBasis<T> & basis_minus = m_basis_minus;
+
+        // tau/p
+        gsBSplineBasis<T> bsp_temp = dynamic_cast<gsBSplineBasis<> & >(basis_geo);
+
+        real_t p = basis_geo.maxDegree();
+        real_t tau_1 = bsp_temp.knots().at(p + 1); // p + 2
+
+        gsMatrix<T> alpha, beta,
+            N_0, N_1,
+            N_j_minus, N_i_plus,
+            der_N_i_plus;
+
+        gsMatrix<T> der_N_0, der_N_1, der_N_00, der_N_01, der_N_uv;
+
+        basis.derivSingle_into(boundary(0, 0),points,der_N_00);
+        basis.derivSingle_into(boundary(1, 0),points,der_N_01);
+        basis.derivSingle_into(boundary(2, 0),points,der_N_uv);
+
+
+
+        gsMatrix<T> fpts(3,1);
+        if (m_uv == 1) // edge is in v-direction
+        {
+            if (m_g1OptionList.getInt("gluingData") == gluingData::global)
+            {
+                m_gD[0].get_alpha_S_tilde(1-m_uv).eval_into(points.bottomRows(1), alpha); // v
+                m_gD[0].get_beta_S_tilde(1-m_uv).eval_into(points.bottomRows(1), beta);
+            }
+
+            basis_geo.evalSingle_into(0, points.topRows(1), N_0); // u
+            basis_geo.evalSingle_into(1, points.topRows(1), N_1); // u
+
+            basis_geo.derivSingle_into(0, points.topRows(1), der_N_0); // u
+            basis_geo.derivSingle_into(1, points.topRows(1), der_N_1); // u
+
+            // Initialize local matrix/rhs
+            if (typeBf == "plus")
+            {
+                basis_plus.evalSingle_into(bfID, points.bottomRows(1), N_i_plus); // v
+                basis_plus.derivSingle_into(bfID, points.bottomRows(1), der_N_i_plus);
+
+                gsMatrix<> temp = beta.cwiseProduct(der_N_i_plus);
+
+                fpts.row(0) = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(N_1) * tau_1 / p;
+                if (der_N_01(1-m_uv,0) == 0)
+                    fpts(1,0) = 0;
+                else
+                    fpts(1,0) = -fpts(0,0)*der_N_00(1-m_uv,0)/der_N_01(1-m_uv,0);
+
+                if (der_N_uv(m_uv,0) == 0)
+                    fpts(2,0) = 0;
+                else
+                    fpts.row(2) = ( der_N_i_plus - fpts.row(0)*der_N_00(m_uv,0) )/der_N_uv(m_uv,0);
+
+            } // n_plus
+            else if (typeBf == "minus")
+            {
+                basis_minus.evalSingle_into(bfID, points.bottomRows(1), N_j_minus); // v
+
+
+                fpts.row(0) = alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p; // == 0
+                if (der_N_01(1-m_uv,0) == 0)
+                    fpts(1,0) = 0;
+                else
+                {
+                    fpts.row(1) = (alpha.cwiseProduct(N_j_minus.cwiseProduct(der_N_1)) * tau_1 / p)* 1/der_N_01(1-m_uv,0);
+                }
+                fpts(2,0) = 0;
+
+            } // n_minus
+
+        } // Patch 0
+        else if (m_uv == 0) // edge is in u-direction
+        {
+            if (m_g1OptionList.getInt("gluingData") == gluingData::global)
+            {
+                m_gD[0].get_alpha_S_tilde(1-m_uv).eval_into(points.topRows(1), alpha); // u
+                m_gD[0].get_beta_S_tilde(1-m_uv).eval_into(points.topRows(1), beta);
+            }
+
+            basis_geo.evalSingle_into(0, points.bottomRows(1), N_0); // v
+            basis_geo.evalSingle_into(1, points.bottomRows(1), N_1); // v
+
+            basis_geo.derivSingle_into(0, points.bottomRows(1), der_N_0); // v
+            basis_geo.derivSingle_into(1, points.bottomRows(1), der_N_1); // v
+
+            // Initialize local matrix/rhs
+            if (typeBf == "plus")
+            {
+                basis_plus.evalSingle_into(bfID, points.topRows(1), N_i_plus); // u
+                basis_plus.derivSingle_into(bfID, points.topRows(1), der_N_i_plus);
+
+                gsMatrix<T> temp = beta.cwiseProduct(der_N_i_plus);
+
+                //gsInfo << "uv = 0 : " << temp - result_singleEdge.eval(md.points.topRows(1)) << "\n";
+                //temp = result_singleEdge.eval(md.points.topRows(1));
+                fpts.row(0) = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(N_1) * tau_1 / p;
+                if (der_N_01(1-m_uv,0) == 0)
+                    fpts(1,0) = 0;
+                else
+                    fpts(1,0) = -fpts(0,0)*der_N_00(1-m_uv,0)/der_N_01(1-m_uv,0);
+
+                if (der_N_uv(m_uv,0) == 0)
+                    fpts(2,0) = 0;
+                else
+                    fpts.row(2) = ( der_N_i_plus - fpts.row(0)*der_N_00(m_uv,0) )/der_N_uv(m_uv,0);
+
+            } // n_tilde
+            else if (typeBf == "minus")
+            {
+                basis_minus.evalSingle_into(bfID, points.topRows(1), N_j_minus); // u
+
+                fpts.row(0) = -alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p; // == 0
+                if (der_N_01(1-m_uv,0) == 0)
+                    fpts(1,0) = 0;
+                else
+                {
+                    fpts.row(1) = (-alpha.cwiseProduct(N_j_minus.cwiseProduct(der_N_1)) * tau_1 / p )* 1/der_N_01(1-m_uv,0);
+
+                }
+                fpts(2,0) = 0;
+
+            } // n_bar
+
+        } // Patch 1
+
+/*
+    // Compute dirichlet values
+    gsMatrix<T> fpts;
+    if ( it->parametric() )
+        fpts = it->function()->eval( gsPointGrid<T>( rr ) );
+    else
+        fpts = it->function()->eval( m_pde_ptr->domain()[it->patch()].eval(  gsPointGrid<T>( rr ) ) );
+*/
+
+        //gsInfo << "typeBf " << typeBf << " bfid " << bfID << " " <<
+        //    " points " << points << " fpts: " << fpts << "\n";
+
+        // Interpolate dirichlet boundary
+        //typename gsBasis<T>::uPtr h = basis.boundaryBasis(sides.at(side));
+        //typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
+        //const gsMatrix<T> & dVals = geo->coefs();
+
+        //gsInfo << fpts << "\n";
+
+        // Save corresponding boundary dofs
+        for (index_t l = 0; l != boundary.size(); ++l)
+        {
+            const int ii = m_system.colMapper(0).bindex(boundary.at(l), 0);
+            m_ddof[0].row(ii) = fpts.row(l);
+        }
+    }
+}
 
 
 

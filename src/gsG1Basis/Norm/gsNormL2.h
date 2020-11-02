@@ -16,7 +16,7 @@
 
 #include <gsG1Basis/Norm/gsNorm.h>
 #include <gsG1Basis/Norm/gsVisitorNormL2.h>
-
+#include <gsG1Basis/gsG1System.h>
 
 namespace gismo
 {
@@ -34,10 +34,11 @@ class gsNormL
 public:
 
     gsNormL(const gsMultiPatch<> & multiPatch,
+            const std::vector<gsMultiBasis<>> & multiBasis,
             const gsSparseMatrix<T> & _field1,
             const gsFunction<T> & _func2,
             bool _f2param = false)
-        :  patchesPtr( &multiPatch),
+        :  patchesPtr( &multiPatch), basisPtr(&multiBasis),
            sparseMatrix(&_field1), func2(&_func2), f2param(_f2param)
     {
 
@@ -127,7 +128,7 @@ public:
 
     std::vector<T> elWise_value() const { return m_elWise; }
 
-    void compute(gsVector<> numBasisFunctions, bool storeElWise = false)
+    void compute(gsG1System<T> & g1System, bool isogeometric = false, bool storeElWise = false)
     {
         boxSide side = boundary::none;
 
@@ -158,7 +159,7 @@ public:
                 const gsFunction<T> & func2p = func2->function(pn);
 
                 // Obtain an integration domain
-                const gsBasis<T> & dom = patchesPtr->patch(pn).basis();
+                const gsBasis<T> & dom = basisPtr->at(0).basis(pn);
 
                 // Initialize visitor
                 visitor.initialize(dom, QuRule, evFlags);
@@ -181,7 +182,7 @@ public:
                     QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
 
                     // Evaluate on quadrature points
-                    visitor.evaluate(*geoEval, func2p, dom, sparseMatrix, numBasisFunctions, quNodes);
+                    visitor.evaluate(*geoEval, func2p, basisPtr, sparseMatrix, g1System, quNodes, isogeometric);
 
 
                     //visitor.compute(*domIt, *geoEval, quWeights, m_value);
@@ -223,6 +224,8 @@ protected:
 
     const gsMultiPatch<T> * patchesPtr;
 
+    const std::vector<gsMultiBasis<>> * basisPtr;
+
     const gsSparseMatrix<T>    * sparseMatrix;
 
     const gsFunctionSet<T> * func2;
@@ -251,10 +254,11 @@ class gsNormL2 : public gsNormL<2,T,gsVisitorNormL2<T>>
 {
 public:
 gsNormL2(const gsMultiPatch<> & multiPatch,
+         const std::vector<gsMultiBasis<>> & multiBasis,
          const gsSparseMatrix<T> & sparseMatrix,
          const gsFunction<T> & _func2,
          bool _f2param = false)
-    : gsNormL<2,T,gsVisitorNormL2<T>>(multiPatch, sparseMatrix, _func2, _f2param)
+    : gsNormL<2,T,gsVisitorNormL2<T>>(multiPatch, multiBasis, sparseMatrix, _func2, _f2param)
 { }
 
 };

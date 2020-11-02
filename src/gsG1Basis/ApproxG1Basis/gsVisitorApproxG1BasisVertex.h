@@ -135,6 +135,7 @@ public:
         std::vector<gsMatrix<>> alpha, beta, alpha_0, beta_0, alpha_deriv, beta_deriv;
         if (g1OptionList.getInt("gluingData") == gluingData::global)
         {
+            // TODO is wrong for now
             alpha.push_back(gluingData[0].get_alpha_tilde().eval(md.points.row(0))); // u
             alpha.push_back(gluingData[1].get_alpha_tilde().eval(md.points.row(1))); // v
             alpha_0.push_back(gluingData[0].get_alpha_tilde().eval(zero.row(0))); // u
@@ -152,19 +153,19 @@ public:
         }
         else if (g1OptionList.getInt("gluingData") == gluingData::local)
         {
-            alpha.push_back(gluingData[0].get_local_alpha_tilde(0).eval(md.points.row(0))); // u
-            alpha.push_back(gluingData[1].get_local_alpha_tilde(0).eval(md.points.row(1))); // v
-            alpha_0.push_back(gluingData[0].get_local_alpha_tilde(0).eval(zero.row(0))); // u
-            alpha_0.push_back(gluingData[1].get_local_alpha_tilde(0).eval(zero.row(0))); // v
-            alpha_deriv.push_back(gluingData[0].get_local_alpha_tilde(0).deriv(zero.row(0))); // u
-            alpha_deriv.push_back(gluingData[1].get_local_alpha_tilde(0).deriv(zero.row(0))); // v
+            alpha.push_back(gluingData[0].get_alpha_S_tilde(0).eval(md.points.row(0))); // u
+            alpha.push_back(gluingData[1].get_alpha_S_tilde(0).eval(md.points.row(1))); // v
+            alpha_0.push_back(gluingData[0].get_alpha_S_tilde(0).eval(zero.row(0))); // u
+            alpha_0.push_back(gluingData[1].get_alpha_S_tilde(0).eval(zero.row(0))); // v
+            alpha_deriv.push_back(gluingData[0].get_alpha_S_tilde(0).deriv(zero.row(0))); // u
+            alpha_deriv.push_back(gluingData[1].get_alpha_S_tilde(0).deriv(zero.row(0))); // v
 
-            beta.push_back(gluingData[0].get_local_beta_tilde(0).eval(md.points.row(0))); // u
-            beta.push_back(gluingData[1].get_local_beta_tilde(0).eval(md.points.row(1))); // v
-            beta_0.push_back(gluingData[0].get_local_beta_tilde(0).eval(zero.row(0))); // u
-            beta_0.push_back(gluingData[1].get_local_beta_tilde(0).eval(zero.row(0))); // v
-            beta_deriv.push_back(gluingData[0].get_local_beta_tilde(0).deriv(zero.row(0))); // u
-            beta_deriv.push_back(gluingData[1].get_local_beta_tilde(0).deriv(zero.row(0))); // v
+            beta.push_back(gluingData[0].get_beta_S_tilde(0).eval(md.points.row(0))); // u
+            beta.push_back(gluingData[1].get_beta_S_tilde(0).eval(md.points.row(1))); // v
+            beta_0.push_back(gluingData[0].get_beta_S_tilde(0).eval(zero.row(0))); // u
+            beta_0.push_back(gluingData[1].get_beta_S_tilde(0).eval(zero.row(0))); // v
+            beta_deriv.push_back(gluingData[0].get_beta_S_tilde(0).deriv(zero.row(0))); // u
+            beta_deriv.push_back(gluingData[1].get_beta_S_tilde(0).deriv(zero.row(0))); // v
         }
         else if (g1OptionList.getInt("gluingData") == gluingData::exact)
         {

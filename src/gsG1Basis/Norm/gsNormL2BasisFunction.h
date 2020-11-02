@@ -1,6 +1,6 @@
-/** @file gsSeminormH2.h
+/** @file gsVisitorNormL2BasisFunction.h
 
-    @brief Computes the H2 seminorm, modified for g1 Basis functions.
+    @brief Computes the L2 norm, modified for G1 Basis functions.
 
     This file is part of the G+Smo library.
 
@@ -8,48 +8,44 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): F. Buchegger, P. Weinmueller
+    Author(s): A. Mantzaflaris & P. Weinmueller
 */
 
+#include<gsG1Basis/Norm/gsVisitorNormL2BasisFunction.h>
+#include <gsCore/gsGeometryEvaluator.h>
 
 #pragma once
-
-#include <gsG1Basis/Norm/gsNorm.h>
-# include <gsG1Basis/Norm/gsVisitorSeminormH2.h>
-
 
 namespace gismo
 {
 
-/** @brief The gsSeminormH2 class provides the functionality
- * to calculate the H2 - seminorm between a field and a function.
+/** @brief The gsSeminormH1 class provides the functionality
+ * to calculate the H1 - seminorm between a field and a function.
  *
  * \ingroup Assembler
 */
-template <class T, class Visitor = gsVisitorSeminormH2<T> >
-class gsSeminormH2
+template <class T, class Visitor = gsVisitorNormL2BasisFunction<T> >
+class gsNormL2BasisFunction
 {
 
 public:
 
-    gsSeminormH2(const gsMultiPatch<> & multiPatch,
-                 const std::vector<gsMultiBasis<>> & multiBasis,
-                 const gsSparseMatrix<T> & _field1,
-                 const gsFunction<T> & _func2,
-                 bool _f2param = false)
-        : patchesPtr( &multiPatch ), basisPtr( & multiBasis),
-          sparseMatrix(&_field1), func2(&_func2), f2param(_f2param)
+    gsNormL2BasisFunction(const gsMultiPatch<T> & multiPatch,
+                 gsMultiBasis<T> & multiBasis,
+                 const gsBSplineBasis<> basis_plus,
+                 const gsBSplineBasis<> basis_minus,
+                 const gsApproxGluingData<T> gD,
+                 const index_t uv)
+        : patchesPtr( &multiPatch ), basisPtr( &multiBasis ),
+          m_basis_plus(basis_plus), m_basis_minus(basis_minus), m_gD(gD), m_uv(uv)
     {
-
     }
 
-
 public:
-
     /// @brief Returns the computed norm value
     T value() const { return m_value; }
 
-    void compute(gsG1System<T> g1System, bool isogeometric, bool storeElWise = false)
+    void compute(bool storeElWise = false)
     {
         boxSide side = boundary::none;
 
@@ -77,10 +73,8 @@ public:
 
             for (size_t pn = 0; pn < patchesPtr->nPatches(); ++pn)// for all patches
             {
-                const gsFunction<T> & func2p = func2->function(pn);
-
                 // Obtain an integration domain
-                const gsBasis<T> & dom = basisPtr->at(0).basis(pn);
+                const gsBasis<T> & dom = basisPtr->basis(0);
 
                 // Initialize visitor
                 visitor.initialize(dom, QuRule, evFlags);
@@ -98,12 +92,11 @@ public:
                 for (; domIt->good(); domIt->next() )
 #endif
                 {
-
                     // Map the Quadrature rule to the element
                     QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
 
                     // Evaluate on quadrature points
-                    visitor.evaluate(*geoEval, func2p, basisPtr, sparseMatrix, g1System, quNodes, isogeometric);
+                    visitor.evaluate(*geoEval, quNodes, patchesPtr, basisPtr, m_basis_plus, m_basis_minus, m_gD, m_uv, pn);
 
                     // Accumulate value from the current element (squared)
                     T temp = 0.0;
@@ -122,7 +115,10 @@ public:
 
     }
 
+
+
     inline T takeRoot(const T v) { return math::sqrt(v);}
+
 
 
 
@@ -130,14 +126,13 @@ protected:
 
     const gsMultiPatch<T> * patchesPtr;
 
-    const std::vector<gsMultiBasis<>> * basisPtr;
+    gsMultiBasis<T> * basisPtr;
 
-    const gsSparseMatrix<T>    * sparseMatrix;
+    const gsBSplineBasis<> m_basis_plus;
+    const gsBSplineBasis<> m_basis_minus;
+    const gsApproxGluingData<T> m_gD;
+    const index_t m_uv;
 
-    const gsFunctionSet<T> * func2;
-
-private:
-    bool f2param;// not used yet
 
 protected:
 

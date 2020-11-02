@@ -12,6 +12,7 @@
 */
 
 #pragma once
+#include <gsG1Basis/gsG1System.h>
 
 namespace gismo
 {
@@ -49,23 +50,53 @@ public:
     // Evaluate on element.
     void evaluate(gsGeometryEvaluator<T> & geoEval,
                   const gsFunction<T>    & _func2,
-                  const gsBasis<T>       & basis,
+                  const std::vector<gsMultiBasis<T>> * basis,
                   const gsSparseMatrix<T> * sol_sparse,
-                  const gsVector<> & numBasisFunctions,
-                  gsMatrix<T>            & quNodes)
+                  gsG1System<T> & g1System,
+                  gsMatrix<T>            & quNodes,
+                  bool isogeometric)
     {
         gsMatrix<unsigned> actives;
         gsMatrix<T> basisData;
 
-        basis.active_into(quNodes.col(0), actives);
+        basis->at(0).basis(geoEval.id()).active_into(quNodes.col(0), actives);
 
         // Evaluate basis functions on element
-        basis.eval_into(quNodes,basisData);
+        basis->at(0).basis(geoEval.id()).eval_into(quNodes,basisData);
 
-        f1vals.setZero(1,actives.rows());
-        for (index_t i = 0; i < sol_sparse->rows(); i++) // -1 bcs of interior solution
+        f1vals.setZero(1,quNodes.cols());
+        if (!isogeometric)
+        {
+            gsMatrix<unsigned> actives2;
+            gsMatrix<T> basisData2;
+
+            basis->at(1).basis(geoEval.id()).active_into(quNodes.col(0), actives2);
+
+            // Evaluate basis functions on element
+            basis->at(1).basis(geoEval.id()).eval_into(quNodes,basisData2);
+
+            for (index_t i = 0; i < g1System.get_numInterfaceFunctions().last(); i++)
+                for (index_t j = 0; j < actives2.rows(); j++)
+                    f1vals += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives2.at(j)) * basisData2.row(j);
+        }
+        else
+        {
+            for (index_t i = 0; i < g1System.get_numInterfaceFunctions().last(); i++)
+                for (index_t j = 0; j < actives.rows(); j++)
+                    f1vals += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j)) * basisData.row(j);
+        }
+
+
+
+
+
+        for (index_t i = g1System.get_numInterfaceFunctions().last(); i < sol_sparse->rows() -1; i++) // -1 bcs of interior solution
             for (index_t j = 0; j < actives.rows(); j++)
-                f1vals += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * basisData.row(j);
+                f1vals += sol_sparse->at(i,g1System.get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * basisData.row(j);
+
+        for (index_t j = 0; j < actives.rows(); j++) // interior solution
+            f1vals += sol_sparse->at(sol_sparse->rows()-1,g1System.get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * basisData.row(j);
+
 
         // Compute geometry related values
         geoEval.evaluateAt(quNodes);

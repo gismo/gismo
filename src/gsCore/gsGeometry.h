@@ -489,6 +489,12 @@ public:
         this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul);
     }
 
+    virtual void uniformRefine_withDifferentRegularity(int numKnots = 1, std::vector<int> mul={1}) // todo: int dir = -1
+    {
+        this->basis().uniformRefine_withDifferentRegularity_withCoefs( m_coefs, numKnots, mul, this->id());
+    }
+
+
     /** \brief Refines the basis and adjusts the coefficients to keep the geometry the same.
      *
      * The syntax of \em boxes depends on the implementation in the

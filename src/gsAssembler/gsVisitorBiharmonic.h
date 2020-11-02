@@ -49,7 +49,7 @@ public:
     {
         gsVector<index_t> numQuadNodes( basis.dim() );
         for (int i = 0; i < basis.dim(); ++i) // to do: improve
-            numQuadNodes[i] = basis.degree(i) + 1;
+            numQuadNodes[i] = 2*basis.degree(i) + 1;
 
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// NB!
@@ -91,19 +91,20 @@ public:
         geo.computeMap(md);
 
         // Evaluate right-hand side at the geometry points
-        rhs_ptr->eval_into(md.values[0], rhsVals); // Dim: 1 X NumPts
+        rhs_ptr->eval_into(md.values[0], rhsVals); // Dim: 1 X NumPts \hat{f} = f(x(u,v))
 
         gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*(x/cos(45)))*cos(4*pi*y) - cos(4*pi*(x/cos(45))) - cos(4*pi*y))",3);
         gsFunctionExpr<> source_planar  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-        /*
+
 #pragma omp critical
         {
-        gsInfo << "Source: " << source.eval(md.values[0]) << " : " << source_planar.eval(md.points) << "\n";
+            gsInfo << "point: " << md.points << " = " << md.values[0] << "\n";
 
-
-        gsInfo << "point: " << md.points << " = " << md.values[0] << "\n";
+            gsInfo << "rhs_ptr: " << rhsVals << "\n";
         }
-        */
+
+
+
         if(md.dim.first +1 == md.dim.second)
         {
             gsMatrix<T> geoMapDeriv1 = geo.deriv(md.points); // First derivative of the geometric mapping with respect to the parameter coordinates
@@ -260,7 +261,8 @@ public:
             rhsVals = rhsVals.cwiseProduct( sqrtDetG );
 
             //gsInfo << "rhsVals: " << rhsVals << "\n";
-            //gsInfo << "sqrtDetG: " << sqrtDetG << "\n";
+
+            gsInfo << "sqrtDetG: " << sqrtDetG << "\n";
 
 
 //              gsInfo << "Du_SqrtDetGinv: " << Du_SqrtDetGinv << "\n";

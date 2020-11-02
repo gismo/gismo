@@ -564,8 +564,17 @@ void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& , int , std::vector<int> )
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+void gsBasis<T>::uniformRefine_withDifferentRegularity_withCoefs(gsMatrix<T>& , int , std::vector<int> , size_t)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsBasis<T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> &,
                                             int, int)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
+void gsBasis<T>::uniformRefine_withDifferentRegularity_withTransfer(gsSparseMatrix<T,RowMajor> &,
+                                            int, int, size_t, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

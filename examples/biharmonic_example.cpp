@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
     dirichlet::strategy dirStrategy = dirichlet::elimination;
     iFace::strategy intStrategy = iFace::glue;
 
-
+/*
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
@@ -47,8 +47,8 @@ int main(int argc, char *argv[])
                               "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
                               " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)",2);
 
-/*
 
+*/
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
     gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
                               "0",
                               "0",
                               3);
-
+/*
     //gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*(x/cos(45)))*cos(4*pi*y) - cos(4*pi*(x/cos(45))) - cos(4*pi*y))",3);
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(-cos(4*pi*x/cos(45))*1/(cos(45)*cos(45)*cos(45)*cos(45)) + cos(4*pi*y) * "
                               "(-1 + cos(4*pi*x/cos(45)) * (1+1/(cos(45)*cos(45))) * (1+1/(cos(45)*cos(45))) ))",3);
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> solVal("(cos(4*pi*(x/cos(45))) - 1) * (cos(4*pi*y) - 1) ",3);
     gsFunctionExpr<> sol1der ("-4*pi*1/cos(45) * (cos(4*pi*y) - 1)*sin(4*pi*(x/cos(45)))",
                               "-4*pi*(cos(4*pi*(x/cos(45))) - 1)*sin(4*pi*y)",
-                              "1",3);
+                              "0",3);
     gsFunctionExpr<> sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
                               "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
                               " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
@@ -95,18 +95,18 @@ int main(int argc, char *argv[])
 
     gsFunctionExpr<> source  ("0",3);
     gsFunctionExpr<> laplace ("0",3);
-    gsFunctionExpr<> solVal("1",3);
+    gsFunctionExpr<> solVal("z",3);
     gsFunctionExpr<>sol1der ("0",
                             "0",
-                             "0",3);
+                             "1",3);
     gsFunctionExpr<>sol2der ("0",
                              "0",
                              "0",
                              "0",
                              "0",
                              "0", 3);
-
     */
+
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
     //gsMultiPatch<> geo( *gsNurbsCreator<>::BSplineFatQuarterAnnulus() );
@@ -203,14 +203,18 @@ int main(int argc, char *argv[])
 //        gsMatrix<> solVector = solver.solve(BiharmonicAssembler.rhs());
 
 
-        //gsInfo << "rhs: " << BiharmonicAssembler.matrix().toDense() << "\n";
 
         gsSparseSolver<real_t>::CGDiagonal solver;
         solver.analyzePattern(BiharmonicAssembler.matrix());
         solver.factorize(BiharmonicAssembler.matrix());
         gsMatrix<> solVector = solver.solve(BiharmonicAssembler.rhs());
 
+        gsInfo << "rhs: " << BiharmonicAssembler.rhs() << "\n";
+        gsInfo << "Matrix: " << BiharmonicAssembler.matrix().toDense() << "\n";
+        gsInfo << "sol: " << solVector << "\n";
+
         gsInfo<< "." <<std::flush; // Linear solving done
+
 
         //Reconstruct solution
         gsMultiPatch<> mpsol;

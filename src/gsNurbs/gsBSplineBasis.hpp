@@ -1063,6 +1063,7 @@ void gsTensorBSplineBasis<1,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int 
 }
 
 
+
 template <class T>
 void gsTensorBSplineBasis<1,T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots, int mul)
 {
@@ -1071,6 +1072,32 @@ void gsTensorBSplineBasis<1,T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowM
     this->knots().getUniformRefinementKnots(numKnots, newKnots,mul);
     this->refine_withTransfer(transfer, newKnots);
 }
+
+template <class T>
+void gsTensorBSplineBasis<1,T>::uniformRefine_withDifferentRegularity_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots, int mul,
+    size_t patchId, int parDir)
+{
+    // See remark about periodic basis in refine_withCoefs, please.
+    std::vector<T> newKnots, newKnots2;
+    this->knots().getUniformRefinementKnots(numKnots, newKnots,mul);
+
+    if (patchId == 1 && parDir == 0)
+        if (newKnots[0] != newKnots[1])
+            newKnots2.push_back(newKnots.front());
+
+    for (size_t i = 0; i < newKnots.size(); i++)
+        newKnots2.push_back(newKnots[i]);
+
+    if (patchId == 0 && parDir == 0)
+        if (newKnots.back() != newKnots[newKnots.size()-2])
+            newKnots2.push_back(newKnots.back());
+
+    //for (size_t i = 0; i < newKnots2.size(); i++)
+    //    gsInfo << " new Knot: " << newKnots2[i] << "\n";
+
+    this->refine_withTransfer(transfer, newKnots2);
+}
+
 
 template <class T>
 void gsTensorBSplineBasis<1,T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots)

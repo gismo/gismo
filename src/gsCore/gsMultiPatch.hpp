@@ -261,9 +261,24 @@ void gsMultiPatch<T>::uniformRefine(int numKnots, int mul)
 }
 
 template<class T>
+void gsMultiPatch<T>::uniformRefine_withSameRegularity(int numKnots, std::vector<std::vector<int>> mul)
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        std::vector<int> patch_mul;
+        for (index_t i = 0; i < (*it)->parDim(); i++)
+        {
+            index_t deg = ( *it )->degree(i);
+            patch_mul.push_back(deg-mul[( *it )->id()][i]);
+        }
+        ( *it )->uniformRefine(numKnots, patch_mul);
+    }
+}
+
+template<class T>
 void gsMultiPatch<T>::uniformRefine_withSameRegularity(int numKnots, int reg)
 {
-    std::vector<std::vector<index_t>> mul;
     for ( typename PatchContainer::const_iterator it = m_patches.begin();
           it != m_patches.end(); ++it )
     {
@@ -274,6 +289,25 @@ void gsMultiPatch<T>::uniformRefine_withSameRegularity(int numKnots, int reg)
             patch_mul.push_back(deg-reg);
         }
         ( *it )->uniformRefine(numKnots, patch_mul);
+    }
+}
+
+template<class T>
+void gsMultiPatch<T>::uniformRefine_withDifferentRegularity(int numKnots, int reg)
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        std::vector<int> patch_mul;
+        for (index_t i = 0; i < (*it)->parDim(); i++)
+        {
+            index_t deg = ( *it )->degree(i);
+            if ( i == 1) // only v direction TODO more general
+                patch_mul.push_back(deg-reg+1); // INTERFACE MINUS 1 REGULARITY
+            else
+                patch_mul.push_back(deg-reg);
+        }
+        ( *it )->uniformRefine_withDifferentRegularity(numKnots, patch_mul);
     }
 }
 

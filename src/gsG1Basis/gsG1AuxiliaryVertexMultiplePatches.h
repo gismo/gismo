@@ -34,6 +34,19 @@ public:
         sigma = 0.0;
     }
 
+    // Constructor for n patches around a common vertex
+    gsG1AuxiliaryVertexMultiplePatches(const gsMultiPatch<> & mp, const gsMultiBasis<> & mb, const std::vector<size_t> patchesAroundVertex, const std::vector<size_t> vertexIndices)
+    {
+        for(size_t i = 0; i < patchesAroundVertex.size(); i++)
+        {
+            auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(patchesAroundVertex[i]), mb.basis(patchesAroundVertex[i]), patchesAroundVertex[i]));
+            auxVertexIndices.push_back(vertexIndices[i]);
+            checkBoundary(mp, patchesAroundVertex[i], vertexIndices[i]);
+        }
+//        gsInfo <<  patchesAroundVertex.size() << " patch constructed \n";
+        sigma = 0.0;
+    }
+
 
     // Compute topology
     // After computeTopology() the patches will have the same patch-index as the position-index in auxGeom
@@ -117,13 +130,16 @@ public:
         real_t h_geo = 0;
         for(size_t i = 0; i < auxGeom.size(); i++)
         {
-            gsTensorBSplineBasis<2, real_t> & bsp_temp = dynamic_cast<gsTensorBSplineBasis<2, real_t> & >(auxGeom[i].getPatch().basis());
+            gsTensorBSplineBasis<2, real_t> & bsp_temp = dynamic_cast<gsTensorBSplineBasis<2, real_t> & >(
+                auxGeom[i].boolBasis() == true ? auxGeom[i].getBasis().basis(0) : auxGeom[i].getPatch().basis());
+
             real_t p_temp = bsp_temp.maxDegree();
+
             p = (p < p_temp ? p_temp : p);
 
             for(index_t j = 0; j < auxGeom[i].getPatch().parDim(); j++)
             {
-               real_t h_geo_temp = bsp_temp.component(j).knots().at(p + 2);
+               real_t h_geo_temp = bsp_temp.knot(j,p + 2);
                h_geo = (h_geo < h_geo_temp ? h_geo_temp : h_geo);
             }
         }
@@ -178,7 +194,7 @@ public:
 
     gsMatrix<> computeBigSystemMatrix( index_t np)
     {
-        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsMultiBasis<> bas(auxGeom[np].boolBasis() == true ? auxGeom[np].getBasis().basis(0) : auxGeom[np].getPatch().basis());
         gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
         size_t dimU = temp_L.size(0);
         size_t dimV = temp_L.size(1);
@@ -209,7 +225,7 @@ public:
 
     gsMatrix<> computeSmallSystemMatrix( index_t np)
     {
-        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsMultiBasis<> bas(auxGeom[np].boolBasis() == true ? auxGeom[np].getBasis().basis(0) : auxGeom[np].getPatch().basis());
         gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
         size_t dimU = temp_L.size(0);
         size_t dimV = temp_L.size(1);
@@ -237,7 +253,7 @@ public:
 
     gsMatrix<> leftBoundaryBigSystem(index_t np)
     {
-        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsMultiBasis<> bas(auxGeom[np].boolBasis() == true ? auxGeom[np].getBasis().basis(0) : auxGeom[np].getPatch().basis());
         gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
         size_t dimU = temp_L.size(0);
         size_t dimV = temp_L.size(1);
@@ -264,7 +280,7 @@ public:
 
     gsMatrix<> leftBoundarySmallSystem( index_t np)
     {
-        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsMultiBasis<> bas(auxGeom[np].boolBasis() == true ? auxGeom[np].getBasis().basis(0) : auxGeom[np].getPatch().basis());
         gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
         size_t dimU = temp_L.size(0);
         size_t dimV = temp_L.size(1);
@@ -288,7 +304,7 @@ public:
 
     gsMatrix<> rightBoundaryBigSystem( index_t np)
     {
-        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsMultiBasis<> bas(auxGeom[np].boolBasis() == true ? auxGeom[np].getBasis().basis(0) : auxGeom[np].getPatch().basis());
         gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
         size_t dimU = temp_L.size(0);
 
@@ -311,7 +327,7 @@ public:
 
     gsMatrix<> rightBoundarySmallSystem( index_t np)
     {
-        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsMultiBasis<> bas(auxGeom[np].boolBasis() == true ? auxGeom[np].getBasis().basis(0) : auxGeom[np].getPatch().basis());
         gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
         //size_t dimU = temp_L.size(0);
         size_t dimU = temp_L.size(0);
@@ -336,7 +352,7 @@ public:
 
     gsMatrix<> bigInternalBoundaryPatchSystem( index_t np)
     {
-        gsMultiBasis<> bas(auxGeom[np].getPatch());
+        gsMultiBasis<> bas(auxGeom[np].boolBasis() == true ? auxGeom[np].getBasis().basis(0) : auxGeom[np].getPatch().basis());
         gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
         size_t dimU = temp_L.size(0);
 
@@ -469,14 +485,14 @@ public:
 
         }
 
-        gsInfo << "Big kernel:\n";
-        gsInfo << bigKernel << "\n ";
-
-        gsInfo << "Small kernel:\n";
-        gsInfo << smallKernel << "\n ";
-
-        gsInfo << "Basis:\n";
-        gsInfo << basisVect << "\n";
+//        gsInfo << "Big kernel:\n";
+//        gsInfo << bigKernel << "\n ";
+//
+//        gsInfo << "Small kernel:\n";
+//        gsInfo << smallKernel << "\n ";
+//
+//        gsInfo << "Basis:\n";
+//        gsInfo << basisVect << "\n";
 
         return std::make_pair(basisVect, numberPerType);
     }
@@ -645,25 +661,24 @@ public:
 
             if (g1OptionList.getSwitch("twoPatch"))
             {
+
                 gsMultiPatch<> test_mp(auxGeom[0].getPatch());
-                gsMultiBasis<> test_mb(auxGeom[0].getPatch().basis());
 
                 gsMultiPatch<> g1Basis;
-                gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(test_mp.basis(0).component(1)); // 0 -> u, 1 -> v
+                gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(auxGeom[0].getBasis().basis(0).component(1)); // 0 -> u, 1 -> v
 
                 for (index_t j = 0; j < 2; j++) // u
                 {
                     for (index_t i = 0; i < 2; i++) // v
                     {
                         gsMatrix<> coefs;
-                        coefs.setZero(test_mb.basis(0).size(),1);
+                        coefs.setZero(auxGeom[0].getBasis().basis(0).size(),1);
 
-                        coefs(j*(test_mb.basis(0).size()/basis_edge.size()) + i,0) = 1;
+                        coefs(j*(auxGeom[0].getBasis().basis(0).size()/basis_edge.size()) + i,0) = 1;
 
-                        g1Basis.addPatch(test_mb.basis(0).makeGeometry(coefs));
+                        g1Basis.addPatch(auxGeom[0].getBasis().basis(0).makeGeometry(coefs));
                     }
                 }
-
                 g1BasisVector.push_back(g1Basis);
                 auxGeom[0].setG1Basis(g1Basis);
             }

@@ -144,8 +144,8 @@ void gsBiharmonicAssembler<T,bhVisitor>::assemble()
         m_ppde.bcFirstKind().neumannSides() );
 
     // Laplace conditions of second kind
-    Base::template push<gsVisitorLaplaceBoundaryBiharmonic<T> >(
-        m_ppde.bcSecondKind().laplaceSides() );
+    //Base::template push<gsVisitorLaplaceBoundaryBiharmonic<T> >(
+    //    m_ppde.bcSecondKind().laplaceSides() );
 
     if ( m_options.getInt("InterfaceStrategy") == iFace::dg )
         gsWarn <<"DG option ignored.\n";
@@ -194,7 +194,7 @@ void gsBiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofs()
 
     gsVector<T> unormal;
 
-    real_t lambda = 1e-3;
+    real_t lambda = 1e-2;
 
     gsMapData<T> md(NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_JACOBIAN);
 
@@ -298,7 +298,6 @@ void gsBiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofs()
                     gsMatrix<T> G = Jk.transpose() * Jk;
                     gsMatrix<T> G_inv = G.cramerInverse();
 
-                    //gsInfo << "rhsVals3: " << Jk * G_inv  << "\n";
 
                     real_t detG = G.determinant();
 
@@ -306,6 +305,13 @@ void gsBiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofs()
                     const T weight_k = sqrt(detG) * quWeights[k] ;
 
                     unormal.normalize();
+
+                    gsInfo << "rhsVals3: " << (Jk * G_inv).transpose() * unormal << "\n";
+
+                    gsInfo << "unormal: " <<  unormal.transpose() << "\n";
+                    gsInfo << "rhsVals2: " <<  rhsVals2.col(k).transpose() << "\n";
+
+
 
                     // Only run through the active boundary functions on the element:
                     for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
@@ -329,7 +335,7 @@ void gsBiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofs()
                                 lambda * ( ( (Jk * G_inv * basisGrads.block(2*i, k, 2, 1)).transpose() * unormal)(0,0) *
                                     ( (Jk * G_inv * basisGrads.block(2*j, k, 2, 1)).transpose() * unormal )(0,0) ) ) );
                         } // for j
-                        globProjRhs.row(ii) += weight_k * ( sqrt(detG) * basisVals(i,k) * rhsVals.col(k).transpose() );
+                        globProjRhs.row(ii) += weight_k * ( basisVals(i,k) * rhsVals.col(k).transpose() );
                         globProjRhs.row(ii) += weight_k * ( lambda * ( (Jk * G_inv * basisGrads.block(2*i,k,2,1)).transpose() * unormal ) *
                             ( rhsVals2.col(k).transpose() * unormal) ); // unormal is different from planar, everthing else is the same! Does that makes sense?
 
@@ -395,6 +401,8 @@ void gsBiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofs()
 
     m_ddof[0] = solver.compute( globProjMat ).solve ( globProjRhs );
     //m_ddof[0].setZero();
+
+    gsInfo << "Boundary: " << m_ddof[0] << "\n";
 }
 // End
 

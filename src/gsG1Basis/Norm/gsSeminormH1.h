@@ -31,10 +31,11 @@ class gsSeminormH1
 public:
 
     gsSeminormH1(const gsMultiPatch<T> & multiPatch,
+                 const std::vector<gsMultiBasis<T>> & multiBasis,
                  const gsSparseMatrix<T> & _field1,
                  const gsFunction<T> & _func2,
                  bool _f2param = false)
-        : patchesPtr( &multiPatch ),
+        : patchesPtr( &multiPatch ), basisPtr( &multiBasis ),
           sparseMatrix(&_field1), func2(&_func2), f2param(_f2param)
     {
     }
@@ -43,7 +44,7 @@ public:
     /// @brief Returns the computed norm value
     T value() const { return m_value; }
 
-    void compute(gsVector<> numBasisFunctions, bool storeElWise = false)
+    void compute(gsG1System<T> g1System, bool isogeometric, bool storeElWise = false)
     {
         boxSide side = boundary::none;
 
@@ -74,7 +75,7 @@ public:
                 const gsFunction<T> & func2p = func2->function(pn);
 
                 // Obtain an integration domain
-                const gsBasis<T> & dom = patchesPtr->patch(pn).basis();
+                const gsBasis<T> & dom = basisPtr->at(0).basis(pn);
 
                 // Initialize visitor
                 visitor.initialize(dom, QuRule, evFlags);
@@ -97,7 +98,7 @@ public:
                     QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
 
                     // Evaluate on quadrature points
-                    visitor.evaluate(*geoEval, func2p, dom, sparseMatrix, numBasisFunctions, quNodes);
+                    visitor.evaluate(*geoEval, func2p, basisPtr, sparseMatrix, g1System, quNodes, isogeometric);
 
                     // Accumulate value from the current element (squared)
                     T temp = 0.0;
@@ -126,6 +127,8 @@ public:
 protected:
 
     const gsMultiPatch<T> * patchesPtr;
+
+    const std::vector<gsMultiBasis<T>> * basisPtr;
 
     const gsSparseMatrix<T>    * sparseMatrix;
 

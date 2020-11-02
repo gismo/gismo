@@ -245,9 +245,16 @@ public:
     /// in each knot-span with multipliplicity \a mul
     void uniformRefine(int numKnots = 1, int mul = 1);
 
+    void uniformRefine_withSameRegularity(int numKnots = 1, std::vector<std::vector<int>> patch_mulmul = {{1}});
+
     /// \brief Refine uniformly all patches by inserting \a numKnots
     /// in each knot-span such that the regularity \a reg is the same in each direction
     void uniformRefine_withSameRegularity(int numKnots = 1, int reg = 1);
+
+    /// \brief Refine uniformly all patches by inserting \a numKnots
+    /// in each knot-span such that the regularity \a reg is the same in each direction
+    void uniformRefine_withDifferentRegularity(int numKnots = 1, int reg = 1);
+
 
     /// \brief Elevate the degree of all patches by \a elevationSteps.
     void degreeElevate(int elevationSteps = 1);

@@ -101,16 +101,16 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     index_t loop = 1; // Number of refinement steps
     index_t geometry = 0; // Which geometry
 
-    index_t q = 0; // geometry degree elevate
+    index_t P_geo = 0; // geometry degree elevate
 
     index_t numRefine = 4; // Initial refinement
-    index_t regularity = 1; // Regularity
+    index_t R_geo = 1; // Regularity
 
     // For the spline space of the gluing data
-    index_t p_tilde = 1;
-    index_t r_tilde = 0;
+    index_t p_gd = 1;
+    index_t r_gd = 0;
 
-    index_t threads = 1; // For parallel computing
+    index_t threads = 12; // For parallel computing
 
 
 
@@ -121,6 +121,7 @@ void gsG1OptionList::initialize(int argc, char *argv[])
 
     bool plot = false;
     bool latex = false;
+    bool latex_plot = false;
 
     bool neumann_bdy = false;
 
@@ -128,6 +129,12 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     bool exactGd = false;
     bool localEdge = false;
     bool localVertex = false;
+    bool isogeometric = false;
+    bool h1projection = false;
+    bool h2projection = false;
+    bool h1projectionProof = false;
+
+    bool info = false;
 
     gluingData::strategy gluingData_strategy = gluingData::global;
     g1BasisEdge::strategy g1BasisEdge_strategy = g1BasisEdge::global;
@@ -135,9 +142,12 @@ void gsG1OptionList::initialize(int argc, char *argv[])
 
     gsCmdLine cmd("Example for solving the biharmonic problem.");
     cmd.addInt("k", "refine", "Number of refinement steps", numRefine);
-    cmd.addInt("p", "p_tilde", "Polynomial degree for tilde{p}", p_tilde);
-    cmd.addInt("q", "q_tilde", "Polynomial degree for geometry", q);
-    cmd.addInt("r", "r_tilde", "Regularity for tilde{r}", r_tilde);
+
+    cmd.addInt("p", "p_tilde", "Polynomial degree for tilde{p}", p_gd);
+    cmd.addInt("P", "P_geo", "Polynomial degree for geometry", P_geo);
+    cmd.addInt("r", "r_tilde", "Regularity for tilde{r}", r_gd);
+    cmd.addInt("R", "R_geo", "Regularity for geometry", R_geo);
+
     cmd.addInt("g", "geometry", "Geometry", geometry);
     cmd.addInt("t", "threads", "Threads", threads);
     cmd.addInt( "l", "loop", "The number of refinement steps", loop);
@@ -147,10 +157,15 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     cmd.addSwitch( "localEdge", "To compute the G1 edge basis functions with local support", localEdge );
     cmd.addSwitch( "localVertex", "To compute the G1 vertex basis functions with the average dd_ik", localVertex );
     cmd.addSwitch("latex","Print the rate and error latex-ready",latex);
+    cmd.addSwitch("latex_plot","Print the rate and error latex-ready",latex_plot);
     cmd.addSwitch("neumann","Compute the biharmonic with neumann bdy",neumann_bdy);
+    cmd.addSwitch( "isogeometric", "Project the basis in isogeometric concept", isogeometric );
+    cmd.addSwitch( "h1projection", "Project the basis in H1 norm", h1projection );
+    cmd.addSwitch( "h2projection", "Project the basis in H2 norm", h2projection );
+    cmd.addSwitch( "h1projectionProof", "Project the basis in H1 norm", h1projectionProof );
+    cmd.addSwitch( "info", "Print information", info );
     cmd.addReal("e","threshold", "The threshold for computing the kernel", threshold);
     cmd.addReal("z","zero", "When the value should be set to zero", zero);
-    cmd.addReal("", "lambda", "The lambda value for the minimization", lambda);
     try { cmd.getValues(argc,argv); } catch (int rv) {  }
 
     optionList.addInt("loop","Loop", loop);
@@ -158,24 +173,34 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     optionList.addInt("threads","Threads", threads);
     optionList.addInt("numRefine","Number of refinement", numRefine);
 
-    optionList.addInt("p_tilde","Grad",p_tilde);
-    optionList.addInt("r_tilde","Reg",r_tilde);
-    optionList.addInt("regularity","Regularity of the initial geometry",regularity);
+    optionList.addInt("p_tilde","Grad",p_gd);
+    optionList.addInt("r_tilde","Reg",r_gd);
+    optionList.addInt("regularity","Regularity of the initial geometry",R_geo);
 
-    optionList.addInt("q_tilde","Grad", q);
+    optionList.addInt("P_geo","Grad", P_geo);
 
     optionList.addSwitch("plot","Plot in Paraview",plot);
     optionList.addSwitch("latex","Latex output",latex);
+    optionList.addSwitch("latex_plot","Latex output",latex_plot);
 
     optionList.addSwitch("twoPatch", "For the two-patch paper",false);
 
     optionList.addSwitch("neumann", "For computing the neumann bdy",neumann_bdy);
 
+    optionList.addSwitch("isogeometric", "Project the basis in isogeometric concept",isogeometric);
+    optionList.addSwitch("h1projection", "Project the basis in H1 norm",h1projection);
+    optionList.addSwitch("h2projection", "Project the basis in H2 norm",h2projection);
+    optionList.addSwitch("h1projectionProof", "Project the basis in H1 norm",h1projectionProof);
+
+    optionList.addSwitch("info", "Print information!",info);
+
     optionList.addReal("threshold","Threshold",threshold);
     optionList.addReal("zero","Zero",zero);
 
-    optionList.addReal("lambda","lambda for the minimization problem", lambda);
-    optionList.addReal("lambda2","lambda for the minimization problem", lambda);
+    optionList.addReal("lambda","lambda for two Patch", lambda);
+    optionList.addReal("lambda2","lambda for two Patch", lambda);
+
+    optionList.addReal("factor","factor for two Patch", lambda);
 
     if (localGd)
         gluingData_strategy = gluingData::local;

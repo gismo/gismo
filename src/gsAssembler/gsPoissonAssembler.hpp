@@ -50,7 +50,7 @@ void gsPoissonAssembler<T>::assemble()
     Base::template push<gsVisitorNeumann<T> >(m_pde_ptr->bc().neumannSides() );
 
     const int dirStr = m_options.getInt("DirichletStrategy");
-    
+
     // If requested, enforce Dirichlet boundary conditions by Nitsche's method
     if ( dirStr == dirichlet::nitsche )
         Base::template push<gsVisitorNitsche<T> >(m_pde_ptr->bc().dirichletSides());
@@ -61,7 +61,7 @@ void gsPoissonAssembler<T>::assemble()
 
     if ( m_options.getInt("InterfaceStrategy") == iFace::dg )
         Base::template pushInterface<gsVisitorDg<T> >();
-    
+
     // Assembly is done, compress the matrix
     Base::finalize();
 }

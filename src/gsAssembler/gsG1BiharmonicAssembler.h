@@ -17,6 +17,7 @@
 #include <gsAssembler/gsVisitorNeumann.h>
 #include <gsAssembler/gsVisitorLaplaceBoundaryBiharmonic.h>
 //#include <gsAssembler/gsVisitorNitscheBiharmonic.h>
+#include <gsAssembler/gsVisitorMixed.h>
 
 # include <gsG1Basis/gsG1System.h>
 
@@ -69,7 +70,9 @@ public:
 
     void refresh();
 
-    void assemble();
+    void assemble(bool isogeometric = true, index_t patchIdx = 0);
+
+    void applyMixed(gsVisitorMixed<T> & visitor, index_t patchIdx = 0);
 
     void constructSolution(const gsMatrix<T>& solVector,
                            gsMultiPatch<T>& result, int unk = 0);
@@ -80,9 +83,9 @@ public:
 
     void plotParaview(gsField<> &solField_interior, std::vector<gsMultiPatch<T>> &result);
 
-
-
     gsMatrix<> get_bValue() { return m_g1_ddof; };
+
+    void constructSystem(const gsSparseMatrix<> & mat22, const gsMatrix<> &f2, const gsSparseMatrix<> & mat12, const gsSparseMatrix<> & mat21, const gsMultiBasis<> & multiBasis);
 
 protected:
 
@@ -101,6 +104,102 @@ protected:
     gsMatrix<T> m_g1_ddof;
 
 };
+
+
+template<class T, class bhVisitor>
+void gsG1BiharmonicAssembler<T,bhVisitor>::constructSystem(const gsSparseMatrix<> &mat22, const gsMatrix<> &f2, const gsSparseMatrix<> &mat12, const gsSparseMatrix<> &mat21, const gsMultiBasis<> & multiBasis)
+{
+
+
+    //gsInfo << "DIMENSION: " << m_system.matrix().dim() << "\n" << mat22.dim() << "\n" << mat12.dim() << "\n" << mat21.dim() << "\n";
+
+
+    gsStopwatch clock;
+
+    index_t rows_K = m_system.matrix().rows() + mat22.rows();
+    index_t cols_K = m_system.matrix().cols() + mat22.cols();
+
+    index_t rows_f = m_system.rhs().rows() + f2.rows();
+    index_t cols_f = m_system.rhs().cols();
+
+    int nnz = (int) 1.2 * (m_system.matrix().nonZeros() + mat22.nonZeros() + mat12.nonZeros() + mat21.nonZeros());
+
+    //K.conservativeResize(rows_K*2,cols_K*2);
+    gsSparseMatrix<real_t> K_temp(rows_K,cols_K);
+
+    clock.restart();
+    index_t rows_f_old = m_system.rhs().rows();
+    m_system.rhs().conservativeResize(rows_f,cols_f);
+    m_system.rhs().block(rows_f_old,0,f2.rows(),cols_f) = f2;
+    //gsInfo << "Matrix manipulation: " << clock.stop() << "\n";
+
+    clock.restart();
+    K_temp.reserve(nnz);
+
+    typedef Eigen::Triplet<double> TT;
+    std::vector<TT> tripletList;
+    tripletList.reserve(nnz);
+    for (int k = 0; k < m_system.matrix().outerSize(); ++k)
+        for (gsSparseMatrix<real_t>::InnerIterator it(m_system.matrix(), k); it; ++it)
+        {
+            tripletList.push_back(TT(it.row(), it.col(), it.value()));
+            //gsInfo << it.value() << " : " << mat12.at(it.row(),it.col()) << "\n";
+        }
+
+
+    for (int k = 0; k < mat22.outerSize(); ++k)
+        for (gsSparseMatrix<real_t>::InnerIterator it(mat22, k); it; ++it)
+            tripletList.push_back(TT(it.row()+  m_system.matrix().rows(), it.col()+  m_system.matrix().cols(), it.value()));
+/*
+    for (int k = 0; k < m_system.matrix().outerSize(); ++k)
+        for (gsSparseMatrix<real_t>::InnerIterator it(m_system.matrix(), k); it; ++it)
+            tripletList.push_back(TT(it.row()+  m_system.matrix().cols(), it.col() , it.value()));
+
+    for (int k = 0; k < m_system.matrix().outerSize(); ++k)
+        for (gsSparseMatrix<real_t>::InnerIterator it(m_system.matrix(), k); it; ++it)
+            tripletList.push_back(TT(it.row()+ m_system.matrix().rows(), it.col(), it.value()));
+*/
+
+    for (int k = 0; k < mat12.outerSize(); ++k)
+        for (gsSparseMatrix<real_t>::InnerIterator it(mat12, k); it; ++it)
+        {
+            if (it.row() < multiBasis.basis(0).size())
+            {
+                //gsInfo << it.row() << " : " << it.col() << " : " << it.value() << " : " << m_system.matrix().at(it.row(), it.col()-m_system.matrix().cols()/2) << "\n";
+                tripletList.push_back(TT(it.row(), it.col()+multiBasis.basis(0).size(), it.value()));
+            }
+
+            if (it.row() >= multiBasis.basis(0).size())
+            {
+                tripletList.push_back(TT(it.row()+multiBasis.basis(0).size(), it.col(), it.value()));
+            }
+        }
+
+
+    for (int k = 0; k < mat21.outerSize(); ++k)
+        for (gsSparseMatrix<real_t>::InnerIterator it(mat21, k); it; ++it)
+        {
+            if (it.row() < multiBasis.basis(0).size())
+            {
+                //gsInfo << it.row() << " : " << it.col() << " : " << it.value() << " : " << m_system.matrix().at(it.row()+m_system.matrix().cols()/2, it.col()) << "\n";
+                tripletList.push_back(TT(it.row()+multiBasis.basis(0).size(), it.col()+multiBasis.basis(1).size()+multiBasis.basis(0).size(), it.value()));
+            }
+
+            if (it.row() >= multiBasis.basis(0).size())
+            {
+                tripletList.push_back(TT(it.row()+multiBasis.basis(1).size()+multiBasis.basis(0).size(), it.col()+multiBasis.basis(0).size(), it.value()));
+            }
+
+        }
+
+
+
+    K_temp.setFromTriplets(tripletList.begin(), tripletList.end());
+    m_system.matrix().swap(K_temp);
+    m_system.matrix().makeCompressed();
+    //gsInfo << "Sparse manipulation: " << clock.stop() << " with " << K_temp.nonZeros() << "\n";
+}
+
 
 template<class T, class bhVisitor>
 void gsG1BiharmonicAssembler<T,bhVisitor>::constructSolution(const gsMatrix<T> &solVector, gsMultiPatch<T> &result, int unk)
@@ -129,7 +228,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::plotParaview(gsField<> &solField_inte
 {
 
     std::string fn = "G1Biharmonic";
-    index_t npts = 2000;
+    index_t npts = 10000;
     gsParaviewCollection collection2(fn);
     std::string fileName2;
 
@@ -209,17 +308,23 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::refresh()
 {
     // We use predefined helper which initializes the system matrix
     // rows and columns using the same test and trial space
-    Base::scalarProblemGalerkinRefresh();
+    //Base::scalarProblemGalerkinRefresh();
+
+    gsDofMapper map(m_bases[0]);
+    map.finalize();
+
+    // 2. Create the sparse system
+    m_system = gsSparseSystem<T>(map);//1,1
 
 }
 
 template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
+void gsG1BiharmonicAssembler<T,bhVisitor>::assemble(bool isogeometric, index_t patchIdx)
 {
     GISMO_ASSERT(m_system.initialized(), "Sparse system is not initialized, call refresh()");
 
     // Reserve sparse system
-    const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0], 2, 1, 0.333333);
+    const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][1], 2, 1, 0.333333);
 
     m_system.reserve(nz, this->pde().numRhs());
 
@@ -227,9 +332,11 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
     m_ddof.resize(m_system.numUnknowns());
     m_ddof[0].setZero(m_system.colMapper(0).boundarySize(), m_system.unkSize(0) * m_system.rhs().cols());
 
-
-    // Assemble volume integrals
-    Base::template push<bhVisitor>();
+    if (isogeometric)
+    {
+        // Assemble volume integrals
+        Base::template push<bhVisitor>();
+    }
 
     // Neuman conditions of first kind
     Base::template push<gsVisitorNeumann<T> >(
@@ -239,8 +346,16 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
     Base::template push<gsVisitorLaplaceBoundaryBiharmonic<T> >(
         m_ppde.bcSecondKind().laplaceSides() );
 
+
     if (m_options.getInt("InterfaceStrategy") == iFace::dg)
         gsWarn << "DG option ignored.\n";
+
+    if (!isogeometric)
+    {
+        gsVisitorMixed<T> visitorMixed;
+        applyMixed(visitorMixed, patchIdx);
+
+    }
 
     /*
     // If requested, force Dirichlet boundary conditions by Nitsche's method
@@ -252,6 +367,61 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
     Base::finalize();
 }
 
+template <class T, class bhVisitor>
+void gsG1BiharmonicAssembler<T,bhVisitor>::applyMixed(gsVisitorMixed<T> & visitor, index_t patchIdx)
+{
+    const int patchIndex1      = patchIdx;
+    const int patchIndex2      = patchIdx == 0 ? 1 : 0;
+
+    const gsBasis<T> & B1 = m_bases[0][patchIndex1];// (!) unknown 0
+    const gsBasis<T> & B2 = m_bases[0][patchIndex2];
+
+#pragma omp parallel
+{
+    gsQuadRule<T> quRule ; // Quadrature rule
+    gsMatrix<T> quNodes1;// Mapped nodes
+    gsVector<T> quWeights;         // Mapped weights
+
+    gsVisitorMixed<T>
+#ifdef _OPENMP
+        // Create thread-private visitor
+    visitor_(visitor);
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#else
+        &visitor_ = visitor;
+#endif
+    // Initialize
+    visitor_.initialize(B1, quRule);
+
+    const gsGeometry<T> & patch1 = m_pde_ptr->patches()[patchIndex1];
+
+    // Initialize domain element iterators
+    typename gsBasis<T>::domainIter domIt = B1.makeDomainIterator();
+
+    // Start iteration over elements
+#ifdef _OPENMP
+        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#else
+        for (; domIt->good(); domIt->next() )
+#endif
+        {
+            // Compute the quadrature rule on both sides
+            quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes1, quWeights);
+
+
+            // Perform required evaluations on the quadrature nodes
+            visitor_.evaluate(B1, patch1, B2, quNodes1);
+
+            // Assemble on element
+            visitor_.assemble(*domIt,*domIt, quWeights);
+
+            // Push to global patch matrix (m_rhs is filled in place)
+#pragma omp critical(localToGlobal)
+            visitor_.localToGlobal(patchIndex1, patchIndex2, m_ddof, m_system);
+         }
+}//omp parallel
+}
 
 template <class T, class bhVisitor>
 void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System<real_t> &  g1System)
@@ -264,6 +434,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
     m_g1_ddof.resize( g1System.boundary_size(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
     m_g1_ddof.setZero();
 
+/*
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
     gsSparseEntries<T> projMatEntries;
@@ -495,6 +666,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
     typename gsSparseSolver<T>::CGDiagonal solver;
     m_g1_ddof = solver.compute( globProjMat ).solve ( globProjRhs );
 
+*/
 }
 
 template <class T, class bhVisitor>

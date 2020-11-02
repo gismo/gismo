@@ -203,7 +203,7 @@ void gsGeometry<T>::degreeElevate(short_t const i, short_t const dir)
     typename gsBasis<T>::uPtr b = m_basis->clone();
 
     if ( dir == -1 )
-        b->degreeElevate(i);
+        b->degreeIncrease(i);
     else if (dir < parDim() )
         b->degreeElevate(i, dir);
     else

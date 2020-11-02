@@ -32,23 +32,42 @@ public:
 
     gsApproxGluingData(gsMultiPatch<T> const & mp,
                        gsMultiBasis<T> const & mb,
-                       index_t uv,
+                       index_t dir,
                        bool isBoundary,
                        gsG1OptionList const & optionList)
-        : gsGluingData<T>(mp, mb, uv, isBoundary, optionList)
+        : gsGluingData<T>(mp, mb, dir, isBoundary, optionList)
     {
         p_tilde = this->m_optionList.getInt("p_tilde");
         r_tilde = this->m_optionList.getInt("r_tilde");
     }
 
+
+    gsApproxGluingData(gsMultiPatch<T> const & mp,
+                       gsMultiBasis<T> const & mb,
+                       bool isBoundary,
+                       gsG1OptionList const & optionList)
+        : gsGluingData<T>(mp, mb, isBoundary, optionList)
+    {
+        p_tilde = this->m_optionList.getInt("p_tilde");
+        r_tilde = this->m_optionList.getInt("r_tilde");
+
+        if (this->m_optionList.getInt("gluingData") == gluingData::local)
+            gsInfo << "!!!!!! LOCAL GLUING DATA NOT YET IMPLEMENTED!!!!!!" << "\n"; //setLocalGluingData(basis_plus, basis_minus, "edge");
+        else if (this->m_optionList.getInt("gluingData") == gluingData::global)
+        {
+            setGlobalGluingData(0,1); // Order is important!!!
+            setGlobalGluingData(1,0);
+        }
+    }
+
     // Computed the gluing data globally
-    void setGlobalGluingData();
+    void setGlobalGluingData(index_t patchID = 0, index_t uv = 1);
 
     // Computed the gluing data locally
     void setLocalGluingData(gsBSplineBasis<> & basis_plus, gsBSplineBasis<> & basis_minus, std::string edgeVertex);
 
-    const gsBSpline<T> get_local_alpha_tilde(index_t i) const {return alpha_minus_tilde[i]; }
-    const gsBSpline<T> get_local_beta_tilde(index_t i) const {return beta_plus_tilde[i]; }
+    const gsBSpline<T> get_alpha_S_tilde(index_t i) const {return alpha_S_tilde[i]; }
+    const gsBSpline<T> get_beta_S_tilde(index_t i) const {return beta_S_tilde[i]; }
 
     void set_beta_tilde(gsBSpline<T> beta_t) { this->beta_tilde = beta_t; }
 
@@ -206,7 +225,7 @@ protected:
     // Spline space for the gluing data (p_tilde,r_tilde,k)
     index_t p_tilde, r_tilde;
 
-    std::vector<gsBSpline<T>> alpha_minus_tilde, beta_plus_tilde;
+    std::vector<gsBSpline<T>> alpha_S_tilde, beta_S_tilde;
 
 }; // class gsGluingData
 
@@ -236,16 +255,16 @@ void gsApproxGluingData<T>::plotGluingData(index_t numGd)
         std::string basename = "ApproxGluingDataLocal" + util::to_string(numGd);
         gsParaviewCollection collection(basename);
 
-        for (size_t i = 0; i < alpha_minus_tilde.size(); i++)
+        for (size_t i = 0; i < alpha_S_tilde.size(); i++)
         {
             fileName = basename + "_alpha_" + util::to_string(i);
-            gsWriteParaview(alpha_minus_tilde[i],fileName,1000);
+            gsWriteParaview(alpha_S_tilde[i],fileName,1000);
             collection.addTimestep(fileName,i,".vtp");
         }
-        for (size_t i = 0; i < beta_plus_tilde.size(); i++)
+        for (size_t i = 0; i < beta_S_tilde.size(); i++)
         {
             fileName = basename + "_beta_" + util::to_string(i);
-            gsWriteParaview(beta_plus_tilde[i],fileName,5000);
+            gsWriteParaview(beta_S_tilde[i],fileName,5000);
             collection.addTimestep(fileName,i,".vtp");
         }
         collection.save();
@@ -254,22 +273,21 @@ void gsApproxGluingData<T>::plotGluingData(index_t numGd)
 
 
 template<class T>
-void gsApproxGluingData<T>::setGlobalGluingData()
+void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
 {
     // ======== Space for gluing data : S^(p_tilde, r_tilde) _k ========
     gsKnotVector<T> kv(0,1,0,p_tilde+1,p_tilde-r_tilde); // first,last,interior,mult_ends,mult_interior
     gsBSplineBasis<T> bsp_gD(kv);
 
-    gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(this->m_mb.basis(0).component(this->m_uv));
+    gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(this->m_mb.basis(patchID).component(uv));
 
     index_t degree = temp_basis_first.maxDegree();
     for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i += temp_basis_first.knots().multiplicityIndex(i))
         bsp_gD.insertKnot(temp_basis_first.knot(i),p_tilde-r_tilde);
 
+    gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD, uv, patchID, this->m_mp, this->m_gamma, this->m_isBoundary);
 
-    gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary);
-
-    globalGdAssembler.assemble();
+    globalGdAssembler.assemble(this->m_optionList.getSwitch("h1projection"));
 
     gsSparseSolver<real_t>::CGDiagonal solver;
     gsVector<> sol_a, sol_b;
@@ -278,22 +296,41 @@ void gsApproxGluingData<T>::setGlobalGluingData()
     solver.compute(globalGdAssembler.matrix_alpha());
     sol_a = solver.solve(globalGdAssembler.rhs_alpha());
 
+    gsVector<> sol_a_new(sol_a.rows() + 2);
+    sol_a_new.setZero();
+    sol_a_new.block(1,0,sol_a.rows(),1) = sol_a;
+    sol_a_new.at(0) = globalGdAssembler.bdy_alpha()(0,0);
+    sol_a_new.at(sol_a.rows() + 1) = globalGdAssembler.bdy_alpha()(1,0);
+
     gsGeometry<>::uPtr tilde_temp;
-    tilde_temp = bsp_gD.makeGeometry(sol_a);
+    tilde_temp = bsp_gD.makeGeometry(sol_a_new);
 
     gsBSpline<T> alpha_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-    this->alpha_tilde = alpha_t;
+    alpha_S_tilde.push_back(alpha_t);
 
     // beta^S
     solver.compute(globalGdAssembler.matrix_beta());
     sol_b = solver.solve(globalGdAssembler.rhs_beta());
 
-    tilde_temp = bsp_gD.makeGeometry(sol_b);
+    gsVector<> sol_b_new(sol_b.rows() + 2);
+    sol_b_new.setZero();
+    sol_b_new.block(1,0,sol_b.rows(),1) = sol_b;
+
+    tilde_temp = bsp_gD.makeGeometry(sol_b_new);
 
     gsBSpline<T> beta_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-    this->beta_tilde = beta_t;
+    beta_S_tilde.push_back(beta_t);
 
-    gsWriteParaview(beta_t, "beta_t",1000);
+    gsMatrix<> zeroOne(1,2);
+    zeroOne.setZero();
+    zeroOne(0,1) = 1.0; // v
+    //gsInfo << "BETA: " << alpha_t.eval(zeroOne) << "\n";
+
+    if (patchID == 0 )
+        gsWriteParaview(alpha_t,"beta_L",1000);
+    if (patchID == 1 )
+        gsWriteParaview(alpha_t,"beta_R",1000);
+
 
 } // setGlobalGluingData
 
@@ -306,13 +343,13 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
     // Setting the space for each alpha_tilde, beta_tilde
     if (edgeVertex == "edge")
     {
-        alpha_minus_tilde.resize(n_minus);
-        beta_plus_tilde.resize(n_plus);
+        alpha_S_tilde.resize(n_minus);
+        beta_S_tilde.resize(n_plus);
     }
     else if (edgeVertex == "vertex")
     {
-        alpha_minus_tilde.resize(1);
-        beta_plus_tilde.resize(1);
+        alpha_S_tilde.resize(1);
+        beta_S_tilde.resize(1);
     }
 
     // ======== Space for gluing data : S^(p_tilde, r_tilde) _k ========
@@ -359,7 +396,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
             gsGeometry<>::uPtr tilde_temp;
             tilde_temp = bsp_gD.makeGeometry(coeffs);
             gsBSpline<T> a_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-            alpha_minus_tilde.at(bfID) = a_t;
+            alpha_S_tilde.at(bfID) = a_t;
         }
         for (index_t bfID = 0; bfID < n_plus; bfID++)
         {
@@ -392,7 +429,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
             gsGeometry<>::uPtr tilde_temp;
             tilde_temp = bsp_gD.makeGeometry(coeffs);
             gsBSpline<T> b_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-            beta_plus_tilde.at(bfID) = b_t;
+            beta_S_tilde.at(bfID) = b_t;
         }
     } // edge
     else if (edgeVertex == "vertex")
@@ -427,7 +464,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
         gsGeometry<>::uPtr tilde_temp;
         tilde_temp = bsp_gD.makeGeometry(coeffs);
         gsBSpline<T> a_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
-        alpha_minus_tilde.at(0) = a_t;
+        alpha_S_tilde.at(0) = a_t;
 
         // BETA
         ab = basis_plus.support(2); // FIXED TO SUPP(b_0^+)
@@ -456,7 +493,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
         gsGeometry<>::uPtr tilde_temp2;
         tilde_temp2 = bsp_gD.makeGeometry(coeffs2);
         gsBSpline<T> b_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp2);
-        beta_plus_tilde.at(0) = b_t;
+        beta_S_tilde.at(0) = b_t;
     }
 
 } // setLocalGluingData

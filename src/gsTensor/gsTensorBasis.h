@@ -344,6 +344,11 @@ public:
     /// given coefficient vector
     void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots=1, std::vector<int> mul = {1});
 
+    /// Refine the basis uniformly and perform knot refinement for the
+    /// given coefficient vector
+    void uniformRefine_withDifferentRegularity_withCoefs(gsMatrix<T>& coefs, int numKnots=1, std::vector<int> mul = {1}, size_t patchId = 0);
+
+
     /// Refine the basis uniformly and produce a sparse matrix which
     /// maps coarse coefficient vectors to refined ones
     void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots=1, int mul=1);
@@ -351,6 +356,10 @@ public:
     /// Refine the basis uniformly and produce a sparse matrix which
     /// maps coarse coefficient vectors to refined ones
     void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots=1, std::vector<int> mul = {1});
+
+    /// Refine the basis uniformly and produce a sparse matrix which
+    /// maps coarse coefficient vectors to refined ones
+    void uniformRefine_withDifferentRegularity_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots=1, std::vector<int> mul = {1}, size_t patchId = 0);
 
     // Look at gsBasis class for documentation 
     virtual void uniformCoarsen(int numKnots = 1)

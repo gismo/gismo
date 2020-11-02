@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsAssembler/gsQuadrature.h>
+#include <gsCore/gsFunctionExpr.h>
 
 namespace gismo
 {
@@ -50,7 +51,7 @@ public:
         rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_JACOBIAN;
     }
 
     // Evaluate on element.
@@ -74,7 +75,7 @@ public:
         // specifies whether the right hand side function should be
         // evaluated in parametric(true) or physical (false)
         rhs_ptr->eval_into( (paramCoef ?  md.points :  md.values[0] ), rhsVals );
-        
+
         // Initialize local matrix/rhs
         localMat.setZero(numActive, numActive      );
         localRhs.setZero(numActive, rhsVals.rows() );//multiple right-hand sides
@@ -88,12 +89,13 @@ public:
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
+
             // Multiply weight by the geometry measure
             const T weight = quWeights[k] * md.measure(k);
-            
+
             // Compute physical gradients at k as a Dim x NumActive matrix
             transformGradients(md, k, bGrads, physGrad);
-            
+
             localRhs.noalias() += weight * ( bVals.col(k) * rhsVals.col(k).transpose() ) ;
             localMat.noalias() += weight * (physGrad.transpose() * physGrad);
         }
@@ -118,6 +120,7 @@ protected:
     // Basis values
     std::vector<gsMatrix<T> > basisData;
     gsMatrix<T>        physGrad;
+
     gsMatrix<unsigned> actives;
     index_t numActive;
 

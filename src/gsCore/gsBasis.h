@@ -820,6 +820,8 @@ public:
 
     virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, std::vector<int> mul = {1});
 
+    virtual void uniformRefine_withDifferentRegularity_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, std::vector<int> mul = {1}, size_t patchId = 0);
+
     /// @brief Refine the basis uniformly
     ///
     /// The function writes a sparse matrix into the variable \a transfer that indicates
@@ -829,6 +831,9 @@ public:
     /// \sa gsBasis::uniformRefine
     virtual void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor>& transfer,
                                             int numKnots = 1, int mul = 1);
+
+    virtual void uniformRefine_withDifferentRegularity_withTransfer(gsSparseMatrix<T,RowMajor>& transfer,
+                                            int numKnots = 1, int mul = 1, size_t patchID = 0, int parDir = 0);
 
     /// @brief Coarsen the basis uniformly by removing groups of \a
     /// numKnots consecutive knots, each knot removed \a mul times

@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Farahat
+    Author(s): A. Farahat & P. Weinmueller
 */
 #pragma once
 
@@ -26,11 +26,23 @@ public:
     gsG1AuxiliaryPatch()
     {}
 
+    // TODO Improve the code here: use only the initial multipatch
     gsG1AuxiliaryPatch(const gsGeometry<> & singlePatch, const size_t globalPatchIndex):
     auxPatch(singlePatch), patchIndex(globalPatchIndex){
         rotationNum = 0;
         axisOrientation = 0;
 //        gsInfo << "Single patch created: " << patchIndex << "\n";
+
+        withBasis = false;
+    };
+
+    gsG1AuxiliaryPatch(const gsGeometry<> & singlePatch, const gsBasis<> & singleBasis, const size_t globalPatchIndex):
+        auxPatch(singlePatch), auxBasis(singleBasis), patchIndex(globalPatchIndex){
+        rotationNum = 0;
+        axisOrientation = 0;
+//        gsInfo << "Single patch created: " << patchIndex << "\n";
+
+        withBasis = true;
     };
 
     void setPlusMinus(index_t plus, index_t minus)
@@ -61,7 +73,7 @@ public:
                 mpar.row(i + j * dimV) = auxPatch.patch(0).coefs().row((dimU - 1 - j) + dimU * i);
             }
         }
-
+        temp_basisLU.knots().reverse(); // For different regularity
         // Create a new geometry starting from kntot vectors and the matrix of the coefficients reparametrized
         gsTensorBSpline<2, real_t> newgeom1(temp_basisLV.knots(), temp_basisLU.knots(), mpar);
 
@@ -72,6 +84,15 @@ public:
 
         auxPatch.swap(newpatch);
         auxPatch.computeTopology();
+
+        if (withBasis)
+        {
+            gsTensorBSplineBasis<2, real_t> & tempBasis = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(auxBasis.basis(0));
+            tempBasis.component(0).reverse();
+            gsTensorBSplineBasis<2, real_t> newTensorBasis(tempBasis.knots(1),tempBasis.knots(0));
+            gsMultiBasis<> newBasis(newTensorBasis);
+            auxBasis.swap(newBasis);
+        }
 
         // Update the number of rotation of the axis
         rotationNum++;
@@ -109,8 +130,8 @@ public:
         G1repBasis.swap(newpatch);
     }
 
-
     void rotateParamClock(){
+
         gsMultiBasis<> auxBase(auxPatch);
         gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(auxBase.basis(0));
         gsBSplineBasis<> temp_basisLU = dynamic_cast<gsBSplineBasis<> &>(temp_L.component(0));
@@ -128,21 +149,30 @@ public:
                 mpar.row(i + (dimU - j - 1) * dimV) = auxPatch.patch(0).coefs().row((dimV * dimU  -1 - j) - dimU * i);
             }
         }
+        temp_basisLV.knots().reverse(); // For different regularity
 
         // Create a new geometry starting from kntot vectors and the matrix of the coefficients reparametrized
         gsTensorBSpline<2, real_t> newgeom1(temp_basisLV.knots(), temp_basisLU.knots(), mpar);
 
         // Create a new single-patch object
-        gsMultiPatch<> newpatch;
-
-        newpatch.addPatch(newgeom1);
+        gsMultiPatch<> newpatch(newgeom1);
 
         auxPatch.swap(newpatch);
         auxPatch.computeTopology();
 
+        if (withBasis)
+        {
+            gsTensorBSplineBasis<2, real_t> & tempBasis = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(auxBasis.basis(0));
+            tempBasis.component(1).reverse();
+            gsTensorBSplineBasis<2, real_t> newTensorBasis(tempBasis.knots(1),tempBasis.knots(0));
+            gsMultiBasis<> newBasis(newTensorBasis);
+            auxBasis.swap(newBasis);
+        }
+
         // Update the number of rotation of the axis
         rotationNum--;
         this->checkRotation();
+
     }
 
 
@@ -196,6 +226,9 @@ public:
         {
             mpar.row(i) = auxPatch.patch(0).coefs().row((dimU * dimV - 1) - i);
         }
+        temp_basisLU.knots().reverse(); // For different regularity
+        temp_basisLV.knots().reverse(); // For different regularity
+
         // Create a new geometry starting from kntot vectors and the matrix of the coefficients reparametrized
         gsTensorBSpline<2, real_t> newgeom1(temp_basisLU.knots(), temp_basisLV.knots(), mpar);
 
@@ -206,6 +239,14 @@ public:
 
         auxPatch.swap(newpatch);
         auxPatch.computeTopology();
+
+        if (withBasis)
+        {
+            gsTensorBSplineBasis<2, real_t> & tempBasis = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(auxBasis.basis(0));
+            gsTensorBSplineBasis<2, real_t> newTensorBasis(tempBasis.knots(0),tempBasis.knots(1));
+            gsMultiBasis<> newBasis(newTensorBasis);
+            auxBasis.swap(newBasis);
+        }
 
         // Update the number of rotation of the axis (anti-clockwise)
         rotationNum+=2;
@@ -270,6 +311,14 @@ public:
 
         auxPatch.swap(newpatch);
         //auxPatch.computeTopology();
+
+        if (withBasis)
+        {
+            gsTensorBSplineBasis<2, real_t> & tempBasis = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(auxBasis.basis(0));
+            gsTensorBSplineBasis<2, real_t> newTensorBasis(tempBasis.knots(1),tempBasis.knots(0));
+            gsMultiBasis<> newBasis(newTensorBasis);
+            auxBasis.swap(newBasis);
+        }
 
         axisOrientation = 1;
     }
@@ -348,6 +397,14 @@ public:
         return auxPatch.patch(0);
     }
 
+    gsMultiBasis<>& getBasis(){
+        return auxBasis;
+    }
+
+    bool boolBasis(){
+        return withBasis;
+    }
+
     const index_t getGlobalPatchIndex(){
         return patchIndex;
     }
@@ -382,19 +439,24 @@ public:
 protected:
 
     gsMultiPatch<> auxPatch;
+    gsMultiBasis<> auxBasis;
     gsMultiPatch<> G1repBasis;
 
     // Global patch index in the initial geometry
     index_t patchIndex;
+
     // Stores the changing of the axis
     // 0 -> axis not changed
     // 1 -> axis swapped (x, y --> y, x)
     bool axisOrientation;
+
     // How many rotation of the axis has been executed
     // Positive -> anticlockwise    Negative -> clockwise
     index_t rotationNum;
 
     index_t m_plus, m_minus;
+
+    bool withBasis;
 
 };
 

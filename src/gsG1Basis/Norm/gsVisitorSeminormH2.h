@@ -48,28 +48,65 @@ public:
     // Evaluate on element.
     void evaluate(gsGeometryEvaluator<T> & geoEval,
                   const gsFunction<T>    & _func2,
-                  const gsBasis<T> & basis,
+                  const std::vector<gsMultiBasis<T>> * basis,
                   const gsSparseMatrix<T> * sol_sparse,
-                  const gsVector<T> & numBasisFunctions,
-                  gsMatrix<T>            & quNodes)
+                  gsG1System<T> & g1System,
+                  gsMatrix<T>            & quNodes,
+                  bool isogeometric)
     {
         gsMatrix<unsigned> actives;
         gsMatrix<T> derivData, deriv2Data;
 
-        basis.active_into(quNodes.col(0), actives);
+        basis->at(0).basis(geoEval.id()).active_into(quNodes.col(0), actives);
 
         // Evaluate basis functions on element
-        basis.deriv_into(quNodes,derivData);
-        basis.deriv2_into(quNodes,deriv2Data);
+        basis->at(0).basis(geoEval.id()).deriv_into(quNodes,derivData);
+        basis->at(0).basis(geoEval.id()).deriv2_into(quNodes,deriv2Data);
 
-        f1ders.setZero(2,actives.rows());
-        f1ders2.setZero(3,actives.rows());
-        for (index_t i = 0; i < sol_sparse->rows(); i++)
+        f1ders.setZero(2,quNodes.cols());
+        f1ders2.setZero(3,quNodes.cols());
+        if (!isogeometric)
+        {
+            gsMatrix<unsigned> actives2;
+            gsMatrix<T> derivData2, deriv2Data2;
+
+            basis->at(1).basis(geoEval.id()).active_into(quNodes.col(0), actives2);
+
+            // Evaluate basis functions on element
+            basis->at(1).basis(geoEval.id()).deriv_into(quNodes,derivData2);
+            basis->at(1).basis(geoEval.id()).deriv2_into(quNodes,deriv2Data2);
+
+
+            for (index_t i = 0; i < g1System.get_numInterfaceFunctions().last(); i++)
+                for (index_t j = 0; j < actives2.rows(); j++)
+                {
+                    f1ders += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives2.at(j)) * derivData2.block(2*j,0,2,f1ders.dim().second);
+                    f1ders2 += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives2.at(j)) * deriv2Data2.block(3*j,0,3,f1ders.dim().second);
+                }
+        }
+        else
+        {
+            for (index_t i = 0; i < g1System.get_numInterfaceFunctions().last(); i++)
+                for (index_t j = 0; j < actives.rows(); j++)
+                {
+                    f1ders += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j)) * derivData.block(2*j,0,2,f1ders.dim().second);
+                    f1ders2 += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j)) * deriv2Data.block(3*j,0,3,f1ders.dim().second);
+                }
+        }
+
+
+        for (index_t i = g1System.get_numInterfaceFunctions().last(); i < sol_sparse->rows()-1; i++)
             for (index_t j = 0; j < actives.rows(); j++)
             {
-                f1ders += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * derivData.block(2*j,0,2,f1ders.dim().second);
-                f1ders2 += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * deriv2Data.block(3*j,0,3,f1ders.dim().second);
+                f1ders += sol_sparse->at(i,g1System.get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * derivData.block(2*j,0,2,f1ders.dim().second);
+                f1ders2 += sol_sparse->at(i,g1System.get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * deriv2Data.block(3*j,0,3,f1ders.dim().second);
             }
+
+        for (index_t j = 0; j < actives.rows(); j++)
+        {
+            f1ders += sol_sparse->at(sol_sparse->rows()-1,g1System.get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * derivData.block(2*j,0,2,f1ders.dim().second);
+            f1ders2 += sol_sparse->at(sol_sparse->rows()-1,g1System.get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * deriv2Data.block(3*j,0,3,f1ders.dim().second);
+        }
 
 
         // get the gradients to columns

@@ -28,10 +28,11 @@ public:
 public:
     gsGlobalGDAssembler(gsBasis<T> const & basis,
                            index_t const & uv,
+                           index_t const & patchID,
                            gsMultiPatch<T> const & mp,
-                           index_t const & gamma,
+                           real_t const & gamma,
                            bool & isBoundary)
-        : m_uv(uv), m_mp(mp), m_gamma(gamma), m_isBoundary(isBoundary)
+        : m_uv(uv), m_patchID(patchID), m_mp(mp), m_gamma(gamma), m_isBoundary(isBoundary)
     {
 
         m_basis.push_back(basis); // Basis for alpha and beta
@@ -41,26 +42,30 @@ public:
 
     void refresh();
 
-    void assemble();
+    void assemble(bool h1projection);
+
+    void computeBoundaryValues();
 
     inline void apply(bhVisitor & visitor,
+                      bool h1projection,
                       int patchIndex = 0,
                       boxSide side = boundary::none);
 
     /// @brief Returns the left-hand global matrix
     const gsSparseMatrix<T> & matrix_alpha() const { return m_system_alpha.matrix(); }
     const gsMatrix<T> & rhs_alpha() const { return m_system_alpha.rhs(); }
+    const gsMatrix<T> & bdy_alpha() const { return m_ddof[0]; }
 
     const gsSparseMatrix<T> & matrix_beta() const { return m_system_beta_S.matrix(); }
     const gsMatrix<T> & rhs_beta() const { return m_system_beta_S.rhs(); }
 
 protected:
-    index_t m_uv;
+    index_t m_uv, m_patchID;
 
     // interface + geometry for computing alpha and beta
     gsMultiPatch<T> m_mp;
 
-    index_t m_gamma;
+    real_t m_gamma;
     bool m_isBoundary;
 
     // Space for phi_0,i, phi_1,j
@@ -83,6 +88,13 @@ void gsGlobalGDAssembler<T, bhVisitor>::refresh()
 
     gsDofMapper map_beta_S(m_basis[0]);
 
+    gsMatrix<unsigned> act;
+    act = m_basis[0].basis(0).boundaryOffset(1,0); // WEST
+    map_beta_S.markBoundary(0, act); // Patch 0
+    map_alpha.markBoundary(0, act); // Patch 0
+    act = m_basis[0].basis(0).boundaryOffset(2,0); // East
+    map_beta_S.markBoundary(0, act); // Patch 0
+    map_alpha.markBoundary(0, act); // Patch 0
 
     map_alpha.finalize();
     map_beta_S.finalize();
@@ -94,7 +106,7 @@ void gsGlobalGDAssembler<T, bhVisitor>::refresh()
 } // refresh()
 
 template <class T, class bhVisitor>
-void gsGlobalGDAssembler<T, bhVisitor>::assemble()
+void gsGlobalGDAssembler<T, bhVisitor>::assemble(bool h1projection)
 {
     //GISMO_ASSERT(m_system.initialized(), "Sparse system is not initialized, call refresh()");
 
@@ -113,9 +125,40 @@ void gsGlobalGDAssembler<T, bhVisitor>::assemble()
     m_ddof[0].setZero(mapper_alpha.boundarySize(), 1 ); // tilde
     m_ddof[1].setZero(mapper_beta.boundarySize(), 1 ); // bar
 
+    // Boundary
+    //computeBoundaryValues(); == 0
+    // alpha^S
+    gsMatrix<> points(1,2), uv, ev;
+    points.setZero();
+    points(0,1) = 1.0;
+    if (m_uv==1)
+    {
+        uv.setZero(2,points.cols());
+        uv.bottomRows(1) = points; // v
+    }
+    else if (m_uv==0)
+    {
+        uv.setZero(2,points.cols());
+        uv.topRows(1) = points; // u
+    }
+
+
+    // ======== Determine bar{alpha^(L)} == Patch 0 ========
+    const gsGeometry<> & P0 = m_mp.patch(m_patchID); // Right
+    for (index_t i = 0; i < uv.cols(); i++)
+    {
+        P0.jacobian_into(uv.col(i), ev);
+        uv(0, i) = 1 * ev.determinant();
+
+    }
+    if (m_isBoundary)
+        uv.setOnes();
+
+    m_ddof[0] = uv.row(0).transpose();
+
     // Assemble volume integrals
     bhVisitor visitor;
-    apply(visitor);
+    apply(visitor, h1projection);
 
     m_system_alpha.matrix().makeCompressed();
     m_system_beta_S.matrix().makeCompressed();
@@ -124,6 +167,7 @@ void gsGlobalGDAssembler<T, bhVisitor>::assemble()
 
 template <class T, class bhVisitor>
 inline void gsGlobalGDAssembler<T, bhVisitor>::apply(bhVisitor & visitor,
+                                                        bool h1projection,
                                                         int patchIndex,
                                                         boxSide side)
 {
@@ -143,7 +187,7 @@ inline void gsGlobalGDAssembler<T, bhVisitor>::apply(bhVisitor & visitor,
         gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
         gsVector<T> quWeights; // Temp variable for mapped weights
 
-        gsBasis<T> & basis = m_basis[0].basis(patchIndex); // = 0
+        gsBasis<T> & basis = m_basis[0].basis(0); // = 0
 
         // Initialize reference quadrature rule and visitor data
         visitor_.initialize(basis,quRule);
@@ -164,10 +208,10 @@ inline void gsGlobalGDAssembler<T, bhVisitor>::apply(bhVisitor & visitor,
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(basis, quNodes, m_uv, m_mp, m_gamma, m_isBoundary);
+            visitor_.evaluate(basis, quNodes, m_uv, m_mp, m_patchID, m_gamma, m_isBoundary, h1projection);
 
             // Assemble on element
-            visitor_.assemble(*domIt, quWeights);
+            visitor_.assemble(*domIt, quWeights, h1projection);
 
             // Push to global matrix and right-hand side vector
 #pragma omp critical(localToGlobal)
@@ -176,6 +220,109 @@ inline void gsGlobalGDAssembler<T, bhVisitor>::apply(bhVisitor & visitor,
         }
 
     }//omp parallel
+}
+
+template <class T, class bhVisitor>
+void gsGlobalGDAssembler<T, bhVisitor>::computeBoundaryValues()
+{
+    real_t D1, lambda0, lambda1;
+    gsMatrix<> uv, ev, D0;
+
+    gsMatrix<> alpha_S, beta_S;
+
+    gsMatrix<> zeroOne(2,2);
+    zeroOne.setZero();
+    zeroOne(1,1) = 1.0; // v
+
+    gsMatrix<> points(1,2);
+    points.setZero();
+    points(0,1) = 1.0;
+
+    const gsGeometry<> & PR = m_mp.patch(0); // Right
+    const gsGeometry<> & PL = m_mp.patch(1); // Left
+
+    PR.jacobian_into(zeroOne.col(1), ev);
+    lambda1 = 1/ev.determinant(); // alpha_R
+
+    D0 = ev.col(1);
+    D1 = 1/ D0.norm();
+    lambda1 *= - m_gamma * D1 * D1 * ev.col(1).transpose() * ev.col(0);
+
+
+
+    PL.jacobian_into(zeroOne.col(0), ev);
+    lambda0 = 1/ev.determinant(); // alpha_L
+
+    D0 = ev.col(0);
+    D1 = 1/ D0.norm();
+    lambda0 *= - m_gamma * D1 * D1 * ev.col(1).transpose() * ev.col(0);
+
+    if (m_uv == 1)
+        lambda0 = - lambda0;
+
+    if (m_uv == 0)
+        lambda1 = - lambda1;
+
+    // alpha^S
+    if (m_uv==1)
+    {
+        uv.setZero(2,points.cols());
+        uv.bottomRows(1) = points; // v
+    }
+    else if (m_uv==0)
+    {
+        uv.setZero(2,points.cols());
+        uv.topRows(1) = points; // u
+    }
+
+
+    // ======== Determine bar{alpha^(L)} == Patch 0 ========
+    const gsGeometry<> & P0 = m_mp.patch(m_patchID); // Right
+    for (index_t i = 0; i < uv.cols(); i++)
+    {
+        P0.jacobian_into(uv.col(i), ev);
+        uv(0, i) = 1 * ev.determinant();
+
+    }
+    if (m_isBoundary)
+        uv.setOnes();
+    alpha_S = uv.row(0);
+
+    // beta^S
+    if (m_uv==1)
+    {
+        uv.setZero(2,points.cols());
+        uv.bottomRows(1) = points; // v
+    }
+    else if (m_uv==0)
+    {
+        uv.setZero(2,points.cols());
+        uv.topRows(1) = points; // u
+    }
+
+    // ======== Determine bar{beta}^L ========
+    for(index_t i = 0; i < uv.cols(); i++)
+    {
+        P0.jacobian_into(uv.col(i),ev);
+        D0 = ev.col(m_uv);
+        real_t D1 = 1/ D0.norm();
+        uv(0,i) = - m_gamma * D1 * D1 * ev.col(1).transpose() * ev.col(0);
+        //uv(0,i) = - ev.col(1).transpose() * ev.col(0);
+
+    }
+    if (m_isBoundary)
+        uv.setZero();
+    beta_S = uv.row(0);
+
+
+    // ++++++++++++++++++++++++++++++++
+    // ================================
+    // ++++++++++++++++++++++++++++++++
+    gsMatrix<> ones;
+    ones.setOnes(1,points.cols());
+
+    m_ddof[1] = (beta_S - lambda0 * (ones - points).cwiseProduct(alpha_S) - lambda1 * (points).cwiseProduct(alpha_S)).transpose();
+
 }
 
 
