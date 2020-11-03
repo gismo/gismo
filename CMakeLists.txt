@@ -290,6 +290,13 @@ if(GISMO_WITH_SMESH)
   #include_directories(${SMESH_INCLUDE_DIR})
 endif()
 
+if(GISMO_WITH_XBRAID)
+  add_subdirectory(extensions/gsXBraid)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${XBRAID_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  #include_directories(${XBRAID_INCLUDE_DIR})
+endif(GISMO_WITH_XBRAID)
+
 #second time
 include_directories(${GISMO_INCLUDE_DIRS})
 
