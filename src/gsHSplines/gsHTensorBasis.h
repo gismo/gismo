@@ -501,14 +501,28 @@ public:
 
     void elementSupport_into(const index_t i, gsMatrix<index_t, d, 2>& result) const
     {
-        unsigned lvl = levelOf(i);
-
+        index_t lvl = levelOf(i);
         m_bases[lvl]->elementSupport_into(m_xmatrix[lvl][ i - m_xmatrix_offset[lvl] ],
                                           result);
     }
 
-    // Look at gsBasis class for a description
-    gsMatrix<T> elementInSupportOf(index_t j) const;
+    gsMatrix<T> elementInSupportOf(index_t j) const
+    {
+        index_t lvl = levelOf(j);
+        gsMatrix<index_t,d,2> sup;
+        m_bases[lvl]->elementSupport_into(m_xmatrix[lvl][j-m_xmatrix_offset[lvl]], sup);
+        std::pair<point,point> box =  m_tree.queryLevelCell(sup.col(0),sup.col(1),lvl);
+        //get intersection
+        for ( short_t i = 0; i!=d; ++i)
+        {
+            box.first[i]  = ( sup(0,i) >= box.first[i] ? sup(0,i) : box.first[i] );
+            box.second[i] = ( sup(1,i) >= box.second[i] ? sup(1,i) : box.second[i] );
+        }
+
+        sup.col(0) = (box.first+box.second)/2;
+        sup.col(1) = sup.col(0).array() + 1;
+        return m_bases[lvl]->elementDom(sup);
+    }
 
     GISMO_UPTR_FUNCTION_PURE(gsHTensorBasis, clone)
 
@@ -734,7 +748,7 @@ public:
     index_t flatTensorIndexOf(const index_t i) const
     {
 
-        const int level = this->levelOf(i);
+        const index_t level = this->levelOf(i);
 
         const index_t offset = this->m_xmatrix_offset[level];
         const index_t ind_in_level = this->m_xmatrix[level][i - offset];

@@ -21,7 +21,6 @@
 #include <gismo.h>
 #include <gsSolver/gsSolverUtils.h>
 #include <gsUtils/gsQuasiInterpolate.h>
-#include <gsUtils/gsQuasiInterpolate.hpp>       //ToDo: add instantiation file
 
 using namespace gismo;
 
