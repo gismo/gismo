@@ -186,6 +186,15 @@ public:
         result = tmp_vec;
     }
 
+    template <int _Rows>
+    gsMatrix<T> elementDom(const gsMatrix<index_t,_Rows,2> & box) const
+    {
+        gsMatrix<T> rvo(1,2);
+        rvo.at(0) = m_knots.uValue(box.at(0));
+        rvo.at(1) = m_knots.uValue(box.at(1));
+        return rvo;
+    }
+
     // Look at gsBasis class for a description
     const TensorSelf_t & component(short_t i) const = 0;
 
