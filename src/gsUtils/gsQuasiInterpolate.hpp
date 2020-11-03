@@ -51,7 +51,7 @@ void gsQuasiInterpolate<T>::Taylor(const gsBasis<T> &bb, const gsFunction<T> &fu
 {
     const gsBSplineBasis<T> & b = dynamic_cast<const gsBSplineBasis<T> &>(bb);
     // ONLY 1D
-    
+
     const gsKnotVector<T> & kv = b.knots();
     int deg = b.degree();
     gsMatrix<T> xj = b.anchors();
@@ -108,7 +108,7 @@ void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> 
     const gsKnotVector<T> & kv = b.knots();
     const int n = b.size();
     //gsDebugVar(kv);
-    
+
     coefs.resize(n, fun.targetDim());
 
     gsMatrix<T> knots(1,kv.size());
@@ -147,7 +147,7 @@ void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> 
         for(int i=1; i<n-1; i++)
         {
             // formula: (-a + 4b - c)/2;
-            coefs.row(i).noalias() = 
+            coefs.row(i).noalias() =
                 ( - TmpCoefs.col(i+1)
                   + 4 * TmpCoefsAvg.col(i+1)
                   - TmpCoefs.col(i+2) ) / 2;
@@ -207,7 +207,7 @@ void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> 
             //compute equally distributed points in greatest subinterval
             distributePoints(kv[gsi], kv[gsi+1], kv.degree()+1, xik);
             //gsDebugVar(xik);
-            
+
             //compute the factors omega_{ik}
             computeWeights(xik, kv, i+1, weights);
 
@@ -226,7 +226,7 @@ T gsQuasiInterpolate<T>::derivProd(const std::vector<T> &zeros, const int &order
         return (x - gsAsConstMatrix<T,1>(zeros).array()).prod();
 
     std::vector<T> tmpZeros;
-    
+
     if(order == 1) // first derivative
     {
         const index_t n1 = zeros.size() - 1;
@@ -274,7 +274,7 @@ void gsQuasiInterpolate<T>::computeWeights(const gsMatrix<T> &points, const gsKn
     for(int k=0; k<deg+1; k++)
     {
         T constant = (T)factorial(deg);
-        
+
         //get the list of points without 'points(k)' and
         //multiply the values of the numerator together, to get the total constant
         for(int i=0; i<k; i++)

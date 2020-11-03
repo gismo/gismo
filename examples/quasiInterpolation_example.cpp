@@ -59,7 +59,7 @@ bool errorAnalysis(const gsFunction<T> &fun, const gsBasis<T> & bbasis, int type
     gsMatrix<T> coefs;
     real_t error, expConvRate=-1.0;// prevError=0.0, ratio=-1.0;
     std::vector<real_t> error_list, h_list;
-    
+
     gsMatrix<> ab = basis->support();
 
     int deg = basis->minDegree();
@@ -124,7 +124,7 @@ bool polyReconstructionTaylor(const gsFunction<T> &fun, gsBSplineBasis<T> basis,
     gsMatrix<T> coefs;
     gsQuasiInterpolate<T>::Taylor(basis, fun, deg, coefs);
     gsBSpline<T> result(basis,coefs);
-    
+
     error = computeError(fun, result, 100);
     int numInnerKnots = basis.knots().size() - 2*(basis.degree()+1);
     real_t h = (b-a)/(numInnerKnots+1);
@@ -224,7 +224,7 @@ public:
         gsMatrix<T> cossin(2,u.size());
         for(int i=0; i<u.size(); i++)
         {
-            sincos(0,i) = 
+            sincos(0,i) =
             cossin(1,i) = math::cos(2*EIGEN_PI*u.at(i));
             sincos(1,i) =
             cossin(0,i) = math::sin(2*EIGEN_PI*u.at(i));
@@ -255,7 +255,7 @@ public:
 bool qi_1D()
 {
     gsInfo<<"\n******** Running QI-1D ********\n";
-    
+
     gsMySinus<real_t> mySinus;
     gsFunctionExpr<> myPolyLin("50*x-28",1);
     gsFunctionExpr<> myPolyQuad("-5*x^2 + 22*x - 4",1);
@@ -313,7 +313,7 @@ bool qi_1D()
 
     gsInfo<<"\nEvaluation-based error analysis (quadratic, general):\n";
     passed &= errorAnalysis(mySinus, bas2, 0, numRef);
-    
+
 
     gsInfo<<"\nSchoenberg error analysis (cubic):\n";
     passed &= errorAnalysis(mySinus, bas3, 1, numRef);
@@ -370,7 +370,7 @@ bool qi_1D()
 
 
 // --------- Taylor Polynomial-reconstruction test (dim = 1)
-    
+
     gsInfo<<"\nTaylor  poly-reconstruction (linear) [deg=1]:\n";
     passed &= polyReconstructionTaylor(myPolyLin, bas1, 1);
 
@@ -390,7 +390,7 @@ bool qi_1D()
 bool qi_2D()
 {
     gsInfo<<"\n******** Running QI-2D ********\n";
-    
+
     gsFunctionExpr<real_t> mySinus("sin(x)*cos(y)",2);
     gsFunctionExpr<> myPolyLin("50*x- + 30*y + 28",2);
     gsFunctionExpr<> myPolyQuad("-5*x^2 + 3*x*y + y^2 + 22*x + y - 4",2);
@@ -417,6 +417,19 @@ bool qi_2D()
     int numRef = 5;
     bool passed = true;
 
+    gsTHBSplineBasis<2,real_t> thb1,thb2,thb3;
+    thb1 = gsTHBSplineBasis<2,real_t>(bas1);
+    thb2 = gsTHBSplineBasis<2,real_t>(bas2);
+    thb3 = gsTHBSplineBasis<2,real_t>(bas3);
+    gsMatrix<> refBoxes(2,2);
+    refBoxes.col(0) << 0,0;
+    refBoxes.col(1) << 0.25,0.25;
+    thb1.refine( refBoxes );
+    thb2.refine( refBoxes );
+    thb3.refine( refBoxes );
+
+    // gsWriteParaview(thb2,"basis");
+
 
 // ---------  Convergence-rate test for trigonometric function
 
@@ -428,7 +441,7 @@ bool qi_2D()
 
     gsInfo<<"\nLocal interpolation-based error analysis (cubic):\n";
     passed &= errorAnalysis<real_t>(mySinus, bas3, 4, numRef);
-    
+
     gsInfo<<"\nSchoenberg error analysis (linear):\n";
     passed &= errorAnalysis<real_t>(mySinus, bas1, 1, numRef);
 
@@ -479,7 +492,7 @@ bool qi_2D()
 
     // gsInfo<<"\nTaylor poly-reconstruction (quadratic)  [deg=2]:\n";
     // passed &= polyReconstructionTaylor(myPolyQuad, bas2, 2);
-    
+
     return passed;
 }
 
@@ -487,7 +500,7 @@ bool qi_2D()
 bool qi_3D()
 {
     gsInfo<<"\n******** Running QI-3D ********\n";
-    
+
     gsFunctionExpr<real_t> mySinus("sin(x)*cos(y)*sin(z)",3);
     int deg1 = 1;
     int deg2 = 2;
@@ -521,7 +534,7 @@ bool qi_3D()
 
     gsInfo<<"\nLocal interpolation-based error analysis (cubic):\n";
     passed &= errorAnalysis<real_t>(mySinus, bas3, 4, numRef);
-    
+
     gsInfo<<"\nSchoenberg error analysis (linear):\n";
     passed &= errorAnalysis<real_t>(mySinus, bas1, 1, numRef);
 
@@ -530,7 +543,7 @@ bool qi_3D()
 
     gsInfo<<"\nSchoenberg error analysis (cubic):\n";
     passed &= errorAnalysis(mySinus, bas3, 1, numRef);
-    
+
     return passed;
 }
 

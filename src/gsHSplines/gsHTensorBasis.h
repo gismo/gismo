@@ -507,6 +507,9 @@ public:
                                           result);
     }
 
+    // Look at gsBasis class for a description
+    gsMatrix<T> elementInSupportOf(index_t j) const;
+
     GISMO_UPTR_FUNCTION_PURE(gsHTensorBasis, clone)
 
     /// The number of basis functions in this basis
