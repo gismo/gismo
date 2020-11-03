@@ -174,6 +174,11 @@ if  (${GISMO_WITH_UNUM})
 message ("  GISMO_WITH_UNUM         ${GISMO_WITH_UNUM}")
 endif()
 
+option(GISMO_WITH_XBRAID         "With XBraid"               false  )
+if  (${GISMO_WITH_XBRAID})
+message ("  GISMO_WITH_XBRAID       ${GISMO_WITH_XBRAID}")
+endif()
+
 ## #################################################################
 ## Options list: Extra options
 ## #################################################################
