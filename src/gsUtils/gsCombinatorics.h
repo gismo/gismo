@@ -28,8 +28,8 @@ namespace gismo
 // could also be in Utils, but doxygen allows only one group for free functions
 inline unsigned factorial( unsigned n)
 {
-    GISMO_ASSERT(n<14, "Overflow when computing factorial.");
     static const unsigned precomputed[]= {1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600};
+    GISMO_ASSERT(n < util::size(precomputed), "Overflow when computing factorial.");
     return precomputed[n];
 }
 
@@ -41,6 +41,7 @@ inline unsigned factorial( unsigned n)
 inline unsigned long long factorial( unsigned long long n)
 {
 static const unsigned long long precomputed[]= {1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600, 6227020800, 87178291200, 1307674368000, 20922789888000, 355687428096000, 6402373705728000, 121645100408832000, 2432902008176640000 };
+GISMO_ASSERT(n < util::size(precomputed), "Overflow when computing factorial.");
 return precomputed[n];
 }
 */
@@ -652,7 +653,7 @@ inline bool nextComposition(Vec & v)
 
 /// \brief Number of compositions of \a sum into \a dim integers
 /// \ingroup combinatorics
-inline unsigned numCompositions(int sum, int dim)
+inline unsigned numCompositions(int sum, short_t dim)
 {
     return binomial(sum+dim-1,dim-1);
 }

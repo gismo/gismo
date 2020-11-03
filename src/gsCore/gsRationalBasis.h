@@ -138,21 +138,21 @@ public:
 
     int size(int const& k) const{ return m_src->size(k); }
 
-    int numElements() const { return m_src->numElements(); }
+    size_t numElements() const { return m_src->numElements(); }
     using Base::numElements; //unhide
     
-    void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const 
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
     { m_src->active_into(u, result); }
     
-    virtual const gsBasis<T> & component(unsigned i) const { return m_src->component(i); }
+    virtual const gsBasis<T> & component(short_t i) const { return m_src->component(i); }
     using Base::component;
 
-    gsMatrix<unsigned> allBoundary( ) const {return m_src->allBoundary(); }
+    gsMatrix<index_t> allBoundary( ) const {return m_src->allBoundary(); }
     
-    gsMatrix<unsigned> boundaryOffset(boxSide const & s, unsigned offset ) const
+    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const
     { return m_src->boundaryOffset(s,offset); }
 
-    virtual unsigned functionAtCorner(boxCorner const & c) const
+    virtual index_t functionAtCorner(boxCorner const & c) const
     { return m_src->functionAtCorner(c); }
 
     // Look at gsBasis class for a description
@@ -182,7 +182,7 @@ public:
      * @param boxes See the function gsBasis::refineElements() of the underlying
      * basis for syntax.
      */
-    void refineElements( std::vector<unsigned> const & boxes)
+    void refineElements( std::vector<index_t> const & boxes)
     {
         // call the refineElements_withCoefs-function of the underlying
         // basis, where the weights are used as coefficients
@@ -198,7 +198,7 @@ public:
      * @param boxes See the function gsBasis::refineElements() of the underlying
      * basis for syntax.
      */
-    void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
+    void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
 
     void degreeElevate(int const& i = 1, int const dir = -1) 
     {
@@ -220,7 +220,7 @@ public:
       GISMO_UPTR_FUNCTION_DEF(gsBasis<T>, boundaryBasis, boxSide const &)
       { 
       typename SrcT::BoundaryBasisType * bb = m_src->boundaryBasis(s);
-      gsMatrix<unsigned> ind = m_src->boundary(s);
+      gsMatrix<index_t> ind = m_src->boundary(s);
       
       gsMatrix<T> ww( ind.size(),1);
       for ( index_t i=0; i<ind.size(); ++i)
@@ -233,7 +233,11 @@ public:
 
     gsDomain<T> * domain() const { return m_src->domain(); }
 
-    void anchors_into(gsMatrix<T> & result) const { return m_src->anchors_into(result) ;}
+    void anchors_into(gsMatrix<T> & result) const
+    { return m_src->anchors_into(result); }
+
+    void anchor_into(index_t i, gsMatrix<T> & result) const
+    { return m_src->anchor_into(i,result); }
 
     // Look at gsBasis class for documentation 
     void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const
@@ -241,11 +245,11 @@ public:
     
     gsMatrix<T> support() const {return m_src->support(); }
     
-    gsMatrix<T> support(const unsigned & i) const {return m_src->support(i); }
+    gsMatrix<T> support(const index_t & i) const {return m_src->support(i); }
     
     void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
     
-    void evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
+    void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 
     void evalFunc_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const;
 
@@ -283,7 +287,7 @@ public:
     }
 
     virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-                           gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const
+                           gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const
     { 
         if ( const gsRationalBasis * _other = dynamic_cast<const gsRationalBasis*>(&other) )
             m_src->matchWith(bi,*_other->m_src,bndThis,bndOther); 
@@ -350,7 +354,7 @@ protected:
     
     
 template<class SrcT>
-void gsRationalBasis<SrcT>::evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const
+void gsRationalBasis<SrcT>::evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const
 { 
     m_src->evalSingle_into(i, u, result);  
     result.array() *= m_weights.at(i);
@@ -365,7 +369,7 @@ template<class SrcT>
 void gsRationalBasis<SrcT>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 { 
     m_src->eval_into(u, result);
-    const gsMatrix<unsigned> act = m_src->active(u);
+    const gsMatrix<index_t> act = m_src->active(u);
     
     gsMatrix<T> denom;
     m_src->evalFunc_into(u, m_weights, denom); 
@@ -414,7 +418,7 @@ void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n,
     m_src->evalAllDers_into(u, n, ev);
     
     // find active basis functions
-    gsMatrix<unsigned> act;
+    gsMatrix<index_t> act;
     m_src->active_into(u,act);
 
     const int numAct = act.rows();
@@ -456,7 +460,7 @@ void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u,
     // Formula:
     // R_i' = (w_i N_i / W)' = w_i ( N_i'W - N_i W' ) / W^2 
 
-    gsMatrix<unsigned> act;
+    gsMatrix<index_t> act;
     m_src->active_into(u,act);
 
     result.resize( act.rows()*Dim, u.cols() );
@@ -504,7 +508,7 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
     
     static const int str = Dim * (Dim+1) / 2;
 
-    gsMatrix<unsigned> act;
+    gsMatrix<index_t> act;
     m_src->active_into(u,act);
 
     result.resize( act.rows()*str, u.cols() );
@@ -618,7 +622,7 @@ void gsRationalBasis<SrcT>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor
 
 template<class SrcT>
 void gsRationalBasis<SrcT>::refineElements_withCoefs(gsMatrix<T> & coefs,
-                                                     std::vector<unsigned> const & boxes)
+                                                     std::vector<index_t> const & boxes)
 {
     // switch from control points (n-dimensional) to
     // "projective control points" ((n+1)-dimensional),

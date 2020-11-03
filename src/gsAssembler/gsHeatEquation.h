@@ -212,7 +212,7 @@ void gsHeatEquation<T>::assembleMass()
 
     // Assemble mass integrals
     gsVisitorMass<T> mass;
-    for (index_t np=0; np < m_pde_ptr->domain().nPatches(); ++np )
+    for (size_t np=0; np < m_pde_ptr->domain().nPatches(); ++np )
     {
         //Assemble mass matrix for this patch
         this->apply(mass, np);

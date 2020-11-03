@@ -76,7 +76,7 @@ namespace internal
 
 #include <gsCore/gsDomainIterator.h>
 
-#include <gsCore/gsTemplateTools.h>
+// #include <gsCore/gsTemplateTools.h> // included by gsForwardDeclarations -> gsMemory
 
 // Tensors
 #include <gsTensor/gsTensorDomainIterator.h>
@@ -188,10 +188,6 @@ namespace internal
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF
 #include <gsAutoDiff.h>
-#endif
-
-#ifdef GISMO_WITH_FDBB
-#include <gsFdbb/gsFdbb.h>
 #endif
 
 /*

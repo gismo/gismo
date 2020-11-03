@@ -93,44 +93,6 @@ gsSparseMatrix<T> assembleStiffness(const gsBasis<T>& basis)
 }
 
 
-template<index_t d, typename T>
-std::vector< gsSparseMatrix<T> > assembleTensorMass_impl(
-    const gsBasis<T>& basis,
-    const gsBoundaryConditions<T>& bc,
-    const gsOptionList& opt
-    )
-{
-    const gsTensorBasis<d,T> * tb = dynamic_cast< const gsTensorBasis<d,T>* >( &basis );
-    GISMO_ENSURE (tb, "gsPatchPreconditionersCreator requires a tensor basis.");
-
-    std::vector< gsSparseMatrix<T> > result(d);
-    for ( index_t i=0; i!=d; ++i )
-    {
-        result[i] = assembleMass(tb->component(d-1-i));
-        eliminateDirichlet1D(boundaryConditionsForDirection(bc,d-1-i), opt, result[i]);
-    }
-    return result;
-}
-
-template<index_t d, typename T>
-std::vector< gsSparseMatrix<T> > assembleTensorStiffness_impl(
-    const gsBasis<T>& basis,
-    const gsBoundaryConditions<T>& bc,
-    const gsOptionList& opt
-    )
-{
-    const gsTensorBasis<d,T> * tb = dynamic_cast< const gsTensorBasis<d,T>* >( &basis );
-    GISMO_ENSURE (tb, "gsPatchPreconditionersCreator requires a tensor basis.");
-
-    std::vector< gsSparseMatrix<T> > result(d);
-    for ( index_t i=0; i!=d; ++i )
-    {
-        result[i] = assembleStiffness(tb->component(d-1-i));
-        eliminateDirichlet1D(boundaryConditionsForDirection(bc,d-1-i), opt, result[i]);
-    }
-    return result;
-}
-
 template<typename T>
 std::vector< gsSparseMatrix<T> > assembleTensorMass(
     const gsBasis<T>& basis,
@@ -138,14 +100,14 @@ std::vector< gsSparseMatrix<T> > assembleTensorMass(
     const gsOptionList& opt
     )
 {
-    switch (basis.dim())
+    const index_t d = basis.dim();
+    std::vector< gsSparseMatrix<T> > result(d);
+    for ( index_t i=0; i!=d; ++i )
     {
-    case 1: return assembleTensorMass_impl<1,T>(basis, bc, opt);
-    case 2: return assembleTensorMass_impl<2,T>(basis, bc, opt);
-    case 3: return assembleTensorMass_impl<3,T>(basis, bc, opt);
-    case 4: return assembleTensorMass_impl<4,T>(basis, bc, opt);
-    default: GISMO_ERROR("gsPatchPreconditionersCreator is only instanciated for up to 4 dimensions." );
+        result[i] = assembleMass(basis.component(d-1-i));
+        eliminateDirichlet1D(boundaryConditionsForDirection(bc,d-1-i), opt, result[i]);
     }
+    return result;
 }
 
 template<typename T>
@@ -155,14 +117,14 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness(
     const gsOptionList& opt
     )
 {
-    switch (basis.dim())
+    const index_t d = basis.dim();
+    std::vector< gsSparseMatrix<T> > result(d);
+    for ( index_t i=0; i!=d; ++i )
     {
-    case 1: return assembleTensorStiffness_impl<1,T>(basis, bc, opt);
-    case 2: return assembleTensorStiffness_impl<2,T>(basis, bc, opt);
-    case 3: return assembleTensorStiffness_impl<3,T>(basis, bc, opt);
-    case 4: return assembleTensorStiffness_impl<4,T>(basis, bc, opt);
-    default: GISMO_ERROR("gsPatchPreconditionersCreator is only instanciated for up to 4 dimensions." );
+        result[i] = assembleStiffness(basis.component(d-1-i));
+        eliminateDirichlet1D(boundaryConditionsForDirection(bc,d-1-i), opt, result[i]);
     }
+    return result;
 }
 
 } // anonymous namespace
@@ -223,13 +185,20 @@ gsSparseMatrix<T> gsPatchPreconditionersCreator<T>::stiffnessMatrix(
     const gsBasis<T>& basis,
     const gsBoundaryConditions<T>& bc,
     const gsOptionList& opt,
-    T a
+    T alpha,
+    T beta
     )
 {
     const index_t d = basis.dim();
 
     std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(basis, bc, opt);
     std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
+
+    if ( beta!=1 )
+    {
+        for (index_t i=0; i!=d; ++i)
+            local_stiff[i] *= beta;
+    }
 
     gsSparseMatrix<T> K = give(local_stiff[d-1]);
     gsSparseMatrix<T> M = give(local_mass [d-1]);
@@ -238,13 +207,13 @@ gsSparseMatrix<T> gsPatchPreconditionersCreator<T>::stiffnessMatrix(
     {
         K  = local_mass[i].kron(K);
         K += local_stiff[i].kron(M);
-        if ( i != 0 || a != 0 )
+        if ( i != 0 || alpha != 0 )
             M = local_mass[i].kron(M);
     }
-    if (a==1)
+    if (alpha==1)
         K += M;
-    else if (a!=0)
-        K += a * M;
+    else if (alpha!=0)
+        K += alpha * M;
     return K;
 }
 
@@ -253,7 +222,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     const gsBasis<T>& basis,
     const gsBoundaryConditions<T>& bc,
     const gsOptionList& opt,
-    T a
+    T alpha,
+    T beta
     )
 {
     const index_t d = basis.dim();
@@ -265,6 +235,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     std::vector<OpPtr > local_mass_op (d);
     for (index_t i=0; i<d; ++i)
     {
+        if (beta!=1)
+            local_stiff[i] *= beta;
         local_stiff_op[i] = makeMatrixOp(local_stiff[i].moveToPtr());
         local_mass_op [i] = makeMatrixOp(local_mass [i].moveToPtr());
     }
@@ -277,13 +249,13 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
             gsKroneckerOp<T>::make( give(K),      local_mass_op [i]  ),
             gsKroneckerOp<T>::make( M,       give(local_stiff_op[i]) )
             );
-        if ( i < d-1 || a != 0 )
+        if ( i < d-1 || alpha != 0 )
             M = gsKroneckerOp<T>::make(M, local_mass_op[i]);
     }
-    if (a==1)
+    if (alpha==1)
         K = gsSumOp<T>::make( give(K), M );
-    else if (a!=0)
-        K = gsSumOp<T>::make( give(K), gsScaledOp<T>::make( M, a ) );
+    else if (alpha!=0)
+        K = gsSumOp<T>::make( give(K), gsScaledOp<T>::make( M, alpha ) );
 
     return K;
 }
@@ -293,15 +265,23 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     const gsBasis<T>& basis,
     const gsBoundaryConditions<T>& bc,
     const gsOptionList& opt,
-    T a
+    T alpha,
+    T beta
     )
 {
+    GISMO_ASSERT ( beta != 0, "gsPatchPreconditionersCreator<T>::fastDiagonalizationOp() does not work for beta==0." );
 
     const index_t d = basis.dim();
 
     // Assemble univariate
     std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(basis, bc, opt);
     std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
+
+    if (beta!=0)
+    {
+        for (index_t i=0; i!=d; ++i)
+            local_stiff[i] *= beta;
+    }
 
     // Determine overall size
     index_t sz = 1;
@@ -310,7 +290,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
     // Initialize the diagonal with 1
     gsMatrix<T> diag;
-    diag.setConstant(sz,1,a); // This is the pure-mass part!
+    diag.setConstant(sz,1,alpha); // This is the pure-mass part!
 
     index_t glob = sz; // Indexing value for setting up the Kronecker product
 
@@ -424,8 +404,13 @@ void tildeSpaceBasis_oneside(const gsTensorBSplineBasis<1,T>& basis, bool isLeft
 
 // Compute a basis for S-tilde and one for its orthogonal complement
 template<typename T>
-void tildeSpaceBasis(const gsTensorBSplineBasis<1,T>& basis, gsSparseMatrix<T>& B_tilde, gsSparseMatrix<T>& B_compl, const gsBoundaryConditions<T>& bc, const bool odd = true)
+void tildeSpaceBasis(const gsBasis<T>& basis, gsSparseMatrix<T>& B_tilde, gsSparseMatrix<T>& B_compl, const gsBoundaryConditions<T>& bc, const bool odd = true)
 {
+    GISMO_ASSERT( nullptr != (dynamic_cast<const gsTensorBSplineBasis<1,T>*>(&basis)),
+                    "gsPatchPreconditionersCreator<T>::getTildeSpaceBasisTransformation and "
+                    "gsPatchPreconditionersCreator<T>::subspaceCorrectedMassSmootherOp only work with tensor-B-spline bases." );
+    const gsTensorBSplineBasis<1,T>& bbasis = static_cast<const gsTensorBSplineBasis<1,T>&>(basis);
+
     patchSide west(0,boundary::west), east(0,boundary::east);
     bool bwest = ( bc.getConditionFromSide( west ) && bc.getConditionFromSide( west )->type() == condition_type::dirichlet );
     bool beast = ( bc.getConditionFromSide( east ) && bc.getConditionFromSide( east )->type() == condition_type::dirichlet );
@@ -434,19 +419,19 @@ void tildeSpaceBasis(const gsTensorBSplineBasis<1,T>& basis, gsSparseMatrix<T>& 
     gsMatrix<T> b_R, b_compl_R;
 
     // Contruct space with vanishing odd derivatives
-    tildeSpaceBasis_oneside(basis, true,  b_L, b_compl_L, bwest, odd);
-    tildeSpaceBasis_oneside(basis, false, b_R, b_compl_R, beast, odd);
+    tildeSpaceBasis_oneside(bbasis, true,  b_L, b_compl_L, bwest, odd);
+    tildeSpaceBasis_oneside(bbasis, false, b_R, b_compl_R, beast, odd);
 
-    const int n = basis.size() - (index_t)bwest - (index_t)beast;
-    const int n_L = b_L.cols();
-    const int m_L = b_L.rows();
-    const int n_R = b_R.cols();
-    const int m_R = b_R.rows();
-    const int n_c_L = b_compl_L.cols();
-    const int m_c_L = b_compl_L.rows();
-    const int n_c_R = b_compl_R.cols();
-    const int m_c_R = b_compl_R.rows();
-    const int n_I = n - n_L - n_R - n_c_L - n_c_R;
+    const index_t n = bbasis.size() - (index_t)bwest - (index_t)beast;
+    const index_t n_L = b_L.cols();
+    const index_t m_L = b_L.rows();
+    const index_t n_R = b_R.cols();
+    const index_t m_R = b_R.rows();
+    const index_t n_c_L = b_compl_L.cols();
+    const index_t m_c_L = b_compl_L.rows();
+    const index_t n_c_R = b_compl_R.cols();
+    const index_t m_c_R = b_compl_R.rows();
+    const index_t n_I = n - n_L - n_R - n_c_L - n_c_R;
 
     //GISMO_ENSURE ( n_I >= 0, "tildeSpaceBasis: Too few knots for that spline degree." );
     if ( n_I <= 0 )
@@ -463,7 +448,7 @@ void tildeSpaceBasis(const gsTensorBSplineBasis<1,T>& basis, gsSparseMatrix<T>& 
 
         gsSparseEntries<T> E_compl;
         E_compl.reserve(n);
-        for (int i = 0; i < n; ++i)
+        for (index_t i = 0; i < n; ++i)
             E_compl.add(i,i,1.0);
         B_compl.resize(n,n);
         B_compl.setFrom(E_compl);
@@ -473,67 +458,39 @@ void tildeSpaceBasis(const gsTensorBSplineBasis<1,T>& basis, gsSparseMatrix<T>& 
     gsSparseEntries<T> E_tilde, E_compl;
 
     // put b_L into upper left block of S-tilde basis
-    for (int j = 0; j < n_L; ++j)
+    for (index_t j = 0; j < n_L; ++j)
     {
-        for (int i = 0; i < m_L; ++i)
+        for (index_t i = 0; i < m_L; ++i)
             E_tilde.add(i, j, b_L(i, j));
     }
     // fill identity matrix into interior part of S-tilde basis
-    for (int j = 0; j < n_I; ++j)
+    for (index_t j = 0; j < n_I; ++j)
     {
         E_tilde.add(m_L + j, n_L + j, 1.0);
     }
     // put b_R into lower right block of S-tilde basis
-    for (int j = 0; j < n_R; ++j)
+    for (index_t j = 0; j < n_R; ++j)
     {
-        for (int i = 0; i < m_R; ++i)
+        for (index_t i = 0; i < m_R; ++i)
             E_tilde.add(m_L + n_I + i, n_L + n_I + j, b_R(i, j));
     }
     B_tilde.resize(n, n_L + n_I + n_R);
     B_tilde.setFrom(E_tilde);
 
     // put b_compl_L into upper left block of complement basis
-    for (int j = 0; j < n_c_L; ++j)
+    for (index_t j = 0; j < n_c_L; ++j)
     {
-        for (int i = 0; i < m_c_L; ++i)
+        for (index_t i = 0; i < m_c_L; ++i)
             E_compl.add(i, j, b_compl_L(i, j));
     }
     // put b_compl_R into lower right block of complement basis
-    for (int j = 0; j < n_c_R; ++j)
+    for (index_t j = 0; j < n_c_R; ++j)
     {
-        for (int i = 0; i < m_c_R; ++i)
+        for (index_t i = 0; i < m_c_R; ++i)
             E_compl.add(m_c_L + n_I + i, n_c_L + j, b_compl_R(i, j));
     }
     B_compl.resize(n, n_c_L + n_c_R);
     B_compl.setFrom(E_compl);
-
-}
-
-template<index_t d, typename T>
-void constructTildeSpaceBasisTensor(
-    const gsBasis<T>& basis,
-    const gsBoundaryConditions<T>& bc,
-    const gsOptionList& opt,
-    std::vector< gsSparseMatrix<T> >& B_tilde,
-    std::vector< gsSparseMatrix<T> >& B_l2compl,
-    const bool odd = true
-    )
-{
-
-    const gsTensorBSplineBasis<d,T> * tb = dynamic_cast<const gsTensorBSplineBasis<d,T>*>(&basis);
-    if( !tb )
-        GISMO_ERROR ("This method only works for gsTensorBSplineBasis.");
-
-    B_tilde.resize(d);
-    B_l2compl.resize(d);
-    dirichlet::strategy ds = (dirichlet::strategy)opt.askInt("DirichletStrategy",dirichlet::elimination);
-    if (ds == dirichlet::elimination)
-    {
-        for ( index_t i=0; i<d; ++i )
-            tildeSpaceBasis(tb->component(d-1-i), B_tilde[i], B_l2compl[i], boundaryConditionsForDirection(bc,d-1-i), odd);
-    }
-    else
-        GISMO_ERROR("Unknown Dirichlet strategy.");
 
 }
 
@@ -547,14 +504,17 @@ void constructTildeSpaceBasis(
     const bool odd = true
     )
 {
-    switch (basis.dim())
+    const index_t d = basis.dim();
+    B_tilde.resize(d);
+    B_l2compl.resize(d);
+    dirichlet::strategy ds = (dirichlet::strategy)opt.askInt("DirichletStrategy",dirichlet::elimination);
+    if (ds == dirichlet::elimination)
     {
-    case 1: constructTildeSpaceBasisTensor<1>( basis, bc, opt, B_tilde, B_l2compl, odd ); return;
-    case 2: constructTildeSpaceBasisTensor<2>( basis, bc, opt, B_tilde, B_l2compl, odd ); return;
-    case 3: constructTildeSpaceBasisTensor<3>( basis, bc, opt, B_tilde, B_l2compl, odd ); return;
-    case 4: constructTildeSpaceBasisTensor<4>( basis, bc, opt, B_tilde, B_l2compl, odd ); return;
-    default: GISMO_ERROR ("gsPatchPreconditionersCreator is only instanciated for up to 4 dimensions.");
+        for ( index_t i=0; i<d; ++i )
+            tildeSpaceBasis(basis.component(d-1-i), B_tilde[i], B_l2compl[i], boundaryConditionsForDirection(bc,d-1-i), odd);
     }
+    else
+        GISMO_ERROR("Unknown Dirichlet strategy.");
 
 }
 
@@ -604,9 +564,12 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     const gsBoundaryConditions<T>& bc,
     const gsOptionList& opt,
     T sigma,
-    T alpha
+    T alpha,
+    T beta
     )
 {
+    GISMO_ASSERT ( beta != 0, "gsPatchPreconditionersCreator<T>::subspaceCorrectedMassSmootherOp() does not work for beta==0." );
+
     // Get some properties
     const index_t d = basis.dim();
     const T h = basis.getMinCellLength();
@@ -614,6 +577,12 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     // Assemble univariate
     std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(basis, bc, opt);
     std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
+
+    if (beta != 1)
+    {
+        for (index_t i=0; i!=d; ++i)
+            local_stiff[i] *= beta;
+    }
 
     // Setup of basis
     std::vector< gsSparseMatrix<T> > B_tilde(d), B_l2compl(d);
@@ -709,9 +678,9 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
         // If we are in the interior, we have to do the scaling here as there is no boundary correction.
         if ( numberInteriors == d )
-            correction[0] = gsScaledOp<T>::make( correction[0], 1./( alpha + numberInteriors/(sigma*h*h) ) );
+            correction[0] = gsScaledOp<T>::make( correction[0], 1./( alpha + beta*numberInteriors/(sigma*h*h) ) );
 
-        // Setup of bondary correction, like  K(x)M(x)M+M(x)K(x)M+M(x)M(x)K+(alpha + (d-3)/(sigma*h*h)) M(x)M(x)M
+        // Setup of bondary correction
         if ( numberInteriors < d )
         {
             gsSparseMatrix<T> bc_matrix;
@@ -728,7 +697,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
                             s = M_compl[d-1-k].kron(s);
                     }
                 }
-                bc_matrix = ( alpha + numberInteriors/(sigma*h*h) ) * s;
+                bc_matrix = ( alpha + beta*numberInteriors/(sigma*h*h) ) * s;
             }
 
             for ( index_t j = d-1; j>=0; --j )

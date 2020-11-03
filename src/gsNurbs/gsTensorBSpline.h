@@ -62,10 +62,10 @@ public:
     typedef memory::unique_ptr< gsTensorBSpline > uPtr;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<d-1,T>::Geometry BoundaryGeometryType;
+    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::Geometry BoundaryGeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<d-1,T>::Basis BoundaryBasisType;
+    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::Basis BoundaryBasisType;
 
 public:
 
@@ -176,7 +176,7 @@ public:
 public:
 
     // Look at gsGeometry class for a description
-    void degreeElevate(int const i = 1, int const dir = -1);
+    void degreeElevate(short_t const i = 1, short_t const dir = -1);
 
     /// Inserts knot \a knot at direction \a dir, \a i times
     void insertKnot( T knot, int dir, int i = 1);

@@ -38,6 +38,17 @@ namespace gismo
 namespace util
 {
 
+#if __cplusplus >= 201103L || _MSC_VER >= 1600
+template <class C, size_t N> // we catch up char arrays
+std::string to_string(C (& value)[N])
+{
+    static_assert(!std::is_same<C[N], char[N]>::value, "Character arrays are not allowed");
+    std::ostringstream convert;
+    convert << value;
+    return convert.str();
+}
+#endif
+
 /// \brief Converts value to string, assuming "operator<<" defined on C
 /// \ingroup Utils
 template<typename C>
@@ -71,7 +82,7 @@ inline bool ends_with( const std::string & haystack, const std::string & needle 
     return std::equal(needle.rbegin(), needle.rend(), haystack.rbegin());
 }
 
-#if __cplusplus > 199711L || (defined(_MSC_VER) && _MSC_VER >= 1600)
+#if __cplusplus > 199711L || _MSC_VER >= 1600
 using std::iota;
 using std::stod;
 using std::stoi;
@@ -89,34 +100,64 @@ void iota(ForwardIterator first, ForwardIterator last, T value)
     }
 }
 
+/// \brief equivalent to std::stoi(str), and therefore std::stoi(str, 0, 10)
 inline int stoi(const std::string& str)
 {
     std::istringstream ss(str);
     int i;
-    if (!(ss >> std::noskipws >> i))
+    if (!(ss >> std::skipws >> i)) // leading whitespaces are ignored by std::stoi
         //Extracting an int failed
-        return 0;
+        throw std::invalid_argument("stoi");    // if CXX11 code throws, CXX98 should do too, or?
 
-    char c;
-    if (ss >> c)
-        //There was something after the number
-        return 0;
+    // std::stoi ignores all after a valid number
+    //char c;
+    //if (ss >> c)
+    //    //There was something after the number
+    //    return 0;
     
     return i;
 }
 
+/// \brief equivalent to std::stod(str)
 inline double stod(const std::string& str)
 {
     std::istringstream ss(str);
     double i;
-    if (!(ss >> std::noskipws >> i))
+    if (!(ss >> i))
         //Extracting double failed
-        return 0;
+        throw std::invalid_argument("stod");
 
-    char c;
-    if (ss >> c)
-        //There was something after the number
-        return 0;
+    size_t pos;
+
+    // hex is valid for std::stod - not a good implementation yet
+    // ssi and ssd correct, better move to double need be done => convert to decimal string and let it parse at usual way.
+    if(i == 0 && (((pos = str.find("0x")) != std::string::npos) || ((pos = str.find("0X")) != std::string::npos)))
+    {
+        bool negative = false;
+        if (pos > 0)
+            if (str[pos - 1] == '-')
+                negative = true;
+
+        size_t comma = str.find(".", pos+2);
+
+        size_t integer, decimal;
+        std::istringstream ssi(str.substr(pos+2, comma - pos - 2));
+        std::istringstream ssd(str.substr(++comma)); // we need always comma+1
+
+        if (!(ssi >> std::hex >> integer))
+            throw std::invalid_argument("stod");
+
+        if (!(ssd >> std::hex >> decimal))
+            throw std::invalid_argument("stod");
+
+        size_t lenght = str.find_first_not_of("0123456789abcdefABCDEF", comma);
+        if (lenght == std::string::npos)
+            lenght = str.length() - comma;
+        else
+            lenght -= comma;
+
+        i = (integer + (decimal/pow(16, lenght))) * (negative ? -1. : 1.);
+    }
 
     return i;
 }
@@ -138,25 +179,36 @@ inline void string_replace(std::string& str,
     }
 }
 
-/// \brief Returns the \a i-th token of the string \a str using delimiter \a delim
+/// \brief Returns the \a i-th token of the string \a str using any character in \a delim as delimiter without counting
+/// empty sequences.
+/// \example util::tokenize("abcdbca", "bd", ...) => {a, c, ca}
 /// \ingroup Utils
 inline std::string tokenize(const std::string& str,
                             const std::string& delim,
-                            const std::size_t token)
+                            const size_t token)
 {
-    std::size_t token_begin = 0;
-    std::size_t token_end   = str.find_first_of(delim);
-    
-    for (std::size_t i=0; i<token; i++) {
-        
-        GISMO_ENSURE(token_end < std::string::npos,
+    size_t token_end = std::string::npos;
+    size_t token_begin = 0;
+    size_t token_count = 0;
+    bool catched = false;
+
+    do
+    {
+        GISMO_ENSURE(!catched,
                      "Requested token exceeds the number of tokens");
-        
-        token_begin += ++token_end;
-        token_end    = str.substr(token_begin).find_first_of(delim);
+
+        token_begin = token_end + 1;
+        token_end = str.find_first_of(delim, token_begin);
+
+        if(token_end == std::string::npos)  // catch in next iteration
+            catched = true;
+
+        if (token_end != token_begin) // ignore empty sequences
+            ++token_count;
     }
-    
-    return str.substr(token_begin,token_end);
+    while (token_count <= token);
+
+    return str.substr(token_begin, token_end - token_begin);
 }
 
 /// \brief Capitalize string in situ
@@ -200,21 +252,36 @@ public:
         std::free(dm);
         return res;
 #endif
-#else
+#else   // not __GNUC__
         return typeid(T).name();
-#endif
+#endif  // __GNUC__
     }
 };
 
 /// \brief Create hash key for a rangle of (integral) numbers
 template<typename T>
-std::size_t hash_range(T const * start, const T * const end)
+size_t hash_range(T const * start, const T * const end)
 {
-    std::size_t seed = end - start;
+    size_t seed = end - start;
     for(; start!=end; ++start) 
         seed ^= *start + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     return seed;
 }
+
+#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
+using std::size;
+#else
+template <class T, size_t N>
+size_t size(const T (&)[N])
+{
+    return N;
+}
+template <class T>
+size_t size(const T& t)
+{
+    return t.size();
+}
+#endif
 
 } // end namespace util
 
@@ -229,7 +296,7 @@ inline bool operator>= (const T& a, const T& b) { return !(a<b);  }
 // This macro deletes the operators ==, !=, <, >, <= and >=
 // for operations that involve the types S and T (in either
 // order)
-#if __cplusplus >= 201103L
+#if __cplusplus >= 201103L || _MSC_VER >= 1600
 #define GISMO_DELETE_COMPARISON_OPERATORS( S, T )         \
 inline bool operator== (const S& a, const T& b) = delete; \
 inline bool operator!= (const S& a, const T& b) = delete; \

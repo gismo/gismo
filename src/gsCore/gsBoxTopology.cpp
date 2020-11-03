@@ -55,16 +55,18 @@ std::ostream & gsBoxTopology::print(std::ostream &os) const
 
 void gsBoxTopology::addAutoBoundaries()
 {
-    if ( nboxes == 0 ) {
+    if (nboxes == 0)
+    {
         return;
     }
-    for (index_t b=0; b<nboxes; ++b)
+    for (index_t b = 0; b < nboxes; ++b)
     {
-        for (boxSide bs=boxSide::getFirst(m_dim); bs<boxSide::getEnd(m_dim); ++bs)
+        for (boxSide bs = boxSide::getFirst(m_dim); bs < boxSide::getEnd(m_dim); ++bs)
         {
-            patchSide ps(b,bs);
-            if ( !isBoundary( ps ) && !isInterface( ps ) ) {
-                addBoundary( ps );
+            patchSide ps(b, bs);
+            if (!isBoundary(ps) && !isInterface(ps))
+            {
+                addBoundary(ps);
             }
         }
     }
@@ -72,7 +74,7 @@ void gsBoxTopology::addAutoBoundaries()
 
 bool gsBoxTopology::isInterface( const patchSide& ps ) const
 {
-    for ( unsigned i = 0; i < m_interfaces.size(); ++i )
+    for ( size_t i = 0; i < m_interfaces.size(); ++i )
         if ( m_interfaces[i].first() == ps || m_interfaces[i].second() == ps ) {
             return true;
         }
@@ -81,7 +83,8 @@ bool gsBoxTopology::isInterface( const patchSide& ps ) const
 
 void gsBoxTopology::checkConsistency() const
 {
-    const int numSides = nboxes * 2 * m_dim;      // an n-D cube has 2*d sides
+    GISMO_ASSERT(m_dim >= 0, "m_dim asserted to be positive");
+    const size_t numSides = nboxes * 2 * m_dim;      // an n-D cube has 2*d sides
     if ( numSides != 2 * nInterfaces() + nBoundary() ) {
         std::cerr << "*** WARNING *** gsBoxTopology has inconsistent interfaces or boundaries!" <<
                      std::endl;
@@ -105,7 +108,7 @@ void gsBoxTopology::checkConsistency() const
 
 bool gsBoxTopology::getNeighbour(const patchSide& ps ,patchSide& result, int & ii) const
 {
-    for ( unsigned i = 0; i < m_interfaces.size(); ++i ) 
+    for ( size_t i = 0; i < m_interfaces.size(); ++i )
     {
        if ( m_interfaces[i].first() == ps )
        {
@@ -129,9 +132,9 @@ bool gsBoxTopology::getNeighbour(const patchSide& ps ,patchSide& result) const
     return getNeighbour(ps, result, a);
 }
 
-const boundaryInterface * gsBoxTopology::findInterface(const int b1, const int b2) const
+const boundaryInterface * gsBoxTopology::findInterface(const index_t b1, const index_t b2) const
 {
-    for ( unsigned i = 0; i < m_interfaces.size(); ++i ) 
+    for ( size_t i = 0; i < m_interfaces.size(); ++i )
     {
         if ( (m_interfaces[i].first() .patch == b1  && 
               m_interfaces[i].second().patch == b2) ||
@@ -151,7 +154,7 @@ bool gsBoxTopology::getCornerList(const patchCorner& start,std::vector<patchCorn
     std::vector<patchSide> psides;     // psides and vertices relate to each other
     std::vector<patchCorner> vertices;
     start.getContainingSides(m_dim,psides);
-    for(unsigned i = 0;i<psides.size();i++)
+    for(size_t i = 0;i<psides.size();i++)
         vertices.push_back(start);
     patchSide ps,psNeighbour;
     patchCorner pc,pcNeighbour;
@@ -171,15 +174,14 @@ bool gsBoxTopology::getCornerList(const patchCorner& start,std::vector<patchCorn
         }
         if(std::find(visitedSides.begin(), visitedSides.end(), psNeighbour)!=visitedSides.end())
             continue;
-        if(std::find(visitedSides.begin(), visitedSides.end(), psNeighbour)==visitedSides.end())
-            visitedSides.push_back(psNeighbour);
+        visitedSides.push_back(psNeighbour);
         getInterface(ps,boundIf);
         pcNeighbour = boundIf.mapCorner(pc);
         if(pcNeighbour==pc)
             continue;
         std::vector<patchSide> neighbourSides;
         pcNeighbour.getContainingSides(m_dim,neighbourSides);
-        for(unsigned i=0;i<neighbourSides.size();++i)
+        for(size_t i=0;i<neighbourSides.size();++i)
         {
             psides.push_back(neighbourSides[i]);
             vertices.push_back(pcNeighbour);
@@ -195,7 +197,7 @@ int gsBoxTopology::getMaxValence() const
     patchCorner start;
     std::vector<patchCorner> cornerList;
     int valence,maxValence=-1;
-    for(int i = 0;i<nboxes;++i)
+    for(index_t i = 0;i<nboxes;++i)
     {
         for(int j = 1;j<=( 1 << m_dim );++j)
         {
@@ -244,7 +246,7 @@ std::vector<index_t> getCornerIndices( const std::vector<patchCorner>& corner, i
     const index_t sz = corner.size();
     std::vector<index_t> result(sz);
     for (index_t i=0; i<sz; ++i)
-        result[i] = corner[i].patch*(1u<<(dim)) + corner[i].m_index;
+        result[i] = corner[i].patch*(1ull<<(dim)) + corner[i].m_index;
     return result;
 }
 
@@ -252,20 +254,18 @@ std::vector<index_t> getCornerIndices( const std::vector<patchCorner>& corner, i
 
 std::vector< std::vector<patchComponent> > gsBoxTopology::allComponents(bool combineCorners) const
 {
-    const index_t nPatches = nboxes;
-    const index_t dim = m_dim;
-
-    index_t cnr = 1;
-    for (index_t i=0; i<dim; ++i) cnr *= 3;
+    const size_t nPatches = nboxes;
+    const short_t dim = m_dim;
+    const short_t cnr = math::ipow(3, dim);
 
     typedef std::vector<patchComponent>                         component_coll_t;
     typedef std::map< std::vector<index_t>, component_coll_t>   map_t;
 
     std::vector<map_t> comps(dim+1);
 
-    for (index_t i = 0; i<nPatches; ++i)
+    for (size_t i = 0; i<nPatches; ++i)
     {
-        for (index_t j = 0; j<cnr; ++j)
+        for (short_t j = 0; j<cnr; ++j)
         {
             patchComponent pc(i, j, dim);
             const index_t d = pc.dim();
@@ -275,20 +275,20 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allComponents(bool com
         }
     }
     index_t sz = 0;
-    for (index_t i=0; i<dim+1; ++i)
+    for (short_t i=0; i<dim+1; ++i)
         sz += comps[i].size();
 
     std::vector<component_coll_t> result;
     result.reserve(sz);
-    for (index_t i=dim; i>=0; --i)
+    for (short_t i=dim; i>=0; --i)
     {
         if (!combineCorners || i>0)
-            for( typename map_t::iterator it = comps[i].begin(); it != comps[i].end(); ++it )
+            for( map_t::iterator it = comps[i].begin(); it != comps[i].end(); ++it )
                 result.push_back( it->second );
         else
         {
             component_coll_t last;
-            for( typename map_t::iterator it = comps[i].begin(); it != comps[i].end(); ++it )
+            for( map_t::iterator it = comps[i].begin(); it != comps[i].end(); ++it )
             {
                 const index_t nrcp = it->second.size();
                 for (index_t j=0; j<nrcp; ++j)
@@ -306,14 +306,14 @@ void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists)
     cornerLists.clear();
     std::vector<patchCorner> cornerList;
     patchCorner c;
-    for(int i = 0;i<nboxes;++i)
+    for(index_t i = 0;i<nboxes;++i)
     {
         for(int j=1;j<=4;++j)
         {
             c=patchCorner(i,j);
             bool isCycle = getCornerList(c,cornerList);
             bool alreadyReached = false;
-            for(unsigned k = 0;k<cornerList.size();++k)
+            for(size_t k = 0;k<cornerList.size();++k)
                 if(cornerList[k].patch<i)
                     alreadyReached = true;
             if(isCycle&&cornerList.size()!=4&&!alreadyReached)
@@ -328,14 +328,14 @@ void gsBoxTopology::getOVs(std::vector<std::vector<patchCorner> > & cornerLists)
     cornerLists.clear();
     std::vector<patchCorner> cornerList;
     patchCorner c;
-    for(int i = 0;i<nboxes;++i)
+    for(index_t i = 0;i<nboxes;++i)
     {
         for(int j=1;j<=4;++j)
         {
             c=patchCorner(i,j);
             bool isCycle = getCornerList(c,cornerList);
             bool alreadyReached = false;
-            for(unsigned k = 0;k<cornerList.size();++k)
+            for(size_t k = 0;k<cornerList.size();++k)
                 if(cornerList[k].patch<i)
                     alreadyReached = true;
             if(isCycle&&cornerList.size()==4&&!alreadyReached)

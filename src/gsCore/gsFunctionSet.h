@@ -266,7 +266,7 @@ public:
       @param u
       @param result
      */
-    virtual void active_into (const gsMatrix<T>  & u, gsMatrix<unsigned> &result) const;
+    virtual void active_into (const gsMatrix<T>  & u, gsMatrix<index_t> &result) const;
     
 public:
     /**
@@ -425,9 +425,9 @@ public:
     /// @brief Returns the indices of active (nonzero) functions at
     /// points \a u, as a list of indices.
     /// \sa active_into()
-    gsMatrix<unsigned> active(const gsMatrix<T> & u) const
+    gsMatrix<index_t> active(const gsMatrix<T> & u) const
     {
-        gsMatrix<unsigned> rvo;
+        gsMatrix<index_t> rvo;
         this->active_into(u, rvo);
         return rvo;
     }

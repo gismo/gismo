@@ -3,7 +3,7 @@
     @brief Provides declaration of THBSplineBasis class.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -31,12 +31,12 @@ namespace gismo
 
     \ingroup geometry
     \ingroup HSplines
-*/    
-    
+*/
+
 template<short_t d, class T>
 class gsHBSpline : public gsGeoTraits<d,T>::GeometryBase
-{   
-public: 
+{
+public:
     typedef typename gsGeoTraits<d,T>::GeometryBase Base;
 
     typedef gsHBSplineBasis<d,T> Basis;
@@ -46,18 +46,18 @@ public:
 
     /// Unique pointer for gsHBSpline
     typedef memory::unique_ptr< gsHBSpline > uPtr;
-    
-    typedef typename 
-    util::conditional<d==1, gsConstantFunction<T>, gsHBSpline<d-1,T>
+
+    typedef typename
+    util::conditional<d==1, gsConstantFunction<T>, gsHBSpline<static_cast<short_t>(d-1),T>
                       >::type BoundaryGeometryType;
 
     typedef typename gsHBSplineBasis<d,T>::BoundaryBasisType BoundaryBasisType;
-    
+
 public:
-    
+
     /// Default empty constructor
     gsHBSpline() { }
-  
+
     /// Construct HB-Spline by basis functions and coefficient matrix
     gsHBSpline( const Basis * basis, const gsMatrix<T> * coefs ) :
     Base( basis, coefs ) { }
@@ -65,20 +65,20 @@ public:
     /// Construct HB-Spline by basis functions and coefficient matrix
     gsHBSpline( const Basis & basis, const gsMatrix<T> & coefs ) :
     Base( basis, coefs ) { }
-  
+
     /// Construct B-Spline from a Tensor B-Spline
-    gsHBSpline( const gsTensorBSpline<d,T> & tbsp )
-    { 
-        this->m_basis = new Basis(tbsp);
-        this->m_coefs = tbsp->coefs();
+    explicit gsHBSpline( const gsTensorBSpline<d,T> & tbsp )
+    {
+        this->m_basis = new Basis( tbsp.basis() );
+        this->m_coefs = tbsp.coefs();
     }
 
     GISMO_CLONE_FUNCTION(gsHBSpline)
 
     GISMO_BASIS_ACCESSORS
-  
+
 public:
-  
+
     /// Constucts an isoparametric slice of this HBSpline by fixing
     /// \a par in direction \a dir_fixed. The resulting HBSpline has
     /// one less dimension and is given back in \a result.
@@ -113,10 +113,9 @@ public:
     }
 }; // class gsHBSpline
 
-    
+
 } // namespace gismo
-    
+
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsHBSpline.hpp)
 #endif
-

@@ -107,7 +107,7 @@ void gsPatchGenerator<T>::preparePatch(gsTensorBSplineBasis<d,T> & resultBasis, 
     GISMO_ASSERT(m_boundary.nPatches()  == 2*d, 
                  "Expecting "<<2*d<<" boundaries");
 
-    typedef typename gsBSplineTraits<d-1,T>::Geometry Boundary_t;
+    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::Geometry Boundary_t;
 
     //-------- 1. Find the pairs of facing boundaries
 
@@ -124,7 +124,7 @@ void gsPatchGenerator<T>::preparePatch(gsTensorBSplineBasis<d,T> & resultBasis, 
 
     std::vector<Boundary_t*> input;// permutation of the input boundaries
     input.reserve(2*d);
-    std::vector<int> perm;// permutation to be computed
+    std::vector<short_t> perm;// permutation to be computed
     perm.reserve(2*d);
 
     for (unsigned k = 0; k!=2*d; ++k) //for all boundaries
@@ -280,7 +280,7 @@ void gsPatchGenerator<T>::preparePatch(gsTensorBSplineBasis<d,T> & resultBasis, 
 
     //-------- 4. Fill in the boundary of the patch
 
-    gsMatrix<unsigned> bdr; // indices of the boundary control points
+    gsMatrix<index_t> bdr; // indices of the boundary control points
     coefs.setZero(resultBasis.size(), m_boundary.geoDim());
     
     // Fill in boundary coefficients

@@ -54,7 +54,7 @@ void saveToFile(std::string& path, gsOptionList& list)
 
 void checkAssemblerOptions(gsOptionList& myList)
 {
-    CHECK_EQUAL(8, myList.size());
+    CHECK_EQUAL(8u, myList.size());
     CHECK_EQUAL(11, myList.getInt("DirichletStrategy"));
     CHECK_EQUAL(101, myList.getInt("DirichletValues"));
     CHECK_EQUAL(1, myList.getInt("InterfaceStrategy"));
@@ -78,7 +78,7 @@ SUITE(gsOptionList_test)
     TEST(get_items_from_empty_list)
     {
         gsOptionList myList;
-        CHECK_EQUAL(0, myList.size());
+        CHECK_EQUAL(0u, myList.size());
         CHECK_EQUAL(STR_1, myList.askString(LABEL_STR_1, STR_1));
         CHECK_EQUAL(INT_1, myList.askInt(LABEL_INT_1, INT_1));
         CHECK_EQUAL(REAL_1, myList.askReal(LABEL_REAL_1, REAL_1));
@@ -95,7 +95,7 @@ SUITE(gsOptionList_test)
     TEST(get_items_from_empty_list_and_throw_exception)
     {
         gsOptionList myList;
-        CHECK_EQUAL(0, myList.size());
+        CHECK_EQUAL(0u, myList.size());
         UnitTest::deactivate_output();
         CHECK_THROW_IN_DEBUG(myList.getString(LABEL_STR_1), std::exception);
         UnitTest::reactivate_output();
@@ -108,14 +108,14 @@ SUITE(gsOptionList_test)
     {
         gsOptionList myList;
         myList.addString(LABEL_STR_1, DESC_1, STR_1);
-        CHECK_EQUAL(1, myList.size());
+        CHECK_EQUAL(1u, myList.size());
         CHECK_EQUAL(STR_1, myList.getString(LABEL_STR_1));
         CHECK_EQUAL(STR_1, myList.askString(LABEL_STR_1, STR_ANY));
         CHECK_EQUAL(STR_2, myList.askString(LABEL_STR_2, STR_2));
         CHECK_EQUAL(STR_1, myList.getString(LABEL_STR_1));
         CHECK_EQUAL(STR_1, myList.askString(LABEL_STR_1, STR_ANY));
         CHECK_EQUAL(STR_2, myList.askString(LABEL_STR_2, STR_2));
-        CHECK_EQUAL(1, myList.size());
+        CHECK_EQUAL(size_t(1), myList.size());
     }
 
     /***
@@ -132,10 +132,10 @@ SUITE(gsOptionList_test)
         myList.addReal(LABEL_REAL_2, DESC_2, REAL_2);
         myList.addSwitch(LABEL_BOOL_1, DESC_1, BOOL_1);
         myList.addSwitch(LABEL_BOOL_2, DESC_2, BOOL_2);
-        CHECK_EQUAL(8, myList.size());
+        CHECK_EQUAL(size_t(8), myList.size());
         CHECK_EQUAL(STR_1, myList.getString(LABEL_STR_1));
         CHECK_EQUAL(STR_1, myList.askString(LABEL_STR_1, STR_ANY));
-        CHECK_EQUAL(8, myList.size());
+        CHECK_EQUAL(size_t(8), myList.size());
         CHECK_EQUAL(STR_1, myList.getString(LABEL_STR_1));
         CHECK_EQUAL(STR_1, myList.askString(LABEL_STR_1, STR_ANY));
         CHECK_EQUAL(STR_2, myList.getString(LABEL_STR_2));
@@ -152,7 +152,7 @@ SUITE(gsOptionList_test)
         CHECK_EQUAL(BOOL_1, myList.askSwitch(LABEL_BOOL_1, BOOL_ANY));
         CHECK_EQUAL(BOOL_2, myList.getSwitch(LABEL_BOOL_2));
         CHECK_EQUAL(BOOL_2, myList.askSwitch(LABEL_BOOL_2, BOOL_ANY));
-        CHECK_EQUAL(8, myList.size());
+        CHECK_EQUAL(size_t(8), myList.size());
     }
 
     /***
@@ -162,13 +162,13 @@ SUITE(gsOptionList_test)
     {
         gsOptionList myList;
         myList.addString(LABEL_STR_1, DESC_1, STR_1);
-        CHECK_EQUAL(1, myList.size());
+        CHECK_EQUAL(size_t(1), myList.size());
         CHECK_EQUAL(STR_1, myList.askString(LABEL_STR_1, STR_ANY));
         CHECK_EQUAL(INT_1, myList.askInt(LABEL_STR_1, INT_1));
         CHECK_EQUAL(REAL_1, myList.askReal(LABEL_STR_1, REAL_1));
         CHECK_EQUAL(BOOL_1, myList.askSwitch(LABEL_STR_1, BOOL_1));
         CHECK_EQUAL(STR_1, myList.askString(LABEL_STR_1, STR_ANY));
-        CHECK_EQUAL(1, myList.size());
+        CHECK_EQUAL(size_t(1), myList.size());
     }
 
     /***
@@ -181,7 +181,7 @@ SUITE(gsOptionList_test)
         myList.addInt(LABEL_INT_1, DESC_1, INT_1);
         myList.addReal(LABEL_REAL_1, DESC_1, REAL_1);
         myList.addSwitch(LABEL_BOOL_1, DESC_1, BOOL_1);
-        CHECK_EQUAL(4, myList.size());
+        CHECK_EQUAL(size_t(4), myList.size());
         CHECK_EQUAL(STR_1, myList.getString(LABEL_STR_1));
         CHECK_EQUAL(INT_1, myList.getInt(LABEL_INT_1));
         CHECK_EQUAL(REAL_1, myList.getReal(LABEL_REAL_1));
@@ -190,7 +190,7 @@ SUITE(gsOptionList_test)
         myList.addInt(LABEL_INT_1, DESC_1, INT_2);
         myList.addReal(LABEL_REAL_1, DESC_1, REAL_2);
         myList.addSwitch(LABEL_BOOL_1, DESC_1, BOOL_2);
-        CHECK_EQUAL(4, myList.size());
+        CHECK_EQUAL(size_t(4), myList.size());
         CHECK_EQUAL(STR_2, myList.getString(LABEL_STR_1));
         UnitTest::deactivate_output();
         CHECK_THROW(myList.addString(LABEL_INT_1, DESC_1, STR_2),
@@ -201,9 +201,9 @@ SUITE(gsOptionList_test)
         CHECK_THROW(myList.addSwitch(LABEL_STR_1, DESC_1, BOOL_1),
                 std::runtime_error);
         UnitTest::reactivate_output();
-        CHECK_EQUAL(4, myList.size());
+        CHECK_EQUAL(size_t(4), myList.size());
         CHECK_EQUAL(STR_2, myList.getString(LABEL_STR_1));
-        CHECK_EQUAL(4, myList.size());
+        CHECK_EQUAL(size_t(4), myList.size());
     }
 
     /***
@@ -220,12 +220,12 @@ SUITE(gsOptionList_test)
         myList.addReal(LABEL_REAL_2, DESC_2, REAL_2);
         myList.addSwitch(LABEL_BOOL_1, DESC_1, BOOL_1);
         myList.addSwitch(LABEL_BOOL_2, DESC_2, BOOL_2);
-        CHECK_EQUAL(8, myList.size());
+        CHECK_EQUAL(size_t(8), myList.size());
         myList.setString(LABEL_STR_1, STR_1);
         myList.setInt(LABEL_INT_1, INT_1);
         myList.setReal(LABEL_REAL_1, REAL_1);
         myList.setSwitch(LABEL_BOOL_1, BOOL_1);
-        CHECK_EQUAL(8, myList.size());
+        CHECK_EQUAL(size_t(8), myList.size());
         CHECK_EQUAL(STR_1, myList.getString(LABEL_STR_1));
         CHECK_EQUAL(STR_2, myList.getString(LABEL_STR_2));
         CHECK_EQUAL(INT_1, myList.getInt(LABEL_INT_1));
@@ -269,7 +269,7 @@ SUITE(gsOptionList_test)
         myList.setReal(LABEL_REAL_2, REAL_2);
         myList.setSwitch(LABEL_BOOL_1, BOOL_1);
         myList.setSwitch(LABEL_BOOL_2, BOOL_2);
-        CHECK_EQUAL(8, myList.size());
+        CHECK_EQUAL(size_t(8), myList.size());
         CHECK_EQUAL(STR_1, myList.getString(LABEL_STR_1));
         CHECK_EQUAL(STR_2, myList.getString(LABEL_STR_2));
         CHECK_EQUAL(INT_1, myList.getInt(LABEL_INT_1));
@@ -290,7 +290,7 @@ SUITE(gsOptionList_test)
         myList.addInt(LABEL_INT_1, DESC_1, INT_1);
         myList.addReal(LABEL_REAL_1, DESC_1, REAL_1);
         myList.addSwitch(LABEL_BOOL_1, DESC_1, BOOL_1);
-        CHECK_EQUAL(4, myList.size());
+        CHECK_EQUAL(size_t(4), myList.size());
         CHECK_EQUAL(STR_1, myList.getString(LABEL_STR_1));
         UnitTest::deactivate_output();
         CHECK_THROW(myList.setString(LABEL_STR_2, STR_2), std::runtime_error);
@@ -298,7 +298,7 @@ SUITE(gsOptionList_test)
         CHECK_THROW(myList.setReal(LABEL_REAL_2, REAL_2), std::runtime_error);
         CHECK_THROW(myList.setSwitch(LABEL_BOOL_2, BOOL_2), std::runtime_error);
         UnitTest::reactivate_output();
-        CHECK_EQUAL(4, myList.size());
+        CHECK_EQUAL(size_t(4), myList.size());
         CHECK_EQUAL(STR_1, myList.getString(LABEL_STR_1));
         CHECK_EQUAL(INT_1, myList.getInt(LABEL_INT_1));
         CHECK_EQUAL(REAL_1, myList.getReal(LABEL_REAL_1));
@@ -318,7 +318,7 @@ SUITE(gsOptionList_test)
         myList.addInt("Size", "", 3);
         myList = myList.wrapIntoGroup("VEC");
 
-        std::vector<int> vec = myList.getMultiInt("VEC");
+        std::vector<index_t> vec = myList.getMultiInt("VEC");
 
         CHECK_EQUAL((size_t)3, vec.size());
         for (size_t i = 0; i < vec.size(); ++i) {
@@ -339,11 +339,11 @@ SUITE(gsOptionList_test)
         myList1.addInt("Size", "", 3);
         myList1 = myList1.wrapIntoGroup("VEC");
 
-        std::vector<int> vec(data, data + sizeof(data)/ sizeof(int));
+        std::vector<index_t> vec(data, data + sizeof(data)/ sizeof(int));
         myList2.addMultiInt("VEC", "", vec);
 
-        std::vector<int> vec1 = myList1.getMultiInt("VEC");
-        std::vector<int> vec2 = myList2.getMultiInt("VEC");
+        std::vector<index_t> vec1 = myList1.getMultiInt("VEC");
+        std::vector<index_t> vec2 = myList2.getMultiInt("VEC");
 
         CHECK_EQUAL((size_t)3, vec.size());
         CHECK_EQUAL((size_t)3, vec1.size());
@@ -403,7 +403,7 @@ SUITE(gsOptionList_test)
     {
         std::string path = gsFileManager::findInDataDir( "options/optionlist.xml" );
         gsOptionList myList = loadFromFile(path);
-        CHECK_EQUAL(4, myList.size());
+        CHECK_EQUAL(size_t(4), myList.size());
 
         CHECK_EQUAL(true, myList.getSwitch("boundary"));
         CHECK_EQUAL(11, myList.getInt("strategy"));
@@ -430,7 +430,7 @@ SUITE(gsOptionList_test)
         myList.setSwitch(LABEL_BOOL_1, BOOL_2);
 
         gsOptionList myList2 = loadFromFile(path);
-        CHECK_EQUAL(4, myList2.size());
+        CHECK_EQUAL(size_t(4), myList2.size());
         CHECK_EQUAL(STR_1, myList2.getString(LABEL_STR_1));
         CHECK_EQUAL(INT_1, myList2.getInt(LABEL_INT_1));
         CHECK_EQUAL(REAL_1, myList2.getReal(LABEL_REAL_1));
@@ -483,11 +483,11 @@ SUITE(gsOptionList_test)
     {
         gsOptionList myList;
         myList.addString(LABEL_STR_1, DESC_1, STR_1);
-        CHECK_EQUAL(1, myList.size());
+        CHECK_EQUAL(size_t(1), myList.size());
         myList.remove(LABEL_STR_1);
-        CHECK_EQUAL(0, myList.size());
+        CHECK_EQUAL(size_t(0), myList.size());
         myList.addInt(LABEL_STR_1, DESC_1, INT_1);
-        CHECK_EQUAL(1, myList.size());
+        CHECK_EQUAL(size_t(1), myList.size());
         CHECK_EQUAL(INT_1, myList.getInt(LABEL_STR_1));
     }
 
@@ -509,12 +509,12 @@ SUITE(gsOptionList_test)
         gsOptionList myList2 = myList.wrapIntoGroup("GR");
         CHECK_EQUAL(false, myList2.hasGlobals());
         CHECK_EQUAL(true, myList2.hasGroup("GR"));
-        CHECK_EQUAL(4, myList2.size());
+        CHECK_EQUAL(size_t(4), myList2.size());
         myList2.addString("LABEL_STR_1", DESC_1, STR_2);
         myList2.addString("LABEL_STR_2", DESC_1, STR_2);
         CHECK_EQUAL(true, myList2.hasGlobals());
         CHECK_EQUAL(true, myList2.hasGroup("GR"));
-        CHECK_EQUAL(6, myList2.size());
+        CHECK_EQUAL(size_t(6), myList2.size());
         CHECK_EQUAL(STR_2, myList2.getString("LABEL_STR_1"));
         CHECK_EQUAL(STR_2, myList2.getString("LABEL_STR_2"));
         CHECK_EQUAL(STR_1, myList2.getString("GR.LABEL_STR_1"));
@@ -525,7 +525,7 @@ SUITE(gsOptionList_test)
         gsOptionList myList3 = myList2.getGroup("GR");
         CHECK_EQUAL(true, myList3.hasGlobals());
         CHECK_EQUAL(false, myList3.hasGroup("GR"));
-        CHECK_EQUAL(4, myList3.size());
+        CHECK_EQUAL(size_t(4), myList3.size());
         CHECK_EQUAL(STR_1, myList3.getString("LABEL_STR_1"));
         CHECK_EQUAL(INT_1, myList3.getInt("LABEL_INT_1"));
         CHECK_EQUAL(REAL_1, myList3.getReal("LABEL_REAL_1"));

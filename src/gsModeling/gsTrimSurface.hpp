@@ -203,8 +203,8 @@ gsBSpline<T> gsTrimSurface<T>::cuttingCurve(int const & sourceID,int const & tar
     T w_app = 0;
 
     // Exact constraints: point interpolation
-    int dimPI = 1; // dimension of space of preImage
-    int dimI = 2;  // dimension of space of image
+    short_t dimPI = 1; // dimension of space of preImage
+    short_t dimI = 2;  // dimension of space of image
     int nip=2; // number of interpolating points
     int nn=2; // number of prescribed normals
     gsMatrix<T> image(dimI,nip);
@@ -239,7 +239,7 @@ memory::unique_ptr<gsMesh<T> > gsTrimSurface<T>::toMesh(int npoints) const
     gsMatrix<T> tmp;
 
     // For all vertices of the msh, push forward the value by m_surface
-    for (std::size_t i = 0; i!= msh->numVertices(); ++i)
+    for (size_t i = 0; i!= msh->numVertices(); ++i)
     {
         m_surface->eval_into( msh->vertex(i).topRows(2), tmp );
         msh->vertex(i).topRows(m_surface->geoDim() ) = tmp;

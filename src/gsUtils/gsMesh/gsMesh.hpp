@@ -29,7 +29,7 @@ gsMesh<T>::~gsMesh()
 }
 
 template<class T>
-gsMesh<T>::gsMesh(const gsBasis<T> & basis, int n)
+gsMesh<T>::gsMesh(const gsBasis<T> & basis, int midPts)
 : MeshElement()
 {
     const unsigned d = basis.dim();
@@ -80,10 +80,10 @@ gsMesh<T>::gsMesh(const gsBasis<T> & basis, int n)
         cur.setZero();
         counter = 0;
 
-        // add points to the mesh
+        // Add points to the mesh.
         do
         {
-            // get appropriate coordinate of a point
+            // Get the appropriate coordinate of a point.
             for (unsigned dim = 0; dim < d; dim++)
             {
                 vv(dim) = ( cur(dim) ?  upp(dim) : low(dim) );
@@ -96,15 +96,15 @@ gsMesh<T>::gsMesh(const gsBasis<T> & basis, int n)
         } while (nextCubePoint<gsVector<unsigned> >(cur, zeros, ones));
 
 
-        // add edges to the mesh (connect points)
+        // Add edges to the mesh (connect points).
         for (size_t index = 0; index != neighbour.size(); index++)
         {
             const std::vector<unsigned> & v = neighbour[index];
 
             for (size_t ngh = 0; ngh != v.size(); ngh++)
             {
-                // add more vertices (n) for better physical resolution
-                addLine( map[index], map[v[ngh]], n );
+                // Add more vertices for better physical resolution.
+                addLine( map[index], map[v[ngh]], midPts );
                 //addEdge( map[index], map[v[ngh]] );
             }
         }
@@ -345,15 +345,15 @@ void gsMesh<T>::addLine(gsMatrix<T> const & points)
     }
 
 template <class T>
-void gsMesh<T>::addLine(VertexHandle v0, VertexHandle v1, int n)
+void gsMesh<T>::addLine(VertexHandle v0, VertexHandle v1, int midPts)
 {
     const gsVector3d<T> & start = *dynamic_cast<gsVector3d<T>* >(v0);
-    const T h = (*v1 - start).norm() / (n+1);
+    const T h = (*v1 - start).norm() / (midPts + 1);
     const gsVector3d<T> step = (*v1 - start).normalized();
 
     VertexHandle last = v0;
     VertexHandle next;
-    for ( int i = 0; i<n; ++i )
+    for ( int i = 0; i<midPts; ++i )
     {
         next = addVertex(start + i*h*step);
         addEdge(last, next);

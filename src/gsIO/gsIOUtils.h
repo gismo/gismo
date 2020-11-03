@@ -60,7 +60,7 @@ void gsWriteGoToolsBodySpline(const gsTensorBSpline<d, T>& bspl,
 
     out << bspl.geoDim() << " " << 0 << "\n";
 
-    for (int dim = 0; dim < bspl.parDim(); dim++)
+    for (short_t dim = 0; dim < bspl.parDim(); dim++)
     {
         out << bspl.basis().size(dim) << " " <<
                bspl.basis().degree(dim) + 1 << "\n";
@@ -324,11 +324,11 @@ void makeMesh(const gsBasis<T>& basis, gsMesh<T> & mesh, int n = 0)
 
 
         // add edges to the mesh (connect points)
-        for (std::size_t index = 0; index != neighbour.size(); index++)
+        for (size_t index = 0; index != neighbour.size(); index++)
         {
             const std::vector<unsigned> & v = neighbour[index];
 
-            for (std::size_t ngh = 0; ngh != v.size(); ngh++)
+            for (size_t ngh = 0; ngh != v.size(); ngh++)
             {
                 // add more vertices (n) for better physical resolution
                 mesh.addLine( map[index], map[v[ngh]], n );
@@ -429,11 +429,11 @@ void makeHierarchicalMesh(const gsHTensorBasis<d, T>& basis,
 
 
         // add edges to the mesh (connect points)
-        for (std::size_t index = 0; index != neighbour.size(); index++)
+        for (size_t index = 0; index != neighbour.size(); index++)
         {
             const std::vector<unsigned> & v = neighbour[index];
 
-            for (std::size_t ngh = 0; ngh != v.size(); ngh++)
+            for (size_t ngh = 0; ngh != v.size(); ngh++)
             {
                 // add more vertices (n) for better physical resolution
                 meshes[level].addLine( map[index], map[v[ngh]], n );

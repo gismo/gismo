@@ -119,9 +119,9 @@ SUITE(gsKnotVectors_test)
         refinementBoxes << 0, 0.2, 0.8, 1, 0.4, 0.6, 0.2, 0.4;
         thbBasis.refine(refinementBoxes);
 
-        gsMatrix<unsigned> corrLowLeft(7,2), corrUppRigh(7,2);
-        gsMatrix<unsigned> compLowLeft, compUppRigh;
-        gsVector<unsigned> corrLvl(7), compLvl;
+        gsMatrix<index_t> corrLowLeft(7,2), corrUppRigh(7,2);
+        gsMatrix<index_t> compLowLeft, compUppRigh;
+        gsVector<index_t> corrLvl(7), compLvl;
         thbBasis.tree().getBoxes(compLowLeft, compUppRigh, compLvl);
 
         // These matrices both contain indices of the second level (draw a picture;)).
@@ -445,7 +445,7 @@ SUITE(gsKnotVectors_test_2)
         // The degree is intentionally -1.
         gsKnotVector<real_t> KV(-1, knots, knots + sizeof(knots)/sizeof(real_t));  //(0,1,3,3,2);
 
-        std::vector<unsigned> spans;
+        std::vector<index_t> spans;
         spans.push_back(0);
         KV.refineSpans(spans, 1);
         {

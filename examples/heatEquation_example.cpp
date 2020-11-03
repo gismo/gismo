@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     gsInfo<<"Source function is: "<< f << "\n";
 
     // Define Geometry, must be a gsMultiPatch object
-    gsMultiPatch<> patches(*gsNurbsCreator<>::BSplineSquare(2));
+    gsMultiPatch<> patches(*gsNurbsCreator<>::BSplineSquareDeg(2));
     patches.computeTopology();
 
     // Boundary conditions
@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 
     std::string fileName;
 
-    if ( plot)
+    if ( plot )
     {
         //sol = assembler.constructSolution(Sol); // same as next line
         gsField<> sol = stationary.constructSolution(Sol);
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
         //sol = assembler.constructSolution(Sol); // same as next line
         gsField<> sol = stationary.constructSolution(Sol);
 
-        if ( plot)
+        if ( plot )
         {
             // Plot the snapshot to paraview
             fileName = baseName + util::to_string(i);
@@ -132,11 +132,14 @@ int main(int argc, char *argv[])
 
     //gsInfo<< " time = "<<endTime<<"\n";
 
-    if ( plot)
+    if ( plot )
     {
         collection.save();
         gsFileManager::open("heat_eq_solution.pvd");
     }
+    else
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+                  "file containing the solution.\n";
 
     return  EXIT_SUCCESS;
 }

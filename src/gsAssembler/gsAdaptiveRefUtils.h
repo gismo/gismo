@@ -52,32 +52,35 @@ void gsMarkPercentage( const std::vector<T> & elError, T refParameter, std::vect
     T Thr = T(0);
 
     // Total number of elements:
-    unsigned NE = elError.size();
+    size_t NE = elError.size();
     // The vector of local errors will need to be sorted,
     // which will be done on a copy:
     std::vector<T> elErrCopy = elError;
 
     // Compute the index from which the refinement should start,
     // once the vector is sorted.
-    unsigned idxRefineStart = cast<T,unsigned>( math::floor( refParameter * T(NE) ) );
+    size_t idxRefineStart = cast<T,size_t>( math::floor( refParameter * T(NE) ) );
     // ...and just to be sure we are in range:
     if( idxRefineStart == elErrCopy.size() )
+    {
+        GISMO_ASSERT(idxRefineStart >= 1, "idxRefineStart can't get negative");
         idxRefineStart -= 1;
+    }
 
     // Sort the list using bubblesort.
     // After each loop, the largest elements are at the end
     // of the list. Since we are only interested in the largest elements,
     // it is enough to run the sorting until enough "largest" elements
     // have been found, i.e., until we have reached indexRefineStart
-    unsigned lastSwapDone = elErrCopy.size() - 1;
-    unsigned lastCheckIdx = lastSwapDone;
+    size_t lastSwapDone = elErrCopy.size() - 1;
+    size_t lastCheckIdx = lastSwapDone;
 
     bool didSwap;
     T tmp;
     do{
         didSwap = false;
         lastCheckIdx = lastSwapDone;
-        for( unsigned i=0; i < lastCheckIdx; i++)
+        for( size_t i=0; i < lastCheckIdx; i++)
             if( elErrCopy[i] > elErrCopy[i+1] )
             {
                 tmp = elErrCopy[i];
@@ -94,7 +97,7 @@ void gsMarkPercentage( const std::vector<T> & elError, T refParameter, std::vect
     elMarked.resize( elError.size() );
     // Now just check for each element, whether the local error
     // is above the computed threshold or not, and mark accordingly.
-    for( unsigned i=0; i < elError.size(); i++)
+    for( size_t i=0; i < elError.size(); i++)
         ( elError[i] >= Thr ? elMarked[i] = true : elMarked[i] = false );
 }
 
@@ -110,7 +113,7 @@ void gsMarkFraction( const std::vector<T> & elError, T refParameter, std::vector
 
     // Compute the sum, i.e., the global/total error
     T totalError = T(0);
-    for( unsigned i = 0; i < elErrCopy.size(); ++i)
+    for( size_t i = 0; i < elErrCopy.size(); ++i)
         totalError += elErrCopy[i];
 
     // We want to mark just enough cells such that their
@@ -120,9 +123,10 @@ void gsMarkFraction( const std::vector<T> & elError, T refParameter, std::vector
     T cummulErrMarked = 0;
 
     T tmp;
-    unsigned lastSwapDone = elErrCopy.size() - 1;
+    GISMO_ASSERT(elErrCopy.size() >= 1, "elErrCopy needs at least 1 element");
+    size_t lastSwapDone = elErrCopy.size() - 1;
     do{
-        for( unsigned i=0; i < lastSwapDone; i++)
+        for( size_t i=0; i < lastSwapDone; i++)
             if( elErrCopy[i] > elErrCopy[i+1] )
             {
                 tmp = elErrCopy[i];
@@ -140,7 +144,7 @@ void gsMarkFraction( const std::vector<T> & elError, T refParameter, std::vector
     elMarked.resize( elError.size() );
     // Now just check for each element, whether the local error
     // is above the computed threshold or not, and mark accordingly.
-    for( unsigned i=0; i < elError.size(); i++)
+    for( size_t i=0; i < elError.size(); i++)
         ( elError[i] >= Thr ? elMarked[i] = true : elMarked[i] = false );
 }
 
@@ -239,25 +243,25 @@ void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T r
 template <class T>
 void gsRefineMarkedElements(gsMultiBasis<T> & basis,
                             const std::vector<bool> & elMarked,
-                            int refExtension = 0)
+                            index_t refExtension = 0)
 {
-    const int dim = basis.dim();
+    const short_t dim = basis.dim();
 
     // numMarked: Number of marked cells on current patch, also currently marked cell
     // poffset  : offset index for the first element on a patch
     // globalCount: counter for the current global element index
-    int numMarked, poffset = 0, globalCount = 0;
+    index_t numMarked, poffset = 0, globalCount = 0;
 
     // refBoxes: contains marked boxes on a given patch
     gsMatrix<T> refBoxes;
 
-    for (unsigned pn=0; pn < basis.nBases(); ++pn )// for all patches
+    for (size_t pn=0; pn < basis.nBases(); ++pn )// for all patches
     {
         // Get number of elements to be refined on this patch
-        const int numEl = basis[pn].numElements();
+        const size_t numEl = basis[pn].numElements();
         numMarked = std::count_if(elMarked.begin() + poffset,
                                   elMarked.begin() + poffset + numEl,
-                                  std::bind2nd(std::equal_to<bool>(), true) );
+                                  GS_BIND2ND(std::equal_to<bool>(), true) );
         poffset += numEl;
         refBoxes.resize(dim, 2*numMarked);
         //gsDebugVar(numMarked);

@@ -41,13 +41,13 @@ class gsHDomainBoundaryIterator: public gsDomainIterator<T>
 {
 public:
 
-    typedef kdnode<d, unsigned> node;
+    typedef kdnode<d, index_t> node;
 
     typedef typename node::point point; 
 
     typedef typename std::vector<T>::const_iterator  uiter;
 
-    typedef gsHDomain<d,unsigned> hDomain;
+    typedef gsHDomain<d,index_t> hDomain;
 
     typedef typename hDomain::const_literator leafIterator;
 
@@ -70,7 +70,7 @@ public:
         m_breaks = std::vector<std::vector<T> >(d, std::vector<T>());
 
         // Set to one quadrature point by default
-        m_quadrature.setNodes( gsVector<int>::Ones(d) );
+        m_quadrature.setNodes( gsVector<index_t>::Ones(d) );
 
         // Get the side information
         par = s.parameter();

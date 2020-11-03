@@ -44,7 +44,6 @@ public:
 
     typedef std::vector<gsGeometry<T> *> PatchContainer;
 
-    typedef typename PatchContainer::size_type size_t;
     typedef typename PatchContainer::iterator iterator;
     typedef typename PatchContainer::const_iterator const_iterator;
 
@@ -179,7 +178,7 @@ public:
     gsMatrix<T> parameterRange(int i = 0) const;
 
     /// \brief Number of patches
-    index_t nPatches() const          { return m_patches.size(); }
+    size_t nPatches() const { return m_patches.size(); }
 
     /// \brief Returns a vector of patches // to do : replace by copies
     PatchContainer const& patches() const { return m_patches; }
@@ -197,17 +196,17 @@ public:
     std::vector<gsBasis<T> *> basesCopy(bool numeratorOnly = false) const;
 
     /// Return the \a i-th patch.
-    gsGeometry<T>& patch( std::size_t i ) const
+    gsGeometry<T>& patch( size_t i ) const
     {
         GISMO_ASSERT( i < m_patches.size(), "Invalid patch index "<<i<<" requested from gsMultiPatch" );
         return *m_patches[i];
     }
 
     ///\brief Permutes the patches according to \a perm
-    void permute(const std::vector<int> & perm);
+    void permute(const std::vector<short_t> & perm);
 
     ///\brief Return the basis of the \a i-th patch.
-    gsBasis<T> & basis( std::size_t i ) const;
+    gsBasis<T> & basis( size_t i ) const;
 
     ///\brief Add a patch from a gsGeometry<T>::uPtr
     void addPatch(typename gsGeometry<T>::uPtr g);
@@ -216,7 +215,7 @@ public:
     void addPatch(const gsGeometry<T> & g);
 
     /// \brief Search for the given geometry and return its patch index.
-    int findPatchIndex( gsGeometry<T>* g ) const;
+    size_t findPatchIndex( gsGeometry<T>* g ) const;
 
     /// @brief Add an interface joint between side \a s1 of geometry
     /// \a g1 side \a s2 of geometry \a g2.
@@ -229,7 +228,7 @@ public:
 
     /// Add side \a s of patch \a g to the outer boundary of the domain
     void addPatchBoundary( gsGeometry<T>* g, boxSide s ) {
-        int p = findPatchIndex( g );
+        size_t p = findPatchIndex( g );
         BaseA::addBoundary( patchSide( p, s ) );
     }
 

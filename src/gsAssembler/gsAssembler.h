@@ -79,19 +79,19 @@ template <class T>
 void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & result)
 {
     //todo: fix and check me
-    int m_orientation = md.jacobian(k).determinant() >= 0 ? 1 : -1;
+    short_t m_orientation = md.jacobian(k).determinant() >= 0 ? 1 : -1;
 
     const T sgn = sideOrientation(s) * m_orientation; // TODO: fix me
-    const int dir = s.direction();
+    const short_t dir = s.direction();
 
     // assumes points u on boundary "s"
     result.resize(md.dim.second);
     if (md.dim.first + 1 == md.dim.second) // surface case GeoDim == 3
     {
-        const gsMatrix<T> Jk = md.jacobian(k);
+        const gsMatrix<T,3,1> Jk = md.jacobian(k).col(!dir);
         // fixme: generalize to nD
         normal(md, k, result);
-        result = result.normalized().cross(sgn * Jk.block(0, !dir, md.dim.first, 1));
+        result = result.template head<3>().normalized().cross(sgn * Jk);
 
         /*
           gsDebugVar(result.transpose()); // result 1
@@ -99,7 +99,7 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
           Jk.col(dir) = result.normalized();
           gsMatrix<T, ParDim, md.dim.first> minor;
           T alt_sgn = sgn;
-          for (int i = 0; i != GeoDim; ++i) // for all components of the normal
+          for (short_t i = 0; i != GeoDim; ++i) // for all components of the normal
           {
           Jk.rowMinor(i, minor);
           result[i] = alt_sgn * minor.determinant();
@@ -118,8 +118,7 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
             return;
         } // 1D case
 
-        const gsMatrix<T> Jk =
-            md.jacobian(k);
+        const gsMatrix<T> Jk = md.jacobian(k);
 
         T alt_sgn = sgn;
         typename gsMatrix<T>::FirstMinorMatrixType minor;
@@ -371,7 +370,7 @@ public:
 
         m_bases.clear();
         m_bases.reserve(basis.size());
-        for(std::size_t c=0;c<basis.size();c++)
+        for(size_t c=0;c<basis.size();c++)
             m_bases.push_back(gsMultiBasis<T>(basis[c]));
 
         m_options = opt;
@@ -389,7 +388,7 @@ public:
     /** @brief Penalty constant for patch \a k, used for Nitsche and
     / Discontinuous Galerkin methods
     */
-    T penalty(int k) const
+    T penalty(index_t k) const
     {
         const short_t deg = m_bases[0][k].maxDegree();
         return (deg + m_bases[0][k].dim()) * (deg + 1) * T(2.0);
@@ -426,7 +425,7 @@ public: /* Element visitors */
     template<class ElementVisitor>
     void push()
     {
-        for (index_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
+        for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
         {
             ElementVisitor visitor(*m_pde_ptr);
             //Assemble (fill m_matrix and m_rhs) on patch np
@@ -453,7 +452,7 @@ public: /* Element visitors */
     template<class ElementVisitor>
     void push(const ElementVisitor & visitor)
     {
-        for (index_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
+        for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
         {
             ElementVisitor curVisitor = visitor;
             //Assemble (fill m_matrix and m_rhs) on patch np
@@ -495,49 +494,49 @@ public:  /* Dirichlet degrees of freedom computation */
 
     /// @brief Triggers computation of the Dirichlet dofs
     /// \param[in] unk the considered unknown
-    void computeDirichletDofs(int unk = 0);
+    void computeDirichletDofs(short_t unk = 0);
 
     /// @brief the user can manually set the dirichlet Dofs for a given patch and
     /// unknown, based on the Basis coefficients
     /// \param[in] coefMatrix the coefficients of the function
     /// \param[in] unk the consideren unknown
     /// \param[in] patch the patch index
-    void setFixedDofs(const gsMatrix<T> & coefMatrix, int unk = 0, int patch = 0);
+    void setFixedDofs(const gsMatrix<T> & coefMatrix, short_t unk = 0, size_t patch = 0);
 
     /// @brief the user can manually set the dirichlet Dofs for a given patch and
     /// unknown.
     /// \param[in] vals the values of the eliminated dofs.
     /// \param[in] unk the considered unknown
-    void setFixedDofVector(gsMatrix<T> vals, int unk = 0);
+    void setFixedDofVector(gsMatrix<T> vals, short_t unk = 0);
 
     /// Enforce Dirichlet boundary conditions by diagonal penalization
     /// \param[in] unk the considered unknown
-    void penalizeDirichletDofs(int unk = 0);
+    void penalizeDirichletDofs(short_t unk = 0);
 
     /// @brief Sets any Dirichlet values to homogeneous (if applicable)
     /// \param[in] unk the considered unknown
-    void homogenizeFixedDofs(int unk = 0)
+    void homogenizeFixedDofs(short_t unk = 0)
     {
         if(unk==-1)
         {
-            for(std::size_t i=0;i<m_ddof.size();++i)
+            for(size_t i=0;i<m_ddof.size();++i)
                 m_ddof[i].setZero();
         }
         else
             m_ddof[unk].setZero();
     }
 
-    // index_t numFixedDofs(int unk = 0) {return m_dofMappers[unk].boundarySize();}
+    // index_t numFixedDofs(short_t unk = 0) {return m_dofMappers[unk].boundarySize();}
 
     /// @brief Returns all the Dirichlet values (if applicable)
     const std::vector<gsMatrix<T> > & allFixedDofs() const { return m_ddof; }
 
     /// @brief Returns the Dirichlet values for a unknown (if applicable)
     /// \param[in] unk the considered unknown
-    const gsMatrix<T> & fixedDofs(int unk=0) const { return m_ddof[unk]; }
+    const gsMatrix<T> & fixedDofs(short_t unk=0) const { return m_ddof[unk]; }
 
     GISMO_DEPRECATED
-    const gsMatrix<T> & dirValues(int unk=0) const { return m_ddof[unk]; }//remove
+    const gsMatrix<T> & dirValues(short_t unk=0) const { return m_ddof[unk]; }//remove
 
 protected:  /* Helpers for Dirichlet degrees of freedom computation */
 
@@ -547,7 +546,7 @@ protected:  /* Helpers for Dirichlet degrees of freedom computation */
     /// \param[in] unk_ the considered unknown
     void computeDirichletDofsIntpl(const gsDofMapper     & mapper,
                                    const gsMultiBasis<T> & mbasis,
-                                   const int unk_ = 0);
+                                   const short_t unk_ = 0);
 
     /// @brief calculates the values of the eliminated dofs based on L2 Projection.
     /// \param[in] mapper the dofMapper for the considered unknown
@@ -555,7 +554,7 @@ protected:  /* Helpers for Dirichlet degrees of freedom computation */
     /// \param[in] unk_ the considered unknown
     void computeDirichletDofsL2Proj(const gsDofMapper     & mapper,
                                     const gsMultiBasis<T> & mbasis,
-                                    const int unk_ = 0);
+                                    const short_t unk_ = 0);
 
 public:  /* Solution reconstruction */
 
@@ -564,7 +563,7 @@ public:  /* Solution reconstruction */
     /// \param[out] result the solution in form of a gsMultiBasis
     /// \param[in] unk the considered unknown
     virtual void constructSolution(const gsMatrix<T>& solVector,
-                                   gsMultiPatch<T>& result, int unk = 0) const;
+                                   gsMultiPatch<T>& result, short_t unk = 0) const;
 
 
 
@@ -579,7 +578,7 @@ public:  /* Solution reconstruction */
                                    gsMultiPatch<T>& result,
                                    const gsVector<index_t>  & unknowns) const;
 
-    gsField<T> constructSolution(const gsMatrix<T>& solVector, int unk = 0) const;
+    gsField<T> constructSolution(const gsMatrix<T>& solVector, short_t unk = 0) const;
 
     /// @brief Update solution by adding the computed solution vector
     /// to the current solution specified by \par result. This method assumes that all
@@ -607,7 +606,7 @@ public: // *** Accessors ***
     gsMultiBasis<T> & multiBasis(index_t k = 0) { return m_bases[k]; }
 
     /// @brief Returns the number of multi-bases
-    std::size_t numMultiBasis() const {return m_bases.size(); }
+    size_t numMultiBasis() const {return m_bases.size(); }
 
     /// @brief Returns the left-hand global matrix
     const gsSparseMatrix<T> & matrix() const { return m_system.matrix(); }
@@ -629,7 +628,7 @@ public: // *** Accessors ***
     }
 
     /// @brief Returns the number of (free) degrees of freedom
-    int numDofs() const
+    index_t numDofs() const
     {
         index_t sum = 0;
         for (index_t c = 0; c!= m_system.numColBlocks(); ++c)
@@ -653,7 +652,7 @@ protected:
     /// integrals.
     template<class ElementVisitor>
     void apply(ElementVisitor & visitor,
-               int patchIndex = 0,
+               size_t patchIndex = 0,
                boxSide side = boundary::none);
 
     /// @brief Generic assembly routine for patch-interface integrals
@@ -665,7 +664,7 @@ protected:
 template <class T>
 template<class ElementVisitor>
 void gsAssembler<T>::apply(ElementVisitor & visitor,
-                           int patchIndex,
+                           size_t patchIndex,
                            boxSide side)
 {
     //gsDebug<< "Apply to patch "<< patchIndex <<"("<< side <<")\n";
@@ -728,8 +727,8 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
 {
     gsRemapInterface<T> interfaceMap(m_pde_ptr->patches(), m_bases[0], bi);
 
-    const int patchIndex1      = bi.first().patch;
-    const int patchIndex2      = bi.second().patch;
+    const index_t patchIndex1      = bi.first().patch;
+    const index_t patchIndex2      = bi.second().patch;
     const gsBasis<T> & B1 = m_bases[0][patchIndex1];// (!) unknown 0
     const gsBasis<T> & B2 = m_bases[0][patchIndex2];
 
@@ -745,12 +744,12 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
 
     // Initialize domain element iterators
     typename gsBasis<T>::domainIter domIt = interfaceMap.makeDomainIterator();
-    int count = 0;
+    //int count = 0;
 
     // iterate over all boundary grid cells on the "left"
     for (; domIt->good(); domIt->next() )
     {
-        count++;
+        //count++;
 
         // Compute the quadrature rule on both sides
         quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes1, quWeights);

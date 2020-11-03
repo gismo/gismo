@@ -183,6 +183,9 @@ int main(int argc, char *argv[])
 
         gsFileManager::open("solution.pvd");
     }
+    else
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+                  "file containing the solution.\n";
     //! [Export visualization in ParaView]
 
     return EXIT_SUCCESS;

@@ -16,7 +16,7 @@
 #include <ostream>
 
 // includes for wall clocks
-#if __cplusplus >= 201103L
+#if __cplusplus >= 201103L || _MSC_VER >= 1600
 #  include <chrono>
 #elif defined(__linux__)
 #  include <sys/time.h>
@@ -101,7 +101,7 @@ private:
  * SYSTEM-SPECIFIC WALL CLOCKS
  */
 
-#if __cplusplus >= 201103L                                          // C++11 //
+#if __cplusplus >= 201103L || _MSC_VER >= 1600   // C++11 //
 // highest-resolution wall clock time
 struct CXX11WallClock
 {

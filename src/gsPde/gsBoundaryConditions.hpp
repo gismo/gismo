@@ -280,7 +280,7 @@ private:
         // set value
         std::ostringstream stream;
         bool first = true;
-        for (int i = 0; i < obj.targetDim(); ++i)
+        for (short_t i = 0; i < obj.targetDim(); ++i)
         {
             if (!first)
             {
