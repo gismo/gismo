@@ -78,18 +78,37 @@ public:
             for (index_t i = 0; i < g1System.get_numInterfaceFunctions().last(); i++)
                 for (index_t j = 0; j < actives2.rows(); j++)
                     f1ders += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives2.at(j)) * bGrads2.block(2*j,0,2,f1ders.dim().second);
+
+            for (index_t i = g1System.get_numBoundaryVertexFunctions()[1]; i < g1System.get_numBoundaryVertexFunctions()[2]; i++)
+                for (index_t j = 0; j < actives2.rows(); j++)
+                    f1ders += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives2.at(j)) * bGrads2.block(2*j,0,2,f1ders.dim().second);
+
+            for (index_t i = g1System.get_numBoundaryVertexFunctions()[3]; i < g1System.get_numBoundaryVertexFunctions()[4]; i++)
+                for (index_t j = 0; j < actives2.rows(); j++)
+                    f1ders += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives2.at(j)) * bGrads2.block(2*j,0,2,f1ders.dim().second);
         }
         else
         {
             for (index_t i = 0; i < g1System.get_numInterfaceFunctions().last(); i++)
                 for (index_t j = 0; j < actives.rows(); j++)
                     f1ders += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f1ders.dim().second);
+
+
+            gsInfo << "ERROR WRONG!!!! \n";
         }
 
 
-        for (index_t i = g1System.get_numInterfaceFunctions().last(); i < sol_sparse->rows() -1; i++)
+        for (index_t i = g1System.get_numInterfaceFunctions().last(); i < g1System.get_numBoundaryVertexFunctions()[1]; i++)
             for (index_t j = 0; j < actives.rows(); j++)
                 f1ders += sol_sparse->at(i,g1System.get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f1ders.dim().second);
+
+        for (index_t i = g1System.get_numBoundaryVertexFunctions()[2]; i < g1System.get_numBoundaryVertexFunctions()[3]; i++)
+            for (index_t j = 0; j < actives.rows(); j++)
+                f1ders += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f1ders.dim().second);
+
+        for (index_t i = g1System.get_numBoundaryVertexFunctions()[4]; i < g1System.get_numBoundaryVertexFunctions().last(); i++)
+            for (index_t j = 0; j < actives.rows(); j++)
+                f1ders += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f1ders.dim().second);
 
 
         for (index_t j = 0; j < actives.rows(); j++)

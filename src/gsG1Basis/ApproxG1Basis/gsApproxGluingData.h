@@ -293,8 +293,12 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
     gsVector<> sol_a, sol_b;
 
     // alpha^S
-    solver.compute(globalGdAssembler.matrix_alpha());
-    sol_a = solver.solve(globalGdAssembler.rhs_alpha());
+    if (globalGdAssembler.matrix_alpha().rows() != 0)
+    {
+        solver.compute(globalGdAssembler.matrix_alpha());
+        sol_a = solver.solve(globalGdAssembler.rhs_alpha());
+    }
+
 
     gsVector<> sol_a_new(sol_a.rows() + 2);
     sol_a_new.setZero();
@@ -309,8 +313,11 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
     alpha_S_tilde.push_back(alpha_t);
 
     // beta^S
-    solver.compute(globalGdAssembler.matrix_beta());
-    sol_b = solver.solve(globalGdAssembler.rhs_beta());
+    if (globalGdAssembler.matrix_beta().rows() != 0)
+    {
+        solver.compute(globalGdAssembler.matrix_beta());
+        sol_b = solver.solve(globalGdAssembler.rhs_beta());
+    }
 
     gsVector<> sol_b_new(sol_b.rows() + 2);
     sol_b_new.setZero();

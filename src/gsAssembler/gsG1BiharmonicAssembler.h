@@ -77,7 +77,7 @@ public:
     void constructSolution(const gsMatrix<T>& solVector,
                            gsMultiPatch<T>& result, int unk = 0);
 
-    void computeDirichletDofsL2Proj(gsG1System<real_t> &  g1System);
+    void computeDirichletDofsL2Proj(std::vector<gsMultiBasis<>> & mb, gsG1System<real_t> &  g1System);
     void computeDirichletAndNeumannDofsL2Proj(gsG1System<real_t> &  g1System);
 
 
@@ -136,7 +136,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructSystem(const gsSparseMatrix<
     clock.restart();
     K_temp.reserve(nnz);
 
-    typedef Eigen::Triplet<double> TT;
+    typedef Eigen::Triplet<real_t> TT;
     std::vector<TT> tripletList;
     tripletList.reserve(nnz);
     for (int k = 0; k < m_system.matrix().outerSize(); ++k)
@@ -424,7 +424,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::applyMixed(gsVisitorMixed<T> & visito
 }
 
 template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System<real_t> &  g1System)
+void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vector<gsMultiBasis<>> & mb, gsG1System<real_t> &  g1System)
 {
     gsVector<> numBoundaryVertexFunctions = g1System.get_numBoundaryVertexFunctions();
     gsVector<> numBoundaryEdgeFunctions = g1System.get_numBoundaryEdgeFunctions();
@@ -434,7 +434,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
     m_g1_ddof.resize( g1System.boundary_size(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
     m_g1_ddof.setZero();
 
-/*
+
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
     gsSparseEntries<T> projMatEntries;
@@ -474,7 +474,8 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
                 row_Edge = numBdy;
 
         gsMultiPatch<T> multiPatch_Edges;
-        gsTensorBSplineBasis<2,real_t> temp_basis = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(m_bases[unk_].basis(patchIdx));
+        gsTensorBSplineBasis<2,real_t> temp_basis = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(mb[0].basis(patchIdx)); // TODO general
+        gsTensorBSplineBasis<2,real_t> temp_basis2 = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(mb[1].basis(patchIdx)); // TODO general
         for (size_t i = 0; i < numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge]; i++)
         {
             index_t ii = numBoundaryEdgeFunctions[row_Edge] + i;
@@ -512,23 +513,29 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
             }
 
 
-
         gsMultiPatch<T> multiPatch_Vertex_0, multiPatch_Vertex_1;
         for (size_t i = 0; i < numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0]; i++)
         {
             index_t ii =  numBoundaryVertexFunctions[row_Vertex_0] + i;
-            multiPatch_Vertex_0.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
+            if (row_Vertex_0 == 1 || row_Vertex_0 == 3)
+                multiPatch_Vertex_0.addPatch(temp_basis2.makeGeometry(g1System.getSingleInterfaceBasis(ii, patchIdx).transpose()));
+            else
+                multiPatch_Vertex_0.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
         }
 
 
         for (size_t i = 0; i < numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1]; i++)
         {
             index_t ii =  numBoundaryVertexFunctions[row_Vertex_1] + i;
-            multiPatch_Vertex_1.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
+            if (row_Vertex_1 == 1 || row_Vertex_1 == 3)
+                multiPatch_Vertex_1.addPatch(temp_basis2.makeGeometry(g1System.getSingleInterfaceBasis(ii, patchIdx).transpose()));
+            else
+                multiPatch_Vertex_1.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
         }
 
-        if (patchIdx == 0 && sideIdx == 3)
-            gsWriteParaview(multiPatch_Vertex_1.patch(0),"test",5000);
+        if (patchIdx == 0 && row_Vertex_1 == 3)
+            gsWriteParaview(multiPatch_Vertex_1,"test",5000);
+
 
         const gsBasis<T> & basis = m_bases[unk_].basis(patchIdx); // Assume that the basis is the same for all the basis functions
 
@@ -666,7 +673,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
     typename gsSparseSolver<T>::CGDiagonal solver;
     m_g1_ddof = solver.compute( globProjMat ).solve ( globProjRhs );
 
-*/
 }
 
 template <class T, class bhVisitor>

@@ -121,6 +121,10 @@ public:
         return D_sparse.block(global_row, numBasisFunctions[5][patchIdx], 1, numBasisFunctions[5][patchIdx+1] - numBasisFunctions[5][patchIdx]);
     };
 
+    gsMatrix<> getSingleInterfaceBasis(index_t global_row, index_t patchIdx) {
+        return D_sparse.block(global_row, numBasisFunctions[6][patchIdx], 1, numBasisFunctions[6][patchIdx+1] - numBasisFunctions[6][patchIdx]);
+    };
+
     gsMatrix<> getSingleBoundaryBasis(index_t boundary_row, index_t patchIdx) {
         return D_sparse.block(dim_G1_Dofs + boundary_row, numBasisFunctions[5][patchIdx], 1, numBasisFunctions[5][patchIdx+1] - numBasisFunctions[5][patchIdx]);
     };
@@ -565,8 +569,12 @@ void gsG1System<T>::constructG1Solution(const gsMatrix<T> & solVector, std::vect
             for (size_t i = 0; i < numBasisFunctions[4][rowVertex+1] - numBasisFunctions[4][rowVertex]; i++) // each boundary vertex
             {
                 index_t ii = numBasisFunctions[4][rowVertex] + i;
-                g1Basis.at(patchIdx).addPatch(mb[0].basis(patchIdx).makeGeometry(D_sparse.block(ii,numBasisFunctions[5][patchIdx],1,mb[0].basis(patchIdx).size()).transpose() *
-                    m_g1.at(ii)));
+                if (rowVertex == 1 || rowVertex == 3)
+                    g1Basis.at(patchIdx).addPatch(mb[1].basis(patchIdx).makeGeometry(D_sparse.block(ii,numBasisFunctions[6][patchIdx],1,mb[1].basis(patchIdx).size()).transpose() *
+                        m_g1.at(ii)));
+                else
+                    g1Basis.at(patchIdx).addPatch(mb[0].basis(patchIdx).makeGeometry(D_sparse.block(ii,numBasisFunctions[5][patchIdx],1,mb[0].basis(patchIdx).size()).transpose() *
+                        m_g1.at(ii)));
             }
             for (size_t i = 0; i < numBasisFunctions[2][rowVertex+1] - numBasisFunctions[2][rowVertex]; i++) // each dofs vertex
             {
@@ -603,6 +611,7 @@ void gsG1System<T>::insertInterfaceEdge(gsMultiPatch<> & mp, boundaryInterface i
                     if (bfID == plusInt-1 || bfID == 2*plusInt - 2)
                         if (mp.patch(np).coefs().at(j) * mp.patch(np).coefs().at(j)  > 10e-25)
                         {
+
                             index_t jj, ii;
                             ii = numBasisFunctions[4][3] + (bfID == plusInt-1 ? 0 : 1); // Boundary
                             jj = numBasisFunctions[6][np == 0 ? item.first().patch : item.second().patch] + j;
@@ -764,8 +773,6 @@ gsMatrix<> gsG1System<T>::solve(const gsSparseMatrix<real_t> & K, const gsMatrix
 {
     gsStopwatch clock;
 
-    //gsInfo << "g1: \n" << m_g1 << "\n";
-
     gsSparseMatrix<real_t> A = D_0_sparse * K * D_0_sparse.transpose();
     gsVector<real_t> F = D_0_sparse * f - D_0_sparse * K * D_boundary_sparse.transpose() * m_g1;
 
@@ -821,8 +828,6 @@ gsMatrix<> gsG1System<T>::solve(const gsSparseMatrix<real_t> & K, const gsMatrix
     gsInfo << "done.\n";
     gsIterativeSolverInfo(EigenBCGDsolver, (A*x0-F).norm()/F.norm(), clock.stop(), succeeded);
 */
-
-    //gsInfo << x0.transpose() << "\n";
 
     return x0;
 }

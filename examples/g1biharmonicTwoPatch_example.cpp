@@ -216,6 +216,9 @@ int main(int argc, char *argv[])
             //else
             //    multiPatch.uniformRefine_withDifferentRegularity(num_knots[refinement_level], g1OptionList.getInt("regularity"));
 
+            //gsTensorBSpline<2,real_t> bsp_temp = dynamic_cast<gsTensorBSpline<2,real_t>&>(multiPatch.patch(0));
+            //gsInfo << "knotvector: " << bsp_temp.knots(0).asMatrix() << "\n";
+
             gsWriteParaview(multiPatch, "geoemtry_init", 2000, true);
 
             //gsInfo << "###### Level: " << refinement_level << " with " << num_knots[refinement_level] << " inner knots ###### " << "\n";
@@ -436,11 +439,20 @@ int main(int argc, char *argv[])
             gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb[0], bcInfo, bcInfo2, source);
             g1BiharmonicAssembler.assemble();
 
+            clock.restart();
+            if (g1OptionList.getSwitch("info"))
+                gsInfo << "Computing Boundary dofs ... \n";
+            g1BiharmonicAssembler
+                .computeDirichletDofsL2Proj(mb,g1System); // Compute boundary values (Type 1) // maybe too much memmory!!!
+            //gsInfo << clock.stop() << "\n";
+            clock.restart();
+
             if (!g1OptionList.getSwitch("isogeometric"))
             {
                 // For interface basis
                 gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler_g22(multiPatch, mb[1], bcInfo, bcInfo2, source);
                 g1BiharmonicAssembler_g22.assemble();
+                //g1BiharmonicAssembler_g22.computeDirichletDofsL2Proj(g1System);
 /*
             // Mixed
             gsBSplineBasis<> basis_1u = dynamic_cast<gsBSplineBasis<> &>(mb[0].basis(0).component(0)); // 0 -> u, 1 -> v
@@ -525,13 +537,6 @@ int main(int argc, char *argv[])
                 //gsInfo << " test 3" << g1BiharmonicAssembler.matrix().rightCols(2) << "\n";
             }
             //gsInfo << clock.stop() << "\n";
-            clock.restart();
-            if (g1OptionList.getSwitch("info"))
-                gsInfo << "Computing Boundary dofs ... \n";
-            g1BiharmonicAssembler
-                .computeDirichletDofsL2Proj(g1System); // Compute boundary values (Type 1) // maybe too much memmory!!!
-            //gsInfo << clock.stop() << "\n";
-            clock.restart();
 
             //gsInfo << "bdy: " << g1BiharmonicAssembler.get_bValue().transpose() << "\n";
             if (g1OptionList.getSwitch("info"))
