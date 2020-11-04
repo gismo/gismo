@@ -38,13 +38,10 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
     fev.transposeInPlace();
     tmp = bev.partialPivLu().solve(fev);//solve on element
 
-    gsDebugVar(i);
-    gsDebugVar(ab);
-
     // find the i-th BS:
     gsMatrix<index_t> act = bb.active(pts.col(0));
     index_t c = std::lower_bound(act.data(), act.data()+act.size(), i) - act.data();
-    gsDebugVar(act.transpose());
+    GISMO_ASSERT(c<act.size(), "Problem with basis function index");
     return tmp.row(c);
 }
 
@@ -55,11 +52,9 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsHTensorBasis<d,T> &bb,
                                               index_t i)
 {
     index_t lvl = bb.levelOf(i);
-    gsDebugVar(lvl);
     index_t j = bb.flatTensorIndexOf(i);
-    gsDebugVar(j);
     return localIntpl(bb.tensorLevel(lvl),fun,j,bb.elementInSupportOf(i)); // uses the H-grid element implementation
-    // return localIntpl(bb.tensorLevel(lvl),fun,i); // uses the central element implementation
+    //return localIntpl(bb.tensorLevel(lvl),fun,j); // uses the central element implementation
 }
 
 template<typename T>
@@ -67,7 +62,13 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
                                               const gsFunction<T> &fun,
                                               index_t i)
 {
+    if (const gsHTensorBasis<1,T>* b = dynamic_cast<const gsHTensorBasis<1,T>* >(&bb))
+        return localIntpl(*b,fun,i);
     if (const gsHTensorBasis<2,T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb))
+         return localIntpl(*b,fun,i);
+    if (const gsHTensorBasis<3,T>* b = dynamic_cast<const gsHTensorBasis<3,T>* >(&bb))
+        return localIntpl(*b,fun,i);
+    if (const gsHTensorBasis<4,T>* b = dynamic_cast<const gsHTensorBasis<4,T>* >(&bb))
         return localIntpl(*b,fun,i);
     else
         return localIntpl(bb,fun,i,bb.elementInSupportOf(i));
