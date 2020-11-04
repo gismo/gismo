@@ -427,22 +427,22 @@ bool qi_2D()
     thb2.refine( refBoxes );
     thb3.refine( refBoxes );
 
-    // gsWriteParaview(thb2,"basis");
+    gsWriteParaview(thb1,"basis");
 
 
 // ---------  Convergence-rate test for trigonometric function
 
     gsInfo<<"\nLocal interpolation-based error analysis (linear):\n";
-    passed &= errorAnalysis<real_t>(mySinus, bas1, 4, numRef);
+    passed &= errorAnalysis<real_t>(mySinus, thb1, 4, numRef);
 
     gsInfo<<"\nLocal interpolation-based error analysis (quadratic):\n";
-    passed &= errorAnalysis<real_t>(mySinus, bas2, 4, numRef);
+    passed &= errorAnalysis<real_t>(mySinus, thb2, 4, numRef);
 
     gsInfo<<"\nLocal interpolation-based error analysis (cubic):\n";
-    passed &= errorAnalysis<real_t>(mySinus, bas3, 4, numRef);
+    passed &= errorAnalysis<real_t>(mySinus, thb3, 4, numRef);
 
     gsInfo<<"\nSchoenberg error analysis (linear):\n";
-    passed &= errorAnalysis<real_t>(mySinus, bas1, 1, numRef);
+    passed &= errorAnalysis<real_t>(mySinus, thb1, 1, numRef);
 
     // gsInfo<<"\nTaylor error analysis (linear):\n";
     // passed &= errorAnalysis(mySinus, bas1, 2, numRef);
@@ -454,7 +454,7 @@ bool qi_2D()
     // passed &= errorAnalysis(mySinus, bas1, 0, numRef);
 
     gsInfo<<"\nSchoenberg error analysis (quadratic):\n";
-    passed &= errorAnalysis(mySinus, bas2, 1, numRef);
+    passed &= errorAnalysis(mySinus, thb2, 1, numRef);
 
     // gsInfo<<"\nTaylor error analysis (quadratic):\n";
     // passed &= errorAnalysis(mySinus, bas2, 2, numRef);
@@ -466,7 +466,7 @@ bool qi_2D()
     // passed &= errorAnalysis(mySinus, bas2, 0, numRef);
 
     gsInfo<<"\nSchoenberg error analysis (cubic):\n";
-    passed &= errorAnalysis(mySinus, bas3, 1, numRef);
+    passed &= errorAnalysis(mySinus, thb3, 1, numRef);
 
     // gsInfo<<"\nTaylor error analysis (cubic):\n";
     // passed &= errorAnalysis(mySinus, bas3, 2, numRef);
@@ -519,7 +519,7 @@ bool qi_3D()
     gsTensorBSplineBasis<3> bas2(kv2,kv2,kv2);
     gsTensorBSplineBasis<3> bas3(kv3,kv3,kv3);
 
-    int numRef = 4;
+    int numRef = 5;
     bool passed = true;
 
 
@@ -550,8 +550,8 @@ bool qi_3D()
 int main(int argc, char* argv[])
 {
     bool passed = true;
-    passed &=  qi_1D();
+    // passed &=  qi_1D();
     passed &=  qi_2D();
-    passed &=  qi_3D();
+    // passed &=  qi_3D();
     return passed ? 0 : 1;
 }

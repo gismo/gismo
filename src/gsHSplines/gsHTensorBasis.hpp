@@ -20,11 +20,11 @@
 
 namespace gismo
 {
-
+ // Central element implementation
 // template<short_t d, class T>
 // gsMatrix<T> gsHTensorBasis<d,T>::elementInSupportOf(index_t i) const
 // {
-//     int lvl = levelOf(i);
+//     index_t lvl = levelOf(i);
 //     index_t j = flatTensorIndexOf(i);
 //     return m_bases[lvl]->elementInSupportOf(j);
 // }

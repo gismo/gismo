@@ -511,16 +511,19 @@ public:
         index_t lvl = levelOf(j);
         gsMatrix<index_t,d,2> sup;
         m_bases[lvl]->elementSupport_into(m_xmatrix[lvl][j-m_xmatrix_offset[lvl]], sup);
+        gsDebugVar(sup);
         std::pair<point,point> box =  m_tree.queryLevelCell(sup.col(0),sup.col(1),lvl);
+        gsDebugVar(box);
         //get intersection
         for ( short_t i = 0; i!=d; ++i)
         {
-            box.first[i]  = ( sup(0,i) >= box.first[i] ? sup(0,i) : box.first[i] );
-            box.second[i] = ( sup(1,i) >= box.second[i] ? sup(1,i) : box.second[i] );
+            box.first[i]  = ( sup(i,0) >= box.first[i] ? sup(i,0) : box.first[i] );
+            box.second[i] = ( sup(i,1) >= box.second[i] ? sup(i,1) : box.second[i] );
         }
-
+        gsDebugVar(box);
         sup.col(0) = (box.first+box.second)/2;
         sup.col(1) = sup.col(0).array() + 1;
+        gsDebugVar(sup);
         return m_bases[lvl]->elementDom(sup);
     }
 

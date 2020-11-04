@@ -43,7 +43,7 @@ struct gsQuasiInterpolate
         Schoenberg = 2, ///< Schoenberg
         EvalBased  = 3
     };
-    
+
     switch(type)
     {
     case(1): gsQuasiInterpolate<T>::Schoenberg(*basis, fun, coefs); expConvRate = 2.0; break;
@@ -54,16 +54,26 @@ struct gsQuasiInterpolate
     }
     */
 
+    static gsMatrix<T> localIntpl(const gsBasis<T> &b,
+                                  const gsFunction<T> &fun,
+                                  index_t i,
+                                  const gsMatrix<T> &ab);
 
     static gsMatrix<T> localIntpl(const gsBasis<T> &b,
                                   const gsFunction<T> &fun,
                                   index_t i);
 
+    template<short_t d>
+    static gsMatrix<T> localIntpl(const gsHTensorBasis<d,T> &b,
+                                  const gsFunction<T> &fun,
+                                  index_t i);
+
+
     static void localIntpl(const gsBasis<T> &b,
                            const gsFunction<T> &fun,
                            gsMatrix<T> &result);
 
-    
+
     /** \brief A quasi-interpolation scheme based on the tayor expansion of the function to approximate.
      *  See Theorem 8.5 of "Spline methods (Lyche Morken)"
      *  Theorem: (Lyche, Morken: Thm 8.5, page 178)
@@ -95,7 +105,7 @@ struct gsQuasiInterpolate
      */
     static void Schoenberg(const gsBasis<T> &b, const gsFunction<T> &fun,
                            gsMatrix<T> &result);
-    
+
     static gsMatrix<T> Schoenberg(const gsBasis<T> &b, const gsFunction<T> &fun, index_t i);
 
 
@@ -165,7 +175,7 @@ struct gsQuasiInterpolate
     //*/
 
 protected:
-    
+
     /**
      * @brief Compute the derivative of a certain order of a normalized polynomial (leading coefficient is 1) defined by its roots at a given point.
      *  \f$g(y) = (y-y_1) \cdots (y-y_n)\f$, where \f$y_1,\dots,y_n\f$ are the roots of the polynomial.

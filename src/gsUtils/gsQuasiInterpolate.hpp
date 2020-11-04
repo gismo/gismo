@@ -21,28 +21,56 @@
 
 namespace gismo {
 
+template<typename T>
+gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
+                                              const gsFunction<T> &fun,
+                                              index_t i,
+                                              const gsMatrix<T> &ab)
+{
+    gsMatrix<T> bev, fev, pts, tmp;
+    gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,1.0,1);
+    gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes);
+
+    qRule.mapTo(ab, pts);//map points on element
+    bb .eval_into(pts, bev);//evaluate basis
+    fun.eval_into(pts, fev);//evaluate function
+    bev.transposeInPlace();
+    fev.transposeInPlace();
+    tmp = bev.partialPivLu().solve(fev);//solve on element
+
+    gsDebugVar(i);
+    gsDebugVar(ab);
+
+    // find the i-th BS:
+    gsMatrix<index_t> act = bb.active(pts.col(0));
+    index_t c = std::lower_bound(act.data(), act.data()+act.size(), i) - act.data();
+    gsDebugVar(act.transpose());
+    return tmp.row(c);
+}
+
+template<typename T>
+template<short_t d>
+gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsHTensorBasis<d,T> &bb,
+                                              const gsFunction<T> &fun,
+                                              index_t i)
+{
+    index_t lvl = bb.levelOf(i);
+    gsDebugVar(lvl);
+    index_t j = bb.flatTensorIndexOf(i);
+    gsDebugVar(j);
+    return localIntpl(bb.tensorLevel(lvl),fun,j,bb.elementInSupportOf(i)); // uses the H-grid element implementation
+    // return localIntpl(bb.tensorLevel(lvl),fun,i); // uses the central element implementation
+}
 
 template<typename T>
 gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
                                               const gsFunction<T> &fun,
                                               index_t i)
 {
-    gsMatrix<T> bev, fev, pts, ab;
-    gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,1.0,1);
-    gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes);
-
-    ab = bb.elementInSupportOf(i);// get one element inside the support of i
-    qRule.mapTo(ab, pts);//map points on element
-    bb .eval_into(pts, bev);//evaluate basis
-    fun.eval_into(pts, fev);//evaluate function
-    bev.transposeInPlace();
-    fev.transposeInPlace();
-    ab = bev.partialPivLu().solve(fev);//solve on element
-
-    // find the i-th BS:
-    gsMatrix<index_t> act = bb.active(pts.col(0));
-    index_t c = std::lower_bound(act.data(), act.data()+act.size(), i) - act.data();
-    return ab.row(c);
+    if (const gsHTensorBasis<2,T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb))
+        return localIntpl(*b,fun,i);
+    else
+        return localIntpl(bb,fun,i,bb.elementInSupportOf(i));
 }
 
 
