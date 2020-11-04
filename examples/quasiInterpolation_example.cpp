@@ -13,7 +13,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): M. Haberleitner
+    Author(s): M. Haberleitner, A. Mantzaflaris, H. Verhelst
 **/
 
 #include <iostream>
@@ -82,7 +82,6 @@ bool errorAnalysis(const gsFunction<T> &fun, const gsBasis<T> & bbasis, int type
         // real_t h = (b-a)/(numInnerKnots+1);
         real_t h = math::pow((ab.col(1)-ab.col(0)).prod()/basis->numElements(),
                              1.0/basis->domainDim());
-        //gsDebugVar(h);
         h_list.push_back(h);
         basis->uniformRefine();
     }
@@ -391,6 +390,56 @@ bool qi_2D()
     gsInfo<<"\n******** Running QI-2D ********\n";
 
     gsFunctionExpr<real_t> mySinus("sin(x)*cos(y)",2);
+    int deg1 = 1;
+    int deg2 = 2;
+    int deg3 = 3;
+    real_t a = 0; // starting knot
+    real_t b = 1; // ending knot
+    unsigned interior = 1; // number of interior knots
+    unsigned multEnd1 = deg1+1; // multiplicity at the two end knots
+    unsigned multEnd2 = deg2+1; // multiplicity at the two end knots
+    unsigned multEnd3 = deg3+1; // multiplicity at the two end knots
+
+    gsKnotVector<> kv1(a, b, interior, multEnd1);
+    gsKnotVector<> kv2(a, b, interior, multEnd2);
+    gsKnotVector<> kv3(a, b, interior, multEnd3);
+
+    gsTensorBSplineBasis<2> bas1(kv1,kv1);
+    gsTensorBSplineBasis<2> bas2(kv2,kv2);
+    gsTensorBSplineBasis<2> bas3(kv3,kv3);
+
+    int numRef = 5;
+    bool passed = true;
+
+// ---------  Convergence-rate test for trigonometric function
+
+    gsInfo<<"\nLocal interpolation-based error analysis (linear):\n";
+    passed &= errorAnalysis<real_t>(mySinus, bas1, 4, numRef);
+
+    gsInfo<<"\nLocal interpolation-based error analysis (quadratic):\n";
+    passed &= errorAnalysis<real_t>(mySinus, bas2, 4, numRef);
+
+    gsInfo<<"\nLocal interpolation-based error analysis (cubic):\n";
+    passed &= errorAnalysis<real_t>(mySinus, bas3, 4, numRef);
+
+    gsInfo<<"\nSchoenberg error analysis (linear):\n";
+    passed &= errorAnalysis<real_t>(mySinus, bas1, 1, numRef);
+
+    gsInfo<<"\nSchoenberg error analysis (quadratic):\n";
+    passed &= errorAnalysis(mySinus, bas2, 1, numRef);
+
+    gsInfo<<"\nSchoenberg error analysis (cubic):\n";
+    passed &= errorAnalysis(mySinus, bas3, 1, numRef);
+
+    return passed;
+}
+
+
+bool qi_hs_2D()
+{
+    gsInfo<<"\n******** Running QI-Hierarchical-2D ********\n";
+
+    gsFunctionExpr<real_t> mySinus("sin(x)*cos(y)",2);
     gsFunctionExpr<> myPolyLin("50*x- + 30*y + 28",2);
     gsFunctionExpr<> myPolyQuad("-5*x^2 + 3*x*y + y^2 + 22*x + y - 4",2);
 
@@ -420,6 +469,7 @@ bool qi_2D()
     thb1 = gsTHBSplineBasis<2,real_t>(bas1);
     thb2 = gsTHBSplineBasis<2,real_t>(bas2);
     thb3 = gsTHBSplineBasis<2,real_t>(bas3);
+
     gsMatrix<> refBoxes(2,2);
     refBoxes.col(0) << 0,0;
     refBoxes.col(1) << 0.25,0.25;
@@ -427,7 +477,7 @@ bool qi_2D()
     thb2.refine( refBoxes );
     thb3.refine( refBoxes );
 
-    gsWriteParaview(thb1,"basis");
+    //gsWriteParaview(thb1,"basis");
 
 
 // ---------  Convergence-rate test for trigonometric function
@@ -441,60 +491,8 @@ bool qi_2D()
     gsInfo<<"\nLocal interpolation-based error analysis (cubic):\n";
     passed &= errorAnalysis<real_t>(mySinus, thb3, 4, numRef);
 
-    gsInfo<<"\nSchoenberg error analysis (linear):\n";
-    passed &= errorAnalysis<real_t>(mySinus, thb1, 1, numRef);
-
-    // gsInfo<<"\nTaylor error analysis (linear):\n";
-    // passed &= errorAnalysis(mySinus, bas1, 2, numRef);
-
-    // gsInfo<<"\nEvaluation-based error analysis (linear, special case):\n";
-    // passed &= errorAnalysis(mySinus, bas1, 3, numRef);
-
-    // gsInfo<<"\nEvaluation-based error analysis (linear, general):\n";
-    // passed &= errorAnalysis(mySinus, bas1, 0, numRef);
-
-    gsInfo<<"\nSchoenberg error analysis (quadratic):\n";
-    passed &= errorAnalysis(mySinus, thb2, 1, numRef);
-
-    // gsInfo<<"\nTaylor error analysis (quadratic):\n";
-    // passed &= errorAnalysis(mySinus, bas2, 2, numRef);
-
-    // gsInfo<<"\nEvaluation-based error analysis (quadratic, special case):\n";
-    // passed &= errorAnalysis(mySinus, bas2, 3, numRef);
-
-    // gsInfo<<"\nEvaluation-based error analysis (quadratic, general):\n";
-    // passed &= errorAnalysis(mySinus, bas2, 0, numRef);
-
-    gsInfo<<"\nSchoenberg error analysis (cubic):\n";
-    passed &= errorAnalysis(mySinus, thb3, 1, numRef);
-
-    // gsInfo<<"\nTaylor error analysis (cubic):\n";
-    // passed &= errorAnalysis(mySinus, bas3, 2, numRef);
-
-    // gsInfo<<"\nEvaluation-based error analysis (cubic, special case):\n";
-    // passed &= errorAnalysis(mySinus, bas3, 3, numRef);
-
-    // gsInfo<<"\nEvaluation-based error analysis (cubic, general):\n";
-    // passed &= errorAnalysis(mySinus, bas3, 0, numRef);
-
-
-// --------- Taylor Polynomial-reconstruction test (dim = 1)
-
-    // gsInfo<<"\nTaylor  poly-reconstruction (linear) [deg=1]:\n";
-    // passed &= polyReconstructionTaylor(myPolyLin, bas1, 1);
-
-    // gsInfo<<"\nTaylor poly-reconstruction (quadratic) [deg=1]:\n";
-    // passed &= polyReconstructionTaylor(myPolyLin, bas2, 1);
-
-    // gsInfo<<"\nTaylor poly-reconstruction (linear) [deg=2]:\n";
-    // passed &= polyReconstructionTaylor(myPolyQuad, bas1, 2);
-
-    // gsInfo<<"\nTaylor poly-reconstruction (quadratic)  [deg=2]:\n";
-    // passed &= polyReconstructionTaylor(myPolyQuad, bas2, 2);
-
     return passed;
 }
-
 
 bool qi_3D()
 {
@@ -540,8 +538,8 @@ bool qi_3D()
     gsInfo<<"\nSchoenberg error analysis (quadratic):\n";
     passed &= errorAnalysis(mySinus, bas2, 1, numRef);
 
-    gsInfo<<"\nSchoenberg error analysis (cubic):\n";
-    passed &= errorAnalysis(mySinus, bas3, 1, numRef);
+    // gsInfo<<"\nSchoenberg error analysis (cubic):\n";
+    // passed &= errorAnalysis(mySinus, bas3, 1, numRef);
 
     return passed;
 }
@@ -550,8 +548,10 @@ bool qi_3D()
 int main(int argc, char* argv[])
 {
     bool passed = true;
-    // passed &=  qi_1D();
+    passed &=  qi_1D();
     passed &=  qi_2D();
-    // passed &=  qi_3D();
+    passed &=  qi_3D();
+
+    passed &=  qi_hs_2D();
     return passed ? 0 : 1;
 }
