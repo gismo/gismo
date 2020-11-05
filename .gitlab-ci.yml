@@ -12,21 +12,55 @@ linux_gcc8_cxx98_release:
     - apt-get install cmake -y
     - mkdir -p build
     - cd build
-    - CC=gcc CXX=g++  cmake .. -DCMAKE_CXX_STANDARD=98 -DCMAKE_BUILD_TYPE=Release
-    - make -j4
+    - cmake .. -DCMAKE_CXX_STANDARD=98 -DCMAKE_BUILD_TYPE=Release
+    - make -j2
+    - make test
+  except:
+    - external_pull_requests
+    
+# GCC 9, C++11, Release
+linux_gcc9_cxx11_release:
+  tags:
+    - linux
+  stage: build
+  image: gcc:9
+  script:
+    - apt-get update -y
+    - apt-get install cmake -y
+    - mkdir -p build
+    - cd build
+    - cmake .. -DCMAKE_CXX_STANDARD=11 -DCMAKE_BUILD_TYPE=Release
+    - make -j2
     - make test
   except:
     - external_pull_requests
 
-#always-run:
-#  script: echo 'this should always run update'
+# GCC 10, C++14, Release
+linux_gcc10_cxx14_release:
+  tags:
+    - linux
+  stage: build
+  image: gcc:10
+  script:
+    - apt-get update -y
+    - apt-get install cmake -y
+    - mkdir -p build
+    - cd build
+    - cmake .. -DCMAKE_CXX_STANDARD=14 -DCMAKE_BUILD_TYPE=Release
+    - make -j2
+    - make test
+  except:
+    - external_pull_requests
 
-#on-pull-requests:
-#  script: echo 'this should run on pull requests'
-#  only:
-#    - external_pull_requests
-
-#except-pull-requests:
-#  script: echo 'this should not run on pull requests'
+# GCC 10, C++14, Release, CTest
+#linux_gcc10_cxx14_release_ctest:
+#  tags:
+#    - linux
+#  stage: build
+#  image: gcc:10
+#  script:
+#    - apt-get update -y
+#    - apt-get install cmake ninja-build -y
+#    - ctest -S /home/amantzaf/ctest_script.cmake -D CTEST_TEST_MODEL=Nightly -D CTEST_CONFIGURATION_TYPE=Debug -D CTEST_BUILD_JOBS=20 -D CTEST_CMAKE_GENERATOR=Ninja -D CNAME=gcc -D CXXNAME=g++ -D CTEST_TEST_TIMEOUT=150 -D DO_COVERAGE=ON -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -Q
 #  except:
 #    - external_pull_requests
