@@ -1,12 +1,26 @@
-always-run:
-  script: echo 'this should always run update'
+stages:
+  - build
 
-on-pull-requests:
-  script: echo 'this should run on pull requests'
-  only:
-    - external_pull_requests
+# CentOS 7, GCC 4.8.5, C++98, Release
+centos7_gcc4.8.5_cxx98_release:
+  stage: build
+  image: centos/devtoolset-7-toolchain-centos7
+  script:
+    - mkdir -p build
+    - cd build
+    - CC=gcc CXX=g++  cmake .. -DCMAKE_CXX_STANDARD=98 -DCMAKE_BUILD_TYPE=Release
+    - make
+    - make test
 
-except-pull-requests:
-  script: echo 'this should not run on pull requests'
-  except:
-    - external_pull_requests
+#always-run:
+#  script: echo 'this should always run update'
+
+#on-pull-requests:
+#  script: echo 'this should run on pull requests'
+#  only:
+#    - external_pull_requests
+
+#except-pull-requests:
+#  script: echo 'this should not run on pull requests'
+#  except:
+#    - external_pull_requests
