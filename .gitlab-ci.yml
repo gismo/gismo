@@ -3,6 +3,8 @@ stages:
 
 # GCC 4.8.5, C++98, Release
 linux_gcc4.8.5_cxx98_release:
+  tags:
+    - linux
   stage: build
   image: gcc:4.8.5
   script:
