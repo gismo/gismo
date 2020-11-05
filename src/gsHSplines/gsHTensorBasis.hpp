@@ -29,7 +29,7 @@ gsMatrix<T> gsHTensorBasis<d,T>::support() const
 
 //i in continuous numbering
 template<short_t d, class T>
-gsMatrix<T> gsHTensorBasis<d,T>::support(const unsigned & i) const
+gsMatrix<T> gsHTensorBasis<d,T>::support(const index_t & i) const
 {
     // Get the level
     int lvl = levelOf(i);
@@ -39,7 +39,7 @@ gsMatrix<T> gsHTensorBasis<d,T>::support(const unsigned & i) const
 
 // S.K.
 template<short_t d, class T> inline
-int gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
+index_t gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
 {
     GISMO_ASSERT(Pt.cols() == 1, "Waiting for single point");
     point loIdx;
@@ -54,8 +54,8 @@ int gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
 
 template<short_t d, class T> inline
 void gsHTensorBasis<d,T>::getLevelUniqueSpanAtPoints(const  gsMatrix<T> & Pt,
-                                                     gsVector<unsigned> & lvl,
-                                                     gsMatrix<unsigned> & loIdx ) const
+                                                     gsVector<index_t> & lvl,
+                                                     gsMatrix<index_t> & loIdx ) const
 {
     lvl.resize( Pt.cols() );
     loIdx.resize( Pt.rows(), Pt.cols() );
@@ -63,14 +63,14 @@ void gsHTensorBasis<d,T>::getLevelUniqueSpanAtPoints(const  gsMatrix<T> & Pt,
     loIdx.setZero();
     for( index_t i = 0; i < Pt.cols(); i++)
     {
-        lvl[i] = static_cast<unsigned>( getLevelAtPoint( Pt.col(i) ) );
+        lvl[i] = getLevelAtPoint( Pt.col(i) );
         for( index_t j = 0; j < Pt.rows(); j++)
             loIdx(j,i) = m_bases[ lvl[i] ]->knots(j).uFind( Pt(j,i) ).uIndex() ;
     }
 }
 
 template<short_t d, class T> inline
-void gsHTensorBasis<d,T>::numActive(const gsMatrix<T> & u, gsVector<unsigned>& result) const
+void gsHTensorBasis<d,T>::numActive_into(const gsMatrix<T> & u, gsVector<index_t>& result) const
 {
     result.resize( u.cols() );
     result.setZero();
@@ -80,7 +80,7 @@ void gsHTensorBasis<d,T>::numActive(const gsMatrix<T> & u, gsVector<unsigned>& r
 
     for(index_t p = 0; p < u.cols(); p++ ) //for all input points
     {
-        for(int i = 0; i != d; ++i)
+        for(short_t i = 0; i != d; ++i)
             low[i] = m_bases[maxLevel]->knots(i).uFind(u(i,p)).uIndex();
 
         // Identify the level of the point
@@ -106,18 +106,18 @@ void gsHTensorBasis<d,T>::numActive(const gsMatrix<T> & u, gsVector<unsigned>& r
 template<short_t d, class T>
 void gsHTensorBasis<d, T>::addConnectivity(int lvl, gsMesh<T> & mesh) const
 {
-    const gsVector<unsigned, d> & low = gsVector<unsigned, d>::Zero();
+    const gsVector<index_t, d> & low = gsVector<index_t, d>::Zero();
 
     const gsTensorBSplineBasis<d, T> & bb = *m_bases[lvl];
     const CMatrix & cmat = m_xmatrix[lvl];
 
     // Last tensor-index in level lvl
-    gsVector<unsigned, d> end(d);
+    gsVector<index_t, d> end(d);
     for (unsigned i = 0; i < d; ++i)
         end(i) = bb.component(i).size() - 1;
 
     unsigned k, s;
-    gsVector<unsigned, d> v, upp;
+    gsVector<index_t, d> v, upp;
     for (unsigned i = 0; i < d; ++i) // For all axes
     {
         s = bb.stride(i);
@@ -128,7 +128,7 @@ void gsHTensorBasis<d, T>::addConnectivity(int lvl, gsMesh<T> & mesh) const
         do // Insert all edges normal to axis i
         {
             k = bb.index(v);
-            for (unsigned j = 0; j != end[i]; ++j)
+            for (index_t j = 0; j != end[i]; ++j)
             {
                 if (cmat.bContains(k) && cmat.bContains(k + s))
                 {
@@ -188,7 +188,7 @@ index_t gsHTensorBasis<d,T>::size() const
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes)
 {
-    std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
     refine(boxes);
     gsSparseMatrix<> transf;
     this->transfer(OX, transf);
@@ -197,9 +197,9 @@ void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> cons
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes)
+void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes)
 {
-    std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
     refineElements(boxes);
     gsSparseMatrix<> transf;
     this->transfer(OX, transf);
@@ -208,18 +208,18 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vect
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::refineElements_withTransfer(std::vector<unsigned> const & boxes, gsSparseMatrix<T> & tran)
+void gsHTensorBasis<d,T>::refineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> & tran)
 {
-    std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
     this->refineElements(boxes);
     this->transfer(OX, tran);
 }
 
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes)
+void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<index_t> const & boxes)
 {
-    std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
     refineElements(boxes);
     gsSparseMatrix<> transf;
     this->transfer2(OX, transf);
@@ -230,16 +230,16 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vec
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul)
 {
-    std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
     //uniformRefine(numKnots);
     //gsMatrix<> transf;
     //CMatrix temp;
     //this->m_xmatrix.insert(this->m_xmatrix.begin(), temp);
-    //gsVector<unsigned> level;
-    //gsMatrix<unsigned> p1, p2;
+    //gsVector<index_t> level;
+    //gsMatrix<index_t> p1, p2;
     //this->m_tree.getBoxes(p1,p2,level);
-    std::vector<unsigned> boxes;
-    unsigned lvl;
+    std::vector<index_t> boxes;
+    index_t lvl;
     
     for ( typename hdomain_type::literator it = m_tree.beginLeafIterator(); it.good(); it.next() )
     {
@@ -252,9 +252,9 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
         const point & u = it.upperCorner();
 
         boxes.push_back(lvl);
-        for( unsigned i = 0; i < d; i++)
+        for( short_t i = 0; i < d; i++)
             boxes.push_back( l(i) * 2);
-        for( unsigned i = 0; i < d; i++)
+        for( short_t i = 0; i < d; i++)
             boxes.push_back( u(i) * 2);
     }
 
@@ -274,7 +274,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
     gsMatrix<T> para = support();
     for(int i = 0; i < boxes.cols()/2; i++)
     {
-        for( unsigned j = 0; j < d; j++ )
+        for( short_t j = 0; j < d; j++ )
         {
             GISMO_ASSERT( para(j,0) <= boxes(j, 2*i) ,
                           "In refine() the first corner is outside the computational domain.");
@@ -304,7 +304,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
 
         // Initialize vector of size
         // "entries per box" times "number of boxes":
-        std::vector<unsigned> refVector( offset * boxes.cols()/2 );
+        std::vector<index_t> refVector( offset * boxes.cols()/2 );
         gsMatrix<T> ctr(d,1);
 
         // Loop over all boxes:
@@ -361,7 +361,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
     gsMatrix<T> para = support();
     for(int i = 0; i < boxes.cols()/2; i++)
     {
-        for( unsigned j = 0; j < d; j++ )
+        for( short_t j = 0; j < d; j++ )
         {
             GISMO_ASSERT( para(j,0) <= boxes(j, 2*i) ,
                           "In refine() the first corner is outside the computational domain.");
@@ -371,7 +371,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
     }
 #endif
     
-    gsVector<unsigned,d> k1, k2;
+    gsVector<index_t,d> k1, k2;
     for(index_t i = 0; i < boxes.cols()/2; i++)
     {
         // 1. Get a small cell containing the box
@@ -419,16 +419,16 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
 */
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::refineElements(std::vector<unsigned> const & boxes)
+void gsHTensorBasis<d,T>::refineElements(std::vector<index_t> const & boxes)
 {
-    gsVector<unsigned int, d> i1;
-    gsVector<unsigned int, d> i2;
+    point i1;
+    point i2;
 
     GISMO_ASSERT( (boxes.size()%(2*d + 1))==0,
                   "The points did not define boxes properly. The boxes were not added to the basis.");
-    for( unsigned int i = 0; i < (boxes.size())/(2*d+1); i++)
+    for(size_t i = 0; i < (boxes.size())/(2*d+1); i++)
     {
-        for( unsigned j = 0; j < d; j++ )
+        for( short_t j = 0; j < d; j++ )
         {
             i1[j] = boxes[(i*(2*d+1))+j+1];
             i2[j] = boxes[(i*(2*d+1))+d+j+1];
@@ -453,20 +453,20 @@ void gsHTensorBasis<d,T>::refineSide(const boxSide side, index_t lvl)
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
                                     const gsBasis<T> & other,
-                                    gsMatrix<unsigned> & bndThis,
-                                    gsMatrix<unsigned> & bndOther) const
+                                    gsMatrix<index_t> & bndThis,
+                                    gsMatrix<index_t> & bndOther) const
 {
     if( const Self_t * _other = dynamic_cast<const Self_t*>( &other) )
     {
-        gsVector<unsigned> N(d);
+        gsVector<index_t> N(d);
 
         // tens1 will store the tensor-index on side second(),...
-        gsVector<unsigned> tens0(d), tens1(d);
+        gsVector<index_t> tens0(d), tens1(d);
 
         // see if the orientation is preserved on side second()
         const gsVector<bool> dirOrient = bi.dirOrientation();
 
-        const gsVector<int> dirMap = bi.dirMap();
+        const gsVector<index_t> dirMap = bi.dirMap();
 
         // get the global indices of the basis functions which are
         // active on the interface
@@ -500,16 +500,16 @@ void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
             // get the sizes of the components of the tensor-basis on this level,
             // i.e., the sizes of the univariate bases corresponding
             // to the respective coordinate directions
-            for( unsigned j=0; j < d; j++)
+            for( short_t j=0; j < d; j++)
                 N[j] = _other->tensorLevel(L).component(j).size();
 
             // get the tensor-index of the basis function on level L on
             // second() that should be matched with flatp/tens0
-            for( unsigned j=0; j<d; j++)
+            for( short_t j=0; j<d; j++)
             {
                 // coordinate direction j on first() gets
                 // mapped to direction jj on second()
-                int jj = dirMap[j];
+                index_t jj = dirMap[j];
                 // store the respective component of the tensor-index
                 tens1[jj] = tens0[j];
 
@@ -557,7 +557,7 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     typedef typename gsKnotVector<T>::smart_iterator knotIter;
 
     //gsDebug<<" Setting level "<< level <<"\n";
-    gsVector<unsigned,d> low, upp;
+    point low, upp;
 
     CMatrix & cmat = m_xmatrix[level];
     
@@ -571,10 +571,10 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
 
 
     gsVector<knotIter,d> starts, ends, curr;
-    gsVector<unsigned,d> ind;
+    point ind;
     ind[0] = 0; // for d==1: warning: may be used uninitialized in this function (snap-ci)
 
-    for(unsigned i = 0; i != d; ++i)
+    for(short_t i = 0; i != d; ++i)
     {
         // beginning of the iteration in i-th direction
         starts[i] = m_bases[level]->knots(i).sbegin() ;
@@ -585,7 +585,7 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     curr = starts;// start iteration
     do
     {
-        for(unsigned i = 0; i != d; ++i)
+        for(short_t i = 0; i != d; ++i)
         {
             low[i]  = curr[i].uIndex();  // lower left corner of the support of the function
             upp[i]  = (curr[i]+m_deg[i]+1).uIndex(); // upper right corner of the support
@@ -607,7 +607,7 @@ void gsHTensorBasis<d,T>::functionOverlap(const point & boxLow, const point & bo
                                           const int level, point & actLow, point & actUpp)
 {
     const tensorBasis & tb = *m_bases[level];
-    for(unsigned i = 0; i != d; ++i)
+    for(short_t i = 0; i != d; ++i)
     {
         actLow[i] = tb.knots(i).lastKnotIndex (boxLow[i]) - m_deg[i];
         actUpp[i] = tb.knots(i).firstKnotIndex(boxUpp[i]) - 1       ;
@@ -633,7 +633,7 @@ void gsHTensorBasis<d,T>::setActive()
     //       query3(supp,box.level) == level (min. is level: no coarser)
     // take care: duplicates from different leaves or adj. cells
     point curr, actUpp;
-    gsMatrix<unsigned,d,2> elSupp;
+    gsMatrix<index_t,d,2> elSupp;
 
     // try: iteration per level
     for ( typename hdomain_type::literator it = m_tree.beginLeafIterator(); 
@@ -684,10 +684,10 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level,
 
     // vectors of iterators. one iterator for each dimension
     gsVector<typename gsKnotVector<T>::smart_iterator,d> starts, ends, curr;
-    gsVector<unsigned,d> ind;
+    gsVector<index_t,d> ind;
     ind[0] = 0; // for d==1: warning: may be used uninitialized in this function (snap-ci)
     
-    gsVector<unsigned,d> low, upp;
+    gsVector<index_t,d> low, upp;
     for(int j =0; j < level+1; j++)
     {
         // Clear previous entries
@@ -732,8 +732,8 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level,
 
 ///private functions
 template<short_t d, class T> inline
-void gsHTensorBasis<d,T>::insert_box(gsVector<unsigned,d> const & k1,
-                                     gsVector<unsigned,d> const & k2,
+void gsHTensorBasis<d,T>::insert_box(typename gsHTensorBasis<d,T>::point const & k1,
+                                     typename gsHTensorBasis<d,T>::point const & k2,
                                      int lvl )
 {
     // Remember box in History (for debugging)
@@ -798,9 +798,9 @@ void gsHTensorBasis<d,T>::flatTensorIndexesToHierachicalIndexes(gsSortedVector< 
 }
 
 template<short_t d, class T>
-int gsHTensorBasis<d,T>::flatTensorIndexToHierachicalIndex(unsigned index,const int level) const
+int gsHTensorBasis<d,T>::flatTensorIndexToHierachicalIndex(index_t index,const int level) const
 {
-    if( m_xmatrix.size()<=static_cast<unsigned>(level) )
+    if( m_xmatrix.size()<=static_cast<size_t>(level) )
         return -1;
     CMatrix::const_iterator it = std::lower_bound(m_xmatrix[level].begin(), m_xmatrix[level].end(), index );
     if(it == m_xmatrix[level].end() || *it != index)
@@ -814,7 +814,7 @@ void gsHTensorBasis<d,T>::activeBoundaryFunctionsOfLevel(const unsigned level,co
 {
     needLevel( level );
 
-    const gsMatrix<unsigned> bound = m_bases[level]->boundary(s);
+    const gsMatrix<index_t> bound = m_bases[level]->boundary(s);
     const index_t sz = bound.rows();
     //gsSortedVector< int > indexes(bound->data(),bound->data()+sz);
     gsSortedVector< int > indexes;
@@ -916,23 +916,23 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
 
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
+void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
 {
     gsMatrix<T> currPoint;
     point low, upp, cur;
     const int maxLevel = m_tree.getMaxInsLevel();
 
-    std::vector<std::vector<unsigned> > temp_output;//collects the outputs
+    std::vector<std::vector<index_t> > temp_output;//collects the outputs
     temp_output.resize( u.cols() );
     size_t sz = 0;
 
-    //gsMatrix<unsigned> activesLvl;
+    //gsMatrix<index_t> activesLvl;
 
     for(index_t p = 0; p < u.cols(); p++) //for all input points
     {
         currPoint = u.col(p);
         
-        for(unsigned i = 0; i != d; ++i)
+        for(short_t i = 0; i != d; ++i)
             low[i] = m_bases[maxLevel]->knots(i).uFind( currPoint(i,0) ).uIndex();
         
         // Identify the level of the point
@@ -977,41 +977,41 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
     for(index_t i = 0; i < result.cols(); i++)
     {
         result.col(i).topRows(temp_output[i].size())
-            = gsAsConstVector<unsigned>(temp_output[i]);
+            = gsAsConstVector<index_t>(temp_output[i]);
         result.col(i).bottomRows(sz-temp_output[i].size()).setZero();
     }
 }
 
 template<short_t d, class T>
-gsMatrix<unsigned>  gsHTensorBasis<d,T>::allBoundary( ) const
+gsMatrix<index_t>  gsHTensorBasis<d,T>::allBoundary( ) const
 {
-    std::vector<unsigned> temp;
-    gsVector<unsigned,d>  ind;
+    std::vector<index_t> temp;
+    gsVector<index_t, d>  ind;
     for(unsigned i = 0; i <= this->maxLevel(); i++)
         for (CMatrix::const_iterator it = m_xmatrix[i].begin();
              it != m_xmatrix[i].end(); it++)
         {
             ind = this->m_bases[i]->tensorIndex(*it);
             for (unsigned j=0; j!=d; ++j )
-                if ( (ind[j]==0) || (ind[j]==unsigned(this->m_bases[i]->size(j)-1)) )
+                if ( (ind[j]==0) || (ind[j]==(this->m_bases[i]->size(j)-1)) )
                 {
                     temp.push_back(m_xmatrix_offset[i] + (it-m_xmatrix[i].begin()) );
                     break;
                 }
         }
-    return makeMatrix<unsigned>(temp.begin(),temp.size(),1 );
+    return makeMatrix<index_t>(temp.begin(),temp.size(),1 );
 }
 
 template<short_t d, class T>
-gsMatrix<unsigned>  gsHTensorBasis<d,T>::
-boundaryOffset(boxSide const & s,unsigned offset) const
+gsMatrix<index_t>  gsHTensorBasis<d,T>::
+boundaryOffset(boxSide const & s,index_t offset) const
 { 
     //get information on the side
-    int k   = s.direction();
-    int par = s.parameter();
+    index_t k   = s.direction();
+    bool par = s.parameter();
     
-    std::vector<unsigned> temp;
-    gsVector<unsigned,d>  ind;
+    std::vector<index_t> temp;
+    gsVector<index_t,d>  ind;
     // i goes through all levels of the hierarchical basis
     for(unsigned i = 0; i <= this->maxLevel(); i++)
     {
@@ -1019,7 +1019,7 @@ boundaryOffset(boxSide const & s,unsigned offset) const
                      "Offset cannot be bigger than the amount of basis" 
                      "functions orthogonal to Boxside s!");
 
-        unsigned r = ( par ? this->m_bases[i]->size(k) - 1 -offset : offset);
+        index_t r = ( par ? this->m_bases[i]->size(k) - 1 -offset : offset);
         for (CMatrix::const_iterator it = m_xmatrix[i].begin();
              it != m_xmatrix[i].end(); it++)
         {
@@ -1030,7 +1030,7 @@ boundaryOffset(boxSide const & s,unsigned offset) const
                     );
         }
     }
-    return makeMatrix<unsigned>(temp.begin(),temp.size(),1 );
+    return makeMatrix<index_t>(temp.begin(),temp.size(),1 );
 }
 
 /*
@@ -1069,14 +1069,14 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
 }
 
 template<short_t d, class T>
-std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const
+std::vector< std::vector< std::vector<index_t > > > gsHTensorBasis<d,T>::domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const
 {
-    std::vector< std::vector< std::vector< std::vector< unsigned int > > > > dummy;
+    std::vector< std::vector< std::vector< std::vector<index_t > > > > dummy;
     return domainBoundariesGeneric( dummy, result, false );
 }
 
 template<short_t d, class T>
-std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector< unsigned int > > > >& result ) const
+std::vector< std::vector< std::vector<index_t > > > gsHTensorBasis<d,T>::domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector<index_t > > > >& result ) const
 {
     std::vector< std::vector< std::vector< std::vector< T > > > > dummy;
     return domainBoundariesGeneric( result, dummy, true );
@@ -1084,15 +1084,15 @@ std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::d
 
 
 template<short_t d, class T>
-std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::domainBoundariesGeneric(std::vector< std::vector< std::vector< std::vector< unsigned int > > > >& indices,
+std::vector< std::vector< std::vector<index_t > > > gsHTensorBasis<d,T>::domainBoundariesGeneric(std::vector< std::vector< std::vector< std::vector<index_t > > > >& indices,
                                                                                                        std::vector< std::vector< std::vector< std::vector< T > > > >& params,
                                                                                                        bool indicesFlag ) const
 {
     indices.clear();
     params.clear();
     std::vector< std::vector< std::vector< int > > > res_aabb;
-    std::vector< std::vector< std::vector< unsigned int > > > res_aabb_unsigned;
-    std::vector< std::vector< std::vector< std::vector< unsigned int > > > > polylines;
+    std::vector< std::vector< std::vector<index_t > > > res_aabb_unsigned;
+    std::vector< std::vector< std::vector< std::vector< index_t > > > > polylines;
 
     polylines =  this->m_tree.getPolylines();
     res_aabb.resize( polylines.size() );
@@ -1193,7 +1193,7 @@ std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::d
 
 
 template<short_t d, class T>
-void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >& old, gsSparseMatrix<T>& result)
+void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<index_t> >& old, gsSparseMatrix<T>& result)
 {
     // Note: implementation assumes number of old + 1 m_bases exists in this basis
     needLevel( old.size() );
@@ -1224,7 +1224,7 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
 
     // Add missing empty char. matrices
     while ( old.size() >= m_xmatrix.size() )
-        m_xmatrix.push_back( gsSortedVector<unsigned>() );
+        m_xmatrix.push_back( gsSortedVector<index_t>() );
 
     result = this->coarsening_direct(old, m_xmatrix, transfer);
 
@@ -1246,7 +1246,7 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
 }
 
 template<short_t d, class T>
-void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<unsigned> >& old, gsSparseMatrix<T>& result)
+void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<index_t> >& old, gsSparseMatrix<T>& result)
 {
     // Note: implementation assumes number of old + 1 m_bases exists in this basis
     needLevel( old.size() );
@@ -1258,7 +1258,7 @@ void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<unsigned> 
     for(size_t i = 1; i < m_bases.size(); ++i)
     {
         //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
-        for(unsigned int dim = 0; dim != d; ++dim)
+        for(short_t dim = 0; dim != d; ++dim)
         {
             const gsKnotVector<T> & ckv = m_bases[i-1]->knots(dim);
             const gsKnotVector<T> & fkv = m_bases[i  ]->knots(dim);
@@ -1275,7 +1275,7 @@ void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<unsigned> 
 
     // Add missing empty char. matrices
     while ( old.size() >= m_xmatrix.size())
-        m_xmatrix.push_back( gsSortedVector<unsigned>() );
+        m_xmatrix.push_back( gsSortedVector<index_t>() );
 
     result = this->coarsening_direct2(old, m_xmatrix, transfer);
 }
@@ -1320,25 +1320,25 @@ void gsHTensorBasis<d,T>::increaseMultiplicity(index_t lvl, int dir, const std::
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, T par,std::vector<unsigned>& boxes ) const
+void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, T par,std::vector<index_t>& boxes ) const
 {
-    gsMatrix<unsigned> b1,b2;
-    gsVector<unsigned> level;
+    gsMatrix<index_t> b1,b2;
+    gsVector<index_t> level;
     m_tree.getBoxesInLevelIndex(b1,b2,level);
-    gsVector<unsigned> min,max;
-    for(int i = 0;i<level.rows();i++)
+    gsVector<index_t> min,max;
+    for(index_t i = 0;i<level.rows();i++)
     {
         min = b1.row(i);
         max = b2.row(i);
-        const unsigned l = level(i);
-        const unsigned par_index = m_bases[l]->knots(dir).uFind(par).uIndex();
+        const index_t l = level(i);
+        const index_t par_index = m_bases[l]->knots(dir).uFind(par).uIndex();
         if(l>0 && (par_index>=min(dir)) && (par_index<=max(dir)))
         {
             boxes.push_back(l);
-            for(int j=0;j<min.rows();++j)
+            for(index_t j=0;j<min.rows();++j)
                 if(j!=dir)
                     boxes.push_back(min(j));
-            for(int j=0;j<max.rows();++j)
+            for(index_t j=0;j<max.rows();++j)
                 if(j!=dir)
                     boxes.push_back(max(j));
         }

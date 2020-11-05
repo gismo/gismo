@@ -15,17 +15,22 @@
 
 using namespace gismo;
 
-gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(const gsSparseMatrix<>&, const gsMultiBasis<>&, const gsBoundaryConditions<>&, const gsOptionList&);
+gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(index_t, index_t, const gsSparseMatrix<>&,
+    const gsMultiBasis<>&, const gsBoundaryConditions<>&, const gsOptionList&, std::vector<real_t>& );
 
 int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
 
     std::string geometry("domain2d/yeti_mp2.xml");
+    index_t splitPatches = 0;
+    real_t stretchGeometry = 1;
+    index_t xRefine = 0;
     index_t refinements = 3;
     index_t degree = 2;
     bool nonMatching = false;
     bool dg = false;
+    bool nitsche = false;
     index_t levels = -1;
     index_t cycles = 1;
     index_t presmooth = 1;
@@ -42,12 +47,16 @@ int main(int argc, char *argv[])
 
     gsCmdLine cmd("Solves a PDE with an isogeometric discretization using a multigrid solver.");
     cmd.addString("g", "Geometry",              "Geometry file", geometry);
+    cmd.addInt   ("",  "SplitPatches",          "Split every patch that many times in 2^d patches", splitPatches);
+    cmd.addReal  ("",  "StretchGeometry",       "Stretch geometry in x-direction by the given factor", stretchGeometry);
+    cmd.addInt   ("",  "XRefine",               "Refine in x-direction by adding that many knots to every knot span", xRefine);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addSwitch("",  "NonMatching",           "Set up a non-matching multi-patch discretization", nonMatching);
-    cmd.addSwitch("",  "DG",                    "Use a discontinuous Galerkin discretization", dg);
+    cmd.addSwitch("",  "DG",                    "Use discontinuous Galerkin (SIPG) for coupling the patches", dg);
+    cmd.addSwitch("",  "Nitsche",               "Use Nitsche method for Dirichlet boundary conditions", nitsche);
     cmd.addInt   ("l", "MG.Levels",             "Number of levels to use for multigrid iteration", levels);
-    cmd.addInt   ("c", "MG.Cycles",             "Number of multi-grid cycles", cycles);
+    cmd.addInt   ("c", "MG.NumCycles",          "Number of multi-grid cycles", cycles);
     cmd.addInt   ("",  "MG.Presmooth",          "Number of pre-smoothing steps", presmooth);
     cmd.addInt   ("",  "MG.Postsmooth",         "Number of post-smoothing steps", postsmooth);
     cmd.addSwitch("",  "MG.Extrasmooth",        "Doubles the number of smoothing steps for each coarser level", extrasmooth);
@@ -71,8 +80,8 @@ int main(int argc, char *argv[])
 
     // Define assembler options
     opt.remove( "DG" );
-    opt.addInt( "MG.InterfaceStrategy", "", (index_t)( dg ? iFace::dg : iFace::conforming )  );
-    opt.addInt( "MG.DirichletStrategy", "", (index_t) dirichlet::elimination                 );
+    opt.addInt( "MG.InterfaceStrategy", "", (index_t)( dg      ? iFace::dg          : iFace::conforming      ) );
+    opt.addInt( "MG.DirichletStrategy", "", (index_t)( nitsche ? dirichlet::nitsche : dirichlet::elimination ) );
 
     if ( ! gsFileManager::fileExists(geometry) )
     {
@@ -94,6 +103,21 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
     gsMultiPatch<>& mp = *mpPtr;
+
+    for (index_t i=0; i<splitPatches; ++i)
+    {
+        gsInfo << "split patches uniformly... " << std::flush;
+        mp = mp.uniformSplit();
+    }
+
+    if (stretchGeometry!=1)
+    {
+       gsInfo << "and stretch it... " << std::flush;
+       for (size_t i=0; i!=mp.nPatches(); ++i)
+           const_cast<gsGeometry<>&>(mp[i]).scale(stretchGeometry,0);
+       // Const cast is allowed since the object itself is not const. Stretching the
+       // overall domain keeps its topology.
+    }
 
     gsInfo << "done.\n";
 
@@ -165,6 +189,19 @@ int main(int argc, char *argv[])
 
     }
 
+    if (xRefine)
+    {
+        if (mp.nPatches() > 1)
+        {
+            gsInfo << "\nThe option --XRefine is only available for single-patch geometries..\n";
+            return EXIT_FAILURE;
+        }
+        gsInfo << "Option --XRefine: Refine the grid in x-direction by interting " << xRefine
+               << " knots in every knot span... " << std::flush;
+        mb[0].component(0).uniformRefine(xRefine,1);
+        gsInfo << "done.\n";
+    }
+
     gsInfo << "Setup bases and adjust degree... " << std::flush;
 
     for ( size_t i = 0; i < mb.nBases(); ++ i )
@@ -206,6 +243,8 @@ int main(int argc, char *argv[])
     gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( assembler.matrix(), transferMatrices );
     mg->setOptions( opt.getGroup("MG") );
 
+    std::vector<real_t> patchLocalDampingParameters;
+
     for (index_t i = 1; i < mg->numLevels(); ++i)
     {
         gsPreconditionerOp<>::Ptr smootherOp;
@@ -217,17 +256,8 @@ int main(int argc, char *argv[])
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
         else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" || smoother == "Hybrid" || smoother == "hyb" )
         {
-            if (multiBases[i].nBases() == 1)
-            {
-                smootherOp = gsPreconditionerFromOp<>::make(
-                    mg->underlyingOp(i),
-                    gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("MG"),scaling)
-                );
-            }
-            else
-            {
-                smootherOp = setupSubspaceCorrectedMassSmoother( mg->matrix(i), multiBases[i], bc, opt.getGroup("MG") );
-            }
+            smootherOp = setupSubspaceCorrectedMassSmoother( i, mg->numLevels(), mg->matrix(i), multiBases[i], bc,
+                opt.getGroup("MG"), patchLocalDampingParameters );
 
             if ( smoother == "Hybrid" || smoother == "hyb" )
             {
@@ -248,7 +278,7 @@ int main(int argc, char *argv[])
             smootherOp->setNumOfSweeps( 1 << (mg->numLevels()-1-i) );
             smootherOp = gsPreconditionerFromOp<>::make(mg->underlyingOp(i),smootherOp);
         }
-        mg->setSmoother(i, smootherOp);
+        mg->setSmoother(i, smootherOp); // TODO: special treatment for scms
     }
 
     gsMatrix<> x, errorHistory;
@@ -306,19 +336,26 @@ int main(int argc, char *argv[])
 
 
 gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
+    index_t level,
+    index_t nrLevels,
     const gsSparseMatrix<>& matrix,
     const gsMultiBasis<>& mb,
     const gsBoundaryConditions<>& bc,
-    const gsOptionList& opt
+    const gsOptionList& opt,
+    std::vector<real_t>& patchLocalDampingParameters
 )
 {
     const short_t dim = mb.topology().dim();
+
+    const iFace::strategy iFaceStrategy = (iFace::strategy)opt.askInt("InterfaceStrategy", 1);
+    GISMO_ASSERT( iFaceStrategy == iFace::dg || iFaceStrategy == iFace::conforming,
+      "Unknown interface strategy." );
 
     // Setup dof mapper
     gsDofMapper dm;
     mb.getMapper(
        (dirichlet::strategy)opt.askInt("DirichletStrategy",11),
-       (iFace    ::strategy)opt.askInt("InterfaceStrategy", 1),
+       iFaceStrategy,
        bc,
        dm,
        0
@@ -328,6 +365,9 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     // Decompose the whole domain into components
     std::vector< std::vector<patchComponent> > components = mb.topology().allComponents(true);
     const index_t nr_components = components.size();
+
+    if (patchLocalDampingParameters.size()==0)
+      patchLocalDampingParameters.resize(nr_components);
 
     // Setup Dirichlet boundary conditions
     gsBoundaryConditions<> dir_bc;
@@ -343,9 +383,9 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
 
     for (index_t i=0; i<nr_components; ++i)
     {
-        gsMatrix<unsigned> indices;
+        const index_t cdim = components[i][0].dim();
+        gsMatrix<index_t> indices;
         std::vector<gsBasis<>::uPtr> bases = mb.componentBasis_withIndices(components[i],dm,indices,true);
-
         index_t sz = indices.rows();
         gsSparseEntries<> se;
         se.reserve(sz);
@@ -354,24 +394,101 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
         gsSparseMatrix<real_t,RowMajor> transfer(nTotalDofs,sz);
         transfer.setFrom(se);
 
-        if (sz>0)
+        if (sz>0)  // It might be the case that there is no active dof in some components.
         {
-            if (bases[0]->dim() == dim)
+            gsSparseMatrix<> localMatrix = transfer.transpose() * matrix * transfer;
+
+            if (cdim >= 2 && cdim >= dim-1)
             {
-                GISMO_ASSERT ( bases.size() == 1, "Only one basis is expected for each patch." );
-                ops.push_back(
-                    gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(
-                        *(bases[0]),
+                // If the component has dimension of at least 2, we have to do something fancy.
+                // For dim > 3, we ignore interaces of dimensionality dim-2 and smaller (for simplicity).
+                index_t nrDifferentBases;
+                real_t stiffFactor, massFactor;
+                if ( cdim == dim )
+                {
+                    nrDifferentBases = 1;
+                    stiffFactor = 1;
+                    massFactor = 0;
+                }
+                else // cdim == dim-1
+                {
+                    if ( iFaceStrategy == iFace::dg && components[i].size() == 2 )
+                    {
+                        // components[i].size() == 2 means that we consider an interface, not a boundary
+                        const index_t patch0 = components[i][0].patch(),
+                                      patch1 = components[i][1].patch();
+                        const real_t h = math::min( mb[patch0].getMinCellLength(), mb[patch1].getMinCellLength() );
+                        const index_t p = math::max( mb[patch0].maxDegree(), mb[patch1].maxDegree() );
+                        nrDifferentBases = 2;
+                        stiffFactor = h/p;
+                        massFactor = p/h;
+                    }
+                    else
+                    {
+                        const index_t patch = components[i][0].patch();
+                        const real_t h  = mb[patch].getMinCellLength();
+                        const index_t p = mb[patch].maxDegree();
+                        nrDifferentBases = 1;
+                        stiffFactor = h/p;
+                        massFactor = p/h;
+                    }
+                }
+
+                gsLinearOperator<>::uPtr localOperators[2];
+                for (index_t j=0; j!=nrDifferentBases; ++j)
+                {
+                    localOperators[j] = gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(
+                        *(bases[j]),
                         dir_bc,
                         gsOptionList(),
-                        opt.getReal("Scaling")
-                    )
-                );
+                        opt.getReal("Scaling"),
+                        massFactor,
+                        stiffFactor
+                    );
+                }
+
+                if ( nrDifferentBases > 1 )
+                {
+                    // In the case of dG, we use a conjugate gradient solver with a block-diagonal
+                    // preconditioner
+                    gsLinearOperator<>::Ptr underlying = makeMatrixOp( localMatrix.moveToPtr() );
+
+                    gsBlockOp<>::uPtr blockPreconder = gsBlockOp<>::make(nrDifferentBases, nrDifferentBases);
+                    for (index_t j=0; j!=nrDifferentBases; ++j)
+                        blockPreconder->addOperator(j,j,give(localOperators[j]));
+
+                    ops.push_back( gsIterativeSolverOp< gsConjugateGradient<> >::make(underlying, give(blockPreconder)) );
+                }
+                else
+                {
+                    // Otherwiese, we just scale the local solvers properly
+                    gsLinearOperator<>::Ptr underlying = makeMatrixOp( localMatrix.moveToPtr() );
+                    gsPreconditionerFromOp<>::uPtr pc = gsPreconditionerFromOp<>::make(underlying,give(localOperators[0]));
+                    if (patchLocalDampingParameters[i] == 0)
+                    {
+                        const real_t damping = 1/pc->estimateLargestEigenvalueOfPreconditionedSystem(10);
+                        pc->setDamping(damping);
+
+                        // We store the local damping parameter if we can expect that it does not change
+                        // too much any more. When the number of inner knots is p or smaller, the subspace
+                        // corrected mass smoother does an exact solver. Thus, these cases are not comparable.
+                        bool saveLambda = (level > nrLevels - 5);
+                        for (index_t j=0; j!=bases[0]->dim(); ++j)
+                            saveLambda &= bases[0]->component(j).numElements()
+                                              > static_cast<size_t>( bases[0]->component(j).maxDegree() );
+                        if ( saveLambda )
+                            patchLocalDampingParameters[i] = damping;
+                    }
+                    else
+                        pc->setDamping(patchLocalDampingParameters[i]);
+                    ops.push_back(give(pc));
+                }
+
             }
             else
             {
-                gsSparseMatrix<> mat = transfer.transpose() * matrix * transfer;
-                ops.push_back( makeSparseCholeskySolver(mat) );
+                // If the component has dimension 0 or 1, we can just du direct solves
+                ops.push_back( makeSparseCholeskySolver(localMatrix) );
             }
 
             transfers.push_back(give(transfer));

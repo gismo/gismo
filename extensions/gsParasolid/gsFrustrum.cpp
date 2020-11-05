@@ -894,7 +894,7 @@ static void read_from_file( file_p file_ptr, char* buffer, int header,
 
             /* copy input buffer back to calling function without terminator */
             *buffer_len = strlen(input_output_buffer);
-            strncpy(buffer, input_output_buffer, *buffer_len);
+            memcpy(buffer, input_output_buffer, *buffer_len);
             }
         }
     else

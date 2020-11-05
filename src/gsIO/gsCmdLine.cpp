@@ -77,7 +77,7 @@ public:
     TCLAP::CmdLine cmd;
 
     // Stores integer arguments
-    std::vector<TCLAP::ValueArg<intVal_t>*>         intVals;
+    std::vector<TCLAP::ValueArg<intVal_t>*>    intVals;
     std::vector<intVal_t*>                     intRes;
 
     // Stores multi integer arguments
@@ -325,8 +325,8 @@ bool gsCmdLine::getExceptionHandling() const
 #define ADD_OPTION_LIST_ENTRY(res,vals,addFct)                                      \
 {                                                                                   \
     std::string nm = (vals)->getName() + ".";                                       \
-    size_t sz = (res).size();                                                  \
-    for ( size_t j=0; j<sz; ++j )                                              \
+    index_t sz = static_cast<index_t>((res).size());                                \
+    for ( index_t j=0; j<sz; ++j )                                                  \
     { result.addFct( nm+util::to_string(j), (vals)->getDescription(), (res)[j] ); } \
     result.addInt( nm+"Size", (vals)->getDescription(), sz );                       \
 }
@@ -426,8 +426,12 @@ void gsCmdLine::printVersion()
     gsInfo << "               version "<< GISMO_VERSION<<"\n";
     gsInfo << "Compiled by ";
 //https://sourceforge.net/p/predef/wiki/Compilers, see also boost/predef.h
-#if defined(_MSC_VER)
-    gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<__cplusplus <<", ";
+#if defined(_MSC_VER) && _MSC_VER < 1600
+    gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<"199711L" <<", ";
+#elsif _MSC_VER >= 1900
+    gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<_MSVC_LANG <<", ";
+#elsif _MSC_VER >= 1600
+    gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<"201103L" <<", ";
 #elif defined(__clang__ )
     gsInfo << "Clang "<<__clang_version__<<" ("<<__cplusplus <<", ";
 #elif defined(_INTEL_COMPILER)
@@ -470,7 +474,7 @@ void gsCmdLine::printVersion()
     gsInfo << "Unknown-STD)\n";
 #endif
     //gsInfo << "Eigen "<< EIGEN_WORLD_VERSION<<"."<<EIGEN_MAJOR_VERSION<<"."<<EIGEN_MINOR_VERSION<<"\n";
-    gsInfo << "RICAM-Linz 2012 - 2017, http://gs.jku.at/gismo\n";
+    gsInfo << "web: http://github.com/gismo\n";
 }
 
 std::string & gsCmdLine::getMessage()

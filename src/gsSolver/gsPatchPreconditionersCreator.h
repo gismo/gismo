@@ -69,7 +69,7 @@ public:
 
     /// Provieds stiffness matrix on the parameter domain
     ///
-    /// The stiffness matrix represents \f$ -\Delta u + \alpha u \f$
+    /// The stiffness matrix represents \f$ - \beta \Delta u + \alpha u \f$
     ///
     /// \param basis  A tensor basis
     /// \param bc     Boundary conditions
@@ -79,13 +79,14 @@ public:
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
         const gsOptionList& opt = gsAssembler<T>::defaultOptions(),
-        T alpha = 0
+        T alpha = 0,
+        T beta = 1
     );
 
     /// Provides \a gsLinearOperator representing the stiffness matrix (in a matrix-free way)
     /// on the parameter domain
     ///
-    /// The stiffness matrix represents \f$ -\Delta u + \alpha u \f$
+    /// The stiffness matrix represents \f$ - \beta \Delta u + \alpha u \f$
     ///
     /// \param basis  A tensor basis
     /// \param bc     Boundary conditions
@@ -95,14 +96,15 @@ public:
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
         const gsOptionList& opt = gsAssembler<T>::defaultOptions(),
-        T alpha = 0
+        T alpha = 0,
+        T beta = 1
     );
 
     /// Provides \a gsLinearOperator representing the inverse stiffness matrix
     /// on the parameter domain based on the fast diagonalization approach
     /// (SIAM J. Sci. Comput., 38 (6), p. A3644 - A3671, 2016)
     ///
-    /// The stiffness matrix represents \f$ -\Delta u + \alpha u \f$
+    /// The stiffness matrix represents \f$ -\beta \Delta u + \alpha u \f$
     ///
     /// \param basis  A tensor basis
     /// \param bc     Boundary conditions
@@ -112,7 +114,8 @@ public:
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
         const gsOptionList& opt = gsAssembler<T>::defaultOptions(),
-        T alpha = 0
+        T alpha = 0,
+        T beta = 1
     );
 
     /// Provides \a gsLinearOperator representing the subspace corrected mass smoother
@@ -120,11 +123,11 @@ public:
     ///
     /// This operator is spectrally equivalent to the inverse of
     ///
-    /// \f$ - \Delta u + \sigma h^{-2} u + \alpha u \f$
+    /// \f$ \beta ( - \Delta u + \sigma h^{-2} u) + \alpha u \f$
     ///
-    /// assuming \f$ \sigma \f$ to be large enough; the exact meaning of \f$ \sigma \f$ is
-    /// explained in the abovementioned paper (\f$ \sigma \f$ from the paper equals
-    /// \f$  1/(\sigma*h*h) \f$ here.)
+    /// assuming \f$ \sigma = \mathcal{O}(1) \f$ to be large enough; the exact meaning of
+    /// \f$ \sigma \f$ is explained in the abovementioned paper (\f$ \sigma \f$ from the
+    /// paper equals \f$  1/(\sigma*h*h) \f$ here.)
     ///
     /// \param basis  A tensor basis
     /// \param bc     Boundary conditions
@@ -136,7 +139,8 @@ public:
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
         const gsOptionList& opt = gsAssembler<T>::defaultOptions(),
         T sigma = T(12)/T(100),
-        T alpha = 0
+        T alpha = 0,
+        T beta = 1
     );
 
     /// Provides matrices that represent the basis of the space \f$ \widetilde{S}_{p,h} \f$,

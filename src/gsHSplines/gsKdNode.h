@@ -25,7 +25,7 @@ namespace gismo {
     
     \ingroup HSplines
 */
-template<short_t d, class Z = unsigned>
+template<short_t d, class Z = index_t>
 struct gsAabb
 {
 public:
@@ -64,7 +64,7 @@ public:
     
     \ingroup HSplines
 */
-template<short_t d, class Z = unsigned>
+template<short_t d, class Z = index_t>
 struct kdnode
 {
     // Defines the type of the box
@@ -305,11 +305,11 @@ struct kdnode
         const unsigned h = 1 << (index_level - level) ;
         //const unsigned mask = ~(h - 1);
         
-        for ( unsigned i = 0; i < d; ++i )
+        for ( short_t i = 0; i < d; ++i )
         {
-            const unsigned c1 = insBox. first[i] - insBox. first[i] % h;//floor
-            const unsigned cc = insBox.second[i] % h;
-            const unsigned c2 = insBox.second[i] + (cc ? h-cc : 0 ) ;// ceil
+            const index_t c1 = insBox. first[i] - insBox. first[i] % h;//floor
+            const index_t cc = insBox.second[i] % h;
+            const index_t c2 = insBox.second[i] + (cc ? h-cc : 0 ) ;// ceil
 
             //const unsigned c1 = (insBox. first[i] & mask)    ;
             //const unsigned c2 = (insBox.second[i] & mask) + ..;

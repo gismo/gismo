@@ -69,12 +69,12 @@ template<class T> class gsExprHelper;
 namespace expr
 {
 
-#if(__cplusplus >= 201402L) // c++14
+#if __cplusplus >= 201402L || _MSVC_LANG >= 201402L // c++14
 #  define MatExprType  auto
 #  define AutoReturn_t auto
-//#elif(__cplusplus >= 201103L) // c++11
+//#elif __cplusplus >= 201103L || _MSC_VER >= 1600 // c++11
 //note: in c++11 auto-return requires -> decltype(.)
-#else // 199711L
+#else // 199711L, 201103L
 #  define MatExprType typename gsMatrix<Scalar>::constRef
 #  define AutoReturn_t typename util::conditional<ScalarValued,Scalar,MatExprType>::type
 #endif
@@ -193,7 +193,7 @@ public:
     { return sqNorm_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the square root of the expression (component-wise)
-    mult_expr<E,E,0> sqr() const { return (*this)*(*this); }
+    mult_expr<E,E,0> (sqr)() const { return (*this)*(*this); }
 
     symm_expr<E> symm() const
     { return symm_expr<E>(static_cast<E const&>(*this)); }
@@ -741,12 +741,12 @@ public:
         GISMO_ASSERT( dynamic_cast<const gsMultiBasis<T>*>(&this->source()), "error");
 
         // Reconstruct solution coefficients on patch p
-        const int sz  = mb[p].size();
+        const index_t sz  = mb[p].size();
         result.resize(sz, dim); // (!)
 
         for (index_t i = 0; i < sz; ++i)
         {
-            const int ii = m_mapper.index(i, p);
+            const index_t ii = m_mapper.index(i, p);
 
             if ( m_mapper.is_free_index(ii) ) // DoF value is in the solVector
             {
@@ -784,7 +784,7 @@ public:
                 }
             }
 
-            gsMatrix<unsigned> bnd;
+            gsMatrix<index_t> bnd;
             for (typename bcRefList::const_iterator
                      it = this->bc().begin() ; it != this->bc().end(); ++it )
             {
@@ -799,7 +799,7 @@ public:
                  dynamic_cast<const gsBasis<T>*>(&this->source()) )
         {
             m_mapper = gsDofMapper(*b);
-            gsMatrix<unsigned> bnd;
+            gsMatrix<index_t> bnd;
             for (typename bcRefList::const_iterator
                      it = this->bc().begin() ; it != this->bc().end(); ++it )
             {
@@ -2973,7 +2973,7 @@ operator-(typename E2::Scalar const& s, _expr<E2> const& v)
 
 
 //----------------------------------------------------------------------------------
-#if(__cplusplus >= 201402L)
+#if __cplusplus >= 201402L || _MSVC_LANG >= 201402L
 
 // Shortcuts for common quantities, for instance function
 // transformations by the geometry map \a G

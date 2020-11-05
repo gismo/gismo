@@ -144,7 +144,8 @@ public:
     { smoothingStep(finestLevel(), rhs, x); }
 
     /// Estimates for a smoother I - S^{-1} A the largest eigenvalue of S^{-1} A. Can be used to adjust the damping parameters.
-    T estimateLargestEigenvalueOfSmoothedOperator(index_t level, index_t iter = 100);
+    T estimateLargestEigenvalueOfSmoothedOperator(index_t level, index_t steps = 10)
+    { return m_smoother[level]->estimateLargestEigenvalueOfPreconditionedSystem(steps); }
 
     /// Perform one multigrid cycle on the iterate \a x with right-hand side \a f at the given \a level.
     void multiGridStep(index_t level, const gsMatrix<T>& rhs, gsMatrix<T>& x) const;

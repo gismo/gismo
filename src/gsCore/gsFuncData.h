@@ -50,9 +50,9 @@ public:
 
 public:
     mutable unsigned flags;
-    int      patchId; // move to mapdata
+    index_t      patchId; // move to mapdata
 
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     /// Stores values and derivatives
     /// values[0] for base
@@ -127,7 +127,7 @@ public:
 
 public:
 
-    inline const gsMatrix<unsigned> & allActives() const
+    inline const gsMatrix<index_t> & allActives() const
     {
         GISMO_ASSERT(flags & NEED_ACTIVE,
                    "actives are not computed unless the NEED_ACTIVE flag is set.");
@@ -143,7 +143,7 @@ public:
         return values.front();
     }
 
-    inline gsMatrix<unsigned>::constColumn active(index_t point = 0) const
+    inline gsMatrix<index_t>::constColumn active(index_t point = 0) const
     {
         GISMO_ASSERT(flags & NEED_ACTIVE,
                    "actives are not computed unless the NEED_ACTIVE flag is set.");

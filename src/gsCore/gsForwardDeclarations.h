@@ -20,6 +20,7 @@
 #include <map>
 #include <stack>
 #include <algorithm>
+#include <functional>
 #include <limits>
 
 #include <gsCore/gsConfig.h>
@@ -151,7 +152,7 @@ template <class T=real_t>                class gsGalerkinMethod;
 // template <class T=real_t>             class gsTensorDomain;
 template <short_t d, class T=real_t>     class gsHFitting;
 
-template <class Z, int mode, int d=-1,
+template <class Z, int mode, short_t d=-1,
          bool = //std::is_integral<Z>::value>
          std::numeric_limits<Z>::is_integer && mode!=3>
                                          class gsGridIterator;

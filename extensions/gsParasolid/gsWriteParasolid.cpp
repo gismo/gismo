@@ -60,6 +60,10 @@ gsWriteParasolid<real_t>
 ( const gsTHBSpline<2, real_t>& thb,const std::vector<real_t>&par_boxes, std::string const & filename);
 
 TEMPLATE_INST bool
+gsWritePK_SHEET<real_t>
+( const gsTensorBSpline<2, real_t>& tp, std::string const & filename);
+
+TEMPLATE_INST bool
 getTrimCurvesAndBoundingBoxes<real_t>
 ( const gsTHBSpline<2, real_t>& surface,
   const std::vector<real_t>& par_boxes,
@@ -67,7 +71,7 @@ getTrimCurvesAndBoundingBoxes<real_t>
 
 TEMPLATE_INST bool
 getParBoxAsIndexBoxInLevel(const gsTHBSplineBasis<2, real_t>& basis,unsigned lvl,
-                           const std::vector<real_t>& par_box,std::vector<unsigned>& index_box);
+                           const std::vector<real_t>& par_box,std::vector<index_t>& index_box);
 
 TEMPLATE_INST bool
 parBoxesIntersect(const std::vector<real_t>& par_boxes);

@@ -127,7 +127,7 @@ Object * getHTensorBasisFromXml ( gsXmlNode * node)
     
     // Insert all boxes
     unsigned c;
-    std::vector<unsigned int> all_boxes;
+    std::vector<index_t> all_boxes;
     for (tmp = node->first_node("box"); 
          tmp; tmp = tmp->next_sibling("box"))
     {
@@ -164,7 +164,7 @@ gsXmlNode * putHTensorBasisToXml ( Object const & obj, gsXmlTree & data)
     tp_node->append_node(tmp);
     
     //Output boxes
-    gsMatrix<unsigned> box(1,2*d);
+    gsMatrix<index_t> box(1,2*d);
 
     for( typename Object::hdomain_type::const_literator lIter = 
              obj.tree().beginLeafIterator(); lIter.good() ; lIter.next() )
@@ -277,7 +277,7 @@ Object * getGeometryFromXml ( gsXmlNode * node)
 
     tmp = node->first_node("coefs");
     GISMO_ASSERT( tmp, "Did not find any coefficients for "<< gsXml<Object>::type().c_str() );
-    gsXmlAttribute * at_geodim = tmp->first_attribute("geoDim"); 
+    gsXmlAttribute * at_geodim = tmp->first_attribute("geoDim");
     GISMO_ASSERT( at_geodim , "geoDim attribute not found in Geometry XML tag");
     unsigned geoDim = atoi(at_geodim->value() ) ;
 
@@ -285,6 +285,14 @@ Object * getGeometryFromXml ( gsXmlNode * node)
 
     gsMatrix<typename Object::Scalar_t> c; 
     getMatrixFromXml<typename Object::Scalar_t>( tmp, b->size(), geoDim, c );
+
+    gsXmlAttribute * coef_order = tmp->first_attribute("order");
+    if ( nullptr != coef_order )
+        if ( !strcmp( coef_order->value(),"coordinates") )
+        {
+            c.transposeInPlace();
+            c.resize(b->size(),geoDim);
+        }
 
     // Looking for transformations
     tmp = node->first_node("transform");

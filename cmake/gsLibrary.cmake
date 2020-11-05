@@ -129,8 +129,6 @@ endif(GISMO_BUILD_LIB)
   endif()
 
   if (EIGEN_USE_MKL_ALL)
-    # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
-    find_package(MKL REQUIRED)
     target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
   endif()
 

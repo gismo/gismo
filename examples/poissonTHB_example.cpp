@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     // Flag for refinemet criterion
     // (see doxygen documentation of the free function
     // gsMarkElementsForRef explanation)
-    index_t refCriterion;
+    index_t refCriterion;   // MarkingStrategy
     // Parameter for computing adaptive refinement threshold
     // (see doxygen documentation of the free function
     // gsMarkElementsForRef explanation)

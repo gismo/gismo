@@ -1,30 +1,30 @@
 #-------------------------------------------------------------------------------
 # Settings for IPOPT
 #-------------------------------------------------------------------------------
-
 #--- C.1 Output ----------------------------------------------------------------
+sb                                    yes                # Suppress header info
 print_user_options                    yes                # d=no
-print_level                           2                   # d=1
-# print_options_documentation          yes
+print_level                           0                  # d=1
+# print_options_documentation         yes
 #--- C.2 Termination -----------------------------------------------------------
-tol                                   1e-6               # d=1e-8
-max_iter                              500               # d=3000
+tol                                   1e-8               # d=1e-8
+max_iter                              500                # d=3000
 # dual_inf_tol                        10                 # d=1
 # constr_viol_tol                     1e-4               # d=1e-4
 # compl_inf_tol                       1e-4:              # d=1e-4
-acceptable_tol                      1e-6               # d=1e-6
-acceptable_iter                       3                  # d=15
-acceptable_constr_viol_tol            1e-1               # d=1e-2
-acceptable_obj_change_tol             1e-6               # d=1e+20
+acceptable_tol                        1e-6               # d=1e-6
+acceptable_iter                       15                 # d=15
+acceptable_constr_viol_tol            1e-2               # d=1e-2
+acceptable_obj_change_tol             1                  # d=1e+20
 
 #--- C.3 NLP Scaling -----------------------------------------------------------
-# obj_scaling_factor                  1                  # d=1
+# obj_scaling_factor                  1                  # d=1 #(-1: maximize)
 
 # if obj_scaling_factor is negative, then the objective is maximized
 #obj_scaling_factor                   -1
 
 #--- C.4 NLP -------------------------------------------------------------------
-bound_relax_factor                    1                  # d=1e-8
+bound_relax_factor                    0                  # d=1e-8
 
 #--- C.5 Initialization --------------------------------------------------------
 #bound_push                            1e-4               # d=1e-2

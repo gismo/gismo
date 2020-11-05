@@ -114,7 +114,7 @@ void gsCurveFitting<T>::compute()
 
     //for computing the value of the basis function
     gsMatrix<T> values;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     //computing the values of the basis functions at some position
     curveBasis->eval_into(m_param_values.transpose(),values);
@@ -183,7 +183,7 @@ void gsCurveFitting<T>::compute_periodic()
 
     //for computing the value of the basis function
     gsMatrix<T> values;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     //computing the values of the basis functions at some position
     curveBasis.eval_into(m_param_values.transpose(),values);

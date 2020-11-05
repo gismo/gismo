@@ -307,15 +307,14 @@ void gsOptProblem<T>::solve()
     }
     
     status = app->OptimizeTNLP(m_data->tnlp);
+    //if (status != Ipopt::Solve_Succeeded)
+    //   gsInfo << "Optimization did not succeed.\n";
     
-        // Retrieve some statistics about the solve
-        numIterations  = app->Statistics()->IterationCount();
-        finalObjective = app->Statistics()->FinalObjective();
-        //gsInfo << "\n*** The problem solved in " << numIterations << " iterations!\n";
-        //gsInfo << "*** The final value of the objective function is " << finalObjective <<".\n";
-
-        if (status != Ipopt::Solve_Succeeded)
-           gsInfo << "Optimization did not succeed.\n";
+    // Retrieve some statistics about the solve
+    numIterations  = app->Statistics()->IterationCount();
+    finalObjective = app->Statistics()->FinalObjective();
+    //gsInfo << "\n*** The problem solved in " << numIterations << " iterations!\n";
+    //gsInfo << "*** The final value of the objective function is " << finalObjective <<".\n";
 
 #else
     

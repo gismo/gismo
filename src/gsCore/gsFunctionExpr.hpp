@@ -193,7 +193,7 @@ public:
 
 public:
 
-    gsFunctionExprPrivate(const int _dim)
+    gsFunctionExprPrivate(const short_t _dim)
     : vars(), dim(_dim)
     {
         GISMO_ENSURE( dim <= N_VARS, "The number of variables can be at most 7 (x,y,z,w,u,v,t)." );
@@ -267,7 +267,7 @@ public:
     SymbolTable_t             symbol_table;
     std::vector<Expression_t> expression;
     std::vector<std::string>  string;
-    index_t dim;
+    short_t dim;
 
 private:
     gsFunctionExprPrivate();
@@ -341,7 +341,7 @@ gsFunctionExpr<T>::gsFunctionExpr() : my(new PrivateData_t(0))
 { }
 
 template<typename T>
-gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string, int ddim)
+gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string, short_t ddim)
 : my(new PrivateData_t(ddim))
 {
     my->addComponent(expression_string);
@@ -350,7 +350,7 @@ gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string, int ddi
 template<typename T>
 gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string1,
                                   const std::string & expression_string2,
-                                  int ddim)
+                                  short_t ddim)
 : my(new PrivateData_t(ddim))
 {
     my->addComponent(expression_string1);
@@ -361,7 +361,7 @@ template<typename T>
 gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string1,
                                   const std::string & expression_string2,
                                   const std::string & expression_string3,
-                                  int ddim)
+                                  short_t ddim)
 : my(new PrivateData_t(ddim))
 {
     my->addComponent(expression_string1);
@@ -374,7 +374,7 @@ gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string1,
                    const std::string & expression_string2,
                    const std::string & expression_string3,
                    const std::string & expression_string4,
-                   int ddim)
+                   short_t ddim)
 : my(new PrivateData_t(ddim))
 {
     my->addComponent(expression_string1);
@@ -393,7 +393,7 @@ gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string1,
                    const std::string & expression_string7,
                    const std::string & expression_string8,
                    const std::string & expression_string9,
-                   int ddim)
+                   short_t ddim)
 : my(new PrivateData_t(ddim))
 {
     my->addComponent(expression_string1);
@@ -409,7 +409,7 @@ gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string1,
 
 template<typename T>
 gsFunctionExpr<T>::gsFunctionExpr(const std::vector<std::string> & expression_string,
-                                  int ddim)
+                                  short_t ddim)
 : my(new PrivateData_t(ddim))
 {
     for (size_t i = 0; i!= expression_string.size(); ++i)
@@ -475,7 +475,7 @@ short_t gsFunctionExpr<T>::domainDim() const
 template<typename T>
 short_t gsFunctionExpr<T>::targetDim() const
 {
-    return static_cast<int>(my->string.size());
+    return static_cast<short_t>(my->string.size());
 }
 
 template<typename T>
@@ -517,7 +517,7 @@ void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
     GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point dimension (expected: "
                    << my->dim <<", got "<< u.rows() <<")");
 
-    const int n = targetDim();
+    const short_t n = targetDim();
     result.resize(n, u.cols());
 
     const PrivateData_t & expr =
@@ -530,7 +530,7 @@ void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
     {
         copy_n(u.col(p).data(), expr.dim, expr.vars);
 
-        for (int c = 0; c!= n; ++c) // for all components
+        for (short_t c = 0; c!= n; ++c) // for all components
 #           ifdef GISMO_WITH_ADIFF
             result(c,p) = expr.expression[c].value().getValue();
 #           else
@@ -565,11 +565,11 @@ template<typename T>
 void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
     //gsDebug<< "Using finite differences (gsFunctionExpr::deriv_into) for derivatives.\n";
-    const index_t d = domainDim();
+    const short_t d = domainDim();
     GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point dimension (expected: "
                    << my->dim <<", got "<< u.rows() <<")");
 
-    const int n = targetDim();
+    const short_t n = targetDim();
     result.resize(d*n, u.cols());
 
     const PrivateData_t & expr =
@@ -581,15 +581,15 @@ void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
     for ( index_t p = 0; p!=u.cols(); p++ ) // for all evaluation points
     {
 #       ifdef GISMO_WITH_ADIFF
-        for (index_t k = 0; k!=d; ++k)
+        for (short_t k = 0; k!=d; ++k)
             expr.vars[k].setVariable(k,d,u(k,p));
-        for (int c = 0; c!= n; ++c) // for all components
+        for (short_t c = 0; c!= n; ++c) // for all components
             expr.expression[c].value().gradient_into(result.block(c*d,p,d,1));
             //result.block(c*d,p,d,1) = expr.expression[c].value().getGradient(); //fails on constants
 #       else
         copy_n(u.col(p).data(), expr.dim, expr.vars);
-        for (int c = 0; c!= n; ++c) // for all components
-            for ( int j = 0; j!=d; j++ ) // for all variables
+        for (short_t c = 0; c!= n; ++c) // for all components
+            for ( short_t j = 0; j!=d; j++ ) // for all variables
                 result(c*d + j, p) =
                     exprtk::derivative<T>(expr.expression[c], expr.vars[j], 0.00001 ) ;
 #       endif
@@ -599,12 +599,12 @@ void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
 template<typename T>
 void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
-    const index_t d = domainDim();
+    const short_t d = domainDim();
     GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point dimension (expected: "
                    << my->dim <<", got "<< u.rows() <<")");
 
-    const int n = targetDim();
-    const unsigned stride = d + d*(d-1)/2;
+    const short_t n = targetDim();
+    const index_t stride = d + d*(d-1)/2;
     result.resize(stride*n, u.cols() );
 
     const PrivateData_t & expr =
@@ -619,7 +619,7 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
         copy_n(u.col(p).data(), expr.dim, expr.vars);
 #       endif
 
-        for (int c = 0; c!= n; ++c) // for all components
+        for (short_t c = 0; c!= n; ++c) // for all components
         {
 #           ifdef GISMO_WITH_ADIFF
             for (index_t v = 0; v!=d; ++v)
@@ -635,14 +635,14 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
                     result(m++,p) = Hmat(k,l);
             }
 #           else
-            for (index_t k = 0; k!=d; ++k)
+            for (short_t k = 0; k!=d; ++k)
             {
                 // H_{k,k}
                 result(k,p) = exprtk::
                     second_derivative<T>(expr.expression[c], expr.vars[k], 0.00001);
 
-                index_t m = d;
-                for (index_t l=k+1; l<d; ++l)
+                short_t m = d;
+                for (short_t l=k+1; l<d; ++l)
                 {
                     // H_{k,l}
                     result(m++,p) =
@@ -680,12 +680,12 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
     expr.expression[coord].value().hessian_into(res);
 #   else
     copy_n(u.data(), expr.dim, expr.vars);
-    for( int j=0; j!=d; ++j )
+    for( index_t j=0; j!=d; ++j )
     {
         res(j,j) = exprtk::
             second_derivative<T>( expr.expression[coord], expr.vars[j], 0.00001);
 
-        for( int k = 0; k!=j; ++k )
+        for( index_t k = 0; k!=j; ++k )
             res(k,j) = res(j,k) =
                 mixed_derivative<T>( expr.expression[coord], expr.vars[k],
                                      expr.vars[j], 0.00001 );
@@ -701,7 +701,7 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
                                         const index_t j) const
 {
     GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point size.");
-    const int n = targetDim();
+    const short_t n = targetDim();
     gsMatrix<T> * res= new gsMatrix<T>(n,u.cols()) ;
 
     const PrivateData_t & expr =
@@ -716,7 +716,7 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
         copy_n(u.col(p).data(), expr.dim, expr.vars);
 #       endif
 
-        for (int c = 0; c!= n; ++c) // for all components
+        for (short_t c = 0; c!= n; ++c) // for all components
         {
 #           ifdef GISMO_WITH_ADIFF
             for (index_t v = 0; v!=expr.dim; ++v)
@@ -736,7 +736,7 @@ gsMatrix<T> gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
 {
     //gsDebug<< "Using finite differences (gsFunction::laplacian) for Laplacian.\n";
     GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point size.");
-    const int n = targetDim();
+    const short_t n = targetDim();
     gsMatrix<T> res(n,u.cols());
 
     const PrivateData_t & expr =
@@ -751,7 +751,7 @@ gsMatrix<T> gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
         copy_n(u.col(p).data(), expr.dim, expr.vars);
 #       endif
 
-        for (int c = 0; c!= n; ++c) // for all components
+        for (short_t c = 0; c!= n; ++c) // for all components
         {
 #           ifdef GISMO_WITH_ADIFF
             for (index_t v = 0; v!=expr.dim; ++v)
@@ -778,7 +778,7 @@ std::ostream & gsFunctionExpr<T>::print(std::ostream &os) const
     {
         os << my->string[0];
 
-        for (int k = 1; k<targetDim(); ++k)
+        for (short_t k = 1; k<targetDim(); ++k)
             os <<", " << my->string[k];
     }
     os <<" ]";
@@ -813,7 +813,7 @@ public:
         gsXmlNode * func = makeNode("FunctionExpr", data);
         func->append_attribute(makeAttribute("dim", obj.domainDim(), data));
 
-        const int tdim = obj.targetDim();
+        const short_t tdim = obj.targetDim();
 
         if ( tdim == 1)
         {
@@ -822,7 +822,7 @@ public:
         else
         {
             gsXmlNode * cnode;
-            for (int c = 0; c!=tdim; ++c)
+            for (short_t c = 0; c!=tdim; ++c)
             {
                 cnode = makeNode("c", obj.expression(c), data);
                 func->append_node(cnode);

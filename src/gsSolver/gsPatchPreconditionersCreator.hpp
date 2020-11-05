@@ -185,13 +185,20 @@ gsSparseMatrix<T> gsPatchPreconditionersCreator<T>::stiffnessMatrix(
     const gsBasis<T>& basis,
     const gsBoundaryConditions<T>& bc,
     const gsOptionList& opt,
-    T a
+    T alpha,
+    T beta
     )
 {
     const index_t d = basis.dim();
 
     std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(basis, bc, opt);
     std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
+
+    if ( beta!=1 )
+    {
+        for (index_t i=0; i!=d; ++i)
+            local_stiff[i] *= beta;
+    }
 
     gsSparseMatrix<T> K = give(local_stiff[d-1]);
     gsSparseMatrix<T> M = give(local_mass [d-1]);
@@ -200,13 +207,13 @@ gsSparseMatrix<T> gsPatchPreconditionersCreator<T>::stiffnessMatrix(
     {
         K  = local_mass[i].kron(K);
         K += local_stiff[i].kron(M);
-        if ( i != 0 || a != 0 )
+        if ( i != 0 || alpha != 0 )
             M = local_mass[i].kron(M);
     }
-    if (a==1)
+    if (alpha==1)
         K += M;
-    else if (a!=0)
-        K += a * M;
+    else if (alpha!=0)
+        K += alpha * M;
     return K;
 }
 
@@ -215,7 +222,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     const gsBasis<T>& basis,
     const gsBoundaryConditions<T>& bc,
     const gsOptionList& opt,
-    T a
+    T alpha,
+    T beta
     )
 {
     const index_t d = basis.dim();
@@ -227,6 +235,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     std::vector<OpPtr > local_mass_op (d);
     for (index_t i=0; i<d; ++i)
     {
+        if (beta!=1)
+            local_stiff[i] *= beta;
         local_stiff_op[i] = makeMatrixOp(local_stiff[i].moveToPtr());
         local_mass_op [i] = makeMatrixOp(local_mass [i].moveToPtr());
     }
@@ -239,13 +249,13 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
             gsKroneckerOp<T>::make( give(K),      local_mass_op [i]  ),
             gsKroneckerOp<T>::make( M,       give(local_stiff_op[i]) )
             );
-        if ( i < d-1 || a != 0 )
+        if ( i < d-1 || alpha != 0 )
             M = gsKroneckerOp<T>::make(M, local_mass_op[i]);
     }
-    if (a==1)
+    if (alpha==1)
         K = gsSumOp<T>::make( give(K), M );
-    else if (a!=0)
-        K = gsSumOp<T>::make( give(K), gsScaledOp<T>::make( M, a ) );
+    else if (alpha!=0)
+        K = gsSumOp<T>::make( give(K), gsScaledOp<T>::make( M, alpha ) );
 
     return K;
 }
@@ -255,15 +265,23 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     const gsBasis<T>& basis,
     const gsBoundaryConditions<T>& bc,
     const gsOptionList& opt,
-    T a
+    T alpha,
+    T beta
     )
 {
+    GISMO_ASSERT ( beta != 0, "gsPatchPreconditionersCreator<T>::fastDiagonalizationOp() does not work for beta==0." );
 
     const index_t d = basis.dim();
 
     // Assemble univariate
     std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(basis, bc, opt);
     std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
+
+    if (beta!=0)
+    {
+        for (index_t i=0; i!=d; ++i)
+            local_stiff[i] *= beta;
+    }
 
     // Determine overall size
     index_t sz = 1;
@@ -272,7 +290,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
     // Initialize the diagonal with 1
     gsMatrix<T> diag;
-    diag.setConstant(sz,1,a); // This is the pure-mass part!
+    diag.setConstant(sz,1,alpha); // This is the pure-mass part!
 
     index_t glob = sz; // Indexing value for setting up the Kronecker product
 
@@ -546,9 +564,12 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     const gsBoundaryConditions<T>& bc,
     const gsOptionList& opt,
     T sigma,
-    T alpha
+    T alpha,
+    T beta
     )
 {
+    GISMO_ASSERT ( beta != 0, "gsPatchPreconditionersCreator<T>::subspaceCorrectedMassSmootherOp() does not work for beta==0." );
+
     // Get some properties
     const index_t d = basis.dim();
     const T h = basis.getMinCellLength();
@@ -556,6 +577,12 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     // Assemble univariate
     std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(basis, bc, opt);
     std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
+
+    if (beta != 1)
+    {
+        for (index_t i=0; i!=d; ++i)
+            local_stiff[i] *= beta;
+    }
 
     // Setup of basis
     std::vector< gsSparseMatrix<T> > B_tilde(d), B_l2compl(d);
@@ -651,9 +678,9 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
         // If we are in the interior, we have to do the scaling here as there is no boundary correction.
         if ( numberInteriors == d )
-            correction[0] = gsScaledOp<T>::make( correction[0], 1./( alpha + numberInteriors/(sigma*h*h) ) );
+            correction[0] = gsScaledOp<T>::make( correction[0], 1./( alpha + beta*numberInteriors/(sigma*h*h) ) );
 
-        // Setup of bondary correction, like  K(x)M(x)M+M(x)K(x)M+M(x)M(x)K+(alpha + (d-3)/(sigma*h*h)) M(x)M(x)M
+        // Setup of bondary correction
         if ( numberInteriors < d )
         {
             gsSparseMatrix<T> bc_matrix;
@@ -670,7 +697,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
                             s = M_compl[d-1-k].kron(s);
                     }
                 }
-                bc_matrix = ( alpha + numberInteriors/(sigma*h*h) ) * s;
+                bc_matrix = ( alpha + beta*numberInteriors/(sigma*h*h) ) * s;
             }
 
             for ( index_t j = d-1; j>=0; --j )

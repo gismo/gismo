@@ -17,10 +17,11 @@ namespace gismo
 {
 
 template<class T>
-void gsDofMapper::init( const gsMultiBasis<T> & bases)
+void gsDofMapper::init( const gsMultiBasis<T> & bases, index_t nComp)
 {
     m_curElimId   = -1;
-    m_numCpldDofs =  1;
+    m_numCpldDofs.assign(nComp+1, 1); m_numCpldDofs.front()=0;
+    m_numElimDofs.assign(nComp+1,0);
     m_offset.clear();
 
     const size_t nPatches = bases.nBases();
@@ -29,24 +30,22 @@ void gsDofMapper::init( const gsMultiBasis<T> & bases)
     m_offset.reserve( nPatches );
     m_offset.push_back(0);
     for (size_t k = 1; k < nPatches; ++k)
-    {
         m_offset.push_back( m_offset.back() + bases[k-1].size() );
-    }
 
-    m_numFreeDofs = m_offset.back() + bases.back().size();
+    m_numFreeDofs.assign(1+nComp,m_offset.back() + bases.back().size()); m_numFreeDofs.front()=0;
 
-    m_dofs.resize( m_numFreeDofs, 0);
+    m_dofs.resize(nComp, std::vector<index_t>(m_numFreeDofs.back(), 0));
 }
 
 template<class T>
 void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
 {
+    const index_t numComp = bases.size();
     m_curElimId   = -1;
-    m_numCpldDofs =  1;
+    m_numCpldDofs.assign(numComp+1,1); m_numCpldDofs.front()=0;
     m_offset.clear();
 
     const size_t nPatches = bases[0]->nBases();
-    const index_t numComp = bases.size();
 
     //Checking if bases are same size in for components.
     std::vector<index_t> offsets(nPatches);
@@ -62,38 +61,37 @@ void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
             offsets[k] =  bases[comp]->basis(k).size();
         }
     }
+
     // Initialize offsets and dof holder
     m_offset.reserve( nPatches );
     m_offset.push_back(0);
     for (size_t k = 1; k < nPatches; ++k)
-    {
         m_offset.push_back( m_offset.back() + bases[0]->basis(k-1).size() );
-    }
 
     if (nPatches == 1)
     {
         index_t dofsPatches = 0;
         for (index_t comp = 0; comp < numComp; ++comp)
-        {
             dofsPatches += bases[comp]->back().size();
-        }
-        m_numFreeDofs = m_offset.back() + dofsPatches;
+        m_numFreeDofs.assign(numComp+1,m_offset.back() + dofsPatches);
+	m_numFreeDofs.front()=0;
     }
     //Assuming each component are of same size;
     //i.e. bases[comp]->back().size() are equal for all comp
     else
     {
-        m_numFreeDofs = (m_offset.back() + bases[0]->back().size())*nPatches;
+      m_numFreeDofs.assign(numComp, (m_offset.back() + bases[0]->back().size())*nPatches); m_numFreeDofs.front()=0;
     }
 
-    m_dofs.resize( m_numFreeDofs, 0);
+    m_numElimDofs.assign(numComp+1,0);
+    m_dofs.resize(numComp, std::vector<index_t>(m_numFreeDofs.back(), 0));
 }
 
 template<class T>
 void gsDofMapper::init(const gsMultiBasis<T>         &basis,
                        const gsBoundaryConditions<T> &bc, int unk)
 {
-    init(basis);
+    init(basis, 1); //one component
 
     /// \todo move this code to gsMultiBasis::getMapper
     for (typename gsBoundaryConditions<T>::const_iterator
@@ -101,10 +99,10 @@ void gsDofMapper::init(const gsMultiBasis<T>         &basis,
     {
         if (unk == -1 || it->unknown() == unk) // special value -1 eliminates all BCs found
         {
-            GISMO_ASSERT(it->ps.patch < m_offset.size(),
+            GISMO_ASSERT(it->ps.patch < static_cast<index_t>(m_offset.size()),
                          "Problem: a boundary condition is set on a patch id which does not exist.");
 
-            gsMatrix<unsigned> bnd = basis[it->ps.patch].boundary(it->ps.side());
+            gsMatrix<index_t> bnd = basis[it->ps.patch].boundary(it->ps.side());
             markBoundary(it->ps.patch, bnd);
         }
     }
@@ -115,7 +113,7 @@ void gsDofMapper::init(const gsMultiBasis<T>         &basis,
     {
         if (unk == -1 || it->unknown == unk)
         {
-            GISMO_ASSERT(it->patch < m_offset.size(),
+            GISMO_ASSERT(it->patch < static_cast<index_t>(m_offset.size()),
                          "Problem: a corner boundary condition is set on a patch id which does not exist.");
 
             eliminateDof(basis[it->patch].functionAtCorner(it->corner), it->patch);
@@ -124,15 +122,15 @@ void gsDofMapper::init(const gsMultiBasis<T>         &basis,
 }
 
 template<class T>
-void gsDofMapper::initSingle( const gsBasis<T> & basis)
+void gsDofMapper::initSingle( const gsBasis<T> & basis, index_t nComp)
 {
     m_curElimId   = -1;
-    m_numCpldDofs =  1;
-
+    m_numFreeDofs.assign(nComp+1,basis.size()); m_numFreeDofs.front()=0;
+    m_numCpldDofs.assign(nComp+1,1); m_numCpldDofs.front()=0;
+    m_numElimDofs.assign(nComp+1,0);
     m_offset.resize(1,0);
-    m_numFreeDofs = basis.size();
-    m_dofs.resize( m_numFreeDofs, 0);
+    m_dofs.resize(nComp, std::vector<index_t>(m_numFreeDofs.back(), 0));
 }
 
-}
+}//namespace gismo
 

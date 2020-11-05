@@ -17,16 +17,13 @@
 #include <gsCore/gsConfig.h>
 #include <gsUtils/gsUtils.h>
 #include <cstdlib>
+#include <sys/stat.h>
 
 #if defined _WIN32
 #include <windows.h>
 #include <direct.h>
 #include <ShlObj.h>
-#ifdef __MINGW32__
-#include <sys/stat.h>
-#endif
 #else
-#include <sys/stat.h>
 #include <dlfcn.h>
 #include <unistd.h>
 #include <pwd.h>
@@ -37,6 +34,10 @@
 #include <mach-o/dyld.h>
 #include <cstring>
 #include <sys/syslimits.h>
+#endif
+
+#if defined __linux__
+#include <limits.h>
 #endif
 
 namespace gismo
@@ -100,7 +101,7 @@ const std::string& gsFileManager::getValidPathSeparators()
     return ps;
 }
 
-const char gsFileManager::getNativePathSeparator()
+char gsFileManager::getNativePathSeparator()
 {
     return getValidPathSeparators()[0];
 }
@@ -151,7 +152,7 @@ bool gsFileManager::isFullyQualified(const std::string& fn)
     // case "c:\\abc"
     if ( fn.size() > 2 && isalpha(fn[0]) && fn[1] == ':')
     {
-        for (int i = 0; i < getValidPathSeparators().length(); ++i)
+        for (size_t i = 0; i < getValidPathSeparators().length(); ++i)
         {
             valid = valid || (fn[2] == getValidPathSeparators()[i]);
         }
@@ -221,7 +222,13 @@ inline bool _addSearchPaths(const std::string& in, std::vector<std::string>& out
             if (*p.rbegin() != '/')
                 p.push_back('/');
 #endif
+
+#if defined(_MSC_VER) && _MSC_VER < 1900
+            // with VS2013, a path must not end with pathseperator
+            if(_dirExistsWithoutSearching(gsFileManager::getCanonicRepresentation(p + "..")))
+#else
             if (_dirExistsWithoutSearching(p))
+#endif // defined(_MSC_VER) && _MSC_VER < 1900
                 out.push_back(p);
             else
                 ok = false;
