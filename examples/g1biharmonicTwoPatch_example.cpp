@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
     {
         case 0:
             string_geo = "planar/twoPatches/square_diagonal.xml";
-            numDegree = 2;
+            numDegree = 1;
             break;
         case 1:
             string_geo = "planar/twoPatches/square_curved.xml";
@@ -153,8 +153,6 @@ int main(int argc, char *argv[])
     fd.getId(0, multiPatch_init); // id=0: Multipatch domain
     multiPatch_init.computeTopology();
 
-    gsWriteParaview(multiPatch_init,"geometry_init",2000,true);
-
 
 /*   TODO NURBS
     gsMultiBasis<> mb_test(multiPatch_init, false);
@@ -168,8 +166,10 @@ int main(int argc, char *argv[])
     multiPatch_init.degreeElevate(g1OptionList.getInt("degree") + g1OptionList.getInt("P_geo"));
 
     //std::vector<int> mul={0, multiPatch_init.patch(0).degree(1) - g1OptionList.getInt("regularity")};
-    //multiPatch_init.patch(0).uniformRefine(1,mul);
+    //multiPatch_init.patch(1).uniformRefine(1,mul);
     //multiPatch_init.patch(1).degreeElevate(1);
+
+    gsWriteParaview(multiPatch_init,"geometry_init",2000,true);
 
     gsVector<real_t> l2Error_vec(g1OptionList.getInt("loop") + 1);
     gsVector<real_t> h1SemiError_vec(g1OptionList.getInt("loop") + 1);
@@ -232,6 +232,10 @@ int main(int argc, char *argv[])
             if (!g1OptionList.getSwitch("isogeometric"))
             {
                 gsMultiPatch<> multiPatch_temp(multiPatch_init);
+
+                //std::vector<int> mul={0, multiPatch_init.patch(0).degree(1) - g1OptionList.getInt("regularity")};
+                //multiPatch_temp.patch(0).uniformRefine(1,mul);
+
                 multiPatch_temp.patch(0).degreeElevate(g1OptionList.getInt("p_tilde") - 1, 1);
                 multiPatch_temp.patch(1).degreeElevate(g1OptionList.getInt("p_tilde") - 1, 1);
 
@@ -261,12 +265,15 @@ int main(int argc, char *argv[])
                 //gsInfo << "Basis G1: " << mb_g1.basis(0) << "\n";
                 //gsInfo << "Basis G1: " << mb_g1.basis(1) << "\n";
                 mb.push_back(mb_g1);
+
+                gsBSplineBasis<> basis_bspline = dynamic_cast<gsBSplineBasis<real_t> &>(mb[1].basis(0).component(1));
+                //gsInfo << "Basis: " << basis_bspline.knots().asMatrix() << "\n";
             }
 
             //mb.degreeIncrease(1,0);
             //mb.uniformRefine(num_knots[refinement_level], 3-g1OptionList.getInt("regularity"));
 
-            gsBSplineBasis<> basis_bspline = dynamic_cast<gsBSplineBasis<real_t> &>(mb[0].basis(0).component(0));
+            //gsBSplineBasis<> basis_bspline = dynamic_cast<gsBSplineBasis<real_t> &>(mb[0].basis(0).component(1));
             //gsInfo << "Basis: " << basis_bspline.knots().asMatrix() << "\n";
             //gsInfo << "Basis: " << mb.basis(1) << "\n";
             //gsInfo << "Basis: " << mb[0].basis(0) << "\n";
@@ -443,7 +450,7 @@ int main(int argc, char *argv[])
             if (g1OptionList.getSwitch("info"))
                 gsInfo << "Computing Boundary dofs ... \n";
             g1BiharmonicAssembler
-                .computeDirichletDofsL2Proj(mb,g1System); // Compute boundary values (Type 1) // maybe too much memmory!!!
+                .computeDirichletDofsL2Proj(mb,g1System, g1OptionList.getSwitch("isogeometric")); // Compute boundary values (Type 1) // maybe too much memmory!!!
             //gsInfo << clock.stop() << "\n";
             clock.restart();
 

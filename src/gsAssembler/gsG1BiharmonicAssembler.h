@@ -77,7 +77,7 @@ public:
     void constructSolution(const gsMatrix<T>& solVector,
                            gsMultiPatch<T>& result, int unk = 0);
 
-    void computeDirichletDofsL2Proj(std::vector<gsMultiBasis<>> & mb, gsG1System<real_t> &  g1System);
+    void computeDirichletDofsL2Proj(std::vector<gsMultiBasis<>> & mb, gsG1System<real_t> &  g1System, bool isogeometric);
     void computeDirichletAndNeumannDofsL2Proj(gsG1System<real_t> &  g1System);
 
 
@@ -424,7 +424,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::applyMixed(gsVisitorMixed<T> & visito
 }
 
 template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vector<gsMultiBasis<>> & mb, gsG1System<real_t> &  g1System)
+void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vector<gsMultiBasis<>> & mb, gsG1System<real_t> &  g1System, bool isogeometric)
 {
     gsVector<> numBoundaryVertexFunctions = g1System.get_numBoundaryVertexFunctions();
     gsVector<> numBoundaryEdgeFunctions = g1System.get_numBoundaryEdgeFunctions();
@@ -475,7 +475,8 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vecto
 
         gsMultiPatch<T> multiPatch_Edges;
         gsTensorBSplineBasis<2,real_t> temp_basis = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(mb[0].basis(patchIdx)); // TODO general
-        gsTensorBSplineBasis<2,real_t> temp_basis2 = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(mb[1].basis(patchIdx)); // TODO general
+        gsTensorBSplineBasis<2,real_t> temp_basis2 = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(mb[isogeometric ? 0 : 1].basis(patchIdx)); // TODO general
+
         for (size_t i = 0; i < numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge]; i++)
         {
             index_t ii = numBoundaryEdgeFunctions[row_Edge] + i;
