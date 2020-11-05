@@ -1,5 +1,5 @@
 always-run:
-  script: echo 'this should always run'
+  script: echo 'this should always run update'
 
 on-pull-requests:
   script: echo 'this should run on pull requests'
