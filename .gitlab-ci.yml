@@ -1,16 +1,20 @@
 stages:
   - build
 
-# CentOS 7, GCC 4.8.5, C++98, Release
-centos7_gcc4.8.5_cxx98_release:
+# GCC 4.8.5, C++98, Release
+linux_gcc4.8.5_cxx98_release:
   stage: build
-  image: centos/devtoolset-7-toolchain-centos7
+  image: gcc:4.8.5
   script:
+    - apt-get update -y
+    - apt-get install cmake -y
     - mkdir -p build
     - cd build
     - CC=gcc CXX=g++  cmake .. -DCMAKE_CXX_STANDARD=98 -DCMAKE_BUILD_TYPE=Release
-    - make
+    - make -j4
     - make test
+  except:
+    - external_pull_requests
 
 #always-run:
 #  script: echo 'this should always run update'
