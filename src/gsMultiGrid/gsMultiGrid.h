@@ -127,8 +127,8 @@ public:
     /// @param restrict                  Linear operators representing the restriction operators
     /// @param coarseSolver              Linear operator representing the exact solver on the coarsest grid level,
     ///                                  defaulted to a direct solver (PartialPivLUSolver)
-    static uPtr make( const std::vector<OpPtr>& ops, const std::vector<OpPtr>& prolong, const std::vector<OpPtr>& restrict, OpPtr coarseSolver = OpPtr() )
-    { return uPtr( new gsMultiGridOp( ops, prolong, restrict, give(coarseSolver) ) ); }
+    static uPtr make( const std::vector<OpPtr>& ops, const std::vector<OpPtr>& prolongation, const std::vector<OpPtr>& restriction, OpPtr coarseSolver = OpPtr() )
+    { return uPtr( new gsMultiGridOp( ops, prolongation, restriction, give(coarseSolver) ) ); }
 
 private:
     // Init function that is used by matrix based constructors

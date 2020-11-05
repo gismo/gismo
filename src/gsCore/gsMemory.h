@@ -20,8 +20,8 @@
 #include <malloc.h>
 #endif
 
-#ifdef __GLIBCXX__
-#  ifdef __INTEL_COMPILER
+#if  __cplusplus < 201103 && defined( __GLIBCXX__ )
+#  if defined(__INTEL_COMPILER)
 #    include <boost/shared_ptr.hpp>
 #    include <boost/weak_ptr.hpp>
 #  else
@@ -51,13 +51,15 @@ memory::shared_ptr<int> B;
 \endcode
 */
 
-#ifdef __INTEL_COMPILER
+#if   __cplusplus < 201103 && defined( __GLIBCXX__ )
+#  if defined(__INTEL_COMPILER)
 using boost::shared_ptr;
 using boost::weak_ptr;
-#elif __cplusplus < 201103 && defined( __GLIBCXX__ )
+#  else
 using std::tr1::shared_ptr;
 using std::tr1::weak_ptr; 
-#else
+#  endif
+#else // libc++ or other
 using std::shared_ptr;
 using std::weak_ptr;
 #endif 
@@ -406,7 +408,7 @@ inline void copy(T begin, T end, U* result)
 
 } // namespace gismo
 
-#if __cplusplus < 201103L && _MSC_VER < 1600
+#if __cplusplus < 201103L && _MSC_VER < 1600 && !defined(nullptr)
 // Define nullptr for compatibility with newer C++
 static const gismo::memory::nullptr_t nullptr ={};
 #endif
