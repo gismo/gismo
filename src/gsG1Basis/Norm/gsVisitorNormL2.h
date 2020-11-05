@@ -86,29 +86,31 @@ public:
             for (index_t i = g1System.get_numBoundaryVertexFunctions()[3]; i < g1System.get_numBoundaryVertexFunctions()[4]; i++)
                 for (index_t j = 0; j < actives2.rows(); j++)
                     f1vals += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives2.at(j)) * basisData2.row(j);
+
+
+
+            for (index_t i = g1System.get_numInterfaceFunctions().last(); i < g1System.get_numBoundaryVertexFunctions()[1]; i++) // -1 bcs of interior solution
+                for (index_t j = 0; j < actives.rows(); j++)
+                    f1vals += sol_sparse->at(i,g1System.get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * basisData.row(j);
+
+            for (index_t i = g1System.get_numBoundaryVertexFunctions()[2]; i < g1System.get_numBoundaryVertexFunctions()[3]; i++)
+                for (index_t j = 0; j < actives.rows(); j++)
+                    f1vals += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j)) * basisData.row(j);
+
+            for (index_t i = g1System.get_numBoundaryVertexFunctions()[4]; i < g1System.get_numBoundaryVertexFunctions().last(); i++)
+                for (index_t j = 0; j < actives.rows(); j++)
+                    f1vals += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j)) * basisData.row(j);
         }
         else
         {
             for (index_t i = 0; i < g1System.get_numInterfaceFunctions().last(); i++)
                 for (index_t j = 0; j < actives.rows(); j++)
                     f1vals += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j)) * basisData.row(j);
+
+            for (index_t i = g1System.get_numInterfaceFunctions().last(); i < sol_sparse->rows() - 1; i++) // -1 bcs of interior solution
+                for (index_t j = 0; j < actives.rows(); j++)
+                    f1vals += sol_sparse->at(i,g1System.get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * basisData.row(j);
         }
-
-
-
-
-
-        for (index_t i = g1System.get_numInterfaceFunctions().last(); i < g1System.get_numBoundaryVertexFunctions()[1]; i++) // -1 bcs of interior solution
-            for (index_t j = 0; j < actives.rows(); j++)
-                f1vals += sol_sparse->at(i,g1System.get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * basisData.row(j);
-
-        for (index_t i = g1System.get_numBoundaryVertexFunctions()[2]; i < g1System.get_numBoundaryVertexFunctions()[3]; i++)
-            for (index_t j = 0; j < actives.rows(); j++)
-                f1vals += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j)) * basisData.row(j);
-
-        for (index_t i = g1System.get_numBoundaryVertexFunctions()[4]; i < g1System.get_numBoundaryVertexFunctions().last(); i++)
-            for (index_t j = 0; j < actives.rows(); j++)
-                f1vals += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j)) * basisData.row(j);
 
 
         for (index_t j = 0; j < actives.rows(); j++) // interior solution

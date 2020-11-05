@@ -570,7 +570,7 @@ void gsG1System<T>::constructG1Solution(const gsMatrix<T> & solVector, std::vect
             {
                 index_t ii = numBasisFunctions[4][rowVertex] + i;
                 if (rowVertex == 1 || rowVertex == 3)
-                    g1Basis.at(patchIdx).addPatch(mb[1].basis(patchIdx).makeGeometry(D_sparse.block(ii,numBasisFunctions[6][patchIdx],1,mb[1].basis(patchIdx).size()).transpose() *
+                    g1Basis.at(patchIdx).addPatch(mb[m_isogeometric ? 0 : 1].basis(patchIdx).makeGeometry(D_sparse.block(ii,numBasisFunctions[6][patchIdx],1,mb[m_isogeometric ? 0 : 1].basis(patchIdx).size()).transpose() *
                         m_g1.at(ii)));
                 else
                     g1Basis.at(patchIdx).addPatch(mb[0].basis(patchIdx).makeGeometry(D_sparse.block(ii,numBasisFunctions[5][patchIdx],1,mb[0].basis(patchIdx).size()).transpose() *

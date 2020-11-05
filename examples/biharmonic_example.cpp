@@ -35,9 +35,9 @@ int main(int argc, char *argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     dirichlet::strategy dirStrategy = dirichlet::elimination;
-    iFace::strategy intStrategy = iFace::glue;
+    iFace::strategy intStrategy = iFace::none;
 
-/*
+
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
                               " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)",2);
 
 
-*/
+/*
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
     gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
                               "0",
                               "0",
                               3);
-/*
+
     //gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*(x/cos(45)))*cos(4*pi*y) - cos(4*pi*(x/cos(45))) - cos(4*pi*y))",3);
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(-cos(4*pi*x/cos(45))*1/(cos(45)*cos(45)*cos(45)*cos(45)) + cos(4*pi*y) * "
                               "(-1 + cos(4*pi*x/cos(45)) * (1+1/(cos(45)*cos(45))) * (1+1/(cos(45)*cos(45))) ))",3);
@@ -122,6 +122,10 @@ int main(int argc, char *argv[])
         case 1: // surface
             string_geo = "KirchhoffLoveGeo/squareSurface3d.xml";
             break;
+        case 2: // 2 Patch
+            string_geo = "planar/twoPatches/square_curved.xml";
+            numDegree = 0;
+            break;
 
         default:
             gsInfo << "No geometry is used! \n";
@@ -147,32 +151,15 @@ int main(int argc, char *argv[])
 
     basis.uniformRefine();
 
-    gsInfo << "Degree: " << basis.maxCwiseDegree() << "\n";
-
     //Setting up boundary conditions
-    gsBoundaryConditions<> bcInfo;
-    bcInfo.addCondition( boundary::west,  condition_type::dirichlet, &solVal);
-    bcInfo.addCondition( boundary::east,  condition_type::dirichlet, &solVal);
-    bcInfo.addCondition( boundary::north, condition_type::dirichlet, &solVal);
-    bcInfo.addCondition( boundary::south, condition_type::dirichlet, &solVal);
-
-    // Second boundary condition
-    gsBoundaryConditions<> bcInfo2;
-    if (!neumann)
+    gsBoundaryConditions<> bcInfo, bcInfo2;
+    for (gsMultiPatch<>::const_biterator bit = geo.bBegin(); bit != geo.bEnd(); ++bit)
     {
-        //Laplace condition of second kind
-        bcInfo2.addCondition( boundary::west,  condition_type::laplace, &laplace);
-        bcInfo2.addCondition( boundary::east,  condition_type::laplace, &laplace);
-        bcInfo2.addCondition( boundary::north, condition_type::laplace, &laplace);
-        bcInfo2.addCondition( boundary::south, condition_type::laplace, &laplace);
-    }
-    else
-    {
-        //Neumann condition of second kind
-        bcInfo2.addCondition( boundary::west,  condition_type::neumann, &sol1der);
-        bcInfo2.addCondition( boundary::east,  condition_type::neumann, &sol1der);
-        bcInfo2.addCondition( boundary::north, condition_type::neumann, &sol1der);
-        bcInfo2.addCondition( boundary::south, condition_type::neumann, &sol1der);
+        bcInfo.addCondition(*bit, condition_type::dirichlet, &solVal);
+        if (!neumann)
+            bcInfo2.addCondition(*bit, condition_type::laplace, &laplace);
+        else
+            bcInfo2.addCondition(*bit,  condition_type::neumann, &sol1der);
     }
 
 
@@ -208,10 +195,6 @@ int main(int argc, char *argv[])
         solver.analyzePattern(BiharmonicAssembler.matrix());
         solver.factorize(BiharmonicAssembler.matrix());
         gsMatrix<> solVector = solver.solve(BiharmonicAssembler.rhs());
-
-        gsInfo << "rhs: " << BiharmonicAssembler.rhs() << "\n";
-        gsInfo << "Matrix: " << BiharmonicAssembler.matrix().toDense() << "\n";
-        gsInfo << "sol: " << solVector << "\n";
 
         gsInfo<< "." <<std::flush; // Linear solving done
 

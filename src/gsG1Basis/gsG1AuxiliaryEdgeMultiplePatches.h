@@ -270,7 +270,7 @@ public:
 
             gsApproxGluingData<real_t> gluingData(test_mp, test_mb, false, g1OptionList); // Need both patches and bases
 
-            //gluingDataCondition(gluingData.get_alpha_S_tilde(0), gluingData.get_alpha_S_tilde(1), gluingData.get_beta_S_tilde(0), gluingData.get_beta_S_tilde(1));
+            gluingDataCondition(gluingData.get_alpha_S_tilde(0), gluingData.get_alpha_S_tilde(1), gluingData.get_beta_S_tilde(0), gluingData.get_beta_S_tilde(1));
 
 
             gsApproxG1BasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), auxGeom[0].getBasis().basis(0), basis_pm, gluingData, 1, false, g1OptionList);

@@ -144,8 +144,8 @@ void gsBiharmonicAssembler<T,bhVisitor>::assemble()
         m_ppde.bcFirstKind().neumannSides() );
 
     // Laplace conditions of second kind
-    //Base::template push<gsVisitorLaplaceBoundaryBiharmonic<T> >(
-    //    m_ppde.bcSecondKind().laplaceSides() );
+    Base::template push<gsVisitorLaplaceBoundaryBiharmonic<T> >(
+        m_ppde.bcSecondKind().laplaceSides() );
 
     if ( m_options.getInt("InterfaceStrategy") == iFace::dg )
         gsWarn <<"DG option ignored.\n";
@@ -306,13 +306,6 @@ void gsBiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofs()
 
                     unormal.normalize();
 
-                    gsInfo << "rhsVals3: " << (Jk * G_inv).transpose() * unormal << "\n";
-
-                    gsInfo << "unormal: " <<  unormal.transpose() << "\n";
-                    gsInfo << "rhsVals2: " <<  rhsVals2.col(k).transpose() << "\n";
-
-
-
                     // Only run through the active boundary functions on the element:
                     for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
                     {
@@ -401,8 +394,6 @@ void gsBiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofs()
 
     m_ddof[0] = solver.compute( globProjMat ).solve ( globProjRhs );
     //m_ddof[0].setZero();
-
-    gsInfo << "Boundary: " << m_ddof[0] << "\n";
 }
 // End
 
