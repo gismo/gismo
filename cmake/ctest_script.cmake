@@ -77,6 +77,7 @@
 ##   GISMO_SUBMODULES
 ##   LABELS_FOR_SUBPROJECTS
 ##   PROJECT_NAME
+##   UPDATE_REPO
 ##   UPDATE_MODULES
 ##   UPDATE_TYPE
 ##
@@ -305,6 +306,11 @@ if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xUndefinedBehaviorSanitizer")
   set(ENV{UBSAN_OPTIONS} "print_stacktrace=1")
 endif()
 
+# Update G+Smo from remote (no effect on Continuous builds)
+if (NOT DEFINED UPDATE_REPO)
+  set(UPDATE_REPO ON)
+endif()
+
 # Update type (git, svn, wget or url)
 if (NOT DEFINED UPDATE_TYPE)
   set(UPDATE_TYPE git)
@@ -448,7 +454,7 @@ if(NOT DEFINED CTEST_BUILD_NAME)
   message("NAME: ${CTEST_BUILD_NAME}")
   
 if(NOT CTEST_BUILD_JOBS)
-  include(ProcessorCount)
+  include(ProcessorCousnt)
   ProcessorCount(NPROC)
   #message("Number of processors: ${NPROC}")
   if(${NPROC} EQUAL 0)
@@ -627,7 +633,7 @@ set(CTEST_NOTES_FILES ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
   ctest_start(${CTEST_TEST_MODEL})
-  if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
+  if(UPDATE_REPO AND NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
     update_gismo(updcount)
   endif()
   run_ctests()
