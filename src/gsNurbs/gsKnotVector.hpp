@@ -305,7 +305,7 @@ void gsKnotVector<T>::insert( T knot, mult_t mult )
     nonConstMultIterator upos = m_multSum.begin() + uit.uIndex();
     if (upos==m_multSum.end() || *uit != knot) // knot value does not exist ?
         upos = m_multSum.insert(upos, fa );
-    std::transform(upos, m_multSum.end(), upos, std::bind1st(std::plus<mult_t>(), mult));
+    std::transform(upos, m_multSum.end(), upos, GS_BIND1ST(std::plus<mult_t>(), mult));
 
     // insert repeated knots
     m_repKnots.insert(m_repKnots.begin() + fa, mult, knot);
@@ -404,9 +404,9 @@ typename gsKnotVector<T>::mult_t gsKnotVector<T>::multiplicityIndex( mult_t knot
                   << m_repKnots.size() << ")." );
 
     iterator it = begin() + knotIndex;
-    iterator L  = std::find_if(it,end(),std::bind1st(std::not_equal_to<T>(),*it));
+    iterator L  = std::find_if(it,end(),GS_BIND1ST(std::not_equal_to<T>(),*it));
     reverse_iterator F = std::find_if(reverse_iterator(it),rend(),
-                                      std::bind1st(std::not_equal_to<T>(),*it));
+                                      GS_BIND1ST(std::not_equal_to<T>(),*it));
     return L-F.base();
     // equivalent:
     //return (sbegin() + knotIndex).multiplicity();
@@ -443,7 +443,7 @@ void gsKnotVector<T>::reverse()
     // reverse the multiplicity
     std::reverse  (m_multSum.begin(), m_multSum.end()-1);
     std::transform(m_multSum.begin(), m_multSum.end()-1, m_multSum.begin(),
-                   std::bind1st(std::minus<mult_t>(), m_multSum.back() ) );
+                   GS_BIND1ST(std::minus<mult_t>(), m_multSum.back() ) );
 
     // reverse the knots
     std::reverse(m_repKnots.begin(), m_repKnots.end());
@@ -553,7 +553,7 @@ void gsKnotVector<T>::rebuildMultSum()
 
     while(it!=ee)
     {
-        it = std::find_if(it,ee,std::bind1st(std::not_equal_to<T>(),*it));
+        it = std::find_if(it,ee,GS_BIND1ST(std::not_equal_to<T>(),*it));
         m_multSum.push_back(it-bb);
     }
 }
@@ -791,7 +791,7 @@ void gsKnotVector<T>::addConstant( T amount )
     // std::for_each( m_repKnots.begin(), m_repKnots.end(),  [amount](T& k){ k+= amount;} );
 
     std::transform( m_repKnots.begin(), m_repKnots.end(), m_repKnots.begin(),
-                    std::bind1st(std::plus<T>(),amount) );
+                    GS_BIND1ST(std::plus<T>(),amount) );
 }
 
 template<typename T>
