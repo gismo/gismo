@@ -218,6 +218,12 @@ public:
 
         rhsVals_alpha = alpha_S;
         rhsVals_beta = beta_S - lambda0 * (ones - md.points).cwiseProduct(alpha_S) - lambda1 * (md.points).cwiseProduct(alpha_S);
+/*
+        if (m_patchID == 0)
+            rhsVals_beta = - 2.0 * ones + 3.5 * md.points;
+        else
+            rhsVals_beta =  ones - 2.5 * md.points;
+*/
 
 
 /*        if (h1projection)
