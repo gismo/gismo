@@ -454,7 +454,7 @@ if(NOT DEFINED CTEST_BUILD_NAME)
   message("NAME: ${CTEST_BUILD_NAME}")
   
 if(NOT CTEST_BUILD_JOBS)
-  include(ProcessorCousnt)
+  include(ProcessorCount)
   ProcessorCount(NPROC)
   #message("Number of processors: ${NPROC}")
   if(${NPROC} EQUAL 0)
