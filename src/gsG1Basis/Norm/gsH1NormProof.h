@@ -389,20 +389,21 @@ protected:
         {
             //const T d = element.dim();
             // Transform the gradients
-            //geoEval.transformGradients(k, f1ders[0], f1pders[0]);
-            //geoEval.transformGradients(k, f1ders[1], f1pders[1]);
+            geoEval.transformGradients(k, f1ders[0], f1pders[0]);
+            geoEval.transformGradients(k, f1ders[1], f1pders[1]);
 
             //geoEval_R.transformGradients(k, f2ders, f2pders);
 
             // Compute the unit normal
-            //gsVector<T> unormal;
+            gsVector<T> unormal;
 
-            //geoEval.outerNormal(k, side, unormal);
+            geoEval.outerNormal(k, side, unormal);
 
             const T weight = quWeights[k];
 
             // f2ders : N X 1
-            sum += weight * ( (f1ders[0] - f1ders[1]).transpose() * normal ).squaredNorm() ;
+            //sum += weight * ( (f1ders[0] - f1ders[1]).transpose() * normal ).squaredNorm() ;
+            sum += weight * ( (f1pders[0] - f1pders[1]).transpose() * unormal ).squaredNorm() ;
         }
         accumulated += sum;
 
