@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
     {
         case 0:
             string_geo = "planar/twoPatches/square_diagonal.xml";
-            numDegree = 1;
+            numDegree = 2;
             break;
         case 1:
             string_geo = "planar/twoPatches/square_curved.xml";
@@ -152,7 +152,6 @@ int main(int argc, char *argv[])
     gsMultiPatch<> multiPatch_init;
     fd.getId(0, multiPatch_init); // id=0: Multipatch domain
     multiPatch_init.computeTopology();
-
 
 /*   TODO NURBS
     gsMultiBasis<> mb_test(multiPatch_init, false);
@@ -266,8 +265,13 @@ int main(int argc, char *argv[])
                 //gsInfo << "Basis G1: " << mb_g1.basis(1) << "\n";
                 mb.push_back(mb_g1);
 
-                gsBSplineBasis<> basis_bspline = dynamic_cast<gsBSplineBasis<real_t> &>(mb[1].basis(0).component(1));
-                //gsInfo << "Basis: " << basis_bspline.knots().asMatrix() << "\n";
+                if (g1OptionList.getSwitch("info"))
+                {
+                    gsBSplineBasis<> basis_bspline = dynamic_cast<gsBSplineBasis<real_t> &>(mb[0].basis(0).component(1));
+                    gsBSplineBasis<> basis_bspline_g1 = dynamic_cast<gsBSplineBasis<real_t> &>(mb[1].basis(0).component(1));
+                    gsInfo << "Basis: " << basis_bspline.knots().asMatrix() << "\n";
+                    gsInfo << "Basis G1: " << basis_bspline_g1.knots().asMatrix() << "\n";
+                }
             }
 
             //mb.degreeIncrease(1,0);

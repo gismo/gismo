@@ -101,6 +101,8 @@ public:
         gsMatrix<> temp = beta.cwiseProduct(der_N_i_plus);
         //f2ders = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(N_1) * tau_1 / p; // beta
         f2ders = ( uv == 0 ? -1 : +1 ) * alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p;
+        //f2ders = ( uv == 0 ? -1 : +1 ) * N_j_minus.cwiseProduct(N_1) * tau_1 / p;
+
 
         rhsGrads2.setZero(2,quNodes.cols());
         rhsGrads2.row(1-uv) = ( uv == 0 ? -1 : +1 ) * alpha.cwiseProduct(N_j_minus.cwiseProduct(der_N_1)) * tau_1 / p;
@@ -118,7 +120,7 @@ public:
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             const T weight = quWeights[k];
-            sum += weight * (rhsGrads.col(k) - rhsGrads2.col(k)).squaredNorm();
+            sum += weight * (f1ders.col(k) - f2ders.col(k)).squaredNorm();
         }
         accumulated += sum;
         return sum;

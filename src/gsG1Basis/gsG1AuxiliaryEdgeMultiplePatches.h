@@ -200,11 +200,6 @@ public:
         if(g1OptionList.getInt("user") == user::pascal)
         {
 
-
-
-
-
-
             // Compute alpha^S and beta
             //gsApproxGluingData3
 
@@ -250,7 +245,8 @@ public:
 
 
             basis_pm.push_back(basis_plus);
-            //gsInfo << "Basis plus : " << basis_plus << "\n";
+            if (g1OptionList.getSwitch("info"))
+                gsInfo << "Basis plus : " << basis_plus.knots().asMatrix() << "\n";
 
             gsKnotVector<real_t> kv_minus(0,1,0,p+1-1,p-1-m_r); // p-1,r //-1 bc p-1
             gsBSplineBasis<> basis_minus(kv_minus);
@@ -263,14 +259,16 @@ public:
                     basis_minus.insertKnot(basis_2.knot(i),p-1-m_r);
 
             basis_pm.push_back(basis_minus);
-            //gsInfo << "Basis minus : " << basis_minus << "\n";
+            if (g1OptionList.getSwitch("info"))
+                gsInfo << "Basis minus : " << basis_minus.knots().asMatrix() << "\n";
 
 
 
 
             gsApproxGluingData<real_t> gluingData(test_mp, test_mb, false, g1OptionList); // Need both patches and bases
 
-            //gluingDataCondition(gluingData.get_alpha_S_tilde(0), gluingData.get_alpha_S_tilde(1), gluingData.get_beta_S_tilde(0), gluingData.get_beta_S_tilde(1));
+            if (g1OptionList.getSwitch("info"))
+                gluingDataCondition(gluingData.get_alpha_S_tilde(0), gluingData.get_alpha_S_tilde(1), gluingData.get_beta_S_tilde(0), gluingData.get_beta_S_tilde(1));
 
 
             gsApproxG1BasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), auxGeom[0].getBasis().basis(0), basis_pm, gluingData, 1, false, g1OptionList);

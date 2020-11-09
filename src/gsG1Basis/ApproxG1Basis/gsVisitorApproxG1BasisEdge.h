@@ -34,7 +34,6 @@ public:
         for (int i = 0; i < basis.dim(); ++i) // to do: improve
             numQuadNodes[i] = basis.degree(i) + 1;
 
-
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// NB!
 
@@ -62,6 +61,25 @@ public:
 
         md.points = quNodes;
 
+/*
+#pragma omp critical
+        {
+            gsBSplineBasis<> basis_bspline = dynamic_cast<gsBSplineBasis<real_t> &>(basis.component(0));
+            gsInfo << "Basis: " << basis_bspline.knots().asMatrix() << "\n";
+
+            gsBSplineBasis<> basis_bspline22 = dynamic_cast<gsBSplineBasis<real_t> &>(basis.component(1));
+            gsInfo << "Basis22: " << basis_bspline22.knots().asMatrix() << "\n";
+
+            gsBSplineBasis<> basis_plus2 = dynamic_cast<gsBSplineBasis<real_t> &>(basis_plus);
+            gsInfo << "basis_plus2: " << basis_plus2.knots().asMatrix() << "\n";
+
+            gsBSplineBasis<> basis_minus2 = dynamic_cast<gsBSplineBasis<real_t> &>(basis_minus);
+            gsInfo << "basis_minus: " << basis_minus2.knots().asMatrix() << "\n";
+
+            gsBSplineBasis<> basis_geo2 = dynamic_cast<gsBSplineBasis<real_t> &>(basis_geo);
+            gsInfo << "basis_geo: " << basis_geo2.knots().asMatrix() << "\n";
+        }
+*/
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the elements
         basis.active_into(md.points.col(0), actives);
@@ -258,6 +276,8 @@ public:
 
                 rhsVals = alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p;
 
+                //rhsVals.setZero();
+
                 if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection"))
                 {
                     rhsGrads.row(0) = alpha.cwiseProduct(N_j_minus.cwiseProduct(der_N_1)) * tau_1 / p;
@@ -446,6 +466,8 @@ public:
 
                 rhsVals = - alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p;
 
+                //gsInfo << "RHSVALS: " << alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p - alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) << "\n";
+
                 if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection"))
                 {
                     rhsGrads.row(1) = - alpha.cwiseProduct(N_j_minus.cwiseProduct(der_N_1)) * tau_1 / p;
@@ -469,7 +491,6 @@ public:
                          const gsVector<T>      & quWeights)
     {
         gsMatrix<T> & bVals  = basisData[0];
-
 
         // ( u, v)
         localMat.noalias() =
