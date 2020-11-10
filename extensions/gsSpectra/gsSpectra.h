@@ -112,17 +112,17 @@ public:
 // };
 
 /// Generalized eigenvalue solver for real symmetric matrices
-template <class MatrixType, int SelRule = Spectra::SMALLEST_ALGE>
+template <class MatrixType, int SelRule = Spectra::SMALLEST_ALGE, int GEigsMode = Spectra::GEIGS_CHOLESKY>
 class gsSpectraGenSymSolver : private SpectraOps<MatrixType>,
 public Spectra::SymGEigsSolver<typename MatrixType::Scalar, SelRule,
-SpectraMatProd<MatrixType>, typename SpectraOps<MatrixType>::InvOp, Spectra::GEIGS_CHOLESKY>
+SpectraMatProd<MatrixType>, typename SpectraOps<MatrixType>::InvOp, GEigsMode>
 {
     typedef typename MatrixType::Scalar Scalar;
     typedef SpectraOps<MatrixType> Ops;
     typedef SpectraMatProd<MatrixType> MatOp;
 
     typedef Spectra::SymGEigsSolver<Scalar,SelRule, MatOp, typename Ops::InvOp,
-                                    Spectra::GEIGS_CHOLESKY> Base;
+                                    GEigsMode> Base;
 public:
     gsSpectraGenSymSolver(const MatrixType & Amat, const MatrixType & Bmat, int nev_, int ncv_)
     : Ops(Amat,Bmat), Base(&this->opA, &this->opB, nev_, math::min(ncv_,Amat.rows()))
