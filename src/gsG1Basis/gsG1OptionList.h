@@ -117,8 +117,6 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     real_t threshold = 1e-5; // For computing the kernel
     real_t zero = 1e-12; // For setting the matrix for the kernel
 
-    real_t lambda = 1e-12; // lambda value
-
     bool plot = false;
     bool latex = false;
     bool latex_plot = false;
@@ -196,11 +194,6 @@ void gsG1OptionList::initialize(int argc, char *argv[])
 
     optionList.addReal("threshold","Threshold",threshold);
     optionList.addReal("zero","Zero",zero);
-
-    optionList.addReal("lambda","lambda for two Patch", lambda);
-    optionList.addReal("lambda2","lambda for two Patch", lambda);
-
-    optionList.addReal("factor","factor for two Patch", lambda);
 
     if (localGd)
         gluingData_strategy = gluingData::local;

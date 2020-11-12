@@ -200,25 +200,6 @@ public:
         if(g1OptionList.getInt("user") == user::pascal)
         {
 
-            // Compute alpha^S and beta
-            //gsApproxGluingData3
-
-            //gsG1ASGluingData<real_t> gd_andrea(test_mp, test_mb);
-            //gsApproxBetaSAssembler<real_t> approxBetaSAssembler(test_mp, test_mb, g1OptionList, gd_andrea); // Here compute new beta and alpha
-
-            //gsApproxGluingData2<real_t> approxGluingData2(test_mp, test_mb, g1OptionList);
-            //approxGluingData2.setGlobalGluingData();
-
-            //gsApproxGluingData3<real_t> approxGluingData3(test_mp, test_mb, g1OptionList);
-            //approxGluingData3.setGlobalGluingData();
-            //approxGluingData3.setGlobalGluingDataWithLambda();
-
-            //gsApproxGluingData4<real_t> approxGluingData4(test_mp, test_mb, g1OptionList);
-            //approxGluingData4.setGlobalGluingData();
-
-            //gsInfo << auxGeom[0].getBasis().basis(0) << "\n";
-            //gsInfo << auxGeom[1].getBasis().basis(0) << "\n";
-
             std::vector<gsBSplineBasis<>> basis_pm;
             gsBSplineBasis<> basis_1 = dynamic_cast<gsBSplineBasis<> &>(auxGeom[0].getBasis().basis(0).component(0)); // 0 -> v, 1 -> u
             gsBSplineBasis<> basis_2 = dynamic_cast<gsBSplineBasis<> &>(auxGeom[1].getBasis().basis(0).component(1)); // 0 -> v, 1 -> u

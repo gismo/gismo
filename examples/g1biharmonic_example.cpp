@@ -154,23 +154,35 @@ int main(int argc, char *argv[])
     fd.getId(0, multiPatch_init); // id=0: Multipatch domain
     multiPatch_init.computeTopology();
 
-    gsWriteParaview(multiPatch_init,"geoemtry_init",2000,true);
+    gsWriteParaview(multiPatch_init,"geometry_init",2000,true);
 
     //multiPatch.patch(1).degreeElevate(1,0);
     multiPatch_init.degreeElevate(g1OptionList.getInt("degree"));
 
-    gsVector<real_t> l2Error_vec(g1OptionList.getInt("loop") + 1);
-    gsVector<real_t> h1SemiError_vec(g1OptionList.getInt("loop") + 1);
-    gsVector<real_t> h2SemiError_vec(g1OptionList.getInt("loop") + 1);
-    gsMatrix<real_t> h1SemiError_jump_edge(g1OptionList.getInt("loop") + 1, multiPatch_init.interfaces().size());
-    gsMatrix<real_t> h1SemiError_jump_vertex(g1OptionList.getInt("loop") + 1, multiPatch_init.interfaces().size());
-    gsMatrix<real_t> h1SemiError_jump_all(g1OptionList.getInt("loop") + 1, multiPatch_init.interfaces().size());
-    l2Error_vec.setZero();
-    h1SemiError_vec.setZero();
-    h2SemiError_vec.setZero();
-    h1SemiError_jump_edge.setZero();
-    h1SemiError_jump_vertex.setZero();
-    h1SemiError_jump_all.setZero();
+    /*
+     * Error-vector:
+     * error[0] = L^2 error
+     * error[1] = H^1 semi-error
+     * error[2] = H^2 semi-error
+     * error[3] = H^1 semi-error jump at edges
+     * error[4] = H^1 semi-error jump at vertices
+     * error[5] = H^1 semi-error jump at both
+     */
+    std::vector<gsMatrix<real_t>> error(6);
+    {
+        gsMatrix<real_t> l2Error_vec(g1OptionList.getInt("loop") + 1,1);
+        gsMatrix<real_t> h1SemiError_vec(g1OptionList.getInt("loop") + 1,1);
+        gsMatrix<real_t> h2SemiError_vec(g1OptionList.getInt("loop") + 1,1);
+        gsMatrix<real_t> h1SemiError_jump_edge(g1OptionList.getInt("loop") + 1, multiPatch_init.interfaces().size());
+        gsMatrix<real_t> h1SemiError_jump_vertex(g1OptionList.getInt("loop") + 1, multiPatch_init.interfaces().size());
+        gsMatrix<real_t> h1SemiError_jump_all(g1OptionList.getInt("loop") + 1, multiPatch_init.interfaces().size());
+        error.push_back(l2Error_vec.setZero());
+        error.push_back(h1SemiError_vec.setZero());
+        error.push_back(h2SemiError_vec.setZero());
+        error.push_back(h1SemiError_jump_edge.setZero());
+        error.push_back(h1SemiError_jump_vertex.setZero());
+        error.push_back(h1SemiError_jump_all.setZero());
+    }
 
     gsVector<index_t> num_knots(g1OptionList.getInt("loop"));
     num_knots[0] = g1OptionList.getInt("numRefine");
@@ -179,21 +191,42 @@ int main(int argc, char *argv[])
 
     for (index_t refinement_level = 0; refinement_level < g1OptionList.getInt("loop"); refinement_level++)
     {
-        real_t old_lambda = g1OptionList.getReal("lambda");
-        g1OptionList.setReal("lambda",old_lambda/4);
-
         gsMultiPatch<> multiPatch(multiPatch_init);
         multiPatch.uniformRefine_withSameRegularity(num_knots[refinement_level], g1OptionList.getInt("regularity"));
 
         gsInfo << "###### Level: " << refinement_level << " with " << num_knots[refinement_level] << " inner knots ###### " << "\n";
 
-        gsMultiBasis<> mb(multiPatch);
+        /*
+         * Spaces for the multi-patch
+         *
+         * Case A: isogeometric concept:
+         *
+         *         All the edge, vertex and interior space are the same, i.e.
+         *         size of mb == 1 and mb[0] = Spline basis of the geometry
+         *
+         * Case B: non-isogeometric concept:
+         *
+         *         Each edge, vertex and interior space are different, i.e.
+         *         size of mb == 1 + I + E + V
+         *         mb[0] = Spline basis for the interior
+         *         mb[1] = Spline basis for the first interface
+         *         ...
+         *         mb[I] = Spline basis for the last interface
+         *         mb[I+1] = Spline basis for the first (boundary) edge
+         *         ...
+         *         mb[I+E] = Spline basis for the last (boundary) edge
+         *         mb[I+E+1] = Spline basis for the first vertex
+         *         ...
+         *         mb[I+E+V] = Spline basis for the last vertex
+         */
+        std::vector<gsMultiBasis<>> mb;
+        mb.push_back(gsMultiBasis<> (multiPatch));
 
 #ifdef _OPENMP
         omp_set_num_threads( g1OptionList.getInt("threads"));
         omp_set_nested(1);
 #endif
-        gsG1System<real_t> g1System(multiPatch, mb, g1OptionList.getSwitch("neumann"));
+        gsG1System<real_t> g1System(multiPatch, mb, g1OptionList.getSwitch("neumann"), g1OptionList.getSwitch("twoPatch"), g1OptionList.getSwitch("isogeometric"));
 
         // ########### EDGE FUNCTIONS ###########
         // Interface loop
@@ -206,7 +239,9 @@ int main(int argc, char *argv[])
             std::string basename = "InterfaceBasisFunctions" + util::to_string(numInt);
             gsParaviewCollection collection(basename);
 
-            gsG1AuxiliaryEdgeMultiplePatches singleInt(multiPatch, item.first().patch, item.second().patch);
+            gsG1AuxiliaryEdgeMultiplePatches singleInt(multiPatch,
+                                                       mb[g1OptionList.getSwitch("isogeometric") ? 0 : numInt],
+                                                       item.first().patch, item.second().patch);
             singleInt.computeG1InterfaceBasis(g1OptionList);
 
             for (size_t i = 0; i < singleInt.getSinglePatch(0).getG1Basis().nPatches(); i++)
@@ -246,7 +281,7 @@ int main(int argc, char *argv[])
             std::string basename = "BoundaryBasisFunctions" + util::to_string(numBdy);
             gsParaviewCollection collection(basename);
 
-            gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatch, bit.patch);
+            gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatch, mb[0], bit.patch);
             singleBdy.computeG1BoundaryBasis(g1OptionList, bit.m_index);
 
             for (size_t i = 0; i < singleBdy.getSinglePatch(0).getG1Basis().nPatches(); i++)
@@ -330,15 +365,15 @@ int main(int argc, char *argv[])
 
         // BiharmonicAssembler
         gsInfo << "Computing Internal basis functions ... \n";
-        gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
+        gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb[0], bcInfo, bcInfo2, source);
         g1BiharmonicAssembler.assemble();
         gsInfo << "Computing Boundary data ... \n";
         if (!g1OptionList.getSwitch("neumann"))
-            g1BiharmonicAssembler.computeDirichletDofsL2Proj(g1System); // Compute boundary values with laplace
+            g1BiharmonicAssembler.computeDirichletDofsL2Proj(mb, g1System,g1OptionList.getSwitch("isogeometric")); // Compute boundary values with laplace
         else
             g1BiharmonicAssembler.computeDirichletAndNeumannDofsL2Proj(g1System); // Compute boundary values with neumann
 
-        g1System.finalize(multiPatch,mb,g1BiharmonicAssembler.get_bValue());
+        g1System.finalize(multiPatch,mb[0],g1BiharmonicAssembler.get_bValue());
 
         gsInfo << "Solving system... \n";
         gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
@@ -353,7 +388,7 @@ int main(int argc, char *argv[])
 
             // construct solution for plotting
             std::vector<gsMultiPatch<>> g1Basis;
-            g1System.constructG1Solution(solVector,g1Basis, multiPatch);
+            g1System.constructG1Solution(solVector,g1Basis, multiPatch,mb);
 
             g1BiharmonicAssembler.plotParaview(solField, g1Basis);
         }
@@ -373,50 +408,50 @@ int main(int argc, char *argv[])
         {
             if (e == 0)
             {
-                gsNormL2<real_t> errorL2(multiPatch, Sol_sparse, solVal);
-                errorL2.compute(g1System.get_numBasisFunctions(), true);
-                l2Error_vec[refinement_level] = errorL2.value();
+                gsNormL2<real_t> errorL2(multiPatch, mb, Sol_sparse, solVal);
+                errorL2.compute(g1System, g1OptionList.getSwitch("isogeometric"));
+                error[0][refinement_level] = errorL2.value();
             }
 
             else if (e == 1)
             {
-                gsSeminormH1<real_t> errorSemiH1(multiPatch, Sol_sparse, solVal);
-                errorSemiH1.compute(g1System.get_numBasisFunctions());
-                h1SemiError_vec[refinement_level] = errorSemiH1.value();
+                gsSeminormH1<real_t> errorSemiH1(multiPatch, mb, Sol_sparse, solVal);
+                errorSemiH1.compute(g1System, g1OptionList.getSwitch("isogeometric"));
+                error[1][refinement_level] = errorSemiH1.value();
             }
             else if (e == 2)
             {
-                gsSeminormH2<real_t> errorSemiH2(multiPatch, Sol_sparse, solVal);
-                errorSemiH2.compute(g1System.get_numBasisFunctions());
-                h2SemiError_vec[refinement_level] = errorSemiH2.value();
+                gsSeminormH2<real_t> errorSemiH2(multiPatch, mb, Sol_sparse, solVal);
+                errorSemiH2.compute(g1System, g1OptionList.getSwitch("isogeometric"));
+                error[2][refinement_level] = errorSemiH2.value();
             }
             else if (e == 3)
             {
-                gsH1NormWithJump<real_t> errorJump(multiPatch, Sol_sparse);
-                errorJump.compute(g1System.get_numBasisFunctions(), g1System.get_numInterfaceFunctions(), "edge");
-                h1SemiError_jump_edge.row(refinement_level) = errorJump.value().transpose();
+                gsH1NormWithJump<real_t> errorJump(multiPatch, mb, Sol_sparse);
+                errorJump.compute(g1System, g1OptionList.getSwitch("isogeometric"), "edge");
+                error[3].row(refinement_level) = errorJump.value().transpose();
             }
             else if (e == 4)
             {
-                gsH1NormWithJump<real_t> errorJump(multiPatch, Sol_sparse);
-                errorJump.compute(g1System.get_numBasisFunctions(), g1System.get_numVertexFunctions(), "vertex");
-                h1SemiError_jump_vertex.row(refinement_level) = errorJump.value().transpose();
+                gsH1NormWithJump<real_t> errorJump(multiPatch, mb, Sol_sparse);
+                errorJump.compute(g1System, g1OptionList.getSwitch("isogeometric"), "vertex");
+                error[4].row(refinement_level) = errorJump.value().transpose();
             }
             else if (e == 5)
             {
-                gsH1NormWithJump<real_t> errorJump(multiPatch, Sol_sparse);
-                errorJump.compute(g1System.get_numBasisFunctions(), g1System.get_numVertexFunctions(), "all");
-                h1SemiError_jump_all.row(refinement_level) = errorJump.value().transpose();
+                gsH1NormWithJump<real_t> errorJump(multiPatch, mb, Sol_sparse);
+                errorJump.compute(g1System, g1OptionList.getSwitch("isogeometric"), "all");
+                error[5].row(refinement_level) = errorJump.value().transpose();
             }
         }
     }
 
     for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
     {
-        h2SemiError_vec[i] = math::sqrt(h2SemiError_vec[i]*h2SemiError_vec(i) +
-            h1SemiError_vec[i]*h1SemiError_vec[i] + l2Error_vec[i]*l2Error_vec[i]);
-        h1SemiError_vec[i] = math::sqrt(h1SemiError_vec[i]*h1SemiError_vec[i] +
-            l2Error_vec[i]*l2Error_vec[i]);
+        error[2][i] = math::sqrt(error[2][i]*error[2](i) +
+            error[1][i]*error[1][i] + error[0][i]*error[0][i]);
+        error[1][i] = math::sqrt(error[1][i]*error[1][i] +
+            error[0][i]*error[0][i]);
     }
 
     if (g1OptionList.getInt("loop") > 1)
@@ -429,25 +464,25 @@ int main(int argc, char *argv[])
             "Rate", "H2-error", "Rate");
         printf("|%-5s|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s\n", "-----", "--------------", "-----", "--------------",
             "-----", "--------------", "-----");
-        printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[0], l2Error_vec[0],
-            rate(0,0),h1SemiError_vec[0], rate(0,1),h2SemiError_vec[0], rate(0,2));
+        printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[0], error[0][0],
+            rate(0,0),error[1][0], rate(0,1),error[1][0], rate(0,2));
         for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
         {
-            rate(i,0) = log2(l2Error_vec[i-1] / l2Error_vec[i]);
-            rate(i,1) = log2(h1SemiError_vec[i-1] / h1SemiError_vec[i]);
-            rate(i,2) = log2(h2SemiError_vec[i-1] / h2SemiError_vec[i]);
+            rate(i,0) = log2(error[0][i-1] / error[0][i]);
+            rate(i,1) = log2(error[1][i-1] / error[1][i]);
+            rate(i,2) = log2(error[1][i-1] / error[1][i]);
 
-            printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[i], l2Error_vec[i],
-                rate(i,0),h1SemiError_vec[i], rate(i,1),h2SemiError_vec[i], rate(i,2));
+            printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[i], error[0][i],
+                rate(i,0),error[1][i], rate(i,1),error[1][i], rate(i,2));
         }
         if (g1OptionList.getSwitch("latex"))
         {
             printf("%-5d & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\ \n", num_knots[0],
-                l2Error_vec[0], rate(0,0),h1SemiError_vec[0], rate(0,1), h2SemiError_vec[0], rate(0,2));
+                   error[0][0], rate(0,0),error[1][0], rate(0,1), error[2][0], rate(0,2));
             for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
             {
                 printf("%-5d & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\ \n", num_knots[i],
-                    l2Error_vec[i], rate(i,0),h1SemiError_vec[i], rate(i,1),h2SemiError_vec[i], rate(i,2));
+                       error[0][i], rate(i,0),error[1][i], rate(i,1),error[2][i], rate(i,2));
             }
         }
         gsInfo << "=====================================================================\n\n";
@@ -475,8 +510,8 @@ int main(int argc, char *argv[])
 
         printf("|%-5d",num_knots[0]);
         for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
-            printf("|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f", h1SemiError_jump_edge(0,i), rate(0,i),
-                h1SemiError_jump_vertex(0,i), rate_vertex(0,i), h1SemiError_jump_all(0,i), rate_all(0,i));
+            printf("|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f", error[3](0,i), rate(0,i),
+                   error[4](0,i), rate_vertex(0,i), error[5](0,i), rate_all(0,i));
         printf("\n");
 
         for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
@@ -484,11 +519,11 @@ int main(int argc, char *argv[])
             printf("|%-5d",num_knots[i]);
             for (size_t j = 0; j < multiPatch_init.interfaces().size(); j++)
             {
-                rate(i,j) = log2(h1SemiError_jump_edge(i-1,j) / h1SemiError_jump_edge(i,j));
-                rate_vertex(i,j) = log2(h1SemiError_jump_vertex(i-1,j) / h1SemiError_jump_vertex(i,j));
-                rate_all(i,j) = log2(h1SemiError_jump_all(i-1,j) / h1SemiError_jump_all(i,j));
-                printf("|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f", h1SemiError_jump_edge(i,j), rate(i,j),
-                    h1SemiError_jump_vertex(i,j), rate_vertex(i,j), h1SemiError_jump_all(i,j), rate_all(i,j));
+                rate(i,j) = log2(error[3](i-1,j) / error[3](i,j));
+                rate_vertex(i,j) = log2(error[4](i-1,j) / error[4](i,j));
+                rate_all(i,j) = log2(error[5](i-1,j) / error[5](i,j));
+                printf("|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f", error[3](i,j), rate(i,j),
+                       error[4](i,j), rate_vertex(i,j), error[5](i,j), rate_all(i,j));
             }
             printf("\n");
         }
@@ -503,7 +538,7 @@ int main(int argc, char *argv[])
         {
             for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
                 printf("%-5d & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\", num_knots[0],
-                   h1SemiError_jump_edge(0,i), rate(0,i),h1SemiError_jump_vertex(0,i), rate_vertex(0,i), h1SemiError_jump_all(0,i), rate_all(0,i));
+                       error[3](0,i), rate(0,i),error[4](0,i), rate_vertex(0,i), error[5](0,i), rate_all(0,i));
             printf("\n");
             for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
             {
@@ -511,11 +546,11 @@ int main(int argc, char *argv[])
                 for (size_t j = 0; j < multiPatch_init.interfaces().size(); j++)
                 {
                     printf("%-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\",
-                           h1SemiError_jump_edge(i,j),
+                           error[3](i,j),
                            rate(i, j),
-                           h1SemiError_jump_vertex(i,j),
+                           error[4](i,j),
                            rate_vertex(i, j),
-                           h1SemiError_jump_all(i,j),
+                           error[5](i,j),
                            rate_all(i, j));
                 }
                 printf("\n");
@@ -525,12 +560,12 @@ int main(int argc, char *argv[])
     else
     {
         gsInfo << "=====================================================================\n";
-        gsInfo << "L2 Error: " << l2Error_vec[0] << "\n";
-        gsInfo << "H1 Semi-error: " << h1SemiError_vec[0] << "\n";
-        gsInfo << "H2 Semi-error: " << h2SemiError_vec[0] << "\n";
-        gsInfo << "Jump error Edge: " << h1SemiError_jump_edge.row(0) << "\n";
-        gsInfo << "Jump error Vertex: " << h1SemiError_jump_vertex.row(0) << "\n";
-        gsInfo << "Jump error all: " << h1SemiError_jump_all.row(0) << "\n";
+        gsInfo << "L2 Error: " << error[0][0] << "\n";
+        gsInfo << "H1 Semi-error: " << error[1][0] << "\n";
+        gsInfo << "H2 Semi-error: " << error[2][0] << "\n";
+        gsInfo << "Jump error Edge: " << error[3].row(0) << "\n";
+        gsInfo << "Jump error Vertex: " << error[4].row(0) << "\n";
+        gsInfo << "Jump error all: " << error[5].row(0) << "\n";
         gsInfo << "=====================================================================\n";
 
     }

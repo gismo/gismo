@@ -220,9 +220,10 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 
         assemble(bfID,"plus"); // i == number of bf
 
+
         //gsSparseSolver<real_t>::CGDiagonal solver;
         gsSparseSolver<real_t>::LU solver;
-        gsMatrix<> sol;
+        gsMatrix<real_t> sol;
         solver.compute(m_system.matrix());
         sol = solver.solve(m_system.rhs());
 /*
@@ -339,7 +340,7 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
         sol = solver.solve(m_system.rhs());
 
         constructSolution(sol,g1EdgeBasis2);
-        g1EdgeBasis.addPatch(g1EdgeBasis2.patch(bfID));
+        g1EdgeBasis.addPatch(g1EdgeBasis2.patch(bfID-bfID_init));
 
         progress += (float) 1.0 / (n_plus+n_minus); // for demonstration only
     }

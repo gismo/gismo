@@ -73,7 +73,7 @@ public:
         if (m_twoPatch)
             initialize_twoPatch(mp,mb);
         else
-            initialize(mp, mb[0]);
+            initialize(mp, mb);
     }
 
     gsG1System(gsMultiPatch<> & mp,
@@ -89,7 +89,7 @@ public:
     }
 
     void initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMultiBasis<>> mb);
-    void initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb);
+    void initialize(gsMultiPatch<> & mp, std::vector<gsMultiBasis<>> mb);
 
     void finalize(gsMultiPatch<> & mp, gsMultiBasis<> & mb, gsMatrix<> g1);
     gsMatrix<> solve(const  gsSparseMatrix<real_t> & K, const gsMatrix<> & f);
@@ -352,7 +352,7 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
 }
 
 template<class T>
-void gsG1System<T>::initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb)
+void gsG1System<T>::initialize(gsMultiPatch<> & mp, std::vector<gsMultiBasis<>> mb)
 {
     // Number of the patches
     index_t numPatches = mp.nPatches();
@@ -380,18 +380,19 @@ void gsG1System<T>::initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb)
 
     numBasisFunctions[6].setZero(numPatches+1);
 
-    for (size_t i = 0; i < mb.nBases(); i++ )
-        numBasisFunctions[5][i+1] = numBasisFunctions[5][i] + mb.basis(i).size();
+    for (size_t i = 0; i < mb[0].nBases(); i++ )
+        numBasisFunctions[5][i+1] = numBasisFunctions[5][i] + mb[0].basis(i).size();
 
-    for (size_t i = 0; i < mb.nBases(); i++ )
-        numBasisFunctions[6][i+1] = numBasisFunctions[6][i] + mb[0].basis(i).size();
+    if (m_isogeometric)
+        for (size_t i = 0; i < mb[0].nBases(); i++ )
+            numBasisFunctions[6][i+1] = numBasisFunctions[6][i] + mb[0].basis(i).size();
 
 
     for (size_t i = 0; i < mp.interfaces().size(); i++)
     {
         // Get the dimension for the spaces at the edges
         index_t dir = mp.interfaces()[i].first().m_index < 3 ? 1 : 0;
-        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(mp.interfaces()[i].first().patch).component(dir)); // If the interface matches!!!
+        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb[0].basis(mp.interfaces()[i].first().patch).component(dir)); // If the interface matches!!!
         index_t m_p = basis_edge.maxDegree();
         index_t m_r = 1; // Here fixed to 1 TODO MORE GENERAL
         index_t m_n = basis_edge.numElements();
@@ -403,7 +404,7 @@ void gsG1System<T>::initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb)
     {
         // Get the dimension for the spaces at the edges
         index_t dir = mp.boundaries()[i].m_index < 3 ? 1 : 0;
-        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb.basis(mp.boundaries()[i].patch).component(dir)); // 0 -> u, 1 -> v
+        gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(mb[0].basis(mp.boundaries()[i].patch).component(dir)); // 0 -> u, 1 -> v
         index_t m_p = basis_edge.maxDegree();
         index_t m_r = 1; // Here fixed to 1 TODO MORE GENERAL
         index_t m_n = basis_edge.numElements();
@@ -459,6 +460,7 @@ void gsG1System<T>::initialize(gsMultiPatch<> & mp, gsMultiBasis<> mb)
 
 
     gsInfo << "Num Basis Functions " << numBasisFunctions[5] << "\n";
+    gsInfo << "Num Basis Functions 2 " << numBasisFunctions[6] << "\n";
     gsInfo << "Num Interface Functions " << numBasisFunctions[0] << "\n";
     gsInfo << "Num Edges Functions " << numBasisFunctions[1] << "\n";
     gsInfo << "Num Boundary Edges Functions " << numBasisFunctions[3] << "\n";
@@ -642,6 +644,7 @@ void gsG1System<T>::insertInterfaceEdge(gsMultiPatch<> & mp, boundaryInterface i
                     index_t jj, ii;
                     ii = numBasisFunctions[0][iID] + bfID;
                     jj = numBasisFunctions[6][np == 0 ? item.first().patch : item.second().patch] + j;
+                    gsInfo << "SIZE: " << D_sparse.size() << "\n";
                     D_sparse.insert(ii,jj) = mp.patch(np).coefs().at(j);
                 }
             }
@@ -776,6 +779,7 @@ gsMatrix<> gsG1System<T>::solve(const gsSparseMatrix<real_t> & K, const gsMatrix
     gsSparseMatrix<real_t> A = D_0_sparse * K * D_0_sparse.transpose();
     gsVector<real_t> F = D_0_sparse * f - D_0_sparse * K * D_boundary_sparse.transpose() * m_g1;
 
+    A.makeCompressed();
     ///----------------------EIGEN-ITERATIVE-SOLVERS----------------------///
     //gsInfo << "\nTesting Eigen's interative solvers:\n";
 
@@ -805,6 +809,7 @@ gsMatrix<> gsG1System<T>::solve(const gsSparseMatrix<real_t> & K, const gsMatrix
     clock.restart();
     EigenCGDsolver.compute(A);
     x0 = EigenCGDsolver.solve(F);
+
     //gsInfo << "done in " << clock.stop() << "\n";
     //gsIterativeSolverInfo(EigenCGDsolver, (A*x0-F).norm()/F.norm(), clock.stop(), succeeded);
 /*

@@ -289,7 +289,7 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
 
     globalGdAssembler.assemble(this->m_optionList.getSwitch("h1projection"));
 
-    gsSparseSolver<real_t>::CGDiagonal solver;
+    gsSparseSolver<real_t>::LU solver;
     gsVector<> sol_a, sol_b;
 
     // alpha^S
@@ -390,7 +390,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
                 localGdAssembler(bsp_gD, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "alpha");
             localGdAssembler.assemble();
 
-            gsSparseSolver<real_t>::CGDiagonal solver;
+            gsSparseSolver<real_t>::LU solver;
             gsVector<> sol;
 
             // alpha^S
@@ -423,7 +423,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
                 localGdAssembler(bsp_gD, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "beta");
             localGdAssembler.assemble();
 
-            gsSparseSolver<real_t>::CGDiagonal solver;
+            gsSparseSolver<real_t>::LU solver;
             gsVector<> sol;
 
             // beta^S
@@ -458,7 +458,7 @@ void gsApproxGluingData<T>::setLocalGluingData(gsBSplineBasis<> & basis_plus, gs
             localGdAssembler(bsp_gD, bsp_geo, this->m_uv, this->m_mp, this->m_gamma, this->m_isBoundary, "alpha");
         localGdAssembler.assemble();
 
-        gsSparseSolver<real_t>::CGDiagonal solver;
+        gsSparseSolver<real_t>::LU solver;
         gsVector<> sol;
 
         // alpha^S
