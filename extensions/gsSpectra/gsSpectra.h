@@ -93,7 +93,7 @@ public:
 
 template <class MatrixType> class SpectraOps
 {
-protected:
+public:
     typedef Spectra::SparseCholesky<typename MatrixType::Scalar> InvOp;
     SpectraOps(const MatrixType & A, const MatrixType & B) : opA(A), opB(B) { }
     SpectraMatProd<MatrixType>                           opA;
