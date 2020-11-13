@@ -19,10 +19,11 @@
 | **System** | **Status** | **More information** |
 |------------|------------|----------------------|
 | CDash      | [![cdash](https://img.shields.io/website?down_color=lightgrey&down_message=offline&label=CDash&up_color=green&up_message=up&url=https%3A%2F%2Fcdash-ci.inria.fr%2Findex.php%3Fproject%3DGismo)](https://cdash-ci.inria.fr/index.php?project=Gismo) | Various builds and configurations on https://cdash-ci.inria.fr/index.php?project=Gismo |
-| Linux      | [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://circleci.com/gh/gismo/gismo) |
-| Linux     | [ ![Codeship Status](https://app.codeship.com/projects/2aa19360-8998-0133-39fd-66416d65b267/status?branch=stable)](https://app.codeship.com/projects/123289)
-| macOS      | [![Travis Status](https://travis-ci.org/gismo/gismo.svg?branch=stable)](https://travis-ci.org/gismo/gismo/branches) | 
-| Windows    | [![Appveyor status](https://ci.appveyor.com/api/projects/status/abps59xbt1gjwci1/branch/stable?svg=true)](https://ci.appveyor.com/project/gismo/gismo) |
+| Appveyor  | [![Appveyor status](https://ci.appveyor.com/api/projects/status/abps59xbt1gjwci1/branch/stable?svg=true)](https://ci.appveyor.com/project/gismo/gismo) |
+| Circle CI | [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://circleci.com/gh/gismo/gismo) |
+| Codeship  | [![Codeship Status](https://app.codeship.com/projects/2aa19360-8998-0133-39fd-66416d65b267/status?branch=stable)](https://app.codeship.com/projects/123289) |
+| GitLab    | [![pipeline status](https://gitlab.com/gismo-ci/gismo/badges/gitlab_ci/pipeline.svg)](https://gitlab.com/gismo-ci/gismo/-/commits/gitlab_ci) | Linux, GCC-[8,9,10], Clang-[9,10,11], C++[98,11,14] |
+| Travis CI | [![Travis Status](https://travis-ci.org/gismo/gismo.svg?branch=stable)](https://travis-ci.org/gismo/gismo/branches) | 
 
 This README file contains brief information. More details are found in
 the [Wiki pages](http://gs.jku.at/gismo).

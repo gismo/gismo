@@ -1,11 +1,11 @@
 stages:
-  - build
+  - test
 
 # GCC 8, C++98, Release
 linux_x86_64_gcc8_cxx98_release:
   tags:
     - linux
-  stage: build
+  stage: test
   image: gcc:8
   script:
     - apt-get update -y
@@ -18,7 +18,7 @@ linux_x86_64_gcc8_cxx98_release:
 linux_x86_64_gcc9_cxx11_release:
   tags:
     - linux
-  stage: build
+  stage: test
   image: gcc:9
   script:
     - apt-get update -y
@@ -31,11 +31,50 @@ linux_x86_64_gcc9_cxx11_release:
 linux_x86_64_gcc10_cxx14_release:
   tags:
     - linux
-  stage: build
+  stage: test
   image: gcc:10
   script:
     - apt-get update -y
     - apt-get install cmake ninja-build -y
     - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_SITE="linux_x86_64_gcc10_cxx14_release" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR=Ninja -D CNAME=gcc -D CXXNAME=g++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON' -Q #-D CTEST_BUILD_JOBS=2
+  except:
+    - external_pull_requests
+
+# Clang 9, C++98, Release
+linux_x86_64_clang9_cxx98_release:
+  tags:
+    - linux
+  stage: test
+  image: silkeh/clang:9
+  script:
+    - apt-get update -y
+    - apt-get install cmake ninja-build -y
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_SITE="linux_x86_64_clang9_cxx98_release" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR=Ninja -D CNAME=gcc -D CXXNAME=clang++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=98;-DGISMO_BUILD_UNITTESTS=ON' -Q #-D CTEST_BUILD_JOBS=2
+  except:
+    - external_pull_requests
+    
+# Clang 10, C++11, Release
+linux_x86_64_clang10_cxx11_release:
+  tags:
+    - linux
+  stage: test
+  image: silkeh/clang:10
+  script:
+    - apt-get update -y
+    - apt-get install cmake ninja-build -y
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_SITE="linux_x86_64_clang10_cxx11_release" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR=Ninja -D CNAME=gcc -D CXXNAME=clang++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON' -Q #-D CTEST_BUILD_JOBS=2
+  except:
+    - external_pull_requests
+
+# Clang 11, C++14, Release
+linux_x86_64_clang11_cxx14_release:
+  tags:
+    - linux
+  stage: test
+  image: silkeh/clang:11
+  script:
+    - apt-get update -y
+    - apt-get install cmake ninja-build -y
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_SITE="linux_x86_64_clang11_cxx14_release" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR=Ninja -D CNAME=gcc -D CXXNAME=clang++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON' -Q #-D CTEST_BUILD_JOBS=2
   except:
     - external_pull_requests
