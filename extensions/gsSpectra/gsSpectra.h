@@ -98,7 +98,8 @@ protected:
     Spectra::SparseCholesky<typename MatrixType::Scalar> opB;
 };
 
-template<> template <class T> class SpectraOps<gsMatrix<T> >
+//template<> //compilation fails with this
+template <class T> class SpectraOps<gsMatrix<T> >
 {
 public:
     typedef Spectra::DenseCholesky<T> InvOp;
