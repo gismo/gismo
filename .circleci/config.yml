@@ -17,7 +17,7 @@ jobs:
       - checkout
       - run:
           name: Configure G+Smo on MacOS
-          command: cmake . -DBUILDNAME="$CIRCLE_USERNAME-$CIRCLE_BRANCH [macos_x86_64_xcode9_cxx98_release]" -DSITE="cci" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98 -DGISMO_WITH_ONURBS=ON
+          command: cmake . -DBUILDNAME="macos_x86_64_xcode9_cxx98_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
@@ -38,7 +38,7 @@ jobs:
       - checkout
       - run:
           name: Configure G+Smo on MacOS
-          command: cmake . -DBUILDNAME="$CIRCLE_USERNAME-$CIRCLE_BRANCH [macos_x86_64_xcode10_cxx11_release]" -DSITE="cci" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=11 -DGISMO_WITH_ONURBS=ON
+          command: cmake . -DBUILDNAME="macos_x86_64_xcode10_cxx11_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=11 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
@@ -59,7 +59,7 @@ jobs:
       - checkout
       - run:
           name: Configure G+Smo on MacOS
-          command: cmake . -DBUILDNAME="$CIRCLE_USERNAME-$CIRCLE_BRANCH [macos_x86_64_xcode11_cxx14_release]" -DSITE="cci" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=14 -DGISMO_WITH_ONURBS=ON
+          command: cmake . -DBUILDNAME="macos_x86_64_xcode11_cxx14_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=14 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
@@ -80,7 +80,7 @@ jobs:
       - checkout
       - run:
           name: Configure G+Smo on MacOS
-          command: cmake . -DBUILDNAME="$CIRCLE_USERNAME-$CIRCLE_BRANCH [macos_x86_64_xcode12_cxx17_release]" -DSITE="cci" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=17 -DGISMO_WITH_ONURBS=ON
+          command: cmake . -DBUILDNAME="macos_x86_64_xcode12_cxx17_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=17 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
