@@ -220,7 +220,7 @@ if(NOT DEFINED CMAKE_ARGS)
     -DGISMO_EXTRA_DEBUG=OFF
     -DGISMO_BUILD_PCH=OFF
     #-DGISMO_PLAINDOX=ON
-    -DNOSNIPPETS=ON
+    -DNOSNIPPETS=OFF
     )
 endif()
 
@@ -442,7 +442,7 @@ if(NOT DEFINED CTEST_BUILD_NAME)
   if(${UPDATE_MODULES})
     set(smHead "(head)")
   endif()
-  get_filename_component(cxxnamewe ${CXXNAME} NAME_WE)
+  get_filename_component(cxxnamewe "${CXXNAME}" NAME_WE)
   set(CTEST_BUILD_NAME "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${cxxnamewe}${smHead}")
   endif()
   message("NAME: ${CTEST_BUILD_NAME}")

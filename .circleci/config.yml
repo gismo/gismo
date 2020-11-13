@@ -24,7 +24,7 @@ jobs:
 
   macos_build: #OS SEED plan!
     macos:
-      xcode: "9.0"
+      xcode: "11.7.0"
     filters:
       branches:
         - only: stable
@@ -34,7 +34,7 @@ jobs:
     steps:
       - run:
           name: Install dependencies
-          command: brew install git cmake # make clang libgcc #valgrind
+          command: brew install cmake # git make clang libgcc #valgrind
       - checkout
       - run:
           name: Configure G+Smo on MacOS

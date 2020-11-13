@@ -124,6 +124,8 @@ function(gismo_fetch_module SUBMODULE)
   # get list of programs to compile
   if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
     add_subdirectory(${gismo_SOURCE_DIR}/extensions/${SUBMODULE} ${gismo_BINARY_DIR}/extensions/${SUBMODULE})
+  else()
+    #WARNING
   endif()
 
 endfunction()

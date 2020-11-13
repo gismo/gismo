@@ -48,7 +48,7 @@ endif()
 
 foreach(file ${unittests_SRCS})
   get_filename_component(testname ${file} NAME_WE) # name without extension
-  add_test(NAME unit_${testname} COMMAND $<TARGET_FILE:unittests> ${file})
+  add_test(NAME unit_${testname} COMMAND $<TARGET_FILE:unittests> ${testname})
   set_property(TEST unit_${testname} PROPERTY LABELS unittests)
 endforeach(file ${FILES})
 

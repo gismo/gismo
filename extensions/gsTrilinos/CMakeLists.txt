@@ -35,48 +35,40 @@ aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
 # Apply same configuration as G+Smo
 include(gsConfig)
 
-# Look for MPI (now: handled by GISMO_WITH_MPI)
-#find_package(MPI REQUIRED)
-#include_directories(SYSTEM ${MPI_INCLUDE_PATH})
-
-# Look for trilinos library
-#find_package(TRILINOS REQUIRED) # for testing user-provided mode
+# Look for pre-installed Trilinos libraries
 find_package(TRILINOS QUIET)
-#find_package(BLAS REQUIRED)   # needs .._DIR on MS windows
-#find_package(LAPACK REQUIRED) # needs LAPACK_DIR on MS windows
 
-#
+# MPI
 find_path(TPL_MPI_INCLUDE_DIRS mpi.h ${MPI_INCLUDE_PATH})
 list(GET MPI_CXX_LIBRARIES 0 TPL_MPI_LIBRARY_DIRS)
 get_filename_component(TPL_MPI_LIBRARY_DIRS ${TPL_MPI_LIBRARY_DIRS} PATH)
 
-if(CMAKE_CXX_STANDARD EQUAL "98")
-set(Trilinos_ENABLE_CXX11 OFF)
-message(WARNING "CMAKE_CXX_STANDARD must be 11 or better for Trilinos extensions to compile ?.")
-else()
-set(Trilinos_ENABLE_CXX11 ON)
-endif()
-
-# Note: might need export FC=/usr/bin/gfortran
-#enable_language(Fortran)
-
 if (NOT TRILINOS_FOUND)
-set(TRILINOS_VER "12-12-1")
-set(TRILINOS_MD5 "ecd4606fa332212433c98bf950a69cc7")
-message(STATUS "Using Trilinos version ${TRILINOS_VER} as an external package.")
-include(ExternalProject)
-ExternalProject_Add(Trilinos
+
+  if(CMAKE_CXX_STANDARD EQUAL "98")
+    message(FATAL_ERROR "CMAKE_CXX_STANDARD must be 11 or better for Trilinos extensions to compile.")
+  endif()
+  
+  set(TRILINOS_VER "12-14-1")
+  set(TRILINOS_MD5 "de912cca43c2ca3b74aa08528ac39dbd")
+  message(STATUS "Using Trilinos version ${TRILINOS_VER} as an external package.")
+  
+  include(ExternalProject)
+  ExternalProject_Add(Trilinos
           SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos
           URL_MD5 ${TRILINOS_MD5}
           URL https://github.com/trilinos/Trilinos/archive/trilinos-release-${TRILINOS_VER}.tar.gz
           CMAKE_ARGS   -DCMAKE_BUILD_TYPE=Release
                        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                       #-DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
                        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
                        -DBUILD_SHARED_LIBS:BOOL=ON
-                       -DTrilinos_ENABLE_CXX11=${Trilinos_ENABLE_CXX11}
+                       -DTrilinos_ENABLE_CXX11=ON
                        -DTrilinos_ENABLE_TESTS=OFF
+                       
+                       # Smart reference-counted pointer class
+                       -DTrilinos_ENABLE_Teuchos=ON
+                       -DTrilinos_ENABLE_TeuchosParser=ON
 
                        # Linear algebra backends
                        -DTrilinos_ENABLE_Epetra=ON # non-templated version
@@ -89,7 +81,7 @@ ExternalProject_Add(Trilinos
 
                        # Iterative solvers
                        -DTrilinos_ENABLE_AztecOO=ON
-                       -DTrilinos_ENABLE_Belos=${Trilinos_ENABLE_CXX11}
+                       -DTrilinos_ENABLE_Belos=ON
                        -DTrilinos_ENABLE_ML=ON # multilevel solver
                        -DTrilinos_ENABLE_Ifpack=ON # Ifpack
 
@@ -110,6 +102,7 @@ ExternalProject_Add(Trilinos
 
                        # Note: we disable all optional packages by default
                        -DTrilinos_ENABLE_ALL_OPTIONAL_PACKAGES=OFF
+                       
                        # and enable individual packages below
                        -DTPL_ENABLE_MPI=${GISMO_WITH_MPI}
                        -DTPL_MPI_INCLUDE_DIRS=${TPL_MPI_INCLUDE_DIRS}
@@ -159,16 +152,8 @@ ExternalProject_Add(Trilinos
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ifpack${CMAKE_SHARED_LIBRARY_SUFFIX}
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ml${CMAKE_SHARED_LIBRARY_SUFFIX}
       CACHE INTERNAL "")
-
-#      set(TRILINOS_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix CACHE INTERNAL "")
-
-      #add_library(${LIBNAME} SHARED IMPORTED )
-      #set_target_properties(${LIBNAME} PROPERTIES IMPORTED_LOCATION ${install_dir}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}${LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX} )
-
-#else()
 endif(NOT TRILINOS_FOUND)
 
-#include_directories(${EPETRA_INCLUDE_PATH})
 include_directories(${TRILINOS_INCLUDE_DIR} ${TPL_MPI_INCLUDE_DIRS})
 
 # Compile statically the extension
@@ -204,9 +189,3 @@ set(gismo_LINKER ${gismo_LINKER} ${LAPACK_LIBRARIES} ${TRILINOS_LIBRARIES}
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
         DESTINATION include/gismo/gsTrilinos/
         FILES_MATCHING PATTERN "*.h")
-
-#set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
-
-#message("TRILINOS_LIBRARIES ${TRILINOS_LIBRARIES}")
-#list(LENGTH TRILINOS_LIBRARIES tlen)
-#message("NUM TRILINOS_LIBRARIES ${tlen}")

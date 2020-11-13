@@ -233,7 +233,7 @@ if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
   #https://github.com/VcDevel/Vc/blob/master/cmake/OptimizeForArchitecture.cmake
   include( OptimizeForArchitecture )
   OptimizeForArchitecture()
-  foreach (flag ${Vc_ARCHITECTURE_FLAGS})
+  foreach (flag ${OFA_ARCHITECTURE_FLAGS})
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flag}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flag}")
   endforeach()

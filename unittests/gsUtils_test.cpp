@@ -15,7 +15,7 @@
 
 #include "gismo_unittest.h"
 
-SUITE(gsUtils)
+SUITE(gsUtils_test)
 {
 TEST(to_string)
 {

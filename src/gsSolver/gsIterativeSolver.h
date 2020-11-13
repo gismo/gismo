@@ -196,12 +196,12 @@ public:
                       "Iterative solvers only work for single right-hand side and solution." );
             GISMO_ASSERT( x.rows() == m_mat->cols(),
                       "The initial guess does not match the matrix: "
-                      << rhs.rows() <<"!="<< m_mat->cols() );
+                      << x.rows() <<"!="<< m_mat->cols() );
         }
         return false; // iteration is not finished
     }
 
-    virtual bool step( VectorType& x ) = 0;                     ///< Perform one step, requires initIteration
+    virtual bool step( VectorType& x ) = 0;                   ///< Perform one step, requires initIteration
     virtual void finalizeIteration( VectorType& ) {}          ///< Some post-processing might be required
 
     /// Returns the size of the linear system
@@ -294,6 +294,11 @@ public:
     {
         res.setZero(input.rows(), input.cols());
         m_solver.solve(input, res);
+        gsDebug << ( (m_solver.error() < m_solver.tolerance())
+                     ? "gsIterativeSolverOp reached desired error bound after "
+                     : "msIterativeSolverOp did not reach desired error bound within " )
+                << m_solver.iterations() << " iterations.\n";
+        gsDebug << input.rows() << "; " << input.norm() << "; " << res.norm() << "\n";
     }
 
     index_t rows() const { return m_solver.underlying()->rows(); }

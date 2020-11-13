@@ -16,6 +16,7 @@
 #include <gsCore/gsForwardDeclarations.h>
 
 #ifdef GISMO_WITH_MPI
+#include <string.h>
 #include <mpi.h>
 // #if MPI_VERSION < 2
 // #  ifdef _MSC_VER
