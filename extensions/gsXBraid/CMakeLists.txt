@@ -33,9 +33,46 @@ if (NOT XBRAID_FOUND)
     endif()
   endif()
 
-  aux_header_directory(${gismo_externals}/XBraid/braid ${PROJECT_NAME}_HEADERS_XBRAID)
-  aux_source_directory(${gismo_externals}/XBraid/braid ${PROJECT_NAME}_SOURCES_XBRAID)
-  aux_tmpl_header_directory(${gismo_externals} ${PROJECT_NAME}_HPPFILES_XBRAID)
+  set(${PROJECT_NAME}_HEADERS "${${PROJECT_NAME}_HEADERS}"
+    ${gismo_externals}/XBraid/braid/_braid.h
+    ${gismo_externals}/XBraid/braid/base.h
+    ${gismo_externals}/XBraid/braid/status.h
+    ${gismo_externals}/XBraid/braid/tape.h
+    ${gismo_externals}/XBraid/braid/util.h
+    ${gismo_externals}/XBraid/braid/braid.h
+    ${gismo_externals}/XBraid/braid/braid_status.h
+    ${gismo_externals}/XBraid/braid/braid_test.h)
+
+  if(NOT GISMO_WITH_MPI )
+    set(${PROJECT_NAME}_HEADERS "${${PROJECT_NAME}_HEADERS}"
+      ${gismo_externals}/XBraid/braid/mpistubs.h)
+    set(${PROJECT_NAME}_SOURCES "${${PROJECT_NAME}_SOURCES}"
+      ${gismo_externals}/XBraid/braid/mpistubs.c)
+  endif()
+
+  set(${PROJECT_NAME}_SOURCES "${${PROJECT_NAME}_SOURCES}"
+    ${gismo_externals}/XBraid/braid/access.c
+    ${gismo_externals}/XBraid/braid/adjoint.c
+    ${gismo_externals}/XBraid/braid/base.c
+    ${gismo_externals}/XBraid/braid/braid.c
+    ${gismo_externals}/XBraid/braid/braid_status.c
+    ${gismo_externals}/XBraid/braid/braid_test.c
+    ${gismo_externals}/XBraid/braid/communication.c
+    ${gismo_externals}/XBraid/braid/distribution.c
+    ${gismo_externals}/XBraid/braid/drive.c
+    ${gismo_externals}/XBraid/braid/grid.c
+    ${gismo_externals}/XBraid/braid/hierarchy.c
+    ${gismo_externals}/XBraid/braid/interp.c
+    ${gismo_externals}/XBraid/braid/norm.c
+    ${gismo_externals}/XBraid/braid/refine.c
+    ${gismo_externals}/XBraid/braid/relax.c
+    ${gismo_externals}/XBraid/braid/residual.c
+    ${gismo_externals}/XBraid/braid/restrict.c
+    ${gismo_externals}/XBraid/braid/space.c
+    ${gismo_externals}/XBraid/braid/step.c
+    ${gismo_externals}/XBraid/braid/tape.c
+    ${gismo_externals}/XBraid/braid/util.c
+    ${gismo_externals}/XBraid/braid/uvector.c)
   
   include_directories(${gismo_externals}/XBraid/braid)
 
@@ -46,9 +83,6 @@ add_library(${PROJECT_NAME} OBJECT
   ${${PROJECT_NAME}_HEADERS}
   ${${PROJECT_NAME}_HPPFILES}
   ${${PROJECT_NAME}_SOURCES}
-  ${${PROJECT_NAME}_HEADERS_XBRAID}
-  ${${PROJECT_NAME}_HPPFILES_XBRAID}
-  ${${PROJECT_NAME}_SOURCES_XBRAID}
  )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
