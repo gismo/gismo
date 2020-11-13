@@ -17,15 +17,15 @@
 
 #include <gsCore/gsConfig.h>
 
-#include <gsSpectra/SymEigsSolver.h>
-#include <gsSpectra/SymEigsShiftSolver.h>
-#include <gsSpectra/SymGEigsSolver.h>
-#include <gsSpectra/GenEigsSolver.h>
-#include <gsSpectra/GenEigsRealShiftSolver.h>
-#include <gsSpectra/MatOp/SparseGenMatProd.h>
-//#include <gsSpectra/MatOp/DenseSymMatProd.h> // included by SymEigsSolver.h
-#include <gsSpectra/MatOp/SparseCholesky.h>
-#include <gsSpectra/MatOp/DenseCholesky.h>
+#include <SymEigsSolver.h>
+#include <SymEigsShiftSolver.h>
+#include <SymGEigsSolver.h>
+#include <GenEigsSolver.h>
+#include <GenEigsRealShiftSolver.h>
+#include <MatOp/SparseGenMatProd.h>
+//#include <MatOp/DenseSymMatProd.h> // included by SymEigsSolver.h
+#include <MatOp/SparseCholesky.h>
+#include <MatOp/DenseCholesky.h>
 
 namespace gismo {
 
@@ -93,23 +93,24 @@ public:
 
 template <class MatrixType> class SpectraOps
 {
-public:
+protected:
     typedef Spectra::SparseCholesky<typename MatrixType::Scalar> InvOp;
     SpectraOps(const MatrixType & A, const MatrixType & B) : opA(A), opB(B) { }
     SpectraMatProd<MatrixType>                           opA;
     Spectra::SparseCholesky<typename MatrixType::Scalar> opB;
 };
 
-// template<> template <class T> class SpectraOps<gsMatrix<T> >
-// {
-// public:
-//     typedef Spectra::DenseCholesky<T> InvOp;
-//     typedef gsMatrix<T> MatrixType;
-// protected:
-//     SpectraOps(const MatrixType & A, const MatrixType & B) : opA(A), opB(B) { }
-//     SpectraMatProd<MatrixType>                          opA;
-//     InvOp opB;
-// };
+//template<> //compilation fails with this
+template <class T> class SpectraOps<gsMatrix<T> >
+{
+public:
+    typedef Spectra::DenseCholesky<T> InvOp;
+    typedef gsMatrix<T> MatrixType;
+protected:
+    SpectraOps(const MatrixType & A, const MatrixType & B) : opA(A), opB(B) { }
+    SpectraMatProd<MatrixType>                          opA;
+    InvOp opB;
+};
 
 /// Generalized eigenvalue solver for real symmetric matrices
 template <class MatrixType, int SelRule = Spectra::SMALLEST_ALGE, int GEigsMode = Spectra::GEIGS_CHOLESKY>

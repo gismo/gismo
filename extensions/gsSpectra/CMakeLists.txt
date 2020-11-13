@@ -1,6 +1,9 @@
-### CMakeLists.txt ---
+### CMakeLists.txt --- Spectra library
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2018 - RICAM-Linz.
+#
+# The library is header-only, the extra code is downloaded in place of
+# the source folder of G+Smo
+#
 ######################################################################
 
 ## Spectra extension
@@ -14,20 +17,19 @@ aux_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HEADERS)
 # Apply same configuration as G+Smo
 include(gsConfig)
 
-message("STATUS CMake Will attempt to download Spectra sources.")
-include(ExternalProject)
-ExternalProject_Add(Spectra
-          SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Spectra
+message(STATUS "CMake Will attempt to download Spectra sources.")
+#include(ExternalProject)
+gismo_fetch_directory(Spectra
+          #SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Spectra
 	  SVN_REPOSITORY https://github.com/yixuan/spectra/trunk/include
-          CONFIGURE_COMMAND ""
-          BUILD_COMMAND ""
-          UPDATE_COMMAND ""
-          INSTALL_COMMAND ""
+	  SVN_TRUST_CERT 1
+	  DESTINATION extensions/gsSpectra
 )
 #endif(NOT SPECTRA_FOUND)
 
-set(SPECTRA_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Spectra CACHE INTERNAL "")
-#include_directories(${SPECTRA_INCLUDE_DIR})
+
+set(SPECTRA_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Spectra/Spectra CACHE INTERNAL "")
+#include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Spectra/Spectra)
 
 add_library(${PROJECT_NAME} INTERFACE)
 target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_HEADERS}>)
