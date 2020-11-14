@@ -77,6 +77,7 @@
 ##   GISMO_SUBMODULES
 ##   LABELS_FOR_SUBPROJECTS
 ##   PROJECT_NAME
+##   UPDATE_REPO
 ##   UPDATE_MODULES
 ##   UPDATE_TYPE
 ##
@@ -305,6 +306,11 @@ if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xUndefinedBehaviorSanitizer")
   set(ENV{UBSAN_OPTIONS} "print_stacktrace=1")
 endif()
 
+# Update G+Smo from remote (no effect on Continuous builds)
+if (NOT DEFINED UPDATE_REPO)
+  set(UPDATE_REPO ON)
+endif()
+
 # Update type (git, svn, wget or url)
 if (NOT DEFINED UPDATE_TYPE)
   set(UPDATE_TYPE git)
@@ -428,23 +434,27 @@ if(NOT DEFINED CTEST_CONFIGURATION_TYPE AND DEFINED ENV{CTEST_CONFIGURATION_TYPE
 endif()
 
 if(NOT DEFINED CTEST_SITE)
-  find_program(HOSTNAME_CMD NAMES hostname)
-  execute_process(COMMAND ${HOSTNAME_CMD} OUTPUT_VARIABLE HOSTNAME OUTPUT_STRIP_TRAILING_WHITESPACE)
-  set(CTEST_SITE "${HOSTNAME}")
+  if(DEFINED ENV{CTEST_SITE})
+    set(CTEST_SITE $ENV{CTEST_SITE})
+  else()
+    find_program(HOSTNAME_CMD NAMES hostname)
+    execute_process(COMMAND ${HOSTNAME_CMD} OUTPUT_VARIABLE HOSTNAME OUTPUT_STRIP_TRAILING_WHITESPACE)
+    set(CTEST_SITE "${HOSTNAME}")
+  endif()
 endif()
 
 # Name of this build
 if(NOT DEFINED CTEST_BUILD_NAME)
-#  find_program(UNAME NAMES uname)
-#  execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname OUTPUT_STRIP_TRAILING_WHITESPACE)
-#  execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu" OUTPUT_STRIP_TRAILING_WHITESPACE)
-#  set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CNAME}")
+  #  find_program(UNAME NAMES uname)
+  #  execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname OUTPUT_STRIP_TRAILING_WHITESPACE)
+  #  execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu" OUTPUT_STRIP_TRAILING_WHITESPACE)
+  #  set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CNAME}")
   if(${UPDATE_MODULES})
     set(smHead "(head)")
   endif()
   get_filename_component(cxxnamewe "${CXXNAME}" NAME_WE)
   set(CTEST_BUILD_NAME "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${cxxnamewe}${smHead}")
-  endif()
+endif()
   message("NAME: ${CTEST_BUILD_NAME}")
   
 if(NOT CTEST_BUILD_JOBS)
@@ -627,7 +637,7 @@ set(CTEST_NOTES_FILES ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
   ctest_start(${CTEST_TEST_MODEL})
-  if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
+  if(UPDATE_REPO AND NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
     update_gismo(updcount)
   endif()
   run_ctests()

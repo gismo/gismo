@@ -294,7 +294,7 @@ endif(HAVE_SYS_STAT_H)
 #  )
 
 # Apply same configuration as G+Smo
-include( gsConfig)
+include(gsConfig)
 
 #if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 #  add_definitions(
@@ -326,6 +326,12 @@ endif()
 
 add_library(gsOpennurbs OBJECT ${OPENNURBS_SOURCES}) #STATIC
 #target_link_libraries(gsOpennurbs Rpcrt4) # Note: linked with gismolib instead
+
+target_compile_options(gsOpennurbs PRIVATE
+  $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
+  -w>
+  $<$<CXX_COMPILER_ID:MSVC>:
+  /W0>)
 
 set_target_properties(gsOpennurbs 
 PROPERTIES POSITION_INDEPENDENT_CODE ON

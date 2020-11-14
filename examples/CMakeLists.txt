@@ -23,6 +23,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER
 aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR} FILES)
 #message("found files: ${FILES}")
 
+#set(CPP_FILES_98 )
+#set(CPP_FILES_11 ${CPP_FILES_98} )
+#set(CPP_FILES_14 ${CPP_FILES_98} ${CPP_FILES_11} )
+
 foreach(file ${FILES})
 
     add_gismo_executable(${file})
