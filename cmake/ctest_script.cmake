@@ -232,7 +232,8 @@ endif()
 
 # Build folder (defaults inside the script directory)
 if(NOT DEFINED CTEST_BINARY_DIRECTORY)
-  set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/build_${CTEST_TEST_MODEL}${CTEST_CONFIGURATION_TYPE}_${CNAME})
+  get_filename_component(cnamewe "${CXXNAME}" NAME_WE)
+  set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/build_${CTEST_TEST_MODEL}${CTEST_CONFIGURATION_TYPE}_${cnamewe})
 endif()
 
 # Empty previous directory before building (otherwise builds are incremental)
