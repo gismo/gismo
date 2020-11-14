@@ -114,9 +114,9 @@ bool polyReconstructionTaylor(const gsFunction<T> &fun, gsBSplineBasis<T> basis,
     int deg = basis.degree();
 
     if(degPoly <= deg)  //set the expected error values
-        expError = 1.0/std::pow(10.0,5);   //only 10^-5 because gsFunctionExpr.eval_into is not more accurate
+        expError = 1.0/math::pow(10.0,5);   //only 10^-5 because gsFunctionExpr.eval_into is not more accurate
     else
-        expError = std::pow(10.0,8);    //some high value, for when we don't expect an exact approximation
+        expError = math::pow(10.0,8);    //some high value, for when we don't expect an exact approximation
                                         //(when degPoly is higher than the degree of the spline function we use to approximate)
 
     gsMatrix<T> coefs;
@@ -491,6 +491,15 @@ bool qi_hs_2D()
     gsInfo<<"\nLocal interpolation-based error analysis (cubic):\n";
     passed &= errorAnalysis<real_t>(mySinus, thb3, 4, numRef);
 
+
+    gsMatrix<> coefs;
+    gsQuasiInterpolate<real_t>::localIntpl(thb3, mySinus, coefs);
+    gsTHBSpline<2> aa1(thb3,coefs);
+    gsInfo<<"\nCheck projection (cubic): ";
+    gsQuasiInterpolate<real_t>::localIntpl(thb3, aa1, coefs);
+    gsTHBSpline<2> aa2(thb3,coefs);
+    gsInfo<<"error="<< computeError(aa1,aa2,100) <<"\n";
+                
     return passed;
 }
 
