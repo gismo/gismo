@@ -126,8 +126,8 @@ void approximatePI(const gsMpi & mpi, const gsMpiComm & comm)
 
             for (index_t i = 0; i < coord.rows(); i++)
             {
-                coord(i, 0) = real_t(rand()) / RAND_MAX;
-                coord(i, 1) = real_t(rand()) / RAND_MAX;
+                coord(i, 0) = (real_t)(rand()) / RAND_MAX;
+                coord(i, 1) = (real_t)(rand()) / RAND_MAX;
             }
 
             // Send the N sample points to the other processors
