@@ -580,7 +580,11 @@ macro(run_ctests)
   
   ctest_configure(OPTIONS "${CMAKE_ARGS};${SUBM_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}")
   #ctest_submit(PARTS Configure Update  RETRY_COUNT 3 RETRY_DELAY 3)
+if(EXISTS ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
   ctest_submit(PARTS Configure Notes RETRY_COUNT 3 RETRY_DELAY 3)
+else()
+  ctest_submit(PARTS Configure RETRY_COUNT 3 RETRY_DELAY 3)
+endif()
 
   #"${CMAKE_VERSION}" VERSION_LESS "3.10"
   if(NOT "x${LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
@@ -639,9 +643,7 @@ endmacro(run_ctests)
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
 
-if(EXISTS ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
-  set(CTEST_NOTES_FILES ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
-endif()
+set(CTEST_NOTES_FILES ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
 
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 

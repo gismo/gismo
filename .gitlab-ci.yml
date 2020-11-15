@@ -60,7 +60,7 @@ linux_x86_64_clang8_cxx11_release_double_int32t:
     - coverity_scan
 
 # Clang 9, C++14, Release
-linux_x86_64_clang9_cxx14_release_longdouble_int64t
+linux_x86_64_clang9_cxx14_release_longdouble_int64t:
   tags:
     - linux
   stage: test
