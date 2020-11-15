@@ -633,7 +633,9 @@ endmacro(run_ctests)
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
 
-set(CTEST_NOTES_FILES ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
+if(EXISTS ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
+  set(CTEST_NOTES_FILES ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
+endif()
 
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
