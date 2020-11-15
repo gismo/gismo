@@ -534,7 +534,6 @@ macro(update_gismo ug_ucount)
   execute_process(COMMAND ${CTEST_UPDATE_COMMAND} status
     WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
     OUTPUT_VARIABLE updtestcmd)
-  )
   message("git test:\n" ${updtestcmd} )
 
   ctest_submit(PARTS Update RETRY_COUNT 3 RETRY_DELAY 3)
