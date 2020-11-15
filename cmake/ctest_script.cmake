@@ -529,15 +529,15 @@ macro(update_gismo ug_ucount)
   endif()
 
   set(ug_updlog "0")
-  ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY} RETURN_VALUE ${ug_ucount})
-  message("CTEST_UPDATE " ${${ug_ucount}} )
-  execute_process(COMMAND ${CTEST_UPDATE_COMMAND} status
+  execute_process(COMMAND ${CTEST_UPDATE_COMMAND} symbolic-ref -q HEAD
     WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-    OUTPUT_VARIABLE updtestcmd)
-  message("git test:\n" ${updtestcmd} )
+    OUTPUT_VARIABLE isdetached)
+  if(isdetached EQUAL 0 AND UPDATE_REPO)
+    ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY} RETURN_VALUE ${ug_ucount})
+    ctest_submit(PARTS Update RETRY_COUNT 3 RETRY_DELAY 3)
+  endif()
+  set(ug_updlog " ${${ug_ucount}} gismo\n")    
 
-  ctest_submit(PARTS Update RETRY_COUNT 3 RETRY_DELAY 3)
-  set(ug_updlog " ${${ug_ucount}} gismo\n")
   if(${UPDATE_MODULES})
     foreach (submodule ${GISMO_SUBMODULES})
       execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
@@ -646,13 +646,13 @@ endif()
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
   ctest_start(${CTEST_TEST_MODEL})
-  if(UPDATE_REPO AND NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
+  if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
     update_gismo(updcount)
   endif()
   run_ctests()
 
 else() #continuous model
-
+  set(UPDATE_REPO ON)
   while(${CTEST_ELAPSED_TIME} LESS ${test_runtime})
     set(START_TIME ${CTEST_ELAPSED_TIME})
     ctest_start(${CTEST_TEST_MODEL})
