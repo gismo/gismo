@@ -3,10 +3,9 @@
 #
 # Travis CI is the primary CI service for macOS
 #
-# Author: Angelos Mantzaflaris 2012-2018
+# Author: Angelos Mantzaflaris 2012-2020
 #
 
-sudo: false
 
 git:
   submodules: false
@@ -46,7 +45,7 @@ addons:
     branch_pattern: coverity_scan
 
 ###################
-matrix:
+jobs:
   fast_finish: true
   include:
 
@@ -162,11 +161,12 @@ before_deploy:
 
 deploy:
   provider: pages
-  skip-cleanup: true
-  github-token: $GITHUB_TOKEN
+  cleanup: false
+  token: $GITHUB_TOKEN
   repo: gismo/gismo.github.io
-  target-branch: master
-  local-dir: build/doc/html
+  target_branch: master
+  local_dir: build/doc/html
+  strategy: git
   #verbose: true
   on:
     branch: stable

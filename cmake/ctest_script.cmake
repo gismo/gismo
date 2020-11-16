@@ -557,6 +557,10 @@ macro(update_gismo ug_ucount)
 endmacro(update_gismo)
 
 macro(run_ctests)
+  set(narg ${ARGC})
+  if (narg GREATER 0)
+    set(${ARGV0} 0)
+  endif()
 
   # Reset CTestConfig variables
   if(DEFINED PROJECT_NAME)
@@ -597,7 +601,11 @@ endif()
       endif()
       ctest_build(TARGET ${subproject} APPEND)
       ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
-      ctest_test(INCLUDE_LABEL "${subproject}" PARALLEL_LEVEL ${CTEST_TEST_JOBS})
+      ctest_test(INCLUDE_LABEL "${subproject}" PARALLEL_LEVEL ${CTEST_TEST_JOBS} RETURN_VALUE testResult)
+    if (narg GREATER 0 AND NOT testResult EQUAL 0)
+      set(${ARGV0} -1)
+    endif()
+
       ctest_submit(PARTS Test  RETRY_COUNT 3 RETRY_DELAY 3)
 
       if(DO_COVERAGE)
@@ -623,7 +631,11 @@ endif()
     ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
     ctest_build(TARGET unittests APPEND)
     ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
-    ctest_test(PARALLEL_LEVEL ${CTEST_TEST_JOBS})
+    ctest_test(PARALLEL_LEVEL ${CTEST_TEST_JOBS} RETURN_VALUE testResult)
+    if (narg GREATER 0 AND NOT testResult EQUAL 0)
+      set(${ARGV0} -1)
+    endif()
+
     ctest_submit(PARTS Test  RETRY_COUNT 3 RETRY_DELAY 3)
 
     if(DO_COVERAGE)
@@ -651,7 +663,11 @@ if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
   if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
     update_gismo(updcount)
   endif()
-  run_ctests()
+  run_ctests(res)
+
+  if(NOT res EQUAL 0)
+    message(FATAL_ERROR "Some Tests failed.")
+  endif()
 
 else() #continuous model
   set(UPDATE_REPO ON)
