@@ -179,6 +179,23 @@ public:
                  bool isFunc_param = false,
                  int = 1000) const;
 
+	/// Computes the H1-seminorm of the diff. between the field and a function \a
+	/// func on the physical domain
+	T distanceF(gsFunctionSet<T> const & func, 
+		T eps, 
+		T p,
+		bool isFunc_param = false,
+		int = 1000) const;
+
+	/// Computes the H1-seminorm of the diff. between the field and a function \a
+	/// func on the physical domain, using mesh from B
+	T distanceF(gsFunctionSet<T> const & func, 
+		gsMultiBasis<T> const & B,
+		T eps,
+		T p,
+		bool isFunc_param = false,
+		int = 1000) const;
+
     /// Computes the H2-seminorm of the diff. between the field and a function \a
     /// func on the physical domain, using mesh from B
     T distanceH2(gsFunctionSet<T> const & func,
