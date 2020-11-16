@@ -248,7 +248,7 @@ class SparseMatrix
       * 
       * \sa resize(Index,Index), data()
       */
-    inline void setZero() // G+Smo
+    inline void setZero()
     {
       m_data.clear();
       memset(m_outerIndex, 0, (m_outerSize+1)*sizeof(StorageIndex));
@@ -327,7 +327,8 @@ class SparseMatrix
           m_outerIndex[j] = newOuterIndex[j];
           m_innerNonZeros[j] = innerNNZ;
         }
-        m_outerIndex[m_outerSize] = m_outerIndex[m_outerSize-1] + m_innerNonZeros[m_outerSize-1] + reserveSizes[m_outerSize-1];
+        if(m_outerSize>0)
+          m_outerIndex[m_outerSize] = m_outerIndex[m_outerSize-1] + m_innerNonZeros[m_outerSize-1] + reserveSizes[m_outerSize-1];
         
         m_data.resize(m_outerIndex[m_outerSize]);
       }
@@ -893,7 +894,7 @@ public:
 
       Index p = m_outerIndex[outer] + m_innerNonZeros[outer]++;
       m_data.index(p) = convert_index(inner);
-      return (m_data.value(p) = 0);
+      return (m_data.value(p) = Scalar(0));
     }
 
 private:
@@ -1274,7 +1275,7 @@ EIGEN_DONT_INLINE typename SparseMatrix<_Scalar,_Options,_StorageIndex>::Scalar&
   m_innerNonZeros[outer]++;
 
   m_data.index(p) = inner;
-  return (m_data.value(p) = 0);
+  return (m_data.value(p) = Scalar(0));
 }
 
 template<typename _Scalar, int _Options, typename _StorageIndex>
@@ -1381,7 +1382,7 @@ EIGEN_DONT_INLINE typename SparseMatrix<_Scalar,_Options,_StorageIndex>::Scalar&
   }
 
   m_data.index(p) = inner;
-  return (m_data.value(p) = 0);
+  return (m_data.value(p) = Scalar(0));
 }
 
 namespace internal {

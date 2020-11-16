@@ -83,13 +83,17 @@ struct functor_traits<std::binder1st<T> >
 { enum { Cost = functor_traits<T>::Cost, PacketAccess = false }; };
 #endif
 
+#if (__cplusplus < 201703L) && (EIGEN_COMP_MSVC < 1910)
+// std::unary_negate is deprecated since c++17 and will be removed in c++20
 template<typename T>
 struct functor_traits<std::unary_negate<T> >
 { enum { Cost = 1 + functor_traits<T>::Cost, PacketAccess = false }; };
 
+// std::binary_negate is deprecated since c++17 and will be removed in c++20
 template<typename T>
 struct functor_traits<std::binary_negate<T> >
 { enum { Cost = 1 + functor_traits<T>::Cost, PacketAccess = false }; };
+#endif
 
 #ifdef EIGEN_STDEXT_SUPPORT
 
@@ -119,7 +123,7 @@ struct functor_traits<std::binary_compose<T0,T1,T2> >
 
 #endif // EIGEN_STDEXT_SUPPORT
 
-// allow one to add new functors and specializations of functor_traits from outside Eigen.
+// allow to add new functors and specializations of functor_traits from outside Eigen.
 // this macro is really needed because functor_traits must be specialized after it is declared but before it is used...
 #ifdef EIGEN_FUNCTORS_PLUGIN
 #include EIGEN_FUNCTORS_PLUGIN
