@@ -60,7 +60,7 @@ namespace gismo
 			const int dir = side.direction();
 			gsVector<int> numQuadNodes(basis.dim());
 			for (int i = 0; i < basis.dim(); ++i)
-				numQuadNodes[i] = 2 * basis.degree(i) + 1;
+				numQuadNodes[i] = 4* basis.degree(i) + 1;
 			numQuadNodes[dir] = 1;
 
 			// Setup Quadrature
@@ -144,23 +144,26 @@ namespace gismo
 				}
 
 				//Compute the Gradient of the approximative function w by multiplying the coefficients of w with the physical gradients
+				//Compute the point evaluation of w by multiplying the coefficients with the basis function evaluations.
 				gsMatrix<T> wGrad = pGrads * w_;
-				gsMatrix<T> wVal = bVals.transpose()*w_;
+				gsMatrix<T> wVal = bVals.transpose() * w_;
 
 				// Get penalty parameter
 				const T h = element.getCellSize();
-				const T mu = penalty * pow(eps*eps + ((dirData.col(k) - wVal).transpose()*(dirData.col(k) - wVal)).value() / (0 != h ? (h*h) : 1), (p - 2) / 2) / (0 != h ? h : 1);
-				const T a = pow(eps*eps + (wGrad.transpose()*wGrad).value(), (p - 2) / 2);
+				const T a_pen = pow(eps * eps + ((dirData.col(k) - wVal).transpose() * (dirData.col(k) - wVal)).value() / (h * h), (p - 2) / 2);
+				const T mu = a_pen * penalty / h;
+				const T a = pow(eps * eps + (wGrad.transpose() * wGrad).value(), (p - 2) / 2);
 
+				//gsInfo << a_pen*mu<< "\n";
+				
 				//gsInfo << dirData.col(k).rows() << " x "<< dirData.col(k).cols() << "\n";
 
 				// Sum up quadrature point evaluations
-				localRhs.noalias() -= weight * (/*a*pGrads.transpose() * unormal*/ - mu * bVals)
-					* dirData.col(k).transpose();
+				localRhs.noalias() -= weight * ((-mu * a_pen * bVals)
+												* dirData.col(k).transpose());
 
 				localMat.noalias() -= weight * (a * bVals * unormal.transpose() * pGrads
-					/*+ a*(bVals * unormal.transpose() * pGrads).transpose()*/
-					- mu * bVals * bVals.transpose());
+								    - mu * a_pen * bVals * bVals.transpose());
 			}
 		}
 
