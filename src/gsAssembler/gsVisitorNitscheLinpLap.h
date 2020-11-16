@@ -159,11 +159,11 @@ namespace gismo
 				//gsInfo << dirData.col(k).rows() << " x "<< dirData.col(k).cols() << "\n";
 
 				// Sum up quadrature point evaluations
-				localRhs.noalias() -= weight * ((-mu * a_pen * bVals)
+				localRhs.noalias() -= weight * ((-mu * bVals)
 												* dirData.col(k).transpose());
 
 				localMat.noalias() -= weight * (a * bVals * unormal.transpose() * pGrads
-								    - mu * a_pen * bVals * bVals.transpose());
+								    - mu * bVals * bVals.transpose());
 			}
 		}
 
