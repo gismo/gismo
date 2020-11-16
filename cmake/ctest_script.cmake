@@ -227,13 +227,19 @@ endif()
 
 # Source folder (defaults inside the script directory)
 if(NOT DEFINED CTEST_SOURCE_DIRECTORY)
-  set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_src)
+  if(EXISTS ${CTEST_SCRIPT_DIRECTORY}/gismoConfig.cmake.in
+      AND EXISTS ${CTEST_SCRIPT_DIRECTORY}/../CMakeLists.txt)
+    get_filename_component(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY} DIRECTORY)
+  else()
+    set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_src)
+  endif()
 endif()
 
-# Build folder (defaults inside the script directory)
+# Build folder (defaults next to source directory)
 if(NOT DEFINED CTEST_BINARY_DIRECTORY)
+  get_filename_component(base_dir ${CTEST_SOURCE_DIRECTORY} DIRECTORY)
   get_filename_component(cnamewe "${CXXNAME}" NAME_WE)
-  set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/build_${CTEST_TEST_MODEL}${CTEST_CONFIGURATION_TYPE}_${cnamewe})
+  set(CTEST_BINARY_DIRECTORY ${base_dir}/build_${CTEST_TEST_MODEL}${CTEST_CONFIGURATION_TYPE}_${CNAME})
 endif()
 
 # Empty previous directory before building (otherwise builds are incremental)
