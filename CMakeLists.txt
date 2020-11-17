@@ -198,7 +198,7 @@ if(GISMO_WITH_MPI)
   #include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 endif(GISMO_WITH_MPI)
 
-if(GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
+if(GISMO_WITH_MPFR OR GISMO_WITH_GMP)
   add_subdirectory(extensions/gsMultiPrecision)
   
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GMP_INCLUDE_DIR}

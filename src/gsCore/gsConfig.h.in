@@ -46,7 +46,7 @@
 #cmakedefine GISMO_WITH_IPOPT
 #cmakedefine GISMO_WITH_MPFR
 #cmakedefine GISMO_WITH_MPI
-#cmakedefine GISMO_WITH_MPQ
+#cmakedefine GISMO_WITH_GMP
 #cmakedefine GISMO_WITH_ONURBS
 #cmakedefine GISMO_WITH_OCC
 #cmakedefine GISMO_WITH_PARDISO
@@ -65,7 +65,7 @@
 #include <mpreal.h>
 #endif
 
-#ifdef GISMO_WITH_MPQ
+#ifdef GISMO_WITH_GMP
 #include <gmpxx.h>
 #include <unsupported/Eigen/MPQClassExtra>
 #endif

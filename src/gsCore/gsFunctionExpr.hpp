@@ -70,7 +70,7 @@
 #include <exprtk_mpfr_forward.hpp>
 #endif
 
-#if defined(GISMO_WITH_MPQ)
+#if defined(GISMO_WITH_GMP)
 #include <exprtk_gmp_forward.hpp>
 #endif
 
@@ -93,7 +93,7 @@
 #include <exprtk_mpfr_adaptor.hpp>
 #endif
 
-#if defined(GISMO_WITH_MPQ)
+#if defined(GISMO_WITH_GMP)
 #include <exprtk_gmp_adaptor.hpp>
 #endif
 

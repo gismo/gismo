@@ -21,7 +21,7 @@ include(gsConfig)
 ##
 ## GMP library
 ##
-if (GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
+if (GISMO_WITH_MPFR OR GISMO_WITH_GMP)
   # Look for pre-installed GMP library
   find_package(GMP QUIET)
   
@@ -61,7 +61,7 @@ if (GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
         DESTINATION include/gismo/gmp/
         FILES_MATCHING PATTERN "*.h")
   endif (NOT GMP_FOUND)
-endif (GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
+endif (GISMO_WITH_MPFR OR GISMO_WITH_GMP)
 
 ##
 ## MPFR library
@@ -148,7 +148,7 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}
 ##
 ## Add dependencies
 ##
-if ((GISMO_WITH_MPQ OR GISMO_WITH_MPFR) AND NOT GMP_FOUND)
+if ((GISMO_WITH_GMP OR GISMO_WITH_MPFR) AND NOT GMP_FOUND)
     # Make gsMultiPrecision extension dependent on GMP library
     add_dependencies(${PROJECT_NAME} gmp)
 endif()
