@@ -36,6 +36,10 @@
 #include <sys/syslimits.h>
 #endif
 
+#if defined __linux__
+#include <limits.h>
+#endif
+
 namespace gismo
 {
 

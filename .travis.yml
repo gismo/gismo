@@ -1,4 +1,7 @@
+#
 # G+smo Travis-CI YML script
+#
+# Travis CI is the primary CI service for macOS
 #
 # Author: Angelos Mantzaflaris 2012-2018
 #
@@ -13,6 +16,10 @@ language: cpp
 notifications:
   email: false
 
+# The purpose of the different branches is as follows:
+# - stable        : tests all commits to the stable branch with different macOS configurations and generates doxygen documentation
+# - coverity_scan : performs a coverity scan of the source code (triggered by merging code into the branch 'coverity_scan')
+# - ci_test       : performs more extensive CI tests (triggered by merging code into the branch 'ci_test').
 branches:
   only:
   - stable
@@ -44,12 +51,31 @@ matrix:
   include:
 
     - os: osx
-      if: branch = stable OR branch = cooverity_scan
-      osx_image: xcode9.1  # xcode8.3
+      if: branch = stable
+      osx_image: xcode9.4 # macOS 10.13 (High Sierra)
       compiler: clang
       env:
         - COMPILER=clang++
         - BUILD_TYPE=Release
+        - CXX_STANDARD=98
+   
+    - os: osx
+      if: branch = stable
+      osx_image: xcode10.3 # macOS 10.14.4 (Mojave)
+      compiler: clang
+      env:
+        - COMPILER=clang++
+        - BUILD_TYPE=Release
+        - CXX_STANDARD=11
+        
+    - os: osx
+      if: branch = stable
+      osx_image: xcode11.6 # macOS 10.15.5 (Catalina)
+      compiler: clang
+      env:
+        - COMPILER=clang++
+        - BUILD_TYPE=Release
+        - CXX_STANDARD=14
 
     - if: branch = stable
       compiler: gcc
@@ -66,6 +92,7 @@ matrix:
       env:
         - BUILD_TYPE=Release
         - TASK=Doxygen
+        - CXX_STANDARD=98
       #install:
         #- wget -q 'https://github.com/doxygen/doxygen/archive/master.tar.gz' -O doxygen.tar.gz
         #- tar -xzf doxygen.tar.gz; mv doxygen-* doxygen
@@ -73,15 +100,15 @@ matrix:
 
     - os: osx
       if: branch = ci_test
-      osx_image: xcode9.1  # xcode8.3
-      compiler: gcc
+      osx_image: xcode9.4 # macOS 10.13 (High Sierra)
+      compiler: clang
       env:
         - COMPILER=clang++
         - BUILD_TYPE=Release
 
     - os: osx
       if: branch = ci_test
-      osx_image: xcode8.3
+      osx_image: xcode9.4 # macOS 10.13 (High Sierra)
       compiler: clang
       env:
         - COMPILER=clang++
@@ -97,7 +124,8 @@ matrix:
       before_install:
         - pip install --user cpp-coveralls
       before_script:
-        - mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_BRANCH/travis-cov" #-DGISMO_WITH_IPOPT=ON -DGISMO_BUILD_COVERAGE=ON
+        - mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_BRANCH/travis-cov" -D
+        ME="$TRAVIS_OS_NAME-$TRAVIS_COMPILER_cxx$CXX_STANDARD_$TRAVIS_CPU_ARCH" #-DGISMO_WITH_IPOPT=ON -DGISMO_BUILD_COVERAGE=ON
       after_success:
         - coveralls --exclude lib --exclude tests --gcov-options '\-lp'
 
@@ -116,11 +144,12 @@ matrix:
 
 before_install:
   - test $TRAVIS_BRANCH != coverity_scan -o ${TRAVIS_JOB_NUMBER##*.} = 1 || exit 0
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update>/dev/null; brew install valgrind; fi #--HEAD
+  - if [ "$TRAVIS_OS_NAME" == "osx" && "$TRAVIS_OSX_IMAGE" == "xcode9.4" ]; then brew update>/dev/null; brew install valgrind; fi #--HEAD
   #- echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
 
 before_script:
-  - mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH [travis]" #-DGISMO_WITH_IPOPT=ON
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH [travis]" -DBUILDNAME="$TRAVIS_OS_NAME-$TRAVIS_OSX_IMAGE_$TRAVIS_COMPILER_cxx$CXX_STANDARD_$TRAVIS_CPU_ARCH"; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH [travis]" -DBUILDNAME="$TRAVIS_OS_NAME-$TRAVIS_COMPILER_cxx$CXX_STANDARD_$TRAVIS_CPU_ARCH"; fi
 
 script:
   - if [ -e "cov-int/scm_log.txt" ]; then cat cov-int/scm_log.txt; fi

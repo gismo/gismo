@@ -15,7 +15,7 @@ max_iter                              500                # d=3000
 acceptable_tol                        1e-6               # d=1e-6
 acceptable_iter                       15                 # d=15
 acceptable_constr_viol_tol            1e-2               # d=1e-2
-acceptable_obj_change_tol             1                  # d=1e+20
+acceptable_obj_change_tol             1e+20              # d=1e+20
 
 #--- C.3 NLP Scaling -----------------------------------------------------------
 # obj_scaling_factor                  1                  # d=1 #(-1: maximize)

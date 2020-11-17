@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
 
     gsBoundaryConditions<> bc;
     fd.getId(2, bc); // id=2: boundary conditions
-    // bc.setMap(mp);
+    bc.setGeoMap(mp);
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
     gsOptionList Aopt;
@@ -197,12 +197,6 @@ int main(int argc, char *argv[])
     space u = exL.getSpace(basisL);
     space v = exH.getSpace(basisH);
 
-    u.setInterfaceCont(0);
-    u.addBc( bc.get("Dirichlet") );
-
-    v.setInterfaceCont(0);
-    v.addBc( bc.get("Dirichlet") );
-
     // Set the source term
     variable ff = exL.getCoeff(f, G);
     variable gg = exH.getCoeff(f, H);
@@ -244,8 +238,11 @@ int main(int argc, char *argv[])
 
     gsSparseSolver<>::CGDiagonal solver;
 
-    exL.initSystem();
-    exH.initSystem();
+    u.setup(bc, dirichlet::interpolation, 0);
+    v.setup(bc, dirichlet::interpolation, 0);
+
+    exL.initSystem(false);
+    exH.initSystem(false);
 
     //! [Problem setup]
     gsInfo<< "NumDofs Primal: "<<exL.numDofs() <<std::flush;
@@ -288,7 +285,7 @@ int main(int argc, char *argv[])
 
     // [Low-order Dual PROBLEM]
     // Compute the system matrix and right-hand side
-    exL.initSystem();
+    exL.initSystem(false);
     exL.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G), u * uL * meas(G) );
 
     // Enforce Neumann conditions to right-hand side
@@ -311,7 +308,7 @@ int main(int argc, char *argv[])
 
     // [!Low-order Dual PROBLEM]
     // Initialize the system
-    exH.initSystem();
+    exH.initSystem(false);
 
     gsInfo<< "NumDofs Dual: "<<exH.numDofs() <<std::flush;
 
@@ -359,27 +356,27 @@ int main(int argc, char *argv[])
     space v0 = exH.getSpace(basisH); // full basis
     space u0 = exL.getSpace(basisL); // full basis
 
-    exL.initSystem();
+    exL.initSystem(true);
     exL.assemble(zL.val() * u0);
     gsDebug<<"int zL "<<evL.integral(zL.val())<<"; "<<exL.rhs().sum()<<"\n";
 
-    exH.initSystem();
+    exH.initSystem(true);
     exH.assemble(zL2.val() * v0);
     gsDebug<<"int zH "<<evH.integral(zL2)<<"; "<<exH.rhs().sum()<<"\n";
 
-    exL.initSystem();
+    exL.initSystem(true);
     exL.assemble(zH2.val() * u0);
     gsDebug<<"int zH "<<evL.integral(zH2)<<"; "<<exL.rhs().sum()<<"\n";
 
-    exH.initSystem();
+    exH.initSystem(true);
     exH.assemble(zH.val() * v0);
     gsDebug<<"int zH "<<evH.integral(zH.val())<<"; "<<exH.rhs().sum()<<"\n";
 
-    exL.initSystem();
+    exL.initSystem(true);
     exL.assemble(u0 * grad(zH2)*grad(uL).tr());
     gsDebug<<"int grad-norm "<<evL.integral(grad(zH2)*grad(uL).tr())<<"; "<<exL.rhs().sum()<<"\n";
 
-    // exL.initSystem();
+    // exL.initSystem(false);
     // exL.assemble(u * grad(zH2)*grad(zH2).tr());
     // gsDebug<<"int grad-norm "<<evL.integral(grad(zH2)*grad(zH2).tr())<<"; "<<exL.rhs().sum()<<"\n";
 
@@ -437,7 +434,7 @@ int main(int argc, char *argv[])
     // FUNCTION WISE ERROR ESTIMATION
     else if (est==1)
     {
-        exL.initSystem(true);
+        exL.initSystem(false);
         // exH.assemble( grad(uLp) * ( grad(v) * (zH - zLp) + v * ( grad(zH) - grad(zLp) ) ) - gg * v * (zH - zLp)  );
 
         /*
@@ -501,8 +498,8 @@ int main(int argc, char *argv[])
     // FUNCTION WISE ERROR ESTIMATION
     else if (est==2)
     {
-        exL.initSystem(true);
-        exH.initSystem(true);
+        exL.initSystem(false);
+        exH.initSystem(false);
 
 
         // exH.assemble( grad(uLp) * ( grad(v) * (zH - zLp) + v * ( grad(zH) - grad(zLp) ) ) - gg * v * (zH - zLp)  );

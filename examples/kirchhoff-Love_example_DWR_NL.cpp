@@ -1831,6 +1831,7 @@ int main(int argc, char *argv[])
     basisH.degreeElevate();
 
     gsBoundaryConditions<> bc;
+    bc.setGeoMap(mp);
     gsVector<> tmp(3);
     tmp << 0, 0, 0;
 
@@ -1845,10 +1846,10 @@ int main(int argc, char *argv[])
 
     for (index_t i=0; i!=3; ++i)
     {
-        bc.addCondition(boundary::north,condition_type::dirichlet, 0, i );
-        bc.addCondition(boundary::east, condition_type::dirichlet, 0, i );
-        bc.addCondition(boundary::south,condition_type::dirichlet, 0, i );
-        bc.addCondition(boundary::west, condition_type::dirichlet, 0, i );
+        bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, i ); // unknown 0 - x
+        bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, i ); // unknown 1 - y
+        bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+        bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
     }
     tmp << 0,0,-load;
     //! [Refinement]
@@ -1884,10 +1885,8 @@ int main(int argc, char *argv[])
     space uL = exL.getSpace(basisL, 3); //primal space on L
     space zH = exH.getSpace(basisH, 3); // dual space on H
 
-    uL.setInterfaceCont(0); //
-    zH.setInterfaceCont(0); //
-    uL.addBc( bc.get("Dirichlet") ); //
-    zH.addBc( bc.get("Dirichlet") ); //
+    uL.setup(bc, dirichlet::interpolation, 0);
+    zH.setup(bc, dirichlet::interpolation, 0);
 
     // Solution vector and solution variable
     gsMatrix<> random;
@@ -1943,8 +1942,8 @@ int main(int argc, char *argv[])
     //A.options().setInt("DirichletValues", dirichlet::homogeneous);
 
     // Initialize the system
-    exL.initSystem(true);
-    exH.initSystem(true);
+    exL.initSystem(false);
+    exH.initSystem(false);
 
     gsInfo  <<"Lower order basis:\n"
             <<"\t Order: "<<basisL.maxCwiseDegree()<<"\n"
@@ -2052,7 +2051,7 @@ int main(int argc, char *argv[])
         basisH.degreeElevate(1);
 
         // Assemble matrix and rhs
-        exL.initSystem(true);
+        exL.initSystem(false);
         gsInfo << "Assembling primal, size ="<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
 
         exL.assemble(

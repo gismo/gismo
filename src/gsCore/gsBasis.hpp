@@ -691,7 +691,7 @@ T gsBasis<T>::getMaxCellLength() const
 
 /*
 template<class T>
-void gsBasis<T>::linearComb(const gsMatrix<unsigned>  & actives,
+void gsBasis<T>::linearComb(const gsMatrix<index_t>  & actives,
                             const gsMatrix<T>         & basisVals,
                             const gsMatrix<T>         & coefs,
                             gsMatrix<T>&                result )

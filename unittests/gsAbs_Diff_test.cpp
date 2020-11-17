@@ -20,7 +20,7 @@
 // This Unittest file tests math::abs_diff, and therefore
 // util::make_unsigned, which is native C++11 and has an
 // C++98 conform custom implementation in gsCore/gsTemplateTools.h
-SUITE(gsMakeUnsigned)
+SUITE(gsAbs_Diff_test)
 {
     TEST(int32_m1_1)
     {

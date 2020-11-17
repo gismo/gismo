@@ -18,7 +18,7 @@
     <Function type="FunctionExpr" dim="2" index="0">sin(pi*x) * sin(pi*y)</Function>
 
     <!-- Dirichlet conditions (patch,side) -->
-    <bc type="Dirichlet" function="0" unknown="0">
+    <bc type="Dirichlet" function="0" unknown="0" component = "0">
       0 1 0 2 0 3 0 4
     </bc>
 

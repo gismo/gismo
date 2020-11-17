@@ -952,7 +952,7 @@ protected:
     // inline void getLinearCombination(
     // const gsMatrix<T>         & scalars,
     // const gsMatrix<T> * const & coefs,
-    // const gsMatrix<unsigned>  & indices,
+    // const gsMatrix<index_t>  & indices,
     // gsMatrix<T>&                result );
 
 }; // class gsBasis

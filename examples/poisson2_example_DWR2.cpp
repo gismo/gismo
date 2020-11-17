@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
 
     gsBoundaryConditions<> bc;
     fd.getId(2, bc); // id=2: boundary conditions
-    // bc.setMap(mp);
+    bc.setGeoMap(mp);
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
     gsOptionList Aopt;
@@ -273,12 +273,6 @@ int main(int argc, char *argv[])
     space u = exL.getSpace(basisL);
     space v = exH.getSpace(basisH);
 
-    u.setInterfaceCont(0);
-    u.addBc( bc.get("Dirichlet") );
-
-    v.setInterfaceCont(0);
-    v.addBc( bc.get("Dirichlet") );
-
     // Set the source term
     variable ff = exL.getCoeff(f, G);
     variable gg = exH.getCoeff(f, H);
@@ -319,8 +313,11 @@ int main(int argc, char *argv[])
 
     gsSparseSolver<>::CGDiagonal solver;
 
-    exL.initSystem();
-    exH.initSystem();
+    u.setup(bc, dirichlet::interpolation, 0);
+    v.setup(bc, dirichlet::interpolation, 0);
+
+    exL.initSystem(false);
+    exH.initSystem(false);
 
 
 
@@ -329,9 +326,6 @@ int main(int argc, char *argv[])
     //Treat labels: Dirichlet, CornerValues, Collapsed, Clamped
     // u.setup(bc.get("Dirichlet"), dirichlet::interpolation, 0); // def=-1
     //u.setupAsInteriorOnly(0); // def=-1
-
-    // Initialize the system
-    exL.initSystem();
 
     gsInfo<< "NumDofs Primal: "<<exL.numDofs() <<std::flush;
 
@@ -371,7 +365,7 @@ int main(int argc, char *argv[])
 
     // [Low-order Dual PROBLEM]
     // Compute the system matrix and right-hand side
-    exL.initSystem();
+    exL.initSystem(false);
     exL.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G) );
 
     // MAKE RHS FOR POINT
@@ -381,7 +375,7 @@ int main(int argc, char *argv[])
     gsVector<index_t> pids;
     mp.locatePoints(point,pids,forcePoint);
 
-    gsMatrix<unsigned> acts, globalActs;
+    gsMatrix<index_t> acts, globalActs;
     gsMatrix<> bVals;
     basisL.front().basis(pids.at(0)).active_into( forcePoint, acts ); // note: takes the first patch of pids as patch id. Works for non-overlapping patches.
     basisL.front().basis(pids.at(0)).eval_into  ( forcePoint, bVals);
@@ -428,7 +422,7 @@ int main(int argc, char *argv[])
     // }
 
     // Initialize the system
-    exH.initSystem();
+    exH.initSystem(false);
 
     gsInfo<< "NumDofs Dual: "<<exH.numDofs() <<std::flush;
 
@@ -466,7 +460,7 @@ int main(int argc, char *argv[])
     if (fullL2)
     {
         zH.extractFull(dualH0);
-        exH.initSystem();
+        exH.initSystem(true);
 
         if (plot)
         {
@@ -498,13 +492,11 @@ int main(int argc, char *argv[])
 
     if (!fullL2)
     {
-        u_n.setInterfaceCont(0);
-        u_n.addBc(bc.get("Dirichlet"));
-        v_n.setInterfaceCont(0);
-        v_n.addBc(bc.get("Dirichlet"));
+        u_n.setup(bc, dirichlet::interpolation, 0);
+        v_n.setup(bc, dirichlet::interpolation, 0);
     }
     exM.setIntegrationElements(basisH);
-    exM.initSystem();
+    exM.initSystem(true);
     exM.assemble(u_n * meas(GM)* v_n.tr()); // * meas(G));
     gsSparseMatrix<> M_HL = exM.matrix(); // from H to L
     gsSparseMatrix<> M_LH = M_HL.transpose(); // from L to H
@@ -515,11 +507,10 @@ int main(int argc, char *argv[])
     space w1_n = exM.getSpace(basisH);
     if (!fullL2)
     {
-        w1_n.setInterfaceCont(0);
-        w1_n.addBc(bc.get("Dirichlet"));
+        w1_n.setup(bc, dirichlet::interpolation, 0);
     }
     exM.setIntegrationElements(basisH);
-    exM.initSystem();
+    exM.initSystem(true);
     exM.assemble(w1_n * meas(GM)* w1_n.tr()); // * meas(G));
     gsSparseMatrix<> M_HH = exM.matrix();
 
@@ -529,11 +520,10 @@ int main(int argc, char *argv[])
     space w2_n = exM.getSpace(basisL);
     if (!fullL2)
     {
-        w2_n.setInterfaceCont(0);
-        w2_n.addBc(bc.get("Dirichlet"));
+        w2_n.setup(bc, dirichlet::interpolation, 0);
     }
     exM.setIntegrationElements(basisL);
-    exM.initSystem();
+    exM.initSystem(true);
 
     exM.assemble(w2_n * meas(GM)* w2_n.tr()); // * meas(G));
     gsSparseMatrix<> M_LL = exM.matrix();
@@ -665,7 +655,7 @@ int main(int argc, char *argv[])
     // gsVector<> pt(2);
     // pt.setConstant(0.5);
 
-    // exL.initSystem();
+    // exL.initSystem(false);
     // exL.assemble(u*u.tr(),u*uexH.val());
 
     // solver.compute( exL.matrix() );

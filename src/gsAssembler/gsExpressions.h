@@ -15,6 +15,7 @@
 
 #include <gsCore/gsFuncData.h>
 #include <gsUtils/gsSortedVector.h>
+#include <gsAssembler/gsDirichletValues.h>
 
 namespace gismo
 {
@@ -756,11 +757,11 @@ protected:
     // C^r coupling
     mutable index_t m_r; // iFace::handling
 
-    typedef typename gsBoundaryConditions<T>::bcRefList bcRefList;
+    typedef gsBoundaryConditions<T> bcList;
+    typedef typename bcList::bcRefList bcRefList;
     mutable bcRefList m_bcs;
-
-    gsDofMapper m_mapper;
-    mutable gsMatrix<T> m_fixedDofs;
+    mutable gsDofMapper m_mapper;
+    gsMatrix<T> m_fixedDofs;
 
 public:
     static constexpr bool rowSpan() {return true; }
@@ -818,9 +819,11 @@ public:
             {
                 const int ii = m_mapper.index(i, p, c);
                 if ( m_mapper.is_free_index(ii) ) // DoF value is in the solVector
-                    result(i,c) = solVector.at(ii );
+                        result(i,c) = solVector.at(ii);
                 else // eliminated DoF: fill with Dirichlet data
-                    result.row(i) = m_fixedDofs.row( m_mapper.global_to_bindex(ii) ).head(dim);
+                {
+                    result(i,c) =  m_fixedDofs.at( m_mapper.global_to_bindex(ii) );
+                }
             }
         }
     }
@@ -883,6 +886,180 @@ public:
         //this->mapper().print();
     }
 
+    void setup(const gsBoundaryConditions<T> & bc, const index_t dir_values, const index_t _icont = -1) const
+    {
+        this->setInterfaceCont(_icont);
+
+        m_mapper = gsDofMapper(); //reset ?
+
+        const gsMultiBasis<T> * smb = static_cast<const gsMultiBasis<T>*>(&this->source());
+
+        if (const gsMultiBasis<T> * mb =
+            dynamic_cast<const gsMultiBasis<T>*>(&this->source()) )
+        {
+            m_mapper = gsDofMapper(*mb, this->dim() );
+            //m_mapper.init(*mb, this->dim()); //bug
+            if ( 0==this->interfaceCont() ) // Conforming boundaries ?
+            {
+                for ( gsBoxTopology::const_iiterator it = mb->topology().iBegin();
+                      it != mb->topology().iEnd(); ++it )
+                {
+                    mb->matchInterface(*it, m_mapper);
+                }
+            }
+
+            // DIRICHLET
+            gsMatrix<index_t> bnd;
+            for (typename bcList::const_iterator
+                     it = bc.begin("Dirichlet") ; it != bc.end("Dirichlet"); ++it )
+            {
+                const index_t cc = it->unkComponent();
+                //if (it->unknown() == -1 || it->unkown() == this->id())
+
+                GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
+                              "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                bnd = mb->basis(it->ps.patch).boundary( it->ps.side() );
+                if (cc==-1)
+                    for (index_t c=0; c!= this->dim(); c++) // for all components
+                        m_mapper.markBoundary(it->ps.patch, bnd, c);
+                else
+                    m_mapper.markBoundary(it->ps.patch, bnd, cc);
+            }
+            // CLAMPED
+            gsMatrix<index_t> bnd1;
+            for (typename bcList::const_iterator
+                     it = bc.begin("Clamped") ; it != bc.end("Clamped"); ++it )
+            {
+                const index_t cc = it->unkComponent();
+                //if (it->unknown() == -1 || it->unkown() == this->id())
+
+                GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
+                              "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                bnd  = mb->basis(it->ps.patch).boundaryOffset( it->ps.side(), 0);
+                bnd1 = mb->basis(it->ps.patch).boundaryOffset( it->ps.side(), 1);
+                // Cast to tensor b-spline basis
+                if ( mb != NULL) // clamp adjacent dofs
+                {
+                    if ( ! it->ps.parameter() )
+                        bnd.swap(bnd1);
+                    if (cc==-1)
+                        for (index_t c=0; c!= this->dim(); c++) // for all components
+                            for ( index_t k=0; k<bnd.size(); ++k)
+                                m_mapper.matchDof( it->ps.patch, (bnd)(k,0),
+                                                   it->ps.patch, (bnd1)(k,0) , c);
+                    else
+                        for ( index_t k=0; k<bnd.size(); ++k)
+                            m_mapper.matchDof( it->ps.patch, (bnd)(k,0),
+                                           it->ps.patch, (bnd1)(k,0) , cc);
+                }
+                else
+                    gsWarn<<"Unable to apply clamped condition.\n";
+            }
+
+            // COLLAPSED
+            for (typename bcList::const_iterator
+                     it = bc.begin("Collapsed") ; it != bc.end("Collapsed"); ++it )
+            {
+                const index_t cc = it->unkComponent();
+                //if (it->unknown() == -1 || it->unkown() == this->id())
+
+                GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
+                              "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                bnd = mb->basis(it->ps.patch).boundary( it->ps.side() );
+
+                // Cast to tensor b-spline basis
+                if ( mb != NULL) // clamp adjacent dofs
+                {
+                    // match all DoFs to the first one of the side
+                    if (cc==-1)
+                        for (index_t c=0; c!= this->dim(); c++) // for all components
+                            for ( index_t k=0; k<bnd.size()-1; ++k)
+                                m_mapper.matchDof( it->ps.patch, (bnd)(0,0),
+                                                   it->ps.patch, (bnd)(k+1,0) , c);
+                    else
+                        for ( index_t k=0; k<bnd.size()-1; ++k)
+                                m_mapper.matchDof( it->ps.patch, (bnd)(0,0),
+                                                   it->ps.patch, (bnd)(k+1,0) , cc);
+                }
+            }
+
+            // corners
+            for (typename gsBoundaryConditions<T>::const_citerator
+                     it = bc.cornerBegin() ; it != bc.cornerEnd(); ++it )
+            {
+                //assumes (unk == -1 || it->unknown == unk)
+                GISMO_ASSERT(static_cast<size_t>(it->patch) < smb->nBases(),
+                             "Problem: a corner boundary condition is set on a patch id which does not exist.");
+                m_mapper.eliminateDof(smb->basis(it->patch).functionAtCorner(it->corner), it->patch);
+            }
+
+        }
+        else if (const gsBasis<T> * b =
+                 dynamic_cast<const gsBasis<T>*>(&this->source()) )
+        {
+            m_mapper = gsDofMapper(*b);
+            gsMatrix<index_t> bnd;
+            for (typename bcList::const_iterator
+                     it = bc.begin("Dirichlet") ; it != bc.end("Dirichlet"); ++it )
+            {
+                GISMO_ASSERT( it->ps.patch == 0,
+                              "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                bnd = b->boundary( it->ps.side() );
+                //const index_t cc = it->unkComponent();
+                m_mapper.markBoundary(0, bnd, 0);
+            }
+
+            m_mapper = gsDofMapper(*b);
+            for (typename bcList::const_iterator
+                     it = bc.begin("Clamped") ; it != bc.end("Clamped"); ++it )
+            {
+                GISMO_ASSERT( it->ps.patch == 0,
+                              "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                bnd = b->boundary( it->ps.side() );
+                //const index_t cc = it->unkComponent();
+                // m_mapper.markBoundary(0, bnd, 0);
+            }
+
+            m_mapper = gsDofMapper(*b);
+            for (typename bcList::const_iterator
+                     it = bc.begin("Collapsed") ; it != bc.end("Collapsed"); ++it )
+            {
+                GISMO_ASSERT( it->ps.patch == 0,
+                              "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                bnd = b->boundary( it->ps.side() );
+                //const index_t cc = it->unkComponent();
+                // m_mapper.markBoundary(0, bnd, 0);
+            }
+        }
+        else
+        {
+            GISMO_ASSERT( 0 == bc.size(), "Problem: BCs are ignored.");
+            m_mapper.setIdentity(this->source().nPieces(), this->source().size());
+        }
+
+        m_mapper.finalize();
+
+        // No more BCs
+        //m_bcs = bc.get("Dirichlet");
+        gsDirichletValues(bc, dir_values, *this);
+
+        // corner values (overrides edge BCs)
+        gsMatrix<T> & fixedDofs = const_cast<gsMatrix<T> &>(m_fixedDofs);
+        for ( typename gsBoundaryConditions<T>::const_citerator
+                  it = bc.cornerBegin(); it != bc.cornerEnd(); ++it )
+        {
+            const int i  = smb->basis(it->patch).functionAtCorner(it->corner);
+            const int ii = m_mapper.bindex( i , it->patch, 0 );//component=0 for now! Todo.
+            fixedDofs.at(ii) = it->value;
+        }
+    }
+
 protected:
     friend class gismo::gsExprHelper<T>;
     explicit gsFeSpace(index_t _d = 1) : Base(_d), m_id(-1), m_r(-1)
@@ -934,8 +1111,8 @@ public:
                     res.at(c) += _Sv->at(ii) * _u.data().values[0](i,k);
                 }
                 else
-                    res.noalias() += _u.data().values[0](i,k) *
-                        _u.fixedPart().row( map.global_to_bindex(ii) ).transpose();//head(_u.dim());
+                    res.at(c) += _u.data().values[0](i,k) *
+                        _u.fixedPart().at( map.global_to_bindex(ii) );
             }
         }
         return res;
@@ -1007,22 +1184,10 @@ public:
                     offset = _u.mapper().offset(j); // index offset for patch
 
                     ii = _u.mapper().index(i,j,c); // global index
-
-
-                    // if (_u.mapper().is_boundary(i,j))
-                    // {
-                    //     bi = _u.mapper().bindex(i,j,c); // boundary index
-                    //     result(ii,0) = _u.fixedPart()(bi,0);
-                    // }
-                    // else
-                    //     result(ii,0) = _Sv->at(ii);
-
-                    if (_u.mapper().is_free(i,j,c))
-                        result(i+offset+c*imax,0) = _Sv->at(ii);
-                    else
+                    if (_u.mapper().is_boundary(i,j,c))
                     {
-                        bi = _u.mapper().bindex(i,j,c); // boundary index
-                        result(i+offset+c*imax,0) = _u.fixedPart()(bi,0);
+                        bi = _u.mapper().global_to_bindex(ii); // boundary index
+                        result(i+offset,0) = _u.fixedPart().at(bi);
                     }
                 }
             }
@@ -1101,7 +1266,7 @@ public:
 
         res.setZero(_u.dim(), _u.parDim());
         const gsDofMapper & map = _u.mapper();
-        for (index_t c = 0; c!= _u.dim(); c++)
+        for (index_t c = 0; c!= _u.dim(); c++) // for all components
         {
             for (index_t i = 0; i!=_u.data().actives.size(); ++i)
             {
@@ -1115,10 +1280,9 @@ public:
                 }
                 else
                 {
-                    res.noalias() +=
-                        _u.fixedPart().row( map.global_to_bindex(ii) ).asDiagonal() *
-                        _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim())
-                        .transpose().replicate(_u.dim(),1);
+                    res.row(c) += _u.fixedPart().at( map.global_to_bindex(ii) ) *
+                        _u.data().values[1]
+                        .col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
                 }
             }
         }
@@ -1146,6 +1310,7 @@ public:
 
     void print(std::ostream &os) const { os << "grad(s)"; }
 };
+
 
 //template<class T>
 //class gsFeMutVariable  : public _expr<gsFeMutVariable<T> >
@@ -1522,6 +1687,7 @@ public:
         for (index_t i = 0; i<numActives; ++i)
         {
             tmp(0,2*i+1) += tmp(1,2*i);
+            // GISMO_ASSERT(tmp(0,2*i+1)==tmp(1,2*i),"ALERT!, tmp(0,2*i+1) = "<<tmp(0,2*i+1)<<", tmp(1,2*i) = "<<tmp(1,2*i));
             std::swap(tmp(1,2*i), tmp(1,2*i+1));
         }
 
@@ -2466,14 +2632,6 @@ public:
     void print(std::ostream &os) const { os << "lap(s)"; }
 };
 
-/*
-   Expression for the Hessian of a finite element solution, in the following form
-   solHess(u) =
-    [d11 u1, d22 u1, d33 u1, d12 u1, d13 u1, d23 u1]
-    [d11 u2, d22 u2, d33 u2, d12 u2, d13 u2, d23 u2]
-    [d11 u3, d22 u3, d33 u3, d12 u3, d13 u3, d23 u3]
-    Where u = [u1, u2, u3]
- */
 template<class T>
 class solHess_expr : public _expr<solHess_expr<T> >
 {
@@ -4214,8 +4372,11 @@ GISMO_SHORTCUT_VAR_EXPRESSION(fform, jac(u).tr()*jac(u) )
 name(const gsFeVariable<T> & u) { return impl; }
 #define GISMO_SHORTCUT_MAP_EXPRESSION(name,impl) \
 name(const gsGeometryMap<T> & G) { return impl; }
-#define GISMO_SHORTCUT_PHY_EXPRESSION(name,impl)  \
-name(const gsFeVariable<T> & u, const gsGeometryMap<T> & G) { return impl; }
+
+//#define GISMO_SHORTCUT_PHY_EXPRESSION(name,impl) name(const gsFeVariable<T> & u, const gsGeometryMap<T> & G) { return impl; }
+#define GISMO_SHORTCUT_PHY_EXPRESSION(name,impl) \
+name(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return impl; }
+
 
 template<class T> EIGEN_STRONG_INLINE trace_expr<jac_expr<T> >
 GISMO_SHORTCUT_VAR_EXPRESSION(div, jac(u).trace() )
@@ -4223,28 +4384,33 @@ GISMO_SHORTCUT_VAR_EXPRESSION(div, jac(u).trace() )
 template<class T> EIGEN_STRONG_INLINE normalized_expr<onormal_expr<T> >
 GISMO_SHORTCUT_MAP_EXPRESSION(unv, nv(G).normalized() )
 
-template<class T> EIGEN_STRONG_INLINE
-mult_expr<grad_expr<gsFeVariable<T> >,jacGinv_expr<T>, 0>
+//template<class T> EIGEN_STRONG_INLINE
+template<class E> EIGEN_STRONG_INLINE
+mult_expr<grad_expr<E>,jacGinv_expr<typename E::Scalar>, 0>
 GISMO_SHORTCUT_PHY_EXPRESSION(igrad, grad(u)*jac(G).ginv())
 
 template<class T> EIGEN_STRONG_INLINE grad_expr<gsFeVariable<T> > // u is presumed to be defined over G
 GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u))
 
-template<class T> EIGEN_STRONG_INLINE mult_expr<jac_expr<T>,jacGinv_expr<T>, 1>
+template<class E> EIGEN_STRONG_INLINE
+mult_expr<jac_expr<E>,jacGinv_expr<typename E::Scalar>, 1>
 GISMO_SHORTCUT_PHY_EXPRESSION(ijac, jac(u) * jac(G).ginv() )
 
-template<class T> EIGEN_STRONG_INLINE trace_expr<mult_expr<jac_expr<T>,jacGinv_expr<T>, 1> >
+template<class E> EIGEN_STRONG_INLINE
+trace_expr<mult_expr<jac_expr<E>,jacGinv_expr<typename E::Scalar>, 1> >
 GISMO_SHORTCUT_PHY_EXPRESSION(idiv, ijac(u,G).trace() )
 
-template<class T> EIGEN_STRONG_INLINE
-mult_expr<mult_expr<tr_expr<jacGinv_expr<T> >,sub_expr<hess_expr<gsFeVariable<T> >,summ_expr<mult_expr<grad_expr<gsFeVariable<T> >, jacGinv_expr<T>, 0>, hess_expr<gsGeometryMap<T> > > >, 0>, jacGinv_expr<T>, 0>
+template<class E> EIGEN_STRONG_INLINE
+mult_expr<mult_expr<tr_expr<jacGinv_expr<typename E::Scalar> >,sub_expr<hess_expr<E>,summ_expr<mult_expr<grad_expr<E>, jacGinv_expr<typename E::Scalar>, 0>, hess_expr<gsGeometryMap<typename E::Scalar> > > >, 0>, jacGinv_expr<typename E::Scalar>, 0>
 GISMO_SHORTCUT_PHY_EXPRESSION(ihess, jac(G).ginv().tr()*(hess(u)-summ(igrad(u,G),hess(G)))*jac(G).ginv() )
+
+template<class E> EIGEN_STRONG_INLINE trace_expr<
+mult_expr<mult_expr<tr_expr<jacGinv_expr<typename E::Scalar> >,sub_expr<hess_expr<E>,summ_expr<mult_expr<grad_expr<E>, jacGinv_expr<typename E::Scalar>, 0>, hess_expr<gsGeometryMap<typename E::Scalar> > > >, 0>, jacGinv_expr<typename E::Scalar>, 0>
+    >
+GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace() )
 
 template<class T> EIGEN_STRONG_INLINE hess_expr<gsFeVariable<T> >
 GISMO_SHORTCUT_VAR_EXPRESSION(ihess, hess(u) )
-
-template<class T> EIGEN_STRONG_INLINE trace_expr< mult_expr<mult_expr<tr_expr<jacGinv_expr<T> >, sub_expr<hess_expr<T>, summ_expr<mult_expr<grad_expr<gsFeVariable<T> >, jacGinv_expr<T>, 0>, hess_expr<gsGeometryMap<T> > > >, 0>, jacGinv_expr<T>, 1> >
-GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace() )
 
 template<class T> EIGEN_STRONG_INLINE trace_expr<hess_expr<gsGeometryMap<T> > >
 GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )
