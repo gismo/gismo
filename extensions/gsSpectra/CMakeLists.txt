@@ -18,7 +18,7 @@ aux_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HEADERS)
 include(gsConfig)
 
 message(STATUS "CMake Will attempt to download Spectra sources.")
-#include(ExternalProject)
+include(gsFetch)
 gismo_fetch_directory(Spectra
           #SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Spectra
 	  SVN_REPOSITORY https://github.com/yixuan/spectra/trunk/include
