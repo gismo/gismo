@@ -35,6 +35,9 @@ cmake_policy(SET CMP0077 NEW)
 endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 if(NOT CMAKE_BUILD_TYPE)
    # Set default build type to Release
@@ -63,7 +66,7 @@ if (GISMO_BUILD_PCH)
 endif()
 
 if(NOT GISMO_INSOURCE_BUILD AND "${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
-   message(FATAL_ERROR "In-source G+Smo builds are not permitted. \n How to fix this:\n 1. Type \nmake cleancmake\nto remove garbage CMake files. \n\n 2. Please make a separate folder for building, otherwise typing \nmake\nthat will create a ./build folder and will compile in that folder. ")
+   message(FATAL_ERROR "In-source G+Smo builds are not permitted. \nHow to fix this:\n1. Type \nmake cleancmake\nto remove garbage CMake files.\n2. Please make a separate folder for building, otherwise typing \nmake\nthat will create a ./build folder and will compile in that folder. ")
 endif()
 
 ## #################################################################

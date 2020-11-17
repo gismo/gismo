@@ -27,6 +27,8 @@ gismo_fetch_directory(Spectra
 )
 #endif(NOT SPECTRA_FOUND)
 
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
+
 # move the files in place ?? -- is a bit buggy
 #file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Spectra/Spectra/  DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 #file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/Spectra)
@@ -73,5 +75,3 @@ foreach(file ${FILES})
     # install the example executables (optionally)
     install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
 endforeach(file ${FILES})
-
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)

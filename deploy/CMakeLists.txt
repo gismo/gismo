@@ -29,6 +29,9 @@ endif()
 
 project(main)
 
+include(CTest)
+#set(BUILD_TESTING "Enable testing" ${GISMO_BUILD_UNITTESTS})
+
 set(CMAKE_CXX_STANDARD 11)
 
 # G+Smo
