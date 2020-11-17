@@ -134,11 +134,15 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 # Add gsMultiPrecision extension to the list of G+Smo extensions
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
-    CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
+    CACHE INTERNAL "gismo extensions to be included")
+
+# Add GMP and MPFR include directories to G+Smo standard include directories
+set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GMP_INCLUDE_DIR} ${MPFR_INCLUDE_DIR}
+  CACHE INTERNAL "gismo include directories")
 
 # Link G+Smo to GMP, GMPXX and MPFR libraries (either dynamically or statically)
-set(gismo_LINKER ${gismo_LINKER} ${GMP_LIBRARY} ${GMPXX_LIBRARY} ${MPFR_LIBRARY}
-    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+set(gismo_LINKER ${gismo_LINKER} ${MPFR_LIBRARY} ${GMP_LIBRARY} ${GMPXX_LIBRARY}
+    CACHE INTERNAL "gismo extra linker objects")
 
 # Install gsMultiPrecision header files
 install(DIRECTORY ${PROJECT_SOURCE_DIR}

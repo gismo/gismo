@@ -163,12 +163,6 @@ include_directories(${GISMO_INCLUDE_DIRS})
 # Add externals directory
 add_subdirectory(external)
 
-if(GISMO_BUILD_UNITTESTS) # Unittests
-  add_subdirectory(unittests)
-else()
-  add_custom_target(unittests COMMAND "" COMMENT "Set CMake argument GISMO_BUILD_UNITTESTS=ON to enable unittests")
-endif(GISMO_BUILD_UNITTESTS)
-
 if(GISMO_WITH_CODIPACK)
   add_subdirectory(extensions/gsCoDiPack)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
@@ -200,18 +194,6 @@ endif(GISMO_WITH_MPI)
 
 if(GISMO_WITH_MPFR OR GISMO_WITH_GMP)
   add_subdirectory(extensions/gsMultiPrecision)
-  
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GMP_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  set(gismo_LINKER ${gismo_LINKER} ${GMP_LIBRARY} ${GMPXX_LIBRARY}
-  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
-  #include_directories(SYSTEM ${GMP_INCLUDE_DIR})
-
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MPFR_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  set(gismo_LINKER ${gismo_LINKER} ${MPFR_LIBRARY}
-  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
-  #include_directories(SYSTEM ${MPFR_INCLUDE_DIR})
 endif()
 
 if(GISMO_WITH_ONURBS)
@@ -299,6 +281,20 @@ include_directories(${GISMO_INCLUDE_DIRS})
 # external inclusion paths
 #get_property(EXTERNAL_INCLUDE_DIRS GLOBAL PROPERTY EXTERNAL_INCLUDE_DIRS)
 #include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/external)
+
+## #################################################################
+## Unittests
+## #################################################################
+
+if(GISMO_BUILD_UNITTESTS)
+  add_subdirectory(unittests)
+else()
+  add_custom_target(unittests COMMAND "" COMMENT "Set CMake argument GISMO_BUILD_UNITTESTS=ON to enable unittests")
+endif(GISMO_BUILD_UNITTESTS)
+
+## #################################################################
+## G+Smo sources
+## #################################################################
 
 # Add main sources directory
 add_subdirectory(src)
