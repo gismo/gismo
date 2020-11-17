@@ -160,8 +160,6 @@ endif()
 #first time
 include_directories(${GISMO_INCLUDE_DIRS})
 
-include(gsFetch)
-
 # Add externals directory
 add_subdirectory(external)
 
@@ -201,13 +199,8 @@ if(GISMO_WITH_MPI)
 endif(GISMO_WITH_MPI)
 
 if(GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
-  find_package(GMP QUIET)
-  find_package(MPFR QUIET)
-
-  if (NOT GMP_FOUND OR NOT MPFR_FOUND)
-    add_subdirectory(extensions/gsMultiPrecision)
-  endif()
-
+  add_subdirectory(extensions/gsMultiPrecision)
+  
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GMP_INCLUDE_DIR}
   CACHE INTERNAL "${PROJECT_NAME} include directories")
   set(gismo_LINKER ${gismo_LINKER} ${GMP_LIBRARY} ${GMPXX_LIBRARY}
@@ -322,28 +315,33 @@ endif()
 
 option(GISMO_COMPFLOW "Enable compflow module" OFF)
 if(GISMO_COMPFLOW)
+  include(gsFetch)
   gismo_fetch_module(gsCompFlow)
 endif()
 
 option(GISMO_ELASTICITY "Enable elasticity module" OFF)
 if(GISMO_ELASTICITY)
+  include(gsFetch)
   gismo_fetch_module(gsElasticity)
 endif()
 
 option(GISMO_EXASTENCILS "Enable exastenciles module" OFF)
 if(GISMO_EXASTENCILS)
+  include(gsFetch)
   gismo_fetch_module(gsExaStencils)
 endif()
 
 option(GISMO_UNSUPPORTED "Enable unsupported module" OFF)
 option(GISMO_MOTOR "Enable motor module" OFF)
 if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
+  include(gsFetch)
   gismo_fetch_module(unsupported)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GISMO_DEV_INCLUDE_DIRS}
   CACHE INTERNAL "${PROJECT_NAME} include directories")
 endif()
 
 if(GISMO_MOTOR)
+  include(gsFetch)
   gismo_fetch_module(motor)
 endif()
 

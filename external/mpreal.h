@@ -124,7 +124,7 @@
     #define MPREAL_MSVC_DEBUGVIEW_DATA 
 #endif
 
-#include <mpfr.h>
+#include <gsMultiPrecision/gsMultiPrecision.h>
 
 #if (MPFR_VERSION < MPFR_VERSION_NUM(3,0,0))
     #include <cstdlib>                          // Needed for random()
