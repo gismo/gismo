@@ -22,7 +22,7 @@ if(GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
   # Look for pre-installed GMP library
   find_package(GMP QUIET)
   
-  if ( GMP_FOUND)
+  if (NOT GMP_FOUND)
     # Set GMP version
     set(GMP_VER "6.2.1")  
     
@@ -53,7 +53,7 @@ if(GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
     set(GMP_INCLUDE_DIR ${install_dir}/include CACHE INTERNAL "")
     include_directories(${GMP_INCLUDE_DIR})
     
-  endif (GMP_FOUND)
+  endif (NOT GMP_FOUND)
 endif (GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
 
 if(GISMO_WITH_MPFR)
@@ -129,7 +129,7 @@ if (GISMO_WITH_MPFR AND NOT MPFR_FOUND)
   add_dependencies(${PROJECT_NAME} mpfr)
 
   # Make MPFR library dependent on GMP library if it is built from sources
-  if (GMP_FOUND)
+  if (NOT GMP_FOUND)
     add_dependencies(mpfr gmp)
-  endif(GMP_FOUND)
+  endif(NOT GMP_FOUND)
 endif()
