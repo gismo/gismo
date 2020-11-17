@@ -28,8 +28,8 @@ public:
 
 public:
     gsApproxG1BasisVertex(gsMultiPatch<> mp, // Single Patch
-                  gsMultiBasis<> basis, // Single Basis
-                  std::vector<bool> isBoundary,
+                          gsMultiBasis<> basis, // Single Basis
+                          std::vector<bool> isBoundary,
                           real_t sigma,
                           gsG1OptionList & g1OptionList)
         : m_mp(mp), m_basis(basis), m_isBoundary(isBoundary), m_sigma(sigma), m_g1OptionList(g1OptionList)
@@ -66,7 +66,7 @@ public:
             if (g1OptionList.getInt("gluingData") == gluingData::local)
                 gluingData.setLocalGluingData(basis_plus, basis_minus, "vertex");
             else if (g1OptionList.getInt("gluingData") == gluingData::global)
-                gluingData.setGlobalGluingData();
+                gluingData.setGlobalGluingData(0,dir);
 
             m_gD.push_back(gluingData);
         }
@@ -181,7 +181,7 @@ protected:
     // Gluing data
     std::vector<gsApproxGluingData<T>> m_gD;
 
-    // Basis for getting the G1 Basis
+    // Basis plus minus
     std::vector<gsBSplineBasis<>> m_basis_plus;
     std::vector<gsBSplineBasis<>> m_basis_minus;
 

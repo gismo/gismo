@@ -55,8 +55,15 @@ public:
             gsInfo << "!!!!!! LOCAL GLUING DATA NOT YET IMPLEMENTED!!!!!!" << "\n"; //setLocalGluingData(basis_plus, basis_minus, "edge");
         else if (this->m_optionList.getInt("gluingData") == gluingData::global)
         {
-            setGlobalGluingData(0,1); // Order is important!!!
-            setGlobalGluingData(1,0);
+            if (mp.nPatches() == 2)
+            {
+                setGlobalGluingData(0,1); // Order is important!!!
+                setGlobalGluingData(1,0);
+            }
+            else if (mp.nPatches() == 1)
+                setGlobalGluingData(0,1);
+            else
+                gsInfo << "Gluing data does not work for #patches > 3 \n";
         }
     }
 
@@ -287,7 +294,7 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
 
     gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD, uv, patchID, this->m_mp, this->m_gamma, this->m_isBoundary);
 
-    globalGdAssembler.assemble(this->m_optionList.getSwitch("h1projection"));
+    globalGdAssembler.assemble();
 
     gsSparseSolver<real_t>::LU solver;
     gsVector<> sol_a, sol_b;
@@ -327,17 +334,6 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
 
     gsBSpline<T> beta_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
     beta_S_tilde.push_back(beta_t);
-
-    gsMatrix<> zeroOne(1,2);
-    zeroOne.setZero();
-    zeroOne(0,1) = 1.0; // v
-    //gsInfo << "BETA: " << alpha_t.eval(zeroOne) << "\n";
-
-    if (patchID == 0 )
-        gsWriteParaview(alpha_t,"beta_L",1000);
-    if (patchID == 1 )
-        gsWriteParaview(alpha_t,"beta_R",1000);
-
 
 } // setGlobalGluingData
 

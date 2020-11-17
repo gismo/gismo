@@ -42,12 +42,11 @@ public:
 
     void refresh();
 
-    void assemble(bool h1projection);
+    void assemble();
 
     void computeBoundaryValues();
 
     inline void apply(bhVisitor & visitor,
-                      bool h1projection,
                       int patchIndex = 0,
                       boxSide side = boundary::none);
 
@@ -106,7 +105,7 @@ void gsGlobalGDAssembler<T, bhVisitor>::refresh()
 } // refresh()
 
 template <class T, class bhVisitor>
-void gsGlobalGDAssembler<T, bhVisitor>::assemble(bool h1projection)
+void gsGlobalGDAssembler<T, bhVisitor>::assemble()
 {
     //GISMO_ASSERT(m_system.initialized(), "Sparse system is not initialized, call refresh()");
 
@@ -131,17 +130,9 @@ void gsGlobalGDAssembler<T, bhVisitor>::assemble(bool h1projection)
     gsMatrix<> points(1,2), uv, ev;
     points.setZero();
     points(0,1) = 1.0;
-    if (m_uv==1)
-    {
-        uv.setZero(2,points.cols());
-        uv.bottomRows(1) = points; // v
-    }
-    else if (m_uv==0)
-    {
-        uv.setZero(2,points.cols());
-        uv.topRows(1) = points; // u
-    }
 
+    uv.setZero(2,points.cols());
+    uv.row(m_uv) = points; // u
 
     // ======== Determine bar{alpha^(L)} == Patch 0 ========
     const gsGeometry<> & P0 = m_mp.patch(m_patchID); // Right
@@ -158,7 +149,7 @@ void gsGlobalGDAssembler<T, bhVisitor>::assemble(bool h1projection)
 
     // Assemble volume integrals
     bhVisitor visitor;
-    apply(visitor, h1projection);
+    apply(visitor);
 
     m_system_alpha.matrix().makeCompressed();
     m_system_beta_S.matrix().makeCompressed();
@@ -167,7 +158,6 @@ void gsGlobalGDAssembler<T, bhVisitor>::assemble(bool h1projection)
 
 template <class T, class bhVisitor>
 inline void gsGlobalGDAssembler<T, bhVisitor>::apply(bhVisitor & visitor,
-                                                        bool h1projection,
                                                         int patchIndex,
                                                         boxSide side)
 {
@@ -208,10 +198,10 @@ inline void gsGlobalGDAssembler<T, bhVisitor>::apply(bhVisitor & visitor,
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(basis, quNodes, m_uv, m_mp, m_patchID, m_gamma, m_isBoundary, h1projection);
+            visitor_.evaluate(basis, quNodes, m_uv, m_mp, m_patchID, m_gamma, m_isBoundary);
 
             // Assemble on element
-            visitor_.assemble(*domIt, quWeights, h1projection);
+            visitor_.assemble(*domIt, quWeights);
 
             // Push to global matrix and right-hand side vector
 #pragma omp critical(localToGlobal)

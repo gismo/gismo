@@ -485,14 +485,14 @@ public:
 
         }
 
-//        gsInfo << "Big kernel:\n";
-//        gsInfo << bigKernel << "\n ";
-//
-//        gsInfo << "Small kernel:\n";
-//        gsInfo << smallKernel << "\n ";
-//
-//        gsInfo << "Basis:\n";
-//        gsInfo << basisVect << "\n";
+        gsInfo << "Big kernel:\n";
+        gsInfo << bigKernel << "\n ";
+
+        gsInfo << "Small kernel:\n";
+        gsInfo << smallKernel << "\n ";
+
+        gsInfo << "Basis:\n";
+        gsInfo << basisVect << "\n";
 
         return std::make_pair(basisVect, numberPerType);
     }
@@ -656,12 +656,9 @@ public:
 
         if(g1OptionList.getInt("user") == user::pascal)
         {
-            //g1OptionList.setInt("gluingData",gluingData::global);
-            //g1OptionList.setInt("p_tilde",2);
 
             if (g1OptionList.getSwitch("twoPatch"))
             {
-
                 gsMultiPatch<> test_mp(auxGeom[0].getPatch());
 
                 gsMultiPatch<> g1Basis;
@@ -684,13 +681,13 @@ public:
             }
             else
             {
+
                 for(size_t i = 0; i < auxGeom.size(); i++)
                 {
-                    gsMultiPatch<> g1Basis;
-
                     gsApproxG1BasisVertex<real_t> g1BasisVertex_0
                         (auxGeom[i].getPatch(), auxGeom[i].getPatch().basis(), isBdy[i], sigma, g1OptionList);
 
+                    gsMultiPatch<> g1Basis;
                     g1BasisVertex_0.setG1BasisVertex(g1Basis, this->kindOfVertex());
 
                     g1BasisVector.push_back(g1Basis);

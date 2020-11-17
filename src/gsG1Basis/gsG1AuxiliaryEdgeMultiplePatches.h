@@ -254,29 +254,7 @@ public:
 
             gsApproxG1BasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), auxGeom[0].getBasis().basis(0), basis_pm, gluingData, 1, false, g1OptionList);
 
-            /*
-            gsMatrix<> lambda, null(1,1);
-            null << 0.0;
-            if (g1OptionList.getInt("gluingData") == gluingData::exact)
-                lambda = g1BasisEdge_0.eval_beta(null) * 1/(g1BasisEdge_0.eval_alpha(null)(0, 0));
-            else
-                lambda = g1BasisEdge_0.get_beta().eval(null) * 1/(g1BasisEdge_0.get_alpha().eval(null)(0, 0));
-            g1OptionList.setReal("lambda",lambda(0,0));
-
-            null << 1.0;
-            if (g1OptionList.getInt("gluingData") == gluingData::exact)
-                lambda = g1BasisEdge_0.eval_beta(null) * 1/(g1BasisEdge_0.eval_alpha(null)(0, 0));
-            else
-                lambda = g1BasisEdge_0.get_beta().eval(null) * 1/(g1BasisEdge_0.get_alpha().eval(null)(0, 0));
-            g1OptionList.setReal("lambda2",lambda(0,0));
-
-            gsInfo << "LAMDBA " <<  lambda << "\n";
-*/
-
             gsApproxG1BasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), auxGeom[1].getBasis().basis(0), basis_pm, gluingData, 0, false, g1OptionList);
-
-            //g1BasisEdge_0.set_beta_tilde(approxGluingData4.get_beta_tilde(1));
-            //g1BasisEdge_1.set_beta_tilde(approxGluingData4.get_beta_tilde(0));
 
 
             g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
@@ -296,8 +274,8 @@ public:
                     gsInfo << "coefs 2: "
                            << g1Basis_0.patch(i).deriv(points)(1, 0) + g1Basis_1.patch(i).deriv(points)(0, 0) << "\n";
                 }
-
-                for (index_t i = 13; i < 15; i++)
+/*
+                for (index_t i = g1BasisEdge_1.get_plus(); i < g1BasisEdge_1.get_plus()+2; i++)
                 {
                     gsMatrix<> points(2, 1);
                     points.setZero();
@@ -307,7 +285,7 @@ public:
                     gsInfo << "coefs 2: "
                            << g1Basis_0.patch(i).deriv(points)(1, 0) + g1Basis_1.patch(i).deriv(points)(0, 0) << "\n";
                 }
-/*
+
                 gsInfo << "coefs mat: "
                        << g1Basis_0.patch(0).coefs().reshape(basis_1.size(), basis_2.size()).block(0, 0, 2, 5) << "\n";
                 gsInfo << "coefs mat: "
@@ -320,25 +298,8 @@ public:
                                    .block(0, 0, 2, 5) << "\n";
 */
             }
+
             //g1ConditionRep(gluingData.get_alpha_S_tilde(0), gluingData.get_alpha_S_tilde(1), g1Basis_0,  g1Basis_1);
-
-/*
-            index_t p_size = 8;
-            gsMatrix<> points(1, p_size), pointsV(2, p_size);
-            pointsV.setZero();
-
-            gsVector<> vec;
-            vec.setLinSpaced(p_size,0,1);
-            points = vec.transpose();
-*/
-            //gsInfo << "Alpha : " << g1BasisEdge_0.get_alpha().eval(points) << "\n";
-            //gsInfo << "Beta : " << g1BasisEdge_0.get_beta().coefs().transpose() << "\n";
-
-            //gsWriteParaview(g1BasisEdge_0.get_alpha(),"alpha_R_formula",2000);
-            //gsWriteParaview(g1BasisEdge_1.get_alpha(),"alpha_L_formula",2000);
-            //gsWriteParaview(g1BasisEdge_0.get_beta(),"beta_R_formula",2000);
-            //gsWriteParaview(g1BasisEdge_1.get_beta(),"beta_L_formula",2000);
-
             //gluingDataCondition(g1BasisEdge_0.get_alpha(), g1BasisEdge_1.get_alpha(), g1BasisEdge_0.get_beta(), g1BasisEdge_1.get_beta());
         }
         else
@@ -403,7 +364,6 @@ public:
                         basis_plus.insertKnot(basis_1.knot(i),p_1-1-m_r);
 
                 basis_pm.push_back(basis_plus);
-                //gsInfo << "Basis plus : " << basis_plus << "\n";
 
                 gsKnotVector<real_t> kv_minus(0,1,0,p_1+1-1,p_1-1-m_r); // p-1,r //-1 bc p-1
                 gsBSplineBasis<> basis_minus(kv_minus);

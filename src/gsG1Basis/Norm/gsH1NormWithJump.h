@@ -231,7 +231,7 @@ protected:
         else if (typeOfnorm == "vertex")
         {
             for (size_t num = 0; num < numInt.size(); num++)
-                for (index_t i = g1System.get_numInterfaceFunctions()[numInt[num]]; i < g1System.get_numInterfaceFunctions()[numInt[num] + 1];
+                for (index_t i = g1System.get_numVertexFunctions()[numInt[num]]; i < g1System.get_numVertexFunctions()[numInt[num] + 1];
                      i++)
                     for (index_t j = 0; j < actives.rows(); j++)
                         f1ders += sol_sparse->at(i, g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j))
@@ -268,7 +268,7 @@ protected:
         else if (typeOfnorm == "vertex")
         {
             for (size_t num = 0; num < numInt.size(); num++)
-                for (index_t i = g1System.get_numInterfaceFunctions()[numInt[num]]; i < g1System.get_numInterfaceFunctions()[numInt[num] + 1];
+                for (index_t i = g1System.get_numVertexFunctions()[numInt[num]]; i < g1System.get_numVertexFunctions()[numInt[num] + 1];
                      i++)
                     for (index_t j = 0; j < actives2.rows(); j++)
                         f2ders += sol_sparse->at(i, g1System.get_numBasisFunctionsInterface()[geoEval_R.id()] + actives2.at(j))

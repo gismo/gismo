@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
      * error[4] = H^1 semi-error jump at vertices
      * error[5] = H^1 semi-error jump at both
      */
-    std::vector<gsMatrix<real_t>> error(6);
+    std::vector<gsMatrix<real_t>> error;
     {
         gsMatrix<real_t> l2Error_vec(g1OptionList.getInt("loop") + 1,1);
         gsMatrix<real_t> h1SemiError_vec(g1OptionList.getInt("loop") + 1,1);
@@ -410,20 +410,20 @@ int main(int argc, char *argv[])
             {
                 gsNormL2<real_t> errorL2(multiPatch, mb, Sol_sparse, solVal);
                 errorL2.compute(g1System, g1OptionList.getSwitch("isogeometric"));
-                error[0][refinement_level] = errorL2.value();
+                error[0](refinement_level,0) = errorL2.value();
             }
 
             else if (e == 1)
             {
                 gsSeminormH1<real_t> errorSemiH1(multiPatch, mb, Sol_sparse, solVal);
                 errorSemiH1.compute(g1System, g1OptionList.getSwitch("isogeometric"));
-                error[1][refinement_level] = errorSemiH1.value();
+                error[1](refinement_level,0) = errorSemiH1.value();
             }
             else if (e == 2)
             {
                 gsSeminormH2<real_t> errorSemiH2(multiPatch, mb, Sol_sparse, solVal);
                 errorSemiH2.compute(g1System, g1OptionList.getSwitch("isogeometric"));
-                error[2][refinement_level] = errorSemiH2.value();
+                error[2](refinement_level,0) = errorSemiH2.value();
             }
             else if (e == 3)
             {
@@ -448,10 +448,10 @@ int main(int argc, char *argv[])
 
     for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
     {
-        error[2][i] = math::sqrt(error[2][i]*error[2](i) +
-            error[1][i]*error[1][i] + error[0][i]*error[0][i]);
-        error[1][i] = math::sqrt(error[1][i]*error[1][i] +
-            error[0][i]*error[0][i]);
+        error[2](i,0) = math::sqrt(error[2](i,0)*error[2](i,0) +
+            error[1](i,0)*error[1](i,0) + error[0](i,0)*error[0](i,0));
+        error[1](i,0) = math::sqrt(error[1](i,0)*error[1](i,0) +
+            error[0](i,0)*error[0](i,0));
     }
 
     if (g1OptionList.getInt("loop") > 1)
@@ -464,25 +464,25 @@ int main(int argc, char *argv[])
             "Rate", "H2-error", "Rate");
         printf("|%-5s|%-14s|%-5s|%-14s|%-5s|%-14s|%-5s\n", "-----", "--------------", "-----", "--------------",
             "-----", "--------------", "-----");
-        printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[0], error[0][0],
-            rate(0,0),error[1][0], rate(0,1),error[1][0], rate(0,2));
+        printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[0], error[0](0,0),
+            rate(0,0),error[1](0,0), rate(0,1),error[2](0,0), rate(0,2));
         for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
         {
-            rate(i,0) = log2(error[0][i-1] / error[0][i]);
-            rate(i,1) = log2(error[1][i-1] / error[1][i]);
-            rate(i,2) = log2(error[1][i-1] / error[1][i]);
+            rate(i,0) = log2(error[0](i-1,0) / error[0](i,0));
+            rate(i,1) = log2(error[1](i-1,0) / error[1](i,0));
+            rate(i,2) = log2(error[2](i-1,0) / error[2](i,0));
 
-            printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[i], error[0][i],
-                rate(i,0),error[1][i], rate(i,1),error[1][i], rate(i,2));
+            printf("|%-5d|%-14.6e|%-5.2f|%-14.6e|%-5.2f|%-14.6e|%-5.2f\n", num_knots[i], error[0](i,0),
+                rate(i,0),error[1](i,0), rate(i,1),error[2](i,0), rate(i,2));
         }
         if (g1OptionList.getSwitch("latex"))
         {
             printf("%-5d & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\ \n", num_knots[0],
-                   error[0][0], rate(0,0),error[1][0], rate(0,1), error[2][0], rate(0,2));
+                   error[0](0,0), rate(0,0),error[1](0,0), rate(0,1), error[2](0,0), rate(0,2));
             for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
             {
                 printf("%-5d & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\ \n", num_knots[i],
-                       error[0][i], rate(i,0),error[1][i], rate(i,1),error[2][i], rate(i,2));
+                       error[0](i,0), rate(i,0),error[1](i,0), rate(i,1),error[2](i,0), rate(i,2));
             }
         }
         gsInfo << "=====================================================================\n\n";
@@ -560,9 +560,9 @@ int main(int argc, char *argv[])
     else
     {
         gsInfo << "=====================================================================\n";
-        gsInfo << "L2 Error: " << error[0][0] << "\n";
-        gsInfo << "H1 Semi-error: " << error[1][0] << "\n";
-        gsInfo << "H2 Semi-error: " << error[2][0] << "\n";
+        gsInfo << "L2 Error: " << error[0](0,0) << "\n";
+        gsInfo << "H1 Semi-error: " << error[1](0,0) << "\n";
+        gsInfo << "H2 Semi-error: " << error[2](0,0) << "\n";
         gsInfo << "Jump error Edge: " << error[3].row(0) << "\n";
         gsInfo << "Jump error Vertex: " << error[4].row(0) << "\n";
         gsInfo << "Jump error all: " << error[5].row(0) << "\n";

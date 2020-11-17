@@ -46,8 +46,7 @@ public:
                          std::string typeBf,
                          gsBasis<T>       & basis, //
                          gsBasis<T>       & basis_geo,
-                         gsBasis<T>       & basis_plus,
-                         gsBasis<T>       & basis_minus,
+                         const std::vector<gsBSplineBasis<T>> & basis_pm,
                          const gsGeometry<T>    & geo, // patch
                          gsMatrix<T>            & quNodes,
                          index_t & uv,
@@ -61,25 +60,6 @@ public:
 
         md.points = quNodes;
 
-/*
-#pragma omp critical
-        {
-            gsBSplineBasis<> basis_bspline = dynamic_cast<gsBSplineBasis<real_t> &>(basis.component(0));
-            gsInfo << "Basis: " << basis_bspline.knots().asMatrix() << "\n";
-
-            gsBSplineBasis<> basis_bspline22 = dynamic_cast<gsBSplineBasis<real_t> &>(basis.component(1));
-            gsInfo << "Basis22: " << basis_bspline22.knots().asMatrix() << "\n";
-
-            gsBSplineBasis<> basis_plus2 = dynamic_cast<gsBSplineBasis<real_t> &>(basis_plus);
-            gsInfo << "basis_plus2: " << basis_plus2.knots().asMatrix() << "\n";
-
-            gsBSplineBasis<> basis_minus2 = dynamic_cast<gsBSplineBasis<real_t> &>(basis_minus);
-            gsInfo << "basis_minus: " << basis_minus2.knots().asMatrix() << "\n";
-
-            gsBSplineBasis<> basis_geo2 = dynamic_cast<gsBSplineBasis<real_t> &>(basis_geo);
-            gsInfo << "basis_geo: " << basis_geo2.knots().asMatrix() << "\n";
-        }
-*/
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the elements
         basis.active_into(md.points.col(0), actives);
@@ -108,384 +88,152 @@ public:
             N_j_minus, N_i_plus,
             der_N_i_plus;
 
+        // For H1 projection
         gsMatrix<T> der_alpha, der_beta,
             der_N_0, der_N_1,
             der_N_j_minus,
             der2_N_i_plus;
 
+        // For H2 projection
         gsMatrix<T> der2_alpha, der2_beta,
             der2_N_0, der2_N_1,
             der2_N_j_minus,
             der3_N_i_plus;
 
-        if (uv == 1) // edge is in v-direction == Patch 0
+        if (g1OptionList.getInt("gluingData") == gluingData::global)
         {
+            gluingData.get_alpha_S_tilde(1-uv).eval_into(md.points.row(uv),alpha); // v
+            gluingData.get_beta_S_tilde(1-uv).eval_into(md.points.row(uv),beta);
+        }
+        else if (g1OptionList.getInt("gluingData") == gluingData::exact)
+        {
+            gluingData.eval_alpha_into(md.points.row(uv),alpha); // v
+            gluingData.eval_beta_into(md.points.row(uv),beta);
+        }
+        basis_geo.evalSingle_into(0,md.points.row(1-uv),N_0); // u
+        basis_geo.evalSingle_into(1,md.points.row(1-uv),N_1); // u
+
+        if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection"))
+        {
+            rhsGrads.setZero(2,md.points.cols());
+
+            basis_geo.derivSingle_into(0,md.points.row(1-uv),der_N_0); // u
+            basis_geo.derivSingle_into(1,md.points.row(1-uv),der_N_1); // u
+
             if (g1OptionList.getInt("gluingData") == gluingData::global)
             {
-                gluingData.get_alpha_S_tilde(1-uv).eval_into(md.points.bottomRows(1),alpha); // v
-                gluingData.get_beta_S_tilde(1-uv).eval_into(md.points.bottomRows(1),beta);
+                gluingData.get_alpha_S_tilde(1-uv).deriv_into(md.points.row(uv),der_alpha); // v
+                gluingData.get_beta_S_tilde(1-uv).deriv_into(md.points.row(uv),der_beta);
             }
-            else if (g1OptionList.getInt("gluingData") == gluingData::exact)
+        }
+        if (g1OptionList.getSwitch("h2projection"))
+        {
+            rhs2Der.setZero(3,md.points.cols());
+
+            basis_geo.deriv2Single_into(0,md.points.row(1-uv),der2_N_0); // u
+            basis_geo.deriv2Single_into(1,md.points.row(1-uv),der2_N_1); // u
+
+            if (g1OptionList.getInt("gluingData") == gluingData::global)
             {
-                gluingData.eval_alpha_into(md.points.bottomRows(1),alpha); // v
-                gluingData.eval_beta_into(md.points.bottomRows(1),beta);
+                gluingData.get_alpha_S_tilde(1-uv).deriv2_into(md.points.row(uv),der2_alpha); // v
+                gluingData.get_beta_S_tilde(1-uv).deriv2_into(md.points.row(uv),der2_beta);
             }
-            basis_geo.evalSingle_into(0,md.points.topRows(1),N_0); // u
-            basis_geo.evalSingle_into(1,md.points.topRows(1),N_1); // u
+        }
+
+
+        // Initialize local matrix/rhs
+        if (typeBf == "plus")
+        {
+            basis_pm[0].evalSingle_into(bfID,md.points.row(uv),N_i_plus); // v
+            basis_pm[0].derivSingle_into(bfID,md.points.row(uv),der_N_i_plus);
 
             if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection"))
-            {
-                rhsGrads.setZero(2,md.points.cols());
-
-                basis_geo.derivSingle_into(0,md.points.topRows(1),der_N_0); // u
-                basis_geo.derivSingle_into(1,md.points.topRows(1),der_N_1); // u
-
-                if (g1OptionList.getInt("gluingData") == gluingData::global)
-                {
-                    gluingData.get_alpha_S_tilde(1-uv).deriv_into(md.points.bottomRows(1),der_alpha); // v
-                    gluingData.get_beta_S_tilde(1-uv).deriv_into(md.points.bottomRows(1),der_beta);
-                }
-            }
+                basis_pm[0].deriv2Single_into(bfID,md.points.row(uv),der2_N_i_plus);
             if (g1OptionList.getSwitch("h2projection"))
+                basis_pm[0].evalDerSingle_into(bfID,md.points.row(uv),3,der3_N_i_plus);
+
+            if (g1OptionList.getInt("gluingData") == gluingData::local)
             {
-                rhs2Der.setZero(3,md.points.cols());
-
-                basis_geo.deriv2Single_into(0,md.points.topRows(1),der2_N_0); // u
-                basis_geo.deriv2Single_into(1,md.points.topRows(1),der2_N_1); // u
-
-                if (g1OptionList.getInt("gluingData") == gluingData::global)
-                {
-                    gluingData.get_alpha_S_tilde(1-uv).deriv2_into(md.points.bottomRows(1),der2_alpha); // v
-                    gluingData.get_beta_S_tilde(1-uv).deriv2_into(md.points.bottomRows(1),der2_beta);
-                }
-            }
-
-
-            // Initialize local matrix/rhs
-            if (typeBf == "plus")
-            {
-                basis_plus.evalSingle_into(bfID,md.points.bottomRows(1),N_i_plus); // v
-                basis_plus.derivSingle_into(bfID,md.points.bottomRows(1),der_N_i_plus);
-
-                if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection"))
-                    basis_plus.deriv2Single_into(bfID,md.points.bottomRows(1),der2_N_i_plus);
-                if (g1OptionList.getSwitch("h2projection"))
-                    basis_plus.evalDerSingle_into(bfID,md.points.bottomRows(1),3,der3_N_i_plus);
-
-                if (g1OptionList.getInt("gluingData") == gluingData::local)
-                {
-                    gsMatrix<> ab = gluingData.get_beta_S_tilde(bfID).support();
-                    if ((md.points(1,0) >= ab(0)) && (md.points(1,0) <= ab(1)))
-                        gluingData.get_beta_S_tilde(bfID).eval_into(md.points.bottomRows(1),beta);
-                    else
-                        beta.setZero(1,md.points.cols());
-                }
-
-                beta = isBoundary ? beta.setZero() : beta; // For the boundary, only on Patch 0
-
-                //if (bfID == 1 || bfID == basis_plus.size()-2)
-                //    beta.setZero();
-
-                gsMatrix<T> temp;
-/*                if (g1OptionList.getSwitch("twoPatch") && bfID == 1 && g1OptionList.getInt("gluingData") == gluingData::global)
-                {
-                    gsMatrix<> lambda, null(1,1);
-                    null << 0.0;
-                    lambda = gluingData.get_beta_tilde().eval(null) * 1/(gluingData.get_alpha_tilde().eval(null)(0, 0));
-                    temp = (beta - lambda * alpha).cwiseProduct(der_N_i_plus);
-                }
-                else if (g1OptionList.getSwitch("twoPatch") && bfID == basis_plus.size()-2 && g1OptionList.getInt("gluingData") == gluingData::global)
-                {
-                    gsMatrix<> lambda, one(1,1);
-                    one << 1.0;
-                    lambda = gluingData.get_beta_tilde().eval(one) * 1/(gluingData.get_alpha_tilde().eval(one)(0, 0));
-                    temp = (beta - lambda * alpha).cwiseProduct(der_N_i_plus);
-                }
-                else if (g1OptionList.getSwitch("twoPatch") && bfID == 1 && g1OptionList.getInt("gluingData") == gluingData::exact)
-                {
-                    gsMatrix<> lambda, null(1,1), alpha_0, beta_0;
-                    null << 0.0;
-                    gluingData.eval_alpha_into(null,alpha_0); // v
-                    gluingData.eval_beta_into(null,beta_0);
-                    lambda = beta_0 * 1/(alpha_0(0, 0));
-                    temp = (beta - lambda * alpha).cwiseProduct(der_N_i_plus);
-                }
-                else if (g1OptionList.getSwitch("twoPatch") && bfID == basis_plus.size()-2 && g1OptionList.getInt("gluingData") == gluingData::exact)
-                {
-                    gsMatrix<> lambda, one(1,1), alpha_1, beta_1;
-                    one << 1.0;
-                    gluingData.eval_alpha_into(one,alpha_1); // v
-                    gluingData.eval_beta_into(one,beta_1);
-                    lambda = beta_1 * 1/(alpha_1(0, 0));
-                    temp = (beta - lambda * alpha).cwiseProduct(der_N_i_plus);
-                }
+                gsMatrix<> ab = gluingData.get_beta_S_tilde(bfID).support();
+                if ((md.points(1,0) >= ab(0)) && (md.points(1,0) <= ab(1)))
+                    gluingData.get_beta_S_tilde(bfID).eval_into(md.points.row(uv),beta);
                 else
-*/                    temp = beta.cwiseProduct(der_N_i_plus);
-
-
-                //gsMatrix<> temp = beta.cwiseProduct(der_N_i_plus);
-
-                rhsVals = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(N_1) * tau_1 / p;
-
-                if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection"))
-                {
-                    gsMatrix<> der_temp;
-
-                    der_temp = der_beta.cwiseProduct(der_N_i_plus) + beta.cwiseProduct(der2_N_i_plus);
-
-                    rhsGrads.row(0) = N_i_plus.cwiseProduct(der_N_0 + der_N_1) - temp.cwiseProduct(der_N_1) * tau_1 / p;
-                    rhsGrads.row(1) = der_N_i_plus.cwiseProduct(N_0 + N_1) - der_temp.cwiseProduct(N_1) * tau_1 / p;
-                }
-
-                if (g1OptionList.getSwitch("h2projection"))
-                {
-                    gsMatrix<> der2_temp, der_temp;
-
-                    der_temp = der_beta.cwiseProduct(der_N_i_plus) + beta.cwiseProduct(der2_N_i_plus);
-                    der2_temp = 2.0*der_beta.cwiseProduct(der2_N_i_plus) + beta.cwiseProduct(der3_N_i_plus) + der2_beta.cwiseProduct(der_N_i_plus);
-
-                    rhs2Der.row(0) = N_i_plus.cwiseProduct(der2_N_0 + der2_N_1) - temp.cwiseProduct(der2_N_1) * tau_1 / p;
-                    rhs2Der.row(1) = der2_N_i_plus.cwiseProduct(N_0 + N_1) - der2_temp.cwiseProduct(N_1) * tau_1 / p;
-                    rhs2Der.row(2) = der_N_i_plus.cwiseProduct(der_N_0 + der_N_1) - der_temp.cwiseProduct(der_N_1) * tau_1 / p;
-                }
-
-                localMat.setZero(numActive, numActive);
-                localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
-
-            } // n_plus
-            else if (typeBf == "minus")
-            {
-                basis_minus.evalSingle_into(bfID,md.points.bottomRows(1),N_j_minus); // v
-
-                if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection") )
-                    basis_minus.derivSingle_into(bfID,md.points.bottomRows(1),der_N_j_minus); // v
-
-                if (g1OptionList.getSwitch("h2projection") )
-                    basis_minus.deriv2Single_into(bfID,md.points.bottomRows(1),der2_N_j_minus); // v
-
-                if (g1OptionList.getInt("gluingData") == gluingData::local)
-                {
-                    gsMatrix<> ab = gluingData.get_alpha_S_tilde(bfID).support();
-                    if ((md.points(1,0) >= ab(0)) && (md.points(1,0) <= ab(1)))
-                        gluingData.get_alpha_S_tilde(bfID).eval_into(md.points.bottomRows(1),alpha);
-                    else
-                        alpha.setZero(1,md.points.cols());
-                }
-
-                alpha = isBoundary ? alpha.setOnes() : alpha; // For the boundary, only on Patch 0
-
-                rhsVals = alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p;
-
-                //rhsVals.setZero();
-
-                if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection"))
-                {
-                    rhsGrads.row(0) = alpha.cwiseProduct(N_j_minus.cwiseProduct(der_N_1)) * tau_1 / p;
-                    rhsGrads.row(1) = (der_alpha.cwiseProduct(N_j_minus)+alpha.cwiseProduct(der_N_j_minus)).cwiseProduct(N_1) * tau_1 / p;
-                }
-                if (g1OptionList.getSwitch("h2projection"))
-                {
-                    rhs2Der.row(0) = alpha.cwiseProduct(N_j_minus.cwiseProduct(der2_N_1)) * tau_1 / p;
-                    rhs2Der.row(1) = (2.0*der_alpha.cwiseProduct(der_N_j_minus)+alpha.cwiseProduct(der2_N_j_minus)+der2_alpha.cwiseProduct(N_j_minus)).cwiseProduct(N_1) * tau_1 / p;
-                    rhs2Der.row(2) = (der_alpha.cwiseProduct(N_j_minus)+alpha.cwiseProduct(der_N_j_minus)).cwiseProduct(der_N_1) * tau_1 / p;
-                }
-
-                localMat.setZero(numActive, numActive);
-                localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
-            } // n_minus
-
-        } // Patch 0
-        else if (uv == 0) // edge is in u-direction
-        {
-            if (g1OptionList.getInt("gluingData") == gluingData::global)
-            {
-                gluingData.get_alpha_S_tilde(1-uv).eval_into(md.points.topRows(1),alpha); // u
-                gluingData.get_beta_S_tilde(1-uv).eval_into(md.points.topRows(1),beta);
+                    beta.setZero(1,md.points.cols());
             }
-            else if (g1OptionList.getInt("gluingData") == gluingData::exact)
-            {
-                gluingData.eval_alpha_into(md.points.topRows(1),alpha); // v
-                gluingData.eval_beta_into(md.points.topRows(1),beta);
-            }
-            basis_geo.evalSingle_into(0,md.points.bottomRows(1),N_0); // v
-            basis_geo.evalSingle_into(1,md.points.bottomRows(1),N_1); // v
+
+            beta = isBoundary ? beta.setZero() : beta; // For the boundary, only on Patch 0
+
+            gsMatrix<T> temp = beta.cwiseProduct(der_N_i_plus);
+
+            rhsVals = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(N_1) * tau_1 / p;
 
             if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection"))
             {
-                rhsGrads.setZero(2,md.points.cols());
+                gsMatrix<> der_temp;
 
-                basis_geo.derivSingle_into(0,md.points.bottomRows(1),der_N_0); // u
-                basis_geo.derivSingle_into(1,md.points.bottomRows(1),der_N_1); // u
+                der_temp = der_beta.cwiseProduct(der_N_i_plus) + beta.cwiseProduct(der2_N_i_plus);
 
-                if (g1OptionList.getInt("gluingData") == gluingData::global)
-                {
-                    gluingData.get_alpha_S_tilde(1-uv).deriv_into(md.points.topRows(1),der_alpha); // v
-                    gluingData.get_beta_S_tilde(1-uv).deriv_into(md.points.topRows(1),der_beta);
-                }
+                rhsGrads.row(1-uv) = N_i_plus.cwiseProduct(der_N_0 + der_N_1) - temp.cwiseProduct(der_N_1) * tau_1 / p;
+                rhsGrads.row(uv) = der_N_i_plus.cwiseProduct(N_0 + N_1) - der_temp.cwiseProduct(N_1) * tau_1 / p;
             }
 
             if (g1OptionList.getSwitch("h2projection"))
             {
-                rhs2Der.setZero(3,md.points.cols());
+                gsMatrix<> der2_temp, der_temp;
 
-                basis_geo.deriv2Single_into(0,md.points.bottomRows(1),der2_N_0); // u
-                basis_geo.deriv2Single_into(1,md.points.bottomRows(1),der2_N_1); // u
+                der_temp = der_beta.cwiseProduct(der_N_i_plus) + beta.cwiseProduct(der2_N_i_plus);
+                der2_temp = 2.0*der_beta.cwiseProduct(der2_N_i_plus) + beta.cwiseProduct(der3_N_i_plus) + der2_beta.cwiseProduct(der_N_i_plus);
 
-                if (g1OptionList.getInt("gluingData") == gluingData::global)
-                {
-                    gluingData.get_alpha_S_tilde(1-uv).deriv2_into(md.points.topRows(1),der2_alpha); // v
-                    gluingData.get_beta_S_tilde(1-uv).deriv2_into(md.points.topRows(1),der2_beta);
-                }
+                rhs2Der.row(1-uv) = N_i_plus.cwiseProduct(der2_N_0 + der2_N_1) - temp.cwiseProduct(der2_N_1) * tau_1 / p;
+                rhs2Der.row(uv) = der2_N_i_plus.cwiseProduct(N_0 + N_1) - der2_temp.cwiseProduct(N_1) * tau_1 / p;
+                rhs2Der.row(2) = der_N_i_plus.cwiseProduct(der_N_0 + der_N_1) - der_temp.cwiseProduct(der_N_1) * tau_1 / p;
             }
 
-            // Initialize local matrix/rhs
-            if (typeBf == "plus")
+            localMat.setZero(numActive, numActive);
+            localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
+
+        } // n_plus
+        else if (typeBf == "minus")
+        {
+            basis_pm[1].evalSingle_into(bfID,md.points.row(uv),N_j_minus); // v
+
+            if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection") )
+                basis_pm[1].derivSingle_into(bfID,md.points.row(uv),der_N_j_minus); // v
+
+            if (g1OptionList.getSwitch("h2projection") )
+                basis_pm[1].deriv2Single_into(bfID,md.points.row(uv),der2_N_j_minus); // v
+
+            if (g1OptionList.getInt("gluingData") == gluingData::local)
             {
-                basis_plus.evalSingle_into(bfID,md.points.topRows(1),N_i_plus); // u
-                basis_plus.derivSingle_into(bfID,md.points.topRows(1),der_N_i_plus);
-
-                if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection"))
-                    basis_plus.deriv2Single_into(bfID,md.points.topRows(1),der2_N_i_plus);
-
-                if (g1OptionList.getSwitch("h2projection"))
-                    basis_plus.evalDerSingle_into(bfID,md.points.topRows(1),3,der3_N_i_plus);
-
-                if (g1OptionList.getInt("gluingData") == gluingData::local)
-                {
-                    gsMatrix<> ab = gluingData.get_beta_S_tilde(bfID).support();
-                    if ((md.points(0,0) >= ab(0)) && (md.points(0,0) <= ab(1)))
-                        gluingData.get_beta_S_tilde(bfID).eval_into(md.points.topRows(1),beta);
-                    else
-                        beta.setZero(1,md.points.cols());
-                }
-
-
-
-                beta = isBoundary ? beta.setZero() : beta; // For the boundary, only on Patch 0
-
-                //if (bfID == 1 || bfID == basis_plus.size()-2)
-                //    beta.setZero();
-
-                gsMatrix<T> temp;
-/*                if (g1OptionList.getSwitch("twoPatch") && bfID == 1 && g1OptionList.getInt("gluingData") == gluingData::global)
-                {
-                    gsMatrix<> lambda, null(1,1);
-                    null << 0.0;
-                    lambda = gluingData.get_beta_tilde().eval(null) * 1/(gluingData.get_alpha_tilde().eval(null)(0, 0));
-
-                    lambda(0,0) = -g1OptionList.getReal("lambda");
-
-                    temp = (beta - lambda * alpha).cwiseProduct(der_N_i_plus);
-                }
-                else if (g1OptionList.getSwitch("twoPatch") && bfID == basis_plus.size()-2 && g1OptionList.getInt("gluingData") == gluingData::global)
-                {
-                    gsMatrix<> lambda, one(1,1);
-                    one << 1.0;
-                    lambda = gluingData.get_beta_tilde().eval(one) * 1/(gluingData.get_alpha_tilde().eval(one)(0, 0));
-
-                    lambda(0,0) = -g1OptionList.getReal("lambda2");
-                    temp = (beta - lambda * alpha).cwiseProduct(der_N_i_plus);
-                }
-                else if (g1OptionList.getSwitch("twoPatch") && bfID == 1 && g1OptionList.getInt("gluingData") == gluingData::exact)
-                {
-                    gsMatrix<> lambda, null(1,1), alpha_0, beta_0;
-                    null << 0.0;
-                    gluingData.eval_alpha_into(null,alpha_0); // v
-                    gluingData.eval_beta_into(null,beta_0);
-                    lambda = beta_0 * 1/(alpha_0(0, 0));
-                    //lambda(0,0) = -g1OptionList.getReal("lambda2");
-
-                    temp = (beta - lambda * alpha).cwiseProduct(der_N_i_plus);
-                }
-                else if (g1OptionList.getSwitch("twoPatch") && bfID == basis_plus.size()-2 && g1OptionList.getInt("gluingData") == gluingData::exact)
-                {
-                    gsMatrix<> lambda, one(1,1), alpha_1, beta_1;
-                    one << 1.0;
-                    gluingData.eval_alpha_into(one,alpha_1); // v
-                    gluingData.eval_beta_into(one,beta_1);
-                    lambda = beta_1 * 1/(alpha_1(0, 0));
-                    //lambda(0,0) = -g1OptionList.getReal("lambda2");
-                    temp = (beta - lambda * alpha).cwiseProduct(der_N_i_plus);
-                }
+                gsMatrix<> ab = gluingData.get_alpha_S_tilde(bfID).support();
+                if ((md.points(1,0) >= ab(0)) && (md.points(1,0) <= ab(1)))
+                    gluingData.get_alpha_S_tilde(bfID).eval_into(md.points.row(uv),alpha);
                 else
-*/                    temp = beta.cwiseProduct(der_N_i_plus);
+                    alpha.setZero(1,md.points.cols());
+            }
+
+            alpha = isBoundary ? alpha.setOnes() : alpha; // For the boundary, only on Patch 0
+
+            rhsVals = (uv == 0 ? -1 : 1) * alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p;
 
 
-                //gsMatrix<T> temp = beta.cwiseProduct(der_N_i_plus);
-
-                //gsInfo << "uv = 0 : " << temp - result_singleEdge.eval(md.points.topRows(1)) << "\n";
-                //temp = result_singleEdge.eval(md.points.topRows(1));
-
-                rhsVals = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(N_1) * tau_1 / p;
-
-                if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection"))
-                {
-                    gsMatrix<> der_temp;
-
-                    der_temp = der_beta.cwiseProduct(der_N_i_plus) + beta.cwiseProduct(der2_N_i_plus);
-
-                    rhsGrads.row(1) = N_i_plus.cwiseProduct(der_N_0 + der_N_1) - temp.cwiseProduct(der_N_1) * tau_1 / p;
-                    rhsGrads.row(0) = der_N_i_plus.cwiseProduct(N_0 + N_1) - der_temp.cwiseProduct(N_1) * tau_1 / p;
-                }
-                if (g1OptionList.getSwitch("h2projection"))
-                {
-                    gsMatrix<> der2_temp, der_temp;
-
-                    der_temp = der_beta.cwiseProduct(der_N_i_plus) + beta.cwiseProduct(der2_N_i_plus);
-                    der2_temp = 2.0*der_beta.cwiseProduct(der2_N_i_plus) + beta.cwiseProduct(der3_N_i_plus) + der2_beta.cwiseProduct(der_N_i_plus);
-
-                    rhs2Der.row(1) = N_i_plus.cwiseProduct(der2_N_0 + der2_N_1) - temp.cwiseProduct(der2_N_1) * tau_1 / p;
-                    rhs2Der.row(0) = der2_N_i_plus.cwiseProduct(N_0 + N_1) - der2_temp.cwiseProduct(N_1) * tau_1 / p;
-                    rhs2Der.row(2) = der_N_i_plus.cwiseProduct(der_N_0 + der_N_1) - der_temp.cwiseProduct(der_N_1) * tau_1 / p;
-                }
-
-                localMat.setZero(numActive, numActive);
-                localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
-
-            } // n_tilde
-            else if (typeBf == "minus")
+            if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection"))
             {
-                basis_minus.evalSingle_into(bfID,md.points.topRows(1),N_j_minus); // u
+                rhsGrads.row(1-uv) = alpha.cwiseProduct(N_j_minus.cwiseProduct(der_N_1)) * tau_1 / p;
+                rhsGrads.row(uv) = (der_alpha.cwiseProduct(N_j_minus)+alpha.cwiseProduct(der_N_j_minus)).cwiseProduct(N_1) * tau_1 / p;
+            }
+            if (g1OptionList.getSwitch("h2projection"))
+            {
+                rhs2Der.row(1-uv) = alpha.cwiseProduct(N_j_minus.cwiseProduct(der2_N_1)) * tau_1 / p;
+                rhs2Der.row(uv) = (2.0*der_alpha.cwiseProduct(der_N_j_minus)+alpha.cwiseProduct(der2_N_j_minus)+der2_alpha.cwiseProduct(N_j_minus)).cwiseProduct(N_1) * tau_1 / p;
+                rhs2Der.row(2) = (der_alpha.cwiseProduct(N_j_minus)+alpha.cwiseProduct(der_N_j_minus)).cwiseProduct(der_N_1) * tau_1 / p;
+            }
 
-                if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection"))
-                    basis_minus.derivSingle_into(bfID,md.points.topRows(1),der_N_j_minus); // u
+            localMat.setZero(numActive, numActive);
+            localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
+        } // n_minus
 
-                if (g1OptionList.getSwitch("h2projection"))
-                    basis_minus.deriv2Single_into(bfID,md.points.topRows(1),der2_N_j_minus); // u
-
-                if (g1OptionList.getInt("gluingData") == gluingData::local)
-                {
-                    gsMatrix<> ab = gluingData.get_alpha_S_tilde(bfID).support();
-                    if ((md.points(0,0) >= ab(0)) && (md.points(0,0) <= ab(1)))
-                        gluingData.get_alpha_S_tilde(bfID).eval_into(md.points.topRows(1),alpha);
-                    else
-                        alpha.setZero(1,md.points.cols());
-                }
-
-                alpha = isBoundary ? alpha.setOnes() : alpha; // For the boundary, only on Patch 0
-
-                rhsVals = - alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p;
-
-                //gsInfo << "RHSVALS: " << alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p - alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) << "\n";
-
-                if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection"))
-                {
-                    rhsGrads.row(1) = - alpha.cwiseProduct(N_j_minus.cwiseProduct(der_N_1)) * tau_1 / p;
-                    rhsGrads.row(0) = - (der_alpha.cwiseProduct(N_j_minus)+alpha.cwiseProduct(der_N_j_minus)).cwiseProduct(N_1) * tau_1 / p;
-                }
-                if (g1OptionList.getSwitch("h2projection"))
-                {
-                    rhs2Der.row(1) = - alpha.cwiseProduct(N_j_minus.cwiseProduct(der2_N_1)) * tau_1 / p;
-                    rhs2Der.row(0) = - (2.0*der_alpha.cwiseProduct(der_N_j_minus)+alpha.cwiseProduct(der2_N_j_minus)+der2_alpha.cwiseProduct(N_j_minus)).cwiseProduct(N_1) * tau_1 / p;
-                    rhs2Der.row(2) = - (der_alpha.cwiseProduct(N_j_minus)+alpha.cwiseProduct(der_N_j_minus)).cwiseProduct(der_N_1) * tau_1 / p;
-                }
-
-                localMat.setZero(numActive, numActive);
-                localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
-            } // n_bar
-
-        } // Patch 1
-    } // evaluate1
+    } // evaluate
 
     inline void assemble(gsDomainIterator<T>    & element,
                          const gsVector<T>      & quWeights)

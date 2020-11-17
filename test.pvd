@@ -1,6 +1,0 @@
-<?xml version="1.0"?>
-<VTKFile type="Collection" version="0.1"><Collection>
-<DataSet part="0" file="test_0.vts"/>
-<DataSet part="1" file="test_1.vts"/>
-</Collection>
-</VTKFile>

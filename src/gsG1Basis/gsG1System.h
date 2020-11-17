@@ -644,7 +644,6 @@ void gsG1System<T>::insertInterfaceEdge(gsMultiPatch<> & mp, boundaryInterface i
                     index_t jj, ii;
                     ii = numBasisFunctions[0][iID] + bfID;
                     jj = numBasisFunctions[6][np == 0 ? item.first().patch : item.second().patch] + j;
-                    gsInfo << "SIZE: " << D_sparse.size() << "\n";
                     D_sparse.insert(ii,jj) = mp.patch(np).coefs().at(j);
                 }
             }
