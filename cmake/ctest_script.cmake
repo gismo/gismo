@@ -671,10 +671,10 @@ if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
   endif()
   run_ctests(res)
 
-  message("CDASH LINK:\nhttps://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=61&value2=${CTEST_SITE}")
+  message("CDASH LINK:\nhttps://cdash-ci.inria.fr/index.php?project=${CTEST_PROJECT_NAME}&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=61&value2=${CTEST_SITE}")
 
   if(NOT res EQUAL 0)
-    message(FATAL_ERROR "Some Tests failed.")
+    message(SEND_ERROR "Some Tests failed.")
   endif()
 
 else() #continuous model
