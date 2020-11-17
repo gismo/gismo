@@ -10,6 +10,8 @@ project(gsUnumExtension)
 # Apply same configuration as G+Smo
 include(gsConfig)
 
+# Fetch Unum sources at configure time
+include(gsFetch)
 gismo_fetch_directory(Unum
     GIT_REPOSITORY https://github.com/stillwater-sc/universal.git
     DESTINATION    external

@@ -20,10 +20,14 @@
 |------------|------------|----------------------|
 | CDash      | [![cdash](https://img.shields.io/website?down_color=lightgrey&down_message=offline&label=CDash&up_color=green&up_message=up&url=https%3A%2F%2Fcdash-ci.inria.fr%2Findex.php%3Fproject%3DGismo)](https://cdash-ci.inria.fr/index.php?project=Gismo) | Various builds and configurations on https://cdash-ci.inria.fr/index.php?project=Gismo |
 | Appveyor  | [![Appveyor status](https://ci.appveyor.com/api/projects/status/abps59xbt1gjwci1/branch/stable?svg=true)](https://ci.appveyor.com/project/gismo/gismo) | Windows MSVC 14.0 |
-| Circle CI | [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://circleci.com/gh/gismo/gismo) | macOS, XCode9-C++98, XCode10-C++11, XCode11-C++14, XCode12-C++17 |
+| Circle CI | [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://circleci.com/gh/gismo/gismo) | macOS XCode9, C++98 <br> macOS XCode10, C++11 <br> macOS XCode11, C++14 <br> macOS XCode12, C++17 |
 | Codeship  | [![Codeship Status](https://app.codeship.com/projects/2aa19360-8998-0133-39fd-66416d65b267/status?branch=stable)](https://app.codeship.com/projects/123289) | |
-| GitLab    | [![pipeline status](https://gitlab.com/gismo-ci/gismo/badges/gitlab_ci/pipeline.svg)](https://gitlab.com/gismo-ci/gismo/-/commits/gitlab_ci) | Linux: GCC8-C++98, GCC9-C++11, GCC10-C++14, Clang7-C++98, Clang8-C++11, Clang9-C++14, Clang10-C++17, Clang11-C++20] |
-| Travis CI | [![Travis Status](https://travis-ci.org/gismo/gismo.svg?branch=stable)](https://travis-ci.org/gismo/gismo/branches) | macOS, XCode[9,10,11], C++[98,11,14] |
+| GitLab    | [![pipeline status](https://gitlab.com/gismo-ci/gismo/badges/gitlab_ci/pipeline.svg)](https://gitlab.com/gismo-ci/gismo/-/commits/gitlab_ci) | Linux GCC6, C++98 <br> Linux GCC7, C++11 <br> Linux GCC8, C++14 <br> Linux GCC9, C++17 <br> Linux GCC10, C++20 <br> Linux Clang7, C++98 <br> Linux Clang8, C++11 <br> Linux Clang9, C++14 <br> Linux Clang10, C++17 <br> Linux Clang11, C++20] |
+| Travis CI | [![Travis Status](https://travis-ci.org/gismo/gismo.svg?branch=stable)](https://travis-ci.org/gismo/gismo/branches) | macOS XCode9 C++98 <br> macOS XCode10, C++11 <br> macOS XCode11, C++14 <br> Linux GCC, C++98 |
+| Jenkins | [![Build Status](https://ci.inria.fr/gismo/buildStatus/icon?job=gismo%2Fgismo%2Fstable)](https://ci.inria.fr/gismo/job/gismo/job/gismo/job/stable/) |    |
+| OBS |  | https://build.opensuse.org/package/show/home:filiatra/gismo |
+| Launchpad |  | https://launchpad.net/~g+smo/+archive/ubuntu/upstream/+packages |
+
 
 This README file contains brief information. More details are found in
 the [Wiki pages](http://gs.jku.at/gismo).

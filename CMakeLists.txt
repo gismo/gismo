@@ -160,16 +160,8 @@ endif()
 #first time
 include_directories(${GISMO_INCLUDE_DIRS})
 
-include(gsFetch)
-
 # Add externals directory
 add_subdirectory(external)
-
-if(GISMO_BUILD_UNITTESTS) # Unittests
-  add_subdirectory(unittests)
-else()
-  add_custom_target(unittests COMMAND "" COMMENT "Set CMake argument GISMO_BUILD_UNITTESTS=ON to enable unittests")
-endif(GISMO_BUILD_UNITTESTS)
 
 if(GISMO_WITH_CODIPACK)
   add_subdirectory(extensions/gsCoDiPack)
@@ -200,25 +192,8 @@ if(GISMO_WITH_MPI)
   #include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 endif(GISMO_WITH_MPI)
 
-if(GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
-  find_package(GMP QUIET)
-  find_package(MPFR QUIET)
-
-  if (NOT GMP_FOUND OR NOT MPFR_FOUND)
-    add_subdirectory(extensions/gsMultiPrecision)
-  endif()
-
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GMP_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  set(gismo_LINKER ${gismo_LINKER} ${GMP_LIBRARY} ${GMPXX_LIBRARY}
-  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
-  #include_directories(SYSTEM ${GMP_INCLUDE_DIR})
-
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MPFR_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  set(gismo_LINKER ${gismo_LINKER} ${MPFR_LIBRARY}
-  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
-  #include_directories(SYSTEM ${MPFR_INCLUDE_DIR})
+if(GISMO_WITH_MPFR OR GISMO_WITH_GMP)
+  add_subdirectory(extensions/gsMultiPrecision)
 endif()
 
 if(GISMO_WITH_ONURBS)
@@ -307,6 +282,20 @@ include_directories(${GISMO_INCLUDE_DIRS})
 #get_property(EXTERNAL_INCLUDE_DIRS GLOBAL PROPERTY EXTERNAL_INCLUDE_DIRS)
 #include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/external)
 
+## #################################################################
+## Unittests
+## #################################################################
+
+if(GISMO_BUILD_UNITTESTS)
+  add_subdirectory(unittests)
+else()
+  add_custom_target(unittests COMMAND "" COMMENT "Set CMake argument GISMO_BUILD_UNITTESTS=ON to enable unittests")
+endif(GISMO_BUILD_UNITTESTS)
+
+## #################################################################
+## G+Smo sources
+## #################################################################
+
 # Add main sources directory
 add_subdirectory(src)
 
@@ -322,28 +311,33 @@ endif()
 
 option(GISMO_COMPFLOW "Enable compflow module" OFF)
 if(GISMO_COMPFLOW)
+  include(gsFetch)
   gismo_fetch_module(gsCompFlow)
 endif()
 
 option(GISMO_ELASTICITY "Enable elasticity module" OFF)
 if(GISMO_ELASTICITY)
+  include(gsFetch)
   gismo_fetch_module(gsElasticity)
 endif()
 
 option(GISMO_EXASTENCILS "Enable exastenciles module" OFF)
 if(GISMO_EXASTENCILS)
+  include(gsFetch)
   gismo_fetch_module(gsExaStencils)
 endif()
 
 option(GISMO_UNSUPPORTED "Enable unsupported module" OFF)
 option(GISMO_MOTOR "Enable motor module" OFF)
 if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
+  include(gsFetch)
   gismo_fetch_module(unsupported)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GISMO_DEV_INCLUDE_DIRS}
   CACHE INTERNAL "${PROJECT_NAME} include directories")
 endif()
 
 if(GISMO_MOTOR)
+  include(gsFetch)
   gismo_fetch_module(motor)
 endif()
 

@@ -10,6 +10,8 @@ project(gsCoDiPackExtension)
 # Apply same configuration as G+Smo
 include(gsConfig)
 
+# Fetch CoDiPack sources at configure time
+include(gsFetch)
 gismo_fetch_directory(CoDiPack
     URL https://github.com/SciCompKL/CoDiPack/archive/numericExtension.zip
     DESTINATION    external

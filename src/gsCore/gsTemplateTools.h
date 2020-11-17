@@ -380,7 +380,7 @@ struct is_complex : integral_constant<bool,
 #ifdef GISMO_WITH_MPFR
                     is_same<T,std::complex<mpfr::mpreal> >::value      ||
 #endif
-#ifdef GISMO_WITH_MPQ
+#ifdef GISMO_WITH_GMP
                     is_same<T,std::complex<mpq_class> >::value         ||
 #endif
 #ifdef GISMO_WITH_UNUM
