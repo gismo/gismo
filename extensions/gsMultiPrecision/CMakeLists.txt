@@ -41,7 +41,7 @@ if (GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
     ExternalProject_Add(gmp
         BINARY_DIR           ${CMAKE_CURRENT_BINARY_DIR}/gmp
         SOURCE_DIR           ${gismo_externals}/gmp
-        CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${gismo_externals}/gmp/configure --enable-cxx --enable-shared=no --enable-static=yes --prefix=<INSTALL_DIR>
+        CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${gismo_externals}/gmp/configure --enable-cxx --enable-shared=no --enable-static=yes --with-pic --prefix=<INSTALL_DIR>
         DOWNLOAD_COMMAND     ""
         UPDATE_COMMAND       ""
         )
@@ -84,14 +84,13 @@ if (GISMO_WITH_MPFR)
     if (NOT GMP_LIBRARY_DIR)
         get_filename_component(GMP_LIBRARY_DIR ${GMP_LIBRARY} PATH)
     endif()
-    message("MPFR BUILDING")
     
     # Build MPFR library at compile time
     include(ExternalProject)
     ExternalProject_Add(mpfr
         BINARY_DIR           ${CMAKE_CURRENT_BINARY_DIR}/mpfr
         SOURCE_DIR           ${gismo_externals}/mpfr
-        CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${gismo_externals}/mpfr/configure --with-gmp-include=${GMP_INCLUDE_DIR} --with-gmp-lib=${GMP_LIBRARY_DIR} --enable-shared=no --enable-static=yes  --prefix=<INSTALL_DIR>
+        CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${gismo_externals}/mpfr/configure --with-gmp-include=${GMP_INCLUDE_DIR} --with-gmp-lib=${GMP_LIBRARY_DIR} --enable-shared=no --enable-static=yes  --with-pic --prefix=<INSTALL_DIR>
         DOWNLOAD_COMMAND     ""
         UPDATE_COMMAND       ""
         )
