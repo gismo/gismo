@@ -34,7 +34,7 @@ install_and_deploy_linux:
     - apt-get update -y
     - apt-get install cmake -y
     - export MAKEFLAGS=-j3
-    - ls #
+    - ls /builds/gismo-ci #
     - mkdir /builds/gismo-ci/buildlib; cd /builds/gismo-ci/buildlib
     - cmake ../gismo -DBUILDNAME="$CI_JOB_NAME" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" -D CMAKE_INSTALL_PREFIX=/usr #-DGISMO_BUILD_UNITTESTS=ON -DGISMO_WITH_ONURBS=ON -DGISMO_WITH_GMP=ON -DGISMO_WITH_MPFR=ON -DGISMO_WITH_IPOPT=ON -DGISMO_WITH_SPECTRA=ON -DGISMO_WITH_SUPERLU=ON -DGISMO_WITH_UMFPACK=ON
     - cmake --build . --target gismo #--parallel 3
