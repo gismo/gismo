@@ -82,6 +82,7 @@ public:
             der_N_j_minus,
             der2_N_i_plus;
 
+        // pn+2 falls non-two Patch
         basis_plus.evalSingle_into(pn,quNodes.row(uv),N_i_plus); // v
         basis_plus.derivSingle_into(pn,quNodes.row(uv),der_N_i_plus);
 

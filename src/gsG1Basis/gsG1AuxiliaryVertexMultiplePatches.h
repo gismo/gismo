@@ -485,14 +485,14 @@ public:
 
         }
 
-        gsInfo << "Big kernel:\n";
-        gsInfo << bigKernel << "\n ";
-
-        gsInfo << "Small kernel:\n";
-        gsInfo << smallKernel << "\n ";
-
-        gsInfo << "Basis:\n";
-        gsInfo << basisVect << "\n";
+//        gsInfo << "Big kernel:\n";
+//        gsInfo << bigKernel << "\n ";
+//
+//        gsInfo << "Small kernel:\n";
+//        gsInfo << smallKernel << "\n ";
+//
+//        gsInfo << "Basis:\n";
+//        gsInfo << basisVect << "\n";
 
         return std::make_pair(basisVect, numberPerType);
     }

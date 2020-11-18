@@ -382,7 +382,7 @@ void gsApproxG1BasisVertex<T, bhVisitor>::apply(bhVisitor & visitor, int patchIn
 template <class T, class bhVisitor>
 void gsApproxG1BasisVertex<T, bhVisitor>::solve()
 {
-    gsSparseSolver<real_t>::CGDiagonal solver;
+    gsSparseSolver<real_t>::LU solver;
 
 
     for (index_t i = 0; i < 6; i++) // Tilde

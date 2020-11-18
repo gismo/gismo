@@ -196,6 +196,8 @@ int main(int argc, char *argv[])
 
         gsInfo << "###### Level: " << refinement_level << " with " << num_knots[refinement_level] << " inner knots ###### " << "\n";
 
+        gsWriteParaview(multiPatch,"geometry_refined",2000,true);
+
         /*
          * Spaces for the multi-patch
          *

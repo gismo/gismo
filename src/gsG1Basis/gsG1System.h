@@ -76,18 +76,6 @@ public:
             initialize(mp, mb);
     }
 
-    gsG1System(gsMultiPatch<> & mp,
-               gsMultiBasis<> & mb,
-               bool neumannBdy = false,
-               bool twoPatch = false,
-               bool isogeometric = false)
-        : m_twoPatch(twoPatch), m_neumannBdy(neumannBdy), m_isogeometric(isogeometric)
-    {
-        numBasisFunctions.resize(6);
-
-        initialize(mp, mb);
-    }
-
     void initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMultiBasis<>> mb);
     void initialize(gsMultiPatch<> & mp, std::vector<gsMultiBasis<>> mb);
 
