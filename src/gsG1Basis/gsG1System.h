@@ -61,9 +61,10 @@ public:
 */
     gsG1System(gsMultiPatch<> & mp,
                gsMultiBasis<> & mb,
-               bool neumannBdy = false,
-               bool twoPatch = false)
-               : m_twoPatch(twoPatch), m_neumannBdy(neumannBdy)
+               bool neumannBdy,
+               bool twoPatch,
+               gsG1OptionList & optList)
+               : m_twoPatch(twoPatch), m_neumannBdy(neumannBdy), optionList(optList)
     {
         numBasisFunctions.resize(6);
 
@@ -114,6 +115,8 @@ protected:
     size_t dim_K, dim_G1_Dofs, dim_G1_Bdy;
 
     std::vector<gsVector<>> numBasisFunctions;
+
+    gsG1OptionList optionList;
 
     gsVector<> kindOfVertex;
     gsVector<size_t> sizePlusInt, sizePlusBdy;
@@ -643,7 +646,6 @@ void gsG1System<T>::insertVertex(gsMultiPatch<> & mp, std::vector<size_t> patchI
 template<class T>
 void gsG1System<T>::finalize(gsMultiPatch<> & mp, gsMultiBasis<> & mb, gsMatrix<> g1)
 {
-
     gsSparseMatrix<> B_0_sparse, B_boundary_sparse, temp;
     B_0_sparse.resize(dim_G1_Dofs + dim_G1_Bdy + dim_K, dim_G1_Dofs + dim_G1_Bdy + dim_K);
     B_0_sparse.reserve(dim_G1_Dofs + dim_K);
@@ -653,17 +655,27 @@ void gsG1System<T>::finalize(gsMultiPatch<> & mp, gsMultiBasis<> & mb, gsMatrix<
     B_boundary_sparse.reserve(dim_G1_Bdy);
     B_boundary_sparse.setZero();
 
-    // Add for the G1 Dofs to 1
-    //for(size_t i = 0; i < dim_G1_Dofs; i++) PASCAL
-    for(size_t i = 0; i < dim_G1_Dofs+dim_G1_Bdy; i++)
-        B_0_sparse.insert(i,i) = 1;
 
-    // Add for the Boundary the edges to 1
-    for(size_t i = 0; i < dim_G1_Bdy; i++)
+
+    // Add for the G1 Dofs to 1
+    if(optionList.getSwitch("L2approx") == false)
     {
-        index_t ii = dim_G1_Dofs + i;
-        //B_boundary_sparse.insert(ii,ii) = 1; PASCAL
+        for (size_t i = 0; i < dim_G1_Dofs; i++)
+            B_0_sparse.insert(i, i) = 1;
+
+        // Add for the Boundary the edges to 1
+        for(size_t i = 0; i < dim_G1_Bdy; i++)
+        {
+            index_t ii = dim_G1_Dofs + i;
+            B_boundary_sparse.insert(ii,ii) = 1;
+        }
     }
+    else
+    {
+        for(size_t i = 0; i < dim_G1_Dofs+dim_G1_Bdy; i++)
+            B_0_sparse.insert(i, i) = 1;
+    }
+
 
     // Add the identity to the end of D
     // Construct the internal matrix
@@ -681,6 +693,9 @@ void gsG1System<T>::finalize(gsMultiPatch<> & mp, gsMultiBasis<> & mb, gsMatrix<
             }
     }
     D_sparse.makeCompressed();
+
+
+
 
     // Getting D_0
     D_0_sparse = B_0_sparse * D_sparse;
@@ -701,9 +716,10 @@ gsMatrix<> gsG1System<T>::solve(gsSparseMatrix<real_t> K, gsMatrix<> f)
 
     gsSparseMatrix<real_t> A = D_0_sparse * K * D_0_sparse.transpose();
 
-    gsVector<real_t> F = D_0_sparse * f;  //- D_0_sparse * K * D_boundary_sparse.transpose() * m_g1; PASCAL
-//    gsInfo << "F: " << F << "\n";
-//    gsInfo << "m_g1: " << m_g1 << "\n";
+    gsVector<real_t> F = D_0_sparse * f;
+        if(optionList.getSwitch("L2approx") == false)
+            F -= D_0_sparse * K * D_boundary_sparse.transpose() * m_g1; //PASCAL
+
 
     gsSparseSolver<real_t>::CGDiagonal solver;
 //    gsSparseSolver<real_t>::BiCGSTABILUT solver;
@@ -712,7 +728,6 @@ gsMatrix<> gsG1System<T>::solve(gsSparseMatrix<real_t> K, gsMatrix<> f)
     gsMatrix<> solVector = solver.solve(F);
 
 
-//    gsInfo << "Sol: " << solVector << "\n";
     return solVector;
 }
 

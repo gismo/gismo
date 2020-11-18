@@ -36,14 +36,23 @@ int main(int argc, char *argv[])
 
 
     // ======= Solution =========
-    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
-    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
-    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
-                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
-                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
+//    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+//    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+//    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+//    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+//                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
+//    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
+//                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
+//                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
+
+    gsFunctionExpr<> source  ("pi*pi*pi*pi*(4*cos(pi*x/2)*cos(pi*y/2) - cos(pi*x/2) - cos(pi*y/2))/16",2);
+    gsFunctionExpr<> laplace ("-pi*pi*(2*cos(pi*x/2)*cos(pi*y/2) - cos(pi*x/2) - cos(pi*y/2))/4",2);
+    gsFunctionExpr<> solVal("(cos(pi*x/2) - 1) * (cos(pi*y/2) - 1)",2);
+    gsFunctionExpr<>sol1der ("-pi*(cos(pi*y/2) - 1)*sin(pi*x/2)/2",
+                             "-pi*(cos(pi*x/2) - 1)*sin(pi*y/2)/2",2);
+    gsFunctionExpr<>sol2der ("-pi*pi*(cos(pi*y/2) - 1)*cos(pi*x/2)/4",
+                             "-pi*pi*(cos(pi*x/2) - 1)*cos(pi*y/2)/4",
+                             "pi*pi*sin(pi*x/2)*sin(pi*y/2)/4", 2);
 
 //    gsFunctionExpr<> source  ("24 * (2 - y) * (2 - y) * y * y + 24 * (2 - x) * (2 - x) * x * x",2);
 //
@@ -150,6 +159,10 @@ int main(int argc, char *argv[])
             string_geo = "KirchhoffLoveGeo/square3dPositiveOrientation2d.xml";
             numDegree = 1; // 2 == degree 3
             break;
+        case 15:
+            string_geo = "KirchhoffLoveGeo/planar_untrimmedGeo.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
 
         default:
             gsInfo << "No geometry is used! \n";
@@ -201,7 +214,7 @@ int main(int argc, char *argv[])
         omp_set_nested(1);
 #endif
 
-        gsG1System<real_t> g1System(multiPatch, mb, g1OptionList.getSwitch("neumann"));
+        gsG1System<real_t> g1System(multiPatch, mb, g1OptionList.getSwitch("neumann"), g1OptionList.getSwitch("twoPatch"), g1OptionList);
 
         // ########### EDGE FUNCTIONS ###########
         // Interface loop
@@ -327,7 +340,7 @@ int main(int argc, char *argv[])
 
 
         // BiharmonicAssembler
-        gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
+        gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source, g1OptionList);
         g1BiharmonicAssembler.assemble();
 
         if (!g1OptionList.getSwitch("neumann"))

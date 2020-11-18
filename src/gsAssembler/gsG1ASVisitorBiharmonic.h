@@ -29,9 +29,9 @@ class gsG1ASVisitorBiharmonic
 {
 public:
 
-    gsG1ASVisitorBiharmonic(const gsPde<T> & pde)
+    gsG1ASVisitorBiharmonic(const gsPde<T> & pde, gsG1OptionList & optionList) : g1OptionList(optionList)
     {
-        rhs_ptr = static_cast<const gsBiharmonicPde<T>&>(pde).rhs() ;
+        rhs_ptr = static_cast<const gsBiharmonicPde<T>&>(pde).rhs();
     }
 
     /** \brief Constructor for gsG1ASVisitorBiharmonic.
@@ -93,10 +93,6 @@ public:
 
         // Evaluate right-hand side at the geometry points
         rhs_ptr->eval_into(md.values[0], rhsVals); // Dim: 1 X NumPts
-        rhs_ptr->deriv_into(md.values[0], rhsGrads);
-        rhs_ptr->deriv2_into(md.values[0], rhsSecDer);
-
-
 
         if(md.dim.first +1 == md.dim.second)
         {
@@ -212,28 +208,59 @@ public:
 //              1 / sqrt( det( G ) ) * ( div ( G* ^-1 * grad( u ) ) )
 //              ]
 
-                surfParametricLaplace.row(i) = Du_SqrtDetGinv.cwiseProduct(
-                                               G22.cwiseProduct( basisGrads.row( i * 2 ) ) -
-                                               G12.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) )
-                                               +
-                                               Dv_SqrtDetGinv.cwiseProduct(
-                                               G11.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) -
-                                               G12.cwiseProduct( basisGrads.row( i * 2 ) ) )
-                                               +
-                                               sqrtDetG_inv.cwiseProduct(
-                                               DuG22.cwiseProduct( basisGrads.row( i * 2 ) ) +
-                                               G22.cwiseProduct( basis2ndDerivs.row( i * 3 ) ) -
-                                               DuG12.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) -
-                                               G12.cwiseProduct( basis2ndDerivs.row( i * 3 + 2 ) ) -
-                                               G12.cwiseProduct( basis2ndDerivs.row( i * 3 + 2 ) ) +
-                                               DvG11.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) +
-                                               G11.cwiseProduct( basis2ndDerivs.row( i * 3 + 1 ) ) -
-                                               DvG21.cwiseProduct( basisGrads.row( i * 2 ) ) );
+//                surfParametricLaplace.row(i) = Du_SqrtDetGinv.cwiseProduct(
+//                                               G22.cwiseProduct( basisGrads.row( i * 2 ) ) -
+//                                               G12.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) )
+//                                               +
+//                                               Dv_SqrtDetGinv.cwiseProduct(
+//                                               G11.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) -
+//                                               G12.cwiseProduct( basisGrads.row( i * 2 ) ) )
+//                                               +
+//                                               sqrtDetG_inv.cwiseProduct(
+//                                               DuG22.cwiseProduct( basisGrads.row( i * 2 ) ) +
+//                                               G22.cwiseProduct( basis2ndDerivs.row( i * 3 ) ) -
+//                                               DuG12.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) -
+//                                               G12.cwiseProduct( basis2ndDerivs.row( i * 3 + 2 ) ) -
+//                                               G12.cwiseProduct( basis2ndDerivs.row( i * 3 + 2 ) ) +
+//                                               DvG11.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) +
+//                                               G11.cwiseProduct( basis2ndDerivs.row( i * 3 + 1 ) ) -
+//                                               DvG21.cwiseProduct( basisGrads.row( i * 2 ) ) );
+//
+//                surfParametricLaplace.row(i) = sqrt4DetG_inv.cwiseProduct(surfParametricLaplace.row(i));
+
+                surfParametricLaplace.row(i) = ( ( G22.cwiseProduct( DvG11 ) -
+                                                   2 * G12.cwiseProduct( DvG21 ) +
+                                                   G11.cwiseProduct( DvG22 ) ).cwiseProduct(
+                                                   G12.cwiseProduct( basisGrads.row( i * 2 ) ) -
+                                                   G11.cwiseProduct( basisGrads.row( i * 2 + 1) ) ) -
+                                                 ( G22.cwiseProduct( DuG11 ) -
+                                                   2 * G12.cwiseProduct( DuG12 ) +
+                                                   G11.cwiseProduct( DuG22 ) ).cwiseProduct(
+                                                   G22.cwiseProduct( basisGrads.row( i * 2 ) ) -
+                                                   G12.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) ) + 2 *
+                                                 ( G12.cwiseProduct( G12 ) -
+                                                   G11.cwiseProduct( G22 ) ).cwiseProduct(
+                                                   DvG21.cwiseProduct( basisGrads.row( i * 2 ) ) -
+                                                   DvG11.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) -
+                                                   G11.cwiseProduct( basis2ndDerivs.row( i * 3 + 1 ) ) +
+                                                   G12.cwiseProduct( basis2ndDerivs.row( i * 3 + 2 ) ) ) + 2 *
+                                                 ( G12.cwiseProduct( G12 ) -
+                                                   G11.cwiseProduct( G22 ) ).cwiseProduct(
+                                                   DuG12.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) -
+                                                   DuG22.cwiseProduct( basisGrads.row( i * 2 ) ) +
+                                                   G12.cwiseProduct( basis2ndDerivs.row( i * 3 + 2 ) ) -
+                                                   G22.cwiseProduct( basis2ndDerivs.row( i * 3 ) ) ) ).cwiseProduct(
+                                                   sqrtDetG_inv_derivative );
+
 
                 surfParametricLaplace.row(i) = sqrt4DetG_inv.cwiseProduct(surfParametricLaplace.row(i));
-            }
-//            rhsVals = rhsVals.cwiseProduct( detG.cwiseProduct( sqrtDetG_inv ) );
 
+
+            }
+            if(g1OptionList.getSwitch("L2approx") == false )
+            {
+                rhsVals = rhsVals.cwiseProduct(detG.cwiseProduct(sqrtDetG_inv));
+            }
 
         }
 
@@ -270,24 +297,21 @@ public:
                 gsMatrix<> G = Jk.transpose() * Jk;
                 gsMatrix<> G_inv = G.cramerInverse();
                 const T weight = quWeights[k];
-//                localMat.noalias() += weight * ( surfParametricLaplace.col(k) * surfParametricLaplace.col(k).transpose() );
 
-//              L2 approximation
-                gsMatrix<> L2approximation = basisVals.col(k) * basisVals.col(k).transpose() * sqrt(G.determinant());
+                if(g1OptionList.getSwitch("L2approx") == false)
+                {
+                    localMat.noalias() += weight * ( surfParametricLaplace.col(k) * surfParametricLaplace.col(k).transpose() );
+                    localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
+//
+                }
+                else
+                {
+    //              L2 approximation
+                    gsMatrix<> L2approximation = basisVals.col(k) * basisVals.col(k).transpose() * sqrt(G.determinant());
 
-//              H1 approximation
-                index_t numGrads = basisGrads.rows() / 2;
-                gsAsConstMatrix<T> grads_k(basisGrads.col(k).data(), md.dim.first, numGrads);
-                gsMatrix<> H1approximation = ( Jk * G_inv * grads_k).transpose() * ( Jk * G_inv * grads_k) * sqrt(G.determinant());
-
-//              H2 approximation
-                index_t numSecDer = basis2ndDerivs.rows() / 3;
-                gsAsConstMatrix<T> secDer_k(basisGrads.col(k).data(), 3, numSecDer);
-                gsMatrix<> H2approximation = secDer_k.transpose() * secDer_k * sqrt(G.determinant());
-
-                localMat.noalias() += weight * ( L2approximation + H1approximation /*+ H2approximation*/);
-                localRhs.noalias() += weight * sqrt(G.determinant()) * ( basisVals.col(k) * rhsVals.col(k).transpose() +
-                                                                       ( Jk * G_inv * grads_k ).transpose() * rhsGrads.col(k) ) ;
+                    localMat.noalias() += weight * ( L2approximation );
+                    localRhs.noalias() += weight * sqrt(G.determinant()) * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
+                }
             }
 
         }
@@ -305,7 +329,6 @@ public:
         system.push(localMat, localRhs, actives, eliminatedDofs[0], 0, 0);
     }
 
-    /*
     inline void localToGlobal(const gsDofMapper     & mapper,
                               const gsMatrix<T>     & eliminatedDofs,
                               const int patchIndex,
@@ -339,7 +362,6 @@ public:
             }
         }
     }
-    */
 
 
 protected:
@@ -370,6 +392,8 @@ protected:
     gsMatrix<T> localRhs;
 
     gsMapData<T> md;
+
+    gsG1OptionList g1OptionList;
 };
 
 

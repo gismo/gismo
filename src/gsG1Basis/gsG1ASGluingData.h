@@ -371,7 +371,7 @@ protected:
 
 //            gsInfo << "cond dim: " << cond.dim() << "\n";
 
-//            gsInfo << "Condition col " << i << ": " << cond.col(i) << "\n";
+            gsInfo << "Condition col " << i << ": " << cond.col(i) << "\n";
 
 
         }

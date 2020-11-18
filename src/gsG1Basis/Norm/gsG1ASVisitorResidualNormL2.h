@@ -36,14 +36,18 @@ public:
         // Setup Quadrature
         const unsigned d = basis->at(0).dim();
         gsVector<index_t> numQuadNodes( d );
+
         for (unsigned i = 0; i < d; ++i)
+        {
             numQuadNodes[i] = basis->at(0).degree(i) + 1;
+        }
 
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
         evFlags = NEED_MEASURE| NEED_VALUE | NEED_JACOBIAN;
+
     }
 
     // Evaluate on element.

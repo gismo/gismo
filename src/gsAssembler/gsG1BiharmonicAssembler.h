@@ -4,7 +4,7 @@
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    Author(s): P. Weinmueller
+    Author(s): A. Farahat
 */
 
 #pragma once
@@ -12,7 +12,6 @@
 #include <gsAssembler/gsAssembler.h>
 
 #include <gsPde/gsBiharmonicPde.h>
-//#include <gsAssembler/gsVisitorBiharmonic.h>
 #include <gsAssembler/gsG1ASVisitorBiharmonic.h>
 #include <gsAssembler/gsVisitorNeumann.h>
 #include <gsAssembler/gsVisitorLaplaceBoundaryBiharmonic.h>
@@ -55,8 +54,9 @@ public:
                             gsMultiBasis<T> const         & bases,
                             gsBoundaryConditions<T> const & bconditions,
                             gsBoundaryConditions<T> const & bconditions2,
-                            const gsPiecewiseFunction<T>          & rhs)
-        : m_ppde(patches,bconditions,bconditions2,rhs)
+                            const gsPiecewiseFunction<T>          & rhs,
+                            gsG1OptionList & optList)
+        : m_ppde(patches,bconditions,bconditions2,rhs), optionList(optList)
     {
         iFace::strategy intStrategy = iFace::none;
         dirichlet::strategy dirStrategy = dirichlet::none;
@@ -88,7 +88,7 @@ protected:
 
     // fixme: add constructor and remove this
     gsBiharmonicPde<T> m_ppde;
-
+    gsG1OptionList optionList;
     // Members from gsAssembler
     using Base::m_pde_ptr;
     using Base::m_bases;
@@ -129,7 +129,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::plotParaview(gsField<> &solField_inte
 {
 
     std::string fn = "G1Biharmonic";
-    index_t npts = 2000;
+    index_t npts = 15000;
     gsParaviewCollection collection2(fn);
     std::string fileName2;
 
@@ -229,17 +229,25 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
 
 
     // Assemble volume integrals
-    Base::template push<bhVisitor>();
+    for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
+    {
+        bhVisitor visitor(*m_pde_ptr, optionList);
+        //Assemble (fill m_matrix and m_rhs) on patch np
+        Base::template apply(visitor, np);
+    }
 
 
-    // PASCAL
-    // Neuman conditions of first kind
-    //Base::template push<gsVisitorNeumann<T> >(
-    //    m_ppde.bcFirstKind().neumannSides() );
 
-    // Laplace conditions of second kind
-    //Base::template push<gsVisitorLaplaceBoundaryBiharmonic<T> >(
-    //    m_ppde.bcSecondKind().laplaceSides() );
+    if(optionList.getSwitch("L2approx") == false )
+    {
+        // Neuman conditions of first kind
+        Base::template push<gsVisitorNeumann<T> >(
+            m_ppde.bcFirstKind().neumannSides());
+
+        // Laplace conditions of second kind
+        Base::template push<gsVisitorLaplaceBoundaryBiharmonic<T> >(
+            m_ppde.bcSecondKind().laplaceSides());
+    }
 
     if (m_options.getInt("InterfaceStrategy") == iFace::dg)
         gsWarn << "DG option ignored.\n";
@@ -263,257 +271,262 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
 
     size_t unk_ = 0;
 
-    m_g1_ddof.resize( g1System.boundary_size(), m_system.unkSize(unk_)*m_system.rhs().cols());  //m_pde_ptr->numRhs() );
+    m_g1_ddof
+        .resize(g1System.boundary_size(), m_system.unkSize(unk_) * m_system.rhs().cols());  //m_pde_ptr->numRhs() );
     m_g1_ddof.setZero();
-/*  PASCAL
-    // Set up matrix, right-hand-side and solution vector/matrix for
-    // the L2-projection
-    gsSparseEntries<T> projMatEntries;
-    gsMatrix<T>        globProjRhs;
-    globProjRhs.setZero( g1System.boundary_size(), m_system.unkSize(unk_)*m_system.rhs().cols() );
 
-    // Temporaries
-    gsVector<T> quWeights;
-
-    gsMatrix<T> rhsVals;
-    gsMatrix<unsigned> globIdxAct;
-    gsMatrix<T> basisVals;
-
-    gsMapData<T> md(NEED_MEASURE);
-
-    // Iterate over all patch-sides with Dirichlet-boundary conditions
-    for ( typename gsBoundaryConditions<T>::const_iterator
-              iter = m_pde_ptr->bc().dirichletBegin();
-          iter != m_pde_ptr->bc().dirichletEnd(); ++iter )
+    if(optionList.getSwitch("L2approx") == false )
     {
-        if (iter->isHomogeneous() )
-            continue;
+        // Set up matrix, right-hand-side and solution vector/matrix for
+        // the L2-projection
+        gsSparseEntries<T> projMatEntries;
+        gsMatrix<T>        globProjRhs;
+        globProjRhs.setZero( g1System.boundary_size(), m_system.unkSize(unk_)*m_system.rhs().cols() );
 
-        GISMO_ASSERT(iter->function()->targetDim() == m_system.unkSize(unk_)*m_system.rhs().cols(),
-                     "Given Dirichlet boundary function does not match problem dimension."
-                         <<iter->function()->targetDim()<<" != "<<m_system.unkSize(unk_)<<"\n");
+        // Temporaries
+        gsVector<T> quWeights;
 
-        const size_t unk = iter->unknown();
-        if(unk!=unk_)
-            continue;
-        const size_t patchIdx = iter->patch();
-        const index_t sideIdx = iter->side();
+        gsMatrix<T> rhsVals;
+        gsMatrix<unsigned> globIdxAct;
+        gsMatrix<T> basisVals;
 
-        size_t row_Edge = 0;
-        for (size_t numBdy = 0; numBdy < m_pde_ptr->domain().boundaries().size(); numBdy++ )
-            if (m_pde_ptr->domain().boundaries()[numBdy].patch == patchIdx && m_pde_ptr->domain().boundaries()[numBdy].m_index == sideIdx)
-                row_Edge = numBdy;
+        gsMapData<T> md(NEED_MEASURE);
 
-        gsMultiPatch<T> multiPatch_Edges;
-        gsTensorBSplineBasis<2,real_t> temp_basis = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(m_bases[unk_].basis(patchIdx));
-        for (size_t i = 0; i < numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge]; i++)
+        // Iterate over all patch-sides with Dirichlet-boundary conditions
+        for ( typename gsBoundaryConditions<T>::const_iterator
+                  iter = m_pde_ptr->bc().dirichletBegin();
+              iter != m_pde_ptr->bc().dirichletEnd(); ++iter )
         {
-            index_t ii = numBoundaryEdgeFunctions[row_Edge] + i;
-            multiPatch_Edges.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
-        }
+            if (iter->isHomogeneous() )
+                continue;
 
-        // VERTEX
-        std::pair<index_t,index_t> vertex_pair;
-        switch (sideIdx)
-        {
-            case 1:
-                vertex_pair = std::make_pair(1,3);
-                break;
-            case 2:
-                vertex_pair = std::make_pair(2,4);
-                break;
-            case 3:
-                vertex_pair = std::make_pair(1,2);
-                break;
-            case 4:
-                vertex_pair = std::make_pair(3,4);
-                break;
-            default:
-                break;
-        }
+            GISMO_ASSERT(iter->function()->targetDim() == m_system.unkSize(unk_)*m_system.rhs().cols(),
+                         "Given Dirichlet boundary function does not match problem dimension."
+                             <<iter->function()->targetDim()<<" != "<<m_system.unkSize(unk_)<<"\n");
 
-        size_t row_Vertex_0 = 0, row_Vertex_1 = 0;
-        for (size_t numVert = 0; numVert < m_pde_ptr->domain().vertices().size(); numVert++ )
-            for(size_t j = 0; j < m_pde_ptr->domain().vertices()[numVert].size(); j++)
+            const size_t unk = iter->unknown();
+            if(unk!=unk_)
+                continue;
+            const size_t patchIdx = iter->patch();
+            const index_t sideIdx = iter->side();
+
+            size_t row_Edge = 0;
+            for (size_t numBdy = 0; numBdy < m_pde_ptr->domain().boundaries().size(); numBdy++ )
+                if (m_pde_ptr->domain().boundaries()[numBdy].patch == patchIdx && m_pde_ptr->domain().boundaries()[numBdy].m_index == sideIdx)
+                    row_Edge = numBdy;
+
+            gsMultiPatch<T> multiPatch_Edges;
+            gsTensorBSplineBasis<2,real_t> temp_basis = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(m_bases[unk_].basis(patchIdx));
+            for (size_t i = 0; i < numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge]; i++)
             {
-                if (m_pde_ptr->domain().vertices()[numVert][j].patch == patchIdx && m_pde_ptr->domain().vertices()[numVert][j].m_index == vertex_pair.first)
-                    row_Vertex_0 = numVert;
-                if (m_pde_ptr->domain().vertices()[numVert][j].patch == patchIdx && m_pde_ptr->domain().vertices()[numVert][j].m_index == vertex_pair.second)
-                    row_Vertex_1 = numVert;
+                index_t ii = numBoundaryEdgeFunctions[row_Edge] + i;
+                multiPatch_Edges.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
             }
 
-
-
-        gsMultiPatch<T> multiPatch_Vertex_0, multiPatch_Vertex_1;
-        for (size_t i = 0; i < numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0]; i++)
-        {
-            index_t ii =  numBoundaryVertexFunctions[row_Vertex_0] + i;
-            multiPatch_Vertex_0.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
-        }
-
-
-        for (size_t i = 0; i < numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1]; i++)
-        {
-            index_t ii =  numBoundaryVertexFunctions[row_Vertex_1] + i;
-            multiPatch_Vertex_1.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
-        }
-
-        if (patchIdx == 0 && sideIdx == 3)
-            gsWriteParaview(multiPatch_Vertex_1.patch(0),"test",5000);
-
-        const gsBasis<T> & basis = m_bases[unk_].basis(patchIdx); // Assume that the basis is the same for all the basis functions
-
-        const gsGeometry<T> & patch = m_pde_ptr->patches()[patchIdx];
-
-        // Set up quadrature to degree+1 Gauss points per direction,
-        // all lying on iter->side() except from the direction which
-        // is NOT along the element
-
-        gsGaussRule<T> bdQuRule(basis, 1.0, 1, iter->side().direction());
-
-        // Create the iterator along the given part boundary.
-        typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(iter->side());
-
-        for(; bdryIter->good(); bdryIter->next() )
-        {
-            bdQuRule.mapTo( bdryIter->lowerCorner(), bdryIter->upperCorner(),
-                            md.points, quWeights);
-
-            //geoEval->evaluateAt( md.points );
-            patch.computeMap(md);
-
-            // the values of the boundary condition are stored
-            // to rhsVals. Here, "rhs" refers to the right-hand-side
-            // of the L2-projection, not of the PDE.
-            rhsVals = iter->function()->eval( m_pde_ptr->domain()[patchIdx].eval( md.points ) );
-
-            basisVals.setZero(numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] +
-                numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0] +
-                numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1], md.points.dim().second);
-            for (size_t i = 0; i < numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge]; i++) // Edge
-                basisVals.row(i) += multiPatch_Edges.patch(i).eval(md.points);
-
-            for (size_t i = 0; i < numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0]; i++) // Left vertex
-                basisVals.row(numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] + i) += multiPatch_Vertex_0.patch(i).eval(md.points);
-
-            for (size_t i = 0; i < numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1]; i++) // Right vertex
-                basisVals.row(numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] + numBoundaryVertexFunctions[row_Vertex_0+1] -
-                      numBoundaryVertexFunctions[row_Vertex_0] + i) += multiPatch_Vertex_1.patch(i).eval(md.points);
-
-
-            globIdxAct.setZero(multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches() + multiPatch_Vertex_1.nPatches(),1);
-            gsVector<unsigned> vec;
-            if (numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] == 2)
+            // VERTEX
+            std::pair<index_t,index_t> vertex_pair;
+            switch (sideIdx)
             {
-                vec.resize(2);
-                vec.at(0) = numBoundaryEdgeFunctions[row_Edge] - numBoundaryEdgeFunctions[0];
-                vec.at(1) = numBoundaryEdgeFunctions[row_Edge] +1 - numBoundaryEdgeFunctions[0];
+                case 1:
+                    vertex_pair = std::make_pair(1,3);
+                    break;
+                case 2:
+                    vertex_pair = std::make_pair(2,4);
+                    break;
+                case 3:
+                    vertex_pair = std::make_pair(1,2);
+                    break;
+                case 4:
+                    vertex_pair = std::make_pair(3,4);
+                    break;
+                default:
+                    break;
             }
-            else
-                vec.setLinSpaced(numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge], numBoundaryEdgeFunctions[row_Edge] - numBoundaryEdgeFunctions[0],
-                                 numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[0]);
 
-            globIdxAct.block(0,0,multiPatch_Edges.nPatches(),1) = vec;
-
-            if (numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0] == 2)
-            {
-                vec.resize(2);
-                vec.at(0) = numBoundaryVertexFunctions[row_Vertex_0] - numBoundaryEdgeFunctions[0];
-                vec.at(1) = numBoundaryVertexFunctions[row_Vertex_0] - numBoundaryEdgeFunctions[0] + 1;
-            }
-            else
-                vec.setLinSpaced(numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0],
-                                 numBoundaryVertexFunctions[row_Vertex_0] - numBoundaryEdgeFunctions[0],
-                                 numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryEdgeFunctions[0]);
-
-            globIdxAct.block(multiPatch_Edges.nPatches(),0,multiPatch_Vertex_0.nPatches(),1) = vec;
-
-            if (numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1] == 2)
-            {
-                vec.resize(2);
-                vec.at(0) = numBoundaryVertexFunctions[row_Vertex_1] - numBoundaryEdgeFunctions[0];
-                vec.at(1) = numBoundaryVertexFunctions[row_Vertex_1] - numBoundaryEdgeFunctions[0] + 1;
-            }
-            else
-                vec.setLinSpaced(numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1],
-                                 numBoundaryVertexFunctions[row_Vertex_1] - numBoundaryEdgeFunctions[0],
-                                 numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryEdgeFunctions[0]);
-
-            globIdxAct.block(multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches(),0,multiPatch_Vertex_1.nPatches(),1) = vec;
-
-
-            std::vector<index_t> eltBdryFcts;
-            eltBdryFcts.reserve(g1System.boundary_size());
-            for( size_t i=0; i < multiPatch_Edges.nPatches(); i++)
+            size_t row_Vertex_0 = 0, row_Vertex_1 = 0;
+            for (size_t numVert = 0; numVert < m_pde_ptr->domain().vertices().size(); numVert++ )
+                for(size_t j = 0; j < m_pde_ptr->domain().vertices()[numVert].size(); j++)
                 {
-                eltBdryFcts.push_back( i );
-                }
-            for( size_t i=0; i < multiPatch_Vertex_0.nPatches(); i++)
-                {
-                eltBdryFcts.push_back( multiPatch_Edges.nPatches() + i );
-                }
-            for( size_t i=0; i < multiPatch_Vertex_1.nPatches(); i++)
-                {
-                eltBdryFcts.push_back( multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches() + i );
+                    if (m_pde_ptr->domain().vertices()[numVert][j].patch == patchIdx && m_pde_ptr->domain().vertices()[numVert][j].m_index == vertex_pair.first)
+                        row_Vertex_0 = numVert;
+                    if (m_pde_ptr->domain().vertices()[numVert][j].patch == patchIdx && m_pde_ptr->domain().vertices()[numVert][j].m_index == vertex_pair.second)
+                        row_Vertex_1 = numVert;
                 }
 
-                // Do the actual assembly:
-                for( index_t k=0; k < md.points.cols(); k++ )
-                {
-                    T weight_k = quWeights[k];
 
-                    if(patch.jacobian(md.point(k)).cols() + 1 == patch.jacobian(md.point(k)).rows() )
+
+            gsMultiPatch<T> multiPatch_Vertex_0, multiPatch_Vertex_1;
+            for (size_t i = 0; i < numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0]; i++)
+            {
+                index_t ii =  numBoundaryVertexFunctions[row_Vertex_0] + i;
+                multiPatch_Vertex_0.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
+            }
+
+
+            for (size_t i = 0; i < numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1]; i++)
+            {
+                index_t ii =  numBoundaryVertexFunctions[row_Vertex_1] + i;
+                multiPatch_Vertex_1.addPatch(temp_basis.makeGeometry(g1System.getSingleBasis(ii, patchIdx).transpose()));
+            }
+
+            if (patchIdx == 0 && sideIdx == 3)
+                gsWriteParaview(multiPatch_Vertex_1.patch(0),"test",5000);
+
+            const gsBasis<T> & basis = m_bases[unk_].basis(patchIdx); // Assume that the basis is the same for all the basis functions
+
+            const gsGeometry<T> & patch = m_pde_ptr->patches()[patchIdx];
+
+            // Set up quadrature to degree+1 Gauss points per direction,
+            // all lying on iter->side() except from the direction which
+            // is NOT along the element
+
+            gsGaussRule<T> bdQuRule(basis, 1.0, 1, iter->side().direction());
+
+            // Create the iterator along the given part boundary.
+            typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(iter->side());
+
+            for(; bdryIter->good(); bdryIter->next() )
+            {
+                bdQuRule.mapTo( bdryIter->lowerCorner(), bdryIter->upperCorner(),
+                                md.points, quWeights);
+
+                //geoEval->evaluateAt( md.points );
+                patch.computeMap(md);
+
+                // the values of the boundary condition are stored
+                // to rhsVals. Here, "rhs" refers to the right-hand-side
+                // of the L2-projection, not of the PDE.
+                rhsVals = iter->function()->eval( m_pde_ptr->domain()[patchIdx].eval( md.points ) );
+
+                basisVals.setZero(numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] +
+                    numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0] +
+                    numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1], md.points.dim().second);
+                for (size_t i = 0; i < numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge]; i++) // Edge
+                    basisVals.row(i) += multiPatch_Edges.patch(i).eval(md.points);
+
+                for (size_t i = 0; i < numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0]; i++) // Left vertex
+                    basisVals.row(numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] + i) += multiPatch_Vertex_0.patch(i).eval(md.points);
+
+                for (size_t i = 0; i < numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1]; i++) // Right vertex
+                    basisVals.row(numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] + numBoundaryVertexFunctions[row_Vertex_0+1] -
+                          numBoundaryVertexFunctions[row_Vertex_0] + i) += multiPatch_Vertex_1.patch(i).eval(md.points);
+
+
+                globIdxAct.setZero(multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches() + multiPatch_Vertex_1.nPatches(),1);
+                gsVector<unsigned> vec;
+                if (numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge] == 2)
+                {
+                    vec.resize(2);
+                    vec.at(0) = numBoundaryEdgeFunctions[row_Edge] - numBoundaryEdgeFunctions[0];
+                    vec.at(1) = numBoundaryEdgeFunctions[row_Edge] +1 - numBoundaryEdgeFunctions[0];
+                }
+                else
+                    vec.setLinSpaced(numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge], numBoundaryEdgeFunctions[row_Edge] - numBoundaryEdgeFunctions[0],
+                                     numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[0]);
+
+                globIdxAct.block(0,0,multiPatch_Edges.nPatches(),1) = vec;
+
+                if (numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0] == 2)
+                {
+                    vec.resize(2);
+                    vec.at(0) = numBoundaryVertexFunctions[row_Vertex_0] - numBoundaryEdgeFunctions[0];
+                    vec.at(1) = numBoundaryVertexFunctions[row_Vertex_0] - numBoundaryEdgeFunctions[0] + 1;
+                }
+                else
+                    vec.setLinSpaced(numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryVertexFunctions[row_Vertex_0],
+                                     numBoundaryVertexFunctions[row_Vertex_0] - numBoundaryEdgeFunctions[0],
+                                     numBoundaryVertexFunctions[row_Vertex_0+1] - numBoundaryEdgeFunctions[0]);
+
+                globIdxAct.block(multiPatch_Edges.nPatches(),0,multiPatch_Vertex_0.nPatches(),1) = vec;
+
+                if (numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1] == 2)
+                {
+                    vec.resize(2);
+                    vec.at(0) = numBoundaryVertexFunctions[row_Vertex_1] - numBoundaryEdgeFunctions[0];
+                    vec.at(1) = numBoundaryVertexFunctions[row_Vertex_1] - numBoundaryEdgeFunctions[0] + 1;
+                }
+                else
+                    vec.setLinSpaced(numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryVertexFunctions[row_Vertex_1],
+                                     numBoundaryVertexFunctions[row_Vertex_1] - numBoundaryEdgeFunctions[0],
+                                     numBoundaryVertexFunctions[row_Vertex_1+1] - numBoundaryEdgeFunctions[0]);
+
+                globIdxAct.block(multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches(),0,multiPatch_Vertex_1.nPatches(),1) = vec;
+
+
+                std::vector<index_t> eltBdryFcts;
+                eltBdryFcts.reserve(g1System.boundary_size());
+                for( size_t i=0; i < multiPatch_Edges.nPatches(); i++)
                     {
-                        gsMatrix<T> Jk = patch.jacobian(md.point(k));
-                        gsMatrix<T> G = Jk.transpose() * Jk;
-                        weight_k *= sqrt(G.determinant());
+                    eltBdryFcts.push_back( i );
                     }
-                    else
+                for( size_t i=0; i < multiPatch_Vertex_0.nPatches(); i++)
                     {
-                        weight_k *= md.measure(k);
+                    eltBdryFcts.push_back( multiPatch_Edges.nPatches() + i );
+                    }
+                for( size_t i=0; i < multiPatch_Vertex_1.nPatches(); i++)
+                    {
+                    eltBdryFcts.push_back( multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches() + i );
                     }
 
-                    // Only run through the active boundary functions on the element:
-                    for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
+                    // Do the actual assembly:
+                    for( index_t k=0; k < md.points.cols(); k++ )
                     {
-                        unsigned ii, jj;
-                        // Each active boundary function/DOF in eltBdryFcts has...
-                        // ...the above-mentioned "element-wise index"
-                        const index_t i = eltBdryFcts[i0];
-                        // ...the boundary index.
-                        ii = globIdxAct.at(i);
+                        T weight_k = quWeights[k];
 
-                        for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
+                        if(patch.jacobian(md.point(k)).cols() + 1 == patch.jacobian(md.point(k)).rows() )
                         {
-                            const index_t j = eltBdryFcts[j0];
-                            jj = globIdxAct.at(j);
+                            gsMatrix<T> Jk = patch.jacobian(md.point(k));
+                            gsMatrix<T> G = Jk.transpose() * Jk;
+                            weight_k *= sqrt(G.determinant());
+                        }
+                        else
+                        {
+                            weight_k *= md.measure(k);
+                        }
 
-                            //gsInfo << "HIER: " << jj << " : " << ii << " : " << i <<" : " << j << " : " << k << "\n";
-                            // Use the "element-wise index" to get the needed
-                            // function value.
-                            // Use the boundary index to put the value in the proper
-                            // place in the global projection matrix.
-                            projMatEntries.add(ii, jj, weight_k * basisVals(i,k) * basisVals(j,k));
-                        } // for j
-                        globProjRhs.row(ii) += weight_k *  basisVals(i,k) * rhsVals.col(k).transpose();
-                    } // for i
-                } // for k
-        } // bdryIter
-    } // boundaryConditions-Iterator
+                        // Only run through the active boundary functions on the element:
+                        for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
+                        {
+                            unsigned ii, jj;
+                            // Each active boundary function/DOF in eltBdryFcts has...
+                            // ...the above-mentioned "element-wise index"
+                            const index_t i = eltBdryFcts[i0];
+                            // ...the boundary index.
+                            ii = globIdxAct.at(i);
+
+                            for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
+                            {
+                                const index_t j = eltBdryFcts[j0];
+                                jj = globIdxAct.at(j);
+
+                                //gsInfo << "HIER: " << jj << " : " << ii << " : " << i <<" : " << j << " : " << k << "\n";
+                                // Use the "element-wise index" to get the needed
+                                // function value.
+                                // Use the boundary index to put the value in the proper
+                                // place in the global projection matrix.
+                                projMatEntries.add(ii, jj, weight_k * basisVals(i,k) * basisVals(j,k));
+                            } // for j
+                            globProjRhs.row(ii) += weight_k *  basisVals(i,k) * rhsVals.col(k).transpose();
+                        } // for i
+                    } // for k
+            } // bdryIter
+        } // boundaryConditions-Iterator
 
 
-    gsSparseMatrix<T> globProjMat( g1System.boundary_size(),
-                                   g1System.boundary_size());
-    globProjMat.setFrom( projMatEntries );
-    globProjMat.makeCompressed();
+        gsSparseMatrix<T> globProjMat( g1System.boundary_size(),
+                                       g1System.boundary_size());
+        globProjMat.setFrom( projMatEntries );
+        globProjMat.makeCompressed();
 
-    // Solve the linear system:
-    // The position in the solution vector already corresponds to the
-    // numbering by the boundary index. Hence, we can simply take them
-    // for the values of the eliminated Dirichlet DOFs.
-    typename gsSparseSolver<T>::CGDiagonal solver;
-    m_g1_ddof = solver.compute( globProjMat ).solve ( globProjRhs );
-*/
+        // Solve the linear system:
+        // The position in the solution vector already corresponds to the
+        // numbering by the boundary index. Hence, we can simply take them
+        // for the values of the eliminated Dirichlet DOFs.
+        typename gsSparseSolver<T>::CGDiagonal solver;
+        m_g1_ddof = solver.compute( globProjMat ).solve ( globProjRhs );
+
+//        gsInfo << "g1DOF: " << m_g1_ddof << "\n";
+    }
 }
 
 template <class T, class bhVisitor>
@@ -826,22 +839,56 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
 
     gsSparseMatrix<T> B_0_sparse;
     B_0_sparse.resize(g1System.boundary_size(), mapper.boundarySize());
-    B_0_sparse.setZero();
+
+/*
+    typedef Eigen::Triplet<double> TT;
+    std::vector<TT> tripletList;
+    tripletList.reserve(int(g1System.boundary_size()*3*1.1));
 
     for(size_t i = 0; i < g1System.boundary_size(); i++)
     {
         for (size_t patchIdx = 0; patchIdx < m_ppde.domain().nPatches(); patchIdx++)
             for(index_t j = 0; j < (m_bases[0])[patchIdx].size(); j++)
             {
+                if (mapper.is_boundary(j,patchIdx))
+                {
+                    index_t jj = mapper.bindex(j,patchIdx);
+                    if ((g1System.getSingleBoundaryBasis(i,patchIdx))(0,j) * (g1System.getSingleBoundaryBasis(i,patchIdx))(0,j) > 10e-25)
+                        tripletList.push_back(TT(i,jj,((g1System.getSingleBoundaryBasis(i,patchIdx))(0,j))));
+
+                }
+            }
+    }
+
+    B_0_sparse.setFromTriplets(tripletList.begin(), tripletList.end());
+*/
+
+
+
+
+
+
+    B_0_sparse.reserve(int(g1System.boundary_size()*3*1.1));
+    B_0_sparse.setZero();
+
+    for(size_t i = 0; i < g1System.boundary_size(); i++)
+    {
+        for (size_t patchIdx = 0; patchIdx < m_ppde.domain().nPatches(); patchIdx++)
+#pragma omp parallel for
+            for(index_t j = 0; j < (m_bases[0])[patchIdx].size(); j++)
+            {
                if (mapper.is_boundary(j,patchIdx))
                {
                    index_t jj = mapper.bindex(j,patchIdx);
                    if ((g1System.getSingleBoundaryBasis(i,patchIdx))(0,j) * (g1System.getSingleBoundaryBasis(i,patchIdx))(0,j) > 10e-25)
+#pragma omp critical(insert)
                        B_0_sparse.insert(i,jj) = (g1System.getSingleBoundaryBasis(i,patchIdx))(0,j);
                }
             }
     }
     B_0_sparse.makeCompressed();
+
+
 
     // Solve the linear system:
     // The position in the solution vector already corresponds to the
@@ -849,6 +896,9 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
     // for the values of the eliminated Dirichlet DOFs.
     typename gsSparseSolver<T>::CGDiagonal solver;
     m_g1_ddof = solver.compute( B_0_sparse * globProjMat * B_0_sparse.transpose() ).solve ( B_0_sparse * globProjRhs );
+
+//    gsInfo << "g1DOF: " << m_g1_ddof << "\n";
+
 
 }
 

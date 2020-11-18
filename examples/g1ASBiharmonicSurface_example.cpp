@@ -41,21 +41,130 @@ int main(int argc, char *argv[])
 
 
 
-    // ======= Solution =========
-//    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
-    gsFunctionExpr<> source  ("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3); // L2 approximation RHS
+    // ======= 2D Solution =========
 
-    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
-    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
-    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
-                             "0",3);
-    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
-                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
-                             "0",
-                             "16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
-                             "0",
-                             "0", 3);
+//    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+//    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+//    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+//    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+//                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
+//    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
+//                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
+//                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
+
+//    gsFunctionExpr<> source  ("16*pi*pi*pi*pi*(4*cos(2*pi*x)*cos(2*pi*y) - cos(2*pi*x) - cos(2*pi*y))",2);
+//    gsFunctionExpr<> laplace ("-4*pi*pi*(2*cos(2*pi*x)*cos(2*pi*y) - cos(2*pi*x) - cos(2*pi*y))",2);
+//    gsFunctionExpr<> solVal("(cos(2*pi*x) - 1) * (cos(2*pi*y) - 1)",2);
+//    gsFunctionExpr<>sol1der ("-2*pi*(cos(2*pi*y) - 1)*sin(2*pi*x)",
+//                             "-2*pi*(cos(2*pi*x) - 1)*sin(2*pi*y)",2);
+//    gsFunctionExpr<>sol2der ("-4*pi^2*(cos(2*pi*y) - 1)*cos(2*pi*x)",
+//                             "-4*pi^2*(cos(2*pi*x) - 1)*cos(2*pi*y)",
+//                             " 4*pi^2*sin(2*pi*x)*sin(2*pi*y)", 2);
+
+//    gsFunctionExpr<> source  ("pi*pi*pi*pi*(4*cos(pi*x/2)*cos(pi*y/2) - cos(pi*x/2) - cos(pi*y/2))/16",2);
+//////    gsFunctionExpr<> source  ("(cos(pi*x/2) - 1) * (cos(pi*y/2) - 1)",2);
+////
+//    gsFunctionExpr<> laplace ("-pi*pi*(2*cos(pi*x/2)*cos(pi*y/2) - cos(pi*x/2) - cos(pi*y/2))/4",2);
+//    gsFunctionExpr<> solVal("(cos(pi*x/2) - 1) * (cos(pi*y/2) - 1)",2);
+//    gsFunctionExpr<>sol1der ("-pi*(cos(pi*y/2) - 1)*sin(pi*x/2)/2",
+//                             "-pi*(cos(pi*x/2) - 1)*sin(pi*y/2)/2",2);
+//    gsFunctionExpr<>sol2der ("-pi*pi*(cos(pi*y/2) - 1)*cos(pi*x/2)/4",
+//                             "-pi*pi*(cos(pi*x/2) - 1)*cos(pi*y/2)/4",
+//                             "pi*pi*sin(pi*x/2)*sin(pi*y/2)/4", 2);
+
+
+//    gsFunctionExpr<> source  ("1/256 * pi^4 (-cos(4 - (pi * y)/4) + cos(4 - (pi * x)/4) * (-1 + 4 * cos(4 - (pi * y)/4)))",2);
+//////    gsFunctionExpr<> source  ("(cos(pi*x/2) - 1) * (cos(pi*y/2) - 1)",2);
+////
+//    gsFunctionExpr<> laplace ("1/16 * pi^2 *(cos(4 - (pi * x)/4) * (1 - 2 * cos(4 - (pi * y)/4)) + cos(4 - (pi * y)/4))",2);
+//    gsFunctionExpr<> solVal("(cos(pi*x/4 -4) - 1) * (cos(pi*y/4 -4) - 1)",2);
+//    gsFunctionExpr<>sol1der ("1/4 *pi* (-1 + cos(4 - (pi * y)/4)) * sin(4 - (pi * x)/4)",
+//                             "1/4 *pi* (-1 + cos(4 - (pi * x)/4)) * sin(4 - (pi * y)/4)",2);
+//    gsFunctionExpr<>sol2der ("-1/16 * pi^2 * cos(4 - (pi * x)/4) * (-1 + cos(4 - (pi * y)/4))",
+//                             "-1/16 * pi^2 * (-1 + cos(4 - (pi * x)/4)) * cos(4 - (pi * y)/4)",
+//                             "1/16 * pi^2 * sin(4 - (pi * x)/4) * sin(4 - (pi * y)/4)", 2);
+
+
+
+//    gsFunctionExpr<> source  ("0",2);
+//    gsFunctionExpr<> laplace ("0",2);
+//    gsFunctionExpr<> solVal("x * y ",2);
+//    gsFunctionExpr<>sol1der ("y",
+//                             "x",2);
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "1", 2);
+
+
+//    gsFunctionExpr<> source  ("0",2);
+//    gsFunctionExpr<> laplace ("- 2 * ( (1 - x) * x + (1 - y) * y )",2);
+//    gsFunctionExpr<> solVal("(1 - x) * x * (1 - y) * y",2);
+//    gsFunctionExpr<>sol1der ("(1 - x) * (1 - y) * y - x * (1 - y) * y",
+//                             "(1 - y) * (1 - x) * x - y * (1 - x) * x",
+//                             2);
+//    gsFunctionExpr<>sol2der ("- 2 * (1 - y) * y",
+//                             "- 2 * (1 - x) * x",
+//                             "(1 - x) * (1 - y) - (1 - x) * y + x * y - x * (1 - y)", 2);
+
+
+//    gsFunctionExpr<> source  ("72 * x * y",2);
+//    gsFunctionExpr<> laplace ("6 * ( x*y*y*y + y*x*x*x)",2);
+//    gsFunctionExpr<> solVal("x*x*x*y*y*y",2);
+//    gsFunctionExpr<>sol1der ("3 * x*x*y*y*y",
+//                             "3 * y*y*x*x*x",2);
+//    gsFunctionExpr<>sol2der ("6 * x*y*y*y",
+//                             "6 * y*x*x*x",
+//                             "9 * x*x*y*y", 2);
+
+
+    // ======= 3D Solution =========
+
+//    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
+//    gsFunctionExpr<> source  ("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3); // L2 approximation RHS
+//
+//    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
+//    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
+//    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+//                             "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",
+//                             "0",3);
+//    gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
+//                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
+//                             "0",
+//                             "16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
+//                             "0",
+//                             "0", 3);
+
+
+//    gsFunctionExpr<> source  ("(cos(2*pi*x) - 1) * (cos(2*pi*y) - 1)",3); // L2 approximation RHS
+//
+//    gsFunctionExpr<> laplace ("-4*pi*pi*(2*cos(2*pi*x)*cos(2*pi*y) - cos(2*pi*x) - cos(2*pi*y))",3);
+//    gsFunctionExpr<> solVal("(cos(2*pi*x) - 1) * (cos(2*pi*y) - 1)",3);
+//    gsFunctionExpr<>sol1der ("-2*pi*(cos(2*pi*y) - 1)*sin(2*pi*x)",
+//                             "-2*pi*(cos(2*pi*x) - 1)*sin(2*pi*y)",
+//                             "0",3);
+//    gsFunctionExpr<>sol2der ("-4*pi^2*(cos(2*pi*y) - 1)*cos(2*pi*x)",
+//                             "-4*pi^2*(cos(2*pi*x) - 1)*cos(2*pi*y)",
+//                             "0",
+//                             "4*pi^2*sin(2*pi*x)*sin(2*pi*y)",
+//                             "0",
+//                             "0", 3);
+
+
+
+//    gsFunctionExpr<> source  ("pi*pi*pi*pi*(4*cos(pi*x/2)*cos(pi*y/2) - cos(pi*x/2) - cos(pi*y/2))/16",3); // RHS
+//    gsFunctionExpr<> source  ("(cos(pi*x/2) - 1) * (cos(pi*y/2) - 1)",3); // L2 approximation RHS
+//
+//    gsFunctionExpr<> laplace ("-pi*pi*(2*cos(pi*x/2)*cos(pi*y/2) - cos(pi*x/2) - cos(pi*y/2))/4",3);
+//    gsFunctionExpr<> solVal("(cos(pi*x/2) - 1) * (cos(pi*y/2) - 1)",3);
+//    gsFunctionExpr<>sol1der ("-pi*(cos(pi*y/2) - 1)*sin(pi*x/2)/2",
+//                             "-pi*(cos(pi*x/2) - 1)*sin(pi*y/2)/2",
+//                             "0",3);
+//    gsFunctionExpr<>sol2der ("-pi*pi*(cos(pi*y/2) - 1)*cos(pi*x/2)/4",
+//                             "-pi*pi*(cos(pi*x/2) - 1)*cos(pi*y/2)/4",
+//                             "0",
+//                             "pi*pi*sin(pi*x/2)*sin(pi*y/2)/4",
+//                             "0",
+//                             "0", 3);
 
 
 
@@ -131,20 +240,21 @@ int main(int argc, char *argv[])
  */
 
 
-//    gsFunctionExpr<> source  ("(8 * (3 * x^10 + 3 * (1 + y^2)^3 + 12 * x^2 * (1 + y^2)^2 * (1 + 5 y^2) + \n"
-//                              "   x^8 * (14 + 15 * y^2) + x^6 * (25 + 36 * y^2 + 5 * y^4) + \n"
-//                              "   x^4 * (23 + 96 * y^2 + 178 * y^4 + 105 * y^6))) / (1 + x^2 + y^2)^5 ", 3);
-//    gsFunctionExpr<> laplace ("(12 * (x^2 + x^4) ) / (1 + x^2 + y^2)",3);
-//    gsFunctionExpr<> solVal("x^4",3);
-//    gsFunctionExpr<>sol1der ("(4 * x^3 * (1 + x^2)) / (1 + x^2 + y^2)",
-//                             "-((4 * x^4 * y) / (1 + x^2 + y^2))",
-//                             "4 * x^3 * ( -( (x^2 * y) / (1 + x^2 + y^2) ) + ( (1 + x^2) * y ) / (1 + x^2 + y^2) )", 3);
-//    gsFunctionExpr<>sol2der ("(12 * (x + x^3)^2 ) / (1 + x^2 + y^2)^2",
-//                             "(12 * x^4 * y^2) / (1 + x^2 + y^2)^2",
-//                             "(12 * x^2 * y^2) / (1 + x^2 + y^2)^2",
-//                             "-((12 * x^3 * (1 + x^2) y) / (1 + x^2 + y^2)^2)",
-//                             "(12 * x^2 * (1 + x^2) * y) / (1 + x^2 + y^2)^2",
-//                             "-((12 * x^3 * y^2) / (1 + x^2 + y^2)^2)", 3);
+    gsFunctionExpr<> source  ("(8 * (3 * x^10 + 3 * (1 + y^2)^3 + 12 * x^2 * (1 + y^2)^2 * (1 + 5 y^2) + \n"
+                              "   x^8 * (14 + 15 * y^2) + x^6 * (25 + 36 * y^2 + 5 * y^4) + \n"
+                              "   x^4 * (23 + 96 * y^2 + 178 * y^4 + 105 * y^6))) / (1 + x^2 + y^2)^5 ", 3);
+////    gsFunctionExpr<> source  ("x^4", 3);
+    gsFunctionExpr<> laplace ("(12 * (x^2 + x^4) ) / (1 + x^2 + y^2)",3);
+    gsFunctionExpr<> solVal("x^4",3);
+    gsFunctionExpr<>sol1der ("(4 * x^3 * (1 + x^2)) / (1 + x^2 + y^2)",
+                             "-((4 * x^4 * y) / (1 + x^2 + y^2))",
+                             "4 * x^3 * ( -( (x^2 * y) / (1 + x^2 + y^2) ) + ( (1 + x^2) * y ) / (1 + x^2 + y^2) )", 3);
+    gsFunctionExpr<>sol2der ("(12 * (x + x^3)^2 ) / (1 + x^2 + y^2)^2",
+                             "(12 * x^4 * y^2) / (1 + x^2 + y^2)^2",
+                             "(12 * x^2 * y^2) / (1 + x^2 + y^2)^2",
+                             "-((12 * x^3 * (1 + x^2) y) / (1 + x^2 + y^2)^2)",
+                             "(12 * x^2 * (1 + x^2) * y) / (1 + x^2 + y^2)^2",
+                             "-((12 * x^3 * y^2) / (1 + x^2 + y^2)^2)", 3);
 
 
 //    gsFunctionExpr<> source  ("(4 * x * (1 - 15 * y^2 - 10 * y^4 + 6 * y^6 + x^4 * (1 + 15 * y^2) + \n"
@@ -178,13 +288,13 @@ int main(int argc, char *argv[])
 //                             "0", 3);
 
 
-//    gsFunctionExpr<> source  ("x^4 ",3);
-//    gsFunctionExpr<> laplace ("12 * x^2",3);
-//    gsFunctionExpr<> solVal("x^4",3);
-//    gsFunctionExpr<>sol1der ("4 * x^3",
+//    gsFunctionExpr<> source  ("12 ",3);
+//    gsFunctionExpr<> laplace ("6 * x",3);
+//    gsFunctionExpr<> solVal("x^3",3);
+//    gsFunctionExpr<>sol1der ("3 * x^2",
 //                             "0",
 //                             "0",3);
-//    gsFunctionExpr<>sol2der ("12 * x^2",
+//    gsFunctionExpr<>sol2der ("6 * x",
 //                             "0",
 //                             "0",
 //                             "0",
@@ -319,7 +429,7 @@ int main(int argc, char *argv[])
             break;
         case 8:
             string_geo = "KirchhoffLoveGeo/surface_fourPatch.xml";
-            numDegree = 1; // 2 == degree 3
+            numDegree = 2; // 2 == degree 3
             break;
         case 9:
             string_geo = "KirchhoffLoveGeo/singlePatch_quadraticParamSurf.xml";
@@ -337,6 +447,35 @@ int main(int argc, char *argv[])
             string_geo = "KirchhoffLoveGeo/parabola_surfaceCubicParamSquaredBdy.xml";
             numDegree = 0; // 1 == degree 3
             break;
+        case 13:
+            string_geo = "KirchhoffLoveGeo/square_smallGeo.xml";
+            numDegree = 2; // 2 == degree 3
+            break;
+        case 14:
+            string_geo = "KirchhoffLoveGeo/planar_squareHole.xml";
+            numDegree = 1; // 2 == degree 3
+            break;
+        case 15:
+            string_geo = "KirchhoffLoveGeo/planar_untrimmedGeo.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
+        case 16:
+            string_geo = "KirchhoffLoveGeo/planar_G1AScubicParam.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
+        case 17:
+            string_geo = "KirchhoffLoveGeo/surfaceFrom2D.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
+        case 18:
+            string_geo = "KirchhoffLoveGeo/surfaceFrom2D_cubic.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
+        case 19:
+            string_geo = "KirchhoffLoveGeo/surfaceFrom2DTriangular.xml";
+            numDegree = 2; // 2 == degree 3
+            break;
+
         default:
             gsInfo << "No geometry is used! \n";
             break;
@@ -375,7 +514,6 @@ int main(int argc, char *argv[])
     for (index_t i = 1; i < g1OptionList.getInt("loop"); i++)
         num_knots[i] = num_knots[i-1]*2 + 1;
 
-
     std::vector<gsSparseMatrix<>> sol_vector;
     std::vector<gsMultiBasis<>> sol_vec_basis;
     std::vector<gsG1System<real_t>> sol_vec_sys;
@@ -383,7 +521,13 @@ int main(int argc, char *argv[])
     for (index_t refinement_level = 0; refinement_level < g1OptionList.getInt("loop"); refinement_level++)
     {
         gsMultiPatch<> multiPatch(multiPatch_init);
+
+//        gsInfo << "KV: " << multiPatch.patch(0).basis().basis(0) << "\n";
+
         multiPatch.uniformRefine_withSameRegularity(num_knots[refinement_level], g1OptionList.getInt("regularity"));
+
+//        gsInfo << "KV: " << multiPatch.patch(0).basis().basis(0) << "\n";
+
         gsInfo << "###### Level: " << refinement_level << " with " << num_knots[refinement_level] << " inner knots ###### " << "\n";
 
         gsMultiBasis<> mb(multiPatch);
@@ -393,7 +537,7 @@ int main(int argc, char *argv[])
         omp_set_nested(1);
 #endif
 
-        gsG1System<real_t> g1System(multiPatch, mb, g1OptionList.getSwitch("neumann"), g1OptionList.getSwitch("twoPatch"));
+        gsG1System<real_t> g1System(multiPatch, mb, g1OptionList.getSwitch("neumann"), g1OptionList.getSwitch("twoPatch"), g1OptionList);
 
         // ########### EDGE FUNCTIONS ###########
         // Interface loop
@@ -479,10 +623,10 @@ int main(int argc, char *argv[])
             std::vector<patchCorner> allcornerLists = multiPatch.vertices()[numVer];
             std::vector<size_t> patchIndex;
             std::vector<size_t> vertIndex;
-            for(size_t j = 0; j < allcornerLists.size(); j++)
+            for(auto & allcornerList : allcornerLists)
             {
-                patchIndex.push_back(allcornerLists[j].patch);
-                vertIndex.push_back(allcornerLists[j].m_index);
+                patchIndex.push_back(allcornerList.patch);
+                vertIndex.push_back(allcornerList.m_index);
             }
 
             if(g1OptionList.getSwitch("twoPatch") == true)
@@ -514,7 +658,6 @@ int main(int argc, char *argv[])
                 gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatch, patchIndex, vertIndex);
 
                 singleVertex.computeG1InternalVertexBasis(g1OptionList);
-                //                for (index_t i = 0; i < (g1OptionList.get("twoPatch") ? 4 : 6); i++)
                 for (index_t i = 0; i < 6; i++)
                 {
                     gsMultiPatch<> singleBasisFunction;
@@ -534,6 +677,7 @@ int main(int argc, char *argv[])
 //            gsInfo << "============================================================ \n";
             collection.save();
         }
+
         gsBoundaryConditions<> bcInfo, bcInfo2;
         for (gsMultiPatch<>::const_biterator bit = multiPatch.bBegin(); bit != multiPatch.bEnd(); ++bit)
         {
@@ -544,10 +688,9 @@ int main(int argc, char *argv[])
                 bcInfo2.addCondition(*bit, condition_type::neumann, &sol1der );
         }
 
-
-
+        gsInfo << "Assembling the system ... \n";
         // BiharmonicAssembler
-        gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source);
+        gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source, g1OptionList);
         g1BiharmonicAssembler.assemble();
 
         gsInfo << "Computing Boundary data ... \n";
@@ -559,18 +702,14 @@ int main(int argc, char *argv[])
 
         g1System.finalize(multiPatch,mb,g1BiharmonicAssembler.get_bValue());
 
-//        gsInfo << "Dir val: " << g1BiharmonicAssembler.get_bValue() << "\n";
-
         gsInfo << "Solving the system ... \n";
         gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
-
-//        gsInfo << "Sol: " << solVector << "\n";
 
         gsInfo << "Plotting the solution ... \n";
         if (g1OptionList.getSwitch("plot"))
         {
             gsField<> exactField(multiPatch,solVal);
-            gsWriteParaview(exactField,"G1Biharmonic_exact",2000);
+            gsWriteParaview(exactField,"G1Biharmonic_exact",15000);
 
             // construct solution: INTERIOR
             gsMultiPatch<> mpsol;
@@ -580,6 +719,33 @@ int main(int argc, char *argv[])
             std::vector<gsMultiPatch<>> g1Basis;
             g1System.constructG1Solution(solVector,g1Basis, multiPatch);
             g1BiharmonicAssembler.plotParaview(solField, g1Basis);
+
+            // Pascal
+            if(multiPatch.patch(0).targetDim() == 2)
+            {
+                gsMultiPatch<> mp_letsee;
+                for (size_t numP = 0; numP < multiPatch.nPatches(); numP++)
+                {
+                    gsMatrix<> coefsnew(multiPatch.patch(numP).coefs().dim().first, 1);
+                    coefsnew = mpsol.patch(numP).coefs();
+                    for (size_t letsee = 0; letsee < g1Basis[numP].nPatches(); letsee++)
+                    {
+                        coefsnew += g1Basis[numP].patch(letsee).coefs();
+                    }
+
+                    gsMatrix<> newcontrolpoints(multiPatch.patch(numP).coefs().dim().first, 3);
+                    newcontrolpoints.leftCols(2) = multiPatch.patch(numP).coefs();
+                    newcontrolpoints.col(2) = coefsnew;
+                    mp_letsee.addPatch(multiPatch.patch(numP));
+                    mp_letsee.patch(numP).setCoefs(newcontrolpoints);
+                }
+                gsWriteParaview(mp_letsee, "mp_letsee", 15000);
+
+                gsFileData<> xml;
+                xml << mp_letsee;
+                xml.save("/home/afarahat/Desktop/gismo/filedata/KirchhoffLoveGeo/surfaceFrom2DTriangular");
+            }
+            // End
         }
 
         // construct solution: G1 Basis
@@ -587,22 +753,25 @@ int main(int argc, char *argv[])
         gsSparseMatrix<real_t> Sol_sparse;
         g1System.constructSparseG1Solution(solVector,Sol_sparse);
 
-        if(sol_vector.size() == 0 || sol_vector.size() == 1)
+        if( g1OptionList.getSwitch("residual") == true)
         {
-            sol_vector.push_back(Sol_sparse);
-            sol_vec_basis.push_back(mb);
-            sol_vec_sys.push_back(g1System);
-        }
-        else
-        {
-            sol_vector.at(0) = sol_vector.at(1);
-            sol_vector.at(1) = Sol_sparse;
+            if(sol_vector.empty() == true || sol_vector.size() == 1)
+            {
+                sol_vector.push_back(Sol_sparse);
+                sol_vec_basis.push_back(mb);
+                sol_vec_sys.push_back(g1System);
+            }
+            else
+            {
+                sol_vector.at(0) = sol_vector.at(1);
+                sol_vector.at(1) = Sol_sparse;
 
-            sol_vec_basis.at(0) = sol_vec_basis.at(1);
-            sol_vec_basis.at(1) = mb;
+                sol_vec_basis.at(0) = sol_vec_basis.at(1);
+                sol_vec_basis.at(1) = mb;
 
-            sol_vec_sys.at(0) = sol_vec_sys.at(1);
-            sol_vec_sys.at(1) = g1System;
+                sol_vec_sys.at(0) = sol_vec_sys.at(1);
+                sol_vec_sys.at(1) = g1System;
+            }
         }
 
 #ifdef _OPENMP
@@ -615,48 +784,77 @@ int main(int argc, char *argv[])
         {
             if (e == 0)
             {
-                if(g1OptionList.getSwitch("residual") == true && sol_vector.size() == 2)
+                if( g1OptionList.getSwitch("residual") == true )
                 {
-                    gsG1ASResidualNormL2<real_t> errorL2(multiPatch, sol_vector, sol_vec_basis);
-                    errorL2.compute(sol_vec_sys);
-                    l2Error_vec[refinement_level] = errorL2.value();
+                    if(sol_vector.size() == 2)
+                    {
+                        gsG1ASResidualNormL2<real_t> errorL2(multiPatch, sol_vector, sol_vec_basis);
+                        errorL2.compute(sol_vec_sys);
+                        l2Error_vec[refinement_level] = errorL2.value();
+                    }
                 }
                 else
                 {
                     gsNormL2<real_t> errorL2(multiPatch, Sol_sparse, solVal);
                     errorL2.compute(g1System.get_numBasisFunctions());
-                    l2Error_vec[refinement_level] = errorL2.value();
+
+//                    gsSparseMatrix<real_t> Sol_sparseZero = Sol_sparse;
+//                    Sol_sparseZero.setZero();
+//                    gsNormL2<real_t> exactErrorL2(multiPatch, Sol_sparseZero, solVal);
+//                    exactErrorL2.compute(g1System.get_numBasisFunctions());
+
+                    l2Error_vec[refinement_level] = errorL2.value() /*/ exactErrorL2.value()*/;
                 }
             }
 
             else if (e == 1)
             {
-                if(g1OptionList.getSwitch("residual") == true && sol_vector.size() == 2)
+                if( g1OptionList.getSwitch("residual") == true)
                 {
-                    gsG1ASResidualSeminormH1<real_t> errorSemiH1(multiPatch, sol_vector, sol_vec_basis);
-                    errorSemiH1.compute(sol_vec_sys);
-                    h1SemiError_vec[refinement_level] = errorSemiH1.value();
+                    if(sol_vector.size() == 2)
+                    {
+                        gsG1ASResidualSeminormH1<real_t> errorSemiH1(multiPatch, sol_vector, sol_vec_basis);
+                        errorSemiH1.compute(sol_vec_sys);
+                        h1SemiError_vec[refinement_level] = errorSemiH1.value();
+                    }
+
                 }
                 else
                 {
                     gsSeminormH1<real_t> errorSemiH1(multiPatch, Sol_sparse, sol1der);
                     errorSemiH1.compute(g1System.get_numBasisFunctions());
-                    h1SemiError_vec[refinement_level] = errorSemiH1.value();
+
+//                    gsSparseMatrix<real_t> Sol_sparseZero = Sol_sparse;
+//                    Sol_sparseZero.setZero();
+//                    gsNormL2<real_t> exactErrorH1(multiPatch, Sol_sparseZero, sol1der);
+//                    exactErrorH1.compute(g1System.get_numBasisFunctions());
+
+                    h1SemiError_vec[refinement_level] = errorSemiH1.value() /*/ exactErrorH1.value()*/;
                 }
             }
             else if (e == 2)
             {
-                if(g1OptionList.getSwitch("residual") == true && sol_vector.size() == 2)
+                if( g1OptionList.getSwitch("residual") == true )
                 {
-                    gsG1ASResidualSeminormH2<real_t> errorSemiH2(multiPatch, sol_vector, sol_vec_basis);
-                    errorSemiH2.compute(sol_vec_sys);
-                    h2SemiError_vec[refinement_level] = errorSemiH2.value();
+                    if(sol_vector.size() == 2)
+                    {
+                        gsG1ASResidualSeminormH2<real_t> errorSemiH2(multiPatch, sol_vector, sol_vec_basis);
+                        errorSemiH2.compute(sol_vec_sys);
+                        h2SemiError_vec[refinement_level] = errorSemiH2.value();
+                    }
+
                 }
                 else
                 {
                     gsSeminormH2<real_t> errorSemiH2(multiPatch, Sol_sparse, sol2der);
                     errorSemiH2.compute(g1System.get_numBasisFunctions());
-                    h2SemiError_vec[refinement_level] = errorSemiH2.value();
+
+//                    gsSparseMatrix<real_t> Sol_sparseZero = Sol_sparse;
+//                    Sol_sparseZero.setZero();
+//                    gsNormL2<real_t> exactErrorH2(multiPatch, Sol_sparseZero, sol2der);
+//                    exactErrorH2.compute(g1System.get_numBasisFunctions());
+
+                    h2SemiError_vec[refinement_level] = errorSemiH2.value() /*/ exactErrorH2.value()*/;
                 }
             }
         }

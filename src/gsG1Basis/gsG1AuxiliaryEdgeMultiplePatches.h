@@ -243,7 +243,9 @@ public:
             gsG1ASBasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, g1OptionList, g1BasisEdge);
             g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
             g1BasisEdge_1.setG1BasisEdge(g1Basis_1);
-            this->g1ConditionRep(g1BasisEdge,g1Basis_0, g1Basis_1);
+
+//            Test C1-interface basis functions
+//            this->g1ConditionRep(g1BasisEdge,g1Basis_0, g1Basis_1);
         }
 //      Patch 0 -> Right
         auxGeom[0].parametrizeBasisBack(g1Basis_0);
@@ -480,7 +482,7 @@ void g1ConditionRep(gsG1ASGluingData<real_t> alpha, gsMultiPatch<> g1Basis_0,  g
             g1Error = temp.array().abs().maxCoeff();
     }
 
-//    gsInfo << "Conditiontest G1 continuity Rep: \n" << g1Error << "\n\n";
+    gsInfo << "Conditiontest G1 continuity Rep: \n" << g1Error << "\n\n";
 }
 
 protected:

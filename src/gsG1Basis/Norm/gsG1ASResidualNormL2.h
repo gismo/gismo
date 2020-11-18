@@ -162,7 +162,6 @@ public:
                 typename gsGeometryEvaluator<T>::uPtr geoEval(getEvaluator(evFlags, patchesPtr->patch(pn)));
 
                 const gsBasis<T> & dom = basisVec->at(1).basis(pn);
-
                 typename gsBasis<T>::domainIter domIt = dom.makeDomainIterator(side);
 
                 // TODO: optimization of the assembling routine, it's too slow for now
@@ -204,7 +203,7 @@ protected:
     {
 
                 return math::pow(v, static_cast<T>(1)/2 );
-        
+
     }
 
 

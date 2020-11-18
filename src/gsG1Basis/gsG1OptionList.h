@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gismo.h>
+#include <gsIO/gsCmdLine.h>
 
 
 namespace gismo
@@ -61,9 +62,10 @@ class gsG1OptionList
 {
 
 public:
+
     gsG1OptionList()
     {
-        
+
     }
 
     gsG1OptionList(gsOptionList & list)
@@ -126,6 +128,11 @@ void gsG1OptionList::initialize(int argc, char *argv[])
 
     bool residual_norm = false;
 
+    bool L2_approximation = false;
+
+    bool rotation_VertexBF = false;
+
+
     bool localGd = false;
     bool exactGd = false;
     bool localEdge = false;
@@ -151,6 +158,8 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     cmd.addSwitch("latex","Print the rate and error latex-ready",latex);
     cmd.addSwitch("neumann","Compute the biharmonic with neumann bdy",neumann_bdy);
     cmd.addSwitch("residual","Compute the error using a residual approach",residual_norm);
+    cmd.addSwitch("L2approx","Solve the problem using L2 approximation",L2_approximation);
+    cmd.addSwitch("rotVertexBF","Compute the verted basis functions rotating the geometry",rotation_VertexBF);
     cmd.addReal("e","threshold", "The threshold for computing the kernel", threshold);
     cmd.addReal("z","zero", "When the value should be set to zero", zero);
     cmd.addReal("", "lambda", "The lambda value for the minimization", lambda);
@@ -175,6 +184,11 @@ void gsG1OptionList::initialize(int argc, char *argv[])
     optionList.addSwitch("neumann", "For computing the neumann bdy",neumann_bdy);
 
     optionList.addSwitch("residual", "For computing the error using a residual approach",residual_norm);
+
+    optionList.addSwitch("L2approx", "For solving the problem using L2 approximation",L2_approximation);
+
+    optionList.addSwitch("rotVertexBF", "For rotating the geometry to compute the vertex basis functions",rotation_VertexBF);
+
 
     optionList.addReal("threshold","Threshold",threshold);
     optionList.addReal("zero","Zero",zero);

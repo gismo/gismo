@@ -184,20 +184,21 @@ public:
         gsMatrix<> dd_ik_minus_deriv, dd_ik_plus_deriv;
 
         dd_ik_minus = ( -1 / alpha_0[0](0,0) ) * ( geo.jacobian(zero).col(1) +
-                                                         beta_0[0](0,0) * geo.jacobian(zero).col(0) );
+                                                            beta_0[0](0,0) * geo.jacobian(zero).col(0) );
 
         dd_ik_plus = ( 1 / alpha_0[1](0,0) ) * ( geo.jacobian(zero).col(0) +
-        beta_0[1](0,0) * geo.jacobian(zero).col(1) );
+                                                          beta_0[1](0,0) * geo.jacobian(zero).col(1) );
 
         gsMatrix<> geo_deriv2_12(geo.targetDim(), 1), geo_deriv2_11(geo.targetDim(), 1), geo_deriv2_22(geo.targetDim(), 1);
-        geo_deriv2_12.row(0) = geo.deriv2(zero).row(2);
-        geo_deriv2_12.row(1) = geo.deriv2(zero).row(5);
 
-        geo_deriv2_11.row(0) = geo.deriv2(zero).row(0);
-        geo_deriv2_11.row(1) = geo.deriv2(zero).row(3);
+                   geo_deriv2_12.row(0) = geo.deriv2(zero).row(2);
+                   geo_deriv2_12.row(1) = geo.deriv2(zero).row(5);
 
-        geo_deriv2_22.row(0) = geo.deriv2(zero).row(1);
-        geo_deriv2_22.row(1) = geo.deriv2(zero).row(4);
+                   geo_deriv2_11.row(0) = geo.deriv2(zero).row(0);
+                   geo_deriv2_11.row(1) = geo.deriv2(zero).row(3);
+
+                   geo_deriv2_22.row(0) = geo.deriv2(zero).row(1);
+                   geo_deriv2_22.row(1) = geo.deriv2(zero).row(4);
 
         if(geo.parDim() + 1 == geo.targetDim()) // In the surface case the dimension of the second derivative vector is 9x1
         {
@@ -293,8 +294,8 @@ public:
                                     (geo.jacobian(zero)(0,0) * Phi.row(5).transpose() + geo.jacobian(zero)(1,0) * Phi.row(8).transpose() + geo.jacobian(zero)(2,0) * Phi.row(11).transpose()) * dd_ik_minus(1,0) +
                                     (geo.jacobian(zero)(0,0) * Phi.row(6).transpose() + geo.jacobian(zero)(1,0) * Phi.row(9).transpose() + geo.jacobian(zero)(2,0) * Phi.row(12).transpose()) * dd_ik_minus(2,0) +
                                     Phi.block(1, 0, 1, 6).transpose() * dd_ik_minus_deriv.row(0) +
-                                    Phi.block(2, 0, 1, 6).transpose() * dd_ik_minus_deriv.row(0) +
-                                    Phi.block(3, 0, 1, 6).transpose() * dd_ik_minus_deriv.row(0) );
+                                    Phi.block(2, 0, 1, 6).transpose() * dd_ik_minus_deriv.row(1) +
+                                    Phi.block(3, 0, 1, 6).transpose() * dd_ik_minus_deriv.row(2) );
         }
         else
         {
@@ -394,6 +395,7 @@ public:
             {
                 T weight = quWeights[k];
                 gsMatrix<> Jk = md.jacobian(k);
+
                 if( Jk.dim().second + 1 == Jk.dim().first)
                 {
                     gsMatrix<> G = Jk.transpose() * Jk;
