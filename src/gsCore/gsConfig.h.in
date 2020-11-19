@@ -127,4 +127,6 @@
     See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html */
 #cmakedefine EIGEN_USE_MKL_ALL
 
+#cmakedefine EIGEN_DONT_VECTORIZE
+#cmakedefine EIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT
 /**@}*/
