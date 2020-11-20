@@ -140,6 +140,10 @@ int main(int argc, char *argv[])
             numDegree = 2;
             break;
 
+        case 20:
+            string_geo = "domain2d/lake.xml";
+            numDegree = 0;
+            break;
 
         default:
             gsInfo << "No geometry is used! \n";
@@ -571,6 +575,5 @@ int main(int argc, char *argv[])
         gsInfo << "=====================================================================\n";
 
     }
-
 
 } // main

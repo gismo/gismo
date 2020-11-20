@@ -31,8 +31,9 @@ public:
                            index_t const & patchID,
                            gsMultiPatch<T> const & mp,
                            real_t const & gamma,
-                           bool & isBoundary)
-        : m_uv(uv), m_patchID(patchID), m_mp(mp), m_gamma(gamma), m_isBoundary(isBoundary)
+                           bool & isBoundary,
+                           bool twoPatch)
+        : m_uv(uv), m_patchID(patchID), m_mp(mp), m_gamma(gamma), m_isBoundary(isBoundary), m_twoPatch(twoPatch)
     {
 
         m_basis.push_back(basis); // Basis for alpha and beta
@@ -66,6 +67,7 @@ protected:
 
     real_t m_gamma;
     bool m_isBoundary;
+    bool m_twoPatch;
 
     // Space for phi_0,i, phi_1,j
     std::vector< gsMultiBasis<T> > m_basis;
@@ -89,12 +91,18 @@ void gsGlobalGDAssembler<T, bhVisitor>::refresh()
 
     gsMatrix<unsigned> act;
     act = m_basis[0].basis(0).boundaryOffset(1,0); // WEST
-    map_beta_S.markBoundary(0, act); // Patch 0
-    map_alpha.markBoundary(0, act); // Patch 0
-    act = m_basis[0].basis(0).boundaryOffset(2,0); // East
-    map_beta_S.markBoundary(0, act); // Patch 0
-    map_alpha.markBoundary(0, act); // Patch 0
+    if (m_twoPatch)
+    {
+        map_beta_S.markBoundary(0, act); // Patch 0
+        map_alpha.markBoundary(0, act); // Patch 0
+    }
 
+    act = m_basis[0].basis(0).boundaryOffset(2,0); // East
+    if (m_twoPatch)
+    {
+        map_beta_S.markBoundary(0, act); // Patch 0
+        map_alpha.markBoundary(0, act); // Patch 0
+    }
     map_alpha.finalize();
     map_beta_S.finalize();
 
@@ -145,7 +153,8 @@ void gsGlobalGDAssembler<T, bhVisitor>::assemble()
     if (m_isBoundary)
         uv.setOnes();
 
-    m_ddof[0] = uv.row(0).transpose();
+    if (m_twoPatch)
+        m_ddof[0] = uv.row(0).transpose();
 
     // Assemble volume integrals
     bhVisitor visitor;
@@ -198,7 +207,7 @@ inline void gsGlobalGDAssembler<T, bhVisitor>::apply(bhVisitor & visitor,
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(basis, quNodes, m_uv, m_mp, m_patchID, m_gamma, m_isBoundary);
+            visitor_.evaluate(basis, quNodes, m_uv, m_mp, m_patchID, m_gamma, m_isBoundary, m_twoPatch);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);

@@ -48,5 +48,8 @@
 0.9756215094476033 1.186901980586305 
 </coefs>
  </Geometry>
+  <MultiPatch parDim="2" id="0">
+  <patches type="id_range">0 0</patches>
+ </MultiPatch>
 </xml>
 

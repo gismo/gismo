@@ -47,7 +47,8 @@ public:
                          gsMultiPatch<T> & mp,
                          index_t m_patchID,
                          real_t & gamma,
-                         bool & isBoundary)
+                         bool & isBoundary,
+                         bool twoPatch)
     {
         md.points = quNodes;
 
@@ -131,7 +132,7 @@ public:
         ones.setOnes(1,md.points.cols());
 
         rhsVals_alpha = alpha_S;
-        if (mp.nPatches() == 2)
+        if (twoPatch)
             rhsVals_beta = beta_S - lambda0 * (ones - md.points).cwiseProduct(alpha_S) - lambda1 * (md.points).cwiseProduct(alpha_S);
         else
             rhsVals_beta = beta_S;

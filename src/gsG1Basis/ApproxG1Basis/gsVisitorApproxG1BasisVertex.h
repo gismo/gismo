@@ -133,10 +133,10 @@ public:
         zero.setZero(2,1);
 
         std::vector<gsMatrix<>> alpha, beta, alpha_0, beta_0, alpha_deriv, beta_deriv;
-        /*
+
         if (g1OptionList.getInt("gluingData") == gluingData::global)
         {
-            gsInfo << "Evtl kann beta falsch sein!! \n";
+            //gsInfo << "Evtl kann beta falsch sein!! \n";
             alpha.push_back(gluingData[0].get_alpha_S_tilde(0).eval(md.points.row(0))); // u
             alpha.push_back(gluingData[1].get_alpha_S_tilde(0).eval(md.points.row(1))); // v
             alpha_0.push_back(gluingData[0].get_alpha_S_tilde(0).eval(zero.row(0))); // u
@@ -169,7 +169,7 @@ public:
             beta_deriv.push_back(gluingData[1].get_beta_S_tilde(0).deriv(zero.row(0))); // v
         }
         else if (g1OptionList.getInt("gluingData") == gluingData::exact)
-*/        {
+        {
             gsMatrix < T > temp_mat;
             gluingData[0].eval_alpha_into(md.points.row(0), temp_mat);
             alpha.push_back(temp_mat); // u

@@ -292,7 +292,7 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
     for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i += temp_basis_first.knots().multiplicityIndex(i))
         bsp_gD.insertKnot(temp_basis_first.knot(i),p_tilde-r_tilde);
 
-    gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD, uv, patchID, this->m_mp, this->m_gamma, this->m_isBoundary);
+    gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD, uv, patchID, this->m_mp, this->m_gamma, this->m_isBoundary, this->m_optionList.getSwitch("twoPatch"));
 
     globalGdAssembler.assemble();
 
@@ -306,15 +306,20 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
         sol_a = solver.solve(globalGdAssembler.rhs_alpha());
     }
 
-
-    gsVector<> sol_a_new(sol_a.rows() + 2);
-    sol_a_new.setZero();
-    sol_a_new.block(1,0,sol_a.rows(),1) = sol_a;
-    sol_a_new.at(0) = globalGdAssembler.bdy_alpha()(0,0);
-    sol_a_new.at(sol_a.rows() + 1) = globalGdAssembler.bdy_alpha()(1,0);
-
     gsGeometry<>::uPtr tilde_temp;
-    tilde_temp = bsp_gD.makeGeometry(sol_a_new);
+    if (this->m_optionList.getSwitch("twoPatch"))
+    {
+        gsVector<> sol_a_new(sol_a.rows() + 2);
+        sol_a_new.setZero();
+        sol_a_new.block(1, 0, sol_a.rows(), 1) = sol_a;
+        sol_a_new.at(0) = globalGdAssembler.bdy_alpha()(0, 0);
+        sol_a_new.at(sol_a.rows() + 1) = globalGdAssembler.bdy_alpha()(1, 0);
+
+
+        tilde_temp = bsp_gD.makeGeometry(sol_a_new);
+    }
+    else
+        tilde_temp = bsp_gD.makeGeometry(sol_a);
 
     gsBSpline<T> alpha_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
     alpha_S_tilde.push_back(alpha_t);
@@ -325,12 +330,16 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
         solver.compute(globalGdAssembler.matrix_beta());
         sol_b = solver.solve(globalGdAssembler.rhs_beta());
     }
+    if (this->m_optionList.getSwitch("twoPatch"))
+    {
+        gsVector<> sol_b_new(sol_b.rows() + 2);
+        sol_b_new.setZero();
+        sol_b_new.block(1, 0, sol_b.rows(), 1) = sol_b;
 
-    gsVector<> sol_b_new(sol_b.rows() + 2);
-    sol_b_new.setZero();
-    sol_b_new.block(1,0,sol_b.rows(),1) = sol_b;
-
-    tilde_temp = bsp_gD.makeGeometry(sol_b_new);
+        tilde_temp = bsp_gD.makeGeometry(sol_b_new);
+    }
+    else
+        tilde_temp = bsp_gD.makeGeometry(sol_b);
 
     gsBSpline<T> beta_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
     beta_S_tilde.push_back(beta_t);
