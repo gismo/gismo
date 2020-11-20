@@ -58,6 +58,7 @@
 #cmakedefine GISMO_WITH_TRILINOS
 #cmakedefine GISMO_WITH_UMFPACK
 #cmakedefine GISMO_WITH_UNUM
+#cmakedefine GISMO_WITH_XBRAID
 
 /* Only include new types here that can be set as real_t */
 
