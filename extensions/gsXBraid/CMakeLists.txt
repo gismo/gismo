@@ -102,6 +102,11 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
   COMPILE_DEFINITIONS gismo_EXPORTS
   POSITION_INDEPENDENT_CODE ON
   LINKER_LANGUAGE CXX
+  #START Export all symbols from this extension
+  CXX_VISIBILITY_PRESET default
+  C_VISIBILITY_PRESET default
+  VISIBILITY_INLINES_HIDDEN 0
+  #END Export all symbols from this extension
   FOLDER "G+Smo extensions" 
   )
 
