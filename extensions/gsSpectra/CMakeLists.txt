@@ -73,5 +73,3 @@ foreach(file ${FILES})
     # install the example executables (optionally)
     install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
 endforeach(file ${FILES})
-
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)

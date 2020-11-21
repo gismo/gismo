@@ -26,7 +26,7 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
 if(WIN32 AND NOT CYGWIN)
   set(DEF_CMAKE_INSTALL_DIR ${LIB_INSTALL_DIR}/cmake)
 else()
-   set(DEF_CMAKE_INSTALL_DIR ${LIB_INSTALL_DIR})
+   set(DEF_CMAKE_INSTALL_DIR ${LIB_INSTALL_DIR}/gismo)
 endif()
 set(CMAKE_INSTALL_DIR ${DEF_CMAKE_INSTALL_DIR} CACHE STRING
     "Installation directory for CMake files")
@@ -68,8 +68,8 @@ file(COPY ${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake DESTINATION ${CMAKE_BINARY_
 # ... for the install tree
 set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
 set(CONF_LIB_DIRS     "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
-set(CONF_MODULE_PATH   "${CMAKE_INSTALL_DIR}")
-set(CONF_USE_FILE     "${CMAKE_INSTALL_DIR}/gismoUse.cmake")
+set(CONF_MODULE_PATH  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DIR}")
+set(CONF_USE_FILE     "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DIR}/gismoUse.cmake")
 configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfig.cmake.in
                "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake" @ONLY)
 
@@ -128,10 +128,20 @@ install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h
 
 # Install cmake files
 install(FILES
-        "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake"
-        "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake"
-        "${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake"
-        DESTINATION "${CMAKE_INSTALL_DIR}" COMPONENT devel)
+  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake"
+  "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/gsConfig.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/gsDebugExtra.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/AddCXXCompileOptions.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/CodeCoverage.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/AddCompilerFlag.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/CheckCCompilerFlag.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/CheckCXXCompilerFlag.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/CheckMicCCompilerFlag.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/CheckMicCXXCompilerFlag.cmake"
+  DESTINATION "${CMAKE_INSTALL_DIR}" COMPONENT devel)
 
 # Install the export set for use with the install-tree
 #install(EXPORT gismoTargets DESTINATION

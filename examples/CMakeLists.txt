@@ -8,6 +8,7 @@
 project(examples)
 
 set(CMAKE_DIRECTORY_LABELS "${PROJECT_NAME}") #CMake 3.10
+#set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
 
 # Add a grouping target that builds all tests this is equivalent to
 # running "make" inside the tests build folder
@@ -43,4 +44,3 @@ endforeach(file ${FILES})
 list(LENGTH FILES len)
 message(STATUS "Number of examples to compile: ${len}")
 
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
