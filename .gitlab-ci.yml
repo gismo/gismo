@@ -42,7 +42,7 @@ install_and_deploy_linux:
     - cp /builds/gismo-ci/gismo/CTestConfig.cmake /builds/gismo-ci/gismo/deploy/
     - mv /builds/gismo-ci/gismo/examples/*.cpp /builds/gismo-ci/gismo/deploy/
     - mkdir /builds/gismo-ci/buildproj; cd /builds/gismo-ci/buildproj
-    - cmake ../gismo/deploy -Dgismo_DIR=/builds/gismo-ci/buildlib -DBUILDNAME="$CI_JOB_NAME-local" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles"
+    - cmake ../gismo/deploy -Dgismo_DIR=/builds/gismo-ci/buildlib -DBUILDNAME="$CI_JOB_NAME-local" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" || true
     - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
     # II. Test deploy from system tree
     - cd /builds/gismo-ci/buildlib
