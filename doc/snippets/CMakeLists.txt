@@ -31,7 +31,7 @@ foreach(snippet_src ${snippets_SRCS})
                  ${CMAKE_CURRENT_BINARY_DIR}/${snippet_target}.cpp)
 
   add_executable(${snippet_target}  ${CMAKE_CURRENT_BINARY_DIR}/${snippet_target}.cpp)
-  add_test(${snippet_target} ${snippet_target})
+  add_test(NAME ${snippet_target} COMMAND $<TARGET_FILE:${snippet_target}>)
   set_property(TEST ${snippet_target} PROPERTY LABELS "${PROJECT_NAME}")
 
   if(GISMO_BUILD_LIB)

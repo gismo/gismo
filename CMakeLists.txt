@@ -354,7 +354,11 @@ include(gsLibrary)
 ## Documentation
 ## #################################################################
 
-add_subdirectory(doc/snippets EXCLUDE_FROM_ALL)
+if(GISMO_BUILD_UNITTESTS OR NOSNIPPETS)
+  add_subdirectory(doc/snippets EXCLUDE_FROM_ALL)
+else()
+  add_subdirectory(doc/snippets)
+endif()
 add_subdirectory(doc)
 
 ## #################################################################
