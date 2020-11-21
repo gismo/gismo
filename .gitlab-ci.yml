@@ -229,8 +229,4 @@ install_and_deploy_linux:
     - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
   only:
     - stable
-  on-pull-requests:
-    only:
-      - external_pull_requests
-      - stable
-
+    - external_pull_requests
