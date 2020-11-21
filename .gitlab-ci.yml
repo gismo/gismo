@@ -48,6 +48,7 @@ install_and_deploy_linux:
     - cd /builds/gismo-ci/buildlib
     - cmake --build . --target install
     - rm -rf ~/.cmake /builds/gismo-ci/buildlib /builds/gismo-ci/buildproj
+    - find /usr -name '*gismo*'
     - mkdir /builds/gismo-ci/buildproj; cd /builds/gismo-ci/buildproj
     - cmake ../gismo/deploy -DBUILDNAME="$CI_JOB_NAME-system" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles"
     - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
