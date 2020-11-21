@@ -91,7 +91,7 @@ jobs:
       env:
         - BUILD_TYPE=Release
         - TASK=Doxygen
-        - CXX_STANDARD=98
+        - CXX_STANDARD=11
       #install:
         #- wget -q 'https://github.com/doxygen/doxygen/archive/master.tar.gz' -O doxygen.tar.gz
         #- tar -xzf doxygen.tar.gz; mv doxygen-* doxygen
@@ -161,7 +161,8 @@ before_deploy:
 
 deploy:
   provider: pages
-  cleanup: false
+  #cleanup: false
+  skip-cleanup: true
   token: $GITHUB_TOKEN
   repo: gismo/gismo.github.io
   target_branch: master
