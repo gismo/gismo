@@ -53,4 +53,4 @@ install_and_deploy_linux:
     - cmake ../gismo/deploy -DBUILDNAME="$CI_JOB_NAME-system" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" || true
     - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
   only:
-    - install_test #stable
+    - stable
