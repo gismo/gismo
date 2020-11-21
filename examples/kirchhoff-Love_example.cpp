@@ -115,7 +115,7 @@ private:
     eval_impl(const U & u, const index_t k)  const
     {
         GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
-        solGrad_expr<Scalar> sGrad =  solGrad_expr(_u);
+        solGrad_expr<Scalar> sGrad =  solGrad_expr<Scalar>(_u);
         res.resize(rows(), cols()); // rows()*
 
         normal = _G.data().normal(k);// not normalized to unit length
@@ -376,7 +376,7 @@ private:
             So we simply evaluate for every active basis function v_k the product hess(c).v_k
         */
 
-        solHess_expr<Scalar> sHess = solHess_expr(_u);
+        solHess_expr<Scalar> sHess = solHess_expr<Scalar>(_u);
         tmp = sHess.eval(k);
         vEv = _v.eval(k);
         res = vEv * tmp;
