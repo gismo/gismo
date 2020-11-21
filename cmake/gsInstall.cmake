@@ -128,10 +128,16 @@ install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h
 
 # Install cmake files
 install(FILES
-        "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake"
-        "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake"
-        "${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake"
-        DESTINATION "${CMAKE_INSTALL_DIR}" COMPONENT devel)
+  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake"
+  "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/gsConfig.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/CheckCXXCompilerFlag.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/AddCXXCompileOptions.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/CodeCoverage.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/gsDebugExtra.cmake"
+    "${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake"
+  DESTINATION "${CMAKE_INSTALL_DIR}" COMPONENT devel)
 
 # Install the export set for use with the install-tree
 #install(EXPORT gismoTargets DESTINATION
