@@ -29,8 +29,6 @@ endif()
 
 project(main)
 
-#set(CMAKE_PREFIX_PATH /usr;/usr/local)
-
 include(CTest)
 #set(BUILD_TESTING "Enable testing" ${GISMO_BUILD_UNITTESTS})
 
