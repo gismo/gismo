@@ -228,7 +228,7 @@ install_and_deploy_linux:
     - cmake ../gismo/deploy -DBUILDNAME="$CI_JOB_NAME-system" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" || true
     - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest #-D ExperimentalSubmit
     # III. Test direct use of -lgismo
-    -rm -rf poisson_example.out
+    - rm -rf poisson_example.out
     - g++ -v /builds/gismo-ci/gismo/deploy/poisson_example.cpp -o poisson_example.out -I/usr/include/gismo -lgismo 2> compile.log
     - ctest --output-on-failure -A compile.log -M Experimental -T Submit
     - if [ ! -f "poisson_example.out" ]; then cat compile.log; exit 1; fi
