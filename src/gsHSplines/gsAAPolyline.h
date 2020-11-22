@@ -1,6 +1,7 @@
 /** @file gsAAPolyline.h
 
-    @brief Provides classes for handling an axis-aligned polyline in 2D: gsVSegment and gsAAPolyline.
+    @brief Provides classes for handling an axis-aligned polyline in
+    2D: gsVSegment and gsAAPolyline.
 
     This file is part of the G+Smo library.
 
@@ -8,7 +9,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): Dominik Mokris (dominik.mokris@jku.at), G. Kiss.
+    Author(s): Dominik Mokris, G. Kiss
 */
 
 #pragma once

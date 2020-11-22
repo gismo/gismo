@@ -29,15 +29,15 @@
 
 
 This README file contains brief information. More details are found in
-the [Wiki pages](http://gs.jku.at/gismo).
+the [Wiki pages](https://github.com/gismo/gismo/wiki).
 
-The latest revision of the code can be obtained using subversion:
-
-```svn co https://github.com/gismo/gismo/trunk gismo```
-
-or using git (via https):
+The latest revision of the code can be obtained using git (via https):
 
 ```git clone https://github.com/gismo/gismo.git```
+
+or using subversion:
+
+```svn co https://github.com/gismo/gismo/trunk gismo```
 
 or as a zip file:
 
@@ -98,8 +98,7 @@ Additionally, if Doxygen is available on the system one can execute
 to obtain the Doxygen documentation in HTML format. The main doxygen
 page is at ./doc/html/index.html.
 
-More information at
-http://gs.jku.at/gismo
+More information at https://github.com/gismo/gismo/wiki
 
 # Configuration Options
 

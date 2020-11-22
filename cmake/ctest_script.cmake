@@ -1,10 +1,9 @@
 ######################################################################
-## ctest_script.txt
+## ctest_script.cmake
 ## This file is part of the G+Smo library.
 ## https://raw.githubusercontent.com/gismo/gismo/stable/cmake/ctest_script.cmake
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012-2018
 ######################################################################
 
 ######################################################################
