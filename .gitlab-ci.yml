@@ -203,7 +203,7 @@ linux_x86_64_gcc10_cxx20_release_float_int:
 install_and_deploy_linux:
   tags:
     - linux
-  stage: deploy
+  stage: test #deploy #(deploy will only run only when all test succeeds)
   image: gcc:9
   script:
     - apt-get update -y
