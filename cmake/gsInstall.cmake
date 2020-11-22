@@ -151,18 +151,10 @@ else(GISMO_BUILD_LIB)
    message ("Configure with -DGISMO_BUILD_LIB=ON to compile the library")
 endif(GISMO_BUILD_LIB)
 
-# Install docs (if available)
-set(DOC_SRC_DIR "${PROJECT_BINARY_DIR}/doc/html/")
-#message("DOC_SRC_DIR='${DOC_SRC_DIR}'")
-
-set(TMP_VERSION "${gismo_VERSION}")
-string(REGEX REPLACE "[a-zA-Z]+" "" TMP_VERSION ${TMP_VERSION})
-#message("TMP_VERSION='${TMP_VERSION}'")
-set(DOC_INSTALL_DIR share/doc/gismo-${TMP_VERSION} CACHE PATH
+# Install docs (if available/generated)
+set(DOC_INSTALL_DIR share/doc/gismo CACHE PATH #-${GISMO_VERSION}
     "Installation directory for documentation")
-#message("DOC_INSTALL_DIR='${DOC_INSTALL_DIR}'")
-
-install(DIRECTORY "${DOC_SRC_DIR}"
+install(DIRECTORY "${PROJECT_BINARY_DIR}/doc/html/"
         COMPONENT doc
         DESTINATION "${DOC_INSTALL_DIR}/"
         USE_SOURCE_PERMISSIONS

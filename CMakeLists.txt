@@ -6,7 +6,7 @@
 ## Copyright (C) 2012-2018 - RICAM-Linz.
 ######################################################################
 
-cmake_minimum_required(VERSION 2.8.8)
+cmake_minimum_required(VERSION 2.8.8) #CMake 3.19 warns to change to 2.8.12
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
@@ -49,14 +49,14 @@ if(NOT CMAKE_BUILD_TYPE)
    endif()
 endif()
 
-set(gismo_VERSION_MAJOR "0")
-set(gismo_VERSION_MINOR "8")
-set(gismo_VERSION_PATCH "5")
-set(gismo_VERSION
-  "${gismo_VERSION_MAJOR}.${gismo_VERSION_MINOR}.${gismo_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
+set(GISMO_VERSION_MAJOR "20") #year
+set(GISMO_VERSION_MINOR "12") #month
+set(GISMO_VERSION_PATCH "dac2e910") #commit
+set(GISMO_VERSION
+  "${GISMO_VERSION_MAJOR}.${GISMO_VERSION_MINOR}" CACHE INTERNAL "G+Smo version number")
 
 if(POLICY CMP0048)# CMake 3.0
-  project(gismo LANGUAGES C CXX  VERSION ${gismo_VERSION})
+  project(gismo LANGUAGES C CXX  VERSION ${GISMO_VERSION})
 else()
   project(gismo C CXX)
 endif()
