@@ -1,9 +1,8 @@
 #####################################################################
-## CMakeLists.txt
+## CMakeLists.txt --- root
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012-2018 - RICAM-Linz.
 ######################################################################
 
 cmake_minimum_required(VERSION 2.8.8) #CMake 3.19 warns to change to 2.8.12

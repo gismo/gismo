@@ -1,9 +1,8 @@
 ######################################################################
-## CMakeLists.txt ---
+## CMakeLists.txt --- snippets
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012 - RICAM-Linz.
 ######################################################################
 
 project(doc-snippets)

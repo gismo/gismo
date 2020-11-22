@@ -1,7 +1,8 @@
-### CMakeLists.txt ---
+######################################################################
+### CMakeLists.txt --- gsTrilinos
+## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2016 - RICAM-Linz.
 ######################################################################
 
 cmake_minimum_required(VERSION 2.8.11)

@@ -1,9 +1,8 @@
 ######################################################################
-## CMakeLists.txt ---
+## gsOptions.cmake
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012 - 2016 RICAM-Linz.
 ######################################################################
 
 message ("Configuration (cmake ${CMAKE_VERSION}):")

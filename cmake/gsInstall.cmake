@@ -1,12 +1,8 @@
 ######################################################################
-## gsIntall.cmake ---
+## gsInstall.cmake
 ## This file is part of the G+Smo library.
 ##
-## Author: Angelos Mantzaflaris
-## Author: Harald Weiner
-## Copyright (C) 2012-2015 - RICAM-Linz.
-######################################################################
-## Installation
+## Authors: Angelos Mantzaflaris, Harald Weiner
 ######################################################################
 
 message ("  CMAKE_INSTALL_PREFIX    ${CMAKE_INSTALL_PREFIX}")

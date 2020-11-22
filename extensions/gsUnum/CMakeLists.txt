@@ -1,7 +1,8 @@
-### CMakeLists.txt ---
+######################################################################
+### CMakeLists.txt --- gsUnum
+## This file is part of the G+Smo library.
 ## 
-## Author: Angelos Mantzaflaris 
-## Copyright (C) 2016 - RICAM-Linz.
+## Author: Matthias Moller
 ######################################################################
 
 ## Unum extension

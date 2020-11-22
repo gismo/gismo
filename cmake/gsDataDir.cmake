@@ -1,9 +1,8 @@
-### gsDataDir.cmake ---
+### gsDataDir.cmake
 ## 
 ## set GISMO_DATA_DIR based on compiler-toolchain
 ## 
 ## Author: Harald Weiner
-## Copyright (C) 2015 - RICAM-Linz.
 ######################################################################
 
 # Data directory

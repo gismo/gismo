@@ -1,7 +1,8 @@
-### CMakeLists.txt ---
+######################################################################
+### CMakeLists.txt --- gsMultiPrecision
+## This file is part of the G+Smo library.
 ## 
-## Author: Angelos Mantzaflaris 
-## Copyright (C) 2016 - RICAM-Linz.
+## Author: Angelos Mantzaflaris, Matthias Moller
 ######################################################################
 
 # Multi-precision floating-point extension
