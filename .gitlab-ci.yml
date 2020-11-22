@@ -203,7 +203,7 @@ linux_x86_64_gcc10_cxx20_release_float_int:
 install_and_deploy_linux:
   tags:
     - linux
-  stage: test
+  stage: deploy
   image: gcc:9
   script:
     - apt-get update -y
@@ -226,7 +226,12 @@ install_and_deploy_linux:
     - rm -rf ~/.cmake /builds/gismo-ci/buildproj #/builds/gismo-ci/buildlib
     - mkdir /builds/gismo-ci/buildproj; cd /builds/gismo-ci/buildproj
     - cmake ../gismo/deploy -DBUILDNAME="$CI_JOB_NAME-system" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" || true
-    - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
+    - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest #-D ExperimentalSubmit
+    # III. Test direct use of -lgismo
+    -rm -rf poisson_example.out
+    - g++ -v /builds/gismo-ci/gismo/deploy/poisson_example.cpp -o poisson_example.out -I/usr/include/gismo -lgismo 2> compile.log
+    - ctest --output-on-failure -A compile.log -M Experimental -T Submit
+    - if [ ! -f "poisson_example.out" ]; then cat compile.log; exit 1; fi
   only:
     - stable
     - external_pull_requests

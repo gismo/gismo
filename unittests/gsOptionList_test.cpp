@@ -407,7 +407,8 @@ SUITE(gsOptionList_test)
 
         CHECK_EQUAL(true, myList.getSwitch("boundary"));
         CHECK_EQUAL(11, myList.getInt("strategy"));
-        CHECK_EQUAL((real_t)1/100000, myList.getReal("tolerance"));
+        CHECK_CLOSE((real_t)1/100000, myList.getReal("tolerance"),EPSILON);
+        //CHECK_EQUAL((real_t)1/100000, myList.getReal("tolerance"));
         CHECK_EQUAL("/path/to/square.xml", myList.getString("geometry"));
     }
 
