@@ -1,9 +1,8 @@
 ######################################################################
-## CMakeLists.txt ---
+## gsLibrary.cmake
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012 - 2016 RICAM-Linz.
 ######################################################################
 
 #include (GenerateExportHeader)
@@ -47,14 +46,14 @@ endif()
   FOLDER "G+Smo libraries"
   )
 
-if(GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
-    find_package(GMP)
-    find_package(MPFR)
-
-    if (GMP_FOUND AND MPFR_FOUND)
-      target_link_libraries(${PROJECT_NAME} ${MPFR_LIBRARY};${GMP_LIBRARY};${GMPXX_LIBRARY})
-    endif()
-endif()
+#if(GISMO_WITH_MPFR OR GISMO_WITH_GMP)
+#    find_package(GMP)
+#    find_package(MPFR)
+#
+#    if (GMP_FOUND AND MPFR_FOUND)
+#      target_link_libraries(${PROJECT_NAME} ${MPFR_LIBRARY};${GMP_LIBRARY};${GMPXX_LIBRARY})
+#    endif()
+#endif()
 
 if (GISMO_WITH_SUPERLU)
   target_link_libraries(${PROJECT_NAME} ${SUPERLU_LIBRARIES})

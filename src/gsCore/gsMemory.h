@@ -283,7 +283,7 @@ memory::shared_ptr<T> give(memory::shared_ptr<T> & x)
 // Small, dynamically sized arrays on the stack, for POD types.
 // Only use this if the size is guaranteed not to be more than a few
 // hundred bytes! Be warned: overflow occurs without any warning
-#if defined(GISMO_WITH_MPQ) || defined(GISMO_WITH_MPFR)
+#if defined(GISMO_WITH_GMP) || defined(GISMO_WITH_MPFR)
  #define STACK_ARRAY( T, name, sz )    T name[sz];
 #else
 // Note: VLAs(following line) can be buggy on some compilers/versions,

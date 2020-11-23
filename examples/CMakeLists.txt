@@ -1,13 +1,14 @@
-### CMakeLists.txt ---
+######################################################################
+## CMakeLists.txt --- examples
+## This file is part of the G+Smo library.
 ##
-## Author: Angelos Mantzaflaris
-## Author: Harald Weiner
-## Copyright (C) 2012-2018 - RICAM-Linz.
+## Author: Angelos Mantzaflaris, Harald Weiner
 ######################################################################
 
 project(examples)
 
 set(CMAKE_DIRECTORY_LABELS "${PROJECT_NAME}") #CMake 3.10
+#set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
 
 # Add a grouping target that builds all tests this is equivalent to
 # running "make" inside the tests build folder
@@ -22,6 +23,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER
 # Collect source file names
 aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR} FILES)
 #message("found files: ${FILES}")
+
+#set(CPP_FILES_98 )
+#set(CPP_FILES_11 ${CPP_FILES_98} )
+#set(CPP_FILES_14 ${CPP_FILES_98} ${CPP_FILES_11} )
 
 foreach(file ${FILES})
 
@@ -39,4 +44,3 @@ endforeach(file ${FILES})
 list(LENGTH FILES len)
 message(STATUS "Number of examples to compile: ${len}")
 
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)

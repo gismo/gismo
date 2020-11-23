@@ -58,8 +58,8 @@ before_build:
   - cmd: cd C:\projects	&& md build-gismo && cd build-gismo
   - cmd: set PATH=%envpath%;%PATH%
   - sh: cd ~/projects && mkdir build-gismo && cd build-gismo  
-  - cmd: cmake -DSITE="%APPVEYOR_PULL_REQUEST_NUMBER%-%APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH% [appVeyor]" -DBUILDNAME="%generator% %configuration%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON ../gismo #-DGISMO_EXTRA_DEBUG=ON -DDbgHelp_DIR="%ProgramFiles(x86)%\Windows Kits\8.1\Debuggers" ../gismo
-  - sh: cmake -DSITE="$APPVEYOR_PULL_REQUEST_NUMBER-$APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH [appVeyor]" -DBUILDNAME="Ubuntu Makefiles-$configuration" -DCMAKE_BUILD_TYPE=$configuration -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DGISMO_ZLIB_STATIC=1 ../gismo
+  - cmd: cmake -DCMAKE_DISABLE_FIND_PACKAGE_Doxygen=TRUE -DSITE="%APPVEYOR_PULL_REQUEST_NUMBER%-%APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH% [appVeyor]" -DBUILDNAME="%generator% %configuration%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON ../gismo #-DGISMO_EXTRA_DEBUG=ON -DDbgHelp_DIR="%ProgramFiles(x86)%\Windows Kits\8.1\Debuggers" ../gismo
+  - sh: cmake -DCMAKE_DISABLE_FIND_PACKAGE_Doxygen=TRUE -DSITE="$APPVEYOR_PULL_REQUEST_NUMBER-$APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH [appVeyor]" -DBUILDNAME="Ubuntu Makefiles-$configuration" -DCMAKE_BUILD_TYPE=$configuration -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DGISMO_ZLIB_STATIC=1 ../gismo
 
 build_script:
   - cmd: ctest --output-on-failure -j5 -C %configuration% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-V

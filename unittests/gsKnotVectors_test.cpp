@@ -224,14 +224,16 @@ SUITE(gsKnotVectors_test_2)
         knotIter kitEnd( KV.end() );
         mult_t i = 0;
         for(  ; kit != kitEnd; ++kit, ++i )
-            CHECK( math::abs(*kit - corrKnots[i]) <= std::numeric_limits<real_t>::epsilon()*100 );
+            CHECK_CLOSE( *kit, corrKnots[i], EPSILON );
+            //CHECK( math::abs(*kit - corrKnots[i]) <= std::numeric_limits<real_t>::epsilon()*100 );
 
         uniqIter uit = KV.ubegin();
         uniqIter uitEnd = KV.uend();
         i = 0;
         for( ; uit != uitEnd; ++uit, ++i )
         {
-            CHECK( math::abs(*uit - corrUKnots[i])<= std::numeric_limits<real_t>::epsilon()*100 );
+            CHECK_CLOSE( *uit, corrUKnots[i], EPSILON );
+            //CHECK( math::abs(*uit - corrUKnots[i])<= std::numeric_limits<real_t>::epsilon()*100 );
             CHECK( uit.multSum() == corrEndPos[i] );
         }
         CHECK(KV.degree() == corrDeg);
