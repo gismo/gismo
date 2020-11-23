@@ -1,7 +1,8 @@
-### CMakeLists.txt ---
+######################################################################
+### CMakeLists.txt --- gsOpennurbs
+## This file is part of the G+Smo library.
 ## 
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2013 - RICAM-Linz.
 ######################################################################
 
 ## OpenNurbs extension

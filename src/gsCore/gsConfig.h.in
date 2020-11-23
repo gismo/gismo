@@ -17,10 +17,10 @@
 #pragma once
 
 /** Define the G+Smo version number. */
-#define GISMO_VERSION    "@gismo_VERSION@"
-#define GISMO_MAJOR      @gismo_VERSION_MAJOR@
-#define GISMO_MINOR      @gismo_VERSION_MINOR@
-#define GISMO_PATCH      @gismo_VERSION_PATCH@
+#define GISMO_VERSION    "@GISMO_VERSION@"
+#define GISMO_MAJOR      @GISMO_VERSION_MAJOR@
+#define GISMO_MINOR      @GISMO_VERSION_MINOR@
+#define GISMO_PATCH      @GISMO_VERSION_PATCH@
 
 /** Define default coefficient type. */
 #define real_t           @GISMO_COEFF_TYPE@

@@ -1,0 +1,4 @@
+G+Smo: Geometry plus Simulation Modules
+https://github.com/gismo
+Coordinator and maintainer: Angelos Mantzaflaris
+Copyright 2012 - today, The G+Smo Authors and the G+Smo Contributors.

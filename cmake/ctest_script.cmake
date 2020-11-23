@@ -1,10 +1,9 @@
 ######################################################################
-## ctest_script.txt
+## ctest_script.cmake
 ## This file is part of the G+Smo library.
 ## https://raw.githubusercontent.com/gismo/gismo/stable/cmake/ctest_script.cmake
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012-2018
 ######################################################################
 
 ######################################################################
@@ -449,6 +448,7 @@ if(NOT DEFINED CTEST_SITE)
     set(CTEST_SITE "${HOSTNAME}")
   endif()
 endif()
+STRING(REPLACE " " "_" CTEST_SITE "${CTEST_SITE}")
 
 # Name of this build
 if(NOT DEFINED CTEST_BUILD_NAME)
@@ -462,6 +462,7 @@ if(NOT DEFINED CTEST_BUILD_NAME)
   get_filename_component(cxxnamewe "${CXXNAME}" NAME_WE)
   set(CTEST_BUILD_NAME "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${cxxnamewe}${smHead}")
 endif()
+  STRING(REPLACE " " "_" CTEST_BUILD_NAME "${CTEST_BUILD_NAME}")
   message("NAME: ${CTEST_BUILD_NAME}")
   
 if(NOT CTEST_BUILD_JOBS)

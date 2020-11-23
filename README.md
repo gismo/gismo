@@ -9,9 +9,8 @@
 
 ======================================================================
 =====             Geometry plus Simulation modules               =====
-=====                      version 0.8.5 Alpha                   =====
+=====                     version 20.12 Alpha                    =====
 =====                   https://github.com/gismo                 =====
-=====          Copyright (C) JKU-RICAM-Linz, 2012 - 2018         =====
 ======================================================================
 ```
 
@@ -31,15 +30,15 @@
 
 
 This README file contains brief information. More details are found in
-the [Wiki pages](http://gs.jku.at/gismo).
+the [Wiki pages](https://github.com/gismo/gismo/wiki).
 
-The latest revision of the code can be obtained using subversion:
-
-```svn co https://github.com/gismo/gismo/trunk gismo```
-
-or using git (via https):
+The latest revision of the code can be obtained using git (via https):
 
 ```git clone https://github.com/gismo/gismo.git```
+
+or using subversion:
+
+```svn co https://github.com/gismo/gismo/trunk gismo```
 
 or as a zip file:
 
@@ -100,8 +99,7 @@ Additionally, if Doxygen is available on the system one can execute
 to obtain the Doxygen documentation in HTML format. The main doxygen
 page is at ./doc/html/index.html.
 
-More information at
-http://gs.jku.at/gismo
+More information at https://github.com/gismo/gismo/wiki
 
 # Configuration Options
 
@@ -218,13 +216,7 @@ eleven modules are present as sub-folders:
 
 * Wiki pages:
 
-  https://gs.jku.at/gismo
-
-* Mailing list: gismo@ricam.oeaw.ac.at
-
-* Subscribe to the mailing list at:
-
-  https://list.ricam.oeaw.ac.at/lists/listinfo/gismo
+  https://github.com/gismo/gismo/wiki
 
 * Bug reports:
 
@@ -237,10 +229,7 @@ Coordinator and maintainer: Angelos Mantzaflaris
 
 See full list in [our wiki pages](https://github.com/gismo/gismo/wiki/About--G-Smo)
 
-# Acknowledgement and os-license
+# OS-license
 
-G+Smo library for isogeometric analysis is supported by the Research
-Network ''Geometry + Simulation'' (NFN S117), funded by the Austrian
-Science Fund, www.gs.jku.at.  It is distributed under the Mozilla
-Public License v2.0.  (see [LICENSE.txt](https://github.com/gismo/gismo/blob/stable/LICENSE.txt)).
+The G+Smo library is distributed under the Mozilla Public License v2.0.  (see [LICENSE.txt](https://github.com/gismo/gismo/blob/stable/LICENSE.txt)).
 

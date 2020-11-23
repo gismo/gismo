@@ -1,9 +1,8 @@
 ######################################################################
-## FindTclap.cmake ---
+## FindTclap.cmake
 ## This file is part of the G+Smo library. 
 ##
 ## Author: Harald Weiner
-## Copyright (C) 2015 RICAM-Linz.
 ######################################################################
 
 

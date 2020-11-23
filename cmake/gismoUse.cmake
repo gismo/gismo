@@ -1,13 +1,9 @@
 ######################################################################
-## CMakeLists.txt ---
+## gismoUse.cmake
 ## This file is part of the G+Smo library.
 ##
+## Macros for using G+Smo in third-party projects
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012 - 2015 RICAM-Linz.
-######################################################################
-
-######################################################################
-# Macros for adding executables linked to G+Smo
 ######################################################################
 
 # add an executable
