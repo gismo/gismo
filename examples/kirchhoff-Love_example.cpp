@@ -1498,7 +1498,7 @@ int main(int argc, char *argv[])
     real_t residual = A.rhs().norm();
     real_t residual0 = residual;
     real_t residualOld = residual;
-    gsVector<> updateVector = solVector;
+    gsMatrix<> updateVector = solVector;
     if (nonlinear)
     {
         index_t itMax = 10;
