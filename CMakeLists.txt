@@ -48,11 +48,12 @@ if(NOT CMAKE_BUILD_TYPE)
    endif()
 endif()
 
-set(GISMO_VERSION_MAJOR "20") #year
-set(GISMO_VERSION_MINOR "12") #month
+set(GISMO_VERSION_MAJOR 20) #year
+set(GISMO_VERSION_MINOR 12) #month
 set(GISMO_VERSION_PATCH "dac2e910") #commit
 set(GISMO_VERSION
   "${GISMO_VERSION_MAJOR}.${GISMO_VERSION_MINOR}" CACHE INTERNAL "G+Smo version number")
+set(gismo_VERSION "${GISMO_VERSION}" CACHE INTERNAL "gismo version number")
 
 if(POLICY CMP0048)# CMake 3.0
   project(gismo LANGUAGES C CXX  VERSION ${GISMO_VERSION})
