@@ -32,6 +32,10 @@ void report( const gsVector<>& computedSolution, const gsVector<>& exactSolution
 
 int main(int argc, char** argv)
 {
+#ifdef EIGEN_USE_MKL
+        gsInfo << "EIGEN_USE_MKL=true.\n";
+#endif
+
     index_t mat_size = 10;
 
     gsCmdLine cmd("Testing the use of sparse linear solvers.");
@@ -52,6 +56,7 @@ int main(int argc, char** argv)
 
     Q.makeCompressed(); // always call makeCompressed after sparse matrix has been filled
 
+//    /*
     gsSparseSolver<>::CGIdentity solverCGI;
     solverCGI.compute(Q);
     x = solverCGI.solve(b);
@@ -99,6 +104,8 @@ int main(int argc, char** argv)
     x = solverLU.solve(b);
     gsInfo << "Solve Ax = b with Eigen's LU factorization.\n";
     report( x, x0, succeeded );
+
+//*/
 
 #ifdef GISMO_WITH_PARDISO
     gsSparseSolver<>::PardisoLU solverpLU;

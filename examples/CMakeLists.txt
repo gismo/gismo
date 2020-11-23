@@ -24,21 +24,21 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER
 aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR} FILES)
 #message("found files: ${FILES}")
 
-#set(CPP_FILES_98 )
-#set(CPP_FILES_11 ${CPP_FILES_98} )
-#set(CPP_FILES_14 ${CPP_FILES_98} ${CPP_FILES_11} )
+#unset(IGNORE_FILES)
+if ("x${CMAKE_CXX_STANDARD}" STREQUAL "x98")
+  set(IGNORE_FILES "kirchhoff-Love_example")
+  list(FILTER FILES EXCLUDE REGEX "${IGNORE_FILES}.cpp$")
+endif()
 
 foreach(file ${FILES})
+  get_filename_component(tarname ${file} NAME_WE) # name without extension
+  add_gismo_executable(${file})
+  set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
+  set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
+  add_dependencies(${PROJECT_NAME} ${tarname})
 
-    add_gismo_executable(${file})
-    get_filename_component(tarname ${file} NAME_WE) # name without extension
-    set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
-    set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
-    add_dependencies(${PROJECT_NAME} ${tarname})
-
-    # install the example executables (optionally)
-    install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
-
+  # install the example executables (optionally)
+  install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
 endforeach(file ${FILES})
 
 list(LENGTH FILES len)

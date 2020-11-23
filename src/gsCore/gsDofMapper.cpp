@@ -18,7 +18,7 @@ namespace gismo
 {
 
 gsDofMapper::gsDofMapper() :
-  m_offset(1,0), m_shift(0), m_numFreeDofs(1,0), m_numElimDofs(1,0), 
+  m_offset(1,0), m_shift(0), m_numFreeDofs(1,0), m_numElimDofs(1,0),
   m_numCpldDofs(1,0), m_curElimId(-1)
 { }
 
@@ -186,7 +186,7 @@ void gsDofMapper::markCoupledAsTagged()
     m_tagged.reserve(m_tagged.size()+m_numCpldDofs.back());
     std::vector<index_t>::const_iterator fr = m_numFreeDofs.begin()+1;
     std::vector<index_t>::const_iterator el = m_numElimDofs.begin();
-    for(std::vector<index_t>::const_iterator cp = 
+    for(std::vector<index_t>::const_iterator cp =
 	  m_numCpldDofs.begin()+1;
 	cp!=m_numCpldDofs.end(); ++cp, ++el, ++fr)
       {
@@ -224,7 +224,7 @@ void gsDofMapper::finalize()
     for (size_t c = 0; c!=m_dofs.size(); ++c)
       {
 	finalizeComp(c);
-	
+
 	//off-set
 	m_curElimId -= m_numElimDofs[c+1];
 	m_numFreeDofs[c+1] += m_numFreeDofs[c];
@@ -236,7 +236,7 @@ void gsDofMapper::finalize()
       for (size_t c = 0; c!=m_dofs.size(); ++c)
 	{
 	  std::vector<index_t> & dofs = m_dofs[c];
-	  for(std::vector<index_t>::iterator j = 
+	  for(std::vector<index_t>::iterator j =
 		dofs.begin(); j!= dofs.end(); ++j)
 	    *j =  (*j<m_numFreeDofs[c+1]+m_numElimDofs[c] ?
 		   *j - m_numElimDofs[c]                  :
@@ -326,7 +326,7 @@ void gsDofMapper::finalizeComp(const index_t comp)
 
 std::ostream& gsDofMapper::print( std::ostream& os ) const
 {
-  os<<" Dofs: "<< this->size() 
+  os<<" Dofs: "<< this->size()
     <<"\n components: "<< m_dofs.size()<<"\n";
     os<<" free: "<< this->freeSize() <<"\n";
     os<<" coupled: "<< this->coupledSize() <<"\n";
@@ -350,7 +350,7 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
     m_numFreeDofs.assign(nComp+1,nDofs); m_numFreeDofs.front()=0;
     m_numElimDofs.assign(nComp+1,0);
     m_numCpldDofs.assign(nComp+1,1); m_numCpldDofs.front()=0;
-    
+
     //todo: check nDofs%nPatches==0 and initialize correctly
     m_offset.resize(nPatches, 0);
 
@@ -559,6 +559,11 @@ index_t gsDofMapper::taggedSize() const
 void gsDofMapper::setShift (index_t shift)
 {
     m_shift=shift;
+}
+
+void gsDofMapper::addShift (index_t shift)
+{
+    m_shift+=shift;
 }
 
 void gsDofMapper::setBoundaryShift (index_t shift)

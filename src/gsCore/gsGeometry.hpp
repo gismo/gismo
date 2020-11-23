@@ -405,7 +405,6 @@ template <class T>
 void
 gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
 {
-
     const unsigned flags = out.flags | NEED_ACTIVE;
     const index_t  numPt = in.cols();
     const index_t  numCo = m_coefs.cols();
@@ -437,7 +436,10 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
             for (index_t p=0; p< numPt; ++p)
                 out.values[2].reshapeCol(p, derS, numCo) = tmp.deriv2(p)*coefM;
         }
-    } else
+        if (flags & NEED_ACTIVE)
+            this->active_into(in.col(0), out.actives);
+    }
+    else
     {
         gsMatrix<T> coefM;
         const index_t derS = tmp.derivSize();
@@ -446,6 +448,7 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
         if (flags & NEED_VALUE)  out.values[0].resize(numCo,numPt);
         if (flags & NEED_DERIV)  out.values[1].resize(numCo*derS,numPt);
         if (flags & NEED_DERIV2) out.values[2].resize(numCo*der2S,numPt);
+        if (flags & NEED_ACTIVE) this->active_into(in, out.actives);
 
         for (index_t p=0; p<numPt;++p)
         {

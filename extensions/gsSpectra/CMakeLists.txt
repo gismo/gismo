@@ -27,6 +27,7 @@ gismo_fetch_directory(Spectra
 )
 #endif(NOT SPECTRA_FOUND)
 
+
 # move the files in place ?? -- is a bit buggy
 #file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Spectra/Spectra/  DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 #file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/Spectra)

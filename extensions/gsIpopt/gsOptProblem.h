@@ -2,12 +2,12 @@
 
     @brief Provides declaration of an optimization problem.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -49,7 +49,7 @@ public:
     /// \a u
     /// By default it uses finite differences, overriding it should provide exact gradient.
     virtual void gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result ) const;
-    
+
     /// \brief Returns values of the constraints at design value \a u
     virtual void evalCon_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result ) const = 0;
 
@@ -91,7 +91,7 @@ public:
     ///    iteration. Returning false causes premature termination of
     ///    the optimization
     virtual bool intermediateCallback() { return true;}
-            
+
 public:
 
     int numDesignVars () const { return m_curDesign.size(); }
@@ -106,7 +106,7 @@ public:
 
     T lowerDesignVar(int k) const { return m_desLowerBounds[k]; }
 
-    T upperDesignVar(int k) const { return m_desLowerBounds[k]; }
+    T upperDesignVar(int k) const { return m_desUpperBounds[k]; }
 
     const std::vector<index_t> & conJacRows() const { return m_conJacRows; }
 
@@ -114,10 +114,12 @@ public:
 
     const gsMatrix<T> & currentDesign() const { return m_curDesign; }
 
-    T currentObjValue() const 
-    { 
+    const gsMatrix<T> & lambda() const { return m_lambda; }
+
+    T currentObjValue() const
+    {
         gsAsConstVector<T> tmp(m_curDesign.data(), m_numDesignVars);
-        return evalObj(tmp); 
+        return evalObj(tmp);
     }
 
     T objective()    const { return finalObjective; }
@@ -125,12 +127,12 @@ public:
     int iterations() const { return numIterations; }
 
 public:
-    
+
     void solve ();
-    
+
     std::ostream &print(std::ostream &os) const
-    { 
-        os << "Design variables:" << m_numDesignVars 
+    {
+        os << "Design variables:" << m_numDesignVars
            << "\nNumber of constraints: " << m_numConstraints
             //<< "\ndesign lower:" << m_desLowerBounds.transpose()
             //<< "\ndesign upper:" << m_desUpperBounds.transpose()
@@ -145,7 +147,7 @@ public:
             ;
         return os;
     }
-    
+
 
 protected:
 
@@ -179,6 +181,9 @@ protected:
     /// Current design variables (and starting point )
     gsMatrix<T> m_curDesign;
 
+    /// Lagrange multipliers (set in the finalize_solution method)
+    gsMatrix<T> m_lambda;
+
 protected:
 
     // Statistics
@@ -190,18 +195,18 @@ private:
     /**@name Methods to block default compiler methods.
      * The compiler automatically generates the following three methods.
      *  Since the default compiler implementation is generally not what
-     *  you want (for all but the most simple classes), we usually 
+     *  you want (for all but the most simple classes), we usually
      *  put the declarations of these methods in the private section
      *  and never implement them. This prevents the compiler from
      *  implementing an incorrect "default" behavior without us
      *  knowing. (See e.g. Scott Meyers book, "Effective C++")
-     *  
+     *
      */
     //@{
     gsOptProblem(const gsOptProblem & );
     gsOptProblem& operator=(const gsOptProblem & );
     //@}
-    
+
     gsOptProblemPrivate * m_data;
 };
 
@@ -212,4 +217,3 @@ private:
 // #ifndef GISMO_BUILD_LIB
 // #include GISMO_HPP_HEADER(gsOptProblem.hpp)
 // #endif
-
