@@ -256,12 +256,12 @@ public:
     bool isScalar() const { return rows()*cols()<=1; } //!rowSpan && !colSpan
 
     ///\brief Returns true iff the expression is vector-valued.
-    static bool isVector() { return rowSpan && (!colSpan); }
+    static bool isVector() { return E::rowSpan && (!E::colSpan); }
 
     ///\brief Returns true iff the expression is matrix-valued.
-    static bool isMatrix() { return rowSpan && colSpan; }
+    static bool isMatrix() { return E::rowSpan && E::colSpan; }
 
-    enum{rowSpan = 0, colSpan = 0};
+    //enum{rowSpan = 0, colSpan = 0};
     // static GS_CONSTEXPR bool rowSpan() { return E::rowSpan(); }
     // static bool colSpan { return E::colSpan; }
 

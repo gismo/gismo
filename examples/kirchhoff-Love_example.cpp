@@ -1,6 +1,6 @@
-/** @file poisson2_example.cpp
+/** @file kirchhoff-Love_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve the Poisson equation
+    @brief Solver for kirchhoff-Love shells
 
     This file is part of the G+Smo library.
 
@@ -12,7 +12,7 @@
 */
 
 //! [Include namespace]
-#include <typeinfo>
+
 #include <gismo.h>
 
 namespace gismo{
