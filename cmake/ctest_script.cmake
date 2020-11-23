@@ -238,7 +238,7 @@ endif()
 if(NOT DEFINED CTEST_BINARY_DIRECTORY)
   get_filename_component(base_dir ${CTEST_SOURCE_DIRECTORY} DIRECTORY)
   get_filename_component(cnamewe "${CXXNAME}" NAME_WE)
-  set(CTEST_BINARY_DIRECTORY ${base_dir}/build_${CTEST_TEST_MODEL}${CTEST_CONFIGURATION_TYPE}_${CNAME})
+  set(CTEST_BINARY_DIRECTORY ${base_dir}/build_${CTEST_TEST_MODEL}${CTEST_CONFIGURATION_TYPE}_${cnamewe})
 endif()
 
 # Empty previous directory before building (otherwise builds are incremental)
