@@ -589,12 +589,17 @@ macro(run_ctests)
     set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS}) #labels/subprojects
   endif()
   
-  ctest_configure(OPTIONS "${CMAKE_ARGS};${SUBM_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}")
+  ctest_configure(OPTIONS "${CMAKE_ARGS};${SUBM_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}"  RETURN_VALUE confResult)
+
   #ctest_submit(PARTS Configure Update  RETRY_COUNT 3 RETRY_DELAY 3)
 if(EXISTS ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
   ctest_submit(PARTS Configure Notes RETRY_COUNT 3 RETRY_DELAY 3)
 else()
   ctest_submit(PARTS Configure RETRY_COUNT 3 RETRY_DELAY 3)
+endif()
+
+if (NOT confResult EQUAL 0)
+  message(SEND_ERROR "CMake Configuration failed.")
 endif()
 
   #"${CMAKE_VERSION}" VERSION_LESS "3.10"
