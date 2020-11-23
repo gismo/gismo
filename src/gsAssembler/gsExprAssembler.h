@@ -498,7 +498,7 @@ private:
                 push<false>(ee.rowVar(), ee.colVar(), m_patchInd);
             else
             {
-                GISMO_ERROR("Something went wrong at this point (rowspan: "<< ee.rowSpan()<< ", colSpan: "<< ee.colSpan() <<")");
+                GISMO_ERROR("Something went wrong at this point (rowspan: "<< E::rowSpan<< ", colSpan: "<< E::colSpan <<")");
                 //GISMO_ASSERTrowSpan() && (!colSpan())
             }
 
