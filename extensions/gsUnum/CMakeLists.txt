@@ -1,7 +1,8 @@
-### CMakeLists.txt ---
+######################################################################
+### CMakeLists.txt --- gsUnum
+## This file is part of the G+Smo library.
 ## 
-## Author: Angelos Mantzaflaris 
-## Copyright (C) 2016 - RICAM-Linz.
+## Author: Matthias Moller
 ######################################################################
 
 ## Unum extension
@@ -10,6 +11,8 @@ project(gsUnumExtension)
 # Apply same configuration as G+Smo
 include(gsConfig)
 
+# Fetch Unum sources at configure time
+include(gsFetch)
 gismo_fetch_directory(Unum
     GIT_REPOSITORY https://github.com/stillwater-sc/universal.git
     DESTINATION    external

@@ -2,12 +2,12 @@
 
     @brief Main header to be included by clients using the G+Smo library.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -24,14 +24,14 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 namespace gismo
-{ 
+{
 
 /** @namespace gismo::internal
 
     @brief
     This namespace contains functionalities that is internal to the library.
 */
-namespace internal 
+namespace internal
 { }
 
 }
@@ -64,6 +64,7 @@ namespace internal
 #include <gsCore/gsAffineFunction.h>
 #include <gsCore/gsFunctionExpr.h>
 #include <gsCore/gsBasisFun.h>
+#include <gsCore/gsFuncCoordinate.h>
 
 #include <gsCore/gsBoxTopology.h>
 #include <gsCore/gsMultiPatch.h>
@@ -106,11 +107,11 @@ namespace internal
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsCurveLoop.h>
 #include <gsModeling/gsPlanarDomain.h>
-#include <gsModeling/gsSolid.h> 
+#include <gsModeling/gsSolid.h>
 #include <gsUtils/gsMesh/gsMesh.h>
 #include <gsUtils/gsMesh/gsHalfEdgeMesh.h>
 #include <gsModeling/gsTriMeshToSolid.h>
-//#include <gsSegment/gsVolumeSegment.h> 
+//#include <gsSegment/gsVolumeSegment.h>
 #include <gsModeling/gsFitting.h>
 #include <gsModeling/gsCurveFitting.h>
 
@@ -187,6 +188,10 @@ namespace internal
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF
 #include <gsAutoDiff.h>
+#endif
+
+#ifdef GISMO_WITH_TRILINOS
+#include <gsTrilinos/gsTrilinos.h>
 #endif
 
 /*

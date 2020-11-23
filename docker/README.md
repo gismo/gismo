@@ -42,7 +42,7 @@ Two additional Docker images are built nightly with MPI and [Trilinos](http://tr
 - `latest-ubuntu16.04-gcc5-cxx11-trilinos-release` ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/mmoelle1/gismo/latest-ubuntu16.04-gcc5-cxx11-trilinos-release) ([GCC](https://gcc.gnu.org/) 5.x, C++11, Release mode with OpenMP)
 - `latest-ubuntu16.04-gcc5-cxx11-trilinos-debug` ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/mmoelle1/gismo/latest-ubuntu16.04-gcc5-cxx11-trilinos-debug) ([GCC](https://gcc.gnu.org/) 5.x, C++11, Debug mode with OpenMP)
 
-The detailed build configuration is as follows (see the [G+Smo Wiki](https://www.gs.jku.at/trac/gismo/wiki/public/Compiling#Configuringandbuilding) for a description of the different options):
+The detailed build configuration is as follows (see the [G+Smo Wiki](https://github.com/gismo/gismo/wiki/Compiling#configuring-and-building) for a description of the different options):
 ```
 Configuration:
   CMAKE_BUILD_TYPE        {Release,Debug}
@@ -64,7 +64,7 @@ The directory structure of the G+Smo library is as follows:
 - `$HOME/gismo/filedata`: parameterisations and other configuration files
 - `$HOME/gismo/src`: source code of the G+Smo library
 
-For a full description of the source code directory structure see the [G+Smo Wiki](https://www.gs.jku.at/trac/gismo/wiki/public/Compiling#Sourcedirectorytree).
+For a full description of the source code directory structure see the [G+Smo Wiki](https://github.com/gismo/gismo/wiki/Compiling#source-directory-tree).
 
 ## Using Docker images
 To install Docker for your platform (Windows, macOS, Linux, cloud platforms, etc.) follow the instructions at [docker.com](https://docs.docker.com/get-started/).
@@ -90,7 +90,7 @@ It is also possible to mount a directory on your host computer to a directory of
 docker run --rm -ti -w/home/gismo/shared -v $(pwd):/home/gismo/shared mmoelle1/gismo:latest-ubuntu16.04-gcc5-release
 ```
 &nbsp;
-A good starting point for learning the G+Smo library is to walk through the [example](https://www.gs.jku.at/trac/gismo/wiki/public/Doxygen/Examples) and [tutorial](https://www.gs.jku.at/trac/gismo/wiki/public/Doxygen/Tutorials) applications.
+A good starting point for learning the G+Smo library is to walk through the [example](https://gismo.github.io/Examples.html) and [tutorial](https://gismo.github.io/Tutorials.html) applications.
 
 ## Building your own Docker images
 

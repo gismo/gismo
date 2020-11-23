@@ -493,6 +493,8 @@ public:
         this->basis().refineElements_withCoefs(this->m_coefs, boxes );
     }
 
+    typename gsGeometry::uPtr coord(const index_t c) const {return this->basis().makeGeometry( this->coefs().col(c) ); }
+    
     /// Embeds coefficients in 3D
     void embed3d()
     {

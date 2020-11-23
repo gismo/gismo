@@ -540,6 +540,10 @@ gsBasis<T>& gsBasis<T>::component(short_t i)
 { return const_cast<gsBasis<T>&>(const_cast<const gsBasis<T>*>(this)->component(i));}
 
 template<class T>
+std::vector<index_t> gsBasis<T>::asElements(gsMatrix<T> const &, int) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsBasis<T>::refine(gsMatrix<T> const &, int)
 { GISMO_NO_IMPLEMENTATION }
 
@@ -687,7 +691,7 @@ T gsBasis<T>::getMaxCellLength() const
 
 /*
 template<class T>
-void gsBasis<T>::linearComb(const gsMatrix<unsigned>  & actives,
+void gsBasis<T>::linearComb(const gsMatrix<index_t>  & actives,
                             const gsMatrix<T>         & basisVals,
                             const gsMatrix<T>         & coefs,
                             gsMatrix<T>&                result )

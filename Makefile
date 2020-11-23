@@ -2,10 +2,9 @@
 ## Makefile
 ## This file is part of the G+Smo library.
 ##
-## Configures and builds G+Smo in ./build
+## Uses CMake to configure and build G+Smo in the subfolder ./build
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012-2018
 ######################################################################
 
 SHELL := /bin/bash

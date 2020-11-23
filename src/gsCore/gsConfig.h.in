@@ -17,10 +17,10 @@
 #pragma once
 
 /** Define the G+Smo version number. */
-#define GISMO_VERSION    "@gismo_VERSION@"
-#define GISMO_MAJOR      @gismo_VERSION_MAJOR@
-#define GISMO_MINOR      @gismo_VERSION_MINOR@
-#define GISMO_PATCH      @gismo_VERSION_PATCH@
+#define GISMO_VERSION    "@GISMO_VERSION@"
+#define GISMO_MAJOR      @GISMO_VERSION_MAJOR@
+#define GISMO_MINOR      @GISMO_VERSION_MINOR@
+#define GISMO_PATCH      @GISMO_VERSION_PATCH@
 
 /** Define default coefficient type. */
 #define real_t           @GISMO_COEFF_TYPE@
@@ -46,7 +46,7 @@
 #cmakedefine GISMO_WITH_IPOPT
 #cmakedefine GISMO_WITH_MPFR
 #cmakedefine GISMO_WITH_MPI
-#cmakedefine GISMO_WITH_MPQ
+#cmakedefine GISMO_WITH_GMP
 #cmakedefine GISMO_WITH_ONURBS
 #cmakedefine GISMO_WITH_OCC
 #cmakedefine GISMO_WITH_PARDISO
@@ -65,7 +65,7 @@
 #include <mpreal.h>
 #endif
 
-#ifdef GISMO_WITH_MPQ
+#ifdef GISMO_WITH_GMP
 #include <gmpxx.h>
 #include <unsupported/Eigen/MPQClassExtra>
 #endif
@@ -127,4 +127,6 @@
     See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html */
 #cmakedefine EIGEN_USE_MKL_ALL
 
+#cmakedefine EIGEN_DONT_VECTORIZE
+#cmakedefine EIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT
 /**@}*/

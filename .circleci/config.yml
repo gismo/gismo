@@ -4,9 +4,6 @@ jobs:
   macos_x86_64_xcode9_cxx98_release:
     macos:
       xcode: "9.4.1"
-    filters:
-      branches:
-        - only: stable
     working_directory: ~/gismo
     environment:
       MAKEFLAGS: -j4
@@ -25,9 +22,6 @@ jobs:
   macos_x86_64_xcode10_cxx11_release:
     macos:
       xcode: "10.3.0"
-    filters:
-      branches:
-        - only: stable
     working_directory: ~/gismo
     environment:
       MAKEFLAGS: -j4
@@ -46,9 +40,6 @@ jobs:
   macos_x86_64_xcode11_cxx14_release:
     macos:
       xcode: "11.7.0"
-    filters:
-      branches:
-        - only: stable
     working_directory: ~/gismo
     environment:
       MAKEFLAGS: -j4
@@ -67,9 +58,6 @@ jobs:
   macos_x86_64_xcode12_cxx17_release:
     macos:
       xcode: "12.2.0"
-    filters:
-      branches:
-        - only: stable
     working_directory: ~/gismo
     environment:
       MAKEFLAGS: -j4

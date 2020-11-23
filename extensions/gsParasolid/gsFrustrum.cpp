@@ -1131,7 +1131,7 @@ static void write_header( file_p file_ptr, const char* pd2hdr, int pd2len,
     if ( *ifail != FR_no_errors ) return;
 
     /* machine specific - this should be replaced by your company's location */
-    strcpy( buffer, "SITE=RICAM-Linz;\n" );
+    strcpy( buffer, "SITE=earth;\n" );
     write_to_file( file_ptr, buffer, 1, strlen( buffer ), ifail );
     if ( *ifail != FR_no_errors ) return;
 

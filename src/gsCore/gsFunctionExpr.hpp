@@ -70,7 +70,7 @@
 #include <exprtk_mpfr_forward.hpp>
 #endif
 
-#if defined(GISMO_WITH_MPQ)
+#if defined(GISMO_WITH_GMP)
 #include <exprtk_gmp_forward.hpp>
 #endif
 
@@ -93,7 +93,7 @@
 #include <exprtk_mpfr_adaptor.hpp>
 #endif
 
-#if defined(GISMO_WITH_MPQ)
+#if defined(GISMO_WITH_GMP)
 #include <exprtk_gmp_adaptor.hpp>
 #endif
 
@@ -515,7 +515,7 @@ template<typename T>
 void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
     GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point dimension (expected: "
-                   << my->dim <<", got "<< u.rows() <<")");
+                   << my->dim <<", got "<< u.rows() <<")\n"<< *this);
 
     const short_t n = targetDim();
     result.resize(n, u.cols());

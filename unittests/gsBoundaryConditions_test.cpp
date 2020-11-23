@@ -145,7 +145,7 @@ void checkGsBoundaryCondition(const gsBoundaryConditions<real_t> & sut)
     int indizes[4] =
     { 1, 3, 1, 2 };
     int unknown = 0;
-    int unkcomp = 0;
+    int unkcomp = -1; //option not present in the XML yields default value -1
     short_t domainDim = 2;
     for (int i = 0; i < 4; i++)
     {

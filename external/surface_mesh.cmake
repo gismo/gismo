@@ -2,6 +2,7 @@
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+include(gsFetch)
 gismo_fetch_directory(surface_mesh
   GIT_REPOSITORY https://opensource.cit-ec.de/git/surface_mesh
   # todo: tarball etc

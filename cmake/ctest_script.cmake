@@ -1,10 +1,9 @@
 ######################################################################
-## ctest_script.txt
+## ctest_script.cmake
 ## This file is part of the G+Smo library.
 ## https://raw.githubusercontent.com/gismo/gismo/stable/cmake/ctest_script.cmake
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012-2018
 ######################################################################
 
 ######################################################################
@@ -227,12 +226,19 @@ endif()
 
 # Source folder (defaults inside the script directory)
 if(NOT DEFINED CTEST_SOURCE_DIRECTORY)
-  set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_src)
+  if(EXISTS ${CTEST_SCRIPT_DIRECTORY}/gismoConfig.cmake.in
+      AND EXISTS ${CTEST_SCRIPT_DIRECTORY}/../CMakeLists.txt)
+    get_filename_component(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY} DIRECTORY)
+  else()
+    set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_src)
+  endif()
 endif()
 
-# Build folder (defaults inside the script directory)
+# Build folder (defaults next to source directory)
 if(NOT DEFINED CTEST_BINARY_DIRECTORY)
-  set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/build_${CTEST_TEST_MODEL}${CTEST_CONFIGURATION_TYPE}_${CNAME})
+  get_filename_component(base_dir ${CTEST_SOURCE_DIRECTORY} DIRECTORY)
+  get_filename_component(cnamewe "${CXXNAME}" NAME_WE)
+  set(CTEST_BINARY_DIRECTORY ${base_dir}/build_${CTEST_TEST_MODEL}${CTEST_CONFIGURATION_TYPE}_${cnamewe})
 endif()
 
 # Empty previous directory before building (otherwise builds are incremental)
@@ -442,6 +448,7 @@ if(NOT DEFINED CTEST_SITE)
     set(CTEST_SITE "${HOSTNAME}")
   endif()
 endif()
+STRING(REPLACE " " "_" CTEST_SITE "${CTEST_SITE}")
 
 # Name of this build
 if(NOT DEFINED CTEST_BUILD_NAME)
@@ -455,6 +462,7 @@ if(NOT DEFINED CTEST_BUILD_NAME)
   get_filename_component(cxxnamewe "${CXXNAME}" NAME_WE)
   set(CTEST_BUILD_NAME "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${cxxnamewe}${smHead}")
 endif()
+  STRING(REPLACE " " "_" CTEST_BUILD_NAME "${CTEST_BUILD_NAME}")
   message("NAME: ${CTEST_BUILD_NAME}")
   
 if(NOT CTEST_BUILD_JOBS)
@@ -528,9 +536,15 @@ macro(update_gismo ug_ucount)
   endif()
 
   set(ug_updlog "0")
-  ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY} RETURN_VALUE ${ug_ucount})
-  ctest_submit(PARTS Update RETRY_COUNT 3 RETRY_DELAY 3)
-  set(ug_updlog " ${${ug_ucount}} gismo\n")
+  execute_process(COMMAND ${CTEST_UPDATE_COMMAND} symbolic-ref -q HEAD
+    WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+    OUTPUT_VARIABLE isdetached)
+  if(isdetached EQUAL 0 AND UPDATE_REPO)
+    ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY} RETURN_VALUE ${ug_ucount})
+    ctest_submit(PARTS Update RETRY_COUNT 3 RETRY_DELAY 3)
+  endif()
+  set(ug_updlog " ${${ug_ucount}} gismo\n")    
+
   if(${UPDATE_MODULES})
     foreach (submodule ${GISMO_SUBMODULES})
       execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
@@ -575,9 +589,18 @@ macro(run_ctests)
     set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS}) #labels/subprojects
   endif()
   
-  ctest_configure(OPTIONS "${CMAKE_ARGS};${SUBM_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}")
+  ctest_configure(OPTIONS "${CMAKE_ARGS};${SUBM_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}"  RETURN_VALUE confResult)
+
   #ctest_submit(PARTS Configure Update  RETRY_COUNT 3 RETRY_DELAY 3)
+if(EXISTS ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
   ctest_submit(PARTS Configure Notes RETRY_COUNT 3 RETRY_DELAY 3)
+else()
+  ctest_submit(PARTS Configure RETRY_COUNT 3 RETRY_DELAY 3)
+endif()
+
+if (NOT confResult EQUAL 0)
+  message(SEND_ERROR "CMake Configuration failed.")
+endif()
 
   #"${CMAKE_VERSION}" VERSION_LESS "3.10"
   if(NOT "x${LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
@@ -649,17 +672,19 @@ set(CTEST_NOTES_FILES ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
   ctest_start(${CTEST_TEST_MODEL})
-  if(UPDATE_REPO AND NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
+  if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
     update_gismo(updcount)
   endif()
   run_ctests(res)
 
+  message("CDASH LINK:\nhttps://cdash-ci.inria.fr/index.php?project=${CTEST_PROJECT_NAME}&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=61&value2=${CTEST_SITE}")
+
   if(NOT res EQUAL 0)
-    message(FATAL_ERROR "Some Tests failed.")
+    message(SEND_ERROR "Some Tests failed.")
   endif()
 
 else() #continuous model
-
+  set(UPDATE_REPO ON)
   while(${CTEST_ELAPSED_TIME} LESS ${test_runtime})
     set(START_TIME ${CTEST_ELAPSED_TIME})
     ctest_start(${CTEST_TEST_MODEL})

@@ -1,7 +1,8 @@
-### CMakeLists.txt ---
+######################################################################
+## CMakeLists.txt --- gsIpopt
+## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2015 - 2016 RICAM-Linz.
 ######################################################################
 
 project(gsIpopt)

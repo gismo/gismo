@@ -18,7 +18,7 @@ aux_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HEADERS)
 include(gsConfig)
 
 message(STATUS "CMake Will attempt to download Spectra sources.")
-#include(ExternalProject)
+include(gsFetch)
 gismo_fetch_directory(Spectra
           #SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Spectra
 	  SVN_REPOSITORY https://github.com/yixuan/spectra/trunk/include
@@ -26,6 +26,7 @@ gismo_fetch_directory(Spectra
 	  DESTINATION extensions/gsSpectra
 )
 #endif(NOT SPECTRA_FOUND)
+
 
 # move the files in place ?? -- is a bit buggy
 #file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Spectra/Spectra/  DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
@@ -73,5 +74,3 @@ foreach(file ${FILES})
     # install the example executables (optionally)
     install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
 endforeach(file ${FILES})
-
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)

@@ -1,9 +1,8 @@
 ######################################################################
-## CMakeLists.txt ---
+## AddCXXConpileOptions.cmake
 ## This file is part of the G+Smo library. 
 ##
 ## Authors: M. Moeller and A. Mantzaflaris 
-## Copyright (C) 2012 - 2017 RICAM-Linz.
 ######################################################################
 
 set(CMAKE_CXX_STANDARD_DEFAULT 11)
