@@ -74,7 +74,6 @@ namespace expr
 #  define MatExprType  auto
 #  define AutoReturn_t auto
 #  define GS_CONSTEXPR constexpr
-//#elif __cplusplus >= 201103L || _MSC_VER >= 1600 // c++11
 //note: in c++11 auto-return requires -> decltype(.)
 #else // 199711L, 201103L
 #  define MatExprType typename gsMatrix<Scalar>::constRef
@@ -4223,7 +4222,7 @@ GISMO_SHORTCUT_VAR_EXPRESSION(fform, jac(u).tr()*jac(u) )
 // we need to update the return type from B to A
 
 #define GISMO_SHORTCUT_VAR_EXPRESSION(name,impl) \
-name(const gsFeVariable<T> & u) { return impl; }
+name(const E & u) { return impl; }
 #define GISMO_SHORTCUT_MAP_EXPRESSION(name,impl) \
 name(const gsGeometryMap<T> & G) { return impl; }
 
@@ -4231,8 +4230,8 @@ name(const gsGeometryMap<T> & G) { return impl; }
 #define GISMO_SHORTCUT_PHY_EXPRESSION(name,impl) \
 name(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return impl; }
 
-
-template<class T> EIGEN_STRONG_INLINE trace_expr<jac_expr<T> >
+// Divergence
+template<class E> EIGEN_STRONG_INLINE trace_expr<jac_expr<E> >
 GISMO_SHORTCUT_VAR_EXPRESSION(div, jac(u).trace() )
 
 template<class T> EIGEN_STRONG_INLINE normalized_expr<onormal_expr<T> >
@@ -4243,7 +4242,7 @@ template<class E> EIGEN_STRONG_INLINE
 mult_expr<grad_expr<E>,jacGinv_expr<typename E::Scalar>, 0>
 GISMO_SHORTCUT_PHY_EXPRESSION(igrad, grad(u)*jac(G).ginv())
 
-template<class T> EIGEN_STRONG_INLINE grad_expr<gsFeVariable<T> > // u is presumed to be defined over G
+template<class E> EIGEN_STRONG_INLINE grad_expr<E> // u is presumed to be defined over G
 GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u))
 
 template<class E> EIGEN_STRONG_INLINE
@@ -4263,10 +4262,10 @@ mult_expr<mult_expr<tr_expr<jacGinv_expr<typename E::Scalar> >,sub_expr<hess_exp
     >
 GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace() )
 
-template<class T> EIGEN_STRONG_INLINE hess_expr<gsFeVariable<T> >
+template<class E> EIGEN_STRONG_INLINE hess_expr<E>
 GISMO_SHORTCUT_VAR_EXPRESSION(ihess, hess(u) )
 
-template<class T> EIGEN_STRONG_INLINE trace_expr<hess_expr<gsGeometryMap<T> > >
+template<class E> EIGEN_STRONG_INLINE trace_expr<hess_expr<E> >
 GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )
 
 #endif
