@@ -448,6 +448,7 @@ if(NOT DEFINED CTEST_SITE)
     set(CTEST_SITE "${HOSTNAME}")
   endif()
 endif()
+STRING(REPLACE " " "_" CTEST_SITE "${CTEST_SITE}")
 
 # Name of this build
 if(NOT DEFINED CTEST_BUILD_NAME)
