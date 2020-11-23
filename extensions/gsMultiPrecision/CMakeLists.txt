@@ -59,7 +59,7 @@ if (GISMO_WITH_MPFR OR GISMO_WITH_GMP)
     
     # Install GMP header files
     install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/gmp-prefix/include
-        DESTINATION include/gismo/gmp/
+        DESTINATION include/gismo/
         FILES_MATCHING PATTERN "*.h")
   endif (NOT GMP_FOUND)
 endif (GISMO_WITH_MPFR OR GISMO_WITH_GMP)
@@ -107,7 +107,7 @@ if (GISMO_WITH_MPFR)
     
     # Install MPFR header files
     install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mpfr-prefix/include
-        DESTINATION include/gismo/mpfr/
+        DESTINATION include/gismo/
         FILES_MATCHING PATTERN "*.h")
   endif(NOT MPFR_FOUND)
 endif(GISMO_WITH_MPFR)
