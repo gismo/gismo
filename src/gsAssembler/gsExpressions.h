@@ -3713,6 +3713,9 @@ public:
 
     enum{rowSpan = E1::rowSpan, colSpan = E1::colSpan};
 
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+
     void print(std::ostream &os) const
     { os << "("; _u.print(os);os <<"/"<< _c << ")"; }
 };
@@ -3748,6 +3751,9 @@ public:
     { _u.parse(evList); }
 
     enum{rowSpan = 0, colSpan = 0};
+
+    const gsFeSpace<Scalar> & rowVar() const { return false; }
+    const gsFeSpace<Scalar> & colVar() const { return false; }
 
     void print(std::ostream &os) const
     { os << "("<< _c <<"/";_u.print(os);os << ")";}

@@ -1524,7 +1524,7 @@ int main(int argc, char *argv[])
                 );
 
             // For Neumann (same for Dirichlet/Nitche) conditions
-            variable g_N = A.getBdrFunction();
+            //variable g_N = A.getBdrFunction(); //defined already before
             // A.assembleRhsBc(u * g_N, bc.neumannSides() );
 
             A.assembleLhsRhsBc
@@ -1549,7 +1549,7 @@ int main(int argc, char *argv[])
 
             // solve system
             solver.compute( A.matrix() );
-            gsMatrix<> updateVector = solver.solve(A.rhs()); // this is the UPDATE
+            updateVector = solver.solve(A.rhs()); // this is the UPDATE
 
 
             solVector += updateVector;

@@ -1,4 +1,5 @@
 
+#include <gsCore/gsDebug.h>
 #include <gsCore/gsTemplateTools.h>
 
 #include <gsCore/gsBasis.h>
