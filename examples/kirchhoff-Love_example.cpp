@@ -15,8 +15,6 @@
 #include <typeinfo>
 #include <gismo.h>
 
-#  define MatExprType  auto
-
 namespace gismo{
 namespace expr{
 
@@ -697,8 +695,8 @@ public:
     mutable gsMatrix<Scalar,3,3> covBasis, conBasis, covMetric, conMetric, cartBasis, result;
     mutable gsVector<Scalar,3> normal, tmp;
     mutable gsVector<Scalar,3> e1, e2, a1, a2;
-
-    MatExprType eval(const index_t k) const
+    
+    gsMatrix<Scalar,3,3> eval(const index_t k) const
     {
         // Compute covariant bases in deformed and undeformed configuration
         normal = _G.data().normals.col(k);
@@ -774,9 +772,10 @@ public:
 
     mutable gsMatrix<T> temp;
 
-    MatExprType eval(const index_t k) const
+    gsMatrix<T> eval(const index_t k) const
     {
-        return  (cartcov_expr(_G).eval(k)).reshape(3,3).inverse();
+        temp = (cartcov_expr<gsGeometryMap<T> >(_G).eval(k)).reshape(3,3).inverse();
+        return temp;
     }
 
     index_t rows() const { return 3; }
@@ -821,7 +820,7 @@ public:
     mutable gsVector<Scalar,3> normal, tmp;
     mutable gsVector<Scalar,3> e1, e2, ac1, ac2;
 
-    MatExprType eval(const index_t k) const
+    gsMatrix<Scalar,3,3> eval(const index_t k) const
     {
         // Compute covariant bases in deformed and undeformed configuration
         normal = _G.data().normals.col(k);
@@ -897,9 +896,10 @@ public:
 
     mutable gsMatrix<T> temp;
 
-    MatExprType eval(const index_t k) const
+    gsMatrix<T> eval(const index_t k) const
     {
-        return  (cartcon_expr(_G).eval(k)).reshape(3,3).inverse();
+        temp = (cartcon_expr<gsGeometryMap<T> >(_G).eval(k)).reshape(3,3).inverse();
+        return temp;
     }
 
     index_t rows() const { return 3; }
@@ -957,12 +957,14 @@ cartcon_expr<E> cartcon(const gsGeometryMap<E> & G) { return cartcon_expr<E>(G);
 
 using namespace gismo;
 
+/*
 template <class T>
 void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsVector<T> pt);
 template <class T>
 void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsMatrix<T> pt);
 template <class T>
 void constructSolution(gsExprAssembler<T> assembler, gsMultiPatch<T> mp_def);
+*/
 
 // Input is parametric coordinates of the surface \a mp
 template <class T>
@@ -1362,7 +1364,7 @@ int main(int argc, char *argv[])
     // gsFunctionExpr<> materialMat("1","0","0","0","1","0","0","0","1",3);
     gsFunctionExpr<> E(std::to_string(E_modulus),3);
     gsFunctionExpr<> nu(std::to_string(PoissonRatio),3);
-    gsMaterialMatrix materialMat(mp, E, nu);
+    gsMaterialMatrix<real_t> materialMat(mp, E, nu);
     variable mm = A.getCoeff(materialMat); // evaluates in the parametric domain, but the class transforms E and nu to physical
 
     gsFunctionExpr<> t(std::to_string(thickness), 3);
@@ -1596,7 +1598,7 @@ int main(int argc, char *argv[])
     }
 
     gsMultiPatch<> deformation = mp_def;
-    for (index_t k = 0; k != mp_def.nPatches(); ++k)
+    for (size_t k = 0; k != mp_def.nPatches(); ++k)
         deformation.patch(k).coefs() -= mp.patch(k).coefs();
 
     //gsInfo <<"Deformation norm       : "<< deformation.patch(0).coefs().norm() <<".\n";
@@ -1645,6 +1647,7 @@ int main(int argc, char *argv[])
 
 }// end main
 
+/*
 template <class T>
 void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsVector<T> pt)
 {
@@ -1665,6 +1668,7 @@ void evaluateFunction(gsExprEvaluator<T> ev, auto expression, gsMatrix<T> pt)
         gsInfo<<evresult<<"\n";
     }
 };
+*/
 
 template <class T>
 gsMultiPatch<T> RectangularDomain(int n, int p, T L, T B)
