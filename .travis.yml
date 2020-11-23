@@ -161,8 +161,8 @@ before_deploy:
 
 deploy:
   provider: pages
-  #cleanup: false
-  skip-cleanup: true
+  cleanup: false
+  skip_cleanup: true
   token: $GITHUB_TOKEN
   repo: gismo/gismo.github.io
   target_branch: master
