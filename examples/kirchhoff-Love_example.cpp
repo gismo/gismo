@@ -640,8 +640,8 @@ public:
         eC = _C.eval(k);
 
         GISMO_ASSERT(_B.rows()==_A.cols(), "Dimensions: "<<_B.rows()<<","<< _A.cols()<< "do not match");
-        GISMO_ASSERT(_A.rowSpan(), "First entry should be rowSpan");
-        GISMO_ASSERT(_B.colSpan(), "Second entry should be colSpan.");
+        GISMO_STATIC_ASSERT(E1::rowSpan, "First entry should be rowSpan");
+        GISMO_STATIC_ASSERT(E2::colSpan, "Second entry should be colSpan.");
         GISMO_ASSERT(_C.cols()==_B.rows(), "Dimensions: "<<_C.rows()<<","<< _B.rows()<< "do not match");
 
         res.resize(An, Bn);
