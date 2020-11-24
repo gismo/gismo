@@ -479,7 +479,11 @@ public:
         //return m_fd->dim.first;
     }
 
-    index_t cSize()  const { return m_fd->values[0].rows(); } // coordinate size
+    index_t cSize()  const
+    {
+        GISMO_ASSERT(0!=m_fd->values[0].size(),"Probable error.");
+        return m_fd->values[0].rows();
+    } // coordinate size
 };
 
 /*
