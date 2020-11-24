@@ -48,11 +48,11 @@ if(NOT CMAKE_BUILD_TYPE)
    endif()
 endif()
 
-set(${PACKAGE_NAME}_VERSION_MAJOR 20) #year
-set(${PACKAGE_NAME}_VERSION_MINOR 12) #month
-set(${PACKAGE_NAME}_VERSION_PATCH 0 ) #patch
-set(${PACKAGE_NAME}_VERSION
-  "${${PACKAGE_NAME}_VERSION_MAJOR}.${${PACKAGE_NAME}_VERSION_MINOR}.${${PACKAGE_NAME}_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
+set(gismo_VERSION_MAJOR 20) #year
+set(gismo_VERSION_MINOR 12) #month
+set(gismo_VERSION_PATCH 0 ) #patch
+set(gismo_VERSION
+  "${gismo_VERSION_MAJOR}.${gismo_VERSION_MINOR}.${gismo_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
 set(GISMO_VERSION "${gismo_VERSION}" CACHE INTERNAL "G+Smo version number")
 
 if(POLICY CMP0048)# CMake 3.0
