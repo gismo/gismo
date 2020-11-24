@@ -538,7 +538,7 @@ macro(update_gismo ug_ucount)
   set(ug_updlog "0")
   execute_process(COMMAND ${CTEST_UPDATE_COMMAND} symbolic-ref -q HEAD
     WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-    OUTPUT_VARIABLE isdetached)
+    RESULT_VARIABLE isdetached)
   if(isdetached EQUAL 0 AND UPDATE_REPO)
     ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY} RETURN_VALUE ${ug_ucount})
     ctest_submit(PARTS Update RETRY_COUNT 3 RETRY_DELAY 3)
