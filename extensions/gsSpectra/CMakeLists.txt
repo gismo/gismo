@@ -62,7 +62,7 @@ add_dependencies(${PROJECT_NAME} Spectra)
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
         DESTINATION include/gismo
-        FILES_MATCHING PATTERN "*.h")
+        FILES_MATCHING PATTERN "gsSpectra/*.h")
 
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/external/Spectra
   DESTINATION include/gismo
