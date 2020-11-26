@@ -1,5 +1,5 @@
 ### CMakeLists.txt --- Spectra library
-## Author: Angelos Mantzaflaris 
+## Author: Angelos Mantzaflaris
 #
 # The library is header-only, the extra code is downloaded in place of
 # the source folder of G+Smo
@@ -28,23 +28,23 @@ gismo_fetch_directory(Spectra
 
 
 # move the files in place ?? -- is a bit buggy
-#file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Spectra/Spectra/  DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
-#file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/Spectra)
+#file(COPY ${gismo_SOURCE_DIR}/external/Spectra/Spectra/  DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
+#file(REMOVE_RECURSE ${gismo_SOURCE_DIR}/external/Spectra)
 
-set(SPECTRA_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Spectra/Spectra CACHE INTERNAL "")
+set(SPECTRA_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/Spectra/Spectra CACHE INTERNAL "")
 
 add_library(${PROJECT_NAME} INTERFACE)
 target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_HEADERS}>)
 
 target_include_directories(${PROJECT_NAME} INTERFACE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/Spectra
+  $<BUILD_INTERFACE:${gismo_SOURCE_DIR}/external/Spectra
   #$<INSTALL_INTERFACE:gismo/gsSpectra>
 )
 
 add_dependencies(${PROJECT_NAME} Spectra)
 
 #set_target_properties(${PROJECT_NAME} PROPERTIES
-#    COMPILE_DEFINITIONS gismo_EXPORTS 
+#    COMPILE_DEFINITIONS gismo_EXPORTS
 #    POSITION_INDEPENDENT_CODE ON
 #    LINKER_LANGUAGE CXX
 #    CXX_VISIBILITY_PRESET hidden
