@@ -20,10 +20,9 @@ include(gsConfig)
 message(STATUS "CMake Will attempt to download Spectra sources.")
 include(gsFetch)
 gismo_fetch_directory(Spectra
-          #SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Spectra
 	  SVN_REPOSITORY https://github.com/yixuan/spectra/trunk/include
 	  SVN_TRUST_CERT 1
-	  DESTINATION extensions/gsSpectra
+	  DESTINATION external
 )
 #endif(NOT SPECTRA_FOUND)
 
