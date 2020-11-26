@@ -61,11 +61,13 @@ add_dependencies(${PROJECT_NAME} Spectra)
 #    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
-        DESTINATION include/gismo/gsSpectra
+        DESTINATION include/gismo
         FILES_MATCHING PATTERN "*.h")
 
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/external/Spectra
-  DESTINATION include/gismo/Spectra)
+  DESTINATION include/gismo
+  PATTERN "*/.svn" EXCLUDE
+  )
       
 # add example files
 #include_directories(${SPECTRA_INCLUDE_DIR})
