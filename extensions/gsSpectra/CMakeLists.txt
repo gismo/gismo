@@ -31,15 +31,17 @@ gismo_fetch_directory(Spectra
 #file(COPY ${gismo_SOURCE_DIR}/external/Spectra/Spectra/  DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 #file(REMOVE_RECURSE ${gismo_SOURCE_DIR}/external/Spectra)
 
-set(SPECTRA_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/Spectra/Spectra CACHE INTERNAL "")
-
+#set(SPECTRA_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/Spectra/Spectra CACHE INTERNAL "")
+#set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SPECTRA_INCLUDE_DIR}
+#    CACHE INTERNAL "gismo include directories")
+  
 add_library(${PROJECT_NAME} INTERFACE)
 target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_HEADERS}>)
 
-target_include_directories(${PROJECT_NAME} INTERFACE
-  $<BUILD_INTERFACE:${gismo_SOURCE_DIR}/external/Spectra
-  #$<INSTALL_INTERFACE:gismo/gsSpectra>
-)
+#target_include_directories(${PROJECT_NAME} INTERFACE
+#  $<BUILD_INTERFACE:${gismo_SOURCE_DIR}/external/Spectra
+#  #$<INSTALL_INTERFACE:gismo/gsSpectra>
+#)
 
 add_dependencies(${PROJECT_NAME} Spectra)
 
@@ -55,15 +57,18 @@ add_dependencies(${PROJECT_NAME} Spectra)
 #set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
 #    CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
 
-set(gismo_LINKER ${gismo_LINKER} ${PROJECT_NAME}
-    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+#set(gismo_LINKER ${gismo_LINKER} ${PROJECT_NAME}
+#    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
         DESTINATION include/gismo/gsSpectra
         FILES_MATCHING PATTERN "*.h")
 
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/external/Spectra
+  DESTINATION include/gismo/Spectra)
+      
 # add example files
-include_directories(${SPECTRA_INCLUDE_DIR})
+#include_directories(${SPECTRA_INCLUDE_DIR})
 aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR}/examples FILES)
 foreach(file ${FILES})
     add_gismo_executable(${file})
