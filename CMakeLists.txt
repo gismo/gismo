@@ -215,9 +215,6 @@ endif(GISMO_WITH_PSOLID)
 
 if(GISMO_WITH_SPECTRA)
   add_subdirectory(extensions/gsSpectra)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SPECTRA_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${SPECTRA_INCLUDE_DIR})
 endif(GISMO_WITH_SPECTRA)
 
 if(GISMO_WITH_SUPERLU)

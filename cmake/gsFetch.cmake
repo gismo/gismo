@@ -38,7 +38,7 @@ function(gismo_fetch_directory)
   file(REMOVE "${GF_DOWNLOAD_DIR}/CMakeCache.txt")
 
   #  if(NOT EXISTS ${GF_DOWNLOAD_DIR}/CMakeLists.txt)
-  file(WRITE ${GF_DOWNLOAD_DIR}/CMakeLists.txt "if(POLICY CMP0048)\ncmake_policy(SET CMP0048 NEW)\nendif()\nif(POLICY CMP0054)\ncmake_policy(SET CMP0054 NEW)\nendif()\ncmake_minimum_required(VERSION 2.8.8)\nproject(${GF_NAME}_fetch NONE)\ninclude(ExternalProject)\nExternalProject_Add(${GF_NAME}_fetch\n ${GF_UNPARSED_ARGUMENTS}\n SOURCE_DIR          \"${GF_SOURCE_DIR}\"\n BINARY_DIR          \"${GF_BINARY_DIR}\"\n CONFIGURE_COMMAND   \"\"\n BUILD_COMMAND       \"\"\n INSTALL_COMMAND     \"\"\n TEST_COMMAND        \"\")\n")
+  file(WRITE ${GF_DOWNLOAD_DIR}/CMakeLists.txt "if(POLICY CMP0048)\ncmake_policy(SET CMP0048 NEW)\nendif()\nif(POLICY CMP0054)\ncmake_policy(SET CMP0054 NEW)\nendif()\ncmake_minimum_required(VERSION 2.8.8)\nproject(${GF_NAME}_fetch NONE)\ninclude(ExternalProject)\nExternalProject_Add(${GF_NAME}_fetch\n ${GF_UNPARSED_ARGUMENTS}\n SOURCE_DIR          \"${GF_SOURCE_DIR}\"\n BINARY_DIR          \"${GF_BINARY_DIR}\"\n CONFIGURE_COMMAND   \"\"\n BUILD_COMMAND       \"\"\n INSTALL_COMMAND     \"\"\n TEST_COMMAND        \"\"\n UPDATE_DISCONNECTED TRUE)\n")
   #  endif()
 
   execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}"
@@ -50,7 +50,14 @@ function(gismo_fetch_directory)
     message(SEND_ERROR "Configure step for ${GF_NAME} failed: ${result}")
   endif()
 
-  #! Update step requires the git sources to be available
+  # make sure that directory exists
+  cmake_parse_arguments(GF "${GF_NAME}" "SVN_REPOSITORY" "" ${ARGN})
+  if(DEFINED GF_SVN_REPOSITORY AND NOT EXISTS "${GF_SOURCE_DIR}/.svn")
+    execute_process(COMMAND ${CMAKE_MAKE_PROGRAM} clean
+      OUTPUT_QUIET
+      WORKING_DIRECTORY "${GF_DOWNLOAD_DIR}" )
+  endif()
+
   execute_process(COMMAND ${CMAKE_COMMAND} --build .
     OUTPUT_QUIET
     RESULT_VARIABLE result
