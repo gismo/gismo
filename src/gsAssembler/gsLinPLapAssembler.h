@@ -8,7 +8,7 @@ This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-Author(s): 
+Author(s):
 */
 
 #pragma once
@@ -18,7 +18,7 @@ Author(s):
 
 #include <gsAssembler/gsVisitorLinpLap.h> // Stiffness volume integrals
 #include <gsAssembler/gsVisitorNeumann.h> // Neumann boundary integrals
-#include <gsAssembler/gsVisitorNitsche.h> // Nitsche boundary integrals
+#include <gsAssembler/gsVisitorNitscheLinpLap.h> // Nitsche boundary integrals
 #include <gsAssembler/gsVisitorDg.h>      // DG interface integrals
 
 
@@ -177,7 +177,7 @@ namespace gismo
 			Base::penalizeDirichletDofs();
 			break;
 		case dirichlet::nitsche:
-			Base::template push<gsVisitorNitsche<T> >(m_pde_ptr->bc().dirichletSides());
+			Base::template push<gsVisitorNitscheLinpLap<T> >(m_pde_ptr->bc().dirichletSides());
 			break;
 		default:
 			break;
