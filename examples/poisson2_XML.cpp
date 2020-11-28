@@ -22,9 +22,9 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot = false;
     bool save = false;
+    bool geometry = false;
     index_t numRefine  = 0;
     index_t numElevate = 0;
-    bool last = false;
     std::string fn("pde/poisson2d_bvp.xml");
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
@@ -33,7 +33,8 @@ int main(int argc, char *argv[])
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
-    cmd.addSwitch("save", "Save gismo XML file", save);
+    cmd.addSwitch("save", "Save solution and refined mesh to gismo XML file", save);
+    cmd.addSwitch("geom", "Save initial geometry to XML file", geometry);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -45,6 +46,12 @@ int main(int argc, char *argv[])
 
     gsMultiPatch<> mp;
     fd.getId(0, mp); // id=0: Multipatch domain
+
+    if (geometry)
+    {
+        gsInfo<<"Writing to geometry to XML...\n";
+        gsWrite(mp,"geometry");
+    }
 
     gsFunctionExpr<> f;
     fd.getId(1, f); // id=1: source function
@@ -65,13 +72,20 @@ int main(int argc, char *argv[])
 
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
+    mp.degreeElevate(numElevate);
 
     // h-refine each basis
     for (int r =0; r < numRefine-1; ++r)
-        dbasis.uniformRefine();
+        mp.uniformRefine();
 
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
+    for (size_t k=0; k!=mp.nPatches(); k++)
+    {
+        gsInfo<<"------------------------------------------------------\n";
+        gsInfo<<"Basis"<<k<<":\n";
+        gsInfo<<mp.basis(k)<<"\n";
+    }
+    gsInfo<<"------------------------------------------------------\n";
     //! [Refinement]
 
     //! [Problem setup]
@@ -143,11 +157,9 @@ int main(int argc, char *argv[])
         gsInfo<<"Writing to XML...\n";
         gsMultiPatch<> mp_export;
         u_sol.extract(mp_export);
-        gsWrite(mp,"geometry");
+        gsWrite(mp,"refined_geometry");
         gsWrite(mp_export,"solution");
     }
-
-
     //! [Export visualization in ParaView]
     if (plot)
     {
@@ -158,9 +170,6 @@ int main(int argc, char *argv[])
 
         gsFileManager::open("solution.pvd");
     }
-    else
-        gsInfo << "No output created, re-run with --plot to get a ParaView "
-                  "file containing the solution.\n";
     //! [Export visualization in ParaView]
 
     return EXIT_SUCCESS;
