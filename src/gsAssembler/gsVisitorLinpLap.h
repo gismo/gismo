@@ -14,6 +14,7 @@ Author(s):
 #pragma once
 
 #include <gsAssembler/gsQuadrature.h>
+#include <gsAssembler/gsSubdividedRule.h>
 
 namespace gismo
 {
@@ -47,9 +48,11 @@ namespace gismo
 			rhs_ptr = &pde_ptr->rhs()->piece(patchIndex);
 
 			// Setup Quadrature
-			rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
+			//rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
+			//TODO: make this configurable
+			rule = gsSubdividedRule<T,gsQuadRule<T> >(gsQuadrature::get(basis, options), 10);
 
-													  // Set Geometry evaluation flags
+			// Set Geometry evaluation flags
 			md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
 		}
 
@@ -87,6 +90,13 @@ namespace gismo
 			gsMatrix<T> & bVals = basisData[0];
 			gsMatrix<T> & bGrads = basisData[1];
 
+			//Access the coefficients of w which correspond to the active basis functions
+			gsMatrix<T> w_(numActive, 1);
+			for (index_t i = 0; i < numActive; i++)
+			{
+				w_(i, 0) = pde_ptr->w(actives(i), 0);
+			}
+
 			for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
 			{
 				// Multiply weight by the geometry measure
@@ -95,18 +105,12 @@ namespace gismo
 				// Compute physical gradients at k as a Dim x NumActive matrix
 				transformGradients(md, k, bGrads, physGrad);
 
-				//Access the coefficients of w which correspond to the active basis functions
-				gsMatrix<T> w_(numActive, 1);
-				for (index_t i = 0; i < numActive; i++)
-				{
-					w_(i, 0) = pde_ptr->w(actives(i), 0);
-				}
-
 				//Compute the Gradient of the approximative function w by multiplying the coefficients of w with the physical gradients
 				const gsMatrix<T> wGrad = physGrad * w_;
 
 				localRhs.noalias() += weight * (bVals.col(k) * rhsVals.col(k).transpose());
-				localMat.noalias() += weight * pow(pde_ptr->eps * pde_ptr->eps + (wGrad.transpose() * wGrad).value(),(pde_ptr->p-2)/2) * (physGrad.transpose() * physGrad);
+
+				localMat.noalias() += ( weight * pow(pde_ptr->eps * pde_ptr->eps + (wGrad.transpose() * wGrad).value(),(pde_ptr->p-2)/2) ) * (physGrad.transpose() * physGrad);
 			}
 		}
 

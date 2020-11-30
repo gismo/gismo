@@ -57,10 +57,12 @@ int main(int argc, char* argv[])
 
 	if (str == 1)
 	{
+		gsInfo << "DirichletStrategy = dirichlet::elimination\n\n";
 		opt.setInt("DirichletStrategy", dirichlet::elimination);
 	}
 	else if(str == 2)
 	{
+		gsInfo << "DirichletStrategy = dirichlet::nitsche\n\n";
 		opt.setInt("DirichletStrategy", dirichlet::nitsche);
 	}
 
@@ -78,7 +80,7 @@ int main(int argc, char* argv[])
 
 	//! [Function data]
 
-	double gamma = 1;
+	double gamma = 10;
 
 	// Define source function
 	gsFunctionExpr<> f1("-4*(" + std::to_string(eps*eps) + "+4*x^2+4*y^2)^(" + std::to_string(p) + "/2-1)-8*(" + std::to_string(p) + "-2)*(" + std::to_string(eps*eps) + "+4*x^2+4*y^2)^(" + std::to_string(p) + "/2-2)*(x^2+y^2)", 2);
@@ -200,7 +202,7 @@ int main(int argc, char* argv[])
 		//pde.w = projectL2(patch, refine_basis, u0);
 		//pde.w = transfer * pde.w; //update w
 
-		gsLinpLapAssembler<real_t> assembler;
+		//gsLinpLapAssembler<real_t> assembler;
 
 		assembler.initialize(pde, refine_basis, opt);
 
@@ -226,13 +228,13 @@ int main(int argc, char* argv[])
 			//gsInfo << pde.w << "\n";
 			//gsInfo << pde.w.size() << "\n";
 
-			gsLinpLapAssembler<real_t> assembler;
+		//	gsLinpLapAssembler<real_t> assembler;
 			assembler.initialize(pde, refine_basis, opt);
 
 			assembler.assemble();
 
 			Kh = assembler.matrix(); //compute new lhs matrix to compute residuum of the nonlinear problem --> Kh(uh)*uh-fh
-			//fh = assembler.rhs();
+			fh = assembler.rhs();
 
 			rh = Kh * solVector - fh;
 
