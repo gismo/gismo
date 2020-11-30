@@ -31,9 +31,9 @@ int main(int argc, char* argv[])
 	index_t k = 1;			//spline degree
 	index_t maxiter = 100;
 	real_t TOL = 1e-12;		//residual error tolerance
-	index_t num = 8;		//number of refinements
+	index_t num = 3;		//number of refinements
 	index_t str = 1;
-	
+	bool require_fin = false;
 	gsCmdLine cmd("Linearized p-Laplace example");
 
 	cmd.addReal("e", "eps", "variable for eps", eps);
@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
 	cmd.addInt("i", "maxiter", "maximal iterations", maxiter);
 	cmd.addInt("r", "numRefine", "number of refinements of the mesh", num);
 	cmd.addInt("s", "strat", "Method for Dirichlet Imposition", str);
-	
+	cmd.addSwitch("fin", "After computation, wait until button is pressed", require_fin);
 	try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 	
 	gsInfo << "Printing command line arguments:\n\n\n"
@@ -288,8 +288,11 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	gsInfo << "fin";
-	std::cin.get();
+	if (require_fin)
+	{
+		gsInfo << "fin";
+		std::cin.get();
+	}
 	return EXIT_SUCCESS;
 	
 }// end main

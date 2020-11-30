@@ -47,39 +47,12 @@ namespace gismo
 			const T &p_,
 			const gsMatrix<T> &w_,
 			const gsFunction<T>           * = NULL)
-			: gsPde<T>(domain, bc), m_rhs(rhs), eps(eps_), p(p_), w(w_)
+			: gsPde<T>(domain, bc), eps(eps_), p(p_), w(w_), m_rhs(rhs)
 		{
 			m_unknownDim.setOnes(1);
 		}
 
 		int m_compat_dim;
-		GISMO_DEPRECATED
-			gsLinpLapPde(const gsFunction<T>  &rhs,
-				int                   domdim,
-				const gsFunction<T>  &)
-			: m_compat_dim(domdim), m_rhs(rhs)
-		{
-			m_unknownDim.setOnes(1);
-
-		}
-		GISMO_DEPRECATED
-			gsLinpLapPde(const gsFunction<T>  &rhs,
-				int                   domdim)
-			: m_compat_dim(domdim), m_rhs(rhs)
-
-		{
-			m_unknownDim.setOnes(1);
-		}
-
-
-		GISMO_DEPRECATED
-			gsLinpLapPde(void * unused)
-		{
-			m_rhs = new gsConstantFunction<T>(0);
-			m_unknownDim.setOnes(1);
-		}
-
-
 
 		/**
 		* @brief gives the number of rhs functions of the PDEs
