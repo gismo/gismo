@@ -446,7 +446,7 @@ void gsG1System<T>::initialize(gsMultiPatch<> & mp, std::vector<gsMultiBasis<>> 
     numBasisFunctions[3] = numBasisFunctions[3].array() + numBasisFunctions[2].last();
     numBasisFunctions[4] = numBasisFunctions[4].array() + numBasisFunctions[3].last();
 
-
+/*
     gsInfo << "Num Basis Functions " << numBasisFunctions[5] << "\n";
     gsInfo << "Num Basis Functions 2 " << numBasisFunctions[6] << "\n";
     gsInfo << "Num Interface Functions " << numBasisFunctions[0] << "\n";
@@ -457,7 +457,7 @@ void gsG1System<T>::initialize(gsMultiPatch<> & mp, std::vector<gsMultiBasis<>> 
     gsInfo << "Kind of Vertex Functions " << kindOfVertex << "\n";
     gsInfo << "Size of plus space Bdy  " << sizePlusBdy << "\n";
     gsInfo << "Size of plus space Int  " << sizePlusInt << "\n";
-
+*/
 
     // Setting the final matrix
     dim_K = numBasisFunctions[6].last(); // interior basis dimension

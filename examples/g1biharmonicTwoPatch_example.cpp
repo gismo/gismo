@@ -734,14 +734,14 @@ int main(int argc, char *argv[])
             printf("\n");
         }
 
-        gsInfo << "======";
-        for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
-            gsInfo << "===============================================================";
-
-        gsInfo << "\n";
-
         if (g1OptionList.getSwitch("latex_plot"))
         {
+            gsInfo << "======";
+            for (size_t i = 0; i < multiPatch_init.interfaces().size(); i++)
+                gsInfo << "===============================================================";
+
+            gsInfo << "\n";
+
             gsInfo << "======================= Latex Plot ===================================\n\n";
 
             printf("%-8s %-8s %-14s %-5s %-14s %-5s %-14s %-5s %-14s %-5s\n", "k","Dofs","L2error", "Rate", "H1error", "Rate", "H2error", "Rate", "Jump", "Rate");

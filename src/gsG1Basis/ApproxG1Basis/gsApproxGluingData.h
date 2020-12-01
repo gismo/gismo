@@ -323,7 +323,12 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
 
     gsBSpline<T> alpha_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
     alpha_S_tilde.push_back(alpha_t);
-
+/*
+    if (patchID == 0)
+        gsWriteParaview(alpha_t, "alpha_L", 1000);
+    if (patchID == 1)
+        gsWriteParaview(alpha_t, "alpha_R", 1000);
+*/
     // beta^S
     if (globalGdAssembler.matrix_beta().rows() != 0)
     {

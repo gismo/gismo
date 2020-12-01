@@ -118,14 +118,28 @@ public:
             c_1_minus.push_back(h_geo/ (p-1) * b_1_minus);
 
             // TODO IF CASE
-            // WORKS ONLY FOR p=3 AND r=1
-            c_0_plus.push_back(b_0_plus + b_1_plus + b_2_plus);
-            c_1_plus.push_back((h_geo / p) * (b_1_plus + 3 * b_2_plus));
-            c_2_plus.push_back((h_geo * h_geo / (p * (p-1))) * 2 * b_2_plus);
+            if ( p == 3)
+            {
+                // WORKS ONLY FOR p=3 AND r=1
+                c_0_plus.push_back(b_0_plus + b_1_plus + b_2_plus);
+                c_1_plus.push_back((h_geo / p) * (b_1_plus + 3 * b_2_plus));
+                c_2_plus.push_back((h_geo * h_geo / (p * (p - 1))) * 2 * b_2_plus);
 
-            c_0_plus_deriv.push_back(b_0_plus_deriv + b_1_plus_deriv + b_2_plus_deriv);
-            c_1_plus_deriv.push_back((h_geo / p) * (b_1_plus_deriv + 3 * b_2_plus_deriv));
-            c_2_plus_deriv.push_back((h_geo * h_geo / (p * (p-1))) * 2 * b_2_plus_deriv);
+                c_0_plus_deriv.push_back(b_0_plus_deriv + b_1_plus_deriv + b_2_plus_deriv);
+                c_1_plus_deriv.push_back((h_geo / p) * (b_1_plus_deriv + 3 * b_2_plus_deriv));
+                c_2_plus_deriv.push_back((h_geo * h_geo / (p * (p - 1))) * 2 * b_2_plus_deriv);
+            }
+            else
+            {
+                c_0_plus.push_back(b_0_plus + b_1_plus + b_2_plus);
+                c_1_plus.push_back((h_geo / p) * (b_1_plus + 2 * b_2_plus));
+                c_2_plus.push_back((h_geo * h_geo / (p * (p - 1))) * b_2_plus);
+
+                c_0_plus_deriv.push_back(b_0_plus_deriv + b_1_plus_deriv + b_2_plus_deriv);
+                c_1_plus_deriv.push_back((h_geo / p) * (b_1_plus_deriv + 2 * b_2_plus_deriv));
+                c_2_plus_deriv.push_back((h_geo * h_geo / (p * (p - 1))) * b_2_plus_deriv);
+
+            }
         }
 
         // Point zero
@@ -134,7 +148,7 @@ public:
 
         std::vector<gsMatrix<>> alpha, beta, alpha_0, beta_0, alpha_deriv, beta_deriv;
 
-        if (g1OptionList.getInt("gluingData") == gluingData::global)
+/*        if (g1OptionList.getInt("gluingData") == gluingData::global)
         {
             //gsInfo << "Evtl kann beta falsch sein!! \n";
             alpha.push_back(gluingData[0].get_alpha_S_tilde(0).eval(md.points.row(0))); // u
@@ -169,7 +183,7 @@ public:
             beta_deriv.push_back(gluingData[1].get_beta_S_tilde(0).deriv(zero.row(0))); // v
         }
         else if (g1OptionList.getInt("gluingData") == gluingData::exact)
-        {
+*/        {
             gsMatrix < T > temp_mat;
             gluingData[0].eval_alpha_into(md.points.row(0), temp_mat);
             alpha.push_back(temp_mat); // u
@@ -336,7 +350,7 @@ public:
             // Map patch-local DoFs to global DoFs
             system.at(i).mapColIndices(actives, patchIndex, actives_temp);
             // Add contributions to the system matrix and right-hand side
-            system.at(i).push(localMat.at(i), localRhs.at(i), actives_temp, eliminatedDofs[0], 0, 0);
+            system.at(i).push(localMat.at(i), localRhs.at(i), actives_temp, eliminatedDofs[i], 0, 0);
         }
     }
 

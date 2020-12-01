@@ -281,6 +281,7 @@ public:
     gsMatrix<> leftBoundarySmallSystem( index_t np)
     {
         gsMultiBasis<> bas(auxGeom[np].boolBasis() == true ? auxGeom[np].getBasis().basis(0) : auxGeom[np].getPatch().basis());
+        //bas.basis(0).degreeElevate(3);
         gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
         size_t dimU = temp_L.size(0);
         size_t dimV = temp_L.size(1);
@@ -328,6 +329,7 @@ public:
     gsMatrix<> rightBoundarySmallSystem( index_t np)
     {
         gsMultiBasis<> bas(auxGeom[np].boolBasis() == true ? auxGeom[np].getBasis().basis(0) : auxGeom[np].getPatch().basis());
+        //bas.basis(0).degreeElevate(3);
         gsTensorBSplineBasis<2, real_t> & temp_L = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(bas.basis(0));
         //size_t dimU = temp_L.size(0);
         size_t dimU = temp_L.size(0);
@@ -346,6 +348,7 @@ public:
                     auxGeom[np].getG1BasisCoefs(bf).at(i) *= 0;
             }
         }
+
         return SmallMatrix;
     }
 
@@ -484,15 +487,17 @@ public:
             }
 
         }
+        if (m_g1OptionList.getSwitch("info"))
+        {
+            gsInfo << "Big kernel:\n";
+            gsInfo << bigKernel << "\n ";
 
-//        gsInfo << "Big kernel:\n";
-//        gsInfo << bigKernel << "\n ";
-//
-//        gsInfo << "Small kernel:\n";
-//        gsInfo << smallKernel << "\n ";
-//
-//        gsInfo << "Basis:\n";
-//        gsInfo << basisVect << "\n";
+            gsInfo << "Small kernel:\n";
+            gsInfo << smallKernel << "\n ";
+
+            gsInfo << "Basis:\n";
+            gsInfo << basisVect << "\n";
+        }
 
         return std::make_pair(basisVect, numberPerType);
     }
@@ -719,7 +724,77 @@ public:
         }
 
 
-        if (this->kindOfVertex() == 1) // Interface-Boundary vertex
+        if (this->kindOfVertex() == 1 && g1OptionList.getInt("user") == user::pascal) // Interface-Boundary vertex
+        {
+            real_t thresh_old = g1OptionList.getReal("threshold");
+
+            if (auxGeom.size() != 2)
+                gsInfo << "Interface-Boundary vertex for valence > 3 not IMPLEMENTED! \n";
+
+            gsMatrix<> point(2,1), matrix_deriv_u(2,2), matrix_deriv_v(2,2);
+            point.setZero();
+            matrix_deriv_u.setZero();
+            matrix_deriv_v.setZero();
+
+            matrix_deriv_u.col(0) = auxGeom[0].getPatch().jacobian(point).col(0); // u
+            matrix_deriv_u.col(1) = auxGeom[1].getPatch().jacobian(point).col(1); // u
+
+            matrix_deriv_v.col(0) = auxGeom[0].getPatch().jacobian(point).col(1); // v
+            matrix_deriv_v.col(1) = auxGeom[1].getPatch().jacobian(point).col(0); // v
+
+            index_t dofsInt = 3;
+            gsInfo << "determinante: " << matrix_deriv_u.determinant() << "\n";
+            if (math::abs(matrix_deriv_u.determinant()) > g1OptionList.getReal("threshold"))
+                dofsInt = 1;
+
+            gsInfo << "determinante 2: " << matrix_deriv_v.determinant() << "\n";
+            if (math::abs(matrix_deriv_v.determinant()) > g1OptionList.getReal("threshold"))
+                dofsInt = 1;
+
+            gsMatrix<> bigMatrix(0,0);
+            gsMatrix<> smallMatrix(0,0);
+            for (size_t i = 0; i < auxGeom.size(); i++)
+            {
+                std::pair<gsMatrix<>, gsMatrix<>> tmp;
+                tmp = createSinglePatchSystem(i);
+                size_t row_bigMatrix = bigMatrix.rows();
+                size_t row_smallMatrix = smallMatrix.rows();
+
+                bigMatrix.conservativeResize(bigMatrix.rows() + tmp.first.rows(), 6);
+                smallMatrix.conservativeResize(smallMatrix.rows() + tmp.second.rows(), 6);
+
+                bigMatrix.block(row_bigMatrix, 0, tmp.first.rows(), 6) = tmp.first;
+                smallMatrix.block(row_smallMatrix, 0, tmp.second.rows(), 6) = tmp.second;
+            }
+
+            Eigen::FullPivLU<gsMatrix<>> SmallLU2(smallMatrix);
+            real_t threshold = 1e-8;
+            SmallLU2.setThreshold(threshold);
+            //gsInfo << "Dimension of Kernel: " << SmallLU2.dimensionOfKernel() << "\n";
+            while (SmallLU2.dimensionOfKernel() < dofsInt)
+            {
+                threshold += 1e-8;
+                SmallLU2.setThreshold(threshold);
+            }
+            gsInfo << "Dimension of Kernel: " << SmallLU2.dimensionOfKernel() << " With " << threshold << "\n";
+
+            g1OptionList.setReal("threshold",threshold);
+
+            Eigen::FullPivLU<gsMatrix<>> BigLU(bigMatrix);
+            Eigen::FullPivLU<gsMatrix<>> SmallLU(smallMatrix);
+            SmallLU.setThreshold(g1OptionList.getReal("threshold"));
+            BigLU.setThreshold(g1OptionList.getReal("threshold"));
+
+            if (!g1OptionList.getSwitch("neumann"))
+                dim_kernel = SmallLU.dimensionOfKernel();
+            else
+                dim_kernel = BigLU.dimensionOfKernel();
+
+            vertexBoundaryBasis = selectVertexBoundaryBasisFunction(BigLU.kernel(), BigLU.dimensionOfKernel(), SmallLU.kernel(), SmallLU.dimensionOfKernel());
+
+            g1OptionList.setReal("threshold",thresh_old);
+        }
+        else if (this->kindOfVertex() == 1 && g1OptionList.getInt("user") == user::andrea) // Interface-Boundary vertex
         {
             gsMatrix<> bigMatrix(0,0);
             gsMatrix<> smallMatrix(0,0);

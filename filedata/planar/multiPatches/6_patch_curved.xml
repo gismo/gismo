@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <!-- Geometry input: two planar 2D-Patches-->    
+   <Geometry type="TensorBSpline2" id="1">
+        <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+            <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+            <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+        </Basis>
+        </Basis>
+        <coefs geoDim="2">0 0
+        1/9 0
+        2/9 0
+        3/9 0
+        
+        0 2/9
+        1/9 2/9
+        2/9 2/9
+        5/18 2/9
+        
+        0 4/9
+        1/9 4/9
+        2/9 4/9
+        7/18 4/9
+        
+        0 6/9
+        1/9 13/18
+        2/9 11/18
+        3/9 6/9
+        </coefs>
+    </Geometry>
+    <Geometry type="TensorBSpline2" id="2">
+        <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+            <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+            <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+        </Basis>
+        </Basis>
+        <coefs geoDim="2">
+        3/9 0 
+        4/9 0
+        5/9 0
+        6/9 0
+        
+        5/18 2/9 
+        4/9 2/9
+        5/9 1/9
+        13/18 1/9
+        
+        7/18 4/9 
+        4/9 3/9
+        5/9 2/9
+        11/18 2/9
+        
+        3/9 6/9 
+        4/9 9/18
+        5/9 10/18
+        6/9 3/9
+        </coefs>
+    </Geometry>
+       <Geometry type="TensorBSpline2" id="3">
+        <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+            <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+            <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+        </Basis>
+        </Basis>
+        <coefs geoDim="2">
+        6/9 0 
+        7/9 0
+        8/9 0
+        9/9 0
+        
+        13/18 1/9 
+        7/9 1/9
+        8/9 1/9
+        9/9 1/9
+        
+        11/18 2/9
+        7/9 2/9
+        8/9 2/9
+        9/9 2/9
+        
+        6/9 3/9 
+        7/9 7/18
+        8/9 5/18
+        9/9 3/9
+        </coefs>
+    </Geometry>
+    <Geometry type="TensorBSpline2" id="4">
+        <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+            <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+            <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+        </Basis>
+        </Basis>
+        <coefs geoDim="2">
+        6/9 3/9 
+        7/9 7/18
+        8/9 5/18
+        9/9 3/9
+        
+        5/9 10/18
+        6/9 4/9
+        7/9 4/9
+        9/9 4/9
+        
+        4/9 9/18
+        5/9 5/9
+        7/9 5/9
+        9/9 5/9
+        
+        3/9 6/9
+        5/9 11/18
+        7/9 13/18
+        9/9 6/9
+        </coefs>
+    </Geometry>
+    <Geometry type="TensorBSpline2" id="5">
+        <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+            <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+            <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+        </Basis>
+        </Basis>
+        <coefs geoDim="2">
+        0 6/9
+        1/9 13/18
+        2/9 11/18
+        3/9 6/9
+
+        0 7/9
+        1/9 7/9
+        2/9 7/9
+        7/18 7/9
+        
+        0 8/9
+        1/9 8/9
+        2/9 8/9
+        5/18 8/9
+        
+        0 9/9
+        1/9 9/9
+        2/9 9/9
+        3/9 9/9
+        </coefs>
+    </Geometry>
+    <Geometry type="TensorBSpline2" id="6">
+        <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+            <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+            <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+        </Basis>
+        </Basis>
+        <coefs geoDim="2">
+        3/9 6/9
+        5/9 11/18
+        7/9 13/18
+        9/9 6/9
+        
+        7/18 7/9
+        5/9 7/9
+        7/9 7/9
+        9/9 7/9
+        
+        5/18 8/9
+        5/9 8/9
+        7/9 8/9
+        9/9 8/9
+        
+        3/9 9/9
+        5/9 9/9
+        7/9 9/9
+        9/9 9/9
+        </coefs>
+    </Geometry>
+    <MultiPatch parDim="2" id="0">
+        <patches type="id_range">1 6</patches>
+ </MultiPatch>
+</xml>
