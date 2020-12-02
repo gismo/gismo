@@ -26,6 +26,15 @@ namespace gismo {
 template<typename T>
 class gsXBraid_app : public gsXBraid<T>
 {
+ private:
+  // Variables, matrices that should be accessible in Step, Init etc.
+  real_t theta;
+  real_t Dt;
+  gsMatrix<> Sol;
+  gsSparseMatrix<> Stiffness_matrix;
+  gsSparseMatrix<> Mass_matrix;
+  gsMatrix<> Rhs;
+
  public:
   /// Inherit all constructors from base class
   using gsXBraid<T>::gsXBraid;
@@ -223,6 +232,10 @@ class gsXBraid_app : public gsXBraid<T>
     variable g_Neumann = K.getBdrFunction();
     K.assembleRhsBc(u_K * g_Neumann.val() * nv(G_K).norm(), bcInfo.neumannSides() );
 
+    gsSparseMatrix<> Stiffness_matrix = K.matrix();
+    gsSparseMatrix<> Mass_matrix = M.matrix();
+    gsMatrix<> Rhs = K.rhs();
+
       for ( int i = 1; i<=numTime; ++i) // for all timesteps
     {
         // Compute the system for the timestep i (rhs is assumed constant wrt time)
@@ -244,7 +257,10 @@ class gsXBraid_app : public gsXBraid<T>
            braid_Vector    ustop,
            braid_Vector    fstop,
            BraidStepStatus &pstatus) override
-  {}
+  {
+    gsSparseSolver<>::CGDiagonal solver;
+    Sol = solver.compute(Mass_matrix+Dt*theta*Stiffness_matrix).solve(Dt*Rhs+(Mass_matrix-Dt*(1-theta)*Stiffness_matrix)*Sol);
+  }
   
   int Clone(braid_Vector  u,
             braid_Vector *v_ptr) override
@@ -289,7 +305,9 @@ class gsXBraid_app : public gsXBraid<T>
   int Residual(braid_Vector     u,
                braid_Vector     r,
                BraidStepStatus &pstatus) override
-  {}
+  {
+
+  }
   
   // Not needed in this example
   int Coarsen(braid_Vector           fu,
