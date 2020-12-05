@@ -119,12 +119,6 @@ include(gsJITConfigXml)
 gsJITConfigXml(${CMAKE_CURRENT_SOURCE_DIR}/cmake/jit.xml.in
   ${CMAKE_BINARY_DIR}/config/jit.xml)
 
-# Configure
-configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
-                "${PROJECT_BINARY_DIR}/gsCore/gsConfig.h" )
-configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
-                "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
-
 ## #################################################################
 ## Collect headers and sources
 ## #################################################################
@@ -383,6 +377,12 @@ endif(GISMO_BUILD_RHINOPLUGINS)
 ## #################################################################
 ## Install
 ## #################################################################
+
+# Configure
+configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
+                "${PROJECT_BINARY_DIR}/gsCore/gsConfig.h" )
+configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
+                "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
 
 include(gsInstall)
 
