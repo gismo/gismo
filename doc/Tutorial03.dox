@@ -31,48 +31,6 @@ See \ref poisson2_example
 
 See \ref kirchhoff-Love_example
 
-
-- The gsPde (abstract) class serves as the class for defining the data
-  of a boundary value problem.  For instance, the gsPoissonPde.
-  Instances of PDE classes are collected in the \ref pdeclass "The PDE group".
-
-
-see \ref poisson_example and \ref assembly_example
-- Setting up the discrete spaces
-
-- The domain iterator
-
-- The geometry map
-
-- Boundary conditions
-
-- The assembler interface
-
-- Visitor classes
-
-- Volume integrals
-
-- Boundary integrals
-
-- Interface integrals
-
-- Assembler options
-
-- Set the number of quadrature points
-
-- Set the bandwidth of the sparse matrix
-
-- Strategy for dirichlet boundary conditions
-
-- Strategy manipulation of patch interfaces
-
-- Newton iteration
-
-- Solving the linear system
-
-- Computing norms
-
-- Viewing the result
-
 */
+
 }
