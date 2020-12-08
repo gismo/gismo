@@ -21,7 +21,7 @@ SUITE(gsMoveSemantics_test)
 
 #if (__cplusplus >= 201103L || _MSC_VER >= 1600) && EIGEN_HAS_RVALUE_REFERENCES
 
-#ifndef _MSC_VER // util::has_move_constructor doesn't work with MSVC
+#if !defined(_MSC_VER) && !defined(__INTEL_COMPILER) // util::has_move_constructor doesn't work with MSVC and Intel C/C++ Compiler
 TEST(gsMatrix_mc) { CHECK(util::has_move_constructor<gismo::gsMatrix<> >::value); }
 TEST(gsVector_mc) { CHECK(util::has_move_constructor<gismo::gsVector<> >::value); }
 TEST(gsSparseMatrix_mc) { CHECK(util::has_move_constructor<gismo::gsSparseMatrix<> >::value); }

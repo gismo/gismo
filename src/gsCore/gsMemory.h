@@ -253,7 +253,7 @@ inline std::vector<T*> release(std::vector< unique_ptr<T> >& cont)
 template <class T> inline
 auto give(T&& t) -> decltype(std::move(std::forward<T>(t)))
 {
-#if defined(GISMO_EXTRA_DEBUG) && ! defined(_MSC_VER)
+#if defined(GISMO_EXTRA_DEBUG) && ! defined(_MSC_VER) && ! defined(__INTEL_COMPILER)
     // TODO: is there way that also MS can check this?
     static_assert( util::has_move_constructor<typename std::remove_reference<T>::type>::value, "There is no move constructor. Copy would be created." );
 #endif
