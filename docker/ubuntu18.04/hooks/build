@@ -733,7 +733,7 @@ case "$IMAGE_NAME" in
         GISMO_WITH_UMFPACK=ON
         ;;
     *)
-        GISMO_WITH_UMFPACK=ON
+        GISMO_WITH_UMFPACK=OFF
         ;;
 esac
 shopt -u extglob;
