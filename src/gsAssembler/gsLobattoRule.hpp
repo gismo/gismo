@@ -95,8 +95,8 @@ gsLobattoRule<T>::computeReference(index_t n,       // Number of points
         {
             for ( i = 0; i < n; i++)
             {
-                p[i+j*n] = ( (T) ( 2 * j - 1 ) * x[i] * p[i+(j-1)*n]
-                             + (T) (   - j + 1 ) *        p[i+(j-2)*n] )
+                p[i+j*n] = ( (T) ( 2.0 * j - 1.0 ) * x[i] * p[i+(j-1)*n]
+                             + (T) (   - j + 1.0 ) *        p[i+(j-2)*n] )
                     / (T) (     j     );
             }
         }
@@ -114,7 +114,7 @@ gsLobattoRule<T>::computeReference(index_t n,       // Number of points
     x.reverseInPlace();
 
     for ( i = 0; i < n; i++ )
-        w[i] = 2.0 / ( (T) ( ( n - 1 ) * n ) * math::pow ( p[i+(n-1)*n], 2 ) );
+      w[i] = T(2.0) / ( (T) ( ( n - 1 ) * n ) * math::pow ( p[i+(n-1)*n], 2 ) );
 }
 
 

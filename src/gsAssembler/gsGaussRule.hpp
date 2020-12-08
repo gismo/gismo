@@ -44,7 +44,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const index_t quB, s
     for(i=0; i!=fixDir; ++i )
     {
         //note: +0.5 for rounding
-        const index_t numNodes = cast<T,index_t>(quA * basis.degree(i) + quB + 0.5);
+        const index_t numNodes = cast<T,index_t>(quA * (T)basis.degree(i) + quB + 0.5);
         //const bool found = 
         lookupReference(numNodes, nodes[i], weights[i]);
         //if (!found)
@@ -53,7 +53,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const index_t quB, s
     ++i;// skip fixed direction
     for(; i<d; ++i )
     {
-        const index_t numNodes = cast<T,index_t>(quA * basis.degree(i) + quB + 0.5);
+        const index_t numNodes = cast<T,index_t>(quA * (T)basis.degree(i) + quB + 0.5);
         lookupReference(numNodes, nodes[i], weights[i]);
     }
 
@@ -150,9 +150,9 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
         {
             pnm2 = pnm1;
             pnm1 = pn;
-            pn   = -j*pnm2/static_cast<T>(j+1);
+            pn   = -static_cast<T>(j)*pnm2/static_cast<T>(j+1);
         }
-        dpn  = n*pn;
+        dpn  = static_cast<T>(n)*pn;
         w[m] = T(2.0) / ( dpn*dpn );
     }
     
@@ -181,11 +181,11 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
             {
                 pnm2 = pnm1; 
                 pnm1 = pn;            
-                pn   = ((2.0*j+1.0)*x[i]*pnm1 - j*pnm2)/static_cast<T>(j+1);
+                pn   = ((2.0*j+1.0)*x[i]*pnm1 - static_cast<T>(j)*pnm2)/static_cast<T>(j+1);
             }
             
             // A recurrence relation also gives the derivative.
-            dpn=n*(x[i]*pn-pnm1)/(x[i]*x[i]-1.0);
+            dpn=static_cast<T>(n)*(x[i]*pn-pnm1)/(x[i]*x[i]-1.0);
             
             // Compute Newton update
             x[i] -= pn/dpn;

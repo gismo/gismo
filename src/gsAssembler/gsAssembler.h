@@ -391,7 +391,7 @@ public:
     T penalty(index_t k) const
     {
         const short_t deg = m_bases[0][k].maxDegree();
-        return (deg + m_bases[0][k].dim()) * (deg + 1) * T(2.0);
+        return ((T)deg + m_bases[0][k].dim()) * (deg + 1) * T(2.0);
     }
 
     /// @brief Provides an estimation of the number of non-zero matrix

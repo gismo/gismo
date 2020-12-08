@@ -75,9 +75,9 @@ struct gsQuadrature
         short_t i;
         for(i=0; i!=fixDir; ++i )
             //note: +0.5 for rounding
-            nnodes[i] = cast<T,index_t>(quA * basis.degree(i) + quB + 0.5);
+            nnodes[i] = cast<T,index_t>(quA * (T)basis.degree(i) + quB + 0.5);
         for(++i; i<d; ++i )
-            nnodes[i] = cast<T,index_t>(quA * basis.degree(i) + quB + 0.5);
+            nnodes[i] = cast<T,index_t>(quA * (T)basis.degree(i) + quB + 0.5);
         return nnodes;
     }
 };
