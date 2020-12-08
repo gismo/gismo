@@ -320,7 +320,7 @@ public:
         gsVector<T> start = supp.col(0), end = supp.col(1);
         gsMatrix<T> trialPoints = uniformPointGrid(start, end, nTrialPoints);
         gsMatrix<T> curveVal, curveDeriv, curveDeriv2, surfVal, surfDeriv, surfDeriv2;
-        T closestParam(10e100), closestSqDist(10e100);
+        T closestParam(std::numeric_limits<T>::max()), closestSqDist(std::numeric_limits<T>::max());
 
         for(int idxTrial = 0; idxTrial < nTrialPoints; idxTrial++)
         {
