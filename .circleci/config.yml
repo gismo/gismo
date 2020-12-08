@@ -1,5 +1,4 @@
 version: 2.0
-
 jobs:
   macos_x86_64_xcode9_cxx98_release:
     macos:
@@ -57,7 +56,7 @@ jobs:
 
   macos_x86_64_xcode12_cxx17_release:
     macos:
-      xcode: "12.2.0"
+      xcode: "12.1.0"
     working_directory: ~/gismo
     environment:
       MAKEFLAGS: -j4
@@ -73,11 +72,45 @@ jobs:
           name: Build and test G+Smo on MacOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
 
+  macos_x86_64_xcode12_cxx20_release:
+    macos:
+      xcode: "12.1.0"
+    working_directory: ~/gismo
+    environment:
+      MAKEFLAGS: -j4
+    steps:
+      - run:
+          name: Install dependencies
+          command: brew install cmake
+      - checkout
+      - run:
+          name: Configure G+Smo on MacOS
+          command: cmake . -DBUILDNAME="macos_x86_64_xcode12_cxx20_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=20 -DGISMO_WITH_ONURBS=ON
+      - run:
+          name: Build and test G+Smo on MacOS
+          command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+
 workflows:
   version: 2
   build:
     jobs:
-      - macos_x86_64_xcode9_cxx98_release
-      - macos_x86_64_xcode10_cxx11_release
-      - macos_x86_64_xcode11_cxx14_release
-      - macos_x86_64_xcode12_cxx17_release
+      - macos_x86_64_xcode9_cxx98_release:
+          filters:
+            branches:
+              only: stable
+      - macos_x86_64_xcode10_cxx11_release:
+          filters:
+            branches:
+              only: stable
+      - macos_x86_64_xcode11_cxx14_release:
+          filters:
+            branches:
+              only: stable
+      - macos_x86_64_xcode12_cxx17_release:
+          filters:
+            branches:
+              only: ci_test
+      - macos_x86_64_xcode12_cxx20_release:
+          filters:
+            branches:
+              only: ci_test

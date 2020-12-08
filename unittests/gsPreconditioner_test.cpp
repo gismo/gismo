@@ -55,24 +55,24 @@ void runPreconditionerTest( index_t testcase )
     if (testcase==0)
     {
         gsConjugateGradient<> solver(mat, makeJacobiOp(mat));
-        solver.setTolerance( 1.e-8 );
-        solver.setMaxIterations( 110 );
+        solver.setTolerance( std::pow(10.0, - REAL_DIG * 0.75) );
+        solver.setMaxIterations( 300 );
         solver.solve(rhs,sol);
         CHECK ( solver.error() <= solver.tolerance() );
     }
     else if (testcase==1)
     {
         gsConjugateGradient<> solver(mat, makeSymmetricGaussSeidelOp(mat));
-        solver.setTolerance( 1.e-8 );
-        solver.setMaxIterations( 35 );
+        solver.setTolerance( std::pow(10.0, - REAL_DIG * 0.75) );
+        solver.setMaxIterations( 300 );
         solver.solve(rhs,sol);
         CHECK ( solver.error() <= solver.tolerance() );
     }
     else if (testcase==2)
     {
         gsConjugateGradient<> solver(mat, gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb[0],bc));
-        solver.setTolerance( 1.e-8 );
-        solver.setMaxIterations( 35 );
+        solver.setTolerance( std::pow(10.0, - REAL_DIG * 0.75) );
+        solver.setMaxIterations( 300 );
         solver.solve(rhs,sol);
         CHECK ( solver.error() <= solver.tolerance() );
     }
@@ -82,8 +82,8 @@ void runPreconditionerTest( index_t testcase )
         gsGenericAssembler<> gAssembler(mp,mb,opt,&bc);
         mat += (1/(h*h)) * gAssembler.assembleMass();
         gsConjugateGradient<> solver(mat, gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(mb[0],bc));
-        solver.setTolerance( 1.e-8 );
-        solver.setMaxIterations( 50 );
+        solver.setTolerance( std::pow(10.0, - REAL_DIG * 0.75) );
+        solver.setMaxIterations( 300 );
         solver.solve(rhs,sol);
         CHECK ( solver.error() <= solver.tolerance() );
     }

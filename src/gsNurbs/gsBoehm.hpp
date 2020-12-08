@@ -75,7 +75,7 @@ void gsBoehm(
         for( index_t i = 0; i<=p-j-s; ++i )
         {
             a = (val - knots[L+i]) / (knots[i+k+1] - knots[L+i]);
-            tmp.row(i) = a * tmp.row(i+1) + (1.0-a) * tmp.row(i);
+            tmp.row(i) = a * tmp.row(i+1) + (T(1.0)-a) * tmp.row(i);
         }
         coefs.row(L)= tmp.row(0);
         coefs.row(k+r-j-s)= tmp.row(math::max(p-j-s,(index_t)0));
@@ -118,7 +118,7 @@ void gsBoehmSingle(
     for( index_t i = k; i>=k-p+1; --i )
     {
         a = (val - knots[i]) / (knots[i+p] - knots[i]);
-        coefs.row(i) = (1-a) * coefs.row(i-1) + a * coefs.row(i);
+        coefs.row(i) = (T(1.0)-a) * coefs.row(i-1) + a * coefs.row(i);
     }
 
     // Update knot vector
@@ -152,7 +152,7 @@ void gsBoehmSingle( iter knot,   // Knot iterator
     for( index_t i = p ; i>=1; --i )
     {
         a = (val - *knot) / ( *(knot+p) - *knot );
-        coefs.row(i) = (1-a) * coefs.row(i-1) + a * coefs.row(i);
+        coefs.row(i) = (T(1.0)-a) * coefs.row(i-1) + a * coefs.row(i);
         knot++;
     }
 }
@@ -222,13 +222,13 @@ void gsBoehmRefine( KnotVectorType & knots,
 
             T alfa = nknots[k+l] - newKnot;
 
-            if( math::abs(alfa) == 0.0 )
+            if( math::abs(alfa) == T(0.0) )
                 coefs.row(ind-1) = coefs.row(ind);
             else
             {
                 alfa /= nknots[k+l]-knots[i-p+l];
                 coefs.row(ind-1) = alfa * coefs.row(ind-1) +
-                (1.0-alfa)*coefs.row(ind);
+		(T(1.0)-alfa)*coefs.row(ind);
             }
         }
         nknots[k] = newKnot;
@@ -332,7 +332,7 @@ void gsTensorBoehm(
             for (int i = 0; i <= p - j - s; ++i)
             {
                 T a = alpha[j - 1][i];
-                tmp.row(i) = a * tmp.row(i + 1) + (1.0 - a) * tmp.row(i);
+                tmp.row(i) = a * tmp.row(i + 1) + (T(1.0) - a) * tmp.row(i);
             }
 
             new_coef.row(new_ind + new_step * L) = tmp.row(0);
@@ -473,13 +473,13 @@ void gsTensorBoehmRefine(
                 const T alfa = alpha[j][ell - 1];
                 const int index = k - p + ell;
 
-                if (math::abs(alfa) == 0.0)
+                if (math::abs(alfa) == T(0.0))
                     new_coefs.row(new_ind + (index - 1) * new_step) =
                             new_coefs.row(new_ind + index * new_step);
                 else
                     new_coefs.row(new_ind + (index - 1) * new_step) =
                             alfa * new_coefs.row(new_ind + (index - 1) * new_step) +
-                            (1.0 - alfa) * new_coefs.row(new_ind + index * new_step);
+		            (T(1.0) - alfa) * new_coefs.row(new_ind + index * new_step);
             }
             k--;
         }
@@ -633,7 +633,7 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
                 if (act_size_of_coefs[direction] < mindex)
                     break;
 
-                if (math::abs(alfa) == 0.0)
+                if (math::abs(alfa) == T(0.0))
                 {
                     if (mindex == act_size_of_coefs[direction])
                         coefs.row(ind + (mindex - 1) * step) = zero.row(0);
@@ -649,7 +649,7 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
                     else
                         coefs.row(ind + (mindex - 1) * step) =
                                 alfa * coefs.row(ind + (mindex - 1) * step) +
-                                (1.0 - alfa) * coefs.row(ind + mindex * step);
+			        (T(1.0) - alfa) * coefs.row(ind + mindex * step);
                 }
             }
             k--;
@@ -726,18 +726,18 @@ void gsTensorBoehmLocal(
             for (unsigned i = 0; i <= p - j - s; i++)
             {
                 T alfa = alpha[j - 1][i];
-                tmp.row(i) = alfa * tmp.row(i + 1) + (1.0 - alfa) * tmp.row(i);
+                tmp.row(i) = alfa * tmp.row(i + 1) + (T(1.0) - alfa) * tmp.row(i);
 
 //                if (ind < 0)
 //                    continue;
 //                else if (ind == static_cast<int>(act_size_of_coefs(direction)) - 1)
 //                    coefs.row(flat_ind + (ind * step) =
-//                            (1 - alfa) * coefs.row(flat_ind + ind * step);
+//                            (T(1.0) - alfa) * coefs.row(flat_ind + ind * step);
 //                else
 //                {
 //                coefs.row(flat_ind + (ind + 1) * step) =
 //                        alfa * coefs.row(flat_ind + (ind + 1) * step) +
-//                        (1.0 - alfa) * coefs.row(flat_ind + ind * step);
+//                        (T(1.0) - alfa) * coefs.row(flat_ind + ind * step);
                 //                }
             }
 
@@ -793,7 +793,7 @@ void gsTensorInsertKnotDegreeTimes(
                 T alfa = alpha[j - 1][i];
                 coefs.row(flat_ind + i * step) =
                         alfa * coefs.row(flat_ind + (i + 1) * step) +
-                        (1.0 - alfa) * coefs.row(flat_ind + i * step);
+		                (T(1.0) - alfa) * coefs.row(flat_ind + i * step);
             }
         }
     } while(nextCubePoint<gsVector<index_t, d> >(position, start, end));

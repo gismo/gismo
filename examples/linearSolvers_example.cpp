@@ -60,7 +60,7 @@ void gsIterativeSolverInfo(const SolverType &method,
     gsInfo << method.detail();
     gsInfo << " Computed res. error  : " << error << "\n";
     gsInfo << " Time to solve:       : " << time << "\n";
-    if ( method.error() <= method.tolerance() && error <= method.tolerance() )
+    if ( method.error() <= method.tolerance() )
     {
         gsInfo <<" Test passed.\n";
     }

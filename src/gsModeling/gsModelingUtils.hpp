@@ -335,11 +335,11 @@ void addConstraints(gsMatrix<T> const & C1, gsMatrix<T> const & d1,
     d.block(nr1,0,nr2,1) = d2;  
 }
 
-/// convert a with abs(a) < eps=2.220446049250313e-16 into 0
+/// convert a with abs(a) < eps into 0
 template <class T>
 gsMatrix<T> convert2Zero(gsMatrix<T> const & mat)
 {
-    T eps=2.220446049250313e-16;
+    T eps = std::numeric_limits<T>::epsilon();
     
     gsMatrix<T> matc = mat;
     int n1 = mat.rows(); 

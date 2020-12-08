@@ -49,7 +49,7 @@ public:
   Vertex* target() const {return mate->source;}
 
 public:
-    gsSolidHalfEdge() : SolidElement() { eps  = 2.220446049250313e-16; }
+    gsSolidHalfEdge() : SolidElement() { eps = std::numeric_limits<T>::epsilon(); }
 
 
     gsSolidHalfEdge(Vertex* v, HalfFace* f, int i, bool conv)
@@ -60,7 +60,7 @@ public:
         prev = 0;
         loopNum = 0;
         //trim_curve = 0;
-        eps = 2.220446049250313e-16;
+        eps = std::numeric_limits<T>::epsilon();
     }
 
     gsSolidHalfEdge(Vertex* v, HalfFace* f, int i, bool conv, int loopN) :
@@ -69,14 +69,14 @@ public:
         mate = 0;
         next = 0;
         prev = 0;
-        eps = 2.220446049250313e-16;
+        eps = std::numeric_limits<T>::epsilon();
     }
 
 
     explicit gsSolidHalfEdge(int i) : SolidElement(i) { }
 
     /// check if two HEs are "equivalent", ie., if their sources have the same coordinates, and their targets have the same coordinates
-    bool isEquiv(HalfEdge* other, T tolFactor=1e-8) const
+    bool isEquiv(HalfEdge* other, T tolFactor = std::max(1e-8,  std::pow(10.0, -(std::numeric_limits<T>::digits10-1))) ) const
     {
         using std::abs;
         T tol = tolFactor*eps;

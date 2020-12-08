@@ -18,7 +18,8 @@ using namespace gismo;
 void report( const gsVector<>& computedSolution, const gsVector<>& exactSolution, bool& succeeded )
 {
     gsInfo << "  Computed solution: " << computedSolution.transpose() << "\n";
-    if ( (computedSolution-exactSolution).norm() <= 1.e-10 )
+    if ( (computedSolution-exactSolution).norm() <=
+	 std::pow(10.0, - REAL_DIG * 0.75)*exactSolution.norm() )
     {
         gsInfo << "  Test passed.\n";
     }
@@ -56,7 +57,6 @@ int main(int argc, char** argv)
 
     Q.makeCompressed(); // always call makeCompressed after sparse matrix has been filled
 
-//    /*
     gsSparseSolver<>::CGIdentity solverCGI;
     solverCGI.compute(Q);
     x = solverCGI.solve(b);
@@ -104,8 +104,6 @@ int main(int argc, char** argv)
     x = solverLU.solve(b);
     gsInfo << "Solve Ax = b with Eigen's LU factorization.\n";
     report( x, x0, succeeded );
-
-//*/
 
 #ifdef GISMO_WITH_PARDISO
     gsSparseSolver<>::PardisoLU solverpLU;

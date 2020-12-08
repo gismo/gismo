@@ -36,7 +36,7 @@ int gsBSplineSolver<T>::insertKnot(int mu)
     for ( int i=mu; i>=mu-m_d+1; i--)
     {
         const T alpha = (x-m_t[i])/(m_t[i+m_d]-m_t[i]);
-        m_c[i] = (1.0-alpha) * m_c[i-1] + alpha * m_c[i];
+        m_c[i] = (T(1.0)-alpha) * m_c[i-1] + alpha * m_c[i];
     }
 
     // set last knot

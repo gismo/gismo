@@ -116,7 +116,7 @@ class gsBSplineSolver
 
 public:
     /// Default empty constructor
-    gsBSplineSolver() : m_n(1),m_k(1), m_d(1), eps(1e-7) { }
+    gsBSplineSolver() : m_n(1),m_k(1), m_d(1), eps( std::max(1e-7,  std::pow(10.0, -(std::numeric_limits<T>::digits10-1))) ) { }
 
     /// Destructor
     ~gsBSplineSolver() { } 
@@ -124,7 +124,7 @@ public:
 public:
     /// Return true if the first root exist, the value of the root is in this->value()
     bool firstRoot(gsBSpline<T> const & bsp, int const & coord = 0,
-                   T const & tr = 0, T const & tol = 1e-7, unsigned const & N=100)
+                   T const & tr = 0, T const & tol = std::max(1e-7,  std::pow(10.0, -(std::numeric_limits<T>::digits10-1))), unsigned const & N=100)
     {
         initSolver(bsp,coord,tr,tol,N);
         return nextRoot();
@@ -139,7 +139,7 @@ public:
     // Return a vector with all the roots
     void allRoots (gsBSpline<T> const & bsp, std::vector<T> & result,
                    int const & coord = 0, 
-                   T const & tr = 0, T const & tol = 1e-7, unsigned const & N=100)
+                   T const & tr = 0, T const & tol = std::max(1e-7,  std::pow(10.0, -(std::numeric_limits<T>::digits10-1))), unsigned const & N=100)
     {
         result.clear();
         initSolver(bsp,coord,tr,tol,N);

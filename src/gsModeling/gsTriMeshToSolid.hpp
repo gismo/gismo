@@ -717,7 +717,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                         distance=tempDist;
                 }
             }
-            if(diameterOut/4<distance&&diameterIn/4<distance) // Is this patch a cylinder ??
+            if(diameterOut/T(4.0)<distance&&diameterIn/T(4.0)<distance) // Is this patch a cylinder ??
             {
                 isCylinder.push_back(1);
                 improveCylinderParametrization.push_back(0.1);// scalar factor for Floater's weight for artificial vertex inside the hole
@@ -1546,7 +1546,7 @@ T gsTriMeshToSolid<T>::calcWeight(VertexHandle v1,VertexHandle v2,
             {
 
                 const gsVector3d<T> vec2 = *v2->nVertices[j] - *v1;
-                weight+=math::tan(conditionedAngle( vec1,  vec2)/2);
+                weight+=math::tan(conditionedAngle( vec1,  vec2)/T(2.0));
             }
         }
     }
@@ -1596,7 +1596,7 @@ int gsTriMeshToSolid<T>::normalMult(gsVector3d<T> globalNormal,
 template<class T>
 bool gsTriMeshToSolid<T>::approxEqual(const gsEdge<T> & e1,const gsEdge<T> & e2)
 {
-    const T epsilon= calcDist(e1.source, e1.target ) * 0.01 ;
+  const T epsilon= std::max(calcDist(e1.source, e1.target ) * 0.01, std::pow(10.0, -(std::numeric_limits<T>::digits10-1)));
 
     return ( (*e1.source - *e2.source).norm() < epsilon &&
              (*e1.target - *e2.target).norm() < epsilon );
@@ -1665,7 +1665,7 @@ T gsTriMeshToSolid<T>::calcAngle(EdgeHandle e1,EdgeHandle e2, int faceNum)
         gsDebug<<"selected Edge has no valid neighboring face"<<"\n";
     gsVector3d<T> normal1=vec1Face->orthogonalVector();
     gsVector3d<T> normal2=vec2Face->orthogonalVector();
-    gsVector3d<T> normal=(normal1+normal2)/2;
+    gsVector3d<T> normal=(normal1+normal2)/T(2.0);
     T angle=conditionedAngle(vec1,vec2,normal);
 
     return angle;
@@ -1746,9 +1746,9 @@ gsBSpline<T> * gsTriMeshToSolid<T>::calcTCurve(Vertex v1,Vertex v2,Vertex v3)
 template<class T>
 typename gsTriMeshToSolid<T>::Vertex gsTriMeshToSolid<T>::giveMidpoint(Vertex v1,Vertex v2)
 {
-    return gsVertex<T>((v1[0]+v2[0])/2,
-                       (v1[1]+v2[1])/2,
-                       (v1[2]+v2[2])/2);
+    return gsVertex<T>((v1[0]+v2[0])/T(2.0),
+                       (v1[1]+v2[1])/T(2.0),
+                       (v1[2]+v2[2])/T(2.0));
 }
 
 
@@ -1801,7 +1801,7 @@ T gsTriMeshToSolid<T>::calcArea(FaceHandle f1)
     T d2=calcDist(f1->vertices[0],f1->vertices[2]);
     T d3=calcDist(f1->vertices[1],f1->vertices[2]);
     //p=perimeter/2
-    T p=(d1+d2+d3)/2;
+    T p=(d1+d2+d3)/T(2.0);
     T area=math::sqrt(p*(p-d1)*(p-d2)*(p-d3));
     return area;
 }

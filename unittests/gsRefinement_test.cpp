@@ -38,7 +38,7 @@ void testBoehm_helper(const gsBSpline<>& bsp, const std::vector<real_t> knots)
     gsBoehmRefine(kv2, coef2, kv2.degree(), knots.begin(), knots.end());
 
     CHECK (compareKV(kv1, kv2));
-    CHECK ((coef1 - coef2).array().abs().maxCoeff() <= 1e-12);
+    CHECK ((coef1 - coef2).array().abs().maxCoeff() <= std::pow(10.0, - REAL_DIG * 0.75));
 }
 
 // copied from gsNorms.hpp, which is no longer in stable
@@ -93,7 +93,7 @@ SUITE(gsRefinement_test)
         gsMatrix<> paramRange = bsp.parameterRange();
         const real_t dist = computeMaximumDistance<real_t>(bsp, *bsp_ref, paramRange.col(0), paramRange.col(1));
 
-        CHECK (dist <= 1e-14);
+        CHECK (dist <= std::pow(10.0, - REAL_DIG * 0.75));
     }
 
     TEST(testRefineWithMultiplicity)
