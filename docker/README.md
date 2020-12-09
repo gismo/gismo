@@ -76,7 +76,7 @@ __Disclaimer__: Optional features are not yet fully supported.
 ## Prebuilt Docker images
 The following Docker images are built automatically for commits to the G+Smo stable branch:
 
-- `ubuntu16.04-clang5-cxx98-release` ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/mmoelle1/gismo/ubuntu16.04-gcc5-cxx98-release) ([GCC](https://gcc.gnu.org/) 5.x, C++98, Release mode with OpenMP)
+- `ubuntu16.04-gcc5-cxx98-release` ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/mmoelle1/gismo/ubuntu16.04-gcc5-cxx98-release) ([GCC](https://gcc.gnu.org/) 5.x, C++98, Release mode with OpenMP)
 - `ubuntu18.04-gcc7-cxx11-release` ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/mmoelle1/gismo/ubuntu18.04-gcc7-cxx11-release) ([GCC](https://gcc.gnu.org/) 7.x, C++11, Release mode with OpenMP)
 - `ubuntu20.04-gcc10-cxx14-release` ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/mmoelle1/gismo/ubuntu20.04-gcc10-cxx14-release) ([GCC](https://gcc.gnu.org/) 10.x, C++14, Release mode with OpenMP)
 
