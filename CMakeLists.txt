@@ -119,12 +119,6 @@ include(gsJITConfigXml)
 gsJITConfigXml(${CMAKE_CURRENT_SOURCE_DIR}/cmake/jit.xml.in
   ${CMAKE_BINARY_DIR}/config/jit.xml)
 
-# Configure
-configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
-                "${PROJECT_BINARY_DIR}/gsCore/gsConfig.h" )
-configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
-                "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
-
 ## #################################################################
 ## Collect headers and sources
 ## #################################################################
@@ -327,6 +321,16 @@ if(GISMO_EXASTENCILS)
   gismo_fetch_module(gsExaStencils)
 endif()
 
+option(GISMO_STRUCTURALANALYSIS "Enable Structural Analysis module" OFF)
+if(GISMO_STRUCTURALANALYSIS)
+  gismo_fetch_module(gsStructuralAnalysis)
+endif()
+
+option(GISMO_KLSHELL "Enable Kirchhoff-Love Shell" OFF)
+if(GISMO_KLSHELL)
+  gismo_fetch_module(gsKLShell)
+endif()
+
 option(GISMO_UNSUPPORTED "Enable unsupported module" OFF)
 option(GISMO_MOTOR "Enable motor module" OFF)
 if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
@@ -383,6 +387,12 @@ endif(GISMO_BUILD_RHINOPLUGINS)
 ## #################################################################
 ## Install
 ## #################################################################
+
+# Configure
+configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
+                "${PROJECT_BINARY_DIR}/gsCore/gsConfig.h" )
+configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
+                "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
 
 include(gsInstall)
 

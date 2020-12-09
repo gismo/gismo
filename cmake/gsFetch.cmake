@@ -130,6 +130,12 @@ function(gismo_fetch_module SUBMODULE)
   # get list of programs to compile
   if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
     add_subdirectory(${gismo_SOURCE_DIR}/extensions/${SUBMODULE} ${gismo_BINARY_DIR}/extensions/${SUBMODULE})
+    if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/filedata")
+      string(REGEX MATCH "extensions/${SUBMODULE}/filedata" fmatch ${GISMO_SEARCH_PATHS})
+      if(NOT fmatch)
+        set(GISMO_SEARCH_PATHS "${GISMO_SEARCH_PATHS};${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/filedata/" CACHE INTERNAL "File search paths")
+      endif()
+    endif()
   else()
     #WARNING
   endif()

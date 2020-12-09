@@ -265,6 +265,7 @@ using mpfr::cos;
 using mpfr::cosh;
 using mpfr::floor;
 using mpfr::log;
+using mpfr::log10;
 using mpfr::pow;
 using mpfr::sin;
 using mpfr::sinh;

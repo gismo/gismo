@@ -217,10 +217,12 @@ public:
     space testSpace(space u) const { return testSpace(u.id()); }
 
     /// Registers \a func as a variable and returns a handle to it
+    ///
     variable getCoeff(const gsFunctionSet<T> & func)
     { return m_exprdata->getVar(func, 1); }
 
     /// Registers \a func as a variable defined on \a G and returns a handle to it
+    ///
     variable getCoeff(const gsFunctionSet<T> & func, geometryMap G)
     { return m_exprdata->getVar(func,G); }
 
