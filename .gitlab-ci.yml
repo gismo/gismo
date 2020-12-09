@@ -96,7 +96,7 @@ linux_x86_64_clang10_cxx17_release_mpreal_long:
     - gitlab_ci
 
 # Clang 11, C++20, Release
-linux_x86_64_clang11_cxx20_release_mpq_longlong:
+linux_x86_64_clang11_cxx20_release_mpq_long:
   tags:
     - linux
   stage: build
@@ -104,7 +104,7 @@ linux_x86_64_clang11_cxx20_release_mpq_longlong:
   script:
     - apt-get update -y
     - apt-get install cmake libgmp-dev -y
-    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=/usr/local/bin/clang -D CXXNAME=/usr/local/bin/clang++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=long long;-DGISMO_WITH_ONURBS=ON' -Q
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=/usr/local/bin/clang -D CXXNAME=/usr/local/bin/clang++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=long;-DGISMO_WITH_ONURBS=ON' -Q
   except:
     - external_pull_requests
     - ci_test
@@ -117,7 +117,7 @@ linux_x86_64_clang11_cxx20_release_mpq_longlong:
 #-------------------------------------------------------------------------------
 
 # GCC 6, C++98, Release
-linux_x86_64_gcc6_cxx98_release_mpq_longlong:
+linux_x86_64_gcc6_cxx98_release_mpq_long:
   tags:
     - linux
   stage: build
@@ -126,7 +126,7 @@ linux_x86_64_gcc6_cxx98_release_mpq_longlong:
     - apt-get update -y
     - apt-get install cmake ninja-build libgmp-dev -y
     - apt-get install cmake libmpfr-dev -y #should not be needed but there is a bug in CMakeLists.txt when using ninja
-    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR=Ninja -D CNAME=/usr/local/bin/gcc -D CXXNAME=/usr/local/bin/g++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=98;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=long long;-DGISMO_WITH_ONURBS=ON' -Q #-VV
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR=Ninja -D CNAME=/usr/local/bin/gcc -D CXXNAME=/usr/local/bin/g++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=98;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=long;-DGISMO_WITH_ONURBS=ON' -Q #-VV
   except:
     - external_pull_requests
     - ci_test
@@ -134,7 +134,7 @@ linux_x86_64_gcc6_cxx98_release_mpq_longlong:
     - gitlab_ci
     
 # GCC 7, C++11, Release
-linux_x86_64_gcc7_cxx11_release_mpreal_long:
+linux_x86_64_gcc7_cxx11_release_mpreal_longlong:
   tags:
     - linux
   stage: build
@@ -142,7 +142,7 @@ linux_x86_64_gcc7_cxx11_release_mpreal_long:
   script:
     - apt-get update -y
     - apt-get install cmake libmpfr-dev -y
-    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=/usr/local/bin/gcc -D CXXNAME=/usr/local/bin/g++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long;-DGISMO_WITH_ONURBS=ON' -Q
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=/usr/local/bin/gcc -D CXXNAME=/usr/local/bin/g++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long long;-DGISMO_WITH_ONURBS=ON' -Q
   except:
     - external_pull_requests
     - ci_test
