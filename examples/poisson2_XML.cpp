@@ -21,11 +21,13 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    bool save = false;
-    bool geometry = false;
     index_t numRefine  = 0;
     index_t numElevate = 0;
     std::string fn("pde/poisson2d_bvp.xml");
+
+    std::string save;
+    std::string geometryRef;
+    std::string geometry;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
@@ -33,8 +35,9 @@ int main(int argc, char *argv[])
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
-    cmd.addSwitch("save", "Save solution and refined mesh to gismo XML file", save);
-    cmd.addSwitch("geom", "Save initial geometry to XML file", geometry);
+    cmd.addString("S","save", "Save solution to gismo XML file", save);
+    cmd.addString("R","rgeom", "Save refined geometry to gismo XML file", geometryRef);
+    cmd.addString("G","geom", "Save initial geometry to XML file", geometry);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -47,10 +50,11 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp;
     fd.getId(0, mp); // id=0: Multipatch domain
 
-    if (geometry)
+    if (!geometry.empty())
     {
         gsInfo<<"Writing to geometry to XML...\n";
-        gsWrite(mp,"geometry");
+        gsInfo<<"Path = "<<geometry<<"\n";
+        gsWrite(mp,geometry);
     }
 
     gsFunctionExpr<> f;
@@ -152,13 +156,19 @@ int main(int argc, char *argv[])
     gsInfo<< ".Done. \n" <<std::flush; // Linear solving done
 
     //! [Solver loop]
-    if (save)
+    if (!save.empty())
     {
         gsInfo<<"Writing to XML...\n";
+        gsInfo<<"Path = "<<save<<"\n";
         gsMultiPatch<> mp_export;
         u_sol.extract(mp_export);
-        gsWrite(mp,"refined_geometry");
-        gsWrite(mp_export,"solution");
+        gsWrite(mp_export,save);
+    }
+    if (!geometryRef.empty())
+    {
+        gsInfo<<"Writing refined geometry to XML...\n";
+        gsInfo<<"Path = "<<geometryRef<<"\n";
+        gsWrite(mp,geometryRef);
     }
     //! [Export visualization in ParaView]
     if (plot)
