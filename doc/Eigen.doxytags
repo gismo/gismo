@@ -219,34 +219,34 @@
     <class kind="class">Eigen::Transpose</class>
     <class kind="class">Eigen::Triplet</class>
   </compound>
-  <compound kind="group">
+  <compound kind="page">
     <name>DenseMatrixManipulation_chapter</name>
     <title>Dense matrix and array manipulation</title>
-    <filename>group__DenseMatrixManipulation__chapter.html</filename>
+    <filename>group__DenseMatrixManipulation__chapter</filename>
   </compound>
-  <compound kind="group">
+  <compound kind="page">
     <name>DenseLinearSolvers_chapter</name>
     <title>Dense linear problems and decompositions</title>
-    <filename>group__DenseLinearSolvers__chapter.html</filename>
+    <filename>group__DenseLinearSolvers__chapter</filename>
   </compound>
-  <compound kind="group">
+  <compound kind="page">
     <name>Sparse_chapter</name>
     <title>Sparse linear algebra</title>
-    <filename>group__Sparse__chapter.html</filename>
+    <filename>group__Sparse__chapter</filename>
   </compound>
-  <compound kind="group">
+  <compound kind="page">
     <name>QuickRefPage</name>
     <title>Quick reference guide</title>
-    <filename>group__QuickRefPage.html</filename>
+    <filename>group__QuickRefPage</filename>
   </compound>
-  <compound kind="group">
+  <compound kind="page">
     <name>SparseQuickRefPage</name>
     <title>Quick reference guide for sparse matrices</title>
-    <filename>group__SparseQuickRefPage.html</filename>
+    <filename>group__SparseQuickRefPage</filename>
   </compound>
-  <compound kind="group">
+  <compound kind="page">
     <name>TopicAliasing</name>
     <title>Aliasing</title>
-    <filename>group__TopicAliasing.html</filename>
+    <filename>group__TopicAliasing</filename>
   </compound>
 </tagfile>

@@ -9,6 +9,7 @@
 namespace gismo {
 
 /** \defgroup Core Core module
+\ingroup Modules
 
 The \b Core module is the backbone of the library. Here an abstract
 interface is defined for a gsBasis, that is, a set of real-valued

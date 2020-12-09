@@ -21,20 +21,26 @@ if(DOXYGEN_FOUND)
     SET(HAVE_DOT NO)
   endif (DOT_EXECUTABLE)
 
-  if(CMAKE_COMPILER_IS_GNUCXX)
-    if(CMAKE_SYSTEM_NAME MATCHES Linux)
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1 -g1")
-    endif(CMAKE_SYSTEM_NAME MATCHES Linux)
-  endif(CMAKE_COMPILER_IS_GNUCXX)
+#  if(CMAKE_COMPILER_IS_GNUCXX)
+#    if(CMAKE_SYSTEM_NAME MATCHES Linux)
+#      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1 -g1")
+#    endif(CMAKE_SYSTEM_NAME MATCHES Linux)
+#  endif(CMAKE_COMPILER_IS_GNUCXX)
 
   # Set some Doxygen flags
   set(GISMO_DOXY_PROJECT_NAME             "G+Smo")
   set(GISMO_DOXY_OUTPUT_DIRECTORY_SUFFIX  "")
-  set(GISMO_DOXY_INPUT                    "\"${gismo_SOURCE_DIR}/src\" \"${gismo_SOURCE_DIR}/doc\" \"${gismo_SOURCE_DIR}/plugins\" \"${gismo_SOURCE_DIR}/extensions\" \"${gismo_BINARY_DIR}/gsCore\"") #\"${gismo_SOURCE_DIR}/examples\"
+  set(GISMO_DOXY_INPUT                    "\"${gismo_SOURCE_DIR}/src\" \"${gismo_SOURCE_DIR}/doc\" \"${gismo_SOURCE_DIR}/extensions\" \"${gismo_BINARY_DIR}/gsCore\"") #\"${gismo_SOURCE_DIR}/plugins\" \"${gismo_SOURCE_DIR}/examples\"
+#  set(GISMO_DOXY_INPUT                    \"${gismo_SOURCE_DIR}/extensions\")
   # Uncomment the line below to have doxygen process only
   # what is inside the doc folder when typing 'make doc'
-  #set(GISMO_DOXY_INPUT                    " \"${gismo_SOURCE_DIR}/doc\" ")
+  # This is ment to improve doc generation time. However, a very good way to
+  # tweak doxygen temporarily is to go to CMAKE_BINARY_DIR/doc and edit
+  # the Doxyfile directly. Then running doxygen inside that folder will
+  # re-generate the doc html pages.
+  #set(GISMO_DOXY_INPUT                    " \"${gismo_SOURCE_DIR}/doc\" \"${gismo_SOURCE_DIR}/extensions\" ")
   set(IMAGE_PATH        "\"${gismo_SOURCE_DIR}/doc/figs\"")
+  set(GISMO_DOXY_EXCLUDE                    "\"${gismo_SOURCE_DIR}/external\" ${IMAGE_PATH} ")
   set(GISMO_DOXY_HTML_COLORSTYLE_HUE      "120") #220
   set(GISMO_DOXY_HTML_COLORSTYLE_SAT      "100") #100
   set(GISMO_DOXY_HTML_COLORSTYLE_GAMMA    "100")  # 80
@@ -61,10 +67,10 @@ if(DOXYGEN_FOUND)
     elseif(UNIX)
       execute_process(COMMAND "date" "+%d/%m/%Y" OUTPUT_VARIABLE TODAY)
       string(REGEX REPLACE "(..)/(..)/..(..).*" "\\1/\\2/\\3" TODAY ${TODAY})
-    else (WIN32)
-      message(SEND_ERROR "date not implemented")
-      set(${RESULT} 000000)
-    endif (WIN32)
+    else(WIN32)
+      message(WARNING "date not implemented")
+      set(TODAY 000000)
+    endif(WIN32)
   else()
     string(TIMESTAMP TODAY "%d/%m/%Y")
   endif()
