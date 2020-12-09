@@ -22,7 +22,7 @@ if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT CMAKE_CXX_COMPILER_ID MATC
   set(CMAKE_VISIBILITY_INLINES_HIDDEN 1 )
 endif()
 
-# Set a default coefficient numeric types if not specified
+# Set a default coefficient numeric type if not specified
 if(NOT GISMO_COEFF_TYPE)
   set (GISMO_COEFF_TYPE "double" CACHE STRING
    "Coefficient type(float, double, long double, mpfr::mpreal, mpq_class, posit_32_2)" FORCE)
@@ -36,6 +36,7 @@ endif()
 set_property(CACHE GISMO_COEFF_TYPE PROPERTY STRINGS
 "float" "double" "long double" "mpfr::mpreal" "mpq_class" "posit_32_2")
 
+# Set a default index type if not specified
 if(NOT GISMO_INDEX_TYPE)
    set (GISMO_INDEX_TYPE "int" CACHE STRING
    #math(EXPR BITSZ_VOID_P "8*${CMAKE_SIZEOF_VOID_P}")
@@ -43,6 +44,12 @@ if(NOT GISMO_INDEX_TYPE)
    "Index type(int, int32_t, int64_t, long, long long)" FORCE)
    set_property(CACHE GISMO_INDEX_TYPE PROPERTY STRINGS
    "int" "int32_t" "int64_t" "long" "long long" )
+endif()
+
+# Make sure that mpq_class is not used together with int64_t or long long
+if (GISMO_COEFF_TYPE STREQUAL "mpq_class" AND GISMO_INDEX_TYPE STREQUAL "int64_t" OR
+    GISMO_COEFF_TYPE STREQUAL "mpq_class" AND GISMO_INDEX_TYPE STREQUAL "long long")
+  message(FATAL_ERROR "GISMO_COEFF_TYPE='mpq_class' cannot be used together with GISMO_INDEX_TYPE='int64_t' or 'long long'")
 endif()
 
 # Set a default build type if none was specified
