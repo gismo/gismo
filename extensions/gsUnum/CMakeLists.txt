@@ -34,5 +34,5 @@ set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${UNUM_INCLUDE_DIR}
   CACHE INTERNAL "gismo include directories")
 
 # Install Unum header files
-install(DIRECTORY ${UNUM_INCLUDE_DIR}
-        DESTINATION include/gismo/unum/ OPTIONAL)
+install(DIRECTORY ${UNUM_INCLUDE_DIR}/universal
+        DESTINATION include/gismo/ OPTIONAL)
