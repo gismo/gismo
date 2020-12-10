@@ -108,7 +108,7 @@ if  (${GISMO_WITH_MPI})
 message ("  GISMO_WITH_MPI          ${GISMO_WITH_MPI}")
 endif()
 
-option(GISMO_WITH_GMP            "With MPQ"                  false  )
+option(GISMO_WITH_GMP            "With GMP"                  false  )
 if  (${GISMO_WITH_GMP})
 message ("  GISMO_WITH_GMP          ${GISMO_WITH_GMP}")
 endif()
