@@ -35,4 +35,9 @@ set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${UNUM_INCLUDE_DIR}
 
 # Install Unum header files
 install(DIRECTORY ${UNUM_INCLUDE_DIR}/universal
-        DESTINATION include/gismo/ OPTIONAL)
+        DESTINATION include/gismo/)
+
+# Install gsUnum extension header files
+install(DIRECTORY ${PROJECT_SOURCE_DIR}
+        DESTINATION include/gismo/
+        FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
