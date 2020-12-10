@@ -1216,7 +1216,7 @@ int main(int argc, char *argv[])
         bc.addCondition(boundary::west, condition_type::clamped, 0, 0, false, 2 );
 
         // Pressure
-        pressure = 5e3;
+        pressure = 1e3;
     }
 
     else if (testCase == 10)
@@ -1422,6 +1422,9 @@ int main(int argc, char *argv[])
         bc.container("Weak Clamped")
     );
 
+    // For Neumann conditions
+    A.assembleRhsBc(u * g_N * nv(defG).norm(), bc.neumannSides() );
+
     A.assemble(
         (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
         ,
@@ -1485,9 +1488,7 @@ int main(int argc, char *argv[])
                 , u * F * meas(G) + pressure * u * sn(defG).normalized() * meas(G) - ( ( N * E_m_der.tr() + M * E_f_der.tr() ) * meas(G) ).tr()
                 );
 
-            // For Neumann (same for Dirichlet/Nitche) conditions
-            //variable g_N = A.getBdrFunction(); //defined already before
-            // A.assembleRhsBc(u * g_N, bc.neumannSides() );
+            A.assembleRhsBc(u * g_N * nv(defG).norm(), bc.neumannSides() );
 
             A.assembleLhsRhsBc
             (
