@@ -1,9 +1,45 @@
+/*
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
 namespace gismo {
 
 /**
   \page Extensions Extensions
 
+  \ref Elasticity
 
+  \ref Ipopt
+
+  \subpage gsTrilinos
+
+  \subpage gsCompFlow
+
+  \subpage gsCoDiPack
+
+  \subpage gsExaStencils
+
+  \subpage gsMultiPrecision
+
+  \subpage gsOpenCascade
+
+  \subpage gsOpennurbs
+
+  \subpage gsParasolid
+
+  \subpage gsSpectra
+
+  \subpage gsUnitTest
+
+  \subpage gsUnum
 
 */
+  //\subpage motor
+  //\subpage unsupported
+  //\subpage gsParaview
+  //\subpage gsAxel
 }
