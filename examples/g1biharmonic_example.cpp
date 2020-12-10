@@ -147,6 +147,10 @@ int main(int argc, char *argv[])
             string_geo = "planar/multiPatches/6_patch_curved.xml";
             numDegree = 0;
             break;
+        case 18:
+            string_geo = "planar/multiPatches/yeti_mp.xml";
+            numDegree = 1;
+            break;
 
         case 20:
             string_geo = "domain2d/lake.xml";

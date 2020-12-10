@@ -385,6 +385,8 @@ void gsG1System<T>::initialize(gsMultiPatch<> & mp, std::vector<gsMultiBasis<>> 
         index_t m_r = 1; // Here fixed to 1 TODO MORE GENERAL
         index_t m_n = basis_edge.numElements();
 
+        gsInfo << "m_n" << m_n << "\n";
+
         numBasisFunctions[0][i+1] = numBasisFunctions[0][i] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p - 9;
         sizePlusInt[i] = (m_p - m_r - 1) * (m_n - 1) + m_p + 1;
     }
