@@ -28,11 +28,6 @@ gismo_fetch_directory(unum
 
 # Set Unum include directory
 set(UNUM_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/unum/include CACHE INTERNAL "")
-#include_directories(${UNUM_INCLUDE_DIR})
-
-# Add gsUnum extension to the list of G+Smo extensions
-set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
-    CACHE INTERNAL "gismo extensions to be included")
 
 # Add Unum include directory to G+Smo standard include directories
 set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${UNUM_INCLUDE_DIR}
