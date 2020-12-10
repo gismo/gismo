@@ -34,7 +34,7 @@ _CentOS/Red Hat_
     ```
 2.  Installation of the additional libraries and header files
     ```bash
-    sudo yum install freetype-devel mesa-libGL-devel tk-devel
+    sudo yum install freetype-devel libXi-devel libXmu-devel mesa-libGL-devel tk-devel
     ```
 
 _Debian/Ubuntu_
