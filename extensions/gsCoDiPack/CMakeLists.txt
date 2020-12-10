@@ -34,5 +34,10 @@ set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
   CACHE INTERNAL "gismo include directories")
 
 # Install CoDiPack header files
-install(DIRECTORY ${CODIPACK_INCLUDE_DIR}
-        DESTINATION include/gismo/ OPTIONAL)
+install(DIRECTORY ${CODIPACK_INCLUDE_DIR}/
+        DESTINATION include/gismo/ )
+
+# Install gsCoDiPack header file
+install(DIRECTORY ${PROJECT_SOURCE_DIR}
+        DESTINATION include/gismo/
+        FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
