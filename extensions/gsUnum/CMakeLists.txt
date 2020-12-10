@@ -5,21 +5,39 @@
 ## Author: Matthias Moller
 ######################################################################
 
-## Unum extension
+# Universal number arithmetic (Unum) extension
 project(gsUnumExtension)
+
+if(CMAKE_CXX_STANDARD EQUAL "98" OR CMAKE_CXX_STANDARD EQUAL "11" )
+  message(FATAL_ERROR "CMAKE_CXX_STANDARD must be 14 or better for Unum extensions to compile.")
+endif()
 
 # Apply same configuration as G+Smo
 include(gsConfig)
 
-# Fetch Unum sources at configure time
+##
+## Universal number arithmetic library
+##
+
+# Download Unum sources at configure time
 include(gsFetch)
-gismo_fetch_directory(Unum
+gismo_fetch_directory(unum
     GIT_REPOSITORY https://github.com/stillwater-sc/universal.git
     DESTINATION    external
 )
 
-set(UNUM_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/Unum/posit CACHE INTERNAL "")
-include_directories(${UNUM_INCLUDE_DIR})
+# Set Unum include directory
+set(UNUM_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/unum/include CACHE INTERNAL "")
+#include_directories(${UNUM_INCLUDE_DIR})
 
+# Add gsUnum extension to the list of G+Smo extensions
+set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
+    CACHE INTERNAL "gismo extensions to be included")
+
+# Add Unum include directory to G+Smo standard include directories
+set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${UNUM_INCLUDE_DIR}
+  CACHE INTERNAL "gismo include directories")
+
+# Install Unum header files
 install(DIRECTORY ${UNUM_INCLUDE_DIR}
-        DESTINATION include/posit/ OPTIONAL)
+        DESTINATION include/gismo/unum/ OPTIONAL)
