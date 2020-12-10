@@ -5,7 +5,7 @@
 ## Author: Angelos Mantzaflaris
 ######################################################################
 
-cmake_minimum_required(VERSION 2.8.8) #CMake 3.19 warns to change to 2.8.12
+cmake_minimum_required(VERSION 2.8.12) #CMake 3.19 warns to change to 2.8.12
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
@@ -247,8 +247,8 @@ endif(GISMO_WITH_UNUM)
 
 if(GISMO_WITH_OCC)
   add_subdirectory(extensions/gsOpenCascade)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${OCC_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  #set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${OCC_INCLUDE_DIR}
+  #CACHE INTERNAL "${PROJECT_NAME} include directories")
   #include_directories(${OCC_INCLUDE_DIR})
 endif(GISMO_WITH_OCC)
 
