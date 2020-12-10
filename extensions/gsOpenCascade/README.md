@@ -24,14 +24,30 @@ packages to be installed on your system. These are essentially OpenGL,
 TCL/TK and X11. Below we give instructions for different operating
 systems that are known to work.
 
-_Linux_
+__Linux__
 
-__Debian/Ubuntu__
+_CentOS/Red Hat_
 
-```bash
-sudo apt-get install libgl-dev libxi-dev libxmu-dev mesa-common-dev tk-dev
-```
+1.  Installation of the general development tools
+    ```bash
+    sudo yum group install "Development Tools"
+    ```
+2.  Installation of the additional libraries and header files
+    ```bash
+    sudo yum install freetype-devel libXi-devel libXmu-devel mesa-libGL-devel tk-devel
+    ```
 
-_macOS_
+_Debian/Ubuntu_
+
+1.  Installation of the general development tools
+    ```bash
+    sudo apt-get install build-essential
+    ```
+2.  Installation of the additional libraries and header files
+    ```bash
+    sudo apt-get install libgl-dev libxi-dev libxmu-dev mesa-common-dev tk-dev
+    ```
+
+__macOS__
 
 _Windows_
