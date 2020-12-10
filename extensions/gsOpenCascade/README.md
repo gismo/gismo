@@ -8,7 +8,7 @@ G+Smo extension for the [Open CASCADE Technology](https://dev.opencascade.org) (
 |OS support|Linux, Windows, macOS|
 |Status|completed|
 |Developer|Angelos Mantzaflaris|
-|Maintainer|M.Moller@tudelft.nl|
+|Maintainer|angelos.mantzaflaris@inria.fr|
 |Last checked|10-12-2020|
 
 ***

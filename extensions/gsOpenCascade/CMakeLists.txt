@@ -40,8 +40,8 @@ if (NOT OpenCascade_FOUND)
                  -DCMAKE_INSTALL_MESSAGE=NEVER
                  -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                  -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-      DOWNLOAD_COMMAND     ""
-      UPDATE_COMMAND ""
+      DOWNLOAD_COMMAND  ""
+      UPDATE_COMMAND    ""
       )
 
   # Set OpenCascade include directory
@@ -52,6 +52,11 @@ if (NOT OpenCascade_FOUND)
   foreach(OCC_LIB ${OCC_LIBNAMES})
     list(APPEND OCC_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/OCC-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}${OCC_LIB}${CMAKE_SHARED_LIBRARY_SUFFIX})
   endforeach()
+
+  # Install OpenCascade header files
+  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/OCC-prefix/include/opencascade
+      DESTINATION include/gismo/opencascade/
+      FILES_MATCHING PATTERN "*.h")
 endif()
 
 include_directories(SYSTEM ${OCC_INCLUDE_DIR})
