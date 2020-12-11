@@ -14,12 +14,12 @@ G+Smo extension for the [Universal Number Arithmetic](https://github.com/stillwa
 
 ***
 __Table of content__
-1. [Philosophy](#philosophy)
+1. [Introduction](#introduction)
 2. [Posits](#posits)
-
+3. [Usage example](#usage-example)
 ***
 
-## Physolophy
+## Introduction
 
 The Universal Number Arithmetic extension builds on the open-source header-only [Universal](https://github.com/stillwater-sc/universal) library developed by Stillwater Supercomputing, Inc. The Universal library provides several drop-in replacements for IEEE floating-point which aim at reproducibility of arithmetic computations especially in parallel execution.
 
@@ -43,3 +43,5 @@ The above data types can be used as drop-in replacements for `double` and `float
 ```bash
 cmake .. -DGISMO_COEFF_TYPE=posit_32_2
 ```
+
+## Usage example
