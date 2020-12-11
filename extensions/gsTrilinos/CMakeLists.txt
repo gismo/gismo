@@ -36,6 +36,10 @@ aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
 # Apply same configuration as G+Smo
 include(gsConfig)
 
+if(NOT GISMO_WITH_MPI)
+  message(FATAL_ERROR "Trilinos requires GISMO_WITH_MPI=ON. Please enable MPI and try again.")
+endif()
+
 # Look for pre-installed Trilinos libraries
 find_package(TRILINOS QUIET)
 
