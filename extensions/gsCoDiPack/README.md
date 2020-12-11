@@ -13,9 +13,36 @@ G+Smo extension for the [CoDiPack - Code Differentiation Package](https://www.sc
 |Last checked|10-12-2020|
 
 ***
+__Table of content__
+1. [Introduction](#introduction)
+2. [Usage example](#usage_example)
+***
 
-The CoDiPack extension provides two new scalar types
-`codi::RealForward` and `codi::RealReverse` that can be used in place
-of `real_t` to enable algorithmic differentiation (AD) in forward and
-reverse mode, respectively. This extension requires C++11 or better
-and compilation in header-only mode.
+__Introdution__
+
+The CoDiPack extension builds on the open-source [CoDiPack](https://github.com/SciCompKL/CoDiPack) (Code Differentiation Package) library developed by the [Scientific Computing Group](http://www.scicomp.uni-kl.de/) at the TU Kaiserslautern. CoDiPack is a tool for gradient evaluation in computer programs. It supports the features:
+
+-  Forward mode of Algorithmic Differentiation(AD)
+-  Reverse mode of Algorithmic Differentiation(AD)
+-  Different tape implementations
+-  An AdjointMPI interface
+-  External functions
+-  Higher order derivatives
+
+G+Smo's CoDiPack extension provides two new scalar types, ```codi::RealForward``` and ```codi::RealReverse```, that can be used in place of ```real_t``` to enable algorithmic differentiation (AD) in forward and reverse mode, respectively. This extension requires C++11 (```-DCMAKE_CXX_STANDARD=11```) or better enabled and compilation in header-only mode (```-DGISMO_BUILD_LIB=OFF```).
+
+__Usage example__
+
+The file ```codipack_example.cpp``` illustrates the basic usage of the CoDiPack extension.
+
+1.  Configuration and compilation
+    ```bash
+    mkdir build
+    cd build
+    cmake .. -DCMAKE_CXX_STANDARD=11 -DGISMO_BUILD_LIB=OFF -DGISMO_WITH_CODIPACK=ON
+    make codipack_example -j4
+    ```
+2.  Execution
+    ```bash
+    ./bin/codipack_example
+    ```
