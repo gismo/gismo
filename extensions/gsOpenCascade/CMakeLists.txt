@@ -5,6 +5,7 @@
 ## Author: Angelos Mantzaflaris 
 ######################################################################
 
+# Open CASCADE Technology extension
 project(gsOpenCascade)
 
 if(CMAKE_CXX_STANDARD EQUAL "98")
@@ -59,32 +60,41 @@ if (NOT OpenCascade_FOUND)
       FILES_MATCHING PATTERN "*.h")
 endif()
 
+##
+## gsOpenCascade extension
+##
 include_directories(SYSTEM ${OCC_INCLUDE_DIR})
-
 set(OCC_SOURCES gsReadBrep.cpp)
 
+# Compile gsMultiPrecision extension as part of the G+Smo library
 add_library(${PROJECT_NAME} OBJECT ${OCC_SOURCES})
 
 if (NOT OpenCascade_FOUND)
   add_dependencies(${PROJECT_NAME} OCC)
 endif(NOT OpenCascade_FOUND)
 
+# Set standard properties for all G+Smo extensions
 set_target_properties(${PROJECT_NAME} PROPERTIES
     COMPILE_DEFINITIONS gismo_EXPORTS 
     POSITION_INDEPENDENT_CODE ON
     LINKER_LANGUAGE CXX
     CXX_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN ON
-    FOLDER "G+Smo extensions"  )
+    FOLDER "G+Smo extensions" )
 
-# Apply same configuration as G+Smo
-include( gsConfig)
-
+# Add gsOpenCascade extension to the list of G+Smo extensions
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
     CACHE INTERNAL "gismo extensions to be included")
+    
+# Add OpenCascade include directory to G+Smo standard include directories
+set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${OCC_INCLUDE_DIR}
+    CACHE INTERNAL "gismo include directories")
+
+# Link G+Smo to OpenCascade library (either dynamically or statically)
 set(gismo_LINKER ${gismo_LINKER} ${OCC_LIBRARIES}
     CACHE INTERNAL "gismo extra linker objects")
 
+# Install gsOpenCascade extension header files
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
         DESTINATION include/gismo/gsOpenCascade/
         FILES_MATCHING PATTERN "*.h")

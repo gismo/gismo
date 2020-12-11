@@ -113,7 +113,7 @@ if (GISMO_WITH_MPFR)
 endif(GISMO_WITH_MPFR)
 
 ##
-## gsMultiPrecision extensions
+## gsMultiPrecision extension
 ##
 
 # Compile gsMultiPrecision extension as part of the G+Smo library
