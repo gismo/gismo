@@ -45,50 +45,52 @@ if(NOT GISMO_WITH_MPI)
 endif()
 
 # Look for pre-installed Trilinos libraries
-find_package(TRILINOS QUIET)
+find_package(Trilinos QUIET)
 
 ##
 ## Trilinos packages
 ##
-if (NOT TRILINOS_FOUND)
+if (NOT Trilinos_FOUND)
 
   if(CMAKE_CXX_STANDARD EQUAL "98")
     message(FATAL_ERROR "CMAKE_CXX_STANDARD must be 11 or better for Trilinos extensions to compile.")
   endif()
 
   # Set Trilinos version
-  set(TRILINOS_VER "13-0-1")
-  set(TRILINOS_MD5 "9d76b494fe1c00cedb93d51dfc666a27") #"de912cca43c2ca3b74aa08528ac39dbd")
+  set(Trilinos_VER "13-0-1")
+  set(Trilinos_MD5 "9d76b494fe1c00cedb93d51dfc666a27") #"de912cca43c2ca3b74aa08528ac39dbd")
 
   # Download Trilinos sources at configure time
   include(gsFetch)
   gismo_fetch_directory(Trilinos
-    URL            https://github.com/trilinos/Trilinos/archive/trilinos-release-${TRILINOS_VER}.tar.gz
-    URL_MD5        ${TRILINOS_MD5}
+    URL            https://github.com/trilinos/Trilinos/archive/trilinos-release-${Trilinos_VER}.tar.gz
+    URL_MD5        ${Trilinos_MD5}
     DESTINATION    external
+    PATCH_COMMAND  patch -p1 -N -d ${gismo_externals}/Trilinos < ${CMAKE_CURRENT_SOURCE_DIR}/Trilinos.patch
     )
 
   # Global Trilinos configuration
-  set(BUILD_SHARED_LIBS                          OFF)
-  set(Trilinos_ENABLE_CXX11                       ON)
+  set(Trilinos_BUILD_SHARED_LIBS                 OFF)
   set(Trilinos_ENABLE_TESTS                      OFF)
+
+  set(Trilinos_ENABLE_CXX11                       ON)
 
   # Smart reference-counted pointer class
   set(Trilinos_ENABLE_Teuchos                     ON)
-  set(Trilinos_ENABLE_TeuchosParser               ON)
+  #set(Trilinos_ENABLE_TeuchosParser               ON)
   
   # Linear algebra backends
   set(Trilinos_ENABLE_Epetra                      ON) # non-templated version
   set(Trilinos_ENABLE_Tpetra                      ON) # templated version
-  set(Trilinos_ENABLE_COMPLEX_DOUBLE              ON) # needed by Anasazi
-  set(Trilinos_ENABLE_COMPLEX_FLOAT               ON) # needed by Anasazi
-  set(Teuchos_ENABLE_COMPLEX                      ON)
-  set(Teuchos_ENABLE_DOUBLE                       ON)
-  set(Teuchos_ENABLE_FLOAT                        ON)
-  set(Tpetra_INST_COMPLEX_DOUBLE                  ON)
-  set(Tpetra_INST_COMPLEX_FLOAT                   ON)
-  set(Tpetra_INST_DOUBLE                          ON)
-  set(Tpetra_INST_FLOAT                           ON)
+  #set(Trilinos_ENABLE_COMPLEX_DOUBLE              ON) # needed by Anasazi
+  #set(Trilinos_ENABLE_COMPLEX_FLOAT               ON) # needed by Anasazi
+  #set(Teuchos_ENABLE_COMPLEX                      ON)
+  #set(Teuchos_ENABLE_DOUBLE                       ON)
+  #set(Teuchos_ENABLE_FLOAT                        ON)
+  #set(Tpetra_INST_COMPLEX_DOUBLE                  ON)
+  #set(Tpetra_INST_COMPLEX_FLOAT                   ON)
+  #set(Tpetra_INST_DOUBLE                          ON)
+  #set(Tpetra_INST_FLOAT                           ON)
   
   # Sparse direct solvers
   set(Trilinos_ENABLE_Amesos                      ON)
@@ -106,15 +108,16 @@ if (NOT TRILINOS_FOUND)
   set(Trilinos_ENABLE_NOX                         ON)
   set(NOX_ENABLE_ThyraCore                        ON)
   set(NOX_ENABLE_ThyraTpetraAdapters              ON)
-  
+  set(NOX_ENABLE_ThyraEpetraExtAdapters           ON)
+
   # Additional packages
   #set(Trilinos_ENABLE_Pamgen                     OFF) # parallel mesh generation (buggy cmake)
   
   # Note: below are options that are required for fine-grained
   # control of individual packages enabled above
-  set(NOX_ENABLE_ThyraCore                        ON)
-  set(NOX_ENABLE_ThyraEpetraAdapters              ON)
-  set(NOX_ENABLE_ThyraEpetraExtAdapters           ON)
+  #set(NOX_ENABLE_ThyraCore                        ON)
+  #set(NOX_ENABLE_ThyraEpetraAdapters              ON)
+  #set(NOX_ENABLE_ThyraEpetraExtAdapters           ON)
   
   # Note: we disable all optional packages by default
   set(Trilinos_ENABLE_ALL_OPTIONAL_PACKAGES      OFF)
@@ -151,110 +154,13 @@ if (NOT TRILINOS_FOUND)
 
   add_subdirectory(${gismo_externals}/Trilinos ${gismo_BINARY_DIR}/external/Trilinos)
   
-  if(NOT)
-  include(ExternalProject)
-  ExternalProject_Add(Trilinos
-          SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos
-          URL_MD5 ${TRILINOS_MD5}
-          URL https://github.com/trilinos/Trilinos/archive/trilinos-release-${TRILINOS_VER}.tar.gz
-          CMAKE_ARGS   -DCMAKE_BUILD_TYPE=Release
-                       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                       -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
-                       -DBUILD_SHARED_LIBS:BOOL=ON
-                       -DTrilinos_ENABLE_CXX11=ON
-                       -DTrilinos_ENABLE_TESTS=OFF
-                       
-                       # Smart reference-counted pointer class
-                       -DTrilinos_ENABLE_Teuchos=ON
-                       -DTrilinos_ENABLE_TeuchosParser=ON
+  foreach(target ${Trilinos_LIBRARIES})
+    set_property(TARGET ${target} PROPERTY POSITION_INDEPENDENT_CODE ON)
+  endforeach()
 
-                       # Linear algebra backends
-                       -DTrilinos_ENABLE_Epetra=ON # non-templated version
-                       -DTrilinos_ENABLE_Tpetra=ON # templated version
-                       -DTrilinos_ENABLE_COMPLEX_DOUBLE=ON # needed by Anasazi
-                       -DTpetra_INST_COMPLEX_DOUBLE=ON
+endif(NOT Trilinos_FOUND)
 
-                       # Direct solvers
-                       -DTrilinos_ENABLE_Amesos=ON
-
-                       # Iterative solvers
-                       -DTrilinos_ENABLE_AztecOO=ON
-                       -DTrilinos_ENABLE_Belos=ON
-                       -DTrilinos_ENABLE_ML=ON # multilevel solver
-                       -DTrilinos_ENABLE_Ifpack=ON # Ifpack
-
-                       # Eigenvalue solvers
-                       -DTrilinos_ENABLE_Anasazi=ON
-
-                       # Nonlinear solvers
-                       -DTrilinos_ENABLE_NOX=ON
-
-                       # Additional packages
-                       -DTrilinos_ENABLE_Pamgen=OFF # parallel mesh generation (buggy cmake)
-
-                       # Note: below are options that are required for fine-grained
-                       # control of individual packages enabled above
-                       -DNOX_ENABLE_ThyraCore=ON
-                       -DNOX_ENABLE_ThyraEpetraAdapters=ON
-                       -DNOX_ENABLE_ThyraEpetraExtAdapters=ON
-
-                       # Note: we disable all optional packages by default
-                       -DTrilinos_ENABLE_ALL_OPTIONAL_PACKAGES=OFF
-                       
-                       # and enable individual packages below
-                       -DTPL_ENABLE_MPI=${GISMO_WITH_MPI}
-                       -DTPL_MPI_INCLUDE_DIRS=${TPL_MPI_INCLUDE_DIRS}
-                       -DTPL_MPI_LIBRARY_DIRS=${TPL_MPI_LIBRARY_DIRS}
-                       #-DMPI_BASE_DIR=${TPL_MPI_BASE_DIR}
-                       #-DTPL_MPI_LIBRARIES=${MPI_CXX_LIBRARIES} # bug ? 2 elements
-                       # Note: this must be ON, otherwise Trilinos compilation fails.
-                       # Must be OFF on MS Windows
-
-                       ## Point to specific paths (! no space after "=")
-                       -DTPL_LAPACK_LIBRARIES=${LAPACK_LIBRARIES}
-                       -DTPL_BLAS_LIBRARIES=${LAPACK_LIBRARIES}
-
-                       # Pardiso solvers
-                       -DTPL_ENABLE_PADISO=${GISMO_WITH_PARDISO}
-
-                       # SuperLU solvers
-                       -DTPL_ENABLE_SuperLU=${GISMO_WITH_SUPERLU}
-                       -DTPL_SuperLU_INCLUDE_DIRS=${SUPERLU_INCLUDES}
-                       -DTPL_SuperLU_LIBRARIES=${SUPERLU_LIBRARIES}
-
-                       # Umfpack solvers
-                       -DTPL_ENABLE_UMFPACK=${GISMO_WITH_UMFPACK}
-
-                       # Taucs solvers
-                       -DTPL_ENABLE_TAUCS=${GISMO_WITH_TAUCS}
-
-                       #-DTPL_ENABLE_Pthread=OFF # Note: MS Win might not have Pthread
-                       UPDATE_COMMAND ""
-                       )
-                     endif()
-      set(TRILINOS_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/include CACHE INTERNAL "")
-      set(TRILINOS_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}epetra${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoscore${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchosnumerics${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}kokkoscore${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoskokkoscomm${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchosparameterlist${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoscomm${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoskokkoscompat${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchosremainder${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}amesos${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}aztecoo${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}epetraext${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}belos${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}anasazi${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}belosepetra${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ifpack${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ml${CMAKE_SHARED_LIBRARY_SUFFIX}
-      CACHE INTERNAL "")
-endif(NOT TRILINOS_FOUND)
-
-include_directories(${TRILINOS_INCLUDE_DIR} ${TPL_MPI_INCLUDE_DIRS})
+include_directories(${Trilinos_INCLUDE_DIRS}) # ${TPL_MPI_INCLUDE_DIRS})
 
 ##
 ## gsTrilinos extension
@@ -297,6 +203,6 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}
 ##
 ## Add dependencies
 ##
-if(GISMO_WITH_TRILINOS AND NOT TRILINOS_FOUND)
+if(GISMO_WITH_TRILINOS AND NOT Trilinos_FOUND)
   add_dependencies(${PROJECT_NAME} ${Trilinos_LIBRARIES})
-endif(GISMO_WITH_TRILINOS AND NOT TRILINOS_FOUND)
+endif(GISMO_WITH_TRILINOS AND NOT Trilinos_FOUND)
