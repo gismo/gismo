@@ -25,6 +25,10 @@ if(POLICY CMP0063)# CMake 3.3
 cmake_policy(SET CMP0063 NEW)
 endif()
 
+if(POLICY CMP0077)
+cmake_policy(SET CMP0077 NEW)
+endif()
+
 ## Trilinos extension
 project(gsTrilinosExtension)
 
@@ -39,21 +43,111 @@ include(gsConfig)
 # Look for pre-installed Trilinos libraries
 find_package(TRILINOS QUIET)
 
-# MPI
-find_path(TPL_MPI_INCLUDE_DIRS mpi.h ${MPI_INCLUDE_PATH})
-list(GET MPI_CXX_LIBRARIES 0 TPL_MPI_LIBRARY_DIRS)
-get_filename_component(TPL_MPI_LIBRARY_DIRS ${TPL_MPI_LIBRARY_DIRS} PATH)
-
+##
+## Trilinos packages
+##
 if (NOT TRILINOS_FOUND)
 
   if(CMAKE_CXX_STANDARD EQUAL "98")
     message(FATAL_ERROR "CMAKE_CXX_STANDARD must be 11 or better for Trilinos extensions to compile.")
   endif()
+
+  # Set Trilinos version
+  set(TRILINOS_VER "13-0-1")
+  set(TRILINOS_MD5 "9d76b494fe1c00cedb93d51dfc666a27") #"de912cca43c2ca3b74aa08528ac39dbd")
+
+  # Download Trilinos sources at configure time
+  include(gsFetch)
+  gismo_fetch_directory(Trilinos
+    URL            https://github.com/trilinos/Trilinos/archive/trilinos-release-${TRILINOS_VER}.tar.gz
+    URL_MD5        ${TRILINOS_MD5}
+    DESTINATION    external
+    )
+
+  # Global Trilinos configuration
+  set(BUILD_SHARED_LIBS                          OFF)
+  set(Trilinos_ENABLE_CXX11                       ON)
+  set(Trilinos_ENABLE_TESTS                      OFF)
+
+  # Smart reference-counted pointer class
+  set(Trilinos_ENABLE_Teuchos                     ON)
+  set(Trilinos_ENABLE_TeuchosParser               ON)
   
-  set(TRILINOS_VER "12-14-1")
-  set(TRILINOS_MD5 "de912cca43c2ca3b74aa08528ac39dbd")
-  message(STATUS "Using Trilinos version ${TRILINOS_VER} as an external package.")
+  # Linear algebra backends
+  set(Trilinos_ENABLE_Epetra                      ON) # non-templated version
+  set(Trilinos_ENABLE_Tpetra                      ON) # templated version
+  set(Trilinos_ENABLE_COMPLEX_DOUBLE              ON) # needed by Anasazi
+  set(Trilinos_ENABLE_COMPLEX_FLOAT               ON) # needed by Anasazi
+  set(Teuchos_ENABLE_COMPLEX                      ON)
+  set(Teuchos_ENABLE_DOUBLE                       ON)
+  set(Teuchos_ENABLE_FLOAT                        ON)
+  set(Tpetra_INST_COMPLEX_DOUBLE                  ON)
+  set(Tpetra_INST_COMPLEX_FLOAT                   ON)
+  set(Tpetra_INST_DOUBLE                          ON)
+  set(Tpetra_INST_FLOAT                           ON)
   
+  # Sparse direct solvers
+  set(Trilinos_ENABLE_Amesos                      ON)
+  
+  # Iterative solvers
+  set(Trilinos_ENABLE_AztecOO                     ON) # Krylov subspace solvers
+  set(Trilinos_ENABLE_Belos                       ON) # Krylov subspace solvers
+  set(Trilinos_ENABLE_ML                          ON) # Multilevel solver
+  set(Trilinos_ENABLE_Ifpack                      ON) # Ifpack
+  
+  # Eigenvalue solvers
+  set(Trilinos_ENABLE_Anasazi                     ON)
+  
+  # Nonlinear solvers
+  set(Trilinos_ENABLE_NOX                         ON)
+  set(NOX_ENABLE_ThyraCore                        ON)
+  set(NOX_ENABLE_ThyraTpetraAdapters              ON)
+  
+  # Additional packages
+  #set(Trilinos_ENABLE_Pamgen                     OFF) # parallel mesh generation (buggy cmake)
+  
+  # Note: below are options that are required for fine-grained
+  # control of individual packages enabled above
+  set(NOX_ENABLE_ThyraCore                        ON)
+  set(NOX_ENABLE_ThyraEpetraAdapters              ON)
+  set(NOX_ENABLE_ThyraEpetraExtAdapters           ON)
+  
+  # Note: we disable all optional packages by default
+  set(Trilinos_ENABLE_ALL_OPTIONAL_PACKAGES      OFF)
+
+  # OpenMP
+  set(TPL_ENABLE_OpenMP                          ${GISMO_WITH_OPENMP})
+  
+  # MPI
+  #find_path(TPL_MPI_INCLUDE_DIRS mpi.h ${MPI_INCLUDE_PATH})
+  #list(GET MPI_CXX_LIBRARIES 0 TPL_MPI_LIBRARY_DIRS)
+  #get_filename_component(TPL_MPI_LIBRARY_DIRS ${TPL_MPI_LIBRARY_DIRS} PATH)
+
+  set(TPL_ENABLE_MPI                              ${GISMO_WITH_MPI})
+  #set(TPL_MPI_INCLUDE_DIRS                        ${TPL_MPI_INCLUDE_DIRS})
+  #set(TPL_MPI_LIBRARY_DIRS                        ${TPL_MPI_LIBRARY_DIRS})
+  
+  ## Point to specific paths (! no space after "=")
+  set(TPL_LAPACK_LIBRARIES                        ${LAPACK_LIBRARIES})
+  set(TPL_BLAS_LIBRARIES                          ${LAPACK_LIBRARIES})
+  
+  # Pardiso solvers
+  set(TPL_ENABLE_PARDISO                          ${GISMO_WITH_PARDISO})
+  
+  # SuperLU solvers
+  set(TPL_ENABLE_SuperLU                          ${GISMO_WITH_SUPERLU})
+  set(TPL_SuperLU_INCLUDE_DIRS                    ${SUPERLU_INCLUDES})
+  set(TPL_SuperLU_LIBRARIES                       ${SUPERLU_LIBRARIES})
+  
+  # Umfpack solvers
+  set(TPL_ENABLE_UMFPACK                          ${GISMO_WITH_UMFPACK})
+  
+  # Taucs solvers
+  set(TPL_ENABLE_TAUCS                            ${GISMO_WITH_TAUCS})
+
+  add_subdirectory(${gismo_externals}/Trilinos ${gismo_BINARY_DIR}/external/Trilinos)
+  
+  if(NOT)
   include(ExternalProject)
   ExternalProject_Add(Trilinos
           SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos
@@ -133,7 +227,8 @@ if (NOT TRILINOS_FOUND)
 
                        #-DTPL_ENABLE_Pthread=OFF # Note: MS Win might not have Pthread
                        UPDATE_COMMAND ""
-      )
+                       )
+                     endif()
       set(TRILINOS_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/include CACHE INTERNAL "")
       set(TRILINOS_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}epetra${CMAKE_SHARED_LIBRARY_SUFFIX};
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoscore${CMAKE_SHARED_LIBRARY_SUFFIX};
@@ -157,19 +252,18 @@ endif(NOT TRILINOS_FOUND)
 
 include_directories(${TRILINOS_INCLUDE_DIR} ${TPL_MPI_INCLUDE_DIRS})
 
-# Compile statically the extension
+##
+## gsTrilinos extension
+##
+
+# Compile gsTrilinos extension as part of the G+Smo library
 add_library(${PROJECT_NAME} OBJECT
-${${PROJECT_NAME}_SOURCES}
-${${PROJECT_NAME}_HEADERS}
-${${PROJECT_NAME}_HPPFILES}
-#${TRILINOS_LIBRARIES}
-)
+    ${${PROJECT_NAME}_SOURCES}
+    ${${PROJECT_NAME}_HEADERS}
+    ${${PROJECT_NAME}_HPPFILES}
+    )
 
-if (NOT TRILINOS_FOUND)
-  add_dependencies(${PROJECT_NAME} Trilinos)
-  set(TRILINOS_FOUND TRUE)
-endif(NOT TRILINOS_FOUND)
-
+# Set standard properties for all G+Smo extensions
 set_target_properties(${PROJECT_NAME} PROPERTIES
     COMPILE_DEFINITIONS gismo_EXPORTS
     POSITION_INDEPENDENT_CODE ON
@@ -179,14 +273,26 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     FOLDER "G+Smo extensions"
     )
 
+# Add gsTrilinos extension to the list of G+Smo extensions
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
-    CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
-set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
+    CACHE INTERNAL "gismo extensions to be included")
 
-set(gismo_LINKER ${gismo_LINKER} ${LAPACK_LIBRARIES} ${TRILINOS_LIBRARIES}
-    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+# Add Trilinos include directories to G+Smo standard include directories
+set(GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${Trilinos_INCLUDE_DIRS}
+    CACHE INTERNAL "gismo include directories")
 
+# Link G+Smo to Trilinos libraries (either dynamically or statically)
+set(gismo_LINKER ${gismo_LINKER} ${LAPACK_LIBRARIES} ${Trilinos_LIBRARIES}
+    CACHE INTERNAL "gismo extra linker objects")
+
+# Install gsTrilinos extension header files
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
         DESTINATION include/gismo/gsTrilinos/
         FILES_MATCHING PATTERN "*.h")
+
+##
+## Add dependencies
+##
+if(GISMO_WITH_TRILINOS AND NOT TRILINOS_FOUND)
+  add_dependencies(${PROJECT_NAME} ${Trilinos_LIBRARIES})
+endif(GISMO_WITH_TRILINOS AND NOT TRILINOS_FOUND)
