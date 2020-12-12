@@ -374,13 +374,14 @@ public: // miscellaneous
     /// left of the domain beginnning.
     index_t numLeftGhosts() const
     {
-	return std::distance(ubegin(), domainUBegin());
+        return std::distance(ubegin(), domainUBegin());
     }
 
-    /// Analogously to numLeftGhosts.
+    /// Computes the number of right ghosts, i.e., of the knots to the
+    /// left of the domain beginnning.
     index_t numRightGhosts() const
     {
-	return std::distance(domainUEnd(), uend()) - 1;
+        return std::distance(domainUEnd(), uend()) - 1;
     }
 
 public:

@@ -632,10 +632,10 @@ void gsKnotVector<T>::initUniform( T first,
 
     const T h = (last-first) / (interior+1);
 
-    for(unsigned i = m_deg - mult_ends + 1, j=0; i!= 0; --i, ++j)
+    for(unsigned i = m_deg - mult_ends + 1, j=1; i!= 0; --i, ++j)
     {   // add left ghost knots
         m_repKnots.push_back(first-i*h);
-        m_multSum .push_back(j+1);
+        m_multSum .push_back(j);
     }
 
     m_repKnots.insert(m_repKnots.end(), mult_ends, first);
@@ -698,12 +698,12 @@ gsKnotVector<T>::uFind( const T u ) const
     GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
 
     // The last element is closed from both sides.
-    uiterator dend = uend();
+    uiterator dend = domainUEnd();
 
-    // if (u==*dend) // knot at domain end ?
-    //     return --dend;
-    // else
-        return std::upper_bound( ubegin(), dend, u ) - 1;
+    if (u==*dend) // knot at domain end ?
+        return --dend;
+    else
+        return std::upper_bound( domainUBegin(), dend, u ) - 1;
 }
 
 template<typename T>
@@ -727,15 +727,15 @@ typename gsKnotVector<T>::iterator
 gsKnotVector<T>::iFind( const T u ) const
 {
     // GISMO_ASSERT done in uFind().
-    //return begin() + uFind(u).lastAppearance();
+    return begin() + uFind(u).lastAppearance();
 
     // equivalent
-    //GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
-    iterator dend = domainEnd();
-    if ( u == *dend )
-	return --dend;
-    else
-	return std::upper_bound( domainBegin(), dend, u) - 1;
+    /*GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
+      iterator dend = domainEnd();
+      if ( u == *dend )
+      return --dend;
+      else
+      return std::upper_bound( domainBegin(), dend, u) - 1; */
 }
 
 template<typename T>

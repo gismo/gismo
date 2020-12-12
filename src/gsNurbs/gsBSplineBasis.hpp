@@ -214,7 +214,6 @@ gsMatrix<T> gsTensorBSplineBasis<1,T>::support(const index_t & i) const
     GISMO_ASSERT( static_cast<size_t>(i) < m_knots.size()-m_p-1,
                   "Invalid index of basis function." );
     gsMatrix<T> res(1,2);
-    res << m_knots[i], m_knots[i+m_p+1];
     res << ( i > m_p ? m_knots[i] : m_knots[m_p] ),
         ( static_cast<size_t>(i) < (m_knots.size()-2*m_p-2) ? m_knots[i+m_p+1] :
           m_knots[m_knots.size()-m_p-1] );
