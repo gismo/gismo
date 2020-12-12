@@ -1423,7 +1423,7 @@ int main(int argc, char *argv[])
     );
 
     // For Neumann conditions
-    A.assembleRhsBc(u * g_N * nv(defG).norm(), bc.neumannSides() );
+    A.assembleRhsBc(u * g_N * otangent(G).norm(), bc.neumannSides() );
 
     A.assemble(
         (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
@@ -1488,7 +1488,7 @@ int main(int argc, char *argv[])
                 , u * F * meas(G) + pressure * u * sn(defG).normalized() * meas(G) - ( ( N * E_m_der.tr() + M * E_f_der.tr() ) * meas(G) ).tr()
                 );
 
-            A.assembleRhsBc(u * g_N * nv(defG).norm(), bc.neumannSides() );
+            A.assembleRhsBc(u * g_N * otangent(G).norm(), bc.neumannSides() );
 
             A.assembleLhsRhsBc
             (
