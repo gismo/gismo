@@ -4,7 +4,56 @@ namespace gismo {
 \page poisson2_example poisson2_example.cpp
 
 
-<!-- more info on the file examples/poisson2_example.cpp goes here -->
+The boundary value problem for the Poisson equation is defined as follows:
+\f{eqnarray*}{
+                    -\Delta u &=& f \quad \text{in} \quad \Omega,         \\
+                            u &=& g \quad \text{on} \quad \Gamma_D,       \\
+    \mathbf{n} \cdot \nabla u &=& h \quad \text{on} \quad \Gamma_N,
+\f}
+where \f$\mathbf{n}\f$ is the outward pointing unit normal vector,
+\f$\Gamma_D\f$ and \f$\Gamma_N\f$ are the parts of the boundary where Dirichlet (essential) and Neumann (natural) boundary conditions are prescribed, respectively. The corresponding weak formulation is:
+\f{eqnarray*}{
+\text{Find }u\in\Sigma_{h}\text{ such that}\\
+\int_\Omega \nabla u \cdot  \nabla \psi \text{d}\Omega = \int_\Omega f\psi \text{d}\Omega + \int_{\Gamma_N} g\psi \text{d}\Gamma\\
+\forall\psi\in\Sigma_{h}
+\f}
+Where \f$\Sigma_{h}\f$ is the function space where the Dirichlet boundary conditions according to function \f$h\f$ are applied and \f$\psi\f$ are the basis functions.
+
+The system to assemble a system of equations based on this weak formulation is constructed in \ref poisson2_example using the \ref gsExprAssembler. This file takes as input any domain \f$\Omega\f$, any function \f$g\f$ and any function \f$h\f$. In this example, we take the \c xml file \c filedata/pde/poisson2d_bvp.xml for the input.
+
+First we include the library and use the gismo namespace.
+
+\snippet poisson2_example.cpp Include namespace
+
+Then we define our command line options. For example, we use the option \c -f or \c --file to set the path to the file that contains our geometry and our boundary conditions.
+
+\snippet poisson2_example.cpp Parse command line
+
+Then we read the input from the file that contains the boundary value problem. In this example, we use the function gsFileData::getId() to read input from an \c xml file. In this function, the first argument specifies the ID of the object in the \c xml file (the \c id flag) and the second argument is the object to which the file info is written. Note that for the boundary conditions, we immedeately set the geometry map (based on the \ref gsMultiPatch class).
+
+\snippet poisson2_example.cpp Read input file
+
+Before we define our \ref gsExprAssembler, we elevate the degree or we refine the basis. This is done in the following snippet
+
+\snippet poisson2_example.cpp Refinement
+
+Now it is time to look at the setup of our boundary value problem. In the code snippet below, we first define our \ref gsExprAssembler. The inputs (1,1) here mean that we have 1 test function space and 1 trial function space. Furthermore, few \c typedef s can be seen. These are just there to prevent lengthy types. The assembler is fed with the basis using the gsExprAssembler::setIntegrationElements() function. When the basis is defined, a \ref gsExprEvaluator is constructed for later use. The geometry is connected to the \ref gsExprAssembler via the gsExprAssembler::getMap() function and we create an expression for the space via gsExprAssembler::getSpace(). Functions for the right-hand side and the manufactured solution are constructed via gsExprAssembler::getCoef() and gsExprEvaluator::getVariable() functions, respectively. Note that the manufactured solution is defined in the \ref gsExprEvaluator because it will not be used in assembly of the system. The problem setup finishes by defining the solution object, which is constructed via gsExprAssembler::getSolution() which requires a space and a reference to a vector that will contain the solution coefficients later.
+
+\snippet poisson2_example.cpp Problem setup
+
+The next step is to actually solve the system at hand. In this particular example, this is done within a loop of uniform refinement (unless the \c last option is selected) in order to study convergence behaviour of the method.
+
+As seen in the snippet below, we first define the solver that we will use (based on the Eigen-library) and we define the vectors to store the errors. Then, within the loop, we first refine the basis uniformly and then the gsExprAssembler<>::space::setup() function is used. This function computes the basis (boundary conditions) and sets the interface continuity. Then the \ref gsExprAssembler is initialized using gsExprAssembler::initSystem() and using gsExprAssembler::assemble() the matrix expression (first argument) and the rhs expression (second argument) are assembled to a system. We also call the function gsExprAssembler::assembleRhsBc() which is dedicated to assemble an expression over a boundary; in this case the Neumann boundaries which are called via gsBoundaryConditions::neumannSides(). When the Neumann boundary conditions are assembled, the system is factorized using gsSparseSolver::compute() and solved via gsSparseSolver::solve(). The errors are then computed via the \ref gsExprEvaluator, where it should be noted that the solution object is appearing, which uses the solution vector and the space as defined earlier.
+
+\snippet poisson2_example.cpp Solver loop
+
+Error norms are computed in the following snippet:
+
+\snippet poisson2_example.cpp Error and convergence rates
+
+Lastly, the export to ParaView is done in the snipped below. Note that this does not directly use the \ref gsWriteParaview class, but instead the gsExprEvaluator::writeParaview() function is employed.
+
+\snippet poisson2_example.cpp Export visualization in ParaView
 
 
 \section poisson2_exampleAnnotated Annotated source file

@@ -18,12 +18,12 @@
 namespace gismo {
 
 
-void boxSide::getContainedCorners(int dim, std::vector<boxCorner> &corners) const
+void boxSide::getContainedCorners(short_t dim, std::vector<boxCorner> &corners) const
 {
     GISMO_ASSERT(dim>=0, "Dimension must be non negative");
     corners.clear();
     corners.reserve( 1ULL<<(dim-1) );
-    const index_t dir = direction();
+    const short_t dir = direction();
     const bool    par = parameter();
     for (boxCorner c=boxCorner::getFirst(dim); c<boxCorner::getEnd(dim);++c)
     {
@@ -32,7 +32,7 @@ void boxSide::getContainedCorners(int dim, std::vector<boxCorner> &corners) cons
     }
 }
 
-void patchSide::getContainedCorners(int dim, std::vector<patchCorner> &corners) const
+void patchSide::getContainedCorners(short_t dim, std::vector<patchCorner> &corners) const
 {
     std::vector<boxCorner> tmp;
     boxSide::getContainedCorners(dim, tmp);
@@ -241,7 +241,7 @@ void boundaryInterface::cornerMap(gsVector<index_t> & cmap) const
 }
 
 
-void boundaryInterface::reorderCorners(gsMatrix<unsigned> & boundary) const
+void boundaryInterface::reorderCorners(gsMatrix<index_t> & boundary) const
 {
     gsVector<index_t> cmap;
     cornerMap(cmap);

@@ -57,7 +57,7 @@ public:
     typedef typename gsBSplineTraits<d,T>::Geometry GeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<d-1,T>::Basis BoundaryBasisType;
+    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::Basis BoundaryBasisType;
 
     typedef typename Base::iterator        iterator;
     typedef typename Base::const_iterator  const_iterator;
@@ -168,7 +168,7 @@ public:
 
 #ifdef __DOXYGEN__
     /// \brief Returns the boundary basis for side s.
-    typename gsBSplineTraits<d-1,T>::Basis::uPtr boundaryBasis(boxSide const & s);
+    typename gsBSplineTraits<static_cast<short_t>(d-1),T>::Basis::uPtr boundaryBasis(boxSide const & s);
 #endif
     GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
     {
@@ -204,25 +204,25 @@ public:
     { return Self_t::component(i).knots()[k]; }
 
 
-    const Basis_t & component(unsigned dir) const 
+    const Basis_t & component(short_t dir) const
     {
         return static_cast<const Basis_t &>(Base::component(dir));
     }
 
-    Basis_t & component(unsigned dir)
+    Basis_t & component(short_t dir)
     {
         return static_cast<Basis_t &>(Base::component(dir));
     }
 
     // Look at gsBasis class for a description
-    void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
 
     /// Returns a box with the coordinate-wise active functions
     /// \param u evaluation points
     /// \param low lower left corner of the box
     /// \param upp upper right corner of the box
-    void active_cwise(const gsMatrix<T> & u, gsVector<unsigned,d>& low, 
-                      gsVector<unsigned,d>& upp ) const;
+    void active_cwise(const gsMatrix<T> & u, gsVector<index_t,d>& low,
+                      gsVector<index_t,d>& upp ) const;
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -363,14 +363,13 @@ public:
     /// \brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
     template <int _Rows>
-    void elementSupport_into(const unsigned& i,
-                             gsMatrix<unsigned, _Rows, 2> & result) const
+    void elementSupport_into(const index_t i, gsMatrix<index_t, _Rows, 2> & result) const
     {
         result.resize(d,2);
-        gsMatrix<unsigned> tmp_vec;
-        const gsVector<unsigned, d> ti = this->tensorIndex(i);
+        gsMatrix<index_t> tmp_vec;
+        const gsVector<index_t, d> ti = this->tensorIndex(i);
 
-        for (unsigned dim = 0; dim < d; ++dim)
+        for (short_t dim = 0; dim < d; ++dim)
         {
             Self_t::component(dim).knots().supportIndex_into(ti[dim], tmp_vec);
             result.row(dim) = tmp_vec.row(0);
@@ -379,9 +378,9 @@ public:
 
     /// \brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
-    gsMatrix<unsigned, d, 2> elementSupport(const unsigned & i) const
+    gsMatrix<index_t, d, 2> elementSupport(const index_t & i) const
     {
-        gsMatrix<unsigned, d, 2> result(d, 2);
+        gsMatrix<index_t, d, 2> result(d, 2);
         elementSupport_into(i, result);
         return result;
     }
@@ -390,7 +389,7 @@ public:
     /// given input element box
     template <int _Rows>
     void elementActive_into(const gsMatrix<unsigned,_Rows,2> & box,
-                             gsMatrix<unsigned> & result) const
+                             gsMatrix<index_t> & result) const
     {
         GISMO_ASSERT( box.rows() == static_cast<index_t>(d), "Invalid input box");
         gsMatrix<index_t,d,2> tmp;
@@ -411,8 +410,7 @@ public:
         for (unsigned dm = 1; dm != d; ++dm)
             cact = cact.replicate(1,sz[dm]) + 
                    gsVector<unsigned>::Constant(cact.rows(), str[dm] )
-                 * gsVector<unsigned>::LinSpaced(sz[dm], tmp(dm,0), tmp(dm,1)).transpose()
-            ;        
+                 * gsVector<unsigned>::LinSpaced(sz[dm], tmp(dm,0), tmp(dm,1)).transpose();
     }
 
     /// Tells, whether there is a coordinate direction in which the basis is periodic.
@@ -430,18 +428,18 @@ public:
     }
 
     /// Sets the coefficients so that the resulting TensorBSpline is periodic in direction dir.
-    gsMatrix<T> perCoefs( const gsMatrix<T>& originalCoefs, int dir ) const
+    gsMatrix<T> perCoefs( const gsMatrix<T>& originalCoefs, short_t dir ) const
     {
         // Identify which coefficients to copy and where to copy them.
         std::vector<index_t> sourceSliceIndices;
         std::vector<index_t> targetSliceIndices;
-        int numPeriodic = Self_t::component(dir).numCrossingFunctions();
+        index_t numPeriodic = Self_t::component(dir).numCrossingFunctions();
 
-        const int sz = this->size(dir) - numPeriodic;
-        for( int i = 0; i < numPeriodic; i++ )
+        const index_t sz = this->size(dir) - numPeriodic;
+        for( index_t i = 0; i < numPeriodic; i++ )
         {
-            gsMatrix<unsigned> currentSourceSlice = this->coefSlice(dir,i);
-            gsMatrix<unsigned> currentTargetSlice = this->coefSlice(dir, sz  + i );
+            gsMatrix<index_t> currentSourceSlice = this->coefSlice(dir,i);
+            gsMatrix<index_t> currentTargetSlice = this->coefSlice(dir, sz  + i );
 
             for( index_t j = 0; j != currentSourceSlice.size(); j++ )
             {
@@ -469,7 +467,7 @@ private:
     void setIsPeriodic()
     {
         m_isPeriodic = -1;
-        for( int i = 0; i < this->dim(); i++ )
+        for( short_t i = 0; i < this->dim(); i++ )
         {
             if( Self_t::component(i).isPeriodic() )
             {
@@ -485,7 +483,7 @@ protected:
 
     /// Coordinate direction, where the basis is periodic (when equal
     /// to -1 if there is no such direction).
-    int m_isPeriodic;
+    short_t m_isPeriodic;
 
 };
 

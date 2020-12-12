@@ -60,7 +60,7 @@ void gsWriteGoToolsBodySpline(const gsTensorBSpline<d, T>& bspl,
 
     out << bspl.geoDim() << " " << 0 << "\n";
 
-    for (int dim = 0; dim < bspl.parDim(); dim++)
+    for (short_t dim = 0; dim < bspl.parDim(); dim++)
     {
         out << bspl.basis().size(dim) << " " <<
                bspl.basis().degree(dim) + 1 << "\n";

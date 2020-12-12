@@ -20,7 +20,7 @@ namespace gismo
 {
 
 template<class T> void
-gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, short_t fixDir)
+gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const index_t quB, short_t fixDir)
 //const unsigned digits)
 {
     const short_t d  = basis.dim();
@@ -60,7 +60,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, short
     //}
     //else
     //{
-    //    for( int i=0; i<d; ++i )
+    //    for( short_t i=0; i<d; ++i )
     //    {
     //        const index_t numNodes = quA * basis.degree(i) + quB;
     //        computeReference(numNodes, nodes[i], weights[i], digits);
@@ -72,7 +72,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, short
 
 template<class T>
 gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, 
-                            const T quA, const int quB,
+                            const T quA, const index_t quB,
                             const short_t fixDir)
 //const unsigned digits)
 {
@@ -128,11 +128,11 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
     x.resize(n);
     w.resize(n);
 
-    const unsigned int max_its = digits;
+    const unsigned max_its = digits;
     const T tolerance = math::pow( T(0.1), static_cast<int>(digits) );
     
     // Find only half the roots because of symmetry
-    const unsigned int m= n / 2 ;
+    const unsigned m = n / 2 ;
     
     // Three recurrence relation values and one derivative value.
     T   pn(0.0),  // P_{n}
@@ -156,7 +156,7 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
         w[m] = T(2.0) / ( dpn*dpn );
     }
     
-    for (unsigned int i=0; i<m; ++i)
+    for (unsigned i=0; i<m; ++i)
     {
         // Remarkably, this simple relation provides a very
         // good initial guess for x_i.  See, for example,
@@ -168,7 +168,7 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
         x[i] = math::cos(EIGEN_PI*(i+0.75)/(n+0.5));
         
         // Newton loop iteration counter
-        unsigned int n_its = 0;
+        unsigned n_its = 0;
         
         // Begin Newton iterations
         do

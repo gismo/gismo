@@ -1,6 +1,7 @@
 namespace gismo {
 
 /** \defgroup Tensor Tensor module
+\ingroup Modules
 
     This module is responsible for dimension-independent operations on
     tensor structures and tensor-product bases.

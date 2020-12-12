@@ -138,7 +138,7 @@ void gsTensorDeboor( //LC
     // Default version - linear combination of basis functions
     result.resize( coefs.cols(), u.cols() ) ;
     gsMatrix<T> B ;
-    gsMatrix<unsigned> ind;
+    gsMatrix<index_t> ind;
 
     // "eval" of gsTensorBasis
     base.eval_into(u, B);   // col j = nonzero basis functions at column point u(..,j)
@@ -173,7 +173,7 @@ void gsTensorDeriv_into(const gsMatrix<T>& u,
 
     result.setZero(d, nPts);
     gsMatrix<T> deriv; // derivatives
-    gsMatrix<unsigned> ind;
+    gsMatrix<index_t> ind;
 
     base.deriv_into(u, deriv);   // col j = nonzero basis functions at column point u(..,j)
     base.active_into(u, ind);// col j = indices of active functions at column point u(..,j)
@@ -206,7 +206,7 @@ void gsTensorDeriv2_into(const gsMatrix<T>& u,
 
     result.setZero(n2der, nPts);
     gsMatrix<T> deriv2; // second derivatives
-    gsMatrix<unsigned> ind;
+    gsMatrix<index_t> ind;
 
 
     base.deriv2_into(u, deriv2);
@@ -244,7 +244,7 @@ void gsTensorDeboor_v2(
     // ** find out how many coefficients one needs for calculation **
 
     result.resize(coefs.cols(), u.cols());
-    gsVector<unsigned, d> size_of_tmp_coefs(d);
+    gsVector<index_t, d> size_of_tmp_coefs(d);
 
     unsigned nmb_of_tmp_coefs = 1;
     for (unsigned dim = 0; dim < d; dim++)
@@ -258,7 +258,7 @@ void gsTensorDeboor_v2(
     tmp_coefs.fill(0);
 
     // for all points
-    for (unsigned i = 0; i < static_cast<unsigned>(u.cols()); i++)
+    for (index_t i = 0; i < u.cols(); i++)
     {
 //        if (0 < log)
 //        {
@@ -273,7 +273,7 @@ void gsTensorDeboor_v2(
 
         std::vector<bool> is_last(d, false);
 
-        for (unsigned dim = 0; dim < d; dim++)
+        for (short_t dim = 0; dim < d; dim++)
         {
             const KnotVectorType& kv = base.knots(dim);
 //            if (u(dim, i) == *(--kv.end()))
@@ -285,7 +285,7 @@ void gsTensorDeboor_v2(
 
 
 
-        gsVector<unsigned, d> low, upp;
+        gsVector<index_t, d> low, upp;
         base.active_cwise(u.col(i), low, upp);
 
 //        if (1 < log)
@@ -305,19 +305,19 @@ void gsTensorDeboor_v2(
         //** copy appropriate coefficients to temporary matrix **
 
         // position of the coefficient
-        gsVector<unsigned, d> coefs_position(low);
+        gsVector<index_t, d> coefs_position(low);
 
-        gsVector<unsigned, d> zero(d);
+        gsVector<index_t, d> zero(d);
         zero.fill(0);
 
         // position in tmp_coefs
-        gsVector<unsigned, d> tmp_coefs_position(zero);
+        gsVector<index_t, d> tmp_coefs_position(zero);
 
         // strides in tmp_coefs
-        gsVector<unsigned, d> tmp_coefs_str(d);
+        gsVector<index_t, d> tmp_coefs_str(d);
         bspline::buildCoeffsStrides<d>(size_of_tmp_coefs, tmp_coefs_str);
 
-        gsVector<unsigned, d> tmp_coefs_last(d);
+        gsVector<index_t, d> tmp_coefs_last(d);
         bspline::getLastIndexLocal<d>(size_of_tmp_coefs, tmp_coefs_last);
 
         do
@@ -338,9 +338,9 @@ void gsTensorDeboor_v2(
             tmp_coefs.row(tmp_coefs_index) = coefs.row(flat_index);
 
 
-            nextCubePoint<gsVector<unsigned, d> >(tmp_coefs_position, zero,
+            nextCubePoint<gsVector<index_t, d> >(tmp_coefs_position, zero,
                                                   tmp_coefs_last);
-        } while(nextCubePoint<gsVector<unsigned, d> >(coefs_position, low, upp));
+        } while(nextCubePoint<gsVector<index_t, d> >(coefs_position, low, upp));
 
 
 //        if (1 < log)
@@ -352,13 +352,13 @@ void gsTensorDeboor_v2(
         // ********************************************************
         // ** perform knot insertion appropriate number of times **
 
-        gsVector<unsigned, d> start(d);
+        gsVector<index_t, d> start(d);
         start.fill(0);
-        gsVector<unsigned, d> end(size_of_tmp_coefs);
-        for (unsigned dim = 0; dim < d; dim++)
+        gsVector<index_t, d> end(size_of_tmp_coefs);
+        for (short_t dim = 0; dim < d; dim++)
             end(dim)--;
 
-        for (unsigned dim = 0; dim < d; dim++) //in each dimension insert a knot
+        for (short_t dim = 0; dim < d; dim++) //in each dimension insert a knot
         {
             if (is_last[dim])
             {
@@ -379,7 +379,7 @@ void gsTensorDeboor_v2(
         }
 
         // index of a point at a parameter u.col(i)
-        unsigned flat_index = bspline::getIndex<d>(tmp_coefs_str,
+        index_t flat_index = bspline::getIndex<d>(tmp_coefs_str,
                                                    start);
 
 //        if (0 < log)

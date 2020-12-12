@@ -108,7 +108,7 @@ public:
     bool good() const   { return m_isGood; }
 
     /// Return dimension of the elements
-    int dim() const   { return center.size(); }
+    short_t dim() const   { return center.size(); }
 
     /// Updates \a other with and adjacent element
     /// \todo upgrade to return adjacent range instead
@@ -181,7 +181,7 @@ public:
     { return (upperCorner() - lowerCorner()).prod(); }
 
     /// Returns the number of elements.
-    virtual index_t numElements() const
+    virtual size_t numElements() const
     {
         //\todo Remove this implementation. Probably using a shallow
         //copy, "reset" and "next" would do this better.
@@ -191,7 +191,7 @@ public:
         // sometimes.
         typename gsBasis<T>::domainIter domIter = m_basis->makeDomainIterator(m_side);
 
-        index_t numEl = 0;
+        size_t numEl = 0;
         for (; domIter->good(); domIter->next(), numEl++){}
 
         return numEl;

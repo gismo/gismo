@@ -1,6 +1,7 @@
 /** @file gsAAPolyline.h
 
-    @brief Provides classes for handling an axis-aligned polyline in 2D: gsVSegment and gsAAPolyline.
+    @brief Provides classes for handling an axis-aligned polyline in
+    2D: gsVSegment and gsAAPolyline.
 
     This file is part of the G+Smo library.
 
@@ -8,7 +9,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): Dominik Mokris (dominik.mokris@jku.at), G. Kiss.
+    Author(s): Dominik Mokris, G. Kiss
 */
 
 #pragma once
@@ -180,7 +181,7 @@ public:
     }
 
     /// Returns the polyline in a format suitable for further treatment by PARASOLID
-    std::vector< std::vector< int > > writeParasolid();
+    std::vector< std::vector< index_t > > writeParasolid();
 
     /// Returns the polyline in a format suitable for further treatment by PARASOLID
     std::vector< std::vector<unsigned int > > writeParasolidUnsigned();
@@ -278,9 +279,9 @@ bool gsAAPolyline<T>::pushFront( T x, T y0, T y1 ) // Symmetric case to push_bac
 }
 
 template<class T>
-std::vector< std::vector< int > > gsAAPolyline<T>::writeParasolid()
+std::vector< std::vector< index_t > > gsAAPolyline<T>::writeParasolid()
 {
-    std::vector< std::vector< int > > result;
+    std::vector< std::vector< index_t > > result;
 
     if( m_vertices.size() < 4 )
     {
@@ -294,7 +295,7 @@ std::vector< std::vector< int > > gsAAPolyline<T>::writeParasolid()
         return result;
     }
 
-    std::vector< int > item(4);
+    std::vector< index_t > item(4);
 
     // it will go through m_vertices; it_fwd will be pointing always to it's next % m_vertices.size().
     typename std::list< std::vector<T> >::iterator it_fwd = m_vertices.begin();

@@ -59,7 +59,7 @@ public:
     { return m_refs.size(); }
 
     /// Return the parametric dimension of the bases (assumed to be the same for all the bases)
-    inline int dim() const { return m_refs.front()->dim();}
+    inline short_t dim() const { return m_refs.front()->dim();}
 
 private:
     std::vector<const gsBasis<T>*> m_refs;

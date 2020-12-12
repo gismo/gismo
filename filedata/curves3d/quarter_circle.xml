@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <Geometry type="BSpline">
+   <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+   </Basis>
+      <weights> 1 0.707106781 1
+</weights>
+  <coefs geoDim="3">
+  1 0 0
+  1 1 0
+  0 1 0
+  </coefs>
+ </Geometry>
+</xml>
+

@@ -35,7 +35,7 @@ gsMatrix<T> * innerProduct( const gsBasis<T>& B1, const gsBasis<T>& B2)
     gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
     gsMatrix<T> ngrid;          // tensor Gauss nodes
     gsVector<T> wgrid;          // tensor Gauss weights
-    gsMatrix<unsigned> act1, act2;
+    gsMatrix<index_t> act1, act2;
     gsMatrix<T>        ev1 , ev2;
 
     typename gsBasis<T>::domainIter domIt = B1.makeDomainIterator();
@@ -70,7 +70,7 @@ gsMatrix<T> * innerProduct1( const gsBasis<T>& B1, const gsBasis<T>& B2)
     gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
     gsMatrix<T> ngrid;          // tensor Gauss nodes
     gsVector<T> wgrid;          // tensor Gauss weights
-    gsMatrix<unsigned> act1, act2;
+    gsMatrix<index_t> act1, act2;
     gsMatrix<T>        ev1 , ev2;
     
     typename gsBasis<T>::domainIter domIt = B1.makeDomainIterator();
@@ -106,7 +106,7 @@ gsMatrix<T> * innerProduct2( const gsBasis<T>& B1, const gsBasis<T>& B2)
     gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
     gsMatrix<T> ngrid;          // tensor Gauss nodes
     gsVector<T> wgrid;          // tensor Gauss weights
-    gsMatrix<unsigned> act1, act2;
+    gsMatrix<index_t> act1, act2;
     gsMatrix<T>        ev1 , ev2;
     
     typename gsBasis<T>::domainIter domIt = B1.makeDomainIterator();
@@ -404,8 +404,8 @@ gsBSpline<T> gsInterpolate(gsKnotVector<T> & kv,const gsMatrix<T> & preImage,
     gsMatrix<T> *Q = innerProduct2(bs, bs);
 
     // Exact constraints: point interpolation
-    int dimPI = 1; // dimension of space of preImage, TODO: put dimPI, dimI to template<dimPI,...
-    int dimI = 2;  // dimension of space of image
+    short_t dimPI = 1; // dimension of space of preImage, TODO: put dimPI, dimI to template<dimPI,...
+    short_t dimI = 2;  // dimension of space of image
     GISMO_UNUSED(dimPI);
     int nip = image.cols(); // number of interpolating points
     int nn=normal.cols(); // number of prescribed normals

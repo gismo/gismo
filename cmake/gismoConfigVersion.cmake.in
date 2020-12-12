@@ -1,4 +1,12 @@
-#
+######################################################################
+## gismoConfigVersion.cmake --- G+Smo CMake Configuration file
+## This file is part of the G+Smo library.
+##
+## https://github.com/gismo/gismo
+## https://gismo.github.io/
+##
+## Author: Angelos Mantzaflaris
+######################################################################
 
 set(PACKAGE_VERSION "@gismo_VERSION@")
 

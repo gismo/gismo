@@ -1,7 +1,8 @@
-### CMakeLists.txt ---
+######################################################################
+## CMakeLists.txt --- gsIpopt
+## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2015 - 2016 RICAM-Linz.
 ######################################################################
 
 project(gsIpopt)
@@ -42,8 +43,8 @@ if (NOT IPOPT_FOUND)
     #DOWNLOAD_NO_PROGRESS 0
     )
   set(IPOPT_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/include/coin CACHE INTERNAL "")
-  set(IPOPT_LIBRARY ${CMAKE_BINARY_DIR}/lib/libipopt.so  CACHE INTERNAL "")
-
+  set(IPOPT_LIBRARY ${CMAKE_BINARY_DIR}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ipopt${CMAKE_SHARED_LIBRARY_SUFFIX}
+    CACHE INTERNAL "")
 else()
   #add_custom_target (IpOpt)
 endif(NOT IPOPT_FOUND)

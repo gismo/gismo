@@ -1,7 +1,8 @@
-### CMakeLists.txt ---
+######################################################################
+### CMakeLists.txt --- gsOpennurbs
+## This file is part of the G+Smo library.
 ## 
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2013 - RICAM-Linz.
 ######################################################################
 
 ## OpenNurbs extension
@@ -288,13 +289,8 @@ if(HAVE_SYS_STAT_H)
   add_definitions(-DHAVE_SYS_STAT_H)
 endif(HAVE_SYS_STAT_H)
 
-# Ideally, we should only need ZLIB here
-#include_directories(
-#  ${${CMAKE_PROJECT_NAME}_SOURCE_DIR}/onurbs/zlib
-#  )
-
 # Apply same configuration as G+Smo
-include( gsConfig)
+include(gsConfig)
 
 #if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 #  add_definitions(
@@ -324,18 +320,25 @@ if (GISMO_ZLIB_STATIC)
   add_definitions(-DMY_ZCALLOC) # zlib uses oncalloc() and onfree()
 endif()
 
-add_library(gsOpennurbs OBJECT ${OPENNURBS_SOURCES}) #STATIC
-#target_link_libraries(gsOpennurbs Rpcrt4) # Note: linked with gismolib instead
+add_library(${PROJECT_NAME} OBJECT ${OPENNURBS_SOURCES}) #STATIC
+#target_link_libraries(${PROJECT_NAME} Rpcrt4) # Note: linked with gismolib instead
 
-set_target_properties(gsOpennurbs 
+if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
+  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "/W0")
+elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-w")
+endif()
+#In CMake 2.8.12 the above can be:
+#target_compile_options(${PROJECT_NAME} PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-w> $<$<CXX_COMPILER_ID:MSVC>: /W0>)
+
+set_target_properties(${PROJECT_NAME} 
 PROPERTIES POSITION_INDEPENDENT_CODE ON
 COMPILE_DEFINITIONS gismo_EXPORTS
-FOLDER "G+Smo extensions"
-)
+FOLDER "G+Smo extensions")
 
-#SET_TARGET_PROPERTIES(gsOpennurbs PROPERTIES VERSION "2010.04.95")
+#SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES VERSION "2010.04.95")
 
-set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:gsOpennurbs>
+set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
     CACHE INTERNAL "Gismo extensions to be included")
 if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" )
 set(gismo_LINKER ${gismo_LINKER} Rpcrt4
@@ -343,5 +346,5 @@ set(gismo_LINKER ${gismo_LINKER} Rpcrt4
 endif()
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
-        DESTINATION include/gismo/gsOpennurbs/
+        DESTINATION include/gismo
         FILES_MATCHING PATTERN "*.h")

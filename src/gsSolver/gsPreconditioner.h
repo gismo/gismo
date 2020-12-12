@@ -114,6 +114,23 @@ public:
         m_num_of_sweeps = opt.askInt( "NumOfSweeps", m_num_of_sweeps );
     }
 
+    /**
+     *  @brief Estimates the largest eigenvalue of  \f$ PA \f$
+     *  @param steps  Number of steps to be performed.
+     */
+    T estimateLargestEigenvalueOfPreconditionedSystem(index_t steps = 10) const
+    {
+        gsMatrix<T> x, tmp;
+        x.setRandom(this->rows(),1);
+        for (index_t i=0; i<steps; ++i)
+        {
+            x.array() /= math::sqrt( x.col(0).dot(x.col(0)) );
+            underlyingOp()->apply(x,tmp);
+            x.setZero(this->rows(),1);
+            this->step(tmp,x);
+        }
+        return math::sqrt( x.col(0).dot(x.col(0)) );
+    }
 
 protected:
     index_t m_num_of_sweeps;
@@ -176,7 +193,7 @@ public:
         GISMO_ASSERT( m_underlying->rows() == x.rows() && x.rows() == rhs.rows() && x.cols() == rhs.cols(),
             "The dimensions do not agree." );
 
-        m_underlying->apply( x, m_res );
+        m_underlying->apply(x, m_res);
         m_res -= rhs;
         m_preconditioner->apply(m_res, m_corr);
         x -= m_tau * m_corr;
@@ -193,9 +210,9 @@ public:
         if (m_tau != (T)1)
             x *= m_tau;
 
-        for ( index_t i=1; i<m_num_of_sweeps; ++i)
+        for (index_t i=1; i<m_num_of_sweeps; ++i)
         {
-            m_underlying->apply( x, m_res );
+            m_underlying->apply(x, m_res);
             m_res -= rhs;
             m_preconditioner->apply(m_res, m_corr);
             x -= m_tau * m_corr;

@@ -127,8 +127,8 @@ public:
     /// @param restrict                  Linear operators representing the restriction operators
     /// @param coarseSolver              Linear operator representing the exact solver on the coarsest grid level,
     ///                                  defaulted to a direct solver (PartialPivLUSolver)
-    static uPtr make( const std::vector<OpPtr>& ops, const std::vector<OpPtr>& prolong, const std::vector<OpPtr>& restrict, OpPtr coarseSolver = OpPtr() )
-    { return uPtr( new gsMultiGridOp( ops, prolong, restrict, give(coarseSolver) ) ); }
+    static uPtr make( const std::vector<OpPtr>& ops, const std::vector<OpPtr>& prolongation, const std::vector<OpPtr>& restriction, OpPtr coarseSolver = OpPtr() )
+    { return uPtr( new gsMultiGridOp( ops, prolongation, restriction, give(coarseSolver) ) ); }
 
 private:
     // Init function that is used by matrix based constructors
@@ -144,7 +144,8 @@ public:
     { smoothingStep(finestLevel(), rhs, x); }
 
     /// Estimates for a smoother I - S^{-1} A the largest eigenvalue of S^{-1} A. Can be used to adjust the damping parameters.
-    T estimateLargestEigenvalueOfSmoothedOperator(index_t level, index_t iter = 100);
+    T estimateLargestEigenvalueOfSmoothedOperator(index_t level, index_t steps = 10)
+    { return m_smoother[level]->estimateLargestEigenvalueOfPreconditionedSystem(steps); }
 
     /// Perform one multigrid cycle on the iterate \a x with right-hand side \a f at the given \a level.
     void multiGridStep(index_t level, const gsMatrix<T>& rhs, gsMatrix<T>& x) const;

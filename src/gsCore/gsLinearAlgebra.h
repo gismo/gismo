@@ -34,7 +34,7 @@
 #include <unsupported/Eigen/MPRealSupport>
 #endif
 
-#if defined(GISMO_WITH_MPQ)
+#if defined(GISMO_WITH_GMP)
 #include <unsupported/Eigen/MPQClassSupport>
 #endif
 
@@ -150,7 +150,7 @@ public:
 
     /// BiCGSTAB with Incomplete LU factorization with dual-threshold strategy
     typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,0,index_t>,
-                            Eigen::IncompleteLUT<T> > BiCGSTABILUT;
+                            Eigen::IncompleteLUT<T, index_t> > BiCGSTABILUT;
 
     /// BiCGSTAB with Diagonal (Jacobi) preconditioner
     typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,0,index_t>,

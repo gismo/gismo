@@ -35,13 +35,13 @@ gsMultiGridOp<T>::gsMultiGridOp(SpMatrixPtr fineMatrix, std::vector< SpMatrixRow
 }
 
 template<class T>
-gsMultiGridOp<T>::gsMultiGridOp( const std::vector<OpPtr>& ops, const std::vector<OpPtr>& prolong,
-                                          const std::vector<OpPtr>& restrict, OpPtr coarseSolver)
-    : n_levels( ops.size() ), m_ops(ops), m_smoother(n_levels), m_prolong(prolong), m_restrict(restrict),
+gsMultiGridOp<T>::gsMultiGridOp( const std::vector<OpPtr>& ops, const std::vector<OpPtr>& prolongation,
+                                          const std::vector<OpPtr>& restriction, OpPtr coarseSolver)
+    : n_levels( ops.size() ), m_ops(ops), m_smoother(n_levels), m_prolong(prolongation), m_restrict(restriction),
       m_numPreSmooth(1), m_numPostSmooth(1), m_numCycles(1), m_damping(1)
 {
-    GISMO_ASSERT ( prolong.size() == restrict.size(), "The number of prolongation and restriction operators differ." );
-    GISMO_ASSERT ( ops.size() == prolong.size()+1, "The number of prolongation and restriction operators do not fit to the number of operators." );
+    GISMO_ASSERT ( prolongation.size() == restriction.size(), "The number of prolongation and restriction operators differ." );
+    GISMO_ASSERT ( ops.size() == prolongation.size()+1, "The number of prolongation and restriction operators do not fit to the number of operators." );
 
     if (coarseSolver)
         m_coarseSolver = coarseSolver;
@@ -137,22 +137,6 @@ void gsMultiGridOp<T>::smoothingStep(index_t level, const gsMatrix<T>& rhs, gsMa
         m_smoother[level]->stepT( rhs, x );
     }
 
-}
-
-template<class T>
-T gsMultiGridOp<T>::estimateLargestEigenvalueOfSmoothedOperator(index_t level, index_t iter)
-{
-    gsMatrix<T> rhs, x, tmp;
-    rhs.setZero(nDofs(level),1);
-    x.setRandom(nDofs(level),1);
-    for (index_t i=0; i<iter; ++i )
-    {
-        x.array() /= math::sqrt( x.row(0).dot(x.row(0)) );
-        tmp = x;
-        m_smoother[level]->step(rhs, tmp);
-        x -= tmp;
-    }
-    return math::sqrt( x.row(0).dot(x.row(0)) );
 }
 
 template<class T>

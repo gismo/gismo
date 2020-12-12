@@ -35,18 +35,18 @@ using namespace gismo;
 
 //lvl- max level of domain refinement, max number of boxes inserted
 //per level, basis, alignement with the prewious level
-std::vector<unsigned int> random_refinement(int lvl, int max_nb,
+std::vector<index_t> random_refinement(int lvl, int max_nb,
                                             gismo::gsHTensorBasis<2> *bas,
                                             bool aligned = false)
 {
 
     //int max_x, max_y;
     int boxes_in_lvl, bi,span_size;
-    std::vector<unsigned int> q;
-    std::vector<gsVector<unsigned int> > boxes;// boxes stores the boxes inserted to the previous level
-    std::vector<gsVector<unsigned int> > boxes_new;
-    gsVector<unsigned int, 2> i1;
-    gsVector<unsigned int, 2> i2;
+    std::vector<index_t> q;
+    std::vector<gsVector<index_t> > boxes;// boxes stores the boxes inserted to the previous level
+    std::vector<gsVector<index_t> > boxes_new;
+    gsVector<index_t, 2> i1;
+    gsVector<index_t, 2> i2;
     span_size = 1 << lvl;
     //gsDebug<<"Spansize is :"<< span_size<<"\n";
 
@@ -136,8 +136,8 @@ SUITE(gsThbs_geometry_test)
 
     TEST(gsThbs_geometry_test)
     {
-    gsVector<unsigned int> iv1;
-    gsVector<unsigned int> iv2;
+    gsVector<index_t> iv1;
+    gsVector<index_t> iv2;
     iv1.resize(2);
     iv2.resize(2);
 
