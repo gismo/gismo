@@ -44,6 +44,8 @@ public:
     
     typedef typename gsHTensorBasis<d,T>::tensorBasis tensorBasis;
 
+    typedef typename gsHTensorBasis<d,T>::point point;
+
     /// @brief Shared pointer for gsTHBSplineBasis.
     typedef memory::shared_ptr< gsTHBSplineBasis > Ptr;
 

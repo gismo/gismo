@@ -124,13 +124,13 @@ public: // iterator ends
     reverse_iterator       rend()    const;
 
     /// Returns an iterator pointing to the first appearance of the
-    /// knot with cardinal index (ie. unique, counted without
-    /// repetitions) equal to \a upos.
+    /// knot with unique index (ie. counted without repetitions, left
+    /// ghosts mapped to negatives) equal to \a upos.
     iterator               beginAt(const mult_t upos)   const;
 
     /// Returns an iterator pointing one past the last appearance of
-    /// the knot with cardinal index (ie. unique, counted without
-    /// repetitions) equal to \a upos.
+    /// the knot with cardinal index (ie. counted without repetitions,
+    /// left ghosts mapped to negatives) equal to \a upos.
     iterator               endAt(const mult_t upos)     const;    
     
     /// Returns unique iterator pointing to the beginning of the unique knots.
@@ -239,11 +239,17 @@ public: // queries
     inline size_t uSize() const { return m_multSum.size(); }
 
     /// Provides the i-th knot (numbered including repetitions).
-    const T& operator[]( const mult_t i ) const
+    const T& operator[](const mult_t i) const
     {
         GISMO_ASSERT( static_cast<size_t>(i) < m_repKnots.size(),
-                      "Index " << i << " not in the knot vector." );
+                      "Index "<<i<<" not in the knot vector.");
         return m_repKnots[i];
+    }
+
+    /// Provides the knot with unique index \a i
+    const T& operator()(const mult_t i) const
+    {
+        return *( this->ubegin()+(numLeftGhosts()+i) );
     }
 
     /// Number of knot intervals inside domain.
@@ -374,11 +380,13 @@ public: // miscellaneous
     /// left of the domain beginnning.
     index_t numLeftGhosts() const
     {
-        return std::distance(ubegin(), domainUBegin());
+        smart_iterator it(*this,0,0);
+        it += math::min( (size_t)m_deg, size() );
+        return std::distance( uiterator(*this,0,0), it.uIterator() );
     }
 
     /// Computes the number of right ghosts, i.e., of the knots to the
-    /// left of the domain beginnning.
+    /// right of the domain end.
     index_t numRightGhosts() const
     {
         return std::distance(domainUEnd(), uend()) - 1;

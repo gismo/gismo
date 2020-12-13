@@ -100,15 +100,17 @@ typename gsKnotVector<T>::iterator gsKnotVector<T>::end()    const
 }
 
 template<typename T>
-typename gsKnotVector<T>::iterator gsKnotVector<T>::beginAt(const mult_t upos)  const
+typename gsKnotVector<T>::iterator gsKnotVector<T>::beginAt(mult_t upos)  const
 {
+    upos += numLeftGhosts();
     return m_repKnots.begin() + (0 == upos ? 0 : m_multSum[upos-1]);
     //return m_repKnots.data() + (0 == upos ? 0 : m_multSum[upos-1]);
 }
 
 template<typename T>
-typename gsKnotVector<T>::iterator gsKnotVector<T>::endAt(const mult_t upos)    const
+typename gsKnotVector<T>::iterator gsKnotVector<T>::endAt(mult_t upos)    const
 {
+    upos += numLeftGhosts();
     return m_repKnots.begin() + m_multSum[upos];
     //return m_repKnots.data() + m_multSum[upos];
 }
@@ -204,7 +206,7 @@ typename gsKnotVector<T>::reverse_iterator gsKnotVector<T>::rend()    const
 template<typename T>
 typename gsKnotVector<T>::uiterator gsKnotVector<T>::ubegin() const
 {
-    return uiterator(*this);
+    return uiterator(*this,0,numLeftGhosts());
 }
 
 template<typename T>
@@ -228,7 +230,7 @@ typename gsKnotVector<T>::reverse_uiterator gsKnotVector<T>::urend()   const
 template<typename T>
 typename gsKnotVector<T>::smart_iterator gsKnotVector<T>::sbegin() const
 {
-    return smart_iterator(*this);
+    return smart_iterator(*this,0,numLeftGhosts());
 }
 
 template<typename T>
@@ -302,7 +304,7 @@ void gsKnotVector<T>::insert( T knot, mult_t mult )
     const mult_t fa = uit.firstAppearance();
 
     // update multiplicity sums
-    nonConstMultIterator upos = m_multSum.begin() + uit.uIndex();
+    nonConstMultIterator upos = m_multSum.begin() + uit.uCardinalIndex();
     if (upos==m_multSum.end() || *uit != knot) // knot value does not exist ?
         upos = m_multSum.insert(upos, fa );
     std::transform(upos, m_multSum.end(), upos, GS_BIND1ST(std::plus<mult_t>(), mult));
@@ -321,7 +323,7 @@ void gsKnotVector<T>::remove( uiterator uit, mult_t mult )
 
     mult_t knotMult = uit.multiplicity();
     mult_t toRemove = (std::min<mult_t>)(mult, knotMult);
-    nonConstMultIterator upos = m_multSum.begin()  + uit.uIndex();
+    nonConstMultIterator upos = m_multSum.begin()  + uit.uCardinalIndex();
 
     nonConstIterator pos = m_repKnots.begin() + uit.firstAppearance();
     m_repKnots.erase(pos, pos+toRemove);
@@ -695,7 +697,7 @@ typename gsKnotVector<T>::uiterator
 gsKnotVector<T>::uFind( const T u ) const
 {
     GISMO_ASSERT(size()>1,"Not enough knots."); // todo: check() --> size() > 2*m_deg+1
-    GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
+    GISMO_ASSERT(inDomain(u), "Point "<<u<<" outside active area of the knot vector");
 
     // The last element is closed from both sides.
     uiterator dend = domainUEnd();
@@ -991,13 +993,11 @@ template< typename T>
 void gsKnotVector<T>::supportIndex_into(const mult_t& i,
                                         gsMatrix<index_t>& result) const
 {
-    T suppBeg=*(this->begin()+i < this->domainBegin() ? this->domainBegin() : this->begin()+i);
-    T suppEnd=*(this->begin()+i+m_deg+1 > this->domainEnd() ? this->domainEnd(): this->begin()+i+m_deg+1);
-    uiterator ubeg   = this->ubegin();
-    uiterator indBeg = uFind(suppBeg);
-    uiterator indEnd = std::find_if(indBeg, this->uend(), GS_BIND2ND(std::greater_equal<T>(), suppEnd));
     result.resize(1,2);
-    result<<indBeg-ubeg,indEnd-ubeg;
+    smart_iterator it = sbegin() + i;
+    result.at(0) = it.uIndex();
+    it += m_deg+1;
+    result.at(1) = it.uIndex();
 }
 
 } // namespace gismo

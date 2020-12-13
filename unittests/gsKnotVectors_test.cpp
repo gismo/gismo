@@ -260,12 +260,24 @@ SUITE(gsKnotVectors_test_2)
             real_t data[]={-0.1, 0.0, 0.0, 0.2 ,0.3, 0.3, 0.5, 0.7, 1.0, 1.1, 1.2};
             gsKnotVector<real_t> KV( 2, data, data+11);
 
-            CHECK( KV.uFind(0.00).uIndex() == 1 );
-            CHECK( KV.uFind(0.49).uIndex() == 3 );
-            CHECK( KV.uFind(0.50).uIndex() == 4 );
-            CHECK( KV.uFind(0.55).uIndex() == 4 );
-            CHECK( KV.uFind(0.99).uIndex() == 5 );
-            CHECK( KV.uFind(1.00).uIndex() == 5 );
+            CHECK( KV.numLeftGhosts() == 1 );
+            CHECK( KV[0] == KV(-1) ); // unique indices of left ghosts are negative
+            CHECK( KV[1] == KV(0)  );
+            CHECK( KV[10] == KV(7) );
+
+            CHECK( KV.uFind(0.00).uIndex() == 0 );
+            CHECK( KV.uFind(0.49).uIndex() == 2 );
+            CHECK( KV.uFind(0.50).uIndex() == 3 );
+            CHECK( KV.uFind(0.55).uIndex() == 3 );
+            CHECK( KV.uFind(0.99).uIndex() == 4 );
+            CHECK( KV.uFind(1.00).uIndex() == 4 );
+
+            CHECK( KV.uFind(0.00).uCardinalIndex() == 1 );
+            CHECK( KV.uFind(0.49).uCardinalIndex() == 3 );
+            CHECK( KV.uFind(0.50).uCardinalIndex() == 4 );
+            CHECK( KV.uFind(0.55).uCardinalIndex() == 4 );
+            CHECK( KV.uFind(0.99).uCardinalIndex() == 5 );
+            CHECK( KV.uFind(1.00).uCardinalIndex() == 5 );
 
             CHECK( KV.iFind(0.00) - KV.begin() == 2 );
             CHECK( KV.iFind(0.49) - KV.begin() == 5 );
