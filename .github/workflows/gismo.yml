@@ -1,0 +1,38 @@
+name: gismo
+
+on:
+  # Trigger the workflow on push or pull request,
+  # but only for the main branch
+  push:
+    branches:
+      - stable
+  pull_request:
+    branches:
+      - stable
+  # Also trigger on page_build, as well as release created events
+  page_build:
+  release:
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    name: "Run for ${{ matrix.os }}"
+    runs-on: "${{ matrix.os }}"
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Running ctest
+      # Use a bash shell so we can use the same syntax for environment variable
+      # access regardless of the host operating system
+      shell: bash
+      working-directory: ${{runner.workspace}}
+      # Note the current convention is to use the -S and -B options here to specify source 
+      # and build directories, but this is only available with CMake 3.13 and higher.  
+      # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
+      run: ctest -S gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="actions_$GITHUB_RUN_NUMBER" -D CTEST_SITE="${{ matrix.os }}_[actions]" -D CMAKE_BUILD_TYPE=$BUILD_TYPE -DGISMO_EXTRA_DEBUG=ON -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON

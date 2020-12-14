@@ -639,7 +639,7 @@ public:
             {
                 tmp = eA.middleCols(i*Ac,Ac) * eB.col(j);   // E_f_der2
                 tmp.row(2) *= 2.0;                          // multiply the third row of E_f_der2 by 2 for voight notation
-                res(i,j) = eC.row(0) * tmp.col(0);          // E_f^T * mm * E_f_der2
+                res(i,j) = (eC.row(0) * tmp.col(0)).value();          // E_f^T * mm * E_f_der2
             }
         return res;
     }
