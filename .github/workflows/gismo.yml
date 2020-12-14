@@ -5,10 +5,10 @@ on:
   # but only for the main branch
   push:
     branches:
-      - main
+      - stable
   pull_request:
     branches:
-      - main
+      - stable
   # Also trigger on page_build, as well as release created events
   page_build:
   release:
