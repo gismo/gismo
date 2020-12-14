@@ -1469,11 +1469,11 @@ void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& po
     aabb.resize(4);
     for (unsigned i = 0; i != kv0.uSize(); i++)
     {
-        if (kv0.uValue(i) <= minX)
+        if (kv0(i) <= minX)
         {
             aabb[0] = i;
         }
-        if (maxX <= kv0.uValue(i))
+        if (maxX <= kv0(i))
         {
             aabb[2] = i;
             break;
@@ -1482,11 +1482,11 @@ void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& po
 
     for (unsigned i = 0; i != kv1.uSize(); i++)
     {
-        if (kv1.uValue(i) <= minY)
+        if (kv1(i) <= minY)
         {
             aabb[1] = i;
         }
-        if (maxY <= kv1.uValue(i))
+        if (maxY <= kv1(i))
         {
             aabb[3] = i;
             break;

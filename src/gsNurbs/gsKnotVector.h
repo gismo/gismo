@@ -252,6 +252,10 @@ public: // queries
         return *( this->ubegin()+(numLeftGhosts()+i) );
     }
 
+    /// Provides the knot with unique index \a i
+    inline T  uValue(const size_t & i) const
+    { return this->operator()(i); }
+
     /// Number of knot intervals inside domain.
     inline size_t numElements() const { return (domainUEnd() - domainUBegin()); }
 
@@ -799,11 +803,7 @@ public: // Deprecated functions required by gsCompactKnotVector.
         // equivalent:
         // return 0 != multiplicity(knot);
     }
-     
-    /// Returns the value of the \a i - th unique index
-    inline T  uValue(const size_t & i) const
-    { return *(ubegin()+i); }
-     
+
     /// Get the multiplicity of the unique knot indexed \a i
     /// \param i index of the knot (without repetitions)
     unsigned u_multiplicityIndex(size_t const & i) const
