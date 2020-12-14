@@ -268,7 +268,7 @@ if (DO_COVERAGE)
   if(NOT DEFINED CTEST_COVERAGE_COMMAND)
     find_program(CTEST_COVERAGE_COMMAND NAMES gcov)
   endif()
-    set(CTEST_CUSTOM_COVERAGE_EXCLUDE "${CTEST_SOURCE_DIRECTORY}/external/")
+  set(CTEST_CUSTOM_COVERAGE_EXCLUDE "${CTEST_SOURCE_DIRECTORY}/external/")
   set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -g -O0 --coverage -fprofile-arcs -ftest-coverage")
   set(ENV{CFLAGS} "$ENV{CFLAGS} -g -O0 --coverage -fprofile-arcs -ftest-coverage")
 endif()
@@ -462,9 +462,9 @@ if(NOT DEFINED CTEST_BUILD_NAME)
   get_filename_component(cxxnamewe "${CXXNAME}" NAME_WE)
   set(CTEST_BUILD_NAME "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${cxxnamewe}${smHead}")
 endif()
-  STRING(REPLACE " " "_" CTEST_BUILD_NAME "${CTEST_BUILD_NAME}")
-  message("NAME: ${CTEST_BUILD_NAME}")
-  
+STRING(REPLACE " " "_" CTEST_BUILD_NAME "${CTEST_BUILD_NAME}")
+message("NAME: ${CTEST_BUILD_NAME}")
+
 if(NOT CTEST_BUILD_JOBS)
   include(ProcessorCount)
   ProcessorCount(NPROC)
@@ -494,10 +494,10 @@ set(ENV{CTEST_USE_LAUNCHERS_DEFAULT} 1)
 
 macro(get_git_status res)
   if(EXISTS "${CTEST_SOURCE_DIRECTORY}/.git" )
-#    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} rev-parse --verify HEAD
-#      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-#      OUTPUT_STRIP_TRAILING_WHITESPACE
-#      OUTPUT_VARIABLE gitHash)
+    #    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} rev-parse --verify HEAD
+    #      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
+    #      OUTPUT_STRIP_TRAILING_WHITESPACE
+    #      OUTPUT_VARIABLE gitHash)
     execute_process(COMMAND ${CTEST_UPDATE_COMMAND} log -1
       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
       OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -592,15 +592,16 @@ macro(run_ctests)
   ctest_configure(OPTIONS "${CMAKE_ARGS};${SUBM_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}"  RETURN_VALUE confResult)
 
   #ctest_submit(PARTS Configure Update  RETRY_COUNT 3 RETRY_DELAY 3)
-if(EXISTS ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
-  ctest_submit(PARTS Configure Notes RETRY_COUNT 3 RETRY_DELAY 3)
-else()
-  ctest_submit(PARTS Configure RETRY_COUNT 3 RETRY_DELAY 3)
-endif()
+  if(EXISTS ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
+    set(CTEST_NOTES_FILES ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
+    ctest_submit(PARTS Configure Notes RETRY_COUNT 3 RETRY_DELAY 3)
+  else()
+    ctest_submit(PARTS Configure RETRY_COUNT 3 RETRY_DELAY 3)
+  endif()
 
-if (NOT confResult EQUAL 0)
-  message(SEND_ERROR "CMake Configuration failed.")
-endif()
+  if (NOT confResult EQUAL 0)
+    message(SEND_ERROR "CMake Configuration failed.")
+  endif()
 
   #"${CMAKE_VERSION}" VERSION_LESS "3.10"
   if(NOT "x${LABELS_FOR_SUBPROJECTS}" STREQUAL "x")
@@ -614,9 +615,9 @@ endif()
       ctest_build(TARGET ${subproject} APPEND)
       ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
       ctest_test(INCLUDE_LABEL "${subproject}" PARALLEL_LEVEL ${CTEST_TEST_JOBS} RETURN_VALUE testResult)
-    if (narg GREATER 0 AND NOT testResult EQUAL 0)
-      set(${ARGV0} -1)
-    endif()
+      if (narg GREATER 0 AND NOT testResult EQUAL 0)
+	set(${ARGV0} -1)
+      endif()
 
       ctest_submit(PARTS Test  RETRY_COUNT 3 RETRY_DELAY 3)
 
@@ -666,8 +667,6 @@ endif()
 endmacro(run_ctests)
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
-
-set(CTEST_NOTES_FILES ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
 
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
