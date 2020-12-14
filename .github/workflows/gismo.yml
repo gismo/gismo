@@ -12,11 +12,11 @@ jobs:
     runs-on: "${{ matrix.os }}"
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        os: [windows-latest, macos-latest, ubuntu-latest]
     steps:
     - uses: actions/checkout@v2
 
-    - name: Launch ctest
+    - name: Running ctest
       # Use a bash shell so we can use the same syntax for environment variable
       # access regardless of the host operating system
       shell: bash
