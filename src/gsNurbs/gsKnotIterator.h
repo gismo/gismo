@@ -25,7 +25,7 @@ namespace internal {
 
    The iteration is done over the unique knots in a knot-sequence, that is,
    the knots are visited **without** repetitions.
-*/ 
+*/
 template <typename T>
 class gsUKnotIterator
 {
@@ -34,7 +34,7 @@ public:
     friend class gsKnotIterator<T>;
 
     typedef typename gsKnotVector<T>::mult_t mult_t;    //index_t, gsKnotVector.h:85
-    typedef std::random_access_iterator_tag iterator_category; 
+    typedef std::random_access_iterator_tag iterator_category;
     typedef const gsKnotVector<T> knotVector;
     typedef T value_type;
     typedef std::ptrdiff_t difference_type;
@@ -46,7 +46,7 @@ private:
     mltpointer m_mlt ; ///< pointer to the beginning of the m_multSum sequence
     pointer    m_raw ; ///< pointer to the beginning of the m_repKnots sequence
     mult_t     m_upos; ///< unique index (without repetitions) of current knot
-    mult_t     m_sh  ; ///< Shift of unique intex related to ghost knows
+    mult_t     m_sh  ; ///< Shift of unique index related to ghost knots
 
 //#if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
     mult_t m_dbg;// iteration limit: extra member for iterator debugging mode
@@ -58,7 +58,7 @@ protected:
     // Warning: call GISMO_ASSERT(check()) after using.
     void setValue(const T val)
     {
-        std::fill(const_cast<T*>(m_raw) + firstAppearance(), 
+        std::fill(const_cast<T*>(m_raw) + firstAppearance(),
                   const_cast<T*>(m_raw) + multSum(), val);
     }
 
@@ -67,7 +67,7 @@ public:
     /**
        \brief Default constructor (the iterator is initialized to
        NULL)
-     */ 
+     */
     gsUKnotIterator()
     : m_mlt(NULL), m_raw(NULL), m_upos(0), m_sh(0), m_dbg(0)
     { }
@@ -85,7 +85,7 @@ public:
         m_dbg = KV.uSize()+1;
 #       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
         //m_dbg = KV.uSize()+1;
-        GISMO_ENSURE(upos < m_dbg, "Invalid iterator position "<< upos 
+        GISMO_ENSURE(upos < m_dbg, "Invalid iterator position "<< upos
                      <<" for knot vector with "<<KV.uSize()<<" unique knots");
 #       endif
     }
@@ -102,17 +102,17 @@ public:
 public:
 
     /// \brief Dereferences the knot-iterator
-    reference operator*  () const 
+    reference operator*  () const
     {
-#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0 
+#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
         GISMO_ENSURE(m_upos >= 0 && m_upos + 1 < m_dbg, "Access to invalid knot position.");
-#       endif 
+#       endif
         return m_raw[m_mlt[m_upos]-1];
     }
 
     pointer   operator-> () const {return m_raw+m_mlt[m_upos]-1 ;}
 
-    gsUKnotIterator& operator++() 
+    gsUKnotIterator& operator++()
     {
         ++m_upos;
 #       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
@@ -122,7 +122,7 @@ public:
         return *this;
     }
 
-    gsUKnotIterator& operator--() 
+    gsUKnotIterator& operator--()
     {
 #       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
         GISMO_ENSURE(m_upos > 0 && m_upos < m_dbg, "Invalid knot-iterator decrement");
@@ -146,7 +146,7 @@ public:
        i.e. checks equality of the knot index positions (counted
        without repetitions) in two different knot-vectors.
      */
-    bool operator == (const gsUKnotIterator& other) const 
+    bool operator == (const gsUKnotIterator& other) const
     { return m_upos == other.m_upos;}// && m_raw == other.m_raw;}
 
     /**
@@ -169,9 +169,9 @@ public:
 
     /**
        \brief Returns the value of the knot which is \a a positions
-       after the current knot (poistion and knots counted without repetitions).
+       after the current knot (position and knots counted without repetitions).
      */
-    reference operator [] (ptrdiff_t a) const
+    reference operator[] (ptrdiff_t a) const
     {
 #       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
         GISMO_ENSURE(m_upos+a>=0 && m_upos+a+1 < m_dbg, "Invalid access to non-existent knot.");
@@ -186,7 +186,7 @@ public:
     gsUKnotIterator& operator+=(const difference_type & a)
     {
         m_upos += a;
-#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0 
+#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
         // Note: we allow invalid position for iterators on empty knot-vectors
         GISMO_ENSURE(m_dbg<2 || (m_upos >= 0 && m_upos < m_dbg),
                      "Iterator jumped to invalid knot position.");
@@ -229,11 +229,11 @@ public:
     /**
        \brief Returns the value of the current knot
      */
-    reference value() const 
+    reference value() const
     {
-#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0 
+#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
         GISMO_ENSURE(m_upos >= 0 && m_upos + 1< m_dbg, "Access to invalid knot position.");
-#       endif 
+#       endif
         return this->operator*();
     }
 
@@ -242,10 +242,10 @@ public:
        in the knot-sequence) of the current knot
      */
     mult_t multiplicity() const
-    { 
-#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0 
+    {
+#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
         GISMO_ENSURE(m_upos >= 0 && m_upos + 1< m_dbg, "Access to invalid knot position.");
-#       endif 
+#       endif
         if ( 0 == m_upos )//is it the first unique knot?
             return *m_mlt;
         else
@@ -277,7 +277,7 @@ public:
        of the current knot
      */
      mult_t firstAppearance() const
-    { 
+    {
         return 0 == m_upos ? 0 : m_mlt[m_upos-1];
     }
 
@@ -290,10 +290,10 @@ public:
        of the current knot
      */
     mult_t lastAppearance() const
-    { 
-#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0 
+    {
+#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
         GISMO_ENSURE(m_upos >= 0 && m_upos + 1< m_dbg, "Access to invalid knot position.");
-#       endif 
+#       endif
         return m_mlt[m_upos] - 1;
     }
 
@@ -307,7 +307,7 @@ public:
      */
     mult_t multSum() const
     { return m_mlt[m_upos];}
-    
+
 private:
 
     /*
@@ -316,7 +316,7 @@ private:
 
     // needed ?
     void reset()
-    { 
+    {
         m_upos = 0;
     }
      */
@@ -328,7 +328,7 @@ private:
 
    The iteration is done over all knots in a knot-sequence, that is,
    the knots are visited with repetitions.
-*/ 
+*/
 template <typename T>
 class gsKnotIterator
 {
@@ -336,7 +336,7 @@ public:
     friend class gsKnotVector<T>;
 
     typedef typename gsKnotVector<T>::mult_t mult_t;
-    typedef std::random_access_iterator_tag iterator_category; 
+    typedef std::random_access_iterator_tag iterator_category;
     typedef const gsKnotVector<T> knotVector;
     typedef T value_type;
     typedef std::ptrdiff_t difference_type;
@@ -356,7 +356,7 @@ public:
 
     /**
        \brief Default constructor (the iterator is initialized to NULL)
-    */ 
+    */
     gsKnotIterator()
     : m_uit(), m_pos(0)
     { }
@@ -369,11 +369,11 @@ public:
     */
     explicit gsKnotIterator(knotVector & KV, const mult_t upos = 0, const index_t s = 0)
     : m_uit(KV,upos,s), m_pos(firstAppearance())
-    { 
+    {
 #       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
         m_dbg = KV.size()+1;
-        GISMO_ENSURE(static_cast<size_t>(upos) <= KV.uSize(), 
-                     "Invalid iterator position "<< upos 
+        GISMO_ENSURE(static_cast<size_t>(upos) <= KV.uSize(),
+                     "Invalid iterator position "<< upos
                      <<" for knot vector with "<<KV.uSize()<<" unique knots");
 #       endif
     }
@@ -390,19 +390,19 @@ public:
 public:
 
     /// \brief Dereferences the knot-iterator
-    reference operator*  () const 
+    reference operator*  () const
     {
-#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0 
-        GISMO_ENSURE(m_pos >= 0 && m_pos + 1< m_dbg, 
+#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
+        GISMO_ENSURE(m_pos >= 0 && m_pos + 1< m_dbg,
                      "Access to invalid knot position.");
-#       endif 
+#       endif
         return  m_uit.m_raw[m_pos];
     }
 
     pointer   get()         const {return  m_uit.m_raw+m_pos;}
     pointer   operator-> () const {return  get();}
 
-    gsKnotIterator& operator++() 
+    gsKnotIterator& operator++()
     {
         if (++m_pos == m_uit.multSum())//crossing interval?
             ++m_uit;
@@ -413,7 +413,7 @@ public:
         return *this;
     }
 
-    gsKnotIterator& operator--() 
+    gsKnotIterator& operator--()
     {
 #       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
         GISMO_ENSURE(m_pos > 0 && m_pos < m_dbg, "Invalid knot-iterator decrement");
@@ -438,7 +438,7 @@ public:
        i.e. checks equality of the knot index positions (counted
        with repetitions) in two different knot-vectors.
      */
-    bool operator == (const gsKnotIterator& other) const 
+    bool operator == (const gsKnotIterator& other) const
     { return m_pos == other.m_pos;}// && m_raw == other.m_raw;}
 
     /**
@@ -463,12 +463,24 @@ public:
        \brief Returns the value of the knot which is \a a positions
        after the current knot (counted with repetitions).
      */
-    reference operator [] (ptrdiff_t a) const
+    reference operator[] (ptrdiff_t a) const
     {
 #       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
         GISMO_ENSURE(m_pos+a>=0 && m_pos+a+1 < m_dbg, "Invalid access to non-existent knot.");
 #       endif
         return m_uit.m_raw[m_pos+a];
+    }
+
+    /**
+       \brief Returns the value of the knot which is \a a positions
+       after the current knot (counted without repetitions).
+    */
+    reference operator() (ptrdiff_t a) const
+    {
+#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
+        GISMO_ENSURE(m_pos+a>=0 && m_pos+a+1 < m_dbg, "Invalid access to non-existent knot.");
+#       endif
+        return m_uit[a];
     }
 
     /**
@@ -507,10 +519,10 @@ public:
     gsKnotIterator& operator+=(const difference_type & a)
     {
         m_pos += a;
-#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0 
-        GISMO_ENSURE((m_pos >= 0 && m_pos < m_dbg), 
+#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
+        GISMO_ENSURE((m_pos >= 0 && m_pos < m_dbg),
                      "Iterator jumped to invalid knot position.");
-#       endif 
+#       endif
 
         if (a<0) //substracting ?
         {
@@ -579,7 +591,7 @@ public:
        in the knot-sequence) of the current knot
      */
     mult_t multiplicity() const
-    { 
+    {
         return m_uit.multiplicity();
     }
 
@@ -644,8 +656,8 @@ public:
        \brief Sets the iterator to the first knot in the knot sequence
     // needed ?
     void reset()
-    { 
-        m_pos  = 0; 
+    {
+        m_pos  = 0;
         m_upos = 0;
     }
      */
