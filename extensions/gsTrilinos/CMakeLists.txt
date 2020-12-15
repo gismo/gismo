@@ -73,7 +73,17 @@ if (NOT Trilinos_FOUND)
   set(Trilinos_BUILD_SHARED_LIBS                 OFF)
   set(Trilinos_ENABLE_TESTS                      OFF)
 
-  set(Trilinos_ENABLE_CXX11                       ON)
+  if(CMAKE_CXX_STANDARD     EQUAL 11)
+    set(Trilinos_ENABLE_CXX11                     ON)
+  elseif(CMAKE_CXX_STANDARD EQUAL 14)
+    set(Trilinos_ENABLE_CXX14                     ON)
+  elseif(CMAKE_CXX_STANDARD EQUAL 17)
+    set(Trilinos_ENABLE_CXX17                     ON)
+  elseif(CMAKE_CXX_STANDARD EQUAL 20)
+    set(Trilinos_ENABLE_CXX20                     ON)
+  else()
+    message(FATAL_ERROR "Unsupported C++ standard.")
+  endif()    
 
   # Smart reference-counted pointer class
   set(Trilinos_ENABLE_Teuchos                     ON)
@@ -109,17 +119,8 @@ if (NOT Trilinos_FOUND)
   set(NOX_ENABLE_ThyraCore                        ON)
   set(NOX_ENABLE_ThyraTpetraAdapters              ON)
   set(NOX_ENABLE_ThyraEpetraExtAdapters           ON)
-
-  # Additional packages
-  #set(Trilinos_ENABLE_Pamgen                     OFF) # parallel mesh generation (buggy cmake)
   
-  # Note: below are options that are required for fine-grained
-  # control of individual packages enabled above
-  #set(NOX_ENABLE_ThyraCore                        ON)
-  #set(NOX_ENABLE_ThyraEpetraAdapters              ON)
-  #set(NOX_ENABLE_ThyraEpetraExtAdapters           ON)
-  
-  # Note: we disable all optional packages by default
+  # Disable all optional packages by default
   set(Trilinos_ENABLE_ALL_OPTIONAL_PACKAGES      OFF)
 
   # OpenMP
@@ -145,13 +146,13 @@ if (NOT Trilinos_FOUND)
   set(TPL_ENABLE_SuperLU                          ${GISMO_WITH_SUPERLU})
   set(TPL_SuperLU_INCLUDE_DIRS                    ${SUPERLU_INCLUDES})
   set(TPL_SuperLU_LIBRARIES                       ${SUPERLU_LIBRARIES})
-  
-  # Umfpack solvers
-  set(TPL_ENABLE_UMFPACK                          ${GISMO_WITH_UMFPACK})
-  
+    
   # Taucs solvers
   set(TPL_ENABLE_TAUCS                            ${GISMO_WITH_TAUCS})
 
+  # Umfpack solvers
+  set(TPL_ENABLE_UMFPACK                          ${GISMO_WITH_UMFPACK})
+  
   add_subdirectory(${gismo_externals}/Trilinos ${gismo_BINARY_DIR}/external/Trilinos)
   
   foreach(target ${Trilinos_LIBRARIES})
