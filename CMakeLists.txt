@@ -160,6 +160,9 @@ include_directories(${GISMO_INCLUDE_DIRS})
 # Add externals directory
 add_subdirectory(external)
 
+# Add core libraries
+add_subdirectory(extensions/gsCoreLibs)
+
 if(GISMO_WITH_CODIPACK)
   add_subdirectory(extensions/gsCoDiPack)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
