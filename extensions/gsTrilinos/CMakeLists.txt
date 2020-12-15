@@ -148,7 +148,8 @@ if (NOT Trilinos_FOUND)
 
   # Umfpack solvers
   set(TPL_ENABLE_UMFPACK                          ${GISMO_WITH_UMFPACK})
-  
+
+  # Build Trilinos at compile time
   add_subdirectory(${gismo_externals}/Trilinos ${gismo_BINARY_DIR}/external/Trilinos)
   
   foreach(target ${Trilinos_LIBRARIES})
