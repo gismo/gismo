@@ -2182,13 +2182,11 @@ public:
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     {
-        gsDebugVar(&_u.data());
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         evList.push_sorted_unique(&_u.source());
         _u.data().flags |= NEED_GRAD;
         if (_u.composed() )
             _u.mapData().flags |= NEED_VALUE;
-        gsDebugVar(_u.data().flags);
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }

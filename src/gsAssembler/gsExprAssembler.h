@@ -457,7 +457,9 @@ private:
     struct __setFlag
     {
         template <typename E> void operator() (const gismo::expr::_expr<E> & v)
-        { v.setFlag(); }
+        {
+            v.setFlag();
+        }
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
     } _setFlag;
@@ -752,14 +754,17 @@ void gsExprAssembler<T>::assemble(expr... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
-    // initialize flags
     m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-#   if __cplusplus >= 201103L || _MSC_VER >= 1600
+    //m_exprdata->parse(args...);
     _apply(_setFlag, args...);
-    //_apply(_printExpr, args...);
-#   else
-    _setFlag(a1);_setFlag(a1);_setFlag(a2);_setFlag(a4);_setFlag(a5);
-#   endif
+
+//    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
+// #   if __cplusplus >= 201103L || _MSC_VER >= 1600
+//     _apply(_setFlag, args...);
+//     //_apply(_printExpr, args...);
+// #   else
+//     _setFlag(a1);_setFlag(a1);_setFlag(a2);_setFlag(a4);_setFlag(a5);
+// #   endif
     gsQuadRule<T> QuRule;  // Quadrature rule
     gsVector<T> quWeights; // quadrature weights
 
@@ -809,11 +814,14 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
 {
     // initialize flags
     m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-#   if __cplusplus >= 201103L || _MSC_VER >= 1600
-    _apply(_setFlag, args...);
-#   else
-    _setFlag(a1);
-#   endif
+
+    m_exprdata->parse(args...);
+
+// #   if __cplusplus >= 201103L || _MSC_VER >= 1600
+//     _apply(_setFlag, args...);
+// #   else
+//     _setFlag(a1);
+// #   endif
 
     gsVector<T> quWeights;// quadrature weights
     gsQuadRule<T>  QuRule;
@@ -873,8 +881,10 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
 
     // initialize flags
     m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-    if (left ) exprLhs.setFlag();
-    if (right) exprRhs.setFlag();
+    if (left ) m_exprdata->parse(exprLhs);
+    if (right) m_exprdata->parse(exprRhs);
+    // if (left ) exprLhs.setFlag();
+    // if (right) exprRhs.setFlag();
 
     gsVector<T> quWeights;// quadrature weights
     gsQuadRule<T>  QuRule;
@@ -928,10 +938,10 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
     // initialize flags
 
     m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-    if (left ) exprLhs.setFlag();
-    if (right) exprRhs.setFlag();
-    //m_exprdata->parse(exprLhs,exprRhs);
-    //m_exprdata->parse(exprRhs);
+    if (left ) m_exprdata->parse(exprLhs);
+    if (right) m_exprdata->parse(exprRhs);
+    // if (left ) exprLhs.setFlag();
+    // if (right) exprRhs.setFlag();
 
     gsVector<T> quWeights;// quadrature weights
     gsQuadRule<T>  QuRule;

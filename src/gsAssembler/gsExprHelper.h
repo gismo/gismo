@@ -17,6 +17,7 @@
 
 namespace gismo
 {
+
 /**
    Class holding an expression environment
  */
@@ -59,7 +60,8 @@ private:
     gsFuncData<T>         mutData;
     bool mutParametric;
 
-    gsSortedVector<const gsFunctionSet<T>*> evList;
+    typedef gsSortedVector<const gsFunctionSet<T>*> flist_t;
+    flist_t evList;
 
     const gsMultiBasis<T> * mesh_ptr;
 
@@ -381,12 +383,20 @@ public:
         }
     }
 
-    template<class E>
-    void parse(const expr::_expr<E> & expr)
+private:
+    template <class E1>
+    void _parse(flist_t & el, const expr::_expr<E1> & a1) { a1.parse(el); }
+    template <class E1, class... Rest>
+    void _parse(flist_t & el, const expr::_expr<E1> & a1, Rest... restArgs)
+    { _parse(el,a1); _parse(el, restArgs...); }
+public:
+
+    template<class... expr>
+    void parse(const expr &... args)
     {
-        //evList.reserve(m_ptable.size()+m_itable.size());
         evList.clear();
-        expr.parse(evList);
+        evList.reserve(16);
+        _parse(evList,args...);
     }
 
 /*
