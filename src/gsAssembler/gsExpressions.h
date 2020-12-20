@@ -610,10 +610,10 @@ public:
     const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>(); }
     const gsFeSpace<T> & colVar() const { return gsNullExpr<T>(); }
 
-    void parse(gsSortedVector<const gsFunctionExpr<T>*> & evList) const
+    void parse(gsSortedVector<const gsFunctionSet<T>*> & evList) const
     {
         GISMO_ASSERT(NULL!=m_fd, "GeometryMap not registered");
-        evList.push_unique(m_fs);
+        evList.push_sorted_unique(m_fs);
         m_fd->flags |= NEED_VALUE;
     }
 };
@@ -1915,7 +1915,8 @@ public:
 
     void setFlag() const { _u.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & ) const {  }
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & el) const
+    { _u.parse(el); }
 
     static bool isScalar() { return true; }
 
@@ -1953,7 +1954,8 @@ public:
 
     void setFlag() const { _u.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & ) const {  }
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & el) const
+    { _u.parse(el); }
 
     static bool isScalar() { return true; }
 
@@ -2018,7 +2020,7 @@ public:
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
-    { _u.parse(evList); }
+    { _u.parse(evList); _v.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _v.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }
@@ -2076,7 +2078,7 @@ public:
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
-    { _u.parse(evList); }
+    { _u.parse(evList); _v.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _v.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }
@@ -2180,11 +2182,13 @@ public:
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     {
+        gsDebugVar(&_u.data());
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         evList.push_sorted_unique(&_u.source());
         _u.data().flags |= NEED_GRAD;
         if (_u.composed() )
             _u.mapData().flags |= NEED_VALUE;
+        gsDebugVar(_u.data().flags);
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -2972,6 +2976,7 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     {
         GISMO_ERROR("error 1712");
+        m_data->flags |= NEED_2ND_DER;
     }
 
     enum{rowSpan = 1, colSpan = 0};
@@ -3034,9 +3039,7 @@ public:
     void setFlag() const { _u.data().flags |= NEED_2ND_DER; }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
-    {
-        GISMO_ERROR("error 1712");
-    }
+    { _u.data().flags |= NEED_2ND_DER; }
 
     enum{rowSpan = E::rowSpan, colSpan = 0};
 
