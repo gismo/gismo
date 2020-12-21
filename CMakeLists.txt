@@ -240,9 +240,6 @@ endif(GISMO_WITH_UMFPACK)
 
 if(GISMO_WITH_UNUM)
   add_subdirectory(extensions/gsUnum)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${UNUM_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${UNUM_INCLUDE_DIR})
 endif(GISMO_WITH_UNUM)
 
 if(GISMO_WITH_OCC)
