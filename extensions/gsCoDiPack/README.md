@@ -29,7 +29,9 @@ The CoDiPack extension builds on the open-source [CoDiPack](https://github.com/S
 -  External functions
 -  Higher order derivatives
 
-G+Smo's CoDiPack extension provides two new scalar types, ```codi::RealForward``` and ```codi::RealReverse```, that can be used in place of ```real_t``` to enable algorithmic differentiation (AD) in forward and reverse mode, respectively. This extension requires C++11 (```-DCMAKE_CXX_STANDARD=11```) or better enabled and compilation in header-only mode (```-DGISMO_BUILD_LIB=OFF```).
+G+Smo's CoDiPack extension provides the scalar types ```codi::RealForward```, ```codi::RealReverse```, and ```codi::RealReverseUnchecked``` and several others. The ```codi::RealForward``` type implements the forward mode of AD and the ```codi::RealReverse``` type implements the reverse mode of AD. The third type, ```codi::RealReverseUnchecked``` is also an implementation of the reverse mode of AD but it should only be used by experienced users since it disabled internal checks. For each type there is also a type with single precession, i.e. ```codi::RealForwardFloat```, ```codi::RealReverseFloat```, and ```codi::RealReverseUncheckedFloat```.
+
+The above scalar types can be used as drop-in replacements of ```real_t``` to enable algorithmic differentiation (AD) in forward and reverse mode, respectively. This extension requires C++11 (```-DCMAKE_CXX_STANDARD=11```) or better enabled and compilation in header-only mode (```-DGISMO_BUILD_LIB=OFF```).
 
 __Usage example__
 
