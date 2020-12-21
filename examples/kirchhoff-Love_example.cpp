@@ -1216,7 +1216,7 @@ int main(int argc, char *argv[])
         bc.addCondition(boundary::west, condition_type::clamped, 0, 0, false, 2 );
 
         // Pressure
-        pressure = 1e3;
+        pressure = 5e2;
     }
 
     else if (testCase == 10)
@@ -1466,7 +1466,7 @@ int main(int argc, char *argv[])
     gsMatrix<> updateVector = solVector;
     if (nonlinear)
     {
-        index_t itMax = 10;
+        index_t itMax = 25;
         real_t tol = 1e-8;
         for (index_t it = 0; it != itMax; ++it)
         {
