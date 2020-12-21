@@ -1596,7 +1596,7 @@ int gsTriMeshToSolid<T>::normalMult(gsVector3d<T> globalNormal,
 template<class T>
 bool gsTriMeshToSolid<T>::approxEqual(const gsEdge<T> & e1,const gsEdge<T> & e2)
 {
-  const T epsilon= std::max(calcDist(e1.source, e1.target ) * 0.01, std::pow(10.0, -(std::numeric_limits<T>::digits10-1)));
+  const T epsilon= std::max(calcDist(e1.source, e1.target ) * 0.01, std::pow(T(10.0), -(std::numeric_limits<T>::digits10-1)));
 
     return ( (*e1.source - *e2.source).norm() < epsilon &&
              (*e1.target - *e2.target).norm() < epsilon );
