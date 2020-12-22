@@ -142,7 +142,7 @@ set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GMP_INCLUDE_DIR} ${MPFR_INCLUDE_
   CACHE INTERNAL "gismo include directories")
 
 # Link G+Smo to GMP, GMPXX and MPFR libraries (either dynamically or statically)
-set(gismo_LINKER ${gismo_LINKER} ${MPFR_LIBRARY} ${GMP_LIBRARY} ${GMPXX_LIBRARY}
+set(gismo_LINKER ${gismo_LINKER} ${MPFR_LIBRARY} ${GMPXX_LIBRARY} ${GMP_LIBRARY}
     CACHE INTERNAL "gismo extra linker objects")
 
 # Install gsMultiPrecision header files
