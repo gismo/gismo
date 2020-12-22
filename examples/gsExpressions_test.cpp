@@ -29,8 +29,7 @@ X = error/incorrect
     [V] det_expr
     [V] sqNorm_expr
     [V] norm_expr
-    [ ] col_expr
-    [ ] _expr
+    [~] col_expr
     [V] gsGeometryMap
     [ ] gsFeElement
     [ ] cdiam_expr
@@ -39,11 +38,11 @@ X = error/incorrect
     [V] gsFeSolution
     [V] solGrad_expr
     [V] tr_expr
-    [ ] temp_expr
-    [ ] trace_expr
+    [~] temp_expr
+    [~] trace_expr
     [V] adjugate_expr
     [V] reshape_expr
-    [ ] replicate_expr
+    [~] replicate_expr
     [ ] flat_expr
     [~] asDiag_expr
     [~] idMat_expr
@@ -63,7 +62,7 @@ X = error/incorrect
     [V] lapl_expr
     [~] solLapl_expr
     [~] solHess_expr                        !! export format is different from hess_expr
-    [X] fform_expr                          ?? Commented
+    [X] fform_expr
     [ ] jacGinv_expr
     [ ] jacG_expr
     [V] jac_expr
@@ -145,7 +144,7 @@ X = error/incorrect
     gsInfo<< result <<"\n";
 
     gsInfo<< "* Matrix col(0):\n";
-    result = ev.eval(reshape(M,3,3)[0],point);
+    result = ev.eval(reshape(M,3,3)[0].temp(),point);
     gsInfo<<result<<"\n";
 
     gsInfo<< "* Matrix sign(trace(M - I)):\n"; // - gismo::expr::id(3).temp()
@@ -253,19 +252,25 @@ X = error/incorrect
         - onormal_expr(gsGeometryMap)
         - normalized_expr
     */
+    gsVector<real_t,2> resVec,exVec;
     point<<1.0,0.5;
     physpoint = ev.eval( G,point );
-    gsInfo<< "* Outward Normal vector:\n";
-    gsVector<real_t,2> resVec = ev.eval( nv(G).normalized(), point );
-    gsVector<real_t,2> exVec;
-    exVec<<math::sin(phi),math::cos(phi);
-    // result = gsVector<real_t,2>();
+    gsInfo<< "* plane normal:\n";
+    resVec = ev.eval( nv(G).normalized(), point );
     phi = math::atan2(physpoint(1,0),physpoint(0,0));
-    exact.resize(2,1);
-    exact<<math::sin(phi),math::cos(phi);
+    exVec<<math::sin(phi),math::cos(phi);
     gsInfo<<( std::abs( (exVec.transpose()*resVec) - 1 ) < 1e-10 ? "passed" : "failed" )<<"\n";
-    gsInfo<< "  Result: "<< ev.allValues().transpose() <<"\n";
-    gsInfo<< "  Exact:  "<< exact.transpose()/exact.norm() <<"\n";
+    gsInfo<< "  Result: "<< resVec <<"\n";
+    gsInfo<< "  Exact:  "<< exVec <<"\n";
+
+    gsInfo<< "* plane tangent:\n";
+    resVec = ev.eval( tv(G).normalized(), point );
+    phi = math::atan2(physpoint(1,0),physpoint(0,0));
+    exVec<<math::cos(phi),math::sin(phi);
+    gsInfo<<( std::abs( (exVec.transpose()*resVec) - 1 ) < 1e-10 ? "passed" : "failed" )<<"\n";
+    gsInfo<< "  Result: "<< resVec <<"\n";
+    gsInfo<< "  Exact:  "<< exVec <<"\n";
+
 
     /*
         Computes the fundamental form of a geometry
