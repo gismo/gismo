@@ -136,7 +136,7 @@ public:
     //todo: ValueType=0,1,2 (scalar,vector,matrix)
     //Space = 0,1,2 (instead of rowSpan ColSpan, RowCol ?)
     enum {Space = 0};
-    
+
     //typedef typename E::Nested_t Nested_t;
     //typedef typename E::Scalar   Scalar;
     typedef typename expr_traits<E>::Nested_t Nested_t;
@@ -1442,7 +1442,7 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
-    
+
     enum{rowSpan = E::rowSpan, colSpan = E::colSpan};
 
     void print(std::ostream &os) const { _u.print(os); }
@@ -1548,7 +1548,7 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
-    
+
     enum{rowSpan = E::rowSpan, colSpan = E::colSpan};
 
     void print(std::ostream &os) const { os << "adj("; _u.print(os); os<<")"; }
@@ -1845,7 +1845,7 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
-    
+
     enum{rowSpan = E::rowSpan, colSpan = E::colSpan};
 
     index_t rows() const { return _u.rows(); }
@@ -2209,8 +2209,8 @@ class dJacdc_expr : public _expr<dJacdc_expr<E> >
 {
     typename E::Nested_t _u;
 public:
-    enum{ Space = E::Space, ScalarValued = 0, ColBlocks = E::rowSpan};    
-    
+    enum{ Space = E::Space, ScalarValued = 0, ColBlocks = E::rowSpan};
+
     typedef typename E::Scalar Scalar;
 
     mutable gsMatrix<Scalar> res;
@@ -2262,7 +2262,7 @@ public:
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const
     {return gsNullExpr<Scalar>::get();}
-    
+
     enum{rowSpan = E::rowSpan, colSpan = 0};
 
     void print(std::ostream &os) const { os << "dJacdc("; _u.print(os); os <<")"; }
@@ -3389,7 +3389,7 @@ public:
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
-    
+
     enum{rowSpan = E1::rowSpan || E2::rowSpan,colSpan = E2::colSpan || E1::colSpan};
 
     index_t cardinality_impl() const { return  _u.cardinality(); }
