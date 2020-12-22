@@ -536,9 +536,6 @@ gsNurbsCreator<T>::BSplineQuarterAnnulusMixedWithLShape(int const & deg) {
 }
 */
 
-/// Fat annulus using B-splines, discarding the weights of the exact NURBS
-/// Analytical formulation (when r0 = 1 and r1 = 2):
-/// (x, y) = (1 + s - s*t*t - t*t, 2*s*t -s*t*t + 2*t - t*t)
 template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
 gsNurbsCreator<T>::BSplineFatQuarterAnnulus( T const & r0, T const & r1)
 {
