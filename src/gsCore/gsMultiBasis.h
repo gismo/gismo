@@ -66,7 +66,7 @@ public:
     /// \note In the case of NURBS, the numerator possess the same
     /// approximation power, while the evaluation of values and
     /// partial derivatives are much less expensive
-    explicit gsMultiBasis( const gsMultiPatch<T> & mpatch, bool numeratorOnly = true);
+    explicit gsMultiBasis( const gsMultiPatch<T> & mpatch, bool numeratorOnly = false);
 
     /// Create from a vector of bases and topology
     gsMultiBasis(BasisContainer& bases, const gsBoxTopology & topology)
