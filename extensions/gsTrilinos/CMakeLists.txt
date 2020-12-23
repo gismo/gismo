@@ -162,7 +162,7 @@ if (NOT Trilinos_FOUND)
 
 endif(NOT Trilinos_FOUND)
 
-include_directories(${Trilinos_INCLUDE_DIRS}) # ${TPL_MPI_INCLUDE_DIRS})
+include_directories(${Trilinos_INCLUDE_DIRS})
 
 ##
 ## gsTrilinos extension
