@@ -19,6 +19,8 @@
 
 using namespace gismo;
 
+#if defined(GISMO_WITH_CODIPACK) && !defined(GISMO_BUILD_LIB)
+
 // Implementation of the system solver for CoDiPack
 void solveSystem_b(codi::RealReverse::TapeType         *tape,
                    codi::DataStore                     *data,
@@ -182,3 +184,13 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+
+#else
+
+int main(int argc, char* argv[])
+{
+    gsInfo << "Compile with -DGISMO_WITH_CODIPACK=ON -DGISMO_BUILD_LIB=OFF\n";
+    return 0;
+}
+
+#endif
