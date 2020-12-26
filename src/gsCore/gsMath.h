@@ -295,7 +295,7 @@ using ::cos;
 using ::cosh;
 using ::exp;
 using ::floor;
-using ::log10;
+//using ::log10;
 using ::log;
 using ::pow;
 using ::sin;
@@ -304,6 +304,8 @@ using ::sqrt;
 using ::tan;
 using ::tanh;
 
+inline mpq_class log10(const mpq_class & a) { return log(a)/log(mpq_class(10.0)); }
+    
 //fixme: min/max duplication with global
 inline mpq_class (max)(const mpq_class & a, const mpq_class & b)
 {return mpq_class(a < b ? b : a);}
