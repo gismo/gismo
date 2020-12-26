@@ -353,9 +353,11 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}
 ##
 ## Add dependencies
 ##
-if(NOT BLAS_FOUND OR NOT Lapack_FOUND)
-  # Make gsCoreLibs extension dependent on OpenBLAS library
-  add_dependencies(${PROJECT_NAME} openblas)
+if(GISMO_WITH_SUPERLU OR GISMO_WITH_TAUCS OR GISMO_WITH_UMFPACK)
+  if(NOT BLAS_FOUND OR NOT Lapack_FOUND)
+    # Make gsCoreLibs extension dependent on OpenBLAS library
+    add_dependencies(${PROJECT_NAME} openblas)
+  endif()
 endif()
 
 if(GISMO_WITH_SUPERLU AND NOT SuperLU_FOUND)
