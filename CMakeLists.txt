@@ -229,6 +229,13 @@ if(GISMO_WITH_TAUCS)
   #include_directories(SYSTEM ${SUPERLU_INCLUDES})
 endif(GISMO_WITH_TAUCS)
 
+if(GISMO_WITH_TORCH)
+  add_subdirectory(extensions/gsTorch)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TORCH_INCLUDE_DIRS}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  #include_directories(${TORCH_INCLUDE_DIRS})
+endif(GISMO_WITH_TORCH)
+
 if(GISMO_WITH_UMFPACK)
   find_package(Umfpack REQUIRED)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${UMFPACK_INCLUDES}

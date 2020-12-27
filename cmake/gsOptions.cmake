@@ -158,6 +158,11 @@ if  (${GISMO_WITH_TAUCS})
 message ("  GISMO_WITH_TAUCS        ${GISMO_WITH_TAUCS}")
 endif()
 
+option(GISMO_WITH_TORCH          "With Torch"                false  )
+if  (${GISMO_WITH_TORCH})
+message ("  GISMO_WITH_TORCH      ${GISMO_WITH_TORCH}")
+endif()
+
 option(GISMO_WITH_TRILINOS       "With TRILINOS"             false  )
 if  (${GISMO_WITH_TRILINOS})
 message ("  GISMO_WITH_TRILINOS     ${GISMO_WITH_TRILINOS}")
