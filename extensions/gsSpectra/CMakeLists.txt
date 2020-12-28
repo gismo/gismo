@@ -33,7 +33,7 @@ gismo_fetch_directory(Spectra
 
 #set(SPECTRA_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/Spectra/Spectra CACHE INTERNAL "")
 #set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SPECTRA_INCLUDE_DIR}
-#    CACHE INTERNAL "gismo include directories")
+#    CACHE INTERNAL "Gismo include directories")
   
 add_library(${PROJECT_NAME} INTERFACE)
 target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_HEADERS}>)

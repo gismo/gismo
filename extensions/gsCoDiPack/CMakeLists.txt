@@ -31,7 +31,7 @@ set(CODIPACK_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/CoDiPack/include CACHE INT
 
 # Add CoDiPack include directory to G+Smo standard include directories
 set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
-  CACHE INTERNAL "gismo include directories")
+  CACHE INTERNAL "Gismo include directories")
 
 # Install CoDiPack header files
 install(DIRECTORY ${CODIPACK_INCLUDE_DIR}/

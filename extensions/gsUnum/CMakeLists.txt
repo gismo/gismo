@@ -31,7 +31,7 @@ set(UNUM_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/unum/include CACHE INTERNAL ""
 
 # Add Unum include directory to G+Smo standard include directories
 set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${UNUM_INCLUDE_DIR}
-  CACHE INTERNAL "gismo include directories")
+  CACHE INTERNAL "Gismo include directories")
 
 # Install Unum header files
 install(DIRECTORY ${UNUM_INCLUDE_DIR}/universal
