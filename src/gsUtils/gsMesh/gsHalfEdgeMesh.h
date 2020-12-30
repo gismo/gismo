@@ -126,11 +126,6 @@ public:
         bool isTwin(const Halfedge &halfedge) const
         { return (m_origin == halfedge.m_end && m_end == halfedge.m_origin); }
 
-	void print() const
-	{
-	    gsInfo << "(" << getOrigin() << ", " << getEnd() << ")";
-	}
-
     private:
         size_t m_origin; ///< index of origin vertex
         size_t m_end;    ///< index of end vertex
@@ -361,15 +356,6 @@ public:
          */
         void appendNextHalfedge(const Halfedge &nextHalfedge, bool ignoreWarning = false);
 
-	void print() const
-	{
-	    for(auto it=m_chainedHalfedges.begin(); it!=m_chainedHalfedges.end(); ++it)
-	    {
-		it->print();
-		gsInfo << std::endl;
-	    }
-	}
-
     private:
         std::list<Halfedge> m_chainedHalfedges; ///< list of halfedges
     };
@@ -538,15 +524,6 @@ private:
 		if(it->isVertexContained(internVertexIndex))
 		    return true;
 	    return false;
-	}
-
-	void print() const
-	{
-	    for(auto it=m_boundary.begin(); it!=m_boundary.end(); ++it)
-	    {
-		it->print();
-		gsInfo << std::endl;
-	    }
 	}
 
     private:
@@ -753,17 +730,6 @@ public:
 		return sorted == true ? i+1 : i;
 	}
 	return -1;
-    }
-
-    void print_boundary() const
-    {
-	m_boundary.print();
-    }
-
-    void print() const
-    {
-	for(size_t i=0; i<getNumberOfVertices(); i++)
-	    gsInfo << i << ": " << *(this->vertices()[i]) << std::endl;
     }
 
     const typename gsMesh<T>::gsVertexHandle &getVertexUnsorted(const size_t globIndex) const

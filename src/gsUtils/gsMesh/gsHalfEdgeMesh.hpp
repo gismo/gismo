@@ -40,7 +40,6 @@ gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision, bool perio
     //typename std::vector<gsVertex<T> *, std::allocator<gsVertex<T> *> >::iterator
     //last = std::unique(this->m_vertex.begin(), this->m_vertex.end(), equal_ptr());
 
-    // gsInfo << "Constructor of gsHalfEdgeMesh, there are " << this->m_vertex.size() << " vertices.\n";
 
     m_halfedges.reserve(3*this->m_face.size());
     for (size_t i = 0; i < this->m_face.size(); i++)
@@ -51,15 +50,8 @@ gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision, bool perio
     }
 
     m_boundary = Boundary(m_halfedges);
-    // The -1 is because of periodicity.
-    // gsInfo << "vertices: " << this->m_vertex.size() << std::endl;
-    // gsInfo << "boundary: " << m_boundary.getNumberOfVertices() << std::endl;
-    m_n = this->m_vertex.size() - m_boundary.getNumberOfVertices(); // +- periodic?
+    m_n = this->m_vertex.size() - m_boundary.getNumberOfVertices();
     sortVertices();
-    
-    // gsInfo << "mesh 4:\n";
-    // print();
-    // gsInfo << std::endl;
 }
 
 template<class T>
@@ -362,9 +354,6 @@ gsHalfEdgeMesh<T>::Boundary::Boundary(const std::vector<typename gsHalfEdgeMesh<
 	    }
 	}
 
-	// gsInfo << "Pushing back a component with " << component.getNumberOfVertices() << " vertices, "
-	//        << nonFittingHalfedges.size() << " halfedges remain." << std::endl;
-
 	m_boundary.push_back(component);
 
 	// // Collect the remaining half edges for the next connected component.
@@ -373,15 +362,7 @@ gsHalfEdgeMesh<T>::Boundary::Boundary(const std::vector<typename gsHalfEdgeMesh<
 	    unsortedNonTwinHalfedges.push_back( nonFittingHalfedges.front() );
 	    nonFittingHalfedges.pop();	// Start a new connected component.
 	}
-	// gsInfo << "Closed: " << m_boundary.isClosed() << ", has "
-	//        << m_boundary.getNumberOfVertices() << std::endl;
     }
-    // if (!m_boundary.isClosed())
-    //     gsWarn << "gsHalfEdgeMesh::Boundary::Boundary: Boundary is not closed although it should be. End points are:\n"
-    //               << m_boundary.getFirstHalfedge().getOrigin() << "\n and "
-    //               << m_boundary.getLastHalfedge().getEnd() << "\n";
-
-    // Even here, print() returns nothing.
 }
 /// @endcond
 // private

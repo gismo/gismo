@@ -261,7 +261,7 @@ gsMesh<T> gsParametrization<T>::createFlatMesh() const
             v[j - 1] = mesh.addVertex(getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[0],
 				      getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[1]);
         }
-	 mesh.addFace(v[0], v[1], v[2]);
+	mesh.addFace(v[0], v[1], v[2]);
     }
     return mesh.cleanMesh();
 }
