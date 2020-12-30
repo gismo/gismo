@@ -36,6 +36,10 @@
 #include <sys/syslimits.h>
 #endif
 
+#if defined __linux__
+#include <limits.h>
+#endif
+
 namespace gismo
 {
 
@@ -148,7 +152,7 @@ bool gsFileManager::isFullyQualified(const std::string& fn)
     // case "c:\\abc"
     if ( fn.size() > 2 && isalpha(fn[0]) && fn[1] == ':')
     {
-        for (int i = 0; i < getValidPathSeparators().length(); ++i)
+        for (size_t i = 0; i < getValidPathSeparators().length(); ++i)
         {
             valid = valid || (fn[2] == getValidPathSeparators()[i]);
         }

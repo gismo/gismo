@@ -71,7 +71,7 @@ getTrimCurvesAndBoundingBoxes<real_t>
 
 TEMPLATE_INST bool
 getParBoxAsIndexBoxInLevel(const gsTHBSplineBasis<2, real_t>& basis,unsigned lvl,
-                           const std::vector<real_t>& par_box,std::vector<unsigned>& index_box);
+                           const std::vector<real_t>& par_box,std::vector<index_t>& index_box);
 
 TEMPLATE_INST bool
 parBoxesIntersect(const std::vector<real_t>& par_boxes);

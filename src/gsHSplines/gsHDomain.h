@@ -64,13 +64,13 @@ Template parameters
 \ingroup HSplines
 */
 
-template<short_t d, class T = unsigned>
+template<short_t d, class T = index_t>
 class gsHDomain
 {
 public:
     typedef kdnode<d,T> node;
 
-    typedef typename node::point point; // it's a gsVector<unsigned,d>
+    typedef typename node::point point; // it's a gsVector<index_t,d>
 
     typedef typename node::kdBox box; // it's a gsAabb<d,unsigned>
 
@@ -107,7 +107,7 @@ public:
 
     gsHDomain() : m_indexLevel(0)
     {
-        m_root=NULL;
+        m_root = nullptr;
         m_maxInsLevel = 0;
         m_maxPath = 0;
     }
@@ -154,6 +154,28 @@ public:
         return *this;
     }
 
+#if EIGEN_HAS_RVALUE_REFERENCES
+    gsHDomain(gsHDomain&& o) :
+    m_root(o.m_root),
+    m_upperIndex(std::move(o.m_upperIndex)),
+    m_indexLevel(o.m_indexLevel),
+    m_maxInsLevel(o.m_maxInsLevel),
+    m_maxPath(o.m_maxPath)
+    {
+        o.m_root = nullptr;
+    }
+
+    gsHDomain & operator=(gsHDomain&& o)
+    {
+        delete m_root; m_root = o.m_root; o.m_root = nullptr;
+        m_upperIndex  = std::move(o.m_upperIndex);
+        m_indexLevel  = o.m_indexLevel;
+        m_maxInsLevel = o.m_maxInsLevel;
+        m_maxPath     = o.m_maxPath;
+        return *this;
+    }
+#endif
+
     /// Initialize the tree
     void init(point const & upp, unsigned index_level = 13)
     {
@@ -163,7 +185,7 @@ public:
         if ( m_root )
             delete m_root;
 
-        for (unsigned i=0; i<d; ++i) 
+        for (short_t i=0; i<d; ++i)
             m_upperIndex[i] = (upp[i]<< m_indexLevel);
 
         m_root = new node(m_upperIndex);
@@ -178,24 +200,24 @@ public:
 
 public:
 
-    void computeFinestIndex( gsVector<unsigned,d> const & index,
+    void computeFinestIndex( gsVector<index_t,d> const & index,
                              unsigned lvl,
-                             gsVector<unsigned,d> & result
+                             gsVector<index_t,d> & result
         ) const;
 
-    void computeLevelIndex( gsVector<unsigned,d> const & index,
+    void computeLevelIndex( gsVector<index_t,d> const & index,
                             unsigned lvl,
-                            gsVector<unsigned,d> & result
+                            gsVector<index_t,d> & result
         ) const;
 
-    void local2globalIndex( gsVector<unsigned,d> const & index,
+    void local2globalIndex( gsVector<index_t,d> const & index,
                             unsigned lvl,
-                            gsVector<unsigned,d> & result
+                            gsVector<index_t,d> & result
         ) const;
 
-    void global2localIndex( gsVector<unsigned,d> const & index,
+    void global2localIndex( gsVector<index_t,d> const & index,
                             unsigned lvl,
-                            gsVector<unsigned,d> & result
+                            gsVector<index_t,d> & result
         ) const;
 
     /// Accessor for gsHDomain::m_upperIndex
@@ -249,7 +271,7 @@ public:
     /// Returns the internal coordinates of point \a point_idx of level \a lvl
     void internalIndex (point const & point_idx, int lvl, point & internal_idx)
     {
-        for ( unsigned i = 0; i!=d; ++i )
+        for ( short_t i = 0; i!=d; ++i )
             internal_idx[i] = point_idx[i] << (m_indexLevel-lvl);
     }
 
@@ -440,7 +462,7 @@ public:
     /// Returns the number of distinct knots in direction \a k of level \a lvl
     int numBreaks(int lvl, int k) const
     {
-        return (m_upperIndex[k] >> (m_indexLevel - lvl) );
+        return m_upperIndex[k] >> (m_indexLevel - lvl);
     }
 
     /// Returns the number of leaves in the tree
@@ -474,9 +496,9 @@ public:
     */
     // getBoxes-functions might get removed at some point of time.
     // Use iterators instead whenever possible.
-    void getBoxes(gsMatrix<unsigned>& b1, 
-                  gsMatrix<unsigned>& b2, 
-                  gsVector<unsigned>& level) const;
+    void getBoxes(gsMatrix<index_t>& b1,
+                  gsMatrix<index_t>& b2,
+                  gsVector<index_t>& level) const;
 
     /** \brief Returns the boxes which make up the hierarchical domain
     * and the respective levels touching side \em s.
@@ -492,9 +514,9 @@ public:
     // getBoxes-functions might get removed at some point of time.
     // Use iterators instead whenever possible.
     void getBoxesOnSide(boundary::side s,
-                        gsMatrix<unsigned>& b1,
-                        gsMatrix<unsigned>& b2,
-                        gsVector<unsigned>& level) const;
+                        gsMatrix<index_t>& b1,
+                        gsMatrix<index_t>& b2,
+                        gsVector<index_t>& level) const;
 
 
 
@@ -507,15 +529,15 @@ public:
     /// \param level corresponding levels
     // getBoxes-functions might get removed at some point of time.
     // Use iterators instead whenever possible.
-    void getBoxesInLevelIndex(gsMatrix<unsigned>& b1,
-                  gsMatrix<unsigned>& b2,
-                  gsVector<unsigned>& level) const;
+    void getBoxesInLevelIndex(gsMatrix<index_t>& b1,
+                  gsMatrix<index_t>& b2,
+                  gsVector<index_t>& level) const;
 
     ///return a list of polylines- boundaries of each connected
     ///component for all levels in the parameter space
-    std::vector< std::vector< std::vector< std::vector< unsigned int > > > > getPolylines() const;
+    std::vector< std::vector< std::vector< std::vector< index_t > > > > getPolylines() const;
 
-    std::vector< std::vector< std::vector< unsigned int > > > getPolylinesSingleLevel(std::vector<gsVSegment<T> >& seg) const;
+    std::vector< std::vector< std::vector< index_t > > > getPolylinesSingleLevel(std::vector<gsVSegment<T> >& seg) const;
 
 
     inline unsigned getIndexLevel() const
@@ -583,7 +605,7 @@ private:
     /// All indexing is in terms of level gsHDomain::m_maxInsLevel. \n
     // getBoxes-functions might get removed at some point of time.
     // Use iterators instead whenever possible.
-    void getBoxes_vec(std::vector<std::vector<unsigned int> >& boxes) const;
+    void getBoxes_vec(std::vector<std::vector<index_t> >& boxes) const;
 
     /// \brief connect the boxes returned from quadtree getBoxes_vec()
     ///
@@ -595,10 +617,10 @@ private:
     /// is represented as vector of size <em>2*d + 1</em> containing
     /// [ [lower corner],[upper corner], Level ], where the corners
     /// are defined by the knot indices on level gsHDomain::m_maxInsLevel.
-    void connect_Boxes(std::vector<std::vector<unsigned int> > &boxes) const;
-    void connect_Boxes2d(std::vector<std::vector<unsigned int> > &boxes) const;
+    void connect_Boxes(std::vector<std::vector<index_t> > &boxes) const;
+    void connect_Boxes2d(std::vector<std::vector<index_t> > &boxes) const;
 
-    void connect_Boxes_2(std::vector<std::vector<unsigned int> > &boxes) const;
+    void connect_Boxes_2(std::vector<std::vector<index_t> > &boxes) const;
 
     /// For each x-coordinate delete repeated parts of vertical segments.
     /// \a vert_seg_lists list, where for each x coordinate (sorted increasingly) a list of vertical segments
@@ -606,7 +628,7 @@ private:
     void getRidOfOverlaps( std::list< std::list< gsVSegment<T> > >& vert_seg_lists ) const;
 
     /// Sweepline algorithm.
-    void sweeplineConnectAndMerge( std::vector< std::vector< std::vector<unsigned int> > >& result,
+    void sweeplineConnectAndMerge( std::vector< std::vector< std::vector<index_t> > >& result,
                                    std::list< std::list< gsVSegment<T> > >& vert_seg_lists ) const;
     
 

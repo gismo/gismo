@@ -29,11 +29,14 @@ endif()
 
 project(main)
 
+include(CTest)
+#set(BUILD_TESTING "Enable testing" ${GISMO_BUILD_UNITTESTS})
+
 set(CMAKE_CXX_STANDARD 11)
+message(STATUS "CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH}")
 
 # G+Smo
 find_package(gismo REQUIRED)
-message(STATUS "G+Smo shared library in ${GISMO_LIBRARY_DIR}")
 include_directories( ${GISMO_INCLUDE_DIRS})
 link_directories   ( ${GISMO_LIBRARY_DIR} )
 
@@ -57,4 +60,5 @@ foreach(file ${FILES})
 
 endforeach(file ${FILES})
 
+message(STATUS "G+Smo shared library found in ${GISMO_LIBRARY_DIR}")
 message(STATUS "Type \"make\" to build")

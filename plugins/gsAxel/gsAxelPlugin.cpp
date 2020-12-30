@@ -1,6 +1,7 @@
 /** @file gsAxelPlugin.h
 
-    @brief This file provides declaration of the G+Smo plugin for Axel modeler.
+    @brief This file provides declaration of the G+Smo plugin for Axel
+    modeler.
 
     This file is part of the G+Smo library. 
 
@@ -131,7 +132,7 @@ void gsAxelPlugin::aboutGismo(void)
                " G+Smo \n\n"
                "Geometry plus Simulation modules\n"
                "Version " GISMO_VERSION "\n"
-               "http://gs.jku.at/gismo \n");
+               "https://github.com/gismo/gismo \n");
     QMessageBox::about(d->gismoMenu, trUtf8("About G+Smo plugin"), gs);
 }
 
@@ -147,7 +148,7 @@ QString gsAxelPlugin::name(void) const
 
 QString gsAxelPlugin::description(void) const
 {
-    return "G+Smo plugin. Geometry + Simulation modules, www.gs.jku.at/gismo";
+    return "G+Smo plugin. Geometry + Simulation modules, https://github.com/gismo/gismo";
 }
 
 QStringList gsAxelPlugin::tags(void) const

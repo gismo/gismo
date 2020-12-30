@@ -14,7 +14,7 @@
 #pragma once
 
 #include <string>
-#include <gmpxx.h>
+#include <gsMultiPrecision/gsMultiPrecision.h>
 
 namespace exprtk
 {

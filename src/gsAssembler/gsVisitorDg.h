@@ -145,8 +145,8 @@ public:
         }
     }
     
-    inline void localToGlobal(const int                         patch1,
-                              const int                         patch2,
+    inline void localToGlobal(const index_t                     patch1,
+                              const index_t                     patch2,
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T>               & system)
     {
@@ -177,7 +177,7 @@ private:
     // Basis values etc
     std::vector<gsMatrix<T> > basisData1, basisData2;
     gsMatrix<T>        phGrad1   , phGrad2;
-    gsMatrix<unsigned> actives1  , actives2;
+    gsMatrix<index_t> actives1  , actives2;
 
     // Outer normal
     gsVector<T> unormal;

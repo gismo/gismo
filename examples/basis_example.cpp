@@ -104,7 +104,7 @@ int main(int argc, char* argv[])
     gsInfo << "u " << size(u) << ": \n" << u << "\n\n";
 
     // indices of active (nonzero) functions at parameter u
-    gsMatrix<unsigned> active = pBasis->active(u);
+    gsMatrix<index_t> active = pBasis->active(u);
     gsInfo << "Active functions at u " << size(active) << ": \n"
            << active << "\n\n";
 

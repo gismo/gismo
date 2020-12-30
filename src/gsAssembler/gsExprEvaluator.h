@@ -201,14 +201,14 @@ public:
 #ifdef __DOXYGEN__
     template<class E> void
 #else
-    template<class E, int mode, int d>
+    template<class E, int mode, short_t d>
     typename util::enable_if<E::ScalarValued,void>::type
 #endif
     eval(const expr::_expr<E> & expr,
          gsGridIterator<T,mode,d> & git,
          const index_t patchInd = 0);
 
-    template<class E, int mode, int d>
+    template<class E, int mode, short_t d>
     typename util::enable_if<!E::ScalarValued,void>::type
     eval(const expr::_expr<E> & expr,
               gsGridIterator<T,mode,d> & git,
@@ -377,9 +377,10 @@ template<class T>
 template<class E, class _op>
 T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr)
 {
-    GISMO_ASSERT( expr.isScalar(),
-                  "Expecting scalar expression instead of "
-                  <<expr.cols()<<" x "<<expr.rows() );
+    // GISMO_ASSERT( expr.isScalar(),
+    //               "Expecting scalar expression instead of "
+    //               <<expr.cols()<<" x "<<expr.rows() );
+
     //expr.print(gsInfo);
 
     gsQuadRule<T> QuRule;  // Quadrature rule
@@ -432,9 +433,9 @@ template<class T>
 template<class E, class _op>
 T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const intContainer & iFaces)
 {
-    GISMO_ASSERT( expr.isScalar(),
-                  "Expecting scalar expression instead of "
-                  <<expr.cols()<<" x "<<expr.rows() );
+    // GISMO_ASSERT( expr.isScalar(),
+    //               "Expecting scalar expression instead of "
+    //               <<expr.cols()<<" x "<<expr.rows() );
 
     //expr.print(gsInfo);
 
@@ -453,8 +454,8 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
              iFaces.begin(); iit != iFaces.end(); ++iit)
     {
         const boundaryInterface & iFace = *iit;
-        const int patch1 = iFace.first().patch;
-        // const int patch2 = iFace.second().patch; //!
+        const index_t patch1 = iFace.first().patch;
+        // const index_t patch2 = iFace.second().patch; //!
         // Quadrature rule
         QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(patch1),
                                    m_options, iFace.first().side().direction());
@@ -491,7 +492,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
 
 
 template<class T>
-template<class E, int mode, int d>
+template<class E, int mode, short_t d>
 typename util::enable_if<E::ScalarValued,void>::type
 gsExprEvaluator<T>::eval(const expr::_expr<E> & expr,
                          gsGridIterator<T,mode,d> & git,
@@ -519,7 +520,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr,
 }
 
 template<class T>
-template<class E, int mode, int d>
+template<class E, int mode, short_t d>
 typename util::enable_if<!E::ScalarValued,void>::type
 gsExprEvaluator<T>::eval(const expr::_expr<E> & expr,
                          gsGridIterator<T,mode,d> & git,
@@ -556,7 +557,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
     m_exprdata->points() = pt;
     m_exprdata->precompute(patchInd);
 
-    expr.printDetail(gsInfo); //
+    // expr.printDetail(gsInfo); //
 
     m_value = expr.val().eval(0);
     return gsAsConstMatrix<T>(&m_value,1,1);
@@ -572,7 +573,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
     m_exprdata->points() = pt;
     m_exprdata->precompute(patchInd);
 
-    expr.printDetail(gsInfo); //after precompute
+    // expr.printDetail(gsInfo); //after precompute
 
     gsMatrix<T> tmp = expr.eval(0);
     // const index_t r = expr.rows();

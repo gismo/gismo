@@ -59,7 +59,7 @@ SUITE(gsBasisComponents_test)
         index_t sz = components.size();
         for (index_t i=0; i<sz; ++i)
         {
-            gsMatrix<unsigned> indices;
+            gsMatrix<index_t> indices;
             std::vector<gsBasis<>::uPtr> bases = mb.componentBasis_withIndices(components[i],dm,indices,true);
             for (index_t j=0; j<indices.rows(); ++j)
             {

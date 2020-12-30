@@ -431,13 +431,14 @@ class PardisoLU : public PardisoImpl< PardisoLU<MatrixType> >
 {
   protected:
     typedef PardisoImpl<PardisoLU> Base;
-    typedef typename Base::Scalar Scalar;
-    typedef typename Base::RealScalar RealScalar;
     using Base::pardisoInit;
     using Base::m_matrix;
     friend class PardisoImpl< PardisoLU<MatrixType> >;
 
   public:
+
+    typedef typename Base::Scalar Scalar;
+    typedef typename Base::RealScalar RealScalar;
 
     using Base::compute;
     using Base::solve;
@@ -463,10 +464,14 @@ class PardisoLU : public PardisoImpl< PardisoLU<MatrixType> >
       typedef typename MatrixType::StorageIndex StorageIndex;
       StorageIndex * s = m_matrix.innerIndexPtr();
       std::transform(s, s + m_matrix.nonZeros(), s,
-                     std::bind2nd(std::plus<StorageIndex>(), 1));
+                     internal::bind2nd_op<std::plus<StorageIndex> >(1)
+                     //std::bind2nd(std::plus<StorageIndex>(), 1)
+          );
       s = m_matrix.outerIndexPtr();
       std::transform(s, s + m_matrix.outerSize()+1, s,
-                     std::bind2nd(std::plus<StorageIndex>(), 1));
+                     internal::bind2nd_op<std::plus<StorageIndex> >(1)
+                     //std::bind2nd(std::plus<StorageIndex>(), 1)
+          );
       // gsInfo << "ia (outer) :"<< m_matrix.outerSize()<< " / "<< m_matrix.outerSize()+1 <<"\n";
       // gsInfo << "ja (inner) :"<< m_matrix.innerSize()<< " / "<< m_matrix.nonZeros() <<"\n";
     }
@@ -496,13 +501,14 @@ class PardisoLLT : public PardisoImpl< PardisoLLT<MatrixType,_UpLo> >
 {
   protected:
     typedef PardisoImpl< PardisoLLT<MatrixType,_UpLo> > Base;
-    typedef typename Base::Scalar Scalar;
-    typedef typename Base::RealScalar RealScalar;
     using Base::pardisoInit;
     using Base::m_matrix;
     friend class PardisoImpl< PardisoLLT<MatrixType,_UpLo> >;
 
   public:
+
+    typedef typename Base::Scalar Scalar;
+    typedef typename Base::RealScalar RealScalar;
 
     typedef typename Base::StorageIndex StorageIndex;
     enum { UpLo = _UpLo };
@@ -533,10 +539,14 @@ class PardisoLLT : public PardisoImpl< PardisoLLT<MatrixType,_UpLo> >
       //1-index based conversion
       StorageIndex * s = m_matrix.innerIndexPtr();
       std::transform(s, s+m_matrix.nonZeros(), s,
-                     std::bind2nd(std::plus<StorageIndex>(), 1));
+                     internal::bind2nd_op<std::plus<StorageIndex> >(1)
+                     //std::bind2nd(std::plus<StorageIndex>(), 1)
+          );
       s = m_matrix.outerIndexPtr();
       std::transform(s, s+m_matrix.outerSize()+1, s,
-                     std::bind2nd(std::plus<StorageIndex>(), 1));
+                     internal::bind2nd_op<std::plus<StorageIndex> >(1)
+                     //std::bind2nd(std::plus<StorageIndex>(), 1)
+          );
     }
 };
 
@@ -566,13 +576,14 @@ class PardisoLDLT : public PardisoImpl< PardisoLDLT<MatrixType,Options> >
 {
   protected:
     typedef PardisoImpl< PardisoLDLT<MatrixType,Options> > Base;
-    typedef typename Base::Scalar Scalar;
-    typedef typename Base::RealScalar RealScalar;
     using Base::pardisoInit;
     using Base::m_matrix;
     friend class PardisoImpl< PardisoLDLT<MatrixType,Options> >;
 
   public:
+
+    typedef typename Base::Scalar Scalar;
+    typedef typename Base::RealScalar RealScalar;
 
     typedef typename Base::StorageIndex StorageIndex;
     using Base::compute;
@@ -601,10 +612,14 @@ class PardisoLDLT : public PardisoImpl< PardisoLDLT<MatrixType,Options> >
       //1-index based conversion
       StorageIndex * s = m_matrix.innerIndexPtr();
       std::transform(s, s + m_matrix.nonZeros(), s,
-                     std::bind2nd(std::plus<StorageIndex>(), 1));
+                     internal::bind2nd_op<std::plus<StorageIndex> >(1)
+                     //std::bind2nd(std::plus<StorageIndex>(), 1)
+          );
       s = m_matrix.outerIndexPtr();
       std::transform(s, s + m_matrix.outerSize()+1, s,
-                     std::bind2nd(std::plus<StorageIndex>(), 1));
+                     internal::bind2nd_op<std::plus<StorageIndex> >(1)
+                     //std::bind2nd(std::plus<StorageIndex>(), 1)
+          );
     }
 };
 

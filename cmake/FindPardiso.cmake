@@ -1,9 +1,8 @@
 ######################################################################
-## FindPardiso.cmake ---
+## FindPardiso.cmake
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012 - 2015 RICAM-Linz.
 ######################################################################
 
 # First try: Pardiso compiled with Intel fortran

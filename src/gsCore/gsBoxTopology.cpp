@@ -59,7 +59,7 @@ void gsBoxTopology::addAutoBoundaries()
     {
         return;
     }
-    for (size_t b = 0; b < nboxes; ++b)
+    for (index_t b = 0; b < nboxes; ++b)
     {
         for (boxSide bs = boxSide::getFirst(m_dim); bs < boxSide::getEnd(m_dim); ++bs)
         {
@@ -132,7 +132,7 @@ bool gsBoxTopology::getNeighbour(const patchSide& ps ,patchSide& result) const
     return getNeighbour(ps, result, a);
 }
 
-const boundaryInterface * gsBoxTopology::findInterface(const size_t b1, const size_t b2) const
+const boundaryInterface * gsBoxTopology::findInterface(const index_t b1, const index_t b2) const
 {
     for ( size_t i = 0; i < m_interfaces.size(); ++i )
     {
@@ -197,7 +197,7 @@ int gsBoxTopology::getMaxValence() const
     patchCorner start;
     std::vector<patchCorner> cornerList;
     int valence,maxValence=-1;
-    for(size_t i = 0;i<nboxes;++i)
+    for(index_t i = 0;i<nboxes;++i)
     {
         for(int j = 1;j<=( 1 << m_dim );++j)
         {
@@ -306,7 +306,7 @@ void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists)
     cornerLists.clear();
     std::vector<patchCorner> cornerList;
     patchCorner c;
-    for(size_t i = 0;i<nboxes;++i)
+    for(index_t i = 0;i<nboxes;++i)
     {
         for(int j=1;j<=4;++j)
         {
@@ -328,7 +328,7 @@ void gsBoxTopology::getOVs(std::vector<std::vector<patchCorner> > & cornerLists)
     cornerLists.clear();
     std::vector<patchCorner> cornerList;
     patchCorner c;
-    for(size_t i = 0;i<nboxes;++i)
+    for(index_t i = 0;i<nboxes;++i)
     {
         for(int j=1;j<=4;++j)
         {

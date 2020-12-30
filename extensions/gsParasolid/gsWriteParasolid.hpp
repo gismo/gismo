@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris, D. Mokris
 */
 
 #include <gsParasolid/gsFrustrum.h>
@@ -71,7 +71,7 @@ template<class T>
 class gsTrimData
 {
 public:
-    gsTrimData(unsigned level,std::vector<unsigned>& AABBBox,std::vector<std::vector<std::vector<T> > >polylines)
+    gsTrimData(unsigned level,std::vector<index_t>& AABBBox,std::vector<std::vector<std::vector<T> > >polylines)
         : m_level(level),m_AABBBox(AABBBox),m_Polylines(polylines)
     { }
 
@@ -80,7 +80,7 @@ public:
 
 public:
     unsigned m_level;
-    std::vector<unsigned> m_AABBBox;
+    std::vector<index_t> m_AABBBox;
     std::vector<std::vector<std::vector<T> > > m_Polylines;
 };
 
@@ -96,7 +96,7 @@ void getInterval(const bool directionU,
                  const PK_CURVE_t line,
                  PK_INTERVAL_t& result);
 
-bool validMultiplicities(const std::vector<int>& mult,
+bool validMultiplicities(const std::vector<index_t>& mult,
                          const int deg);
 
 template <class T>
@@ -110,7 +110,7 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
 
 template <class T>
 void getTrimCurvesAndBoundingBoxes(const gsTHBSpline<2, T>& surface,
-                                   std::vector<unsigned>& boxes,
+                                   std::vector<index_t>& boxes,
                                    gsTHBSplineBasis<2>::TrimmingCurves& trimCurves,
                                    gsTHBSplineBasis<2>::AxisAlignedBoundingBox& boundaryAABB);
 
@@ -351,12 +351,15 @@ bool createPK_BSURF(const gsTensorBSpline< 2, T> & bsp,
                     bool closed_u,
                     bool closed_v)
 {
+    typedef typename gsKnotVector<T>::mult_t mult_t;
+    std::vector<mult_t> mult;
+
     // Gismo and Parasolid store the coefficients in different order.
     // Therefore we create the BSURF with u and v swapped and then transpose it.
     for (index_t dim = 0; dim != 2; dim++)
     {
         const int deg = bsp.basis().degree(dim);
-        std::vector<int> mult = bsp.basis().knots(dim).multiplicities();
+        mult = bsp.basis().knots(dim).multiplicities();
 
         if (!validMultiplicities(mult, deg))
         {
@@ -374,14 +377,14 @@ bool createPK_BSURF(const gsTensorBSpline< 2, T> & bsp,
 
     // Knots in u-direction
     std::vector<T> gknot0 = bsp.basis().knots(1).unique();
-    std::vector<int> gmult0 = bsp.basis().knots(1).multiplicities();
+    std::vector<mult_t> gmult0 = bsp.basis().knots(1).multiplicities();
     sform.n_u_knots     = gknot0.size();
     sform.u_knot        = gknot0.data();
     sform.u_knot_mult   = gmult0.data();
 
     // Knots in v-direction
     std::vector<T> gknot1 = bsp.basis().knots(0).unique();
-    std::vector<int> gmult1 = bsp.basis().knots(0).multiplicities();
+    std::vector<mult_t> gmult1 = bsp.basis().knots(0).multiplicities();
     sform.n_v_knots     = gknot1.size();
     sform.v_knot        = gknot1.data();
     sform.v_knot_mult   = gmult1.data();
@@ -443,6 +446,8 @@ template<class T>
 bool createPK_BCURVE( const gsBSpline<T>& curve,
                       PK_BCURVE_t& bcurve)
 {
+    typedef typename gsKnotVector<T>::mult_t mult_t;
+    
     PK_BCURVE_sf_t sform; // B-curve data holder (standard form)
 
     // Degree
@@ -450,7 +455,7 @@ bool createPK_BCURVE( const gsBSpline<T>& curve,
 
     // Knots
     std::vector<T> knots = curve.basis().knots().unique();
-    std::vector<int> mult = curve.basis().knots().multiplicities();
+    std::vector<mult_t> mult = curve.basis().knots().multiplicities();
     sform.n_knots = knots.size();
     sform.knot = knots.data();
     sform.knot_mult = mult.data();
@@ -503,7 +508,7 @@ bool exportMesh(const gsMesh<T>& mesh,
     gsBSpline<T> bspl(kv, coefs);
 
     gsMatrix<T> newCoefs(2, 3);
-    for (int i = 0; i != mesh.numEdges(); ++i)
+    for (size_t i = 0; i != mesh.numEdges(); ++i)
     {
         newCoefs.row(0) = mesh.edges()[i].source->transpose();
         newCoefs.row(1) = mesh.edges()[i].target->transpose();
@@ -577,7 +582,7 @@ bool exportTHBsurface(const gsTHBSpline<2, T>& surface,
 
 // returns true la all multiplicities in muls are less (<) than deg + 1
 // parasolid restriction
-bool validMultiplicities(const std::vector<int>& mult,
+bool validMultiplicities(const std::vector<index_t>& mult,
                          const int deg)
 {
     for (size_t i = 1; i != mult.size() - 1; i++)
@@ -760,7 +765,7 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
     B.setZero();
 
     gsMatrix<> value;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     for (index_t k = 0; k != params.cols(); k++)
     {
@@ -808,12 +813,14 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
 template <class T>
 bool exportCheck(const gsTHBSpline<2, T>& surface)
 {
+    typedef typename gsKnotVector<T>::mult_t mult_t;
+    
     for (index_t dim = 0; dim != 2; dim++)
     {
         typedef std::vector< gsTensorBSplineBasis< 2, real_t>* > Bases;
         const Bases& bases = surface.basis().getBases();
         const int deg = (bases[0])->degree(dim);
-        std::vector<int> mult = (bases[0])->knots(dim).multiplicities();
+        std::vector<mult_t> mult = (bases[0])->knots(dim).multiplicities();
 
         if (!validMultiplicities(mult, deg))
         {
@@ -837,10 +844,10 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
     err = PK_ASSEMBLY_create_empty(&assembly);
     PARASOLID_ERROR(PK_ASSEMBLY_create_empty, err);
 
-    for (unsigned box = 0;box<trimData.size();++box)
+    for (size_t box = 0;box<trimData.size();++box)
     {
         unsigned level = trimData[box].m_level;
-        std::vector<unsigned> AABBBox = trimData[box].m_AABBBox;
+        std::vector<index_t> AABBBox = trimData[box].m_AABBBox;
         std::vector<std::vector<std::vector<T> > > polylines = trimData[box].m_Polylines;
 
         gsTensorBSpline<2, T> bspline =
@@ -850,7 +857,7 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
         //std::cout << "bspline coef size: " << bspline.coefs().rows() << std::endl;
         makeValidGeometry(surface, bspline);
 
-        //gsWriteParaview(bspline,"paraviewtest",1000,true,true);
+        //gsWriteParaview(bspline,"paraviewtest" + util::to_string(box),1000,true,true);
 
         PK_BSURF_t bsurf;
         createPK_BSURF<T>(bspline, bsurf); // swap
@@ -864,10 +871,10 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
         {
             for (unsigned seg = 0; seg != polylines[loop].size(); seg++)
             {
-                real_t x1 = polylines[loop][seg][0];
-                real_t y1 = polylines[loop][seg][1];
-                real_t x2 = polylines[loop][seg][2];
-                real_t y2 = polylines[loop][seg][3];
+                real_t y1 = polylines[loop][seg][0];
+                real_t x1 = polylines[loop][seg][1];
+                real_t y2 = polylines[loop][seg][2];
+                real_t x2 = polylines[loop][seg][3];
 
                 PK_CURVE_t line;
                 PK_INTERVAL_t intervalDummy;
@@ -882,7 +889,7 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
                                                       &options, &line, &intervalDummy);
                     PARASOLID_ERROR(PK_SURF_make_curve_isoparam, err);
 
-                    getInterval(false, y1, y2, x1, bspline, line, interval);
+                    getInterval(true, y1, y2, x1, bspline, line, interval);
                 }
                 else
                 {
@@ -890,7 +897,7 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
                                                       &options, &line, &intervalDummy);
                     PARASOLID_ERROR(PK_SURF_make_curve_isoparam, err);
 
-                    getInterval(true, x1, x2,  y1, bspline, line, interval);
+                    getInterval(false, x1, x2,  y1, bspline, line, interval);
                 }
 
                 curves.push_back(line);
@@ -967,6 +974,16 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
 
         // ----------------------------------------------------------------------
 
+	// Extra transposition (2019-11-14) to compensate for the transposition in createPK_BSURF.
+	// PK_BSURF_reparameterise_o_t rep_options;
+	// PK_BSURF_reparameterise_o_m(rep_options);
+	// rep_options.transpose = PK_LOGICAL_true;
+
+	// err = PK_BSURF_reparameterise(bsurf,&rep_options);
+	// PARASOLID_ERROR(PK_BSURF_reparameterise, err);
+	// End of the transposition.
+
+
         PK_SURF_trim_data_t trim_data;
         trim_data.n_spcurves = static_cast<int>(curves.size());
         trim_data.spcurves = curves.data();
@@ -1018,7 +1035,7 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
 
 template <class T>
 bool getParBoxAsIndexBoxInLevel(const gsTHBSplineBasis<2, T>& basis,unsigned lvl,const std::vector<real_t>& par_box,
-                                std::vector<unsigned>& index_box)
+                                std::vector<index_t>& index_box)
 {
     T lowU=par_box[0];
     T lowV=par_box[1];
@@ -1127,9 +1144,9 @@ bool getTrimCurvesAndBoundingBoxes(const gsTHBSpline<2, T>& surface,
     const gsTHBSplineBasis<2, T>* basis = static_cast< const gsTHBSplineBasis<2,T>* > (&surface.basis());
     unsigned maxLevel = basis->tree().getMaxInsLevel();
     unsigned lvl;
-    std::vector<std::vector<unsigned> >aabbBoxesForCheck;
+    std::vector<std::vector<index_t> >aabbBoxesForCheck;
     std::vector<T> par_box;
-    std::vector<unsigned> index_box;
+    std::vector<index_t> index_box;
     unsigned d=2;
     unsigned boxSize=2*d;
     bool success;
@@ -1146,9 +1163,9 @@ bool getTrimCurvesAndBoundingBoxes(const gsTHBSpline<2, T>& surface,
         if(!success)
             return false;
 
-        gsVector<unsigned,2>lower;
+        gsVector<index_t,2>lower;
         lower << index_box[1],index_box[2];
-        gsVector<unsigned,2>upper;
+        gsVector<index_t,2>upper;
         upper << index_box[3],index_box[4];
         lvl=basis->tree().query4(lower, upper, index_box[0]);
 
@@ -1160,7 +1177,7 @@ bool getTrimCurvesAndBoundingBoxes(const gsTHBSpline<2, T>& surface,
         //std::cout << "el-box: "<< index_box[1] << " "<< index_box[2] << " "
         //          << index_box[3] << " " << index_box[4] << " in level: " << lvl << std::endl;
 
-        std::vector<unsigned> aabb_box;
+        std::vector<index_t> aabb_box;
         aabb_box.push_back(index_box[1]<<(maxLevel-lvl));
         aabb_box.push_back(index_box[2]<<(maxLevel-lvl));
         aabb_box.push_back(index_box[3]<<(maxLevel-lvl));

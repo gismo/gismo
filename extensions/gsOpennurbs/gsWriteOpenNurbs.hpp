@@ -49,7 +49,7 @@ bool writeON_NurbsCurve( const gsCurve<T> & curve, ONX_Model & model, const std:
 
       for (int k = 0; k < wiggle->CVCount(); k++ ) 
       {
-          ON_3dPoint pt( curve.coef(k,0), curve.coef(k,1), 0.0  ); // pt = some 3d point
+          ON_3dPoint pt( cast<T,double>(curve.coef(k,0)), cast<T,double>(curve.coef(k,1)), 0.0  ); // pt = some 3d point
           wiggle->SetCV( k, pt );
       }
 
@@ -59,7 +59,7 @@ bool writeON_NurbsCurve( const gsCurve<T> & curve, ONX_Model & model, const std:
       // ON_NurbsCurve's have order+cv_count-2 knots.
       for (size_t k = 1; k < kv.size()-1; k++ ) 
       {
-          wiggle->SetKnot(k-1, kv[k] );
+          wiggle->SetKnot(k-1, cast<T,double>(kv[k]) );
       }
       
       ON_TextLog log;
@@ -97,7 +97,7 @@ bool writeON_NurbsSurface( const gsSurface<T> & surface,
     for ( int j = 0; j < onsurf->CVCount(1); j++ )
         for ( int i = 0; i < onsurf->CVCount(0); i++ )
         {
-            ON_3dPoint pt(surface.coef(c,0), surface.coef(c,1), surface.coef(c,2) );
+            ON_3dPoint pt(cast<T,double>(surface.coef(c,0)), cast<T,double>(surface.coef(c,1)), cast<T,double>(surface.coef(c,2)) );
             //ON_3dPoint pt( surface.coef(c,0), surface.coef(c,1), 0 );
             onsurf->SetCV( i, j, pt );//Note: j runs faster than i for CP(i,j)
             c++;
@@ -109,10 +109,10 @@ bool writeON_NurbsSurface( const gsSurface<T> & surface,
           dynamic_cast<const gsBSplineBasis<T>&>( surface.basis().component(1) ).knots();
       //Note: ON_NurbsSurface's have order+cv_count-2 knots per direction.
       for (size_t k = 1; k < kv1.size()-1; k++ ) 
-          onsurf->SetKnot(0, k-1, kv1[k] );
+          onsurf->SetKnot(0, k-1, cast<T,double>(kv1[k]) );
 
       for (size_t k = 1; k < kv2.size()-1; k++ ) 
-          onsurf->SetKnot(1, k-1, kv2[k] );
+          onsurf->SetKnot(1, k-1, cast<T,double>(kv2[k]) );
 
       ON_TextLog log;
       if ( onsurf->IsValid(&log) ) 

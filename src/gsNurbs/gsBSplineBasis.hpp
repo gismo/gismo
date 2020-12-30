@@ -49,13 +49,13 @@ gsTensorBSplineBasis<1,T>::New(std::vector<gsBasis<T>*> & bb )
 }
 
 template <class T>
-int gsTensorBSplineBasis<1,T>::elementIndex(const gsVector<T> & u ) const
+size_t gsTensorBSplineBasis<1,T>::elementIndex(const gsVector<T> & u ) const
 {
     return m_knots.uFind(u(0,0)).uIndex();
 }
 
 template <class T>
-int gsTensorBSplineBasis<1,T>::elementIndex(T u ) const
+size_t gsTensorBSplineBasis<1,T>::elementIndex(T u ) const
 {
     return m_knots.uFind( u ).uIndex();
 }
@@ -85,8 +85,8 @@ void gsTensorBSplineBasis<1,T>::connectivity(const gsMatrix<T> & nodes,
 template <class T>
 void gsTensorBSplineBasis<1,T>::matchWith(const boundaryInterface & bi,
                                           const gsBasis<T> & other,
-                                          gsMatrix<unsigned> & bndThis,
-                                          gsMatrix<unsigned> & bndOther) const
+                                          gsMatrix<index_t> & bndThis,
+                                          gsMatrix<index_t> & bndOther) const
 {
     if ( const TensorSelf_t * _other = dynamic_cast<const TensorSelf_t*>(&other) )
     {
@@ -102,7 +102,7 @@ void gsTensorBSplineBasis<1,T>::matchWith(const boundaryInterface & bi,
 
 template <class T>
 void gsTensorBSplineBasis<1,T>::active_into(const gsMatrix<T>& u,
-                                            gsMatrix<unsigned>& result ) const
+                                            gsMatrix<index_t>& result ) const
 {
     result.resize(m_p+1, u.cols());
 
@@ -111,7 +111,7 @@ void gsTensorBSplineBasis<1,T>::active_into(const gsMatrix<T>& u,
         // We want to keep the non-periodic case unaffected wrt
         // complexity, therefore we keep the modulo operation of the
         // periodic case separate
-        const int s = size();
+        const index_t s = size();
         for (index_t j = 0; j < u.cols(); ++j)
         {
             unsigned first = firstActive(u(0,j));
@@ -131,7 +131,7 @@ void gsTensorBSplineBasis<1,T>::active_into(const gsMatrix<T>& u,
 }
 
 template <class T>
-bool gsTensorBSplineBasis<1,T>::isActive(const unsigned i, const gsVector<T>& u) const
+bool gsTensorBSplineBasis<1,T>::isActive(const index_t i, const gsVector<T>& u) const
 {
     GISMO_ASSERT( u.rows() == 1, "Invalid input.");
     // Note: right end of the support will be considered active
@@ -139,18 +139,18 @@ bool gsTensorBSplineBasis<1,T>::isActive(const unsigned i, const gsVector<T>& u)
 }
 
 template <class T>
-gsMatrix<unsigned> gsTensorBSplineBasis<1,T>::allBoundary() const
+gsMatrix<index_t> gsTensorBSplineBasis<1,T>::allBoundary() const
 {
     if( m_periodic ) // Periodic basis does not have such things as boundaries.
     {
         gsWarn << "Periodic basis does not have such things as boundaries.\n";
         // return NULL;
-        gsMatrix<unsigned> matrix;
+        gsMatrix<index_t> matrix;
         return matrix;
     }
     else
     {
-        gsMatrix<unsigned> res(2,1);
+        gsMatrix<index_t> res(2,1);
         res(0,0) = 0;
         res(1,0) = m_knots.size()-m_p-2;
         return res;
@@ -159,14 +159,14 @@ gsMatrix<unsigned> gsTensorBSplineBasis<1,T>::allBoundary() const
 
 
 template <class T>
-gsMatrix<unsigned> gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
-                                                               unsigned offset ) const
+gsMatrix<index_t> gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
+                                                               index_t offset ) const
 {
     if( m_periodic )
         gsWarn << "Periodic basis does not have such things as boundaries.\n";
 
-    gsMatrix<unsigned> res(1,1);
-    GISMO_ASSERT(offset+m_p+1 < static_cast<unsigned>(m_knots.size()),
+    gsMatrix<index_t> res(1,1);
+    GISMO_ASSERT(offset+m_p+1 < static_cast<index_t>(m_knots.size()),
                  "Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
     switch (s) {
     case boundary::left : // left
@@ -202,7 +202,7 @@ gsMatrix<T> gsTensorBSplineBasis<1,T>::support() const
 }
 
 template <class T>
-gsMatrix<T> gsTensorBSplineBasis<1,T>::support(const unsigned & i) const
+gsMatrix<T> gsTensorBSplineBasis<1,T>::support(const index_t & i) const
 {
     // Note: in the periodic case last index is
     // m_knots.size() - m_p - 1 - m_periodic
@@ -211,22 +211,22 @@ gsMatrix<T> gsTensorBSplineBasis<1,T>::support(const unsigned & i) const
     // support has two connected components, so probably one should
     // call this function with twice for the two twins
 
-    GISMO_ASSERT( i < static_cast<unsigned>(m_knots.size()-m_p-1),
+    GISMO_ASSERT( static_cast<size_t>(i) < m_knots.size()-m_p-1,
                   "Invalid index of basis function." );
     gsMatrix<T> res(1,2);
-    res << ( i > static_cast<unsigned>(m_p) ? m_knots[i] : m_knots[m_p] ),
-        ( i < static_cast<unsigned>(m_knots.size()-2*m_p-2) ? m_knots[i+m_p+1] :
+    res << ( i > m_p ? m_knots[i] : m_knots[m_p] ),
+        ( static_cast<size_t>(i) < (m_knots.size()-2*m_p-2) ? m_knots[i+m_p+1] :
           m_knots[m_knots.size()-m_p-1] );
     return res ;
 }
 
 template <class T>
-unsigned gsTensorBSplineBasis<1,T>::twin(unsigned i) const
+index_t gsTensorBSplineBasis<1,T>::twin(index_t i) const
 {
     if( m_periodic == 0 )
         return i;
-    const unsigned s = size();
-    if ( i < static_cast<unsigned>(m_periodic) )
+    const index_t s = size();
+    if ( i < static_cast<index_t>(m_periodic) )
         i += s;
     else if ( i > s )
         i -= s;
@@ -351,11 +351,11 @@ void gsTensorBSplineBasis<1,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& re
 
 
 template <class T>
-void gsTensorBSplineBasis<1,T>::evalSingle_into(unsigned i,
+void gsTensorBSplineBasis<1,T>::evalSingle_into(index_t i,
                                                 const gsMatrix<T> & u,
                                                 gsMatrix<T>& result) const
 {
-    GISMO_ASSERT( i < unsigned(m_knots.size()-m_p-1),"Invalid index of basis function." );
+    GISMO_ASSERT( static_cast<size_t>(i) < m_knots.size()-m_p-1,"Invalid index of basis function." );
 
     result.resize(1, u.cols() );
     STACK_ARRAY(T, N, m_p + 1);
@@ -378,7 +378,7 @@ void gsTensorBSplineBasis<1,T>::evalSingle_into(unsigned i,
         }
 
         // Special case of C^{-1} on right end of support
-        if ( (i== unsigned(m_knots.size()-m_p-2)) &&
+        if ( (static_cast<size_t>(i) == m_knots.size()-m_p-2) &&
              (u(0,s) == m_knots.last()) &&  (u(0,s)== m_knots[m_knots.size()-m_p-1]) )
         {
             result(0,s)= T(1.0);
@@ -431,7 +431,7 @@ void gsTensorBSplineBasis<1,T>::evalSingle_into(unsigned i,
 }
 
 template <class T>
-void gsTensorBSplineBasis<1,T>::evalDerSingle_into(unsigned i,
+void gsTensorBSplineBasis<1,T>::evalDerSingle_into(index_t i,
                                                    const gsMatrix<T> & u,
                                                    int n,
                                                    gsMatrix<T>& result) const
@@ -644,7 +644,7 @@ void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u,
 }
 
 template <class T>  inline
-void gsTensorBSplineBasis<1,T>::derivSingle_into(unsigned i,
+void gsTensorBSplineBasis<1,T>::derivSingle_into(index_t i,
                                                  const gsMatrix<T> & u,
                                                  gsMatrix<T>& result ) const
 {
@@ -655,7 +655,7 @@ void gsTensorBSplineBasis<1,T>::derivSingle_into(unsigned i,
 
     for (index_t j = 0; j < u.cols(); ++j)
     {
-        const unsigned first = firstActive(u(0,j));
+        const index_t first = firstActive(u(0,j));
         if ( (i>= first) && (i<= first + m_p) )
             result(0,j) = tmp(i-first,j);
         else
@@ -665,7 +665,7 @@ void gsTensorBSplineBasis<1,T>::derivSingle_into(unsigned i,
 
 template <class T>  inline
 void
-gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(unsigned i,
+gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(index_t i,
                                                   const gsMatrix<T> & u,
                                                   int n,
                                                   gsMatrix<T>& result) const
@@ -817,7 +817,7 @@ void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u, const gsMatri
 }
 
 template <class T>  inline
-void gsTensorBSplineBasis<1,T>::deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result ) const
+void gsTensorBSplineBasis<1,T>::deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {
     // \todo Redo an efficient implementation p. 76, Alg. A2.5 Nurbs book
     result.resize(1, u.cols() );
@@ -826,7 +826,7 @@ void gsTensorBSplineBasis<1,T>::deriv2Single_into(unsigned i, const gsMatrix<T> 
 
     for (index_t j = 0; j < u.cols(); ++j)
     {
-        const unsigned first = firstActive(u(0,j));
+        const index_t first = firstActive(u(0,j));
         if ( (i>= first) && (i<= first + m_p) )
             result(0,j) = tmp(i-first,j);
         else
@@ -942,8 +942,8 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
         // Check if the point is in the domain
         if ( ! inDomain( u(0,v) ) )
         {
-            gsWarn<< "Point "<< u(0,v) <<" not in the BSpline domain ["
-                  << *(m_knots.begin()+m_p)<< ", "<<*(m_knots.end()-m_p-1)<<"].\n";
+            //gsDebug<< "Point "<< u(0,v) <<" not in the BSpline domain ["
+            //      << *(m_knots.begin()+m_p)<< ", "<<*(m_knots.end()-m_p-1)<<"].\n";
             for(int k=0; k<=n; k++)
                 result[k].col(v).setZero();
             continue;
@@ -1082,7 +1082,7 @@ void gsTensorBSplineBasis<1,T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,Row
 }
 
 template <class T>
-unsigned gsTensorBSplineBasis<1,T>::functionAtCorner(boxCorner const & c) const
+index_t gsTensorBSplineBasis<1,T>::functionAtCorner(boxCorner const & c) const
 {
     GISMO_ASSERT(c<3,"Invalid corner for 1D basis.");
     return ( c == 1 ? 0 : this->size()-1);
@@ -1214,7 +1214,7 @@ void gsTensorBSplineBasis<1,T>::_stretchEndKnots()
 /* ********************************************** */
 
 template <class T>
-gsBSplineBasis<T> & gsBSplineBasis<T>::component(unsigned i)
+gsBSplineBasis<T> & gsBSplineBasis<T>::component(short_t i)
 {
     GISMO_UNUSED(i);
     GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");
@@ -1222,7 +1222,7 @@ gsBSplineBasis<T> & gsBSplineBasis<T>::component(unsigned i)
 }
 
 template <class T>
-const gsBSplineBasis<T> & gsBSplineBasis<T>::component(unsigned i) const
+const gsBSplineBasis<T> & gsBSplineBasis<T>::component(short_t i) const
 {
     GISMO_UNUSED(i);
     GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");

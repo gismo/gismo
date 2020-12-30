@@ -29,7 +29,7 @@
 #define index_t          @GISMO_INDEX_TYPE@
 
 /** Define default dimension type. */
-#define short_t          short
+#define short_t          @GISMO_INDEX_TYPE@ //short
 
 /** Define the file data directory. */
 #define GISMO_DATA_DIR "@GISMO_DATA_DIR@"
@@ -46,7 +46,7 @@
 #cmakedefine GISMO_WITH_IPOPT
 #cmakedefine GISMO_WITH_MPFR
 #cmakedefine GISMO_WITH_MPI
-#cmakedefine GISMO_WITH_MPQ
+#cmakedefine GISMO_WITH_GMP
 #cmakedefine GISMO_WITH_ONURBS
 #cmakedefine GISMO_WITH_OCC
 #cmakedefine GISMO_WITH_PARDISO
@@ -65,7 +65,7 @@
 #include <mpreal.h>
 #endif
 
-#ifdef GISMO_WITH_MPQ
+#ifdef GISMO_WITH_GMP
 #include <gmpxx.h>
 #include <unsupported/Eigen/MPQClassExtra>
 #endif
@@ -127,4 +127,6 @@
     See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html */
 #cmakedefine EIGEN_USE_MKL_ALL
 
+#cmakedefine EIGEN_DONT_VECTORIZE
+#cmakedefine EIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT
 /**@}*/

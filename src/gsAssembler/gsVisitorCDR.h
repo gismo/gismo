@@ -261,9 +261,9 @@ public:
         }
     }
 
-    inline void localToGlobal(const int patchIndex,
+    inline void localToGlobal(const index_t                     patchIndex,
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
-                              gsSparseSystem<T>     & system)
+                              gsSparseSystem<T>               & system)
     {
         // Map patch-local DoFs to global DoFs
         system.mapColIndices(actives, patchIndex, actives);
@@ -394,7 +394,7 @@ protected:
     // Basis values
     std::vector<gsMatrix<T> > basisData;
     gsMatrix<T>        physBasisGrad, physBasisd2;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
     index_t numActive;
 
     gsMatrix<T> coeff_A_vals;

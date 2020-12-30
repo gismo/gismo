@@ -894,7 +894,7 @@ static void read_from_file( file_p file_ptr, char* buffer, int header,
 
             /* copy input buffer back to calling function without terminator */
             *buffer_len = strlen(input_output_buffer);
-            strncpy(buffer, input_output_buffer, *buffer_len);
+            memcpy(buffer, input_output_buffer, *buffer_len);
             }
         }
     else
@@ -1131,7 +1131,7 @@ static void write_header( file_p file_ptr, const char* pd2hdr, int pd2len,
     if ( *ifail != FR_no_errors ) return;
 
     /* machine specific - this should be replaced by your company's location */
-    strcpy( buffer, "SITE=RICAM-Linz;\n" );
+    strcpy( buffer, "SITE=earth;\n" );
     write_to_file( file_ptr, buffer, 1, strlen( buffer ), ifail );
     if ( *ifail != FR_no_errors ) return;
 

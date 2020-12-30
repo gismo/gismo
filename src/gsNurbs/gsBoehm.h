@@ -160,9 +160,9 @@ void gsTensorBoehmRefineLocal(
         KnotVectorType& knots,
         const unsigned index,
         Mat& coefs,
-        gsVector<unsigned, d>& nmb_of_coefs,
-        const gsVector<unsigned, d>& act_size_of_coefs,
-        const gsVector<unsigned, d>& size_of_coefs,
+        gsVector<index_t, d>& nmb_of_coefs,
+        const gsVector<index_t, d>& act_size_of_coefs,
+        const gsVector<index_t, d>& size_of_coefs,
         const unsigned direction,
         ValIt valBegin,
         ValIt valEnd,
@@ -188,11 +188,11 @@ template <short_t d, typename T, typename KnotVectorType, typename Mat>
 void gsTensorInsertKnotDegreeTimes(
         const KnotVectorType& knots,
         Mat& coefs,
-        const gsVector<unsigned, d>& size_of_coefs,
+        const gsVector<index_t, d>& size_of_coefs,
         T val,
         const unsigned direction,
-        gsVector<unsigned, d>& start,
-        gsVector<unsigned, d>& end);
+        gsVector<index_t, d>& start,
+        gsVector<index_t, d>& end);
 
 
 
@@ -233,11 +233,11 @@ int getIndex(const gsVector<unsigned>& stride,
 
 
 template<short_t d>
-unsigned getIndex(const gsVector<unsigned, d>& stride,
-                      const gsVector<unsigned, d>& position)
+index_t getIndex(const gsVector<index_t, d>& stride,
+                      const gsVector<index_t, d>& position)
 {
 
-    unsigned ind = 0;
+    index_t ind = 0;
 
     for (short_t i = 0; i < d; ++i)
         ind += stride[i] * position[i];
@@ -410,8 +410,8 @@ void correctNewStride(gsVector<unsigned>& new_str,
 /// @param size_of_coef size of the coefficients
 /// @param last_point we compute last point into this variable
 template<short_t d>
-void getLastIndexLocal(const gsVector<unsigned, d>& size_of_coef,
-                  gsVector<unsigned, d>& last_point)
+void getLastIndexLocal(const gsVector<index_t, d>& size_of_coef,
+                  gsVector<index_t, d>& last_point)
 {
     for (short_t i = 0; i < d; ++i)
     {
@@ -427,8 +427,8 @@ void getLastIndexLocal(const gsVector<unsigned, d>& size_of_coef,
 /// @param size_of_coefs size of the coefficients
 /// @param strides we compute strides into this variable
 template <short_t d>
-void buildCoeffsStrides(const gsVector<unsigned, d>& size_of_coefs,
-                         gsVector<unsigned, d>& strides)
+void buildCoeffsStrides(const gsVector<index_t, d>& size_of_coefs,
+                         gsVector<index_t, d>& strides)
 {
     strides(0) = 1;
     for (short_t dim = 1; dim < d; dim++)
@@ -446,7 +446,7 @@ void buildCoeffsStrides(const gsVector<unsigned, d>& size_of_coefs,
 ///
 /// @return number of iterations
 inline
-unsigned numberOfIterations(const gsVector<unsigned>& nmb_of_coefs,
+unsigned numberOfIterations(const gsVector<index_t>& nmb_of_coefs,
                             const unsigned direction)
 {
     unsigned nmb_of_iter = 1;

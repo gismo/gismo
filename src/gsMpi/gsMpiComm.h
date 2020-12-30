@@ -1,7 +1,7 @@
 /** @file gsMpiComm.h
-    
+
     @brief A wrapper for MPI communicators.
-    
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -26,7 +26,7 @@ struct MPI_Status {};
 
 /**
    @brief A sequential communicator group class
- 
+
    @ingroup Mpi
 */
 class gsSerialGroup
@@ -143,7 +143,7 @@ inline std::ostream& operator<<(std::ostream& os, const gsSerialGroup& obj)
 
 /**
    @brief A sequential communicator status class
- 
+
    @ingroup Mpi
 */
 class GISMO_EXPORT gsSerialStatus
@@ -163,7 +163,7 @@ public:
        @brief Returns the size of the status
     */
     template<typename T>
-        static int size (T* in)
+        static int size ()
     {
         return 1;
     }
@@ -182,7 +182,7 @@ public:
     */
     static std::ostream &print(std::ostream &os)
     {
-        os << "gsSerialStatus : rank = " << gsSerialStatus::rank() 
+        os << "gsSerialStatus : rank = " << gsSerialStatus::rank()
            << ", tag = " << gsSerialStatus::tag();
         return os;
     }
@@ -199,29 +199,29 @@ inline std::ostream& operator<<(std::ostream& os, const gsSerialStatus& obj)
 
 /**
    @brief A sequential communicator request class
- 
+
    @ingroup Mpi
 */
 class gsSerialRequest
 {
 public:
-    /** 
+    /**
         @brief Cancels the communication request.
     */
     static int cancel ()
     {
         return 0;
     }
-  
-    /** 
+
+    /**
         @brief Returns the status of the communication request
     */
     static gsSerialStatus status ()
     {
         return gsSerialStatus();
     }
-  
-    /** 
+
+    /**
         @brief Tests for the completion of for the communication request
     */
     static gsSerialStatus test ()
@@ -229,12 +229,23 @@ public:
         return gsSerialStatus();
     }
 
-    /** 
+    /**
         @brief Waits for the communication request
     */
     static gsSerialStatus wait ()
     {
         return gsSerialStatus();
+    }
+
+    static gsSerialStatus waitAny (int numberRequests, gsSerialRequest requests[], int* outIndex)
+    {
+        return gsSerialStatus();
+    }
+
+    static gsSerialRequest getNullRequest()
+    {
+        gsSerialRequest request;
+        return request;
     }
 
     /**
@@ -267,7 +278,7 @@ inline std::ostream& operator<<(std::ostream& os, const gsSerialRequest& obj)
 
 /**
    @brief A serial communication class
- 
+
    This communicator can be used if no MPI is available or one wants to run
    sequentially even if MPI is available and used.
 
@@ -278,7 +289,7 @@ class gsSerialComm
 public:
     /**
        @brief return rank of process, i.e. zero
-      
+
        This function is intentionally left non-static to avoid compiler
        warnings of unused object.
     */
@@ -419,7 +430,7 @@ public:
         return 0;
     }
 
-    /** @brief Query the status from a source process with a defined tag
+    /** @brief Query the status from a source process with a defined tag (blocking)
      *
      * One process queries the status of receiving data from the source process source.
      * The argument tag specifies the message ID.
@@ -428,6 +439,20 @@ public:
      * @param[in] tag Specifies the message ID
      */
     static gsSerialStatus probe(int source, int tag = 0)
+    {
+        return gsSerialStatus();
+    }
+
+    /** @brief Query the status from a source process with a defined tag (non-blocking)
+     *
+     * One process queries the status of receiving data from the source process source.
+     * The argument tag specifies the message ID.
+     *
+     * @param[in] source The rank of the process which sended the message
+     * @param[out] flag True if a message with the specified source, tag, and communicator is available (logical)
+     * @param[in] tag Specifies the message ID
+     */
+    static gsSerialStatus iprobe (int source, int* flag, int tag = 0)
     {
         return gsSerialStatus();
     }
@@ -684,7 +709,7 @@ public:
 
 /**
    @brief A parallel communicator group class
- 
+
    @ingroup Mpi
 */
 class gsMpiGroup
@@ -695,13 +720,13 @@ public:
     */
     gsMpiGroup()
     {}
-  
+
     /**
        @brief Constructor
     */
-    gsMpiGroup(MPI_Group& group) : m_group(group) 
+    gsMpiGroup(MPI_Group& group) : m_group(group)
     {}
-  
+
     /**
        @brief Destructor
     */
@@ -850,7 +875,7 @@ inline std::ostream& operator<<(std::ostream& os, const gsMpiGroup& obj)
 
 /**
    @brief A parallel communicator status class
- 
+
    @ingroup Mpi
 */
 class gsMpiStatus : public MPI_Status
@@ -870,7 +895,7 @@ public:
        @brief Returns the size of the status
     */
     template<typename T>
-    int size (T* in) const 
+    int size () const
     {
         int count;
         MPI_Get_count(this, MPITraits<T>::getType(), &count);
@@ -898,21 +923,26 @@ inline std::ostream& operator<<(std::ostream& os, const gsMpiStatus& obj)
 
 /**
    @brief A parallel communicator request class
- 
+
    @ingroup Mpi
 */
 class gsMpiRequest
 {
 public:
-    /** 
+    /**
         @brief Cancels the communication request.
     */
     int cancel ()
     {
         return MPI_Cancel(&m_request);
     }
-  
-    /** 
+
+    int free ()
+    {
+        return MPI_Request_free(&m_request);
+    }
+
+    /**
         @brief Returns the status of the communication request
     */
     gsMpiStatus status () const
@@ -922,8 +952,8 @@ public:
         MPI_Request_get_status(m_request, &flag, &status);
         return status;
     }
-  
-    /** 
+
+    /**
         @brief Tests for the completion of for the communication request
     */
     gsMpiStatus test ()
@@ -934,7 +964,7 @@ public:
         return status;
     }
 
-    /** 
+    /**
         @brief Waits for the communication request
     */
     gsMpiStatus wait ()
@@ -969,6 +999,26 @@ public:
         return &m_request;
     }
 
+    static gsMpiStatus waitAny (int numberRequests, gsMpiRequest requests[], int* outIndex)
+    {
+        gsMpiStatus status;
+        MPI_Request mpiRequests[numberRequests];
+        for(int i = 0; i < numberRequests; i++)
+        {
+            mpiRequests[i] = requests[i].m_request;
+        }
+
+        MPI_Waitany(numberRequests, mpiRequests, outIndex, &status);
+        return status;
+    }
+
+    static gsMpiRequest getNullRequest()
+    {
+        gsMpiRequest request;
+        request.m_request = MPI_REQUEST_NULL;
+        return request;
+    }
+
 private:
     MPI_Request m_request;
 };
@@ -984,7 +1034,7 @@ inline std::ostream& operator<<(std::ostream& os, const gsMpiRequest& obj)
 
 /**
    @brief A parallel communicator class based on MPI
- 
+
    @ingroup Mpi
 */
 class GISMO_EXPORT gsMpiComm
@@ -992,18 +1042,18 @@ class GISMO_EXPORT gsMpiComm
     friend class gsMpi;
 
 public:
-    
+
     gsMpiComm() : rank_(-1), size_(0) { }
 
     gsMpiComm(const MPI_Comm & _comm)
     : m_comm(_comm)
     {
-        if(_comm != MPI_COMM_NULL) 
+        if(_comm != MPI_COMM_NULL)
         {
 #           ifndef NDEBUG
             int initialized = 0;
             MPI_Initialized(&initialized);
-            GISMO_ENSURE(1==initialized, 
+            GISMO_ENSURE(1==initialized,
                          "You must call gsMpi::init(..) in your main() function"
                          " before using gsMpiComm");
             MPI_Comm_set_errhandler(m_comm, ErrHandler);
@@ -1017,9 +1067,9 @@ public:
             rank_ =-1;
         }
     }
-   
+
     gsMpiComm(const gsSerialComm &) : m_comm(MPI_COMM_SELF) { }
-    
+
     /**
      * @brief The type of the mpi communicator.
      */
@@ -1038,8 +1088,8 @@ public:
     /**
      * @brief Returns the name of the communicator
      */
-    std::string name() const 
-    { 
+    std::string name() const
+    {
         char str[MPI_MAX_OBJECT_NAME];
         int len;
         MPI_Comm_get_name(m_comm, str, &len);
@@ -1085,7 +1135,7 @@ private:
     MPI_Comm m_comm;
 
 #   ifndef NDEBUG
-protected: 
+protected:
 
     // Mpi error handling
     static void ErrCallBack(MPI_Comm *comm, int *err_code, ...)
@@ -1096,7 +1146,7 @@ protected:
         int rank;
         MPI_Comm_get_name(*comm, err_string, &err_length);
         MPI_Comm_rank(*comm, &rank);
-        gsWarn << "MPI error ("<<*err_code<<") at process "<< rank 
+        gsWarn << "MPI error ("<<*err_code<<") at process "<< rank
                <<" of "<< err_string <<"\n";
         MPI_Error_class(*err_code, &err_class);
         MPI_Error_string(err_class, err_string, &err_length);
@@ -1219,6 +1269,13 @@ public:
     {
         gsMpiStatus status;
         MPI_Probe(source,tag,m_comm,&status);
+        return status;
+    }
+
+    gsMpiStatus iprobe (int source, int* flag, int tag = 0) const
+    {
+        gsMpiStatus status;
+        MPI_Iprobe(source,tag,m_comm,flag,&status);
         return status;
     }
 
@@ -1347,7 +1404,7 @@ public:
   #  endif
 */
 #endif
-    
+
     /// @copydoc gsSerialComm::allreduce(Type* inout,int len) const
     template<typename BinaryFunction, typename Type>
     int allreduce(Type* inout, int len) const
@@ -1425,7 +1482,7 @@ public:
 #undef MPI_IN_PLACE
 #undef MASK_MPI_IN_PLACE
 #endif
-    
+
     template<typename BinaryFunction, typename Type>
     int ireduce(Type* in, Type* out, int len, int root, MPI_Request* req) const
     {
