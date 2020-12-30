@@ -15,6 +15,17 @@
 
 using namespace gismo;
 
+/* TODO (Dominik)
+   - Descriptions of command line arguments.
+   - Documentation of the new functions.
+   - Code clean-up.
+   - v-periodicity
+   - speed-up
+   - off-input
+   - Do something about the free method.
+   - iterative method
+ */
+
 int main(int argc, char *argv[])
 {
     bool paraview = false;
@@ -53,17 +64,17 @@ int main(int argc, char *argv[])
                   boundaryMethod);
     cmd.addString("f", "filenameIn", "input file name", filenameIn);
     cmd.addString("o", "filenameOut", "output file name", filenameOut);
-    cmd.addString("d", "v0", "file name to v=0", filenameV0);
-    cmd.addString("t", "v1", "file name to v=1", filenameV1);
+    cmd.addString("d", "v0", ".xml file containing points and u-parameters of points with v=0", filenameV0);
+    cmd.addString("t", "v1", ".xml file containing points and u-parameters of points with v=1", filenameV1);
     cmd.addString("x", "fileCorners", "file with 3D coordinates of the corners", fileCorners);
     
-    cmd.addString("l", "overlap", "file name of the overlap file, must not be combined with -s", filenameOverlap);
-    cmd.addString("s", "stitch", "file name of the stitch file, must not be combined with -l.", filenameStitch);
+    cmd.addString("l", "overlap", ".stl file of the overlap for periodicity; must not be combined with -s", filenameOverlap);
+    cmd.addString("s", "stitch", ".xml file with the vertices on the stitch for periodicity; must not be combined with -l.", filenameStitch);
     cmd.addReal("r", "range", "in case of restrict or opposite", range);
     cmd.addInt("n", "number", "number of corners, in case of corners", number);
     cmd.addMultiInt("c", "corners", "vector for corners, call it every time for an entry (-c 3 -c 1 -c 2 => {3,1,2})", corners);
     cmd.addSwitch("plot","Plot with Paraview",paraview);
-    cmd.addSwitch("fit", "Create a .xml file suitable for surface fitting with G+Smo.", fitting);
+    cmd.addSwitch("fit", "Create an .xml file suitable for surface fitting with G+Smo.", fitting);
     cmd.getValues(argc, argv);
 
     gsOptionList ol = cmd.getOptionList();
@@ -82,7 +93,6 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    gsInfo << "Input had " << ol.getMultiInt("corners").size() << " corners." << std::endl;
     pm.setOptions(ol);
 
     // TODO: Rename.
@@ -96,6 +106,8 @@ int main(int argc, char *argv[])
 	periodicity = free;
     else
     	periodicity = none;
+
+    gsInfo << "Periodicity set to " << periodicity << "." << std::endl;
 
     std::vector<size_t> left, right;
     std::vector<std::vector<size_t> > corrections;
@@ -141,12 +153,22 @@ int main(int argc, char *argv[])
     gsInfo << stopwatch << "\n";
 
     if( periodicity == stitch || periodicity == overlap )
-	pm.restrictMatrices_2(uv, xyz);
+	pm.restrictMatrices(uv, xyz);
 
     if(paraview)
     {
 	gsInfo << "Writing to Paraview." << std::endl;
+
+	// .pvd with the flat mesh
 	gsWriteParaview(flatMesh, ol.getString("filenameOut"));
+
+	// .vtk with the vertices coloured according to the parameters
+	// Note: calling gsWriteParaview directly with the uv matrix
+	// would not do, as the vertices are in different order than
+	// in the xyz matrix.
+	pm.writeTexturedMesh(ol.getString("filenameOut"));
+
+	pm.writeSTL(*mm, ol.getString("filenameOut"));
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
@@ -163,6 +185,3 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-
-// TODO: Add the iterative method.
-// TODO: 

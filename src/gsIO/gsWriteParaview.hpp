@@ -1569,10 +1569,10 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix
 
     // Parameters
     file << "POINT_DATA " << sl.numVertices() << std::endl;
-    file << "TEXTURE_COORDINATES hello 2 float\n";
-    for(size_t i=0; i<params.rows(); i++)
+    file << "TEXTURE_COORDINATES parameters 2 float\n";
+    for(index_t i=0; i<params.rows(); i++)
     {
-	for(size_t j=0; j<params.cols(); j++)
+	for(index_t j=0; j<params.cols(); j++)
 	    file << params(i,j) << " ";
 	file << "\n";
     }

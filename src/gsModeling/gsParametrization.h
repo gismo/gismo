@@ -96,45 +96,17 @@ public:
      */
     gsMatrix<T> createXYZmatrix();
 
-    void restrictMatrices(gsMatrix<T>& uv, gsMatrix<T>& xyz,
-			  real_t uMin = 0, real_t uMax = 1, real_t vMin = 0, real_t vMax = 1)
-    {
-	std::vector<index_t> goodCols;
-	for(index_t j=0; j<uv.cols(); j++)
-	{
-	    if(uv(0, j) >= uMin && uv(0, j) <= uMax && uv(1, j) >= vMin && uv(1, j) <= vMax)
-		goodCols.push_back(j);
-	}
-
-	// The following is possible, because j <= goodCols[j].
-	size_t newSize = goodCols.size();
-	for(size_t j=0; j<newSize; j++)
-	{
-	    uv.col(j)  =  uv.col(goodCols[j]);
-	    xyz.col(j) = xyz.col(goodCols[j]);
-	}
-
-	gsInfo << newSize << " points remain." << std::endl;
-
-	uv.conservativeResize(2, newSize);
-	xyz.conservativeResize(3, newSize);
-    }
-
-    /// For Pierre's way.
-    void restrictMatrices_2(gsMatrix<T>& uv, gsMatrix<T>& xyz,
-			    real_t uMin = 0, real_t uMax = 1)
-    {
-	real_t uLength = uMax - uMin;
-	for(index_t j=0; j<uv.cols(); j++)
-	{
-	    real_t u = uv(0, j);
-
-	    if(u < uMin)
-		uv(0, j) += uLength;
-	    else if(u > uMax)
-		uv(0 ,j) -= uLength;
-	}
-    }
+    /**
+     * Moves the u-coordinates of parameters outside the
+     * interval [@a uMin, @a uMax] to inside the interval.
+     * Note: it modifies uv!
+     * @param uv Matrix of the parameters, one column per point
+     * @param xyz Matrix of the coordinates, one column per point
+     * @param uMin minimal desired u
+     * @param uMax maximal desired u
+     */
+    void restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
+			  real_t uMin = 0, real_t uMax = 1) const;
 
     /**
      * Creates a flat mesh
@@ -160,13 +132,21 @@ public:
 			     bool restrict = false) const;
 
     /**
-     * Creates a copy of the mesh @a original with the u-coordinates shifted by @a uShift.
-     * Useful for demonstration purposes and debugging.
+     * Writes m_mesh into @a filename.vtk with the vertices coloured
+     * according to the parameters.
+     * @param filename The name of the output file (without extension).
      */
-    gsMesh<T> createShiftedCopy(const gsMesh<T>& original, real_t uShift) const;
-
     void writeTexturedMesh(std::string filename) const;
 
+    // TODO: Move!
+    /**
+     * Writes the mesh @a mesh into @a filename.stl.  The STL is ASCII
+     * (i.e., not binary) and the normals are not specified correctly
+     * (i.e., it assumes that the downstream application deduces the
+     * normals from the vertex order the way MeshLab seems to do).
+     * @param mesh the mesh for writing
+     * @param filename the filename (without extension)
+     */
     void writeSTL (const gsMesh<T>& mesh, std::string filename) const;
 
     gsOptionList& options() { return m_options; }

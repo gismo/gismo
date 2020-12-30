@@ -232,6 +232,22 @@ gsMatrix<T> gsParametrization<T>::createXYZmatrix()
     return m;
 }
 
+template <class T>
+void gsParametrization<T>::restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
+					    real_t uMin, real_t uMax) const
+{
+    real_t uLength = uMax - uMin;
+    for(index_t j=0; j<uv.cols(); j++)
+    {
+	real_t u = uv(0, j);
+
+	if(u < uMin)
+	    uv(0, j) += uLength;
+	else if(u > uMax)
+	    uv(0 ,j) -= uLength;
+    }
+}
+
 template<class T>
 gsMesh<T> gsParametrization<T>::createFlatMesh() const
 {
@@ -333,26 +349,6 @@ gsMesh<T> gsParametrization<T>::createFlatMesh(const std::vector<std::vector<siz
     }
     else
 	return unfolded;
-}
-
-template<class T>
-gsMesh<T> gsParametrization<T>::createShiftedCopy(const gsMesh<T>& original, real_t uShift) const
-{
-    gsHalfEdgeMesh<T> originalHEM(original);
-    gsMesh<T> result;
-    for(size_t i=0; i<originalHEM.getNumberOfTriangles(); i++)
-    {
-	typename gsMesh<T>::VertexHandle vh[3];
-	for(size_t j=1; j<=3; j++)
-	{
-	    vh[j-1] = originalHEM.getVertex(originalHEM.getGlobalVertexIndex(j ,i));
-	}
-	result.addFace(
-	    result.addVertex(vh[0]->x() + uShift, vh[0]->y()),
-	    result.addVertex(vh[1]->x() + uShift, vh[1]->y()),
-	    result.addVertex(vh[2]->x() + uShift, vh[2]->y()));
-    }
-    return result;
 }
 
 template<class T>
@@ -613,7 +609,7 @@ void gsParametrization<T>::writeTexturedMesh(std::string filename) const
 	size_t index = m_mesh.unsorted(i);
 	params.row(i) = getParameterPoint(index);
     }
-    gsWriteParaview(m_mesh, "mesh", params);
+    gsWriteParaview(m_mesh, filename, params);
 }
 
 template <class T>
