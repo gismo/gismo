@@ -126,12 +126,12 @@ if(GISMO_WITH_SUPERLU OR GISMO_WITH_TAUCS OR GISMO_WITH_UMFPACK)
     # Build OpenBLAS library at compile time
     add_subdirectory(${gismo_externals}/openblas ${gismo_BINARY_DIR}/external/openblas)
 
-    # Set OpenBLAS library
-    set(BLAS_LIBRARIES ${gismo_BINARY_DIR}/external/openblas/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE INTERNAL "")
-    set(Lapack_LIBRARIES ${gismo_BINARY_DIR}/external/openblas/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE INTERNAL "")
-    
     find_package(Threads QUIET REQUIRED)
-    set(BLAS_LIBRARIES ${BLAS_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+
+    # Set OpenBLAS library
+    set(BLAS_LIBRARIES ${gismo_BINARY_DIR}/external/openblas/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX} ${CMAKE_THREAD_LIBS_INIT} CACHE INTERNAL "")
+
+    set(Lapack_LIBRARIES ${gismo_BINARY_DIR}/external/openblas/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE INTERNAL "")
 
   endif(NOT BLAS_FOUND OR NOT Lapack_FOUND)
 endif(GISMO_WITH_SUPERLU OR GISMO_WITH_TAUCS OR GISMO_WITH_UMFPACK)
