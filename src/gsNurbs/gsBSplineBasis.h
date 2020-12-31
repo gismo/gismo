@@ -180,7 +180,7 @@ public:
     {
         gsMatrix<index_t> tmp_vec;
         m_knots.supportIndex_into(i, tmp_vec);
-        result = tmp_vec;
+        result = tmp_vec.cwiseMax(0).cwiseMin(m_knots.numElements());
     }
 
     // Look at gsBasis class for a description

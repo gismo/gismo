@@ -124,14 +124,14 @@ public: // iterator ends
     reverse_iterator       rend()    const;
 
     /// Returns an iterator pointing to the first appearance of the
-    /// knot with cardinal index (ie. unique, counted without
-    /// repetitions) equal to \a upos.
-    iterator               beginAt(const mult_t upos)   const;
+    /// knot with unique index (ie. counted without repetitions, left
+    /// ghosts mapped to negatives) equal to \a upos.
+    iterator               beginAt(mult_t upos)   const;
 
     /// Returns an iterator pointing one past the last appearance of
-    /// the knot with cardinal index (ie. unique, counted without
-    /// repetitions) equal to \a upos.
-    iterator               endAt(const mult_t upos)     const;    
+    /// the knot with cardinal index (ie. counted without repetitions,
+    /// left ghosts mapped to negatives) equal to \a upos.
+    iterator               endAt(mult_t upos)     const;    
     
     /// Returns unique iterator pointing to the beginning of the unique knots.
     uiterator              ubegin()  const;
@@ -239,12 +239,22 @@ public: // queries
     inline size_t uSize() const { return m_multSum.size(); }
 
     /// Provides the i-th knot (numbered including repetitions).
-    const T& operator[]( const mult_t i ) const
+    const T& operator[](const mult_t i) const
     {
         GISMO_ASSERT( static_cast<size_t>(i) < m_repKnots.size(),
-                      "Index " << i << " not in the knot vector." );
+                      "Index "<<i<<" not in the knot vector.");
         return m_repKnots[i];
     }
+
+    /// Provides the knot with unique index \a i
+    const T& operator()(const mult_t i) const
+    {
+        return *( this->ubegin()+(numLeftGhosts()+i) );
+    }
+
+    /// Provides the knot with unique index \a i
+    inline T  uValue(const size_t & i) const
+    { return this->operator()(i); }
 
     /// Number of knot intervals inside domain.
     inline size_t numElements() const { return (domainUEnd() - domainUBegin()); }
@@ -369,6 +379,22 @@ public: // miscellaneous
     
     /// Removes the right-most \a numKnots from the knot-vector
     void trimRight(const mult_t numKnots);
+
+    /// Computes the number of left ghosts, i.e., of the knots to the
+    /// left of the domain beginning.
+    index_t numLeftGhosts() const
+    {
+        smart_iterator it(*this,0,0);
+        it += math::min( (size_t)m_deg, size() );
+        return std::distance( uiterator(*this,0,0), it.uIterator() );
+    }
+
+    /// Computes the number of right ghosts, i.e., of the knots to the
+    /// right of the domain end.
+    index_t numRightGhosts() const
+    {
+        return std::distance(domainUEnd(), uend()) - 1;
+    }
 
 public:
 
@@ -777,11 +803,7 @@ public: // Deprecated functions required by gsCompactKnotVector.
         // equivalent:
         // return 0 != multiplicity(knot);
     }
-     
-    /// Returns the value of the \a i - th unique index
-    inline T  uValue(const size_t & i) const
-    { return *(ubegin()+i); }
-     
+
     /// Get the multiplicity of the unique knot indexed \a i
     /// \param i index of the knot (without repetitions)
     unsigned u_multiplicityIndex(size_t const & i) const

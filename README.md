@@ -51,7 +51,7 @@ https://github.com/gismo/gismo/archive/stable.zip
   - Linux
   - macOS
 
-* Configuration: [CMake 2.8.8](https://cmake.org) or newer.
+* Configuration: [CMake 2.8.12](https://cmake.org) or newer.
 
 * Compilers tested include recent versions of
   - [AMD Optimizing C/C++ Compiler](https://developer.amd.com/amd-aocc/)

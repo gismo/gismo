@@ -38,7 +38,7 @@ function(gismo_fetch_directory)
   file(REMOVE "${GF_DOWNLOAD_DIR}/CMakeCache.txt")
 
   #  if(NOT EXISTS ${GF_DOWNLOAD_DIR}/CMakeLists.txt)
-  file(WRITE ${GF_DOWNLOAD_DIR}/CMakeLists.txt "if(POLICY CMP0048)\ncmake_policy(SET CMP0048 NEW)\nendif()\nif(POLICY CMP0054)\ncmake_policy(SET CMP0054 NEW)\nendif()\ncmake_minimum_required(VERSION 2.8.8)\nproject(${GF_NAME}_fetch NONE)\ninclude(ExternalProject)\nExternalProject_Add(${GF_NAME}_fetch\n ${GF_UNPARSED_ARGUMENTS}\n SOURCE_DIR          \"${GF_SOURCE_DIR}\"\n BINARY_DIR          \"${GF_BINARY_DIR}\"\n CONFIGURE_COMMAND   \"\"\n BUILD_COMMAND       \"\"\n INSTALL_COMMAND     \"\"\n TEST_COMMAND        \"\"\n UPDATE_DISCONNECTED TRUE)\n")
+  file(WRITE ${GF_DOWNLOAD_DIR}/CMakeLists.txt "if(POLICY CMP0048)\ncmake_policy(SET CMP0048 NEW)\nendif()\nif(POLICY CMP0054)\ncmake_policy(SET CMP0054 NEW)\nendif()\ncmake_minimum_required(VERSION 2.8.12)\nproject(${GF_NAME}_fetch NONE)\ninclude(ExternalProject)\nExternalProject_Add(${GF_NAME}_fetch\n ${GF_UNPARSED_ARGUMENTS}\n SOURCE_DIR          \"${GF_SOURCE_DIR}\"\n BINARY_DIR          \"${GF_BINARY_DIR}\"\n CONFIGURE_COMMAND   \"\"\n BUILD_COMMAND       \"\"\n INSTALL_COMMAND     \"\"\n TEST_COMMAND        \"\"\n UPDATE_DISCONNECTED TRUE)\n")
   #  endif()
 
   execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}"
@@ -131,7 +131,10 @@ function(gismo_fetch_module SUBMODULE)
   if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
     add_subdirectory(${gismo_SOURCE_DIR}/extensions/${SUBMODULE} ${gismo_BINARY_DIR}/extensions/${SUBMODULE})
     if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/filedata")
-      set(GISMO_SEARCH_PATHS "${GISMO_SEARCH_PATHS};${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/filedata/" CACHE INTERNAL "File search paths")
+      string(REGEX MATCH "extensions/${SUBMODULE}/filedata" fmatch ${GISMO_SEARCH_PATHS})
+      if(NOT fmatch)
+        set(GISMO_SEARCH_PATHS "${GISMO_SEARCH_PATHS};${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/filedata/" CACHE INTERNAL "File search paths")
+      endif()
     endif()
   else()
     #WARNING

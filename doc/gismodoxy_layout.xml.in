@@ -4,6 +4,7 @@
   <navindex>
     <tab type="mainpage" visible="no" title=""/> 
 
+    <!--
     <tab type="usergroup" title="Modules" intro="A list of available modules:">
       <tab type="user" url="@ref Core" title="Core"/>
       <tab type="user" url="@ref Nurbs" title="Nurbs"/>
@@ -17,24 +18,28 @@
       <tab type="user" url="@ref Tensor" title="Tensor"/>
       <tab type="user" url="@ref Utils" title="Utils"/>
     </tab>
+    -->
+
+    <tab type="user" visible="yes" url="@ref Modules" title="Modules"/>
     
     <tab type="usergroup" title="Groups and hierarchies">    
       <tab type="user" url="@ref geometry" title="Geometries hierarchy"/>
       <tab type="user" url="@ref basis" title="Bases hierarchy"/>
       <tab type="user" url="@ref function" title="Functions hierarchy"/>
-      <tab type="user" url="@ref pdeclass" title="PDE group"/>
+      <tab type="user" url="@ref pdeclass" title="PDE definitions"/>
       <tab type="user" url="@ref combinatorics" title="Combinatorics group"/>
-      <tab type="user" url="@ref enum" title="Enumerations used"/>
+      <tab type="user" url="@ref enum" title="Enumeration declarations"/>
     </tab>
     
     <tab type="classlist" visible="yes" title="" intro=""/>
 
-    <tab type="user" url="@ref citelist" title="Bibliographic references" /> 
+    <tab type="user" url="@ref citelist" title="Bibliographic references" />
 
     <!--
         <tab type="pages" visible="yes" title=""/>
 	<tab type="modules" visible="yes" title="All groups" intro="All defined groups:"/>
     -->
+    	<tab type="modules" visible="yes" title="All groups" intro="All defined groups:"/>
   </navindex>
 
   <!-- Layout definition for a class page -->
