@@ -381,7 +381,7 @@ public: // miscellaneous
     void trimRight(const mult_t numKnots);
 
     /// Computes the number of left ghosts, i.e., of the knots to the
-    /// left of the domain beginnning.
+    /// left of the domain beginning.
     index_t numLeftGhosts() const
     {
         smart_iterator it(*this,0,0);

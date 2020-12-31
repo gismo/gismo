@@ -46,7 +46,7 @@ private:
     mltpointer m_mlt ; ///< pointer to the beginning of the m_multSum sequence
     pointer    m_raw ; ///< pointer to the beginning of the m_repKnots sequence
     mult_t     m_upos; ///< unique index (without repetitions) of current knot
-    mult_t     m_sh  ; ///< Shift of unique index related to ghost knots
+    mult_t     m_sh  ; ///< Shift of unique index (to negatives) for ghost knots
 
 //#if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
     mult_t m_dbg;// iteration limit: extra member for iterator debugging mode
@@ -76,7 +76,10 @@ public:
        \brief Constructs an iterator for the knot-vector \a KV.
 
        Optionally the iteration starts from from the knot with unique
-       index (i.e. without repetitions) equal to \a upos
+       index (i.e. without repetitions) equal to \a upos.
+
+       It is possible to define a shift \a s, then unique indices
+       start from the negative value -\a s.
      */
     explicit gsUKnotIterator(knotVector & KV, const mult_t upos = 0, const index_t s = 0)
     : m_mlt ( KV.multSumData() ), m_raw ( KV.data() ),
@@ -263,7 +266,7 @@ public:
 
     /**
        \brief Returns the number of knots counted without repetitions
-       thet are on the left of the current knot (differs from uIndex
+       that are on the left of the current knot (differs from uIndex
        in the case of knot vectors with left ghost knots)
     */
     mult_t uCardinalIndex() const {return m_upos;}
@@ -365,7 +368,10 @@ public:
        \brief Constructs an iterator for the knot-vector \a KV.
 
        Optionally the iteration starts from from the first appearance
-       of the knot with unique index (i.e. without repetitions) equal to \a upos
+       of the knot with unique index (i.e. without repetitions) equal to \a upos.
+
+       It is possible to define a shift \a s, then unique indices
+       start from the negative value -\a s.
     */
     explicit gsKnotIterator(knotVector & KV, const mult_t upos = 0, const index_t s = 0)
     : m_uit(KV,upos,s), m_pos(firstAppearance())
@@ -609,7 +615,7 @@ public:
 
     /**
        \brief Returns the number of knots counted without repetitions
-       thet are on the left of the current knot (differs from uIndex
+       that are on the left of the current knot (differs from uIndex
        in the case of knot vectors with left ghost knots)
     */
     mult_t uCardinalIndex() const {return m_uit.uCardinalIndex();}
