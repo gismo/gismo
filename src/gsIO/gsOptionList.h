@@ -40,7 +40,12 @@ public:
     /// @copydoc gsOptionList::getString()
     index_t     getInt   (const std::string & label) const;
     /// @copydoc gsOptionList::getString()
-    real_t      getReal  (const std::string & label) const;
+    real_t getReal  (const std::string & label) const
+    {return getReal<real_t>(label); }
+
+    template<typename T> 
+    T      getReal  (const std::string & label) const;
+
     /// @copydoc gsOptionList::getString()
     bool        getSwitch(const std::string & label) const;
 
@@ -51,7 +56,8 @@ public:
     /// @copydoc gsOptionList::getMultiString()
     std::vector<index_t>     getMultiInt   (const std::string & gn) const;
     /// @copydoc gsOptionList::getMultiString()
-    std::vector<real_t>      getMultiReal  (const std::string & gn) const;
+    template<typename T>
+    std::vector<T>      getMultiReal  (const std::string & gn) const;
 
     /// \brief Reads value for option \a label from options.
     ///
@@ -60,7 +66,8 @@ public:
     /// @copydoc gsOptionList::askString()
     index_t     askInt   (const std::string & label, const index_t &     value = 0     ) const;
     /// @copydoc gsOptionList::askString()
-    real_t      askReal  (const std::string & label, const real_t &      value = 0     ) const;
+    template<typename T>
+    T      askReal  (const std::string & label, const T &      value = 0     ) const;
     /// @copydoc gsOptionList::askString()
     bool        askSwitch(const std::string & label, const bool &        value = false ) const;
 
@@ -80,7 +87,8 @@ public:
     /// @copydoc gsOptionList::setString()
     void setInt   (const std::string & label, const index_t &     value);
     /// @copydoc gsOptionList::setString()
-    void setReal  (const std::string & label, const real_t &      value);
+    template<typename T>
+    void setReal  (const std::string & label, const T &      value);
     /// @copydoc gsOptionList::setString()
     void setSwitch(const std::string & label, const bool &        value);
 
@@ -103,7 +111,8 @@ public:
     /// @copydoc gsOptionList::addString()
     void addInt   (const std::string & label, const std::string & desc, const index_t &     value );
     /// @copydoc gsOptionList::addString()
-    void addReal  (const std::string & label, const std::string & desc, const real_t &      value );
+    template<typename T>
+    void addReal  (const std::string & label, const std::string & desc, const T &      value );
     /// @copydoc gsOptionList::addString()
     void addSwitch(const std::string & label, const std::string & desc, const bool &        value );
 

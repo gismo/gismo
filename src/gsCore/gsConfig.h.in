@@ -23,7 +23,9 @@
 #define GISMO_PATCH      @gismo_VERSION_PATCH@
 
 /** Define default coefficient type. */
+#ifndef real_t
 #define real_t           @GISMO_COEFF_TYPE@
+#endif
 
 /** Define default index type. */
 #define index_t          @GISMO_INDEX_TYPE@
