@@ -124,6 +124,7 @@ gsJITConfigXml(${CMAKE_CURRENT_SOURCE_DIR}/cmake/jit.xml.in
 ## #################################################################
 
 # Clean previously set variables in the cache
+unset(GISMO_EXTRA_INSTANCE       CACHE)
 unset(${PROJECT_NAME}_HEADERS    CACHE)
 unset(${PROJECT_NAME}_SOURCES    CACHE)
 unset(${PROJECT_NAME}_EXTENSIONS CACHE)
