@@ -19,21 +19,21 @@
 namespace gismo {
 
 TEMPLATE_INST
-real_t gsOptionList::getReal(const std::string & label) const;
+real_t gsOptionList::getReal<real_t>(const std::string & label) const;
 
 TEMPLATE_INST
-std::vector<real_t> gsOptionList::getMultiReal(const std::string & gn) const;
+std::vector<real_t> gsOptionList::getMultiReal<real_t>(const std::string & gn) const;
 
 TEMPLATE_INST
-real_t gsOptionList::askReal(const std::string & label, const real_t & value) const;
+real_t gsOptionList::askReal<real_t>(const std::string & label, const real_t & value) const;
 
 TEMPLATE_INST
-void gsOptionList::setReal(const std::string & label, const real_t & value);
+void gsOptionList::setReal<real_t>(const std::string & label, const real_t & value);
 
 TEMPLATE_INST
-void gsOptionList::addReal(const std::string & label,
-                           const std::string & desc,
-                           const real_t & value);
+void gsOptionList::addReal<real_t>(const std::string & label,
+                                   const std::string & desc,
+                                   const real_t & value);
 
 }
 
