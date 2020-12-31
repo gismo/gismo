@@ -56,6 +56,9 @@ public:
     /// @copydoc gsOptionList::getMultiString()
     std::vector<index_t>     getMultiInt   (const std::string & gn) const;
     /// @copydoc gsOptionList::getMultiString()
+    std::vector<real_t>      getMultiReal  (const std::string & gn) const
+    {return getMultiReal<real_t>(gn); }
+
     template<typename T>
     std::vector<T>      getMultiReal  (const std::string & gn) const;
 
