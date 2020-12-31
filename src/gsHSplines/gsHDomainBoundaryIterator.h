@@ -201,8 +201,6 @@ private:
                 static_cast<const gsHTensorBasis<d,T>*>(m_basis)
                 ->tensorLevel(level2).component(dim).knots();
 
-            // knotVals = kv.unique()
-
             m_breaks[dim].clear();
             if ( dim == dir )
             {
@@ -210,9 +208,6 @@ private:
                 {
                     m_breaks[dim].push_back( kv(end-1) );
                     m_breaks[dim].push_back( kv(end  ) );
-
-                    //  = knotValues.begin() + end -1;
-                    //  = knotValues.begin() + end   ;
                 }
                 else
                 {
