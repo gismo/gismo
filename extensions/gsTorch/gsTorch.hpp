@@ -12,3 +12,26 @@
     
     Author(s): M. Moller
 */
+
+namespace gismo
+{
+  /*
+  // Specializations for floating-point numbers
+  template<> gsTensorOptions<double>::gsTensorOptions() : torch::TensorOptions(torch::kFloat64) {}
+  template<> gsTensorOptions<float>::gsTensorOptions()  : torch::TensorOptions(torch::kFloat32) {}
+
+  // Specializations for integers
+  template<> gsTensorOptions<long long>::gsTensorOptions()  : torch::TensorOptions(torch::kInt64) {}
+  template<> gsTensorOptions<long>::gsTensorOptions()       : torch::TensorOptions(sizeof(long)  == 32 ? torch::kInt32 : torch::kInt64) {}
+  template<> gsTensorOptions<int>::gsTensorOptions()        : torch::TensorOptions(sizeof(int)   == 16 ? torch::kInt16 : torch::kInt32) {}
+  template<> gsTensorOptions<short>::gsTensorOptions()      : torch::TensorOptions(sizeof(short) == 16 ? torch::kInt16 : torch::kInt32) {}
+  
+  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setActive()          { return this->requires_grad(true); }
+  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setPassive()         { return this->requires_grad(false); }
+  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setStrided()         { return this->layout(torch::kStrided); }
+  template<typename T> gsTensorOptions<T> gsTensorOptionS<T>::setSparse()          { return this->layout(torch::kSparse); }
+  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setCPU()             { return this->device(torch::kCPU); }
+  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setGPU(int device=0) { return this->device(torch::kCUDA, device); }
+  */
+  
+} // end namespace gismo

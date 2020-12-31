@@ -18,9 +18,12 @@ set(TORCH_VER 1.7.1)
 # Apply same configuration as G+Smo
 include(gsConfig)
 
-# Check that C++14 is enabled
-if(CMAKE_CXX_STANDARD LESS 14)
-  message(FATAL_ERROR "gsTorchExtension requires C++14 or better.")
+# Check that C++14 is enabled and that compilers are not too old
+if (CMAKE_CXX_STANDARD LESS 14 OR
+    ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU"        AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5) OR
+    ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"      AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4) OR
+    ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4) )
+  message(FATAL_ERROR "gsTorchExtension requires C++14 and GCC 5 or Clang 4 or better.")
 endif()
 
 # Compile LibTorch from source
@@ -33,25 +36,31 @@ find_package(Torch ${TORCH_VER} QUIET)
 
 if ( NOT TORCH_FOUND )
 
+  include(gsFetch)
+
   if ( CMAKE_SYSTEM_NAME MATCHES "Linux" )
-
-    # Compile test program to check whether pre-cxx11 or cxx11 ABI is used
-    try_compile(GLIBCXX_USE_CXX11_ABI ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test_linux_cxx11_abi.cxx)
-
-    # When we build libtorch with the old GCC ABI, dependent libraries must too.
-    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-      if (${GLIBCXX_USE_CXX11_ABI})
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
-      else()
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
-      endif()
+    ##
+    ## Linux
+    ## 
+    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 12.1)
+      set(TORCH_CXX_FLAGS "-D_GLIBCXX_USE_CXX11_ABI=0")
+      set(GLIBCXX_USE_CXX11_ABI OFF)
+    else()
+      set(TORCH_CXX_FLAGS "-D_GLIBCXX_USE_CXX11_ABI=1")
+      set(GLIBCXX_USE_CXX11_ABI ON)
     endif()
     
     if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "i686.*|i386.*|x86.*|amd64.*|x86_64.*|AMD64.*")
+      ##
+      ## x86/x86_64
+      ##
       find_package(CUDA QUIET)
       if(CUDA_FOUND)
-        # CUDA 11.0
+        
         if ("x${CUDA_VERSION}" STREQUAL "x11.0")
+          ##
+          ## CUDA 11.0
+          ##
           if (${GLIBCXX_USE_CXX11_ABI})
             gismo_fetch_directory(torch-linux-cxx11-cuda110
               URL            https://download.pytorch.org/libtorch/cu110/libtorch-cxx11-abi-shared-with-deps-${TORCH_VER}%2Bcu110.zip
@@ -65,8 +74,11 @@ if ( NOT TORCH_FOUND )
               )
             set(TORCH_INSTALL_PREFIX ${gismo_SOURCE_DIR}/external/torch-linux-cuda110 CACHE INTERNAL "")
           endif()
+
         elseif ("x${CUDA_VERSION}" STREQUAL "x10.2")
-          # CUDA 10.2
+          ##
+          ## CUDA 10.2
+          ##
           if (${GLIBCXX_USE_CXX11_ABI})
             gismo_fetch_directory(torch-linux-cxx11-cuda102
               URL            https://download.pytorch.org/libtorch/cu102/libtorch-cxx11-abi-shared-with-deps-${TORCH_VER}.zip
@@ -80,8 +92,11 @@ if ( NOT TORCH_FOUND )
               )
             set(TORCH_INSTALL_PREFIX ${gismo_SOURCE_DIR}/external/torch-linux-cuda102 CACHE INTERNAL "")
           endif()
+
         elseif ("x${CUDA_VERSION}" STREQUAL "x10.1")
-          # CUDA 10.1
+          ##
+          ## CUDA 10.1
+          ##
           if (${GLIBCXX_USE_CXX11_ABI})
             gismo_fetch_directory(torch-linux-cxx11-cuda101
               URL            https://download.pytorch.org/libtorch/cu101/libtorch-cxx11-abi-shared-with-deps-${TORCH_VER}%2Bcu101.zip
@@ -95,8 +110,11 @@ if ( NOT TORCH_FOUND )
               )
             set(TORCH_INSTALL_PREFIX ${gismo_SOURCE_DIR}/external/torch-linux-cuda101 CACHE INTERNAL "")
           endif()
+
         elseif ("x${CUDA_VERSION}" STREQUAL "x9.2")
-          # CUDA 9.2
+          ##
+          ## CUDA 9.2
+          ##
           if (${GLIBCXX_USE_CXX11_ABI})
             gismo_fetch_directory(torch-linux-cxx11-cuda92
               URL            https://download.pytorch.org/libtorch/cu92/libtorch-cxx11-abi-shared-with-deps-${TORCH_VER}%2Bcu92.zip
@@ -110,11 +128,18 @@ if ( NOT TORCH_FOUND )
               )
             set(TORCH_INSTALL_PREFIX ${gismo_SOURCE_DIR}/external/torch-linux-cuda92 CACHE INTERNAL "")
           endif()
+          
         else()
+          ##
+          ## CUDA < 9.2
+          ##
           pytorch_compile_trom_source()
         endif()
+
       else(CUDA_FOUND)
-        # No CUDA
+        ##
+        ## No CUDA
+        ##
         if (${GLIBCXX_USE_CXX11_ABI})
           gismo_fetch_directory(torch-linux-cxx11
             URL            https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-${TORCH_VER}%2Bcpu.zip
@@ -129,33 +154,61 @@ if ( NOT TORCH_FOUND )
           set(TORCH_INSTALL_PREFIX ${gismo_SOURCE_DIR}/external/torch-linux CACHE INTERNAL "")
         endif()
       endif(CUDA_FOUND)
+      
     else()
+      ##
+      ## non-x86/x86_64
+      ##
       pytorch_compile_from_source()
     endif()
 
   elseif ( CMAKE_SYSTEM_NAME MATCHES "Darwin" )
 
     if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "i686.*|i386.*|x86.*|amd64.*|x86_64.*|AMD64.*")
+      ##
+      ## x86/x86_64
+      ##
       find_package(CUDA QUIET)
       if(CUDA_FOUND)
+        ##
+        ## CUDA
+        ##
         pytorch_compile_from_source()
+
       else(CUDA_FOUND)
+        ##
+        ## No CUDA
+        ##
         gismo_fetch_directory(torch-macos
           URL            https://download.pytorch.org/libtorch/cpu/libtorch-macos-${TORCH_VER}.zip
           DESTINATION    external
           )
         set(TORCH_INSTALL_PREFIX ${gismo_SOURCE_DIR}/external/torch-macos CACHE INTERNAL "")
       endif(CUDA_FOUND)
+      
     else()
+      ##
+      ## non-x86/x86_64
+      ##
       pytorch_compile_from_source()
     endif()
 
   elseif ( CMAKE_SYSTEM_NAME MATCHES "Windows" )
-
+    ##
+    ## Windows
+    ##
     if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "i686.*|i386.*|x86.*|amd64.*|x86_64.*|AMD64.*")
+      
+      ##
+      ## x86/x86_64
+      ##
       find_package(CUDA QUIET)
       if(CUDA_FOUND)
+        
         if ("x${CUDA_VERSION}" STREQUAL "x11.0")
+          ##
+          ## CUDA 11.0
+          ##
           if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")
             gismo_fetch_directory(torch-win-cuda110-release
               URL            https://download.pytorch.org/libtorch/cu110/libtorch-win-shared-with-deps-${TORCH_VER}%2Bcu110.zip
@@ -169,7 +222,11 @@ if ( NOT TORCH_FOUND )
               )
             set(TORCH_INSTALL_PREFIX ${gismo_SOURCE_DIR}/external/torch-win-cuda110-debug CACHE INTERNAL "")
           endif()
+
         elseif ("x${CUDA_VERSION}" STREQUAL "x10.2")
+          ##
+          ## CUDA 10.2
+          ##
           if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")
             gismo_fetch_directory(torch-win-cuda102-release
               URL            https://download.pytorch.org/libtorch/cu102/libtorch-win-shared-with-deps-${TORCH_VER}%2Bcu102.zip
@@ -183,7 +240,11 @@ if ( NOT TORCH_FOUND )
               )
             set(TORCH_INSTALL_PREFIX ${gismo_SOURCE_DIR}/external/torch-win-cuda102-debug CACHE INTERNAL "")
           endif()
+
         elseif ("x${CUDA_VERSION}" STREQUAL "x10.1")
+          ##
+          ## CUDA 10.1
+          ##
           if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")
             gismo_fetch_directory(torch-win-cuda101-release
               URL            https://download.pytorch.org/libtorch/cu101/libtorch-win-shared-with-deps-${TORCH_VER}%2Bcu101.zip
@@ -197,10 +258,18 @@ if ( NOT TORCH_FOUND )
               )
             set(TORCH_INSTALL_PREFIX ${gismo_SOURCE_DIR}/external/torch-win-cuda101-debug CACHE INTERNAL "")
           endif()
+          
         else()
+          ##
+          ##CUDA < 10.1
+          ##
           pytorch_compile_from_source()
         endif()
+        
       else(CUDA_FOUND)
+        ##
+        ## non-CUDA
+        ##
         if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")
           gismo_fetch_directory(torch-win-release
             URL            https://download.pytorch.org/libtorch/cpu/libtorch-win-shared-with-deps-${TORCH_VER}%2Bcpu.zip
@@ -215,11 +284,18 @@ if ( NOT TORCH_FOUND )
           set(TORCH_INSTALL_PREFIX ${gismo_SOURCE_DIR}/external/torch-win-debug CACHE INTERNAL "")
         endif()
       endif(CUDA_FOUND)
+      
     else()
+      ##
+      ## non-x86/x86_64
+      ##
       pytorch_compile_from_source()
     endif()
 
   else()
+    ##
+    ## non-standard operating system
+    ##
     pytorch_compile_from_source()
   endif()
 endif ( NOT TORCH_FOUND )
@@ -231,7 +307,11 @@ find_library(TORCH_CPU_LIBRARY  NAMES torch_cpu  HINTS "${TORCH_INSTALL_PREFIX}/
 find_library(TORCH_CUDA_LIBRARY NAMES torch_cuda HINTS "${TORCH_INSTALL_PREFIX}/lib")
 
 # Set LibTorch libraries
-set(TORCH_LIBRARIES ${TORCH_LIBRARY} ${C10_LIBRARY} ${TORCH_CPU_LIBRARY} ${TORCH_CUDA_LIBRARY} CACHE INTERNAL "")
+if (TORCH_CUDA_LIBRARY)
+  set(TORCH_LIBRARIES ${TORCH_LIBRARY} ${C10_LIBRARY} ${TORCH_CPU_LIBRARY} ${TORCH_CUDA_LIBRARY} CACHE INTERNAL "")
+else()
+  set(TORCH_LIBRARIES ${TORCH_LIBRARY} ${C10_LIBRARY} ${TORCH_CPU_LIBRARY} CACHE INTERNAL "")
+endif()
 
 # Set LibTorch include directories
 set(TORCH_INCLUDE_DIRS ${TORCH_INSTALL_PREFIX}/include ${TORCH_INSTALL_PREFIX}/include/torch/csrc/api/include CACHE INTERNAL "")
@@ -258,13 +338,17 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     FOLDER "G+Smo extensions"
     )
 
+#if(TORCH_CXX_FLAGS)
+#  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}" CACHE INTERNAL "")
+#endif()
+
 # Add gsTorch extension to the list of G+Smo extensions
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
     CACHE INTERNAL "Gismo extensions to be included")
 
 # Add LibTorch include directories to G+Smo standard include directories
-set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TORCH_INCLUDE_DIRS}
-  CACHE INTERNAL "Gismo include directories")
+set(GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TORCH_INCLUDE_DIRS}
+    CACHE INTERNAL "Gismo include directories")
 
 # Link G+Smo to LibTorch libraries (either dynamically or statically)
 set(gismo_LINKER ${gismo_LINKER} ${TORCH_LIBRARIES}

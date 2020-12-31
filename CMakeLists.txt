@@ -47,7 +47,7 @@ if(NOT CMAKE_BUILD_TYPE)
      "RelWithDebInfo" "MinSizeRel")
    endif()
 endif()
-
+add_definitions("-D_GLIBCXX_USE_CXX11_ABI=0")
 set(gismo_VERSION_MAJOR 20) #year
 set(gismo_VERSION_MINOR 12) #month
 set(gismo_VERSION_PATCH 0 ) #patch
