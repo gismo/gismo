@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): L. Groiss, J. Vogl
+    Author(s): L. Groiss, J. Vogl, D. Mokris
 */
 
 #pragma once
@@ -39,7 +39,6 @@ gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision, bool perio
     //std::sort(this->m_vertex.begin(), this->m_vertex.end(), less_than_ptr());
     //typename std::vector<gsVertex<T> *, std::allocator<gsVertex<T> *> >::iterator
     //last = std::unique(this->m_vertex.begin(), this->m_vertex.end(), equal_ptr());
-
 
     m_halfedges.reserve(3*this->m_face.size());
     for (size_t i = 0; i < this->m_face.size(); i++)
@@ -228,6 +227,23 @@ gsHalfEdgeMesh<T>::getOppositeHalfedges(const size_t vertexIndex, const bool inn
         }
     }
     return oppositeHalfedges;
+}
+
+template <class T>
+size_t gsHalfEdgeMesh<T>::findVertex(T x, T y, T z, bool sorted, real_t tol) const
+{
+    size_t numVertices = getNumberOfVertices();
+    size_t i=0;
+    for( ; i<numVertices; i++)
+    {
+	typename gsMesh<T>::gsVertexHandle handle = sorted ? getVertex(i+1) : getVertexUnsorted(i);
+
+	if((math::abs(x - handle->x()) < tol) &&
+	   (math::abs(y - handle->y()) < tol) &&
+	   (math::abs(z - handle->z()) < tol))
+	    return sorted == true ? i+1 : i;
+    }
+    return -1;
 }
 
 template<class T>

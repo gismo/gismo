@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): L. Groiss, J. Vogl
+    Author(s): L. Groiss, J. Vogl, D. Mokris
 */
 
 #pragma once
@@ -364,7 +364,7 @@ private:
     /**
      * @brief Class that maintains boundary of triangle mesh.
      *
-     * A Boundary class object is given by several chains of the boundary
+     * A Boundary class object is given by one or more chains of the boundary
      * halfedges. The halfedges are ordered counter clockwise.
      *
      * An object of the class can be constructed by a vector of all
@@ -407,7 +407,7 @@ private:
         size_t getNumberOfVertices() const
 	{
 	    size_t result = 0;
-	    for(auto it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+	    for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
 	    {
 		result += it->getNumberOfVertices();
 		//gsInfo << "result: " << result;
@@ -425,7 +425,7 @@ private:
         T getLength() const
 	{
 	    T result = 0;
-	    for(auto it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+	    for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
 		result += it->getLength();	   
 	    return result;
 	}
@@ -440,7 +440,7 @@ private:
         const std::vector<T> getHalfedgeLengths() const
 	{
 	    std::vector<T> result;
-	    for(auto it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+	    for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
 	    {
 		const std::vector<T> lengthsOneComp = it->getHalfedgeLengths();
 		result.insert(result.end(), lengthsOneComp.begin(), lengthsOneComp.end());
@@ -458,7 +458,7 @@ private:
         const std::list<size_t > getVertexIndices() const
 	{
 	    std::list<size_t> result;
-	    for(auto it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+	    for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
 	    {
 		const std::list<size_t>& indicesOneComp = it->getVertexIndices();
 		result.insert(result.end(), indicesOneComp.begin(), indicesOneComp.end());
@@ -479,7 +479,7 @@ private:
          */
         T getShortestDistanceBetween(const size_t &i, const size_t &j, T precision) const
 	{
-	    for(auto it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+	    for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
 	    {
 		T dist = it->getShortestDistanceBetween(i, j, precision);
 		if(dist > 0)
@@ -502,7 +502,7 @@ private:
          */
         T getDistanceBetween(const size_t &i, const size_t &j) const
 	{
-	    for(auto it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+	    for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
 	    {
 		T dist = it->getDistanceBetween(i, j);
 		if(dist > 0)
@@ -520,7 +520,7 @@ private:
          */
         bool isVertexContained(const size_t &internVertexIndex) const
 	{
-	    for(auto it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+	    for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
 		if(it->isVertexContained(internVertexIndex))
 		    return true;
 	    return false;
@@ -700,6 +700,7 @@ public:
      */
     short_t isTriangleVertex(size_t vertexIndex, size_t triangleIndex) const;
 
+    /// Returns the vertex indices of the boundary.
     std::list<size_t> getBoundaryVertexIndices() const
     {
 	return m_boundary.getVertexIndices();
@@ -711,35 +712,13 @@ public:
 	return findVertex(vertex->x(), vertex->y(), vertex->z());
     }
 
-    /// Finds the vertex that has the coordinates @a x, @a by and @a z (up to a tolerance).
-    size_t findVertex(T x, T y, T z, bool sorted = false) const
-    {
-	size_t numVertices = getNumberOfVertices();
-	size_t i=0;
-	for( ; i<numVertices; i++)
-	{
-	    typename gsMesh<T>::gsVertexHandle handle;
-	    if(sorted)
-		handle = getVertex(i+1);
-	    else
-		handle = getVertexUnsorted(i);
-		
-	    if((math::abs(x - handle->x()) < 1E-6) &&
-	       (math::abs(y - handle->y()) < 1E-6) &&
-	       (math::abs(z - handle->z()) < 1E-6))
-		return sorted == true ? i+1 : i;
-	}
-	return -1;
-    }
+    /// Finds the vertex that has the coordinates @a x, @a by and @a z (up to a tolerance @a tol).
+    size_t findVertex(T x, T y, T z, bool sorted = false, real_t tol = 1e-6) const;
 
+    /// Returns the handle to the vertex with index @a globIndex.
     const typename gsMesh<T>::gsVertexHandle &getVertexUnsorted(const size_t globIndex) const
     {
 	return this->m_vertex[globIndex];
-    }
-
-    size_t sorted(const size_t index) const
-    {
-	return m_sorting[index];
     }
 
     size_t unsorted(const size_t index) const
