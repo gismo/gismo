@@ -58,7 +58,7 @@ SUITE(gsKnotVectors_test)
             }
         }
 
-        // It would be great to merge the two test to one but I am off to look for the problem in gsHierarchical_box_test.cpp, as Angelos promised me 0.50 EUR for solving it.
+        // It would be great to merge the two tests to one but I am off to look for the problem in gsHierarchical_box_test.cpp, as Angelos promised me 0.50 EUR for solving it.
     };
 
 
@@ -105,6 +105,26 @@ SUITE(gsKnotVectors_test)
         CHECK( regular[6] == 1 );
 
         CHECK( regular.size() == 7 );
+    }
+
+    TEST(notClampedKnotVector)
+    {
+	gsKnotVector<real_t> KV(0.0, 1.0, 1, 1, 1, 1);
+
+	std::vector<real_t> repKnots = KV.get();
+	CHECK( repKnots.size() == 5 );
+	CHECK_CLOSE( repKnots[0], -0.5, 1e-6 );
+	CHECK_CLOSE( repKnots[1],  0.0, 1e-6 );
+	CHECK_CLOSE( repKnots[2],  0.5, 1e-6 );
+	CHECK_CLOSE( repKnots[3],  1.0, 1e-6 );
+	CHECK_CLOSE( repKnots[4],  1.5, 1e-6 );
+
+	const gsKnotVector<real_t>::mult_t* multSum = KV.multSumData();
+	CHECK( *multSum == 1 );
+	CHECK( *(multSum + 1) == 2 );
+	CHECK( *(multSum + 2) == 3 );
+	CHECK( *(multSum + 3) == 4 );
+	CHECK( *(multSum + 4) == 5 );
     }
 
     TEST(gsBasis_refine)
