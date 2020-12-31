@@ -2,10 +2,10 @@
 
 G+Smo extension for the [GMP](https://gmplib.org) and [MPFR](https://www.mpfr.org) libraries.
 
-|CMake flags|```-DGISMO_WITH_GMP=ON``` (default ```OFF```) or <br>```-DGISMO_WITH_MPFR=ON``` (default ```OFF```)|
+|CMake flags|```-DGISMO_WITH_GMP=ON``` (default ```OFF```) <br> or <br> ```-DGISMO_WITH_MPFR=ON``` (default ```OFF```)|
 |--:|---|
 |License|[MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/)|
-|OS support|Linux, Windows, macOS|
+|OS support|Linux, macOS, Windows (only MinGW)|
 |Status|completed|
 |Developer|Angelos Mantzaflaris, Matthias Moller|
 |Maintainer|M.Moller@tudelft.nl|
