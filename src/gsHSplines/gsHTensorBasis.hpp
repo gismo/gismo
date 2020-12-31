@@ -919,7 +919,7 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
     // Initialize the binary tree
     point upp;
     for ( index_t i = 0; i!=d; ++i )
-        upp[i] = m_bases[0]->knots(i).uSize()-1;
+        upp[i] = m_bases[0]->knots(i).numElements();
 
     m_tree.init(upp);
 
