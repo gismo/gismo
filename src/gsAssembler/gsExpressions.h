@@ -376,7 +376,7 @@ public:
     bool composed() const {return NULL!=m_md;}
 
     /// Returns true if the variable is used on a two-sided interface
-    bool isTwoSided() const {return NULL!=m_fd2;}
+    //bool isTwoSided() const {return NULL!=m_fd2;}
 
     index_t cardinality_impl() const { return m_d * m_fd->actives.rows(); }
 
