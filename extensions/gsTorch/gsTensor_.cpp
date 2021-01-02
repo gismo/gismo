@@ -1,7 +1,6 @@
-
 #include <gsCore/gsTemplateTools.h>
-#include <gsTorch/gsTorch.h>
-#include <gsTorch/gsTorch.hpp>
+#include <gsTorch/gsTensor.h>
+#include <gsTorch/gsTensor.hpp>
 
 namespace gismo
 {
