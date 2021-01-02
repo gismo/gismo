@@ -46,6 +46,18 @@ private:
     FunctionTable m_stable; // for spaces
     //FunctionTable i_map;
 
+    typedef std::map<const gsFunctionSet<T>*,gsFuncData<T> >  FuncData;
+    typedef std::map<const gsFunctionSet<T>*,gsMapData<T> >  MapData;
+    typedef std::map<const expr::gsFeVariable<T>*,gsFuncData<T> >  VarData;
+    typedef typename FuncData::iterator FuncDataIt;
+    typedef typename MapData ::iterator MapDataIt;
+    typedef typename VarData ::iterator VarDataIt;
+
+    FuncData m_fdata, m_fdata2;
+    MapData m_mdata, m_mdata2;
+    VarData m_vdata;// for BCs etc. //do we need it interfaced?
+    //gsFunctionSet* : interface, thread
+
     DofMappers m_mappers;
 
     // geometry map
@@ -56,12 +68,9 @@ private:
 
     // mutable pair of variable and data,
     // ie. not uniquely assigned to a gsFunctionSet
-    expr::gsFeVariable<T> mutVar ;
+    expr::gsFeVariable<T> mutVar ; //ADD: symbol.setSource(.);
     gsFuncData<T>         mutData;
     bool mutParametric;
-
-    typedef gsSortedVector<const gsFunctionSet<T>*> flist_t;
-    flist_t evList;
 
     const gsMultiBasis<T> * mesh_ptr;
 
@@ -385,32 +394,135 @@ public:
 
 private:
     template <class E1>
-    void _parse(flist_t & el, const expr::_expr<E1> & a1) { a1.parse(el); }
+    void _parse(const expr::_expr<E1> & a1)
+    {
+        gsDebug<< "got "<< &a1 <<"\n";
+        a1.parse(*this);
+        //gsDebugVar( typeid(a1).name() );
+        a1.print(gsInfo);
+    }
+
+    // void _parse(const expr::gsFeVariable<T> & a1)
+    // {
+    //     a1.parse(*this);
+    //     gsDebug<< "got gsFeVariable "<< &a1 <<"\n";
+    // }
+
     template <class E1, class... Rest>
-    void _parse(flist_t & el, const expr::_expr<E1> & a1, Rest... restArgs)
-    { _parse(el,a1); _parse(el, restArgs...); }
+    void _parse(const expr::_expr<E1> & a1, Rest... restArgs)
+    {
+        _parse(a1);
+        _parse(restArgs...);
+    }
 public:
 
     template<class... expr>
     void parse(const expr &... args)
     {
-        evList.clear();
-        evList.reserve(16);
-        _parse(evList,args...);
+        //todo: CLEAR CACHE HERE
+
+        _parse(args...);
+
+        // Add few evaluation flags
+        for (MapDataIt it  = m_mdata.begin(); it != m_mdata.end(); ++it)
+            it->second.flags |= SAME_ELEMENT|NEED_ACTIVE;
+        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
+            it->second.flags |= SAME_ELEMENT|NEED_ACTIVE;
+        for (VarDataIt it  = m_vdata.begin(); it != m_vdata.end(); ++it)
+            it->second.flags |= SAME_ELEMENT|NEED_ACTIVE;
+
+        gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
+        gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
+        gsInfo<< "vdata: "<< m_vdata.size()<<"\n";
+    }
+
+    void add(const expr::gsGeometryMap<T> & sym)
+    {//TODO: inherit gsGeomatryMap from symbol_expr
+        gsDebug<<"+ gMap "<< sym.m_fs <<"\n";
+        const_cast<expr::gsGeometryMap<T>&>(sym)
+            .m_fd = & m_mdata[sym.m_fs];
+    }
+
+    template <class E>
+    void add(const expr::symbol_expr<E> & sym)
+    {
+        //parallel: variables become thread-local
+        // for each variable we provide a gsFuncData pointer
+        // in the same thread this can be the same ptr (as done now)
+
+        //grab &sym.source();
+        
+        if (NULL!=sym.m_fs)
+        {
+            if ( 1==sym.m_fs->size() &&
+                 sym.m_fs->domainDim()<=sym.m_fs->targetDim() )// map?
+            {
+                gsDebug<<"+ Map "<< sym.m_fs <<"\n";
+                const_cast<expr::symbol_expr<E>&>(sym)
+                    .setData( m_mdata[sym.m_fs] );
+            }
+            else
+            {
+                gsDebug<<"+ Func "<< sym.m_fs <<"\n";
+                const_cast<expr::symbol_expr<E>&>(sym)
+                    .setData( m_fdata[sym.m_fs] );
+            }
+        }
+        else
+        {
+            gsDebug<<"- No source for "<< sym.m_fs <<"\n";
+            //GISMO_ASSERT(NULL==sym.m_fs, "Not registered");
+            //BC etc
+//            m_vdata.insert(&sym); //No fespace..
+        }
+
+        //IF ELSE!! :) m_vdata.insert(&sym);
+        
+        // get variable (all): create and set m_fs and m_d [var is thread-local]
+        
+        //parse (all): set m_fd and flags [stored in m_fdata, th-local]
+
+        // var.registerData(mp, fd, dim);
+
+
+        //m_vlist.push_back( expr::gsFeVariable<T>() );
+        //expr::gsFeVariable<T> & var = m_vlist.back();
+
+        //gsFuncData<T> & fd = m_ptable[&mp];
+        //sym.registerData(sym.data(), fd, dim);
+    }
+
+    void precompute2(const index_t patchIndex = 0)
+    {
+        //TO DO! : mapData.points  --> gsMatrix points.
+                
+        //First compute the maps
+        for (MapDataIt it = m_mdata.begin(); it != m_mdata.end(); ++it)
+        {
+            it->second.points.swap(mapData.points);//swap
+            it->first->function(patchIndex).computeMap(it->second);
+            it->second.patchId = patchIndex;
+            it->second.points.swap(mapData.points);
+        }
+        
+        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
+        {
+            it->first->piece(patchIndex).compute(mapData.points, it->second);
+            it->second.patchId = patchIndex;
+        }
+
+        for (VarDataIt it = m_vdata.begin(); it != m_vdata.end(); ++it)
+        {
+            it->first->source().piece(patchIndex).compute(mapData.points, it->second);
+            it->second.patchId = patchIndex;
+        }
+                
     }
 
 /*
     void precompute(const index_t patch1, const index_t patch2);
+*/
 
-    void precompute(const index_t patch)
-    {
-        for (ftIterator it = evList.begin(); it != evList.end(); ++it)
-        {
-            (*it)->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
-            it->second.patchId = patchIndex;
-        }
-    }
-//*/
 
 
 };//class

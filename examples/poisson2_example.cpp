@@ -134,8 +134,11 @@ int main(int argc, char *argv[])
         A.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
 
         // Enforce Neumann conditions to right-hand side
-        variable g_N = A.getBdrFunction();
-        A.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
+//        variable g_N = A.getBdrFunction();
+//        A.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
+
+        // gsDebugVar(A.matrix().toDense());
+        // gsDebugVar(A.rhs().transpose()   );
 
         gsInfo<< "." <<std::flush;// Assemblying done
 

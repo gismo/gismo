@@ -269,7 +269,7 @@ public:
 
     ///\brief Parse the expression and discover the list of evaluation
     ///sources, also sets the required evaluation flags
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { static_cast<E const&>(*this).parse(evList); }
 
     /// Returns the space that is found on the left-most of the
@@ -320,7 +320,7 @@ public:
     inline index_t rows() const { GISMO_ERROR("gsNullExpr"); }
     inline index_t cols() const { GISMO_ERROR("gsNullExpr"); }
     inline void setFlag() const {/* gsInfo<<"gsNullExpr emtpy flag\n"; */ }
-    void parse(gsSortedVector<const gsFunctionSet<T>*> &) const { }
+    void parse(gsExprHelper<T> &) const { }
 
     const gsFeSpace<T> & rowVar() const { GISMO_ERROR("gsNullExpr"); }
     const gsFeSpace<T> & colVar() const { GISMO_ERROR("gsNullExpr"); }
@@ -339,6 +339,7 @@ public:
 };
 
 
+// SYMBOLS  u_L , u_R, u_B ??
 template<class E>
 class symbol_expr : public _expr<E>
 {
@@ -362,7 +363,11 @@ public:
     const gsFunctionSet<Scalar> & source() const {return *m_fs;}
 
     /// Returns the function data
-    const gsFuncData<Scalar> & data() const {return *m_fd;}
+    const gsFuncData<Scalar> & data() const
+    {
+        GISMO_ASSERT(NULL!=m_fd, "FuncData member not registered "<<this<<"/"<< m_fs);
+        return *m_fd;
+    }
 
     /// Returns the mapping data (precondition: composed()==true)
     const gsMapData<Scalar> & mapData() const {return *m_md;}
@@ -370,12 +375,16 @@ public:
     /// Returns true if the variable is a composition
     bool composed() const {return NULL!=m_md;}
 
+    /// Returns true if the variable is used on a two-sided interface
+    bool isTwoSided() const {return NULL!=m_fd2;}
+
     index_t cardinality_impl() const { return m_d * m_fd->actives.rows(); }
 
 private:
 
     void setSource(const gsFunctionSet<Scalar> & fs) { m_fs = &fs;}
     void setData(const gsFuncData<Scalar> & val) { m_fd = &val;}
+    void setDim(index_t _d) { m_d = give(_d); }
     void clear() { m_fs = NULL; }
     // gsFuncData<Scalar> & data() {return *m_fd;}
     // gsMapData<Scalar> & mapData() {return *m_md;}
@@ -388,7 +397,7 @@ protected:
     {
         GISMO_ASSERT(NULL==m_fs, "gsFeVariable: already registered");
         m_fs = &fs ;
-        m_fd = &val;
+        m_fd = &val; // :)
         m_d  = d;
         m_md = NULL;
     }
@@ -454,10 +463,12 @@ public:
         if (NULL!=m_md) m_md->flags |= NEED_VALUE;
     }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const //
     {
         GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(m_fs);
+        //evList.push_sorted_unique(m_fs);
+        gsDebug<<"Parse symb "<< this <<"\n";
+        evList.add(*this);
         m_fd->flags |= NEED_VALUE;
         if (NULL!=m_md) m_md->flags |= NEED_VALUE;
     }
@@ -508,7 +519,7 @@ public:
     index_t rows() const { return _c.rows(); }
     index_t cols() const { return 1; }
     void setFlag() const { _c.setFlag();}
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const { _c.parse(evList); }
+    void parse(gsExprHelper<Scalar> & evList) const { _c.parse(evList); }
 
     enum{rowSpan = E::rowSpan, colSpan = 0};
 
@@ -541,7 +552,7 @@ public:
     index_t rows() const { return 0; }
     index_t cols() const { return 0; }
     void setFlag() const { }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> &) const { }
+    void parse(gsExprHelper<Scalar> &) const { }
 
     enum{rowSpan = 0, colSpan = 0};
     const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>(); }
@@ -574,7 +585,7 @@ public:
 public:
     typedef T Scalar;
 
-    friend class gismo::gsExprHelper<T>;
+    friend class gismo::gsExprHelper<Scalar>;
 
     void print(std::ostream &os) const { os << "G"; }
 
@@ -612,8 +623,8 @@ public:
 
     void parse(gsSortedVector<const gsFunctionSet<T>*> & evList) const
     {
-        GISMO_ASSERT(NULL!=m_fd, "GeometryMap not registered");
-        evList.push_sorted_unique(m_fs);
+        gsDebug<<"Parse gMap "<< this <<"\n";
+        evList.add(*this);
         m_fd->flags |= NEED_VALUE;
     }
 };
@@ -675,7 +686,7 @@ public:
     inline index_t rows() const { return 0; }
     inline index_t cols() const { return 0; }
     inline void setFlag() const { }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & ) const { }
+    void parse(gsExprHelper<Scalar> & ) const { }
 
     const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>(); }
     const gsFeSpace<T> & colVar() const { return gsNullExpr<T>(); }
@@ -704,7 +715,7 @@ public:
     inline index_t rows() const { return 0; }
     inline index_t cols() const { return 0; }
     inline void setFlag() const { }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> &) const { }
+    void parse(gsExprHelper<Scalar> &) const { }
     const gsFeVariable<T> & rowVar() const { gsNullExpr<T>(); }
     const gsFeVariable<T> & colVar() const { gsNullExpr<T>(); }
     enum{rowSpan = 0, colSpan = 0};
@@ -1065,7 +1076,7 @@ public:
     }
 
 protected:
-    friend class gismo::gsExprHelper<T>;
+    friend class gismo::gsExprHelper<Scalar>;
     explicit gsFeSpace(index_t _d = 1) : Base(_d), m_id(-1), m_r(-1)
     { }
 };
@@ -1132,10 +1143,10 @@ public:
     void setFlag() const
     { _u.data().flags |= NEED_VALUE | NEED_ACTIVE; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_u.source());
+        //evList.push_sorted_unique(&_u.source());
         _u.data().flags |= NEED_VALUE | NEED_ACTIVE;
     }
 
@@ -1302,10 +1313,10 @@ public:
         _u.data().flags |= NEED_GRAD|NEED_ACTIVE;
     }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_u.source());
+        //evList.push_sorted_unique(&_u.source());
         _u.data().flags |= NEED_GRAD|NEED_ACTIVE;
     }
 
@@ -1374,7 +1385,7 @@ public:
     }
     void setFlag() const { _u.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.colVar(); }
@@ -1437,7 +1448,7 @@ public:
 
     void setFlag() const { _u.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -1490,7 +1501,7 @@ public:
     index_t cols() const { return 1; }
     void setFlag() const { _u.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -1543,7 +1554,7 @@ public:
     index_t cols() const { return _u.cols(); }
     void setFlag() const { _u.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -1586,7 +1597,7 @@ public:
     index_t cols() const { return _m; }
     void setFlag() const { _u.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -1630,7 +1641,7 @@ public:
     index_t cols() const { return _m*_u.cols(); }
     void setFlag() const { _u.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -1707,7 +1718,7 @@ public:
     index_t cols() const { return 3; }
     void setFlag() const { _u.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -1762,7 +1773,7 @@ public:
     index_t cols() const { return 1; }
     void setFlag() const { _u.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -1785,7 +1796,7 @@ public:                                                                 \
     index_t rows() const { return isSv ? 0 : _u.rows(); }               \
     index_t cols() const { return isSv ? 0 : _u.cols(); }               \
     void setFlag() const { _u.setFlag(); }                              \
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const { _u.parse(evList); } \
+    void parse(gsExprHelper<Scalar> & evList) const { _u.parse(evList); } \
     const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();} \
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();} \
     void print(std::ostream &os) const                                  \
@@ -1851,7 +1862,7 @@ public:
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.rows() * _u.cols(); }
     void setFlag() const { _u.setFlag(); }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
     void print(std::ostream &os) const { os << "diag("; _u.print(os); os <<")";}
@@ -1880,7 +1891,7 @@ public:
     index_t rows() const { return _dim; }
     index_t cols() const { return  _dim; }
     void setFlag() const { }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & ) const {  }
+    void parse(gsExprHelper<Scalar> & ) const {  }
 
     enum{rowSpan = 0, colSpan = 0};
 
@@ -1915,7 +1926,7 @@ public:
 
     void setFlag() const { _u.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & el) const
+    void parse(gsExprHelper<Scalar> & el) const
     { _u.parse(el); }
 
     static bool isScalar() { return true; }
@@ -1954,7 +1965,7 @@ public:
 
     void setFlag() const { _u.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & el) const
+    void parse(gsExprHelper<Scalar> & el) const
     { _u.parse(el); }
 
     static bool isScalar() { return true; }
@@ -2019,7 +2030,7 @@ public:
     index_t cols() const { return _v.cols(); }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _v.rowVar(); }
@@ -2077,7 +2088,7 @@ public:
     index_t cols() const { return _v.cols(); }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _v.rowVar(); }
@@ -2114,7 +2125,7 @@ public:
     index_t rows() const { return 0; }
     index_t cols() const { return 0; }
     void setFlag() const { _u.setFlag(); }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
     static bool isScalar() { return true; }
@@ -2180,10 +2191,11 @@ public:
             _u.mapData().flags |= NEED_VALUE;
     }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_u.source());
+        //gsInfo<< "************** Parsing "<< _u.source() <<"\n";
+        gsDebug<<"Parse grad "<< this <<"\n";
+        evList.add(_u);
         _u.data().flags |= NEED_GRAD;
         if (_u.composed() )
             _u.mapData().flags |= NEED_VALUE;
@@ -2250,10 +2262,10 @@ public:
             _u.mapData().flags |= NEED_VALUE;
     }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_u.source());
+        //evList.push_sorted_unique(&_u.source());
         _u.data().flags |= NEED_GRAD;
         if (_u.composed() )
             _u.mapData().flags |= NEED_VALUE;
@@ -2309,10 +2321,10 @@ public:
     index_t cols() const { return u.cols(); }
     void setFlag() const { u.data().flags |= NEED_GRAD; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&u.source());
+        //evList.push_sorted_unique(&u.source());
         u.data().flags |= NEED_GRAD;
     }
 
@@ -2360,10 +2372,10 @@ public:
     index_t rows() const { return u.rows();   }
     index_t cols() const { return u.parDim(); }
     void setFlag() const { u.data().flags |= NEED_DERIV2; }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&u.source());
+        //evList.push_sorted_unique(&u.source());
         u.data().flags |= NEED_DERIV2;
     }
 
@@ -2409,10 +2421,10 @@ public:
 
     void setFlag() const { _G.data().flags |= NEED_OUTER_NORMAL; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_G.source());
+        //evList.push_sorted_unique(&_G.source());
         _G.data().flags |= NEED_OUTER_NORMAL;
     }
 
@@ -2452,10 +2464,10 @@ public:
 
     void setFlag() const { _G.data().flags |= NEED_NORMAL; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_G.source());
+        //evList.push_sorted_unique(&_G.source());
         _G.data().flags |= NEED_NORMAL;
     }
 
@@ -2497,10 +2509,10 @@ public:
 
     void setFlag() const { _G.data().flags |= NEED_OUTER_NORMAL; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_G.source());
+        //evList.push_sorted_unique(&_G.source());
         _G.data().flags |= NEED_OUTER_NORMAL;
     }
 
@@ -2541,10 +2553,10 @@ public:
 
     void setFlag() const { _u.data().flags |= NEED_LAPLACIAN; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_u.source());
+        //evList.push_sorted_unique(&_u.source());
         _u.data().flags |= NEED_LAPLACIAN;
     }
 
@@ -2597,10 +2609,10 @@ public:
 
     void setFlag() const { _u.data().flags |= NEED_DERIV2; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_u.source());
+        //evList.push_sorted_unique(&_u.source());
         _u.data().flags |= NEED_DERIV2;
     }
 
@@ -2657,10 +2669,10 @@ public:
 
     void setFlag() const { _u.data().flags |= NEED_DERIV2; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_u.source());
+        //evList.push_sorted_unique(&_u.source());
         _u.data().flags |= NEED_DERIV2;
     }
 
@@ -2694,10 +2706,10 @@ public:
 
     void setFlag() const { _G.data().flags |= NEED_GRAD_TRANSFORM; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_G.source());
+        //evList.push_sorted_unique(&_G.source());
         _G.data().flags |= NEED_GRAD_TRANSFORM;
     }
 
@@ -2733,10 +2745,10 @@ public:
 
     void setFlag() const { _G.data().flags |= NEED_GRAD_TRANSFORM; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_G.source());
+        gsDebug<<"Parse jacInv "<< this <<"\n";
+        evList.add(_G);
         _G.data().flags |= NEED_GRAD_TRANSFORM;
     }
 
@@ -2790,10 +2802,10 @@ public:
 
     void setFlag() const { _G.data().flags |= NEED_DERIV; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_G.source());
+        //evList.push_sorted_unique(&_G.source());
         _G.data().flags |= NEED_DERIV;
     }
 
@@ -2864,10 +2876,10 @@ public:
         m_fev.data().flags |= NEED_ACTIVE;// rows() depend on this
     }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(& m_fev.source());
+        //evList.push_sorted_unique(& m_fev.source());
          m_fev.data().flags |= NEED_DERIV;
          m_fev.data().flags |= NEED_ACTIVE;// rows() depend on this
     }
@@ -2911,10 +2923,10 @@ public:
         m_fev.data().flags |= NEED_DERIV;
     }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(& m_fev.source());
+        //evList.push_sorted_unique(& m_fev.source());
         m_fev.data().flags |= NEED_DERIV;
     }
 
@@ -2971,7 +2983,7 @@ public:
 
     void setFlag() const { m_data->flags |= NEED_2ND_DER; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         GISMO_ERROR("error 1712");
         m_data->flags |= NEED_2ND_DER;
@@ -3036,7 +3048,7 @@ public:
 
     void setFlag() const { _u.data().flags |= NEED_2ND_DER; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.data().flags |= NEED_2ND_DER; }
 
     enum{rowSpan = E::rowSpan, colSpan = 0};
@@ -3079,10 +3091,10 @@ public:
     index_t cols() const { return _G.data().dim.first; }
     void setFlag() const { _G.data().flags |= NEED_2ND_DER; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_G.source());
+        //evList.push_sorted_unique(&_G.source());
         _G.data().flags |= NEED_2ND_DER;
     }
 
@@ -3114,10 +3126,10 @@ public:
     index_t rows() const { return 0; }
     index_t cols() const { return 0; }
     void setFlag() const { _G.data().flags |= NEED_MEASURE; }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_G.source());
+        gsDebug<<"Parse meas "<< this <<"\n";
+        evList.add(_G);
         _G.data().flags |= NEED_MEASURE;
     }
 
@@ -3169,10 +3181,10 @@ public:
             _u.mapData().flags |= NEED_VALUE;
     }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_u.source());
+        //evList.push_sorted_unique(&_u.source());
         _u.data().flags |= NEED_GRAD;
         if (_u.composed() )
             _u.mapData().flags |= NEED_VALUE;
@@ -3250,7 +3262,7 @@ public:
     index_t rows() const { return E1::ScalarValued ? _v.rows()  : _u.rows(); }
     index_t cols() const { return E2::ScalarValued ? _u.cols()  : _v.cols(); }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
     enum{rowSpan = (0==E1::Space ? E2::rowSpan : int(E1::rowSpan)), colSpan = (0==E2::Space ? E1::colSpan : int(E2::colSpan)) };
@@ -3387,7 +3399,7 @@ public:
         return _u.cols();
     }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
     enum{rowSpan = E1::rowSpan || E2::rowSpan,colSpan = E2::colSpan || E1::colSpan};
@@ -3440,7 +3452,7 @@ public:
     index_t rows() const { return _v.rows(); }
     index_t cols() const { return _v.cols(); }
     void setFlag() const { _v.setFlag(); }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _v.parse(evList); }
 
     enum{rowSpan = E2::rowSpan, colSpan = E2::colSpan};
@@ -3503,7 +3515,7 @@ public:
     index_t rows() const { return E1::ColBlocks ? _u.cols() / _v.rows() : _v.cols() / _u.cols() ; }
     index_t cols() const { return E1::ColBlocks ? _v.rows()  : _u.cols(); }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
     enum{rowSpan = E1::Space ? E1::rowSpan : E2::rowSpan, colSpan = E2::Space ? E2::colSpan : E1::colSpan};
@@ -3574,7 +3586,7 @@ public:
     index_t rows() const { return _u.cols() / _u.rows(); }
     index_t cols() const { return _u.cols() / _u.rows(); }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
     enum{rowSpan = E1::rowSpan, colSpan = E2::rowSpan};
@@ -3635,7 +3647,7 @@ public:
     index_t rows() const { return _u.cols() / _u.rows(); }
     index_t cols() const { return 1; }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
     enum{rowSpan = E1::rowSpan, colSpan = E2::rowSpan};
@@ -3675,7 +3687,7 @@ public:
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
     void setFlag() const { _u.setFlag(); _v.setFlag();}
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
     enum{rowSpan = E1::rowSpan, colSpan = E1::colSpan};
@@ -3713,7 +3725,7 @@ public:
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
     void setFlag() const { _u.setFlag(); }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
     enum{rowSpan = E1::rowSpan, colSpan = E1::colSpan};
@@ -3752,7 +3764,7 @@ public:
     index_t rows() const { return 0; }
     index_t cols() const { return 0; }
     void setFlag() const { _u.setFlag(); }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
     enum{rowSpan = 0, colSpan = 0};
@@ -3804,7 +3816,7 @@ public:
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
     enum{rowSpan = E1::rowSpan, colSpan = E1::colSpan};
@@ -3870,7 +3882,7 @@ public:
     index_t rows() const { return _M.rows(); }
     index_t cols() const { return _u.rows() * _M.rows(); }
     void setFlag() const { _u.setFlag(); _M.setFlag(); }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _M.parse(evList); }
 
     enum{rowSpan = E1::rowSpan, colSpan = 0};
@@ -3931,7 +3943,7 @@ public:
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
     enum{rowSpan = E1::rowSpan, colSpan = E2::colSpan};
@@ -3973,7 +3985,7 @@ public:
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.rows(); }
     void setFlag() const { _u.setFlag(); }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
     enum{rowSpan = E::rowSpan, colSpan = E::rowSpan};
@@ -4008,7 +4020,7 @@ public:
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.rows(); }
     void setFlag() const { _u.setFlag(); }
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
     enum{rowSpan = E::rowSpan, colSpan = E::rowSpan};

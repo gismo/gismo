@@ -310,7 +310,7 @@ X = error/incorrect
     mp.clear();
     mp.addPatch(gsNurbsCreator<>::NurbsQuarterAnnulus(M_R,2*M_R));
     mp.degreeElevate();
-    basis = gsMultiBasis(mp);
+    basis = gsMultiBasis<>(mp);
 
     /*
         Computes the boundary normal vector and compares to exact
@@ -469,9 +469,10 @@ X = error/incorrect
     gsInfo<<"-------------------------------------------------------------------------"<<"\n";;
 
     mp.clear();
-    mp.addPatch(gsNurbsCreator<>::BSplineFatQuarterAnnulus(M_R,2*M_R));
+    //mp.addPatch(gsNurbsCreator<>::BSplineFatQuarterAnnulus(M_R,2*M_R));
+    mp.addPatch(gsNurbsCreator<>::NurbsQuarterAnnulus(M_R,2*M_R));
     mp.degreeElevate();
-    basis = gsMultiBasis(mp);
+    basis = gsMultiBasis<>(mp);
 
     space u = A.getSpace(basis,1); // to construct solution manually
     space u2 = A.getSpace(basis,2); // for gsFeSolution

@@ -520,11 +520,11 @@ private:
 
             const index_t cd            = u.dim();
             const index_t rd            = v.dim();
-            const gsDofMapper  & colMap = u.mapper();
             const gsDofMapper  & rowMap = v.mapper();
-            gsMatrix<index_t> & colInd0 = const_cast<gsMatrix<index_t>&>(u.data().actives);
+            const gsDofMapper  & colMap = (isMatrix ? u.mapper() : rowMap);
             gsMatrix<index_t> & rowInd0 = const_cast<gsMatrix<index_t>&>(v.data().actives);
-            const gsMatrix<T>  & fixedDofs = u.fixedPart();
+            gsMatrix<index_t> & colInd0 = (isMatrix ? const_cast<gsMatrix<index_t>&>(u.data().actives) : rowInd0);
+            const gsMatrix<T> & fixedDofs = (isMatrix ? u.fixedPart() : gsMatrix<T>());
 
             gsMatrix<index_t> rowInd, colInd;
             rowMap.localToGlobal(rowInd0, patchInd, rowInd);
@@ -754,9 +754,9 @@ void gsExprAssembler<T>::assemble(expr... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
-    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-    //m_exprdata->parse(args...);
-    _apply(_setFlag, args...);
+    //m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
+    m_exprdata->parse(args...);
+    //_apply(_setFlag, args...);
 
 //    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
 // #   if __cplusplus >= 201103L || _MSC_VER >= 1600
@@ -788,8 +788,10 @@ void gsExprAssembler<T>::assemble(expr... args)
                           m_exprdata->points(), quWeights);
 
             // Perform required pre-computations on the quadrature nodes
-            m_exprdata->precompute(patchInd);
-            //m_exprdata->precompute(QuRule, *domIt); // todo
+//            m_exprdata->precompute(patchInd);
+            //m_exprdata->precompute(patchInd, QuRule, *domIt); // todo
+
+            m_exprdata->precompute2(patchInd);
 
             // Assemble contributions of the element
 #           if __cplusplus >= 201103L || _MSC_VER >= 1600
