@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gsCore/gsFuncData.h>
-#include <gsUtils/gsSortedVector.h>
 #include <gsAssembler/gsDirichletValues.h>
 
 namespace gismo
@@ -355,6 +354,7 @@ protected:
     const gsMapData<Scalar>     * m_md; ///< If set, the variable is composed with a geometry map
     // comp(u,G)
 
+    //const gsMatrix<Scalar> * m_srcpts;
 public:
 
     enum {Space = 4};// remove!
@@ -384,6 +384,7 @@ private:
 
     void setSource(const gsFunctionSet<Scalar> & fs) { m_fs = &fs;}
     void setData(const gsFuncData<Scalar> & val) { m_fd = &val;}
+    void setMap(const gsMapData<Scalar> & val) { m_md = &val;}
     void setDim(index_t _d) { m_d = give(_d); }
     void clear() { m_fs = NULL; }
     // gsFuncData<Scalar> & data() {return *m_fd;}
@@ -431,27 +432,9 @@ public:
 
     index_t rows() const
     {
-        GISMO_ASSERT(NULL!=m_fs, "FeVariable: Function member not registered");
-        GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+        GISMO_ASSERT(NULL!=m_fs, "FeVariable: Function source not registered");
+        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         return m_fs->targetDim();
-        /*
-        gsDebugVar(m_fd->flags & NEED_VALUE);
-        gsDebugVar(m_fd->values[0].rows());
-        gsDebugVar(m_fd->flags & NEED_ACTIVE);
-        gsDebugVar(m_fd->actives.rows());
-        gsDebugVar(m_fd->flags & NEED_DERIV);
-        */
-
-	/* HV: NOT NEDED SINCE CARDINALITY IMPLEMENTATION
-        // note: precomputation is needed
-        if (m_fd->flags & NEED_VALUE)
-        {return m_d * m_fd->values[0].rows();}
-        if (m_fd->flags & NEED_ACTIVE) // note: gsFunction coeff ??
-        {return m_d * m_fd->actives.rows();}
-        if (m_fd->flags & NEED_DERIV)
-        {return m_d * m_fd->values[0].rows();}
-        GISMO_ERROR("Cannot deduce row size.");
-	*/
     }
 
     index_t cols() const { return m_d; }
@@ -463,14 +446,17 @@ public:
         if (NULL!=m_md) m_md->flags |= NEED_VALUE;
     }
 
-    void parse(gsExprHelper<Scalar> & evList) const //
+    void parse(gsExprHelper<Scalar> & evList) const
     {
-        GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(m_fs);
         gsDebug<<"Parse symb "<< this <<"\n";
+        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         evList.add(*this);
         m_fd->flags |= NEED_VALUE;
-        if (NULL!=m_md) m_md->flags |= NEED_VALUE;
+        if (NULL!=m_md)
+        {
+            gsDebug<<"With map values "<< m_md <<"\n";
+            m_md->flags |= NEED_VALUE;
+        }
     }
 
     void print(std::ostream &os) const { os << "u"; }
@@ -601,6 +587,9 @@ protected:
 
     gsGeometryMap() : m_fs(NULL), m_fd(NULL) { }
 
+    void setSource(const gsFunctionSet<Scalar> & fs) { m_fs = &fs;}
+    void setData(const gsMapData<Scalar> & val) { m_fd = &val;}
+
     /// Registers the source function and evaluation data
     void registerData(const gsFunctionSet<T> & fs, const gsMapData<T> & val)
     {
@@ -621,9 +610,8 @@ public:
     const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>(); }
     const gsFeSpace<T> & colVar() const { return gsNullExpr<T>(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<T>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
-        gsDebug<<"Parse gMap "<< this <<"\n";
         evList.add(*this);
         m_fd->flags |= NEED_VALUE;
     }
@@ -733,10 +721,8 @@ struct expr_traits<gsFeVariable<T> >
 };
 
 /**
-   Expression for finite element variables or PDE coefficient functionals
-
-   This can be e.g. a diffusion coefficient, or a function that
-   belongs to an isogeometric function space (derived class gsFeSpace)
+   Expression for finite element variables or PDE coefficient functionals.
+   This can be e.g. a diffusion coefficient, or an isogeometric function.
 */
 template<class T>
 class gsFeVariable  : public symbol_expr< gsFeVariable<T> >
@@ -748,6 +734,26 @@ protected:
 public:
         enum{rowSpan = 0};
 };
+
+template<class T>
+class gsComposition : public symbol_expr< gsComposition<T> >
+{
+    friend class gismo::gsExprHelper<T>;
+    typedef symbol_expr< gsComposition<T> > Base;
+protected:
+    explicit gsComposition(index_t _d = 1) : Base(_d) { }
+public:
+    enum{rowSpan = 0};
+
+    MatExprType eval(const index_t k) const
+    {
+        //gsDebugVar("-----------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+        //gsDebugVar(this->m_fs);
+        //gsDebugVar(this->m_md);
+        return this->m_fs->eval(this->m_md->values[0].col(k));
+    }
+};
+
 
 /**
    Expression for finite element variable in an isogeometric function

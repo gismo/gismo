@@ -168,9 +168,9 @@ public:
         GISMO_ASSERT(1==mp.targetDim(), "Expecting scalar source space");
         GISMO_ASSERT(static_cast<size_t>(id)<m_vrow.size(),
                      "Given ID "<<id<<" exceeds "<<m_vrow.size()-1 );
-        expr::gsFeSpace<T> & u = m_exprdata->getSpace(mp,dim);
+        expr::gsFeSpace<T>& u = m_exprdata->getSpace(mp,dim);
         u.setId(id);
-        m_vrow[id] = m_vcol[id] = &u;
+        m_vrow[id] = m_vcol[id] = &u; //PROBLEM!!
         return u;
     }
 
@@ -223,7 +223,7 @@ public:
 
     /// Registers \a func as a variable defined on \a G and returns a handle to it
     ///
-    variable getCoeff(const gsFunctionSet<T> & func, geometryMap G)
+    expr::gsComposition<T> getCoeff(const gsFunctionSet<T> & func, geometryMap G)
     { return m_exprdata->getVar(func,G); }
 
     /// \brief Registers a representation of a solution variable from
@@ -754,6 +754,8 @@ void gsExprAssembler<T>::assemble(expr... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
+#pragma omp parallel
+{
     //m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
     m_exprdata->parse(args...);
     //_apply(_setFlag, args...);
@@ -770,7 +772,7 @@ void gsExprAssembler<T>::assemble(expr... args)
 
     _eval ee(m_matrix, m_rhs, quWeights);
 
-    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
+    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd) //todo: decide parallel?
     {
         ee.setPatch(patchInd);
         QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(patchInd), m_options);
@@ -781,26 +783,35 @@ void gsExprAssembler<T>::assemble(expr... args)
         m_element.set(*domIt);
 
         // Start iteration over elements of patchInd
+#ifdef _OPENMP
+        const int tid = omp_get_thread_num();
+        const int nt  = omp_get_num_threads();
+        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#else
         for (; domIt->good(); domIt->next() )
+#endif
         {
             // Map the Quadrature rule to the element
             QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                           m_exprdata->points(), quWeights);
 
             // Perform required pre-computations on the quadrature nodes
-//            m_exprdata->precompute(patchInd);
+            m_exprdata->precompute(patchInd);
             //m_exprdata->precompute(patchInd, QuRule, *domIt); // todo
 
-            m_exprdata->precompute2(patchInd);
-
             // Assemble contributions of the element
+#pragma omp critical(_apply_ee)
+            {
 #           if __cplusplus >= 201103L || _MSC_VER >= 1600
             _apply(ee, args...);
 #           else
             ee(a1);ee(a2);ee(a3);ee(a4);ee(a5);
 #           endif
+            }
         }
     }
+
+}//omp parallel
 
     m_matrix.makeCompressed();
 }

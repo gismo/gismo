@@ -110,7 +110,7 @@ public:
     { return m_exprdata->getVar(func, dim); }
 
     /// Registers \a func as a variable defined on \a G and returns a handle to it
-    variable getVariable(const gsFunctionSet<T> & func, geometryMap G)
+    auto getVariable(const gsFunctionSet<T> & func, geometryMap G)
     { return m_exprdata->getVar(func, G); }
 
     /// Returns a handle to an isogeometric element
@@ -327,9 +327,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
     gsQuadRule<T> QuRule;  // Quadrature rule
     gsVector<T> quWeights; // quadrature weights
 
-    // initialize flags
-    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-    m_exprdata->setFlags(expr, SAME_ELEMENT, SAME_ELEMENT);
+    m_exprdata->parse(expr);
 
     // Computed value
     T elVal;
@@ -386,9 +384,8 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr)
     gsQuadRule<T> QuRule;  // Quadrature rule
     gsVector<T> quWeights; // quadrature weights
 
-    // initialize flags
-    m_exprdata->setFlags(expr, SAME_ELEMENT, SAME_ELEMENT);
-
+    m_exprdata->parse(expr);
+    
     // Computed value
     T elVal;
     m_value = _op::init();
@@ -442,8 +439,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
     gsQuadRule<T> QuRule;  // Quadrature rule
     gsVector<T> quWeights; // quadrature weights
 
-    // initialize flags
-    m_exprdata->setFlags(expr, SAME_ELEMENT, SAME_ELEMENT);
+    m_exprdata->parse(expr);
 
     // Computed value
     T elVal;
@@ -501,8 +497,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr,
     // bug: fails due to gsFeVariable::rows() before evaluation
     // GISMO_ASSERT( expr.isScalar(), "Expecting scalar");
 
-    m_exprdata->initFlags();
-    expr.setFlag();
+    m_exprdata->parse(expr);
     m_elWise.clear();
     m_elWise.reserve(git.numPoints());
 
@@ -529,7 +524,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr,
     // bug: fails due to gsFeVariable::rows() before evaluation
     // GISMO_ASSERT( expr.isScalar(), "Expecting scalar");
 
-    m_exprdata->setFlags(expr);
+    m_exprdata->parse(expr);
     m_elWise.clear();
     m_elWise.reserve(git.numPoints());
     gsMatrix<T> tmp;
@@ -551,8 +546,7 @@ typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
 gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
                          const index_t patchInd)
 {
-    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE);
-    m_exprdata->setFlags(expr);
+    m_exprdata->parse(expr);
     m_elWise.clear();
     m_exprdata->points() = pt;
     m_exprdata->precompute(patchInd);
@@ -569,7 +563,7 @@ typename util::enable_if<!E::ScalarValued,gsAsConstMatrix<T> >::type
 gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
                          const index_t patchInd)
 {
-    m_exprdata->setFlags(expr);
+    m_exprdata->parse(expr);
     m_exprdata->points() = pt;
     m_exprdata->precompute(patchInd);
 
@@ -592,7 +586,7 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
                                             geometryMap G,
                                             std::string const & fn)
     {
-        m_exprdata->setFlags(expr);
+        m_exprdata->parse(expr);
 
         //if false, embed topology ?
         const index_t n = m_exprdata->multiBasis().nBases();
