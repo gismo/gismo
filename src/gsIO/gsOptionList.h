@@ -40,7 +40,7 @@ public:
     /// @copydoc gsOptionList::getString()
     index_t     getInt   (const std::string & label) const;
     /// @copydoc gsOptionList::getString()
-    real_t getReal  (const std::string & label) const
+    inline real_t getReal  (const std::string & label) const
     {return getReal<real_t>(label); }
 
     template<typename T> 
@@ -56,7 +56,7 @@ public:
     /// @copydoc gsOptionList::getMultiString()
     std::vector<index_t>     getMultiInt   (const std::string & gn) const;
     /// @copydoc gsOptionList::getMultiString()
-    std::vector<real_t>      getMultiReal  (const std::string & gn) const
+    inline std::vector<real_t> getMultiReal  (const std::string & gn) const
     {return getMultiReal<real_t>(gn); }
 
     template<typename T>
@@ -70,7 +70,7 @@ public:
     index_t     askInt   (const std::string & label, const index_t &     value = 0     ) const;
     /// @copydoc gsOptionList::askString()
     template<typename T>
-    T      askReal  (const std::string & label, const T &      value = 0     ) const;
+    T      askReal(const std::string & label, const T &      value = 0     ) const;
     /// @copydoc gsOptionList::askString()
     bool        askSwitch(const std::string & label, const bool &        value = false ) const;
 
@@ -263,7 +263,7 @@ private:
     // Format: std::pair<Value,Description>
     typedef std::pair<std::string,std::string> StringOpt;
     typedef std::pair<index_t    ,std::string> IntOpt;
-    typedef std::pair<real_t     ,std::string> RealOpt;
+    typedef std::pair<GISMO_COEFF_TYPE,std::string> RealOpt;
     typedef std::pair<bool       ,std::string> SwitchOpt;
 
     // Format: std::map<Label, std::pair<Value,Description> >

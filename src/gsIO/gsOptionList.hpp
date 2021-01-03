@@ -58,7 +58,7 @@ void gsOptionList::setReal(const std::string & label,
 {
     RealTable::iterator it = m_reals.find(label);
     GISMO_ENSURE(it!=m_reals.end(), "Invalid request (setReal): "<<label<<" is not a real; it is "<<getInfo(label)<<".");
-    it->second.first = (real_t)value;
+    it->second.first = (GISMO_COEFF_TYPE)value;
 }
 
 template<typename T>
@@ -69,7 +69,7 @@ void gsOptionList::addReal(const std::string & label,
     GISMO_ENSURE( !( isString(label) || isInt(label) || isSwitch(label) ),
          "Invalid request (addReal): Option "<<label<<" already exists, but not as a real; it is "<<getInfo(label)<<"." );
     //GISMO_ASSERT( !exists(label), "Option "<<label<<" already exists." );
-    m_reals[label] = std::make_pair( (real_t)(value),desc);
+    m_reals[label] = std::make_pair( (GISMO_COEFF_TYPE)(value),desc);
 }
 
 
