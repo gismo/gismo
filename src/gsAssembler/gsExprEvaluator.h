@@ -110,7 +110,7 @@ public:
     { return m_exprdata->getVar(func, dim); }
 
     /// Registers \a func as a variable defined on \a G and returns a handle to it
-    auto getVariable(const gsFunctionSet<T> & func, geometryMap G)
+    expr::gsComposition<T> getVariable(const gsFunctionSet<T> & func, geometryMap G)
     { return m_exprdata->getVar(func, G); }
 
     /// Returns a handle to an isogeometric element

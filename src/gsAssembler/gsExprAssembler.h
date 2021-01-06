@@ -55,7 +55,6 @@ public:
 
     typedef typename gsExprHelper<T>::element     element;     ///< Current element
     typedef typename gsExprHelper<T>::geometryMap geometryMap; ///< Geometry map type
-
     typedef typename gsExprHelper<T>::variable    variable;    ///< Variable type
     typedef typename gsExprHelper<T>::space       space;       ///< Space type
     typedef typename expr::gsFeSolution<T>        solution;    ///< Solution type
@@ -495,6 +494,7 @@ private:
             for (index_t k = 1; k != m_quWeights.rows(); ++k)
                 localMat.noalias() += (*(++w)) * ee.eval(k);
 
+
             //  ------- Accumulate  -------
             if (E::isMatrix())
                 push<true>(ee.rowVar(), ee.colVar(), m_patchInd);
@@ -757,7 +757,7 @@ void gsExprAssembler<T>::assemble(expr... args)
 #pragma omp parallel
 {
     //m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-    m_exprdata->parse(args...);
+    m_exprdata->parse(args...); //threaded.. variable must be as well
     //_apply(_setFlag, args...);
 
 //    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);

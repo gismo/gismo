@@ -565,7 +565,11 @@ public:
     const gsFunctionSet<T> & source() const {return *m_fs;}
 
     /// Returns the function data
-    const gsMapData<T> & data() const  { return *m_fd; }
+    const gsMapData<T> & data() const
+    {
+        GISMO_ASSERT(NULL!=m_fd, "gsGeometryMap: invalid data "<< m_fs <<","<<m_fd);
+        return *m_fd;
+    }
 
     index_t targetDim() const { return m_fs->targetDim();}
 public:
@@ -621,7 +625,7 @@ public:
 template <typename T>  struct expr_traits<gsGeometryMap<T> >
 {
     typedef T Scalar;
-    typedef gsGeometryMap<T> const & Nested_t;
+    typedef const gsGeometryMap<T> Nested_t; // nesting without ref!
 };
 
 /*
@@ -740,18 +744,38 @@ class gsComposition : public symbol_expr< gsComposition<T> >
 {
     friend class gismo::gsExprHelper<T>;
     typedef symbol_expr< gsComposition<T> > Base;
+    typename gsGeometryMap<T>::Nested_t _G;
 protected:
-    explicit gsComposition(index_t _d = 1) : Base(_d) { }
+    explicit gsComposition(const gsGeometryMap<T> & G, index_t _d = 1)
+    : Base(_d), _G(G) { }
 public:
     enum{rowSpan = 0};
 
-    MatExprType eval(const index_t k) const
+    //MatExprType
+    mutable gsMatrix<T> res;
+    const gsMatrix<T> &
+    eval(const index_t k) const
     {
         //gsDebugVar("-----------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
         //gsDebugVar(this->m_fs);
         //gsDebugVar(this->m_md);
-        return this->m_fs->eval(this->m_md->values[0].col(k));
+        res = this->m_fs->eval(_G.data().values[0].col(k));
+        return res;
+        //return  this->m_fs->eval(_G.data().values[0].col(k));
     }
+
+    void parse(gsExprHelper<T> & evList) const
+    {
+        gsDebug<<"Parse COMP "<< this <<"\n";
+        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+        evList.add(_G);
+        //this->setMap( m_mdata[&_G.source()] );
+        evList.add(*this);
+        this->m_fd->flags |= NEED_VALUE;
+        _G.data().flags  |= NEED_VALUE;
+        gsDebug<<"With map values "<< &_G.data() <<"\n";
+    }
+
 };
 
 
@@ -1114,6 +1138,8 @@ public:
     gsFeSolution(const gsFeSpace<T> & u, gsMatrix<T> & Sv) : _u(u), _Sv(&Sv)
     { }
 
+    const gsFeSpace<T> & space() const {return _u;};
+    
     mutable gsMatrix<T> res;
     const gsMatrix<T> & eval(index_t k) const
     {
@@ -1151,8 +1177,8 @@ public:
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(&_u.source());
+        gsInfo<<"Reg. gsFeSolution\n";
+        evList.add(_u);
         _u.data().flags |= NEED_VALUE | NEED_ACTIVE;
     }
 
@@ -1321,9 +1347,10 @@ public:
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(&_u.source());
-        _u.data().flags |= NEED_GRAD|NEED_ACTIVE;
+        gsDebug<<"Parse solGrad "<< this <<"\n";
+//        evList.add(_u.space());            // add symbol
+        _u.parse(evList);                   // add symbol
+        _u.data().flags |= NEED_GRAD|NEED_ACTIVE; // define flags
     }
 
     void print(std::ostream &os) const { os << "grad(s)"; }
@@ -1822,7 +1849,7 @@ GISMO_EXPR_VECTOR_EXPRESSION(inv,inverse,0);
 // GISMO_EXPR_VECTOR_EXPRESSION(cwSqr,array().square,0)
 // GISMO_EXPR_VECTOR_EXPRESSION(sum,array().sum,1)
 // GISMO_EXPR_VECTOR_EXPRESSION(sqrt,array().sqrt,0)
-// GISMO_EXPR_VECTOR_EXPRESSION(abs,array().abs,0)
+//GISMO_EXPR_VECTOR_EXPRESSION(abs,array().abs,0)
 
 //Determinant
 GISMO_EXPR_VECTOR_EXPRESSION(det,determinant,1);
@@ -2175,6 +2202,10 @@ public:
 
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
+        // Assumes: derivatives are in _u.data().values[1]
+        // will NOT work for gsComposition. Before: we composed in place
+        // so that derivs were directly computed
+        //
         tmp = _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
         return tmp;
     }
@@ -2200,8 +2231,10 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     {
         //gsInfo<< "************** Parsing "<< _u.source() <<"\n";
-        gsDebug<<"Parse grad "<< this <<"\n";
-        evList.add(_u);
+         gsDebug<<"Parse grad "<< this <<"\n";
+        //evList.add(_u); //works?
+        _u.parse(evList); 
+        
         _u.data().flags |= NEED_GRAD;
         if (_u.composed() )
             _u.mapData().flags |= NEED_VALUE;
@@ -3125,7 +3158,6 @@ public:
 
     T eval(const index_t k) const
     {
-        //gsDebugVar(_G.data().measures.at(k));
         return _G.data().measures.at(k);
     }
 
@@ -3135,6 +3167,7 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     {
         gsDebug<<"Parse meas "<< this <<"\n";
+//        gsMapData<T> * m = evList.getData(_G.
         evList.add(_G);
         _G.data().flags |= NEED_MEASURE;
     }
@@ -3935,7 +3968,8 @@ public:
         */
     }
 
-    AutoReturn_t eval(const index_t k) const
+    AutoReturn_t
+    eval(const index_t k) const
     {
         GISMO_ASSERT(_u.rows() == _v.rows(),
                      "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in - operation:\n" << _u <<" minus \n" << _v );
@@ -3943,14 +3977,19 @@ public:
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in - operation:\n" << _u <<" minus \n" << _v );
         //gsDebugVar( (_u.eval(k) - _v.eval(k)) );
         //gsDebugVar( (_u.eval(k) - _v.eval(k)).squaredNorm() );
-        return (_u.eval(k) - _v.eval(k) );
+        //return (_u.eval(k) - _v.eval(k) ).eval();
+        return (_u.eval(k) - _v.eval(k) ); // any temporary matrices eval(.) will leak mem.
     }
 
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
     void parse(gsExprHelper<Scalar> & evList) const
-    { _u.parse(evList); _v.parse(evList); }
+    {
+        gsInfo<<"SUB expr\n";
+        _u.parse(evList);
+        _v.parse(evList);
+    }
 
     enum{rowSpan = E1::rowSpan, colSpan = E2::colSpan};
 

@@ -103,15 +103,20 @@ public:
         return *mesh_ptr;
     }
 
+    // gsFuncData<T> * getData()
+    // {
+    //     return 
+    // }
 
-    expr::gsGeometryMap<T> getMap(const gsFunction<T> & mp)
+    geometryMap getMap(const gsFunction<T> & mp)
     {
         expr::gsGeometryMap<T> gm;
         gm.setSource(mp);
+        gsDebugVar(gm.m_fs);
         return gm;
     }
 
-    expr::gsGeometryMap<T> getMap(const gsMultiPatch<T> & mp)
+    geometryMap getMap(const gsMultiPatch<T> & mp)
     {
         expr::gsGeometryMap<T> gm;
         gm.setSource(mp);
@@ -126,8 +131,8 @@ public:
     {
         expr::gsFeVariable<T> var;
         var.setSource(mp);
-        var.setData( m_fdata[&mp] );
         var.setDim(dim);
+        //var.setData( m_fdata[&mp] );//NO
         return var;
     }
 
@@ -136,7 +141,7 @@ public:
         //GISMO_UNUSED(G);
         //GISMO_ASSERT(&G==&mapVar, "geometry map not known");
         //m_vlist.push_back( expr::gsFeVariable<T>() );
-        expr::gsComposition<T> var;
+        expr::gsComposition<T> var(G);
         //gsFuncData<T> & fd = m_itable[&mp];
         //fd.dim = mp.dimensions();
         //gsDebugVar(&fd);
@@ -146,7 +151,7 @@ public:
         // const_cast<expr::gsGeometryMap<T>&>(sym)
         //     .m_fd = & m_mdata[sym.m_fs];
 
-        var.setMap( m_mdata[&G.source()] );
+        //var.setMap( m_mdata[&G.source()] );
         //gsInfo<<"aaaaaaaaaaaaaaaaa Reg.  symb "<< &G.data() <<"\n";
         return var;
     }
@@ -265,7 +270,7 @@ private:
     // }
 
     template <class E1, class... Rest>
-    void _parse(const expr::_expr<E1> & a1, Rest... restArgs)
+    void _parse(const expr::_expr<E1> & a1, Rest &... restArgs)
     {
         _parse(a1);
         _parse(restArgs...);
@@ -275,7 +280,9 @@ public:
     template<class... expr>
     void parse(const expr &... args)
     {
-        //todo: CLEAR CACHE HERE
+        m_mdata.clear();
+        m_fdata.clear();
+        m_vdata.clear();
 
         _parse(args...);
 
@@ -294,8 +301,9 @@ public:
 
     void add(const expr::gsGeometryMap<T> & sym)
     {//TODO: inherit gsGeomatryMap from symbol_expr
+        GISMO_ASSERT(NULL!=sym.m_fs, "Geometry map "<<&sym<<" is invalid");
         const_cast<expr::gsGeometryMap<T>&>(sym)
-            .m_fd = & m_mdata[sym.m_fs];
+            .setData(m_mdata[sym.m_fs]);
         gsDebug<<"+ gMap "<< sym.m_fs <<" ("<<sym.m_fd<<")\n";
     }
 
