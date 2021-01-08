@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
+    bool verbose = false;
     index_t numRefine  = 0;
     index_t numElevate = 0;
     std::string fn("pde/poisson2d_bvp.xml");
@@ -38,6 +39,7 @@ int main(int argc, char *argv[])
     cmd.addString("S","save", "Save solution to gismo XML file", save);
     cmd.addString("R","rgeom", "Save refined geometry to gismo XML file", geometryRef);
     cmd.addString("G","geom", "Save initial geometry to XML file", geometry);
+    cmd.addSwitch("verbose","Verbose output", verbose);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -45,29 +47,42 @@ int main(int argc, char *argv[])
     //! [Read input file]
 
     gsFileData<> fd(fn);
-    gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
+    if (verbose)
+        gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
 
+    index_t num;
     gsMultiPatch<> mp;
-    fd.getId(0, mp); // id=0: Multipatch domain
+    num = fd.template count<gsMultiPatch<real_t>>(); // id=0: Multipatch domain
+    GISMO_ASSERT(num==1,"Number of multipatch objects in XML should be 1, but is "<<num);
+    fd.template getFirst<gsMultiPatch<real_t>>(mp); // Multipatch domain
 
     if (!geometry.empty())
     {
-        gsInfo<<"Writing to geometry to XML...\n";
-        gsInfo<<"Path = "<<geometry<<"\n";
+        if (verbose)
+        {
+            gsInfo<<"Writing geometry to XML...\n";
+            gsInfo<<"Path = "<<geometry<<"\n";
+        }
         gsWrite(mp,geometry);
     }
 
     gsFunctionExpr<> f;
     fd.getId(1, f); // id=1: source function
-    gsInfo<<"Source function "<< f << "\n";
+    if (verbose)
+        gsInfo<<"Source function "<< f << "\n";
 
     gsBoundaryConditions<> bc;
-    fd.getId(2, bc); // id=2: boundary conditions
+    num = fd.template count<gsBoundaryConditions<>>(); // id=0: Multipatch domain
+    GISMO_ASSERT(num==1,"Number of boundary condition objects in XML should be 1, but is "<<num);
+    fd.template getFirst<gsBoundaryConditions<>>(bc); // Multipatch domain
     bc.setGeoMap(mp);
-    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
+    if (verbose)
+        gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
     gsOptionList Aopt;
-    fd.getId(4, Aopt); // id=4: assembler options
+    num = fd.template count<gsOptionList>(); // id=0: Multipatch domain
+    GISMO_ASSERT(num==1,"Number of options objects in XML should be 1, but is "<<num);
+    fd.template getFirst<gsOptionList>(Aopt); // Multipatch domain
 
     //! [Read input file]
 
@@ -82,14 +97,17 @@ int main(int argc, char *argv[])
     for (int r =0; r < numRefine-1; ++r)
         mp.uniformRefine();
 
-    gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
-    for (size_t k=0; k!=mp.nPatches(); k++)
+    if (verbose)
     {
+        gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
+        for (size_t k=0; k!=mp.nPatches(); k++)
+        {
+            gsInfo<<"------------------------------------------------------\n";
+            gsInfo<<"Basis"<<k<<":\n";
+            gsInfo<<mp.basis(k)<<"\n";
+        }
         gsInfo<<"------------------------------------------------------\n";
-        gsInfo<<"Basis"<<k<<":\n";
-        gsInfo<<mp.basis(k)<<"\n";
     }
-    gsInfo<<"------------------------------------------------------\n";
     //! [Refinement]
 
     //! [Problem setup]
@@ -128,16 +146,15 @@ int main(int argc, char *argv[])
     //! [Problem setup]
 
     //! [Solver loop]
-    gsInfo<< "(dot1=assembled, dot2=solved)\n"
-        "\nDoFs: ";
-
     //labels: Dirichlet, CornerValues, Collapsed, Clamped
     u.setup(bc, dirichlet::interpolation, 0);
 
     // Initialize the system
     A.initSystem(false);
 
-    gsInfo<< A.numDofs() <<std::flush;
+    if (verbose)
+        gsInfo<< "(dot1=assembled, dot2=solved)\n"
+        "\nDoFs: "<<A.numDofs() <<std::flush;
 
     // Compute the system matrix and right-hand side
     A.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
@@ -148,32 +165,42 @@ int main(int argc, char *argv[])
     //gsInfo<<"Sparse Matrix:\n"<< A.matrix().toDense() <<"\n";
     //gsInfo<<"Rhs vector:\n"<< A.rhs().transpose() <<"\n";
 
-    gsInfo<< "." <<std::flush;// Assemblying done
+    if (verbose)
+        gsInfo<< "." <<std::flush;// Assemblying done
 
     solver.compute( A.matrix() );
     solVector = solver.solve(A.rhs());
 
-    gsInfo<< ".Done. \n" <<std::flush; // Linear solving done
+    if (verbose)
+        gsInfo<< ".Done. \n" <<std::flush; // Linear solving done
 
     //! [Solver loop]
     if (!save.empty())
     {
-        gsInfo<<"Writing to XML...\n";
-        gsInfo<<"Path = "<<save<<"\n";
+        if (verbose)
+        {
+            gsInfo<<"Writing to XML...\n";
+            gsInfo<<"Path = "<<save<<"\n";
+        }
         gsMultiPatch<> mp_export;
         u_sol.extract(mp_export);
         gsWrite(mp_export,save);
     }
     if (!geometryRef.empty())
     {
-        gsInfo<<"Writing refined geometry to XML...\n";
-        gsInfo<<"Path = "<<geometryRef<<"\n";
+        if (verbose)
+        {
+            gsInfo<<"Writing refined geometry to XML...\n";
+            gsInfo<<"Path = "<<geometryRef<<"\n";
+        }
         gsWrite(mp,geometryRef);
     }
     //! [Export visualization in ParaView]
     if (plot)
     {
-        gsInfo<<"Plotting in Paraview...\n";
+        if (verbose)
+            gsInfo<<"Plotting in Paraview...\n";
+
         ev.options().setSwitch("plot.elements", true);
         ev.writeParaview( u_sol   , G, "solution");
         //ev.writeParaview( u, G, "aa");
