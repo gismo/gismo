@@ -190,7 +190,7 @@ void gsMappedBasis<d,T>::eval_into(const unsigned patch, const gsMatrix<T> & u, 
 
     const index_t shift=_getFirstLocalIndex(patch);
     std::transform(act0.begin(), act0.end(), act0.begin(),
-                   std::bind2nd(std::plus<index_t>(), shift));
+                   GS_BIND2ND(std::plus<index_t>(), shift));
 
     m_mapper->fastSourceToTarget(act0,act);
     m_mapper->getLocalMap(act0, act, map);
@@ -352,7 +352,7 @@ void gsMappedBasis<d,T>::evalAllDers_into(const unsigned patch, const gsMatrix<T
     std::vector<index_t>  act, act0(bact.data(), bact.data()+bact.rows());
     const index_t shift=_getFirstLocalIndex(patch);
     std::transform(act0.begin(), act0.end(), act0.begin(),
-                   std::bind2nd(std::plus<index_t>(), shift));
+                   GS_BIND2ND(std::plus<index_t>(), shift));
     m_mapper->fastSourceToTarget(act0,act);
     gsMatrix<T> map;//r:B,c:C
     m_mapper->getLocalMap(act0, act, map);
