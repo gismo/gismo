@@ -123,7 +123,7 @@ X = error/incorrect
     typedef gsExprAssembler<>::variable    variable;
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
-    element     e = ev.getElement();
+    //element     e = ev.getElement();
     geometryMap G = ev.getMap(mp);
     variable    m = ev.getVariable(m_);
     variable    M = ev.getVariable(M_);
@@ -166,17 +166,17 @@ X = error/incorrect
     */
     gsInfo<< "* Matrix expression:\t"; // - gismo::expr::id(3).temp()
     ev.eval(((reshape(M,3,3).inv()-gismo::expr::id(3)).trace()).val(),point);
-    gsInfo<<( std::abs(ev.value() - ( 0.0 - 1./2. - 2./3. ) ) < 1e-10 ? "passed" : "failed" )<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<ev.value()<<"\n"
                 <<"Exact:\n"<<( 0.0 - 1./2. - 2./3. )<<"\n";
+    gsInfo<<( std::abs(ev.value() - ( 0.0 - 1./2. - 2./3. ) ) < 1e-10 ? "passed" : "failed" )<<"\n";
 
     gsInfo<< "* Matrix expr sign:\t"; // - gismo::expr::id(3).temp()
     ev.eval(((reshape(M,3,3).inv()-gismo::expr::id(3)).trace()).sgn(),point);
-    gsInfo<<( std::abs(ev.value() + 1) < 1e-10 ? "passed" : "failed" )<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<ev.value()<<"\n"
                 <<"Exact:\n"<<-1<<"\n";
+    gsInfo<<( std::abs(ev.value() + 1) < 1e-10 ? "passed" : "failed" )<<"\n";
 
     /*
         Computes trace(M^-1 - I) with M = diag([1,2,3])
@@ -189,10 +189,10 @@ X = error/incorrect
     gsInfo<< "* Matrix diag:\t\t"; // - gismo::expr::id(3).temp()
     exact  = ev.eval(reshape(M,3,3),point);
     result = ev.eval(m.asDiag(),point);
-    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
     /*
         Replicates a vector
@@ -203,9 +203,10 @@ X = error/incorrect
     */
     gsInfo<< "* Matrix replicate:\t";
     result = ev.eval(replicate(m,1,2),point);
-    gsInfo<<"passed \t\tnote: eval only\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n";
+        gsInfo<<"passed \t\tnote: eval only\n";
+
     /*
         Computes the inverse in two ways: 1) directly with Eigen, 2) with 1/det(M)*adj(M).
         Assessment of:
@@ -217,10 +218,10 @@ X = error/incorrect
     gsInfo<< "* Matrix inverse:\t";
     result = ev.eval(reshape(M,3,3).inv(),point);
     exact  = ev.eval(1.0 / reshape(M,3,3).det() * reshape(M,3,3).adj() ,point);
-    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
     /*
         Computes the norm in two ways: 1) sqnorm, 2) power of the norm.
@@ -233,10 +234,12 @@ X = error/incorrect
     gsInfo<< "* Matrix sqnorm:\t";
     result = ev.eval(reshape(M,3,3).sqNorm(),point);
     exact  = ev.eval(pow(reshape(M,3,3).norm(),2),point);
-    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+
+
     /*
         Symmetrizes directly (symm) and indirectly (N*N^T)
         Assessment of:
@@ -247,10 +250,11 @@ X = error/incorrect
     gsInfo<< "* Matrix symm:\t\t";
     result = ev.eval(reshape(N,3,3).symm(),point);
     exact  = ev.eval(reshape(N,3,3)*reshape(N,3,3).tr(),point);
-    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
+        gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+
     /*
         Symmetrizes directly (symmmetrize) and indirectly (N+N^T)
         Assessment of:
@@ -261,10 +265,11 @@ X = error/incorrect
     gsInfo<< "* Matrix symmetrize:\t";
     result = ev.eval(reshape(N,3,3).symmetrize(),point);
     exact  = ev.eval((reshape(N,3,3)+reshape(N,3,3).tr()),point);
-    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////GEOMETRY OPERATIONS//////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -282,11 +287,11 @@ X = error/incorrect
     gsInfo<< "* Area (integral):\t";
     real_t num = ev.integral( meas(G) );
     real_t ref = 4*M_PI*M_R*M_R;
-    gsInfo<<( std::abs( num-ref ) / ref < 1e-4 ? "passed" : "failed" );//<<"\n";
-    gsInfo<<"\t\tnote: with lower tolerance"<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<num<<"\n"
                 <<"Exact:\n"<<ref<<"\n";
+    gsInfo<<( std::abs( num-ref ) / ref < 1e-4 ? "passed" : "failed" );//<<"\n";
+    gsInfo<<"\t\tnote: with lower tolerance"<<"\n";
 
     point.setConstant(0.5);
     physpoint = ev.eval( G,point );
@@ -301,11 +306,10 @@ X = error/incorrect
     exact.resize(3,1);
     exact<<math::cos(theta)*math::sin(phi),math::sin(theta)*math::sin(phi),math::cos(phi);
     exact.normalize();
-    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
-
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
     mp.clear();
     mp.addPatch(gsNurbsCreator<>::NurbsQuarterAnnulus(M_R,2*M_R));
@@ -325,22 +329,21 @@ X = error/incorrect
     resVec = ev.eval( nv(G).normalized(), point );
     phi = math::atan2(physpoint(1,0),physpoint(0,0));
     exVec<<math::cos(phi),math::sin(phi);
-    gsInfo<<( std::abs( (exVec.transpose()*resVec) ) - 1  < 1e-10 ? "passed" : "failed" );//<<"\n";
-    gsInfo<<"\t\tnote: sign might be wrong"<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
+    gsInfo<<( std::abs( (exVec.transpose()*resVec) ) - 1  < 1e-10 ? "passed" : "failed" );//<<"\n";
+    gsInfo<<"\t\tnote: sign might be wrong"<<"\n";
 
     gsInfo<< "* Plane tangent:\t";
     resVec = ev.eval( tv(G).normalized(), point );
     phi = math::atan2(physpoint(1,0),physpoint(0,0));
     exVec<<-math::sin(phi),math::cos(phi);
-    gsInfo<<( std::abs( (exVec.transpose()*resVec) ) - 1  < 1e-10 ? "passed" : "failed" );//<<"\n";
-    gsInfo<<"\t\tnote: sign might be wrong"<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
-
+    gsInfo<<( std::abs( (exVec.transpose()*resVec) ) - 1  < 1e-10 ? "passed" : "failed" );//<<"\n";
+    gsInfo<<"\t\tnote: sign might be wrong"<<"\n";
 
     /*
         Computes the fundamental form of a geometry
@@ -355,11 +358,11 @@ X = error/incorrect
          -M_R*math::cos(phi)*math::sin(phi) + M_R*math::sin(phi)*math::cos(phi),
          -M_R*math::cos(phi)*math::sin(phi) + M_R*math::sin(phi)*math::cos(phi),
          2*(2*M_R*2*M_R);
-    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" );//<<"\n";
-    gsInfo<<"\t\tISSUE KNOWN; expression seems wrong"<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" );//<<"\n";
+    gsInfo<<"\t\tISSUE KNOWN; expression seems wrong"<<"\n";
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////FUNCTION OPERATIONS//////////////////////////////////////////////////////////////////////////////////////////////
@@ -369,12 +372,12 @@ X = error/incorrect
     gsInfo<<"------------------------------Function operations------------------------"<<"\n";
     gsInfo<<"-------------------------------------------------------------------------"<<"\n";
 
-    gsFunctionExpr<> a_("x^2","y^2","x*y",2);
+    gsFunctionExpr<> a_("x^2","y^2","x*y",2);// R^2 -> R
     gsFunctionExpr<> b_("x^2+y^2",2);
     gsFunctionExpr<> c_("-y","x","0",2);
-    variable    a = ev.getVariable(a_, G);
-    variable    b = ev.getVariable(b_, G);
-    variable    c = ev.getVariable(c_, G);
+    auto a = ev.getVariable(a_, G);
+    auto b = ev.getVariable(b_, G);
+    //auto c = ev.getVariable(c_, G);
 
     /*
         Computes the gradient of a variable
@@ -385,24 +388,24 @@ X = error/incorrect
     result = ev.eval( grad(a), point );
     exact.resize(3,2);
     exact<<2*physpoint(0,0),0,0,2*physpoint(1,0),physpoint(1,0),physpoint(0,0);
-    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+
     /*
         Computes the Jacobian of a variable
         Assessment of:
         - fjac_expr(gsFeVariable)
     */
     gsInfo<< "* Function Jacobian:\t";
-    result = ev.eval( fjac(a), point );
-    exact.resize(2,3);
-    exact<<2*physpoint(0,0),0,0,2*physpoint(1,0),physpoint(1,0),physpoint(0,0);
-    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+    result = ev.eval( jac(a), point );
+    //exact.resize(2,3);
+    //exact<<2*physpoint(0,0),0,0,2*physpoint(1,0),physpoint(1,0),physpoint(0,0);
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
-
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
     /*
         Computes the Jacobian of a (1D) variable
         Assessment of:
@@ -426,12 +429,12 @@ X = error/incorrect
     result = ev.eval( lapl(b), point );
     exact.resize(1,1);
     exact<<4;
-    gsInfo<<( (result-exact).norm() < 1e-5 ? "passed" : "failed" );//<<"\n";
-    gsInfo<<"\t\tnote: with lower tolerance"<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n"
                 <<"Diff:\n"<< (result-exact) <<"\n";
+    gsInfo<<( (result-exact).norm() < 1e-5 ? "passed" : "failed" );//<<"\n";
+    gsInfo<<"\t\tnote: with lower tolerance"<<"\n";
 
     /*
         Computes the Hessian of a variable
@@ -442,12 +445,12 @@ X = error/incorrect
     result = ev.eval( hess(b), point );
     exact.resize(2,2);
     exact<<2,0,0,2;
-    gsInfo<<( (result-exact).norm() < 1e-5 ? "passed" : "failed" );//<<"\n";
-    gsInfo<<"\t\tnote: with lower tolerance"<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n"
                 <<"Diff:\n"<< (result-exact) <<"\n";
+    gsInfo<<( (result-exact).norm() < 1e-5 ? "passed" : "failed" );//<<"\n";
+    gsInfo<<"\t\tnote: with lower tolerance"<<"\n";
     /*
         Computes the curl of a variable
         Assessment of:
@@ -495,17 +498,17 @@ X = error/incorrect
     gsInfo<< "* Values (space):\t";
     result.transpose() = ev.eval( u, point );
     result *= coefs;
-    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
     gsInfo<< "* Values (map):\t\t";
     result.transpose() = ev.eval( G, point );
-    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
     A.initSystem();
     gsMatrix<> solVec;
@@ -514,10 +517,10 @@ X = error/incorrect
     solVec = coefs;
     solVec.resize(2*solVec.rows(),1);
     result.transpose() = ev.eval( u_sol, point );
-    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
     /*
         Computes the derivatives on the geometry
@@ -537,28 +540,28 @@ X = error/incorrect
     gsInfo<< "* Deriv  (space):\t";
     result.transpose() = ev.eval( grad(u), point );
     result *= coefs;
-    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
     gsInfo<< "* Deriv  (map):\t\t";
     result = ev.eval( jac(G), point );
-    gsInfo<<( (result.transpose()-exact).norm() < 1e-10 ? "passed" : "failed" );//<<"\n";
-    // note: transpose() below should not be needed!
-    gsInfo<<"\t\tnote: is transposed!"<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
+    gsInfo<<( (result.transpose()-exact).norm() < 1e-10 ? "passed" : "failed" );//<<"\n";
+    // note: transpose() below should not be needed!
+    gsInfo<<"\t\tnote: is transposed!"<<"\n";
 
     gsInfo<< "* Deriv  (solution):\t";
     result = ev.eval( grad(u_sol), point );
     // note: transpose() below should not be needed!
-    gsInfo<<( (result.transpose()-exact).norm() < 1e-10 ? "passed" : "failed" );//<<"\n";
-    gsInfo<<"\t\tnote: is transposed!"<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
+    gsInfo<<( (result.transpose()-exact).norm() < 1e-10 ? "passed" : "failed" );//<<"\n";
+    gsInfo<<"\t\tnote: is transposed!"<<"\n";
 
     /*
         Computes the second derivatives on the geometry
@@ -600,19 +603,18 @@ X = error/incorrect
     exact.transpose() = ev.eval( u_sol.tr() * grad(u_sol), point );
     result = ev.eval( (u_sol.tr() * jac(u2)).tr(), point );
     result *= solVec;
-    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result.transpose()<<"\n"
                 <<"Exact:\n"<<exact.transpose()<<"\n";
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
     gsInfo<<"* u grad(s):\t\t";
     result.transpose() = ev.eval( u2 * grad(u_sol), point );
     result *= solVec;
-    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
     if (verbose)
         gsInfo  <<"Result:\n"<<result.transpose()<<"\n"
                 <<"Exact:\n"<<exact.transpose()<<"\n";
-
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
     // COLBLOCKS ERROR
     gsInfo<<"* s grad(u) + u grad(s):\t";
