@@ -362,9 +362,9 @@ public:
                           const bcContainer & BCs)
     {
         space rvar = static_cast<space>(exprLhs.rowVar());
-        GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
+        //GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
         space cvar = static_cast<space>(exprLhs.colVar());
-        GISMO_ASSERT(m_exprdata->exists(cvar), "Error - inexistent variable.");
+        //GISMO_ASSERT(m_exprdata->exists(cvar), "Error - inexistent variable.");
         GISMO_ASSERT(&rvar==&exprRhs.rowVar(), "Inconsistent left and right hand side");
         assembleLhsRhsBc_impl<true,true>(exprLhs, exprRhs, rvar, cvar, BCs);
     }
@@ -373,7 +373,7 @@ public:
     void assembleRhsBc(const expr::_expr<E1> & exprRhs, const bcContainer & BCs)
     {
         space var = static_cast<space>(exprRhs.rowVar());
-        GISMO_ASSERT(m_exprdata->exists(var), "Error - inexistent variable.");
+        //GISMO_ASSERT(m_exprdata->exists(var), "Error - inexistent variable.");
         assembleLhsRhsBc_impl<false,true>(nullExpr(), exprRhs, var, var, BCs);
     }
 
@@ -389,7 +389,7 @@ public:
     void assembleRhsInterface(const expr::_expr<E1> & exprInt, const ifContainer & iFaces)
     {
         space rvar = static_cast<space>(exprInt.rowVar());
-        GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
+        //GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
         assembleInterface_impl<false,true>(nullExpr(), exprInt, rvar, rvar, iFaces);
     }
 
@@ -752,17 +752,8 @@ void gsExprAssembler<T>::assemble(expr... args)
 
 #pragma omp parallel
 {
-    //m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-    m_exprdata->parse(args...); //threaded.. variable must be as well
-    //_apply(_setFlag, args...);
+    m_exprdata->parse(args...);
 
-//    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-// #   if __cplusplus >= 201103L || _MSC_VER >= 1600
-//     _apply(_setFlag, args...);
-//     //_apply(_printExpr, args...);
-// #   else
-//     _setFlag(a1);_setFlag(a1);_setFlag(a2);_setFlag(a4);_setFlag(a5);
-// #   endif
     gsQuadRule<T> QuRule;  // Quadrature rule
     gsVector<T> quWeights; // quadrature weights
 

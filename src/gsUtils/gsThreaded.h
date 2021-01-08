@@ -17,30 +17,47 @@ namespace gismo
 namespace util
 {
 
+// Usage:
+// gsThreaded<C> a;
+// a.mine();
 template<class C>
 class gsThreaded
 {
+#ifdef _OPENMP
     std::vector<C> m_array;
+    #else
+    C m_c;
+#endif
+
 public:
+
+#ifdef _OPENMP
     gsThreaded() : m_array(omp_get_max_threads()) { }
 
-    // copying?
+    /// Casting to the local data
+    operator C&()             { return m_array[omp_get_thread_num()]; }
+    operator const C&() const { return m_array[omp_get_thread_num()]; }
 
-    // Usage:
-    // gsThreaded<C> a;
-    // a().function();
-    C&       operator ()() { return m_array[omp_get_thread_num()]; }
-    const C& operator ()() const { return m_array[omp_get_thread_num()]; }
-    //operator C&() const { return m_array[omp_get_thread_num()]; }
+    /// Returning the local data
+    C&       mine() { return m_array[omp_get_thread_num()]; }
+    const C& mine() const { return m_array[omp_get_thread_num()]; }
 
-    C&       get() { return m_array[omp_get_thread_num()]; }
-    const C& get() const { return m_array[omp_get_thread_num()]; }
-
+    /// Assigning to the local data
     C& operator = (C other) { return m_array[omp_get_thread_num()] = give(other); }
-
+#else
+    /// Casting to the local data
+    operator C&()             { return m_c; }
+    operator const C&() const { return m_c; }
+    
+    /// Returning the local data
+    C&       mine() { return m_c; }
+    const C& mine() const { return m_c; }
+    
+    /// Assigning to the local data
+    C& operator = (C other) { return m_c = give(other); }
+#endif
+    
 };//gsThreaded
-
-
 
 }//util
 

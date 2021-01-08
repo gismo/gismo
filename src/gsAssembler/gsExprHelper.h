@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsAssembler/gsExpressions.h>
+#include <gsUtils/gsThreaded.h>
 
 namespace gismo
 {
@@ -197,75 +198,11 @@ public:
         mutParametric = param;
     }
 
-    // void initFlags(const unsigned fflag = 0,
-    //                const unsigned mflag = 0)
-
-    //void precompute(const gsMatrix<T> & points, const index_t patchIndex = 0)
-
-    /*
-    void precompute0(const index_t patchIndex = 0)
-    {
-        GISMO_ASSERT(0!=points().size(), "No points");
-
-        //mapData.side
-        if ( mapVar.isValid() ) // list ?
-        {
-            //gsDebugVar("MAPDATA-------***************");
-            mapData.flags |= NEED_VALUE;
-            mapVar.source().function(patchIndex).computeMap(mapData);
-            mapData.patchId = patchIndex;
-        }
-        if ( mapVar2.isValid() ) // list ?
-        {
-            mapData2.points = points();
-            //gsDebugVar("MAPDATA-------***************");
-            mapData2.flags |= NEED_VALUE;
-            mapVar2.source().function(patchIndex).computeMap(mapData2);
-            mapData2.patchId = patchIndex;
-        }
-        if ( mutVar.isValid() && 0!=mutData.flags)
-        {
-            GISMO_ASSERT( mutParametric || 0!=mapData.values.size(), "Map values not computed");
-            //mutVar.source().piece(patchIndex).compute(mapData.points, mutData);
-            mutVar.source().piece(patchIndex)
-                .compute( mutParametric ? mapData.points : mapData.values[0], mutData);
-        }
-
-        // this->print();
-
-        // Parametric Variables
-        for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
-        {
-            it->first->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
-            it->second.patchId = patchIndex;
-        }
-        // Spaces
-        for (ftIterator it = m_stable.begin(); it != m_stable.end(); ++it)
-        {
-            it->first->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
-            it->second.patchId = patchIndex;
-        }
-
-        GISMO_ASSERT( m_itable.empty() || 0!=mapData.values.size(), "Map values not computed");
-        // Physical Variables
-        if ( 0!=mapData.values.size() && 0!= mapData.values[0].rows() ) // avoid left-over from previous expr.
-        for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
-        {
-            //gsDebugVar(&it->second);
-            //gsDebugVar(it->second.dim.first);
-            it->first->piece(patchIndex).compute(mapData.values[0], it->second);
-            //gsDebugVar(it->second.dim.first);
-            it->second.patchId = patchIndex;
-        }
-        }*/
-
 private:
     template <class E1>
     void _parse(const expr::_expr<E1> & a1)
     {
-        gsDebug<< "got "<< &a1 <<"\n";
         a1.parse(*this);
-        //gsDebugVar( typeid(a1).name() );
         a1.print(gsInfo);
     }
 
@@ -293,7 +230,7 @@ public:
 
         _parse(args...);
 
-        // Add few evaluation flags
+        // Add initial evaluation flags
         for (MapDataIt it  = m_mdata.begin(); it != m_mdata.end(); ++it)
             it->second.flags |= SAME_ELEMENT|NEED_ACTIVE;
         for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
@@ -303,10 +240,10 @@ public:
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
             it->second.flags |= SAME_ELEMENT|NEED_ACTIVE;
 
-        gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
-        gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
-        gsInfo<< "vdata: "<< m_vdata.size()<<"\n";
-        gsInfo<< "cdata: "<< m_cdata.size()<<"\n";
+        // gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
+        // gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
+        // gsInfo<< "vdata: "<< m_vdata.size()<<"\n";
+        // gsInfo<< "cdata: "<< m_cdata.size()<<"\n";
     }
 
     void add(const expr::gsGeometryMap<T> & sym)
@@ -314,7 +251,7 @@ public:
         GISMO_ASSERT(NULL!=sym.m_fs, "Geometry map "<<&sym<<" is invalid");
         const_cast<expr::gsGeometryMap<T>&>(sym)
             .setData(m_mdata[sym.m_fs]);
-        gsDebug<<"+ gMap "<< sym.m_fs <<" ("<<sym.m_fd<<")\n";
+        //gsDebug<<"+ gMap "<< sym.m_fs <<" ("<<sym.m_fd<<")\n";
     }
 
     void add(const expr::gsComposition<T> & sym)
@@ -325,7 +262,7 @@ public:
         const_cast<expr::gsComposition<T>&>(sym)
             .setData(m_cdata[ std::make_pair(sym.m_fs,
             const_cast<gsMapData<T>*>(sym.inner().m_fd))]);
-        gsDebug<<"+ Comp "<< sym.m_fs <<" ("<<sym.m_fd<<")\n";
+        //gsDebug<<"+ Comp "<< sym.m_fs <<" ("<<sym.m_fd<<")\n";
     }
 
     template <class E>
@@ -342,13 +279,13 @@ public:
             if ( 1==sym.m_fs->size() &&
                  sym.m_fs->domainDim()<=sym.m_fs->targetDim() )// map?
             {
-                gsDebug<<"+ Map "<< sym.m_fs <<"\n";
+                //gsDebug<<"+ Map "<< sym.m_fs <<"\n";
                 const_cast<expr::symbol_expr<E>&>(sym)
                     .setData( m_mdata[sym.m_fs] );
             }
             else
             {
-                gsDebug<<"+ Func "<< sym.m_fs <<"\n";
+                //gsDebug<<"+ Func "<< sym.m_fs <<"\n";
                 const_cast<expr::symbol_expr<E>&>(sym)
                     .setData( m_fdata[sym.m_fs] );
             }
@@ -356,25 +293,11 @@ public:
         else
         {
             gsDebug<<"- No source for "<< sym.m_fs <<"\n";
-            //GISMO_ASSERT(NULL==sym.m_fs, "Not registered");
-            //BC etc
-//            m_vdata.insert(&sym); //No fespace..
+            // eg. mutable var?
         }
 
-        //IF ELSE!! :) m_vdata.insert(&sym);
-
         // get variable (all): create and set m_fs and m_d [var is thread-local]
-
         //parse (all): set m_fd and flags [stored in m_fdata, th-local]
-
-        // var.registerData(mp, fd, dim);
-
-
-        //m_vlist.push_back( expr::gsFeVariable<T>() );
-        //expr::gsFeVariable<T> & var = m_vlist.back();
-
-        //gsFuncData<T> & fd = m_ptable[&mp];
-        //sym.registerData(sym.data(), fd, dim);
     }
 
     void precompute(const index_t patchIndex = 0)
@@ -415,7 +338,6 @@ public:
 /*
     void precompute(const index_t patch1, const index_t patch2);
 */
-
 
 
 };//class
