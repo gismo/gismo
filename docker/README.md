@@ -18,7 +18,6 @@ __Table of content__
 1. [Building Docker images](#building-docker-images)
 2. [Prebuilt Docker images](#prebuilt-docker-images)
 3. [Using Docker images](#using-docker-images)
-4. [Building Docker images](#using-docker-images)
 
 ***
 
