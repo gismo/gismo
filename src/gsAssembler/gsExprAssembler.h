@@ -249,19 +249,15 @@ public:
     void setFixedDofs(const gsMatrix<T> & coefMatrix, short_t unk = 0, size_t patch = 0);
 
     /// \brief Initializes the sparse system (sparse matrix and rhs)
-    void initSystem(bool resetFirst = true)
+    void initSystem(bool resetFirst = false)
     {
         // Check spaces.nPatches==mesh.patches
         initMatrix(resetFirst);
         m_rhs.setZero(numDofs(), 1);
-
-        // USE setup and gsDirichletValues instead
-        //for (size_t i = 0; i!= m_vcol.size(); ++i)
-        // computeDirichletDofs2(i);
     }
 
     /// \brief Initializes the sparse matrix only
-    void initMatrix(bool resetFirst = true)
+    void initMatrix(bool resetFirst = false)
     {
         if (resetFirst)
             resetSpaces();
@@ -286,7 +282,7 @@ public:
     }
 
     /// \brief Initializes the right-hand side vector only
-    void initVector(const index_t numRhs = 1, bool resetFirst = true)
+    void initVector(const index_t numRhs = 1, bool resetFirst = false)
     {
         if (resetFirst)
             resetSpaces();

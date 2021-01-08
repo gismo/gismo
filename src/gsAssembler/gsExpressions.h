@@ -263,9 +263,6 @@ public:
     // static GS_CONSTEXPR bool rowSpan() { return E::rowSpan(); }
     // static bool colSpan { return E::colSpan; }
 
-    ///\brief Sets the required evaluation flags
-    void setFlag() const { static_cast<E const&>(*this).setFlag(); }
-
     ///\brief Parse the expression and discover the list of evaluation
     ///sources, also sets the required evaluation flags
     void parse(gsExprHelper<Scalar> & evList) const
@@ -318,7 +315,6 @@ public:
     gsMatrix<T> eval(const index_t) const { GISMO_ERROR("gsNullExpr"); }
     inline index_t rows() const { GISMO_ERROR("gsNullExpr"); }
     inline index_t cols() const { GISMO_ERROR("gsNullExpr"); }
-    inline void setFlag() const {/* gsInfo<<"gsNullExpr emtpy flag\n"; */ }
     void parse(gsExprHelper<T> &) const { }
 
     const gsFeSpace<T> & rowVar() const { GISMO_ERROR("gsNullExpr"); }
@@ -440,13 +436,6 @@ public:
 
     index_t cols() const { return m_d; }
 
-    void setFlag() const
-    {
-        GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        m_fd->flags |= NEED_VALUE | NEED_ACTIVE;
-        if (NULL!=m_md) m_md->flags |= NEED_VALUE;
-    }
-
     void parse(gsExprHelper<Scalar> & evList) const
     {
         gsDebug<<"Parse symb "<< this <<"\n";
@@ -506,7 +495,6 @@ public:
 
     index_t rows() const { return _c.rows(); }
     index_t cols() const { return 1; }
-    void setFlag() const { _c.setFlag();}
     void parse(gsExprHelper<Scalar> & evList) const { _c.parse(evList); }
 
     enum{rowSpan = E::rowSpan, colSpan = 0};
@@ -539,7 +527,6 @@ public:
     inline _expr val() const { return *this; }
     index_t rows() const { return 0; }
     index_t cols() const { return 0; }
-    void setFlag() const { }
     void parse(gsExprHelper<Scalar> &) const { }
 
     enum{rowSpan = 0, colSpan = 0};
@@ -582,12 +569,6 @@ public:
     void print(std::ostream &os) const { os << "G"; }
 
     MatExprType eval(const index_t k) const { return m_fd->values[0].col(k); }
-
-    void setFlag() const
-    {
-        GISMO_ASSERT(NULL!=m_fd, "GeometryMap not registered");
-        m_fd->flags |= NEED_VALUE;
-    }
 
 protected:
 
@@ -679,7 +660,6 @@ public:
     inline cdiam_expr<T> val() const { return *this; }
     inline index_t rows() const { return 0; }
     inline index_t cols() const { return 0; }
-    inline void setFlag() const { }
     void parse(gsExprHelper<Scalar> & ) const { }
 
     const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>(); }
@@ -708,7 +688,6 @@ public:
     inline cdiam_expr<T> val() const { return *this; }
     inline index_t rows() const { return 0; }
     inline index_t cols() const { return 0; }
-    inline void setFlag() const { }
     void parse(gsExprHelper<Scalar> &) const { }
     const gsFeVariable<T> & rowVar() const { gsNullExpr<T>(); }
     const gsFeVariable<T> & colVar() const { gsNullExpr<T>(); }
@@ -1173,12 +1152,8 @@ public:
     index_t rows() const {return _u.dim(); }
     static index_t cols() {return 1; }
 
-    void setFlag() const
-    { _u.data().flags |= NEED_VALUE | NEED_ACTIVE; }
-
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        gsInfo<<"Reg. gsFeSolution\n";
         evList.add(_u);
         _u.data().flags |= NEED_VALUE | NEED_ACTIVE;
     }
@@ -1341,16 +1316,9 @@ public:
 
     index_t cols() const {return _u.parDim(); }
 
-    void setFlag() const
-    {
-        _u.data().flags |= NEED_GRAD|NEED_ACTIVE;
-    }
-
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        gsDebug<<"Parse solGrad "<< this <<"\n";
-//        evList.add(_u.space());            // add symbol
-        _u.parse(evList);                   // add symbol
+        _u.parse(evList);                         // add symbol
         _u.data().flags |= NEED_GRAD|NEED_ACTIVE; // define flags
     }
 
@@ -1417,7 +1385,6 @@ public:
         // else
             return _u.rows();
     }
-    void setFlag() const { _u.setFlag(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
@@ -1480,8 +1447,6 @@ public:
         return _u.cols();
     }
 
-    void setFlag() const { _u.setFlag(); }
-
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
@@ -1533,7 +1498,6 @@ public:
 
     index_t rows() const { return _u.cols() / _u.rows(); }
     index_t cols() const { return 1; }
-    void setFlag() const { _u.setFlag(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
@@ -1586,7 +1550,6 @@ public:
 
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
-    void setFlag() const { _u.setFlag(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
@@ -1629,7 +1592,6 @@ public:
 
     index_t rows() const { return _n; }
     index_t cols() const { return _m; }
-    void setFlag() const { _u.setFlag(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
@@ -1673,7 +1635,6 @@ public:
 
     index_t rows() const { return _n*_u.rows(); }
     index_t cols() const { return _m*_u.cols(); }
-    void setFlag() const { _u.setFlag(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
@@ -1750,7 +1711,6 @@ public:
 
     index_t rows() const { return 1; }
     index_t cols() const { return 3; }
-    void setFlag() const { _u.setFlag(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
@@ -1805,7 +1765,6 @@ public:
 
     index_t rows() const { return _u.cols() / _u.rows(); }
     index_t cols() const { return 1; }
-    void setFlag() const { _u.setFlag(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
@@ -1829,7 +1788,6 @@ public:                                                                 \
     AutoReturn_t eval(const index_t k) const { return _u.eval(k).mname();} \
     index_t rows() const { return isSv ? 0 : _u.rows(); }               \
     index_t cols() const { return isSv ? 0 : _u.cols(); }               \
-    void setFlag() const { _u.setFlag(); }                              \
     void parse(gsExprHelper<Scalar> & evList) const { _u.parse(evList); } \
     const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();} \
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();} \
@@ -1895,7 +1853,6 @@ public:
 
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.rows() * _u.cols(); }
-    void setFlag() const { _u.setFlag(); }
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
@@ -1924,7 +1881,6 @@ public:
 
     index_t rows() const { return _dim; }
     index_t cols() const { return  _dim; }
-    void setFlag() const { }
     void parse(gsExprHelper<Scalar> & ) const {  }
 
     enum{rowSpan = 0, colSpan = 0};
@@ -1957,8 +1913,6 @@ public:
 
     static index_t rows() { return 0; }
     static index_t cols() { return 0; }
-
-    void setFlag() const { _u.setFlag(); }
 
     void parse(gsExprHelper<Scalar> & el) const
     { _u.parse(el); }
@@ -1996,8 +1950,6 @@ public:
 
     static index_t rows() { return 0; }
     static index_t cols() { return 0; }
-
-    void setFlag() const { _u.setFlag(); }
 
     void parse(gsExprHelper<Scalar> & el) const
     { _u.parse(el); }
@@ -2062,7 +2014,6 @@ public:
 
     index_t rows() const { return _u.cols(); }
     index_t cols() const { return _v.cols(); }
-    void setFlag() const { _u.setFlag(); _v.setFlag(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
@@ -2120,7 +2071,6 @@ public:
 
     index_t rows() const { return _u.cols(); }
     index_t cols() const { return _v.cols(); }
-    void setFlag() const { _u.setFlag(); _v.setFlag(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
@@ -2158,7 +2108,6 @@ public:
     inline value_expr<E> val() const { return *this; }
     index_t rows() const { return 0; }
     index_t cols() const { return 0; }
-    void setFlag() const { _u.setFlag(); }
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
@@ -2221,16 +2170,8 @@ public:
     //index_t rows() const { return _u.source().targetDim() is wrong }
     index_t cols() const { return _u.source().domainDim(); }
 
-    void setFlag() const
-    {
-        _u.data().flags |= NEED_GRAD;
-        if (_u.composed() )
-            _u.mapData().flags |= NEED_VALUE;
-    }
-
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        gsDebug<<"Parse grad "<< this <<"\n";
         evList.add(_u); //works!
         _u.data().flags |= NEED_GRAD;
     }
@@ -2292,26 +2233,13 @@ public:
         //return _u.data().values[0].rows();
         return _u.source().domainDim();
     }
-    //index_t rows() const { return _u.data().actives.size(); }
-    //index_t rows() const { return _u.rows(); }
 
-    //index_t rows() const { return _u.source().targetDim() is wrong }
     index_t cols() const { return _u.source().domainDim()*_u.rows(); }
-
-    void setFlag() const
-    {
-        _u.data().flags |= NEED_GRAD;
-        if (_u.composed() )
-            _u.mapData().flags |= NEED_VALUE;
-    }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(&_u.source());
+        evList.add(_u);
         _u.data().flags |= NEED_GRAD;
-        if (_u.composed() )
-            _u.mapData().flags |= NEED_VALUE;
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -2362,12 +2290,10 @@ public:
 
     index_t rows() const { return u.rows(); }
     index_t cols() const { return u.cols(); }
-    void setFlag() const { u.data().flags |= NEED_GRAD; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(&u.source());
+        evList.add(u);
         u.data().flags |= NEED_GRAD;
     }
 
@@ -2414,11 +2340,10 @@ public:
 
     index_t rows() const { return u.rows();   }
     index_t cols() const { return u.parDim(); }
-    void setFlag() const { u.data().flags |= NEED_DERIV2; }
+
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(&u.source());
+        evList.add(u);
         u.data().flags |= NEED_DERIV2;
     }
 
@@ -2462,11 +2387,8 @@ public:
 
     enum{rowSpan = 0, colSpan = 0};
 
-    void setFlag() const { _G.data().flags |= NEED_OUTER_NORMAL; }
-
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         evList.add(_G);
         _G.data().flags |= NEED_OUTER_NORMAL;
     }
@@ -2504,8 +2426,6 @@ public:
 
     const gsFeSpace<T> & rowVar() const {return gsNullExpr<T>::get();}
     const gsFeSpace<T> & colVar() const {return gsNullExpr<T>::get();}
-
-    void setFlag() const { _G.data().flags |= NEED_NORMAL; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -2549,8 +2469,6 @@ public:
 
     enum{rowSpan = 0, colSpan = 0};
 
-    void setFlag() const { _G.data().flags |= NEED_OUTER_NORMAL; }
-
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_G);
@@ -2591,8 +2509,6 @@ public:
     index_t cols() const { return 1; }
 
     enum{rowSpan = 1, colSpan = 0};
-
-    void setFlag() const { _u.data().flags |= NEED_LAPLACIAN; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -2647,12 +2563,9 @@ public:
 
     enum{rowSpan = 1, colSpan = 0};
 
-    void setFlag() const { _u.data().flags |= NEED_DERIV2; }
-
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(&_u.source());
+        evList.add(_u);
         _u.data().flags |= NEED_DERIV2;
     }
 
@@ -2698,21 +2611,19 @@ public:
 
     index_t rows() const
     {
-        return _u.dim(); //  number of components
+        return _u.dim(); // * _u.targetDim()  // number of components
     }
+
     index_t cols() const
     {// second derivatives in the columns; i.e. [d11, d22, d33, d12, d13, d23]
-        return _u.parDim() * (_u.parDim() + 1) / 2;
+        return _u.parDim();
     }
 
     enum{rowSpan = 1, colSpan = 0};
 
-    void setFlag() const { _u.data().flags |= NEED_DERIV2; }
-
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(&_u.source());
+        evList.add(_u.space());
         _u.data().flags |= NEED_DERIV2;
     }
 
@@ -2743,8 +2654,6 @@ public:
     index_t cols() const { return _G.data().dim.first ; }
 
     enum{rowSpan = 0, colSpan = 0};
-
-    void setFlag() const { _G.data().flags |= NEED_GRAD_TRANSFORM; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -2782,8 +2691,6 @@ public:
     index_t cols() const { return _G.data().dim.second; }
 
     enum{rowSpan = 0, colSpan = 0};
-
-    void setFlag() const { _G.data().flags |= NEED_GRAD_TRANSFORM; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -2840,11 +2747,8 @@ public:
     static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
     static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
 
-    void setFlag() const { _G.data().flags |= NEED_DERIV; }
-
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         evList.add(_G);
         _G.data().flags |= NEED_DERIV;
     }
@@ -2914,12 +2818,6 @@ public:
 
     enum{rowSpan = 1, colSpan = 0};
 
-    void setFlag() const
-    {
-        _u.data().flags |= NEED_DERIV;
-        _u.data().flags |= NEED_ACTIVE;// rows() depend on this
-    }
-
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u);
@@ -2961,91 +2859,14 @@ public:
 
     enum{rowSpan = 1, colSpan = 0};
 
-    void setFlag() const
-    {
-        m_fev.data().flags |= NEED_DERIV;
-    }
-
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(& m_fev.source());
+        evList.add(m_fev);
         m_fev.data().flags |= NEED_DERIV;
     }
 
     void print(std::ostream &os) const { os << "fjac("; m_fev.print(os);os <<")"; }
 };
-
-/*
-   Expression for the Hessian matrix of (a coordinate of) the geometry
-   map or a finite element variable
-
-template<class T>
-class hess_expr : public _expr<hess_expr<T> >
-{
-public:
-    typedef T Scalar;
-    enum {ScalarValued = 0, ColBlocks = 1};
-
-private:
-    const gsFuncData<T> * m_data;
-    mutable gsMatrix<Scalar> res;
-
-    //hess_expr(const hess_expr & );
-public:
-    hess_expr(const gsGeometryMap<T> & G)
-    : m_data(&G.data()) { } //ColBlocks=0 ?
-
-    hess_expr(const gsFeVariable<T> & _u)
-    : m_data(&_u.data())
-    {
-        GISMO_ASSERT(1==_u.dim(),"hess(.) requires 1D variable");
-    }
-
-    const gsMatrix<Scalar> & eval(const index_t k) const
-    {
-        const index_t sz = cols();
-        res.resize(m_data->dim.first, sz*m_data->dim.first);
-        secDerToHessian(m_data->values[2].col(k), m_data->dim.first, res);
-        res.resize(m_data->dim.first, res.cols()*m_data->dim.first);
-        // Note: auto returns by value here
-        return res;
-    }
-
-    index_t rows() const
-    {
-        // gsDebugVar(m_data);
-        // gsDebugVar(m_data->dim.first);
-        // gsDebugVar(m_data->values[0].rows());
-        return m_data->dim.first;
-    }
-    index_t cols() const
-    {
-        return 2*m_data->values[2].rows() / (1+m_data->dim.first);
-    }
-
-    void setFlag() const { m_data->flags |= NEED_2ND_DER; }
-
-    void parse(gsExprHelper<Scalar> & evList) const
-    {
-        GISMO_ERROR("error 1712");
-        m_data->flags |= NEED_2ND_DER;
-    }
-
-    enum{rowSpan = 1, colSpan = 0};
-
-    const gsFeVariable<T> & rowVar() const
-    {
-        GISMO_ERROR("error -- hess");
-        return gsNullExpr<T>::get();
-    }
-    const gsFeSpace<T> & colVar() const { return gsNullExpr<T>::get(); }
-
-    void print(std::ostream &os) const
-    //    { os << "hess("; _u.print(os);os <<")"; }
-    { os << "hess(U)"; }
-};
- */
 
 template<class E>
 class hess_expr : public _expr<hess_expr<E> >
@@ -3089,8 +2910,6 @@ public:
     {
         return 2*_u.data().values[2].rows() / (1+_u.data().dim.first);
     }
-
-    void setFlag() const { _u.data().flags |= NEED_2ND_DER; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -3136,12 +2955,10 @@ public:
 
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return _G.data().dim.first; }
-    void setFlag() const { _G.data().flags |= NEED_2ND_DER; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(&_G.source());
+        evList.add(_G);
         _G.data().flags |= NEED_2ND_DER;
     }
 
@@ -3171,11 +2988,8 @@ public:
 
     index_t rows() const { return 0; }
     index_t cols() const { return 0; }
-    void setFlag() const { _G.data().flags |= NEED_MEASURE; }
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        gsDebug<<"Parse meas "<< this <<"\n";
-//        gsMapData<T> * m = evList.getData(_G.
         evList.add(_G);
         _G.data().flags |= NEED_MEASURE;
     }
@@ -3221,20 +3035,11 @@ public:
 
     index_t rows() const { return _u.dim() * _u.data().values[0].rows(); }
     index_t cols() const { return _u.data().dim.first; }
-    void setFlag() const
-    {
-        _u.data().flags |= NEED_GRAD;
-        if (_u.composed() )
-            _u.mapData().flags |= NEED_VALUE;
-    }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(&_u.source());
+        evList.add(_u);
         _u.data().flags |= NEED_GRAD;
-        if (_u.composed() )
-            _u.mapData().flags |= NEED_VALUE;
     }
 
     const gsFeSpace<T> & rowVar() const { return _u.rowVar(); }
@@ -3308,7 +3113,6 @@ public:
 
     index_t rows() const { return E1::ScalarValued ? _v.rows()  : _u.rows(); }
     index_t cols() const { return E2::ScalarValued ? _u.cols()  : _v.cols(); }
-    void setFlag() const { _u.setFlag(); _v.setFlag(); }
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
@@ -3445,7 +3249,7 @@ public:
         //return _v.cols() * (_u.cols()/_u.rows());
         return _u.cols();
     }
-    void setFlag() const { _u.setFlag(); _v.setFlag(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
@@ -3498,7 +3302,7 @@ public:
 
     index_t rows() const { return _v.rows(); }
     index_t cols() const { return _v.cols(); }
-    void setFlag() const { _v.setFlag(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
     { _v.parse(evList); }
 
@@ -3561,7 +3365,7 @@ public:
 
     index_t rows() const { return E1::ColBlocks ? _u.cols() / _v.rows() : _v.cols() / _u.cols() ; }
     index_t cols() const { return E1::ColBlocks ? _v.rows()  : _u.cols(); }
-    void setFlag() const { _u.setFlag(); _v.setFlag(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
@@ -3632,7 +3436,7 @@ public:
 
     index_t rows() const { return _u.cols() / _u.rows(); }
     index_t cols() const { return _u.cols() / _u.rows(); }
-    void setFlag() const { _u.setFlag(); _v.setFlag(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
@@ -3693,7 +3497,7 @@ public:
 
     index_t rows() const { return _u.cols() / _u.rows(); }
     index_t cols() const { return 1; }
-    void setFlag() const { _u.setFlag(); _v.setFlag(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
@@ -3733,7 +3537,7 @@ public:
 
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
-    void setFlag() const { _u.setFlag(); _v.setFlag();}
+
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
@@ -3771,7 +3575,7 @@ public:
 
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
-    void setFlag() const { _u.setFlag(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
@@ -3810,7 +3614,7 @@ public:
 
     index_t rows() const { return 0; }
     index_t cols() const { return 0; }
-    void setFlag() const { _u.setFlag(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
@@ -3862,7 +3666,7 @@ public:
 
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
-    void setFlag() const { _u.setFlag(); _v.setFlag(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
@@ -3928,7 +3732,7 @@ public:
 
     index_t rows() const { return _M.rows(); }
     index_t cols() const { return _u.rows() * _M.rows(); }
-    void setFlag() const { _u.setFlag(); _M.setFlag(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _M.parse(evList); }
 
@@ -3991,13 +3795,9 @@ public:
 
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.cols(); }
-    void setFlag() const { _u.setFlag(); _v.setFlag(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
-    {
-        gsInfo<<"SUB expr\n";
-        _u.parse(evList);
-        _v.parse(evList);
-    }
+    { _u.parse(evList); _v.parse(evList); }
 
     enum{rowSpan = E1::rowSpan, colSpan = E2::colSpan};
 
@@ -4037,7 +3837,7 @@ public:
 
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.rows(); }
-    void setFlag() const { _u.setFlag(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
@@ -4072,7 +3872,7 @@ public:
 
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.rows(); }
-    void setFlag() const { _u.setFlag(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
