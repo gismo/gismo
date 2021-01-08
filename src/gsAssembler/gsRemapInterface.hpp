@@ -416,7 +416,7 @@ void gsRemapInterface<T>::constructBreaks() {
                         }
                         j++;
                     }
-                    if ((roundingError.array() == false).all())
+                    if (( false == roundingError.array() ).all())
                         parameterBreaks.push_sorted_unique(G2_parametric_LC(0, 0)); // sort w.r.t. u direction
 
 
@@ -435,7 +435,7 @@ void gsRemapInterface<T>::constructBreaks() {
 
                         j++;
                     }
-                    if ((roundingError.array() == false).all())
+                    if (( false == roundingError.array() ).all())
                         parameterBreaks.push_sorted_unique(G2_parametric_LC(1, 0)); // sort w.r.t. v direction
                 }
             }
