@@ -1,4 +1,4 @@
-/** @file gsCompositeBasis.h
+/** @file gsMappedBasis.h
 
     @brief Provides declaration of Basis abstract interface.
 
