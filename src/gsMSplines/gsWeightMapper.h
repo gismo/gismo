@@ -19,10 +19,11 @@
 namespace gismo
 {
 
-class GISMO_EXPORT gsWeightMapper
+template<class T>
+class gsWeightMapper
 {
 public:
-    typedef real_t weightType;
+    typedef T weightType;
     typedef index_t indexType; //indices of gsMatrix
 
     typedef gsSparseMatrix<weightType,Eigen::RowMajor,indexType> LToGMatrix;
@@ -31,8 +32,8 @@ public:
     typedef std::vector<indexType> IndexContainer;
     typedef std::vector<indexType>::const_iterator CIndexIter;
     typedef std::vector<weightType> WeightContainer;
-    typedef std::vector<weightType>::const_iterator CWeightIter;
-    typedef LToGMatrix::InnerIterator InIterMat;
+    typedef typename std::vector<weightType>::const_iterator CWeightIter;
+    typedef typename LToGMatrix::InnerIterator InIterMat;
 public:
     /**
      * @brief The Iterator struct
@@ -466,7 +467,7 @@ public:
        @param[out] map    : a matrix containing the coefficinets of the expansion of the targets as
                             linear combination of the sources. Targets corresponds to columns, sources to rows.
      */
-     void getLocalMap (IndexContainer const & source, IndexContainer const & target, gsMatrix<real_t> &map) const;
+     void getLocalMap (IndexContainer const & source, IndexContainer const & target, gsMatrix<T> &map) const;
 
     /**
        @brief getLocalMap
@@ -474,7 +475,7 @@ public:
        @param[out] map    : a matrix containing the coefficinets of the expansion of all the targets as
                             linear combination of the sources. Targets corresponds to columns, sources to rows.
      */
-     void getLocalMap (IndexContainer const & source, gsMatrix<real_t> &map) const;
+     void getLocalMap (IndexContainer const & source, gsMatrix<T> &map) const;
 
 
 private:
@@ -484,3 +485,7 @@ private:
 };//gsWeightMapper
 
 }//namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsWeightMapper.hpp)
+#endif

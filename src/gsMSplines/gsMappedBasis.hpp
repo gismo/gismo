@@ -24,7 +24,7 @@ gsMappedBasis<d,T>::gsMappedBasis( gsMultiPatch<T> const & mp, std::string pathT
     m_bases = mp.basesCopy();
     gsSparseMatrix<T> m;
     gsFileData<T>(pathToMap).getFirst(m);
-    m_mapper = new gsWeightMapper(m);
+    m_mapper = new gsWeightMapper<T>(m);
 
     m_sb.reserve(mp.nPatches());
     for (size_t q = 0; q!=m_bases.size(); ++q)
@@ -40,7 +40,7 @@ gsMappedBasis<d,T>::gsMappedBasis( const gsMappedBasis& other )
     {
         m_bases.push_back( (BasisType*)(*it)->clone().release() );
     }
-    m_mapper=new gsWeightMapper(*other.m_mapper);
+    m_mapper=new gsWeightMapper<T>(*other.m_mapper);
 
     //m_sb = other.m_sb; //no: other.m_sb refers to other
 }

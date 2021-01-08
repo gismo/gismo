@@ -70,7 +70,7 @@ public:
         GISMO_ASSERT(mb.domainDim()==d, "Error in dimensions");
         m_topol  = mb.topology();
         delete m_mapper;
-        m_mapper = new gsWeightMapper(m);
+        m_mapper = new gsWeightMapper<T>(m);
 
         freeAll(m_bases);
         m_bases.reserve(mb.nBases());
@@ -84,7 +84,7 @@ public:
             m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
         }
 
-        m_mapper->optimize(gsWeightMapper::optSourceToTarget);
+        m_mapper->optimize(gsWeightMapper<T>::optSourceToTarget);
     }
 
     index_t nPieces() const {return m_topol.nBoxes();}
@@ -106,11 +106,11 @@ public:
     const std::vector<BasisType*> getBases() const;
 
     /// getter for m_mapper
-    gsWeightMapper const & getMapper() const
+    gsWeightMapper<T> const & getMapper() const
     { return *m_mapper; }
 
     /// getter for m_mapper
-    gsWeightMapper * getMapPointer() const
+    gsWeightMapper<T> * getMapPointer() const
     { return m_mapper; }
 
     /// getter for m_topol
@@ -166,7 +166,7 @@ public:
     void reorderDofs(const gsPermutationMatrix& permMatrix)
     {
         (*m_mapper)*=permMatrix;
-        m_mapper->optimize(gsWeightMapper::optSourceToTarget);
+        m_mapper->optimize(gsWeightMapper<T>::optSourceToTarget);
     }
 
     void reorderDofs_withCoef(const gsPermutationMatrix& permMatrix,gsMatrix<T>& coefs)
@@ -358,7 +358,7 @@ protected:
     std::vector<BasisType *> m_bases;
 
     /// map between the local basis functions and the newly created ones
-    gsWeightMapper * m_mapper;
+    gsWeightMapper<T> * m_mapper;
     // gsSparseMatrix<T> r:C, c:B
 
     std::vector<gsMappedSingleBasis<d,T> > m_sb;
