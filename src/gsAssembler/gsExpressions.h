@@ -370,7 +370,7 @@ public:
     }
 
     /// Returns the mapping data (precondition: composed()==true)
-    const gsMapData<Scalar> & mapData() const {return *m_md;}
+//    const gsMapData<Scalar> & mapData() const {return *m_md;}
 
     /// Returns true if the variable is a composition
     bool composed() const {return NULL!=m_md;}
@@ -384,7 +384,7 @@ private:
 
     void setSource(const gsFunctionSet<Scalar> & fs) { m_fs = &fs;}
     void setData(const gsFuncData<Scalar> & val) { m_fd = &val;}
-    void setMap(const gsMapData<Scalar> & val) { m_md = &val;}
+//    void setMap(const gsMapData<Scalar> & val) { m_md = &val;}
     void setDim(index_t _d) { m_d = give(_d); }
     void clear() { m_fs = NULL; }
     // gsFuncData<Scalar> & data() {return *m_fd;}
@@ -403,7 +403,8 @@ protected:
         m_md = NULL;
     }
 
-    void registerData(const gsFunctionSet<Scalar> & fs, const gsFuncData<Scalar> & val, index_t d,
+    void registerData(const gsFunctionSet<Scalar> & fs,
+                      const gsFuncData<Scalar> & val, index_t d,
                       const gsMapData<Scalar> & md)
     {
         registerData(fs,val,d);
@@ -466,8 +467,9 @@ public:
     /// Returns the vector dimension of the FE variable
     index_t dim() const { return m_d;}
 
-    /// Returns the vector dimension of the FE variable
-    index_t targetDim() const { return m_d;}
+    /// Returns the target dimension of the FE variable
+    /// before vector-replication
+    index_t targetDim() const { return m_fs->targetDim(); }
 
     /// Returns the parameter domain dimension the FE variable
     index_t parDim() const
@@ -751,18 +753,17 @@ protected:
 public:
     enum{rowSpan = 0};
 
-    //MatExprType
-    mutable gsMatrix<T> res;
-    const gsMatrix<T> &
+    //mutable gsMatrix<T> res;
+    //const gsMatrix<T> &
+    AutoReturn_t
     eval(const index_t k) const
     {
-        //gsDebugVar("-----------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
-        //gsDebugVar(this->m_fs);
-        //gsDebugVar(this->m_md);
-        res = this->m_fs->eval(_G.data().values[0].col(k));
-        return res;
-        //return  this->m_fs->eval(_G.data().values[0].col(k));
+        //res = this->m_fs->eval(_G.data().values[0].col(k));
+        //return res;
+        return this->m_fd->values[0].col(k);
     }
+
+    const gsGeometryMap<T> & inner() const { return _G;};
 
     void parse(gsExprHelper<T> & evList) const
     {
@@ -2203,9 +2204,8 @@ public:
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
         // Assumes: derivatives are in _u.data().values[1]
-        // will NOT work for gsComposition. Before: we composed in place
-        // so that derivs were directly computed
-        //
+        // gsExprHelper acounts for compositions/physical expressions
+        // so that derivs are directly computed
         tmp = _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
         return tmp;
     }
@@ -2230,14 +2230,9 @@ public:
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //gsInfo<< "************** Parsing "<< _u.source() <<"\n";
-         gsDebug<<"Parse grad "<< this <<"\n";
-        //evList.add(_u); //works?
-        _u.parse(evList); 
-        
+        gsDebug<<"Parse grad "<< this <<"\n";
+        evList.add(_u); //works!
         _u.data().flags |= NEED_GRAD;
-        if (_u.composed() )
-            _u.mapData().flags |= NEED_VALUE;
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -2247,6 +2242,15 @@ public:
     enum{rowSpan = E::rowSpan, colSpan = 0};
 
     void print(std::ostream &os) const { os << "grad("; _u.print(os); os <<")"; }
+private:
+
+    template<class U> static inline
+    typename util::enable_if<util::is_same<U,gsComposition<Scalar> >::value,
+                             const gsMatrix<Scalar> &>::type
+    eval_impl(const U & u, const index_t k)
+    {
+        return u.eval(k);
+    }
 };
 
 /*
@@ -2463,7 +2467,7 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(&_G.source());
+        evList.add(_G);
         _G.data().flags |= NEED_OUTER_NORMAL;
     }
 
@@ -2505,8 +2509,7 @@ public:
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(&_G.source());
+        evList.add(_G);
         _G.data().flags |= NEED_NORMAL;
     }
 
@@ -2550,8 +2553,7 @@ public:
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(&_G.source());
+        evList.add(_G);
         _G.data().flags |= NEED_OUTER_NORMAL;
     }
 
@@ -2566,15 +2568,15 @@ public:
 /**
    Expression for the Laplacian of a finite element variable
  */
-template<class T>
-class lapl_expr : public _expr<lapl_expr<T> >
+template<class E>
+class lapl_expr : public _expr<lapl_expr<E> >
 {
-    typename gsFeVariable<T>::Nested_t _u;
+    typename E::Nested_t _u;
 
 public:
-    typedef T Scalar;
+    typedef typename E::Scalar Scalar;
 
-    lapl_expr(const gsFeVariable<T> & u) : _u(u) { }
+    lapl_expr(const E & u) : _u(u) { }
 
     MatExprType eval(const index_t k) const
     {
@@ -2594,8 +2596,7 @@ public:
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(&_u.source());
+        evList.add(_u);
         _u.data().flags |= NEED_LAPLACIAN;
     }
 
@@ -2844,7 +2845,7 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(&_G.source());
+        evList.add(_G);
         _G.data().flags |= NEED_DERIV;
     }
 
@@ -2873,7 +2874,7 @@ public:
 template<class E>
 class jac_expr : public _expr<jac_expr<E> >
 {
-    typename E::Nested_t m_fev;
+    typename E::Nested_t _u;
 public:
     enum {ColBlocks = E::rowSpan };
     enum {Space = E::Space };
@@ -2883,47 +2884,50 @@ public:
     mutable gsMatrix<Scalar> res;
 
     jac_expr(const E & _u)
-    : m_fev(_u) { }
+    : _u(_u) { }
 
     MatExprType eval(const index_t k) const
     {
         // Dim x (numActive*Dim)
-        res = m_fev.data().values[1].col(k).transpose().blockDiag(m_fev.dim());
+//        res = _u.data().values[1].col(k).transpose().blockDiag(_u.dim());
+
+        res = _u.data().values[1]
+            .reshapeCol(k, _u.parDim(), _u.targetDim()).transpose()
+            .blockDiag(_u.dim());
         return res;
     }
 
-    const gsFeSpace<Scalar> & rowVar() const { return m_fev; }
+    const gsFeSpace<Scalar> & rowVar() const { return _u; }
     const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
-    index_t rows() const { return m_fev.dim(); }
+    index_t rows() const { return _u.dim(); }
     index_t cols() const
     {   //bug: Should return the column size of each BLOCK contained
-        // return m_fev.dim() * m_fev.data().actives.rows() * m_fev.data().dim.first;
-        return m_fev.data().dim.first;
+        // return _u.dim() * _u.data().actives.rows() * _u.data().dim.first;
+        return _u.data().dim.first;
     }
 
     index_t cardinality_impl() const
     {
-        return m_fev.dim() * m_fev.data().actives.rows();
+        return _u.dim() * _u.data().actives.rows();
     }
 
     enum{rowSpan = 1, colSpan = 0};
 
     void setFlag() const
     {
-        m_fev.data().flags |= NEED_DERIV;
-        m_fev.data().flags |= NEED_ACTIVE;// rows() depend on this
+        _u.data().flags |= NEED_DERIV;
+        _u.data().flags |= NEED_ACTIVE;// rows() depend on this
     }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(& m_fev.source());
-         m_fev.data().flags |= NEED_DERIV;
-         m_fev.data().flags |= NEED_ACTIVE;// rows() depend on this
+        evList.add(_u);
+        _u.data().flags |= NEED_DERIV|NEED_ACTIVE;
+        //note: cardinality() depends on actives
     }
 
-    void print(std::ostream &os) const { os << "jac("; m_fev.print(os);os <<")"; }
+    void print(std::ostream &os) const { os << "jac("; _u.print(os);os <<")"; }
 };
 
 /*
@@ -3069,7 +3073,8 @@ public:
         res.resize(dd.dim.first, sz*dd.dim.first);
         secDerToHessian(dd.values[2].col(k), dd.dim.first, res);
         res.resize(dd.dim.first, res.cols()*dd.dim.first);
-        // Note: auto returns by value here
+        // Note: auto returns by value here,
+        // in C++11 we may add in -> decltype(res) & 
         return res;
     }
 
@@ -3088,7 +3093,10 @@ public:
     void setFlag() const { _u.data().flags |= NEED_2ND_DER; }
 
     void parse(gsExprHelper<Scalar> & evList) const
-    { _u.data().flags |= NEED_2ND_DER; }
+    {
+        evList.add(_u);
+        _u.data().flags |= NEED_2ND_DER;
+    }
 
     enum{rowSpan = E::rowSpan, colSpan = 0};
 
@@ -4123,9 +4131,9 @@ normal_expr<T> sn(const gsGeometryMap<T> & u) { return normal_expr<T>(u); }
 template<class T> EIGEN_STRONG_INLINE
 tangent_expr<T> tv(const gsGeometryMap<T> & u) { return tangent_expr<T>(u); }
 
-/// The laplacian of a finite element variable
-template<class T> EIGEN_STRONG_INLINE
-lapl_expr<T> lapl(const gsFeVariable<T> & u) { return lapl_expr<T>(u); }
+template<class E> EIGEN_STRONG_INLINE
+lapl_expr<symbol_expr<E> > lapl(const symbol_expr<E> & u)
+{ return lapl_expr<symbol_expr<E> >(u); }
 
 template<class T> EIGEN_STRONG_INLINE
 solLapl_expr<T> slapl(const gsFeSolution<T> & u) { return solLapl_expr<T>(u); }
@@ -4143,11 +4151,11 @@ jacG_expr<T> jac(const gsGeometryMap<T> & G) { return jacG_expr<T>(G); }
 
 /// The Jacobian matrix of a FE variable
 template<class E> EIGEN_STRONG_INLINE
-jac_expr<E> jac(const E & u) { return jac_expr<E>(u); }
+jac_expr<symbol_expr<E> > jac(const symbol_expr<E> & u) { return jac_expr<symbol_expr<E> >(u); }
 
 /// The Jacobian matrix of a vector function
-template<class T> EIGEN_STRONG_INLINE
-fjac_expr<T> fjac(const gsFeVariable<T> & u) { return fjac_expr<T>(u); }
+// template<class T> EIGEN_STRONG_INLINE
+// fjac_expr<T> fjac(const gsFeVariable<T> & u) { return fjac_expr<T>(u); }
 
 /// The Hessian matrix of (each coordianate of) the geometry map \a G
 //template<class T> EIGEN_STRONG_INLINE hess_expr<T> hess(const gsGeometryMap<T> & G) { return hess_expr<T >(G); }
@@ -4156,7 +4164,8 @@ fjac_expr<T> fjac(const gsFeVariable<T> & u) { return fjac_expr<T>(u); }
 //template<class T> EIGEN_STRONG_INLINE hess_expr<T> hess(const gsFeVariable<T> & u) { return hess_expr<T>(u); }
 
 template<class E> EIGEN_STRONG_INLINE
-hess_expr<E> hess(const E & u) { return hess_expr<E>(u); }
+hess_expr<symbol_expr<E> > hess(const symbol_expr<E> & u)
+{ return hess_expr<symbol_expr<E> >(u); }
 
 /// The partial derivatives of the Jacobian matrix of a geometry map
 template<class T> EIGEN_STRONG_INLINE

@@ -34,10 +34,16 @@ private:
     typedef std::map<const gsFunctionSet<T>*,gsFuncData<T> >  FuncData;
     typedef std::map<const gsFunctionSet<T>*,gsMapData<T> >  MapData;
     typedef std::map<const expr::gsFeVariable<T>*,gsFuncData<T> >  VarData;
+
+    typedef std::pair<const gsFunctionSet<T>*,gsMapData<T>*> CFuncKey;
+    typedef std::map<CFuncKey,gsMapData<T> >  CFuncData;
+
     typedef typename FuncData::iterator FuncDataIt;
     typedef typename MapData ::iterator MapDataIt;
     typedef typename VarData ::iterator VarDataIt;
+    typedef typename CFuncData ::iterator CFuncDataIt;
 
+    CFuncData m_cdata;
     FuncData m_fdata, m_fdata2;
     MapData m_mdata, m_mdata2;
     VarData m_vdata;// for BCs etc. //do we need it interfaced?
@@ -57,12 +63,12 @@ private:
 public:
     typedef const expr::gsGeometryMap<T>   geometryMap;
     typedef const expr::gsFeElement<T>   & element;
-    typedef const expr::gsFeVariable<T>  & variable;
-    typedef const expr::gsFeSpace<T>     & space;
+    typedef const expr::gsFeVariable<T>    variable;
+    typedef const expr::gsFeSpace<T>     & space; // reference needed for init.
     typedef const expr::gsNullExpr<T>      nullExpr;
 
-    typedef expr::gsFeVariable<T>  & nonConstVariable;
-    typedef expr::gsFeSpace<T>     & nonConstSpace;
+    typedef expr::gsFeVariable<T>    nonConstVariable;
+    typedef expr::gsFeSpace<T>       nonConstSpace;
 
     typedef memory::unique_ptr<gsExprHelper> uPtr;
     typedef memory::shared_ptr<gsExprHelper>  Ptr;
@@ -105,7 +111,7 @@ public:
 
     // gsFuncData<T> * getData()
     // {
-    //     return 
+    //     return
     // }
 
     geometryMap getMap(const gsFunction<T> & mp)
@@ -171,7 +177,7 @@ public:
         return var;
     }
     */
-    
+
     std::list<expr::gsFeSpace<T> > m_slist;//to be moved in ExprAssembler
     expr::gsFeSpace<T> & getSpace(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
@@ -283,6 +289,7 @@ public:
         m_mdata.clear();
         m_fdata.clear();
         m_vdata.clear();
+        m_cdata.clear();
 
         _parse(args...);
 
@@ -293,10 +300,13 @@ public:
             it->second.flags |= SAME_ELEMENT|NEED_ACTIVE;
         for (VarDataIt it  = m_vdata.begin(); it != m_vdata.end(); ++it)
             it->second.flags |= SAME_ELEMENT|NEED_ACTIVE;
+        for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
+            it->second.flags |= SAME_ELEMENT|NEED_ACTIVE;
 
         gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
         gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
         gsInfo<< "vdata: "<< m_vdata.size()<<"\n";
+        gsInfo<< "cdata: "<< m_cdata.size()<<"\n";
     }
 
     void add(const expr::gsGeometryMap<T> & sym)
@@ -307,6 +317,17 @@ public:
         gsDebug<<"+ gMap "<< sym.m_fs <<" ("<<sym.m_fd<<")\n";
     }
 
+    void add(const expr::gsComposition<T> & sym)
+    {
+        GISMO_ASSERT(NULL!=sym.m_fs, "Composition "<<&sym<<" is invalid");
+        add(sym.inner());
+        sym.inner().data().flags |= NEED_VALUE;
+        const_cast<expr::gsComposition<T>&>(sym)
+            .setData(m_cdata[ std::make_pair(sym.m_fs,
+            const_cast<gsMapData<T>*>(sym.inner().m_fd))]);
+        gsDebug<<"+ Comp "<< sym.m_fs <<" ("<<sym.m_fd<<")\n";
+    }
+
     template <class E>
     void add(const expr::symbol_expr<E> & sym)
     {
@@ -315,7 +336,7 @@ public:
         // in the same thread this can be the same ptr (as done now)
 
         //grab &sym.source();
-        
+
         if (NULL!=sym.m_fs)
         {
             if ( 1==sym.m_fs->size() &&
@@ -341,9 +362,9 @@ public:
         }
 
         //IF ELSE!! :) m_vdata.insert(&sym);
-        
+
         // get variable (all): create and set m_fs and m_d [var is thread-local]
-        
+
         //parse (all): set m_fd and flags [stored in m_fdata, th-local]
 
         // var.registerData(mp, fd, dim);
@@ -359,7 +380,7 @@ public:
     void precompute(const index_t patchIndex = 0)
     {
         //TO DO! : mapData.points  --> gsMatrix points.
-                
+
         //First compute the maps
         for (MapDataIt it = m_mdata.begin(); it != m_mdata.end(); ++it)
         {
@@ -368,19 +389,27 @@ public:
             it->second.patchId = patchIndex;
             it->second.points.swap(mapData.points);
         }
-        
+
         for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
         {
-            it->first->piece(patchIndex).compute(mapData.points, it->second);
+            it->first->piece(patchIndex)
+                .compute(mapData.points, it->second);
             it->second.patchId = patchIndex;
         }
 
         for (VarDataIt it = m_vdata.begin(); it != m_vdata.end(); ++it)
         {
-            it->first->source().piece(patchIndex).compute(mapData.points, it->second);
+            it->first->source().piece(patchIndex)
+                .compute(mapData.points, it->second);
             it->second.patchId = patchIndex;
         }
-                
+
+        for (CFuncDataIt it = m_cdata.begin(); it != m_cdata.end(); ++it)
+        {
+            it->first.first->piece(patchIndex)
+                .compute(it->first.second->values[0], it->second);
+            it->second.patchId = patchIndex;
+        }
     }
 
 /*
