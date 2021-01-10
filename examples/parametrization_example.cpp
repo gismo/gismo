@@ -13,6 +13,8 @@
 
 #include <gismo.h>
 
+#include "gsModeling/gsPeriodicParametrizationOverlap.h"
+
 using namespace gismo;
 
 /* TODO (Dominik)
@@ -25,6 +27,26 @@ using namespace gismo;
    - Do something about the free method.
    - iterative method
  */
+
+// A trick to get around C++ strong typing, cf. https://stackoverflow.com/a/12240295/8634018
+union parametrization_t
+{
+    gsParametrization<real_t> std;
+    gsPeriodicParametrizationOverlap<real_t> over;
+
+    // To know what to do in the beginning, cf. https://stackoverflow.com/questions/9941987/there-are-no-arguments-that-depend-on-a-template-parameter
+    parametrization_t() {}
+    ~parametrization_t() {}
+};
+
+namespace gismo
+{
+template <class T>
+class gsGeneralParametrization : public gsPeriodicParametrizationOverlap<T>
+{
+};
+
+} // namespace gismo
 
 int main(int argc, char *argv[])
 {
@@ -87,14 +109,6 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    gsInfo << "creating gsParametrization<real_t>       ";
-    stopwatch.restart();
-    gsParametrization<real_t> pm(*mm, ol);
-    stopwatch.stop();
-    gsInfo << stopwatch << "\n";
-
-    pm.setOptions(ol);
-
     // TODO: Rename.
     enum periodic_options {none, overlap, stitch, free} periodicity;
 
@@ -109,13 +123,34 @@ int main(int argc, char *argv[])
 
     gsInfo << "Periodicity set to " << periodicity << "." << std::endl;
 
-    std::vector<size_t> left, right;
+    gsInfo << "creating gsParametrization<real_t>       ";
+
+    //parametrization_t pm;
+	
+    stopwatch.restart();
+    // if( periodicity == overlap )
+    // 	pm.over = gsPeriodicParametrizationOverlap<real_t>(*mm, ol);
+    // // TODO next time: this is where it fails.
+    // else
+    // 	pm.std = gsParametrization<real_t>(*mm, ol);
+
+    gsPeriodicParametrizationOverlap<real_t> pm(*mm, ol);
+
+    stopwatch.stop();
+    gsInfo << stopwatch << "\n";
+
+    // if( periodicity == overlap )
+    // 	pm.over.setOptions(ol);
+    // else
+    // 	pm.std.setOptions(ol);
+    pm.setOptions(ol);
+
     std::vector<std::vector<size_t> > corrections;
     gsInfo << "gsParametrization::compute()             ";
     stopwatch.restart();
 
     if( periodicity == overlap )
-	pm.compute_periodic_overlap(filenameV0, filenameV1, filenameOverlap, left, right);
+	pm.compute_periodic_overlap(filenameV0, filenameV1, filenameOverlap);
     else if( periodicity == stitch )
     	pm.compute_periodic_stitch(filenameV0, filenameV1, filenameStitch, corrections);
     else if( periodicity == free )
@@ -131,7 +166,7 @@ int main(int argc, char *argv[])
 
     stopwatch.restart();
     if( periodicity == overlap )
-	flatMesh = pm.createFlatMesh(left, right, true);
+	flatMesh = pm.createFlatMesh(true);
     else if( periodicity == stitch )
 	flatMesh = pm.createFlatMesh(corrections, true);
     else
@@ -142,17 +177,31 @@ int main(int argc, char *argv[])
 
     gsInfo << "gsParametrization::createUVmatrix()      ";
     stopwatch.restart();
-    gsMatrix<> uv = pm.createUVmatrix();
+    gsMatrix<> uv;
+    // if( periodicity == overlap )
+    // 	uv = pm.over.createUVmatrix();
+    // else
+    // 	uv = pm.std.createUVmatrix();
+    uv=pm.createUVmatrix();
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
     gsInfo << "gsParametrization::createXYZmatrix()     ";
     stopwatch.restart();
-    gsMatrix<> xyz = pm.createXYZmatrix();
+    gsMatrix<> xyz;
+    // if( periodicity == overlap )
+    // 	xyz = pm.over.createXYZmatrix();
+    // else
+    // 	xyz = pm.std.createXYZmatrix();
+    xyz = pm.createXYZmatrix();
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    if( periodicity == stitch || periodicity == overlap )
+    // if( periodicity == overlap )
+    // 	pm.over.restrictMatrices(uv, xyz);
+    // else if( periodicity == stitch )
+    // 	pm.std.restrictMatrices(uv, xyz);
+    if( periodicity == overlap || periodicity == stitch )
 	pm.restrictMatrices(uv, xyz);
 
     if(paraview)
@@ -166,8 +215,17 @@ int main(int argc, char *argv[])
 	// Note: calling gsWriteParaview directly with the uv matrix
 	// would not do, as the vertices are in different order than
 	// in the xyz matrix.
+	// if(periodicity == overlap)
+	// {
+	//     pm.over.writeTexturedMesh(ol.getString("filenameOut"));
+	//     pm.over.writeSTL(*mm, ol.getString("filenameOut"));
+	// }
+	// else
+	// {
+	//     pm.std.writeTexturedMesh(ol.getString("filenameOut"));
+	//     pm.std.writeSTL(*mm, ol.getString("filenameOut"));
+	// }
 	pm.writeTexturedMesh(ol.getString("filenameOut"));
-
 	pm.writeSTL(*mm, ol.getString("filenameOut"));
     }
     else

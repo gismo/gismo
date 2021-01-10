@@ -51,9 +51,9 @@ public:
     // if we use std::vector with static Eigen classes, the second template parameter is needed
 	typedef std::vector<Point2D, typename Point2D::aalloc> VectorType;
 
-private:
+protected:
     gsHalfEdgeMesh<T> m_mesh;     ///< mesh information
-	VectorType m_parameterPoints; ///< parameter points
+    VectorType m_parameterPoints; ///< parameter points
     gsOptionList m_options;
 
 public:
@@ -68,13 +68,6 @@ public:
 
     /// Main function which performs the computation
     gsParametrization<T>& compute();
-
-    /// Analogous main function for periodic parametrizations.
-    gsParametrization<T>& compute_periodic_overlap(std::string bottomFile,
-						   std::string topFile,
-						   std::string overlapFile,
-						   std::vector<size_t>& left,
-						   std::vector<size_t>& right);
 
     /// Periodic parametrization using Pierre's trick.
     gsParametrization<T>& compute_periodic_stitch(std::string bottomFile,
@@ -115,15 +108,6 @@ public:
     gsMesh<T> createFlatMesh() const;
 
     /**
-     * Creates a flat mesh out of a periodic parametrization created by the overlap method.
-     * @param left Indices of the vertices on the left boundary of the parameter domain.
-     * @param right Indices of the vertices on the right boundary of the parameter domain.
-     */ // TODO: Clarify, which indexing!
-    gsMesh<T> createFlatMesh(const std::vector<size_t>& left,
-			     const std::vector<size_t>& right,
-			     bool restrict = false) const;
-
-    /**
      * Creates a flat mesh out of a periodic parametrization created by a the stitch method.
      * @param posCorrections Positive corrections from the stitch algorithm.
      * @param restrict If set to true, the mesh is restricted to [0, 1]^2.
@@ -153,7 +137,7 @@ public:
 
     gsParametrization<T>& setOptions(const gsOptionList& list);
 
-private:
+protected:
 
     /**
      * @brief Class that maintains the local neighbourhood properties.
@@ -400,7 +384,7 @@ private:
     };
 
 
-private:
+protected:
     /**
     * @brief Get parameter point
     * Returns the parameter point with given vertex index.
@@ -433,12 +417,6 @@ private:
 					   const size_t n,
 					   const size_t N);
 
-    /** Similar to @a _2 but does the periodic thing through the twin trick.*/     // TODO: Remove
-    void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
-					 const size_t n,
-					 const size_t N,
-					 const std::vector<std::pair<size_t, size_t> >& twins);
-
     /** Similar to @a constructAndSolveEquationSystem but works for periodic meshes using
      * the corrections.
      */ // TODO: Explain the parameters.
@@ -449,6 +427,26 @@ private:
 					 const std::vector<std::vector<size_t> >& negCorrections);
 
     std::vector<size_t> readIndices(const std::string& filename) const;
+
+    // Cf. https://stackoverflow.com/questions/9338152/must-the-definition-of-a-c-inline-functions-be-in-the-same-file
+    void readIndicesAndValues(const std::string& filename,
+			      std::vector<size_t>& indices,
+			      std::vector<T>& values) const
+    {
+	gsFileData<T> fd(filename);
+	gsMatrix<> pars, pts;
+	// Cf. https://stackoverflow.com/questions/3505713/c-template-compilation-error-expected-primary-expression-before-token
+	fd.template getId<gsMatrix<T> >(0, pars);
+	fd.template getId<gsMatrix<T> >(1, pts);
+
+	GISMO_ASSERT(pars.cols() == pts.cols(), "The numbers of parameters and points differ.");
+
+	for(index_t c=0; c<pts.cols(); c++)
+	{
+	    indices.push_back(this->m_mesh.findVertex(pts(0, c), pts(1, c), pts(2, c), true));
+	    values.push_back(pars(0, c));
+	}
+    }
     
     void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
 					 const size_t n,
@@ -459,27 +457,11 @@ private:
 					 const std::vector<size_t>& topBoundary,
 					 const std::vector<size_t>& lftBoundary);
 
-    void constructTwins(std::vector<std::pair<size_t, size_t> >& twins,
-			const gsMesh<T>& overlapMesh,
-			typename gsMesh<T>::gsVertexHandle u0vMin,
-			typename gsMesh<T>::gsVertexHandle u0vMax,
-			typename gsMesh<T>::gsVertexHandle u1vMin,
-			typename gsMesh<T>::gsVertexHandle u1vMax);
-
     void calculate(const size_t boundaryMethod,
                    const size_t paraMethod,
                    const std::vector<index_t> &cornersInput,
                    const T rangeInput,
                    const size_t numberInput);
-
-    void calculate_periodic_overlap(const size_t paraMethod,
-				    const std::vector<size_t>& indicesU0,
-				    const std::vector<T>& valuesU0,
-				    const std::vector<size_t>& indicesU1,
-				    const std::vector<T>& valuesU1,
-				    const gsMesh<T>& overlapMesh,
-				    std::vector<size_t>& left,
-				    std::vector<size_t>& right);
 
     void calculate_periodic_stitch(const size_t paraMethod,
 				   const std::vector<size_t>& indicesV0,
@@ -501,11 +483,6 @@ private:
 
     bool rangeCheck(const std::vector<index_t> &corners, const size_t minimum, const size_t maximum);
 
-    /// Helper function to constructAndSolveEquationSystem with twins.
-    void updateLambdasWithTwins(std::vector<T>& lambdas,
-				const std::vector<std::pair<size_t, size_t> >& twins,
-				size_t vertexId) const;
-
     real_t correspondingV(const typename gsMesh<T>::VertexHandle& v0,
 			  const typename gsMesh<T>::VertexHandle& v1,
 			  real_t u) const;
@@ -525,10 +502,7 @@ private:
 						   typename gsMesh<T>::VertexHandle& v1,
 						   typename gsMesh<T>::VertexHandle& v2) const;
 
-    // TODO: Get rid of this function.
-    gsMesh<T> createMidMesh(const std::vector<size_t>& right,
-			    const std::vector<size_t>& left) const;
-
+protected:
     gsMesh<T> createRestrictedFlatMesh(const gsHalfEdgeMesh<T>& unfolded) const;
 
 }; // class gsParametrization
