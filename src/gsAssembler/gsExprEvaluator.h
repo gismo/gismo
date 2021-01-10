@@ -280,7 +280,7 @@ private:
                             geometryMap G, std::string const & fn);
 
     template<class E, bool storeElWise, class _op>
-    T compute_impl(const expr::_expr<E> & expr);
+    T compute_impl(const E & expr);
 
     template<class E, class _op>
     T computeBdr_impl(const expr::_expr<E> & expr);
@@ -294,60 +294,65 @@ private:
     struct plus_op
     {
         static inline T init() { return 0; }
-        static inline void acc(const T contrib, const T w, T & res) { res += w * contrib; }
+        static inline void acc(const T contrib, const T w, T & res)
+        { res += w * contrib; }
     };
     struct min_op
     {
         static inline T init() { return math::limits::max(); }
         static inline void acc (const T contrib, const T, T & res)
-        {
-            res = math::min(contrib, res);
-        }
+        { res = math::min(contrib, res); }
     };
     struct max_op
     {
         static inline T init() { return math::limits::min(); }
         static inline void acc (const T contrib, const T, T & res)
-        {
-            res = math::max(contrib, res);
-        }
+        { res = math::max(contrib, res); }
     };
 
 };
 
 template<class T>
 template<class E, bool storeElWise, class _op>
-T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
+T gsExprEvaluator<T>::compute_impl(const E & expr)
 {
-    // GISMO_ASSERT( expr.isScalar(), // precompute
-    //               "Expecting scalar expression instead of "
-    //               <<expr.cols()<<" x "<<expr.rows() );
-    //expr.print(gsInfo); // precompute
-
-    gsQuadRule<T> QuRule;  // Quadrature rule
-    gsVector<T> quWeights; // quadrature weights
-
-    m_exprdata->parse(expr);
-
-    // Computed value
-    T elVal;
     m_value = _op::init();
     m_elWise.clear();
     if ( storeElWise )
         m_elWise.reserve(m_exprdata->multiBasis().totalElements());
+
+#pragma omp parallel
+{
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#   endif
+
+    gsQuadRule<T> QuRule;  // Quadrature rule
+    gsVector<T> quWeights; // quadrature weights
+
+    E _arg = expr;    
+    m_exprdata->parse(_arg);
+
+    // Computed value on element
+    T elVal;
+    index_t c = 0;
     for (unsigned patchInd=0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
         // Quadrature rule
         QuRule =  gsQuadrature::get(m_exprdata->multiBasis().basis(patchInd), m_options);
-        //gsDebugVar(QuRule.numNodes());
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().piece(patchInd).makeDomainIterator();
         m_element.set(*domIt);
 
-        // Start iteration over elements
+        // Start iteration over elements of patchInd
+#       ifdef _OPENMP
+        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#       else
         for (; domIt->good(); domIt->next() )
+#       endif
         {
             // Map the Quadrature rule to the element
             QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
@@ -358,16 +363,18 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
             // Compute on element
             elVal = _op::init();
-            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quadrature nodes
-                _op::acc(expr.val().eval(k), quWeights[k], elVal);
+            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quad. nodes
+                _op::acc(_arg.val().eval(k), quWeights[k], elVal);
 
-            //gsDebugVar(elVal);
-            _op::acc(elVal, 1, m_value);
             if ( storeElWise )
-                m_elWise.push_back( elVal );
+                m_elWise[c++] = elVal;
+
+#           pragma omp critical
+            _op::acc(elVal, 1, m_value);
         }
     }
 
+}//omp parallel
     return m_value;
 }
 

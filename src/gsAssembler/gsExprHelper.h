@@ -32,12 +32,12 @@ private:
     { mutVar.setData(mutData); }
 
 private:
-    typedef std::map<const gsFunctionSet<T>*,gsFuncData<T> >  FuncData;
-    typedef std::map<const gsFunctionSet<T>*,gsMapData<T> >  MapData;
-    typedef std::map<const expr::gsFeVariable<T>*,gsFuncData<T> >  VarData;
+    typedef std::map<const gsFunctionSet<T>*,util::gsThreaded<gsFuncData<T> > >  FuncData;
+    typedef std::map<const gsFunctionSet<T>*,util::gsThreaded<gsMapData<T> > >  MapData;
+    typedef std::map<const expr::gsFeVariable<T>*,util::gsThreaded<gsFuncData<T> > >  VarData;
 
-    typedef std::pair<const gsFunctionSet<T>*,gsMapData<T>*> CFuncKey;
-    typedef std::map<CFuncKey,gsMapData<T> >  CFuncData;
+    typedef std::pair<const gsFunctionSet<T>*,util::gsThreaded<gsMapData<T> >*> CFuncKey;
+    typedef std::map<CFuncKey,util::gsThreaded<gsFuncData<T> > >  CFuncData;
 
     typedef typename FuncData::iterator FuncDataIt;
     typedef typename MapData ::iterator MapDataIt;
@@ -50,7 +50,7 @@ private:
     VarData m_vdata;// for BCs etc. //do we need it interfaced?
     //gsFunctionSet* : interface, thread
 
-    gsMapData<T> mapData;
+    util::gsThreaded<gsMatrix<T> > m_points;
 private:
 
     // mutable pair of variable and data,
@@ -65,7 +65,7 @@ public:
     typedef const expr::gsGeometryMap<T>   geometryMap;
     typedef const expr::gsFeElement<T>   & element;
     typedef const expr::gsFeVariable<T>    variable;
-    typedef const expr::gsFeSpace<T>     & space; // reference needed for init.
+    typedef const expr::gsFeSpace<T>       space;
     typedef const expr::gsNullExpr<T>      nullExpr;
 
     typedef expr::gsFeVariable<T>    nonConstVariable;
@@ -75,7 +75,7 @@ public:
     typedef memory::shared_ptr<gsExprHelper>  Ptr;
 public:
 
-    gsMatrix<T> & points() { return mapData.points; }
+    gsMatrix<T> & points() { return m_points; }
 
     static uPtr make() { return uPtr(new gsExprHelper()); }
 
@@ -85,19 +85,9 @@ public:
         //mapVar.reset();
     }
 
-    void print() const
-    {
-
-    }
-
     void cleanUp()
     {
-        mapData.clear();
         mutData.clear();
-    }
-
-    void clean(bool space=false)
-    {
     }
 
     void setMultiBasis(const gsMultiBasis<T> & mesh) { mesh_ptr = &mesh; }
@@ -109,11 +99,6 @@ public:
         GISMO_ASSERT(multiBasisSet(), "Integration elements not set.");
         return *mesh_ptr;
     }
-
-    // gsFuncData<T> * getData()
-    // {
-    //     return
-    // }
 
     geometryMap getMap(const gsFunction<T> & mp)
     {
@@ -130,62 +115,25 @@ public:
         return gm;
     }
 
-    //geometryMap getMap() const
-
-    //geometryMap getMap2() const
-
     expr::gsFeVariable<T> getVar(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
         expr::gsFeVariable<T> var;
         var.setSource(mp);
         var.setDim(dim);
-        //var.setData( m_fdata[&mp] );//NO
         return var;
     }
 
-    expr::gsComposition<T> getVar(const gsFunctionSet<T> & mp, geometryMap G)
+    expr::gsComposition<T> getVar(const gsFunctionSet<T> & mp, geometryMap & G)
     {
-        //GISMO_UNUSED(G);
-        //GISMO_ASSERT(&G==&mapVar, "geometry map not known");
-        //m_vlist.push_back( expr::gsFeVariable<T>() );
         expr::gsComposition<T> var(G);
-        //gsFuncData<T> & fd = m_itable[&mp];
-        //fd.dim = mp.dimensions();
-        //gsDebugVar(&fd);
-        //var.registerData(mp, fd, 1, mapData);
         var.setSource(mp);
-
-        // const_cast<expr::gsGeometryMap<T>&>(sym)
-        //     .m_fd = & m_mdata[sym.m_fs];
-
-        //var.setMap( m_mdata[&G.source()] );
-        //gsInfo<<"aaaaaaaaaaaaaaaaa Reg.  symb "<< &G.data() <<"\n";
         return var;
     }
 
-    /*
-    nonConstVariable searchVar(const gsFunctionSet<T> & mp)
+    expr::gsFeSpace<T> getSpace(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
-    // Search in the variable list and get back the first object which source \a mp
-        GISMO_UNUSED(G);
-        GISMO_ASSERT(&G==&mapVar, "geometry map not known");
-        m_vlist.push_back( expr::gsFeVariable<T>() );
-        expr::gsFeVariable<T> & var = m_vlist.back();
-        gsFuncData<T> & fd = m_itable[&mp];
-        //fd.dim = mp.dimensions();
-        //gsDebugVar(&fd);
-        var.registerData(mp, fd, 1, mapData);
-        return var;
-    }
-    */
-
-    std::list<expr::gsFeSpace<T> > m_slist;//to be moved in ExprAssembler
-    expr::gsFeSpace<T> & getSpace(const gsFunctionSet<T> & mp, index_t dim = 1)
-    {
-        m_slist.push_back( expr::gsFeSpace<T>() );
-        expr::gsFeSpace<T> & var = m_slist.back();
+        expr::gsFeSpace<T> var;
         var.setSource(mp);
-        var.setData( m_fdata[&mp] );
         var.setDim(dim);
         return var;
     }
@@ -203,14 +151,8 @@ private:
     void _parse(const expr::_expr<E1> & a1)
     {
         a1.parse(*this);
-        a1.print(gsInfo);
+        //a1.print(gsInfo);
     }
-
-    // void _parse(const expr::gsFeVariable<T> & a1)
-    // {
-    //     a1.parse(*this);
-    //     gsDebug<< "got gsFeVariable "<< &a1 <<"\n";
-    // }
 
     template <class E1, class... Rest>
     void _parse(const expr::_expr<E1> & a1, Rest &... restArgs)
@@ -218,40 +160,87 @@ private:
         _parse(a1);
         _parse(restArgs...);
     }
+
+    template<size_t I, typename... Ts>
+    void _parse_tuple_i (const std::tuple<Ts...> &tuple)
+    {
+        std::get<I>(tuple).parse(*this);
+        if (I + 1 < sizeof... (Ts))
+            _parse_tuple_i<(I+1 < sizeof... (Ts) ? I+1 : I)> (tuple);
+    }
+    
+    template<typename... Ts>
+    void _parse_tuple (const std::tuple<Ts...> &tuple) {_parse_tuple_i<0>(tuple);}
+    //template<> void _parse_tuple<> (const std::tuple<> &) { }
+
 public:
 
+    template<class... Ts>
+    void parse(const std::tuple<Ts...> &tuple)
+    {
+#pragma omp single
+        {
+            m_mdata.clear();
+            m_fdata.clear();
+            m_vdata.clear();
+            m_cdata.clear();
+        }//implicit barrier
+
+        _parse_tuple(tuple);
+
+        // Add initial evaluation flags
+        for (MapDataIt it  = m_mdata.begin(); it != m_mdata.end(); ++it)
+            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
+            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+        for (VarDataIt it  = m_vdata.begin(); it != m_vdata.end(); ++it)
+            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+        for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
+            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+
+        // gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
+        // gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
+        // gsInfo<< "vdata: "<< m_vdata.size()<<"\n";
+        // gsInfo<< "cdata: "<< m_cdata.size()<<std::endl;
+    }
+
+//    #ifndef _OPENMP
     template<class... expr>
     void parse(const expr &... args)
     {
+#pragma omp single
+        {
         m_mdata.clear();
         m_fdata.clear();
         m_vdata.clear();
         m_cdata.clear();
+        }//implicit barrier
 
         _parse(args...);
 
         // Add initial evaluation flags
         for (MapDataIt it  = m_mdata.begin(); it != m_mdata.end(); ++it)
-            it->second.flags |= SAME_ELEMENT|NEED_ACTIVE;
+            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
         for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
-            it->second.flags |= SAME_ELEMENT|NEED_ACTIVE;
+            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
         for (VarDataIt it  = m_vdata.begin(); it != m_vdata.end(); ++it)
-            it->second.flags |= SAME_ELEMENT|NEED_ACTIVE;
+            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
-            it->second.flags |= SAME_ELEMENT|NEED_ACTIVE;
+            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
 
         // gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
         // gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
         // gsInfo<< "vdata: "<< m_vdata.size()<<"\n";
         // gsInfo<< "cdata: "<< m_cdata.size()<<"\n";
     }
+//#endif
 
     void add(const expr::gsGeometryMap<T> & sym)
     {//TODO: inherit gsGeomatryMap from symbol_expr
         GISMO_ASSERT(NULL!=sym.m_fs, "Geometry map "<<&sym<<" is invalid");
+#       pragma omp critical (m_mdata_first_touch)
         const_cast<expr::gsGeometryMap<T>&>(sym)
             .setData(m_mdata[sym.m_fs]);
-        //gsDebug<<"+ gMap "<< sym.m_fs <<" ("<<sym.m_fd<<")\n";
     }
 
     void add(const expr::gsComposition<T> & sym)
@@ -259,10 +248,17 @@ public:
         GISMO_ASSERT(NULL!=sym.m_fs, "Composition "<<&sym<<" is invalid");
         add(sym.inner());
         sym.inner().data().flags |= NEED_VALUE;
+        auto k = std::make_pair(sym.m_fs,&m_mdata[sym.inner().m_fs]);
+        auto it = m_cdata.find(k);
+        if (m_cdata.end()==it)
+        {
+#       pragma omp critical (m_cdata_first_touch)
         const_cast<expr::gsComposition<T>&>(sym)
-            .setData(m_cdata[ std::make_pair(sym.m_fs,
-            const_cast<gsMapData<T>*>(sym.inner().m_fd))]);
-        //gsDebug<<"+ Comp "<< sym.m_fs <<" ("<<sym.m_fd<<")\n";
+            .setData(m_cdata[ give(k) ]);
+        }
+        else
+            const_cast<expr::gsComposition<T>&>(sym)
+                .setData(m_cdata[ give(k) ]);
     }
 
     template <class E>
@@ -271,21 +267,21 @@ public:
         //parallel: variables become thread-local
         // for each variable we provide a gsFuncData pointer
         // in the same thread this can be the same ptr (as done now)
-
-        //grab &sym.source();
-
+        
         if (NULL!=sym.m_fs)
         {
             if ( 1==sym.m_fs->size() &&
                  sym.m_fs->domainDim()<=sym.m_fs->targetDim() )// map?
             {
                 //gsDebug<<"+ Map "<< sym.m_fs <<"\n";
+#               pragma omp critical (m_mdata_first_touch)
                 const_cast<expr::symbol_expr<E>&>(sym)
                     .setData( m_mdata[sym.m_fs] );
             }
             else
             {
                 //gsDebug<<"+ Func "<< sym.m_fs <<"\n";
+#               pragma omp critical (m_fdata_first_touch)
                 const_cast<expr::symbol_expr<E>&>(sym)
                     .setData( m_fdata[sym.m_fs] );
             }
@@ -302,36 +298,34 @@ public:
 
     void precompute(const index_t patchIndex = 0)
     {
-        //TO DO! : mapData.points  --> gsMatrix points.
-
         //First compute the maps
         for (MapDataIt it = m_mdata.begin(); it != m_mdata.end(); ++it)
         {
-            it->second.points.swap(mapData.points);//swap
+            it->second.mine().points.swap(m_points.mine());//swap
             it->first->function(patchIndex).computeMap(it->second);
-            it->second.patchId = patchIndex;
-            it->second.points.swap(mapData.points);
+            it->second.mine().patchId = patchIndex;
+            it->second.mine().points.swap(m_points.mine());
         }
 
         for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
         {
             it->first->piece(patchIndex)
-                .compute(mapData.points, it->second);
-            it->second.patchId = patchIndex;
+                .compute(m_points, it->second);
+            it->second.mine().patchId = patchIndex;
         }
 
         for (VarDataIt it = m_vdata.begin(); it != m_vdata.end(); ++it)
         {
             it->first->source().piece(patchIndex)
-                .compute(mapData.points, it->second);
-            it->second.patchId = patchIndex;
+                .compute(m_points, it->second);
+            it->second.mine().patchId = patchIndex;
         }
 
         for (CFuncDataIt it = m_cdata.begin(); it != m_cdata.end(); ++it)
         {
             it->first.first->piece(patchIndex)
-                .compute(it->first.second->values[0], it->second);
-            it->second.patchId = patchIndex;
+                .compute(it->first.second->mine().values[0], it->second);
+            it->second.mine().patchId = patchIndex;
         }
     }
 
