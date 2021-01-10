@@ -11,6 +11,8 @@
     Author(s): A. Mantzaflaris
 */
 
+#pragma once
+
 namespace gismo
 {
 
