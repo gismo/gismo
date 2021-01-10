@@ -39,14 +39,14 @@ union parametrization_t
     ~parametrization_t() {}
 };
 
-namespace gismo
-{
-template <class T>
-class gsGeneralParametrization : public gsPeriodicParametrizationOverlap<T>
-{
-};
+// namespace gismo
+// {
+// template <class T>
+// class gsGeneralParametrization : public gsPeriodicParametrizationOverlap<T>, gsPeriodicParametrizationStitch<T>
+// {
+// };
 
-} // namespace gismo
+// } // namespace gismo
 
 int main(int argc, char *argv[])
 {
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
     // else
     // 	pm.std = gsParametrization<real_t>(*mm, ol);
 
-    gsPeriodicParametrizationOverlap<real_t> pm(*mm, ol);
+    gsPeriodicParametrizationStitch<real_t> pm(*mm, ol);
 
     stopwatch.stop();
     gsInfo << stopwatch << "\n";

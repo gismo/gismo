@@ -16,6 +16,7 @@
 
 namespace gismo
 {
+
 template <class T>
 gsPeriodicParametrizationOverlap<T>& gsPeriodicParametrizationOverlap<T>::compute_periodic_overlap(std::string bottomFile,
 												   std::string topFile,

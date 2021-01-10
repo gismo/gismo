@@ -69,12 +69,6 @@ public:
     /// Main function which performs the computation
     gsParametrization<T>& compute();
 
-    /// Periodic parametrization using Pierre's trick.
-    gsParametrization<T>& compute_periodic_stitch(std::string bottomFile,
-						  std::string topFile,
-						  std::string stitchFile,
-						  std::vector<std::vector<size_t> >& posCorrections);
-
     gsParametrization<T>& compute_free_boundary();
 
     /**
@@ -106,14 +100,6 @@ public:
      * @return
      */
     gsMesh<T> createFlatMesh() const;
-
-    /**
-     * Creates a flat mesh out of a periodic parametrization created by a the stitch method.
-     * @param posCorrections Positive corrections from the stitch algorithm.
-     * @param restrict If set to true, the mesh is restricted to [0, 1]^2.
-     */
-    gsMesh<T> createFlatMesh(const std::vector<std::vector<size_t> >& posCorrections,
-			     bool restrict = false) const;
 
     /**
      * Writes m_mesh into @a filename.vtk with the vertices coloured
@@ -417,15 +403,6 @@ protected:
 					   const size_t n,
 					   const size_t N);
 
-    /** Similar to @a constructAndSolveEquationSystem but works for periodic meshes using
-     * the corrections.
-     */ // TODO: Explain the parameters.
-    void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
-					 const size_t n,
-					 const size_t N,
-					 const std::vector<std::vector<size_t> >& posCorrections,
-					 const std::vector<std::vector<size_t> >& negCorrections);
-
     std::vector<size_t> readIndices(const std::string& filename) const;
 
     // Cf. https://stackoverflow.com/questions/9338152/must-the-definition-of-a-c-inline-functions-be-in-the-same-file
@@ -462,14 +439,6 @@ protected:
                    const std::vector<index_t> &cornersInput,
                    const T rangeInput,
                    const size_t numberInput);
-
-    void calculate_periodic_stitch(const size_t paraMethod,
-				   const std::vector<size_t>& indicesV0,
-				   const std::vector<T>& valuesV0,
-				   const std::vector<size_t>& indicesV1,
-				   const std::vector<T>& valuesV1,
-				   const std::vector<size_t>& stitchIndices,
-				   std::vector<std::vector<size_t> >& posCorrections);
 
     std::vector<size_t> getSide(const std::list<size_t>& boundary, size_t beg, size_t end) const;
 
