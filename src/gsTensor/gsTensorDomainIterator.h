@@ -153,15 +153,14 @@ public:
 
     bool isBoundaryElement() const
     {
-        gsDebug<<*meshStart[0]<<"\n";
-        gsDebug<<*meshStart[1]<<"\n";
-        gsDebug<<*meshEnd[0]<<"\n";
-        gsDebug<<*meshEnd[1]<<"\n";
-        // gsDebugVar(meshEnd);
-
-        // gsDebugVar(lowerCorner()-meshStart);
-        // gsDebugVar(upperCorner()-meshEnd);
-        return true;
+        if ((lower[0]-*meshStart[0]==0)
+            || (lower[1]-*meshStart[1] == 0)
+            || (*meshEnd[0]-upper[0] ==0)
+            || (*meshEnd[1]-upper[1] ==0)
+           )
+            return true;
+        else
+            return false;
     }
 
 private:
