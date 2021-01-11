@@ -121,7 +121,8 @@ int main(int argc, char *argv[])
     auto M = ev.getVariable(M_);
     auto N = ev.getVariable(N_);
 
-    gsMatrix<> result, exact, physpoint, point(2);
+    gsMatrix<> result, exact;
+    gsVector<> physpoint, point(2);
     point.setConstant(0.5);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -330,7 +331,7 @@ int main(int argc, char *argv[])
     exVec<<-math::sin(phi),math::cos(phi);
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
-                <<"Exact:\n"<<exact<<"\n";
+                <<"Exact:\n"<<exVec<<"\n";
     gsInfo<<( std::abs( (exVec.transpose()*resVec) ) - 1  < 1e-10 ? "passed" : "failed" );//<<"\n";
     gsInfo<<"\t\tnote: sign might be wrong"<<"\n";
 
@@ -389,7 +390,7 @@ int main(int argc, char *argv[])
     */
     gsInfo<< "* Function Jacobian:\t";
     result = ev.eval( jac(a), point );
-    //exact.resize(2,3);
+    //exact.resize(3,2); //done above
     //exact<<2*physpoint(0,0),0,0,2*physpoint(1,0),physpoint(1,0),physpoint(0,0);
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
@@ -466,8 +467,8 @@ int main(int argc, char *argv[])
     mp.degreeElevate();
     basis = gsMultiBasis<>(mp);
 
-    space u = A.getSpace(basis, 1); // to construct solution manually
-    space u2 = A.getSpace(basis,2); // for gsFeSolution
+    auto u = A.getSpace(basis, 1); // to construct solution manually
+    auto u2 = A.getSpace(basis,2); // for gsFeSolution
 
     u .setup(gsBoundaryConditions<>(), 0, 0);
     u2.setup(gsBoundaryConditions<>(), 0, 0);
@@ -505,7 +506,7 @@ int main(int argc, char *argv[])
 
     A.initSystem();
     gsMatrix<> solVec;
-    solution u_sol = A.getSolution(u2,solVec);
+    auto u_sol = A.getSolution(u2,solVec);
     gsInfo<< "* Values (solution):\t";
     solVec = coefs;
     solVec.resize(2*solVec.rows(),1);
@@ -538,7 +539,7 @@ int main(int argc, char *argv[])
                 <<"Exact:\n"<<exact<<"\n";
     gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
-    gsInfo<< "* Jacobian  (map):\t\t";
+    gsInfo<< "* Jacobian  (map):\t";
     result = ev.eval( jac(G), point );
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
@@ -562,30 +563,25 @@ int main(int argc, char *argv[])
 
       Assessment of:
       - hess_expr(gsGeometryMap)
-      - solHess_expr(gsFeSolution)
-      - solLapl_expr(gsFeSolution)
+      - hess_expr(gsFeSolution)
+      - lapl_expr(gsFeSolution)
     */
     mp.patch(0).deriv2_into(point,exact);
 
     gsWarn<<"The following expressions have different formats:\n";
 
     // TODO
-    // gsMatrix<> result2 = ev.eval( hess(G), point );
-    // gsInfo<< "* Hess (map): \n"<<result2<<"\n";
-
-    //TODO!! how to get rid of solHess?
-    // DELEGATE extra member of gsFeSolution to a e new
-    // wrapper expression, possibly using preprocessor
-    
-    result = ev.eval( shess(u_sol), point );
+    gsMatrix<> result2 = ev.eval( hess(G), point );
+    gsInfo<< "* Hess (map): \n"<<result2<<"\n";
+    // result = ev.eval( shess(u_sol), point );
     gsInfo<< "* Hess (solution): \n"<<result<<"\n";
-    //result = ev.eval( slapl(u_sol), point );
-    //gsInfo<< "* Lapl (solution): \n"<<result<<"\n";
+    result = ev.eval( lapl(u_sol), point );
+    gsInfo<< "* Lapl (solution): \n"<<result<<"\n";
 
     /*
       Computes some expressions for assembly
       NOTE: the expressions are multiplied by the components such that the
-      expression with th solution (exact) is represented.
+      expression with the solution (exact) is represented.
 
       Performed using
       - gsFeSolution  (basis*coefs inside gsExprEvaluator)
@@ -599,11 +595,13 @@ int main(int argc, char *argv[])
       - mult_expr (type 1 & type 2)
     */
 
-    return 0;
-
     gsInfo<<"* s grad(u):\t\t";
     exact.transpose() = ev.eval( u_sol.tr() * grad(u_sol), point );
     result = ev.eval( (u_sol.tr() * jac(u2)).tr(), point );
+    gsDebugVar(exact);
+    gsDebugVar(result);
+    gsDebugVar(solVec);
+    
     result *= solVec;
     if (verbose)
         gsInfo  <<"Result:\n"<<result.transpose()<<"\n"
