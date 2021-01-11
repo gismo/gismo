@@ -294,7 +294,7 @@ public:
         _v.setFlag();
     }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(const gsExprHelper<T> & evList) const
     {
         evList.push_sorted_unique(&_u.source());
         _u.data().flags |= NEED_DERIV2;

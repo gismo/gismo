@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
-    cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
+    cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
     //! [Read input file]
 
     //! [Refinement]
-    gsMultiBasis<> dbasis(mp);
+    gsMultiBasis<> dbasis(mp, true);//true: poly-splines (not NURBS)
 
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
@@ -72,12 +72,15 @@ int main(int argc, char *argv[])
     // h-refine each basis
     if (last)
     {
-        for (int r =0; r < numRefine-1; ++r)
+        for (int r =0; r < numRefine; ++r)
             dbasis.uniformRefine();
         numRefine = 0;
     }
 
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
+#ifdef _OPENMP
+    gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
+#endif
     //! [Refinement]
 
     //! [Problem setup]
@@ -102,10 +105,10 @@ int main(int argc, char *argv[])
     space u = A.getSpace(dbasis);
 
     // Set the source term
-    variable ff = A.getCoeff(f, G);
+    auto ff = A.getCoeff(f, G);
 
     // Recover manufactured solution
-    variable u_ex = ev.getVariable(ms, G);
+    auto u_ex = ev.getVariable(ms, G);
 
     // Solution vector and solution variable
     gsMatrix<> solVector;
@@ -119,6 +122,8 @@ int main(int argc, char *argv[])
     gsVector<> l2err(numRefine+1), h1err(numRefine+1);
     gsInfo<< "(dot1=assembled, dot2=solved, dot3=got_error)\n"
         "\nDoFs: ";
+    double setup_time(0), ma_time(0), slv_time(0), err_time(0);
+    gsStopwatch timer;
     for (int r=0; r<=numRefine; ++r)
     {
         dbasis.uniformRefine();
@@ -126,13 +131,22 @@ int main(int argc, char *argv[])
         u.setup(bc, dirichlet::interpolation, 0);
 
         // Initialize the system
-        A.initSystem(false);
+        A.initSystem();
+        setup_time += timer.stop();
 
         gsInfo<< A.numDofs() <<std::flush;
 
+        timer.restart();
         // Compute the system matrix and right-hand side
-        A.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
-
+        A.assemble(
+            igrad(u, G) * igrad(u, G).tr()
+            * meas(G)
+            ,
+            u * ff
+            * meas(G)
+            );
+        ma_time += timer.stop();
+        
         // Enforce Neumann conditions to right-hand side
 //        variable g_N = A.getBdrFunction();
 //        A.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
@@ -142,20 +156,34 @@ int main(int argc, char *argv[])
 
         gsInfo<< "." <<std::flush;// Assemblying done
 
+        timer.restart();
         solver.compute( A.matrix() );
         solVector = solver.solve(A.rhs());
+        slv_time += timer.stop();
 
         gsInfo<< "." <<std::flush; // Linear solving done
 
-        l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
-        h1err[r]= l2err[r] +
-        math::sqrt(ev.integral( ( igrad(u_ex) - grad(u_sol)*jac(G).inv() ).sqNorm() * meas(G) ));
+        // omp_set_dynamic(0);     // Explicitly disable dynamic teams
+        // omp_set_num_threads(1); // Use these threads for later parallel regions
 
+        timer.restart();
+        l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
+        
+        h1err[r]= l2err[r] +
+            math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
+        err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
 
     } //for loop
 
     //! [Solver loop]
+
+    timer.stop();
+    gsInfo<<"\nTotal time: "<< setup_time+ma_time+slv_time+err_time <<"\n";
+    gsInfo<<"     Setup: "<< setup_time <<"\n";
+    gsInfo<<"  Assembly: "<< ma_time    <<"\n";
+    gsInfo<<"   Solving: "<< slv_time   <<"\n";
+    gsInfo<<"Error norm: "<< err_time   <<"\n";
 
     //! [Error and convergence rates]
     gsInfo<< "\n\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
@@ -164,8 +192,9 @@ int main(int argc, char *argv[])
     if (!last && numRefine>0)
     {
         gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
-              << ( l2err.head(numRefine).array() /
-                   l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+              <<  ( l2err.head(numRefine).array()  /
+                   l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0)
+                   <<"\n";
 
         gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
               <<( h1err.head(numRefine).array() /

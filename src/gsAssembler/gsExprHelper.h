@@ -249,14 +249,14 @@ public:
         add(sym.inner());
         sym.inner().data().flags |= NEED_VALUE;
         auto k = std::make_pair(sym.m_fs,&m_mdata[sym.inner().m_fs]);
-        auto it = m_cdata.find(k);
-        if (m_cdata.end()==it)
-        {
+        // auto it = m_cdata.find(k);
+        // if (m_cdata.end()==it)
+        // {
+        // const_cast<expr::gsComposition<T>&>(sym)
+        //     .setData(m_cdata[ give(k) ]);
+        // }
+        // else
 #       pragma omp critical (m_cdata_first_touch)
-        const_cast<expr::gsComposition<T>&>(sym)
-            .setData(m_cdata[ give(k) ]);
-        }
-        else
             const_cast<expr::gsComposition<T>&>(sym)
                 .setData(m_cdata[ give(k) ]);
     }

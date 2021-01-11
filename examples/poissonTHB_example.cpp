@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
         ev.setIntegrationElements(pa.multiBasis());
         gsExprEvaluator<>::geometryMap Gm = ev.getMap(patches);
         gsExprEvaluator<>::variable f1 = ev.getVariable(mpsol);
-        gsExprEvaluator<>::variable ff = ev.getVariable(f, Gm);
+        auto ff = ev.getVariable(f, Gm);
 
         // The vector with element-wise local error estimates.
         ev.integralElWise( (ilapl(f1,Gm) + ff).sqNorm() * meas(Gm) );

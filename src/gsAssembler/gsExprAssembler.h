@@ -478,7 +478,6 @@ private:
             for (index_t k = 1; k != m_quWeights.rows(); ++k)
                 localMat.noalias() += (*(++w)) * ee.eval(k);
 
-
             //  ------- Accumulate  -------
             if (E::isMatrix())
                 push<true>(ee.rowVar(), ee.colVar(), m_patchInd);
@@ -559,6 +558,7 @@ private:
                             }
                             else
                             {
+#                               pragma omp critical (acc_m_rhs)
                                 m_rhs.row(ii) += localMat.row(rls+i);
                             }
                         }
@@ -692,6 +692,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     const int nt  = omp_get_num_threads();
 #   endif
     auto arg_tpl = std::make_tuple(args...);//copying expressions
+
     m_exprdata->parse(arg_tpl);
     //op_tuple(__printExpr(), arg_tpl);
 

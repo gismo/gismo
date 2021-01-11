@@ -331,7 +331,7 @@ T gsExprEvaluator<T>::compute_impl(const E & expr)
     gsQuadRule<T> QuRule;  // Quadrature rule
     gsVector<T> quWeights; // quadrature weights
 
-    E _arg = expr;    
+    E _arg = expr;
     m_exprdata->parse(_arg);
 
     // Computed value on element
@@ -369,7 +369,7 @@ T gsExprEvaluator<T>::compute_impl(const E & expr)
             if ( storeElWise )
                 m_elWise[c++] = elVal;
 
-#           pragma omp critical
+#           pragma omp critical (_op_acc)
             _op::acc(elVal, 1, m_value);
         }
     }
