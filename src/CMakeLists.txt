@@ -30,21 +30,19 @@ FOREACH(subdir ${SUBDIRS})
 
   ## Collect files
   aux_header_directory     (${CMAKE_CURRENT_SOURCE_DIR}/${subdir} ${subdir}_H  )
-  aux_cpp_directory        (${CMAKE_CURRENT_SOURCE_DIR}/${subdir} ${subdir}_CPP)
+  aux_cpp_noins_directory  (${CMAKE_CURRENT_SOURCE_DIR}/${subdir} ${subdir}_CPP)
   aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR}/${subdir} ${subdir}_HPP)
 
-  if( (NOT GISMO_BUILD_LIB) )
+  if(GISMO_BUILD_LIB)
     aux_instance_directory (${CMAKE_CURRENT_SOURCE_DIR}/${subdir} ${subdir}_INS)
-    if(${subdir}_INS)
-      LIST( REMOVE_ITEM ${subdir}_CPP ${${subdir}_INS})
-    endif()
   endif()
 
   ## Add module
   add_library(${GM_NAME} OBJECT
     ${${subdir}_H}
     ${${subdir}_HPP}
-    ${${subdir}_CPP}
+    ${${subdir}_CPP} # static/non templated part
+    ${${subdir}_INS}
     )
 
   set_target_properties(${GM_NAME} PROPERTIES
@@ -52,9 +50,28 @@ FOREACH(subdir ${SUBDIRS})
     POSITION_INDEPENDENT_CODE ON
     LINKER_LANGUAGE CXX
     FOLDER "G+Smo modules"
-    #EXCLUDE_FROM_ALL 1
-    #EXCLUDE_FROM_DEFAULT_BUILD 1
     )
+
+  ## Add extra instances (template instantiations)
+  # NOTE: The static/non templated part of the library is
+  # compiled above only for GISMO_COEFF_TYPE
+  math(EXPR ii "1")
+  foreach(ins ${GISMO_EXTRA_INSTANCE})
+    add_library(${GM_NAME}${ii} OBJECT
+      ${${subdir}_H}
+      ${${subdir}_HPP}
+      ${${subdir}_INS}
+      )
+    set_target_properties(${GM_NAME}${ii} PROPERTIES
+      COMPILE_DEFINITIONS "gismo_EXPORTS;real_t=${ins}"
+      POSITION_INDEPENDENT_CODE ON
+      LINKER_LANGUAGE CXX
+      FOLDER "G+Smo modules"
+      )
+    set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_NAME}${ii}>
+      CACHE INTERNAL "G+Smo modules" )
+    math(EXPR ii "${ii}+1")
+  endforeach()
 
   if(GISMO_BUILD_MULTIPRECISION)
     add_dependencies(${GM_NAME} gsMultiPrecisionExtension)

@@ -127,10 +127,15 @@ macro(aux_cxx_source_directory DIR VAR)
         FILE(GLOB ${ARGV1} ${DIR}/[^.]*.cxx)
 endmacro(aux_cxx_source_directory)
 
-# collect _.cpp (instance) files
+# collect _.cpp (instance/template instantiation) files
 macro(aux_instance_directory DIR VAR)
         FILE(GLOB ${ARGV1} ${DIR}/[^.]*_.cpp)
 endmacro(aux_instance_directory)
+
+# collect .cpp files that are not template instantiation
+macro(aux_cpp_noins_directory DIR VAR)
+        FILE(GLOB ${ARGV1} ${DIR}/[^.]*[^_].cpp)
+endmacro(aux_cpp_noins_directory)
 
 function(get_repo_info repository revision) #REPO_REVISION
   if (NOT DEFINED ${repository})
