@@ -1252,6 +1252,7 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const { _u.parse(evList); }
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+
     enum{rowSpan = E::rowSpan, colSpan = E::colSpan};
     void print(std::ostream &os) const { _u.print(os); }
 };
@@ -2300,13 +2301,32 @@ public:
     tangent_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
     mutable gsMatrix<Scalar> res;
+    mutable gsVector<Scalar,3> normal,onormal,otangent;
 
-    MatExprType eval(const index_t k) const
+    const gsMatrix<Scalar> eval(const index_t k) const
     {
-        res = _G.data().outNormals.col(k);//2x1
-        std::swap( res(0,0), res(1,0) );
-        res(0,0) *= -1;
-        return res;
+        gsDebugVar(_G.targetDim()==2);
+        if (_G.targetDim()==2)
+        {
+            res = _G.data().outNormals.col(k);//2x1
+            std::swap( res(0,0), res(1,0) );
+            res(0,0) *= -1;
+            return res;
+        }
+        else if (_G.targetDim()==3)
+        {
+            onormal = _G.data().outNormals.col(k);
+            gsDebugVar(onormal);
+            normal =  _G.data().normals.col(k);
+            gsDebugVar(normal);
+            otangent = normal.template head<3>().cross(onormal.template head<3>());
+            gsDebugVar(otangent);
+
+            return otangent;
+        }
+        else
+            GISMO_ERROR("Function not implemented for dimension"<<_G.targetDim());
+
     }
 
     index_t rows() const { return _G.data().dim.second; }
@@ -2317,6 +2337,7 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_G);
+        _G.data().flags |= NEED_NORMAL;
         _G.data().flags |= NEED_OUTER_NORMAL;
     }
 
@@ -2326,7 +2347,6 @@ public:
 
     void print(std::ostream &os) const { os << "tv("; _G.print(os); os <<")"; }
 };
-
 
 /**
    Expression for the Laplacian of a finite element variable
@@ -3742,7 +3762,7 @@ onormal_expr<T> nv(const gsGeometryMap<T> & u) { return onormal_expr<T>(u); }
 template<class T> EIGEN_STRONG_INLINE
 normal_expr<T> sn(const gsGeometryMap<T> & u) { return normal_expr<T>(u); }
 
-/// The tangent boundary vector of a geometry map
+/// The tangent boundary vector of a geometry map in 2D
 template<class T> EIGEN_STRONG_INLINE
 tangent_expr<T> tv(const gsGeometryMap<T> & u) { return tangent_expr<T>(u); }
 
