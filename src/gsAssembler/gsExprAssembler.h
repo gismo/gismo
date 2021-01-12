@@ -247,8 +247,6 @@ public:
 
     element getElement() const { return m_element; }
 
-    void computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u);
-    void computeDirichletDofsL2Proj(const expr::gsFeSpace<T> & u);
     void setFixedDofVector(gsMatrix<T> & dof, short_t unk = 0);
     void setFixedDofs(const gsMatrix<T> & coefMatrix, short_t unk = 0, size_t patch = 0);
 
@@ -328,7 +326,7 @@ public:
     /// Adds the expressions \a args to the system matrix/rhs
     ///
     /// The arguments are considered as integrals over the boundary parts in \a BCs
-    template<class... expr> void assemble(const bcRefList & BCs, expr... args);
+    template<class... expr> void assemble(const bcRefList & BCs, expr&... args);
 
     /*
       template<class... expr> void assemble(const ifContainer & iFaces, expr... args);
@@ -439,13 +437,13 @@ private:
                                 space rvar, space cvar,
                                 const ifContainer & iFaces);
 
-#if __cplusplus >= 201103L || _MSC_VER >= 1600 // c++11
-    template <class op, class E1>
-    void _apply(op _op, const expr::_expr<E1> & firstArg) {_op(firstArg);}
-    template <class op, class E1, class... Rest>
-    void _apply(op _op, const expr::_expr<E1> & firstArg, Rest... restArgs)
-    { _op(firstArg); _apply<op>(_op, restArgs...); }
-#endif
+// #if __cplusplus >= 201103L || _MSC_VER >= 1600 // c++11
+//     template <class op, class E1>
+//     void _apply(op _op, const expr::_expr<E1> & firstArg) {_op(firstArg);}
+//     template <class op, class E1, class... Rest>
+//     void _apply(op _op, const expr::_expr<E1> & firstArg, Rest... restArgs)
+//     { _op(firstArg); _apply<op>(_op, restArgs...); }
+// #endif
 
     struct __printExpr
     {
@@ -745,28 +743,30 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 template<class T>
 #if __cplusplus >= 201103L || _MSC_VER >= 1600 // c++11
 template<class... expr>
-void gsExprAssembler<T>::assemble(const bcRefList & BCs, expr... args)
+void gsExprAssembler<T>::assemble(const bcRefList & BCs, expr&... args)
 #else
 template <class E1>
 void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> & a1)
 #endif
 {
-    // initialize flags
-    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
+        GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
-    m_exprdata->parse(args...);
-
-// #   if __cplusplus >= 201103L || _MSC_VER >= 1600
-//     _apply(_setFlag, args...);
-// #   else
-//     _setFlag(a1);
+// #pragma omp parallel
+// {
+// #   ifdef _OPENMP
+//     const int tid = omp_get_thread_num();
+//     const int nt  = omp_get_num_threads();
 // #   endif
+    auto arg_tpl = std::make_tuple(args...);//copying expressions
 
-    gsVector<T> quWeights;// quadrature weights
-    gsQuadRule<T>  QuRule;
+    m_exprdata->parse(arg_tpl);
+
+    gsQuadRule<T> QuRule;  // Quadrature rule  ---->OUT
+    gsVector<T> quWeights; // quadrature weights
 
     _eval ee(m_matrix, m_rhs, quWeights);
 
+//#   pragma omp parallel for
     for (typename bcRefList::const_iterator iit = BCs.begin(); iit!= BCs.end(); ++iit)
     {
         const boundary_condition<T> * it = &iit->get();
@@ -795,17 +795,16 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
 
             // Assemble contributions of the element
 #           if __cplusplus >= 201103L || _MSC_VER >= 1600
-            _apply(ee, args...);
+            _apply(ee, arg_tpl);
 #           else
             ee(a1);
 #           endif
         }
     }
 
-    //this->finalize();
+//}//omp parallel
+
     m_matrix.makeCompressed();
-    //g_bd.clear();
-    //mutVar.clear();
 }
 
 
@@ -817,13 +816,11 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
                                                const bcContainer & BCs)
 {
     //GISMO_ASSERT( exprRhs.isVector(), "Expecting vector expression");
-
-    // initialize flags
-    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-    if (left ) m_exprdata->parse(exprLhs);
-    if (right) m_exprdata->parse(exprRhs);
-    // if (left ) exprLhs.setFlag();
-    // if (right) exprRhs.setFlag();
+    auto arg_lhs = std::make_tuple(exprLhs);//copying expressions
+    auto arg_rhs = std::make_tuple(exprRhs);
+    
+    if (left ) m_exprdata->parse(arg_lhs);
+    if (right) m_exprdata->parse(arg_rhs);
 
     gsVector<T> quWeights;// quadrature weights
     gsQuadRule<T>  QuRule;
@@ -854,12 +851,11 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
             m_exprdata->precompute(it->patch());
 
             ee.setPatch(it->patch());
-    	    ee(exprLhs);
-	        ee(exprRhs);
+    	    ee(arg_lhs);
+	        ee(arg_rhs);
         }
     }
 
-    //this->finalize();
     m_matrix.makeCompressed();
     //g_bd.clear();
     //mutVar.clear();
@@ -872,35 +868,34 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
                                                 space rvar, space cvar,
                                                 const ifContainer & iFaces)
 {
-    //GISMO_ASSERT( exprRhs.isVector(), "Expecting vector expression");
+    // auto lhs11 = std::make_tuple(exprLhs);
+    // auto lhs12 = std::make_tuple(exprLhs);
+    // auto lhs21 = std::make_tuple(exprLhs);
+    // auto lhs22 = std::make_tuple(exprLhs);
 
-    // initialize flags
-
-    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-    if (left ) m_exprdata->parse(exprLhs);
-    if (right) m_exprdata->parse(exprRhs);
-    // if (left ) exprLhs.setFlag();
-    // if (right) exprRhs.setFlag();
+    auto arg_lhs = std::make_tuple(exprLhs);//copying expressions
+    auto arg_rhs = std::make_tuple(exprRhs);
+    if (left ) m_exprdata->parse(arg_lhs);
+    if (right) m_exprdata->parse(arg_rhs);
 
     gsVector<T> quWeights;// quadrature weights
     gsQuadRule<T>  QuRule;
     _eval ee(m_matrix, m_rhs, quWeights);
-
-    //gsMatrix<T> tmp;
 
     for (gsBoxTopology::const_iiterator it = iFaces.begin();
          it != iFaces.end(); ++it )
     {
         const boundaryInterface & iFace = *it;
         const index_t patch1 = iFace.first() .patch;
-        //const index_t patch2 = iFace.second().patch;
+        const index_t patch2 = iFace.second().patch;
         //const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
 
         QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(patch1),
                                    m_options, iFace.first().side().direction());
 
-        m_exprdata->mapData.side = iFace.first().side(); // (!)
-
+        m_exprdata->setSide        ( iFace.first() .side() );
+        m_exprdata->iface().setSide( iFace.second().side() );
+                
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().basis(patch1).makeDomainIterator(iFace.first().side());
         m_element.set(*domIt);
@@ -914,353 +909,18 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(patch1);
+            m_exprdata->iface().precompute(patch2);
+            
+            // interfaceMap.eval_into(m_exprdata->points(),
+            //                        m_exprdata->iface().points());
 
-            // DG: need data1, data2
-            // coupling: need to know patch1/patch2
-
-//            interfaceMap.eval_into(m_exprdata->points(), tmp);
-//            m_exprdata->points().swap(tmp);
-//            m_exprdata->precompute(patch2);
-
-        ee.setPatch(patch1);
-	    ee(exprLhs);
-	    ee(exprRhs);
+            ee.setPatch(patch1);
+            ee(arg_lhs);
+            ee(arg_rhs);
         }
     }
 
     m_matrix.makeCompressed();
 }
-
-
-template<class T> //
-void gsExprAssembler<T>::computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u)
-{
-    const gsDofMapper  & mapper    = u.mapper;
-    gsMatrix<T>        & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
-    fixedDofs.resize(mapper.boundarySize(), u.dim() );
-    const index_t parDim = u.source().domainDim();
-
-    const gsMultiBasis<T> & mbasis =
-        *dynamic_cast<const gsMultiBasis<T>*>(&u.source());
-
-    // Iterate over all patch-sides with Boundary conditions
-    typedef typename gsBoundaryConditions<T>::bcRefList bcRefList;
-    for ( typename bcRefList::const_iterator iit =  u.bc().begin();
-          iit != u.bc().end()  ; ++iit )
-    {
-        const boundary_condition<T> * it = &iit->get();
-        const index_t com = it->unkComponent();
-
-        const index_t k = it->patch();
-        if( it->unknown()!=u.id() )
-            continue;
-        const gsBasis<T> & basis = mbasis[k];
-
-        // Get dofs on this boundary
-        const gsMatrix<index_t> boundary = basis.boundary(it->side());
-
-        // If the condition is homogeneous then fill with zeros
-        if ( it->isHomogeneous() )
-        {
-            for (index_t i=0; i!= boundary.size(); ++i)
-            {
-                const index_t ii= mapper.bindex( boundary.at(i) , k, com );
-                fixedDofs.at(ii) = 0;
-            }
-            continue;
-        }
-
-        // Get the side information
-        short_t dir = it->side().direction( );
-        index_t param = (it->side().parameter() ? 1 : 0);
-
-        // Compute grid of points on the face ("face anchors")
-        std::vector< gsVector<T> > rr;
-        rr.reserve( parDim );
-
-        for ( short_t i=0; i < parDim; ++i)
-        {
-            if ( i==dir )
-            {
-                gsVector<T> b(1);
-                b[0] = ( basis.component(i).support() ) (0, param);
-                rr.push_back(b);
-            }
-            else
-            {
-                rr.push_back( basis.component(i).anchors().transpose() );
-            }
-        }
-
-        // GISMO_ASSERT(it->function()->targetDim() == u.dim(),
-        //              "Given Dirichlet boundary function does not match problem dimension."
-        //              <<it->function()->targetDim()<<" != "<<u.dim()<<"\n");
-
-        // Compute dirichlet values
-        gsMatrix<T> fpts;
-        if ( it->parametric() )
-            fpts = it->function()->eval( gsPointGrid<T>( rr ) );
-        else
-            fpts = it->function()->eval(
-                m_exprdata->getMap().source().piece(it->patch()).eval(  gsPointGrid<T>( rr ) ) );
-
-        /*
-        if ( fpts.rows() != u.dim() )
-        {
-            // assume scalar
-            gsMatrix<T> tmp(u.dim(), fpts.cols());
-            tmp.setZero();
-            gsDebugVar(!dir);
-            tmp.row(!dir) = (param ? 1 : -1) * fpts; // normal !
-            fpts.swap(tmp);
-        }
-        */
-
-        // Interpolate dirichlet boundary
-        typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
-        typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
-        const gsMatrix<T> & dVals =  geo->coefs();
-
-        // Save corresponding boundary dofs
-        for (index_t l=0; l!= boundary.size(); ++l)
-        {
-            const index_t ii = mapper.bindex( boundary.at(l) , it->patch(), com);
-            fixedDofs.at(ii) = dVals.at(l);
-        }
-    }
-}
-
-
-/*
-template<class T> //
-void gsExprAssembler<T>::computeDirichletDofsIntpl3(const expr::gsFeSpace<T> & u)
-{
-    const gsDofMapper  & mapper    = u.mapper;
-    gsMatrix<T>        & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
-    const index_t bsz = mapper.boundarySize();
-    fixedDofs.resize(bsz, u.dim() );
-    gsMatrix<T> pt, val, rhs;
-    rhs.resize(bsz, u.dim() );
-    gsMatrix<index_t> act;
-    gsSparseMatrix<T> cmat(bsz, bsz);
-    // todo: reserve
-
-    const gsMultiBasis<T> & mbasis =
-        *dynamic_cast<const gsMultiBasis<T>*>(&u.source());
-
-    // Iterate over all patch-sides with Boundary conditions
-    // Iterate over all patch-sides with Dirichlet-boundary conditions
-    typedef typename gsBoundaryConditions<T>::bcRefList bcRefList;
-    for ( typename bcRefList::const_iterator iit =  u.bc().begin();
-          iit != u.bc().end()  ; ++iit )
-    {
-        const boundary_condition<T> * it = &iit->get();
-
-        GISMO_ASSERT(it->function()->targetDim() == u.dim(),
-                     "Given Dirichlet boundary function does not match problem dimension."
-                     <<it->function()->targetDim()<<" != "<<u.dim()<<"\n");
-
-        const index_t k   = it->patch();
-        if( it->unknown()!=u.id() )
-            continue;
-        const gsBasis<T> & basis = mbasis[k];
-
-        // Get dofs on this boundary
-        gsMatrix<index_t> boundary = basis.boundary(it->side());
-
-        // If the condition is homogeneous then fill with zeros
-        if ( it->isHomogeneous() )
-        {
-            for (index_t i=0; i!= boundary.size(); ++i)
-            {
-                const index_t ii= mapper.bindex( boundary.at(i) , k );
-                fixedDofs.row(ii).setZero();
-            }
-            continue;
-        }
-
-        // Get anchor points for the respective dofs
-        for ( index_t i=0; i != boundary.size(); ++i)
-            // or: preimage ?
-        {
-            const index_t cc = mapper.bindex( boundary.at(l) , k );
-            basis.anchor_into(boundary.at(i), pt);
-            basis.active_into(pt, act);
-            basis.eval_into  (pt, val);
-
-            for ( index_t l = 0; l != act.size(); ++l)
-            {
-                const index_t ii = mapper.index( act.at(l) , k );
-                if ( mapper.is_boundary_index(ii) ) // && cmat.isExpZero
-                    cmat.insert(cc, mapper.global_to_bindex(ii)) = val.at(l);
-            }
-
-            // rhs
-            if ( it->parametric() )
-                it->function()->eval_into(pt, val);
-            else
-            {
-                it->function()->eval_into(
-                    m_exprdata->getMap().source().piece(it->patch()).eval(pt), val );
-            }
-            rhs.row(cc) = val.transpose();
-        }
-
-        // Interpolate dirichlet boundary
-        // Solve overconstraint using QR ?
-        //fixedDofs = ..
-    }
-}
-//*/
-
-template<class T>
-void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
-{
-    GISMO_ASSERT(&m_exprdata->getMap().source() != NULL, "Geometry not set, call setMap(...) first!");
-
-    const gsDofMapper & mapper = u.mapper;
-    gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>& >(u).fixedPart();
-    fixedDofs.resize(mapper.boundarySize(), u.dim());
-
-    const gsMultiBasis<T> & mbasis = *dynamic_cast<const gsMultiBasis<T>* >(&u.source());
-
-    //const gsBoundaryConditions<> & bbc = u.hasBc() ? u.bc() : gsBoundaryConditions<>();
-
-    // Set up matrix, right-hand-side and solution vector/matrix for
-    // the L2-projection
-    gsSparseEntries<T> projMatEntries;
-    gsMatrix<T>        globProjRhs;
-    globProjRhs.setZero(mapper.boundarySize(), u.dim());
-
-    // Temporaries
-    gsVector<T> quWeights;
-
-    gsMatrix<T> rhsVals;
-    gsMatrix<index_t> globIdxAct;
-    gsMatrix<T> basisVals;
-
-    gsMapData<T> md(NEED_MEASURE | SAME_ELEMENT);
-
-    const gsMultiPatch<T> & mp = static_cast<const gsMultiPatch<T> &>(m_exprdata->getMap().source());
-
-    // Iterate over all patch-sides with Dirichlet-boundary conditions
-    typedef typename gsBoundaryConditions<T>::bcRefList bcRefList;
-    for (typename bcRefList::const_iterator iit = u.bc().begin();
-         iit != u.bc().end(); ++iit)
-    {
-        const boundary_condition<T> * iter = &iit->get();
-
-        const short_t unk = iter->unknown();
-        if(unk != u.id())
-            continue;
-        const index_t patchIdx   = iter->patch();
-        const gsBasis<T> & basis = mbasis[patchIdx];
-
-        const gsGeometry<T> & patch = mp.patch(patchIdx);
-
-        // Set up quadrature to degree+1 Gauss points per direction,
-        // all lying on iter->side() except from the direction which
-        // is NOT along the element
-        gsGaussRule<T> bdQuRule(basis, 1.0, 1, iter->side().direction());
-
-        // Create the iterator along the given part boundary.
-        typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(iter->side());
-
-        for (; bdryIter->good(); bdryIter->next())
-        {
-            bdQuRule.mapTo(bdryIter->lowerCorner(), bdryIter->upperCorner(),
-                           md.points, quWeights);
-
-            patch.computeMap(md);
-
-            // the values of the boundary condition are stored
-            // to rhsVals. Here, "rhs" refers to the right-hand-side
-            // of the L2-projection, not of the PDE.
-            rhsVals = iter->function()->eval(m_exprdata->getMap().source().piece(patchIdx).eval(md.points));
-
-            basis.eval_into(md.points, basisVals);
-
-            // Indices involved here:
-            // --- Local index:
-            // Index of the basis function/DOF on the patch.
-            // Does not take into account any boundary or interface conditions.
-            // --- Global Index:
-            // Each DOF has a unique global index that runs over all patches.
-            // This global index includes a re-ordering such that all eliminated
-            // DOFs come at the end.
-            // The global index also takes care of glued interface, i.e., corresponding
-            // DOFs on different patches will have the same global index, if they are
-            // glued together.
-            // --- Boundary Index (actually, it's a "Dirichlet Boundary Index"):
-            // The eliminated DOFs, which come last in the global indexing,
-            // have their own numbering starting from zero.
-
-            // Get the global indices (second line) of the local
-            // active basis (first line) functions/DOFs:
-            basis.active_into(md.points.col(0), globIdxAct);
-            mapper.localToGlobal(globIdxAct, patchIdx, globIdxAct);
-
-            // Out of the active functions/DOFs on this element, collect all those
-            // which correspond to a boundary DOF.
-            // This is checked by calling mapper.is_boundary_index( global Index )
-
-            // eltBdryFcts stores the row in basisVals/globIdxAct, i.e.,
-            // something like a "element-wise index"
-            std::vector<index_t> eltBdryFcts;
-            eltBdryFcts.reserve(mapper.boundarySize());
-            for (index_t i = 0; i < globIdxAct.rows(); i++)
-            {
-                if (mapper.is_boundary_index(globIdxAct(i, 0)))
-                {
-                    eltBdryFcts.push_back(i);
-                }
-            }
-
-            // Do the actual assembly:
-            for (index_t k = 0; k < md.points.cols(); k++)
-            {
-                const T weight_k = quWeights[k] * md.measure(k);
-
-                // Only run through the active boundary functions on the element:
-                for (size_t i0 = 0; i0 < eltBdryFcts.size(); i0++)
-                {
-                    // Each active boundary function/DOF in eltBdryFcts has...
-                    // ...the above-mentioned "element-wise index"
-                    const index_t i = eltBdryFcts[i0];
-                    // ...the boundary index.
-                    const index_t ii = mapper.global_to_bindex(globIdxAct(i));
-
-                    for (size_t j0 = 0; j0 < eltBdryFcts.size(); j0++)
-                    {
-                        const index_t j = eltBdryFcts[j0];
-                        const index_t jj = mapper.global_to_bindex(globIdxAct(j));
-
-                        // Use the "element-wise index" to get the needed
-                        // function value.
-                        // Use the boundary index to put the value in the proper
-                        // place in the global projection matrix.
-                        projMatEntries.add(ii, jj, weight_k * basisVals(i, k) * basisVals(j, k));
-                    } // for j
-
-                    globProjRhs.row(ii) += weight_k * basisVals(i, k) * rhsVals.col(k).transpose();
-
-                } // for i
-            } // for k
-        } // bdryIter
-    } // boundaryConditions-Iterator
-
-    gsSparseMatrix<T> globProjMat(mapper.boundarySize(), mapper.boundarySize());
-    globProjMat.setFrom(projMatEntries);
-    globProjMat.makeCompressed();
-
-    // Solve the linear system:
-    // The position in the solution vector already corresponds to the
-    // numbering by the boundary index. Hence, we can simply take them
-    // for the values of the eliminated Dirichlet DOFs.
-    typename gsSparseSolver<T>::CGDiagonal solver;
-    fixedDofs = solver.compute(globProjMat).solve(globProjRhs);
-
-} // computeDirichletDofsL2Proj
-
 
 } //namespace gismo

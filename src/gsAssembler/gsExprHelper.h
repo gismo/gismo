@@ -44,13 +44,13 @@ private:
     typedef typename VarData ::iterator VarDataIt;
     typedef typename CFuncData ::iterator CFuncDataIt;
 
-    CFuncData m_cdata;
-    FuncData m_fdata, m_fdata2;
-    MapData m_mdata, m_mdata2;
-    VarData m_vdata;// for BCs etc. //do we need it interfaced?
-    //gsFunctionSet* : interface, thread
-
     util::gsThreaded<gsMatrix<T> > m_points;
+    FuncData  m_fdata;
+    MapData   m_mdata;
+    CFuncData m_cdata;
+    VarData   m_vdata;// for BCs etc. //do we need it interfaced?
+
+    gsExprHelper * m_mirror;
 private:
 
     // mutable pair of variable and data,
@@ -62,20 +62,31 @@ private:
     const gsMultiBasis<T> * mesh_ptr;
 
 public:
-    typedef const expr::gsGeometryMap<T>   geometryMap;
-    typedef const expr::gsFeElement<T>   & element;
-    typedef const expr::gsFeVariable<T>    variable;
-    typedef const expr::gsFeSpace<T>       space;
-    typedef const expr::gsNullExpr<T>      nullExpr;
-
-    typedef expr::gsFeVariable<T>    nonConstVariable;
-    typedef expr::gsFeSpace<T>       nonConstSpace;
-
     typedef memory::unique_ptr<gsExprHelper> uPtr;
     typedef memory::shared_ptr<gsExprHelper>  Ptr;
-public:
 
+    typedef const expr::gsGeometryMap<T>   geometryMap;
+    typedef const expr::gsFeElement<T>     element;
+    typedef const expr::gsFeVariable<T>    variable;
+    typedef const expr::gsFeSpace<T>       space;
+    typedef const expr::gsComposition<T>   composition;
+    typedef const expr::gsNullExpr<T>      nullExpr;
+
+private:
+    explicit gsExprHelper(gsExprHelper * m) : m_mirror(m)
+    { m->mesh_ptr- mesh_ptr; }
+
+public:
+    
+    ~gsExprHelper() { delete m_mirror; }
+    
     gsMatrix<T> & points() { return m_points; }
+    gsExprHelper & iface()
+    {
+        if (nullptr==m_mirror)
+            m_mirror = new gsExprHelper(this);
+        return *m_mirror;
+    }
 
     static uPtr make() { return uPtr(new gsExprHelper()); }
 
@@ -123,7 +134,7 @@ public:
         return var;
     }
 
-    expr::gsComposition<T> getVar(const gsFunctionSet<T> & mp, geometryMap & G)
+    composition getVar(const gsFunctionSet<T> & mp, geometryMap & G)
     {
         expr::gsComposition<T> var(G);
         var.setSource(mp);
@@ -188,7 +199,7 @@ public:
 
         _parse_tuple(tuple);
 
-        // Add initial evaluation flags
+        // Additional evaluation flags
         for (MapDataIt it  = m_mdata.begin(); it != m_mdata.end(); ++it)
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
         for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
@@ -249,16 +260,14 @@ public:
         add(sym.inner());
         sym.inner().data().flags |= NEED_VALUE;
         auto k = std::make_pair(sym.m_fs,&m_mdata[sym.inner().m_fs]);
-        // auto it = m_cdata.find(k);
-        // if (m_cdata.end()==it)
-        // {
-        // const_cast<expr::gsComposition<T>&>(sym)
-        //     .setData(m_cdata[ give(k) ]);
-        // }
-        // else
-#       pragma omp critical (m_cdata_first_touch)
+        auto it = m_cdata.find(k);
+        if (m_cdata.end()==it)
+#           pragma omp critical (m_cdata_first_touch)
             const_cast<expr::gsComposition<T>&>(sym)
                 .setData(m_cdata[ give(k) ]);
+        else
+         const_cast<expr::gsComposition<T>&>(sym)
+             .setData(m_cdata[ give(k) ]);
     }
 
     template <class E>
@@ -291,10 +300,19 @@ public:
             gsDebug<<"- No source for "<< sym.m_fs <<"\n";
             // eg. mutable var?
         }
-
-        // get variable (all): create and set m_fs and m_d [var is thread-local]
-        //parse (all): set m_fd and flags [stored in m_fdata, th-local]
     }
+
+    // template <class E>
+    // void add(expr::avg_expr<E> & avg)
+    // {
+    //     // avg(u) * avg(g) // specialize * op ???
+    //     // how about nv(.)
+        
+    //     // ??mode B11,B12,B21,B22
+    //     avg.parse(*this); // pass a state: now you are left/right
+    //     // OR
+    //     avg.parse(this->iface());
+    // }
 
     void precompute(const index_t patchIndex = 0)
     {
@@ -328,11 +346,6 @@ public:
             it->second.mine().patchId = patchIndex;
         }
     }
-
-/*
-    void precompute(const index_t patch1, const index_t patch2);
-*/
-
 
 };//class
 

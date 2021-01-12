@@ -148,8 +148,8 @@ int main(int argc, char *argv[])
         ma_time += timer.stop();
         
         // Enforce Neumann conditions to right-hand side
-//        variable g_N = A.getBdrFunction();
-//        A.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
+        // auto g_N = A.getBdrFunction();
+        // A.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
 
         // gsDebugVar(A.matrix().toDense());
         // gsDebugVar(A.rhs().transpose()   );
@@ -179,14 +179,14 @@ int main(int argc, char *argv[])
     //! [Solver loop]
 
     timer.stop();
-    gsInfo<<"\nTotal time: "<< setup_time+ma_time+slv_time+err_time <<"\n";
+    gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time+err_time <<"\n";
     gsInfo<<"     Setup: "<< setup_time <<"\n";
     gsInfo<<"  Assembly: "<< ma_time    <<"\n";
     gsInfo<<"   Solving: "<< slv_time   <<"\n";
     gsInfo<<"Error norm: "<< err_time   <<"\n";
 
     //! [Error and convergence rates]
-    gsInfo<< "\n\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
+    gsInfo<< "\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
     gsInfo<< "H1 error: "<<std::scientific<<h1err.transpose()<<"\n";
 
     if (!last && numRefine>0)

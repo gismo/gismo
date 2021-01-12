@@ -360,7 +360,9 @@ protected:
     const gsFuncData<Scalar>    * m_fd; ///< Temporary variable storing flags and evaluation data
     index_t m_d;                   ///< Dimension of this (scalar or vector) variable
 
-    //const gsMatrix<Scalar> * m_srcpts;
+    // m_fd in this handle must be either l?R
+    index_t patch;
+    bool lr;
 public:
 
     enum {Space = 4};// remove!
@@ -3606,9 +3608,110 @@ public:
    symm(_expr<E> const& u) { return symm_expr<E>(u);}
 */
 
+/*
+  Expression for computing average value on an interface
+*/
+template <typename E>
+class avg_expr : public _expr<avg_expr<E> >
+{
+    typename E::Nested_t _u1, _u2;
+public:
+    enum {ScalarValued = E::ScalarValued, ColBlocks = E::ColBlocks};
+    enum {Space = E::Space};
+
+    typedef typename E::Scalar Scalar;
+
+    bool lr;// left or right????
+    
+    avg_expr(_expr<E> const& u) : _u1(u), _u2(u) { }
+
+    AutoReturn_t eval(const index_t k) const
+    {
+        // avg(u) * jump(v)
+        //=
+        // (uL + uR)/2 * (vL - vR)
+        //=
+        // uL*vL/2 + uR*vL/2  - uL*vR/2 - uR*vR/2
+
+        //Therefore here we need actually something like
+        
+        // _u1.eval(k)/2    and _u2.eval(k)/2
+
+        // eval(k), eval2(k)
+        
+        //or even
+        //   add_expr(_u1,u2)/2
+        // but th8is is a formal '+' actually
+
+        // for l2G: rowvar, colvar are the same
+        // patch is different for L and R
+
+        // During push:  uL uR is the same variable on a different patch.
+
+        // The thing is:  push(v,u) must be called with
+        // push(vL,uL)11
+        // push(vL,uR)12
+        // push(vR,uL)21
+        // push(vR,uR)22
+        // due to
+        // The local element matrix is
+        //[ B11 B21 ]
+        //[ B12 B22 ]
+
+
+
+        // SEEMS u1 and u2 should be the overall expression
+        // to be evaluated twice, or FOUR times
+        // and pushed ..
+        // THIS MEANS that gsFeSpace must have a STATE: L, R
+        // THIS MEANS copying the expression two ? four ? times
+        // Parsing: parse left / parse right ?
+        // PROBLEM: mixed B12 expessions..
+        // who knows if we are now left or right to set m_fd ?
+
+        // rowVar, colVar: ASSUMES: there is a single one of those
+        // in the expression. We can NOT change state though due to
+        // copied handles, eg. at +
+
+
+        // avg_expr should be the only one to know (CAN THIS WORK?).
+        //Then it sets its contents and evaluates u.eval(k)/2
+
+        //maybe:  evList.add( avg_expr(u,v) )
+        // adds respectively, and according to MODE of gsExprHelper
+        // eg. 
+        
+        return (_u1.eval(k) + _u2.eval(k)) / (Scalar)(2);
+    }
+
+    index_t rows() const { return _u1.rows(); }
+    index_t cols() const { return _u1.cols(); }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    {
+        // added on both side
+        evList.add(_u1);
+        _u1.parse(evList);
+        evList.iface().add(_u2);
+        _u2.parse(evList.iface());
+    }
+
+    enum{rowSpan = E::rowSpan, colSpan = E::colSpan};
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u1.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u1.colVar(); }
+
+    void print(std::ostream &os) const
+    { os << "avg("; _u1.print(os); os << ")";}
+};
+
 #undef MatExprType
 #undef AutoReturn_t
 //----------------------------------------------------------------------------------
+
+/// The average
+template<class E> EIGEN_STRONG_INLINE
+avg_expr<E> avg(const E & u) { return avg_expr<E>(u); }
 
 // Returns the unit as an expression
 //EIGEN_STRONG_INLINE _expr<real_t> one() { return _expr<real_t>(1); }
