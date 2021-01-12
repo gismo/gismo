@@ -2479,13 +2479,32 @@ public:
     tangent_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
     mutable gsMatrix<Scalar> res;
+    mutable gsVector<Scalar,3> normal,onormal,otangent;
 
-    MatExprType eval(const index_t k) const
+    const gsMatrix<Scalar> eval(const index_t k) const
     {
-        res = _G.data().outNormals.col(k);//2x1
-        std::swap( res(0,0), res(1,0) );
-        res(0,0) *= -1;
-        return res;
+        gsDebugVar(_G.targetDim()==2);
+        if (_G.targetDim()==2)
+        {
+            res = _G.data().outNormals.col(k);//2x1
+            std::swap( res(0,0), res(1,0) );
+            res(0,0) *= -1;
+            return res;
+        }
+        else if (_G.targetDim()==3)
+        {
+            onormal = _G.data().outNormals.col(k);
+            gsDebugVar(onormal);
+            normal =  _G.data().normals.col(k);
+            gsDebugVar(normal);
+            otangent = normal.template head<3>().cross(onormal.template head<3>());
+            gsDebugVar(otangent);
+
+            return otangent;
+        }
+        else
+            GISMO_ERROR("Function not implemented for dimension"<<_G.targetDim());
+
     }
 
     index_t rows() const { return _G.data().dim.second; }
@@ -2493,73 +2512,23 @@ public:
 
     enum{rowSpan = 0, colSpan = 0};
 
-    void setFlag() const { _G.data().flags |= NEED_OUTER_NORMAL; }
+    void setFlag() const
+    {
+        _G.data().flags |= NEED_NORMAL;
+        _G.data().flags |= NEED_OUTER_NORMAL;
+    }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         evList.push_sorted_unique(&_G.source());
+        _G.data().flags |= NEED_NORMAL;
         _G.data().flags |= NEED_OUTER_NORMAL;
     }
 
     // Normalized to unit length
     normalized_expr<tangent_expr<T> > normalized()
     { return normalized_expr<tangent_expr<T> >(*this); }
-
-    void print(std::ostream &os) const { os << "tv("; _G.print(os); os <<")"; }
-};
-
-/**
-    Expression for the tangent vector of a geometry map. This
-    expression is valid only at the boundaries of a geometric patch.
-    Use this expression for 3D surfaces.
- */
-template<class T>
-class otangent_expr : public _expr<otangent_expr<T> >
-{
-    typename gsGeometryMap<T>::Nested_t _G;
-
-public:
-    typedef T Scalar;
-
-private:
-    mutable gsVector<Scalar,3> onormal, normal;
-
-public:
-    otangent_expr(const gsGeometryMap<T> & G) : _G(G) { }
-
-    MatExprType eval(const index_t k) const
-    {
-        onormal = _G.data().outNormals.col(k);
-        normal =  _G.data().normals.col(k);
-        return normal.cross(onormal);
-    }
-
-    index_t rows() const { return _G.data().dim.second; }
-    index_t cols() const { return 1; }
-
-    const gsFeSpace<T> & rowVar() const {return gsNullExpr<T>::get();}
-    const gsFeSpace<T> & colVar() const {return gsNullExpr<T>::get();}
-
-    enum{rowSpan = 0, colSpan = 0};
-
-    void setFlag() const
-    {
-        _G.data().flags |= NEED_OUTER_NORMAL;
-        _G.data().flags |= NEED_NORMAL;
-    }
-
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
-    {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_G.source());
-        _G.data().flags |= NEED_OUTER_NORMAL;
-        _G.data().flags |= NEED_NORMAL;
-    }
-
-    // Normalized to unit length
-    normalized_expr<otangent_expr<T> > normalized()
-    { return normalized_expr<otangent_expr<T> >(*this); }
 
     void print(std::ostream &os) const { os << "tv("; _G.print(os); os <<")"; }
 };
@@ -4118,10 +4087,6 @@ normal_expr<T> sn(const gsGeometryMap<T> & u) { return normal_expr<T>(u); }
 /// The tangent boundary vector of a geometry map in 2D
 template<class T> EIGEN_STRONG_INLINE
 tangent_expr<T> tv(const gsGeometryMap<T> & u) { return tangent_expr<T>(u); }
-
-/// The tangent boundary vector of a geometry map in 3D
-template<class T> EIGEN_STRONG_INLINE
-otangent_expr<T> otangent(const gsGeometryMap<T> & u) { return otangent_expr<T>(u); }
 
 /// The laplacian of a finite element variable
 template<class T> EIGEN_STRONG_INLINE
