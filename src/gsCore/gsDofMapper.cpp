@@ -173,6 +173,7 @@ void gsDofMapper::markTagged( index_t i, index_t k, index_t comp)
         m_tagged.insert(pos, t);
 }
 
+
 void gsDofMapper::markBoundary(index_t k, const gsMatrix<index_t> & boundaryDofs, index_t comp)
 {
     for (index_t i = 0; i < boundaryDofs.rows(); ++i)

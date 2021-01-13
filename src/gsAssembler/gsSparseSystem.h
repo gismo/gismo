@@ -365,7 +365,7 @@ public:
         const gsBasis<T> & b = mb[0];
         T nz = 1;
         for (short_t i = 0; i != b.dim(); ++i)
-            nz *= bdA * b.degree(i) + bdB;
+            nz *= bdA * cast<short_t,T>(b.degree(i)) + cast<index_t,T>(bdB);
         return cast<T,short_t>(nz*(1.0+bdO));
     }
 

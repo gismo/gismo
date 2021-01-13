@@ -12,7 +12,6 @@
 */
 
 #include <gismo.h>
-#include <gsTrilinos/gsTrilinos.h>
 
 using namespace gismo;
 

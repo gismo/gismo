@@ -1284,6 +1284,12 @@ public:
                         _u.data().values[1]
                         .col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
                 }
+                // {
+                //     res.noalias() +=
+                //         _u.fixedPart().row( map.global_to_bindex(ii) ).asDiagonal() *
+                //         _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim())
+                //         .transpose().replicate(_u.dim(),1);
+                // }
             }
         }
         return res;

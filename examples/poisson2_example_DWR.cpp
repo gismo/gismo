@@ -486,90 +486,65 @@ int main(int argc, char *argv[])
         gsRefineMarkedFunctions( mp, funMarked, 0 );
         basisL = gsMultiBasis<>(mp);
         gsWriteParaview(basisL.basis(0),"basisL",1000);
-
-        gsWriteParaview(basisH.basis(0),"basisH_old",1000);
-        basisH = basisL;
-        basisH.degreeElevate();
-        gsWriteParaview(basisH.basis(0),"basisH",1000);
-
         gsWriteParaview(mp,"mp",1000,true);
 
     }
     // FUNCTION WISE ERROR ESTIMATION
     else if (est==2)
     {
-        exL.initSystem(false);
-        exH.initSystem(false);
+        exL.initSystem(true);
+        exH.initSystem(true);
 
 
         // exH.assemble( grad(uLp) * ( grad(v) * (zH - zLp) + v * ( grad(zH) - grad(zLp) ) ) - gg * v * (zH - zLp)  );
 
-        auto lhs = ((zH2 - zL) * grad(uL) * grad(u).tr()).tr(); // + v * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
-        auto lhs2 = u * ( grad(zH2) - grad(zL) ) * grad(uL).tr();
-        auto rhs = ff.val() * (zH2 - zL).val() * u;
+        auto lhs = ((zH2 - zL) * grad(uL) * grad(u0).tr()).tr(); // + v * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
+        auto lhs2 = u0 * ( grad(zH2) - grad(zL) ) * grad(uL).tr();
+        auto rhs = u0 * ff;// * (zH2 - zL);
 
-        gsDebug<<evL.eval(zL,pt)<<"\n";
+        gsDebug<<evL.integral(zL)<<"\n";
 
-        gsDebug<<evL.eval(zH,pt)<<"\n";
-
-        gsDebug<<evH.integral(zH)<<"\n";
-
-        exL.assemble(zH.val() * u * meas(G));
-        gsDebugVar(exL.rhs().sum());
-        gsDebug<<evH.integral(zH)<<"\n";
-        exH.assemble(zH.val() * v * meas(H));
-        gsDebugVar(exH.rhs().sum());
-
-        exL.assemble(zL.val() * u * meas(G));
+        exL.assemble(zL.val() * u0 * meas(G));
         gsDebugVar(exL.rhs().sum());
 
+        gsMatrix<> res;
 
-    //     gsDebug<<evL.eval(zL,pt)<<"\n";
-    //     gsDebug<<evL.eval(zH.temp(),pt)<<"\n";
-    //     gsDebug<<evH.eval(zH,pt)<<"\n";
+        exL.initSystem(true);
+        exL.assemble(lhs*meas(G));
+        res = exL.rhs();
 
-    //     gsMatrix<> res;
-    //     exL.assemble(lhs*meas(G));
-    //     res = exL.rhs();
+        exL.initSystem(true);
+        exL.assemble(lhs2*meas(G));
+        res += exL.rhs();
 
-    //     exL.assemble(lhs2*meas(G));
-    //     res += exL.rhs();
+        exL.initSystem(true);
+        exL.assemble(rhs*meas(G));
+        res += exL.rhs();
 
-    //     exL.assemble(rhs*meas(G));
-    //     res += exL.rhs();
+        gsDebugVar(res);
 
-    //     gsDebugVar(res);
+        gsInfo<< "  Result (global)    : "<< res.sum()<<"\n";
 
-    //     gsInfo<< "  Result (global)    : "<< res.sum()<<"\n";
+        MarkingStrategy adaptRefCrit = PUCA;
+        const real_t adaptRefParam = 0.9;
+        std::vector<bool> funMarked( res.size() );
 
-    //     MarkingStrategy adaptRefCrit = PUCA;
-    //     const real_t adaptRefParam = 0.9;
-    //     std::vector<bool> funMarked( res.size() );
-
-    //     std::vector<real_t> errors( res.size() );
-    //     gsVector<>::Map(&errors[0],res.size() ) = res;
-
-
-    //     for (std::vector<real_t>::const_iterator i = errors.begin(); i != errors.end(); ++i)
-    //         gsInfo << *i << "\n";
-    //     gsInfo<<"\n";
-
-    //     gsMarkElementsForRef( errors, adaptRefCrit, adaptRefParam, funMarked);
-    //     for (std::vector<bool>::const_iterator i = funMarked.begin(); i != funMarked.end(); ++i)
-    //         gsInfo << *i << ' ';
-    //     gsInfo<<"\n";
-
-    //     // Refine the marked elements with a 1-ring of cells around marked elements
-    //     gsRefineMarkedFunctions( mpL, funMarked, 1 );
-    //     gsDebugVar(mpL.basis(0));
-    // gsWriteParaview(mpL,"mpH",1000,true);
+        std::vector<real_t> errors( res.size() );
+        gsVector<>::Map(&errors[0],res.size() ) = res;
 
 
-    //     gsMultiPatch<> tmp = mpH;
-    //     tmp.patch(0).degreeReduce(1);
-    //     mpL = tmp;
-    //     // gsRefineMarkedFunctions( mpL, funMarked, 1 );
-    //     gsDebugVar(mpL.basis(0));
+        for (std::vector<real_t>::const_iterator i = errors.begin(); i != errors.end(); ++i)
+            gsInfo << *i << "\n";
+        gsInfo<<"\n";
+
+        gsMarkElementsForRef( errors, adaptRefCrit, adaptRefParam, funMarked);
+        for (std::vector<bool>::const_iterator i = funMarked.begin(); i != funMarked.end(); ++i)
+            gsInfo << *i << ' ';
+        gsInfo<<"\n";
+
+        // Refine the marked elements with a 1-ring of cells around marked supports
+        gsRefineMarkedFunctions( mp, funMarked, 0 );
+        gsWriteParaview(mp,"mp",1000,true);
 
     }
     else

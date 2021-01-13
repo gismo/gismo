@@ -59,10 +59,12 @@ using std::make_unsigned;
 using std::make_signed;
 using std::is_signed;
 
+# define GS_BIND1ST(_op,_arg) std::bind(_op, _arg, std::placeholders::_1)
 # define GS_BIND2ND(_op,_arg) std::bind(_op, std::placeholders::_1, _arg)
 
 #else
 
+# define GS_BIND1ST(_op,_arg) std::bind1st(_op,_arg)
 # define GS_BIND2ND(_op,_arg) std::bind2nd(_op,_arg)
 
 // template <typename T> struct has_move_constructor { enum { value = 0 }; };
@@ -378,7 +380,7 @@ struct is_complex : integral_constant<bool,
 #ifdef GISMO_WITH_MPFR
                     is_same<T,std::complex<mpfr::mpreal> >::value      ||
 #endif
-#ifdef GISMO_WITH_MPQ
+#ifdef GISMO_WITH_GMP
                     is_same<T,std::complex<mpq_class> >::value         ||
 #endif
 #ifdef GISMO_WITH_UNUM

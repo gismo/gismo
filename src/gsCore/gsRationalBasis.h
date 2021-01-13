@@ -143,12 +143,12 @@ public:
 
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
     { m_src->active_into(u, result); }
-
+    
     virtual const gsBasis<T> & component(short_t i) const { return m_src->component(i); }
     using Base::component;
 
     gsMatrix<index_t> allBoundary( ) const {return m_src->allBoundary(); }
-
+    
     gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const
     { return m_src->boundaryOffset(s,offset); }
 
@@ -200,7 +200,7 @@ public:
      */
     void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
 
-    void degreeElevate(int const& i = 1, int const dir = -1)
+    void degreeElevate(short_t const& i = 1, short_t const dir = -1)
     {
         typename SourceBasis::GeometryType tmp(*m_src,give(m_weights));
         tmp.degreeElevate(i,dir);
@@ -208,7 +208,7 @@ public:
         std::swap(*m_src, tmp.basis() );
     }
 
-    void degreeReduce(int const& i = 1, int const dir = -1)
+    void degreeReduce(short_t const& i = 1, short_t const dir = -1)
     {
         typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
         tmp.degreeReduce(i,dir);
@@ -243,11 +243,11 @@ public:
     { return m_src->connectivity(nodes, mesh); }
 
     gsMatrix<T> support() const {return m_src->support(); }
-
+    
     gsMatrix<T> support(const index_t & i) const {return m_src->support(i); }
-
+    
     void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
-
+    
     void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 
     void evalFunc_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const;
@@ -287,7 +287,7 @@ public:
 
     virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                            gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const
-    {
+    { 
         if ( const gsRationalBasis * _other = dynamic_cast<const gsRationalBasis*>(&other) )
             m_src->matchWith(bi,*_other->m_src,bndThis,bndOther);
         else
@@ -330,13 +330,13 @@ public:
 
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
-        gsWarn<< "rational domain iterator with evaluate the source.\n";
+//        gsWarn<< "rational domain iterator with evaluate the source.\n";
         return m_src->makeDomainIterator();
     }
 
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
-        gsWarn<< "rational domain boundary iterator with evaluate the source.\n";
+//        gsWarn<< "rational domain boundary iterator with evaluate the source.\n";
         return m_src->makeDomainIterator(s);
     }
 
@@ -354,8 +354,8 @@ protected:
 
 template<class SrcT>
 void gsRationalBasis<SrcT>::evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const
-{
-    m_src->evalSingle_into(i, u, result);
+{ 
+    m_src->evalSingle_into(i, u, result);  
     result.array() *= m_weights.at(i);
     gsMatrix<T> denom;
     m_src->evalFunc_into(u, m_weights, denom);

@@ -1,68 +1,83 @@
 version: 2.0
 
 jobs:
-  centos_build98:
-    docker:
-      - image: centos:7
-    filters:
-      branches:
-        - only: stable
-    working_directory: ~/gismo
-    environment:
-      MAKEFLAGS: -j4
-    steps:
-      - run:
-          name: Install dependencies
-          command: yum install -y git cmake make gcc-c++ #valgrind
-      - checkout
-      - run:
-          name: Configure G+Smo on CentOS
-          command: cmake . -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [circleci98]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98 -DGISMO_WITH_ONURBS=ON
-      - run:
-          name: Build and test G+Smo on CentOS
-          command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
-
-  macos_build: #OS SEED plan!
+  macos_x86_64_xcode10_cxx98_release:
     macos:
-      xcode: "11.7.0"
-    filters:
-      branches:
-        - only: stable
+      xcode: "10.3.0"
     working_directory: ~/gismo
     environment:
       MAKEFLAGS: -j4
     steps:
       - run:
           name: Install dependencies
-          command: brew install cmake # git make clang libgcc #valgrind
+          command: brew update; brew install cmake
       - checkout
       - run:
           name: Configure G+Smo on MacOS
-          command: cmake . -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [macos]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DGISMO_WITH_ONURBS=ON
+          command: cmake . -DBUILDNAME="macos_x86_64_xcode10_cxx98_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
 
-#deployment:
-#    working_directory: ~/deploy
-#    docker:
-#      - image: centos:7
-#    steps:
-#      - run:
-#          name: Install dependencies
-#          command: yum install -y git
-#      - checkout
-#      - run:
-#          name: Deploy the code from CentOS
-#          command:
+  macos_x86_64_xcode10_cxx11_release:
+    macos:
+      xcode: "10.3.0"
+    working_directory: ~/gismo
+    environment:
+      MAKEFLAGS: -j4
+    steps:
+      - run:
+          name: Install dependencies
+          command: brew install cmake
+      - checkout
+      - run:
+          name: Configure G+Smo on MacOS
+          command: cmake . -DBUILDNAME="macos_x86_64_xcode10_cxx11_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=11 -DGISMO_WITH_ONURBS=ON
+      - run:
+          name: Build and test G+Smo on MacOS
+          command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+
+  macos_x86_64_xcode11_cxx14_release:
+    macos:
+      xcode: "11.7.0"
+    working_directory: ~/gismo
+    environment:
+      MAKEFLAGS: -j4
+    steps:
+      - run:
+          name: Install dependencies
+          command: brew install cmake
+      - checkout
+      - run:
+          name: Configure G+Smo on MacOS
+          command: cmake . -DBUILDNAME="macos_x86_64_xcode11_cxx14_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=14 -DGISMO_WITH_ONURBS=ON
+      - run:
+          name: Build and test G+Smo on MacOS
+          command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+
+  macos_x86_64_xcode12_cxx17_release:
+    macos:
+      xcode: "12.2.0"
+    working_directory: ~/gismo
+    environment:
+      MAKEFLAGS: -j4
+    steps:
+      - run:
+          name: Install dependencies
+          command: brew install cmake
+      - checkout
+      - run:
+          name: Configure G+Smo on MacOS
+          command: cmake . -DBUILDNAME="macos_x86_64_xcode12_cxx17_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=17 -DGISMO_WITH_ONURBS=ON
+      - run:
+          name: Build and test G+Smo on MacOS
+          command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
 
 workflows:
   version: 2
   build:
     jobs:
-      - centos_build98
-      - macos_build
-
-#      - deployment:
-#          requires:
-#            - build
+      - macos_x86_64_xcode10_cxx98_release
+      - macos_x86_64_xcode10_cxx11_release
+      - macos_x86_64_xcode11_cxx14_release
+      - macos_x86_64_xcode12_cxx17_release

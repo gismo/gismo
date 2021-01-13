@@ -144,7 +144,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             // Save corresponding boundary dofs
             for (index_t l=0; l!= boundary.size(); ++l)
             {
-                const int ii = u.mapper().bindex( boundary.at(l) , k, com );
+                const int ii = u.mapper().bindex( boundary.at(l) , k, r );
                 fixedDofs.at(ii) = dVals.at(l);
             }
         }

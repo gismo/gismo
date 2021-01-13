@@ -13,9 +13,9 @@ max_iter                              500                # d=3000
 # constr_viol_tol                     1e-4               # d=1e-4
 # compl_inf_tol                       1e-4:              # d=1e-4
 acceptable_tol                        1e-6               # d=1e-6
-acceptable_iter                       15                 # d=15
+acceptable_iter                       15                  # d=15
 acceptable_constr_viol_tol            1e-2               # d=1e-2
-acceptable_obj_change_tol             1e+20              # d=1e+20
+acceptable_obj_change_tol             1e+20               # d=1e+20
 
 #--- C.3 NLP Scaling -----------------------------------------------------------
 # obj_scaling_factor                  1                  # d=1 #(-1: maximize)
@@ -31,7 +31,7 @@ bound_relax_factor                    0                  # d=1e-8
 
 #--- C.6 Barrier Parameter -----------------------------------------------------
 # mehrotra_algorithm                  yes                # d=no
-mu_strategy                           adaptive           # d=monotone
+mu_strategy                           monotone           # d=monotone
 # mu_oracle                           probing            # d=quality-function
 # quality_function_max_section_steps  10                 # d=8
 
@@ -61,7 +61,7 @@ hessian_approximation                 limited-memory     # d=exact
 #--- C.14 Derivative Test ------------------------------------------------------
 
 # exact ~ finite diff
-#derivative_test                      first-order        # d=none
+# derivative_test                      first-order        # d=none
 # derivative_test                     second-order       # d=none
 # derivative_test_perturbation         6e-7               # d=1e-8 (def. value can be too small)
 # derivative_test_tol                 1e-4               # d=1e-4

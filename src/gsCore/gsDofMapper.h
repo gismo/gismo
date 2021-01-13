@@ -278,7 +278,7 @@ public:
      */
     void localToGlobal(const gsMatrix<index_t>& locals,
                        index_t patchIndex,
-                       gsMatrix<index_t>& globals,
+                       gsMatrix<index_t>& globals, 
 		               index_t comp = 0) const;
 
     /** \brief Computes the global indices of the input local indices
@@ -291,7 +291,7 @@ public:
     void localToGlobal2(const gsMatrix<index_t>& locals,
                         index_t patchIndex,
                         gsMatrix<index_t>& globals,
-                        index_t & numFree,
+                        index_t & numFree, 
 		                index_t comp = 0) const;
 
     /** \brief Returns the index associated to local dof \a i of patch \a k without shifts.

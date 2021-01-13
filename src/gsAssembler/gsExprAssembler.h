@@ -217,10 +217,12 @@ public:
     space testSpace(space u) const { return testSpace(u.id()); }
 
     /// Registers \a func as a variable and returns a handle to it
+    ///
     variable getCoeff(const gsFunctionSet<T> & func)
     { return m_exprdata->getVar(func, 1); }
 
     /// Registers \a func as a variable defined on \a G and returns a handle to it
+    ///
     variable getCoeff(const gsFunctionSet<T> & func, geometryMap G)
     { return m_exprdata->getVar(func,G); }
 
@@ -498,7 +500,7 @@ private:
                 push<false>(ee.rowVar(), ee.colVar(), m_patchInd);
             else
             {
-                GISMO_ERROR("Something went wrong at this point (rowspan: "<< ee.rowSpan()<< ", colSpan: "<< ee.colSpan() <<")");
+                GISMO_ERROR("Something went wrong at this point (rowspan: "<< E::rowSpan<< ", colSpan: "<< E::colSpan <<")");
                 //GISMO_ASSERTrowSpan() && (!colSpan())
             }
 

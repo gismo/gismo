@@ -24,6 +24,8 @@ In the gismo/examples sub-directory we find:
 
 - \subpage commandLineArg_example
 
+- \subpage fileIo_example
+
 - \subpage fitting_example
 
 - \subpage geometry_example
@@ -32,11 +34,11 @@ In the gismo/examples sub-directory we find:
 
 - \subpage inputOutput_example
 
-- \subpage fileIo_example
-
 - \subpage gsInterpolateMap
 
 - \subpage knotVector_example
+
+- \subpage kirchhoff-Love_example
 
 - \subpage linearAlgebra_example
   

@@ -3,10 +3,9 @@
 #
 # Travis CI is the primary CI service for macOS
 #
-# Author: Angelos Mantzaflaris 2012-2018
+# Author: Angelos Mantzaflaris 2012-2020
 #
 
-sudo: false
 
 git:
   submodules: false
@@ -46,7 +45,7 @@ addons:
     branch_pattern: coverity_scan
 
 ###################
-matrix:
+jobs:
   fast_finish: true
   include:
 
@@ -92,7 +91,7 @@ matrix:
       env:
         - BUILD_TYPE=Release
         - TASK=Doxygen
-        - CXX_STANDARD=98
+        - CXX_STANDARD=11
       #install:
         #- wget -q 'https://github.com/doxygen/doxygen/archive/master.tar.gz' -O doxygen.tar.gz
         #- tar -xzf doxygen.tar.gz; mv doxygen-* doxygen
@@ -124,8 +123,7 @@ matrix:
       before_install:
         - pip install --user cpp-coveralls
       before_script:
-        - mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_BRANCH/travis-cov" -D
-        ME="$TRAVIS_OS_NAME-$TRAVIS_COMPILER_cxx$CXX_STANDARD_$TRAVIS_CPU_ARCH" #-DGISMO_WITH_IPOPT=ON -DGISMO_BUILD_COVERAGE=ON
+        - mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_BRANCH/travis-cov" -DBUILDNAME="$TRAVIS_OS_NAME-$TRAVIS_COMPILER-$CXX_STANDARD-$TRAVIS_CPU_ARCH" #-DGISMO_WITH_IPOPT=ON -DGISMO_BUILD_COVERAGE=ON
       after_success:
         - coveralls --exclude lib --exclude tests --gcov-options '\-lp'
 
@@ -148,8 +146,8 @@ before_install:
   #- echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
 
 before_script:
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH [travis]" -DBUILDNAME="$TRAVIS_OS_NAME-$TRAVIS_OSX_IMAGE_$TRAVIS_COMPILER_cxx$CXX_STANDARD_$TRAVIS_CPU_ARCH"; fi
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH [travis]" -DBUILDNAME="$TRAVIS_OS_NAME-$TRAVIS_COMPILER_cxx$CXX_STANDARD_$TRAVIS_CPU_ARCH"; fi
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH [travis]" -DBUILDNAME="$TASK$TRAVIS_OS_NAME-$TRAVIS_OSX_IMAGE-$TRAVIS_COMPILER-$CXX_STANDARD-$TRAVIS_CPU_ARCH"; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH [travis]" -DBUILDNAME="$TASK$TRAVIS_OS_NAME-$TRAVIS_COMPILER-$CXX_STANDARD-$TRAVIS_CPU_ARCH"; fi
 
 script:
   - if [ -e "cov-int/scm_log.txt" ]; then cat cov-int/scm_log.txt; fi
@@ -158,16 +156,18 @@ script:
   - if [ "$TASK" != "Doxygen" ]; then ctest -D ExperimentalSubmit; fi
 
 before_deploy:
-  - make doc
+  - make $MAKEFLAGS doc
   - ctest --add-notes doc/doxygen.log -M Experimental -T Submit
 
 deploy:
   provider: pages
-  skip-cleanup: true
-  github-token: $GITHUB_TOKEN
+  cleanup: false
+  skip_cleanup: true
+  token: $GITHUB_TOKEN
   repo: gismo/gismo.github.io
-  target-branch: master
-  local-dir: build/doc/html
+  target_branch: master
+  local_dir: build/doc/html
+  strategy: git
   #verbose: true
   on:
     branch: stable

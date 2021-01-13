@@ -17,15 +17,15 @@
 
 #include <gsCore/gsConfig.h>
 
-#include <SymEigsSolver.h>
-#include <SymEigsShiftSolver.h>
-#include <SymGEigsSolver.h>
-#include <GenEigsSolver.h>
-#include <GenEigsRealShiftSolver.h>
-#include <MatOp/SparseGenMatProd.h>
-//#include <MatOp/DenseSymMatProd.h> // included by SymEigsSolver.h
-#include <MatOp/SparseCholesky.h>
-#include <MatOp/DenseCholesky.h>
+#include <Spectra/Spectra/SymEigsSolver.h>
+#include <Spectra/Spectra/SymEigsShiftSolver.h>
+#include <Spectra/Spectra/SymGEigsSolver.h>
+#include <Spectra/Spectra/GenEigsSolver.h>
+#include <Spectra/Spectra/GenEigsRealShiftSolver.h>
+#include <Spectra/Spectra/MatOp/SparseGenMatProd.h>
+//#include <Spectra/Spectra/MatOp/DenseSymMatProd.h> // included by SymEigsSolver.h
+#include <Spectra/Spectra/MatOp/SparseCholesky.h>
+#include <Spectra/Spectra/MatOp/DenseCholesky.h>
 
 namespace gismo {
 
