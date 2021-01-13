@@ -558,7 +558,7 @@ private:
             tmp2.col(comp) = tmp.block(comp*nDers,0,nDers,1); //star,length
 
         vEv = _v.eval(k);
-        res = vEv * tmp2;
+        res = vEv * tmp2.transpose();
         return res;
     }
 
@@ -579,7 +579,7 @@ private:
         solHess_expr<Scalar> sHess = solHess_expr(u);
         tmp = sHess.eval(k).transpose();
         vEv = _v.eval(k);
-        res = vEv * tmp;
+        res = vEv * tmp.transpose();
         return res;
     }
 
@@ -2297,19 +2297,6 @@ int main(int argc, char *argv[])
         auto E_fG = ( deriv2(mapRef,sn(mapRef).normalized().tr()) - deriv2(defRef,sn(defRef).normalized().tr()) ) * reshape(m2Ref,3,3) ; //[checked]
         auto S_mG = E_mG * reshape(mmRef,3,3);
         auto S_fG = E_fG * reshape(mmRef,3,3);
-
-        gsVector<> pt(2);
-        pt.setConstant(0.25);
-        gsDebug<<"fjac "<<evL.eval((fjac(zH2)),pt)<<"\n";
-        gsDebug<<"fjac "<<(fjac(zH2)).rows()<<"\n";
-        gsDebug<<"fjac "<<(fjac(zH2)).cols()<<"\n";
-        gsDebug<<"fjac "<<evL.eval((fjac(zL3)),pt)<<"\n";
-        gsDebug<<"fjac "<<(fjac(zL3)).rows()<<"\n";
-        gsDebug<<"fjac "<<(fjac(zL3)).cols()<<"\n";
-        gsDebugVar(uL.fixedPart());
-        gsDebug<<"jac "<<evL.eval((grad(zL_sol)),pt)<<"\n";
-        gsDebug<<"jac "<<(grad(zL_sol)).rows()<<"\n";
-        gsDebug<<"jac "<<(grad(zL_sol)).cols()<<"\n";
 
         gsInfo<<"Fint_m = "<<evL.integral(( N * E_m_der.tr() ) * meas(mapL) )<<"\n";
         gsInfo<<"Fint_f = "<<evL.integral(( M * E_f_der.tr() ) * meas(mapL) )<<"\n";

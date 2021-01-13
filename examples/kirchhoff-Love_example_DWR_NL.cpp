@@ -48,8 +48,7 @@ public:
     void setFlag() const { }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & ) const {  }
 
-    static constexpr bool rowSpan() {return false;}
-    static bool colSpan() {return false;}
+    enum{rowSpan = 0, colSpan = 0};
 
     const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
@@ -111,8 +110,7 @@ public:
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
     index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
-    static constexpr bool rowSpan() {return E::rowSpan(); }
-    static constexpr bool colSpan() {return false;}
+    enum{rowSpan = E::rowSpan, colSpan = 0};
 
     void print(std::ostream &os) const { os << "var1("; _u.print(os); os <<")"; }
 
@@ -254,8 +252,7 @@ public:
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
     index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
-    static constexpr bool rowSpan() {return E1::rowSpan(); }
-    static constexpr bool colSpan() {return false;}
+    enum{rowSpan = E1::rowSpan, colSpan = 0};
 
     void print(std::ostream &os) const { os << "var1("; _u.print(os); os <<")"; }
 
@@ -438,8 +435,7 @@ public:
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
 
-    static constexpr bool rowSpan() {return true; }
-    static constexpr bool colSpan() {return true; }
+    enum{rowSpan = 1, colSpan = 1};
 
     void print(std::ostream &os) const { os << "var2("; _u.print(os); os <<")"; }
 };
@@ -490,8 +486,7 @@ public:
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
 
-    static constexpr bool rowSpan() {return E1::rowSpan(); }
-    static constexpr bool colSpan() {return E2::rowSpan(); }
+    enum{rowSpan = E1::rowSpan, colSpan = E2::rowSpan};
 
     void print(std::ostream &os) const { os << "deriv2("; _u.print(os); _v.print(os); os <<")"; }
 
@@ -645,7 +640,7 @@ private:
     typename E::Nested_t _u;
 
 public:
-    enum {ColBlocks = E::rowSpan() };
+    enum {ColBlocks = E::rowSpan };
     enum{ Space = E::Space };
 
     deriv2_expr(const E & u) : _u(u) { }
@@ -682,8 +677,7 @@ public:
 
     index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
-    static constexpr bool rowSpan() {return E::rowSpan();}
-    static constexpr bool colSpan() {return E::colSpan();}
+    enum{rowSpan = E::rowSpan, colSpan = E::colSpan};
 
     void print(std::ostream &os) const { os << "deriv2("; _u.print(os); os <<")"; }
 
@@ -847,7 +841,7 @@ public:
 
 //     index_t cols() const
 //     {
-//         return // ( E2::rowSpan() ? rows() : 1 ) *
+//         return // ( E2::rowSpan ? rows() : 1 ) *
 //             _u.data().values[2].rows() / _u.data().values[0].rows();//=3
 //     }
 
@@ -867,8 +861,8 @@ public:
 //     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
 //     const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
 
-//     static constexpr bool rowSpan() {return E1::rowSpan(); }
-//     static constexpr bool colSpan() {return E2::rowSpan(); }
+//     static constexpr bool rowSpan {return E1::rowSpan; }
+//     static constexpr bool colSpan {return E2::rowSpan; }
 
 //     void print(std::ostream &os) const { os << "hessdot("; _u.print(os); os <<")"; }
 // };
@@ -921,8 +915,8 @@ public:
         // gsDebugVar(_B.cols());
 
         GISMO_ASSERT(Bc==_A.rows(), "Dimensions: "<<Bc<<","<< _A.rows()<< "do not match");
-        GISMO_ASSERT(_A.rowSpan(), "First entry should be rowSpan");
-        GISMO_ASSERT(_B.colSpan(), "Second entry should be colSpan.");
+        GISMO_ASSERT(_A.rowSpan, "First entry should be rowSpan");
+        GISMO_ASSERT(_B.colSpan, "Second entry should be colSpan.");
 
         res.resize(An, Bn);
         for (index_t i = 0; i!=An; ++i)
@@ -949,8 +943,7 @@ public:
     const gsFeSpace<Scalar> & colVar() const { return _B.colVar(); }
     index_t cardinality_impl() const { return _A.cardinality_impl(); }
 
-    static constexpr bool rowSpan() {return E1::rowSpan();}
-    static constexpr bool colSpan() {return E2::colSpan();}
+    enum{rowSpan = E1::rowSpan, colSpan = E2::colSpan};
 
     void print(std::ostream &os) const { os << "flatdot("; _A.print(os);_B.print(os);_C.print(os); os<<")"; }
 };
@@ -1004,8 +997,8 @@ public:
         // gsDebugVar(_B.cols());
 
         GISMO_ASSERT(_B.rows()==_A.cols(), "Dimensions: "<<_B.rows()<<","<< _A.cols()<< "do not match");
-        GISMO_ASSERT(_A.rowSpan(), "First entry should be rowSpan");
-        GISMO_ASSERT(_B.colSpan(), "Second entry should be colSpan.");
+        GISMO_ASSERT(_A.rowSpan, "First entry should be rowSpan");
+        GISMO_ASSERT(_B.colSpan, "Second entry should be colSpan.");
         GISMO_ASSERT(_C.cols()==_B.rows(), "Dimensions: "<<_C.rows()<<","<< _B.rows()<< "do not match");
 
         // NOTE: product moved to the loop since that is more consistent with the formulations
@@ -1035,8 +1028,7 @@ public:
     const gsFeSpace<Scalar> & colVar() const { return _B.colVar(); }
     index_t cardinality_impl() const { return _A.cardinality_impl(); }
 
-    static constexpr bool rowSpan() {return E1::rowSpan();}
-    static constexpr bool colSpan() {return E2::colSpan();}
+    enum{rowSpan = E1::rowSpan, colSpan = E2::colSpan};
 
     void print(std::ostream &os) const { os << "flatdot2("; _A.print(os);_B.print(os);_C.print(os); os<<")"; }
 };
@@ -1108,8 +1100,7 @@ public:
 
     index_t cols() const { return 3; }
 
-    static constexpr bool rowSpan() {return false; }
-    static bool colSpan() {return false;}
+    enum{rowSpan = 0, colSpan = 0};
 
     static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
     static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
@@ -1147,8 +1138,7 @@ public:
 
     index_t cols() const { return 3; }
 
-    static constexpr bool rowSpan() {return false; }
-    static bool colSpan() {return false;}
+    enum{rowSpan = 0, colSpan = 0};
 
     static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
     static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
@@ -1232,8 +1222,7 @@ public:
 
     index_t cols() const { return 3; }
 
-    static constexpr bool rowSpan() {return false; }
-    static bool colSpan() {return false;}
+    enum{rowSpan = 0, colSpan = 0};
 
     static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
     static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
@@ -1271,8 +1260,7 @@ public:
 
     index_t cols() const { return 3; }
 
-    static constexpr bool rowSpan() {return false; }
-    static bool colSpan() {return false;}
+    enum{rowSpan = 0, colSpan = 0};
 
     static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
     static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }

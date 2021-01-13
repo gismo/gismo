@@ -1304,6 +1304,9 @@ public:
 
     index_t cols() const {return _u.parDim(); }
 
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+
     void setFlag() const
     {
         _u.data().flags |= NEED_GRAD|NEED_ACTIVE;
