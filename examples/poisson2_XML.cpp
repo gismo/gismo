@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     bool verbose = false;
     index_t numRefine  = 0;
     index_t numElevate = 0;
-    std::string fn("pde/poisson2d_bvp.xml");
+    std::string fn("pde/poisson3d_bvp.xml");
 
     std::string save;
     std::string geometryRef;
