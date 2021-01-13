@@ -1109,16 +1109,6 @@ int main(int argc, char *argv[])
         E_modulus = (2+PoissonRatio)*mu;
         fn = "surfaces/quarter_sphere.xml";
         gsReadFile<>(fn, mp);
-        PoissonRatio = 0.0;
-    }
-    else if (testCase == 6)
-    {
-        thickness = 0.1;
-        real_t mu = 4.225e5;
-        PoissonRatio = 0.3;
-        E_modulus = (2+PoissonRatio)*mu;
-        fn = "../extensions/unsupported/filedata/quarter_sphere.xml";
-        gsReadFile<>(fn, mp);
     }
     else
     {
