@@ -1956,6 +1956,7 @@ int main(int argc, char *argv[])
     // gsInfo<<"Basis Dual:   "<<basisH.basis(0)<<"\n";
 
     gsBoundaryConditions<> bc;
+    bc.setGeoMap(mp);
     gsVector<> tmp(3);
     tmp << 0, 0, 0;
 
@@ -2018,10 +2019,8 @@ int main(int argc, char *argv[])
     space uL = exL.getSpace(basisL, 3); //primal space on L
     space zH = exH.getSpace(basisH, 3); // dual space on H
 
-    uL.setInterfaceCont(0); //
-    zH.setInterfaceCont(0); //
-    uL.addBc( bc.get("Dirichlet") ); //
-    zH.addBc( bc.get("Dirichlet") ); //
+    uL.setup(bc, dirichlet::interpolation, 0);
+    zH.setup(bc, dirichlet::interpolation, 0);
 
     // Solution vector and solution variable
     gsMatrix<> random;
@@ -2074,8 +2073,8 @@ int main(int argc, char *argv[])
     //A.options().setInt("DirichletValues", dirichlet::homogeneous);
 
     // Initialize the system
-    exL.initSystem();
-    exH.initSystem();
+    exL.initSystem(false);
+    exH.initSystem(false);
 
     gsInfo<<"Number of elements: "<<basisL.totalElements()<<"\n";
     gsInfo  <<"Lower order basis:\n"
@@ -2183,7 +2182,6 @@ int main(int argc, char *argv[])
         basisH.degreeElevate(1);
 
         // Assemble matrix and rhs
-        exL.initSystem(true);
         gsInfo << "Assembling primal, size ="<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
 
         exL.assemble(
@@ -2194,10 +2192,6 @@ int main(int argc, char *argv[])
             );
         gsInfo << "done." << "\n";
 
-        space zH = exH.getSpace(basisH, 3); // dual space on H
-        zH.setInterfaceCont(0); //
-        zH.addBc( bc.get("Dirichlet") ); //
-        exH.initSystem(true);
         gsInfo << "Assembling dual matrix (high), size = "<<exH.matrix().rows()<<","<<exH.matrix().cols()<<"... "<< std::flush;
 
         exH.assemble(
@@ -2328,8 +2322,6 @@ int main(int argc, char *argv[])
 
         real_t approx = Fe;
         real_t exact = 0;
-
-        gsWriteParaview(mp_ex,"mp_ex",1000);
 
         if (goal==1)
         {
@@ -2474,6 +2466,7 @@ int main(int argc, char *argv[])
             mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
         }
         gsWriteParaview<>( mp_def, "mp_def", 1000, true);
+        gsWriteParaview<>( mp_ex , "mp_ex" , 1000, true);
 
         gsMultiPatch<> deformation = mp_def;
         for (index_t k = 0; k != mp_def.nPatches(); ++k)

@@ -1070,6 +1070,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
+    bool write = false;
     index_t numRefine  = 1;
     index_t numElevate = 1;
     index_t testCase = 1;
@@ -1090,10 +1091,12 @@ int main(int argc, char *argv[])
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
     cmd.addInt( "t", "testCase", "Test case to run: 1 = unit square; 2 = Scordelis Lo Roof",  testCase );
     cmd.addInt( "l", "law", "MaterialLaw", MaterialLaw );
+    cmd.addReal( "T", "thickness", "thickness",  thickness );
     cmd.addInt( "c", "comp", "Compressibility", Compressibility );
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("nl", "Solve nonlinear problem", nonlinear);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("write", "Write deformed geometry to xml", write);
     cmd.addSwitch("weak", "Weak BCs", weak);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -1103,7 +1106,16 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp;
     gsMultiPatch<> mp_def;
 
-    if (testCase == 2  || testCase == 3)
+    if (testCase == 1)
+    {
+        // Unit square
+        mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
+        mp.addAutoBoundaries();
+        mp.embed(3);
+        E_modulus = 1e0;
+        PoissonRatio = 0.0;
+    }
+    else if (testCase == 2  || testCase == 3)
     {
         thickness = 0.25;
         E_modulus = 4.32E8;
@@ -1636,6 +1648,16 @@ int main(int argc, char *argv[])
         gsWriteParaview<>( solField, "solution", 1000, true);
         // gsFileManager::open("solution.pvd");
     }
+
+    if (write)
+    {
+        if (!nonlinear)
+            gsWrite(mp_def,"deformed_plate_lin_T="+std::to_string(thickness)+".xml");
+        else
+            gsWrite(mp_def,"deformed_plate_T="+std::to_string(thickness)+".xml");
+
+    }
+
     return EXIT_SUCCESS;
 
 }// end main
