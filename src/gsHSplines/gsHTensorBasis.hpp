@@ -425,7 +425,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
     }
 
     // Update the basis
-    update_structure();
+    // update_structure();
 }
 
 template<short_t d, class T>

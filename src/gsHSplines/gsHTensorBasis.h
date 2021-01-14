@@ -589,6 +589,29 @@ public:
         return td;
     }
 
+    /// @brief Reduces spline continuity at interior knots by \a i
+    void reduceContinuity(int const & i = 1)
+    {
+        for (unsigned int lvl = 0; lvl <= maxLevel(); lvl++)
+        {
+            for (unsigned int dir = 0; dir < d; dir++)
+            {
+                // TODO check: max interior mult + i <= m_p+1
+
+                // We iterate through unique knots, skipping the first and last knot
+                // At level 0 we iterate through all unique knots,
+                // At level >0 we iterate through all knots that are new, i.e. every other knot starting from 1
+                for (gsKnotVector<>::uiterator it = m_bases[lvl]->knots(dir).ubegin() + 1; it < m_bases[lvl]->knots(dir).uend() - 1; it += (lvl == 0? 1 : 2))
+                {
+                    for(unsigned int j =lvl;j < m_bases.size();j++)
+                        m_bases[j]->component(dir).insertKnot(*it,i);
+
+                }
+            }
+        }
+        update_structure();
+    }
+
     /// @brief If the basis is a tensor product of (piecewise)
     /// polynomial bases, then this function returns the polynomial
     /// degree of the \a i-th component.
