@@ -667,7 +667,14 @@ public:
 
      The entries in <em>result[0]</em>, <em>result[1]</em>, and <em>result[2]</em> are ordered as in
      eval_into(), deriv_into(), and deriv2_into(), respectively. For <em>i > 2</em>, the
-     derivatives are stored in lexicographical order.
+     derivatives are stored in lexicographical order, e.g. for order <em>i = 3</em> the derivatives are stored
+     as follows:\n
+     \f$
+     \partial_{xxx}\, \n
+     \partial_{xxy}\, \n
+     \partial_{xyy}\, \n
+     \partial_{yyy}\, \f$\n
+     \n
 
      \param[in] u Evaluation points, each column corresponds to one evaluation point.
      \param[in] n All derivatives up to order \em n are computed and stored
