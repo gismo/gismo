@@ -32,3 +32,4 @@ CMakeFiles/
 # Patch Files
 *.patch
 *.rej
+/doxygen
