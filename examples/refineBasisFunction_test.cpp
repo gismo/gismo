@@ -40,8 +40,8 @@ int main(int argc, char *argv[])
     //! [Parse command line]
 
     gsMultiPatch<> mp0;
-    mp0 = *gsNurbsCreator<>::BSplineRectangle(0,0,1,1);
-
+    mp0.addPatch(gsNurbsCreator<>::BSplineRectangle(0,0,1,1));
+    mp0 = mp0.uniformSplit();
     //! [Read input file]
 
     //! [Refinement]
@@ -87,10 +87,17 @@ int main(int argc, char *argv[])
     gsHBSplineBasis<2,real_t> THBbasis(*basis0);
     THBbasis.refineBasisFunction(function);
 
-    std::vector<bool> funMarked( mp.basis(0).size() );
+    std::vector<bool> funMarked( basis.totalSize() );
     for(std::vector<bool>::iterator i = funMarked.begin(); i!=  funMarked.end(); ++i)
         *i = false;
-    funMarked[function] = true;
+
+    index_t offset = 0;
+    for (index_t p = 0; p!=mp.nPatches(); p++)
+    {
+        funMarked[offset + 0] = true;
+        funMarked[offset + function] = true;
+        offset += mp.basis(p).size();
+    }
 
     // PRINT
     for (std::vector<bool>::const_iterator i = funMarked.begin(); i != funMarked.end(); ++i)
@@ -98,24 +105,10 @@ int main(int argc, char *argv[])
     gsInfo<<"\n";
     // ! PRINT
 
-    gsRefineMarkedFunctions(mp,funMarked,0);
+    gsRefineMarkedFunctions(mp,funMarked,1);
 
 
-    gsInfo<<"Basis After: "<<mp.basis(0)<<"\n";
-    gsInfo  <<"Original : "<< mp.basis(0)<<"\t"
-            <<"size = "<< mp.basis(0).size()<<"\n";
-
-    gsWriteParaview<>(mp.basis(0), "newBasisL", 1000, true);
     gsWriteParaview<>(mp, "mpL", 1000, true);
-
-    mp.degreeElevate(1);
-    gsWriteParaview<>(mp.basis(0), "newBasisH", 1000, true);
-    gsWriteParaview<>(mp, "mpH", 1000, true);
-
-
-    mp0.basis(0).uniformRefine();
-    gsWriteParaview<>(mp0.basis(0), "uniformRefine", 1000, true);
-
    return EXIT_SUCCESS;
 
 }// end main
