@@ -301,7 +301,7 @@ private:
     {
         static inline T init() { return math::limits::max(); }
         static inline void acc (const T contrib, const T, T & res)
-        { res = math::min(contrib, res); }
+        { res = math::min(contrib, res); } //note: min/max are not atomic
     };
     struct max_op
     {

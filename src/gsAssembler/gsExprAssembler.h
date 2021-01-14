@@ -483,7 +483,7 @@ private:
                 push<false>(ee.rowVar(), ee.colVar(), m_patchInd);
             else
             {
-                GISMO_ERROR("Something went wrong at this point (rowspan: "<< E::rowSpan<< ", colSpan: "<< E::colSpan <<")");
+                GISMO_ERROR("Something went terribly wrong at this point");
                 //GISMO_ASSERTrowSpan() && (!colSpan())
             }
 
@@ -522,7 +522,7 @@ private:
                 const index_t rls = r * rowInd0.rows();     //local stride
                 for (index_t i = 0; i != rowInd0.rows(); ++i)
                 {
-                    const index_t ii = rowMap.index(rowInd0.at(i),patchInd,r); // N_i
+                    const index_t ii = rowMap.index(rowInd0.at(i),patchInd,r); //N_i
                     if ( rowMap.is_free_index(ii) )
                     {
                         for (index_t c = 0; c != cd; ++c)
@@ -548,7 +548,7 @@ private:
                                     {
                                         // Symmetric treatment of eliminated BCs
                                         // GISMO_ASSERT(1==m_rhs.cols(), "-");
-#                                       pragma omp critical (acc_m_rhs)
+#                                       pragma omp atomic
                                         m_rhs.at(ii) -= localMat(rls+i,cls+j) *
                                             fixedDofs.at(colMap.global_to_bindex(jj));
                                     }
@@ -556,8 +556,8 @@ private:
                             }
                             else
                             {
-#                               pragma omp critical (acc_m_rhs)
-                                m_rhs.row(ii) += localMat.row(rls+i);
+#                               pragma omp atomic
+                                m_rhs.at(ii) += localMat.at(rls+i);
                             }
                         }
                     }
@@ -812,7 +812,7 @@ template<class T>
 template<bool left, bool right, class E1, class E2>
 void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
                                                const expr::_expr<E2> & exprRhs,
-                                               space rvar, space cvar,
+                                               space rvar, space cvar,//unused?
                                                const bcContainer & BCs)
 {
     //GISMO_ASSERT( exprRhs.isVector(), "Expecting vector expression");
@@ -897,7 +897,8 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
         m_exprdata->iface().setSide( iFace.second().side() );
                 
         typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().basis(patch1).makeDomainIterator(iFace.first().side());
+            m_exprdata->multiBasis().basis(patch1)
+            .makeDomainIterator(iFace.first().side());
         m_element.set(*domIt);
 
         // Start iteration over elements
@@ -913,6 +914,12 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
             
             // interfaceMap.eval_into(m_exprdata->points(),
             //                        m_exprdata->iface().points());
+
+            // uL*vL/2 + uR*vL/2  - uL*vR/2 - uR*vR/2
+            //[ B11 B21 ]
+            //[ B12 B22 ]
+            // arg_lhs.setTestSide (true)
+            // arg_lhs.setTrialSide(true)
 
             ee.setPatch(patch1);
             ee(arg_lhs);
