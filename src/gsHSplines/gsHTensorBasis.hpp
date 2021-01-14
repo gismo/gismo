@@ -185,7 +185,6 @@ index_t gsHTensorBasis<d,T>::size() const
 {
     return m_xmatrix_offset.back();
 }
-
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes)
 {
@@ -296,72 +295,14 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
     else
     {
         // Make an element vector
-        std::vector<index_t> refVector = this->asElements(boxes, refExt);
+        std::vector<index_t> refVector = this->asElements(boxes, refExt);//std::vector<unsigned> refVector = this->asElements(boxes, refExt);
+
         // ...and refine
         this->refineElements( refVector );
     }
 
-    // Update the basis
-    update_structure();
-}
-
-template<short_t d, class T>
-void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
-{
-    GISMO_ASSERT(boxes.rows() == d, "refine() needs d rows of boxes.");
-    GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provide refine() with them.");
-
-#ifndef NDEBUG
-    gsMatrix<T> para = support();
-    for(int i = 0; i < boxes.cols()/2; i++)
-    {
-        for( short_t j = 0; j < d; j++ )
-        {
-            GISMO_ASSERT( para(j,0) <= boxes(j, 2*i) ,
-                          "In refine() the first corner is outside the computational domain.");
-            GISMO_ASSERT( para(j,1) >= boxes(j, 2*i+1),
-                          "In refine() the second corner is outside the computational domain." );
-        }
-    }
-#endif
-
-    gsVector<index_t,d> k1, k2;
-
-    for(index_t i = 0; i < boxes.cols()/2; i++)
-    {
-        // 1. Get a small cell containing the box
-        const int fLevel = m_bases.size()-1;
-
-        for(index_t j = 0; j < k1.size();j++)
-        {
-            const gsKnotVector<T> & kv = m_bases.back()->knots(j);
-            k1[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
-                                      boxes(j,2*i  ) ) - 1).uIndex();
-            k2[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
-                                      boxes(j,2*i+1) ) - 1).uIndex();
-
-            // Trivial boxes trigger some refinement
-            if ( k1[j] == k2[j])
-            {
-                if (0!=k1[j]) {--k1[j];}
-                ++k2[j];
-            }
-        }
-
-        // 2. Find the smallest level in which the box is completely contained
-        //const int level = m_tree.query3(k1,k2,fLevel) + 1;
-        // make sure that the grid is computed ( needLevel(level) )
-        //const tensorBasis & tb = tensorLevel(level);
-        //GISMO_UNUSED(tb);
-
-        // Sink box
-        m_tree.sinkBox(k1, k2, fLevel);
-        // Make sure we have enough levels
-        needLevel( m_tree.getMaxInsLevel() );
-    }
-
-    // Update the basis
-    update_structure();
+    // Update the basis (already done by now)
+    //update_structure();
 }
 
 template<short_t d, class T>
@@ -422,13 +363,93 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElements(gsMatrix<T> const & boxes, 
         }
     }
     // gsDebug<<"begin\n";
-    // for (std::vector<index_t>::const_iterator i = refVector.begin(); i != refVector.end(); ++i)
+    // for (std::vector<unsigned>::const_iterator i = refVector.begin(); i != refVector.end(); ++i)
     //     std::cout << *i << ' ';
     // gsDebug<<"end\n";
 
     return refVector;
 }
 
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
+{
+    GISMO_ASSERT(boxes.rows() == d, "refine() needs d rows of boxes.");
+    GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provide refine() with them.");
+
+#ifndef NDEBUG
+    gsMatrix<T> para = support();
+    for(int i = 0; i < boxes.cols()/2; i++)
+    {
+        for( short_t j = 0; j < d; j++ )
+        {
+            GISMO_ASSERT( para(j,0) <= boxes(j, 2*i) ,
+                          "In refine() the first corner is outside the computational domain.");
+            GISMO_ASSERT( para(j,1) >= boxes(j, 2*i+1),
+                          "In refine() the second corner is outside the computational domain." );
+        }
+    }
+#endif
+
+    gsVector<index_t,d> k1, k2;
+    for(index_t i = 0; i < boxes.cols()/2; i++)
+    {
+        // 1. Get a small cell containing the box
+        const int fLevel = m_bases.size()-1;
+
+        for(index_t j = 0; j < k1.size();j++)
+        {
+            const gsKnotVector<T> & kv = m_bases.back()->knots(j);
+            k1[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
+                                      boxes(j,2*i  ) ) - 1).uIndex();
+            k2[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
+                                      boxes(j,2*i+1) ) - 1).uIndex();
+
+            // Trivial boxes trigger some refinement
+            if ( k1[j] == k2[j])
+            {
+                if (0!=k1[j]) {--k1[j];}
+                ++k2[j];
+            }
+        }
+
+        // 2. Find the smallest level in which the box is completely contained
+        //const int level = m_tree.query3(k1,k2,fLevel) + 1;
+        // make sure that the grid is computed ( needLevel(level) )
+        //const tensorBasis & tb = tensorLevel(level);
+        //GISMO_UNUSED(tb);
+
+        // Sink box
+        m_tree.sinkBox(k1, k2, fLevel);
+        // Make sure we have enough levels
+        needLevel( m_tree.getMaxInsLevel() );
+    }
+
+    // Update the basis
+    update_structure();
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::refineBasisFunction(const index_t i)
+{
+    // Get current level
+    const index_t lvl = this->levelOf(i);
+    // Get the support endpoints
+    gsMatrix<index_t, d, 2>	elements;
+    m_bases[lvl]->elementSupport_into(m_xmatrix[lvl][ i - m_xmatrix_offset[lvl] ],
+                                          elements);
+    point low = elements.col(0);
+    point upp = elements.col(1);
+    // Advance the indices to one level deeper
+    for ( short_t i = 0; i!=d; ++i )
+    {
+        low[i] = low[i] << 1;
+        upp[i] = upp[i] << 1;
+    }
+    // Insert the domain to the lvl+1 nested domain
+    m_tree.insertBox(low,upp,lvl+1);
+    // Update the basis
+    update_structure();
+}
 
 
 /*
@@ -1024,11 +1045,11 @@ gsMatrix<index_t>  gsHTensorBasis<d,T>::allBoundary( ) const
 template<short_t d, class T>
 gsMatrix<index_t>  gsHTensorBasis<d,T>::
 boundaryOffset(boxSide const & s,index_t offset) const
-{ 
+{
     //get information on the side
     index_t k   = s.direction();
     bool par = s.parameter();
-    
+
     std::vector<index_t> temp;
     gsVector<index_t,d>  ind;
     // i goes through all levels of the hierarchical basis
