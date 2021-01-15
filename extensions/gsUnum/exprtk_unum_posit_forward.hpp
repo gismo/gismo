@@ -17,32 +17,58 @@
 #include <string>
 #include <gsUnum/gsUnum.h>
 
-typedef sw::unum::posit<32,2> posit_32_2;
+typedef sw::unum::posit<256,5> posit_256_5;
+typedef sw::unum::posit<128,4> posit_128_4;
+typedef sw::unum::posit< 64,3> posit_64_3;
+typedef sw::unum::posit< 32,2> posit_32_2;
+typedef sw::unum::posit< 16,1> posit_16_1;
+typedef sw::unum::posit<  8,1> posit_8_1;
+typedef sw::unum::posit<  8,0> posit_8_0;
+typedef sw::unum::posit<  4,0> posit_4_0;
+typedef sw::unum::posit<  3,1> posit_3_1;
+typedef sw::unum::posit<  3,0> posit_3_0;
+typedef sw::unum::posit<  2,0> posit_2_0;
 
-namespace exprtk
-{
+#define UNUM_TYPE posit_256_5
+#include "exprtk_unum_posit_forward.h"
+#undef UNUM_TYPE
 
-namespace details
-{
-namespace numeric { namespace details {
+#define UNUM_TYPE posit_128_4
+#include "exprtk_unum_posit_forward.h"
+#undef UNUM_TYPE
 
-struct unum_posit_type_tag;
+#define UNUM_TYPE posit_64_3
+#include "exprtk_unum_posit_forward.h"
+#undef UNUM_TYPE
 
-template <typename T> inline T const_pi_impl(unum_posit_type_tag);
-template <typename T> inline T const_e_impl (unum_posit_type_tag);
-} } // namespace details // namespace numeric
+#define UNUM_TYPE posit_32_2
+#include "exprtk_unum_posit_forward.h"
+#undef UNUM_TYPE
 
-inline bool is_true (const posit_32_2& v);
-inline bool is_false(const posit_32_2& v);
+#define UNUM_TYPE posit_16_1
+#include "exprtk_unum_posit_forward.h"
+#undef UNUM_TYPE
 
-template <typename Iterator>
-inline bool string_to_real(Iterator& itr_external, const Iterator end, posit_32_2& t, numeric::details::unum_posit_type_tag);
+#define UNUM_TYPE posit_8_1
+#include "exprtk_unum_posit_forward.h"
+#undef UNUM_TYPE
 
-} // namespace details
+#define UNUM_TYPE posit_8_0
+#include "exprtk_unum_posit_forward.h"
+#undef UNUM_TYPE
 
-namespace rtl { namespace io { namespace details {
-inline void print_type(const std::string&, const posit_32_2& v, exprtk::details::numeric::details::unum_posit_type_tag);
-} } } // namespace details // namespace io // namespace rtl
+#define UNUM_TYPE posit_4_0
+#include "exprtk_unum_posit_forward.h"
+#undef UNUM_TYPE
 
-using details::is_true;
-}
+#define UNUM_TYPE posit_3_1
+#include "exprtk_unum_posit_forward.h"
+#undef UNUM_TYPE
+
+#define UNUM_TYPE posit_3_0
+#include "exprtk_unum_posit_forward.h"
+#undef UNUM_TYPE
+
+#define UNUM_TYPE posit_2_0
+#include "exprtk_unum_posit_forward.h"
+#undef UNUM_TYPE

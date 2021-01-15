@@ -95,7 +95,10 @@ int main(int argc, char* argv[])
     // or the user invoked "--help" or "--version"
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsInfo << "Printing command line arguments:\n\n\n"
+    // Print out the version information
+    cmd.printVersion();
+            
+    gsInfo << "\nPrinting command line arguments:\n\n\n"
            << "Plain string: " << plainString << "\n\n"
            << "String:       " << string << "\n\n"
            << "Float:        " << flNumber << "\n\n"
