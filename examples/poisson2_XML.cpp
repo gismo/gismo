@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     index_t num;
     gsMultiPatch<> mp;
     num = fd.template count<gsMultiPatch<real_t>>(); // id=0: Multipatch domain
-    GISMO_ASSERT(num==1,"Number of multipatch objects in XML should be 1, but is "<<num);
+    GISMO_ENSURE(num==1,"Number of multipatch objects in XML should be 1, but is "<<num);
     fd.template getFirst<gsMultiPatch<real_t>>(mp); // Multipatch domain
 
     if (!geometry.empty())
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 
     gsBoundaryConditions<> bc;
     num = fd.template count<gsBoundaryConditions<>>(); // id=0: Multipatch domain
-    GISMO_ASSERT(num==1,"Number of boundary condition objects in XML should be 1, but is "<<num);
+    GISMO_ENSURE(num==1,"Number of boundary condition objects in XML should be 1, but is "<<num);
     fd.template getFirst<gsBoundaryConditions<>>(bc); // Multipatch domain
     bc.setGeoMap(mp);
     if (verbose)
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 
     gsOptionList Aopt;
     num = fd.template count<gsOptionList>(); // id=0: Multipatch domain
-    GISMO_ASSERT(num==1,"Number of options objects in XML should be 1, but is "<<num);
+    GISMO_ENSURE(num==1,"Number of options objects in XML should be 1, but is "<<num);
     fd.template getFirst<gsOptionList>(Aopt); // Multipatch domain
 
     //! [Read input file]

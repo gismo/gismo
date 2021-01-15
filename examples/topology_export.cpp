@@ -32,10 +32,10 @@ int main(int argc, char *argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-    GISMO_ASSERT(!save.empty(),"No file path specified.");
+    GISMO_ENSURE(!save.empty(),"No file path specified.");
 
     gsFileData<> fd(save);
-    GISMO_ASSERT(fd.template has<gsMultiPatch<real_t>>(),"File does not have a Multipatch object!");
+    GISMO_ENSURE(fd.template has<gsMultiPatch<real_t>>(),"File does not have a Multipatch object!");
 
     if (verbose)
         gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
     std::vector< memory::unique_ptr<gsMultiPatch<real_t>> > vec = fd.template getAll<gsMultiPatch<real_t>>();
 
     index_t num = fd.template count<gsMultiPatch<real_t>>(); // id=0: Multipatch domain
-    GISMO_ASSERT(num==1,"Number of multipatch objects in XML should be 1, but is "<<num);
+    GISMO_ENSURE(num==1,"Number of multipatch objects in XML should be 1, but is "<<num);
 
     gsMultiPatch<> mp;
     fd.template getFirst<gsMultiPatch<real_t>>(mp); // Multipatch domain
