@@ -73,15 +73,15 @@ public:
     typedef const expr::gsNullExpr<T>      nullExpr;
 
 private:
-    explicit gsExprHelper(gsExprHelper * m) : m_mirror(m)
-    { m->mesh_ptr- mesh_ptr; }
+    explicit gsExprHelper(gsExprHelper * m)
+    : m_mirror(m), mesh_ptr(m->mesh_ptr) { }
 
 public:
     
     ~gsExprHelper() { delete m_mirror; }
     
     gsMatrix<T> & points() { return m_points; }
-    gsExprHelper & iface()
+    inline gsExprHelper & iface()
     {
         if (nullptr==m_mirror)
             m_mirror = new gsExprHelper(this);
@@ -162,7 +162,7 @@ private:
     void _parse(const expr::_expr<E1> & a1)
     {
         a1.parse(*this);
-        //a1.print(gsInfo);
+        a1.print(gsInfo);
     }
 
     template <class E1, class... Rest>
@@ -239,10 +239,19 @@ public:
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
 
-        // gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
-        // gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
-        // gsInfo<< "vdata: "<< m_vdata.size()<<"\n";
-        // gsInfo<< "cdata: "<< m_cdata.size()<<"\n";
+        /*
+        gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
+        gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
+        gsInfo<< "vdata: "<< m_vdata.size()<<"\n";
+        gsInfo<< "cdata: "<< m_cdata.size()<<"\n";
+        if (m_mirror)
+        {
+            gsInfo<< "\nfdata2: "<< iface().m_fdata.size()<<"\n";
+            gsInfo<< "mdata2: "  << iface().m_mdata.size()<<"\n";
+            gsInfo<< "vdata2: "  << iface().m_vdata.size()<<"\n";
+            gsInfo<< "cdata2: "  << iface().m_cdata.size()<<"\n";
+        }
+        */
     }
 //#endif
 

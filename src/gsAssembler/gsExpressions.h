@@ -144,16 +144,13 @@ protected://private:
     _expr(){}
     _expr(const _expr&) { }
 public:
-    // ScalarValued: 0 is a scalar (must have Space=0),1 one denotes gsMatrix
-    // ColBlocks: the expression stacks matrices per basis function
-
-    // Space: 0: not a trial nor a test object (eg. normal vector, force function)
-    //        1: a test object  (essentially a right-hand side vector expression)
-    //        2: a trial object
-    //        3: a trial+trial object (essentially a matrix expression)
-
-    //Space = 0,1,2,3 (instead of rowSpan ColSpan, RowCol ?)
-    enum {Space = 0, ScalarValued = 0, ColBlocks = 0};
+    // Defined in derived classes: enum { Space, ScalarValued, ColBlocks }
+    // - ScalarValued: 0 is a scalar (must have Space=0),1 one denotes gsMatrix
+    // - ColBlocks: the expression stacks matrices per basis function
+    // - Space: 0: not a trial nor a test object (eg. normal vector, force function)
+    //          1: a test object  (essentially a right-hand side vector expression)
+    //          2: a trial object
+    //          3: a trial+trial object (essentially a matrix expression)
 
     typedef typename expr_traits<E>::Nested_t Nested_t;
     typedef typename expr_traits<E>::Scalar   Scalar;
@@ -161,6 +158,7 @@ public:
     /// Prints the expression as a string to \a os
     void print(std::ostream &os) const
     {
+        gsInfo<<"\n Space="<<E::Space<<", ScV="<<E::ScalarValued<<", ColBlocks="<<E::ColBlocks<<"\n";
         static_cast<E const&>(*this).print(os);
         /*
           std::string tmp(__PRETTY_FUNCTION__);
@@ -303,7 +301,7 @@ public:
     operator E&()             { return static_cast<      E&>(*this); }
     operator E const&() const { return static_cast<const E&>(*this); }
 
-    //E const & derived() const { return static_cast<const E&>(*this); }
+    E const & derived() const { return static_cast<const E&>(*this); }
 };
 
 /// Stream operator for expressions
@@ -460,7 +458,7 @@ public:
     typedef typename E::Scalar Scalar;
     typedef const col_expr<E> Nested_t;
 
-    enum{Space = E::Space, ColBlocks = 0};
+    enum { Space = E::Space, ScalarValued = 0, ColBlocks = 0 };
 
     col_expr(const E & c, const index_t i) : _c(c), _i(i) { }
 
@@ -493,8 +491,7 @@ public:
     _expr(const Scalar & c) : _c(c) { }
 
 public:
-    enum {ScalarValued = 1};
-    enum {Space = 0};
+    enum {Space = 0, ScalarValued = 1, ColBlocks= 0};
 
     inline Scalar eval(const index_t ) const { return _c; }
 
@@ -520,8 +517,7 @@ class gsGeometryMap : public _expr<gsGeometryMap<T> >
     //index_t d, n;
 
 public:
-
-    enum {Space = 0};
+    enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
 
     /// Returns the function source
     const gsFunctionSet<T> & source() const {return *m_fs;}
@@ -612,7 +608,7 @@ class cdiam_expr : public _expr<cdiam_expr<T> >
 public:
     typedef T Scalar;
 
-    enum {ScalarValued = 1};
+    enum {Space= 0, ScalarValued= 1, ColBlocks = 0};
 
     explicit cdiam_expr(const gsFeElement<T> & el) : _e(el) { }
 
@@ -675,7 +671,7 @@ class gsFeVariable  : public symbol_expr< gsFeVariable<T> >
 protected:
     explicit gsFeVariable(index_t _d = 1) : Base(_d) { }
 public:
-    enum{Space = 0};
+    enum {Space = 0, ScalarValued = 0, ColBlocks = 0};
 };
 
 template<class T>
@@ -688,7 +684,7 @@ protected:
     explicit gsComposition(const gsGeometryMap<T> & G, index_t _d = 1)
     : Base(_d), _G(G) { }
 public:
-    enum{Space = 0};
+    enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
 
     AutoReturn_t eval(const index_t k) const
     { return this->m_fd->values[0].col(k); }
@@ -725,7 +721,7 @@ protected:
     gsFeSpaceData<T> * m_sd;
     
 public:
-    enum{Space = 1};// test space
+    enum{Space = 1, ScalarValued=0, ColBlocks=0};// test space
 
     typedef const gsFeSpace Nested_t; //no ref
 
@@ -987,8 +983,7 @@ protected:
     gsMatrix<T> * _Sv; ///< Pointer to a coefficient vector
 public:
     typedef T Scalar;
-
-    enum {Space = 0};
+    enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
 
     explicit gsFeSolution(const gsFeSpace<T> & u) : _u(u), _Sv(NULL) { }
 
@@ -1146,7 +1141,7 @@ public:
     : _u(u) { }
 
 public:
-    enum {ColBlocks = E::ColBlocks};
+    enum {ColBlocks = E::ColBlocks, ScalarValued=E::ScalarValued};
     enum {Space = (E::Space==0?0:(E::Space==1?2:1))};
 
     mutable gsMatrix<Scalar> res;
@@ -1210,7 +1205,7 @@ public:
     : _u(u) { }
 
 public:
-    enum {ColBlocks = E::ColBlocks};
+    enum {ScalarValued = E::ScalarValued, ColBlocks = E::ColBlocks};
     enum {Space = E::Space};
 
     // template<bool S  = ColBlocks>
@@ -1241,8 +1236,7 @@ class trace_expr  : public _expr<trace_expr<E> >
 {
 public:
     typedef typename E::Scalar Scalar;
-    enum {ScalarValued = 0};
-    enum {Space = E::Space};
+    enum {ScalarValued = 0, Space = E::Space, ColBlocks= E::ColBlocks};
 
 private:
     typename E::Nested_t _u;
@@ -1339,7 +1333,7 @@ class reshape_expr  : public _expr<reshape_expr<E> >
 {
 public:
     typedef typename E::Scalar Scalar;
-    enum {ScalarValued = 0};
+    enum {ScalarValued = 0, ColBlocks = E::ColBlocks};
     enum {Space = E::Space};
 private:
     typename E::Nested_t _u;
@@ -1385,8 +1379,7 @@ class replicate_expr  : public _expr<replicate_expr<E> >
 {
 public:
     typedef typename E::Scalar Scalar;
-    enum {ScalarValued = 0};
-    enum {Space = E::Space};
+    enum {ScalarValued = 0, Space = E::Space, ColBlocks= E::ColBlocks};
 private:
     typename E::Nested_t _u;
     index_t _n, _m;
@@ -1435,7 +1428,7 @@ class flat_expr  : public _expr<flat_expr<E> >
 {
 public:
     typedef typename E::Scalar Scalar;
-     enum {ScalarValued = 0, Space = E::Space};
+    enum {ScalarValued = 0, Space = E::Space, ColBlocks= 0};
  private:
     typename E::Nested_t _u;
     mutable gsMatrix<Scalar> tmp;
@@ -1540,8 +1533,7 @@ flat_expr<E> const flat(E const & u)
         typename E::Nested_t _u;                                        \
     public:                                                             \
     typedef typename E::Scalar Scalar;                                  \
-    enum {ScalarValued = isSv};                                         \
-    enum{Space = E::Space};                                             \
+    enum {Space= E::Space, ScalarValued= isSv, ColBlocks= E::ColBlocks};\
     name##_##expr(_expr<E> const& u) : _u(u) { }                        \
     AutoReturn_t eval(const index_t k) const { return _u.eval(k).mname();} \
     index_t rows() const { return isSv ? 0 : _u.rows(); }               \
@@ -1587,7 +1579,7 @@ private:
     mutable gsMatrix<Scalar> res;
 
 public:
-    enum{Space = E::Space};
+    enum{Space = E::Space, ScalarValued= 0, ColBlocks= E::ColBlocks};
 
     asdiag_expr(_expr<E> const& u) : _u(u) { }
 
@@ -1622,6 +1614,7 @@ class idMat_expr : public _expr<idMat_expr >
 {
 public:
     typedef real_t Scalar;
+    enum {Space = 0, ScalarValued = 0, ColBlocks = 0};
 private:
     index_t _dim;
 
@@ -1654,8 +1647,7 @@ class sign_expr : public _expr<sign_expr<E> >
     typename E::Nested_t _u;
 public:
     typedef typename E::Scalar Scalar;
-    enum {ScalarValued = 1 };
-    enum {Space = E::Space};
+    enum {ScalarValued = 1, Space = E::Space, ColBlocks= 0};
 
     sign_expr(_expr<E> const& u) : _u(u) { }
 
@@ -1687,8 +1679,7 @@ class pow_expr : public _expr<pow_expr<E> >
 
 public:
     typedef typename E::Scalar Scalar;
-    enum {ScalarValued = 1 };
-    enum {Space = E::Space};
+    enum {ScalarValued = 1, Space = E::Space, ColBlocks= E::ColBlocks};
 
     Scalar _q;// power
 
@@ -1848,8 +1839,7 @@ public:
     }
 
 public:
-    enum {ScalarValued = 1};
-    enum {Space = 0};
+    enum {Space= 0, ScalarValued= 1, ColBlocks= 0};
 
     Scalar eval(const index_t k) const { return eval_impl(_u,k); }
 
@@ -1889,8 +1879,8 @@ class grad_expr : public _expr<grad_expr<E> >
 {
     typename E::Nested_t _u;
 public:
-    enum{ Space = E::Space };
-
+    enum {Space = E::Space, ScalarValued= 0, ColBlocks= 0};
+    
     typedef typename E::Scalar Scalar;
     mutable gsMatrix<Scalar> tmp;
 
@@ -1947,7 +1937,7 @@ protected:
 
 public:
     typedef T Scalar;
-    enum{Space = 0};
+    enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
 
     explicit grad_expr(const gsFeSolution<T> & u) : _u(u) { }
 
@@ -2166,7 +2156,7 @@ class onormal_expr : public _expr<onormal_expr<T> >
 
 public:
     typedef T Scalar;
-    enum {Space = 0};
+    enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
     
     onormal_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
@@ -2205,7 +2195,8 @@ class normal_expr : public _expr<normal_expr<T> >
 
 public:
     typedef T Scalar;
-
+    enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
+    
     normal_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
     MatExprType eval(const index_t k) const
@@ -2243,7 +2234,8 @@ class tangent_expr : public _expr<tangent_expr<T> >
 
 public:
     typedef T Scalar;
-
+    enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
+    
     tangent_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
     mutable gsMatrix<Scalar> res;
@@ -2294,7 +2286,7 @@ class lapl_expr : public _expr<lapl_expr<E> >
 
 public:
     typedef typename E::Scalar Scalar;
-    enum {Space = 1};
+    enum {Space = E::Space, ScalarValued= 0, ColBlocks= 0};
 
     lapl_expr(const E & u) : _u(u) { }
 
@@ -2330,7 +2322,7 @@ protected:
 
 public:
     typedef T Scalar;
-    enum{Space = 0};
+    enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
 
     lapl_expr(const gsFeSolution<T> & u) : _u(u) { }
 
@@ -2415,7 +2407,7 @@ class jacInv_expr  : public _expr<jacInv_expr<T> >
     typename gsGeometryMap<T>::Nested_t _G;
 public:
     typedef T Scalar;
-    enum {Space = 0};
+    enum {Space = 0, ScalarValued = 0, ColBlocks = 0};
 
     jacInv_expr(const gsGeometryMap<T> & G) : _G(G)
     {
@@ -2452,7 +2444,7 @@ class jac_expr : public _expr<jac_expr<E> >
     typename E::Nested_t _u;
 public:
     enum {ColBlocks = (1==E::Space?1:0) };
-    enum {Space = E::Space };
+    enum {Space = E::Space, ScalarValued= 0 };
 
     typedef typename E::Scalar Scalar;
 
@@ -2463,12 +2455,13 @@ public:
 
     MatExprType eval(const index_t k) const
     {
+        if (0!=Space)
         // Dim x (numActive*Dim)
-//        res = _u.data().values[1].col(k).transpose().blockDiag(_u.dim());
-
-        res = _u.data().values[1]
-            .reshapeCol(k, _u.parDim(), _u.targetDim()).transpose()
-            .blockDiag(_u.dim());
+            res = _u.data().values[1].col(k).transpose().blockDiag(_u.dim());
+        else
+            res = _u.data().values[1]
+                .reshapeCol(k, _u.parDim(), _u.targetDim()).transpose()
+                .blockDiag(_u.dim());
         return res;
     }
 
@@ -2508,7 +2501,7 @@ class jac_expr<gsGeometryMap<T> > : public _expr<jac_expr<gsGeometryMap<T> > >
 
 public:
     typedef T Scalar;
-    enum {Space = 0};
+    enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
 
     jac_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
@@ -2702,7 +2695,7 @@ class meas_expr : public _expr<meas_expr<T> >
     typename gsGeometryMap<T>::Nested_t _G;
 
 public:
-    enum {ScalarValued = 1};
+    enum {Space = 0, ScalarValued = 1, ColBlocks = 0};
 
     typedef T Scalar;
 
@@ -2739,7 +2732,7 @@ private:
     typename gsFeVariable<T>::Nested_t _u;
     mutable gsMatrix<Scalar> res;
 public:
-    enum{ Space = 1 };
+    enum{ Space = 1, ScalarValued= 0, ColBlocks= 0};
     
     curl_expr(const gsFeVariable<T> & u) : _u(u)
     { GISMO_ASSERT(3==u.dim(),"curl(.) requires 3D variable."); }
@@ -3060,7 +3053,6 @@ class frprod_expr : public _expr<frprod_expr<E1, E2> >
 public:
     typedef typename E1::Scalar Scalar;
     enum {ScalarValued = 0, ColBlocks=E2::ColBlocks};
-
     enum { Space = E1::Space + E2::Space };
     // E1 E2 this (16 cases..)
     // 0  0  0
@@ -3126,7 +3118,7 @@ class frprod_expr<E1,E2,false> : public _expr<frprod_expr<E1, E2,false> >
 {
 public:
     typedef typename E1::Scalar Scalar;
-    enum {ScalarValued = 0, Space = E1::Space};
+    enum {ScalarValued = 0, Space = E1::Space, ColBlocks= E1::ColBlocks};
 
 private:
     typename E1::Nested_t _u;
@@ -3187,7 +3179,7 @@ public:
     typedef typename E1::Scalar Scalar;
 
 public:
-    enum {ScalarValued = E1::ScalarValued};
+    enum {ScalarValued = E1::ScalarValued, ColBlocks= E2::ColBlocks};
     enum {Space = E1::Space}; // The denominator E2 has to be scalar.
 
     divide_expr(_expr<E1> const& u, _expr<E2> const& v)
@@ -3228,7 +3220,7 @@ private:
     Scalar  const   _c;
 
 public:
-    enum {ScalarValued = E1::ScalarValued};
+    enum {Space= E1::Space, ScalarValued = E1::ScalarValued, ColBlocks= E1::ColBlocks};
 
     divide_expr(_expr<E1> const& u, Scalar const  c)
     : _u(u), _c(c) { }
@@ -3265,7 +3257,7 @@ private:
     Scalar  const   _c;
     typename E2::Nested_t _u;
 public:
-    enum {ScalarValued = 1};
+    enum {Space= 0, ScalarValued = 1, ColBlocks= 0};
 
     divide_expr(Scalar const c, _expr<E2> const& u)
     : _c(c), _u(u)
@@ -3370,7 +3362,7 @@ class summ_expr : public _expr<summ_expr<E1,E2> >
 public:
     typedef typename E1::Scalar Scalar;
 
-    enum {Space = E1::Space };
+    enum {Space = E1::Space, ScalarValued= 0, ColBlocks= 1};
 
     summ_expr(E1 const& u, E2 const& M) : _u(u), _M(M) { }
 
@@ -3475,7 +3467,7 @@ class symm_expr : public _expr<symm_expr<E> >
 public:
     typedef typename E::Scalar Scalar;
 
-    enum { Space = (0==E::Space ? 0 : E::Space) };
+    enum { Space = (0==E::Space ? 0 : E::Space), ScalarValued= E::ScalarValued, ColBlocks= E::ColBlocks };
     
     symm_expr(_expr<E> const& u)
     : _u(u) { }
@@ -3507,7 +3499,7 @@ class symmetrize_expr : public _expr<symmetrize_expr<E> >
 
     mutable gsMatrix<typename E::Scalar> tmp;
 public:
-    enum { Space = (0==E::Space ? 0 : E::Space) };
+    enum { Space = (0==E::Space ? 0 : E::Space), ScalarValued=E::ScalarValued, ColBlocks= E::ColBlocks };
     typedef typename E::Scalar Scalar;
 
     symmetrize_expr(_expr<E> const& u)
@@ -3555,8 +3547,9 @@ public:
     typedef typename E::Scalar Scalar;
     
     avg_expr(_expr<E> const& u) : _u1(u), _u2(u), _lr(true) { }
-    
-    AutoReturn_t eval(const index_t k) const
+
+    mutable gsMatrix<Scalar> res;
+    const gsMatrix<Scalar> & eval(const index_t k) const
     {
         // avg(u) * jump(v)
         //= (uL + uR)/2 * (vL - vR)
@@ -3573,9 +3566,10 @@ public:
         //to do: nv(G) should be lr-enabled
 
         if (0==Space) // This is  an average of values
-            return (_u1.eval(k)+_u2.eval(k)) / (Scalar)(2);
+            res= (_u1.eval(k)+_u2.eval(k)) / (Scalar)(2);
         else//Space=1 or 2. lr: true=first, false=second(iface)
-            return (_lr ? _u1.eval(k) : _u2.eval(k) ) / (Scalar)(2);
+            res= (_lr ? _u1.eval(k) : _u2.eval(k) ) / (Scalar)(2);
+        return res;
     }
 
     // testSide:T/F, trialSide: T/F
@@ -3590,11 +3584,12 @@ public:
             _lr = lr;
     }
 
-    index_t rows() const { return _u1.rows(); }
-    index_t cols() const { return _u1.cols(); }
+    index_t rows() const { return (_lr ? _u1.rows() : _u2.rows()); }
+    index_t cols() const { return (_lr ? _u1.cols() : _u2.cols()); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
+        gsDebug<<"+ Add AVG\n";
         // added on both sides
         evList.add(_u1);
         _u1.parse(evList);
@@ -3653,8 +3648,7 @@ template<class T> EIGEN_STRONG_INLINE
 tangent_expr<T> tv(const gsGeometryMap<T> & u) { return tangent_expr<T>(u); }
 
 template<class E> EIGEN_STRONG_INLINE
-lapl_expr<symbol_expr<E> > lapl(const symbol_expr<E> & u)
-{ return lapl_expr<symbol_expr<E> >(u); }
+lapl_expr<E> lapl(const symbol_expr<E> & u) { return lapl_expr<E>(u); }
 
 template<class T> EIGEN_STRONG_INLINE
 lapl_expr<gsFeSolution<T> > lapl(const gsFeSolution<T> & u)
@@ -3665,15 +3659,14 @@ lapl_expr<gsFeSolution<T> > lapl(const gsFeSolution<T> & u)
 
 /// The Jacobian matrix of a FE variable
 template<class E> EIGEN_STRONG_INLINE
-jac_expr<symbol_expr<E> > jac(const symbol_expr<E> & u) { return jac_expr<symbol_expr<E> >(u); }
+jac_expr<E> jac(const symbol_expr<E> & u) { return jac_expr<E>(u); }
 
 /// The Jacobian matrix of a geometry map
 template<class T> EIGEN_STRONG_INLINE
 jac_expr<gsGeometryMap<T> > jac(const gsGeometryMap<T> & G) {return jac_expr<gsGeometryMap<T> >(G);}
 
 template<class E> EIGEN_STRONG_INLINE
-hess_expr<symbol_expr<E> > hess(const symbol_expr<E> & u)
-{ return hess_expr<symbol_expr<E> >(u); }
+hess_expr<E> hess(const symbol_expr<E> & u) { return hess_expr<E>(u); }
 
 /// The hessian of a geometry map
 template<class T> EIGEN_STRONG_INLINE

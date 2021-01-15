@@ -437,16 +437,11 @@ template<class T>
 template<class E, class _op>
 T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const intContainer & iFaces)
 {
-    // GISMO_ASSERT( expr.isScalar(),
-    //               "Expecting scalar expression instead of "
-    //               <<expr.cols()<<" x "<<expr.rows() );
-
-    //expr.print(gsInfo);
-
+    auto arg_tpl = expr.derived();//std::make_tuple(expr);//copying expression
+    m_exprdata->parse(arg_tpl);
+    
     gsQuadRule<T> QuRule;  // Quadrature rule
     gsVector<T> quWeights; // quadrature weights
-
-    m_exprdata->parse(expr);
 
     // Computed value
     T elVal;
@@ -458,12 +453,14 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
     {
         const boundaryInterface & iFace = *iit;
         const index_t patch1 = iFace.first().patch;
-        // const index_t patch2 = iFace.second().patch; //!
+        const index_t patch2 = iFace.second().patch;
         // Quadrature rule
         QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(patch1),
                                    m_options, iFace.first().side().direction());
 
-        m_exprdata->mapData.side = iFace.first().side();
+        //m_exprdata->mapData.side = iFace.first().side();
+        // m_exprdata->setSide        ( iFace.first() .side() );
+        // m_exprdata->iface().setSide( iFace.second().side() );
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
@@ -479,6 +476,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(patch1);
+            m_exprdata->iface().precompute(patch2);
 
             // Compute on element
             elVal = _op::init();
