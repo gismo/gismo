@@ -137,12 +137,14 @@ void gsPeriodicParametrizationStitch<T>::constructAndSolveEquationSystem(
 
 	for (size_t j = 0; j < posCorrections[i].size(); j++)
 	{
-	    RHS(i, 0) += lambdas[ posCorrections[i][j] - 1 ];
+	    //RHS(i, 0) += lambdas[ posCorrections[i][j] - 1 ];
+	    RHS(i, 0) -= lambdas[ posCorrections[i][j] - 1 ];
 	}
 	// TODO: Actually, one can work directly with posCorrections.
 	for (size_t j = 0; j < negCorrections[i].size(); j++)
 	{
-	    RHS(i, 0) -= lambdas[ negCorrections[i][j] - 1];
+	    //RHS(i, 0) -= lambdas[ negCorrections[i][j] - 1];
+	    RHS(i, 0) += lambdas[ negCorrections[i][j] - 1];
 	}
     }
 
@@ -223,7 +225,7 @@ gsMesh<T> gsPeriodicParametrizationStitch<T>::createFlatMesh(const std::vector<s
 	    {
 		if(correctors[j-1])
 		{
-		    v[j - 1] = mesh.addVertex(gsParametrization<T>::getParameterPoint(this->m_mesh.getGlobalVertexIndex(j, i))[0]+1,
+		    v[j - 1] = mesh.addVertex(gsParametrization<T>::getParameterPoint(this->m_mesh.getGlobalVertexIndex(j, i))[0]-1,
 					      gsParametrization<T>::getParameterPoint(this->m_mesh.getGlobalVertexIndex(j, i))[1]);
 		}
 		else
