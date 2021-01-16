@@ -193,65 +193,63 @@ private:
 }; // class gsTensorPatchRule
 
 
-// template<class T>
-// class gsPatchRule GISMO_FINAL : public gsQuadRule<T>
-// {
-// public:
+template<class T>
+class gsPatchRule GISMO_FINAL : public gsQuadRule<T>
+{
+public:
 
-//     /// Default empty constructor
-//     gsPatchRule()
-//     :
-//     m_basis(nullptr)
-//     {};
+    /// Default empty constructor
+    gsPatchRule()
+    :
+    m_basis(nullptr)
+    {};
 
-//     /// Initialize a tensor-product Gauss quadrature rule for \a basis
-//     /// using quA *deg_i + quB nodes (direction-wise)
-//     gsPatchRule(const gsMatrix<T> & points,
-//                 const gsVector<T> & weights,
-//                 const  gsBasis<T> & basis)
-//     :
-//     m_nodes(&points),
-//     m_weights(&weights),
-//     m_basis(&basis)
-//     {
-//         // m_nodes = points;
-//         // m_weights = weights;
-//         m_start = m_basis->support().col(0);
-//         m_end = m_basis->support().col(1);
-//     };
+    /// Initialize a tensor-product Gauss quadrature rule for \a basis
+    /// using quA *deg_i + quB nodes (direction-wise)
+    gsPatchRule(const  gsBasis<T> & basis)
+    :
+    m_basis(&basis)
+    {
+        // m_nodes = points;
+        // m_weights = weights;
+        m_start = m_basis->support().col(0);
+        m_end = m_basis->support().col(1);
+        m_nodes = m_basis->anchors();
+    };
 
 
-//     //const unsigned digits = std::numeric_limits<T>::digits10 );
+    //const unsigned digits = std::numeric_limits<T>::digits10 );
 
-//     ~gsPatchRule() { };
+    ~gsPatchRule() { };
 
-// public:
-//     // see gsQuadRule.h for documentation
-//     void setNodes( gsVector<index_t> const & numNodes,
-//                    unsigned digits = 0 )
-//     {
+public:
+    // see gsQuadRule.h for documentation
+    void setNodes( gsVector<index_t> const & numNodes,
+                   unsigned digits = 0 )
+    {
 
 
-//     };
+    };
 
-//     using gsQuadRule<T>::setNodes; // unhide base
+    using gsQuadRule<T>::setNodes; // unhide base
 
-//     /// \brief Dimension of the rule
-//     index_t dim() const { return m_basis->dim(); }
+    /// \brief Dimension of the rule
+    index_t dim() const { return m_basis->dim(); }
 
-//     void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
-//                        gsMatrix<T> & nodes, gsVector<T> & weights ) const
-//     {
+    void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
+                       gsMatrix<T> & nodes, gsVector<T> & weights ) const
+    {
 
-//     };
+    };
 
-// private:
-//     mutable gsVector<T> m_start,m_end;
-//     const gsMatrix<T> * m_nodes;
-//     const gsVector<T> * m_weights;
-//     const gsBasis<T> * m_basis;
+public:
+    mutable gsMatrix<T> m_nodes;
+    mutable gsVector<T> m_weights;
+private:
+    mutable gsVector<T> m_start,m_end;
+    const gsBasis<T> * m_basis;
 
-// }; // class gsPatchRule
+}; // class gsPatchRule
 
 
 
@@ -289,6 +287,8 @@ int main(int argc, char* argv[])
 
 
     gsWriteParaview(tbsb,"basis",1000,true);
+    bsb0.degreeIncrease();
+    gsWriteParaview(bsb0,"basis_1D",1000,true);
 
     // ======================================================================
     // some properties
@@ -381,10 +381,6 @@ int main(int argc, char* argv[])
     {
         tensorPatchRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                         points, weights);
-
-        gsDebugVar(points);
-        gsDebugVar(weights);
-
         if (points.cols()!=0)
             gsWriteParaviewPoints(points,"randPoints_el" + std::to_string(el));
         el++;
@@ -392,11 +388,20 @@ int main(int argc, char* argv[])
 
     gsMatrix<> rndPoints(1,random.size());
     rndPoints.row(0) = random;
-            gsWriteParaviewPoints(rndPoints,"randPoints");
+    gsWriteParaviewPoints(rndPoints,"randPoints");
 
 
 
     gsWriteParaviewPoints(allPoints,"quadPoints");
+
+
+
+    gsPatchRule<real_t> patchRule(bsb0);
+    gsDebugVar(bsb0.totalDegree());
+    gsWriteParaviewPoints(patchRule.m_nodes,"greville");
+
+    gsQuadRule<real_t> gauss(bsb0,1,1);
+
 
 
     return 0;
