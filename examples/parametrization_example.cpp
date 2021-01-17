@@ -16,6 +16,7 @@
 #include "gsModeling/gsParametrization.h"
 #include "gsModeling/gsPeriodicParametrizationOverlap.h"
 #include "gsModeling/gsPeriodicParametrizationStitch.h"
+//#include "gsModeling/gsFreeBoundaryParametrization.h"
 
 using namespace gismo;
 
@@ -99,6 +100,7 @@ int main(int argc, char *argv[])
 
     gsPeriodicParametrizationOverlap<real_t>* pm_over;
     gsPeriodicParametrizationStitch<real_t>* pm_stitch;
+    //gsFreeBoundaryParametrization<real_t>* pm_free;
     gsParametrization<real_t>* pm;
 
     if(periodicity == overlap)
@@ -111,6 +113,11 @@ int main(int argc, char *argv[])
 	pm_stitch = new gsPeriodicParametrizationStitch<real_t>(*mm, ol);
 	pm = pm_stitch;
     }
+    // else if(periodicity == free)
+    // {
+    // 	pm_free = new gsFreeBoundaryParametrization<real_t>(*mm, ol);
+    // 	pm = pm_free;
+    // }
     else
     {
 	pm = new gsParametrization<real_t>(*mm, ol);
@@ -128,6 +135,8 @@ int main(int argc, char *argv[])
 	pm_over->compute_periodic_overlap(filenameV0, filenameV1, filenameOverlap);
     else if( periodicity == stitch )
 	pm_stitch->compute_periodic_stitch(filenameV0, filenameV1, filenameStitch);
+    // else if(periodicity == free)
+    // 	pm_free->compute_free_boundary();
     else
 	pm->compute();
 

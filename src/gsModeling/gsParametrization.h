@@ -60,9 +60,7 @@ protected:
 public:
 
     /// Constructor using the input mesh and (possibly) options
-    explicit gsParametrization(gsMesh<T> &mesh,
-			       const gsOptionList & list = defaultOptions(),
-			       bool periodic = false);
+    explicit gsParametrization(gsMesh<T> &mesh, const gsOptionList & list = defaultOptions());
 
     /// @brief Returns the list of default options for gsParametrization
     static gsOptionList defaultOptions();

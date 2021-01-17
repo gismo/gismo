@@ -45,9 +45,7 @@ gsOptionList gsParametrization<T>::defaultOptions()
 }
 
 template<class T>
-gsParametrization<T>::gsParametrization(gsMesh<T> &mesh,
-					const gsOptionList & list,
-					bool periodic) : m_mesh(mesh, 1E-12, periodic)
+gsParametrization<T>::gsParametrization(gsMesh<T> &mesh, const gsOptionList & list) : m_mesh(mesh)
 {
     m_options.update(list, gsOptionList::addIfUnknown);
 }
