@@ -417,9 +417,7 @@ protected:
     * @param[in] n const int - number of inner vertices and therefore size of the square matrix
     * @param[in] N const int - number of the vertices and therefore N-n is the size of the right-hand-side vector
     */
-    void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
-					 const size_t n,
-					 const size_t N);
+    void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood, const size_t n, const size_t N);
 
     /** Similar to @a constructAndSolveEquationSystem but using the NxN system. */
     void constructAndSolveEquationSystem_2(const Neighbourhood &neighbourhood,
@@ -492,6 +490,7 @@ protected:
                                     const std::vector<T> &lengths);
 
     bool rangeCheck(const std::vector<index_t> &corners, const size_t minimum, const size_t maximum);
+
 }; // class gsParametrization
 
 } // namespace gismo
