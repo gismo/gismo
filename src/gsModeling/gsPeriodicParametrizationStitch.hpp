@@ -223,7 +223,7 @@ void gsPeriodicParametrizationStitch<T>::constructAndSolveEquationSystem(const N
 }
 
 template<class T>
-gsMesh<T> gsPeriodicParametrizationStitch<T>::createFlatMesh_2(bool restrict) const
+gsMesh<T> gsPeriodicParametrizationStitch<T>::createFlatMesh(bool restrict) const
 {
     // We unfold the mesh first.
     gsMesh<T> mesh;

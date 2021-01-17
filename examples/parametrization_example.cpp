@@ -13,38 +13,11 @@
 
 #include <gismo.h>
 
+#include "gsModeling/gsParametrization.h"
 #include "gsModeling/gsPeriodicParametrizationOverlap.h"
 #include "gsModeling/gsPeriodicParametrizationStitch.h"
 
 using namespace gismo;
-
-/* TODO (Dominik)
-   - Descriptions of command line arguments.
-   - Documentation of the new functions.
-   - Code clean-up.
-   - Do something about the free method.
-   - iterative method
- */
-
-// A trick to get around C++ strong typing, cf. https://stackoverflow.com/a/12240295/8634018
-union parametrization_t
-{
-    gsParametrization<real_t> std;
-    gsPeriodicParametrizationOverlap<real_t> over;
-
-    // To know what to do in the beginning, cf. https://stackoverflow.com/questions/9941987/there-are-no-arguments-that-depend-on-a-template-parameter
-    parametrization_t() {}
-    ~parametrization_t() {}
-};
-
-// namespace gismo
-// {
-// template <class T>
-// class gsGeneralParametrization : public gsPeriodicParametrizationOverlap<T>, gsPeriodicParametrizationStitch<T>
-// {
-// };
-
-// } // namespace gismo
 
 int main(int argc, char *argv[])
 {
@@ -122,38 +95,41 @@ int main(int argc, char *argv[])
     gsInfo << "Periodicity set to " << periodicity << "." << std::endl;
 
     gsInfo << "creating gsParametrization<real_t>       ";
-
-    //parametrization_t pm;
-	
     stopwatch.restart();
-    // if( periodicity == overlap )
-    // 	pm.over = gsPeriodicParametrizationOverlap<real_t>(*mm, ol);
-    // // TODO next time: this is where it fails.
-    // else
-    // 	pm.std = gsParametrization<real_t>(*mm, ol);
 
-    gsPeriodicParametrizationStitch<real_t> pm(*mm, ol);
+    gsPeriodicParametrizationOverlap<real_t>* pm_over;
+    gsPeriodicParametrizationStitch<real_t>* pm_stitch;
+    gsParametrization<real_t>* pm;
+
+    if(periodicity == overlap)
+    {
+	pm_over = new gsPeriodicParametrizationOverlap<real_t>(*mm, ol);
+	pm = pm_over;
+    }
+    else if(periodicity == stitch)
+    {
+	pm_stitch = new gsPeriodicParametrizationStitch<real_t>(*mm, ol);
+	pm = pm_stitch;
+    }
+    else
+    {
+	pm = new gsParametrization<real_t>(*mm, ol);
+    }
 
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    // if( periodicity == overlap )
-    // 	pm.over.setOptions(ol);
-    // else
-    // 	pm.std.setOptions(ol);
-    pm.setOptions(ol);
+    pm->setOptions(ol);
 
     gsInfo << "gsParametrization::compute()             ";
     stopwatch.restart();
 
     if( periodicity == overlap )
-	pm.compute_periodic_overlap(filenameV0, filenameV1, filenameOverlap);
+	pm_over->compute_periodic_overlap(filenameV0, filenameV1, filenameOverlap);
     else if( periodicity == stitch )
-    	pm.compute_periodic_stitch(filenameV0, filenameV1, filenameStitch);
-    else if( periodicity == free )
-	pm.compute_free_boundary();
+	pm_stitch->compute_periodic_stitch(filenameV0, filenameV1, filenameStitch);
     else
-	pm.compute();
+	pm->compute();
 
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
@@ -163,11 +139,11 @@ int main(int argc, char *argv[])
 
     stopwatch.restart();
     if( periodicity == overlap )
-	flatMesh = pm.createFlatMesh_2(true);
+	flatMesh = pm_over->createFlatMesh(true);
     else if( periodicity == stitch )
-	flatMesh = pm.createFlatMesh_2(true);
+	flatMesh = pm_stitch->createFlatMesh(true);
     else
-	flatMesh = pm.createFlatMesh();
+	flatMesh = pm->createFlatMesh();
 
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
@@ -175,31 +151,21 @@ int main(int argc, char *argv[])
     gsInfo << "gsParametrization::createUVmatrix()      ";
     stopwatch.restart();
     gsMatrix<> uv;
-    // if( periodicity == overlap )
-    // 	uv = pm.over.createUVmatrix();
-    // else
-    // 	uv = pm.std.createUVmatrix();
-    uv=pm.createUVmatrix();
+    uv=pm->createUVmatrix();
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
     gsInfo << "gsParametrization::createXYZmatrix()     ";
     stopwatch.restart();
     gsMatrix<> xyz;
-    // if( periodicity == overlap )
-    // 	xyz = pm.over.createXYZmatrix();
-    // else
-    // 	xyz = pm.std.createXYZmatrix();
-    xyz = pm.createXYZmatrix();
+    xyz = pm->createXYZmatrix();
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    // if( periodicity == overlap )
-    // 	pm.over.restrictMatrices(uv, xyz);
-    // else if( periodicity == stitch )
-    // 	pm.std.restrictMatrices(uv, xyz);
-    if( periodicity == overlap || periodicity == stitch )
-	pm.restrictMatrices(uv, xyz);
+    if( periodicity == overlap)
+	pm_over->restrictMatrices(uv, xyz);
+    else if( periodicity == stitch)
+	pm_stitch->restrictMatrices(uv, xyz);
 
     if(paraview)
     {
@@ -211,19 +177,8 @@ int main(int argc, char *argv[])
 	// .vtk with the vertices coloured according to the parameters
 	// Note: calling gsWriteParaview directly with the uv matrix
 	// would not do, as the vertices are in different order than
-	// in the xyz matrix.
-	// if(periodicity == overlap)
-	// {
-	//     pm.over.writeTexturedMesh(ol.getString("filenameOut"));
-	//     pm.over.writeSTL(*mm, ol.getString("filenameOut"));
-	// }
-	// else
-	// {
-	//     pm.std.writeTexturedMesh(ol.getString("filenameOut"));
-	//     pm.std.writeSTL(*mm, ol.getString("filenameOut"));
-	// }
-	pm.writeTexturedMesh(ol.getString("filenameOut"));
-	pm.writeSTL(*mm, ol.getString("filenameOut"));
+	pm->writeTexturedMesh(ol.getString("filenameOut"));
+	pm->writeSTL(*mm, ol.getString("filenameOut"));
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
@@ -237,6 +192,8 @@ int main(int argc, char *argv[])
 	output << xyz;
 	output.save(ol.getString("filenameOut"));
     }
+
+    delete pm;
 
     return 0;
 }

@@ -21,9 +21,8 @@
 namespace gismo
 {
 
-    // TODO: inherit from gsParametrization (this is just a trick for compilation)
 template <class T>
-class GISMO_EXPORT gsPeriodicParametrizationStitch : public gsPeriodicParametrizationOverlap<T>
+class GISMO_EXPORT gsPeriodicParametrizationStitch : public gsParametrization<T>
 {
     class Neighbourhood : public gsParametrization<T>::Neighbourhood
     {
@@ -46,7 +45,7 @@ class GISMO_EXPORT gsPeriodicParametrizationStitch : public gsPeriodicParametriz
 public:
     explicit gsPeriodicParametrizationStitch(gsMesh<T> &mesh,
 					     const gsOptionList &list = gsParametrization<T>::defaultOptions())
-	: gsPeriodicParametrizationOverlap<T>(mesh, list)
+	: gsParametrization<T>(mesh, list)
 	{}
 
     /// Periodic parametrization using Pierre's trick.
@@ -81,7 +80,7 @@ public:
      * @param posCorrections Positive corrections from the stitch algorithm.
      * @param restrict If set to true, the mesh is restricted to [0, 1]^2.
      */
-    gsMesh<T> createFlatMesh_2(bool restrict) const;
+    gsMesh<T> createFlatMesh(bool restrict) const;
 
 protected:
     std::vector<std::vector<size_t> > m_posCorrections;
