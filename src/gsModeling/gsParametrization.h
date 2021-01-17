@@ -15,6 +15,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsIO/gsOptionList.h>
+#include <gsIO/gsFileData.h> // TODO: Move readIndices and remove this include.
 #include <gsUtils/gsMesh/gsHalfEdgeMesh.h>
 
 namespace gismo
@@ -68,8 +69,6 @@ public:
 
     /// Main function which performs the computation
     gsParametrization<T>& compute();
-
-    gsParametrization<T>& compute_free_boundary();
 
     /**
      * Parametric Coordinates u,v from 0..1
@@ -419,26 +418,12 @@ protected:
 	    values.push_back(pars(0, c));
 	}
     }
-    
-    void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
-					 const size_t n,
-					 const size_t N,
-					 const std::vector<size_t>& corners,
-					 const std::vector<size_t>& botBoundary,
-					 const std::vector<size_t>& rgtBoundary,
-					 const std::vector<size_t>& topBoundary,
-					 const std::vector<size_t>& lftBoundary);
 
     void calculate(const size_t boundaryMethod,
                    const size_t paraMethod,
                    const std::vector<index_t> &cornersInput,
                    const T rangeInput,
                    const size_t numberInput);
-
-    std::vector<size_t> getSide(const std::list<size_t>& boundary, size_t beg, size_t end) const;
-
-    void calculate_free_boundary(const size_t paraMethod,
-				 const std::string& fileCorners);
 
     T findLengthOfPositionPart(const size_t position,
                                     const size_t numberOfPositions,
