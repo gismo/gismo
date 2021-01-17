@@ -14,6 +14,7 @@
 #include <gismo.h>
 
 #include "gsModeling/gsPeriodicParametrizationOverlap.h"
+#include "gsModeling/gsPeriodicParametrizationStitch.h"
 
 using namespace gismo;
 
@@ -21,9 +22,6 @@ using namespace gismo;
    - Descriptions of command line arguments.
    - Documentation of the new functions.
    - Code clean-up.
-   - v-periodicity
-   - speed-up
-   - off-input
    - Do something about the free method.
    - iterative method
  */
@@ -145,14 +143,13 @@ int main(int argc, char *argv[])
     // 	pm.std.setOptions(ol);
     pm.setOptions(ol);
 
-    std::vector<std::vector<size_t> > corrections;
     gsInfo << "gsParametrization::compute()             ";
     stopwatch.restart();
 
     if( periodicity == overlap )
 	pm.compute_periodic_overlap(filenameV0, filenameV1, filenameOverlap);
     else if( periodicity == stitch )
-    	pm.compute_periodic_stitch(filenameV0, filenameV1, filenameStitch, corrections);
+    	pm.compute_periodic_stitch(filenameV0, filenameV1, filenameStitch);
     else if( periodicity == free )
 	pm.compute_free_boundary();
     else
@@ -166,9 +163,9 @@ int main(int argc, char *argv[])
 
     stopwatch.restart();
     if( periodicity == overlap )
-	flatMesh = pm.createFlatMesh(true);
+	flatMesh = pm.createFlatMesh_2(true);
     else if( periodicity == stitch )
-	flatMesh = pm.createFlatMesh(corrections, true);
+	flatMesh = pm.createFlatMesh_2(true);
     else
 	flatMesh = pm.createFlatMesh();
 

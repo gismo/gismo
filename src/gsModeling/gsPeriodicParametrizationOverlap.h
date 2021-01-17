@@ -164,10 +164,10 @@ public:
      *
      * @param restrict If set to true, the mesh is restricted to [0, 1]^2.
      */
-    gsMesh<T> createFlatMesh(bool restrict = false) const;
+    gsMesh<T> createFlatMesh(bool restrict) const;
 
     // Cf. https://stackoverflow.com/questions/18100865/compiler-cant-find-base-class-method-when-called-from-derived-and-the-derived
-    using gsParametrization<T>::createFlatMesh;
+    //using gsParametrization<T>::createFlatMesh;
 
 protected:
     /** Creates a flat (i.e., 2D) mesh with the overlap triangles on

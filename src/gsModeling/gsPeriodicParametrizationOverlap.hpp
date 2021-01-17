@@ -243,8 +243,9 @@ gsMesh<T> gsPeriodicParametrizationOverlap<T>::createFlatMesh(bool restrict) con
 	else
 	    right.push_back(it->second);
     }
-    gsHalfEdgeMesh<T> unfolded(createExtendedFlatMesh(left, right));
-    return this->createRestrictedFlatMesh(unfolded);
+
+    typename gsParametrization<T>::FlatMesh display(createExtendedFlatMesh(left, right));
+    return display.createRestrictedFlatMesh();
 }
 
 template<class T>

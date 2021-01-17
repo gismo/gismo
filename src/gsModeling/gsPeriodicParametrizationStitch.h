@@ -34,11 +34,9 @@ public:
 	{}
 
     /// Periodic parametrization using Pierre's trick.
-    // TODO: Repair (the result is broken in the u-direction).
     gsPeriodicParametrizationStitch<T>& compute_periodic_stitch(std::string bottomFile,
 								std::string topFile,
-								std::string stitchFile,
-								std::vector<std::vector<size_t> >& posCorrections);
+								std::string stitchFile);
 
 protected:
     void calculate_periodic_stitch(const size_t paraMethod,
@@ -46,36 +44,32 @@ protected:
 				   const std::vector<T>& valuesV0,
 				   const std::vector<size_t>& indicesV1,
 				   const std::vector<T>& valuesV1,
-				   const std::vector<size_t>& stitchIndices,
-				   std::vector<std::vector<size_t> >& posCorrections);
+				   const std::vector<size_t>& stitchIndices);
 
     /** Similar to @a constructAndSolveEquationSystem but works for periodic meshes using
      * the corrections.
      */ // TODO: Explain the parameters.
     void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
 					 const size_t n,
-					 const size_t N,
-					 const std::vector<std::vector<size_t> >& posCorrections,
-					 const std::vector<std::vector<size_t> >& negCorrections);
+					 const size_t N);
 
     // From here on the visualisation methods
 public:
 
     using gsParametrization<T>::createFlatMesh;
     // TODO: remove
-    using gsPeriodicParametrizationOverlap<T>::createFlatMesh;
+    //using gsPeriodicParametrizationOverlap<T>::createFlatMesh;
 
     /**
      * Creates a flat mesh out of a periodic parametrization created by a the stitch method.
      * @param posCorrections Positive corrections from the stitch algorithm.
      * @param restrict If set to true, the mesh is restricted to [0, 1]^2.
      */
-    gsMesh<T> createFlatMesh(const std::vector<std::vector<size_t> >& posCorrections,
-			     bool restrict = false) const;
+    gsMesh<T> createFlatMesh_2(bool restrict) const;
 
 protected:
-    // TODO next time
     std::vector<std::vector<size_t> > m_posCorrections;
+    std::vector<std::vector<size_t> > m_negCorrections;
 };
 
 } // namespace gismo

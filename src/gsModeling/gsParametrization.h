@@ -369,6 +369,38 @@ protected:
         std::vector<LocalNeighbourhood> m_localBoundaryNeighbourhoods;
     };
 
+    class FlatMesh
+    {
+    public:
+	FlatMesh(const gsMesh<T>& unfolded)
+	    : m_unfolded(unfolded)
+	{}
+
+	gsMesh<T> createRestrictedFlatMesh() const;
+
+    private:
+	real_t correspondingV(const typename gsMesh<T>::VertexHandle& v0,
+			      const typename gsMesh<T>::VertexHandle& v1,
+			      real_t u) const;
+
+	void addThreeFlatTrianglesOneOut(gsMesh<T>& mesh,
+					 const typename gsMesh<T>::VertexHandle& v0,
+					 const typename gsMesh<T>::VertexHandle& v1,
+					 const typename gsMesh<T>::VertexHandle& v2) const;
+
+	void addThreeFlatTrianglesTwoOut(gsMesh<T>& mesh,
+					 const typename gsMesh<T>::VertexHandle& v0,
+					 const typename gsMesh<T>::VertexHandle& v1,
+					 const typename gsMesh<T>::VertexHandle& v2) const;
+
+	void addOneFlatTriangleNotIntersectingBoundary(gsMesh<T>& mesh,
+						       const typename gsMesh<T>::VertexHandle& v0,
+						       const typename gsMesh<T>::VertexHandle& v1,
+						       const typename gsMesh<T>::VertexHandle& v2) const;
+    private: // members
+	gsHalfEdgeMesh<T> m_unfolded;
+    };
+
 
 protected:
     /**
@@ -403,13 +435,31 @@ protected:
 					   const size_t n,
 					   const size_t N);
 
-    std::vector<size_t> readIndices(const std::string& filename) const;
+    /// Read 3D points from filename.xml and return their indices in m_mesh.
+    std::vector<size_t> readIndices(const std::string& filename) const
+    {
+	gsMatrix<> pts;
+	gsFileData<T> fd(filename);
+	fd.template getId<gsMatrix<T> >(0, pts);
 
-    // Cf. https://stackoverflow.com/questions/9338152/must-the-definition-of-a-c-inline-functions-be-in-the-same-file
+	std::vector<size_t> result;
+	for(index_t c=0; c<pts.cols(); c++)
+	    result.push_back(m_mesh.findVertex(pts(0, c), pts(1, c), pts(2, c), true));
+
+	return result;
+    }
+
+    /** Read 3D points (stored as a matrix with id=0) and their
+     * associated scalars (a matrix with id=1) from filename.xml.
+     * @param filename name of the input file
+     * @param[out] indices of the points from the file in m_mesh
+     * @param[out] values associated to each of the points in the file
+     */
     void readIndicesAndValues(const std::string& filename,
 			      std::vector<size_t>& indices,
 			      std::vector<T>& values) const
     {
+	// Cf. https://stackoverflow.com/questions/9338152/must-the-definition-of-a-c-inline-functions-be-in-the-same-file
 	gsFileData<T> fd(filename);
 	gsMatrix<> pars, pts;
 	// Cf. https://stackoverflow.com/questions/3505713/c-template-compilation-error-expected-primary-expression-before-token
@@ -451,29 +501,6 @@ protected:
                                     const std::vector<T> &lengths);
 
     bool rangeCheck(const std::vector<index_t> &corners, const size_t minimum, const size_t maximum);
-
-    real_t correspondingV(const typename gsMesh<T>::VertexHandle& v0,
-			  const typename gsMesh<T>::VertexHandle& v1,
-			  real_t u) const;
-
-    void addThreeFlatTrianglesOneOut(gsMesh<T>& mesh,
-				     const typename gsMesh<T>::VertexHandle& v0,
-				     const typename gsMesh<T>::VertexHandle& v1,
-				     const typename gsMesh<T>::VertexHandle& v2) const;
-
-    void addThreeFlatTrianglesTwoOut(gsMesh<T>& mesh,
-				     const typename gsMesh<T>::VertexHandle& v0,
-				     const typename gsMesh<T>::VertexHandle& v1,
-				     const typename gsMesh<T>::VertexHandle& v2) const;
-
-    void addOneFlatTriangleNotIntersectingBoundary(gsMesh<T>& mesh,
-						   typename gsMesh<T>::VertexHandle& v0,
-						   typename gsMesh<T>::VertexHandle& v1,
-						   typename gsMesh<T>::VertexHandle& v2) const;
-
-protected:
-    gsMesh<T> createRestrictedFlatMesh(const gsHalfEdgeMesh<T>& unfolded) const;
-
 }; // class gsParametrization
 
 } // namespace gismo

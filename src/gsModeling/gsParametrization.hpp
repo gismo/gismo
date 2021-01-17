@@ -266,181 +266,6 @@ gsMesh<T> gsParametrization<T>::createFlatMesh() const
     return mesh.cleanMesh();
 }
 
-template<class T>
-real_t gsParametrization<T>::correspondingV(const typename gsMesh<T>::VertexHandle& h0,
-					    const typename gsMesh<T>::VertexHandle& h1,
-					    real_t u) const
-{
-    real_t u0 = (*h0)[0];
-    real_t u1 = (*h1)[0];
-    real_t v0 = (*h0)[1];
-    real_t v1 = (*h1)[1];
-
-    real_t t = (u - u0) / (u1 - u0);
-
-    return (1 - t) * v0 + t * v1;
-}
-
-// v1 is outside the domain, v0 and v2 inside.
-template<class T>
-void gsParametrization<T>::addThreeFlatTrianglesOneOut(gsMesh<T>& mesh,
-						       const typename gsMesh<T>::VertexHandle& v0,
-						       const typename gsMesh<T>::VertexHandle& v1,
-						       const typename gsMesh<T>::VertexHandle& v2) const
-{
-    // Note: v are in the input mesh, w in the output.
-
-    typename gsMesh<T>::VertexHandle w0 = mesh.addVertex(v0->x(), v0->y());
-    typename gsMesh<T>::VertexHandle w2 = mesh.addVertex(v2->x(), v2->y());
-
-    if(v1->x() < 0)
-    {
-	// Two triangles on the left.
-	typename gsMesh<T>::VertexHandle w01 = mesh.addVertex(0, correspondingV(v0, v1, 0));
-	typename gsMesh<T>::VertexHandle w12 = mesh.addVertex(0, correspondingV(v1, v2, 0));
-
-	mesh.addFace(w0, w01, w12);
-	mesh.addFace(w0, w12, w2);
-
-	// One triangle on the right.
-	typename gsMesh<T>::VertexHandle vvv01 = mesh.addVertex(1, correspondingV(v0, v1, 0));
-	typename gsMesh<T>::VertexHandle vvv12 = mesh.addVertex(1, correspondingV(v1, v2, 0));
-	typename gsMesh<T>::VertexHandle v1copy = mesh.addVertex(v1->x() + 1, v1->y());
-	mesh.addFace(vvv01, v1copy, vvv12);	
-    }
-    else if(v1->x() > 1)
-    {
-	// Two triangles on the left.
-	typename gsMesh<T>::VertexHandle w01 = mesh.addVertex(1, correspondingV(v0, v1, 1));
-	typename gsMesh<T>::VertexHandle w12 = mesh.addVertex(1, correspondingV(v1, v2, 1));
-
-	mesh.addFace(w0, w01, w12);
-	mesh.addFace(w0, w12, w2);
-
-	// One triangle on the right.
-	typename gsMesh<T>::VertexHandle vvv01 = mesh.addVertex(0, correspondingV(v0, v1, 1));
-	typename gsMesh<T>::VertexHandle vvv12 = mesh.addVertex(0, correspondingV(v1, v2, 1));
-	typename gsMesh<T>::VertexHandle v1copy = mesh.addVertex(v1->x() - 1, v1->y());
-	mesh.addFace(vvv01, v1copy, vvv12);
-    }
-    else
-	gsWarn << "This situation of addThreeFlatTriangles should not happen, v1->x() = "
-	       << v1->x() << "." << std::endl;
-}
-
-// v1 is inside the domain, v0 and v2 outside.
-template<class T>
-void gsParametrization<T>::addThreeFlatTrianglesTwoOut(gsMesh<T>& mesh,
-						       const typename gsMesh<T>::VertexHandle& v0,
-						       const typename gsMesh<T>::VertexHandle& v1,
-						       const typename gsMesh<T>::VertexHandle& v2) const
-{
-    if(v0->x() < 0 && v2->x() < 0)
-    {
-	typename gsMesh<T>::VertexHandle w0 = mesh.addVertex(v0->x() + 1, v0->y());
-	typename gsMesh<T>::VertexHandle w1 = mesh.addVertex(v1->x() + 1, v1->y());
-	typename gsMesh<T>::VertexHandle w2 = mesh.addVertex(v2->x() + 1, v2->y());
-	addThreeFlatTrianglesOneOut(mesh, w0, w1, w2);
-    }
-    else if(v0->x() > 1 && v2->x() > 1)
-    {
-	typename gsMesh<T>::VertexHandle w0 = mesh.addVertex(v0->x() - 1, v0->y());
-	typename gsMesh<T>::VertexHandle w1 = mesh.addVertex(v1->x() - 1, v1->y());
-	typename gsMesh<T>::VertexHandle w2 = mesh.addVertex(v2->x() - 1, v2->y());
-	addThreeFlatTrianglesOneOut(mesh, w0, w1, w2);
-    }
-    else
-	gsWarn << "This situation of addThreeFlatTrianglesTwoOut should not happen, v1->x()="
-	       << v1->x() << "." << std::endl;
-}
-
-template<class T>
-void gsParametrization<T>::addOneFlatTriangleNotIntersectingBoundary(gsMesh<T>& mesh,
-								     typename gsMesh<T>::VertexHandle& v0,
-								     typename gsMesh<T>::VertexHandle& v1,
-								     typename gsMesh<T>::VertexHandle& v2) const
-{
-    // Note: I wanted to solve this by modifying the x-coordinates of
-    // the vertex handles and recursion. However, this creates mess,
-    // as the vertex handles are shared among several triangles.
-    real_t v0x = v0->x();
-    real_t v1x = v1->x();
-    real_t v2x = v2->x();
-
-    while(v0x > 1 && v1x > 1 && v2x > 1)
-    {
-	v0x -= 1;
-	v1x -= 1;
-	v2x -= 1;
-    }
-
-    while(v0x < 0 && v1x < 0 && v2x < 0)
-    {
-	v0x += 1;
-	v1x += 1;
-	v2x += 1;
-    }
-
-    if(v0x >= 0 && v0x <= 1 &&
-       v1x >= 0 && v1x <= 1 &&
-       v2x >= 0 && v2x <= 1)
-    {
-	mesh.addFace(
-	    mesh.addVertex(v0x, v0->y()),
-	    mesh.addVertex(v1x, v1->y()),
-	    mesh.addVertex(v2x, v2->y()));
-    }
-    else
-    {
-	gsWarn << "This triangle does intersect the boundary.";
-	gsWarn << "v0: " << v0x << ", " << v0->y() << std::endl;
-	gsWarn << "v1: " << v1x << ", " << v1->y() << std::endl;
-	gsWarn << "v2: " << v2x << ", " << v2->y() << std::endl;
-    }
-}
-
-template<class T>
-gsMesh<T> gsParametrization<T>::createRestrictedFlatMesh(const gsHalfEdgeMesh<T>& unfolded) const
-{
-    gsMesh<T> result;
-
-    for(size_t i=0; i<unfolded.getNumberOfTriangles(); i++)
-    {
-	// Remember the corners and which of them are inside the domain.
-	bool out[3];
-	typename gsMesh<T>::VertexHandle vh[3];
-	for(size_t j=1; j<=3; ++j)
-	{
-	    vh[j-1] = unfolded.getVertex(unfolded.getGlobalVertexIndex(j, i));
-	    real_t u = vh[j-1]->x();
-
-	    if(u < 0 || u > 1)
-		out[j-1] = true;
-	    else
-		out[j-1] = false;
-	}
-	if( !out[0] && !out[1] && !out[2] )
-	    addOneFlatTriangleNotIntersectingBoundary(result, vh[0], vh[1], vh[2]);
-
-	else if( out[0] && !out[1] && out[2] )
-	    addThreeFlatTrianglesTwoOut(result, vh[0], vh[1], vh[2]);
-	else if( out[0] && out[1] && !out[2] )
-	    addThreeFlatTrianglesTwoOut(result, vh[1], vh[2], vh[0]);
-	else if( !out[0] && out[1] && out[2] )
-	    addThreeFlatTrianglesTwoOut(result, vh[2], vh[0], vh[1]);
-
-	else if( !out[0] && !out[1] && out[2] )
-	    addThreeFlatTrianglesOneOut(result, vh[1], vh[2], vh[0]);
-	else if( !out[0] && out[1] && !out[2] )
-	    addThreeFlatTrianglesOneOut(result, vh[0], vh[1], vh[2]);
-	else if( out[0] && !out[1] && !out[2] )
-	    addThreeFlatTrianglesOneOut(result, vh[2], vh[0], vh[1]);
-
-	else
-	    addOneFlatTriangleNotIntersectingBoundary(result, vh[0], vh[1], vh[2]);
-    }
-    return result.cleanMesh();
-}
 
 template <class T>
 void gsParametrization<T>::writeTexturedMesh(std::string filename) const
@@ -568,7 +393,6 @@ std::vector<size_t> gsParametrization<T>::Neighbourhood::computeCorrections(
     const std::vector<size_t>& stitchIndices,
     const LocalNeighbourhood& localNeighbourhood) const
 {
-    //gsInfo << "vertex index: " << localNeighbourhood.getVertexIndex() << std::endl;
     auto indexIt = std::find(stitchIndices.begin(), stitchIndices.end(), localNeighbourhood.getVertexIndex());
 
     if(indexIt == stitchIndices.end()) // Not on the stitch, nothing to do.
@@ -626,11 +450,10 @@ gsParametrization<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & mes
 						   const size_t parametrizationMethod)
     : m_basicInfos(meshInfo)
 {
-    // TODO: Now we have posCorrections for those on the stitch interacting with those to the left.
-    // We also need the posCorrections for those to the left interacting with the stitch.
-    GISMO_ASSERT(posCorrections.size() == meshInfo.getNumberOfVertices(), "posCorrections not properly initialized.");
+    posCorrections.resize(meshInfo.getNumberOfVertices());
+    negCorrections.resize(meshInfo.getNumberOfVertices());
     m_localParametrizations.reserve(meshInfo.getNumberOfInnerVertices());
-    gsInfo << "Positive correction\n";
+
     for(size_t i=1; i <= meshInfo.getNumberOfInnerVertices(); i++)
     {
 	LocalNeighbourhood localNeighbourhood(meshInfo, i);
@@ -1163,21 +986,185 @@ std::list<T> gsParametrization<T>::LocalNeighbourhood::getNeighbourDistances() c
     return m_neighbourDistances;
 }
 
-
+/* Nested class FlatMesh */
 
 template<class T>
-std::vector<size_t> gsParametrization<T>::readIndices(const std::string& filename) const
+real_t gsParametrization<T>::FlatMesh::correspondingV(const typename gsMesh<T>::VertexHandle& h0,
+						      const typename gsMesh<T>::VertexHandle& h1,
+						      real_t u) const
 {
-    gsMatrix<> pts;
-    gsFileData<> fd(filename);
-    fd.getId<gsMatrix<> >(0, pts);
+    real_t u0 = (*h0)[0];
+    real_t u1 = (*h1)[0];
+    real_t v0 = (*h0)[1];
+    real_t v1 = (*h1)[1];
 
-    std::vector<size_t> result;
-    for(index_t c=0; c<pts.cols(); c++)
-	result.push_back(m_mesh.findVertex(pts(0, c), pts(1, c), pts(2, c), true));
+    real_t t = (u - u0) / (u1 - u0);
 
-    return result;
+    return (1 - t) * v0 + t * v1;
 }
+
+// v1 is outside the domain, v0 and v2 inside.
+template<class T>
+void gsParametrization<T>::FlatMesh::addThreeFlatTrianglesOneOut(gsMesh<T>& mesh,
+								 const typename gsMesh<T>::VertexHandle& v0,
+								 const typename gsMesh<T>::VertexHandle& v1,
+								 const typename gsMesh<T>::VertexHandle& v2) const
+{
+    // Note: v are in the input mesh, w in the output.
+
+    typename gsMesh<T>::VertexHandle w0 = mesh.addVertex(v0->x(), v0->y());
+    typename gsMesh<T>::VertexHandle w2 = mesh.addVertex(v2->x(), v2->y());
+
+    if(v1->x() < 0)
+    {
+	// Two triangles on the left.
+	typename gsMesh<T>::VertexHandle w01 = mesh.addVertex(0, correspondingV(v0, v1, 0));
+	typename gsMesh<T>::VertexHandle w12 = mesh.addVertex(0, correspondingV(v1, v2, 0));
+
+	mesh.addFace(w0, w01, w12);
+	mesh.addFace(w0, w12, w2);
+
+	// One triangle on the right.
+	typename gsMesh<T>::VertexHandle vvv01 = mesh.addVertex(1, correspondingV(v0, v1, 0));
+	typename gsMesh<T>::VertexHandle vvv12 = mesh.addVertex(1, correspondingV(v1, v2, 0));
+	typename gsMesh<T>::VertexHandle v1copy = mesh.addVertex(v1->x() + 1, v1->y());
+	mesh.addFace(vvv01, v1copy, vvv12);
+    }
+    else if(v1->x() > 1)
+    {
+	// Two triangles on the left.
+	typename gsMesh<T>::VertexHandle w01 = mesh.addVertex(1, correspondingV(v0, v1, 1));
+	typename gsMesh<T>::VertexHandle w12 = mesh.addVertex(1, correspondingV(v1, v2, 1));
+
+	mesh.addFace(w0, w01, w12);
+	mesh.addFace(w0, w12, w2);
+
+	// One triangle on the right.
+	typename gsMesh<T>::VertexHandle vvv01 = mesh.addVertex(0, correspondingV(v0, v1, 1));
+	typename gsMesh<T>::VertexHandle vvv12 = mesh.addVertex(0, correspondingV(v1, v2, 1));
+	typename gsMesh<T>::VertexHandle v1copy = mesh.addVertex(v1->x() - 1, v1->y());
+	mesh.addFace(vvv01, v1copy, vvv12);
+    }
+    else
+	gsWarn << "This situation of addThreeFlatTriangles should not happen, v1->x() = "
+	       << v1->x() << "." << std::endl;
+}
+
+// v1 is inside the domain, v0 and v2 outside.
+template<class T>
+void gsParametrization<T>::FlatMesh::addThreeFlatTrianglesTwoOut(gsMesh<T>& mesh,
+						       const typename gsMesh<T>::VertexHandle& v0,
+						       const typename gsMesh<T>::VertexHandle& v1,
+						       const typename gsMesh<T>::VertexHandle& v2) const
+{
+    if(v0->x() < 0 && v2->x() < 0)
+    {
+	typename gsMesh<T>::VertexHandle w0 = mesh.addVertex(v0->x() + 1, v0->y());
+	typename gsMesh<T>::VertexHandle w1 = mesh.addVertex(v1->x() + 1, v1->y());
+	typename gsMesh<T>::VertexHandle w2 = mesh.addVertex(v2->x() + 1, v2->y());
+	addThreeFlatTrianglesOneOut(mesh, w0, w1, w2);
+    }
+    else if(v0->x() > 1 && v2->x() > 1)
+    {
+	typename gsMesh<T>::VertexHandle w0 = mesh.addVertex(v0->x() - 1, v0->y());
+	typename gsMesh<T>::VertexHandle w1 = mesh.addVertex(v1->x() - 1, v1->y());
+	typename gsMesh<T>::VertexHandle w2 = mesh.addVertex(v2->x() - 1, v2->y());
+	addThreeFlatTrianglesOneOut(mesh, w0, w1, w2);
+    }
+    else
+	gsWarn << "This situation of addThreeFlatTrianglesTwoOut should not happen, v1->x()="
+	       << v1->x() << "." << std::endl;
+}
+
+template<class T>
+void gsParametrization<T>::FlatMesh::addOneFlatTriangleNotIntersectingBoundary(gsMesh<T>& mesh,
+									       const typename gsMesh<T>::VertexHandle& v0,
+									       const typename gsMesh<T>::VertexHandle& v1,
+									       const typename gsMesh<T>::VertexHandle& v2) const
+{
+    // Note: I wanted to solve this by modifying the x-coordinates of
+    // the vertex handles and recursion. However, this creates mess,
+    // as the vertex handles are shared among several triangles.
+    real_t v0x = v0->x();
+    real_t v1x = v1->x();
+    real_t v2x = v2->x();
+
+    while(v0x > 1 && v1x > 1 && v2x > 1)
+    {
+	v0x -= 1;
+	v1x -= 1;
+	v2x -= 1;
+    }
+
+    while(v0x < 0 && v1x < 0 && v2x < 0)
+    {
+	v0x += 1;
+	v1x += 1;
+	v2x += 1;
+    }
+
+    if(v0x >= 0 && v0x <= 1 &&
+       v1x >= 0 && v1x <= 1 &&
+       v2x >= 0 && v2x <= 1)
+    {
+	mesh.addFace(
+	    mesh.addVertex(v0x, v0->y()),
+	    mesh.addVertex(v1x, v1->y()),
+	    mesh.addVertex(v2x, v2->y()));
+    }
+    else
+    {
+	gsWarn << "This triangle does intersect the boundary.";
+	gsWarn << "v0: " << v0x << ", " << v0->y() << std::endl;
+	gsWarn << "v1: " << v1x << ", " << v1->y() << std::endl;
+	gsWarn << "v2: " << v2x << ", " << v2->y() << std::endl;
+    }
+}
+
+template<class T>
+gsMesh<T> gsParametrization<T>::FlatMesh::createRestrictedFlatMesh() const
+{
+    gsMesh<T> result;
+
+    for(size_t i=0; i<m_unfolded.getNumberOfTriangles(); i++)
+    {
+	// Remember the corners and which of them are inside the domain.
+	bool out[3];
+	typename gsMesh<T>::VertexHandle vh[3];
+	for(size_t j=1; j<=3; ++j)
+	{
+	    vh[j-1] = m_unfolded.getVertex(m_unfolded.getGlobalVertexIndex(j, i));
+	    real_t u = vh[j-1]->x();
+
+	    if(u < 0 || u > 1)
+		out[j-1] = true;
+	    else
+		out[j-1] = false;
+	}
+	if( !out[0] && !out[1] && !out[2] )
+	    addOneFlatTriangleNotIntersectingBoundary(result, vh[0], vh[1], vh[2]);
+
+	else if( out[0] && !out[1] && out[2] )
+	    addThreeFlatTrianglesTwoOut(result, vh[0], vh[1], vh[2]);
+	else if( out[0] && out[1] && !out[2] )
+	    addThreeFlatTrianglesTwoOut(result, vh[1], vh[2], vh[0]);
+	else if( !out[0] && out[1] && out[2] )
+	    addThreeFlatTrianglesTwoOut(result, vh[2], vh[0], vh[1]);
+
+	else if( !out[0] && !out[1] && out[2] )
+	    addThreeFlatTrianglesOneOut(result, vh[1], vh[2], vh[0]);
+	else if( !out[0] && out[1] && !out[2] )
+	    addThreeFlatTrianglesOneOut(result, vh[0], vh[1], vh[2]);
+	else if( out[0] && !out[1] && !out[2] )
+	    addThreeFlatTrianglesOneOut(result, vh[2], vh[0], vh[1]);
+
+	else
+	    addOneFlatTriangleNotIntersectingBoundary(result, vh[0], vh[1], vh[2]);
+    }
+    return result.cleanMesh();
+}
+
+// back to gsParametrization
 
 template <class T>
 std::vector<size_t> gsParametrization<T>::getSide(const std::list<size_t>& boundary, size_t beg, size_t end) const
