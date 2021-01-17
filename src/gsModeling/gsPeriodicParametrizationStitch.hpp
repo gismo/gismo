@@ -18,6 +18,101 @@
 namespace gismo
 {
 
+/* Nested class Neighbourhood */
+
+
+
+template<class T>
+std::vector<size_t> gsPeriodicParametrizationStitch<T>::Neighbourhood::computeCorrections(const std::vector<size_t>& stitchIndices,
+											  const LocalNeighbourhood& localNeighbourhood) const
+{
+    auto indexIt = std::find(stitchIndices.begin(), stitchIndices.end(), localNeighbourhood.getVertexIndex());
+
+    if(indexIt == stitchIndices.end()) // Not on the stitch, nothing to do.
+    {
+	return std::vector<size_t>();
+    }
+
+    std::list<size_t> result;
+    std::list<size_t> neighbours = localNeighbourhood.getVertexIndicesOfNeighbours();
+
+    if(indexIt == stitchIndices.begin()) // In the beginning of the stitch.
+    {
+	auto nextOnStitch = std::find(neighbours.begin(), neighbours.end(), *std::next(indexIt));
+	// (Assuming that the stitch has at least two vertices.)
+	for(auto it=nextOnStitch; it!=neighbours.end(); ++it)
+	    result.push_back(*it);
+    }
+    else if(std::next(indexIt) == stitchIndices.end()) // In the end of the stitch.
+    {
+	auto prevOnStitch = std::find(neighbours.begin(), neighbours.end(), *std::prev(indexIt));
+	// (Again assuming the stitch to have at least two vertices.)
+	for(auto it=neighbours.begin(); it!=prevOnStitch; ++it)
+	    result.push_back(*it);
+    }
+    else // In the middle of the stitch.
+    {
+	while(neighbours.front() != *std::next(indexIt))
+	{
+	    neighbours.push_back(neighbours.front());
+	    neighbours.pop_front();
+	}
+
+	auto prevOnStitch = std::find(neighbours.begin(), neighbours.end(), *std::prev(indexIt));
+	for(auto it=neighbours.begin(); it!=prevOnStitch; ++it)
+	    result.push_back(*it);
+    }
+
+    // Other stitch vertices can still be present in the neighbourhood.
+    for(auto it=stitchIndices.begin(); it!=stitchIndices.end(); ++it)
+	result.remove(*it);
+
+    std::vector<size_t> finalResult;
+    finalResult.reserve(result.size());
+    for(auto it=result.begin(); it!=result.end(); ++it)
+	finalResult.push_back(*it);
+
+    return finalResult;
+}
+
+template<class T>
+gsPeriodicParametrizationStitch<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo,
+						   const std::vector<size_t>& stitchIndices,
+						   std::vector<std::vector<size_t> >& posCorrections,
+						   std::vector<std::vector<size_t> >& negCorrections,
+						   const size_t parametrizationMethod)
+    : gsParametrization<T>::Neighbourhood(meshInfo, parametrizationMethod)
+{
+    // We re-do a little of the work done already in the constructor of the parent class.
+    // Alternatively, we could provide a constructor of the parent class setting m_basicInfos
+    // and do everything else here, much as we did when this was a part of the parent class.
+    // Cf., e.g., fcacc860ee28edd608e841af5aeb74dacc90e006 for a reference.
+    posCorrections.resize(meshInfo.getNumberOfVertices());
+    negCorrections.resize(meshInfo.getNumberOfVertices());
+
+    for(size_t i=1; i <= meshInfo.getNumberOfInnerVertices(); i++)
+    {
+	LocalNeighbourhood localNeighbourhood(meshInfo, i);
+
+	posCorrections[i-1] = computeCorrections(stitchIndices, localNeighbourhood);
+	for(size_t j=0; j < posCorrections[i-1].size(); j++)
+	{
+	    negCorrections[posCorrections[i-1][j]-1].push_back(i);
+	}
+    }
+
+    for(size_t i=meshInfo.getNumberOfInnerVertices()+1; i<= meshInfo.getNumberOfVertices(); i++)
+    {
+	LocalNeighbourhood localNeighbourhood(meshInfo, i, 0);
+
+	posCorrections[i-1] = computeCorrections(stitchIndices, localNeighbourhood);
+	for(size_t j=0; j < posCorrections[i-1].size(); j++)
+	{
+	    negCorrections[posCorrections[i-1][j]-1].push_back(i);
+	}
+    }
+}
+
 template <class T>
 gsPeriodicParametrizationStitch<T>& gsPeriodicParametrizationStitch<T>::compute_periodic_stitch(std::string bottomFile,
 												std::string topFile,

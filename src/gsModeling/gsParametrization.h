@@ -321,13 +321,6 @@ protected:
         explicit Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
                                const size_t parametrizationMethod = 2);
 
-	/// Can be probably integrated into the standard constructor.
-        explicit Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
-			       const std::vector<size_t>& stitchIndices,
-			       std::vector<std::vector<size_t> >& posCorrections,
-			       std::vector<std::vector<size_t> >& negCorrections,
-                               const size_t parametrizationMethod = 2);
-
         /**
          * @brief Get vector of lambdas
          *
@@ -361,9 +354,7 @@ protected:
                                            std::vector<std::pair<T, size_t> > &sortedAngles,
                                            std::vector<index_t> &corners) const;
 
-	std::vector<size_t> computeCorrections(const std::vector<size_t>& stitchIndices,
-					       const LocalNeighbourhood& localNeighbourhood) const;
-
+    protected:
         const gsHalfEdgeMesh<T> & m_basicInfos;
         std::vector<LocalParametrization> m_localParametrizations;
         std::vector<LocalNeighbourhood> m_localBoundaryNeighbourhoods;

@@ -25,7 +25,23 @@ namespace gismo
 template <class T>
 class GISMO_EXPORT gsPeriodicParametrizationStitch : public gsPeriodicParametrizationOverlap<T>
 {
-    typedef typename gsParametrization<T>::Neighbourhood Neighbourhood;
+    class Neighbourhood : public gsParametrization<T>::Neighbourhood
+    {
+    public:
+	typedef typename gsParametrization<T>::LocalNeighbourhood LocalNeighbourhood;
+
+	explicit Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
+			       const std::vector<size_t>& stitchIndices,
+			       std::vector<std::vector<size_t> >& posCorrections,
+			       std::vector<std::vector<size_t> >& negCorrections,
+			       const size_t parametrizationMethod = 2);
+
+    private:
+	std::vector<size_t> computeCorrections(const std::vector<size_t>& stitchIndices,
+					       const LocalNeighbourhood& localNeighbourhood) const;
+    };
+
+    //typedef typename gsParametrization<T>::Neighbourhood Neighbourhood;
 
 public:
     explicit gsPeriodicParametrizationStitch(gsMesh<T> &mesh,
