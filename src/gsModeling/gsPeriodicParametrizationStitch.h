@@ -15,14 +15,14 @@
 
 #pragma once
 
-#include "gsModeling/gsPeriodicParametrizationOverlap.h"
+#include "gsModeling/gsPeriodicParametrization.h"
 #include "gsIO/gsOptionList.h"
 
 namespace gismo
 {
 
 template <class T>
-class GISMO_EXPORT gsPeriodicParametrizationStitch : public gsParametrization<T>
+class GISMO_EXPORT gsPeriodicParametrizationStitch : public gsPeriodicParametrization<T>
 {
     class Neighbourhood : public gsParametrization<T>::Neighbourhood
     {
@@ -45,7 +45,7 @@ class GISMO_EXPORT gsPeriodicParametrizationStitch : public gsParametrization<T>
 public:
     explicit gsPeriodicParametrizationStitch(gsMesh<T> &mesh,
 					     const gsOptionList &list = gsParametrization<T>::defaultOptions())
-	: gsParametrization<T>(mesh, list)
+	: gsPeriodicParametrization<T>(mesh, list)
 	{}
 
     /// Periodic parametrization using Pierre's trick.

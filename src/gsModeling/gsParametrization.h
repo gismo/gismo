@@ -360,38 +360,6 @@ protected:
         std::vector<LocalNeighbourhood> m_localBoundaryNeighbourhoods;
     };
 
-    class FlatMesh
-    {
-    public:
-	FlatMesh(const gsMesh<T>& unfolded)
-	    : m_unfolded(unfolded)
-	{}
-
-	gsMesh<T> createRestrictedFlatMesh() const;
-
-    private:
-	real_t correspondingV(const typename gsMesh<T>::VertexHandle& v0,
-			      const typename gsMesh<T>::VertexHandle& v1,
-			      real_t u) const;
-
-	void addThreeFlatTrianglesOneOut(gsMesh<T>& mesh,
-					 const typename gsMesh<T>::VertexHandle& v0,
-					 const typename gsMesh<T>::VertexHandle& v1,
-					 const typename gsMesh<T>::VertexHandle& v2) const;
-
-	void addThreeFlatTrianglesTwoOut(gsMesh<T>& mesh,
-					 const typename gsMesh<T>::VertexHandle& v0,
-					 const typename gsMesh<T>::VertexHandle& v1,
-					 const typename gsMesh<T>::VertexHandle& v2) const;
-
-	void addOneFlatTriangleNotIntersectingBoundary(gsMesh<T>& mesh,
-						       const typename gsMesh<T>::VertexHandle& v0,
-						       const typename gsMesh<T>::VertexHandle& v1,
-						       const typename gsMesh<T>::VertexHandle& v2) const;
-    private: // members
-	gsHalfEdgeMesh<T> m_unfolded;
-    };
-
 
 protected:
     /**

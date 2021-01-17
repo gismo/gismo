@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsModeling/gsParametrization.h>
+#include <gsModeling/gsPeriodicParametrization.h>
 #include <gsIO/gsOptionList.h>
 
 namespace gismo
@@ -49,7 +49,7 @@ namespace gismo
  * TODO: Mention the paper once it passes the review.
  */
 template <class T>
-class GISMO_EXPORT gsPeriodicParametrizationOverlap : public gsParametrization<T>
+class GISMO_EXPORT gsPeriodicParametrizationOverlap : public gsPeriodicParametrization<T>
 {
     typedef typename gsParametrization<T>::Neighbourhood Neighbourhood;
 
@@ -59,8 +59,8 @@ public:
      * @param list List of the method options.
      */
     explicit gsPeriodicParametrizationOverlap(gsMesh<T> &mesh,
-					      const gsOptionList &list = gsParametrization<T>::defaultOptions())
-	: gsParametrization<T>(mesh, list)
+					      const gsOptionList &list = gsPeriodicParametrization<T>::defaultOptions())
+	: gsPeriodicParametrization<T>(mesh, list)
     {
 	// Note: m_twins and m_overlapHEM are initiated later on.
     }

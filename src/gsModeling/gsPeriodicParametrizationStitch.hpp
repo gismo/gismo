@@ -300,7 +300,7 @@ gsMesh<T> gsPeriodicParametrizationStitch<T>::createFlatMesh(bool restrict) cons
     gsMesh<T> unfolded = mesh.cleanMesh();
     if(restrict)
     {
-	typename gsParametrization<T>::FlatMesh display(unfolded);
+	typename gsPeriodicParametrization<T>::FlatMesh display(unfolded);
 	return display.createRestrictedFlatMesh();
     }
     else

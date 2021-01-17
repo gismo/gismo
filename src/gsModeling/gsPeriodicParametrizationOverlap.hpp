@@ -244,7 +244,7 @@ gsMesh<T> gsPeriodicParametrizationOverlap<T>::createFlatMesh(bool restrict) con
 	    right.push_back(it->second);
     }
 
-    typename gsParametrization<T>::FlatMesh display(createExtendedFlatMesh(left, right));
+    typename gsPeriodicParametrization<T>::FlatMesh display(createExtendedFlatMesh(left, right));
     return display.createRestrictedFlatMesh();
 }
 
