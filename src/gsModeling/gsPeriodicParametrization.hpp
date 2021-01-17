@@ -20,8 +20,8 @@ namespace gismo
 /* Nested class FlatMesh */
 
 template<class T>
-real_t gsPeriodicParametrization<T>::FlatMesh::correspondingV(const typename gsMesh<T>::VertexHandle& h0,
-							      const typename gsMesh<T>::VertexHandle& h1,
+real_t gsPeriodicParametrization<T>::FlatMesh::correspondingV(const VertexHandle& h0,
+							      const VertexHandle& h1,
 							      real_t u) const
 {
     real_t u0 = (*h0)[0];
@@ -34,12 +34,11 @@ real_t gsPeriodicParametrization<T>::FlatMesh::correspondingV(const typename gsM
     return (1 - t) * v0 + t * v1;
 }
 
-// v1 is outside the domain, v0 and v2 inside.
 template<class T>
 void gsPeriodicParametrization<T>::FlatMesh::addThreeFlatTrianglesOneOut(gsMesh<T>& mesh,
-									 const typename gsMesh<T>::VertexHandle& v0,
-									 const typename gsMesh<T>::VertexHandle& v1,
-									 const typename gsMesh<T>::VertexHandle& v2) const
+									 const VertexHandle& v0,
+									 const VertexHandle& v1,
+									 const VertexHandle& v2) const
 {
     // Note: v are in the input mesh, w in the output.
 
@@ -81,12 +80,11 @@ void gsPeriodicParametrization<T>::FlatMesh::addThreeFlatTrianglesOneOut(gsMesh<
 	       << v1->x() << "." << std::endl;
 }
 
-// v1 is inside the domain, v0 and v2 outside.
 template<class T>
 void gsPeriodicParametrization<T>::FlatMesh::addThreeFlatTrianglesTwoOut(gsMesh<T>& mesh,
-									 const typename gsMesh<T>::VertexHandle& v0,
-									 const typename gsMesh<T>::VertexHandle& v1,
-									 const typename gsMesh<T>::VertexHandle& v2) const
+									 const VertexHandle& v0,
+									 const VertexHandle& v1,
+									 const VertexHandle& v2) const
 {
     if(v0->x() < 0 && v2->x() < 0)
     {
@@ -193,6 +191,24 @@ gsMesh<T> gsPeriodicParametrization<T>::FlatMesh::createRestrictedFlatMesh() con
 	    addOneFlatTriangleNotIntersectingBoundary(result, vh[0], vh[1], vh[2]);
     }
     return result.cleanMesh();
+}
+
+// back to implementing the main class
+
+template <class T>
+void gsPeriodicParametrization<T>::restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
+						    real_t uMin, real_t uMax) const
+{
+    real_t uLength = uMax - uMin;
+    for(index_t j=0; j<uv.cols(); j++)
+    {
+	real_t u = uv(0, j);
+
+	if(u < uMin)
+	    uv(0, j) += uLength;
+	else if(u > uMax)
+	    uv(0 ,j) -= uLength;
+    }
 }
 
 } // namespace gismo

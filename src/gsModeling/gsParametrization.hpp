@@ -232,22 +232,6 @@ gsMatrix<T> gsParametrization<T>::createXYZmatrix()
     return m;
 }
 
-template <class T>
-void gsParametrization<T>::restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
-					    real_t uMin, real_t uMax) const
-{
-    real_t uLength = uMax - uMin;
-    for(index_t j=0; j<uv.cols(); j++)
-    {
-	real_t u = uv(0, j);
-
-	if(u < uMin)
-	    uv(0, j) += uLength;
-	else if(u > uMax)
-	    uv(0 ,j) -= uLength;
-    }
-}
-
 template<class T>
 gsMesh<T> gsParametrization<T>::createFlatMesh() const
 {

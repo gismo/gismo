@@ -23,46 +23,82 @@ namespace gismo
 template <class T>
 class gsPeriodicParametrization : public gsParametrization<T>
 {
+
 public:
+
+    /// Nested class for plotting flat meshes restricted to [0, 1]^2.
     class FlatMesh
     {
+	typedef typename gsMesh<T>::VertexHandle VertexHandle;
     public:
+
+	/// Constructor.
+	/// @a unfolded Flat mesh possibly intersecting the domain boundaries.
 	FlatMesh(const gsMesh<T>& unfolded)
 	    : m_unfolded(unfolded)
 	{}
 
+	/// Trims the mesh to [0, 1]^2.
 	gsMesh<T> createRestrictedFlatMesh() const;
 
     private:
-	real_t correspondingV(const typename gsMesh<T>::VertexHandle& v0,
-			      const typename gsMesh<T>::VertexHandle& v1,
+
+	/// Finds the v-coordinate of the point on the line segment
+	/// (@a v0, @a v1) that has the u-coordinate @a u.
+	real_t correspondingV(const VertexHandle& v0,
+			      const VertexHandle& v1,
 			      real_t u) const;
 
+	/// Adds three flat triangles in the situation where one of
+	/// the vertices of the original triangle is outside the
+	/// domain.
+	/// @a v1 is outside the domain, @a v0 and @a v2 inside.
 	void addThreeFlatTrianglesOneOut(gsMesh<T>& mesh,
-					 const typename gsMesh<T>::VertexHandle& v0,
-					 const typename gsMesh<T>::VertexHandle& v1,
-					 const typename gsMesh<T>::VertexHandle& v2) const;
+					 const VertexHandle& v0,
+					 const VertexHandle& v1,
+					 const VertexHandle& v2) const;
 
+	/// Adds three flat triangles in the situation where two of
+	/// the vertices of the original triangle are outside the
+	/// domain.
+	/// @a v1 is inside the domain, @a v0 and @a v2 outside.
 	void addThreeFlatTrianglesTwoOut(gsMesh<T>& mesh,
-					 const typename gsMesh<T>::VertexHandle& v0,
-					 const typename gsMesh<T>::VertexHandle& v1,
-					 const typename gsMesh<T>::VertexHandle& v2) const;
+					 const VertexHandle& v0,
+					 const VertexHandle& v1,
+					 const VertexHandle& v2) const;
 
+	/// Adds a flat triangle and shifts it inside the domain if necessary.
 	void addOneFlatTriangleNotIntersectingBoundary(gsMesh<T>& mesh,
-						       const typename gsMesh<T>::VertexHandle& v0,
-						       const typename gsMesh<T>::VertexHandle& v1,
-						       const typename gsMesh<T>::VertexHandle& v2) const;
+						       const VertexHandle& v0,
+						       const VertexHandle& v1,
+						       const VertexHandle& v2) const;
+
     private: // members
-	gsHalfEdgeMesh<T> m_unfolded;
+	gsHalfEdgeMesh<T> m_unfolded;///< flat mesh possibly intersecting the domain boundaries
     };
 
 public:
+
+    /// Constructor, just passing the parameters to the parent class.
     gsPeriodicParametrization(gsMesh<T>& mesh,
 			      const gsOptionList &list = gsParametrization<T>::defaultOptions())
 	: gsParametrization<T>(mesh, list)
 	{}
 
     using gsParametrization<T>::defaultOptions;
+
+    /**
+     * Moves the u-coordinates of parameters outside the
+     * interval [@a uMin, @a uMax] to inside the interval.
+     * Note: it modifies uv!
+     * @param uv Matrix of the parameters, one column per point
+     * @param xyz Matrix of the coordinates, one column per point
+     * @param uMin minimal desired u
+     * @param uMax maximal desired u
+     */
+    void restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
+			  real_t uMin = 0, real_t uMax = 1) const;
+
 };
 
 } // namespace gismo

@@ -84,18 +84,6 @@ public:
     gsMatrix<T> createXYZmatrix();
 
     /**
-     * Moves the u-coordinates of parameters outside the
-     * interval [@a uMin, @a uMax] to inside the interval.
-     * Note: it modifies uv!
-     * @param uv Matrix of the parameters, one column per point
-     * @param xyz Matrix of the coordinates, one column per point
-     * @param uMin minimal desired u
-     * @param uMax maximal desired u
-     */
-    void restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
-			  real_t uMin = 0, real_t uMax = 1) const;
-
-    /**
      * Creates a flat mesh
      * @return
      */
