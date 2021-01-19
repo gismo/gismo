@@ -8,7 +8,7 @@ This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-Author(s): 
+Author(s):
 */
 
 #pragma once
@@ -34,9 +34,10 @@ namespace gismo
 
 		/** \brief Constructor for gsVisitorLinpLap.
 		*/
-		gsVisitorLinpLap(const gsPde<T> & pde)
+		gsVisitorLinpLap(const gsPde<T> & pde, index_t sub_ = 1)
 		{
 			pde_ptr = static_cast<const gsLinpLapPde<T>*>(&pde);
+			sub = sub_;
 		}
 
 		void initialize(const gsBasis<T> & basis,
@@ -50,9 +51,9 @@ namespace gismo
 			// Setup Quadrature
 			//rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
 			//TODO: make this configurable
-			rule = gsSubdividedRule<T,gsQuadRule<T> >(gsQuadrature::get(basis, options), 10);
+			rule = gsSubdividedRule<T, gsQuadRule<T> >(gsQuadrature::get(basis, options), 1);
 
-			// Set Geometry evaluation flags
+													  // Set Geometry evaluation flags
 			md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
 		}
 
@@ -81,6 +82,7 @@ namespace gismo
 			// Initialize local matrix/rhs
 			localMat.setZero(numActive, numActive);
 			localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
+			localJ = 0;
 		}
 
 		inline void assemble(gsDomainIterator<T>    &,
@@ -106,24 +108,35 @@ namespace gismo
 				transformGradients(md, k, bGrads, physGrad);
 
 				//Compute the Gradient of the approximative function w by multiplying the coefficients of w with the physical gradients
-				const gsMatrix<T> wGrad = physGrad * w_;
+				gsMatrix<T> wGrad = physGrad * w_;
+				gsMatrix<T> wVal = bVals.col(k).transpose() * w_;
 
+				const T a = pow(pde_ptr->eps * pde_ptr->eps + (wGrad.transpose() * wGrad).value(), (pde_ptr->p - 2) / 2);
+				
+				localJ += weight * (pow(pde_ptr->eps * pde_ptr->eps + (wGrad.transpose() * wGrad).value(), (pde_ptr->p) / 2) / (pde_ptr->p) - (rhsVals.col(k).transpose()*wVal).value());
 				localRhs.noalias() += weight * (bVals.col(k) * rhsVals.col(k).transpose());
-
-				localMat.noalias() += ( weight * pow(pde_ptr->eps * pde_ptr->eps + (wGrad.transpose() * wGrad).value(),(pde_ptr->p-2)/2) ) * (physGrad.transpose() * physGrad);
+				localMat.noalias() += weight * a * (physGrad.transpose() * physGrad);
 			}
 		}
 
 		inline void localToGlobal(const index_t                     patchIndex,
 			const std::vector<gsMatrix<T> > & eliminatedDofs,
-			gsSparseSystem<T>               & system)
+			gsSparseSystem<T>               & system,
+			T								& J)
 		{
 			// Map patch-local DoFs to global DoFs
 			system.mapColIndices(actives, patchIndex, actives);
 
 			// Add contributions to the system matrix and right-hand side
 			system.push(localMat, localRhs, actives, eliminatedDofs.front(), 0, 0);
+
+			//Add contributions to the evaluation of the energy functional in w
+			J = J + localJ;
 		}
+
+	protected:
+		//number of subdivisions for quadrature
+		index_t sub;
 
 	protected:
 		// Pointer to the pde data
@@ -147,6 +160,7 @@ namespace gismo
 		// Local matrices
 		gsMatrix<T> localMat;
 		gsMatrix<T> localRhs;
+		T localJ;
 
 		gsMapData<T> md;
 	};
