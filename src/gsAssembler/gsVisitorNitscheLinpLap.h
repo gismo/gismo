@@ -60,7 +60,7 @@ namespace gismo
 			const int dir = side.direction();
 			gsVector<int> numQuadNodes(basis.dim());
 			for (int i = 0; i < basis.dim(); ++i)
-				numQuadNodes[i] = 4* basis.degree(i) + 1;
+				numQuadNodes[i] = 2* basis.degree(i) + 1;
 			numQuadNodes[dir] = 1;
 
 			// Setup Quadrature
@@ -75,15 +75,17 @@ namespace gismo
 			const gsOptionList & options,
 			gsQuadRule<T>    & rule)
 		{
-			// Setup Quadrature (harmless slicing occurs)
-			rule = gsQuadrature::get(basis, options, side.direction());
+			// Setup Quadrature
+			//rule = gsQuadrature::get(basis, options, side.direction()); // harmless slicing occurs here
+			//TODO: make this configurable
+			rule = gsSubdividedRule<T, gsQuadRule<T> >(gsQuadrature::get(basis, options, side.direction()), 1);
 
 			// Set Geometry evaluation flags
 			md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
 
 			// Compute penalty parameter
 			const int deg = basis.maxDegree();
-			penalty = (deg + basis.dim()) * (deg + 1) * T(2.5);
+			penalty = (deg + basis.dim()) * (deg + 1) * T(10);
 		}
 
 		// Evaluate on element.
@@ -118,6 +120,13 @@ namespace gismo
 			gsMatrix<T> & bGrads = basisData[1];
 			const index_t numActive = actives.rows();
 
+			//Access the coefficients of w which correspond to the active basis functions
+			gsMatrix<T> w_(numActive, 1);
+			for (index_t i = 0; i < numActive; i++)
+			{
+				w_(i, 0) = w(actives(i), 0);
+			}
+
 			for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
 			{
 
@@ -136,13 +145,6 @@ namespace gismo
 				// Compute physical gradients at k as a Dim x NumActive matrix
 				transformGradients(md, k, bGrads, pGrads);
 
-				//Access the coefficients of w which correspond to the active basis functions
-				gsMatrix<T> w_(numActive, 1);
-				for (index_t i = 0; i < numActive; i++)
-				{
-					w_(i, 0) = w(actives(i), 0);
-				}
-
 				//Compute the Gradient of the approximative function w by multiplying the coefficients of w with the physical gradients
 				//Compute the point evaluation of w by multiplying the coefficients with the basis function evaluations.
 				gsMatrix<T> wGrad = pGrads * w_;
@@ -151,12 +153,8 @@ namespace gismo
 				// Get penalty parameter
 				const T h = element.getCellSize();
 				const T a_pen = pow(eps * eps + ((dirData.col(k) - wVal).transpose() * (dirData.col(k) - wVal)).value() / (h * h), (p - 2) / 2);
-				const T mu = a_pen * penalty / h;
 				const T a = pow(eps * eps + (wGrad.transpose() * wGrad).value(), (p - 2) / 2);
-
-				//gsInfo << a_pen*mu<< "\n";
-				
-				//gsInfo << dirData.col(k).rows() << " x "<< dirData.col(k).cols() << "\n";
+				const T mu = a_pen * penalty / h;
 
 				// Sum up quadrature point evaluations
 				localRhs.noalias() -= weight * ((-mu * bVals)
