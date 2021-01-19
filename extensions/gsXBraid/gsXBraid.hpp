@@ -20,20 +20,16 @@ namespace gismo {
   // Constructor
   template <typename T>
   gsXBraid<T>::gsXBraid(const gsMpiComm& comm,
-                        const T&         tstart,
-                        const T&         tstop,
-                        int              ntime)
-    : BraidApp(static_cast<MPI_Comm>(comm), double(tstart), double(tstop), ntime),
+                        const braid_Real tstart,
+                        const braid_Real tstop,
+                        braid_Int        ntime)
+    : BraidApp(static_cast<MPI_Comm>(comm), tstart, tstop, ntime),
       core(static_cast<MPI_Comm>(comm), this)
-  {
-    std::cout << "gsXBraid constructor called\n";
-  }
+  {}
 
   // Destructor
   template <typename T>
   gsXBraid<T>::~gsXBraid()
-  {
-    std::cout << "gsXBraid destructor called\n";
-  }
+  {}
   
 }// namespace gismo
