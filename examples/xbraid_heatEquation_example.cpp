@@ -26,19 +26,145 @@ namespace gismo {
 template<typename T>
 class gsXBraid_app : public gsXBraid<T>
 {
- private:
-  // Variables, matrices that should be accessible in Step, Init etc.
-  real_t theta;
-  real_t Dt;
-  gsMatrix<> Sol;
-  gsSparseMatrix<> Stiffness_matrix;
-  gsSparseMatrix<> Mass_matrix;
-  gsMatrix<> Rhs;
+private:
+  // Spatial discretisation parameters
+  index_t numRefine, numElevate;
 
+  // Temporal discretisation parameters
+  index_t numTime;
+  T tstart, tstop, theta, tstep;
+
+  // Spatial discretization
+  gsMultiPatch<T> patches;
+  gsMultiBasis<T> bases;
+  
+  // Boundary conditions
+  gsBoundaryConditions<T> bcInfo;
+  gsConstantFunction<T> g_D, g_N;
+
+  // Expression assembler
+  gsExprAssembler<T> K, M;
+  gsConstantFunction<T> f;
+  
+  // Solution
+  gsMatrix<T> sol;
+  
+  typedef typename gsExprAssembler<T>::geometryMap geometryMap;
+  typedef typename gsExprAssembler<T>::variable    variable;
+  typedef typename gsExprAssembler<T>::space       space;
+  typedef typename gsExprAssembler<T>::solution    solution;
+  
  public:
-  /// Inherit all constructors from base class
-  using gsXBraid<T>::gsXBraid;
+  /// Contructor
+  gsXBraid_app(const gsMpiComm& comm,
+               const T&         tstart,
+               const T&         tstop,
+               index_t          numTime,
+               index_t          numRefine,
+               index_t          numElevate)
+    : gsXBraid<T>::gsXBraid(comm, tstart, tstop, (int)numTime),
+      numRefine(numRefine),
+      numElevate(numElevate),
+      numTime(numTime),
+      tstart(tstart),
+      tstop(tstop),
+      theta(0.0),
+      tstep( (tstop-tstart)/numTime ),
+      patches(*gsNurbsCreator<>::BSplineSquareDeg(2)),
+      bases(patches),
+      g_D(0,2), g_N(1,2),
+      K(1,1), M(1,1), f(1,2)
+  {
+    /////////////////////////////////////////////////////////////////////////////////////////////
+    //                           Code for heat equation starts here                            //
+    /////////////////////////////////////////////////////////////////////////////////////////////
 
+    // Source function
+    gsInfo << "Source function is: "<< f << "\n";
+    
+    // Define Geometry, must be a gsMultiPatch object
+    patches.computeTopology();
+
+    // Boundary conditions    
+    bcInfo.addCondition(0, boundary::west,  condition_type::neumann  , &g_N);
+    bcInfo.addCondition(0, boundary::east,  condition_type::dirichlet, &g_D);
+    bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &g_D);
+    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &g_D);
+
+    // Elevate and p-refine the basis to order k + numElevate
+    // where k is the highest degree in the bases
+    if ( numElevate > -1 )
+    {
+        // Find maximum degree with respect to all the variables
+        int tmp = bases.maxDegree(0);
+        for (short_t j = 1; j < patches.parDim(); ++j )
+            if ( tmp < bases.maxDegree(j) )
+                tmp = bases.maxDegree(j);
+
+        // Elevate all degrees uniformly
+        tmp += numElevate;
+        bases.setDegree(tmp);
+    }
+
+    // h-refine the basis
+    for (int i = 0; i < numRefine; ++i)
+        bases.uniformRefine();
+    
+    // Generate system matrix and load vector
+    gsInfo << "Assembling mass and stiffness...\n";
+
+    // Set the basis
+    K.setIntegrationElements(bases);
+    M.setIntegrationElements(bases);   
+
+    // Set the geometry map
+    geometryMap G_K = K.getMap(patches);
+    geometryMap G_M = M.getMap(patches);
+
+    // Set the discretization space
+    space u_K = K.getSpace(bases);
+    space u_M = M.getSpace(bases);
+    u_K.setInterfaceCont(0);
+    u_M.setInterfaceCont(0);
+    u_K.addBc( bcInfo.get("Dirichlet") );
+    u_M.addBc( bcInfo.get("Dirichlet") );
+
+    // Set the source term
+    variable ff_K = K.getCoeff(f, G_K);
+    variable ff_M = M.getCoeff(f, G_M);
+
+    // Initialize and assemble the system matrix
+    K.initSystem();
+    K.assemble( igrad(u_K, G_K) * igrad(u_K, G_K).tr() * meas(G_K), u_K * ff_K * meas(G_K) );
+
+    // Initialize and assemble the mass matrix
+    M.initSystem();
+    M.assemble( u_M * u_M.tr() * meas(G_M), u_M * ff_M * meas(G_M) );
+
+    // Enforce Neumann conditions to right-hand side
+    variable g_Neumann = K.getBdrFunction();
+    K.assembleRhsBc(u_K * g_Neumann.val() * nv(G_K).norm(), bcInfo.neumannSides() );
+
+    gsSparseSolver<>::CGDiagonal solver;
+    sol.setZero(M.numDofs(), 1);
+    
+    for ( int i = 1; i<=numTime; ++i) // for all timesteps
+    {
+        // Compute the system for the timestep i (rhs is assumed constant wrt time)
+        gsInfo << "Solving timestep " << i*tstep << ".\n";
+        sol = solver.compute(M.matrix() +
+                             tstep*theta*K.matrix()
+                             ).solve(tstep*K.rhs() +
+                                     (M.matrix()-tstep*(1.0-theta)*K.matrix())*sol);
+    }
+    
+    gsInfo << "Norm of the solution" << std::endl;
+    gsInfo << sol.norm() << std::endl;
+  }
+
+  /// Destructor
+  ~gsXBraid_app() {}
+  
   /// Creates instance from command line argument
   static inline gsXBraid_app create(const gsMpiComm& comm,
                                     int              argc,
@@ -50,7 +176,7 @@ class gsXBraid_app : public gsXBraid<T>
     // Spatial discretisation parameters
     index_t numRefine  = 2;
     index_t numElevate = 0;
-
+    
     // Temporal discretisation parameters
     index_t numTime    = 40;
     T       tfinal     = 0.1;
@@ -118,10 +244,14 @@ class gsXBraid_app : public gsXBraid<T>
     cmd.getValues(argc,argv);
 
     // Create instance
-    gsXBraid_app<T> app(comm, 0.0, tfinal, numTime);
+    gsXBraid_app<T> app(comm, 0.0, tfinal, numTime, numRefine, numElevate);
 
-    app.SetAbsTol(absTol);
-    app.SetRelTol(relTol);
+    if (absTol != 1e-10)
+      app.SetAbsTol(absTol);
+    else if (relTol != 1e-3)
+      app.SetRelTol(relTol);
+    else
+      app.SetAbsTol(absTol);
 
     app.SetCFactor(CFactor);
     app.SetMaxIter(maxIter);
@@ -141,185 +271,168 @@ class gsXBraid_app : public gsXBraid<T>
     if (refine) app.SetRefine(1); else app.SetRefine(0);
     if (sequential) app.SetSeqSoln(1); else app.SetSeqSoln(0);
     if (skip) app.SetSkip(1); else app.SetSkip(0);
-
-    /////////////////////////////////////////////////////////////////////////////////////////////
-    //                           Code for heat equation starts here                            //
-    /////////////////////////////////////////////////////////////////////////////////////////////
-
-    // Source function
-    gsConstantFunction<> f(1,2);
-    gsInfo<<"Source function is: "<< f << "\n";
-
-    // Define Geometry, must be a gsMultiPatch object
-    gsMultiPatch<> patches(*gsNurbsCreator<>::BSplineSquareDeg(2));
-    patches.computeTopology();
-
-    // Boundary conditions
-    gsBoundaryConditions<> bcInfo;
-    gsConstantFunction<> g_N(1,2); // Neumann
-    gsConstantFunction<> g_D(0,2); // Dirichlet
-    bcInfo.addCondition(0, boundary::west,  condition_type::neumann  , &g_N);
-    bcInfo.addCondition(0, boundary::east,  condition_type::dirichlet, &g_D);
-    bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &g_D);
-    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &g_D);
-
-    gsMultiBasis<> refine_bases( patches );
-
-    // Elevate and p-refine the basis to order k + numElevate
-    // where k is the highest degree in the bases
-    if ( numElevate > -1 )
-    {
-        // Find maximum degree with respect to all the variables
-        int tmp = refine_bases.maxDegree(0);
-        for (short_t j = 1; j < patches.parDim(); ++j )
-            if ( tmp < refine_bases.maxDegree(j) )
-                tmp = refine_bases.maxDegree(j);
-
-        // Elevate all degrees uniformly
-        tmp += numElevate;
-        refine_bases.setDegree(tmp);
-    }
-
-    // h-refine the basis
-    for (int i = 0; i < numRefine; ++i)
-        refine_bases.uniformRefine();
-
-    // A Conjugate Gradient linear solver with a diagonal (Jacobi) preconditionner
-    gsSparseSolver<>::CGDiagonal solver;
-
-    real_t theta = 0.0;
-    gsMatrix<> Sol;
-    real_t Dt = tfinal / numTime ;
-
-    // Generate system matrix and load vector
-    gsInfo<<"Assembling mass and stiffness...\n";
-   
-    gsExprAssembler<> K(1,1);
-    gsExprAssembler<> M(1,1);
-    
-    typedef gsExprAssembler<>::geometryMap geometryMap;
-    typedef gsExprAssembler<>::variable    variable;
-    typedef gsExprAssembler<>::space       space;
-    typedef gsExprAssembler<>::solution    solution;
-
-    K.setIntegrationElements(refine_bases);
-    M.setIntegrationElements(refine_bases);   
-    gsExprEvaluator<> ev_K(K);
-    gsExprEvaluator<> ev_M(M);
-
-    // Set the geometry map
-    geometryMap G_K = K.getMap(patches);
-    geometryMap G_M = M.getMap(patches);
-
-    // Set the discretization space
-    space u_K = K.getSpace(refine_bases);
-    space u_M = M.getSpace(refine_bases);
-    u_K.setInterfaceCont(0);
-    u_M.setInterfaceCont(0);
-    u_K.addBc( bcInfo.get("Dirichlet") );
-    u_M.addBc( bcInfo.get("Dirichlet") );
-
-    // Set the source term
-    variable ff_K = K.getCoeff(f, G_K);
-    variable ff_M = M.getCoeff(f, G_M);
-
-    K.initSystem();
-    M.initSystem();
-    K.assemble( igrad(u_K, G_K) * igrad(u_K, G_K).tr() * meas(G_K), u_K * ff_K * meas(G_K) );
-    M.assemble( u_M * u_M.tr() * meas(G_M), u_M * ff_M * meas(G_M) );
-
-    // Enforce Neumann conditions to right-hand side
-    variable g_Neumann = K.getBdrFunction();
-    K.assembleRhsBc(u_K * g_Neumann.val() * nv(G_K).norm(), bcInfo.neumannSides() );
-
-    gsSparseMatrix<> Stiffness_matrix = K.matrix();
-    gsSparseMatrix<> Mass_matrix = M.matrix();
-    gsMatrix<> Rhs = K.rhs();
-
-      for ( int i = 1; i<=numTime; ++i) // for all timesteps
-    {
-        // Compute the system for the timestep i (rhs is assumed constant wrt time)
-        gsInfo<<"Solving timestep "<< i*Dt<<".\n";
-        Sol = solver.compute(M.matrix()+Dt*theta*K.matrix()).solve(Dt*K.rhs()+(M.matrix()-Dt*(1-theta)*K.matrix())*Sol);
-    }
-
-    gsInfo << "Norm of the solution" << std::endl;
-    gsInfo << Sol.norm() << std::endl;
    
     return app;
   }
   
-  /// Destructor
-  ~gsXBraid_app() override
-    {}
-
-  int Step(braid_Vector    u,
-           braid_Vector    ustop,
-           braid_Vector    fstop,
-           BraidStepStatus &pstatus) override
+  /// Performs a single step of the parallel-in-time multigrid
+  braid_Int Step(braid_Vector    u,
+                 braid_Vector    ustop,
+                 braid_Vector    fstop,
+                 BraidStepStatus &pstatus) override
   {
+    gsMatrix<T>* _u  = (gsMatrix<T>*) u;
+    T tstart, tstop;
+    
+    // Get time step information
+    pstatus.GetTstartTstop(&tstart, &tstop);
+    T tstep(tstop - tstart);
+
+    // Solve spatial problem
     gsSparseSolver<>::CGDiagonal solver;
-    Sol = solver.compute(Mass_matrix+Dt*theta*Stiffness_matrix).solve(Dt*Rhs+(Mass_matrix-Dt*(1-theta)*Stiffness_matrix)*Sol);
+    *_u = solver.compute(M.matrix() +
+                         tstep*theta*K.matrix()
+                         ).solve(tstep*K.rhs() +
+                                 (M.matrix()-tstep*(1.0-theta)*K.matrix())*(*_u));    
+    // no refinement
+    pstatus.SetRFactor(1);
+    return braid_Int(0);
   }
-  
-  int Clone(braid_Vector  u,
-            braid_Vector *v_ptr) override
-  {}
-  
-  int Init(T             t,
-           braid_Vector *u_ptr) override
-  {}
-  
-  int Free(braid_Vector u) override
-  {}
-  
-  int Sum(T            alpha,
-          braid_Vector x,
-          T            beta,
-          braid_Vector y) override
-  {}
-  
-  int SpatialNorm(braid_Vector  u,
-                  T            *norm_ptr) override
-  {}
-  
-  int BufSize(index_t           *size_ptr,
-              BraidBufferStatus &status) override
-  {}
-  
-  int BufPack(braid_Vector       u,
-              void              *buffer,
-              BraidBufferStatus &status) override
-  {}
-  
-  int BufUnpack(void              *buffer,
-                braid_Vector      *u_ptr,
-                BraidBufferStatus &status) override
-  {}
-  
-  int Access(braid_Vector       u,
-             BraidAccessStatus &astatus) override
-  {}
-  
-  // Not needed in this example
-  int Residual(braid_Vector     u,
-               braid_Vector     r,
-               BraidStepStatus &pstatus) override
-  {
 
+  /// Clones a given vector
+  braid_Int Clone(braid_Vector  u,
+                  braid_Vector *v_ptr) override
+  {
+    gsMatrix<T>* _u = (gsMatrix<T>*) u;
+    gsMatrix<T>*  v = new gsMatrix<T>();
+    (*v) = (*_u);
+    *v_ptr = (braid_Vector) v;
+    return braid_Int(0);
+  }
+
+  /// Initializes a vector
+  braid_Int Init(braid_Real     t,
+           braid_Vector *u_ptr) override
+  {
+    gsMatrix<T>* u = new gsMatrix<T>(M.numDofs(), 1);
+    
+    if (t != tstart) {
+      // Intermediate solution
+      u->setZero(M.numDofs(), 1);
+    } else {
+      // Initial solution
+      u->setZero(M.numDofs(), 1);
+    }
+
+    *u_ptr = (braid_Vector) u;
+    return braid_Int(0);
+  }
+
+  /// Frees a given vector
+  braid_Int Free(braid_Vector u) override
+  {
+    gsMatrix<T>* _u = (gsMatrix<T>*) u;
+    delete _u;
+    return braid_Int(0);
+  }
+
+  /// Computes the sum of two given vectors
+  braid_Int Sum(braid_Real   alpha,
+                braid_Vector x,
+                braid_Real   beta,
+                braid_Vector y) override
+  {
+    gsMatrix<T>* _x = (gsMatrix<T>*) x;
+    gsMatrix<T>* _y = (gsMatrix<T>*) y;
+    *_y = (T)alpha * (*_x) + (T)beta * (*_y);
+    return braid_Int(0);
+  }
+
+  /// Computes the spatial norm of a given vector
+  braid_Int SpatialNorm(braid_Vector  u,
+                        braid_Real   *norm_ptr) override
+  {
+    gsMatrix<T> *_u = (gsMatrix<T>*) u;    
+    *norm_ptr = _u->norm();
+    return braid_Int(0);
+  }
+  
+  braid_Int BufSize(braid_Int         *size_ptr,
+                    BraidBufferStatus &status) override
+  {
+    *size_ptr = sizeof(T)*(M.numDofs()+1);
+    return braid_Int(0);
+  }
+  
+  braid_Int BufPack(braid_Vector       u,
+                    void              *buffer,
+                    BraidBufferStatus &status) override
+  {
+    gsMatrix<T> *_u = (gsMatrix<T>*) u;
+    T* _buffer      = (T*) buffer;
+    T* _data        = _u->data();
+    index_t size    = _u->rows()*_u->cols();
+    
+    _buffer[0] = size;
+    for (index_t idx = 0; idx < size; ++idx)
+      _buffer[idx+1] = _data[idx];
+
+    status.SetSize(sizeof(T)*(size+1));
+    return braid_Int(0);
+  }
+  
+  braid_Int BufUnpack(void              *buffer,
+                      braid_Vector      *u_ptr,
+                      BraidBufferStatus &status) override
+  {
+    T* _buffer     = (T*) buffer;
+    index_t size   = _buffer[0];
+    gsMatrix<T>* u = new gsMatrix<T>(size,1);
+    T* _data       = u->data();
+
+    for (index_t idx = 0; idx < size; ++idx)
+      _data[idx] = _buffer[idx+1];
+    
+    *u_ptr = (braid_Vector) u;
+    return braid_Int(0);
+  }
+  
+  braid_Int Access(braid_Vector       u,
+                   BraidAccessStatus &astatus) override
+  {
+    if(static_cast<gsXBraidAccessStatus&>(astatus).done() &&
+       static_cast<gsXBraidAccessStatus&>(astatus).timeIndex() ==
+       static_cast<gsXBraidAccessStatus&>(astatus).times()) {
+      gsMatrix<T>* _u = (gsMatrix<T>*) u;
+      gsInfo << "Norm of the solution" << std::endl;
+      gsInfo << _u->norm() << std::endl;    
+    }    
+    return braid_Int(0);
   }
   
   // Not needed in this example
-  int Coarsen(braid_Vector           fu,
-              braid_Vector          *cu_ptr,
-              BraidCoarsenRefStatus &status) override
-  {}
+  braid_Int Residual(braid_Vector     u,
+                     braid_Vector     r,
+                     BraidStepStatus &pstatus) override
+  {
+    return braid_Int(0);
+  }
   
   // Not needed in this example
-  int Refine(braid_Vector           cu,
-             braid_Vector          *fu_ptr,
-             BraidCoarsenRefStatus &status) override
-  {}
+  braid_Int Coarsen(braid_Vector           fu,
+                    braid_Vector          *cu_ptr,
+                    BraidCoarsenRefStatus &status) override
+  {
+    return braid_Int(0);
+  }
+  
+  // Not needed in this example
+  braid_Int Refine(braid_Vector           cu,
+                   braid_Vector          *fu_ptr,
+                   BraidCoarsenRefStatus &status) override
+  {
+    return braid_Int(0);
+  }
 };
 
 } // ending namespace gismo
@@ -328,17 +441,21 @@ class gsXBraid_app : public gsXBraid<T>
 
 int main(int argc, char**argv)
 {
+#ifdef GISMO_WITH_XBRAID
+  
   // Initialize the MPI environment and obtain the world communicator
   gsMpiComm comm = gsMpi::init(argc, argv).worldComm();
-  
-#ifdef GISMO_WITH_XBRAID
 
   // Set up app structure
   gsXBraid_app<real_t> app = gsXBraid_app<real_t>::create(comm, argc, argv);
 
   // Perform parallel-in-time multigrid
   app.solve();
-  
+
+#else
+
+  gsInfo << "\n";
+ 
 #endif
 
   return 0;
