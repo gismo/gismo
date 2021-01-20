@@ -64,11 +64,9 @@ namespace gismo {
 
      The generic implementation of the gsXBraid class leaves all of
      these methods unimplemented. We also provide specializations for
-     gsXBraid< gsMatrix<T> > and gsXBraid< std::vector< gsMatrix<T> >
-     > which assume that the data type for storing the solution
-     (passed as braid_Vector) is of type gsMatrix<T> and std::vector<
-     gsMatrix<T> >, respectively. The latter can be used to pass a
-     hierarchy of matrices/vectors in a multi-level setup.
+     gsXBraid<gsMatrix<T>> and gsXBraid<gsVector<T>> which assume that
+     the data type for storing the solution (passed as braid_Vector)
+     is of type gsMatrix<T> and gsVector<T>, respectively.
   */
 
   template<typename T>
@@ -210,6 +208,24 @@ namespace gismo {
     
     /// Sets user-defined sync routine.
     void SetSync() { core.SetSync(); }
+
+    /// Sets the default print file
+    void SetDefaultPrintFile() { core.SetDefaultPrintFile(); }
+
+    /// Sets the file input/output level
+    void SetFileIOLevel(braid_Int io_level) { core.SetFileIOLevel(io_level); }
+
+    /// Sets the coarse-relaxation weight
+    void SetCRelaxWt(braid_Int level, braid_Real  Cwt) { core.SetCRelaxWt(level, Cwt); }
+
+    /// Sets the time cutoff
+   void SetTPointsCutoff(braid_Int tpoints_cutoff) { core.SetTPointsCutoff(tpoints_cutoff); }
+
+    /// Sets callback function for residual numer calculation
+   void SetFullRNormRes(braid_PtFcnResidual residual) { core.SetFullRNormRes(residual); }
+
+    /// Sets callback function for time grid
+   void SetTimeGrid(braid_PtFcnTimeGrid tgrid) { core.SetTimeGrid(tgrid); }
     
   public:
     /// Gets the number of iterations (XBraid style)
@@ -221,6 +237,9 @@ namespace gismo {
     /// Gets the total number of levels (XBraid style)
     void GetNLevels(braid_Int *nlevels_ptr) { core.GetNLevels(nlevels_ptr); }
 
+    /// Gets the MPI process ID
+    void GetMyID(braid_Int *myid_ptr) { core.GetMyID(myid_ptr); }
+    
     /// Returns the number of iterations
     braid_Int iterations() {
       braid_Int niter;
@@ -241,6 +260,13 @@ namespace gismo {
       GetNLevels(&nlevels);
       return nlevels;
     }
+
+    /// Returns the MPI process ID
+    braid_Int id() {
+      braid_Int myid;
+      GetMyID(&myid);
+      return myid;
+    }
     
   protected:
     /// Braid Core object
@@ -249,7 +275,7 @@ namespace gismo {
 
   
   /**
-     \brief Specializations for gsXBraid< gsMatrix<T> >
+     \brief Specializations for gsXBraid<gsMatrix<T>>
   */
   template<typename T>
   class gsXBraid< gsMatrix<T> > : public gsXBraid<T>
@@ -268,9 +294,9 @@ namespace gismo {
     virtual braid_Int Clone(braid_Vector  u,
                             braid_Vector *v_ptr)
     {
-      gsMatrix<T>* _u = (gsMatrix<T>*) u;
-      gsMatrix<T>*  v = new gsMatrix<T>();
-      (*v) = (*_u);
+      gsMatrix<T>* u_ptr = (gsMatrix<T>*) u;
+      gsMatrix<T>* v     = new gsMatrix<T>();
+      (*v) = (*u_ptr);
       *v_ptr = (braid_Vector) v;
       return braid_Int(0);
     }
@@ -278,8 +304,8 @@ namespace gismo {
     /// Frees a given vector
     virtual braid_Int Free(braid_Vector u)
     {
-      gsMatrix<T>* _u = (gsMatrix<T>*) u;
-      delete _u;
+      gsMatrix<T>* u_ptr = (gsMatrix<T>*) u;
+      delete u_ptr;
       return braid_Int(0);
     }
     
@@ -289,9 +315,9 @@ namespace gismo {
                           braid_Real   beta,
                           braid_Vector y)
     {
-      gsMatrix<T>* _x = (gsMatrix<T>*) x;
-      gsMatrix<T>* _y = (gsMatrix<T>*) y;
-      *_y = (T)alpha * (*_x) + (T)beta * (*_y);
+      gsMatrix<T>* x_ptr = (gsMatrix<T>*) x;
+      gsMatrix<T>* y_ptr = (gsMatrix<T>*) y;
+      *y_ptr = (T)alpha * (*x_ptr) + (T)beta * (*y_ptr);
       return braid_Int(0);
     }
     
@@ -299,8 +325,8 @@ namespace gismo {
     virtual braid_Int SpatialNorm(braid_Vector  u,
                                   braid_Real   *norm_ptr)
     {
-      gsMatrix<T> *_u = (gsMatrix<T>*) u;    
-      *norm_ptr = _u->norm();
+      gsMatrix<T> *u_ptr = (gsMatrix<T>*) u;    
+      *norm_ptr = u_ptr->norm();
       return braid_Int(0);
     }
     
@@ -309,15 +335,15 @@ namespace gismo {
                               void              *buffer,
                               BraidBufferStatus &status)
     {
-      gsMatrix<T> *_u = (gsMatrix<T>*) u;
-      T* _buffer      = (T*) buffer;
-      T* _data        = _u->data();
-      index_t size    = _u->rows()*_u->cols();
+      gsMatrix<T> *u_ptr = (gsMatrix<T>*) u;
+      T* buffer_ptr      = (T*) buffer;
+      T* data_ptr        = u_ptr->data();
+      index_t size       = u_ptr->rows()*u_ptr->cols();
       
-      _buffer[0] = _u->rows();
-      _buffer[1] = _u->cols();
+      buffer_ptr[0] = u_ptr->rows();
+      buffer_ptr[1] = u_ptr->cols();
       for (index_t idx = 0; idx < size; ++idx)
-        _buffer[idx+2] = _data[idx];
+        buffer_ptr[idx+2] = data_ptr[idx];
       
       status.SetSize(sizeof(T)*(size+2));
       return braid_Int(0);
@@ -328,26 +354,25 @@ namespace gismo {
                                 braid_Vector      *u_ptr,
                                 BraidBufferStatus &status)
     {
-      T* _buffer     = (T*) buffer;
-      index_t rows   = _buffer[0];
-      index_t cols   = _buffer[1];
+      T* buffer_ptr  = (T*) buffer;
+      index_t rows   = buffer_ptr[0];
+      index_t cols   = buffer_ptr[1];
       gsMatrix<T>* u = new gsMatrix<T>(rows,cols);
-      T* _data       = u->data();
+      T* data_ptr       = u->data();
 
     for (index_t idx = 0; idx < rows*cols; ++idx)
-      _data[idx] = _buffer[idx+2];
+      data_ptr[idx] = buffer_ptr[idx+2];
     
     *u_ptr = (braid_Vector) u;
     return braid_Int(0);
     }
   };
 
-
   /**
-     \brief Specializations for gsXBraid< std::vector< gsMatrix<T> > >
+     \brief Specializations for gsXBraid<gsVector<T>>
   */
   template<typename T>
-  class gsXBraid< std::vector< gsMatrix<T> > > : public gsXBraid<T>
+  class gsXBraid< gsVector<T> > : public gsXBraid<T>
   {
   public:
     /// Constructor
@@ -363,12 +388,9 @@ namespace gismo {
     virtual braid_Int Clone(braid_Vector  u,
                             braid_Vector *v_ptr)
     {
-      std::vector< gsMatrix<T> >* _u = (std::vector< gsMatrix<T> >*) u;
-      std::vector< gsMatrix<T> >*  v = new std::vector< gsMatrix<T> >();
-
-      for (typename std::vector< gsMatrix<T> >::const_iterator it = _u->cbegin();
-           it != _u->cend(); ++it)
-        v->push_back( *it );
+      gsVector<T>* u_ptr = (gsVector<T>*) u;
+      gsVector<T>* v     = new gsVector<T>();
+      (*v) = (*u_ptr);
       *v_ptr = (braid_Vector) v;
       return braid_Int(0);
     }
@@ -376,8 +398,8 @@ namespace gismo {
     /// Frees a given vector
     virtual braid_Int Free(braid_Vector u)
     {
-      gsMatrix<T>* _u = (gsMatrix<T>*) u;
-      delete _u;
+      gsVector<T>* u_ptr = (gsVector<T>*) u;
+      delete u_ptr;
       return braid_Int(0);
     }
     
@@ -387,9 +409,9 @@ namespace gismo {
                           braid_Real   beta,
                           braid_Vector y)
     {
-      gsMatrix<T>* _x = (gsMatrix<T>*) x;
-      gsMatrix<T>* _y = (gsMatrix<T>*) y;
-      *_y = (T)alpha * (*_x) + (T)beta * (*_y);
+      gsVector<T>* x_ptr = (gsVector<T>*) x;
+      gsVector<T>* y_ptr = (gsVector<T>*) y;
+      *y_ptr = (T)alpha * (*x_ptr) + (T)beta * (*y_ptr);
       return braid_Int(0);
     }
     
@@ -397,8 +419,8 @@ namespace gismo {
     virtual braid_Int SpatialNorm(braid_Vector  u,
                                   braid_Real   *norm_ptr)
     {
-      gsMatrix<T> *_u = (gsMatrix<T>*) u;    
-      *norm_ptr = _u->norm();
+      gsVector<T> *u_ptr = (gsVector<T>*) u;    
+      *norm_ptr = u_ptr->norm();
       return braid_Int(0);
     }
     
@@ -407,17 +429,16 @@ namespace gismo {
                               void              *buffer,
                               BraidBufferStatus &status)
     {
-      gsMatrix<T> *_u = (gsMatrix<T>*) u;
-      T* _buffer      = (T*) buffer;
-      T* _data        = _u->data();
-      index_t size    = _u->rows()*_u->cols();
+      gsVector<T> *u_ptr = (gsVector<T>*) u;
+      T* buffer_ptr      = (T*) buffer;
+      T* data_ptr        = u_ptr->data();
+      index_t size       = u_ptr->size();
       
-      _buffer[0] = _u->rows();
-      _buffer[1] = _u->cols();
+      buffer_ptr[0] = u_ptr->size();
       for (index_t idx = 0; idx < size; ++idx)
-        _buffer[idx+2] = _data[idx];
+        buffer_ptr[idx+1] = data_ptr[idx];
       
-      status.SetSize(sizeof(T)*(size+2));
+      status.SetSize(sizeof(T)*(size+1));
       return braid_Int(0);
     }
 
@@ -426,20 +447,18 @@ namespace gismo {
                                 braid_Vector      *u_ptr,
                                 BraidBufferStatus &status)
     {
-      T* _buffer     = (T*) buffer;
-      index_t rows   = _buffer[0];
-      index_t cols   = _buffer[1];
-      gsMatrix<T>* u = new gsMatrix<T>(rows,cols);
-      T* _data       = u->data();
+      T* buffer_ptr  = (T*) buffer;
+      index_t size   = buffer_ptr[0];
+      gsVector<T>* u = new gsVector<T>(size);
+      T* data_ptr    = u->data();
 
-    for (index_t idx = 0; idx < rows*cols; ++idx)
-      _data[idx] = _buffer[idx+2];
+    for (index_t idx = 0; idx < size; ++idx)
+      data_ptr[idx] = buffer_ptr[idx+1];
     
     *u_ptr = (braid_Vector) u;
     return braid_Int(0);
     }
   };
-  
   
   /**
      \brief Class defining the XBraid access status wrapper
@@ -478,6 +497,13 @@ namespace gismo {
       return nref;
     }
 
+    /// Returns the current time instance
+    braid_Real time() {
+      braid_Real t;
+      GetT(&t);
+      return t;
+    }
+    
     /// Returns the total number of time instances
     braid_Int times() {
       braid_Int ntpoints;
@@ -497,13 +523,6 @@ namespace gismo {
       braid_Int callingfcn;
       GetCallingFunction(&callingfcn);
       return callingfcn;
-    }
-
-    /// Returns the current time instance
-    braid_Real time() {
-      braid_Real t;
-      GetT(&t);
-      return t;
     }
     
     /// Returns the index of the time instance
@@ -605,6 +624,270 @@ namespace gismo {
       braid_Int numerrorest;
       GetNumErrorEst(&numerrorest);
       return numerrorest;
+    }
+  };
+
+  /**
+     \brief Class defining the XBraid step status wrapper
+
+     The wrapper provides all functionality of the BraidStepStatus
+     class plus some functions that return the information by value
+  */
+  class gsXBraidStepStatus : public BraidStepStatus
+  {
+  public:
+    /// Returns the number of iterations
+    braid_Int iterations() {
+      braid_Int iter;
+      GetIter(&iter);
+      return iter;
+    }
+
+    /// Returns the current multigrid level
+    braid_Int level() {
+      braid_Int level;
+      GetLevel(&level);
+      return level;
+    }
+
+    /// Returns the total number of multigrid levels
+    braid_Int levels() {
+      braid_Int nlevels;
+      GetNLevels(&nlevels);
+      return nlevels;
+    }
+
+    /// Returns the total number of refinements
+    braid_Int refines() {
+      braid_Int nref;
+      GetNRefine(&nref);
+      return nref;
+    }
+
+    /// Returns the current time instance
+    braid_Real time() {
+      braid_Real t;
+      GetT(&t);
+      return t;
+    }
+    
+    /// Returns the total number of time instances
+    braid_Int times() {
+      braid_Int ntpoints;
+      GetNTPoints(&ntpoints);
+      return ntpoints;
+    }
+
+    /// Returns the end of the time interval
+    braid_Real timeStop() {
+      braid_Real t;
+      GetTstop(&t);
+      return t;
+    }
+
+    /// Returns the time interval
+    std::pair<braid_Real, braid_Real> timeInterval() {
+      std::pair<braid_Real, braid_Real> t;
+      GetTstartTstop(&t.first, &t.second);
+      return t;
+    }
+    
+    /// Returns the index of the time instance
+    braid_Int timeIndex() {
+      braid_Int tindex;
+      GetTIndex(&tindex);
+      return tindex;
+    }
+
+    /// Returns the tolerance
+    braid_Real tol() {
+      braid_Real t;
+      GetTol(&t);
+      return t;
+    }
+
+    /// Returns the old tolerence for the fine-grid solver
+    braid_Real tolFine() {
+      braid_Real t;
+      GetOldFineTolx(&t);
+      return t;
+    }
+
+    /// Returns the estimated error
+    braid_Real error() {
+      braid_Real errorest;
+      GetSingleErrorEstStep(&errorest);
+      return errorest;
+    }
+
+    /// Returns the spatial accuracy
+    braid_Real accuracy(braid_Real loose_tol, braid_Real tight_tol) {
+      braid_Real tol;
+      GetSpatialAccuracy(loose_tol, tight_tol, &tol);
+      return tol;
+    }
+  };
+
+  /**
+     \brief Class defining the XBraid coarsen and refinement status wrapper
+
+     The wrapper provides all functionality of the BraidCoarsenRefStatus
+     class plus some functions that return the information by value
+  */
+  class gsXBraidCoarsenRefStatus : public BraidCoarsenRefStatus
+  {
+  public:
+    /// Returns the number of iterations
+    braid_Int iterations() {
+      braid_Int iter;
+      GetIter(&iter);
+      return iter;
+    }
+
+    /// Returns the current multigrid level
+    braid_Int level() {
+      braid_Int level;
+      GetLevel(&level);
+      return level;
+    }
+
+    /// Returns the total number of multigrid levels
+    braid_Int levels() {
+      braid_Int nlevels;
+      GetNLevels(&nlevels);
+      return nlevels;
+    }
+
+    /// Returns the total number of refinements
+    braid_Int refines() {
+      braid_Int nref;
+      GetNRefine(&nref);
+      return nref;
+    }
+
+    /// Returns the current time instance
+    braid_Real time() {
+      braid_Real t;
+      GetT(&t);
+      return t;
+    }
+    
+    /// Returns the total number of time instances
+    braid_Int times() {
+      braid_Int ntpoints;
+      GetNTPoints(&ntpoints);
+      return ntpoints;
+    }
+
+    /// Returns the index of the time instance
+    braid_Int timeIndex() {
+      braid_Int tindex;
+      GetTIndex(&tindex);
+      return tindex;
+    }
+
+    /// Returns the end of the fine time interval
+    braid_Real ftimeStop() {
+      braid_Real t;
+      GetFTstop(&t);
+      return t;
+    }
+
+    /// Returns the start of the fine time interval
+    braid_Real ftimeStart() {
+      braid_Real t;
+      GetFTprior(&t);
+      return t;
+    }
+    
+    /// Returns the end of the coarse time interval
+    braid_Real ctimeStop() {
+      braid_Real t;
+      GetCTstop(&t);
+      return t;
+    }
+
+    /// Returns the start of the coarse time interval
+    braid_Real ctimeStart() {
+      braid_Real t;
+      GetCTprior(&t);
+      return t;
+    }
+  };
+
+  /**
+     \brief Class defining the XBraid buffer status wrapper
+
+     The wrapper provides all functionality of the BraidBufferStatus
+     class plus some functions that return the information by value
+  */
+  class gsXBraidBufferStatus : public BraidBufferStatus
+  {
+  public:
+    /// Returns the message type
+    braid_Int type() {
+      braid_Int msg;
+      GetMessageType(&msg);
+      return msg;
+    }
+  };
+
+  /**
+     \brief Class defining the XBraid step objective wrapper
+
+     The wrapper provides all functionality of the BraidObjectiveStatus
+     class plus some functions that return the information by value
+  */
+  class gsXBraidObjectiveStatus : public BraidObjectiveStatus
+  {
+  public:
+    /// Returns the number of iterations
+    braid_Int iterations() {
+      braid_Int iter;
+      GetIter(&iter);
+      return iter;
+    }
+
+    /// Returns the current multigrid level
+    braid_Int level() {
+      braid_Int level;
+      GetLevel(&level);
+      return level;
+    }
+
+    /// Returns the total number of multigrid levels
+    braid_Int levels() {
+      braid_Int nlevels;
+      GetNLevels(&nlevels);
+      return nlevels;
+    }
+
+    /// Returns the total number of refinements
+    braid_Int refines() {
+      braid_Int nref;
+      GetNRefine(&nref);
+      return nref;
+    }
+    
+    /// Returns the current time instance
+    braid_Real time() {
+      braid_Real t;
+      GetT(&t);
+      return t;
+    }
+    
+    /// Returns the total number of time instances
+    braid_Int times() {
+      braid_Int ntpoints;
+      GetNTPoints(&ntpoints);
+      return ntpoints;
+    }
+    
+    /// Returns the index of the time instance
+    braid_Int timeIndex() {
+      braid_Int tindex;
+      GetTIndex(&tindex);
+      return tindex;
     }
   };
   
