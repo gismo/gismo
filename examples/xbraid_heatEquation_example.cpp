@@ -24,7 +24,7 @@ namespace gismo {
    \brief Derived class implementing the XBraid wrapper for the heat equation
 */
 template<typename T>
-class gsXBraid_app : public gsXBraid<gsMatrix<T> >
+class gsXBraid_app : public gsXBraid< gsVector<T> >
 {
 private:
   // Spatial discretisation parameters
@@ -47,7 +47,7 @@ private:
   gsConstantFunction<T> f;
   
   // Solution
-  gsMatrix<T> sol;
+  gsVector<T> sol;
   
   typedef typename gsExprAssembler<T>::geometryMap geometryMap;
   typedef typename gsExprAssembler<T>::variable    variable;
@@ -62,7 +62,7 @@ private:
                index_t          numTime,
                index_t          numRefine,
                index_t          numElevate)
-    : gsXBraid<gsMatrix<T> >::gsXBraid(comm, tstart, tstop, (int)numTime),
+    : gsXBraid< gsVector<T> >::gsXBraid(comm, tstart, tstop, (int)numTime),
       numRefine(numRefine),
       numElevate(numElevate),
       numTime(numTime),
@@ -78,11 +78,8 @@ private:
     /////////////////////////////////////////////////////////////////////////////////////////////
     //                           Code for heat equation starts here                            //
     /////////////////////////////////////////////////////////////////////////////////////////////
-
-    // Source function
-    gsInfo << "Source function is: "<< f << "\n";
     
-    // Define Geometry, must be a gsMultiPatch object
+    // Define geometry, must be a gsMultiPatch object
     patches.computeTopology();
 
     // Boundary conditions    
@@ -110,9 +107,6 @@ private:
     for (int i = 0; i < numRefine; ++i)
         bases.uniformRefine();
     
-    // Generate system matrix and load vector
-    gsInfo << "Assembling mass and stiffness...\n";
-
     // Set the basis
     K.setIntegrationElements(bases);
     M.setIntegrationElements(bases);   
@@ -145,21 +139,23 @@ private:
     variable g_Neumann = K.getBdrFunction();
     K.assembleRhsBc(u_K * g_Neumann.val() * nv(G_K).norm(), bcInfo.neumannSides() );
 
-    gsSparseSolver<>::CGDiagonal solver;
-    sol.setZero(M.numDofs(), 1);
-    
-    for ( int i = 1; i<=numTime; ++i) // for all timesteps
-    {
+    if (this->id() == 0) {
+      gsStopwatch clock;
+      clock.restart();
+      
+      gsSparseSolver<>::CGDiagonal solver;
+      sol.setZero(M.numDofs());
+      
+      for ( int i = 1; i<=numTime; ++i) // for all timesteps
         // Compute the system for the timestep i (rhs is assumed constant wrt time)
-        gsInfo << "Solving timestep " << i*tstep << ".\n";
         sol = solver.compute(M.matrix() +
                              tstep*theta*K.matrix()
                              ).solve(tstep*K.rhs() +
                                      (M.matrix()-tstep*(1.0-theta)*K.matrix())*sol);
+      
+      gsInfo << "norm of the solution = " << sol.norm() << "\n"
+             << "wall time = " << clock.stop() << std::endl;
     }
-    
-    gsInfo << "Norm of the solution" << std::endl;
-    gsInfo << sol.norm() << std::endl;
   }
 
   /// Destructor
@@ -276,17 +272,17 @@ private:
   }
 
   /// Initializes a vector
-  braid_Int Init(braid_Real     t,
+  braid_Int Init(braid_Real    t,
                  braid_Vector *u_ptr)
   {
-    gsMatrix<T>* u = new gsMatrix<T>(M.numDofs(), 1);
+    gsVector<T>* u = new gsVector<T>(M.numDofs());
     
     if (t != tstart) {
       // Intermediate solution
-      u->setZero(M.numDofs(), 1);
+      u->setZero(M.numDofs());
     } else {
       // Initial solution
-      u->setZero(M.numDofs(), 1);
+      u->setZero(M.numDofs());
     }
 
     *u_ptr = (braid_Vector) u;
@@ -299,19 +295,19 @@ private:
                  braid_Vector    fstop,
                  BraidStepStatus &pstatus)
   {
-    gsMatrix<T>* _u  = (gsMatrix<T>*) u;
-    T tstart, tstop;
+    gsVector<T>* u_ptr = (gsVector<T>*) u;
     
     // Get time step information
-    pstatus.GetTstartTstop(&tstart, &tstop);
-    T tstep(tstop - tstart);
-
+    std::pair<braid_Real, braid_Real> time =
+      static_cast<gsXBraidStepStatus&>(pstatus).timeInterval();
+    T tstep(time.second - time.first);
+    
     // Solve spatial problem
     gsSparseSolver<>::CGDiagonal solver;
-    *_u = solver.compute(M.matrix() +
-                         tstep*theta*K.matrix()
-                         ).solve(tstep*K.rhs() +
-                                 (M.matrix()-tstep*(1.0-theta)*K.matrix())*(*_u));    
+    *u_ptr = solver.compute(M.matrix() +
+                            tstep*theta*K.matrix()
+                            ).solve(tstep*K.rhs() +
+                                    (M.matrix()-tstep*(1.0-theta)*K.matrix())*(*u_ptr));    
     // no refinement
     pstatus.SetRFactor(1);
     return braid_Int(0);
@@ -321,21 +317,20 @@ private:
   braid_Int BufSize(braid_Int         *size_ptr,
                     BraidBufferStatus &status)
   {
-    *size_ptr = sizeof(T)*(M.numDofs()+1);
+    *size_ptr = sizeof(T)*(M.numDofs()+2);
     return braid_Int(0);
   }
 
-  /// Handles 
+  /// Handles access for input/output
   braid_Int Access(braid_Vector       u,
                    BraidAccessStatus &astatus)
   {
     if(static_cast<gsXBraidAccessStatus&>(astatus).done() &&
        static_cast<gsXBraidAccessStatus&>(astatus).timeIndex() ==
        static_cast<gsXBraidAccessStatus&>(astatus).times()) {
-      gsMatrix<T>* _u = (gsMatrix<T>*) u;
-      gsInfo << "Norm of the solution" << std::endl;
-      gsInfo << _u->norm() << std::endl;    
-    }    
+      gsVector<T>* u_ptr = (gsVector<T>*) u;
+      gsInfo << "norm of the solution = " << u_ptr->norm() << std::endl;    
+    }
     return braid_Int(0);
   }
   
