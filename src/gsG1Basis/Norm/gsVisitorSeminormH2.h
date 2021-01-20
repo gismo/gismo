@@ -186,12 +186,12 @@ public:
                 real_t detG_inv = 1 / ( detG );
 
                 real_t Du_detG_Inv = detG_inv * detG_inv * ( 2 * G12 * DuG12 -
-                    G22 * DuG11 -
-                    G11 * DuG22 );
+                                                                G22 * DuG11 -
+                                                                G11 * DuG22 );
 
                 real_t Dv_detG_Inv = detG_inv * detG_inv * ( 2 * G12 * DvG21 -
-                    G22 * DvG11 -
-                    G11 * DvG22 );
+                                                                G22 * DvG11 -
+                                                                G11 * DvG22 );
 
 
 //          Computing the divergence of the first fundamental form
@@ -230,9 +230,11 @@ public:
 // ---------------------------------------------------------------------------------------------------------------------
 
 //          Computing the tranformartion of the gradient basis functions
-
+//                gsMatrix<> hessian_fromGrad_first(3, 3);
+//                hessian_fromGrad_first.setZero();
                 gsMatrix<> hessian_fromGrad_first = Jk * G_inv * div_G_inv.transpose() * grad_par_first.transpose() * Jk.transpose();
-                hessian_fromGrad_first += Jk * G_inv * G_inv * grad_par_first * div_Jk_transpose;
+                           hessian_fromGrad_first += Jk * G_inv * G_inv * grad_par_first * div_Jk_transpose;
+
                 hessian_fromGrad_first.setZero();
 
 //          Computing the tranformation of the hessian basis functions
@@ -243,12 +245,17 @@ public:
                 surfParametricLaplace(2, 0) += (hessian_fromGrad_first(2, 2) + hessian_phys_first(2, 2));
                 surfParametricLaplace(3, 0) += (hessian_fromGrad_first(0, 1) + hessian_phys_first(0, 1));
                 surfParametricLaplace(4, 0) += (hessian_fromGrad_first(0, 2) + hessian_phys_first(0, 2));
+//                surfParametricLaplace(5, 0) += (hessian_fromGrad_first(1, 0) + hessian_phys_first(1, 0));
                 surfParametricLaplace(5, 0) += (hessian_fromGrad_first(1, 2) + hessian_phys_first(1, 2));
+//                surfParametricLaplace(7, 0) += (hessian_fromGrad_first(2, 0) + hessian_phys_first(2, 0));
+//                surfParametricLaplace(8, 0) += (hessian_fromGrad_first(2, 1) + hessian_phys_first(2, 1));
 
                 weight *= sqrt(detG);
 
+
                 sum += weight * ( (surfParametricLaplace.topRows(3) - f2ders2.col(k).topRows(3)).squaredNorm()
-                                + 2 * (surfParametricLaplace.bottomRows(3) - f2ders2.col(k).bottomRows(3)).squaredNorm());
+//                                +  (surfParametricLaplace.bottomRows(6) - f2ders2.col(k).bottomRows(6)).squaredNorm());
+                                +  2 * (surfParametricLaplace.bottomRows(3) - f2ders2.col(k).bottomRows(3)).squaredNorm());
 
             }
             else
@@ -263,7 +270,7 @@ public:
                 weight *= geoEval.measure(k);
 
                 sum += weight * ((f1pders2.topRows(parDim) - f2ders2.col(k).topRows(parDim)).squaredNorm() +
-                    2 * (f1pders2.bottomRows(rest) - f2ders2.col(k).bottomRows(rest)).squaredNorm());
+                    2 * (f1pders2.bottomRows(rest) - f2ders2.col(k).bottomRows(rest)).squaredNorm() );
             }
         }
         accumulated += sum;

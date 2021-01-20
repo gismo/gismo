@@ -286,8 +286,22 @@ public:
                 const T weight = quWeights[k] * md.measure(k);
                 transformLaplaceHgrad(md, k, basisGrads, basis2ndDerivs, physBasisLaplace);
 
-                localMat.noalias() += weight * ( physBasisLaplace.transpose() * physBasisLaplace );
-                localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
+                if(g1OptionList.getSwitch("L2approx") == false)
+                {
+                    localMat.noalias() += weight * ( physBasisLaplace.transpose() * physBasisLaplace );
+                    localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
+//
+                }
+                else
+                {
+    //              L2 approximation
+                    gsMatrix<> L2approximation = basisVals.col(k) * basisVals.col(k).transpose();
+
+                    localMat.noalias() += weight * ( L2approximation );
+                    localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
+                }
+
+
 
             }
             else

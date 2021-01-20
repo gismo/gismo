@@ -74,8 +74,8 @@ int main(int argc, char *argv[])
 
 
 //    gsFunctionExpr<> source  ("1/256 * pi^4 (-cos(4 - (pi * y)/4) + cos(4 - (pi * x)/4) * (-1 + 4 * cos(4 - (pi * y)/4)))",2);
-//////    gsFunctionExpr<> source  ("(cos(pi*x/2) - 1) * (cos(pi*y/2) - 1)",2);
-////
+//    gsFunctionExpr<> source  ("(cos(pi*x/4 -4) - 1) * (cos(pi*y/4 -4) - 1)",2);
+//
 //    gsFunctionExpr<> laplace ("1/16 * pi^2 *(cos(4 - (pi * x)/4) * (1 - 2 * cos(4 - (pi * y)/4)) + cos(4 - (pi * y)/4))",2);
 //    gsFunctionExpr<> solVal("(cos(pi*x/4 -4) - 1) * (cos(pi*y/4 -4) - 1)",2);
 //    gsFunctionExpr<>sol1der ("1/4 *pi* (-1 + cos(4 - (pi * y)/4)) * sin(4 - (pi * x)/4)",
@@ -84,16 +84,25 @@ int main(int argc, char *argv[])
 //                             "-1/16 * pi^2 * (-1 + cos(4 - (pi * x)/4)) * cos(4 - (pi * y)/4)",
 //                             "1/16 * pi^2 * sin(4 - (pi * x)/4) * sin(4 - (pi * y)/4)", 2);
 
+//    gsFunctionExpr<> source  ("1/256 * pi^4 (-cos(4 - (pi * y)/4) + cos(4 - (pi * x)/4) * (-1 + 4 * cos(4 - (pi * y)/4)))",2);
+//    gsFunctionExpr<> source  ("(cos(pi*x/4 -6.5) - 1) * (cos(pi*y/4 -1) - 1)",2);
+//
+//    gsFunctionExpr<> laplace ("-1/16  * pi^2 ( -cos(1 - (pi * y) / 4) + cos(6.5 - pi * x / 4) * (-1 + 2 * cos(1 - (pi * y) / 4)))",2);
+//    gsFunctionExpr<> solVal("(cos( pi*x/4 -6.5 ) - 1) * (cos( pi*y/4 -1 ) - 1)",2);
+//    gsFunctionExpr<>sol1der ("1/4 *pi* (-1 + cos( pi * y /4 - 1 )) * sin(6.5 - pi * x/4)",
+//                             "1/4 *pi* (-1 + cos(6.5 - pi * x/4)) * sin(1 - pi * y/4)",2);
+//    gsFunctionExpr<>sol2der ("-1/16 * pi^2 * cos(6.5 - (pi * x)/4) * (-1 + cos((pi * y)/4 -1))",
+//                             "-1/16 * pi^2 * (-1 + cos(6.5 - (pi * x)/4)) * cos( 1 - pi * y /4 )",
+//                             "1/16 * pi^2 * sin(6.5 - pi * x /4) * sin( 1 - pi * y /4 )", 2);
 
-
-//    gsFunctionExpr<> source  ("0",2);
+//    gsFunctionExpr<> source  ("3",2);
 //    gsFunctionExpr<> laplace ("0",2);
-//    gsFunctionExpr<> solVal("x * y ",2);
-//    gsFunctionExpr<>sol1der ("y",
-//                             "x",2);
+//    gsFunctionExpr<> solVal("0 ",2);
+//    gsFunctionExpr<>sol1der ("0",
+//                             "0",2);
 //    gsFunctionExpr<>sol2der ("0",
 //                             "0",
-//                             "1", 2);
+//                             "0", 2);
 
 
 //    gsFunctionExpr<> source  ("0",2);
@@ -240,21 +249,32 @@ int main(int argc, char *argv[])
  */
 
 
-    gsFunctionExpr<> source  ("(8 * (3 * x^10 + 3 * (1 + y^2)^3 + 12 * x^2 * (1 + y^2)^2 * (1 + 5 y^2) + \n"
-                              "   x^8 * (14 + 15 * y^2) + x^6 * (25 + 36 * y^2 + 5 * y^4) + \n"
-                              "   x^4 * (23 + 96 * y^2 + 178 * y^4 + 105 * y^6))) / (1 + x^2 + y^2)^5 ", 3);
+//    gsFunctionExpr<> source  ("(8 * (3 * x^10 + 3 * (1 + y^2)^3 + 12 * x^2 * (1 + y^2)^2 * (1 + 5 y^2) + \n"
+//                              "   x^8 * (14 + 15 * y^2) + x^6 * (25 + 36 * y^2 + 5 * y^4) + \n"
+//                              "   x^4 * (23 + 96 * y^2 + 178 * y^4 + 105 * y^6))) / (1 + x^2 + y^2)^5 ", 3);
 ////    gsFunctionExpr<> source  ("x^4", 3);
-    gsFunctionExpr<> laplace ("(12 * (x^2 + x^4) ) / (1 + x^2 + y^2)",3);
-    gsFunctionExpr<> solVal("x^4",3);
-    gsFunctionExpr<>sol1der ("(4 * x^3 * (1 + x^2)) / (1 + x^2 + y^2)",
-                             "-((4 * x^4 * y) / (1 + x^2 + y^2))",
-                             "4 * x^3 * ( -( (x^2 * y) / (1 + x^2 + y^2) ) + ( (1 + x^2) * y ) / (1 + x^2 + y^2) )", 3);
-    gsFunctionExpr<>sol2der ("(12 * (x + x^3)^2 ) / (1 + x^2 + y^2)^2",
-                             "(12 * x^4 * y^2) / (1 + x^2 + y^2)^2",
-                             "(12 * x^2 * y^2) / (1 + x^2 + y^2)^2",
-                             "-((12 * x^3 * (1 + x^2) y) / (1 + x^2 + y^2)^2)",
-                             "(12 * x^2 * (1 + x^2) * y) / (1 + x^2 + y^2)^2",
-                             "-((12 * x^3 * y^2) / (1 + x^2 + y^2)^2)", 3);
+//    gsFunctionExpr<> laplace ("0 * (12 * (x^2 + x^4) ) / (1 + x^2 + y^2)",3);
+//    gsFunctionExpr<> solVal("x^4",3);
+//    gsFunctionExpr<>sol1der ("(4 * x^3 * (1 + x^2)) / (1 + x^2 + y^2)",
+//                             "-((4 * x^4 * y) / (1 + x^2 + y^2))",
+//                             "4 * x^3 * ( -( (x^2 * y) / (1 + x^2 + y^2) ) + ( (1 + x^2) * y ) / (1 + x^2 + y^2) )", 3);
+//
+////    gsFunctionExpr<>sol2der ("(4 * (1 + x^2) * (3 * x^6 + 3 * x^2 * (1 + y^2) + x^4 * (6 + 7 * y^2) ) ) / (1 + x^2 + y^2)^3",
+////                             "(4 * x^4 * (-1 + 4 * y^2 + 5 * y^4 + x^2 * (-1 + y^2) ) ) / (1 + x^2 + y^2)^3",
+////                             "(4 * (x^4 + x^6 + 3 * x^2 * (y^2 + y^4) ) ) / (1 + x^2 + y^2)^3",
+////                             "-( (4 * y * (x^7 + 4 * x^3 * (1 + y^2) + 5 * x^5 * (1 + y^2) ) ) / (1 + x^2 + y^2)^3)",
+////                             "(4 * y * (3 * x^2 * (1 + y^2) + x^4 * (3 + 4 * y^2) ) ) / (1 + x^2 + y^2)^3",
+////                             "-( (4 * y * (3 * x^7 + 5 * x^3 * (1 + y^2) + x^5 * (8 + 7 * y^2) ) ) / (1 + x^2 + y^2)^3)",
+////                             "(4 * x^3 * (1 + x^2 - 3 * y^2 - 4 * y^4) ) / (1 + x^2 + y^2)^3",
+////                             "(4 * y * (x^6 + 3 * x^2 * (1 + y^2) + x^4 * (4 + 5 * y^2) ) ) / (1 + x^2 + y^2)^3",
+////                             "-( (4 * (x^7 + x^5 * (1 + y^2) + 4 * x^3 * (y^2 + y^4) ) ) / (1 + x^2 + y^2)^3)", 3);
+//
+//    gsFunctionExpr<>sol2der ("(12 * (x + x^3)^2 ) / (1 + x^2 + y^2)^2",
+//                             "(12 * x^4 * y^2) / (1 + x^2 + y^2)^2",
+//                             "(12 * x^2 * y^2) / (1 + x^2 + y^2)^2",
+//                             "-((12 * x^3 * (1 + x^2) * y) / (1 + x^2 + y^2)^2)",
+//                             "(12 * x^2 * (1 + x^2) * y) / (1 + x^2 + y^2)^2",
+//                             "-((12 * x^3 * y^2) / (1 + x^2 + y^2)^2)", 3);
 
 
 //    gsFunctionExpr<> source  ("(4 * x * (1 - 15 * y^2 - 10 * y^4 + 6 * y^6 + x^4 * (1 + 15 * y^2) + \n"
@@ -274,18 +294,18 @@ int main(int argc, char *argv[])
 
 // PLANAR SOLUTION
 
-//    gsFunctionExpr<> source  ("0 ",3);
-//    gsFunctionExpr<> laplace ("0",3);
-//    gsFunctionExpr<> solVal("x",3);
-//    gsFunctionExpr<>sol1der ("1",
-//                             "0",
-//                             "0",3);
-//    gsFunctionExpr<>sol2der ("0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0", 3);
+    gsFunctionExpr<> source  ("2",3);
+    gsFunctionExpr<> laplace ("0",3);
+    gsFunctionExpr<> solVal("0",3);
+    gsFunctionExpr<>sol1der ("0",
+                             "0",
+                             "0",3);
+    gsFunctionExpr<>sol2der ("0",
+                             "0",
+                             "0",
+                             "0",
+                             "0",
+                             "0", 3);
 
 
 //    gsFunctionExpr<> source  ("12 ",3);
@@ -429,7 +449,7 @@ int main(int argc, char *argv[])
             break;
         case 8:
             string_geo = "KirchhoffLoveGeo/surface_fourPatch.xml";
-            numDegree = 2; // 2 == degree 3
+            numDegree = 1; // 2 == degree 3
             break;
         case 9:
             string_geo = "KirchhoffLoveGeo/singlePatch_quadraticParamSurf.xml";
@@ -475,6 +495,12 @@ int main(int argc, char *argv[])
             string_geo = "KirchhoffLoveGeo/surfaceFrom2DTriangular.xml";
             numDegree = 2; // 2 == degree 3
             break;
+        case 20:
+            string_geo = "KirchhoffLoveGeo/surfaceFromCubic2DCentralBump.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
+
+
 
         default:
             gsInfo << "No geometry is used! \n";
@@ -526,7 +552,7 @@ int main(int argc, char *argv[])
 
         multiPatch.uniformRefine_withSameRegularity(num_knots[refinement_level], g1OptionList.getInt("regularity"));
 
-//        gsInfo << "KV: " << multiPatch.patch(0).basis().basis(0) << "\n";
+        gsInfo << "KV: " << multiPatch.patch(0).basis().basis(0) << "\n";
 
         gsInfo << "###### Level: " << refinement_level << " with " << num_knots[refinement_level] << " inner knots ###### " << "\n";
 
@@ -721,30 +747,30 @@ int main(int argc, char *argv[])
             g1BiharmonicAssembler.plotParaview(solField, g1Basis);
 
             // Pascal
-            if(multiPatch.patch(0).targetDim() == 2)
-            {
-                gsMultiPatch<> mp_letsee;
-                for (size_t numP = 0; numP < multiPatch.nPatches(); numP++)
-                {
-                    gsMatrix<> coefsnew(multiPatch.patch(numP).coefs().dim().first, 1);
-                    coefsnew = mpsol.patch(numP).coefs();
-                    for (size_t letsee = 0; letsee < g1Basis[numP].nPatches(); letsee++)
-                    {
-                        coefsnew += g1Basis[numP].patch(letsee).coefs();
-                    }
-
-                    gsMatrix<> newcontrolpoints(multiPatch.patch(numP).coefs().dim().first, 3);
-                    newcontrolpoints.leftCols(2) = multiPatch.patch(numP).coefs();
-                    newcontrolpoints.col(2) = coefsnew;
-                    mp_letsee.addPatch(multiPatch.patch(numP));
-                    mp_letsee.patch(numP).setCoefs(newcontrolpoints);
-                }
-                gsWriteParaview(mp_letsee, "mp_letsee", 15000);
-
-                gsFileData<> xml;
-                xml << mp_letsee;
-                xml.save("/home/afarahat/Desktop/gismo/filedata/KirchhoffLoveGeo/surfaceFrom2DTriangular");
-            }
+//            if(multiPatch.patch(0).targetDim() == 2)
+//            {
+//                gsMultiPatch<> mp_letsee;
+//                for (size_t numP = 0; numP < multiPatch.nPatches(); numP++)
+//                {
+//                    gsMatrix<> coefsnew(multiPatch.patch(numP).coefs().dim().first, 1);
+//                    coefsnew = mpsol.patch(numP).coefs();
+//                    for (size_t letsee = 0; letsee < g1Basis[numP].nPatches(); letsee++)
+//                    {
+//                        coefsnew += g1Basis[numP].patch(letsee).coefs();
+//                    }
+//
+//                    gsMatrix<> newcontrolpoints(multiPatch.patch(numP).coefs().dim().first, 3);
+//                    newcontrolpoints.leftCols(2) = multiPatch.patch(numP).coefs();
+//                    newcontrolpoints.col(2) = coefsnew;
+//                    mp_letsee.addPatch(multiPatch.patch(numP));
+//                    mp_letsee.patch(numP).setCoefs(newcontrolpoints);
+//                }
+//                gsWriteParaview(mp_letsee, "mp_letsee", 15000);
+//
+//                gsFileData<> xml;
+//                xml << mp_letsee;
+//                xml.save("/home/afarahat/Desktop/gismo/filedata/KirchhoffLoveGeo/surfaceFromCubic2DCentralBump");
+//            }
             // End
         }
 
@@ -853,7 +879,6 @@ int main(int argc, char *argv[])
 //                    Sol_sparseZero.setZero();
 //                    gsNormL2<real_t> exactErrorH2(multiPatch, Sol_sparseZero, sol2der);
 //                    exactErrorH2.compute(g1System.get_numBasisFunctions());
-
                     h2SemiError_vec[refinement_level] = errorSemiH2.value() /*/ exactErrorH2.value()*/;
                 }
             }
