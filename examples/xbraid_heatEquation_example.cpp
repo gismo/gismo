@@ -24,7 +24,7 @@ namespace gismo {
    \brief Derived class implementing the XBraid wrapper for the heat equation
 */
 template<typename T>
-class gsXBraid_app : public gsXBraid<T>
+class gsXBraid_app : public gsXBraid<gsMatrix<T> >
 {
 private:
   // Spatial discretisation parameters
@@ -62,7 +62,7 @@ private:
                index_t          numTime,
                index_t          numRefine,
                index_t          numElevate)
-    : gsXBraid<T>::gsXBraid(comm, tstart, tstop, (int)numTime),
+    : gsXBraid<gsMatrix<T> >::gsXBraid(comm, tstart, tstop, (int)numTime),
       numRefine(numRefine),
       numElevate(numElevate),
       numTime(numTime),
@@ -163,7 +163,7 @@ private:
   }
 
   /// Destructor
-  ~gsXBraid_app() {}
+  virtual ~gsXBraid_app() {}
   
   /// Creates instance from command line argument
   static inline gsXBraid_app create(const gsMpiComm& comm,
@@ -274,12 +274,30 @@ private:
    
     return app;
   }
+
+  /// Initializes a vector
+  braid_Int Init(braid_Real     t,
+                 braid_Vector *u_ptr)
+  {
+    gsMatrix<T>* u = new gsMatrix<T>(M.numDofs(), 1);
+    
+    if (t != tstart) {
+      // Intermediate solution
+      u->setZero(M.numDofs(), 1);
+    } else {
+      // Initial solution
+      u->setZero(M.numDofs(), 1);
+    }
+
+    *u_ptr = (braid_Vector) u;
+    return braid_Int(0);
+  }
   
   /// Performs a single step of the parallel-in-time multigrid
   braid_Int Step(braid_Vector    u,
                  braid_Vector    ustop,
                  braid_Vector    fstop,
-                 BraidStepStatus &pstatus) override
+                 BraidStepStatus &pstatus)
   {
     gsMatrix<T>* _u  = (gsMatrix<T>*) u;
     T tstart, tstop;
@@ -299,106 +317,17 @@ private:
     return braid_Int(0);
   }
 
-  /// Clones a given vector
-  braid_Int Clone(braid_Vector  u,
-                  braid_Vector *v_ptr) override
-  {
-    gsMatrix<T>* _u = (gsMatrix<T>*) u;
-    gsMatrix<T>*  v = new gsMatrix<T>();
-    (*v) = (*_u);
-    *v_ptr = (braid_Vector) v;
-    return braid_Int(0);
-  }
-
-  /// Initializes a vector
-  braid_Int Init(braid_Real     t,
-           braid_Vector *u_ptr) override
-  {
-    gsMatrix<T>* u = new gsMatrix<T>(M.numDofs(), 1);
-    
-    if (t != tstart) {
-      // Intermediate solution
-      u->setZero(M.numDofs(), 1);
-    } else {
-      // Initial solution
-      u->setZero(M.numDofs(), 1);
-    }
-
-    *u_ptr = (braid_Vector) u;
-    return braid_Int(0);
-  }
-
-  /// Frees a given vector
-  braid_Int Free(braid_Vector u) override
-  {
-    gsMatrix<T>* _u = (gsMatrix<T>*) u;
-    delete _u;
-    return braid_Int(0);
-  }
-
-  /// Computes the sum of two given vectors
-  braid_Int Sum(braid_Real   alpha,
-                braid_Vector x,
-                braid_Real   beta,
-                braid_Vector y) override
-  {
-    gsMatrix<T>* _x = (gsMatrix<T>*) x;
-    gsMatrix<T>* _y = (gsMatrix<T>*) y;
-    *_y = (T)alpha * (*_x) + (T)beta * (*_y);
-    return braid_Int(0);
-  }
-
-  /// Computes the spatial norm of a given vector
-  braid_Int SpatialNorm(braid_Vector  u,
-                        braid_Real   *norm_ptr) override
-  {
-    gsMatrix<T> *_u = (gsMatrix<T>*) u;    
-    *norm_ptr = _u->norm();
-    return braid_Int(0);
-  }
-  
+  /// Sets the size of the MPI communication buffer
   braid_Int BufSize(braid_Int         *size_ptr,
-                    BraidBufferStatus &status) override
+                    BraidBufferStatus &status)
   {
     *size_ptr = sizeof(T)*(M.numDofs()+1);
     return braid_Int(0);
   }
-  
-  braid_Int BufPack(braid_Vector       u,
-                    void              *buffer,
-                    BraidBufferStatus &status) override
-  {
-    gsMatrix<T> *_u = (gsMatrix<T>*) u;
-    T* _buffer      = (T*) buffer;
-    T* _data        = _u->data();
-    index_t size    = _u->rows()*_u->cols();
-    
-    _buffer[0] = size;
-    for (index_t idx = 0; idx < size; ++idx)
-      _buffer[idx+1] = _data[idx];
 
-    status.SetSize(sizeof(T)*(size+1));
-    return braid_Int(0);
-  }
-  
-  braid_Int BufUnpack(void              *buffer,
-                      braid_Vector      *u_ptr,
-                      BraidBufferStatus &status) override
-  {
-    T* _buffer     = (T*) buffer;
-    index_t size   = _buffer[0];
-    gsMatrix<T>* u = new gsMatrix<T>(size,1);
-    T* _data       = u->data();
-
-    for (index_t idx = 0; idx < size; ++idx)
-      _data[idx] = _buffer[idx+1];
-    
-    *u_ptr = (braid_Vector) u;
-    return braid_Int(0);
-  }
-  
+  /// Handles 
   braid_Int Access(braid_Vector       u,
-                   BraidAccessStatus &astatus) override
+                   BraidAccessStatus &astatus)
   {
     if(static_cast<gsXBraidAccessStatus&>(astatus).done() &&
        static_cast<gsXBraidAccessStatus&>(astatus).timeIndex() ==
@@ -413,23 +342,7 @@ private:
   // Not needed in this example
   braid_Int Residual(braid_Vector     u,
                      braid_Vector     r,
-                     BraidStepStatus &pstatus) override
-  {
-    return braid_Int(0);
-  }
-  
-  // Not needed in this example
-  braid_Int Coarsen(braid_Vector           fu,
-                    braid_Vector          *cu_ptr,
-                    BraidCoarsenRefStatus &status) override
-  {
-    return braid_Int(0);
-  }
-  
-  // Not needed in this example
-  braid_Int Refine(braid_Vector           cu,
-                   braid_Vector          *fu_ptr,
-                   BraidCoarsenRefStatus &status) override
+                     BraidStepStatus &pstatus)
   {
     return braid_Int(0);
   }
