@@ -309,7 +309,6 @@ void getLastIndex(const gsVector<unsigned>& stride,
 }
 
 
-// QUESTION: SHOUD I PUT THIS FUNCTION INTO .HPP?
 /// Computes 2D vector of alpha values, and also computes new knot values and
 /// saves them into nknots.
 ///
@@ -339,7 +338,6 @@ void computeTensorAlpha(std::vector< std::vector<T> >& alpha,
 
     int i = b + p - 1;
     int k = b + p + nik - 1; // nik - 1 == r
-
 
     if (!sparse)
     {

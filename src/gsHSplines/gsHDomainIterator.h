@@ -164,7 +164,7 @@ private:
 
             m_breaks[dim].clear();
             for (unsigned index = start; index <= end; ++index)
-                m_breaks[dim].push_back(kv.uValue(index));
+                m_breaks[dim].push_back( kv(index) );// unique index
 
             m_curElement(dim) =
             m_meshStart(dim)  = m_breaks[dim].begin();

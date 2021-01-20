@@ -371,8 +371,10 @@ public:
 
         for (short_t dim = 0; dim < d; ++dim)
         {
-            Self_t::component(dim).knots().supportIndex_into(ti[dim], tmp_vec);
-            result.row(dim) = tmp_vec.row(0);
+            const gsKnotVector<T> & kv = Self_t::component(dim).knots();
+            kv.supportIndex_into(ti[dim], tmp_vec);
+            result.row(dim).noalias() =
+                tmp_vec.cwiseMax(0).cwiseMin(kv.numElements());
         }
     }
 

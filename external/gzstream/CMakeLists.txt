@@ -1,9 +1,8 @@
 ######################################################################
-## CMakeLists.txt ---
+## CMakeLists.txt --- gzstream
 ## This file is part of the G+Smo library. 
 ## 
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012 - 2018 RICAM-Linz.
 ######################################################################
 
 project(gzstream)

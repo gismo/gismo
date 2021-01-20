@@ -1,0 +1,238 @@
+################################################################################
+# GitLab CI is used for multiple purposes
+#
+# 1. Building and testing of commits to all branches except 'ci_test' and 
+#   'coverity_scan' and sending of the ctest results to the CDASH server
+#    - these jobs exclude external pull requests and the two branches 
+#      'ci_test' and 'coverity_scan' by the rule
+#       except:
+#       - external_pull_requests
+#       - ci_test
+#       - coverity_scan
+#
+# 2. Building and testing of external pull requests (PRs) [to be added]
+#
+# 3. Building and extensive testing of commits to branch 'ci_test' [to be added]
+#
+# 4. Coverity scan of commits to branch 'coverity_scan' [to be added]
+################################################################################
+
+################################################################################
+# 1. Building and testing of commits to all branches except 'ci_test' and 
+#    'coverity_scan' and sending of the ctest results to the CDASH server
+################################################################################
+
+#-------------------------------------------------------------------------------
+# Clang 7-11, C++98,11,14,17,20
+#-------------------------------------------------------------------------------
+
+# Clang 7, C++98, Release
+linux_x86_64_clang7_cxx98_release_float_int:
+  tags:
+    - linux
+  stage: test
+  image: silkeh/clang:7
+  script:
+    - apt-get update -y
+    - apt-get install cmake subversion -y #for Spectra
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=/usr/local/bin/clang -D CXXNAME=/usr/local/bin/clang++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=98;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int;-DGISMO_WITH_GMP=ON;-DGISMO_WITH_MPFR=ON;-DGISMO_WITH_GMP=ON;-DGISMO_WITH_IPOPT=ON;-DGISMO_WITH_OCC=ON;-DGISMO_WITH_ONURBS=ON;-DGISMO_WITH_SPECTRA=ON;-DGISMO_WITH_SUPERLU=ON;-DGISMO_WITH_UMFPACK=ON' -Q
+  except:
+    - external_pull_requests
+    - ci_test
+    - coverity_scan
+    
+# Clang 8, C++11, Release
+linux_x86_64_clang8_cxx11_release_double_int32t:
+  tags:
+    - linux
+  stage: test
+  image: silkeh/clang:8
+  script:
+    - apt-get update -y
+    - apt-get install cmake ninja-build -y
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=ON -D CTEST_CMAKE_GENERATOR=Ninja -D CNAME=/usr/local/bin/clang -D CXXNAME=/usr/local/bin/clang++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t;-DGISMO_WITH_ONURBS=ON' -Q
+  except:
+    - external_pull_requests
+    - ci_test
+    - coverity_scan
+
+# Clang 9, C++14, Release
+linux_x86_64_clang9_cxx14_release_longdouble_int64t:
+  tags:
+    - linux
+  stage: test
+  image: silkeh/clang:9
+  script:
+    - apt-get update -y
+    - apt-get install cmake -y
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=/usr/local/bin/clang -D CXXNAME=/usr/local/bin/clang++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=long double;-DGISMO_INDEX_TYPE=int64_t;-DGISMO_WITH_ONURBS=ON' -Q
+  except:
+    - external_pull_requests
+    - ci_test
+    - coverity_scan
+
+# Clang 10, C++17, Release
+linux_x86_64_clang10_cxx17_release_mpreal_long:
+  tags:
+    - linux
+  stage: test
+  image: silkeh/clang:10
+  script:
+    - apt-get update -y
+    - apt-get install cmake libmpfr-dev ninja-build -y
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR=Ninja -D CNAME=/usr/local/bin/clang -D CXXNAME=/usr/local/bin/clang++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long;-DGISMO_WITH_ONURBS=ON' -Q
+  except:
+    - external_pull_requests
+    - ci_test
+    - coverity_scan
+
+# Clang 11, C++20, Release
+linux_x86_64_clang11_cxx20_release_mpq_longlong:
+  tags:
+    - linux
+  stage: test
+  image: silkeh/clang:11
+  script:
+    - apt-get update -y
+    - apt-get install cmake libgmp-dev -y
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=/usr/local/bin/clang -D CXXNAME=/usr/local/bin/clang++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=long long;-DGISMO_WITH_ONURBS=ON' -Q
+  except:
+    - external_pull_requests
+    - ci_test
+    - coverity_scan
+
+
+#-------------------------------------------------------------------------------
+# GCC 6-10, C++98,11,14,17,20
+#-------------------------------------------------------------------------------
+
+# GCC 6, C++98, Release
+linux_x86_64_gcc6_cxx98_release_mpq_longlong:
+  tags:
+    - linux
+  stage: test
+  image: gcc:6
+  script:
+    - apt-get update -y
+    - apt-get install cmake ninja-build libgmp-dev -y
+    - apt-get install cmake libmpfr-dev -y #should not be needed but there is a bug in CMakeLists.txt when using ninja
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR=Ninja -D CNAME=/usr/local/bin/gcc -D CXXNAME=/usr/local/bin/g++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=98;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=long long;-DGISMO_WITH_ONURBS=ON' -Q #-VV
+  except:
+    - external_pull_requests
+    - ci_test
+    - coverity_scan
+    
+# GCC 7, C++11, Release
+linux_x86_64_gcc7_cxx11_release_mpreal_long:
+  tags:
+    - linux
+  stage: test
+  image: gcc:7
+  script:
+    - apt-get update -y
+    - apt-get install cmake libmpfr-dev -y
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=/usr/local/bin/gcc -D CXXNAME=/usr/local/bin/g++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long;-DGISMO_WITH_ONURBS=ON' -Q
+  except:
+    - external_pull_requests
+    - ci_test
+    - coverity_scan
+
+# GCC 8, C++14, Release
+linux_x86_64_gcc8_cxx14_release_longdouble_int64t:
+  tags:
+    - linux
+  stage: test
+  image: gcc:8
+  script:
+    - apt-get update -y
+    - apt-get install cmake ninja-build -y
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR=Ninja -D CNAME=/usr/local/bin/gcc -D CXXNAME=/usr/local/bin/g++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=long double;-DGISMO_INDEX_TYPE=int64_t;-DGISMO_WITH_ONURBS=ON' -Q
+  except:
+    - external_pull_requests
+    - ci_test
+    - coverity_scan
+    
+# GCC 9, C++17, Release
+linux_x86_64_gcc9_cxx17_release_double_int32t:
+  
+  tags:
+    - linux
+  stage: test
+  image: gcc:9
+  script:
+    - apt-get update -y
+    - apt-get install cmake -y
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=/usr/local/bin/gcc -D CXXNAME=/usr/local/bin/g++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t;-DGISMO_WITH_ONURBS=ON' -Q
+  except:
+    - external_pull_requests
+    - ci_test
+    - coverity_scan
+
+# GCC 10, C++20, Release
+linux_x86_64_gcc10_cxx20_release_float_int:
+  tags:
+    - linux
+  stage: test
+  image: gcc:10
+  script:
+    - apt-get update -y
+    - apt-get install cmake ninja-build -y
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR=Ninja -D CNAME=/usr/local/bin/gcc -D CXXNAME=/usr/local/bin/g++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int;-DGISMO_WITH_ONURBS=ON' -Q
+  except:
+    - external_pull_requests
+    - ci_test
+    - coverity_scan
+    
+################################################################################
+# 2. Building and testing of external pull requests (PRs)
+################################################################################
+
+################################################################################
+# 3. Building and extensive testing of commits to branch 'ci_test'
+################################################################################
+
+################################################################################
+# 4. Coverity scan of commits to branch 'coverity_scan'
+################################################################################
+
+################################################################################
+# 5. Test installation and deployment
+################################################################################
+
+# Standard installation and deployment on linux
+install_and_deploy_linux:
+  tags:
+    - linux
+  stage: test #deploy #(deploy will only run only when all test succeeds)
+  image: gcc:9
+  script:
+    - apt-get update -y
+    - apt-get install cmake -y
+    - export MAKEFLAGS=-j3
+    - rm -rf ~/.cmake /builds/gismo-ci/buildlib/CMakeCache.txt /builds/gismo-ci/buildlib/lib /usr/lib*/gismo /usr/lib*/*gismo*.* /usr/include/gismo /usr/share/gismodata /builds/gismo-ci/buildproj # Cleanup folders
+    - if [ ! -d "/builds/gismo-ci/buildlib" ]; then mkdir /builds/gismo-ci/buildlib; fi
+    - cd /builds/gismo-ci/buildlib
+    - cmake ../gismo -DBUILDNAME="$CI_JOB_NAME" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" -D CMAKE_INSTALL_PREFIX=/usr -DTARGET_ARCHITECTURE=generic #-DGISMO_BUILD_UNITTESTS=ON -DGISMO_WITH_ONURBS=ON -DGISMO_WITH_GMP=ON -DGISMO_WITH_MPFR=ON -DGISMO_WITH_IPOPT=ON -DGISMO_WITH_SPECTRA=ON -DGISMO_WITH_SUPERLU=ON -DGISMO_WITH_UMFPACK=ON
+    - cmake --build . --target gismo #--parallel 3
+    # I. Test deploy from build tree
+    - cp /builds/gismo-ci/gismo/CTestConfig.cmake /builds/gismo-ci/gismo/deploy/
+    - mv /builds/gismo-ci/gismo/examples/*.cpp /builds/gismo-ci/gismo/deploy/
+    - mkdir /builds/gismo-ci/buildproj; cd /builds/gismo-ci/buildproj
+    - cmake ../gismo/deploy -Dgismo_DIR=/builds/gismo-ci/buildlib -DBUILDNAME="$CI_JOB_NAME-local" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" || true
+    - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
+    # II. Test deploy from system tree
+    - cd /builds/gismo-ci/buildlib
+    - cmake --build . --target install
+    - rm -rf ~/.cmake /builds/gismo-ci/buildproj
+    - mkdir /builds/gismo-ci/buildproj; cd /builds/gismo-ci/buildproj
+    - cmake ../gismo/deploy -DBUILDNAME="$CI_JOB_NAME-system" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" || true
+    - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest
+    # III. Test direct use of -lgismo
+    - rm -rf ./poisson_example.out
+    - g++ -v /builds/gismo-ci/gismo/deploy/poisson_example.cpp -o poisson_example.out -I/usr/include/gismo -lgismo 2> compile.log
+    - ctest --output-on-failure -A compile.log -M Experimental -T Submit
+    - if [ ! -f "poisson_example.out" ]; then cat compile.log; fi
+    - ./poisson_example.out
+  only:
+    - stable
+    - external_pull_requests

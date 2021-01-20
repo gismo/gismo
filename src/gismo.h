@@ -190,6 +190,10 @@ namespace internal
 #include <gsAutoDiff.h>
 #endif
 
+#ifdef GISMO_WITH_TRILINOS
+#include <gsTrilinos/gsTrilinos.h>
+#endif
+
 /*
 #if defined(gismo_EXPORTS) || defined(gismo_dev_EXPORTS)
 #  ifdef _MSC_VER

@@ -111,6 +111,8 @@ int main(int argc, char *argv[])
 
   lookFor< gsPlanarDomain<> > (data) ;
 
+  lookFor< gsCurveLoop<> > (data) ;
+
   lookFor< gsTrimSurface<> > (data) ;
 
   lookFor< gsMultiPatch<> > (data) ;

@@ -77,7 +77,7 @@ public:
 
         // Compute penalty parameter
         const int deg = basis.maxDegree();
-        penalty = (deg + basis.dim()) * (deg + 1) * T(2.5);
+        penalty = T((deg + basis.dim()) * (deg + 1)) * T(2.5);
     }
 
     // Evaluate on element.

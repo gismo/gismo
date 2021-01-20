@@ -1,6 +1,7 @@
 namespace gismo {
 
 /** \defgroup IO Input/Output module
+\ingroup Modules
 
     This module is responsible for input and output of \gismo objects to files.
 

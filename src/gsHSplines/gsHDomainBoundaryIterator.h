@@ -201,29 +201,24 @@ private:
                 static_cast<const gsHTensorBasis<d,T>*>(m_basis)
                 ->tensorLevel(level2).component(dim).knots();
 
-            // knotVals = kv.unique()
-
             m_breaks[dim].clear();
             if ( dim == dir )
             {
                 if ( par )
                 {
-                    m_breaks[dim].push_back(kv.uValue(end-1));
-                    m_breaks[dim].push_back(kv.uValue(end  ));
-
-                    //  = knotValues.begin() + end -1;
-                    //  = knotValues.begin() + end   ;
+                    m_breaks[dim].push_back( kv(end-1) );
+                    m_breaks[dim].push_back( kv(end  ) );
                 }
                 else
                 {
-                    m_breaks[dim].push_back(kv.uValue(start));
-                    m_breaks[dim].push_back(kv.uValue(start+1));
+                    m_breaks[dim].push_back( kv(start)   );
+                    m_breaks[dim].push_back( kv(start+1) );
                 }
             }
             else
             {
                 for (unsigned index = start; index <= end; ++index)
-                    m_breaks[dim].push_back(kv.uValue(index));
+                    m_breaks[dim].push_back( kv(index) );
             }
 
             m_curElement(dim) = 

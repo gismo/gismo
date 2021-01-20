@@ -1,7 +1,7 @@
 // Jenkins script for G+Smo, Angelos Mantzaflaris, 2019
 
-// Gather builders
-def labels = ['gismo-ubuntu', 'gismo-macos', 'gismo-centos', 'gismo-fedora', 'gismo-win7x64']
+// Gather builders , 'gismo-win7x64'
+def labels = ['gismo-ubuntu', 'gismo-macos', 'gismo-centos', 'gismo-fedora']
 def builders = [:]
 for (x in labels)
 {
@@ -13,7 +13,7 @@ for (x in labels)
 	        //for(e in env) {echo e + " is " + ${e}}
    		dir('gismo_src') { checkout scm }
 	    	//buildGismo()
-		cmd "ctest -S gismo_src/cmake/ctest_script.cmake -D CTEST_SOURCE_DIRECTORY=./gismo_src -D CTEST_BINARY_DIRECTORY=./build -D CTEST_SITE=$NODE_NAME-$BUILD_ID "
+		cmd "ctest -S gismo_src/cmake/ctest_script.cmake -D CTEST_SOURCE_DIRECTORY=./gismo_src -D CTEST_BINARY_DIRECTORY=./build -D CTEST_SITE=$NODE_NAME-$BUILD_ID-[jenkins] "
 		//-D CTEST_TEST_MODEL=Experimental
 		//-D CMAKE_ARGS='-DGISMO_BUILD_UNITTESTS=ON -DCMAKE_BUILD_TYPE=Release'
 	}

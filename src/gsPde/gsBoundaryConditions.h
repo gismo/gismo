@@ -812,12 +812,13 @@ public:
         return m_trMatrix;
     }
 
+    /// Set the geometry map to evaluate boundary conditions.
     void setGeoMap(const gsFunctionSet<T> & gm)
     {
-      //GISMO_ASSERT
       m_patches = &gm;
     }
 
+    /// Returns the geometry map
     const gsFunctionSet<T> & geoMap() const
     {
         GISMO_ASSERT(nullptr!=m_patches, "Geometry map was not provided in BC.");

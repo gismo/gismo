@@ -1,6 +1,7 @@
 namespace gismo {
 
 /** \defgroup Utils Utilities module
+\ingroup Modules
 
     This module contains several common functionalities needed for
     G+Smo, for instance point iterators and combinatorial iterators.

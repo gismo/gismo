@@ -34,7 +34,7 @@
 #include <unsupported/Eigen/MPRealSupport>
 #endif
 
-#if defined(GISMO_WITH_MPQ)
+#if defined(GISMO_WITH_GMP)
 #include <unsupported/Eigen/MPQClassSupport>
 #endif
 

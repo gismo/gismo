@@ -9,31 +9,37 @@
 
 ======================================================================
 =====             Geometry plus Simulation modules               =====
-=====                      version 0.8.5 Alpha                   =====
+=====                     version 20.12 Alpha                    =====
 =====                   https://github.com/gismo                 =====
-=====          Copyright (C) JKU-RICAM-Linz, 2012 - 2018         =====
 ======================================================================
 ```
 
 # Continuous Integration status
 | **System** | **Status** | **More information** |
 |------------|------------|----------------------|
-| CDash      | [![cdash](https://img.shields.io/website?down_color=lightgrey&down_message=offline&label=CDash&up_color=green&up_message=up&url=https%3A%2F%2Fcdash-ci.inria.fr%2Findex.php%3Fproject%3DGismo)](https://cdash-ci.inria.fr/index.php?project=Gismo) | Various builds and configurations on https://cdash-ci.inria.fr/index.php?project=Gismo |
-| Linux      | [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://circleci.com/gh/gismo/gismo) |
-| Linux     | [ ![Codeship Status](https://app.codeship.com/projects/2aa19360-8998-0133-39fd-66416d65b267/status?branch=stable)](https://app.codeship.com/projects/123289)
-| macOS      | [![Travis Status](https://travis-ci.org/gismo/gismo.svg?branch=stable)](https://travis-ci.org/gismo/gismo/branches) | 
-| Windows    | [![Appveyor status](https://ci.appveyor.com/api/projects/status/abps59xbt1gjwci1/branch/stable?svg=true)](https://ci.appveyor.com/project/gismo/gismo) |
+| [CDash](https://cdash-ci.inria.fr/index.php?project=Gismo) | [![cdash](https://img.shields.io/website?down_color=lightgrey&down_message=offline&label=CDash&up_color=green&up_message=up&url=https%3A%2F%2Fcdash-ci.inria.fr%2Findex.php%3Fproject%3DGismo)](https://cdash-ci.inria.fr/index.php?project=Gismo) | Report results from all builds |
+| [Appveyor](https://ci.appveyor.com/project/gismo/gismo)  | [![Appveyor status](https://ci.appveyor.com/api/projects/status/abps59xbt1gjwci1/branch/stable?svg=true)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[appVeyor]) | Windows MSVC 14.0 |
+| [Circle CI](https://circleci.com/gh/gismo/gismo) | [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[cci]) | macOS XCode9, C++98 <br> macOS XCode10, C++11 <br> macOS XCode11, C++14 <br> macOS XCode12, C++17 |
+| [Codeship](https://app.codeship.com/projects/123289)  | [![Codeship Status](https://app.codeship.com/projects/2aa19360-8998-0133-39fd-66416d65b267/status?branch=stable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[codeship]) | |
+| [GitLab](https://gitlab.com/gismo-ci/gismo/-/pipelines)    | [![pipeline status](https://gitlab.com/gismo-ci/gismo/badges/gitlab_ci/pipeline.svg)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gitlab-ci]) | Linux GCC6, C++98 <br> Linux GCC7, C++11 <br> Linux GCC8, C++14 <br> Linux GCC9, C++17 <br> Linux GCC10, C++20 <br> Linux Clang7, C++98 <br> Linux Clang8, C++11 <br> Linux Clang9, C++14 <br> Linux Clang10, C++17 <br> Linux Clang11, C++20] |
+| [Travis](https://travis-ci.org/gismo/gismo/branches) | [![Travis Status](https://travis-ci.org/gismo/gismo.svg?branch=stable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[travis]) | macOS XCode9 C++98 <br> macOS XCode10, C++11 <br> macOS XCode11, C++14 <br> Linux GCC, C++98 |
+| [GitHub Actions](https://github.com/gismo/gismo/actions) | [![Build Status](https://github.com/gismo/gismo/workflows/gismo/badge.svg?branch=stable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[actions]) | Latest Linux/MacOS/Windows |
+| [Jenkins](https://ci.inria.fr/gismo/job/gismo/job/gismo/job/stable) | [![Build Status](https://ci.inria.fr/gismo/buildStatus/icon?job=gismo%2Fgismo%2Fstable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[jenkins]) |VMs for Linux/MacOS/Windows |
+| GCC Farm | [Status](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gccfarm]) | Builders from the GCC Farm   |
+| [OBS](https://build.opensuse.org/package/show/home:filiatra/gismo) | [binaries](https://software.opensuse.org/download/package?project=home:filiatra&package=gismo)  | Upstream package builds for many Linux distributions |
+| [Launchpad](https://code.launchpad.net/~g+smo/+recipe/g+smo-daily) |[binaries](https://launchpad.net/~g+smo/+archive/ubuntu/upstream/+packages)  | Upstream package builds for Ubuntu distributions |
+
 
 This README file contains brief information. More details are found in
-the [Wiki pages](http://gs.jku.at/gismo).
+the [Wiki pages](https://github.com/gismo/gismo/wiki).
 
-The latest revision of the code can be obtained using subversion:
-
-```svn co https://github.com/gismo/gismo/trunk gismo```
-
-or using git (via https):
+The latest revision of the code can be obtained using git (via https):
 
 ```git clone https://github.com/gismo/gismo.git```
+
+or using subversion:
+
+```svn co https://github.com/gismo/gismo/trunk gismo```
 
 or as a zip file:
 
@@ -46,7 +52,7 @@ https://github.com/gismo/gismo/archive/stable.zip
   - Linux
   - macOS
 
-* Configuration: [CMake 2.8.8](https://cmake.org) or newer.
+* Configuration: [CMake 2.8.12](https://cmake.org) or newer.
 
 * Compilers tested include recent versions of
   - [AMD Optimizing C/C++ Compiler](https://developer.amd.com/amd-aocc/)
@@ -94,8 +100,7 @@ Additionally, if Doxygen is available on the system one can execute
 to obtain the Doxygen documentation in HTML format. The main doxygen
 page is at ./doc/html/index.html.
 
-More information at
-http://gs.jku.at/gismo
+More information at https://github.com/gismo/gismo/wiki
 
 # Configuration Options
 
@@ -212,13 +217,7 @@ eleven modules are present as sub-folders:
 
 * Wiki pages:
 
-  https://gs.jku.at/gismo
-
-* Mailing list: gismo@ricam.oeaw.ac.at
-
-* Subscribe to the mailing list at:
-
-  https://list.ricam.oeaw.ac.at/lists/listinfo/gismo
+  https://github.com/gismo/gismo/wiki
 
 * Bug reports:
 
@@ -231,10 +230,7 @@ Coordinator and maintainer: Angelos Mantzaflaris
 
 See full list in [our wiki pages](https://github.com/gismo/gismo/wiki/About--G-Smo)
 
-# Acknowledgement and os-license
+# OS-license
 
-G+Smo library for isogeometric analysis is supported by the Research
-Network ''Geometry + Simulation'' (NFN S117), funded by the Austrian
-Science Fund, www.gs.jku.at.  It is distributed under the Mozilla
-Public License v2.0.  (see [LICENSE.txt](https://github.com/gismo/gismo/blob/stable/LICENSE.txt)).
+The G+Smo library is distributed under the Mozilla Public License v2.0.  (see [LICENSE.txt](https://github.com/gismo/gismo/blob/stable/LICENSE.txt)).
 

@@ -627,7 +627,7 @@ public:
      * Each column of \em result corresponds to a column of \em u. It contains the
      * "pure" and the mixed derivatives for each active basis function, "above" each other.\n
      * \n
-     ** <b>Example (bivariate):</b> Let \f$B_i(x,y)\f$, $d = 2$ be bivariate basis functions,
+     ** <b>Example (bivariate):</b> Let \f$B_i(x,y)\f$, <em>d = 2</em> be bivariate basis functions,
      * and let the functions with indices <em>3,4,7, and 8</em> (K = 4) be active at an evaluation
      * point \em u. Then, the corresponding column of \em result represents:\n
      * \f$ (
@@ -635,7 +635,7 @@ public:
      * \partial_{xx}\, B_4(u), \partial_{yy}\, B_4(u), \partial_{xy}\, B_4(u),
      * \partial_{xx}\, B_7(u), ... , \partial_{xy}\, B_8(u) )^T \f$\n
      * \n
-     * <b>Example (trivariate):</b> Let \f$B_i(x,y,z)\f$, $d = 3$ be trivariate basis functions,
+     * <b>Example (trivariate):</b> Let \f$B_i(x,y,z)\f$, <em>d = 3</em> be trivariate basis functions,
      * and let the functions with indices <em>3,4,7, and 8</em> be active at an evaluation
      * point \em u. Then, the corresponding column of \em result represents:\n
      * \f$(
@@ -667,7 +667,9 @@ public:
 
      The entries in <em>result[0]</em>, <em>result[1]</em>, and <em>result[2]</em> are ordered as in
      eval_into(), deriv_into(), and deriv2_into(), respectively. For <em>i > 2</em>, the
-     derivatives are stored in lexicographical order.
+     derivatives are stored in lexicographical order, e.g. for order <em>i = 3</em> and dimension <em>2</em>
+     the derivatives are stored as follows:
+     \f$ \partial_{xxx}, \, \partial_{xxy}, \, \partial_{xyy}, \, \partial_{yyy}.\, \f$\n
 
      \param[in] u Evaluation points, each column corresponds to one evaluation point.
      \param[in] n All derivatives up to order \em n are computed and stored
