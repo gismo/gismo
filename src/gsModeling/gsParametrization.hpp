@@ -342,15 +342,12 @@ T gsParametrization<T>::findLengthOfPositionPart(const size_t position,
 //******************************************************************************************
 
 template<class T>
-gsParametrization<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo,
-						   const size_t parametrizationMethod)
-    : m_basicInfos(meshInfo)
+gsParametrization<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo, const size_t parametrizationMethod) : m_basicInfos(meshInfo)
 {
     m_localParametrizations.reserve(meshInfo.getNumberOfInnerVertices());
     for(size_t i=1; i <= meshInfo.getNumberOfInnerVertices(); i++)
     {
-        m_localParametrizations.push_back(LocalParametrization(meshInfo, LocalNeighbourhood(meshInfo, i),
-							       parametrizationMethod));
+        m_localParametrizations.push_back(LocalParametrization(meshInfo, LocalNeighbourhood(meshInfo, i), parametrizationMethod));
     }
 
     m_localBoundaryNeighbourhoods.reserve(meshInfo.getNumberOfVertices() - meshInfo.getNumberOfInnerVertices());
@@ -607,9 +604,7 @@ void gsParametrization<T>::Neighbourhood::searchAreas(const T range, std::vector
 //*******************************************************************************************
 
 template<class T>
-gsParametrization<T>::LocalParametrization::LocalParametrization(const gsHalfEdgeMesh<T>& meshInfo,
-								 const LocalNeighbourhood& localNeighbourhood,
-								 const size_t parametrizationMethod)
+gsParametrization<T>::LocalParametrization::LocalParametrization(const gsHalfEdgeMesh<T>& meshInfo, const LocalNeighbourhood& localNeighbourhood, const size_t parametrizationMethod)
 {
     m_vertexIndex = localNeighbourhood.getVertexIndex();
     std::list<size_t> indices = localNeighbourhood.getVertexIndicesOfNeighbours();
@@ -766,9 +761,7 @@ void gsParametrization<T>::LocalParametrization::calculateLambdas(const size_t N
 //*******************************************************************************************
 
 template<class T>
-gsParametrization<T>::LocalNeighbourhood::LocalNeighbourhood(const gsHalfEdgeMesh<T>& meshInfo,
-							     const size_t vertexIndex,
-							     const bool innerVertex)
+gsParametrization<T>::LocalNeighbourhood::LocalNeighbourhood(const gsHalfEdgeMesh<T>& meshInfo, const size_t vertexIndex, const bool innerVertex)
 {
     GISMO_ASSERT(!((innerVertex && vertexIndex > meshInfo.getNumberOfInnerVertices()) || vertexIndex < 1),
                  "Vertex with index " << vertexIndex << " does either not exist (< 1) or is not an inner vertex (> "
