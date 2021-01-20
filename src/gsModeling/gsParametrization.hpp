@@ -114,7 +114,7 @@ void gsParametrization<T>::calculate(const size_t boundaryMethod,
             GISMO_ERROR("boundaryMethod not valid: " << boundaryMethod);
     }
 
-    constructAndSolveEquationSystem_2(neighbourhood, n, N);
+    constructAndSolveEquationSystem(neighbourhood, n, N);
 }
 
 
@@ -151,55 +151,6 @@ void gsParametrization<T>::constructAndSolveEquationSystem(const Neighbourhood &
 
     for (size_t i = 0; i < n; i++)
         m_parameterPoints[i] << u(i), v(i);
-}
-
-template <class T>
-void gsParametrization<T>::constructAndSolveEquationSystem_2(const Neighbourhood &neighbourhood,
-							     const size_t n,
-							     const size_t N)
-{
-    gsMatrix<T> LHS(N,N);
-    gsMatrix<T> RHS(N,2);
-    std::vector<T> lambdas;
-
-    for (size_t i = 0; i < n; i++)
-    {
-        lambdas = neighbourhood.getLambdas(i);
-        for (size_t j = 0; j < N; j++)
-        {
-	    // Standard way:
-            // LHS(i, j) = ( i==j ? T(1) : -lambdas[j] );
-	    LHS(i, j) = lambdas[j];
-	    // Initial guess:
-	    RHS(i, 0) = 0.5;
-	    RHS(i, 1) = 0.5;
-        }
-    }
-
-    for (size_t i=n; i<N; i++)
-    {
-	LHS(i,i) = T(1);
-	RHS.row(i) = m_parameterPoints[i];
-    }
-
-    gsMatrix<T> sol;
-    // Eigen::PartialPivLU<typename gsMatrix<T>::Base> LU = LHS.partialPivLu();
-    // sol = LU.solve(RHS);
-
-    for(size_t k=0; k<=100; k++)
-    {
-	sol = LHS * RHS;
-	RHS = sol;
-
-	for (size_t i = 0; i < n; i++)
-	    m_parameterPoints[i] << sol(i, 0), sol(i, 1);
-
-	if(k%5 == 0)
-	{
-	    const gsMesh<T> mesh = createFlatMesh();
-	    gsWriteParaview(mesh, "mesh" + std::to_string(k));
-	}
-    }
 }
 
 template<class T>
@@ -353,7 +304,6 @@ gsParametrization<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & mes
     m_localBoundaryNeighbourhoods.reserve(meshInfo.getNumberOfVertices() - meshInfo.getNumberOfInnerVertices());
     for(size_t i=meshInfo.getNumberOfInnerVertices()+1; i<= meshInfo.getNumberOfVertices(); i++)
     {
-
         m_localBoundaryNeighbourhoods.push_back(LocalNeighbourhood(meshInfo, i, 0));
     }
 }

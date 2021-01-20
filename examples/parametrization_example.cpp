@@ -17,6 +17,7 @@
 #include "gsModeling/gsPeriodicParametrizationOverlap.h"
 #include "gsModeling/gsPeriodicParametrizationStitch.h"
 //#include "gsModeling/gsFreeBoundaryParametrization.h"
+//#include "gsModeling/gsIterativeParametrization.h"
 
 using namespace gismo;
 
@@ -81,19 +82,20 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    // TODO: Rename.
-    enum periodic_options {none, overlap, stitch, free} periodicity;
+    enum domainOptions {standard, overlap, stitch, iterative, free} domainMethod;
 
     if( ol.askString("overlap", "").compare("") > 0 )
-	periodicity = overlap;
+	domainMethod = overlap;
     else if( ol.askString("stitch", "").compare("") > 0 )
-	periodicity = stitch;
-    else if( ol.askString("fileCorners", "").compare("") > 0)
-	periodicity = free;
+	domainMethod = stitch;
+    // else if( ol.askString("fileCorners", "").compare("") > 0)
+    // 	domainMethod = free;
+    // else
+    // 	domainMethod = iterative;
     else
-    	periodicity = none;
+	domainMethod = standard;
 
-    gsInfo << "Periodicity set to " << periodicity << "." << std::endl;
+    gsInfo << "DomainMethod set to " << domainMethod << "." << std::endl;
 
     gsInfo << "creating gsParametrization<real_t>       ";
     stopwatch.restart();
@@ -101,22 +103,28 @@ int main(int argc, char *argv[])
     gsPeriodicParametrizationOverlap<real_t>* pm_over;
     gsPeriodicParametrizationStitch<real_t>* pm_stitch;
     //gsFreeBoundaryParametrization<real_t>* pm_free;
+    //gsIterativeParametrization<real_t>*      pm_iter;
     gsParametrization<real_t>* pm;
 
-    if(periodicity == overlap)
+    if(domainMethod == overlap)
     {
 	pm_over = new gsPeriodicParametrizationOverlap<real_t>(*mm, ol);
 	pm = pm_over;
     }
-    else if(periodicity == stitch)
+    else if(domainMethod == stitch)
     {
 	pm_stitch = new gsPeriodicParametrizationStitch<real_t>(*mm, ol);
 	pm = pm_stitch;
     }
-    // else if(periodicity == free)
+    // else if(domainMethod == free)
     // {
     // 	pm_free = new gsFreeBoundaryParametrization<real_t>(*mm, ol);
     // 	pm = pm_free;
+    // }
+    // else if(domainMethod == iterative)
+    // {
+    // 	pm_iter = new gsIterativeParametrization<real_t>(*mm, ol);
+    // 	pm = pm_iter;
     // }
     else
     {
@@ -131,12 +139,14 @@ int main(int argc, char *argv[])
     gsInfo << "gsParametrization::compute()             ";
     stopwatch.restart();
 
-    if( periodicity == overlap )
+    if( domainMethod == overlap )
 	pm_over->compute_periodic_overlap(filenameV0, filenameV1, filenameOverlap);
-    else if( periodicity == stitch )
+    else if( domainMethod == stitch )
 	pm_stitch->compute_periodic_stitch(filenameV0, filenameV1, filenameStitch);
-    // else if(periodicity == free)
+    // else if(domainMethod == free)
     // 	pm_free->compute_free_boundary();
+    // else if(domainMethod == iterative)
+    // 	pm_iter->compute();
     else
 	pm->compute();
 
@@ -147,9 +157,9 @@ int main(int argc, char *argv[])
     gsMesh<> flatMesh;
 
     stopwatch.restart();
-    if( periodicity == overlap )
+    if( domainMethod == overlap )
 	flatMesh = pm_over->createFlatMesh(true);
-    else if( periodicity == stitch )
+    else if( domainMethod == stitch )
 	flatMesh = pm_stitch->createFlatMesh(true);
     else
 	flatMesh = pm->createFlatMesh();
@@ -171,9 +181,9 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    if( periodicity == overlap)
+    if( domainMethod == overlap)
 	pm_over->restrictMatrices(uv, xyz);
-    else if( periodicity == stitch)
+    else if( domainMethod == stitch)
 	pm_stitch->restrictMatrices(uv, xyz);
 
     if(paraview)
