@@ -372,11 +372,6 @@ protected:
     */
     void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood, const size_t n, const size_t N);
 
-    /** Similar to @a constructAndSolveEquationSystem but using the NxN system. */
-    void constructAndSolveEquationSystem_2(const Neighbourhood &neighbourhood,
-					   const size_t n,
-					   const size_t N);
-
     /// Read 3D points from filename.xml and return their indices in m_mesh.
     std::vector<size_t> readIndices(const std::string& filename) const
     {
