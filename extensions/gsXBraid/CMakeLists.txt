@@ -25,7 +25,7 @@ find_package(XBRAID QUIET)
 
 if (NOT XBRAID_FOUND)
   # Set XBraid version
-  set(XBRAID_VER "v3.0.0")  
+  set(XBRAID_VER "master")  
 
   # Download XBraid sources at configure time
   include(gsFetch)

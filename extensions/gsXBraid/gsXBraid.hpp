@@ -31,5 +31,33 @@ namespace gismo {
   template <typename T>
   gsXBraid<T>::~gsXBraid()
   {}
+
+  // Constructor
+  template <typename T>
+  gsXBraid< gsMatrix<T> >::gsXBraid(const gsMpiComm& comm,
+                                    const braid_Real tstart,
+                                    const braid_Real tstop,
+                                    braid_Int        ntime)
+    : gsXBraid<T>(comm, tstart, tstop, ntime)
+  {}
+  
+  // Destructor
+  template <typename T>
+  gsXBraid< gsMatrix<T> >::~gsXBraid()
+  {}
+
+    // Constructor
+  template <typename T>
+  gsXBraid< std::vector< gsMatrix<T> > >::gsXBraid(const gsMpiComm& comm,
+                                                   const braid_Real tstart,
+                                                   const braid_Real tstop,
+                                                   braid_Int        ntime)
+    : gsXBraid<T>(comm, tstart, tstop, ntime)
+  {}
+  
+  // Destructor
+  template <typename T>
+  gsXBraid< std::vector< gsMatrix<T> > >::~gsXBraid()
+  {}
   
 }// namespace gismo

@@ -13,8 +13,7 @@
 
 #pragma once
 
-#include <gsCore/gsConfig.h>
-#include <gsMpi/gsMpi.h>
+#include <gismo.h>
 
 #if !defined(GISMO_WITH_MPI)
 #define braid_SEQUENTIAL 1
@@ -29,9 +28,47 @@ namespace gismo {
   class gsXBraidStepStatus;
   class gsXBraidCoarsenRefStatus;
   class gsXBraidBufferStatus;
+  class gsXBraidObjectiveStatus;
   
   /**
      \brief Class defining the XBraid wrapper
+
+     The gsXBraid class wraps the BraidApp class provided by the
+     XBraid project and adds a set of commodity functions.
+
+     In order to implement an XBraid application the user has to
+     implement a derived class
+
+     \code{.cpp}
+     template<typename T>
+     class gsXBraid_app : public gsXBraid<T>
+     { ... };
+     \endcode
+     
+     and implement the following application-specific functions:
+
+     \code{.cpp}
+     braid_Int Access(...)
+     braid_Int BufPack(...)
+     braid_Int BufSize(...)
+     braid_Int BufUnpack(...)
+     braid_Int Clone(...)
+     braid_Int Free(...)
+     braid_Int Init(...)
+     braid_Int Residual(...)
+     braid_Int SpatialNorm(...)
+     braid_Int Step(...)
+     \endcode
+     
+     which are declared as (pure) virtual functions in BraidApp.
+
+     The generic implementation of the gsXBraid class leaves all of
+     these methods unimplemented. We also provide specializations for
+     gsXBraid< gsMatrix<T> > and gsXBraid< std::vector< gsMatrix<T> >
+     > which assume that the data type for storing the solution
+     (passed as braid_Vector) is of type gsMatrix<T> and std::vector<
+     gsMatrix<T> >, respectively. The latter can be used to pass a
+     hierarchy of matrices/vectors in a multi-level setup.
   */
 
   template<typename T>
@@ -47,65 +84,8 @@ namespace gismo {
     /// Destructor
     virtual ~gsXBraid();
 
-    /// Performs one time step
-    virtual braid_Int Step(braid_Vector    u,
-                           braid_Vector    ustop,
-                           braid_Vector    fstop,
-                           BraidStepStatus &pstatus) = 0;
-    
-    /// Clones the given vectors
-    virtual braid_Int Clone(braid_Vector  u,
-                            braid_Vector *v_ptr) = 0 ;
-
-    /// Initializes the given vector
-    virtual braid_Int Init(braid_Real    t,
-                           braid_Vector *u_ptr) = 0;
-
-    /// Fianlizes the given vector
-    virtual braid_Int Free(braid_Vector u) = 0;
-
-    /// Computes the weighted sum of two given vectors
-    virtual braid_Int Sum(braid_Real   alpha,
-                          braid_Vector x,
-                          braid_Real   beta,
-                          braid_Vector y) = 0;
-
-    /// Computes the spatial norm of the given vector
-    virtual braid_Int SpatialNorm(braid_Vector  u,
-                                  braid_Real   *norm_ptr) = 0;
-
-    /// Computes the buffer size
-    virtual braid_Int BufSize(index_t           *size_ptr,
-                              BraidBufferStatus &status) = 0;
-
-    /// Packes the given vector into the given buffer
-    virtual braid_Int BufPack(braid_Vector       u,
-                              void              *buffer,
-                              BraidBufferStatus &status) = 0;
-    
-    /// Unpacks the given buffer into the given vector
-    virtual braid_Int BufUnpack(void              *buffer,
-                                braid_Vector      *u_ptr,
-                                BraidBufferStatus &status) = 0;
-    
-    /// Accesses the given vector
-    virtual braid_Int Access(braid_Vector       u,
-                             BraidAccessStatus &astatus) = 0;
-    
-    /// Calculates the residual
-    virtual braid_Int Residual(braid_Vector     u,
-                               braid_Vector     r,
-                               BraidStepStatus &pstatus) = 0;
-
-    /// Performs coarsening in time
-    virtual braid_Int Coarsen(braid_Vector           fu,
-                              braid_Vector          *cu_ptr,
-                              BraidCoarsenRefStatus &status) = 0;
-
-    /// Performs refinement in time
-    virtual braid_Int Refine(braid_Vector           cu,
-                             braid_Vector          *fu_ptr,
-                             BraidCoarsenRefStatus &status) = 0;
+    /// Free
+    virtual braid_Int Free(braid_Vector u) { return braid_Int(0); }
     
     /// Runs the parallel-in-time multigrid solver
     void solve() { core.Drive(); }
@@ -249,10 +229,10 @@ namespace gismo {
     }
 
     /// Returns the residual norm
-    braid_Real rnorm(braid_Int nrequest) {
-      braid_Real norm;
-      GetRNorms(&nrequest, &norm);
-      return norm;
+    braid_Real norm(braid_Int nrequest) {
+      braid_Real rnorm;
+      GetRNorms(&nrequest, &rnorm);
+      return rnorm;
     }
     
     /// Returns the total number of levels
@@ -267,6 +247,200 @@ namespace gismo {
     BraidCore core;    
   };
 
+  
+  /**
+     \brief Specializations for gsXBraid< gsMatrix<T> >
+  */
+  template<typename T>
+  class gsXBraid< gsMatrix<T> > : public gsXBraid<T>
+  {
+  public:
+    /// Constructor
+    gsXBraid(const gsMpiComm& comm,
+             const braid_Real tstart,
+             const braid_Real tstop,
+             braid_Int        ntime);
+    
+    /// Destructor
+    virtual ~gsXBraid();
+    
+    /// Clones a given vector
+    virtual braid_Int Clone(braid_Vector  u,
+                            braid_Vector *v_ptr)
+    {
+      gsMatrix<T>* _u = (gsMatrix<T>*) u;
+      gsMatrix<T>*  v = new gsMatrix<T>();
+      (*v) = (*_u);
+      *v_ptr = (braid_Vector) v;
+      return braid_Int(0);
+    }
+    
+    /// Frees a given vector
+    virtual braid_Int Free(braid_Vector u)
+    {
+      gsMatrix<T>* _u = (gsMatrix<T>*) u;
+      delete _u;
+      return braid_Int(0);
+    }
+    
+    /// Computes the sum of two given vectors
+    virtual braid_Int Sum(braid_Real   alpha,
+                          braid_Vector x,
+                          braid_Real   beta,
+                          braid_Vector y)
+    {
+      gsMatrix<T>* _x = (gsMatrix<T>*) x;
+      gsMatrix<T>* _y = (gsMatrix<T>*) y;
+      *_y = (T)alpha * (*_x) + (T)beta * (*_y);
+      return braid_Int(0);
+    }
+    
+    /// Computes the spatial norm of a given vector
+    virtual braid_Int SpatialNorm(braid_Vector  u,
+                                  braid_Real   *norm_ptr)
+    {
+      gsMatrix<T> *_u = (gsMatrix<T>*) u;    
+      *norm_ptr = _u->norm();
+      return braid_Int(0);
+    }
+    
+    /// Packs the given vector into the MPI communication buffer
+    virtual braid_Int BufPack(braid_Vector       u,
+                              void              *buffer,
+                              BraidBufferStatus &status)
+    {
+      gsMatrix<T> *_u = (gsMatrix<T>*) u;
+      T* _buffer      = (T*) buffer;
+      T* _data        = _u->data();
+      index_t size    = _u->rows()*_u->cols();
+      
+      _buffer[0] = _u->rows();
+      _buffer[1] = _u->cols();
+      for (index_t idx = 0; idx < size; ++idx)
+        _buffer[idx+2] = _data[idx];
+      
+      status.SetSize(sizeof(T)*(size+2));
+      return braid_Int(0);
+    }
+
+    /// Unpacks a vector from the MPI communication buffer
+    virtual braid_Int BufUnpack(void              *buffer,
+                                braid_Vector      *u_ptr,
+                                BraidBufferStatus &status)
+    {
+      T* _buffer     = (T*) buffer;
+      index_t rows   = _buffer[0];
+      index_t cols   = _buffer[1];
+      gsMatrix<T>* u = new gsMatrix<T>(rows,cols);
+      T* _data       = u->data();
+
+    for (index_t idx = 0; idx < rows*cols; ++idx)
+      _data[idx] = _buffer[idx+2];
+    
+    *u_ptr = (braid_Vector) u;
+    return braid_Int(0);
+    }
+  };
+
+
+  /**
+     \brief Specializations for gsXBraid< std::vector< gsMatrix<T> > >
+  */
+  template<typename T>
+  class gsXBraid< std::vector< gsMatrix<T> > > : public gsXBraid<T>
+  {
+  public:
+    /// Constructor
+    gsXBraid(const gsMpiComm& comm,
+             const braid_Real tstart,
+             const braid_Real tstop,
+             braid_Int        ntime);
+    
+    /// Destructor
+    virtual ~gsXBraid();
+    
+    /// Clones a given vector
+    virtual braid_Int Clone(braid_Vector  u,
+                            braid_Vector *v_ptr)
+    {
+      std::vector< gsMatrix<T> >* _u = (std::vector< gsMatrix<T> >*) u;
+      std::vector< gsMatrix<T> >*  v = new std::vector< gsMatrix<T> >();
+
+      for (typename std::vector< gsMatrix<T> >::const_iterator it = _u->cbegin();
+           it != _u->cend(); ++it)
+        v->push_back( *it );
+      *v_ptr = (braid_Vector) v;
+      return braid_Int(0);
+    }
+    
+    /// Frees a given vector
+    virtual braid_Int Free(braid_Vector u)
+    {
+      gsMatrix<T>* _u = (gsMatrix<T>*) u;
+      delete _u;
+      return braid_Int(0);
+    }
+    
+    /// Computes the sum of two given vectors
+    virtual braid_Int Sum(braid_Real   alpha,
+                          braid_Vector x,
+                          braid_Real   beta,
+                          braid_Vector y)
+    {
+      gsMatrix<T>* _x = (gsMatrix<T>*) x;
+      gsMatrix<T>* _y = (gsMatrix<T>*) y;
+      *_y = (T)alpha * (*_x) + (T)beta * (*_y);
+      return braid_Int(0);
+    }
+    
+    /// Computes the spatial norm of a given vector
+    virtual braid_Int SpatialNorm(braid_Vector  u,
+                                  braid_Real   *norm_ptr)
+    {
+      gsMatrix<T> *_u = (gsMatrix<T>*) u;    
+      *norm_ptr = _u->norm();
+      return braid_Int(0);
+    }
+    
+    /// Packs the given vector into the MPI communication buffer
+    virtual braid_Int BufPack(braid_Vector       u,
+                              void              *buffer,
+                              BraidBufferStatus &status)
+    {
+      gsMatrix<T> *_u = (gsMatrix<T>*) u;
+      T* _buffer      = (T*) buffer;
+      T* _data        = _u->data();
+      index_t size    = _u->rows()*_u->cols();
+      
+      _buffer[0] = _u->rows();
+      _buffer[1] = _u->cols();
+      for (index_t idx = 0; idx < size; ++idx)
+        _buffer[idx+2] = _data[idx];
+      
+      status.SetSize(sizeof(T)*(size+2));
+      return braid_Int(0);
+    }
+
+    /// Unpacks a vector from the MPI communication buffer
+    virtual braid_Int BufUnpack(void              *buffer,
+                                braid_Vector      *u_ptr,
+                                BraidBufferStatus &status)
+    {
+      T* _buffer     = (T*) buffer;
+      index_t rows   = _buffer[0];
+      index_t cols   = _buffer[1];
+      gsMatrix<T>* u = new gsMatrix<T>(rows,cols);
+      T* _data       = u->data();
+
+    for (index_t idx = 0; idx < rows*cols; ++idx)
+      _data[idx] = _buffer[idx+2];
+    
+    *u_ptr = (braid_Vector) u;
+    return braid_Int(0);
+    }
+  };
+  
+  
   /**
      \brief Class defining the XBraid access status wrapper
 

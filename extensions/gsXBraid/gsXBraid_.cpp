@@ -6,6 +6,8 @@
 namespace gismo
 {
 
-CLASS_TEMPLATE_INST gsXBraid<real_t>;
+  CLASS_TEMPLATE_INST gsXBraid<real_t>;
+  CLASS_TEMPLATE_INST gsXBraid< gsMatrix<real_t> >;
+  CLASS_TEMPLATE_INST gsXBraid< std::vector< gsMatrix<real_t> > >;
 
 }
