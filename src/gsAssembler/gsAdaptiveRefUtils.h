@@ -336,6 +336,43 @@ void gsRefineMarkedElements(gsMultiPatch<T> & mp,
     }
 }
 
+template <class T>
+void gsRefineMarkedFunctions(gsMultiPatch<T> & mp,
+                            const std::vector<bool> & funMarked,
+                            int refExtension = 0)
+{
+    GISMO_ASSERT(funMarked.size()==gsMultiBasis<T>(mp).totalSize(),"Vector of marked functions must have the same size as the total number of basis functions (over all patches)!");
 
+    const int dim = mp.dim();
+
+    int numMarked, poffset = 0, globalCount = 0;
+
+    // refBoxes: contains marked boxes on a given patch
+    gsMatrix<T> refBoxes;
+
+    for (size_t pn=0; pn < mp.nPatches(); ++pn )// for all patches
+    {
+        // Get number of elements to be refined on this patch
+        const int numFun = mp[pn].basis().size();
+        numMarked = std::count_if(funMarked.begin() + poffset,
+                                  funMarked.begin() + poffset + numFun,
+                                  GS_BIND2ND(std::equal_to<bool>(), true) );
+
+        poffset += numFun;
+        refBoxes.resize(dim, 2*numMarked);
+        numMarked = 0;// counting current patch element to be refined
+        for (index_t i = 0; i != mp.basis(pn).size(); ++i)
+            if (funMarked[globalCount++])
+            {
+                refBoxes.block(0,2*numMarked,2,2) = mp.basis(pn).support(i);
+                numMarked++;
+            }
+
+        // Refine all of the found refBoxes in this patch
+        std::vector<index_t> elements = mp.patch(pn).basis().asElements(refBoxes, refExtension);
+
+        mp.patch(pn).refineElements( elements );
+    }
+}
 
 } // namespace gismo
