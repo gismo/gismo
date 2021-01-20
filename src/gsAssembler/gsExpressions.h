@@ -2493,7 +2493,6 @@ public:
 
     const gsMatrix<Scalar> eval(const index_t k) const
     {
-        gsDebugVar(_G.targetDim()==2);
         if (_G.targetDim()==2)
         {
             res = _G.data().outNormals.col(k);//2x1
@@ -2504,12 +2503,8 @@ public:
         else if (_G.targetDim()==3)
         {
             onormal = _G.data().outNormals.col(k);
-            gsDebugVar(onormal);
             normal =  _G.data().normals.col(k);
-            gsDebugVar(normal);
             otangent = normal.template head<3>().cross(onormal.template head<3>());
-            gsDebugVar(otangent);
-
             return otangent;
         }
         else
