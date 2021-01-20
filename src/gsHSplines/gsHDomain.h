@@ -374,7 +374,7 @@ public:
     // coresponding basis function is active or not.  it returns the
     // smallest level in which [k1,k2] is completely contained and not
     // completely overlaped by higher omega structure. The idea is
-    // the same as in case of query1 and query2 but insted of returning a
+    // the same as in case of query1 and query2 but instead of returning a
     // true or false value we remember the lowest level, which is returned
     // at the end.
     int query3(point const & k1, point const & k2, 
@@ -411,6 +411,10 @@ public:
      */
     int query4(point const & lower, point const & upper,
                int level) const;
+
+    std::pair<point,point> queryLevelCell(point const & lower,
+                                          point const & upper,
+                                          int level) const;
 
     /// Returns the level of the point \a p
     int levelOf(point const & p, int level) const
@@ -644,7 +648,7 @@ private:
     struct levelUp_visitor
     {
         typedef int return_type;
-        static const return_type init = 0;
+        static const return_type init() {return 0;}
         
         static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
         {
@@ -656,7 +660,7 @@ private:
     struct levelDown_visitor
     {
         typedef int return_type;
-        static const return_type init = 0;
+        static const return_type init() {return 0;}
         
         static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
         {
@@ -668,7 +672,7 @@ private:
     struct numLeaves_visitor
     {
         typedef int return_type;
-        static const return_type init = 0;
+        static const return_type init() {return 0;}
         
         static void visitLeaf(kdnode<d,T> * , return_type & i)
         {
@@ -680,7 +684,7 @@ private:
     struct numNodes_visitor
     {
         typedef int return_type;
-        static const return_type init = 0;
+        static return_type init() {return 0;}
         
         static void visitNode(kdnode<d,T> * , return_type & i)
         {
@@ -692,7 +696,7 @@ private:
     struct liftCoordsOneLevel_visitor
     {
         typedef int return_type;
-        static const return_type init = 0;
+        static return_type init() {return 0;}
         
         static void visitNode(kdnode<d,T> * leafNode, return_type &)
         {
@@ -704,7 +708,7 @@ private:
     struct printLeaves_visitor
     {
         typedef int return_type;
-        static const return_type init = 0;
+        static return_type init() {return 0;}
         
         static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
         {
@@ -727,6 +731,25 @@ private:
         T m_pow;
     };
     */
+
+    // Returns an cell/element box of a requested level
+    //(todo: stop traverse as soon as it is found for the first time..)
+    struct get_cell_visitor
+    {
+        typedef std::pair<point,point> return_type;
+
+        // initialize result
+        static return_type init() { return return_type(); }
+
+        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int level, return_type & res)
+        {
+            if ( leafNode->level == level )
+            {
+                res.first  = leafNode->lowCorner();
+                res.second = leafNode->uppCorner();
+            }
+        }
+    };
 
 };
 

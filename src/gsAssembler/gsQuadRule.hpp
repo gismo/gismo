@@ -35,6 +35,20 @@ gsQuadRule<T>::mapTo( T startVal, T endVal,
     weights.noalias() = (0==h?T(0.5):h) * m_weights;
 }
 
+// Note: left here for inlining
+template<class T> void
+gsQuadRule<T>::mapTo( const gsMatrix<T>& ab,
+                      gsMatrix<T> & nodes) const
+{
+    const index_t d = ab.rows();
+    GISMO_ASSERT( d == m_nodes.rows(), "Inconsistent quadrature mapping");
+    nodes.resize( m_nodes.rows(), m_nodes.cols() );
+    nodes.setZero();
+    const gsVector<T> h = (ab.col(1)-ab.col(0)) / T(2) ;
+    nodes.noalias() = ( h.asDiagonal() * (m_nodes.array()+1).matrix() ).colwise() + ab.col(0);
+}
+
+
 template<class T> void
 gsQuadRule<T>::mapToAll( const std::vector<T> & breaks,
                          gsMatrix<T> & nodes, gsVector<T> & weights ) const
