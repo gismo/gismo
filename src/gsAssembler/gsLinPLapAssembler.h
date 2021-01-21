@@ -57,6 +57,7 @@ namespace gismo
 			const gsMultiBasis<T>          & bases)
 		{
 			Base::initialize(pde, bases, m_options);
+			J = 0;
 		}
 
 
@@ -76,6 +77,7 @@ namespace gismo
 			m_options.setInt("InterfaceStrategy", intStrategy);
 
 			Base::initialize(pde, bases, m_options);
+			J = 0;
 		}
 
 		/** @brief
@@ -105,6 +107,7 @@ namespace gismo
 
 			typename gsPde<T>::Ptr pde(new gsLinpLapPde<T>(patches, bconditions, rhs, eps, p, w));
 			Base::initialize(pde, basis, m_options);
+			J = 0;
 		}
 
 		virtual gsAssembler<T>* clone() const
@@ -123,6 +126,60 @@ namespace gismo
 		// Main assembly routine
 		virtual void assemble();
 
+	protected:
+
+		template<class ElementVisitor>
+		void push1(const ElementVisitor & visitor)
+		{
+			for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
+			{
+				ElementVisitor curVisitor = visitor;
+				//Assemble (fill m_matrix and m_rhs) on patch np
+				apply1(curVisitor, np);
+			}
+		}
+
+		
+		template<class ElementVisitor>
+		void apply1(ElementVisitor & visitor,
+			size_t patchIndex,
+			boxSide side = boundary::none)
+		{
+			//gsDebug<< "Apply to patch "<< patchIndex <<"("<< side <<")\n";
+
+			const gsBasisRefs<T> bases(m_bases, patchIndex);
+
+			gsQuadRule<T> quRule; // Quadrature rule
+			gsMatrix<T> quNodes; // Temp variable for mapped nodes
+			gsVector<T> quWeights; // Temp variable for mapped weights
+
+								   // Initialize reference quadrature rule and visitor data
+			visitor.initialize(bases, patchIndex, m_options, quRule);
+
+			const gsGeometry<T> & patch = m_pde_ptr->patches()[patchIndex];
+
+			// Initialize domain element iterator -- using unknown 0
+			typename gsBasis<T>::domainIter domIt = bases[0].makeDomainIterator(side);
+
+			// Start iteration over elements
+			//for (domIt->next(tid); domIt->good(); domIt->next(nt))
+
+			for (; domIt->good(); domIt->next())
+			{
+				// Map the Quadrature rule to the element
+				quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
+
+				// Perform required evaluations on the quadrature nodes
+				visitor.evaluate(bases, patch, quNodes);
+
+				// Assemble on element
+				visitor.assemble(*domIt, quWeights);
+
+				// Push to global matrix and right-hand side vector
+				visitor.localToGlobal(patchIndex, m_ddof, m_system, J); // omp_locks inside
+			}
+		}
+
 		/// Returns an expression of the "full" assembled sparse
 		/// matrix. Note that matrix() might return a lower diagonal
 		/// matrix, if we exploit possible symmetry during assembly
@@ -132,7 +189,13 @@ namespace gismo
 			return m_system.matrix().template selfadjointView<Lower>();
 		}
 
+	public:
+
+		T energy() { return J; }
+
 	protected:
+
+		T J;
 
 		// Members from gsAssembler
 		using Base::m_pde_ptr;
@@ -164,9 +227,9 @@ namespace gismo
 
 		// Clean the sparse system
 		// m_system.setZero(); //<< this call leads to a quite significant performance degrade!
-
+		J = 0;
 		// Assemble volume integrals
-		Base::template push<gsVisitorLinpLap<T> >();
+		this->push1<gsVisitorLinpLap<T> >(gsVisitorLinpLap<T>(*m_pde_ptr));
 
 		// Enforce Neumann boundary conditions
 		Base::template push<gsVisitorNeumann<T> >(m_pde_ptr->bc().neumannSides());
@@ -189,8 +252,6 @@ namespace gismo
 		// Assembly is done, compress the matrix
 		Base::finalize();
 	}
-
-
 } // namespace gismo
 
 
