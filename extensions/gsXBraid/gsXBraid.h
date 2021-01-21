@@ -82,8 +82,12 @@ namespace gismo {
     /// Destructor
     virtual ~gsXBraid();
 
-    /// Free
-    virtual braid_Int Free(braid_Vector u) { return braid_Int(0); }
+    /// Frees the given vector (dummy method)
+    virtual braid_Int Free(braid_Vector) { return braid_Int(0); }
+
+    /// Computes the residual (dummy method)
+    virtual braid_Int Residual(braid_Vector, braid_Vector, BraidStepStatus&)
+    { GISMO_NO_IMPLEMENTATION }
     
     /// Runs the parallel-in-time multigrid solver
     void solve() { core.Drive(); }
@@ -215,7 +219,7 @@ namespace gismo {
     /// Sets the file input/output level
     void SetFileIOLevel(braid_Int io_level) { core.SetFileIOLevel(io_level); }
 
-    /// Sets the coarse-relaxation weight
+    /// Sets the C-relaxation weight
     void SetCRelaxWt(braid_Int level, braid_Real  Cwt) { core.SetCRelaxWt(level, Cwt); }
 
     /// Sets the time cutoff
@@ -290,18 +294,18 @@ namespace gismo {
     /// Destructor
     virtual ~gsXBraid();
     
-    /// Clones a given vector
+    /// Clones the given vector
     virtual braid_Int Clone(braid_Vector  u,
                             braid_Vector *v_ptr)
     {
       gsMatrix<T>* u_ptr = (gsMatrix<T>*) u;
       gsMatrix<T>* v     = new gsMatrix<T>();
-      (*v) = (*u_ptr);
+      *v = *u_ptr;
       *v_ptr = (braid_Vector) v;
       return braid_Int(0);
     }
     
-    /// Frees a given vector
+    /// Frees the given vector
     virtual braid_Int Free(braid_Vector u)
     {
       gsMatrix<T>* u_ptr = (gsMatrix<T>*) u;
@@ -321,7 +325,7 @@ namespace gismo {
       return braid_Int(0);
     }
     
-    /// Computes the spatial norm of a given vector
+    /// Computes the spatial norm of the given vector
     virtual braid_Int SpatialNorm(braid_Vector  u,
                                   braid_Real   *norm_ptr)
     {
@@ -384,18 +388,18 @@ namespace gismo {
     /// Destructor
     virtual ~gsXBraid();
     
-    /// Clones a given vector
+    /// Clones the given vector
     virtual braid_Int Clone(braid_Vector  u,
                             braid_Vector *v_ptr)
     {
       gsVector<T>* u_ptr = (gsVector<T>*) u;
       gsVector<T>* v     = new gsVector<T>();
-      (*v) = (*u_ptr);
+      *v = *u_ptr;
       *v_ptr = (braid_Vector) v;
       return braid_Int(0);
     }
     
-    /// Frees a given vector
+    /// Frees the given vector
     virtual braid_Int Free(braid_Vector u)
     {
       gsVector<T>* u_ptr = (gsVector<T>*) u;
@@ -415,7 +419,7 @@ namespace gismo {
       return braid_Int(0);
     }
     
-    /// Computes the spatial norm of a given vector
+    /// Computes the spatial norm of the given vector
     virtual braid_Int SpatialNorm(braid_Vector  u,
                                   braid_Real   *norm_ptr)
     {
