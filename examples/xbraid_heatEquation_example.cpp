@@ -59,6 +59,7 @@ private:
   gsXBraid_app(const gsMpiComm& comm,
                const T&         tstart,
                const T&         tstop,
+               const T&         theta,
                index_t          numTime,
                index_t          numRefine,
                index_t          numElevate)
@@ -68,7 +69,7 @@ private:
       numTime(numTime),
       tstart(tstart),
       tstop(tstop),
-      theta(0.0),
+      theta(theta),
       tstep( (tstop-tstart)/numTime ),
       patches(*gsNurbsCreator<>::BSplineSquareDeg(2)),
       bases(patches),
@@ -175,11 +176,12 @@ private:
     
     // Temporal discretisation parameters
     index_t numTime    = 40;
+    T       theta      = 0.5;
     T       tfinal     = 0.1;
     
     // Parallel-in-time multigrid parameters
     index_t CFactor    = 2;
-    index_t info       = 2;
+    index_t access     = 1;
     index_t maxIter    = 100;
     index_t maxLevel   = 30;
     index_t minCLevel  = 2;
@@ -188,6 +190,7 @@ private:
     index_t numMaxRef  = 1;
     index_t numRelax   = 1;
     index_t numStorage =-1;
+    index_t print      = 2;
     index_t tnorm      = 2; // 1-norm, 2-norm, inf-norm
     
     T       absTol     = 1e-10;
@@ -213,22 +216,24 @@ private:
     // Temporal diescretisation parameters
     cmd.addInt( "n",  "timeSteps", "Number of parallel-in-time steps", numTime );
     cmd.addReal( "t", "time", "Final time", tfinal );
+    cmd.addReal( "T", "theta", "Implicitness parameter of the two-level theta scheme", theta);
 
     // Parallel-in-time multigrid parameters
+    cmd.addInt( "",   "numStorage", "Number of storage of the parallel-in-time multigrid solver", numStorage );
+    cmd.addInt( "A",  "access", "Access level (neve [=0], =after finished [=1(default)], each iteration [=2]", access );
     cmd.addInt( "C",  "CFactor", "Coarsening factor of the parallel-in-time multigrid solver", CFactor );
-    cmd.addInt( "I",  "info", "Print level (no output [=0], =runtime inforation [=1], run statistics [=2(default)], debug [=3])", info );
-    cmd.addInt( "M",  "maxIter", "Maximum iteration numbers  of the parallel-in-time multigrid solver", maxIter );
-    cmd.addInt( "L",  "maxLevel", "Maximum numbers of parallel-in-time multigrid levels", maxLevel );
-    cmd.addInt( "l",  "minCLevel", "Minimum level of the parallel-in-time multigrid solver", minCLevel );
     cmd.addInt( "F",  "numFMG", "Number of full multigrid steps of the parallel-in-time multigrid solver", numFMG );
-    cmd.addInt( "V",  "numFMGVcyc", "Number of full multigrid V-cycles of the parallel-in-time multigrid solver", numFMGVcyc );
+    cmd.addInt( "L",  "maxLevel", "Maximum numbers of parallel-in-time multigrid levels", maxLevel );
+    cmd.addInt( "M",  "maxIter", "Maximum iteration numbers  of the parallel-in-time multigrid solver", maxIter );
+    cmd.addInt( "N",  "norm", "Temporal norm of the parallel-in-time multigrid solver (1-norm [=1], 2-norm [=2(default)], inf-norm [=3])", tnorm );
+    cmd.addInt( "P",  "print", "Print level (no output [=0], =runtime inforation [=1], run statistics [=2(default)], debug [=3])", print );
     cmd.addInt( "R",  "numMaxRef", "Maximum number of refinements of the parallel-in-time multigrid solver", numMaxRef );
+    cmd.addInt( "V",  "numFMGVcyc", "Number of full multigrid V-cycles of the parallel-in-time multigrid solver", numFMGVcyc );
     cmd.addInt( "X",  "numRelax", "Number of relaxation steps of the parallel-in-time multigrid solver", numRelax );
-    cmd.addInt( "",  "numStorage", "Number of storage of the parallel-in-time multigrid solver", numStorage );
-    cmd.addInt( "T",  "tnorm", "Temporal norm of the parallel-in-time multigrid solver (1-norm [=1], 2-norm [=2(default)], inf-norm [=3])", tnorm );
+    cmd.addInt( "l",  "minCLevel", "Minimum level of the parallel-in-time multigrid solver", minCLevel );
     
-    cmd.addReal( "", "absTol", "Absolute tolerance of the parallel-in-time multigrid solver", absTol );
-    cmd.addReal( "", "relTol", "Relative tolerance of the parallel-in-time multigrid solver", relTol );
+    cmd.addReal( "",  "absTol", "Absolute tolerance of the parallel-in-time multigrid solver", absTol );
+    cmd.addReal( "",  "relTol", "Relative tolerance of the parallel-in-time multigrid solver", relTol );
 
     cmd.addSwitch( "fmg" , "Perform full multigrid (default is off)", fmg);
     cmd.addSwitch( "incrMaxLevels" , "Increase the maximum number of parallel-in-time multigrid levels after performing a refinement (default is off)", incrMaxLevels);
@@ -240,7 +245,7 @@ private:
     cmd.getValues(argc,argv);
 
     // Create instance
-    gsXBraid_app<T> app(comm, 0.0, tfinal, numTime, numRefine, numElevate);
+    gsXBraid_app<T> app(comm, 0.0, tfinal, theta, numTime, numRefine, numElevate);
 
     if (absTol != 1e-10)
       app.SetAbsTol(absTol);
@@ -257,17 +262,20 @@ private:
     app.SetNFMG(numFMG);
     app.SetNFMGVcyc(numFMGVcyc);
     app.SetNRelax(numRelax);
-    app.SetPrintLevel(info);
+    app.SetAccessLevel(access);
+    app.SetPrintLevel(print);
     app.SetStorage(numStorage);
     app.SetTemporalNorm(tnorm);
 
-    if (fmg) app.SetFMG();
+    if (fmg)           app.SetFMG();
     if (incrMaxLevels) app.SetIncrMaxLevels();
-    if (periodic) app.SetPeriodic(1); else app.SetPeriodic(0);
-    if (refine) app.SetRefine(1); else app.SetRefine(0);
-    if (sequential) app.SetSeqSoln(1); else app.SetSeqSoln(0);
-    if (skip) app.SetSkip(1); else app.SetSkip(0);
-   
+    if (periodic)      app.SetPeriodic(1); else app.SetPeriodic(0);
+    if (refine)        app.SetRefine(1);   else app.SetRefine(0);
+    if (sequential)    app.SetSeqSoln(1);  else app.SetSeqSoln(0);
+    if (skip)          app.SetSkip(1);     else app.SetSkip(0);
+
+    //app.SetSpatialCoarsenAndRefine();
+    
     return app;
   }
 
@@ -296,6 +304,13 @@ private:
                  BraidStepStatus &pstatus)
   {
     gsVector<T>* u_ptr = (gsVector<T>*) u;
+    gsVector<T>* ustop_ptr = (gsVector<T>*) ustop;
+
+    // XBraid forcing
+    if (fstop != NULL) {
+      gsVector<T>* fstop_ptr = (gsVector<T>*) fstop;
+      *u_ptr += *fstop_ptr;
+    }
     
     // Get time step information
     std::pair<braid_Real, braid_Real> time =
@@ -306,10 +321,20 @@ private:
     gsSparseSolver<>::CGDiagonal solver;
     *u_ptr = solver.compute(M.matrix() +
                             tstep*theta*K.matrix()
-                            ).solve(tstep*K.rhs() +
-                                    (M.matrix()-tstep*(1.0-theta)*K.matrix())*(*u_ptr));    
-    // no refinement
-    pstatus.SetRFactor(1);
+                            ).solveWithGuess(tstep*K.rhs() +
+                                             (M.matrix()-tstep*(1.0-theta)*K.matrix())*(*u_ptr),
+                                             *ustop_ptr);
+    
+    // Carry out adaptive refinement in time
+    if (static_cast<gsXBraidStepStatus&>(pstatus).level() == 0) {
+      braid_Real error = static_cast<gsXBraidStepStatus&>(pstatus).error();
+      if (error != braid_Real(-1.0)) {
+        braid_Int rfactor = (braid_Int) std::ceil( std::sqrt( error / 1e-3) );
+        pstatus.SetRFactor(rfactor);
+      } else
+        pstatus.SetRFactor(1);
+    }
+    
     return braid_Int(0);
   }
 
@@ -333,16 +358,32 @@ private:
     }
     return braid_Int(0);
   }
+
+  /// Performs spatial coarsening
+  virtual int Coarsen(braid_Vector           fu,
+                      braid_Vector          *cu_ptr,
+                      BraidCoarsenRefStatus &status) {
+    gsInfo << "Coarsen\n";
+    gsVector<T> *fu_ptr = (gsVector<T>*) fu;    
+    gsVector<T>* cu     = new gsVector<T>();
+    *cu = *fu_ptr;
+    *cu_ptr = (braid_Vector) cu;
+    return 0;
+  }
   
-  // Not needed in this example
-  braid_Int Residual(braid_Vector     u,
-                     braid_Vector     r,
-                     BraidStepStatus &pstatus)
-  {
-    return braid_Int(0);
+  // Performs spatial refinement
+  virtual int Refine(braid_Vector           cu,
+                     braid_Vector          *fu_ptr,
+                     BraidCoarsenRefStatus &status)  {
+    gsInfo << "Refine\n";
+    gsVector<T> *cu_ptr = (gsVector<T>*) cu;    
+    gsVector<T>* fu     = new gsVector<T>();
+    *fu = *cu_ptr;
+    *fu_ptr = (braid_Vector) fu;
+    return 0;
   }
 };
-
+  
 } // ending namespace gismo
 
 #endif

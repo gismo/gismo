@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < numRefine; ++i)
         bases.uniformRefine();
 
-    real_t theta = 0.0;
+    real_t theta = 0.5;
     real_t endTime = 0.1;
     int numSteps = 40;
     
