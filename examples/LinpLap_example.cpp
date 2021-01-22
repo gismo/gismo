@@ -1,5 +1,5 @@
 /** @file poisson_example.cpp
-@brief Tutorial on how to use G+Smo to solve the Poisson equation,
+brief Tutorial on how to use G+Smo to solve the Poisson equation,
 see the \ref PoissonTutorial
 This file is part of the G+Smo library.
 This Source Code Form is subject to the terms of the Mozilla Public
@@ -13,44 +13,62 @@ Author(s):
 #include <gismo.h>
 #include <ctime>
 
+//#define wolfe_powell_debug 1
+#define wolf_powell_alt 1
+
 using namespace gismo;
 //! [Include namespace]
 
 gsMatrix<real_t> projectL2(gsMultiPatch<real_t> mp, gsMultiBasis<real_t> mb, gsFunction<real_t> &g);
 gsMatrix<real_t> addDirVal(gsAssembler<real_t> a, gsMatrix<real_t> solVector);
 gsMatrix<real_t> reduceDirichlet(gsAssembler<real_t> a, gsMatrix<real_t> w_);
-real_t stepsize(gsSparseMatrix<real_t,1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPde<real_t> &pde, gsMultiBasis<real_t> basis, gsOptionList opt, gsMatrix<real_t> u_, gsMatrix<real_t> s_, gsMatrix<real_t> &rh, real_t &Jh, real_t mu = 0.0001, real_t sigma = 0.9);
+real_t stepsize(gsSparseMatrix<real_t,1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPde<real_t> &pde, gsMultiBasis<real_t> basis, gsOptionList opt, gsMatrix<real_t> u_, gsMatrix<real_t> s_, gsMatrix<real_t> &rh, real_t &Jh, real_t mu, real_t sigma, real_t tau_min, real_t tau_max);
 
 int main(int argc, char* argv[])
 {
-	real_t eps = 0.01;
-	real_t eps_ = 0.1;
+	real_t eps = 0.1;
 	real_t p = 1.5;			//p-Laplace parameter
 	index_t k = 1;			//spline degree
 	index_t maxiter = 100;
-	real_t TOL = 1e-10;		//residual error tolerance
+	real_t TOL = 1e-6;		//residual error tolerance
 	index_t num = 8;		//number of refinements
 	index_t str = 2;
 	bool require_fin = true;
+	real_t mu = 0.7;
+	real_t sigma = 0.3;
+	real_t tau_min = 1e-3;
+	real_t tau_max = 1e+3;
 	gsCmdLine cmd("Linearized p-Laplace example");
 
 	cmd.addReal("e", "eps", "variable for eps", eps);
+	//cmd.addReal("f", "eps_", "variable for eps_", eps_);
 	cmd.addReal("p", "pow", "p-Laplace Parameter", p);
 	cmd.addInt("k", "degree", "degree of basis", k);
 	cmd.addInt("i", "maxiter", "maximal iterations", maxiter);
 	cmd.addInt("r", "numRefine", "number of refinements of the mesh", num);
 	cmd.addInt("s", "strat", "Method for Dirichlet Imposition", str);
+	cmd.addReal("", "mu", "Wolfe-Powell-Parameter mu", mu);
+	cmd.addReal("", "sigma", "Wolfe-Powell-Parameter sigma", sigma);
+	cmd.addReal("", "tau_min", "Minimum stepsize", tau_min);
+	cmd.addReal("", "tau_max", "Maximum stepsize", tau_max);
+	cmd.addReal("t","tol", "Residual error tolerance", TOL);
 	cmd.addSwitch("fin", "After computation, wait until button is pressed", require_fin);
 	try { cmd.getValues(argc, argv); }
 	catch (int rv) { return rv; }
 
-	gsInfo << "Printing command line arguments:\n\n\n"
-		<< "eps = " << eps << "\n\n"
-		<< "p = " << p << "\n\n"
-		<< "Degree = " << k << "\n\n"
-		<< "Maxiter = " << maxiter << "\n\n"
-		<< "Number of refinements = " << num << "\n\n";
+ 	const real_t eps_ = eps;
 
+	gsInfo << "Printing command line arguments:\n"
+		<< "eps               = " << eps << "\n"
+		<< "pow               = " << p << "\n"
+		<< "degree            = " << k << "\n"
+		<< "maxiter           = " << maxiter << "\n"
+		<< "numRefine         = " << num << "\n"
+		<< "mu                = " << mu << "\n"
+		<< "sigma             = " << sigma << "\n"
+		<< "tau_min           = " << tau_min << "\n"
+		<< "tau_max           = " << tau_min << "\n"
+		<< "tol               = " << TOL << "\n";
 	gsOptionList opt = gsAssembler<>::defaultOptions();
 	//opt.setInt("DirichletValues", dirichlet::l2Projection);
 
@@ -63,6 +81,11 @@ int main(int argc, char* argv[])
 	{
 		gsInfo << "DirichletStrategy = dirichlet::nitsche\n\n";
 		opt.setInt("DirichletStrategy", dirichlet::nitsche);
+	}
+	else
+	{
+		gsInfo << "DirichletStrategy unknown.";
+		return 1;
 	}
 
 	gsOptionList opt2 = opt;
@@ -78,7 +101,7 @@ int main(int argc, char* argv[])
 
 	//! [Function data]
 
-	double gamma = 2;
+	double gamma = 5;
 
 	// Define source function
 	gsFunctionExpr<> f1("-4*(" + std::to_string(eps*eps) + "+4*x^2+4*y^2)^(" + std::to_string(p) + "/2-1)-8*(" + std::to_string(p) + "-2)*(" + std::to_string(eps*eps) + "+4*x^2+4*y^2)^(" + std::to_string(p) + "/2-2)*(x^2+y^2)", 2);
@@ -158,7 +181,7 @@ int main(int argc, char* argv[])
 
 	//not used
 
-	int n = refine_basis.size();
+	//int n = refine_basis.size();
 
 	gsMatrix<real_t> w_ = projectL2(patch, refine_basis, u0);
 	//gsMatrix<real_t> w_ = gsMatrix<real_t>::Zero(n, 1);
@@ -206,7 +229,7 @@ int main(int argc, char* argv[])
 		gsInfo << pde.w.size() << "\n";
 		*/
 
-		int n = refine_basis.size();
+		//int n = refine_basis.size();
 
 		//start with 0 solution for every mesh for now, later with transfer.
 		//pde.w = gsMatrix<real_t>::Zero(n, 1);
@@ -248,8 +271,7 @@ int main(int argc, char* argv[])
 
 			//std::cin.get();
 
-			real_t tau = stepsize(Kh, fh, pde, refine_basis, opt, solVector, step, rh, Jh);
-			gsInfo << tau << "\n";
+			real_t tau = stepsize(Kh, fh, pde, refine_basis, opt, solVector, step, rh, Jh, mu, sigma, tau_min, tau_max);
 
 			solVector = solVector + tau*step;
 
@@ -271,6 +293,8 @@ int main(int argc, char* argv[])
 			//Jh = A.energy();
 
 			//rh = Kh * solVector - fh;
+
+			gsInfo << " " << iter << ": rh = " << rh.norm() << ", tau = " << tau << "\n";
 
 			iter++;
 		} while (iter < maxiter && rh.norm()>TOL);
@@ -479,16 +503,19 @@ gsMatrix<real_t> reduceDirichlet(gsAssembler<real_t> a, gsMatrix<real_t> w_)
 /*
 	calculate stepsize of the iteration
 */
-real_t stepsize(gsSparseMatrix<real_t,1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPde<real_t> &pde, gsMultiBasis<> basis, gsOptionList opt, gsMatrix<real_t> u_, gsMatrix<real_t> s_, gsMatrix<real_t> &rh, real_t &Jh, real_t mu, real_t sigma)
+real_t stepsize(gsSparseMatrix<real_t,1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPde<real_t> &pde, gsMultiBasis<> basis, gsOptionList opt, gsMatrix<real_t> u_, gsMatrix<real_t> s_, gsMatrix<real_t> &rh, real_t &Jh, real_t mu, real_t sigma, real_t tau_min, real_t tau_max)
 {
 	real_t tau = 1;
-	int iter = 0;
-	int maxiter = 10;
-
+	//int iter = 0;
+	//int maxiter = 10;
+ 
 	//gsMatrix<real_t> fh;
 	gsMatrix<real_t> rh_new;
 	//gsSparseMatrix<real_t, 1> Kh;
 	real_t Jh_new;
+ 
+	const real_t downscale = 0.8;
+	const real_t upscale = 1.2;
 
 	gsLinpLapAssembler<real_t> A;
 
@@ -501,14 +528,31 @@ real_t stepsize(gsSparseMatrix<real_t,1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPde
 	rh_new = Kh * (u_ + tau * s_) - fh;
 	Jh_new = A.energy();
 
+#ifndef wolf_powell_alt
 	bool c1 = Jh_new <= Jh + tau * mu*(rh.transpose()*s_).value();
+#else
+	bool c1 = (rh_new.transpose() * rh_new).value() <= (rh.transpose() * rh).value() + mu * tau * (rh.transpose()*Kh*s_).value();
+#endif
 	bool c2 = (rh_new.transpose()*s_).value() >= sigma*(rh.transpose()*s_).value();
-
-	if (!c1)
+#ifdef wolfe_powell_debug
+#ifndef wolf_powell_alt
+	gsInfo << "   WP1: " << Jh_new << " <= " << Jh + tau * mu*(rh.transpose()*s_).value()
+		<< " = " << Jh << "+" << tau << "*" << mu << "*" << rh.norm() << "*" << s_.norm() << "*" <<
+		((rh.transpose()*s_).value()/(rh.norm()*s_.norm())) << "     " << (c1?"true":"false") << "\n";
+#else
+	gsInfo << "   WP1: " << (rh_new.transpose() * rh_new).value() << " <= "
+		<< (rh.transpose() * rh).value() + mu * tau * (rh.transpose()*Kh*s_).value()
+		<< " = " << (rh.transpose() * rh).value() << "+" << mu << "*" << tau 
+		<< "*" << (rh.transpose()*Kh*s_).value() << "     " << (c1?"true":"false") << "\n";
+#endif
+	gsInfo << "   WP2: " << (rh_new.transpose()*s_).value() << " >= " << sigma*(rh.transpose()*s_).value() 
+		<< "     " << (c2?"true":"false") << "\n";
+#endif
+	if (!c1 && tau*downscale>=tau_min)
 	{
 		do
 		{
-			tau *= 0.8;
+			tau *= downscale;
 
 			pde.w = u_ + tau * s_;
 			A.initialize(pde, basis, opt);
@@ -519,15 +563,34 @@ real_t stepsize(gsSparseMatrix<real_t,1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPde
 			rh_new = Kh * (u_ + tau * s_) - fh;
 			Jh_new = A.energy();
 			
-			bool c1 = Jh_new <= Jh + tau * mu*(rh.transpose()*s_).value();
-			iter++;
-		} while (!c1 && iter < maxiter);
+#ifndef wolf_powell_alt
+			c1 = Jh_new <= Jh + tau * mu*(rh.transpose()*s_).value();
+#else
+			d1 = (rh_new.transpose() * rh_new).value() <= (rh.transpose() * rh).value() + mu * tau * (rh.transpose()*Kh*s_).value();
+#endif
+#ifdef wolfe_powell_debug
+			c2 = (rh_new.transpose()*s_).value() >= sigma*(rh.transpose()*s_).value();
+#ifndef wolf_powell_alt
+			gsInfo << "   WP1: " << Jh_new << " <= " << Jh + tau * mu*(rh.transpose()*s_).value()
+				<< " = " << Jh << "+" << tau << "*" << mu << "*" << rh.norm() << "*" << s_.norm() << "*" <<
+				((rh.transpose()*s_).value()/(rh.norm()*s_.norm())) << "     " << (c1?"true":"false") << "\n";
+#else
+			gsInfo << "   WP1: " << (rh_new.transpose() * rh_new).value() << " <= "
+				<< (rh.transpose() * rh).value() + mu * tau * (rh.transpose()*Kh*s_).value()
+				<< " = " << (rh.transpose() * rh).value() << "+" << mu << "*" << tau 
+				<< "*" << (rh.transpose()*Kh*s_).value() << "     " << (c1?"true":"false") << "\n";
+#endif
+			gsInfo << "   WP2: " << (rh_new.transpose()*s_).value() << " >= " << sigma*(rh.transpose()*s_).value() 
+				<< "     " << (c2?"true":"false") << "\n";
+#endif
+			//iter++;
+		} while (!c1 && tau*downscale>=tau_min);
 	}
-	else if (c1 && !c2)
+	else if (c1 && !c2 && tau*upscale<=tau_max)
 	{
 		do
 		{
-			tau *= 1.2;
+			tau *= upscale;
 
 			pde.w = u_ + tau * s_;
 			A.initialize(pde, basis, opt);
@@ -538,10 +601,28 @@ real_t stepsize(gsSparseMatrix<real_t,1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPde
 			rh_new = Kh * (u_ + tau * s_) - fh;
 			Jh_new = A.energy();
 
-			bool c1 = Jh_new <= Jh + tau * mu*(rh.transpose()*s_).value();
-			bool c2 = (rh_new.transpose()*s_).value() >= sigma*(rh.transpose()*s_).value();
-			iter++;
-		} while (c1 && !c2 && iter < maxiter);
+#ifndef wolf_powell_alt
+			c1 = Jh_new <= Jh + tau * mu*(rh.transpose()*s_).value();
+#else
+			c1 = (rh_new.transpose() * rh_new).value() <= (rh.transpose() * rh).value() + mu * tau * (rh.transpose()*Kh*s_).value();
+#endif
+			c2 = (rh_new.transpose()*s_).value() >= sigma*(rh.transpose()*s_).value();
+#ifdef wolfe_powell_debug
+#ifndef wolf_powell_alt
+			gsInfo << "   WP1: " << Jh_new << " <= " << Jh + tau * mu*(rh.transpose()*s_).value()
+				<< " = " << Jh << "+" << tau << "*" << mu << "*" << rh.norm() << "*" << s_.norm() << "*" <<
+				((rh.transpose()*s_).value()/(rh.norm()*s_.norm())) << "     " << (c1?"true":"false") << "\n";
+#else
+			gsInfo << "   WP1: " << (rh_new.transpose() * rh_new).value() << " <= "
+				<< (rh.transpose() * rh).value() + mu * tau * (rh.transpose()*Kh*s_).value()
+				<< " = " << (rh.transpose() * rh).value() << "+" << mu << "*" << tau 
+				<< "*" << (rh.transpose()*Kh*s_).value() << "     " << (c1?"true":"false") << "\n";
+#endif
+			gsInfo << "   WP2: " << (rh_new.transpose()*s_).value() << " >= " << sigma*(rh.transpose()*s_).value() 
+				<< "     " << (c2?"true":"false") << "\n";
+#endif
+			//iter++;
+		} while (c1 && !c2 && tau*upscale<=tau_max);
 	}
 	rh = rh_new;
 	Jh = Jh_new;
