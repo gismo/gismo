@@ -158,7 +158,7 @@ public:
     /// Prints the expression as a string to \a os
     void print(std::ostream &os) const
     {
-        gsInfo<<"\n Space="<<E::Space<<", ScV="<<E::ScalarValued<<", ColBlocks="<<E::ColBlocks<<"\n";
+        //gsInfo<<"\n Space="<<E::Space<<", ScV="<<E::ScalarValued<<", ColBlocks="<<E::ColBlocks<<"\n";
         static_cast<E const&>(*this).print(os);
         /*
           std::string tmp(__PRETTY_FUNCTION__);
@@ -376,9 +376,6 @@ public:
         evList.add(*this);
         this->m_fd->flags |= NEED_VALUE;
     }
-
-    /// Returns true if the variable is used on a two-sided interface
-    //bool isTwoSided() const {return NULL!=m_fd2;}
 
     index_t cardinality_impl() const { return m_d * m_fd->actives.rows(); }
 
@@ -2807,7 +2804,7 @@ public:
                      << _u <<" times \n" << _v );
         // Note: a * b * c --> (a*b).eval()*c
         tmp = _u.eval(k) * _v.eval(k);
-        return tmp; // assume result not scalarv
+        return tmp; // assumes result is not scalarvalued
     }
 
     index_t rows() const { return E1::ScalarValued ? _v.rows()  : _u.rows(); }
@@ -2830,6 +2827,8 @@ public:
 /*
   Expression for multiplication operation (second version)
 
+  First argument E1 has ColBlocks = true
+
   Partial specialization for (right) blockwise multiplication
   [A1 A2 A3] * B = [A1*B  A2*B  A3*B]
 
@@ -2849,7 +2848,7 @@ private:
 
     mutable gsMatrix<Scalar> res;
 public:
-    enum {ScalarValued = 0, ColBlocks = 1};
+    enum {ScalarValued = 0, ColBlocks = E2::ColBlocks};
     enum {Space = E1::Space + E2::Space };
 
     mult_expr(_expr<E1> const& u,
@@ -3291,7 +3290,7 @@ class add_expr : public _expr<add_expr<E1, E2> >
 
 public:
     enum {ScalarValued = E1::ScalarValued && E2::ScalarValued,
-          ColBlocks = E1::ColBlocks && E2::ColBlocks };
+          ColBlocks = E1::ColBlocks || E2::ColBlocks };
     enum {Space = E1::Space}; // == E2::Space
 
     typedef typename E1::Scalar Scalar;
@@ -3299,15 +3298,12 @@ public:
     add_expr(_expr<E1> const& u, _expr<E2> const& v)
     : _u(u), _v(v)
     {
-        // false on c++98 ?
-        //GISMO_STATIC_ASSERT((int)(E1::ColBlocks)==(int)(E2::ColBlocks), "Cannot add if the number of colums do not agree.");
-        GISMO_ASSERT((int)E1::ColBlocks == (int)E2::ColBlocks, "Error: "<< E1::ColBlocks
-                     <<"!="<< E2::ColBlocks);
+        //GISMO_ASSERT((int)E1::ColBlocks == (int)E2::ColBlocks,
+        //             "Error: "<< E1::ColBlocks <<"!="<< E2::ColBlocks);
     }
 
     AutoReturn_t eval(const index_t k) const
     {
-        // (?) Wrong dimensions 0!=1 in + operation ?
         GISMO_ASSERT(_u.rows() == _v.rows(),
                      "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in + operation:\n"
                      << _u <<" plus \n" << _v );
@@ -3413,7 +3409,7 @@ class sub_expr : public _expr<sub_expr<E1, E2> >
 
 public:
     enum {ScalarValued = E1::ScalarValued && E2::ScalarValued,
-          ColBlocks = E1::ColBlocks && E2::ColBlocks };
+          ColBlocks = E1::ColBlocks || E2::ColBlocks };
     enum {Space = E1::Space}; // == E2::Space
 
     typedef typename E1::Scalar Scalar;
@@ -3421,13 +3417,7 @@ public:
     sub_expr(_expr<E1> const& u, _expr<E2> const& v)
     : _u(u), _v(v)
     {
-        GISMO_STATIC_ASSERT((int)E1::ColBlocks == (int)E2::ColBlocks, "Cannot subtract if the number of colums do not agree.");
-        /* // Note: rows()/cols() might be still pending at construction time..
-           GISMO_ASSERT(_u.rows() == _v.rows(),
-           "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in - operation");
-           GISMO_ASSERT(_u.cols() == _v.cols(),
-           "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in - operation");
-        */
+        //GISMO_STATIC_ASSERT((int)E1::ColBlocks == (int)E2::ColBlocks, "Cannot subtract if the number of colums do not agree.");
     }
 
     AutoReturn_t
