@@ -1875,9 +1875,9 @@ int main(int argc, char *argv[])
     std::string fn;
 
     real_t E_modulus = 1.0;
-    real_t PoissonRatio = 0.0;
+    real_t PoissonRatio = 0.3;
     real_t Density = 1.0;
-    real_t thickness = 1.0;
+    real_t thickness = 0.01;
 
     index_t modeIdx  = 0;
 
@@ -1907,9 +1907,6 @@ int main(int argc, char *argv[])
     //! [Read input file]
     gsMultiPatch<> mp, mpH;
     gsMultiPatch<> mp_def;
-    gsMultiPatch<> mp_ex;
-    gsReadFile<>("deformed_plate_lin_T=" + std::to_string(thickness) + ".xml",mp_ex);
-    gsMultiBasis<> basisR(mp_ex);
 
     // Unit square
     mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
@@ -1987,7 +1984,6 @@ int main(int argc, char *argv[])
     //! [Problem setup]
     gsExprAssembler<> exL;
     gsExprAssembler<> exH;
-    gsExprAssembler<> exRef;
 
     //gsInfo<<"Active options:\n"<< A.options() <<"\n";
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -1998,18 +1994,14 @@ int main(int argc, char *argv[])
     // Elements used for numerical integration
     exL.setIntegrationElements(basisH);
     exH.setIntegrationElements(basisH);
-    exRef.setIntegrationElements(basisR);
     gsExprEvaluator<> evL(exL);
     gsExprEvaluator<> evH(exH);
-    gsExprEvaluator<> evRef(exRef);
 
     // Set the geometry map
     geometryMap mapL = exL.getMap(mp); // the last map counts
     geometryMap mapH = exH.getMap(mp); // the last map counts
     geometryMap defL = exL.getMap(mp_def);
     geometryMap defH = exH.getMap(mp_def);
-    geometryMap mapRef = exRef.getMap(mp);
-    geometryMap defRef = exRef.getMap(mp_ex);
 
     variable primal_exL = evL.getVariable(u_ex, mapL);
     variable primal_exH = evH.getVariable(u_ex, mapH);
@@ -2049,12 +2041,10 @@ int main(int argc, char *argv[])
     gsMaterialMatrix materialMat(mp, E, nu);
     variable mmL = exL.getCoeff(materialMat); // evaluates in the parametric domain, but the class transforms E and nu to physical
     variable mmH = exH.getCoeff(materialMat); // evaluates in the parametric domain, but the class transforms E and nu to physical
-    variable mmRef = exRef.getCoeff(materialMat);
 
     gsFunctionExpr<> mult2t("1","0","0","0","1","0","0","0","2",3);
     variable m2L = exL.getCoeff(mult2t, mapL); // evaluates in the physical domain
     variable m2H = exH.getCoeff(mult2t, mapH); // evaluates in the physical domain
-    variable m2Ref = exRef.getCoeff(mult2t, mapRef);
 
     gsFunctionExpr<> t(std::to_string(thickness), 3);
     variable ttL = exL.getCoeff(t, mapL); // evaluates in the physical domain
@@ -2133,7 +2123,7 @@ int main(int argc, char *argv[])
 
     auto F_L        = ffL;
 
-    auto massL      = rhoL.val() * uL * uL.tr();
+    auto massL      = rhoL.val() * ttL.val() * uL * uL.tr();
 
     // --------------------------------------------------Higher-order basis---------------------------------------------------------------- //
     // Membrane components
@@ -2160,7 +2150,7 @@ int main(int argc, char *argv[])
 
     auto F_H        = ffH;
 
-    auto massH      = rhoH.val() * zH * zH.tr();
+    auto massH      = rhoH.val() *ttH.val() * zH * zH.tr();
 
     // ! [Solve linear problem]
 
@@ -2173,6 +2163,8 @@ int main(int argc, char *argv[])
     zL_sol.setSolutionVector(solVectorDualL);
 
     gsMatrix<> solVectorDualH;
+    zH_sol.setSolutionVector(solVectorDualH);
+
     std::vector<bool> elMarked;
     // So, ready to start the adaptive refinement loop:
     for( int RefineLoop = 1; RefineLoop <= RefineLoopMax ; RefineLoop++ )
@@ -2228,24 +2220,17 @@ int main(int argc, char *argv[])
         gsInfo << "Solving primal, size ="<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
         Eigen::GeneralizedSelfAdjointEigenSolver< gsMatrix<real_t>::Base >  eigSolver;
         eigSolver.compute(K_L,M_L);
-        gsDebugVar(eigSolver.eigenvalues());
+        // gsDebugVar(eigSolver.eigenvalues().head(2));
+        gsDebugVar(math::sqrt(eigSolver.eigenvalues()[modeIdx]));
 
         // solver.compute(exL.matrix());
         // solVectorL = solver.solve(exL.rhs());
         solVectorL = solVectorDualL = eigSolver.eigenvectors().col(modeIdx);
         real_t eigvalL,dualvalL;
         eigvalL = dualvalL = eigSolver.eigenvalues()[modeIdx];
-
         uL_sol.extract(uL2_mp);
-        zL_sol.setSolutionVector(solVectorDualL);
         zL_sol.extract(zL2_mp);
 
-        gsMatrix<> res;
-        gsDebugVar(solVectorL);
-        gsDebugVar(solVectorL.rows());
-        zL_sol.extractFull(res);
-        gsDebugVar(res);
-        gsDebugVar(res.rows());
         // Deform mps
         gsMatrix<> cc;
         for ( size_t k =0; k!=mp.nPatches(); ++k) // Deform the geometry
@@ -2254,26 +2239,28 @@ int main(int argc, char *argv[])
             uL_sol.extract(cc, k);
             mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
         }
-        gsWriteParaview<>( mp_def, "mp_def", 1000, true);
+        // gsWriteParaview<>( mp_def, "mp_def", 1000, true, true);
+        evL.writeParaview( uL_sol   , mapL, "deformedL");
 
 
 
 
         gsInfo << "Solving dual (high), size ="<<exH.matrix().rows()<<","<<exH.matrix().cols()<<"... "<< std::flush;
         eigSolver.compute(K_H,M_H);
-        gsDebugVar(eigSolver.eigenvalues());
+        // gsDebugVar(eigSolver.eigenvalues().head(2));
+        gsDebugVar(math::sqrt(eigSolver.eigenvalues()[modeIdx]));
         solVectorDualH = eigSolver.eigenvectors().col(modeIdx);
         real_t dualvalH = eigSolver.eigenvalues()[modeIdx];
-        // zH_sol.setSolutionVector(solVectorDualH);
-        // zH_sol.extract(zH2_mp);
+        zH_sol.extract(zH2_mp);
 
-        // for ( size_t k =0; k!=mp.nPatches(); ++k) // Deform the geometry
-        // {
-        //     // extract deformed geometry
-        //     zH_sol.extract(cc, k);
-        //     mpH.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
-        // }
-        // gsWriteParaview<>( mpH, "mpH_def", 1000, true);
+        for ( size_t k =0; k!=mp.nPatches(); ++k) // Deform the geometry
+        {
+            // extract deformed geometry
+            zH_sol.extract(cc, k);
+            mpH.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
+        }
+        // gsWriteParaview<>( mpH, "mpH_def", 1000, true, true);
+        evH.writeParaview( zH_sol   , mapH, "deformedH");
 
         // auto massL_sol = rhoL.val() * uL_sol.tr() * uL_sol;
         // auto massH_sol = rhoH.val() * zH_sol.tr() * zH_sol;
@@ -2283,7 +2270,84 @@ int main(int argc, char *argv[])
         // gsDebug<<evH.integral(massH_sol * meas(mapH))<<"\n";
 
 
+        auto massL_sol  = rhoL.val() * ttL.val() * (uL_sol.tr() * uL_sol);
+        auto massL2_sol = rhoL.val() * ttL.val() * (zL_sol.tr() * zL_sol);
+        auto massH_sol  = rhoH.val() *ttH.val() * (zH_sol.tr() * zH_sol);
 
+        // Normalize the mode shapes according to M(phi_h,phi_h)=1
+        real_t ampl;
+        ampl = evL.integral(massL_sol * meas(mapL));
+        solVectorL      *= 1. / ampl;
+        solVectorDualL  *= 1. / ampl;
+
+        ampl = evH.integral(massH_sol*meas(mapH));
+        solVectorDualH  *= 1. / ampl;
+
+        /*
+            // CHECK NORMALIZATION
+            ampl = evL.integral(massL2_sol*meas(mapL));
+            gsDebugVar(ampl);
+            ampl = evL.integral(massL_sol*meas(mapL));
+            gsDebugVar(ampl);
+            ampl = evH.integral(massH_sol*meas(mapH));
+            gsDebugVar(ampl);
+        */
+
+
+        //
+        auto E_m = 0.5 * ( flat(jac(mapL).tr()*jac(mapL)) - flat(jac(mapL).tr()* jac(mapL)) ) ; //[checked]
+        auto S_m = E_m * reshape(mmL,3,3);
+        auto N   = ttL.val() * S_m;
+
+        auto E_f = ( deriv2(mapL,sn(mapL).normalized().tr()) - deriv2(mapL,sn(mapL).normalized().tr()) ) * reshape(m2L,3,3) ; //[checked]
+        auto S_f = E_f * reshape(mmL,3,3);
+        auto M   = ttL.val() * ttL.val() * ttL.val() / 12.0 * S_f;
+
+        auto E_m_der= flat( jac(mapL).tr() * (fjac(zH2) - jac(zL_sol)) ) ; //[checked]
+        auto S_m_der= E_m_der * reshape(mmL,3,3);
+        auto N_der  = ttL.val() * S_m_der;
+
+        auto E_f_der= ( deriv2(zH2,sn(mapL).normalized().tr() ) - deriv2(zL_sol,sn(mapL).normalized().tr() ) + deriv2(mapL,var1(zH2,mapL) ) - deriv2(defL,var1(zL_sol,mapL) ) ) * reshape(m2L,3,3); //[checked]
+        auto S_f_der= E_f_der * reshape(mmL,3,3);
+        auto M_der  = ttL.val() * ttL.val() * ttL.val() / 12.0 * S_f_der;
+
+        auto mass   = rhoL.val() *ttL.val() * (uL_sol.tr() * ( zH2-zL_sol));
+        auto mass2  = rhoL.val() *ttL.val() * (uL_sol.tr() * uL_sol);
+
+        auto Fint = ( N_der * E_m_der.tr() - M_der * E_f_der.tr() );
+
+        gsInfo<<"Fint_m = "<<evL.integral(( N_der * E_m_der.tr() ) * meas(mapL) )<<"\n";
+        gsInfo<<"Fint_f = "<<evL.integral(( M_der * E_f_der.tr() ) * meas(mapL) )<<"\n";
+
+
+        real_t First = eigvalL * evL.integral( mass * meas(mapL) );
+        gsInfo<<"First = "<<First<<"\n";
+
+        real_t Fi = -evL.integral( Fint  * meas(mapL) );
+        gsInfo<<"Second = "<<Fi<<"\n";
+
+
+        real_t Third = (dualvalH-dualvalL)*(evL.integral( mass2 * meas(mapL)) -1.0 );
+        gsInfo<<"Third = "<<Third<<"\n";
+        real_t err = -(First + Fi + Third);
+        gsInfo<<"Estimated error: "<<err<<"\n";
+
+        index_t m,n;
+        m=n=1;
+        real_t D = E_modulus*math::pow(thickness,3)/(12*(1-math::pow(PoissonRatio,2)));
+        real_t lambda_an = (math::pow(m/1.0,2)+math::pow(n/1.0,2))*math::pow(3.1415926535,2)*math::sqrt(D / (Density * thickness));
+
+        real_t exact = math::pow(lambda_an,2) - eigvalL;
+        gsInfo<<"Exact error: "<<exact<<"\n";
+
+        gsInfo<<"Efficiency: "<<err/exact*100<<"%\n";
+
+        return 0;
+
+// --------------------------------------------------------------------------------------------------------------------------------------------------
+        /*
+                                        PROJECTIONS
+        */
 
 /*        space v0 = exH.getSpace(basisH,3);
         space u0 = exL.getSpace(basisL,3);
@@ -2302,12 +2366,10 @@ int main(int argc, char *argv[])
         exL.assemble(u2 * u1.tr() * meas(mapL));
 
         gsSparseMatrix<> Proj = exL.matrix();
-        gsDebugVar(Proj.toDense());
 
         exH.initSystem(false);
         exH.assemble(zH * zH.tr() * meas(mapH));
         gsSparseMatrix<> Mass = exH.matrix();
-        gsDebugVar(Mass.toDense());
 
         gsSparseSolver<>::QR solver;
         solver.compute(Mass);
@@ -2318,7 +2380,9 @@ int main(int argc, char *argv[])
         // gsQuasiInterpolate<real_t>::localIntpl(basisH.basis(0),static_cast<gsFunction<>&>(mp_def.patch(0)),coefs);
         // gsDebugVar(coefs);
 
+
         gsDebugVar(phi_s.transpose());
+        gsDebugVar(solVectorDualH.transpose());
         zH_sol.setSolutionVector(phi_s);
         evH.writeParaview( zH_sol   , mapH, "phi_s");
 
@@ -2332,283 +2396,9 @@ int main(int argc, char *argv[])
         gsDebugVar(phi_ss.transpose());
         zH_sol.setSolutionVector(phi_ss);
         evH.writeParaview( zH_sol   , mapH, "phi_ss");
-
-return 0;
-
-        // Assemble matrix and rhs
-        exL.initVector(1,false);
-        gsInfo << "Assembling dual (low), size = "<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
-        // NOTE, we assume that the matrix in space uL is equal to that in space zL, hence it is not re-assembled!
-        if (goal == 1)
-            exL.assemble( uL * gismo::expr::uv(2,3) * meas(mapL) );
-        else if (goal == 2)
-            exL.assemble( 2 * uL * uL_sol * meas(mapL) );
-        else if (goal == 3)
-            exL.assemble( 2 * E_m_derL * E_mL.tr() * meas(mapL) );
-        else if (goal == 4)
-            exL.assemble( S_m_derL * gismo::expr::uv(0,3) * meas(mapL) );
-        gsInfo << "done." << "\n";
-
-        // Solve system
-        gsInfo << "Solving dual (low), size = "<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
-        // solver.compute(exL.matrix()); // not needed
-        solVectorDualL = solver.solve(exL.rhs());
-        zL_sol.setSolutionVector(solVectorDualL);
-        zL_sol.extract(zL2_mp);
-
-        gsInfo << "done." << " --> ";
-        gsInfo <<"Dual L error: \t"<<evL.integral(((dual_exL - zL_sol).norm()*meas(mapL)))<<"\n";
-
-        // Assemble matrix and rhs
-        exH.initVector(1,false);
-        gsInfo << "Assembling dual vector (high), size = "<<exH.rhs().rows()<<",1... "<< std::flush;
-
-        if (goal == 1)
-            exH.assemble(
-                    zH * gismo::expr::uv(2,3) * meas(mapH)
-                );
-        else if (goal == 2)
-            exH.assemble(
-                    2 * zH * uL2 * meas(mapH)
-                );
-        else if (goal == 3)
-            exH.assemble(
-                    2*E_m_derH * E_mH.tr() * meas(mapH)
-                );
-        else if (goal == 4)
-            exH.assemble(
-                    S_m_derH * gismo::expr::uv(0,3) * meas(mapH)
-                );
-
-        gsInfo << "done." << "\n";
-
-        // Solve system
-        gsInfo << "Solving dual (high), size = "<<exH.matrix().rows()<<","<<exH.matrix().cols()<<"... "<< std::flush;
-        solver.compute(exH.matrix());
-        solVectorDualH = solver.solve(exH.rhs());
-
-        zH_sol.setSolutionVector(solVectorDualH);
-        zH_sol.extract(zH2_mp);
-        gsInfo << "done." << " --> ";
-        gsInfo <<"Dual H error: \t"<<evH.integral(((dual_exH - zH_sol).norm()*meas(mapH)))<<"\n";
-
-        // --------------------------------------------------------------------------------------------------------------------------------- //
-        // ---------------------------------------------------------Computing DWR error estimate-------------------------------------------- //
-        // --------------------------------------------------------------------------------------------------------------------------------- //
-
-        auto E_m = 0.5 * ( flat(jac(defL).tr()*jac(defL)) - flat(jac(mapL).tr()* jac(mapL)) ) ; //[checked]
-        auto S_m = E_m * reshape(mmL,3,3);
-        auto N   = ttL.val() * S_m;
-
-        auto E_f = ( deriv2(mapL,sn(mapL).normalized().tr()) - deriv2(defL,sn(defL).normalized().tr()) ) * reshape(m2L,3,3) ; //[checked]
-        auto S_f = E_f * reshape(mmL,3,3);
-        auto M   = ttL.val() * ttL.val() * ttL.val() / 12.0 * S_f;
-
-        auto E_m_der = flat( jac(defL).tr() * (fjac(zH2) - jac(zL_sol)) ) ; //[checked]
-        auto S_m_der = E_m_der * reshape(mmL,3,3);
-        auto N_der   = ttL.val() * S_m_der;
-
-        auto E_f_der =  ( deriv2(zH2,sn(defL).normalized().tr() ) - deriv2(zL_sol,sn(defL).normalized().tr() ) + deriv2(defL,var1(zH2,defL) ) - deriv2(defL,var1(zL_sol,defL) ) ) * reshape(m2L,3,3); //[checked]
-        auto S_f_der = E_f_der * reshape(mmL,3,3);
-        auto M_der   = ttL.val() * ttL.val() * ttL.val() / 12.0 * S_f_der;
-
-        auto Fint = ( N * E_m_der.tr() - M * E_f_der.tr() ) * meas(mapL);
-        // auto Fint = ( ( N * E_m_der.tr() ) * meas(mapL) ).tr();
-        // auto Fint = ( ( M * E_f_der.tr() ) * meas(mapL) ).tr();
-        auto F_H        = ffL;
-
-        auto Fext = (zH2-zL_sol).tr() * F_L * meas(mapL);
-
-        auto E_mG = 0.5 * ( flat(jac(defRef).tr()*jac(defRef)) - flat(jac(mapRef).tr()* jac(mapRef)) ) ; //[checked]
-        auto E_fG = ( deriv2(mapRef,sn(mapRef).normalized().tr()) - deriv2(defRef,sn(defRef).normalized().tr()) ) * reshape(m2Ref,3,3) ; //[checked]
-        auto S_mG = E_mG * reshape(mmRef,3,3);
-        auto S_fG = E_fG * reshape(mmRef,3,3);
-
-        gsInfo<<"Fint_m = "<<evL.integral(( N * E_m_der.tr() ) * meas(mapL) )<<"\n";
-        gsInfo<<"Fint_f = "<<evL.integral(( M * E_f_der.tr() ) * meas(mapL) )<<"\n";
-
-        real_t Fi = evL.integral( Fint  );
-        real_t Fe = evL.integral( Fext  );
-        gsInfo<<"Fint = "<<Fi<<"\n";
-        gsInfo<<"Fext = "<<Fe<<"\n";
-        // real_t Res = evL.integral( Fext-Fint  );
-        // gsDebug<<"R = "<<Res<<"\n";
-
-        real_t approx = Fe;
-        real_t exact = 0;
-
-        if (goal==1)
-        {
-            // exact = evL.integral((primal_exL-uL_sol).tr() * gismo::expr::uv(2,3)*meas(mapL));
-            exact = evRef.integral((defRef-mapRef).tr() * gismo::expr::uv(2,3)*meas(mapRef)) - evL.integral((defL-mapL).tr() * gismo::expr::uv(2,3)*meas(mapL));
-        }
-        else if (goal==2)
-        {
-            // exact = evL.integral( (primal_exL.tr() * primal_exL - uL_sol.tr() * uL_sol) *meas(mapL) );
-            // exact = evRef.integral( (defRef - mapRef).tr() * (defRef - mapRef) * meas(mapRef)) - evL.integral(uL_sol.tr() * uL_sol * meas(mapL));
-            exact = evRef.integral( (defRef - mapRef).tr() * (defRef - mapRef) * meas(mapRef)) - evL.integral((defL - mapL).tr() * (defL - mapL) * meas(mapL));
-        }
-        else if (goal==3)
-        {
-            gsDebugVar(evRef.integral(E_mG * E_mG.tr() *meas(mapRef) ));
-            gsDebugVar(evL.integral(E_m * E_m.tr() *meas(mapL)));
-            exact = evRef.integral(E_mG * E_mG.tr() *meas(mapRef) ) - evL.integral(E_m * E_m.tr() *meas(mapL) );
-        }
-        else if (goal==4)
-        {
-            exact = evRef.integral(S_mG * gismo::expr::uv(0,3)*meas(mapRef) ) - evL.integral(S_m * gismo::expr::uv(0,3)*meas(mapL) );
-        }
-
-
-        // gsDebug<<evL.integral(((primal_exL).tr() * gismo::expr::uv(2,3))*meas(mapL))<<"\n";
-        gsInfo<<"Exact = "<<exact<<"\n";
-        gsInfo<<"Efficiency = "<<approx/exact<<"\n";
-
-
-        // auto dzW1 = (zH2-zL_sol).asDiag() * jac(uL);
-        // auto dzW2 = uL.tr().asDiag() * (fjac(zH2).tr() - jac(zL_sol)) ;
-
-/*
-        space uL0 = exL.getSpace(basisL,3);
-        exL.initSystem(true);
-        // weighted expressions
-        auto zW = uL0 * (zH2-zL_sol).asDiag();
-        auto dzW1 = (zH2-zL_sol).asDiag() * jac(uL);
-        auto dzW2 = uL.tr().asDiag() * (fjac(zH2) - jac(zL_sol)) ; // THIS ONE IS IMPOSSIBLE AS LONG AS .asDiag() DOES NOT WORK WITH COLBLOCKS!!!
-
-        auto FextW      = zW * F_L * meas(mapL);
-        auto E_m_derW   = flat( jac(defL).tr() * (fjac(zH2) - jac(zL_sol)) ) ;
-        // auto E_m_derW   = flat( jac(defL).tr() * (fjac(zH2).tr() - jac(zL_sol)) ) ;
-        auto E_f_derW   = ( deriv2(zH2,sn(defL).normalized().tr() ) - deriv2(zL_sol,sn(defL).normalized().tr() ) + deriv2(defL,var1(zH2,defL) ) - deriv2(defL,var1(zL_sol,defL) ) ) * reshape(m2L,3,3); //[checked]
-        auto FintW      = ( ( N * E_m_derW.tr() - M * E_f_derW.tr() ) * meas(mapL));
-        exL.assemble(FextW);
-
-        gsVector<> pt(2);
-        pt.setConstant(0.25);
-        gsDebugVar(exL.rhs().sum());
-
-        gsDebugVar((jac(uL0).rows()));
-        gsDebugVar((jac(uL0).cols()));
-        gsDebug<<evL.eval(dzW1,pts)<<"\n";
-        gsDebug<<evL.eval(dzW2,pts)<<"\n";
-        gsDebug<<evL.eval(E_m_derW,pts)<<"\n";
-
-        exL.initSystem(true);
-        exL.assemble(N * E_m_derW.tr() * meas(mapL));
-        gsDebugVar(exL.rhs().sum());
-
-        // gsDebug<<evL.eval(  (zH2 - zL_sol).asDiag() * uL.tr(),pts)<<"\n";
-
-        // gsDebug<<evL.eval(zW,pts)<<"\n";
-        // gsDebug<<evL.eval(uL,pts)<<"\n";
-        // gsDebug<<evL.eval(uL.tr(),pts)<<"\n";
-
-        // gsDebug<<evL.eval(jac(uL),pts)<<"\n";
-        // gsDebug<<evL.eval(dzW1,pts)<<"\n";
-        // gsDebug<<evL.eval(uL.tr().asDiag(),pts)<<"\n";
-        // gsDebug<<evL.eval((fjac(zH2).tr() - jac(zL_sol)),pts)<<"\n";
-
-        // gsDebug<<evL.eval(uL.tr().asDiag().rows(),pts)<<"\n";
-        // gsDebug<<evL.eval(uL.tr().asDiag().cols(),pts)<<"\n";
-
-
-
-        // gsDebug<<evL.eval(dzW2,pts)<<"\n";
-
-
-        // exL.assemble((u * F * meas(G) - ( ( N * E_m_der.tr() - M * E_f_der.tr() ) * meas(G)) * meas(mapL));
-        // gsDebugVar(exL.rhs().sum());
-
-
-
-        // // Construct the solution for plotting the mesh later
-        // pa.constructSolution(solVector, mpsol);
-        // gsField<> sol(pa.patches(), mpsol);
-
-        // // The vector with element-wise local error estimates.
-        // evL.maxElWise( uL_sol.norm() );
-        // const std::vector<real_t> & elErrEst = evL.elementwise();
-
-        // gsElementErrorPlotter<real_t> err_eh(basisL.basis(0),elErrEst);
-        // const gsField<> elemError_eh( mpL, err_eh, false );
-        // gsWriteParaview<>( elemError_eh, "error_elem_eh", 1000);
-
-        // Get the vector with element-wise local (known in this case) errors...
-        //gsExprEvaluator<>::variable gg = ev.getVariable(g, Gm);
-        //ev.integralElWise( (f1 - gg).sqNorm() * meas(Gm) );
-        //const std::vector<real_t> & elErrEst = ev.elementwise();
-
-        // // Mark elements for refinement, based on the computed local errors and
-        // // refCriterion and refParameter.
-        // elMarked.resize( elErrEst.size() );
-        // gsMarkElementsForRef( elErrEst, refCriterion, refParameter, elMarked);
-
-        // gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true)<<" elements\n";
-
-        // // Refine the elements of the mesh, based on elMarked.
-        // if (RefineLoop != RefineLoopMax)
-        // {
-        //     gsRefineMarkedElements( mpL, elMarked);
-        //     gsRefineMarkedElements( mpH, elMarked);
-        //     gsWriteParaview<>( mpL, "mp", 1000, true);
-        // }
-
-
-        // if ( (RefineLoop == RefineLoopMax) && plot)
-        // {
-        //     // Write approximate solution to paraview files
-        //     gsInfo<<"Plotting in Paraview...\n";
-        //     gsWriteParaview<>(sol, "p2d_adaRef_sol", 5001, true);
-        //     // Run paraview and plot the last mesh
-        //     gsFileManager::open("p2d_adaRef_sol.pvd");
-        // }
-*/
-    }
-
-
-    //! [Export visualization in ParaView]
-    if (plot)
-    {
-        gsMatrix<> cc;
-        uL_sol.setSolutionVector(solVectorL);
-        mp_def = mp;
-
-        for ( size_t k =0; k!=mp.nPatches(); ++k) // Deform the geometry
-        {
-            // extract deformed geometry
-            uL_sol.extract(cc, k);
-            mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
-        }
-        gsWriteParaview<>( mp_def, "mp_def", 1000, true);
-        gsWriteParaview<>( mp_ex , "mp_ex" , 1000, true);
-
-        gsMultiPatch<> deformation = mp_def;
-        for (index_t k = 0; k != mp_def.nPatches(); ++k)
-            deformation.patch(k).coefs() -= mp.patch(k).coefs();
-
-        gsField<> solField(mp, deformation);
-        gsInfo<<"Plotting in Paraview...\n";
-        gsWriteParaview<>( solField, "solution", 1000, true);
-
-        gsInfo<<"Plotting in Paraview...\n";
-        evL.options().setSwitch("plot.elements", true);
-        evH.options().setSwitch("plot.elements", true);
-        evL.writeParaview( defL-mapL   , mapL, "solution_primalL");
-        evL.writeParaview( zL_sol   , mapL, "solution_dualL");
-        evH.writeParaview( zH_sol   , mapH, "solution_dualH");
-        evL.writeParaview( zH2-zL_sol   , mapL, "solution_dual");
-        evRef.writeParaview( defRef-mapRef   , mapRef, "solution_dual_exact");
-
-        // ev.options().setSwitch("plot.elements", true);
-        // ev.writeParaview( S_f2, G, "stress");
-        // evaluateFunction(ev, S_f2[0], pt); // evaluates an expression on a point
-
-
-        // gsFileManager::open("solution.pvd");
-    }
+    } //end for
 
     return EXIT_SUCCESS;
-
 }// end main
 
 template <class T>
