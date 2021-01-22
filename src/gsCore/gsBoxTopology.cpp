@@ -26,29 +26,69 @@ std::ostream & gsBoxTopology::print(std::ostream &os) const
     }
     else
         os << "gsBoxTopology ( empty! ).\n";
-    
-    os << "Boundaries:";
+
+    os << "Boundaries(" << m_boundary.size() << "):\n";
     if ( m_boundary.size() )
     {
         for( std::vector< patchSide >::const_iterator bit =
                  m_boundary.begin(); bit != m_boundary.end(); ++bit )
         {
-            os <<"\n"<< *bit <<" ";
+            os <<"\t"<< *bit <<"\n";
         }
     }
     else
         os << " (none)";
-    os << "\nInterfaces:";
+    os << "\nInterfaces("<< m_interfaces.size() <<"):\n";
     if ( m_interfaces.size() )
     {
         for( std::vector< boundaryInterface >::const_iterator iit =
                  m_interfaces.begin(); iit != m_interfaces.end(); ++iit )
         {
-            os <<"\n"<< *iit <<" ";
+            os <<"\t"<< *iit <<"\n";
         }
+        os << m_interfaces.begin()._Unwrapped()->dirMap() << " ";
+        os << m_interfaces.begin()._Unwrapped()->dirOrientation() << std::endl;
     }
     else
         os << " (none)";
+    return os;
+}
+
+std::ostream& gsBoxTopology::printLikeXML(std::ostream& os, int StartIndex) const
+{
+
+    if (nboxes > 0){
+        os << "Create Topology for " << nboxes << " patches\n";
+    }
+    else {
+        os << "No patches found\n";
+    }
+
+    os << "Boundaries(" << m_boundary.size() << "):\n";
+    if (m_boundary.size())
+    {
+        for (std::vector< patchSide >::const_iterator bit = m_boundary.begin(); bit != m_boundary.end(); ++bit)
+        {
+            os << "\t" << StartIndex+bit._Unwrapped()->patch << " " << bit._Unwrapped()->index() << "\n";
+        }
+    }
+
+
+    os << "\nInterfaces(" << m_interfaces.size() << "):\n";
+    if (m_interfaces.size())
+    {
+        for (std::vector< boundaryInterface >::const_iterator iit = m_interfaces.begin(); iit != m_interfaces.end(); ++iit)
+        {
+            os << "\t" << StartIndex+iit._Unwrapped()->first().patch << " " << iit._Unwrapped()->first().index() << " " << StartIndex+iit._Unwrapped()->second().patch << " " <<  iit._Unwrapped()->second().index() << " ";
+
+            os << iit._Unwrapped()->dirMap().asRowVector() << " ";
+            os << iit._Unwrapped()->dirOrientation().asRowVector() << std::endl;
+        }
+    }
+    else {
+        os << "\t(none)";
+    }
+
     return os;
 }
 

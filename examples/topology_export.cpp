@@ -23,18 +23,33 @@ int main(int argc, char *argv[])
     std::string save;
     real_t tol = 1e-4;
     bool verbose = false;
+    int startIndex = 0;
 
     gsCmdLine cmd("Adds topology to multipatch file.");
     cmd.addReal("T","tol", "tolerance", tol);
-    cmd.addString("S","save", "Save solution to gismo XML file", save);
+    cmd.addString("f","file", "File from which the geometries must be read", save);
     cmd.addSwitch("verbose","Verbose output", verbose);
+    cmd.addInt("S", "startIndex", "Index From which the geometry Indeces must start", startIndex);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-    GISMO_ENSURE(!save.empty(),"No file path specified.");
+    gsInfo << "\n";
+
+    if (verbose) {
+        if (save.empty()) {
+            gsInfo << "gsError: \t" << "No file path specified";
+        }
+    }
+    GISMO_ENSURE(!save.empty(), "No file path specified.");
 
     gsFileData<> fd(save);
+
+    if (verbose) {
+        if (!fd.template has<gsMultiPatch<real_t>>()) {
+            gsInfo << "gsError: \t" << "File does not have a Multipatch object!";
+        }
+    }
     GISMO_ENSURE(fd.template has<gsMultiPatch<real_t>>(),"File does not have a Multipatch object!");
 
     if (verbose)
@@ -50,14 +65,19 @@ int main(int argc, char *argv[])
     mp.clearTopology();
     mp.computeTopology(tol);
 
+
+    std::string TopologyData;
+
+    mp.topology().printLikeXML(std::cout, startIndex);
+
+
     if (verbose)
     {
         gsInfo<<"Writing geometry to XML...\n";
         gsInfo<<"Path = "<<save<<"\n";
     }
 
-    gsWrite(mp,save);
-
+    //gsWrite(mp,save);
     return EXIT_SUCCESS;
 
 }// end main

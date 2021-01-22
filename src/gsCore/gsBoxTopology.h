@@ -76,13 +76,14 @@ public:
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const;
+    std::ostream& printLikeXML(std::ostream& os, int StartIndex) const;
 
     /// Print (as string) a boxTopology object
     friend std::ostream& operator<<( std::ostream& os, const gsBoxTopology& b )
     {
         return b.print( os );
     }
-    
+
     /// Number of boxes
     index_t nBoxes() const       { return nboxes; }
 
@@ -91,9 +92,9 @@ public:
 
     /// Set the dimension of the boxes
     void setDim  (short_t i)
-    { 
+    {
         GISMO_ASSERT(m_dim==-1 || i==m_dim, "Changing box dimension.");
-        m_dim = i; 
+        m_dim = i;
     }
 
     /// Number of interfaces
