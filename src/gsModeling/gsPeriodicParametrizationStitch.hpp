@@ -20,8 +20,6 @@ namespace gismo
 
 /* Nested class Neighbourhood */
 
-
-
 template<class T>
 std::vector<size_t> gsPeriodicParametrizationStitch<T>::Neighbourhood::computeCorrections(const std::vector<size_t>& stitchIndices,
 											  const LocalNeighbourhood& localNeighbourhood) const
@@ -77,38 +75,26 @@ std::vector<size_t> gsPeriodicParametrizationStitch<T>::Neighbourhood::computeCo
 
 template<class T>
 gsPeriodicParametrizationStitch<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo,
-						   const std::vector<size_t>& stitchIndices,
-						   std::vector<std::vector<size_t> >& posCorrections,
-						   std::vector<std::vector<size_t> >& negCorrections,
-						   const size_t parametrizationMethod)
+								 const std::vector<size_t>& stitchIndices,
+								 gsMatrix<int>& corrections,
+								 const size_t parametrizationMethod)
     : gsParametrization<T>::Neighbourhood(meshInfo, parametrizationMethod)
 {
     // We re-do a little of the work done already in the constructor of the parent class.
     // Alternatively, we could provide a constructor of the parent class setting m_basicInfos
     // and do everything else here, much as we did when this was a part of the parent class.
     // Cf., e.g., fcacc860ee28edd608e841af5aeb74dacc90e006 for a reference.
-    posCorrections.resize(meshInfo.getNumberOfVertices());
-    negCorrections.resize(meshInfo.getNumberOfVertices());
 
-    for(size_t i=1; i <= meshInfo.getNumberOfInnerVertices(); i++)
+    for(size_t i=1; i <= meshInfo.getNumberOfVertices(); i++)
     {
-	LocalNeighbourhood localNeighbourhood(meshInfo, i);
+	LocalNeighbourhood localNeighbourhood = (i <= meshInfo.getNumberOfInnerVertices()) ? LocalNeighbourhood(meshInfo, i) : LocalNeighbourhood(meshInfo, i, 0);
 
-	posCorrections[i-1] = computeCorrections(stitchIndices, localNeighbourhood);
-	for(size_t j=0; j < posCorrections[i-1].size(); j++)
+	std::vector<size_t> corr = computeCorrections(stitchIndices, localNeighbourhood);
+	
+	for(auto it=corr.begin(); it!=corr.end(); ++it)
 	{
-	    negCorrections[posCorrections[i-1][j]-1].push_back(i);
-	}
-    }
-
-    for(size_t i=meshInfo.getNumberOfInnerVertices()+1; i<= meshInfo.getNumberOfVertices(); i++)
-    {
-	LocalNeighbourhood localNeighbourhood(meshInfo, i, 0);
-
-	posCorrections[i-1] = computeCorrections(stitchIndices, localNeighbourhood);
-	for(size_t j=0; j < posCorrections[i-1].size(); j++)
-	{
-	    negCorrections[posCorrections[i-1][j]-1].push_back(i);
+	    corrections(i-1, *it-1) = 1;
+	    corrections(*it-1, i-1) = -1;
 	}
     }
 }
@@ -150,7 +136,10 @@ void gsPeriodicParametrizationStitch<T>::calculate_periodic_stitch(const size_t 
     size_t n = this->m_mesh.getNumberOfInnerVertices();
     size_t N = this->m_mesh.getNumberOfVertices();
 
-    Neighbourhood neighbourhood(this->m_mesh, stitchIndices, m_posCorrections, m_negCorrections, paraMethod);
+    m_corrections.resize(N, N);
+    m_corrections.setZero();
+
+    Neighbourhood neighbourhood(this->m_mesh, stitchIndices, m_corrections, paraMethod);
 
     this->m_parameterPoints.reserve(N);
     for (size_t i = 1; i <= n; i++)
@@ -193,16 +182,11 @@ void gsPeriodicParametrizationStitch<T>::constructAndSolveEquationSystem(const N
         for (size_t j = 0; j < N; j++)
         {
             LHS(i, j) = ( i==j ? T(1) : -lambdas[j] );
-	}
 
-	for (size_t j = 0; j < m_posCorrections[i].size(); j++)
-	{
-	    RHS(i, 0) -= lambdas[ m_posCorrections[i][j] - 1 ];
-	}
-	// TODO: Actually, one can work directly with posCorrections.
-	for (size_t j = 0; j < m_negCorrections[i].size(); j++)
-	{
-	    RHS(i, 0) += lambdas[ m_negCorrections[i][j] - 1];
+	    if(m_corrections(i, j) == 1)
+		RHS(i, 0) -= lambdas[j];
+	    else if(m_corrections(i, j) == -1)
+	    	RHS(i, 0) += lambdas[j];
 	}
     }
 
@@ -223,88 +207,37 @@ void gsPeriodicParametrizationStitch<T>::constructAndSolveEquationSystem(const N
 }
 
 template<class T>
-gsMesh<T> gsPeriodicParametrizationStitch<T>::createFlatMesh(bool restrict) const
+gsMesh<T> gsPeriodicParametrizationStitch<T>::createUnfoldedFlatMesh() const
 {
-    // We unfold the mesh first.
-    gsMesh<T> mesh;
-    for (size_t i = 0; i < this->m_mesh.getNumberOfTriangles(); i++)
+    typedef typename gsMesh<T>::VertexHandle       VertexHandle;
+    typedef typename gsParametrization<T>::Point2D Point2D;
+
+    gsMesh<T> result;
+    for(size_t i=0; i<this->m_mesh.getNumberOfTriangles(); i++)
     {
-	bool normalTriangle = false;
-
-	bool correctors[3];
-	correctors[0] = false;
-	correctors[1] = false;
-	correctors[2] = false;
-
-        for (size_t j = 1; j <= 3; ++j)
-        {
-	    // Note: globIndex is numbered from 1 and so are the contents of m_posCorrections.
-	    size_t globIndex = this->m_mesh.getGlobalVertexIndex(j, i);
-
-	    // If we find a vertex that is neither on a stitch nor in
-	    // a correction, we mark the triangle as normal.
-	    if(!normalTriangle)
-	    {
-		// If it's not on the stitch, we look whether it is in the corrections.
-		if(m_posCorrections[globIndex-1].size() == 0)
-		{
-		    bool isNearStitch = false;
-		    for(size_t k = 0; k < m_posCorrections.size(); k++)
-		    {
-			for(size_t l = 0; l < m_posCorrections[k].size(); l++)
-			{
-			    if(m_posCorrections[k][l] == globIndex)
-			    {
-				isNearStitch = true;
-				correctors[j-1] = true;
-			    }
-			}
-		    }
-		    if(!isNearStitch)
-			normalTriangle = true;
-		}
-	    }
-	}
-
-	// Normal triangle means it does not intersect the domain boundary.
-	if(normalTriangle)
+	std::vector<size_t> vertices;
+	for(size_t j=1; j<=3; ++j)
 	{
-	    typename gsMesh<T>::VertexHandle v[3];
-	    for (size_t j = 1; j <= 3; ++j)
-	    {
-		v[j - 1] = mesh.addVertex(gsParametrization<T>::getParameterPoint(this->m_mesh.getGlobalVertexIndex(j, i))[0],
-					  gsParametrization<T>::getParameterPoint(this->m_mesh.getGlobalVertexIndex(j, i))[1]);
-	    }
-	    mesh.addFace( v[0],  v[1],  v[2]);
+	    vertices.push_back(this->m_mesh.getGlobalVertexIndex(j, i));
+ 	}
+	bool nearStitchTriangle = (edgeIsInCorrections(vertices[0]-1, vertices[1]-1) ||
+				   edgeIsInCorrections(vertices[1]-1, vertices[2]-1) ||
+				   edgeIsInCorrections(vertices[2]-1, vertices[0]-1));
+
+	VertexHandle v[3];
+	for (size_t j = 1; j <= 3; ++j)
+	{		
+	    const Point2D& point = gsParametrization<T>::getParameterPoint(vertices[j-1]);
+	    // The near-stitch triangles get their stitch vertices shifted by 1 to the left.
+	    if( nearStitchTriangle && isOnStitch(vertices[j-1]) )
+		v[j - 1] = result.addVertex(point[0] + 1, point[1]);
+	    else
+		v[j - 1] = result.addVertex(point[0],     point[1]);
 	}
-	else
-	{
-	    typename gsMesh<T>::VertexHandle v[3];
-	    for (size_t j = 1; j <= 3; ++j)
-	    {
-		if(correctors[j-1])
-		{
-		    v[j - 1] = mesh.addVertex(gsParametrization<T>::getParameterPoint(this->m_mesh.getGlobalVertexIndex(j, i))[0]-1,
-					      gsParametrization<T>::getParameterPoint(this->m_mesh.getGlobalVertexIndex(j, i))[1]);
-		}
-		else
-		{
-		    v[j - 1] = mesh.addVertex(gsParametrization<T>::getParameterPoint(this->m_mesh.getGlobalVertexIndex(j, i))[0],
-					      gsParametrization<T>::getParameterPoint(this->m_mesh.getGlobalVertexIndex(j, i))[1]);
-		}
-	    }
-	    mesh.addFace( v[0],  v[1],  v[2]);
-	}	    
+	result.addFace( v[0],  v[1],  v[2]);
     }
 
-    gsMesh<T> unfolded = mesh.cleanMesh();
-    if(restrict)
-    {
-	typename gsPeriodicParametrization<T>::FlatMesh display(unfolded);
-	return display.createRestrictedFlatMesh();
-    }
-    else
-	return unfolded;
+    return result.cleanMesh();
 }
 
 } // namespace gismo

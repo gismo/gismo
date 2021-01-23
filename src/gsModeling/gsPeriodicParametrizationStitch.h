@@ -1,8 +1,17 @@
 /** @file gsPeriodicParametrizationStitch.h
 
     @brief Implementation of periodic Floater parametrization using a
-    stitch. This is an alternative to gsPeriodicParametrizationOverlap
-    class.
+    stitch. The idea is adapted from
+
+    Tong, Y., Alliez, P., Cohen-Steiner, D., Desbrun, M.: Designing
+    quadrangulations with discrete harmonic forms, in: Sheffer, A.,
+    Polthier, K. (Eds.), Symposium on Geometry Processing,
+    Eurographics. pp. 201–210, 2006,
+
+    where it was used constructing discrete harmonic mappings on
+    arbitrary topology.
+
+    This class is an alternative to gsPeriodicParametrizationOverlap.
 
     This file is part of the G+Smo library.
 
@@ -31,8 +40,7 @@ class GISMO_EXPORT gsPeriodicParametrizationStitch : public gsPeriodicParametriz
 
 	explicit Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
 			       const std::vector<size_t>& stitchIndices,
-			       std::vector<std::vector<size_t> >& posCorrections,
-			       std::vector<std::vector<size_t> >& negCorrections,
+			       gsMatrix<int>& corrections,
 			       const size_t parametrizationMethod = 2);
 
     private:
@@ -71,20 +79,50 @@ protected:
     // From here on the visualisation methods
 public:
 
-    using gsParametrization<T>::createFlatMesh;
     // TODO: remove
-    //using gsPeriodicParametrizationOverlap<T>::createFlatMesh;
+    using gsParametrization<T>::createFlatMesh;
 
     /**
      * Creates a flat mesh out of a periodic parametrization created by a the stitch method.
      * @param posCorrections Positive corrections from the stitch algorithm.
      * @param restrict If set to true, the mesh is restricted to [0, 1]^2.
      */
-    gsMesh<T> createFlatMesh(bool restrict) const;
+    gsMesh<T> createFlatMesh(bool restrict) const
+    {
+    	gsMesh<T> unfolded = createUnfoldedFlatMesh();
+    	if(restrict)
+    	{
+    		typename gsPeriodicParametrization<T>::FlatMesh display(unfolded);
+    		return display.createRestrictedFlatMesh();
+    	}
+    	else
+    	    return unfolded;
+    }
 
 protected:
-    std::vector<std::vector<size_t> > m_posCorrections;
-    std::vector<std::vector<size_t> > m_negCorrections;
+    gsMesh<T> createUnfoldedFlatMesh() const;
+
+    // Alternatively, one can save the stitch vertices into a vector beforehand.
+    // vertexIndex is numbered from 1
+    bool isOnStitch(size_t vertexIndex) const
+    {
+	for(index_t c=0; c<m_corrections.cols(); c++)
+	    if(m_corrections(vertexIndex-1, c) == 1)
+		return true;
+	return false;
+    }
+
+    bool edgeIsInCorrections(index_t beg, index_t end) const
+    {
+	return ((m_corrections(beg, end) ==  1) ||
+		(m_corrections(beg, end) == -1) ||
+		(m_corrections(end, beg) ==  1) ||
+		(m_corrections(end, beg) == -1));
+	// Actually, the first two conditions should be enough.		
+    }
+
+protected:
+    gsMatrix<int> m_corrections;
 };
 
 } // namespace gismo
