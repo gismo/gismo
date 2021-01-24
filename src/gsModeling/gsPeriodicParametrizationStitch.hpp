@@ -106,36 +106,33 @@ gsPeriodicParametrizationStitch<T>::Neighbourhood::Neighbourhood(const gsHalfEdg
 }
 
 template <class T>
-gsPeriodicParametrizationStitch<T>& gsPeriodicParametrizationStitch<T>::compute_periodic_stitch(std::string bottomFile,
-												std::string topFile,
-												std::string stitchFile)
+gsPeriodicParametrizationStitch<T>& gsPeriodicParametrizationStitch<T>::compute(const gsMatrix<T>& verticesV0,
+										const gsMatrix<T>& paramsV0,
+										const gsMatrix<T>& verticesV1,
+										const gsMatrix<T>& paramsV1,
+										const gsMatrix<T>& stitchVertices)
 {
-    // Read the indices and u-coordinates of the points with v=0.
-    std::vector<size_t> indicesV0;
-    std::vector<T> valuesV0;
-    gsParametrization<T>::readIndicesAndValues(bottomFile, indicesV0, valuesV0);
+    GISMO_ASSERT(paramsV0.rows() == 1, "one row expected in paramsV0");
+    GISMO_ASSERT(paramsV1.rows() == 1, "one row expected in paramsV1");
 
-    // Read the indices and u-coordinates of the points with v=1.
-    std::vector<size_t> indicesV1;
-    std::vector<T> valuesV1;
-    gsParametrization<T>::readIndicesAndValues(topFile, indicesV1, valuesV1);
+    // Convert the coordinates to the indices of the corresponding vertices.
+    std::vector<size_t> indicesV0     = this->indices(verticesV0);
+    std::vector<size_t> indicesV1     = this->indices(verticesV1);
+    std::vector<size_t> stitchIndices = this->indices(stitchVertices);
 
-    // Read the indices of the points on the stitch.
-    std::vector<size_t> stitchIndices = gsParametrization<T>::readIndices(stitchFile);
-
-    // Calculation itself.
-    calculate_periodic_stitch(this->m_options.getInt("parametrizationMethod"),
-			      indicesV0, valuesV0, indicesV1, valuesV1, stitchIndices);
+    // calculation itself
+    calculate(this->m_options.getInt("parametrizationMethod"),
+	      indicesV0, paramsV0, indicesV1, paramsV1, stitchIndices);
     return *this;
 }
 
 template<class T>
-void gsPeriodicParametrizationStitch<T>::calculate_periodic_stitch(const size_t paraMethod,
-								   const std::vector<size_t>& indicesV0,
-								   const std::vector<T>& valuesV0,
-								   const std::vector<size_t>& indicesV1,
-								   const std::vector<T>& valuesV1,
-								   const std::vector<size_t>& stitchIndices)
+void gsPeriodicParametrizationStitch<T>::calculate(const size_t paraMethod,
+						   const std::vector<size_t>& indicesV0,
+						   const gsMatrix<T>& valuesV0,
+						   const std::vector<size_t>& indicesV1,
+						   const gsMatrix<T>& valuesV1,
+						   const std::vector<size_t>& stitchIndices)
 {
     typedef typename gsParametrization<T>::Point2D       Point2D ;
 
@@ -151,8 +148,16 @@ void gsPeriodicParametrizationStitch<T>::calculate_periodic_stitch(const size_t 
     }
 
     // Add the parameters of the boundary points.
-    GISMO_ASSERT(indicesV0.size() == valuesV0.size(), "Different sizes of u0.");
-    GISMO_ASSERT(indicesV1.size() == valuesV1.size(), "Different sizes of u1.");
+    size_t v0cols = valuesV0.cols();
+    size_t v1cols = valuesV1.cols();
+
+    // Note: this yields a warning in the release mode.
+    // Alternatively, one could turn valuesV0 into std::vector<T> but
+    // then user could not directly read it from .xml.
+    // TODO: Discuss!
+
+    GISMO_ASSERT(indicesV0.size() == v0cols, "Different sizes of u0.");
+    GISMO_ASSERT(indicesV1.size() == v1cols, "Different sizes of u1.");
     GISMO_ASSERT(indicesV0.size() + indicesV1.size() == this->m_mesh.getNumberOfBoundaryVertices(),
 		 "Not prescribing all boundary points.");
 
@@ -161,11 +166,11 @@ void gsPeriodicParametrizationStitch<T>::calculate_periodic_stitch(const size_t 
 
     // Set the parameter values on the v=0 boundary.
     for(size_t i=0; i<indicesV0.size(); i++)
-    	this->m_parameterPoints[indicesV0[i]-1] = Point2D(valuesV0[i], 0, numPtsSoFar++);
+	this->m_parameterPoints[indicesV0[i]-1] = Point2D(valuesV0(i, 0), 0, numPtsSoFar++);
 
     // Set the parameter values on the v=1 boundary.
     for(size_t i=0; i<indicesV1.size(); i++)
-	this->m_parameterPoints[indicesV1[i]-1] = Point2D(valuesV1[i], 1, numPtsSoFar++);
+	this->m_parameterPoints[indicesV1[i]-1] = Point2D(valuesV1(i, 0), 1, numPtsSoFar++);
 
     /// Solve.
     constructAndSolveEquationSystem(neighbourhood, n, N);

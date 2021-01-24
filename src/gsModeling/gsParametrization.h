@@ -412,6 +412,17 @@ protected:
 	}
     }
 
+    std::vector<size_t> indices(const gsMatrix<T>& vertices) const
+    {
+	std::vector<size_t> result;
+	GISMO_ASSERT(vertices.rows() == 3, "three rows expected in vertices");
+	for(index_t c=0; c<vertices.cols(); c++)
+	{
+	    result.push_back(m_mesh.findVertex(vertices(0, c), vertices(1, c), vertices(2, c), true));
+	}
+	return result;
+    }
+
     void calculate(const size_t boundaryMethod,
                    const size_t paraMethod,
                    const std::vector<index_t> &cornersInput,

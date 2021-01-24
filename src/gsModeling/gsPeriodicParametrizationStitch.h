@@ -102,35 +102,35 @@ public:
 
     /**
      * Computes the periodic parametrization.
-     * @param bottomFile name of a file containing vertices with v=0
-     * (as a gsMatrix with id 1 and 3 rows) and their u-coordinates
-     * (gsMatrix with id 0 and 1 row)
-     * @param topFile name of a file containing the vertices with
-     * v=1 and their u-coordinates in the same format as in @a
-     * bottomFile
-     * @stitchFile name of a file containing the vertices on the
-     * stitch (as a gsMatrix with 3 rows)
+     * @param verticesV0 matrix with three rows containing the vertices with v=0
+     * @param paramsV0 matrix with one row containing the u-parameters of vertices with v=0
+     * @param verticesV1 matrix with three rows containing the vertices with v=1
+     * @param paramsV1 matrix with one row containing the u-parameters of vertices with v=1
+     * @param stitchVertices matrix with three rows containing the vertices on the stitch
      */
-    gsPeriodicParametrizationStitch<T>& compute_periodic_stitch(std::string bottomFile,
-								std::string topFile,
-								std::string stitchFile);
+    gsPeriodicParametrizationStitch<T>& compute(const gsMatrix<T>& verticesV0,
+						const gsMatrix<T>& paramsV0,
+						const gsMatrix<T>& verticesV1,
+						const gsMatrix<T>& paramsV1,
+						const gsMatrix<T>& stitchVertices);
+
 
 protected:
     /**
      * Calculation itself
      * @param paraMethod parametrization method (cf. gsParametrization<T>)
      * @param indicesV0 indices of the vertices with v=0
-     * @param valuesV0 u-coordinates of the vertices with v=0
+     * @param valuesV0 u-coordinates of the vertices with v=0 (in one row)
      * @param indicesV1 indices of the vertices with v=1
-     * @param valuesV1 u-coordinates of the vertices with v=1
+     * @param valuesV1 u-coordinates of the vertices with v=1 (in one row)
      * @param stitchIndices indices of the vertices on the stitch
      */
-    void calculate_periodic_stitch(const size_t paraMethod,
-				   const std::vector<size_t>& indicesV0,
-				   const std::vector<T>& valuesV0,
-				   const std::vector<size_t>& indicesV1,
-				   const std::vector<T>& valuesV1,
-				   const std::vector<size_t>& stitchIndices);
+    void calculate(const size_t paraMethod,
+		   const std::vector<size_t>& indicesV0,
+		   const gsMatrix<T>& valuesV0,
+		   const std::vector<size_t>& indicesV1,
+		   const gsMatrix<T>& valuesV1,
+		   const std::vector<size_t>& stitchIndices);
 
     /** Similar to @a constructAndSolveEquationSystem but works for
      * periodic meshes using the corrections.
@@ -140,9 +140,6 @@ protected:
 					 const size_t N);
 
 public:
-
-    // TODO: Can we remove this?
-    using gsParametrization<T>::createFlatMesh;
 
     /**
      * Creates a flat mesh out of a periodic parametrization created by a the stitch method.
