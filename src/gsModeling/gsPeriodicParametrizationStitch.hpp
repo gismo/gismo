@@ -85,6 +85,10 @@ gsPeriodicParametrizationStitch<T>::Neighbourhood::Neighbourhood(const gsHalfEdg
     // and do everything else here, much as we did when this was a part of the parent class.
     // Cf., e.g., fcacc860ee28edd608e841af5aeb74dacc90e006 for a reference.
 
+    index_t N = meshInfo.getNumberOfVertices();
+    corrections.resize(N, N);
+    corrections.setZero(); // important, otherwise you might end up with artifacts
+
     for(size_t i=1; i <= meshInfo.getNumberOfVertices(); i++)
     {
 	LocalNeighbourhood localNeighbourhood = (i <= meshInfo.getNumberOfInnerVertices()) ? LocalNeighbourhood(meshInfo, i) : LocalNeighbourhood(meshInfo, i, 0);

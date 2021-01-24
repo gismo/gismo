@@ -22,7 +22,9 @@ namespace gismo
 /**
  * A class for computing periodic parametrizations of closed
  * (cylinder-like) surface meshes. The result will be periodic in the
- * u-direction and the parameter domain will be [0, 1]^2.
+ * u-direction and the parameter domain will be [0, 1]^2. An
+ * alternative implementation is given in
+ * gsPeriodicParametrizationOverlap.
  *
  * Main idea
  * =========
