@@ -21,6 +21,27 @@
 
 using namespace gismo;
 
+template <class T>
+void readParsAndPts(const std::string& filename,
+		    gsMatrix<T>& pars,
+		    gsMatrix<T>& pts)
+{
+    gsFileData<T> fd(filename);
+    // Cf. https://stackoverflow.com/questions/3505713/c-template-compilation-error-expected-primary-expression-before-token
+    fd.template getId<gsMatrix<T> >(0, pars);
+    fd.template getId<gsMatrix<T> >(1, pts);
+
+    GISMO_ASSERT(pars.cols() == pts.cols(), "The numbers of parameters and points differ.");
+}
+
+template <class T>
+void readPts(const std::string& filename,
+	     gsMatrix<T>& pts)
+{
+    gsFileData<T> fd(filename);
+    fd.template getId<gsMatrix<T> >(0, pts);
+}
+
 int main(int argc, char *argv[])
 {
     bool paraview = false;
@@ -139,10 +160,24 @@ int main(int argc, char *argv[])
     gsInfo << "gsParametrization::compute()             ";
     stopwatch.restart();
 
-    if( domainMethod == overlap )
-	pm_over->compute_periodic_overlap(filenameV0, filenameV1, filenameOverlap);
-    else if( domainMethod == stitch )
-	pm_stitch->compute_periodic_stitch(filenameV0, filenameV1, filenameStitch);
+    if(domainMethod == overlap || domainMethod == stitch)
+    {
+	gsMatrix<real_t> verticesV0, paramsV0, verticesV1, paramsV1, stitchVertices;
+	readParsAndPts(filenameV0, paramsV0, verticesV0);
+	readParsAndPts(filenameV1, paramsV1, verticesV1);
+
+	if(domainMethod == overlap)
+	{
+	    gsFileData<real_t> fd_overlap(filenameOverlap);
+	    gsMesh<real_t> overlap = *(fd_overlap.getFirst<gsMesh<real_t> >());
+	    pm_over->compute(verticesV0, paramsV0, verticesV1, paramsV1, overlap);
+	}
+	else // domainMethod == stitch
+	{
+	    readPts(filenameStitch,    stitchVertices);
+	    pm_stitch->compute(verticesV0, paramsV0, verticesV1, paramsV1, stitchVertices);
+	}
+    }
     // else if(domainMethod == free)
     // 	pm_free->compute_free_boundary();
     // else if(domainMethod == iterative)

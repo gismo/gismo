@@ -18,33 +18,31 @@ namespace gismo
 {
 
 template <class T>
-gsPeriodicParametrizationOverlap<T>& gsPeriodicParametrizationOverlap<T>::compute_periodic_overlap(std::string bottomFile,
-												   std::string topFile,
-												   std::string overlapFile)
+gsPeriodicParametrizationOverlap<T>& gsPeriodicParametrizationOverlap<T>::compute(const gsMatrix<T>& verticesV0,
+										  const gsMatrix<T>& paramsV0,
+										  const gsMatrix<T>& verticesV1,
+										  const gsMatrix<T>& paramsV1,
+										  const gsMesh<T>& overlap)
 {
-    std::vector<size_t> indicesV0;
-    std::vector<T> valuesV0;
-    gsParametrization<T>::readIndicesAndValues(bottomFile, indicesV0, valuesV0);
+    GISMO_ASSERT(paramsV0.rows() == 1, "one row expected in paramsV0");
+    GISMO_ASSERT(paramsV1.rows() == 1, "one row expected in paramsV1");
 
-    std::vector<size_t> indicesV1;
-    std::vector<T> valuesV1;
-    gsParametrization<T>::readIndicesAndValues(topFile, indicesV1, valuesV1);
+    std::vector<size_t> indicesV0 = this->indices(verticesV0);
+    std::vector<size_t> indicesV1 = this->indices(verticesV1);
+    m_overlapHEM = gsHalfEdgeMesh<T>(overlap);
 
-    gsFileData<> fd_overlap(overlapFile);
-    m_overlapHEM = gsHalfEdgeMesh<T>( *(fd_overlap.getFirst<gsMesh<real_t> >()) );
-
-    calculate_periodic_overlap(this->m_options.getInt("parametrizationMethod"),
-			       indicesV0, valuesV0, indicesV1, valuesV1);
+    calculate(this->m_options.getInt("parametrizationMethod"),
+	      indicesV0, paramsV0, indicesV1, paramsV1);
 
     return *this;
 }
 
 template<class T>
-void gsPeriodicParametrizationOverlap<T>::calculate_periodic_overlap(const size_t paraMethod,
-								     const std::vector<size_t>& indicesV0,
-								     const std::vector<T>& valuesV0,
-								     const std::vector<size_t>& indicesV1,
-								     const std::vector<T>& valuesV1)
+void gsPeriodicParametrizationOverlap<T>::calculate(const size_t paraMethod,
+						    const std::vector<size_t>& indicesV0,
+						    const gsMatrix<T>& paramsV0,
+						    const std::vector<size_t>& indicesV1,
+						    const gsMatrix<T>& paramsV1)
 {
     typedef typename gsParametrization<T>::Point2D       Point2D ;
     size_t n = this->m_mesh.getNumberOfInnerVertices();
@@ -52,26 +50,7 @@ void gsPeriodicParametrizationOverlap<T>::calculate_periodic_overlap(const size_
 
     Neighbourhood neighbourhood(this->m_mesh, paraMethod);
 
-    this->m_parameterPoints.reserve(N);
-    for (size_t i = 1; i <= n; i++)
-    {
-	this->m_parameterPoints.push_back(Point2D(0, 0, i));
-    }
-
-    // Add the parameters of the boundary points.
-    GISMO_ASSERT(indicesV0.size() == valuesV0.size(), "Different sizes of u0.");
-    GISMO_ASSERT(indicesV1.size() == valuesV1.size(), "Different sizes of u1.");
-    GISMO_ASSERT(indicesV0.size() + indicesV1.size() == this->m_mesh.getNumberOfBoundaryVertices(),
-		 "Not prescribing all boundary points.");
-
-    size_t numPtsSoFar = n;
-    this->m_parameterPoints.resize(n + indicesV0.size() + indicesV1.size());
-
-    for(size_t i=0; i<indicesV0.size(); i++)
-    	this->m_parameterPoints[indicesV0[i]-1] = Point2D(valuesV0[i], 0, numPtsSoFar++);
-
-    for(size_t i=0; i<indicesV1.size(); i++)
-	this->m_parameterPoints[indicesV1[i]-1] = Point2D(valuesV1[i], 1, numPtsSoFar++);
+    this->initParameterPoints(indicesV0, paramsV0, indicesV1, paramsV1);
 
     // Construct the twins.
     constructTwins(this->m_mesh.getVertex(indicesV0.front()),

@@ -41,7 +41,7 @@ public:
 	/// Trims the mesh to [0, 1]^2.
 	gsMesh<T> createRestrictedFlatMesh() const;
 
-    private:
+    protected:
 
 	/// Finds the v-coordinate of the point on the line segment
 	/// (@a v0, @a v1) that has the u-coordinate @a u.
@@ -73,7 +73,7 @@ public:
 						       const VertexHandle& v1,
 						       const VertexHandle& v2) const;
 
-    private: // members
+    protected: // members
 	gsHalfEdgeMesh<T> m_unfolded;///< flat mesh possibly intersecting the domain boundaries
     };
 
@@ -98,6 +98,21 @@ public:
      */
     void restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
 			  real_t uMin = 0, real_t uMax = 1) const;
+
+protected:
+
+    /**
+     * Prepares m_parameterPoints for a computation of a periodic parametrization.
+     * Important: Neighbourhood has to be constructed before calling this function.
+     * @param indicesV0 indices of the vertices with v=0
+     * @param valuesV0 u-parameters of the vertices with v=0
+     * @param indicesV1 indices of the vertices with v=1
+     * @param valuesV1 u-parameters of the vertices with v=1
+     */
+    void initParameterPoints(const std::vector<size_t>& indicesV0,
+			     const gsMatrix<T>& valuesV0,
+			     const std::vector<size_t>& indicesV1,
+			     const gsMatrix<T>& valuesV1);
 
 };
 

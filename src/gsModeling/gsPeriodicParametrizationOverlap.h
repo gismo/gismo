@@ -66,12 +66,21 @@ public:
     {
 	// Note: m_twins and m_overlapHEM are initiated later on.
     }
-    
-    /// Analogous main function for periodic parametrizations.
-    // TODO: Move the file inputs outside.
-    gsPeriodicParametrizationOverlap<T>& compute_periodic_overlap(std::string bottomFile,
-								  std::string topFile,
-								  std::string overlapFile);
+
+    /**
+     * Compute the parametrization
+     *
+     * @param paraMethod which parametrization method to use
+     * @param verticesV0 vertices on the bottom (i.e., v = 0) boundary
+     * @param paramsV0 their prescribed parameters
+     * @param verticessV1 vertices on the upper (i.e., v = 1) boundary
+     * @param paramsV1 their prescribed parameters
+     */
+    gsPeriodicParametrizationOverlap<T>& compute(const gsMatrix<T>& verticesV0,
+						 const gsMatrix<T>& paramsV0,
+						 const gsMatrix<T>& verticesV1,
+						 const gsMatrix<T>& paramsV1,
+						 const gsMesh<T>& overlap);
 
 protected:
     /**
@@ -79,15 +88,16 @@ protected:
      *
      * @param paraMethod which parametrization method to use
      * @param indicesV0 indices of the vertices on the bottom (i.e., v = 0) boundary
-     * @param valuesV0 their prescribed parameters
+     * @param paramsV0 their prescribed parameters
      * @param indicesV1 indices of the vertices on the upper (i.e., v = 1) boundary
-     * @param valuesV1 their prescribed parameters
+     * @param paramsV1 their prescribed parameters
      */
-    void calculate_periodic_overlap(const size_t paraMethod,
-				    const std::vector<size_t>& indicesV0,
-				    const std::vector<T>& valuesV0,
-				    const std::vector<size_t>& indicesV1,
-				    const std::vector<T>& valuesV1);
+    void calculate(const size_t paraMethod,
+		   const std::vector<size_t>& indicesV0,
+		   const gsMatrix<T>& paramsV0,
+		   const std::vector<size_t>& indicesV1,
+		   const gsMatrix<T>& paramsV1);
+
 
     /// Finds the twin of the vertex nr. @a vertexId in the mesh.
     size_t findTwin(size_t vertexId) const

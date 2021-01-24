@@ -211,4 +211,45 @@ void gsPeriodicParametrization<T>::restrictMatrices(gsMatrix<T>& uv, const gsMat
     }
 }
 
+template <class T>
+void gsPeriodicParametrization<T>::initParameterPoints(const std::vector<size_t>& indicesV0,
+						       const gsMatrix<T>& valuesV0,
+						       const std::vector<size_t>& indicesV1,
+						       const gsMatrix<T>& valuesV1)
+{
+    typedef typename gsParametrization<T>::Point2D Point2D;
+
+    size_t n = this->m_mesh.getNumberOfInnerVertices();
+    size_t N = this->m_mesh.getNumberOfVertices();
+
+    this->m_parameterPoints.reserve(N);
+    for (size_t i = 1; i <= n; i++)
+	this->m_parameterPoints.push_back(Point2D(0, 0, i));
+
+    // Add the parameters of the boundary points.
+    size_t v0cols = valuesV0.cols();
+    size_t v1cols = valuesV1.cols();
+
+    // Note: this yields a warning in the release mode.
+    // Alternatively, one could turn valuesV0 into std::vector<T> but
+    // then user could not directly read it from .xml.
+    // TODO: Discuss!
+
+    GISMO_ASSERT(indicesV0.size() == v0cols, "Different sizes of u0.");
+    GISMO_ASSERT(indicesV1.size() == v1cols, "Different sizes of u1.");
+    GISMO_ASSERT(indicesV0.size() + indicesV1.size() == this->m_mesh.getNumberOfBoundaryVertices(),
+		 "Not prescribing all boundary points.");
+
+    size_t numPtsSoFar = n;
+    this->m_parameterPoints.resize(n + indicesV0.size() + indicesV1.size());
+
+    // Set the parameter values on the v=0 boundary.
+    for(size_t i=0; i<indicesV0.size(); i++)
+	this->m_parameterPoints[indicesV0[i]-1] = Point2D(valuesV0(i, 0), 0, numPtsSoFar++);
+
+    // Set the parameter values on the v=1 boundary.
+    for(size_t i=0; i<indicesV1.size(); i++)
+	this->m_parameterPoints[indicesV1[i]-1] = Point2D(valuesV1(i, 0), 1, numPtsSoFar++);
+}
+
 } // namespace gismo

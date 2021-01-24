@@ -15,7 +15,6 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsIO/gsOptionList.h>
-#include <gsIO/gsFileData.h> // TODO: Move readIndices and remove this include.
 #include <gsUtils/gsMesh/gsHalfEdgeMesh.h>
 
 namespace gismo
@@ -372,44 +371,15 @@ protected:
     */
     void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood, const size_t n, const size_t N);
 
-    /// Read 3D points from filename.xml and return their indices in m_mesh.
-    std::vector<size_t> readIndices(const std::string& filename) const
+    std::vector<size_t> indices(const gsMatrix<T>& vertices) const
     {
-	gsMatrix<> pts;
-	gsFileData<T> fd(filename);
-	fd.template getId<gsMatrix<T> >(0, pts);
-
 	std::vector<size_t> result;
-	for(index_t c=0; c<pts.cols(); c++)
-	    result.push_back(m_mesh.findVertex(pts(0, c), pts(1, c), pts(2, c), true));
-
-	return result;
-    }
-
-    /** Read 3D points (stored as a matrix with id=0) and their
-     * associated scalars (a matrix with id=1) from filename.xml.
-     * @param filename name of the input file
-     * @param[out] indices of the points from the file in m_mesh
-     * @param[out] values associated to each of the points in the file
-     */
-    void readIndicesAndValues(const std::string& filename,
-			      std::vector<size_t>& indices,
-			      std::vector<T>& values) const
-    {
-	// Cf. https://stackoverflow.com/questions/9338152/must-the-definition-of-a-c-inline-functions-be-in-the-same-file
-	gsFileData<T> fd(filename);
-	gsMatrix<> pars, pts;
-	// Cf. https://stackoverflow.com/questions/3505713/c-template-compilation-error-expected-primary-expression-before-token
-	fd.template getId<gsMatrix<T> >(0, pars);
-	fd.template getId<gsMatrix<T> >(1, pts);
-
-	GISMO_ASSERT(pars.cols() == pts.cols(), "The numbers of parameters and points differ.");
-
-	for(index_t c=0; c<pts.cols(); c++)
+	GISMO_ASSERT(vertices.rows() == 3, "three rows expected in vertices");
+	for(index_t c=0; c<vertices.cols(); c++)
 	{
-	    indices.push_back(m_mesh.findVertex(pts(0, c), pts(1, c), pts(2, c), true));
-	    values.push_back(pars(0, c));
+	    result.push_back(m_mesh.findVertex(vertices(0, c), vertices(1, c), vertices(2, c), true));
 	}
+	return result;
     }
 
     void calculate(const size_t boundaryMethod,
