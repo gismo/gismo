@@ -76,7 +76,7 @@ std::vector<size_t> gsPeriodicParametrizationStitch<T>::Neighbourhood::computeCo
 template<class T>
 gsPeriodicParametrizationStitch<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo,
 								 const std::vector<size_t>& stitchIndices,
-								 gsMatrix<int>& corrections,
+								 gsSparseMatrix<int>& corrections,
 								 const size_t parametrizationMethod)
     : gsParametrization<T>::Neighbourhood(meshInfo, parametrizationMethod)
 {
@@ -91,7 +91,9 @@ gsPeriodicParametrizationStitch<T>::Neighbourhood::Neighbourhood(const gsHalfEdg
 
     for(size_t i=1; i <= meshInfo.getNumberOfVertices(); i++)
     {
-	LocalNeighbourhood localNeighbourhood = (i <= meshInfo.getNumberOfInnerVertices()) ? LocalNeighbourhood(meshInfo, i) : LocalNeighbourhood(meshInfo, i, 0);
+	LocalNeighbourhood localNeighbourhood = (i <= meshInfo.getNumberOfInnerVertices()) ?
+	    LocalNeighbourhood(meshInfo, i) :
+	    LocalNeighbourhood(meshInfo, i, 0);
 
 	std::vector<size_t> corr = computeCorrections(stitchIndices, localNeighbourhood);
 	
@@ -140,9 +142,6 @@ void gsPeriodicParametrizationStitch<T>::calculate_periodic_stitch(const size_t 
     size_t n = this->m_mesh.getNumberOfInnerVertices();
     size_t N = this->m_mesh.getNumberOfVertices();
 
-    m_corrections.resize(N, N);
-    m_corrections.setZero();
-
     Neighbourhood neighbourhood(this->m_mesh, stitchIndices, m_corrections, paraMethod);
 
     this->m_parameterPoints.reserve(N);
@@ -160,9 +159,11 @@ void gsPeriodicParametrizationStitch<T>::calculate_periodic_stitch(const size_t 
     size_t numPtsSoFar = n;
     this->m_parameterPoints.resize(n + indicesV0.size() + indicesV1.size());
 
+    // Set the parameter values on the v=0 boundary.
     for(size_t i=0; i<indicesV0.size(); i++)
     	this->m_parameterPoints[indicesV0[i]-1] = Point2D(valuesV0[i], 0, numPtsSoFar++);
 
+    // Set the parameter values on the v=1 boundary.
     for(size_t i=0; i<indicesV1.size(); i++)
 	this->m_parameterPoints[indicesV1[i]-1] = Point2D(valuesV1[i], 1, numPtsSoFar++);
 
@@ -187,6 +188,9 @@ void gsPeriodicParametrizationStitch<T>::constructAndSolveEquationSystem(const N
         {
             LHS(i, j) = ( i==j ? T(1) : -lambdas[j] );
 
+	    // If your neighbour is across the stitch, its contributions appear
+	    // on the right hand-side multiplied by +1 or -1. Write the equations
+	    // down if it is unclear. (-;
 	    if(m_corrections(i, j) == 1)
 		RHS(i, 0) -= lambdas[j];
 	    else if(m_corrections(i, j) == -1)

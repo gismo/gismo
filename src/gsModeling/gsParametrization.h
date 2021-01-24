@@ -407,7 +407,7 @@ protected:
 
 	for(index_t c=0; c<pts.cols(); c++)
 	{
-	    indices.push_back(this->m_mesh.findVertex(pts(0, c), pts(1, c), pts(2, c), true));
+	    indices.push_back(m_mesh.findVertex(pts(0, c), pts(1, c), pts(2, c), true));
 	    values.push_back(pars(0, c));
 	}
     }

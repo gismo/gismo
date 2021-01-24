@@ -80,7 +80,7 @@ class GISMO_EXPORT gsPeriodicParametrizationStitch : public gsPeriodicParametriz
 	 */
 	explicit Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
 			       const std::vector<size_t>& stitchIndices,
-			       gsMatrix<int>& corrections,
+			       gsSparseMatrix<int>& corrections,
 			       const size_t parametrizationMethod = 2);
 
     private:
@@ -206,7 +206,7 @@ protected:
      * interface. Slot (j, i) is then set to -1.
      * TODO: Turn into a gsSparseMatrix.
      */
-    gsMatrix<int> m_corrections;
+    gsSparseMatrix<int> m_corrections;
 };
 
 } // namespace gismo
