@@ -28,7 +28,7 @@ class gsExprHelper
 private:
     gsExprHelper(const gsExprHelper &);
 
-    gsExprHelper() : mesh_ptr(NULL)
+    gsExprHelper() : m_mirror(nullptr), mesh_ptr(nullptr)
     { mutVar.setData(mutData); }
 
 private:
@@ -77,9 +77,9 @@ private:
     : m_mirror(m), mesh_ptr(m->mesh_ptr) { }
 
 public:
-    
+
     ~gsExprHelper() { delete m_mirror; }
-    
+
     gsMatrix<T> & points() { return m_points; }
     inline gsExprHelper & iface()
     {
@@ -179,7 +179,7 @@ private:
         if (I + 1 < sizeof... (Ts))
             _parse_tuple_i<(I+1 < sizeof... (Ts) ? I+1 : I)> (tuple);
     }
-    
+
     template<typename... Ts>
     void _parse_tuple (const std::tuple<Ts...> &tuple) {_parse_tuple_i<0>(tuple);}
     //template<> void _parse_tuple<> (const std::tuple<> &) { }
@@ -285,7 +285,7 @@ public:
         //parallel: variables become thread-local
         // for each variable we provide a gsFuncData pointer
         // in the same thread this can be the same ptr (as done now)
-        
+
         if (NULL!=sym.m_fs)
         {
             if ( 1==sym.m_fs->size() &&
@@ -316,7 +316,7 @@ public:
     // {
     //     // avg(u) * avg(g) // specialize * op ???
     //     // how about nv(.)
-        
+
     //     // ??mode B11,B12,B21,B22
     //     avg.parse(*this); // pass a state: now you are left/right
     //     // OR
