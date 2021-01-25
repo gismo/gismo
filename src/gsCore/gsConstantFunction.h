@@ -179,8 +179,10 @@ public:
     {
         GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
                      << ", expected "<< m_domainDim);
+        
         result.resize(n+1,gsMatrix<T>());
-        for (int i = 0; i<=n; ++i)
+        eval_into(u,result.front());
+        for (int i = 1; i<=n; ++i)
             result[i].resize( this->targetDim()*binomial(i+m_domainDim-1,m_domainDim-1)
                            , u.cols() );
     }
