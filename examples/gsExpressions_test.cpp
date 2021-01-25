@@ -370,6 +370,28 @@ int main(int argc, char *argv[])
     //auto c = ev.getVariable(c_, G);
 
     /*
+      Computes the value of a variable
+      Assessment of:
+      - gsFeVariable
+      = avg(gsFeVariable)
+    */
+    gsInfo<< "* Value:\t\t";
+    result = ev.eval( a, point );
+    exact  = a_.eval(physpoint);
+    if (verbose)
+        gsInfo  <<"Result:\n"<<result<<"\n"
+                <<"Exact:\n"<<exact<<"\n";
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+    /*
+    gsInfo<< "* Average:\t\t";
+    result.resize(1,1); result.at(0) = ev.integralInterface( avg(a) );
+    if (verbose)
+        gsInfo  <<"Result:\n"<<result<<"\n"
+                <<"Exact:\n"<<exact<<"\n";
+    gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+    */
+
+    /*
       Computes the gradient of a variable
       Assessment of:
       - grad_expr(gsFeVariable)
@@ -595,13 +617,13 @@ int main(int argc, char *argv[])
       - mult_expr (type 1 & type 2)
     */
 
-    gsInfo<<"* s grad(u):\t\t";
     exact.transpose() = ev.eval( u_sol.tr() * grad(u_sol), point );
-    result = ev.eval( (u_sol.tr() * jac(u2)).tr(), point );
-    gsDebugVar(exact);
-    gsDebugVar(result);
-    gsDebugVar(solVec);
-    
+
+    gsInfo<<"* s grad(u):\t\t";
+    //space=2,cb=1 / m1
+    auto e1 = (u_sol.tr() * jac(u2)).tr(); //note: transposition is blockwise
+    result = ev.eval( e1, point );
+    //gsDebugVar(result);
     result *= solVec;
     if (verbose)
         gsInfo  <<"Result:\n"<<result.transpose()<<"\n"
@@ -609,21 +631,23 @@ int main(int argc, char *argv[])
     gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
     gsInfo<<"* u grad(s):\t\t";
-    result.transpose() = ev.eval( u2 * grad(u_sol), point );
+    //space=2,cb=0 / m1
+    auto e2 = (u2 * grad(u_sol)).tr();
+    result = ev.eval( e2, point );
+    //gsDebugVar(result);
     result *= solVec;
     if (verbose)
         gsInfo  <<"Result:\n"<<result.transpose()<<"\n"
                 <<"Exact:\n"<<exact.transpose()<<"\n";
     gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
-    // COLBLOCKS ERROR
     gsInfo<<"* s grad(u) + u grad(s):\t";
-    result = ev.eval( u2*grad(u_sol) + u_sol * jac(u2) , point );
+    result = ev.eval( e1 + e2 , point );
+    result *= solVec;
     if (verbose)
         gsInfo  <<"Result:\n"<<result.transpose()<<"\n"
                 <<"Exact:\n"<<2*exact.transpose()<<"\n";
-
-
+    gsInfo<<( (result-2*exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
     return EXIT_SUCCESS;
 }
