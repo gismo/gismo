@@ -95,14 +95,14 @@ int main(int argc, char *argv[])
 //                             "-1/16 * pi^2 * (-1 + cos(6.5 - (pi * x)/4)) * cos( 1 - pi * y /4 )",
 //                             "1/16 * pi^2 * sin(6.5 - pi * x /4) * sin( 1 - pi * y /4 )", 2);
 
-//    gsFunctionExpr<> source  ("3",2);
-//    gsFunctionExpr<> laplace ("0",2);
-//    gsFunctionExpr<> solVal("0 ",2);
-//    gsFunctionExpr<>sol1der ("0",
-//                             "0",2);
-//    gsFunctionExpr<>sol2der ("0",
-//                             "0",
-//                             "0", 2);
+    gsFunctionExpr<> source  ("2",2);
+    gsFunctionExpr<> laplace ("0",2);
+    gsFunctionExpr<> solVal("0 ",2);
+    gsFunctionExpr<>sol1der ("0",
+                             "0",2);
+    gsFunctionExpr<>sol2der ("0",
+                             "0",
+                             "0", 2);
 
 
 //    gsFunctionExpr<> source  ("0",2);
@@ -294,18 +294,18 @@ int main(int argc, char *argv[])
 
 // PLANAR SOLUTION
 
-    gsFunctionExpr<> source  ("2",3);
-    gsFunctionExpr<> laplace ("0",3);
-    gsFunctionExpr<> solVal("0",3);
-    gsFunctionExpr<>sol1der ("0",
-                             "0",
-                             "0",3);
-    gsFunctionExpr<>sol2der ("0",
-                             "0",
-                             "0",
-                             "0",
-                             "0",
-                             "0", 3);
+//    gsFunctionExpr<> source  ("2",3);
+//    gsFunctionExpr<> laplace ("0",3);
+//    gsFunctionExpr<> solVal("0",3);
+//    gsFunctionExpr<>sol1der ("0",
+//                             "0",
+//                             "0",3);
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
 
 
 //    gsFunctionExpr<> source  ("12 ",3);
@@ -552,7 +552,7 @@ int main(int argc, char *argv[])
 
         multiPatch.uniformRefine_withSameRegularity(num_knots[refinement_level], g1OptionList.getInt("regularity"));
 
-        gsInfo << "KV: " << multiPatch.patch(0).basis().basis(0) << "\n";
+//        gsInfo << "KV: " << multiPatch.patch(0).basis().basis(0) << "\n";
 
         gsInfo << "###### Level: " << refinement_level << " with " << num_knots[refinement_level] << " inner knots ###### " << "\n";
 

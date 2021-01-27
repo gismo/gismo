@@ -44,7 +44,7 @@ public:
 //        gsInfo << "Solution: " << sol << "\n";
 //        gsInfo << "Solution Beta: " << solBeta << "\n";
 
-//        AScondition(mp);
+        AScondition(mp);
     }
 
 
@@ -365,7 +365,8 @@ protected:
 
             DvFL = FL.jacobian(pointU.col(i)).col(1);
 
-            cond.col(i) = alpha_R.col(i).cwiseProduct(DvFL) + alpha_L.col(i).cwiseProduct(DuFR) + beta.col(i).cwiseProduct(DvFR) ;
+            cond.col(i) = alpha_R.col(i);
+//                .cwiseProduct(DvFL) + alpha_L.col(i).cwiseProduct(DuFR) + beta.col(i).cwiseProduct(DvFR) ;
 
 //            cond.col(i) = beta.col(i) - (alpha_R.col(i).cwiseProduct(beta_L.col(i)) + alpha_L.col(i).cwiseProduct(beta_R.col(i)));
 
