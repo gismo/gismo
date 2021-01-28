@@ -536,7 +536,12 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vecto
 
         if (patchIdx == 0 && row_Vertex_1 == 3)
             gsWriteParaview(multiPatch_Vertex_1,"test",5000);
-
+        if (patchIdx == 1 && row_Vertex_0 == 3)
+            gsWriteParaview(multiPatch_Vertex_0,"test2",5000);
+        if (patchIdx == 1 && row_Vertex_0 == 1)
+            gsWriteParaview(multiPatch_Vertex_0,"test3",5000);
+        if (patchIdx == 0 && row_Vertex_0 == 1)
+            gsWriteParaview(multiPatch_Vertex_0,"test4",5000);
 
         const gsBasis<T> & basis = m_bases[unk_].basis(patchIdx); // Assume that the basis is the same for all the basis functions
 
@@ -619,6 +624,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vecto
             globIdxAct.block(multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches(),0,multiPatch_Vertex_1.nPatches(),1) = vec;
 
 
+
             std::vector<index_t> eltBdryFcts;
             eltBdryFcts.reserve(g1System.boundary_size());
             for( size_t i=0; i < multiPatch_Edges.nPatches(); i++)
@@ -627,6 +633,8 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vecto
                 eltBdryFcts.push_back( multiPatch_Edges.nPatches() + i );
             for( size_t i=0; i < multiPatch_Vertex_1.nPatches(); i++)
                 eltBdryFcts.push_back( multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches() + i );
+
+            gsInfo << "Side: " << sideIdx << " : " << patchIdx << "\n" << rhsVals << "\n";
 
             // Do the actual assembly:
             for( index_t k=0; k < md.points.cols(); k++ )
@@ -647,7 +655,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vecto
                     {
                         const index_t j = eltBdryFcts[j0];
                         jj = globIdxAct.at(j);
-
                         //gsInfo << "HIER: " << jj << " : " << ii << " : " << i <<" : " << j << " : " << k << "\n";
                         // Use the "element-wise index" to get the needed
                         // function value.
@@ -673,7 +680,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vecto
     // for the values of the eliminated Dirichlet DOFs.
     typename gsSparseSolver<T>::CGDiagonal solver;
     m_g1_ddof = solver.compute( globProjMat ).solve ( globProjRhs );
-
 }
 
 template <class T, class bhVisitor>

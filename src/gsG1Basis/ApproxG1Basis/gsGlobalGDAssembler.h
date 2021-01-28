@@ -93,14 +93,14 @@ void gsGlobalGDAssembler<T, bhVisitor>::refresh()
     act = m_basis[0].basis(0).boundaryOffset(1,0); // WEST
     if (m_twoPatch)
     {
-        map_beta_S.markBoundary(0, act); // Patch 0
+        //map_beta_S.markBoundary(0, act); // Patch 0
         map_alpha.markBoundary(0, act); // Patch 0
     }
 
     act = m_basis[0].basis(0).boundaryOffset(2,0); // East
     if (m_twoPatch)
     {
-        map_beta_S.markBoundary(0, act); // Patch 0
+        //map_beta_S.markBoundary(0, act); // Patch 0
         map_alpha.markBoundary(0, act); // Patch 0
     }
     map_alpha.finalize();

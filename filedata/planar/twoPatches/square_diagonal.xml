@@ -24,11 +24,11 @@
             1/4 1
             1/2 1
             -->
-            0 0
+            0 -0.2
             0.2 0
             
             0 1
-            0.7 1
+            0.25 1.25
         </coefs>
     </Geometry>
     <Geometry type="TensorBSpline2" id="2">
@@ -58,8 +58,8 @@
             0.2 0
             1 0
             
-            0.7 1
-            1 1          
+            0.25 1.25
+            1  1.25        
 
         </coefs>
     </Geometry>

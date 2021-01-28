@@ -216,7 +216,7 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
         if (m_neumannBdy)
             numIntBdy = 8;
         else
-            numIntBdy = 4;
+            numIntBdy = 4; // 4
 
         //gsInfo << "r: " << m_r << " : " << m_p << " : " << basis_1.knots().multiplicityIndex(p_1 + 1) << "\n";
         //gsInfo << "IFace: " << numBasisFunctions[0][i] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1 - numIntBdy << "\n";
@@ -290,7 +290,7 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
                 else
                 {
                     numBasisFunctions[2][i+1] = numBasisFunctions[2][i] + 0; // TODO
-                    numBasisFunctions[4][i+1] = numBasisFunctions[4][i] + 2; // TODO
+                    numBasisFunctions[4][i+1] = numBasisFunctions[4][i] + 2; // TODO 2
                 }
             }
         }
@@ -299,7 +299,7 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
     numBasisFunctions[2] = numBasisFunctions[2].array() + numBasisFunctions[1].last();
     numBasisFunctions[3] = numBasisFunctions[3].array() + numBasisFunctions[2].last();
     numBasisFunctions[4] = numBasisFunctions[4].array() + numBasisFunctions[3].last();
-/*
+
     gsInfo << "Num Basis Functions " << numBasisFunctions[5] << "\n";
     gsInfo << "Num Interface Basis Functions " << numBasisFunctions[6] << "\n";
     gsInfo << "Num Interface Functions " << numBasisFunctions[0] << "\n";
@@ -310,7 +310,7 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
     gsInfo << "Kind of Vertex Functions " << kindOfVertex << "\n";
     gsInfo << "Size of plus space Bdy  " << sizePlusBdy << "\n";
     gsInfo << "Size of plus space Int  " << sizePlusInt << "\n";
-*/
+
 
     // Setting the final matrix
     dim_K = numBasisFunctions[6].last(); // interior basis + interface basis dimension
@@ -592,7 +592,7 @@ void gsG1System<T>::insertInterfaceEdge(gsMultiPatch<> & mp, boundaryInterface i
                 index_t plusInt = sizePlusInt[0];
                 if(bfID == 0 || bfID == plusInt-1 || bfID == plusInt || bfID == 2*plusInt - 2) // first and last of +/-
                 {
-                    if (bfID == 0 || bfID == plusInt)
+                    if (bfID == 0 || bfID == 1 || bfID == plusInt)
                         if (mp.patch(np).coefs().at(j) * mp.patch(np).coefs().at(j)  > 10e-25)
                         {
                             index_t jj, ii;
@@ -600,7 +600,7 @@ void gsG1System<T>::insertInterfaceEdge(gsMultiPatch<> & mp, boundaryInterface i
                             jj = numBasisFunctions[6][np == 0 ? item.first().patch : item.second().patch] + j;
                             D_sparse.insert(ii,jj) = mp.patch(np).coefs().at(j);
                         }
-                    if (bfID == plusInt-1 || bfID == 2*plusInt - 2)
+                    if (bfID == plusInt-2 || bfID == plusInt-1 || bfID == 2*plusInt - 2)
                         if (mp.patch(np).coefs().at(j) * mp.patch(np).coefs().at(j)  > 10e-25)
                         {
 
