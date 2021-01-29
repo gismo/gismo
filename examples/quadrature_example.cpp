@@ -47,6 +47,16 @@ using namespace gismo;
 // };
 
 template<class T>
+gsSparseMatrix<T> sparseDiagonal(const gsVector<T> & vec)
+{
+    gsSparseMatrix<T> spdiag(vec.size(),vec.size());
+    for (index_t k=0; k!=vec.size(); k++)
+        spdiag.insert(k,k) = vec.at(k);
+    spdiag.makeCompressed();
+    return spdiag;
+}
+
+template<class T>
 class gsOverIntegrated GISMO_FINAL : public gsQuadRule<T>
 {
 public:
@@ -164,6 +174,9 @@ public:
         nodes.resize(2,m_nodesX.size()*m_nodesY.size());
         weights.resize(m_nodesX.size()*m_nodesY.size());
 
+        /*
+            To do: overload std::map.lower_bound s.t. it starts searching from index n
+        */
         index_t k=0;
         for (auto itX = m_mapX.lower_bound(lower[0]); itX!=m_mapX.upper_bound(upper[0]); itX++) // lower_bound = geq, upper_bound= greather than
             for (auto itY = m_mapY.lower_bound(lower[1]); itY!=m_mapY.upper_bound(upper[1]); itY++, k++) // lower_bound = geq, upper_bound= greather than
@@ -206,15 +219,23 @@ public:
 
     /// Initialize a tensor-product Gauss quadrature rule for \a basis
     /// using quA *deg_i + quB nodes (direction-wise)
-    gsPatchRule(const  gsBasis<T> & basis)
+    gsPatchRule(const  gsBSplineBasis<T> & basis,index_t degree, index_t regularity, bool overintegrate)
     :
-    m_basis(&basis)
+    m_basis(basis),
+    m_deg(degree),
+    m_reg(regularity),
+    m_over(overintegrate)
     {
+        GISMO_ENSURE(basis.dim()==1,"Dimension must be equal to 1, not "<<basis.dim());
+        GISMO_ENSURE(m_reg<m_deg,"regularity cannot be greater or equal to the order!");
+
         // m_nodes = points;
         // m_weights = weights;
-        m_start = m_basis->support().col(0);
-        m_end = m_basis->support().col(1);
-        m_nodes = m_basis->anchors();
+        m_size = m_basis.size();
+        m_knots = m_basis.knots();
+        this->init();
+
+        m_knots.greville_into(m_greville);
     };
 
 
@@ -239,15 +260,186 @@ public:
     void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
                        gsMatrix<T> & nodes, gsVector<T> & weights ) const
     {
+        m_qRule.mapTo(lower,upper,nodes,weights);
+    };
+
+    gsMatrix<T> integrate() const
+    {
+        typename gsBasis<real_t>::domainIter domIt =  // add patchInd to domainiter ?
+                    m_basis2.makeDomainIterator();
+
+        gsMatrix<T> result(m_basis2.size(),1);
+        result.setZero();
+        gsMatrix<T> nodes, tmp;
+        gsMatrix<index_t> actives;
+        gsVector<T> weights;
+        gsInfo<<m_basis2.size()<<"\n";
+        for (; domIt->good(); domIt->next() )
+        {
+            m_qRule.mapTo(domIt->lowerCorner(),domIt->upperCorner(),nodes,weights);
+            m_basis2.active_into(nodes,actives);
+            m_basis2.eval_into(nodes,tmp);
+            tmp *= weights;
+            for (index_t k = 0; k!=weights.size(); k++)
+                result(actives.at(k),0) += tmp(k,0);
+        }
+        return result;
+    };
+
+    void init(bool overInt = false)
+    {
+        index_t pdiff = m_deg - m_basis.knots().degree();
+        std::vector<index_t> multiplicities = m_knots.multiplicities();
+        index_t rmin = *std::min_element(multiplicities.begin(), multiplicities.end());
+        index_t rdiff = (m_deg-m_reg)-rmin ;
+
+        if (pdiff>0)
+            m_knots.degreeIncrease(pdiff);
+        else if (pdiff<0)
+            m_knots.degreeDecrease(-pdiff);
+        if (rdiff>0)
+            m_knots.increaseMultiplicity(rdiff);
+        else if (rdiff>0)
+            m_knots.reduceMultiplicity(-rdiff);
+
+        // m_size = (m_knots.uSize()-1)*(m_deg-m_reg)+m_reg+1;
+        m_basis2 = gsBSplineBasis<T>(m_knots);
+        m_size = m_basis2.size();
+
+        if (m_size % 2 == 1)
+        {
+            typedef typename gsKnotVector<T>::const_iterator knotIterator;
+            knotIterator prevKnot = m_knots.begin();
+            std::vector<T> diff;
+            for (knotIterator it = m_knots.begin()+1; it!=m_knots.end(); it++ )
+            {
+                diff.push_back(*it-*prevKnot);
+                prevKnot = it;
+            }
+
+            T max = *std::max_element(diff.begin(),diff.end());
+            std::vector<index_t> maxIdx;
+            index_t k=0;
+            for (typename std::vector<T>::iterator it = diff.begin(); it!=diff.end(); it++,k++)
+            {
+                if (std::abs(*it-max)/(max)<1e-15)
+                    maxIdx.push_back(k);
+            }
+
+            index_t i = maxIdx.at(std::ceil(maxIdx.size()/2.)-1);
+            m_knots.insert( (m_knots.at(i) + m_knots.at(i+1))/2. );
+
+            m_size++;
+        }
+
+        if (m_over) //(overInt)
+        {
+            // index_t rmax = *std::max_element(multiplicities.begin(), multiplicities.end());
+            index_t numOver = m_knots.degree();
+
+            T lowerLength = (m_knots(1)-m_knots.first())/(numOver+1);
+            T upperLength = (m_knots.last()-m_knots(m_knots.uSize()-2))/(numOver+1);
+            for (index_t k=0; k!=numOver; k++)
+            {
+                m_knots.insert(m_knots.first()+(k+1)*lowerLength);
+                m_knots.insert(m_knots.last()-(k+1)*upperLength);
+            }
+        }
+
+        for (gsKnotVector<>::iterator it = m_knots.begin(); it!=m_knots.end(); it++)
+            gsInfo<<*it<<"\n";
+
+        m_basis2 = gsBSplineBasis<T>(m_knots);
+        m_size = m_basis2.size();
+
+        m_qRule = gsGaussRule<T>(m_basis2,1,1);
 
     };
 
+    void compute(T tol = 1e-10)
+    {
+        // initialize iteration
+        m_integral = this->integrate();
+
+        gsInfo<<"integral = "<<m_integral<<"\n";
+
+        GISMO_ENSURE((m_size % 2 == 0),"Number of points should be even!");
+        GISMO_ENSURE((m_basis.dim() == 1),"Basis dimension should be 1 but is "<<m_basis.dim());
+        m_nodes.resize(m_size/2);
+        m_weights.resize(m_size/2);
+        for (index_t k = 0; k!=m_size/2; k++)
+        {
+            m_nodes.at(k)  = 0.5 * (m_greville.at(2*k) + m_greville.at(2*k+1));
+            m_weights.at(k) = m_integral(2*k,0) + m_integral(2*k+1,0);
+        }
+
+        gsInfo<<"nodes = "<<m_nodes<<"\n";
+        gsInfo<<"weights = "<<m_weights<<"\n";
+
+        index_t itMax = 15;
+        gsMatrix<index_t> actives;
+        gsMatrix<T> vals,dvals,vals_tmp,dvals_tmp,res,dres;
+        gsVector<T> update(m_size);
+        vals.resize(m_size,m_size/2);   vals.setZero();
+        dvals.resize(m_size,m_size/2);  dvals.setZero();
+        typename gsSparseSolver<T>::QR solver;
+        index_t it;
+        for (it = 0; it != itMax; it++)
+        {
+            m_basis2.active_into(m_nodes.transpose(),actives);
+            m_basis2.eval_into(m_nodes.transpose(),vals_tmp);
+            m_basis2.deriv_into(m_nodes.transpose(),dvals_tmp);
+            for (index_t act=0; act!=actives.rows(); act++)
+                for (index_t pt=0; pt!=actives.cols(); pt++)
+                {
+                    vals(actives(act,pt),pt)    = vals_tmp(act,pt);
+                    dvals(actives(act,pt),pt)   = dvals_tmp(act,pt);
+                }
+
+            res = vals * m_weights - m_integral;
+            dres = gsMatrix<T>::Zero(m_size,m_size);
+
+            dres.block(0,0,m_size,m_size/2) = vals;
+            dres.block(0,m_size/2,m_size,m_size/2) = dvals * m_weights.asDiagonal();
+
+            solver.compute(dres.sparseView());
+            update = solver.solve(-res);
+
+            m_weights+= update.head(m_size/2);
+            m_nodes.col(0)  += update.tail(m_size/2);
+
+            GISMO_ENSURE(m_nodes.minCoeff() > m_knots.first(),"Construction failed: min(nodes) < min(knots) minCoef = "<<m_nodes.minCoeff()<<"; min(knots) = "<<m_knots.first());
+            GISMO_ENSURE(m_nodes.maxCoeff() < m_knots.last(),"Construction failed: max(nodes) > max(knots) maxCoef = "<<m_nodes.maxCoeff()<<"; min(knots) = "<<m_knots.last());
+
+            if (res.norm() < tol)
+            {
+                gsInfo<<"Converged in "<<it<<" iterations\n";
+                break;
+            }
+        }
+        GISMO_ENSURE(it+1!=itMax,"Maximum iterations reached");
+
+
+    }
+
+
 public:
-    mutable gsMatrix<T> m_nodes;
+    mutable gsMatrix<T> m_greville;
+    mutable gsKnotVector<T> m_knots;
+    mutable gsVector<T> m_nodes;
     mutable gsVector<T> m_weights;
+    mutable gsVector<T> m_integral;
+    mutable index_t m_size;
+
+    const index_t m_deg,m_reg;
+    const bool m_over;
+
 private:
     mutable gsVector<T> m_start,m_end;
-    const gsBasis<T> * m_basis;
+    // const gsBasis<T> * m_basis;
+    const gsBSplineBasis<T> & m_basis;
+    mutable gsBSplineBasis<T> m_basis2;
+    gsQuadRule<T> m_qRule;
 
 }; // class gsPatchRule
 
@@ -260,25 +452,21 @@ int main(int argc, char* argv[])
     // ======================================================================
 
 
-    real_t a = 0; // starting knot
-    real_t b = 1; // ending knot
-    index_t interior = 4; // number of interior knots
-    index_t multEnd = 3; // multiplicity at the two end knots
-    index_t multInt = 1; // multiplicity at the interior knots
+    index_t order = 2;
+    index_t regularity = 1;
     bool plot = false;
+    bool overInt = false;
 
-    gsCmdLine cmd("Quadratire rules in G+Smo.");
-    cmd.addReal("","starting","Starting knot",a);
-    cmd.addReal("","ending","Ending knot",b);
-    cmd.addInt("n","interior","Number of interior knots",interior);
-    cmd.addInt("m","multI","Multiplicity at the interior knots",multInt);
-    cmd.addInt("M","multE","Multiplicity at the two end knots",multEnd);
+    gsCmdLine cmd("Quadrature rules in G+Smo.");
+    cmd.addInt("p","deg","order of target space",order);
+    cmd.addInt("r","reg","regularity of target space",regularity);
     cmd.addSwitch("plot","Plot with paraview",plot);
+    cmd.addSwitch("over","overintegrate",overInt);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsInfo << "------------- Constructions -----------------------------\n";
 
-    gsKnotVector<> kv1(a, b, interior, multEnd, multInt);
+    gsKnotVector<> kv1(0, 1.0, 3, 3, 1);
     gsKnotVector<> kv2 = kv1;
 
     gsBSplineBasis<> bsb0(kv1);
@@ -287,7 +475,7 @@ int main(int argc, char* argv[])
 
 
     gsWriteParaview(tbsb,"basis",1000,true);
-    bsb0.degreeIncrease();
+    // bsb0.degreeIncrease();
     gsWriteParaview(bsb0,"basis_1D",1000,true);
 
     // ======================================================================
@@ -342,9 +530,6 @@ int main(int argc, char* argv[])
     gsMatrix<> allPoints(tbsb.dim(),0);
     for (; domIt->good(); domIt->next() )
     {
-
-        gsInfo<<"Element corners:\n"<<domIt->lowerCorner().transpose()<<"\n"<<domIt->upperCorner().transpose()<<"\n";
-
         // Map the Quadrature rule to the element
         MixedQuadRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                         points, weights);
@@ -363,8 +548,7 @@ int main(int argc, char* argv[])
     gsVector<> random;
     random.setRandom(20);
     random += gsVector<>::Ones(random.size());
-    random *= 0.5*(b-a);
-    random += a*gsVector<>::Ones(random.size());
+    random *= 0.5;
 
     gsVector<> unitWeights(random.size());
     unitWeights.setOnes();
@@ -396,11 +580,15 @@ int main(int argc, char* argv[])
 
 
 
-    gsPatchRule<real_t> patchRule(bsb0);
-    gsDebugVar(bsb0.totalDegree());
-    gsWriteParaviewPoints(patchRule.m_nodes,"greville");
+    gsPatchRule<real_t> patchRule(bsb0,order,regularity,overInt);
+    gsInfo<<"size = "<<patchRule.m_size<<"\n";
+    gsInfo<<"integral = "<<patchRule.m_integral<<"\n";
+    patchRule.compute();
+    gsInfo<<"nodes = "<<patchRule.m_nodes<<"\n";
+    gsInfo<<"weights = "<<patchRule.m_weights<<"\n";
+    // gsDebugVar(bsb0.totalDegree());
+    gsWriteParaviewPoints(patchRule.m_greville,"greville");
 
-    gsQuadRule<real_t> gauss(bsb0,1,1);
 
 
 
