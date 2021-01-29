@@ -132,26 +132,6 @@ protected:
 
 }; // class gsG1System
 
-
-//Print out information of the iterative solver
-template<typename SolverType>
-void gsIterativeSolverInfo(const SolverType &method,
-                           real_t error, double time, bool& succeeded )
-{
-    gsInfo << method.detail();
-    gsInfo << " Computed res. error  : " << error << "\n";
-    gsInfo << " Time to solve:       : " << time << "\n";
-    if ( method.error() <= method.tolerance() && error <= method.tolerance() )
-    {
-        gsInfo <<" Test passed.\n";
-    }
-    else
-    {
-        gsInfo <<" TEST FAILED!\n";
-        succeeded = false;
-    }
-}
-
 template<class T>
 void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMultiBasis<>> mb)
 {
@@ -216,7 +196,7 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
         if (m_neumannBdy)
             numIntBdy = 8;
         else
-            numIntBdy = 4; // 4
+            numIntBdy = 6; // 4
 
         //gsInfo << "r: " << m_r << " : " << m_p << " : " << basis_1.knots().multiplicityIndex(p_1 + 1) << "\n";
         //gsInfo << "IFace: " << numBasisFunctions[0][i] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1 - numIntBdy << "\n";
@@ -290,7 +270,7 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
                 else
                 {
                     numBasisFunctions[2][i+1] = numBasisFunctions[2][i] + 0; // TODO
-                    numBasisFunctions[4][i+1] = numBasisFunctions[4][i] + 2; // TODO 2
+                    numBasisFunctions[4][i+1] = numBasisFunctions[4][i] + 3; // TODO 2
                 }
             }
         }
@@ -590,13 +570,13 @@ void gsG1System<T>::insertInterfaceEdge(gsMultiPatch<> & mp, boundaryInterface i
             if (m_twoPatch && !m_neumannBdy)
             {
                 index_t plusInt = sizePlusInt[0];
-                if(bfID == 0 || bfID == plusInt-1 || bfID == plusInt || bfID == 2*plusInt - 2) // first and last of +/-
+                if(bfID == 0 || bfID == 1 || bfID == plusInt-2 || bfID == plusInt-1 || bfID == plusInt || bfID == 2*plusInt - 2) // first and last of +/-
                 {
                     if (bfID == 0 || bfID == 1 || bfID == plusInt)
                         if (mp.patch(np).coefs().at(j) * mp.patch(np).coefs().at(j)  > 10e-25)
                         {
                             index_t jj, ii;
-                            ii = numBasisFunctions[4][1] + (bfID == 0 ? 0 : 1); // Boundary
+                            ii = numBasisFunctions[4][1] + (bfID == 0 ? 0 : (bfID == 1 ? 2 : 1)); // Boundary // TODO
                             jj = numBasisFunctions[6][np == 0 ? item.first().patch : item.second().patch] + j;
                             D_sparse.insert(ii,jj) = mp.patch(np).coefs().at(j);
                         }
@@ -605,7 +585,7 @@ void gsG1System<T>::insertInterfaceEdge(gsMultiPatch<> & mp, boundaryInterface i
                         {
 
                             index_t jj, ii;
-                            ii = numBasisFunctions[4][3] + (bfID == plusInt-1 ? 0 : 1); // Boundary
+                            ii = numBasisFunctions[4][3] + (bfID == plusInt-2 ? 2 : (bfID == plusInt-1 ? 0 : 1)); // Boundary // TODO
                             jj = numBasisFunctions[6][np == 0 ? item.first().patch : item.second().patch] + j;
                             D_sparse.insert(ii,jj) = mp.patch(np).coefs().at(j);
                         }
@@ -616,10 +596,10 @@ void gsG1System<T>::insertInterfaceEdge(gsMultiPatch<> & mp, boundaryInterface i
                     if (mp.patch(np).coefs().at(j) * mp.patch(np).coefs().at(j)  > 10e-25)
                     {
                         index_t jj, ii, bfID_shift;
-                        if (bfID < plusInt - 1)
-                            bfID_shift = 1;
+                        if (bfID < plusInt - 2) // TODO 1
+                            bfID_shift = 2; // TODO 1
                         else
-                            bfID_shift = 3;
+                            bfID_shift = 5; // TODO 3
 
                         ii = numBasisFunctions[0][iID] + bfID - bfID_shift;
                         jj = numBasisFunctions[6][np == 0 ? item.first().patch : item.second().patch] + j;

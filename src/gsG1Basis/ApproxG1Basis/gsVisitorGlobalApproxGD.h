@@ -132,10 +132,10 @@ public:
         ones.setOnes(1,md.points.cols());
 
         rhsVals_alpha = alpha_S;
-        if (twoPatch)
+/*        if (twoPatch)
             rhsVals_beta = beta_S - lambda0 * (ones - md.points).cwiseProduct(alpha_S) - lambda1 * (md.points).cwiseProduct(alpha_S);
         else
-            rhsVals_beta = beta_S;
+*/            rhsVals_beta = beta_S;
 
         // Initialize local matrix/rhs
         localMat.setZero(numActive, numActive      );

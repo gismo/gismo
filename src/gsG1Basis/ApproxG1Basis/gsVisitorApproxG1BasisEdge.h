@@ -165,6 +165,35 @@ public:
 
             gsMatrix<T> temp = beta.cwiseProduct(der_N_i_plus);
 
+            // START
+            if (bfID == 1 || bfID == basis_pm[0].size() -2 )
+            {
+                real_t lambda_L, lambda_R;
+
+                gsMatrix<T> nulleins(1,1);
+                nulleins(0,0) = bfID == 1 ? 0.0 : 1.0;
+
+                gsMatrix<> betaL, betaR, alphaL, alphaR;
+                gluingData.get_beta_S_tilde(0).eval_into(nulleins,betaL);
+                gluingData.get_beta_S_tilde(1).eval_into(nulleins,betaR);
+                gluingData.get_alpha_S_tilde(0).eval_into(nulleins,alphaL);
+                gluingData.get_alpha_S_tilde(1).eval_into(nulleins,alphaR);
+
+                lambda_L = betaL(0,0)/alphaL(0,0);
+                lambda_R = betaR(0,0)/alphaR(0,0);
+
+                gsInfo << "lambda_L " << lambda_L << "\n";
+                gsInfo << "lambda_R " << lambda_R << "\n";
+
+                temp = (beta - lambda_R * alpha).cwiseProduct(der_N_i_plus);
+
+            }
+
+
+            // END
+
+
+
             rhsVals = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(N_1) * tau_1 / p;
 
             if (g1OptionList.getSwitch("h1projection") || g1OptionList.getSwitch("h2projection"))
