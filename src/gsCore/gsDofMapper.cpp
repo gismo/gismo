@@ -77,10 +77,10 @@ void gsDofMapper::localToGlobal2(const gsMatrix<index_t>& locals,
 
 gsVector<index_t> gsDofMapper::asVector(index_t comp) const
 {
-  gsVector<index_t> v(m_dofs[comp].size());
-  for(size_t j = 0; j!= m_dofs[comp].size(); ++j)
-    v[j] = m_dofs[comp][j] + m_shift;
-  return v;
+    gsVector<index_t> v(m_dofs[comp].size());
+    for(size_t j = 0; j!= m_dofs[comp].size(); ++j)
+        v[j] = m_dofs[comp][j] + m_shift;
+    return v;
 }
 
 void gsDofMapper::colapseDofs(index_t k, const gsMatrix<unsigned> & b,

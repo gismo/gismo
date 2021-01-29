@@ -166,6 +166,10 @@ namespace internal
 #include <gsSolver/gsPatchPreconditionersCreator.h>
 #include <gsSolver/gsLanczosMatrix.h>
 
+/* ----------- Ieti ----------- */
+//#include <gsIeti/gsIetiMapper.h>
+//#include <gsIeti/geIetiSystem.h>
+
 /* ----------- IO ----------- */
 #include <gsIO/gsOptionList.h>
 #include <gsIO/gsCmdLine.h>

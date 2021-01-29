@@ -42,6 +42,7 @@ int main(int argc, char *argv[])
     std::string iterativeSolver("cg");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
+    bool sol = false;
     bool plot = false;
     std::string boundary_conditions("d");
 
@@ -67,6 +68,7 @@ int main(int argc, char *argv[])
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundary_conditions);
+    cmd.addSwitch(     "sol",                   "Write the computed solution to console", sol);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -240,7 +242,9 @@ int main(int argc, char *argv[])
         .moveTransferMatricesTo(transferMatrices)
         .clear();
 
-    gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( assembler.matrix(), transferMatrices );
+    gsLinearOperator<>::Ptr mg_;
+  if (transferMatrices.size()>0){
+    gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( assembler.matrix(), transferMatrices ); mg_=mg;
     mg->setOptions( opt.getGroup("MG") );
 
     std::vector<real_t> patchLocalDampingParameters;
@@ -280,16 +284,16 @@ int main(int argc, char *argv[])
         }
         mg->setSmoother(i, smootherOp); // TODO: special treatment for scms
     }
-
+  } else { gsInfo << "Use one-grid method = direct solver.\n"; mg_ = makeSparseCholeskySolver(assembler.matrix()); }
     gsMatrix<> x, errorHistory;
     x.setRandom( assembler.matrix().rows(), 1 );
 
     if (iterativeSolver=="cg")
-        gsConjugateGradient<>( assembler.matrix(), mg )
+        gsConjugateGradient<>( assembler.matrix(), mg_ )
             .setOptions( opt.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
     else if (iterativeSolver=="d")
-        gsGradientMethod<>( assembler.matrix(), mg )
+        gsGradientMethod<>( assembler.matrix(), mg_ )
             .setOptions( opt.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
     else
@@ -313,6 +317,9 @@ int main(int argc, char *argv[])
         gsInfo << errorHistory.transpose() << "\n\n";
     else
         gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
+
+    if (sol)
+        gsInfo << x.transpose() << "\n\n";
 
     if (plot)
     {
