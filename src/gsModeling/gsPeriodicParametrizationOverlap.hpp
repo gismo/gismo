@@ -208,11 +208,8 @@ void gsPeriodicParametrizationOverlap<T>::updateLambdasWithTwins(std::vector<T>&
 }
 
 template<class T>
-gsMesh<T> gsPeriodicParametrizationOverlap<T>::createFlatMesh(bool restrict) const
+gsMesh<T> gsPeriodicParametrizationOverlap<T>::createFlatMesh() const
 {
-    if(!restrict)
-	return gsParametrization<T>::createFlatMesh();
-
     // Remember the vertices on the overlap boundaries.
     std::vector<size_t> left, right;
     for(auto it=m_twins.begin(); it!=m_twins.end(); ++it)

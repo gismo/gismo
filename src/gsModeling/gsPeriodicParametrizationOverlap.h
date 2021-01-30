@@ -176,7 +176,7 @@ public:
      *
      * @param restrict If set to true, the mesh is restricted to [0, 1]^2.
      */
-    gsMesh<T> createFlatMesh(bool restrict) const;
+    gsMesh<T> createFlatMesh() const;
 
     // Cf. https://stackoverflow.com/questions/18100865/compiler-cant-find-base-class-method-when-called-from-derived-and-the-derived
     //using gsParametrization<T>::createFlatMesh;

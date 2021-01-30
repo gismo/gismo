@@ -61,6 +61,8 @@ public:
     /// Constructor using the input mesh and (possibly) options
     explicit gsParametrization(gsMesh<T> &mesh, const gsOptionList & list = defaultOptions());
 
+    virtual ~gsParametrization() {} // Prevent -Wdelete-non-virtual-dtor warning.
+
     /// @brief Returns the list of default options for gsParametrization
     static gsOptionList defaultOptions();
 
@@ -83,7 +85,7 @@ public:
      * Creates a flat mesh
      * @return
      */
-    gsMesh<T> createFlatMesh() const;
+    virtual gsMesh<T> createFlatMesh() const;
 
     /**
      * Writes m_mesh into @a filename.vtk with the vertices coloured
@@ -102,6 +104,11 @@ public:
      * @param filename the filename (without extension)
      */
     void writeSTL (const gsMesh<T>& mesh, std::string filename) const;
+
+    /// It might make sense in the derived classes to restrict the parameters to [0, 1]^2.
+    virtual void restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
+				  real_t uMin = 0, real_t uMax = 1) const
+    {}
 
     gsOptionList& options() { return m_options; }
 

@@ -143,19 +143,13 @@ public:
 
     /**
      * Creates a flat mesh out of a periodic parametrization created by a the stitch method.
-     * @param posCorrections Positive corrections from the stitch algorithm.
-     * @param restrict If set to true, the mesh is restricted to [0, 1]^2.
+     * The mesh is then restricted to [0, 1]^2.
      */
-    gsMesh<T> createFlatMesh(bool restrict) const
+    gsMesh<T> createFlatMesh() const
     {
     	gsMesh<T> unfolded = createUnfoldedFlatMesh();
-    	if(restrict)
-    	{
-    		typename gsPeriodicParametrization<T>::FlatMesh display(unfolded);
-    		return display.createRestrictedFlatMesh();
-    	}
-    	else
-    	    return unfolded;
+	typename gsPeriodicParametrization<T>::FlatMesh display(unfolded);
+	return display.createRestrictedFlatMesh();
     }
 
 protected:

@@ -121,21 +121,15 @@ int main(int argc, char *argv[])
     gsInfo << "creating gsParametrization<real_t>       ";
     stopwatch.restart();
 
-    gsPeriodicParametrizationOverlap<real_t>* pm_over;
-    gsPeriodicParametrizationStitch<real_t>* pm_stitch;
-    //gsFreeBoundaryParametrization<real_t>* pm_free;
-    //gsIterativeParametrization<real_t>*      pm_iter;
     gsParametrization<real_t>* pm;
 
     if(domainMethod == overlap)
     {
-	pm_over = new gsPeriodicParametrizationOverlap<real_t>(*mm, ol);
-	pm = pm_over;
+	pm = new gsPeriodicParametrizationOverlap<real_t>(*mm, ol);
     }
     else if(domainMethod == stitch)
     {
-	pm_stitch = new gsPeriodicParametrizationStitch<real_t>(*mm, ol);
-	pm = pm_stitch;
+	pm = new gsPeriodicParametrizationStitch<real_t>(*mm, ol);
     }
     // else if(domainMethod == free)
     // {
@@ -170,12 +164,12 @@ int main(int argc, char *argv[])
 	{
 	    gsFileData<real_t> fd_overlap(filenameOverlap);
 	    gsMesh<real_t> overlap = *(fd_overlap.getFirst<gsMesh<real_t> >());
-	    pm_over->compute(verticesV0, paramsV0, verticesV1, paramsV1, overlap);
+	    static_cast<gsPeriodicParametrizationOverlap<real_t>*>(pm)->compute(verticesV0, paramsV0, verticesV1, paramsV1, overlap);
 	}
 	else // domainMethod == stitch
 	{
 	    readPts(filenameStitch,    stitchVertices);
-	    pm_stitch->compute(verticesV0, paramsV0, verticesV1, paramsV1, stitchVertices);
+	    static_cast<gsPeriodicParametrizationStitch<real_t>*>(pm)->compute(verticesV0, paramsV0, verticesV1, paramsV1, stitchVertices);
 	}
     }
     // else if(domainMethod == free)
@@ -192,12 +186,7 @@ int main(int argc, char *argv[])
     gsMesh<> flatMesh;
 
     stopwatch.restart();
-    if( domainMethod == overlap )
-	flatMesh = pm_over->createFlatMesh(true);
-    else if( domainMethod == stitch )
-	flatMesh = pm_stitch->createFlatMesh(true);
-    else
-	flatMesh = pm->createFlatMesh();
+    flatMesh = pm->createFlatMesh();
 
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
@@ -216,10 +205,8 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    if( domainMethod == overlap)
-	pm_over->restrictMatrices(uv, xyz);
-    else if( domainMethod == stitch)
-	pm_stitch->restrictMatrices(uv, xyz);
+    if(domainMethod == overlap || domainMethod == stitch)
+	pm->restrictMatrices(uv, xyz);
 
     if(paraview)
     {
