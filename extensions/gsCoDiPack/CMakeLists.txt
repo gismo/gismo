@@ -14,6 +14,7 @@ endif()
 
 # Apply same configuration as G+Smo
 include(gsConfig)
+set(CMAKE_CXX_VISIBILITY_PRESET default)# this is needed to get the CoDiPack tapes exported
 
 ##
 ## CoDiPack package
@@ -37,6 +38,19 @@ set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
 set (GISMO_EXTRA_INSTANCE ${GISMO_EXTRA_INSTANCE} "codi::RealForward;codi::RealReverse"
   CACHE INTERNAL "Additional instantiations")
 
+add_library(${PROJECT_NAME} OBJECT gsCoDiPack_.cpp)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+  COMPILE_DEFINITIONS gismo_EXPORTS
+  POSITION_INDEPENDENT_CODE ON
+  LINKER_LANGUAGE CXX
+  CXX_VISIBILITY_PRESET hidden
+  VISIBILITY_INLINES_HIDDEN ON
+  FOLDER "G+Smo extensions"  )
+
+set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
+  CACHE INTERNAL "Gismo extensions to be included")
+
 # Install CoDiPack header files
 install(DIRECTORY ${CODIPACK_INCLUDE_DIR}/
         DESTINATION include/gismo/ )
@@ -45,9 +59,6 @@ install(DIRECTORY ${CODIPACK_INCLUDE_DIR}/
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
         DESTINATION include/gismo/
         FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
-
-# Add filedata folder
-add_definitions(-DELAST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/filedata/") 
 
 # Add example files
 include_directories(${CODIPACK_INCLUDE_DIR})
