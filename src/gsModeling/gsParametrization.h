@@ -67,7 +67,7 @@ public:
     static gsOptionList defaultOptions();
 
     /// Main function which performs the computation
-    gsParametrization<T>& compute();
+    virtual void compute();
 
     /**
      * Parametric Coordinates u,v from 0..1

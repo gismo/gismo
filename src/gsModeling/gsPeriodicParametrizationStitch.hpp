@@ -106,11 +106,11 @@ gsPeriodicParametrizationStitch<T>::Neighbourhood::Neighbourhood(const gsHalfEdg
 }
 
 template <class T>
-gsPeriodicParametrizationStitch<T>& gsPeriodicParametrizationStitch<T>::compute(const gsMatrix<T>& verticesV0,
-										const gsMatrix<T>& paramsV0,
-										const gsMatrix<T>& verticesV1,
-										const gsMatrix<T>& paramsV1,
-										const gsMatrix<T>& stitchVertices)
+void gsPeriodicParametrizationStitch<T>::compute(const gsMatrix<T>& verticesV0,
+						 const gsMatrix<T>& paramsV0,
+						 const gsMatrix<T>& verticesV1,
+						 const gsMatrix<T>& paramsV1,
+						 const gsMatrix<T>& stitchVertices)
 {
     GISMO_ASSERT(paramsV0.rows() == 1, "one row expected in paramsV0");
     GISMO_ASSERT(paramsV1.rows() == 1, "one row expected in paramsV1");
@@ -123,7 +123,6 @@ gsPeriodicParametrizationStitch<T>& gsPeriodicParametrizationStitch<T>::compute(
     // calculation itself
     calculate(this->m_options.getInt("parametrizationMethod"),
 	      indicesV0, paramsV0, indicesV1, paramsV1, stitchIndices);
-    return *this;
 }
 
 template<class T>

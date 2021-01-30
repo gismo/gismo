@@ -76,11 +76,9 @@ public:
      * @param verticessV1 vertices on the upper (i.e., v = 1) boundary
      * @param paramsV1 their prescribed parameters
      */
-    gsPeriodicParametrizationOverlap<T>& compute(const gsMatrix<T>& verticesV0,
-						 const gsMatrix<T>& paramsV0,
-						 const gsMatrix<T>& verticesV1,
-						 const gsMatrix<T>& paramsV1,
-						 const gsMesh<T>& overlap);
+    void compute(const gsMatrix<T>& verticesV0, const gsMatrix<T>& paramsV0,
+		 const gsMatrix<T>& verticesV1, const gsMatrix<T>& paramsV1,
+		 const gsMesh<T>& overlap);
 
 protected:
     /**

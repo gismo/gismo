@@ -18,11 +18,11 @@ namespace gismo
 {
 
 template <class T>
-gsPeriodicParametrizationOverlap<T>& gsPeriodicParametrizationOverlap<T>::compute(const gsMatrix<T>& verticesV0,
-										  const gsMatrix<T>& paramsV0,
-										  const gsMatrix<T>& verticesV1,
-										  const gsMatrix<T>& paramsV1,
-										  const gsMesh<T>& overlap)
+void gsPeriodicParametrizationOverlap<T>::compute(const gsMatrix<T>& verticesV0,
+						  const gsMatrix<T>& paramsV0,
+						  const gsMatrix<T>& verticesV1,
+						  const gsMatrix<T>& paramsV1,
+						  const gsMesh<T>& overlap)
 {
     GISMO_ASSERT(paramsV0.rows() == 1, "one row expected in paramsV0");
     GISMO_ASSERT(paramsV1.rows() == 1, "one row expected in paramsV1");
@@ -33,8 +33,6 @@ gsPeriodicParametrizationOverlap<T>& gsPeriodicParametrizationOverlap<T>::comput
 
     calculate(this->m_options.getInt("parametrizationMethod"),
 	      indicesV0, paramsV0, indicesV1, paramsV1);
-
-    return *this;
 }
 
 template<class T>

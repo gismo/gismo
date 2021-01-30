@@ -108,11 +108,9 @@ public:
      * @param paramsV1 matrix with one row containing the u-parameters of vertices with v=1
      * @param stitchVertices matrix with three rows containing the vertices on the stitch
      */
-    gsPeriodicParametrizationStitch<T>& compute(const gsMatrix<T>& verticesV0,
-						const gsMatrix<T>& paramsV0,
-						const gsMatrix<T>& verticesV1,
-						const gsMatrix<T>& paramsV1,
-						const gsMatrix<T>& stitchVertices);
+    void compute(const gsMatrix<T>& verticesV0, const gsMatrix<T>& paramsV0,
+		 const gsMatrix<T>& verticesV1, const gsMatrix<T>& paramsV1,
+		 const gsMatrix<T>& stitchVertices);
 
 
 protected:

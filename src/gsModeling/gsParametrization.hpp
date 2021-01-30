@@ -252,15 +252,13 @@ gsParametrization<T>& gsParametrization<T>::setOptions(const gsOptionList& list)
 }
 
 template<class T>
-gsParametrization<T>& gsParametrization<T>::compute()
+void gsParametrization<T>::compute()
 {
     calculate(m_options.getInt("boundaryMethod"),
               m_options.getInt("parametrizationMethod"),
               m_options.getMultiInt("corners"),
               m_options.getReal("range"),
               m_options.getInt("number"));
-
-    return *this;
 }
 
 template<class T>
