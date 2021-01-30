@@ -16,18 +16,18 @@
 #include <codi.hpp>
 #include <gsCore/gsTemplateTools.h>
 
-namespace codi
-{
-
-#if defined(GISMO_BUILD_LIB) && defined(gsCoDiPack_EXPORTS)
+#ifdef GISMO_BUILD_LIB
+#ifdef gsCoDiPack_EXPORTS
 #undef  EXTERN_CLASS_TEMPLATE
 #define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
 #endif
 
+namespace codi
+{
 EXTERN_CLASS_TEMPLATE
 ActiveReal<JacobiTape<JacobiTapeTypes<ReverseTapeTypes<double, double, LinearIndexHandler<int> >, ChunkVector> > >;
 
 EXTERN_CLASS_TEMPLATE
 ActiveReal<ForwardEvaluation<ForwardTapeTypes<double, double> > >;
-
 }
+#endif
