@@ -160,8 +160,7 @@ int main(int argc, char *argv[])
     gsInfo << "gsParametrization::compute()             ";
     stopwatch.restart();
 
-    if( domainMethod == overlap )
-	pm_over->compute_periodic_overlap(filenameV0, filenameV1, filenameOverlap);
+    if(domainMethod == overlap || domainMethod == stitch)
     {
 	gsMatrix<real_t> verticesV0, paramsV0, verticesV1, paramsV1, stitchVertices;
 	readParsAndPts(filenameV0, paramsV0, verticesV0);
