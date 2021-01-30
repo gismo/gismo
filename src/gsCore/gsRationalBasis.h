@@ -330,13 +330,13 @@ public:
 
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
-        gsWarn<< "rational domain iterator with evaluate the source.\n";
+//        gsWarn<< "rational domain iterator with evaluate the source.\n";
         return m_src->makeDomainIterator();
     }
 
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
-        gsWarn<< "rational domain boundary iterator with evaluate the source.\n";
+//        gsWarn<< "rational domain boundary iterator with evaluate the source.\n";
         return m_src->makeDomainIterator(s);
     }
 

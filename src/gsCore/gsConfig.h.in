@@ -23,7 +23,10 @@
 #define GISMO_PATCH      @gismo_VERSION_PATCH@
 
 /** Define default coefficient type. */
-#define real_t           @GISMO_COEFF_TYPE@
+#define GISMO_COEFF_TYPE @GISMO_COEFF_TYPE@
+#ifndef real_t
+#define real_t           GISMO_COEFF_TYPE
+#endif
 
 /** Define default index type. */
 #define index_t          @GISMO_INDEX_TYPE@
@@ -72,6 +75,10 @@
 
 #ifdef GISMO_WITH_UNUM
 #include <gsUnum/gsUnum.h>
+#endif
+
+#ifdef GISMO_WITH_CODIPACK
+#include <gsCoDiPack/gsCoDiPack.h>
 #endif
 
 /* Determine if only header files should be used. */

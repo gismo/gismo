@@ -5,7 +5,7 @@
 ## Author: Angelos Mantzaflaris
 ######################################################################
 
-cmake_minimum_required(VERSION 2.8.12) #CMake 3.19 warns to change to 2.8.12
+cmake_minimum_required(VERSION 2.8.12)
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
@@ -124,6 +124,7 @@ gsJITConfigXml(${CMAKE_CURRENT_SOURCE_DIR}/cmake/jit.xml.in
 ## #################################################################
 
 # Clean previously set variables in the cache
+unset(GISMO_EXTRA_INSTANCE       CACHE)
 unset(${PROJECT_NAME}_HEADERS    CACHE)
 unset(${PROJECT_NAME}_SOURCES    CACHE)
 unset(${PROJECT_NAME}_EXTENSIONS CACHE)
@@ -240,9 +241,6 @@ endif(GISMO_WITH_UMFPACK)
 
 if(GISMO_WITH_UNUM)
   add_subdirectory(extensions/gsUnum)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${UNUM_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${UNUM_INCLUDE_DIR})
 endif(GISMO_WITH_UNUM)
 
 if(GISMO_WITH_OCC)

@@ -9,7 +9,7 @@ In this example, the Kirchhoff-Love shell is implemented. References for this im
 
 The variational formulation for the Kirchhoff-Love shell is:
 \f{eqnarray*}{
-	\int_\Omega \mathbf{f}\cdot\mathbf{v}\:\text{d} + p\mathbf{\hat{n}}\Omega - \int_\Omega \mathbf{n}(\mathbf{u}):\mathbf{\varepsilon}^\prime(\mathbf{u},\mathbf{v}) + \mathbf{m}(\mathbf{u}):\mathbf{\kappa}^\prime(\mathbf{u},\mathbf{v}) \text{d}\Omega = 0
+	\int_\Omega \mathbf{f}\cdot\mathbf{v}\ + p\mathbf{\hat{n}}:\text{d}\Omega - \int_\Omega \mathbf{n}(\mathbf{u}):\mathbf{\varepsilon}^\prime(\mathbf{u},\mathbf{v}) + \mathbf{m}(\mathbf{u}):\mathbf{\kappa}^\prime(\mathbf{u},\mathbf{v}) \text{d}\Omega = 0
 \f}
 
 The left-hand side of this formulation in fact is the residual of the problem, being the balance between external and internal forces. In this equation, \f$\Omega\f$ is the domain, \f$ \mathbf{f} \f$ is a vector with a distributed load acting on the mid-plane of the shell, \f$ \mathbf{v} \f$ is the three-dimensional test function, \f$ p\f$ is a follower pressure acting on the shell, \f$ \mathbf{\hat{n}}\f$ is the shell normal, \f$ n \f$ is the normal-force tensor, \f$ \mathbf{\varepsilon}^\prime \f$ is the variation of the membrane strain tensor, \f$ \mathbf{m} \f$ is the bending moment tensor, \f$ \mathbf{\kappa}^\prime \f$ is the variation of the bending strain tensor and \f$\mathbf{u} \f$ is the displacement of the mid-plane of the shell; thus the solution to the problem.
@@ -17,7 +17,7 @@ The left-hand side of this formulation in fact is the residual of the problem, b
 In order to solve the variational formulation for \f$ \mathbf{u} \f$, the second variation is derived, such that a lineararized form can be found or such that the Jacobian and for Newton iterations can be found. The second variation is:
 
  \f{eqnarray*}{
-	j(\mathbf{u},\mathbf{v},\mathbf{w}) = \int_\Omega \mathbf{n}(\mathbf{u}):\mathbf{\varepsilon}^{\prime\prime}(\mathbf{u},\mathbf{v},\mathbf{v}) + \mathbf{n}^\prime(\mathbf{u},\mathbf{v}):\mathbf{\varepsilon}^{\prime}(\mathbf{u},\mathbf{v}) + \mathbf{m}(\mathbf{u}):\mathbf{\kappa}^{\prime\prime}(\mathbf{u},\mathbf{v},\mathbf{w}) + \mathbf{m}^\prime(\mathbf{u},\mathbf{v}):\mathbf{\kappa}^\prime(\mathbf{u},\mathbf{v}) \text{d}\Omega - \int_\Omega p \mathbf{v}\cdot\mathbf{\hat{n}}^\prime
+	j(\mathbf{u},\mathbf{v},\mathbf{w}) = \int_\Omega \mathbf{n}(\mathbf{u}):\mathbf{\varepsilon}^{\prime\prime}(\mathbf{u},\mathbf{v},\mathbf{v}) + \mathbf{n}^\prime(\mathbf{u},\mathbf{v}):\mathbf{\varepsilon}^{\prime}(\mathbf{u},\mathbf{v}) + \mathbf{m}(\mathbf{u}):\mathbf{\kappa}^{\prime\prime}(\mathbf{u},\mathbf{v},\mathbf{w}) + \mathbf{m}^\prime(\mathbf{u},\mathbf{v}):\mathbf{\kappa}^\prime(\mathbf{u},\mathbf{v}) \text{d}\Omega - \int_\Omega p \mathbf{v}\cdot\mathbf{\hat{n}}^\prime :\text{d}\Omega
 \f}
 
 In this equation, the primed (\f$\cdot^\prime\f$) expressions again denote the first variation and the double-primed (\f$\cdot^{\prime\prime}\f$) expressions denote second variations.

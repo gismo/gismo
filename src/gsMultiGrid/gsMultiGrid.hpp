@@ -283,7 +283,7 @@ gsOptionList gsMultiGridOp<T>::defaultOptions()
     opt.addInt   ("NumPreSmooth"                , "Number of pre-smoothing steps",                             1      );
     opt.addInt   ("NumPostSmooth"               , "Number of post-smoothing steps",                            1      );
     opt.addInt   ("NumCycles"                   , "Number of cycles (usually 1 for V-cycle or 2 for W-cycle)", 1      );
-    opt.addReal  ("CorarseGridCorrectionDamping", "Damping of the coarse-grid correction (usually 1)",         1      );
+    opt.addReal  ("CorarseGridCorrectionDamping", "Damping of the coarse-grid correction (usually 1)",      (T)1      );
     return opt;
 }
 

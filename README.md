@@ -23,6 +23,7 @@
 | [Codeship](https://app.codeship.com/projects/123289)  | [![Codeship Status](https://app.codeship.com/projects/2aa19360-8998-0133-39fd-66416d65b267/status?branch=stable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[codeship]) | |
 | [GitLab](https://gitlab.com/gismo-ci/gismo/-/pipelines)    | [![pipeline status](https://gitlab.com/gismo-ci/gismo/badges/gitlab_ci/pipeline.svg)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gitlab-ci]) | Linux GCC6, C++98 <br> Linux GCC7, C++11 <br> Linux GCC8, C++14 <br> Linux GCC9, C++17 <br> Linux GCC10, C++20 <br> Linux Clang7, C++98 <br> Linux Clang8, C++11 <br> Linux Clang9, C++14 <br> Linux Clang10, C++17 <br> Linux Clang11, C++20] |
 | [Travis](https://travis-ci.org/gismo/gismo/branches) | [![Travis Status](https://travis-ci.org/gismo/gismo.svg?branch=stable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[travis]) | macOS XCode9 C++98 <br> macOS XCode10, C++11 <br> macOS XCode11, C++14 <br> Linux GCC, C++98 |
+| [GitHub Actions](https://github.com/gismo/gismo/actions) | [![Build Status](https://github.com/gismo/gismo/workflows/gismo/badge.svg?branch=stable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[actions]) | Latest Linux/MacOS/Windows |
 | [Jenkins](https://ci.inria.fr/gismo/job/gismo/job/gismo/job/stable) | [![Build Status](https://ci.inria.fr/gismo/buildStatus/icon?job=gismo%2Fgismo%2Fstable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[jenkins]) |VMs for Linux/MacOS/Windows |
 | GCC Farm | [Status](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gccfarm]) | Builders from the GCC Farm   |
 | [OBS](https://build.opensuse.org/package/show/home:filiatra/gismo) | [binaries](https://software.opensuse.org/download/package?project=home:filiatra&package=gismo)  | Upstream package builds for many Linux distributions |
@@ -51,7 +52,7 @@ https://github.com/gismo/gismo/archive/stable.zip
   - Linux
   - macOS
 
-* Configuration: [CMake 2.8.8](https://cmake.org) or newer.
+* Configuration: [CMake 2.8.12](https://cmake.org) or newer.
 
 * Compilers tested include recent versions of
   - [AMD Optimizing C/C++ Compiler](https://developer.amd.com/amd-aocc/)

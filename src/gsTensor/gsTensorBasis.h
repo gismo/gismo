@@ -550,7 +550,7 @@ public:
         for ( short_t i = 0; i < d; ++i )
             if ( ind[i] == size(i)-1 )
                 return true;
-        return ( (ind.array() == 0).any() );
+        return ((0 == ind.array()).any() );
     }
 
     /// \brief Returns true iff the basis function indexed \a m is on

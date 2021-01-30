@@ -31,7 +31,11 @@ set(CODIPACK_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/CoDiPack/include CACHE INT
 
 # Add CoDiPack include directory to G+Smo standard include directories
 set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
-  CACHE INTERNAL "gismo include directories")
+  CACHE INTERNAL "Gismo include directories")
+
+# Add needed instantiations to the precompiled library
+set (GISMO_EXTRA_INSTANCE ${GISMO_EXTRA_INSTANCE} "codi::RealForward;codi::RealReverse"
+  CACHE INTERNAL "Additional instantiations")
 
 # Install CoDiPack header files
 install(DIRECTORY ${CODIPACK_INCLUDE_DIR}/
