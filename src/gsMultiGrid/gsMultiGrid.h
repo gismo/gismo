@@ -210,7 +210,7 @@ public:
     void setNumCycles(index_t n)                    { m_numCycles = n;        } ///< Set number of cycles (usually 1 for V-cycle or 2 for W-cycle).
     void setMaxIters(index_t n)                     { m_maxIters = n;         } ///< Set the maximum number of iterations for the member function \a solve
     void setTol(T tol)                              { m_tol = tol;            } ///< Set the error bound for the member function \a solve
-    void setCorarseGridCorrectionDamping(T damping) { m_damping = damping;    } ///<Set the damping of for the coarse-grid correction
+  void setCorarseGridCorrectionDamping(T damping) { m_damping = (gsOptionList::Real)damping;    } ///<Set the damping of for the coarse-grid correction
 
     static gsOptionList defaultOptions();                                       ///< Returns a list of default options
     virtual void setOptions(const gsOptionList & opt);                          ///< Set the options based on a gsOptionList
@@ -242,7 +242,7 @@ private:
     index_t m_numCycles;
     index_t m_maxIters;
     T m_tol;
-    T m_damping;
+    gsOptionList::Real  m_damping;
 
 }; // class gsMultiGridOp
 
