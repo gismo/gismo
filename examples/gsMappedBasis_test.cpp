@@ -37,8 +37,7 @@ int main(int argc, char *argv[])
     int numRefine  = 3;
     int qRule  = 1;
 
-    gsFileManager::addSearchPaths(gsFileManager::getHomePath() + "/dbox/Florian_ThreePatches/star");
-    std::string fn("star3_");
+    std::string fn("msplines/star3_");
 
     gsCmdLine cmd("Example using mapped spline bases.");
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
