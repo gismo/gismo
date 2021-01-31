@@ -116,6 +116,12 @@ public:
 
     /// Make function
     ///
+    /// This function allows to obtain an empty instance
+    static uPtr make()
+    { return uPtr( new gsAdditiveOp() ); }
+
+    /// Make function
+    ///
     /// The operator realizes \f$ \sum_{i=1}^n T_i A_i T_i^T \f$
     ///
     /// @param transfers  transfer matrices \f$ T_i \f$

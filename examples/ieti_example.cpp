@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
     {
         //gsSparseMatrix<> primalMatrix;
         //gsMatrix<> primalRhs;
-    
+
         for (size_t i=0; i<nr_patches; ++i)
         {
             gsBoundaryConditions<> bc_local;
@@ -193,9 +193,9 @@ int main(int argc, char *argv[])
 
             ieti.localMatrixOps.push_back(makeMatrixOp(gsSparseMatrix<>(assembler.matrix()).moveToPtr()));
             ieti.localRhs.push_back(give(assembler.rhs()));
-          
+
         }
-      
+
         //ieti.localMatrixOps.push_back(makeMatrixOp(primalMatrix.moveToPtr()));
         //ieti.localRhs.push_back(give(primalRhs));
     }
@@ -208,9 +208,12 @@ int main(int argc, char *argv[])
     prec.jumpMatrices.reserve(nr_patches);
     for (size_t i=0; i<nr_patches; ++i)
     {
-        prec.localMatrixOps.push_back( ieti.localMatrixOps[i] );
-        prec.jumpMatrices.push_back( ieti.jumpMatrices[i] );
-        prec.localSchurOps.push_back( ieti.localMatrixOps[i] );//TODO: wrong
+        prec.addPatch(
+            gsScaledDirichletPrec<>::restrictToSkeleton(
+                *(ieti.jumpMatrices[i]),
+                ieti.localMatrixOps[i]
+            )
+        );
     }
 
     //ieti.jumpMatrices.push_back( ietiAssembler.primalJumpMatrix() );

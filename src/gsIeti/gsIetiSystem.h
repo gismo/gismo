@@ -53,7 +53,7 @@ public:
             localSolverOps.push_back(makeSparseLUSolver(gsSparseMatrix<T>(matop->matrix())));
         }
     }
-    
+
     OpPtr saddlePointProblem() const
     {
         GISMO_ASSERT( jumpMatrices.size() == localMatrixOps.size(),
@@ -69,14 +69,14 @@ public:
         }
         return result;
     }
-    
+
     index_t numberOfLagrangeMultipliers() const
     {
         GISMO_ASSERT( jumpMatrices.size()>0, "gsIetiSystem: Number of Lagrange multipliers "
             "can only be determined if there are jump matrices.");
         return jumpMatrices[0]->rows();
     }
-    
+
     OpPtr schurComplement() const
     {
         GISMO_ASSERT( jumpMatrices.size() == localMatrixOps.size(),

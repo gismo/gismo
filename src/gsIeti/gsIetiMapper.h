@@ -61,7 +61,7 @@ public:
 private:
 
     typedef std::vector< std::vector< std::pair<index_t,index_t> > > CouplingInfo;
-    
+
     CouplingInfo getCoupling() const
     {
         CouplingInfo result;
@@ -91,7 +91,7 @@ private:
         }
         return result;
     }
-    
+
 public:
 
 
@@ -112,7 +112,7 @@ public:
             const index_t n = coupling[i].size();
             numLagrangeMult += (n * (n-1))/2;
         }
-        
+
         for (index_t i=0; i<numPatches; ++i)
             result.push_back(Transfer(numLagrangeMult, dm_local[i].freeSize()).moveToPtr());
 
@@ -120,7 +120,7 @@ public:
         for (index_t i=0; i<couplingSize; ++i)
         {
             const index_t sz = coupling[i].size();
-            GISMO_ASSERT( sz>1, "Found coupled dof that is not coupled to any other dof." ); 
+            GISMO_ASSERT( sz>1, "Found coupled dof that is not coupled to any other dof." );
             // We implement fully redundant. TODO: Allow alternatives.
             for (index_t j1=0; j1<sz-1; ++j1)
             {
@@ -143,17 +143,17 @@ public:
 
         return result;
     }
-    
+
     gsMatrix<T> constructGlobalSolutionFromLocalSolutions( const std::vector< gsMatrix<T> >& localContribs )
     {
         const index_t numPatches = dm_global.numPatches();
         GISMO_ASSERT( numPatches == dm_local.size(), "");
         GISMO_ASSERT( numPatches == localContribs.size(), "");
-        
+
         gsMatrix<T> result;
         result.setZero( dm_global.freeSize(), 1/*==localContribs[0].cols()*/ );
-        
-        
+
+
         for (index_t k=0; k<numPatches; ++k)
         {
             const index_t sz=dm_local[k].size();
@@ -163,7 +163,7 @@ public:
                     result(dm_global.index(i,k),0) = localContribs[k](dm_local[k].index(i,0),0);
             }
         }
-        
+
         return result;
     }
 
