@@ -16,8 +16,6 @@
 #include "gsModeling/gsParametrization.h"
 #include "gsModeling/gsPeriodicParametrizationOverlap.h"
 #include "gsModeling/gsPeriodicParametrizationStitch.h"
-//#include "gsModeling/gsFreeBoundaryParametrization.h"
-//#include "gsModeling/gsIterativeParametrization.h"
 
 using namespace gismo;
 
@@ -109,10 +107,6 @@ int main(int argc, char *argv[])
 	domainMethod = overlap;
     else if( ol.askString("stitch", "").compare("") > 0 )
 	domainMethod = stitch;
-    // else if( ol.askString("fileCorners", "").compare("") > 0)
-    // 	domainMethod = free;
-    // else
-    // 	domainMethod = iterative;
     else
 	domainMethod = standard;
 
