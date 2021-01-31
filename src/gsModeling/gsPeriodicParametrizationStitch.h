@@ -110,9 +110,10 @@ public:
 					     const gsMatrix<T>& paramsV1,
 					     const gsMatrix<T>& stitchVertices,
 					     const gsOptionList &list = gsParametrization<T>::defaultOptions())
-	: gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
-	m_stitchVertices(stitchVertices)
-	{}
+	: gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list)
+	{
+	    m_stitchIndices = this->indices(stitchVertices);
+	}
 
     /// Computes the periodic parametrization.
     void compute();
@@ -122,14 +123,8 @@ protected:
     /**
      * Calculation itself
      * @param paraMethod parametrization method (cf. gsParametrization<T>)
-     * @param indicesV0 indices of the vertices with v=0
-     * @param indicesV1 indices of the vertices with v=1
-     * @param stitchIndices indices of the vertices on the stitch
      */
-    void calculate(const size_t paraMethod,
-		   const std::vector<size_t>& indicesV0,
-		   const std::vector<size_t>& indicesV1,
-		   const std::vector<size_t>& stitchIndices);
+    void calculate(const size_t paraMethod);
 
     /** Similar to @a constructAndSolveEquationSystem but works for
      * periodic meshes using the corrections.
@@ -162,15 +157,12 @@ protected:
     /**
      * Query, whether the vertex with index @a vertexIndex (in the
      * numbering of Floater's paper, i.e., starting from 1) is on the
-     * stitch or not.  TODO: One can save the stitch vertices into a
-     * vector in the initialisation.
+     * stitch or not.
      */
     bool isOnStitch(size_t vertexIndex) const
     {
-	for(index_t c=0; c<m_corrections.cols(); c++)
-	    if(m_corrections(vertexIndex-1, c) == 1)
-		return true;
-	return false;
+	return (std::find(m_stitchIndices.begin(), m_stitchIndices.end(), vertexIndex)
+		!= m_stitchIndices.end());
     }
 
     /**
@@ -197,7 +189,7 @@ protected:
      */
     gsSparseMatrix<int> m_corrections;
 
-    const gsMatrix<T> m_stitchVertices;
+    std::vector<size_t> m_stitchIndices; ///< indices of the vertices on the stitch
 };
 
 } // namespace gismo

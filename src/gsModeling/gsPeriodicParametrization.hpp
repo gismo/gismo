@@ -212,8 +212,7 @@ void gsPeriodicParametrization<T>::restrictMatrices(gsMatrix<T>& uv, const gsMat
 }
 
 template <class T>
-void gsPeriodicParametrization<T>::initParameterPoints(const std::vector<size_t>& indicesV0,
-						       const std::vector<size_t>& indicesV1)
+void gsPeriodicParametrization<T>::initParameterPoints()
 {
     typedef typename gsParametrization<T>::Point2D Point2D;
 
@@ -224,23 +223,24 @@ void gsPeriodicParametrization<T>::initParameterPoints(const std::vector<size_t>
     for (size_t i = 1; i <= n; i++)
 	this->m_parameterPoints.push_back(Point2D(0, 0, i));
 
-    GISMO_ASSERT(indicesV0.size() == static_cast<size_t>(m_valuesV0.cols()),
-		 "Different sizes of u0.");
-    GISMO_ASSERT(indicesV1.size() == static_cast<size_t>(m_valuesV1.cols()),
-		 "Different sizes of u1.");
-    GISMO_ASSERT(indicesV0.size() + indicesV1.size() == this->m_mesh.getNumberOfBoundaryVertices(),
+    // save the sizes (as index_t to compare without warnings)
+    index_t v0size = m_indicesV0.size();
+    index_t v1size = m_indicesV1.size();
+    GISMO_ASSERT(v0size == m_valuesV0.cols(), "Different sizes of u0.");
+    GISMO_ASSERT(v1size == m_valuesV1.cols(), "Different sizes of u1.");
+    GISMO_ASSERT(v0size + v1size == this->m_mesh.getNumberOfBoundaryVertices(),
 		 "Not prescribing all boundary points.");
 
     size_t numPtsSoFar = n;
-    this->m_parameterPoints.resize(n + indicesV0.size() + indicesV1.size());
+    this->m_parameterPoints.resize(n + v0size + v1size);
 
     // Set the parameter values on the v=0 boundary.
-    for(size_t i=0; i<indicesV0.size(); i++)
-	this->m_parameterPoints[indicesV0[i]-1] = Point2D(m_paramsV0(i, 0), 0, numPtsSoFar++);
+    for(index_t i=0; i<v0size; i++)
+	this->m_parameterPoints[m_indicesV0[i]-1] = Point2D(m_paramsV0(i, 0), 0, numPtsSoFar++);
 
     // Set the parameter values on the v=1 boundary.
-    for(size_t i=0; i<indicesV1.size(); i++)
-	this->m_parameterPoints[indicesV1[i]-1] = Point2D(m_paramsV1(i, 0), 1, numPtsSoFar++);
+    for(index_t i=0; i<v1size; i++)
+	this->m_parameterPoints[m_indicesV1[i]-1] = Point2D(m_paramsV1(i, 0), 1, numPtsSoFar++);
 }
 
 } // namespace gismo

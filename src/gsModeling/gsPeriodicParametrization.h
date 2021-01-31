@@ -94,9 +94,11 @@ public:
 			      const gsMatrix<T>& paramsV1,
 			      const gsOptionList &list = gsParametrization<T>::defaultOptions())
 	: gsParametrization<T>(mesh, list),
-	  m_verticesV0(verticesV0), m_paramsV0(paramsV0),
-	  m_verticesV1(verticesV1), m_paramsV1(paramsV1)
+	  m_paramsV0(paramsV0), m_paramsV1(paramsV1)
 	{
+	    m_indicesV0 = this->indices(verticesV0);
+	    m_indicesV1 = this->indices(verticesV1);
+
 	    GISMO_ASSERT(this->m_paramsV0.rows() == 1, "one row expected in paramsV0");
 	    GISMO_ASSERT(this->m_paramsV1.rows() == 1, "one row expected in paramsV1");
 
@@ -123,6 +125,7 @@ public:
     void restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
 			  real_t uMin = 0, real_t uMax = 1) const;
 
+    /// Computes the periodic parametrization.
     virtual void compute() = 0;
 
 protected:
@@ -130,17 +133,15 @@ protected:
     /**
      * Prepares m_parameterPoints for a computation of a periodic parametrization.
      * Important: Neighbourhood has to be constructed before calling this function.
-     * @param indicesV0 indices of the vertices with v=0
-     * @param valuesV0 u-parameters of the vertices with v=0
-     * @param indicesV1 indices of the vertices with v=1
-     * @param valuesV1 u-parameters of the vertices with v=1
      */
-    void initParameterPoints(const std::vector<size_t>& indicesV0,
-			     const std::vector<size_t>& indicesV1);
+    void initParameterPoints();
 
 protected: // members
 
-    const gsMatrix<T> m_verticesV0, m_paramsV0, m_verticesV1, m_paramsV1;
+    const gsMatrix<T> m_paramsV0;    ///< u-parameters of the vertices with v=0
+    const gsMatrix<T> m_paramsV1;    ///< u-parameters of the vertices with v=1
+    std::vector<size_t> m_indicesV0; ///< indices of the vertices with v=0
+    std::vector<size_t> m_indicesV1; ///< indicesV1 indices of the vertices with v=1
 
 };
 

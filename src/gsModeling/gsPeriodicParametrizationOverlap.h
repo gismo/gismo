@@ -54,6 +54,7 @@ template <class T>
 class GISMO_EXPORT gsPeriodicParametrizationOverlap : public gsPeriodicParametrization<T>
 {
     typedef typename gsParametrization<T>::Neighbourhood Neighbourhood;
+    typedef typename gsMesh<T>::gsVertexHandle           gsVertexHandle;
 
 public:
     /** Constructor
@@ -90,9 +91,7 @@ protected:
      * @param indicesV0 indices of the vertices on the bottom (i.e., v = 0) boundary
      * @param indicesV1 indices of the vertices on the upper (i.e., v = 1) boundary
      */
-    void calculate(const size_t paraMethod,
-		   const std::vector<size_t>& indicesV0,
-		   const std::vector<size_t>& indicesV1);
+    void calculate(const size_t paraMethod);
 
     /// Finds the twin of the vertex nr. @a vertexId in the mesh.
     size_t findTwin(size_t vertexId) const
@@ -124,8 +123,8 @@ protected:
      */
     void constructTwinsBetween(size_t& currentNrAllVertices,
 			       std::list<size_t> vertexIndices,
-			       typename gsMesh<T>::gsVertexHandle from,
-			       typename gsMesh<T>::gsVertexHandle to,
+			       gsVertexHandle from,
+			       gsVertexHandle to,
 			       bool rightHandSide)
     {
 	return constructTwinsBetween(currentNrAllVertices,
@@ -135,21 +134,10 @@ protected:
 				     rightHandSide);
     }
 
-    /**
-     * Construct the twins.
-     * @param uMinv0 the vertex (of the input mesh) with parameter v = 0 and lowest u value
-     * @param uMaxv0 the vertex with parameter v = 0 and highest u value
-     * @param uMinv1 the vertex with parameter v = 1 and lowest u value
-     * @param uMaxv1 the vertex with parameter v = 1 and highest u value
-     */
-    void constructTwins(typename gsMesh<T>::gsVertexHandle uMinv0,
-			typename gsMesh<T>::gsVertexHandle uMaxv0,
-			typename gsMesh<T>::gsVertexHandle uMinv1,
-			typename gsMesh<T>::gsVertexHandle uMaxv1);
+    /// Construct the twins.
+    void constructTwins();
 
-    /** Analogous to the overloaded function from the parent class but
-     * does the periodic thing through the twin trick.*/
-    // TODO: Rename (currently, this shadows the parent class implementation).
+    /// Analogous to the overloaded function from the parent class.
     void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
 					 const size_t n,
 					 const size_t N);
@@ -172,9 +160,6 @@ public:
      * @param restrict If set to true, the mesh is restricted to [0, 1]^2.
      */
     gsMesh<T> createFlatMesh() const;
-
-    // Cf. https://stackoverflow.com/questions/18100865/compiler-cant-find-base-class-method-when-called-from-derived-and-the-derived
-    //using gsParametrization<T>::createFlatMesh;
 
 protected:
     /** Creates a flat (i.e., 2D) mesh with the overlap triangles on

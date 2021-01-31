@@ -20,30 +20,21 @@ namespace gismo
 template <class T>
 void gsPeriodicParametrizationOverlap<T>::compute()
 {
-    std::vector<size_t> indicesV0 = this->indices(this->m_verticesV0);
-    std::vector<size_t> indicesV1 = this->indices(this->m_verticesV1);
-
-    calculate(this->m_options.getInt("parametrizationMethod"), indicesV0, indicesV1);
+    calculate(this->m_options.getInt("parametrizationMethod"));
 }
 
 template<class T>
-void gsPeriodicParametrizationOverlap<T>::calculate(const size_t paraMethod,
-						    const std::vector<size_t>& indicesV0,
-						    const std::vector<size_t>& indicesV1)
+void gsPeriodicParametrizationOverlap<T>::calculate(const size_t paraMethod)
 {
-    typedef typename gsParametrization<T>::Point2D Point2D;
     size_t n = this->m_mesh.getNumberOfInnerVertices();
     size_t N = this->m_mesh.getNumberOfVertices();
 
     Neighbourhood neighbourhood(this->m_mesh, paraMethod);
 
-    this->initParameterPoints(indicesV0, indicesV1);
+    this->initParameterPoints();
 
     // Construct the twins.
-    constructTwins(this->m_mesh.getVertex(indicesV0.front()),
-		   this->m_mesh.getVertex(indicesV0.back()),
-		   this->m_mesh.getVertex(indicesV1.front()),
-		   this->m_mesh.getVertex(indicesV1.back()));
+    constructTwins();
 
     // Solve.
     constructAndSolveEquationSystem(neighbourhood, n, N);
@@ -81,11 +72,20 @@ void gsPeriodicParametrizationOverlap<T>::constructTwinsBetween(size_t& currentN
 }
 
 template<class T>
-void gsPeriodicParametrizationOverlap<T>::constructTwins(typename gsMesh<T>::gsVertexHandle uMinv0,
-							 typename gsMesh<T>::gsVertexHandle uMaxv0,
-							 typename gsMesh<T>::gsVertexHandle uMinv1,
-							 typename gsMesh<T>::gsVertexHandle uMaxv1)
+void gsPeriodicParametrizationOverlap<T>::constructTwins()
 {
+    // vertex with parameter v = 0 and lowest u value
+    gsVertexHandle uMinv0 = this->m_mesh.getVertex(this->m_indicesV0.front());
+
+    // vertex with parameter v = 0 and highest u value
+    gsVertexHandle uMaxv0 = this->m_mesh.getVertex(this->m_indicesV0.back());
+
+    // vertex with parameter v = 1 and lowest u value
+    gsVertexHandle uMinv1 = this->m_mesh.getVertex(this->m_indicesV1.front());
+
+    // vertex with parameter v = 1 and highest u value
+    gsVertexHandle uMaxv1 = this->m_mesh.getVertex(this->m_indicesV1.back());
+
     std::list<size_t> vertexIndices = m_overlapHEM.getBoundaryVertexIndices();
     size_t currentNrAllVertices = this->m_mesh.getNumberOfVertices();
 
@@ -105,7 +105,6 @@ void gsPeriodicParametrizationOverlap<T>::constructAndSolveEquationSystem(const 
     gsMatrix<T> LHS(N + numTwins, N + numTwins);
     gsMatrix<T> RHS(N + numTwins, 2);
     std::vector<T> lambdas;
-
 
     // interior points
     for (size_t i = 0; i < n; i++)
@@ -137,9 +136,8 @@ void gsPeriodicParametrizationOverlap<T>::constructAndSolveEquationSystem(const 
 	RHS(i, 1)      = T( 0);
     }
 
-    gsMatrix<T> sol;
     Eigen::PartialPivLU<typename gsMatrix<T>::Base> LU = LHS.partialPivLu();
-    sol = LU.solve(RHS);
+    gsMatrix<T> sol = LU.solve(RHS);
     for (size_t i = 0; i < N; i++)
     {
     	this->m_parameterPoints[i] << sol(i, 0), sol(i, 1);
@@ -215,12 +213,16 @@ template<class T>
 gsMesh<T> gsPeriodicParametrizationOverlap<T>::createExtendedFlatMesh(const std::vector<size_t>& right,
 								      const std::vector<size_t>& left) const
 {
+    typedef typename gsParametrization<T>::Point2D Point2D;
+
     gsMesh<T> midMesh;
     midMesh.reserve(3 * this->m_mesh.getNumberOfTriangles(), this->m_mesh.getNumberOfTriangles(), 0);
 
     for (size_t i = 0; i < this->m_mesh.getNumberOfTriangles(); i++)
     {
 	size_t vInd[3];
+
+	// the indices of the current triangle vertices that are among left or right, respectively
 	std::vector<size_t> lVert, rVert;
         for (size_t j = 1; j <= 3; ++j)
 	{
@@ -231,27 +233,24 @@ gsMesh<T> gsPeriodicParametrizationOverlap<T>::createExtendedFlatMesh(const std:
 		lVert.push_back(j-1);
 	}
 
+	// Is the triangle inside overlap?
 	if(lVert.size() > 0 && rVert.size() > 0 && lVert.size() + rVert.size() == 3)
 	{
-	    // Make two copies
+	    // Make two shifted copies of the triangle.
 	    typename gsMesh<T>::VertexHandle mvLft[3], mvRgt[3];
 	    
 	    for (size_t j=0; j<3; ++j)
 	    {
+		const Point2D vertex = gsParametrization<T>::getParameterPoint(vInd[j]);
 		if(std::find(rVert.begin(), rVert.end(), j) != rVert.end())
 		{
-		    // TODO: Is there something like a typedef for the gsParametrization<T>::?
-		    mvLft[j] = midMesh.addVertex(gsParametrization<T>::getParameterPoint(vInd[j])[0],
-		    				 gsParametrization<T>::getParameterPoint(vInd[j])[1]);
-		    mvRgt[j] = midMesh.addVertex(gsParametrization<T>::getParameterPoint(vInd[j])[0]+1,
-		    				 gsParametrization<T>::getParameterPoint(vInd[j])[1]);
+		    mvLft[j] = midMesh.addVertex(vertex[0],   vertex[1]);
+		    mvRgt[j] = midMesh.addVertex(vertex[0]+1, vertex[1]);
 		}
 		else
 		{
-		    mvLft[j] = midMesh.addVertex(gsParametrization<T>::getParameterPoint(vInd[j])[0]-1,
-						 gsParametrization<T>::getParameterPoint(vInd[j])[1]);
-		    mvRgt[j] = midMesh.addVertex(gsParametrization<T>::getParameterPoint(vInd[j])[0],
-						 gsParametrization<T>::getParameterPoint(vInd[j])[1]);
+		    mvLft[j] = midMesh.addVertex(vertex[0]-1, vertex[1]);
+		    mvRgt[j] = midMesh.addVertex(vertex[0],   vertex[1]);
 		}
 	    }
 	    midMesh.addFace(mvLft[0], mvLft[1], mvLft[2]);
@@ -259,12 +258,12 @@ gsMesh<T> gsPeriodicParametrizationOverlap<T>::createExtendedFlatMesh(const std:
 	}
 	else
 	{
-	    // Make just one triangle
+	    // Make just one triangle.
 	    typename gsMesh<T>::VertexHandle mv[3];
 	    for (size_t j=0; j<3; ++j)
 	    {
-		mv[j] = midMesh.addVertex(gsParametrization<T>::getParameterPoint(vInd[j])[0],
-					  gsParametrization<T>::getParameterPoint(vInd[j])[1]);
+		const Point2D vertex = gsParametrization<T>::getParameterPoint(vInd[j]);
+		mv[j] = midMesh.addVertex(vertex[0], vertex[1]);
 	    }
 	    midMesh.addFace(mv[0], mv[1], mv[2]);
 	}

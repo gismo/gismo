@@ -108,28 +108,18 @@ gsPeriodicParametrizationStitch<T>::Neighbourhood::Neighbourhood(const gsHalfEdg
 template <class T>
 void gsPeriodicParametrizationStitch<T>::compute()
 {
-    // Convert the coordinates to the indices of the corresponding vertices.
-    std::vector<size_t> indicesV0     = this->indices(this->m_verticesV0);
-    std::vector<size_t> indicesV1     = this->indices(this->m_verticesV1);
-    std::vector<size_t> stitchIndices = this->indices(m_stitchVertices);
-
-    // calculation itself
-    calculate(this->m_options.getInt("parametrizationMethod"),
-	      indicesV0, indicesV1, stitchIndices);
+    calculate(this->m_options.getInt("parametrizationMethod"));
 }
 
 template<class T>
-void gsPeriodicParametrizationStitch<T>::calculate(const size_t paraMethod,
-						   const std::vector<size_t>& indicesV0,
-						   const std::vector<size_t>& indicesV1,
-						   const std::vector<size_t>& stitchIndices)
+void gsPeriodicParametrizationStitch<T>::calculate(const size_t paraMethod)
 {
     size_t n = this->m_mesh.getNumberOfInnerVertices();
     size_t N = this->m_mesh.getNumberOfVertices();
 
-    Neighbourhood neighbourhood(this->m_mesh, stitchIndices, m_corrections, paraMethod);
+    Neighbourhood neighbourhood(this->m_mesh, m_stitchIndices, m_corrections, paraMethod);
 
-    this->initParameterPoints(indicesV0, indicesV1);
+    this->initParameterPoints();
 
     /// Solve.
     constructAndSolveEquationSystem(neighbourhood, n, N);
