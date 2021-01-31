@@ -51,6 +51,8 @@ public:
     // if we use std::vector with static Eigen classes, the second template parameter is needed
 	typedef std::vector<Point2D, typename Point2D::aalloc> VectorType;
 
+    typedef memory::shared_ptr<gsParametrization<T> > uPtr;
+
 protected:
     const gsHalfEdgeMesh<T> m_mesh;     ///< mesh information
     VectorType m_parameterPoints; ///< parameter points

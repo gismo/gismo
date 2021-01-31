@@ -57,6 +57,9 @@ class GISMO_EXPORT gsPeriodicParametrizationOverlap : public gsPeriodicParametri
     typedef typename gsMesh<T>::gsVertexHandle           gsVertexHandle;
 
 public:
+    typedef memory::shared_ptr<gsPeriodicParametrizationOverlap<T> > uPtr;
+
+public:
     /** Constructor
      * @param mesh the surface mesh to be parametrized
      * @param verticesV0 vertices on the bottom (i.e., v = 0) boundary

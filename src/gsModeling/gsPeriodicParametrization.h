@@ -26,6 +26,8 @@ class gsPeriodicParametrization : public gsParametrization<T>
 
 public:
 
+    typedef memory::shared_ptr<gsPeriodicParametrization<T> > uPtr;
+
     /// Nested class for plotting flat meshes restricted to [0, 1]^2.
     class FlatMesh
     {

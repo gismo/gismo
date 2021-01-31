@@ -60,6 +60,13 @@ namespace gismo
 template <class T>
 class GISMO_EXPORT gsPeriodicParametrizationStitch : public gsPeriodicParametrization<T>
 {
+
+public:
+
+    typedef memory::shared_ptr<gsPeriodicParametrizationStitch<T> > uPtr;
+
+protected:
+
     /**
      * Modification of the corresponding class from
      * gsParametrization<T>. Given the indices of the stitch vertices,
@@ -94,6 +101,7 @@ class GISMO_EXPORT gsPeriodicParametrizationStitch : public gsPeriodicParametriz
     };
 
 public:
+
     /** Constructor
      * @param mesh the surface mesh to be parametrized
      * @param verticesV0 matrix with three rows containing the vertices with v=0
@@ -103,7 +111,7 @@ public:
      * @param stitchVertices matrix with three rows containing the vertices on the stitch
      * @param list list of the method options
      */
-    explicit gsPeriodicParametrizationStitch(gsMesh<T> &mesh,
+    explicit gsPeriodicParametrizationStitch(const gsMesh<T> &mesh,
 					     const gsMatrix<T>& verticesV0,
 					     const gsMatrix<T>& paramsV0,
 					     const gsMatrix<T>& verticesV1,

@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
     gsInfo << "creating gsParametrization<real_t>       ";
     stopwatch.restart();
 
-    gsParametrization<real_t>* pm;
+    gsParametrization<real_t>::uPtr pm;
 
     if(domainMethod == overlap || domainMethod == stitch)
     {
@@ -128,24 +128,18 @@ int main(int argc, char *argv[])
 	    gsFileData<real_t> fd_overlap(filenameOverlap);
 	    gsMesh<real_t> overlap = *(fd_overlap.getFirst<gsMesh<real_t> >());
 
-	    pm = new gsPeriodicParametrizationOverlap<real_t>(*mm,
-							      verticesV0, paramsV0,
-							      verticesV1, paramsV1,
-							      overlap, ol);
+	    pm = gsPeriodicParametrizationOverlap<real_t>::uPtr(new gsPeriodicParametrizationOverlap<real_t>(*mm, verticesV0, paramsV0, verticesV1, paramsV1, overlap, ol));
 	}
 	else // domainMethod == stitch
 	{
 	    gsMatrix<real_t> stitchVertices;
 	    readPts(filenameStitch, stitchVertices);
-	    pm = new gsPeriodicParametrizationStitch<real_t>(*mm,
-							     verticesV0, paramsV0,
-							     verticesV1, paramsV1,
-							     stitchVertices, ol);
+	    pm = gsPeriodicParametrizationStitch<real_t>::uPtr(new gsPeriodicParametrizationStitch<real_t>(*mm, verticesV0, paramsV0, verticesV1, paramsV1, stitchVertices, ol));
 	}
     }
     else
     {
-	pm = new gsParametrization<real_t>(*mm, ol);
+	pm = gsParametrization<real_t>::uPtr(new gsParametrization<real_t>(*mm, ol));
     }
 
     stopwatch.stop();
@@ -211,8 +205,6 @@ int main(int argc, char *argv[])
 	output << xyz;
 	output.save(ol.getString("filenameOut"));
     }
-
-    delete pm;
 
     return 0;
 }
