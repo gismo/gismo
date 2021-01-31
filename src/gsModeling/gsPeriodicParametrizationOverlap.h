@@ -57,8 +57,14 @@ class GISMO_EXPORT gsPeriodicParametrizationOverlap : public gsPeriodicParametri
 
 public:
     /** Constructor
-     * @param mesh The surface mesh to be parametrized.
-     * @param list List of the method options.
+     * @param mesh the surface mesh to be parametrized
+     * @param verticesV0 vertices on the bottom (i.e., v = 0) boundary
+     * @param paramsV0 their prescribed parameters
+     * @param verticessV1 vertices on the upper (i.e., v = 1) boundary
+     * @param paramsV1 their prescribed parameters
+     * @param overlap edge-connected chain of triangles connecting the bottom
+     *        and top boundary and forming the first guess of the periodic interface
+     * @param list list of the method options
      */
     explicit gsPeriodicParametrizationOverlap(gsMesh<T> &mesh,
 					      const gsMatrix<T>& verticesV0,
@@ -73,15 +79,7 @@ public:
 	// Note: m_twins are initiated later on.
     }
 
-    /**
-     * Compute the parametrization
-     *
-     * @param paraMethod which parametrization method to use
-     * @param verticesV0 vertices on the bottom (i.e., v = 0) boundary
-     * @param paramsV0 their prescribed parameters
-     * @param verticessV1 vertices on the upper (i.e., v = 1) boundary
-     * @param paramsV1 their prescribed parameters
-     */
+    /// Computes the periodic parametrization.
     void compute();
 
 protected:
@@ -90,9 +88,7 @@ protected:
      *
      * @param paraMethod which parametrization method to use
      * @param indicesV0 indices of the vertices on the bottom (i.e., v = 0) boundary
-     * @param paramsV0 their prescribed parameters
      * @param indicesV1 indices of the vertices on the upper (i.e., v = 1) boundary
-     * @param paramsV1 their prescribed parameters
      */
     void calculate(const size_t paraMethod,
 		   const std::vector<size_t>& indicesV0,

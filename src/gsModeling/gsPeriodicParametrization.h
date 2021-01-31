@@ -79,7 +79,14 @@ public:
 
 public:
 
-    /// Constructor, just passing the parameters to the parent class.
+    /** Constructor
+     * @param mesh the surface mesh to be parametrized
+     * @param verticesV0 vertices on the bottom (i.e., v = 0) boundary
+     * @param paramsV0 their prescribed parameters
+     * @param verticessV1 vertices on the upper (i.e., v = 1) boundary
+     * @param paramsV1 their prescribed parameters
+     * @param list list of the method options
+     */
     gsPeriodicParametrization(gsMesh<T>& mesh,
 			      const gsMatrix<T>& verticesV0,
 			      const gsMatrix<T>& paramsV0,

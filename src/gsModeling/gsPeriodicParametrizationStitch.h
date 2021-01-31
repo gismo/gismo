@@ -94,7 +94,15 @@ class GISMO_EXPORT gsPeriodicParametrizationStitch : public gsPeriodicParametriz
     };
 
 public:
-    /// Constructor, cf. the parent class.
+    /** Constructor
+     * @param mesh the surface mesh to be parametrized
+     * @param verticesV0 matrix with three rows containing the vertices with v=0
+     * @param paramsV0 matrix with one row containing the u-parameters of vertices with v=0
+     * @param verticesV1 matrix with three rows containing the vertices with v=1
+     * @param paramsV1 matrix with one row containing the u-parameters of vertices with v=1
+     * @param stitchVertices matrix with three rows containing the vertices on the stitch
+     * @param list list of the method options
+     */
     explicit gsPeriodicParametrizationStitch(gsMesh<T> &mesh,
 					     const gsMatrix<T>& verticesV0,
 					     const gsMatrix<T>& paramsV0,
@@ -106,14 +114,7 @@ public:
 	m_stitchVertices(stitchVertices)
 	{}
 
-    /**
-     * Computes the periodic parametrization.
-     * @param verticesV0 matrix with three rows containing the vertices with v=0
-     * @param paramsV0 matrix with one row containing the u-parameters of vertices with v=0
-     * @param verticesV1 matrix with three rows containing the vertices with v=1
-     * @param paramsV1 matrix with one row containing the u-parameters of vertices with v=1
-     * @param stitchVertices matrix with three rows containing the vertices on the stitch
-     */
+    /// Computes the periodic parametrization.
     void compute();
 
 
@@ -122,9 +123,7 @@ protected:
      * Calculation itself
      * @param paraMethod parametrization method (cf. gsParametrization<T>)
      * @param indicesV0 indices of the vertices with v=0
-     * @param valuesV0 u-coordinates of the vertices with v=0 (in one row)
      * @param indicesV1 indices of the vertices with v=1
-     * @param valuesV1 u-coordinates of the vertices with v=1 (in one row)
      * @param stitchIndices indices of the vertices on the stitch
      */
     void calculate(const size_t paraMethod,
