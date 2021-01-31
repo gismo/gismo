@@ -123,6 +123,8 @@ public:
     void restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
 			  real_t uMin = 0, real_t uMax = 1) const;
 
+    virtual void compute() = 0;
+
 protected:
 
     /**
