@@ -87,7 +87,7 @@ public:
      * @param paramsV1 their prescribed parameters
      * @param list list of the method options
      */
-    gsPeriodicParametrization(gsMesh<T>& mesh,
+    gsPeriodicParametrization(const gsMesh<T>& mesh,
 			      const gsMatrix<T>& verticesV0,
 			      const gsMatrix<T>& paramsV0,
 			      const gsMatrix<T>& verticesV1,

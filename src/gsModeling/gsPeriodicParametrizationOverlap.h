@@ -67,7 +67,7 @@ public:
      *        and top boundary and forming the first guess of the periodic interface
      * @param list list of the method options
      */
-    explicit gsPeriodicParametrizationOverlap(gsMesh<T> &mesh,
+    explicit gsPeriodicParametrizationOverlap(const gsMesh<T> &mesh,
 					      const gsMatrix<T>& verticesV0,
 					      const gsMatrix<T>& paramsV0,
 					      const gsMatrix<T>& verticesV1,

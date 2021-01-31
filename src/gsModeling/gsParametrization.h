@@ -52,14 +52,14 @@ public:
 	typedef std::vector<Point2D, typename Point2D::aalloc> VectorType;
 
 protected:
-    gsHalfEdgeMesh<T> m_mesh;     ///< mesh information
+    const gsHalfEdgeMesh<T> m_mesh;     ///< mesh information
     VectorType m_parameterPoints; ///< parameter points
     gsOptionList m_options;
 
 public:
 
     /// Constructor using the input mesh and (possibly) options
-    explicit gsParametrization(gsMesh<T> &mesh, const gsOptionList & list = defaultOptions());
+    explicit gsParametrization(const gsMesh<T> &mesh, const gsOptionList & list = defaultOptions());
 
     virtual ~gsParametrization() {} // Prevent -Wdelete-non-virtual-dtor warning.
 

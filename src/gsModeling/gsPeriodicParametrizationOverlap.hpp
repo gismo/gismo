@@ -86,7 +86,7 @@ void gsPeriodicParametrizationOverlap<T>::constructTwins()
     // vertex with parameter v = 1 and highest u value
     gsVertexHandle uMaxv1 = this->m_mesh.getVertex(this->m_indicesV1.back());
 
-    std::list<size_t> vertexIndices = m_overlapHEM.getBoundaryVertexIndices();
+    const std::list<size_t> vertexIndices = m_overlapHEM.getBoundaryVertexIndices();
     size_t currentNrAllVertices = this->m_mesh.getNumberOfVertices();
 
     // Construct the twins on the right boundary of the overlap.
