@@ -135,8 +135,8 @@ protected:
 
 protected: // members
 
-    const gsMatrix<T> m_paramsV0;          ///< u-parameters of the vertices with v=0
-    const gsMatrix<T> m_paramsV1;          ///< u-parameters of the vertices with v=1
+    const gsMatrix<T>& m_paramsV0;         ///< u-parameters of the vertices with v=0
+    const gsMatrix<T>& m_paramsV1;         ///< u-parameters of the vertices with v=1
     const std::vector<size_t> m_indicesV0; ///< indices of the vertices with v=0
     const std::vector<size_t> m_indicesV1; ///< indicesV1 indices of the vertices with v=1
 
