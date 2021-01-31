@@ -278,6 +278,7 @@ template <class T=real_t>                class gsGridHierarchy;
 
 template <class T=real_t>                class gsIetiMapper;
 template <class T=real_t>                class gsIetiSystem;
+template <class T=real_t>                class gsScaledDirichletPrec;
 
 /// @endcond
 

@@ -14,6 +14,7 @@
 #include <gismo.h>
 #include <gsIeti/gsIetiMapper.h>
 #include <gsIeti/gsIetiSystem.h>
+#include <gsIeti/gsScaledDirichletPrec.h>
 
 using namespace gismo;
 
@@ -154,9 +155,9 @@ int main(int argc, char *argv[])
        0
     );
 
-    gsIetiSystem<> ieti;
-    
     const size_t nr_patches = mp.nPatches();
+
+    gsIetiSystem<> ieti;
     ieti.localMatrixOps.reserve(nr_patches+1);
     ieti.localRhs.reserve(nr_patches+1);
 
@@ -189,22 +190,29 @@ int main(int argc, char *argv[])
                 iFace::glue // Does not matter
             );
             assembler.assemble();
-            DEBUGMATRIX(assembler.matrix()); 
-            gsSparseMatrix<> localMatrix = give(assembler.matrix());
-            gsMatrix<> localRhs = give(assembler.rhs());
-            //ietiAssembler.handlePrimalBasis(ietiAssembler.primalConstraints(), localMatrix, localRhs, primalMatrix, primalRhs);
-            
-            ieti.localMatrixOps.push_back(makeMatrixOp(localMatrix.moveToPtr()));
-            ieti.localRhs.push_back(localRhs);
+
+            ieti.localMatrixOps.push_back(makeMatrixOp(gsSparseMatrix<>(assembler.matrix()).moveToPtr()));
+            ieti.localRhs.push_back(give(assembler.rhs()));
           
         }
       
         //ieti.localMatrixOps.push_back(makeMatrixOp(primalMatrix.moveToPtr()));
         //ieti.localRhs.push_back(give(primalRhs));
     }
-    
+
     gsIetiMapper<> ietiMapper(give(dm),give(dm_local));
     ieti.jumpMatrices = ietiMapper.jumpMatrices();
+
+
+    gsScaledDirichletPrec<> prec;
+    prec.jumpMatrices.reserve(nr_patches);
+    for (size_t i=0; i<nr_patches; ++i)
+    {
+        prec.localMatrixOps.push_back( ieti.localMatrixOps[i] );
+        prec.jumpMatrices.push_back( ieti.jumpMatrices[i] );
+        prec.localSchurOps.push_back( ieti.localMatrixOps[i] );//TODO: wrong
+    }
+
     //ieti.jumpMatrices.push_back( ietiAssembler.primalJumpMatrix() );
 
     gsInfo << "done.\n";
@@ -216,9 +224,8 @@ int main(int argc, char *argv[])
 
     ieti.setupSparseLUSolvers();
     gsInfo << "done.\n    Setup multiplicity scaling... " << std::flush;
-    ieti.setupMultiplicityScaling();
 
-    ieti.localSchurOps = ieti.localMatrixOps;//TODO: wrong
+    prec.setupMultiplicityScaling();
 
     gsMatrix<> lambda, errorHistory;
     lambda.setRandom( ieti.numberOfLagrangeMultipliers(), 1 );
@@ -227,7 +234,7 @@ int main(int argc, char *argv[])
     gsMatrix<> rhsForSchur = ieti.rhsForSchurComplement();
     gsInfo << "done.\n    Setup cg solver for Lagrange multipliers and solve... " << std::flush;
 
-    gsConjugateGradient<>( ieti.schurComplement(), ieti.secaledDirichletPreconditioner() )
+    gsConjugateGradient<>( ieti.schurComplement(), prec.secaledDirichletPreconditioner() )
         .setOptions( opt.getGroup("Solver") )
         .solveDetailed( rhsForSchur, lambda, errorHistory );
 
