@@ -213,9 +213,7 @@ void gsPeriodicParametrization<T>::restrictMatrices(gsMatrix<T>& uv, const gsMat
 
 template <class T>
 void gsPeriodicParametrization<T>::initParameterPoints(const std::vector<size_t>& indicesV0,
-						       const gsMatrix<T>& valuesV0,
-						       const std::vector<size_t>& indicesV1,
-						       const gsMatrix<T>& valuesV1)
+						       const std::vector<size_t>& indicesV1)
 {
     typedef typename gsParametrization<T>::Point2D Point2D;
 
@@ -226,12 +224,10 @@ void gsPeriodicParametrization<T>::initParameterPoints(const std::vector<size_t>
     for (size_t i = 1; i <= n; i++)
 	this->m_parameterPoints.push_back(Point2D(0, 0, i));
 
-    // Alternatively, one could turn valuesV0 into std::vector<T> but
-    // then user could not directly read it from .xml.
-    // TODO: Discuss!
-
-    GISMO_ASSERT(indicesV0.size() == static_cast<size_t>(valuesV0.cols()), "Different sizes of u0.");
-    GISMO_ASSERT(indicesV1.size() == static_cast<size_t>(valuesV1.cols()), "Different sizes of u1.");
+    GISMO_ASSERT(indicesV0.size() == static_cast<size_t>(m_valuesV0.cols()),
+		 "Different sizes of u0.");
+    GISMO_ASSERT(indicesV1.size() == static_cast<size_t>(m_valuesV1.cols()),
+		 "Different sizes of u1.");
     GISMO_ASSERT(indicesV0.size() + indicesV1.size() == this->m_mesh.getNumberOfBoundaryVertices(),
 		 "Not prescribing all boundary points.");
 
@@ -240,11 +236,11 @@ void gsPeriodicParametrization<T>::initParameterPoints(const std::vector<size_t>
 
     // Set the parameter values on the v=0 boundary.
     for(size_t i=0; i<indicesV0.size(); i++)
-	this->m_parameterPoints[indicesV0[i]-1] = Point2D(valuesV0(i, 0), 0, numPtsSoFar++);
+	this->m_parameterPoints[indicesV0[i]-1] = Point2D(m_paramsV0(i, 0), 0, numPtsSoFar++);
 
     // Set the parameter values on the v=1 boundary.
     for(size_t i=0; i<indicesV1.size(); i++)
-	this->m_parameterPoints[indicesV1[i]-1] = Point2D(valuesV1(i, 0), 1, numPtsSoFar++);
+	this->m_parameterPoints[indicesV1[i]-1] = Point2D(m_paramsV1(i, 0), 1, numPtsSoFar++);
 }
 
 } // namespace gismo

@@ -106,31 +106,22 @@ gsPeriodicParametrizationStitch<T>::Neighbourhood::Neighbourhood(const gsHalfEdg
 }
 
 template <class T>
-void gsPeriodicParametrizationStitch<T>::compute(const gsMatrix<T>& verticesV0,
-						 const gsMatrix<T>& paramsV0,
-						 const gsMatrix<T>& verticesV1,
-						 const gsMatrix<T>& paramsV1,
-						 const gsMatrix<T>& stitchVertices)
+void gsPeriodicParametrizationStitch<T>::compute()
 {
-    GISMO_ASSERT(paramsV0.rows() == 1, "one row expected in paramsV0");
-    GISMO_ASSERT(paramsV1.rows() == 1, "one row expected in paramsV1");
-
     // Convert the coordinates to the indices of the corresponding vertices.
-    std::vector<size_t> indicesV0     = this->indices(verticesV0);
-    std::vector<size_t> indicesV1     = this->indices(verticesV1);
-    std::vector<size_t> stitchIndices = this->indices(stitchVertices);
+    std::vector<size_t> indicesV0     = this->indices(this->m_verticesV0);
+    std::vector<size_t> indicesV1     = this->indices(this->m_verticesV1);
+    std::vector<size_t> stitchIndices = this->indices(m_stitchVertices);
 
     // calculation itself
     calculate(this->m_options.getInt("parametrizationMethod"),
-	      indicesV0, paramsV0, indicesV1, paramsV1, stitchIndices);
+	      indicesV0, indicesV1, stitchIndices);
 }
 
 template<class T>
 void gsPeriodicParametrizationStitch<T>::calculate(const size_t paraMethod,
 						   const std::vector<size_t>& indicesV0,
-						   const gsMatrix<T>& valuesV0,
 						   const std::vector<size_t>& indicesV1,
-						   const gsMatrix<T>& valuesV1,
 						   const std::vector<size_t>& stitchIndices)
 {
     size_t n = this->m_mesh.getNumberOfInnerVertices();
@@ -138,7 +129,7 @@ void gsPeriodicParametrizationStitch<T>::calculate(const size_t paraMethod,
 
     Neighbourhood neighbourhood(this->m_mesh, stitchIndices, m_corrections, paraMethod);
 
-    this->initParameterPoints(indicesV0, valuesV0, indicesV1, valuesV1);
+    this->initParameterPoints(indicesV0, indicesV1);
 
     /// Solve.
     constructAndSolveEquationSystem(neighbourhood, n, N);

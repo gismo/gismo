@@ -61,10 +61,16 @@ public:
      * @param list List of the method options.
      */
     explicit gsPeriodicParametrizationOverlap(gsMesh<T> &mesh,
+					      const gsMatrix<T>& verticesV0,
+					      const gsMatrix<T>& paramsV0,
+					      const gsMatrix<T>& verticesV1,
+					      const gsMatrix<T>& paramsV1,
+					      const gsMesh<T>& overlap,
 					      const gsOptionList &list = gsPeriodicParametrization<T>::defaultOptions())
-	: gsPeriodicParametrization<T>(mesh, list)
+	: gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
+	m_overlapHEM(overlap)
     {
-	// Note: m_twins and m_overlapHEM are initiated later on.
+	// Note: m_twins are initiated later on.
     }
 
     /**
@@ -76,9 +82,7 @@ public:
      * @param verticessV1 vertices on the upper (i.e., v = 1) boundary
      * @param paramsV1 their prescribed parameters
      */
-    void compute(const gsMatrix<T>& verticesV0, const gsMatrix<T>& paramsV0,
-		 const gsMatrix<T>& verticesV1, const gsMatrix<T>& paramsV1,
-		 const gsMesh<T>& overlap);
+    void compute();
 
 protected:
     /**
@@ -92,10 +96,7 @@ protected:
      */
     void calculate(const size_t paraMethod,
 		   const std::vector<size_t>& indicesV0,
-		   const gsMatrix<T>& paramsV0,
-		   const std::vector<size_t>& indicesV1,
-		   const gsMatrix<T>& paramsV1);
-
+		   const std::vector<size_t>& indicesV1);
 
     /// Finds the twin of the vertex nr. @a vertexId in the mesh.
     size_t findTwin(size_t vertexId) const

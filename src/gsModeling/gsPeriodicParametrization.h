@@ -81,9 +81,26 @@ public:
 
     /// Constructor, just passing the parameters to the parent class.
     gsPeriodicParametrization(gsMesh<T>& mesh,
+			      const gsMatrix<T>& verticesV0,
+			      const gsMatrix<T>& paramsV0,
+			      const gsMatrix<T>& verticesV1,
+			      const gsMatrix<T>& paramsV1,
 			      const gsOptionList &list = gsParametrization<T>::defaultOptions())
-	: gsParametrization<T>(mesh, list)
-	{}
+	: gsParametrization<T>(mesh, list),
+	  m_verticesV0(verticesV0), m_paramsV0(paramsV0),
+	  m_verticesV1(verticesV1), m_paramsV1(paramsV1)
+	{
+	    GISMO_ASSERT(this->m_paramsV0.rows() == 1, "one row expected in paramsV0");
+	    GISMO_ASSERT(this->m_paramsV1.rows() == 1, "one row expected in paramsV1");
+
+	    GISMO_ASSERT(this->m_valuesV0.rows() == 3, "three rows expected in valuesV0");
+	    GISMO_ASSERT(this->m_valuesV1.rows() == 3, "three rows expected in valuesV1");
+
+	    GISMO_ASSERT(this->m_paramsV0.cols() == this->m_valuesV0.cols(),
+			 "paramsV0 and valuesV0 are required to have the same number of cols");
+	    GISMO_ASSERT(this->m_paramsV1.cols() == this->m_valuesV1.cols(),
+			 "paramsV1 and valuesV1 are required to have the same number of cols");
+	}
 
     using gsParametrization<T>::defaultOptions;
 
@@ -110,9 +127,11 @@ protected:
      * @param valuesV1 u-parameters of the vertices with v=1
      */
     void initParameterPoints(const std::vector<size_t>& indicesV0,
-			     const gsMatrix<T>& valuesV0,
-			     const std::vector<size_t>& indicesV1,
-			     const gsMatrix<T>& valuesV1);
+			     const std::vector<size_t>& indicesV1);
+
+protected: // members
+
+    const gsMatrix<T> m_verticesV0, m_paramsV0, m_verticesV1, m_paramsV1;
 
 };
 

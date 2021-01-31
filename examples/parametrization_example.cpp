@@ -123,24 +123,32 @@ int main(int argc, char *argv[])
 
     gsParametrization<real_t>* pm;
 
-    if(domainMethod == overlap)
+    if(domainMethod == overlap || domainMethod == stitch)
     {
-	pm = new gsPeriodicParametrizationOverlap<real_t>(*mm, ol);
+	gsMatrix<real_t> verticesV0, paramsV0, verticesV1, paramsV1;
+	readParsAndPts(filenameV0, paramsV0, verticesV0);
+	readParsAndPts(filenameV1, paramsV1, verticesV1);
+
+	if(domainMethod == overlap)
+	{
+	    gsFileData<real_t> fd_overlap(filenameOverlap);
+	    gsMesh<real_t> overlap = *(fd_overlap.getFirst<gsMesh<real_t> >());
+
+	    pm = new gsPeriodicParametrizationOverlap<real_t>(*mm,
+							      verticesV0, paramsV0,
+							      verticesV1, paramsV1,
+							      overlap, ol);
+	}
+	else // domainMethod == stitch
+	{
+	    gsMatrix<real_t> stitchVertices;
+	    readPts(filenameStitch, stitchVertices);
+	    pm = new gsPeriodicParametrizationStitch<real_t>(*mm,
+							     verticesV0, paramsV0,
+							     verticesV1, paramsV1,
+							     stitchVertices, ol);
+	}
     }
-    else if(domainMethod == stitch)
-    {
-	pm = new gsPeriodicParametrizationStitch<real_t>(*mm, ol);
-    }
-    // else if(domainMethod == free)
-    // {
-    // 	pm_free = new gsFreeBoundaryParametrization<real_t>(*mm, ol);
-    // 	pm = pm_free;
-    // }
-    // else if(domainMethod == iterative)
-    // {
-    // 	pm_iter = new gsIterativeParametrization<real_t>(*mm, ol);
-    // 	pm = pm_iter;
-    // }
     else
     {
 	pm = new gsParametrization<real_t>(*mm, ol);
@@ -154,30 +162,7 @@ int main(int argc, char *argv[])
     gsInfo << "gsParametrization::compute()             ";
     stopwatch.restart();
 
-    if(domainMethod == overlap || domainMethod == stitch)
-    {
-	gsMatrix<real_t> verticesV0, paramsV0, verticesV1, paramsV1, stitchVertices;
-	readParsAndPts(filenameV0, paramsV0, verticesV0);
-	readParsAndPts(filenameV1, paramsV1, verticesV1);
-
-	if(domainMethod == overlap)
-	{
-	    gsFileData<real_t> fd_overlap(filenameOverlap);
-	    gsMesh<real_t> overlap = *(fd_overlap.getFirst<gsMesh<real_t> >());
-	    static_cast<gsPeriodicParametrizationOverlap<real_t>*>(pm)->compute(verticesV0, paramsV0, verticesV1, paramsV1, overlap);
-	}
-	else // domainMethod == stitch
-	{
-	    readPts(filenameStitch,    stitchVertices);
-	    static_cast<gsPeriodicParametrizationStitch<real_t>*>(pm)->compute(verticesV0, paramsV0, verticesV1, paramsV1, stitchVertices);
-	}
-    }
-    // else if(domainMethod == free)
-    // 	pm_free->compute_free_boundary();
-    // else if(domainMethod == iterative)
-    // 	pm_iter->compute();
-    else
-	pm->compute();
+    pm->compute();
 
     stopwatch.stop();
     gsInfo << stopwatch << "\n";

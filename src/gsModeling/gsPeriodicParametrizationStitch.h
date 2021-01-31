@@ -96,8 +96,14 @@ class GISMO_EXPORT gsPeriodicParametrizationStitch : public gsPeriodicParametriz
 public:
     /// Constructor, cf. the parent class.
     explicit gsPeriodicParametrizationStitch(gsMesh<T> &mesh,
+					     const gsMatrix<T>& verticesV0,
+					     const gsMatrix<T>& paramsV0,
+					     const gsMatrix<T>& verticesV1,
+					     const gsMatrix<T>& paramsV1,
+					     const gsMatrix<T>& stitchVertices,
 					     const gsOptionList &list = gsParametrization<T>::defaultOptions())
-	: gsPeriodicParametrization<T>(mesh, list)
+	: gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
+	m_stitchVertices(stitchVertices)
 	{}
 
     /**
@@ -108,9 +114,7 @@ public:
      * @param paramsV1 matrix with one row containing the u-parameters of vertices with v=1
      * @param stitchVertices matrix with three rows containing the vertices on the stitch
      */
-    void compute(const gsMatrix<T>& verticesV0, const gsMatrix<T>& paramsV0,
-		 const gsMatrix<T>& verticesV1, const gsMatrix<T>& paramsV1,
-		 const gsMatrix<T>& stitchVertices);
+    void compute();
 
 
 protected:
@@ -125,9 +129,7 @@ protected:
      */
     void calculate(const size_t paraMethod,
 		   const std::vector<size_t>& indicesV0,
-		   const gsMatrix<T>& valuesV0,
 		   const std::vector<size_t>& indicesV1,
-		   const gsMatrix<T>& valuesV1,
 		   const std::vector<size_t>& stitchIndices);
 
     /** Similar to @a constructAndSolveEquationSystem but works for
@@ -195,6 +197,8 @@ protected:
      * interface. Slot (j, i) is then set to -1.
      */
     gsSparseMatrix<int> m_corrections;
+
+    const gsMatrix<T> m_stitchVertices;
 };
 
 } // namespace gismo
