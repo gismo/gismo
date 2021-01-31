@@ -110,14 +110,14 @@ public:
 					     const gsMatrix<T>& paramsV1,
 					     const gsMatrix<T>& stitchVertices,
 					     const gsOptionList &list = gsParametrization<T>::defaultOptions())
-	: gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list)
+	: gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
+	m_stitchIndices(this->indices(stitchVertices))
 	{
-	    m_stitchIndices = this->indices(stitchVertices);
+	    // Note: m_corrections gets filled later.
 	}
 
     /// Computes the periodic parametrization.
     void compute();
-
 
 protected:
     /**
@@ -189,7 +189,7 @@ protected:
      */
     gsSparseMatrix<int> m_corrections;
 
-    std::vector<size_t> m_stitchIndices; ///< indices of the vertices on the stitch
+    const std::vector<size_t> m_stitchIndices; ///< indices of the vertices on the stitch
 };
 
 } // namespace gismo

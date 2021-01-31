@@ -94,11 +94,10 @@ public:
 			      const gsMatrix<T>& paramsV1,
 			      const gsOptionList &list = gsParametrization<T>::defaultOptions())
 	: gsParametrization<T>(mesh, list),
-	  m_paramsV0(paramsV0), m_paramsV1(paramsV1)
+	  m_paramsV0(paramsV0), m_paramsV1(paramsV1),
+	  m_indicesV0(this->indices(verticesV0)),
+	  m_indicesV1(this->indices(verticesV1))
 	{
-	    m_indicesV0 = this->indices(verticesV0);
-	    m_indicesV1 = this->indices(verticesV1);
-
 	    GISMO_ASSERT(this->m_paramsV0.rows() == 1, "one row expected in paramsV0");
 	    GISMO_ASSERT(this->m_paramsV1.rows() == 1, "one row expected in paramsV1");
 
@@ -110,8 +109,6 @@ public:
 	    GISMO_ASSERT(this->m_paramsV1.cols() == this->m_valuesV1.cols(),
 			 "paramsV1 and valuesV1 are required to have the same number of cols");
 	}
-
-    using gsParametrization<T>::defaultOptions;
 
     /**
      * Moves the u-coordinates of parameters outside the
@@ -138,10 +135,10 @@ protected:
 
 protected: // members
 
-    const gsMatrix<T> m_paramsV0;    ///< u-parameters of the vertices with v=0
-    const gsMatrix<T> m_paramsV1;    ///< u-parameters of the vertices with v=1
-    std::vector<size_t> m_indicesV0; ///< indices of the vertices with v=0
-    std::vector<size_t> m_indicesV1; ///< indicesV1 indices of the vertices with v=1
+    const gsMatrix<T> m_paramsV0;          ///< u-parameters of the vertices with v=0
+    const gsMatrix<T> m_paramsV1;          ///< u-parameters of the vertices with v=1
+    const std::vector<size_t> m_indicesV0; ///< indices of the vertices with v=0
+    const std::vector<size_t> m_indicesV1; ///< indicesV1 indices of the vertices with v=1
 
 };
 

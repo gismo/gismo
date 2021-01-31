@@ -94,17 +94,6 @@ public:
      */
     void writeTexturedMesh(std::string filename) const;
 
-    // TODO: Move!
-    /**
-     * Writes the mesh @a mesh into @a filename.stl.  The STL is ASCII
-     * (i.e., not binary) and the normals are not specified correctly
-     * (i.e., it assumes that the downstream application deduces the
-     * normals from the vertex order the way MeshLab seems to do).
-     * @param mesh the mesh for writing
-     * @param filename the filename (without extension)
-     */
-    void writeSTL (const gsMesh<T>& mesh, std::string filename) const;
-
     /// It might make sense in the derived classes to restrict the parameters to [0, 1]^2.
     virtual void restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
 				  real_t uMin = 0, real_t uMax = 1) const

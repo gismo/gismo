@@ -204,7 +204,6 @@ int main(int argc, char *argv[])
 	// Note: calling gsWriteParaview directly with the uv matrix
 	// would not do, as the vertices are in different order than
 	pm->writeTexturedMesh(ol.getString("filenameOut"));
-	pm->writeSTL(*mm, ol.getString("filenameOut"));
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "

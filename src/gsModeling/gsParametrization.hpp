@@ -213,37 +213,6 @@ void gsParametrization<T>::writeTexturedMesh(std::string filename) const
     gsWriteParaview(m_mesh, filename, params);
 }
 
-template <class T>
-void gsParametrization<T>::writeSTL(const gsMesh<T>& mesh, std::string filename) const
-{
-    std::string mfn(filename);
-    mfn.append(".stl");
-    std::ofstream file(mfn.c_str());
-
-    gsHalfEdgeMesh<T> hMesh(mesh);
-
-    if(!file.is_open())
-	gsWarn << "Opening file " << mfn << " for writing failed." << std::endl;
-
-    file << std::fixed;
-    file << std::setprecision(12);
-
-    file << "solid created by G+Smo" << std::endl;
-    for(size_t t=0; t<hMesh.getNumberOfTriangles(); t++)
-    {
-	file << " facet normal 0 0 -1" << std::endl;
-	file << "  outer loop" << std::endl;
-	for(size_t v=0; v<3; v++)
-	{
-	    typename gsMesh<T>::VertexHandle handle = hMesh.getVertex(hMesh.getGlobalVertexIndex(v+1, t));
-	    file << "   vertex " << handle->y() << " " << handle->x() << " " << handle->z() << std::endl;
-	}
-	file << "  endloop" << std::endl;
-	file << " endfacet" << std::endl;
-    }
-    file << "endsolid" << std::endl;
-}
-
 template<class T>
 gsParametrization<T>& gsParametrization<T>::setOptions(const gsOptionList& list)
 {

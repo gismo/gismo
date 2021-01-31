@@ -77,7 +77,8 @@ public:
 	: gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
 	m_overlapHEM(overlap)
     {
-	// Note: m_twins are initiated later on.
+	// Note: m_twins gets constructed later on.
+	// Note: One could also write another constructor accepting gsHalfEdgeMesh as overlap.
     }
 
     /// Computes the periodic parametrization.
@@ -183,7 +184,7 @@ protected: // members
 						      * smaller by one than the second.
 						      */
 
-    gsHalfEdgeMesh<T> m_overlapHEM; ///< The mesh of the overlap, cf. the introduction to the class.
+    const gsHalfEdgeMesh<T> m_overlapHEM; ///< The mesh of the overlap, cf. the introduction to the class.
 };
 
 } // namespace gismo
