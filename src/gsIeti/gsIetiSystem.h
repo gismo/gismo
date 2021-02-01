@@ -120,11 +120,34 @@ public:
         return result;
     }
 
+    void reserve( index_t n )
+    {
+        localMatrixOps.reserve(n);
+        localRhs.reserve(n);
+        localSolverOps.reserve(n);
+        jumpMatrices.reserve(n);
+    }
+
+    struct subdomain {
+        TransferPtr jumpMatrix;
+        OpPtr       localMatrixOp;
+        Matrix      localRhs;
+        subdomain(TransferPtr _jumpMatrix, OpPtr _localMatrixOp, Matrix _localRhs)
+            : jumpMatrix(_jumpMatrix), localMatrixOp(_localMatrixOp), localRhs(_localRhs) {}
+    };
+
+    void addPatch(subdomain data)
+    {
+        jumpMatrices.push_back(give(data.jumpMatrix));
+        localMatrixOps.push_back(give(data.localMatrixOp));
+        localRhs.push_back(give(data.localRhs));
+    }
+
 public:
+    std::vector< TransferPtr >  jumpMatrices;
     std::vector< OpPtr >        localMatrixOps;
     std::vector< Matrix >       localRhs;
     std::vector< OpPtr >        localSolverOps;
-    std::vector< TransferPtr >  jumpMatrices;
 };
 
 } // namespace gismo

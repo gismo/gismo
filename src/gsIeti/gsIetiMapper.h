@@ -36,28 +36,6 @@ class gsIetiMapper
     typedef gsSparseMatrix<T,RowMajor> Transfer;
     typedef memory::shared_ptr<Transfer> TransferPtr;
 
-public:
-
-    /// Constructor
-    gsIetiMapper(
-        gsDofMapper global,
-        std::vector<gsDofMapper> local )
-        : m_options(defaultOptions()), dm_global(give(global)), dm_local(give(local))
-    {}
-
-    /// Returns default options
-    static gsOptionList defaultOptions()
-    {
-        gsOptionList opt;
-        return opt;
-    }
-
-    /// Set options
-    void setOptions( const gsOptionList& opt )
-    {
-        m_options.update(opt);
-    }
-
 private:
 
     typedef std::vector< std::vector< std::pair<index_t,index_t> > > CouplingInfo;
@@ -168,7 +146,6 @@ public:
     }
 
 public:
-    gsOptionList m_options;
     gsDofMapper dm_global;
     std::vector<gsDofMapper> dm_local;
 };

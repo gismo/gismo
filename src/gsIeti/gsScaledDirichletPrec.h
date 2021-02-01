@@ -173,6 +173,13 @@ public:
         localSchurOps.push_back(give(data.second));
     }
 
+    void reserve( index_t n )
+    {
+        jumpMatrices.reserve(n);
+        localSchurOps.reserve(n);
+        localScaling.reserve(n);
+    }
+
     index_t numberOfLagrangeMultipliers() const
     {
         GISMO_ASSERT( jumpMatrices.size()>0, "gsScaledDirichletPrec: Number of Lagrange multipliers "

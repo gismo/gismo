@@ -146,28 +146,32 @@ int main(int argc, char *argv[])
 
     gsInfo << "Setup assembler and assemble matrix... " << std::flush;
 
-    gsDofMapper dm;
-    mb.getMapper(
-       dirichlet::elimination,
-       iFace::glue,
-       bc,
-       dm,
-       0
-    );
+    const size_t nPatches = mp.nPatches();
 
-    const size_t nr_patches = mp.nPatches();
+    gsIetiMapper<> ietiMapper;
+    ietiMapper.dm_local.resize(nPatches);
 
     gsIetiSystem<> ieti;
-    ieti.localMatrixOps.reserve(nr_patches+1);
-    ieti.localRhs.reserve(nr_patches+1);
-
-    std::vector<gsDofMapper> dm_local(nr_patches);
 
     {
-        //gsSparseMatrix<> primalMatrix;
-        //gsMatrix<> primalRhs;
 
-        for (size_t i=0; i<nr_patches; ++i)
+        std::vector< gsSparseMatrix<> > localMatrices;
+        localMatrices.reserve(nPatches);
+
+        std::vector< gsMatrix<> > localRhs;
+        localRhs.reserve(nPatches);
+
+
+        mb.getMapper(
+           dirichlet::elimination,
+           iFace::glue,
+           bc,
+           ietiMapper.dm_global,
+           0
+        );
+        std::vector<gsDofMapper> dm_local(nPatches);
+
+        for (size_t i=0; i<nPatches; ++i)
         {
             gsBoundaryConditions<> bc_local;
             bc.getConditionsForPatch(i,bc_local);
@@ -177,7 +181,7 @@ int main(int argc, char *argv[])
                dirichlet::elimination,
                iFace::glue,
                bc_local,
-               dm_local[i],
+               ietiMapper.dm_local[i],
                0
             );
 
@@ -191,22 +195,34 @@ int main(int argc, char *argv[])
             );
             assembler.assemble();
 
-            ieti.localMatrixOps.push_back(makeMatrixOp(gsSparseMatrix<>(assembler.matrix()).moveToPtr()));
-            ieti.localRhs.push_back(give(assembler.rhs()));
+            localMatrices.push_back(assembler.matrix());
+            localRhs.push_back(assembler.rhs());
 
         }
 
-        //ieti.localMatrixOps.push_back(makeMatrixOp(primalMatrix.moveToPtr()));
-        //ieti.localRhs.push_back(give(primalRhs));
+        std::vector< memory::shared_ptr< gsSparseMatrix<real_t,RowMajor> > > jumpMatrices = ietiMapper.jumpMatrices();
+
+        gsInfo << "done.\nSetup IETI system... " << std::flush;
+
+        ieti.reserve(nPatches+1);
+        for (size_t i=0; i<nPatches; ++i)
+        {
+            ieti.addPatch( gsIetiSystem<>::subdomain(
+                give(jumpMatrices[i]),
+                makeMatrixOp(localMatrices[i].moveToPtr()),
+                give(localRhs[i])
+            ) );
+        }
+
     }
 
-    gsIetiMapper<> ietiMapper(give(dm),give(dm_local));
-    ieti.jumpMatrices = ietiMapper.jumpMatrices();
+    /******** Setup scaled Dirichlet preconditioner *********/
 
+    gsInfo << "done.\nSetup scaled Dirichlet preconditioner... " << std::flush;
 
     gsScaledDirichletPrec<> prec;
-    prec.jumpMatrices.reserve(nr_patches);
-    for (size_t i=0; i<nr_patches; ++i)
+    prec.reserve(nPatches);
+    for (size_t i=0; i<nPatches; ++i)
     {
         prec.addPatch(
             gsScaledDirichletPrec<>::restrictToSkeleton(
@@ -215,8 +231,6 @@ int main(int argc, char *argv[])
             )
         );
     }
-
-    //ieti.jumpMatrices.push_back( ietiAssembler.primalJumpMatrix() );
 
     gsInfo << "done.\n";
 
