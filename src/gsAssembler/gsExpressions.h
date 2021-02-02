@@ -1252,7 +1252,8 @@ public:
         // Assume mat ??
         MatExprType tmp = _u.eval(k);
         const index_t cb = _u.rows();
-        const index_t r  = _u.cols() / cb;
+        // const index_t r  = _u.cols() / cb;
+        const index_t r  = _u.cardinality();
         res.resize(r, 1);
         for (index_t i = 0; i!=r; ++i){
             res(i,0) = tmp.middleCols(i*cb,cb).trace();
@@ -3369,6 +3370,9 @@ public:
         MatExprType ml = _M.eval(k);
         const index_t mr  = ml.rows();
         const index_t mb  = ml.cols() / mr;
+
+        GISMO_ASSERT(_M.cols()==_M.rows(),"Matrix must be square!");
+        // GISMO_ASSERT(_M.cardinality()==_u.cardinality(),"cardinality must match, but card(M)="<<_M.cardinality()<<" and card(u)="<<_u.cardinality());
 
         res.setZero(mr, sr * mr);
         for (index_t i = 0; i!=sr; ++i)
