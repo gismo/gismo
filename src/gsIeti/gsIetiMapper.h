@@ -24,7 +24,7 @@ namespace gismo
 #define DEBUGMATRIX(a) gsInfo << "  " << #a << ": " << a.rows() << " x " << a.cols() << std::endl
 
 /** @brief
-    Ieti Assembler
+    Ieti Mapper
 
     This class contains algorithms for the assembling of matrices required for IETI-Solvrs.
 
@@ -74,9 +74,9 @@ public:
 
 
     /// Get jump matrices for local subproblems
-    std::vector<TransferPtr> jumpMatrices() const
+    std::vector<Transfer> jumpMatrices() const
     {
-        std::vector<TransferPtr> result;
+        std::vector<Transfer> result;
         CouplingInfo coupling = getCoupling();
         const index_t couplingSize = coupling.size();
 
@@ -92,7 +92,7 @@ public:
         }
 
         for (index_t i=0; i<numPatches; ++i)
-            result.push_back(Transfer(numLagrangeMult, dm_local[i].freeSize()).moveToPtr());
+            result.push_back(Transfer(numLagrangeMult, dm_local[i].freeSize()));
 
         index_t multiplier = 0;
         for (index_t i=0; i<couplingSize; ++i)
@@ -111,8 +111,8 @@ public:
                     const index_t localIndex2 = coupling[i][j2].second;
                     const index_t localMappedIndex2 = dm_local[patch2].index(localIndex2,0);
                     GISMO_ASSERT(multiplier<numLagrangeMult, "bug." );
-                    (*result[patch1])(multiplier,localMappedIndex1) = 1.;
-                    (*result[patch2])(multiplier,localMappedIndex2) = -1.;
+                    result[patch1](multiplier,localMappedIndex1) = 1.;
+                    result[patch2](multiplier,localMappedIndex2) = -1.;
                     ++multiplier;
                 }
             }

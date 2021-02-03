@@ -16,15 +16,6 @@
 
 using namespace gismo;
 
-gsSparseMatrix<> getSparseMatrix( gsLinearOperator<>::Ptr op )
-{
-    typedef gsMatrixOp< gsSparseMatrix<> > SparseMatrixOp;
-    SparseMatrixOp* matop = dynamic_cast<SparseMatrixOp*>(op.get());
-    GISMO_ENSURE( matop, "Not a matrix." );
-    return matop->matrix();
-}
-
-
 int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
@@ -159,6 +150,7 @@ int main(int argc, char *argv[])
     ietiMapper.dm_local.resize(nPatches);
 
     gsIetiSystem<> ieti;
+    gsScaledDirichletPrec<> prec;
 
     {
 
@@ -206,39 +198,31 @@ int main(int argc, char *argv[])
 
         }
 
-        std::vector< memory::shared_ptr< gsSparseMatrix<real_t,RowMajor> > > jumpMatrices = ietiMapper.jumpMatrices();
+        std::vector< gsSparseMatrix<real_t,RowMajor> > jumpMatrices = ietiMapper.jumpMatrices();
 
-        gsInfo << "done.\nSetup IETI system... " << std::flush;
+        gsInfo << "done.\nSetup IETI system and scaled Dirichlet preconditioner... " << std::flush;
 
         ieti.reserve(nPatches+1);
+        prec.reserve(nPatches);
+
         for (size_t i=0; i<nPatches; ++i)
         {
+            prec.addSubdomain(
+                gsScaledDirichletPrec<>::restrictToSkeleton(
+                    jumpMatrices[i],
+                    localMatrices[i]
+                )
+            );
+
             ieti.addSubdomain(
-                give(jumpMatrices[i]),
+                jumpMatrices[i].moveToPtr(),
                 makeMatrixOp(localMatrices[i].moveToPtr()),
                 give(localRhs[i])
             );
         }
 
+        gsInfo << "done.\n";
     }
-
-    /******** Setup scaled Dirichlet preconditioner *********/
-
-    gsInfo << "done.\nSetup scaled Dirichlet preconditioner... " << std::flush;
-
-    gsScaledDirichletPrec<> prec;
-    prec.reserve(nPatches);
-    for (size_t i=0; i<nPatches; ++i)
-    {
-        prec.addSubdomain(
-            gsScaledDirichletPrec<>::restrictToSkeleton(
-                *(ieti.jumpMatrices()[i]),
-                getSparseMatrix( ieti.localMatrixOps()[i] )
-            )
-        );
-    }
-
-    gsInfo << "done.\n";
 
     /**************** Setup solver and solve ****************/
 
