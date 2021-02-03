@@ -15,139 +15,143 @@
 
 #include <gsSolver/gsLinearOperator.h>
 #include <gsSolver/gsMatrixOp.h>
-#include <gsSolver/gsBlockOp.h>
-#include <gsSolver/gsProductOp.h>
-#include <gsSolver/gsSumOp.h>
-#include <gsSolver/gsAdditiveOp.h>
-
-#define DEBUGVAR(a) gsInfo << "  " << #a << ": " << a << std::endl
-#define DEBUGMATRIX(a) gsInfo << "  " << #a << ": " << a.rows() << " x " << a.cols() << std::endl
 
 namespace gismo
 {
 
 /** @brief   This class represents a IETI problem. Its algorithms allow to set up a IETI solver.
+ *
+ *  The IETI saddle point system is a system of the form:
+ *
+ *  \f[
+ *       \begin{pmatrix}
+ *            \tilde A_1 &            &             &            &  \tilde B_1^\top \\
+ *                       & \tilde A_2 &             &            &  \tilde B_2^\top \\
+ *                       &            &   \ddots    &            &  \vdots   \\
+ *                       &            &             & \tilde A_K &  \tilde B_K^\top \\
+ *            \tilde B_1 & \tilde B_2 &   \cdots    & \tilde B_K &     0     \\
+ *       \end{pmatrix}
+ *  \f]
+ *
+ *  The correspondung Schur complement is
+ *
+ *  \f[
+ *       \sum_{k=1}^K   \tilde B_k   \tilde A_k^{-1}  \tilde B_k^\top
+ *  \f]
+ *
+ *  For a standard IETI-dp setup, the matrices \f$ \tilde A_k \f$ and \f$ \tilde B_k \f$ are obtained
+ *  from the original matrices \f$ A_k \f$ and \f$ B_k \f$ by eliminating the primal dofs (or by
+ *  incorporatung a constraint that sets them to zero).
+ *
+ *  The matrices \f$ \tilde A_k \f$ are stored in the vector \a localMatrixOps . To allow certain
+ *  matrix-free variats, they are stored in form of a vector of \a gsLinearOperator s.
+ *
+ *  The inverses \f$ \tilde A_k^{-1} \f$ are stored in the vector \a localSolverOps . As far as the
+ *  matrices \f$ \tilde A_k\f$ are stored as \a gsMatrixOp containing \a gsSparseMatrix , LU solvers can
+ *  be automatically created by calling \a setupSparseLUSolvers. Otherwise or if the caller wants other
+ *  local solvers (like inexact ones), the vector can be populated by the caller.
+ *
+ *  The matrices \f$ \tilde B_k \f$ are stored in the vector \a jumpMatrices .
+ *
+ *  The right-hand sides are stored in the vector \a localRhs .
+ *
+ *  @note This class does not have any special treatment for the primal problem of a IETI-dp solver.
+ *
+ *  @ingroup Solver
+**/
 
-    \ingroup Solver
-*/
 template< typename T >
 class gsIetiSystem
 {
-    typedef typename gsLinearOperator<T>::Ptr OpPtr;
-    typedef gsSparseMatrix<T,RowMajor> Transfer;
-    typedef memory::shared_ptr<Transfer> TransferPtr;
-    typedef gsMatrix<T> Matrix;
+    typedef gsLinearOperator<T>               Op;
+    typedef memory::shared_ptr<Op>            OpPtr;
+    typedef gsSparseMatrix<T>                 SparseMatrix;
+    typedef gsMatrixOp< gsSparseMatrix<T> >   SparseMatrixOp;
+    typedef gsSparseMatrix<T,RowMajor>        JumpMatrix;
+    typedef memory::shared_ptr<JumpMatrix>    JumpMatrixPtr;
+    typedef gsMatrix<T>                       Matrix;
 public:
 
-    void setupSparseLUSolvers()
-    {
-        const size_t sz = localMatrixOps.size();
-        localSolverOps.clear();
-        localSolverOps.reserve(sz);
-        for (size_t i=0; i<sz; ++i)
-        {
-            gsMatrixOp< gsSparseMatrix<T> >* matop
-              = dynamic_cast< gsMatrixOp< gsSparseMatrix<T> >* >(localMatrixOps[i].get());
-            GISMO_ENSURE( matop, "gsIetiSystem::setupSparseLUSolvers requires the "
-              "local systems in localMatrixOps to by of type gsMatrixOp< gsSparseMatrix<T> >." );
-            localSolverOps.push_back(makeSparseLUSolver(gsSparseMatrix<T>(matop->matrix())));
-        }
-    }
+    /// @brief Reservs the memory required to store the given number of subdomain
+    /// @param n Number of subdomains
+    void reserve(index_t n);
 
-    OpPtr saddlePointProblem() const
-    {
-        GISMO_ASSERT( jumpMatrices.size() == localMatrixOps.size(),
-            "gsIeti: The number of restriction operators must match the number of local problems." );
-        const size_t sz = localMatrixOps.size();
-        typename gsBlockOp<T>::Ptr result = gsBlockOp<T>::make( sz+1, sz+1 );
-        for (size_t i=0; i<sz; ++i)
-        {
-            result->addOperator( i, i, localMatrixOps[i] );
-            // We hope that the transposed operator does not outlive the non-transposed one.
-            result->addOperator( i, sz, makeMatrixOp( jumpMatrices[i]->transpose() ) );
-            result->addOperator( sz, i, makeMatrixOp( jumpMatrices[i] ) );
-        }
-        return result;
-    }
+    /// @briefs Adds a new subdomain
+    ///
+    /// Subdomain might be, e.g., a patch-local problem or the primal problem
+    ///
+    /// @param jumpMatrix       The associated jump matrix
+    /// @param localMatrixOp    The operator that represents the local problem
+    /// @param localRhs         The contribution to the right-hand side
+    void addSubdomain(JumpMatrixPtr jumpMatrix, OpPtr localMatrixOp, Matrix localRhs);
 
+    /// Access the vector of jump matrices
+    std::vector<JumpMatrixPtr>&       jumpMatrices()          { return m_jumpMatrices;   }
+    const std::vector<JumpMatrixPtr>& jumpMatrices() const    { return m_jumpMatrices;   }
+
+    /// Access the vector of local system matrices (as \a gsLinearOperator)
+    std::vector<OpPtr>&               localMatrixOps()        { return m_localMatrixOps; }
+    const std::vector<OpPtr>&         localMatrixOps() const  { return m_localMatrixOps; }
+
+    /// Access the vector of local right-hand sides
+    std::vector<Matrix>&              localRhs()              { return m_localRhs;       }
+    const std::vector<Matrix>&        localRhs() const        { return m_localRhs;       }
+
+    /// Access the vector of local solver operators
+    std::vector<OpPtr>&               localSolverOps()        { return m_localSolverOps; }
+    const std::vector<OpPtr>&         localSolverOps() const  { return m_localSolverOps; }
+
+    /// @brief Populates the member \a m_localSolverOps
+    ///
+    /// This function assums that \a m_jumpMatrices and \a m_localMatrixOps have been populated
+    /// first. Moreover, it requres that all \a localMatrixOp s are actually of type
+    /// \a gsMatrixOp<gsSparseMatrix<T>> .
+    void setupSparseLUSolvers();
+
+    /// Returns the number of Lagrange multipliers
+    ///
+    /// This requires that at least one jump matrix has been set.
     index_t numberOfLagrangeMultipliers() const
     {
-        GISMO_ASSERT( jumpMatrices.size()>0, "gsIetiSystem: Number of Lagrange multipliers "
+        GISMO_ASSERT( m_jumpMatrices.size()>0, "gsIetiSystem: Number of Lagrange multipliers "
             "can only be determined if there are jump matrices.");
-        return jumpMatrices[0]->rows();
+        return m_jumpMatrices[0]->rows();
     }
 
-    OpPtr schurComplement() const
-    {
-        GISMO_ASSERT( jumpMatrices.size() == localMatrixOps.size(),
-            "gsIeti: The number of restriction operators must match the number of local problems." );
-        GISMO_ASSERT( localSolverOps.size() == localMatrixOps.size(),
-            "gsIetiSystem::schurComplement() requires solvers for the local subproblems." );
-        return gsAdditiveOp<T>::make( jumpMatrices, localSolverOps );
-    }
+    /// @brief Returns \a gsLinearOperator that represents the IETI problem as saddle point problem
+    ///
+    /// This requires that the jump matrices (\a jumpMatrices) and the local matrices
+    /// (\a localMatrixOps) have been provided.
+    OpPtr saddlePointProblem() const;
 
-    gsMatrix<T> rhsForSchurComplement() const
-    {
-        GISMO_ASSERT( localSolverOps.size() == jumpMatrices.size(),
-            "gsIetiSystem::rhsForSchurComplement() requires solvers for the local subproblems." );
-        GISMO_ASSERT( localRhs.size() == jumpMatrices.size(),
-            "gsIetiSystem::rhsForSchurComplement() requires the right-hand sides for the local subproblems." );
-        gsMatrix<T> result;
-        result.setZero( numberOfLagrangeMultipliers(), localRhs[0].cols());
-        const index_t numPatches = jumpMatrices.size();
-        for (index_t i=0; i<numPatches; ++i)
-        {
-            gsMatrix<T> tmp;
-            localSolverOps[i]->apply( localRhs[i], tmp );
-            result += *(jumpMatrices[i]) * tmp;
-        }
-        return result;
-    }
+    /// @brief Returns \a gsLinearOperator that represents the Schur complement for the IETI problem
+    ///
+    /// This requires that the jump matrices (\a jumpMatrices) and the local solvers
+    /// (\a localSolverOps) have been provided. The local solvers can be automatically generated
+    /// by calling the member function \a setupSparseLUSolvers .
+    OpPtr schurComplement() const;
 
-    std::vector< gsMatrix<T> > constructSolutionFromLagrangeMultipliers(const gsMatrix<T>& multipliers) const
-    {
-        GISMO_ASSERT( localSolverOps.size() == jumpMatrices.size(),
-            "gsIetiSystem::rhsForSchurComplement() requires solvers for the local subproblems." );
-        const index_t numPatches = jumpMatrices.size();
-        std::vector< gsMatrix<T> > result;
-        result.reserve(numPatches);
-        for (index_t i=0; i<numPatches; ++i)
-        {
-            gsMatrix<T> tmp;
-            localSolverOps[i]->apply( localRhs[i]-jumpMatrices[i]->transpose()*multipliers, tmp );
-            result.push_back(tmp);
-        }
-        return result;
-    }
+    /// @brief Returns the right-hand-side that is required for the Schur complement formulation of the IETI problem
+    ///
+    /// This requires that the jump matrices (\a jumpMatrices) and the local solvers
+    /// (\a localSolverOps) have been provided. The local solvers can be automatically generated
+    /// by calling the member function \a setupSparseLUSolvers .
+    Matrix rhsForSchurComplement() const;
 
-    void reserve( index_t n )
-    {
-        localMatrixOps.reserve(n);
-        localRhs.reserve(n);
-        localSolverOps.reserve(n);
-        jumpMatrices.reserve(n);
-    }
+    /// @brief Returns the local solutions for the individual subdomains
+    ///
+    /// @param multipliers  The Lagrange multipliers previously computed (based on the Schur complement form)
+    ///
+    /// This requires that the jump matrices (\a jumpMatrices), the local right-hand sides (\a localRhs) and
+    /// the local solvers (\a localSolverOps) have been provided. The local solvers can be automatically
+    /// generated by calling the member function \a setupSparseLUSolvers .
+    std::vector<Matrix> constructSolutionFromLagrangeMultipliers(const gsMatrix<T>& multipliers) const;
 
-    struct subdomain {
-        TransferPtr jumpMatrix;
-        OpPtr       localMatrixOp;
-        Matrix      localRhs;
-        subdomain(TransferPtr _jumpMatrix, OpPtr _localMatrixOp, Matrix _localRhs)
-            : jumpMatrix(_jumpMatrix), localMatrixOp(_localMatrixOp), localRhs(_localRhs) {}
-    };
-
-    void addPatch(subdomain data)
-    {
-        jumpMatrices.push_back(give(data.jumpMatrix));
-        localMatrixOps.push_back(give(data.localMatrixOp));
-        localRhs.push_back(give(data.localRhs));
-    }
-
-public:
-    std::vector< TransferPtr >  jumpMatrices;
-    std::vector< OpPtr >        localMatrixOps;
-    std::vector< Matrix >       localRhs;
-    std::vector< OpPtr >        localSolverOps;
+private:
+    std::vector<JumpMatrixPtr>  m_jumpMatrices;
+    std::vector<OpPtr>          m_localMatrixOps;
+    std::vector<Matrix>         m_localRhs;
+    std::vector<OpPtr>          m_localSolverOps;
 };
 
 } // namespace gismo

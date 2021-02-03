@@ -13,10 +13,17 @@
 
 #include <gismo.h>
 #include <gsIeti/gsIetiMapper.h>
-#include <gsIeti/gsIetiSystem.h>
-#include <gsIeti/gsScaledDirichletPrec.h>
 
 using namespace gismo;
+
+gsSparseMatrix<> getSparseMatrix( gsLinearOperator<>::Ptr op )
+{
+    typedef gsMatrixOp< gsSparseMatrix<> > SparseMatrixOp;
+    SparseMatrixOp* matop = dynamic_cast<SparseMatrixOp*>(op.get());
+    GISMO_ENSURE( matop, "Not a matrix." );
+    return matop->matrix();
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -161,7 +168,6 @@ int main(int argc, char *argv[])
         std::vector< gsMatrix<> > localRhs;
         localRhs.reserve(nPatches);
 
-
         mb.getMapper(
            dirichlet::elimination,
            iFace::glue,
@@ -207,11 +213,11 @@ int main(int argc, char *argv[])
         ieti.reserve(nPatches+1);
         for (size_t i=0; i<nPatches; ++i)
         {
-            ieti.addPatch( gsIetiSystem<>::subdomain(
+            ieti.addSubdomain(
                 give(jumpMatrices[i]),
                 makeMatrixOp(localMatrices[i].moveToPtr()),
                 give(localRhs[i])
-            ) );
+            );
         }
 
     }
@@ -224,10 +230,10 @@ int main(int argc, char *argv[])
     prec.reserve(nPatches);
     for (size_t i=0; i<nPatches; ++i)
     {
-        prec.addPatch(
+        prec.addSubdomain(
             gsScaledDirichletPrec<>::restrictToSkeleton(
-                *(ieti.jumpMatrices[i]),
-                ieti.localMatrixOps[i]
+                *(ieti.jumpMatrices()[i]),
+                getSparseMatrix( ieti.localMatrixOps()[i] )
             )
         );
     }
@@ -251,7 +257,7 @@ int main(int argc, char *argv[])
     gsMatrix<> rhsForSchur = ieti.rhsForSchurComplement();
     gsInfo << "done.\n    Setup cg solver for Lagrange multipliers and solve... " << std::flush;
 
-    gsConjugateGradient<>( ieti.schurComplement(), prec.secaledDirichletPreconditioner() )
+    gsConjugateGradient<>( ieti.schurComplement(), prec.preconditioner() )
         .setOptions( opt.getGroup("Solver") )
         .solveDetailed( rhsForSchur, lambda, errorHistory );
 

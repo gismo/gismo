@@ -15,247 +15,150 @@
 
 #include <gsSolver/gsLinearOperator.h>
 #include <gsSolver/gsMatrixOp.h>
-#include <gsSolver/gsBlockOp.h>
-#include <gsSolver/gsProductOp.h>
-#include <gsSolver/gsSumOp.h>
-#include <gsSolver/gsAdditiveOp.h>
 #include <gsUtils/gsSortedVector.h>
-
-#define DEBUGVAR(a) gsInfo << "  " << #a << ": " << a << std::endl
-#define DEBUGMATRIX(a) gsInfo << "  " << #a << ": " << a.rows() << " x " << a.cols() << std::endl
 
 namespace gismo
 {
 
-/** @brief   This class represents the sclaed Dirichlet preconditioner.
+/** @brief   This class represents the scaled Dirichlet preconditioner for a IETI problem.
+ *
+ *  The IETI saddle point system is a system of the form:
+ *
+ *  Its formal representation is
+ *
+ *  \f[
+ *       \sum_{k=1}^K  \hat B_k  D_k  S_k D_k \hat B_k^\top
+ *  \f]
+ *
+ *  It is a preconditioner for the Schur complement of the IETI system
+ *
+ *  \f[
+ *       \begin{pmatrix}
+ *            \tilde A_1 &            &             &            &  \tilde B_1^\top \\
+ *                       & \tilde A_2 &             &            &  \tilde B_2^\top \\
+ *                       &            &   \ddots    &            &  \vdots   \\
+ *                       &            &             & \tilde A_N &  \tilde B_N^\top \\
+ *            \tilde B_1 & \tilde B_2 &   \cdots    & \tilde B_N &     0     \\
+ *       \end{pmatrix}
+ *  \f]
+ *
+ *  For a standard IETI-dp setup, we additionally have a primal problem, thus N=K+1. In this
+ *  case, the matrices \f$ \tilde A_k \f$ and \f$ \tilde B_k \f$ are obtained from the
+ *  original matrices \f$ A_k \f$ and \f$ B_k \f$ by eliminating the primal dofs (or by
+ *  incorporatung a constraint that sets them to zero).
+ *
+ *  The matrices \f$ S_k \f$ are stored in the vector \a localSchurOps . To allow certain matrix-free
+ *  variats, they are stored in form of a vector of \a gsLinearOperator s. These matrices are the
+ *  Schur-complements of the matrices \f$ A_k \f$ with respect to the degrees of freedom on the
+ *  skeleton.
+ *
+ *  The matrices \f$\tilde B_k\f$ are stored in the vector \a jumpMatrices . These matrices usually
+ *  differ from the matrices \f$ B_k \f$ from the IETI-system since -- for the preconditioner --
+ *  the jump matrices have to be restricted to the Skeleton.
+ *
+ *  If the matrices \f$ A_k \f$ and \f$ B_k \f$ are given, the function \a restrictToSkeleton allows
+ *  to compute the corresponding matrices \f$ S_k \f$ and \f$ \hat B_k \f$. The degrees of freedom
+ *  belonging to the skeleton can be specified by the caller. The caller can use the function
+ *  \a getSkeletonDofs to extract this information from the jump matrices, i.e., skeleton dofs are
+ *  those that are affected by a Lagrange multiplier.
+ *
+ *  The scaling matrcies \f$ D_k \f$ are stored in the vector \a scalingMatrices. They can be provided
+ *  by the caller or generated automatically using \a setupMultiplicityScaling .
+ *
+ *  @ingroup Solver
+**/
 
-    \ingroup Solver
-*/
 template< typename T >
 class gsScaledDirichletPrec
 {
-    typedef typename gsLinearOperator<T>::Ptr OpPtr;
-    typedef gsSparseMatrix<T,RowMajor> Transfer;
-    typedef memory::shared_ptr<Transfer> TransferPtr;
-    typedef gsMatrix<T> Matrix;
+    typedef gsLinearOperator<T>               Op;
+    typedef memory::shared_ptr<Op>            OpPtr;
+    typedef gsSparseMatrix<T>                 SparseMatrix;
+    typedef gsSparseMatrix<T,RowMajor>        JumpMatrix;
+    typedef memory::shared_ptr<JumpMatrix>    JumpMatrixPtr;
+    typedef gsMatrix<T>                       Matrix;
 public:
 
-    static gsSortedVector<index_t> getSkeletonDofs( const Transfer& jm )
-    {
-        gsSortedVector<index_t> result;
-        for (index_t i=0; i<jm.outerSize(); ++i)
-            for (typename Transfer::InnerIterator it(jm, i); it; ++it)
-                result.push_sorted_unique(it.col());
-        return result;
-    }
-
-    static Transfer restrictJumpMatrix( const Transfer& jm, const std::vector<index_t> dofs )
-    {
-        gsVector<index_t> reverse;
-        reverse.setZero( jm.cols() );
-        const index_t sz = dofs.size();
-        for (index_t i=0; i<sz; ++i)
-            reverse[dofs[i]] = i+1;
-
-        gsSparseEntries<T> triplets;
-        triplets.reserve(jm.nonZeros());
-        for (index_t i=0; i<jm.outerSize(); ++i)
-            for (typename Transfer::InnerIterator it(jm, i); it; ++it)
-                if (reverse[it.col()] > 0)
-                {
-                    triplets.add(
-                        it.row(),
-                        reverse[it.col()]-1,
-                        it.value()
-                    );
-                }
-
-        Transfer result(jm.rows(), dofs.size());
-        result.setFrom(triplets);
-        return result;
-    }
-
-    static OpPtr schurComplement( const gsSparseMatrix<T> & mat, const std::vector<index_t> dofs )
-    {
-        gsVector<index_t> reverse;
-        reverse.setZero( mat.cols() );
-        const index_t sz = dofs.size();
-        for (index_t i=0; i<sz; ++i)
-            reverse[dofs[i]] = i+1;
-        index_t j=0;
-        for (index_t i=0; i<mat.cols(); ++i)
-            if (reverse[i]==0)
-                reverse[i] = --j;
-
-        gsSparseEntries<T> se_A00, se_A10, se_A01, se_A11;
-        se_A00.reserve( 2 * mat.nonZeros() * dofs.size() / mat.rows() );
-        se_A10.reserve( 2 * mat.nonZeros() * dofs.size() / mat.rows() );
-        se_A01.reserve( 2 * mat.nonZeros() * dofs.size() / mat.rows() );
-        se_A11.reserve( mat.nonZeros() );
-        for (index_t i=0; i<mat.outerSize(); ++i)
-            for (typename gsSparseMatrix<T>::InnerIterator it(mat, i); it; ++it)
-            {
-                if (reverse[it.row()] > 0 && reverse[it.col()] > 0)
-                {
-                    se_A00.add(
-                        reverse[it.row()]-1,
-                        reverse[it.col()]-1,
-                        it.value()
-                    );
-                }
-                else if (reverse[it.row()] > 0 && reverse[it.col()] < 0)
-                {
-                    se_A01.add(
-                        reverse[it.row()]-1,
-                        -reverse[it.col()]-1,
-                        it.value()
-                    );
-                }
-                else if (reverse[it.row()] < 0 && reverse[it.col()] > 0)
-                {
-                    se_A10.add(
-                        -reverse[it.row()]-1,
-                        reverse[it.col()]-1,
-                        it.value()
-                    );
-                }
-                else //if (reverse[it.col()] < 0 && reverse[it.row()] < 0)
-                {
-                    se_A11.add(
-                        -reverse[it.row()]-1,
-                        -reverse[it.col()]-1,
-                        -it.value() // Since we need a minus in the Schur complement
-                    );
-                }
-            }
-
-        gsSparseMatrix<T> A00(           dofs.size(),            dofs.size());
-        A00.setFrom(se_A00);
-        gsSparseMatrix<T> A10(mat.rows()-dofs.size(),            dofs.size());
-        A10.setFrom(se_A10);
-        gsSparseMatrix<T> A01(           dofs.size(), mat.rows()-dofs.size());
-        A01.setFrom(se_A01);
-        gsSparseMatrix<T> A11(mat.rows()-dofs.size(), mat.rows()-dofs.size());
-        A11.setFrom(se_A11);
-
-        return gsSumOp<T>::make(
-            makeMatrixOp(A00.moveToPtr()),
-            gsProductOp<T>::make(
-                makeMatrixOp(A10.moveToPtr()),
-                makeSparseCholeskySolver(A11),
-                makeMatrixOp(A01.moveToPtr())
-            )
-        );
-    }
-
-    static std::pair<Transfer,OpPtr> restrictToSkeleton( const Transfer& jm, const gsSparseMatrix<T>& mat )
-    {
-        std::vector<index_t> skeletonDofs = getSkeletonDofs(jm);
-        return std::pair<Transfer,OpPtr>(
-                restrictJumpMatrix( jm, skeletonDofs ),
-                schurComplement( mat, skeletonDofs )
-            );
-    }
-
-    static std::pair<Transfer,OpPtr> restrictToSkeleton( const Transfer& jm, OpPtr op )
-    {
-        gsMatrixOp< gsSparseMatrix<T> >* matop
-            = dynamic_cast< gsMatrixOp< gsSparseMatrix<T> >* >(op.get());
-        GISMO_ENSURE( matop, "gsScaledDirichletPrec::restrictToSkeleton requires the "
-          "local system to be of type gsMatrixOp< gsSparseMatrix<T> >." );
-        return restrictToSkeleton(jm, matop->matrix());
-    }
-
-
-    void addPatch( std::pair<Transfer,OpPtr> data )
-    {
-        jumpMatrices.push_back(data.first.moveToPtr());
-        localSchurOps.push_back(give(data.second));
-    }
-
+    /// @brief Reservs the memory required to store the given number of subdomain
+    /// @param n Number of subdomains
     void reserve( index_t n )
     {
-        jumpMatrices.reserve(n);
-        localSchurOps.reserve(n);
-        localScaling.reserve(n);
+        m_jumpMatrices.reserve(n);
+        m_localSchurOps.reserve(n);
+        m_localScaling.reserve(n);
     }
 
+    /// @briefs Adds a new subdomain
+    ///
+    /// Subdomain might be, e.g., a patch-local problem or the primal problem
+    ///
+    /// @param jumpMatrix       The associated jump matrix
+    /// @param localSchurOp     The operator that represents the local Schur complement
+    ///
+    /// @note These tow parameters can also be provided as \a std::pair
+    void addSubdomain( JumpMatrix jumpMatrix, OpPtr localSchurOp )
+    {
+        m_jumpMatrices.push_back(jumpMatrix.moveToPtr());
+        m_localSchurOps.push_back(give(localSchurOp));
+    }
+
+    void addSubdomain( std::pair<JumpMatrix,OpPtr> data )
+    {
+        m_jumpMatrices.push_back(data.first.moveToPtr());
+        m_localSchurOps.push_back(give(data.second));
+    }
+
+    /// Access the vector of jump matrices
+    std::vector<JumpMatrixPtr>&       jumpMatrices()         { return m_jumpMatrices;  }
+    const std::vector<JumpMatrixPtr>& jumpMatrices() const   { return m_jumpMatrices;  }
+
+    /// Access the vector of local Schur complements operators
+    std::vector<OpPtr>&               localSchurOps()        { return m_localSchurOps; }
+    const std::vector<OpPtr>&         localSchurOps() const  { return m_localSchurOps; }
+
+    /// Access the vector of local scaling matrices (as row vector)
+    std::vector<Matrix>&              localScaling()         { return m_localScaling;  }
+    const std::vector<Matrix>&        localScaling() const   { return m_localScaling;  }
+
+    /// @brief Extracts the skeleton dofs from the jump matrix
+    ///
+    /// This means that a dof is considered to be on the skeleton iff at least one Lagrange
+    /// multiplier acts on it.
+    static gsSortedVector<index_t> getSkeletonDofs( const JumpMatrix& jm );
+
+    /// Restricts the jump matrix to the given dofs (just takes the corresponding cols)
+    static JumpMatrix restrictJumpMatrix( const JumpMatrix& jm, const std::vector<index_t> dofs );
+
+    /// Computes the Schur complement with respect to the given dofs
+    static OpPtr schurComplement( const SparseMatrix & mat, const std::vector<index_t> dofs );
+
+    /// Combines \a restrictJumpMatrix and \a schurComplement
+    static std::pair<JumpMatrix,OpPtr> restrictToSkeleton( const JumpMatrix& jm, const SparseMatrix& mat );
+
+    /// @brief Returns the number of Lagrange multipliers.
+    /// This requires that at least one subdomain was defined.
     index_t numberOfLagrangeMultipliers() const
     {
-        GISMO_ASSERT( jumpMatrices.size()>0, "gsScaledDirichletPrec: Number of Lagrange multipliers "
+        GISMO_ASSERT( !m_jumpMatrices.empty(), "gsScaledDirichletPrec: Number of Lagrange multipliers "
             "can only be determined if there are jump matrices.");
-        return jumpMatrices[0]->rows();
+        return m_jumpMatrices[0]->rows();
     }
 
-    void setupMultiplicityScaling()
-    {
-        GISMO_ASSERT( jumpMatrices.size() == localSchurOps.size(),
-            "TODO" );
+    /// @brief This sets up the member vector \a localScaling based on multiplicity scaling
+    ///
+    /// This requires that \a jumpMatrices have been populated first.
+    void setupMultiplicityScaling();
 
-        const size_t pnr = jumpMatrices.size();
-        localScaling.clear();
-        localScaling.reserve(pnr);
-
-        for (size_t k=0; k<pnr; ++k)
-        {
-            const size_t sz = localSchurOps[k]->rows();
-            gsMatrix<T> sc(sz,1);
-            for (index_t i=0; i<sz; ++i)
-              sc(i,0) = 1;
-
-            Transfer & jm = *(jumpMatrices[k]);
-
-            for (index_t i=0; i<jm.outerSize(); ++i){
-                for (typename Transfer::InnerIterator it(jm, i); it; ++it)
-                {
-                    const index_t c = it.col();
-                    sc(c,0) += 1;
-                }
-            }
-            localScaling.push_back(give(sc));
-        }
-    }
-
-    OpPtr secaledDirichletPreconditioner() const
-    {
-        GISMO_ASSERT( jumpMatrices.size() == localScaling.size(),
-            "gsScaledDirichletPrec::secaledDirichletPreconditioner needs the localScaling matrices given. "
-            "Forgot to call setupMultiplicityScaling()?" );
-        GISMO_ASSERT( jumpMatrices.size() == localSchurOps.size(),
-            "gsScaledDirichletPrec::secaledDirichletPreconditioner needs the localSchur operators given." );
-
-        const size_t pnr = jumpMatrices.size();
-
-        std::vector<OpPtr> scalingOps;
-        scalingOps.reserve(pnr);
-
-        for (size_t k=0; k<pnr; ++k)
-        {
-            const size_t sz = localSchurOps[k]->rows();
-            gsSparseMatrix<T> scaling(sz,sz);
-            for (size_t i=0; i<sz; ++i)
-                scaling(i,i) = 1./localScaling[k](i,0);
-            scalingOps.push_back(makeMatrixOp(scaling.moveToPtr()));
-        }
-
-        typename gsAdditiveOp<T>::Ptr result = gsAdditiveOp<T>::make();
-
-        for (size_t i=0; i<pnr; ++i)
-        {
-            typename gsProductOp<T>::Ptr local = gsProductOp<T>::make();
-            local->addOperator(scalingOps[i]);
-            local->addOperator(localSchurOps[i]);
-            local->addOperator(scalingOps[i]);
-            result->addOperator(jumpMatrices[i],local);
-        }
-
-        return result;
-    }
+    /// @brief This returns the preconditioner as \a gsLinearOperator
+    ///
+    /// This requires that \a localSchurOps , \a jumpMatrices and \a localScaling have been populated
+    /// first.
+    OpPtr preconditioner() const;
 
 public:
-    std::vector< OpPtr >        localSchurOps;
-    std::vector< Matrix >       localScaling;
-    std::vector< TransferPtr >  jumpMatrices;
+    std::vector<OpPtr>          m_localSchurOps;
+    std::vector<Matrix>         m_localScaling;
+    std::vector<JumpMatrixPtr>  m_jumpMatrices;
 };
 
 } // namespace gismo

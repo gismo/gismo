@@ -168,8 +168,8 @@ namespace internal
 
 /* ----------- Ieti ----------- */
 //#include <gsIeti/gsIetiMapper.h>
-//#include <gsIeti/geIetiSystem.h>
-//#include <gsIeti/geScaledDirichletPrec.h>
+#include <gsIeti/gsIetiSystem.h>
+#include <gsIeti/gsScaledDirichletPrec.h>
 
 /* ----------- IO ----------- */
 #include <gsIO/gsOptionList.h>
