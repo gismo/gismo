@@ -74,9 +74,9 @@ public:
 
 
     /// Get jump matrices for local subproblems
-    std::vector<Transfer> jumpMatrices() const
+    void computeJumpMatrices()
     {
-        std::vector<Transfer> result;
+        m_jumpMatrices.resize(0);
         CouplingInfo coupling = getCoupling();
         const index_t couplingSize = coupling.size();
 
@@ -92,7 +92,7 @@ public:
         }
 
         for (index_t i=0; i<numPatches; ++i)
-            result.push_back(Transfer(numLagrangeMult, dm_local[i].freeSize()));
+            m_jumpMatrices.push_back(Transfer(numLagrangeMult, dm_local[i].freeSize()));
 
         index_t multiplier = 0;
         for (index_t i=0; i<couplingSize; ++i)
@@ -111,16 +111,17 @@ public:
                     const index_t localIndex2 = coupling[i][j2].second;
                     const index_t localMappedIndex2 = dm_local[patch2].index(localIndex2,0);
                     GISMO_ASSERT(multiplier<numLagrangeMult, "bug." );
-                    result[patch1](multiplier,localMappedIndex1) = 1.;
-                    result[patch2](multiplier,localMappedIndex2) = -1.;
+                    m_jumpMatrices[patch1](multiplier,localMappedIndex1) = 1.;
+                    m_jumpMatrices[patch2](multiplier,localMappedIndex2) = -1.;
                     ++multiplier;
                 }
             }
         }
         GISMO_ASSERT( multiplier == numLagrangeMult, "Have:"<<multiplier<<"!="<<numLagrangeMult);
 
-        return result;
     }
+
+    Transfer jumpMatrix(index_t i) { return m_jumpMatrices[i]; }
 
     gsMatrix<T> constructGlobalSolutionFromLocalSolutions( const std::vector< gsMatrix<T> >& localContribs )
     {
@@ -148,6 +149,7 @@ public:
 public:
     gsDofMapper dm_global;
     std::vector<gsDofMapper> dm_local;
+    std::vector< gsSparseMatrix<real_t,RowMajor> > m_jumpMatrices;
 };
 
 } // namespace gismo

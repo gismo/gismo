@@ -13,6 +13,7 @@
 
 #include <gismo.h>
 #include <gsIeti/gsIetiMapper.h>
+#include <gsIeti/gsPrimalDofs.h>
 
 using namespace gismo;
 
@@ -144,7 +145,7 @@ int main(int argc, char *argv[])
 
     gsInfo << "Setup assembler and assemble matrix... " << std::flush;
 
-    const size_t nPatches = mp.nPatches();
+    const index_t nPatches = mp.nPatches();
 
     gsIetiMapper<> ietiMapper;
     ietiMapper.dm_local.resize(nPatches);
@@ -152,13 +153,15 @@ int main(int argc, char *argv[])
     gsIetiSystem<> ieti;
     gsScaledDirichletPrec<> prec;
 
+    std::vector< std::vector<index_t> > corners;
+    corners.reserve(nPatches);
     {
 
-        std::vector< gsSparseMatrix<> > localMatrices;
-        localMatrices.reserve(nPatches);
+        ieti.reserve(nPatches+1);
+        prec.reserve(nPatches);
+        gsPrimalDofs<real_t> primal;
 
-        std::vector< gsMatrix<> > localRhs;
-        localRhs.reserve(nPatches);
+        // Setup dofmappers and list of corners
 
         mb.getMapper(
            dirichlet::elimination,
@@ -167,25 +170,80 @@ int main(int argc, char *argv[])
            ietiMapper.dm_global,
            0
         );
-        std::vector<gsDofMapper> dm_local(nPatches);
 
-        for (size_t i=0; i<nPatches; ++i)
+        for (index_t i=0; i<nPatches; ++i)
         {
             gsBoundaryConditions<> bc_local;
             bc.getConditionsForPatch(i,bc_local);
-            gsMultiBasis<> mb_local = mb[i];
-
-            mb_local.getMapper(
+            gsMultiBasis<>(mb[i]).getMapper(
                dirichlet::elimination,
                iFace::glue,
                bc_local,
                ietiMapper.dm_local[i],
                0
             );
+            std::vector<index_t> local_corners;
+            for (boxCorner it = boxCorner::getFirst(mb.dim()); it!=boxCorner::getEnd(mb.dim()); ++it)
+                local_corners.push_back( mb[i].functionAtCorner(it) );
+            corners.push_back(give(local_corners));
+        }
+
+        // Setup the specifications for the primal dofs
+        std::vector< std::vector< gsSparseVector<real_t> > > primalConstraints;
+        std::vector< std::vector< index_t > >                primalConstraintsMapper;
+        primalConstraints.reserve(nPatches);
+        primalConstraintsMapper.reserve(nPatches);
+
+        std::vector<index_t> corner_list;
+        for (index_t i=0; i<nPatches; ++i)
+        {
+            std::vector< gsSparseVector<real_t> > localPrimalConstraints;
+            std::vector< index_t > localPrimalConstraintsMapper;
+
+            const index_t nCorners = corners[i].size();
+            for (index_t j=0; j<nCorners; ++j)
+            {
+                const index_t localIndex = ietiMapper.dm_local[i].index(corners[i][j],0);
+                const index_t globalIndex = ietiMapper.dm_global.index(corners[i][j],i);
+                const bool is_free = ietiMapper.dm_global.is_free_index(globalIndex);
+
+                if (is_free) {
+
+                    const index_t sz = corner_list.size();
+                    index_t index; //std::find or better?
+                    for (index=0; index<sz && corner_list[index]!=globalIndex; ++index)
+                    {}
+
+                    if (index==sz)
+                        corner_list.push_back(globalIndex);
+
+                    gsSparseVector<> constr(ietiMapper.dm_local[i].freeSize()); //!
+                    constr[localIndex] = 1;
+
+                    localPrimalConstraintsMapper.push_back(index);
+                    localPrimalConstraints.push_back(give(constr));
+                }
+            }
+
+            primalConstraints.push_back(localPrimalConstraints);
+            primalConstraintsMapper.push_back(localPrimalConstraintsMapper);
+        }
+
+        ietiMapper.computeJumpMatrices();
+
+        primal.init(corner_list.size(), ietiMapper.jumpMatrix(0).rows());
+
+        // Now, the main loop
+
+        for (index_t i=0; i<nPatches; ++i)
+        {
+            // TODO: What happens if from a patch only the corner belongs to the Dirichlet boundary?
+            gsBoundaryConditions<> bc_local;
+            bc.getConditionsForPatch(i,bc_local);
 
             gsPoissonAssembler<> assembler(
                 mp[i],
-                mb_local,
+                mb[i],
                 bc_local,
                 gsConstantFunction<>(1,mp.geoDim()),
                 dirichlet::elimination,
@@ -193,33 +251,40 @@ int main(int argc, char *argv[])
             );
             assembler.assemble();
 
-            localMatrices.push_back(assembler.matrix());
-            localRhs.push_back(assembler.rhs());
+            gsSparseMatrix<real_t, RowMajor> jumpMatrix = ietiMapper.jumpMatrix(i);
+            gsSparseMatrix<>                localMatrix = assembler.matrix();
+            gsMatrix<>                         localRhs = assembler.rhs();
 
-        }
-
-        std::vector< gsSparseMatrix<real_t,RowMajor> > jumpMatrices = ietiMapper.jumpMatrices();
-
-        gsInfo << "done.\nSetup IETI system and scaled Dirichlet preconditioner... " << std::flush;
-
-        ieti.reserve(nPatches+1);
-        prec.reserve(nPatches);
-
-        for (size_t i=0; i<nPatches; ++i)
-        {
             prec.addSubdomain(
                 gsScaledDirichletPrec<>::restrictToSkeleton(
-                    jumpMatrices[i],
-                    localMatrices[i]
+                    jumpMatrix,
+                    localMatrix
                 )
             );
 
+            // This function writes back to jumpMatrix, localMatrix, and localRhs,
+            // so it must be called after prec.addSubdomain
+            primal.incorporate(
+                primalConstraints[i],
+                primalConstraintsMapper[i],
+                jumpMatrix,
+                localMatrix,
+                localRhs
+            );
+
             ieti.addSubdomain(
-                jumpMatrices[i].moveToPtr(),
-                makeMatrixOp(localMatrices[i].moveToPtr()),
-                give(localRhs[i])
+                jumpMatrix.moveToPtr(),
+                makeMatrixOp(localMatrix.moveToPtr()),
+                give(localRhs)
             );
         }
+
+        if (!corner_list.empty())
+            ieti.addSubdomain(
+                primal.jumpMatrix.moveToPtr(),
+                makeMatrixOp(primal.localMatrix.moveToPtr()),
+                give(primal.localRhs)
+            );
 
         gsInfo << "done.\n";
     }
@@ -246,8 +311,10 @@ int main(int argc, char *argv[])
         .solveDetailed( rhsForSchur, lambda, errorHistory );
 
     gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
-    gsMatrix<> x = ietiMapper.constructGlobalSolutionFromLocalSolutions(
-          ieti.constructSolutionFromLagrangeMultipliers(lambda) );
+    std::vector< gsMatrix<> > localSolutions = ieti.constructSolutionFromLagrangeMultipliers(lambda);
+    if (localSolutions.size()>ietiMapper.dm_local.size())
+        localSolutions.pop_back(); // TODO
+    gsMatrix<> x = ietiMapper.constructGlobalSolutionFromLocalSolutions( localSolutions );
     gsInfo << "done.\n\n";
 
     /******************** Print end Exit ********************/
