@@ -127,9 +127,7 @@ public:
     {
         const index_t numPatches = dm_global.numPatches();
         GISMO_ASSERT( numPatches == dm_local.size(), "");
-        GISMO_ASSERT( numPatches == localContribs.size() || numPatches == localContribs.size()-1, "");
-
-        // TODO: incorporate values at primal dofs
+        GISMO_ASSERT( numPatches == localContribs.size(), "");
 
         gsMatrix<T> result;
         result.setZero( dm_global.freeSize(), 1/*==localContribs[0].cols()*/ );

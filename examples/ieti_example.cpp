@@ -151,6 +151,7 @@ int main(int argc, char *argv[])
 
     gsIetiSystem<> ieti;
     gsScaledDirichletPrec<> prec;
+    gsPrimalSystem<> primal;
 
     std::vector< std::vector<index_t> > corners;
     corners.reserve(nPatches);
@@ -158,7 +159,6 @@ int main(int argc, char *argv[])
 
         ieti.reserve(nPatches+1);
         prec.reserve(nPatches);
-        gsPrimalSystem<> primal;
 
         // Setup dofmappers and list of corners
 
@@ -271,7 +271,9 @@ int main(int argc, char *argv[])
 
     gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
     gsMatrix<> x = ietiMapper.constructGlobalSolutionFromLocalSolutions(
-        ieti.constructSolutionFromLagrangeMultipliers(lambda)
+        primal.distributePrimalSolution(
+            ieti.constructSolutionFromLagrangeMultipliers(lambda)
+        )
     );
     gsInfo << "done.\n\n";
 

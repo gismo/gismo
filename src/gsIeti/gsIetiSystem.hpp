@@ -50,7 +50,7 @@ void gsIetiSystem<T>::addSubdomain(JumpMatrixPtr jumpMatrix, OpPtr localMatrixOp
 }
 
 template<class T>
-void gsIetiSystem<T>::setupSparseLUSolvers() const 
+void gsIetiSystem<T>::setupSparseLUSolvers() const
 {
     const size_t sz = this->m_localSolverOps.size();
     for (size_t i=0; i<sz; ++i)

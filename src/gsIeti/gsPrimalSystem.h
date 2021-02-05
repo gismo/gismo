@@ -44,7 +44,7 @@ public:
         const gsSparseMatrix<T,RowMajor>& jumpMatrix,
         const gsSparseMatrix<T>& localMatrix,
         const gsMatrix<T>& localRhs,
-        const gsSparseMatrix<T>& primalBasis
+        gsSparseMatrix<T> primalBasis
     );
 
     void handleConstraints(
@@ -55,12 +55,14 @@ public:
         gsMatrix<T>& localRhs
     );
 
+    std::vector< gsMatrix<T> > distributePrimalSolution( std::vector< gsMatrix<T> > sol );
+
 public:
     index_t primalProblemSize;
     gsSparseMatrix<T, RowMajor> jumpMatrix;
     gsSparseMatrix<T> localMatrix;
     gsMatrix<T> localRhs;
-
+    std::vector< gsSparseMatrix<T> > primalBases;
 };
 
 } // namespace gismo

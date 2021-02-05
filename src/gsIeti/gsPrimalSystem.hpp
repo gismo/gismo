@@ -119,7 +119,7 @@ void gsPrimalSystem<T>::incorporate(
         const gsSparseMatrix<T,RowMajor>& jumpMatrix,
         const gsSparseMatrix<T>& localMatrix,
         const gsMatrix<T>& localRhs,
-        const gsSparseMatrix<T>& primalBasis
+        gsSparseMatrix<T> primalBasis
     )
 {
     GISMO_ASSERT( primalBasis.cols() == primalProblemSize,
@@ -129,6 +129,7 @@ void gsPrimalSystem<T>::incorporate(
     this->localRhs        += primalBasis.transpose() * localRhs.topRows(sz);
     gsSparseMatrix<T,RowMajor> tmp(jumpMatrix.leftCols(sz) * primalBasis);
     this->jumpMatrix      += tmp;
+    this->primalBases.push_back(give(primalBasis));
 }
 
 template <class T>
@@ -154,5 +155,38 @@ void gsPrimalSystem<T>::handleConstraints(
         primalBasis( makeSparseLUSolver( localMatrix ), primalConstraintsMapper, primalProblemSize )
     );
 }
+
+template <class T>
+std::vector< gsMatrix<T> > gsPrimalSystem<T>::distributePrimalSolution( std::vector< gsMatrix<T> > sol )
+{
+    const index_t sz = primalBases.size();
+
+    // If the primal problem is empty, there might just not be any primal subdomain
+    if (sol.size()==sz && primalProblemSize==0)
+        return sol;
+
+    GISMO_ASSERT(sol.size()==sz+1, "gsPrimalSystem::distributePrimalSolution expects that there "
+        "is one more subdomain that patches.");
+
+    for (index_t i=0; i<sz; ++i)
+    {
+        GISMO_ASSERT( sol[i].rows() >= primalBases[i].rows()
+            && primalBases[i].cols() == sol.back().rows()
+            && sol.back().cols() == sol[i].cols(),
+            "gsPrimalSystem::distributePrimalSolution: Dimensions do not agree: "
+            << sol[i].rows() << ">=" << primalBases[i].rows() << "&&"
+            << primalBases[i].cols() << "==" << sol.back().rows() << "&&"
+            << sol.back().cols() << "==" << sol[i].cols() << " ( i=" << i << "). "
+            << "This method assumes the primal subspace to be the last one." );
+
+        sol[i].conservativeResize( primalBases[i].rows(), Eigen::NoChange );
+        sol[i] += primalBases[i] * sol.back();
+    }
+
+    sol.pop_back();
+
+    return sol;
+}
+
 
 } // namespace gismo
