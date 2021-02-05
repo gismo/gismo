@@ -196,7 +196,10 @@ public:
 
     }
 
-
+    index_t nrLagrangeMultipliers() {
+        GISMO_ASSERT(! m_jumpMatrices.empty(), "Not yet known.");
+        return m_jumpMatrices[0].rows();
+    }
 
 public:
     gsDofMapper dm_global;

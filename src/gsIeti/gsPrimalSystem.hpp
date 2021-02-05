@@ -28,14 +28,13 @@ namespace gismo
 template <class T>
 void gsPrimalSystem<T>::init(index_t primalProblemSize, index_t nrLagrangeMultipliers)
 {
-    this->primalProblemSize = primalProblemSize;
-    jumpMatrix.resize(nrLagrangeMultipliers,primalProblemSize);
-    localMatrix.resize(primalProblemSize,primalProblemSize);
-    localRhs.setZero(primalProblemSize,1);
+    this->m_jumpMatrix.resize(nrLagrangeMultipliers,primalProblemSize);
+    this->m_localMatrix.resize(primalProblemSize,primalProblemSize);
+    this->m_localRhs.setZero(primalProblemSize,1);
 }
 
 template <class T>
-void gsPrimalSystem<T>::extendLocalSystem(
+void gsPrimalSystem<T>::incorporateConstraints(
         const std::vector<gsSparseVector<T>>& primalConstraints,
         gsSparseMatrix<T,RowMajor>& jumpMatrix,
         gsSparseMatrix<T>& localMatrix,
@@ -63,13 +62,13 @@ void gsPrimalSystem<T>::extendLocalSystem(
     localMatrix.makeCompressed();
 
     GISMO_ASSERT( localRhs.rows() == localDofs,
-        "gsPrimalSystem::extendLocalSystem: Right-hand side does not have the expected number of columns;");
+        "gsPrimalSystem::incorporateConstraint: Right-hand side does not have the expected number of columns;");
 
     localRhs.conservativeResize(localDofs+nrPrimalConstraints, Eigen::NoChange);
     localRhs.bottomRows(nrPrimalConstraints).setZero();
 
     GISMO_ASSERT( jumpMatrix.cols() == localDofs,
-        "gsPrimalSystem::extendLocalSystem: Jump matrix does not have the expected number of columns;");
+        "gsPrimalSystem::incorporateConstraint: Jump matrix does not have the expected number of columns;");
 
     jumpMatrix.conservativeResize(jumpMatrix.rows(), localDofs+nrPrimalConstraints);
     jumpMatrix.makeCompressed();
@@ -86,7 +85,8 @@ gsSparseMatrix<T> gsPrimalSystem<T>::primalBasis(
     const index_t nrPrimalConstraints = primalConstraintsMapper.size();
 
     GISMO_ASSERT( nrPrimalConstraints<=primalProblemSize, "gsPrimalSystem::primalBasis: "
-        "There are more local constrains that there are constraints in total." );
+        "There are more local constrains that there are constraints in total. "
+        "Forgot to call gsPrimalSystem::init()?" );
 
     const index_t localDofs = localSaddlePointSolver->rows() - nrPrimalConstraints;
 
@@ -115,54 +115,30 @@ gsSparseMatrix<T> gsPrimalSystem<T>::primalBasis(
 }
 
 template <class T>
-void gsPrimalSystem<T>::incorporate(
+void gsPrimalSystem<T>::addContribution(
         const gsSparseMatrix<T,RowMajor>& jumpMatrix,
         const gsSparseMatrix<T>& localMatrix,
         const gsMatrix<T>& localRhs,
         gsSparseMatrix<T> primalBasis
     )
 {
-    GISMO_ASSERT( primalBasis.cols() == primalProblemSize,
-        "gsPrimalSystem::incorporate: The given problem size does not match the stored primal problem size" );
+    GISMO_ASSERT( primalBasis.cols() == m_jumpMatrix.cols(),
+        "gsPrimalSystem::incorporate: The given problem size does not match the stored primal problem size. "
+        "Forgot to call gsPrimalSystem::init()?" );
     const index_t sz = primalBasis.rows();
-    this->localMatrix     += primalBasis.transpose() * localMatrix.block(0,0,sz,sz) * primalBasis;
-    this->localRhs        += primalBasis.transpose() * localRhs.topRows(sz);
-    gsSparseMatrix<T,RowMajor> tmp(jumpMatrix.leftCols(sz) * primalBasis);
-    this->jumpMatrix      += tmp;
-    this->primalBases.push_back(give(primalBasis));
-}
-
-template <class T>
-void gsPrimalSystem<T>::handleConstraints(
-        const std::vector< gsSparseVector<T> >& primalConstraints,
-        const std::vector<index_t>& primalConstraintsMapper,
-        gsSparseMatrix<T,RowMajor>& jumpMatrix,
-        gsSparseMatrix<T>& localMatrix,
-        gsMatrix<T>& localRhs
-    )
-{
-    extendLocalSystem(
-        primalConstraints,
-        jumpMatrix,
-        localMatrix,
-        localRhs
-    );
-
-    incorporate(
-        jumpMatrix,
-        localMatrix,
-        localRhs,
-        primalBasis( makeSparseLUSolver( localMatrix ), primalConstraintsMapper, primalProblemSize )
-    );
+    m_localMatrix     += primalBasis.transpose() * localMatrix.block(0,0,sz,sz) * primalBasis;
+    m_localRhs        += primalBasis.transpose() * localRhs.topRows(sz);
+    m_jumpMatrix      += gsSparseMatrix<T,RowMajor>(jumpMatrix.leftCols(sz) * primalBasis);
+    m_primalBases.push_back(give(primalBasis));
 }
 
 template <class T>
 std::vector< gsMatrix<T> > gsPrimalSystem<T>::distributePrimalSolution( std::vector< gsMatrix<T> > sol )
 {
-    const index_t sz = primalBases.size();
+    const index_t sz = this->m_primalBases.size();
 
     // If the primal problem is empty, there might just not be any primal subdomain
-    if (sol.size()==sz && primalProblemSize==0)
+    if (sol.size()==sz && this->m_jumpMatrix.cols()==0)
         return sol;
 
     GISMO_ASSERT(sol.size()==sz+1, "gsPrimalSystem::distributePrimalSolution expects that there "
@@ -170,17 +146,17 @@ std::vector< gsMatrix<T> > gsPrimalSystem<T>::distributePrimalSolution( std::vec
 
     for (index_t i=0; i<sz; ++i)
     {
-        GISMO_ASSERT( sol[i].rows() >= primalBases[i].rows()
-            && primalBases[i].cols() == sol.back().rows()
+        GISMO_ASSERT( sol[i].rows() >= this->m_primalBases[i].rows()
+            && this->m_primalBases[i].cols() == sol.back().rows()
             && sol.back().cols() == sol[i].cols(),
             "gsPrimalSystem::distributePrimalSolution: Dimensions do not agree: "
-            << sol[i].rows() << ">=" << primalBases[i].rows() << "&&"
-            << primalBases[i].cols() << "==" << sol.back().rows() << "&&"
+            << sol[i].rows() << ">=" << this->m_primalBases[i].rows() << "&&"
+            << this->m_primalBases[i].cols() << "==" << sol.back().rows() << "&&"
             << sol.back().cols() << "==" << sol[i].cols() << " ( i=" << i << "). "
             << "This method assumes the primal subspace to be the last one." );
 
-        sol[i].conservativeResize( primalBases[i].rows(), Eigen::NoChange );
-        sol[i] += primalBases[i] * sol.back();
+        sol[i].conservativeResize( this->m_primalBases[i].rows(), Eigen::NoChange );
+        sol[i] += this->m_primalBases[i] * sol.back();
     }
 
     sol.pop_back();

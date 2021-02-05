@@ -191,8 +191,7 @@ int main(int argc, char *argv[])
 
         ietiMapper.computeJumpMatrices();
 
-        primal.init(ietiMapper.nrPrimalConstraints, ietiMapper.jumpMatrix(0).rows());
-
+        primal.init(ietiMapper.nrPrimalConstraints, ietiMapper.nrLagrangeMultipliers());
 
         for (index_t i=0; i<nPatches; ++i)
         {
@@ -243,9 +242,9 @@ int main(int argc, char *argv[])
 
         if (ietiMapper.nrPrimalConstraints>0)
             ieti.addSubdomain(
-                primal.jumpMatrix.moveToPtr(),
-                makeMatrixOp(primal.localMatrix.moveToPtr()),
-                give(primal.localRhs)
+                primal.jumpMatrix().moveToPtr(),
+                makeMatrixOp(primal.localMatrix().moveToPtr()),
+                give(primal.localRhs())
             );
 
         gsInfo << "done.\n";
