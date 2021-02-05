@@ -127,7 +127,9 @@ public:
     {
         const index_t numPatches = dm_global.numPatches();
         GISMO_ASSERT( numPatches == dm_local.size(), "");
-        GISMO_ASSERT( numPatches == localContribs.size(), "");
+        GISMO_ASSERT( numPatches == localContribs.size() || numPatches == localContribs.size()-1, "");
+
+        // TODO: incorporate values at primal dofs
 
         gsMatrix<T> result;
         result.setZero( dm_global.freeSize(), 1/*==localContribs[0].cols()*/ );
@@ -146,10 +148,66 @@ public:
         return result;
     }
 
+    void cornersAsPrimalConstraints(
+        const std::vector< std::vector<index_t> >&       corners
+    )
+    {
+        const index_t nPatches = dm_local.size();
+
+        if (primalConstraints.empty())
+            primalConstraints.resize(nPatches);
+
+        if (primalConstraintsMapper.empty())
+            primalConstraintsMapper.resize(nPatches);
+
+        GISMO_ASSERT(primalConstraints.size() == nPatches, "The number of primal constraints does not fit.");
+        GISMO_ASSERT(primalConstraints.size() == nPatches, "The number of primal constraints mappers does not fit.");
+
+        std::vector<index_t> corner_list;
+        for (index_t i=0; i<nPatches; ++i)
+        {
+            std::vector< gsSparseVector<real_t> > localPrimalConstraints;
+            std::vector< index_t > localPrimalConstraintsMapper;
+
+            const index_t nCorners = corners[i].size();
+            for (index_t j=0; j<nCorners; ++j)
+            {
+                const index_t localIndex = dm_local[i].index(corners[i][j],0);
+                const index_t globalIndex = dm_global.index(corners[i][j],i);
+                const bool is_free = dm_global.is_free_index(globalIndex);
+
+                if (is_free) {
+
+                    const index_t sz = corner_list.size();
+                    index_t index; //std::find or better?
+                    for (index=0; index<sz && corner_list[index]!=globalIndex; ++index)
+                    {}
+
+                    if (index==sz)
+                        corner_list.push_back(globalIndex);
+
+                    gsSparseVector<> constr(dm_local[i].freeSize()); //!
+                    constr[localIndex] = 1;
+
+                    primalConstraints[i].push_back(give(constr));
+                    primalConstraintsMapper[i].push_back(index);
+                }
+            }
+        }
+        nrPrimalConstraints = corner_list.size();
+
+    }
+
+
+
 public:
     gsDofMapper dm_global;
     std::vector<gsDofMapper> dm_local;
     std::vector< gsSparseMatrix<real_t,RowMajor> > m_jumpMatrices;
+
+    index_t nrPrimalConstraints;
+    std::vector< std::vector< gsSparseVector<real_t> > > primalConstraints;
+    std::vector< std::vector< index_t > >                primalConstraintsMapper;
 };
 
 } // namespace gismo

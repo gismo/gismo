@@ -37,72 +37,128 @@ public:
         localRhs.setZero(primalProblemSize,1);
     }
 
-    void incorporate( const std::vector< gsSparseVector<T> >& primalConstraints, const std::vector<index_t>& primalConstraintsMapper,
-        gsSparseMatrix<T,RowMajor>& jumpMatrix, gsSparseMatrix<T>& localMatrix, gsMatrix<T>& localRhs)
+    static void extendLocalSystem(
+        const std::vector<gsSparseVector<T>>& primalConstraints,
+        const std::vector<index_t>& primalConstraintsMapper,
+        gsSparseMatrix<T,RowMajor>& jumpMatrix,
+        gsSparseMatrix<T>& localMatrix,
+        gsMatrix<T>& localRhs,
+        index_t primalProblemSize
+    )
     {
-        const index_t localDofs = localRhs.rows();
+        const index_t localDofs = localMatrix.rows();
         const index_t nrPrimalConstraints = primalProblemSize; //TODO: only active ones
-
         if (nrPrimalConstraints==0) return;
 
         gsVector<index_t> activator;
         activator.setZero(nrPrimalConstraints);
 
-        gsSparseMatrix<> localSaddlePointProblem(localDofs+nrPrimalConstraints,localDofs+nrPrimalConstraints);
-        for (index_t j=0; j<localMatrix.outerSize(); ++j)
-            for (typename gsSparseMatrix<T>::InnerIterator it(localMatrix, j); it; ++it)
-                localSaddlePointProblem(it.row(), it.col()) = it.value();
+        localMatrix.conservativeResize(localDofs+nrPrimalConstraints, localDofs+nrPrimalConstraints);
+
         for (index_t k=0; k<primalConstraints.size(); ++k)
+        {
+            const index_t col = primalConstraintsMapper[k];
+            //localMatrix.block(localDofs+col,0,1,localDofs) = primalConstraints[k];
+            //localMatrix.block(0,localDofs+col,localDofs,1) = primalConstraints[k].transpose();
             for (index_t j=0; j<primalConstraints[k].outerSize(); ++j)
                 for (typename gsSparseVector<T>::InnerIterator it(primalConstraints[k], j); it; ++it)
                 {
-                    GISMO_ASSERT( it.col() == 0, "Vec??"<<it.col() );
-                    const index_t col = primalConstraintsMapper[k];
-                    localSaddlePointProblem(it.row(), localDofs+col) = it.value();
-                    localSaddlePointProblem(localDofs+col, it.row()) = it.value();
+                    localMatrix(it.row(), localDofs+col) = it.value();
+                    localMatrix(localDofs+col, it.row()) = it.value();
                     activator[col] = 1;
                 }
+        }
         for (index_t k=0; k<nrPrimalConstraints; ++k)
         {
             if (activator[k]==0)
-                localSaddlePointProblem(localDofs+k,localDofs+k) = 1;  //shut off...
+                localMatrix(localDofs+k,localDofs+k) = 1;  //shut off...
+            // TODO: instead of this, we should just make the problem smaller
         }
 
-        gsMatrix<> rhsForLocalSaddlePointProblem;
-        rhsForLocalSaddlePointProblem.setZero(localRhs.rows()+nrPrimalConstraints,1);
-        rhsForLocalSaddlePointProblem.topRows(localRhs.rows()) = localRhs;
+        localMatrix.makeCompressed();
 
-        gsSparseMatrix<T,RowMajor> extendedJumpMatrix(jumpMatrix.rows(),localDofs+nrPrimalConstraints);
-        for (index_t j=0; j<jumpMatrix.outerSize(); ++j)
-            for (typename gsSparseMatrix<T,RowMajor>::InnerIterator it(jumpMatrix, j); it; ++it)
-                extendedJumpMatrix(it.row(), it.col()) = it.value();
+        GISMO_ASSERT( localRhs.rows() == localDofs,
+            "gsPrimalDofs::extendLocalSystem: Right-hand side does not have the expected number of columns;");
 
+        localRhs.conservativeResize(localDofs+nrPrimalConstraints, Eigen::NoChange);
+        localRhs.bottomRows(nrPrimalConstraints).setZero();
 
-        gsLinearOperator<>::Ptr lu = makeSparseLUSolver(localSaddlePointProblem);
+        GISMO_ASSERT( jumpMatrix.cols() == localDofs,
+            "gsPrimalDofs::extendLocalSystem: Jump matrix does not have the expected number of columns;");
 
-        gsSparseMatrix<> primalBasis(localDofs,nrPrimalConstraints);
-        {
-            gsMatrix<> id;
-            id.setZero(localDofs+nrPrimalConstraints,nrPrimalConstraints);
-            for (index_t i=0; i<nrPrimalConstraints; ++i)
-                id(localDofs+i,i) = 1;
-            gsMatrix<> tmp;
-            lu->apply(id, tmp);
-            for (index_t i=0; i<localDofs; ++i)
-                for (index_t j=0; j<nrPrimalConstraints; ++j)
-                    primalBasis(i,j) = tmp(i,j);
-        }
+        jumpMatrix.conservativeResize(jumpMatrix.rows(), localDofs+nrPrimalConstraints);
+        jumpMatrix.makeCompressed();
 
-        this->localMatrix     += primalBasis.transpose() * localMatrix * primalBasis;
-        this->localRhs        += primalBasis.transpose() * localRhs;
-        this->jumpMatrix      += gsSparseMatrix<real_t,RowMajor>(jumpMatrix * primalBasis);
+    }
 
-        // Write back:
+    static gsSparseMatrix<T> primalBasis(
+        typename gsLinearOperator<T>::Ptr localSaddlePointSolver,
+        const std::vector<index_t>& primalConstraintsMapper,
+        index_t primalProblemSize
+    )
+    {
+        //const index_t nrPrimalConstraints = primalConstraintsMapper.size();
+        const index_t nrPrimalConstraints = primalProblemSize;
+        const index_t localDofs = localSaddlePointSolver->rows() - primalProblemSize;
 
-        jumpMatrix   = extendedJumpMatrix;
-        localMatrix  = localSaddlePointProblem;
-        localRhs     = rhsForLocalSaddlePointProblem;
+        gsSparseMatrix<T> result( localDofs, nrPrimalConstraints );
+        if (nrPrimalConstraints==0) return result;
 
+        gsMatrix<T> id;
+        id.setZero(localDofs+primalProblemSize,nrPrimalConstraints);
+
+        for (index_t i=0; i<nrPrimalConstraints; ++i)
+            id(localDofs+i,i) = 1;
+
+        gsMatrix<T> tmp;
+        localSaddlePointSolver->apply(id, tmp);
+
+        for (index_t i=0; i<localDofs; ++i)
+            for (index_t j=0; j<nrPrimalConstraints; ++j)
+                result(i,j) = tmp(i,j);
+
+        return result;
+    }
+
+    void incorporate(
+        const gsSparseMatrix<T,RowMajor>& jumpMatrix,
+        const gsSparseMatrix<T>& localMatrix,
+        const gsMatrix<T>& localRhs,
+        const gsSparseMatrix<T>& primalBasis
+    )
+    {
+        GISMO_ASSERT( primalBasis.cols() == primalProblemSize,
+            "gsPrimalDofs::incorporate: The given problem size does not match the stored primal problem size" );
+        const index_t sz = primalBasis.rows();
+        this->localMatrix     += primalBasis.transpose() * localMatrix.block(0,0,sz,sz) * primalBasis;
+        this->localRhs        += primalBasis.transpose() * localRhs.topRows(sz);
+        gsSparseMatrix<T,RowMajor> tmp(jumpMatrix.leftCols(sz) * primalBasis);
+        this->jumpMatrix      += tmp;
+    }
+
+    void handleConstraints(
+        const std::vector< gsSparseVector<T> >& primalConstraints,
+        const std::vector<index_t>& primalConstraintsMapper,
+        gsSparseMatrix<T,RowMajor>& jumpMatrix,
+        gsSparseMatrix<T>& localMatrix,
+        gsMatrix<T>& localRhs
+    )
+    {
+        extendLocalSystem(
+            primalConstraints,
+            primalConstraintsMapper,
+            jumpMatrix,
+            localMatrix,
+            localRhs,
+            primalProblemSize
+        );
+
+        incorporate(
+            jumpMatrix,
+            localMatrix,
+            localRhs,
+            primalBasis( makeSparseLUSolver( localMatrix ), primalConstraintsMapper, primalProblemSize )
+        );
     }
 
 
@@ -111,8 +167,6 @@ public:
     gsSparseMatrix<T, RowMajor> jumpMatrix;
     gsSparseMatrix<T> localMatrix;
     gsMatrix<T> localRhs;
-
-
 
 };
 
