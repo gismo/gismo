@@ -16,6 +16,8 @@
 #include <gsIO/gsOptionList.h>
 #include <gsAssembler/gsGaussRule.h>
 #include <gsAssembler/gsLobattoRule.h>
+#include <gsAssembler/gsPatchRule.h>
+#include <gsAssembler/gsOverIntegrateRule.h>
 
 namespace gismo
 {
@@ -27,7 +29,8 @@ struct gsQuadrature
     enum rule
     {
         GaussLegendre = 1, ///< Gauss-Legendre quadrature
-        GaussLobatto  = 2  ///< Gauss-Lobatto quadrature
+        GaussLobatto  = 2, ///< Gauss-Lobatto quadrature
+        PatchRule     = 3  ///< Patch-wise quadrature rule
     };
 
     /// Constructs a quadrature rule based on input \a options
@@ -35,11 +38,41 @@ struct gsQuadrature
     static gsQuadRule<T> get(const gsBasis<T> & basis,
                              const gsOptionList & options, short_t fixDir = -1)
     {
-        const index_t qu  = options.askInt("quRule", GaussLegendre);
-        const T       quA = options.getReal("quA");
-        const index_t quB = options.getInt ("quB");
-        const gsVector<index_t> nnodes = numNodes(basis,quA,quB,fixDir);
-        return get<T>(qu, nnodes);
+        const index_t qu   = options.askInt("quRule", GaussLegendre);
+        const T       quA  = options.getReal("quA");
+        const index_t quB  = options.getInt ("quB");
+        const bool    over = options.askSwitch ("overInt", false);
+
+        if ( (qu==rule::GaussLegendre || qu==rule::GaussLobatto) )
+        {
+            if (!over)
+            {
+                const gsVector<index_t> nnodes = numNodes(basis,quA,quB,fixDir);
+                return get<T>(qu, nnodes);
+            }
+            else
+            {
+                const T       quAb  = options.askReal("quAb",quA+1);
+                const index_t quBb  = options.askInt ("quBb",quB);
+
+                // !!!! How to fix a nice input (i.e. over-integrate based on regularity)
+
+                const gsVector<index_t> nnodesI = numNodes(basis,quA,quB,fixDir);
+                const gsVector<index_t> nnodesB = numNodes(basis,quAb,quBb,fixDir);
+
+                return gsOverIntegrateRule<T>(basis,get<T>(qu, nnodesI),get<T>(qu, nnodesB));
+            }
+        }
+        else if (qu==rule::PatchRule)
+        {
+            // quA: Order of the target space
+            // quB: Regularity of the target space
+            return gsPatchRule<T>(basis,static_cast<index_t>(quA),quB,over);
+        }
+        else
+        {
+            GISMO_ERROR("Quadrature with index "<<qu<<" unknown.");
+        }
     }
 
     /// Constructs a quadrature rule based on input \a options
