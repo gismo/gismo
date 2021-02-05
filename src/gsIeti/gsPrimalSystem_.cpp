@@ -1,6 +1,6 @@
 /** @file gsPrimalSystem_.cpp
 
-    @brief
+    @brief This class represents the primal system and allows to incorporate the primal constraints
 
     This file is part of the G+Smo library.
 

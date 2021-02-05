@@ -1,6 +1,6 @@
 /** @file gsPrimalSystem.hpp
 
-    @brief
+    @brief This class represents the primal system and allows to incorporate the primal constraints
 
     This file is part of the G+Smo library.
 
@@ -37,40 +37,27 @@ void gsPrimalSystem<T>::init(index_t primalProblemSize, index_t nrLagrangeMultip
 template <class T>
 void gsPrimalSystem<T>::extendLocalSystem(
         const std::vector<gsSparseVector<T>>& primalConstraints,
-        const std::vector<index_t>& primalConstraintsMapper,
         gsSparseMatrix<T,RowMajor>& jumpMatrix,
         gsSparseMatrix<T>& localMatrix,
-        gsMatrix<T>& localRhs,
-        index_t primalProblemSize
+        gsMatrix<T>& localRhs
     )
 {
     const index_t localDofs = localMatrix.rows();
-    const index_t nrPrimalConstraints = primalProblemSize; //TODO: only active ones
+    const index_t nrPrimalConstraints = primalConstraints.size();
     if (nrPrimalConstraints==0) return;
-
-    gsVector<index_t> activator;
-    activator.setZero(nrPrimalConstraints);
 
     localMatrix.conservativeResize(localDofs+nrPrimalConstraints, localDofs+nrPrimalConstraints);
 
-    for (index_t k=0; k<primalConstraints.size(); ++k)
+    for (index_t i=0; i<nrPrimalConstraints; ++i)
     {
-        const index_t col = primalConstraintsMapper[k];
-        //localMatrix.block(localDofs+col,0,1,localDofs) = primalConstraints[k];
-        //localMatrix.block(0,localDofs+col,localDofs,1) = primalConstraints[k].transpose();
-        for (index_t j=0; j<primalConstraints[k].outerSize(); ++j)
-            for (typename gsSparseVector<T>::InnerIterator it(primalConstraints[k], j); it; ++it)
+        //localMatrix.block(localDofs+i,0,1,localDofs) = primalConstraints[i];
+        //localMatrix.block(0,localDofs+i,localDofs,1) = primalConstraints[i].transpose();
+        for (index_t j=0; j<primalConstraints[i].outerSize(); ++j)
+            for (typename gsSparseVector<T>::InnerIterator it(primalConstraints[i], j); it; ++it)
             {
-                localMatrix(it.row(), localDofs+col) = it.value();
-                localMatrix(localDofs+col, it.row()) = it.value();
-                activator[col] = 1;
+                localMatrix(it.row(), localDofs+i) = it.value();
+                localMatrix(localDofs+i, it.row()) = it.value();
             }
-    }
-    for (index_t k=0; k<nrPrimalConstraints; ++k)
-    {
-        if (activator[k]==0)
-            localMatrix(localDofs+k,localDofs+k) = 1;  //shut off...
-        // TODO: instead of this, we should just make the problem smaller
     }
 
     localMatrix.makeCompressed();
@@ -96,25 +83,33 @@ gsSparseMatrix<T> gsPrimalSystem<T>::primalBasis(
         index_t primalProblemSize
     )
 {
-    //const index_t nrPrimalConstraints = primalConstraintsMapper.size();
-    const index_t nrPrimalConstraints = primalProblemSize;
-    const index_t localDofs = localSaddlePointSolver->rows() - primalProblemSize;
+    const index_t nrPrimalConstraints = primalConstraintsMapper.size();
 
-    gsSparseMatrix<T> result( localDofs, nrPrimalConstraints );
-    if (nrPrimalConstraints==0) return result;
+    GISMO_ASSERT( nrPrimalConstraints<=primalProblemSize, "gsPrimalSystem::primalBasis: "
+        "There are more local constrains that there are constraints in total." );
+
+    const index_t localDofs = localSaddlePointSolver->rows() - nrPrimalConstraints;
+
+    gsSparseMatrix<T> result( localDofs, primalProblemSize );
+
+    if (primalProblemSize==0) return result;
 
     gsMatrix<T> id;
-    id.setZero(localDofs+primalProblemSize,nrPrimalConstraints);
+    id.setZero(localDofs+nrPrimalConstraints,nrPrimalConstraints);
 
     for (index_t i=0; i<nrPrimalConstraints; ++i)
+    {
+        GISMO_ASSERT( primalConstraintsMapper[i]>=0 && primalConstraintsMapper[i]<primalProblemSize,
+            "gsPrimalSystem::primalBasis: Invalid index.");
         id(localDofs+i,i) = 1;
+    }
 
     gsMatrix<T> tmp;
     localSaddlePointSolver->apply(id, tmp);
 
     for (index_t i=0; i<localDofs; ++i)
         for (index_t j=0; j<nrPrimalConstraints; ++j)
-            result(i,j) = tmp(i,j);
+            result(i,primalConstraintsMapper[j]) = tmp(i,j);
 
     return result;
 }
@@ -147,11 +142,9 @@ void gsPrimalSystem<T>::handleConstraints(
 {
     extendLocalSystem(
         primalConstraints,
-        primalConstraintsMapper,
         jumpMatrix,
         localMatrix,
-        localRhs,
-        primalProblemSize
+        localRhs
     );
 
     incorporate(

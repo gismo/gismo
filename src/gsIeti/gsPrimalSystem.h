@@ -1,6 +1,6 @@
 /** @file gsPrimalSystem.h
 
-    @brief
+    @brief This class represents the primal system and allows to incorporate the primal constraints
 
     This file is part of the G+Smo library.
 
@@ -29,11 +29,9 @@ public:
 
     static void extendLocalSystem(
         const std::vector<gsSparseVector<T>>& primalConstraints,
-        const std::vector<index_t>& primalConstraintsMapper,
         gsSparseMatrix<T,RowMajor>& jumpMatrix,
         gsSparseMatrix<T>& localMatrix,
-        gsMatrix<T>& localRhs,
-        index_t primalProblemSize
+        gsMatrix<T>& localRhs
     );
 
     static gsSparseMatrix<T> primalBasis(
