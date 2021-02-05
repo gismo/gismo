@@ -100,25 +100,25 @@ public:
     {
         m_jumpMatrices.push_back(jumpMatrix.moveToPtr());
         m_localSchurOps.push_back(give(localSchurOp));
+        m_localScaling.push_back( Matrix() );
     }
 
     void addSubdomain( std::pair<JumpMatrix,OpPtr> data )
     {
-        m_jumpMatrices.push_back(data.first.moveToPtr());
-        m_localSchurOps.push_back(give(data.second));
+        addSubdomain(give(data.first), give(data.second));
     }
 
-    /// Access the vector of jump matrices
-    std::vector<JumpMatrixPtr>&       jumpMatrices()         { return m_jumpMatrices;  }
-    const std::vector<JumpMatrixPtr>& jumpMatrices() const   { return m_jumpMatrices;  }
+    /// Access the jump matrix
+    JumpMatrixPtr&       jumpMatrix(index_t i)           { return m_jumpMatrices[i];  }
+    const JumpMatrixPtr& jumpMatrix(index_t i) const     { return m_jumpMatrices[i];  }
 
-    /// Access the vector of local Schur complements operators
-    std::vector<OpPtr>&               localSchurOps()        { return m_localSchurOps; }
-    const std::vector<OpPtr>&         localSchurOps() const  { return m_localSchurOps; }
+    /// Access the local Schur complements operator
+    OpPtr&               localSchurOps(index_t i)        { return m_localSchurOps[i]; }
+    const OpPtr&         localSchurOps(index_t i) const  { return m_localSchurOps[i]; }
 
-    /// Access the vector of local scaling matrices (as row vector)
-    std::vector<Matrix>&              localScaling()         { return m_localScaling;  }
-    const std::vector<Matrix>&        localScaling() const   { return m_localScaling;  }
+    /// Access the local scaling matrix (as row vector)
+    Matrix&              localScaling(index_t i)         { return m_localScaling[i];  }
+    const Matrix&        localScaling(index_t i) const   { return m_localScaling[i];  }
 
     /// @brief Extracts the skeleton dofs from the jump matrix
     ///

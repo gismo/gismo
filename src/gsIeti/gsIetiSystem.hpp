@@ -32,7 +32,7 @@ void gsIetiSystem<T>::reserve(index_t n)
 }
 
 template<class T>
-void gsIetiSystem<T>::addSubdomain(JumpMatrixPtr jumpMatrix, OpPtr localMatrixOp, Matrix localRhs)
+void gsIetiSystem<T>::addSubdomain(JumpMatrixPtr jumpMatrix, OpPtr localMatrixOp, Matrix localRhs, OpPtr localSolverOp)
 {
     GISMO_ASSERT( jumpMatrix->cols() == localMatrixOp->cols()
         && localMatrixOp->rows() == localMatrixOp->cols()
@@ -46,28 +46,30 @@ void gsIetiSystem<T>::addSubdomain(JumpMatrixPtr jumpMatrix, OpPtr localMatrixOp
     this->m_jumpMatrices.push_back(give(jumpMatrix));
     this->m_localMatrixOps.push_back(give(localMatrixOp));
     this->m_localRhs.push_back(give(localRhs));
+    this->m_localSolverOps.push_back(give(localSolverOp));
 }
 
 template<class T>
-void gsIetiSystem<T>::setupSparseLUSolvers()
+void gsIetiSystem<T>::setupSparseLUSolvers() const 
 {
-    const size_t sz = this->m_localMatrixOps.size();
-    this->m_localSolverOps.clear();
-    this->m_localSolverOps.reserve(sz);
+    const size_t sz = this->m_localSolverOps.size();
     for (size_t i=0; i<sz; ++i)
     {
-        SparseMatrixOp* matop = dynamic_cast<SparseMatrixOp*>(this->m_localMatrixOps[i].get());
-        GISMO_ENSURE( matop, "gsIetiSystem::setupSparseLUSolvers requires the "
-          "local systems in localMatrixOps to by of type gsMatrixOp<gsSparseMatrix<T>>." );
-        this->m_localSolverOps.push_back(makeSparseLUSolver(SparseMatrix(matop->matrix())));
+        if (!m_localSolverOps[i]) // If not yet provided...
+        {
+            SparseMatrixOp* matop = dynamic_cast<SparseMatrixOp*>(this->m_localMatrixOps[i].get());
+            GISMO_ENSURE( matop, "gsIetiSystem::setupSparseLUSolvers The local solvers can only "
+              "be computed on the fly if the local systems in localMatrixOps are of type "
+              "gsMatrixOp<gsSparseMatrix<T>>. Please provide solvers via members .addSubdomain "
+              "or .solverOp" );
+            this->m_localSolverOps[i] = makeSparseLUSolver(SparseMatrix(matop->matrix()));
+        }
     }
 }
 
 template<class T>
 typename gsIetiSystem<T>::OpPtr gsIetiSystem<T>::saddlePointProblem() const
 {
-    GISMO_ASSERT( this->m_jumpMatrices.size() == this->m_localMatrixOps.size(),
-        "gsIeti: The number of jump matrices must match the number of local problems." );
     const size_t sz = this->m_localMatrixOps.size();
     typename gsBlockOp<T>::Ptr result = gsBlockOp<T>::make( sz+1, sz+1 );
     for (size_t i=0; i<sz; ++i)
@@ -83,11 +85,7 @@ typename gsIetiSystem<T>::OpPtr gsIetiSystem<T>::saddlePointProblem() const
 template<class T>
 typename gsIetiSystem<T>::OpPtr gsIetiSystem<T>::schurComplement() const
 {
-    GISMO_ASSERT( this->m_localMatrixOps.empty() || this->m_jumpMatrices.size() == this->m_localMatrixOps.size(),
-        "gsIeti: The number of restriction operators must match the number of local problems." );
-    GISMO_ASSERT( this->m_localSolverOps.size() == this->m_jumpMatrices.size(),
-        "gsIetiSystem::schurComplement() requires solvers for the local subproblems. "
-        "Forgot to call setupSparseLUSolvers?" );
+    setupSparseLUSolvers();
     return gsAdditiveOp<T>::make( this->m_jumpMatrices, this->m_localSolverOps );
 }
 
@@ -95,14 +93,7 @@ typename gsIetiSystem<T>::OpPtr gsIetiSystem<T>::schurComplement() const
 template<class T>
 gsMatrix<T> gsIetiSystem<T>::rhsForSchurComplement() const
 {
-    GISMO_ASSERT( this->m_localMatrixOps.empty() || this->m_jumpMatrices.size() == this->m_localMatrixOps.size(),
-        "gsIeti: The number of restriction operators must match the number of local problems." );
-    GISMO_ASSERT( this->m_localSolverOps.size() == this->m_jumpMatrices.size(),
-        "gsIetiSystem::rhsForSchurComplement() requires solvers for the local subproblems. "
-        "Forgot to call setupSparseLUSolvers?" );
-    GISMO_ASSERT( this->m_localRhs.size() == this->m_jumpMatrices.size(),
-        "gsIetiSystem::rhsForSchurComplement() requires the right-hand sides for the local subproblems." );
-
+    setupSparseLUSolvers();
     gsMatrix<T> result;
     result.setZero( this->numberOfLagrangeMultipliers(), this->m_localRhs[0].cols());
     const index_t numPatches = this->m_jumpMatrices.size();
@@ -118,13 +109,7 @@ gsMatrix<T> gsIetiSystem<T>::rhsForSchurComplement() const
 template<class T>
 std::vector< gsMatrix<T> > gsIetiSystem<T>::constructSolutionFromLagrangeMultipliers(const gsMatrix<T>& multipliers) const
 {
-    GISMO_ASSERT( this->m_localMatrixOps.empty() || this->m_jumpMatrices.size() == this->m_localMatrixOps.size(),
-        "gsIeti: The number of restriction operators must match the number of local problems." );
-    GISMO_ASSERT( this->m_localSolverOps.size() == this->m_jumpMatrices.size(),
-        "gsIetiSystem::constructSolutionFromLagrangeMultipliers() requires solvers for the local subproblems. "
-        "Forgot to call setupSparseLUSolvers?" );
-    GISMO_ASSERT( this->m_localRhs.size() == this->m_jumpMatrices.size(),
-        "gsIetiSystem::constructSolutionFromLagrangeMultipliers() requires the right-hand sides for the local subproblems." );
+    setupSparseLUSolvers();
 
     const index_t numPatches = this->m_jumpMatrices.size();
     std::vector< gsMatrix<T> > result;

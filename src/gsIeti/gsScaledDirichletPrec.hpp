@@ -151,17 +151,14 @@ gsScaledDirichletPrec<T>::restrictToSkeleton( const JumpMatrix& jm, const Sparse
 template <class T>
 void gsScaledDirichletPrec<T>::setupMultiplicityScaling()
 {
-    GISMO_ASSERT( m_jumpMatrices.size() == m_localSchurOps.size(),
-        "The number of jump matrices and the number of local Schur complements do not agree. " );
-
     const index_t pnr = m_jumpMatrices.size();
-    m_localScaling.clear();
-    m_localScaling.reserve(pnr);
 
     for (index_t k=0; k<pnr; ++k)
     {
         const index_t sz = m_localSchurOps[k]->rows();
-        gsMatrix<T> sc(sz,1);
+        gsMatrix<T> & sc = m_localScaling[k];
+        sc.resize(sz, 1);
+
         for (index_t i=0; i<sz; ++i)
           sc(i,0) = 1;
 
@@ -174,7 +171,6 @@ void gsScaledDirichletPrec<T>::setupMultiplicityScaling()
                 sc(c,0) += 1;
             }
         }
-        m_localScaling.push_back(give(sc));
     }
 }
 
@@ -182,13 +178,14 @@ template <class T>
 typename gsScaledDirichletPrec<T>::OpPtr
 gsScaledDirichletPrec<T>::preconditioner() const
 {
-    GISMO_ASSERT( m_jumpMatrices.size() == m_localScaling.size(),
-        "gsScaledDirichletPrec::secaledDirichletPreconditioner needs the m_localScaling matrices given. "
-        "Forgot to call setupMultiplicityScaling()?" );
-    GISMO_ASSERT( m_jumpMatrices.size() == m_localSchurOps.size(),
-        "gsScaledDirichletPrec::secaledDirichletPreconditioner needs the localSchur operators given." );
-
     const index_t pnr = m_jumpMatrices.size();
+
+    for (index_t i=0; i<pnr; ++i)
+    {
+        GISMO_ASSERT( m_localScaling[i].rows() > 0 && m_localScaling[i].cols() == 1,
+            "gsScaledDirichletPrec::preconditioner needs the local scaling matrices given. "
+            "Forgot to call setupMultiplicityScaling()?" );
+    }
 
     std::vector<OpPtr> scalingOps;
     scalingOps.reserve(pnr);

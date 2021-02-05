@@ -254,10 +254,7 @@ int main(int argc, char *argv[])
     /**************** Setup solver and solve ****************/
 
     gsInfo << "Setup solver and solve... \n"
-        "    Setup LU solvers... " << std::flush;
-
-    ieti.setupSparseLUSolvers();
-    gsInfo << "done.\n    Setup multiplicity scaling... " << std::flush;
+        "    Setup multiplicity scaling... " << std::flush;
 
     prec.setupMultiplicityScaling();
 

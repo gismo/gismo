@@ -48,7 +48,7 @@ namespace gismo
  *
  *  The inverses \f$ \tilde A_k^{-1} \f$ are stored in the vector \a localSolverOps . As far as the
  *  matrices \f$ \tilde A_k\f$ are stored as \a gsMatrixOp containing \a gsSparseMatrix , LU solvers can
- *  be automatically created by calling \a setupSparseLUSolvers. Otherwise or if the caller wants other
+ *  be automatically created on the fly if needed. Otherwise or if the caller wants other
  *  local solvers (like inexact ones), the vector can be populated by the caller.
  *
  *  The matrices \f$ \tilde B_k \f$ are stored in the vector \a jumpMatrices .
@@ -83,30 +83,27 @@ public:
     /// @param jumpMatrix       The associated jump matrix
     /// @param localMatrixOp    The operator that represents the local problem
     /// @param localRhs         The contribution to the right-hand side
-    void addSubdomain(JumpMatrixPtr jumpMatrix, OpPtr localMatrixOp, Matrix localRhs);
+    /// @param localSolverOp    The operator that represents a solver for the local problem.
+    ///                         This parameter is optional, if needed the solver will be
+    ///                         created automatrically.
+    void addSubdomain(JumpMatrixPtr jumpMatrix, OpPtr localMatrixOp,
+        Matrix localRhs, OpPtr localSolverOp = OpPtr() );
 
-    /// Access the vector of jump matrices
-    std::vector<JumpMatrixPtr>&       jumpMatrices()          { return m_jumpMatrices;   }
-    const std::vector<JumpMatrixPtr>& jumpMatrices() const    { return m_jumpMatrices;   }
+    /// Access the jump matrix
+    JumpMatrixPtr&       jumpMatrix(index_t i)           { return m_jumpMatrices[i];   }
+    const JumpMatrixPtr& jumpMatrix(index_t i) const     { return m_jumpMatrices[i];   }
 
-    /// Access the vector of local system matrices (as \a gsLinearOperator)
-    std::vector<OpPtr>&               localMatrixOps()        { return m_localMatrixOps; }
-    const std::vector<OpPtr>&         localMatrixOps() const  { return m_localMatrixOps; }
+    /// Access the local system matrix (as \a gsLinearOperator)
+    OpPtr&               localMatrixOp(index_t i)        { return m_localMatrixOps[i]; }
+    const OpPtr&         localMatrixOp(index_t i) const  { return m_localMatrixOps[i]; }
 
-    /// Access the vector of local right-hand sides
-    std::vector<Matrix>&              localRhs()              { return m_localRhs;       }
-    const std::vector<Matrix>&        localRhs() const        { return m_localRhs;       }
+    /// Access the local right-hand side
+    Matrix&              localRhs(index_t i)             { return m_localRhs[i];       }
+    const Matrix&        localRhs(index_t i) const       { return m_localRhs[i];       }
 
-    /// Access the vector of local solver operators
-    std::vector<OpPtr>&               localSolverOps()        { return m_localSolverOps; }
-    const std::vector<OpPtr>&         localSolverOps() const  { return m_localSolverOps; }
-
-    /// @brief Populates the member \a m_localSolverOps
-    ///
-    /// This function assums that \a m_jumpMatrices and \a m_localMatrixOps have been populated
-    /// first. Moreover, it requres that all \a localMatrixOp s are actually of type
-    /// \a gsMatrixOp<gsSparseMatrix<T>> .
-    void setupSparseLUSolvers();
+    /// Access the local solver operator
+    OpPtr&               localSolverOp(index_t i)        { return m_localSolverOps[i]; }
+    const OpPtr&         localSolverOp(index_t i) const  { return m_localSolverOps[i]; }
 
     /// Returns the number of Lagrange multipliers
     ///
@@ -148,10 +145,12 @@ public:
     std::vector<Matrix> constructSolutionFromLagrangeMultipliers(const gsMatrix<T>& multipliers) const;
 
 private:
+    void setupSparseLUSolvers() const;
+
     std::vector<JumpMatrixPtr>  m_jumpMatrices;
     std::vector<OpPtr>          m_localMatrixOps;
     std::vector<Matrix>         m_localRhs;
-    std::vector<OpPtr>          m_localSolverOps;
+    mutable std::vector<OpPtr>  m_localSolverOps;
 };
 
 } // namespace gismo
