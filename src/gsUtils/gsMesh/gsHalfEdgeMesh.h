@@ -408,10 +408,7 @@ private:
 	{
 	    size_t result = 0;
 	    for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
-	    {
 		result += it->getNumberOfVertices();
-		//gsInfo << "result: " << result;
-	    }
 	    return result;
 	}
 

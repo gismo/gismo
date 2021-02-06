@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
     // distributed: choose the smallest inner angle corners (number for how much to choose) and choose four corners s.t. they are as evenly distributed as possible, input number n=6 for choosing 6 boundary vertices with smallest inner angles and then find 4 of them s.t. evenly distributed
     std::string filenameIn("stl/norm.stl");
     std::string filenameOut("flatMesh");
-    std::string filenameV0, filenameV1, fileCorners, filenameOverlap, filenameStitch;
+    std::string filenameV0, filenameV1, filenameOverlap, filenameStitch;
     real_t range = 0.1; // in case of restrict or opposite
     index_t number = 4; // number of corners, in case of distributed
     std::vector<index_t> corners; // in case of corners
@@ -80,7 +80,6 @@ int main(int argc, char *argv[])
     cmd.addString("o", "filenameOut", "output file name", filenameOut);
     cmd.addString("d", "v0", ".xml file containing points and u-parameters of points with v=0", filenameV0);
     cmd.addString("t", "v1", ".xml file containing points and u-parameters of points with v=1", filenameV1);
-    cmd.addString("x", "fileCorners", "file with 3D coordinates of the corners", fileCorners);
     
     cmd.addString("l", "overlap", ".stl file of the overlap for periodicity; must not be combined with -s", filenameOverlap);
     cmd.addString("s", "stitch", ".xml file with the vertices on the stitch for periodicity; must not be combined with -l.", filenameStitch);
@@ -101,7 +100,7 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    enum domainOptions {standard, overlap, stitch, iterative, free} domainMethod;
+    enum domainOptions {standard, overlap, stitch} domainMethod;
 
     if( ol.askString("overlap", "").compare("") > 0 )
 	domainMethod = overlap;

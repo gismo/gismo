@@ -26,7 +26,7 @@ namespace gismo
  * u-direction and the parameter domain will be [0, 1]^2. This class is an alternative to
  * gsPeriodicParametrizationOverlap. The idea is adapted from
  *
- * - Tong, Y., Alliez, P., Cohen-Steiner, D., Desbrun, M.: Designing
+ * Tong, Y., Alliez, P., Cohen-Steiner, D., Desbrun, M.: Designing
  * quadrangulations with discrete harmonic forms, in: Sheffer, A.,
  * Polthier, K. (Eds.), Symposium on Geometry Processing,
  * Eurographics. pp. 201–210, 2006,
@@ -90,7 +90,7 @@ protected:
 			       gsSparseMatrix<int>& corrections,
 			       const size_t parametrizationMethod = 2);
 
-    private:
+    protected:
 	/**
 	 * For a stitch vertex finds its neighbours across the interface.
 	 * @param stitchIndices indices of the stitch vertices

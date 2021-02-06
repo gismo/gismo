@@ -47,8 +47,6 @@ namespace gismo
  * @image html  gsPeriodicParametrizationOverlap-scheme.png
  *
  * @image latex gsPeriodicParametrizationOverlap-scheme.pdf
- *
- * TODO: Mention the paper once it passes the review.
  */
 template <class T>
 class GISMO_EXPORT gsPeriodicParametrizationOverlap : public gsPeriodicParametrization<T>
