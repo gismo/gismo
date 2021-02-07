@@ -86,6 +86,12 @@ using codi::sinh;
 using codi::sqrt;
 using codi::tan;
 using codi::tanh;
+using codi::isnan;
+using codi::isfinite;
+using codi::isinf;
+//using codi::real;
+//using codi::imag;
+//using codi::conj;
 #endif
 
 #ifdef GISMO_WITH_UNUM
@@ -265,6 +271,7 @@ using mpfr::cos;
 using mpfr::cosh;
 using mpfr::floor;
 using mpfr::log;
+using mpfr::log10;
 using mpfr::pow;
 using mpfr::sin;
 using mpfr::sinh;

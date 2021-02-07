@@ -1500,7 +1500,7 @@ void ON_TextureMapping::Dump( ON_TextLog& text_log ) const
   }
 
 	text_log.Print("texture_space: ");
-  switch(m_texture_space)
+    switch((unsigned int)m_texture_space)
   {
   case single:
     text_log.Print("single texture space\n");
@@ -2306,7 +2306,7 @@ ON__UINT32 ON_TextureMapping::MappingCRC() const
 
 	  if ( 0 != m_mapping_primitive )
 	  {
-      switch( m_type )
+      switch( (unsigned int)m_type )
       {
       case ON_TextureMapping::mesh_mapping_primitive:
         {

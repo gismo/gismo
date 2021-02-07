@@ -5,7 +5,7 @@
 ## Author: Angelos Mantzaflaris
 ######################################################################
 
-cmake_minimum_required(VERSION 2.8.8) #CMake 3.19 warns to change to 2.8.12
+cmake_minimum_required(VERSION 2.8.12)
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
@@ -119,17 +119,12 @@ include(gsJITConfigXml)
 gsJITConfigXml(${CMAKE_CURRENT_SOURCE_DIR}/cmake/jit.xml.in
   ${CMAKE_BINARY_DIR}/config/jit.xml)
 
-# Configure
-configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
-                "${PROJECT_BINARY_DIR}/gsCore/gsConfig.h" )
-configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
-                "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
-
 ## #################################################################
 ## Collect headers and sources
 ## #################################################################
 
 # Clean previously set variables in the cache
+unset(GISMO_EXTRA_INSTANCE       CACHE)
 unset(${PROJECT_NAME}_HEADERS    CACHE)
 unset(${PROJECT_NAME}_SOURCES    CACHE)
 unset(${PROJECT_NAME}_EXTENSIONS CACHE)
@@ -246,16 +241,10 @@ endif(GISMO_WITH_UMFPACK)
 
 if(GISMO_WITH_UNUM)
   add_subdirectory(extensions/gsUnum)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${UNUM_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${UNUM_INCLUDE_DIR})
 endif(GISMO_WITH_UNUM)
 
 if(GISMO_WITH_OCC)
   add_subdirectory(extensions/gsOpenCascade)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${OCC_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${OCC_INCLUDE_DIR})
 endif(GISMO_WITH_OCC)
 
 if(GISMO_WITH_SMESH)
@@ -327,6 +316,16 @@ if(GISMO_EXASTENCILS)
   gismo_fetch_module(gsExaStencils)
 endif()
 
+option(GISMO_STRUCTURALANALYSIS "Enable Structural Analysis module" OFF)
+if(GISMO_STRUCTURALANALYSIS)
+  gismo_fetch_module(gsStructuralAnalysis)
+endif()
+
+option(GISMO_KLSHELL "Enable Kirchhoff-Love Shell" OFF)
+if(GISMO_KLSHELL)
+  gismo_fetch_module(gsKLShell)
+endif()
+
 option(GISMO_UNSUPPORTED "Enable unsupported module" OFF)
 option(GISMO_MOTOR "Enable motor module" OFF)
 if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
@@ -383,6 +382,12 @@ endif(GISMO_BUILD_RHINOPLUGINS)
 ## #################################################################
 ## Install
 ## #################################################################
+
+# Configure
+configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
+                "${PROJECT_BINARY_DIR}/gsCore/gsConfig.h" )
+configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
+                "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
 
 include(gsInstall)
 

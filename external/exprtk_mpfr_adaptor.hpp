@@ -157,7 +157,7 @@ namespace exprtk
             template <typename T>
             inline T nequal_impl(const T& v0, const T& v1, mpfrreal_type_tag)
             {
-               const T epsilon  = epsilon_type<T>::value();
+               const T epsilon  = epsilon_type<mpfrreal_type_tag>::value();
                const T eps_norm = (mpfr::max(T(1),mpfr::max(mpfr::abs(v0),mpfr::abs(v1))) * epsilon);
                return (mpfr::abs(v0 - v1) > eps_norm) ? T(1) : T(0);
             }
@@ -218,7 +218,7 @@ namespace exprtk
             template <typename T>
             inline T sinc_impl(const T& v, mpfrreal_type_tag)
             {
-               if (mpfr::abs(v) >= epsilon_type<mpfr::mpreal>::value())
+               if (mpfr::abs(v) >= epsilon_type<mpfrreal_type_tag>::value())
                    return(mpfr::sin(v) / v);
                else
                   return T(1);
@@ -244,7 +244,7 @@ namespace exprtk
             template <typename T>
             inline T equal_impl(const T& v0, const T& v1, mpfrreal_type_tag)
             {
-               const T epsilon  = epsilon_type<T>::value();
+               const T epsilon  = epsilon_type<mpfrreal_type_tag>::value();
                const T eps_norm = (mpfr::max(T(1),mpfr::max(mpfr::abs(v0),mpfr::abs(v1))) * epsilon);
                return (mpfr::abs(v0 - v1) <= eps_norm) ? T(1) : T(0);
             }

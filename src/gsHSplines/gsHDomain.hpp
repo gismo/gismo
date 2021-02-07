@@ -37,9 +37,8 @@ inline unsigned translateIndex( unsigned const & i,
 
 #include <queue>
 
-namespace {
-
-
+namespace
+{
     // Query 1
     struct query1_visitor
     {
@@ -111,7 +110,7 @@ namespace {
         }
     };
 
-}
+} //namespace
 
 namespace gismo {
 
@@ -295,8 +294,8 @@ gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
 }
 
 template<short_t d, class T > void
-gsHDomain<d,T>::sinkBox(point const & k1,
-                         point const & k2, int lvl)
+gsHDomain<d,T>::sinkBox ( point const & k1,
+                          point const & k2, int lvl)
 {
     GISMO_ENSURE( m_maxInsLevel+1 <= m_indexLevel,
                   "Max index level might be reached..");
@@ -1539,7 +1538,7 @@ template<short_t d, class T> inline void
 }
 
 template<short_t d, class T> inline void
- gsHDomain<d,T>::global2localIndex( gsVector<index_t,d> const & index,
+gsHDomain<d,T>::global2localIndex( gsVector<index_t,d> const & index,
                                         unsigned lvl,
                                         gsVector<index_t,d> & result
     ) const
@@ -1547,4 +1546,44 @@ template<short_t d, class T> inline void
     for ( short_t i = 0; i!=d; ++i )
         result[i] = index[i] >> (this->m_indexLevel-lvl) ;
 }
+
+template<short_t d, class T> inline void
+gsHDomain<d,T>::incrementLevel()
+{
+    m_maxInsLevel++;
+
+    GISMO_ASSERT( m_maxInsLevel <= m_indexLevel,
+                  "Problem with indices, increase number of levels (to do).");
+
+    leafSearch< levelUp_visitor >();
+}
+
+template<short_t d, class T> inline void
+gsHDomain<d,T>::multiplyByTwo()
+    {
+        m_upperIndex *= 2;
+        nodeSearch< liftCoordsOneLevel_visitor >();
+    }
+
+template<short_t d, class T> inline void
+gsHDomain<d,T>::decrementLevel()
+    {
+        m_maxInsLevel--;
+        leafSearch< levelDown_visitor >();
+    }
+
+template<short_t d, class T> inline int
+gsHDomain<d,T>::size() const
+    {
+        return nodeSearch< numNodes_visitor >();
+    }
+
+template<short_t d, class T> inline int
+gsHDomain<d,T>::leafSize() const
+    { return leafSearch< numLeaves_visitor >(); }
+
+template<short_t d, class T> inline void
+gsHDomain<d,T>::printLeaves() const
+    { leafSearch< printLeaves_visitor >(); }
+
 }// end namespace gismo

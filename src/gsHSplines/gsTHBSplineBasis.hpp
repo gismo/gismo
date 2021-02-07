@@ -53,24 +53,25 @@ void gsTHBSplineBasis<d,T>::representBasis()
     this->m_is_truncated.resize(this->size());
     m_presentation.clear();
 
+    gsMatrix<index_t, d, 2> element_ind(d, 2);
+    point low, high;
     for (index_t j = 0; j < this->size(); ++j)
     {
-        unsigned level = this->levelOf(j);
+        index_t level = this->levelOf(j);
         index_t tensor_index = this->flatTensorIndexOf(j, level);
 
         // element indices
-        gsMatrix<index_t, d, 2> element_ind(d, 2);
         this->m_bases[level]->elementSupport_into(tensor_index, element_ind);
 
         // I tried with block, I can not trick the compiler to use references
-        gsVector<index_t, d> low = element_ind.col(0); //block<d, 1>(0, 0);
-        gsVector<index_t, d> high = element_ind.col(1); //block<d, 1>(0, 1);gsMatrix<index_t> element_ind =
+        low = element_ind.col(0); //block<d, 1>(0, 0);
+        high = element_ind.col(1); //block<d, 1>(0, 1);
 
         // Finds coarsest level that function, with supports given with
         // support indices of the coarsest level (low & high), has presentation
         // based only on B-Splines (and not THB-Splines).
         // this is not the same as query 3
-        unsigned clevel = this->m_tree.query4(low, high, level);
+        index_t clevel = this->m_tree.query4(low, high, level);
 
         if (level != clevel) // we must compute its presentation
         {
@@ -104,11 +105,9 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
     unsigned nmb_of_coefs = _updateSizeOfCoefs(cur_level, pres_level,
                                                finest_low, finest_high,
                                                act_size_of_coefs);
-    gsVector<T> one(1);
-    one(0) = 1.0;
     gsMatrix<T> coefs(nmb_of_coefs, 1);
     coefs.fill(0);
-    coefs.row(0) = one;
+    coefs.row(0).setOnes();
 
     // vector of the numbers of the coefficients (in each dimension)
     // stored in coefs
@@ -1470,11 +1469,11 @@ void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& po
     aabb.resize(4);
     for (unsigned i = 0; i != kv0.uSize(); i++)
     {
-        if (kv0.uValue(i) <= minX)
+        if (kv0(i) <= minX)
         {
             aabb[0] = i;
         }
-        if (maxX <= kv0.uValue(i))
+        if (maxX <= kv0(i))
         {
             aabb[2] = i;
             break;
@@ -1483,11 +1482,11 @@ void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& po
 
     for (unsigned i = 0; i != kv1.uSize(); i++)
     {
-        if (kv1.uValue(i) <= minY)
+        if (kv1(i) <= minY)
         {
             aabb[1] = i;
         }
-        if (maxY <= kv1.uValue(i))
+        if (maxY <= kv1(i))
         {
             aabb[3] = i;
             break;

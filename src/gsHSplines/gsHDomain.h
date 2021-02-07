@@ -416,30 +416,14 @@ public:
     int levelOf(point const & p, int level) const
     { return pointSearch(p,level,m_root)->level;}
 
-    // to do: move to the hpp file do avoid need for instantization
-    void incrementLevel()
-    {
-        m_maxInsLevel++;
-
-        GISMO_ASSERT( m_maxInsLevel <= m_indexLevel,
-        "Problem with indices, increase number of levels (to do).");
-
-        leafSearch< levelUp_visitor >(); 
-    }
-
+    /// Increment the level index globally
+    void incrementLevel();
+    
     /// Multiply all coordinates by two
-    void multiplyByTwo()
-    {
-        m_upperIndex *= 2;
-        nodeSearch< liftCoordsOneLevel_visitor >();
-    }
+    void multiplyByTwo();
 
-    // to do: move to the hpp file do avoid need for instantization
-    void decrementLevel()
-    {
-        m_maxInsLevel--;
-        leafSearch< levelDown_visitor >(); 
-    }
+    /// Decrement the level index globally
+    void decrementLevel();
 
     literator beginLeafIterator()
     {
@@ -454,10 +438,7 @@ public:
     void makeCompressed();
     
     /// Returns the number of nodes in the tree
-    int size() const
-    { 
-        return nodeSearch< numNodes_visitor >(); 
-    }
+    int size() const;
 
     /// Returns the number of distinct knots in direction \a k of level \a lvl
     int numBreaks(int lvl, int k) const
@@ -466,14 +447,13 @@ public:
     }
 
     /// Returns the number of leaves in the tree
-    int leafSize() const 
-    { return leafSearch< numLeaves_visitor >(); }
+    int leafSize() const;
 
     /// Returns the minimim and maximum path length in the tree
     std::pair<int,int> minMaxPath() const;
 
-    void printLeaves() const
-    { leafSearch< printLeaves_visitor >(); }
+    /// Prints out the leaves of the kd-tree
+    void printLeaves() const;
 
     /** \brief Returns the boxes which make up the hierarchical domain
     * and the respective levels.
