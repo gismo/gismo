@@ -138,17 +138,6 @@ gsScaledDirichletPrec<T>::schurComplement( const SparseMatrix& mat, const std::v
 }
 
 template <class T>
-std::pair<typename gsScaledDirichletPrec<T>::JumpMatrix,typename gsScaledDirichletPrec<T>::OpPtr>
-gsScaledDirichletPrec<T>::restrictToSkeleton( const JumpMatrix& jm, const SparseMatrix& mat )
-{
-    std::vector<index_t> skeletonDofs = getSkeletonDofs(jm);
-    return std::pair<JumpMatrix,OpPtr>(
-            restrictJumpMatrix( jm, skeletonDofs ),
-            schurComplement( mat, skeletonDofs )
-        );
-}
-
-template <class T>
 void gsScaledDirichletPrec<T>::setupMultiplicityScaling()
 {
     const index_t pnr = m_jumpMatrices.size();

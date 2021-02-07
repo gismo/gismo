@@ -1,6 +1,6 @@
 /** @file gsIetiMapper.h
 
-    @brief Algorithms for the assembling of matrices required for IETI-Solvers
+    @brief Algorithms that help with assembling the matrices required for IETI-Solvers
 
     This file is part of the G+Smo library.
 
@@ -13,282 +13,160 @@
 
 #pragma once
 
-#include <gsCore/gsDofMapper.h>
 #include <gsCore/gsMultiBasis.h>
-#include <gsNurbs/gsKnotVector.h>
-#include <gsIO/gsOptionList.h>
-#include <gsUtils/gsCombinatorics.h>
 #include <gsAssembler/gsExprAssembler.h>
 
 namespace gismo
 {
-#define DEBUGVAR(a) gsInfo << "  " << #a << ": " << a << std::endl
-#define DEBUGMATRIX(a) gsInfo << "  " << #a << ": " << a.rows() << " x " << a.cols() << std::endl
 
 /** @brief
-    Ieti Mapper
-
-    This class contains algorithms for the assembling of matrices required for IETI-Solvrs.
-
-    \ingroup Solver
+ *  Ieti Mapper
+ *
+ *  Algorithms that help with assembling the matrices required for IETI-Solvers
+ *
+ *  This class is written to work with the expression assembler. If applied to a
+ *  system, it is expected that individual instances of this class are used for
+ *  each of the variables.
+ *
+ *  The objects of this class are initialized using a global dof mapper and a
+ *  vector that contains function values for the eliminated variables (usually
+ *  for the Dirichlet boundary). Moreover, options can be provided.
+ *
+ *  This class then allows to obtain the jump matrices (\a jumpMatrix), the
+ *  patch-local dof mappers (\a dofMapperLocal) and the patch-local function
+ *  values for the eliminated dofs (\a fixedPart). The member function
+ *  \a initFeSpace allows to pass dof mapper and the function values for the
+ *  eliminated dofs to a variable object of the \a gsExprAssembler.
+ *
+ *  Moreover, this class allows to construct the primal degrees of freedom,
+ *  which are then handeled by the class \a gsPrimalProblem.
+ *
+ *  Finally, the member \a constructGlobalSolutionFromLocalSolutions allows
+ *  the combination of the patch-local solutions to a global one.
+ *
+ *  \ingroup Solver
 */
 template< typename T >
 class gsIetiMapper
 {
-    typedef gsSparseMatrix<T,RowMajor> Transfer;
-    typedef memory::shared_ptr<Transfer> TransferPtr;
+    typedef gsMatrix<T>                Matrix;
+    typedef gsSparseVector<T>          SparseVector;
+    typedef gsSparseMatrix<T,RowMajor> JumpMatrix;
 
 public:
-    gsIetiMapper() : m_nrPrimalConstraints(0) {}
+    /// @brief Default constructor
+    gsIetiMapper() : m_multiBasis(NULL), m_nPrimalDofs(0), m_status(0) {}
 
-    void init(gsDofMapper dofMapperGlobal, const gsMatrix<T>& fixedPart)
+    /// @brief Create the ieti mapper
+    ///
+    /// @param multiBasis     The corresponding \a gsMultiBasis
+    /// @param gsDofMapper    The dof mapper for the global problem
+    /// @param fixedPart      The function values for the eliminated dofs
+    ///
+    /// The multibasis object has to outlive the ieti mapper.
+    gsIetiMapper(
+        const gsMultiBasis<T>& multiBasis,
+        gsDofMapper dofMapperGlobal,
+        const gsMatrix<T>& fixedPart
+    )
+    { init(multiBasis, dofMapperGlobal, fixedPart); }
+
+    /// @brief Init the ieti mapper after default construction
+    ///
+    /// @param multiBasis     The corresponding \a gsMultiBasis
+    /// @param gsDofMapper    The dof mapper for the global problem
+    /// @param fixedPart      The function values for the eliminated dofs
+    ///
+    /// Instances of the class can be reused using this member function.
+    void init(
+        const gsMultiBasis<T>& multiBasis,
+        gsDofMapper dofMapperGlobal,
+        const gsMatrix<T>& fixedPart
+    );
+
+    /// @brief Apply the required changes to a space object of the expression assembler
+    ///
+    /// It is assumed that the space object is fully functioning, i.e., the setup member
+    /// has been called.
+    ///
+    /// This function exposes the \a dofMapperLocal and the \a fixedPart to the space.
+    void initFeSpace(typename gsExprAssembler<T>::space u, index_t k)
     {
-        const index_t nPatches = dofMapperGlobal.numPatches();
-
-        m_dofMapperGlobal = give(dofMapperGlobal);
-        m_dofMapperLocal.resize(nPatches);
-        m_fixedPart.resize(nPatches);
-
-        for (index_t k=0; k<nPatches; ++k)
-        {
-            const index_t nDofs = m_dofMapperGlobal.patchSize(k);
-            m_dofMapperLocal[k].setIdentity(1,nDofs);
-            for (index_t i=0; i<nDofs; ++i)
-            {
-                const index_t idx = m_dofMapperGlobal.index(i,k);
-                if (m_dofMapperGlobal.is_boundary_index(idx))
-                    m_dofMapperLocal[k].eliminateDof(i,0);
-            }
-            m_dofMapperLocal[k].finalize();
-
-            const index_t szFixedPart = m_dofMapperLocal[k].boundarySize();
-            m_fixedPart[k].setZero(szFixedPart,1);
-            for (index_t i=0; i<nDofs; ++i)
-            {
-                const index_t idx = m_dofMapperGlobal.index(i,k);
-                if (m_dofMapperGlobal.is_boundary_index(idx))
-                {
-                    const index_t globalBoundaryIdx = m_dofMapperGlobal.bindex(i,k);
-                    const index_t localBoundaryIdx = m_dofMapperLocal[k].bindex(i,0);
-                    m_fixedPart[k](localBoundaryIdx,0) = fixedPart(globalBoundaryIdx,0);
-                }
-            }
-        }
-        computeJumpMatrices();
-    }
-
-    void initFeSpace(const typename gsExprAssembler<T>::space& u, index_t k)
-    {
+        GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
         GISMO_ASSERT( u.mapper().size() ==  m_dofMapperLocal[k].size(),
             "gsIetiMapper::initFeSpace: The sizes do not agree." );
-        /*if (m_dofMapperLocal[k].freeSize() == u.mapper().freeSize())
-        {
-            gsInfo << "Patch " << k << ": The number of Dirichlet values does match; the error of their values is "
-                << (u.fixedPart()-m_fixedPart[k]).norm() << "\n";
-        }
-        else
-        {
-            gsInfo << "Patch " << k << ": The number of Dirichlet values does not match.\n";
-            gsInfo << u.fixedPart().transpose() << "\n";
-            gsInfo << m_fixedPart[k].transpose() << "\n";
-        }*/
-        const_cast<expr::gsFeSpace<real_t>&>(u).mapper() = m_dofMapperLocal[k];
-        const_cast<expr::gsFeSpace<real_t>&>(u).fixedPart() = m_fixedPart[k];
+        const_cast<expr::gsFeSpace<T>&>(u).mapper() = m_dofMapperLocal[k];
+        const_cast<expr::gsFeSpace<T>&>(u).fixedPart() = m_fixedPart[k];
     }
 
+    /// @brief This function computes the jump matrices
+    ///
+    /// @param fullyRedundant  Compute the jump matrices in a fullyRedundant way;
+    ///                        if false, then no redundancy
+    /// @param excludeCorners  Ignore corners for jump matrices. This makes sence
+    ///                        if the corners are chosen as primal dofs
+    void computeJumpMatrices(bool fullyRedundant, bool excludeCorners);
 
-private:
+    /// @brief This function instructs the class to set up the corners as primal dofs
+    void cornersAsPrimals();
 
-    typedef std::vector< std::vector< std::pair<index_t,index_t> > > CouplingInfo;
+    /// @brief With this function, the caller can register more primal constraints
+    ///
+    /// All primal constraints in the vector are considered to be one single primal
+    /// dof. Each component of the vector contains a pair consisting of the patch
+    /// index and the vector representing the primal constraint.
+    void customPrimalConstraints( std::vector< std::pair<index_t,SparseVector> > data );
 
-    CouplingInfo getCoupling() const
-    {
-        CouplingInfo result;
-        result.reserve(m_dofMapperGlobal.coupledSize());
-        gsVector<index_t> tmp;
-        tmp.setZero(m_dofMapperGlobal.freeSize(),1);
-        const index_t numPatches = m_dofMapperGlobal.numPatches();
-        for (index_t k=0; k<numPatches; ++k)
-        {
-            const index_t patchSize = m_dofMapperGlobal.patchSize(k);
-            for (index_t i=0; i<patchSize; ++i)
-            {
-                const index_t j=m_dofMapperGlobal.index(i,k);
-                if (m_dofMapperGlobal.is_coupled_index(j))
-                {
-                    if (tmp[j]==0)
-                    {
-                        std::vector< std::pair<index_t,index_t> > vec;
-                        vec.push_back(std::pair<index_t,index_t>(k,i));
-                        result.push_back(give(vec));
-                        tmp[j] = result.size();
-                    }
-                    else
-                        result[tmp[j]-1].push_back(std::pair<index_t,index_t>(k,i));
-                }
-            }
-        }
-        return result;
-    }
+    /// @brief This functon constructs the global solution from a vector of patch-local ones
+    Matrix constructGlobalSolutionFromLocalSolutions( const std::vector<Matrix>& localContribs );
 
-    void computeJumpMatrices()
-    {
-        m_jumpMatrices.resize(0);
-        CouplingInfo coupling = getCoupling();
-        const index_t couplingSize = coupling.size();
-
-        const index_t numPatches = m_dofMapperGlobal.numPatches();
-        GISMO_ASSERT( numPatches == m_dofMapperLocal.size(), "gsIetiMapper::jumpMatrices: "
-            "The number of patches and the number of local dof mappers must match." );
-
-        index_t numLagrangeMult = 0;
-        for (index_t i=0; i<couplingSize; ++i)
-        {
-            const index_t n = coupling[i].size();
-            numLagrangeMult += (n * (n-1))/2;
-        }
-
-        for (index_t i=0; i<numPatches; ++i)
-            m_jumpMatrices.push_back(Transfer(numLagrangeMult, m_dofMapperLocal[i].freeSize()));
-
-        index_t multiplier = 0;
-        for (index_t i=0; i<couplingSize; ++i)
-        {
-            const index_t sz = coupling[i].size();
-            GISMO_ASSERT( sz>1, "Found coupled dof that is not coupled to any other dof." );
-            // We implement fully redundant. TODO: Allow alternatives.
-            for (index_t j1=0; j1<sz-1; ++j1)
-            {
-                const index_t patch1 = coupling[i][j1].first;
-                const index_t localIndex1 = coupling[i][j1].second;
-                const index_t localMappedIndex1 = m_dofMapperLocal[patch1].index(localIndex1,0);
-                for (index_t j2=j1+1; j2<sz; ++j2)
-                {
-                    const index_t patch2 = coupling[i][j2].first;
-                    const index_t localIndex2 = coupling[i][j2].second;
-                    const index_t localMappedIndex2 = m_dofMapperLocal[patch2].index(localIndex2,0);
-                    GISMO_ASSERT(multiplier<numLagrangeMult, "bug." );
-                    m_jumpMatrices[patch1](multiplier,localMappedIndex1) = 1.;
-                    m_jumpMatrices[patch2](multiplier,localMappedIndex2) = -1.;
-                    ++multiplier;
-                }
-            }
-        }
-        GISMO_ASSERT( multiplier == numLagrangeMult, "Have:"<<multiplier<<"!="<<numLagrangeMult);
-
-    }
+    /// @brief This function returns a list of dofs that are (on the coarse level) coupled
+    ///
+    /// @param patch   Number of the patch
+    std::vector<index_t> getSkeletonDofs( index_t patch ) const;
 
 public:
-
-    Transfer jumpMatrix(index_t i) { return m_jumpMatrices[i]; }
-
-    gsMatrix<T> constructGlobalSolutionFromLocalSolutions( const std::vector< gsMatrix<T> >& localContribs )
+    /// @brief Returns the number of Lagrange multipliers.
+    index_t nLagrangeMultipliers()
     {
-        const index_t numPatches = m_dofMapperGlobal.numPatches();
-        GISMO_ASSERT( numPatches == m_dofMapperLocal.size(), "");
-        GISMO_ASSERT( numPatches == localContribs.size(), "");
-
-        gsMatrix<T> result;
-        result.setZero( m_dofMapperGlobal.freeSize(), 1/*==localContribs[0].cols()*/ );
-
-
-        for (index_t k=0; k<numPatches; ++k)
-        {
-            const index_t sz=m_dofMapperLocal[k].size();
-            for (index_t i=0; i<sz; ++i)
-            {
-                if (m_dofMapperLocal[k].is_free(i,0) && m_dofMapperGlobal.is_free(i,k))
-                    result(m_dofMapperGlobal.index(i,k),0) = localContribs[k](m_dofMapperLocal[k].index(i,0),0);
-            }
-        }
-
-        return result;
-    }
-
-    void cornersAsPrimalConstraints( const gsMultiBasis<T>& mb )
-    {
-        const index_t nPatches = m_dofMapperLocal.size();
-
-        std::vector< std::vector<index_t> > corners;
-        corners.reserve(nPatches);
-        for (index_t i=0; i<nPatches; ++i)
-        {
-            std::vector<index_t> local_corners;
-            for (boxCorner it = boxCorner::getFirst(mb.dim()); it!=boxCorner::getEnd(mb.dim()); ++it)
-                local_corners.push_back( mb[i].functionAtCorner(it) );
-            corners.push_back(give(local_corners));
-        }
-
-
-        if (m_primalConstraints.empty())
-            m_primalConstraints.resize(nPatches);
-
-        if (m_primalConstraintsMapper.empty())
-            m_primalConstraintsMapper.resize(nPatches);
-
-        GISMO_ASSERT(m_primalConstraints.size() == nPatches, "The number of primal constraints does not fit.");
-        GISMO_ASSERT(m_primalConstraintsMapper.size() == nPatches, "The number of primal constraints mappers does not fit.");
-
-        std::vector<index_t> corner_list;
-        for (index_t i=0; i<nPatches; ++i)
-        {
-            std::vector< gsSparseVector<real_t> > localPrimalConstraints;
-            std::vector< index_t > localPrimalConstraintsMapper;
-
-            const index_t nCorners = corners[i].size();
-            for (index_t j=0; j<nCorners; ++j)
-            {
-                const index_t localIndex = m_dofMapperLocal[i].index(corners[i][j],0);
-                const index_t globalIndex = m_dofMapperGlobal.index(corners[i][j],i);
-                const bool is_free = m_dofMapperGlobal.is_free_index(globalIndex);
-
-                if (is_free) {
-
-                    const index_t sz = corner_list.size();
-                    index_t index; //std::find or better?
-                    for (index=0; index<sz && corner_list[index]!=globalIndex; ++index)
-                    {}
-
-                    if (index==sz)
-                        corner_list.push_back(globalIndex);
-
-                    gsSparseVector<> constr(m_dofMapperLocal[i].freeSize()); //!
-                    constr[localIndex] = 1;
-
-                    m_primalConstraints[i].push_back(give(constr));
-                    m_primalConstraintsMapper[i].push_back(index);
-                }
-            }
-        }
-        m_nrPrimalConstraints = corner_list.size();
-
-    }
-
-    index_t nrLagrangeMultipliers() {
-        GISMO_ASSERT(! m_jumpMatrices.empty(), "Not yet known.");
+        GISMO_ASSERT(! m_jumpMatrices.empty(), "gsIetiMapper: Number of Lagrange multipliers not yet known.");
         return m_jumpMatrices[0].rows();
     }
 
-    index_t nrPrimalConstraints() {
-        return m_nrPrimalConstraints;
-    }
+    /// @brief Returs the size of the primal problem (number of primal dofs)
+    index_t nPrimalDofs() const                                            { return m_nPrimalDofs;                }
 
-    const std::vector< gsSparseVector<real_t> > & primalConstraints(index_t i) const
-    { return m_primalConstraints[i]; }
+    /// @brief Returns the primalConstraints (as vectors) for the given patch
+    ///
+    /// These vectors form the matrix \f$ C_k \f$ in the local saddle point system, cf.
+    /// the documentation \a gsPrimalSystem
+    const std::vector<SparseVector> & primalConstraints(index_t k) const   { return m_primalConstraints[k];       }
 
-    const std::vector<index_t> & primalConstraintsMapper(index_t i) const
-    { return m_primalConstraintsMapper[i]; }
+    /// @brief Returns the indices of the primal dofs that are associated to the primal constraints for the given patch
+    const std::vector<index_t> & primalConstraintsMapper(index_t k) const  { return m_primalConstraintsMapper[k]; }
+
+    /// @brief Returns the jump matrix \f$ B_k \f$ for the given patch
+    const JumpMatrix& jumpMatrix(index_t k) const                          { return m_jumpMatrices[k];            }
+
+    /// @brief The global dof mapper
+    const gsDofMapper& dofMapperGlobal() const                             { return m_dofMapperGlobal;            }
+
+    /// @brief The dof mapper for the given patch
+    const gsDofMapper& dofMapperLocal(index_t k) const                     { return m_dofMapperLocal[k];          }
+
+    /// @brief The function values for the eliminated dofs on the given patch
+    const Matrix& fixedPart(index_t k) const                               { return m_fixedPart[k];               }
 
 private:
-    gsDofMapper                                          m_dofMapperGlobal;
-    std::vector<gsDofMapper>                             m_dofMapperLocal;
-    std::vector< gsMatrix<T> >                           m_fixedPart;
-
-    std::vector< gsSparseMatrix<real_t,RowMajor> >       m_jumpMatrices;
-
-    index_t                                              m_nrPrimalConstraints;
-    std::vector< std::vector< gsSparseVector<real_t> > > m_primalConstraints;
-    std::vector< std::vector< index_t > >                m_primalConstraintsMapper;
+    const gsMultiBasis<T>*                        m_multiBasis;
+    gsDofMapper                                   m_dofMapperGlobal;
+    std::vector<gsDofMapper>                      m_dofMapperLocal;
+    std::vector<Matrix>                           m_fixedPart;
+    std::vector<JumpMatrix>                       m_jumpMatrices;
+    index_t                                       m_nPrimalDofs;
+    std::vector< std::vector<SparseVector> >      m_primalConstraints;
+    std::vector< std::vector<index_t> >           m_primalConstraintsMapper;
+    unsigned                                      m_status;
 };
 
 } // namespace gismo

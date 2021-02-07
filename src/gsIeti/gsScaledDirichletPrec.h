@@ -123,7 +123,8 @@ public:
     /// @brief Extracts the skeleton dofs from the jump matrix
     ///
     /// This means that a dof is considered to be on the skeleton iff at least one Lagrange
-    /// multiplier acts on it.
+    /// multiplier acts on it. This might lead to other results than the function that is
+    /// provided by \a gsIetiMapper.
     static gsSortedVector<index_t> getSkeletonDofs( const JumpMatrix& jm );
 
     /// Restricts the jump matrix to the given dofs (just takes the corresponding cols)
@@ -133,7 +134,12 @@ public:
     static OpPtr schurComplement( const SparseMatrix & mat, const std::vector<index_t> dofs );
 
     /// Combines \a restrictJumpMatrix and \a schurComplement
-    static std::pair<JumpMatrix,OpPtr> restrictToSkeleton( const JumpMatrix& jm, const SparseMatrix& mat );
+    static std::pair<JumpMatrix,OpPtr> restrictToSkeleton(
+        const JumpMatrix& jm,
+        const SparseMatrix& mat,
+        const std::vector<index_t>& dofs
+    )
+    { return std::pair<JumpMatrix,OpPtr>( restrictJumpMatrix( jm, dofs ), schurComplement( mat, dofs ) ); }
 
     /// @brief Returns the number of Lagrange multipliers.
     /// This requires that at least one subdomain was defined.
@@ -146,13 +152,12 @@ public:
 
     /// @brief This sets up the member vector \a localScaling based on multiplicity scaling
     ///
-    /// This requires that \a jumpMatrices have been populated first.
+    /// This requires that the subdomains have been defined first.
     void setupMultiplicityScaling();
 
     /// @brief This returns the preconditioner as \a gsLinearOperator
     ///
-    /// This requires that \a localSchurOps , \a jumpMatrices and \a localScaling have been populated
-    /// first.
+    /// This requires that the subdomains have been defined first.
     OpPtr preconditioner() const;
 
 public:

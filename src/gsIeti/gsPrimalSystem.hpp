@@ -17,20 +17,14 @@
 
 #include <gsSolver/gsMatrixOp.h>
 
-
-#define DEBUGVAR(a) gsInfo << "  " << #a << ": " << a << std::endl
-#define DEBUGMATRIX(a) gsInfo << "  " << #a << ": " << a.rows() << " x " << a.cols() << std::endl
-
-
 namespace gismo
 {
 
 template <class T>
-void gsPrimalSystem<T>::init(index_t primalProblemSize, index_t nrLagrangeMultipliers)
+void gsPrimalSystem<T>::init(index_t nPrimalDofs)
 {
-    this->m_jumpMatrix.resize(nrLagrangeMultipliers,primalProblemSize);
-    this->m_localMatrix.resize(primalProblemSize,primalProblemSize);
-    this->m_localRhs.setZero(primalProblemSize,1);
+    this->m_localMatrix.resize(nPrimalDofs,nPrimalDofs);
+    this->m_localRhs.setZero(nPrimalDofs,1);
 }
 
 template <class T>
@@ -79,27 +73,27 @@ template <class T>
 gsSparseMatrix<T> gsPrimalSystem<T>::primalBasis(
         typename gsLinearOperator<T>::Ptr localSaddlePointSolver,
         const std::vector<index_t>& primalConstraintsMapper,
-        index_t primalProblemSize
+        index_t nPrimalDofs
     )
 {
     const index_t nrPrimalConstraints = primalConstraintsMapper.size();
 
-    GISMO_ASSERT( nrPrimalConstraints<=primalProblemSize, "gsPrimalSystem::primalBasis: "
+    GISMO_ASSERT( nrPrimalConstraints<=nPrimalDofs, "gsPrimalSystem::primalBasis: "
         "There are more local constrains that there are constraints in total. "
         "Forgot to call gsPrimalSystem::init()?" );
 
     const index_t localDofs = localSaddlePointSolver->rows() - nrPrimalConstraints;
 
-    gsSparseMatrix<T> result( localDofs, primalProblemSize );
+    gsSparseMatrix<T> result( localDofs, nPrimalDofs );
 
-    if (primalProblemSize==0) return result;
+    if (nPrimalDofs==0) return result;
 
     gsMatrix<T> id;
     id.setZero(localDofs+nrPrimalConstraints,nrPrimalConstraints);
 
     for (index_t i=0; i<nrPrimalConstraints; ++i)
     {
-        GISMO_ASSERT( primalConstraintsMapper[i]>=0 && primalConstraintsMapper[i]<primalProblemSize,
+        GISMO_ASSERT( primalConstraintsMapper[i]>=0 && primalConstraintsMapper[i]<nPrimalDofs,
             "gsPrimalSystem::primalBasis: Invalid index.");
         id(localDofs+i,i) = 1;
     }
@@ -122,6 +116,9 @@ void gsPrimalSystem<T>::addContribution(
         gsSparseMatrix<T> primalBasis
     )
 {
+    if (m_jumpMatrix.rows()==0&&m_jumpMatrix.cols()==0)
+        m_jumpMatrix.resize(jumpMatrix.rows(),nPrimalDofs());
+
     GISMO_ASSERT( primalBasis.cols() == m_jumpMatrix.cols(),
         "gsPrimalSystem::incorporate: The given problem size does not match the stored primal problem size. "
         "Forgot to call gsPrimalSystem::init()?" );

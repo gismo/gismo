@@ -159,18 +159,19 @@ int main(int argc, char *argv[])
     // obtain a dof mapper and the Dirichlet data
     {
         typedef gsExprAssembler<>::space  space;
-        gsExprAssembler<> A;
-        space u = A.getSpace(mb);
+        gsExprAssembler<> assembler;
+        space u = assembler.getSpace(mb);
         bc.setGeoMap(mp);
         u.setup(bc, dirichlet::interpolation, 0);
-
-        ietiMapper.init( u.mapper(), u.fixedPart() );
+        ietiMapper.init( mb, u.mapper(), u.fixedPart() );
     }
 
-    // We tell the ieti mapper which primal constraints we want
-    // Of course, we can call several such functions to obtain more
-    // primal constraints
-    ietiMapper.cornersAsPrimalConstraints(mb);
+    // Compute the jump matrices
+    ietiMapper.computeJumpMatrices(true, true);
+
+    // We tell the ieti mapper which primal constraints we want; calling
+    // more than one such function is possible.
+    ietiMapper.cornersAsPrimals();
 
     gsIetiSystem<> ieti;
     ieti.reserve(nPatches+1);
@@ -179,15 +180,15 @@ int main(int argc, char *argv[])
     prec.reserve(nPatches);
 
     gsPrimalSystem<> primal;
-    primal.init(ietiMapper.nrPrimalConstraints(), ietiMapper.nrLagrangeMultipliers());
+    primal.init(ietiMapper.nPrimalDofs());
 
-    for (index_t i=0; i<nPatches; ++i)
+    for (index_t k=0; k<nPatches; ++k)
     {
         // We use the local variants of everything
         gsBoundaryConditions<> bc_local;
-        bc.getConditionsForPatch(i,bc_local);
-        gsMultiPatch<> mp_local = mp[i];
-        gsMultiBasis<> mb_local = mb[i];
+        bc.getConditionsForPatch(k,bc_local);
+        gsMultiPatch<> mp_local = mp[k];
+        gsMultiBasis<> mb_local = mb[k];
 
         // The usual stuff for the expression assembler
         typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -217,7 +218,7 @@ int main(int argc, char *argv[])
         // Dirichlet boundary just with a corner or that a 3d-patch touches the
         // Dirichlet boundary with a corner or an edge. These cases are not
         // covered by bc.getConditionsForPatch
-        ietiMapper.initFeSpace(u,i);
+        ietiMapper.initFeSpace(u,k);
 
         // Set the source term
         variable ff = assembler.getCoeff(f, G);
@@ -233,7 +234,7 @@ int main(int argc, char *argv[])
         assembler.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
 
         // Fetch data
-        gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(i);
+        gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
         gsSparseMatrix<>                 localMatrix = assembler.matrix();
         gsMatrix<>                       localRhs    = assembler.rhs();
 
@@ -241,15 +242,16 @@ int main(int argc, char *argv[])
         prec.addSubdomain(
             gsScaledDirichletPrec<>::restrictToSkeleton(
                 jumpMatrix,
-                localMatrix
+                localMatrix,
+                ietiMapper.getSkeletonDofs(k)
             )
         );
 
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
         // so it must be called after prec.addSubdomain().
         primal.handleConstraints(
-            ietiMapper.primalConstraints(i),
-            ietiMapper.primalConstraintsMapper(i),
+            ietiMapper.primalConstraints(k),
+            ietiMapper.primalConstraintsMapper(k),
             jumpMatrix,
             localMatrix,
             localRhs
@@ -264,7 +266,7 @@ int main(int argc, char *argv[])
     }
 
     // Add the primal problem if there are primal constraints
-    if (ietiMapper.nrPrimalConstraints()>0)
+    if (ietiMapper.nPrimalDofs()>0)
         ieti.addSubdomain(
             primal.jumpMatrix().moveToPtr(),
             makeMatrixOp(primal.localMatrix().moveToPtr()),

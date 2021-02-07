@@ -72,9 +72,8 @@ public:
 
     /// @brief Initialize the object
     ///
-    /// @param primalProblemSize       Number of primal constraints in total
-    /// @param nrLagrangeMultipliers   Number of Lagrange multipliers (=number of rows of jump matrices)
-    void init(index_t primalProblemSize, index_t nrLagrangeMultipliers);
+    /// @param nPrimalDofs       Number of primal constraints in total
+    void init(index_t nPrimalDofs);
 
     /// @brief Incorporates the given constraints in the local system
     ///
@@ -117,12 +116,12 @@ public:
     /// @param  localSaddlePointSolver    Solver that realizes \f$ \tilde{A}^{-1} \f$
     /// @param  primalConstraintsMapper   Vector of indices that contain the global indices for each local
     ///                                   constraint or, equivalently, primal dof
-    /// @param  primalProblemSize         The total number of primal dofs
+    /// @param  nPrimalDofs         The total number of primal dofs
     ///
     static gsSparseMatrix<T> primalBasis(
         typename gsLinearOperator<T>::Ptr localSaddlePointSolver,
         const std::vector<index_t>& primalConstraintsMapper,
-        index_t primalProblemSize
+        index_t nPrimalDofs
     );
 
     /// @brief Adds contributions for a patch to the data hold in the class
@@ -158,7 +157,7 @@ public:
     {
         incorporateConstraints(primalConstraints,jumpMatrix,localMatrix,localRhs);
         addContribution(jumpMatrix,localMatrix,localRhs,
-            primalBasis(makeSparseLUSolver(localMatrix),primalConstraintsMapper,m_jumpMatrix.cols())
+            primalBasis(makeSparseLUSolver(localMatrix),primalConstraintsMapper,nPrimalDofs())
         );
     }
 
@@ -169,16 +168,19 @@ public:
     std::vector< gsMatrix<T> > distributePrimalSolution( std::vector< gsMatrix<T> > sol );
 
     /// @brief Returns the jump matrix for the primal problem
-    gsSparseMatrix<T, RowMajor>&          jumpMatrix()        { return m_jumpMatrix;   }
-    const gsSparseMatrix<T, RowMajor>&    jumpMatrix() const  { return m_jumpMatrix;   }
+    gsSparseMatrix<T, RowMajor>&          jumpMatrix()        { return m_jumpMatrix;         }
+    const gsSparseMatrix<T, RowMajor>&    jumpMatrix() const  { return m_jumpMatrix;         }
 
     /// @brief Returns the local matrix for the primal problem
-    gsSparseMatrix<T>&                    localMatrix()       { return m_localMatrix;  }
-    const gsSparseMatrix<T>&              localMatrix() const { return m_localMatrix;  }
+    gsSparseMatrix<T>&                    localMatrix()       { return m_localMatrix;        }
+    const gsSparseMatrix<T>&              localMatrix() const { return m_localMatrix;        }
 
     /// @brief Returns the right-hand-side for the primal problem
-    gsMatrix<T>&                          localRhs()          { return m_localRhs;     }
-    const gsMatrix<T>&                    localRhs() const    { return m_localRhs;     }
+    gsMatrix<T>&                          localRhs()          { return m_localRhs;           }
+    const gsMatrix<T>&                    localRhs() const    { return m_localRhs;           }
+
+    /// @brief Returs the size of the primal problem (number of primal dofs)
+    index_t nPrimalDofs() const                               { return m_localMatrix.rows(); }
 
 private:
     gsSparseMatrix<T, RowMajor>      m_jumpMatrix;
