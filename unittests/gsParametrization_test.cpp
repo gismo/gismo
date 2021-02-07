@@ -67,7 +67,7 @@ SUITE(gsParametrization_test)
 
 	const real_t eps;
 
-	gsMesh<real_t>::uPtr mesh;
+	//gsMesh<real_t>::uPtr mesh;
 	
 	inputs() : eps(1e-5)
 	{
@@ -79,6 +79,10 @@ SUITE(gsParametrization_test)
 	    fd_v1.template getId<gsMatrix<real_t> >(0, paramsV1);
 	    fd_v1.template getId<gsMatrix<real_t> >(1, verticesV1);
 
+	    // TODO: Uncomment the following two lines and the last
+	    // test starts failing, although it uses its own filedata
+	    // and mesh. Why?
+
 	    // gsFileData<real_t> fd_mesh("parametrization/powerplant-mesh.stl");
 	    // mesh = fd_mesh.getFirst<gsMesh<real_t> >();
 
@@ -89,14 +93,14 @@ SUITE(gsParametrization_test)
     TEST_FIXTURE(inputs, gsPeriodicParametrizationOverlap)
     {
 	// TODO: When I put mesh into inputs, strange things start happening.
-	gsFileData<real_t> fd_mesh("parametrization/powerplant-mesh.stl");
-	gsMesh<real_t>::uPtr mesh = fd_mesh.getFirst<gsMesh<real_t> >();
+	gsFileData<real_t> fd_mesh1("parametrization/powerplant-mesh.stl");
+	gsMesh<real_t>::uPtr mesh1 = fd_mesh1.getFirst<gsMesh<real_t> >();
 
 	gsFileData<real_t> fd_over("parametrization/powerplant-overlap.stl");
 	gsMesh<real_t>::uPtr over = fd_over.getFirst<gsMesh<real_t> >();
 
 	// Construct the parametrization.
-	gsPeriodicParametrizationOverlap<real_t> param(*mesh,
+	gsPeriodicParametrizationOverlap<real_t> param(*mesh1,
 						       verticesV0, paramsV0,
 						       verticesV1, paramsV1,
 						       *over, options);
@@ -158,15 +162,21 @@ SUITE(gsParametrization_test)
 
     TEST_FIXTURE(inputs, gsPeriodicParametrizationStitch)
     {
-	gsFileData<real_t> fd_mesh("parametrization/powerplant-mesh.stl");
-	gsMesh<real_t>::uPtr mesh = fd_mesh.getFirst<gsMesh<real_t> >();
+	// TODO: If any of the following two gsFileDatas gets removed,
+	// ./bin/unittests -R gsParametrization_test
+	// leads to a fail in this test.
+	gsFileData<real_t> fd_v0b("parametrization/powerplant-bottom.xml");
+	gsFileData<real_t> fd_v1b("parametrization/powerplant-top.xml");
+
+	gsFileData<real_t> fd_mesh2("parametrization/powerplant-mesh2.stl");
+	gsMesh<real_t>::uPtr mesh2 = fd_mesh2.getFirst<gsMesh<real_t> >();
 
 	gsMatrix<real_t> stitch;
 	gsFileData<real_t> fd_stitch("parametrization/powerplant-stitch.xml");
 	fd_stitch.getFirst<gsMatrix<real_t> >(stitch);
 
 	// Construct the parametrization.
-	gsPeriodicParametrizationStitch<real_t> param(*mesh,
+	gsPeriodicParametrizationStitch<real_t> param(*mesh2,
 						      verticesV0, paramsV0,
 						      verticesV1, paramsV1,
 						      stitch, options);
