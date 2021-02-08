@@ -2470,7 +2470,8 @@ public:
     index_t cols() const
     {   //bug: Should return the column size of each BLOCK contained
         // return _u.dim() * _u.data().actives.rows() * _u.data().dim.first;
-        return _u.data().dim.first;
+        //return _u.data().dim.first;
+        return _u.source().domainDim();
     }
 
     index_t cardinality_impl() const
