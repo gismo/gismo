@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    gsInfo << "Run multiGrid_example with options:\n" << opt << std::endl;
+    gsInfo << "Run multiGrid_example with options:\n" << opt << "\n";
 
     /******************* Define geometry ********************/
 
