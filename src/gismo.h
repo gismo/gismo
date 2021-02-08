@@ -167,7 +167,7 @@ namespace internal
 #include <gsSolver/gsLanczosMatrix.h>
 
 /* ----------- Ieti ----------- */
-//#include <gsIeti/gsIetiMapper.h>
+#include <gsIeti/gsIetiMapper.h>
 #include <gsIeti/gsIetiSystem.h>
 #include <gsIeti/gsPrimalSystem.h>
 #include <gsIeti/gsScaledDirichletPrec.h>
