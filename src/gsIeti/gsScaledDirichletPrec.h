@@ -130,7 +130,15 @@ public:
     /// Restricts the jump matrix to the given dofs (just takes the corresponding cols)
     static JumpMatrix restrictJumpMatrix( const JumpMatrix& jm, const std::vector<index_t> dofs );
 
+    /// Computes the matrix blocks with respect to the given dofs
+    ///
+    /// If 0 corresponds to the list of dofs and 1 remains to the others, this function returns
+    /// the blocks A00, A10, A01, A11 of A
+    static std::vector<SparseMatrix> matrixBlocks( const SparseMatrix & mat, const std::vector<index_t> dofs );
+
     /// Computes the Schur complement with respect to the given dofs
+    ///
+    /// Uses sparse Cholesky solver
     static OpPtr schurComplement( const SparseMatrix & mat, const std::vector<index_t> dofs );
 
     /// Combines \a restrictJumpMatrix and \a schurComplement

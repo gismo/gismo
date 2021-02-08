@@ -143,16 +143,16 @@ void gsIetiMapper<T>::cornersAsPrimals()
     std::sort(corners.begin(), corners.end());
 
     // Create data
-    index_t nCorners=0, lastIndex=-1;
+    index_t lastIndex=-1;
     const index_t sz = corners.size();
     for (index_t i=0; i<sz; ++i)
     {
         if (lastIndex!=corners[i].globalIndex)
         {
             lastIndex = corners[i].globalIndex;
-            ++nCorners;
+            ++m_nPrimalDofs;
         }
-        const index_t cornerIndex = nCorners - 1;
+        const index_t cornerIndex = m_nPrimalDofs - 1;
         const index_t patch       = corners[i].patch;
         const index_t localIndex  = corners[i].localIndex;
 
@@ -163,7 +163,6 @@ void gsIetiMapper<T>::cornersAsPrimals()
         m_primalDofIndices[patch].push_back(cornerIndex);
     }
 
-    m_nPrimalDofs += nCorners;
 }
 
 template <class T>

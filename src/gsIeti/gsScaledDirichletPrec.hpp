@@ -63,8 +63,8 @@ gsScaledDirichletPrec<T>::restrictJumpMatrix( const JumpMatrix& jm, const std::v
 }
 
 template <class T>
-typename gsScaledDirichletPrec<T>::OpPtr
-gsScaledDirichletPrec<T>::schurComplement( const SparseMatrix& mat, const std::vector<index_t> dofs )
+std::vector< gsSparseMatrix<T> >
+gsScaledDirichletPrec<T>::matrixBlocks( const SparseMatrix& mat, const std::vector<index_t> dofs )
 {
     gsVector<index_t> reverse;
     reverse.setZero( mat.cols() );
@@ -118,21 +118,32 @@ gsScaledDirichletPrec<T>::schurComplement( const SparseMatrix& mat, const std::v
             }
         }
 
-    gsSparseMatrix<T> A00(           dofs.size(),            dofs.size());
-    A00.setFrom(se_A00);
-    gsSparseMatrix<T> A10(mat.rows()-dofs.size(),            dofs.size());
-    A10.setFrom(se_A10);
-    gsSparseMatrix<T> A01(           dofs.size(), mat.rows()-dofs.size());
-    A01.setFrom(se_A01);
-    gsSparseMatrix<T> A11(mat.rows()-dofs.size(), mat.rows()-dofs.size());
-    A11.setFrom(se_A11);
+    std::vector<SparseMatrix> result;
 
+    result.push_back(SparseMatrix(           dofs.size(),            dofs.size()));
+    result[0].setFrom(se_A00);
+    result.push_back(SparseMatrix(mat.rows()-dofs.size(),            dofs.size()));
+    result[1].setFrom(se_A10);
+    result.push_back(SparseMatrix(           dofs.size(), mat.rows()-dofs.size()));
+    result[2].setFrom(se_A01);
+    result.push_back(SparseMatrix(mat.rows()-dofs.size(), mat.rows()-dofs.size()));
+    result[3].setFrom(se_A11);
+
+    return result;
+
+}
+
+template <class T>
+typename gsScaledDirichletPrec<T>::OpPtr
+gsScaledDirichletPrec<T>::schurComplement( const SparseMatrix& mat, const std::vector<index_t> dofs )
+{
+    std::vector<SparseMatrix> result = matrixBlocks(mat, dofs);
     return gsSumOp<T>::make(
-        makeMatrixOp(A00.moveToPtr()),
+        makeMatrixOp(result[0].moveToPtr()),
         gsProductOp<T>::make(
-            makeMatrixOp(A10.moveToPtr()),
-            makeSparseCholeskySolver(A11),
-            makeMatrixOp(A01.moveToPtr())
+            makeMatrixOp(result[1].moveToPtr()),
+            makeSparseCholeskySolver(result[3]),
+            makeMatrixOp(result[2].moveToPtr())
         )
     );
 }
@@ -184,7 +195,7 @@ gsScaledDirichletPrec<T>::preconditioner() const
         const index_t sz = m_localSchurOps[k]->rows();
         gsSparseMatrix<T> scaling(sz,sz);
         for (index_t i=0; i<sz; ++i)
-            scaling(i,i) = 1./m_localScaling[k](i,0);
+            scaling(i,i) = (T)1/m_localScaling[k](i,0);
         scalingOps.push_back(makeMatrixOp(scaling.moveToPtr()));
     }
 
