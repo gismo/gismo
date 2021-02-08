@@ -94,12 +94,12 @@ template<class T>
 gsMatrix<T> gsIetiSystem<T>::rhsForSchurComplement() const
 {
     setupSparseLUSolvers();
-    gsMatrix<T> result;
+    Matrix result;
     result.setZero( this->numberOfLagrangeMultipliers(), this->m_localRhs[0].cols());
     const index_t numPatches = this->m_jumpMatrices.size();
     for (index_t i=0; i<numPatches; ++i)
     {
-        gsMatrix<T> tmp;
+        Matrix tmp;
         this->m_localSolverOps[i]->apply( this->m_localRhs[i], tmp );
         result += *(this->m_jumpMatrices[i]) * tmp;
     }
@@ -107,12 +107,12 @@ gsMatrix<T> gsIetiSystem<T>::rhsForSchurComplement() const
 }
 
 template<class T>
-std::vector< gsMatrix<T> > gsIetiSystem<T>::constructSolutionFromLagrangeMultipliers(const gsMatrix<T>& multipliers) const
+std::vector< gsMatrix<T> > gsIetiSystem<T>::constructSolutionFromLagrangeMultipliers(const Matrix& multipliers) const
 {
     setupSparseLUSolvers();
 
     const index_t numPatches = this->m_jumpMatrices.size();
-    std::vector< gsMatrix<T> > result;
+    std::vector<Matrix> result;
     result.resize(numPatches);
     for (index_t i=0; i<numPatches; ++i)
     {

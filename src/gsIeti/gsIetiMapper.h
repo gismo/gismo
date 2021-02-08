@@ -67,7 +67,7 @@ public:
     gsIetiMapper(
         const gsMultiBasis<T>& multiBasis,
         gsDofMapper dofMapperGlobal,
-        const gsMatrix<T>& fixedPart
+        const Matrix& fixedPart
     )
     { init(multiBasis, dofMapperGlobal, fixedPart); }
 
@@ -81,7 +81,7 @@ public:
     void init(
         const gsMultiBasis<T>& multiBasis,
         gsDofMapper dofMapperGlobal,
-        const gsMatrix<T>& fixedPart
+        const Matrix& fixedPart
     );
 
     /// @brief Apply the required changes to a space object of the expression assembler
@@ -143,7 +143,7 @@ public:
     const std::vector<SparseVector> & primalConstraints(index_t k) const   { return m_primalConstraints[k];       }
 
     /// @brief Returns the indices of the primal dofs that are associated to the primal constraints for the given patch
-    const std::vector<index_t> & primalConstraintsMapper(index_t k) const  { return m_primalConstraintsMapper[k]; }
+    const std::vector<index_t> & primalDofIndices(index_t k) const         { return m_primalDofIndices[k];        }
 
     /// @brief Returns the jump matrix \f$ B_k \f$ for the given patch
     const JumpMatrix& jumpMatrix(index_t k) const                          { return m_jumpMatrices[k];            }
@@ -165,7 +165,7 @@ private:
     std::vector<JumpMatrix>                       m_jumpMatrices;
     index_t                                       m_nPrimalDofs;
     std::vector< std::vector<SparseVector> >      m_primalConstraints;
-    std::vector< std::vector<index_t> >           m_primalConstraintsMapper;
+    std::vector< std::vector<index_t> >           m_primalDofIndices;
     unsigned                                      m_status;
 };
 

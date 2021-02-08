@@ -34,7 +34,7 @@ template <class T>
 void gsIetiMapper<T>::init(
         const gsMultiBasis<T>& multiBasis,
         gsDofMapper dofMapperGlobal,
-        const gsMatrix<T>& fixedPart
+        const Matrix& fixedPart
     )
 {
     const index_t nPatches = dofMapperGlobal.numPatches();
@@ -48,8 +48,8 @@ void gsIetiMapper<T>::init(
     m_nPrimalDofs = 0;
     m_primalConstraints.clear();
     m_primalConstraints.resize(nPatches);
-    m_primalConstraintsMapper.clear();
-    m_primalConstraintsMapper.resize(nPatches);
+    m_primalDofIndices.clear();
+    m_primalDofIndices.resize(nPatches);
     m_status = 1;
 
     for (index_t k=0; k<nPatches; ++k)
@@ -160,7 +160,7 @@ void gsIetiMapper<T>::cornersAsPrimals()
         constr[localIndex] = 1;
 
         m_primalConstraints[patch].push_back(give(constr));
-        m_primalConstraintsMapper[patch].push_back(cornerIndex);
+        m_primalDofIndices[patch].push_back(cornerIndex);
     }
 
     m_nPrimalDofs += nCorners;
@@ -176,7 +176,7 @@ void gsIetiMapper<T>::customPrimalConstraints(std::vector< std::pair<index_t,Spa
     {
         const index_t patch = data[i].first;
         m_primalConstraints[patch].push_back( give(data[i].second) );
-        m_primalConstraintsMapper[patch].push_back(m_nPrimalDofs);
+        m_primalDofIndices[patch].push_back(m_nPrimalDofs);
     }
     ++m_nPrimalDofs;
 }

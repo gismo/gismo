@@ -26,11 +26,13 @@ namespace gismo
  *  The class gsIetiSystem does not know anything about the primal problem. For
  *  that class the primal problem is just another subdomain.
  *
- *  The class at hand allows to handle primal degrees of freedom. It is purely
+ *  The class at hand allows to handle primal degrees of freedom (dofs). It is purely
  *  algebraic and assums that the caller provides the constraint matrix C
  *  (or, more precisely, its individual rows) and a mapping (as vector of
- *  vectors of indices) that allows to obtain the global index for a primal
- *  dof from the corresponding local index.
+ *  indices) that tells the class to which primal dof the corresponding
+ *  constraint belongs. So, for example, if a primal dof is a vertex value,
+ *  than that vertex gets one identifying index identifying it as one single
+ *  primal dof, while there is a constraint for each patch the corner belongs to.
  *
  *  It is assumed that the class recieves the matrix \f$ A \f$ and the member
  *  \a incorporateConstraints constructs the local saddle point matrix:
@@ -68,6 +70,13 @@ namespace gismo
 template< typename T >
 class gsPrimalSystem
 {
+private:
+    typedef gsLinearOperator<T>               Op;
+    typedef memory::shared_ptr<Op>            OpPtr;
+    typedef gsSparseMatrix<T>                 SparseMatrix;
+    typedef gsSparseMatrix<T,RowMajor>        JumpMatrix;
+    typedef gsSparseVector<T>                 SparseVector;
+    typedef gsMatrix<T>                       Matrix;
 public:
 
     /// @brief Initialize the object
@@ -105,22 +114,22 @@ public:
     ///  \f]
     ///
     static void incorporateConstraints(
-        const std::vector<gsSparseVector<T>>& primalConstraints,
-        gsSparseMatrix<T,RowMajor>& jumpMatrix,
-        gsSparseMatrix<T>& localMatrix,
-        gsMatrix<T>& localRhs
+        const std::vector<SparseVector>& primalConstraints,
+        JumpMatrix& jumpMatrix,
+        SparseMatrix& localMatrix,
+        Matrix& localRhs
     );
 
     /// @brief Returs the matrix representation of the energy minimizing primal basis
     ///
     /// @param  localSaddlePointSolver    Solver that realizes \f$ \tilde{A}^{-1} \f$
-    /// @param  primalConstraintsMapper   Vector of indices that contain the global indices for each local
-    ///                                   constraint or, equivalently, primal dof
-    /// @param  nPrimalDofs         The total number of primal dofs
+    /// @param  primalDofIndices          Vector, that contains for every primal constraint the index
+    ///                                   of the respective primal dof
+    /// @param  nPrimalDofs               The total number of primal dofs
     ///
     static gsSparseMatrix<T> primalBasis(
-        typename gsLinearOperator<T>::Ptr localSaddlePointSolver,
-        const std::vector<index_t>& primalConstraintsMapper,
+        OpPtr localSaddlePointSolver,
+        const std::vector<index_t>& primalDofIndices,
         index_t nPrimalDofs
     );
 
@@ -132,32 +141,32 @@ public:
     /// @param primalBasis       Matrix representation of the primal basis
     ///
     void addContribution(
-        const gsSparseMatrix<T,RowMajor>& jumpMatrix,
-        const gsSparseMatrix<T>& localMatrix,
-        const gsMatrix<T>& localRhs,
-        gsSparseMatrix<T> primalBasis
+        const JumpMatrix& jumpMatrix,
+        const SparseMatrix& localMatrix,
+        const Matrix& localRhs,
+        SparseMatrix primalBasis
     );
 
     /// @brief Convenience function for handling the primal constraints
 
     /// @param[in]     primalConstraints        Primal constraints; the given vectors make up the matrix C
-    /// @param[in]     primalConstraintsMapper  Vector of indices that contain the global indices for each local
-    ///                                         constraint or, equivalently, primal dof
+    /// @param[in]     primalDofIndices         Vector, that contains for every primal constraint the index
+    ///                                         of the respective primal dof
     /// @param[in,out] jumpMatrix               Jump matrix B (in&out)
     /// @param[in,out] localMatrix              Local matrix A (in&out)
     /// @param[in,out] localRhs                 Local right-hand-side f (in&out)
     ///
     void handleConstraints(
-        const std::vector< gsSparseVector<T> >& primalConstraints,
-        const std::vector<index_t>& primalConstraintsMapper,
-        gsSparseMatrix<T,RowMajor>& jumpMatrix,
-        gsSparseMatrix<T>& localMatrix,
-        gsMatrix<T>& localRhs
+        const std::vector<SparseVector>& primalConstraints,
+        const std::vector<index_t>& primalDofIndices,
+        JumpMatrix& jumpMatrix,
+        SparseMatrix& localMatrix,
+        Matrix& localRhs
     )
     {
         incorporateConstraints(primalConstraints,jumpMatrix,localMatrix,localRhs);
         addContribution(jumpMatrix,localMatrix,localRhs,
-            primalBasis(makeSparseLUSolver(localMatrix),primalConstraintsMapper,nPrimalDofs())
+            primalBasis(makeSparseLUSolver(localMatrix),primalDofIndices,nPrimalDofs())
         );
     }
 
@@ -165,28 +174,28 @@ public:
     ///
     /// @param  sol  The solution, first for the N patches, followed by the contribution for the primal dofs
     /// @returns     The solution for the N patches
-    std::vector< gsMatrix<T> > distributePrimalSolution( std::vector< gsMatrix<T> > sol );
+    std::vector<Matrix> distributePrimalSolution( std::vector<Matrix> sol );
 
     /// @brief Returns the jump matrix for the primal problem
-    gsSparseMatrix<T, RowMajor>&          jumpMatrix()        { return m_jumpMatrix;         }
-    const gsSparseMatrix<T, RowMajor>&    jumpMatrix() const  { return m_jumpMatrix;         }
+    JumpMatrix&                           jumpMatrix()        { return m_jumpMatrix;         }
+    const JumpMatrix&                     jumpMatrix() const  { return m_jumpMatrix;         }
 
     /// @brief Returns the local matrix for the primal problem
-    gsSparseMatrix<T>&                    localMatrix()       { return m_localMatrix;        }
-    const gsSparseMatrix<T>&              localMatrix() const { return m_localMatrix;        }
+    SparseMatrix&                         localMatrix()       { return m_localMatrix;        }
+    const SparseMatrix&                   localMatrix() const { return m_localMatrix;        }
 
     /// @brief Returns the right-hand-side for the primal problem
-    gsMatrix<T>&                          localRhs()          { return m_localRhs;           }
-    const gsMatrix<T>&                    localRhs() const    { return m_localRhs;           }
+    Matrix&                               localRhs()          { return m_localRhs;           }
+    const Matrix&                         localRhs() const    { return m_localRhs;           }
 
     /// @brief Returs the size of the primal problem (number of primal dofs)
     index_t nPrimalDofs() const                               { return m_localMatrix.rows(); }
 
 private:
-    gsSparseMatrix<T, RowMajor>      m_jumpMatrix;
-    gsSparseMatrix<T>                m_localMatrix;
-    gsMatrix<T>                      m_localRhs;
-    std::vector< gsSparseMatrix<T> > m_primalBases;
+    JumpMatrix                  m_jumpMatrix;
+    SparseMatrix                m_localMatrix;
+    Matrix                      m_localRhs;
+    std::vector<SparseMatrix>   m_primalBases;
 };
 
 } // namespace gismo

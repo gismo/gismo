@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
         // so it must be called after prec.addSubdomain().
         primal.handleConstraints(
             ietiMapper.primalConstraints(k),
-            ietiMapper.primalConstraintsMapper(k),
+            ietiMapper.primalDofIndices(k),
             jumpMatrix,
             localMatrix,
             localRhs

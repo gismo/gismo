@@ -29,10 +29,10 @@ void gsPrimalSystem<T>::init(index_t nPrimalDofs)
 
 template <class T>
 void gsPrimalSystem<T>::incorporateConstraints(
-        const std::vector<gsSparseVector<T>>& primalConstraints,
-        gsSparseMatrix<T,RowMajor>& jumpMatrix,
-        gsSparseMatrix<T>& localMatrix,
-        gsMatrix<T>& localRhs
+        const std::vector<SparseVector>& primalConstraints,
+        JumpMatrix& jumpMatrix,
+        SparseMatrix& localMatrix,
+        Matrix& localRhs
     )
 {
     const index_t localDofs = localMatrix.rows();
@@ -46,7 +46,7 @@ void gsPrimalSystem<T>::incorporateConstraints(
         //localMatrix.block(localDofs+i,0,1,localDofs) = primalConstraints[i];
         //localMatrix.block(0,localDofs+i,localDofs,1) = primalConstraints[i].transpose();
         for (index_t j=0; j<primalConstraints[i].outerSize(); ++j)
-            for (typename gsSparseVector<T>::InnerIterator it(primalConstraints[i], j); it; ++it)
+            for (typename SparseVector::InnerIterator it(primalConstraints[i], j); it; ++it)
             {
                 localMatrix(it.row(), localDofs+i) = it.value();
                 localMatrix(localDofs+i, it.row()) = it.value();
@@ -70,13 +70,14 @@ void gsPrimalSystem<T>::incorporateConstraints(
 }
 
 template <class T>
-gsSparseMatrix<T> gsPrimalSystem<T>::primalBasis(
-        typename gsLinearOperator<T>::Ptr localSaddlePointSolver,
-        const std::vector<index_t>& primalConstraintsMapper,
+typename gsPrimalSystem<T>::SparseMatrix
+gsPrimalSystem<T>::primalBasis(
+        OpPtr localSaddlePointSolver,
+        const std::vector<index_t>& primalDofIndices,
         index_t nPrimalDofs
     )
 {
-    const index_t nrPrimalConstraints = primalConstraintsMapper.size();
+    const index_t nrPrimalConstraints = primalDofIndices.size();
 
     GISMO_ASSERT( nrPrimalConstraints<=nPrimalDofs, "gsPrimalSystem::primalBasis: "
         "There are more local constrains that there are constraints in total. "
@@ -84,36 +85,36 @@ gsSparseMatrix<T> gsPrimalSystem<T>::primalBasis(
 
     const index_t localDofs = localSaddlePointSolver->rows() - nrPrimalConstraints;
 
-    gsSparseMatrix<T> result( localDofs, nPrimalDofs );
+    SparseMatrix result( localDofs, nPrimalDofs );
 
     if (nPrimalDofs==0) return result;
 
-    gsMatrix<T> id;
+    Matrix id;
     id.setZero(localDofs+nrPrimalConstraints,nrPrimalConstraints);
 
     for (index_t i=0; i<nrPrimalConstraints; ++i)
     {
-        GISMO_ASSERT( primalConstraintsMapper[i]>=0 && primalConstraintsMapper[i]<nPrimalDofs,
+        GISMO_ASSERT( primalDofIndices[i]>=0 && primalDofIndices[i]<nPrimalDofs,
             "gsPrimalSystem::primalBasis: Invalid index.");
         id(localDofs+i,i) = 1;
     }
 
-    gsMatrix<T> tmp;
+    Matrix tmp;
     localSaddlePointSolver->apply(id, tmp);
 
     for (index_t i=0; i<localDofs; ++i)
         for (index_t j=0; j<nrPrimalConstraints; ++j)
-            result(i,primalConstraintsMapper[j]) = tmp(i,j);
+            result(i,primalDofIndices[j]) = tmp(i,j);
 
     return result;
 }
 
 template <class T>
 void gsPrimalSystem<T>::addContribution(
-        const gsSparseMatrix<T,RowMajor>& jumpMatrix,
-        const gsSparseMatrix<T>& localMatrix,
-        const gsMatrix<T>& localRhs,
-        gsSparseMatrix<T> primalBasis
+        const JumpMatrix& jumpMatrix,
+        const SparseMatrix& localMatrix,
+        const Matrix& localRhs,
+        SparseMatrix primalBasis
     )
 {
     if (m_jumpMatrix.rows()==0&&m_jumpMatrix.cols()==0)
@@ -130,7 +131,8 @@ void gsPrimalSystem<T>::addContribution(
 }
 
 template <class T>
-std::vector< gsMatrix<T> > gsPrimalSystem<T>::distributePrimalSolution( std::vector< gsMatrix<T> > sol )
+std::vector<typename gsPrimalSystem<T>::Matrix>
+gsPrimalSystem<T>::distributePrimalSolution( std::vector<Matrix> sol )
 {
     const index_t sz = this->m_primalBases.size();
 
