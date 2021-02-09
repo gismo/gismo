@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <gsIeti/gsIetiMapper.h>
 #include <gsCore/gsDofMapper.h>
 #include <gsNurbs/gsKnotVector.h>
 #include <gsUtils/gsCombinatorics.h>

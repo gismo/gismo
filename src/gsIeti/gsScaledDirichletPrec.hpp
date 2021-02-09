@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include <gsIeti/gsScaledDirichletPrec.h>
-
 #include <gsSolver/gsBlockOp.h>
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsSumOp.h>

@@ -28,34 +28,37 @@ namespace gismo
  *            \tilde A_1 &            &             &            &  \tilde B_1^\top \\
  *                       & \tilde A_2 &             &            &  \tilde B_2^\top \\
  *                       &            &   \ddots    &            &  \vdots   \\
- *                       &            &             & \tilde A_K &  \tilde B_K^\top \\
- *            \tilde B_1 & \tilde B_2 &   \cdots    & \tilde B_K &     0     \\
+ *                       &            &             & \tilde A_N &  \tilde B_N^\top \\
+ *            \tilde B_1 & \tilde B_2 &   \cdots    & \tilde B_N &     0     \\
  *       \end{pmatrix}
  *  \f]
  *
  *  The corresponding Schur complement is
  *
  *  \f[
- *       \sum_{k=1}^K   \tilde B_k   \tilde A_k^{-1}  \tilde B_k^\top
+ *       \sum_{i=k}^N   \tilde B_k   \tilde A_k^{-1}  \tilde B_k^\top
  *  \f]
  *
  *  For a standard IETI-dp setup, the matrices \f$ \tilde A_k \f$ and \f$ \tilde B_k \f$ are obtained
- *  from the original matrices \f$ A_k \f$ and \f$ B_k \f$ by eliminating the primal dofs (or by
- *  incorporating a constraint that sets them to zero).
+ *  from the original matrices \f$ A_k \f$ and \f$ B_k \f$ by eliminating the primal dofs or by
+ *  incorporating a constraint that sets them to zero.
  *
- *  The matrices \f$ \tilde A_k \f$ are stored in the vector \a localMatrixOps . To allow certain
- *  matrix-free variants, they are stored in form of a vector of \a gsLinearOperator s.
+ *  This class does not have any special treatment for the primal problem of a IETI-dp solver.
+ *  Thus, the primal problem is just another subdomain and in case of IETI-dp, we have N=K+1, where
+ *  K is the number of patches.
  *
- *  The inverses \f$ \tilde A_k^{-1} \f$ are stored in the vector \a localSolverOps . As far as the
- *  matrices \f$ \tilde A_k\f$ are stored as \a gsMatrixOp containing \a gsSparseMatrix , LU solvers can
- *  be automatically created on the fly if needed. Otherwise or if the caller wants other
+ *  The matrices \f$ \tilde A_k \f$ are stored in a vector that can be accessed (read and write)
+ *  via \a localMatrixOp . To allow certain matrix-free variants, each of them is stored as
+ *  \a gsLinearOperator .
+ *
+ *  The inverses \f$ \tilde A_k^{-1} \f$ are stored as vector accessable via \a localSolverOp . If the
+ *  matrices \f$ \tilde A_k \f$ are stored as \a gsMatrixOp containing \a gsSparseMatrix , LU solvers
+ *  will be automatically created on the fly if needed. Otherwise or if the caller wants other
  *  local solvers (like inexact ones), the vector can be populated by the caller.
  *
- *  The matrices \f$ \tilde B_k \f$ are stored in the vector \a jumpMatrices .
+ *  The matrices \f$ \tilde B_k \f$ are stored in a vector accessible via \a jumpMatrix .
  *
- *  The right-hand sides are stored in the vector \a localRhs .
- *
- *  @note This class does not have any special treatment for the primal problem of a IETI-dp solver.
+ *  The right-hand sides are stored in a vector accessible via \a localRhs .
  *
  *  @ingroup Solver
 **/
@@ -148,12 +151,12 @@ public:
 
 
 private:
-    void setupSparseLUSolvers() const;
+    void setupSparseLUSolvers() const;                ///< Used to setup solvers if needed and not provided by user
 
-    std::vector<JumpMatrixPtr>  m_jumpMatrices;
-    std::vector<OpPtr>          m_localMatrixOps;
-    std::vector<Matrix>         m_localRhs;
-    mutable std::vector<OpPtr>  m_localSolverOps;
+    std::vector<JumpMatrixPtr>  m_jumpMatrices;       ///< Stores the jump matrices
+    std::vector<OpPtr>          m_localMatrixOps;     ///< Stores the local matrix ops \f$ \tilde A_j \f$
+    std::vector<Matrix>         m_localRhs;           ///< Stores the local right-hand-sides
+    mutable std::vector<OpPtr>  m_localSolverOps;     ///< Stores the local solvers
 };
 
 } // namespace gismo

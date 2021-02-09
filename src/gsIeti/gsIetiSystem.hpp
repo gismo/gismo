@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <gsIeti/gsIetiSystem.h>
 #include <gsSolver/gsBlockOp.h>
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsSumOp.h>

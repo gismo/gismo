@@ -192,10 +192,10 @@ public:
     index_t nPrimalDofs() const                               { return m_localMatrix.rows(); }
 
 private:
-    JumpMatrix                  m_jumpMatrix;
-    SparseMatrix                m_localMatrix;
-    Matrix                      m_localRhs;
-    std::vector<SparseMatrix>   m_primalBases;
+    JumpMatrix                  m_jumpMatrix;   ///< The jump matrix for the primal problem
+    SparseMatrix                m_localMatrix;  ///< The overall matrix for the primal problem
+    Matrix                      m_localRhs;     ///< The right-hand side for the primal problem
+    std::vector<SparseMatrix>   m_primalBases;  ///< The bases for the primal dofs on the patches
 };
 
 } // namespace gismo

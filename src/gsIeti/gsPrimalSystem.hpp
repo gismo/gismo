@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include <gsIeti/gsPrimalSystem.h>
-
 #include <gsSolver/gsMatrixOp.h>
 
 namespace gismo
