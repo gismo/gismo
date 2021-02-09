@@ -26,11 +26,11 @@ int main(int argc, char *argv[])
     index_t degree = 2;
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
-    bool plot = false;
-    bool sol = false;
     std::string boundaryConditions("d");
+    std::string fn;
+    bool plot = false;
 
-    gsCmdLine cmd("Solves a PDE with an isogeometric discretization using an isogeometric tearing and interconnecting (IETI) solver.");
+    gsCmdLine cmd("Solves a PDE with an isogeometric discretization using a ieti solver.");
     cmd.addString("g", "Geometry",              "Geometry file", geometry);
     cmd.addInt   ("",  "SplitPatches",          "Split every patch that many times in 2^d patches", splitPatches);
     cmd.addReal  ("",  "StretchGeometry",       "Stretch geometry in x-direction by the given factor", stretchGeometry);
@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
-    cmd.addSwitch(     "sol",                   "Write the computed solution to console", sol);
+    cmd.addString("" , "fn",                    "Write solution and used options to file", fn);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
             ++i;
         }
         if ( len > i )
-            gsInfo << "\nToo many boundary conditions have been specified. Ingnoring the remaining ones.\n";
+            gsInfo << "\nToo much boundary conditions have been specified. Ingnoring the remaining ones.\n";
         gsInfo << "done. "<<i<<" boundary conditions set.\n";
     }
 
@@ -320,12 +320,20 @@ int main(int argc, char *argv[])
     else
         gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
 
-    if (sol)
-        gsInfo << uVec.transpose() << "\n\n";
+    if (!fn.empty())
+    {
+        gsFileData<> fd;
+        std::time_t time = std::time(NULL);
+        fd.add(opt);
+        fd.add(uVec);
+        fd.addComment(std::string("ieti_example   Timestamp:")+std::ctime(&time));
+        fd.save(fn);
+        gsInfo << "Write solution to file " << fn << "\n";
+    }
 
     if (plot)
     {
-        gsInfo << "Plotting in Paraview.\n";
+        gsInfo << "Write Paraview data to file ieti_result.pvd\n";
         // Construct the solution as a scalar field
         // For this purpose, we use a global assembler
         gsExprAssembler<> A(1,1);
@@ -349,10 +357,10 @@ int main(int argc, char *argv[])
         ev.writeParaview( u_sol, G, "ieti_result" );
         //gsFileManager::open("ieti_result.pvd");
     }
-    else
+        if (!plot&&fn.empty())
     {
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                  "file containing the solution.\n";
+                  "file containing the solution or --fn to write solution to xml file.\n";
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
