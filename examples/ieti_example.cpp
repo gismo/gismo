@@ -253,7 +253,7 @@ int main(int argc, char *argv[])
             gsScaledDirichletPrec<>::restrictToSkeleton(
                 jumpMatrix,
                 localMatrix,
-                ietiMapper.getSkeletonDofs(k)
+                ietiMapper.skeletonDofs(k)
             )
         );
 
@@ -300,7 +300,7 @@ int main(int argc, char *argv[])
     gsInfo << "done.\n    Setup cg solver for Lagrange multipliers and solve... " << std::flush;
     // Initial guess
     gsMatrix<> lambda;
-    lambda.setRandom( ieti.numberOfLagrangeMultipliers(), 1 );
+    lambda.setRandom( ieti.nLagrangeMultipliers(), 1 );
 
     // This is the main cg iteration
     gsMatrix<> errorHistory;

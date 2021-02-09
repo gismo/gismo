@@ -180,7 +180,7 @@ void gsIetiMapper<T>::customPrimalConstraints(std::vector< std::pair<index_t,Spa
 }
 
 template <class T>
-std::vector<index_t> gsIetiMapper<T>::getSkeletonDofs( index_t patch ) const
+std::vector<index_t> gsIetiMapper<T>::skeletonDofs( index_t patch ) const
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
 

@@ -125,7 +125,7 @@ public:
     /// This means that a dof is considered to be on the skeleton iff at least one Lagrange
     /// multiplier acts on it. This might lead to other results than the function that is
     /// provided by \a gsIetiMapper.
-    static gsSortedVector<index_t> getSkeletonDofs( const JumpMatrix& jm );
+    static gsSortedVector<index_t> skeletonDofs( const JumpMatrix& jm );
 
     /// Restricts the jump matrix to the given dofs (just takes the corresponding cols)
     static JumpMatrix restrictJumpMatrix( const JumpMatrix& jm, const std::vector<index_t> dofs );
@@ -151,7 +151,7 @@ public:
 
     /// @brief Returns the number of Lagrange multipliers.
     /// This requires that at least one subdomain was defined.
-    index_t numberOfLagrangeMultipliers() const
+    index_t nLagrangeMultipliers() const
     {
         GISMO_ASSERT( !m_jumpMatrices.empty(), "gsScaledDirichletPrec: Number of Lagrange multipliers "
             "can only be determined if there are jump matrices.");

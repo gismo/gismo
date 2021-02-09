@@ -94,7 +94,7 @@ gsMatrix<T> gsIetiSystem<T>::rhsForSchurComplement() const
 {
     setupSparseLUSolvers();
     Matrix result;
-    result.setZero( this->numberOfLagrangeMultipliers(), this->m_localRhs[0].cols());
+    result.setZero( this->nLagrangeMultipliers(), this->m_localRhs[0].cols());
     const index_t numPatches = this->m_jumpMatrices.size();
     for (index_t i=0; i<numPatches; ++i)
     {
@@ -124,7 +124,7 @@ template<class T>
 gsMatrix<T> gsIetiSystem<T>::rhsForSaddlePoint() const
 {
     const index_t sz = m_localMatrixOps.size();
-    index_t rows = numberOfLagrangeMultipliers();
+    index_t rows = nLagrangeMultipliers();
     for (index_t k=0; k<sz; ++k)
         rows += m_localRhs[k].rows();
     Matrix result;

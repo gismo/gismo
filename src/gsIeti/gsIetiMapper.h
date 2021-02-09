@@ -24,13 +24,13 @@ namespace gismo
  *
  *  Algorithms that help with assembling the matrices required for IETI-Solvers
  *
- *  This class is written to work with the expression assembler. If applied to a
- *  system, it is expected that individual instances of this class are used for
- *  each of the variables.
+ *  This class is written to work with the expression assembler and with assemblers
+ *  derived from gsAssembler. If applied to a system, it is expected that individual
+ *  instances of this class are used for each of the variables.
  *
  *  The objects of this class are initialized using a global dof mapper and a
  *  vector that contains function values for the eliminated variables (usually
- *  for the Dirichlet boundary). Moreover, options can be provided.
+ *  for the Dirichlet boundary).
  *
  *  This class then allows to obtain the jump matrices (\a jumpMatrix), the
  *  patch-local dof mappers (\a dofMapperLocal) and the patch-local function
@@ -123,7 +123,7 @@ public:
     /// @brief This function returns a list of dofs that are (on the coarse level) coupled
     ///
     /// @param patch   Number of the patch
-    std::vector<index_t> getSkeletonDofs( index_t patch ) const;
+    std::vector<index_t> skeletonDofs( index_t patch ) const;
 
 public:
     /// @brief Returns the number of Lagrange multipliers.
@@ -158,15 +158,15 @@ public:
     const Matrix& fixedPart(index_t k) const                               { return m_fixedPart[k];               }
 
 private:
-    const gsMultiBasis<T>*                        m_multiBasis;
-    gsDofMapper                                   m_dofMapperGlobal;
-    std::vector<gsDofMapper>                      m_dofMapperLocal;
-    std::vector<Matrix>                           m_fixedPart;
-    std::vector<JumpMatrix>                       m_jumpMatrices;
-    index_t                                       m_nPrimalDofs;
-    std::vector< std::vector<SparseVector> >      m_primalConstraints;
-    std::vector< std::vector<index_t> >           m_primalDofIndices;
-    unsigned                                      m_status;
+    const gsMultiBasis<T>*                        m_multiBasis;          ///< Pointer to the respective multibasis
+    gsDofMapper                                   m_dofMapperGlobal;     ///< The global dof mapper
+    std::vector<gsDofMapper>                      m_dofMapperLocal;      ///< A vector of the patch-local dof mappers
+    std::vector<Matrix>                           m_fixedPart;           ///< The values for the elminated (Dirichlet) dofs
+    std::vector<JumpMatrix>                       m_jumpMatrices;        ///< The jump matrices
+    index_t                                       m_nPrimalDofs;         ///< The number of primal dofs already created
+    std::vector< std::vector<SparseVector> >      m_primalConstraints;   ///< The primal constraints
+    std::vector< std::vector<index_t> >           m_primalDofIndices;    ///< The primal dof indices for each of the primal constraints
+    unsigned                                      m_status;              ///< A status flag that is checked by assertions
 };
 
 } // namespace gismo

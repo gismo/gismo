@@ -111,7 +111,7 @@ public:
     /// Returns the number of Lagrange multipliers
     ///
     /// This requires that at least one jump matrix has been set.
-    index_t numberOfLagrangeMultipliers() const
+    index_t nLagrangeMultipliers() const
     {
         GISMO_ASSERT( m_jumpMatrices.size()>0, "gsIetiSystem: Number of Lagrange multipliers "
             "can only be determined if there are jump matrices.");

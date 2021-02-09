@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
         // call the underlying commands directly to show how one can choose an
         // alternative solver.
         {
-            std::vector<index_t> skeletonDofs = ietiMapper.getSkeletonDofs(k);
+            std::vector<index_t> skeletonDofs = ietiMapper.skeletonDofs(k);
             std::vector< gsSparseMatrix<> > matrixBlocks
                 = gsScaledDirichletPrec<>::matrixBlocks(localMatrix, skeletonDofs);
 

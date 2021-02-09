@@ -23,7 +23,7 @@ namespace gismo
 
 template <class T>
 gsSortedVector<index_t>
-gsScaledDirichletPrec<T>::getSkeletonDofs( const JumpMatrix& jm )
+gsScaledDirichletPrec<T>::skeletonDofs( const JumpMatrix& jm )
 {
     gsSortedVector<index_t> result;
     for (index_t i=0; i<jm.outerSize(); ++i)
