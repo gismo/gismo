@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     std::string fn;
     bool plot = false;
 
-    gsCmdLine cmd("Solves a PDE with an isogeometric discretization using a ieti solver.");
+    gsCmdLine cmd("Solves a PDE with an isogeometric discretization using an isogeometric tearing and interconnecting (IETI) solver.");
     cmd.addString("g", "Geometry",              "Geometry file", geometry);
     cmd.addInt   ("",  "SplitPatches",          "Split every patch that many times in 2^d patches", splitPatches);
     cmd.addReal  ("",  "StretchGeometry",       "Stretch geometry in x-direction by the given factor", stretchGeometry);
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
             ++i;
         }
         if ( len > i )
-            gsInfo << "\nToo much boundary conditions have been specified. Ingnoring the remaining ones.\n";
+            gsInfo << "\nToo many boundary conditions have been specified. Ingnoring the remaining ones.\n";
         gsInfo << "done. "<<i<<" boundary conditions set.\n";
     }
 
