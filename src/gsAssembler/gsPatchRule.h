@@ -2,6 +2,11 @@
 
     @brief Provides patch-wise quadrature rule
 
+    Reference:
+    Johannessen, K. A. (2017). Optimal quadrature for univariate and tensor product splines.
+    Computer Methods in Applied Mechanics and Engineering, 316, 84–99.
+    https://doi.org/10.1016/j.cma.2016.04.030
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
