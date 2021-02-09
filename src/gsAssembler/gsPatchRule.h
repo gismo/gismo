@@ -2,11 +2,6 @@
 
     @brief Provides patch-wise quadrature rule
 
-    Reference:
-    Johannessen, K. A. (2017). Optimal quadrature for univariate and tensor product splines.
-    Computer Methods in Applied Mechanics and Engineering, 316, 84–99.
-    https://doi.org/10.1016/j.cma.2016.04.030
-
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -27,6 +22,63 @@ namespace gismo
 
 /**
     \brief Class that represents the (tensor) patch quadrature rule
+
+    The class uses the \a basis to construct the quadrature. The rule uses (and distributes) quadrature points according to a Newton scheme and the number of points and weights is based on the number of points and weights in a target space with a specific \a order and \a regularity.
+
+    Optionally, one can \a over-integrate the quadrature rule, meaning that extra quadrature points are added on the boundary elements. The number of points for over integration is equal to the degree of the knot vector of the basis.
+
+    The method works as follows(see Johannessen 2017 for more information):
+    Given a vector of quadrature points \f$\mathbf{\xi}=[ \xi_1, \xi_2,...\xi_n ]\f$ (where \f$n\f$ depends on the order and regularity of the target space, the fact that this space provides an even/odd number of points and on over-integration or not) with corresponding weights \f$\mathbf{w}=[ w_1, w_2,...w_n ]\f$. Initially, we know the integrals of our basis functions \f$ \int_\mathbb{R} N_{j,p}(\xi)\:\text{d}\xi\f$, \f$j=\{1,2,...,m\}\f$, where \f$m\f$ is the number of basis functions in our space. Then, we want to minimize the residual
+    \f{eqnarray*}{
+    \mathbf{F}
+    \left(
+        \begin{bmatrix} \mathbf{w} \\ \mathbf{\xi} \end{bmatrix}
+    \right)
+     =
+     \begin{bmatrix}
+        N_{1,p}(\xi_1) & N_{1,p}(\xi_2) & \dots & N_{1,p}(\xi_n)\\
+        N_{2,p}(\xi_1) & N_{2,p}(\xi_2) & \dots & N_{2,p}(\xi_n)\\
+        \vdots &  & \ddots & \vdots \\
+        N_{m,p}(\xi_1) & N_{m,p}(\xi_2) & \dots & N_{m,p}(\xi_n)
+     \end{bmatrix}
+     \begin{bmatrix}
+        w_1 \\ w_2 \\ \vdots \\ w_n
+     \end{bmatrix}
+     -
+     \begin{bmatrix}
+        \int N_{1,p}(\xi)\:\text{d}\xi\\
+        \int N_{2,p}(\xi)\:\text{d}\xi\\
+        \vdots \\
+        \int N_{m,p}(\xi)\:\text{d}\xi
+     \end{bmatrix}
+    \f}
+    For the Newton iterations, we compute the Jacobian according to \f$\mathbf{F}\f$:
+    \f{eqnarray*}{
+        \frac{\partial\mathbf{F}}{\partial \mathbf{w}} =
+     \begin{bmatrix}
+        N_{1,p}(\xi_1) & N_{1,p}(\xi_2) & \dots & N_{1,p}(\xi_n)\\
+        N_{2,p}(\xi_1) & N_{2,p}(\xi_2) & \dots & N_{2,p}(\xi_n)\\
+        \vdots &  & \ddots & \vdots \\
+        N_{m,p}(\xi_1) & N_{m,p}(\xi_2) & \dots & N_{m,p}(\xi_n)
+     \end{bmatrix}
+    \f}
+    \f{eqnarray*}{
+        \frac{\partial\mathbf{F}}{\partial \mathbf{\xi}} =
+     \begin{bmatrix}
+        w_1 N'_{1,p}(\xi_1) & w_1 N'_{1,p}(\xi_2) & \dots & w_1 N'_{1,p}(\xi_n)\\
+        w_2 N'_{2,p}(\xi_1) & w_2 N'_{2,p}(\xi_2) & \dots & w_2 N'_{2,p}(\xi_n)\\
+        \vdots &  & \ddots & \vdots \\
+        w_m N'_{m,p}(\xi_1) & w_m N'_{m,p}(\xi_2) & \dots & w_m N'_{m,p}(\xi_n)
+     \end{bmatrix}
+    \f}
+    Such that \f$ \partial \mathbf{F} = \left[ \frac{\partial\mathbf{F}}{\partial \mathbf{w}} , \frac{\partial\mathbf{F}}{\partial \mathbf{\xi}} \right] \in \mathbb{R}^{m\times m}\f$.
+
+    The weights and quadrature points are updated using the Newton update. As an initial guess, we use \f$ w_i = \int N_{2i,p}(\xi) + N_{2i+1,p}(\xi) \: \text{d}\xi\f$ and \f$ \xi_i=\frac{\tau_{2i}+\tau_{2i+1}}{2}\f$ with \f$\tau_i\f$ the Greville abcissa of basis function \f$i\f$
+
+    Reference:
+    Johannessen, K. A. (2017). Optimal quadrature for univariate and tensor product splines.
+    Computer Methods in Applied Mechanics and Engineering, 316, 84–99.
+    https://doi.org/10.1016/j.cma.2016.04.030
 
     \ingroup Assembler
 */
@@ -52,7 +104,7 @@ public:
      * @param[in]  basis          The basis
      * @param[in]  degree         The degree of the target space
      * @param[in]  regularity     The regularity of the target space
-     * @param[in]  overintegrate  Over-integrate or not?
+     * @param[in]  overintegrate  Over-integrate (i.e. add p points in boundary elements) when true
      */
     gsPatchRule(const gsBasis<T> & basis,
                 const index_t degree,
@@ -67,7 +119,7 @@ public:
      * @param[in]  basis          The basis
      * @param[in]  degree         The degree of the target space
      * @param[in]  regularity     The regularity of the target space
-     * @param[in]  overintegrate  Over-integrate or not?
+     * @param[in]  overintegrate  Over-integrate (i.e. add p points in boundary elements) when true
      *
      * @return     QuadRule pointer
      */
@@ -86,7 +138,7 @@ public:
 public:
 
     /**
-     * @brief      Maps the points in the d-dimensional cube with points lower and upper
+     * @brief      Maps the points in the d-dimensional cube with points \a lower and \a upper
      *
      * @param[in]  lower    The lower corner
      * @param[in]  upper    The upper corner
@@ -104,7 +156,11 @@ public:
 protected:
 
     /**
-     * @brief      Computes the knot vector.
+     * @brief      Initializes the knot vector for the patch-rule implementation
+     *
+     * The knot vector for the basis in a specific direction is modified:
+     * 1) the number of knots is made even. If this is not the case, an extra knot is added in the middle
+     * 2) over-integration is applied. In this case, p knots are added to the boundary elements
      *
      * @param[in]  Bbasis  a gsBSplineBasis
      *
@@ -115,6 +171,8 @@ protected:
     /**
      * @brief      Integrates all basis functions from a knot vector (numerically with Gauss)
      *
+     * This computes the integrals of the basis function for the newton integration.
+     *
      * @param      knots  The knots
      *
      * @return     Greville points and Exact integrals of the basis
@@ -122,7 +180,7 @@ protected:
     std::pair<gsMatrix<T>,gsMatrix<T>> _integrate(const gsKnotVector<T> & knots ) const;
 
     /**
-     * @brief      Computes the points and weights for the patch rule
+     * @brief      Computes the points and weights for the patch rule using Newton iterations
      *
      * @param      knots      The knots of the basis
      * @param      greville   The greville point

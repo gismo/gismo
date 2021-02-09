@@ -30,8 +30,15 @@ struct gsQuadrature
     {
         GaussLegendre = 1, ///< Gauss-Legendre quadrature
         GaussLobatto  = 2, ///< Gauss-Lobatto quadrature
-        PatchRule     = 3  ///< Patch-wise quadrature rule
+        PatchRule     = 3  ///< Patch-wise quadrature rule  (Johannessen 2017)
+
     };
+    /*
+    Reference:
+        Johannessen, K. A. (2017). Optimal quadrature for univariate and tensor product splines.
+        Computer Methods in Applied Mechanics and Engineering, 316, 84–99.
+        https://doi.org/10.1016/j.cma.2016.04.030
+    */
 
     /// Constructs a quadrature rule based on input \a options
     template<class T>
@@ -54,7 +61,7 @@ struct gsQuadrature
                 const index_t qu   = options.askInt("quRule", GaussLegendre);
         const T       quA  = options.getReal("quA");
         const index_t quB  = options.getInt ("quB");
-        const bool    over = options.askSwitch ("overInt", false);
+        const bool    over = options.askSwitch ("overInt", false);  // use overintegration?
 
         if ( (qu==rule::GaussLegendre || qu==rule::GaussLobatto) )
         {
@@ -72,10 +79,12 @@ struct gsQuadrature
             }
             else
             {
+                /*
+                    Uses quadrature rule with quA and quB for the interior
+                    elements and one with quAb and quBb for the boundary elements
+                */
                 const T       quAb  = options.askReal("quAb",quA+1);
                 const index_t quBb  = options.askInt ("quBb",quB);
-
-                // !!!! How to fix a nice input (i.e. over-integrate based on regularity)
 
                 const gsVector<index_t> nnodesI = numNodes(basis,quA,quB,fixDir);
                 const gsVector<index_t> nnodesB = numNodes(basis,quAb,quBb,fixDir);

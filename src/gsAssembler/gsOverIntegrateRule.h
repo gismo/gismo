@@ -20,7 +20,9 @@ namespace gismo
 {
 
 /**
-    \brief Class that represents the (tensor) patch quadrature rule
+    \brief Class that defines a mixed quadrature rule with different rules for the interior and the boundaries
+
+    This class is defined using two other quadrature rules (only works for \ref gsGaussRule or \ref gsLobattoRule) for the interior and for the boundary. Depending on the location of the considered element, it will either use the interior rule or the boundary rule. In this way, one can for example use full (exact) integration on the boundary points and reduced integration in the interior.
 
     \ingroup Assembler
 */
