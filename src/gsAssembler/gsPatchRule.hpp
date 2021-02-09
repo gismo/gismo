@@ -302,14 +302,16 @@ std::pair<gsVector<T>,gsVector<T>> gsPatchRule<T>::_compute(const gsKnotVector<T
         weights.at(k) = integrals(2*k,0) + integrals(2*k+1,0);
     }
 
-    // Initialize nonlinear iterations
+    // Initialize Newton iterations
     index_t itMax = 100;
     gsMatrix<index_t> actives;
     gsMatrix<T> vals,dvals,vals_tmp,dvals_tmp,res,dres;
     gsVector<T> update(size);
-    vals.resize(size,size/2);   vals.setZero();
-    dvals.resize(size,size/2);  dvals.setZero();
+    vals.resize(size,size/2);   vals.setZero();                 // Jacobian: dF/dw
+    dvals.resize(size,size/2);  dvals.setZero();                // Jacobian: dF/dxi
     index_t it;
+
+    // Newton Iterations
     for (it = 0; it != itMax; it++)
     {
         // Compute matrix with values and derivatives of the basis on the quadrature point estimates
@@ -319,12 +321,12 @@ std::pair<gsVector<T>,gsVector<T>> gsPatchRule<T>::_compute(const gsKnotVector<T
         for (index_t act=0; act!=actives.rows(); act++)
             for (index_t pt=0; pt!=actives.cols(); pt++)
             {
-                vals(actives(act,pt),pt)    = vals_tmp(act,pt);
-                dvals(actives(act,pt),pt)   = dvals_tmp(act,pt);
+                vals(actives(act,pt),pt)    = vals_tmp(act,pt); // Jacobian: dF/dw
+                dvals(actives(act,pt),pt)   = dvals_tmp(act,pt);// Jacobian: dF/dxi
             }
 
-        // Compute the residual (res) and its variation (dres)
-        res = vals * weights - integrals;
+        // Compute the residual (res) and the Jacobian (dres)
+        res = vals * weights - integrals;                       // Residual
         dres = gsMatrix<T>::Zero(size,size);
         dres.block(0,0,size,size/2) = vals;
         dres.block(0,size/2,size,size/2) = dvals * weights.asDiagonal();
