@@ -11,7 +11,6 @@
     Author(s): C. Hofreither, S. Takacs
 */
 
-#include <gsMultiGrid/gsMultiGrid.h>
 #include <gsSolver/gsMatrixOp.h>
 
 namespace gismo
