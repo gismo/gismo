@@ -137,10 +137,10 @@ gsPrimalSystem<T>::distributePrimalSolution( std::vector<Matrix> sol )
     const index_t sz = this->m_primalBases.size();
 
     // If the primal problem is empty, there might just not be any primal subdomain
-    if (sol.size()==sz && this->m_jumpMatrix.cols()==0)
+    if (static_cast<index_t>(sol.size())==sz && this->m_jumpMatrix.cols()==0)
         return sol;
 
-    GISMO_ASSERT(sol.size()==sz+1, "gsPrimalSystem::distributePrimalSolution expects that there "
+    GISMO_ASSERT(static_cast<index_t>(sol.size())==sz+1, "gsPrimalSystem::distributePrimalSolution expects that there "
         "is one more subdomain that patches.");
 
     for (index_t i=0; i<sz; ++i)

@@ -58,7 +58,7 @@ namespace gismo
  *  of a LU solver for the local system, and the members \a primalBasis and \a addContribution
  *  into one single function
  *
- *  After going through all patches, the class \a gsIetiProblem gets one more subdomain:
+ *  After going through all patches, the class \a gsIetiSystem gets one more subdomain:
  *  the primal one (which is set up based on \a jumpMatrix, \a localMatrix, \a localRhs).
  *
  *  After solving, the member \a distributePrimalSolution distributes the solution
