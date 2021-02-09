@@ -121,4 +121,40 @@ std::vector< gsMatrix<T> > gsIetiSystem<T>::constructSolutionFromLagrangeMultipl
     return result;
 }
 
+template<class T>
+gsMatrix<T> gsIetiSystem<T>::rhsForSaddlePoint() const
+{
+    const index_t sz = m_localMatrixOps.size();
+    index_t rows = numberOfLagrangeMultipliers();
+    for (index_t k=0; k<sz; ++k)
+        rows += m_localRhs[k].rows();
+    Matrix result;
+    result.setZero(rows,m_localRhs[0].cols());
+    index_t i=0;
+    for (index_t k=0; k<sz; ++k)
+    {
+        const index_t l = m_localRhs[k].rows();
+        result.middleRows(i, l) = m_localRhs[k];
+        i += l;
+    }
+    return result;
+}
+
+template<class T>
+std::vector< gsMatrix<T> > gsIetiSystem<T>::constructSolutionFromSaddlePoint(const Matrix& x) const
+{
+    const index_t sz = m_localMatrixOps.size();
+    std::vector<Matrix> result;
+    result.reserve(sz);
+    index_t i=0;
+    for (index_t k=0; k<sz; ++k)
+    {
+        const index_t l = m_localRhs[k].rows();
+        result.push_back( x.middleRows(i, l) );
+        i += l;
+    }
+    return result;
+}
+
+
 } // namespace gismo

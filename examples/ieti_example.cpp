@@ -2,6 +2,12 @@
 
     @brief Provides examples for the ieti solver.
 
+    Here, CG solves the Schur complement formulation. For solving
+    the saddle point formulation with MINRES, see ieti2_example.cpp.
+
+    This class uses the expression assembler, for a use of the
+    gsPoisson Assembler, see ieti2_example.cpp.
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -172,12 +178,17 @@ int main(int argc, char *argv[])
     // more than one such function is possible.
     ietiMapper.cornersAsPrimals();
 
+    // The ieti system does not have a special treatment for the
+    // primal dofs. They are just one more subdomain
     gsIetiSystem<> ieti;
     ieti.reserve(nPatches+1);
 
+    // The scaled Dirichlet preconditioner is independent of the
+    // primal dofs.
     gsScaledDirichletPrec<> prec;
     prec.reserve(nPatches);
 
+    // Setup the primal system, which needs to know the number of primal dofs.
     gsPrimalSystem<> primal;
     primal.init(ietiMapper.nPrimalDofs());
 

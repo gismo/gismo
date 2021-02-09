@@ -141,7 +141,7 @@ gsPrimalSystem<T>::distributePrimalSolution( std::vector<Matrix> sol )
         return sol;
 
     GISMO_ASSERT(sol.size()==sz+1, "gsPrimalSystem::distributePrimalSolution expects that there "
-        "is one more subdomain that patches.");
+        "is one more subdomain that patches. Have "<<sol.size()<<"!="<<sz+1);
 
     for (index_t i=0; i<sz; ++i)
     {

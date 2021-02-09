@@ -1,6 +1,12 @@
 /** @file ieti2_example.cpp
 
-    @brief Provides examples for the ieti solver.
+    @brief Provides an example for the ieti solver
+
+    Here, MINRES solves the saddle point formulation. For solving
+    the Schur complement formulation with CG, see ieti_example.cpp.
+
+    This class uses the gsPoissonAssembler, for the expression
+    assembler, see ieti_example.cpp.
 
     This file is part of the G+Smo library.
 
@@ -176,14 +182,24 @@ int main(int argc, char *argv[])
     // more than one such function is possible.
     ietiMapper.cornersAsPrimals();
 
+    // The ieti system does not have a special treatment for the
+    // primal dofs. They are just one more subdomain
     gsIetiSystem<> ieti;
     ieti.reserve(nPatches+1);
 
+    // The scaled Dirichlet preconditioner is independent of the
+    // primal dofs.
     gsScaledDirichletPrec<> prec;
     prec.reserve(nPatches);
 
+    // Setup the primal system, which needs to know the number of primal dofs.
     gsPrimalSystem<> primal;
     primal.init(ietiMapper.nPrimalDofs());
+
+    // Setup of the block-diagonal preconditioner for the saddle point problem
+    // First, we need to know its size
+    const index_t bdPrecSz = nPatches + 1 + (ietiMapper.nPrimalDofs()>0?1:0);
+    gsBlockOp<>::Ptr bdPrec = gsBlockOp<>::make(bdPrecSz,bdPrecSz);
 
     for (index_t k=0; k<nPatches; ++k)
     {
@@ -220,15 +236,28 @@ int main(int argc, char *argv[])
         gsSparseMatrix<>                 localMatrix = assembler.matrix();
         gsMatrix<>                       localRhs    = assembler.rhs();
 
-
         // Add the patch to the scaled Dirichlet preconditioner
-        prec.addSubdomain(
-            gsScaledDirichletPrec<>::restrictToSkeleton(
-                jumpMatrix,
-                localMatrix,
-                ietiMapper.getSkeletonDofs(k)
-            )
-        );
+        //
+        // This can be done using prec.addSubdomain as in ieti_example. Here, we
+        // call the underlying commands directly to show how one can choose an
+        // alternative solver.
+        {
+            std::vector<index_t> skeletonDofs = ietiMapper.getSkeletonDofs(k);
+            std::vector< gsSparseMatrix<> > matrixBlocks
+                = gsScaledDirichletPrec<>::matrixBlocks(localMatrix, skeletonDofs);
+
+            prec.addSubdomain(
+               prec.restrictJumpMatrix(jumpMatrix, skeletonDofs),
+               gsSumOp<>::make(
+                    makeMatrixOp(matrixBlocks[0].moveToPtr()),
+                    gsProductOp<>::make(
+                        makeMatrixOp(matrixBlocks[1].moveToPtr()),
+                        makeSparseCholeskySolver(matrixBlocks[3]),
+                        makeMatrixOp(matrixBlocks[2].moveToPtr())
+                    )
+                )
+            );
+        }
 
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
         // so it must be called after prec.addSubdomain().
@@ -240,6 +269,11 @@ int main(int argc, char *argv[])
             localRhs
         );
 
+        // Register the local solver to the block preconditioner. We use
+        // a sparse LU solver since the local saddle point problem is not
+        // positive definite.
+        bdPrec->addOperator(k,k,makeSparseLUSolver(localMatrix));
+
         // Add the patch to the Ieti system
         ieti.addSubdomain(
             jumpMatrix.moveToPtr(),
@@ -250,11 +284,17 @@ int main(int argc, char *argv[])
 
     // Add the primal problem if there are primal constraints
     if (ietiMapper.nPrimalDofs()>0)
+    {
+        // Register the local solver to the block preconditioner
+        bdPrec->addOperator(nPatches, nPatches, makeSparseCholeskySolver(primal.localMatrix()));
+
+        // Add to IETI system
         ieti.addSubdomain(
             primal.jumpMatrix().moveToPtr(),
             makeMatrixOp(primal.localMatrix().moveToPtr()),
             give(primal.localRhs())
         );
+    }
 
     gsInfo << "done.\n";
 
@@ -266,26 +306,27 @@ int main(int argc, char *argv[])
     // Tell the preconditioner to set up the scaling
     prec.setupMultiplicityScaling();
 
-    gsInfo << "done.\n    Setup rhs... " << std::flush;
-    // Compute the Schur-complement contribution for the right-hand-side
-    gsMatrix<> rhsForSchur = ieti.rhsForSchurComplement();
+    // The scaled Dirichlet preconditioner is in the last block
+    gsLinearOperator<>::Ptr sdPrec = prec.preconditioner();
+    bdPrec->addOperator(bdPrecSz-1,bdPrecSz-1,sdPrec);
 
-    gsInfo << "done.\n    Setup cg solver for Lagrange multipliers and solve... " << std::flush;
+    gsInfo << "done.\n    Setup minres solver and solve... " << std::flush;
     // Initial guess
-    gsMatrix<> lambda;
-    lambda.setRandom( ieti.numberOfLagrangeMultipliers(), 1 );
+    gsMatrix<> x;
+    x.setRandom( bdPrec->rows(), 1 );
 
     // This is the main cg iteration
     gsMatrix<> errorHistory;
-    gsConjugateGradient<>( ieti.schurComplement(), prec.preconditioner() )
+    gsMinimalResidual<>( ieti.saddlePointProblem(), bdPrec )
         .setOptions( opt.getGroup("Solver") )
-        .solveDetailed( rhsForSchur, lambda, errorHistory );
+        .solveDetailed( ieti.rhsForSaddlePoint(), x, errorHistory );
 
     gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
+
     // Now, we want to have the global solution for u
     gsMatrix<> uVec = ietiMapper.constructGlobalSolutionFromLocalSolutions(
         primal.distributePrimalSolution(
-            ieti.constructSolutionFromLagrangeMultipliers(lambda)
+            ieti.constructSolutionFromSaddlePoint(x)
         )
     );
     gsInfo << "done.\n\n";
@@ -333,7 +374,7 @@ int main(int argc, char *argv[])
         gsWriteParaview<>(sol, "ieti_result", 1000);
         //gsFileManager::open("ieti_result.pvd");
     }
-    if (!plot&&fn.empty())
+        if (!plot&&fn.empty())
     {
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution or --fn to write solution to xml file.\n";
