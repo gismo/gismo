@@ -33,7 +33,7 @@ namespace gismo
  *       \end{pmatrix}
  *  \f]
  *
- *  The correspondung Schur complement is
+ *  The corresponding Schur complement is
  *
  *  \f[
  *       \sum_{k=1}^K   \tilde B_k   \tilde A_k^{-1}  \tilde B_k^\top
@@ -41,10 +41,10 @@ namespace gismo
  *
  *  For a standard IETI-dp setup, the matrices \f$ \tilde A_k \f$ and \f$ \tilde B_k \f$ are obtained
  *  from the original matrices \f$ A_k \f$ and \f$ B_k \f$ by eliminating the primal dofs (or by
- *  incorporatung a constraint that sets them to zero).
+ *  incorporating a constraint that sets them to zero).
  *
  *  The matrices \f$ \tilde A_k \f$ are stored in the vector \a localMatrixOps . To allow certain
- *  matrix-free variats, they are stored in form of a vector of \a gsLinearOperator s.
+ *  matrix-free variants, they are stored in form of a vector of \a gsLinearOperator s.
  *
  *  The inverses \f$ \tilde A_k^{-1} \f$ are stored in the vector \a localSolverOps . As far as the
  *  matrices \f$ \tilde A_k\f$ are stored as \a gsMatrixOp containing \a gsSparseMatrix , LU solvers can
@@ -72,7 +72,7 @@ class gsIetiSystem
     typedef gsMatrix<T>                       Matrix;
 public:
 
-    /// @brief Reservs the memory required to store the given number of subdomain
+    /// @brief Reserves the memory required to store the given number of subdomain
     /// @param n Number of subdomains
     void reserve(index_t n);
 
@@ -85,7 +85,7 @@ public:
     /// @param localRhs         The contribution to the right-hand side
     /// @param localSolverOp    The operator that represents a solver for the local problem.
     ///                         This parameter is optional, if needed the solver will be
-    ///                         created automatrically.
+    ///                         created automatically.
     void addSubdomain(JumpMatrixPtr jumpMatrix, OpPtr localMatrixOp,
         Matrix localRhs, OpPtr localSolverOp = OpPtr() );
 

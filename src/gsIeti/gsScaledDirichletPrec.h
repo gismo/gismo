@@ -1,6 +1,6 @@
 /** @file gsScaledDirichletPrec.h
 
-    @brief This class represents the sclaed Dirichlet preconditioner.
+    @brief This class represents the scaled Dirichlet preconditioner.
 
     This file is part of the G+Smo library.
 
@@ -45,10 +45,10 @@ namespace gismo
  *  For a standard IETI-dp setup, we additionally have a primal problem, thus N=K+1. In this
  *  case, the matrices \f$ \tilde A_k \f$ and \f$ \tilde B_k \f$ are obtained from the
  *  original matrices \f$ A_k \f$ and \f$ B_k \f$ by eliminating the primal dofs (or by
- *  incorporatung a constraint that sets them to zero).
+ *  incorporating a constraint that sets them to zero).
  *
  *  The matrices \f$ S_k \f$ are stored in the vector \a localSchurOps . To allow certain matrix-free
- *  variats, they are stored in form of a vector of \a gsLinearOperator s. These matrices are the
+ *  variants, they are stored in form of a vector of \a gsLinearOperator s. These matrices are the
  *  Schur-complements of the matrices \f$ A_k \f$ with respect to the degrees of freedom on the
  *  skeleton.
  *
@@ -62,7 +62,7 @@ namespace gismo
  *  \a getSkeletonDofs to extract this information from the jump matrices, i.e., skeleton dofs are
  *  those that are affected by a Lagrange multiplier.
  *
- *  The scaling matrcies \f$ D_k \f$ are stored in the vector \a scalingMatrices. They can be provided
+ *  The scaling matrices \f$ D_k \f$ are stored in the vector \a scalingMatrices. They can be provided
  *  by the caller or generated automatically using \a setupMultiplicityScaling .
  *
  *  @ingroup Solver
@@ -79,7 +79,7 @@ class gsScaledDirichletPrec
     typedef gsMatrix<T>                       Matrix;
 public:
 
-    /// @brief Reservs the memory required to store the given number of subdomain
+    /// @brief Reserves the memory required to store the given number of subdomain
     /// @param n Number of subdomains
     void reserve( index_t n )
     {

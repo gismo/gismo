@@ -39,7 +39,7 @@ namespace gismo
  *  eliminated dofs to a variable object of the \a gsExprAssembler.
  *
  *  Moreover, this class allows to construct the primal degrees of freedom,
- *  which are then handeled by the class \a gsPrimalProblem.
+ *  which are then handled by the class \a gsPrimalProblem.
  *
  *  Finally, the member \a constructGlobalSolutionFromLocalSolutions allows
  *  the combination of the patch-local solutions to a global one.
@@ -103,7 +103,7 @@ public:
     ///
     /// @param fullyRedundant  Compute the jump matrices in a fullyRedundant way;
     ///                        if false, then no redundancy
-    /// @param excludeCorners  Ignore corners for jump matrices. This makes sence
+    /// @param excludeCorners  Ignore corners for jump matrices. This makes sense
     ///                        if the corners are chosen as primal dofs
     void computeJumpMatrices(bool fullyRedundant, bool excludeCorners);
 
@@ -117,7 +117,7 @@ public:
     /// index and the vector representing the primal constraint.
     void customPrimalConstraints( std::vector< std::pair<index_t,SparseVector> > data );
 
-    /// @brief This functon constructs the global solution from a vector of patch-local ones
+    /// @brief This function constructs the global solution from a vector of patch-local ones
     Matrix constructGlobalSolutionFromLocalSolutions( const std::vector<Matrix>& localContribs );
 
     /// @brief This function returns a list of dofs that are (on the coarse level) coupled
@@ -133,7 +133,7 @@ public:
         return m_jumpMatrices[0].rows();
     }
 
-    /// @brief Returs the size of the primal problem (number of primal dofs)
+    /// @brief Returns the size of the primal problem (number of primal dofs)
     index_t nPrimalDofs() const                                            { return m_nPrimalDofs;                }
 
     /// @brief Returns the primalConstraints (as vectors) for the given patch
