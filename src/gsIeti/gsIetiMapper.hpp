@@ -87,7 +87,7 @@ gsIetiMapper<T>::constructGlobalSolutionFromLocalSolutions( const std::vector<Ma
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
 
     const index_t nPatches = m_dofMapperGlobal.numPatches();
-    GISMO_ASSERT( nPatches == localContribs.size(),
+    GISMO_ASSERT( nPatches == static_cast<index_t>(localContribs.size()),
         "gsIetiMapper::constructGlobalSolutionFromLocalSolutions; The number of local contributions does "
         "not argee with the number of patches." );
 
