@@ -38,7 +38,20 @@ struct gsQuadrature
     static gsQuadRule<T> get(const gsBasis<T> & basis,
                              const gsOptionList & options, short_t fixDir = -1)
     {
-        const index_t qu   = options.askInt("quRule", GaussLegendre);
+        const index_t qu  = options.askInt("quRule", GaussLegendre);
+        const T       quA = options.getReal("quA");
+        const index_t quB = options.getInt ("quB");
+        const gsVector<index_t> nnodes = numNodes(basis,quA,quB,fixDir);
+        return get<T>(qu, nnodes);
+    }
+
+    /// Constructs a quadrature rule based on input \a options
+    template<class T>
+    static typename gsQuadRule<T>::uPtr
+                      getPtr(const gsBasis<T> & basis,
+                             const gsOptionList & options, short_t fixDir = -1)
+    {
+                const index_t qu   = options.askInt("quRule", GaussLegendre);
         const T       quA  = options.getReal("quA");
         const index_t quB  = options.getInt ("quB");
         const bool    over = options.askSwitch ("overInt", false);
@@ -47,8 +60,15 @@ struct gsQuadrature
         {
             if (!over)
             {
-                const gsVector<index_t> nnodes = numNodes(basis,quA,quB,fixDir);
-                return get<T>(qu, nnodes);
+                switch (qu)
+                {
+                    case GaussLegendre :
+                        return gsGaussRule<T>::make(numNodes(basis,quA,quB,fixDir));
+                    case GaussLobatto :
+                        return gsLobattoRule<T>::make(numNodes(basis,quA,quB,fixDir));
+                    default:
+                        GISMO_ERROR("Invalid Quadrature rule request ("<<qu<<")");
+                };
             }
             else
             {
@@ -60,14 +80,14 @@ struct gsQuadrature
                 const gsVector<index_t> nnodesI = numNodes(basis,quA,quB,fixDir);
                 const gsVector<index_t> nnodesB = numNodes(basis,quAb,quBb,fixDir);
 
-                return gsOverIntegrateRule<T>(basis,get<T>(qu, nnodesI),get<T>(qu, nnodesB));
+                return gsOverIntegrateRule<T>::make(basis,get<T>(qu, nnodesI),get<T>(qu, nnodesB));
             }
         }
         else if (qu==rule::PatchRule)
         {
             // quA: Order of the target space
             // quB: Regularity of the target space
-            return gsPatchRule<T>(basis,static_cast<index_t>(quA),quB,over);
+            return gsPatchRule<T>::make(basis,static_cast<index_t>(quA),quB,over);
         }
         else
         {

@@ -760,7 +760,6 @@ void gsExprAssembler<T>::assemble(expr... args)
 #   else
     _setFlag(a1);_setFlag(a1);_setFlag(a2);_setFlag(a4);_setFlag(a5);
 #   endif
-    gsQuadRule<T> QuRule;  // Quadrature rule
     gsVector<T> quWeights; // quadrature weights
 
     _eval ee(m_matrix, m_rhs, quWeights);
@@ -768,7 +767,7 @@ void gsExprAssembler<T>::assemble(expr... args)
     for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
         ee.setPatch(patchInd);
-        QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(patchInd), m_options);
+        gsQuadRule<T> & QuRule = *gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?

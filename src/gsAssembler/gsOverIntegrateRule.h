@@ -1,6 +1,6 @@
 /** @file gsOverIntegrateRule.h
 
-    @brief Provides the Gauss-Legendre quadrature rule
+    @brief Over-integrates a Gauss-Legendre or Gauss-Lobatto rule
 
     This file is part of the G+Smo library.
 
@@ -29,6 +29,8 @@ class gsOverIntegrateRule GISMO_FINAL : public gsQuadRule<T>
 {
 public:
 
+    typedef memory::unique_ptr<gsOverIntegrateRule> uPtr;
+
     /// Default empty constructor
     gsOverIntegrateRule()
     :
@@ -39,6 +41,18 @@ public:
 
     /// Initialize a tensor-product Gauss quadrature rule for \a basis
     /// using quA *deg_i + quB nodes (direction-wise)
+
+
+
+    /**
+     * @brief      Constructor
+     *
+     * @param[in]  basis         The basis
+     * @param[in]  quadInterior  The rule used for the interior
+     * @param[in]  quadBoundary  The rule used for the boundary
+     *
+     * @note: Only works for QuadRules that do not re-implement mapTo (slicing occurs)
+     */
     gsOverIntegrateRule(const  gsBasis<T> & basis,
                         const  gsQuadRule<T> & quadInterior,
                         const  gsQuadRule<T> & quadBoundary)
@@ -51,6 +65,19 @@ public:
         m_end = m_basis->support().col(1);
     };
 
+    /**
+     * @brief      Construct a smart-pointer to the rule
+     *
+     * @param[in]  basis         The basis
+     * @param[in]  quadInterior  The rule used for the interior
+     * @param[in]  quadBoundary  The rule used for the boundary
+     *
+     * @note: Only works for QuadRules that do not re-implement mapTo (slicing occurs)
+     */
+    static uPtr make(   const  gsBasis<T> & basis,
+                        const  gsQuadRule<T> & quadInterior,
+                        const  gsQuadRule<T> & quadBoundary )
+    { return uPtr( new gsOverIntegrateRule(basis,quadInterior,quadBoundary) ); }
 
     //const unsigned digits = std::numeric_limits<T>::digits10 );
 
@@ -70,6 +97,14 @@ public:
     /// \brief Dimension of the rule
     index_t dim() const { return m_basis->dim(); }
 
+    /**
+     * @brief      Maps the points in the d-dimensional cube with points lower and upper
+     *
+     * @param[in]  lower    The lower corner
+     * @param[in]  upper    The upper corner
+     * @param      nodes    Quadrature points
+     * @param      weights  Quadrature weights
+     */
     void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
                        gsMatrix<T> & nodes, gsVector<T> & weights ) const
     {

@@ -29,6 +29,8 @@ class gsQuadRule
 {
 public:
 
+    typedef memory::unique_ptr<gsQuadRule> uPtr;
+
     /// Default empty constructor
     gsQuadRule()
     { }

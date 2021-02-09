@@ -1,6 +1,6 @@
 /** @file gsPatchRule.h
 
-    @brief Provides the Gauss-Legendre quadrature rule
+    @brief Provides patch-wise quadrature rule
 
     This file is part of the G+Smo library.
 
@@ -29,6 +29,9 @@ template<class T>
 class gsPatchRule GISMO_FINAL : public gsQuadRule<T>
 {
 public:
+
+    typedef memory::unique_ptr<gsPatchRule> uPtr;
+
     /// Default empty constructor
     gsPatchRule()
     :
@@ -38,20 +41,55 @@ public:
     m_over(false)
     {};
 
-    /// Initialize a tensor-product Gauss quadrature rule for \a basis
-    /// using quA *deg_i + quB nodes (direction-wise)
+    /**
+     * @brief      Initialize a (tensor-product) patch-rule with based on the \a basis
+     *
+     * @param[in]  basis          The basis
+     * @param[in]  degree         The degree of the target space
+     * @param[in]  regularity     The regularity of the target space
+     * @param[in]  overintegrate  Over-integrate or not?
+     */
     gsPatchRule(const gsBasis<T> & basis,
                 const index_t degree,
                 const index_t regularity,
                 const bool overintegrate);
 
+    /// Make function returning a smart pointer
+
+    /**
+     * @brief      Construct a smart-pointer to the quadrature rule
+     *
+     * @param[in]  basis          The basis
+     * @param[in]  degree         The degree of the target space
+     * @param[in]  regularity     The regularity of the target space
+     * @param[in]  overintegrate  Over-integrate or not?
+     *
+     * @return     QuadRule pointer
+     */
+    static uPtr make(   const gsBasis<T> & basis,
+                        const index_t degree,
+                        const index_t regularity,
+                        const bool overintegrate)
+    { return uPtr( new gsPatchRule(basis,degree,regularity,overintegrate) ); }
+
+
+    /**
+     * @brief      Destructor
+     */
     ~gsPatchRule() { };
 
 public:
 
-    /// \brief Dimension of the rule
+    /**
+     * @brief      Maps the points in the d-dimensional cube with points lower and upper
+     *
+     * @param[in]  lower    The lower corner
+     * @param[in]  upper    The upper corner
+     * @param      nodes    Quadrature points
+     * @param      weights  Quadrature weights
+     */
     void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
-                       gsMatrix<T> & nodes, gsVector<T> & weights ) const;
+                       gsMatrix<T> & nodes, gsVector<T> & weights ) const override;
 
     index_t dim() const { return m_basis->dim(); }
 
@@ -95,15 +133,11 @@ protected:
 
 private:
     const gsBasis<T> * m_basis;
-    mutable gsBSplineBasis<T> * m_Bbasis;
     const index_t m_deg,m_reg;
     const bool m_over;
 
-    gsMatrix<T> m_greville;
-    gsKnotVector<T> m_knots;
     std::vector<gsVector<T>> m_nodes;
     std::vector<gsVector<T>> m_weights;
-    gsVector<T> m_integral;
 
     mutable typename gsSparseSolver<T>::QR m_solver;
 

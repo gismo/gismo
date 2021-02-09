@@ -32,26 +32,42 @@ gsPatchRule<T>::gsPatchRule(const gsBasis<T> & basis,
                             m_over(overintegrate)
 {
     GISMO_ENSURE(m_reg<m_deg,"regularity cannot be greater or equal to the order!");
+    // Initialize some stuff
     m_dim = m_basis->dim();
     m_nodes.resize(m_dim);
     m_weights.resize(m_dim);
     m_maps.resize(m_dim);
+
+    gsKnotVector<T> knots;
+    gsMatrix<T> greville;
+    gsVector<T> integral;
+    gsBSplineBasis<T> * Bbasis;
+
+    // Loop over dimensions of the basis and store the nodes and weights for each dimension
     for (size_t d = 0; d != m_dim; d++)
     {
-        m_Bbasis = const_cast<gsBSplineBasis<T> *>(static_cast<const gsBSplineBasis<T> * >(&m_basis->component(d)));
+        // Construc temporary basis (must be B-spline because we use knots!)
+        Bbasis = const_cast<gsBSplineBasis<T> *>(static_cast<const gsBSplineBasis<T> * >(&m_basis->component(d)));
 
-        m_knots = this->_init(m_Bbasis);
-        std::tie(m_greville,m_integral) = this->_integrate(m_knots);
-        std::tie(m_nodes.at(d),m_weights.at(d)) = this->_compute(m_knots,m_greville,m_integral);
+        // Find the knots
+        knots = this->_init(Bbasis);
+        // Compute exact integrals
+        std::tie(greville,integral) = this->_integrate(knots);
+        // Compute quadrule
+        std::tie(m_nodes.at(d),m_weights.at(d)) = this->_compute(knots,greville,integral);
 
+        // Construc a map with the nodes and the weights
         for (index_t k=0; k!=m_nodes[d].size(); k++)
             m_maps[d][m_nodes[d].at(k)] = m_weights[d].at(k);
+
     }
 }
 
 
 
 /*
+    Maps as follows:
+
     COORDINATES
     d=1:[x1 x2 x3 x4]
 
@@ -90,27 +106,32 @@ void gsPatchRule<T>::mapTo( const gsVector<T>& lower,
                             gsMatrix<T> & nodes,
                             gsVector<T> & weights ) const
 {
+    // First, we compute the nodes and weights that are between the lower and upper corners.
+    // This number can be different per element
+    // we also compute the total number of points in the tensor product (size)
     index_t size = 1;
     std::vector<gsVector<T>> elNodes(m_dim), elWeights(m_dim);
-    index_t k = 0;
+    index_t k = 0; // counter per direction d
     for (size_t d = 0; d!=m_dim; d++)
     {
         elNodes[d].resize(m_nodes[d].size());
         elWeights[d].resize(m_weights[d].size());
-        for (auto it = m_maps[d].lower_bound(lower[0]); it!=m_maps[d].upper_bound(upper[0]); it++, k++) // lower_bound = geq, upper_bound= greather than
+        for (auto it = m_maps[d].lower_bound(lower[d]); it!=m_maps[d].upper_bound(upper[d]); it++, k++) // lower_bound = geq, upper_bound= greather than
         {
             elNodes[d].at(k) = it->first;
             elWeights[d].at(k) = it->second;
         }
         elNodes[d].conservativeResize(k);
         elWeights[d].conservativeResize(k);
-        size *= elNodes[d].size();
-        k = 0;
+        size *= elNodes[d].size(); // compute tensor size
+        k = 0; // reset counter
     }
+
+    // initialize the number of nodes and weights
     nodes.resize(m_dim,size);
     weights.resize(size);
 
-    // fill matrix
+    // Now we fill the matrix with the points and we construct the tensor product (according to the scheme on top)
     gsMatrix<T> tmpNodes, tmpWeights;
     gsVector<T> ones;
     tmpNodes = elNodes[0].transpose();
@@ -181,6 +202,8 @@ gsKnotVector<T> gsPatchRule<T>::_init(const gsBSplineBasis<T> * Bbasis) const
     else if (rdiff>0)
         knots.reduceMultiplicity(-rdiff);
 
+    gsBSplineBasis<T> basis = gsBSplineBasis<T>(knots);
+    size = basis.size();
     // Add a middle knot if the size of the knot vector is odd
     if (size % 2 == 1)
     {
@@ -227,12 +250,12 @@ gsKnotVector<T> gsPatchRule<T>::_init(const gsBSplineBasis<T> * Bbasis) const
 template <class T>
 std::pair<gsMatrix<T>,gsMatrix<T>> gsPatchRule<T>::_integrate(const gsKnotVector<T> & knots ) const
 {
+    // Obtain a temporary bspline basis and quadrule
     gsBSplineBasis<T> basis = gsBSplineBasis<T>(knots);
     gsQuadRule<T> quRule = gsGaussRule<T>(basis,1,1);
 
-    typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-                basis.makeDomainIterator();
 
+    // obtain the greville points
     gsMatrix<T> greville;
     knots.greville_into(greville);
 
@@ -241,6 +264,9 @@ std::pair<gsMatrix<T>,gsMatrix<T>> gsPatchRule<T>::_integrate(const gsKnotVector
     gsMatrix<T> nodes, tmp;
     gsMatrix<index_t> actives;
     gsVector<T> weights;
+
+    // obtain the exact integrals of the functions
+    typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator();
     for (; domIt->good(); domIt->next() )
     {
         quRule.mapTo(domIt->lowerCorner(),domIt->upperCorner(),nodes,weights);
@@ -316,10 +342,7 @@ std::pair<gsVector<T>,gsVector<T>> gsPatchRule<T>::_compute(const gsKnotVector<T
 
         // Check convergence
         if (res.norm() < tol)
-        {
-            gsInfo<<"Converged in "<<it<<" iterations\n";
             break;
-        }
     }
     GISMO_ENSURE(it+1!=itMax,"Maximum iterations reached");
     return std::make_pair(nodes,weights);
