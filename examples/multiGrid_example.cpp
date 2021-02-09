@@ -42,8 +42,9 @@ int main(int argc, char *argv[])
     std::string iterativeSolver("cg");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
-    bool plot = false;
     std::string boundary_conditions("d");
+    std::string fn;
+    bool plot = false;
 
     gsCmdLine cmd("Solves a PDE with an isogeometric discretization using a multigrid solver.");
     cmd.addString("g", "Geometry",              "Geometry file", geometry);
@@ -67,6 +68,7 @@ int main(int argc, char *argv[])
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundary_conditions);
+    cmd.addString("" , "fn",                    "Write solution and used options to file", fn);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -90,7 +92,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    gsInfo << "Run multiGrid_example with options:\n" << opt << std::endl;
+    gsInfo << "Run multiGrid_example with options:\n" << opt << "\n";
 
     /******************* Define geometry ********************/
 
@@ -157,7 +159,7 @@ int main(int argc, char *argv[])
             ++i;
         }
         if ( len > i )
-            gsInfo << "\nToo much boundary conditions have been specified. Ingnoring the remaining ones.\n";
+            gsInfo << "\nToo many boundary conditions have been specified. Ingnoring the remaining ones.\n";
         gsInfo << "done. "<<i<<" boundary conditions set.\n";
     }
 
@@ -314,6 +316,17 @@ int main(int argc, char *argv[])
     else
         gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
 
+    if (!fn.empty())
+    {
+        gsFileData<> fd;
+        std::time_t time = std::time(NULL);
+        fd.add(opt);
+        fd.add(x);
+        fd.addComment(std::string("multiGrid_example   Timestamp:")+std::ctime(&time));
+        fd.save(fn);
+        gsInfo << "Write solution to file " << fn << "\n";
+    }
+
     if (plot)
     {
         // Construct the solution as a scalar field
@@ -321,15 +334,15 @@ int main(int argc, char *argv[])
         assembler.constructSolution(x, mpsol);
         gsField<> sol( assembler.patches(), mpsol );
 
-        // Write approximate and exact solution to paraview files
-        gsInfo << "Plotting in Paraview.\n";
+        // Write solution to paraview files
+        gsInfo << "Write Paraview data to file multiGrid_result.pvd\n";
         gsWriteParaview<>(sol, "multiGrid_result", 1000);
         gsFileManager::open("multiGrid_result.pvd");
     }
-    else
+    if (!plot&&fn.empty())
     {
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                  "file containing the solution.\n";
+                  "file containing the solution or --fn to write solution to xml file.\n";
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
