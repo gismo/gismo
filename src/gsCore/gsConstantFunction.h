@@ -15,6 +15,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsFunction.h>
+#include <gsUtils/gsCombinatorics.h>
 
 namespace gismo
 {
@@ -169,8 +170,21 @@ public:
     {
         GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
                                               << ", expected "<< m_domainDim);
-        result = gsMatrix<T>::Zero( (this->domainDim()*(this->domainDim()+1))/2,
-                                    this->targetDim()*u.cols() );
+        result = gsMatrix<T>::Zero(this->targetDim()*(this->domainDim()*(this->domainDim()+1))/2,
+                                   u.cols() );
+    }
+
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
+                          std::vector<gsMatrix<T> > & result) const
+    {
+        GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
+                     << ", expected "<< m_domainDim);
+        
+        result.resize(n+1,gsMatrix<T>());
+        eval_into(u,result.front());
+        for (int i = 1; i<=n; ++i)
+            result[i].resize( this->targetDim()*binomial(i+m_domainDim-1,m_domainDim-1)
+                           , u.cols() );
     }
 
     // Documentation in gsFunction class

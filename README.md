@@ -41,9 +41,10 @@ or using subversion:
 
 ```svn co https://github.com/gismo/gismo/trunk gismo```
 
-or as a zip file:
+or as a tar.gz or zip file:
 
-https://github.com/gismo/gismo/archive/stable.zip
+* https://github.com/gismo/gismo/archive/stable.tar.gz
+* https://github.com/gismo/gismo/archive/stable.zip
 
 # Prerequisites
 
@@ -56,7 +57,8 @@ https://github.com/gismo/gismo/archive/stable.zip
 
 * Compilers tested include recent versions of
   - [AMD Optimizing C/C++ Compiler](https://developer.amd.com/amd-aocc/)
-  - [Clang](https://clang.llvm.org) also Apple Clang
+  - [AppleClang](https://developer.apple.com/documentation/xcode/) see [here](https://mac.r-project.org/openmp/) for OpenMP support
+  - [Clang](https://clang.llvm.org)
   - [GNU GCC](https://gcc.gnu.org)
   - [Intel C++ compiler](https://software.intel.com/content/www/us/en/develop/tools/compilers/c-compilers.html)
   - [Mingw64](http://mingw-w64.org/)
@@ -68,37 +70,40 @@ https://github.com/gismo/gismo/archive/stable.zip
   - [IBM XLC C/C++](https://www.ibm.com/products/xl-cpp-linux-compiler-power) fails to compile Eigen
 
 * Recommended:
+   - [Doxygen](https://www.doxygen.org) for generating documentation.
    - [Paraview](https://www.paraview.org) for visualization.
 
 # Compilation
 
-The compilation requires configuration using CMake at a new, empty
-folder (in-source builds are disabled).
+The compilation requires configuration using [CMake](https://cmake.org)
+at a new, empty folder (in-source builds are disabled).
 
-* On Linux/macOS: A Unix makefile exists in the root source
-  folder. Running "make" creates a sub folder named "build" and
+* On **Linux/macOS**: A Unix makefile exists in the root source
+  folder. Running `make` creates a sub folder named `build` and
   executes CMake and compilation inside that folder. Alternatively,
   choose your own build folder and execute CMake pointing to the
   sources.
 
-* On MS Windows: Run cmake-gui tool (from an environment that is
-  configured with your compiler) to generate makefiles (or Visual
-  Studio project). Then execute the make tool to launch
-  compilation. Alternatively, use the QtCreator GUI and open the
-  CMakeLists.txt file on the root folder to create a QtCreator
-  project.
+* On **MS Windows**: MS Visual Studio has [built-in CMake
+  support](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio)
+  since version 2015. Alternatively, you can run the `cmake-gui` tool
+  (from an environment that is configured with your compiler) to
+  generate makefiles (or Visual Studio project files). Then execute
+  the make tool to launch compilation. Alternatively, use the
+  QtCreator GUI and open the CMakeLists.txt file on the root folder to
+  create a QtCreator project.
 
-After successful compilation a dynamic library is created in ./lib and
-executable example programs are output at the ./bin subdirectory of
+After successful compilation a dynamic library is created in `./lib` and
+executable example programs are output at the `./bin` subdirectory of
 the build folder.
 
-Additionally, if Doxygen is available on the system one can execute
-(eg. on Linux):
+Additionally, if [Doxygen](https://www.doxygen.org) is available on
+the system one can execute (eg. on Linux):
 
 ```make doc```
 
 to obtain the Doxygen documentation in HTML format. The main doxygen
-page is at ./doc/html/index.html.
+page is at `./doc/html/index.html`.
 
 More information at https://github.com/gismo/gismo/wiki
 
@@ -116,6 +121,11 @@ Release, RelWithDebInfo, MinSizeRel.
 
   The arithmetic type to be used for all computations. Available options
 include double, long double, float.
+
+* GISMO_EXTRA_INSTANCE    *not set*
+
+  If set to one or more of the options available for GISMO_COEFF_TYPE
+  the G+Smo library is compiled with extra arithmetic types enabled.
 
 * GISMO_EXTRA_DEBUG       *OFF*
 

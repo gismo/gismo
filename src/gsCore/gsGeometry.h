@@ -261,6 +261,10 @@ public:
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { this->basis().deriv2Func_into(u, m_coefs, result); }
 
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
+                          std::vector<gsMatrix<T> > & result) const
+    { this->basis().evalAllDersFunc_into(u, m_coefs, n, result); }
+
     /// @}
 
 
