@@ -14,8 +14,6 @@
 #pragma once
 
 #include <gsSolver/gsBlockOp.h>
-#include <gsSolver/gsProductOp.h>
-#include <gsSolver/gsSumOp.h>
 #include <gsSolver/gsAdditiveOp.h>
 
 namespace gismo

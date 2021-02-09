@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <gsSolver/gsLinearOperator.h>
 #include <gsSolver/gsMatrixOp.h>
 
 namespace gismo
@@ -90,7 +89,7 @@ public:
     ///                         This parameter is optional, if needed the solver will be
     ///                         created automatically.
     void addSubdomain(JumpMatrixPtr jumpMatrix, OpPtr localMatrixOp,
-        Matrix localRhs, OpPtr localSolverOp = OpPtr() );
+        Matrix localRhs, OpPtr localSolverOp = OpPtr());
 
     /// Access the jump matrix
     JumpMatrixPtr&       jumpMatrix(index_t i)           { return m_jumpMatrices[i];   }

@@ -13,11 +13,6 @@
 
 #pragma once
 
-#include <gsCore/gsDofMapper.h>
-#include <gsNurbs/gsKnotVector.h>
-#include <gsUtils/gsCombinatorics.h>
-
-
 /*    Concerning the status flag m_status:
  *       (m_status&1)!=0    means that the object has been initialized by calling init or the value constructor
  *       (m_status&2)!=0    means that the jump matrices have been computed

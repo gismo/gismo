@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <gsSolver/gsLinearOperator.h>
 #include <gsSolver/gsMatrixOp.h>
 #include <gsUtils/gsSortedVector.h>
 
