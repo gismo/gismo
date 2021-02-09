@@ -760,6 +760,7 @@ void gsExprAssembler<T>::assemble(expr... args)
 #   else
     _setFlag(a1);_setFlag(a1);_setFlag(a2);_setFlag(a4);_setFlag(a5);
 #   endif
+    typename gsQuadRule<T>::uPtr QuRule;
     gsVector<T> quWeights; // quadrature weights
 
     _eval ee(m_matrix, m_rhs, quWeights);
@@ -767,7 +768,7 @@ void gsExprAssembler<T>::assemble(expr... args)
     for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
         ee.setPatch(patchInd);
-        gsQuadRule<T> & QuRule = *gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
+        QuRule= gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
@@ -778,8 +779,8 @@ void gsExprAssembler<T>::assemble(expr... args)
         for (; domIt->good(); domIt->next() )
         {
             // Map the Quadrature rule to the element
-            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                          m_exprdata->points(), quWeights);
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           m_exprdata->points(), quWeights);
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(patchInd);
