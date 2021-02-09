@@ -27,14 +27,14 @@ namespace gismo
  *  that class the primal problem is just another subdomain.
  *
  *  The class at hand allows to handle primal degrees of freedom (dofs). It is purely
- *  algebraic and assums that the caller provides the constraint matrix C
+ *  algebraic and assumes that the caller provides the constraint matrix C
  *  (or, more precisely, its individual rows) and a mapping (as vector of
  *  indices) that tells the class to which primal dof the corresponding
  *  constraint belongs. So, for example, if a primal dof is a vertex value,
  *  than that vertex gets one identifying index identifying it as one single
  *  primal dof, while there is a constraint for each patch the corner belongs to.
  *
- *  It is assumed that the class recieves the matrix \f$ A \f$ and the member
+ *  It is assumed that the class receives the matrix \f$ A \f$ and the member
  *  \a incorporateConstraints constructs the local saddle point matrix:
  *
  *  \f[
@@ -46,8 +46,8 @@ namespace gismo
  *       \end{pmatrix}
  *  \f]
  *
- *  This matrix is then to be handed over to the \a gsIetiSystem . (Simultainously, the
- *  local rhs and the local jump matrix are ammended).
+ *  This matrix is then to be handed over to the \a gsIetiSystem . (Simultaneously, the
+ *  local rhs and the local jump matrix are amended).
  *
  *  The member \a primalBasis allows to construct the basis for the primal space by the
  *  principle of energy minimization.
@@ -120,7 +120,7 @@ public:
         Matrix& localRhs
     );
 
-    /// @brief Returs the matrix representation of the energy minimizing primal basis
+    /// @brief Returns the matrix representation of the energy minimizing primal basis
     ///
     /// @param  localSaddlePointSolver    Solver that realizes \f$ \tilde{A}^{-1} \f$
     /// @param  primalDofIndices          Vector, that contains for every primal constraint the index
@@ -188,7 +188,7 @@ public:
     Matrix&                               localRhs()          { return m_localRhs;           }
     const Matrix&                         localRhs() const    { return m_localRhs;           }
 
-    /// @brief Returs the size of the primal problem (number of primal dofs)
+    /// @brief Returns the size of the primal problem (number of primal dofs)
     index_t nPrimalDofs() const                               { return m_localMatrix.rows(); }
 
 private:
