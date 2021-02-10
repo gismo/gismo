@@ -259,6 +259,7 @@ public:
     gsHTensorBasis & operator=(gsHTensorBasis&& other)
     {
         m_deg     = std::move(other.m_deg);
+        freeAll( m_bases );
         m_bases   = std::move(other.m_bases);
         m_xmatrix = std::move(other.m_xmatrix);
         m_tree    = std::move(other.m_tree);

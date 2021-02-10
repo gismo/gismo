@@ -739,7 +739,11 @@ private:
         typedef std::pair<point,point> return_type;
 
         // initialize result
-        static return_type init() { return return_type(); }
+        static return_type init()
+        {
+            return std::make_pair(point::Zero(),point::Zero());
+            //return return_type();//!does not properly initialize the points
+        }
 
         static void visitLeaf(gismo::kdnode<d,T> * leafNode , int level, return_type & res)
         {
