@@ -173,7 +173,7 @@ gsGeometry<T>::boundary(boxSide const& s) const
 }
 
 template<class T>
-typename gsGeometr::uPtr
+typename gsGeometry<T>::uPtr
 gsGeometry<T>::component(boxComponent const& bc) const
 {
     gsMatrix<index_t> ind;
@@ -185,8 +185,8 @@ gsGeometry<T>::component(boxComponent const& bc) const
         coefs.row(i) = m_coefs.row( ind(i,0) );
     }
 
-    return componentBasis->makeGeometry( coefs );
-} 
+    return Bs->makeGeometry( coefs );
+}
 
 template<class T>
 void gsGeometry<T>::evaluateMesh(gsMesh<T>& mesh) const
