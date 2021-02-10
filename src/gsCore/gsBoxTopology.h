@@ -54,9 +54,9 @@ public:
 public:
 
     /// Default constructor
-    gsBoxTopology(short_t d = -1, int n = 0) : m_dim(d), nboxes(n) { }
+    gsBoxTopology(short_t d = -1, index_t n = 0) : m_dim(d), nboxes(n) { }
 
-    gsBoxTopology( short_t d, unsigned boxes,
+    gsBoxTopology( short_t d, index_t boxes,
             const bContainer & boundary,
             const ifContainer & interfaces )
         : m_dim(d), nboxes(boxes), m_boundary(boundary), m_interfaces(interfaces) { }
@@ -84,7 +84,7 @@ public:
     }
     
     /// Number of boxes
-    size_t nBoxes() const       { return nboxes; }
+    index_t nBoxes() const       { return nboxes; }
 
     /// Dimension of the boxes
     short_t dim  () const       { return m_dim; }
@@ -171,8 +171,8 @@ public:
     }
 
     /// Add an interface between side \a s1 of box \a p1 and side \a s2 of box \a p2.
-    void addInterface(size_t p1, boxSide s1,
-                      size_t p2, boxSide s2)
+    void addInterface(index_t p1, boxSide s1,
+                      index_t p2, boxSide s2)
     {
         addInterface(boundaryInterface(patchSide(p1, s1), patchSide(p2, s2), m_dim));
     }
@@ -184,13 +184,13 @@ public:
     }
 
     /// Add \a i new boxes.
-    void addBox(size_t i = 1)
+    void addBox(index_t i = 1)
     {
         nboxes += i;
     }
 
     /// Set side \a s of box \a p to a boundary.
-    void addBoundary(size_t p, boxSide s)
+    void addBoundary(index_t p, boxSide s)
     {
         addBoundary(patchSide(p, s));
     }
@@ -211,7 +211,7 @@ public:
     }
 
     /// Returns true if side \a s on patch \a p is a boundary.
-    bool isBoundary( int p, boxSide s )
+    bool isBoundary( index_t p, boxSide s )
     {
         return isBoundary( patchSide(p,s) );
     }
@@ -243,7 +243,7 @@ public:
 
     /// Returns a pointer to the interface between boxes \a b1 and \a
     /// b2, if one exists, otherwise it returns a null pointer
-    InterfacePtr findInterface(const size_t b1, const size_t b2) const;
+    InterfacePtr findInterface(const index_t b1, const index_t b2) const;
 
     /// set \a result to the associated interface of \a ps, returns
     /// false if it is a boundary patchSide
@@ -297,7 +297,7 @@ protected:
     short_t m_dim;
 
     /// Number of boxes held
-    size_t nboxes;
+    index_t nboxes;
 
     /// List of boundaries of the boxes
     bContainer m_boundary;

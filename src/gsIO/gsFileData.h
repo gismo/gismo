@@ -43,7 +43,7 @@ public:
     gsFileData();
 
     /**
-     * Initializes a a gsFileData object with the containts of a file
+     * Initializes a gsFileData object with the contents of a file
      *
      * @param fn filename string
      */

@@ -1,9 +1,8 @@
 ######################################################################
-## CMakeLists.txt ---
+## gsOptions.cmake
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012 - 2016 RICAM-Linz.
 ######################################################################
 
 message ("Configuration (cmake ${CMAKE_VERSION}):")
@@ -99,10 +98,10 @@ endif()
 #message ("  GISMO_WITH_METIS        ${GISMO_WITH_METIS}")
 #endif()
 
-option(GISMO_WITH_GMP           "With GMP"                  false  )
-if  (${GISMO_WITH_GMP})
-message ("  GISMO_WITH_GMP         ${GISMO_WITH_GMP}")
-endif()
+#option(GISMO_WITH_GMP            "With GMP"                  false  )
+#if  (${GISMO_WITH_GMP})
+#message ("  GISMO_WITH_GMP          ${GISMO_WITH_GMP}")
+#endif()
 
 option(GISMO_WITH_MPFR           "With MPFR"                  false  )
 if  (${GISMO_WITH_MPFR})
@@ -114,9 +113,9 @@ if  (${GISMO_WITH_MPI})
 message ("  GISMO_WITH_MPI          ${GISMO_WITH_MPI}")
 endif()
 
-option(GISMO_WITH_MPQ            "With MPQ"                  false  )
-if  (${GISMO_WITH_MPQ})
-message ("  GISMO_WITH_MPQ          ${GISMO_WITH_MPQ}")
+option(GISMO_WITH_GMP            "With GMP"                  false  )
+if  (${GISMO_WITH_GMP})
+message ("  GISMO_WITH_GMP          ${GISMO_WITH_GMP}")
 endif()
 
 option(GISMO_WITH_OCC            "With OpenCascade"          false  )

@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     // Flag for refinemet criterion
     // (see doxygen documentation of the free function
     // gsMarkElementsForRef explanation)
-    index_t refCriterion;
+    index_t refCriterion;   // MarkingStrategy
     // Parameter for computing adaptive refinement threshold
     // (see doxygen documentation of the free function
     // gsMarkElementsForRef explanation)
@@ -53,6 +53,7 @@ int main(int argc, char *argv[])
     refCriterion = PUCA;
     refParameter = 0.85;
     dump = false;
+    index_t refExt = 0;
 
     gsCmdLine cmd("Solving a PDE with adaptive refinement using THB-splines.");
     cmd.addSwitch("plot", "Plot resulting mesh in ParaView", plot);
@@ -63,6 +64,8 @@ int main(int argc, char *argv[])
     cmd.addInt("", "degree", "Spline degree of the THB basis", degree);
     cmd.addInt("c", "criterion",  "Criterion to be used for adaptive refinement (1-3, see documentation)",
             refCriterion);
+    cmd.addInt("E", "extension",  "Criterion to be used for adaptive refinement (1-3, see documentation)",
+            refExt);
     cmd.addReal("p", "parameter", "Parameter for adaptive refinement", refParameter);
     cmd.addSwitch("dump", "Write geometry and sequence of bases into XML files",
                 dump);
@@ -135,11 +138,17 @@ int main(int argc, char *argv[])
     // With this gsTensorBSplineBasis, it's possible to call the THB-Spline constructor
     gsTHBSplineBasis<2,real_t> THB( tbb );
 
+    gsTHBSpline<2,real_t> THB_patches(tbb, geo->coefs());
+
     // Finally, create a vector (of length one) of this gsTHBSplineBasis
     gsMultiBasis<real_t> bases(THB);
+    gsMultiPatch<real_t> mp(THB_patches);
 
     for (int i = 0; i < initUnifRef; ++i)
+    {
+        mp.uniformRefine();
         bases.uniformRefine();
+    }
 
     gsMultiPatch<> mpsol; // holds computed solution
     gsPoissonAssembler<real_t> pa(patches,bases,bcInfo,f);// constructs matrix and rhs
@@ -147,6 +156,9 @@ int main(int argc, char *argv[])
 
     if (dump)
         gsWrite(bases[0], "adapt_basis_0.xml");
+
+    gsWriteParaview<>(mp, "mp", 1001, true);
+
 
     // So, ready to start the adaptive refinement loop:
     for( int RefineLoop = 1; RefineLoop <= RefineLoopMax ; RefineLoop++ )
@@ -190,10 +202,10 @@ int main(int argc, char *argv[])
         std::vector<bool> elMarked( elErrEst.size() );
         gsMarkElementsForRef( elErrEst, refCriterion, refParameter, elMarked);
 
-        gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true);
+        gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true)<<"\n";
 
         // Refine the elements of the mesh, based on elMarked.
-        gsRefineMarkedElements( pa.multiBasis(), elMarked);
+        gsRefineMarkedElements( pa.multiBasis(), elMarked, refExt);
 
         // Refresh the assembler, since basis is now changed
         pa.refresh();
@@ -210,9 +222,12 @@ int main(int argc, char *argv[])
             // Write approximate solution to paraview files
             gsInfo<<"Plotting in Paraview...\n";
             gsWriteParaview<>(sol, "p2d_adaRef_sol", 5001, true);
+            gsWriteParaview<>(mp, "mp_ref", 5001);
             // Run paraview and plot the last mesh
             gsFileManager::open("p2d_adaRef_sol.pvd");
         }
+        gsRefineMarkedElements( mp, elMarked, refExt);
+
 
     }
 

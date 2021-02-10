@@ -1,28 +1,38 @@
-# Copyright (c) 2008-2010 Kent State University
-# Copyright (c) 2011-2012 Texas A&M University
-#
-# This file is distributed under the MIT License. See the accompanying file
-# LICENSE.txt or http://www.opensource.org/licenses/mit-license.php for terms
-# and conditions.
+######################################################################
+## FindMPFR.cmake
+## This file is part of the G+Smo library. 
+##
+## Author: Angelos Mantzaflaris 
+##
+##
+## MPFR_FOUND       - system has MPFR lib
+## MPFR_INCLUDE_DIR - the MPFR include directory
+## MPFR_LIBRARY     - Libraries needed to use MPFR
+######################################################################
 
-# FIXME: How do I find the version of MPFR that I want to use?
-# What versions are available?
+#unset(MPFR_LIBRARY CACHE)
 
-# NOTE: MPFR prefix is understood to be the path to the root of the MPFR
-# installation library.
-set(MPFR_PREFIX "" CACHE PATH "The path to the previx of an MPFR installation")
+if (MPFR_INCLUDE_DIR AND MPFR_LIBRARY)
+   set(MPFR_FIND_QUIETLY TRUE)
+endif ()
+
+set(MPFR_PREFIX "" CACHE PATH "The path to the prefix of an MPFR installation")
 
 find_path(MPFR_INCLUDE_DIR mpfr.h 
 	PATHS ${MPFR_PREFIX}/include /usr/include /usr/local/include)
 
-find_library(MPFR_LIBRARY NAMES mpfr 
+find_library(MPFR_LIBRARY NAMES mpfr libmpfr
 	PATHS ${MPFR_PREFIX}/lib /usr/lib /usr/local/lib)
 
-if(MPFR_INCLUDE_DIR AND MPFR_LIBRARY)
-	get_filename_component(MPFR_LIBRARY_DIR ${MPFR_LIBRARY} PATH)
-   set(MPFR_FOUND TRUE)
-endif()
+#if(MPFR_INCLUDE_DIR AND MPFR_LIBRARY)
+#	get_filename_component(MPFR_LIBRARY_DIR ${MPFR_LIBRARY} PATH)
+#   set(MPFR_FOUND TRUE)
+#endif()
 
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(MPFR DEFAULT_MSG MPFR_INCLUDE_DIR MPFR_LIBRARY)
+
+mark_as_advanced(MPFR_INCLUDE_DIR MPFR_LIBRARY)
 
 if(MPFR_FOUND)
    if(NOT MPFR_FIND_QUIETLY)

@@ -120,6 +120,8 @@ public:
 
     const gsGeometry<T> & piece(const index_t i) const { return patch(i); }
 
+    gsMultiPatch<T> coord(const index_t c) const;
+
     index_t nPieces() const { return static_cast<index_t>(m_patches.size()); }
 
     index_t size() const { return 1; }
@@ -201,7 +203,7 @@ public:
     }
 
     ///\brief Permutes the patches according to \a perm
-    void permute(const std::vector<int> & perm);
+    void permute(const std::vector<short_t> & perm);
 
     ///\brief Return the basis of the \a i-th patch.
     gsBasis<T> & basis( size_t i ) const;

@@ -22,8 +22,9 @@ namespace gismo
 
 namespace util {
 
-#if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER > 1700)
+#if __cplusplus >= 201103L
 //see also http://lists.boost.org/Archives/boost/2009/04/151209.php
+// has_move_constructor is not working with MSVC up to VS2019
 template <typename T> struct has_move_constructor
 {
     typedef char yes[1];
@@ -38,6 +39,9 @@ template <typename T> struct has_move_constructor
     template <typename> static yes& test(...);
     enum { value = (sizeof(test<T>(0)) == sizeof(yes)) };
 };
+#endif
+
+#if __cplusplus >= 201103L || _MSC_VER >= 1600
 
 using std::conditional;
 using std::enable_if;
@@ -55,7 +59,13 @@ using std::make_unsigned;
 using std::make_signed;
 using std::is_signed;
 
+# define GS_BIND1ST(_op,_arg) std::bind(_op, _arg, std::placeholders::_1)
+# define GS_BIND2ND(_op,_arg) std::bind(_op, std::placeholders::_1, _arg)
+
 #else
+
+# define GS_BIND1ST(_op,_arg) std::bind1st(_op,_arg)
+# define GS_BIND2ND(_op,_arg) std::bind2nd(_op,_arg)
 
 // template <typename T> struct has_move_constructor { enum { value = 0 }; };
 
@@ -370,7 +380,7 @@ struct is_complex : integral_constant<bool,
 #ifdef GISMO_WITH_MPFR
                     is_same<T,std::complex<mpfr::mpreal> >::value      ||
 #endif
-#ifdef GISMO_WITH_MPQ
+#ifdef GISMO_WITH_GMP
                     is_same<T,std::complex<mpq_class> >::value         ||
 #endif
 #ifdef GISMO_WITH_UNUM

@@ -3,7 +3,6 @@
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2018 RICAM-Linz.
 ##
 ##
 ## Set INTEL_ROOT to the intel folder in your system

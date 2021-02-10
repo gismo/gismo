@@ -153,7 +153,7 @@ inline T max_impl(const T& v0, const T& v1, ad_type_tag)
 template <typename T>
 inline T nequal_impl(const T& v0, const T& v1, ad_type_tag)
 {
-    const T epsilon  = epsilon_type<T>::value();
+    const T epsilon( epsilon_type<ad_type_tag>::value() );
     const T eps_norm = (max(T(1),max(abs(v0),abs(v1))) * epsilon);
     return (abs(v0 - v1) > eps_norm) ? T(1) : T(0);
 }
@@ -215,7 +215,7 @@ inline T logn_impl(const T& v0, const T& v1, ad_type_tag)
 template <typename T>
 inline T sinc_impl(const T& v, ad_type_tag)
 {
-    if (abs(v) >= epsilon_type<DScalar>::value())
+    if (abs(v) >= epsilon_type<ad_type_tag>::value())
         return(sin(v) / v);
     else
         return T(1);
@@ -241,7 +241,7 @@ inline T xnor_impl(const T& v0, const T& v1, ad_type_tag)
 template <typename T>
 inline T equal_impl(const T& v0, const T& v1, ad_type_tag)
 {
-    const T epsilon  = epsilon_type<T>::value();
+    const T epsilon( epsilon_type<ad_type_tag>::value() );
     const T eps_norm = (max(T(1),max(abs(v0),abs(v1))) * epsilon);
     return (abs(v0 - v1) <= eps_norm) ? T(1) : T(0);
 }

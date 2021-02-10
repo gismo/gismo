@@ -240,7 +240,7 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #endif
 
-#if (__cplusplus < 201402L && __GNUC__==7)
+#if (__cplusplus < 201703L && __GNUC__>6)
 // mangled name will change in C++17 because the exception
 // specification is part of a function type [-Wnoexcept-type]
 #pragma GCC diagnostic ignored "-Wnoexcept-type"
@@ -264,7 +264,7 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
  */
 #ifndef GISMO_NO_STATIC_ASSERT
 
-  #if defined(__GXX_EXPERIMENTAL_CXX0X__) || (defined(_MSC_VER) && (_MSC_VER >= 1600))
+  #if defined(__GXX_EXPERIMENTAL_CXX0X__) || _MSC_VER >= 1600
 
     // Native static_assert is available
     #define GISMO_STATIC_ASSERT(X,MSG) static_assert(X,#MSG);

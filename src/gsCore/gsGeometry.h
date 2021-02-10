@@ -161,6 +161,7 @@ public:
         m_coefs.swap(other.m_coefs); other.m_coefs.clear();
         delete m_basis;
         m_basis = other.m_basis; other.m_basis = NULL;
+        m_id = std::move(other.m_id);
         return *this;
     }
 #endif
@@ -260,6 +261,10 @@ public:
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { this->basis().deriv2Func_into(u, m_coefs, result); }
 
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
+                          std::vector<gsMatrix<T> > & result) const
+    { this->basis().evalAllDersFunc_into(u, m_coefs, n, result); }
+
     /// @}
 
 
@@ -300,7 +305,7 @@ public:
     short_t targetDim() const { return this->coefDim(); }
 
     /// Dimension \em n of the coefficients (control points)
-    short_t coefDim() const { return m_coefs.cols(); }
+    short_t coefDim() const { return static_cast<short_t>(m_coefs.cols()); }
 
     /// Dimension \em n of the absent physical space
     short_t geoDim() const { return this->coefDim(); }
@@ -451,9 +456,8 @@ public:
     /// Apply Scaling coord-wise by a vector v
     void scale(gsVector<T> const & v)
     {
-        this->m_coefs.col(0) *= v[0];
-        this->m_coefs.col(1) *= v[1];
-        this->m_coefs.col(2) *= v[2];
+        GISMO_ASSERT( v.rows() == this->m_coefs.cols(), "Sizes do not agree." );
+        this->m_coefs.array().rowwise() *= v.array().transpose();
     }
 
     /// Apply translation by vector v
@@ -488,11 +492,13 @@ public:
      * The syntax of \em boxes depends on the implementation in the
      * underlying basis. See gsBasis::refineElements_withCoefs() for details.
      */
-    void refineElements( std::vector<unsigned> const & boxes )
+    void refineElements( std::vector<index_t> const & boxes )
     {
         this->basis().refineElements_withCoefs(this->m_coefs, boxes );
     }
 
+    typename gsGeometry::uPtr coord(const index_t c) const {return this->basis().makeGeometry( this->coefs().col(c) ); }
+    
     /// Embeds coefficients in 3D
     void embed3d()
     {
@@ -535,7 +541,8 @@ public:
     
     /// Compute the Hessian matrix of the coordinate \a coord
     /// evaluated at points \a u
-    virtual gsMatrix<T> hessian(const gsMatrix<T>& u, unsigned coord) const;
+    virtual void hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
+                              index_t coord) const;
     
     /// Return the control net of the geometry
     void controlNet( gsMesh<T> & mesh) const
@@ -593,7 +600,14 @@ public:
     /// parameter values.  If the point cannot be inverted (eg. is not
     /// part of the geometry) the corresponding parameter values will be undefined
     virtual void invertPoints(const gsMatrix<T> & points, gsMatrix<T> & result,
-                              const T accuracy = 1e-6) const;
+                              const T accuracy = 1e-6,
+                              const bool useInitialPoint = false) const;
+
+    /// Returns the parameters of closest point to \a pt
+    void closestPointTo(const gsVector<T> & pt,
+                        gsVector<T> & result,
+                        const T accuracy = 1e-6,
+                        const bool useInitialPoint = false) const;
 
     /// Sets the patch index for this patch
     void setId(const size_t i) { m_id = i; }

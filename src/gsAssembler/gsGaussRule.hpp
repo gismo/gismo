@@ -20,7 +20,7 @@ namespace gismo
 {
 
 template<class T> void
-gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, short_t fixDir)
+gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const index_t quB, short_t fixDir)
 //const unsigned digits)
 {
     const short_t d  = basis.dim();
@@ -60,7 +60,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, short
     //}
     //else
     //{
-    //    for( int i=0; i<d; ++i )
+    //    for( short_t i=0; i<d; ++i )
     //    {
     //        const index_t numNodes = quA * basis.degree(i) + quB;
     //        computeReference(numNodes, nodes[i], weights[i], digits);
@@ -72,7 +72,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, short
 
 template<class T>
 gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, 
-                            const T quA, const int quB,
+                            const T quA, const index_t quB,
                             const short_t fixDir)
 //const unsigned digits)
 {
@@ -128,11 +128,11 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
     x.resize(n);
     w.resize(n);
 
-    const unsigned int max_its = digits;
+    const unsigned max_its = digits;
     const T tolerance = math::pow( T(0.1), static_cast<int>(digits) );
     
     // Find only half the roots because of symmetry
-    const unsigned int m= n / 2 ;
+    const unsigned m = n / 2 ;
     
     // Three recurrence relation values and one derivative value.
     T   pn(0.0),  // P_{n}
@@ -156,7 +156,7 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
         w[m] = T(2.0) / ( dpn*dpn );
     }
     
-    for (unsigned int i=0; i<m; ++i)
+    for (unsigned i=0; i<m; ++i)
     {
         // Remarkably, this simple relation provides a very
         // good initial guess for x_i.  See, for example,
@@ -168,7 +168,7 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
         x[i] = math::cos(EIGEN_PI*(i+0.75)/(n+0.5));
         
         // Newton loop iteration counter
-        unsigned int n_its = 0;
+        unsigned n_its = 0;
         
         // Begin Newton iterations
         do
@@ -376,7 +376,8 @@ gsGaussRule<T>::lookupReference(index_t n,       // Number of points
         w << 0.016017228257774333324224616858, 0.036953789770852493799950668299, 0.057134425426857208283635826472, 0.076100113628379302017051653300, 0.093444423456033861553289741114, 0.108797299167148377663474578070, 0.12183141605372853419536717713, 0.13226893863333746178105257450, 0.13988739479107315472213342387, 0.14452440398997005906382716655, 0.14608113364969042719198514768, 0.14452440398997005906382716655, 0.13988739479107315472213342387, 0.13226893863333746178105257450, 0.12183141605372853419536717713, 0.108797299167148377663474578070, 0.093444423456033861553289741114, 0.076100113628379302017051653300, 0.057134425426857208283635826472, 0.036953789770852493799950668299, 0.016017228257774333324224616858;
         return true;
     }
-/*
+#ifndef _MSC_VER
+// /*
     case 22 :
     {
         x << -0.99429458548239929207303142, -0.97006049783542872712395099, -0.92695677218717400052069294, -0.86581257772030013653642564, -0.78781680597920816200427796, -0.69448726318668278005068984, -0.58764040350691159295887693, -0.46935583798675702640633071, -0.34193582089208422515814742, -0.20786042668822128547884653, -0.06973927331972222121384180, 0.06973927331972222121384180, 0.20786042668822128547884653, 0.34193582089208422515814742, 0.46935583798675702640633071, 0.58764040350691159295887693, 0.69448726318668278005068984, 0.78781680597920816200427796, 0.86581257772030013653642564, 0.92695677218717400052069294, 0.97006049783542872712395099, 0.99429458548239929207303142;
@@ -525,6 +526,7 @@ gsGaussRule<T>::lookupReference(index_t n,       // Number of points
         return true;
     }
 // */
+#endif
     default:
     {
         //gsWarn << "  Illegal value of N = " << n << "\n";

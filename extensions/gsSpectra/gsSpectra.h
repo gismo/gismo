@@ -17,13 +17,15 @@
 
 #include <gsCore/gsConfig.h>
 
-#include <SymEigsSolver.h>
-#include <SymGEigsSolver.h>
-#include <GenEigsSolver.h>
-#include <MatOp/SparseGenMatProd.h>
-//#include <MatOp/DenseSymMatProd.h> // included by SymEigsSolver.h
-#include <MatOp/SparseCholesky.h>
-#include <MatOp/DenseCholesky.h>
+#include <Spectra/Spectra/SymEigsSolver.h>
+#include <Spectra/Spectra/SymEigsShiftSolver.h>
+#include <Spectra/Spectra/SymGEigsSolver.h>
+#include <Spectra/Spectra/GenEigsSolver.h>
+#include <Spectra/Spectra/GenEigsRealShiftSolver.h>
+#include <Spectra/Spectra/MatOp/SparseGenMatProd.h>
+//#include <Spectra/Spectra/MatOp/DenseSymMatProd.h> // included by SymEigsSolver.h
+#include <Spectra/Spectra/MatOp/SparseCholesky.h>
+#include <Spectra/Spectra/MatOp/DenseCholesky.h>
 
 namespace gismo {
 
@@ -32,6 +34,7 @@ namespace gismo {
 // Product operation wrapper
 template <class MatrixType> class SpectraMatProd
 {
+public:
     typedef typename MatrixType::Scalar Scalar;
     typedef typename MatrixType::Nested NestedMatrix;
     NestedMatrix m_mat;
@@ -41,7 +44,7 @@ public:
     int cols() const { return m_mat.cols(); }
     void perform_op(const Scalar* x_in, Scalar* y_out) const
     {
-        gsAsVector<Scalar>(y_out, m_mat.rows()).noalias() = 
+        gsAsVector<Scalar>(y_out, m_mat.rows()).noalias() =
             m_mat * gsAsConstVector<Scalar>(x_in,  m_mat.cols());
     }
 };
@@ -61,44 +64,41 @@ public:
     }
     \code
 */
-template <class MatrixType, int SelRule = Spectra::SMALLEST_MAGN>
+template <class MatrixType>
 class gsSpectraSolver : private SpectraMatProd<MatrixType>,
-        public Spectra::GenEigsSolver<typename MatrixType::Scalar,
-                                      SelRule, SpectraMatProd<MatrixType> >
+        public Spectra::GenEigsSolver<SpectraMatProd<MatrixType> >
 {
     typedef SpectraMatProd<MatrixType> MatOp;
-    typedef Spectra::GenEigsSolver<typename MatrixType::Scalar,
-                                   SelRule, MatOp > Base;
+    typedef Spectra::GenEigsSolver<MatOp> Base;
 public:
     gsSpectraSolver(const MatrixType & mat, int nev_, int ncv_) :
-    MatOp(mat), Base(this, nev_, ncv_) { Base::init(); }
+    MatOp(mat), Base(*this, nev_, ncv_) { Base::init(); }
 };
 
 /// Eigenvalue solver for real symmetric matrices
-template <class MatrixType, int SelRule = Spectra::SMALLEST_ALGE>
+template <class MatrixType>
 class gsSpectraSymSolver : private SpectraMatProd<MatrixType>,
-        public Spectra::SymEigsSolver<typename MatrixType::Scalar,
-                                      SelRule, SpectraMatProd<MatrixType> >
+        public Spectra::SymEigsSolver<SpectraMatProd<MatrixType> >
 {
     typedef SpectraMatProd<MatrixType> MatOp;
-    typedef Spectra::SymEigsSolver<typename MatrixType::Scalar,
-                                   SelRule, MatOp> Base;
+    typedef Spectra::SymEigsSolver<MatOp> Base;
 public:
     gsSpectraSymSolver(const MatrixType & mat, int nev_, int ncv_) :
-    MatOp(mat), Base(this, nev_, ncv_) { Base::init(); }
+    MatOp(mat), Base(*this, nev_, ncv_) { Base::init(); }
 };
 
 
 template <class MatrixType> class SpectraOps
 {
-protected:
+public:
     typedef Spectra::SparseCholesky<typename MatrixType::Scalar> InvOp;
     SpectraOps(const MatrixType & A, const MatrixType & B) : opA(A), opB(B) { }
     SpectraMatProd<MatrixType>                           opA;
     Spectra::SparseCholesky<typename MatrixType::Scalar> opB;
 };
 
-template<> template <class T> class SpectraOps<gsMatrix<T> >
+//template<> //compilation fails with this
+template <class T> class SpectraOps<gsMatrix<T> >
 {
 public:
     typedef Spectra::DenseCholesky<T> InvOp;
@@ -109,21 +109,18 @@ protected:
     InvOp opB;
 };
 
-/// Generalized eigenvalue solver for real symmetric matrices
-template <class MatrixType, int SelRule = Spectra::SMALLEST_ALGE>
-class gsSpectraGenSymSolver : private SpectraOps<MatrixType>, 
-public Spectra::SymGEigsSolver<typename MatrixType::Scalar, SelRule,
-SpectraMatProd<MatrixType>, typename SpectraOps<MatrixType>::InvOp, Spectra::GEIGS_CHOLESKY>
+template <class MatrixType, Spectra::GEigsMode GEigsMode = Spectra::GEigsMode::Cholesky>
+class gsSpectraGenSymSolver : private SpectraOps<MatrixType>,
+public Spectra::SymGEigsSolver<SpectraMatProd<MatrixType>, typename SpectraOps<MatrixType>::InvOp, GEigsMode>
 {
     typedef typename MatrixType::Scalar Scalar;
     typedef SpectraOps<MatrixType> Ops;
     typedef SpectraMatProd<MatrixType> MatOp;
 
-    typedef Spectra::SymGEigsSolver<Scalar,SelRule, MatOp, typename Ops::InvOp,
-                                    Spectra::GEIGS_CHOLESKY> Base;
+    typedef Spectra::SymGEigsSolver<MatOp, typename Ops::InvOp,GEigsMode> Base;
 public:
     gsSpectraGenSymSolver(const MatrixType & Amat, const MatrixType & Bmat, int nev_, int ncv_)
-    : Ops(Amat,Bmat), Base(&this->opA, &this->opB, nev_, math::min(ncv_,Amat.rows()))
+    : Ops(Amat,Bmat), Base(this->opA, this->opB, nev_, math::min(ncv_,Amat.rows()))
     { Base::init(); }
 };
 

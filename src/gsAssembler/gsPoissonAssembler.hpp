@@ -49,15 +49,17 @@ void gsPoissonAssembler<T>::assemble()
     // Enforce Neumann boundary conditions
     Base::template push<gsVisitorNeumann<T> >(m_pde_ptr->bc().neumannSides() );
 
-    const int dirStr = m_options.getInt("DirichletStrategy");
-    
-    // If requested, enforce Dirichlet boundary conditions by Nitsche's method
-    if ( dirStr == dirichlet::nitsche )
-        Base::template push<gsVisitorNitsche<T> >(m_pde_ptr->bc().dirichletSides());
-
-     // If requested, enforce Dirichlet boundary conditions by diagonal penalization
-     else if ( dirStr == dirichlet::penalize )
-         Base::penalizeDirichletDofs();
+    switch (m_options.getInt("DirichletStrategy"))
+    {
+        case dirichlet::penalize:
+            Base::penalizeDirichletDofs();
+            break;
+        case dirichlet::nitsche:
+            Base::template push<gsVisitorNitsche<T> >(m_pde_ptr->bc().dirichletSides());
+            break;
+        default:
+            break;
+    }
 
     if ( m_options.getInt("InterfaceStrategy") == iFace::dg )
         Base::template pushInterface<gsVisitorDg<T> >();

@@ -38,7 +38,7 @@ namespace gismo
 namespace util
 {
 
-#if __cplusplus >= 201103L
+#if __cplusplus >= 201103L || _MSC_VER >= 1600
 template <class C, size_t N> // we catch up char arrays
 std::string to_string(C (& value)[N])
 {
@@ -82,7 +82,7 @@ inline bool ends_with( const std::string & haystack, const std::string & needle 
     return std::equal(needle.rbegin(), needle.rend(), haystack.rbegin());
 }
 
-#if __cplusplus > 199711L || (defined(_MSC_VER) && _MSC_VER >= 1600)
+#if __cplusplus > 199711L || _MSC_VER >= 1600
 using std::iota;
 using std::stod;
 using std::stoi;
@@ -187,7 +187,7 @@ inline std::string tokenize(const std::string& str,
                             const std::string& delim,
                             const size_t token)
 {
-    size_t token_end = -1;
+    size_t token_end = std::string::npos;
     size_t token_begin = 0;
     size_t token_count = 0;
     bool catched = false;
@@ -252,9 +252,9 @@ public:
         std::free(dm);
         return res;
 #endif
-#else
+#else   // not __GNUC__
         return typeid(T).name();
-#endif
+#endif  // __GNUC__
     }
 };
 
@@ -268,7 +268,7 @@ size_t hash_range(T const * start, const T * const end)
     return seed;
 }
 
-#if __cplusplus >= 201703L
+#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
 using std::size;
 #else
 template <class T, size_t N>
@@ -296,7 +296,7 @@ inline bool operator>= (const T& a, const T& b) { return !(a<b);  }
 // This macro deletes the operators ==, !=, <, >, <= and >=
 // for operations that involve the types S and T (in either
 // order)
-#if __cplusplus >= 201103L
+#if __cplusplus >= 201103L || _MSC_VER >= 1600
 #define GISMO_DELETE_COMPARISON_OPERATORS( S, T )         \
 inline bool operator== (const S& a, const T& b) = delete; \
 inline bool operator!= (const S& a, const T& b) = delete; \

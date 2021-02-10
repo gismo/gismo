@@ -20,8 +20,8 @@
 #include <malloc.h>
 #endif
 
-#ifdef __GLIBCXX__
-#  ifdef __INTEL_COMPILER
+#if  __cplusplus < 201103 && defined( __GLIBCXX__ )
+#  if defined(__INTEL_COMPILER)
 #    include <boost/shared_ptr.hpp>
 #    include <boost/weak_ptr.hpp>
 #  else
@@ -51,13 +51,15 @@ memory::shared_ptr<int> B;
 \endcode
 */
 
-#ifdef __INTEL_COMPILER
+#if   __cplusplus < 201103 && defined( __GLIBCXX__ )
+#  if defined(__INTEL_COMPILER)
 using boost::shared_ptr;
 using boost::weak_ptr;
-#elif __cplusplus < 201103 && defined( __GLIBCXX__ )
+#  else
 using std::tr1::shared_ptr;
 using std::tr1::weak_ptr; 
-#else
+#  endif
+#else // libc++ or other
 using std::shared_ptr;
 using std::weak_ptr;
 #endif 
@@ -69,7 +71,7 @@ usage:
 memory::unique_ptr<int> B;
 \endcode
 */
-#if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1600)
+#if __cplusplus >= 201103 || _MSC_VER >= 1600
 using std::unique_ptr;
 using std::nullptr_t;
 #else
@@ -234,7 +236,15 @@ inline std::vector<T*> release(std::vector< unique_ptr<T> >& cont)
 
 } // namespace memory
 
-#if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1600)
+#if __cplusplus >= 201103 || _MSC_VER >= 1900
+// fix MSVC 2013- (_MSC_VER < 1900)
+// MSVC < 1900 do not work probably. give makes a deep copy for return value,
+// losses left value. But the alternative code results in segmentation vaults
+// because a swap/give loop leads to a stack overflow.
+// From the adresses, it seams that Eigen do not support rvalue with MSVC < 1900
+// Therefore disabled EIGEN_HAS_RVALUE_REFERENCES for MSVC < 1900 and use
+// alternative code.
+
 /** 
     Alias for std::move, to be used instead of writing std::move for
     keeping backward c++98 compatibility
@@ -253,7 +263,7 @@ auto give(T&& t) -> decltype(std::move(std::forward<T>(t)))
 #else
 /**
     Alias for std::move, to be used instead of std::move for backward
-    c++98 compatibility
+    c++98 compatibility and MSVC before 2015
 
     Based on swapping and copy elision.
 */
@@ -273,7 +283,7 @@ memory::shared_ptr<T> give(memory::shared_ptr<T> & x)
 // Small, dynamically sized arrays on the stack, for POD types.
 // Only use this if the size is guaranteed not to be more than a few
 // hundred bytes! Be warned: overflow occurs without any warning
-#if defined(GISMO_WITH_MPQ) || defined(GISMO_WITH_MPFR)
+#if defined(GISMO_WITH_GMP) || defined(GISMO_WITH_MPFR)
  #define STACK_ARRAY( T, name, sz )    T name[sz];
 #else
 // Note: VLAs(following line) can be buggy on some compilers/versions,
@@ -398,7 +408,7 @@ inline void copy(T begin, T end, U* result)
 
 } // namespace gismo
 
-#if (__cplusplus < 201103) && (!defined(_MSC_VER) || _MSC_VER < 1600)
+#if __cplusplus < 201103L && _MSC_VER < 1600 && !defined(nullptr)
 // Define nullptr for compatibility with newer C++
 static const gismo::memory::nullptr_t nullptr ={};
 #endif
