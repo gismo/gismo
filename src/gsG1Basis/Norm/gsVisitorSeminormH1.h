@@ -94,11 +94,11 @@ public:
 
             for (index_t i = g1System.get_numBoundaryVertexFunctions()[2]; i < g1System.get_numBoundaryVertexFunctions()[3]; i++)
                 for (index_t j = 0; j < actives.rows(); j++)
-                    f1ders += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f1ders.dim().second);
+                    f1ders += sol_sparse->at(i,g1System.get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f1ders.dim().second);
 
             for (index_t i = g1System.get_numBoundaryVertexFunctions()[4]; i < g1System.get_numBoundaryVertexFunctions().last(); i++)
                 for (index_t j = 0; j < actives.rows(); j++)
-                    f1ders += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f1ders.dim().second);
+                    f1ders += sol_sparse->at(i,g1System.get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f1ders.dim().second);
         }
         else
         {

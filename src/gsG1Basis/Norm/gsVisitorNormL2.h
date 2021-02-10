@@ -95,11 +95,11 @@ public:
 
             for (index_t i = g1System.get_numBoundaryVertexFunctions()[2]; i < g1System.get_numBoundaryVertexFunctions()[3]; i++)
                 for (index_t j = 0; j < actives.rows(); j++)
-                    f1vals += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j)) * basisData.row(j);
+                    f1vals += sol_sparse->at(i,g1System.get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * basisData.row(j);
 
             for (index_t i = g1System.get_numBoundaryVertexFunctions()[4]; i < g1System.get_numBoundaryVertexFunctions().last(); i++)
                 for (index_t j = 0; j < actives.rows(); j++)
-                    f1vals += sol_sparse->at(i,g1System.get_numBasisFunctionsInterface()[geoEval.id()] + actives.at(j)) * basisData.row(j);
+                    f1vals += sol_sparse->at(i,g1System.get_numBasisFunctions()[geoEval.id()] + actives.at(j)) * basisData.row(j);
         }
         else
         {
@@ -133,15 +133,8 @@ public:
         T sum(0.0);
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
-            gsMatrix<T> Jk = geoEval.jacobian(k);
-            gsMatrix<T> G = Jk.transpose() * Jk;
-            gsMatrix<T> G_inv = G.cramerInverse();
-
-            real_t detG = G.determinant();
-
-
-            //const T weight = quWeights[k] * geoEval.measure(k);
-            const T weight = quWeights[k] * sqrt(detG);
+            const T weight = quWeights[k] * geoEval.measure(k);
+            //const T weight = quWeights[k] * sqrt(detG);
             switch (m_p)
             {
                 case 0: // infinity norm

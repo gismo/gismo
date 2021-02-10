@@ -307,7 +307,7 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
     }
 
     gsGeometry<>::uPtr tilde_temp;
-    if (this->m_optionList.getSwitch("twoPatch"))
+/*    if (this->m_optionList.getSwitch("twoPatch"))
     {
         gsVector<> sol_a_new(sol_a.rows() + 2);
         sol_a_new.setZero();
@@ -319,7 +319,7 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
         tilde_temp = bsp_gD.makeGeometry(sol_a_new);
     }
     else
-        tilde_temp = bsp_gD.makeGeometry(sol_a);
+*/        tilde_temp = bsp_gD.makeGeometry(sol_a);
 
     gsBSpline<T> alpha_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
     alpha_S_tilde.push_back(alpha_t);
@@ -340,7 +340,8 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
         gsVector<> sol_b_new(sol_b.rows() + 2);
         sol_b_new.setZero();
         sol_b_new.block(1, 0, sol_b.rows(), 1) = sol_b;
-
+        sol_b_new.at(0) = globalGdAssembler.bdy_beta()(0, 0);
+        sol_b_new.at(sol_b.rows() + 1) = globalGdAssembler.bdy_beta()(1, 0);
         tilde_temp = bsp_gD.makeGeometry(sol_b_new);
     }
     else

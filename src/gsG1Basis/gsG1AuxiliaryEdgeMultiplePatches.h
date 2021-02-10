@@ -66,6 +66,7 @@ public:
     }
 
     real_t getError() { return m_error; }
+    index_t getPlus() { return plus; }
 
     // Compute topology
     // After computeTopology() the patches will have the same patch-index as the position-index in auxGeom
@@ -224,6 +225,7 @@ public:
                 for (size_t i = basis_2.degree()+1; i < basis_2.knots().size() - (basis_2.degree()+1); i += basis_2.knots().multiplicityIndex(i))
                     basis_plus.insertKnot(basis_2.knot(i),p-1-m_r);
 
+            plus = basis_plus.size();
 
             basis_pm.push_back(basis_plus);
             if (g1OptionList.getSwitch("info"))
@@ -585,6 +587,8 @@ public:
 protected:
     std::vector<gsG1AuxiliaryPatch> auxGeom;
     real_t m_error;
+
+    index_t plus;
 };
 }
 

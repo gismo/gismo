@@ -77,7 +77,7 @@ public:
     void constructSolution(const gsMatrix<T>& solVector,
                            gsMultiPatch<T>& result, int unk = 0);
 
-    void computeDirichletDofsL2Proj(std::vector<gsMultiBasis<>> & mb, gsG1System<real_t> &  g1System, bool isogeometric);
+    void computeDirichletDofsL2Proj(std::vector<gsMultiBasis<>> & mb, gsG1System<real_t> &  g1System, bool isogeometric = true);
     void computeDirichletAndNeumannDofsL2Proj(gsG1System<real_t> &  g1System);
 
 
@@ -228,7 +228,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::plotParaview(gsField<> &solField_inte
 {
 
     std::string fn = "G1Biharmonic";
-    index_t npts = 10000;
+    index_t npts = 1000;
     gsParaviewCollection collection2(fn);
     std::string fileName2;
 
@@ -331,6 +331,8 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble(bool isogeometric, index_t p
     // Compute the Dirichlet Degrees of freedom (if needed by m_options)
     m_ddof.resize(m_system.numUnknowns());
     m_ddof[0].setZero(m_system.colMapper(0).boundarySize(), m_system.unkSize(0) * m_system.rhs().cols());
+
+
 
     if (isogeometric)
     {
@@ -543,7 +545,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vecto
         if (patchIdx == 0 && row_Vertex_1 == 1)
             gsWriteParaview(multiPatch_Vertex_1,"test4",5000);
 
-        gsInfo << "patchIdx: " << patchIdx << " : " << row_Vertex_0 << " : " << row_Vertex_1 << "\n";
+        //gsInfo << "patchIdx: " << patchIdx << " : " << row_Vertex_0 << " : " << row_Vertex_1 << "\n";
 
         const gsBasis<T> & basis = m_bases[unk_].basis(patchIdx); // Assume that the basis is the same for all the basis functions
 
@@ -636,7 +638,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vecto
             for( size_t i=0; i < multiPatch_Vertex_1.nPatches(); i++)
                 eltBdryFcts.push_back( multiPatch_Edges.nPatches() + multiPatch_Vertex_0.nPatches() + i );
 
-            gsInfo << "Side: " << sideIdx << " : " << patchIdx << "\n" << globIdxAct << "\n";
+            //gsInfo << "Side: " << sideIdx << " : " << patchIdx << "\n" << globIdxAct << "\n";
 
             // Do the actual assembly:
             for( index_t k=0; k < md.points.cols(); k++ )
@@ -682,14 +684,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(std::vecto
     // for the values of the eliminated Dirichlet DOFs.
     typename gsSparseSolver<T>::CGDiagonal solver;
     m_g1_ddof = solver.compute( globProjMat ).solve ( globProjRhs );
-
-    gsInfo << "ROW: " << globProjMat.row(51) << "\n";
-    gsInfo << "ROW 2: " << globProjMat.row(52) << "\n";
-    gsInfo << "ROW 3: " << globProjMat.row(53) << "\n";
-    gsInfo << "ROW 4: " << globProjMat.row(57) << "\n";
-    gsInfo << "ROW 5: " << globProjMat.row(58) << "\n";
-    gsInfo << "ROW 6: " << globProjMat.row(59) << "\n";
-    gsInfo << "RHS: " << globProjRhs << "\n";
 }
 
 template <class T, class bhVisitor>

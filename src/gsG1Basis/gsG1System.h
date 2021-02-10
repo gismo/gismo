@@ -130,6 +130,8 @@ protected:
     gsSparseMatrix<T> D_sparse, D_0_sparse, D_boundary_sparse;
     gsMatrix<> m_g1;
 
+    std::vector<bool> kink;
+
 }; // class gsG1System
 
 template<class T>
@@ -196,7 +198,34 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
         if (m_neumannBdy)
             numIntBdy = 8;
         else
-            numIntBdy = 6; // 4
+            numIntBdy = 4;
+
+        kink.resize(2);
+        kink[0] = false; // u = 0
+        kink[1] = false; // u = 1
+
+        gsMatrix<> points, matrix(2,2);
+        points.setZero(2,2);
+        points(0,0) = 1.0;
+        matrix.col(0) = mp.patch(0).jacobian(points.col(0)).col(0);
+        matrix.col(1) = mp.patch(1).jacobian(points.col(1)).col(0);
+        if (matrix.determinant()*matrix.determinant() > 1e-25)
+        {
+            kink[0] = true;
+            numIntBdy += 1;
+        }
+        gsInfo << "knick: " << matrix.determinant() << "\n";
+
+        points.setOnes(2,2);
+        points(0,1) = 0.0;
+        matrix.col(0) = mp.patch(0).jacobian(points.col(0)).col(0);
+        matrix.col(1) = mp.patch(1).jacobian(points.col(1)).col(0);
+        if (matrix.determinant()*matrix.determinant() > 1e-25)
+        {
+            kink[1] = true;
+            numIntBdy += 1;
+        }
+        gsInfo << "knick 2: " << matrix.determinant() << "\n";
 
         //gsInfo << "r: " << m_r << " : " << m_p << " : " << basis_1.knots().multiplicityIndex(p_1 + 1) << "\n";
         //gsInfo << "IFace: " << numBasisFunctions[0][i] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1 - numIntBdy << "\n";
@@ -270,7 +299,9 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
                 else
                 {
                     numBasisFunctions[2][i+1] = numBasisFunctions[2][i] + 0; // TODO
-                    numBasisFunctions[4][i+1] = numBasisFunctions[4][i] + 3; // TODO 2
+                    numBasisFunctions[4][i+1] = numBasisFunctions[4][i] + 2; // TODO
+                    if (kink[i == 1 ? 0 : 1])
+                        numBasisFunctions[4][i+1] += 1;
                 }
             }
         }
@@ -279,7 +310,7 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
     numBasisFunctions[2] = numBasisFunctions[2].array() + numBasisFunctions[1].last();
     numBasisFunctions[3] = numBasisFunctions[3].array() + numBasisFunctions[2].last();
     numBasisFunctions[4] = numBasisFunctions[4].array() + numBasisFunctions[3].last();
-
+/*
     gsInfo << "Num Basis Functions " << numBasisFunctions[5] << "\n";
     gsInfo << "Num Interface Basis Functions " << numBasisFunctions[6] << "\n";
     gsInfo << "Num Interface Functions " << numBasisFunctions[0] << "\n";
@@ -290,7 +321,9 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
     gsInfo << "Kind of Vertex Functions " << kindOfVertex << "\n";
     gsInfo << "Size of plus space Bdy  " << sizePlusBdy << "\n";
     gsInfo << "Size of plus space Int  " << sizePlusInt << "\n";
-
+    gsInfo << "Kink bottom  " << kink[0] << "\n";
+    gsInfo << "Kink top  " << kink[1] << "\n";
+*/
 
     // Setting the final matrix
     dim_K = numBasisFunctions[6].last(); // interior basis + interface basis dimension
@@ -570,25 +603,45 @@ void gsG1System<T>::insertInterfaceEdge(gsMultiPatch<> & mp, boundaryInterface i
             if (m_twoPatch && !m_neumannBdy)
             {
                 index_t plusInt = sizePlusInt[0];
-                if(bfID == 0 || bfID == 1 || bfID == plusInt-2 || bfID == plusInt-1 || bfID == plusInt || bfID == 2*plusInt - 2) // first and last of +/-
+                if(bfID == 0 || bfID == plusInt-1 || bfID == plusInt || bfID == 2*plusInt - 2) // first and last of +/-
                 {
-                    if (bfID == 0 || bfID == 1 || bfID == plusInt)
+                    if (bfID == 0 || bfID == plusInt)
                         if (mp.patch(np).coefs().at(j) * mp.patch(np).coefs().at(j)  > 10e-25)
                         {
                             index_t jj, ii;
-                            ii = numBasisFunctions[4][1] + (bfID == 0 ? 0 : (bfID == 1 ? 2 : 1)); // Boundary // TODO
+                            ii = numBasisFunctions[4][1] + (bfID == 0 ? 0 : 1); // Boundary // TODO
                             jj = numBasisFunctions[6][np == 0 ? item.first().patch : item.second().patch] + j;
                             D_sparse.insert(ii,jj) = mp.patch(np).coefs().at(j);
                         }
-                    if (bfID == plusInt-2 || bfID == plusInt-1 || bfID == 2*plusInt - 2)
+                    if (bfID == plusInt-1 || bfID == 2*plusInt - 2)
                         if (mp.patch(np).coefs().at(j) * mp.patch(np).coefs().at(j)  > 10e-25)
                         {
 
                             index_t jj, ii;
-                            ii = numBasisFunctions[4][3] + (bfID == plusInt-2 ? 2 : (bfID == plusInt-1 ? 0 : 1)); // Boundary // TODO
+                            ii = numBasisFunctions[4][3] + (bfID == plusInt-1 ? 0 : 1); // Boundary // TODO
                             jj = numBasisFunctions[6][np == 0 ? item.first().patch : item.second().patch] + j;
                             D_sparse.insert(ii,jj) = mp.patch(np).coefs().at(j);
                         }
+                }
+                else if (bfID == 1 && kink[0])
+                {
+                    if (mp.patch(np).coefs().at(j) * mp.patch(np).coefs().at(j)  > 10e-25)
+                    {
+                        index_t jj, ii;
+                        ii = numBasisFunctions[4][1] + 2; // Boundary
+                        jj = numBasisFunctions[6][np == 0 ? item.first().patch : item.second().patch] + j;
+                        D_sparse.insert(ii,jj) = mp.patch(np).coefs().at(j);
+                    }
+                }
+                else if (bfID == plusInt-2 && kink[1])
+                {
+                    if (mp.patch(np).coefs().at(j) * mp.patch(np).coefs().at(j)  > 10e-25)
+                    {
+                        index_t jj, ii;
+                        ii = numBasisFunctions[4][3] + 2; // Boundary
+                        jj = numBasisFunctions[6][np == 0 ? item.first().patch : item.second().patch] + j;
+                        D_sparse.insert(ii,jj) = mp.patch(np).coefs().at(j);
+                    }
                 }
                 else
                 {
@@ -596,10 +649,10 @@ void gsG1System<T>::insertInterfaceEdge(gsMultiPatch<> & mp, boundaryInterface i
                     if (mp.patch(np).coefs().at(j) * mp.patch(np).coefs().at(j)  > 10e-25)
                     {
                         index_t jj, ii, bfID_shift;
-                        if (bfID < plusInt - 2) // TODO 1
-                            bfID_shift = 2; // TODO 1
+                        if (bfID < plusInt - (kink[1] ? 2 : 1)) // TODO 1
+                            bfID_shift = (kink[0] ? 2 : 1); // TODO 1
                         else
-                            bfID_shift = 5; // TODO 3
+                            bfID_shift = 3 + (kink[0] ? 1 : 0) + (kink[1] ? 1 : 0); // T
 
                         ii = numBasisFunctions[0][iID] + bfID - bfID_shift;
                         jj = numBasisFunctions[6][np == 0 ? item.first().patch : item.second().patch] + j;

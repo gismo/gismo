@@ -55,6 +55,7 @@ public:
     const gsSparseMatrix<T> & matrix_alpha() const { return m_system_alpha.matrix(); }
     const gsMatrix<T> & rhs_alpha() const { return m_system_alpha.rhs(); }
     const gsMatrix<T> & bdy_alpha() const { return m_ddof[0]; }
+    const gsMatrix<T> & bdy_beta() const { return m_ddof[1]; }
 
     const gsSparseMatrix<T> & matrix_beta() const { return m_system_beta_S.matrix(); }
     const gsMatrix<T> & rhs_beta() const { return m_system_beta_S.rhs(); }
@@ -94,14 +95,14 @@ void gsGlobalGDAssembler<T, bhVisitor>::refresh()
     if (m_twoPatch)
     {
         //map_beta_S.markBoundary(0, act); // Patch 0
-        map_alpha.markBoundary(0, act); // Patch 0
+        //map_alpha.markBoundary(0, act); // Patch 0
     }
 
     act = m_basis[0].basis(0).boundaryOffset(2,0); // East
     if (m_twoPatch)
     {
         //map_beta_S.markBoundary(0, act); // Patch 0
-        map_alpha.markBoundary(0, act); // Patch 0
+        //map_alpha.markBoundary(0, act); // Patch 0
     }
     map_alpha.finalize();
     map_beta_S.finalize();
@@ -135,7 +136,7 @@ void gsGlobalGDAssembler<T, bhVisitor>::assemble()
     // Boundary
     //computeBoundaryValues(); == 0
     // alpha^S
-    gsMatrix<> points(1,2), uv, ev;
+    gsMatrix<> points(1,2), uv, ev, D0;
     points.setZero();
     points(0,1) = 1.0;
 
@@ -153,8 +154,21 @@ void gsGlobalGDAssembler<T, bhVisitor>::assemble()
     if (m_isBoundary)
         uv.setOnes();
 
-    if (m_twoPatch)
-        m_ddof[0] = uv.row(0).transpose();
+    //if (m_twoPatch)
+    //    m_ddof[0] = uv.row(0).transpose();
+
+    uv.setZero(2,points.cols());
+    uv.row(m_uv) = points; // u
+    for(index_t i = 0; i < uv.cols(); i++)
+    {
+        P0.jacobian_into(uv.col(i),ev);
+        D0 = ev.col(m_uv);
+        real_t D1 = 1/ D0.norm();
+        uv(0,i) = - 1 * D1 * D1 * ev.col(1).transpose() * ev.col(0);
+    }
+
+    //if (m_twoPatch)
+    //    m_ddof[1] = uv.row(0).transpose();
 
     // Assemble volume integrals
     bhVisitor visitor;
