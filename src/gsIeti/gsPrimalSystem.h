@@ -1,6 +1,6 @@
 /** @file gsPrimalSystem.h
 
-    @brief This class represents the primal system and allows to incorporate the primal constraints
+    @brief This class represents the primal system for a IETI-dp algorithm
 
     This file is part of the G+Smo library.
 
@@ -22,19 +22,19 @@ namespace gismo
 
 /** @brief   This class represents the primal system for a IETI-dp algorithm
  *
- *  The class gsIetiSystem does not know anything about the primal problem. For
- *  that class the primal problem is just another subdomain.
+ *  The class \a gsIetiSystem does not know anything about the primal problem.
+ *  For that class the primal problem is just another subdomain.
  *
- *  The class at hand allows to handle primal degrees of freedom (dofs). It is purely
- *  algebraic and assumes that the caller provides the constraint matrix C
- *  (or, more precisely, its individual rows) and a mapping (as vector of
+ *  The class at hand allows to handle primal degrees of freedom (dofs). It is
+ *  purely algebraic and assumes that the caller provides the constraint matrix
+ *  C (or, more precisely, its individual rows) and a mapping (as vector of
  *  indices) that tells the class to which primal dof the corresponding
- *  constraint belongs. So, for example, if a primal dof is a vertex value,
- *  than that vertex gets one identifying index identifying it as one single
- *  primal dof, while there is a constraint for each patch the corner belongs to.
+ *  constraint belongs. So, for example, if a primal dof is a vertex value, then
+ *  that vertex gets one identifying index identifying it as one single primal
+ *  dof, while there is a constraint for each patch the corner belongs to.
  *
  *  It is assumed that the class receives the matrix \f$ A \f$ and the member
- *  \a incorporateConstraints constructs the local saddle point matrix:
+ *  \ref incorporateConstraints constructs the local saddle point matrix:
  *
  *  \f[
  *       \tilde A
@@ -45,23 +45,26 @@ namespace gismo
  *       \end{pmatrix}
  *  \f]
  *
- *  This matrix is then to be handed over to the \a gsIetiSystem . (Simultaneously, the
- *  local rhs and the local jump matrix are amended).
+ *  This matrix is then to be handed over to the \a gsIetiSystem. (Simultaneously,
+ *  the local rhs and the local jump matrix are amended).
  *
- *  The member \a primalBasis allows to construct the basis for the primal space by the
- *  principle of energy minimization.
+ *  The member \ref primalBasis allows to construct the basis for the primal
+ *  space by the principle of energy minimization.
  *
- *  The member \a addContribution add the local contributions to the primal problem.
+ *  The member \ref addContribution add the local contributions to the primal
+ *  problem.
  *
- *  The member \a handleConstraints combines the member \a incorporateConstraints, the setup
- *  of a LU solver for the local system, and the members \a primalBasis and \a addContribution
- *  into one single function
+ *  The member \ref handleConstraints combines the member
+ *  \ref incorporateConstraints, the setup of a sparse LU solver for the local
+ *  system, and the members \a primalBasis and \ref addContribution into one
+ *  single function.
  *
- *  After going through all patches, the class \a gsIetiSystem gets one more subdomain:
- *  the primal one (which is set up based on \a jumpMatrix, \a localMatrix, \a localRhs).
+ *  After going through all patches, the class \a gsIetiSystem gets one more
+ *  subdomain: the primal one (which is set up based on \ref jumpMatrix,
+ *  \ref localMatrix and \ref localRhs).
  *
- *  After solving, the member \a distributePrimalSolution distributes the solution
- *  obtained for the primal problem back to the individual patches.
+ *  After solving, the member \ref distributePrimalSolution distributes the
+ *  solution obtained for the primal problem back to the individual patches.
  *
  *  @ingroup Solver
 **/
@@ -80,35 +83,36 @@ public:
 
     /// @brief Initialize the object
     ///
-    /// @param nPrimalDofs       Number of primal constraints in total
+    /// @param nPrimalDofs                Number of primal constraints in total
     void init(index_t nPrimalDofs);
 
     /// @brief Incorporates the given constraints in the local system
     ///
-    /// @param[in]     primalConstraints        Primal constraints; the given vectors make up the matrix C
-    /// @param[in,out] jumpMatrix               Jump matrix B (in&out)
-    /// @param[in,out] localMatrix              Local matrix A (in&out)
-    /// @param[in,out] localRhs                 Local right-hand-side f (in&out)
+    /// @param[in]     primalConstraints  Primal constraints; the given vectors
+    ///                                   make up the matrix C
+    /// @param[in,out] jumpMatrix         Jump matrix B
+    /// @param[in,out] localMatrix        Local matrix A
+    /// @param[in,out] localRhs           Local right-hand-side f
     ///
     /// The output is for the local matrix,
     ///  \f[
-    ///      \tilde{A} =
+    ///      \tilde{A}_k =
     ///      \begin{pmatrix}
-    ///           A   &    C^\top \\  C   &  0
+    ///           A_k   &  C_k^\top \\  C_k   &  0
     ///      \end{pmatrix}
     ///  \f]
     /// for the jump matrix
     ///  \f[
-    ///      \tilde{B} =
+    ///      \tilde{B}_k =
     ///      \begin{pmatrix}
-    ///           B   &   0
+    ///           B_k   &   0
     ///      \end{pmatrix}
     ///  \f]
     /// and the right-hand side
     ///  \f[
-    ///      \tilde{f} =
+    ///      \underline{\tilde f}_k =
     ///      \begin{pmatrix}
-    ///           f \\ 0
+    ///           \underline f_k \\ 0
     ///      \end{pmatrix}
     ///  \f]
     ///
@@ -121,10 +125,11 @@ public:
 
     /// @brief Returns the matrix representation of the energy minimizing primal basis
     ///
-    /// @param  localSaddlePointSolver    Solver that realizes \f$ \tilde{A}^{-1} \f$
-    /// @param  primalDofIndices          Vector, that contains for every primal constraint the index
-    ///                                   of the respective primal dof
-    /// @param  nPrimalDofs               The total number of primal dofs
+    /// @param  localSaddlePointSolver  Solver that realizes \f$ \tilde{A}^{-1} \f$
+    /// @param  primalDofIndices        Vector, that contains for every primal
+    ///                                 constraint the index of the respective
+    ///                                 primal dof
+    /// @param  nPrimalDofs             The total number of primal dofs
     ///
     static gsSparseMatrix<T> primalBasis(
         OpPtr localSaddlePointSolver,
@@ -134,10 +139,10 @@ public:
 
     /// @brief Adds contributions for a patch to the data hold in the class
     ///
-    /// @param jumpMatrix        Jump matrix B (in&out)
-    /// @param localMatrix       Local matrix A (in&out)
-    /// @param localRhs          Local right-hand-side f (in&out)
-    /// @param primalBasis       Matrix representation of the primal basis
+    /// @param[in,out]  jumpMatrix    Jump matrix B_k
+    /// @param[in,out]  localMatrix   Local matrix A_k
+    /// @param[in,out]  localRhs      Local right-hand-side f_k
+    /// @param[in]      primalBasis   Matrix representation of the primal basis
     ///
     void addContribution(
         const JumpMatrix& jumpMatrix,
@@ -148,12 +153,14 @@ public:
 
     /// @brief Convenience function for handling the primal constraints
 
-    /// @param[in]     primalConstraints        Primal constraints; the given vectors make up the matrix C
-    /// @param[in]     primalDofIndices         Vector, that contains for every primal constraint the index
-    ///                                         of the respective primal dof
-    /// @param[in,out] jumpMatrix               Jump matrix B (in&out)
-    /// @param[in,out] localMatrix              Local matrix A (in&out)
-    /// @param[in,out] localRhs                 Local right-hand-side f (in&out)
+    /// @param[in]     primalConstraints  Primal constraints; the given vectors
+    ///                                   make up the matrix C_k
+    /// @param[in]     primalDofIndices   Vector, that contains for every primal
+    ///                                   constraint the index of the respective
+    ///                                   primal dof
+    /// @param[in,out] jumpMatrix         Jump matrix B_k
+    /// @param[in,out] localMatrix        Local matrix A_k
+    /// @param[in,out] localRhs           Local right-hand-side f_k
     ///
     void handleConstraints(
         const std::vector<SparseVector>& primalConstraints,
@@ -169,10 +176,11 @@ public:
         );
     }
 
-    /// @brief  Distributes the given solution for N+1 subdomains to the N patches
+    /// @brief  Distributes the given solution for K+1 subdomains to the K patches
     ///
-    /// @param  sol  The solution, first for the N patches, followed by the contribution for the primal dofs
-    /// @returns     The solution for the N patches
+    /// @param    sol   The solution, first for the K patches, followed by the
+    ///                 contribution for the primal dofs
+    /// @returns        The solution for the K patches
     std::vector<Matrix> distributePrimalSolution( std::vector<Matrix> sol );
 
     /// @brief Returns the jump matrix for the primal problem

@@ -1,6 +1,6 @@
 /** @file gsIetiSystem.hpp
 
-    @brief This class represents a IETI problem. Its algorithms allow to set up a IETI solver.
+    @brief This class represents a IETI system
 
     This file is part of the G+Smo library.
 

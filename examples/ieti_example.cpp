@@ -67,12 +67,15 @@ int main(int argc, char *argv[])
 
     gsInfo << "Define geometry... " << std::flush;
 
+    //! [Define Geometry]
     gsMultiPatch<>::uPtr mpPtr = gsReadFile<>(geometry);
+    //! [Define Geometry]
     if (!mpPtr)
     {
         gsInfo << "No geometry found in file " << geometry << ".\n";
         return EXIT_FAILURE;
     }
+    //! [Define Geometry2]
     gsMultiPatch<>& mp = *mpPtr;
 
     for (index_t i=0; i<splitPatches; ++i)
@@ -80,6 +83,7 @@ int main(int argc, char *argv[])
         gsInfo << "split patches uniformly... " << std::flush;
         mp = mp.uniformSplit();
     }
+    //! [Define Geometry2]
 
     if (stretchGeometry!=1)
     {
@@ -96,6 +100,7 @@ int main(int argc, char *argv[])
 
     gsInfo << "Define right-hand-side and boundary conditions... " << std::flush;
 
+    //! [Define Source]
     // Right-hand-side
     gsFunctionExpr<> f( "2*sin(x)*cos(y)", mp.geoDim() );
 
@@ -106,6 +111,7 @@ int main(int argc, char *argv[])
     gsConstantFunction<> gN( 1.0, mp.geoDim() );
 
     gsBoundaryConditions<> bc;
+    //! [Define Source]
     {
         const index_t len = boundaryConditions.length();
         index_t i = 0;
@@ -142,7 +148,9 @@ int main(int argc, char *argv[])
 
     /************ Setup bases and adjust degree *************/
 
+    //! [Define Basis]
     gsMultiBasis<> mb(mp);
+    //! [Define Basis]
 
     gsInfo << "Setup bases and adjust degree... " << std::flush;
 
@@ -160,10 +168,13 @@ int main(int argc, char *argv[])
 
     const index_t nPatches = mp.nPatches();
 
+    //! [Define IetiMapper]
     gsIetiMapper<> ietiMapper;
+    //! [Define IetiMapper]
 
     // We start by setting up a global FeSpace that allows us to
     // obtain a dof mapper and the Dirichlet data
+    //! [Define global mapper]
     {
         typedef gsExprAssembler<>::space  space;
         gsExprAssembler<> assembler;
@@ -172,6 +183,7 @@ int main(int argc, char *argv[])
         u.setup(bc, dirichlet::interpolation, 0);
         ietiMapper.init( mb, u.mapper(), u.fixedPart() );
     }
+    //! [Define global mapper]
 
     // Which primal dofs should we choose?
     bool cornersAsPrimals = false, edgesAsPrimals = false, facesAsPrimals = false;
@@ -188,6 +200,7 @@ int main(int argc, char *argv[])
 
     // We tell the ieti mapper which primal constraints we want; calling
     // more than one such function is possible.
+    //! [Define primals]
     if (cornersAsPrimals)
         ietiMapper.cornersAsPrimals();
 
@@ -196,12 +209,16 @@ int main(int argc, char *argv[])
 
     if (facesAsPrimals)
         ietiMapper.interfaceAveragesAsPrimals(mp,2);
+    //! [Define primals]
 
     // Compute the jump matrices
     bool fullyMatching = true,
          noLagrangeMultipliersForCorners = cornersAsPrimals;
+    //! [Define jumps]
     ietiMapper.computeJumpMatrices(fullyMatching, noLagrangeMultipliersForCorners);
+    //! [Define jumps]
 
+    //! [Setup]
     // The ieti system does not have a special treatment for the
     // primal dofs. They are just one more subdomain
     gsIetiSystem<> ieti;
@@ -215,7 +232,9 @@ int main(int argc, char *argv[])
     // Setup the primal system, which needs to know the number of primal dofs.
     gsPrimalSystem<> primal;
     primal.init(ietiMapper.nPrimalDofs());
+    //! [Setup]
 
+    //! [Assemble]
     for (index_t k=0; k<nPatches; ++k)
     {
         // We use the local variants of everything
@@ -271,8 +290,10 @@ int main(int argc, char *argv[])
         gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
         gsSparseMatrix<>                 localMatrix = assembler.matrix();
         gsMatrix<>                       localRhs    = assembler.rhs();
+        //! [Assemble]
 
         // Add the patch to the scaled Dirichlet preconditioner
+        //! [Patch to preconditioner]
         prec.addSubdomain(
             gsScaledDirichletPrec<>::restrictToSkeleton(
                 jumpMatrix,
@@ -280,9 +301,11 @@ int main(int argc, char *argv[])
                 ietiMapper.skeletonDofs(k)
             )
         );
+        //! [Patch to preconditioner]
 
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
         // so it must be called after prec.addSubdomain().
+        //! [Patch to primals]
         primal.handleConstraints(
             ietiMapper.primalConstraints(k),
             ietiMapper.primalDofIndices(k),
@@ -290,8 +313,10 @@ int main(int argc, char *argv[])
             localMatrix,
             localRhs
         );
+        //! [Patch to primals]
 
         // Add the patch to the Ieti system
+        //! [Patch to system]
         ieti.addSubdomain(
             jumpMatrix.moveToPtr(),
             makeMatrixOp(localMatrix.moveToPtr()),
@@ -299,14 +324,17 @@ int main(int argc, char *argv[])
         );
 
     }
+    //! [Patch to system]
 
     // Add the primal problem if there are primal constraints
     if (ietiMapper.nPrimalDofs()>0)
+    //! [Primal to system]
         ieti.addSubdomain(
             primal.jumpMatrix().moveToPtr(),
             makeMatrixOp(primal.localMatrix().moveToPtr()),
             give(primal.localRhs())
         );
+    //! [Primal to system]
 
     gsInfo << "done.\n";
 
@@ -316,11 +344,15 @@ int main(int argc, char *argv[])
         "    Setup multiplicity scaling... " << std::flush;
 
     // Tell the preconditioner to set up the scaling
+    //! [Setup scaling]
     prec.setupMultiplicityScaling();
+    //! [Setup scaling]
 
     gsInfo << "done.\n    Setup rhs... " << std::flush;
     // Compute the Schur-complement contribution for the right-hand-side
+    //! [Setup rhs]
     gsMatrix<> rhsForSchur = ieti.rhsForSchurComplement();
+    //! [Setup rhs]
 
     gsInfo << "done.\n    Setup cg solver for Lagrange multipliers and solve... " << std::flush;
     // Initial guess
@@ -329,17 +361,21 @@ int main(int argc, char *argv[])
 
     // This is the main cg iteration
     gsMatrix<> errorHistory;
+    //! [Solve]
     gsConjugateGradient<>( ieti.schurComplement(), prec.preconditioner() )
         .setOptions( opt.getGroup("Solver") )
         .solveDetailed( rhsForSchur, lambda, errorHistory );
+    //! [Solve]
 
     gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
     // Now, we want to have the global solution for u
+    //! [Recover]
     gsMatrix<> uVec = ietiMapper.constructGlobalSolutionFromLocalSolutions(
         primal.distributePrimalSolution(
             ieti.constructSolutionFromLagrangeMultipliers(lambda)
         )
     );
+    //! [Recover]
     gsInfo << "done.\n\n";
 
     /******************** Print end Exit ********************/

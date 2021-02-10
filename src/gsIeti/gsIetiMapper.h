@@ -1,6 +1,6 @@
 /** @file gsIetiMapper.h
 
-    @brief Algorithms that help with assembling the matrices required for IETI-Solvers
+    @brief Algorithms that help with assembling the matrices required for IETI-solvers
 
     This file is part of the G+Smo library.
 
@@ -19,32 +19,31 @@
 namespace gismo
 {
 
-/** @brief
- *  Ieti Mapper
+/** @brief Ieti Mapper
  *
  *  Algorithms that help with assembling the matrices required for IETI-Solvers
  *
  *  This class is written to work with the expression assembler and with assemblers
- *  derived from gsAssembler. If applied to a system, it is expected that individual
- *  instances of this class are used for each of the variables.
+ *  derived from \a gsAssembler. If applied to a system, it is expected that
+ *  individual instances of this class are used for each of the variables.
  *
  *  The objects of this class are initialized using a global dof mapper and a
  *  vector that contains function values for the eliminated variables (usually
  *  for the Dirichlet boundary).
  *
- *  This class then allows to obtain the jump matrices (\a jumpMatrix), the
- *  patch-local dof mappers (\a dofMapperLocal) and the patch-local function
- *  values for the eliminated dofs (\a fixedPart). The member function
- *  \a initFeSpace allows to pass dof mapper and the function values for the
+ *  This class then allows to obtain the jump matrices (\ref jumpMatrix), the
+ *  patch-local dof mappers (\ref dofMapperLocal) and the patch-local function
+ *  values for the eliminated dofs (\ref fixedPart). The member function
+ *  \ref initFeSpace allows to pass dof mapper and the function values for the
  *  eliminated dofs to a variable object of the \a gsExprAssembler.
  *
  *  Moreover, this class allows to construct the primal degrees of freedom,
- *  which are then handled by the class \a gsPrimalProblem.
+ *  which are then handled by the class \a gsPrimalSystem.
  *
- *  Finally, the member \a constructGlobalSolutionFromLocalSolutions allows
+ *  Finally, the member \ref constructGlobalSolutionFromLocalSolutions allows
  *  the combination of the patch-local solutions to a global one.
  *
- *  \ingroup Solver
+ *  @ingroup Solver
 */
 template< typename T >
 class gsIetiMapper
@@ -84,15 +83,18 @@ public:
         const Matrix& fixedPart
     );
 
-    /// @brief Apply the required changes to a space object of the expression assembler
+    /// @brief Apply the required changes to a space object of the expression
+    /// assembler
     ///
-    /// It is assumed that the space object is fully functioning, i.e., the setup member
-    /// has been called.
+    /// It is assumed that the space object is fully functioning, i.e., the
+    /// setup member has been called.
     ///
-    /// This function exposes the \a dofMapperLocal and the \a fixedPart to the space.
+    /// This function exposes the \ref dofMapperLocal and the \ref fixedPart to
+    /// the space.
     void initFeSpace(typename gsExprAssembler<T>::space u, index_t k)
     {
-        GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
+        GISMO_ASSERT( m_status&1,
+            "gsIetiMapper: The class has not been initialized." );
         GISMO_ASSERT( u.mapper().size() ==  m_dofMapperLocal[k].size(),
             "gsIetiMapper::initFeSpace: The sizes do not agree." );
         const_cast<expr::gsFeSpace<T>&>(u).mapper() = m_dofMapperLocal[k];
@@ -107,14 +109,14 @@ public:
     ///                        if the corners are chosen as primal dofs
     void computeJumpMatrices(bool fullyRedundant, bool excludeCorners);
 
-    /// @brief This function instructs the class to set up the corners as primal dofs
+    /// @brief Set up the corners as primal dofs
     void cornersAsPrimals();
 
-    /// @brief This function instructs the class to set up interface averages as primal dofs
+    /// @brief Set up interface averages as primal dofs
     ///
     /// @param geo             \a gsMultiPatch object describing the geometry
-    /// @param d               The dimension of the interfaces to be considered, i.e.,
-    ///                        d=1 yields edge averages and d=2 yields face averages
+    /// @param d               The dimension of the interfaces to be considered:
+    ///                        d=1 yields edge averages, d=2 yields face averages
     void interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, short_t d);
 
     /// @brief With this function, the caller can register more primal constraints
@@ -124,10 +126,10 @@ public:
     /// index and the vector representing the primal constraint.
     void customPrimalConstraints( std::vector< std::pair<index_t,SparseVector> > data );
 
-    /// @brief This function constructs the global solution from a vector of patch-local ones
+    /// @brief Construct the global solution from a vector of patch-local ones
     Matrix constructGlobalSolutionFromLocalSolutions( const std::vector<Matrix>& localContribs );
 
-    /// @brief This function returns a list of dofs that are (on the coarse level) coupled
+    /// @brief Returns a list of dofs that are (on the coarse level) coupled
     ///
     /// @param patch   Number of the patch
     std::vector<index_t> skeletonDofs( index_t patch ) const;
@@ -136,7 +138,8 @@ public:
     /// @brief Returns the number of Lagrange multipliers.
     index_t nLagrangeMultipliers()
     {
-        GISMO_ASSERT(! m_jumpMatrices.empty(), "gsIetiMapper: Number of Lagrange multipliers not yet known.");
+        GISMO_ASSERT(! m_jumpMatrices.empty(),
+            "gsIetiMapper: Number of Lagrange multipliers not yet known.");
         return m_jumpMatrices[0].rows();
     }
 
@@ -145,11 +148,12 @@ public:
 
     /// @brief Returns the primalConstraints (as vectors) for the given patch
     ///
-    /// These vectors form the matrix \f$ C_k \f$ in the local saddle point system, cf.
-    /// the documentation \a gsPrimalSystem
+    /// These vectors form the matrix \f$ C_k \f$ in the local saddle point
+    /// system, see  \a gsPrimalSystem
     const std::vector<SparseVector> & primalConstraints(index_t k) const   { return m_primalConstraints[k];       }
 
-    /// @brief Returns the indices of the primal dofs that are associated to the primal constraints for the given patch
+    /// @brief Returns the indices of the primal dofs that are associated to
+    /// the primal constraints for the given patch
     const std::vector<index_t> & primalDofIndices(index_t k) const         { return m_primalDofIndices[k];        }
 
     /// @brief Returns the jump matrix \f$ B_k \f$ for the given patch
@@ -166,8 +170,9 @@ public:
 
 private:
 
-    static gsSparseVector<T> assembleAverage( const gsGeometry<T>& geo, const gsBasis<T>& basis,
-        const gsDofMapper& dm, boxComponent bc );
+    static gsSparseVector<T> assembleAverage( const gsGeometry<T>& geo,
+        const gsBasis<T>& basis, const gsDofMapper& dm,
+        boxComponent bc );   ///< Assembles for \ref interfaceAveragesAsPrimals
 
 private:
     const gsMultiBasis<T>*                        m_multiBasis;          ///< Pointer to the respective multibasis

@@ -1,6 +1,6 @@
 /** @file gsPrimalSystem.hpp
 
-    @brief This class represents the primal system and allows to incorporate the primal constraints
+    @brief This class represents the primal system for a IETI-dp algorithm
 
     This file is part of the G+Smo library.
 

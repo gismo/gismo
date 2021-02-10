@@ -1,6 +1,6 @@
 /** @file gsIetiMapper.hpp
 
-    @brief Algorithms for the assembling of matrices required for IETI-Solvers
+    @brief Algorithms that help with assembling the matrices required for IETI-solvers
 
     This file is part of the G+Smo library.
 
