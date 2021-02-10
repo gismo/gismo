@@ -369,7 +369,39 @@ public:
         this->basis().swapDirections(i,j);
     }
 
-
+    /// Splits the geometry either two parts in direction \a dir, or if \a dir = -1
+    /// in 2^d parts, by calling splitAt() for each direction.
+    /// The function automatically searches for the midpoint the corresponding knot vector.
+    std::vector<gsGeometry<T>*> uniformSplit(index_t dir = -1) const
+    {
+        // We use the simple fact that a NURBS function in R^d is the central probjection
+        // of a spline function in R^{d+1} into R^d.
+        //
+        // Create a B-spline in R^{d+1} and split it
+        gsRationalBasis< gsTensorBSplineBasis<d,T> > * basis
+            = dynamic_cast< gsRationalBasis< gsTensorBSplineBasis<d,T> > * >(m_basis);
+        GISMO_ENSURE( basis, "gsTensorNurbs::uniformSplit: Dynamic cast failed." );
+        gsMatrix<T> coefs(m_coefs);
+        coefs.conservativeResize(Eigen::NoChange,coefs.cols()+1);
+        coefs.rightCols(1) = basis->weights();
+        std::vector<gsGeometry<T>*> splitGeo = gsTensorBSpline<d,T>(basis->source(), coefs).uniformSplit(dir);
+        // Turn the B-splines in R^{d+1} back into NURBS in R^d
+        const size_t sz = splitGeo.size();
+        std::vector<gsGeometry<T>*> result;
+        result.reserve(sz);
+        for (size_t i=0; i!=sz; ++i)
+        {
+            gsTensorBSpline<d,T>* splitSpline
+                = dynamic_cast<gsTensorBSpline<d,T>*>(splitGeo[i]);
+            GISMO_ENSURE( splitSpline, "gsTensorNurbs::uniformSplit: Dynamic cast failed." );
+            gsTensorNurbsBasis<d,T> nurbsBasis(splitSpline->basis().clone().release(), splitSpline->coefs().rightCols(1));
+            gsMatrix<T> splitCoefs(splitSpline->coefs());
+            splitCoefs.conservativeResize(Eigen::NoChange,splitCoefs.cols()-1);
+            result.push_back( new gsTensorNurbs<d,T>( nurbsBasis, splitCoefs ) );
+        }
+        freeAll(splitGeo);
+        return result;
+    }
 
 protected:
     // todo: check function: check the coefficient number, degree, knot vector ...
