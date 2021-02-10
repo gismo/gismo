@@ -76,8 +76,8 @@ public:
             zeroOne.setZero();
             zeroOne(1, 1) = 1.0; // v
 
-            const gsGeometry<> & PR = mp.patch(0); // Right
-            const gsGeometry<> & PL = mp.patch(1); // Left
+            const gsGeometry<> & PR = mp.patch(0); // Right m_uv = 1
+            const gsGeometry<> & PL = mp.patch(1); // Left m_uv = 0
 
             PR.jacobian_into(zeroOne.col(1), ev);
             lambda1 = 1 / ev.determinant(); // alpha_R
@@ -136,6 +136,7 @@ public:
             rhsVals_beta = beta_S - lambda0 * (ones - md.points).cwiseProduct(alpha_S) - lambda1 * (md.points).cwiseProduct(alpha_S);
         else
             rhsVals_beta = beta_S;
+
 
         // Initialize local matrix/rhs
         localMat.setZero(numActive, numActive      );

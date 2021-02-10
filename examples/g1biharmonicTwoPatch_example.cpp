@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
             numDegree = 2;
             break;
         case 8:
-            string_geo = "planar/twoPatches/square_cuttedCorner.xml";
+            string_geo = "planar/twoPatches/square_cuttedCornerBSpline.xml";
             numDegree = 0;
             break;
         case 9:
@@ -164,11 +164,9 @@ int main(int argc, char *argv[])
 */
     multiPatch_init.degreeElevate(g1OptionList.getInt("degree") + g1OptionList.getInt("P_geo"));
 
-    //std::vector<int> mul={0, multiPatch_init.patch(0).degree(1) - g1OptionList.getInt("regularity")};
+    //std::vector<int> mul={multiPatch_init.patch(1).degree(1) - g1OptionList.getInt("regularity"), multiPatch_init.patch(1).degree(1) - g1OptionList.getInt("regularity")};
     //multiPatch_init.patch(1).uniformRefine(1,mul);
     //multiPatch_init.patch(1).degreeElevate(1);
-
-    gsWriteParaview(multiPatch_init,"geometry_init",2000,true);
 
     gsVector<real_t> l2Error_vec(g1OptionList.getInt("loop") + 1);
     gsVector<real_t> h1SemiError_vec(g1OptionList.getInt("loop") + 1);
@@ -218,7 +216,7 @@ int main(int argc, char *argv[])
             //gsTensorBSpline<2,real_t> bsp_temp = dynamic_cast<gsTensorBSpline<2,real_t>&>(multiPatch.patch(0));
             //gsInfo << "knotvector: " << bsp_temp.knots(0).asMatrix() << "\n";
 
-            gsWriteParaview(multiPatch, "geoemtry_init", 2000, true);
+            gsWriteParaview(multiPatch, "geometry_init", 2000, true);
 
             //gsInfo << "###### Level: " << refinement_level << " with " << num_knots[refinement_level] << " inner knots ###### " << "\n";
 
@@ -348,6 +346,35 @@ int main(int argc, char *argv[])
 
                 collection.save();
 
+                real_t dimU = singleInt.getSinglePatch(0).getG1Basis().patch(0).basis().component(0).size();
+
+                gsMatrix<> coefs_interface(2*dimU,3);
+                coefs_interface.setZero();
+
+                for (size_t i = 0; i < dimU; i++)
+                {
+                    if (singleInt.getSinglePatch(0).getG1Basis().patch(0).coef(i,0)*singleInt.getSinglePatch(0).getG1Basis().patch(0).coef(i,0) > 1e-25)
+                        coefs_interface(i, 0) = singleInt.getSinglePatch(0).getG1Basis().patch(0).coef(i,0);
+                    if (singleInt.getSinglePatch(0).getG1Basis().patch(1).coef(i,0)*singleInt.getSinglePatch(0).getG1Basis().patch(1).coef(i,0) > 1e-25)
+                        coefs_interface(i, 1) = singleInt.getSinglePatch(0).getG1Basis().patch(1).coef(i,0);
+                    if (singleInt.getSinglePatch(0).getG1Basis().patch(singleInt.getPlus()).coef(i,0)*singleInt.getSinglePatch(0).getG1Basis().patch(singleInt.getPlus()).coef(i,0) > 1e-25)
+                        coefs_interface(i, 2) = singleInt.getSinglePatch(0).getG1Basis().patch(singleInt.getPlus()).coef(i,0);
+
+                    if (singleInt.getSinglePatch(1).getG1Basis().patch(0).coef(i,0)*singleInt.getSinglePatch(1).getG1Basis().patch(0).coef(i,0) > 1e-25)
+                        coefs_interface(dimU + i, 0) = singleInt.getSinglePatch(1).getG1Basis().patch(0).coef(i,0);
+                    if (singleInt.getSinglePatch(1).getG1Basis().patch(1).coef(i,0)*singleInt.getSinglePatch(1).getG1Basis().patch(1).coef(i,0) > 1e-25)
+                        coefs_interface(dimU + i, 1) = singleInt.getSinglePatch(1).getG1Basis().patch(1).coef(i,0);
+                    if (singleInt.getSinglePatch(1).getG1Basis().patch(singleInt.getPlus()).coef(i,0)*singleInt.getSinglePatch(1).getG1Basis().patch(singleInt.getPlus()).coef(i,0) > 1e-25)
+                        coefs_interface(dimU + i, 2) = singleInt.getSinglePatch(1).getG1Basis().patch(singleInt.getPlus()).coef(i,0);
+                }
+
+                //gsInfo << "MATRIX: " << coefs_interface << "\n";
+
+                Eigen::FullPivLU<gsMatrix<>> SmallLU(coefs_interface);
+                SmallLU.setThreshold(1e-5);
+                gsInfo << "Kernel: " << SmallLU.kernel() << "\n";
+                gsInfo << "Kernel 2: " << math::pow(mesh_size[refinement_level],(g1OptionList.getInt("p_tilde") +1)) << "\n";
+
             }
             //gsInfo << "Done. Interface computing time is: " << clock.stop() << "\n";
             clock.restart();
@@ -463,7 +490,7 @@ int main(int argc, char *argv[])
                 // For interface basis
                 gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler_g22(multiPatch, mb[1], bcInfo, bcInfo2, source);
                 g1BiharmonicAssembler_g22.assemble();
-                //g1BiharmonicAssembler_g22.computeDirichletDofsL2Proj(g1System);
+                //g1BiharmonicAssembler_g22.computeDirichletDofsL2Proj(mb,g1System, false);
 /*
             // Mixed
             gsBSplineBasis<> basis_1u = dynamic_cast<gsBSplineBasis<> &>(mb[0].basis(0).component(0)); // 0 -> u, 1 -> v
@@ -558,8 +585,6 @@ int main(int argc, char *argv[])
             gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
             if (g1OptionList.getSwitch("info"))
                 gsInfo << "Solving finished! \n";
-
-            //gsInfo << "sol: " << solVector.transpose() << "\n";
 
             dofs_size[refinement_level] = solVector.rows();
 
