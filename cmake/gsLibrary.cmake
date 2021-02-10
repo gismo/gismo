@@ -41,6 +41,8 @@ endif()
       ${${PROJECT_NAME}_EXTENSIONS}
       "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
       )
+    target_link_libraries(${PROJECT_NAME} ${PYTHON_LIBRARY})
+    target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME})
   endif(GISMO_BUILD_PYBIND11)
   
   #generate_export_header(${PROJECT_NAME})
