@@ -40,8 +40,7 @@ template<class T> void
 gsQuadRule<T>::mapTo( const gsMatrix<T>& ab,
                       gsMatrix<T> & nodes) const
 {
-    const index_t d = ab.rows();
-    GISMO_ASSERT( d == m_nodes.rows(), "Inconsistent quadrature mapping");
+    GISMO_ASSERT( ab.rows() == m_nodes.rows(), "Inconsistent quadrature mapping");
     nodes.resize( m_nodes.rows(), m_nodes.cols() );
     nodes.setZero();
     const gsVector<T> h = (ab.col(1)-ab.col(0)) / T(2) ;

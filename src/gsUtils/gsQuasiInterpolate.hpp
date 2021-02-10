@@ -28,7 +28,7 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
                                               const gsMatrix<T> &ab)
 {
     gsMatrix<T> bev, fev, pts, tmp;
-    gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,1.0,1);
+    gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(T)1.0,1);
     gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes);
 
     qRule.mapTo(ab, pts);//map points on element
