@@ -1,6 +1,6 @@
-/** @file 
+/** @file
 
-    @brief 
+    @brief
 
     This file is part of the G+Smo library.
 
@@ -21,9 +21,9 @@ int main(int argc, char *argv[])
     gsMatrix<real_t> A(10,10);
     A.setRandom();
     A = (A + A.transpose()) * 0.5;
-    
-    gsSpectraSymSolver<gsMatrix<>,Spectra::SMALLEST_ALGE> minev(A, 5, 10);
-    minev.compute();
+
+    gsSpectraSymSolver<gsMatrix<>> minev(A, 5, 10);
+    minev.compute(Spectra::SortRule::SmallestAlge);
     gsInfo << "Eigenvalues:" << minev.eigenvalues().transpose() <<"\n";
     return EXIT_SUCCESS;
 
