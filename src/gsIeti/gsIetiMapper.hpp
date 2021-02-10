@@ -13,12 +13,13 @@
 
 #pragma once
 
+#include <gsAssembler/gsGenericAssembler.h>
+
 /*    Concerning the status flag m_status:
  *       (m_status&1)!=0    means that the object has been initialized by calling init or the value constructor
  *       (m_status&2)!=0    means that the jump matrices have been computed
  *       (m_status&4)!=0    means that corners have been set up as primal constraints
- *
- *    Please add more uses to the list.
+ *       (m_status&flag)!=0 for flag = 8, 16,... means that edges, faces, ... have been set up as primal constraints
  */
 
 namespace gismo
@@ -160,6 +161,85 @@ void gsIetiMapper<T>::cornersAsPrimals()
 }
 
 template <class T>
+gsSparseVector<T> gsIetiMapper<T>::assembleAverage(
+    const gsGeometry<T>& geo,
+    const gsBasis<T>& basis,
+    const gsDofMapper& dm,
+    boxComponent bc
+)
+{
+    gsMatrix<index_t> indices;
+
+    gsMatrix<T> moments = gsGenericAssembler<T>(
+        *(geo.component(bc)),
+        *(basis.componentBasis_withIndices(bc, indices, false))
+    ).assembleMoments(
+        gsConstantFunction<T>(1,geo.targetDim())
+    );
+
+    gsSparseVector<T> constraint( dm.freeSize() );
+    const index_t sz = moments.size();
+    GISMO_ASSERT( sz == indices.size(), "Internal error." );
+    for (index_t i=0; i<sz; ++i)
+    {
+        const index_t idx = dm.index( indices(i,0), 0 );
+        if (dm.is_free_index(idx))
+            constraint[idx] = moments(i,0);
+    }
+    return constraint;
+
+}
+
+
+template <class T>
+void gsIetiMapper<T>::interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, short_t d)
+{
+    GISMO_ASSERT( d>0, "gsIetiMapper<T>::interfaceAveragesAsPrimals cannot handle corners." );
+    GISMO_ASSERT( d<m_multiBasis->dim(), "gsIetiMapper<T>::interfaceAveragesAsPrimals: "
+        "Interfaces must have smaller dimension than considered object." );
+    GISMO_ASSERT( geo.nPatches() == m_multiBasis->nPieces(),
+        "gsIetiMapper<T>::interfaceAveragesAsPrimals: The given geometry does not fit.");
+    GISMO_ASSERT( geo.parDim() == m_multiBasis->dim(),
+        "gsIetiMapper<T>::interfaceAveragesAsPrimals: The given geometry does not fit.");
+
+    const unsigned flag = 1<<(2+d);
+    GISMO_ASSERT( !(m_status&flag), "gsIetiMapper::interfaceAveragesAsPrimals: This function has "
+        " already been called for d="<<d );
+    m_status |= flag;
+
+    std::vector< std::vector<patchComponent> > components = geo.allComponents();
+    const index_t nComponents = components.size();
+    for (index_t n=0; n<nComponents; ++n)
+    {
+        const index_t sz = components[n].size();
+        if ( sz > 1 && components[n][0].dim() == d )
+        {
+            index_t used = 0;
+            for (index_t i=0; i<sz; ++i)
+            {
+                const index_t k = components[n][i].patch();
+                gsSparseVector<T> constr = assembleAverage(
+                    geo[k],
+                    (*m_multiBasis)[k],
+                    m_dofMapperLocal[k],
+                    components[n][i]
+                );
+                if ( constr.nonZeros() > 0 )
+                {
+                    m_primalConstraints[k].push_back(give(constr));
+                    m_primalDofIndices[k].push_back(m_nPrimalDofs);
+                    ++used;
+                }
+            }
+            GISMO_ASSERT( used==0 || used == sz, "Internal error." );
+            if (used)
+                ++m_nPrimalDofs;
+        }
+    }
+}
+
+
+template <class T>
 void gsIetiMapper<T>::customPrimalConstraints(std::vector< std::pair<index_t,SparseVector> > data)
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
@@ -168,7 +248,7 @@ void gsIetiMapper<T>::customPrimalConstraints(std::vector< std::pair<index_t,Spa
     for (index_t i=0; i<sz; ++i)
     {
         const index_t patch = data[i].first;
-        m_primalConstraints[patch].push_back( give(data[i].second) );
+        m_primalConstraints[patch].push_back(give(data[i].second));
         m_primalDofIndices[patch].push_back(m_nPrimalDofs);
     }
     ++m_nPrimalDofs;

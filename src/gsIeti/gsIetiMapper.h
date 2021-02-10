@@ -110,6 +110,13 @@ public:
     /// @brief This function instructs the class to set up the corners as primal dofs
     void cornersAsPrimals();
 
+    /// @brief This function instructs the class to set up interface averages as primal dofs
+    ///
+    /// @param geo             \a gsMultiPatch object describing the geometry
+    /// @param d               The dimension of the interfaces to be considered, i.e.,
+    ///                        d=1 yields edge averages and d=2 yields face averages
+    void interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, short_t d);
+
     /// @brief With this function, the caller can register more primal constraints
     ///
     /// All primal constraints in the vector are considered to be one single primal
@@ -156,6 +163,11 @@ public:
 
     /// @brief The function values for the eliminated dofs on the given patch
     const Matrix& fixedPart(index_t k) const                               { return m_fixedPart[k];               }
+
+private:
+
+    static gsSparseVector<T> assembleAverage( const gsGeometry<T>& geo, const gsBasis<T>& basis,
+        const gsDofMapper& dm, boxComponent bc );
 
 private:
     const gsMultiBasis<T>*                        m_multiBasis;          ///< Pointer to the respective multibasis

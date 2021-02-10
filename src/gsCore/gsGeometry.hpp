@@ -165,14 +165,28 @@ gsGeometry<T>::boundary(boxSide const& s) const
 
     for (index_t i=0; i != ind.size(); i++ )
     {
-        coeffs.row(i) = m_coefs.row( (ind)(i,0) );
+        coeffs.row(i) = m_coefs.row( ind(i,0) );
     }
 
     typename gsBasis<T>::uPtr Bs = this->basis().boundaryBasis(s);  // Basis for boundary side s
-    uPtr bgeo = Bs->makeGeometry( give(coeffs) );
-
-    return bgeo;
+    return Bs->makeGeometry( give(coeffs) );
 }
+
+template<class T>
+typename gsGeometr::uPtr
+gsGeometry<T>::component(boxComponent const& bc) const
+{
+    gsMatrix<index_t> ind;
+    typename gsBasis<T>::uPtr Bs = this->basis().componentBasis_withIndices(bc, ind, false);
+    gsMatrix<T> coefs (ind.size(), geoDim());
+
+    for (index_t i=0; i != ind.size(); i++ )
+    {
+        coefs.row(i) = m_coefs.row( ind(i,0) );
+    }
+
+    return componentBasis->makeGeometry( coefs );
+} 
 
 template<class T>
 void gsGeometry<T>::evaluateMesh(gsMesh<T>& mesh) const
@@ -309,7 +323,7 @@ void gsGeometry<T>::outerNormal_into(const gsMatrix<T>&, gsMatrix<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-std::vector<gsGeometry<T> *> gsGeometry<T>:: boundary() const
+std::vector<gsGeometry<T> *> gsGeometry<T>::boundary() const
 {
     // TO DO: get boundary curves, using basis().boundary();
     GISMO_NO_IMPLEMENTATION

@@ -559,6 +559,9 @@ public:
     /// Get parametrization of boundary side \a s as a new gsGeometry uPtr.
     typename gsGeometry::uPtr boundary(boxSide const& s) const;
 
+    /// Get parametrization of box component \a bc as a new gsGeometry uPtr.
+    typename gsGeometry::uPtr component(boxComponent const& bc) const;
+
     GISMO_UPTR_FUNCTION_PURE(gsGeometry, clone)
 
     /// Prints the object as a string.

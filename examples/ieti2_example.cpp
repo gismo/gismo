@@ -30,9 +30,9 @@ int main(int argc, char *argv[])
     real_t stretchGeometry = 1;
     index_t refinements = 1;
     index_t degree = 2;
+    std::string boundaryConditions("d");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
-    std::string boundaryConditions("d");
     std::string fn;
     bool plot = false;
 
@@ -42,9 +42,9 @@ int main(int argc, char *argv[])
     cmd.addReal  ("",  "StretchGeometry",       "Stretch geometry in x-direction by the given factor", stretchGeometry);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
+    cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
-    cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
     cmd.addString("" , "fn",                    "Write solution and used options to file", fn);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
@@ -176,7 +176,9 @@ int main(int argc, char *argv[])
     }
 
     // Compute the jump matrices
-    ietiMapper.computeJumpMatrices(true, true);
+    bool fullyMatching = true,
+         noLagrangeMultipliersForCorners = true;
+    ietiMapper.computeJumpMatrices(fullyMatching, noLagrangeMultipliersForCorners);
 
     // We tell the ieti mapper which primal constraints we want; calling
     // more than one such function is possible.

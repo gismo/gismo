@@ -30,9 +30,10 @@ int main(int argc, char *argv[])
     real_t stretchGeometry = 1;
     index_t refinements = 1;
     index_t degree = 2;
+    std::string boundaryConditions("d");
+    std::string primals("c");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
-    std::string boundaryConditions("d");
     std::string fn;
     bool plot = false;
 
@@ -42,9 +43,10 @@ int main(int argc, char *argv[])
     cmd.addReal  ("",  "StretchGeometry",       "Stretch geometry in x-direction by the given factor", stretchGeometry);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
+    cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
+    cmd.addString("c", "Primals",               "Primal constraints (c=corners, e=edges, f=faces)", primals);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
-    cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
     cmd.addString("" , "fn",                    "Write solution and used options to file", fn);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
@@ -171,12 +173,34 @@ int main(int argc, char *argv[])
         ietiMapper.init( mb, u.mapper(), u.fixedPart() );
     }
 
-    // Compute the jump matrices
-    ietiMapper.computeJumpMatrices(true, true);
+    // Which primal dofs should we choose?
+    bool cornersAsPrimals = false, edgesAsPrimals = false, facesAsPrimals = false;
+    for (size_t i=0; i<primals.length(); ++i)
+        switch (primals[i])
+        {
+            case 'c': cornersAsPrimals = true;   break;
+            case 'e': edgesAsPrimals = true;     break;
+            case 'f': facesAsPrimals = true;     break;
+            default:
+                gsInfo << "\nUnkown type of primal constraint: \"" << primals[i] << "\"\n";
+                return EXIT_FAILURE;
+        }
 
     // We tell the ieti mapper which primal constraints we want; calling
     // more than one such function is possible.
-    ietiMapper.cornersAsPrimals();
+    if (cornersAsPrimals)
+        ietiMapper.cornersAsPrimals();
+
+    if (edgesAsPrimals)
+        ietiMapper.interfaceAveragesAsPrimals(mp,1);
+
+    if (facesAsPrimals)
+        ietiMapper.interfaceAveragesAsPrimals(mp,2);
+
+    // Compute the jump matrices
+    bool fullyMatching = true,
+         noLagrangeMultipliersForCorners = cornersAsPrimals;
+    ietiMapper.computeJumpMatrices(fullyMatching, noLagrangeMultipliersForCorners);
 
     // The ieti system does not have a special treatment for the
     // primal dofs. They are just one more subdomain
@@ -273,6 +297,7 @@ int main(int argc, char *argv[])
             makeMatrixOp(localMatrix.moveToPtr()),
             give(localRhs)
         );
+
     }
 
     // Add the primal problem if there are primal constraints
