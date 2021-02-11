@@ -37,7 +37,7 @@ gsPatchRule<T>::gsPatchRule(const gsBasis<T> & basis,
     // Initialize some stuff
     m_dim = m_basis->dim();
 
-    GISMO_ASSERT( m_fixDir < m_dim && m_fixDir>-2, "Invalid input fixDir = "<<m_fixDir);
+    GISMO_ASSERT( m_fixDir < short_t(m_dim) && m_fixDir>-2, "Invalid input fixDir = "<<m_fixDir);
 
     m_nodes.resize(m_dim);
     m_weights.resize(m_dim);
@@ -145,6 +145,7 @@ void gsPatchRule<T>::mapTo( const gsVector<T>& lower,
     // initialize the number of nodes and weights
     nodes.resize(m_dim,size);
     weights.resize(size);
+    gsDebugVar(size);
     if (size==0)
         return;
 
@@ -161,8 +162,8 @@ void gsPatchRule<T>::mapTo( const gsVector<T>& lower,
         ones.setOnes(tmpNodes.cols());
         for (index_t k = 0; k != elNodes[d].size(); k++)
         {
-            nodes.block(d,k*ones.size(),1,ones.size()) = ones*elNodes[d].at(k);
-            weights.segment(k*ones.size(),ones.size()) = (ones*elWeights[d].at(k)).cwiseProduct(tmpWeights);
+            nodes.block(d,k*ones.size(),1,ones.size()) = ones.transpose()*elNodes[d].at(k);
+            weights.segment(k*ones.size(),ones.size()) = (ones.transpose()*elWeights[d].at(k)).cwiseProduct(tmpWeights);
         }
 
         tmpWeights = weights.segment(0,tmpWeights.cols()*elWeights[d].size());
