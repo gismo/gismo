@@ -39,7 +39,7 @@ public:
     /// If \a label is not found, the function throws.
     std::string getString(const std::string & label) const;
     /// @copydoc gsOptionList::getString()
-    index_t     getInt   (const std::string & label) const;
+    const index_t & getInt   (const std::string & label) const;
     /// @copydoc gsOptionList::getString()
     Real      getReal  (const std::string & label) const;
     /// @copydoc gsOptionList::getString()
@@ -229,6 +229,9 @@ public:
         m_switches.swap(other.m_switches);
     }
 
+protected:
+    index_t & getIntRef(const std::string & label);
+    
 private:
 
     /// \brief Gives information regarding the option named \a label

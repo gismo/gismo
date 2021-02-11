@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
+#include <gsIO/gsOptionList.h>
 
 namespace gismo
 {
@@ -52,7 +53,7 @@ class gsCmdLinePrivate;
  *
  *  \ingroup IO
  */
-class GISMO_EXPORT gsCmdLine
+class GISMO_EXPORT gsCmdLine : public gsOptionList //TODO: better name: gsCmdOptionList
 {
     typedef index_t intVal_t;
 
@@ -93,7 +94,21 @@ public:
     void addInt(const std::string& flag,
                 const std::string& name,
                 const std::string& desc,
-                intVal_t         & value);
+                intVal_t         & value); //TODO: rename as addIntArg
+
+    /// Second version: unbinded integer command-line argument
+    void addNewInt(const std::string& flag,
+                   const std::string& name,
+                   const std::string& desc,
+                   intVal_t          value) //TODO: rename as addNewIntArg
+    {
+        addInt(name, desc, give(value));            //add new option
+        addInt(flag, name, desc, getIntRef(name) ); //bind cmd arg
+    }
+
+    // Third (inherited) version: add int option which is NOT a
+    // command-line argument
+    using gsOptionList::addInt;
 
     /// @brief Register an int option for the command line, which can be assigned more than once
     ///
@@ -235,15 +250,6 @@ public:
     /// If the parsing did non succeed, the function throws.
     void getValues(int argc, char *argv[]);
 
-    /// Writes all given options (as specified by \a addInt, \a addReal,
-    /// \a addString or \a addSwitch or \a addPlainString) into a
-    /// gsOptionList object.
-    ///
-    /// Must be invoked after \a getValues. This function takes its values
-    /// from the registered variables, so changes in thoes are taken into
-    /// account.
-    gsOptionList getOptionList();
-
     /// Prints the version information
     static void printVersion();
 
@@ -266,6 +272,12 @@ public:
     ~gsCmdLine();
 
 private:
+    /// Writes all given options (as specified by \a addInt, \a addReal,
+    /// \a addString or \a addSwitch or \a addPlainString) into the
+    /// gsOptionList base object.
+    gsOptionList updateOptionList();
+
+private:
 
     gsCmdLinePrivate * my;
 
@@ -277,7 +289,7 @@ private:
    * @brief Initializes the Python wrapper for the class: gsCmdLine
    */
   void pybind11_init_gsCmdLine(pybind11::module &m);
-  
+
 #endif // GISMO_BUILD_PYBIND11
-  
+
 } // namespace gismo

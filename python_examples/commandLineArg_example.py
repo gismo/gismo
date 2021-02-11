@@ -20,7 +20,6 @@ import pygismo as gs
 # Variables that will take values from the command line
 string='''none'''  # string variable default value
 flNumber = 1.0     # flNumber variable default value
-number = 1         # number variable default value
 boolean = False    # boolean variable default value
 plainString=''     # argument of reading plain string
 
@@ -65,12 +64,12 @@ If set, string is updated to the input value, otherwise string remains untouched
 
 """
 -----------------------------------------------------------------
-Adding a string argument, given by the "-i" (or "--num") flag
+Adding an int argument, given by the "-i" (or "--num") flag
 If set, number is updated to the input value, otherwise number remains untouched
 """
-cmd.addInt   ("i", "num",
-              "Description of int command line argument",
-              number)
+cmd.addNewInt   ("i", "num",
+                 "Description of int command line argument",
+                 1)
 
 """
 -----------------------------------------------------------------
@@ -115,6 +114,8 @@ try:
     cmd.getValues(sys.argv)
 except:
     print("An error occured")
+
+number= cmd.getInt("num")
 
 print('''
 Printing command line arguments:\n\n\n

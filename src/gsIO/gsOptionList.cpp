@@ -4,7 +4,7 @@
     set and accessed easily
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -31,7 +31,10 @@ std::string gsOptionList::getString(const std::string & label) const
     return it->second.first;
 }
 
-index_t gsOptionList::getInt(const std::string & label) const
+index_t & gsOptionList::getIntRef(const std::string & label)
+{ return const_cast<index_t &>(getInt(label)); }
+
+const index_t & gsOptionList::getInt(const std::string & label) const
 {
     IntTable::const_iterator it = m_ints.find(label);
     GISMO_ENSURE(it!=m_ints.end(), "Invalid request (getInt): "<<label<<" is not not an int; it is "<<getInfo(label)<<".");
@@ -622,7 +625,7 @@ gsXml<gsOptionList>::put (const gsOptionList & obj, gsXmlTree & data)
       optionList->insert_node(0, tmp);
       }
     */
-        
+
     return optionList;
 }
 
@@ -633,18 +636,18 @@ gsXml<gsOptionList>::put (const gsOptionList & obj, gsXmlTree & data)
 
 namespace py = pybind11;
 void pybind11_init_gsOptionList(py::module &m) {
-  
+
   py::class_<gsOptionList> ol(m, "gsOptionList");
-  
-  ol.def("getString", &gsOptionList::getString)    
+
+  ol.def("getString", &gsOptionList::getString)
     .def("getInt",    &gsOptionList::getInt)
     .def("getReal",   &gsOptionList::getReal)
     .def("getSwitch", &gsOptionList::getSwitch)
-    
+
     .def("getMultiString", &gsOptionList::getMultiString)
     .def("getMultiInt",    &gsOptionList::getMultiInt)
     .def("getMultiReal",   &gsOptionList::getMultiReal)
-    
+
     .def("askString", (std::string (gsOptionList::*)(const std::string&)) &gsOptionList::askString)
     .def("askString", (std::string (gsOptionList::*)(const std::string&,
                                                      const std::string&)) &gsOptionList::askString)
@@ -657,7 +660,7 @@ void pybind11_init_gsOptionList(py::module &m) {
     .def("askSwitch", (std::string (gsOptionList::*)(const std::string&)) &gsOptionList::askSwitch)
     .def("askSwitch", (std::string (gsOptionList::*)(const std::string&,
                                                      const bool&))        &gsOptionList::askSwitch)
-    
+
     .def("setString", &gsOptionList::setString)
     .def("setInt",    &gsOptionList::setInt)
     .def("setReal",   &gsOptionList::setReal)
@@ -675,7 +678,7 @@ void pybind11_init_gsOptionList(py::module &m) {
     .def("update",     (void (gsOptionList::*)(const gsOptionList&,
                                                gsOptionList::updateType)) &gsOptionList::update)
     .def("hasGlobals", &gsOptionList::hasGlobals)
-    
+
     .def("wrapIntoGroup", &gsOptionList::wrapIntoGroup)
     .def("getGroup",      &gsOptionList::getGroup)
     .def("hasGroup",      &gsOptionList::hasGroup)
@@ -689,11 +692,11 @@ void pybind11_init_gsOptionList(py::module &m) {
     .def(py::init<>())
     .def("assign", &gsOptionList::operator=)
 
-#if EIGEN_HAS_RVALUE_REFERENCES    
+#if EIGEN_HAS_RVALUE_REFERENCES
     .def(py::init<const gsOptionList&>())
     .def(py::init<gsOptionList&&>())
 #endif
-    
+
     .def("__repr__",
          [](const gsOptionList &obj) {
            std::stringstream os;
@@ -701,7 +704,7 @@ void pybind11_init_gsOptionList(py::module &m) {
            return os.str();
          })
     ;
-  
+
   py::enum_<gsOptionList::updateType>(ol, "updateType")
     .value("ignoreIfUnknown", gsOptionList::updateType::ignoreIfUnknown)
     .value("addIfUnknown",    gsOptionList::updateType::addIfUnknown)
@@ -728,7 +731,7 @@ void pybind11_init_gsOptionList(py::module &m) {
            os << obj;
            return os.str();
          })
-    
+
     .def("__lt__",
          [](const gsOptionList::OptionListEntry &obj,
             const gsOptionList::OptionListEntry &other) {
@@ -736,7 +739,7 @@ void pybind11_init_gsOptionList(py::module &m) {
          })
     ;
 
-  
+
 }
 
 #endif // GISMO_BUILD_PYBIND11
