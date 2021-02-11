@@ -14,11 +14,6 @@
 
 #pragma once
 
-#include<gsCore/gsLinearAlgebra.h>
-#include<gsCore/gsFunction.h>
-#include<gsNurbs/gsBSpline.h>
-#include<gsUtils/gsCombinatorics.h>
-
 namespace gismo {
 
 template<typename T>

@@ -237,4 +237,6 @@ protected:
 
 } // gismo
 
-#include <gsUtils/gsQuasiInterpolate.hpp>
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsQuasiInterpolate.hpp)
+#endif

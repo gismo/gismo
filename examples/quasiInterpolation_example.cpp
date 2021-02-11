@@ -20,7 +20,6 @@
 #include <string>
 #include <gismo.h>
 #include <gsSolver/gsSolverUtils.h>
-#include <gsUtils/gsQuasiInterpolate.h>
 
 using namespace gismo;
 
