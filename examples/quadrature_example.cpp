@@ -36,7 +36,8 @@ int main(int argc, char* argv[])
     cmd.addSwitch("over","overintegrate",overInt);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsKnotVector<> kv1(0, 1.0, 3, 3, 1);
+    gsKnotVector<> kv1(0, 1.0, 1, 3, 1);
+    kv1.uniformRefine(2);
     gsKnotVector<> kv2 = kv1;
 
     gsTensorBSplineBasis<2,real_t> tbsb2(kv1,kv2);
@@ -55,29 +56,30 @@ int main(int argc, char* argv[])
     // ======================================================================
 
     // Gauss Legendre
-    gsOptionList options;
-    options.addInt   ("quRule","Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",gsQuadrature::rule::GaussLegendre);
-    options.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
-    options.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
-    options.addSwitch("overInt","Apply over-integration or not?",false);
-
-    gsQuadRule<real_t>::uPtr legendre = gsQuadrature::getPtr(tbsb2, options);
+    gsOptionList legendreOpts;
+    legendreOpts.addInt   ("quRule","Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",gsQuadrature::rule::GaussLegendre);
+    legendreOpts.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
+    legendreOpts.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
+    legendreOpts.addSwitch("overInt","Apply over-integration or not?",false);
+    gsQuadRule<real_t>::uPtr legendre = gsQuadrature::getPtr(tbsb2, legendreOpts);
 
     // Mixed Quadrature
-    options.setInt   ("quRule" ,gsQuadrature::rule::GaussLobatto);
-    options.setSwitch("overInt",true);
-    options.setReal("quA", 0  ); // interior
-    options.setInt ("quB", 1  );
-    options.addReal("quAb", "Number of quadrature points: quA*deg + quB", 1.0  );
-    options.addInt ("quBb", "Number of quadrature points: quA*deg + quB", 1    );
-    gsQuadRule<real_t>::uPtr mixedLobatto = gsQuadrature::getPtr(tbsb2, options);
+    gsOptionList lobattoOpts;
+    lobattoOpts.addInt   ("quRule","Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",gsQuadrature::rule::GaussLobatto);
+    lobattoOpts.addReal("quA", "Number of quadrature points: quA*deg + quB", 0.0  );
+    lobattoOpts.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
+    lobattoOpts.addReal("quAb", "Number of quadrature points: quA*deg + quB", 1.0  );
+    lobattoOpts.addInt ("quBb", "Number of quadrature points: quA*deg + quB", 1    );
+    lobattoOpts.addSwitch("overInt","Apply over-integration or not?",true);
+    gsQuadRule<real_t>::uPtr mixedLobatto = gsQuadrature::getPtr(tbsb2, lobattoOpts);
 
     // PatchRule
-    options.setInt   ("quRule",gsQuadrature::rule::PatchRule);
-    options.setReal  ("quA", order      );
-    options.setInt   ("quB", regularity );
-    options.setSwitch("overInt",overInt);
-    gsQuadRule<real_t>::uPtr patchRule = gsQuadrature::getPtr(tbsb2, options);
+    gsOptionList patchOpts;
+    patchOpts.addInt   ("quRule","Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",gsQuadrature::rule::PatchRule);
+    patchOpts.addReal("quA", "Order of the target space", order  );
+    patchOpts.addInt ("quB", "Regularity of the targed space", regularity    );
+    patchOpts.addSwitch("overInt","Apply over-integration or not?",overInt);
+    gsQuadRule<real_t>::uPtr patchRule = gsQuadrature::getPtr(tbsb2, patchOpts);
 
     gsMatrix<> points;
     gsVector<> weights;
@@ -150,6 +152,83 @@ int main(int argc, char* argv[])
         gsWriteParaviewPoints(GaussRule,"Points_Original");
         gsWriteParaviewPoints(MixedRule,"Points_Mixed");
         gsWriteParaviewPoints(TensorPatch,"Points_Patch");
+    }
+    else
+    {
+        gsInfo<<"No plot produced! Re-run with --plot to export points and basis to Paraview\n";
+    }
+
+    legendre = gsQuadrature::getPtr(tbsb2, legendreOpts,1);
+    mixedLobatto = gsQuadrature::getPtr(tbsb2, lobattoOpts,1);
+    patchRule = gsQuadrature::getPtr(tbsb2, patchOpts,1);
+
+
+    boxSide side(4);
+    typename gsBasis<>::domainIter bIt = tbsb2.makeDomainIterator(side);
+    // Start iteration over elements
+    GaussRule.resize(tbsb2.dim(),0);
+    MixedRule.resize(tbsb2.dim(),0);
+    TensorPatch.resize(tbsb2.dim(),0);
+    for (; bIt->good(); bIt->next() )
+    {
+        if (verbose)
+        {
+            gsInfo<<"---------------------------------------------------------------------------\n";
+            gsInfo  <<"Element with corners (lower) "
+                    <<bIt->lowerCorner().transpose()<<" and (higher) "
+                    <<bIt->upperCorner().transpose()<<" :\n";
+        }
+
+        //---------------------------------------------------------------------------
+        // Gauss-Legendre rule (w/o over-integration)
+        legendre->mapTo( bIt->lowerCorner(), bIt->upperCorner(),
+                        points, weights);
+        if (verbose)
+        {
+            gsInfo  <<"* \t Gauss-Legendre\n"
+                    <<"- points:\n"<<points<<"\n"
+                    <<"- weights:\n"<<weights.transpose()<<"\n";
+        }
+        start = GaussRule.cols();
+        GaussRule.conservativeResize(Eigen::NoChange,GaussRule.cols()+points.cols());
+        GaussRule.block(0,start,GaussRule.rows(),points.cols()) = points;
+        //---------------------------------------------------------------------------
+        // Gauss-Lobatto rule (w/ over-integration)
+        mixedLobatto->mapTo( bIt->lowerCorner(), bIt->upperCorner(),
+                        points, weights);
+        if (verbose)
+        {
+            gsInfo  <<"* \t Gauss-Lobatto (overintegrated)\n"
+                    <<"- points:\n"<<points<<"\n"
+                    <<"- weights:\n"<<weights.transpose()<<"\n";
+        }
+        start = MixedRule.cols();
+        MixedRule.conservativeResize(Eigen::NoChange,MixedRule.cols()+points.cols());
+        MixedRule.block(0,start,MixedRule.rows(),points.cols()) = points;
+        //---------------------------------------------------------------------------
+        //  Patch-rule
+        patchRule->mapTo( bIt->lowerCorner(), bIt->upperCorner(),
+                        points, weights);
+        if (verbose)
+        {
+            gsInfo  <<"* \t PatchRule ("<<( overInt ? "" : "not " )<<"overintegrated)\n"
+                    <<"- points:\n"<<points<<"\n"
+                    <<"- weights:\n"<<weights.transpose()<<"\n";
+        }
+        start = TensorPatch.cols();
+        TensorPatch.conservativeResize(Eigen::NoChange,TensorPatch.cols()+points.cols());
+        TensorPatch.block(0,start,TensorPatch.rows(),points.cols()) = points;
+
+    }
+
+    if (verbose)
+        gsInfo<<"---------------------------------------------------------------------------\n";
+
+    if (plot)
+    {
+        gsWriteParaviewPoints(GaussRule,"BoundaryPoints_Original");
+        gsWriteParaviewPoints(MixedRule,"BoundaryPoints_Mixed");
+        gsWriteParaviewPoints(TensorPatch,"BoundaryPoints_Patch");
     }
     else
     {

@@ -95,7 +95,8 @@ public:
     m_basis(nullptr),
     m_deg(0),
     m_reg(0),
-    m_over(false)
+    m_over(false),
+    m_fixDir(-1)
     {};
 
     /**
@@ -109,7 +110,8 @@ public:
     gsPatchRule(const gsBasis<T> & basis,
                 const index_t degree,
                 const index_t regularity,
-                const bool overintegrate);
+                const bool overintegrate,
+                const short_t fixDir = -1);
 
     /// Make function returning a smart pointer
 
@@ -126,8 +128,9 @@ public:
     static uPtr make(   const gsBasis<T> & basis,
                         const index_t degree,
                         const index_t regularity,
-                        const bool overintegrate)
-    { return uPtr( new gsPatchRule(basis,degree,regularity,overintegrate) ); }
+                        const bool overintegrate,
+                        const short_t fixDir = -1)
+    { return uPtr( new gsPatchRule(basis,degree,regularity,overintegrate,fixDir) ); }
 
 
     /**
@@ -140,6 +143,8 @@ public:
     /**
      * @brief      Maps the points in the d-dimensional cube with points \a lower and \a upper
      *
+     * See \ref gsQuadRule for documentation
+     *
      * @param[in]  lower    The lower corner
      * @param[in]  upper    The upper corner
      * @param      nodes    Quadrature points
@@ -147,6 +152,15 @@ public:
      */
     void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
                        gsMatrix<T> & nodes, gsVector<T> & weights ) const override;
+
+    /// See \ref gsQuadRule for documentation
+    void mapTo(  T startVal, T endVal,
+                       gsMatrix<T> & nodes, gsVector<T> & weights ) const override;
+
+    /// Not implemented! See \ref gsQuadRule for documentation
+    void mapToAll( const std::vector<T> & breaks,
+                   gsMatrix<T> & nodes, gsVector<T> & weights ) const
+    { GISMO_NO_IMPLEMENTATION }
 
     index_t dim() const { return m_basis->dim(); }
 
@@ -198,6 +212,7 @@ private:
     const gsBasis<T> * m_basis;
     const index_t m_deg,m_reg;
     const bool m_over;
+    const short_t m_fixDir;
 
     std::vector<gsVector<T>> m_nodes;
     std::vector<gsVector<T>> m_weights;

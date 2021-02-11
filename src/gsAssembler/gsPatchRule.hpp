@@ -23,17 +23,22 @@ template<class T>
 gsPatchRule<T>::gsPatchRule(const gsBasis<T> & basis,
                             const index_t degree,
                             const index_t regularity,
-                            const bool overintegrate
+                            const bool overintegrate,
+                            const short_t fixDir
                             )
                             :
                             m_basis(&basis),
                             m_deg(degree),
                             m_reg(regularity),
-                            m_over(overintegrate)
+                            m_over(overintegrate),
+                            m_fixDir(fixDir)
 {
     GISMO_ENSURE(m_reg<m_deg,"regularity cannot be greater or equal to the order!");
     // Initialize some stuff
     m_dim = m_basis->dim();
+
+    GISMO_ASSERT( m_fixDir < m_dim && m_fixDir>-2, "Invalid input fixDir = "<<m_fixDir);
+
     m_nodes.resize(m_dim);
     m_weights.resize(m_dim);
     m_maps.resize(m_dim);
@@ -46,17 +51,27 @@ gsPatchRule<T>::gsPatchRule(const gsBasis<T> & basis,
     // Loop over dimensions of the basis and store the nodes and weights for each dimension
     for (size_t d = 0; d != m_dim; d++)
     {
-        // Construc temporary basis (must be B-spline because we use knots!)
-        Bbasis = const_cast<gsBSplineBasis<T> *>(static_cast<const gsBSplineBasis<T> * >(&m_basis->component(d)));
+        if (short_t(d)==m_fixDir && m_fixDir!=-1)
+        {
+            m_nodes[d].resize(2);
+            m_nodes[d]<<0,1;
+            m_weights[d].resize(2);
+            m_weights[d]<<1,1;
+        }
+        else
+        {
+            // Construct temporary basis (must be B-spline because we use knots!)
+            Bbasis = const_cast<gsBSplineBasis<T> *>(static_cast<const gsBSplineBasis<T> * >(&m_basis->component(d)));
 
-        // Find the knots
-        knots = this->_init(Bbasis);
-        // Compute exact integrals
-        std::tie(greville,integral) = this->_integrate(knots);
-        // Compute quadrule
-        std::tie(m_nodes.at(d),m_weights.at(d)) = this->_compute(knots,greville,integral);
+            // Find the knots
+            knots = this->_init(Bbasis);
+            // Compute exact integrals
+            std::tie(greville,integral) = this->_integrate(knots);
+            // Compute quadrule
+            std::tie(m_nodes[d],m_weights[d]) = this->_compute(knots,greville,integral);
+        }
 
-        // Construc a map with the nodes and the weights
+        // Construct a map with the nodes and the weights
         for (index_t k=0; k!=m_nodes[d].size(); k++)
             m_maps[d][m_nodes[d].at(k)] = m_weights[d].at(k);
 
@@ -130,6 +145,8 @@ void gsPatchRule<T>::mapTo( const gsVector<T>& lower,
     // initialize the number of nodes and weights
     nodes.resize(m_dim,size);
     weights.resize(size);
+    if (size==0)
+        return;
 
     // Now we fill the matrix with the points and we construct the tensor product (according to the scheme on top)
     gsMatrix<T> tmpNodes, tmpWeights;
@@ -152,6 +169,24 @@ void gsPatchRule<T>::mapTo( const gsVector<T>& lower,
         tmpNodes = nodes.block( 0, 0, d+1, tmpNodes.cols()*elNodes[d].size() );
     }
 };
+
+template<class T> void
+gsPatchRule<T>::mapTo( T startVal, T endVal,
+                      gsMatrix<T> & nodes, gsVector<T> & weights ) const
+{
+    GISMO_ASSERT( 1 == m_nodes.size(), "Inconsistent quadrature mapping (dimension != 1)");
+
+    nodes.resize(1,m_nodes[0].size());
+    weights.resize(m_weights[0].size());
+    index_t k=0;
+    for (auto it = m_maps[0].lower_bound(startVal); it!=m_maps[0].upper_bound(endVal); it++, k++) // lower_bound = geq, upper_bound= greather than
+    {
+        nodes.at(k) = it->first;
+        weights.at(k) = it->second;
+    }
+    nodes.conservativeResize(1,k);
+    weights.conservativeResize(k);
+}
 
 /*
 // THIS IS AN IMPLEMENTATION FOR STRICTLY 2D DOMAINS!
@@ -204,6 +239,23 @@ gsKnotVector<T> gsPatchRule<T>::_init(const gsBSplineBasis<T> * Bbasis) const
 
     gsBSplineBasis<T> basis = gsBSplineBasis<T>(knots);
     size = basis.size();
+
+    // If basis should be over-integrated, then add extra knots in the boundary elements
+    if (m_over)
+    {
+        index_t numOver = knots.degree();
+
+        T lowerLength = (knots(1)-knots.first())/(numOver+1);
+        T upperLength = (knots.last()-knots(knots.uSize()-2))/(numOver+1);
+        for (index_t k=0; k!=numOver; k++)
+        {
+            knots.insert(knots.first()+(k+1)*lowerLength);
+            knots.insert(knots.last()-(k+1)*upperLength);
+        }
+
+        size += 2*numOver;
+    }
+
     // Add a middle knot if the size of the knot vector is odd
     if (size % 2 == 1)
     {
@@ -226,23 +278,18 @@ gsKnotVector<T> gsPatchRule<T>::_init(const gsBSplineBasis<T> * Bbasis) const
         }
 
         index_t i = maxIdx.at(std::ceil(maxIdx.size()/2.)-1);
-        knots.insert( (knots.at(i) + knots.at(i+1))/2. );
+        T knot = (knots.at(i) + knots.at(i+1))/2. ;
+
+        /*
+            Add knot in the middle of the domain
+        */
+        // T first = knots.first();
+        // T last  = knots.last();
+        // T knot = (last - first) / 2.0;
+
+        knots.insert( knot );
 
         size++;
-    }
-
-    // If basis should be over-integrated, then add extra knots in the boundary elements
-    if (m_over)
-    {
-        index_t numOver = knots.degree();
-
-        T lowerLength = (knots(1)-knots.first())/(numOver+1);
-        T upperLength = (knots.last()-knots(knots.uSize()-2))/(numOver+1);
-        for (index_t k=0; k!=numOver; k++)
-        {
-            knots.insert(knots.first()+(k+1)*lowerLength);
-            knots.insert(knots.last()-(k+1)*upperLength);
-        }
     }
     return knots;
 };
