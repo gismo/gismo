@@ -146,9 +146,9 @@ before_install:
   #- echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
 
 before_script:
-    - export SITE="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH [travis]"
-    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then export BUILDNAME="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH [travis]"; fi
-    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then export BUILDNAME="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH [travis]"; fi
+    - export SITE="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH_[travis]"
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then export BUILDNAME="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH_[travis]"; fi
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then export BUILDNAME="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH_[travis]"; fi
     - mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$SITE" -DBUILDNAME="$BUILDNAME";
 
 script:
