@@ -240,16 +240,16 @@ int main(int argc, char *argv[])
 
         // Add the patch to the scaled Dirichlet preconditioner
         //
-        // This can be done using prec.addSubdomain as in ieti_example. Here, we
-        // call the underlying commands directly to show how one can choose an
-        // alternative solver.
+        // This can be done using gsScaledDirichletPrec<>::restrictToSkeleton
+        // as in ieti_example. Here, we call the underlying commands directly
+        // to show how one can choose an alternative solver.
         {
             std::vector<index_t> skeletonDofs = ietiMapper.skeletonDofs(k);
             std::vector< gsSparseMatrix<> > matrixBlocks
                 = gsScaledDirichletPrec<>::matrixBlocks(localMatrix, skeletonDofs);
 
             prec.addSubdomain(
-               prec.restrictJumpMatrix(jumpMatrix, skeletonDofs),
+               prec.restrictJumpMatrix(jumpMatrix, skeletonDofs).moveToPtr(),
                gsSumOp<>::make(
                     makeMatrixOp(matrixBlocks[0].moveToPtr()),
                     gsProductOp<>::make(
@@ -261,14 +261,15 @@ int main(int argc, char *argv[])
             );
         }
 
-        // This function writes back to jumpMatrix, localMatrix, and localRhs,
-        // so it must be called after prec.addSubdomain().
-        primal.handleConstraints(
-            ietiMapper.primalConstraints(k),
-            ietiMapper.primalDofIndices(k),
-            jumpMatrix,
-            localMatrix,
-            localRhs
+        // Now, we handle the primal cosntraits.
+        //
+        // This can be done using primal.handleConstraints as in ieti_example.
+        // Here, we call the underlying commands directly to show how one can
+        // choose an alternative solver.
+        primal.incorporateConstraints(ietiMapper.primalConstraints(k),jumpMatrix,localMatrix,localRhs);
+        gsLinearOperator<>::Ptr localSolver = makeSparseLUSolver(localMatrix);
+        primal.addContribution(jumpMatrix,localMatrix,localRhs,
+            gsPrimalSystem<>::primalBasis(localSolver,ietiMapper.primalDofIndices(k),primal.nPrimalDofs())
         );
 
         // Register the local solver to the block preconditioner. We use

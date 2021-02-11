@@ -322,18 +322,29 @@ int main(int argc, char *argv[])
             makeMatrixOp(localMatrix.moveToPtr()),
             give(localRhs)
         );
-
-    }
-    //! [Patch to system]
+        //! [Patch to system]
+    //! [End of assembling loop]
+    } // end for
+    //! [End of assembling loop]
 
     // Add the primal problem if there are primal constraints
-    if (ietiMapper.nPrimalDofs()>0)
     //! [Primal to system]
+    if (ietiMapper.nPrimalDofs()>0)
+    {
+        // It is not required to provide a local solver to .addSubdomain,
+        // since a sparse LU solver would be set up on the fly if required.
+        // Here, we make use of the fact that we can use a Cholesky solver
+        // because the primal problem is symmetric and positive definite:
+        gsLinearOperator<>::Ptr localSolver
+            = makeSparseCholeskySolver(primal.localMatrix());
+
         ieti.addSubdomain(
             primal.jumpMatrix().moveToPtr(),
             makeMatrixOp(primal.localMatrix().moveToPtr()),
-            give(primal.localRhs())
+            give(primal.localRhs()),
+            localSolver
         );
+    }
     //! [Primal to system]
 
     gsInfo << "done.\n";

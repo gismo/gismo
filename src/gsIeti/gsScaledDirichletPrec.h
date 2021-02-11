@@ -103,9 +103,9 @@ public:
     ///                       complement
     ///
     /// @note These tow parameters can also be provided as \a std::pair
-    void addSubdomain( JumpMatrix jumpMatrix, OpPtr localSchurOp )
+    void addSubdomain( JumpMatrixPtr jumpMatrix, OpPtr localSchurOp )
     {
-        m_jumpMatrices.push_back(jumpMatrix.moveToPtr());
+        m_jumpMatrices.push_back(give(jumpMatrix));
         m_localSchurOps.push_back(give(localSchurOp));
         m_localScaling.push_back(Matrix());
     }
@@ -113,7 +113,7 @@ public:
     /// @briefs Adds a new subdomain
     void addSubdomain( std::pair<JumpMatrix,OpPtr> data )
     {
-        addSubdomain(give(data.first), give(data.second));
+        addSubdomain(data.first.moveToPtr(), give(data.second));
     }
 
     /// Access the jump matrix
@@ -179,9 +179,9 @@ public:
     OpPtr preconditioner() const;
 
 public:
+    std::vector<JumpMatrixPtr>  m_jumpMatrices;     ///< The jump matrices \f$ \hat B_k \f$
     std::vector<OpPtr>          m_localSchurOps;    ///< The local Schur complements \f$ S_k \f$
     std::vector<Matrix>         m_localScaling;     ///< The diagonal entries of \f$ D_k \f$ as vectors
-    std::vector<JumpMatrixPtr>  m_jumpMatrices;     ///< The jump matrices \f$ \hat B_k \f$
 };
 
 } // namespace gismo

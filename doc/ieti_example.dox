@@ -250,7 +250,7 @@ does all necessary steps:
 
 This can also be done in a step-by-step way, for example if one does not want
 to use a sparse Cholesky solver (which requires symmetric positive definite
-problems). This is shown in *ieti2_example.cpp*.
+problems and would be done by default). This is shown in *ieti2_example.cpp*.
 
 As next step, we treat the primal dofs. We first compute energy minimizing primal
 basis functions. Then the following commands amends the variables jumpMatrix,
@@ -262,12 +262,20 @@ function collects the contributions for \f$ \tilde B_{K+1} \f$,
 
 \snippet ieti_example.cpp Patch to primals
 
+This can also be done in a step-by-step way, for example if one does not want
+to use a sparse LU solver (which would be done by default). This is shown in
+the file *ieti2_example.cpp*.
+
 Now, we add \f$ \tilde B_k \f$, \f$ \tilde A_k \f$, and \f$ \underline{\tilde f}_k \f$
 to the IETI-system:
 
 \snippet ieti_example.cpp Patch to system
 
-This ends the for loop.
+Additionally, one can also provide a solver object that realizes \f$ \tilde A_k^{-1} \f$,
+possibly the one which has already been used for the setup of the bases for the primal
+doefs. By default, again, a LU solver would be used.
+
+\snippet ieti_example.cpp End of assembling loop
 
 Finally, we add \f$ \tilde B_{K+1} \f$, \f$ \tilde A_{K+1} \f$, and
 \f$ \underline{\tilde f}_{K+1} \f$ to the IETI-system:
