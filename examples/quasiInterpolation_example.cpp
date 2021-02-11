@@ -1,9 +1,9 @@
-/** @file gsQuasiInterpolate.h
+/** @file quasiinterpolation_example.cpp
 
-    @brief Different Quasi-Interpolation Schemes based on the article
-    "Spline methods (Lyche Morken)"
+    @brief Different Quasi-Interpolation Schemes.
+
     Different quasi-interpolation-methods of a function.
-    The implemented methods are based on
+    Some of the implemented methods are based on
     "Tom Lyche and Knut Morken. Spline methods draft. 2011"
     http://www.uio.no/studier/emner/matnat/ifi/INF-MAT5340/v11/undervisningsmateriale/
 
@@ -16,8 +16,6 @@
     Author(s): M. Haberleitner, A. Mantzaflaris, H. Verhelst
 **/
 
-#include <iostream>
-#include <string>
 #include <gismo.h>
 #include <gsSolver/gsSolverUtils.h>
 
@@ -31,20 +29,17 @@ using namespace gismo;
 template<typename T>
 T computeError(const gsFunction<T> &fun, const gsFunction<T> &spl, const int &numVals)
 {
-    gsMatrix<T> vals = gsPointGrid<T>(spl.support(), numVals);
-    gsMatrix<T> funExact;
-    fun.eval_into(vals, funExact);
-    gsMatrix<T> funApprox;
-    spl.eval_into(vals, funApprox);
-
+    gsGridIterator<T,CUBE> pt(spl.support(), numVals);
+    gsMatrix<T> funExact, funApprox;
     T error = 0;
-    gsMatrix<T> diff = funExact - funApprox;
-    for(int i=0; i<diff.cols(); i++)
-        error += diff.col(i).squaredNorm();
-
+    for(index_t c = 0; pt; ++pt, ++c)
+    {
+        funExact  = fun.eval(*pt);
+        funApprox = spl.eval(*pt);
+        error    += (funExact - funApprox).squaredNorm();
+    }
     return math::sqrt(error);
 }
-
 
 //compute a quasi-interpolant of some 'type' and print the error to the original function
 //then (uniformly) refine the interpolant 'numRef' times and print the error each time
@@ -537,8 +532,8 @@ bool qi_3D()
     gsInfo<<"\nLocal interpolation-based error analysis (quadratic):\n";
     passed &= errorAnalysis<real_t>(mySinus, bas2, 4, numRef);
 
-    gsInfo<<"\nLocal interpolation-based error analysis (cubic):\n";
-    passed &= errorAnalysis<real_t>(mySinus, bas3, 4, numRef);
+    // gsInfo<<"\nLocal interpolation-based error analysis (cubic):\n";
+    // passed &= errorAnalysis<real_t>(mySinus, bas3, 4, numRef);
 
     gsInfo<<"\nSchoenberg error analysis (linear):\n";
     passed &= errorAnalysis<real_t>(mySinus, bas1, 1, numRef);

@@ -40,6 +40,35 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
     return tmp.row(c);
 }
 
+/*
+gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsTensorBasis<d,T> &bb,
+                                              const gsFunction<T> &fun,
+                                              index_t i,
+                                              const gsMatrix<T> &ab)
+{
+    gsMatrix<T> bev, fev, pts, tmp;
+    gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(T)1.0,1);
+    gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes); //gsTPQuadRule ..
+
+    // for(pt..)
+    //{
+    qRule.mapTo(ab, pt);//map point on element
+    fun.eval_into(pts, fev);//evaluate function
+    //}
+    fev.transposeInPlace();
+
+    //solve
+    bev.transposeInPlace();// must be cwise
+    tmp = bev.partialPivLu().solve(fev);//solve on element
+
+    // find the i-th BS:
+    gsMatrix<index_t> act = bb.active(pts.col(0)); //cwise..?
+    index_t c = std::lower_bound(act.data(), act.data()+act.size(), i) - act.data();
+    GISMO_ASSERT(c<act.size(), "Problem with basis function index");
+    return tmp.row(c);
+}
+*/
+
 template<typename T>
 template<short_t d>
 gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsHTensorBasis<d,T> &bb,
@@ -48,7 +77,7 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsHTensorBasis<d,T> &bb,
 {
     index_t lvl = bb.levelOf(i);
     index_t j = bb.flatTensorIndexOf(i);
-    return localIntpl(bb.tensorLevel(lvl),fun,j,bb.elementInSupportOf(i)); // uses the H-grid element implementation
+    return localIntpl(bb.tensorLevel(lvl),fun,j, bb.elementInSupportOf(i)); // uses the H-grid element implementation
     //return localIntpl(bb.tensorLevel(lvl),fun,j); // uses the central element implementation
 }
 
