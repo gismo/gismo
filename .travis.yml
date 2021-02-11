@@ -156,13 +156,13 @@ script:
   - ctest $MAKEFLAGS --output-on-failure -C %BUILD_TYPE% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest
   - if [ $TRAVIS_BRANCH != stable ] && [ $TASK != Doxygen ]; then ctest $MAKEFLAGS --output-on-failure -D ExperimentalMemCheck; fi
   - if [ "$TASK" != "Doxygen" ]; then ctest -D ExperimentalSubmit; fi
+  - echo "CDASH LINK:"
+  - export TODAY=`date --utc +%Y-%m-%d`
+  - echo "https://cdash-ci.inria.fr/index.php?project=Gismo&date=$TODAY&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=$BUILDNAME&field2=site&compare2=61&value2=$SITE"
 
 before_deploy:
   - make $MAKEFLAGS doc
   - ctest --add-notes doc/doxygen.log -M Experimental -T Submit
-  - export TODAY=`date --utc +%Y-%m-%d`
-  - echo "CDASH LINK:"
-  - echo "https://cdash-ci.inria.fr/index.php?project=Gismo&date=$TODAY&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=$BUILDNAME&field2=site&compare2=61&value2=$SITE")
 
 deploy:
   provider: pages
