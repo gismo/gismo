@@ -382,21 +382,28 @@ public:
             = dynamic_cast< gsRationalBasis< gsTensorBSplineBasis<d,T> > * >(m_basis);
         GISMO_ENSURE( basis, "gsTensorNurbs::uniformSplit: Dynamic cast failed." );
         gsMatrix<T> coefs(m_coefs);
-        coefs.conservativeResize(Eigen::NoChange,coefs.cols()+1);
-        coefs.rightCols(1) = basis->weights();
+        const size_t dm = coefs.cols(), N = coefs.rows();
+        coefs.conservativeResize(Eigen::NoChange,dm+1);
+        for (size_t i=0; i<N; ++i)
+        {
+            coefs(i,dm) = 1;
+            coefs.row(i) *= basis->weights()(i,0);
+        }
         std::vector<gsGeometry<T>*> splitGeo = gsTensorBSpline<d,T>(basis->source(), coefs).uniformSplit(dir);
         // Turn the B-splines in R^{d+1} back into NURBS in R^d
         const size_t sz = splitGeo.size();
         std::vector<gsGeometry<T>*> result;
         result.reserve(sz);
-        for (size_t i=0; i!=sz; ++i)
+        for (size_t k=0; k!=sz; ++k)
         {
             gsTensorBSpline<d,T>* splitSpline
-                = dynamic_cast<gsTensorBSpline<d,T>*>(splitGeo[i]);
+                = dynamic_cast<gsTensorBSpline<d,T>*>(splitGeo[k]);
             GISMO_ENSURE( splitSpline, "gsTensorNurbs::uniformSplit: Dynamic cast failed." );
             gsTensorNurbsBasis<d,T> nurbsBasis(splitSpline->basis().clone().release(), splitSpline->coefs().rightCols(1));
-            gsMatrix<T> splitCoefs(splitSpline->coefs());
-            splitCoefs.conservativeResize(Eigen::NoChange,splitCoefs.cols()-1);
+            gsMatrix<T> splitCoefs(give(splitSpline->coefs()));
+            for (size_t i=0; i<N; ++i)
+                splitCoefs.row(i) /= splitCoefs(i,dm);
+            splitCoefs.conservativeResize(Eigen::NoChange,dm);
             result.push_back( new gsTensorNurbs<d,T>( nurbsBasis, splitCoefs ) );
         }
         freeAll(splitGeo);
