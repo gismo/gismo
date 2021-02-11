@@ -15,6 +15,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsGeometry.h>
+#include <gsUtils/gsCombinatorics.h>
 
 namespace gismo
 {
