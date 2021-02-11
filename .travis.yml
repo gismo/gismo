@@ -149,7 +149,7 @@ before_script:
     - export SITE="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH [travis]"
     - if [ "$TRAVIS_OS_NAME" == "osx" ]; then export BUILDNAME="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH [travis]"; fi
     - if [ "$TRAVIS_OS_NAME" == "linux" ]; then export BUILDNAME="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH [travis]"; fi
-    - mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE=$SITE -DBUILDNAME=$BUILDNAME;
+    - mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$SITE" -DBUILDNAME="$BUILDNAME";
 
 script:
   - if [ -e "cov-int/scm_log.txt" ]; then cat cov-int/scm_log.txt; fi
