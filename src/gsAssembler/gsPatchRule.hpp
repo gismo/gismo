@@ -145,7 +145,6 @@ void gsPatchRule<T>::mapTo( const gsVector<T>& lower,
     // initialize the number of nodes and weights
     nodes.resize(m_dim,size);
     weights.resize(size);
-    gsDebugVar(size);
     if (size==0)
         return;
 
