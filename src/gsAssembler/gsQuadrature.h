@@ -89,7 +89,16 @@ struct gsQuadrature
                 const gsVector<index_t> nnodesI = numNodes(basis,quA,quB,fixDir);
                 const gsVector<index_t> nnodesB = numNodes(basis,quAb,quBb,fixDir);
 
-                return gsOverIntegrateRule<T>::make(basis,get<T>(qu, nnodesI),get<T>(qu, nnodesB));
+                std::vector<gsQuadRule<T> > quInterior(nnodesI.size());
+                std::vector<gsQuadRule<T> > quBoundary(nnodesB.size());
+
+                for (index_t d = 0; d != nnodesI.size(); d++)
+                {
+                    quInterior[d] = getUnivariate<T>(qu,nnodesI[d]);
+                    quBoundary[d] = getUnivariate<T>(qu,nnodesB[d]);
+                }
+
+                return gsOverIntegrateRule<T>::make(basis,quInterior,quBoundary);
             }
         }
         else if (qu==rule::PatchRule)
@@ -107,6 +116,21 @@ struct gsQuadrature
     /// Constructs a quadrature rule based on input \a options
     template<class T>
     static inline gsQuadRule<T> get(index_t qu, gsVector<index_t> const & numNodes, unsigned digits = 0)
+    {
+        switch (qu)
+        {
+        case GaussLegendre :
+            return gsGaussRule<T>(numNodes, digits);
+        case GaussLobatto :
+            return gsLobattoRule<T>(numNodes, digits);
+        default:
+            GISMO_ERROR("Invalid Quadrature rule request ("<<qu<<")");
+        };
+    }
+
+    /// Constructs a quadrature rule based on input \a options
+    template<class T>
+    static inline gsQuadRule<T> getUnivariate(index_t qu, index_t numNodes, unsigned digits = 0)
     {
         switch (qu)
         {

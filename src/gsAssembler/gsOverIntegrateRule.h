@@ -41,28 +41,24 @@ public:
     m_boundary()
     {}
 
-    /// Initialize a tensor-product Gauss quadrature rule for \a basis
-    /// using quA *deg_i + quB nodes (direction-wise)
-
-
-
     /**
      * @brief      Constructor
      *
      * @param[in]  basis         The basis
-     * @param[in]  quadInterior  The rule used for the interior
-     * @param[in]  quadBoundary  The rule used for the boundary
+     * @param[in]  quadInterior  vector with the univariate INTERIOR quadrature rules for each dimension of the basis.
+     * @param[in]  quadBoundary  vector with the univariate BOUNDARY quadrature rules for each dimension of the basis.
      *
      * @note: Only works for QuadRules that do not re-implement mapTo (slicing occurs)
      */
     gsOverIntegrateRule(const  gsBasis<T> & basis,
-                        const  gsQuadRule<T> & quadInterior,
-                        const  gsQuadRule<T> & quadBoundary)
+                        const  std::vector<gsQuadRule<T> > & quadInterior,
+                        const  std::vector<gsQuadRule<T> > & quadBoundary)
     :
     m_basis(&basis),
     m_interior(quadInterior),
     m_boundary(quadBoundary)
     {
+        std::vector< gsVector<T> > nodes(m_basis->dim());
         m_start = m_basis->support().col(0);
         m_end = m_basis->support().col(1);
     };
@@ -77,8 +73,8 @@ public:
      * @note: Only works for QuadRules that do not re-implement mapTo (slicing occurs)
      */
     static uPtr make(   const  gsBasis<T> & basis,
-                        const  gsQuadRule<T> & quadInterior,
-                        const  gsQuadRule<T> & quadBoundary )
+                        const  std::vector<gsQuadRule<T> > & quadInterior,
+                        const  std::vector<gsQuadRule<T> > & quadBoundary )
     { return uPtr( new gsOverIntegrateRule(basis,quadInterior,quadBoundary) ); }
 
     //const unsigned digits = std::numeric_limits<T>::digits10 );
@@ -86,16 +82,6 @@ public:
     ~gsOverIntegrateRule() { }
 
 public:
-    // see gsQuadRule.h for documentation
-    void setNodes( gsVector<index_t> const & numNodes,
-                   unsigned digits = 0 )
-    {
-        m_interior.setNodes(numNodes,digits);
-        m_boundary.setNodes(numNodes,digits);
-    };
-
-    using gsQuadRule<T>::setNodes; // unhide base
-
     /// \brief Dimension of the rule
     index_t dim() const { return m_basis->dim(); }
 
@@ -110,15 +96,33 @@ public:
     void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
                        gsMatrix<T> & nodes, gsVector<T> & weights ) const
     {
-        if ((lower-m_start).prod()==0 || (upper-m_end).prod()==0)
-            m_boundary.mapTo( lower, upper, nodes, weights);
-        else
-            m_interior.mapTo( lower, upper, nodes, weights);
+
+        gsVector<T> bot = lower-m_start;
+        gsVector<T> top = upper-m_end;
+        std::vector<gsVector<T> > elNodes(m_basis->dim());
+        std::vector<gsVector<T> > elWeights(m_basis->dim());
+        gsMatrix<T> tmp;
+        for (index_t d = 0; d!=dim(); d++)
+        {
+            if (bot[d]==0.0 || top[d]==0.0) // is the coordinate on a side?
+            {
+                m_boundary[d].mapTo( lower[d], upper[d], tmp, elWeights[d]);
+                GISMO_ASSERT(tmp.rows()==1,"Dimension of the nodes is wrong!");
+                elNodes[d] = tmp.transpose();
+            }
+            else
+            {
+                m_interior[d].mapTo( lower[d], upper[d], tmp, elWeights[d]);
+                GISMO_ASSERT(tmp.rows()==1,"Dimension of the nodes is wrong!");
+                elNodes[d] = tmp;
+            }
+        }
+        this->computeTensorProductRule_into(elNodes,elWeights,nodes,weights);
     }
 
 private:
     const gsBasis<T> * m_basis;
-    gsQuadRule<T> m_interior, m_boundary;
+    std::vector<gsQuadRule<T> > m_interior, m_boundary;
     mutable gsVector<T> m_start,m_end;
 
 }; // class gsOverIntegrateRule

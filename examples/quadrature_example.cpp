@@ -2,6 +2,9 @@
 
     @brief Example of different quadratyre rules
 
+    Examples from the following paper can be created with this file.
+    Adam, C., Hughes, T. J. R., Bouabdallah, S., Zarroug, M., & Maitournam, H. (2015). Selective and reduced numerical integrations for NURBS-based isogeometric analysis. Computer Methods in Applied Mechanics and Engineering, 284, 732–761. https://doi.org/10.1016/j.cma.2014.11.001
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -36,8 +39,8 @@ int main(int argc, char* argv[])
     cmd.addSwitch("over","overintegrate",overInt);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsKnotVector<> kv1(0, 1.0, 1, 3, 1);
-    kv1.uniformRefine(2);
+    gsKnotVector<> kv1(0, 1.0, 3, 3, 1);
+    kv1.uniformRefine();
     gsKnotVector<> kv2 = kv1;
 
     gsTensorBSplineBasis<2,real_t> tbsb2(kv1,kv2);
@@ -65,7 +68,7 @@ int main(int argc, char* argv[])
 
     // Mixed Quadrature
     gsOptionList lobattoOpts;
-    lobattoOpts.addInt   ("quRule","Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",gsQuadrature::rule::GaussLobatto);
+    lobattoOpts.addInt   ("quRule","Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",gsQuadrature::rule::GaussLegendre);
     lobattoOpts.addReal("quA", "Number of quadrature points: quA*deg + quB", 0.0  );
     lobattoOpts.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
     lobattoOpts.addReal("quAb", "Number of quadrature points: quA*deg + quB", 1.0  );

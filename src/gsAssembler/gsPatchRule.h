@@ -151,11 +151,11 @@ public:
      * @param      weights  Quadrature weights
      */
     void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
-                       gsMatrix<T> & nodes, gsVector<T> & weights ) const override;
+                       gsMatrix<T> & nodes, gsVector<T> & weights ) const;
 
     /// See \ref gsQuadRule for documentation
     void mapTo(  T startVal, T endVal,
-                       gsMatrix<T> & nodes, gsVector<T> & weights ) const override;
+                       gsMatrix<T> & nodes, gsVector<T> & weights ) const;
 
     /// Not implemented! See \ref gsQuadRule for documentation
     void mapToAll( const std::vector<T> & breaks,
@@ -191,7 +191,7 @@ protected:
      *
      * @return     Greville points and Exact integrals of the basis
      */
-    std::pair<gsMatrix<T>,gsMatrix<T>> _integrate(const gsKnotVector<T> & knots ) const;
+    std::pair<gsMatrix<T>,gsMatrix<T> > _integrate(const gsKnotVector<T> & knots ) const;
 
     /**
      * @brief      Computes the points and weights for the patch rule using Newton iterations
@@ -203,7 +203,7 @@ protected:
      *
      * @return     knots and weights
      */
-    std::pair<gsVector<T>,gsVector<T>> _compute(const gsKnotVector<T> & knots,
+    std::pair<gsVector<T>,gsVector<T> > _compute(const gsKnotVector<T> & knots,
                                                 const gsMatrix<T> & greville,
                                                 const gsVector<T> & integrals,
                                                 const T tol = 1e-10) const;
@@ -214,14 +214,14 @@ private:
     const bool m_over;
     const short_t m_fixDir;
 
-    std::vector<gsVector<T>> m_nodes;
-    std::vector<gsVector<T>> m_weights;
+    std::vector<gsVector<T> > m_nodes;
+    std::vector<gsVector<T> > m_weights;
 
     mutable typename gsSparseSolver<T>::QR m_solver;
 
     mutable size_t m_dim;
 
-    std::vector<std::map<T,T>> m_maps;
+    std::vector<std::map<T,T> > m_maps;
 }; // class gsPatchRule
 
 } // namespace gismo

@@ -152,6 +152,12 @@ protected:
     void computeTensorProductRule(const std::vector<gsVector<T> > & nodes,
                                   const std::vector<gsVector<T> > & weights);
 
+    void computeTensorProductRule_into( const std::vector<gsVector<T> > & nodes,
+                                        const std::vector<gsVector<T> > & weights,
+                                        gsMatrix<T> & targetNodes,
+                                        gsVector<T> & targetWeights
+                                        ) const;
+
 protected:
 
     /// \brief Reference quadrature nodes (on the interval [-1,1]).

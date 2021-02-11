@@ -125,7 +125,7 @@ void gsPatchRule<T>::mapTo( const gsVector<T>& lower,
     // This number can be different per element
     // we also compute the total number of points in the tensor product (size)
     index_t size = 1;
-    std::vector<gsVector<T>> elNodes(m_dim), elWeights(m_dim);
+    std::vector<gsVector<T> > elNodes(m_dim), elWeights(m_dim);
     index_t k = 0; // counter per direction d
     for (size_t d = 0; d!=m_dim; d++)
     {
@@ -141,6 +141,9 @@ void gsPatchRule<T>::mapTo( const gsVector<T>& lower,
         size *= elNodes[d].size(); // compute tensor size
         k = 0; // reset counter
     }
+
+    // This could work. However, in cases when there are elements which have no quadPoint, it goes wrong
+    // this->computeTensorProductRule_into(elNodes,elWeights,nodes,weights);
 
     // initialize the number of nodes and weights
     nodes.resize(m_dim,size);
@@ -165,7 +168,7 @@ void gsPatchRule<T>::mapTo( const gsVector<T>& lower,
             weights.segment(k*ones.size(),ones.size()) = (ones.transpose()*elWeights[d].at(k)).cwiseProduct(tmpWeights);
         }
 
-        tmpWeights = weights.segment(0,tmpWeights.cols()*elWeights[d].size());
+        tmpWeights.transpose() = weights.segment(0,tmpWeights.cols()*elWeights[d].size());
         tmpNodes = nodes.block( 0, 0, d+1, tmpNodes.cols()*elNodes[d].size() );
     }
 };
@@ -295,7 +298,7 @@ gsKnotVector<T> gsPatchRule<T>::_init(const gsBSplineBasis<T> * Bbasis) const
 };
 
 template <class T>
-std::pair<gsMatrix<T>,gsMatrix<T>> gsPatchRule<T>::_integrate(const gsKnotVector<T> & knots ) const
+std::pair<gsMatrix<T>,gsMatrix<T> > gsPatchRule<T>::_integrate(const gsKnotVector<T> & knots ) const
 {
     // Obtain a temporary bspline basis and quadrule
     gsBSplineBasis<T> basis = gsBSplineBasis<T>(knots);
@@ -328,7 +331,7 @@ std::pair<gsMatrix<T>,gsMatrix<T>> gsPatchRule<T>::_integrate(const gsKnotVector
 };
 
 template <class T>
-std::pair<gsVector<T>,gsVector<T>> gsPatchRule<T>::_compute(const gsKnotVector<T> & knots,
+std::pair<gsVector<T>,gsVector<T> > gsPatchRule<T>::_compute(const gsKnotVector<T> & knots,
                                                             const gsMatrix<T> & greville,
                                                             const gsVector<T> & integrals,
                                                             const T tol) const
