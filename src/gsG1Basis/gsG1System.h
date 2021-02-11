@@ -855,7 +855,6 @@ gsMatrix<> gsG1System<T>::solve(const gsSparseMatrix<real_t> & K, const gsMatrix
     gsInfo << "done.\n";
     gsIterativeSolverInfo(EigenBCGDsolver, (A*x0-F).norm()/F.norm(), clock.stop(), succeeded);
 */
-
     return x0;
 }
 

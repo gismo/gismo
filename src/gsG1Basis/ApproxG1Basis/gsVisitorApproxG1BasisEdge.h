@@ -163,7 +163,31 @@ public:
 
             beta = isBoundary ? beta.setZero() : beta; // For the boundary, only on Patch 0
 
-            gsMatrix<T> temp = beta.cwiseProduct(der_N_i_plus);
+            gsMatrix<T> temp;
+            if (bfID == 1 && g1OptionList.getSwitch("twoPatch"))
+            {
+                gsMatrix<> zeroOne(1, 1), alpha_zero, beta_zero;
+                zeroOne.setZero();
+                gluingData.get_alpha_S_tilde(0).eval_into(zeroOne,alpha_zero); // v
+                gluingData.get_beta_S_tilde(0).eval_into(zeroOne,beta_zero);
+
+                real_t lambda_0 = (uv == 0 ? -1 : 1) * beta_zero(0,0)/alpha_zero(0,0);
+
+                temp = (beta - lambda_0*alpha).cwiseProduct(der_N_i_plus);
+            }
+            else if (bfID == basis_pm[0].size() - 2 && g1OptionList.getSwitch("twoPatch"))
+            {
+                gsMatrix<> zeroOne(1, 1), alpha_one, beta_one;
+                zeroOne.setOnes();
+                gluingData.get_alpha_S_tilde(0).eval_into(zeroOne,alpha_one); // v
+                gluingData.get_beta_S_tilde(0).eval_into(zeroOne,beta_one);
+
+                real_t lambda_1 = (uv == 0 ? -1 : 1) * beta_one(0,0)/alpha_one(0,0);
+
+                temp = (beta - lambda_1*alpha).cwiseProduct(der_N_i_plus);
+            }
+            else
+                temp = beta.cwiseProduct(der_N_i_plus);
 
             rhsVals = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(N_1) * tau_1 / p;
 
