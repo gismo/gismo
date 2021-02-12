@@ -81,10 +81,10 @@ private:
     typedef gsMatrix<T>                       Matrix;
 public:
 
-    /// @brief Initialize the object
+    /// @brief Constructor
     ///
     /// @param nPrimalDofs                Number of primal constraints in total
-    void init(index_t nPrimalDofs);
+    gsPrimalSystem(index_t nPrimalDofs);
 
     /// @brief Incorporates the given constraints in the local system
     ///

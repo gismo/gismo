@@ -17,7 +17,7 @@ namespace gismo
 {
 
 template <class T>
-void gsPrimalSystem<T>::init(index_t nPrimalDofs)
+gsPrimalSystem<T>::gsPrimalSystem(index_t nPrimalDofs)
 {
     this->m_localMatrix.resize(nPrimalDofs,nPrimalDofs);
     this->m_localRhs.setZero(nPrimalDofs,1);

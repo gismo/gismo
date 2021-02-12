@@ -195,8 +195,7 @@ int main(int argc, char *argv[])
     prec.reserve(nPatches);
 
     // Setup the primal system, which needs to know the number of primal dofs.
-    gsPrimalSystem<> primal;
-    primal.init(ietiMapper.nPrimalDofs());
+    gsPrimalSystem<> primal(ietiMapper.nPrimalDofs());
 
     // Setup of the block-diagonal preconditioner for the saddle point problem
     // First, we need to know its size
