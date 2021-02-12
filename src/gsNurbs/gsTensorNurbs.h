@@ -379,7 +379,7 @@ public:
         //
         // Create a B-spline in R^{d+1} and split it
         gsRationalBasis< gsTensorBSplineBasis<d,T> > * basis
-            = dynamic_cast< gsRationalBasis< gsTensorBSplineBasis<d,T> > * >(m_basis);
+            = dynamic_cast<gsRationalBasis< gsTensorBSplineBasis<d,T> >*>(m_basis);
         GISMO_ENSURE( basis, "gsTensorNurbs::uniformSplit: Dynamic cast failed." );
         std::vector<gsGeometry<T>*> result
             = gsTensorBSpline<d,T>(basis->source(), basis->projectiveCoefs(m_coefs)).uniformSplit(dir);
@@ -387,14 +387,17 @@ public:
         for ( typename std::vector<gsGeometry<T>*>::iterator it = result.begin();
             it != result.end(); ++it )
         {
-            gsTensorBSpline<d,T>* spline
-                = dynamic_cast<gsTensorBSpline<d,T>*>(*it);
-            GISMO_ENSURE( spline, "gsTensorNurbs::uniformSplit: Dynamic cast failed." );
-            gsTensorNurbsBasis<d,T> nurbsBasis(spline->basis().clone().release());
-            gsMatrix<T> coefs;
-            gsTensorNurbsBasis<d,T>::setFromProjectiveCoefs(spline->coefs(), coefs, nurbsBasis.weights() );
+            gsTensorBSpline<d,T>* spline = static_cast<gsTensorBSpline<d,T>*>(*it);
+            gsTensorNurbsBasis<d,T>* nurbsBasis = new gsTensorNurbsBasis<d,T>(spline->basis().clone().release());
+            gsTensorNurbs<d,T>* nurbs = new gsTensorNurbs<d,T>;
+            nurbs->m_basis = nurbsBasis;
+            gsTensorNurbsBasis<d,T>::setFromProjectiveCoefs(
+                spline->coefs(),
+                nurbs->m_coefs,
+                nurbsBasis->weights()
+            );
             delete *it;
-            *it = new gsTensorNurbs<d,T>( nurbsBasis, give(coefs) );
+            *it = nurbs;
         }
         return result;
     }
