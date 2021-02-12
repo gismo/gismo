@@ -146,9 +146,9 @@ before_install:
   #- echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
 
 before_script:
-    - export SITE="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH-[travis]"
-    - export TRBUILDNAME="$TASK$TRAVIS_OS_NAME-$TRAVIS_OSX_IMAGE-$TRAVIS_COMPILER-$CXX_STANDARD-$TRAVIS_CPU_ARCH"; fi
-    - mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE=$SITE -DBUILDNAME=$TRBUILDNAME
+    - export TRSITE="$TRAVIS_PULL_REQUEST-$TRAVIS_PULL_REQUEST_BRANCH-[travis]"
+    - export TRBUILDNAME="$TASK$TRAVIS_OS_NAME-$TRAVIS_OSX_IMAGE-$TRAVIS_COMPILER-$CXX_STANDARD-$TRAVIS_CPU_ARCH"
+    - mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE=$TRSITE -DBUILDNAME=$TRBUILDNAME
 
 script:
   - if [ -e "cov-int/scm_log.txt" ]; then cat cov-int/scm_log.txt; fi
@@ -156,7 +156,7 @@ script:
   - if [ $TRAVIS_BRANCH != stable ] && [ $TASK != Doxygen ]; then ctest $MAKEFLAGS --output-on-failure -D ExperimentalMemCheck; fi
   - if [ "$TASK" != "Doxygen" ]; then ctest -D ExperimentalSubmit; fi
   - export TODAY=`date -u +%Y-%m-%d`
-  - printf "CDASH LINK:\nhttps://cdash-ci.inria.fr/index.php?project=Gismo&date=$TODAY&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=$TRBUILDNAME&field2=site&compare2=61&value2=$SITE"
+  - printf "CDASH LINK:\nhttps://cdash-ci.inria.fr/index.php?project=Gismo&date=$TODAY&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=$TRBUILDNAME&field2=site&compare2=61&value2=$TRSITE"
 
 before_deploy:
   - make $MAKEFLAGS doc
