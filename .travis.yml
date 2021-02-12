@@ -156,7 +156,7 @@ script:
   - if [ $TRAVIS_BRANCH != stable ] && [ $TASK != Doxygen ]; then ctest $MAKEFLAGS --output-on-failure -D ExperimentalMemCheck; fi
   - if [ "$TASK" != "Doxygen" ]; then ctest -D ExperimentalSubmit; fi
   - export TODAY=`date -u +%Y-%m-%d`
-  - printf "https://cdash-ci.inria.fr/index.php?project=Gismo&date=$TODAY&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=$TRBUILDNAME&field2=site&compare2=61&value2=$TRSITE"
+  - echo "https://cdash-ci.inria.fr/index.php?project=Gismo&date=$TODAY&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=$TRBUILDNAME&field2=site&compare2=61&value2=$TRSITE"
 
 before_deploy:
   - make $MAKEFLAGS doc
