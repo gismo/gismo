@@ -73,12 +73,12 @@ template< typename T >
 class gsPrimalSystem
 {
 private:
-    typedef gsLinearOperator<T>               Op;
-    typedef memory::shared_ptr<Op>            OpPtr;
-    typedef gsSparseMatrix<T>                 SparseMatrix;
-    typedef gsSparseMatrix<T,RowMajor>        JumpMatrix;
-    typedef gsSparseVector<T>                 SparseVector;
-    typedef gsMatrix<T>                       Matrix;
+    typedef gsLinearOperator<T>               Op;              ///< Linear operator
+    typedef memory::shared_ptr<Op>            OpPtr;           ///< Shared pointer to linear operator
+    typedef gsSparseMatrix<T>                 SparseMatrix;    ///< Sparse matrix type
+    typedef gsSparseMatrix<T,RowMajor>        JumpMatrix;      ///< Sparse matrix type for jumps
+    typedef gsSparseVector<T>                 SparseVector;    ///< Sparse vector type
+    typedef gsMatrix<T>                       Matrix;          ///< Matrix type
 public:
 
     /// @brief Constructor

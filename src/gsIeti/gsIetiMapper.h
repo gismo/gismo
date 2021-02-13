@@ -48,9 +48,9 @@ namespace gismo
 template< typename T >
 class gsIetiMapper
 {
-    typedef gsMatrix<T>                Matrix;
-    typedef gsSparseVector<T>          SparseVector;
-    typedef gsSparseMatrix<T,RowMajor> JumpMatrix;
+    typedef gsMatrix<T>                Matrix;        ///< Matrix type
+    typedef gsSparseVector<T>          SparseVector;  ///< Sparse matrix type
+    typedef gsSparseMatrix<T,RowMajor> JumpMatrix;    ///< Sparse matrix type for jumps
 
 public:
     /// @brief Default constructor

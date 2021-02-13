@@ -154,11 +154,13 @@ int main(int argc, char *argv[])
 
     gsInfo << "Setup bases and adjust degree... " << std::flush;
 
+    //! [Set degree and refine]
     for ( size_t i = 0; i < mb.nBases(); ++ i )
         mb[i].setDegreePreservingMultiplicity(degree);
 
     for ( index_t i = 0; i < refinements; ++i )
         mb.uniformRefine();
+    //! [Set degree and refine]
 
     gsInfo << "done.\n";
 
@@ -366,11 +368,14 @@ int main(int argc, char *argv[])
 
     gsInfo << "done.\n    Setup cg solver for Lagrange multipliers and solve... " << std::flush;
     // Initial guess
+    //! [Define initial guess]
     gsMatrix<> lambda;
     lambda.setRandom( ieti.nLagrangeMultipliers(), 1 );
+    //! [Define initial guess]
+
+    gsMatrix<> errorHistory;
 
     // This is the main cg iteration
-    gsMatrix<> errorHistory;
     //! [Solve]
     gsConjugateGradient<>( ieti.schurComplement(), prec.preconditioner() )
         .setOptions( opt.getGroup("Solver") )

@@ -77,12 +77,12 @@ namespace gismo
 template< typename T >
 class gsScaledDirichletPrec
 {
-    typedef gsLinearOperator<T>               Op;
-    typedef memory::shared_ptr<Op>            OpPtr;
-    typedef gsSparseMatrix<T>                 SparseMatrix;
-    typedef gsSparseMatrix<T,RowMajor>        JumpMatrix;
-    typedef memory::shared_ptr<JumpMatrix>    JumpMatrixPtr;
-    typedef gsMatrix<T>                       Matrix;
+    typedef gsLinearOperator<T>               Op;              ///< Linear operator
+    typedef memory::shared_ptr<Op>            OpPtr;           ///< Shared pointer to linear operator
+    typedef gsSparseMatrix<T>                 SparseMatrix;    ///< Sparse matrix type
+    typedef gsSparseMatrix<T,RowMajor>        JumpMatrix;      ///< Sparse matrix type for jumps
+    typedef memory::shared_ptr<JumpMatrix>    JumpMatrixPtr;   ///< Shared pointer to sparse matrix type for jumps
+    typedef gsMatrix<T>                       Matrix;          ///< Matrix type
 public:
 
     /// @brief Reserves the memory required to store the given number of subdomain

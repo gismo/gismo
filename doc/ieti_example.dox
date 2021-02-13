@@ -50,6 +50,10 @@ multi basis.
 
 \snippet ieti_example.cpp Define Basis
 
+We set the spline degree and the grid size as desired.
+
+\snippet ieti_example.cpp Set degree and refine
+
 Now, we can discuss the IETI system.
 
 We are considering patch-wise formulations of the variational formulation:
@@ -291,6 +295,10 @@ Now, we compute the right-hand-side
 \f]
 
 \snippet ieti_example.cpp Setup rhs
+
+We choose a random initial guess.
+
+\snippet ieti_example.cpp Define initial guess
 
 As a next step, we solve the problem
 \f[
