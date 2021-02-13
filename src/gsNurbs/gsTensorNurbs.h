@@ -378,11 +378,9 @@ public:
         // of a spline function in R^{d+1} into R^d.
         //
         // Create a B-spline in R^{d+1} and split it
-        gsRationalBasis< gsTensorBSplineBasis<d,T> > * basis
-            = dynamic_cast<gsRationalBasis< gsTensorBSplineBasis<d,T> >*>(m_basis);
-        GISMO_ENSURE( basis, "gsTensorNurbs::uniformSplit: Dynamic cast failed." );
+        Basis& basis = static_cast<Basis&>(*m_basis); // Basis is here gsTensorNurbsBasis
         std::vector<gsGeometry<T>*> result
-            = gsTensorBSpline<d,T>(basis->source(), basis->projectiveCoefs(m_coefs)).uniformSplit(dir);
+            = gsTensorBSpline<d,T>(basis.source(), basis.projectiveCoefs(m_coefs)).uniformSplit(dir);
         // Turn the B-splines in R^{d+1} back into NURBS in R^d
         for ( typename std::vector<gsGeometry<T>*>::iterator it = result.begin();
             it != result.end(); ++it )
