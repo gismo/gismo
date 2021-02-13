@@ -49,7 +49,7 @@ public:
     typedef gsPoint<2, T> Point2D;
 
     // if we use std::vector with static Eigen classes, the second template parameter is needed
-	typedef std::vector<Point2D, typename Point2D::aalloc> VectorType;
+        typedef std::vector<Point2D, typename Point2D::aalloc> VectorType;
 
     typedef memory::shared_ptr<gsParametrization<T> > uPtr;
 
@@ -98,7 +98,7 @@ public:
 
     /// It might make sense in the derived classes to restrict the parameters to [0, 1]^2.
     virtual void restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
-				  real_t uMin = 0, real_t uMax = 1) const
+                                  real_t uMin = 0, real_t uMax = 1) const
     {}
 
     gsOptionList& options() { return m_options; }
@@ -371,13 +371,13 @@ protected:
 
     std::vector<size_t> indices(const gsMatrix<T>& vertices) const
     {
-	std::vector<size_t> result;
-	GISMO_ASSERT(vertices.rows() == 3, "three rows expected in vertices");
-	for(index_t c=0; c<vertices.cols(); c++)
-	{
-	    result.push_back(m_mesh.findVertex(vertices(0, c), vertices(1, c), vertices(2, c), true));
-	}
-	return result;
+        std::vector<size_t> result;
+        GISMO_ASSERT(vertices.rows() == 3, "three rows expected in vertices");
+        for(index_t c=0; c<vertices.cols(); c++)
+        {
+            result.push_back(m_mesh.findVertex(vertices(0, c), vertices(1, c), vertices(2, c), true));
+        }
+        return result;
     }
 
     void calculate(const size_t boundaryMethod,

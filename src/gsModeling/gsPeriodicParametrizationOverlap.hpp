@@ -45,9 +45,9 @@ void gsPeriodicParametrizationOverlap<T>::calculate(const size_t paraMethod)
 
 template <class T>
 void gsPeriodicParametrizationOverlap<T>::constructTwinsBetween(size_t& currentNrAllVertices,
-								std::list<size_t> vertexIndices,
-								size_t from, size_t to,
-								bool rightHandSide)
+                                                                std::list<size_t> vertexIndices,
+                                                                size_t from, size_t to,
+                                                                bool rightHandSide)
 {
     // TODO: The whiles do not check if the sought member is indeed in
     // the list (danger of infinite loop).
@@ -55,18 +55,18 @@ void gsPeriodicParametrizationOverlap<T>::constructTwinsBetween(size_t& currentN
     // Rotate the vertexIndices so as to start from from.
     while(vertexIndices.front() != from)
     {
-	vertexIndices.push_back(vertexIndices.front());
-	vertexIndices.pop_front();
+        vertexIndices.push_back(vertexIndices.front());
+        vertexIndices.pop_front();
     }
 
     // Push the corresponding pairs to the twin vector.
     for(std::list<size_t>::const_iterator it=vertexIndices.begin(); *std::prev(it) != to; ++it)
     {
-	size_t twin = findTwin(*it);
-	if(rightHandSide)
-	    m_twins.push_back(std::pair<size_t, size_t>(twin, ++currentNrAllVertices));
-	else
-	    m_twins.push_back(std::pair<size_t, size_t>(++currentNrAllVertices, twin));
+        size_t twin = findTwin(*it);
+        if(rightHandSide)
+            m_twins.push_back(std::pair<size_t, size_t>(twin, ++currentNrAllVertices));
+        else
+            m_twins.push_back(std::pair<size_t, size_t>(++currentNrAllVertices, twin));
     }
 
 }
@@ -98,8 +98,8 @@ void gsPeriodicParametrizationOverlap<T>::constructTwins()
 
 template <class T>
 void gsPeriodicParametrizationOverlap<T>::constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
-									  const size_t n,
-									  const size_t N)
+                                                                          const size_t n,
+                                                                          const size_t N)
 {
     size_t numTwins = m_twins.size();
     gsMatrix<T> LHS(N + numTwins, N + numTwins);
@@ -110,7 +110,7 @@ void gsPeriodicParametrizationOverlap<T>::constructAndSolveEquationSystem(const 
     for (size_t i = 0; i < n; i++)
     {
         lambdas = neighbourhood.getLambdas(i);
-	updateLambdasWithTwins(lambdas, i+1);
+        updateLambdasWithTwins(lambdas, i+1);
 
         for (size_t j = 0; j < N + numTwins; j++)
             LHS(i, j) = ( i==j ? T(1) : -lambdas[j] );
@@ -119,38 +119,38 @@ void gsPeriodicParametrizationOverlap<T>::constructAndSolveEquationSystem(const 
     // points on the lower and upper boundary
     for (size_t i=n; i<N; i++)
     {
-	LHS(i, i)  = T(1);
-	RHS.row(i) = this->m_parameterPoints[i];
+        LHS(i, i)  = T(1);
+        RHS.row(i) = this->m_parameterPoints[i];
     }
 
     // points on the overlap
     for (size_t i=N; i<N+numTwins; i++)
     {
-	size_t first   = m_twins[i-N].first-1;
-	size_t second  = m_twins[i-N].second-1;
+        size_t first   = m_twins[i-N].first-1;
+        size_t second  = m_twins[i-N].second-1;
 
-	LHS(i, first)  = T( 1);
-	LHS(i, second) = T(-1);
+        LHS(i, first)  = T( 1);
+        LHS(i, second) = T(-1);
 
-	RHS(i, 0)      = T(-1);
-	RHS(i, 1)      = T( 0);
+        RHS(i, 0)      = T(-1);
+        RHS(i, 1)      = T( 0);
     }
 
     Eigen::PartialPivLU<typename gsMatrix<T>::Base> LU = LHS.partialPivLu();
     gsMatrix<T> sol = LU.solve(RHS);
     for (size_t i = 0; i < N; i++)
     {
-    	this->m_parameterPoints[i] << sol(i, 0), sol(i, 1);
+        this->m_parameterPoints[i] << sol(i, 0), sol(i, 1);
     }
 }
 
 template <class T>
 void gsPeriodicParametrizationOverlap<T>::updateLambdasWithTwins(std::vector<T>& lambdas,
-								 size_t vertexId) const
+                                                                 size_t vertexId) const
 {
     lambdas.reserve(lambdas.size() + m_twins.size());
     for(size_t i=0; i<m_twins.size(); i++)
-	lambdas.push_back(0);
+        lambdas.push_back(0);
 
     // Determine, whether vertexId is on the left or right side of the overlap.
     bool isLeft  = false;
@@ -158,37 +158,37 @@ void gsPeriodicParametrizationOverlap<T>::updateLambdasWithTwins(std::vector<T>&
 
     for(auto it=m_twins.begin(); it!=m_twins.end(); ++it)
     {
-	if(it->first == vertexId)
-	{
-	    isRight = true;
-	    break;
-	}
-	else if(it->second == vertexId)
-	{
-	    isLeft = true;
-	    break;
-	}
+        if(it->first == vertexId)
+        {
+            isRight = true;
+            break;
+        }
+        else if(it->second == vertexId)
+        {
+            isLeft = true;
+            break;
+        }
     }
 
 
     for(size_t i=0; i<m_twins.size(); i++)
     {
-	size_t first=m_twins[i].first-1;
-	size_t second=m_twins[i].second-1;
+        size_t first=m_twins[i].first-1;
+        size_t second=m_twins[i].second-1;
 
-	// Left vertex swaps all its right neighbours.
-	if(isRight && first > second && lambdas[second] != 0)
-	{
-	    lambdas[first] = lambdas[second];
-	    lambdas[second] = 0;
-	}
-	// Right vertex swaps all its left neighbours
-	else if(isLeft && first < second && lambdas[first] != 0)
-	{
-	    lambdas[second] = lambdas[first];
-	    lambdas[first] = 0;
-	}
-	// Nothing happens to vertices that are not on the overlap.	    
+        // Left vertex swaps all its right neighbours.
+        if(isRight && first > second && lambdas[second] != 0)
+        {
+            lambdas[first] = lambdas[second];
+            lambdas[second] = 0;
+        }
+        // Right vertex swaps all its left neighbours
+        else if(isLeft && first < second && lambdas[first] != 0)
+        {
+            lambdas[second] = lambdas[first];
+            lambdas[first] = 0;
+        }
+        // Nothing happens to vertices that are not on the overlap.         
     }
 }
 
@@ -199,10 +199,10 @@ gsMesh<T> gsPeriodicParametrizationOverlap<T>::createFlatMesh() const
     std::vector<size_t> left, right;
     for(auto it=m_twins.begin(); it!=m_twins.end(); ++it)
     {
-	if(it->first < it->second)
-	    left.push_back(it->first);
-	else
-	    right.push_back(it->second);
+        if(it->first < it->second)
+            left.push_back(it->first);
+        else
+            right.push_back(it->second);
     }
 
     typename gsPeriodicParametrization<T>::FlatMesh display(createExtendedFlatMesh(left, right));
@@ -211,7 +211,7 @@ gsMesh<T> gsPeriodicParametrizationOverlap<T>::createFlatMesh() const
 
 template<class T>
 gsMesh<T> gsPeriodicParametrizationOverlap<T>::createExtendedFlatMesh(const std::vector<size_t>& right,
-								      const std::vector<size_t>& left) const
+                                                                      const std::vector<size_t>& left) const
 {
     typedef typename gsParametrization<T>::Point2D Point2D;
 
@@ -220,53 +220,53 @@ gsMesh<T> gsPeriodicParametrizationOverlap<T>::createExtendedFlatMesh(const std:
 
     for (size_t i = 0; i < this->m_mesh.getNumberOfTriangles(); i++)
     {
-	size_t vInd[3];
+        size_t vInd[3];
 
-	// the indices of the current triangle vertices that are among left or right, respectively
-	std::vector<size_t> lVert, rVert;
+        // the indices of the current triangle vertices that are among left or right, respectively
+        std::vector<size_t> lVert, rVert;
         for (size_t j = 1; j <= 3; ++j)
-	{
-	    vInd[j-1] = this->m_mesh.getGlobalVertexIndex(j, i);
-	    if(std::find(right.begin(), right.end(), vInd[j-1]) != right.end())
-		rVert.push_back(j-1);
-	    if(std::find(left.begin(),  left.end(),  vInd[j-1]) != left.end())
-		lVert.push_back(j-1);
-	}
+        {
+            vInd[j-1] = this->m_mesh.getGlobalVertexIndex(j, i);
+            if(std::find(right.begin(), right.end(), vInd[j-1]) != right.end())
+                rVert.push_back(j-1);
+            if(std::find(left.begin(),  left.end(),  vInd[j-1]) != left.end())
+                lVert.push_back(j-1);
+        }
 
-	// Is the triangle inside overlap?
-	if(lVert.size() > 0 && rVert.size() > 0 && lVert.size() + rVert.size() == 3)
-	{
-	    // Make two shifted copies of the triangle.
-	    typename gsMesh<T>::VertexHandle mvLft[3], mvRgt[3];
-	    
-	    for (size_t j=0; j<3; ++j)
-	    {
-		const Point2D vertex = gsParametrization<T>::getParameterPoint(vInd[j]);
-		if(std::find(rVert.begin(), rVert.end(), j) != rVert.end())
-		{
-		    mvLft[j] = midMesh.addVertex(vertex[0],   vertex[1]);
-		    mvRgt[j] = midMesh.addVertex(vertex[0]+1, vertex[1]);
-		}
-		else
-		{
-		    mvLft[j] = midMesh.addVertex(vertex[0]-1, vertex[1]);
-		    mvRgt[j] = midMesh.addVertex(vertex[0],   vertex[1]);
-		}
-	    }
-	    midMesh.addFace(mvLft[0], mvLft[1], mvLft[2]);
-	    midMesh.addFace(mvRgt[0], mvRgt[1], mvRgt[2]);
-	}
-	else
-	{
-	    // Make just one triangle.
-	    typename gsMesh<T>::VertexHandle mv[3];
-	    for (size_t j=0; j<3; ++j)
-	    {
-		const Point2D vertex = gsParametrization<T>::getParameterPoint(vInd[j]);
-		mv[j] = midMesh.addVertex(vertex[0], vertex[1]);
-	    }
-	    midMesh.addFace(mv[0], mv[1], mv[2]);
-	}
+        // Is the triangle inside overlap?
+        if(lVert.size() > 0 && rVert.size() > 0 && lVert.size() + rVert.size() == 3)
+        {
+            // Make two shifted copies of the triangle.
+            typename gsMesh<T>::VertexHandle mvLft[3], mvRgt[3];
+            
+            for (size_t j=0; j<3; ++j)
+            {
+                const Point2D vertex = gsParametrization<T>::getParameterPoint(vInd[j]);
+                if(std::find(rVert.begin(), rVert.end(), j) != rVert.end())
+                {
+                    mvLft[j] = midMesh.addVertex(vertex[0],   vertex[1]);
+                    mvRgt[j] = midMesh.addVertex(vertex[0]+1, vertex[1]);
+                }
+                else
+                {
+                    mvLft[j] = midMesh.addVertex(vertex[0]-1, vertex[1]);
+                    mvRgt[j] = midMesh.addVertex(vertex[0],   vertex[1]);
+                }
+            }
+            midMesh.addFace(mvLft[0], mvLft[1], mvLft[2]);
+            midMesh.addFace(mvRgt[0], mvRgt[1], mvRgt[2]);
+        }
+        else
+        {
+            // Make just one triangle.
+            typename gsMesh<T>::VertexHandle mv[3];
+            for (size_t j=0; j<3; ++j)
+            {
+                const Point2D vertex = gsParametrization<T>::getParameterPoint(vInd[j]);
+                mv[j] = midMesh.addVertex(vertex[0], vertex[1]);
+            }
+            midMesh.addFace(mv[0], mv[1], mv[2]);
+        }
     }
     return midMesh.cleanMesh();
 }

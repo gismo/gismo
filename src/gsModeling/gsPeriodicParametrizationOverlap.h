@@ -69,17 +69,17 @@ public:
      * @param list list of the method options
      */
     explicit gsPeriodicParametrizationOverlap(const gsMesh<T> &mesh,
-					      const gsMatrix<T>& verticesV0,
-					      const gsMatrix<T>& paramsV0,
-					      const gsMatrix<T>& verticesV1,
-					      const gsMatrix<T>& paramsV1,
-					      const gsMesh<T>& overlap,
-					      const gsOptionList &list = gsPeriodicParametrization<T>::defaultOptions())
-	: gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
-	m_overlapHEM(overlap)
+                                              const gsMatrix<T>& verticesV0,
+                                              const gsMatrix<T>& paramsV0,
+                                              const gsMatrix<T>& verticesV1,
+                                              const gsMatrix<T>& paramsV1,
+                                              const gsMesh<T>& overlap,
+                                              const gsOptionList &list = gsPeriodicParametrization<T>::defaultOptions())
+        : gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
+        m_overlapHEM(overlap)
     {
-	// Note: m_twins gets constructed later on.
-	// Note: One could also write another constructor accepting gsHalfEdgeMesh as overlap.
+        // Note: m_twins gets constructed later on.
+        // Note: One could also write another constructor accepting gsHalfEdgeMesh as overlap.
     }
 
     /// Computes the periodic parametrization.
@@ -98,7 +98,7 @@ protected:
     /// Finds the twin of the vertex nr. @a vertexId in the mesh.
     size_t findTwin(size_t vertexId) const
     {
-	return this->m_mesh.getVertexIndex(m_overlapHEM.getVertexUnsorted(vertexId));
+        return this->m_mesh.getVertexIndex(m_overlapHEM.getVertexUnsorted(vertexId));
     }
 
     /**
@@ -116,24 +116,24 @@ protected:
      * overlap.
      */
     void constructTwinsBetween(size_t& currentNrAllVertices,
-			       std::list<size_t> vertexIndices,
-			       size_t from, size_t to, bool rightHandSide);
+                               std::list<size_t> vertexIndices,
+                               size_t from, size_t to, bool rightHandSide);
 
     /**
      * Helper function to @a constructTwins, preprocesses the inputs for
      * the overloaded method by finding the indices of the vertices @a from and @a to.
      */
     void constructTwinsBetween(size_t& currentNrAllVertices,
-			       std::list<size_t> vertexIndices,
-			       gsVertexHandle from,
-			       gsVertexHandle to,
-			       bool rightHandSide)
+                               std::list<size_t> vertexIndices,
+                               gsVertexHandle from,
+                               gsVertexHandle to,
+                               bool rightHandSide)
     {
-	return constructTwinsBetween(currentNrAllVertices,
-				     vertexIndices,
-				     m_overlapHEM.findVertex(from),
-				     m_overlapHEM.findVertex(to),
-				     rightHandSide);
+        return constructTwinsBetween(currentNrAllVertices,
+                                     vertexIndices,
+                                     m_overlapHEM.findVertex(from),
+                                     m_overlapHEM.findVertex(to),
+                                     rightHandSide);
     }
 
     /// Construct the twins.
@@ -141,8 +141,8 @@ protected:
 
     /// Analogous to the overloaded function from the parent class.
     void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
-					 const size_t n,
-					 const size_t N);
+                                         const size_t n,
+                                         const size_t N);
 
     /** Helper function to constructAndSolveEquationSystem with twins.
      * Takes the coefficients computed by the standard method and
@@ -152,7 +152,7 @@ protected:
      * @param vertex the id of the current vertex
      */
     void updateLambdasWithTwins(std::vector<T>& lambdas,
-				size_t vertexId) const;
+                                size_t vertexId) const;
 
     // From here on the visualisation functions.
 public:
@@ -174,16 +174,16 @@ protected:
      * the overlap mesh (using the same indexing as the twins).
      */
     gsMesh<T> createExtendedFlatMesh(const std::vector<size_t>& right,
-				     const std::vector<size_t>& left) const;
+                                     const std::vector<size_t>& left) const;
 
 
 protected: // members
 
     std::vector<std::pair<size_t, size_t> > m_twins; /**< Every twin pair is a pair of vertices
-						      * with (almost) the same coordinates.
-						      * The first in the pair has the u-coordinate
-						      * smaller by one than the second.
-						      */
+                                                      * with (almost) the same coordinates.
+                                                      * The first in the pair has the u-coordinate
+                                                      * smaller by one than the second.
+                                                      */
 
     const gsHalfEdgeMesh<T> m_overlapHEM; ///< The mesh of the overlap, cf. the introduction to the class.
 };

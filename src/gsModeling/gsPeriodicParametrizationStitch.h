@@ -76,28 +76,28 @@ protected:
     class Neighbourhood : public gsParametrization<T>::Neighbourhood
     {
     public:
-	typedef typename gsParametrization<T>::LocalNeighbourhood LocalNeighbourhood;
+        typedef typename gsParametrization<T>::LocalNeighbourhood LocalNeighbourhood;
 
-	/** Constructor.
-	 * @param meshInfo: surface mesh (as in the parent class)
-	 * @param stitchIndices: indices of the vertices forming the stitch
-	 * @param[out] corrections: a reference to @a m_corrections of
-	 * gsPeriodicParametrizationStitch that gets filled here
-	 * @param parametrizationMethod: parametrization method (as in the parent class)
-	 */
-	explicit Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
-			       const std::vector<size_t>& stitchIndices,
-			       gsSparseMatrix<int>& corrections,
-			       const size_t parametrizationMethod = 2);
+        /** Constructor.
+         * @param meshInfo: surface mesh (as in the parent class)
+         * @param stitchIndices: indices of the vertices forming the stitch
+         * @param[out] corrections: a reference to @a m_corrections of
+         * gsPeriodicParametrizationStitch that gets filled here
+         * @param parametrizationMethod: parametrization method (as in the parent class)
+         */
+        explicit Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
+                               const std::vector<size_t>& stitchIndices,
+                               gsSparseMatrix<int>& corrections,
+                               const size_t parametrizationMethod = 2);
 
     protected:
-	/**
-	 * For a stitch vertex finds its neighbours across the interface.
-	 * @param stitchIndices indices of the stitch vertices
-	 * @param localNeighbourhood local neighbourhood of the vertex in question
-	 */
-	std::vector<size_t> computeCorrections(const std::vector<size_t>& stitchIndices,
-					       const LocalNeighbourhood& localNeighbourhood) const;
+        /**
+         * For a stitch vertex finds its neighbours across the interface.
+         * @param stitchIndices indices of the stitch vertices
+         * @param localNeighbourhood local neighbourhood of the vertex in question
+         */
+        std::vector<size_t> computeCorrections(const std::vector<size_t>& stitchIndices,
+                                               const LocalNeighbourhood& localNeighbourhood) const;
     };
 
 public:
@@ -112,17 +112,17 @@ public:
      * @param list list of the method options
      */
     explicit gsPeriodicParametrizationStitch(const gsMesh<T> &mesh,
-					     const gsMatrix<T>& verticesV0,
-					     const gsMatrix<T>& paramsV0,
-					     const gsMatrix<T>& verticesV1,
-					     const gsMatrix<T>& paramsV1,
-					     const gsMatrix<T>& stitchVertices,
-					     const gsOptionList &list = gsParametrization<T>::defaultOptions())
-	: gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
-	m_stitchIndices(this->indices(stitchVertices))
-	{
-	    // Note: m_corrections gets filled later.
-	}
+                                             const gsMatrix<T>& verticesV0,
+                                             const gsMatrix<T>& paramsV0,
+                                             const gsMatrix<T>& verticesV1,
+                                             const gsMatrix<T>& paramsV1,
+                                             const gsMatrix<T>& stitchVertices,
+                                             const gsOptionList &list = gsParametrization<T>::defaultOptions())
+        : gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
+        m_stitchIndices(this->indices(stitchVertices))
+        {
+            // Note: m_corrections gets filled later.
+        }
 
     /// Computes the periodic parametrization.
     void compute();
@@ -138,8 +138,8 @@ protected:
      * periodic meshes using the corrections.
      */
     void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
-					 const size_t n,
-					 const size_t N);
+                                         const size_t n,
+                                         const size_t N);
 
 public:
 
@@ -149,9 +149,9 @@ public:
      */
     gsMesh<T> createFlatMesh() const
     {
-    	gsMesh<T> unfolded = createUnfoldedFlatMesh();
-	typename gsPeriodicParametrization<T>::FlatMesh display(unfolded);
-	return display.createRestrictedFlatMesh();
+        gsMesh<T> unfolded = createUnfoldedFlatMesh();
+        typename gsPeriodicParametrization<T>::FlatMesh display(unfolded);
+        return display.createRestrictedFlatMesh();
     }
 
 protected:
@@ -169,8 +169,8 @@ protected:
      */
     bool isOnStitch(size_t vertexIndex) const
     {
-	return (std::find(m_stitchIndices.begin(), m_stitchIndices.end(), vertexIndex)
-		!= m_stitchIndices.end());
+        return (std::find(m_stitchIndices.begin(), m_stitchIndices.end(), vertexIndex)
+                != m_stitchIndices.end());
     }
 
     /**
@@ -181,11 +181,11 @@ protected:
      */
     bool edgeIsInCorrections(index_t beg, index_t end) const
     {
-	return ((m_corrections(beg, end) ==  1) ||
-		(m_corrections(beg, end) == -1) ||
-		(m_corrections(end, beg) ==  1) ||
-		(m_corrections(end, beg) == -1));
-	// Actually, the first two conditions should be enough.		
+        return ((m_corrections(beg, end) ==  1) ||
+                (m_corrections(beg, end) == -1) ||
+                (m_corrections(end, beg) ==  1) ||
+                (m_corrections(end, beg) == -1));
+        // Actually, the first two conditions should be enough.         
     }
 
 protected:

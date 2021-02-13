@@ -22,13 +22,13 @@ namespace gismo
 
 template<class T>
 std::vector<size_t> gsPeriodicParametrizationStitch<T>::Neighbourhood::computeCorrections(const std::vector<size_t>& stitchIndices,
-											  const LocalNeighbourhood& localNeighbourhood) const
+                                                                                          const LocalNeighbourhood& localNeighbourhood) const
 {
     auto indexIt = std::find(stitchIndices.begin(), stitchIndices.end(), localNeighbourhood.getVertexIndex());
 
     if(indexIt == stitchIndices.end()) // Not on the stitch, nothing to do.
     {
-	return std::vector<size_t>();
+        return std::vector<size_t>();
     }
 
     std::list<size_t> result;
@@ -36,48 +36,48 @@ std::vector<size_t> gsPeriodicParametrizationStitch<T>::Neighbourhood::computeCo
 
     if(indexIt == stitchIndices.begin()) // In the beginning of the stitch.
     {
-	auto nextOnStitch = std::find(neighbours.begin(), neighbours.end(), *std::next(indexIt));
-	// (Assuming that the stitch has at least two vertices.)
-	for(auto it=nextOnStitch; it!=neighbours.end(); ++it)
-	    result.push_back(*it);
+        auto nextOnStitch = std::find(neighbours.begin(), neighbours.end(), *std::next(indexIt));
+        // (Assuming that the stitch has at least two vertices.)
+        for(auto it=nextOnStitch; it!=neighbours.end(); ++it)
+            result.push_back(*it);
     }
     else if(std::next(indexIt) == stitchIndices.end()) // In the end of the stitch.
     {
-	auto prevOnStitch = std::find(neighbours.begin(), neighbours.end(), *std::prev(indexIt));
-	// (Again assuming the stitch to have at least two vertices.)
-	for(auto it=neighbours.begin(); it!=prevOnStitch; ++it)
-	    result.push_back(*it);
+        auto prevOnStitch = std::find(neighbours.begin(), neighbours.end(), *std::prev(indexIt));
+        // (Again assuming the stitch to have at least two vertices.)
+        for(auto it=neighbours.begin(); it!=prevOnStitch; ++it)
+            result.push_back(*it);
     }
     else // In the middle of the stitch.
     {
-	while(neighbours.front() != *std::next(indexIt))
-	{
-	    neighbours.push_back(neighbours.front());
-	    neighbours.pop_front();
-	}
+        while(neighbours.front() != *std::next(indexIt))
+        {
+            neighbours.push_back(neighbours.front());
+            neighbours.pop_front();
+        }
 
-	auto prevOnStitch = std::find(neighbours.begin(), neighbours.end(), *std::prev(indexIt));
-	for(auto it=neighbours.begin(); it!=prevOnStitch; ++it)
-	    result.push_back(*it);
+        auto prevOnStitch = std::find(neighbours.begin(), neighbours.end(), *std::prev(indexIt));
+        for(auto it=neighbours.begin(); it!=prevOnStitch; ++it)
+            result.push_back(*it);
     }
 
     // Other stitch vertices can still be present in the neighbourhood.
     for(auto it=stitchIndices.begin(); it!=stitchIndices.end(); ++it)
-	result.remove(*it);
+        result.remove(*it);
 
     std::vector<size_t> finalResult;
     finalResult.reserve(result.size());
     for(auto it=result.begin(); it!=result.end(); ++it)
-	finalResult.push_back(*it);
+        finalResult.push_back(*it);
 
     return finalResult;
 }
 
 template<class T>
 gsPeriodicParametrizationStitch<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo,
-								 const std::vector<size_t>& stitchIndices,
-								 gsSparseMatrix<int>& corrections,
-								 const size_t parametrizationMethod)
+                                                                 const std::vector<size_t>& stitchIndices,
+                                                                 gsSparseMatrix<int>& corrections,
+                                                                 const size_t parametrizationMethod)
     : gsParametrization<T>::Neighbourhood(meshInfo, parametrizationMethod)
 {
     // We re-do a little of the work done already in the constructor of the parent class.
@@ -91,17 +91,17 @@ gsPeriodicParametrizationStitch<T>::Neighbourhood::Neighbourhood(const gsHalfEdg
 
     for(size_t i=1; i <= meshInfo.getNumberOfVertices(); i++)
     {
-	LocalNeighbourhood localNeighbourhood = (i <= meshInfo.getNumberOfInnerVertices()) ?
-	    LocalNeighbourhood(meshInfo, i) :
-	    LocalNeighbourhood(meshInfo, i, 0);
+        LocalNeighbourhood localNeighbourhood = (i <= meshInfo.getNumberOfInnerVertices()) ?
+            LocalNeighbourhood(meshInfo, i) :
+            LocalNeighbourhood(meshInfo, i, 0);
 
-	std::vector<size_t> corr = computeCorrections(stitchIndices, localNeighbourhood);
-	
-	for(auto it=corr.begin(); it!=corr.end(); ++it)
-	{
-	    corrections(i-1, *it-1) = 1;
-	    corrections(*it-1, i-1) = -1;
-	}
+        std::vector<size_t> corr = computeCorrections(stitchIndices, localNeighbourhood);
+        
+        for(auto it=corr.begin(); it!=corr.end(); ++it)
+        {
+            corrections(i-1, *it-1) = 1;
+            corrections(*it-1, i-1) = -1;
+        }
     }
 }
 
@@ -127,8 +127,8 @@ void gsPeriodicParametrizationStitch<T>::calculate(const size_t paraMethod)
 
 template <class T>
 void gsPeriodicParametrizationStitch<T>::constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
-									 const size_t n,
-									 const size_t N)
+                                                                         const size_t n,
+                                                                         const size_t N)
 {
     std::vector<T> lambdas;
     gsMatrix<T> LHS(N, N);
@@ -142,21 +142,21 @@ void gsPeriodicParametrizationStitch<T>::constructAndSolveEquationSystem(const N
         {
             LHS(i, j) = ( i==j ? T(1) : -lambdas[j] );
 
-	    // If your neighbour is across the stitch, its contributions appear
-	    // on the right hand-side multiplied by +1 or -1. Write the equations
-	    // down if it is unclear. (-;
-	    if(m_corrections(i, j) == 1)
-		RHS(i, 0) -= lambdas[j];
-	    else if(m_corrections(i, j) == -1)
-	    	RHS(i, 0) += lambdas[j];
-	}
+            // If your neighbour is across the stitch, its contributions appear
+            // on the right hand-side multiplied by +1 or -1. Write the equations
+            // down if it is unclear. (-;
+            if(m_corrections(i, j) == 1)
+                RHS(i, 0) -= lambdas[j];
+            else if(m_corrections(i, j) == -1)
+                RHS(i, 0) += lambdas[j];
+        }
     }
 
     // points on the lower and upper boundary
     for (size_t i=n; i<N; i++)
     {
-	LHS(i, i) = T(1);
-	RHS.row(i) = this->m_parameterPoints[i];
+        LHS(i, i) = T(1);
+        RHS.row(i) = this->m_parameterPoints[i];
     }
 
     // Solve the system and save the results.
@@ -164,7 +164,7 @@ void gsPeriodicParametrizationStitch<T>::constructAndSolveEquationSystem(const N
     gsMatrix<T> sol = LU.solve(RHS);
     for (size_t i = 0; i < n; i++)
     {
-    	this->m_parameterPoints[i] << sol(i, 0), sol(i, 1);
+        this->m_parameterPoints[i] << sol(i, 0), sol(i, 1);
     }
 }
 
@@ -177,26 +177,26 @@ gsMesh<T> gsPeriodicParametrizationStitch<T>::createUnfoldedFlatMesh() const
     gsMesh<T> result;
     for(size_t i=0; i<this->m_mesh.getNumberOfTriangles(); i++)
     {
-	std::vector<size_t> vertices;
-	for(size_t j=1; j<=3; ++j)
-	{
-	    vertices.push_back(this->m_mesh.getGlobalVertexIndex(j, i));
- 	}
-	bool nearStitchTriangle = (edgeIsInCorrections(vertices[0]-1, vertices[1]-1) ||
-				   edgeIsInCorrections(vertices[1]-1, vertices[2]-1) ||
-				   edgeIsInCorrections(vertices[2]-1, vertices[0]-1));
+        std::vector<size_t> vertices;
+        for(size_t j=1; j<=3; ++j)
+        {
+            vertices.push_back(this->m_mesh.getGlobalVertexIndex(j, i));
+        }
+        bool nearStitchTriangle = (edgeIsInCorrections(vertices[0]-1, vertices[1]-1) ||
+                                   edgeIsInCorrections(vertices[1]-1, vertices[2]-1) ||
+                                   edgeIsInCorrections(vertices[2]-1, vertices[0]-1));
 
-	VertexHandle v[3];
-	for (size_t j = 1; j <= 3; ++j)
-	{		
-	    const Point2D& point = gsParametrization<T>::getParameterPoint(vertices[j-1]);
-	    // The near-stitch triangles get their stitch vertices shifted by 1 to the left.
-	    if( nearStitchTriangle && isOnStitch(vertices[j-1]) )
-		v[j - 1] = result.addVertex(point[0] + 1, point[1]);
-	    else
-		v[j - 1] = result.addVertex(point[0],     point[1]);
-	}
-	result.addFace( v[0],  v[1],  v[2]);
+        VertexHandle v[3];
+        for (size_t j = 1; j <= 3; ++j)
+        {               
+            const Point2D& point = gsParametrization<T>::getParameterPoint(vertices[j-1]);
+            // The near-stitch triangles get their stitch vertices shifted by 1 to the left.
+            if( nearStitchTriangle && isOnStitch(vertices[j-1]) )
+                v[j - 1] = result.addVertex(point[0] + 1, point[1]);
+            else
+                v[j - 1] = result.addVertex(point[0],     point[1]);
+        }
+        result.addFace( v[0],  v[1],  v[2]);
     }
 
     return result.cleanMesh();

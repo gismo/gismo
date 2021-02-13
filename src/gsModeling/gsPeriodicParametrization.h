@@ -31,52 +31,52 @@ public:
     /// Nested class for plotting flat meshes restricted to [0, 1]^2.
     class FlatMesh
     {
-	typedef typename gsMesh<T>::VertexHandle VertexHandle;
+        typedef typename gsMesh<T>::VertexHandle VertexHandle;
     public:
 
-	/// Constructor.
-	/// @a unfolded Flat mesh possibly intersecting the domain boundaries.
-	FlatMesh(const gsMesh<T>& unfolded)
-	    : m_unfolded(unfolded)
-	{}
+        /// Constructor.
+        /// @a unfolded Flat mesh possibly intersecting the domain boundaries.
+        FlatMesh(const gsMesh<T>& unfolded)
+            : m_unfolded(unfolded)
+        {}
 
-	/// Trims the mesh to [0, 1]^2.
-	gsMesh<T> createRestrictedFlatMesh() const;
+        /// Trims the mesh to [0, 1]^2.
+        gsMesh<T> createRestrictedFlatMesh() const;
 
     protected:
 
-	/// Finds the v-coordinate of the point on the line segment
-	/// (@a v0, @a v1) that has the u-coordinate @a u.
-	real_t correspondingV(const VertexHandle& v0,
-			      const VertexHandle& v1,
-			      real_t u) const;
+        /// Finds the v-coordinate of the point on the line segment
+        /// (@a v0, @a v1) that has the u-coordinate @a u.
+        real_t correspondingV(const VertexHandle& v0,
+                              const VertexHandle& v1,
+                              real_t u) const;
 
-	/// Adds three flat triangles in the situation where one of
-	/// the vertices of the original triangle is outside the
-	/// domain.
-	/// @a v1 is outside the domain, @a v0 and @a v2 inside.
-	void addThreeFlatTrianglesOneOut(gsMesh<T>& mesh,
-					 const VertexHandle& v0,
-					 const VertexHandle& v1,
-					 const VertexHandle& v2) const;
+        /// Adds three flat triangles in the situation where one of
+        /// the vertices of the original triangle is outside the
+        /// domain.
+        /// @a v1 is outside the domain, @a v0 and @a v2 inside.
+        void addThreeFlatTrianglesOneOut(gsMesh<T>& mesh,
+                                         const VertexHandle& v0,
+                                         const VertexHandle& v1,
+                                         const VertexHandle& v2) const;
 
-	/// Adds three flat triangles in the situation where two of
-	/// the vertices of the original triangle are outside the
-	/// domain.
-	/// @a v1 is inside the domain, @a v0 and @a v2 outside.
-	void addThreeFlatTrianglesTwoOut(gsMesh<T>& mesh,
-					 const VertexHandle& v0,
-					 const VertexHandle& v1,
-					 const VertexHandle& v2) const;
+        /// Adds three flat triangles in the situation where two of
+        /// the vertices of the original triangle are outside the
+        /// domain.
+        /// @a v1 is inside the domain, @a v0 and @a v2 outside.
+        void addThreeFlatTrianglesTwoOut(gsMesh<T>& mesh,
+                                         const VertexHandle& v0,
+                                         const VertexHandle& v1,
+                                         const VertexHandle& v2) const;
 
-	/// Adds a flat triangle and shifts it inside the domain if necessary.
-	void addOneFlatTriangleNotIntersectingBoundary(gsMesh<T>& mesh,
-						       const VertexHandle& v0,
-						       const VertexHandle& v1,
-						       const VertexHandle& v2) const;
+        /// Adds a flat triangle and shifts it inside the domain if necessary.
+        void addOneFlatTriangleNotIntersectingBoundary(gsMesh<T>& mesh,
+                                                       const VertexHandle& v0,
+                                                       const VertexHandle& v1,
+                                                       const VertexHandle& v2) const;
 
     protected: // members
-	gsHalfEdgeMesh<T> m_unfolded;///< flat mesh possibly intersecting the domain boundaries
+        gsHalfEdgeMesh<T> m_unfolded;///< flat mesh possibly intersecting the domain boundaries
     };
 
 public:
@@ -90,24 +90,24 @@ public:
      * @param list list of the method options
      */
     gsPeriodicParametrization(const gsMesh<T>& mesh,
-			      const gsMatrix<T>& verticesV0,
-			      const gsMatrix<T>& paramsV0,
-			      const gsMatrix<T>& verticesV1,
-			      const gsMatrix<T>& paramsV1,
-			      const gsOptionList &list = gsParametrization<T>::defaultOptions())
-	: gsParametrization<T>(mesh, list),
-	  m_paramsV0(paramsV0), m_paramsV1(paramsV1),
-	  m_indicesV0(this->indices(verticesV0)),
-	  m_indicesV1(this->indices(verticesV1))
-	{
-	    GISMO_ASSERT(this->m_paramsV0.rows() == 1, "one row expected in paramsV0");
-	    GISMO_ASSERT(this->m_paramsV1.rows() == 1, "one row expected in paramsV1");
+                              const gsMatrix<T>& verticesV0,
+                              const gsMatrix<T>& paramsV0,
+                              const gsMatrix<T>& verticesV1,
+                              const gsMatrix<T>& paramsV1,
+                              const gsOptionList &list = gsParametrization<T>::defaultOptions())
+        : gsParametrization<T>(mesh, list),
+          m_paramsV0(paramsV0), m_paramsV1(paramsV1),
+          m_indicesV0(this->indices(verticesV0)),
+          m_indicesV1(this->indices(verticesV1))
+        {
+            GISMO_ASSERT(this->m_paramsV0.rows() == 1, "one row expected in paramsV0");
+            GISMO_ASSERT(this->m_paramsV1.rows() == 1, "one row expected in paramsV1");
 
-	    GISMO_ASSERT(this->m_paramsV0.cols() == static_cast<index_t>(m_indicesV0.size()),
+            GISMO_ASSERT(this->m_paramsV0.cols() == static_cast<index_t>(m_indicesV0.size()),
                          "paramsV0 and valuesV0 are required to have the same number of cols");
-	    GISMO_ASSERT(this->m_paramsV1.cols() == static_cast<index_t>(m_indicesV1.size()),
+            GISMO_ASSERT(this->m_paramsV1.cols() == static_cast<index_t>(m_indicesV1.size()),
                          "paramsV1 and valuesV1 are required to have the same number of cols");
-	}
+        }
 
     /**
      * Moves the u-coordinates of parameters outside the
@@ -119,7 +119,7 @@ public:
      * @param uMax maximal desired u
      */
     void restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
-			  real_t uMin = 0, real_t uMax = 1) const;
+                          real_t uMin = 0, real_t uMax = 1) const;
 
     /// Computes the periodic parametrization.
     virtual void compute() = 0;

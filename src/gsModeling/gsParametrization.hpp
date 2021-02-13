@@ -192,9 +192,9 @@ gsMesh<T> gsParametrization<T>::createFlatMesh() const
         for (size_t j = 1; j <= 3; ++j)
         {
             v[j - 1] = mesh.addVertex(getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[0],
-				      getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[1]);
+                                      getParameterPoint(m_mesh.getGlobalVertexIndex(j, i))[1]);
         }
-	mesh.addFace(v[0], v[1], v[2]);
+        mesh.addFace(v[0], v[1], v[2]);
     }
     return mesh.cleanMesh();
 }
@@ -207,8 +207,8 @@ void gsParametrization<T>::writeTexturedMesh(std::string filename) const
 
     for(size_t i=0; i<m_mesh.numVertices(); i++)
     {
-	size_t index = m_mesh.unsorted(i);
-	params.row(i) = getParameterPoint(index);
+        size_t index = m_mesh.unsorted(i);
+        params.row(i) = getParameterPoint(index);
     }
     gsWriteParaview(m_mesh, filename, params);
 }
