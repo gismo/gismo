@@ -92,15 +92,12 @@ SUITE(gsParametrization_test)
 
     TEST_FIXTURE(inputs, gsPeriodicParametrizationOverlap)
     {
-	// TODO: When I put mesh into inputs, strange things start happening.
-	gsFileData<real_t> fd_mesh1("parametrization/powerplant-mesh.stl");
-	gsMesh<real_t>::uPtr mesh1 = fd_mesh1.getFirst<gsMesh<real_t> >();
-
+        // Read the overlap mesh.
 	gsFileData<real_t> fd_over("parametrization/powerplant-overlap.stl");
 	gsMesh<real_t>::uPtr over = fd_over.getFirst<gsMesh<real_t> >();
 
 	// Construct the parametrization.
-	gsPeriodicParametrizationOverlap<real_t> param(*mesh1,
+	gsPeriodicParametrizationOverlap<real_t> param(*mesh,
 						       verticesV0, paramsV0,
 						       verticesV1, paramsV1,
 						       *over, options);
@@ -110,6 +107,7 @@ SUITE(gsParametrization_test)
 	gsMatrix<real_t> xyz = param.createXYZmatrix();
 	param.restrictMatrices(uv, xyz);
 
+        // Check matrix sizes.
         CHECK_EQUAL(2,  uv.rows());
         CHECK_EQUAL(80, uv.cols());
         CHECK_EQUAL(3,  xyz.rows());
@@ -167,21 +165,13 @@ SUITE(gsParametrization_test)
 
     TEST_FIXTURE(inputs, gsPeriodicParametrizationStitch)
     {
-	// TODO: If any of the following two gsFileDatas gets removed,
-	// ./bin/unittests -R gsParametrization_test
-	// leads to a fail in this test.
-	gsFileData<real_t> fd_v0b("parametrization/powerplant-bottom.xml");
-	gsFileData<real_t> fd_v1b("parametrization/powerplant-top.xml");
-
-	gsFileData<real_t> fd_mesh2("parametrization/powerplant-mesh.stl");
-	gsMesh<real_t>::uPtr mesh2 = fd_mesh2.getFirst<gsMesh<real_t> >();
-
+        // Read the stitch mesh.
 	gsMatrix<real_t> stitch;
 	gsFileData<real_t> fd_stitch("parametrization/powerplant-stitch.xml");
 	fd_stitch.getFirst<gsMatrix<real_t> >(stitch);
 
 	// Construct the parametrization.
-	gsPeriodicParametrizationStitch<real_t> param(*mesh2,
+	gsPeriodicParametrizationStitch<real_t> param(*mesh,
 						      verticesV0, paramsV0,
 						      verticesV1, paramsV1,
 						      stitch, options);
@@ -190,11 +180,15 @@ SUITE(gsParametrization_test)
 	gsMatrix<real_t> uv  = param.createUVmatrix();
 	gsMatrix<real_t> xyz = param.createXYZmatrix();
 
+        // Check matrix sizes.
         CHECK_EQUAL(2,  uv.rows());
         CHECK_EQUAL(80, uv.cols());
         CHECK_EQUAL(3,  xyz.rows());
         CHECK_EQUAL(80, xyz.cols());
 
+        // Check with the precomputed values.
+        // TODO: The values are the same as in the overlap case.
+        // Can we factor out the checks to one common function?
 	CHECK_CLOSE(0.420668, uv(0, 0), eps);
 	CHECK_CLOSE(0.242996, uv(1, 0), eps);
 	CHECK_CLOSE(0.25, xyz(0, 0), eps);
