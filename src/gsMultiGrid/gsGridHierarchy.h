@@ -24,7 +24,8 @@ namespace gismo
  *  Grid Hierarchy
  *
  *  This class allows to construct a grid hierarchy and stors a grid hierarchy (vector of
- *  bases, local transfer matrices and transfer matrices).
+ *  bases, local transfer matrices and transfer matrices). The transfer matrices can then
+ *  be used for the setup of a \a gsMultiGridOp object.
  *
  *  @ingroup Solver
 **/

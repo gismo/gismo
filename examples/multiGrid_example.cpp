@@ -315,7 +315,9 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
+        //! [Define smoothers2]
         smootherOp->setOptions( opt.getGroup("MG") );
+        //! [Define smoothers2]
 
         // Handle the extra-smooth option. On the finest grid level, there is nothing to handle.
         if (extrasmooth && i < mg->numLevels()-1)
@@ -324,15 +326,19 @@ int main(int argc, char *argv[])
             smootherOp = gsPreconditionerFromOp<>::make(mg->underlyingOp(i),smootherOp);
         }
 
-    //! [Define smoothers2]
+    //! [Define smoothers3]
         mg->setSmoother(i, smootherOp);
-    }
-    //! [Define smoothers2]
+    } // end for
+    //! [Define smoothers3]
+
+    gsMatrix<> errorHistory;
+
+    //! [Initial guess]
+    gsMatrix<> x;
+    x.setRandom( assembler.matrix().rows(), 1 );
+    //! [Initial guess]
 
     //! [Solve]
-    gsMatrix<> x, errorHistory;
-    x.setRandom( assembler.matrix().rows(), 1 );
-
     if (iterativeSolver=="cg")
         gsConjugateGradient<>( assembler.matrix(), mg )
             .setOptions( opt.getGroup("Solver") )
@@ -534,7 +540,7 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
 
                         // We store the local damping parameter if we can expect that it does not change
                         // too much any more. When the number of inner knots is p or smaller, the subspace
-                        // corrected mass smoother does an exact solver. Thus, these cases are not comparable.
+                        // corrected mass smoother is an exact solver. Thus, these cases are not comparable.
                         bool saveLambda = (level > nrLevels - 5);
                         for (index_t j=0; j!=bases[0]->dim(); ++j)
                             saveLambda &= bases[0]->component(j).numElements()
@@ -550,7 +556,7 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
             }
             else
             {
-                // If the component has dimension 0 or 1, we can just du direct solves
+                // If the component has dimension 0 or 1, we can just use direct solves
                 ops.push_back( makeSparseCholeskySolver(localMatrix) );
             }
 

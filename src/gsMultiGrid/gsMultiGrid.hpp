@@ -190,15 +190,15 @@ void gsMultiGridOp<T>::multiGridStep(index_t level, const Matrix& rhs, Matrix& x
 template<class T>
 void gsMultiGridOp<T>::fullMultiGrid(
     const std::vector<Matrix>& rhs,
-    const std::vector<Matrix>& dirichletIntp,
+    const std::vector<Matrix>& fixedValues,
     gsMatrix<T>& result
 ) const
 {
 
-    GISMO_ASSERT (dirichletIntp.size() == static_cast<size_t>(n_levels),
-        "gsMultiGridOp::fullMultiGrid: The number of dirichletIntp does not correspond to the number of levels.");
+    GISMO_ASSERT (fixedValues.size() == static_cast<size_t>(n_levels),
+        "gsMultiGridOp::fullMultiGrid: The size of fixedValues does not correspond to the number of levels.");
     GISMO_ASSERT (rhs.size() == static_cast<size_t>(n_levels),
-        "gsMultiGridOp::fullMultiGrid: The number of rhs does not correspond to the number of levels.");
+        "gsMultiGridOp::fullMultiGrid: The size of rhs does not correspond to the number of levels.");
 
     std::vector<Matrix> u(n_levels);
 
@@ -209,7 +209,7 @@ void gsMultiGridOp<T>::fullMultiGrid(
     {
         // transfer result from previous level
         prolongVector(i-1, u[i-1], u[i]);
-        u[i] += dirichletIntp[i];
+        u[i] += fixedValues[i];
 
         // run one multigrid step
         multiGridStep(i, rhs[i], u[i]);
@@ -221,15 +221,15 @@ void gsMultiGridOp<T>::fullMultiGrid(
 template<class T>
 void gsMultiGridOp<T>::cascadicMultiGrid(
     const std::vector<Matrix>& rhs,
-    const std::vector<Matrix>& dirichletIntp,
+    const std::vector<Matrix>& fixedValues,
     Matrix& result
 ) const
 {
 
-    GISMO_ASSERT (dirichletIntp.size() == static_cast<size_t>(n_levels),
-        "gsMultiGridOp::cascadicMultiGrid: The number of dirichletIntp does not correspond to the number of levels.");
+    GISMO_ASSERT (fixedValues.size() == static_cast<size_t>(n_levels),
+        "gsMultiGridOp::cascadicMultiGrid: The size of fixedValue does not correspond to the number of levels.");
     GISMO_ASSERT (rhs.size() == static_cast<size_t>(n_levels),
-        "gsMultiGridOp::cascadicMultiGrid: The number of rhs does not correspond to the number of levels.");
+        "gsMultiGridOp::cascadicMultiGrid: The size of rhs does not correspond to the number of levels.");
 
     std::vector<Matrix> u(n_levels);
 
@@ -240,7 +240,7 @@ void gsMultiGridOp<T>::cascadicMultiGrid(
     {
         // transfer result from previous level
         prolongVector(i-1, u[i-1], u[i]);
-        u[i] += dirichletIntp[i];
+        u[i] += fixedValues[i];
 
         // smooth
         smoothingStep(i, rhs[i], u[i]);

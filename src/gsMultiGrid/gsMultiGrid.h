@@ -23,25 +23,27 @@ namespace gismo
 /** @brief Multigrid solver isogeometric problems.
  *
  *  This class implements geometric multigrid for isogeometric patches.
- *  To use it, pass the operators representing the stiffness matrix on ALL levels
- *  and the transfer matrices. The smoother has to be set with setSmoother().
+ *
+ *  The class expects transfer matrices, which can be constructed with the
+ *  class \a gsGridHierarchy.
  *
  *  The matrix to be solved for is stored as \a gsLinearOperator, which means
- *  that also matrix-free variants are possible.
+ *  that also matrix-free variants are possible. In this case the linear
+ *  operators representing the siffness matrix have to be provided for all
+ *  grid levles; if a sparse matrix is provided, the matrices for the coarser
+ *  levels are computed automatically based on the Galerkin principle.
+ *
+ *  For all levels, a smoother has to be provided by defining setSmoother().
  *
  *  The solver for the coarsest grid level is created automatically if not
  *  provided by the caller.
  *
  *  The solver can be configured to use V- or W-cycles using setNumCycles().
- *
- *  The smoother to use can be set with setSmoother(). Here, a pointer
- *  to the gsPreconditioner object has to be provided for each grid level.
- *
  *  The number of pre- and post-smoothing steps can be configured with
  *  setNumPreSmooth() and setNumPostSmooth(), respectively.
  *
- *  Full multigrid (FMG) and cascadic multigrid are supported and sometimes
- *  extremely efficient.
+ *  Also full multigrid and cascadic multigrid algorithms for computing an
+ *  initial guess are provided.
  *
  *  @ingroup Solver
 **/
@@ -120,7 +122,7 @@ public:
         OpPtr coarseSolver = OpPtr()
     );
 
-    /// Make function returning smart pointer
+    /// @brief Make function returning smart pointer
     ///
     /// @param fineMatrix                Stiffness matrix on the finest grid
     /// @param transferMatrices          Intergrid transfer matrices representing restriction and prolongation operators
@@ -133,7 +135,7 @@ public:
     )
     { return uPtr( new gsMultiGridOp( give(fineMatrix), give(transferMatrices), give(coarseSolver) ) ); }
 
-    /// Make function returning smart pointer
+    /// @brief Make function returning smart pointer
     ///
     /// @param fineMatrix                Stiffness matrix (as smart pointers) on the finest grid
     /// @param transferMatrices          Intergrid transfer matrices representing restriction and prolongation operators
@@ -146,7 +148,7 @@ public:
     )
     { return uPtr( new gsMultiGridOp( give(fineMatrix), give(transferMatrices), give(coarseSolver) ) ); }
 
-    /// Make function returning a shared pointer for a matix-free variant
+    /// @brief Make function returning a shared pointer for a matix-free variant
     ///
     /// @param ops                       Linear operators representing the stiffness matrix on all levels
     /// @param prolongation              Linear operators representing the prolongation operators
@@ -164,56 +166,81 @@ public:
 private:
     // Init function that is used by matrix based constructors
     void init(SpMatrixPtr fineMatrix, std::vector<SpMatrixRowMajorPtr> transferMatrices);
+    // Init solver on coarsest grid level
     void initCoarseSolver() const;
 public:
 
-    /// Apply smoothing step
+    /// @brief Apply smoothing steps on the corresponding level
+    ///
+    /// @param[in]     level   Level
+    /// @param[in]     rhs     Right hand side
+    /// @param[in,out] x       Current iterate vector
     void smoothingStep(index_t level, const Matrix& rhs, Matrix& x) const;
 
-    /// Apply smoothing step on finest grid
+    /// @brief Apply smoothing steps on finest grid
+    ///
+    /// @param[in]     rhs     Right hand side
+    /// @param[in,out] x       Current iterate vector
     void smoothingStep(const Matrix& rhs, Matrix& x) const
     { smoothingStep(finestLevel(), rhs, x); }
 
-    /// Estimates for a smoother I - S^{-1} A the largest eigenvalue of S^{-1} A.
-    /// Can be used to adjust the damping parameters.
-    T estimateLargestEigenvalueOfSmoothedOperator(index_t level, index_t steps = 10)
-    { return m_smoother[level]->estimateLargestEigenvalueOfPreconditionedSystem(steps); }
-
-    /// Perform one multigrid cycle on the iterate \a x with right-hand side \a f at the given \a level.
+    /// @brief Perform one multigrid cycle, starting from the given level
+    ///
+    /// @param[in]     level   Level
+    /// @param[in]     rhs     Right-hand side
+    /// @param[in,out] x       Current iterate vector
     void multiGridStep(index_t level, const Matrix& rhs, Matrix& x) const;
 
+    /// @brief Perform one multigrid cycle
+    ///
+    /// @param[in]     rhs     Right-hand side
+    /// @param[in,out] x       Current iterate vector
     void step(const Matrix& rhs, Matrix& x) const
     { multiGridStep(finestLevel(), rhs, x); }
 
+    /// @brief Perform one transposed multigrid cycle
+    ///
+    /// @param[in]     rhs     Right-hand side
+    /// @param[in,out] x       Current iterate vector
+    ///
+    /// This assumes that the stiffness matrix is symmetric and that
+    /// the smoothers implement stepT correctly.
     void stepT(const Matrix& rhs, Matrix& x) const
     {
-        // This should cover most cases:
         std::swap(m_numPreSmooth,m_numPostSmooth);
         step(rhs,x);
         std::swap(m_numPreSmooth,m_numPostSmooth);
     }
 
-    /// Perform one full multigrid cycle and store the resulting solution vector in \a result.
+    /// @brief Perform one full multigrid cycle and store the resulting solution vector in result.
+    ///
+    /// @param[in]  rhs         The right-hand-sides for all grid levels
+    /// @param[in]  fixedValues The values for the fixed dofs (like eliminated Dirichlet values)
+    /// @param[out] result      The destination for the result
     void fullMultiGrid(
         const std::vector<Matrix>& rhs,
         const std::vector<Matrix>& dirichletIntp,
         Matrix& result
     ) const;
 
-    /// Perform one cascadic multigrid cycle and store the resulting solution vector in \a result.
+    /// @brief Perform one cascadic multigrid cycle and store the resulting solution vector in result.
+    ///
+    /// @param[in]  rhs         The right-hand-sides for all grid levels
+    /// @param[in]  fixedValues The values for the fixed dofs (like eliminated Dirichlet values)
+    /// @param[out] result      The destination for the result
     void cascadicMultiGrid(
         const std::vector<Matrix>& rhs,
-        const std::vector<Matrix>& dirichletIntp,
+        const std::vector<Matrix>& fixedValues,
         Matrix& result
     ) const;
 
-    /// Restrict a vector of coefficients from the level \a lf, given by \a fine, to the next coarser level.
+    /// Restrict a vector of coefficients from the level lf, given by fine, to the next coarser level.
     void restrictVector(index_t lf, const Matrix& fine, Matrix& coarse) const;
 
-    /// Prolong a vector of coefficients from the level \a lc, given by \a coarse, to the next finer level.
+    /// Prolong a vector of coefficients from the level lc, given by coarse, to the next finer level.
     void prolongVector(index_t lc, const Matrix& coarse, Matrix& fine) const;
 
-    /// Solve the problem with direct method on coarsest level
+    /// Solve the problem with direct solver on coarsest level
     void solveCoarse(const Matrix& rhs, Matrix& result) const
     {
         if (!m_coarseSolver) initCoarseSolver();
