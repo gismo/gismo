@@ -21,13 +21,13 @@ namespace gismo
 {
 
 /** @brief
-    Grid Hierarchy
-
-    This class allows to construct a grid hierarchy and stors a grid hierarchy (vector of
-    bases, local transfer matrices and transfer matrices).
-
-    \ingroup Solver
-*/
+ *  Grid Hierarchy
+ *
+ *  This class allows to construct a grid hierarchy and stors a grid hierarchy (vector of
+ *  bases, local transfer matrices and transfer matrices).
+ *
+ *  @ingroup Solver
+**/
 template< typename T >
 class gsGridHierarchy
 {
@@ -42,8 +42,6 @@ public:
     /// @param levels                    The number of levels
     /// @param numberOfKnotsToBeInserted The number of knots to be inserted, defaulted to 1
     /// @param multiplicityOfKnotsToBeInserted The multiplicity of the knots to be inserted, defaulted to 1
-    ///
-    /// \ingroup Solver
     static gsGridHierarchy buildByRefinement(
         gsMultiBasis<T> mBasis,
         const gsBoundaryConditions<T>& boundaryConditions,
@@ -58,8 +56,6 @@ public:
     /// @param mBasis                    The gsMultiBasis to be refined (initial basis)
     /// @param boundaryConditions        The boundary conditions
     /// @param options                   A gsOptionList defining the necessary infomation
-    ///
-    /// \ingroup Solver
     static gsGridHierarchy buildByRefinement(
         gsMultiBasis<T> mBasis,
         const gsBoundaryConditions<T>& boundaryConditions,
@@ -143,16 +139,18 @@ public:
         m_transferMatrices.clear();
     }
 
-    /// Get the vector of multi bases (by reference)
+    /// Get the vector of \a gsMultiBasis objects (by reference)
     const std::vector< gsMultiBasis<T> >& getMultiBases() const
     { return m_mBases; }
-    /// Get the vector of multi bases
+
+    /// Get the vector of \a gsMultiBasis objects
     gsGridHierarchy& moveMultiBasesTo( std::vector< gsMultiBasis<T> >& o )
     { o = give(m_mBases); return *this; }
 
     /// Get the vector of transfer matrices (by reference)
     const std::vector< gsSparseMatrix<T, RowMajor> >& getTransferMatrices() const
     { return m_transferMatrices; }
+
     /// Get the vector of transfer matrices
     gsGridHierarchy& moveTransferMatricesTo( std::vector< gsSparseMatrix<T, RowMajor> >& o )
     { o = give(m_transferMatrices); return *this; }

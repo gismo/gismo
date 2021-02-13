@@ -3,8 +3,64 @@ namespace gismo {
 
 \page multiGrid_example multiGrid_example.cpp
 
+We consider the Poisson boundary value problem (for simplicity here
+only with Dirichlet conditions):
+\f{eqnarray*}{
+                    -\Delta u &=& f \quad \text{in} \quad \Omega,         \\
+                            u &=& g \quad \text{on} \quad \partial\Omega.
+\f}
+Its variational form is: Find \f$ u\in V_g \f$ such that
+\f[
+    \int_\Omega \nabla u \nabla v d x = \int_\Omega f v dx
+\f]
+for all \f$ u\in V_0 \f$, which corresponds to the linear system
+\f[
+      A \underline u = \underline f.
+\f]
 
-<!-- more info on the file examples/multiGrid_example.cpp goes here -->
+
+After reading the command line arguments, we read in the geometry file and
+modify the geometry as desired:
+
+\snippet multiGrid_example.cpp Define Geometry
+\snippet multiGrid_example.cpp Define Geometry2
+
+Then, we set up the right-hand-side f and a \a gsBoundaryConditions
+object based on the command line arguments.
+
+\snippet multiGrid_example.cpp Define Source
+
+Then, we extract the basis from the multi patch object to obtain a
+multi basis.
+
+\snippet multiGrid_example.cpp Define Basis
+
+\snippet multiGrid_example.cpp Define Non Matching
+
+\snippet multiGrid_example.cpp Set degree and refine
+
+Now, we assemble the linear system and the right-hand side using one of the
+assemblers.
+
+\snippet multiGrid_example.cpp Assemble
+
+\snippet multiGrid_example.cpp Define vectors
+
+\snippet multiGrid_example.cpp Setup grid hierarchy
+
+\snippet multiGrid_example.cpp Setup multigrid
+
+\snippet multiGrid_example.cpp Define coarse solver
+
+\snippet multiGrid_example.cpp Define smoothers
+
+\snippet multiGrid_example.cpp Define smoothers2
+
+As a next step, we solve the linear system using either a conjugate graident solver
+with multigrid preconditioner or by iterating multigrid itself. The latter is to be
+represented as preconditioned gradient (=Richardson) solver.
+
+\snippet multiGrid_example.cpp Solve
 
 
 \section multiGrid_exampleAnnotated Annotated source file
