@@ -42,7 +42,7 @@ methods are presented as linear operators and preconditioners.
 The files associated to this module are located in the folders
     - src/gsSolver
     - src/gsMultiGrid
-    - src/geIeti
+    - src/gsIeti
 
 */
 
