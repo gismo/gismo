@@ -60,7 +60,7 @@ gsScaledDirichletPrec<T>::restrictJumpMatrix( const JumpMatrix& jm, const std::v
 }
 
 template <class T>
-std::vector< gsSparseMatrix<T> >
+typename gsScaledDirichletPrec<T>::Blocks
 gsScaledDirichletPrec<T>::matrixBlocks( const SparseMatrix& mat, const std::vector<index_t> dofs )
 {
     gsVector<index_t> reverse;
@@ -73,10 +73,10 @@ gsScaledDirichletPrec<T>::matrixBlocks( const SparseMatrix& mat, const std::vect
         if (reverse[i]==0)
             reverse[i] = --j;
 
-    gsSparseEntries<T> se_A00, se_A10, se_A01, se_A11;
+    gsSparseEntries<T> se_A00, se_A01, se_A10, se_A11;
     se_A00.reserve( 2 * mat.nonZeros() * dofs.size() / mat.rows() );
-    se_A10.reserve( 2 * mat.nonZeros() * dofs.size() / mat.rows() );
     se_A01.reserve( 2 * mat.nonZeros() * dofs.size() / mat.rows() );
+    se_A10.reserve( 2 * mat.nonZeros() * dofs.size() / mat.rows() );
     se_A11.reserve( mat.nonZeros() );
     for (index_t i=0; i<mat.outerSize(); ++i)
         for (typename gsSparseMatrix<T>::InnerIterator it(mat, i); it; ++it)
@@ -91,7 +91,7 @@ gsScaledDirichletPrec<T>::matrixBlocks( const SparseMatrix& mat, const std::vect
             }
             else if (reverse[it.row()] > 0 && reverse[it.col()] < 0)
             {
-                se_A01.add(
+                se_A10.add(
                     reverse[it.row()]-1,
                     -reverse[it.col()]-1,
                     it.value()
@@ -99,7 +99,7 @@ gsScaledDirichletPrec<T>::matrixBlocks( const SparseMatrix& mat, const std::vect
             }
             else if (reverse[it.row()] < 0 && reverse[it.col()] > 0)
             {
-                se_A10.add(
+                se_A01.add(
                     -reverse[it.row()]-1,
                     reverse[it.col()]-1,
                     it.value()
@@ -115,16 +115,16 @@ gsScaledDirichletPrec<T>::matrixBlocks( const SparseMatrix& mat, const std::vect
             }
         }
 
-    std::vector<SparseMatrix> result;
+    Blocks result;
 
-    result.push_back(SparseMatrix(           dofs.size(),            dofs.size()));
-    result[0].setFrom(se_A00);
-    result.push_back(SparseMatrix(mat.rows()-dofs.size(),            dofs.size()));
-    result[1].setFrom(se_A10);
-    result.push_back(SparseMatrix(           dofs.size(), mat.rows()-dofs.size()));
-    result[2].setFrom(se_A01);
-    result.push_back(SparseMatrix(mat.rows()-dofs.size(), mat.rows()-dofs.size()));
-    result[3].setFrom(se_A11);
+    result.A00.resize(           dofs.size(),            dofs.size());
+    result.A00.setFrom(se_A00);
+    result.A01.resize(mat.rows()-dofs.size(),            dofs.size());
+    result.A01.setFrom(se_A01);
+    result.A10.resize(           dofs.size(), mat.rows()-dofs.size());
+    result.A10.setFrom(se_A10);
+    result.A11.resize(mat.rows()-dofs.size(), mat.rows()-dofs.size());
+    result.A11.setFrom(se_A11);
 
     return result;
 
@@ -134,13 +134,13 @@ template <class T>
 typename gsScaledDirichletPrec<T>::OpPtr
 gsScaledDirichletPrec<T>::schurComplement( const SparseMatrix& mat, const std::vector<index_t> dofs )
 {
-    std::vector<SparseMatrix> result = matrixBlocks(mat, dofs);
+    Blocks result = matrixBlocks(mat, dofs);
     return gsSumOp<T>::make(
-        makeMatrixOp(result[0].moveToPtr()),
+        makeMatrixOp(result.A00.moveToPtr()),
         gsProductOp<T>::make(
-            makeMatrixOp(result[1].moveToPtr()),
-            makeSparseCholeskySolver(result[3]),
-            makeMatrixOp(result[2].moveToPtr())
+            makeMatrixOp(result.A01.moveToPtr()),
+            makeSparseCholeskySolver(result.A11),
+            makeMatrixOp(result.A10.moveToPtr())
         )
     );
 }

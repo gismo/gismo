@@ -244,17 +244,17 @@ int main(int argc, char *argv[])
         // to show how one can choose an alternative solver.
         {
             std::vector<index_t> skeletonDofs = ietiMapper.skeletonDofs(k);
-            std::vector< gsSparseMatrix<> > matrixBlocks
+            gsScaledDirichletPrec<>::Blocks matrixBlocks
                 = gsScaledDirichletPrec<>::matrixBlocks(localMatrix, skeletonDofs);
 
             prec.addSubdomain(
                prec.restrictJumpMatrix(jumpMatrix, skeletonDofs).moveToPtr(),
                gsSumOp<>::make(
-                    makeMatrixOp(matrixBlocks[0].moveToPtr()),
+                    makeMatrixOp(matrixBlocks.A00.moveToPtr()),
                     gsProductOp<>::make(
-                        makeMatrixOp(matrixBlocks[1].moveToPtr()),
-                        makeSparseCholeskySolver(matrixBlocks[3]),
-                        makeMatrixOp(matrixBlocks[2].moveToPtr())
+                        makeMatrixOp(matrixBlocks.A01.moveToPtr()),
+                        makeSparseCholeskySolver(matrixBlocks.A11),
+                        makeMatrixOp(matrixBlocks.A10.moveToPtr())
                     )
                 )
             );
