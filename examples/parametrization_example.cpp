@@ -34,11 +34,42 @@ void readParsAndPts(const std::string& filename,
 
 template <class T>
 void readPts(const std::string& filename,
-	     gsMatrix<T>& pts)
+             gsMatrix<T>& pts)
 {
     gsFileData<T> fd(filename);
     fd.template getId<gsMatrix<T> >(0, pts);
 }
+
+template <class T>
+typename gsParametrization<T>::uPtr newPeriodicParametrizationOverlap(const gsMesh<T>& mm, const std::string& filenameV0, const std::string& filenameV1,
+                                                                      const std::string& filenameOverlap, const gsOptionList& ol)
+{
+    gsMatrix<real_t> verticesV0, paramsV0, verticesV1, paramsV1;
+    readParsAndPts(filenameV0, paramsV0, verticesV0);
+    readParsAndPts(filenameV1, paramsV1, verticesV1);
+
+    gsFileData<real_t> fd_overlap(filenameOverlap);
+    gsMesh<real_t> overlap = *(fd_overlap.getFirst<gsMesh<real_t> >());
+
+    return typename gsPeriodicParametrizationOverlap<T>::uPtr(new gsPeriodicParametrizationOverlap<T>(mm, verticesV0, paramsV0, verticesV1, paramsV1, overlap, ol));
+
+    // Note: paramsV0 and paramsV1 go out of scope here; that's why gs::PeriodicParametrization<T>::m_paramsV0 and [...]V1 cannot be const-references.
+}
+
+template <class T>
+typename gsParametrization<T>::uPtr newPeriodicParametrizationStitch(const gsMesh<T>& mm, const std::string& filenameV0, const std::string& filenameV1,
+                                                                     const std::string& filenameStitch, const gsOptionList& ol)
+{
+    gsMatrix<real_t> verticesV0, paramsV0, verticesV1, paramsV1;
+    readParsAndPts(filenameV0, paramsV0, verticesV0);
+    readParsAndPts(filenameV1, paramsV1, verticesV1);
+
+    gsMatrix<real_t> stitchVertices;
+    readPts(filenameStitch, stitchVertices);
+
+    return typename gsPeriodicParametrizationStitch<T>::uPtr(new gsPeriodicParametrizationStitch<T>(mm, verticesV0, paramsV0, verticesV1, paramsV1, stitchVertices, ol));
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -100,46 +131,17 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    enum domainOptions {standard, overlap, stitch} domainMethod;
-
-    if( ol.askString("overlap", "").compare("") > 0 )
-	domainMethod = overlap;
-    else if( ol.askString("stitch", "").compare("") > 0 )
-	domainMethod = stitch;
-    else
-	domainMethod = standard;
-
-    gsInfo << "DomainMethod set to " << domainMethod << "." << std::endl;
-
     gsInfo << "creating gsParametrization<real_t>       ";
     stopwatch.restart();
 
     gsParametrization<real_t>::uPtr pm;
 
-    if(domainMethod == overlap || domainMethod == stitch)
-    {
-	gsMatrix<real_t> verticesV0, paramsV0, verticesV1, paramsV1;
-	readParsAndPts(filenameV0, paramsV0, verticesV0);
-	readParsAndPts(filenameV1, paramsV1, verticesV1);
-
-	if(domainMethod == overlap)
-	{
-	    gsFileData<real_t> fd_overlap(filenameOverlap);
-	    gsMesh<real_t> overlap = *(fd_overlap.getFirst<gsMesh<real_t> >());
-
-	    pm = gsPeriodicParametrizationOverlap<real_t>::uPtr(new gsPeriodicParametrizationOverlap<real_t>(*mm, verticesV0, paramsV0, verticesV1, paramsV1, overlap, ol));
-	}
-	else // domainMethod == stitch
-	{
-	    gsMatrix<real_t> stitchVertices;
-	    readPts(filenameStitch, stitchVertices);
-	    pm = gsPeriodicParametrizationStitch<real_t>::uPtr(new gsPeriodicParametrizationStitch<real_t>(*mm, verticesV0, paramsV0, verticesV1, paramsV1, stitchVertices, ol));
-	}
-    }
+    if(ol.askString("overlap", "").compare("") > 0)
+        pm = newPeriodicParametrizationOverlap(*mm, filenameV0, filenameV1, filenameOverlap, ol);
+    else if(ol.askString("stitch", "").compare("") > 0)
+        pm = newPeriodicParametrizationStitch(*mm, filenameV0, filenameV1, filenameStitch, ol);
     else
-    {
-	pm = gsParametrization<real_t>::uPtr(new gsParametrization<real_t>(*mm, ol));
-    }
+        pm = gsParametrization<real_t>::uPtr(new gsParametrization<real_t>(*mm, ol));
 
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
@@ -177,20 +179,21 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    if(domainMethod == overlap || domainMethod == stitch)
-	pm->restrictMatrices(uv, xyz);
+    if((ol.askString("overlap", "").compare("") > 0) ||
+       (ol.askString("stitch", "").compare("") > 0))
+        pm->restrictMatrices(uv, xyz);
 
     if(paraview)
     {
-	gsInfo << "Writing to Paraview." << std::endl;
+        gsInfo << "Writing to Paraview." << std::endl;
 
-	// .pvd with the flat mesh
-	gsWriteParaview(flatMesh, ol.getString("filenameOut"));
+        // .pvd with the flat mesh
+        gsWriteParaview(flatMesh, ol.getString("filenameOut"));
 
-	// .vtk with the vertices coloured according to the parameters
-	// Note: calling gsWriteParaview directly with the uv matrix
-	// would not do, as the vertices are in different order than
-	pm->writeTexturedMesh(ol.getString("filenameOut"));
+        // .vtk with the vertices coloured according to the parameters
+        // Note: calling gsWriteParaview directly with the uv matrix
+        // would not do, as the vertices are in different order than
+        pm->writeTexturedMesh(ol.getString("filenameOut"));
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
@@ -198,11 +201,11 @@ int main(int argc, char *argv[])
 
     if(fitting)
     {
-	gsInfo << "Writing to G+Smo XML." << std::endl;
-	gsFileData<> output;
-	output << uv;
-	output << xyz;
-	output.save(ol.getString("filenameOut"));
+        gsInfo << "Writing to G+Smo XML." << std::endl;
+        gsFileData<> output;
+        output << uv;
+        output << xyz;
+        output.save(ol.getString("filenameOut"));
     }
 
     return 0;
