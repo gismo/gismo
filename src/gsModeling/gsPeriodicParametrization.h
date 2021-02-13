@@ -103,13 +103,10 @@ public:
 	    GISMO_ASSERT(this->m_paramsV0.rows() == 1, "one row expected in paramsV0");
 	    GISMO_ASSERT(this->m_paramsV1.rows() == 1, "one row expected in paramsV1");
 
-	    GISMO_ASSERT(this->m_valuesV0.rows() == 3, "three rows expected in valuesV0");
-	    GISMO_ASSERT(this->m_valuesV1.rows() == 3, "three rows expected in valuesV1");
-
-	    GISMO_ASSERT(this->m_paramsV0.cols() == this->m_valuesV0.cols(),
-			 "paramsV0 and valuesV0 are required to have the same number of cols");
-	    GISMO_ASSERT(this->m_paramsV1.cols() == this->m_valuesV1.cols(),
-			 "paramsV1 and valuesV1 are required to have the same number of cols");
+	    GISMO_ASSERT(this->m_paramsV0.cols() == static_cast<index_t>(m_indicesV0.size()),
+                         "paramsV0 and valuesV0 are required to have the same number of cols");
+	    GISMO_ASSERT(this->m_paramsV1.cols() == static_cast<index_t>(m_indicesV1.size()),
+                         "paramsV1 and valuesV1 are required to have the same number of cols");
 	}
 
     /**

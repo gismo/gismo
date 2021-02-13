@@ -223,24 +223,24 @@ void gsPeriodicParametrization<T>::initParameterPoints()
     for (size_t i = 1; i <= n; i++)
 	this->m_parameterPoints.push_back(Point2D(0, 0, i));
 
-    // save the sizes (as index_t to compare without warnings)
-    index_t v0size = m_indicesV0.size();
-    index_t v1size = m_indicesV1.size();
-    GISMO_ASSERT(v0size == m_valuesV0.cols(), "Different sizes of u0.");
-    GISMO_ASSERT(v1size == m_valuesV1.cols(), "Different sizes of u1.");
+    // Save the sizes as size_t to compare without warnings.
+    size_t v0size = m_paramsV0.cols();
+    size_t v1size = m_paramsV1.cols();
+    GISMO_ASSERT(m_indicesV0.size() == v0size, "Different sizes of u0.");
+    GISMO_ASSERT(m_indicesV1.size() == v1size, "Different sizes of u1.");
     GISMO_ASSERT(v0size + v1size == this->m_mesh.getNumberOfBoundaryVertices(),
-		 "Not prescribing all boundary points.");
+                 "Not prescribing all boundary points.");
 
     size_t numPtsSoFar = n;
     this->m_parameterPoints.resize(n + v0size + v1size);
 
     // Set the parameter values on the v=0 boundary.
-    for(index_t i=0; i<v0size; i++)
-	this->m_parameterPoints[m_indicesV0[i]-1] = Point2D(m_paramsV0(i, 0), 0, numPtsSoFar++);
+    for(size_t i=0; i<v0size; i++)
+	this->m_parameterPoints[m_indicesV0[i]-1] = Point2D(m_paramsV0(0, i), 0, numPtsSoFar++);
 
     // Set the parameter values on the v=1 boundary.
-    for(index_t i=0; i<v1size; i++)
-	this->m_parameterPoints[m_indicesV1[i]-1] = Point2D(m_paramsV1(i, 0), 1, numPtsSoFar++);
+    for(size_t i=0; i<v1size; i++)
+	this->m_parameterPoints[m_indicesV1[i]-1] = Point2D(m_paramsV1(0, i), 1, numPtsSoFar++);
 }
 
 } // namespace gismo
