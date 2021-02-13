@@ -161,18 +161,16 @@ moreover computes the energy minimizing basis functions and represents them as
 matrices \f$ \Psi_k \f$. It then computes
 \f[
       \tilde A_{K+1} = \sum_{k=1}^K \Psi_k A_k \Psi_k^\top
-\f]
-\f[
+      \quad\text{and}\quad
       \tilde B_{K+1} = \sum_{k=1}^K B_k \Psi_k^\top
-\f]
-\f[
+      \quad\text{and}\quad
       \underline{\tilde f}_{K+1} = \sum_{k=1}^K \Psi_k \underline f_k.
 \f]
 
 Instead of directly solving the IETI-saddle point system (*), we solve the
 corresponding Schur complement system
 \f[
-      F \underline \lambda = \underline g
+      F \underline \lambda = \underline g,
 \f]
 where
 \f[
