@@ -168,7 +168,7 @@ SUITE(gsParametrization_test)
 	gsFileData<real_t> fd_v0b("parametrization/powerplant-bottom.xml");
 	gsFileData<real_t> fd_v1b("parametrization/powerplant-top.xml");
 
-	gsFileData<real_t> fd_mesh2("parametrization/powerplant-mesh2.stl");
+	gsFileData<real_t> fd_mesh2("parametrization/powerplant-mesh.stl");
 	gsMesh<real_t>::uPtr mesh2 = fd_mesh2.getFirst<gsMesh<real_t> >();
 
 	gsMatrix<real_t> stitch;
