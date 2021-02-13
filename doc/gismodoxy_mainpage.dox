@@ -15,10 +15,10 @@ The library is licenced under the <a href="https://www.mozilla.org/MPL/2.0" targ
 
 - The list of \subpage Examples.
 
-- The library is partitioned into smaller entities called <a href="usergroup0.html"><b>modules</b></a>. See section <a href="usergroup0.html"><b>\gismo modules</b></a> for an overview of available modules.
+- The library is partitioned into smaller entities called <a href="group__Modules.html"><b>modules</b></a>. See section <a href="group__Modules.html"><b>\gismo modules</b></a> for an overview of available modules.
 
 - Object hierarchies and groups of classes that are related or
-implement the same concept are <a href="usergroup1.html"><b>listed
+implement the same concept are <a href="usergroup0.html"><b>listed
 here.</b></a>
 
 - The full <a href="annotated.html"><b>list of classes</b></a> is available.
