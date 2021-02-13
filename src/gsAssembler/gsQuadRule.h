@@ -130,6 +130,8 @@ public:
     virtual inline void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
                        gsMatrix<T> & nodes, gsVector<T> & weights ) const;
 
+    void mapTo(const gsMatrix<T>& ab, gsMatrix<T> & nodes) const;
+    
     /**\brief Maps a univariate quadrature rule (i.e., points and
      * weights) from the reference interval to an arbitrary interval.
      */

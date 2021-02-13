@@ -147,6 +147,9 @@ public:
         return ElIndex;        
     }
 
+    // Look at gsBasis class for a description
+    gsMatrix<T> elementInSupportOf(index_t j) const;
+    
     /// Returns the number of elements (component wise)
     void numElements_cwise(gsVector<unsigned>& result) const
     {
