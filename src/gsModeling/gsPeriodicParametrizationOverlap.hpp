@@ -104,6 +104,9 @@ void gsPeriodicParametrizationOverlap<T>::constructAndSolveEquationSystem(const 
     size_t numTwins = m_twins.size();
     gsMatrix<T> LHS(N + numTwins, N + numTwins);
     gsMatrix<T> RHS(N + numTwins, 2);
+    // prevent Valgrind warnings
+    LHS.setZero();
+    RHS.setZero();
     std::vector<T> lambdas;
 
     // interior points

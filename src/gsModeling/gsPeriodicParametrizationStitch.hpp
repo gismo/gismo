@@ -134,6 +134,10 @@ void gsPeriodicParametrizationStitch<T>::constructAndSolveEquationSystem(const N
     gsMatrix<T> LHS(N, N);
     gsMatrix<T> RHS(N, 2);
 
+    // prevent Valgrind warnings
+    LHS.setZero();
+    RHS.setZero();
+
     // interior points
     for (size_t i = 0; i < n; i++)
     {
