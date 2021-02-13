@@ -67,7 +67,7 @@ SUITE(gsParametrization_test)
 
 	const real_t eps;
 
-	//gsMesh<real_t>::uPtr mesh;
+	gsMesh<real_t>::uPtr mesh;
 	
 	inputs() : eps(1e-5)
 	{
@@ -83,8 +83,8 @@ SUITE(gsParametrization_test)
 	    // test starts failing, although it uses its own filedata
 	    // and mesh. Why?
 
-	    // gsFileData<real_t> fd_mesh("parametrization/powerplant-mesh.stl");
-	    // mesh = fd_mesh.getFirst<gsMesh<real_t> >();
+	    gsFileData<real_t> fd_mesh("parametrization/powerplant-mesh.stl");
+	    mesh = fd_mesh.getFirst<gsMesh<real_t> >();
 
 	    options.addInt("parametrizationMethod", "parametrizationMethod", 1);
 	}
@@ -109,6 +109,11 @@ SUITE(gsParametrization_test)
 	gsMatrix<real_t> uv  = param.createUVmatrix();
 	gsMatrix<real_t> xyz = param.createXYZmatrix();
 	param.restrictMatrices(uv, xyz);
+
+        CHECK_EQUAL(2,  uv.rows());
+        CHECK_EQUAL(80, uv.cols());
+        CHECK_EQUAL(3,  xyz.rows());
+        CHECK_EQUAL(80, xyz.cols());
 
 	// Compare with pre-computed values.
 	CHECK_CLOSE(0.420668, uv(0, 0), eps);
@@ -184,6 +189,11 @@ SUITE(gsParametrization_test)
 	param.compute();
 	gsMatrix<real_t> uv  = param.createUVmatrix();
 	gsMatrix<real_t> xyz = param.createXYZmatrix();
+
+        CHECK_EQUAL(2,  uv.rows());
+        CHECK_EQUAL(80, uv.cols());
+        CHECK_EQUAL(3,  xyz.rows());
+        CHECK_EQUAL(80, xyz.cols());
 
 	CHECK_CLOSE(0.420668, uv(0, 0), eps);
 	CHECK_CLOSE(0.242996, uv(1, 0), eps);
