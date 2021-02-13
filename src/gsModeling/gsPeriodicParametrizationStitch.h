@@ -120,9 +120,9 @@ public:
                                              const gsOptionList &list = gsParametrization<T>::defaultOptions())
         : gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
         m_stitchIndices(this->indices(stitchVertices))
-        {
-            // Note: m_corrections gets filled later.
-        }
+    {
+        // Note: m_corrections gets filled later.
+    }
 
     /// Computes the periodic parametrization.
     void compute();

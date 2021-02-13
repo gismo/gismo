@@ -1557,7 +1557,7 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix
     for (typename std::vector< gsFace<T>* >::const_iterator it=sl.faces().begin();
          it!=sl.faces().end(); ++it)
     {
-	file << "3 ";
+        file << "3 ";
         for (typename std::vector< gsVertex<T>* >::const_iterator vit= (*it)->vertices.begin();
              vit!=(*it)->vertices.end(); ++vit)
         {
@@ -1572,9 +1572,9 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix
     file << "TEXTURE_COORDINATES parameters 2 float\n";
     for(index_t i=0; i<params.rows(); i++)
     {
-	for(index_t j=0; j<params.cols(); j++)
-	    file << params(i,j) << " ";
-	file << "\n";
+        for(index_t j=0; j<params.cols(); j++)
+            file << params(i,j) << " ";
+        file << "\n";
     }
      
     file.close();

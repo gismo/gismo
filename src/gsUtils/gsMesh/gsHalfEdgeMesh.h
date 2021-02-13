@@ -405,12 +405,12 @@ private:
          * @return number of vertices
          */
         size_t getNumberOfVertices() const
-	{
-	    size_t result = 0;
-	    for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
-		result += it->getNumberOfVertices();
-	    return result;
-	}
+        {
+            size_t result = 0;
+            for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+                result += it->getNumberOfVertices();
+            return result;
+        }
 
         /**
          * @brief Get length
@@ -420,12 +420,12 @@ private:
          * @return length
          */
         T getLength() const
-	{
-	    T result = 0;
-	    for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
-		result += it->getLength();	   
-	    return result;
-	}
+        {
+            T result = 0;
+            for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+                result += it->getLength();         
+            return result;
+        }
 
         /**
          * @brief Get halfedge lengths
@@ -435,15 +435,15 @@ private:
          * @return vector of halfedges
          */
         const std::vector<T> getHalfedgeLengths() const
-	{
-	    std::vector<T> result;
-	    for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
-	    {
-		const std::vector<T> lengthsOneComp = it->getHalfedgeLengths();
-		result.insert(result.end(), lengthsOneComp.begin(), lengthsOneComp.end());
-	    }
-	    return result;
-	}
+        {
+            std::vector<T> result;
+            for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+            {
+                const std::vector<T> lengthsOneComp = it->getHalfedgeLengths();
+                result.insert(result.end(), lengthsOneComp.begin(), lengthsOneComp.end());
+            }
+            return result;
+        }
 
         /**
          * @brief Get list of vertex indices in the chain.
@@ -453,15 +453,15 @@ private:
          * @return list of vertex indices
          */
         const std::list<size_t > getVertexIndices() const
-	{
-	    std::list<size_t> result;
-	    for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
-	    {
-		const std::list<size_t>& indicesOneComp = it->getVertexIndices();
-		result.insert(result.end(), indicesOneComp.begin(), indicesOneComp.end());
-	    }	    
-	    return result;
-	}
+        {
+            std::list<size_t> result;
+            for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+            {
+                const std::list<size_t>& indicesOneComp = it->getVertexIndices();
+                result.insert(result.end(), indicesOneComp.begin(), indicesOneComp.end());
+            }       
+            return result;
+        }
 
         /**
          * @brief Get distance between vertices
@@ -475,15 +475,15 @@ private:
          * @return (shortest) distance between vertices
          */
         T getShortestDistanceBetween(const size_t &i, const size_t &j, T precision) const
-	{
-	    for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
-	    {
-		T dist = it->getShortestDistanceBetween(i, j, precision);
-		if(dist > 0)
-		    return dist;
-	    }
-	    return 0;
-	}
+        {
+            for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+            {
+                T dist = it->getShortestDistanceBetween(i, j, precision);
+                if(dist > 0)
+                    return dist;
+            }
+            return 0;
+        }
 
         /**
          * @brief Get distance between vertices
@@ -498,15 +498,15 @@ private:
          * @return (shortest) distance between i-th and j-th vertex
          */
         T getDistanceBetween(const size_t &i, const size_t &j) const
-	{
-	    for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
-	    {
-		T dist = it->getDistanceBetween(i, j);
-		if(dist > 0)
-		    return dist;
-	    }
-	    return 0;
-	}
+        {
+            for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+            {
+                T dist = it->getDistanceBetween(i, j);
+                if(dist > 0)
+                    return dist;
+            }
+            return 0;
+        }
 
         /**
          * @brief Tells if vertex is contained in boundary chain.
@@ -516,12 +516,12 @@ private:
          * @return TRUE if it is contained and FALSE otherwise
          */
         bool isVertexContained(const size_t &internVertexIndex) const
-	{
-	    for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
-		if(it->isVertexContained(internVertexIndex))
-		    return true;
-	    return false;
-	}
+        {
+            for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+                if(it->isVertexContained(internVertexIndex))
+                    return true;
+            return false;
+        }
 
     private:
         /**
@@ -535,7 +535,7 @@ private:
          */
         const std::list<Halfedge> findNonTwinHalfedges(const std::vector<Halfedge> &allHalfedges);
 
-	std::vector<Chain> m_boundary; ///< boundary chains
+        std::vector<Chain> m_boundary; ///< boundary chains
     };
 
 public:
@@ -700,13 +700,13 @@ public:
     /// Returns the vertex indices of the boundary.
     std::list<size_t> getBoundaryVertexIndices() const
     {
-	return m_boundary.getVertexIndices();
+        return m_boundary.getVertexIndices();
     }
 
     /// Finds the vertex that has the same coordinates (up to a tolerance) as @a vertex.
     size_t findVertex(const typename gsMesh<T>::gsVertexHandle& vertex) const
     {
-	return findVertex(vertex->x(), vertex->y(), vertex->z());
+        return findVertex(vertex->x(), vertex->y(), vertex->z());
     }
 
     /// Finds the vertex that has the coordinates @a x, @a by and @a z (up to a tolerance @a tol).
@@ -715,12 +715,12 @@ public:
     /// Returns the handle to the vertex with index @a globIndex.
     const typename gsMesh<T>::gsVertexHandle &getVertexUnsorted(const size_t globIndex) const
     {
-	return this->m_vertex[globIndex];
+        return this->m_vertex[globIndex];
     }
 
     size_t unsorted(const size_t index) const
     {
-	return m_inverseSorting[index];
+        return m_inverseSorting[index];
     }
 
 private:

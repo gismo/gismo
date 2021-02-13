@@ -99,15 +99,15 @@ public:
           m_paramsV0(paramsV0), m_paramsV1(paramsV1),
           m_indicesV0(this->indices(verticesV0)),
           m_indicesV1(this->indices(verticesV1))
-        {
-            GISMO_ASSERT(this->m_paramsV0.rows() == 1, "one row expected in paramsV0");
-            GISMO_ASSERT(this->m_paramsV1.rows() == 1, "one row expected in paramsV1");
+    {
+        GISMO_ASSERT(this->m_paramsV0.rows() == 1, "one row expected in paramsV0");
+        GISMO_ASSERT(this->m_paramsV1.rows() == 1, "one row expected in paramsV1");
 
-            GISMO_ASSERT(this->m_paramsV0.cols() == static_cast<index_t>(m_indicesV0.size()),
-                         "paramsV0 and valuesV0 are required to have the same number of cols");
-            GISMO_ASSERT(this->m_paramsV1.cols() == static_cast<index_t>(m_indicesV1.size()),
-                         "paramsV1 and valuesV1 are required to have the same number of cols");
-        }
+        GISMO_ASSERT(this->m_paramsV0.cols() == static_cast<index_t>(m_indicesV0.size()),
+                     "paramsV0 and valuesV0 are required to have the same number of cols");
+        GISMO_ASSERT(this->m_paramsV1.cols() == static_cast<index_t>(m_indicesV1.size()),
+                     "paramsV1 and valuesV1 are required to have the same number of cols");
+    }
 
     /**
      * Moves the u-coordinates of parameters outside the

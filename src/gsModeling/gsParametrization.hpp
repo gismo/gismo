@@ -117,7 +117,6 @@ void gsParametrization<T>::calculate(const size_t boundaryMethod,
     constructAndSolveEquationSystem(neighbourhood, n, N);
 }
 
-
 template<class T>
 void gsParametrization<T>::constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
                                                            const size_t n,
