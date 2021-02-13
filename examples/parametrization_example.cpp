@@ -21,8 +21,8 @@ using namespace gismo;
 
 template <class T>
 void readParsAndPts(const std::string& filename,
-		    gsMatrix<T>& pars,
-		    gsMatrix<T>& pts)
+                    gsMatrix<T>& pars,
+                    gsMatrix<T>& pts)
 {
     gsFileData<T> fd(filename);
     // Cf. https://stackoverflow.com/questions/3505713/c-template-compilation-error-expected-primary-expression-before-token
