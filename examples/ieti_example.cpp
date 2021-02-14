@@ -17,6 +17,8 @@
     Author(s): S. Takacs
 */
 
+#include <ctime>
+
 #include <gismo.h>
 
 using namespace gismo;
