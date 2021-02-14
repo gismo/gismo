@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include <gsMultiGrid/gsGridHierarchy.h>
-
 #include <gsNurbs/gsKnotVector.h>
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>

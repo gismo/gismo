@@ -150,23 +150,11 @@ public:
     }
 
     /**
-     * @brief restrictToPatch creats a new PDE object for a single patch \a np. This function is used
-     * in the IETI algorithm
-     * <hr>\b Parameters \n
-     * \b np the patch index
+     * @brief restrictToPatch creats a new PDE object for a single patch \a np.
+     * @param np the patch index
      * @return a pointer to an allocated gsPDE<T> object.
      */
     virtual gsPde<T>* restrictToPatch(unsigned) const{GISMO_NO_IMPLEMENTATION}
-
-    /**
-     * @brief getCoeffForIETI returns for a patch \a np the scaling coefficient in order to make
-     * the IETI method robust (assuming constant material parameters on that patch).
-     * This is PDE dependent and cannot be generalized.
-     * <hr>\b Parameters
-     * \n\b np the patch under consideration
-     * @return the scaling value for IETI
-     */
-    virtual T getCoeffForIETI(unsigned) const {GISMO_NO_IMPLEMENTATION}
 
 protected:
     /// @brief Description of the unknown fields:
