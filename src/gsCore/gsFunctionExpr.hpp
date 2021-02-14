@@ -75,8 +75,7 @@
 #endif
 
 #if defined(GISMO_WITH_CODIPACK)
-#include <gsCoDiPack/exprtk_codi_rf_forward.hpp>
-#include <gsCoDiPack/exprtk_codi_rr_forward.hpp>
+#include <gsCoDiPack/exprtk_codi_forward.hpp>
 #endif
 
 #if defined(GISMO_WITH_UNUM)
@@ -98,8 +97,7 @@
 #endif
 
 #if defined(GISMO_WITH_CODIPACK)
-#include <gsCoDiPack/exprtk_codi_rf_adaptor.hpp>
-#include <gsCoDiPack/exprtk_codi_rr_adaptor.hpp>
+#include <gsCoDiPack/exprtk_codi_adaptor.hpp>
 #endif
 
 #if defined(GISMO_WITH_UNUM)

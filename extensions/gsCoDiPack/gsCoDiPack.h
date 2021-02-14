@@ -24,10 +24,19 @@
 
 namespace codi
 {
+
+#ifndef real_t
 EXTERN_CLASS_TEMPLATE
-ActiveReal<JacobiTape<JacobiTapeTypes<ReverseTapeTypes<double, double, LinearIndexHandler<int> >, ChunkVector> > >;
+ActiveReal<JacobiTape<JacobiTapeTypes<ReverseTapeTypes<real_t, real_t, LinearIndexHandler<int> >, ChunkVector> > >;
 
 EXTERN_CLASS_TEMPLATE
-ActiveReal<ForwardEvaluation<ForwardTapeTypes<double, double> > >;
+ActiveReal<ForwardEvaluation<ForwardTapeTypes<real_t, real_t> > >;
+#else
+EXTERN_CLASS_TEMPLATE
+ActiveReal<JacobiTape<JacobiTapeTypes<ReverseTapeTypes<GISMO_COEFF_TYPE, GISMO_COEFF_TYPE, LinearIndexHandler<int> >, ChunkVector> > >;
+
+EXTERN_CLASS_TEMPLATE
+ActiveReal<ForwardEvaluation<ForwardTapeTypes<GISMO_COEFF_TYPE, GISMO_COEFF_TYPE> > >;
+#endif
 }
 #endif
