@@ -11,6 +11,8 @@
     Author(s): C. Hofreither, S. Takacs
 */
 
+#include <ctime>
+
 #include <gismo.h>
 
 using namespace gismo;
