@@ -30,12 +30,11 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByRefinement(
     const gsOptionList& options,
     index_t levels,
     index_t numberOfKnotsToBeInserted,
-    index_t multiplicityOfKnotsToBeInserted
+    index_t multiplicityOfKnotsToBeInserted,
+    index_t comp
     )
 {
     gsGridHierarchy<T> result;
-    result.m_boundaryConditions = boundaryConditions,
-    result.m_options = options,
     result.m_mBases.resize(levels);
     result.m_transferMatrices.resize(levels-1);
     result.m_mBases[0] = give(mBasis);
@@ -44,10 +43,11 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByRefinement(
         result.m_mBases[i] = result.m_mBases[i-1];
         result.m_mBases[i].uniformRefine_withTransfer(
             result.m_transferMatrices[i-1],
-            result.m_boundaryConditions,
-            result.m_options,
+            boundaryConditions,
+            options,
             numberOfKnotsToBeInserted,
-            multiplicityOfKnotsToBeInserted
+            multiplicityOfKnotsToBeInserted,
+            comp
         );
     }
     return result;
@@ -59,12 +59,11 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
     const gsBoundaryConditions<T>& boundaryConditions,
     const gsOptionList& options,
     index_t levels,
-    index_t degreesOfFreedom
+    index_t degreesOfFreedom,
+    index_t comp
     )
 {
     gsGridHierarchy<T> result;
-    result.m_boundaryConditions = boundaryConditions,
-    result.m_options = options,
 
     result.m_mBases.push_back(give(mBasis));
 
@@ -77,9 +76,10 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
         coarseMBasis.uniformCoarsen_withTransfer(
             transferMatrix,
             boundaryConditions,
-            options
+            options,
+            1,
+            comp
         );
-
 
         index_t newSize = coarseMBasis.totalSize();
         // If the number of dofs could not be decreased, then cancel. However, if only the number

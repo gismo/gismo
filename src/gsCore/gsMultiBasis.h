@@ -345,7 +345,8 @@ public:
     /// grid functions.
     ///
     /// For computing the transfer matrix (but not for refinement), the \a boundaryConditions and
-    /// the \a assemblerOptions have to be provided
+    /// the \a assemblerOptions have to be provided. By deault, the boundary conditions for
+    /// component 0 are chosen. Use the parameter comp to choose another one.
     ///
     /// \sa gsMultiBasis::uniformRefine
     void uniformRefine_withTransfer(
@@ -353,7 +354,8 @@ public:
         const gsBoundaryConditions<T>& boundaryConditions,
         const gsOptionList& assemblerOptions,
         int numKnots = 1,
-        int mul = 1
+        int mul = 1,
+        index_t comp = 0
         );
 
     /// @brief Refine the component \a comp of every basis uniformly
@@ -410,14 +412,16 @@ public:
     /// grid functions.
     ///
     /// For computing the transfer matrix (but not for refinement), the \a boundaryConditions and
-    /// the \a assemblerOptions have to be provided
+    /// the \a assemblerOptions have to be provided. By deault, the boundary conditions for
+    /// component 0 are chosen. Use the parameter comp to choose another one.
     ///
     /// \sa gsMultiBasis::uniformCoarsen
     void uniformCoarsen_withTransfer(
         gsSparseMatrix<T, RowMajor>& transfer,
         const gsBoundaryConditions<T>& boundaryConditions,
         const gsOptionList& assemblerOptions,
-        int numKnots = 1
+        int numKnots = 1,
+        index_t comp = 0
         );
 
     /// @brief Returns the basis that corresponds to the component
