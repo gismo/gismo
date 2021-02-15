@@ -1,13 +1,9 @@
 /** @file gsVisitorLinpLap.h
-
 @brief LinpLap equation element visitor.
-
 This file is part of the G+Smo library.
-
 This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 Author(s):
 */
 
@@ -34,10 +30,11 @@ namespace gismo
 
 		/** \brief Constructor for gsVisitorLinpLap.
 		*/
-		gsVisitorLinpLap(const gsPde<T> & pde, index_t sub_ = 1)
+		gsVisitorLinpLap(const gsPde<T> & pde, index_t subdiv_ = 1, bool prec_ = 0)
 		{
 			pde_ptr = static_cast<const gsLinpLapPde<T>*>(&pde);
-			sub = sub_;
+			subdiv = subdiv_;
+			prec = prec_;
 		}
 
 		void initialize(const gsBasis<T> & basis,
@@ -51,9 +48,9 @@ namespace gismo
 			// Setup Quadrature
 			//rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
 			//TODO: make this configurable
-			rule = gsSubdividedRule<T, gsQuadRule<T> >(gsQuadrature::get(basis, options), 1);
+			rule = gsSubdividedRule<T, gsQuadRule<T> >(gsQuadrature::get(basis, options), subdiv);
 
-													  // Set Geometry evaluation flags
+			// Set Geometry evaluation flags
 			md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
 		}
 
@@ -99,6 +96,24 @@ namespace gismo
 				w_(i, 0) = pde_ptr->w(actives(i), 0);
 			}
 
+			real_t eps= pde_ptr->eps;
+
+			if (prec == 1)
+			{
+				real_t sum = 0;
+				for (index_t k = 0; k < quWeights.rows(); ++k)
+				{
+					//const T weight = quWeights[k] * md.measure(k);
+					transformGradients(md, k, bGrads, physGrad);
+					gsMatrix<T> wGrad = physGrad * w_;
+					sum += (wGrad.transpose() * wGrad).value();
+				}
+				if (sum/(quWeights.rows()) < 0.01)
+				{
+					eps = 0.1;
+				}
+			}
+
 			for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
 			{
 				// Multiply weight by the geometry measure
@@ -111,9 +126,9 @@ namespace gismo
 				gsMatrix<T> wGrad = physGrad * w_;
 				gsMatrix<T> wVal = bVals.col(k).transpose() * w_;
 
-				const T a = pow(pde_ptr->eps * pde_ptr->eps + (wGrad.transpose() * wGrad).value(), (pde_ptr->p - 2) / 2);
-				
-				localJ += weight * (pow(pde_ptr->eps * pde_ptr->eps + (wGrad.transpose() * wGrad).value(), (pde_ptr->p) / 2) / (pde_ptr->p) - (rhsVals.col(k).transpose()*wVal).value());
+				const T a = pow(eps * eps + (wGrad.transpose() * wGrad).value(), (pde_ptr->p - 2) / 2);
+
+				localJ += weight * (pow(eps * eps + (wGrad.transpose() * wGrad).value(), (pde_ptr->p) / 2) / (pde_ptr->p) - (rhsVals.col(k).transpose()*wVal).value());
 				localRhs.noalias() += weight * (bVals.col(k) * rhsVals.col(k).transpose());
 				localMat.noalias() += weight * a * (physGrad.transpose() * physGrad);
 			}
@@ -136,7 +151,8 @@ namespace gismo
 
 	protected:
 		//number of subdivisions for quadrature
-		index_t sub;
+		index_t subdiv;
+		bool prec;
 
 	protected:
 		// Pointer to the pde data
@@ -167,4 +183,3 @@ namespace gismo
 
 
 } // namespace gismo
-

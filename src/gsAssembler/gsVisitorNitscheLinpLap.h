@@ -31,8 +31,8 @@ namespace gismo
 	{
 	public:
 
-		gsVisitorNitscheLinpLap(const gsPde<T> & pde, const boundary_condition<T> & s)
-			: dirdata_ptr(s.function().get()), side(s.side())
+		gsVisitorNitscheLinpLap(const gsPde<T> & pde, const boundary_condition<T> & s, index_t subdiv_ = 1)
+			: dirdata_ptr(s.function().get()), side(s.side()), subdiv(subdiv_)
 		{
 			const gsLinpLapPde<T> * pde_ptr = static_cast<const gsLinpLapPde<T>*>(&pde);
 
@@ -64,7 +64,7 @@ namespace gismo
 			numQuadNodes[dir] = 1;
 
 			// Setup Quadrature
-			rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
+			rule = gsSubdividedRule<T, gsQuadRule<T> >(gsGaussRule<T>(numQuadNodes), subdiv);// harmless slicing occurs here
 
 												// Set Geometry evaluation flags
 			md.flags = NEED_VALUE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM;
@@ -78,7 +78,7 @@ namespace gismo
 			// Setup Quadrature
 			//rule = gsQuadrature::get(basis, options, side.direction()); // harmless slicing occurs here
 			//TODO: make this configurable
-			rule = gsSubdividedRule<T, gsQuadRule<T> >(gsQuadrature::get(basis, options, side.direction()), 1);
+			rule = gsSubdividedRule<T, gsQuadRule<T> >(gsQuadrature::get(basis, options, side.direction()), subdiv);
 
 			// Set Geometry evaluation flags
 			md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
@@ -214,6 +214,8 @@ namespace gismo
 
 		// Side
 		boxSide side;
+
+		index_t subdiv;
 
 	private:
 		// Basis values

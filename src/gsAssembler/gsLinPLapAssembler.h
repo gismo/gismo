@@ -1,13 +1,9 @@
 /** @file gsLinpLapAssembler.h
-
 @brief Provides assembler for the linearized p-Laplace equation.
-
 This file is part of the G+Smo library.
-
 This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 Author(s):
 */
 
@@ -27,14 +23,11 @@ namespace gismo
 
 	/** @brief
 	Implementation of an (multiple right-hand side) linearized p-Laplace assembler.
-
 	The LinpLap equation: \f$-\Delta\mathbf{u}=\mathbf{f} \f$
-
 	It sets up an assembler and assembles the system patch wise and combines
 	the patch-local stiffness matrices into a global system by various methods
 	(see gismo::gsInterfaceStrategy). It can also enforce Dirichlet boundary
 	conditions in various ways (see gismo::gsDirichletStrategy).
-
 	\ingroup Assembler
 	*/
 	template <class T>
@@ -43,26 +36,30 @@ namespace gismo
 	public:
 		typedef gsAssembler<T> Base;
 
+		typedef typename gsBoundaryConditions<T>::bcContainer bcContainer;
+
 	public:
 
 		gsLinpLapAssembler()
 		{ }
 
 		/** @brief Main Constructor of the assembler object.
-
 		\param[in] pde A boundary value Poisson problem
 		\param[in] bases a multi-basis that contains patch-wise bases
 		*/
 		gsLinpLapAssembler(const gsLinpLapPde<T>          & pde,
-			const gsMultiBasis<T>          & bases)
+			const gsMultiBasis<T>          & bases,
+			index_t						   subdiv_ = 1,
+			bool						   prec_ = 0)
 		{
 			Base::initialize(pde, bases, m_options);
 			J = 0;
+			subdiv = subdiv_;
+			prec = prec_;
 		}
 
 
 		/** @brief Main Constructor of the assembler object.
-
 		\param[in] pde A boundary value LinpLap problem
 		\param[in] bases a multi-basis that contains patch-wise bases
 		\param[in] dirStrategy option for the treatment of Dirichlet boundary
@@ -71,25 +68,27 @@ namespace gismo
 		gsLinpLapAssembler(const gsLinpLapPde<T>          & pde,
 			const gsMultiBasis<T>          & bases,
 			dirichlet::strategy           dirStrategy,
-			iFace::strategy               intStrategy = iFace::glue)
+			iFace::strategy               intStrategy = iFace::glue,
+			index_t						  subdiv_ = 1,
+			bool						  prec_ = 0)
 		{
 			m_options.setInt("DirichletStrategy", dirStrategy);
 			m_options.setInt("InterfaceStrategy", intStrategy);
 
 			Base::initialize(pde, bases, m_options);
 			J = 0;
+			subdiv = subdiv_;
+			prec = prec_;
 		}
 
 		/** @brief
 		Constructor of the assembler object.
-
 		\param[in] patches is a gsMultiPatch object describing the geometry.
 		\param[in] basis a multi-basis that contains patch-wise bases
 		\param[in] bconditions is a gsBoundaryConditions object that holds all boundary conditions.
 		\param[in] rhs is the right-hand side of the linearized p-Laplace equation, \f$\mathbf{f}\f$.
 		\param[in] dirStrategy option for the treatment of Dirichlet boundary
 		\param[in] intStrategy option for the treatment of patch interfaces
-
 		\ingroup Assembler
 		*/
 		gsLinpLapAssembler(gsMultiPatch<T> const         & patches,
@@ -100,7 +99,9 @@ namespace gismo
 			const T &p,
 			const gsMatrix<T> &w,
 			dirichlet::strategy           dirStrategy = dirichlet::elimination,
-			iFace::strategy               intStrategy = iFace::glue)
+			iFace::strategy               intStrategy = iFace::glue,
+			index_t						  subdiv_ = 1,
+			bool						  prec_ = 0)
 		{
 			m_options.setInt("DirichletStrategy", dirStrategy);
 			m_options.setInt("InterfaceStrategy", intStrategy);
@@ -108,6 +109,20 @@ namespace gismo
 			typename gsPde<T>::Ptr pde(new gsLinpLapPde<T>(patches, bconditions, rhs, eps, p, w));
 			Base::initialize(pde, basis, m_options);
 			J = 0;
+			subdiv = subdiv_;
+			prec = prec_;
+		}
+
+		void initialize(const gsPde<T>           & pde,
+			const gsMultiBasis<T>    & bases,
+			const gsOptionList & opt = Base::defaultOptions(),
+			index_t subdiv_ = 1,
+			bool prec_ = 0)
+		{
+			typename gsPde<T>::Ptr _pde = memory::make_shared_not_owned(&pde);
+			Base::initialize(_pde, bases, opt);
+			subdiv = subdiv_;
+			prec = prec_;
 		}
 
 		virtual gsAssembler<T>* clone() const
@@ -126,6 +141,7 @@ namespace gismo
 		// Main assembly routine
 		virtual void assemble();
 
+
 	protected:
 
 		template<class ElementVisitor>
@@ -139,7 +155,18 @@ namespace gismo
 			}
 		}
 
-		
+		template<class BElementVisitor>
+		void push1(const bcContainer & BCs)
+		{
+			for (typename bcContainer::const_iterator it = BCs.begin(); it != BCs.end(); ++it)
+			{
+				BElementVisitor visitor(*m_pde_ptr, *it, subdiv);
+				//Assemble (fill m_matrix and m_rhs) contribution from this BC
+				Base::apply(visitor, it->patch(), it->side());
+			}
+		}
+
+
 		template<class ElementVisitor>
 		void apply1(ElementVisitor & visitor,
 			size_t patchIndex,
@@ -196,6 +223,8 @@ namespace gismo
 	protected:
 
 		T J;
+		index_t subdiv;
+		bool prec;
 
 		// Members from gsAssembler
 		using Base::m_pde_ptr;
@@ -229,7 +258,7 @@ namespace gismo
 		// m_system.setZero(); //<< this call leads to a quite significant performance degrade!
 		J = 0;
 		// Assemble volume integrals
-		this->push1<gsVisitorLinpLap<T> >(gsVisitorLinpLap<T>(*m_pde_ptr));
+		push1<gsVisitorLinpLap<T> >(gsVisitorLinpLap<T>(*m_pde_ptr, subdiv, prec));
 
 		// Enforce Neumann boundary conditions
 		Base::template push<gsVisitorNeumann<T> >(m_pde_ptr->bc().neumannSides());
@@ -240,7 +269,7 @@ namespace gismo
 			Base::penalizeDirichletDofs();
 			break;
 		case dirichlet::nitsche:
-			Base::template push<gsVisitorNitscheLinpLap<T> >(m_pde_ptr->bc().dirichletSides());
+			push1<gsVisitorNitscheLinpLap<T> >(m_pde_ptr->bc().dirichletSides());
 			break;
 		default:
 			break;
