@@ -169,6 +169,13 @@ public:
 
 protected:
 
+    index_t _numQuads(const gsKnotVector<T> knots) const
+    {
+        index_t ndof = (m_deg + 1)*knots.numElements() - (m_reg+1)*(knots.numElements()-1);
+        ndof = std::ceil(ndof/2.0);
+        return ndof;
+    }
+
     /**
      * @brief      Initializes the knot vector for the patch-rule implementation
      *
@@ -213,6 +220,7 @@ private:
     const index_t m_deg,m_reg;
     const bool m_over;
     const short_t m_fixDir;
+    mutable index_t m_nQuad;
 
     std::vector<gsVector<T> > m_nodes;
     std::vector<gsVector<T> > m_weights;
