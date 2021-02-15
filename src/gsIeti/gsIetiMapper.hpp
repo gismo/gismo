@@ -32,6 +32,8 @@ void gsIetiMapper<T>::init(
         const Matrix& fixedPart
     )
 {
+    GISMO_ASSERT( dofMapperGlobal.componentsSize() == 1, "gsIetiMapper<T>::init: "
+        "Got only 1 multi basis, so a gsDofMapper with only 1 component is expected." );
     const index_t nPatches = dofMapperGlobal.numPatches();
     m_multiBasis = &multiBasis;
     m_dofMapperGlobal = give(dofMapperGlobal);
