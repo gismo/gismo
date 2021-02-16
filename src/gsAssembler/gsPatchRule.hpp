@@ -51,6 +51,7 @@ gsPatchRule<T>::gsPatchRule(const gsBasis<T> & basis,
     // Loop over dimensions of the basis and store the nodes and weights for each dimension
     for (size_t d = 0; d != m_dim; d++)
     {
+        m_end = m_basis->support().col(1);
         if (short_t(d)==m_fixDir && m_fixDir!=-1)
         {
             m_nodes[d].resize(2);
@@ -131,7 +132,7 @@ void gsPatchRule<T>::mapTo( const gsVector<T>& lower,
     {
         elNodes[d].resize(m_nodes[d].size());
         elWeights[d].resize(m_weights[d].size());
-        for (auto it = m_maps[d].lower_bound(lower[d]); it!=m_maps[d].upper_bound(upper[d]); it++, k++) // lower_bound = geq, upper_bound= greather than
+        for (auto it = m_maps[d].lower_bound(lower[d]); it!= ( upper[d]==m_end[d] ? m_maps[d].upper_bound(upper[d]) : m_maps[d].lower_bound(upper[d]) ); it++, k++) // lower_bound = geq, upper_bound= greather than
         {
             elNodes[d].at(k) = it->first;
             elWeights[d].at(k) = it->second;

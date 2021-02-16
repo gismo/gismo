@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 
     // Mixed Quadrature
     gsOptionList lobattoOpts;
-    lobattoOpts.addInt   ("quRule","Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",gsQuadrature::rule::GaussLegendre);
+    lobattoOpts.addInt   ("quRule","Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",gsQuadrature::rule::GaussLobatto);
     lobattoOpts.addReal("quA", "Number of quadrature points: quA*deg + quB", 0.0  );
     lobattoOpts.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
     lobattoOpts.addReal("quAb", "Number of quadrature points: quA*deg + quB", 1.0  );

@@ -250,6 +250,8 @@ private:
     std::vector<gsVector<T> > m_nodes;
     std::vector<gsVector<T> > m_weights;
 
+    mutable gsVector<T> m_end;
+
     mutable typename gsSparseSolver<T>::QR m_solver;
 
     mutable size_t m_dim;
