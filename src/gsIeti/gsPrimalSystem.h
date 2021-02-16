@@ -88,11 +88,15 @@ public:
 
     /// @brief Incorporates the given constraints in the local system
     ///
-    /// @param[in]     primalConstraints  Primal constraints; the given vectors
-    ///                                   make up the matrix C
-    /// @param[in,out] jumpMatrix         Jump matrix B
-    /// @param[in,out] localMatrix        Local matrix A
-    /// @param[in,out] localRhs           Local right-hand-side f
+    /// @param[in]  primalConstraints     Primal constraints; the given vectors
+    ///                                   make up the matrix \f$ C_k \f$
+    /// @param[in]  jumpMatrix            Jump matrix \f$ B_k \f$
+    /// @param[in]  localMatrix           Local matrix \f$ A_k \f$
+    /// @param[in]  localRhs              Local right-hand-side \f$ f_k \f$
+    /// @param[out] modifiedJumpMatrix    Jump matrix \f$ \tilde B_k \f$
+    /// @param[out] modifiedLocalMatrix   Local matrix \f$ \tilde A_k \f$
+    /// @param[out] modifiedLocalRhs      Local right-hand-side \f$ \tilde f_k \f$
+    /// @param[out] rhsForBasis           Right-hand-side for basis computation
     ///
     /// The output is for the local matrix,
     ///  \f[
@@ -110,40 +114,45 @@ public:
     ///  \f]
     /// and the right-hand side
     ///  \f[
-    ///      \underline{\tilde f}_k =
+    ///      \tilde f_k =
     ///      \begin{pmatrix}
-    ///           \underline f_k \\ 0
+    ///           f_k \\ 0
     ///      \end{pmatrix}
     ///  \f]
     ///
     static void incorporateConstraints(
         const std::vector<SparseVector>& primalConstraints,
-        JumpMatrix& jumpMatrix,
-        SparseMatrix& localMatrix,
-        Matrix& localRhs
+        const JumpMatrix& jumpMatrix,
+        const SparseMatrix& localMatrix,
+        const Matrix& localRhs,
+        JumpMatrix& modifiedJumpMatrix,
+        SparseMatrix& modifiedLocalMatrix,
+        Matrix& modifiedLocalRhs,
+        Matrix& rhsForBasis
     );
 
     /// @brief Returns the matrix representation of the energy minimizing primal basis
     ///
-    /// @param  localSaddlePointSolver  Solver that realizes \f$ \tilde{A}^{-1} \f$
+    /// @param  localSaddlePointSolver  Solver that realizes \f$ \tilde{A}_k^{-1} \f$
+    /// @param  rhsForBasis             The right-hand side required for the computation
+    ///                                 of the basis as provided by \ref incorporateConstraints
     /// @param  primalDofIndices        Vector, that contains for every primal
     ///                                 constraint the index of the respective
     ///                                 primal dof
     /// @param  nPrimalDofs             The total number of primal dofs
-    ///
     static gsSparseMatrix<T> primalBasis(
         OpPtr localSaddlePointSolver,
+        const Matrix& rhsForBasis,
         const std::vector<index_t>& primalDofIndices,
         index_t nPrimalDofs
     );
 
     /// @brief Adds contributions for a patch to the data hold in the class
     ///
-    /// @param[in,out]  jumpMatrix    Jump matrix B_k
-    /// @param[in,out]  localMatrix   Local matrix A_k
-    /// @param[in,out]  localRhs      Local right-hand-side f_k
-    /// @param[in]      primalBasis   Matrix representation of the primal basis
-    ///
+    /// @param[in,out]  jumpMatrix        Jump matrix \f$ B_k \f$
+    /// @param[in,out]  localMatrix       Local stiffness matrix \f$ A_k \f$
+    /// @param[in,out]  localRhs          Local right-hand side \f$ f_k \f$
+    /// @param[in]      primalBasis       Matrix representation of the primal basis
     void addContribution(
         const JumpMatrix& jumpMatrix,
         const SparseMatrix& localMatrix,
@@ -152,34 +161,48 @@ public:
     );
 
     /// @brief Convenience function for handling the primal constraints
-
+    ///
     /// @param[in]     primalConstraints  Primal constraints; the given vectors
-    ///                                   make up the matrix C_k
+    ///                                   make up the matrix \f$ C_k \f$
     /// @param[in]     primalDofIndices   Vector, that contains for every primal
     ///                                   constraint the index of the respective
     ///                                   primal dof
-    /// @param[in,out] jumpMatrix         Jump matrix B_k
-    /// @param[in,out] localMatrix        Local matrix A_k
-    /// @param[in,out] localRhs           Local right-hand-side f_k
+    /// @param[in,out] jumpMatrix         Jump matrix \f$ B_k \f$
+    /// @param[in,out] localMatrix        Local stiffness matrix \f$ A_k \f$
+    /// @param[in,out] localRhs           Local right-hand side \f$ f_k \f$
     ///
+    /// The implementation is basically:
+    /// @code{.cpp}
+    ///     gsPrimalSystem<T>::incorporateConstraints(
+    ///        primalConstraints,jumpMatrix,localMatrix,localRhs,
+    ///        modifiedJumpMatrix,modifiedLocalMatrix,modifiedLocalRhs,rhsForBasis
+    ///     );
+    ///     this->addContribution(
+    ///         jumpMatrix, localMatrix, localRhs,
+    ///         gsPrimalSystem<T>::primalBasis(
+    ///             makeSparseLUSolver(modifiedLocalMatrix),
+    ///             rhsForBasis, primalDofIndices, this->nPrimalDofs()
+    ///         )
+    ///     );
+    ///     jumpMatrix   = give(modifiedJumpMatrix);
+    ///     localMatrix  = give(modifiedLocalMatrix);
+    ///     localRhs     = give(modifiedLocalRhs);
+    /// @endcode
     void handleConstraints(
         const std::vector<SparseVector>& primalConstraints,
         const std::vector<index_t>& primalDofIndices,
         JumpMatrix& jumpMatrix,
         SparseMatrix& localMatrix,
         Matrix& localRhs
-    )
-    {
-        incorporateConstraints(primalConstraints,jumpMatrix,localMatrix,localRhs);
-        addContribution(jumpMatrix,localMatrix,localRhs,
-            primalBasis(makeSparseLUSolver(localMatrix),primalDofIndices,nPrimalDofs())
-        );
-    }
+    );
 
     /// @brief  Distributes the given solution for K+1 subdomains to the K patches
     ///
     /// @param    sol   The solution, first for the K patches, followed by the
-    ///                 contribution for the primal dofs
+    ///                 contribution for the primal dofs. The solutions for the K
+    ///                 patches is expected to have first the values for all patch-local
+    ///                 degrees of freedom, possibly followed by degrees of freedom
+    ///                 from Lagrange-mutlipliers used for enforcing primal constraints.
     /// @returns        The solution for the K patches
     std::vector<Matrix> distributePrimalSolution( std::vector<Matrix> sol );
 
@@ -187,7 +210,7 @@ public:
     JumpMatrix&                           jumpMatrix()        { return m_jumpMatrix;         }
     const JumpMatrix&                     jumpMatrix() const  { return m_jumpMatrix;         }
 
-    /// @brief Returns the local matrix for the primal problem
+    /// @brief Returns the local stiffness matrix for the primal problem
     SparseMatrix&                         localMatrix()       { return m_localMatrix;        }
     const SparseMatrix&                   localMatrix() const { return m_localMatrix;        }
 

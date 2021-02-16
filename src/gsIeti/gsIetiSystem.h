@@ -35,7 +35,7 @@ namespace gismo
  *  The corresponding Schur complement is
  *
  *  \f[
- *       \sum_{i=k}^N   \tilde B_k   \tilde A_k^{-1}  \tilde B_k^\top
+ *       \sum_{k=1}^N   \tilde B_k   \tilde A_k^{-1}  \tilde B_k^\top
  *  \f]
  *
  *  For a standard IETI-dp setup, \f$ \tilde A_k \f$ and \f$ \tilde B_k \f$ are
@@ -86,7 +86,7 @@ public:
     /// Subdomain might be, e.g., a patch-local problem or the primal problem
     ///
     /// @param jumpMatrix       The associated jump matrix
-    /// @param localMatrixOp    The operator that represents the local problem
+    /// @param localMatrixOp    The operator that represents the local stiffness matrix
     /// @param localRhs         The contribution to the right-hand side
     /// @param localSolverOp    The operator that represents a solver for the
     ///                         local problem. This parameter is optional; the
@@ -98,7 +98,7 @@ public:
     JumpMatrixPtr&       jumpMatrix(index_t i)           { return m_jumpMatrices[i];   }
     const JumpMatrixPtr& jumpMatrix(index_t i) const     { return m_jumpMatrices[i];   }
 
-    /// Access the local system matrix (as \a gsLinearOperator)
+    /// Access the local stiffness matrix (as \a gsLinearOperator)
     OpPtr&               localMatrixOp(index_t i)        { return m_localMatrixOps[i]; }
     const OpPtr&         localMatrixOp(index_t i) const  { return m_localMatrixOps[i]; }
 
@@ -110,7 +110,7 @@ public:
     OpPtr&               localSolverOp(index_t i)        { return m_localSolverOps[i]; }
     const OpPtr&         localSolverOp(index_t i) const  { return m_localSolverOps[i]; }
 
-    /// Returns the number of Lagrange multipliers
+    /// @brief Returns the number of Lagrange multipliers
     ///
     /// This requires that at least one jump matrix has been set.
     index_t nLagrangeMultipliers() const
@@ -161,8 +161,8 @@ private:
     void setupSparseLUSolvers() const;                ///< Setup solvers if not provided by user
 
     std::vector<JumpMatrixPtr>  m_jumpMatrices;       ///< Stores the jump matrices
-    std::vector<OpPtr>          m_localMatrixOps;     ///< Stores the local matrix ops \f$ \tilde A_j \f$
-    std::vector<Matrix>         m_localRhs;           ///< Stores the local right-hand-sides
+    std::vector<OpPtr>          m_localMatrixOps;     ///< Stores the local matrix ops \f$ \tilde A_k \f$
+    std::vector<Matrix>         m_localRhs;           ///< Stores the local right-hand sides
     mutable std::vector<OpPtr>  m_localSolverOps;     ///< Stores the local solvers
 };
 

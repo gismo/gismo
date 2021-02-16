@@ -24,7 +24,7 @@ namespace gismo
  *  Its formal representation is
  *
  *  \f[
- *       \sum_{k=1}^K  \hat B_k  D_k  S_k D_k \hat B_k^\top
+ *       \sum_{k=1}^K  \hat B_k  D_k^{-1}  S_k D_k^{-1} \hat B_k^\top
  *  \f]
  *
  *  It is a preconditioner for the Schur complement of the IETI system (as represented
@@ -98,11 +98,12 @@ public:
     ///
     /// Subdomain might be, e.g., a patch-local problem or the primal problem
     ///
-    /// @param jumpMatrix     The associated jump matrix
-    /// @param localSchurOp   The operator that represents the local Schur
-    ///                       complement
+    /// @param jumpMatrix    The associated jump matrix
+    /// @param localSchurOp  The operator that represents the local Schur
+    ///                      complement
     ///
-    /// @note These tow parameters can also be provided as \a std::pair
+    /// @note These two parameters can also be provided as \a std::pair as provided
+    ///       by \ref restrictToSkeleton
     void addSubdomain( JumpMatrixPtr jumpMatrix, OpPtr localSchurOp )
     {
         m_jumpMatrices.push_back(give(jumpMatrix));
@@ -110,59 +111,96 @@ public:
         m_localScaling.push_back(Matrix());
     }
 
-    /// @briefs Adds a new subdomain
+    // Adds a new subdomain
+    // Documented in comment above
     void addSubdomain( std::pair<JumpMatrix,OpPtr> data )
-    {
-        addSubdomain(data.first.moveToPtr(), give(data.second));
-    }
+    { addSubdomain(data.first.moveToPtr(), give(data.second)); }
 
-    /// Access the jump matrix
+    /// @brief Access the jump matrix
     JumpMatrixPtr&       jumpMatrix(index_t i)           { return m_jumpMatrices[i];  }
     const JumpMatrixPtr& jumpMatrix(index_t i) const     { return m_jumpMatrices[i];  }
 
-    /// Access the local Schur complements operator
+    /// @brief Access the local Schur complements operator
     OpPtr&               localSchurOps(index_t i)        { return m_localSchurOps[i]; }
     const OpPtr&         localSchurOps(index_t i) const  { return m_localSchurOps[i]; }
 
-    /// Access the local scaling matrix (as row vector)
+    /// @brief Access the local scaling matrix (as row vector)
     Matrix&              localScaling(index_t i)         { return m_localScaling[i];  }
     const Matrix&        localScaling(index_t i) const   { return m_localScaling[i];  }
 
     /// @brief Extracts the skeleton dofs from the jump matrix
     ///
+    /// @param jumpMatrix    The jump matrix
+    ///
     /// This means that a dof is considered to be on the skeleton iff at least
     /// one Lagrange multiplier acts on it. This might lead to other results
     /// than the function that is provided by \a gsIetiMapper.
-    static gsSortedVector<index_t> skeletonDofs( const JumpMatrix& jm );
+    static gsSortedVector<index_t> skeletonDofs( const JumpMatrix& jumpMatrix );
 
-    /// Restricts the jump matrix to the given dofs (just takes the
-    /// corresponding cols)
-    static JumpMatrix restrictJumpMatrix( const JumpMatrix& jm, const std::vector<index_t> dofs );
+    /// @brief Restricts the jump matrix to the given dofs
+    ///
+    /// @param jumpMatrix    The jump matrix
+    /// @param dofs          The corresponding degrees of freedom (usually skeleton dofs)
+    static JumpMatrix restrictJumpMatrix( const JumpMatrix& jumpMatrix, const std::vector<index_t> dofs );
 
     /// Data type that contains four sparse matrices that make
     /// up the blocks, stored in the members A00, A01, A10 and A11.
     struct Blocks { SparseMatrix A00, A01, A10, A11; };
 
-    /// Computes the matrix blocks with respect to the given dofs
+    /// @brief Computes the matrix blocks with respect to the given dofs
+    ///
+    /// @param localMatrix   The local stiffness matrix
+    /// @param dofs          The corresponding degrees of freedom (usually skeleton dofs)
     ///
     /// If 0 corresponds to the list of dofs and 1 remains to the
     /// others, this function returns the blocks A00, A10, A01, A11 of A
-    static Blocks matrixBlocks( const SparseMatrix & mat, const std::vector<index_t> dofs );
+    static Blocks matrixBlocks( const SparseMatrix& localMatrix, const std::vector<index_t> dofs );
 
-    /// Computes the Schur complement with respect to the given dofs
+    /// @brief Computes the Schur complement with respect to the block A11 of matrixBlocks
     ///
-    /// Uses sparse Cholesky solver
-    static OpPtr schurComplement( const SparseMatrix & mat, const std::vector<index_t> dofs );
+    /// @param matrixBlocks  The blocks of the stiffess matrix as returned by \ref matrixBlocks
+    /// @param solver        A \a gsLinearOperator that realizes the inverse of `matrixBlocks.A11`
+    static OpPtr schurComplement( Blocks matrixBlocks, OpPtr solver );
 
-    /// Combines \ref restrictJumpMatrix and \ref schurComplement
+    /// @brief Computes the Schur complement of the matrix with respect to the given dofs
+    /// using a sparse Cholesky solver.
+    ///
+    /// @param localMatrix   The local stiffness matrix
+    /// @param dofs          The degrees of freedom for which the Schur complement is taken
+    ///
+    /// The implementation is basically:
+    /// @code{.cpp}
+    ///    auto blocks = gsScaledDirichletPrec<T>::matrixBlocks(mat, dofs);
+    ///    return gsScaledDirichletPrec<T>::schurComplement( blocks, makeSparseCholeskySolver(blocks.A11) );
+    /// @endcode
+    static OpPtr schurComplement( const SparseMatrix& localMatrix, const std::vector<index_t> dofs )
+    {
+        Blocks blocks = matrixBlocks(localMatrix, dofs);
+        return schurComplement( blocks, makeSparseCholeskySolver(blocks.A11) );
+    }
+
+    /// Restricts the jump matrix and the local stiffness matrix to the skeleton
+    ///
+    /// @param jumpMatrix    The jump matrix
+    /// @param localMatrix   The local stiffness matrix
+    /// @param dofs          The degrees of freedom on the skeleton
+    ///
+    /// The implementation is basically:
+    /// @code{.cpp}
+    ///    return std::pair<gsSparseMatrix<T,RowMajor>,typename gsLinearOperator<T>::Ptr>(
+    ///        gsScaledDirichletPrec<T>::restrictJumpMatrix( jumpMatrix, dofs ),
+    ///        gsScaledDirichletPrec<T>::schurComplement( localMatrix, dofs )
+    ///     );
+    /// @endcode
     static std::pair<JumpMatrix,OpPtr> restrictToSkeleton(
-        const JumpMatrix& jm,
-        const SparseMatrix& mat,
+        const JumpMatrix& jumpMatrix,
+        const SparseMatrix& localMatrix,
         const std::vector<index_t>& dofs
     )
-    { return std::pair<JumpMatrix,OpPtr>( restrictJumpMatrix( jm, dofs ), schurComplement( mat, dofs ) ); }
+    { return std::pair<JumpMatrix,OpPtr>(restrictJumpMatrix(jumpMatrix,dofs),schurComplement(localMatrix,dofs)); }
 
     /// @brief Returns the number of Lagrange multipliers.
+    ///
     /// This requires that at least one subdomain was defined.
     index_t nLagrangeMultipliers() const
     {

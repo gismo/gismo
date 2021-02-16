@@ -26,42 +26,53 @@ gsPrimalSystem<T>::gsPrimalSystem(index_t nPrimalDofs)
 template <class T>
 void gsPrimalSystem<T>::incorporateConstraints(
         const std::vector<SparseVector>& primalConstraints,
-        JumpMatrix& jumpMatrix,
-        SparseMatrix& localMatrix,
-        Matrix& localRhs
+        const JumpMatrix& jumpMatrix,
+        const SparseMatrix& localMatrix,
+        const Matrix& localRhs,
+        JumpMatrix& modifiedJumpMatrix,
+        SparseMatrix& modifiedLocalMatrix,
+        Matrix& modifiedLocalRhs,
+        Matrix& rhsForBasis
     )
 {
     const index_t localDofs = localMatrix.rows();
     const index_t nrPrimalConstraints = primalConstraints.size();
     if (nrPrimalConstraints==0) return;
 
-    // TODO: consider doing this using sparse entries
-    localMatrix.conservativeResize(localDofs+nrPrimalConstraints, localDofs+nrPrimalConstraints);
+    gsSparseEntries<T> seLocalMatrix;
+    seLocalMatrix.reserve( localMatrix.nonZeros() + nrPrimalConstraints * localDofs );
+
+    for (index_t i=0; i<localDofs; ++i)
+        for (typename SparseMatrix::InnerIterator it(localMatrix,i); it; ++it)
+            seLocalMatrix.add(it.row(), it.col(), it.value());
 
     for (index_t i=0; i<nrPrimalConstraints; ++i)
-    {
-        //localMatrix.block(localDofs+i,0,1,localDofs) = primalConstraints[i];
-        //localMatrix.block(0,localDofs+i,localDofs,1) = primalConstraints[i].transpose();
         for (typename SparseVector::InnerIterator it(primalConstraints[i]); it; ++it)
         {
-            localMatrix(it.row(), localDofs+i) = it.value();
-            localMatrix(localDofs+i, it.row()) = it.value();
+            seLocalMatrix.add(it.row(), localDofs+i, it.value());
+            seLocalMatrix.add(localDofs+i, it.row(), it.value());
         }
-    }
 
-    localMatrix.makeCompressed();
+    modifiedLocalMatrix.clear();
+    modifiedLocalMatrix.resize(localDofs+nrPrimalConstraints, localDofs+nrPrimalConstraints);
+    modifiedLocalMatrix.setFrom(seLocalMatrix);
+    modifiedLocalMatrix.makeCompressed();
 
     GISMO_ASSERT( localRhs.rows() == localDofs,
         "gsPrimalSystem::incorporateConstraint: Right-hand side does not have the expected number of columns;");
 
-    localRhs.conservativeResize(localDofs+nrPrimalConstraints, Eigen::NoChange);
-    localRhs.bottomRows(nrPrimalConstraints).setZero();
+    modifiedLocalRhs.setZero(localDofs+nrPrimalConstraints, localRhs.cols());
+    modifiedLocalRhs.topRows(localDofs) = localRhs;
 
     GISMO_ASSERT( jumpMatrix.cols() == localDofs,
         "gsPrimalSystem::incorporateConstraint: Jump matrix does not have the expected number of columns;");
 
-    jumpMatrix.conservativeResize(jumpMatrix.rows(), localDofs+nrPrimalConstraints);
-    jumpMatrix.makeCompressed();
+    modifiedJumpMatrix = jumpMatrix;
+    modifiedJumpMatrix.conservativeResize(jumpMatrix.rows(), localDofs+nrPrimalConstraints);
+
+    rhsForBasis.setZero(localDofs+nrPrimalConstraints,nrPrimalConstraints);
+    for (index_t i=0; i<nrPrimalConstraints; ++i)
+        rhsForBasis(localDofs+i,i) = 1;
 
 }
 
@@ -69,6 +80,7 @@ template <class T>
 typename gsPrimalSystem<T>::SparseMatrix
 gsPrimalSystem<T>::primalBasis(
         OpPtr localSaddlePointSolver,
+        const Matrix& rhsForBasis,
         const std::vector<index_t>& primalDofIndices,
         index_t nPrimalDofs
     )
@@ -85,24 +97,18 @@ gsPrimalSystem<T>::primalBasis(
 
     if (nPrimalDofs==0) return result;
 
-    Matrix id;
-    id.setZero(localDofs+nrPrimalConstraints,nrPrimalConstraints);
-
-    for (index_t i=0; i<nrPrimalConstraints; ++i)
-    {
-        GISMO_ASSERT( primalDofIndices[i]>=0 && primalDofIndices[i]<nPrimalDofs,
-            "gsPrimalSystem::primalBasis: Invalid index.");
-        id(localDofs+i,i) = 1;
-    }
-
     Matrix tmp;
-    localSaddlePointSolver->apply(id, tmp);
+    localSaddlePointSolver->apply(rhsForBasis, tmp);
 
     gsSparseEntries<T> se_result;
     se_result.reserve(localDofs*nrPrimalConstraints);
     for (index_t i=0; i<localDofs; ++i)
         for (index_t j=0; j<nrPrimalConstraints; ++j)
+        {
+            GISMO_ASSERT( primalDofIndices[j]>=0 && primalDofIndices[j]<nPrimalDofs,
+                "gsPrimalSystem::primalBasis: Invalid index.");
             se_result.add(i,primalDofIndices[j],tmp(i,j));
+        }
 
     result.setFrom(se_result);
 
@@ -123,11 +129,39 @@ void gsPrimalSystem<T>::addContribution(
     GISMO_ASSERT( primalBasis.cols() == m_jumpMatrix.cols(),
         "gsPrimalSystem::incorporate: The given problem size does not match the stored primal problem size. "
         "Forgot to call gsPrimalSystem::init()?" );
-    const index_t sz = primalBasis.rows();
-    m_localMatrix     += primalBasis.transpose() * localMatrix.block(0,0,sz,sz) * primalBasis;
-    m_localRhs        += primalBasis.transpose() * localRhs.topRows(sz);
-    m_jumpMatrix      += gsSparseMatrix<T,RowMajor>(jumpMatrix.leftCols(sz) * primalBasis);
+
+    m_localMatrix     += primalBasis.transpose() * localMatrix * primalBasis;
+    m_localRhs        += primalBasis.transpose() * localRhs;
+    m_jumpMatrix      += JumpMatrix(jumpMatrix * primalBasis);
     m_primalBases.push_back(give(primalBasis));
+}
+
+template <class T>
+void gsPrimalSystem<T>::handleConstraints(
+        const std::vector<SparseVector>& primalConstraints,
+        const std::vector<index_t>& primalDofIndices,
+        JumpMatrix& jumpMatrix,
+        SparseMatrix& localMatrix,
+        Matrix& localRhs
+    )
+{
+    JumpMatrix modifiedJumpMatrix;
+    SparseMatrix modifiedLocalMatrix;
+    Matrix modifiedLocalRhs, rhsForBasis;
+
+    incorporateConstraints(primalConstraints,jumpMatrix,localMatrix,localRhs,
+        modifiedJumpMatrix,modifiedLocalMatrix,modifiedLocalRhs,rhsForBasis);
+
+    addContribution(
+        jumpMatrix, localMatrix, localRhs,
+        primalBasis( makeSparseLUSolver(modifiedLocalMatrix),
+            rhsForBasis, primalDofIndices, nPrimalDofs()
+        )
+    );
+
+    jumpMatrix   = give(modifiedJumpMatrix);
+    localMatrix  = give(modifiedLocalMatrix);
+    localRhs     = give(modifiedLocalRhs);
 }
 
 template <class T>

@@ -244,45 +244,51 @@ int main(int argc, char *argv[])
         // This can be done using gsScaledDirichletPrec<>::restrictToSkeleton
         // as in ieti_example. Here, we call the underlying commands directly
         // to show how one can choose an alternative solver.
-        {
-            std::vector<index_t> skeletonDofs = ietiMapper.skeletonDofs(k);
-            gsScaledDirichletPrec<>::Blocks matrixBlocks
-                = gsScaledDirichletPrec<>::matrixBlocks(localMatrix, skeletonDofs);
-            matrixBlocks.A01 *= -1;
-            prec.addSubdomain(
-               prec.restrictJumpMatrix(jumpMatrix, skeletonDofs).moveToPtr(),
-               gsSumOp<>::make(
-                    makeMatrixOp(matrixBlocks.A00.moveToPtr()),
-                    gsProductOp<>::make(
-                        makeMatrixOp(matrixBlocks.A01.moveToPtr()),
-                        makeSparseCholeskySolver(matrixBlocks.A11),
-                        makeMatrixOp(matrixBlocks.A10.moveToPtr())
-                    )
-                )
-            );
-        }
+        std::vector<index_t> skeletonDofs = ietiMapper.skeletonDofs(k);
+
+        gsScaledDirichletPrec<>::Blocks blocks
+            = gsScaledDirichletPrec<>::matrixBlocks(localMatrix, skeletonDofs);
+
+        prec.addSubdomain(
+            prec.restrictJumpMatrix(jumpMatrix, skeletonDofs).moveToPtr(),
+            gsScaledDirichletPrec<>::schurComplement( blocks, makeSparseCholeskySolver(blocks.A11) )
+        );
 
         // Now, we handle the primal cosntraits.
         //
         // This can be done using primal.handleConstraints as in ieti_example.
         // Here, we call the underlying commands directly to show how one can
         // choose an alternative solver.
-        primal.incorporateConstraints(ietiMapper.primalConstraints(k),jumpMatrix,localMatrix,localRhs);
-        gsLinearOperator<>::Ptr localSolver = makeSparseLUSolver(localMatrix);
-        primal.addContribution(jumpMatrix,localMatrix,localRhs,
-            gsPrimalSystem<>::primalBasis(localSolver,ietiMapper.primalDofIndices(k),primal.nPrimalDofs())
+        gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix;
+        gsSparseMatrix<>                 modifiedLocalMatrix;
+        gsMatrix<>                       modifiedLocalRhs, rhsForBasis;
+
+        gsPrimalSystem<>::incorporateConstraints(
+            ietiMapper.primalConstraints(k),
+            jumpMatrix,localMatrix,localRhs,
+            modifiedJumpMatrix,modifiedLocalMatrix,modifiedLocalRhs,
+            rhsForBasis
+        );
+
+        gsLinearOperator<>::Ptr localSolver = makeSparseLUSolver(modifiedLocalMatrix);
+
+        primal.addContribution(
+            jumpMatrix, localMatrix, localRhs,
+            gsPrimalSystem<>::primalBasis(
+                localSolver, rhsForBasis, ietiMapper.primalDofIndices(k), primal.nPrimalDofs()
+            )
         );
 
         // Register the local solver to the block preconditioner. We use
         // a sparse LU solver since the local saddle point problem is not
         // positive definite.
-        bdPrec->addOperator(k,k,makeSparseLUSolver(localMatrix));
+        bdPrec->addOperator(k,k,localSolver);
 
         // Add the patch to the Ieti system
         ieti.addSubdomain(
-            jumpMatrix.moveToPtr(),
-            makeMatrixOp(localMatrix.moveToPtr()),
-            give(localRhs)
+            modifiedJumpMatrix.moveToPtr(),
+            makeMatrixOp(modifiedLocalMatrix.moveToPtr()),
+            give(modifiedLocalRhs)
         );
     }
 

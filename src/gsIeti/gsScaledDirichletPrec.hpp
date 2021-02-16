@@ -132,16 +132,15 @@ gsScaledDirichletPrec<T>::matrixBlocks( const SparseMatrix& mat, const std::vect
 
 template <class T>
 typename gsScaledDirichletPrec<T>::OpPtr
-gsScaledDirichletPrec<T>::schurComplement( const SparseMatrix& mat, const std::vector<index_t> dofs )
+gsScaledDirichletPrec<T>::schurComplement( Blocks matrixBlocks, OpPtr solver )
 {
-    Blocks result = matrixBlocks(mat, dofs);
-    result.A01 *= -1;
+    matrixBlocks.A01 *= -1;
     return gsSumOp<T>::make(
-        makeMatrixOp(result.A00.moveToPtr()),
+        makeMatrixOp(matrixBlocks.A00.moveToPtr()),
         gsProductOp<T>::make(
-            makeMatrixOp(result.A01.moveToPtr()),
-            makeSparseCholeskySolver(result.A11),
-            makeMatrixOp(result.A10.moveToPtr())
+            makeMatrixOp(matrixBlocks.A01.moveToPtr()),
+            give(solver),
+            makeMatrixOp(matrixBlocks.A10.moveToPtr())
         )
     );
 }

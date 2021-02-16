@@ -68,7 +68,7 @@ public:
         gsDofMapper dofMapperGlobal,
         const Matrix& fixedPart
     )
-    { init(multiBasis, dofMapperGlobal, fixedPart); }
+    { init(multiBasis, give(dofMapperGlobal), fixedPart); }
 
     /// @brief Init the ieti mapper after default construction
     ///
@@ -117,7 +117,7 @@ public:
     /// @param geo             \a gsMultiPatch object describing the geometry
     /// @param d               The dimension of the interfaces to be considered:
     ///                        d=1 yields edge averages, d=2 yields face averages
-    void interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, const short_t d);
+    void interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, short_t d);
 
     /// @brief With this function, the caller can register more primal constraints
     ///
@@ -132,7 +132,7 @@ public:
     /// @brief Returns a list of dofs that are (on the coarse level) coupled
     ///
     /// @param patch   Number of the patch
-    std::vector<index_t> skeletonDofs( const index_t patch ) const;
+    std::vector<index_t> skeletonDofs( index_t patch ) const;
 
 public:
     /// @brief Returns the number of Lagrange multipliers.
@@ -150,23 +150,23 @@ public:
     ///
     /// These vectors form the matrix \f$ C_k \f$ in the local saddle point
     /// system, see  \a gsPrimalSystem
-    const std::vector<SparseVector> & primalConstraints(const index_t k) const   { return m_primalConstraints[k];       }
+    const std::vector<SparseVector> & primalConstraints(index_t k) const   { return m_primalConstraints[k];       }
 
     /// @brief Returns the indices of the primal dofs that are associated to
     /// the primal constraints for the given patch
-    const std::vector<index_t> & primalDofIndices(const index_t k) const         { return m_primalDofIndices[k];        }
+    const std::vector<index_t> & primalDofIndices(index_t k) const         { return m_primalDofIndices[k];        }
 
     /// @brief Returns the jump matrix \f$ B_k \f$ for the given patch
-    const JumpMatrix& jumpMatrix(const index_t k) const                          { return m_jumpMatrices[k];            }
+    const JumpMatrix& jumpMatrix(index_t k) const                          { return m_jumpMatrices[k];            }
 
     /// @brief The global dof mapper
-    const gsDofMapper& dofMapperGlobal() const                                   { return m_dofMapperGlobal;            }
+    const gsDofMapper& dofMapperGlobal() const                             { return m_dofMapperGlobal;            }
 
     /// @brief The dof mapper for the given patch
-    const gsDofMapper& dofMapperLocal(const index_t k) const                     { return m_dofMapperLocal[k];          }
+    const gsDofMapper& dofMapperLocal(index_t k) const                     { return m_dofMapperLocal[k];          }
 
     /// @brief The function values for the eliminated dofs on the given patch
-    const Matrix& fixedPart(const index_t k) const                               { return m_fixedPart[k];               }
+    const Matrix& fixedPart(index_t k) const                               { return m_fixedPart[k];               }
 
 private:
 
