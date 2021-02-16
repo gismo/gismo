@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
     std::string primals("c");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
+    bool calcEigenvalues = false;
     std::string fn;
     bool plot = false;
 
@@ -48,7 +49,8 @@ int main(int argc, char *argv[])
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
     cmd.addString("c", "Primals",               "Primal constraints (c=corners, e=edges, f=faces)", primals);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
-    cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
+    cmd.addInt   ("",  "Solver.MaxIterations",  "Maximum iterations for linear solver", maxIterations);
+    cmd.addSwitch("",  "Solver.CalcEigenvalues","Estimate eigenvalues based on Lanczos", calcEigenvalues);
     cmd.addString("" , "fn",                    "Write solution and used options to file", fn);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
@@ -379,9 +381,8 @@ int main(int argc, char *argv[])
 
     // This is the main cg iteration
     //! [Solve]
-    gsConjugateGradient<>( ieti.schurComplement(), prec.preconditioner() )
-        .setOptions( opt.getGroup("Solver") )
-        .solveDetailed( rhsForSchur, lambda, errorHistory );
+    gsConjugateGradient<> PCG( ieti.schurComplement(), prec.preconditioner() );
+    PCG.setOptions( opt.getGroup("Solver") ).solveDetailed( rhsForSchur, lambda, errorHistory );
     //! [Solve]
 
     gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
@@ -408,6 +409,9 @@ int main(int argc, char *argv[])
         gsInfo << errorHistory.transpose() << "\n\n";
     else
         gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
+
+    if (calcEigenvalues)
+        gsInfo << "Estimated condition number: " << PCG.getConditionNumber() << "\n";
 
     if (!fn.empty())
     {
