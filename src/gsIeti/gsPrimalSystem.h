@@ -122,12 +122,11 @@ public:
     ///
     static void incorporateConstraints(
         const std::vector<SparseVector>& primalConstraints,
-        const JumpMatrix& jumpMatrix,
+        bool eliminatePointwiseConstraints,
         const SparseMatrix& localMatrix,
-        const Matrix& localRhs,
-        JumpMatrix& modifiedJumpMatrix,
         SparseMatrix& modifiedLocalMatrix,
-        Matrix& modifiedLocalRhs,
+        SparseMatrix& localEmbedding,
+        SparseMatrix& embeddingForBasis,
         Matrix& rhsForBasis
     );
 
@@ -142,6 +141,7 @@ public:
     /// @param  nPrimalDofs             The total number of primal dofs
     static gsSparseMatrix<T> primalBasis(
         OpPtr localSaddlePointSolver,
+        const SparseMatrix& embeddingForBasis,
         const Matrix& rhsForBasis,
         const std::vector<index_t>& primalDofIndices,
         index_t nPrimalDofs
@@ -153,11 +153,14 @@ public:
     /// @param  localMatrix       Local stiffness matrix \f$ A_k \f$
     /// @param  localRhs          Local right-hand side \f$ f_k \f$
     /// @param  primalBasis       Matrix representation of the primal basis
+    /// @param  embedding         The map \f$ \tilde u_k \f$ to \f$ u_k \f$; if not
+    ///                           provided, defaulted to (possibly rectangular) identity
     void addContribution(
         const JumpMatrix& jumpMatrix,
         const SparseMatrix& localMatrix,
         const Matrix& localRhs,
-        SparseMatrix primalBasis
+        SparseMatrix primalBasis,
+        OpPtr embedding = OpPtr()
     );
 
     /// @brief Convenience function for handling the primal constraints
@@ -173,20 +176,7 @@ public:
     ///
     /// The implementation is basically:
     /// @code{.cpp}
-    ///     gsPrimalSystem<T>::incorporateConstraints(
-    ///        primalConstraints,jumpMatrix,localMatrix,localRhs,
-    ///        modifiedJumpMatrix,modifiedLocalMatrix,modifiedLocalRhs,rhsForBasis
-    ///     );
-    ///     this->addContribution(
-    ///         jumpMatrix, localMatrix, localRhs,
-    ///         gsPrimalSystem<T>::primalBasis(
-    ///             makeSparseLUSolver(modifiedLocalMatrix),
-    ///             rhsForBasis, primalDofIndices, this->nPrimalDofs()
-    ///         )
-    ///     );
-    ///     jumpMatrix   = give(modifiedJumpMatrix);
-    ///     localMatrix  = give(modifiedLocalMatrix);
-    ///     localRhs     = give(modifiedLocalRhs);
+    ///     //TODO
     /// @endcode
     void handleConstraints(
         const std::vector<SparseVector>& primalConstraints,
@@ -219,13 +209,21 @@ public:
     const Matrix&                         localRhs() const    { return m_localRhs;           }
 
     /// @brief Returns the size of the primal problem (number of primal dofs)
-    index_t nPrimalDofs() const                               { return m_localMatrix.rows(); }
+    index_t nPrimalDofs() const                               { return m_localMatrix.rows();            }
+
+    /// @brief TODO
+    index_t eliminatePointwiseConstraints() const             { return m_eliminatePointwiseConstraints; }
+
+    /// @brief TODO
+    void setEliminatePointwiseConstraints(bool v)             { m_eliminatePointwiseConstraints = v;    }
 
 private:
     JumpMatrix                  m_jumpMatrix;   ///< The jump matrix for the primal problem
     SparseMatrix                m_localMatrix;  ///< The overall matrix for the primal problem
     Matrix                      m_localRhs;     ///< The right-hand side for the primal problem
     std::vector<SparseMatrix>   m_primalBases;  ///< The bases for the primal dofs on the patches
+    std::vector<OpPtr>          m_embeddings;   ///< For each patch, the map \f$ \tilde u_k \f$ to \f$ u_k \f$
+    bool                        m_eliminatePointwiseConstraints; //TODO
 };
 
 } // namespace gismo

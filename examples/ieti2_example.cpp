@@ -259,14 +259,18 @@ int main(int argc, char *argv[])
         // This can be done using primal.handleConstraints as in ieti_example.
         // Here, we call the underlying commands directly to show how one can
         // choose an alternative solver.
-        gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix;
-        gsSparseMatrix<>                 modifiedLocalMatrix;
-        gsMatrix<>                       modifiedLocalRhs, rhsForBasis;
+        gsSparseMatrix<>  modifiedLocalMatrix, localEmbedding, embeddingForBasis;
+        gsMatrix<>        rhsForBasis;
+
+        const bool eliminatePointwiseDofs = true;
 
         gsPrimalSystem<>::incorporateConstraints(
             ietiMapper.primalConstraints(k),
-            jumpMatrix,localMatrix,localRhs,
-            modifiedJumpMatrix,modifiedLocalMatrix,modifiedLocalRhs,
+            eliminatePointwiseDofs,
+            localMatrix,
+            modifiedLocalMatrix,
+            localEmbedding,
+            embeddingForBasis,
             rhsForBasis
         );
 
@@ -275,9 +279,12 @@ int main(int argc, char *argv[])
         primal.addContribution(
             jumpMatrix, localMatrix, localRhs,
             gsPrimalSystem<>::primalBasis(
-                localSolver, rhsForBasis, ietiMapper.primalDofIndices(k), primal.nPrimalDofs()
+                localSolver, embeddingForBasis, rhsForBasis, ietiMapper.primalDofIndices(k), primal.nPrimalDofs()
             )
         );
+        gsMatrix<>                       modifiedLocalRhs     = localEmbedding.transpose() * localRhs;
+        gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix   = jumpMatrix * localEmbedding;
+
 
         // Register the local solver to the block preconditioner. We use
         // a sparse LU solver since the local saddle point problem is not

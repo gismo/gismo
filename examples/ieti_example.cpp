@@ -34,6 +34,7 @@ int main(int argc, char *argv[])
     index_t degree = 2;
     std::string boundaryConditions("d");
     std::string primals("c");
+    bool eliminateCorners = false;
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
     bool calcEigenvalues = false;
@@ -48,6 +49,7 @@ int main(int argc, char *argv[])
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
     cmd.addString("c", "Primals",               "Primal constraints (c=corners, e=edges, f=faces)", primals);
+    cmd.addSwitch("e", "EliminateCorners",      "Eliminate corners (if they are primals)", eliminateCorners);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Maximum iterations for linear solver", maxIterations);
     cmd.addSwitch("",  "Solver.CalcEigenvalues","Estimate eigenvalues based on Lanczos", calcEigenvalues);
@@ -237,6 +239,8 @@ int main(int argc, char *argv[])
 
     // Setup the primal system, which needs to know the number of primal dofs.
     gsPrimalSystem<> primal(ietiMapper.nPrimalDofs());
+    if (eliminateCorners)
+        primal.setEliminatePointwiseConstraints(true);
     //! [Setup]
 
     //! [Assemble]
