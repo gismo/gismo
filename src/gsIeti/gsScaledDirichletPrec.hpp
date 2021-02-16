@@ -79,7 +79,7 @@ gsScaledDirichletPrec<T>::matrixBlocks( const SparseMatrix& mat, const std::vect
     se_A10.reserve( 2 * mat.nonZeros() * dofs.size() / mat.rows() );
     se_A11.reserve( mat.nonZeros() );
     for (index_t i=0; i<mat.outerSize(); ++i)
-        for (typename gsSparseMatrix<T>::InnerIterator it(mat, i); it; ++it)
+        for (typename SparseMatrix::InnerIterator it(mat, i); it; ++it)
         {
             if (reverse[it.row()] > 0 && reverse[it.col()] > 0)
             {

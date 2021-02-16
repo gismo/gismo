@@ -42,12 +42,11 @@ void gsPrimalSystem<T>::incorporateConstraints(
     {
         //localMatrix.block(localDofs+i,0,1,localDofs) = primalConstraints[i];
         //localMatrix.block(0,localDofs+i,localDofs,1) = primalConstraints[i].transpose();
-        for (index_t j=0; j<primalConstraints[i].outerSize(); ++j)
-            for (typename SparseVector::InnerIterator it(primalConstraints[i], j); it; ++it)
-            {
-                localMatrix(it.row(), localDofs+i) = it.value();
-                localMatrix(localDofs+i, it.row()) = it.value();
-            }
+        for (typename SparseVector::InnerIterator it(primalConstraints[i]); it; ++it)
+        {
+            localMatrix(it.row(), localDofs+i) = it.value();
+            localMatrix(localDofs+i, it.row()) = it.value();
+        }
     }
 
     localMatrix.makeCompressed();
