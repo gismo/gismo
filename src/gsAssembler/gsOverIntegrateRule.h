@@ -114,7 +114,7 @@ public:
             {
                 m_interior[d].mapTo( lower[d], upper[d], tmp, elWeights[d]);
                 GISMO_ASSERT(tmp.rows()==1,"Dimension of the nodes is wrong!");
-                elNodes[d] = tmp;
+                elNodes[d] = tmp.transpose();
             }
         }
         this->computeTensorProductRule_into(elNodes,elWeights,nodes,weights);

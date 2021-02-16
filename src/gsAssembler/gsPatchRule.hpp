@@ -230,8 +230,6 @@ gsKnotVector<T> gsPatchRule<T>::_init(const gsBSplineBasis<T> * Bbasis) const
     index_t rmin = *std::min_element(multiplicities.begin(), multiplicities.end());
     index_t rdiff = (m_deg-m_reg)-rmin ;
 
-    m_nQuad = _numQuads(knots);
-
     // Increase order and regularity
     if (pdiff>0)
         knots.degreeIncrease(pdiff);
