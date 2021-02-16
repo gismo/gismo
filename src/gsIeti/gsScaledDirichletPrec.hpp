@@ -110,7 +110,7 @@ gsScaledDirichletPrec<T>::matrixBlocks( const SparseMatrix& mat, const std::vect
                 se_A11.add(
                     -reverse[it.row()]-1,
                     -reverse[it.col()]-1,
-                    -it.value() // Since we need a minus in the Schur complement
+                    it.value()
                 );
             }
         }
@@ -139,7 +139,7 @@ gsScaledDirichletPrec<T>::schurComplement( const SparseMatrix& mat, const std::v
         makeMatrixOp(result.A00.moveToPtr()),
         gsProductOp<T>::make(
             makeMatrixOp(result.A01.moveToPtr()),
-            makeSparseCholeskySolver(result.A11),
+            makeSparseCholeskySolver(-result.A11),
             makeMatrixOp(result.A10.moveToPtr())
         )
     );

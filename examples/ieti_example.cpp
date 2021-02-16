@@ -446,7 +446,7 @@ int main(int argc, char *argv[])
         ev.writeParaview( u_sol, G, "ieti_result" );
         //gsFileManager::open("ieti_result.pvd");
     }
-        if (!plot&&fn.empty())
+    if (!plot&&fn.empty())
     {
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution or --fn to write solution to xml file.\n";

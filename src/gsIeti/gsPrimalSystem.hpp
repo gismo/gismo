@@ -35,6 +35,7 @@ void gsPrimalSystem<T>::incorporateConstraints(
     const index_t nrPrimalConstraints = primalConstraints.size();
     if (nrPrimalConstraints==0) return;
 
+    // TODO: consider doing this using sparse entries
     localMatrix.conservativeResize(localDofs+nrPrimalConstraints, localDofs+nrPrimalConstraints);
 
     for (index_t i=0; i<nrPrimalConstraints; ++i)
@@ -98,9 +99,13 @@ gsPrimalSystem<T>::primalBasis(
     Matrix tmp;
     localSaddlePointSolver->apply(id, tmp);
 
+    gsSparseEntries<T> se_result;
+    se_result.resevre(localDofs*nrPrimalConstraints);
     for (index_t i=0; i<localDofs; ++i)
         for (index_t j=0; j<nrPrimalConstraints; ++j)
-            result(i,primalDofIndices[j]) = tmp(i,j);
+            result_se.push_back(i,primalDofIndices[j],tmp(i,j));
+
+    result.setFrom(se_result);
 
     return result;
 }

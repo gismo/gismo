@@ -179,15 +179,18 @@ gsSparseVector<T> gsIetiMapper<T>::assembleAverage(
         gsConstantFunction<T>(1,geo.targetDim())
     );
 
-    gsSparseVector<T> constraint( dm.freeSize() );
+    gsSparseEntries<T> constraint_se;
+    constraint_se.reserve( dm.freeSize() );
     const index_t sz = moments.size();
     GISMO_ASSERT( sz == indices.size(), "Internal error." );
     for (index_t i=0; i<sz; ++i)
     {
         const index_t idx = dm.index( indices(i,0), 0 );
         if (dm.is_free_index(idx))
-            constraint[idx] = moments(i,0);
+            constraint_se.push_back(idx,0,moments(i,0));
     }
+    gsSparseVector<T> constraint( dm.freeSize() );
+    constraint.setFrom( constraint_se );
     return constraint;
 
 }
@@ -334,9 +337,9 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
     }
 
     // Compute the jump matrices
-    m_jumpMatrices.clear();
+    std::vector< gsSparseEntries<T> > jumpMatrices_se(nPatches);
     for (index_t i=0; i<nPatches; ++i)
-        m_jumpMatrices.push_back(JumpMatrix(numLagrangeMult, m_dofMapperLocal[i].freeSize()));
+        jumpMatrices_se[i].reserve( math::sqrt( m_dofMapperLocal[i].freeSize() ) );
 
     index_t multiplier = 0;
     for (index_t i=0; i<coupledSize; ++i)
@@ -353,14 +356,21 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
                 const index_t patch2 = coupling[i][j2].first;
                 const index_t localIndex2 = coupling[i][j2].second;
                 const index_t localMappedIndex2 = m_dofMapperLocal[patch2].index(localIndex2,0);
-                m_jumpMatrices[patch1](multiplier,localMappedIndex1) = (T)1;
-                m_jumpMatrices[patch2](multiplier,localMappedIndex2) = (T)-1;
+                jumpMatrices_se[patch1].push_back(multiplier,localMappedIndex1,(T)1);
+                jumpMatrices_se[patch2].push_back(multiplier,localMappedIndex2,(T)-1);
                 ++multiplier;
             }
         }
     }
     GISMO_ASSERT( multiplier == numLagrangeMult, "gsIetiMapper::computeJumpMatrices: Internal error: "
         << multiplier << "!=" << numLagrangeMult );
+
+    m_jumpMatrices.clear();
+    for (index_t i=0; i<nPatches; ++i)
+    {
+        m_jumpMatrices.push_back(JumpMatrix(numLagrangeMult, m_dofMapperLocal[i].freeSize()));
+        m_jumpMatrices[i].setFrom(jumpMatrices_se[i]);
+    }
 
 }
 
