@@ -217,7 +217,6 @@ public:
             gsKnotVector<real_t> kv_plus(0,1,0,p+1,p-1-m_r); // p,r+1 //-1 bc r+1
             gsBSplineBasis<> basis_plus(kv_plus);
 
-
             if (basis_1.numElements() <= basis_2.numElements()) //
                 for (size_t i = basis_1.degree()+1; i < basis_1.knots().size() - (basis_1.degree()+1); i += basis_1.knots().multiplicityIndex(i))
                     basis_plus.insertKnot(basis_1.knot(i),p-1-m_r);

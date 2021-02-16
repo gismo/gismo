@@ -228,7 +228,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::plotParaview(gsField<> &solField_inte
 {
 
     std::string fn = "G1Biharmonic";
-    index_t npts = 1000;
+    index_t npts = 100000;
     gsParaviewCollection collection2(fn);
     std::string fileName2;
 

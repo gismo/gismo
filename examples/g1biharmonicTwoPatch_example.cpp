@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>sol2der ("-64*pi^2*(cos(8*pi*y) - 1)*cos(8*pi*x)",
                              "-64*pi^2*(cos(8*pi*x) - 1)*cos(8*pi*y)",
                              " 64*pi^2*sin(8*pi*x)*sin(8*pi*y)", 2);
-*/
+
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
@@ -57,6 +57,15 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
+*/
+    gsFunctionExpr<> source  ("pi*pi*pi*pi*(4*cos(pi*x)*cos(pi*y) - cos(pi*x) - cos(pi*y))",2);
+    gsFunctionExpr<> laplace ("-1*pi*pi*(2*cos(pi*x)*cos(pi*y) - cos(pi*x) - cos(pi*y))",2);
+    gsFunctionExpr<> solVal("(cos(pi*x) - 1) * (cos(pi*y) - 1)",2);
+    gsFunctionExpr<>sol1der ("-1*pi*(cos(pi*y) - 1)*sin(pi*x)",
+                             "-1*pi*(cos(pi*x) - 1)*sin(pi*y)",2);
+    gsFunctionExpr<>sol2der ("-1*pi^2*(cos(pi*y) - 1)*cos(pi*x)",
+                             "-1*pi^2*(cos(pi*x) - 1)*cos(pi*y)",
+                             " 1*pi^2*sin(pi*x)*sin(pi*y)", 2);
 /*
     gsFunctionExpr<> source  ("0",2);
     gsFunctionExpr<> laplace ("0",2);
@@ -68,14 +77,14 @@ int main(int argc, char *argv[])
                              "0", 2);
 
     // Solution of Marios paper
-    gsFunctionExpr<> source  ("-1*cos(x/2)*sin(y/2)",2);
-    gsFunctionExpr<> laplace ("2*cos(x/2)*sin(y/2)",2);
-    gsFunctionExpr<> solVal("-4*cos(x/2)*sin(y/2)",2);
-    gsFunctionExpr<>sol1der ("2*sin(x/2)*sin(y/2)",
-                             "-2*cos(x/2)*cos(y/2)",2);
-    gsFunctionExpr<>sol2der ("cos(x/2)*sin(y/2)",
-                             "cos(x/2)*sin(y/2)",
-                             "cos(x/2)*sin(y/2)", 2);
+    gsFunctionExpr<> source  ("-4*pi*pi*pi*pi*cos(pi*x)*sin(pi*y)",2);
+    gsFunctionExpr<> laplace ("2*pi*pi*cos(pi*x)*sin(pi*y)",2);
+    gsFunctionExpr<> solVal("-1*cos(pi*x)*sin(pi*y)",2);
+    gsFunctionExpr<>sol1der ("pi*sin(pi*x)*sin(pi*y)",
+                             "-1*pi*cos(pi*x)*cos(pi*y)",2);
+    gsFunctionExpr<>sol2der ("pi^2*cos(pi*x)*sin(pi*y)",
+                             "pi^2*cos(pi*x)*sin(pi*y)",
+                             "pi^2*cos(pi*x)*sin(pi*y)", 2);
 */
 
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
@@ -87,7 +96,7 @@ int main(int argc, char *argv[])
     {
         case 0:
             string_geo = "planar/twoPatches/square_diagonal.xml";
-            numDegree = 2;
+            numDegree = 0;
             break;
         case 1:
             string_geo = "planar/twoPatches/square_curved.xml";
@@ -130,6 +139,23 @@ int main(int argc, char *argv[])
             numDegree = 0;
             break;
 
+        case 30:
+            string_geo = "planar/twoPatches/2patch_C1curved2.xml";
+            numDegree = 0;
+            break;
+        case 31:
+            string_geo = "planar/twoPatches/2patch_C1curved3.xml";
+            numDegree = 0;
+            break;
+        case 32:
+            string_geo = "planar/twoPatches/2patch_C1curved4.xml";
+            numDegree = 0;
+            break;
+
+        case 40:
+            string_geo = "planar/twoPatches/funny_example.xml";
+            numDegree = 0;
+            break;
 
         case 11:
             string_geo = "planar/multiPatches/4_square_curved.xml";
@@ -164,9 +190,14 @@ int main(int argc, char *argv[])
 */
     multiPatch_init.degreeElevate(g1OptionList.getInt("degree") + g1OptionList.getInt("P_geo"));
 
-    //std::vector<int> mul={multiPatch_init.patch(1).degree(1) - g1OptionList.getInt("regularity"), multiPatch_init.patch(1).degree(1) - g1OptionList.getInt("regularity")};
-    //multiPatch_init.patch(1).uniformRefine(1,mul);
+    //std::vector<int> mul={multiPatch_init.patch(1).degree(1) - g1OptionList.getInt("regularity"), 0};
+    std::vector<int> mul={1, 0};
+    multiPatch_init.patch(0).uniformRefine(3,mul);
+    multiPatch_init.patch(1).uniformRefine(3,mul);
     //multiPatch_init.patch(1).degreeElevate(1);
+
+    //gsInfo << "Patch: " << multiPatch_init.patch(0) << "\n";
+    //gsInfo << "Patch 2: " << multiPatch_init.patch(1 ) << "\n";
 
     gsVector<real_t> l2Error_vec(g1OptionList.getInt("loop") + 1);
     gsVector<real_t> h1SemiError_vec(g1OptionList.getInt("loop") + 1);
@@ -213,7 +244,7 @@ int main(int argc, char *argv[])
             //else
             //    multiPatch.uniformRefine_withDifferentRegularity(num_knots[refinement_level], g1OptionList.getInt("regularity"));
 
-            //gsTensorBSpline<2,real_t> bsp_temp = dynamic_cast<gsTensorBSpline<2,real_t>&>(multiPatch.patch(0));
+            gsTensorBSpline<2,real_t> bsp_temp = dynamic_cast<gsTensorBSpline<2,real_t>&>(multiPatch.patch(0));
             //gsInfo << "knotvector: " << bsp_temp.knots(0).asMatrix() << "\n";
 
             gsWriteParaview(multiPatch, "geometry_init", 2000, true);
@@ -228,13 +259,20 @@ int main(int argc, char *argv[])
             mb.push_back(gsMultiBasis<>(multiPatch));
             if (!g1OptionList.getSwitch("isogeometric"))
             {
-                gsMultiPatch<> multiPatch_temp(multiPatch_init);
+                gsMultiBasis<> mb_g1(multiPatch_init);
 
                 //std::vector<int> mul={0, multiPatch_init.patch(0).degree(1) - g1OptionList.getInt("regularity")};
                 //multiPatch_temp.patch(0).uniformRefine(1,mul);
 
-                multiPatch_temp.patch(0).degreeElevate(g1OptionList.getInt("p_tilde") - 1, 1);
-                multiPatch_temp.patch(1).degreeElevate(g1OptionList.getInt("p_tilde") - 1, 1);
+                mb_g1.basis(0).degreeIncrease(g1OptionList.getInt("p_tilde") - 1, 1);
+                mb_g1.basis(1).degreeIncrease(g1OptionList.getInt("p_tilde") - 1, 1);
+                mb_g1.basis(0).component(1).reduceContinuity(mb_g1.basis(0).maxDegree() - 1 -  math::min(g1OptionList.getInt("regularity"),
+                                                           math::min(g1OptionList.getInt("r_tilde"), multiPatch_init.patch(0).degree(1)-2)));
+                mb_g1.basis(1).component(1).reduceContinuity(mb_g1.basis(0).maxDegree() - 1 - math::min(g1OptionList.getInt("regularity"),
+                                                           math::min(g1OptionList.getInt("r_tilde"), multiPatch_init.patch(0).degree(1)-2)));
+
+                gsTensorBSplineBasis<2, real_t> basis_bspline_g1 = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(mb_g1.basis(0));
+                //gsInfo << "Basis basis_bspline_g1: " << basis_bspline_g1.knots(1).asMatrix() << "\n";
 
                 // Degree in Patch 0 and 1 the same!!! TODO
                 std::vector<std::vector<int>> patch_mul;
@@ -248,10 +286,18 @@ int main(int argc, char *argv[])
                 single_mul.push_back(g1OptionList.getInt("regularity")); // u
                 single_mul.push_back(math::min(g1OptionList.getInt("regularity"), math::min(g1OptionList.getInt("r_tilde"),multiPatch_init.patch(0).degree(1)-2))); // v
                 patch_mul.push_back(single_mul);
+/*
+                gsInfo << "Mul " << patch_mul.at(0).at(0) << "\n";
+                gsInfo << "Mul " << patch_mul.at(0).at(1) << "\n";
+                gsInfo << "Mul " << patch_mul.at(1).at(0) << "\n";
+                gsInfo << "Mul " << patch_mul.at(1).at(1) << "\n";
+*/
+                mb_g1.basis(0).component(0).uniformRefine(num_knots[refinement_level], mb_g1.basis(0).degree(0)-patch_mul.at(0).at(0));
+                mb_g1.basis(0).component(1).uniformRefine(num_knots[refinement_level], mb_g1.basis(0).degree(1)-patch_mul.at(0).at(1));
+                mb_g1.basis(1).component(0).uniformRefine(num_knots[refinement_level], mb_g1.basis(1).degree(0)-patch_mul.at(1).at(0));
+                mb_g1.basis(1).component(1).uniformRefine(num_knots[refinement_level], mb_g1.basis(1).degree(1)-patch_mul.at(1).at(1));
 
-                multiPatch_temp.uniformRefine_withSameRegularity(num_knots[refinement_level], patch_mul);
 
-                gsMultiBasis<> mb_g1(multiPatch_temp);
                 /*
                 if (g1OptionList.getInt("regularity") + g1OptionList.getInt("P_geo") >= g1OptionList.getInt("r_tilde"))
                     mb_g1.degreeIncrease(g1OptionList.getInt("p_tilde") -1,1); // (keeping the multiplicity)
@@ -267,8 +313,10 @@ int main(int argc, char *argv[])
                 {
                     gsBSplineBasis<> basis_bspline = dynamic_cast<gsBSplineBasis<real_t> &>(mb[0].basis(0).component(1));
                     gsBSplineBasis<> basis_bspline_g1 = dynamic_cast<gsBSplineBasis<real_t> &>(mb[1].basis(0).component(1));
+                    gsBSplineBasis<> basis_bspline_g12 = dynamic_cast<gsBSplineBasis<real_t> &>(mb[1].basis(0).component(0));
                     gsInfo << "Basis: " << basis_bspline.knots().asMatrix() << "\n";
                     gsInfo << "Basis G1: " << basis_bspline_g1.knots().asMatrix() << "\n";
+                    gsInfo << "Basis G1 2: " << basis_bspline_g12.knots().asMatrix() << "\n";
                 }
             }
 
@@ -372,8 +420,8 @@ int main(int argc, char *argv[])
 
                 Eigen::FullPivLU<gsMatrix<>> SmallLU(coefs_interface);
                 SmallLU.setThreshold(1e-5);
-                gsInfo << "Kernel: " << SmallLU.kernel() << "\n";
-                gsInfo << "Kernel 2: " << math::pow(mesh_size[refinement_level],(g1OptionList.getInt("p_tilde") +1)) << "\n";
+                //gsInfo << "Kernel: " << SmallLU.kernel() << "\n";
+                //gsInfo << "Kernel 2: " << math::pow(mesh_size[refinement_level],(g1OptionList.getInt("p_tilde") +1)) << "\n";
 
             }
             //gsInfo << "Done. Interface computing time is: " << clock.stop() << "\n";
@@ -513,9 +561,12 @@ int main(int argc, char *argv[])
 */
 
                 std::vector<std::vector<int>> patch_mul;
-                gsMultiPatch<> multiPatch_temp(multiPatch_init);
+                gsMultiBasis<> mb_g1(multiPatch_init);
                 //multiPatch_temp.patch(0).degreeElevate(g1OptionList.getInt("p_tilde") -1,1);
-                multiPatch_temp.patch(1).degreeElevate(g1OptionList.getInt("p_tilde") - 1, 1);
+
+                mb_g1.basis(1).degreeIncrease(g1OptionList.getInt("p_tilde") - 1, 1);
+                mb_g1.basis(1).component(1).reduceContinuity(mb_g1.basis(1).maxDegree() - 1 - math::min(g1OptionList.getInt("regularity"),
+                                                           math::min(g1OptionList.getInt("r_tilde"), multiPatch_init.patch(0).degree(1)-2)));
 
                 std::vector<int> single_mul;
 
@@ -528,13 +579,18 @@ int main(int argc, char *argv[])
                 single_mul.push_back(math::min(g1OptionList.getInt("regularity"), math::min(g1OptionList.getInt("r_tilde"),multiPatch_init.patch(0).degree(1)-2))); // v
 
                 patch_mul.push_back(single_mul);
-                multiPatch_temp.uniformRefine_withSameRegularity(num_knots[refinement_level], patch_mul);
 
-
-                gsMultiBasis<> mb_g1(multiPatch_temp);
-
-                //gsInfo << "Basis: " << mb_g1.basis(0) << "\n";
-                //gsInfo << "Basis2 : " << mb_g1.basis(1) << "\n";
+                mb_g1.basis(0).component(0).uniformRefine(num_knots[refinement_level], mb_g1.basis(0).degree(0)-patch_mul.at(0).at(0));
+                mb_g1.basis(0).component(1).uniformRefine(num_knots[refinement_level], mb_g1.basis(0).degree(1)-patch_mul.at(0).at(1));
+                mb_g1.basis(1).component(0).uniformRefine(num_knots[refinement_level], mb_g1.basis(1).degree(0)-patch_mul.at(1).at(0));
+                mb_g1.basis(1).component(1).uniformRefine(num_knots[refinement_level], mb_g1.basis(1).degree(1)-patch_mul.at(1).at(1));
+/*
+                gsInfo << "Basis: " << mb_g1.basis(0) << "\n";
+                gsInfo << "Basis2 : " << mb_g1.basis(1) << "\n";
+                gsTensorBSplineBasis<2, real_t> basis_bspline_g1 = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(mb_g1.basis(1));
+                gsInfo << "Basis basis_bspline_g1 2: " << basis_bspline_g1.knots(1).asMatrix() << "\n";
+                gsInfo << "Basis basis_bspline_g1 3: " << basis_bspline_g1.knots(0).asMatrix() << "\n";
+*/
 /*
             if (g1OptionList.getInt("regularity") + g1OptionList.getInt("P_geo") >= g1OptionList.getInt("r_tilde"))
                 mb_g1.basis(1).degreeIncrease(g1OptionList.getInt("p_tilde") -1,1);
