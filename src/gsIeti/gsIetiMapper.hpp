@@ -194,12 +194,12 @@ gsSparseVector<T> gsIetiMapper<T>::assembleAverage(
 
 
 template <class T>
-void gsIetiMapper<T>::interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, short_t d)
+void gsIetiMapper<T>::interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, const short_t d)
 {
     GISMO_ASSERT( d>0, "gsIetiMapper<T>::interfaceAveragesAsPrimals cannot handle corners." );
     GISMO_ASSERT( d<m_multiBasis->dim(), "gsIetiMapper<T>::interfaceAveragesAsPrimals: "
         "Interfaces must have smaller dimension than considered object." );
-    GISMO_ASSERT( geo.nPatches() == m_multiBasis->nPieces(),
+    GISMO_ASSERT( (index_t)(geo.nPatches()) == m_multiBasis->nPieces(),
         "gsIetiMapper<T>::interfaceAveragesAsPrimals: The given geometry does not fit.");
     GISMO_ASSERT( geo.parDim() == m_multiBasis->dim(),
         "gsIetiMapper<T>::interfaceAveragesAsPrimals: The given geometry does not fit.");
@@ -257,7 +257,7 @@ void gsIetiMapper<T>::customPrimalConstraints(std::vector< std::pair<index_t,Spa
 }
 
 template <class T>
-std::vector<index_t> gsIetiMapper<T>::skeletonDofs( index_t patch ) const
+std::vector<index_t> gsIetiMapper<T>::skeletonDofs( const index_t patch ) const
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
 

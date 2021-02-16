@@ -76,7 +76,7 @@ gsPrimalSystem<T>::primalBasis(
     const index_t nrPrimalConstraints = primalDofIndices.size();
 
     GISMO_ASSERT( nrPrimalConstraints<=nPrimalDofs, "gsPrimalSystem::primalBasis: "
-        "There are more local constrains that there are constraints in total. "
+        "There are more local constraints that there are constraints in total. "
         "Forgot to call gsPrimalSystem::init()?" );
 
     const index_t localDofs = localSaddlePointSolver->rows() - nrPrimalConstraints;
