@@ -149,10 +149,10 @@ public:
 
     /// @brief Adds contributions for a patch to the data hold in the class
     ///
-    /// @param[in,out]  jumpMatrix        Jump matrix \f$ B_k \f$
-    /// @param[in,out]  localMatrix       Local stiffness matrix \f$ A_k \f$
-    /// @param[in,out]  localRhs          Local right-hand side \f$ f_k \f$
-    /// @param[in]      primalBasis       Matrix representation of the primal basis
+    /// @param  jumpMatrix        Jump matrix \f$ B_k \f$
+    /// @param  localMatrix       Local stiffness matrix \f$ A_k \f$
+    /// @param  localRhs          Local right-hand side \f$ f_k \f$
+    /// @param  primalBasis       Matrix representation of the primal basis
     void addContribution(
         const JumpMatrix& jumpMatrix,
         const SparseMatrix& localMatrix,
