@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
             std::vector<index_t> skeletonDofs = ietiMapper.skeletonDofs(k);
             gsScaledDirichletPrec<>::Blocks matrixBlocks
                 = gsScaledDirichletPrec<>::matrixBlocks(localMatrix, skeletonDofs);
-
+            matrixBlocks.A01 *= -1;
             prec.addSubdomain(
                prec.restrictJumpMatrix(jumpMatrix, skeletonDofs).moveToPtr(),
                gsSumOp<>::make(

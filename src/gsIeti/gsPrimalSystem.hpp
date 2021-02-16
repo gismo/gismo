@@ -99,10 +99,10 @@ gsPrimalSystem<T>::primalBasis(
     localSaddlePointSolver->apply(id, tmp);
 
     gsSparseEntries<T> se_result;
-    se_result.resevre(localDofs*nrPrimalConstraints);
+    se_result.reserve(localDofs*nrPrimalConstraints);
     for (index_t i=0; i<localDofs; ++i)
         for (index_t j=0; j<nrPrimalConstraints; ++j)
-            result_se.push_back(i,primalDofIndices[j],tmp(i,j));
+            se_result.add(i,primalDofIndices[j],tmp(i,j));
 
     result.setFrom(se_result);
 
