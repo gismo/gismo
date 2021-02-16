@@ -16,9 +16,6 @@
 #include <gsCore/gsBasis.h>
 #include <gsIO/gsOptionList.h>
 
-#include <gsIO/gsWriteParaview.h>
-
-
 namespace gismo
 {
 
@@ -265,54 +262,36 @@ gsKnotVector<T> gsPatchRule<T>::_init(const gsBSplineBasis<T> * Bbasis) const
     // Add a middle knot if the size of the knot vector is odd
     if (size % 2 == 1)
     {
-            typedef typename gsKnotVector<T>::const_iterator knotIterator;
-            knotIterator prevKnot = knots.begin();
-            std::vector<T> diff;
-            for (knotIterator it = knots.begin()+1; it!=knots.end(); it++ )
-            {
-                diff.push_back(*it-*prevKnot);
-                prevKnot = it;
-            }
+        typedef typename gsKnotVector<T>::const_iterator knotIterator;
+        knotIterator prevKnot = knots.begin();
+        std::vector<T> diff;
+        for (knotIterator it = knots.begin()+1; it!=knots.end(); it++ )
+        {
+            diff.push_back(*it-*prevKnot);
+            prevKnot = it;
+        }
 
-            T max = *std::max_element(diff.begin(),diff.end());
-            std::vector<index_t> maxIdx;
-            index_t k=0;
-            for (typename std::vector<T>::iterator it = diff.begin(); it!=diff.end(); it++,k++)
-            {
-                if (std::abs(*it-max)/(max)<1e-15)
-                    maxIdx.push_back(k);
-            }
+        T max = *std::max_element(diff.begin(),diff.end());
+        std::vector<index_t> maxIdx;
+        index_t k=0;
+        for (typename std::vector<T>::iterator it = diff.begin(); it!=diff.end(); it++,k++)
+        {
+            if (std::abs(*it-max)/(max)<1e-15)
+                maxIdx.push_back(k);
+        }
 
-            index_t i = maxIdx.at(std::ceil(maxIdx.size()/2.)-1);
-            T knot = (knots.at(i) + knots.at(i+1))/2. ;
-            knots.insert(knot);
-        // /*
-        //     Add knot in the middle of the domain
-        // */
-        // if (size/2.0 > m_nQuad)
-        // {
-        //     T first = knots.first();
-        //     T last  = knots.last();
-        //     T knot = (last - first) / 2.0;
+        index_t i = maxIdx.at(std::ceil(maxIdx.size()/2.)-1);
+        knots.insert((knots.at(i) + knots.at(i+1))/2.) ;
 
-        //     internal::gsUKnotIterator<T> it = knots.uFind(knot);
-        //     // it--;
+        /*  ALTERNATIVE (does not work well)
+            T first = knots.first();
+            T last  = knots.last();
+            T knot = (last - first) / 2.0;
 
+            knots.insert( knot );
 
-        //     knots.remove( it );
-
-        //     size--;
-        // }
-        // else
-        // {
-            // T first = knots.first();
-            // T last  = knots.last();
-            // T knot = (last - first) / 2.0;
-
-            // knots.insert( knot );
-
-            // size++;
-        // }
+            size++;
+        */
 
     }
     return knots;

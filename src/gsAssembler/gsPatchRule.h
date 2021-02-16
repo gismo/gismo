@@ -169,12 +169,36 @@ public:
 
 protected:
 
+    /**
+     * @brief      Computes the number of quadrature points to exactly integrate the space
+     *
+     * @param[in]  knots  knot vector
+     *
+     * @return     Integer number of quadrature points
+     */
     index_t _numQuads(const gsKnotVector<T> knots) const
     {
         index_t ndof = (m_deg + 1)*knots.numElements() - (m_reg+1)*(knots.numElements()-1);
         ndof = std::ceil(ndof/2.0);
         return ndof;
     }
+
+    /**
+     * @brief      Determines whether the specified knot vector is symmetric.
+     *
+     * @param[in]  knots  knot vector
+     *
+     * @return     True if the specified knots is symmetric, False otherwise.
+     */
+    bool _isSymmetric(const gsKnotVector<T> knots) const
+    {
+        gsKnotVector<T> copy = knots;
+        copy.reverse();
+        std::vector<T> result;
+        knots.symDifference(copy,result);
+        return result.size()==0 ? true : false;
+    }
+
 
     /**
      * @brief      Initializes the knot vector for the patch-rule implementation
@@ -221,6 +245,7 @@ private:
     const bool m_over;
     const short_t m_fixDir;
     mutable index_t m_nQuad;
+    mutable bool m_symmetry;
 
     std::vector<gsVector<T> > m_nodes;
     std::vector<gsVector<T> > m_weights;
