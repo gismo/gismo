@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>sol2der ("-64*pi^2*(cos(8*pi*y) - 1)*cos(8*pi*x)",
                              "-64*pi^2*(cos(8*pi*x) - 1)*cos(8*pi*y)",
                              " 64*pi^2*sin(8*pi*x)*sin(8*pi*y)", 2);
-
+*/
     gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
-*/
+/*
     gsFunctionExpr<> source  ("pi*pi*pi*pi*(4*cos(pi*x)*cos(pi*y) - cos(pi*x) - cos(pi*y))",2);
     gsFunctionExpr<> laplace ("-1*pi*pi*(2*cos(pi*x)*cos(pi*y) - cos(pi*x) - cos(pi*y))",2);
     gsFunctionExpr<> solVal("(cos(pi*x) - 1) * (cos(pi*y) - 1)",2);
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>sol2der ("-1*pi^2*(cos(pi*y) - 1)*cos(pi*x)",
                              "-1*pi^2*(cos(pi*x) - 1)*cos(pi*y)",
                              " 1*pi^2*sin(pi*x)*sin(pi*y)", 2);
-/*
+
     gsFunctionExpr<> source  ("0",2);
     gsFunctionExpr<> laplace ("0",2);
     gsFunctionExpr<> solVal("1",2);
@@ -154,6 +154,10 @@ int main(int argc, char *argv[])
 
         case 40:
             string_geo = "planar/twoPatches/funny_example.xml";
+            numDegree = 0;
+            break;
+        case 41:
+            string_geo = "planar/twoPatches/funny_example2.xml";
             numDegree = 0;
             break;
 
