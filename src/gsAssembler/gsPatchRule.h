@@ -222,7 +222,7 @@ protected:
      *
      * @return     Greville points and Exact integrals of the basis
      */
-    std::pair<gsMatrix<T>,gsMatrix<T> > _integrate(const gsKnotVector<T> & knots ) const;
+    std::pair<gsMatrix<T>,gsVector<T> > _integrate(const gsKnotVector<T> & knots ) const;
 
     /**
      * @brief      Computes the points and weights for the patch rule using Newton iterations
@@ -244,17 +244,15 @@ private:
     const index_t m_deg,m_reg;
     const bool m_over;
     const short_t m_fixDir;
-    mutable index_t m_nQuad;
-    mutable bool m_symmetry;
 
     std::vector<gsVector<T> > m_nodes;
     std::vector<gsVector<T> > m_weights;
 
-    mutable gsVector<T> m_end;
+    gsVector<T> m_end;
 
     mutable typename gsSparseSolver<T>::QR m_solver;
 
-    mutable size_t m_dim;
+    size_t m_dim;
 
     std::vector<std::map<T,T> > m_maps;
 }; // class gsPatchRule

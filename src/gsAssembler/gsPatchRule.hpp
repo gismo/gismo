@@ -67,9 +67,22 @@ gsPatchRule<T>::gsPatchRule(const gsBasis<T> & basis,
             // Find the knots
             knots = this->_init(Bbasis);
             // Compute exact integrals
-            std::tie(greville,integral) = this->_integrate(knots);
+            #if __cplusplus >= 201103L || _MSC_VER >= 1600
+                std::tie(greville,integral) = this->_integrate(knots);
+            #else
+                std::pair< gsMatrix<T>,gsVector<T> > tmp1 = this->_integrate(knots);
+                tmp1.first.swap(greville);
+                tmp1.second.swap(integral);
+            #endif
+
             // Compute quadrule
-            std::tie(m_nodes[d],m_weights[d]) = this->_compute(knots,greville,integral);
+            #if __cplusplus >= 201103L || _MSC_VER >= 1600
+                std::tie(m_nodes[d],m_weights[d]) = this->_compute(knots,greville,integral);
+            #else
+                std::pair< gsVector<T>,gsVector<T> > tmp2 = this->_compute(knots,greville,integral);
+                tmp2.first.swap(m_nodes[d]);
+                tmp2.second.swap(m_weights[d]);
+            #endif
         }
 
         // Construct a map with the nodes and the weights
@@ -132,7 +145,7 @@ void gsPatchRule<T>::mapTo( const gsVector<T>& lower,
     {
         elNodes[d].resize(m_nodes[d].size());
         elWeights[d].resize(m_weights[d].size());
-        for (auto it = m_maps[d].lower_bound(lower[d]); it!= ( upper[d]==m_end[d] ? m_maps[d].upper_bound(upper[d]) : m_maps[d].lower_bound(upper[d]) ); it++, k++) // lower_bound = geq, upper_bound= greather than
+        for (typename std::map<T,T>::const_iterator it = m_maps[d].lower_bound(lower[d]); it!= ( upper[d]==m_end[d] ? m_maps[d].end() : m_maps[d].lower_bound(upper[d]) ); it++, k++) // lower_bound = geq, upper_bound= greather than
         {
             elNodes[d].at(k) = it->first;
             elWeights[d].at(k) = it->second;
@@ -183,7 +196,7 @@ gsPatchRule<T>::mapTo( T startVal, T endVal,
     nodes.resize(1,m_nodes[0].size());
     weights.resize(m_weights[0].size());
     index_t k=0;
-    for (auto it = m_maps[0].lower_bound(startVal); it!=m_maps[0].upper_bound(endVal); it++, k++) // lower_bound = geq, upper_bound= greather than
+    for (typename std::map<T,T>::const_iterator it = m_maps[0].lower_bound(startVal); it!= ( endVal==m_end[0] ? m_maps[0].end() : m_maps[0].lower_bound(endVal) ); it++, k++) // lower_bound = geq, upper_bound= greather than
     {
         nodes.at(k) = it->first;
         weights.at(k) = it->second;
@@ -191,31 +204,6 @@ gsPatchRule<T>::mapTo( T startVal, T endVal,
     nodes.conservativeResize(1,k);
     weights.conservativeResize(k);
 }
-
-/*
-// THIS IS AN IMPLEMENTATION FOR STRICTLY 2D DOMAINS!
-
-void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
-                   gsMatrix<T> & nodes, gsVector<T> & weights ) const
-{
-    nodes.resize(2,m_nodesX.size()*m_nodesY.size());
-    weights.resize(m_nodesX.size()*m_nodesY.size());
-
-    //    To do: overload std::map.lower_bound s.t. it starts searching from index n
-
-    index_t k=0;
-    for (auto itX = m_mapX.lower_bound(lower[0]); itX!=m_mapX.upper_bound(upper[0]); itX++) // lower_bound = geq, upper_bound= greather than
-        for (auto itY = m_mapY.lower_bound(lower[1]); itY!=m_mapY.upper_bound(upper[1]); itY++, k++) // lower_bound = geq, upper_bound= greather than
-            {
-                nodes(0,k) = itX->first;
-                nodes(1,k) = itY->first;
-                weights.at(k) = itX->second*itY->second;
-            }
-
-    nodes.conservativeResize(2,k);
-    weights.conservativeResize(k);
-}
-*/
 
 template<class T>
 gsKnotVector<T> gsPatchRule<T>::_init(const gsBSplineBasis<T> * Bbasis) const
@@ -297,7 +285,7 @@ gsKnotVector<T> gsPatchRule<T>::_init(const gsBSplineBasis<T> * Bbasis) const
 };
 
 template <class T>
-std::pair<gsMatrix<T>,gsMatrix<T> > gsPatchRule<T>::_integrate(const gsKnotVector<T> & knots ) const
+std::pair<gsMatrix<T>,gsVector<T> > gsPatchRule<T>::_integrate(const gsKnotVector<T> & knots ) const
 {
     // Obtain a temporary bspline basis and quadrule
     gsBSplineBasis<T> basis = gsBSplineBasis<T>(knots);

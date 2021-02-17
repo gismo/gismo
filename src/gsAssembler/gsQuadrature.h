@@ -63,7 +63,7 @@ struct gsQuadrature
         const index_t quB  = options.getInt ("quB");
         const bool    over = options.askSwitch ("overInt", false);  // use overintegration?
 
-        if ( (qu==rule::GaussLegendre || qu==rule::GaussLobatto) )
+        if ( (qu==GaussLegendre || qu==GaussLobatto) )
         {
             if (!over)
             {
@@ -101,7 +101,7 @@ struct gsQuadrature
                 return gsOverIntegrateRule<T>::make(basis,quInterior,quBoundary);
             }
         }
-        else if (qu==rule::PatchRule)
+        else if (qu==PatchRule)
         {
             // quA: Order of the target space
             // quB: Regularity of the target space

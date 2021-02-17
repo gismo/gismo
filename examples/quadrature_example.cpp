@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
 
     // Gauss Legendre
     gsOptionList legendreOpts;
-    legendreOpts.addInt   ("quRule","Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",gsQuadrature::rule::GaussLegendre);
+    legendreOpts.addInt   ("quRule","Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",gsQuadrature::GaussLegendre);
     legendreOpts.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
     legendreOpts.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
     legendreOpts.addSwitch("overInt","Apply over-integration or not?",false);
@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 
     // Mixed Quadrature
     gsOptionList lobattoOpts;
-    lobattoOpts.addInt   ("quRule","Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",gsQuadrature::rule::GaussLobatto);
+    lobattoOpts.addInt   ("quRule","Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",gsQuadrature::GaussLobatto);
     lobattoOpts.addReal("quA", "Number of quadrature points: quA*deg + quB", 0.0  );
     lobattoOpts.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
     lobattoOpts.addReal("quAb", "Number of quadrature points: quA*deg + quB", 1.0  );
@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
 
     // PatchRule
     gsOptionList patchOpts;
-    patchOpts.addInt   ("quRule","Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",gsQuadrature::rule::PatchRule);
+    patchOpts.addInt   ("quRule","Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",gsQuadrature::PatchRule);
     patchOpts.addReal("quA", "Order of the target space", order  );
     patchOpts.addInt ("quB", "Regularity of the targed space", regularity    );
     patchOpts.addSwitch("overInt","Apply over-integration or not?",overInt);

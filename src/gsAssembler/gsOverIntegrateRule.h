@@ -123,7 +123,7 @@ public:
 private:
     const gsBasis<T> * m_basis;
     std::vector<gsQuadRule<T> > m_interior, m_boundary;
-    mutable gsVector<T> m_start,m_end;
+    gsVector<T> m_start,m_end;
 
 }; // class gsOverIntegrateRule
 
