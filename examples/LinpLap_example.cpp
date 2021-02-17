@@ -32,14 +32,16 @@ int main(int argc, char* argv[])
 	index_t maxiter = 100;
 	real_t TOL = 1e-6;		//residual error tolerance
 	index_t num = 8;		//number of refinements
-	index_t str = 1;
+	index_t str = 2;
 	bool require_fin = true;
 	real_t mu = 0.7;
 	real_t sigma = 0.3;
 	real_t tau_min = 0.01;
 	real_t tau_max = 100;
 	index_t subdiv = 1;
-	bool prec = 0;
+	bool prec = true;
+	real_t ip = 1.8;
+  real_t ieps=1;
 	gsCmdLine cmd("Linearized p-Laplace example");
 
 	cmd.addReal("e", "eps", "variable for eps", eps);
@@ -55,11 +57,14 @@ int main(int argc, char* argv[])
 	cmd.addReal("", "tau_min", "Minimum stepsize", tau_min);
 	cmd.addReal("", "tau_max", "Maximum stepsize", tau_max);
 	cmd.addReal("t", "tol", "Residual error tolerance", TOL);
-	cmd.addSwitch("fin", "After computation, wait until button is pressed", require_fin);
+	cmd.addSwitch("", "fin", "After computation, wait until button is pressed", require_fin);
+	cmd.addSwitch("", "prec", "Preconditioning switch", prec);
+ cmd.addReal("","ip","initial p value",ip);
 	try { cmd.getValues(argc, argv); }
 	catch (int rv) { return rv; }
 
-	const real_t eps_ = eps;
+	real_t eps_=eps;
+	real_t p_=p;
 
 	gsInfo << "Printing command line arguments:\n"
 		<< "eps               = " << eps << "\n"
@@ -72,7 +77,8 @@ int main(int argc, char* argv[])
 		<< "tau_min           = " << tau_min << "\n"
 		<< "tau_max           = " << tau_min << "\n"
 		<< "tol               = " << TOL << "\n"
-		<< "subdiv              = " << subdiv << "\n";
+		<< "subdiv            = " << subdiv << "\n"
+		<< "prec              = " << prec << "\n";
 	gsOptionList opt = gsAssembler<>::defaultOptions();
 	//opt.setInt("DirichletValues", dirichlet::l2Projection);
 
@@ -109,7 +115,7 @@ int main(int argc, char* argv[])
 	int l = 3;
 	double lambda = 2.2;//l - 2. / p + 0.01;
 
-	// Define source function
+						// Define source function
 	gsFunctionExpr<> f1("-(2*" + std::to_string(lambda) + "^2*(0.5+(x-1)*x+(y-1)*y)^(" + std::to_string(lambda) + "/2)*(" + std::to_string(eps*eps) + "+" + std::to_string(lambda) + "^2*(0.5+(x-1)*x+(y-1)*y)^(" + std::to_string(lambda) + "-1))^(" + std::to_string(p) + "/2)*(2*" + std::to_string(lambda) + "*(2+" + std::to_string(lambda) + "*(" + std::to_string(p) + "-1)-" + std::to_string(p) + ")*(0.5+(x-1)*x+(y-1)*y)^(" + std::to_string(lambda) + ")+" + std::to_string(eps*eps) + "*(1+2*(x-1)*x+2*(y-1)*y)))/(2*" + std::to_string(lambda) + "^2*(0.5+(x-1)*x+(y-1)*y)^(" + std::to_string(lambda) + ")+" + std::to_string(eps*eps) + "*(1+2*(x-1)*x+2*(y-1)*y))^2", 2);
 	//gsFunctionExpr<> f1("-4*(" + std::to_string(eps*eps) + "+4*(x^2+y^2))^((" + std::to_string(p) + "-4)/2)*(" + std::to_string(eps*eps) + "+2*" + std::to_string(p) + "*(x^2+y^2))", 2);
 	gsFunctionExpr<> f2("2*" + std::to_string(gamma) + "^2*pi^2*(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*pi^2*cos(" + std::to_string(gamma) + "*pi*(x+y))^2)^((" + std::to_string(p) + "-4)/2)*(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*(" + std::to_string(p) + "-1)*pi^2*cos(" + std::to_string(gamma) + "*pi*(x+y))^2)*sin(" + std::to_string(gamma) + "*pi*(x+y))", 2);
@@ -130,13 +136,13 @@ int main(int argc, char* argv[])
 	gsFunctionExpr<> Z("0", 2);
 	gsFunctionExpr<> L("x+y", 2);
 
-	gsFunctionExpr<> u0 = L;
+	gsFunctionExpr<> u0 = B;
 
 
 	// Print out source function and solution
 	gsInfo << "Source function " << f << "\n";
 	gsInfo << "Exact solution " << u << "\n";
-	gsInfo << "Initial guess" << Z << "\n\n";
+	gsInfo << "Initial guess" << u0 << "\n\n";
 	//! [Function data]
 
 
@@ -195,7 +201,7 @@ int main(int argc, char* argv[])
 
 	//int n = refine_basis.size();
 
-	gsMatrix<real_t> w_ = projectL2(patch, refine_basis, Z);
+	gsMatrix<real_t> w_ = projectL2(patch, refine_basis, L);
 	//gsMatrix<real_t> w_ = gsMatrix<real_t>::Zero(n, 1);
 
 	if (str == 2) { hbcInfo = bcInfo; }
@@ -236,19 +242,26 @@ int main(int argc, char* argv[])
 
 	for (int i = startrefine; i < num; i++)
 	{
+		if (prec)
+		{
+			p_ = ip - (i - startrefine)*(ip-p) / (num-startrefine);
+		}
+    //p_ = ip - (i - startrefine)*(ip-p) / (num-startrefine);
+    //eps_= ieps - (i-startrefine)*(ieps-eps)/(num-startrefine);
+    //gsInfo<<ip - (i - startrefine)*(ip-p) / (num-startrefine)<<"\n";
+
 		//transfer recent solution to finer mesh. with elimination it only transfers free DoFs and not Dirichlet values.
 		refine_basis.uniformRefine_withTransfer(transfer, bcInfo, opt2);
 
 		//refine_basis.uniformRefine();
 		//A.initialize(pde, refine_basis, opt, subdiv);
 		//rA.initialize(pde_, refine_basis, opt, subdiv, prec);
-		
+
 		/*
 		gsInfo << A.numDofs() << "\n";
 		gsInfo << transfer.rows() << " x " << transfer.cols() << "\n";
 		gsInfo << pde.w.size() << "\n";
 		*/
-		
 
 		//int n = refine_basis.size();
 
@@ -258,6 +271,9 @@ int main(int argc, char* argv[])
 
 		pde.w = transfer * pde.w; //update w
 		pde_.w = pde.w;
+		pde_.p = p_;
+    pde.p=p_;
+    //pde_.eps=eps_;
 
 		A.initialize(pde, refine_basis, opt, subdiv);
 		rA.initialize(pde_, refine_basis, opt, subdiv, prec);
@@ -298,10 +314,10 @@ int main(int argc, char* argv[])
 			//std::cin.get();
 
 			real_t tau = stepsize(Kh, fh, pde, refine_basis, opt, solVector, step, rh, Jh, mu, sigma, tau_min, tau_max, subdiv);
-			
+
 			solVector = solVector + tau * step;
 
-			pde.w = addDirVal(A,solVector); //add Dirichlet values to current solution and set as new w.
+			pde.w = addDirVal(A, solVector); //add Dirichlet values to current solution and set as new w.
 			pde_.w = pde.w;
 
 			A.initialize(pde, refine_basis, opt);
@@ -324,7 +340,7 @@ int main(int argc, char* argv[])
 
 			iter++;
 		} while (iter < maxiter && (rh.transpose()*rh).value()>TOL*TOL*(r0.transpose()*r0).value());
-		
+
 		std::clock_t c_end = std::clock();
 		double time = (c_end - c_start) / CLOCKS_PER_SEC;
 
@@ -546,8 +562,8 @@ real_t stepsize(gsSparseMatrix<real_t, 1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPd
 	A.initialize(pde, basis, opt, subdiv);
 	A.assemble();
 
-	pde.w = addDirVal(A,u_ + tau * s_);
-	
+	pde.w = addDirVal(A, u_ + tau * s_);
+
 	A.initialize(pde, basis, opt, subdiv);
 	A.assemble();
 
@@ -582,7 +598,7 @@ real_t stepsize(gsSparseMatrix<real_t, 1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPd
 		{
 			tau *= downscale;
 
-			pde.w = addDirVal(A,u_ + tau * s_);
+			pde.w = addDirVal(A, u_ + tau * s_);
 			A.initialize(pde, basis, opt, subdiv);
 			A.assemble();
 
@@ -620,7 +636,7 @@ real_t stepsize(gsSparseMatrix<real_t, 1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPd
 		{
 			tau *= upscale;
 
-			pde.w = addDirVal(A,u_ + tau * s_);
+			pde.w = addDirVal(A, u_ + tau * s_);
 			A.initialize(pde, basis, opt, subdiv);
 			A.assemble();
 

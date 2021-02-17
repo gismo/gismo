@@ -91,6 +91,7 @@ namespace gismo
 
 			//Access the coefficients of w which correspond to the active basis functions
 			gsMatrix<T> w_(numActive, 1);
+
 			for (index_t i = 0; i < numActive; i++)
 			{
 				w_(i, 0) = pde_ptr->w(actives(i), 0);
@@ -98,17 +99,17 @@ namespace gismo
 
 			real_t eps= pde_ptr->eps;
 
-			if (prec == 1)
+			if (prec)      //elementwise regularization
 			{
 				real_t sum = 0;
 				for (index_t k = 0; k < quWeights.rows(); ++k)
 				{
-					//const T weight = quWeights[k] * md.measure(k);
 					transformGradients(md, k, bGrads, physGrad);
 					gsMatrix<T> wGrad = physGrad * w_;
-					sum += (wGrad.transpose() * wGrad).value();
+					sum += math::sqrt((wGrad.transpose() * wGrad).value());
 				}
-				if (sum/(quWeights.rows()) < 0.01)
+        //gsInfo<<sum/(quWeights.rows())<<"\n";
+				if (sum/(quWeights.rows()) < 1) //good value for the gradient?
 				{
 					eps = 0.1;
 				}
@@ -125,7 +126,14 @@ namespace gismo
 				//Compute the Gradient of the approximative function w by multiplying the coefficients of w with the physical gradients
 				gsMatrix<T> wGrad = physGrad * w_;
 				gsMatrix<T> wVal = bVals.col(k).transpose() * w_;
-
+        
+        eps=pde_ptr->eps;
+        
+        if(math::sqrt((wGrad.transpose() * wGrad).value())<0.1)  //pointwise regularization
+        {
+          //eps=0.1;
+        }
+        
 				const T a = pow(eps * eps + (wGrad.transpose() * wGrad).value(), (pde_ptr->p - 2) / 2);
 
 				localJ += weight * (pow(eps * eps + (wGrad.transpose() * wGrad).value(), (pde_ptr->p) / 2) / (pde_ptr->p) - (rhsVals.col(k).transpose()*wVal).value());
