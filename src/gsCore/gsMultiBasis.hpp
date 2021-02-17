@@ -181,7 +181,7 @@ void gsMultiBasis<T>::uniformRefine_withTransfer(
         const gsOptionList& assemblerOptions,
         int numKnots,
         int mul,
-        index_t comp)
+        index_t unk)
 {
     // Get coarse mapper
     gsDofMapper coarseMapper;
@@ -190,7 +190,7 @@ void gsMultiBasis<T>::uniformRefine_withTransfer(
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
             boundaryConditions,
             coarseMapper,
-            comp
+            unk
     );
 
     // Refine
@@ -207,7 +207,7 @@ void gsMultiBasis<T>::uniformRefine_withTransfer(
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
             boundaryConditions,
             fineMapper,
-            comp
+            unk
     );
 
     // restrict to free dofs
@@ -221,7 +221,7 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
         const gsBoundaryConditions<T>& boundaryConditions,
         const gsOptionList& assemblerOptions,
         int numKnots,
-        index_t comp)
+        index_t unk)
 {
     // Get fine mapper
     gsDofMapper fineMapper;
@@ -230,7 +230,7 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
             boundaryConditions,
             fineMapper,
-            comp
+            unk
     );
 
     // Refine
@@ -247,7 +247,7 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
             boundaryConditions,
             coarseMapper,
-            comp
+            unk
     );
 
     // restrict to free dofs

@@ -31,7 +31,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByRefinement(
     index_t levels,
     index_t numberOfKnotsToBeInserted,
     index_t multiplicityOfKnotsToBeInserted,
-    index_t comp
+    index_t unk
     )
 {
     gsGridHierarchy<T> result;
@@ -47,7 +47,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByRefinement(
             options,
             numberOfKnotsToBeInserted,
             multiplicityOfKnotsToBeInserted,
-            comp
+            unk
         );
     }
     return result;
@@ -60,7 +60,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
     const gsOptionList& options,
     index_t levels,
     index_t degreesOfFreedom,
-    index_t comp
+    index_t unk
     )
 {
     gsGridHierarchy<T> result;
@@ -78,7 +78,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
             boundaryConditions,
             options,
             1,
-            comp
+            unk
         );
 
         index_t newSize = coarseMBasis.totalSize();

@@ -43,8 +43,8 @@ public:
     /// @param levels                    The number of levels
     /// @param numberOfKnotsToBeInserted The number of knots to be inserted, defaulted to 1
     /// @param multiplicityOfKnotsToBeInserted The multiplicity of the knots to be inserted, defaulted to 1
-    /// @param comp                      Since the gsBoundaryCondition object can obtain data for systems
-    ///                                  of PDEs, we have to provide information concerning which component
+    /// @param unk                       Since the gsBoundaryCondition object can obtain data for systems
+    ///                                  of PDEs, we have to provide information concerning which unknown
     ///                                  we are refering to.
     static gsGridHierarchy buildByRefinement(
         gsMultiBasis<T> mBasis,
@@ -53,7 +53,7 @@ public:
         index_t levels,
         index_t numberOfKnotsToBeInserted = 1,
         index_t multiplicityOfKnotsToBeInserted = 1,
-        index_t comp = 0
+        index_t unk = 0
         );
 
     /// @brief This function sets up a multigrid hierarchy by uniform refinement
@@ -61,7 +61,7 @@ public:
     /// @param mBasis                    The gsMultiBasis to be refined (initial basis)
     /// @param boundaryConditions        The boundary conditions
     /// @param options                   A gsOptionList defining the necessary infomation
-    /// Takes boundary conditions for component 0.
+    /// Takes boundary conditions for unknown 0.
     static gsGridHierarchy buildByRefinement(
         gsMultiBasis<T> mBasis,
         const gsBoundaryConditions<T>& boundaryConditions,
@@ -87,8 +87,8 @@ public:
     /// @param assemblerOptions          A gsOptionList defining a "DirichletStrategy" and a "InterfaceStrategy"
     /// @param levels                    The maximum number of levels
     /// @param degreesOfFreedom          Number of dofs in the coarsest grid in the grid hierarchy
-    /// @param comp                      Since the gsBoundaryCondition object can obtain data for systems
-    ///                                  of PDEs, we have to provide information concerning which component
+    /// @param unk                       Since the gsBoundaryCondition object can obtain data for systems
+    ///                                  of PDEs, we have to provide information concerning which unknown
     ///                                  we are refering to.
     ///
     /// The algorithm terminates if either the number of levels is reached or the number of degrees of freedom
@@ -100,7 +100,7 @@ public:
         const gsOptionList& assemblerOptions,
         index_t levels,
         index_t degreesOfFreedom = 0,
-        index_t comp = 0
+        index_t unk = 0
         );
 
     /// @brief This function sets up a grid hierarchy by coarsening
@@ -109,7 +109,7 @@ public:
     /// @param boundaryConditions        The boundary conditions
     /// @param options                   A gsOptionList defining the necessary infomation
     ///
-    /// Takes boundary conditions for component 0.
+    /// Takes boundary conditions for unkown 0.
     static gsGridHierarchy buildByCoarsening(
         gsMultiBasis<T> mBasis,
         const gsBoundaryConditions<T>& boundaryConditions,
