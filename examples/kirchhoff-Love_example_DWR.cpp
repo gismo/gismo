@@ -2270,19 +2270,19 @@ int main(int argc, char *argv[])
         // ---------------------------------------------------------Computing DWR error estimate-------------------------------------------- //
         // --------------------------------------------------------------------------------------------------------------------------------- //
 
-        auto E_m = 0.5 * ( flat(jac(defL).tr()*jac(defL)) - flat(jac(mapL).tr()* jac(mapL)) ) ; //[checked]
+        auto E_m = 0.5 * ( flat(jac(mapL).tr()*jac(mapL)) - flat(jac(mapL).tr()* jac(mapL)) ) ; //[checked]
         auto S_m = E_m * reshape(mmL,3,3);
         auto N   = ttL.val() * S_m;
 
-        auto E_f = ( deriv2(mapL,sn(mapL).normalized().tr()) - deriv2(defL,sn(defL).normalized().tr()) ) * reshape(m2L,3,3) ; //[checked]
+        auto E_f = ( deriv2(mapL,sn(mapL).normalized().tr()) - deriv2(mapL,sn(mapL).normalized().tr()) ) * reshape(m2L,3,3) ; //[checked]
         auto S_f = E_f * reshape(mmL,3,3);
         auto M   = ttL.val() * ttL.val() * ttL.val() / 12.0 * S_f;
 
-        auto E_m_der = flat( jac(defL).tr() * (fjac(zH2) - jac(zL_sol)) ) ; //[checked]
+        auto E_m_der = flat( jac(mapL).tr() * (fjac(zH2) - jac(zL_sol)) ) ; //[checked]
         auto S_m_der = E_m_der * reshape(mmL,3,3);
         auto N_der   = ttL.val() * S_m_der;
 
-        auto E_f_der =  ( deriv2(zH2,sn(defL).normalized().tr() ) - deriv2(zL_sol,sn(defL).normalized().tr() ) + deriv2(defL,var1(zH2,defL) ) - deriv2(defL,var1(zL_sol,defL) ) ) * reshape(m2L,3,3); //[checked]
+        auto E_f_der =  ( deriv2(zH2,sn(mapL).normalized().tr() ) - deriv2(zL_sol,sn(mapL).normalized().tr() ) + deriv2(mapL,var1(zH2,mapL) ) - deriv2(mapL,var1(zL_sol,mapL) ) ) * reshape(m2L,3,3); //[checked]
         auto S_f_der = E_f_der * reshape(mmL,3,3);
         auto M_der   = ttL.val() * ttL.val() * ttL.val() / 12.0 * S_f_der;
 
