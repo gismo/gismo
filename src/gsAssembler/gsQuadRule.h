@@ -29,6 +29,8 @@ class gsQuadRule
 {
 public:
 
+    typedef memory::unique_ptr<gsQuadRule> uPtr;
+
     /// Default empty constructor
     gsQuadRule()
     { }
@@ -151,6 +153,12 @@ protected:
     /// 1D \a nodes and \a weights.
     void computeTensorProductRule(const std::vector<gsVector<T> > & nodes,
                                   const std::vector<gsVector<T> > & weights);
+
+    void computeTensorProductRule_into( const std::vector<gsVector<T> > & nodes,
+                                        const std::vector<gsVector<T> > & weights,
+                                        gsMatrix<T> & targetNodes,
+                                        gsVector<T> & targetWeights
+                                        ) const;
 
 protected:
 

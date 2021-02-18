@@ -2,12 +2,12 @@
 
     @brief Iterator over the elements of a tensor-structured grid
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): C. Hofreither, A. Mantzaflaris
 */
 
@@ -24,7 +24,7 @@ namespace gismo
 // Documentation in gsDomainIterator.h
 // Class which enables iteration over all elements of a tensor product parameter domain
 
-/** 
+/**
  * @brief Re-implements gsDomainIterator for iteration over all elements of a <b>tensor product</b> parameter domain.\n
  * <em>See gsDomainIterator for more detailed documentation and an example of the typical use!!!</em>
  *
@@ -51,7 +51,7 @@ public:
         meshEnd.resize(d);
         curElement.resize(d);
         breaks = breaks_;
-        for (int i=0; i < d; ++i) 
+        for (int i=0; i < d; ++i)
         {
             meshEnd[i]   = breaks[i].end() - 1;
             curElement[i] = meshStart[i] = breaks[i].begin();
@@ -70,14 +70,14 @@ public:
         : gsDomainIterator<T>( b ),
           d( m_basis->dim() ),
           lower ( gsVector<T, D>::Zero(d) ),
-          upper ( gsVector<T, D>::Zero(d) ) 
+          upper ( gsVector<T, D>::Zero(d) )
     {
         // compute breaks and mesh size
         meshStart.resize(d);
         meshEnd.resize(d);
         curElement.resize(d);
         breaks.reserve(d);
-        for (int i=0; i < d; ++i) 
+        for (int i=0; i < d; ++i)
         {
             breaks.push_back( m_basis->component(i).domain()->breaks() );
             // for n breaks, we have n-1 elements (spans)
@@ -126,12 +126,12 @@ public:
         gsVector<unsigned, D> curr_index(d);
         for (int i = 0; i < d; ++i)
             curr_index[i]  = curElement[i] - breaks[i].begin();
-        return curr_index; 
+        return curr_index;
     }
 
-    void getVertices(gsMatrix<T>& result) 
+    void getVertices(gsMatrix<T>& result)
     {
-        result.resize( D, 1 << D); 
+        result.resize( D, 1 << D);
 
         gsVector<T,D> v, l, u;
         l.setZero();
@@ -144,12 +144,21 @@ public:
         }
         while ( nextCubeVertex(v, l, u) );
     }
-    
+
     const gsVector<T> & lowerCorner() const
     { return lower; }
 
     const gsVector<T> & upperCorner() const
     { return upper; }
+
+    bool isBoundaryElement() const
+    {
+        for (int i = 0; i< D; ++i)
+            if ((lower[i]-*meshStart[i]==0) ||
+                (*meshEnd[0]-upper[0] ==0)  )
+                return true;
+        return false;
+    }
 
 private:
 
