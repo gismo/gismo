@@ -46,7 +46,7 @@ public:
 
 private:
   /// Default empty constructor
-  gsMappedSingleBasis() { }
+  gsMappedSingleBasis() : m_basis(nullptr) { }
 
 public:
 
@@ -65,6 +65,9 @@ public:
       m_basis = other.m_basis;
       m_index = other.m_index;
   }
+
+  static uPtr make(   const gsMappedSingleBasis& other)
+  { return uPtr( new gsMappedSingleBasis( other ) ); }
 
   ~gsMappedSingleBasis() { } //destructor
 
