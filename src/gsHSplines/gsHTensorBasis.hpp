@@ -1074,15 +1074,33 @@ boundaryOffset(boxSide const & s,index_t offset) const
 }
 
 template<short_t d, class T>
+gsMatrix<index_t>  gsHTensorBasis<d,T>::
+boundaryOffset(boxSide const & s,index_t offset, index_t level) const
+{
+    //get information on the side
+    index_t k   = s.direction();
+    bool par = s.parameter();
+
+    return this->m_bases[level]->boundaryOffset(s, offset);
+}
+
+template<short_t d, class T>
 index_t  gsHTensorBasis<d,T>::
-functionAtCorner(boxCorner const & c) const
+levelAtCorner(boxCorner const & c) const
 {
     // Get parametric points of corner
     gsVector<bool> pars;
     c.parameters_into(d,pars);
     // Cast to reals and find the level
     gsMatrix<T> mat = pars.template cast<T>();
-    index_t lvl = getLevelAtPoint(mat);
+    return getLevelAtPoint(mat);
+}
+
+template<short_t d, class T>
+index_t  gsHTensorBasis<d,T>::
+functionAtCorner(boxCorner const & c) const
+{
+    index_t lvl = this->levelAtCorner(c);
 
     // Get the index of the corner on the level
     index_t index = m_bases[lvl]->functionAtCorner(c);
