@@ -263,7 +263,7 @@ gsKnotVector<T> gsPatchRule<T>::_init(const gsBSplineBasis<T> * Bbasis) const
         index_t k=0;
         for (typename std::vector<T>::iterator it = diff.begin(); it!=diff.end(); it++,k++)
         {
-            if (std::abs(*it-max)/(max)<1e-15)
+            if (math::abs(*it-max)/(max)<1e-15)//warning: fixed acuracy
                 maxIdx.push_back(k);
         }
 
