@@ -451,7 +451,12 @@ if(NOT DEFINED CTEST_BUILD_NAME)
   set(CTEST_BUILD_NAME "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${cxxnamewe}${smHead}")
 endif()
 STRING(REPLACE " " "_" CTEST_BUILD_NAME "${CTEST_BUILD_NAME}")
-message("NAME: ${CTEST_BUILD_NAME}")
+
+#Output details
+message("Site: ${CTEST_SITE}")
+message("Build Name: ${CTEST_BUILD_NAME}")
+string(TIMESTAMP TODAY "%Y-%m-%d")
+message("Date: ${TODAY}")
 
 if(NOT CTEST_BUILD_JOBS)
   include(ProcessorCount)
@@ -674,7 +679,6 @@ if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
   endif()
   run_ctests(res)
 
-  string(TIMESTAMP TODAY "%Y-%m-%d")
   message("CDASH LINK:\nhttps://cdash-ci.inria.fr/index.php?project=${CTEST_PROJECT_NAME}&date=${TODAY}&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=65&value2=${CTEST_SITE}")
 
   if(NOT res EQUAL 0)
