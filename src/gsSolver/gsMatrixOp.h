@@ -326,7 +326,7 @@ typename gsSolverOp< typename gsSparseSolver<T>::LU >::uPtr  makeSparseLUSolver(
 ///
 /// @note This uses the default COLAMD column ordering.
 ///
-/// \ingroup gsSolverOp
+/// \relates gsSolverOp
 template <typename T, int _Opt, typename _Index>
 typename gsSolverOp< typename gsSparseSolver<T>::QR >::uPtr  makeSparseQRSolver(const gsSparseMatrix<T,_Opt,_Index> & mat)
 {
@@ -338,7 +338,7 @@ typename gsSolverOp< typename gsSparseSolver<T>::QR >::uPtr  makeSparseQRSolver(
 ///
 /// @note This uses the default COLAMD column ordering.
 ///
-/// \ingroup gsSolverOp
+/// \relates gsSolverOp
 template <typename T, int _Opt, typename _Index>
 typename gsSolverOp< typename gsSparseSolver<T>::QR >::uPtr  makeSparseQRSolver(const memory::shared_ptr< gsSparseMatrix<T,_Opt,_Index> > & mat)
 {
