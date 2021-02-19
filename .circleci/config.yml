@@ -6,7 +6,8 @@ jobs:
       xcode: "10.3.0"
     working_directory: ~/gismo
     environment:
-      MAKEFLAGS: -j4
+      #MAKEFLAGS: -j4
+      MAKEJOBS: 4
     steps:
       - run:
           name: Install dependencies
@@ -17,14 +18,16 @@ jobs:
           command: cmake . -DBUILDNAME="macos_x86_64_xcode10_cxx98_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
-          command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+          #command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+          command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG -D CTEST_BUILD_JOBS=$MAKEJOBS -Q
 
   macos_x86_64_xcode10_cxx11_release:
     macos:
       xcode: "10.3.0"
     working_directory: ~/gismo
     environment:
-      MAKEFLAGS: -j4
+      #MAKEFLAGS: -j4
+      MAKEJOBS: 4
     steps:
       - run:
           name: Install dependencies
@@ -35,14 +38,16 @@ jobs:
           command: cmake . -DBUILDNAME="macos_x86_64_xcode10_cxx11_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=11 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
-          command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+          #command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+          command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG -D CTEST_BUILD_JOBS=$MAKEJOBS -Q
 
   macos_x86_64_xcode11_cxx14_release:
     macos:
       xcode: "11.7.0"
     working_directory: ~/gismo
     environment:
-      MAKEFLAGS: -j4
+      #MAKEFLAGS: -j4
+      MAKEJOBS: 4
     steps:
       - run:
           name: Install dependencies
@@ -53,14 +58,16 @@ jobs:
           command: cmake . -DBUILDNAME="macos_x86_64_xcode11_cxx14_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=14 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
-          command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+          #command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+          command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG -D CTEST_BUILD_JOBS=$MAKEJOBS -Q
 
   macos_x86_64_xcode12_cxx17_release:
     macos:
       xcode: "12.2.0"
     working_directory: ~/gismo
     environment:
-      MAKEFLAGS: -j4
+      #MAKEFLAGS: -j4
+      MAKEJOBS: 4
     steps:
       - run:
           name: Install dependencies
@@ -71,7 +78,8 @@ jobs:
           command: cmake . -DBUILDNAME="macos_x86_64_xcode12_cxx17_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=17 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
-          command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+          #command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+          command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG -D CTEST_BUILD_JOBS=$MAKEJOBS -Q
 
 workflows:
   version: 2
