@@ -289,12 +289,6 @@ endif(GISMO_BUILD_UNITTESTS)
 # Add main sources directory
 add_subdirectory(src)
 
-if(GISMO_BUILD_LIB)
-  if (GISMO_EXTRA_DEBUG)
-    set(gismo_SOURCES ${gismo_SOURCES} ${PROJECT_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
-  endif()
-endif()
-
 ## #################################################################
 ## Submodules
 ## #################################################################

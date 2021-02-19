@@ -105,7 +105,7 @@ struct gsQuadrature
         {
             // quA: Order of the target space
             // quB: Regularity of the target space
-            return gsPatchRule<T>::make(basis,static_cast<index_t>(quA),quB,over,fixDir);
+            return gsPatchRule<T>::make(basis,cast<T,index_t>(quA),quB,over,fixDir);
         }
         else
         {
