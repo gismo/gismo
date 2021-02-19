@@ -176,7 +176,7 @@ void gsPatchRule<T>::mapTo( const gsVector<T>& lower,
         nodes.block( 0, 0, d, tmpNodes.cols()*elNodes[d].size() ) = tmpNodes.replicate(1,elNodes[d].size());
 
         ones.setOnes(tmpNodes.cols());
-        for (index_t k = 0; k != elNodes[d].size(); k++)
+        for (k = 0; k != elNodes[d].size(); k++)
         {
             nodes.block(d,k*ones.size(),1,ones.size()) = ones.transpose()*elNodes[d].at(k);
             weights.segment(k*ones.size(),ones.size()) = (ones.transpose()*elWeights[d].at(k)).cwiseProduct(tmpWeights);

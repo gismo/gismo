@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
 
     // --------------------------------------------------------------------------------------
 
-    typename gsBasis<real_t>::domainIter domIt = tbsb2.makeDomainIterator();
+    gsBasis<real_t>::domainIter domIt = tbsb2.makeDomainIterator();
 
     gsMatrix<> GaussRule(tbsb2.dim(),0);
     gsMatrix<> MixedRule(tbsb2.dim(),0);
@@ -167,7 +167,7 @@ int main(int argc, char* argv[])
 
 
     boxSide side(4);
-    typename gsBasis<>::domainIter bIt = tbsb2.makeDomainIterator(side);
+    gsBasis<>::domainIter bIt = tbsb2.makeDomainIterator(side);
     // Start iteration over elements
     GaussRule.resize(tbsb2.dim(),0);
     MixedRule.resize(tbsb2.dim(),0);
