@@ -68,6 +68,7 @@
 ##   CTEST_TEST_TIMEOUT
 ##   CXXNAME
 ##   DO_COVERAGE
+##   DO_TESTS
 ##   DROP_LOCATION
 ##   DROP_METHOD
 ##   DROP_SITE
@@ -157,6 +158,10 @@ endif()
 # also to be changed
 if (NOT DEFINED DO_COVERAGE)
   set(DO_COVERAGE FALSE)
+endif()
+
+if (NOT DEFINED DO_TESTS)
+  set(DO_TESTS TRUE)
 endif()
 
 if(DEFINED CNAME)
@@ -582,13 +587,13 @@ macro(run_ctests)
     set(CTEST_LABELS_FOR_SUBPROJECTS ${LABELS_FOR_SUBPROJECTS}) #labels/subprojects
   endif()
 
+  message("Configuring")
   if(DEFINED KEEPCONFIG)
     ctest_configure(RETURN_VALUE confResult)
   else()
     ctest_configure(OPTIONS "${CMAKE_ARGS};${SUBM_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}"  RETURN_VALUE confResult)
   endif()
-    
-  #ctest_submit(PARTS Configure Update  RETRY_COUNT 3 RETRY_DELAY 3)
+
   if(EXISTS ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
     set(CTEST_NOTES_FILES ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
     #list(APPEND CTEST_NOTES_FILES "file")
@@ -612,13 +617,14 @@ macro(run_ctests)
       endif()
       ctest_build(TARGET ${subproject} APPEND)
       ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
-      ctest_test(INCLUDE_LABEL "${subproject}" PARALLEL_LEVEL ${CTEST_TEST_JOBS} RETURN_VALUE testResult)
-      if (narg GREATER 0 AND NOT testResult EQUAL 0)
-	set(${ARGV0} -1)
+      if (DO_TESTS)
+	ctest_test(INCLUDE_LABEL "${subproject}" PARALLEL_LEVEL ${CTEST_TEST_JOBS} RETURN_VALUE testResult)
+	if (narg GREATER 0 AND NOT testResult EQUAL 0)
+	  set(${ARGV0} -1)
+	endif()
+	ctest_submit(PARTS Test  RETRY_COUNT 3 RETRY_DELAY 3)
       endif()
-
-      ctest_submit(PARTS Test  RETRY_COUNT 3 RETRY_DELAY 3)
-
+    
       if(DO_COVERAGE)
         ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" LABELS "${subproject}" APPEND)
         ctest_submit(PARTS Coverage  RETRY_COUNT 3 RETRY_DELAY 3)
@@ -634,29 +640,33 @@ macro(run_ctests)
   else() # No subprojects
 
 
+    message("Building")
     if("x${CTEST_CMAKE_GENERATOR}" STREQUAL "xNinja")
       ctest_build(TARGET UnitTestPP APPEND) # for older versions of ninja
     endif()
     ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
     ctest_build(APPEND)
     ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
+    message("Building unittests")
     ctest_build(TARGET unittests APPEND)
     ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
-    ctest_test(PARALLEL_LEVEL ${CTEST_TEST_JOBS} RETURN_VALUE testResult)
-    if (narg GREATER 0 AND NOT testResult EQUAL 0)
-      set(${ARGV0} -1)
-    endif()
-
+    if (DO_TESTS)
+      message("Testing")
+      ctest_test(PARALLEL_LEVEL ${CTEST_TEST_JOBS} RETURN_VALUE testResult)
+      if (narg GREATER 0 AND NOT testResult EQUAL 0)
+	set(${ARGV0} -1)
+      endif()
     ctest_submit(PARTS Test  RETRY_COUNT 3 RETRY_DELAY 3)
-
+  endif()
+      
     if(DO_COVERAGE)
-      #message("Running coverage..")
+      message("Running Coverage")
       ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" APPEND)
       ctest_submit(PARTS Coverage  RETRY_COUNT 3 RETRY_DELAY 3)
     endif()
 
     if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
-      #message("Running memcheck..")
+      message("Running Memcheck")
       ctest_memcheck()
       ctest_submit(PARTS MemCheck  RETRY_COUNT 3 RETRY_DELAY 3)
     endif()
