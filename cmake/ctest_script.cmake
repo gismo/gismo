@@ -675,7 +675,7 @@ if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
   run_ctests(res)
 
   string(TIMESTAMP TODAY "%Y-%m-%d")
-  message("CDASH LINK:\nhttps://cdash-ci.inria.fr/index.php?project=${CTEST_PROJECT_NAME}&date=${TODAY}&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=63&value2=${CTEST_SITE}")
+  message("CDASH LINK:\nhttps://cdash-ci.inria.fr/index.php?project=${CTEST_PROJECT_NAME}&date=${TODAY}&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=65&value2=${CTEST_SITE}")
 
   if(NOT res EQUAL 0)
     message(SEND_ERROR "Some Tests failed.")

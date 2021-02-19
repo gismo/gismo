@@ -179,7 +179,7 @@ protected:
     index_t _numQuads(const gsKnotVector<T> knots) const
     {
         index_t ndof = (m_deg + 1)*knots.numElements() - (m_reg+1)*(knots.numElements()-1);
-        ndof = std::ceil(ndof/2.0);
+        ndof = static_cast<index_t>(std::ceil(ndof/2.0));
         return ndof;
     }
 

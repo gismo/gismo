@@ -267,7 +267,8 @@ gsKnotVector<T> gsPatchRule<T>::_init(const gsBSplineBasis<T> * Bbasis) const
                 maxIdx.push_back(k);
         }
 
-        index_t i = maxIdx.at(std::ceil(maxIdx.size()/2.)-1);
+        const index_t i = maxIdx.at(
+            static_cast<index_t>(std::ceil(maxIdx.size()/2.))-1);
         knots.insert((knots.at(i) + knots.at(i+1))/2.) ;
 
         /*  ALTERNATIVE (does not work well)
