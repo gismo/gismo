@@ -147,6 +147,9 @@ public:
         return ElIndex;        
     }
 
+    // Look at gsBasis class for a description
+    gsMatrix<T> elementInSupportOf(index_t j) const;
+    
     /// Returns the number of elements (component wise)
     void numElements_cwise(gsVector<unsigned>& result) const
     {
@@ -550,7 +553,7 @@ public:
         for ( short_t i = 0; i < d; ++i )
             if ( ind[i] == size(i)-1 )
                 return true;
-        return ( (ind.array() == 0).any() );
+        return ((0 == ind.array()).any() );
     }
 
     /// \brief Returns true iff the basis function indexed \a m is on

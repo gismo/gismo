@@ -5,7 +5,7 @@
 ## Author: Angelos Mantzaflaris
 ######################################################################
 
-cmake_minimum_required(VERSION 2.8.12) #CMake 3.19 warns to change to 2.8.12
+cmake_minimum_required(VERSION 2.8.12)
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
@@ -55,6 +55,19 @@ set(gismo_VERSION
   "${gismo_VERSION_MAJOR}.${gismo_VERSION_MINOR}.${gismo_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
 set(GISMO_VERSION "${gismo_VERSION}" CACHE INTERNAL "G+Smo version number")
 
+if(CMAKE_QUIET)
+  function(message)
+    list(GET ARGV 0 MessageType)
+    if(MessageType STREQUAL FATAL_ERROR OR
+	MessageType STREQUAL SEND_ERROR OR
+	MessageType STREQUAL WARNING OR
+	MessageType STREQUAL AUTHOR_WARNING)
+      list(REMOVE_AT ARGV 0)
+      _message(${MessageType} "${ARGV}")
+    endif()
+endfunction()
+endif()
+
 if(POLICY CMP0048)# CMake 3.0
   project(gismo LANGUAGES C CXX  VERSION ${gismo_VERSION})
 else()
@@ -103,6 +116,7 @@ include( gsOptions )
 include(CTest)
 # Note: clean cache to reset to OFF
 set(BUILD_TESTING "Enable testing" ${GISMO_BUILD_UNITTESTS})
+file(WRITE "${PROJECT_BINARY_DIR}/CTestCustom.cmake" "set(CTEST_SOURCE_DIRECTORY ${PROJECT_SOURCE_DIR})\nset(CTEST_BINARY_DIRECTORY   ${PROJECT_BINARY_DIR})\nset(CTEST_SITE         ${SITE})\nset(CTEST_BUILD_NAME   ${BUILDNAME})\n")
 
 ## #################################################################
 ## Preprocessor definitions
@@ -124,6 +138,7 @@ gsJITConfigXml(${CMAKE_CURRENT_SOURCE_DIR}/cmake/jit.xml.in
 ## #################################################################
 
 # Clean previously set variables in the cache
+unset(GISMO_EXTRA_INSTANCE       CACHE)
 unset(${PROJECT_NAME}_HEADERS    CACHE)
 unset(${PROJECT_NAME}_SOURCES    CACHE)
 unset(${PROJECT_NAME}_EXTENSIONS CACHE)
@@ -240,9 +255,6 @@ endif(GISMO_WITH_UMFPACK)
 
 if(GISMO_WITH_UNUM)
   add_subdirectory(extensions/gsUnum)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${UNUM_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${UNUM_INCLUDE_DIR})
 endif(GISMO_WITH_UNUM)
 
 if(GISMO_WITH_OCC)
@@ -289,12 +301,6 @@ endif(GISMO_BUILD_UNITTESTS)
 
 # Add main sources directory
 add_subdirectory(src)
-
-if(GISMO_BUILD_LIB)
-  if (GISMO_EXTRA_DEBUG)
-    set(gismo_SOURCES ${gismo_SOURCES} ${PROJECT_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
-  endif()
-endif()
 
 ## #################################################################
 ## Submodules

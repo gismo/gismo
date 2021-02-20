@@ -86,6 +86,12 @@ using codi::sinh;
 using codi::sqrt;
 using codi::tan;
 using codi::tanh;
+using codi::isnan;
+using codi::isfinite;
+using codi::isinf;
+//using codi::real;
+//using codi::imag;
+//using codi::conj;
 #endif
 
 #ifdef GISMO_WITH_UNUM
@@ -295,7 +301,7 @@ using ::cos;
 using ::cosh;
 using ::exp;
 using ::floor;
-using ::log10;
+inline mpq_class log10(const mpq_class & a) { return log(a)/log(10); }
 using ::log;
 using ::pow;
 using ::sin;

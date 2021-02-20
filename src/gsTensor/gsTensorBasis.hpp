@@ -1032,6 +1032,19 @@ T gsTensorBasis<d, T>::getMaxCellLength() const
     return h;
 }
 
+template<short_t d, class T>
+gsMatrix<T> gsTensorBasis<d,T>::elementInSupportOf(index_t j) const
+{
+    const gsVector<index_t, d> ti = tensorIndex(j);
+    gsMatrix<T> el, res(d,2);
+    for (short_t i = 0; i < d; ++i)
+    {
+        el = m_bases[i]->elementInSupportOf(ti[i]);
+        res.row(i) = el;
+    }
+    return res;
+}
+    
 //template<short_t d, class T>
 //gsDomain<T> * gsTensorBasis<d,T>::makeDomain() const
 //{

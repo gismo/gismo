@@ -136,7 +136,7 @@ public:
     //todo: ValueType=0,1,2 (scalar,vector,matrix)
     //Space = 0,1,2 (instead of rowSpan ColSpan, RowCol ?)
     enum {Space = 0};
-    
+
     //typedef typename E::Nested_t Nested_t;
     //typedef typename E::Scalar   Scalar;
     typedef typename expr_traits<E>::Nested_t Nested_t;
@@ -1442,7 +1442,7 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
-    
+
     enum{rowSpan = E::rowSpan, colSpan = E::colSpan};
 
     void print(std::ostream &os) const { _u.print(os); }
@@ -1548,7 +1548,7 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
-    
+
     enum{rowSpan = E::rowSpan, colSpan = E::colSpan};
 
     void print(std::ostream &os) const { os << "adj("; _u.print(os); os<<")"; }
@@ -1845,7 +1845,7 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
-    
+
     enum{rowSpan = E::rowSpan, colSpan = E::colSpan};
 
     index_t rows() const { return _u.rows(); }
@@ -2207,8 +2207,8 @@ class dJacdc_expr : public _expr<dJacdc_expr<E> >
 {
     typename E::Nested_t _u;
 public:
-    enum{ Space = E::Space, ScalarValued = 0, ColBlocks = E::rowSpan};    
-    
+    enum{ Space = E::Space, ScalarValued = 0, ColBlocks = E::rowSpan};
+
     typedef typename E::Scalar Scalar;
 
     mutable gsMatrix<Scalar> res;
@@ -2260,7 +2260,7 @@ public:
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const
     {return gsNullExpr<Scalar>::get();}
-    
+
     enum{rowSpan = E::rowSpan, colSpan = 0};
 
     void print(std::ostream &os) const { os << "dJacdc("; _u.print(os); os <<")"; }
@@ -2466,7 +2466,7 @@ public:
 
 /**
    Expression for the tangent vector of a geometry map. This
-   expression is valid only at the boundaries of a geometric patch
+   expression is valid only at the boundaries of a geometric patch and only for in-plane surfaces
  */
 template<class T>
 class tangent_expr : public _expr<tangent_expr<T> >
@@ -2479,13 +2479,27 @@ public:
     tangent_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
     mutable gsMatrix<Scalar> res;
+    mutable gsVector<Scalar,3> normal,onormal,otangent;
 
-    MatExprType eval(const index_t k) const
+    const gsMatrix<Scalar> eval(const index_t k) const
     {
-        res = _G.data().outNormals.col(k);//2x1
-        std::swap( res(0,0), res(1,0) );
-        res(0,0) *= -1;
-        return res;
+        if (_G.targetDim()==2)
+        {
+            res = _G.data().outNormals.col(k);//2x1
+            std::swap( res(0,0), res(1,0) );
+            res(0,0) *= -1;
+            return res;
+        }
+        else if (_G.targetDim()==3)
+        {
+            onormal = _G.data().outNormals.col(k);
+            normal =  _G.data().normals.col(k);
+            otangent = normal.template head<3>().cross(onormal.template head<3>());
+            return otangent;
+        }
+        else
+            GISMO_ERROR("Function not implemented for dimension"<<_G.targetDim());
+
     }
 
     index_t rows() const { return _G.data().dim.second; }
@@ -2493,12 +2507,17 @@ public:
 
     enum{rowSpan = 0, colSpan = 0};
 
-    void setFlag() const { _G.data().flags |= NEED_OUTER_NORMAL; }
+    void setFlag() const
+    {
+        _G.data().flags |= NEED_NORMAL;
+        _G.data().flags |= NEED_OUTER_NORMAL;
+    }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         evList.push_sorted_unique(&_G.source());
+        _G.data().flags |= NEED_NORMAL;
         _G.data().flags |= NEED_OUTER_NORMAL;
     }
 
@@ -2508,7 +2527,6 @@ public:
 
     void print(std::ostream &os) const { os << "tv("; _G.print(os); os <<")"; }
 };
-
 
 /**
    Expression for the Laplacian of a finite element variable
@@ -3388,7 +3406,7 @@ public:
     void setFlag() const { _u.setFlag(); _v.setFlag(); }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
-    
+
     enum{rowSpan = E1::rowSpan || E2::rowSpan,colSpan = E2::colSpan || E1::colSpan};
 
     index_t cardinality_impl() const { return  _u.cardinality(); }
@@ -4061,7 +4079,7 @@ onormal_expr<T> nv(const gsGeometryMap<T> & u) { return onormal_expr<T>(u); }
 template<class T> EIGEN_STRONG_INLINE
 normal_expr<T> sn(const gsGeometryMap<T> & u) { return normal_expr<T>(u); }
 
-/// The tangent boundary vector of a geometry map
+/// The tangent boundary vector of a geometry map in 2D
 template<class T> EIGEN_STRONG_INLINE
 tangent_expr<T> tv(const gsGeometryMap<T> & u) { return tangent_expr<T>(u); }
 

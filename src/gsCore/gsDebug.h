@@ -240,7 +240,7 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #endif
 
-#if (__cplusplus < 201402L && __GNUC__==7)
+#if (__cplusplus < 201703L && __GNUC__>6)
 // mangled name will change in C++17 because the exception
 // specification is part of a function type [-Wnoexcept-type]
 #pragma GCC diagnostic ignored "-Wnoexcept-type"

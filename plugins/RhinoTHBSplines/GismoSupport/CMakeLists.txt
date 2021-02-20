@@ -17,7 +17,7 @@ set_target_properties(GismoSupport PROPERTIES
 #---- Native cmake
 else()
 
-cmake_minimum_required(VERSION 2.8.8)
+cmake_minimum_required(VERSION 2.8.12)
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)

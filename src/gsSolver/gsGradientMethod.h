@@ -102,7 +102,7 @@ public:
     {
         gsOptionList opt = Base::defaultOptions();
         opt.addSwitch("AdaptiveStepSize", "Adaptive step sizes (to minimize residual)", true );
-        opt.addReal  ("StepSize", "Step size (requires AdaptiveStepSize to be false)" , 0    );
+        opt.addReal  ("StepSize", "Step size (requires AdaptiveStepSize to be false)" , (T)0    );
         return opt;
     }
 

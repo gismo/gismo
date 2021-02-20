@@ -109,10 +109,10 @@ int main(int argc, char *argv[])
     gsOptionList opt = gsIterativeSolver<>::defaultOptions();
     opt.setInt ("MaxIterations", 3*N);
     opt.setReal("Tolerance"    , tol);
+    gsInfo << opt <<"\n";
 
     ///----------------------GISMO-SOLVERS----------------------///
-    gsInfo << "Testing G+Smo's solvers:\n";
-
+    gsInfo << "Testing G+Smo's linear solvers:\n";
 
 
     //Initialize the MinRes solver

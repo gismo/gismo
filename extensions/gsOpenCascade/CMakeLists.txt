@@ -84,15 +84,15 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 # Add gsOpenCascade extension to the list of G+Smo extensions
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
-    CACHE INTERNAL "gismo extensions to be included")
+    CACHE INTERNAL "Gismo extensions to be included")
     
 # Add OpenCascade include directory to G+Smo standard include directories
 set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${OCC_INCLUDE_DIR}
-    CACHE INTERNAL "gismo include directories")
+    CACHE INTERNAL "Gismo include directories")
 
 # Link G+Smo to OpenCascade library (either dynamically or statically)
 set(gismo_LINKER ${gismo_LINKER} ${OCC_LIBRARIES}
-    CACHE INTERNAL "gismo extra linker objects")
+    CACHE INTERNAL "Gismo extra linker objects")
 
 # Install gsOpenCascade extension header files
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
