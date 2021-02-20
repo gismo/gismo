@@ -55,12 +55,6 @@ set(gismo_VERSION
   "${gismo_VERSION_MAJOR}.${gismo_VERSION_MINOR}.${gismo_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
 set(GISMO_VERSION "${gismo_VERSION}" CACHE INTERNAL "G+Smo version number")
 
-if(POLICY CMP0048)# CMake 3.0
-  project(gismo LANGUAGES C CXX  VERSION ${gismo_VERSION})
-else()
-  project(gismo C CXX)
-endif()
-
 if(CMAKE_QUIET)
   function(message)
     list(GET ARGV 0 MessageType)
@@ -72,6 +66,12 @@ if(CMAKE_QUIET)
       _message(${MessageType} "${ARGV}")
     endif()
 endfunction()
+endif()
+
+if(POLICY CMP0048)# CMake 3.0
+  project(gismo LANGUAGES C CXX  VERSION ${gismo_VERSION})
+else()
+  project(gismo C CXX)
 endif()
 
 if (GISMO_BUILD_PCH)
