@@ -50,7 +50,7 @@ void gsBSpline<T>::merge( gsGeometry<T> * otherG )
 
     // check whether the resulting curve will be continuous
     // TODO: ideally, the tolerance should be a parameter of the function
-    T tol = std::max(1e-8,  std::pow(10.0, -(std::numeric_limits<T>::digits10-1)));
+    T tol = std::max(1e-8,  std::pow(10.0, -(std::numeric_limits<T>::digits10()-1)));
     gsMatrix<T> mValue = this ->eval(this ->support().col(1));
     gsMatrix<T> oValue = other->eval(other->support().col(0));
     bool continuous = gsAllCloseAbsolute(mValue,oValue,tol);

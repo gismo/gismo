@@ -496,7 +496,7 @@ public:
      * @param[in] mesh gsMesh object.
      * @param[in] precision tolerance
      */
-    explicit gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision = std::max(1e-8,  std::pow(10.0, -(std::numeric_limits<T>::digits10-1))) );
+    explicit gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision = std::max(1e-8,  std::pow(10.0, -(std::numeric_limits<T>::digits10()-1))) );
 
     virtual ~gsHalfEdgeMesh() { }
 

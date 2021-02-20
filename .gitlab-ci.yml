@@ -239,14 +239,14 @@ linux_x86_64_intel_cxx11_release_float_int:
     - external_pull_requests
 
 ################################################################################
-# 6. Test installation and deployment
+# 6. Test build, installation and deployment
 ################################################################################
 
-# Standard installation and deployment on linux
+# Standard build, installation and deployment on linux
 install_and_deploy_linux:
   tags:
     - linux
-  stage: test #deploy #(deploy will only run only when all test succeeds)
+  stage: build #deploy #(deploy will only run only when all test succeeds)
   image: gcc:9
   script:
     - apt-get update -y

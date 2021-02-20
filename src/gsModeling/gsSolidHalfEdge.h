@@ -76,7 +76,7 @@ public:
     explicit gsSolidHalfEdge(int i) : SolidElement(i) { }
 
     /// check if two HEs are "equivalent", ie., if their sources have the same coordinates, and their targets have the same coordinates
-    bool isEquiv(HalfEdge* other, T tolFactor = std::max(1e-8,  std::pow(10.0, -(std::numeric_limits<T>::digits10-1))) ) const
+    bool isEquiv(HalfEdge* other, T tolFactor = std::max(1e-8,  std::pow(10.0, -(std::numeric_limits<T>::digits10()-1))) ) const
     {
         using std::abs;
         T tol = tolFactor*eps;
