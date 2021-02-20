@@ -321,6 +321,31 @@ typename gsSolverOp< typename gsSparseSolver<T>::LU >::uPtr  makeSparseLUSolver(
 }
 
 
+/// @brief Convenience function to create a sparse QR solver as a
+/// gsLinearOperator.
+///
+/// @note This uses the default COLAMD column ordering.
+///
+/// \relates gsSolverOp
+template <typename T, int _Opt, typename _Index>
+typename gsSolverOp< typename gsSparseSolver<T>::QR >::uPtr  makeSparseQRSolver(const gsSparseMatrix<T,_Opt,_Index> & mat)
+{
+    return memory::make_unique( new gsSolverOp< typename gsSparseSolver<T>::QR >(mat) );
+}
+
+/// @brief Convenience function to create a sparse QR solver as a
+/// gsLinearOperator taking a shared pointer.
+///
+/// @note This uses the default COLAMD column ordering.
+///
+/// \relates gsSolverOp
+template <typename T, int _Opt, typename _Index>
+typename gsSolverOp< typename gsSparseSolver<T>::QR >::uPtr  makeSparseQRSolver(const memory::shared_ptr< gsSparseMatrix<T,_Opt,_Index> > & mat)
+{
+    return memory::make_unique( new gsSolverOp< typename gsSparseSolver<T>::QR >(mat) );
+}
+
+ 
 /// @brief Convenience function to create a sparse Cholesky
 /// (simplicial LDL^T) solver as a gsLinearOperator.
 ///
