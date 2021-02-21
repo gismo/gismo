@@ -81,7 +81,7 @@ void solveSystem(typename gsSparseSolver<codi::RealReverseGen<T>>::LU   &solver,
 
     dataHandler->addData(&sol);
 
-    tape.pushExternalFunction(&solveSystem_b, dataHandler, &solveSystem_delete);
+    tape.pushExternalFunction(&solveSystem_b<T>, dataHandler, &solveSystem_delete<T>);
     tape.setActive();
     for(index_t i = 0; i < sol.size(); ++i) {
         tape.registerInput(sol[i]);
