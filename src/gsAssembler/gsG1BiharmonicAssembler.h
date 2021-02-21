@@ -85,7 +85,7 @@ public:
 
     gsMatrix<> get_bValue() { return m_g1_ddof; };
 
-    void constructSystem(const gsSparseMatrix<> & mat22, const gsMatrix<> &f2, const gsSparseMatrix<> & mat12, const gsSparseMatrix<> & mat21, const gsMultiBasis<> & multiBasis);
+    void constructSystem(const gsSparseMatrix<> & mat22, const gsMatrix<> &f2, const gsSparseMatrix<> & mat12, const gsSparseMatrix<> & mat21, const std::vector<gsMultiBasis<>> & multiBasis);
 
 protected:
 
@@ -107,7 +107,7 @@ protected:
 
 
 template<class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::constructSystem(const gsSparseMatrix<> &mat22, const gsMatrix<> &f2, const gsSparseMatrix<> &mat12, const gsSparseMatrix<> &mat21, const gsMultiBasis<> & multiBasis)
+void gsG1BiharmonicAssembler<T,bhVisitor>::constructSystem(const gsSparseMatrix<> &mat22, const gsMatrix<> &f2, const gsSparseMatrix<> &mat12, const gsSparseMatrix<> &mat21, const std::vector<gsMultiBasis<>> & multiBasis)
 {
 
 
@@ -163,15 +163,15 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructSystem(const gsSparseMatrix<
     for (int k = 0; k < mat12.outerSize(); ++k)
         for (gsSparseMatrix<real_t>::InnerIterator it(mat12, k); it; ++it)
         {
-            if (it.row() < multiBasis.basis(0).size())
+            if (it.row() < multiBasis[0].basis(0).size())
             {
                 //gsInfo << it.row() << " : " << it.col() << " : " << it.value() << " : " << m_system.matrix().at(it.row(), it.col()-m_system.matrix().cols()/2) << "\n";
-                tripletList.push_back(TT(it.row(), it.col()+multiBasis.basis(0).size(), it.value()));
+                tripletList.push_back(TT(it.row(), it.col()+multiBasis[0].basis(1).size(), it.value()));
             }
 
-            if (it.row() >= multiBasis.basis(0).size())
+            if (it.row() >= multiBasis[0].basis(0).size())
             {
-                tripletList.push_back(TT(it.row()+multiBasis.basis(0).size(), it.col(), it.value()));
+                tripletList.push_back(TT(it.row()+multiBasis[0].basis(1).size(), it.col(), it.value()));
             }
         }
 
@@ -179,15 +179,15 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructSystem(const gsSparseMatrix<
     for (int k = 0; k < mat21.outerSize(); ++k)
         for (gsSparseMatrix<real_t>::InnerIterator it(mat21, k); it; ++it)
         {
-            if (it.row() < multiBasis.basis(0).size())
+            if (it.row() < multiBasis[0].basis(1).size())
             {
                 //gsInfo << it.row() << " : " << it.col() << " : " << it.value() << " : " << m_system.matrix().at(it.row()+m_system.matrix().cols()/2, it.col()) << "\n";
-                tripletList.push_back(TT(it.row()+multiBasis.basis(0).size(), it.col()+multiBasis.basis(1).size()+multiBasis.basis(0).size(), it.value()));
+                tripletList.push_back(TT(it.row()+multiBasis[0].basis(0).size(), it.col()+multiBasis[1].basis(0).size()+multiBasis[0].basis(1).size(), it.value()));
             }
 
-            if (it.row() >= multiBasis.basis(0).size())
+            if (it.row() >= multiBasis[0].basis(1).size())
             {
-                tripletList.push_back(TT(it.row()+multiBasis.basis(1).size()+multiBasis.basis(0).size(), it.col()+multiBasis.basis(0).size(), it.value()));
+                tripletList.push_back(TT(it.row()+multiBasis[1].basis(0).size()+multiBasis[0].basis(0).size(), it.col()+multiBasis[0].basis(0).size(), it.value()));
             }
 
         }
@@ -354,9 +354,10 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble(bool isogeometric, index_t p
 
     if (!isogeometric)
     {
+        //gsInfo << "apply mixed assembling \n";
         gsVisitorMixed<T> visitorMixed;
         applyMixed(visitorMixed, patchIdx);
-
+        //gsInfo << "finished \n";
     }
 
     /*

@@ -308,13 +308,16 @@ void gsApproxG1BasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
     if (m_g1OptionList.getSwitch("info"))
         std::cout << std::endl;
 
-
-    gsNormL2BasisFunction<T> normL2BasisFunction(g1EdgeBasis2, m_basis, m_basis_pm[0], m_basis_pm[1], m_gD[0], m_uv);
-    normL2BasisFunction.compute();
-
-    m_error = normL2BasisFunction.value();
     if (m_g1OptionList.getSwitch("info"))
-        gsInfo << "\nVALUE: " << normL2BasisFunction.value() << "\n\n";
+    {
+        gsNormL2BasisFunction<T> normL2BasisFunction(g1EdgeBasis2, m_basis, m_basis_pm[0], m_basis_pm[1], m_gD[0], m_uv);
+        normL2BasisFunction.compute();
+
+        m_error = normL2BasisFunction.value();
+        if (m_g1OptionList.getSwitch("info"))
+            gsInfo << "\nVALUE: " << normL2BasisFunction.value() << "\n\n";
+    }
+
 } // setG1BasisEdge
 
 template <class T, class bhVisitor>

@@ -299,11 +299,119 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
     gsSparseSolver<real_t>::LU solver;
     gsVector<> sol_a, sol_b;
 
+    bool lagrange = true;
+    gsSparseMatrix<> basis_lagrange(bsp_gD.size(),bsp_gD.size());
+    basis_lagrange.reserve(3*bsp_gD.size());
+    basis_lagrange.setZero();
+    gsMatrix<> rhs_lagrange, rhsB_lagrange;
+    rhs_lagrange.setZero(bsp_gD.size(), 1);
+    rhsB_lagrange.setZero(bsp_gD.size(), 1);
+
+    gsMatrix<> innerPoints(2, 3);
+    innerPoints.setZero();
+    innerPoints(uv, 0) = 0.25; // v
+    innerPoints(uv, 1) = 0.5; // v
+    innerPoints(uv, 2) = 0.75; // v
+    if (lagrange)
+    {
+        real_t lambda = 10000;
+        index_t r_tilde = 1;
+
+        for (index_t ii = 0; ii < bsp_gD.size(); ii++)
+        {
+            gsMatrix<T> basisData_lagrange_ii, basisData_der_lagrange_ii;
+            bsp_gD.evalSingle_into(ii, innerPoints.row(uv), basisData_lagrange_ii);
+            bsp_gD.derivSingle_into(ii, innerPoints.row(uv), basisData_der_lagrange_ii);
+            for (index_t jj = 0; jj < bsp_gD.size(); jj++)
+            {
+                gsMatrix<T> basisData_lagrange_jj, basisData_der_lagrange_jj;
+                bsp_gD.evalSingle_into(jj, innerPoints.row(uv), basisData_lagrange_jj);
+                bsp_gD.derivSingle_into(jj, innerPoints.row(uv), basisData_der_lagrange_jj);
+
+                basis_lagrange.insert(ii, jj) = lambda * (basisData_lagrange_ii * basisData_lagrange_jj.transpose())(0,0)
+                    + lambda * (basisData_der_lagrange_ii * basisData_der_lagrange_jj.transpose())(0,0);
+            }
+        }
+
+        gsMatrix<> ev, ev2;
+        std::vector<gsMatrix<T>> alpha_lagrange;
+        const gsGeometry<> & P0 = this->m_mp.patch(patchID); // Right
+
+        alpha_lagrange.resize(r_tilde+1);
+        alpha_lagrange[0].setZero(1, innerPoints.cols());
+
+        P0.deriv_into(innerPoints, ev);
+        alpha_lagrange[0] = ( ev.row(0).cwiseProduct(ev.row(3)) - ev.row(1).cwiseProduct(ev.row(2)) );
+
+        P0.deriv2_into(innerPoints, ev2);
+        alpha_lagrange[1].setZero(1, innerPoints.cols());
+        if (uv == 1)
+            alpha_lagrange[1] = ev2.row(2).cwiseProduct(ev.row(3)) +
+                ev2.row(4).cwiseProduct(ev.row(0)) - ev2.row(1).cwiseProduct(ev.row(2)) -
+                ev2.row(5).cwiseProduct(ev.row(1));
+        else if (uv == 0)
+            alpha_lagrange[1] = ev2.row(0).cwiseProduct(ev.row(3)) +
+                ev2.row(5).cwiseProduct(ev.row(0)) - ev2.row(2).cwiseProduct(ev.row(2)) -
+                ev2.row(3).cwiseProduct(ev.row(1));
+
+
+        for (index_t ii = 0; ii < bsp_gD.size(); ii++)
+        {
+            gsMatrix<T> basisData_lagrange_ii, basisData_deriv_lagrange_ii;
+            bsp_gD.evalSingle_into(ii, innerPoints.row(uv), basisData_lagrange_ii);
+            bsp_gD.derivSingle_into(ii, innerPoints.row(uv), basisData_deriv_lagrange_ii);
+            rhs_lagrange.row(ii) = lambda * basisData_lagrange_ii * alpha_lagrange[0].transpose() +
+                lambda * basisData_deriv_lagrange_ii * alpha_lagrange[1].transpose();
+        }
+
+        std::vector<gsMatrix<T>> beta_lagrange;
+        beta_lagrange.resize(r_tilde+1);
+        beta_lagrange[0].setZero(1, innerPoints.cols());
+        beta_lagrange[1].setZero(1, innerPoints.cols());
+
+        for(index_t i = 0; i < innerPoints.cols(); i++)
+        {
+            gsMatrix<> ev_temp, ev2_temp, D0;
+            P0.jacobian_into(innerPoints.col(i),ev_temp);
+            D0 = ev_temp.col(uv);
+            real_t D1 = 1/ D0.norm();
+            beta_lagrange[0](0,i) = - 1 * D1 * D1 * ev_temp.col(1).transpose() * ev_temp.col(0) ;
+
+            P0.deriv2_into(innerPoints.col(i), ev2_temp);
+            D1 = 1/ D0.squaredNorm();
+            real_t D2 = D0.squaredNorm();
+            if (uv == 1)
+                beta_lagrange[1](0,i) = - 1 * D1 * D1 * (D2*(ev2_temp(2,0)*ev_temp(0,1) + ev2_temp(1,0)*ev_temp(0,0)+
+                    ev2_temp(5,0)*ev_temp(1,1) + ev2_temp(4,0)*ev_temp(1,0)) -
+                    (ev_temp.col(1).transpose() * ev_temp.col(0))(0,0) * 2.0 * (ev2_temp(1,0)*ev_temp(0,1) +
+                    ev2_temp(4,0)*ev_temp(1,1)));
+            else if (uv == 0)
+                beta_lagrange[1](0,i) = - 1 * D1 * D1 * (D2*(ev2_temp(0,0)*ev_temp(0,1) + ev2_temp(2,0)*ev_temp(0,0)+
+                    ev2_temp(3,0)*ev_temp(1,1) + ev2_temp(5,0)*ev_temp(1,0)) -
+                    (ev_temp.col(1).transpose() * ev_temp.col(0))(0,0) * 2.0 * (ev2_temp(0,0)*ev_temp(0,0) +
+                    ev2_temp(3,0)*ev_temp(1,0)));
+
+        }
+
+        //gsInfo << "beta: " << beta_lagrange[0] << "\n";
+        //gsInfo << "der beta: " << uv << " : " << beta_lagrange[1] << "\n";
+
+        for (index_t ii = 0; ii < bsp_gD.size(); ii++)
+        {
+            gsMatrix<T> basisData_lagrange_ii, basisData_deriv_lagrange_ii;
+            bsp_gD.evalSingle_into(ii, innerPoints.row(uv), basisData_lagrange_ii);
+            bsp_gD.derivSingle_into(ii, innerPoints.row(uv), basisData_deriv_lagrange_ii);
+            rhsB_lagrange.row(ii) = lambda * basisData_lagrange_ii * beta_lagrange[0].transpose() +
+                lambda * basisData_deriv_lagrange_ii * beta_lagrange[1].transpose();
+        }
+    }
+
+
     // alpha^S
     if (globalGdAssembler.matrix_alpha().rows() != 0)
     {
-        solver.compute(globalGdAssembler.matrix_alpha());
-        sol_a = solver.solve(globalGdAssembler.rhs_alpha());
+        solver.compute(globalGdAssembler.matrix_alpha() + basis_lagrange);
+        sol_a = solver.solve(globalGdAssembler.rhs_alpha()+rhs_lagrange);
     }
 
     gsGeometry<>::uPtr tilde_temp;
@@ -323,6 +431,7 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
 
     gsBSpline<T> alpha_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
     alpha_S_tilde.push_back(alpha_t);
+
 /*
     if (patchID == 0)
         gsWriteParaview(alpha_t, "alpha_L", 1000);
@@ -332,8 +441,8 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
     // beta^S
     if (globalGdAssembler.matrix_beta().rows() != 0)
     {
-        solver.compute(globalGdAssembler.matrix_beta());
-        sol_b = solver.solve(globalGdAssembler.rhs_beta());
+        solver.compute(globalGdAssembler.matrix_beta() + basis_lagrange);
+        sol_b = solver.solve(globalGdAssembler.rhs_beta() + rhsB_lagrange);
     }
 /*    if (this->m_optionList.getSwitch("twoPatch"))
     {
@@ -349,6 +458,9 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
 
     gsBSpline<T> beta_t = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
     beta_S_tilde.push_back(beta_t);
+
+    //gsInfo << "Beta SOl: " << beta_t.eval(innerPoints.row(uv)) << "\n";
+    //gsInfo << "Beta deriv sol: " << beta_t.deriv(innerPoints.row(uv)) << "\n";
 
     if (patchID == 0)
         gsWriteParaview(alpha_t, "alpha_L", 1000);

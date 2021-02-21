@@ -92,6 +92,7 @@ int main(int argc, char *argv[])
     // ======= Geometry =========
     std::string string_geo;
     index_t numDegree = 0;
+    index_t innerKnotMulti = 0;
     switch(g1OptionList.getInt("geometry"))
     {
         case 0:
@@ -159,6 +160,7 @@ int main(int argc, char *argv[])
         case 41:
             string_geo = "planar/twoPatches/funny_example2.xml";
             numDegree = 0;
+            innerKnotMulti = 1 + g1OptionList.getInt("P_geo");
             break;
 
         case 11:
@@ -175,6 +177,7 @@ int main(int argc, char *argv[])
             break;
     }
     g1OptionList.addInt("degree","Degree", numDegree);
+    g1OptionList.addInt("innerKnotMulti","innerKnotMulti", innerKnotMulti);
 
     gsFileData<> fd(string_geo);
     //gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
@@ -196,12 +199,14 @@ int main(int argc, char *argv[])
 
     //std::vector<int> mul={multiPatch_init.patch(1).degree(1) - g1OptionList.getInt("regularity"), 0};
     std::vector<int> mul={1, 0};
-    multiPatch_init.patch(0).uniformRefine(3,mul);
-    multiPatch_init.patch(1).uniformRefine(3,mul);
+    //multiPatch_init.patch(0).uniformRefine(3,mul);
+    //multiPatch_init.patch(1).uniformRefine(3,mul);
     //multiPatch_init.patch(1).degreeElevate(1);
-
-    //gsInfo << "Patch: " << multiPatch_init.patch(0) << "\n";
-    //gsInfo << "Patch 2: " << multiPatch_init.patch(1 ) << "\n";
+    if (g1OptionList.getSwitch("info"))
+    {
+        gsInfo << "Patch: " << multiPatch_init.patch(0) << "\n";
+        gsInfo << "Patch 2: " << multiPatch_init.patch(1) << "\n";
+    }
 
     gsVector<real_t> l2Error_vec(g1OptionList.getInt("loop") + 1);
     gsVector<real_t> h1SemiError_vec(g1OptionList.getInt("loop") + 1);
@@ -251,7 +256,7 @@ int main(int argc, char *argv[])
             gsTensorBSpline<2,real_t> bsp_temp = dynamic_cast<gsTensorBSpline<2,real_t>&>(multiPatch.patch(0));
             //gsInfo << "knotvector: " << bsp_temp.knots(0).asMatrix() << "\n";
 
-            gsWriteParaview(multiPatch, "geometry_init", 2000, true);
+            gsWriteParaview(multiPatch, "geometry_init", 5000, true);
 
             //gsInfo << "###### Level: " << refinement_level << " with " << num_knots[refinement_level] << " inner knots ###### " << "\n";
 
@@ -270,9 +275,9 @@ int main(int argc, char *argv[])
 
                 mb_g1.basis(0).degreeIncrease(g1OptionList.getInt("p_tilde") - 1, 1);
                 mb_g1.basis(1).degreeIncrease(g1OptionList.getInt("p_tilde") - 1, 1);
-                mb_g1.basis(0).component(1).reduceContinuity(mb_g1.basis(0).maxDegree() - 1 -  math::min(g1OptionList.getInt("regularity"),
+                mb_g1.basis(0).component(1).reduceContinuity(mb_g1.basis(0).maxDegree() - innerKnotMulti -  math::min(g1OptionList.getInt("regularity"),
                                                            math::min(g1OptionList.getInt("r_tilde"), multiPatch_init.patch(0).degree(1)-2)));
-                mb_g1.basis(1).component(1).reduceContinuity(mb_g1.basis(0).maxDegree() - 1 - math::min(g1OptionList.getInt("regularity"),
+                mb_g1.basis(1).component(1).reduceContinuity(mb_g1.basis(0).maxDegree() - innerKnotMulti - math::min(g1OptionList.getInt("regularity"),
                                                            math::min(g1OptionList.getInt("r_tilde"), multiPatch_init.patch(0).degree(1)-2)));
 
                 gsTensorBSplineBasis<2, real_t> basis_bspline_g1 = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(mb_g1.basis(0));
@@ -339,6 +344,7 @@ int main(int argc, char *argv[])
 #endif
             gsG1System<real_t> g1System(multiPatch,
                                         mb,
+                                         innerKnotMulti,
                                         g1OptionList.getSwitch("neumann"),
                                         g1OptionList.getSwitch("twoPatch"),
                                         g1OptionList.getSwitch("isogeometric"));
@@ -373,6 +379,8 @@ int main(int argc, char *argv[])
 
                 for (size_t i = 0; i < singleInt.getSinglePatch(0).getG1Basis().nPatches(); i++)
                 {
+                    if (g1OptionList.getSwitch("info"))
+                        gsInfo << "Num Interface " << singleInt.getSinglePatch(0).getG1Basis().nPatches() << "\n";
 
                     gsMultiPatch<> edgeSingleBF;
 
@@ -569,7 +577,7 @@ int main(int argc, char *argv[])
                 //multiPatch_temp.patch(0).degreeElevate(g1OptionList.getInt("p_tilde") -1,1);
 
                 mb_g1.basis(1).degreeIncrease(g1OptionList.getInt("p_tilde") - 1, 1);
-                mb_g1.basis(1).component(1).reduceContinuity(mb_g1.basis(1).maxDegree() - 1 - math::min(g1OptionList.getInt("regularity"),
+                mb_g1.basis(1).component(1).reduceContinuity(mb_g1.basis(1).maxDegree() - innerKnotMulti - math::min(g1OptionList.getInt("regularity"),
                                                            math::min(g1OptionList.getInt("r_tilde"), multiPatch_init.patch(0).degree(1)-2)));
 
                 std::vector<int> single_mul;
@@ -588,6 +596,7 @@ int main(int argc, char *argv[])
                 mb_g1.basis(0).component(1).uniformRefine(num_knots[refinement_level], mb_g1.basis(0).degree(1)-patch_mul.at(0).at(1));
                 mb_g1.basis(1).component(0).uniformRefine(num_knots[refinement_level], mb_g1.basis(1).degree(0)-patch_mul.at(1).at(0));
                 mb_g1.basis(1).component(1).uniformRefine(num_knots[refinement_level], mb_g1.basis(1).degree(1)-patch_mul.at(1).at(1));
+
 /*
                 gsInfo << "Basis: " << mb_g1.basis(0) << "\n";
                 gsInfo << "Basis2 : " << mb_g1.basis(1) << "\n";
@@ -629,7 +638,7 @@ int main(int argc, char *argv[])
                                                       g1BiharmonicAssembler_g22.rhs(),
                                                       g1BiharmonicAssembler_g12.matrix(),
                                                       g1BiharmonicAssembler_g21.matrix(),
-                                                      mb_g1);
+                                                      mb);
 
                 //gsInfo << " test " << g1BiharmonicAssembler.matrix().bottomRows(2) << "\n";
                 //gsInfo << " test 3" << g1BiharmonicAssembler.matrix().rightCols(2) << "\n";
@@ -682,38 +691,46 @@ int main(int argc, char *argv[])
 
 
 #ifdef _OPENMP
-        omp_set_num_threads(g1OptionList.getInt("threads"));
+        //omp_set_num_threads(g1OptionList.getInt("threads"));
         //omp_set_num_threads(1);
         omp_set_nested(1);
 #endif
         if (g1OptionList.getSwitch("info"))
             gsInfo << "Compute Error ... \n";
-#pragma omp parallel for
-        for (index_t e = 0; e < 6; ++e)
+//#pragma omp parallel for
+        for (index_t e = 0; e < 4; ++e)
         {
             if (e == 0)
             {
                 gsNormL2<real_t> errorL2(multiPatch_proof.back(), mb_proof.back(), sol_proof.back(), solVal);
                 errorL2.compute(g1System_proof.back(), g1OptionList.getSwitch("isogeometric"));
                 l2Error_vec[refinement_level] = errorL2.value();
+                if (g1OptionList.getSwitch("info"))
+                    gsInfo << "Finished L2 Error ... \n";
             }
             else if (e == 1)
             {
                 gsSeminormH1<real_t> errorSemiH1(multiPatch_proof.back(), mb_proof.back(), sol_proof.back(), solVal);
                 errorSemiH1.compute(g1System_proof.back(), g1OptionList.getSwitch("isogeometric"));
                 h1SemiError_vec[refinement_level] = errorSemiH1.value();
+                if (g1OptionList.getSwitch("info"))
+                    gsInfo << "Finished H1 Error ... \n";
             }
             else if (e == 2)
             {
                 gsSeminormH2<real_t> errorSemiH2(multiPatch_proof.back(), mb_proof.back(), sol_proof.back(), solVal);
                 errorSemiH2.compute(g1System_proof.back(), g1OptionList.getSwitch("isogeometric"));
                 h2SemiError_vec[refinement_level] = errorSemiH2.value();
+                if (g1OptionList.getSwitch("info"))
+                    gsInfo << "Finished H2 Error ... \n";
             }
             else if (e == 3)
             {
                 gsH1NormWithJump<real_t> errorJump(multiPatch_proof.back(), mb_proof.back(), sol_proof.back());
                 errorJump.compute(g1System_proof.back(), g1OptionList.getSwitch("isogeometric"), "all");
                 h1SemiError_jump_edge.row(refinement_level) = errorJump.value().transpose();
+                if (g1OptionList.getSwitch("info"))
+                    gsInfo << "Finished Jump Error ... \n";
             }
 
         }

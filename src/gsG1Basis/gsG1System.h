@@ -63,6 +63,7 @@ public:
 */
     gsG1System(gsMultiPatch<> & mp,
                std::vector<gsMultiBasis<>> & mb,
+               index_t innerKnotMulti,
                bool neumannBdy = false,
                bool twoPatch = false,
                bool isogeometric = false)
@@ -71,12 +72,12 @@ public:
         numBasisFunctions.resize(7);
 
         if (m_twoPatch)
-            initialize_twoPatch(mp,mb);
+            initialize_twoPatch(mp,mb,innerKnotMulti);
         else
             initialize(mp, mb);
     }
 
-    void initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMultiBasis<>> mb);
+    void initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMultiBasis<>> mb, index_t innerKnotMulti);
     void initialize(gsMultiPatch<> & mp, std::vector<gsMultiBasis<>> mb);
 
     void finalize(gsMultiPatch<> & mp, gsMultiBasis<> & mb, gsMatrix<> g1);
@@ -135,7 +136,7 @@ protected:
 }; // class gsG1System
 
 template<class T>
-void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMultiBasis<>> mb)
+void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMultiBasis<>> mb, index_t innerKnotMulti)
 {
     // Number of the patches
     index_t numPatches = mp.nPatches();
@@ -214,7 +215,7 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
             kink[0] = true;
             numIntBdy += 1;
         }
-        gsInfo << "knick: " << matrix.determinant() << "\n";
+        //gsInfo << "knick: " << matrix.determinant() << "\n";
 
         points.setOnes(2,2);
         points(0,1) = 0.0;
@@ -225,13 +226,19 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
             kink[1] = true;
             numIntBdy += 1;
         }
-        gsInfo << "knick 2: " << matrix.determinant() << "\n";
+        //gsInfo << "knick 2: " << matrix.determinant() << "\n";
 
         //gsInfo << "r: " << m_r << " : " << m_p << " : " << basis_1.knots().multiplicityIndex(p_1 + 1) << "\n";
-        //gsInfo << "IFace: " << numBasisFunctions[0][i] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1 - numIntBdy << "\n";
 
-        numBasisFunctions[0][i+1] = numBasisFunctions[0][i] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1 - numIntBdy; // 1+ and 1- times 2
-        sizePlusInt[i] = (m_p - m_r - 1) * (m_n - 1) + m_p + 1;
+        index_t numInnerKnot = 0;
+        if (innerKnotMulti > 0 && m_p-1-m_r == 1)
+            numInnerKnot = 3;
+
+        //gsInfo << "Inner " << numInnerKnot << "\n";
+        //gsInfo << "IFace: " << numBasisFunctions[0][i] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1 + 2*numInnerKnot << "\n";
+
+        numBasisFunctions[0][i+1] = numBasisFunctions[0][i] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1 - numIntBdy +2*numInnerKnot; // 1+ and 1- times 2
+        sizePlusInt[i] = (m_p - m_r - 1) * (m_n - 1) + m_p + 1 + numInnerKnot;
     }
     for (size_t i = 0; i < mp.boundaries().size(); i++)
     {
@@ -800,8 +807,8 @@ gsMatrix<> gsG1System<T>::solve(const gsSparseMatrix<real_t> & K, const gsMatrix
 
     gsSparseMatrix<real_t> A = D_0_sparse * K * D_0_sparse.transpose();
     gsVector<real_t> F = D_0_sparse * f - D_0_sparse * K * D_boundary_sparse.transpose() * m_g1;
-
     A.makeCompressed();
+
     ///----------------------EIGEN-ITERATIVE-SOLVERS----------------------///
     //gsInfo << "\nTesting Eigen's interative solvers:\n";
 

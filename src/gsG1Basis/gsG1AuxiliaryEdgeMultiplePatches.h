@@ -202,8 +202,18 @@ public:
         {
 
             std::vector<gsBSplineBasis<>> basis_pm;
-            gsBSplineBasis<> basis_1 = dynamic_cast<gsBSplineBasis<> &>(auxGeom[0].getBasis().basis(0).component(0)); // 0 -> v, 1 -> u
-            gsBSplineBasis<> basis_2 = dynamic_cast<gsBSplineBasis<> &>(auxGeom[1].getBasis().basis(0).component(1)); // 0 -> v, 1 -> u
+            gsBSplineBasis<> basis_1 = dynamic_cast<gsBSplineBasis<> &>(test_mb.basis(0).component(1)); // 0 -> v, 1 -> u
+            gsBSplineBasis<> basis_2 = dynamic_cast<gsBSplineBasis<> &>(test_mb.basis(1).component(0)); // 0 -> v, 1 -> u
+
+            if (g1OptionList.getSwitch("info"))
+            {
+                gsInfo << "Basis_1 " << auxGeom[0].getBasis().basis(0) << "\n";
+                gsInfo << "Basis_2 " << auxGeom[1].getBasis().basis(0) << "\n";
+
+                gsInfo << "Basis_1 " << basis_1 << "\n";
+                gsInfo << "Basis_2 " << basis_2 << "\n";
+            }
+
 
             index_t p_1 = basis_1.degree();
             index_t p_2 = basis_2.degree();
@@ -224,6 +234,15 @@ public:
                 for (size_t i = basis_2.degree()+1; i < basis_2.knots().size() - (basis_2.degree()+1); i += basis_2.knots().multiplicityIndex(i))
                     basis_plus.insertKnot(basis_2.knot(i),p-1-m_r);
 
+            index_t innerKnotMulti = g1OptionList.getInt("innerKnotMulti");
+            if (innerKnotMulti > 0 && p-1-m_r == 1)
+            {
+                basis_plus.insertKnot(0.25, 1);
+                basis_plus.insertKnot(0.5, 1);
+                basis_plus.insertKnot(0.75, 1);
+            }
+
+
             plus = basis_plus.size();
 
             basis_pm.push_back(basis_plus);
@@ -239,6 +258,13 @@ public:
             else
                 for (size_t i = basis_2.degree()+1; i < basis_2.knots().size() - (basis_2.degree()+1); i += basis_2.knots().multiplicityIndex(i))
                     basis_minus.insertKnot(basis_2.knot(i),p-1-m_r);
+
+            if (innerKnotMulti > 0 && p-1-m_r == 1)
+            {
+                basis_minus.insertKnot(0.25, 1);
+                basis_minus.insertKnot(0.5, 1);
+                basis_minus.insertKnot(0.75, 1);
+            }
 
             basis_pm.push_back(basis_minus);
             if (g1OptionList.getSwitch("info"))
