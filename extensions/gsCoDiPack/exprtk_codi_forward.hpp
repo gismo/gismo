@@ -17,19 +17,11 @@
 #include <string>
 #include <gsCoDiPack/gsCoDiPack.h>
 
-#ifndef real_t
-typedef codi::RealForwardGen<real_t>                         codi_real_forward_t;
-typedef codi::RealReverseGen<real_t>                         codi_real_reverse_t;
-typedef codi::RealReverseIndexGen<real_t>                    codi_real_reverse_index_t;
-typedef codi::RealReverseIndexUncheckedGen<real_t>           codi_real_reverse_index_unchecked_t;
-typedef codi::RealReverseUncheckedGen<real_t>                codi_real_reverse_unchecked_t;
-#else
-typedef codi::RealForwardGen<GISMO_COEFF_TYPE>               codi_real_forward_t;
-typedef codi::RealReverseGen<GISMO_COEFF_TYPE>               codi_real_reverse_t;
-typedef codi::RealReverseIndexGen<GISMO_COEFF_TYPE>          codi_real_reverse_index_t;
-typedef codi::RealReverseIndexUncheckedGen<GISMO_COEFF_TYPE> codi_real_reverse_index_unchecked_t;
-typedef codi::RealReverseUncheckedGen<GISMO_COEFF_TYPE>      codi_real_reverse_unchecked_t;
-#endif
+typedef codi::RealForwardGen<codi::codi_real<real_t>::type>                codi_real_forward_t;
+typedef codi::RealReverseGen<codi::codi_real<real_t>::type>                codi_real_reverse_t;
+typedef codi::RealReverseIndexGen<codi::codi_real<real_t>::type>           codi_real_reverse_index_t;
+typedef codi::RealReverseIndexUncheckedGen<codi::codi_real<real_t>::type>  codi_real_reverse_index_unchecked_t;
+typedef codi::RealReverseUncheckedGen<codi::codi_real<real_t>::type>       codi_real_reverse_unchecked_t;
 
 #define CODI_TYPE codi_real_forward_t
 #include "exprtk_codi_forward.h"

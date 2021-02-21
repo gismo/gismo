@@ -35,9 +35,13 @@ set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
   CACHE INTERNAL "Gismo include directories")
 
 # Add needed instantiations to the precompiled library
-set (GISMO_EXTRA_INSTANCE ${GISMO_EXTRA_INSTANCE} "codi::RealForward;codi::RealReverse"
-  CACHE INTERNAL "Additional instantiations")
+foreach(ins ${GISMO_COEFF_TYPE} ${GISMO_EXTRA_INSTANCE})
+  set(GISMO_CODIPACK_INSTANCE ${GISMO_CODIPACK_INSTANCE} "codi::RealForwardGen<${ins}>;codi::RealReverseGen<${ins}>;codi::RealReverseIndexGen<${ins}>")
+endforeach()
 
+set (GISMO_EXTRA_INSTANCE ${GISMO_EXTRA_INSTANCE} ${GISMO_CODIPACK_INSTANCE}
+  CACHE INTERNAL "Additional instantiations")
+message(${GISMO_EXTRA_INSTANCE})
 add_library(${PROJECT_NAME} OBJECT gsCoDiPack_.cpp)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES

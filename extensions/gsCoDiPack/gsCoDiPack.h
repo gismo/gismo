@@ -22,21 +22,30 @@
 #define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
 #endif
 
-namespace codi
-{
+namespace codi {
+template<class T>
+using codi_real = std::conditional<std::is_base_of<codi::Expression<typename codi::TypeTraits<T>::Real, T>, T>::value,
+                                   GISMO_COEFF_TYPE, T>;
 
-#ifndef real_t
+// RealReverseGen<real_t>
 EXTERN_CLASS_TEMPLATE
-ActiveReal<JacobiTape<JacobiTapeTypes<ReverseTapeTypes<real_t, real_t, LinearIndexHandler<int> >, ChunkVector> > >;
+ActiveReal<JacobiTape<JacobiTapeTypes<ReverseTapeTypes<codi_real<real_t>::type, codi_real<real_t>::type, LinearIndexHandler<int> >, ChunkVector> > >;
 
+// RealForwardGen<real_t>
 EXTERN_CLASS_TEMPLATE
-ActiveReal<ForwardEvaluation<ForwardTapeTypes<real_t, real_t> > >;
-#else
-EXTERN_CLASS_TEMPLATE
-ActiveReal<JacobiTape<JacobiTapeTypes<ReverseTapeTypes<GISMO_COEFF_TYPE, GISMO_COEFF_TYPE, LinearIndexHandler<int> >, ChunkVector> > >;
+ActiveReal<ForwardEvaluation<ForwardTapeTypes<real_t, codi_real<real_t>::type> > >;
 
+// RealReverseIndexGen<real_t>
 EXTERN_CLASS_TEMPLATE
-ActiveReal<ForwardEvaluation<ForwardTapeTypes<GISMO_COEFF_TYPE, GISMO_COEFF_TYPE> > >;
-#endif
-}
+ActiveReal<JacobiIndexTape<JacobiIndexTapeTypes<ReverseTapeTypes<real_t, real_t, ReuseIndexHandlerUseCount<int> >, ChunkVector> > >;
+
+// RealReverseGen<real_t, Direction<real_t, 4> >
+EXTERN_CLASS_TEMPLATE
+ActiveReal<JacobiTape<JacobiTapeTypes<ReverseTapeTypes<real_t, Direction<real_t, 4>, LinearIndexHandler<int> >, ChunkVector > > >;
+
+// RealReverseIndexGen<real_t, Direction<real_t, 4> >
+EXTERN_CLASS_TEMPLATE
+ActiveReal<JacobiIndexTape<JacobiIndexTapeTypes<ReverseTapeTypes<real_t, Direction<real_t, 4>, ReuseIndexHandlerUseCount<int> >, ChunkVector> > >;
+
+} // namespace codi
 #endif
