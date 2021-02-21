@@ -16,16 +16,16 @@
 #include <iostream>
 
 #include <gismo.h>
-#include <gsCoDiPack/gsCoDiPack.h>
+//#include <gsCoDiPack/gsCoDiPack.h>
 
 using namespace gismo;
 
 // Implementation of the system solver for CoDiPack
 template<class T>
-void solveSystem_b(codi::RealReverseGen<T>::TapeType *tape,
+void solveSystem_b(typename codi::RealReverseGen<T>::TapeType *tape,
                    codi::DataStore                     *data,
-                   codi::AdjointInterface<double, int> *interface) {
-
+                   codi::AdjointInterface<double, int> *interface)
+{
     gsSparseMatrix<codi::RealReverseGen<T>>* matrix;
     gsMatrix<codi::RealReverseGen<T>>* rhs;
     gsMatrix<codi::RealReverseGen<T>>* sol;
@@ -34,7 +34,7 @@ void solveSystem_b(codi::RealReverseGen<T>::TapeType *tape,
     data->getData(rhs);
     data->getData(sol);
 
-    gsSparseSolver<codi::RealReverseGen<T>>::LU solver;
+    typename gsSparseSolver<codi::RealReverseGen<T>>::LU solver;
 
     gsMatrix<codi::RealReverseGen<T>> solAdj(*sol);
     gsMatrix<codi::RealReverseGen<T>> rhsAdj(*sol);
@@ -50,7 +50,7 @@ void solveSystem_b(codi::RealReverseGen<T>::TapeType *tape,
         tape->gradient(index) += rhsAdj[i].getValue();
     }
     for (int e=0; e<matrix->outerSize(); ++e) {
-        for (gsSparseMatrix<codi::RealReverseGen<T>>::InnerIterator it(*matrix,e); it; ++it) {
+        for (typename gsSparseMatrix<codi::RealReverseGen<T>>::InnerIterator it(*matrix,e); it; ++it) {
             int k = it.row();
             int l = it.col();
             codi::RealReverseGen<T>& temp1 = matrix->at(k,l);
@@ -61,16 +61,16 @@ void solveSystem_b(codi::RealReverseGen<T>::TapeType *tape,
 
 // Implementation of the system deleter for CoDiPack
 template<class T>
-void solveSystem_delete(codi::RealReverseGen<T>::TapeType* tape, codi::DataStore* data) {}
+void solveSystem_delete(typename codi::RealReverseGen<T>::TapeType* tape, codi::DataStore* data) {}
 
 // Implementation of the system solver for CoDiPack
 template<class T>
-void solveSystem(gsSparseSolver<codi::RealReverseGen<T>>::LU   &solver,
+void solveSystem(typename gsSparseSolver<codi::RealReverseGen<T>>::LU   &solver,
                  const gsSparseMatrix<codi::RealReverseGen<T>> &matrix,
                  const gsMatrix<codi::RealReverseGen<T>>       &rhs,
                  gsMatrix<codi::RealReverseGen<T>>             &sol) {
 
-    codi::RealReverseGen<T>::TapeType& tape = codi::RealReverseGen<T>::getGlobalTape();
+    typename codi::RealReverseGen<T>::TapeType& tape = codi::RealReverseGen<T>::getGlobalTape();
     tape.setPassive();
 
     codi::DataStore* dataHandler = new codi::DataStore();
