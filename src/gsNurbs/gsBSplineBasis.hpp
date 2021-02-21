@@ -405,18 +405,18 @@ void gsTensorBSplineBasis<1,T>::evalSingle_into(index_t i,
         for (int k=1;k<=m_p; ++k)
         {
             T saved;
-            if (N[0]==0)
-                saved= 0.0;
+            if (N[0] == T(0.0))
+              saved = T(0.0);
             else
                 saved= ((u(0,s) - m_knots[i] )* N[0]) / (m_knots[k+i] - m_knots[i]);
             for (int j=0;j<m_p-k+1; ++j)
             {
                 const T kleft  = m_knots[i+j+1];
                 const T kright = m_knots[i+j+k+1];
-                if ( N[j+1] == 0.0 )
+                if ( N[j+1] == T(0.0) )
                 {
                     N[j] = saved;
-                    saved = 0.0 ;
+                    saved = T(0.0);
                 }
                 else
                 {
@@ -426,7 +426,7 @@ void gsTensorBSplineBasis<1,T>::evalSingle_into(index_t i,
                 }
             }
         }
-        result(0,s)= N[0];
+        result(0,s) = N[0];
     }
 }
 
@@ -1153,7 +1153,7 @@ void gsTensorBSplineBasis<1,T>::_convertToPeriodic()
             // Compare the knot intervals in the beginning with the corresponding knot intervals at the end.
             i1 = m_knots[i] - m_knots[i-1];
             i2 = m_knots[m_knots.size() - (2*m_p) + i - 2 + borderKnotMult] - m_knots[m_knots.size() - (2*m_p) + i - 3 + borderKnotMult];
-            if( math::abs( i1 - i2 ) > 1e-8 )
+            if( math::abs( i1 - i2 ) > T(1e-8) )
             {
                 gsWarn << "Your basis cannot be changed into periodic:\n Trouble stretching interior knots.\n";
                 //std::cerr << "i: " << i << ", i1: " << i1 << ", i2: " << i2 << std::endl;

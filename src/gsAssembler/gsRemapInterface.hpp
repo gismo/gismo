@@ -411,7 +411,7 @@ void gsRemapInterface<T>::constructBreaks() {
                     for (typename gsSortedVector<T>::iterator it = parameterBreaks.begin();
                          it != parameterBreaks.end(); it++) {
 
-                        if (math::abs(G2_parametric_LC(0, 0) - *it) > 1.e-4) {
+                         if (math::abs(G2_parametric_LC(0, 0) - *it) > T(1.e-4)) {
                             roundingError(j) = false;
                         }
                         j++;
@@ -430,7 +430,7 @@ void gsRemapInterface<T>::constructBreaks() {
 
                     for (typename gsSortedVector<T>::iterator it = parameterBreaks.begin();
                          it != parameterBreaks.end(); it++) {
-                        if (math::abs(G2_parametric_LC(1, 0) - *it) > 1.e-4)
+                        if (math::abs(G2_parametric_LC(1, 0) - *it) > T(1.e-4))
                             roundingError(j) = false;
 
                         j++;
@@ -1335,7 +1335,7 @@ bool gsRemapInterface<T>::checkIfMatching()
         for(short_t j = 1; j <= 1<<domainDim(); j++)
         {
             gsMatrix<T> c2 = m_g2.coefAtCorner(j).transpose();
-            if((c1-c2).squaredNorm() < 1.e-6)
+            if((c1-c2).squaredNorm() < T(1.e-6))
                 sameCorners++;
         }
     }

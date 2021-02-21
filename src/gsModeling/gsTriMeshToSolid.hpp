@@ -157,8 +157,8 @@ void gsTriMeshToSolid<T>::getFeatures(T angleGrad,bool& bWarnNonManifold,bool& b
         nv1 = nv1/(math::sqrt(nv1.squaredNorm()));
         T cosPhi( nv0.dot(nv1) );
         // Numerical robustness
-        if(cosPhi>1.0) cosPhi=1.0;
-        else if(cosPhi<-1.0) cosPhi=-1.0;
+        if(cosPhi > T(1.0)) cosPhi = T(1.0);
+        else if(cosPhi < T(-1.0)) cosPhi = T(-1.0);
 
         const T PI_(3.14159);
         T phiGrad(math::acos(cosPhi)/PI_*180);
@@ -268,8 +268,8 @@ void gsTriMeshToSolid<T>::divideAndMergePatches(T innerAngle, T patchAreaWeight,
                 nv1 = nv1/(math::sqrt(nv1.squaredNorm()));
                 T cosPhi( nv0.dot(nv1) );
                 // Numerical robustness
-                if(cosPhi>1.0) cosPhi=1.0;
-                else if(cosPhi<-1.0) cosPhi=-1.0;
+                if(cosPhi > T(1.0)) cosPhi = T(1.0);
+                else if(cosPhi < T(-1.0)) cosPhi = T(-1.0);
 
                 const T PI_(3.14159);
                 T phiGrad(math::acos(cosPhi)/PI_*180);
@@ -507,7 +507,7 @@ void gsTriMeshToSolid<T>::getFaces(std::vector<std::vector<VertexHandle> > & iPo
 
             for (size_t j=0;j<angle.size();j++)
             {
-                isConvex.push_back(angle[j]<EIGEN_PI);
+                isConvex.push_back(angle[j] < T(EIGEN_PI));
             }
             //first vertex is added 2 times -> delete last one
             vertexVec.pop_back();
@@ -942,7 +942,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                 }
                 //-- end Locating NON-outer boundary neighbors of j-th point
             }
-            if(check<1-0.001||check>1+0.001)
+            if(check < T(1-0.001)||check > T(1+0.001))
                 gsWarn<<"something might have gone wrong with norming: "<<check<<"!=1\n";
         }
         //build A from the entries

@@ -299,7 +299,7 @@ bool gsCurveLoop<T>::approximatingPolygon(const std::vector<T> &signedAngles, co
     for(size_t i = 0; i < n; i++)
     {
         scaledAngles[i] *= angleScale;
-        if(math::abs(scaledAngles[i]) >= EIGEN_PI)
+        if(math::abs(scaledAngles[i]) >= T(EIGEN_PI))
         {
             gsWarn << "Scaled turning angle exceeded pi, treatment of this has not been implemented.\n";
             return false;
