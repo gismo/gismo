@@ -292,6 +292,9 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
     for (size_t i = degree+1; i < temp_basis_first.knots().size() - (degree+1); i += temp_basis_first.knots().multiplicityIndex(i))
         bsp_gD.insertKnot(temp_basis_first.knot(i),p_tilde-r_tilde);
 
+
+    //gsInfo << "Gluing data: " << bsp_gD.knots().asMatrix() << "\n";
+
     gsGlobalGDAssembler<T> globalGdAssembler(bsp_gD, uv, patchID, this->m_mp, this->m_gamma, this->m_isBoundary, this->m_optionList.getSwitch("twoPatch"));
 
     globalGdAssembler.assemble();
@@ -315,6 +318,8 @@ void gsApproxGluingData<T>::setGlobalGluingData(index_t patchID, index_t uv)
     if (lagrange)
     {
         real_t lambda = 10000;
+        //real_t lambda = 100000;
+        //lambda = 0;
         index_t r_tilde = 1;
 
         for (index_t ii = 0; ii < bsp_gD.size(); ii++)

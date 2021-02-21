@@ -235,11 +235,11 @@ public:
                     basis_plus.insertKnot(basis_2.knot(i),p-1-m_r);
 
             index_t innerKnotMulti = g1OptionList.getInt("innerKnotMulti");
-            if (innerKnotMulti > 0 && p-1-m_r == 1)
+            if (innerKnotMulti > 0 && p-m_r < innerKnotMulti+1)
             {
-                basis_plus.insertKnot(0.25, 1);
-                basis_plus.insertKnot(0.5, 1);
-                basis_plus.insertKnot(0.75, 1);
+                basis_plus.insertKnot(0.25, m_r-1);
+                basis_plus.insertKnot(0.5, m_r-1);
+                basis_plus.insertKnot(0.75, m_r-1);
             }
 
 
@@ -259,11 +259,11 @@ public:
                 for (size_t i = basis_2.degree()+1; i < basis_2.knots().size() - (basis_2.degree()+1); i += basis_2.knots().multiplicityIndex(i))
                     basis_minus.insertKnot(basis_2.knot(i),p-1-m_r);
 
-            if (innerKnotMulti > 0 && p-1-m_r == 1)
+            if (innerKnotMulti > 0 && p-m_r < innerKnotMulti+1)
             {
-                basis_minus.insertKnot(0.25, 1);
-                basis_minus.insertKnot(0.5, 1);
-                basis_minus.insertKnot(0.75, 1);
+                basis_minus.insertKnot(0.25, m_r-1);
+                basis_minus.insertKnot(0.5, m_r-1);
+                basis_minus.insertKnot(0.75, m_r-1);
             }
 
             basis_pm.push_back(basis_minus);

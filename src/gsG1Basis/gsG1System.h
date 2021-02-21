@@ -231,8 +231,8 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
         //gsInfo << "r: " << m_r << " : " << m_p << " : " << basis_1.knots().multiplicityIndex(p_1 + 1) << "\n";
 
         index_t numInnerKnot = 0;
-        if (innerKnotMulti > 0 && m_p-1-m_r == 1)
-            numInnerKnot = 3;
+        if (innerKnotMulti > 0 && m_p-m_r < innerKnotMulti+1)
+            numInnerKnot = 3*(m_r-1);
 
         //gsInfo << "Inner " << numInnerKnot << "\n";
         //gsInfo << "IFace: " << numBasisFunctions[0][i] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1 + 2*numInnerKnot << "\n";
