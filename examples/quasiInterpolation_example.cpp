@@ -108,9 +108,9 @@ bool polyReconstructionTaylor(const gsFunction<T> &fun, gsBSplineBasis<T> basis,
     int deg = basis.degree();
 
     if(degPoly <= deg)  //set the expected error values
-        expError = 1.0/math::pow(10.0,5);   //only 10^-5 because gsFunctionExpr.eval_into is not more accurate
+        expError = 1e-5;   //only 10^-5 because gsFunctionExpr.eval_into is not more accurate
     else
-        expError = math::pow(10.0,8);    //some high value, for when we don't expect an exact approximation
+        expError = 1e-8;    //some high value, for when we don't expect an exact approximation
                                         //(when degPoly is higher than the degree of the spline function we use to approximate)
 
     gsMatrix<T> coefs;

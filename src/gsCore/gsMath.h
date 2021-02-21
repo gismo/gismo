@@ -135,8 +135,8 @@ using sw::unum::conj;
 
 #endif
 
-// template <typename T> T min(T a, T b) {return  (a < b ? a : b); }
-// template <typename T> T max(T a, T b) {return  (a < b ? b : a); }
+template <typename T, typename U> inline T (min)(T a, U b) {return  (a < (T)b ? a : b); }
+template <typename T, typename U> inline T (max)(T a, U b) {return  (a < (T)b ? b : a); }
 
 template <typename T> inline T exp2(const T a) { return 1U << a;}
 
@@ -311,10 +311,8 @@ using ::tan;
 using ::tanh;
 
 //fixme: min/max duplication with global
-inline mpq_class (max)(const mpq_class & a, const mpq_class & b)
-{return mpq_class(a < b ? b : a);}
-inline mpq_class (min)(const mpq_class & a, const mpq_class & b)
-{return mpq_class(a < b ? a : b);}
+//inline mpq_class (max)(const mpq_class & a, const mpq_class & b) {return mpq_class(a < b ? b : a);}
+//inline mpq_class (min)(const mpq_class & a, const mpq_class & b) {return mpq_class(a < b ? a : b);}
 inline bool isfinite(mpq_class a) {return true; }
 inline bool isinf(mpq_class a)    {return false;}
 inline bool isnan(mpq_class a)    {return false;}

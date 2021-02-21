@@ -607,7 +607,7 @@ void gsCurvatureSmoothing<T>::computeApproxErrorLMax(T & error)
     //computing the Lmax approximation error
     for(index_t k=0;k<m_points.rows();k++)
     {
-        error= math::max(error,(T)math::sqrt(math::pow(m_points(k,0)-results(k,0),2)+math::pow(m_points(k,1)-results(k,1),2)));
+        error= math::max(error,math::sqrt(math::pow(m_points(k,0)-results(k,0),(T)2)+math::pow(m_points(k,1)-results(k,1),(T)2)));
     }
 }
 
@@ -704,7 +704,7 @@ void gsCurvatureSmoothing<T>::compute_ObjectiveFunction(gsBSplineBasis<T> *basis
 
         objective2+= math::abs( 6.0*(m_values1(1,i)*m_values2(0,i) - m_values1(0,i)*m_values2(1,i))*(m_values1(0,i)*m_values2(0,i) + m_values1(1,i)*m_values2(1,i)) +
                           2*( (math::pow(m_values1(0,i),2)+math::pow(m_values1(1,i),2)) * ((-1.0)*m_values1(1,i)*m_values3(0,i)+ m_values1(0,i)*m_values3(1,i))  )    )/
-                (2*math::pow( math::pow(m_values1(0,i),2)+math::pow(m_values1(1,i),2) ,2.5)   );
+            (2*math::pow( math::pow(m_values1(0,i),(T)2)+math::pow(m_values1(1,i),2) ,(T)2.5)   );
     }
     objective2=objective2/(0.0+m_param_values.rows());
 
