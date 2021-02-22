@@ -36,52 +36,61 @@ void gsPrimalSystem<T>::incorporateConstraints(
 {
     const index_t localDofs = localMatrix.rows();
     const index_t nrPrimalConstraints = primalConstraints.size();
-    if (nrPrimalConstraints==0) return;
-
-    gsSparseEntries<T> seLocalMatrix;
-    seLocalMatrix.reserve( localMatrix.nonZeros() + nrPrimalConstraints * localDofs );
 
     // Which dofs should we eliminate?
     index_t nElimDofs = 0;
-    gsVector<index_t> dofList;
-    dofList.setZero(localDofs);
-    if (eliminatePointwiseConstraints)
+    std::vector<bool> eliminatedDof(localDofs, false);
+    std::vector<bool> eliminatedConstaint(nrPrimalConstraints, false);
+
     {
-        for (index_t i=0; i<nrPrimalConstraints; ++i)
+        gsSparseEntries<T> seModifiedLocalMatrix;
+        seModifiedLocalMatrix.reserve( localMatrix.nonZeros() + nrPrimalConstraints * localDofs );
+
+        if (eliminatePointwiseConstraints)
         {
-            if (primalConstraints[i].nonZeros() == 1)
+            for (index_t i=0; i!=nrPrimalConstraints; ++i)
             {
-                typename SparseVector::InnerIterator it(primalConstraints[i]);
-                dofList[ it.row() ] = 1;
-                ++nElimDofs;
-                seLocalMatrix.add(it.row(),it.row(),(T)1);
-            }
-         }
-    }
-
-    for (index_t i=0; i<localDofs; ++i)
-        for (typename SparseMatrix::InnerIterator it(localMatrix,i); it; ++it)
-            if ( dofList[it.row()]==0 && dofList[it.col()]==0  )
-                seLocalMatrix.add(it.row(), it.col(), it.value());
-
-    for (index_t i=0, j=0; i<nrPrimalConstraints; ++i)
-    {
-        if (!( eliminatePointwiseConstraints && primalConstraints[i].nonZeros() == 1 ))
-        {
-            for (typename SparseVector::InnerIterator it(primalConstraints[i]); it; ++it)
-                if (dofList[ it.row() ] == 0)
+                if (primalConstraints[i].nonZeros() == 1)
                 {
-                    seLocalMatrix.add(it.row(), localDofs+j, it.value());
-                    seLocalMatrix.add(localDofs+j, it.row(), it.value());
+                    typename SparseVector::InnerIterator it(primalConstraints[i]);
+                    // mark dof and constraint as to be eliminated
+                    eliminatedDof[it.row()] = true;
+                    eliminatedConstaint[i] = true;
+                    // set diagonal matrix of new matrix
+                    seModifiedLocalMatrix.add(it.row(),it.row(),(T)1);
+                    ++nElimDofs;
                 }
-            ++j;
+             }
         }
-    }
 
-    modifiedLocalMatrix.clear();
-    modifiedLocalMatrix.resize(localDofs+nrPrimalConstraints-nElimDofs, localDofs+nrPrimalConstraints-nElimDofs);
-    modifiedLocalMatrix.setFrom(seLocalMatrix);
-    modifiedLocalMatrix.makeCompressed();
+        // Copy entries of local matrix if not eliminated
+        for (index_t i=0; i!=localDofs; ++i)
+            for (typename SparseMatrix::InnerIterator it(localMatrix,i); it; ++it)
+                if ( !eliminatedDof[it.row()] && !eliminatedDof[it.col()]  )
+                    seModifiedLocalMatrix.add(it.row(), it.col(), it.value());
+
+        // Make saddle point for non-eliminated primal constraints
+        for (index_t i=0, j=0; i!=nrPrimalConstraints; ++i)
+        {
+            if ( !eliminatedConstaint[i] )
+            {
+                for (typename SparseVector::InnerIterator it(primalConstraints[i]); it; ++it)
+                {
+                    if ( !eliminatedDof[it.row()] )
+                    {
+                        seModifiedLocalMatrix.add(it.row(), localDofs+j, it.value());
+                        seModifiedLocalMatrix.add(localDofs+j, it.row(), it.value());
+                    }
+                }
+                ++j;
+            }
+        }
+
+        modifiedLocalMatrix.clear();
+        modifiedLocalMatrix.resize(localDofs+nrPrimalConstraints-nElimDofs, localDofs+nrPrimalConstraints-nElimDofs);
+        modifiedLocalMatrix.setFrom(seModifiedLocalMatrix);
+        modifiedLocalMatrix.makeCompressed();
+    }
 
     // Compute the embedding matrices
     {
@@ -92,9 +101,9 @@ void gsPrimalSystem<T>::incorporateConstraints(
         gsSparseEntries<T> seLocalEmbedding, seEmbeddingForBasis;
         seLocalEmbedding.reserve(localDofs-nElimDofs);
         seEmbeddingForBasis.reserve(localDofs);
-        for (index_t i=0; i<localDofs; ++i)
+        for (index_t i=0; i!=localDofs; ++i)
         {
-            if (dofList[i]==0)
+            if ( !eliminatedDof[i] )
                 seLocalEmbedding.add(i,i,(T)1);
             seEmbeddingForBasis.add(i,i,(T)1);
         }
@@ -104,27 +113,27 @@ void gsPrimalSystem<T>::incorporateConstraints(
         embeddingForBasis.makeCompressed();
     }
 
+    // Compute rhs for basis
     rhsForBasis.setZero(localDofs+nrPrimalConstraints-nElimDofs,nrPrimalConstraints);
-    for (index_t i=0, j=0; i<nrPrimalConstraints; ++i)
-        if (eliminatePointwiseConstraints && primalConstraints[i].nonZeros() == 1)
+    for (index_t i=0, j=0; i!=nrPrimalConstraints; ++i)
+    {
+        if ( eliminatedConstaint[i] )
         {
             typename SparseVector::InnerIterator it(primalConstraints[i]);
             const index_t idx = it.row();
-            // TODO: is this correct or is A to be transposed?
             for (typename SparseMatrix::InnerIterator it2(localMatrix, idx); it2; ++it2)
             {
-                if (dofList[it2.row()]==0)
+                if ( !eliminatedDof[it2.row()] )
                     rhsForBasis(it2.row(),i) = - it2.value();
             }
-            rhsForBasis( idx, i ) = 1;
+            rhsForBasis(idx,i) = (T)1;
         }
         else
         {
-            rhsForBasis(localDofs+j,i) = 1;
+            rhsForBasis(localDofs+j,i) = (T)1;
             ++j;
         }
-
-
+    }
 }
 
 template <class T>

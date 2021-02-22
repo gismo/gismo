@@ -148,6 +148,8 @@ the extended jump matrix
 \f[
      \tilde{B}_k
      =
+     B_k (P_0^{(k)})^\top
+     =
      \begin{pmatrix}
          B_k   &   0_k
      \end{pmatrix}
@@ -156,13 +158,16 @@ and the extended right-hand side
 \f[
      \underline{\tilde f}_k
      =
+     P_0^{(k)} \underline f_k
+     =
      \begin{pmatrix}
          \underline f_k \\ 0
      \end{pmatrix}.
 \f]
 These modifications are provided by \a gsPrimalSystem. The class \a gsPrimalSystem
 moreover computes the energy minimizing basis functions and represents them as
-matrices \f$ \Psi_k \f$. It then computes
+matrices \f$ \Psi_k = (P_c^{(k)})^\top \tilde{A}_k^{-1} R_c \f$, where
+\f$ R_c=(0,I)^\top \f$ and \f$ P_c=(I,0) \f$. It then computes
 \f[
       \tilde A_{K+1} = \sum_{k=1}^K \Psi_k A_k \Psi_k^\top
       \quad\text{and}\quad
@@ -170,6 +175,11 @@ matrices \f$ \Psi_k \f$. It then computes
       \quad\text{and}\quad
       \underline{\tilde f}_{K+1} = \sum_{k=1}^K \Psi_k \underline f_k.
 \f]
+
+By setting a corresponding flag, it is possible to eliminate the pointwise
+constraints. A constraint is pointwise the correspoding row of \f$ C_k \f$
+has only one non-zero entries. Typically, the corner values are pointwise
+constraints.
 
 Instead of directly solving the IETI-saddle point system (*), we solve the
 corresponding Schur complement system
