@@ -180,15 +180,19 @@ gsSparseVector<T> gsIetiMapper<T>::assembleAverage(
     );
 
     SparseVector constraint( dm.freeSize() );
+    T sum = (T)0;
     const index_t sz = moments.size();
     GISMO_ASSERT( sz == indices.size(), "Internal error." );
     for (index_t i=0; i<sz; ++i)
     {
         const index_t idx = dm.index( indices(i,0), 0 );
         if (dm.is_free_index(idx))
+        {
             constraint[idx] = moments(i,0);
+            sum += moments(i,0);
+        }
     }
-    return constraint;
+    return constraint / sum;
 
 }
 
@@ -196,13 +200,14 @@ gsSparseVector<T> gsIetiMapper<T>::assembleAverage(
 template <class T>
 void gsIetiMapper<T>::interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, const short_t d)
 {
-    GISMO_ASSERT( d>0, "gsIetiMapper<T>::interfaceAveragesAsPrimals cannot handle corners." );
-    GISMO_ASSERT( d<m_multiBasis->dim(), "gsIetiMapper<T>::interfaceAveragesAsPrimals: "
+    GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
+    GISMO_ASSERT( d>0, "gsIetiMapper::interfaceAveragesAsPrimals cannot handle corners." );
+    GISMO_ASSERT( d<m_multiBasis->dim(), "gsIetiMapper::interfaceAveragesAsPrimals: "
         "Interfaces must have smaller dimension than considered object." );
     GISMO_ASSERT( (index_t)(geo.nPatches()) == m_multiBasis->nPieces(),
-        "gsIetiMapper<T>::interfaceAveragesAsPrimals: The given geometry does not fit.");
+        "gsIetiMapper::interfaceAveragesAsPrimals: The given geometry does not fit.");
     GISMO_ASSERT( geo.parDim() == m_multiBasis->dim(),
-        "gsIetiMapper<T>::interfaceAveragesAsPrimals: The given geometry does not fit.");
+        "gsIetiMapper::interfaceAveragesAsPrimals: The given geometry does not fit.");
 
     const unsigned flag = 1<<(2+d);
     GISMO_ASSERT( !(m_status&flag), "gsIetiMapper::interfaceAveragesAsPrimals: This function has "
