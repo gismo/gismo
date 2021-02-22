@@ -33,26 +33,39 @@ namespace gismo
  *  that vertex gets one identifying index identifying it as one single primal
  *  dof, while there is a constraint for each patch the corner belongs to.
  *
- *  It is assumed that the class receives the matrix \f$ A \f$ and the member
- *  \ref incorporateConstraints constructs the local saddle point matrix:
+ *  It is assumed that the class receives the matrix \f$ A_k \f$ and the vectors
+ *  \f$ c_k^{(n)} \f$ that make up the constraints matrix \f$ C_k \f$ such
+ *  that the local saddle point formulation reads as follows:
  *
  *  \f[
- *       \tilde A
+ *       \tilde A_k
  *       =
  *       \begin{pmatrix}
- *            A   &    C^\top \\
- *            C   &
+ *            A_k   &    C_k^\top \\
+ *            C_k   &
  *       \end{pmatrix}
  *  \f]
  *
- *  This matrix is then to be handed over to the \a gsIetiSystem. (Simultaneously,
- *  the local rhs and the local jump matrix are amended).
+ *  Using \ref setEliminatePointwiseConstraints, it is possible to instruct the
+ *  class to eliminate pointwise constraints. A constraint is pointwise iff the vector
+ *  \f$ c_k^{(n)} \f$ only has one non-zero entry accordning to the sparsity pattern
+ *  of the sparse vector data structure. This is typically the case for vertex values.
  *
- *  The member \ref primalBasis allows to construct the basis for the primal
- *  space by the principle of energy minimization.
+ *  Usually, it will be the best only to call \ref handleConstraints, which modifies
+ *  the local system matrix, the jump matrix and the right-hand side such that they
+ *  can then handed over to the \a gsIetiSystem. That function simultainously collects
+ *  the contributions for the primal problem, which is handed over to \a gsIetiSystem
+ *  as last subspace.
  *
- *  The member \ref addContribution add the local contributions to the primal
- *  problem.
+ *  The member \ref handleConstraints is based on the static members
+ *  \ref incorporateConstraints, \ref primalBasis and the member \ref addContribution.
+ *  \ref incorporateConstraints sets up the matrix \f$ \tilde A_k \f$,
+ *  \f$ R_c \f$ (right-hand-side for basis), \f$ P_c \f$ (embedding for basis) and
+ *  \f$ P_0 \f$ (local embedding). The member \ref primalBasis constructs the basis
+ *  for the primal space by the principle of energy minimization by calculating
+ *  \f$ \Psi = P_c^\top \tilde{A}_k^{-1} R_c \f$. The member \ref addContribution adds
+ *  the local contributions to the primal problem. Finally, the matrix \f$ P_0 \f$
+ *  is used to modify the jump matrix and the local rhs.
  *
  *  The member \ref handleConstraints combines the member
  *  \ref incorporateConstraints, the setup of a sparse LU solver for the local
@@ -90,36 +103,68 @@ public:
     ///
     /// @param[in]  primalConstraints     Primal constraints; the given vectors
     ///                                   make up the matrix \f$ C_k \f$
-    /// @param[in]  jumpMatrix            Jump matrix \f$ B_k \f$
+    /// @param[in]  eliminatePointwiseConstraints  True iff pointwise constraints (typically
+    ///                                   vertex values are eliminated (and not treated as local
+    ///                                   saddle point problems). A constraint is pointwise iff
+    ///                                   \f$ C_k \f$ has one non-zero entry.
     /// @param[in]  localMatrix           Local matrix \f$ A_k \f$
-    /// @param[in]  localRhs              Local right-hand-side \f$ f_k \f$
-    /// @param[out] modifiedJumpMatrix    Jump matrix \f$ \tilde B_k \f$
     /// @param[out] modifiedLocalMatrix   Local matrix \f$ \tilde A_k \f$
-    /// @param[out] modifiedLocalRhs      Local right-hand-side \f$ \tilde f_k \f$
-    /// @param[out] rhsForBasis           Right-hand-side for basis computation
+    /// @param[out] localEmbedding        Embedding \f$ P_0 \f$. This matrix is used by to modify
+    ///                                   the right-hand side and the jump matrix
+    ///                                   (cf. \ref handleConstraints)
+    /// @param[out] embeddingForBasis     Embedding \f$ P_c \f$ for energy-minimizing basis
+    ///                                   (cf. \ref primalBasis)
+    /// @param[out] rhsForBasis           Right-hand side \f$ R_c \f$ for energy-minimizing basis
+    ///                                   (cf. \ref primalBasis)
     ///
-    /// The output is for the local matrix,
-    ///  \f[
+    /// Iff the constraint is not handled by elimination, the output is:
+    /// \f[
     ///      \tilde{A}_k =
     ///      \begin{pmatrix}
     ///           A_k   &  C_k^\top \\  C_k   &  0
     ///      \end{pmatrix}
-    ///  \f]
-    /// for the jump matrix
-    ///  \f[
-    ///      \tilde{B}_k =
+    ///      \quad\text{and}\quad
+    ///      P_0 = P_c =
     ///      \begin{pmatrix}
-    ///           B_k   &   0
+    ///           I   &   0
     ///      \end{pmatrix}
-    ///  \f]
-    /// and the right-hand side
-    ///  \f[
-    ///      \tilde f_k =
+    ///      \quad\text{and}\quad
+    ///      R_c =
     ///      \begin{pmatrix}
-    ///           f_k \\ 0
-    ///      \end{pmatrix}
-    ///  \f]
+    ///           0   \\   I
+    ///      \end{pmatrix}.
+    /// \f]
     ///
+    /// Iff the constraint is handled by elimination and if we assume that the first block
+    /// component of
+    /// \f[
+    ///      A_k =
+    ///      \begin{pmatrix}
+    ///           A_{11} & A_{12} \\  A_{21} & A_{22}
+    ///      \end{pmatrix}
+    /// \f]
+    /// is to be eliminated, then we have:
+    /// \f[
+    ///      \tilde{A}_k =
+    ///      \begin{pmatrix}
+    ///           I \\ & A_{22}
+    ///      \end{pmatrix}
+    ///      \quad\text{and}\quad
+    ///      P_0 =
+    ///      \begin{pmatrix}
+    ///           0   \\ &  I
+    ///      \end{pmatrix}
+    ///      \quad\text{and}\quad
+    ///      P_C =
+    ///      \begin{pmatrix}
+    ///           I   \\ &  I
+    ///      \end{pmatrix}
+    ///      \quad\text{and}\quad
+    ///      R_c =
+    ///      \begin{pmatrix}
+    ///           I   \\ -A_{21}
+    ///      \end{pmatrix}.
+    /// \f]
     static void incorporateConstraints(
         const std::vector<SparseVector>& primalConstraints,
         bool eliminatePointwiseConstraints,
@@ -133,12 +178,19 @@ public:
     /// @brief Returns the matrix representation of the energy minimizing primal basis
     ///
     /// @param  localSaddlePointSolver  Solver that realizes \f$ \tilde{A}_k^{-1} \f$
-    /// @param  rhsForBasis             The right-hand side required for the computation
-    ///                                 of the basis as provided by \ref incorporateConstraints
+    /// @param  embeddingForBasis       Embedding \f$ P_c \f$ as provided by
+    ///                                 \ref incorporateConstraints
+    /// @param  rhsForBasis             Embedding \f$ R_c \f$ as provided by
+    ///                                 \ref incorporateConstraints
     /// @param  primalDofIndices        Vector, that contains for every primal
     ///                                 constraint the index of the respective
     ///                                 primal dof
-    /// @param  nPrimalDofs             The total number of primal dofs
+    /// @param  nPrimalDofs             The total number of primal dofs (\ref nPrimalDofs())
+    ///
+    /// The local basis is given by \f$ \Psi = P_c^\top \tilde{A}_k^{-1} R_c \f$.
+    ///
+    /// @returns a version of \f$ \Psi \f$ where the column indices are changed according
+    ///          to primalDofIndices.
     static gsSparseMatrix<T> primalBasis(
         OpPtr localSaddlePointSolver,
         const SparseMatrix& embeddingForBasis,
@@ -176,7 +228,24 @@ public:
     ///
     /// The implementation is basically:
     /// @code{.cpp}
-    ///     //TODO
+    ///    gsSparseMatrix<T> modifiedLocalMatrix, localEmbedding, embeddingForBasis;
+    ///    gsMatrix<T> rhsForBasis;
+    ///
+    ///    gsPrimalSystem<T>::incorporateConstraints(
+    ///        primalConstraints, this->eliminatePointwiseConstraints(), localMatrix,
+    ///        modifiedLocalMatrix, localEmbedding, embeddingForBasis, rhsForBasis);
+    ///
+    ///    this->addContribution(
+    ///        jumpMatrix, localMatrix, localRhs,
+    ///        gsPrimalSystem<T>::primalBasis(
+    ///            makeSparseLUSolver(modifiedLocalMatrix),
+    ///            embeddingForBasis, rhsForBasis, primalDofIndices, this->nPrimalDofs()
+    ///        )
+    ///    );
+    ///
+    ///    localMatrix  = give(modifiedLocalMatrix);
+    ///    localRhs     = localEmbedding * localRhs;
+    ///    jumpMatrix   = jumpMatrix * localEmbedding.transpose();
     /// @endcode
     void handleConstraints(
         const std::vector<SparseVector>& primalConstraints,
@@ -196,25 +265,25 @@ public:
     /// @returns        The solution for the K patches
     std::vector<Matrix> distributePrimalSolution( std::vector<Matrix> sol );
 
-    /// @brief Returns the jump matrix for the primal problem
-    JumpMatrix&                           jumpMatrix()        { return m_jumpMatrix;         }
-    const JumpMatrix&                     jumpMatrix() const  { return m_jumpMatrix;         }
+    /// Returns the jump matrix for the primal problem
+    JumpMatrix&                           jumpMatrix()        { return m_jumpMatrix;                    }
+    const JumpMatrix&                     jumpMatrix() const  { return m_jumpMatrix;                    }
 
-    /// @brief Returns the local stiffness matrix for the primal problem
-    SparseMatrix&                         localMatrix()       { return m_localMatrix;        }
-    const SparseMatrix&                   localMatrix() const { return m_localMatrix;        }
+    /// Returns the local stiffness matrix for the primal problem
+    SparseMatrix&                         localMatrix()       { return m_localMatrix;                   }
+    const SparseMatrix&                   localMatrix() const { return m_localMatrix;                   }
 
-    /// @brief Returns the right-hand-side for the primal problem
-    Matrix&                               localRhs()          { return m_localRhs;           }
-    const Matrix&                         localRhs() const    { return m_localRhs;           }
+    /// Returns the right-hand-side for the primal problem
+    Matrix&                               localRhs()          { return m_localRhs;                      }
+    const Matrix&                         localRhs() const    { return m_localRhs;                      }
 
-    /// @brief Returns the size of the primal problem (number of primal dofs)
+    /// Returns the size of the primal problem (number of primal dofs)
     index_t nPrimalDofs() const                               { return m_localMatrix.rows();            }
 
-    /// @brief TODO
+    /// Returns true iff \ref handleConstraints will eliminate pointwise constraints (typically vertex values)
     index_t eliminatePointwiseConstraints() const             { return m_eliminatePointwiseConstraints; }
 
-    /// @brief TODO
+    /// Iff true, \ref handleConstraints will eliminate pointwise constraints (typically vertex values)
     void setEliminatePointwiseConstraints(bool v)             { m_eliminatePointwiseConstraints = v;    }
 
 private:
@@ -223,7 +292,7 @@ private:
     Matrix                      m_localRhs;     ///< The right-hand side for the primal problem
     std::vector<SparseMatrix>   m_primalBases;  ///< The bases for the primal dofs on the patches
     std::vector<OpPtr>          m_embeddings;   ///< For each patch, the map \f$ \tilde u_k \f$ to \f$ u_k \f$
-    bool                        m_eliminatePointwiseConstraints; //TODO
+    bool                        m_eliminatePointwiseConstraints; ///< \ref handleConstraints will eliminate pointwise constraints
 };
 
 } // namespace gismo

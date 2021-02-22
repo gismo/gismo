@@ -95,20 +95,20 @@ public:
         Matrix localRhs, OpPtr localSolverOp = OpPtr());
 
     /// Access the jump matrix
-    JumpMatrixPtr&       jumpMatrix(index_t i)           { return m_jumpMatrices[i];   }
-    const JumpMatrixPtr& jumpMatrix(index_t i) const     { return m_jumpMatrices[i];   }
+    JumpMatrixPtr&       jumpMatrix(index_t k)           { return m_jumpMatrices[k];   }
+    const JumpMatrixPtr& jumpMatrix(index_t k) const     { return m_jumpMatrices[k];   }
 
     /// Access the local stiffness matrix (as \a gsLinearOperator)
-    OpPtr&               localMatrixOp(index_t i)        { return m_localMatrixOps[i]; }
-    const OpPtr&         localMatrixOp(index_t i) const  { return m_localMatrixOps[i]; }
+    OpPtr&               localMatrixOp(index_t k)        { return m_localMatrixOps[k]; }
+    const OpPtr&         localMatrixOp(index_t k) const  { return m_localMatrixOps[k]; }
 
     /// Access the local right-hand side
-    Matrix&              localRhs(index_t i)             { return m_localRhs[i];       }
-    const Matrix&        localRhs(index_t i) const       { return m_localRhs[i];       }
+    Matrix&              localRhs(index_t k)             { return m_localRhs[k];       }
+    const Matrix&        localRhs(index_t k) const       { return m_localRhs[k];       }
 
     /// Access the local solver operator
-    OpPtr&               localSolverOp(index_t i)        { return m_localSolverOps[i]; }
-    const OpPtr&         localSolverOp(index_t i) const  { return m_localSolverOps[i]; }
+    OpPtr&               localSolverOp(index_t k)        { return m_localSolverOps[k]; }
+    const OpPtr&         localSolverOp(index_t k) const  { return m_localSolverOps[k]; }
 
     /// @brief Returns the number of Lagrange multipliers
     ///

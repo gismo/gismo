@@ -116,17 +116,17 @@ public:
     void addSubdomain( std::pair<JumpMatrix,OpPtr> data )
     { addSubdomain(data.first.moveToPtr(), give(data.second)); }
 
-    /// @brief Access the jump matrix
-    JumpMatrixPtr&       jumpMatrix(index_t i)           { return m_jumpMatrices[i];  }
-    const JumpMatrixPtr& jumpMatrix(index_t i) const     { return m_jumpMatrices[i];  }
+    /// Access the jump matrix
+    JumpMatrixPtr&       jumpMatrix(index_t k)           { return m_jumpMatrices[k];  }
+    const JumpMatrixPtr& jumpMatrix(index_t k) const     { return m_jumpMatrices[k];  }
 
-    /// @brief Access the local Schur complements operator
-    OpPtr&               localSchurOps(index_t i)        { return m_localSchurOps[i]; }
-    const OpPtr&         localSchurOps(index_t i) const  { return m_localSchurOps[i]; }
+    /// Access the local Schur complements operator
+    OpPtr&               localSchurOps(index_t k)        { return m_localSchurOps[k]; }
+    const OpPtr&         localSchurOps(index_t k) const  { return m_localSchurOps[k]; }
 
-    /// @brief Access the local scaling matrix (as row vector)
-    Matrix&              localScaling(index_t i)         { return m_localScaling[i];  }
-    const Matrix&        localScaling(index_t i) const   { return m_localScaling[i];  }
+    /// Access the local scaling matrix (as row vector)
+    Matrix&              localScaling(index_t k)         { return m_localScaling[k];  }
+    const Matrix&        localScaling(index_t k) const   { return m_localScaling[k];  }
 
     /// @brief Extracts the skeleton dofs from the jump matrix
     ///
