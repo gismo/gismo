@@ -254,7 +254,7 @@ int main(int argc, char *argv[])
             gsScaledDirichletPrec<>::schurComplement( blocks, makeSparseCholeskySolver(blocks.A11) )
         );
 
-        // Now, we handle the primal cosntraits.
+        // Now, we handle the primal constraints.
         //
         // This can be done using primal.handleConstraints as in ieti_example.
         // Here, we call the underlying commands directly to show how one can
