@@ -164,6 +164,96 @@ public:
 
     }
 
+    void getActives(gsMatrix<index_t>*& actives1, gsMatrix<index_t>*& actives2)
+    {
+        actives1 = &(this->actives1);
+        actives2 = &(this->actives2);
+    }
+
+    void localToGlobalIETI(const gsDofMapper       & mapper,
+                           const gsMatrix<T>       & eliminatedDofs,
+                           const gsMatrix<index_t> & activeExtra,
+                           gsSparseMatrix<T>       & sysMatrix,
+                           gsMatrix<T>             & rhsMatrix)
+    {
+        //gsInfo << "\n before: \n" << actives1.transpose() << "\n";
+        mapper.localToGlobal(actives1, 0, actives1);
+        //gsInfo << "\n after: \n" << actives1.transpose() << "\n";
+
+        const index_t numActive = B11.rows(); //here we cannot use the rows of active1, because it is modified outside.
+
+        index_t numActiveExtra = activeExtra.rows();
+
+        // TODO: This only works for constant alpha on each patch
+        T alpha = 1.;//alphaVals1(0,0)/2);
+
+        // Push element contributions 1-2 to the global matrix and load vector
+        for (index_t j=0; j!=numActive; ++j)
+        {
+            const index_t jj1 = actives1(j); // N1_j
+            if ( mapper.is_free_index(jj1) )
+            {
+                for (index_t i=0; i!=numActive; ++i)
+                {
+                    const index_t  ii1 = actives1(i); // N1_i
+                    if ( mapper.is_free_index(ii1) )
+                        //if ( jj1 <= ii1 )
+                        sysMatrix( ii1, jj1 ) -=  B11(i,j) + B11(j,i) - alpha*E11(i,j);
+                    else
+                    {
+                        rhsMatrix.row(jj1).noalias() += (B11(i,j) + B11(j,i) - alpha*E11(i,j)) *
+                                                        eliminatedDofs.row( mapper.global_to_bindex(ii1) );
+                    }
+                }
+
+                for (index_t i=0; i!=numActiveExtra; ++i)
+                {
+                    const index_t  ii2 = actives1(numActive+activeExtra(i)); // N2_i
+                    if ( mapper.is_free_index(ii2) )
+                        //if ( jj1 <= ii2 )
+                        sysMatrix( ii2, jj1)  -=  B21(activeExtra(i),j) + alpha*E21(activeExtra(i),j);
+                    else
+                    {
+                        rhsMatrix.row(jj1).noalias() += (B21(activeExtra(i),j) + alpha*E21(activeExtra(i),j)) *
+                                                        eliminatedDofs.row( mapper.global_to_bindex(ii2));
+                    }
+                }
+            }
+        }
+        for (index_t j=0; j!=numActiveExtra; ++j)
+        {
+            const index_t  jj1 = actives1(numActive+activeExtra(j)); // N2_i
+
+            if ( mapper.is_free_index(jj1) )
+            {
+                for (index_t i=0; i!=numActive; ++i)
+                {
+                    const index_t  ii1 = actives1(i); // N1_i
+                    if ( mapper.is_free_index(ii1) )
+                        //if ( jj1 <= ii1 )
+                        sysMatrix( ii1, jj1 ) -=  B21(activeExtra(j),i) + alpha*E21(activeExtra(j),i);
+                    else
+                    {
+                        rhsMatrix.row(jj1).noalias() += (B21(activeExtra(j),i) + alpha*E21(activeExtra(j),i)) *
+                                                        eliminatedDofs.row( mapper.global_to_bindex(ii1) );
+                    }
+                }
+
+                for (index_t i=0; i!=numActiveExtra; ++i)
+                {
+                    const index_t  ii2 = actives1(numActive+activeExtra(i)); // N2_i
+                    if ( mapper.is_free_index(ii2) )
+                        //if ( jj1 <= ii2 )
+                        sysMatrix( ii2, jj1)  -= - alpha*E22(activeExtra(i),activeExtra(j));
+                    else
+                    {
+                        rhsMatrix.row(jj1).noalias() += (-alpha*E22(activeExtra(i),activeExtra(j))) *
+                                                        eliminatedDofs.row( mapper.global_to_bindex(ii2));
+                    }
+                }
+            }
+        }
+    }
 private:
 
     // Penalty constant
