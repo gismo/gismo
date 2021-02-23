@@ -80,7 +80,8 @@ public:
     void init(
         const gsMultiBasis<T>& multiBasis,
         gsDofMapper dofMapperGlobal,
-        const Matrix& fixedPart
+        const Matrix& fixedPart,
+        const bool dG = false
     );
 
     /// @brief Apply the required changes to a space object of the expression
@@ -134,6 +135,9 @@ public:
     /// @param patch   Number of the patch
     std::vector<index_t> skeletonDofs( index_t patch ) const;
 
+    /// @brief Add the dG inferface contributions to the local matrices
+    void adddGInterfaceContributions(gsAssembler<T>* localassembler, gsSparseMatrix<T>& localmatrix, gsMatrix<T>& localrhs, const index_t patch, const gsMultiPatch<T>& domain, const gsOptionList options) const;
+
 public:
     /// @brief Returns the number of Lagrange multipliers.
     index_t nLagrangeMultipliers()
@@ -174,6 +178,42 @@ private:
         const gsBasis<T>& basis, const gsDofMapper& dm,
         boxComponent bc );   ///< Assembles for \ref interfaceAveragesAsPrimals
 
+
+    ///@brief Finds the artificial dof of localBasisnumber2 on side.patch
+    index_t dgFindCorrespondingExtraIndex(const patchSide& side, const patchSide& side2, const index_t& localBasisNumber2) const
+    {
+        unsigned n= m_dofMapperGlobal.patchSize(side.patch);
+        int k= dgFindIndexOnSide(side2, localBasisNumber2);
+        if(k==-1)
+            return -1;
+        else
+            return n+dgOffset(side.patch,side)+k;
+    }
+
+    ///@brief Returns k if localBasisNumber is the k-th dof on side or -1 otherwise
+    index_t dgFindIndexOnSide(const patchSide& side, const index_t& localBasisNumber) const
+    {
+        //find the index of the basis function on the boundary w.r.t to the side
+        for(int k=0; k<m_multiBasis->basis(side.patch).boundary(side.index()).rows();k++)
+            if(m_multiBasis->basis(side.patch).boundary(side.index())(k,0)==localBasisNumber)
+                return k;
+        return -1;
+
+    }
+
+    ///@brief Computes the offset on patch to the artificial interface corresponding to side
+    index_t dgOffset(const index_t patch, const boxSide &side) const
+    {
+        index_t offset =0;
+        for(int i=1; i< side.index();i++)
+            offset+=m_artificialDofsPerSide[patch][i];
+        return offset;
+    }
+
+    ///@brief Computes the local actives including the artificial basis functions
+    void prepareActives(const boundaryInterface & bi, gsMatrix<index_t>& actives1, gsMatrix<index_t>& actives2,
+                        gsMatrix<index_t>& activesExtra1) const;
+
 private:
     const gsMultiBasis<T>*                        m_multiBasis;          ///< Pointer to the respective multibasis
     gsDofMapper                                   m_dofMapperGlobal;     ///< The global dof mapper
@@ -184,6 +224,13 @@ private:
     std::vector< std::vector<SparseVector> >      m_primalConstraints;   ///< The primal constraints
     std::vector< std::vector<index_t> >           m_primalDofIndices;    ///< The primal dof indices for each of the primal constraints
     unsigned                                      m_status;              ///< A status flag that is checked by assertions
+
+    // Extra dG members
+    bool                                                        m_dG;                      ///< A flag that indicates whether to use dG or not
+    std::vector<std::vector<std::pair<patchSide,patchSide>> >   m_artificialEdges;         ///< A vector of mappings of "real" and "artificial" edges of each patch
+    gsDofMapper                                                 m_dofMapperGlobaldG;       ///< A vector of artificial edges of each patch
+    std::vector<std::vector<gsMatrix<T>> >                      m_extraBasis;              ///< A vector with extra basis indices for each side
+    std::vector<std::array<index_t, 5> >                        m_artificialDofsPerSide;   ///< A vector of artificial dofs for each side TODO:restricted now to 2D
 };
 
 } // namespace gismo
