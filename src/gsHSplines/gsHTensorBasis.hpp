@@ -20,6 +20,14 @@
 
 namespace gismo
 {
+ // Central element implementation
+// template<short_t d, class T>
+// gsMatrix<T> gsHTensorBasis<d,T>::elementInSupportOf(index_t i) const
+// {
+//     index_t lvl = levelOf(i);
+//     index_t j = flatTensorIndexOf(i);
+//     return m_bases[lvl]->elementInSupportOf(j);
+// }
 
 template<short_t d, class T>
 gsMatrix<T> gsHTensorBasis<d,T>::support() const
@@ -440,10 +448,10 @@ void gsHTensorBasis<d,T>::refineBasisFunction(const index_t i)
     point low = elements.col(0);
     point upp = elements.col(1);
     // Advance the indices to one level deeper
-    for ( short_t i = 0; i!=d; ++i )
+    for ( short_t k = 0; k!=d; ++k )
     {
-        low[i] = low[i] << 1;
-        upp[i] = upp[i] << 1;
+        low[k] = low[k] << 1;
+        upp[k] = upp[k] << 1;
     }
     // Insert the domain to the lvl+1 nested domain
     m_tree.insertBox(low,upp,lvl+1);
