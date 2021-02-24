@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
             ++i;
         }
         if ( len > i )
-            gsInfo << "\nToo many boundary conditions have been specified. Ingnoring the remaining ones.\n";
+            gsInfo << "\nToo many boundary conditions have been specified. Ignoring the remaining ones.\n";
         gsInfo << "done. "<<i<<" boundary conditions set.\n";
     }
 

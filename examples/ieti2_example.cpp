@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
             ++i;
         }
         if ( len > i )
-            gsInfo << "\nToo many boundary conditions have been specified. Ingnoring the remaining ones.\n";
+            gsInfo << "\nToo many boundary conditions have been specified. Ignoring the remaining ones.\n";
         gsInfo << "done. "<<i<<" boundary conditions set.\n";
     }
 
@@ -177,9 +177,9 @@ int main(int argc, char *argv[])
     }
 
     // Compute the jump matrices
-    bool fullyMatching = true,
+    bool fullyRedundant = true,
          noLagrangeMultipliersForCorners = true;
-    ietiMapper.computeJumpMatrices(fullyMatching, noLagrangeMultipliersForCorners);
+    ietiMapper.computeJumpMatrices(fullyRedundant, noLagrangeMultipliersForCorners);
 
     // We tell the ieti mapper which primal constraints we want; calling
     // more than one such function is possible.
