@@ -2,12 +2,12 @@
 
     @brief Provides declaration of the NurbsCreator struct.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -28,7 +28,7 @@ namespace gismo
 
 /**
    @brief Class gsNurbsCreator provides some simple examples of Nurbs Geometries
-   
+
    \ingroup Nurbs
 */
 
@@ -46,9 +46,9 @@ struct gsNurbsCreator
     typedef typename gsTensorNurbs<4,T>::uPtr   TensorNurbs4Ptr;
 
 public:
-    
+
     static TensorBSpline3Ptr lift3D( gsTensorBSpline<2,T> const & geo, T z = 1);
-    
+
     static TensorBSpline4Ptr lift4D( gsTensorBSpline<3,T> const & geo, T z = 1);
 
     static TensorNurbs3Ptr lift3D( gsTensorNurbs<2,T> const & geo, T z = 1);
@@ -77,6 +77,31 @@ public:
                                                     T const & low_y = 0,
                                                     T const & upp_x = 1,
                                                     T const & upp_y = 1, T const & turndeg = 0);
+
+
+    /// 2d-trapezium
+    static TensorBSpline2Ptr BSplineTrapezium( T const & Lbot = 1,
+                                                    T const & Ltop = 0.5,
+                                                    T const & H = 1,
+                                                    T const & d = 0, T const & turndeg = 0);
+
+    /// 2d-trapezium
+    static TensorBSpline2Ptr BSplineTrapezium(  T const & Ax, T const & Ay,
+                                                T const & Bx, T const & By,
+                                                T const & Cx, T const & Cy,
+                                                T const & Dx, T const & Dy, T const & turndeg = 0);
+
+    /// 2d-trapezium
+    static TensorNurbs2Ptr NurbsArcTrapezium(   T const & Lbot = 1,
+                                                    T const & Ltop = 0.5,
+                                                    T const & H = 1,
+                                                    T const & d = 0, T const & turndeg = 0);
+
+    /// 2d-trapezium
+    static TensorNurbs2Ptr NurbsArcTrapezium(   T const & Ax, T const & Ay,
+                                                T const & Bx, T const & By,
+                                                T const & Cx, T const & Cy,
+                                                T const & Dx, T const & Dy, T const & turndeg = 0);
 
     // Rectangle described by the identity mapping over the given parameter domain, using tensor product B-splines.
     static TensorBSpline2Ptr BSplineRectangleWithPara( T low_x = 0, T low_y = 0, T upp_x = 1, T upp_y = 1);
@@ -120,7 +145,7 @@ public:
 
     static TensorBSpline3Ptr BSplineHalfCube( T const & r = 1, T const & x = 0,
                                                    T const & y = 0, T const & z = 0  );
-    
+
     static TensorNurbs3Ptr NurbsCube( T const & r = 1, T const & x = 0,
                                            T const & y = 0, T const & z = 0 );
 
