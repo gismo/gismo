@@ -34,7 +34,8 @@ gsLobattoRule<T>::setNodes( gsVector<index_t> const & numNodes,
         for (short_t i = 0; i < d; ++i)
         {
             if (!lookupReference(numNodes[i], nodes[i], weights[i]))
-                computeReference(numNodes[i], nodes[i], weights[i], REAL_DIG);
+                computeReference(numNodes[i], nodes[i], weights[i],
+                                 0==REAL_DIG?2:REAL_DIG);
             if (1!=numNodes[i])
                 nodes[i].last() -= epsilon; //interval may be half-open
         }

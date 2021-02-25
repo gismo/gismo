@@ -29,7 +29,7 @@ endif()
 
 if (GISMO_EXTRA_DEBUG)
   if (NOT "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR DBGHELP_FOUND)
-    set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} ${PROJECT_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
+    set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} ${gismo_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
   endif()
 endif()
 
