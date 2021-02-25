@@ -235,13 +235,15 @@ gsKnotVector<T> gsPatchRule<T>::_init(const gsBSplineBasis<T> * Bbasis) const
     // If basis should be over-integrated, then add extra knots in the boundary elements
     if (m_over)
     {
-        index_t numOver = knots.degree();
+        index_t numOver = knots.degree()-1;
 
-        T lowerLength = (knots(1)-knots.first())/(numOver);
-        T upperLength = (knots.last()-knots(knots.uSize()-2))/(numOver);
-
-        knots.insert(knots.first()+lowerLength);
-        knots.insert(knots.last()-upperLength);
+        T lowerLength = (knots(1)-knots.first())/(numOver+1);
+        T upperLength = (knots.last()-knots(knots.uSize()-2))/(numOver+1);
+        for (index_t k=0; k!=numOver; k++)
+        {
+            knots.insert(knots.first()+(k+1)*lowerLength);
+            knots.insert(knots.last()-(k+1)*upperLength);
+        }
 
         size += 2*numOver;
     }
