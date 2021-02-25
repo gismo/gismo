@@ -204,7 +204,17 @@ if (GISMO_BUILD_PYBIND11)
    find_package(pybind11 REQUIRED)
    include_directories(${pybind11_INCLUDE_DIR})
   
-   find_package(PythonLibs REQUIRED)
+   #find_package(PythonLibs REQUIRED)# deprecated since cmake 3.12
+   #PYTHON_LIBRARY
+   #PYTHON_INCLUDE_DIR
+
+   # New and better way:
+   find_package(Python REQUIRED COMPONENTS Development) #Python2 Python3
+   #Python_INCLUDE_DIRS
+   #Python_LIBRARIES
+
+   #find_package(PythonLibsNew ${PYBIND11_PYTHON_VERSION} MODULE REQUIRED) #pybind11
+
    include_directories(${PYTHON_INCLUDE_DIRS})
 endif()
 
