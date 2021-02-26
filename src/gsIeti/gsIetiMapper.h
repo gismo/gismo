@@ -80,8 +80,7 @@ public:
     void init(
         const gsMultiBasis<T>& multiBasis,
         gsDofMapper dofMapperGlobal,
-        const Matrix& fixedPart,
-        const bool dG = false
+        const Matrix& fixedPart
     );
 
     /// @brief Apply the required changes to a space object of the expression
@@ -135,8 +134,25 @@ public:
     /// @param patch   Number of the patch
     std::vector<index_t> skeletonDofs( index_t patch ) const;
 
-    /// @brief Add the dG inferface contributions to the local matrices
-    void adddGInterfaceContributions(gsAssembler<T>* localassembler, gsSparseMatrix<T>& localmatrix, gsMatrix<T>& localrhs, const index_t patch, const gsMultiPatch<T>& domain, const gsOptionList options) const;
+    /// @brief Function to set up a global dG discretization
+    void fullDG();
+
+    /// @brief Set the fixed part corresponding to each patch
+    void setFixedPart(const Matrix& fixedPart);
+
+    /// @brief Function to register an artificial interface
+    void registerArtificialIface(const index_t patch, const boxSide s1, const patchSide ps2);
+
+    ///@brief Finds the artificial dof of localBasisnumber2 on side.patch
+    index_t dgFindCorrespondingExtraIndex(const patchSide& side, const patchSide& side2, const index_t& localBasisNumber2) const
+    {
+        unsigned n= m_multiBasis->basis(side.patch).size();
+        int k= dgFindIndexOnSide(side2, localBasisNumber2);
+        if(k==-1)
+            return -1;
+        else
+            return n+dgOffset(side.patch,side)+k;
+    }
 
 public:
     /// @brief Returns the number of Lagrange multipliers.
@@ -148,29 +164,38 @@ public:
     }
 
     /// @brief Returns the size of the primal problem (number of primal dofs)
-    index_t nPrimalDofs() const                                            { return m_nPrimalDofs;                }
+    index_t nPrimalDofs() const                                                             { return m_nPrimalDofs;                }
 
     /// @brief Returns the primalConstraints (as vectors) for the given patch
     ///
     /// These vectors form the matrix \f$ C_k \f$ in the local saddle point
     /// system, see  \a gsPrimalSystem
-    const std::vector<SparseVector> & primalConstraints(index_t k) const   { return m_primalConstraints[k];       }
+    const std::vector<SparseVector> & primalConstraints(index_t k) const                    { return m_primalConstraints[k];       }
 
     /// @brief Returns the indices of the primal dofs that are associated to
     /// the primal constraints for the given patch
-    const std::vector<index_t> & primalDofIndices(index_t k) const         { return m_primalDofIndices[k];        }
+    const std::vector<index_t> & primalDofIndices(index_t k) const                          { return m_primalDofIndices[k];        }
 
     /// @brief Returns the jump matrix \f$ B_k \f$ for the given patch
-    const JumpMatrix& jumpMatrix(index_t k) const                          { return m_jumpMatrices[k];            }
+    const JumpMatrix& jumpMatrix(index_t k) const                                           { return m_jumpMatrices[k];            }
 
     /// @brief The global dof mapper
-    const gsDofMapper& dofMapperGlobal() const                             { return m_dofMapperGlobal;            }
+    const gsDofMapper& dofMapperGlobal() const                                              { return m_dofMapperGlobal;            }
 
     /// @brief The dof mapper for the given patch
-    const gsDofMapper& dofMapperLocal(index_t k) const                     { return m_dofMapperLocal[k];          }
+    const gsDofMapper& dofMapperLocal(index_t k) const                                      { return m_dofMapperLocal[k];          }
 
     /// @brief The function values for the eliminated dofs on the given patch
-    const Matrix& fixedPart(index_t k) const                               { return m_fixedPart[k];               }
+    const Matrix& fixedPart(index_t k) const                                                { return m_fixedPart[k];               }
+
+    /// @brief Returns the "real" edge-artificial edge pairs of patch k
+    const std::vector<std::pair<patchSide, patchSide> >& artificialedges(index_t k) const   { return m_artificialEdges[k];          }
+
+    /// @brief Returns an array of dofs per side of patch k
+    const std::array<index_t, 5>& artificialDofsPerSide(index_t k) const                    { return m_artificialDofsPerSide[k];    }
+
+    /// @brief Return the discretization basis
+    const gsMultiBasis<T>* basis() const                                                    { return m_multiBasis;                  }
 
 private:
 
@@ -178,17 +203,8 @@ private:
         const gsBasis<T>& basis, const gsDofMapper& dm,
         boxComponent bc );   ///< Assembles for \ref interfaceAveragesAsPrimals
 
-
-    ///@brief Finds the artificial dof of localBasisnumber2 on side.patch
-    index_t dgFindCorrespondingExtraIndex(const patchSide& side, const patchSide& side2, const index_t& localBasisNumber2) const
-    {
-        unsigned n= m_dofMapperGlobal.patchSize(side.patch);
-        int k= dgFindIndexOnSide(side2, localBasisNumber2);
-        if(k==-1)
-            return -1;
-        else
-            return n+dgOffset(side.patch,side)+k;
-    }
+    /// @brief Allows to create a new dofMapper if the current one is already finalize
+    void unfinalizeMapper();
 
     ///@brief Returns k if localBasisNumber is the k-th dof on side or -1 otherwise
     index_t dgFindIndexOnSide(const patchSide& side, const index_t& localBasisNumber) const
@@ -210,9 +226,7 @@ private:
         return offset;
     }
 
-    ///@brief Computes the local actives including the artificial basis functions
-    void prepareActives(const boundaryInterface & bi, gsMatrix<index_t>& actives1, gsMatrix<index_t>& actives2,
-                        gsMatrix<index_t>& activesExtra1) const;
+    void dgInit();
 
 private:
     const gsMultiBasis<T>*                        m_multiBasis;          ///< Pointer to the respective multibasis
@@ -226,9 +240,7 @@ private:
     unsigned                                      m_status;              ///< A status flag that is checked by assertions
 
     // Extra dG members
-    bool                                                        m_dG;                      ///< A flag that indicates whether to use dG or not
     std::vector<std::vector<std::pair<patchSide,patchSide>> >   m_artificialEdges;         ///< A vector of mappings of "real" and "artificial" edges of each patch
-    gsDofMapper                                                 m_dofMapperGlobaldG;       ///< A vector of artificial edges of each patch
     std::vector<std::vector<gsMatrix<T>> >                      m_extraBasis;              ///< A vector with extra basis indices for each side
     std::vector<std::array<index_t, 5> >                        m_artificialDofsPerSide;   ///< A vector of artificial dofs for each side TODO:restricted now to 2D
 };

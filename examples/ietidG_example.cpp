@@ -20,8 +20,25 @@
 #include <ctime>
 
 #include <gismo.h>
+#include <gsAssembler/gsVisitorDg.h>
 
 using namespace gismo;
+
+
+template<class T>
+void adddGInterfaceContributions(const gsPde<T>& localpde,
+                                 gsSparseMatrix<T>& localmatrix,
+                                 gsMatrix<T>& localrhs,
+                                 const index_t patch,
+                                 const gsMultiPatch<T>& domain,
+                                 const gsIetiMapper<T>& mapper,
+                                 const gsOptionList options);
+
+void prepareActives(const gsIetiMapper<>& mapper,
+                    const boundaryInterface & bi,
+                    gsMatrix<index_t>& actives1,
+                    gsMatrix<index_t>& actives2,
+                    gsMatrix<index_t>& activesExtra1);
 
 int main(int argc, char *argv[])
 {
@@ -32,7 +49,6 @@ int main(int argc, char *argv[])
     real_t stretchGeometry = 1;
     index_t refinements = 1;
     index_t degree = 2;
-    bool dG = true;
     std::string boundaryConditions("d");
     std::string primals("c");
     real_t tolerance = 1.e-8;
@@ -46,7 +62,6 @@ int main(int argc, char *argv[])
     cmd.addReal  ("",  "StretchGeometry",       "Stretch geometry in x-direction by the given factor", stretchGeometry);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
-    cmd.addSwitch("",  "dG",                    "Enable discontinuous Galerkin IETI-DP", dG);
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
     cmd.addString("c", "Primals",               "Primal constraints (c=corners, e=edges, f=faces)", primals);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
@@ -168,18 +183,30 @@ int main(int argc, char *argv[])
 
     // We start by setting up a global FeSpace that allows us to
     // obtain a dof mapper and the Dirichlet data
+    gsPoissonAssembler<> assembler(
+        mp,
+        mb,
+        bc,
+        f,
+        dirichlet::elimination,
+        iFace::dg
+    );
+    assembler.computeDirichletDofs();
+    ietiMapper.init( mb, assembler.system().rowMapper(0), assembler.fixedDofs() );
+
+
+    gsInfo << "Register artificial interfaces ... "<< std::flush;
+    for (index_t k=0; k<nPatches; ++k)
     {
-      gsPoissonAssembler<> assembler(
-            mp,
-            mb,
-            bc,
-            f,
-            dirichlet::elimination,
-            iFace::dg
-        );
-        assembler.computeDirichletDofs();
-        ietiMapper.init( mb, assembler.system().rowMapper(0), assembler.fixedDofs(), dG );
+        const gsBoxTopology& top = mb.topology();
+        for (boxSide it = boxSide::getFirst(2 * mb.domainDim()); it!=boxSide::getEnd(2*mb.domainDim()); ++it) {
+            patchSide result;
+
+            if(top.getNeighbour(patchSide(k,it), result))
+                ietiMapper.registerArtificialIface(k, it, result);
+        }
     }
+    gsInfo << "done\n";
 
     // Compute the jump matrices
     bool fullyMatching = true,
@@ -207,6 +234,9 @@ int main(int argc, char *argv[])
     // First, we need to know its size
     const index_t bdPrecSz = nPatches + 1 + (ietiMapper.nPrimalDofs()>0?1:0);
     gsBlockOp<>::Ptr bdPrec = gsBlockOp<>::make(bdPrecSz,bdPrecSz);
+
+    // After the whole initialization we set the fixed part in the ietiMapper
+    ietiMapper.setFixedPart(assembler.fixedDofs());
 
     for (index_t k=0; k<nPatches; ++k)
     {
@@ -244,7 +274,9 @@ int main(int argc, char *argv[])
         gsMatrix<>                       localRhs    = assembler.rhs();
 
         gsInfo << "\n patch " << k<< "\n";
-        ietiMapper.adddGInterfaceContributions(&assembler, localMatrix, localRhs, k, mp, assembler.options());
+        localMatrix.uncompress();
+        localMatrix.conservativeResize(ietiMapper.dofMapperLocal(k).freeSize(), ietiMapper.dofMapperLocal(k).freeSize());
+        adddGInterfaceContributions(assembler.pde(), localMatrix, localRhs, k, mp, ietiMapper, assembler.options());
         gsInfo << "\n matrix \n" << localMatrix.toDense() << "\n";
 
         // Add the patch to the scaled Dirichlet preconditioner
@@ -406,4 +438,110 @@ int main(int argc, char *argv[])
                   "file containing the solution or --fn to write solution to xml file.\n";
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+
+template<class T>
+void adddGInterfaceContributions(const gsPde<T>& localpde,
+                                 gsSparseMatrix<T>& localmatrix,
+                                 gsMatrix<T>& localrhs,
+                                 const index_t patch,
+                                 const gsMultiPatch<T>& domain,
+                                 const gsIetiMapper<T>& mapper,
+                                 const gsOptionList options)
+{
+    const gsMultiBasis<T>* base = mapper.basis();
+    const gsMatrix<T>& fixedPart = mapper.fixedPart(patch);
+    const std::vector<std::pair<patchSide, patchSide> >& edgePairs = mapper.artificialedges(patch);
+    const gsDofMapper& localmapper = mapper.dofMapperLocal(patch);
+
+    gsMatrix<index_t> *actives1, *actives2;
+    gsMatrix<index_t> activesExtra1, activesExtra2;
+
+    gsMatrix<T> quNodes1, quNodes2;// Mapped nodes
+    gsVector<T> quWeights;         // Mapped weights
+
+    gsQuadRule<T> QuRule;
+
+    for (size_t e = 0; e < edgePairs.size(); ++e)
+    {
+        patchSide side1, side2;
+        if(base->basis(patch).numElements(edgePairs[e].second.side()) > base->basis(patch).numElements(edgePairs[e].first.side())) {
+            side2 = edgePairs[e].first;
+            side1 = edgePairs[e].second;
+        }
+        else {
+            side1 = edgePairs[e].first;
+            side2 = edgePairs[e].second;
+        }
+
+        gsVisitorDg<T> dg(localpde);
+
+        boundaryInterface bi(side1, side2, domain.domainDim());
+        gsRemapInterface<T> interfaceMap(domain, *base, bi);
+
+        const index_t patch1      = side1.patch;
+        const index_t patch2      = side2.patch;
+        const gsBasis<T> & B1 = base->basis(patch1);
+        const gsBasis<T> & B2 = base->basis(patch2);
+
+        // Initialize
+        dg.initialize(B1, B2, bi, options, QuRule);
+
+        // Initialize domain element iterators
+        typename gsBasis<T>::domainIter domIt1 = interfaceMap.makeDomainIterator();
+        typename gsBasis<T>::domainIter domIt2 = B2.makeDomainIterator(bi.second().side()); // for the correct penalty term in the Visitor
+        typename gsBasis<T>::domainIter domExtra = B1.makeDomainIterator(bi.first().side());
+
+        // iterate over all boundary grid cells on the "left"
+        for (; domIt1->good(); domIt1->next() )
+        {
+            QuRule.mapTo( domIt1->lowerCorner(), domIt1->upperCorner(), quNodes1, quWeights);
+            interfaceMap.eval_into(quNodes1,quNodes2);
+
+            // Perform required evaluations on the quadrature nodes
+            dg.evaluate(B1, domain[patch1], B2, domain[patch2], quNodes1, quNodes2);
+
+            // Assemble on element
+            dg.assemble(*domExtra,*domIt2, quWeights); // the iterator is only used for the calculation of the cell size
+
+            //extract the actives and prepare them for the IETI_locToGlob map
+            dg.getActives(actives1, actives2);
+            prepareActives(mapper, bi,*actives1,*actives2,activesExtra1 );
+
+
+            //do the map
+            dg.localToGlobalIETI(localmapper,fixedPart,
+                                 activesExtra1, localmatrix, localrhs);
+
+        }
+    }
+
+}
+
+void prepareActives(const gsIetiMapper<>& mapper, const boundaryInterface & bi, gsMatrix<index_t>& actives1, gsMatrix<index_t>& actives2,
+                                     gsMatrix<index_t>& activesExtra1) {
+    index_t patch1 = bi.first().patch;
+    patchSide side1 = bi.first();
+    patchSide side2 = bi.second();
+    const index_t n1 = actives1.rows();
+    const index_t n2 = actives2.rows();
+
+    actives1.conservativeResize(n1 + n2, actives1.cols());
+    actives2.conservativeResize(n2 + n1, actives2.cols());
+    actives1.bottomRows(n2).setZero();
+    actives2.bottomRows(n1).setZero();
+
+    activesExtra1.resize(mapper.artificialDofsPerSide(patch1)[side1.index()],1);
+    index_t iter1 = 0;
+    for (index_t i = 0; i < n2; i++) {
+        index_t k = mapper.dgFindCorrespondingExtraIndex(side1, side2, actives2(i,0));
+        if (k >= 0) {
+            (actives1)(n1+i,0)= k;
+            activesExtra1(iter1, 0) = i;
+            iter1++;
+        }
+    }
+    //shrink to the appropriate size, since not all extra dofs are active on an element!
+    activesExtra1.conservativeResize(iter1, activesExtra1.cols());
 }

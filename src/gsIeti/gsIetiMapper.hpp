@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gsAssembler/gsGenericAssembler.h>
-#include <gsAssembler/gsVisitorDg.h>
 
 /*    Concerning the status flag m_status:
  *       (m_status&1)!=0    means that the object has been initialized by calling init or the value constructor
@@ -30,8 +29,7 @@ template <class T>
 void gsIetiMapper<T>::init(
         const gsMultiBasis<T>& multiBasis,
         gsDofMapper dofMapperGlobal,
-        const Matrix& fixedPart,
-        const bool dG
+        const Matrix& fixedPart
     )
 {
     GISMO_ASSERT( dofMapperGlobal.componentsSize() == 1, "gsIetiMapper<T>::init: "
@@ -51,83 +49,16 @@ void gsIetiMapper<T>::init(
     m_primalDofIndices.resize(nPatches);
     m_status = 1;
 
-    m_dG = dG;
-    m_artificialEdges.clear();
-    m_artificialEdges.resize(nPatches);
-    m_artificialDofsPerSide.clear();
-    m_artificialDofsPerSide.resize(nPatches);
-    gsVector<index_t> artificialDofs(nPatches); artificialDofs.setZero();
-
-    if(m_dG){
-        gsVector<index_t> localSpaceDofs(nPatches); localSpaceDofs.setZero();
-        for (index_t k = 0; k < nPatches; ++k) {
-            m_artificialDofsPerSide[k] = {0,0,0,0,0};
-            localSpaceDofs[k] += m_dofMapperGlobal.patchSize(k);
-        }
-        const gsBoxTopology& topology = m_multiBasis->topology();
-        for(typename gsBoxTopology::const_iiterator it  = topology.iBegin();it<topology.iEnd();it++)
-        {
-            const patchSide side1 = it->first();
-            const patchSide side2 = it->second();
-            m_artificialEdges[side1.patch].push_back(std::pair<patchSide,patchSide>(side1, side2));
-            m_artificialEdges[side2.patch].push_back(std::pair<patchSide,patchSide>(side2, side1));
-
-            m_artificialDofsPerSide[side1.patch][side1.index()]=m_multiBasis->basis(side2.patch).boundary(side2.index()).rows();
-            m_artificialDofsPerSide[side2.patch][side2.index()]=m_multiBasis->basis(side1.patch).boundary(side1.index()).rows();
-
-            artificialDofs[side1.patch] += m_multiBasis->basis(side2.patch).boundary(side2.index()).rows();
-            artificialDofs[side2.patch] += m_multiBasis->basis(side1.patch).boundary(side1.index()).rows();
-
-            localSpaceDofs[side1.patch] += m_multiBasis->basis(side2.patch).boundary(side2.index()).rows();
-            localSpaceDofs[side2.patch] += m_multiBasis->basis(side1.patch).boundary(side1.index()).rows();
-        }
-
-        m_dofMapperGlobaldG = gsDofMapper(localSpaceDofs);
-
-        // Match the "real" and "artificial" dofs
-        for(typename gsBoxTopology::const_iiterator it  = topology.iBegin();it<topology.iEnd();it++)
-        {
-            const patchSide side1 = it->first();
-            const patchSide side2 = it->second();
-
-            gsMatrix<index_t> bnd1 = m_multiBasis->basis(side1.patch).boundary(side1.index());
-            gsMatrix<index_t> bnd2 = m_multiBasis->basis(side2.patch).boundary(side2.index());
-
-            for (index_t i = 0; i<bnd1.rows(); ++i)
-                m_dofMapperGlobaldG.matchDof(side1.patch, (bnd1)(i,0), side2.patch,m_dofMapperGlobal.patchSize(side2.patch)+dgOffset(side2.patch, side2.side())+i);
-
-            for (index_t i = 0; i<bnd2.rows(); ++i)
-                m_dofMapperGlobaldG.matchDof(side2.patch, (bnd2)(i,0), side1.patch, m_dofMapperGlobal.patchSize(side1.patch)+dgOffset(side1.patch, side1.side())+i);
-        }
-    }
-
     for (index_t k=0; k<nPatches; ++k)
     {
         const index_t patchDofs = m_dofMapperGlobal.patchSize(k);
-        m_dofMapperLocal[k].setIdentity(1,patchDofs+artificialDofs[k]);
+        m_dofMapperLocal[k].setIdentity(1,patchDofs);
 
         for (index_t i=0; i<patchDofs; ++i)
         {
             const index_t idx = m_dofMapperGlobal.index(i,k);
-            if (m_dofMapperGlobal.is_boundary_index(idx)){
+            if (m_dofMapperGlobal.is_boundary_index(idx))
                 m_dofMapperLocal[k].eliminateDof(i,0);
-                m_dofMapperGlobaldG.eliminateDof(i, k);
-            }
-        }
-
-        gsInfo << "\n patch: " << k<<"\n";
-        for (size_t n=0; n<m_artificialEdges[k].size(); ++n)
-        {
-            const patchSide s = m_artificialEdges[k][n].second;
-            const patchSide t = m_artificialEdges[k][n].first;
-            const index_t additionalDofs = m_multiBasis->basis(s.patch).boundary(s.index()).rows();
-            for (index_t i = 0; i < additionalDofs; ++i) {
-                const index_t idx = m_dofMapperGlobal.index(m_multiBasis->basis(s.patch).boundary(s.index())(i,0),s.patch);
-                if (m_dofMapperGlobal.is_boundary_index(idx)){
-                    m_dofMapperLocal[k].eliminateDof(patchDofs + dgOffset(k, t.side()) + i,0);
-                    m_dofMapperGlobaldG.eliminateDof(patchDofs + dgOffset(k, t.side()) + i,k);
-                }
-            }
         }
         m_dofMapperLocal[k].finalize();
 
@@ -144,13 +75,27 @@ void gsIetiMapper<T>::init(
             }
         }
     }
-
-    if(m_dG)
-        m_dofMapperGlobaldG.finalize();
-
-
 }
 
+template <class T>
+void gsIetiMapper<T>::setFixedPart(const Matrix &fixedPart)
+{
+    index_t nPatches = m_dofMapperGlobal.numPatches();
+    for (index_t k = 0; k < nPatches; ++k) {
+        const index_t szFixedPart = m_dofMapperLocal[k].boundarySize();
+        m_fixedPart[k].setZero(szFixedPart,1);
+        for (size_t i=0; i<m_dofMapperLocal[k].patchSize(0); ++i)
+        {
+            const index_t idx = m_dofMapperGlobal.index(i,k);
+            if (m_dofMapperGlobal.is_boundary_index(idx))
+            {
+                const index_t globalBoundaryIdx = m_dofMapperGlobal.bindex(i,k);
+                const index_t localBoundaryIdx = m_dofMapperLocal[k].bindex(i,0);
+                m_fixedPart[k](localBoundaryIdx,0) = fixedPart(globalBoundaryIdx,0);
+            }
+        }
+    }
+}
 
 template <class T>
 typename gsIetiMapper<T>::Matrix
@@ -182,7 +127,7 @@ namespace{
 struct dof_helper {
     index_t globalIndex;
     index_t patch;
-    std::vector<index_t> localIndex;
+    index_t localIndex;
     bool operator<(const dof_helper& other) const
     { return globalIndex < other.globalIndex; }
 };
@@ -198,51 +143,33 @@ void gsIetiMapper<T>::cornersAsPrimals()
     const index_t nPatches = m_dofMapperLocal.size();
 
     // Construct all corners
-    std::vector<dof_helper> corners;
-    corners.reserve(4*nPatches);
     const short_t dim = m_multiBasis->dim();
+    std::vector<dof_helper> corners;
+    corners.reserve(math::pow(2,dim)*nPatches);
+
     for (index_t k=0; k<nPatches; ++k){
         for (boxCorner it = boxCorner::getFirst(dim); it!=boxCorner::getEnd(dim); ++it)
         {
             const index_t idx = (*m_multiBasis)[k].functionAtCorner(it);
             dof_helper dh;
-            dh.globalIndex = m_dofMapperGlobaldG.index( idx, k );
+            dh.globalIndex = m_dofMapperGlobal.index( idx, k );
             dh.patch = k;
-            dh.localIndex.push_back(m_dofMapperLocal[k].index( idx, 0 ));
-            if (m_dofMapperGlobaldG.is_free_index(dh.globalIndex))
+            dh.localIndex = m_dofMapperLocal[k].index( idx, 0 );
+            if (m_dofMapperGlobal.is_free_index(dh.globalIndex))
             {
-                std::vector<boxSide> side;
-                it.getContainingSides(dim, side);
-                for (typename std::vector<boxSide>::iterator  bit = side.begin();  bit != side.end(); ++bit) {
-                    std::vector<std::pair<patchSide,patchSide> >::iterator it = std::find_if( m_artificialEdges[k].begin(), m_artificialEdges[k].end(),
-                                                                                            [bit](const std::pair<patchSide, patchSide>& element){ return element.first.side() == *bit;} );
-
-                    if(it != m_artificialEdges[k].end()) {
-                        patchSide artificialEdge = it->second;
-                        //index_t artificial_corner = m_dofMapperGlobal.patchSize(k) + dgOffset(artificialEdge.patch, artificialEdge.side());
-                        index_t artificial_corner = m_dofMapperGlobal.patchSize(k) + dgOffset(k, it->first.side());
-
-                        gsMatrix<index_t> bndBasis = m_multiBasis->basis(artificialEdge.patch).boundary(artificialEdge);
-                        const index_t candidate = bndBasis(bndBasis.rows()-1,0);
-                        index_t c = m_dofMapperGlobaldG.index( candidate, artificialEdge.patch );
-                        std::vector<std::pair<index_t, index_t> > patchDofs;
-                        m_dofMapperGlobaldG.preImage(c, patchDofs);
-
-                        for (size_t n = 0; n < patchDofs.size(); ++n)
-                            if (patchDofs[n].first == k)
-                                if(m_dofMapperLocal[k].index( patchDofs[n].second,0) < m_dofMapperLocal[k].freeSize()){
-                                    artificial_corner += bndBasis.rows() - 1;
-                                    break;
-                                }
-
-                        // The corner can only be the first or the last entry of the boundary basis
-                        dh.localIndex.push_back((m_dofMapperLocal[k].index( artificial_corner,0)));
-                    }
-
-                }
                 corners.push_back(dh);
+                for (size_t n=0; n<m_artificialEdges[k].size(); ++n)
+                {
+                    const patchSide s = m_artificialEdges[k][n].second;
+                    const patchSide t = m_artificialEdges[k][n].first;
+                    index_t idxAsArtificial = dgFindCorrespondingExtraIndex(s, t, idx);
+                    dof_helper artificialDh;
+                    artificialDh.globalIndex = m_dofMapperGlobal.index(idxAsArtificial, s.patch);
+                    artificialDh.patch = s.patch;
+                    artificialDh.localIndex = (m_dofMapperLocal[s.patch].index( idxAsArtificial,0));
+                    corners.push_back(artificialDh);
+                }
             }
-
         }
     }
     std::sort(corners.begin(), corners.end());
@@ -258,24 +185,15 @@ void gsIetiMapper<T>::cornersAsPrimals()
         }
         const index_t cornerIndex = m_nPrimalDofs - 1;
         const index_t patch       = corners[i].patch;
-        const index_t localIndex  = corners[i].localIndex[0];
+        const index_t localIndex  = corners[i].localIndex;
 
         SparseVector constr(m_dofMapperLocal[patch].freeSize());
         constr[localIndex] = 1;
+
         m_primalConstraints[patch].push_back(give(constr));
         m_primalDofIndices[patch].push_back(cornerIndex);
     }
 
-    // .... and then the "artificial" ones
-    for (index_t i=0;i<sz; ++i){
-        const index_t patch = corners[i].patch;
-        for (size_t  j = 1; j < corners[i].localIndex.size(); ++j) {
-            SparseVector constr(m_dofMapperLocal[patch].freeSize());
-            const index_t localIndex = corners[i].localIndex[j];
-            constr[localIndex] = 1;
-            m_primalConstraints[patch].push_back(give(constr));
-        }
-    }
 }
 
 template <class T>
@@ -401,8 +319,12 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
     GISMO_ASSERT( !(m_status&2), "gsIetiMapper::computeJumpMatrices: This function has already been called." );
     m_status |= 2;
 
+    if(m_status&32)
+        unfinalizeMapper();
+
+
     const index_t nPatches = m_dofMapperGlobal.numPatches();
-    const index_t coupledSize = m_dofMapperGlobaldG.coupledSize();
+    const index_t coupledSize = m_dofMapperGlobal.coupledSize();
 
     // Find the groups of to be coupled indices
     std::vector< std::vector< std::pair<index_t,index_t> > > coupling;
@@ -410,13 +332,13 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
 
     for (index_t k=0; k<nPatches; ++k)
     {
-        const index_t patchSize = m_dofMapperGlobaldG.patchSize(k);
+        const index_t patchSize = m_multiBasis->basis(k).size();
         for (index_t i=0; i<patchSize; ++i)
         {
-            const index_t globalIndex = m_dofMapperGlobaldG.index(i,k);
-            if ( m_dofMapperGlobaldG.is_coupled_index(globalIndex) )
+            const index_t globalIndex = m_dofMapperGlobal.index(i,k);
+            if ( m_dofMapperGlobal.is_coupled_index(globalIndex) )
             {
-                const index_t coupledIndex = m_dofMapperGlobaldG.cindex(i,k);
+                const index_t coupledIndex = m_dofMapperGlobal.cindex(i,k);
                 coupling[coupledIndex].push_back(
                     std::pair<index_t,index_t>(k,i)
                 );
@@ -432,10 +354,10 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
             for (boxCorner it = boxCorner::getFirst(dim); it!=boxCorner::getEnd(dim); ++it)
             {
                 const index_t idx = (*m_multiBasis)[k].functionAtCorner(it);
-                const index_t globalIndex = m_dofMapperGlobaldG.index(idx,k);
-                if ( m_dofMapperGlobaldG.is_coupled_index(globalIndex) )
+                const index_t globalIndex = m_dofMapperGlobal.index(idx,k);
+                if ( m_dofMapperGlobal.is_coupled_index(globalIndex) )
                 {
-                    const index_t coupledIndex = m_dofMapperGlobaldG.cindex(idx,k);
+                    const index_t coupledIndex = m_dofMapperGlobal.cindex(idx,k);
                     coupling[coupledIndex].clear();
                 }
             }
@@ -494,102 +416,215 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
 }
 
 template<class T>
-void gsIetiMapper<T>::adddGInterfaceContributions(gsAssembler<T>* localassembler, gsSparseMatrix<T>& localmatrix, gsMatrix<T>& localrhs,
-                                                  const index_t patch, const gsMultiPatch<T>& domain, const gsOptionList options) const
+void gsIetiMapper<T>::fullDG()
 {
-    GISMO_ASSERT(m_dG, "gsIETIMapper::adddGInterfaceContributions: this is only allowed in dG mode");
-    gsMatrix<index_t> *actives1, *actives2;
-    gsMatrix<index_t> activesExtra1, activesExtra2;
+    index_t nPatches = m_dofMapperGlobal.numPatches();
+    m_artificialEdges.clear();
+    m_artificialEdges.resize(nPatches);
+    m_artificialDofsPerSide.clear();
+    m_artificialDofsPerSide.resize(nPatches);
 
-    gsMatrix<T> quNodes1, quNodes2;// Mapped nodes
-    gsVector<T> quWeights;         // Mapped weights
+    gsVector<index_t> artificialDofs(nPatches); artificialDofs.setZero();
+    gsDofMapper dGMapper;
+    std::vector<gsDofMapper> localdGmappers;
 
-    gsQuadRule<T> QuRule;
-
-    for (size_t e = 0; e < m_artificialEdges[patch].size(); ++e)
+    gsVector<index_t> localSpaceDofs(nPatches); localSpaceDofs.setZero();
+    for (index_t k = 0; k < nPatches; ++k) {
+        m_artificialDofsPerSide[k] = {0,0,0,0,0};
+        localSpaceDofs[k] += m_dofMapperGlobal.patchSize(k);
+    }
+    const gsBoxTopology& topology = m_multiBasis->topology();
+    for(typename gsBoxTopology::const_iiterator it  = topology.iBegin();it<topology.iEnd();it++)
     {
-        patchSide side1, side2;
-        if(m_multiBasis->basis(patch).numElements(m_artificialEdges[patch][e].second.side()) > m_multiBasis->basis(patch).numElements(m_artificialEdges[patch][e].first.side())) {
-            side2 = m_artificialEdges[patch][e].first;
-            side1 = m_artificialEdges[patch][e].second;
-        }
-        else {
-            side1 = m_artificialEdges[patch][e].first;
-            side2 = m_artificialEdges[patch][e].second;
-        }
+        const patchSide side1 = it->first();
+        const patchSide side2 = it->second();
+        m_artificialEdges[side1.patch].push_back(std::pair<patchSide,patchSide>(side1, side2));
+        m_artificialEdges[side2.patch].push_back(std::pair<patchSide,patchSide>(side2, side1));
 
-        gsVisitorDg<T> dg(localassembler->pde());
+        m_artificialDofsPerSide[side1.patch][side1.index()]=m_multiBasis->basis(side2.patch).boundary(side2.index()).rows();
+        m_artificialDofsPerSide[side2.patch][side2.index()]=m_multiBasis->basis(side1.patch).boundary(side1.index()).rows();
 
-        boundaryInterface bi(side1, side2, domain.domainDim());
-        gsRemapInterface<T> interfaceMap(domain, *m_multiBasis, bi);
+        artificialDofs[side1.patch] += m_multiBasis->basis(side2.patch).boundary(side2.index()).rows();
+        artificialDofs[side2.patch] += m_multiBasis->basis(side1.patch).boundary(side1.index()).rows();
 
-        const index_t patch1      = side1.patch;
-        const index_t patch2      = side2.patch;
-        const gsBasis<T> & B1 = m_multiBasis->basis(patch1);
-        const gsBasis<T> & B2 = m_multiBasis->basis(patch2);
+        localSpaceDofs[side1.patch] += m_multiBasis->basis(side2.patch).boundary(side2.index()).rows();
+        localSpaceDofs[side2.patch] += m_multiBasis->basis(side1.patch).boundary(side1.index()).rows();
+    }
 
-        // Initialize
-        dg.initialize(B1, B2, bi, options, QuRule);
+    dGMapper = gsDofMapper(localSpaceDofs);
 
-        // Initialize domain element iterators
-        typename gsBasis<T>::domainIter domIt1 = interfaceMap.makeDomainIterator();
-        typename gsBasis<T>::domainIter domIt2 = B2.makeDomainIterator(bi.second().side()); // for the correct penalty term in the Visitor
-        typename gsBasis<T>::domainIter domExtra = B1.makeDomainIterator(bi.first().side());
+    // Match the "real" and "artificial" dofs
+    for(typename gsBoxTopology::const_iiterator it  = topology.iBegin();it<topology.iEnd();it++)
+    {
+        const patchSide side1 = it->first();
+        const patchSide side2 = it->second();
 
-        // iterate over all boundary grid cells on the "left"
-        for (; domIt1->good(); domIt1->next() )
+        gsMatrix<index_t> bnd1 = m_multiBasis->basis(side1.patch).boundary(side1.index());
+        gsMatrix<index_t> bnd2 = m_multiBasis->basis(side2.patch).boundary(side2.index());
+
+        for (index_t i = 0; i<bnd1.rows(); ++i)
+            dGMapper.matchDof(side1.patch, (bnd1)(i,0), side2.patch,m_dofMapperGlobal.patchSize(side2.patch)+dgOffset(side2.patch, side2.side())+i);
+
+        for (index_t i = 0; i<bnd2.rows(); ++i)
+            dGMapper.matchDof(side2.patch, (bnd2)(i,0), side1.patch, m_dofMapperGlobal.patchSize(side1.patch)+dgOffset(side1.patch, side1.side())+i);
+    }
+
+    for (index_t k=0; k<nPatches; ++k)
+    {
+        const index_t patchDofs = m_dofMapperGlobal.patchSize(k);
+        localdGmappers[k].setIdentity(1,patchDofs+artificialDofs[k]);
+
+        for (index_t i=0; i<patchDofs; ++i)
         {
-            QuRule.mapTo( domIt1->lowerCorner(), domIt1->upperCorner(), quNodes1, quWeights);
-            interfaceMap.eval_into(quNodes1,quNodes2);
+            const index_t idx = m_dofMapperGlobal.index(i,k);
+            if (m_dofMapperGlobal.is_boundary_index(idx)){
+                localdGmappers[k].eliminateDof(i,0);
+                dGMapper.eliminateDof(i, k);
+            }
+        }
 
-            // Perform required evaluations on the quadrature nodes
-            dg.evaluate(B1, domain[patch1], B2, domain[patch2], quNodes1, quNodes2);
+        for (size_t n=0; n<m_artificialEdges[k].size(); ++n)
+        {
+            const patchSide s = m_artificialEdges[k][n].second;
+            const patchSide t = m_artificialEdges[k][n].first;
+            const index_t additionalDofs = m_multiBasis->basis(s.patch).boundary(s.index()).rows();
+            for (index_t i = 0; i < additionalDofs; ++i) {
+                const index_t idx = m_dofMapperGlobal.index(m_multiBasis->basis(s.patch).boundary(s.index())(i,0),s.patch);
+                if (m_dofMapperGlobal.is_boundary_index(idx)){
+                    localdGmappers[k].eliminateDof(patchDofs + dgOffset(k, t.side()) + i,0);
+                    dGMapper.eliminateDof(patchDofs + dgOffset(k, t.side()) + i,k);
+                }
+            }
+        }
+        localdGmappers[k].finalize();
+    }
 
-            // Assemble on element
-            dg.assemble(*domExtra,*domIt2, quWeights); // the iterator is only used for the calculation of the cell size
+    dGMapper.finalize();
+    m_dofMapperGlobal = dGMapper;
+    m_dofMapperLocal = localdGmappers;
+}
 
-            //extract the actives and prepare them for the IETI_locToGlob map
-            dg.getActives(actives1, actives2);
-            prepareActives(bi,*actives1,*actives2,activesExtra1 );
+template <class T>
+void gsIetiMapper<T>::registerArtificialIface(const index_t patch, const boxSide s1, const patchSide ps2)
+{
+    GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
+
+    if(!(m_status&32))
+        dgInit();
+
+    if(!(m_status&64))
+        m_status |= 64;
 
 
-            //do the map
-            dg.localToGlobalIETI(m_dofMapperLocal[patch1],m_fixedPart[patch1],
-                                 activesExtra1, localmatrix, localrhs);
 
+    gsDofMapper newlocal;
+    gsVector<index_t> artificialDofs(1); artificialDofs.setZero();
+
+
+    m_artificialEdges[patch].push_back(std::pair<patchSide,patchSide>(patchSide(patch, s1), ps2));
+    m_artificialDofsPerSide[patch][s1.index()]=m_multiBasis->basis(ps2.patch).boundary(ps2.index()).rows();
+    artificialDofs(0) += m_multiBasis->basis(ps2.patch).boundary(ps2.index()).rows();
+
+    const index_t patchDofs = m_dofMapperLocal[patch].patchSize(0);
+    newlocal.setIdentity(1,patchDofs+artificialDofs(0));
+
+    for (index_t i=0; i<m_multiBasis->basis(patch).size(); ++i)
+    {
+        const index_t idx = m_dofMapperGlobal.index(i,patch);
+        if (m_dofMapperGlobal.is_boundary_index(idx))
+            newlocal.eliminateDof(i,0);
+    }
+
+    for (size_t n=0; n<m_artificialEdges[patch].size(); ++n)
+    {
+        const patchSide s = m_artificialEdges[patch][n].second;
+        const patchSide t = m_artificialEdges[patch][n].first;
+        const index_t additionalDofs = m_multiBasis->basis(s.patch).boundary(s.index()).rows();
+        for (index_t i = 0; i < additionalDofs; ++i) {
+            const index_t idx = m_dofMapperGlobal.index(m_multiBasis->basis(s.patch).boundary(s.index())(i,0),s.patch);
+            if (m_dofMapperGlobal.is_boundary_index(idx)){
+                newlocal.eliminateDof(m_multiBasis->basis(patch).size() + dgOffset(patch, t.side()) + i,0);
+            }
         }
     }
 
+    m_dofMapperLocal[patch] = newlocal;
 }
 
-template<class T>
-void gsIetiMapper<T>::prepareActives(const boundaryInterface & bi, gsMatrix<index_t>& actives1, gsMatrix<index_t>& actives2,
-                                          gsMatrix<index_t>& activesExtra1) const {
-    index_t patch1 = bi.first().patch;
-    patchSide side1 = bi.first();
-    patchSide side2 = bi.second();
-    const index_t n1 = actives1.rows();
-    const index_t n2 = actives2.rows();
+template <class T>
+void gsIetiMapper<T>::unfinalizeMapper() {
+    index_t nPatches = m_dofMapperGlobal.numPatches();
+    gsVector<index_t> artificialDofs(nPatches); artificialDofs.setZero();
+    gsDofMapper dGMapper;
 
-    actives1.conservativeResize(n1 + n2, actives1.cols());
-    actives2.conservativeResize(n2 + n1, actives2.cols());
-    actives1.bottomRows(n2).setZero();
-    actives2.bottomRows(n1).setZero();
+    gsVector<index_t> localSpaceDofs(nPatches); localSpaceDofs.setZero();
+    for (index_t k = 0; k < nPatches; ++k) {
+        m_dofMapperLocal[k].finalize();
+        localSpaceDofs[k] += m_dofMapperLocal[k].patchSize(0);
+    }
 
-    activesExtra1.resize(m_artificialDofsPerSide[patch1][side1.index()],1);
-    index_t iter1 = 0;
-    for (index_t i = 0; i < n2; i++) {
-        index_t k = dgFindCorrespondingExtraIndex(side1, side2, actives2(i,0));
-        if (k >= 0) {
-            (actives1)(n1+i,0)= k;
-            activesExtra1(iter1, 0) = i;
-            iter1++;
+    dGMapper = gsDofMapper(localSpaceDofs);
+
+    const gsBoxTopology& topology = m_multiBasis->topology();
+    // Match the "real" and "artificial" dofs
+    for(typename gsBoxTopology::const_iiterator it  = topology.iBegin();it<topology.iEnd();it++)
+    {
+        const patchSide side1 = it->first();
+        const patchSide side2 = it->second();
+
+        gsMatrix<index_t> bnd1 = m_multiBasis->basis(side1.patch).boundary(side1.index());
+        gsMatrix<index_t> bnd2 = m_multiBasis->basis(side2.patch).boundary(side2.index());
+
+        for (index_t i = 0; i<bnd1.rows(); ++i)
+            dGMapper.matchDof(side1.patch, (bnd1)(i,0), side2.patch,m_dofMapperGlobal.patchSize(side2.patch)+dgOffset(side2.patch, side2.side())+i);
+
+        for (index_t i = 0; i<bnd2.rows(); ++i)
+            dGMapper.matchDof(side2.patch, (bnd2)(i,0), side1.patch, m_dofMapperGlobal.patchSize(side1.patch)+dgOffset(side1.patch, side1.side())+i);
+    }
+
+    for (index_t k=0; k<nPatches; ++k)
+    {
+        const index_t patchDofs = m_dofMapperGlobal.patchSize(k);
+        for (index_t i=0; i<patchDofs; ++i)
+        {
+            const index_t idx = m_dofMapperGlobal.index(i,k);
+            if (m_dofMapperGlobal.is_boundary_index(idx)){
+                dGMapper.eliminateDof(i, k);
+            }
+        }
+
+        for (size_t n=0; n<m_artificialEdges[k].size(); ++n)
+        {
+            const patchSide s = m_artificialEdges[k][n].second;
+            const patchSide t = m_artificialEdges[k][n].first;
+            const index_t additionalDofs = m_multiBasis->basis(s.patch).boundary(s.index()).rows();
+            for (index_t i = 0; i < additionalDofs; ++i) {
+                const index_t idx = m_dofMapperGlobal.index(m_multiBasis->basis(s.patch).boundary(s.index())(i,0),s.patch);
+                if (m_dofMapperGlobal.is_boundary_index(idx)){
+                    dGMapper.eliminateDof(patchDofs + dgOffset(k, t.side()) + i,k);
+                }
+            }
         }
     }
-    //shrink to the appropriate size, since not all extra dofs are active on an element!
-    activesExtra1.conservativeResize(iter1, activesExtra1.cols());
+
+    dGMapper.finalize();
+    m_dofMapperGlobal = dGMapper;
 }
 
+template <class T>
+void gsIetiMapper<T>::dgInit()
+{
+    GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
+    GISMO_ASSERT( !(m_status&32), "gsIetiMapper: The dG components have already been initialized" );
+    m_status |= 32;
 
+    const index_t nPatches = m_dofMapperGlobal.numPatches();
+    m_artificialEdges.clear();
+    m_artificialEdges.resize(nPatches);
+    m_artificialDofsPerSide.clear();
+    m_artificialDofsPerSide.resize(nPatches);
+    for (index_t k = 0; k < nPatches; ++k)
+        m_artificialDofsPerSide[k] = {0,0,0,0,0};
 
+}
 } // namespace gismo
