@@ -99,7 +99,7 @@ namespace
 
         // initialize result as a minimum possible value, since we are
         // looking for a maximum
-        static const return_type init() {return -1;}
+        static return_type init() {return -1;}
 
         template<short_t d, class T >
         static void visitLeaf(gismo::kdnode<d,T> * leafNode , int , return_type & res)

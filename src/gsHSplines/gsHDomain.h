@@ -648,7 +648,7 @@ private:
     struct levelUp_visitor
     {
         typedef int return_type;
-        static const return_type init() {return 0;}
+        static return_type init() {return 0;}
         
         static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
         {
@@ -660,7 +660,7 @@ private:
     struct levelDown_visitor
     {
         typedef int return_type;
-        static const return_type init() {return 0;}
+        static return_type init() {return 0;}
         
         static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
         {
@@ -672,7 +672,7 @@ private:
     struct numLeaves_visitor
     {
         typedef int return_type;
-        static const return_type init() {return 0;}
+        static return_type init() {return 0;}
         
         static void visitLeaf(kdnode<d,T> * , return_type & i)
         {
