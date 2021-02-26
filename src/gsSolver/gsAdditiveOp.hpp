@@ -26,9 +26,9 @@ void gsAdditiveOp<T>::apply(const gsMatrix<T>& input, gsMatrix<T>& x) const
 
     for (index_t i=0; i<n; ++i)
     {
-        res_local.noalias() = m_transfers[i].transpose()*input;
+        res_local.noalias() = m_transfers[i]->transpose()*input;
         m_ops[i]->apply(res_local, corr_local);
-        x.noalias() += m_transfers[i]*corr_local;
+        x.noalias() += *(m_transfers[i])*corr_local;
     }
 }
 
