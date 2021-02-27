@@ -268,7 +268,7 @@ std::vector<index_t> gsIetiMapper<T>::skeletonDofs( const index_t patch ) const
 
     std::vector<index_t> result;
     const index_t patchSize = m_dofMapperGlobal.patchSize(patch);
-    result.reserve(4*math::sqrt(patchSize));
+    result.reserve(4*std::sqrt(patchSize));
     for (index_t i=0; i<patchSize; ++i)
     {
         if ( m_dofMapperGlobal.is_coupled(i,patch) )
@@ -341,7 +341,7 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
     // Compute the jump matrices
     std::vector< gsSparseEntries<T> > jumpMatrices_se(nPatches);
     for (index_t i=0; i<nPatches; ++i)
-        jumpMatrices_se[i].reserve( math::sqrt( m_dofMapperLocal[i].freeSize() ) );
+        jumpMatrices_se[i].reserve( std::sqrt( m_dofMapperLocal[i].freeSize() ) );
 
     index_t multiplier = 0;
     for (index_t i=0; i<coupledSize; ++i)
