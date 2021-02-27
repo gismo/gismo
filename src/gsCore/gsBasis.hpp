@@ -532,6 +532,10 @@ size_t gsBasis<T>::elementIndex(const gsVector<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+gsMatrix<T> gsBasis<T>::elementInSupportOf(index_t j) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 const gsBasis<T>& gsBasis<T>::component(short_t) const
 { GISMO_NO_IMPLEMENTATION }
 

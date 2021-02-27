@@ -51,10 +51,9 @@ void gsIetiMapper<T>::init(
 
     for (index_t k=0; k<nPatches; ++k)
     {
-        const index_t patchDofs = m_dofMapperGlobal.patchSize(k);
-        m_dofMapperLocal[k].setIdentity(1,patchDofs);
-
-        for (index_t i=0; i<patchDofs; ++i)
+        const index_t nDofs = m_dofMapperGlobal.patchSize(k);
+        m_dofMapperLocal[k].setIdentity(1,nDofs);
+        for (index_t i=0; i<nDofs; ++i)
         {
             const index_t idx = m_dofMapperGlobal.index(i,k);
             if (m_dofMapperGlobal.is_boundary_index(idx))
@@ -64,7 +63,7 @@ void gsIetiMapper<T>::init(
 
         const index_t szFixedPart = m_dofMapperLocal[k].boundarySize();
         m_fixedPart[k].setZero(szFixedPart,1);
-        for (index_t i=0; i<patchDofs; ++i)
+        for (index_t i=0; i<nDofs; ++i)
         {
             const index_t idx = m_dofMapperGlobal.index(i,k);
             if (m_dofMapperGlobal.is_boundary_index(idx))
@@ -178,8 +177,10 @@ void gsIetiMapper<T>::cornersAsPrimals()
     index_t lastIndex=-1;
     const index_t sz = corners.size();
     //First add the "real" primal constraints ....
-    for (index_t i=0; i<sz; ++i) {
-        if (lastIndex != corners[i].globalIndex) {
+    for (index_t i=0; i<sz; ++i)
+    {
+        if (lastIndex != corners[i].globalIndex)
+        {
             lastIndex = corners[i].globalIndex;
             ++m_nPrimalDofs;
         }
@@ -302,7 +303,7 @@ std::vector<index_t> gsIetiMapper<T>::skeletonDofs( const index_t patch ) const
 
     std::vector<index_t> result;
     const index_t patchSize = m_dofMapperGlobal.patchSize(patch);
-    result.reserve(4*math::sqrt(patchSize));
+    result.reserve(4*std::sqrt(patchSize));
     for (index_t i=0; i<patchSize; ++i)
     {
         if ( m_dofMapperGlobal.is_coupled(i,patch) )
@@ -321,7 +322,6 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
 
     if(m_status&32)
         unfinalizeMapper();
-
 
     const index_t nPatches = m_dofMapperGlobal.numPatches();
     const index_t coupledSize = m_dofMapperGlobal.coupledSize();
@@ -627,4 +627,5 @@ void gsIetiMapper<T>::dgInit()
         m_artificialDofsPerSide[k] = {0,0,0,0,0};
 
 }
+
 } // namespace gismo

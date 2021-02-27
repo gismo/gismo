@@ -18,7 +18,6 @@
 */
 
 #include <ctime>
-
 #include <gismo.h>
 
 using namespace gismo;
@@ -35,7 +34,7 @@ int main(int argc, char *argv[])
     std::string boundaryConditions("d");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
-    std::string fn;
+    std::string out;
     bool plot = false;
 
     gsCmdLine cmd("Solves a PDE with an isogeometric discretization using an isogeometric tearing and interconnecting (IETI) solver.");
@@ -47,7 +46,7 @@ int main(int argc, char *argv[])
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
-    cmd.addString("" , "fn",                    "Write solution and used options to file", fn);
+    cmd.addString("",  "out",                   "Write solution and used options to file", out);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -135,7 +134,7 @@ int main(int argc, char *argv[])
             ++i;
         }
         if ( len > i )
-            gsInfo << "\nToo many boundary conditions have been specified. Ingnoring the remaining ones.\n";
+            gsInfo << "\nToo many boundary conditions have been specified. Ignoring the remaining ones.\n";
         gsInfo << "done. "<<i<<" boundary conditions set.\n";
     }
 
@@ -178,9 +177,9 @@ int main(int argc, char *argv[])
     }
 
     // Compute the jump matrices
-    bool fullyMatching = true,
+    bool fullyRedundant = true,
          noLagrangeMultipliersForCorners = true;
-    ietiMapper.computeJumpMatrices(fullyMatching, noLagrangeMultipliersForCorners);
+    ietiMapper.computeJumpMatrices(fullyRedundant, noLagrangeMultipliersForCorners);
 
     // We tell the ieti mapper which primal constraints we want; calling
     // more than one such function is possible.
@@ -254,7 +253,7 @@ int main(int argc, char *argv[])
             gsScaledDirichletPrec<>::schurComplement( blocks, makeSparseCholeskySolver(blocks.A11) )
         );
 
-        // Now, we handle the primal cosntraits.
+        // Now, we handle the primal constraints.
         //
         // This can be done using primal.handleConstraints as in ieti_example.
         // Here, we call the underlying commands directly to show how one can
@@ -362,15 +361,15 @@ int main(int argc, char *argv[])
     else
         gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
 
-    if (!fn.empty())
+    if (!out.empty())
     {
         gsFileData<> fd;
         std::time_t time = std::time(NULL);
         fd.add(opt);
         fd.add(uVec);
         fd.addComment(std::string("ieti2_example   Timestamp:")+std::ctime(&time));
-        fd.save(fn);
-        gsInfo << "Write solution to file " << fn << "\n";
+        fd.save(out);
+        gsInfo << "Write solution to file " << out << "\n";
     }
 
     if (plot)
@@ -391,10 +390,10 @@ int main(int argc, char *argv[])
         gsWriteParaview<>(sol, "ieti_result", 1000);
         //gsFileManager::open("ieti_result.pvd");
     }
-    if (!plot&&fn.empty())
+    if (!plot&&out.empty())
     {
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                  "file containing the solution or --fn to write solution to xml file.\n";
+                  "file containing the solution or --out to write solution to xml file.\n";
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }

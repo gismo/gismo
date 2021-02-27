@@ -1,6 +1,6 @@
 /** @file gsPrimalSystem.h
 
-    @brief This class represents the primal system for a IETI-dp algorithm
+    @brief This class represents the primal system for a IETI-DP algorithm
 
     This file is part of the G+Smo library.
 
@@ -20,7 +20,7 @@ namespace gismo
 {
 
 
-/** @brief   This class represents the primal system for a IETI-dp algorithm
+/** @brief   This class represents the primal system for a IETI-DP algorithm
  *
  *  The class \a gsIetiSystem does not know anything about the primal problem.
  *  For that class the primal problem is just another subdomain.
@@ -155,7 +155,7 @@ public:
     ///           0   \\ &  I
     ///      \end{pmatrix}
     ///      \quad\text{and}\quad
-    ///      P_C =
+    ///      P_c =
     ///      \begin{pmatrix}
     ///           I   \\ &  I
     ///      \end{pmatrix}

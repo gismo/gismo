@@ -64,7 +64,7 @@ void checkAssemblerOptions(gsOptionList& myList)
     #ifndef GISMO_WITH_GMP
         CHECK_EQUAL(0.333, myList.getReal("bdO"));
     #else
-        CHECK_CLOSE(0.333, myList.getReal("bdO"), 1e-5);
+        CHECK_CLOSE(0.333, myList.getReal("bdO"), 1e-3);
     #endif
     CHECK_EQUAL(1.0, myList.getReal("quA"));
 }

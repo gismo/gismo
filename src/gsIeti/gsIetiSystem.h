@@ -38,14 +38,14 @@ namespace gismo
  *       \sum_{k=1}^N   \tilde B_k   \tilde A_k^{-1}  \tilde B_k^\top
  *  \f]
  *
- *  For a standard IETI-dp setup, \f$ \tilde A_k \f$ and \f$ \tilde B_k \f$ are
+ *  For a standard IETI-DP setup, \f$ \tilde A_k \f$ and \f$ \tilde B_k \f$ are
  *  obtained from the original matrices \f$ A_k \f$ and \f$ B_k \f$ by
  *  eliminating the primal dofs or by incorporating a constraint that sets them
  *  to zero.
  *
  *  This class does not have any special treatment for the primal problem of a
- *  IETI-dp solver. Thus, the primal problem is just another subdomain and in
- *  case of IETI-dp, we have N=K+1, where K is the number of patches.
+ *  IETI-DP solver. Thus, the primal problem is just another subdomain and in
+ *  case of IETI-DP, we have N=K+1, where K is the number of patches.
  *
  *  The matrices \f$ \tilde A_k \f$ are stored in a vector that can be accessed
  *  (read and write) via \ref localMatrixOp. To allow certain matrix-free
