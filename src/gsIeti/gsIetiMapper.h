@@ -66,9 +66,9 @@ public:
     gsIetiMapper(
         const gsMultiBasis<T>& multiBasis,
         gsDofMapper dofMapperGlobal,
-        const Matrix& fixedPart
+        Matrix fixedPart
     )
-    { init(multiBasis, give(dofMapperGlobal), fixedPart); }
+    { init(multiBasis, give(dofMapperGlobal), give(fixedPart)); }
 
     /// @brief Init the ieti mapper after default construction
     ///
@@ -80,7 +80,7 @@ public:
     void init(
         const gsMultiBasis<T>& multiBasis,
         gsDofMapper dofMapperGlobal,
-        const Matrix& fixedPart
+        Matrix fixedPart
     );
 
     /// @brief Apply the required changes to a space object of the expression
@@ -132,7 +132,7 @@ public:
     /// @brief Returns a list of dofs that are (on the coarse level) coupled
     ///
     /// @param patch   Number of the patch
-    std::vector<index_t> skeletonDofs( index_t patch ) const;
+    std::vector<index_t> skeletonDofs(index_t patch) const;
 
 public:
     /// @brief Returns the number of Lagrange multipliers.
@@ -157,15 +157,18 @@ public:
     const std::vector<index_t> & primalDofIndices(index_t k) const         { return m_primalDofIndices[k];        }
 
     /// @brief Returns the jump matrix \f$ B_k \f$ for the given patch
+    /// Only available after \ref computeJumpMatrices has been called
     const JumpMatrix& jumpMatrix(index_t k) const                          { return m_jumpMatrices[k];            }
 
     /// @brief The global dof mapper
     const gsDofMapper& dofMapperGlobal() const                             { return m_dofMapperGlobal;            }
 
     /// @brief The dof mapper for the given patch
+    /// Only available after \ref computeJumpMatrices has been called
     const gsDofMapper& dofMapperLocal(index_t k) const                     { return m_dofMapperLocal[k];          }
 
     /// @brief The function values for the eliminated dofs on the given patch
+    /// Only available after \ref computeJumpMatrices has been called
     const Matrix& fixedPart(index_t k) const                               { return m_fixedPart[k];               }
 
 private:
@@ -174,11 +177,14 @@ private:
         const gsBasis<T>& basis, const gsDofMapper& dm,
         boxComponent bc );   ///< Assembles for \ref interfaceAveragesAsPrimals
 
+    void setupMappers();     ///< Setup of local mappers
+
 private:
     const gsMultiBasis<T>*                        m_multiBasis;          ///< Pointer to the respective multibasis
     gsDofMapper                                   m_dofMapperGlobal;     ///< The global dof mapper
     std::vector<gsDofMapper>                      m_dofMapperLocal;      ///< A vector of the patch-local dof mappers
-    std::vector<Matrix>                           m_fixedPart;           ///< The values for the elminated (Dirichlet) dofs
+    Matrix                                        m_fixedPartGlobal;     ///< The values for the elminated (Dirichlet) dofs globally
+    std::vector<Matrix>                           m_fixedPart;           ///< The values for the elminated (Dirichlet) dofs locally
     std::vector<JumpMatrix>                       m_jumpMatrices;        ///< The jump matrices
     index_t                                       m_nPrimalDofs;         ///< The number of primal dofs already created
     std::vector< std::vector<SparseVector> >      m_primalConstraints;   ///< The primal constraints

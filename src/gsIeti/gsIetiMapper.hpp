@@ -17,9 +17,11 @@
 
 /*    Concerning the status flag m_status:
  *       (m_status&1)!=0    means that the object has been initialized by calling init or the value constructor
- *       (m_status&2)!=0    means that the jump matrices have been computed
- *       (m_status&4)!=0    means that corners have been set up as primal constraints
- *       (m_status&flag)!=0 for flag = 8, 16,... means that edges, faces, ... have been set up as primal constraints
+ *       (m_status&2)!=0    
+ *       (m_status&4)!=0    means that setupMappers has been called
+ *       (m_status&8)!=0    means that the jump matrices have been computed
+ *       (m_status&16)!=0   means that corners have been set up as primal constraints
+ *       (m_status&flag)!=0 for flag = 32, 64,... means that edges, faces, ... have been set up as primal constraints
  */
 
 namespace gismo
@@ -29,7 +31,7 @@ template <class T>
 void gsIetiMapper<T>::init(
         const gsMultiBasis<T>& multiBasis,
         gsDofMapper dofMapperGlobal,
-        const Matrix& fixedPart
+        Matrix fixedPart
     )
 {
     GISMO_ASSERT( dofMapperGlobal.componentsSize() == 1, "gsIetiMapper<T>::init: "
@@ -38,9 +40,8 @@ void gsIetiMapper<T>::init(
     m_multiBasis = &multiBasis;
     m_dofMapperGlobal = give(dofMapperGlobal);
     m_dofMapperLocal.clear();
-    m_dofMapperLocal.resize(nPatches);
+    m_fixedPartGlobal = give(fixedPart);
     m_fixedPart.clear();
-    m_fixedPart.resize(nPatches);
     m_jumpMatrices.clear();
     m_nPrimalDofs = 0;
     m_primalConstraints.clear();
@@ -48,7 +49,18 @@ void gsIetiMapper<T>::init(
     m_primalDofIndices.clear();
     m_primalDofIndices.resize(nPatches);
     m_status = 1;
+}
 
+template <class T>
+void gsIetiMapper<T>::setupMappers()
+{
+    GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
+    GISMO_ASSERT( !(m_status&4), "gsIetiMapper:: setupMappers has already been called." );
+    m_status |= 4;
+
+    const index_t nPatches = m_dofMapperGlobal.numPatches();
+    m_dofMapperLocal.resize(nPatches);
+    m_fixedPart.resize(nPatches);
     for (index_t k=0; k<nPatches; ++k)
     {
         const index_t nDofs = m_dofMapperGlobal.patchSize(k);
@@ -70,10 +82,11 @@ void gsIetiMapper<T>::init(
             {
                 const index_t globalBoundaryIdx = m_dofMapperGlobal.bindex(i,k);
                 const index_t localBoundaryIdx = m_dofMapperLocal[k].bindex(i,0);
-                m_fixedPart[k](localBoundaryIdx,0) = fixedPart(globalBoundaryIdx,0);
+                m_fixedPart[k](localBoundaryIdx,0) = m_fixedPartGlobal(globalBoundaryIdx,0);
             }
         }
     }
+    m_fixedPartGlobal.resize(0,0);
 }
 
 
@@ -82,6 +95,9 @@ typename gsIetiMapper<T>::Matrix
 gsIetiMapper<T>::constructGlobalSolutionFromLocalSolutions( const std::vector<Matrix>& localContribs )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
+
+    if (!(m_status&4))
+        setupMappers();
 
     const index_t nPatches = m_dofMapperGlobal.numPatches();
     GISMO_ASSERT( nPatches == static_cast<index_t>(localContribs.size()),
@@ -117,15 +133,18 @@ template <class T>
 void gsIetiMapper<T>::cornersAsPrimals()
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
-    GISMO_ASSERT( !(m_status&4), "gsIetiMapper::cornersAsPrimals: This function has already been called." );
-    m_status |= 4;
+    GISMO_ASSERT( !(m_status&16), "gsIetiMapper::cornersAsPrimals: This function has already been called." );
+    m_status |= 16;
+
+    if (!(m_status&4))
+        setupMappers();
 
     const index_t nPatches = m_dofMapperLocal.size();
 
     // Construct all corners
     std::vector<dof_helper> corners;
-    corners.reserve(4*nPatches);
     const index_t dim = m_multiBasis->dim();
+    corners.reserve((1<<dim)*nPatches);
     for (index_t k=0; k<nPatches; ++k)
         for (boxCorner it = boxCorner::getFirst(dim); it!=boxCorner::getEnd(dim); ++it)
         {
@@ -209,10 +228,13 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, con
     GISMO_ASSERT( geo.parDim() == m_multiBasis->dim(),
         "gsIetiMapper::interfaceAveragesAsPrimals: The given geometry does not fit.");
 
-    const unsigned flag = 1<<(2+d);
+    const unsigned flag = 1<<(4+d);
     GISMO_ASSERT( !(m_status&flag), "gsIetiMapper::interfaceAveragesAsPrimals: This function has "
         " already been called for d="<<d );
     m_status |= flag;
+
+    if (!(m_status&4))
+        setupMappers();
 
     std::vector< std::vector<patchComponent> > components = geo.allComponents();
     const index_t nComponents = components.size();
@@ -251,6 +273,9 @@ void gsIetiMapper<T>::customPrimalConstraints(std::vector< std::pair<index_t,Spa
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
 
+    if (!(m_status&4))
+        setupMappers();
+
     const index_t sz = data.size();
     for (index_t i=0; i<sz; ++i)
     {
@@ -262,13 +287,15 @@ void gsIetiMapper<T>::customPrimalConstraints(std::vector< std::pair<index_t,Spa
 }
 
 template <class T>
-std::vector<index_t> gsIetiMapper<T>::skeletonDofs( const index_t patch ) const
+std::vector<index_t> gsIetiMapper<T>::skeletonDofs(const index_t patch) const
 {
-    GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
+    GISMO_ASSERT( m_status&4, "gsIetiMapper::skeletonDofs can only be called after "
+        "jump matrices have been computed." );
 
     std::vector<index_t> result;
     const index_t patchSize = m_dofMapperGlobal.patchSize(patch);
-    result.reserve(4*std::sqrt(patchSize));
+    const index_t dim = m_multiBasis->dim();
+    result.reserve(2*dim*std::pow(patchSize,(1.0-dim)/dim));
     for (index_t i=0; i<patchSize; ++i)
     {
         if ( m_dofMapperGlobal.is_coupled(i,patch) )
@@ -282,8 +309,11 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
 
-    GISMO_ASSERT( !(m_status&2), "gsIetiMapper::computeJumpMatrices: This function has already been called." );
-    m_status |= 2;
+    GISMO_ASSERT( !(m_status&8), "gsIetiMapper::computeJumpMatrices: This function has already been called." );
+    m_status |= 8;
+
+    if (!(m_status&4))
+        setupMappers();
 
     const index_t nPatches = m_dofMapperGlobal.numPatches();
     const index_t coupledSize = m_dofMapperGlobal.coupledSize();
@@ -341,7 +371,10 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
     // Compute the jump matrices
     std::vector< gsSparseEntries<T> > jumpMatrices_se(nPatches);
     for (index_t i=0; i<nPatches; ++i)
-        jumpMatrices_se[i].reserve( std::sqrt( m_dofMapperLocal[i].freeSize() ) );
+    {
+        const index_t dim = m_multiBasis->dim();
+        jumpMatrices_se[i].reserve(std::pow(m_dofMapperLocal[i].freeSize(),(1.0-dim)/dim));
+    }
 
     index_t multiplier = 0;
     for (index_t i=0; i<coupledSize; ++i)
