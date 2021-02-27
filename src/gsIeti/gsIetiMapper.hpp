@@ -17,7 +17,7 @@
 
 /*    Concerning the status flag m_status:
  *       (m_status&1)!=0    means that the object has been initialized by calling init or the value constructor
- *       (m_status&2)!=0    
+ *       (m_status&2)!=0    means that artificial interfaces have been registered
  *       (m_status&4)!=0    means that setupMappers has been called
  *       (m_status&8)!=0    means that the jump matrices have been computed
  *       (m_status&16)!=0   means that corners have been set up as primal constraints
@@ -48,6 +48,8 @@ void gsIetiMapper<T>::init(
     m_primalConstraints.resize(nPatches);
     m_primalDofIndices.clear();
     m_primalDofIndices.resize(nPatches);
+    m_artificialIfaces.clear();
+    m_artificialIfaces.resize(nPatches);
     m_status = 1;
 }
 
@@ -59,22 +61,44 @@ void gsIetiMapper<T>::setupMappers()
     m_status |= 4;
 
     const index_t nPatches = m_dofMapperGlobal.numPatches();
-    m_dofMapperLocal.resize(nPatches);
-    m_fixedPart.resize(nPatches);
+    m_dofMapperLocal.reserve(nPatches);
+    m_fixedPart.reserve(nPatches);
     for (index_t k=0; k<nPatches; ++k)
     {
+        // The first patch is the k th patch. The following "patches" are the
+        // artificial interfaces.
         const index_t nDofs = m_dofMapperGlobal.patchSize(k);
-        m_dofMapperLocal[k].setIdentity(1,nDofs);
+        const index_t nArtIf = m_artificialIfaces[k].size();
+        gsVector<index_t> sizes(1+nArtIf);
+        sizes[0] = nDofs;
+        for (index_t l=0; l<nArtIf; ++l)
+            sizes[l+1] = m_artificialIfaces[k][l].ifaceIndices.rows();
+        m_dofMapperLocal.push_back(gsDofMapper(sizes));
+
+        // Eliminate boundary dofs (we do not consider the full floating case).
         for (index_t i=0; i<nDofs; ++i)
         {
             const index_t idx = m_dofMapperGlobal.index(i,k);
             if (m_dofMapperGlobal.is_boundary_index(idx))
                 m_dofMapperLocal[k].eliminateDof(i,0);
         }
+        for (index_t l=0; l<nArtIf; ++l)
+        {
+            for (index_t i=0; i<m_artificialIfaces[k][l].ifaceIndices.rows(); ++i)
+            {
+                const index_t kk = m_artificialIfaces[k][l].artificialIface.patch;
+                const index_t ii = m_artificialIfaces[k][l].ifaceIndices[i];
+                const index_t idx = m_dofMapperGlobal.index(ii,kk);
+                if (m_dofMapperGlobal.is_boundary_index(idx))
+                    m_dofMapperLocal[k].eliminateDof(i,l+1);
+            }
+        }
+
         m_dofMapperLocal[k].finalize();
 
         const index_t szFixedPart = m_dofMapperLocal[k].boundarySize();
-        m_fixedPart[k].setZero(szFixedPart,1);
+        m_fixedPart.push_back(Matrix(szFixedPart,1));
+        m_fixedPart[k].setZero();
         for (index_t i=0; i<nDofs; ++i)
         {
             const index_t idx = m_dofMapperGlobal.index(i,k);
@@ -85,7 +109,23 @@ void gsIetiMapper<T>::setupMappers()
                 m_fixedPart[k](localBoundaryIdx,0) = m_fixedPartGlobal(globalBoundaryIdx,0);
             }
         }
+        for (index_t l=0; l<nArtIf; ++l)
+        {
+            for (index_t i=0; i<m_artificialIfaces[k][l].ifaceIndices.rows(); ++i)
+            {
+                const index_t kk = m_artificialIfaces[k][l].artificialIface.patch;
+                const index_t ii = m_artificialIfaces[k][l].ifaceIndices[i];
+                const index_t idx = m_dofMapperGlobal.index(ii,kk);
+                if (m_dofMapperGlobal.is_boundary_index(idx))
+                {
+                    const index_t globalBoundaryIdx = m_dofMapperGlobal.bindex(ii,kk);
+                    const index_t localBoundaryIdx = m_dofMapperLocal[k].bindex(i,l+1);
+                    m_fixedPart[k](localBoundaryIdx,0) = m_fixedPartGlobal(globalBoundaryIdx,0);
+                }
+            }
+        }
     }
+    // Cleanup
     m_fixedPartGlobal.resize(0,0);
 }
 
@@ -107,11 +147,13 @@ gsIetiMapper<T>::constructGlobalSolutionFromLocalSolutions( const std::vector<Ma
     Matrix result;
     result.setZero( m_dofMapperGlobal.freeSize(), localContribs[0].cols() );
 
+    // We are never extracting the solution from artificial interfaces
     for (index_t k=0; k<nPatches; ++k)
     {
         const index_t sz=m_dofMapperLocal[k].size();
         for (index_t i=0; i<sz; ++i)
         {
+            // There is an asignment. This means that if there are several values, we just take the last one.
             if (m_dofMapperLocal[k].is_free(i,0) && m_dofMapperGlobal.is_free(i,k))
                 result.row(m_dofMapperGlobal.index(i,k)) = localContribs[k].row(m_dofMapperLocal[k].index(i,0));
         }
@@ -127,6 +169,14 @@ struct dof_helper {
     bool operator<(const dof_helper& other) const
     { return globalIndex < other.globalIndex; }
 };
+
+template<typename Container, typename Element>
+index_t indexOf( const Container& c, Element e )
+{
+    const Element* it = std::lower_bound(c.begin(),c.end(),e);
+    if (it==c.end() || *it>e) return -1;
+    return it-c.begin();
+}
 }
 
 template <class T>
@@ -145,6 +195,7 @@ void gsIetiMapper<T>::cornersAsPrimals()
     std::vector<dof_helper> corners;
     const index_t dim = m_multiBasis->dim();
     corners.reserve((1<<dim)*nPatches);
+    // Add corners on all patches
     for (index_t k=0; k<nPatches; ++k)
         for (boxCorner it = boxCorner::getFirst(dim); it!=boxCorner::getEnd(dim); ++it)
         {
@@ -156,6 +207,36 @@ void gsIetiMapper<T>::cornersAsPrimals()
             if (m_dofMapperGlobal.is_free_index(dh.globalIndex))
                 corners.push_back(dh);
         }
+    // Are there corners on the artificial interfaces as well?
+    for (index_t k=0; k<nPatches; ++k)
+    {
+        const index_t nArtIfaces = m_artificialIfaces[k].size();
+        for (index_t l=0; l<nArtIfaces; ++l)
+        {
+            const index_t kk = m_artificialIfaces[k][l].artificialIface.patch;
+            std::vector<boxCorner> cornersOnSide;
+            m_artificialIfaces[k][l].artificialIface.getContainedCorners(dim,cornersOnSide);
+            for (index_t i=0; i<cornersOnSide.size(); ++i)
+            {
+                const boxCorner& it = cornersOnSide[i];
+                const index_t idx = (*m_multiBasis)[kk].functionAtCorner(it);
+                const index_t idxOnIface = indexOf(m_artificialIfaces[k][l].ifaceIndices, idx);
+                if (idxOnIface > -1)
+                {
+                    dof_helper dh;
+                    dh.globalIndex = m_dofMapperGlobal.index( idx, kk );
+                    dh.patch = k;
+                    dh.localIndex = m_dofMapperLocal[k].index(idxOnIface, l+1);
+                    if (m_dofMapperGlobal.is_free_index(dh.globalIndex))
+                    //if (m_dofMapperLocal[kk].is_free(idx,0))
+                    //if (m_dofMapperLocal[k].is_free(idxOnIface,l+1))
+
+                        corners.push_back(dh);
+                }
+            }
+        }
+    }
+    // Sort corners to collapse corners with same global index
     std::sort(corners.begin(), corners.end());
 
     // Create data
@@ -228,6 +309,9 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, con
     GISMO_ASSERT( geo.parDim() == m_multiBasis->dim(),
         "gsIetiMapper::interfaceAveragesAsPrimals: The given geometry does not fit.");
 
+    GISMO_ASSERT( !(m_status&2), "gsIetiMapper::interfaceAveragesAsPrimals "
+        "is not implemented for artificial ifaces." ); //TODO
+
     const unsigned flag = 1<<(4+d);
     GISMO_ASSERT( !(m_status&flag), "gsIetiMapper::interfaceAveragesAsPrimals: This function has "
         " already been called for d="<<d );
@@ -296,10 +380,35 @@ std::vector<index_t> gsIetiMapper<T>::skeletonDofs(const index_t patch) const
     const index_t patchSize = m_dofMapperGlobal.patchSize(patch);
     const index_t dim = m_multiBasis->dim();
     result.reserve(2*dim*std::pow(patchSize,(1.0-dim)/dim));
+    // All dofs on patch that are coupled
     for (index_t i=0; i<patchSize; ++i)
-    {
         if ( m_dofMapperGlobal.is_coupled(i,patch) )
-            result.push_back(m_dofMapperLocal[patch].index(i,0));
+            result.push_back( m_dofMapperLocal[patch].index(i,0) );
+    // All dofs on artificial iface
+    for (index_t l=0; l<m_artificialIfaces[patch].size(); ++l)
+    {
+        const index_t nDofs = m_artificialIfaces[patch][l].ifaceIndices.size();
+        for (index_t i=0; i<nDofs; ++i)
+            if ( m_dofMapperLocal[patch].is_free(i,l+1) )
+                result.push_back( m_dofMapperLocal[patch].index(i,l+1) );
+    }
+    // All dofs on patch that are part of artificial iface of other patch
+    for (index_t kk=0; kk<m_artificialIfaces.size(); ++kk)
+    {
+        for (index_t l=0; l<m_artificialIfaces[kk].size(); ++l)
+        {
+            // Does that artificial interface refer back?
+            if ( patch == m_artificialIfaces[kk][l].artificialIface.patch )
+            {
+                const index_t nDofs = m_artificialIfaces[kk][l].ifaceIndices.size();
+                for (index_t i=0; i<nDofs; ++i)
+                {
+                    const index_t idx = m_artificialIfaces[kk][l].ifaceIndices[i];
+                    if ( m_dofMapperLocal[patch].is_free(idx,0) )
+                        result.push_back(m_dofMapperLocal[patch].index(idx,0));
+                }
+            }
+        }
     }
     return result;
 }
@@ -308,7 +417,6 @@ template <class T>
 void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorners)
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
-
     GISMO_ASSERT( !(m_status&8), "gsIetiMapper::computeJumpMatrices: This function has already been called." );
     m_status |= 8;
 
@@ -318,10 +426,10 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
     const index_t nPatches = m_dofMapperGlobal.numPatches();
     const index_t coupledSize = m_dofMapperGlobal.coupledSize();
 
-    // Find the groups of to be coupled indices
     std::vector< std::vector< std::pair<index_t,index_t> > > coupling;
     coupling.resize(coupledSize);
 
+    // Find the groups of to be coupled indices in the global mapper
     for (index_t k=0; k<nPatches; ++k)
     {
         const index_t patchSize = m_dofMapperGlobal.patchSize(k);
@@ -331,9 +439,41 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
             if ( m_dofMapperGlobal.is_coupled_index(globalIndex) )
             {
                 const index_t coupledIndex = m_dofMapperGlobal.cindex(i,k);
+                const index_t localIndex = m_dofMapperLocal[k].index(i,0);
                 coupling[coupledIndex].push_back(
-                    std::pair<index_t,index_t>(k,i)
+                    std::pair<index_t,index_t>(k,localIndex)
                 );
+            }
+        }
+    }
+    // Additionally, the artificial ifaces are coupled with the iface from
+    // the patch where they were taken from
+    {
+        index_t reserve = 0;
+        for (index_t k=0; k<nPatches; ++k)
+            for (index_t l=0; l<m_artificialIfaces[k].size(); ++l)
+                reserve += m_artificialIfaces[k][l].ifaceIndices.size();
+        coupling.resize(coupledSize+reserve);
+    }
+    // TODO: Think about strategy: The following joins iface with artificial iface,
+    // which is basically minimally connection; never fully redundant.
+    for (index_t k=0; k<nPatches; ++k)
+    {
+        for (index_t l=0; l<m_artificialIfaces[k].size(); ++l)
+        {
+            const index_t nDofs = m_artificialIfaces[k][l].ifaceIndices.size();
+            for (index_t i=0; i<nDofs; ++i)
+            {
+                std::vector< std::pair<index_t,index_t> > coupling_pair(2);
+                // Binding artificial iface
+                coupling_pair[0].first = k;
+                coupling_pair[0].second = m_dofMapperLocal[k].index(i,l+1);
+                // and corresponding real iface
+                const index_t idx = m_artificialIfaces[k][l].ifaceIndices[i];
+                const index_t kk = m_artificialIfaces[k][l].artificialIface.patch;
+                coupling_pair[1].first = kk;
+                coupling_pair[1].second = m_dofMapperLocal[kk].index(idx,0);
+                coupling.push_back( give(coupling_pair) );
             }
         }
     }
@@ -341,8 +481,11 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
     // Erease data for corners if so desired
     if (excludeCorners)
     {
+        GISMO_ASSERT( !(m_status&2), "gsIetiMapper::computeJumpMatrices: "
+            "The option excludeCorners is not implemented for artificial ifaces." ); //TODO
         const index_t dim = m_multiBasis->dim();
         for (index_t k=0; k<nPatches; ++k)
+        {
             for (boxCorner it = boxCorner::getFirst(dim); it!=boxCorner::getEnd(dim); ++it)
             {
                 const index_t idx = (*m_multiBasis)[k].functionAtCorner(it);
@@ -353,6 +496,7 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
                     coupling[coupledIndex].clear();
                 }
             }
+        }
     }
 
     // Compute the number of Lagrange multipliers
@@ -380,19 +524,17 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
     for (index_t i=0; i<coupledSize; ++i)
     {
         const index_t n = coupling[i].size();
-        index_t maxIndex = fullyRedundant ? (n-1) : 1;
+        const index_t maxIndex = fullyRedundant ? (n-1) : 1;
         for (index_t j1=0; j1<maxIndex; ++j1)
         {
-            const index_t patch1 = coupling[i][j1].first;
-            const index_t localIndex1 = coupling[i][j1].second;
-            const index_t localMappedIndex1 = m_dofMapperLocal[patch1].index(localIndex1,0);
             for (index_t j2=j1+1; j2<n; ++j2)
             {
+                const index_t patch1 = coupling[i][j1].first;
+                const index_t localIndex1 = coupling[i][j1].second;
                 const index_t patch2 = coupling[i][j2].first;
                 const index_t localIndex2 = coupling[i][j2].second;
-                const index_t localMappedIndex2 = m_dofMapperLocal[patch2].index(localIndex2,0);
-                jumpMatrices_se[patch1].add(multiplier,localMappedIndex1,(T)1);
-                jumpMatrices_se[patch2].add(multiplier,localMappedIndex2,(T)-1);
+                jumpMatrices_se[patch1].add(multiplier,localIndex1,(T)1);
+                jumpMatrices_se[patch2].add(multiplier,localIndex2,(T)-1);
                 ++multiplier;
             }
         }
@@ -409,5 +551,32 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
 
 }
 
+template <class T>
+void gsIetiMapper<T>::registerArtificialIface(patchSide realIface, patchSide artificialIface)
+{
+    m_status |= 2;
+    ArtificialIface ai;
+    ai.realIface = realIface;
+    ai.artificialIface = artificialIface;
+    ai.ifaceIndices = (*m_multiBasis)[realIface.patch].boundary(artificialIface);
+    m_artificialIfaces[realIface.patch].push_back(give(ai));
+}
+
+template <class T>
+void gsIetiMapper<T>::registerAllArtificialIfaces()
+{
+    const gsBoxTopology& top = m_multiBasis->topology();
+    const short_t dim        = m_multiBasis->domainDim();
+    const index_t nPatches   = m_dofMapperGlobal.numPatches();
+    for (index_t k=0; k<nPatches; ++k)
+    {
+        for (boxSide it = boxSide::getFirst(dim); it!=boxSide::getEnd(dim); ++it) {
+            patchSide realIface(k,it);
+            patchSide artificialIface;
+            if(top.getNeighbour(realIface, artificialIface))
+                registerArtificialIface(realIface, artificialIface);
+        }
+    }
+}
 
 } // namespace gismo

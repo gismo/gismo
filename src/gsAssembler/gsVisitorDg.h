@@ -163,7 +163,117 @@ public:
         system.push(-B22 - B22.transpose() + E22, m_localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
 
     }
+    
+    index_t indexOf( const gsMatrix<index_t>& c, index_t e)
+    {
+        // TODO: binary search!
+        for (index_t i=0; i<c.rows(); ++i)
+            if (c(i,0)==e) return i;
+        return -1;
+    }
 
+    void localToGlobalIETI(const gsDofMapper       & mapper,
+                           const gsMatrix<T>       & eliminatedDofs,
+                           index_t                   artIfaceIdx,
+                           const gsVector<index_t> & ifaceIndices,
+                           gsSparseMatrix<T>       & sysMatrix,
+                           gsMatrix<T>             & rhsMatrix)
+    {
+        //gsInfo << "\n before: \n" << actives1.transpose() << "\n";
+        //gsInfo << "\n before: \n" << actives2.transpose() << "\n";
+        mapper.localToGlobal(actives1,             0, actives1);
+        for (size_t i=0; i<actives2.size(); ++i)
+        {
+            const index_t idx = indexOf(ifaceIndices,actives2(i,0));           
+            if (idx>-1)
+                actives2(i,0) = mapper.index(idx, artIfaceIdx+1);
+            else
+                actives2(i,0) = -1;
+        }
+        //gsInfo << "\n after: \n" << actives1.transpose() << "\n";
+        //gsInfo << "\n after: \n" << actives2.transpose() << "\n";
+
+        const index_t numActives1 = B11.rows(); //here we cannot use the rows of active1, because it is modified outside.
+        const index_t numActives2 = B22.rows();
+        
+        // This only works for constant alpha on each patch
+        T alpha = (T)1;
+
+        // Push element contributions 1-2 to the global matrix and load vector
+        for (index_t j=0; j!=numActives1; ++j)
+        {
+            const index_t jj1 = actives1(j); // N1_j
+            if ( mapper.is_free_index(jj1) )
+            {
+                for (index_t i=0; i!=numActives1; ++i)
+                {
+                    const index_t  ii1 = actives1(i); // N1_i
+                    if ( mapper.is_free_index(ii1) )
+                        //if ( jj1 <= ii1 )
+                        sysMatrix( ii1, jj1 ) -=  B11(i,j) + B11(j,i) - alpha*E11(i,j);
+                    else
+                    {
+                        rhsMatrix.row(jj1).noalias() += (B11(i,j) + B11(j,i) - alpha*E11(i,j)) *
+                                                        eliminatedDofs.row( mapper.global_to_bindex(ii1) );
+                    }
+                }
+
+                for (index_t i=0; i!=numActives2; ++i)
+                {
+                    const index_t  ii2 = actives2(i); // N2_i
+                    if ( ii2>-1 )
+                    {
+                        if ( mapper.is_free_index(ii2) )
+                            //if ( jj1 <= ii2 )
+                            sysMatrix( ii2, jj1)  -=  B21(i,j) + alpha*E21(i,j);
+                        else
+                        {
+                            rhsMatrix.row(jj1).noalias() += (B21(i,j) + alpha*E21(i,j)) *
+                                                            eliminatedDofs.row( mapper.global_to_bindex(ii2) );
+                        }
+                    }
+                }
+            }
+        }
+        for (index_t j=0; j!=numActives2; ++j)
+        {
+            const index_t  jj1 = actives2(j); // N2_i
+            if ( jj1>-1 )
+            {
+                if ( mapper.is_free_index(jj1) )
+                {
+                    for (index_t i=0; i!=numActives1; ++i)
+                    {
+                        const index_t  ii1 = actives1(i); // N1_i
+                        if ( mapper.is_free_index(ii1) )
+                            //if ( jj1 <= ii1 )
+                            sysMatrix( ii1, jj1 ) -=  B21(j,i) + alpha*E21(j,i);
+                        else
+                        {
+                            rhsMatrix.row(jj1).noalias() += (B21(j,i) + alpha*E21(j,i)) *
+                                                            eliminatedDofs.row( mapper.global_to_bindex(ii1) );
+                        }
+                    }
+    
+                    for (index_t i=0; i!=numActives2; ++i)
+                    {
+                        const index_t  ii2 = actives2(i); // N2_i
+                        if ( ii2>-1 )
+                        {
+                            if ( mapper.is_free_index(ii2) )
+                                //if ( jj1 <= ii2 )
+                                sysMatrix( ii2, jj1 )  -= - alpha*E22(i,j);
+                            else
+                            {
+                                rhsMatrix.row(jj1).noalias() += (-alpha*E22(i,j)) *
+                                                                eliminatedDofs.row( mapper.global_to_bindex(ii2) );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 private:
 
     // Penalty constant

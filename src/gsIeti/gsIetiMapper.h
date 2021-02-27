@@ -83,24 +83,6 @@ public:
         Matrix fixedPart
     );
 
-    /// @brief Apply the required changes to a space object of the expression
-    /// assembler
-    ///
-    /// It is assumed that the space object is fully functioning, i.e., the
-    /// setup member has been called.
-    ///
-    /// This function exposes the \ref dofMapperLocal and the \ref fixedPart to
-    /// the space.
-    void initFeSpace(typename gsExprAssembler<T>::space u, index_t k)
-    {
-        GISMO_ASSERT( m_status&1,
-            "gsIetiMapper: The class has not been initialized." );
-        GISMO_ASSERT( u.mapper().size() ==  m_dofMapperLocal[k].size(),
-            "gsIetiMapper::initFeSpace: The sizes do not agree." );
-        const_cast<expr::gsFeSpace<T>&>(u).mapper() = m_dofMapperLocal[k];
-        const_cast<expr::gsFeSpace<T>&>(u).fixedPart() = m_fixedPart[k];
-    }
-
     /// @brief This function computes the jump matrices
     ///
     /// @param fullyRedundant  Compute the jump matrices in a fullyRedundant way;
@@ -134,7 +116,49 @@ public:
     /// @param patch   Number of the patch
     std::vector<index_t> skeletonDofs(index_t patch) const;
 
-public:
+    /// @brief Apply the required changes to a space object of the expression
+    /// assembler
+    ///
+    /// It is assumed that the space object is fully functioning, i.e., the
+    /// setup member has been called.
+    ///
+    /// This function exposes the \ref dofMapperLocal and the \ref fixedPart to
+    /// the space.
+    void initFeSpace(typename gsExprAssembler<T>::space u, index_t k)
+    {
+        GISMO_ASSERT( m_status&1,
+            "gsIetiMapper: The class has not been initialized." );
+        GISMO_ASSERT( u.mapper().size() ==  m_dofMapperLocal[k].size(),
+            "gsIetiMapper::initFeSpace: The sizes do not agree." );
+        const_cast<expr::gsFeSpace<T>&>(u).mapper() = m_dofMapperLocal[k];
+        const_cast<expr::gsFeSpace<T>&>(u).fixedPart() = m_fixedPart[k];
+    }
+
+public:  // Artificial ifaces are required in the handling of dG discretizations
+
+    /// Data structure for artificial interfaces, as used in dG settings
+    struct ArtificialIface {
+       /// The real interface (local patch to which the artificial interface is assigned+side)
+       patchSide           realIface;
+       /// The artificial interface (foreign patch from which the artificial interface taken+side)
+       patchSide           artificialIface;
+       /// The indicies of the basis of the foreign patch that belong to artificial interface
+       /// Vector is assumed to be sorted
+       gsVector<index_t>   ifaceIndices;
+    };
+
+    /// @brief Registers an artificial interface, as used in dG settings
+    /// @param realIface        The real interface (local patch to which the artificial
+    ///                         interface is assigned+side)
+    /// @param artificialIface  The artificial interface (foreign patch from which the
+    ///                         artificial interface taken+side)
+    void registerArtificialIface(patchSide realIface, patchSide artificialIface);
+
+    /// Calls \ref registerArtificialIface for all interface known to the underlying box topology
+    void registerAllArtificialIfaces();
+
+public:  // Access to class data
+
     /// @brief Returns the number of Lagrange multipliers.
     index_t nLagrangeMultipliers()
     {
@@ -171,6 +195,12 @@ public:
     /// Only available after \ref computeJumpMatrices has been called
     const Matrix& fixedPart(index_t k) const                               { return m_fixedPart[k];               }
 
+    /// @brief Returns artificial interfaces for given patch
+    const std::vector<ArtificialIface>& artificialIfaces(index_t k) const  { return m_artificialIfaces[k];        }
+
+    /// @brief Reference to the multi basis object being passed to constructur or \ref init
+    const gsMultiBasis<T>& multiBasis() const                              { return *m_multiBasis;                }
+
 private:
 
     static gsSparseVector<T> assembleAverage( const gsGeometry<T>& geo,
@@ -189,6 +219,7 @@ private:
     index_t                                       m_nPrimalDofs;         ///< The number of primal dofs already created
     std::vector< std::vector<SparseVector> >      m_primalConstraints;   ///< The primal constraints
     std::vector< std::vector<index_t> >           m_primalDofIndices;    ///< The primal dof indices for each of the primal constraints
+    std::vector< std::vector<ArtificialIface> >   m_artificialIfaces;    ///< TODO: docs
     unsigned                                      m_status;              ///< A status flag that is checked by assertions
 };
 
