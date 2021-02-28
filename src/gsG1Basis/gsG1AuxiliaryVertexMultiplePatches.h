@@ -22,13 +22,19 @@ class gsG1AuxiliaryVertexMultiplePatches
 public:
 
 // Constructor for n patches around a common vertex
-    gsG1AuxiliaryVertexMultiplePatches(const gsMultiPatch<> & mp, const std::vector<size_t> patchesAroundVertex, const std::vector<size_t> vertexIndices)
+    gsG1AuxiliaryVertexMultiplePatches(const gsMultiPatch<> & mp, const gsMultiPatch<> & mpPlanar, const std::vector<size_t> patchesAroundVertex, const std::vector<size_t> vertexIndices)
     {
         for(size_t i = 0; i < patchesAroundVertex.size(); i++)
         {
             auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(patchesAroundVertex[i]), patchesAroundVertex[i]));
+            auxGeomPlanar.push_back(gsG1AuxiliaryPatch(mp.patch(patchesAroundVertex[i]), patchesAroundVertex[i]));
+
             auxVertexIndices.push_back(vertexIndices[i]);
+            auxVertexIndicesPlanar.push_back(vertexIndices[i]);
+
             checkBoundary(mp, patchesAroundVertex[i], vertexIndices[i]);
+            checkBoundaryPlanar(mpPlanar, patchesAroundVertex[i], vertexIndices[i]);
+
         }
 //        gsInfo <<  patchesAroundVertex.size() << " patch constructed \n";
         sigma = 0.0;
@@ -49,6 +55,15 @@ public:
         return auxTop;
     }
 
+    gsMultiPatch<> computeAuxTopologyPlanar(){
+        gsMultiPatch<> auxTop;
+        for(unsigned i = 0; i <  auxGeomPlanar.size(); i++)
+        {
+            auxTop.addPatch(auxGeomPlanar[i].getPatch());
+        }
+        auxTop.computeTopology();
+        return auxTop;
+    }
 
     void reparametrizeG1Vertex()
     {
@@ -71,6 +86,33 @@ public:
                     break;
                 case 3:
                     auxGeom[i].rotateParamClock();
+//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated clockwise\n";
+                    break;
+            }
+        }
+    }
+
+    void reparametrizeG1VertexPlanar()
+    {
+        for(size_t i = 0; i < auxGeomPlanar.size(); i++)
+        {
+            checkOrientationPlanar(i); // Check if the orientation is correct. If not, modifies vertex and edge vectors
+
+            switch (auxVertexIndices[i])
+            {
+                case 1:
+//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " not rotated\n";
+                    break;
+                case 4:
+                    auxGeomPlanar[i].rotateParamAntiClockTwice();
+//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated twice anticlockwise\n";
+                    break;
+                case 2:
+                    auxGeomPlanar[i].rotateParamAntiClock();
+//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated anticlockwise\n";
+                    break;
+                case 3:
+                    auxGeomPlanar[i].rotateParamClock();
 //                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated clockwise\n";
                     break;
             }
@@ -111,6 +153,23 @@ public:
     }
 
 
+    void checkOrientationPlanar(size_t i)
+    {
+        if (auxGeomPlanar[i].getPatch().orientation() == -1)
+        {
+            auxGeomPlanar[i].swapAxis();
+//            gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
+
+            this->swapBdy(i); //Swap boundary edge bool-value
+
+            // Swap vertices index after swapping axis
+            if(auxVertexIndicesPlanar[i] == 2)
+                auxVertexIndicesPlanar[i] = 3;
+            else
+            if(auxVertexIndicesPlanar[i] == 3)
+                auxVertexIndicesPlanar[i] = 2;
+        }
+    }
     void computeSigma()
     {
         real_t p = 0;
@@ -168,11 +227,45 @@ public:
     }
 
 
+    void checkBoundaryPlanar(const gsMultiPatch<> & mpTmp, size_t  patchInd, size_t sideInd)
+    {
+        std::vector<bool> tmp;
+        switch (sideInd)
+        {
+            case 1: tmp.push_back(mpTmp.isBoundary(patchInd,3));
+                tmp.push_back(mpTmp.isBoundary(patchInd,1));
+//                    gsInfo << "Edge 3: " << mpTmp.isBoundary(patchInd, 3) << "\t Edge 1: " << mpTmp.isBoundary(patchInd, 1) << "\n";
+                break;
+            case 2: tmp.push_back(mpTmp.isBoundary(patchInd, 2));
+                tmp.push_back(mpTmp.isBoundary(patchInd, 3));
+//                    gsInfo << "Edge 2: " << mpTmp.isBoundary(patchInd, 2) << "\t Edge 3: " << mpTmp.isBoundary(patchInd, 3) << "\n";
+                break;
+            case 3: tmp.push_back(mpTmp.isBoundary(patchInd, 1));
+                tmp.push_back(mpTmp.isBoundary(patchInd, 4));
+//                    gsInfo << "Edge 1: " << mpTmp.isBoundary(patchInd, 1) << "\t Edge 4: " << mpTmp.isBoundary(patchInd, 4) << "\n";
+                break;
+            case 4: tmp.push_back(mpTmp.isBoundary(patchInd, 4));
+                tmp.push_back(mpTmp.isBoundary(patchInd, 2));
+//                    gsInfo << "Edge 4: " << mpTmp.isBoundary(patchInd, 4) << "\t Edge 2: " << mpTmp.isBoundary(patchInd, 2) << "\n";
+                break;
+            default:
+                break;
+        }
+        isBdyPlanar.push_back(tmp);
+    }
+
     void swapBdy(size_t i)
     {
         bool tmp = isBdy[i][0];
         isBdy[i][0] = isBdy[i][1];
         isBdy[i][1] = tmp;
+    }
+
+    void swapBdyPlanar(size_t i)
+    {
+        bool tmp = isBdyPlanar[i][0];
+        isBdyPlanar[i][0] = isBdyPlanar[i][1];
+        isBdyPlanar[i][1] = tmp;
     }
 
 
@@ -488,7 +581,7 @@ public:
 
         if( kindOfVertex() == 1 ) // If the boundary it´s along u and along v there is an interface (Right Patch) or viceversa
         {
-            gsMultiPatch<> tmp(this->computeAuxTopology());
+            gsMultiPatch<> tmp(this->computeAuxTopologyPlanar());
             for(auto iter : tmp.interfaces())
             {
                 if( i == iter.first().patch || i == iter.second().patch )
@@ -567,6 +660,7 @@ public:
         if( kindOfVertex() == -1 ) // Single patch corner
         {
             coefs.setZero();
+
             coefs(0, 0) = 1;
             coefs(0, 1) = 1;
             coefs(1, 0) = 1;
@@ -577,7 +671,7 @@ public:
         else
         if( kindOfVertex() == 0 ) // Internal vertex -> Two interfaces
         {
-            gsMultiPatch<> tmp(this->computeAuxTopology());
+            gsMultiPatch<> tmp(this->computeAuxTopologyPlanar());
             for(auto iter : tmp.interfaces())
             {
                 if( (i == iter.first().patch) || (i == iter.second().patch) )
@@ -635,6 +729,8 @@ public:
         this->reparametrizeG1Vertex();
         this->computeSigma();
 
+        this->reparametrizeG1VertexPlanar();
+
         std::vector<gsMultiPatch<>> g1BasisVector;
         std::pair<gsMatrix<>, std::vector<index_t>> vertexBoundaryBasis;
 
@@ -690,31 +786,6 @@ public:
         }
         else if(g1OptionList.getInt("user") == user::andrea)
         {
-            if (g1OptionList.getSwitch("twoPatch"))
-            {
-                gsMultiPatch<> test_mp(auxGeom[0].getPatch());
-                gsMultiBasis<> test_mb(auxGeom[0].getPatch().basis());
-
-                gsMultiPatch<> g1Basis;
-                gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(test_mp.basis(0).component(1)); // 0 -> u, 1 -> v
-
-                for (index_t j = 0; j < 2; j++) // u
-                {
-                    for (index_t i = 0; i < 2; i++) // v
-                    {
-                        gsMatrix<> coefs;
-                        coefs.setZero(test_mb.basis(0).size(),1);
-
-                        coefs(j*(test_mb.basis(0).size()/basis_edge.size()) + i,0) = 1;
-
-                        g1Basis.addPatch(test_mb.basis(0).makeGeometry(coefs));
-                    }
-                }
-
-                g1BasisVector.push_back(g1Basis);
-                auxGeom[0].setG1Basis(g1Basis);
-            }
-            else
             {
                 gsMatrix<> Phi(6, 6);
                 Phi.setIdentity();
@@ -1100,8 +1171,13 @@ public:
 
 protected:
     std::vector<gsG1AuxiliaryPatch> auxGeom;
+    std::vector<gsG1AuxiliaryPatch> auxGeomPlanar;
     std::vector<size_t> auxVertexIndices;
+    std::vector<size_t> auxVertexIndicesPlanar;
+
     std::vector< std::vector<bool>> isBdy;
+    std::vector< std::vector<bool>> isBdyPlanar;
+
     real_t sigma;
     size_t dim_kernel;
 

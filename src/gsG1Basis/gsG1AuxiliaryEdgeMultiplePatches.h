@@ -40,15 +40,20 @@ class gsG1AuxiliaryEdgeMultiplePatches
 public:
 
     // Constructor for one patch and it's boundary
-    gsG1AuxiliaryEdgeMultiplePatches(const gsMultiPatch<> & sp, const size_t patchInd){
+    gsG1AuxiliaryEdgeMultiplePatches(const gsMultiPatch<> & sp, const gsMultiPatch<> & spPlanar, const size_t patchInd){
         auxGeom.push_back(gsG1AuxiliaryPatch(sp.patch(patchInd), patchInd));
+        auxGeomPlanar.push_back(gsG1AuxiliaryPatch(spPlanar.patch(patchInd), patchInd));
+
 
     }
 
     // Constructor for two patches along the common interface
-    gsG1AuxiliaryEdgeMultiplePatches(const gsMultiPatch<> & mp, const size_t firstPatch, const size_t secondPatch){
+    gsG1AuxiliaryEdgeMultiplePatches(const gsMultiPatch<> & mp, const gsMultiPatch<> & mpPlanar, const size_t firstPatch, const size_t secondPatch){
         auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(firstPatch), firstPatch));
         auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(secondPatch), secondPatch));
+
+        auxGeomPlanar.push_back(gsG1AuxiliaryPatch(mpPlanar.patch(firstPatch), firstPatch));
+        auxGeomPlanar.push_back(gsG1AuxiliaryPatch(mpPlanar.patch(secondPatch), secondPatch));
 
     }
 
@@ -66,6 +71,20 @@ public:
 //                gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
             }
             auxTop.addPatch(auxGeom[i].getPatch());
+        }
+        auxTop.computeTopology();
+        return auxTop;
+    }
+
+    gsMultiPatch<> computeAuxTopologyPlanar(){
+        gsMultiPatch<> auxTop;
+        for(unsigned i = 0; i <  auxGeomPlanar.size(); i++){
+            if(auxGeomPlanar[i].getPatch().orientation() == -1)
+            {
+                auxGeomPlanar[i].swapAxis();
+//                gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
+            }
+            auxTop.addPatch(auxGeomPlanar[i].getPatch());
         }
         auxTop.computeTopology();
         return auxTop;
@@ -119,6 +138,53 @@ public:
        return this->computeAuxTopology();
     }
 
+    gsMultiPatch<> reparametrizeG1InterfacePlanar(){
+        gsMultiPatch<> repTop(this->computeAuxTopologyPlanar());
+
+        if(repTop.interfaces()[0].second().side().index() == 1 && repTop.interfaces()[0].first().side().index() == 3)
+            return repTop;
+
+        // Right patch along the interface. Patch 0 -> v coordinate. Edge west along interface
+        switch (repTop.interfaces()[0].second().side().index())
+        {
+            case 1:
+//                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << "\tLocal patch: " << repTop.interfaces()[0].second().patch << " not rotated\n";
+                break;
+            case 4: auxGeomPlanar[0].rotateParamClock();
+//                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].second().patch << " rotated clockwise\n";
+                break;
+            case 3: auxGeomPlanar[0].rotateParamAntiClock();
+//                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].second().patch << " rotated anticlockwise\n";
+                break;
+            case 2: auxGeomPlanar[0].rotateParamAntiClockTwice();
+//                gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].second().patch << " rotated twice anticlockwise\n";
+                break;
+            default:
+                break;
+        }
+
+        // Left patch along the interface. Patch 1 -> u coordinate. Edge south along interface
+        switch (repTop.interfaces()[0].first().side().index())
+        {
+            case 3:
+//                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " not rotated\n";
+                break;
+            case 4: auxGeomPlanar[1].rotateParamAntiClockTwice();
+//                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " rotated twice anticlockwise\n";
+                break;
+            case 2: auxGeomPlanar[1].rotateParamAntiClock();
+//                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " rotated anticlockwise\n";
+                break;
+            case 1: auxGeomPlanar[1].rotateParamClock();
+//                gsInfo << "Global patch: " << auxGeom[1].getGlobalPatchIndex() <<"\tLocal patch: " << repTop.interfaces()[0].first().patch << " rotated clockwise\n";
+                break;
+            default:
+                break;
+        }
+
+        return this->computeAuxTopologyPlanar();
+    }
+
 
     gsMultiPatch<> reparametrizeG1Boundary(const int bInd){
         gsMultiPatch<> repTop(this->computeAuxTopology());
@@ -168,15 +234,71 @@ public:
     }
 
 
+    gsMultiPatch<> reparametrizeG1BoundaryPlanar(const int bInd){
+        gsMultiPatch<> repTop(this->computeAuxTopologyPlanar());
+        if(auxGeomPlanar[0].getOrient())
+        {
+            switch (bInd)
+            {
+                case 3:
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " not rotated\n";
+                    break;
+                case 2:
+                    auxGeomPlanar[0].rotateParamClock();
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated clockwise\n";
+                    break;
+                case 4:
+                    auxGeomPlanar[0].rotateParamAntiClockTwice();
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated twice anticlockwise\n";
+                    break;
+                case 1:
+                    auxGeomPlanar[0].rotateParamAntiClock();
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated anticlockwise\n";
+                    break;
+            }
+        }
+        else
+        {
+            switch (bInd)
+            {
+                case 1:
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " not rotated\n";
+                    break;
+                case 4:
+                    auxGeomPlanar[0].rotateParamClock();
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated clockwise\n";
+                    break;
+                case 2:
+                    auxGeomPlanar[0].rotateParamAntiClockTwice();
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated twice anticlockwise\n";
+                    break;
+                case 3:
+                    auxGeomPlanar[0].rotateParamAntiClock();
+//                    gsInfo << "Global patch: " << auxGeom[0].getGlobalPatchIndex() << " rotated anticlockwise\n";
+                    break;
+            }
+        }
+        return this->computeAuxTopologyPlanar();
+    }
+
+
     void computeG1InterfaceBasis(gsG1OptionList g1OptionList)
     {
         gsMultiPatch<> mp_init;
         mp_init.addPatch(auxGeom[0].getPatch());// Right -> 0 ====> v along the interface
         mp_init.addPatch(auxGeom[1].getPatch()); // Left -> 1 ====> u along the interface
 
+        gsMultiPatch<> mp_init_planar;
+        mp_init_planar.addPatch(auxGeomPlanar[0].getPatch());// Right -> 0 ====> v along the interface
+        mp_init_planar.addPatch(auxGeomPlanar[1].getPatch()); // Left -> 1 ====> u along the interface
+
         gsMultiPatch<> test_mp(this->reparametrizeG1Interface()); // auxGeom contains now the reparametrized geometry
         gsMultiBasis<> test_mb(test_mp);
         gsMultiPatch<> g1Basis_0, g1Basis_1;
+
+        gsMultiPatch<> test_mp_planar(this->reparametrizeG1InterfacePlanar()); // auxGeom contains now the reparametrized geometry
+        gsMultiBasis<> test_mb_planar(test_mp_planar);
+
 
         if(g1OptionList.getInt("user") == user::pascal)
         {
@@ -238,7 +360,8 @@ public:
         else
         if(g1OptionList.getInt("user") == user::andrea)
         {
-            gsG1ASGluingData<real_t> g1BasisEdge(test_mp, test_mb);
+
+            gsG1ASGluingData<real_t> g1BasisEdge(test_mp_planar, test_mb_planar);
             gsG1ASBasisEdge<real_t> g1BasisEdge_0(test_mp.patch(0), test_mb.basis(0), 1, false, g1OptionList, g1BasisEdge);
             gsG1ASBasisEdge<real_t> g1BasisEdge_1(test_mp.patch(1), test_mb.basis(1), 0, false, g1OptionList, g1BasisEdge);
             g1BasisEdge_0.setG1BasisEdge(g1Basis_0);
@@ -487,6 +610,8 @@ void g1ConditionRep(gsG1ASGluingData<real_t> alpha, gsMultiPatch<> g1Basis_0,  g
 
 protected:
     std::vector<gsG1AuxiliaryPatch> auxGeom;
+    std::vector<gsG1AuxiliaryPatch> auxGeomPlanar;
+
 };
 }
 

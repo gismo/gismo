@@ -22,29 +22,39 @@ public:
 
     //Empty constructor will set the gluing data for the boundary edges
     gsG1ASGluingData()
-    {   setGDEdge();
-//        gsInfo << "Solution: " << sol << "\n";
-//        gsInfo << "Solution Beta: " << solBeta << "\n";
+    {
+        setGDEdge();
+
+//    ASreadGD(fd, bdyNum);
+//        ASwriteGDParaview(fd);
+
     }
 
 
     gsG1ASGluingData(gsMultiPatch<T> const & mp,
                  gsMultiBasis<T> & mb)
-        : gsGluingData<T>(mp, mb)
+        :  gsGluingData<T>(mp, mb)
     {
     // Solve the system for alpha_L and alpha_R (also for beta, which will be splitted)
+
         refresh();
         assemble();
         solve();
+
     // Solve the system for beta_L and beta_R
+
         refreshBeta();
         assembleBeta();
         solveBeta();
+//
+////        gsInfo << "Solution: " << sol << "\n";
+////        gsInfo << "Solution Beta: " << solBeta << "\n";
+//
+////        AScondition(mp);
+//
+//        ASwriteGDParaview(fd);
 
-//        gsInfo << "Solution: " << sol << "\n";
-//        gsInfo << "Solution Beta: " << solBeta << "\n";
-
-        AScondition(mp);
+//        ASreadGD(fd, intNum);
     }
 
 
@@ -94,8 +104,6 @@ protected:
     gsSparseSystem<> mSysBeta;
     gsMatrix<> dirichletDofs;
     gsMatrix<> dirichletDofsBeta;
-
-
 
     gsMatrix<> sol; // In order, it contains: alpha_0L, alpha_1L, alpha_0R, alpha_1R, beta_0, beta_1, beta_2
                     // to construct the linear combination of the GD:
@@ -272,12 +280,8 @@ protected:
     {
         gsSparseSolver<>::CGDiagonal solver;
 
-//        gsInfo << "Matrix: " << mSys.matrix() << "\n";
-
         solver.compute(mSys.matrix());
         sol = solver.solve(mSys.rhs()); // My solution
-
-//        gsInfo << "Rhs: " << mSys.rhs() << "\n";
 
     }
 
@@ -314,6 +318,50 @@ protected:
         sol = solTMP;
         solBeta = solBetaTMP;
     }
+
+
+    void ASwriteGDParaview( gsFileData<> & fd)
+    {
+
+        gsMatrix<> alpha_R = sol.block(0, 0, 2, 1);
+        gsMatrix<> alpha_L = sol.block(2, 0, 2, 1);
+
+        gsMatrix<> beta_R = solBeta.block(0, 0, 2, 1);
+        gsMatrix<> beta_L = solBeta.block(2, 0, 2, 1);
+
+        fd << alpha_R;
+        fd << alpha_L;
+        fd << beta_R;
+        fd << beta_L;
+
+    }
+
+    void ASreadGD(gsFileData<> & fd, size_t intNum)
+    {
+        gsMatrix<> aR;
+        gsMatrix<> aL;
+        gsMatrix<> bR;
+        gsMatrix<> bL;
+        fd.getId(intNum * 4, aR);
+        fd.getId(intNum * 4 + 1, aL);
+        fd.getId(intNum * 4 + 2, bR);
+        fd.getId(intNum * 4 + 3, bL);
+
+        sol.block(0, 0, 2, 1) = aR;
+        sol.block(2, 0, 2, 1) = aL;
+        solBeta.block(0, 0, 2, 1) = bR;
+        solBeta.block(2, 0, 2, 1) = bL;
+
+        gsInfo << "numCount: " << intNum*4 << "\n";
+        gsInfo << "numCount: " << intNum*4 +1<< "\n";
+        gsInfo << "numCount: " << intNum*4 +2<< "\n";
+        gsInfo << "numCount: " << intNum*4 +3<< "\n";
+
+//        gsInfo << "Num loop: " << intNum << "\n";
+//        gsInfo << "sol: " << sol << "\n";
+//        gsInfo << "solBeta: " << solBeta << "\n";
+    }
+
 
 
 

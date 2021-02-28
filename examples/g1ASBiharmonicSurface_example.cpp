@@ -44,6 +44,8 @@ int main(int argc, char *argv[])
     // ======= 2D Solution =========
 
 //    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+//    gsFunctionExpr<> source  ("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+//
 //    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
 //    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
 //    gsFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
@@ -52,18 +54,18 @@ int main(int argc, char *argv[])
 //                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
 //                             " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
 
-//    gsFunctionExpr<> source  ("16*pi*pi*pi*pi*(4*cos(2*pi*x)*cos(2*pi*y) - cos(2*pi*x) - cos(2*pi*y))",2);
-//    gsFunctionExpr<> laplace ("-4*pi*pi*(2*cos(2*pi*x)*cos(2*pi*y) - cos(2*pi*x) - cos(2*pi*y))",2);
-//    gsFunctionExpr<> solVal("(cos(2*pi*x) - 1) * (cos(2*pi*y) - 1)",2);
-//    gsFunctionExpr<>sol1der ("-2*pi*(cos(2*pi*y) - 1)*sin(2*pi*x)",
-//                             "-2*pi*(cos(2*pi*x) - 1)*sin(2*pi*y)",2);
-//    gsFunctionExpr<>sol2der ("-4*pi^2*(cos(2*pi*y) - 1)*cos(2*pi*x)",
-//                             "-4*pi^2*(cos(2*pi*x) - 1)*cos(2*pi*y)",
-//                             " 4*pi^2*sin(2*pi*x)*sin(2*pi*y)", 2);
+//    gsFunctionExpr<> source  ("(cos(2*pi*x) - pi/2) * sin(2*pi*y)",2);
+//    gsFunctionExpr<> laplace ("-4*pi^2*sin(2*pi*y)*cos(2*pi*x) + 2 * pi^2 * (pi - 2 * cos(2*pi*x)) * sin(2*pi*y)",2);
+//    gsFunctionExpr<> solVal("(cos(2*pi*x) - pi/2) * sin(2*pi*y)",2);
+//    gsFunctionExpr<>sol1der ("-2*pi*sin(2*pi*y)*sin(2*pi*x)",
+//                             "-pi * (pi - 2 * cos(2*pi*x)) * cos(2*pi*y)",2);
+//    gsFunctionExpr<>sol2der ("-4*pi^2*sin(2*pi*y)*cos(2*pi*x)",
+//                             "2 * pi^2 * (pi - 2 * cos(2*pi*x)) * sin(2*pi*y)",
+//                             "-4*pi^2*sin(2*pi*x)*cos(2*pi*y)", 2);
 
 //    gsFunctionExpr<> source  ("pi*pi*pi*pi*(4*cos(pi*x/2)*cos(pi*y/2) - cos(pi*x/2) - cos(pi*y/2))/16",2);
-//////    gsFunctionExpr<> source  ("(cos(pi*x/2) - 1) * (cos(pi*y/2) - 1)",2);
-////
+//    gsFunctionExpr<> source  ("(cos(pi*x/2) - 1) * (cos(pi*y/2) - 1)",2);
+//
 //    gsFunctionExpr<> laplace ("-pi*pi*(2*cos(pi*x/2)*cos(pi*y/2) - cos(pi*x/2) - cos(pi*y/2))/4",2);
 //    gsFunctionExpr<> solVal("(cos(pi*x/2) - 1) * (cos(pi*y/2) - 1)",2);
 //    gsFunctionExpr<>sol1der ("-pi*(cos(pi*y/2) - 1)*sin(pi*x/2)/2",
@@ -85,15 +87,15 @@ int main(int argc, char *argv[])
 //                             "1/16 * pi^2 * sin(4 - (pi * x)/4) * sin(4 - (pi * y)/4)", 2);
 
 //    gsFunctionExpr<> source  ("1/256 * pi^4 (-cos(4 - (pi * y)/4) + cos(4 - (pi * x)/4) * (-1 + 4 * cos(4 - (pi * y)/4)))",2);
-//    gsFunctionExpr<> source  ("(cos(pi*x/4 -6.5) - 1) * (cos(pi*y/4 -1) - 1)",2);
+//    gsFunctionExpr<> source  ("(cos(pi*x/4 -3.5) - 1) * (cos(pi*y/4 -3.5) - 1)",2);
 //
-//    gsFunctionExpr<> laplace ("-1/16  * pi^2 ( -cos(1 - (pi * y) / 4) + cos(6.5 - pi * x / 4) * (-1 + 2 * cos(1 - (pi * y) / 4)))",2);
-//    gsFunctionExpr<> solVal("(cos( pi*x/4 -6.5 ) - 1) * (cos( pi*y/4 -1 ) - 1)",2);
-//    gsFunctionExpr<>sol1der ("1/4 *pi* (-1 + cos( pi * y /4 - 1 )) * sin(6.5 - pi * x/4)",
-//                             "1/4 *pi* (-1 + cos(6.5 - pi * x/4)) * sin(1 - pi * y/4)",2);
-//    gsFunctionExpr<>sol2der ("-1/16 * pi^2 * cos(6.5 - (pi * x)/4) * (-1 + cos((pi * y)/4 -1))",
-//                             "-1/16 * pi^2 * (-1 + cos(6.5 - (pi * x)/4)) * cos( 1 - pi * y /4 )",
-//                             "1/16 * pi^2 * sin(6.5 - pi * x /4) * sin( 1 - pi * y /4 )", 2);
+//    gsFunctionExpr<> laplace ("-1/16  * pi^2 ( -cos(3.5 - (pi * y) / 4) + cos(3.5 - pi * x / 4) * (-1 + 2 * cos(3.5 - (pi * y) / 4)))",2);
+//    gsFunctionExpr<> solVal("(cos( pi*x/4 -3.5 ) - 1) * (cos( pi*y/4 -3.5 ) - 1)",2);
+//    gsFunctionExpr<>sol1der ("1/4 *pi* (-1 + cos( pi * y /4 -3.5 )) * sin(3.5 - pi * x/4)",
+//                             "1/4 *pi* (-1 + cos(3.5 - pi * x/4)) * sin(3.5 - pi * y/4)",2);
+//    gsFunctionExpr<>sol2der ("-1/16 * pi^2 * cos(3.5 - (pi * x)/4) * (-1 + cos((pi * y)/4 -3.5))",
+//                             "-1/16 * pi^2 * (-1 + cos(3.5 - (pi * x)/4)) * cos( 3.5 - pi * y /4 )",
+//                             "1/16 * pi^2 * sin(3.5 - pi * x /4) * sin( 3.5 - pi * y /4 )", 2);
 
     gsFunctionExpr<> source  ("2",2);
     gsFunctionExpr<> laplace ("0",2);
@@ -115,15 +117,17 @@ int main(int argc, char *argv[])
 //                             "- 2 * (1 - x) * x",
 //                             "(1 - x) * (1 - y) - (1 - x) * y + x * y - x * (1 - y)", 2);
 
+//    gsFunctionExpr<> source  ("0.00005 * (x - 1)^2 * (y - 1)^2 * x^2 * y^2",2);
+//    gsFunctionExpr<> laplace ("0.00005 * 2 * (6 * x^2 - 6 * x + 1) * (y - 1)^2 * y^2 + 2 * (6 * y^2 - 6 * y + 1) * (x - 1)^2 * x^2",2);
+//    gsFunctionExpr<> solVal("0.00005 *(x - 1)^2 * (y - 1)^2 * x^2 * y^2",2);
+//    gsFunctionExpr<>sol1der ("0.00005 *2 * (x - 1) * x *(2 * x - 1) * (y - 1)^2 * y^2",
+//                             "0.00005 * 2 * (x - 1)^2 * x^2 * (y - 1) * y * (2 * y - 1)",2);
+//    gsFunctionExpr<>sol2der ("0.00005 * 2 * (6 * x^2 - 6 * x + 1) * (y - 1)^2 * y^2",
+//                             "0.00005 * 2 * (6 * y^2 - 6 * y + 1) * (x - 1)^2 * x^2",
+//                             "0.00005 * 4 * (x - 1) * x * (2 * x - 1) * (y - 1) * y * (2 * y - 1)", 2);
 
-//    gsFunctionExpr<> source  ("72 * x * y",2);
-//    gsFunctionExpr<> laplace ("6 * ( x*y*y*y + y*x*x*x)",2);
-//    gsFunctionExpr<> solVal("x*x*x*y*y*y",2);
-//    gsFunctionExpr<>sol1der ("3 * x*x*y*y*y",
-//                             "3 * y*y*x*x*x",2);
-//    gsFunctionExpr<>sol2der ("6 * x*y*y*y",
-//                             "6 * y*x*x*x",
-//                             "9 * x*x*y*y", 2);
+
+
 
 
     // ======= 3D Solution =========
@@ -325,22 +329,23 @@ int main(int argc, char *argv[])
 // ==============================================================================================================================================
 
 
-//    gsFunctionExpr<> source  ("0",3);
+
+//    gsFunctionExpr<> source  ("(x - 1)^2 * (y - 1)^2 * x^2 * y^2",3);
 //
-//    gsFunctionExpr<> laplace ("0",3);
+//    gsFunctionExpr<> laplace ("2 * (6 * x^2 - 6 * x + 1) * (y - 1)^2 * y^2 + 2 * (6 * y^2 - 6 * y + 1) * (x - 1)^2 * x^2",3);
 //
-//    gsFunctionExpr<> solVal("(x - 1) * (y - 1)",3);
+//    gsFunctionExpr<> solVal("(x - 1)^2 * (y - 1)^2 * x^2 * y^2",3);
 //
-//    gsFunctionExpr<>sol1der ("(y - 1)",
-//                             "(x - 1)",
+//    gsFunctionExpr<>sol1der ("2 * (x - 1) * x *(2 * x - 1) * (y - 1)^2 * y^2",
+//                             "2 * (x - 1)^2 * x^2 * (y - 1) * y * (2 * y - 1)",
 //                             "0",3);
 //
-//    gsFunctionExpr<>sol2der ("0",
+//    gsFunctionExpr<>sol2der ("2 * (6 * x^2 - 6 * x + 1) * (y - 1)^2 * y^2",
+//                             "2 * (6 * y^2 - 6 * y + 1) * (x - 1)^2 * x^2",
 //                             "0",
+//                             "4 * (x - 1) * x * (2 * x - 1) * (y - 1) * y * (2 * y - 1)",
 //                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
+//                             "4 * (x - 1) * x * (2 * x - 1) * (y - 1) * y * (2 * y - 1)",
 //                             "0",
 //                             "0",
 //                             "0", 3);
@@ -468,7 +473,7 @@ int main(int argc, char *argv[])
             numDegree = 0; // 1 == degree 3
             break;
         case 13:
-            string_geo = "KirchhoffLoveGeo/square_smallGeo.xml";
+            string_geo = "KirchhoffLoveGeo/square_singlePatch.xml";
             numDegree = 2; // 2 == degree 3
             break;
         case 14:
@@ -499,6 +504,22 @@ int main(int argc, char *argv[])
             string_geo = "KirchhoffLoveGeo/surfaceFromCubic2DCentralBump.xml";
             numDegree = 0; // 2 == degree 3
             break;
+        case 21:
+            string_geo = "KirchhoffLoveGeo/surfaceFrom2DFourPatchesEasy.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
+        case 22:
+            string_geo = "KirchhoffLoveGeo/surfaceFrom2DFourPatchesCubicQuad.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
+        case 23:
+            string_geo = "KirchhoffLoveGeo/geo_fivePatch.xml";
+            numDegree = 2; // 2 == degree 3
+            break;
+        case 24:
+            string_geo = "KirchhoffLoveGeo/surfaceFrom2DFivePatchesCosCos.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
 
 
 
@@ -516,10 +537,17 @@ int main(int argc, char *argv[])
     fd.getId(0, multiPatch_init); // id=0: Multipatch domain
     multiPatch_init.computeTopology();
 
+    std::string string_geo_planar = "KirchhoffLoveGeo/geo_fivePatch.xml";
+    gsFileData<> fdPlanar(string_geo_planar);
+    gsMultiPatch<> multiPatchPlanar;
+    fdPlanar.getId(0, multiPatchPlanar); // id=0: Multipatch domain
+    multiPatchPlanar.computeTopology();
+    multiPatchPlanar.degreeElevate(2);
+
+
+
     gsWriteParaview(multiPatch_init,"geoemtry_init",2000,true);
 
-
-    //multiPatch.patch(1).degreeElevate(1,0);
     multiPatch_init.degreeElevate(g1OptionList.getInt("degree"));
 
     gsVector<real_t> l2Error_vec(g1OptionList.getInt("loop") + 1);
@@ -544,39 +572,45 @@ int main(int argc, char *argv[])
     std::vector<gsMultiBasis<>> sol_vec_basis;
     std::vector<gsG1System<real_t>> sol_vec_sys;
 
+
+
     for (index_t refinement_level = 0; refinement_level < g1OptionList.getInt("loop"); refinement_level++)
     {
-        gsMultiPatch<> multiPatch(multiPatch_init);
+        gsMultiPatch<> multiPatchSurf(multiPatch_init);
 
 //        gsInfo << "KV: " << multiPatch.patch(0).basis().basis(0) << "\n";
 
-        multiPatch.uniformRefine_withSameRegularity(num_knots[refinement_level], g1OptionList.getInt("regularity"));
+        multiPatchSurf.uniformRefine_withSameRegularity(num_knots[refinement_level], g1OptionList.getInt("regularity"));
 
 //        gsInfo << "KV: " << multiPatch.patch(0).basis().basis(0) << "\n";
 
         gsInfo << "###### Level: " << refinement_level << " with " << num_knots[refinement_level] << " inner knots ###### " << "\n";
 
-        gsMultiBasis<> mb(multiPatch);
+        gsMultiBasis<> mb(multiPatchSurf);
 
 #ifdef _OPENMP
         omp_set_num_threads( g1OptionList.getInt("threads"));
         omp_set_nested(1);
 #endif
+//        gsFileData<> interfacesGD;
+//        gsFileData<> boundaryGD;
+//        gsFileData<> verticesGD;
 
-        gsG1System<real_t> g1System(multiPatch, mb, g1OptionList.getSwitch("neumann"), g1OptionList.getSwitch("twoPatch"), g1OptionList);
+
+        gsG1System<real_t> g1System(multiPatchSurf, mb, g1OptionList.getSwitch("neumann"), g1OptionList.getSwitch("twoPatch"), g1OptionList);
 
         // ########### EDGE FUNCTIONS ###########
         // Interface loop
-        for (size_t numInt = 0; numInt < multiPatch.interfaces().size(); numInt++ )
+        for (size_t numInt = 0; numInt < multiPatchSurf.interfaces().size(); numInt++ )
         {
-            const boundaryInterface & item = multiPatch.interfaces()[numInt];
+            const boundaryInterface & item = multiPatchSurf.interfaces()[numInt];
 
             std::string fileName;
             std::string basename = "InterfaceBasisFunctions" + util::to_string(numInt);
             gsParaviewCollection collection(basename);
 
-            gsG1AuxiliaryEdgeMultiplePatches singleInt(multiPatch, item.first().patch, item.second().patch);
-            singleInt.computeG1InterfaceBasis(g1OptionList);
+            gsG1AuxiliaryEdgeMultiplePatches singleInt(multiPatchSurf, multiPatchPlanar, item.first().patch, item.second().patch);
+                singleInt.computeG1InterfaceBasis(g1OptionList);
 
 
             for (size_t i = 0; i < singleInt.getSinglePatch(0).getG1Basis().nPatches(); i++)
@@ -592,12 +626,12 @@ int main(int argc, char *argv[])
                 {
                     // First Interface Side
                     fileName = basename + "_0_" + util::to_string(i);
-                    gsField<> temp_field(multiPatch.patch(item.first().patch),edgeSingleBF.patch(0));
+                    gsField<> temp_field(multiPatchSurf.patch(item.first().patch),edgeSingleBF.patch(0));
                     gsWriteParaview(temp_field,fileName,5000);
                     collection.addTimestep(fileName,i,"0.vts");
                     // Second Interface Side
                     fileName = basename + "_1_" + util::to_string(i);
-                    gsField<> temp_field_1(multiPatch.patch(item.second().patch),edgeSingleBF.patch(1));
+                    gsField<> temp_field_1(multiPatchSurf.patch(item.second().patch),edgeSingleBF.patch(1));
                     gsWriteParaview(temp_field_1,fileName,5000);
                     collection.addTimestep(fileName,i,"0.vts");
                 }
@@ -607,16 +641,19 @@ int main(int argc, char *argv[])
         }
 
         // Boundaries loop
-        for (size_t numBdy = 0; numBdy < multiPatch.boundaries().size(); numBdy++ )
+        for (size_t numBdy = 0; numBdy < multiPatchSurf.boundaries().size(); numBdy++ )
         {
-            const patchSide & bit = multiPatch.boundaries()[numBdy];
+            const patchSide & bit = multiPatchSurf.boundaries()[numBdy];
 
             std::string fileName;
             std::string basename = "BoundaryBasisFunctions" + util::to_string(numBdy);
             gsParaviewCollection collection(basename);
 
-            gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatch, bit.patch);
-            singleBdy.computeG1BoundaryBasis(g1OptionList, bit.m_index);
+            gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatchSurf, multiPatchPlanar, bit.patch);
+             singleBdy.computeG1BoundaryBasis(g1OptionList, bit.m_index);
+
+
+
 
 
             for (size_t i = 0; i < singleBdy.getSinglePatch(0).getG1Basis().nPatches(); i++)
@@ -630,7 +667,7 @@ int main(int argc, char *argv[])
                 if (g1OptionList.getSwitch("plot"))
                 {
                     fileName = basename + "_0_" + util::to_string(i);
-                    gsField<> temp_field(multiPatch.patch(bit.patch),edgeSingleBF.patch(0));
+                    gsField<> temp_field(multiPatchSurf.patch(bit.patch),edgeSingleBF.patch(0));
                     gsWriteParaview(temp_field,fileName,5000);
                     collection.addTimestep(fileName,i,"0.vts");
                 }
@@ -640,13 +677,13 @@ int main(int argc, char *argv[])
         }
 
         // Vertices
-        for(size_t numVer=0; numVer < multiPatch.vertices().size(); numVer++)
+        for(size_t numVer=0; numVer < multiPatchSurf.vertices().size(); numVer++)
         {
             std::string fileName;
             std::string basename = "VerticesBasisFunctions" + util::to_string(numVer);
             gsParaviewCollection collection(basename);
 
-            std::vector<patchCorner> allcornerLists = multiPatch.vertices()[numVer];
+            std::vector<patchCorner> allcornerLists = multiPatchSurf.vertices()[numVer];
             std::vector<size_t> patchIndex;
             std::vector<size_t> vertIndex;
             for(auto & allcornerList : allcornerLists)
@@ -655,35 +692,9 @@ int main(int argc, char *argv[])
                 vertIndex.push_back(allcornerList.m_index);
             }
 
-            if(g1OptionList.getSwitch("twoPatch") == true)
-            {
-                if (patchIndex.size() == 1)
-                {
-                    gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatch, patchIndex, vertIndex);
-                    singleVertex.computeG1InternalVertexBasis(g1OptionList);
-                    for (index_t i = 0; i < 4; i++)
-                        {
-                        gsMultiPatch<> singleBasisFunction;
-                        for (size_t np = 0; np < vertIndex.size(); np++)
-                        {
-                            singleBasisFunction.addPatch(singleVertex.getSinglePatch(np).getG1Basis().patch(i));
-                            if (g1OptionList.getSwitch("plot"))
-                            {
-                                fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
-                                gsField<> temp_field(multiPatch.patch(patchIndex[np]), singleBasisFunction.patch(np));
-                                gsWriteParaview(temp_field, fileName, 5000);
-                                collection.addTimestep(fileName, i, "0.vts");
-                            }
-                        }
-                        g1System.insertVertex(singleBasisFunction, patchIndex, numVer, singleVertex.get_internalDofs(), i);
-                    }
-                }
-            }
-            else
-            {
-                gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatch, patchIndex, vertIndex);
-
+                gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatchSurf, multiPatchPlanar, patchIndex, vertIndex);
                 singleVertex.computeG1InternalVertexBasis(g1OptionList);
+
                 for (index_t i = 0; i < 6; i++)
                 {
                     gsMultiPatch<> singleBasisFunction;
@@ -693,19 +704,20 @@ int main(int argc, char *argv[])
                         if (g1OptionList.getSwitch("plot"))
                         {
                             fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
-                            gsField<> temp_field(multiPatch.patch(patchIndex[np]), singleBasisFunction.patch(np));
+                            gsField<> temp_field(multiPatchSurf.patch(patchIndex[np]), singleBasisFunction.patch(np));
                             gsWriteParaview(temp_field, fileName, 5000);
                             collection.addTimestep(fileName, i, "0.vts");
                         }
                     }
                     g1System.insertVertex(singleBasisFunction, patchIndex, numVer, singleVertex.get_internalDofs(), i);}
-            }
+
 //            gsInfo << "============================================================ \n";
             collection.save();
         }
 
+
         gsBoundaryConditions<> bcInfo, bcInfo2;
-        for (gsMultiPatch<>::const_biterator bit = multiPatch.bBegin(); bit != multiPatch.bEnd(); ++bit)
+        for (gsMultiPatch<>::const_biterator bit = multiPatchSurf.bBegin(); bit != multiPatchSurf.bEnd(); ++bit)
         {
             bcInfo.addCondition( *bit, condition_type::dirichlet, &solVal );
             if (!g1OptionList.getSwitch("neumann"))
@@ -716,7 +728,7 @@ int main(int argc, char *argv[])
 
         gsInfo << "Assembling the system ... \n";
         // BiharmonicAssembler
-        gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatch, mb, bcInfo, bcInfo2, source, g1OptionList);
+        gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(multiPatchSurf, mb, bcInfo, bcInfo2, source, g1OptionList);
         g1BiharmonicAssembler.assemble();
 
         gsInfo << "Computing Boundary data ... \n";
@@ -726,7 +738,7 @@ int main(int argc, char *argv[])
         else
             g1BiharmonicAssembler.computeDirichletAndNeumannDofsL2Proj(g1System); // Compute boundary values with neumann
 
-        g1System.finalize(multiPatch,mb,g1BiharmonicAssembler.get_bValue());
+        g1System.finalize(multiPatchSurf,mb,g1BiharmonicAssembler.get_bValue());
 
         gsInfo << "Solving the system ... \n";
         gsMatrix<> solVector = g1System.solve(g1BiharmonicAssembler.matrix(), g1BiharmonicAssembler.rhs());
@@ -734,43 +746,43 @@ int main(int argc, char *argv[])
         gsInfo << "Plotting the solution ... \n";
         if (g1OptionList.getSwitch("plot"))
         {
-            gsField<> exactField(multiPatch,solVal);
+            gsField<> exactField(multiPatchSurf,solVal);
             gsWriteParaview(exactField,"G1Biharmonic_exact",15000);
 
             // construct solution: INTERIOR
             gsMultiPatch<> mpsol;
             g1BiharmonicAssembler.constructSolution(solVector.bottomRows(g1BiharmonicAssembler.matrix().dim().first),mpsol);
-            gsField<> solField(multiPatch, mpsol);
+            gsField<> solField(multiPatchSurf, mpsol);
             // construct solution for plotting
             std::vector<gsMultiPatch<>> g1Basis;
-            g1System.constructG1Solution(solVector,g1Basis, multiPatch);
+            g1System.constructG1Solution(solVector,g1Basis, multiPatchSurf);
             g1BiharmonicAssembler.plotParaview(solField, g1Basis);
 
             // Pascal
-//            if(multiPatch.patch(0).targetDim() == 2)
-//            {
-//                gsMultiPatch<> mp_letsee;
-//                for (size_t numP = 0; numP < multiPatch.nPatches(); numP++)
-//                {
-//                    gsMatrix<> coefsnew(multiPatch.patch(numP).coefs().dim().first, 1);
-//                    coefsnew = mpsol.patch(numP).coefs();
-//                    for (size_t letsee = 0; letsee < g1Basis[numP].nPatches(); letsee++)
-//                    {
-//                        coefsnew += g1Basis[numP].patch(letsee).coefs();
-//                    }
-//
-//                    gsMatrix<> newcontrolpoints(multiPatch.patch(numP).coefs().dim().first, 3);
-//                    newcontrolpoints.leftCols(2) = multiPatch.patch(numP).coefs();
-//                    newcontrolpoints.col(2) = coefsnew;
-//                    mp_letsee.addPatch(multiPatch.patch(numP));
-//                    mp_letsee.patch(numP).setCoefs(newcontrolpoints);
-//                }
-//                gsWriteParaview(mp_letsee, "mp_letsee", 15000);
-//
-//                gsFileData<> xml;
-//                xml << mp_letsee;
-//                xml.save("/home/afarahat/Desktop/gismo/filedata/KirchhoffLoveGeo/surfaceFromCubic2DCentralBump");
-//            }
+            if(multiPatchSurf.patch(0).targetDim() == 2)
+            {
+                gsMultiPatch<> mp_letsee;
+                for (size_t numP = 0; numP < multiPatchSurf.nPatches(); numP++)
+                {
+                    gsMatrix<> coefsnew(multiPatchSurf.patch(numP).coefs().dim().first, 1);
+                    coefsnew = mpsol.patch(numP).coefs();
+                    for (size_t letsee = 0; letsee < g1Basis[numP].nPatches(); letsee++)
+                    {
+                        coefsnew += g1Basis[numP].patch(letsee).coefs();
+                    }
+
+                    gsMatrix<> newcontrolpoints(multiPatchSurf.patch(numP).coefs().dim().first, 3);
+                    newcontrolpoints.leftCols(2) = multiPatchSurf.patch(numP).coefs();
+                    newcontrolpoints.col(2) = coefsnew;
+                    mp_letsee.addPatch(multiPatchSurf.patch(numP));
+                    mp_letsee.patch(numP).setCoefs(newcontrolpoints);
+                }
+                gsWriteParaview(mp_letsee, "mp_letsee", 15000);
+
+                gsFileData<> xml;
+                xml << mp_letsee;
+                xml.save("/home/afarahat/Desktop/gismo/filedata/KirchhoffLoveGeo/surfaceFrom2DFivePatchesCosCos");
+            }
             // End
         }
 
@@ -814,19 +826,19 @@ int main(int argc, char *argv[])
                 {
                     if(sol_vector.size() == 2)
                     {
-                        gsG1ASResidualNormL2<real_t> errorL2(multiPatch, sol_vector, sol_vec_basis);
+                        gsG1ASResidualNormL2<real_t> errorL2(multiPatchSurf, sol_vector, sol_vec_basis);
                         errorL2.compute(sol_vec_sys);
                         l2Error_vec[refinement_level] = errorL2.value();
                     }
                 }
                 else
                 {
-                    gsNormL2<real_t> errorL2(multiPatch, Sol_sparse, solVal);
+                    gsNormL2<real_t> errorL2(multiPatchSurf, Sol_sparse, solVal);
                     errorL2.compute(g1System.get_numBasisFunctions());
 
 //                    gsSparseMatrix<real_t> Sol_sparseZero = Sol_sparse;
 //                    Sol_sparseZero.setZero();
-//                    gsNormL2<real_t> exactErrorL2(multiPatch, Sol_sparseZero, solVal);
+//                    gsNormL2<real_t> exactErrorL2(multiPatchSurf, Sol_sparseZero, solVal);
 //                    exactErrorL2.compute(g1System.get_numBasisFunctions());
 
                     l2Error_vec[refinement_level] = errorL2.value() /*/ exactErrorL2.value()*/;
@@ -839,7 +851,7 @@ int main(int argc, char *argv[])
                 {
                     if(sol_vector.size() == 2)
                     {
-                        gsG1ASResidualSeminormH1<real_t> errorSemiH1(multiPatch, sol_vector, sol_vec_basis);
+                        gsG1ASResidualSeminormH1<real_t> errorSemiH1(multiPatchSurf, sol_vector, sol_vec_basis);
                         errorSemiH1.compute(sol_vec_sys);
                         h1SemiError_vec[refinement_level] = errorSemiH1.value();
                     }
@@ -847,12 +859,12 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    gsSeminormH1<real_t> errorSemiH1(multiPatch, Sol_sparse, sol1der);
+                    gsSeminormH1<real_t> errorSemiH1(multiPatchSurf, Sol_sparse, sol1der);
                     errorSemiH1.compute(g1System.get_numBasisFunctions());
 
 //                    gsSparseMatrix<real_t> Sol_sparseZero = Sol_sparse;
 //                    Sol_sparseZero.setZero();
-//                    gsNormL2<real_t> exactErrorH1(multiPatch, Sol_sparseZero, sol1der);
+//                    gsNormL2<real_t> exactErrorH1(multiPatchSurf, Sol_sparseZero, sol1der);
 //                    exactErrorH1.compute(g1System.get_numBasisFunctions());
 
                     h1SemiError_vec[refinement_level] = errorSemiH1.value() /*/ exactErrorH1.value()*/;
@@ -864,7 +876,7 @@ int main(int argc, char *argv[])
                 {
                     if(sol_vector.size() == 2)
                     {
-                        gsG1ASResidualSeminormH2<real_t> errorSemiH2(multiPatch, sol_vector, sol_vec_basis);
+                        gsG1ASResidualSeminormH2<real_t> errorSemiH2(multiPatchSurf, sol_vector, sol_vec_basis);
                         errorSemiH2.compute(sol_vec_sys);
                         h2SemiError_vec[refinement_level] = errorSemiH2.value();
                     }
@@ -872,12 +884,12 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    gsSeminormH2<real_t> errorSemiH2(multiPatch, Sol_sparse, sol2der);
+                    gsSeminormH2<real_t> errorSemiH2(multiPatchSurf, Sol_sparse, sol2der);
                     errorSemiH2.compute(g1System.get_numBasisFunctions());
 
 //                    gsSparseMatrix<real_t> Sol_sparseZero = Sol_sparse;
 //                    Sol_sparseZero.setZero();
-//                    gsNormL2<real_t> exactErrorH2(multiPatch, Sol_sparseZero, sol2der);
+//                    gsNormL2<real_t> exactErrorH2(multiPatchSurf, Sol_sparseZero, sol2der);
 //                    exactErrorH2.compute(g1System.get_numBasisFunctions());
                     h2SemiError_vec[refinement_level] = errorSemiH2.value() /*/ exactErrorH2.value()*/;
                 }
