@@ -16,13 +16,16 @@
 namespace gismo
 {
 /** @brief
-    Implementation of a interface condition for the
-    discontinuous Galerkin Assembler.
-
-    It sets up an assembler and assembles the system patch wise and
-    combines the patch-local stiffness matrices into a global system.
-    Dirichlet boundary can also be imposed weakly (i.e. Nitsche).
-*/
+  * Implementation of a interface condition for the
+  * discontinuous Galerkin Assembler.
+  *
+  * It uses the Symmetric Interior Penalty discontinuous Galerkin (SIPG)
+  * method.
+  *
+  * It sets up an assembler and assembles the system patch wise and
+  * combines the patch-local stiffness matrices into a global system.
+  * Dirichlet boundary can also be imposed weakly (i.e. Nitsche).
+  */
 
 template <class T>
 class gsVisitorDg
@@ -33,15 +36,35 @@ public:
      * interior penalty method of the Poisson problem.
      *
      * This visitor adds the following term to the left-hand side (bilinear form).
-     * \f[ - \{\nabla u\} \cdot \mathbf{n} [ v ]
-     *     - \{\nabla v\} \cdot \mathbf{n} [ u ]
-     *     + \alpha [ u ][  v ] \f].
-     * Where \f[v\f] is the test function and \f[ u \f] is trial function.
+     * \f[
+     *     s(u,v) :=
+     *        - \{\nabla u\} \cdot \mathbf{n} [ v ]
+     *        - \{\nabla v\} \cdot \mathbf{n} [ u ]
+     *        + \alpha (h_k^{-1} + h_\ell^{-1}) [ u ][ v ],
+     * \f]
+     * where \f$ v \f$ is the test function and \f$ u \f$ is trial function,
+     * \f$ [u] = u^{(k)} - u^{(\ell)} \f$ denotes the jump accross the interface
+     * and \f$ \{ u \} = (u^{(k)} + u^{(\ell)})/2\f$ denotes the average between
+     * the two patches.
+     *
+     * We have \f$ s(u,v) = m(u,v) + m(v,u) \f$, where
+     * \f[
+     *     m(u,v) :=
+     *        - \nabla u^{(k)} \cdot \mathbf{n} [ v ]
+     *        - \nabla v^{(k)} \cdot \mathbf{n} [ u ]
+     *        + \alpha h_k^{-1} [ u ][ v ].
+     * \f]
+     * This bilinear form can be obtained using \ref localToGlobalNonSymm.
+     * TODO: How is alpha chosen? Are the bilinear forms correct?
      */
 
-    gsVisitorDg(const gsPde<T> &)
-    {}
+    /// Constructor
+    gsVisitorDg() {}
 
+    /// Constructor. The given Pde is ignored.
+    gsVisitorDg(const gsPde<T> &) {}
+
+    /// Initialize
     void initialize(const gsBasis<T> & basis1,
                     const gsBasis<T> & ,
                     const boundaryInterface & bi,
@@ -61,7 +84,7 @@ public:
         md1.flags = md2.flags = NEED_VALUE|NEED_JACOBIAN|NEED_GRAD_TRANSFORM;
     }
 
-    // Evaluate on element.
+    /// Evaluate on element
     inline void evaluate(const gsBasis<T>       & B1, // to do: more unknowns
                          const gsGeometry<T>    & geo1,
                          const gsBasis<T>       & B2, // to do: more unknowns
@@ -92,7 +115,7 @@ public:
         E22.setZero(numActive2, numActive2); E21.setZero(numActive2, numActive1);
     }
 
-    // assemble on element
+    /// Assemble on element
     inline void assemble(gsDomainIterator<T>    & element1,
                          gsDomainIterator<T>    & element2,
                          gsVector<T>            & quWeights)
@@ -144,7 +167,8 @@ public:
             E21.noalias() += c2 * ( val2 * val1.transpose() );
         }
     }
-    
+
+    /// Adds the contirbutions to the sparse system
     inline void localToGlobal(const index_t                     patch1,
                               const index_t                     patch2,
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
@@ -163,117 +187,27 @@ public:
         system.push(-B22 - B22.transpose() + E22, m_localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
 
     }
-    
-    index_t indexOf( const gsMatrix<index_t>& c, index_t e)
+
+    /// Adds the contirbutions for $\f m(u,v) \f$ to the sparse system
+    inline void localToGlobalNonSymm(const index_t                     patch1,
+                                     const index_t                     patch2,
+                                     const std::vector<gsMatrix<T> > & eliminatedDofs,
+                                     gsSparseSystem<T>               & system)
     {
-        // TODO: binary search!
-        for (index_t i=0; i<c.rows(); ++i)
-            if (c(i,0)==e) return i;
-        return -1;
+        // Map patch-local DoFs to global DoFs
+        system.mapColIndices(actives1, patch1, actives1);
+        system.mapColIndices(actives2, patch2, actives2);
+
+        m_localRhs1.setZero(actives1.rows(),system.rhsCols());
+        m_localRhs2.setZero(actives2.rows(),system.rhsCols());
+
+        system.push((-B11 - B11.transpose() + E11)/T(2), m_localRhs1,actives1,actives1,eliminatedDofs.front(),0,0);
+        system.push( -B21                   - E21 /T(2), m_localRhs2,actives2,actives1,eliminatedDofs.front(),0,0);
+        system.push(      - B21.transpose() - E12 /T(2), m_localRhs1,actives1,actives2,eliminatedDofs.front(),0,0);
+        system.push(                          E22 /T(2), m_localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
+
     }
 
-    void localToGlobalIETI(const gsDofMapper       & mapper,
-                           const gsMatrix<T>       & eliminatedDofs,
-                           index_t                   artIfaceIdx,
-                           const gsVector<index_t> & ifaceIndices,
-                           gsSparseMatrix<T>       & sysMatrix,
-                           gsMatrix<T>             & rhsMatrix)
-    {
-        //gsInfo << "\n before: \n" << actives1.transpose() << "\n";
-        //gsInfo << "\n before: \n" << actives2.transpose() << "\n";
-        mapper.localToGlobal(actives1,             0, actives1);
-        for (size_t i=0; i<actives2.size(); ++i)
-        {
-            const index_t idx = indexOf(ifaceIndices,actives2(i,0));           
-            if (idx>-1)
-                actives2(i,0) = mapper.index(idx, artIfaceIdx+1);
-            else
-                actives2(i,0) = -1;
-        }
-        //gsInfo << "\n after: \n" << actives1.transpose() << "\n";
-        //gsInfo << "\n after: \n" << actives2.transpose() << "\n";
-
-        const index_t numActives1 = B11.rows(); //here we cannot use the rows of active1, because it is modified outside.
-        const index_t numActives2 = B22.rows();
-        
-        // This only works for constant alpha on each patch
-        T alpha = (T)1;
-
-        // Push element contributions 1-2 to the global matrix and load vector
-        for (index_t j=0; j!=numActives1; ++j)
-        {
-            const index_t jj1 = actives1(j); // N1_j
-            if ( mapper.is_free_index(jj1) )
-            {
-                for (index_t i=0; i!=numActives1; ++i)
-                {
-                    const index_t  ii1 = actives1(i); // N1_i
-                    if ( mapper.is_free_index(ii1) )
-                        //if ( jj1 <= ii1 )
-                        sysMatrix( ii1, jj1 ) -=  B11(i,j) + B11(j,i) - alpha*E11(i,j);
-                    else
-                    {
-                        rhsMatrix.row(jj1).noalias() += (B11(i,j) + B11(j,i) - alpha*E11(i,j)) *
-                                                        eliminatedDofs.row( mapper.global_to_bindex(ii1) );
-                    }
-                }
-
-                for (index_t i=0; i!=numActives2; ++i)
-                {
-                    const index_t  ii2 = actives2(i); // N2_i
-                    if ( ii2>-1 )
-                    {
-                        if ( mapper.is_free_index(ii2) )
-                            //if ( jj1 <= ii2 )
-                            sysMatrix( ii2, jj1)  -=  B21(i,j) + alpha*E21(i,j);
-                        else
-                        {
-                            rhsMatrix.row(jj1).noalias() += (B21(i,j) + alpha*E21(i,j)) *
-                                                            eliminatedDofs.row( mapper.global_to_bindex(ii2) );
-                        }
-                    }
-                }
-            }
-        }
-        for (index_t j=0; j!=numActives2; ++j)
-        {
-            const index_t  jj1 = actives2(j); // N2_i
-            if ( jj1>-1 )
-            {
-                if ( mapper.is_free_index(jj1) )
-                {
-                    for (index_t i=0; i!=numActives1; ++i)
-                    {
-                        const index_t  ii1 = actives1(i); // N1_i
-                        if ( mapper.is_free_index(ii1) )
-                            //if ( jj1 <= ii1 )
-                            sysMatrix( ii1, jj1 ) -=  B21(j,i) + alpha*E21(j,i);
-                        else
-                        {
-                            rhsMatrix.row(jj1).noalias() += (B21(j,i) + alpha*E21(j,i)) *
-                                                            eliminatedDofs.row( mapper.global_to_bindex(ii1) );
-                        }
-                    }
-    
-                    for (index_t i=0; i!=numActives2; ++i)
-                    {
-                        const index_t  ii2 = actives2(i); // N2_i
-                        if ( ii2>-1 )
-                        {
-                            if ( mapper.is_free_index(ii2) )
-                                //if ( jj1 <= ii2 )
-                                sysMatrix( ii2, jj1 )  -= - alpha*E22(i,j);
-                            else
-                            {
-                                rhsMatrix.row(jj1).noalias() += (-alpha*E22(i,j)) *
-                                                                eliminatedDofs.row( mapper.global_to_bindex(ii2) );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 private:
 
     // Penalty constant
@@ -295,7 +229,7 @@ private:
     // Auxiliary element matrices
     gsMatrix<T> B11, B12, E11, E12, N1,
                 B22, B21, E22, E21, N2;
-                
+
     gsMatrix<T> m_localRhs1, m_localRhs2;
 
     gsMapData<T> md1, md2;

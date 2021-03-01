@@ -66,9 +66,9 @@ public:
     gsIetiMapper(
         const gsMultiBasis<T>& multiBasis,
         gsDofMapper dofMapperGlobal,
-        Matrix fixedPart
+        const Matrix& fixedPart
     )
-    { init(multiBasis, give(dofMapperGlobal), give(fixedPart)); }
+    { init(multiBasis, give(dofMapperGlobal), fixedPart); }
 
     /// @brief Init the ieti mapper after default construction
     ///
@@ -80,16 +80,8 @@ public:
     void init(
         const gsMultiBasis<T>& multiBasis,
         gsDofMapper dofMapperGlobal,
-        Matrix fixedPart
+        const Matrix& fixedPart
     );
-
-    /// @brief This function computes the jump matrices
-    ///
-    /// @param fullyRedundant  Compute the jump matrices in a fullyRedundant way;
-    ///                        if false, then no redundancy
-    /// @param excludeCorners  Ignore corners for jump matrices. This makes sense
-    ///                        if the corners are chosen as primal dofs
-    void computeJumpMatrices(bool fullyRedundant, bool excludeCorners);
 
     /// @brief Set up the corners as primal dofs
     void cornersAsPrimals();
@@ -108,8 +100,13 @@ public:
     /// index and the vector representing the primal constraint.
     void customPrimalConstraints( std::vector< std::pair<index_t,SparseVector> > data );
 
-    /// @brief Construct the global solution from a vector of patch-local ones
-    Matrix constructGlobalSolutionFromLocalSolutions( const std::vector<Matrix>& localContribs );
+    /// @brief This function computes the jump matrices
+    ///
+    /// @param fullyRedundant  Compute the jump matrices in a fullyRedundant way;
+    ///                        if false, then no redundancy
+    /// @param excludeCorners  Ignore corners for jump matrices. This makes sense
+    ///                        if the corners are chosen as primal dofs
+    void computeJumpMatrices(bool fullyRedundant, bool excludeCorners);
 
     /// @brief Returns a list of dofs that are (on the coarse level) coupled
     ///
@@ -134,30 +131,10 @@ public:
         const_cast<expr::gsFeSpace<T>&>(u).fixedPart() = m_fixedPart[k];
     }
 
-public:  // Artificial ifaces are required in the handling of dG discretizations
+    /// @brief Construct the global solution from a vector of patch-local ones
+    Matrix constructGlobalSolutionFromLocalSolutions( const std::vector<Matrix>& localContribs );
 
-    /// Data structure for artificial interfaces, as used in dG settings
-    struct ArtificialIface {
-       /// The real interface (local patch to which the artificial interface is assigned+side)
-       patchSide           realIface;
-       /// The artificial interface (foreign patch from which the artificial interface taken+side)
-       patchSide           artificialIface;
-       /// The indicies of the basis of the foreign patch that belong to artificial interface
-       /// Vector is assumed to be sorted
-       gsVector<index_t>   ifaceIndices;
-    };
-
-    /// @brief Registers an artificial interface, as used in dG settings
-    /// @param realIface        The real interface (local patch to which the artificial
-    ///                         interface is assigned+side)
-    /// @param artificialIface  The artificial interface (foreign patch from which the
-    ///                         artificial interface taken+side)
-    void registerArtificialIface(patchSide realIface, patchSide artificialIface);
-
-    /// Calls \ref registerArtificialIface for all interface known to the underlying box topology
-    void registerAllArtificialIfaces();
-
-public:  // Access to class data
+public:
 
     /// @brief Returns the number of Lagrange multipliers.
     index_t nLagrangeMultipliers()
@@ -195,9 +172,6 @@ public:  // Access to class data
     /// Only available after \ref computeJumpMatrices has been called
     const Matrix& fixedPart(index_t k) const                               { return m_fixedPart[k];               }
 
-    /// @brief Returns artificial interfaces for given patch
-    const std::vector<ArtificialIface>& artificialIfaces(index_t k) const  { return m_artificialIfaces[k];        }
-
     /// @brief Reference to the multi basis object being passed to constructur or \ref init
     const gsMultiBasis<T>& multiBasis() const                              { return *m_multiBasis;                }
 
@@ -207,19 +181,17 @@ private:
         const gsBasis<T>& basis, const gsDofMapper& dm,
         boxComponent bc );   ///< Assembles for \ref interfaceAveragesAsPrimals
 
-    void setupMappers();     ///< Setup of local mappers
+    void setupMappers(const Matrix&);     ///< Setup of local mappers
 
 private:
     const gsMultiBasis<T>*                        m_multiBasis;          ///< Pointer to the respective multibasis
     gsDofMapper                                   m_dofMapperGlobal;     ///< The global dof mapper
     std::vector<gsDofMapper>                      m_dofMapperLocal;      ///< A vector of the patch-local dof mappers
-    Matrix                                        m_fixedPartGlobal;     ///< The values for the elminated (Dirichlet) dofs globally
-    std::vector<Matrix>                           m_fixedPart;           ///< The values for the elminated (Dirichlet) dofs locally
+    std::vector<Matrix>                           m_fixedPart;           ///< The values for the elminated (Dirichlet) dofs
     std::vector<JumpMatrix>                       m_jumpMatrices;        ///< The jump matrices
     index_t                                       m_nPrimalDofs;         ///< The number of primal dofs already created
     std::vector< std::vector<SparseVector> >      m_primalConstraints;   ///< The primal constraints
     std::vector< std::vector<index_t> >           m_primalDofIndices;    ///< The primal dof indices for each of the primal constraints
-    std::vector< std::vector<ArtificialIface> >   m_artificialIfaces;    ///< TODO: docs
     unsigned                                      m_status;              ///< A status flag that is checked by assertions
 };
 
