@@ -16,7 +16,109 @@
 
 using namespace gismo;
 //! [Include namespace]
+ 
+// Input is parametric coordinates of the surface \a mp
+template <class T>
+class gsMaterialMatrix : public gismo::gsFunction<T>
+{
+    // Computes the material matrix for Reissner-Mindlin model
+protected:
+    const gsFunctionSet<T>* _mp;
+    const gsFunction<T>* _YoungsModulus;
+    const gsFunction<T>* _PoissonRatio;
+    mutable gsMapData<T> _tmp;
+    mutable gsMatrix<real_t, 3, 3> F0;
+    mutable gsMatrix<T> Emat, Nmat;
+    mutable real_t lambda, mu, E, nu, C_constant;
+    int m_dof_node;
+    double k_shear;
+public:
+    /// Shared pointer for gsMaterialMatrix
+    typedef memory::shared_ptr< gsMaterialMatrix > Ptr;
 
+    /// Unique pointer for gsMaterialMatrix
+    typedef memory::unique_ptr< gsMaterialMatrix > uPtr;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+        gsMaterialMatrix(const gsFunctionSet<T>& mp, const gsFunction<T>& YoungsModulus,
+            const gsFunction<T>& PoissonRatio) :
+        _mp(&mp), _YoungsModulus(&YoungsModulus), _PoissonRatio(&PoissonRatio), _mm_piece(nullptr)
+    {
+        _tmp.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
+        m_dof_node = 3;
+        k_shear = 5.0 / 6.0;
+    }
+
+    ~gsMaterialMatrix() { delete _mm_piece; }
+
+    GISMO_CLONE_FUNCTION(gsMaterialMatrix)
+
+    short_t domainDim() const { return 2; }
+
+    short_t targetDim() const { return 9; }
+
+    mutable gsMaterialMatrix<T>* _mm_piece; // todo: improve the way pieces are accessed
+
+    const gsFunction<T>& piece(const index_t k) const
+    {
+        delete _mm_piece;
+        _mm_piece = new gsMaterialMatrix(_mp->piece(k), *_YoungsModulus, *_PoissonRatio);
+        return *_mm_piece;
+    }
+
+    //class .. matMatrix_z
+    // should contain eval_into(thickness variable)
+
+    // Input is parametric coordinates of the surface \a mp
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        // NOTE 1: if the input \a u is considered to be in physical coordinates
+        // then we first need to invert the points to parameter space
+        // _mp.patch(0).invertPoints(u, _tmp.points, 1e-8)
+        // otherwise we just use the input paramteric points
+        _tmp.points = u;
+
+        static_cast<const gsFunction<T>&>(_mp->piece(0)).computeMap(_tmp); // the piece(0) here implies that if you call class.eval_into, it will be evaluated on piece(0). Hence, call class.piece(k).eval_into()
+
+        // NOTE 2: in the case that parametric value is needed it suffices
+        // to evaluate Youngs modulus and Poisson's ratio at
+        // \a u instead of _tmp.values[0].
+        _YoungsModulus->eval_into(_tmp.values[0], Emat);
+        _PoissonRatio->eval_into(_tmp.values[0], Nmat);
+
+        result.resize(targetDim(), u.cols());
+        for (index_t i = 0; i < u.cols(); ++i)
+        {
+            gsAsMatrix<T, Dynamic, Dynamic> C = result.reshapeCol(i, m_dof_node, m_dof_node);
+
+            F0.leftCols(2) = _tmp.jacobian(i);
+            F0.col(2) = _tmp.normal(i).normalized();
+            F0 = F0.inverse();
+            F0 = F0 * F0.transpose(); //3x3
+
+            // Evaluate material properties on the quadrature point
+            E = Emat(0, i);
+            nu = Nmat(0, i);
+            lambda = E * nu / ((1. + nu) * (1. - 2. * nu));
+            mu = E / (2. * (1. + nu));
+
+            C_constant = 2 * lambda * mu / (lambda + 2 * mu);
+
+            C(0, 0) = C_constant * F0(0, 0) * F0(0, 0) + 1 * mu * (2 * F0(0, 0) * F0(0, 0));
+            C(1, 1) = C_constant * F0(1, 1) * F0(1, 1) + 1 * mu * (2 * F0(1, 1) * F0(1, 1));
+            C(2, 2) = C_constant * F0(0, 1) * F0(0, 1) + 1 * mu * (F0(0, 0) * F0(1, 1) + F0(0, 1) * F0(0, 1));
+            C(1, 0) =
+                C(0, 1) = C_constant * F0(0, 0) * F0(1, 1) + 1 * mu * (2 * F0(0, 1) * F0(0, 1));
+            C(2, 0) =
+                C(0, 2) = C_constant * F0(0, 0) * F0(0, 1) + 1 * mu * (2 * F0(0, 0) * F0(0, 1));
+            C(2, 1) = C(1, 2) = C_constant * F0(0, 1) * F0(1, 1) + 1 * mu * (2 * F0(0, 1) * F0(1, 1));
+        }
+    }
+
+    // piece(k) --> for patch k
+
+};
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
@@ -24,7 +126,7 @@ int main(int argc, char *argv[])
     index_t numRefine  = 1;
     index_t numElevate = 0;
     bool last = true;
-    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
+    gsCmdLine cmd("Tutorial on solving a Reissner-Mindlin shell problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
@@ -38,9 +140,9 @@ int main(int argc, char *argv[])
 
     gsMultiPatch<> mp;
     // Unit square
-    mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // degree
+    mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // size 1, degree 1
     mp.addAutoBoundaries();
-    mp.embed(3);
+    mp.embed(3); // set dimension of geometry as 3
     real_t E_modulus = 1e0;
     real_t thickness = 1e0;
     real_t PoissonRatio = 0.0;
@@ -124,6 +226,20 @@ int main(int argc, char *argv[])
     gsMatrix<> solVectorU,solVectorT;
     solution u_sol = A.getSolution(u, solVectorU);
     solution theta_sol = A.getSolution(theta, solVectorT);
+    //***********************************************************************//
+    // material and constitutive equation
+    //***********************************************************************//
+    gsFunctionExpr<> E(util::to_string(E_modulus), 3);
+    gsFunctionExpr<> nu(util::to_string(PoissonRatio), 3);
+    gsMaterialMatrix<real_t> materialMat(mp, E, nu);
+    // evaluates in the parametric domain, but the class transforms E and nu to physical
+    variable mm = A.getCoeff(materialMat); 
+    auto S_m = reshape(mm, 3, 3);
+    //thickness
+    gsFunctionExpr<> t(util::to_string(thickness), 3);
+//     variable tt = A.getCoeff(t, G); // evaluates in the physical domain
+
+
 
     //! [Problem setup]
 
