@@ -65,7 +65,8 @@ if(CMAKE_QUIET)
       list(REMOVE_AT ARGV 0)
       _message(${MessageType} "${ARGV}")
     endif()
-endfunction()
+  endfunction()
+  unset(CMAKE_QUIET CACHE)
 endif()
 
 if(POLICY CMP0048)# CMake 3.0
