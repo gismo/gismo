@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
 		<< "mu                = " << mu << "\n"
 		<< "sigma             = " << sigma << "\n"
 		<< "tau_min           = " << tau_min << "\n"
-		<< "tau_max           = " << tau_min << "\n"
+		<< "tau_max           = " << tau_max << "\n"
 		<< "tol               = " << TOL << "\n"
 		<< "subdiv            = " << subdiv << "\n"
 		<< "prec              = " << prec << "\n"
@@ -245,7 +245,7 @@ int main(int argc, char* argv[])
 	//gsField<> solnew;
 
 	gsInfo << "eps = " << eps << " , p = " << p << " , k = " << k << " , lambda = " << lambda << "\n";
-	gsInfo << "Dofs & CPU time & L_p error & L_p rate & F error & F rate & N_max \n";
+	gsInfo << "Dofs      & CPU time & L_p error& L_p rate & F error  & F rate   & N_max    & _p       & _eps \n";
 
 	for (int i = startrefine; i < num; i++)
 	{
@@ -381,13 +381,13 @@ int main(int argc, char* argv[])
 
 		if (i == startrefine)
 		{
-			gsInfo << A.numDofs() << " & " << time << "s & " << e_0 << " & - & " << e_F << " & - & " << iter << " & " << p_ << " & " << eps_ << "\n";
+			gsInfo << std::setw(8) << A.numDofs() << "  & " << std::setw(7) << time << "s & " << std::setw(8) << e_0 << " &     -    & " << std::setw(8) << e_F << " &    -     & " << std::setw(8) << iter << " & " << std::setw(8) << p_ << " & " << std::setw(8) << eps_ << "\n";
 		}
 		else
 		{
 			Lp_rate = math::log(e_0 / e_0old) / math::log(0.5);
 			F_rate = math::log(e_F / e_Fold) / math::log(0.5);
-			gsInfo << A.numDofs() << " & " << time << "s & " << e_0 << " & " << Lp_rate << " & " << e_F << " & " << F_rate << " & " << iter << " & " << p_ << " & " << eps_ << "\n";
+			gsInfo << std::setw(8) << A.numDofs() << "  & " << std::setw(7) << time << "s & " << std::setw(8) << e_0 << " &" << std::setw(9) << Lp_rate << " & " << std::setw(8) << e_F << " &" << std::setw(9) << F_rate << " & " << std::setw(8) << iter << " & " << std::setw(8) << p_ << " & " << std::setw(8) << eps_ << "\n";
 		}
 	}
 
