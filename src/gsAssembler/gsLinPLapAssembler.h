@@ -49,6 +49,7 @@ namespace gismo
 		*/
 		gsLinpLapAssembler(const gsLinpLapPde<T>          & pde,
 			const gsMultiBasis<T>          & bases,
+			T eps_R,
 			index_t						   subdiv_ = 1,
 			bool						   prec_ = 0)
 		{
@@ -56,6 +57,7 @@ namespace gismo
 			J = 0;
 			subdiv = subdiv_;
 			prec = prec_;
+			eps_=eps_R;
 		}
 
 
@@ -66,6 +68,7 @@ namespace gismo
 		\param[in] intStrategy option for the treatment of patch interfaces
 		*/
 		gsLinpLapAssembler(const gsLinpLapPde<T>          & pde,
+			T eps_R,
 			const gsMultiBasis<T>          & bases,
 			dirichlet::strategy           dirStrategy,
 			iFace::strategy               intStrategy = iFace::glue,
@@ -79,6 +82,7 @@ namespace gismo
 			J = 0;
 			subdiv = subdiv_;
 			prec = prec_;
+			eps_ = eps_R;
 		}
 
 		/** @brief
@@ -97,6 +101,7 @@ namespace gismo
 			const gsFunction<T>           & rhs,
 			const T &eps,
 			const T &p,
+			T eps_R,
 			const gsMatrix<T> &w,
 			dirichlet::strategy           dirStrategy = dirichlet::elimination,
 			iFace::strategy               intStrategy = iFace::glue,
@@ -109,11 +114,13 @@ namespace gismo
 			typename gsPde<T>::Ptr pde(new gsLinpLapPde<T>(patches, bconditions, rhs, eps, p, w));
 			Base::initialize(pde, basis, m_options);
 			J = 0;
+			eps_ = eps_R;
 			subdiv = subdiv_;
 			prec = prec_;
 		}
 
 		void initialize(const gsPde<T>           & pde,
+			T eps_R,
 			const gsMultiBasis<T>    & bases,
 			const gsOptionList & opt = Base::defaultOptions(),
 			index_t subdiv_ = 1,
@@ -122,6 +129,7 @@ namespace gismo
 			typename gsPde<T>::Ptr _pde = memory::make_shared_not_owned(&pde);
 			Base::initialize(_pde, bases, opt);
 			subdiv = subdiv_;
+			eps_ = eps_R,
 			prec = prec_;
 		}
 
@@ -225,6 +233,7 @@ namespace gismo
 		T J;
 		index_t subdiv;
 		bool prec;
+		T eps_;
 
 		// Members from gsAssembler
 		using Base::m_pde_ptr;
@@ -258,7 +267,7 @@ namespace gismo
 		// m_system.setZero(); //<< this call leads to a quite significant performance degrade!
 		J = 0;
 		// Assemble volume integrals
-		push1<gsVisitorLinpLap<T> >(gsVisitorLinpLap<T>(*m_pde_ptr, subdiv, prec));
+		push1<gsVisitorLinpLap<T> >(gsVisitorLinpLap<T>(*m_pde_ptr, eps_, subdiv, prec));
 
 		// Enforce Neumann boundary conditions
 		Base::template push<gsVisitorNeumann<T> >(m_pde_ptr->bc().neumannSides());

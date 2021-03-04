@@ -14,7 +14,7 @@ Author(s):
 #include <ctime>
 
 //#define wolfe_powell_debug 1
-#define wolf_powell_alt 1
+#define wolf_powell_alt 0
 
 using namespace gismo;
 //! [Include namespace]
@@ -22,12 +22,13 @@ using namespace gismo;
 gsMatrix<real_t> projectL2(gsMultiPatch<real_t> mp, gsMultiBasis<real_t> mb, gsFunction<real_t> &g);
 gsMatrix<real_t> addDirVal(gsAssembler<real_t> a, gsMatrix<real_t> solVector);
 gsMatrix<real_t> reduceDirichlet(gsAssembler<real_t> a, gsMatrix<real_t> w_);
-real_t stepsize(gsSparseMatrix<real_t, 1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPde<real_t> &pde, gsMultiBasis<real_t> basis, gsOptionList opt, gsMatrix<real_t> u_, gsMatrix<real_t> s_, gsMatrix<real_t> &rh, real_t &Jh, real_t mu, real_t sigma, real_t tau_min, real_t tau_max, index_t subdiv);
+real_t stepsize(gsSparseMatrix<real_t, 1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPde<real_t> &pde,real_t epsR, gsMultiBasis<real_t> basis, gsOptionList opt, gsMatrix<real_t> u_, gsMatrix<real_t> s_, gsMatrix<real_t> &rh, real_t &Jh, real_t mu, real_t sigma, real_t tau_min, real_t tau_max, index_t subdiv);
 
 int main(int argc, char* argv[])
 {
 	real_t eps = 1;
-	real_t p = 1.2;			//p-Laplace parameter
+	real_t epsR = eps;
+	real_t p = 1.8;			//p-Laplace parameter
 	index_t k = 1;			//spline degree
 	index_t maxiter = 100;
 	real_t TOL = 1e-6;		//residual error tolerance
@@ -36,12 +37,10 @@ int main(int argc, char* argv[])
 	bool require_fin = true;
 	real_t mu = 0.7;
 	real_t sigma = 0.3;
-	real_t tau_min = 0.01;
-	real_t tau_max = 100;
+	real_t tau_min = 1;
+	real_t tau_max = 1;
 	index_t subdiv = 1;
-	bool prec = true;
-	real_t ip = 1.8;
-  real_t ieps=1;
+	bool prec = false;
 	gsCmdLine cmd("Linearized p-Laplace example");
 
 	cmd.addReal("e", "eps", "variable for eps", eps);
@@ -59,12 +58,14 @@ int main(int argc, char* argv[])
 	cmd.addReal("t", "tol", "Residual error tolerance", TOL);
 	cmd.addSwitch("", "fin", "After computation, wait until button is pressed", require_fin);
 	cmd.addSwitch("", "prec", "Preconditioning switch", prec);
- cmd.addReal("","ip","initial p value",ip);
+	cmd.addReal("", "epsR", "regularizing parameter", epsR);
 	try { cmd.getValues(argc, argv); }
 	catch (int rv) { return rv; }
 
-	real_t eps_=eps;
+	real_t eps_ = eps;
 	real_t p_=p;
+	real_t ip = 1.8;
+	real_t ieps = 1;
 
 	gsInfo << "Printing command line arguments:\n"
 		<< "eps               = " << eps << "\n"
@@ -78,7 +79,8 @@ int main(int argc, char* argv[])
 		<< "tau_max           = " << tau_min << "\n"
 		<< "tol               = " << TOL << "\n"
 		<< "subdiv            = " << subdiv << "\n"
-		<< "prec              = " << prec << "\n";
+		<< "prec              = " << prec << "\n"
+		<< "epsR              = " << epsR << "\n";
 	gsOptionList opt = gsAssembler<>::defaultOptions();
 	//opt.setInt("DirichletValues", dirichlet::l2Projection);
 
@@ -129,6 +131,11 @@ int main(int argc, char* argv[])
 	gsFunctionExpr<> u2("sin(" + std::to_string(gamma) + "*pi*(x+y))", 2);
 	gsFunctionExpr<> u3("sin(2*pi*x)*sin(2*pi*y)", 2);
 	gsFunctionExpr<> u4("sin(x)", 2);
+
+	gsFunctionExpr<> u2_derEast("(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*pi^2*cos(" + std::to_string(gamma) + "*pi*(1+y))^2)^((" + std::to_string(p) + "-2)/2)*(" + std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*(1+y)))", 2);
+	gsFunctionExpr<> u2_derWest("-(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*pi^2*cos(" + std::to_string(gamma) + "*pi*y)^2)^((" + std::to_string(p) + "-2)/2)*(" + std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*y))", 2);
+	gsFunctionExpr<> u2_derNorth("(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*pi^2*cos(" + std::to_string(gamma) + "*pi*(x+1))^2)^((" + std::to_string(p) + "-2)/2)*(" + std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*(x+1)))", 2);
+	gsFunctionExpr<> u2_derSouth("-(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*pi^2*cos(" + std::to_string(gamma) + "*pi*x)^2)^((" + std::to_string(p) + "-2)/2)*(" + std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*x))", 2);
 
 	gsFunctionExpr<> f = f2;
 	gsFunctionExpr<> u = u2;
@@ -210,13 +217,13 @@ int main(int argc, char* argv[])
 	gsLinpLapPde<real_t> pde_(patch, hbcInfo, f, eps_, p, w_);
 
 	gsLinpLapAssembler<real_t> A;
-	A.initialize(pde, refine_basis, opt, subdiv);
+	A.initialize(pde, epsR, refine_basis, opt, subdiv);
 
 	gsLinpLapAssembler<real_t> rA;
-	rA.initialize(pde_, refine_basis, opt, subdiv, prec);
+	rA.initialize(pde_, epsR, refine_basis, opt, subdiv, prec);
 
-	A.initialize(pde, refine_basis, opt, subdiv);
-	rA.initialize(pde_, refine_basis, opt, subdiv, prec);
+	A.initialize(pde, epsR, refine_basis, opt, subdiv);
+	rA.initialize(pde_, epsR, refine_basis, opt, subdiv, prec);
 
 	gsMatrix<real_t> solVector = w_;
 	gsMatrix<real_t> step;
@@ -244,11 +251,9 @@ int main(int argc, char* argv[])
 	{
 		if (prec)
 		{
-			p_ = ip - (i - startrefine)*(ip-p) / (num-startrefine);
+			p_ = math::max(p,ip - (i - startrefine)*(ip-p) / (5-startrefine));
+			eps_ = math::max(eps,ieps - (i - startrefine)*(ieps - eps) / (5 - startrefine)); //reach the true parameter after 5 iterations
 		}
-    //p_ = ip - (i - startrefine)*(ip-p) / (num-startrefine);
-    //eps_= ieps - (i-startrefine)*(ieps-eps)/(num-startrefine);
-    //gsInfo<<ip - (i - startrefine)*(ip-p) / (num-startrefine)<<"\n";
 
 		//transfer recent solution to finer mesh. with elimination it only transfers free DoFs and not Dirichlet values.
 		refine_basis.uniformRefine_withTransfer(transfer, bcInfo, opt2);
@@ -272,11 +277,10 @@ int main(int argc, char* argv[])
 		pde.w = transfer * pde.w; //update w
 		pde_.w = pde.w;
 		pde_.p = p_;
-    pde.p=p_;
-    //pde_.eps=eps_;
+		pde_.eps = eps_;
 
-		A.initialize(pde, refine_basis, opt, subdiv);
-		rA.initialize(pde_, refine_basis, opt, subdiv, prec);
+		A.initialize(pde_, epsR, refine_basis, opt, subdiv);
+		rA.initialize(pde_, epsR, refine_basis, opt, subdiv, prec);
 
 		A.assemble();
 		rA.assemble();
@@ -313,15 +317,15 @@ int main(int argc, char* argv[])
 
 			//std::cin.get();
 
-			real_t tau = stepsize(Kh, fh, pde, refine_basis, opt, solVector, step, rh, Jh, mu, sigma, tau_min, tau_max, subdiv);
+			real_t tau =2*eps_/epsR;// stepsize(Kh, fh, pde, epsR, refine_basis, opt, solVector, step, rh, Jh, mu, sigma, tau_min, tau_max, subdiv);
 
 			solVector = solVector + tau * step;
 
 			pde.w = addDirVal(A, solVector); //add Dirichlet values to current solution and set as new w.
 			pde_.w = pde.w;
 
-			A.initialize(pde, refine_basis, opt);
-			rA.initialize(pde_, refine_basis, opt, subdiv, prec);
+			A.initialize(pde_, epsR, refine_basis, opt);
+			rA.initialize(pde_, epsR, refine_basis, opt, subdiv, prec);
 
 			A.assemble();
 			rA.assemble();
@@ -377,13 +381,13 @@ int main(int argc, char* argv[])
 
 		if (i == startrefine)
 		{
-			gsInfo << A.numDofs() << " & " << time << "s & " << e_0 << " & - & " << e_F << " & - & " << iter << "\n";
+			gsInfo << A.numDofs() << " & " << time << "s & " << e_0 << " & - & " << e_F << " & - & " << iter << " & " << p_ << " & " << eps_ << "\n";
 		}
 		else
 		{
 			Lp_rate = math::log(e_0 / e_0old) / math::log(0.5);
 			F_rate = math::log(e_F / e_Fold) / math::log(0.5);
-			gsInfo << A.numDofs() << " & " << time << "s & " << e_0 << " & " << Lp_rate << " & " << e_F << " & " << F_rate << " & " << iter << "\n";
+			gsInfo << A.numDofs() << " & " << time << "s & " << e_0 << " & " << Lp_rate << " & " << e_F << " & " << F_rate << " & " << iter << " & " << p_ << " & " << eps_ << "\n";
 		}
 	}
 
@@ -544,7 +548,7 @@ gsMatrix<real_t> reduceDirichlet(gsAssembler<real_t> a, gsMatrix<real_t> w_)
 /*
 calculate stepsize of the iteration
 */
-real_t stepsize(gsSparseMatrix<real_t, 1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPde<real_t> &pde, gsMultiBasis<> basis, gsOptionList opt, gsMatrix<real_t> u_, gsMatrix<real_t> s_, gsMatrix<real_t> &rh, real_t &Jh, real_t mu, real_t sigma, real_t tau_min, real_t tau_max, index_t subdiv)
+real_t stepsize(gsSparseMatrix<real_t, 1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPde<real_t> &pde,real_t epsR, gsMultiBasis<> basis, gsOptionList opt, gsMatrix<real_t> u_, gsMatrix<real_t> s_, gsMatrix<real_t> &rh, real_t &Jh, real_t mu, real_t sigma, real_t tau_min, real_t tau_max, index_t subdiv)
 {
 	real_t tau = 1;
 	//int iter = 0;
@@ -559,12 +563,12 @@ real_t stepsize(gsSparseMatrix<real_t, 1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPd
 	const real_t upscale = 1.2;
 
 	gsLinpLapAssembler<real_t> A;
-	A.initialize(pde, basis, opt, subdiv);
+	A.initialize(pde, epsR, basis, opt, subdiv);
 	A.assemble();
 
 	pde.w = addDirVal(A, u_ + tau * s_);
 
-	A.initialize(pde, basis, opt, subdiv);
+	A.initialize(pde,epsR, basis, opt, subdiv);
 	A.assemble();
 
 	Kh = A.matrix();
@@ -599,7 +603,7 @@ real_t stepsize(gsSparseMatrix<real_t, 1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPd
 			tau *= downscale;
 
 			pde.w = addDirVal(A, u_ + tau * s_);
-			A.initialize(pde, basis, opt, subdiv);
+			A.initialize(pde, epsR, basis, opt, subdiv);
 			A.assemble();
 
 			Kh = A.matrix();
@@ -637,7 +641,7 @@ real_t stepsize(gsSparseMatrix<real_t, 1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPd
 			tau *= upscale;
 
 			pde.w = addDirVal(A, u_ + tau * s_);
-			A.initialize(pde, basis, opt, subdiv);
+			A.initialize(pde, epsR, basis, opt, subdiv);
 			A.assemble();
 
 			Kh = A.matrix();

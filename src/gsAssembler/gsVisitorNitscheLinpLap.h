@@ -127,6 +127,23 @@ namespace gismo
 				w_(i, 0) = w(actives(i), 0);
 			}
 
+			/*
+			if (prec)
+			{
+				real_t sum = 0;
+				for (index_t k = 0; k < quWeights.rows(); ++k)
+				{
+					transformGradients(md, k, bGrads, pGrads);
+					gsMatrix<T> wGrad = pGrads * w_;
+					sum += (wGrad.transpose() * wGrad).value();
+				}
+				if (sum / (quWeights.rows()) < 5)
+				{
+					eps = 0.1;
+				}
+			}
+			*/
+
 			for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
 			{
 

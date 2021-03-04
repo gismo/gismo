@@ -30,11 +30,12 @@ namespace gismo
 
 		/** \brief Constructor for gsVisitorLinpLap.
 		*/
-		gsVisitorLinpLap(const gsPde<T> & pde, index_t subdiv_ = 1, bool prec_ = 0)
+		gsVisitorLinpLap(const gsPde<T> & pde,T eps_R, index_t subdiv_ = 1, bool prec_ = 0)
 		{
 			pde_ptr = static_cast<const gsLinpLapPde<T>*>(&pde);
 			subdiv = subdiv_;
 			prec = prec_;
+			eps_ = eps_R;
 		}
 
 		void initialize(const gsBasis<T> & basis,
@@ -82,7 +83,7 @@ namespace gismo
 			localJ = 0;
 		}
 
-		inline void assemble(gsDomainIterator<T>    &,
+		inline void assemble(gsDomainIterator<T>    &element,
 			gsVector<T> const      & quWeights)
 		{
 
@@ -92,26 +93,30 @@ namespace gismo
 			//Access the coefficients of w which correspond to the active basis functions
 			gsMatrix<T> w_(numActive, 1);
 
+			const T h = element.getCellSize();
+
 			for (index_t i = 0; i < numActive; i++)
 			{
 				w_(i, 0) = pde_ptr->w(actives(i), 0);
 			}
 
-			real_t eps= pde_ptr->eps;
+			real_t eps = pde_ptr->eps; //simplicity
 
 			if (prec)      //elementwise regularization
 			{
 				real_t sum = 0;
 				for (index_t k = 0; k < quWeights.rows(); ++k)
 				{
+					const T weight = quWeights[k] * md.measure(k);
 					transformGradients(md, k, bGrads, physGrad);
 					gsMatrix<T> wGrad = physGrad * w_;
-					sum += math::sqrt((wGrad.transpose() * wGrad).value());
+					sum += weight * (wGrad.transpose() * wGrad).value();
 				}
-        //gsInfo<<sum/(quWeights.rows())<<"\n";
-				if (sum/(quWeights.rows()) < 1) //good value for the gradient?
+				//gsInfo << sum << "\n";
+				if (sum < 0.5) //good value for the gradient?
 				{
-					eps = 0.1;
+					eps = math::max(eps_, eps);
+					//gsInfo<<"yes \n";
 				}
 			}
 
@@ -126,15 +131,16 @@ namespace gismo
 				//Compute the Gradient of the approximative function w by multiplying the coefficients of w with the physical gradients
 				gsMatrix<T> wGrad = physGrad * w_;
 				gsMatrix<T> wVal = bVals.col(k).transpose() * w_;
-        
-        eps=pde_ptr->eps;
-        
-        if(math::sqrt((wGrad.transpose() * wGrad).value())<0.1)  //pointwise regularization
-        {
-          //eps=0.1;
-        }
-        
-				const T a = pow(eps * eps + (wGrad.transpose() * wGrad).value(), (pde_ptr->p - 2) / 2);
+
+				eps = pde_ptr->eps;
+
+				if (math::sqrt((wGrad.transpose() * wGrad).value())<0.1)  //pointwise regularization
+				{
+					//eps=0.1;
+				}
+
+				T a = pow(eps * eps + (wGrad.transpose() * wGrad).value(), (pde_ptr->p - 2) / 2);
+				//if(prec){a=math::max(a,math::pow(0.05,pde_ptr->p-2));}
 
 				localJ += weight * (pow(eps * eps + (wGrad.transpose() * wGrad).value(), (pde_ptr->p) / 2) / (pde_ptr->p) - (rhsVals.col(k).transpose()*wVal).value());
 				localRhs.noalias() += weight * (bVals.col(k) * rhsVals.col(k).transpose());
@@ -156,6 +162,8 @@ namespace gismo
 			//Add contributions to the evaluation of the energy functional in w
 			J = J + localJ;
 		}
+
+		T eps_;
 
 	protected:
 		//number of subdivisions for quadrature
