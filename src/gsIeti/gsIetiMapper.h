@@ -117,6 +117,8 @@ public:
     /// @param geo             \a gsMultiPatch object describing the geometry
     /// @param d               The dimension of the interfaces to be considered:
     ///                        d=1 yields edge averages, d=2 yields face averages
+    ///                        Works for d=geo.dim() as well, but this is no
+    ///                        longer an interface.
     void interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, short_t d);
 
     /// @brief With this function, the caller can register more primal constraints

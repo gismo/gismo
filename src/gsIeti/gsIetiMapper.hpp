@@ -202,8 +202,8 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, con
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
     GISMO_ASSERT( d>0, "gsIetiMapper::interfaceAveragesAsPrimals cannot handle corners." );
-    GISMO_ASSERT( d<m_multiBasis->dim(), "gsIetiMapper::interfaceAveragesAsPrimals: "
-        "Interfaces must have smaller dimension than considered object." );
+    GISMO_ASSERT( d<=m_multiBasis->dim(), "gsIetiMapper::interfaceAveragesAsPrimals: "
+        "Interfaces cannot have larger dimension than considered object." );
     GISMO_ASSERT( (index_t)(geo.nPatches()) == m_multiBasis->nPieces(),
         "gsIetiMapper::interfaceAveragesAsPrimals: The given geometry does not fit.");
     GISMO_ASSERT( geo.parDim() == m_multiBasis->dim(),
@@ -219,7 +219,7 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, con
     for (index_t n=0; n<nComponents; ++n)
     {
         const index_t sz = components[n].size();
-        if ( sz > 1 && components[n][0].dim() == d )
+        if ( components[n][0].dim() == d && ( sz > 1 || m_multiBasis->dim() == d ))
         {
             index_t used = 0;
             for (index_t i=0; i<sz; ++i)
