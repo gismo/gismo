@@ -240,6 +240,7 @@ int main(int argc, char* argv[])
 	//gsMatrix<real_t> vh
 
 	real_t Jh;
+  real_t tau;
 
 	gsField<> sol;
 	//gsField<> solnew;
@@ -275,11 +276,13 @@ int main(int argc, char* argv[])
 		//pde.w = projectL2(patch, refine_basis, u0);
 
 		pde.w = transfer * pde.w; //update w
+    pde.p=p_;
+    pde.eps=eps_;
 		pde_.w = pde.w;
 		pde_.p = p_;
 		pde_.eps = eps_;
 
-		A.initialize(pde_, epsR, refine_basis, opt, subdiv);
+		A.initialize(pde, epsR, refine_basis, opt, subdiv);
 		rA.initialize(pde_, epsR, refine_basis, opt, subdiv, prec);
 
 		A.assemble();
@@ -317,14 +320,18 @@ int main(int argc, char* argv[])
 
 			//std::cin.get();
 
-			real_t tau =2*eps_/epsR;// stepsize(Kh, fh, pde, epsR, refine_basis, opt, solVector, step, rh, Jh, mu, sigma, tau_min, tau_max, subdiv);
-
+      if(prec && eps_<epsR){tau=2*eps_/epsR;}
+      else
+      {tau =1;// stepsize(Kh, fh, pde, epsR, refine_basis, opt, solVector, step, rh, Jh, mu, sigma, tau_min, tau_max, subdiv);
+      }
+      //gsInfo<<tau<<"\n";
+      
 			solVector = solVector + tau * step;
 
 			pde.w = addDirVal(A, solVector); //add Dirichlet values to current solution and set as new w.
 			pde_.w = pde.w;
 
-			A.initialize(pde_, epsR, refine_basis, opt);
+			A.initialize(pde, epsR, refine_basis, opt);
 			rA.initialize(pde_, epsR, refine_basis, opt, subdiv, prec);
 
 			A.assemble();
