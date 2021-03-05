@@ -22,7 +22,7 @@ using namespace gismo;
 gsMatrix<real_t> projectL2(gsMultiPatch<real_t> mp, gsMultiBasis<real_t> mb, gsFunction<real_t> &g);
 gsMatrix<real_t> addDirVal(gsAssembler<real_t> a, gsMatrix<real_t> solVector);
 gsMatrix<real_t> reduceDirichlet(gsAssembler<real_t> a, gsMatrix<real_t> w_);
-real_t stepsize(gsSparseMatrix<real_t, 1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPde<real_t> &pde,real_t epsR, gsMultiBasis<real_t> basis, gsOptionList opt, gsMatrix<real_t> u_, gsMatrix<real_t> s_, gsMatrix<real_t> &rh, real_t &Jh, real_t mu, real_t sigma, real_t tau_min, real_t tau_max, index_t subdiv);
+real_t stepsize(gsSparseMatrix<real_t, 1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPde<real_t> &pde, real_t epsR, gsMultiBasis<real_t> basis, gsOptionList opt, gsMatrix<real_t> u_, gsMatrix<real_t> s_, gsMatrix<real_t> &rh, real_t &Jh, real_t mu, real_t sigma, real_t tau_min, real_t tau_max, index_t subdiv);
 
 int main(int argc, char* argv[])
 {
@@ -40,6 +40,7 @@ int main(int argc, char* argv[])
 	real_t tau_min = 1;
 	real_t tau_max = 1;
 	index_t subdiv = 1;
+	index_t bc = 1;
 	bool prec = false;
 	gsCmdLine cmd("Linearized p-Laplace example");
 
@@ -59,11 +60,12 @@ int main(int argc, char* argv[])
 	cmd.addSwitch("", "fin", "After computation, wait until button is pressed", require_fin);
 	cmd.addSwitch("", "prec", "Preconditioning switch", prec);
 	cmd.addReal("", "epsR", "regularizing parameter", epsR);
+	cmd.addInt("", "bc", "Type of Boundary conditions on all boundaries", bc);
 	try { cmd.getValues(argc, argv); }
 	catch (int rv) { return rv; }
 
 	real_t eps_ = eps;
-	real_t p_=p;
+	real_t p_ = p;
 	real_t ip = 1.8;
 	real_t ieps = 1;
 
@@ -80,7 +82,8 @@ int main(int argc, char* argv[])
 		<< "tol               = " << TOL << "\n"
 		<< "subdiv            = " << subdiv << "\n"
 		<< "prec              = " << prec << "\n"
-		<< "epsR              = " << epsR << "\n";
+		<< "epsR              = " << epsR << "\n"
+		<< "BC                = " << bc << "\n";
 	gsOptionList opt = gsAssembler<>::defaultOptions();
 	//opt.setInt("DirichletValues", dirichlet::l2Projection);
 
@@ -132,10 +135,10 @@ int main(int argc, char* argv[])
 	gsFunctionExpr<> u3("sin(2*pi*x)*sin(2*pi*y)", 2);
 	gsFunctionExpr<> u4("sin(x)", 2);
 
-	gsFunctionExpr<> u2_derEast("(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*pi^2*cos(" + std::to_string(gamma) + "*pi*(1+y))^2)^((" + std::to_string(p) + "-2)/2)*(" + std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*(1+y)))", 2);
-	gsFunctionExpr<> u2_derWest("-(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*pi^2*cos(" + std::to_string(gamma) + "*pi*y)^2)^((" + std::to_string(p) + "-2)/2)*(" + std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*y))", 2);
-	gsFunctionExpr<> u2_derNorth("(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*pi^2*cos(" + std::to_string(gamma) + "*pi*(x+1))^2)^((" + std::to_string(p) + "-2)/2)*(" + std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*(x+1)))", 2);
-	gsFunctionExpr<> u2_derSouth("-(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*pi^2*cos(" + std::to_string(gamma) + "*pi*x)^2)^((" + std::to_string(p) + "-2)/2)*(" + std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*x))", 2);
+	gsFunctionExpr<> u2_derEast(std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*(1+y))", 2);
+	gsFunctionExpr<> u2_derWest("-" + std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*y)", 2);
+	gsFunctionExpr<> u2_derNorth(std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*(x+1))", 2);
+	gsFunctionExpr<> u2_derSouth("-" + std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*x)", 2);
 
 	gsFunctionExpr<> f = f2;
 	gsFunctionExpr<> u = u2;
@@ -143,7 +146,7 @@ int main(int argc, char* argv[])
 	gsFunctionExpr<> Z("0", 2);
 	gsFunctionExpr<> L("x+y", 2);
 
-	gsFunctionExpr<> u0 = B;
+	gsFunctionExpr<> u0 = L;
 
 
 	// Print out source function and solution
@@ -163,17 +166,33 @@ int main(int argc, char* argv[])
 
 	//! [Boundary conditions]
 	gsBoundaryConditions<> bcInfo;
-	bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, &u);
-	bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &u);
-	bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &u);
-	bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &u);
-
 	gsBoundaryConditions<> hbcInfo;
-	hbcInfo.addCondition(0, boundary::west, condition_type::dirichlet, &Z);
-	hbcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &Z);
-	hbcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &Z);
-	hbcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &Z);
+	if (bc == 1)
+	{
+		bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, &u);
+		bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &u);
+		bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &u);
+		bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &u);
 
+		hbcInfo.addCondition(0, boundary::west, condition_type::dirichlet, &Z);
+		hbcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &Z);
+		hbcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &Z);
+		hbcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &Z);
+	}
+	else
+	{
+		bcInfo.addCondition(0, boundary::west, condition_type::neumann, &u2_derWest);
+		bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &u);
+		bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &u);
+		bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &u);
+		//bcInfo.addCornerValue(boundary::southwest, 0);
+
+		hbcInfo.addCondition(0, boundary::west, condition_type::neumann, &Z);
+		hbcInfo.addCondition(0, boundary::east, condition_type::neumann, &Z);
+		hbcInfo.addCondition(0, boundary::north, condition_type::neumann, &Z);
+		hbcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &Z);
+		//hbcInfo.addCornerValue(boundary::southwest,0);
+	}
 	//! [Boundary conditions]
 
 	//! [Refinement]
@@ -240,7 +259,7 @@ int main(int argc, char* argv[])
 	//gsMatrix<real_t> vh
 
 	real_t Jh;
-  real_t tau;
+	real_t tau;
 
 	gsField<> sol;
 	//gsField<> solnew;
@@ -252,8 +271,8 @@ int main(int argc, char* argv[])
 	{
 		if (prec)
 		{
-			p_ = math::max(p,ip - (i - startrefine)*(ip-p) / (5-startrefine));
-			eps_ = math::max(eps,ieps - (i - startrefine)*(ieps - eps) / (5 - startrefine)); //reach the true parameter after 5 iterations
+			p_ = math::max(p, ip - (i - startrefine)*(ip - p) / (5 - startrefine));
+			eps_ = math::max(eps, ieps - (i - startrefine)*(ieps - eps) / (5 - startrefine)); //reach the true parameter after 5 iterations
 		}
 
 		//transfer recent solution to finer mesh. with elimination it only transfers free DoFs and not Dirichlet values.
@@ -276,8 +295,8 @@ int main(int argc, char* argv[])
 		//pde.w = projectL2(patch, refine_basis, u0);
 
 		pde.w = transfer * pde.w; //update w
-    pde.p=p_;
-    pde.eps=eps_;
+		pde.p = p_;
+		pde.eps = eps_;
 		pde_.w = pde.w;
 		pde_.p = p_;
 		pde_.eps = eps_;
@@ -320,12 +339,13 @@ int main(int argc, char* argv[])
 
 			//std::cin.get();
 
-      if(prec && eps_<epsR){tau=2*eps_/epsR;}
-      else
-      {tau =1;// stepsize(Kh, fh, pde, epsR, refine_basis, opt, solVector, step, rh, Jh, mu, sigma, tau_min, tau_max, subdiv);
-      }
-      //gsInfo<<tau<<"\n";
-      
+			if (prec && eps_<epsR) { tau = 2 * eps_ / epsR; }
+			else
+			{
+				tau = 1;// stepsize(Kh, fh, pde, epsR, refine_basis, opt, solVector, step, rh, Jh, mu, sigma, tau_min, tau_max, subdiv);
+			}
+			//gsInfo<<tau<<"\n";
+
 			solVector = solVector + tau * step;
 
 			pde.w = addDirVal(A, solVector); //add Dirichlet values to current solution and set as new w.
@@ -555,7 +575,7 @@ gsMatrix<real_t> reduceDirichlet(gsAssembler<real_t> a, gsMatrix<real_t> w_)
 /*
 calculate stepsize of the iteration
 */
-real_t stepsize(gsSparseMatrix<real_t, 1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPde<real_t> &pde,real_t epsR, gsMultiBasis<> basis, gsOptionList opt, gsMatrix<real_t> u_, gsMatrix<real_t> s_, gsMatrix<real_t> &rh, real_t &Jh, real_t mu, real_t sigma, real_t tau_min, real_t tau_max, index_t subdiv)
+real_t stepsize(gsSparseMatrix<real_t, 1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPde<real_t> &pde, real_t epsR, gsMultiBasis<> basis, gsOptionList opt, gsMatrix<real_t> u_, gsMatrix<real_t> s_, gsMatrix<real_t> &rh, real_t &Jh, real_t mu, real_t sigma, real_t tau_min, real_t tau_max, index_t subdiv)
 {
 	real_t tau = 1;
 	//int iter = 0;
@@ -575,7 +595,7 @@ real_t stepsize(gsSparseMatrix<real_t, 1> &Kh, gsMatrix<real_t> &fh, gsLinpLapPd
 
 	pde.w = addDirVal(A, u_ + tau * s_);
 
-	A.initialize(pde,epsR, basis, opt, subdiv);
+	A.initialize(pde, epsR, basis, opt, subdiv);
 	A.assemble();
 
 	Kh = A.matrix();
