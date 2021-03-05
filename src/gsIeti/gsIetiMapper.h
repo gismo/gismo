@@ -117,6 +117,12 @@ public:
     /// @param geo             \a gsMultiPatch object describing the geometry
     /// @param d               The dimension of the interfaces to be considered:
     ///                        d=1 yields edge averages, d=2 yields face averages
+    ///
+    /// Adds contributions only iff the interface (edge, face,...) belongs to at
+    /// least two patches. This function also works if d=geo.dim(), i.e., for the
+    /// patch averages. In this case, the requirement that it contributes to
+    /// at least two patches does not apply. For corners, use \ref cornersAsPrimals
+    /// instead.
     void interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, short_t d);
 
     /// @brief With this function, the caller can register more primal constraints
