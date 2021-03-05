@@ -56,7 +56,7 @@ public:
 
     short_t domainDim() const { return 2; }
 
-    short_t targetDim() const { return 9; }
+    short_t targetDim() const { return 36; } // all values into one column
 
     mutable gsMaterialMatrix<T>* _mm_piece; // todo: improve the way pieces are accessed
 
@@ -109,9 +109,9 @@ public:
             C(1, 1) = C_constant * F0(1, 1) * F0(1, 1) + 1 * mu * (2 * F0(1, 1) * F0(1, 1));
             C(2, 2) = C_constant * F0(0, 1) * F0(0, 1) + 1 * mu * (F0(0, 0) * F0(1, 1) + F0(0, 1) * F0(0, 1));
             C(1, 0) =
-                C(0, 1) = C_constant * F0(0, 0) * F0(1, 1) + 1 * mu * (2 * F0(0, 1) * F0(0, 1));
+            C(0, 1) = C_constant * F0(0, 0) * F0(1, 1) + 1 * mu * (2 * F0(0, 1) * F0(0, 1));
             C(2, 0) =
-                C(0, 2) = C_constant * F0(0, 0) * F0(0, 1) + 1 * mu * (2 * F0(0, 0) * F0(0, 1));
+            C(0, 2) = C_constant * F0(0, 0) * F0(0, 1) + 1 * mu * (2 * F0(0, 0) * F0(0, 1));
             C(2, 1) = C(1, 2) = C_constant * F0(0, 1) * F0(1, 1) + 1 * mu * (2 * F0(0, 1) * F0(1, 1));
         }
     }
@@ -161,6 +161,9 @@ int main(int argc, char *argv[])
         // component: component of n-dimensional space, e.g. the i-th displacement
 
         // Displacements
+        //    void addCondition( boxSide s, condition_type::type t,
+        //gsFunction<T>* f, short_t unknown = 0, bool parametric = false, int comp = -1)
+
         bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, i );
         bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, i );
         bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, i );
@@ -197,10 +200,10 @@ int main(int argc, char *argv[])
     //! [Refinement]
 
     //! [Problem setup]
-    gsExprAssembler<> A(2,2);
+    gsExprAssembler<> RmAssembler(2,2);
     // A.setOptions(Aopt);
 
-    gsInfo<<"Active options:\n"<< A.options() <<"\n";
+    gsInfo<<"Active options:\n"<< RmAssembler.options() <<"\n";
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -208,24 +211,24 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::solution    solution;
 
     // Elements used for numerical integration
-    A.setIntegrationElements(dbasis); // is compatible with new B-bar?? --> test with Poisson first
-    gsExprEvaluator<> ev(A);
+    RmAssembler.setIntegrationElements(dbasis); // is compatible with new B-bar?? --> test with Poisson first
+    gsExprEvaluator<> ev(RmAssembler);
 
     // Set the geometry map
-    geometryMap Gori = A.getMap(mp);
-    geometryMap Gdef = A.getMap(mp_def);
+    geometryMap Gori = RmAssembler.getMap(mp);
+    geometryMap Gdef = RmAssembler.getMap(mp_def);
 
     // Set the discretization space
-    space u = A.getSpace(dbasis,3,0);
-    space theta = A.getSpace(dbasis,3,1);
+    space u = RmAssembler.getSpace(dbasis,3,0);
+    space theta = RmAssembler.getSpace(dbasis,3,1);
 
     // Set the source term
-    variable ff = A.getCoeff(f, Gori);
+    variable ff = RmAssembler.getCoeff(f, Gori);
 
     // Solution vector and solution variable
     gsMatrix<> solVectorU,solVectorT;
-    solution u_sol = A.getSolution(u, solVectorU);
-    solution theta_sol = A.getSolution(theta, solVectorT);
+    solution u_sol = RmAssembler.getSolution(u, solVectorU);
+    solution theta_sol = RmAssembler.getSolution(theta, solVectorT);
     //***********************************************************************//
     // material and constitutive equation
     //***********************************************************************//
@@ -233,7 +236,11 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> nu(util::to_string(PoissonRatio), 3);
     gsMaterialMatrix<real_t> materialMat(mp, E, nu);
     // evaluates in the parametric domain, but the class transforms E and nu to physical
-    variable mm = A.getCoeff(materialMat); 
+    variable mm = RmAssembler.getCoeff(materialMat); 
+    gsVector<> point(2);
+    point << 0.5, 0.5;
+    gsMatrix<> result = ev.eval(mm, point);
+    gsInfo << result;
     auto S_m = reshape(mm, 3, 3);
     //thickness
     gsFunctionExpr<> t(util::to_string(thickness), 3);
@@ -257,24 +264,24 @@ int main(int argc, char *argv[])
         theta.setup(bc, dirichlet::interpolation, 0); // will setup take the unknowns into account????
 
         // Initialize the system
-        A.initSystem(false);
+        RmAssembler.initSystem(false);
 
-        gsInfo<< A.numDofs() <<std::flush;
+        gsInfo<< RmAssembler.numDofs() <<std::flush;
 
         // Compute the system matrix and right-hand side
-        A.assemble( (           igrad(u, Gori) * igrad(u, Gori).tr()                    ) * meas(Gori),
+        RmAssembler.assemble( (           igrad(u, Gori) * igrad(u, Gori).tr()                    ) * meas(Gori),
                     (           u * ff                    ) * meas(Gori) ); // assembly depends on u, theta, u_sol, theta_sol
 
         // Enforce Neumann conditions to right-hand side
-        variable g_N = A.getBdrFunction();
-        A.assembleRhsBc(
+        variable g_N = RmAssembler.getBdrFunction();
+        RmAssembler.assembleRhsBc(
                         u * g_N.val() * nv(Gori).norm(),
                             bc.neumannSides() );
 
         gsInfo<< "." <<std::flush;// Assemblying done
 
-        solver.compute( A.matrix() );
-        gsVector<> solVector = solver.solve(A.rhs());
+        solver.compute( RmAssembler.matrix() );
+        gsVector<> solVector = solver.solve(RmAssembler.rhs());
 
         gsInfo<< "." <<std::flush; // Linear solving done
 
@@ -323,3 +330,184 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 
 }// end main
+
+/*
+   Expression for the transformation matrix FROM local covariant TO local
+   cartesian bases, based on a geometry map
+ */
+ // template<class T> class cartcovinv_expr;
+ // template<class T>
+ // class cartcov_expr : public _expr<cartcov_expr<T> >
+ // {
+ //     typename gsGeometryMap<T>::Nested_t _G;
+ // public:
+ //     typedef T Scalar;
+ //     cartcov_expr(const gsGeometryMap<T>& G) : _G(G) { }
+ //     mutable gsMatrix<Scalar, 3, 3> covBasis, conBasis, covMetric, conMetric, cartBasis, result;
+ //     mutable gsVector<Scalar, 3> normal, tmp;
+ //     mutable gsVector<Scalar, 3> e1, e2, a1, a2;
+ //     gsMatrix<Scalar, 3, 3> eval(const index_t k) const
+ //     {
+ //         // Compute covariant bases in deformed and undeformed configuration
+ //         normal = _G.data().normals.col(k);
+ //         normal.normalize();
+ //         covBasis.leftCols(2) = _G.data().jacobian(k);
+ //         covBasis.col(2) = normal;
+ //         covMetric = covBasis.transpose() * covBasis;
+ //         conMetric = covMetric.inverse();
+ //         conBasis.col(1) = conMetric(1, 0) * covBasis.col(0) + conMetric(1, 1) * covBasis.col(1) + conMetric(1, 2) * covBasis.col(2);
+ //         e1 = covBasis.col(0); e1.normalize();
+ //         e2 = conBasis.col(1); e2.normalize();
+ //         // e3 = normal;
+ //         a1 = covBasis.col(0);
+ //         a2 = covBasis.col(1);
+ //         result(0, 0) = (e1.dot(a1)) * (a1.dot(e1));
+ //         result(0, 1) = (e1.dot(a2)) * (a2.dot(e2));
+ //         result(0, 2) = 2 * (e1.dot(a1)) * (a2.dot(e1));
+ //         // Row 1
+ //         result(1, 0) = (e2.dot(a1)) * (a1.dot(e2));
+ //         result(1, 1) = (e2.dot(a2)) * (a2.dot(e2));
+ //         result(1, 2) = 2 * (e2.dot(a1)) * (a2.dot(e2));
+ //         // Row 2
+ //         result(2, 0) = (e1.dot(a1)) * (a1.dot(e2));
+ //         result(2, 1) = (e1.dot(a2)) * (a2.dot(e2));
+ //         result(2, 2) = (e1.dot(a1)) * (a2.dot(e2)) + (e1.dot(a2)) * (a1.dot(e2));
+ //         // return result.inverse(); // !!!!
+ //         return result;
+ //     }
+ //     cartcovinv_expr<T> inv() const
+ //     {
+ //         GISMO_ASSERT(rows() == cols(), "The Jacobian matrix is not square");
+ //         return cartcovinv_expr<T>(_G);
+ //     }
+ //     index_t rows() const { return 3; }
+ //     index_t cols() const { return 3; }
+ //     enum { rowSpan = 0, colSpan = 0 };
+ //     static const gsFeSpace<Scalar>& rowVar() { return gsNullExpr<Scalar>::get(); }
+ //     static const gsFeSpace<Scalar>& colVar() { return gsNullExpr<Scalar>::get(); }
+ //     void setFlag() const { _G.data().flags |= NEED_NORMAL | NEED_DERIV; }
+ //     void parse(gsSortedVector<const gsFunctionSet<Scalar>*>& evList) const
+ //     {
+ //         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+ //         evList.push_sorted_unique(&_G.source());
+ //         _G.data().flags |= NEED_NORMAL | NEED_DERIV;
+ //     }
+ //     void print(std::ostream& os) const { os << "cartcov("; _G.print(os); os << ")"; }
+ // };
+ // template<class T>
+ // class cartcovinv_expr : public _expr<cartcovinv_expr<T> >
+ // {
+ //     typename gsGeometryMap<T>::Nested_t _G;
+ // public:
+ //     typedef T Scalar;
+ //     cartcovinv_expr(const gsGeometryMap<T>& G) : _G(G) { }
+ //     mutable gsMatrix<T> temp;
+ //     gsMatrix<T> eval(const index_t k) const
+ //     {
+ //         temp = (cartcov_expr<gsGeometryMap<T> >(_G).eval(k)).reshape(3, 3).inverse();
+ //         return temp;
+ //     }
+ //     index_t rows() const { return 3; }
+ //     index_t cols() const { return 3; }
+ //     enum { rowSpan = 0, colSpan = 0 };
+ //     static const gsFeSpace<Scalar>& rowVar() { return gsNullExpr<Scalar>::get(); }
+ //     static const gsFeSpace<Scalar>& colVar() { return gsNullExpr<Scalar>::get(); }
+ //     void setFlag() const { _G.data().flags |= NEED_NORMAL | NEED_DERIV; }
+ //     void parse(gsSortedVector<const gsFunctionSet<Scalar>*>& evList) const
+ //     {
+ //         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+ //         evList.push_sorted_unique(&_G.source());
+ //         _G.data().flags |= NEED_NORMAL | NEED_DERIV;
+ //     }
+ //     void print(std::ostream& os) const { os << "cartcovinv("; _G.print(os); os << ")"; }
+ // };
+ /*
+    Expression for the transformation matrix FROM local contravariant
+    TO local cartesian bases, based on a geometry map
+  */
+  // template<class T> class cartconinv_expr;
+  // template<class T>
+  // class cartcon_expr : public _expr<cartcon_expr<T> >
+  // {
+  //     typename gsGeometryMap<T>::Nested_t _G;
+  // public:
+  //     typedef T Scalar;
+  //     cartcon_expr(const gsGeometryMap<T>& G) : _G(G) { }
+  //     mutable gsMatrix<Scalar, 3, 3> covBasis, conBasis, covMetric, conMetric, cartBasis, result;
+  //     mutable gsVector<Scalar, 3> normal, tmp;
+  //     mutable gsVector<Scalar, 3> e1, e2, ac1, ac2;
+  //     gsMatrix<Scalar, 3, 3> eval(const index_t k) const
+  //     {
+  //         // Compute covariant bases in deformed and undeformed configuration
+  //         normal = _G.data().normals.col(k);
+  //         normal.normalize();
+  //         covBasis.leftCols(2) = _G.data().jacobian(k);
+  //         covBasis.col(2) = normal;
+  //         covMetric = covBasis.transpose() * covBasis;
+  //         conMetric = covMetric.inverse();
+  //         conBasis.col(0) = conMetric(0, 0) * covBasis.col(0) + conMetric(0, 1) * covBasis.col(1) + conMetric(0, 2) * covBasis.col(2);
+  //         conBasis.col(1) = conMetric(1, 0) * covBasis.col(0) + conMetric(1, 1) * covBasis.col(1) + conMetric(1, 2) * covBasis.col(2);
+  //         e1 = covBasis.col(0); e1.normalize();
+  //         e2 = conBasis.col(1); e2.normalize();
+  //         // e3 = normal;
+  //         ac1 = conBasis.col(0);
+  //         ac2 = conBasis.col(1);
+  //         result(0, 0) = (e1.dot(ac1)) * (ac1.dot(e1));
+  //         result(0, 1) = (e1.dot(ac2)) * (ac2.dot(e2));
+  //         result(0, 2) = 2 * (e1.dot(ac1)) * (ac2.dot(e1));
+  //         // Row 1
+  //         result(1, 0) = (e2.dot(ac1)) * (ac1.dot(e2));
+  //         result(1, 1) = (e2.dot(ac2)) * (ac2.dot(e2));
+  //         result(1, 2) = 2 * (e2.dot(ac1)) * (ac2.dot(e2));
+  //         // Row 2
+  //         result(2, 0) = (e1.dot(ac1)) * (ac1.dot(e2));
+  //         result(2, 1) = (e1.dot(ac2)) * (ac2.dot(e2));
+  //         result(2, 2) = (e1.dot(ac1)) * (ac2.dot(e2)) + (e1.dot(ac2)) * (ac1.dot(e2));
+  //         return result;
+  //     }
+  //     cartconinv_expr<T> inv() const
+  //     {
+  //         GISMO_ASSERT(rows() == cols(), "The Jacobian matrix is not square");
+  //         return cartconinv_expr<T>(_G);
+  //     }
+  //     index_t rows() const { return 3; }
+  //     index_t cols() const { return 3; }
+  //     enum { rowSpan = 0, colSpan = 0 };
+  //     static const gsFeSpace<Scalar>& rowVar() { return gsNullExpr<Scalar>::get(); }
+  //     static const gsFeSpace<Scalar>& colVar() { return gsNullExpr<Scalar>::get(); }
+  //     void setFlag() const { _G.data().flags |= NEED_NORMAL | NEED_DERIV; }
+  //     void parse(gsSortedVector<const gsFunctionSet<Scalar>*>& evList) const
+  //     {
+  //         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+  //         evList.push_sorted_unique(&_G.source());
+  //         _G.data().flags |= NEED_NORMAL | NEED_DERIV;
+  //     }
+  //     void print(std::ostream& os) const { os << "cartcon("; _G.print(os); os << ")"; }
+  // };
+  // template<class T>
+  // class cartconinv_expr : public _expr<cartconinv_expr<T> >
+  // {
+  //     typename gsGeometryMap<T>::Nested_t _G;
+  // public:
+  //     typedef T Scalar;
+  //     cartconinv_expr(const gsGeometryMap<T>& G) : _G(G) { }
+  //     mutable gsMatrix<T> temp;
+  //     gsMatrix<T> eval(const index_t k) const
+  //     {
+  //         temp = (cartcon_expr<gsGeometryMap<T> >(_G).eval(k)).reshape(3, 3).inverse();
+  //         return temp;
+  //     }
+  //     index_t rows() const { return 3; }
+  //     index_t cols() const { return 3; }
+  //     enum { rowSpan = 0, colSpan = 0 };
+  //     static const gsFeSpace<Scalar>& rowVar() { return gsNullExpr<Scalar>::get(); }
+  //     static const gsFeSpace<Scalar>& colVar() { return gsNullExpr<Scalar>::get(); }
+  //     void setFlag() const { _G.data().flags |= NEED_NORMAL | NEED_DERIV; }
+  //     void parse(gsSortedVector<const gsFunctionSet<Scalar>*>& evList) const
+  //     {
+  //         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+  //         evList.push_sorted_unique(&_G.source());
+  //         _G.data().flags |= NEED_NORMAL | NEED_DERIV;
+  //     }
+  //     void print(std::ostream& os) const { os << "cartconinv("; _G.print(os); os << ")"; }
+  // };
