@@ -343,4 +343,27 @@ void gsBoxTopology::getOVs(std::vector<std::vector<patchCorner> > & cornerLists)
         }
     }
 }
+
+std::vector<std::vector<patchCorner>> gsBoxTopology::vertices() const
+{
+    std::vector<std::vector<patchCorner>> allCorners;
+    for (index_t n = 0; n < nboxes; ++n)
+    {
+        for(index_t j=1;j<=4;++j)
+        {
+            std::vector<patchCorner> cornerLists;
+            patchCorner start(n, j);
+            getCornerList(start, cornerLists);
+            bool alreadyReached = false;
+            for(size_t k = 0;k<allCorners.size();++k)
+                for(size_t l = 0;l<allCorners[k].size();++l)
+                    if(allCorners[k][l].patch==n && allCorners[k][l].m_index==j)
+                        alreadyReached = true;
+            if (cornerLists.size() > 0 && !alreadyReached)
+                allCorners.push_back(cornerLists);
+        }
+    }
+
+    return allCorners;
+}
 }

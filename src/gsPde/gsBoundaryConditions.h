@@ -34,7 +34,8 @@ struct condition_type
         robin     = 2, ///< Robin type
         clamped   = 3, ///< Robin type
         weak_clamped = 30,
-        collapsed = 4  ///< Robin type
+        collapsed = 4,  ///< Robin type
+        laplace = 5 ///< Laplace type, e.g. \Delta u = g
         //mixed BD means: there are both dirichlet and neumann sides
         //robin: a linear combination of value and derivative
         //cauchy: there are 2 conditions (value+deriv) defined on the same side
@@ -82,6 +83,11 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
         os<< "Collapsed";
         break;
     }
+    case condition_type::laplace:
+    {
+        os<< "Laplace";
+        break;
+    }
     default:
         os<< "condition type not known.\n";
     };
@@ -118,6 +124,7 @@ struct boundary_condition
         else if (m_label == "Clamped")   m_type = condition_type::clamped;
         else if (m_label == "Weak Clamped")   m_type = condition_type::weak_clamped;
         else if (m_label == "Collapsed") m_type = condition_type::collapsed;
+        else if (m_label == "Laplace") m_type = condition_type::laplace;
         else m_type = condition_type::unknownType;
     }
 
@@ -165,6 +172,11 @@ struct boundary_condition
         case condition_type::collapsed:
         {
             m_label = "Collapsed";
+            break;
+        }
+        case condition_type::laplace:
+        {
+            m_label = "Laplace";
             break;
         }
         default:
@@ -217,6 +229,11 @@ struct boundary_condition
         case condition_type::collapsed:
         {
             m_label = "Collapsed";
+            break;
+        }
+        case condition_type::laplace:
+        {
+            m_label = "Laplace";
             break;
         }
         default:
@@ -392,6 +409,9 @@ public:
     /// Return a reference to the Robin sides
     const bcContainer & robinSides()     const {return m_bc["Robin"]; }
 
+    /// Return a reference to the Laplace sides
+    const bcContainer & laplaceSides()     const {return m_bc["Laplace"]; }
+
     const cornerContainer & cornerValues() const  {return corner_values;  }
 
     /// Extracts the BC, comming from a certain component.
@@ -535,6 +555,26 @@ public:
     citerator cornerEnd()
     { return corner_values.end(); }
 
+    /// Get a const-iterator to the beginning of the Laplace sides
+    /// \return an iterator to the beginning of the Laplace sides
+    const_iterator laplaceBegin() const
+    { return m_bc["Laplace"].begin(); }
+
+    /// Get a const-iterator to the end of the Laplace sides
+    /// \return an iterator to the end of the Laplace sides
+    const_iterator laplaceEnd() const
+    { return m_bc["Laplace"].end(); }
+
+    /// Get an iterator to the beginning of the Laplace sides
+    /// \return an iterator to the beginning of the Laplace sides
+    iterator laplaceBegin()
+    { return m_bc["Laplace"].begin(); }
+
+    /// Get an iterator to the end of the Laplace sides
+    /// \return an iterator to the end of the Laplace sides
+    iterator laplaceEnd()
+    { return m_bc["Laplace"].end(); }
+
     void add(int p, boxSide s, const std::string & label,
              const function_ptr & f_ptr, short_t unknown = 0,
              int comp = -1, bool parametric = false)
@@ -610,6 +650,9 @@ public:
             break;
         case condition_type::collapsed :
             m_bc["Collapsed"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
+            break;
+        case condition_type::laplace :
+            m_bc["Laplace"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
             break;
         default:
             gsWarn<<"gsBoundaryConditions: Unknown boundary condition.\n";
@@ -700,6 +743,11 @@ public:
         cur = std::find_if(beg,end,psRef);
         if (cur != end)
             return &(*cur);
+        beg = laplaceBegin();
+        end = laplaceEnd();
+        cur = std::find_if(beg,end,psRef);
+        if (cur != end)
+            return &(*cur);
 
         return NULL;
     }
@@ -732,6 +780,12 @@ public:
         for(cur=beg; cur!=end; cur++)
             if(cur->ps == ps)
                 result.push_back(*cur);
+
+        beg = laplaceBegin();
+        end = laplaceEnd();
+        for(cur=beg; cur!=end; cur++)
+            if(cur->ps == ps)
+                result.push_back(*cur);
     }
 
 
@@ -748,7 +802,7 @@ public:
         {
             if((*it).patch()==np)
             {
-                if(it->type() == condition_type::dirichlet || it->type() == condition_type::neumann || it->type() == condition_type::robin)
+                if(it->type() == condition_type::dirichlet || it->type() == condition_type::neumann || it->type() == condition_type::robin || it->type() == condition_type::laplace)
                     result.addCondition(0,(*it).side(),(*it).type(),(*it).function(),(*it).unknown());
                 else
                    result.add(0,(*it).side(),it->ctype(),(*it).function(),(*it).unknown());
