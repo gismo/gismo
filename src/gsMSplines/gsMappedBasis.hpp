@@ -153,6 +153,7 @@ void gsMappedBasis<d,T>::active_into(const index_t patch, const gsMatrix<T> & u,
     const index_t start = _getFirstLocalIndex(patch);
     gsMatrix<index_t> pActive;
     m_bases[patch]->active_into(u, pActive);
+
     // Shift actives by the offset of the current patch
     pActive.array() += start;
     const index_t numact  = pActive.rows();

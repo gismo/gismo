@@ -48,6 +48,8 @@ public:
 
         // p-refine
         multiBasis.degreeIncrease(m_optionList.getInt("degreeElevate"));
+        multiBasis.uniformRefine();
+        multiBasis.uniformRefine();
 /*
         multiBasis.basis(0).uniformRefine();
         multiBasis.basis(1).degreeIncrease();

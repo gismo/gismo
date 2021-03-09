@@ -18,7 +18,7 @@
 
 #include <gsPde/gsBiharmonicPde.h>
 
-#include <gsAssembler/gsVisitorBiharmonic.h>
+#include <gsAssembler/gsVisitorG1Biharmonic.h>
 #include <gsAssembler/gsVisitorNeumann.h>
 #include <gsAssembler/gsVisitorLaplaceBiharmonic.h>
 //#include <gsAssembler/gsVisitorNitscheBiharmonic.h>
@@ -34,7 +34,7 @@ namespace gismo
     Dirichlet boundary can only be enforced strongly (i.e Nitsche is
     not implemented).
 */
-template <class T, class bhVisitor = gsVisitorBiharmonic<T> >
+template <class T, class bhVisitor = gsVisitorG1Biharmonic<T> >
 class gsG1BiharmonicAssembler : public gsAssembler<T>
 {
 public:
@@ -67,12 +67,19 @@ public:
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
 
+        typename gsPde<T>::Ptr _pde = memory::make_shared_not_owned(&m_ppde);
+        m_pde_ptr = _pde;
+
         refresh();
     }
 
     void refresh();
     
     void assemble();
+    void push();
+    void apply(bhVisitor & visitor,
+               size_t patchIndex,
+               boxSide side = boundary::none);
 
 protected:
 
@@ -101,19 +108,31 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::refresh()
 
     gsDofMapper map(sz);
 
-    gsMatrix<index_t> boundaryDofs;
     typedef std::vector< patchSide >::const_iterator b_const_iter;
     for(b_const_iter iter = m_ppde.domain().bBegin();iter!=m_ppde.domain().bEnd();++iter)
     {
+        gsMatrix<index_t> boundaryDofs;
         boundaryDofs = m_bases.getBase(iter->patch).boundaryOffset(*iter, 0);
         map.markBoundary(iter->patch, boundaryDofs);
     }
 
-    // TODO Matching Interface BFs
+    typedef std::vector<boundaryInterface>::const_iterator i_const_iter;
+    for(i_const_iter iter = m_ppde.domain().iBegin();iter!=m_ppde.domain().iEnd();++iter)
+    {
+        gsMatrix<index_t> matched_dofs1, matched_dofs2;
+        matched_dofs1 = m_bases.getBase(iter->first().patch).boundaryOffset(iter->first().side(), 0);
+        matched_dofs2 = m_bases.getBase(iter->second().patch).boundaryOffset(iter->second().side(), 0);
+
+        map.matchDofs(iter->first().patch, matched_dofs1, iter->second().patch, matched_dofs2);
+
+        matched_dofs1 = m_bases.getBase(iter->first().patch).boundaryOffset(iter->first().side(), 1);
+        matched_dofs2 = m_bases.getBase(iter->second().patch).boundaryOffset(iter->second().side(), 1);
+
+        map.matchDofs(iter->first().patch, matched_dofs1, iter->second().patch, matched_dofs2);
+    }
 
     map.finalize();
-
-    map.print();
+    //map.print();
 
     // 2. Create the sparse system
     m_system = gsSparseSystem<T>(map);
@@ -126,10 +145,13 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
 
     // Reserve sparse system
     index_t nz = 1;
-    for (short_t i = 0; i != 2; ++i) // 2 == dim
+    for (short_t i = 0; i != m_bases.domainDim(); ++i) // 2 == dim
         nz *= static_cast<index_t>(2 * m_bases.degree(0,i) + 1 + 0.5); // Patch 0
     nz = static_cast<index_t>(nz*(1.333333));
-    m_system.reserve(nz, this->pde().numRhs());
+    m_system.reserve(nz, 1);
+
+    gsInfo << "nz " << m_bases.maxDegree() << "\n";
+    gsInfo << "nz " << nz << "\n";
 
     // Compute the Dirichlet Degrees of freedom (if needed by m_options)
     //Base::computeDirichletDofs();
@@ -138,7 +160,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
 
 
     // Assemble volume integrals
-    Base::template push<bhVisitor >();
+    push();
     
     // Newman conditions of first kind
     Base::template push<gsVisitorNeumann<T> >(
@@ -160,6 +182,74 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
     // Assembly is done, compress the matrix
     Base::finalize();
 }
+
+
+template <class T, class bhVisitor>
+void gsG1BiharmonicAssembler<T,bhVisitor>::push()
+{
+    for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
+    {
+        bhVisitor visitor(*m_pde_ptr);
+        //Assemble (fill m_matrix and m_rhs) on patch np
+        apply(visitor, np);
+    }
+}
+
+
+template <class T, class bhVisitor>
+void gsG1BiharmonicAssembler<T,bhVisitor>::apply(bhVisitor & visitor, size_t patchIndex, boxSide side)
+{
+    //gsDebug<< "Apply to patch "<< patchIndex <<"("<< side <<")\n";
+
+    //const gsBasisRefs<T> bases(m_bases.getBase(patchIndex), patchIndex);
+
+#pragma omp parallel
+{
+    gsQuadRule<T> quRule ; // Quadrature rule
+    gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
+    gsVector<T> quWeights; // Temp variable for mapped weights
+
+    bhVisitor
+#ifdef _OPENMP
+    // Create thread-private visitor
+    visitor_(visitor);
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#else
+            &visitor_ = visitor;
+#endif
+
+    // Initialize reference quadrature rule and visitor data
+    visitor_.initialize(m_bases, patchIndex, m_options, quRule);
+
+    const gsGeometry<T> & patch = m_pde_ptr->patches()[patchIndex];
+
+    // Initialize domain element iterator -- using unknown 0
+    typename gsBasis<T>::domainIter domIt = m_bases.getBase(patchIndex).makeDomainIterator(side);
+
+    // Start iteration over elements
+#ifdef _OPENMP
+    for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#else
+    for (; domIt->good(); domIt->next() )
+#endif
+    {
+        // Map the Quadrature rule to the element
+        quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
+
+        // Perform required evaluations on the quadrature nodes
+        visitor_.evaluate(m_bases, patch, quNodes);
+
+        // Assemble on element
+        visitor_.assemble(*domIt, quWeights);
+
+        // Push to global matrix and right-hand side vector
+#pragma omp critical(localToGlobal)
+        visitor_.localToGlobal(patchIndex, m_ddof, m_system); // omp_locks inside
+    }
+}//omp parallel
+
+} // apply
 
 
 } // namespace gismo

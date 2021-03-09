@@ -46,6 +46,8 @@ public:
         // For size
         rowContainer.resize(9);
         colContainer.resize(9);
+
+        isInterface.resize(4);
     }
 
     static uPtr make(   const gsC1ArgyrisBasis& other)
@@ -150,9 +152,17 @@ public:
         for (index_t i = 0; i<4; ++i)
         {
             if (m_mp.isBoundary(m_patchID,i+1)) // +1 of side index
+            {
                 rowContainer[1+i] = basisPlusContainer[i].size()+basisMinusContainer[i].size() - 8;
+                isInterface[i] = false;
+            }
+
             else
+            {
                 rowContainer[1+i] = basisPlusContainer[i].size()+basisMinusContainer[i].size();
+                isInterface[i] = true;
+            }
+
         }
 
 
@@ -296,42 +306,74 @@ public:
 
     gsMatrix<index_t> boundaryOffset(boxSide const & side , index_t offset = 0) const
     {
-        const short_t side_id = side.index();
-        index_t num = basisPlusContainer[side_id-1].size() - 4;
+        short_t side_id = side.index();
+        index_t num = 0;
+        if(offset == 0)
+        {
+            if(!isInterface[side_id-1])
+                num = basisPlusContainer[side_id-1].size() - 4; // Boundary
+            else
+                num = basisPlusContainer[side_id-1].size(); // Interface
+        }
+        else if(offset == 1)
+        {
+            if(!isInterface[side_id-1])
+                num = basisMinusContainer[side_id-1].size() - 4; // Boundary
+            else
+                num = basisMinusContainer[side_id-1].size(); // Interface
+        }
+        else
+            gsInfo << "Offset > 1 is not implemented! \n";
+
+
         index_t num_vert = 0;
 
         std::vector<index_t> corner_id;
-        switch (side_id) {
-           case 1:
-               corner_id.push_back(1);
-               corner_id.push_back(3);
-               break;
-           case 2:
-               corner_id.push_back(2);
-               corner_id.push_back(4);
-               break;
-           case 3:
-               corner_id.push_back(1);
-               corner_id.push_back(2);
-               break;
-           case 4:
-               corner_id.push_back(3);
-               corner_id.push_back(4);
-               break;
-           default:
-               break;
+        if(!isInterface[side_id-1])
+        {
+            switch (side_id) {
+                case 1:
+                    corner_id.push_back(1);
+                    corner_id.push_back(3);
+                    break;
+                case 2:
+                    corner_id.push_back(2);
+                    corner_id.push_back(4);
+                    break;
+                case 3:
+                    corner_id.push_back(1);
+                    corner_id.push_back(2);
+                    break;
+                case 4:
+                    corner_id.push_back(3);
+                    corner_id.push_back(4);
+                    break;
+                default:
+                    break;
+            }
+
+            // Special case two Patch TODO
+            if (rows("vertex", corner_id[0]) != 0)
+                num_vert += 3;
+            if (rows("vertex", corner_id[1]) != 0)
+                num_vert += 3;
         }
-        // Special case two Patch TODO
-        if (rows("vertex", corner_id[0]) != 0)
-           num_vert += 3;
-        if (rows("vertex", corner_id[1]) != 0)
-           num_vert += 3;
+
+
 
         index_t ii = 0;
         gsMatrix<index_t> indizes(num+num_vert,1);
         //for(index_t of = 0;of<=offset;++of)
         {
             index_t start = rowBegin("edge", side_id); // The first num basis functions
+
+            if (offset == 1)
+            {
+                if(!isInterface[side_id-1])
+                    start += basisPlusContainer[side_id-1].size() - 4; // Boundary
+                else
+                    start += basisPlusContainer[side_id-1].size(); // Interface
+            }
 
             for (index_t i = start; i < start+num; i++, ii++) // Single basis function
                 indizes(ii,0) = i;
@@ -352,10 +394,6 @@ public:
             }
 
         }
-
-        if (offset > 0)
-            gsInfo << "Not implemented! \n";
-
         return indizes;
     }
 
@@ -387,9 +425,15 @@ public:
       GISMO_NO_IMPLEMENTATION;
     }
 
-    short_t degree(short_t deg) const
+    // Returm max degree of all the spaces, otherwise i =
+    short_t degree(short_t dir) const
     {
-        return 0;
+        short_t deg = 0;
+        for (size_t i=0; i< basisG1Container.size(); ++i)
+            if (basisG1Container[i].degree(dir) > deg)
+                deg = basisG1Container[i].degree(dir);
+
+        return deg;
     }
 
     index_t size() const {
@@ -408,6 +452,38 @@ public:
         return sz;
     }
 
+    typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & side) const
+    {
+        // Using the inner basis for iterating
+        return basisG1Container[0].makeDomainIterator(side);
+    }
+
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t> & result) const
+    {
+        GISMO_ASSERT(u.rows() == d, "Dimension of the points in active_into is wrong");
+        GISMO_ASSERT(u.cols() > 1, "Active_into only for one point computed");
+
+        result.resize(0,1);
+        //for (index_t u_i = 0; u_i < u.cols(); ++u_i) // For each points
+        {
+            index_t u_i = 0; // Check if the points are in the same element TODO
+            index_t shift = 0;
+            gsMatrix<index_t> result_single(0,1);
+            for (size_t i=0; i< basisG1Container.size(); ++i)
+            {
+                gsMatrix<index_t> result_temp(0,1);
+                basisG1Container[i].active_into(u.col(u_i), result_temp);
+                result_temp.array() += shift;
+                result_single.conservativeResize(result_single.rows()+result_temp.rows(), 1 );
+                result_single.bottomRows(result_temp.rows()) = result_temp;
+
+                shift += basisG1Container[i].size();
+            }
+            result.conservativeResize(result.rows()+result_single.rows(), 1 );
+            result.bottomRows(result_single.rows()) = result_single;
+        }
+    }
+
 protected:
 
     gsMultiPatch<T> m_mp;
@@ -423,6 +499,8 @@ protected:
 
     std::vector<index_t> colContainer;
     std::vector<index_t> rowContainer;
+
+    std::vector<bool> isInterface;
 
 
 }; // Class gsC1ArgyrisBasis

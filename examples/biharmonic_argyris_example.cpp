@@ -169,15 +169,17 @@ int main(int argc, char *argv[])
 
         c1Argyris.init();
         c1Argyris.createArgyrisSpace();
+        if (plot) {
+            gsInfo << "Plot start \n";
+            c1Argyris.writeParaviewSinglePatch(0, "inner");
+            c1Argyris.writeParaviewSinglePatch(0, "edge");
+            c1Argyris.writeParaviewSinglePatch(0, "vertex");
 
-        c1Argyris.writeParaviewSinglePatch(0, "inner");
-        c1Argyris.writeParaviewSinglePatch(0, "edge");
-        c1Argyris.writeParaviewSinglePatch(0, "vertex");
-
-        c1Argyris.writeParaviewSinglePatch(1, "inner");
-        c1Argyris.writeParaviewSinglePatch(1, "edge");
-        c1Argyris.writeParaviewSinglePatch(1, "vertex");
-
+            c1Argyris.writeParaviewSinglePatch(1, "inner");
+            c1Argyris.writeParaviewSinglePatch(1, "edge");
+            c1Argyris.writeParaviewSinglePatch(1, "vertex");
+            gsInfo << "Plot end \n";
+        }
         c1Argyris.getMultiBasis(mb_argyris);
         sparseMatrix_argyris = c1Argyris.getSystem();
 
@@ -187,7 +189,7 @@ int main(int argc, char *argv[])
         gsInfo<< "." <<std::flush;// Construction of Argyris space done
 
         gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(mp, mappedBasis, bcInfo, bcInfo2, source);
-        //g1BiharmonicAssembler.assemble();
+        g1BiharmonicAssembler.assemble();
         gsInfo<< "." <<std::flush;// Assemblying done
 
 
