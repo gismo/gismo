@@ -36,6 +36,10 @@ In the gismo/examples sub-directory we find:
 
 - \subpage gsInterpolateMap
 
+- \subpage ieti_example
+
+- \subpage ieti2_example
+
 - \subpage knotVector_example
 
 - \subpage kirchhoff-Love_example

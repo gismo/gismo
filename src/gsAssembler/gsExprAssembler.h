@@ -694,7 +694,8 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     m_exprdata->parse(arg_tpl);
     //op_tuple(__printExpr(), arg_tpl);
 
-    gsQuadRule<T> QuRule;  // Quadrature rule  ---->OUT
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
+
     gsVector<T> quWeights; // quadrature weights
 
     _eval ee(m_matrix, m_rhs, quWeights);
@@ -704,7 +705,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd) //todo: distribute in parallel somehow?
     {
         ee.setPatch(patchInd);
-        QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(patchInd), m_options);
+        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
@@ -719,8 +720,11 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 #       endif
         {
             // Map the Quadrature rule to the element
-            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                          m_exprdata->points(), quWeights);
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           m_exprdata->points(), quWeights);
+
+            if (m_exprdata->points().cols()==0)
+                continue;
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(patchInd);
@@ -761,8 +765,8 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
 
     m_exprdata->parse(arg_tpl);
 
-    gsQuadRule<T> QuRule;  // Quadrature rule  ---->OUT
-    gsVector<T> quWeights; // quadrature weights
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
+    gsVector<T> quWeights;               // quadrature weights
 
     _eval ee(m_matrix, m_rhs, quWeights);
 
@@ -771,8 +775,7 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
     {
         const boundary_condition<T> * it = &iit->get();
 
-        QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(it->patch()), m_options, it->side().direction());
-
+        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(it->patch()), m_options, it->side().direction());
         m_exprdata->mapData.side = it->side();
 
         // Update boundary function source
@@ -787,8 +790,11 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
         for (; domIt->good(); domIt->next() )
         {
             // Map the Quadrature rule to the element
-            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                          m_exprdata->points(), quWeights);
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           m_exprdata->points(), quWeights);
+
+            if (m_exprdata->points().cols()==0)
+                continue;
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(it->patch());
@@ -823,12 +829,12 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
     if (right) m_exprdata->parse(arg_rhs);
 
     gsVector<T> quWeights;// quadrature weights
-    gsQuadRule<T>  QuRule;
+    typename gsQuadRule<T>::uPtr QuRule;
     _eval ee(m_matrix, m_rhs, quWeights);
 
     for (typename bcContainer::const_iterator it = BCs.begin(); it!= BCs.end(); ++it)
     {
-        QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(it->patch()), m_options, it->side().direction());
+        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(it->patch()), m_options, it->side().direction());
 
         m_exprdata->mapData.side = it->side();
 
@@ -844,8 +850,11 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
         for (; domIt->good(); domIt->next() )
         {
             // Map the Quadrature rule to the element
-            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                          m_exprdata->points(), quWeights);
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           m_exprdata->points(), quWeights);
+
+            if (m_exprdata->points().cols()==0)
+                continue;
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(it->patch());
@@ -879,7 +888,7 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
     if (right) m_exprdata->parse(arg_rhs);
 
     gsVector<T> quWeights;// quadrature weights
-    gsQuadRule<T>  QuRule;
+    typename gsQuadRule<T>::uPtr QuRule;
     _eval ee(m_matrix, m_rhs, quWeights);
 
     for (gsBoxTopology::const_iiterator it = iFaces.begin();
@@ -890,7 +899,7 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
         const index_t patch2 = iFace.second().patch;
         //const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
 
-        QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(patch1),
+        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
                                    m_options, iFace.first().side().direction());
 
         m_exprdata->setSide        ( iFace.first() .side() );
@@ -905,8 +914,11 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
         for (; domIt->good(); domIt->next() )
         {
             // Map the Quadrature rule to the element
-            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                          m_exprdata->points(), quWeights);
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           m_exprdata->points(), quWeights);
+
+            if (m_exprdata->points().cols()==0)
+                continue;
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(patch1);
