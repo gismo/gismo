@@ -1003,6 +1003,7 @@ public: /* Add local contributions to system matrix and right-hand side */
                     {
                         m_rhs.row(ii).noalias() -= localMat(i, j) *
                                 eliminatedDofs.row( rowMap.global_to_bindex(actives.at(j)) );
+
                     }
                 }
             }

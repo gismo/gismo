@@ -18,6 +18,9 @@
 
 # include <gsAssembler/gsG1BiharmonicAssembler.h>
 # include <gsArgyris/gsC1Argyris.h>
+# include <gsArgyris/gsErrorAnalysis/gsArgyrisNorms.h>
+
+# include <gsArgyris/gsC1ArgyrisIO.h>
 
 # include <gsMSplines/gsMappedBasis.h>
 
@@ -29,7 +32,7 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot       = false;
     bool last       = false;
-    index_t discrete_p = 2; // Degree of the geometry + discrete_p = polynomial degree of the discrete space
+    index_t discrete_p = 0; // Degree of the geometry + discrete_p = polynomial degree of the discrete space
     index_t discrete_r = 1; // Regularity of the geometry + discrete_r = regularity of the discrete space
 
     index_t numRefine = 0; // Number of loops = refinement steps
@@ -88,12 +91,16 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp;
     gsMultiBasis<> mb;
 
+    // For input/output stuff
+    gsC1ArgyrisIO c1ArgyrisIO;
+
     gsOptionList optionList;
     optionList.addInt( "degreeElevate", "Number of degree elevation steps to perform before solving", discrete_p );
     optionList.addInt( "regularity", "Number of increase Continuity steps to perform before solving",  discrete_r );
     optionList.addSwitch("isogeometric", "Project the basis in isogeometric concept", isogeometric);
     optionList.addSwitch("exactGD", "To compute the gluing data exact", exactGD);
     optionList.addSwitch("info", "Print information", info);
+    optionList.addSwitch("plot", "Plot", plot);
 
     optionList.addSwitch("twoPatch", "Two Patch", true);
     //! [Problem setup]
@@ -111,24 +118,51 @@ int main(int argc, char *argv[])
                 string_geo = "planar/twoPatches/two_squares_linear_with_inner_knot.xml";
                 break;
             case 2:
-                string_geo = "planar/twoPatches/two_squares_linear_partial_matching.xml";
+                string_geo = "planar/twoPatches/square_cubic_with_inner_knot.xml";
                 break;
             case 3:
+                string_geo = "planar/twoPatches/two_squares_linear_partial_matching.xml";
+                break;
+            case 4:
                 string_geo = "planar/twoPatches/two_squares_linear_non_matching.xml";
+                break;
+            case 5:
+                string_geo = "planar/twoPatches/two_squares_linear_with_inner_knot2.xml";
+                break;
+            case 6:
+                string_geo = "planar/twoPatches/square_cubic_with_inner_knot2.xml";
                 break;
 
             case 10:
+                string_geo = "planar/twoPatches/square_curved.xml";
+                break;
+            case 11:
+                string_geo = "planar/twoPatches/funny_example.xml";
+                break;
+
+            case 100:
                 string_geo = "planar/multiPatches/four_squares_linear.xml";
                 break;
+
+            case -8 ... -1:
+                string_geo = "planar/twoPatches/benchmark/square_linear_" + std::to_string(-geometry) + ".xml";
+                break;
+
             default:
                 gsInfo << "No geometry is used! \n";
                 break;
         }
     }
+
+    gsInfo << "Filedata: " << string_geo << "\n";
     gsReadFile<>(string_geo, mp);
     mp.clearTopology();
     mp.computeTopology();
     //! [Read geometry]
+
+    //! [Check the input data]
+    c1ArgyrisIO.checkInput(mp, optionList);
+    //! [Check the input data]
 
     //! [Boundary condition]
     gsBoundaryConditions<> bcInfo, bcInfo2;
@@ -153,12 +187,20 @@ int main(int argc, char *argv[])
     gsInfo << "TEST: " << mb_temp.nBases() << "\n";
     gsInfo << "TEST 2: " << mb_temp[0].size() << "\n";
     */
+    if (last)
+    {
+        // h-refine
+        for (int l =0; l < numRefine; ++l)
+             c1Argyris.uniformRefine();
+
+        numRefine = 0;
+    }
     //! [Initialise the discrete space]
 
     gsSparseSolver<>::CGDiagonal solver;
 
     //! [Solver loop]
-    gsVector<> l2err(numRefine+1), h1err(numRefine+1), h2err(numRefine+1);
+    gsVector<> l2err(numRefine+1), h1err(numRefine+1), h2err(numRefine+1), dofs(numRefine+1), meshSize(numRefine+1);
     gsMatrix<> jumperr(numRefine+1, mp.nInterfaces());
 
     gsInfo<< "(dot1=got_argyris_space, dot2=assembled, dot3=solved, dot4=got_error)\n";
@@ -168,7 +210,7 @@ int main(int argc, char *argv[])
         gsMultiBasis<> mb_argyris;
 
         c1Argyris.init();
-        c1Argyris.createArgyrisSpace();
+        c1Argyris.createArgyrisSpace(); // Slow TODO
         if (plot) {
             gsInfo << "Plot start \n";
             c1Argyris.writeParaviewSinglePatch(0, "inner");
@@ -182,20 +224,35 @@ int main(int argc, char *argv[])
         }
         c1Argyris.getMultiBasis(mb_argyris);
         sparseMatrix_argyris = c1Argyris.getSystem();
-
         mappedBasis.init(mb_argyris, sparseMatrix_argyris.transpose());
-        gsInfo << "DOFS: " << mappedBasis.size() << "\n";
-
         gsInfo<< "." <<std::flush;// Construction of Argyris space done
 
         gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(mp, mappedBasis, bcInfo, bcInfo2, source);
         g1BiharmonicAssembler.assemble();
         gsInfo<< "." <<std::flush;// Assemblying done
 
+        gsSparseSolver<real_t>::CGDiagonal solver;
+        solver.compute(g1BiharmonicAssembler.matrix());
+        gsMatrix<real_t> solVector= solver.solve(g1BiharmonicAssembler.rhs());
 
+        gsMatrix<real_t> solFull;
+        g1BiharmonicAssembler.constructSolution(solVector, solFull);
+        sparseMatrix_argyris = solFull.asDiagonal() * sparseMatrix_argyris;
+        c1Argyris.setSystem(sparseMatrix_argyris);
         gsInfo<< "." <<std::flush;// Linear solving done
 
+        mappedBasis.init(mb_argyris, sparseMatrix_argyris.transpose());
+        gsArgyrisNorms<real_t> argyrisNorms(mp, mappedBasis, solution);
+        argyrisNorms.compute();
 
+        // Collecting data
+        meshSize[l] = c1Argyris.getMinMeshSize();
+        dofs[l] = g1BiharmonicAssembler.numDofs();
+
+        l2err[l] = argyrisNorms.valueL2();
+        h1err[l] = math::sqrt(argyrisNorms.valueH1() * argyrisNorms.valueH1() + l2err[l] * l2err[l]);
+        h2err[l] = math::sqrt(argyrisNorms.valueH2() * argyrisNorms.valueH2() +
+                argyrisNorms.valueH1() * argyrisNorms.valueH1() + l2err[l] * l2err[l]);
         gsInfo<< ". " <<std::flush;// Error computations done
 
         // TODO Refine spaces
@@ -204,14 +261,35 @@ int main(int argc, char *argv[])
     //! [Solver loop]
 
     //! [Error and convergence rates]
-    // TODO
+    gsInfo << "\nDofs: " << dofs.transpose() << "\n";
+    gsInfo << "Mesh-size: " << meshSize.transpose() << "\n";
+    gsInfo<< "\n\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
+    gsInfo<< "H1 error: "<<std::scientific<<h1err.transpose()<<"\n";
+    gsInfo<< "H2 error: "<<std::scientific<<h2err.transpose()<<"\n";
+
+    if (numRefine>0)
+    {
+        gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
+              << ( l2err.head(numRefine).array() /
+                   l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+
+        gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
+              <<( h1err.head(numRefine).array() /
+                  h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+
+        gsInfo<<   "EoC (H2): "<< std::fixed<<std::setprecision(2)
+              <<( h2err.head(numRefine).array() /
+                  h2err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+    }
     //! [Error and convergence rates]
 
     //! [Export visualization in ParaView]
     if (plot)
     {
         gsInfo<<"Plotting in Paraview...\n";
-        // TODO
+        c1Argyris.plotParaview("G1Biharmonic",10000);
+        mp.uniformRefine(3);
+        gsWriteParaview(mp,"Geometry_init",1000,true);
     }
     //! [Export visualization in ParaView]
 

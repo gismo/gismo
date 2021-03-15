@@ -35,6 +35,8 @@ public:
                 const gsOptionList & optionList)
                 : m_mp(mp), m_patchID(patchID)
     {
+        info = optionList.getSwitch("info");
+
         basisG1Container.resize(9);
 
         // For each side:
@@ -80,6 +82,10 @@ public:
     void setBasisGluingData(gsBSplineBasis<> & basisGD, index_t side) { basisGluingDataContainer[side-1] = basisGD; }
     gsBSplineBasis<> & getBasisGluingData(index_t side) { return basisGluingDataContainer[side-1]; }
 
+    std::vector<gsTensorBSplineBasis<d, T>> & getBasisG1Container() { return basisG1Container; }
+    std::vector<index_t> & getRowContainer() { return rowContainer; }
+    std::vector<index_t> & getColContainer() { return colContainer; }
+
     void uniformRefine()
     {
         for (size_t i=0; i< basisG1Container.size(); ++i)
@@ -97,37 +103,11 @@ public:
 
     void swapAxis()
     {
-        std::vector<gsTensorBSplineBasis<d, T>> temp1 = basisG1Container;
-
-        std::vector<gsBSplineBasis<T>> temp2 = basisPlusContainer;
-        std::vector<gsBSplineBasis<T>> temp3 = basisMinusContainer;
-        std::vector<gsBSplineBasis<T>> temp4 = basisGeoContainer;
-
-        std::vector<gsBSplineBasis<T>> temp5 = basisGluingDataContainer;
-
         for (size_t i=0; i< basisG1Container.size(); ++i)
         {
             gsTensorBSplineBasis<d, T> newTensorBasis(basisG1Container[i].knots(1),basisG1Container[i].knots(0));
             basisG1Container[i].swap(newTensorBasis);
         }
-
-        /*
-         * W -> S; E -> N; S -> W; N -> E
-         */
-/*        for (size_t i=0; i< basisMinusContainer.size(); ++i)
-        {
-            basisG1Container[i+1].swap(temp1[(i+2)%4+1]);
-            basisG1Container[i+5].swap(temp1[(i+2)%4+5]);
-
-            basisPlusContainer[i].swap(temp2[(i+2)%4]);
-            basisMinusContainer[i].swap(temp3[(i+2)%4]);
-            basisGeoContainer[i].swap(temp4[(i+2)%4]);
-            basisGluingDataContainer[i].swap(temp5[(i+2)%4]);
-        }
-
-        for (index_t i = 0; i < 4; i++)
-            gsInfo << "i " << i+1 << ": " << (i+2)%4+5 << "\n";
-*/
     }
 
     void init()
@@ -165,7 +145,6 @@ public:
 
         }
 
-
         // Vertex basis functions
         for (index_t i = 0; i<4; ++i)
             if (basisG1Container[4+i+1].size() == 1)
@@ -173,13 +152,18 @@ public:
             else
                 rowContainer[1+4+i] = 4;
 
-        gsInfo << "Patch: " << m_patchID << "\n";
-        for (size_t i = 0; i<colContainer.size(); ++i)
-            gsInfo << colContainer[i] << ", ";
-        gsInfo << "\n";
-        for (size_t i = 0; i<rowContainer.size(); ++i)
-            gsInfo << rowContainer[i] << ", ";
-        gsInfo << "\n";
+        if (info)
+        {
+            gsInfo << "Patch: " << m_patchID << "\n";
+            for (size_t i = 0; i < colContainer.size(); ++i)
+                gsInfo << colContainer[i] << ", ";
+            gsInfo << "\n";
+            for (size_t i = 0; i < rowContainer.size(); ++i)
+                gsInfo << rowContainer[i] << ", ";
+            gsInfo << "\n";
+        }
+
+
     }
 
     index_t cols(std::string type, index_t side = 0) const
@@ -208,100 +192,36 @@ public:
         return row_index;
     }
 
-    index_t colBegin(std::string type, index_t side = 0) const
-    {
-        index_t col_index = 0;
-        if (type == "inner")
-            col_index = 0; // Nothing happens
-        else if (type == "edge")
-        {
-            col_index += colContainer[0];
-            for (index_t i = 1; i < side; ++i)
-                col_index += colContainer[i];
-        }
-        else if (type == "vertex")
-        {
-            col_index += colContainer[0];
-            for (index_t i = 1; i < 5; ++i) // add all sides
-                col_index += colContainer[i];
-
-            for (index_t i = 1; i < side; ++i)
-                col_index += colContainer[4+i];
-        }
-
-        return col_index;
-    }
-
-    index_t colEnd(std::string type, index_t side = 0) const
-    {
-        index_t col_index = 0;
-        if (type == "inner")
-            col_index = colContainer[0]; // Nothing happens
-        else if (type == "edge")
-        {
-            col_index += colContainer[0];
-            for (index_t i = 1; i < side+1; ++i)
-                col_index += colContainer[i];
-        }
-        else if (type == "vertex")
-        {
-            col_index += colContainer[0];
-            for (index_t i = 1; i < 5; ++i) // add all sides
-                col_index += colContainer[i];
-
-            for (index_t i = 1; i < side+1; ++i)
-                col_index += colContainer[4+i];
-        }
-
-        return col_index;
-    }
-
-    index_t rowBegin(std::string type, index_t side = 0) const
+    index_t rowBegin(index_t side = 0) const
     {
         index_t row_index = 0;
-        if (type == "inner")
-            row_index = 0; // Nothing happens
-        else if (type == "edge")
-        {
-            row_index += rowContainer[0];
-            for (index_t i = 1; i < side; ++i)
-                row_index += rowContainer[i];
-        }
-        else if (type == "vertex")
-        {
-            row_index += rowContainer[0];
-            for (index_t i = 1; i < 5; ++i) // add all sides
-                row_index += rowContainer[i];
-
-            for (index_t i = 1; i < side; ++i)
-                row_index += rowContainer[4+i];
-        }
-
+        for (index_t i = 0; i < side; ++i)
+            row_index += rowContainer[i];
         return row_index;
     }
 
-    index_t rowEnd(std::string type, index_t side = 0) const
+    index_t rowEnd(index_t side = 0) const
     {
         index_t row_index = 0;
-        if (type == "inner")
-            row_index = rowContainer[0]; // Nothing happens
-        else if (type == "edge")
-        {
-            row_index += rowContainer[0];
-            for (index_t i = 1; i < side+1; ++i)
-                row_index += rowContainer[i];
-        }
-        else if (type == "vertex")
-        {
-            row_index += rowContainer[0];
-            for (index_t i = 1; i < 5; ++i) // add all sides
-                row_index += rowContainer[i];
-
-            for (index_t i = 1; i < side+1; ++i)
-                row_index += rowContainer[4+i];
-        }
-
+        for (index_t i = 0; i < side+1; ++i)
+            row_index += rowContainer[i];
         return row_index;
+    }
+
+    index_t colBegin(index_t side = 0) const
+    {
+        index_t col_index = 0;
+        for (index_t i = 0; i < side; ++i)
+            col_index += colContainer[i];
+        return col_index;
+    }
+
+    index_t colEnd(index_t side = 0) const
+    {
+        index_t col_index = 0;
+        for (index_t i = 0; i < side+1; ++i)
+            col_index += colContainer[i];
+        return col_index;
     }
 
     gsMatrix<index_t> boundaryOffset(boxSide const & side , index_t offset = 0) const
@@ -365,7 +285,7 @@ public:
         gsMatrix<index_t> indizes(num+num_vert,1);
         //for(index_t of = 0;of<=offset;++of)
         {
-            index_t start = rowBegin("edge", side_id); // The first num basis functions
+            index_t start = rowBegin(side_id); // The first num basis functions
 
             if (offset == 1)
             {
@@ -385,7 +305,7 @@ public:
 
             for (size_t j = 0; j < corner_id.size(); j++)
             {
-                index_t start = rowBegin("vertex", corner_id[j]); // The first 3 basis functions
+                index_t start = rowBegin(corner_id[j]+4); // The first 3 basis functions
                 if (rows("vertex", corner_id[j]) != 0)
                 {
                     for (index_t i = start; i < start+3; i++, ii++) // Single basis function
@@ -436,16 +356,16 @@ public:
         return deg;
     }
 
-    index_t size() const {
+    index_t size_rows() const {
         index_t sz = 0;
         for (size_t i = 0; i < rowContainer.size(); ++i)
             sz += rowContainer[i];
         return sz;
     }
 
-    index_t size_rows() const { return size(); }
+    index_t size_cols() const { return size(); }
 
-    index_t size_cols() const {
+    index_t size() const {
         index_t sz = 0;
         for (size_t i = 0; i < colContainer.size(); ++i)
             sz += colContainer[i];
@@ -461,7 +381,8 @@ public:
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t> & result) const
     {
         GISMO_ASSERT(u.rows() == d, "Dimension of the points in active_into is wrong");
-        GISMO_ASSERT(u.cols() > 1, "Active_into only for one point computed");
+        //if (u.cols() > 1)
+        //    gsInfo << "Active_into only for one point computed\n";
 
         result.resize(0,1);
         //for (index_t u_i = 0; u_i < u.cols(); ++u_i) // For each points
@@ -471,23 +392,75 @@ public:
             gsMatrix<index_t> result_single(0,1);
             for (size_t i=0; i< basisG1Container.size(); ++i)
             {
-                gsMatrix<index_t> result_temp(0,1);
-                basisG1Container[i].active_into(u.col(u_i), result_temp);
-                result_temp.array() += shift;
-                result_single.conservativeResize(result_single.rows()+result_temp.rows(), 1 );
-                result_single.bottomRows(result_temp.rows()) = result_temp;
+                if (rowContainer[i] != 0)
+                {
+                    gsMatrix<index_t> result_temp(0,1);
+                    basisG1Container[i].active_into(u.col(u_i), result_temp);
+                    result_temp.array() += shift;
+                    result_single.conservativeResize(result_single.rows()+result_temp.rows(), 1 );
+                    result_single.bottomRows(result_temp.rows()) = result_temp;
 
-                shift += basisG1Container[i].size();
+                    shift += basisG1Container[i].size();
+                }
             }
             result.conservativeResize(result.rows()+result_single.rows(), 1 );
             result.bottomRows(result_single.rows()) = result_single;
         }
     }
 
+    void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
+    {
+        result.resize(0, u.cols());
+        for (size_t i=0; i< basisG1Container.size(); ++i)
+        {
+            if (rowContainer[i] != 0)
+            {
+                gsMatrix<T> result_temp;
+                basisG1Container[i].eval_into(u, result_temp);
+                result.conservativeResize(result.rows()+result_temp.rows(), result.cols());
+                result.bottomRows(result_temp.rows()) = result_temp;
+            }
+        }
+    }
+
+    void deriv_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
+    {
+        result.resize(0, u.cols());
+        for (size_t i=0; i< basisG1Container.size(); ++i)
+        {
+            if (rowContainer[i] != 0)
+            {
+                gsMatrix<T> result_temp;
+                basisG1Container[i].deriv_into(u, result_temp);
+                result.conservativeResize(result.rows()+result_temp.rows(), result.cols());
+                result.bottomRows(result_temp.rows()) = result_temp;
+            }
+        }
+    }
+
+    void deriv2_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
+    {
+        result.resize(0, u.cols());
+        for (size_t i=0; i< basisG1Container.size(); ++i)
+        {
+            if (rowContainer[i] != 0)
+            {
+                gsMatrix<T> result_temp;
+                basisG1Container[i].deriv2_into(u, result_temp);
+                result.conservativeResize(result.rows()+result_temp.rows(), result.cols());
+                result.bottomRows(result_temp.rows()) = result_temp;
+            }
+        }
+    }
+
 protected:
 
+
+    // Input
     gsMultiPatch<T> m_mp;
     index_t m_patchID;
+
+    bool info;
 
     std::vector<gsTensorBSplineBasis<d, T>> basisG1Container;
 

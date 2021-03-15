@@ -82,26 +82,30 @@ public:
         basisEdgeResult.clear();
         basisEdgeResult.push_back(result_1);
         basisEdgeResult.push_back(result_2);
-/*
-        std::string fileName;
-        std::string basename = "InterfaceBasisFunctions" + util::to_string(numInt);
-        gsParaviewCollection collection(basename);
 
-        for (size_t i = 0; i< result_1.nPatches(); i++)
+        if (m_optionList.getSwitch("plot"))
         {
-            // First Interface Side
-            fileName = basename + "_0_" + util::to_string(i);
-            gsField<> temp_field(m_mp.patch(patch_1), result_1.patch(i));
-            gsWriteParaview(temp_field, fileName, 5000);
-            collection.addTimestep(fileName, i, "0.vts");
-            // Second Interface Side
-            fileName = basename + "_1_" + util::to_string(i);
-            gsField<> temp_field_1(m_mp.patch(patch_2), result_2.patch(i));
-            gsWriteParaview(temp_field_1, fileName, 5000);
-            collection.addTimestep(fileName, i, "0.vts");
+            std::string fileName;
+            std::string basename = "InterfaceBasisFunctions" + util::to_string(numInt);
+            gsParaviewCollection collection(basename);
+
+            for (size_t i = 0; i< result_1.nPatches(); i++)
+            {
+                // First Interface Side
+                fileName = basename + "_0_" + util::to_string(i);
+                gsField<> temp_field(m_mp.patch(patch_1), result_1.patch(i));
+                gsWriteParaview(temp_field, fileName, 5000);
+                collection.addTimestep(fileName, i, "0.vts");
+                // Second Interface Side
+                fileName = basename + "_1_" + util::to_string(i);
+                gsField<> temp_field_1(m_mp.patch(patch_2), result_2.patch(i));
+                gsWriteParaview(temp_field_1, fileName, 5000);
+                collection.addTimestep(fileName, i, "0.vts");
+            }
+            collection.save();
         }
-        collection.save();
-*/
+
+
     }
 
     gsC1ArgyrisEdge(gsMultiPatch<T> const & mp,
@@ -123,9 +127,27 @@ public:
 
         // Compute GLuing data NO NEED
         // gsApproxGluingData<d, T> approxGluingData(m_auxPatches, m_optionList);
-        gsApproxArgyrisEdgeBasis<d, T> approxArgyrisEdgeBasis(m_auxPatches, 0, m_optionList);
-        gsMultiPatch<T> result_1;
-        approxArgyrisEdgeBasis.setG1BasisEdge(result_1);
+        //gsApproxArgyrisEdgeBasis<d, T> approxArgyrisEdgeBasis(m_auxPatches, 0, m_optionList);
+        //gsMultiPatch<T> result_1;
+        //approxArgyrisEdgeBasis.setG1BasisEdge(result_1);
+
+        gsMultiPatch<> result_1;
+        gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[0].getArygrisBasisRotated().getEdgeBasis(m_auxPatches[0].side()); // 0 -> u, 1 -> v
+
+        index_t dim_u = basis_edge.component(0).size();
+        index_t dim_v = basis_edge.component(1).size();
+        for (index_t i = 0; i < 2; i++) // u
+        {
+            for (index_t j = 2; j < dim_v-2; j++) // v
+            {
+                gsMatrix<> coefs;
+                coefs.setZero(dim_u * dim_v, 1);
+
+                coefs(j * dim_u + i, 0) = 1;
+
+                result_1.addPatch(basis_edge.makeGeometry(coefs));
+            }
+        }
 
         // Compute Kernel (before parametrizeBack) NO NEED
         //computeKernel(result_1, result_2, side_1);
@@ -135,7 +157,7 @@ public:
 
         basisEdgeResult.clear();
         basisEdgeResult.push_back(result_1);
-/*
+
         std::string fileName;
         std::string basename = "BoundaryBasisFunctions" + util::to_string(numBdy);
         gsParaviewCollection collection(basename);
@@ -149,7 +171,7 @@ public:
             collection.addTimestep(fileName, i, "0.vts");
         }
         collection.save();
-*/
+
     }
 
     void saveBasisInterface(gsSparseMatrix<T> & system)
@@ -163,11 +185,11 @@ public:
         }
 
         index_t ii = 0;
-        for (index_t i = m_bases[patch_1].rowBegin("edge",side_1); i < m_bases[patch_1].rowEnd("edge",side_1); ++i, ++ii)
+        for (index_t i = m_bases[patch_1].rowBegin(side_1); i < m_bases[patch_1].rowEnd(side_1); ++i, ++ii)
         {
             index_t jj = 0;
-            for (index_t j = m_bases[patch_1].colBegin("edge", side_1);
-                 j < m_bases[patch_1].colEnd("edge", side_1); ++j, ++jj) {
+            for (index_t j = m_bases[patch_1].colBegin(side_1);
+                 j < m_bases[patch_1].colEnd(side_1); ++j, ++jj) {
                 if (basisEdgeResult[0].patch(ii).coef(jj, 0) * basisEdgeResult[0].patch(ii).coef(jj, 0) > 1e-25)
                     system.insert(shift_row + i, shift_col + j) = basisEdgeResult[0].patch(ii).coef(jj, 0);
             }
@@ -181,15 +203,12 @@ public:
             shift_col += m_bases[np].size_cols();
         }
 
-        gsInfo << "i: " << shift_row << "\n";
-        gsInfo << "j: " <<  shift_col << "\n";
-
         ii = 0;
-        for (index_t i = m_bases[patch_2].rowBegin("edge",side_2); i < m_bases[patch_2].rowEnd("edge",side_2); ++i, ++ii)
+        for (index_t i = m_bases[patch_2].rowBegin(side_2); i < m_bases[patch_2].rowEnd(side_2); ++i, ++ii)
         {
             index_t jj = 0;
-            for (index_t j = m_bases[patch_2].colBegin("edge", side_2);
-                 j < m_bases[patch_2].colEnd("edge", side_2); ++j, ++jj)
+            for (index_t j = m_bases[patch_2].colBegin(side_2);
+                 j < m_bases[patch_2].colEnd(side_2); ++j, ++jj)
                 if (basisEdgeResult[1].patch(ii).coef(jj, 0) * basisEdgeResult[1].patch(ii).coef(jj, 0) > 1e-25)
                     system.insert(shift_row + i, shift_col + j) = basisEdgeResult[1].patch(ii).coef(jj, 0);
         }
@@ -205,11 +224,11 @@ public:
         }
 
         index_t ii = 0;
-        for (index_t i = m_bases[patch_1].rowBegin("edge",side_1); i < m_bases[patch_1].rowEnd("edge",side_1); ++i, ++ii)
+        for (index_t i = m_bases[patch_1].rowBegin(side_1); i < m_bases[patch_1].rowEnd(side_1); ++i, ++ii)
         {
             index_t jj = 0;
-            for (index_t j = m_bases[patch_1].colBegin("edge", side_1);
-                 j < m_bases[patch_1].colEnd("edge", side_1); ++j, ++jj)
+            for (index_t j = m_bases[patch_1].colBegin(side_1);
+                 j < m_bases[patch_1].colEnd(side_1); ++j, ++jj)
                 if (basisEdgeResult[0].patch(ii).coef(jj, 0) * basisEdgeResult[0].patch(ii).coef(jj, 0) > 1e-25)
                     system.insert(shift_row + i, shift_col + j) = basisEdgeResult[0].patch(ii).coef(jj, 0);
         }

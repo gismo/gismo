@@ -47,17 +47,19 @@ public:
         multiBasis = gsMultiBasis<>(m_mp);
 
         // p-refine
+        //gsInfo << "Before: " << multiBasis.basis(0) << "\n";
         multiBasis.degreeIncrease(m_optionList.getInt("degreeElevate"));
-        multiBasis.uniformRefine();
-        multiBasis.uniformRefine();
+        //gsInfo << "After: " << multiBasis.basis(0) << "\n";
+        // Pre-uniformRefine TODO delete
+        //multiBasis.uniformRefine();
+        //gsInfo << "After 2: " << multiBasis.basis(0) << "\n";
+        //multiBasis.uniformRefine();
 /*
         multiBasis.basis(0).uniformRefine();
         multiBasis.basis(1).degreeIncrease();
 */
         //init();
     }
-
-
 
     void createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVector<T> & kv2,
                            gsKnotVector<T> & kv1_patch, gsKnotVector<T> & kv2_patch,
@@ -106,9 +108,6 @@ public:
             gsBSplineBasis<> basis_geo_1 = dynamic_cast<gsBSplineBasis<> &>(multiBasis.basis(patch_1).component(1-dir_1));
             gsBSplineBasis<> basis_geo_2 = dynamic_cast<gsBSplineBasis<> &>(multiBasis.basis(patch_2).component(1-dir_2));
 
-            gsInfo << "Basis geo 1 : " << basis_geo_1.knots().asMatrix() << "\n";
-            gsInfo << "Basis geo 2 : " << basis_geo_2.knots().asMatrix() << "\n";
-
             gsKnotVector<T> kv_1 = basis_1.knots();
             gsKnotVector<T> kv_2 = basis_2.knots();
 
@@ -122,14 +121,12 @@ public:
             createPlusMinusSpace(kv_1, kv_2, kv_patch_1, kv_patch_2, kv_plus, kv_minus);
 
             gsBSplineBasis<> basis_plus(kv_plus);
-            gsInfo << "Basis plus : " << basis_plus.knots().asMatrix() << "\n";
             gsBSplineBasis<> basis_minus(kv_minus);
-            gsInfo << "Basis minus : " << basis_minus.knots().asMatrix() << "\n";
+
 
             createGluingDataSpace(kv_1, kv_2, kv_patch_1, kv_patch_2, kv_gluingData);
 
             gsBSplineBasis<> basis_gluingData(kv_gluingData);
-            gsInfo << "Basis gluingData : " << basis_gluingData.knots().asMatrix() << "\n";
 
             m_bases[patch_1].setBasisPlus(basis_plus, side_1);
             m_bases[patch_2].setBasisPlus(basis_plus, side_2);
@@ -142,6 +139,17 @@ public:
 
             m_bases[patch_1].setBasisGluingData(basis_gluingData, side_1);
             m_bases[patch_2].setBasisGluingData(basis_gluingData, side_2);
+
+            if (m_optionList.getSwitch("info"))
+            {
+                gsInfo << "Basis geo 1 : " << basis_geo_1.knots().asMatrix() << "\n";
+                gsInfo << "Basis geo 2 : " << basis_geo_2.knots().asMatrix() << "\n";
+                gsInfo << "Basis plus : " << basis_plus.knots().asMatrix() << "\n";
+                gsInfo << "Basis minus : " << basis_minus.knots().asMatrix() << "\n";
+
+                gsInfo << "Basis gluingData : " << basis_gluingData.knots().asMatrix() << "\n";
+            }
+
 
             if (m_optionList.getSwitch("isogeometric"))
             {
@@ -160,7 +168,8 @@ public:
 
                 createLokalEdgeSpace(kv_plus, kv_minus, kv_gluingData, kv_gluingData, kv_edge_1, kv_edge_2);
                 gsBSplineBasis<> basis_edge(kv_edge_1);
-                gsInfo << "Basis edge : " << basis_edge.knots().asMatrix() << "\n";
+                if (m_optionList.getSwitch("info"))
+                    gsInfo << "Basis edge : " << basis_edge.knots().asMatrix() << "\n";
 
                 gsTensorBSplineBasis<d, T> basis_edge_1(dir_1 == 0 ? kv_edge_1 : kv_geo_1, dir_1 == 0 ? kv_geo_1 : kv_edge_1);
                 gsTensorBSplineBasis<d, T> basis_edge_2(dir_2 == 0 ? kv_edge_2 : kv_geo_2, dir_2 == 0 ? kv_geo_2 : kv_edge_2);
@@ -299,26 +308,21 @@ public:
 
         m_system.makeCompressed();
 
-        gsInfo << "Dimension of Sparse matrix: " << m_system.dim() << "\n";
-        gsInfo << "Non-zeros: " << m_system.nonZeros() << "\n";
-
-        gsInfo << "Dim for Patches: \n";
-        for(size_t np = 0; np < m_mp.nPatches(); ++np)
+        if (m_optionList.getSwitch("info"))
         {
-            gsInfo << "(" << m_bases[np].size_rows() << "," << m_bases[np].size_cols() << "), ";
+            gsInfo << "Dim for Patches: \n";
+            for(size_t np = 0; np < m_mp.nPatches(); ++np)
+            {
+                gsInfo << "(" << m_bases[np].size_rows() << "," << m_bases[np].size_cols() << "), ";
+            }
+            gsInfo << "\n";
         }
-        gsInfo << "\n";
+
 
     }
 
     void uniformRefine()
     {
-        /*
-        for (size_t np = 0; np < m_mp.nPatches(); np++)
-        {
-            m_bases[np].uniformRefine();
-        }
-        */
         multiBasis.uniformRefine();
     }
 
@@ -338,11 +342,11 @@ public:
         if (type == "inner")
         {
             index_t ii = 0;
-            for (index_t i = m_bases[patchID].rowBegin(type);
-                     i < m_bases[patchID].rowEnd(type); i++, ii++) // Single basis function
+            for (index_t i = m_bases[patchID].rowBegin(0);
+                     i < m_bases[patchID].rowEnd(0); i++, ii++) // Single basis function
             {
-                index_t start_j = m_bases[patchID].colBegin(type);
-                index_t end_j = m_bases[patchID].colEnd(type);
+                index_t start_j = m_bases[patchID].colBegin(0);
+                index_t end_j = m_bases[patchID].colEnd(0);
 
                 gsMatrix<> coefs = m_system.block(shift_row + i, shift_col + start_j, 1, end_j - start_j);
 
@@ -361,11 +365,12 @@ public:
         {
             index_t ii = 0;
             for (index_t side = 1; side < 5; ++side) {
-                for (index_t i = m_bases[patchID].rowBegin(type, side);
-                     i < m_bases[patchID].rowEnd(type, side); i++, ii++) // Single basis function
+                index_t side_shift = type == "edge" ? 0 : 4;
+                for (index_t i = m_bases[patchID].rowBegin(side + side_shift);
+                     i < m_bases[patchID].rowEnd(side + side_shift); i++, ii++) // Single basis function
                 {
-                    index_t start_j = m_bases[patchID].colBegin(type, side);
-                    index_t end_j = m_bases[patchID].colEnd(type, side);
+                    index_t start_j = m_bases[patchID].colBegin(side + side_shift);
+                    index_t end_j = m_bases[patchID].colEnd(side + side_shift);
 
                     gsMatrix<> coefs = m_system.block(shift_row + i, shift_col + start_j, 1, end_j - start_j);
 
@@ -387,6 +392,155 @@ public:
         collection.save();
     }
 
+    void plotParaview( std::string fn, index_t npts = 1000 )
+    {
+        gsParaviewCollection collection2(fn);
+        std::string fileName2;
+
+        for ( size_t pp = 0; pp < m_mp.nPatches(); ++pp ) // Patches
+        {
+            index_t shift_row = 0, shift_col = 0;
+            for (size_t np = 0; np < pp; ++np)
+            {
+                shift_row += m_bases[np].size_rows();
+                shift_col += m_bases[np].size_cols();
+            }
+
+            fileName2 = fn + util::to_string(pp);
+
+            const gsFunction<T> & geometry = m_mp.patch(pp);
+
+            const int n = geometry.targetDim();
+
+            gsMatrix<T> ab = geometry.support();
+            gsVector<T> a = ab.col(0);
+            gsVector<T> b = ab.col(1);
+
+            gsVector<unsigned> np = uniformSampleCount(a, b, npts);
+            gsMatrix<T> pts = gsPointGrid(a, b, np);
+
+            gsMatrix<T> eval_geo = geometry.eval(pts);//pts
+            gsMatrix<T> eval_field;
+
+            // Here add g1 basis
+            eval_field.setZero(1, pts.cols());
+
+            index_t ii = 0;
+            for (index_t i = m_bases[pp].rowBegin(0);
+                     i < m_bases[pp].rowEnd(0); i++, ii++) // Single basis function
+            {
+                index_t start_j = m_bases[pp].colBegin(0);
+                index_t end_j = m_bases[pp].colEnd(0);
+
+                gsMatrix<> coefs = m_system.block(shift_row + i, shift_col + start_j, 1, end_j - start_j);
+
+                gsGeometry<>::uPtr geo_temp;
+                geo_temp = m_bases[pp].getInnerBasis().makeGeometry(coefs.transpose());
+
+                gsTensorBSpline<d, T> patch_single = dynamic_cast<gsTensorBSpline<d, T> &> (*geo_temp);
+                gsField<> temp_field(m_mp.patch(pp), patch_single);
+                eval_field += temp_field.value(pts);
+            }
+            std::string type = "edge";
+            ii = 0;
+            for (index_t side = 1; side < 5; ++side) {
+                for (index_t i = m_bases[pp].rowBegin(side);
+                     i < m_bases[pp].rowEnd(side); i++, ii++) // Single basis function
+                {
+                    index_t start_j = m_bases[pp].colBegin(side);
+                    index_t end_j = m_bases[pp].colEnd(side);
+
+                    gsMatrix<> coefs = m_system.block(shift_row + i, shift_col + start_j, 1, end_j - start_j);
+
+                    gsGeometry<>::uPtr geo_temp;
+                    if (type == "edge")
+                        geo_temp = m_bases[pp].getEdgeBasis(side).makeGeometry(coefs.transpose());
+                    else if (type == "vertex")
+                        geo_temp = m_bases[pp].getVertexBasis(side).makeGeometry(coefs.transpose());
+
+                    gsTensorBSpline<d, T> patch_single = dynamic_cast<gsTensorBSpline<d, T> &> (*geo_temp);
+                    gsField<> temp_field(m_mp.patch(pp), patch_single);
+                    eval_field += temp_field.value(pts);
+                }
+            }
+
+            type = "vertex";
+            ii = 0;
+            for (index_t side = 1; side < 5; ++side) {
+                for (index_t i = m_bases[pp].rowBegin(side+4);
+                     i < m_bases[pp].rowEnd(side+4); i++, ii++) // Single basis function
+                {
+                    index_t start_j = m_bases[pp].colBegin(side+4);
+                    index_t end_j = m_bases[pp].colEnd(side+4);
+
+                    gsMatrix<> coefs = m_system.block(shift_row + i, shift_col + start_j, 1, end_j - start_j);
+
+                    gsGeometry<>::uPtr geo_temp;
+                    if (type == "edge")
+                        geo_temp = m_bases[pp].getEdgeBasis(side).makeGeometry(coefs.transpose());
+                    else if (type == "vertex")
+                        geo_temp = m_bases[pp].getVertexBasis(side).makeGeometry(coefs.transpose());
+
+                    gsTensorBSpline<d, T> patch_single = dynamic_cast<gsTensorBSpline<d, T> &> (*geo_temp);
+                    gsField<> temp_field(m_mp.patch(pp), patch_single);
+                    eval_field += temp_field.value(pts);
+                }
+            }
+
+
+            /*
+            for (size_t numSpaces = 0; numSpaces < m_bases[pp].getBasisG1Container().size(); ++numSpaces)
+            {
+                gsTensorBSplineBasis<d, T> basis = m_bases[pp].getBasisG1Container()[numSpaces];
+                for (index_t i = 0; i < m_bases[pp].getRowContainer()[numSpaces]; ++i)
+                {
+                    gsMatrix<> coefs = m_system.block(shift_row + i, shift_col, 1, basis.size());
+                    gsMultiPatch<> geo;
+                    geo.addPatch(basis.makeGeometry(coefs));
+                    if (pp == 0 && i == 0 && numSpaces == 0)
+                        gsWriteParaview(geo.patch(0),"test_geo",1000);
+                    gsField<> temp_field(m_mp.patch(pp), geo.patch(0));
+                    eval_field += temp_field.value(pts);
+                }
+                shift_row += m_bases[pp].getRowContainer()[numSpaces];
+                shift_col += m_bases[pp].getColContainer()[numSpaces]; // == basis.size()
+            }
+            */
+            if ( 3 - d > 0 )
+            {
+                np.conservativeResize(3);
+                np.bottomRows(3-d).setOnes();
+            }
+            else if (d > 3)
+            {
+                gsWarn<< "Cannot plot 4D data.\n";
+                return;
+            }
+
+            if ( 3 - n > 0 )
+            {
+                eval_geo.conservativeResize(3,eval_geo.cols() );
+                eval_geo.bottomRows(3-n).setZero();
+            }
+            else if (n > 3)
+            {
+                gsWarn<< "Data is more than 3 dimensions.\n";
+            }
+
+            if ( eval_field.rows() == 2)
+            {
+                eval_field.conservativeResize(3,eval_geo.cols() );
+                eval_field.bottomRows(1).setZero(); // 3-field.dim()
+            }
+
+            gsWriteParaviewTPgrid(eval_geo, eval_field, np.template cast<index_t>(), fileName2);
+
+
+            collection2.addPart(fileName2, ".vts");
+        }
+        collection2.save();
+    }
+
 public:
 
     //GISMO_CLONE_FUNCTION(gsC1Argyris)
@@ -405,10 +559,17 @@ public:
         multiBasis_result = gsMultiBasis<>(basis_temp, m_mp.topology());
     };
 
-    gsSparseMatrix<T> & getSystem()
+    gsSparseMatrix<T> & getSystem() { return m_system; };
+    void setSystem(gsSparseMatrix<T> & system) { m_system = system; };
+
+    T getMinMeshSize()
     {
-        return m_system;
-    };
+        T meshSize = 1.0;
+        for (size_t np = 0; np < m_mp.nPatches(); np++)
+            if (multiBasis.basis(np).getMinCellLength() < meshSize)
+                meshSize = multiBasis.basis(np).getMinCellLength();
+        return meshSize;
+    }
 
 protected:
     /// Multipatch
@@ -461,15 +622,15 @@ void gsC1Argyris<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVector<
         }
         else if (*it < *it2)
         {
-            knot_vector_plus.push_back(*it);
-            knot_vector_minus.push_back(*it);
+            //knot_vector_plus.push_back(*it);
+            //knot_vector_minus.push_back(*it);
         }
         else if (*it > *it2)
         {
             while (*it > *it2)
             {
-                knot_vector_plus.push_back(*it2);
-                knot_vector_minus.push_back(*it2);
+                //knot_vector_plus.push_back(*it2);
+                //knot_vector_minus.push_back(*it2);
                 ++it2;
             }
             knot_vector_plus.push_back(*it2);
@@ -478,6 +639,7 @@ void gsC1Argyris<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVector<
         }
     }
 
+    // Repeat the first and the last vector p or p-1 times
     kv1_result = gsKnotVector<>(knot_vector_plus);
     kv1_result.degreeIncrease(p);
     kv2_result = gsKnotVector<>(knot_vector_minus);
@@ -507,21 +669,21 @@ void gsC1Argyris<d,T>::createGluingDataSpace(gsKnotVector<T> & kv1, gsKnotVector
     {
         if (*it == *it2)
         {
-            knot_vector.push_back(*it); // r_tilde = p_tilde - 1
+            knot_vector.push_back(*it);
             ++it2;
         }
         else if (*it < *it2)
         {
-            knot_vector.push_back(*it); // r_tilde = p_tilde - 1
+            //knot_vector.push_back(*it);
         }
         else if (*it > *it2)
         {
             while (*it > *it2)
             {
-                knot_vector.push_back(*it2); // r_tilde = p_tilde - 1
+                //knot_vector.push_back(*it2);
                 ++it2;
             }
-            knot_vector.push_back(*it2); // r_tilde = p_tilde - 1
+            knot_vector.push_back(*it2);
             ++it2;
         }
     }

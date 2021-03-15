@@ -65,11 +65,10 @@ public:
         for(size_t i = 0; i < m_patchesAroundVertex.size(); i++)
         {
             if (m_optionList.getSwitch("twoPatch")) {
-                gsMultiPatch<> test_mp(m_auxPatches[0].getPatch());
 
                 gsMultiPatch<> g1Basis;
                 gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[0].getArygrisBasisRotated().getVertexBasis(
-                        m_auxPatches[0].side()); // 0 -> u, 1 -> v
+                        m_vertexIndices[i]); // 0 -> u, 1 -> v
 
                 index_t dim_u = basis_edge.component(0).size();
                 index_t dim_v = basis_edge.component(1).size();
@@ -85,7 +84,15 @@ public:
                         g1Basis.addPatch(basis_edge.makeGeometry(coefs));
                     }
                 }
+                //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with vertex: " << m_vertexIndices[i] << "\n";
+                //if (m_patchesAroundVertex[i] == 0 && m_vertexIndices[i] == 2)
+                //    gsWriteParaview(g1Basis, "Vertex", 1000);
+
                 m_auxPatches[0].parametrizeBasisBack(g1Basis);
+
+                //if (m_patchesAroundVertex[i] == 0 && m_vertexIndices[i] == 2)
+                //    gsWriteParaview(g1Basis, "Vertex2", 1000);
+
                 basisVertexResult.push_back(g1Basis);
             }
         }
@@ -125,16 +132,13 @@ public:
             }
 
             index_t ii = 0;
-            for (index_t i = m_bases[patch_1].rowBegin("vertex",corner); i < m_bases[patch_1].rowEnd("vertex",corner); ++i, ++ii)
+            for (index_t i = m_bases[patch_1].rowBegin(corner+4); i < m_bases[patch_1].rowEnd(corner+4); ++i, ++ii)
             {
                 index_t jj = 0;
-                for (index_t j = m_bases[patch_1].colBegin("vertex",corner); j < m_bases[patch_1].colEnd("vertex",corner); ++j, ++jj)
+                for (index_t j = m_bases[patch_1].colBegin(corner+4); j < m_bases[patch_1].colEnd(corner+4); ++j, ++jj)
                     if (basisVertexResult[0].patch(ii).coef(jj,0)*basisVertexResult[0].patch(ii).coef(jj,0)>1e-25)
                         system.insert(shift_row+i,shift_col+j) = basisVertexResult[0].patch(ii).coef(jj,0);
             }
-
-
-
         }
     }
 
@@ -147,19 +151,19 @@ public:
             switch (m_auxPatches[i].side()) // == vertex
             {
                 case 1:
-//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " not rotated\n";
+                    //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " not rotated\n";
                     break;
                 case 4:
                     m_auxPatches[i].rotateParamAntiClockTwice();
-//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated twice anticlockwise\n";
+                    //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " rotated twice anticlockwise\n";
                     break;
                 case 2:
                     m_auxPatches[i].rotateParamAntiClock();
-//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated anticlockwise\n";
+                    //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " rotated anticlockwise\n";
                     break;
                 case 3:
                     m_auxPatches[i].rotateParamClock();
-//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated clockwise\n";
+                    //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " rotated clockwise\n";
                     break;
             }
         }
@@ -170,9 +174,7 @@ public:
         if (m_auxPatches[i].getPatch().orientation() == -1)
         {
             m_auxPatches[i].swapAxis();
-//            gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
-
-            //this->swapBdy(i); //Swap boundary edge bool-value
+            //gsInfo << "Changed axis on patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i] << "\n";
 
             // Swap vertices index after swapping axis
             if(m_auxPatches[i].side() == 2)

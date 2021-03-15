@@ -72,7 +72,7 @@ public:
         // tau/p
         gsBSplineBasis<T> bsp_temp = dynamic_cast<gsBSplineBasis<> & >(basis_geo);
 
-        real_t p = basis_geo.maxDegree();
+        real_t p = bsp_temp.degree();
         real_t tau_1 = bsp_temp.knots().at(p + 1); // p + 2
 
         gsMatrix<T> alpha, beta,

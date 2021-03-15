@@ -38,51 +38,38 @@ public:
     neudata_ptr(&neudata), side(s)
     { }
 
-    void initialize(const gsBasis<T> & basis, 
-                    gsQuadRule<T>    & rule)
-    {
-        const int dir = side.direction();
-        gsVector<int> numQuadNodes ( basis.dim() );
-        for (int i = 0; i < basis.dim(); ++i)
-            numQuadNodes[i] = basis.degree(i) + 1;
-        numQuadNodes[dir] = 1;
-
-        // Setup Quadrature
-        rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
-
-        // Set Geometry evaluation flags
-        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM ;
-
-    }
-
-    void initialize(const gsBasis<T> & basis,
-                    const index_t ,
+    void initialize(const gsMappedBasis<2, T> & basis,
+                    const index_t patchIndex,
                     const gsOptionList & options, 
                     gsQuadRule<T>    & rule)
     {
-        // Setup Quadrature (harmless slicing occurs)
-        rule = gsGaussRule<T>(basis, options.getReal("quA"),
-                              options.getInt("quB"),
-                              side.direction() );
+        gsVector<index_t> numQuadNodes( basis.getBase(patchIndex).dim() );
+        for (int i = 0; i < basis.getBase(patchIndex).dim(); ++i) // to do: improve
+            numQuadNodes[i] = basis.getBase(patchIndex).degree(i) + 1;
+
+        // Setup Quadrature
+        rule = gsGaussRule<T>(numQuadNodes);// NB!
 
         // Set Geometry evaluation flags
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
     }
 
     // Evaluate on element.
-    inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
+    inline void evaluate(const gsMappedBasis<2, T>      & basis, // to do: more unknowns
                          const gsGeometry<T>    & geo,
                          // todo: add element here for efficiency
                          gsMatrix<T>            & quNodes)
     {
+        index_t patchIndex = geo.id();
+
         md.points = quNodes;
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the elements
-        basis.active_into(md.points.col(0), actives);
+        basis.active_into(patchIndex, md.points.col(0), actives);
         numActive = actives.rows();
 
         // Evaluate basis gradients on element
-        basis.deriv_into( md.points, basisGrads);
+        basis.evalAllDers_into(patchIndex, md.points, 1, basisData); // Todo change to deriv_into
 
         // Compute geometry related values
         geo.computeMap(md);
@@ -97,6 +84,8 @@ public:
     inline void assemble(gsDomainIterator<T>    & ,
                          gsVector<T> const      & quWeights)
     {
+        gsMatrix<> basisGrads = basisData[1];
+
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Compute the outer normal vector on the side
@@ -116,6 +105,11 @@ public:
                               const std::vector<gsMatrix<T> > & ,
                               gsSparseSystem<T>               & system)
     {
+        // Shift global to local:
+        gsDofMapper map = system.rowMapper(0);
+        for (index_t i = 0; i < patchIndex; i++)
+            actives.array() -= map.patchSize(i);
+
         // Map patch-local DoFs to global DoFs
         system.mapColIndices(actives, patchIndex, actives);
 
@@ -154,7 +148,7 @@ protected:
     boxSide side;
 
     // Basis values
-    gsMatrix<T> basisGrads;
+    std::vector<gsMatrix<T>> basisData;
     gsMatrix<index_t> actives;
 
     // Normal and Neumann values

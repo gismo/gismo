@@ -202,15 +202,19 @@ public:
         switch (rotationNum)
         {
             case 2:
+                //gsInfo << "Patch Basis rotated twice anticlockwise\n";
                 rotateBasisAntiClockTwice(g1Basis);
                 break;
             case -1:
-                this->rotateBasisAntiClock(g1Basis);
+                //gsInfo << "Patch Basis rotated anticlockwise\n";
+                rotateBasisAntiClock(g1Basis);
                 break;
             case 1:
-                this->rotateBasisClock(g1Basis);
+                //gsInfo << "Patch Basis rotated clockwise\n";
+                rotateBasisClock(g1Basis);
                 break;
             case 0:
+                //gsInfo << "Patch Basis not rotated\n";
                 break;
             default:
                 break;
@@ -364,10 +368,6 @@ public:
         return withBasis;
     }
 
-    const index_t getGlobalPatchIndex(){
-        return patchIndex;
-    }
-
     const index_t getNumberOfRotatioin(){
         return rotationNum;
     }
@@ -412,7 +412,7 @@ protected:
     gsC1ArgyrisBasis<d, T> m_ArgyrisBasisRotated;
 
     // Global patch index in the initial geometry
-    index_t m_side, patchIndex;
+    index_t m_side;
 
     // Stores the changing of the axis
     // 0 -> axis not changed

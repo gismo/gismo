@@ -70,6 +70,7 @@ namespace gismo
             index_t patchIndex = geo.id();
 
             md.points = quNodes;
+
             // Compute the active basis functions
             // Assumes actives are the same for all quadrature points on the elements
             basis.active_into(patchIndex, md.points.col(0), actives);
@@ -120,9 +121,14 @@ namespace gismo
                                   const std::vector<gsMatrix<T> > & eliminatedDofs,
                                   gsSparseSystem<T>               & system)
         {
+            // Shift global to local:
+            gsDofMapper map = system.rowMapper(0);
+            for (index_t i = 0; i < patchIndex; i++)
+                actives.array() -= map.patchSize(i);
+
             // Map patch-local DoFs to global DoFs
             system.mapColIndices(actives, patchIndex, actives);
-
+            //gsInfo << "patchIndex: " << patchIndex << "\n";
             // Add contributions to the system matrix and right-hand side
             system.push(localMat, localRhs, actives, eliminatedDofs[0], 0, 0);
         }

@@ -69,7 +69,6 @@ void gsApproxGluingData<d, T>::setGlobalGluingData(index_t patchID, index_t side
 {
     // ======== Space for gluing data : S^(p_tilde, r_tilde) _k ========
     gsBSplineBasis<T> bsp_gD = m_auxPatches[patchID].getArygrisBasisRotated().getBasisGluingData(side);
-    gsInfo << "Gluing data: " << bsp_gD.knots().asMatrix() << "\n";
 
     index_t dir = patchID == 0 ? 1 : 0;
 
