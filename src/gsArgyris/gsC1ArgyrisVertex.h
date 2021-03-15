@@ -64,7 +64,8 @@ public:
 
         for(size_t i = 0; i < m_patchesAroundVertex.size(); i++)
         {
-            if (m_optionList.getSwitch("twoPatch")) {
+            if (m_optionList.getSwitch("twoPatch") && m_patchesAroundVertex.size() == 1)
+            {
 
                 gsMultiPatch<> g1Basis;
                 gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[0].getArygrisBasisRotated().getVertexBasis(
@@ -84,37 +85,42 @@ public:
                         g1Basis.addPatch(basis_edge.makeGeometry(coefs));
                     }
                 }
-                //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with vertex: " << m_vertexIndices[i] << "\n";
-                //if (m_patchesAroundVertex[i] == 0 && m_vertexIndices[i] == 2)
-                //    gsWriteParaview(g1Basis, "Vertex", 1000);
-
                 m_auxPatches[0].parametrizeBasisBack(g1Basis);
-
-                //if (m_patchesAroundVertex[i] == 0 && m_vertexIndices[i] == 2)
-                //    gsWriteParaview(g1Basis, "Vertex2", 1000);
 
                 basisVertexResult.push_back(g1Basis);
             }
-        }
-
-/*
-        std::string fileName;
-        std::string basename = "VerticesBasisFunctions" + util::to_string(numVer);
-        gsParaviewCollection collection(basename);
-
-        for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
-        {
-            for (size_t i = 0; i < basisVertexResult[np].nPatches(); ++i)
+            else
             {
-                fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
-                gsField<> temp_field(m_mp.patch(m_patchesAroundVertex[np]), basisVertexResult[np].patch(i));
-                gsWriteParaview(temp_field, fileName, 5000);
-                collection.addTimestep(fileName, i, "0.vts");
-
+                // Compute Gluing data
+                // Create Basis functions
+                // Compute Kernel
+                // Rotate Back
+                // Store
             }
         }
-        collection.save();
-*/
+
+
+        if (m_optionList.getSwitch("plot"))
+        {
+            std::string fileName;
+            std::string basename = "VerticesBasisFunctions" + util::to_string(numVer);
+            gsParaviewCollection collection(basename);
+
+            for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
+            {
+                for (size_t i = 0; i < basisVertexResult[np].nPatches(); ++i)
+                {
+                    fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
+                    gsField<> temp_field(m_mp.patch(m_patchesAroundVertex[np]), basisVertexResult[np].patch(i));
+                    gsWriteParaview(temp_field, fileName, 5000);
+                    collection.addTimestep(fileName, i, "0.vts");
+
+                }
+            }
+            collection.save();
+        }
+
+
     }
 
     void saveBasisVertex(gsSparseMatrix<T> & system)

@@ -51,9 +51,9 @@ public:
         multiBasis.degreeIncrease(m_optionList.getInt("degreeElevate"));
         //gsInfo << "After: " << multiBasis.basis(0) << "\n";
         // Pre-uniformRefine TODO delete
-        //multiBasis.uniformRefine();
+        multiBasis.uniformRefine();
         //gsInfo << "After 2: " << multiBasis.basis(0) << "\n";
-        //multiBasis.uniformRefine();
+        multiBasis.uniformRefine();
 /*
         multiBasis.basis(0).uniformRefine();
         multiBasis.basis(1).degreeIncrease();
@@ -219,7 +219,6 @@ public:
                 vertIndex.push_back(allcornerLists[j].m_index);
             }
 
-            // JUST FOR TWO PATCH TODO
             if (patchIndex.size() == 1) // Boundary vertex
             {
                 index_t patch_1 = patchIndex[0];
@@ -227,6 +226,39 @@ public:
 
                 gsTensorBSplineBasis<d, T> basis_vertex_1 = dynamic_cast<gsTensorBSplineBasis<d, real_t> &>(multiBasis.basis(patch_1));
                 m_bases[patch_1].setVertexBasis(basis_vertex_1, vertex_1);
+                m_bases[patch_1].setKindOfVertex(-1, vertex_1);
+            }
+            else if (patchIndex.size() > 1 && !m_optionList.getSwitch("twoPatch"))
+            {
+                gsMultiPatch<> temp_mp;
+                for (size_t j = 0; j < patchIndex.size(); j++)
+                    temp_mp.addPatch(m_mp.patch(patchIndex[j]));
+
+                temp_mp.computeTopology();
+                if (patchIndex.size() == temp_mp.interfaces().size()) // Internal vertex
+                {
+                    for (size_t j = 0; j < patchIndex.size(); j++)
+                    {
+                        index_t patch_1 = patchIndex[j];
+                        index_t vertex_1 = vertIndex[j];
+
+                        gsTensorBSplineBasis<d, T> basis_vertex_1 = dynamic_cast<gsTensorBSplineBasis<d, real_t> &>(multiBasis.basis(patch_1));
+                        m_bases[patch_1].setVertexBasis(basis_vertex_1, vertex_1);
+                        m_bases[patch_1].setKindOfVertex(0, vertex_1);
+                    }
+                }
+                else // Interface-Boundary vertex
+                {
+                    for (size_t j = 0; j < patchIndex.size(); j++)
+                    {
+                        index_t patch_1 = patchIndex[j];
+                        index_t vertex_1 = vertIndex[j];
+
+                        gsTensorBSplineBasis<d, T> basis_vertex_1 = dynamic_cast<gsTensorBSplineBasis<d, real_t> &>(multiBasis.basis(patch_1));
+                        m_bases[patch_1].setVertexBasis(basis_vertex_1, vertex_1);
+                        m_bases[patch_1].setKindOfVertex(1, vertex_1);
+                    }
+                }
             }
         }
 
@@ -298,12 +330,9 @@ public:
                 vertIndex.push_back(allcornerLists[j].m_index);
             }
 
-            // JUST FOR TWO PATCH TODO
-            if (patchIndex.size() == 1) // Boundary vertex
-            {
-                gsC1ArgyrisVertex<d, T> c1ArgyrisVertex(m_mp, m_bases, patchIndex, vertIndex, numVer, m_optionList);
-                c1ArgyrisVertex.saveBasisVertex(m_system);
-            }
+            gsC1ArgyrisVertex<d, T> c1ArgyrisVertex(m_mp, m_bases, patchIndex, vertIndex, numVer, m_optionList);
+            c1ArgyrisVertex.saveBasisVertex(m_system);
+
         }
 
         m_system.makeCompressed();

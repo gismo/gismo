@@ -73,7 +73,8 @@ public:
         approxArgyrisEdgeBasis2.setG1BasisEdge(result_2);
 
         // Compute Kernel (before parametrizeBack)
-        computeKernel(result_1, result_2, side_1);
+        if (m_optionList.getSwitch("twoPatch"))
+            computeKernel(result_1, result_2, side_1);
 
         // parametrizeBasisBack
         m_auxPatches[0].parametrizeBasisBack(result_1);

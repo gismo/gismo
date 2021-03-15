@@ -36,6 +36,7 @@ public:
                 : m_mp(mp), m_patchID(patchID)
     {
         info = optionList.getSwitch("info");
+        twoPatch = optionList.getSwitch("twoPatch");
 
         basisG1Container.resize(9);
 
@@ -49,7 +50,9 @@ public:
         rowContainer.resize(9);
         colContainer.resize(9);
 
+        // For topology
         isInterface.resize(4);
+        kindOfVertex.resize(4);
     }
 
     static uPtr make(   const gsC1ArgyrisBasis& other)
@@ -85,6 +88,12 @@ public:
     std::vector<gsTensorBSplineBasis<d, T>> & getBasisG1Container() { return basisG1Container; }
     std::vector<index_t> & getRowContainer() { return rowContainer; }
     std::vector<index_t> & getColContainer() { return colContainer; }
+
+    // Kind of vertex
+    // -1 Boundary vertex
+    // 0 Internal vertex
+    // 1 Interface boundary vertey
+    void setKindOfVertex(index_t i, index_t corner) { kindOfVertex[corner-1] = i; }
 
     void uniformRefine()
     {
@@ -123,7 +132,7 @@ public:
                 colContainer[i] = basisG1Container[i].size();
 
         // Inner basis functions
-        rowContainer[0] = basisG1Container[0].size(); // TODO change
+        rowContainer[0] = basisG1Container[0].size();
         index_t dim_u = basisG1Container[0].component(0).size();
         index_t dim_v = basisG1Container[0].component(1).size();
         rowContainer[0] = (dim_u - 4)*(dim_v - 4);
@@ -133,13 +142,18 @@ public:
         {
             if (m_mp.isBoundary(m_patchID,i+1)) // +1 of side index
             {
-                rowContainer[1+i] = basisPlusContainer[i].size()+basisMinusContainer[i].size() - 8;
+                if (twoPatch)
+                    rowContainer[1+i] = basisPlusContainer[i].size()+basisMinusContainer[i].size() - 8;
+                else
+                    rowContainer[1+i] = math::max(basisPlusContainer[i].size()+basisMinusContainer[i].size() - 10, 0);
                 isInterface[i] = false;
             }
-
             else
             {
-                rowContainer[1+i] = basisPlusContainer[i].size()+basisMinusContainer[i].size();
+                if (twoPatch)
+                    rowContainer[1+i] = basisPlusContainer[i].size()+basisMinusContainer[i].size();
+                else
+                    rowContainer[1+i] = math::max(basisPlusContainer[i].size()+basisMinusContainer[i].size() - 10, 0);
                 isInterface[i] = true;
             }
 
@@ -147,10 +161,19 @@ public:
 
         // Vertex basis functions
         for (index_t i = 0; i<4; ++i)
-            if (basisG1Container[4+i+1].size() == 1)
-                rowContainer[1+4+i] = 0;
+        {
+            if (twoPatch)
+            {
+                if (basisG1Container[4+i+1].size() == 1)
+                    rowContainer[1+4+i] = 0;
+                else
+                    rowContainer[1+4+i] = 4;
+            }
             else
-                rowContainer[1+4+i] = 4;
+                rowContainer[1+4+i] = 6;
+        }
+
+
 
         if (info)
         {
@@ -161,6 +184,11 @@ public:
             for (size_t i = 0; i < rowContainer.size(); ++i)
                 gsInfo << rowContainer[i] << ", ";
             gsInfo << "\n";
+            gsInfo << "Kind of Vertex\n";
+            for (size_t i = 0; i < kindOfVertex.size(); ++i)
+                gsInfo << kindOfVertex[i] << ", ";
+            gsInfo << "\n";
+
         }
 
 
@@ -460,7 +488,7 @@ protected:
     gsMultiPatch<T> m_mp;
     index_t m_patchID;
 
-    bool info;
+    bool info, twoPatch;
 
     std::vector<gsTensorBSplineBasis<d, T>> basisG1Container;
 
@@ -474,6 +502,7 @@ protected:
     std::vector<index_t> rowContainer;
 
     std::vector<bool> isInterface;
+    std::vector<index_t> kindOfVertex;
 
 
 }; // Class gsC1ArgyrisBasis

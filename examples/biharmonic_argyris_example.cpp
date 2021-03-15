@@ -47,6 +47,8 @@ int main(int argc, char *argv[])
     bool info = false;
     bool latex = false;
 
+    bool twoPatch = false;
+
     gsCmdLine cmd("Solving biharmonic equation with Argyris space.");
     cmd.addPlainString("filename", "G+Smo input geometry file.", input);
     cmd.addInt( "g", "geometry", "Which geometry",  geometry );
@@ -65,6 +67,8 @@ int main(int argc, char *argv[])
     cmd.addSwitch( "exactGD", "To compute the gluing data exact", exactGD );
     cmd.addSwitch( "isogeometric", "Project the basis in isogeometric concept", isogeometric );
     cmd.addSwitch("neumann","Compute the biharmonic with neumann bdy",neumann);
+
+    cmd.addSwitch("twoPatch","Two Patch",twoPatch);
 
     // Output features
     cmd.addSwitch("latex","Print the rate and error latex-ready",latex);
@@ -102,7 +106,7 @@ int main(int argc, char *argv[])
     optionList.addSwitch("info", "Print information", info);
     optionList.addSwitch("plot", "Plot", plot);
 
-    optionList.addSwitch("twoPatch", "Two Patch", true);
+    optionList.addSwitch("twoPatch", "Two Patch", twoPatch);
     //! [Problem setup]
 
     //! [Read geometry]
