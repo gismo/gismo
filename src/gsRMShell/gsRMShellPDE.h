@@ -19,7 +19,7 @@
 
 #include <gsPde/gsPde.h>
 #include <gsCore/gsPiecewiseFunction.h>
-#include"gsMyBase/gsMyBase.h"
+
 namespace gismo
 {
 

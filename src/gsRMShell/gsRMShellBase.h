@@ -1,3 +1,4 @@
+#pragma once
 /** @file gsRMShellBase.hpp
 
 	@brief Provides basic parameters for the RM shell equation.
@@ -12,16 +13,16 @@
 
 	Date:   2020-12-23
 */
-#pragma once
 
 #include <gismo.h>
 #include <string.h>
-#include"gsMyBase/gsMyBase.h"
+
 using namespace Eigen;
 using namespace std;
 
 namespace gismo
 {
+	// >>> ======================================================================
 	// 材料属性
 	class Material
 	{
@@ -31,12 +32,12 @@ namespace gismo
 		// 构造函数（初始化）
 		Material()
 		{
-			thickness	= 0.01; // 壳的厚度(m)
-			E_modulus	= 200E9;// 弹性模量(Pa)
-			poisson_ratio = 0.3;  // 泊松比
-			rho			= 1.0;  // 密度
-			lambda		= 0.0;
-			mu			= 0.0;
+			thickness = 0.01; // 壳的厚度(m)
+			E_modulus = 200E9;// 弹性模量(Pa)
+			poisson_ratio = 0.3;// 泊松比
+			rho = 1.0;  // 密度
+			lambda = 0.0;
+			mu = 0.0;
 		}
 		// 析构函数
 		~Material() {}
@@ -49,11 +50,89 @@ namespace gismo
 		real_t mu;
 	};
 
-	// ======================================================
+	// >>> ======================================================================
+	// 用于计算应力应变的数据
+	template<class T>
+	class SSdata
+	{
+	public:
+		SSdata()
+		{}
 
+		SSdata(SSdata<T>& S)
+		{
+			m_Dg = S.m_Dg;
+			m_Bg = S.m_Bg;
+			m_Ng = S.m_Ng;
+			m_Pg = S.m_Pg;
+		}
+		~SSdata()
+		{}
 
+	public:
+		vector<gsMatrix<real_t>> m_Dg;	// 所有单元的D阵 <[积分点数*dof x dof]>
+		vector<gsMatrix<real_t>> m_Bg;	// 所有单元的B阵 <[积分点数*dof x 控制点数*dof]>
+		vector<gsMatrix<real_t>> m_Ng;	// 所有单元的基函数N <[积分点数 x 控制点数]>
+		vector<gsMatrix<index_t>> m_Pg;	// 所有单元的控制点编号P <[控制点数 x 1]>
+	};
 
-	// =============================================================
+	// >>> ======================================================================
+	// 边界条件数据
+	struct str_SPC1
+	{
+		int no_patch;
+		double position;
+		string dof;
+		double value;
+		bool is_parametric;
+	};
+
+	struct str_2d_SPC1
+	{
+		int no_patch;
+		double position[2];
+		string dof;
+		double value;
+		bool is_parametric;
+	};
+
+	struct str_FORCE
+	{
+		int no_patch;
+		double position;
+		string dof;
+		double value;
+		bool is_parametric;
+	};
+
+	struct str_2d_FORCE
+	{
+		int no_patch;
+		double position[2];
+		string dof;
+		double value;
+		bool is_parametric;
+	};
+
+	struct str_PRESSURE
+	{
+		int no_patch;
+		string dof;
+		double value;
+		bool is_parametric;
+	};
+
+	struct str_2d_PRESSURE
+	{
+		int no_patch;
+		string dof;
+		double value;
+		string section;
+		bool is_parametric;
+	};
+
+	// >>> ======================================================================
+	// 约束条件
 	struct gsShellBoundaryCondition
 	{
 		int patch;
@@ -74,16 +153,16 @@ namespace gismo
 			point(0) = posU1;
 			point(1) = posU2;
 		}
-		
+
 		~gsShellBoundaryCondition() {}
 	};
-	// ===================================================================
 
+	// >>> ======================================================================
+	// 集中载荷
 	/** @brief
-	Struct defining a point together with a scalar or vector load.
-
-	\ingroup Pde
-*/
+		Struct defining a point together with a scalar or vector load.
+		\ingroup Pde
+	*/
 	template<class T>
 	struct point_load
 	{
@@ -116,7 +195,6 @@ namespace gismo
 
 	/** @brief Class containing a set of points on a multi-patch
 		isogeometric domain, together with boundary conditions.
-
 		\ingroup Pde
 	*/
 	template<class T>
@@ -181,13 +259,13 @@ namespace gismo
 		plContainer  m_pointLoads; ///< List of Point loads
 
 	}; // class gsPointLoads
-	// =============================================================================
 
-/** @brief
-	Struct defining a pressure load with a scalar or vector load.
-
-	\ingroup Pde
-*/
+	// >>> ======================================================================
+	// 均布载荷
+	/** @brief
+		Struct defining a pressure load with a scalar or vector load.
+		\ingroup Pde
+	*/
 	template<class T>
 	struct distri_load
 	{
@@ -196,7 +274,7 @@ namespace gismo
 			string _zone = "",
 			bool _parametric = true)
 			:
-			patch(_patch), value(_value), section(_zone),parametric(_parametric)
+			patch(_patch), value(_value), section(_zone), parametric(_parametric)
 		{
 		}
 
@@ -207,11 +285,8 @@ namespace gismo
 		bool parametric;
 	};
 
-
-
 	/** @brief Class containing a set of distributed loads on a multi-patch
 		isogeometric domain, together with boundary conditions.
-
 		\ingroup Pde
 	*/
 	template<class T>
@@ -268,4 +343,6 @@ namespace gismo
 		plContainer  m_distriLoads; ///< List of domain loads
 
 	}; // class gsDistriLoads
+
+	// >>> ======================================================================
 }

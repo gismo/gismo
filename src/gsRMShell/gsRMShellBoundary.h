@@ -1,3 +1,4 @@
+#pragma once
 /** @file gsRMShellBoundary.h
 
    @brief Set Boundary condition for the RM shell equation.
@@ -12,11 +13,10 @@
 
    Date:   2020-12-23
 */
-#pragma once
 
 #include "gsRMShellBase.h"
 #include "gsNURBSinfo.hpp"
-#include"gsMyBase/gsMyBase.h"
+
 namespace gismo
 {
 	/** @brief
@@ -30,42 +30,39 @@ namespace gismo
 		\ingroup Assembler
 	*/
 	template < class T>
-	class gsRMShellBoundary 
+	class gsRMShellBoundary
 	{
-	
+
 	public:
 		// 默认构造函数
-		gsRMShellBoundary()	{}
+		gsRMShellBoundary() {}
 		typedef memory::shared_ptr<gsRMShellBoundary> Ptr;
 		typedef memory::unique_ptr<gsRMShellBoundary> uPtr;
-		
+
 		// 构造函数
 		gsRMShellBoundary(ifstream& bc_stream,
-			gsMultiBasis<T> const & m_basis,
-			gsNURBSinfo<T> & nurbs_info,
+			gsMultiBasis<T> const& m_basis,
+			gsNURBSinfo<T>& nurbs_info,
 			index_t dof_per_node)
 		{
-			m_basis_ = m_basis;
-			m_nurbs_info = nurbs_info;
-			//bc_file = bc_stream;
-			sum_nodes = nurbs_info.nurbs_node; //节点总数
-			dof_node = dof_per_node;
-			//setBoundary(bc_stream);
+			m_basis_		= m_basis;
+			m_nurbs_info	= nurbs_info;
+			sum_nodes		= nurbs_info.nurbs_sumcp; //节点总数
+			dof_node		= dof_per_node;
 		}
 
- 		gsRMShellBoundary(gsRMShellBoundary<T>& C)
- 		{
- 			m_basis_		= C.m_basis_;
+		gsRMShellBoundary(gsRMShellBoundary<T>& C)
+		{
+			m_basis_		= C.m_basis_;
 			m_nurbs_info	= C.m_nurbs_info;
- 			sum_nodes		= C.sum_nodes;
- 			dof_node		= C.dof_node;
- // 			bc_file			= C.bc_file;
- // 			m_BCs			= C.m_BCs;
- // 			m_pLoads		= C.m_pLoads;
- // 			m_pPressure		= C.m_pPressure;
-			
- 		}
-		
+			sum_nodes		= C.sum_nodes;
+			dof_node		= C.dof_node;
+			m_pdDomain		= C.m_pdDomain;
+			// 			bc_file			= C.bc_file;
+			// 			m_BCs			= C.m_BCs;
+			// 			m_pLoads		= C.m_pLoads;
+			// 			m_pPressure		= C.m_pPressure;
+		}
 
 		// 析构函数
 		~gsRMShellBoundary()
@@ -78,11 +75,12 @@ namespace gismo
 
 		// 1. 读取边界条件
 		void _bc_read(gsMultiBasis<T> const& m_basis,
-			gsNURBSinfo<T> const& nurbs_info,
-			ifstream& bc_file,
-			vector<str_2d_SPC1>& vec_SPC1,
-			vector<str_2d_FORCE>& vec_FORCE,
-			vector<str_2d_PRESSURE>& vec_PRESSURE);
+			gsNURBSinfo<T> const&	nurbs_info,
+			ifstream&				bc_file,
+			vector<str_2d_SPC1>&	vec_SPC1,
+			vector<str_2d_FORCE>&	vec_FORCE,
+			vector<str_2d_PRESSURE>& vec_PRESSURE,
+			vector<real_t>&			pdDomain);
 
 		// 2. 位移约束定义
 		void _setBc_spc(vector<str_2d_SPC1>& vec_SPC1,
@@ -107,13 +105,14 @@ namespace gismo
 
 	public:
 
-		gsMultiBasis<T> m_basis_;
-		gsNURBSinfo<T>	m_nurbs_info;
-		index_t sum_nodes;
-		index_t dof_node;
-		ifstream bc_file;
-		gsPointLoads<T> m_pLoads;
-		gsDistriLoads<T> m_pPressure;
-		vector<gsShellBoundaryCondition> m_BCs;
+		gsMultiBasis<T>  m_basis_;		// 
+		gsNURBSinfo<T>	 m_nurbs_info;	// nurbs 信息
+		index_t			 sum_nodes;		// 控制点总数
+		index_t			 dof_node;		// 节点自由度
+		ifstream		 bc_file;		// 边界条件数据
+		gsPointLoads<T>  m_pLoads;		// 集中载荷
+		gsDistriLoads<T> m_pPressure;	// 均布载荷
+		vector<gsShellBoundaryCondition> m_BCs;	// 位移约束
+		vector<real_t>	 m_pdDomain;	// PD 区域
 	};
 }

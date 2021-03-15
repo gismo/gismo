@@ -1,3 +1,4 @@
+#pragma once
 /** @file gsRMShellBoundary.h
 
    @brief Set Boundary condition for the RM shell equation.
@@ -12,13 +13,12 @@
 
    Date:   2020-12-23
 */
-#pragma once
+
 #include "gsRMShellBoundary.h"
-#include"gsMyBase/gsMyBase.h"
+
 namespace gismo
 {
-
-
+	// >>> --------------------------------------------------------------------
 	template < class T>
 	void gsRMShellBoundary<T>::setBoundary(ifstream& bc_stream)
 	{
@@ -28,7 +28,7 @@ namespace gismo
 
 		//1.read the bc file
 		_bc_read(m_basis_, m_nurbs_info, bc_stream,
-			vec_SPC1, vec_FORCE, vec_PRESSURE);
+			vec_SPC1, vec_FORCE, vec_PRESSURE, m_pdDomain);
 
 		//2.set boundary conditions
 		_setBc_spc(vec_SPC1, m_BCs);
@@ -40,18 +40,22 @@ namespace gismo
 		_setBc_pressure(vec_PRESSURE, m_pPressure);
 	}
 
+	// >>> --------------------------------------------------------------------
 	// 1. 读取边界条件
 	template < class T>
 	void gsRMShellBoundary<T>::_bc_read(gsMultiBasis<T> const& m_basis,
-		gsNURBSinfo<T> const& nurbs_info,
-		ifstream& bc_file,
-		vector<str_2d_SPC1>& vec_SPC1,
-		vector<str_2d_FORCE>& vec_FORCE,
-		vector<str_2d_PRESSURE>& vec_PRESSURE)
+		gsNURBSinfo<T> const&	nurbsinfo,
+		ifstream&				bc_file,
+		vector<str_2d_SPC1>&	vec_SPC1,
+		vector<str_2d_FORCE>&	vec_FORCE,
+		vector<str_2d_PRESSURE>& vec_PRESSURE,
+		vector<real_t>&			pdDomain)
 	{
 		string line;
 		stringstream ss_buff;
 		string buff_ss_;
+		vector<real_t> tem_disp;
+		real_t tem_double;
 		while (!bc_file.eof())
 		{
 			getline(bc_file, line);
@@ -84,25 +88,23 @@ namespace gismo
 				// 使用 str("") 初始化 ss_buff，将 空字符 复制给 ss_buff 的操作
 				ss_buff.str("");
 				ss_buff.str(line);
-				ss_buff >> buff_ss_; // buff_ss_ = "SPCSIDE"
+				ss_buff >> buff_ss_;		// "SPCSIDE"
 				int no_patch;
-				ss_buff >> no_patch; // no_patch = 0
+				ss_buff >> no_patch;		// 0
 				double u1[2], u2[2];
-				ss_buff >> buff_ss_; // buff_ss_ = U1
-				ss_buff >> u1[0] >> u1[1];
-				ss_buff >> buff_ss_; // buff_ss_ = U2
-				ss_buff >> u2[0] >> u2[1];
-				string dof;  // UX, UY, UZ, RX...
-				double va;	// 0.0 value
-				bool par;	// parameter = 1
+				ss_buff >> buff_ss_;		// U1
+				ss_buff >> u1[0] >> u1[1];	// 0 0
+				ss_buff >> buff_ss_;		// U2
+				ss_buff >> u2[0] >> u2[1];	// 0 1
+				string dof;					// UX, UY, UZ, RX...
+				double va;					// 0.0 value
+				bool par;					// parameter = 1
 				ss_buff >> dof >> va >> par;
-				
+
 				// 如果约束是在 U1 这条边上
 				if (u1[0] != u1[1])
 				{
-					
-					index_t cp_No = nurbs_info.igainfo[0].knot_size - 
-						nurbs_info.igainfo[0].knot_degree -  1;
+					index_t cp_No = m_nurbs_info.nurbsdata[no_patch].knot_vector[0].knotvec_size;
 					for (int i = 0; i < cp_No; ++i)
 					{
 						str_2d_SPC1 temp_str_SPC1;
@@ -118,8 +120,7 @@ namespace gismo
 				}
 				else if (u2[0] != u2[1])
 				{
-					index_t cp_No = nurbs_info.igainfo[1].knot_size -
-						nurbs_info.igainfo[1].knot_degree - 1;
+					index_t cp_No = m_nurbs_info.nurbsdata[no_patch].knot_vector[1].knotvec_size;
 					for (int i = 0; i < cp_No; ++i)
 					{
 						str_2d_SPC1 temp_str_SPC1;
@@ -130,10 +131,8 @@ namespace gismo
 						temp_str_SPC1.value = va;
 						temp_str_SPC1.is_parametric = par;
 						vec_SPC1.push_back(temp_str_SPC1);
-						//gsDebug << "vec_SPC1\n" << temp_str_SPC1 << endl;
 					}
 				}
-				//gsDebug << "vec_SPC1\n" << vec_SPC1 << endl;
 				ss_buff.clear();
 			}
 			else if (line.find("FORCE") != std::string::npos)
@@ -141,13 +140,13 @@ namespace gismo
 				str_2d_FORCE temp_str_FORCE;
 				ss_buff.str("");
 				ss_buff.str(line);
-				ss_buff >> buff_ss_;
-				ss_buff >> temp_str_FORCE.no_patch;
-				ss_buff >> temp_str_FORCE.position[0];
-				ss_buff >> temp_str_FORCE.position[1];
-				ss_buff >> temp_str_FORCE.dof;
-				ss_buff >> temp_str_FORCE.value;
-				ss_buff >> temp_str_FORCE.is_parametric;
+				ss_buff >> buff_ss_;						// FORCE
+				ss_buff >> temp_str_FORCE.no_patch;			// 0
+				ss_buff >> temp_str_FORCE.position[0];		// 1
+				ss_buff >> temp_str_FORCE.position[1];		// 1
+				ss_buff >> temp_str_FORCE.dof;				// FX,FY,FZ,MX,MY,MZ
+				ss_buff >> temp_str_FORCE.value;			// -100
+				ss_buff >> temp_str_FORCE.is_parametric;	// 1
 				ss_buff.clear();
 				vec_FORCE.push_back(temp_str_FORCE);
 			}
@@ -156,14 +155,32 @@ namespace gismo
 				str_2d_PRESSURE temp_str_PRESS;
 				ss_buff.str("");
 				ss_buff.str(line);
-				ss_buff >> buff_ss_;
-				ss_buff >> temp_str_PRESS.no_patch;
-				ss_buff >> temp_str_PRESS.dof;
-				ss_buff >> temp_str_PRESS.value;
-				ss_buff >> temp_str_PRESS.section;
-				ss_buff >> temp_str_PRESS.is_parametric;
+				ss_buff >> buff_ss_;						// PRESSURE
+				ss_buff >> temp_str_PRESS.no_patch;			// 0
+				ss_buff >> temp_str_PRESS.dof;				// PX,PY,PZ,MX,MY,MZ
+				ss_buff >> temp_str_PRESS.value;			// -90
+				ss_buff >> temp_str_PRESS.section;			// SUR,UP,DOWN,LEFT,RIGHT
+				ss_buff >> temp_str_PRESS.is_parametric;	// 1
 				ss_buff.clear();
 				vec_PRESSURE.push_back(temp_str_PRESS);
+			}
+			else if (line.find("PDIGADOMAIN") != std::string::npos)
+			{
+				ss_buff.str("");
+				ss_buff.str(line);
+				tem_disp.clear();
+				ss_buff >> buff_ss_;				// PDIGADOMAIN 
+				ss_buff >> buff_ss_;				// Xi 
+				ss_buff >> tem_double;				// 0.4
+				m_pdDomain.push_back(tem_double);
+				ss_buff >> tem_double;				// 0.6 
+				m_pdDomain.push_back(tem_double);
+				ss_buff >> buff_ss_;				// Eta
+				ss_buff >> tem_double;				// 0.4
+				m_pdDomain.push_back(tem_double);
+				ss_buff >> tem_double;				// 0.6
+				m_pdDomain.push_back(tem_double);
+				ss_buff.clear();
 			}
 		}
 	}
@@ -235,10 +252,20 @@ namespace gismo
 		}
 	}
 
+	// >>> --------------------------------------------------------------------
 	// 5. 设置均布载荷
 	template < class T>
 	void gsRMShellBoundary<T>::setPressure(gsSparseSystem<T>& m_system)
 	{
+		index_t patch_no = 0;
+		index_t nodes_row = m_nurbs_info.nurbsdata[patch_no].knot_vector[0].knotvec_size;	// 每行控制点数
+		index_t nodes_col = m_nurbs_info.nurbsdata[patch_no].knot_vector[1].knotvec_size;	// 每列控制点数
+
+		// 继续向k文件中添加载荷等数据
+		// 显示指定app模式，防止已有数据被丢弃
+		ofstream append("../../TestResult/RMShell.k", ofstream::app);
+		append << "*LOAD_NODE_POINT\n";
+
 		for (size_t i = 0; i < m_pPressure.numLoads(); ++i)
 		{
 			if (m_pPressure[i].section == "SUR")
@@ -247,15 +274,122 @@ namespace gismo
 				{
 					for (index_t m = 0; m < dof_node; ++m)
 					{
-						m_system.rhs()(k * dof_node + m, i) *= m_pPressure[i].value[m];	
+						m_system.rhs()(k * dof_node + m, i) *= m_pPressure[i].value[m];
 					}					
 				}
 			}
+			else if (m_pPressure[i].section == "DOWN")
+			{
+				for (index_t k = 0; k < sum_nodes; ++k)
+				{
+					if (k < nodes_row)
+					{
+						for (index_t m = 0; m < dof_node; ++m)
+						{
+							m_system.rhs()(k * dof_node + m, i) *= m_pPressure[i].value[m];
+						}
+					}
+					else
+					{
+						for (index_t m = 0; m < dof_node; ++m)
+						{
+							m_system.rhs()(k * dof_node + m, i) = 0;
+						}
+					}
+				}
+			}
+			else if (m_pPressure[i].section == "UP")
+			{
+				for (index_t k = 0; k < sum_nodes; ++k)
+				{
+					if ((nodes_col-1)*nodes_row < k)
+					{
+						for (index_t m = 0; m < dof_node; ++m)
+						{
+							m_system.rhs()(k * dof_node + m, i) *= m_pPressure[i].value[m];
+						}
+					}
+					else
+					{
+						for (index_t m = 0; m < dof_node; ++m)
+						{
+							m_system.rhs()(k * dof_node + m, i) = 0;
+						}
+					}
+				}
+			}
+			else if (m_pPressure[i].section == "LEFT")
+			{
+				for (index_t k = 0; k < sum_nodes; ++k)
+				{
+					if ( k % nodes_row == 0)
+					{
+						for (index_t m = 0; m < dof_node; ++m)
+						{
+							m_system.rhs()(k * dof_node + m, i) *= m_pPressure[i].value[m];
+						}
+					}
+					else
+					{
+						for (index_t m = 0; m < dof_node; ++m)
+						{
+							m_system.rhs()(k * dof_node + m, i) = 0;
+						}
+					}
+				}
+			}
+			else if (m_pPressure[i].section == "RIGHT")
+			{
+				for (index_t k = 0; k < sum_nodes; ++k)
+				{
+					if ((k+1) % nodes_row == 0 )
+					{
+						for (index_t m = 0; m < dof_node; ++m)
+						{
+							m_system.rhs()(k * dof_node + m, i) *= m_pPressure[i].value[m];
+							
+						}
+					}
+					else
+					{
+						for (index_t m = 0; m < dof_node; ++m)
+						{
+							m_system.rhs()(k * dof_node + m, i) = 0;
+						}
+					}
 
+				}
+			}
 		}
 
-		if (m_pPressure.numLoads()==0)
+		// 如果存在多个均布载荷就合并为1个
+		if (1 < m_pPressure.numLoads())
 		{
+			for (size_t i = 1; i < m_pPressure.numLoads(); ++i)
+			{
+				m_system.rhs().col(0) += m_system.rhs().col(i);
+			}
+		}
+
+		// 输出k文件中的均布载荷
+		for (index_t k = 0; k < sum_nodes; ++k)
+		{
+			for (index_t m = 0; m < dof_node; ++m)
+			{
+				if (m_system.rhs()(k * dof_node + m, 0) != 0)
+				{
+					append << setw(10) << k + 1
+						<< setw(10) << m + 1
+						<< setw(10) << 0
+						<< setw(10) << m_system.rhs()(k * dof_node + m, 0)
+						<< setw(10) << 0 << "\n";
+				}	
+			}
+		}
+		append.close();
+
+		if (m_pPressure.numLoads()==0)
+		{ 
 			m_system.rhs().setZero();
 		}
 
@@ -268,6 +402,11 @@ namespace gismo
 		gsMatrix<T>			bVals;
 		gsMatrix<index_t>	acts;
 
+		// 继续向k文件中添加载荷等数据
+		// 显示指定app模式，防止已有数据被丢弃
+		ofstream append("../../TestResult/RMShell.k", ofstream::app);
+		append << "*LOAD_NODE_POINT\n";
+
 		for (size_t i = 0; i < m_pLoads.numLoads(); ++i)
 		{
 			//m_patches
@@ -275,7 +414,6 @@ namespace gismo
 			{
 				m_basis_.basis(m_pLoads[i].patch).active_into(m_pLoads[i].point, acts);
 				m_basis_.basis(m_pLoads[i].patch).eval_into(m_pLoads[i].point, bVals);
-
 			}
 			else
 			{
@@ -289,9 +427,22 @@ namespace gismo
 				{
 					m_system.rhs()(acts(k, 0) * dof_node + m, 0) +=
 						bVals(k, 0) * m_pLoads[i].value[m];
+					
+					// k 文件 载荷数据
+					if (bVals(k, 0)!=0 && m_pLoads[i].value[m]!=0)
+					{
+						append << setw(10) << acts(k, 0) + 1
+							<< setw(10) << m + 1
+							<< setw(10) << 0
+							<< setw(10) << bVals(k, 0) * m_pLoads[i].value[m]
+							<< setw(10) << 0 << "\n";
+					}
+					
 				}
 			}
 		}
+		append.close();
+
 	}
 	
 	// 7. 设置位移约束
@@ -304,6 +455,12 @@ namespace gismo
 		
 		vector<set<index_t> > vec_boundedCp(7, set<index_t>());
 		set<index_t> boundedCp;
+
+		// 继续向k文件中添加位移约束等数据
+		// 显示指定app模式，防止已有数据被丢弃
+		ofstream append("../../TestResult/RMShell.k", ofstream::app);
+		append << "*BOUNDARY_SPC_NODE\n";
+
 		for (size_t i = 0; i < m_BCs.size(); ++i)
 		{
 			if (m_BCs[i].is_parametric)
@@ -341,6 +498,12 @@ namespace gismo
 					}
 					// 防止一个点重复乘大数
 					boundedCp.insert(acts(k, 0));
+
+					// k 文件 位移约束
+					append << setw(10) << acts(k, 0) + 1
+						<< setw(10) << " "
+						<< setw(10) << 1 << setw(10) << 1 << setw(10) << 1
+						<< setw(10) << 1 << setw(10) << 1 << setw(10) << 1 << "\n";
 				}
 				else if (m_BCs[i].direction != 6 && bVals(k, 0) != 0
 					&& (vec_boundedCp[m_BCs[i].direction].find(acts(k, 0))
@@ -354,8 +517,24 @@ namespace gismo
 					m_system.matrix()(tem, tem) *= LARGE_NUMBER_MINE;
 					// 防止重复对同一个乘成大数
 					vec_boundedCp[m_BCs[i].direction].insert(acts(k, 0));
+
+					// k 文件 位移约束
+					append << setw(10) << acts(k, 0) + 1
+						<< setw(10) << " ";
+						for (index_t d = 0; d < dof_node; ++d)
+						{
+							if(d == m_BCs[i].direction)
+								append << setw(10) << 1;
+							else
+								append << setw(10) << 0;
+						}
+					append << "\n";
 				}
 			}
 		}
+
+		append << "*END";
+		append.close();
 	}
+	// -------------------------------------------------------------------- <<<
 }
