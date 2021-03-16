@@ -29,6 +29,7 @@ int main(int argc, char* argv[])
     index_t reduceCont = 0;
     index_t maxiter = 100;
     real_t tol = 1e-6;        //residual error tolerance
+    real_t tol0 = 0;
     index_t num = 8;        //number of refinements
     index_t str = 2;
     bool require_fin = false;
@@ -46,6 +47,7 @@ int main(int argc, char* argv[])
     cmd.addInt("c", "reduceCont", "reduce continuity of basis by...", reduceCont);
     cmd.addInt("i", "maxiter", "maximal iterations", maxiter);
     cmd.addReal("t", "tol", "Residual error tolerance", tol);
+    cmd.addReal("", "tol0", "Residual error tolerance for coarsest grid (if 0: like --tol)", tol0);
     cmd.addInt("r", "numRefine", "number of refinements of the mesh", num);
     cmd.addInt("s", "strat", "Method for Dirichlet Imposition", str);
     cmd.addInt("", "sub", "Number of subdivision of an element for quadrature nodes", subdiv);
@@ -56,10 +58,7 @@ int main(int argc, char* argv[])
     try { cmd.getValues(argc, argv); }
     catch (int rv) { return rv; }
 
-    real_t eps_ = eps;
-    real_t p_ = p;
-    real_t ip = 1.8;
-    real_t ieps = 1;
+    if (tol0==0) tol0 = tol;
 
     gsInfo << "Printing command line arguments:\n"
           << "eps               = " << eps << "\n"
@@ -69,8 +68,10 @@ int main(int argc, char* argv[])
           << "reduceCont        = " << reduceCont << "\n"
           << "maxiter           = " << maxiter << "\n"
           << "tol               = " << tol << "\n"
+          << "tol0              = " << tol0 << "\n"
           << "numRefine         = " << num << "\n"
           << "subdiv            = " << subdiv << "\n"
+          << "solver_type       = " << solver_type << "\n"
           << "BC                = " << bc << "\n";
     gsOptionList opt = gsAssembler<>::defaultOptions();
     //opt.setInt("DirichletValues", dirichlet::l2Projection);
@@ -220,9 +221,15 @@ int main(int argc, char* argv[])
         real_t final_res_sq = (rh.transpose()*rh).value();
         real_t initial_res_sq = final_res_sq;
 
+        real_t tol_k = i==startrefine ? tol0 : tol;
+
+        gsInfo << "   " << 0 << " (initial res "
+               << std::setprecision(4) << std::scientific << final_res_sq << ")\n";
+
+
         do
         {
-            index_t ls_iter;
+            index_t ls_iter = 0;
             real_t cg_cond = 0;
             if (solver_type=="lu")
             {
@@ -267,13 +274,21 @@ int main(int argc, char* argv[])
             A.assemble();
             rh = A.matrix() * solVector - A.rhs();
             final_res_sq = (rh.transpose()*rh).value();
-            if (solver_type!="lu")
-                gsInfo << "   " << iter << " (lin solver: " << ls_iter << " iterations to reach res "
-                       << std::setprecision(2) << std::scientific << final_res_sq << ". "
-                       << " cond: " << cg_cond << ")\n";
-                  iter++;
 
-        } while (iter < maxiter && final_res_sq>tol*tol*initial_res_sq);
+            iter++;
+
+            if (solver_type=="lu")
+                gsInfo << "   " << iter << " (lin solver: obtained res "
+                       << std::setprecision(4) << std::scientific << final_res_sq << ")\n";
+            else if (solver_type=="cg"||solver_type=="cg-mg")
+                gsInfo << "   " << iter << " (lin solver: " << ls_iter << " iterations to reach res "
+                       << std::setprecision(4) << std::scientific << final_res_sq << ". "
+                       << " cond: " << cg_cond << ")\n";
+            else if (solver_type=="gmres"||solver_type=="gmres-mg")
+                gsInfo << "   " << iter << " (lin solver: " << ls_iter << " iterations to reach res "
+                       << std::setprecision(4) << std::scientific << final_res_sq << ")\n";
+
+        } while (iter < maxiter && final_res_sq>tol_k*tol_k*initial_res_sq);
 
         std::clock_t c_end = std::clock();
         double time = (c_end - c_start) / CLOCKS_PER_SEC;
