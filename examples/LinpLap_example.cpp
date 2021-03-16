@@ -30,6 +30,7 @@ int main(int argc, char* argv[])
 	real_t epsR = eps;
 	real_t p = 1.8;			//p-Laplace parameter
 	index_t k = 1;			//spline degree
+  index_t reduceCont = 0;
 	index_t maxiter = 100;
 	real_t TOL = 1e-6;		//residual error tolerance
 	index_t num = 8;		//number of refinements
@@ -48,6 +49,7 @@ int main(int argc, char* argv[])
 	//cmd.addReal("f", "eps_", "variable for eps_", eps_);
 	cmd.addReal("p", "pow", "p-Laplace Parameter", p);
 	cmd.addInt("k", "degree", "degree of basis", k);
+ 	cmd.addInt("c", "reduceCont", "reduce continuity of basis by...", reduceCont);
 	cmd.addInt("i", "maxiter", "maximal iterations", maxiter);
 	cmd.addInt("r", "numRefine", "number of refinements of the mesh", num);
 	cmd.addInt("s", "strat", "Method for Dirichlet Imposition", str);
@@ -126,7 +128,6 @@ int main(int argc, char* argv[])
 	gsFunctionExpr<> f2("2*" + std::to_string(gamma) + "^2*pi^2*(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*pi^2*cos(" + std::to_string(gamma) + "*pi*(x+y))^2)^((" + std::to_string(p) + "-4)/2)*(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*(" + std::to_string(p) + "-1)*pi^2*cos(" + std::to_string(gamma) + "*pi*(x+y))^2)*sin(" + std::to_string(gamma) + "*pi*(x+y))", 2);
 	gsFunctionExpr<> f3("8*pi^2*(" + std::to_string(eps*eps) + "+2*pi^2+pi^2*(-(" + std::to_string(p) + "-2)*cos(4*pi*y)-cos(4*pi*x)*(" + std::to_string(p) + "-2+2*(" + std::to_string(p) + "-1)*cos(4*pi*y))))*(" + std::to_string(eps*eps) + "+2*pi^2-pi^2*(cos(4*pi*(x-y))+cos(4*pi*(x+y))))^((" + std::to_string(p) + "-4)/2)*(sin(2*pi*x)*sin(2*pi*y))", 2);
 	gsFunctionExpr<> f4("(" + std::to_string(eps*eps) + "+cos(x)^2)^(" + std::to_string(p) + "/2-2)*(" + std::to_string(eps*eps) + "+(" + std::to_string(p) + "-1)*cos(x)^2)*sin(x)", 2);
-
 	gsFunctionExpr<> f5("1", 2);
 
 	// Define exact solution (optional)
@@ -205,6 +206,7 @@ int main(int argc, char* argv[])
 	{
 		refine_basis.uniformRefine();
 	}
+  refine_basis.reduceContinuity(reduceCont);
 
 	////////////// Setup solver and solve //////////////
 	// Initialize Solver
@@ -265,14 +267,14 @@ int main(int argc, char* argv[])
 	//gsField<> solnew;
 
 	gsInfo << "eps = " << eps << " , p = " << p << " , k = " << k << " , lambda = " << lambda << "\n";
-	gsInfo << "Dofs      & CPU time & L_p error& L_p rate & F error  & F rate   & N_max    & _p       & _eps \n";
+	gsInfo << "Dofs      & CPU time & L_p error& L_p rate & F error  & F rate   & N_max    & _p       & _eps     & ||rh||_{\ell^2} \n";
 
 	for (int i = startrefine; i < num; i++)
 	{
 		if (prec)
 		{
 			p_ = math::max(p, ip - (i - startrefine)*(ip - p) / (5 - startrefine));
-			eps_ = math::max(eps, ieps - (i - startrefine)*(ieps - eps) / (5 - startrefine)); //reach the true parameter after 5 iterations
+			eps_ = math::max(eps, ieps * std::pow( eps/ieps, real_t(i - startrefine)/(5 - startrefine) )); //reach the true parameter after 5 iterations
 		}
 
 		//transfer recent solution to finer mesh. with elimination it only transfers free DoFs and not Dirichlet values.
@@ -342,7 +344,10 @@ int main(int argc, char* argv[])
 			if (prec && eps_<epsR) { tau = 2 * eps_ / epsR; }
 			else
 			{
-				tau = 1;// stepsize(Kh, fh, pde, epsR, refine_basis, opt, solVector, step, rh, Jh, mu, sigma, tau_min, tau_max, subdiv);
+        if (tau_min == 1 && tau_max == 1)
+          tau = 1;
+        else
+  				tau = stepsize(Kh, fh, pde, epsR, refine_basis, opt, solVector, step, rh, Jh, mu, sigma, tau_min, tau_max, subdiv);
 			}
 			//gsInfo<<tau<<"\n";
 
@@ -408,13 +413,31 @@ int main(int argc, char* argv[])
 
 		if (i == startrefine)
 		{
-			gsInfo << std::setw(8) << A.numDofs() << "  & " << std::setw(7) << time << "s & " << std::setw(8) << e_0 << " &     -    & " << std::setw(8) << e_F << " &    -     & " << std::setw(8) << iter << " & " << std::setw(8) << p_ << " & " << std::setw(8) << eps_ << "\n";
+			gsInfo << std::setw(8) << A.numDofs() << "  & " 
+          << std::setprecision(2) << std::fixed << std::setw(7) << time << "s & " 
+          << std::setprecision(2) << std::scientific << std::setw(8) << e_0 << " &  "
+          << "   -    & "
+          << std::setprecision(2) << std::scientific << std::setw(8) << e_F << " & "
+          << "   -     & "
+          << std::setw(8) << iter << " & " 
+          << std::setprecision(2) << std::fixed << std::setw(8) << p_ << " & "
+          << std::setprecision(2) << std::fixed << std::setw(8) << eps_ << " & " 
+          << std::setprecision(2) << std::scientific << std::setw(8) << math::sqrt((rh.transpose()*rh).value()) << "\n";
 		}
 		else
 		{
 			Lp_rate = math::log(e_0 / e_0old) / math::log(0.5);
 			F_rate = math::log(e_F / e_Fold) / math::log(0.5);
-			gsInfo << std::setw(8) << A.numDofs() << "  & " << std::setw(7) << time << "s & " << std::setw(8) << e_0 << " &" << std::setw(9) << Lp_rate << " & " << std::setw(8) << e_F << " &" << std::setw(9) << F_rate << " & " << std::setw(8) << iter << " & " << std::setw(8) << p_ << " & " << std::setw(8) << eps_ << "\n";
+			gsInfo << std::setw(8) << A.numDofs() << "  & "
+          << std::setprecision(2) << std::fixed << std::setw(7) << time << "s & "
+          << std::setprecision(2) << std::scientific << std::setw(8) << e_0 << " &"
+          << std::setprecision(4) << std::fixed << std::setw(9) << Lp_rate << " & "
+          << std::setprecision(2) << std::scientific << std::setw(8) << e_F << " &"
+          << std::setprecision(4) << std::fixed << std::setw(9) << F_rate << " & "
+          << std::setw(8) << iter << " & "
+          << std::setprecision(2) << std::fixed << std::setw(8) << p_ << " & "
+          << std::setprecision(2) << std::fixed << std::setw(8) << eps_ << " & " 
+          << std::setprecision(2) << std::scientific << std::setw(8) << math::sqrt((rh.transpose()*rh).value()) << "\n";
 		}
 	}
 
