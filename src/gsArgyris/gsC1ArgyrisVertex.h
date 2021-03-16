@@ -15,6 +15,7 @@
 
 #include <gsArgyris/gsC1ArgyrisBasis.h>
 #include <gsArgyris/gsC1ArgyrisAuxiliaryPatch.h>
+#include <gsArgyris/gsApproxArgyrisVertexBasis.h>
 
 
 
@@ -62,42 +63,92 @@ public:
 
         reparametrizeVertexPatches();
 
-        for(size_t i = 0; i < m_patchesAroundVertex.size(); i++)
+        if (m_optionList.getSwitch("twoPatch") && m_patchesAroundVertex.size() == 1)
         {
-            if (m_optionList.getSwitch("twoPatch") && m_patchesAroundVertex.size() == 1)
+            gsMultiPatch<> g1Basis;
+            gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[0].getArygrisBasisRotated().getVertexBasis(
+                    m_vertexIndices[0]); // 0 -> u, 1 -> v
+
+            index_t dim_u = basis_edge.component(0).size();
+            index_t dim_v = basis_edge.component(1).size();
+            for (index_t j = 0; j < 2; j++) // v
             {
-
-                gsMultiPatch<> g1Basis;
-                gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[0].getArygrisBasisRotated().getVertexBasis(
-                        m_vertexIndices[i]); // 0 -> u, 1 -> v
-
-                index_t dim_u = basis_edge.component(0).size();
-                index_t dim_v = basis_edge.component(1).size();
-                for (index_t j = 0; j < 2; j++) // v
+                for (index_t i = 0; i < 2; i++) // u
                 {
-                    for (index_t i = 0; i < 2; i++) // u
-                    {
-                        gsMatrix<> coefs;
-                        coefs.setZero(dim_u * dim_v, 1);
+                    gsMatrix<> coefs;
+                    coefs.setZero(dim_u * dim_v, 1);
 
-                        coefs(j * dim_u + i, 0) = 1;
+                    coefs(j * dim_u + i, 0) = 1;
 
-                        g1Basis.addPatch(basis_edge.makeGeometry(coefs));
-                    }
+                    g1Basis.addPatch(basis_edge.makeGeometry(coefs));
                 }
-                m_auxPatches[0].parametrizeBasisBack(g1Basis);
-
-                basisVertexResult.push_back(g1Basis);
             }
-            else
+            m_auxPatches[0].parametrizeBasisBack(g1Basis);
+
+            basisVertexResult.push_back(g1Basis);
+        }
+        else if (!m_optionList.getSwitch("twoPatch"))
+        {
+            // Compute Sigma
+            real_t sigma = computeSigma(m_vertexIndices);
+
+            for(size_t i = 0; i < m_patchesAroundVertex.size(); i++)
             {
+                ArgyrisAuxPatchContainer auxPatchSingle;
+                auxPatchSingle.push_back(m_auxPatches[i]);
+
+                std::vector<index_t> sideContainer;
+                switch (auxPatchSingle[0].side())
+                {
+                    case 1:
+                        sideContainer.push_back(3); // u
+                        sideContainer.push_back(1); // v
+                        break;
+                    case 2:
+                        sideContainer.push_back(2); // u
+                        sideContainer.push_back(3); // v
+                        break;
+                    case 3:
+                        sideContainer.push_back(1); // u
+                        sideContainer.push_back(4); // v
+                        break;
+                    case 4:
+                        sideContainer.push_back(4); // u
+                        sideContainer.push_back(2); // v
+                        break;
+                    default:
+                        gsInfo << "Something went wrong\n";
+                        break;
+                }
+
                 // Compute Gluing data
+                gsApproxGluingData<d, T> approxGluingData(auxPatchSingle, m_optionList, sideContainer);
                 // Create Basis functions
+                gsApproxArgyrisVertexBasis<d, T> approxArgyrisVertexBasis(auxPatchSingle, approxGluingData,
+                                                                          m_vertexIndices[i], sideContainer, sigma, m_optionList);
+
+                gsMultiPatch<> result_1;
+                approxArgyrisVertexBasis.setBasisVertex(result_1);
                 // Compute Kernel
-                // Rotate Back
+
+                // parametrizeBasisBack
+                auxPatchSingle[0].parametrizeBasisBack(result_1);
+
                 // Store
+                basisVertexResult.push_back(result_1);
+
             }
         }
+
+        gsMatrix<> points;
+        points.setZero(2,2);
+        points(0,1) = 1.0;
+
+        if (m_patchesAroundVertex.size() == 2 && !m_optionList.getSwitch("twoPatch"))
+            for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
+                for (size_t i = 0; i < basisVertexResult[np].nPatches(); ++i)
+                    gsInfo << basisVertexResult[np].patch(i).deriv(points) << "\n\n";
+
 
 
         if (m_optionList.getSwitch("plot"))
@@ -157,19 +208,19 @@ public:
             switch (m_auxPatches[i].side()) // == vertex
             {
                 case 1:
-                    //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " not rotated\n";
+                    gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " not rotated\n";
                     break;
                 case 4:
                     m_auxPatches[i].rotateParamAntiClockTwice();
-                    //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " rotated twice anticlockwise\n";
+                    gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " rotated twice anticlockwise\n";
                     break;
                 case 2:
                     m_auxPatches[i].rotateParamAntiClock();
-                    //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " rotated anticlockwise\n";
+                    gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " rotated anticlockwise\n";
                     break;
                 case 3:
                     m_auxPatches[i].rotateParamClock();
-                    //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " rotated clockwise\n";
+                    gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " rotated clockwise\n";
                     break;
             }
         }
@@ -188,6 +239,38 @@ public:
             else if(m_auxPatches[i].side() == 3)
                 m_auxPatches[i].setSide(2);
         }
+    }
+
+    real_t computeSigma(const std::vector<size_t> & vertexIndices)
+    {
+        real_t sigma = 0;
+
+        real_t p = 0;
+        real_t h_geo = 0;
+        for(size_t i = 0; i < m_auxPatches.size(); i++)
+        {
+            gsTensorBSplineBasis<2, real_t> bsp_temp = m_auxPatches[0].getArygrisBasisRotated().getVertexBasis(vertexIndices[i]);
+
+            gsInfo << bsp_temp << "\n";
+
+            real_t p_temp = math::max(bsp_temp.degree(0), bsp_temp.degree(1));
+
+            p = (p < p_temp ? p_temp : p);
+
+            for(index_t j = 0; j < m_auxPatches[i].getPatch().parDim(); j++)
+            {
+                real_t h_geo_temp = bsp_temp.knot(j,p + 2);
+                h_geo = (h_geo < h_geo_temp ? h_geo_temp : h_geo);
+            }
+        }
+
+        gsMatrix<> zero;
+        zero.setZero(2,1);
+        for (size_t i = 0; i < m_auxPatches.size(); i++)
+            sigma += gsMatrix<> (m_auxPatches[i].getPatch().deriv(zero)).lpNorm<Eigen::Infinity>();
+        sigma *= h_geo/(m_auxPatches.size()*p);
+
+        return (1 / sigma);
     }
 
 

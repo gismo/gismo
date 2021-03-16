@@ -51,7 +51,7 @@ public:
         colContainer.resize(9);
 
         // For topology
-        isInterface.resize(4);
+        kindOfEdge.resize(4);
         kindOfVertex.resize(4);
     }
 
@@ -88,6 +88,12 @@ public:
     std::vector<gsTensorBSplineBasis<d, T>> & getBasisG1Container() { return basisG1Container; }
     std::vector<index_t> & getRowContainer() { return rowContainer; }
     std::vector<index_t> & getColContainer() { return colContainer; }
+
+
+    // Kind of edge
+    // true == interface
+    // false == boundary edge
+    bool isInterface(index_t side) const { return kindOfEdge[side-1]; }
 
     // Kind of vertex
     // -1 Boundary vertex
@@ -146,7 +152,7 @@ public:
                     rowContainer[1+i] = basisPlusContainer[i].size()+basisMinusContainer[i].size() - 8;
                 else
                     rowContainer[1+i] = math::max(basisPlusContainer[i].size()+basisMinusContainer[i].size() - 10, 0);
-                isInterface[i] = false;
+                kindOfEdge[i] = false;
             }
             else
             {
@@ -154,7 +160,7 @@ public:
                     rowContainer[1+i] = basisPlusContainer[i].size()+basisMinusContainer[i].size();
                 else
                     rowContainer[1+i] = math::max(basisPlusContainer[i].size()+basisMinusContainer[i].size() - 10, 0);
-                isInterface[i] = true;
+                kindOfEdge[i] = true;
             }
 
         }
@@ -258,14 +264,14 @@ public:
         index_t num = 0;
         if(offset == 0)
         {
-            if(!isInterface[side_id-1])
+            if(!kindOfEdge[side_id-1])
                 num = basisPlusContainer[side_id-1].size() - 4; // Boundary
             else
                 num = basisPlusContainer[side_id-1].size(); // Interface
         }
         else if(offset == 1)
         {
-            if(!isInterface[side_id-1])
+            if(!kindOfEdge[side_id-1])
                 num = basisMinusContainer[side_id-1].size() - 4; // Boundary
             else
                 num = basisMinusContainer[side_id-1].size(); // Interface
@@ -277,7 +283,7 @@ public:
         index_t num_vert = 0;
 
         std::vector<index_t> corner_id;
-        if(!isInterface[side_id-1])
+        if(!kindOfEdge[side_id-1])
         {
             switch (side_id) {
                 case 1:
@@ -317,7 +323,7 @@ public:
 
             if (offset == 1)
             {
-                if(!isInterface[side_id-1])
+                if(!kindOfEdge[side_id-1])
                     start += basisPlusContainer[side_id-1].size() - 4; // Boundary
                 else
                     start += basisPlusContainer[side_id-1].size(); // Interface
@@ -501,7 +507,7 @@ protected:
     std::vector<index_t> colContainer;
     std::vector<index_t> rowContainer;
 
-    std::vector<bool> isInterface;
+    std::vector<bool> kindOfEdge;
     std::vector<index_t> kindOfVertex;
 
 

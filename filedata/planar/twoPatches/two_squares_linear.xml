@@ -18,8 +18,8 @@ B-splines meeting along one side
       0.0 0.0 
       0.2 0.0
 
-      0.0 1.2 
-      0.7 1.2
+      0.0 1
+      0.7 1
     </coefs>
   </Geometry>
 
@@ -35,10 +35,10 @@ B-splines meeting along one side
     </Basis>
     <coefs geoDim="2">
        0.2 0.0
-       1.2 0.0
+       1 0.0
 
-       0.7 1.2
-       1.2 1.2
+       0.7 1
+       1 1
     </coefs>
   </Geometry>
 

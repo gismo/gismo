@@ -29,7 +29,7 @@ public:
     gsC1ArgyrisAuxiliaryPatch(const gsGeometry<> & patch, gsC1ArgyrisBasis<d,T> & singlePatch, const index_t side)
     : m_patchRotated(patch), m_side(side)
     {
-        m_ArgyrisBasisRotated = singlePatch; // Hopefully copy TODO Check
+        m_ArgyrisBasisRotated = singlePatch;
         rotationNum = 0;
         axisOrientation = 0;
     };
@@ -110,6 +110,7 @@ public:
             auxBasis.swap(newBasis);
         }
 */
+
         // Update the number of rotation of the axis
         rotationNum++;
     }
@@ -400,7 +401,11 @@ public:
             rotationNum = 0;
     }
 
-    gsC1ArgyrisBasis<d, T> getArygrisBasisRotated() { return m_ArgyrisBasisRotated; }
+    const index_t getNumberOfRotation(){
+        return rotationNum;
+    }
+
+    gsC1ArgyrisBasis<d, T> getArygrisBasisRotated() const { return m_ArgyrisBasisRotated; }
 
     void setSide(index_t side ) { m_side = side; }
     index_t side() { return m_side; }
@@ -411,8 +416,9 @@ protected:
 
     gsC1ArgyrisBasis<d, T> m_ArgyrisBasisRotated;
 
-    // Global patch index in the initial geometry
+    // Global side/vertex index in the initial geometry
     index_t m_side;
+
 
     // Stores the changing of the axis
     // 0 -> axis not changed

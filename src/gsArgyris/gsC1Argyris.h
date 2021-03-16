@@ -51,9 +51,8 @@ public:
         multiBasis.degreeIncrease(m_optionList.getInt("degreeElevate"));
         //gsInfo << "After: " << multiBasis.basis(0) << "\n";
         // Pre-uniformRefine TODO delete
-        multiBasis.uniformRefine();
+        multiBasis.uniformRefine(3,2);
         //gsInfo << "After 2: " << multiBasis.basis(0) << "\n";
-        multiBasis.uniformRefine();
 /*
         multiBasis.basis(0).uniformRefine();
         multiBasis.basis(1).degreeIncrease();
@@ -329,6 +328,8 @@ public:
                 patchIndex.push_back(allcornerLists[j].patch);
                 vertIndex.push_back(allcornerLists[j].m_index);
             }
+
+            gsInfo << patchIndex[0] << " : " << vertIndex[0] << "\n";
 
             gsC1ArgyrisVertex<d, T> c1ArgyrisVertex(m_mp, m_bases, patchIndex, vertIndex, numVer, m_optionList);
             c1ArgyrisVertex.saveBasisVertex(m_system);

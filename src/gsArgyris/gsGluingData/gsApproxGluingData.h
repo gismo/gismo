@@ -31,22 +31,39 @@ public:
 
 
     gsApproxGluingData(ArgyrisAuxPatchContainer const & auxPatchContainer,
-                       gsOptionList const & optionList)
+                       gsOptionList const & optionList,
+                       std::vector<index_t> sidesContainer = std::vector<index_t>{})
         : m_auxPatches(auxPatchContainer), m_optionList(optionList)
     {
 
-        if (m_auxPatches.size() == 2)
+        if (m_auxPatches.size() == 2) // Interface
         {
-            setGlobalGluingData(0,m_auxPatches[0].side()); // Order is important!!!
-            setGlobalGluingData(1,m_auxPatches[1].side());
+            setGlobalGluingData(0,m_auxPatches[0].side(), 1); // v Order is important!!!
+            setGlobalGluingData(1,m_auxPatches[1].side(), 0); // u
+        }
+        else if (m_auxPatches.size() == 1) // Vertex
+        {
+
+            for (size_t dir = 0; dir < sidesContainer.size(); dir++)
+            {
+                if(auxPatchContainer[0].getArygrisBasisRotated().isInterface(sidesContainer[dir])) // West
+                    setGlobalGluingData(0, sidesContainer[dir], dir);
+                else
+                {
+                    gsBSpline<> alpha;
+                    gsBSpline<> beta;
+                    alphaSContainer.push_back(alpha);
+                    betaSContainer.push_back(beta);
+                }
+            }
         }
         else
-            gsInfo << "SOMETHING WENT WRONG \n";
+            gsInfo << "Something went wrong \n";
 
     }
 
     // Computed the gluing data globally
-    void setGlobalGluingData(index_t patchID = 0,  index_t side = 1);
+    void setGlobalGluingData(index_t patchID = 0,  index_t side = 1, index_t dir = 1);
 
     gsBSpline<T> & alphaS(index_t patchID) { return alphaSContainer[patchID]; }
     gsBSpline<T> & betaS(index_t patchID) { return betaSContainer[patchID]; }
@@ -65,12 +82,10 @@ protected:
 
 
 template<short_t d, class T>
-void gsApproxGluingData<d, T>::setGlobalGluingData(index_t patchID, index_t side)
+void gsApproxGluingData<d, T>::setGlobalGluingData(index_t patchID, index_t side, index_t dir)
 {
     // ======== Space for gluing data : S^(p_tilde, r_tilde) _k ========
     gsBSplineBasis<T> bsp_gD = m_auxPatches[patchID].getArygrisBasisRotated().getBasisGluingData(side);
-
-    index_t dir = patchID == 0 ? 1 : 0;
 
     gsApproxGluingDataAssembler<T> approxGluingDataAssembler(m_auxPatches[patchID].getPatch(), bsp_gD, dir, m_optionList);
     alphaSContainer.push_back(approxGluingDataAssembler.getAlphaS());
