@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
         mappedBasis.init(mb_argyris, sparseMatrix_argyris.transpose());
         gsInfo<< "." <<std::flush;// Construction of Argyris space done
 
-        gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(mp, mappedBasis, bcInfo, bcInfo2, source);
+        gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(mp, mappedBasis, bcInfo, bcInfo2, source, twoPatch);
         g1BiharmonicAssembler.assemble();
         gsInfo<< "." <<std::flush;// Assemblying done
 

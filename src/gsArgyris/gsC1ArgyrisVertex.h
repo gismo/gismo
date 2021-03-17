@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <gsArgyris/gsC1ArgyrisBasis.h>
 #include <gsArgyris/gsC1ArgyrisAuxiliaryPatch.h>
 #include <gsArgyris/gsApproxArgyrisVertexBasis.h>
 
@@ -129,27 +128,39 @@ public:
 
                 gsMultiPatch<> result_1;
                 approxArgyrisVertexBasis.setBasisVertex(result_1);
-                // Compute Kernel
 
-                // parametrizeBasisBack
-                auxPatchSingle[0].parametrizeBasisBack(result_1);
-
-                // Store
+                // Store temporary
                 basisVertexResult.push_back(result_1);
+            }
+
+            if (m_auxPatches[0].getArygrisBasisRotated().getKindOfVertex(m_vertexIndices[0]) != 0) // No internal vertex
+            {
+                computeKernel();
+
+                for(size_t i = 0; i < m_patchesAroundVertex.size(); i++)
+                    m_auxPatches[i].parametrizeBasisBack(basisVertexResult[i]); // parametrizeBasisBack
 
             }
+            else // Internal vertex
+            {
+                for(size_t i = 0; i < m_patchesAroundVertex.size(); i++)
+                    m_auxPatches[i].parametrizeBasisBack(basisVertexResult[i]); // parametrizeBasisBack
+            }
+
+
         }
 
+        /*
         gsMatrix<> points;
         points.setZero(2,2);
         points(0,1) = 1.0;
+
 
         if (m_patchesAroundVertex.size() == 2 && !m_optionList.getSwitch("twoPatch"))
             for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
                 for (size_t i = 0; i < basisVertexResult[np].nPatches(); ++i)
                     gsInfo << basisVertexResult[np].patch(i).deriv(points) << "\n\n";
-
-
+        */
 
         if (m_optionList.getSwitch("plot"))
         {
@@ -193,8 +204,8 @@ public:
             {
                 index_t jj = 0;
                 for (index_t j = m_bases[patch_1].colBegin(corner+4); j < m_bases[patch_1].colEnd(corner+4); ++j, ++jj)
-                    if (basisVertexResult[0].patch(ii).coef(jj,0)*basisVertexResult[0].patch(ii).coef(jj,0)>1e-25)
-                        system.insert(shift_row+i,shift_col+j) = basisVertexResult[0].patch(ii).coef(jj,0);
+                    if (basisVertexResult[np].patch(ii).coef(jj,0)*basisVertexResult[np].patch(ii).coef(jj,0)>1e-25)
+                        system.insert(shift_row+i,shift_col+j) = basisVertexResult[np].patch(ii).coef(jj,0);
             }
         }
     }
@@ -208,19 +219,19 @@ public:
             switch (m_auxPatches[i].side()) // == vertex
             {
                 case 1:
-                    gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " not rotated\n";
+                    //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " not rotated\n";
                     break;
                 case 4:
                     m_auxPatches[i].rotateParamAntiClockTwice();
-                    gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " rotated twice anticlockwise\n";
+                    //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " rotated twice anticlockwise\n";
                     break;
                 case 2:
                     m_auxPatches[i].rotateParamAntiClock();
-                    gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " rotated anticlockwise\n";
+                    //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " rotated anticlockwise\n";
                     break;
                 case 3:
                     m_auxPatches[i].rotateParamClock();
-                    gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " rotated clockwise\n";
+                    //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " rotated clockwise\n";
                     break;
             }
         }
@@ -251,8 +262,6 @@ public:
         {
             gsTensorBSplineBasis<2, real_t> bsp_temp = m_auxPatches[0].getArygrisBasisRotated().getVertexBasis(vertexIndices[i]);
 
-            gsInfo << bsp_temp << "\n";
-
             real_t p_temp = math::max(bsp_temp.degree(0), bsp_temp.degree(1));
 
             p = (p < p_temp ? p_temp : p);
@@ -271,6 +280,139 @@ public:
         sigma *= h_geo/(m_auxPatches.size()*p);
 
         return (1 / sigma);
+    }
+
+    void computeKernel()
+    {
+
+        // TODO Boundary vertex with valence > 2
+        gsMultiPatch<T> mp_vertex;
+        for(size_t i = 0; i < m_patchesAroundVertex.size(); i++)
+        {
+            mp_vertex.addPatch(m_auxPatches[i].getPatch());
+        }
+        mp_vertex.computeTopology();
+
+        index_t dim_mat = 0;
+        std::vector<index_t> dim_u, dim_v, side, patchID;
+        gsMatrix<> matrix_det(2,2), points(2,1);
+        points.setZero();
+        for(size_t np = 0; np < mp_vertex.nPatches(); np++)
+        {
+            if (mp_vertex.isBoundary(np,3)) // u
+            {
+                side.push_back(3);
+                patchID.push_back(np);
+                dim_u.push_back(basisVertexResult[np].basis(0).component(0).size());
+                dim_v.push_back(basisVertexResult[np].basis(0).component(1).size());
+                dim_mat += basisVertexResult[np].basis(0).component(0).size();
+
+                matrix_det.col(0) = m_auxPatches[np].getPatch().jacobian(points).col(0); // u
+            }
+            if (mp_vertex.isBoundary(np,1)) // v
+            {
+                side.push_back(1);
+                patchID.push_back(np);
+                dim_u.push_back(basisVertexResult[np].basis(0).component(0).size());
+                dim_v.push_back(basisVertexResult[np].basis(0).component(1).size());
+                dim_mat += basisVertexResult[np].basis(0).component(1).size();
+
+                matrix_det.col(1) = m_auxPatches[np].getPatch().jacobian(points).col(1); // u
+            }
+        }
+        if (patchID.size() != 2)
+            gsInfo << "Something went wrong \n";
+
+        index_t dofsCorner = 3;
+        if (matrix_det.determinant()*matrix_det.determinant() > 0) // There is a kink
+            dofsCorner = 1;
+
+        for(size_t np = 0; np < mp_vertex.nPatches(); np++)
+            m_bases[m_patchesAroundVertex[np]].setNumDofsVertex(dofsCorner, m_vertexIndices[np]);
+
+        gsInfo << "Det: " << matrix_det.determinant() << "\n";
+
+        gsMatrix<T> coefs_corner(dim_mat, 6);
+        coefs_corner.setZero();
+
+        index_t shift_row = 0;
+        for (size_t bdy_index = 0; bdy_index < patchID.size(); ++bdy_index)
+        {
+            if (side[bdy_index] < 3) // v
+            {
+                for (index_t i = 0; i < dim_v[bdy_index]; ++i)
+                {
+                    for (index_t j = 0; j < 6; ++j)
+                    {
+                        T coef_temp = basisVertexResult[patchID[bdy_index]].patch(j).coef(i*dim_u[bdy_index], 0); // v = 0
+                        if (coef_temp * coef_temp > 1e-25)
+                            coefs_corner(shift_row+i, j) = coef_temp;
+                    }
+                }
+                shift_row += dim_v[bdy_index];
+            }
+            else // u
+            {
+                for (index_t i = 0; i < dim_u[bdy_index]; ++i)
+                {
+                    for (index_t j = 0; j < 6; ++j)
+                    {
+                        T coef_temp = basisVertexResult[patchID[bdy_index]].patch(j).coef(i, 0); // v = 0
+                        if (coef_temp * coef_temp > 1e-25)
+                            coefs_corner(shift_row+i, j) = coef_temp;
+                    }
+                }
+                shift_row += dim_u[bdy_index];
+            }
+        }
+
+        real_t threshold = 1e-8;
+        Eigen::FullPivLU<gsMatrix<>> KernelCorner(coefs_corner);
+        KernelCorner.setThreshold(threshold);
+        //gsInfo << "Coefs: " << coefs_corner << "\n";
+        while (KernelCorner.dimensionOfKernel() < dofsCorner)
+        {
+            threshold += 1e-8;
+            KernelCorner.setThreshold(threshold);
+        }
+        gsInfo << "Dimension of Kernel: " << KernelCorner.dimensionOfKernel() << " With " << threshold << "\n";
+
+        gsMatrix<> vertBas;
+        vertBas.setIdentity(6, 6);
+
+        gsMatrix<T> kernel = KernelCorner.kernel();
+
+        size_t count = 0;
+        while (kernel.cols() < 6) {
+            kernel.conservativeResize(kernel.rows(), kernel.cols() + 1);
+            kernel.col(kernel.cols() - 1) = vertBas.col(count);
+
+            Eigen::FullPivLU<gsMatrix<>> ker_temp(kernel);
+            ker_temp.setThreshold(1e-5);
+            if (ker_temp.dimensionOfKernel() != 0) {
+                kernel = kernel.block(0, 0, kernel.rows(), kernel.cols() - 1);
+            }
+            count++;
+        }
+        gsInfo << "Kernel: " << kernel << "\n";
+
+        for(size_t np = 0; np < m_patchesAroundVertex.size(); np++)
+        {
+            gsMultiPatch<> temp_result_0 = basisVertexResult[np];
+
+            for (size_t j = 0; j < 6; ++j)
+            {
+                index_t dim_uv = temp_result_0.basis(j).size();
+                gsMatrix<> coef_bf;
+                coef_bf.setZero(dim_uv, 1);
+                for (index_t i = 0; i < 6; ++i)
+                    if (kernel(i, j) * kernel(i, j) > 1e-25)
+                        coef_bf += temp_result_0.patch(i).coefs() * kernel(i, j);
+
+                basisVertexResult[np].patch(j).setCoefs(coef_bf);
+            }
+        }
+
     }
 
 

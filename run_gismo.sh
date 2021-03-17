@@ -5,8 +5,8 @@ echo "P = 3, R = 1"
 
 for i in 1 2 3 4 5 6 7 8
 do
-   echo ./bin/biharmonic_argyris_example -g -$i -l 3 -p 3
-   ./bin/biharmonic_argyris_example -g -$i -l 3 -p 3
+   echo ./bin/biharmonic_argyris_example -g -$i -l 3 -p 2 --twoPatch
+   ./bin/biharmonic_argyris_example -g -$i -l 3 -p 2 --twoPatch
 done
 
 echo Finished!

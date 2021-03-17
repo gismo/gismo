@@ -15,7 +15,6 @@
 
 #include <gsArgyris/gsC1ArgyrisEdge.h>
 
-#include <gsArgyris/gsC1ArgyrisBasis.h>
 #include <gsArgyris/gsC1ArgyrisAuxiliaryPatch.h>
 
 #include <gsArgyris/gsGluingData/gsApproxGluingData.h>

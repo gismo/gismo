@@ -135,11 +135,14 @@ public:
         gsMultiPatch<> result_1;
         gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[0].getArygrisBasisRotated().getEdgeBasis(m_auxPatches[0].side()); // 0 -> u, 1 -> v
 
+        std::vector<index_t> shift_bf(2);
+        shift_bf[0] = m_optionList.getSwitch("twoPatch") ? 2 : 3;
+        shift_bf[1] = 2;
         index_t dim_u = basis_edge.component(0).size();
         index_t dim_v = basis_edge.component(1).size();
         for (index_t i = 0; i < 2; i++) // u
         {
-            for (index_t j = 2; j < dim_v-2; j++) // v
+            for (index_t j = shift_bf[i]; j < dim_v-shift_bf[i]; j++) // v
             {
                 gsMatrix<> coefs;
                 coefs.setZero(dim_u * dim_v, 1);

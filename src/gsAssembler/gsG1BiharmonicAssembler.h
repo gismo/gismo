@@ -63,9 +63,10 @@ public:
                            gsBoundaryConditions<T> const & bconditions,
                            gsBoundaryConditions<T> const & bconditions2,
                            const gsFunction<T>           & rhs,
+                           const bool                    & twoPatch,
                            dirichlet::strategy           dirStrategy = dirichlet::none,
                            iFace::strategy               intStrategy = iFace::none)
-    : m_ppde(patches,bconditions,bconditions2,rhs), m_bases(bases)
+    : m_ppde(patches,bconditions,bconditions2,rhs), m_bases(bases), m_twoPatch(twoPatch)
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
@@ -102,6 +103,8 @@ protected:
     // G1 Basis
     gsMappedBasis<2,T> const m_bases;
 
+    bool m_twoPatch;
+
     // Members from gsAssembler
     using Base::m_pde_ptr;
     using Base::m_ddof;
@@ -129,6 +132,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::refresh()
     {
         gsMatrix<index_t> boundaryDofs;
         boundaryDofs = m_bases.getBase(iter->patch).boundaryOffset(*iter, 0);
+
         map.markBoundary(iter->patch, boundaryDofs);
     }
 
@@ -187,51 +191,98 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::refresh()
                 break;
         }
 
-        const index_t dir_1 = iter->first().side().index() > 2 ? 0 : 1;
-        const index_t dir_2 = iter->second().side().index() > 2 ? 0 : 1;
 
-        matrix_det.col(0) = m_ppde.domain().patch(iter->first().patch).jacobian(points_1.col(0)).col(1-dir_1);
-        matrix_det.col(1) = m_ppde.domain().patch(iter->second().patch).jacobian(points_2.col(0)).col(1-dir_2);
-        if (matrix_det.determinant()*matrix_det.determinant() > 1e-25)
-        {
-            kink[0] = true;
-            numIntBdy += 1;
-        }
-
-        matrix_det.col(0) = m_ppde.domain().patch(iter->first().patch).jacobian(points_1.col(1)).col(1-dir_1);
-        matrix_det.col(1) = m_ppde.domain().patch(iter->second().patch).jacobian(points_2.col(1)).col(1-dir_2);
-        if (matrix_det.determinant()*matrix_det.determinant() > 1e-25)
-        {
-            kink[1] = true;
-            numIntBdy += 1;
-        }
 
         gsMatrix<index_t> matched_dofs1, matched_dofs2;
         matched_dofs1 = m_bases.getBase(iter->first().patch).boundaryOffset(iter->first().side().index(), 0);
         matched_dofs2 = m_bases.getBase(iter->second().patch).boundaryOffset(iter->second().side().index(), 0);
 
-        gsMatrix<index_t> bdy_interface(2+numIntBdy,1);
-        bdy_interface.row(0) = matched_dofs1.row(0);
-        bdy_interface.row(1) = matched_dofs1.bottomRows(1);
-        if(kink[0])
-            bdy_interface.row(2) = matched_dofs1.row(1);
-        if(kink[1])
-            bdy_interface(1+numIntBdy,0) = matched_dofs1(-2,0);
+        if (m_twoPatch)
+        {
+            const index_t dir_1 = iter->first().side().index() > 2 ? 0 : 1;
+            const index_t dir_2 = iter->second().side().index() > 2 ? 0 : 1;
 
-        map.markBoundary(iter->first(), bdy_interface);
+            matrix_det.col(0) = m_ppde.domain().patch(iter->first().patch).jacobian(points_1.col(0)).col(1-dir_1);
+            matrix_det.col(1) = m_ppde.domain().patch(iter->second().patch).jacobian(points_2.col(0)).col(1-dir_2);
+            if (matrix_det.determinant()*matrix_det.determinant() > 1e-25)
+            {
+                kink[0] = true;
+                numIntBdy += 1;
+            }
+
+            matrix_det.col(0) = m_ppde.domain().patch(iter->first().patch).jacobian(points_1.col(1)).col(1-dir_1);
+            matrix_det.col(1) = m_ppde.domain().patch(iter->second().patch).jacobian(points_2.col(1)).col(1-dir_2);
+            if (matrix_det.determinant()*matrix_det.determinant() > 1e-25)
+            {
+                kink[1] = true;
+                numIntBdy += 1;
+            }
+
+            gsMatrix<index_t> bdy_interface(2+numIntBdy,1);
+            bdy_interface.row(0) = matched_dofs1.row(0);
+            bdy_interface.row(1) = matched_dofs1.bottomRows(1);
+            if(kink[0])
+                bdy_interface.row(2) = matched_dofs1.row(1);
+            if(kink[1])
+                bdy_interface(1+numIntBdy,0) = matched_dofs1(-2,0);
+
+            map.markBoundary(iter->first(), bdy_interface); // TODO Shift to vertex
+        }
+
+
 
         map.matchDofs(iter->first().patch, matched_dofs1, iter->second().patch, matched_dofs2);
 
         matched_dofs1 = m_bases.getBase(iter->first().patch).boundaryOffset(iter->first().side().index(), 1);
         matched_dofs2 = m_bases.getBase(iter->second().patch).boundaryOffset(iter->second().side().index(), 1);
 
-        bdy_interface.setZero(2,1);
-        bdy_interface.row(0) = matched_dofs1.row(0);
-        bdy_interface.row(1) = matched_dofs1.bottomRows(1);
-        map.markBoundary(iter->first(), bdy_interface);
+        if (m_twoPatch)
+        {
+            gsMatrix<index_t> bdy_interface(2,1);
+            bdy_interface.setZero(2,1);
+            bdy_interface.row(0) = matched_dofs1.row(0);
+            bdy_interface.row(1) = matched_dofs1.bottomRows(1);
+
+
+            map.markBoundary(iter->first(), bdy_interface); // TODO Shift to vertex
+        }
 
         map.matchDofs(iter->first().patch, matched_dofs1, iter->second().patch, matched_dofs2);
+
     }
+
+    for (size_t numVer = 0; numVer < m_ppde.domain().vertices().size(); numVer++)
+    {
+        std::vector<patchCorner> allcornerLists = m_ppde.domain().vertices()[numVer];
+        std::vector<size_t> patchIndex;
+        std::vector<size_t> vertIndex;
+        for (size_t j = 0; j < allcornerLists.size(); j++)
+        {
+            patchIndex.push_back(allcornerLists[j].patch);
+            vertIndex.push_back(allcornerLists[j].m_index);
+        }
+
+        std::vector<gsMatrix<index_t>> bdy_cornerContainer;
+        for (size_t i = 0; i < patchIndex.size(); ++i)
+        {
+
+            gsMatrix<index_t> bdy_corner;
+            bdy_corner = m_bases.getBase(patchIndex[i]).boundaryOffset(vertIndex[i]+4, 0); // + 4 of the edge index // 0 == bdy
+            if (bdy_corner(0,0) != -1) // Just for the two Patch case
+                map.markBoundary(patchIndex[i], bdy_corner);
+
+            bdy_corner = m_bases.getBase(patchIndex[i]).boundaryOffset(vertIndex[i]+4, 1); // + 4 of the edge index // 1 == coupled
+
+            if (bdy_corner(0,0) != -1) // Just for the two Patch case
+                bdy_cornerContainer.push_back(bdy_corner);
+        }
+        if (bdy_cornerContainer.size() > 1)
+            for (size_t i = 1; i < bdy_cornerContainer.size(); ++i)
+                map.matchDofs(patchIndex[i], bdy_cornerContainer[i], patchIndex[0], bdy_cornerContainer[0]);
+
+
+    }
+
 
     map.finalize();
     //map.print();
@@ -613,6 +664,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(const shor
     // for the values of the eliminated Dirichlet DOFs.
     typename gsSparseSolver<T>::CGDiagonal solver;
     m_ddof[unk_] = solver.compute( globProjMat ).solve ( globProjRhs );
+
 } // computeDirichletDofsL2Proj
 
 } // namespace gismo

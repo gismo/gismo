@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include <gsArgyris/gsC1ArgyrisBasis.h>
-
 #include <gsArgyris/gsC1ArgyrisEdge.h>
 #include <gsArgyris/gsC1ArgyrisVertex.h>
 
@@ -49,10 +47,13 @@ public:
         // p-refine
         //gsInfo << "Before: " << multiBasis.basis(0) << "\n";
         multiBasis.degreeIncrease(m_optionList.getInt("degreeElevate"));
-        //gsInfo << "After: " << multiBasis.basis(0) << "\n";
+
+        index_t p = multiBasis.minCwiseDegree();
+        index_t r = m_optionList.getInt("regularity");
+
         // Pre-uniformRefine TODO delete
-        multiBasis.uniformRefine(3,2);
-        //gsInfo << "After 2: " << multiBasis.basis(0) << "\n";
+        multiBasis.uniformRefine(3, p-r);
+
 /*
         multiBasis.basis(0).uniformRefine();
         multiBasis.basis(1).degreeIncrease();
@@ -329,8 +330,6 @@ public:
                 vertIndex.push_back(allcornerLists[j].m_index);
             }
 
-            gsInfo << patchIndex[0] << " : " << vertIndex[0] << "\n";
-
             gsC1ArgyrisVertex<d, T> c1ArgyrisVertex(m_mp, m_bases, patchIndex, vertIndex, numVer, m_optionList);
             c1ArgyrisVertex.saveBasisVertex(m_system);
 
@@ -353,7 +352,10 @@ public:
 
     void uniformRefine()
     {
-        multiBasis.uniformRefine();
+        index_t p = multiBasis.minCwiseDegree();
+        index_t r = m_optionList.getInt("regularity");
+
+        multiBasis.uniformRefine(1,p-r);
     }
 
     void writeParaviewSinglePatch( index_t patchID, std::string type )
