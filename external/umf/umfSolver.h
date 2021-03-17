@@ -4,7 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
-#include "umfpack.h"
+#include "umf/umfSolver.h"
 #include "Eigen/Dense"
 
 using namespace Eigen;

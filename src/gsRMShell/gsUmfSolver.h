@@ -8,7 +8,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
-#include "umf/umfpack.h"
+#include <umf/umfSolver.h>
 #include "Eigen/Dense"
 #include "gismo.h"
 

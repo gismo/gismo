@@ -5,7 +5,7 @@
 #include <set>
 #include <Eigen/StdVector>
 //#include "pd_base_toolkit.hpp"
-#include "Eigen"
+#include "Eigen/Eigen"
 using namespace std;
 
 namespace DLUT

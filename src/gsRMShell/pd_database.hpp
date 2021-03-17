@@ -23,7 +23,7 @@ $HISTORY$
 //#include "Eigen/SparseLU"
 //#include "Eigen/Eigenvalues"
 //#include "Eigen"
-#include "umfSolver.h"
+#include "umf/umfSolver.h"
 #include "pd_base_toolkit.hpp"
 #include "fem_database.hpp"
 #include <ppl.h>

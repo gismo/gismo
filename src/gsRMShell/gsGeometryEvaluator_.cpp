@@ -3,8 +3,8 @@
 
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsBasis.h>
-#include <gsCore/gsGeometryEvaluator.h>
-#include <gsCore/gsGeometryEvaluator.hpp>
+#include <gsRMShell/gsGeometryEvaluator.h>
+#include <gsRMShell/gsGeometryEvaluator.hpp>
 
 
 namespace gismo
