@@ -61,6 +61,16 @@ endif()
 #    endif()
 #endif()
 
+#some errors arise for Pytho2
+find_package(Python3 COMPONENTS Development)
+target_include_directories(${PROJECT_NAME} PRIVATE ${Python3_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} Python3::Python)
+
+#CMake <= 3.11
+#find_package(PythonLibs 2.7)
+#target_include_directories(${PROJECT_NAME} PRIVATE ${PYTHON_INCLUDE_DIRS})
+#target_link_libraries(${PROJECT_NAME} ${PYTHON_LIBRARIES})
+
 if (GISMO_WITH_SUPERLU)
   target_link_libraries(${PROJECT_NAME} ${SUPERLU_LIBRARIES})
 endif()

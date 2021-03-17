@@ -11,6 +11,9 @@
     Author(s): A. Mantzaflaris
 */
 
+#define WITHOUT_NUMPY
+#include <matplotlibcpp.h>
+
 //! [Include namespace]
 #include <gismo.h>
 
@@ -169,6 +172,22 @@ int main(int argc, char *argv[])
                   h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
     }
     //! [Error and convergence rates]
+
+    std::vector<double> h1(h1err.data(),h1err.data()+h1err.size());
+    std::vector<double> l2(l2err.data(),l2err.data()+l2err.size());
+    std::vector<double> xa(numRefine+1);
+    std::iota(std::begin(xa), std::end(xa), 0);
+
+    namespace plt = matplotlibcpp;
+    //matplotlibcpp::plot(h1);
+    //matplotlibcpp::plot(l2);
+    plt::title("Convergence rates");
+    plt::named_semilogy("H1 error", xa, h1);
+    plt::named_semilogy("L2 error", xa, l2);
+    plt::legend();
+    plt::show();
+    //plt::save("./poisson2_example.png"); //not together with show
+    Py_Finalize();
 
     //! [Export visualization in ParaView]
     if (plot)
