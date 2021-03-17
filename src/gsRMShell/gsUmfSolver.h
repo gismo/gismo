@@ -12,6 +12,8 @@
 #include "Eigen/Dense"
 #include "gismo.h"
 
+// #pragma comment(lib, "external/umf/lib/umf_debug.lib")
+
 using namespace Eigen;
 using namespace std;
 using namespace gismo;
