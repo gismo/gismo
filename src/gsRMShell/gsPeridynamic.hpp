@@ -10,8 +10,8 @@
 //#include "pd_base_toolkit.hpp"
 //#include "pd_base_toolkit_2.hpp"
 //#include "gsRMShellAssembler.h"
-#include "gsRMShellAssembler.hpp"
-#include "pd_solver_beampd.hpp"
+#include "gsRMShell/gsRMShellAssembler.hpp"
+#include "gsRMShell/pd_solver_beampd.hpp"
 //#include "gismo.h"
 
 using namespace Eigen;

@@ -18,8 +18,8 @@
 #include <gsAssembler/gsVisitorNeumann.h> // Neumann boundary integrals
 #include <gsAssembler/gsVisitorNitsche.h> // Nitsche boundary integrals
 #include <gsAssembler/gsVisitorDg.h>      // DG interface integrals
-#include "gsRMShellAssembler.h"
-#include "gsHyperMeshOut.h"
+#include "gsRMShell/gsRMShellAssembler.h"
+#include "gsRMShell/gsHyperMeshOut.h"
 
 namespace gismo
 {

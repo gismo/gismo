@@ -8,26 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): Yang Xia & Hugo Verhelst
-*/
-
-//! [Include namespace]
-// IGA_RM_Shell.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
-//
-/** @file IGA_RM_Shell.cpp
-
-	@brief Provides main process for Reissner-Mindlin shells.
-
-	Author(s): Y. Xia, HS. Wang
-
-	Date:   2021-02-01
-	================================================================
-	Modify:
-	1. 设置Pd计算域，不再对整个模型进行PD刚度阵的计算，缩短了计算时间
-	2. 使用Umf求解器
-	Author: HS. Wang
-	Date:	2021-02-03
-	================================================================
+    Author(s): Yang Xia & Hugo Verhelst & HS. Wang
 */
 #include <iostream>
 #include <gismo.h>
