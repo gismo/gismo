@@ -79,6 +79,7 @@ int main(int argc, char *argv[])
     //! [Parse command line]
 
     //! [Exact solution]
+
     gsFunctionExpr<> source("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> laplace("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
@@ -87,7 +88,18 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> sol2der("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
                              "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
                              " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
+/*
+    gsFunctionExpr<> source("0",2);
+    gsFunctionExpr<> laplace("0",2);
+    gsFunctionExpr<> solVal("x",2);
+    gsFunctionExpr<> sol1der("1",
+                             "0",2);
+    gsFunctionExpr<> sol2der("0",
+                             "0",
+                             "0", 2);
+    */
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
+
     //! [Exact solution]
 
     //! [Problem setup]

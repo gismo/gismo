@@ -322,7 +322,7 @@ public:
                         indizes(ii, 0) = i;
 
                     return indizes;
-                } else
+                } else if (kindOfVertex[corner_id - 4 - 1] != 0)
                 {
                     index_t ii = 0;
                     gsMatrix<index_t> indizes(6 - numDofsVertex[corner_id - 4 - 1], 1);
@@ -332,6 +332,12 @@ public:
                          i < start + 6; i++, ii++) // Single basis function
                         indizes(ii, 0) = i;
                     return indizes;
+                }
+                else
+                {
+                    gsMatrix<index_t> null(1, 1);
+                    null(0, 0) = -1;
+                    return null;
                 }
             }
             else if (offset == 1 && !twoPatch)

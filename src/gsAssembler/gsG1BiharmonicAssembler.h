@@ -278,14 +278,20 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::refresh()
         }
         if (bdy_cornerContainer.size() > 1)
             for (size_t i = 1; i < bdy_cornerContainer.size(); ++i)
+            {
+                gsInfo << "matched: " << bdy_cornerContainer[0] << " with " << bdy_cornerContainer[i] <<"\n";
                 map.matchDofs(patchIndex[i], bdy_cornerContainer[i], patchIndex[0], bdy_cornerContainer[0]);
+            }
+
 
 
     }
 
 
     map.finalize();
-    //map.print();
+    map.print();
+
+    gsInfo << map.asVector() << "\n";
 
     // 2. Create the sparse system
     m_system = gsSparseSystem<T>(map);
@@ -503,6 +509,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructSolution(const gsMatrix<T>& 
             if ( mapper.is_free(i, np) ) // DoF value is in the solVector
             {
                 coeffs.row(i) = solVector.row( mapper.index(i, np) );
+                //coeffs.row(i) = 0 * solVector.row( mapper.index(i, np) );
             }
             else // eliminated DoF: fill with Dirichlet data
             {
@@ -664,6 +671,9 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(const shor
     // for the values of the eliminated Dirichlet DOFs.
     typename gsSparseSolver<T>::CGDiagonal solver;
     m_ddof[unk_] = solver.compute( globProjMat ).solve ( globProjRhs );
+
+    gsInfo << "rhs: " << globProjRhs << "\n";
+    gsInfo << m_ddof[unk_] << "\n";
 
 } // computeDirichletDofsL2Proj
 

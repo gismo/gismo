@@ -15,11 +15,11 @@ B-splines meeting along one side
       </Basis>
     </Basis>
     <coefs geoDim="2">
-      0.0 0.2 
+      0.0 0.0 
       0.0 1.0
 
-      0.4 0.2 
-      0.5 1.0
+      0.4 0.0 
+      0.6 1.1
     </coefs>
   </Geometry>
 
@@ -34,11 +34,11 @@ B-splines meeting along one side
       </Basis>
     </Basis>
     <coefs geoDim="2">
-       0.4 0.2
-       1.0 0.2
+       0.4 0.0
+       1.0 0.0
 
-       0.5 1.0
-       1.0 1.0
+       0.6 1.1
+       1.0 1.1
     </coefs>
   </Geometry>
     <Geometry type="TensorBSpline2" id="2">
@@ -52,7 +52,7 @@ B-splines meeting along one side
     </Basis>
     <coefs geoDim="2">
       0.0 1.0 
-      0.5 1.0
+      0.6 1.1
 
       0.0 2.0 
       0.5 2.0
@@ -70,7 +70,7 @@ B-splines meeting along one side
       </Basis>
     </Basis>
     <coefs geoDim="2">
-       0.5 1.0
+       0.6 1.1
        1.0 1.0
 
        0.5 2.0

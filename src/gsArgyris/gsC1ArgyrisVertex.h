@@ -137,8 +137,25 @@ public:
             {
                 computeKernel();
 
+                gsMatrix<> points;
+                points.setZero(2,2);
+                points(0,1) = 1.0;
+
+
+                if (m_patchesAroundVertex.size() == 2 && !m_optionList.getSwitch("twoPatch"))
+                    for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
+                        for (size_t i = 0; i < basisVertexResult[np].nPatches(); ++i)
+                            gsInfo << i << " : " << basisVertexResult[np].patch(i).deriv(points.col(0)) << "\n\n";
+
                 for(size_t i = 0; i < m_patchesAroundVertex.size(); i++)
                     m_auxPatches[i].parametrizeBasisBack(basisVertexResult[i]); // parametrizeBasisBack
+
+                gsInfo << "\n";
+
+                if (m_patchesAroundVertex.size() == 2 && !m_optionList.getSwitch("twoPatch"))
+                    for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
+                        for (size_t i = 0; i < basisVertexResult[np].nPatches(); ++i)
+                            gsInfo << i << " : " << basisVertexResult[np].patch(i).deriv(points.col(1-np)) << "\n\n";
 
             }
             else // Internal vertex
