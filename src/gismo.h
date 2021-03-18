@@ -201,6 +201,12 @@ namespace internal
 #include <gsTrilinos/gsTrilinos.h>
 #endif
 
+#ifdef GISMO_WITH_MATPLOTLIB
+#define WITHOUT_NUMPY
+#include <matplotlibcpp.h>
+namespace plt = matplotlibcpp;
+#endif
+
 /*
 #if defined(gismo_EXPORTS) || defined(gismo_dev_EXPORTS)
 #  ifdef _MSC_VER

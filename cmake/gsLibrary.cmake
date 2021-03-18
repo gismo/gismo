@@ -61,10 +61,10 @@ endif()
 #    endif()
 #endif()
 
-#some errors arise for Pytho2
-find_package(Python3 COMPONENTS Development)
-target_include_directories(${PROJECT_NAME} PRIVATE ${Python3_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} Python3::Python)
+
+if(GISMO_WITH_MATPLOTLIB)
+  target_link_libraries(${PROJECT_NAME} Python3::Python)
+endif(GISMO_WITH_MATPLOTLIB)
 
 #CMake <= 3.11
 #find_package(PythonLibs 2.7)

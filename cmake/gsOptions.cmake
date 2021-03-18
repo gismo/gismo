@@ -173,6 +173,11 @@ if  (${GISMO_WITH_UNUM})
 message ("  GISMO_WITH_UNUM         ${GISMO_WITH_UNUM}")
 endif()
 
+option(GISMO_WITH_MATPLOTLIB        "With Matplotlibcpp"     false)
+if  (${GISMO_WITH_MATPLOTLIB})
+message ("  GISMO_WITH_MATPLOTLIB   ${GISMO_WITH_MATPLOTLIB}")
+endif()
+
 ## #################################################################
 ## Options list: Extra options
 ## #################################################################

@@ -267,7 +267,13 @@ if(GISMO_WITH_SMESH)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SMESH_INCLUDE_DIRS}
   CACHE INTERNAL "${PROJECT_NAME} include directories")
   #include_directories(${SMESH_INCLUDE_DIR})
-endif()
+endif(GISMO_WITH_SMESH)
+
+if(GISMO_WITH_MATPLOTLIB)
+#some errors arise for Python2
+find_package(Python3 COMPONENTS Development)
+include_directories(${Python3_INCLUDE_DIRS})
+endif(GISMO_WITH_MATPLOTLIB)
 
 #second time
 include_directories(${GISMO_INCLUDE_DIRS})
