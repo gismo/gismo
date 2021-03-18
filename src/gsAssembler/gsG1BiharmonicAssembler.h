@@ -279,7 +279,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::refresh()
         if (bdy_cornerContainer.size() > 1)
             for (size_t i = 1; i < bdy_cornerContainer.size(); ++i)
             {
-                gsInfo << "matched: " << bdy_cornerContainer[0] << " with " << bdy_cornerContainer[i] <<"\n";
                 map.matchDofs(patchIndex[i], bdy_cornerContainer[i], patchIndex[0], bdy_cornerContainer[0]);
             }
 
@@ -628,6 +627,13 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(const shor
                 if( mapper.is_boundary_index( globIdxAct(i,0)) )
                     eltBdryFcts.push_back( i );
 
+            for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
+            {
+                const unsigned j = eltBdryFcts[j0];
+                const unsigned jj = mapper.global_to_bindex( globIdxAct( j ));
+                gsInfo << "patch: " << patchIdx << " : " << iter->side().index() << " : " << globIdxAct( j ) <<  " : " << jj <<  " : " << rhsVals.col(0) << "\n";
+            }
+
             // Do the actual assembly:
             for( index_t k=0; k < md.points.cols(); k++ )
             {
@@ -671,6 +677,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(const shor
     // for the values of the eliminated Dirichlet DOFs.
     typename gsSparseSolver<T>::CGDiagonal solver;
     m_ddof[unk_] = solver.compute( globProjMat ).solve ( globProjRhs );
+
 
     gsInfo << "rhs: " << globProjRhs << "\n";
     gsInfo << m_ddof[unk_] << "\n";
