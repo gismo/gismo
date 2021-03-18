@@ -175,8 +175,8 @@ int main(int argc, char *argv[])
     std::iota(std::begin(xa), std::end(xa), 0);
 
     plt::title("Convergence rates");
-    plt::named_semilogy("H1 error", xa, h1err);
-    plt::named_semilogy("L2 error", xa, l2err);
+    plt::named_semilogy("$H^1$ error", xa, h1err);
+    plt::named_semilogy("$L^2$ error", xa, l2err);
     plt::legend();
     plt::show();
     //plt::save("./poisson2_example.png");
