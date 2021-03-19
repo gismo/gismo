@@ -16,7 +16,7 @@
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsMatrixOp.h>
-#include <gsAssembler/gsExprAssembler.h>
+//#include <gsAssembler/gsExprAssembler.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
 namespace gismo
@@ -67,28 +67,28 @@ void eliminateDirichlet1D(const gsBoundaryConditions<T>& bc,
 template<typename T>
 gsSparseMatrix<T> assembleMass(const gsBasis<T>& basis)
 {
-    gsExprAssembler<T> mass(1,1);
-    gsMultiBasis<T> mb(basis);
-    mass.setIntegrationElements(mb);
-    typename gsExprAssembler<T>::space u = mass.getSpace(mb);
-    mass.initMatrix();
-    mass.assemble( u * u.tr() );
+    // gsExprAssembler<T> mass(1,1);
+    // gsMultiBasis<T> mb(basis);
+    // mass.setIntegrationElements(mb);
+    // typename gsExprAssembler<T>::space u = mass.getSpace(mb);
+    // mass.initMatrix();
+    // mass.assemble( u * u.tr() );
     gsSparseMatrix<T> result;
-    mass.matrix_into(result);
-    return result;
+    // mass.matrix_into(result);
+     return result;
 }
 
 template<typename T>
 gsSparseMatrix<T> assembleStiffness(const gsBasis<T>& basis)
 {
-    gsExprAssembler<T> stiff(1,1);
-    gsMultiBasis<T> mb(basis);
-    stiff.setIntegrationElements(mb);
-    typename gsExprAssembler<T>::space u = stiff.getSpace(mb);
-    stiff.initMatrix();
-    stiff.assemble( grad(u) * grad(u).tr() );
+    // gsExprAssembler<T> stiff(1,1);
+    // gsMultiBasis<T> mb(basis);
+    // stiff.setIntegrationElements(mb);
+    // typename gsExprAssembler<T>::space u = stiff.getSpace(mb);
+    // stiff.initMatrix();
+    // stiff.assemble( grad(u) * grad(u).tr() );
     gsSparseMatrix<T> result;
-    stiff.matrix_into(result);
+    //stiff.matrix_into(result);
     return result;
 }
 

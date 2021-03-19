@@ -1,3 +1,15 @@
+/** @file gsDirichletValues.h
+
+    @brief The functions compute Dirichlet degrees of freedom using various methods.
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): A. Mantzaflaris, H.M. Verhelst
+*/
 
 namespace gismo {
 
@@ -12,12 +24,8 @@ void gsDirichletValues(
     const index_t dir_values,
     const expr::gsFeSpace<T> & u)
 {
-    //if ( m_options.getInt("DirichletStrategy") == dirichlet::nitsche)
-    //    return; // Nothing to compute
+    if ( bc.container("Dirichlet").empty() ) return;
 
-    //const gsMultiBasis<T> & mbasis = dynamic_cast<const gsMultiBasis<T>&>(u.source());
-
-    // eg. not penalize
     const gsDofMapper & mapper = u.mapper();
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
 
@@ -57,7 +65,7 @@ void gsDirichletValues(
 
 template<class T>
 void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
-                                      const gsBoundaryConditions<T> & bc)
+                                        const gsBoundaryConditions<T> & bc)
 {
     const index_t parDim = u.source().domainDim();
     const gsMultiBasis<T> & mbasis =
@@ -172,70 +180,70 @@ gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
 
     if( bc.unknown()!=u.id() ) { boundary.clear(); values.clear(); return; }
 
-        const int k = bc.patch();
-        const gsBasis<T> & basis = mbasis[k];
+    const int k = bc.patch();
+    const gsBasis<T> & basis = mbasis[k];
 
-        // Get dofs on this boundary
-        boundary = basis.boundary(bc.side());
+    // Get dofs on this boundary
+    boundary = basis.boundary(bc.side());
 
-        // If the condition is homogeneous then fill with zeros
-        if ( bc.isHomogeneous() )
+    // If the condition is homogeneous then fill with zeros
+    if ( bc.isHomogeneous() )
+    {
+        const index_t com = bc.unkComponent();
+        values.setZero(boundary.size(), (-1==com ? u.dim():1) );
+        return;
+    }
+
+    // Get the side information
+    int dir = bc.side().direction( );
+    index_t param = (bc.side().parameter() ? 1 : 0);
+
+    // Compute grid of points on the face ("face anchors")
+    rr.clear();
+    rr.reserve( parDim );
+
+    for ( int i=0; i < parDim; ++i)
+    {
+        if ( i==dir )
         {
-            const index_t com = bc.unkComponent();
-            values.setZero(boundary.size(), (-1==com ? u.dim():1) );
-            return;
+            b[0] = ( basis.component(i).support() ) (0, param);
+            rr.push_back(b);
         }
-
-        // Get the side information
-        int dir = bc.side().direction( );
-        index_t param = (bc.side().parameter() ? 1 : 0);
-
-        // Compute grid of points on the face ("face anchors")
-        rr.clear();
-        rr.reserve( parDim );
-
-        for ( int i=0; i < parDim; ++i)
-        {
-            if ( i==dir )
-            {
-                b[0] = ( basis.component(i).support() ) (0, param);
-                rr.push_back(b);
-            }
-            else
-            {
-                rr.push_back( basis.component(i).anchors().transpose() );
-            }
-        }
-
-        // GISMO_ASSERT(bc.function()->targetDim() == u.dim(),
-        //              "Given Dirichlet boundary function does not match problem dimension."
-        //              <<bc.function()->targetDim()<<" != "<<u.dim()<<"\n");
-
-        // Compute dirichlet values
-        if ( bc.parametric() )
-            fpts = bc.function()->eval( gsPointGrid<T>( rr ) );
         else
         {
-            const gsFunctionSet<T> & gmap = bc.geoMap();
-            fpts = bc.function()->eval(  gmap.piece(bc.patch()).eval(  gsPointGrid<T>( rr ) )  );
+            rr.push_back( basis.component(i).anchors().transpose() );
         }
+    }
 
-        /*
-        if ( fpts.rows() != u.dim() )
-        {
-            // assume scalar
-            tmp.resize(u.dim(), fpts.cols());
-            tmp.setZero();
-            gsDebugVar(!dir);
-            tmp.row(!dir) = (param ? 1 : -1) * fpts; // normal !
-            fpts.swap(tmp);
-        }
-        */
+    // GISMO_ASSERT(bc.function()->targetDim() == u.dim(),
+    //              "Given Dirichlet boundary function does not match problem dimension."
+    //              <<bc.function()->targetDim()<<" != "<<u.dim()<<"\n");
 
-        // Interpolate dirichlet boundary
-        typename gsBasis<T>::uPtr h = basis.boundaryBasis(bc.side());
-        typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
-        values = give( geo->coefs() );
+    // Compute dirichlet values
+    if ( bc.parametric() )
+        fpts = bc.function()->eval( gsPointGrid<T>( rr ) );
+    else
+    {
+        const gsFunctionSet<T> & gmap = bc.geoMap();
+        fpts = bc.function()->eval(  gmap.piece(bc.patch()).eval(  gsPointGrid<T>( rr ) )  );
+    }
+
+    /*
+      if ( fpts.rows() != u.dim() )
+      {
+      // assume scalar
+      tmp.resize(u.dim(), fpts.cols());
+      tmp.setZero();
+      gsDebugVar(!dir);
+      tmp.row(!dir) = (param ? 1 : -1) * fpts; // normal !
+      fpts.swap(tmp);
+      }
+    */
+
+    // Interpolate dirichlet boundary
+    typename gsBasis<T>::uPtr h = basis.boundaryBasis(bc.side());
+    typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
+    values = give( geo->coefs() );
 }
 
 

@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
        ev.setIntegrationElements(cdrAss.multiBasis());
        gsExprEvaluator<>::geometryMap Gm = ev.getMap(patches);
        gsExprEvaluator<>::variable is = ev.getVariable(solField.fields());
-       gsExprEvaluator<>::variable ms = ev.getVariable(g, Gm);
+       auto ms = ev.getVariable(g, Gm);
 
        // Get the element-wise norms.
        ev.integralElWise( ( igrad(is,Gm) - igrad(ms)).sqNorm()*meas(Gm) );

@@ -282,10 +282,10 @@ int main(int argc, char *argv[])
         ietiMapper.initFeSpace(u,k);
 
         // Set the source term
-        variable ff = assembler.getCoeff(f, G);
+        auto ff = assembler.getCoeff(f, G);
 
         // Initialize the system
-        assembler.initSystem(false);
+        assembler.initSystem();
 
         // Compute the system matrix and right-hand side
         assembler.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
