@@ -243,13 +243,8 @@ public:
     gsMatrix<T> unitNormal(gsMatrix<T> point) const
     {
       gsMatrix<T> Jacobian = m_surface->jacobian(point);
-            
-      gsMatrix<T> sigma_u = Jacobian.col(0);
-      gsMatrix<T> sigma_v = Jacobian.col(1);
-      gsMatrix<T> un= (gsVector3d<T>(sigma_u)).cross( gsVector3d<T>(sigma_v) );     
-      un.normalize();
-      
-      return un;
+      return Jacobian.col(0).template head<3>().cross(
+          Jacobian.col(1).template head<3>() ).normalized();
     }
     
     /// sample standard unit normals along a trimming curve

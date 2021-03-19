@@ -755,6 +755,10 @@ public:
     /// @brief Returns an index for the element which contains point \a u
     virtual size_t elementIndex(const gsVector<T> & u ) const;
 
+    /// @brief Returns (the coordinates of) an element in the support
+    /// of basis function \a j
+    virtual gsMatrix<T> elementInSupportOf(index_t j) const;
+    
     /// @brief For a tensor product basis, return the (const) 1-d
     /// basis for the \a i-th parameter component.
     virtual const gsBasis<T> & component(short_t i) const;
