@@ -69,7 +69,7 @@ public:
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
-
+        
         Base::initialize(pde, bases, m_options);
     }
 
@@ -93,6 +93,35 @@ public:
                         iFace::strategy               intStrategy = iFace::glue)
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
+        m_options.setInt("InterfaceStrategy", intStrategy);
+
+        typename gsPde<T>::Ptr pde( new gsPoissonPde<T>(patches,bconditions,rhs) );
+        Base::initialize(pde, basis, m_options);
+    }
+
+        /** @brief
+    Constructor of the assembler object.
+
+    \param[in] patches is a gsMultiPatch object describing the geometry.
+    \param[in] basis a multi-basis that contains patch-wise bases
+    \param[in] bconditions is a gsBoundaryConditions object that holds all boundary conditions.
+    \param[in] rhs is the right-hand side of the Poisson equation, \f$\mathbf{f}\f$.
+    \param[in] dirStrategy option for the treatment of Dirichlet boundary
+    \param[in] dirValues   option for the calculation of the Dirichlet DoFs (i.e., interpolation or projection)
+    \param[in] intStrategy option for the treatment of patch interfaces
+    
+    \ingroup Assembler
+    */
+    gsPoissonAssembler( gsMultiPatch<T> const         & patches,
+                        gsMultiBasis<T> const         & basis,
+                        gsBoundaryConditions<T> const & bconditions,
+                        const gsFunction<T>           & rhs,
+                        dirichlet::strategy           dirStrategy = dirichlet::elimination,
+                        dirichlet::values             dirValues   = dirichlet::interpolation,
+                        iFace::strategy               intStrategy = iFace::glue)
+    {
+        m_options.setInt("DirichletStrategy", dirStrategy);
+        m_options.setInt("DirichletValues",   dirValues);
         m_options.setInt("InterfaceStrategy", intStrategy);
 
         typename gsPde<T>::Ptr pde( new gsPoissonPde<T>(patches,bconditions,rhs) );
