@@ -400,6 +400,14 @@ public:
         }
     }
 
+    virtual void anchor_into(index_t i, gsMatrix<T> & result) const
+    {
+        index_t lvl = levelOf(i);
+        index_t ind = flatTensorIndexOf(i);
+
+        m_bases[lvl]->anchor_into(ind,result);
+    }
+
     virtual void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const;
     void connectivity(const gsMatrix<T> & nodes, int level, gsMesh<T> & mesh) const;
 
@@ -476,6 +484,14 @@ public:
 
     // Look at gsBasis.h for the documentation of this function
     virtual gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const;
+
+    virtual gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset , index_t level) const;
+
+    virtual index_t levelAtCorner(boxCorner const & c) const;
+
+    virtual index_t functionAtCorner(boxCorner const & c) const;
+    virtual index_t functionAtCorner(boxCorner const & c, index_t level) const;
+
 
     // Look at gsBasis.h for the documentation of this function
     // /// \todo impl. evalAllDers_into
