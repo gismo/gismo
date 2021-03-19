@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
     gsInfo<<"     Setup: "<< setup_time <<"\n";
     gsInfo<<"  Assembly: "<< ma_time    <<"\n";
     gsInfo<<"   Solving: "<< slv_time   <<"\n";
-    gsInfo<<"Error norm: "<< err_time   <<"\n";
+    gsInfo<<"     Norms: "<< err_time   <<"\n";
 
     //! [Error and convergence rates]
     gsInfo<< "\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
