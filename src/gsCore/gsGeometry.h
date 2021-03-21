@@ -506,22 +506,30 @@ public:
     }
 
     /// Embeds coefficients in \a N dimension
-    void embed(index_t N)
-    { 
+    void embed(index_t N, bool lr = true)
+    {
         GISMO_ASSERT( N > 0, "Embed dimension must be positive");
 
         const index_t nc = N - m_coefs.cols();
+        if ( nc == 0 ) return;
 
-        if ( nc != 0 )
+        if (!lr && nc<0)
+            m_coefs.leftCols(N) = m_coefs.rightCols(N);
+        m_coefs.conservativeResize(Eigen::NoChange, N);
+
+        if ( nc > 0 )
         {
-            m_coefs.conservativeResize(Eigen::NoChange, N);
-            if ( nc > 0 )
+            if (lr)
                 m_coefs.rightCols(nc).setZero();
-            else // nc < 0
+            else
             {
-                gsWarn<<"Coefficients projected (deleted)..\n";
+                m_coefs.rightCols(N-nc) = m_coefs.leftCols(N-nc);
+                m_coefs.leftCols(nc).setZero();
             }
         }
+#       ifndef NDEBUG
+        else gsWarn<<"Coefficients projected (deleted)..\n";
+#       endif
     }
 
     /// \brief Returns the degree wrt direction i
