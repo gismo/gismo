@@ -15,6 +15,8 @@
 
 #include <gsCore/gsFuncData.h>
 #include <gsAssembler/gsDirichletValues.h>
+#include <gsMSplines/gsMappedBasis.h>
+
 
 namespace gismo
 {
@@ -787,6 +789,36 @@ public:
     // space restrictTo(boundaries);
     // space restrictTo(bcRefList domain);
 
+    void setup(const index_t _icont = -1) const
+    {
+        this->setInterfaceCont(_icont);
+        m_sd->mapper = gsDofMapper();
+
+        if (const gsMultiBasis<T> * mb =
+            dynamic_cast<const gsMultiBasis<T>*>(&this->source()) )
+        {
+            m_sd->mapper = gsDofMapper(*mb, this->dim() );
+            //m_mapper.init(*mb, this->dim()); //bug
+            if ( 0==this->interfaceCont() ) // Conforming boundaries ?
+            {
+                for ( gsBoxTopology::const_iiterator it = mb->topology().iBegin();
+                      it != mb->topology().iEnd(); ++it )
+                {
+                    mb->matchInterface(*it, m_sd->mapper);
+                }
+            }
+        }
+
+        if (const gsMappedBasis<2,T> * mb =
+            dynamic_cast<const gsMappedBasis<2,T>*>(&this->source()) )
+        {
+            gsInfo<< "gsMappedBasis2 \n";
+            m_sd->mapper.setIdentity(mb->nPatches(), mb->size() , this->dim());
+        }
+            
+        m_sd->mapper.finalize();        
+    }
+
     void setup(const gsBoundaryConditions<T> & bc, const index_t dir_values,
                const index_t _icont = -1) const
     {
@@ -794,10 +826,9 @@ public:
 
         m_sd->mapper = gsDofMapper(); //reset ?
 
-        const gsMultiBasis<T> * smb = static_cast<const gsMultiBasis<T>*>(&this->source());
+        const gsMultiBasis<T> * mb = dynamic_cast<const gsMultiBasis<T>*>(&this->source());
 
-        if (const gsMultiBasis<T> * mb =
-            dynamic_cast<const gsMultiBasis<T>*>(&this->source()) )
+        if (mb != nullptr)
         {
             m_sd->mapper = gsDofMapper(*mb, this->dim() );
             //m_mapper.init(*mb, this->dim()); //bug
@@ -889,9 +920,9 @@ public:
                      it = bc.cornerBegin() ; it != bc.cornerEnd(); ++it )
             {
                 //assumes (unk == -1 || it->unknown == unk)
-                GISMO_ASSERT(static_cast<size_t>(it->patch) < smb->nBases(),
+                GISMO_ASSERT(static_cast<size_t>(it->patch) < mb->nBases(),
                              "Problem: a corner boundary condition is set on a patch id which does not exist.");
-                m_sd->mapper.eliminateDof(smb->basis(it->patch).functionAtCorner(it->corner), it->patch);
+                m_sd->mapper.eliminateDof(mb->basis(it->patch).functionAtCorner(it->corner), it->patch);
             }
 
         }
@@ -935,6 +966,28 @@ public:
                 // m_sd->mapper.markBoundary(0, bnd, 0);
             }
         }
+        else if (const gsMappedBasis<2,T> * mapb =
+            dynamic_cast<const gsMappedBasis<2,T>*>(&this->source()) )
+        {
+            gsInfo<< "gsMappedBasis2 \n";
+            m_sd->mapper.setIdentity(mapb->nPatches(), mapb->size() , this->dim());
+            gsMatrix<index_t> bnd;
+            for (typename gsBoundaryConditions<T>::const_iterator
+                     it = bc.begin("Dirichlet") ; it != bc.end("Dirichlet"); ++it )
+            {
+                const index_t cc = it->unkComponent();
+                GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
+                             "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                bnd = mapb->basis(it->ps.patch).boundary( it->ps.side() );
+                if (cc==-1)
+                    for (index_t c=0; c!= this->dim(); c++) // for all components
+                        m_sd->mapper.markBoundary(it->ps.patch, bnd, c);
+                else
+                    m_sd->mapper.markBoundary(it->ps.patch, bnd, cc);
+            }
+        }
+
         else
         {
             GISMO_ASSERT( 0 == bc.size(), "Problem: BCs are ignored.");
@@ -952,7 +1005,8 @@ public:
         for ( typename gsBoundaryConditions<T>::const_citerator
                   it = bc.cornerBegin(); it != bc.cornerEnd(); ++it )
         {
-            const int i  = smb->basis(it->patch).functionAtCorner(it->corner);
+            GISMO_ASSERT(nullptr!=mb, "Assumes a multibasis at this point");
+            const int i  = mb->basis(it->patch).functionAtCorner(it->corner);
             const int ii = m_sd->mapper.bindex( i , it->patch, 0 );//component=0 for now! Todo.
             fixedDofs.at(ii) = it->value;
         }

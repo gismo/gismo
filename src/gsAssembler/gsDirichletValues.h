@@ -256,8 +256,6 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
     const gsDofMapper & mapper = u.mapper();
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>& >(u).fixedPart();
 
-    const gsMultiBasis<T> & mbasis = *dynamic_cast<const gsMultiBasis<T>* >(&u.source());
-
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
     gsSparseEntries<T> projMatEntries;
@@ -271,7 +269,7 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
 
     gsMapData<T> md(NEED_MEASURE | SAME_ELEMENT);
 
-    const gsMultiPatch<T> & mp = static_cast<const gsMultiPatch<T> &>(gmap);
+    //const gsMultiPatch<T> & mp = static_cast<const gsMultiPatch<T> &>(gmap);
 
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     typedef gsBoundaryConditions<T> bcList;
@@ -281,8 +279,8 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
         const int unk = iter->unknown();
         if(unk != u.id()) continue;
         const int patchIdx   = iter->patch();
-        const gsBasis<T> & basis = mbasis[patchIdx];
-        const gsGeometry<T> & patch = mp.patch(patchIdx);
+        const gsBasis<T> & basis = u.source().basis(patchIdx);
+        const gsFunction<T> & patch = gmap.function(patchIdx);
 
         // Set up quadrature to degree+1 Gauss points per direction,
         // all lying on iter->side() except from the direction which

@@ -79,15 +79,25 @@ int main(int argc, char *argv[])
     geometryMap G = A.getMap(mp);
     gsFunctionExpr<> ff;
     ff = gsFunctionExpr<>("cos(pi*x/8) * sin(pi*y/8)", 2);
-    variable f = A.getCoeff(ff, G);
+    auto f = A.getCoeff(ff, G);
 
     // Solution vector and solution variable
     gsMatrix<> sVector;
     solution s = A.getSolution(u, sVector);
 
-    gsSparseSolver<>::CGDiagonal solver;
+    // Boundary conditions
+    gsBoundaryConditions<> bc;
+    bc.setGeoMap(G.source());
+    bc.addCondition(0, boundary::north,  condition_type::dirichlet, &ff);
+    bc.addCondition(0, boundary::east ,  condition_type::dirichlet, &ff);
+    bc.addCondition(1, boundary::north,  condition_type::dirichlet, &ff);
+    bc.addCondition(1, boundary::east ,  condition_type::dirichlet, &ff);
+    bc.addCondition(2, boundary::north,  condition_type::dirichlet, &ff);
+    bc.addCondition(2, boundary::east ,  condition_type::dirichlet, &ff);
 
     //! [Solver loop]
+    gsSparseSolver<>::CGDiagonal solver;
+        
     gsVector<> l2err(numRefine+1), h1err(numRefine+1), linferr(numRefine+1),
         b2err(numRefine+1), b1err(numRefine+1), binferr(numRefine+1);
     gsVector<index_t>  CGiter(numRefine+1);
@@ -105,10 +115,10 @@ int main(int argc, char *argv[])
             bb2.init(mb,cf);
         if (3==d)
             bb3.init(mb,cf);
-            
 
-        //u.setup(bc, dirichlet::interpolation, 0);
-        
+        //u.setup(); // if no BCs needed
+        u.setup(bc, dirichlet::l2Projection, 0); //dirichlet::interpolation does not work yet for gsMappedBasis
+
         // Initialize the system
         A.initSystem();
 
