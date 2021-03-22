@@ -91,7 +91,12 @@ public:
             const gsXmlAttribute * comp = child->first_attribute("component");
             int cIndex = -1;
             if (NULL != comp)
-                cIndex = atoi( child->first_attribute("component")->value() );
+                cIndex = atoi( comp->value() );
+
+            const gsXmlAttribute * att_ispar = child->first_attribute("parametric");
+            bool ispar = false;
+            if (NULL != att_ispar)
+                ispar = atoi( att_ispar->value() );
 
             getBoundaries(child, ids, boundaries);
 
@@ -100,8 +105,8 @@ public:
             const char * bctype = bcat->value();
             for (std::vector<patchSide>::const_iterator it = boundaries.begin();
                     it != boundaries.end(); ++it)
-                result.add(it->patch, it->side(), bctype, func[fIndex], uIndex,cIndex,
-                        false);        //parametric
+                result.add(it->patch, it->side(), bctype,
+                           func[fIndex], uIndex,cIndex, ispar);
         }
 
         T val(0);
