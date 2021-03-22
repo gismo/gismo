@@ -88,12 +88,6 @@ int main(int argc, char *argv[])
     // Boundary conditions
     gsBoundaryConditions<> bc;
     bc.setGeoMap(G.source());
-    bc.addCondition(0, boundary::north,  condition_type::dirichlet, &ff);
-    bc.addCondition(0, boundary::east ,  condition_type::dirichlet, &ff);
-    bc.addCondition(1, boundary::north,  condition_type::dirichlet, &ff);
-    bc.addCondition(1, boundary::east ,  condition_type::dirichlet, &ff);
-    bc.addCondition(2, boundary::north,  condition_type::dirichlet, &ff);
-    bc.addCondition(2, boundary::east ,  condition_type::dirichlet, &ff);
 
     //! [Solver loop]
     gsSparseSolver<>::CGDiagonal solver;
@@ -115,7 +109,13 @@ int main(int argc, char *argv[])
             bb2.init(mb,cf);
         if (3==d)
             bb3.init(mb,cf);
-
+        
+        // Set Dirichlet boundary conditions on all boundaries
+        bc.clear();
+        for ( gsMultiPatch<>::const_biterator bit = mp.bBegin();
+              bit != mp.bEnd(); ++bit)
+            bc.addCondition( *bit, condition_type::dirichlet, &ff );
+        gsDebugVar(bc);
         //u.setup(); // if no BCs needed
         u.setup(bc, dirichlet::l2Projection, 0); //dirichlet::interpolation does not work yet for gsMappedBasis
 
@@ -125,12 +125,12 @@ int main(int argc, char *argv[])
         gsInfo<< A.numDofs() <<std::flush;
 
         // Compute the system matrix and right-hand side
-        A.assemble(  u * u.tr(), u * f );
+        //A.assemble(  u * u.tr(), u * f );
 
         // Poisson
-//        A.assemble( igrad(u,G) * igrad(u,G).tr() * meas(G), - u * ilapl(f) * meas(G) );
+        A.assemble( igrad(u,G) * igrad(u,G).tr() * meas(G), - u * ilapl(f) * meas(G) );
 
-        // Biharmonic
+        // Biharmonic (note: needs more boundary conditions to work)
         //A.assemble(  ilapl(u,G) * ilapl(u,G).tr() * meas(G), - u * ilapl(f) * meas(G) );
 
         gsInfo<< "." <<std::flush;// Assemblying done

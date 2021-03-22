@@ -812,7 +812,6 @@ public:
         if (const gsMappedBasis<2,T> * mb =
             dynamic_cast<const gsMappedBasis<2,T>*>(&this->source()) )
         {
-            gsInfo<< "gsMappedBasis2 \n";
             m_sd->mapper.setIdentity(mb->nPatches(), mb->size() , this->dim());
         }
             
@@ -969,7 +968,6 @@ public:
         else if (const gsMappedBasis<2,T> * mapb =
             dynamic_cast<const gsMappedBasis<2,T>*>(&this->source()) )
         {
-            gsInfo<< "gsMappedBasis2 \n";
             m_sd->mapper.setIdentity(mapb->nPatches(), mapb->size() , this->dim());
             gsMatrix<index_t> bnd;
             for (typename gsBoundaryConditions<T>::const_iterator
