@@ -28,7 +28,7 @@ class gsXBraid_app : public gsXBraid< gsVector<T> >
 {
 private:
   // Spatial discretisation parameters
-  index_t numRefine, numElevate;
+  index_t numRefine, numElevate, numIncrease;
 
   // Temporal discretisation parameters
   index_t numTime;
@@ -62,10 +62,12 @@ private:
                const T&         theta,
                index_t          numTime,
                index_t          numRefine,
-               index_t          numElevate)
+               index_t          numElevate,
+               index_t          numIncrease)
     : gsXBraid< gsVector<T> >::gsXBraid(comm, tstart, tstop, (int)numTime),
       numRefine(numRefine),
       numElevate(numElevate),
+      numIncrease(numIncrease),
       numTime(numTime),
       tstart(tstart),
       tstop(tstop),
@@ -104,6 +106,10 @@ private:
         bases.setDegree(tmp);
     }
 
+    // Increase and p-refine the basis
+    if (numIncrease >0)
+      bases.degreeIncrease(numIncrease);
+      
     // h-refine the basis
     for (int i = 0; i < numRefine; ++i)
         bases.uniformRefine();
@@ -171,8 +177,9 @@ private:
     std::string fn("pde/poisson2d_bvp.xml");
     
     // Spatial discretisation parameters
-    index_t numRefine  = 2;
-    index_t numElevate = 0;
+    index_t numRefine   = 2;
+    index_t numElevate  = 0;
+    index_t numIncrease = 0;
     
     // Temporal discretisation parameters
     index_t numTime    = 40;
@@ -211,6 +218,8 @@ private:
     // Spatial discretisation parameters
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
+    cmd.addInt( "i", "degreeIncrease",
+                "Number of degree increase steps to perform before solving (0: equalize degree in all directions)", numIncrease );
     cmd.addInt( "r", "uniformRefine", "Number of uniform h-refinement steps to perform before solving",  numRefine );
 
     // Temporal diescretisation parameters
@@ -245,7 +254,7 @@ private:
     cmd.getValues(argc,argv);
 
     // Create instance
-    gsXBraid_app<T> app(comm, 0.0, tfinal, theta, numTime, numRefine, numElevate);
+    gsXBraid_app<T> app(comm, 0.0, tfinal, theta, numTime, numRefine, numElevate, numIncrease);
 
     if (absTol != 1e-10)
       app.SetAbsTol(absTol);
