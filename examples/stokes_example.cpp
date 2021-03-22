@@ -177,10 +177,20 @@ int main(int argc, char *argv[])
         + p * igrad(v, G)[1].tr() * meas(G)
     , u * ff1 * meas(G) + v * ff2 * meas(G) );
 
-    // Fetch data
-    gsSparseMatrix<>                 matrix = assembler.matrix();
-    gsMatrix<>                       rhs    = assembler.rhs();
+    gsInfo << "done.\n";
 
-    const bool success = true;
-    return success ? EXIT_SUCCESS : EXIT_FAILURE;
+    /************ Solve resulting linear system *************/
+
+    gsInfo << "Solve resulting linear system... " << std::flush;
+
+    // Solve
+    gsSparseSolver<>::LU solver( assembler.matrix() );
+    gsMatrix<> sol = solver.solve( assembler.rhs() );
+
+    gsInfo << "done.\n\n";
+
+    // Print the solution
+    gsInfo << "Solution:\n" << sol.transpose() << "\n\n";
+
+    return EXIT_SUCCESS;
 }
