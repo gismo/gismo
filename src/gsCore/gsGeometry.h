@@ -505,21 +505,24 @@ public:
         embed(3);
     }
 
-    /// Embeds coefficients in \a N dimension
-    void embed(index_t N, bool lr = true)
+    /// \brief Embeds coefficients in \a N dimensions
+    ///For the new dimensions zeros are added (or removed) on the
+    /// right (if \a pad_right is true) or on the left (if \a
+    /// pad_right is false)
+    void embed(index_t N, bool pad_right = true)
     {
         GISMO_ASSERT( N > 0, "Embed dimension must be positive");
 
         const index_t nc = N - m_coefs.cols();
         if ( nc == 0 ) return;
 
-        if (!lr && nc<0)
+        if (!pad_right && nc<0)
             m_coefs.leftCols(N) = m_coefs.rightCols(N);
         m_coefs.conservativeResize(Eigen::NoChange, N);
 
         if ( nc > 0 )
         {
-            if (lr)
+            if (pad_right)
                 m_coefs.rightCols(nc).setZero();
             else
             {
