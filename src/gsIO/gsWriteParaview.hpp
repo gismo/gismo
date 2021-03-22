@@ -466,7 +466,7 @@ void writeSingleGeometry(gsFunction<T> const& func,
                          gsMatrix<T> const& supp,
                          std::string const & fn, unsigned npts)
 {
-    const int n = func.targetDim();
+    int n = func.targetDim();
     const int d = func.domainDim();
 
     gsVector<T> a = supp.col(0);
@@ -489,6 +489,12 @@ void writeSingleGeometry(gsFunction<T> const& func,
 
         if ( n == 1 )
         {
+            if (d==3)
+            {
+                n = 4;
+                eval_func.conservativeResize(4,eval_func.cols() );
+            }
+
             //std::swap( eval_geo.row(d),  eval_geo.row(0) );
             eval_func.row(d) = eval_func.row(0);
             eval_func.topRows(d) = pts;
