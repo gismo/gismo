@@ -111,6 +111,8 @@ public:
     /// \param bc     Boundary conditions
     /// \param opt    Assembler options
     /// \param alpha  Scaling parameter (see above)
+    /// \param beta   Scaling parameter (see above)
+    /// \param gamma  Scaling parameter (see above). Only allowed for pure Neumann case.
     static OpUPtr            fastDiagonalizationOp(
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
@@ -136,6 +138,7 @@ public:
     /// \param opt    Assembler options
     /// \param sigma  Scaling parameter (see above)
     /// \param alpha  Scaling parameter (see above)
+    /// \param beta   Scaling parameter (see above)
     static OpUPtr            subspaceCorrectedMassSmootherOp(
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),

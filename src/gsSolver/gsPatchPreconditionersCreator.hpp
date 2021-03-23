@@ -309,7 +309,6 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     // Now, setup the Q's and update the D's
     for ( index_t i=0; i<d; ++i )
     {
-        gsMatrix<T> etrans = local_mass[i]*gsMatrix<T>::Ones(local_mass[i].rows(),1);
         // Solve generalized eigenvalue problem
         ges.compute(local_stiff[i], local_mass[i], Eigen::ComputeEigenvectors);
         // Q^T M Q = I, or M = Q^{-T} Q^{-1}
@@ -317,8 +316,6 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
         // We store the eigenvectors
         ev.swap(const_cast<evMatrix&>(ges.eigenvectors()));
-
-        gsMatrix<T> wtrans(etrans.rows(), 1); wtrans.setZero();
 
         // These are the operators representing the eigenvectors
         typename gsMatrixOp< gsMatrix<T> >::Ptr matrOp = makeMatrixOp( ev.moveToPtr() );
@@ -328,8 +325,11 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
         if(gamma != 0)
         {
+            gsMatrix<T> etrans = local_mass[i]*gsMatrix<T>::Ones(local_mass[i].rows(),1);
+            gsMatrix<T> wtrans;
             QTop[i]->apply(etrans, wtrans);
-            GISMO_ASSERT((wtrans.block(1,0, wtrans.rows()-1, 1).array() < 1e-13).all(), "gsPatchPreconditionerCreator::fastDiagonalizationOp, only the first entry is supposed to be non-zero");
+            GISMO_ASSERT((wtrans.block(1,0, wtrans.rows()-1, 1).array() < T(1)/100000000).all(),
+                "gsPatchPreconditionerCreator::fastDiagonalizationOp: gamma!=0 only allowed for pure Neumann.");
             avg_term *= wtrans(0,0) * wtrans(0,0);
         }
 
