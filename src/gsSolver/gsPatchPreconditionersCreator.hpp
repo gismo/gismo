@@ -316,6 +316,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         // Finally, we store the eigenvectors
         ev.swap(const_cast<evMatrix&>(ges.eigenvectors()));
 
+        gsMatrix<T> wtrans(etrans.rows(), 1); wtrans.setZero();
+
         // These are the operators representing the eigenvectors
         typename gsMatrixOp< gsMatrix<T> >::Ptr matrOp = makeMatrixOp( ev.moveToPtr() );
         Qop [i] = matrOp;
