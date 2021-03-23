@@ -266,7 +266,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     const gsBoundaryConditions<T>& bc,
     const gsOptionList& opt,
     T alpha,
-    T beta
+    T beta,
+    T gamma
     )
 {
     GISMO_ASSERT ( beta != 0, "gsPatchPreconditionersCreator<T>::fastDiagonalizationOp() does not work for beta==0." );
@@ -306,10 +307,26 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     // Now, setup the Q's and update the D's
     for ( index_t i=0; i<d; ++i )
     {
+        gsMatrix<T> etrans = local_mass[i]*gsMatrix<T>::Ones(local_mass[i].rows(),1);
         // Solve generalized eigenvalue problem
         ges.compute(local_stiff[i], local_mass[i], Eigen::ComputeEigenvectors);
         // Q^T M Q = I, or M = Q^{-T} Q^{-1}
         // Q^T K Q = D, or K = Q^{-T} D Q^{-1}
+
+        // Finally, we store the eigenvectors
+        ev.swap(const_cast<evMatrix&>(ges.eigenvectors()));
+
+        // These are the operators representing the eigenvectors
+        typename gsMatrixOp< gsMatrix<T> >::Ptr matrOp = makeMatrixOp( ev.moveToPtr() );
+        Qop [i] = matrOp;
+        // Here we are safe as long as we do not want to apply QTop after Qop got destroyed.
+        QTop[i] = makeMatrixOp( matrOp->matrix().transpose() );
+
+        if(g != 0)
+        {
+            QTop[i]->apply(etrans, wtrans);
+            GISMO_ASSERT((wtrans.block(1,0, wtrans.rows()-1, 1).array() < 1e-13).all(), "gsPatchPreconditionerCreator::fastDiagonalizationOp, only the first entry is supposed to be non-zero");
+        }
 
         // From the eigenvalues, we setup the matrix D already in an Kroneckerized way.
         const evVector & D = ges.eigenvalues();
@@ -321,16 +338,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         for ( index_t l=0; l<loc; ++l )
             for ( index_t m=0; m<glob; ++m )
                 for ( index_t n=0; n<glob2; ++n )
-                    diag( m + l*glob + n*loc*glob, 0 ) += D(l,0);
+                    diag( m + l*glob + n*loc*glob, 0 ) += D(l,0) + g * ( wtrans(l,0) * wtrans(l,0) );
 
-        // Finally, we store the eigenvectors
-        ev.swap(const_cast<evMatrix&>(ges.eigenvectors()));
-
-        // These are the operators representing the eigenvectors
-        typename gsMatrixOp< gsMatrix<T> >::Ptr matrOp = makeMatrixOp( ev.moveToPtr() );
-        Qop [i] = matrOp;
-        // Here we are safe as long as we do not want to apply QTop after Qop got destroyed.
-        QTop[i] = makeMatrixOp( matrOp->matrix().transpose() );
     }
 
     GISMO_ASSERT( glob == 1, "Internal error." );
