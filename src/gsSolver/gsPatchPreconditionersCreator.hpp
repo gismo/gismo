@@ -304,6 +304,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     std::vector<OpPtr> QTop(d);
     gsMatrix<T> ev;
 
+    T avg_term = gamma;
+
     // Now, setup the Q's and update the D's
     for ( index_t i=0; i<d; ++i )
     {
@@ -313,7 +315,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         // Q^T M Q = I, or M = Q^{-T} Q^{-1}
         // Q^T K Q = D, or K = Q^{-T} D Q^{-1}
 
-        // Finally, we store the eigenvectors
+        // We store the eigenvectors
         ev.swap(const_cast<evMatrix&>(ges.eigenvectors()));
 
         gsMatrix<T> wtrans(etrans.rows(), 1); wtrans.setZero();
@@ -324,10 +326,11 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         // Here we are safe as long as we do not want to apply QTop after Qop got destroyed.
         QTop[i] = makeMatrixOp( matrOp->matrix().transpose() );
 
-        if(g != 0)
+        if(gamma != 0)
         {
             QTop[i]->apply(etrans, wtrans);
             GISMO_ASSERT((wtrans.block(1,0, wtrans.rows()-1, 1).array() < 1e-13).all(), "gsPatchPreconditionerCreator::fastDiagonalizationOp, only the first entry is supposed to be non-zero");
+            avg_term *= wtrans(0,0) * wtrans(0,0);
         }
 
         // From the eigenvalues, we setup the matrix D already in an Kroneckerized way.
@@ -340,11 +343,13 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         for ( index_t l=0; l<loc; ++l )
             for ( index_t m=0; m<glob; ++m )
                 for ( index_t n=0; n<glob2; ++n )
-                    diag( m + l*glob + n*loc*glob, 0 ) += D(l,0) + g * ( wtrans(l,0) * wtrans(l,0) );
+                    diag( m + l*glob + n*loc*glob, 0 ) += D(l,0);
 
     }
 
     GISMO_ASSERT( glob == 1, "Internal error." );
+
+    diag(0,0) += avg_term;
 
     for ( index_t l=0; l<sz; ++l )
         diag( l, 0 ) = 1/diag( l, 0 );

@@ -104,7 +104,8 @@ public:
     /// on the parameter domain based on the fast diagonalization approach
     /// (SIAM J. Sci. Comput., 38 (6), p. A3644 - A3671, 2016)
     ///
-    /// The stiffness matrix represents \f$ \beta (\nabla u, \nabla v)_{\ell_2} + \alpha (u, v)_{\ell_2} + \gamma (u, 1)_{\ell_2} (v,1)_{\ell_2} \f$
+    /// The stiffness matrix represents
+    /// \f$ \beta (\nabla u, \nabla v)_{L_2} + \alpha (u, v)_{L_2} + \gamma (u, 1)_{L_2} (v,1)_{L_2} \f$
     ///
     /// \param basis  A tensor basis
     /// \param bc     Boundary conditions
