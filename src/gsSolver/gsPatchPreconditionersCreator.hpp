@@ -323,7 +323,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         // Here we are safe as long as we do not want to apply QTop after Qop got destroyed.
         QTop[i] = makeMatrixOp( matrOp->matrix().transpose() );
 
-        if(gamma != 0)
+        if (gamma != 0)
         {
             gsMatrix<T> etrans = local_mass[i]*gsMatrix<T>::Ones(local_mass[i].rows(),1);
             gsMatrix<T> wtrans;
