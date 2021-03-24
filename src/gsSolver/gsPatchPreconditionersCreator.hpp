@@ -314,23 +314,12 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         // Q^T M Q = I, or M = Q^{-T} Q^{-1}
         // Q^T K Q = D, or K = Q^{-T} D Q^{-1}
 
-        // We store the eigenvectors
-        ev.swap(const_cast<evMatrix&>(ges.eigenvectors()));
-
-        // These are the operators representing the eigenvectors
-        typename gsMatrixOp< gsMatrix<T> >::Ptr matrOp = makeMatrixOp( ev.moveToPtr() );
-        Qop [i] = matrOp;
-        // Here we are safe as long as we do not want to apply QTop after Qop got destroyed.
-        QTop[i] = makeMatrixOp( matrOp->matrix().transpose() );
-
         if (gamma != 0)
         {
-            gsMatrix<T> etrans = local_mass[i]*gsMatrix<T>::Ones(local_mass[i].rows(),1);
-            gsMatrix<T> wtrans;
-            QTop[i]->apply(etrans, wtrans);
-            GISMO_ASSERT((wtrans.block(1,0, wtrans.rows()-1, 1).array() < T(1)/100000000).all(),
+            gsMatrix<T> etrans = ges.eigenvectors().transpose()*local_mass[i]*gsMatrix<T>::Ones(local_mass[i].rows(),1);
+            GISMO_ASSERT((etrans.block(1, 0, etrans.rows()-1, 1).array() < T(1)/100000000).all(),
                 "gsPatchPreconditionerCreator::fastDiagonalizationOp: gamma!=0 only allowed for pure Neumann.");
-            avg_term *= wtrans(0,0) * wtrans(0,0);
+            avg_term *= etrans(0,0) * etrans(0,0);
         }
 
         // From the eigenvalues, we setup the matrix D already in an Kroneckerized way.
@@ -345,6 +334,14 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
                 for ( index_t n=0; n<glob2; ++n )
                     diag( m + l*glob + n*loc*glob, 0 ) += D(l,0);
 
+        // Finally, we store the eigenvectors
+        ev.swap(const_cast<evMatrix&>(ges.eigenvectors()));
+
+        // These are the operators representing the eigenvectors
+        typename gsMatrixOp< gsMatrix<T> >::Ptr matrOp = makeMatrixOp( ev.moveToPtr() );
+        Qop [i] = matrOp;
+        // Here we are safe as long as we do not want to apply QTop after Qop got destroyed.
+        QTop[i] = makeMatrixOp( matrOp->matrix().transpose() );
     }
 
     GISMO_ASSERT( glob == 1, "Internal error." );
