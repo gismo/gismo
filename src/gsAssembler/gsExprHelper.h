@@ -323,12 +323,14 @@ public:
     //     avg.parse(this->iface());
     // }
 
-    void precompute(const index_t patchIndex = 0)
+    void precompute(const index_t patchIndex = 0,
+                    boundary::side bs = boundary::none)
     {
         //First compute the maps
         for (MapDataIt it = m_mdata.begin(); it != m_mdata.end(); ++it)
         {
             it->second.mine().points.swap(m_points.mine());//swap
+            it->second.mine().side    = bs;
             it->first->function(patchIndex).computeMap(it->second);
             it->second.mine().patchId = patchIndex;
             it->second.mine().points.swap(m_points.mine());

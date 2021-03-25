@@ -68,8 +68,6 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
                                         const gsBoundaryConditions<T> & bc)
 {
     const index_t parDim = u.source().domainDim();
-    const gsMultiBasis<T> & mbasis =
-        *dynamic_cast<const gsMultiBasis<T>*>(&u.source());
 
     std::vector< gsVector<T> > rr;
     gsMatrix<index_t> boundary;
@@ -94,7 +92,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             if (com!=-1 && r!=com) continue;
 
             const int k = it->patch();
-            const gsBasis<T> & basis = mbasis[k];
+            const gsBasis<T> & basis = u.source().basis(k);
 
             // Get dofs on this boundary
             boundary = basis.boundary(it->side());
@@ -167,8 +165,6 @@ gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
                                  gsMatrix<T> & values)
 {
     const index_t parDim = u.source().domainDim();
-    const gsMultiBasis<T> & mbasis =
-        *dynamic_cast<const gsMultiBasis<T>*>(&u.source());
 
     const gsFunctionSet<T> & gmap = bc.geoMap();
     std::vector< gsVector<T> > rr;
@@ -181,7 +177,7 @@ gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
     if( bc.unknown()!=u.id() ) { boundary.clear(); values.clear(); return; }
 
     const int k = bc.patch();
-    const gsBasis<T> & basis = mbasis[k];
+    const gsBasis<T> & basis = u.source().basis(k);
 
     // Get dofs on this boundary
     boundary = basis.boundary(bc.side());

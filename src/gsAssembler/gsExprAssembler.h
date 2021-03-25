@@ -836,14 +836,13 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
     {
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(it->patch()), m_options, it->side().direction());
 
-        m_exprdata->mapData.side = it->side();
-
         // Update boundary function source
         m_exprdata->setMutSource(*it->function(), it->parametric());
         //mutVar.registerVariable(func, mutData);
 
         typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().basis(it->patch()).makeDomainIterator(it->side());
+            m_exprdata->multiBasis().basis(it->patch())
+            .makeDomainIterator(it->side());
         m_element.set(*domIt);
 
         // Start iteration over elements
@@ -857,7 +856,7 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
                 continue;
 
             // Perform required pre-computations on the quadrature nodes
-            m_exprdata->precompute(it->patch());
+            m_exprdata->precompute(it->patch(), it->side());
 
             ee.setPatch(it->patch());
     	    ee(arg_lhs);

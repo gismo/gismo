@@ -109,13 +109,13 @@ int main(int argc, char *argv[])
             bb2.init(mb,cf);
         if (3==d)
             bb3.init(mb,cf);
-        
+
         // Set Dirichlet boundary conditions on all boundaries
         bc.clear();
         for ( gsMultiPatch<>::const_biterator bit = mp.bBegin();
               bit != mp.bEnd(); ++bit)
             bc.addCondition( *bit, condition_type::dirichlet, &ff );
-        gsDebugVar(bc);
+
         //u.setup(); // if no BCs needed
         u.setup(bc, dirichlet::l2Projection, 0); //dirichlet::interpolation does not work yet for gsMappedBasis
 
