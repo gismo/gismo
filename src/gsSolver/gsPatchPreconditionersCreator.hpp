@@ -344,7 +344,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         QTop[i] = makeMatrixOp( matrOp->matrix().transpose() );
     }
 
-    GISMO_ASSERT( glob == 1, "Internal error." );
+    GISMO_ASSERT( glob == 1,
+        "gsPatchPreconditionerCreator::fastDiagonalizationOp: Internal error." );
 
     diag(0,0) += avg_term;
 
