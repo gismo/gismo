@@ -63,7 +63,7 @@ template<class T> struct gsFeSpaceData
 {
     gsFeSpaceData(const gsFunctionSet<T> & _fs, index_t _id):
     fs(&_fs), id(give(_id)) { }
-    
+
     const gsFunctionSet<T> * fs;
     index_t id;
     gsDofMapper mapper;
@@ -718,7 +718,7 @@ protected:
 
     // contains id, mapper, fixedDofs, etc
     gsFeSpaceData<T> * m_sd;
-    
+
 public:
     enum{Space = 1, ScalarValued=0, ColBlocks=0};// test space
 
@@ -814,8 +814,8 @@ public:
         {
             m_sd->mapper.setIdentity(mb->nPatches(), mb->size() , this->dim());
         }
-            
-        m_sd->mapper.finalize();        
+
+        m_sd->mapper.finalize();
     }
 
     void setup(const gsBoundaryConditions<T> & bc, const index_t dir_values,
@@ -1039,7 +1039,7 @@ public:
     gsFeSolution(const gsFeSpace<T> & u, gsMatrix<T> & Sv) : _u(u), _Sv(&Sv) { }
 
     const gsFeSpace<T> & space() const {return _u;};
-    
+
     mutable gsMatrix<T> res;
     const gsMatrix<T> & eval(index_t k) const
     {
@@ -1105,7 +1105,7 @@ public:
     {
         index_t offset, ii, bi;
         result.resize(_u.mapper().mapSize(),1);
-        for (index_t c=0; c!=_u.m_d; c++)
+        for (index_t c=0; c!=_u.dim(); c++)
             for (size_t j=0; j!=_u.mapper().numPatches(); j++)
                 for (size_t i=0; i!=_u.mapper().patchSize(j); i++) // loop over all DoFs (free and eliminated)
                 {
@@ -1930,7 +1930,7 @@ class grad_expr : public _expr<grad_expr<E> >
     typename E::Nested_t _u;
 public:
     enum {Space = E::Space, ScalarValued= 0, ColBlocks= 0};
-    
+
     typedef typename E::Scalar Scalar;
     mutable gsMatrix<Scalar> tmp;
 
@@ -2207,7 +2207,7 @@ class onormal_expr : public _expr<onormal_expr<T> >
 public:
     typedef T Scalar;
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
-    
+
     onormal_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
     MatExprType eval(const index_t k) const
@@ -2246,7 +2246,7 @@ class normal_expr : public _expr<normal_expr<T> >
 public:
     typedef T Scalar;
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
-    
+
     normal_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
     MatExprType eval(const index_t k) const
@@ -2285,7 +2285,7 @@ class tangent_expr : public _expr<tangent_expr<T> >
 public:
     typedef T Scalar;
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
-    
+
     tangent_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
     mutable gsMatrix<Scalar> res;
@@ -2621,7 +2621,7 @@ public:
         secDerToHessian(dd.values[2].col(k), dd.dim.first, res);
         res.resize(dd.dim.first, res.cols()*dd.dim.first);
         // Note: auto returns by value here,
-        // in C++11 we may add in -> decltype(res) & 
+        // in C++11 we may add in -> decltype(res) &
         return res;
     }
 
@@ -2784,7 +2784,7 @@ private:
     mutable gsMatrix<Scalar> res;
 public:
     enum{ Space = 1, ScalarValued= 0, ColBlocks= 0};
-    
+
     curl_expr(const gsFeVariable<T> & u) : _u(u)
     { GISMO_ASSERT(3==u.dim(),"curl(.) requires 3D variable."); }
 
@@ -3109,9 +3109,9 @@ public:
     enum { Space = E1::Space + E2::Space };
     // E1 E2 this (16 cases..)
     // 0  0  0
-    // 1  1  
-    // 2  2  
-    // 3  3  
+    // 1  1
+    // 2  2
+    // 3  3
 
 private:
     typename E1::Nested_t _u;
@@ -3515,7 +3515,7 @@ public:
     typedef typename E::Scalar Scalar;
 
     enum { Space = (0==E::Space ? 0 : E::Space), ScalarValued= E::ScalarValued, ColBlocks= E::ColBlocks };
-    
+
     symm_expr(_expr<E> const& u)
     : _u(u) { }
 
@@ -3592,7 +3592,7 @@ public:
     enum {Space = E::Space};
 
     typedef typename E::Scalar Scalar;
-    
+
     avg_expr(_expr<E> const& u) : _u1(u), _u2(u), _lr(true) { }
 
     mutable gsMatrix<Scalar> res;
