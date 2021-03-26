@@ -40,20 +40,29 @@ public:
         // Collect the needed basis
         m_basis_g1 = m_auxPatches[0].getArygrisBasisRotated().getVertexBasis(corner);
 
-        m_basis_plus.clear();
-        m_basis_minus.clear();
-        m_basis_geo.clear();
+        m_basis_plus.resize(2);
+        m_basis_minus.resize(2);
+        m_basis_geo.resize(2);
 
-        kindOfEdge.clear();
+        kindOfEdge.resize(2);
 
         for (size_t dir = 0; dir < sideContainer.size(); ++dir)
         {
-            m_basis_plus.push_back(m_auxPatches[0].getArygrisBasisRotated().getBasisPlus(sideContainer[dir]));
-            m_basis_minus.push_back(m_auxPatches[0].getArygrisBasisRotated().getBasisMinus(sideContainer[dir]));
-            m_basis_geo.push_back(m_auxPatches[0].getArygrisBasisRotated().getBasisGeo(sideContainer[dir]));
+            index_t localdir = m_auxPatches[0].getMapIndex(sideContainer[dir]) < 3 ? 1 : 0;
 
-            kindOfEdge.push_back( m_auxPatches[0].getArygrisBasisRotated().isInterface(sideContainer[dir]));
+            m_basis_plus[localdir] = m_auxPatches[0].getArygrisBasisRotated().getBasisPlus(sideContainer[dir]);
+            m_basis_minus[localdir] = m_auxPatches[0].getArygrisBasisRotated().getBasisMinus(sideContainer[dir]);
+            m_basis_geo[localdir] = m_auxPatches[0].getArygrisBasisRotated().getBasisGeo(sideContainer[dir]);
+
+            kindOfEdge[localdir] = m_auxPatches[0].getArygrisBasisRotated().isInterface(sideContainer[dir]);
+
+            //gsInfo << "Basis plus: " << m_basis_plus[localdir] << "\n";
+            //gsInfo << "Basis minus: " << m_basis_minus[localdir] << "\n";
+            //gsInfo << "Basis geo: " << m_basis_geo[localdir] << "\n";
+
         }
+
+        //gsInfo << "kindOfEdge" << kindOfEdge[0] << " : " << kindOfEdge[1] << " : " << true << "\n";
     }
 
 
@@ -147,6 +156,23 @@ void gsApproxArgyrisVertexBasis<d, T, bhVisitor>::refresh()
 {
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper map(m_basis_g1);
+
+    index_t p_1 = m_basis_g1.degree(0);
+    index_t p_2 = m_basis_g1.degree(1);
+
+    gsMatrix<index_t> act;
+    if (2*p_1+1 < m_basis_g1.component(0).size())
+        for (index_t i = 2*p_1+1; i < m_basis_g1.component(0).size(); i++) // only the first 2*p+1
+        {
+            act = m_basis_g1.boundaryOffset(1, i); // WEST
+            map.markBoundary(0, act); // Patch 0
+        }
+    if (2*p_2+1 < m_basis_g1.component(1).size())
+        for (index_t i = 2*p_2+1; i < m_basis_g1.component(1).size(); i++) // only the first 2*p+1
+        {
+            act = m_basis_g1.boundaryOffset(3, i); // WEST
+            map.markBoundary(0, act); // Patch 0
+        }
 
     map.finalize();
     //gsInfo << "map : " << map.asVector() << "\n";

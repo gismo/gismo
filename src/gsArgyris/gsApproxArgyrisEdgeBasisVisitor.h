@@ -95,8 +95,8 @@ public:
 
         if (!isboundary)
         {
-            approxGluingData.alphaS(1-dir).eval_into(md.points.row(dir),alpha); // 1-dir == PatchID
-            approxGluingData.betaS(1-dir).eval_into(md.points.row(dir),beta); // 1-dir == PatchID
+            approxGluingData.alphaS(dir).eval_into(md.points.row(dir),alpha); // 1-dir == PatchID
+            approxGluingData.betaS(dir).eval_into(md.points.row(dir),beta); // 1-dir == PatchID
         }
         else
         {

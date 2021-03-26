@@ -71,7 +71,7 @@ B-splines meeting along one side
     </Basis>
     <coefs geoDim="2">
        0.6 1.1
-       1.0 1.0
+       1.0 1.1
 
        0.5 2.0
        1.0 2.0

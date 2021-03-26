@@ -32,6 +32,7 @@ public:
                                 const gsOptionList & optionList)
         : m_patch(patch), m_bspGD(bsp_Gd), m_uv(uv), m_optionList(optionList)
     {
+        gsWriteParaview(m_patch.patch(0),"geogeo",2000);
         refresh();
         assemble();
         solve();

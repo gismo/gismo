@@ -288,9 +288,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::refresh()
 
 
     map.finalize();
-    map.print();
-
-    gsInfo << map.asVector() << "\n";
+    //map.print();
 
     // 2. Create the sparse system
     m_system = gsSparseSystem<T>(map);
@@ -627,13 +625,6 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(const shor
                 if( mapper.is_boundary_index( globIdxAct(i,0)) )
                     eltBdryFcts.push_back( i );
 
-            for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
-            {
-                const unsigned j = eltBdryFcts[j0];
-                const unsigned jj = mapper.global_to_bindex( globIdxAct( j ));
-                gsInfo << "patch: " << patchIdx << " : " << iter->side().index() << " : " << globIdxAct( j ) <<  " : " << jj <<  " : " << rhsVals.col(0) << "\n";
-            }
-
             // Do the actual assembly:
             for( index_t k=0; k < md.points.cols(); k++ )
             {
@@ -679,8 +670,8 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(const shor
     m_ddof[unk_] = solver.compute( globProjMat ).solve ( globProjRhs );
 
 
-    gsInfo << "rhs: " << globProjRhs << "\n";
-    gsInfo << m_ddof[unk_] << "\n";
+    //gsInfo << "rhs: " << globProjRhs << "\n";
+    //gsInfo << m_ddof[unk_] << "\n";
 
 } // computeDirichletDofsL2Proj
 

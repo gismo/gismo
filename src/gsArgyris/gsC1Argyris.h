@@ -65,6 +65,10 @@ public:
                            gsKnotVector<T> & kv1_patch, gsKnotVector<T> & kv2_patch,
                            gsKnotVector<T> & kv1_result, gsKnotVector<T> & kv2_result);
 
+    void createPlusMinusSpace(gsKnotVector<T> & kv1,
+                           gsKnotVector<T> & kv1_patch,
+                           gsKnotVector<T> & kv1_result, gsKnotVector<T> & kv2_result);
+
     void createGluingDataSpace(gsKnotVector<T> & kv1, gsKnotVector<T> & kv2,
                            gsKnotVector<T> & kv1_patch, gsKnotVector<T> & kv2_patch,
                            gsKnotVector<T> & kv_result);
@@ -196,8 +200,26 @@ public:
             gsBSplineBasis<> basis_geo_1 = dynamic_cast<gsBSplineBasis<> &>(multiBasis.basis(patch_1).component(1-dir_1));
 
             // Assume that plus/minus space is the same as the inner space
-            gsBSplineBasis<> basis_plus = basis_1;
-            gsBSplineBasis<> basis_minus = basis_1;
+            gsBSplineBasis<> basis_plus, basis_minus;
+
+            if (m_optionList.getSwitch("twoPatch"))
+            {
+                basis_plus = basis_1;
+                basis_minus = basis_1;
+            }
+            else
+            {
+                gsKnotVector<T> kv_1 = basis_1.knots();
+
+                gsBSplineBasis<> patch_basis_1 = dynamic_cast<gsBSplineBasis<> &>(m_mp.patch(patch_1).basis().component(dir_1));
+                gsKnotVector<T> kv_patch_1 = patch_basis_1.knots();
+
+                gsKnotVector<T> kv_plus, kv_minus;
+                createPlusMinusSpace(kv_1,  kv_patch_1,  kv_plus, kv_minus);
+
+                basis_plus = gsBSplineBasis<>(kv_plus);
+                basis_minus = gsBSplineBasis<>(kv_minus);
+            }
 
             m_bases[patch_1].setEdgeBasis(basis_edge_1, side_1);
 
@@ -669,6 +691,42 @@ void gsC1Argyris<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVector<
             knot_vector_minus.push_back(*it2);
             ++it2;
         }
+    }
+
+    // Repeat the first and the last vector p or p-1 times
+    kv1_result = gsKnotVector<>(knot_vector_plus);
+    kv1_result.degreeIncrease(p);
+    kv2_result = gsKnotVector<>(knot_vector_minus);
+    kv2_result.degreeIncrease(p-1);
+}
+
+
+template<short_t d,class T>
+void gsC1Argyris<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1,
+                           gsKnotVector<T> & kv1_patch,
+                           gsKnotVector<T> & kv1_result, gsKnotVector<T> & kv2_result)
+{
+    std::vector<real_t> knots_unique_1 = kv1.unique();
+
+    std::vector<real_t> patch_kv_unique_1 = kv1_patch.unique();
+    std::vector<index_t> patch_kv_mult_1 = kv1_patch.multiplicities();
+
+    index_t p = math::max(kv1.degree(), 0);
+
+    std::vector<real_t> knot_vector_plus, knot_vector_minus;
+    /*
+    * TODO Add geometry inner knot regularity
+    *
+    index_t i_3 = 0, i_4 = 0;
+
+    std::vector<real_t>::iterator it3 = patch_kv_unique_1.begin();
+    std::vector<real_t>::iterator it4 = patch_kv_unique_2.begin();
+    */
+
+    for(std::vector<real_t>::iterator it = knots_unique_1.begin(); it != knots_unique_1.end(); ++it)
+    {
+        knot_vector_plus.push_back(*it);
+        knot_vector_minus.push_back(*it);
     }
 
     // Repeat the first and the last vector p or p-1 times

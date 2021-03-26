@@ -137,9 +137,6 @@ namespace gismo
 
         const gsFunctionWithDerivatives<T> & exactSol;
 
-    private:
-
-        bool f2param;
 
     protected:
 

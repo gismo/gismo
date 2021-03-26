@@ -239,7 +239,6 @@ void gsApproxArgyrisEdgeBasis<d, T,bhVisitor>::refresh(index_t bfID, std::string
     gsDofMapper map(m_basis_g1);
 
     gsMatrix<index_t> act;
-
     for (index_t i = 2; i < m_basis_g1.component(1 - m_dir).size();
          i++) // only the first two u/v-columns are Dofs (0/1)
     {

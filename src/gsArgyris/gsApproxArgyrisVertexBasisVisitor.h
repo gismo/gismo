@@ -80,6 +80,10 @@ namespace gismo
         Phi.row(5) *= sigma * sigma;
 
         // Computing c, c+ and c-
+        // Point zero
+        gsMatrix<> zero;
+        zero.setZero(2,1);
+
         std::vector<gsMatrix<>> c_0, c_1;
         std::vector<gsMatrix < >> c_0_plus, c_1_plus, c_2_plus;
         std::vector<gsMatrix < >> c_0_plus_deriv, c_1_plus_deriv, c_2_plus_deriv;
@@ -115,7 +119,25 @@ namespace gismo
             c_0_minus.push_back(b_0_minus + b_1_minus);
             c_1_minus.push_back(h_geo/ (p-1) * b_1_minus);
 
+            gsMatrix<> der_b_1_plus_0, der2_b_1_plus_0, der2_b_2_plus_0;
+            basis_plus[i].derivSingle_into(1, zero.row(i), der_b_1_plus_0);
+            basis_plus[i].deriv2Single_into(1, zero.row(i), der2_b_1_plus_0);
+            basis_plus[i].deriv2Single_into(2, zero.row(i), der2_b_2_plus_0);
+
+            real_t factor_c_1_plus = 1/der_b_1_plus_0(0,0);
+            real_t factor2_c_1_plus = -der2_b_1_plus_0(0,0)/(der_b_1_plus_0(0,0)*der2_b_2_plus_0(0,0));
+            real_t factor_c_2_plus = 1/der2_b_2_plus_0(0,0);
+
+            c_0_plus.push_back(b_0_plus + b_1_plus + b_2_plus);
+            c_1_plus.push_back(factor_c_1_plus * b_1_plus + factor2_c_1_plus * b_2_plus);
+            c_2_plus.push_back(factor_c_2_plus * b_2_plus );
+
+            c_0_plus_deriv.push_back(b_0_plus_deriv + b_1_plus_deriv + b_2_plus_deriv);
+            c_1_plus_deriv.push_back(factor_c_1_plus * b_1_plus_deriv + factor2_c_1_plus * b_2_plus_deriv);
+            c_2_plus_deriv.push_back(factor_c_2_plus * b_2_plus_deriv);
+
             // TODO IF CASE
+            /*
             if ( p == 3)
             {
                 // WORKS ONLY FOR p=3 AND r=1
@@ -138,11 +160,8 @@ namespace gismo
                 c_2_plus_deriv.push_back((h_geo * h_geo / (p * (p - 1))) * b_2_plus_deriv);
 
             }
+         */
         }
-
-        // Point zero
-        gsMatrix<> zero;
-        zero.setZero(2,1);
 
         std::vector<gsMatrix<>> alpha, beta, alpha_0, beta_0, alpha_deriv, beta_deriv;
 
@@ -261,11 +280,15 @@ namespace gismo
                             (geo.jacobian(zero).col(0) + beta_0[1](0,0) * geo.jacobian(zero).col(1)) *
                             alpha_deriv[1](0,0));
 
-        //if (isBoundary[0] == false)
-        //    gsInfo << dd_ik_minus_deriv << "\n";
-        //if (isBoundary[1] == false)
-        //    gsInfo << dd_ik_plus_deriv << "\n";
+        /*
+        gsInfo << "Transversal\n";
+        if (kindOfEdge[1])
+            gsInfo << dd_ik_minus_deriv << "\n";
+        if (kindOfEdge[0])
+            gsInfo << dd_ik_plus_deriv << "\n";
 
+        gsInfo << geo.jacobian(zero).col(0) << " : " << geo.jacobian(zero).col(1) << "\n";
+*/
         // Comupute d_(0,0)^(i_k), d_(1,0)^(i_k), d_(0,1)^(i_k), d_(1,1)^(i_k) ; i_k == 2
         std::vector<gsMatrix<>> d_ik;
         d_ik.push_back(Phi.col(0));
@@ -304,6 +327,7 @@ namespace gismo
 
         for (index_t i = 0; i < 6; i++)
         {
+
             rhsVals.at(i) = d_ilik_minus.at(0)(i,0) * (c_0_plus.at(0).cwiseProduct(c_0.at(1)) -
                                                        beta[0].cwiseProduct(c_0_plus_deriv.at(0).cwiseProduct(c_1.at(1)))) +
                             d_ilik_minus.at(1)(i,0) * (c_1_plus.at(0).cwiseProduct(c_0.at(1)) -
@@ -313,7 +337,11 @@ namespace gismo
                             d_ilik_minus.at(3)(i,0) * alpha[0].cwiseProduct(c_0_minus.at(0).cwiseProduct(c_1.at(1))) -
                             d_ilik_minus.at(4)(i,0) * alpha[0].cwiseProduct(c_1_minus.at(0).cwiseProduct(c_1.at(1))); // f*_(ik-1,ik)
 
-            rhsVals.at(i) += d_ilik_plus.at(0)(i,0) * (c_0_plus.at(1).cwiseProduct(c_0.at(0)) -
+            //if (kindOfEdge[0])
+                //rhsVals.at(i).setZero();
+
+            //if (!kindOfEdge[1])
+                rhsVals.at(i) += d_ilik_plus.at(0)(i,0) * (c_0_plus.at(1).cwiseProduct(c_0.at(0)) -
                                                        beta[1].cwiseProduct(c_0_plus_deriv.at(1).cwiseProduct(c_1.at(0)))) +
                              d_ilik_plus.at(1)(i,0) * (c_1_plus.at(1).cwiseProduct(c_0.at(0)) -
                                                        beta[1].cwiseProduct(c_1_plus_deriv.at(1).cwiseProduct(c_1.at(0)))) +
@@ -321,6 +349,7 @@ namespace gismo
                                                        beta[1].cwiseProduct(c_2_plus_deriv.at(1).cwiseProduct(c_1.at(0)))) +
                              d_ilik_plus.at(3)(i,0) * alpha[1].cwiseProduct(c_0_minus.at(1).cwiseProduct(c_1.at(0))) +
                              d_ilik_plus.at(4)(i,0) * alpha[1].cwiseProduct(c_1_minus.at(1).cwiseProduct(c_1.at(0))); // f*_(ik+1,ik)
+
 
             rhsVals.at(i) -= d_ik.at(0)(i,0) * c_0.at(0).cwiseProduct(c_0.at(1)) + d_ik.at(2)(i,0) * c_0.at(0).cwiseProduct(c_1.at(1)) +
                              d_ik.at(1)(i,0) * c_1.at(0).cwiseProduct(c_0.at(1)) + d_ik.at(3)(i,0) * c_1.at(0).cwiseProduct(c_1.at(1)); // f*_(ik)
@@ -341,13 +370,12 @@ namespace gismo
         {
             // ( u, v)
             localMat.at(i).noalias() =
-                    basisData * quWeights.asDiagonal() *
-                    md.measures.asDiagonal() * basisData.transpose();
+                    basisData * quWeights.asDiagonal() * basisData.transpose();
 
             for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
             {
                 // Multiply weight by the geometry measure
-                const T weight = quWeights[k] * md.measure(k);
+                const T weight = quWeights[k];
 
                 localRhs.at(i).noalias() += weight * (basisVals.col(k) * rhsVals.at(i).col(k).transpose());
             }

@@ -35,25 +35,25 @@ public:
                        std::vector<index_t> sidesContainer = std::vector<index_t>{})
         : m_auxPatches(auxPatchContainer), m_optionList(optionList)
     {
-
+        alphaSContainer.resize(2);
+        betaSContainer.resize(2);
         if (m_auxPatches.size() == 2) // Interface
         {
-            setGlobalGluingData(0,m_auxPatches[0].side(), 1); // v Order is important!!!
             setGlobalGluingData(1,m_auxPatches[1].side(), 0); // u
+            setGlobalGluingData(0,m_auxPatches[0].side(), 1); // v
         }
         else if (m_auxPatches.size() == 1) // Vertex
         {
-
             for (size_t dir = 0; dir < sidesContainer.size(); dir++)
             {
+                index_t localSide = auxPatchContainer[0].getMapIndex(sidesContainer[dir]);
+                //gsInfo << "Global: " << sidesContainer[dir] << " : " << localSide << "\n";
+                index_t localDir = localSide < 3 ? 1 : 0;
                 if(auxPatchContainer[0].getArygrisBasisRotated().isInterface(sidesContainer[dir])) // West
-                    setGlobalGluingData(0, sidesContainer[dir], dir);
+                    setGlobalGluingData(0, sidesContainer[dir], localDir);
                 else
                 {
-                    gsBSpline<> alpha;
-                    gsBSpline<> beta;
-                    alphaSContainer.push_back(alpha);
-                    betaSContainer.push_back(beta);
+                    // empty
                 }
             }
         }
@@ -82,14 +82,14 @@ protected:
 
 
 template<short_t d, class T>
-void gsApproxGluingData<d, T>::setGlobalGluingData(index_t patchID, index_t side, index_t dir)
+void gsApproxGluingData<d, T>::setGlobalGluingData(index_t patchID, index_t globalSide, index_t dir)
 {
     // ======== Space for gluing data : S^(p_tilde, r_tilde) _k ========
-    gsBSplineBasis<T> bsp_gD = m_auxPatches[patchID].getArygrisBasisRotated().getBasisGluingData(side);
+    gsBSplineBasis<T> bsp_gD = m_auxPatches[patchID].getArygrisBasisRotated().getBasisGluingData(globalSide);
 
     gsApproxGluingDataAssembler<T> approxGluingDataAssembler(m_auxPatches[patchID].getPatch(), bsp_gD, dir, m_optionList);
-    alphaSContainer.push_back(approxGluingDataAssembler.getAlphaS());
-    betaSContainer.push_back(approxGluingDataAssembler.getBetaS());
+    alphaSContainer[dir] = approxGluingDataAssembler.getAlphaS();
+    betaSContainer[dir] = approxGluingDataAssembler.getBetaS();
 
     if (patchID == 0)
         gsWriteParaview(approxGluingDataAssembler.getAlphaS(), "alpha_R", 1000);

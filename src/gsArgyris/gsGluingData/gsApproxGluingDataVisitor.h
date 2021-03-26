@@ -88,7 +88,6 @@ public:
         }
         rhsVals_beta = uv.row(0);
 
-
         // Initialize local matrix/rhs
         localMat.setZero(numActive, numActive      );
         localRhs.setZero(numActive, rhsVals_alpha.rows() );//multiple right-hand sides

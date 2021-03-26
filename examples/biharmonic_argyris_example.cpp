@@ -19,6 +19,7 @@
 # include <gsAssembler/gsG1BiharmonicAssembler.h>
 # include <gsArgyris/gsC1Argyris.h>
 # include <gsArgyris/gsErrorAnalysis/gsArgyrisNorms.h>
+# include <gsArgyris/gsErrorAnalysis/gsC1ArgyrisJumpNorm.h>
 
 # include <gsArgyris/gsC1ArgyrisIO.h>
 
@@ -97,7 +98,7 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> sol2der("0",
                              "0",
                              "0", 2);
-    */
+*/
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
     //! [Exact solution]
@@ -163,11 +164,18 @@ int main(int argc, char *argv[])
             case -8 ... -1:
                 string_geo = "planar/twoPatches/benchmark/square_linear_" + std::to_string(-geometry) + ".xml";
                 break;
+            case -18 ... -11:
+                string_geo = "planar/twoPatches/benchmark/square_linear_bc_" + std::to_string(-geometry-10) + ".xml";
+                break;
 
             default:
                 gsInfo << "No geometry is used! \n";
                 break;
         }
+    }
+    else
+    {
+        string_geo = input;
     }
 
     gsInfo << "Filedata: " << string_geo << "\n";
@@ -216,17 +224,22 @@ int main(int argc, char *argv[])
     gsSparseSolver<>::CGDiagonal solver;
 
     //! [Solver loop]
-    gsVector<> l2err(numRefine+1), h1err(numRefine+1), h2err(numRefine+1), dofs(numRefine+1), meshSize(numRefine+1);
+    gsVector<> l2err(numRefine+1), h1err(numRefine+1), h2err(numRefine+1),
+               dofs(numRefine+1), meshSize(numRefine+1);
     gsMatrix<> jumperr(numRefine+1, mp.nInterfaces());
 
     gsInfo<< "(dot1=got_argyris_space, dot2=assembled, dot3=solved, dot4=got_error)\n";
+    gsStopwatch time;
     for( index_t l = 0; l<=numRefine; ++l)
     {
+        gsInfo<<"--------------------------------------------------------------\n";
+        time.restart();
         gsSparseMatrix<> sparseMatrix_argyris;
         gsMultiBasis<> mb_argyris;
 
         c1Argyris.init();
         c1Argyris.createArgyrisSpace(); // Slow TODO
+        /*
         if (plot) {
             gsInfo << "Plot start \n";
             c1Argyris.writeParaviewSinglePatch(0, "inner");
@@ -238,19 +251,27 @@ int main(int argc, char *argv[])
             c1Argyris.writeParaviewSinglePatch(1, "vertex");
             gsInfo << "Plot end \n";
         }
+        */
         c1Argyris.getMultiBasis(mb_argyris);
         sparseMatrix_argyris = c1Argyris.getSystem();
         mappedBasis.init(mb_argyris, sparseMatrix_argyris.transpose());
         gsInfo<< "." <<std::flush;// Construction of Argyris space done
+        gsInfo<<"\tAssembly of mapping:\t"<<time.stop()<<"\t[s]\n";
 
+        time.restart();
         gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(mp, mappedBasis, bcInfo, bcInfo2, source, twoPatch);
+        gsInfo<<"\tDegrees of freedom:\t"<< g1BiharmonicAssembler.numDofs() <<"\n";
         g1BiharmonicAssembler.assemble();
         gsInfo<< "." <<std::flush;// Assemblying done
+        gsInfo<<"\tSystem assembly:\t"<<time.stop()<<"\t[s]\n";
 
+        time.restart();
         gsSparseSolver<real_t>::CGDiagonal solver;
         solver.compute(g1BiharmonicAssembler.matrix());
         gsMatrix<real_t> solVector= solver.solve(g1BiharmonicAssembler.rhs());
+        gsInfo<<"\tSolving system:\t\t"<<time.stop()<<"\t[s]\n";
 
+        time.restart();
         gsMatrix<real_t> solFull;
         g1BiharmonicAssembler.constructSolution(solVector, solFull);
         sparseMatrix_argyris = solFull.asDiagonal() * sparseMatrix_argyris;
@@ -260,6 +281,9 @@ int main(int argc, char *argv[])
         mappedBasis.init(mb_argyris, sparseMatrix_argyris.transpose());
         gsArgyrisNorms<real_t> argyrisNorms(mp, mappedBasis, solution);
         argyrisNorms.compute();
+        gsC1ArgyrisJumpNorm<real_t> c1ArgyrisJumpNorm(mp, mappedBasis, solution);
+        c1ArgyrisJumpNorm.compute();
+        gsInfo<<"\tError computations:\t"<<time.stop()<<"\t[s]\n";
 
         // Collecting data
         meshSize[l] = c1Argyris.getMinMeshSize();
@@ -269,6 +293,7 @@ int main(int argc, char *argv[])
         h1err[l] = math::sqrt(argyrisNorms.valueH1() * argyrisNorms.valueH1() + l2err[l] * l2err[l]);
         h2err[l] = math::sqrt(argyrisNorms.valueH2() * argyrisNorms.valueH2() +
                 argyrisNorms.valueH1() * argyrisNorms.valueH1() + l2err[l] * l2err[l]);
+        jumperr.row(l) = c1ArgyrisJumpNorm.value();
         gsInfo<< ". " <<std::flush;// Error computations done
 
         // TODO Refine spaces
@@ -282,6 +307,7 @@ int main(int argc, char *argv[])
     gsInfo<< "\n\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
     gsInfo<< "H1 error: "<<std::scientific<<h1err.transpose()<<"\n";
     gsInfo<< "H2 error: "<<std::scientific<<h2err.transpose()<<"\n";
+    gsInfo<< "Jump error: "<<std::scientific<<jumperr.transpose()<<"\n";
 
     if (numRefine>0)
     {
@@ -296,6 +322,14 @@ int main(int argc, char *argv[])
         gsInfo<<   "EoC (H2): "<< std::fixed<<std::setprecision(2)
               <<( h2err.head(numRefine).array() /
                   h2err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+        for (size_t numInt = 0; numInt < mp.interfaces().size(); numInt++ )
+        {
+            gsVector<> singleInterr = jumperr.col(numInt);
+            gsInfo<<   "EoC (Interface " + util::to_string(numInt) + "): "<< std::fixed<<std::setprecision(2)
+              <<( singleInterr.head(numRefine).array() /
+                  singleInterr.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+        }
+
     }
     //! [Error and convergence rates]
 

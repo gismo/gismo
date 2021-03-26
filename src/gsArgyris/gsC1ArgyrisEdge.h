@@ -72,6 +72,14 @@ public:
         approxArgyrisEdgeBasis.setG1BasisEdge(result_1);
         approxArgyrisEdgeBasis2.setG1BasisEdge(result_2);
 
+        gsMatrix<> points_u, points_v;
+        points_u.setZero(2, 10);
+        points_v.setZero(2, 10);
+        gsVector<> lin;
+        lin.setLinSpaced(10, 0, 1);
+        points_u.row(0) = lin.transpose();
+        points_v.row(1) = lin.transpose();
+
         // Compute Kernel (before parametrizeBack)
         if (m_optionList.getSwitch("twoPatch"))
             computeKernel(result_1, result_2, side_1);
@@ -126,32 +134,43 @@ public:
 
         reparametrizeSinglePatch(side_1);
 
+        gsMultiPatch<> result_1;
+
         // Compute GLuing data NO NEED
         // gsApproxGluingData<d, T> approxGluingData(m_auxPatches, m_optionList);
         //gsApproxArgyrisEdgeBasis<d, T> approxArgyrisEdgeBasis(m_auxPatches, 0, m_optionList);
         //gsMultiPatch<T> result_1;
         //approxArgyrisEdgeBasis.setG1BasisEdge(result_1);
 
-        gsMultiPatch<> result_1;
-        gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[0].getArygrisBasisRotated().getEdgeBasis(m_auxPatches[0].side()); // 0 -> u, 1 -> v
-
-        std::vector<index_t> shift_bf(2);
-        shift_bf[0] = m_optionList.getSwitch("twoPatch") ? 2 : 3;
-        shift_bf[1] = 2;
-        index_t dim_u = basis_edge.component(0).size();
-        index_t dim_v = basis_edge.component(1).size();
-        for (index_t i = 0; i < 2; i++) // u
+        if (m_optionList.getSwitch("twoPatch"))
         {
-            for (index_t j = shift_bf[i]; j < dim_v-shift_bf[i]; j++) // v
+            gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[0].getArygrisBasisRotated().getEdgeBasis(m_auxPatches[0].side()); // 0 -> u, 1 -> v
+
+            std::vector<index_t> shift_bf(2);
+            shift_bf[0] = m_optionList.getSwitch("twoPatch") ? 2 : 3;
+            shift_bf[1] = 2;
+            index_t dim_u = basis_edge.component(0).size();
+            index_t dim_v = basis_edge.component(1).size();
+            for (index_t i = 0; i < 2; i++) // u
             {
-                gsMatrix<> coefs;
-                coefs.setZero(dim_u * dim_v, 1);
+                for (index_t j = shift_bf[i]; j < dim_v-shift_bf[i]; j++) // v
+                {
+                    gsMatrix<> coefs;
+                    coefs.setZero(dim_u * dim_v, 1);
 
-                coefs(j * dim_u + i, 0) = 1;
+                    coefs(j * dim_u + i, 0) = 1;
 
-                result_1.addPatch(basis_edge.makeGeometry(coefs));
+                    result_1.addPatch(basis_edge.makeGeometry(coefs));
+                }
             }
+
         }
+        else
+        {
+            gsApproxArgyrisEdgeBasis<d, T> approxArgyrisEdgeBasis(m_auxPatches, 0, m_optionList);
+            approxArgyrisEdgeBasis.setG1BasisEdge(result_1);
+        }
+
 
         // Compute Kernel (before parametrizeBack) NO NEED
         //computeKernel(result_1, result_2, side_1);

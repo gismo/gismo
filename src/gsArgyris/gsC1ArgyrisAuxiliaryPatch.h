@@ -32,6 +32,12 @@ public:
         m_ArgyrisBasisRotated = singlePatch;
         rotationNum = 0;
         axisOrientation = 0;
+
+        mapIndex.setZero(4);
+        mapIndex[0] = 1;
+        mapIndex[1] = 2;
+        mapIndex[2] = 3;
+        mapIndex[3] = 4;
     };
 
     gsGeometry<>& getPatch(){
@@ -48,7 +54,6 @@ public:
 
         // The number of cols has to match the dimension of the space
         gsMatrix<> mpar(dimU * dimV, m_patchRotated.targetDim());
-
         for (index_t j = 0; j < dimU; j++)
         {   // Loop over the rows
             for (index_t i = 0; i < dimV; i++)
@@ -56,7 +61,6 @@ public:
                 mpar.row(i + j * dimV) = m_patchRotated.patch(0).coefs().row(j + dimU * i);
             }
         }
-
         // Create a new geometry starting from kntot vectors and the matrix of the coefficients reparametrized
         gsTensorBSpline<2, real_t> newgeom1(temp_basisLV.knots(), temp_basisLU.knots(), mpar);
 
@@ -67,6 +71,12 @@ public:
 
         // BASES
         m_ArgyrisBasisRotated.swapAxis();
+
+        // Map Index
+        mapIndex[0] = 3;
+        mapIndex[1] = 4;
+        mapIndex[2] = 1;
+        mapIndex[3] = 2;
 
         axisOrientation = 1;
     }
@@ -110,6 +120,22 @@ public:
             auxBasis.swap(newBasis);
         }
 */
+        // Map Index
+        if (getOrient() == 0)
+        {
+            mapIndex[0] = 4;
+            mapIndex[1] = 3;
+            mapIndex[2] = 1;
+            mapIndex[3] = 2;
+        }
+        else
+        {
+            mapIndex[0] = 1;
+            mapIndex[1] = 2;
+            mapIndex[2] = 4;
+            mapIndex[3] = 3;
+        }
+
 
         // Update the number of rotation of the axis
         rotationNum++;
@@ -154,6 +180,23 @@ public:
             auxBasis.swap(newBasis);
         }
 */
+        // Map Index
+        if (getOrient() == 0)
+        {
+            mapIndex[0] = 3;
+            mapIndex[1] = 4;
+            mapIndex[2] = 2;
+            mapIndex[3] = 1;
+        }
+        else
+        {
+            mapIndex[0] = 2;
+            mapIndex[1] = 1;
+            mapIndex[2] = 3;
+            mapIndex[3] = 4;
+        }
+
+
         // Update the number of rotation of the axis
         rotationNum--;
         checkRotation();
@@ -193,6 +236,23 @@ public:
             auxBasis.swap(newBasis);
         }
 */
+        // Map Index
+        if (getOrient() == 0)
+        {
+            mapIndex[0] = 2;
+            mapIndex[1] = 1;
+            mapIndex[2] = 4;
+            mapIndex[3] = 3;
+        }
+        else
+        {
+            mapIndex[0] = 4;
+            mapIndex[1] = 3;
+            mapIndex[2] = 2;
+            mapIndex[3] = 1;
+        }
+
+
         // Update the number of rotation of the axis (anti-clockwise)
         rotationNum+=2;
         checkRotation();
@@ -410,6 +470,8 @@ public:
     void setSide(index_t side ) { m_side = side; }
     index_t side() { return m_side; }
 
+    index_t getMapIndex(index_t glSide) const { return mapIndex[glSide-1]; }
+
 protected:
 
     gsMultiPatch<> m_patchRotated;
@@ -419,6 +481,8 @@ protected:
     // Global side/vertex index in the initial geometry
     index_t m_side;
 
+    // Referenz to initial geometry
+    gsVector<index_t> mapIndex;
 
     // Stores the changing of the axis
     // 0 -> axis not changed

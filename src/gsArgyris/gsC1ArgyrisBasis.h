@@ -206,31 +206,9 @@ public:
 
     }
 
-    index_t cols(std::string type, index_t side = 0) const
-    {
-        index_t col_index = -1;
-        if (type == "inner")
-            col_index = colContainer[0];
-        else if (type == "edge")
-            col_index = colContainer[side];
-        else if (type == "vertex")
-            col_index = colContainer[4+side];
+    index_t cols(index_t side = 0) const { return colContainer[side]; }
 
-        return col_index;
-    }
-
-    index_t rows(std::string type, index_t side = 0) const
-    {
-        index_t row_index = -1;
-        if (type == "inner")
-            row_index = rowContainer[0];
-        else if (type == "edge")
-            row_index = rowContainer[side];
-        else if (type == "vertex")
-            row_index = rowContainer[4+side];
-
-        return row_index;
-    }
+    index_t rows(index_t side = 0) const { return rowContainer[side]; }
 
     index_t rowBegin(index_t side = 0) const
     {
@@ -311,7 +289,7 @@ public:
         else if (side.index() > 4)
         {
             index_t corner_id = side.index(); // + 4 already included!
-            if (offset == 0 && rows("vertex", corner_id - 4) != 0) {
+            if (offset == 0 && rows(corner_id ) != 0) {
 
                 if (twoPatch) {
                     index_t ii = 0;
@@ -350,13 +328,11 @@ public:
                     indizes(ii, 0) = i;
                 return indizes;
             }
-            else {
-                    gsMatrix<index_t> null(1, 1);
-                    null(0, 0) = -1;
-                    return null;
-            }
         }
+        gsMatrix<index_t> null(1, 1);
+        null(0, 0) = -1;
 
+        return null;
     }
 
 public:
@@ -418,6 +394,12 @@ public:
     {
         // Using the inner basis for iterating
         return basisG1Container[0].makeDomainIterator(side);
+    }
+
+    typename gsBasis<T>::domainIter makeDomainIterator() const
+    {
+        // Using the inner basis for iterating
+        return basisG1Container[0].makeDomainIterator();
     }
 
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t> & result) const
