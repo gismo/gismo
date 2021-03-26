@@ -689,7 +689,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     const int tid = omp_get_thread_num();
     const int nt  = omp_get_num_threads();
 #   endif
-    auto arg_tpl = std::make_tuple(args...);//copying expressions
+    auto arg_tpl = std::make_tuple(args...);
 
     m_exprdata->parse(arg_tpl);
     //op_tuple(__printExpr(), arg_tpl);
@@ -761,7 +761,7 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
 //     const int tid = omp_get_thread_num();
 //     const int nt  = omp_get_num_threads();
 // #   endif
-    auto arg_tpl = std::make_tuple(args...);//copying expressions
+    auto arg_tpl = std::make_tuple(args...);
 
     m_exprdata->parse(arg_tpl);
 
@@ -822,9 +822,10 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
                                                const bcContainer & BCs)
 {
     //GISMO_ASSERT( exprRhs.isVector(), "Expecting vector expression");
-    auto arg_lhs = std::make_tuple(exprLhs);//copying expressions
-    auto arg_rhs = std::make_tuple(exprRhs);
     
+    auto arg_lhs(exprLhs.derived());//copying expressions
+    auto arg_rhs(exprRhs.derived());
+
     if (left ) m_exprdata->parse(arg_lhs);
     if (right) m_exprdata->parse(arg_rhs);
 
@@ -859,8 +860,8 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
             m_exprdata->precompute(it->patch(), it->side());
 
             ee.setPatch(it->patch());
-    	    ee(arg_lhs);
-	        ee(arg_rhs);
+            ee(arg_lhs);
+            ee(arg_rhs);
         }
     }
 
@@ -881,7 +882,7 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
     // auto lhs21 = std::make_tuple(exprLhs);
     // auto lhs22 = std::make_tuple(exprLhs);
 
-    auto arg_lhs = std::make_tuple(exprLhs);//copying expressions
+    auto arg_lhs = std::make_tuple(exprLhs);
     auto arg_rhs = std::make_tuple(exprRhs);
     if (left ) m_exprdata->parse(arg_lhs);
     if (right) m_exprdata->parse(arg_rhs);

@@ -233,7 +233,7 @@ public:
         evList.add(_G);
         _u.data().flags |= NEED_GRAD;
         _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
-        _Ef.setFlag();
+        evList.parse(_Ef);
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -270,7 +270,7 @@ public:
         return cols_impl(_u);
     }
 
-    void parse(const gsExprHelper<Scalar> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u);
         _u.data().flags |= NEED_DERIV2;
@@ -419,9 +419,9 @@ public:
         return _u.source().domainDim() * ( _u.source().domainDim() + 1 ) / 2;
     }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
-        evList.add(_u);
+        _u.parse(evList);
         _u.data().flags |= NEED_DERIV2;
     }
 
@@ -525,8 +525,8 @@ public:
         eC = _C.eval(k);
 
         GISMO_ASSERT(Bc==_A.rows(), "Dimensions: "<<Bc<<","<< _A.rows()<< "do not match");
-        GISMO_STATIC_ASSERT(E1::rowSpan, "First entry should be rowSpan"  );
-        GISMO_STATIC_ASSERT(E2::colSpan, "Second entry should be colSpan.");
+        GISMO_STATIC_ASSERT(E1::Space==1, "First entry should be rowSpan"  );
+        GISMO_STATIC_ASSERT(E2::Space==2, "Second entry should be colSpan.");
 
         res.resize(An, Bn);
 
@@ -549,7 +549,7 @@ public:
     index_t cols() const { return 0; }
     void setFlag() const { _A.setFlag();_B.setFlag();_C.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _A.parse(evList);_B.parse(evList);_C.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _A.rowVar(); }
@@ -593,8 +593,8 @@ public:
         eC = _C.eval(k);
 
         GISMO_ASSERT(_B.rows()==_A.cols(), "Dimensions: "<<_B.rows()<<","<< _A.cols()<< "do not match");
-        GISMO_STATIC_ASSERT(E1::rowSpan, "First entry should be rowSpan");
-        GISMO_STATIC_ASSERT(E2::colSpan, "Second entry should be colSpan.");
+        GISMO_STATIC_ASSERT(E1::Space==1, "First entry should be rowSpan");
+        GISMO_STATIC_ASSERT(E2::Space==2, "Second entry should be colSpan.");
         GISMO_ASSERT(_C.cols()==_B.rows(), "Dimensions: "<<_C.rows()<<","<< _B.rows()<< "do not match");
 
         res.resize(An, Bn);
@@ -611,7 +611,7 @@ public:
     index_t rows() const { return 0; }
     index_t cols() const { return 0; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _A.parse(evList);_B.parse(evList);_C.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _A.rowVar(); }
@@ -728,7 +728,7 @@ public:
     static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
     static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         evList.add(_G);
@@ -809,7 +809,7 @@ public:
     static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
     static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         evList.add(_G);
@@ -846,7 +846,7 @@ public:
     static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
     static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         evList.add(_G);
