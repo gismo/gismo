@@ -50,7 +50,7 @@ void gsPeriodicParametrizationOverlap<T>::constructTwinsBetween(size_t& currentN
                                                                 bool rightHandSide)
 {
     // TODO: The whiles do not check if the sought member is indeed in
-    // the list (danger of infinite loop).
+    // the list (danger of an infinite loop).
 
     // Rotate the vertexIndices so as to start from from.
     while(vertexIndices.front() != from)
@@ -60,7 +60,11 @@ void gsPeriodicParametrizationOverlap<T>::constructTwinsBetween(size_t& currentN
     }
 
     // Push the corresponding pairs to the twin vector.
-    for(std::list<size_t>::const_iterator it=vertexIndices.begin(); *std::prev(it) != to; ++it)
+    // Note that if we would do std::prev on begin(), we should not dereference.
+    // The error is visible only with -DGISMO_EXTRA_DEBUG=ON.
+    for(std::list<size_t>::const_iterator it=vertexIndices.begin();
+        it == vertexIndices.begin() || *std::prev(it) != to;
+        ++it)
     {
         size_t twin = findTwin(*it);
         if(rightHandSide)
