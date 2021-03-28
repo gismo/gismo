@@ -26,6 +26,11 @@ namespace gismo
  * alternative implementation is given in
  * gsPeriodicParametrizationOverlap.
  *
+ * This is the implementation used in the paper
+ * L. Groiss, B. Juettler, D. Mokris: 27 variants of Tutte's theorem
+ * for plane near-triangulations and an application to periodic
+ * spline surface fitting, CAGD, 2021.
+ *
  * Main idea
  * =========
  *
