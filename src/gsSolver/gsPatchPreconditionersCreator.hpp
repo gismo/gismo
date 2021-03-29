@@ -314,7 +314,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         // Q^T M Q = I, or M = Q^{-T} Q^{-1}
         // Q^T K Q = D, or K = Q^{-T} D Q^{-1}
 
-        if (gamma != 0)
+        if (gamma != T(0))
         {
             gsMatrix<T> etrans = ges.eigenvectors().transpose()*local_mass[i]*gsMatrix<T>::Ones(local_mass[i].rows(),1);
             GISMO_ASSERT((etrans.block(1, 0, etrans.rows()-1, 1).array() < T(1)/100000000).all(),
