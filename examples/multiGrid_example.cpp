@@ -302,7 +302,7 @@ int main(int argc, char *argv[])
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
         else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" )
             smootherOp = setupSubspaceCorrectedMassSmoother( i, mg->numLevels(), mg->matrix(i),
-                multiBases[i], bc, opt, patchLocalDampingParameters );
+                multiBases[i], bc, opt.getGroup("MG"), patchLocalDampingParameters );
         else if ( smoother == "Hybrid" || smoother == "hyb" )
             smootherOp = gsCompositePrecOp<>::make(
                 makeGaussSeidelOp(mg->matrix(i)),
