@@ -136,7 +136,7 @@ private:
     typename E3::Nested_t _Ef;
 
 public:
-    enum{ Space = 2, ScalarValued= 1, ColBlocks= 0 };
+    enum{ Space = 2, ScalarValued= 0, ColBlocks= 0 };
 
     var2_expr( const E1 & u, const E2 & v, const gsGeometryMap<Scalar> & G, _expr<E3> const& Ef) : _u(u),_v(v), _G(G), _Ef(Ef) { }
 
@@ -1366,7 +1366,13 @@ int main(int argc, char *argv[])
     real_t alpha_r = 1e3;
     A.assembleLhsRhsBc
     (
-        alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var2(u,u,defG,nv(G).tr()) )
+//        alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var2(u,u,defG,nv(G).tr()) )
+//        +
+
+        alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val()
+        *
+        ( var2(u,u,defG,nv(G).tr()) )
+
         +
         alpha_r * ( ( var1(u,defG) * nv(G) ) * ( var1(u,defG) * nv(G) ).tr() )
         ,
@@ -1453,8 +1459,8 @@ int main(int argc, char *argv[])
             );
             A.assembleLhsRhsBc
             (
-                alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var2(u,u,defG,nv(G).tr()) )
-                +
+//                alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var2(u,u,defG,nv(G).tr()) )
+//                +
                 alpha_r * ( ( var1(u,defG) * nv(G) ) * ( var1(u,defG) * nv(G) ).tr() )
                 ,
                 -alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var1(u,defG) * nv(G) )

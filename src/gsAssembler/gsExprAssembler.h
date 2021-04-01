@@ -363,7 +363,7 @@ public:
         //GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
         space cvar = static_cast<space>(exprLhs.colVar());
         //GISMO_ASSERT(m_exprdata->exists(cvar), "Error - inexistent variable.");
-        GISMO_ASSERT(&rvar==&exprRhs.rowVar(), "Inconsistent left and right hand side");
+        GISMO_ASSERT(rvar.id()==exprRhs.rowVar().id(), "Inconsistent left and right hand side"<<rvar.id() <<"!="<<exprRhs.rowVar().id() );
         assembleLhsRhsBc_impl<true,true>(exprLhs, exprRhs, rvar, cvar, BCs);
     }
 
