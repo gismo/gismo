@@ -86,7 +86,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED OFF)
 set(CMAKE_CXX_EXTENSIONS OFF)
 include(AddCXXCompileOptions)
 
-if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel")
+if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel" AND "x${CMAKE_CXX_STANDARD}" STREQUAL "x98")
   # message(STATUS "Using Boost for smart pointers")
   find_package(Boost REQUIRED)
   include_directories(${Boost_INCLUDE_DIRS})
