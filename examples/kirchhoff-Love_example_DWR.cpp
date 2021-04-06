@@ -1926,13 +1926,13 @@ int main(int argc, char *argv[])
     gsInfo << dbasis.basis(0)<<"\n";
 
     // Cast all patches of the mp object to THB splines
-    gsTHBSpline<2,real_t> thb;
-    for (index_t k=0; k!=mp.nPatches(); ++k)
-    {
-        gsTensorBSpline<2,real_t> *geo = dynamic_cast< gsTensorBSpline<2,real_t> * > (&mp.patch(k));
-        thb = gsTHBSpline<2,real_t>(*geo);
-        mp.patch(k) = thb;
-    }
+    // gsTHBSpline<2,real_t> thb;
+    // for (index_t k=0; k!=mp.nPatches(); ++k)
+    // {
+    //     gsTensorBSpline<2,real_t> *geo = dynamic_cast< gsTensorBSpline<2,real_t> * > (&mp.patch(k));
+    //     thb = gsTHBSpline<2,real_t>(*geo);
+    //     mp.patch(k) = thb;
+    // }
 
     mp_def = mp;
 
@@ -2025,7 +2025,7 @@ int main(int argc, char *argv[])
     variable zL3 = exL.getCoeff(zL2_mp);
     // uL2
     gsMultiPatch<> uL2_mp(mp);//just initialize for not being empty
-    variable uL2 = exH.getCoeff(uL2_mp);
+    variable uL2 = exH.getCoeff(mp_def);
 
     // gsFunctionExpr<> materialMat("1","0","0","0","1","0","0","0","1",3);
     // variable mm = A.getCoeff(materialMat, G);
@@ -2193,10 +2193,7 @@ int main(int argc, char *argv[])
         gsInfo << "Solving primal, size ="<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
         solver.compute(exL.matrix());
         solVectorL = solver.solve(exL.rhs());
-        uL_sol.extract(uL2_mp);
-
-        gsInfo << "done." << " --> ";
-        gsInfo <<"Primal error: \t"<<evL.integral(((primal_exL - uL_sol).norm()*meas(mapL)))<<"\n";
+        // uL_sol.extract(uL2_mp);
 
         // Deform mps
         gsMatrix<> cc;
@@ -2208,6 +2205,8 @@ int main(int argc, char *argv[])
         }
         gsWriteParaview<>( mp_def, "mp_def", 1000, true);
 
+        gsInfo << "done." << " --> ";
+        gsInfo <<"Primal error: \t"<<evL.integral(((primal_exL - uL_sol).norm()*meas(mapL)))<<"\n";
 
         // Assemble matrix and rhs
         exL.initVector(1,false);
@@ -2263,6 +2262,7 @@ int main(int argc, char *argv[])
 
         zH_sol.setSolutionVector(solVectorDualH);
         zH_sol.extract(zH2_mp);
+
         gsInfo << "done." << " --> ";
         gsInfo <<"Dual H error: \t"<<evH.integral(((dual_exH - zH_sol).norm()*meas(mapH)))<<"\n";
 
@@ -2297,6 +2297,12 @@ int main(int argc, char *argv[])
         auto E_fG = ( deriv2(mapRef,sn(mapRef).normalized().tr()) - deriv2(defRef,sn(defRef).normalized().tr()) ) * reshape(m2Ref,3,3) ; //[checked]
         auto S_mG = E_mG * reshape(mmRef,3,3);
         auto S_fG = E_fG * reshape(mmRef,3,3);
+
+        gsVector<real_t> pt(2);
+        pt.setConstant(0.5);
+
+        gsDebug<<evL.eval(zL_sol,pt)<<"\n";
+        gsDebug<<evL.eval(zH2,pt)<<"\n";
 
         gsInfo<<"Fint_m = "<<evL.integral(( N * E_m_der.tr() ) * meas(mapL) )<<"\n";
         gsInfo<<"Fint_f = "<<evL.integral(( M * E_f_der.tr() ) * meas(mapL) )<<"\n";
@@ -2447,18 +2453,16 @@ int main(int argc, char *argv[])
         uL_sol.setSolutionVector(solVectorL);
         mp_def = mp;
 
+        gsMultiPatch<> deformation = mp;
         for ( size_t k =0; k!=mp.nPatches(); ++k) // Deform the geometry
         {
             // extract deformed geometry
             uL_sol.extract(cc, k);
             mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
+            deformation.patch(k).coefs() = cc;  // defG points to mp_def, therefore updated
         }
         gsWriteParaview<>( mp_def, "mp_def", 1000, true);
         gsWriteParaview<>( mp_ex , "mp_ex" , 1000, true);
-
-        gsMultiPatch<> deformation = mp_def;
-        for (index_t k = 0; k != mp_def.nPatches(); ++k)
-            deformation.patch(k).coefs() -= mp.patch(k).coefs();
 
         gsField<> solField(mp, deformation);
         gsInfo<<"Plotting in Paraview...\n";
