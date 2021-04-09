@@ -18,40 +18,56 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    gsMatrix<real_t> Ad(10,10), Bd(10,10);
+    size_t sz = 10;
+    gsMatrix<real_t> Ad(sz,sz);
     Ad.setRandom();
-    Ad = (Ad + Ad.transpose()) * 0.5;
-    Bd.setIdentity();
-    Bd = (Bd + Bd.transpose()) * 0.5;
+    Ad = (Ad + Ad.transpose());
 
-    gsSparseMatrix<real_t> A, B;
+    gsSparseMatrix<real_t> A, B(sz,sz);
     A = Ad.sparseView();
-    B = Bd.sparseView();
 
+    // Define the B matrix, a tridiagonal matrix with 2 on the diagonal
+    // and 1 on the subdiagonals
+    for (int i = 0; i < sz; i++)
+    {
+        B.insert(i, i) = 2.0;
+        if (i > 0)
+            B.insert(i - 1, i) = 1.0;
+        if (i < sz - 1)
+            B.insert(i + 1, i) = 1.0;
+    }
 
-    gsSpectraSymSolver<gsMatrix<real_t>> minev(Ad, 5, 10);
+    gsInfo<<"Test for eigenvalue solvers.\n A is a symmetric matrix and B is positive definite\n";
+
+    gsSpectraSymSolver<gsMatrix<real_t>> minev(Ad, math::floor(sz/2), sz);
     minev.compute(Spectra::SortRule::SmallestAlge);
-    gsInfo << "Eigenvalues:" << minev.eigenvalues().transpose() <<"\n";
+    gsInfo << "Symmetric solver:\n";
+    gsInfo << "Eigenvalues A*x=lambda*x:\n" << minev.eigenvalues().transpose() <<"\n\n";
 
-    gsSpectraGenSymSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Cholesky> Chsolver(A,B,5,10);
+    gsSpectraGenSymSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Cholesky> Chsolver(A,B,math::floor(sz/2),sz);
     Chsolver.compute(Spectra::SortRule::SmallestAlge,1000,1e-3);
-    gsInfo << "Eigenvalues:" << Chsolver.eigenvalues().transpose() <<"\n";
+    gsInfo << "General Symmetric solver, Cholesky:\n";
+    gsInfo << "Eigenvalues A*x=lambda*B*x:\n" << Chsolver.eigenvalues().transpose() <<"\n\n";
 
-    gsSpectraGenSymSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::RegularInverse> Rsolver(A,B,5,10);
+    gsSpectraGenSymSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::RegularInverse> Rsolver(A,B,math::floor(sz/2),sz);
     Rsolver.compute(Spectra::SortRule::SmallestAlge,1000,1e-3);
-    gsInfo << "Eigenvalues:" << Rsolver.eigenvalues().transpose() <<"\n";
+    gsInfo << "General Symmetric solver, Regular Inverse:\n";
+    gsInfo << "Eigenvalues A*x=lambda*B*x:\n" << Rsolver.eigenvalues().transpose() <<"\n\n";
 
-    gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::ShiftInvert> Ssolver(A,B,5,10,1);
+    gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::ShiftInvert> Ssolver(A,B,math::floor(sz/2),sz,1);
     Ssolver.compute(Spectra::SortRule::SmallestAlge,1000,1e-3);
-    gsInfo << "Eigenvalues:" << Ssolver.eigenvalues().transpose() <<"\n";
+    gsInfo << "General Symmetric Shift solver, Shift Invert:\n";
+    gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Ssolver.eigenvalues().transpose() <<"\n\n";
 
-    gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Buckling> Bsolver(A,B,5,10,1);
-    Bsolver.compute(Spectra::SortRule::SmallestAlge,1000,1e-3);
-    gsInfo << "Eigenvalues:" << Bsolver.eigenvalues().transpose() <<"\n";
-
-    gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Cayley> Csolver(A,B,5,10,1);
+    gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Cayley> Csolver(A,B,math::floor(sz/2),sz,1);
     Csolver.compute(Spectra::SortRule::SmallestAlge,1000,1e-3);
-    gsInfo << "Eigenvalues:" << Csolver.eigenvalues().transpose() <<"\n";
+    gsInfo << "General Symmetric Shift solver, Cayley:\n";
+    gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Csolver.eigenvalues().transpose() <<"\n\n";
+
+    gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Buckling> Bsolver(B,A,math::floor(sz/2),sz,1);
+    Bsolver.compute(Spectra::SortRule::SmallestAlge,1000,1e-3);
+    gsInfo << "General Symmetric Shift solver, Buckling:\n";
+    gsInfo << "Eigenvalues B*x=lambda*A*x (!) (shift=1):\n" << Bsolver.eigenvalues().transpose() <<"\n\n";
 
     return EXIT_SUCCESS;
 

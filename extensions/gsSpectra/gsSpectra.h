@@ -91,7 +91,8 @@ public:
 };
 
 
-template <class MatrixType, Spectra::GEigsMode GEigsMode = Spectra::GEigsMode::Cholesky> class SpectraOps
+template <class MatrixType, Spectra::GEigsMode GEigsMode = Spectra::GEigsMode::Cholesky>
+class SpectraOps
 {
 public:
     typedef Spectra::SparseCholesky<typename MatrixType::Scalar> InvOp;
@@ -100,7 +101,8 @@ public:
     Spectra::SparseCholesky<typename MatrixType::Scalar> opB;
 };
 
-template <class MatrixType> class SpectraOps<MatrixType,Spectra::GEigsMode::RegularInverse>
+template <class MatrixType>
+class SpectraOps<MatrixType,Spectra::GEigsMode::RegularInverse>
 {
 public:
     typedef Spectra::SparseRegularInverse<typename MatrixType::Scalar> InvOp;
@@ -109,12 +111,24 @@ public:
     Spectra::SparseRegularInverse<typename MatrixType::Scalar> opB;
 };
 
-template <class MatrixType> class SpectraShiftOps
+template <class MatrixType, Spectra::GEigsMode GEigsMode = Spectra::GEigsMode::ShiftInvert>
+class SpectraShiftOps
 {
 public:
     typedef typename MatrixType::Scalar Scalar;
     typedef Spectra::SymShiftInvert<typename MatrixType::Scalar> InvOp;
     SpectraShiftOps(const MatrixType & A, const MatrixType & B) : opA(A,B), opB(B) { }
+    Spectra::SymShiftInvert<typename MatrixType::Scalar> opA;
+    SpectraMatProd<MatrixType>                           opB;
+};
+
+template <class MatrixType>
+class SpectraShiftOps<MatrixType,Spectra::GEigsMode::Buckling>
+{
+public:
+    typedef typename MatrixType::Scalar Scalar;
+    typedef Spectra::SymShiftInvert<typename MatrixType::Scalar> InvOp;
+    SpectraShiftOps(const MatrixType & A, const MatrixType & B) : opA(A,B), opB(A) { }
     Spectra::SymShiftInvert<typename MatrixType::Scalar> opA;
     SpectraMatProd<MatrixType>                           opB;
 };
@@ -150,11 +164,11 @@ public:
 
 /// NEEDS CHANGE OF SpectraOps
 template <class MatrixType, Spectra::GEigsMode GEigsMode = Spectra::GEigsMode::ShiftInvert>
-class gsSpectraGenSymShiftSolver : private SpectraShiftOps<MatrixType>,
-public Spectra::SymGEigsShiftSolver<typename SpectraShiftOps<MatrixType>::InvOp, SpectraMatProd<MatrixType>, GEigsMode>
+class gsSpectraGenSymShiftSolver : private SpectraShiftOps<MatrixType,GEigsMode>,
+public Spectra::SymGEigsShiftSolver<typename SpectraShiftOps<MatrixType,GEigsMode>::InvOp, SpectraMatProd<MatrixType>, GEigsMode>
 {
     typedef typename MatrixType::Scalar Scalar;
-    typedef SpectraShiftOps<MatrixType> OpType;
+    typedef SpectraShiftOps<MatrixType,GEigsMode> OpType;
     typedef SpectraMatProd<MatrixType> BOpType;
 
     typedef Spectra::SymGEigsShiftSolver<typename OpType::InvOp, BOpType,GEigsMode> Base;
