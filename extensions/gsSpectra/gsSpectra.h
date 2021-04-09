@@ -91,6 +91,7 @@ public:
 };
 
 
+/// For GEigsMode::Cholesky
 template <class MatrixType, Spectra::GEigsMode GEigsMode = Spectra::GEigsMode::Cholesky>
 class SpectraOps
 {
@@ -101,6 +102,7 @@ public:
     Spectra::SparseCholesky<typename MatrixType::Scalar> opB;
 };
 
+/// For GEigsMode::RegularInverse
 template <class MatrixType>
 class SpectraOps<MatrixType,Spectra::GEigsMode::RegularInverse>
 {
@@ -111,6 +113,7 @@ public:
     Spectra::SparseRegularInverse<typename MatrixType::Scalar> opB;
 };
 
+/// For GEigsMode::ShiftInvert and GEigsMode::Cayley
 template <class MatrixType, Spectra::GEigsMode GEigsMode = Spectra::GEigsMode::ShiftInvert>
 class SpectraShiftOps
 {
@@ -122,6 +125,7 @@ public:
     SpectraMatProd<MatrixType>                           opB;
 };
 
+/// Specialization for GEigsMode::Buckling
 template <class MatrixType>
 class SpectraShiftOps<MatrixType,Spectra::GEigsMode::Buckling>
 {
@@ -132,8 +136,6 @@ public:
     Spectra::SymShiftInvert<typename MatrixType::Scalar> opA;
     SpectraMatProd<MatrixType>                           opB;
 };
-
-// Add more specializations
 
 //template<> //compilation fails with this
 template <class T> class SpectraOps<gsMatrix<T> >
@@ -147,6 +149,8 @@ protected:
     InvOp opB;
 };
 
+/// GE Solver with shifts. Works for GEigsMode = Cholesky or RegularInverse.
+/// See the Spectra Documentation (SymGEigsSolver) for more information
 template <class MatrixType, Spectra::GEigsMode GEigsMode = Spectra::GEigsMode::Cholesky>
 class gsSpectraGenSymSolver : private SpectraOps<MatrixType,GEigsMode>,
 public Spectra::SymGEigsSolver<SpectraMatProd<MatrixType>, typename SpectraOps<MatrixType,GEigsMode>::InvOp, GEigsMode>
@@ -162,7 +166,8 @@ public:
     { Base::init(); }
 };
 
-/// NEEDS CHANGE OF SpectraOps
+/// GE Solver with shifts. Works for GEigsMode = ShiftInvert, Buckling or Cayley
+/// See the Spectra Documentation (SymGEigsShiftSolver) for more information
 template <class MatrixType, Spectra::GEigsMode GEigsMode = Spectra::GEigsMode::ShiftInvert>
 class gsSpectraGenSymShiftSolver : private SpectraShiftOps<MatrixType,GEigsMode>,
 public Spectra::SymGEigsShiftSolver<typename SpectraShiftOps<MatrixType,GEigsMode>::InvOp, SpectraMatProd<MatrixType>, GEigsMode>
