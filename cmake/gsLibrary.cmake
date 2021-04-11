@@ -27,6 +27,12 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR
      "${gismo_SOURCE_DIR}/src/misc/gsDllMain.cpp")
 endif()
 
+if (GISMO_EXTRA_DEBUG)
+  if (NOT "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR DBGHELP_FOUND)
+    set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} ${gismo_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
+  endif()
+endif()
+
   add_library(${PROJECT_NAME} SHARED
     ${${PROJECT_NAME}_MODULES}
     ${${PROJECT_NAME}_SOURCES}

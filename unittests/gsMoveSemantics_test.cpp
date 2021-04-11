@@ -45,8 +45,8 @@ TEST(gsTensorBSplineBasis_std_mc) { CHECK(std::is_move_constructible<gismo::gsTe
 TEST(gsTensorBSpline_std_mc) { CHECK(std::is_move_constructible<gismo::gsTensorBSpline<2> >::value); }
 
 // T needs to be a complete type.
-TEST(gsMatrix_nothrow_mc) { CHECK(std::is_nothrow_move_constructible<gismo::gsMatrix<> >::value); }
-TEST(gsVector_nothrow_mc) { CHECK(std::is_nothrow_move_constructible<gismo::gsVector<> >::value); }
+//TEST(gsMatrix_nothrow_mc) { CHECK(std::is_nothrow_move_constructible<gismo::gsMatrix<> >::value); }
+//TEST(gsVector_nothrow_mc) { CHECK(std::is_nothrow_move_constructible<gismo::gsVector<> >::value); }
 TEST(gsKnotVector_nothrow_mc) { CHECK(std::is_nothrow_move_constructible<gismo::gsKnotVector<> >::value); }
 #endif
 

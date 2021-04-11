@@ -927,15 +927,20 @@ inline mpreal& mpreal::operator=(const mpreal& v)
 {
     if (this != &v)
     {
+        clear(mpfr_ptr());
+        mpfr_init2(mpfr_ptr(),mpfr_get_prec(v.mpfr_srcptr()));
+        mpfr_set  (mpfr_ptr(),v.mpfr_srcptr(),mpreal::get_default_rnd());
+        /* //G+Smo: original implementation
         mp_prec_t tp = mpfr_get_prec(  mpfr_srcptr());
         mp_prec_t vp = mpfr_get_prec(v.mpfr_srcptr());
 
-        if(tp != vp){
+        if(tp != vp){ //G+Smo: bug? variable "tp" uninitialized within std::vector
             clear(mpfr_ptr());
             mpfr_init2(mpfr_ptr(), vp);
         }
 
         mpfr_set(mpfr_ptr(), v.mpfr_srcptr(), mpreal::get_default_rnd());
+        */
 
         MPREAL_MSVC_DEBUGVIEW_CODE;
     }

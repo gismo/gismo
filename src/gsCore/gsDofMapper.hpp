@@ -80,7 +80,7 @@ void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
     //i.e. bases[comp]->back().size() are equal for all comp
     else
     {
-      m_numFreeDofs.assign(numComp, (m_offset.back() + bases[0]->back().size())*nPatches); m_numFreeDofs.front()=0;
+      m_numFreeDofs.assign(numComp+1, (m_offset.back() + bases[0]->back().size())); m_numFreeDofs.front()=0;
     }
 
     m_numElimDofs.assign(numComp+1,0);

@@ -169,6 +169,12 @@ namespace internal
 #include <gsSolver/gsPatchPreconditionersCreator.h>
 #include <gsSolver/gsLanczosMatrix.h>
 
+/* ----------- Ieti ----------- */
+#include <gsIeti/gsIetiMapper.h>
+#include <gsIeti/gsIetiSystem.h>
+#include <gsIeti/gsPrimalSystem.h>
+#include <gsIeti/gsScaledDirichletPrec.h>
+
 /* ----------- IO ----------- */
 #include <gsIO/gsOptionList.h>
 #include <gsIO/gsCmdLine.h>
@@ -187,6 +193,7 @@ namespace internal
 //#include <gsUtils/gsUtils.h> - in gsForwardDeclarations.h
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
+#include <gsUtils/gsQuasiInterpolate.h>
 
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF

@@ -274,6 +274,13 @@ template <class T=real_t>                class gsPatchPreconditionersCreator;
 template <class T=real_t>                class gsMultiGridOp;
 template <class T=real_t>                class gsGridHierarchy;
 
+// gsIeti
+
+template <class T=real_t>                class gsIetiMapper;
+template <class T=real_t>                class gsIetiSystem;
+template <class T=real_t>                class gsPrimalSystem;
+template <class T=real_t>                class gsScaledDirichletPrec;
+
 /// @endcond
 
 ///@}
