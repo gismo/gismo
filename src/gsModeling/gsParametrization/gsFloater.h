@@ -43,7 +43,7 @@ namespace gismo
 * The parametrization can be printed by printing all parameter points.
 */
 template<class T>
-class gsParametrization
+class gsFloater
 {
 public:
     typedef gsPoint<2, T> Point2D;
@@ -51,7 +51,7 @@ public:
     // if we use std::vector with static Eigen classes, the second template parameter is needed
     typedef std::vector<Point2D, typename Point2D::aalloc> VectorType;
 
-    typedef memory::shared_ptr<gsParametrization<T> > uPtr;
+    typedef memory::shared_ptr<gsFloater<T> > uPtr;
 
 protected:
     const gsHalfEdgeMesh<T> m_mesh; ///< mesh information
@@ -61,11 +61,11 @@ protected:
 public:
 
     /// Constructor using the input mesh and (possibly) options
-    explicit gsParametrization(const gsMesh<T> &mesh, const gsOptionList & list = defaultOptions());
+    explicit gsFloater(const gsMesh<T> &mesh, const gsOptionList & list = defaultOptions());
 
-    virtual ~gsParametrization() {} // Prevent -Wdelete-non-virtual-dtor warning.
+    virtual ~gsFloater() {} // Prevent -Wdelete-non-virtual-dtor warning.
 
-    /// @brief Returns the list of default options for gsParametrization
+    /// @brief Returns the list of default options for gsFloater
     static gsOptionList defaultOptions();
 
     /// Main function which performs the computation
@@ -103,7 +103,7 @@ public:
 
     gsOptionList& options() { return m_options; }
 
-    gsParametrization<T>& setOptions(const gsOptionList& list);
+    gsFloater<T>& setOptions(const gsOptionList& list);
 
 protected:
 
@@ -393,10 +393,10 @@ protected:
 
     bool rangeCheck(const std::vector<index_t> &corners, const size_t minimum, const size_t maximum);
 
-}; // class gsParametrization
+}; // class gsFloater
 
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsParametrization.hpp)
+#include GISMO_HPP_HEADER(gsFloater.hpp)
 #endif

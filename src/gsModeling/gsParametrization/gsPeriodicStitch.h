@@ -1,7 +1,7 @@
-/** @file gsPeriodicParametrizationStitch.h
+/** @file gsPeriodicStitch.h
 
     @brief Implementation of periodic Floater parametrization using a
-    stitch. This class is an alternative to gsPeriodicParametrizationOverlap.
+    stitch. This class is an alternative to gsPeriodicOverlap.
 
     This file is part of the G+Smo library.
 
@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "gsModeling/gsPeriodicParametrization.h"
-#include "gsIO/gsOptionList.h"
+#include <gsIO/gsOptionList.h>
+#include <gsModeling/gsParametrization/gsPeriodic.h>
 
 namespace gismo
 {
@@ -24,7 +24,7 @@ namespace gismo
  * A class for computing periodic parametrizations of closed
  * (cylinder-like) surface meshes. The result will be periodic in the
  * u-direction and the parameter domain will be [0, 1]^2. This class is an alternative to
- * gsPeriodicParametrizationOverlap. The idea is adapted from
+ * gsPeriodicOverlap. The idea is adapted from
  *
  * Tong, Y., Alliez, P., Cohen-Steiner, D., Desbrun, M.: Designing
  * quadrangulations with discrete harmonic forms, in: Sheffer, A.,
@@ -58,31 +58,31 @@ namespace gismo
  
  */
 template <class T>
-class GISMO_EXPORT gsPeriodicParametrizationStitch : public gsPeriodicParametrization<T>
+class GISMO_EXPORT gsPeriodicStitch : public gsPeriodic<T>
 {
 
 public:
 
-    typedef memory::shared_ptr<gsPeriodicParametrizationStitch<T> > uPtr;
+    typedef memory::shared_ptr<gsPeriodicStitch<T> > uPtr;
 
 protected:
 
     /**
      * Modification of the corresponding class from
-     * gsParametrization<T>. Given the indices of the stitch vertices,
+     * gsFloater<T>. Given the indices of the stitch vertices,
      * a matrix of corrections is produced according to vertices being
      * neighbours across the interface.
      */
-    class Neighbourhood : public gsParametrization<T>::Neighbourhood
+    class Neighbourhood : public gsFloater<T>::Neighbourhood
     {
     public:
-        typedef typename gsParametrization<T>::LocalNeighbourhood LocalNeighbourhood;
+        typedef typename gsFloater<T>::LocalNeighbourhood LocalNeighbourhood;
 
         /** Constructor.
          * @param meshInfo: surface mesh (as in the parent class)
          * @param stitchIndices: indices of the vertices forming the stitch
          * @param[out] corrections: a reference to @a m_corrections of
-         * gsPeriodicParametrizationStitch that gets filled here
+         * gsPeriodicStitch that gets filled here
          * @param parametrizationMethod: parametrization method (as in the parent class)
          */
         explicit Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
@@ -111,14 +111,14 @@ public:
      * @param stitchVertices matrix with three rows containing the vertices on the stitch
      * @param list list of the method options
      */
-    explicit gsPeriodicParametrizationStitch(const gsMesh<T> &mesh,
-                                             const gsMatrix<T>& verticesV0,
-                                             const gsMatrix<T>& paramsV0,
-                                             const gsMatrix<T>& verticesV1,
-                                             const gsMatrix<T>& paramsV1,
-                                             const gsMatrix<T>& stitchVertices,
-                                             const gsOptionList &list = gsParametrization<T>::defaultOptions())
-        : gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
+    explicit gsPeriodicStitch(const gsMesh<T> &mesh,
+                              const gsMatrix<T>& verticesV0,
+                              const gsMatrix<T>& paramsV0,
+                              const gsMatrix<T>& verticesV1,
+                              const gsMatrix<T>& paramsV1,
+                              const gsMatrix<T>& stitchVertices,
+                              const gsOptionList &list = gsFloater<T>::defaultOptions())
+        : gsPeriodic<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
         m_stitchIndices(this->indices(stitchVertices))
     {
         // Note: m_corrections gets filled later.
@@ -130,7 +130,7 @@ public:
 protected:
     /**
      * Calculation itself
-     * @param paraMethod parametrization method (cf. gsParametrization<T>)
+     * @param paraMethod parametrization method (cf. gsFloater<T>)
      */
     void calculate(const size_t paraMethod);
 
@@ -150,7 +150,7 @@ public:
     gsMesh<T> createFlatMesh() const
     {
         gsMesh<T> unfolded = createUnfoldedFlatMesh();
-        typename gsPeriodicParametrization<T>::FlatMesh display(unfolded);
+        typename gsPeriodic<T>::FlatMesh display(unfolded);
         return display.createRestrictedFlatMesh();
     }
 
@@ -201,3 +201,7 @@ protected:
 };
 
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsPeriodicStitch.hpp)
+#endif

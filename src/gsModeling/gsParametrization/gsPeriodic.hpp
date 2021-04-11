@@ -1,6 +1,6 @@
-/** @file gsPeriodicParametrization.hpp
+/** @file gsPeriodic.hpp
 
-    @brief Provides implementation gsPeriodicParametrization class.
+    @brief Provides implementation gsPeriodic class.
 
     This file is part of the G+Smo library.
 
@@ -12,7 +12,7 @@
 
 */
 
-#include "gsModeling/gsPeriodicParametrization.h"
+#include <gsModeling/gsParametrization/gsPeriodic.h>
 
 namespace gismo
 {
@@ -20,9 +20,9 @@ namespace gismo
 /* Nested class FlatMesh */
 
 template<class T>
-real_t gsPeriodicParametrization<T>::FlatMesh::correspondingV(const VertexHandle& h0,
-                                                              const VertexHandle& h1,
-                                                              real_t u) const
+real_t gsPeriodic<T>::FlatMesh::correspondingV(const VertexHandle& h0,
+                                               const VertexHandle& h1,
+                                               real_t u) const
 {
     real_t u0 = (*h0)[0];
     real_t u1 = (*h1)[0];
@@ -35,10 +35,10 @@ real_t gsPeriodicParametrization<T>::FlatMesh::correspondingV(const VertexHandle
 }
 
 template<class T>
-void gsPeriodicParametrization<T>::FlatMesh::addThreeFlatTrianglesOneOut(gsMesh<T>& mesh,
-                                                                         const VertexHandle& v0,
-                                                                         const VertexHandle& v1,
-                                                                         const VertexHandle& v2) const
+void gsPeriodic<T>::FlatMesh::addThreeFlatTrianglesOneOut(gsMesh<T>& mesh,
+                                                          const VertexHandle& v0,
+                                                          const VertexHandle& v1,
+                                                          const VertexHandle& v2) const
 {
     // Note: v are in the input mesh, w in the output.
 
@@ -81,7 +81,7 @@ void gsPeriodicParametrization<T>::FlatMesh::addThreeFlatTrianglesOneOut(gsMesh<
 }
 
 template<class T>
-void gsPeriodicParametrization<T>::FlatMesh::addThreeFlatTrianglesTwoOut(gsMesh<T>& mesh,
+void gsPeriodic<T>::FlatMesh::addThreeFlatTrianglesTwoOut(gsMesh<T>& mesh,
                                                                          const VertexHandle& v0,
                                                                          const VertexHandle& v1,
                                                                          const VertexHandle& v2) const
@@ -106,7 +106,7 @@ void gsPeriodicParametrization<T>::FlatMesh::addThreeFlatTrianglesTwoOut(gsMesh<
 }
 
 template<class T>
-void gsPeriodicParametrization<T>::FlatMesh::addOneFlatTriangleNotIntersectingBoundary(gsMesh<T>& mesh,
+void gsPeriodic<T>::FlatMesh::addOneFlatTriangleNotIntersectingBoundary(gsMesh<T>& mesh,
                                                                                        const typename gsMesh<T>::VertexHandle& v0,
                                                                                        const typename gsMesh<T>::VertexHandle& v1,
                                                                                        const typename gsMesh<T>::VertexHandle& v2) const
@@ -151,7 +151,7 @@ void gsPeriodicParametrization<T>::FlatMesh::addOneFlatTriangleNotIntersectingBo
 }
 
 template<class T>
-gsMesh<T> gsPeriodicParametrization<T>::FlatMesh::createRestrictedFlatMesh() const
+gsMesh<T> gsPeriodic<T>::FlatMesh::createRestrictedFlatMesh() const
 {
     gsMesh<T> result;
 
@@ -196,8 +196,8 @@ gsMesh<T> gsPeriodicParametrization<T>::FlatMesh::createRestrictedFlatMesh() con
 // back to implementing the main class
 
 template <class T>
-void gsPeriodicParametrization<T>::restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
-                                                    real_t uMin, real_t uMax) const
+void gsPeriodic<T>::restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
+                                     real_t uMin, real_t uMax) const
 {
     real_t uLength = uMax - uMin;
     for(index_t j=0; j<uv.cols(); j++)
@@ -212,9 +212,9 @@ void gsPeriodicParametrization<T>::restrictMatrices(gsMatrix<T>& uv, const gsMat
 }
 
 template <class T>
-void gsPeriodicParametrization<T>::initParameterPoints()
+void gsPeriodic<T>::initParameterPoints()
 {
-    typedef typename gsParametrization<T>::Point2D Point2D;
+    typedef typename gsFloater<T>::Point2D Point2D;
 
     size_t n = this->m_mesh.getNumberOfInnerVertices();
     size_t N = this->m_mesh.getNumberOfVertices();

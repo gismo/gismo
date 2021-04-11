@@ -1,6 +1,6 @@
-/** @file gsPeriodicParametrizationStitch.hpp
+/** @file gsPeriodicStitch.hpp
 
-    @brief Provides implementation of the gsPeriodicParametrizationStitch class.
+    @brief Provides implementation of the gsPeriodicStitch class.
 
     This file is part of the G+Smo library.
 
@@ -12,8 +12,7 @@
 
 */
 
-#include <gismo.h>
-#include "gsModeling/gsPeriodicParametrizationStitch.h"
+#include <gsModeling/gsParametrization/gsPeriodicStitch.h>
 
 namespace gismo
 {
@@ -21,8 +20,8 @@ namespace gismo
 /* Nested class Neighbourhood */
 
 template<class T>
-std::vector<size_t> gsPeriodicParametrizationStitch<T>::Neighbourhood::computeCorrections(const std::vector<size_t>& stitchIndices,
-                                                                                          const LocalNeighbourhood& localNeighbourhood) const
+std::vector<size_t> gsPeriodicStitch<T>::Neighbourhood::computeCorrections(const std::vector<size_t>& stitchIndices,
+                                                                           const LocalNeighbourhood& localNeighbourhood) const
 {
     auto indexIt = std::find(stitchIndices.begin(), stitchIndices.end(), localNeighbourhood.getVertexIndex());
 
@@ -74,11 +73,11 @@ std::vector<size_t> gsPeriodicParametrizationStitch<T>::Neighbourhood::computeCo
 }
 
 template<class T>
-gsPeriodicParametrizationStitch<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo,
-                                                                 const std::vector<size_t>& stitchIndices,
-                                                                 gsSparseMatrix<int>& corrections,
-                                                                 const size_t parametrizationMethod)
-    : gsParametrization<T>::Neighbourhood(meshInfo, parametrizationMethod)
+gsPeriodicStitch<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo,
+                                                  const std::vector<size_t>& stitchIndices,
+                                                  gsSparseMatrix<int>& corrections,
+                                                  const size_t parametrizationMethod)
+    : gsFloater<T>::Neighbourhood(meshInfo, parametrizationMethod)
 {
     // We re-do a little of the work done already in the constructor of the parent class.
     // Alternatively, we could provide a constructor of the parent class setting m_basicInfos
@@ -106,13 +105,13 @@ gsPeriodicParametrizationStitch<T>::Neighbourhood::Neighbourhood(const gsHalfEdg
 }
 
 template <class T>
-void gsPeriodicParametrizationStitch<T>::compute()
+void gsPeriodicStitch<T>::compute()
 {
     calculate(this->m_options.getInt("parametrizationMethod"));
 }
 
 template<class T>
-void gsPeriodicParametrizationStitch<T>::calculate(const size_t paraMethod)
+void gsPeriodicStitch<T>::calculate(const size_t paraMethod)
 {
     size_t n = this->m_mesh.getNumberOfInnerVertices();
     size_t N = this->m_mesh.getNumberOfVertices();
@@ -126,7 +125,7 @@ void gsPeriodicParametrizationStitch<T>::calculate(const size_t paraMethod)
 }
 
 template <class T>
-void gsPeriodicParametrizationStitch<T>::constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
+void gsPeriodicStitch<T>::constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
                                                                          const size_t n,
                                                                          const size_t N)
 {
@@ -173,10 +172,10 @@ void gsPeriodicParametrizationStitch<T>::constructAndSolveEquationSystem(const N
 }
 
 template<class T>
-gsMesh<T> gsPeriodicParametrizationStitch<T>::createUnfoldedFlatMesh() const
+gsMesh<T> gsPeriodicStitch<T>::createUnfoldedFlatMesh() const
 {
     typedef typename gsMesh<T>::VertexHandle       VertexHandle;
-    typedef typename gsParametrization<T>::Point2D Point2D;
+    typedef typename gsFloater<T>::Point2D Point2D;
 
     gsMesh<T> result;
     for(size_t i=0; i<this->m_mesh.getNumberOfTriangles(); i++)
@@ -193,7 +192,7 @@ gsMesh<T> gsPeriodicParametrizationStitch<T>::createUnfoldedFlatMesh() const
         VertexHandle v[3];
         for (size_t j = 1; j <= 3; ++j)
         {               
-            const Point2D& point = gsParametrization<T>::getParameterPoint(vertices[j-1]);
+            const Point2D& point = gsFloater<T>::getParameterPoint(vertices[j-1]);
             // The near-stitch triangles get their stitch vertices shifted by 1 to the left.
             if( nearStitchTriangle && isOnStitch(vertices[j-1]) )
                 v[j - 1] = result.addVertex(point[0] + 1, point[1]);

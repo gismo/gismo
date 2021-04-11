@@ -22,7 +22,7 @@ SUITE(gsParametrization_test)
 
         real_t eps = 1e-5;
 
-        gsParametrization<real_t> param(*mesh);
+        gsFloater<real_t> param(*mesh);
         
         param.compute();
         gsMatrix<real_t> uv  = param.createUVmatrix();
@@ -97,10 +97,10 @@ SUITE(gsParametrization_test)
         gsMesh<real_t>::uPtr over = fd_over.getFirst<gsMesh<real_t> >();
 
         // Construct the parametrization.
-        gsPeriodicParametrizationOverlap<real_t> param(*mesh,
-                                                       verticesV0, paramsV0,
-                                                       verticesV1, paramsV1,
-                                                       *over, options);
+        gsPeriodicOverlap<real_t> param(*mesh,
+                                        verticesV0, paramsV0,
+                                        verticesV1, paramsV1,
+                                        *over, options);
 
         param.compute();
         gsMatrix<real_t> uv  = param.createUVmatrix();
@@ -171,10 +171,10 @@ SUITE(gsParametrization_test)
         fd_stitch.getFirst<gsMatrix<real_t> >(stitch);
 
         // Construct the parametrization.
-        gsPeriodicParametrizationStitch<real_t> param(*mesh,
-                                                      verticesV0, paramsV0,
-                                                      verticesV1, paramsV1,
-                                                      stitch, options);
+        gsPeriodicStitch<real_t> param(*mesh,
+                                       verticesV0, paramsV0,
+                                       verticesV1, paramsV1,
+                                       stitch, options);
 
         param.compute();
         gsMatrix<real_t> uv  = param.createUVmatrix();

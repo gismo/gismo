@@ -1,4 +1,4 @@
-/** @file gsPeriodicParametrizationOverlap.h
+/** @file gsPeriodicOverlap.h
 
     @brief Implementation of periodic Floater parametrization using overlaps.
 
@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <gsModeling/gsPeriodicParametrization.h>
 #include <gsIO/gsOptionList.h>
+#include "gsPeriodic.h"
 
 namespace gismo
 {
@@ -24,7 +24,7 @@ namespace gismo
  * (cylinder-like) surface meshes. The result will be periodic in the
  * u-direction and the parameter domain will be [0, 1]^2. An
  * alternative implementation is given in
- * gsPeriodicParametrizationOverlap.
+ * gsPeriodicOverlap.
  *
  * This is the implementation used in the paper
  * L. Groiss, B. Juettler, D. Mokris: 27 variants of Tutte's theorem
@@ -49,18 +49,18 @@ namespace gismo
  * depending on whether they are on the left or the right hand side of
  * the overlap (empty and full squares, respectively).
  * 
- * @image html  gsPeriodicParametrizationOverlap-scheme.png
+ * @image html  gsPeriodicOverlap-scheme.png
  *
- * @image latex gsPeriodicParametrizationOverlap-scheme.pdf
+ * @image latex gsPeriodicOverlap-scheme.pdf
  */
 template <class T>
-class GISMO_EXPORT gsPeriodicParametrizationOverlap : public gsPeriodicParametrization<T>
+class GISMO_EXPORT gsPeriodicOverlap : public gsPeriodic<T>
 {
-    typedef typename gsParametrization<T>::Neighbourhood Neighbourhood;
-    typedef typename gsMesh<T>::gsVertexHandle           gsVertexHandle;
+    typedef typename gsFloater<T>::Neighbourhood Neighbourhood;
+    typedef typename gsMesh<T>::gsVertexHandle   gsVertexHandle;
 
 public:
-    typedef memory::shared_ptr<gsPeriodicParametrizationOverlap<T> > uPtr;
+    typedef memory::shared_ptr<gsPeriodicOverlap<T> > uPtr;
 
 public:
     /** Constructor
@@ -73,14 +73,14 @@ public:
      *        and top boundary and forming the first guess of the periodic interface
      * @param list list of the method options
      */
-    explicit gsPeriodicParametrizationOverlap(const gsMesh<T> &mesh,
-                                              const gsMatrix<T>& verticesV0,
-                                              const gsMatrix<T>& paramsV0,
-                                              const gsMatrix<T>& verticesV1,
-                                              const gsMatrix<T>& paramsV1,
-                                              const gsMesh<T>& overlap,
-                                              const gsOptionList &list = gsPeriodicParametrization<T>::defaultOptions())
-        : gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
+    explicit gsPeriodicOverlap(const gsMesh<T> &mesh,
+                               const gsMatrix<T>& verticesV0,
+                               const gsMatrix<T>& paramsV0,
+                               const gsMatrix<T>& verticesV1,
+                               const gsMatrix<T>& paramsV1,
+                               const gsMesh<T>& overlap,
+                               const gsOptionList &list = gsPeriodic<T>::defaultOptions())
+        : gsPeriodic<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
         m_overlapHEM(overlap)
     {
         // Note: m_twins gets constructed later on.
@@ -196,5 +196,5 @@ protected: // members
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsPeriodicParametrizationOverlap.hpp)
+#include GISMO_HPP_HEADER(gsPeriodicOverlap.hpp)
 #endif

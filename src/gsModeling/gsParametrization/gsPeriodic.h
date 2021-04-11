@@ -1,8 +1,8 @@
-/** @file gsPeriodicParametrization.h
+/** @file gsPeriodic.h
 
     @brief Abstract class with the functionality common to
-    gsPeriodicParametrizationStitch and
-    gsPeriodicParametrizationOverlap.
+    gsPeriodicStitch and
+    gsPeriodicOverlap.
 
     This file is part of the G+Smo library.
 
@@ -15,18 +15,18 @@
 
 #pragma once
 
-#include "gsModeling/gsParametrization.h"
+#include <gsModeling/gsParametrization/gsFloater.h>
 
 namespace gismo
 {
 
 template <class T>
-class gsPeriodicParametrization : public gsParametrization<T>
+class gsPeriodic : public gsFloater<T>
 {
 
 public:
 
-    typedef memory::shared_ptr<gsPeriodicParametrization<T> > uPtr;
+    typedef memory::shared_ptr<gsPeriodic<T> > uPtr;
 
     /// Nested class for plotting flat meshes restricted to [0, 1]^2.
     class FlatMesh
@@ -89,13 +89,13 @@ public:
      * @param paramsV1 their prescribed parameters
      * @param list list of the method options
      */
-    gsPeriodicParametrization(const gsMesh<T>& mesh,
-                              const gsMatrix<T>& verticesV0,
-                              const gsMatrix<T>& paramsV0,
-                              const gsMatrix<T>& verticesV1,
-                              const gsMatrix<T>& paramsV1,
-                              const gsOptionList &list = gsParametrization<T>::defaultOptions())
-        : gsParametrization<T>(mesh, list),
+    gsPeriodic(const gsMesh<T>& mesh,
+               const gsMatrix<T>& verticesV0,
+               const gsMatrix<T>& paramsV0,
+               const gsMatrix<T>& verticesV1,
+               const gsMatrix<T>& paramsV1,
+               const gsOptionList &list = gsFloater<T>::defaultOptions())
+        : gsFloater<T>(mesh, list),
           m_paramsV0(paramsV0), m_paramsV1(paramsV1),
           m_indicesV0(this->indices(verticesV0)),
           m_indicesV1(this->indices(verticesV1))

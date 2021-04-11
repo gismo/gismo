@@ -1,6 +1,6 @@
-/** @file gsPeriodicParametrizationOverlap.hpp
+/** @file gsPeriodicOverlap.hpp
 
-    @brief Provides implementation of the gsPeriodicParametrizationOverlap class.
+    @brief Provides implementation of the gsPeriodicOverlap class.
 
     This file is part of the G+Smo library.
 
@@ -18,13 +18,13 @@ namespace gismo
 {
 
 template <class T>
-void gsPeriodicParametrizationOverlap<T>::compute()
+void gsPeriodicOverlap<T>::compute()
 {
     calculate(this->m_options.getInt("parametrizationMethod"));
 }
 
 template<class T>
-void gsPeriodicParametrizationOverlap<T>::calculate(const size_t paraMethod)
+void gsPeriodicOverlap<T>::calculate(const size_t paraMethod)
 {
     size_t n = this->m_mesh.getNumberOfInnerVertices();
     size_t N = this->m_mesh.getNumberOfVertices();
@@ -44,10 +44,10 @@ void gsPeriodicParametrizationOverlap<T>::calculate(const size_t paraMethod)
 
 
 template <class T>
-void gsPeriodicParametrizationOverlap<T>::constructTwinsBetween(size_t& currentNrAllVertices,
-                                                                std::list<size_t> vertexIndices,
-                                                                size_t from, size_t to,
-                                                                bool rightHandSide)
+void gsPeriodicOverlap<T>::constructTwinsBetween(size_t& currentNrAllVertices,
+                                                 std::list<size_t> vertexIndices,
+                                                 size_t from, size_t to,
+                                                 bool rightHandSide)
 {
     // TODO: The whiles do not check if the sought member is indeed in
     // the list (danger of an infinite loop).
@@ -76,7 +76,7 @@ void gsPeriodicParametrizationOverlap<T>::constructTwinsBetween(size_t& currentN
 }
 
 template<class T>
-void gsPeriodicParametrizationOverlap<T>::constructTwins()
+void gsPeriodicOverlap<T>::constructTwins()
 {
     // vertex with parameter v = 0 and lowest u value
     gsVertexHandle uMinv0 = this->m_mesh.getVertex(this->m_indicesV0.front());
@@ -101,9 +101,9 @@ void gsPeriodicParametrizationOverlap<T>::constructTwins()
 }
 
 template <class T>
-void gsPeriodicParametrizationOverlap<T>::constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
-                                                                          const size_t n,
-                                                                          const size_t N)
+void gsPeriodicOverlap<T>::constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
+                                                           const size_t n,
+                                                           const size_t N)
 {
     size_t numTwins = m_twins.size();
     gsMatrix<T> LHS(N + numTwins, N + numTwins);
@@ -152,8 +152,8 @@ void gsPeriodicParametrizationOverlap<T>::constructAndSolveEquationSystem(const 
 }
 
 template <class T>
-void gsPeriodicParametrizationOverlap<T>::updateLambdasWithTwins(std::vector<T>& lambdas,
-                                                                 size_t vertexId) const
+void gsPeriodicOverlap<T>::updateLambdasWithTwins(std::vector<T>& lambdas,
+                                                  size_t vertexId) const
 {
     lambdas.reserve(lambdas.size() + m_twins.size());
     for(size_t i=0; i<m_twins.size(); i++)
@@ -200,7 +200,7 @@ void gsPeriodicParametrizationOverlap<T>::updateLambdasWithTwins(std::vector<T>&
 }
 
 template<class T>
-gsMesh<T> gsPeriodicParametrizationOverlap<T>::createFlatMesh() const
+gsMesh<T> gsPeriodicOverlap<T>::createFlatMesh() const
 {
     // Remember the vertices on the overlap boundaries.
     std::vector<size_t> left, right;
@@ -212,15 +212,15 @@ gsMesh<T> gsPeriodicParametrizationOverlap<T>::createFlatMesh() const
             right.push_back(it->second);
     }
 
-    typename gsPeriodicParametrization<T>::FlatMesh display(createExtendedFlatMesh(left, right));
+    typename gsPeriodic<T>::FlatMesh display(createExtendedFlatMesh(left, right));
     return display.createRestrictedFlatMesh();
 }
 
 template<class T>
-gsMesh<T> gsPeriodicParametrizationOverlap<T>::createExtendedFlatMesh(const std::vector<size_t>& right,
-                                                                      const std::vector<size_t>& left) const
+gsMesh<T> gsPeriodicOverlap<T>::createExtendedFlatMesh(const std::vector<size_t>& right,
+                                                       const std::vector<size_t>& left) const
 {
-    typedef typename gsParametrization<T>::Point2D Point2D;
+    typedef typename gsFloater<T>::Point2D Point2D;
 
     gsMesh<T> midMesh;
     midMesh.reserve(3 * this->m_mesh.getNumberOfTriangles(), this->m_mesh.getNumberOfTriangles(), 0);
@@ -248,7 +248,7 @@ gsMesh<T> gsPeriodicParametrizationOverlap<T>::createExtendedFlatMesh(const std:
             
             for (size_t j=0; j<3; ++j)
             {
-                const Point2D vertex = gsParametrization<T>::getParameterPoint(vInd[j]);
+                const Point2D vertex = gsFloater<T>::getParameterPoint(vInd[j]);
                 if(std::find(rVert.begin(), rVert.end(), j) != rVert.end())
                 {
                     mvLft[j] = midMesh.addVertex(vertex[0],   vertex[1]);
@@ -269,7 +269,7 @@ gsMesh<T> gsPeriodicParametrizationOverlap<T>::createExtendedFlatMesh(const std:
             typename gsMesh<T>::VertexHandle mv[3];
             for (size_t j=0; j<3; ++j)
             {
-                const Point2D vertex = gsParametrization<T>::getParameterPoint(vInd[j]);
+                const Point2D vertex = gsFloater<T>::getParameterPoint(vInd[j]);
                 mv[j] = midMesh.addVertex(vertex[0], vertex[1]);
             }
             midMesh.addFace(mv[0], mv[1], mv[2]);

@@ -18,6 +18,7 @@ endif()
 SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
 #LIST( REMOVE_ITEM SUBDIRS misc)
 LIST( APPEND SUBDIRS gsUtils/gsMesh)
+LIST( APPEND SUBDIRS gsModeling/gsParametrization)
 
 if (GISMO_BUILD_PCH)
   add_precompiled_header(gsPrecompiledHeader misc/gsPrecompiledHeader.h)
