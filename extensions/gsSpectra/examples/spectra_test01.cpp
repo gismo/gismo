@@ -18,7 +18,7 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    size_t sz = 10;
+    index_t sz = 10;
     gsMatrix<real_t> Ad(sz,sz);
     Ad.setRandom();
     Ad = (Ad + Ad.transpose());
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 
     // Define the B matrix, a tridiagonal matrix with 2 on the diagonal
     // and 1 on the subdiagonals
-    for (int i = 0; i < sz; i++)
+    for (index_t i = 0; i < sz; i++)
     {
         B.insert(i, i) = 2.0;
         if (i > 0)
