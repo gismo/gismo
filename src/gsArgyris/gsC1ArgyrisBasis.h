@@ -266,6 +266,7 @@ public:
             } else
                 gsInfo << "Offset > 1 is not implemented! \n";
 
+            num = num < 0 ? 0 : num; // if there are no bf at the interface
 
             index_t ii = 0;
             gsMatrix<index_t> indizes(num , 1);

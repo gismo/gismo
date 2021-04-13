@@ -34,9 +34,6 @@ namespace gismo
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// NB!
 
-        // Set Geometry evaluation flags
-        md.flags = NEED_MEASURE ;
-
         localMat.resize(6);
         localRhs.resize(6);
 
@@ -55,17 +52,12 @@ namespace gismo
                          const std::vector<bool> & kindOfEdge,
                          const gsOptionList optionList)
     {
-        md.points = quNodes;
-
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the elements
-        basis.active_into(md.points.col(0), actives);
+        basis.active_into(quNodes.col(0), actives);
 
         // Evaluate basis functions on element
-        basis.eval_into(md.points, basisData);
-
-        // Compute geometry related values
-        geo.computeMap(md);
+        basis.eval_into(quNodes, basisData);
 
         numActive = actives.rows();
 
@@ -95,23 +87,23 @@ namespace gismo
             gsMatrix<> b_0_plus_deriv, b_1_plus_deriv, b_2_plus_deriv;
             gsMatrix<> b_0_minus, b_1_minus;
 
-            gsBSplineBasis<T> bsp_temp = dynamic_cast<gsBSplineBasis<> & >(basis_geo[i]);
+            gsBSplineBasis<T> bsp_temp = dynamic_cast<gsBSplineBasis<> & >(basis_geo[1-i]);
             real_t p = bsp_temp.degree();
             real_t h_geo = bsp_temp.knots().at(p + 1);
 
-            basis_geo[i].evalSingle_into(0, md.points.row(i),b_0); // first
-            basis_geo[i].evalSingle_into(1, md.points.row(i),b_1); // second
+            basis_geo[1-i].evalSingle_into(0, quNodes.row(i),b_0); // first
+            basis_geo[1-i].evalSingle_into(1, quNodes.row(i),b_1); // second
 
-            basis_plus[i].evalSingle_into(0, md.points.row(i),b_0_plus);
-            basis_plus[i].evalSingle_into(1, md.points.row(i),b_1_plus);
-            basis_plus[i].evalSingle_into(2, md.points.row(i),b_2_plus);
+            basis_plus[i].evalSingle_into(0, quNodes.row(i),b_0_plus);
+            basis_plus[i].evalSingle_into(1, quNodes.row(i),b_1_plus);
+            basis_plus[i].evalSingle_into(2, quNodes.row(i),b_2_plus);
 
-            basis_plus[i].derivSingle_into(0, md.points.row(i),b_0_plus_deriv);
-            basis_plus[i].derivSingle_into(1, md.points.row(i),b_1_plus_deriv);
-            basis_plus[i].derivSingle_into(2, md.points.row(i),b_2_plus_deriv);
+            basis_plus[i].derivSingle_into(0, quNodes.row(i),b_0_plus_deriv);
+            basis_plus[i].derivSingle_into(1, quNodes.row(i),b_1_plus_deriv);
+            basis_plus[i].derivSingle_into(2, quNodes.row(i),b_2_plus_deriv);
 
-            basis_minus[i].evalSingle_into(0, md.points.row(i),b_0_minus);
-            basis_minus[i].evalSingle_into(1, md.points.row(i),b_1_minus);
+            basis_minus[i].evalSingle_into(0, quNodes.row(i),b_0_minus);
+            basis_minus[i].evalSingle_into(1, quNodes.row(i),b_1_minus);
 
             c_0.push_back(b_0 + b_1);
             c_1.push_back((h_geo / p) * b_1);
@@ -168,7 +160,7 @@ namespace gismo
         gsMatrix < T > temp_mat;
         if (kindOfEdge[0])
         {
-            approxGluingData.alphaS(0).eval_into(md.points.row(0),temp_mat); // 1-dir == PatchID
+            approxGluingData.alphaS(0).eval_into(quNodes.row(0),temp_mat); // 1-dir == PatchID
             alpha.push_back(temp_mat); // u
 
             approxGluingData.alphaS(0).eval_into(zero.row(0),temp_mat); // 1-dir == PatchID
@@ -177,7 +169,7 @@ namespace gismo
             approxGluingData.alphaS(0).deriv_into(zero.row(0),temp_mat); // 1-dir == PatchID
             alpha_deriv.push_back(temp_mat); // u
 
-            approxGluingData.betaS(0).eval_into(md.points.row(0),temp_mat); // 1-dir == PatchID
+            approxGluingData.betaS(0).eval_into(quNodes.row(0),temp_mat); // 1-dir == PatchID
             beta.push_back(temp_mat); // u
 
             approxGluingData.betaS(0).eval_into(zero.row(0),temp_mat); // 1-dir == PatchID
@@ -188,7 +180,7 @@ namespace gismo
         }
         else
         {
-            temp_mat.setOnes(1, md.points.cols());
+            temp_mat.setOnes(1, quNodes.cols());
             alpha.push_back(temp_mat); // u
 
             temp_mat.setOnes(1, zero.cols());
@@ -197,7 +189,7 @@ namespace gismo
             temp_mat.setZero(1, zero.cols());
             alpha_deriv.push_back(temp_mat); // u
 
-            temp_mat.setZero(1, md.points.cols());
+            temp_mat.setZero(1, quNodes.cols());
             beta.push_back(temp_mat); // u
 
             temp_mat.setZero(1, zero.cols());
@@ -210,7 +202,7 @@ namespace gismo
 
 
         if (kindOfEdge[1]) {
-            approxGluingData.alphaS(1).eval_into(md.points.row(1), temp_mat); // 1-dir == PatchID
+            approxGluingData.alphaS(1).eval_into(quNodes.row(1), temp_mat); // 1-dir == PatchID
             alpha.push_back(temp_mat); // v
 
             approxGluingData.alphaS(1).eval_into(zero.row(0), temp_mat); // 1-dir == PatchID
@@ -219,7 +211,7 @@ namespace gismo
             approxGluingData.alphaS(1).deriv_into(zero.row(0), temp_mat); // 1-dir == PatchID
             alpha_deriv.push_back(temp_mat); // v
 
-            approxGluingData.betaS(1).eval_into(md.points.row(1), temp_mat); // 1-dir == PatchID
+            approxGluingData.betaS(1).eval_into(quNodes.row(1), temp_mat); // 1-dir == PatchID
             beta.push_back(temp_mat); // v
 
             approxGluingData.betaS(1).eval_into(zero.row(0), temp_mat); // 1-dir == PatchID
@@ -230,7 +222,7 @@ namespace gismo
         }
         else
         {
-            temp_mat.setOnes(1, md.points.cols());
+            temp_mat.setOnes(1, quNodes.cols());
             alpha.push_back(temp_mat); // u
 
             temp_mat.setOnes(1, zero.cols());
@@ -239,7 +231,7 @@ namespace gismo
             temp_mat.setZero(1, zero.cols());
             alpha_deriv.push_back(temp_mat); // u
 
-            temp_mat.setZero(1, md.points.cols());
+            temp_mat.setZero(1, quNodes.cols());
             beta.push_back(temp_mat); // u
 
             temp_mat.setZero(1, zero.cols());
@@ -249,79 +241,83 @@ namespace gismo
             beta_deriv.push_back(temp_mat); // u
         }
 
+        // Geo data:
+        gsMatrix<> geo_jac = geo.jacobian(zero);
+        gsMatrix<T> geo_der2 = geo.deriv2(zero);
+
         // Compute dd^^(i_k) and dd^^(i_k-1)
         gsMatrix<> dd_ik_plus, dd_ik_minus;
         gsMatrix<> dd_ik_minus_deriv, dd_ik_plus_deriv;
-        dd_ik_minus = -1/(alpha_0[0](0,0)) * (geo.jacobian(zero).col(1) +
-                                              beta_0[0](0,0) * geo.jacobian(zero).col(0));
+        dd_ik_minus = -1/(alpha_0[0](0,0)) * (geo_jac.col(1) +
+                                              beta_0[0](0,0) * geo_jac.col(0));
 
-        dd_ik_plus = 1/(alpha_0[1](0,0)) * (geo.jacobian(zero).col(0) +
-                                            beta_0[1](0,0) * geo.jacobian(zero).col(1));
+        dd_ik_plus = 1/(alpha_0[1](0,0)) * (geo_jac.col(0) +
+                                            beta_0[1](0,0) * geo_jac.col(1));
 
         gsMatrix<> geo_deriv2_12(2,1), geo_deriv2_11(2,1), geo_deriv2_22(2,1);
-        geo_deriv2_12.row(0) = geo.deriv2(zero).row(2);
-        geo_deriv2_12.row(1) = geo.deriv2(zero).row(5);
-        geo_deriv2_11.row(0) = geo.deriv2(zero).row(0);
-        geo_deriv2_11.row(1) = geo.deriv2(zero).row(3);
-        geo_deriv2_22.row(0) = geo.deriv2(zero).row(1);
-        geo_deriv2_22.row(1) = geo.deriv2(zero).row(4);
+        geo_deriv2_12.row(0) = geo_der2.row(2);
+        geo_deriv2_12.row(1) = geo_der2.row(5);
+        geo_deriv2_11.row(0) = geo_der2.row(0);
+        geo_deriv2_11.row(1) = geo_der2.row(3);
+        geo_deriv2_22.row(0) = geo_der2.row(1);
+        geo_deriv2_22.row(1) = geo_der2.row(4);
         gsMatrix<> alpha_squared_u = alpha_0[0]*alpha_0[0];
         gsMatrix<> alpha_squared_v = alpha_0[1]*alpha_0[1];
 
         dd_ik_minus_deriv = -1/(alpha_squared_u(0,0)) * // N^2
-                            ((geo_deriv2_12 + (beta_deriv[0](0,0) * geo.jacobian(zero).col(0) +
+                            ((geo_deriv2_12 + (beta_deriv[0](0,0) * geo_jac.col(0) +
                                                beta_0[0](0,0) * geo_deriv2_11))*alpha_0[0](0,0) -
-                             (geo.jacobian(zero).col(1) + beta_0[0](0,0) * geo.jacobian(zero).col(0)) *
+                             (geo_jac.col(1) + beta_0[0](0,0) * geo_jac.col(0)) *
                              alpha_deriv[0](0,0));
 
         dd_ik_plus_deriv = 1/(alpha_squared_v(0,0)) *
-                           ((geo_deriv2_12 + (beta_deriv[1](0,0) * geo.jacobian(zero).col(1) +
+                           ((geo_deriv2_12 + (beta_deriv[1](0,0) * geo_jac.col(1) +
                                               beta_0[1](0,0) * geo_deriv2_22))*alpha_0[1](0,0) -
-                            (geo.jacobian(zero).col(0) + beta_0[1](0,0) * geo.jacobian(zero).col(1)) *
+                            (geo_jac.col(0) + beta_0[1](0,0) * geo_jac.col(1)) *
                             alpha_deriv[1](0,0));
 
-        /*
+/*
         gsInfo << "Transversal\n";
         if (kindOfEdge[1])
-            gsInfo << dd_ik_minus_deriv << "\n";
+            gsInfo << "dd_ik_minus_deriv " << dd_ik_minus_deriv << "\n";
         if (kindOfEdge[0])
-            gsInfo << dd_ik_plus_deriv << "\n";
+            gsInfo << "dd_ik_minus_deriv " << dd_ik_plus_deriv << "\n";
 
-        gsInfo << geo.jacobian(zero).col(0) << " : " << geo.jacobian(zero).col(1) << "\n";
+        gsInfo << geo_jac.col(0) << " : " << geo_jac.col(1) << "\n";
 */
         // Comupute d_(0,0)^(i_k), d_(1,0)^(i_k), d_(0,1)^(i_k), d_(1,1)^(i_k) ; i_k == 2
         std::vector<gsMatrix<>> d_ik;
         d_ik.push_back(Phi.col(0));
-        d_ik.push_back(Phi.block(0,1,6,2) * geo.jacobian(zero).col(0) ); // deriv into u
-        d_ik.push_back(Phi.block(0,1,6,2) * geo.jacobian(zero).col(1) ); // deriv into v
-        d_ik.push_back((geo.jacobian(zero)(0,0) * Phi.col(3) + geo.jacobian(zero)(1,0) * Phi.col(4))*geo.jacobian(zero)(0,1) +
-                       (geo.jacobian(zero)(0,0) * Phi.col(4) + geo.jacobian(zero)(1,0) * Phi.col(5))*geo.jacobian(zero)(1,1) +
-                       Phi.block(0,1,6,1) * geo.deriv2(zero).row(2) +
-                       Phi.block(0,2,6,1) * geo.deriv2(zero).row(5)); // Hessian
+        d_ik.push_back(Phi.block(0,1,6,2) * geo_jac.col(0) ); // deriv into u
+        d_ik.push_back(Phi.block(0,1,6,2) * geo_jac.col(1) ); // deriv into v
+        d_ik.push_back((geo_jac(0,0) * Phi.col(3) + geo_jac(1,0) * Phi.col(4))*geo_jac(0,1) +
+                       (geo_jac(0,0) * Phi.col(4) + geo_jac(1,0) * Phi.col(5))*geo_jac(1,1) +
+                       Phi.block(0,1,6,1) * geo_der2.row(2) +
+                       Phi.block(0,2,6,1) * geo_der2.row(5)); // Hessian
 
         // Compute d_(*,*)^(il,ik)
         std::vector<gsMatrix<>> d_ilik_minus, d_ilik_plus;
         d_ilik_minus.push_back(Phi.col(0));
-        d_ilik_minus.push_back(Phi.block(0,1,6,2) * geo.jacobian(zero).col(0));
-        d_ilik_minus.push_back((geo.jacobian(zero)(0,0) * Phi.col(3) + geo.jacobian(zero)(1,0) * Phi.col(4))*geo.jacobian(zero)(0,0) +
-                               (geo.jacobian(zero)(0,0) * Phi.col(4) + geo.jacobian(zero)(1,0) * Phi.col(5))*geo.jacobian(zero)(1,0) +
-                               Phi.block(0,1,6,1) * geo.deriv2(zero).row(0) +
-                               Phi.block(0,2,6,1) * geo.deriv2(zero).row(3));
+        d_ilik_minus.push_back(Phi.block(0,1,6,2) * geo_jac.col(0));
+        d_ilik_minus.push_back((geo_jac(0,0) * Phi.col(3) + geo_jac(1,0) * Phi.col(4))*geo_jac(0,0) +
+                               (geo_jac(0,0) * Phi.col(4) + geo_jac(1,0) * Phi.col(5))*geo_jac(1,0) +
+                               Phi.block(0,1,6,1) * geo_der2.row(0) +
+                               Phi.block(0,2,6,1) * geo_der2.row(3));
         d_ilik_minus.push_back(Phi.block(0,1,6,2) * dd_ik_minus);
-        d_ilik_minus.push_back((geo.jacobian(zero)(0,0) * Phi.col(3) + geo.jacobian(zero)(1,0) * Phi.col(4))*dd_ik_minus(0,0) +
-                               (geo.jacobian(zero)(0,0) * Phi.col(4) + geo.jacobian(zero)(1,0) * Phi.col(5))*dd_ik_minus(1,0) +
+        d_ilik_minus.push_back((geo_jac(0,0) * Phi.col(3) + geo_jac(1,0) * Phi.col(4))*dd_ik_minus(0,0) +
+                               (geo_jac(0,0) * Phi.col(4) + geo_jac(1,0) * Phi.col(5))*dd_ik_minus(1,0) +
                                Phi.block(0,1,6,1) * dd_ik_minus_deriv.row(0) +
                                Phi.block(0,2,6,1) * dd_ik_minus_deriv.row(1));
 
         d_ilik_plus.push_back(Phi.col(0));
-        d_ilik_plus.push_back(Phi.block(0,1,6,2) * geo.jacobian(zero).col(1));
-        d_ilik_plus.push_back((geo.jacobian(zero)(0,1) * Phi.col(3) + geo.jacobian(zero)(1,1) * Phi.col(4))*geo.jacobian(zero)(0,1) +
-                              (geo.jacobian(zero)(0,1) * Phi.col(4) + geo.jacobian(zero)(1,1) * Phi.col(5))*geo.jacobian(zero)(1,1) +
-                              Phi.block(0,1,6,1) * geo.deriv2(zero).row(1) +
-                              Phi.block(0,2,6,1) * geo.deriv2(zero).row(4));
+        d_ilik_plus.push_back(Phi.block(0,1,6,2) * geo_jac.col(1));
+        d_ilik_plus.push_back((geo_jac(0,1) * Phi.col(3) + geo_jac(1,1) * Phi.col(4))*geo_jac(0,1) +
+                              (geo_jac(0,1) * Phi.col(4) + geo_jac(1,1) * Phi.col(5))*geo_jac(1,1) +
+                              Phi.block(0,1,6,1) * geo_der2.row(1) +
+                              Phi.block(0,2,6,1) * geo_der2.row(4));
         d_ilik_plus.push_back(Phi.block(0,1,6,2) * dd_ik_plus);
-        d_ilik_plus.push_back((geo.jacobian(zero)(0,1) * Phi.col(3) + geo.jacobian(zero)(1,1) * Phi.col(4))*dd_ik_plus(0,0) +
-                              (geo.jacobian(zero)(0,1) * Phi.col(4) + geo.jacobian(zero)(1,1) * Phi.col(5))*dd_ik_plus(1,0) +
+        d_ilik_plus.push_back((geo_jac(0,1) * Phi.col(3) + geo_jac(1,1) * Phi.col(4))*dd_ik_plus(0,0) +
+                              (geo_jac(0,1) * Phi.col(4) + geo_jac(1,1) * Phi.col(5))*dd_ik_plus(1,0) +
                               Phi.block(0,1,6,1) * dd_ik_plus_deriv.row(0) +
                               Phi.block(0,2,6,1) * dd_ik_plus_deriv.row(1));
 
@@ -349,7 +345,6 @@ namespace gismo
                                                        beta[1].cwiseProduct(c_2_plus_deriv.at(1).cwiseProduct(c_1.at(0)))) +
                              d_ilik_plus.at(3)(i,0) * alpha[1].cwiseProduct(c_0_minus.at(1).cwiseProduct(c_1.at(0))) +
                              d_ilik_plus.at(4)(i,0) * alpha[1].cwiseProduct(c_1_minus.at(1).cwiseProduct(c_1.at(0))); // f*_(ik+1,ik)
-
 
             rhsVals.at(i) -= d_ik.at(0)(i,0) * c_0.at(0).cwiseProduct(c_0.at(1)) + d_ik.at(2)(i,0) * c_0.at(0).cwiseProduct(c_1.at(1)) +
                              d_ik.at(1)(i,0) * c_1.at(0).cwiseProduct(c_0.at(1)) + d_ik.at(3)(i,0) * c_1.at(0).cwiseProduct(c_1.at(1)); // f*_(ik)
@@ -409,8 +404,6 @@ namespace gismo
         // Local matrices
         std::vector< gsMatrix<T> > localMat;
         std::vector< gsMatrix<T> > localRhs;
-
-        gsMapData<T> md;
 
     }; // class gsVisitorG1BasisVertex
 } // namespace gismo

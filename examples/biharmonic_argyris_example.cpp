@@ -25,6 +25,8 @@
 
 # include <gsMSplines/gsMappedBasis.h>
 
+#include <boost/filesystem.hpp>
+
 using namespace gismo;
 //! [Include namespace]
 
@@ -33,8 +35,8 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot       = false;
     bool last       = false;
-    index_t discrete_p = 0; // Degree of the geometry + discrete_p = polynomial degree of the discrete space
-    index_t discrete_r = 1; // Regularity of the geometry + discrete_r = regularity of the discrete space
+    index_t discrete_p = 3; // Polynomial degree of the discrete space
+    index_t discrete_r = 1; // Regularity of the discrete space
 
     index_t numRefine = 0; // Number of loops = refinement steps
 
@@ -47,6 +49,10 @@ int main(int argc, char *argv[])
 
     bool info = false;
     bool latex = false;
+    bool csv = false;
+    bool mesh = false;
+
+    bool interpolation = false;
 
     bool twoPatch = false;
 
@@ -55,10 +61,10 @@ int main(int argc, char *argv[])
     cmd.addInt( "g", "geometry", "Which geometry",  geometry );
 
     // For the discrete space
-    cmd.addInt( "p", "degreeElevate",
-                "Number of degree elevation steps to perform before solving", discrete_p );
-    cmd.addInt( "r", "regularity",
-                "Number of increase Continuity steps to perform before solving",  discrete_r );
+    cmd.addInt( "p", "discreteDegree",
+                "Polynomial degree of the discrete space", discrete_p );
+    cmd.addInt( "r", "discreteRegularity",
+                "Regularity of the discrete space",  discrete_r );
 
     // For computing the convergence rates
     cmd.addInt( "l", "loop",
@@ -69,6 +75,8 @@ int main(int argc, char *argv[])
     cmd.addSwitch( "isogeometric", "Project the basis in isogeometric concept", isogeometric );
     cmd.addSwitch("neumann","Compute the biharmonic with neumann bdy",neumann);
 
+    cmd.addSwitch( "interpolation", "Interpolate the basis functions", interpolation );
+
     cmd.addSwitch("twoPatch","Two Patch",twoPatch);
 
     // Output features
@@ -76,11 +84,12 @@ int main(int argc, char *argv[])
     cmd.addSwitch("plot", "Plotting the results!",plot);
     cmd.addSwitch("last", "Last case only!",last);
     cmd.addSwitch( "info", "Print information", info );
+    cmd.addSwitch( "csv", "Save the output to a csv file", csv );
+    cmd.addSwitch( "mesh", "Save the mesh to a csv file", mesh );
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
     //! [Exact solution]
-
     gsFunctionExpr<> source("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> laplace("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
@@ -111,15 +120,8 @@ int main(int argc, char *argv[])
     // For input/output stuff
     gsC1ArgyrisIO c1ArgyrisIO;
 
-    gsOptionList optionList;
-    optionList.addInt( "degreeElevate", "Number of degree elevation steps to perform before solving", discrete_p );
-    optionList.addInt( "regularity", "Number of increase Continuity steps to perform before solving",  discrete_r );
-    optionList.addSwitch("isogeometric", "Project the basis in isogeometric concept", isogeometric);
-    optionList.addSwitch("exactGD", "To compute the gluing data exact", exactGD);
-    optionList.addSwitch("info", "Print information", info);
-    optionList.addSwitch("plot", "Plot", plot);
-
-    optionList.addSwitch("twoPatch", "Two Patch", twoPatch);
+    gsOptionList optionList = cmd.getOptionList();
+    gsInfo << optionList << "\n";
     //! [Problem setup]
 
     //! [Read geometry]
@@ -159,6 +161,10 @@ int main(int argc, char *argv[])
 
             case 100:
                 string_geo = "planar/multiPatches/four_squares_linear.xml";
+                break;
+
+            case 1000 ... 1999:
+                string_geo = "planar/geometries/g" + std::to_string(geometry) + ".xml";
                 break;
 
             case -8 ... -1:
@@ -224,9 +230,10 @@ int main(int argc, char *argv[])
     gsSparseSolver<>::CGDiagonal solver;
 
     //! [Solver loop]
-    gsVector<> l2err(numRefine+1), h1err(numRefine+1), h2err(numRefine+1),
-               dofs(numRefine+1), meshSize(numRefine+1);
-    gsMatrix<> jumperr(numRefine+1, mp.nInterfaces());
+    gsMatrix<> jumperr(numRefine+1, mp.nInterfaces()), jumperrRate(numRefine+1, mp.nInterfaces());
+    gsMatrix<> normerr(numRefine+1, 8); // 8 == 3 Norms + 3 Rates + h + dofs
+    gsMatrix<> time_mat(numRefine+1, 4);
+    normerr.setZero(); jumperrRate.setZero();
 
     gsInfo<< "(dot1=got_argyris_space, dot2=assembled, dot3=solved, dot4=got_error)\n";
     gsStopwatch time;
@@ -256,20 +263,23 @@ int main(int argc, char *argv[])
         sparseMatrix_argyris = c1Argyris.getSystem();
         mappedBasis.init(mb_argyris, sparseMatrix_argyris.transpose());
         gsInfo<< "." <<std::flush;// Construction of Argyris space done
-        gsInfo<<"\tAssembly of mapping:\t"<<time.stop()<<"\t[s]\n";
+        time_mat(l, 0) = time.stop();
+        gsInfo<<"\tAssembly of mapping:\t"<< time_mat(l, 0) <<"\t[s]\n";
 
         time.restart();
         gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(mp, mappedBasis, bcInfo, bcInfo2, source, twoPatch);
         gsInfo<<"\tDegrees of freedom:\t"<< g1BiharmonicAssembler.numDofs() <<"\n";
         g1BiharmonicAssembler.assemble();
         gsInfo<< "." <<std::flush;// Assemblying done
-        gsInfo<<"\tSystem assembly:\t"<<time.stop()<<"\t[s]\n";
+        time_mat(l, 1) = time.stop();
+        gsInfo<<"\tSystem assembly:\t"<<time_mat(l, 1)<<"\t[s]\n";
 
         time.restart();
         gsSparseSolver<real_t>::CGDiagonal solver;
         solver.compute(g1BiharmonicAssembler.matrix());
         gsMatrix<real_t> solVector= solver.solve(g1BiharmonicAssembler.rhs());
-        gsInfo<<"\tSolving system:\t\t"<<time.stop()<<"\t[s]\n";
+        time_mat(l, 2) = time.stop();
+        gsInfo<<"\tSolving system:\t\t"<<time_mat(l, 2)<<"\t[s]\n";
 
         time.restart();
         gsMatrix<real_t> solFull;
@@ -283,16 +293,17 @@ int main(int argc, char *argv[])
         argyrisNorms.compute();
         gsC1ArgyrisJumpNorm<real_t> c1ArgyrisJumpNorm(mp, mappedBasis, solution);
         c1ArgyrisJumpNorm.compute();
-        gsInfo<<"\tError computations:\t"<<time.stop()<<"\t[s]\n";
+        time_mat(l, 3) = time.stop();
+        gsInfo<<"\tError computations:\t"<<time_mat(l, 3)<<"\t[s]\n";
 
         // Collecting data
-        meshSize[l] = c1Argyris.getMinMeshSize();
-        dofs[l] = g1BiharmonicAssembler.numDofs();
+        normerr(l,0) = c1Argyris.getMinMeshSize();
+        normerr(l,1) = g1BiharmonicAssembler.numDofs();
 
-        l2err[l] = argyrisNorms.valueL2();
-        h1err[l] = math::sqrt(argyrisNorms.valueH1() * argyrisNorms.valueH1() + l2err[l] * l2err[l]);
-        h2err[l] = math::sqrt(argyrisNorms.valueH2() * argyrisNorms.valueH2() +
-                argyrisNorms.valueH1() * argyrisNorms.valueH1() + l2err[l] * l2err[l]);
+        normerr(l,2) = argyrisNorms.valueL2();
+        normerr(l,4) = math::sqrt(argyrisNorms.valueH1() * argyrisNorms.valueH1() + normerr(l,2) * normerr(l,2));
+        normerr(l,6) = math::sqrt(argyrisNorms.valueH2() * argyrisNorms.valueH2() +
+                argyrisNorms.valueH1() * argyrisNorms.valueH1() + normerr(l,2) * normerr(l,2));
         jumperr.row(l) = c1ArgyrisJumpNorm.value();
         gsInfo<< ". " <<std::flush;// Error computations done
 
@@ -302,32 +313,37 @@ int main(int argc, char *argv[])
     //! [Solver loop]
 
     //! [Error and convergence rates]
-    gsInfo << "\nDofs: " << dofs.transpose() << "\n";
-    gsInfo << "Mesh-size: " << meshSize.transpose() << "\n";
-    gsInfo<< "\n\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
-    gsInfo<< "H1 error: "<<std::scientific<<h1err.transpose()<<"\n";
-    gsInfo<< "H2 error: "<<std::scientific<<h2err.transpose()<<"\n";
+    gsInfo << "\nDofs: " << normerr.col(1).transpose() << "\n";
+    gsInfo << "Mesh-size: " << normerr.col(0).transpose() << "\n";
+    gsInfo<< "\n\nL2 error: "<<std::scientific<<std::setprecision(3)<<normerr.col(2).transpose()<<"\n";
+    gsInfo<< "H1 error: "<<std::scientific<<normerr.col(4).transpose()<<"\n";
+    gsInfo<< "H2 error: "<<std::scientific<<normerr.col(6).transpose()<<"\n";
     gsInfo<< "Jump error: "<<std::scientific<<jumperr.transpose()<<"\n";
 
     if (numRefine>0)
     {
+
+        normerr.block(1,3, numRefine, 1) = ( normerr.col(2).head(numRefine).array() /
+                normerr.col(2).tail(numRefine).array() ).log() / std::log(2.0); // L2
+        normerr.block(1, 5, numRefine, 1)  = ( normerr.col(4).head(numRefine).array() /
+                normerr.col(4).tail(numRefine).array() ).log() / std::log(2.0); // H1
+        normerr.block(1, 7, numRefine, 1)  = ( normerr.col(6).head(numRefine).array() /
+                normerr.col(6).tail(numRefine).array() ).log() / std::log(2.0); // H2
+
         gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
-              << ( l2err.head(numRefine).array() /
-                   l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
-
+              << normerr.col(3).transpose() <<"\n";
         gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
-              <<( h1err.head(numRefine).array() /
-                  h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
-
+              << normerr.col(5).transpose() <<"\n";
         gsInfo<<   "EoC (H2): "<< std::fixed<<std::setprecision(2)
-              <<( h2err.head(numRefine).array() /
-                  h2err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+              << normerr.col(7).transpose() <<"\n";
+
         for (size_t numInt = 0; numInt < mp.interfaces().size(); numInt++ )
         {
             gsVector<> singleInterr = jumperr.col(numInt);
+            jumperrRate.block(1, numInt, numRefine, 1) = ( singleInterr.head(numRefine).array() /
+                                        singleInterr.tail(numRefine).array() ).log() / std::log(2.0);
             gsInfo<<   "EoC (Interface " + util::to_string(numInt) + "): "<< std::fixed<<std::setprecision(2)
-              <<( singleInterr.head(numRefine).array() /
-                  singleInterr.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+              << jumperrRate.col(numInt).transpose() <<"\n";
         }
 
     }
@@ -342,6 +358,135 @@ int main(int argc, char *argv[])
         gsWriteParaview(mp,"Geometry_init",1000,true);
     }
     //! [Export visualization in ParaView]
+
+    //! [Save results to csv file]
+    if (csv)
+    {
+        std::vector<std::string> colNames, colNamesJump, colNamesTime;
+        colNames.push_back("h");
+        colNames.push_back("dofs");
+        colNames.push_back("Linfty");
+        colNames.push_back("Rate");
+        colNames.push_back("L2");
+        colNames.push_back("Rate");
+        colNames.push_back("H1");
+        colNames.push_back("Rate");
+
+        for (size_t numInt = 0; numInt < mp.interfaces().size(); numInt++ )
+        {
+            colNamesJump.push_back("Interface" + util::to_string(numInt) );
+            colNamesJump.push_back("Rate");
+        }
+
+        colNamesTime.push_back("Mapping");
+        colNamesTime.push_back("System");
+        colNamesTime.push_back("Solving");
+        colNamesTime.push_back("Error");
+
+        std::string name = "";
+        for(index_t i = 1; i < argc; i++)
+            if ((std::string) argv[i] != "--csv")
+                name += (std::string) argv[i];
+
+        std::string fullname = "";
+        for(index_t i = 0; i < argc; i++)
+            fullname += (std::string) argv[i] + " ";
+
+        std::string path = "../../results/g" + std::to_string(geometry);
+
+        std::string command = "mkdir " + path;
+        system(command.c_str());
+
+        path += "/" + name + ".csv";
+
+        std::ofstream file(path);
+        c1ArgyrisIO.writeLineString(file, "Command", fullname);
+        c1ArgyrisIO.writeBlockMatrix(file, "Error", normerr, colNames, true);
+        c1ArgyrisIO.writeBlockMatrix(file, "Jump", jumperr, jumperrRate, colNamesJump);
+        c1ArgyrisIO.writeBlockMatrix(file, "Time", time_mat, colNamesTime);
+        file.close();
+    }
+    //! [Save results to csv file]
+
+    //! [Save mesh to csv file]
+    if (mesh) {
+        unsigned resolution = 100;
+
+        std::string path = "../../gismo_results/results/g" + std::to_string(geometry);
+
+        std::string command = "mkdir " + path;
+        system(command.c_str());
+
+        std::string name = "linedata";
+        std::string name2 = "points";
+        std::string name3 = "points_sorted_";
+
+        std::ofstream file_linedata(path + "/" + name + ".csv");
+        std::ofstream file_points(path + "/" + name2 + ".csv");
+
+
+        size_t offset = 0;
+        for (size_t np = 0; np < mp.nPatches(); np++)
+        {
+            std::ofstream file_points_sorted(path + "/" + name3 + util::to_string(np) + ".csv");
+
+            gsBasis<real_t> &basis = mb.basis(np);
+            gsGeometry<real_t> &Geo = mp.patch(np);
+
+            basis.uniformRefine();
+
+            gsMesh<real_t> sl(basis, resolution);
+            Geo.evaluateMesh(sl);
+
+            for (typename std::vector<gsVertex<real_t> *>::const_iterator it = sl.vertices().begin();
+                 it != sl.vertices().end(); ++it) {
+                const gsVertex<real_t> &vertex = **it;
+                file_points << vertex[0] << " ";
+                file_points << vertex[1] << "\n";
+                //gsInfo << vertex[0] << " "; // 3D
+                //gsInfo << vertex[1] << "\n"; // 3D
+            }
+
+            for (typename std::vector<gsEdge<real_t> >::const_iterator it = sl.edges().begin();
+                 it != sl.edges().end(); ++it) {
+                file_linedata << std::fixed << std::setprecision(4) << it->source->getId() + offset << " " << it->target->getId() + offset << "\n";
+            }
+
+            offset += sl.numVertices();
+
+            gsMatrix<> points;
+            points.setZero(2,resolution);
+            gsVector<> point_temp;
+            point_temp.setLinSpaced(resolution, 0, 1);
+
+            // v = 0
+            points.row(0) = point_temp;
+            file_points_sorted << Geo.eval(points).transpose() << "\n";
+
+            // u = 1
+            points.setOnes();
+            points.row(1) = point_temp;
+            file_points_sorted << Geo.eval(points).transpose() << "\n";
+
+            // v = 1
+            points.setOnes();
+            points.row(0) = point_temp.reverse();
+            file_points_sorted << Geo.eval(points).transpose() << "\n";
+
+            // u = 0
+            points.setZero();
+            points.row(1) = point_temp.reverse();
+            file_points_sorted << Geo.eval(points).transpose() << "\n";
+
+            file_points_sorted.close();
+        }
+
+        file_linedata.close();
+        file_points.close();
+
+
+    }
+    //! [Save mesh to csv file]
 
     return EXIT_SUCCESS;
 

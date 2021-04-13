@@ -45,14 +45,15 @@ public:
         multiBasis = gsMultiBasis<>(m_mp);
 
         // p-refine
-        //gsInfo << "Before: " << multiBasis.basis(0) << "\n";
-        multiBasis.degreeIncrease(m_optionList.getInt("degreeElevate"));
+        for (size_t np = 0; np < m_mp.nPatches(); ++np)
+            multiBasis.basis(np).setDegree(m_optionList.getInt("discreteDegree"));
 
-        index_t p = multiBasis.minCwiseDegree();
-        index_t r = m_optionList.getInt("regularity");
+
+        //index_t p = multiBasis.minCwiseDegree();
+        //index_t r = m_optionList.getInt("regularity");
 
         // Pre-uniformRefine TODO delete
-        multiBasis.uniformRefine(3, p-r);
+        //multiBasis.uniformRefine(3, p-r);
 
 /*
         multiBasis.basis(0).uniformRefine();
@@ -75,6 +76,7 @@ public:
 
     void createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
                            gsKnotVector<T> & kv_gD_1, gsKnotVector<T> & kv_gD_2,
+                           gsKnotVector<T> & kv_1, gsKnotVector<T> & kv_2,
                            gsKnotVector<T> & kv1_result, gsKnotVector<T> & kv2_result);
 
     void init()
@@ -170,7 +172,7 @@ public:
 
                 gsKnotVector<T> kv_edge_1, kv_edge_2;
 
-                createLokalEdgeSpace(kv_plus, kv_minus, kv_gluingData, kv_gluingData, kv_edge_1, kv_edge_2);
+                createLokalEdgeSpace(kv_plus, kv_minus, kv_gluingData, kv_gluingData, kv_patch_1, kv_patch_2, kv_edge_1, kv_edge_2);
                 gsBSplineBasis<> basis_edge(kv_edge_1);
                 if (m_optionList.getSwitch("info"))
                     gsInfo << "Basis edge : " << basis_edge.knots().asMatrix() << "\n";
@@ -375,7 +377,7 @@ public:
     void uniformRefine()
     {
         index_t p = multiBasis.minCwiseDegree();
-        index_t r = m_optionList.getInt("regularity");
+        index_t r = m_optionList.getInt("discreteRegularity");
 
         multiBasis.uniformRefine(1,p-r);
     }
@@ -786,6 +788,7 @@ void gsC1Argyris<d,T>::createGluingDataSpace(gsKnotVector<T> & kv1, gsKnotVector
 template<short_t d,class T>
 void gsC1Argyris<d,T>::createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
                            gsKnotVector<T> & kv_gD_1, gsKnotVector<T> & kv_gD_2,
+                           gsKnotVector<T> & kv_1, gsKnotVector<T> & kv_2,
                            gsKnotVector<T> & kv1_result, gsKnotVector<T> & kv2_result)
 {
     index_t p_1 = math::max(kv_plus.degree()+kv_gD_1.degree()-1, kv_minus.degree()+kv_gD_1.degree() );
@@ -793,12 +796,19 @@ void gsC1Argyris<d,T>::createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVec
 
     index_t p_plus_diff = p_1 - kv_plus.degree();
     index_t p_gD_diff = p_1 - kv_gD_1.degree();
+    index_t p_patch_diff = p_1 - kv_1.degree();
 
     std::vector<real_t> knots_unique_plus = kv_plus.unique();
     std::vector<real_t> knots_unique_gD = kv_gD_1.unique();
 
+    std::vector<real_t> knots_unique_1 = kv_1.unique();
+    knots_unique_1.erase(knots_unique_1.begin()); // First
+    knots_unique_1.pop_back(); // Last
+
     std::vector<index_t> patch_kv_mult_plus = kv_plus.multiplicities();
     std::vector<index_t> patch_kv_mult_gD = kv_gD_1.multiplicities();
+
+    std::vector<index_t> patch_kv_mult_1 = kv_1.multiplicities();
 
     if (knots_unique_plus != knots_unique_gD)
         gsInfo << "\n\nERROR: TODO \n\n";
@@ -810,15 +820,36 @@ void gsC1Argyris<d,T>::createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVec
  *
  */
 
+
     index_t i_plus = 0;
+    index_t i_1 = 1;
+    std::vector<real_t>::iterator it_1 = knots_unique_1.begin();
     for(std::vector<real_t>::iterator it = knots_unique_plus.begin(); it != knots_unique_plus.end(); ++it, ++i_plus)
     {
-        index_t i_temp = 0;
-        while(i_temp < math::max(patch_kv_mult_plus[i_plus]+p_plus_diff, patch_kv_mult_gD[i_plus]+p_gD_diff))
+        if (*it_1 == *it && it_1 != knots_unique_1.end())
         {
-            knot_vector.push_back(*it);
-            ++i_temp;
+            index_t i_temp = 0;
+            while(i_temp < math::max(patch_kv_mult_1[i_1]+1+p_patch_diff, math::max(patch_kv_mult_plus[i_plus]+p_plus_diff, patch_kv_mult_gD[i_plus]+p_gD_diff)))
+            {
+                knot_vector.push_back(*it);
+                ++i_temp;
+            }
+
+            ++it_1;
+            ++i_1;
         }
+        else
+        {
+            index_t i_temp = 0;
+            while(i_temp < math::max(patch_kv_mult_plus[i_plus]+p_plus_diff, patch_kv_mult_gD[i_plus]+p_gD_diff))
+            {
+                knot_vector.push_back(*it);
+                ++i_temp;
+            }
+        }
+
+
+
     }
 
     kv1_result = gsKnotVector<>(knot_vector);

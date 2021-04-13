@@ -36,9 +36,6 @@ public:
 
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// NB!
-
-        // Set Geometry evaluation flags
-        md.flags = NEED_MEASURE ;
     }
 
     // Evaluate on element.
@@ -55,17 +52,12 @@ public:
                          bool isboundary,
                          const gsOptionList optionList)
     {
-        md.points = quNodes;
-
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the elements
-        basis.active_into(md.points.col(0), actives);
+        basis.active_into(quNodes.col(0), actives);
 
         // Evaluate basis functions on element
-        basis.evalAllDers_into( md.points, 0, basisData);
-
-        // Compute geometry related values
-        geo.computeMap(md);
+        basis.evalAllDers_into( quNodes, 0, basisData);
 
         numActive = actives.rows();
 
@@ -75,44 +67,24 @@ public:
         real_t p = bsp_temp.degree();
         real_t tau_1 = bsp_temp.knots().at(p + 1); // p + 2
 
-        gsMatrix<T> alpha, beta,
-            N_0, N_1,
-            N_j_minus, N_i_plus,
-            der_N_i_plus;
-
-        // For H1 projection
-        gsMatrix<T> der_alpha, der_beta,
-            der_N_0, der_N_1,
-            der_N_j_minus,
-            der2_N_i_plus;
-
-        // For H2 projection
-        gsMatrix<T> der2_alpha, der2_beta,
-            der2_N_0, der2_N_1,
-            der2_N_j_minus,
-            der3_N_i_plus;
-
-
-        if (!isboundary)
-        {
-            approxGluingData.alphaS(dir).eval_into(md.points.row(dir),alpha); // 1-dir == PatchID
-            approxGluingData.betaS(dir).eval_into(md.points.row(dir),beta); // 1-dir == PatchID
-        }
-        else
-        {
-            beta.setZero(1, md.points.cols());
-            alpha.setOnes(1, md.points.cols());
-        }
-
-
-        basis_geo.evalSingle_into(0,md.points.row(1-dir),N_0); // u
-        basis_geo.evalSingle_into(1,md.points.row(1-dir),N_1); // u
-
         // Initialize local matrix/rhs
         if (typeBf == "plus")
         {
-            basis_plus.evalSingle_into(bfID,md.points.row(dir),N_i_plus); // v
-            basis_plus.derivSingle_into(bfID,md.points.row(dir),der_N_i_plus);
+            gsMatrix<T> beta,
+                    N_0, N_1,
+                    N_i_plus,
+                    der_N_i_plus;
+
+            if (!isboundary)
+                approxGluingData.betaS(dir).eval_into(quNodes.row(dir),beta); // 1-dir == PatchID
+            else
+                beta.setZero(1, quNodes.cols());
+
+            basis_geo.evalSingle_into(0,quNodes.row(1-dir),N_0); // u
+            basis_geo.evalSingle_into(1,quNodes.row(1-dir),N_1); // u
+
+            basis_plus.evalSingle_into(bfID,quNodes.row(dir),N_i_plus); // v
+            basis_plus.derivSingle_into(bfID,quNodes.row(dir),der_N_i_plus);
 
             gsMatrix<T> temp = beta.cwiseProduct(der_N_i_plus);
             rhsVals = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(N_1) * tau_1 / p;
@@ -123,13 +95,24 @@ public:
         } // n_plus
         else if (typeBf == "minus")
         {
-            basis_minus.evalSingle_into(bfID,md.points.row(dir),N_j_minus); // v
+
+            gsMatrix<T> alpha,
+                    N_1,
+                    N_j_minus;
+
+            if (!isboundary)
+                approxGluingData.alphaS(dir).eval_into(quNodes.row(dir),alpha); // 1-dir == PatchID
+            else
+                alpha.setOnes(1, quNodes.cols());
+
+            basis_geo.evalSingle_into(1,quNodes.row(1-dir),N_1); // u
+
+            basis_minus.evalSingle_into(bfID,quNodes.row(dir),N_j_minus); // v
 
             if (!isboundary)
                 rhsVals = (dir == 0 ? -1 : 1) * alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1)) * tau_1 / p;
             else
                 rhsVals = (dir == 0 ? -1 : 1) * alpha.cwiseProduct(N_j_minus.cwiseProduct(N_1));
-
 
             localMat.setZero(numActive, numActive);
             localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
@@ -182,8 +165,6 @@ protected:
     // Local matrices
     gsMatrix<T> localMat;
     gsMatrix<T> localRhs;
-
-    gsMapData<T> md;
 
 }; // class gsVisitorG1BasisEdge
 } // namespace gismo

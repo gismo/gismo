@@ -56,13 +56,18 @@ public:
 
             kindOfEdge[localdir] = m_auxPatches[0].getArygrisBasisRotated().isInterface(sideContainer[dir]);
 
-            //gsInfo << "Basis plus: " << m_basis_plus[localdir] << "\n";
-            //gsInfo << "Basis minus: " << m_basis_minus[localdir] << "\n";
-            //gsInfo << "Basis geo: " << m_basis_geo[localdir] << "\n";
-
         }
+/*
+        gsInfo << "Basis plus: " << m_basis_plus[0] << "\n";
+        gsInfo << "Basis minus: " << m_basis_minus[0] << "\n";
+        gsInfo << "Basis geo: " << m_basis_geo[0] << "\n";
+        gsInfo << "Basis plus 1: " << m_basis_plus[1] << "\n";
+        gsInfo << "Basis minus 1: " << m_basis_minus[1] << "\n";
+        gsInfo << "Basis geo 1: " << m_basis_geo[1] << "\n";
 
-        //gsInfo << "kindOfEdge" << kindOfEdge[0] << " : " << kindOfEdge[1] << " : " << true << "\n";
+        gsInfo << "basis g1: " << m_basis_g1.basis(0) << "\n";
+        gsInfo << "kindOfEdge " << kindOfEdge[0] << " : " << kindOfEdge[1] << " : " << true << "\n";
+*/
     }
 
 

@@ -16,6 +16,8 @@
 namespace gismo
 {
 
+
+
 class gsC1ArgyrisIO {
 
     public:
@@ -61,7 +63,7 @@ class gsC1ArgyrisIO {
         //! [Assumptions for Geometry]
 
         //! [Assumptions for spline space]
-        index_t discrete_p = optionList.getInt("degreeElevate");
+        index_t discrete_p = optionList.getInt("discreteDegree");
         for (size_t numInt = 0; numInt < mp.nInterfaces(); ++numInt)
         {
             const boundaryInterface & item = mp.interfaces()[numInt];
@@ -82,7 +84,7 @@ class gsC1ArgyrisIO {
             }
         }
 
-        index_t discrete_r = optionList.getInt("regularity");
+        index_t discrete_r = optionList.getInt("discreteRegularity");
         for (size_t np = 0; np < mp.nPatches(); ++np)
         {
             gsTensorBSplineBasis<2, real_t> basis_patch = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(mp.basis(np));
@@ -125,6 +127,82 @@ class gsC1ArgyrisIO {
             file<< "\n";
         }
         file.close();
+    }
+
+    void writeLineString(std::ofstream & file, std::string command, std::string name )
+    {
+        file<<"# " + command + "\n";
+        file<<name;
+        file<<"\n";
+    }
+
+    void writeBlockMatrix(std::ofstream & file, std::string command, gsMatrix<> matrix, std::vector<std::string> colName , bool rate = false)
+    {
+
+        file<<"# Start " + command + "\n";
+        // Colname
+        for (std::vector<std::string>::const_iterator it = colName.begin(); it != colName.end(); it++)
+        {
+            if (it != std::prev(colName.end()))
+                file<<*it<<',';
+            else
+                file<<*it;
+        }
+        file<<"\n";
+
+        // Results
+        for(int  i = 0; i < matrix.rows(); i++){
+            for(int j = 0; j < matrix.cols(); j++){
+                if (rate) {
+                    if (j + 1 == matrix.cols())
+                        file << std::fixed << std::setprecision(2) << matrix(i, j); // last is rate
+                    else if (j%2 == 1 && j > 2)
+                        file << std::fixed << std::setprecision(2) << matrix(i, j) << ',';
+                    else if (j == 0)
+                        file << std::fixed << std::setprecision(5) << matrix(i, j) << ',';
+                    else if (j == 1)
+                        file << std::fixed << std::setprecision(0) << matrix(i, j) << ',';
+                    else
+                        file << std::scientific << std::setprecision(5) << matrix(i, j) << ',';
+                }
+                else {
+                    if (j + 1 == matrix.cols())
+                        file << std::scientific << std::setprecision(5) << matrix(i, j);
+                    else
+                        file << std::scientific << std::setprecision(5) << matrix(i, j) << ',';
+                }
+            }
+            file<<'\n';
+        }
+        file<<"# End " + command + "\n";
+    }
+
+    void writeBlockMatrix(std::ofstream & file, std::string command, gsMatrix<> matrix, gsMatrix<> rate, std::vector<std::string> colName)
+    {
+
+        file<<"# Start " + command + "\n";
+        // Colname
+        for (std::vector<std::string>::const_iterator it = colName.begin(); it != colName.end(); it++)
+        {
+            if (it != std::prev(colName.end()))
+                file<<*it<<',';
+            else
+                file<<*it;
+        }
+        file<<"\n";
+
+        // Results
+        for(int  i = 0; i < matrix.rows(); i++){
+            for(int j = 0; j < matrix.cols(); j++){
+                file << std::scientific << std::setprecision(5) << matrix(i, j) << ',';
+                if (j + 1 == matrix.cols())
+                    file << std::fixed << std::setprecision(2) << rate(i, j); // last is rate
+                else
+                    file << std::fixed << std::setprecision(2) << rate(i, j) << ',';
+            }
+            file<<'\n';
+        }
+        file<<"# End " + command + "\n";
     }
 
 }; // class gsC1ArgyrisIO

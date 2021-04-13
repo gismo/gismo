@@ -90,7 +90,7 @@ void gsApproxGluingData<d, T>::setGlobalGluingData(index_t patchID, index_t glob
     gsApproxGluingDataAssembler<T> approxGluingDataAssembler(m_auxPatches[patchID].getPatch(), bsp_gD, dir, m_optionList);
     alphaSContainer[dir] = approxGluingDataAssembler.getAlphaS();
     betaSContainer[dir] = approxGluingDataAssembler.getBetaS();
-
+/*
     if (patchID == 0)
         gsWriteParaview(approxGluingDataAssembler.getAlphaS(), "alpha_R", 1000);
     if (patchID == 1)
@@ -100,7 +100,7 @@ void gsApproxGluingData<d, T>::setGlobalGluingData(index_t patchID, index_t glob
         gsWriteParaview(approxGluingDataAssembler.getBetaS(), "beta_R", 1000);
     if (patchID == 1)
         gsWriteParaview(approxGluingDataAssembler.getBetaS(), "beta_L", 1000);
-
+*/
 } // setGlobalGluingData
 
 
