@@ -51,6 +51,7 @@ int main(int argc, char *argv[])
     bool latex = false;
     bool csv = false;
     bool mesh = false;
+    bool csv_sol = false;
 
     bool interpolation = false;
 
@@ -86,6 +87,7 @@ int main(int argc, char *argv[])
     cmd.addSwitch( "info", "Print information", info );
     cmd.addSwitch( "csv", "Save the output to a csv file", csv );
     cmd.addSwitch( "mesh", "Save the mesh to a csv file", mesh );
+    cmd.addSwitch( "solution", "Save the solution to a csv file", csv_sol );
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
@@ -365,11 +367,11 @@ int main(int argc, char *argv[])
         std::vector<std::string> colNames, colNamesJump, colNamesTime;
         colNames.push_back("h");
         colNames.push_back("dofs");
-        colNames.push_back("Linfty");
-        colNames.push_back("Rate");
         colNames.push_back("L2");
         colNames.push_back("Rate");
         colNames.push_back("H1");
+        colNames.push_back("Rate");
+        colNames.push_back("H2");
         colNames.push_back("Rate");
 
         for (size_t numInt = 0; numInt < mp.interfaces().size(); numInt++ )
@@ -433,7 +435,7 @@ int main(int argc, char *argv[])
             gsBasis<real_t> &basis = mb.basis(np);
             gsGeometry<real_t> &Geo = mp.patch(np);
 
-            basis.uniformRefine();
+            //basis.uniformRefine();
 
             gsMesh<real_t> sl(basis, resolution);
             Geo.evaluateMesh(sl);
@@ -487,6 +489,49 @@ int main(int argc, char *argv[])
 
     }
     //! [Save mesh to csv file]
+
+    //! [Save solution to csv file]
+    if (csv_sol) {
+        //unsigned resolution = 100/mp.nPatches();
+        unsigned resolution = 50;
+
+        std::string path = "../../gismo_results/results/g" + std::to_string(geometry);
+
+        std::string command = "mkdir " + path;
+        system(command.c_str());
+
+        //std::string name = "solution";
+        //std::ofstream file_points(path + "/" + name + ".csv");
+
+        for (size_t np = 0; np < mp.nPatches(); np++)
+        {
+            std::string name = "solution" + std::to_string(np);
+            std::ofstream file_points(path + "/" + name + ".csv");
+
+            gsBasis<real_t> &basis = mb.basis(np);
+            gsGeometry<real_t> &Geo = mp.patch(np);
+
+            gsMatrix<real_t> ab = Geo.support();
+            gsVector<real_t> a = ab.col(0);
+            gsVector<real_t> b = ab.col(1);
+
+            gsVector<unsigned> numpoints = uniformSampleCount(a, b, resolution*resolution);
+            gsMatrix<real_t> pts = gsPointGrid(a, b, numpoints);
+
+            gsMatrix<real_t> eval_geo = Geo.eval(pts);//pts
+            gsMatrix<real_t> eval_field = solVal.eval(eval_geo);
+
+            for (index_t it = 0; it < eval_geo.cols(); ++it) {
+                file_points << eval_geo(0, it) << " ";
+                file_points << eval_geo(1, it) << " ";
+                file_points << eval_field(0, it) << "\n";
+            }
+
+            file_points.close();
+        }
+        //file_points.close();
+    }
+    //! [Save solution to csv file]
 
     return EXIT_SUCCESS;
 
