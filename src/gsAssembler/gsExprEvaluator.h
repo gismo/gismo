@@ -41,6 +41,7 @@ private:
 
 public:
     typedef std::vector< boundaryInterface > intContainer;
+    typedef std::vector< patchSide > bContainer;
 
     typedef typename gsExprHelper<T>::element     element;
     typedef typename gsExprHelper<T>::geometryMap geometryMap;
@@ -152,13 +153,21 @@ public:
     /// boundary of the integration domain
     template<class E> // note: integralBdrElWise not offered
     T integralBdr(const expr::_expr<E> & expr)
-    { return computeBdr_impl<E,plus_op>(expr); }
+    { return computeBdr_impl<E,plus_op>(expr,
+      m_exprdata->multiBasis().topology().boundaries()); }
+
+    /// Calculates the integral of the expression \a expr on the
+    /// boundaries contained in \a bdrlist
+    template<class E> // note: integralBdrElWise not offered
+    T integralBdr(const expr::_expr<E> & expr, const bContainer & bdrlist)
+    { return computeBdr_impl<E,plus_op>(expr,bdrlist); }
 
     /// Calculates the integral of the expression \a expr on the
     /// interfaces of the (multi-basis) integration domain
     template<class E> // note: elementwise integral not offered
     T integralInterface(const expr::_expr<E> & expr)
-    { return computeInterface_impl<E,plus_op>(expr, m_exprdata->multiBasis().topology().interfaces()); }
+    { return computeInterface_impl<E,plus_op>(expr,
+      m_exprdata->multiBasis().topology().interfaces()); }
 
     /// Calculates the integral of the expression \a expr on the
     /// interfaces \a iFaces of the integration domain
@@ -283,7 +292,7 @@ private:
     T compute_impl(const E & expr);
 
     template<class E, class _op>
-    T computeBdr_impl(const expr::_expr<E> & expr);
+    T computeBdr_impl(const expr::_expr<E> & expr, const bContainer & bdrlist);
 
     template<class E, class _op>
     T computeInterface_impl(const expr::_expr<E> & expr, const intContainer & iFaces);
@@ -380,7 +389,8 @@ T gsExprEvaluator<T>::compute_impl(const E & expr)
 
 template<class T>
 template<class E, class _op>
-T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr)
+T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
+                                      const bContainer & bdrlist)
 {
     // GISMO_ASSERT( expr.isScalar(),
     //               "Expecting scalar expression instead of "
@@ -399,7 +409,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr)
     m_elWise.clear();
 
     for (typename gsBoxTopology::const_biterator bit = //!! not multipatch!
-             m_exprdata->multiBasis().topology().bBegin(); bit != m_exprdata->multiBasis().topology().bEnd(); ++bit)
+             bdrlist.begin(); bit != bdrlist.end(); ++bit)
     {
         // Quadrature rule
         QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(bit->patch), m_options,bit->direction());

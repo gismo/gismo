@@ -86,7 +86,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED OFF)
 set(CMAKE_CXX_EXTENSIONS OFF)
 include(AddCXXCompileOptions)
 
-if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel")
+if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel" AND "x${CMAKE_CXX_STANDARD}" STREQUAL "x98")
   # message(STATUS "Using Boost for smart pointers")
   find_package(Boost REQUIRED)
   include_directories(${Boost_INCLUDE_DIRS})
@@ -204,8 +204,8 @@ if (GISMO_WITH_OPENMP)
    # Apple explicitly disabled OpenMP support in their compilers that
    # are shipped with XCode but there is an easy workaround as
    # described at https://mac.r-project.org/openmp/
-   if (CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL "Clang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR
-       CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+   if ("x${CMAKE_C_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_C_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR
+       "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
       find_path(OpenMP_C_INCLUDE_DIR
         NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES include)
       find_path(OpenMP_CXX_INCLUDE_DIR
@@ -228,7 +228,7 @@ if (CMAKE_COMPILER_IS_GNUCXX AND NOT GISMO_WITH_OPENMP)
    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
 endif()
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Intel" AND NOT GISMO_WITH_OPENMP)
+if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel" AND NOT GISMO_WITH_OPENMP)
    if ( CMAKE_SYSTEM_NAME MATCHES "Linux" )
      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -diag-disable 3180") #comma for more warns
    elseif ( CMAKE_SYSTEM_NAME MATCHES "Windows" )
@@ -248,7 +248,7 @@ endif()
 #string(TOUPPER ${CMAKE_BUILD_TYPE} TEMP)
 #message(STATUS "Using compilation flags: ${CMAKE_CXX_FLAGS}, ${CMAKE_CXX_FLAGS_${TEMP}}")
 
-if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+if("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")
   #https://github.com/VcDevel/Vc/blob/master/cmake/OptimizeForArchitecture.cmake
   include( OptimizeForArchitecture )
   OptimizeForArchitecture()
@@ -256,4 +256,4 @@ if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flag}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flag}")
   endforeach()
-endif("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+endif("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")

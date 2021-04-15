@@ -519,6 +519,50 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
 }
 
 
+template<short_t d, class T>
+std::vector<gsGeometry<T>* >
+gsTensorBSpline<d,T>::splitAtMult(index_t minMult, index_t dir) const
+{
+    GISMO_ASSERT( (dir >= -1) && (dir < static_cast<index_t>(d)),
+                  "Invalid basis component "<< dir <<" requested for splitting" );
+    std::vector<gsGeometry<T>* > result;
+
+    if (-1==dir)
+    {
+        std::vector<gsGeometry<T>* > tmpi, tmp;
+        result = this->splitAtMult(minMult,0);
+        for(short_t i=1; i<d;++i)
+        {
+            tmp.swap(result);
+            result.clear();
+            for(size_t j=0; j!=tmp.size();++j)
+            {
+                tmpi = static_cast<gsTensorBSpline<d,T>*>(tmp[j])
+                    ->splitAtMult(minMult,i);
+                delete tmp[j];
+                result.insert( result.end(), tmpi.begin(), tmpi.end() );
+            }
+        }
+        return result;
+    }
+
+    gsTensorBSpline<d,T> * tmp = new gsTensorBSpline<d,T>(*this);
+    //iterate over knots
+    for (typename KnotVectorType::uiterator it = knots(dir).ubegin()+1;
+         it!=knots(dir).uend()-1; ++it)
+    {
+        if (it.multiplicity()>=minMult)
+        {
+            gsTensorBSpline<d,T> * o = new gsTensorBSpline<d,T>();
+            tmp->splitAt(dir,*it,*o,*tmp);
+            result.push_back(o);
+        }
+    }
+    result.push_back(tmp);
+    return result;
+}
+
+
 namespace internal
 {
 
