@@ -394,7 +394,7 @@ int main(int argc, char *argv[])
         for(index_t i = 0; i < argc; i++)
             fullname += (std::string) argv[i] + " ";
 
-        std::string path = "../../results/g" + std::to_string(geometry);
+        std::string path = "../../gismo_results/results/g" + std::to_string(geometry);
 
         std::string command = "mkdir " + path;
         system(command.c_str());
@@ -508,7 +508,6 @@ int main(int argc, char *argv[])
             std::string name = "solution" + std::to_string(np);
             std::ofstream file_points(path + "/" + name + ".csv");
 
-            gsBasis<real_t> &basis = mb.basis(np);
             gsGeometry<real_t> &Geo = mp.patch(np);
 
             gsMatrix<real_t> ab = Geo.support();

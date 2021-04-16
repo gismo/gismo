@@ -5,10 +5,10 @@ echo "P = 3, R = 1"
 
 for pp in 3 4 5
 do
-    for i in 1100 1020 1021 1000 1010 1011
+    for i in 1001 1002 1012 1022 1023 1024
     do
-    echo ./bin/biharmonic_argyris_example -g $i -p $pp -r 1 -l 7 --csv
-    ./bin/biharmonic_argyris_example -g $i -p $pp -r 1 -l 7 --csv
+    echo ./bin/biharmonic_argyris_example -g $i -p $pp -r 1 -l 6 --csv
+    ./bin/biharmonic_argyris_example -g $i -p $pp -r 1 -l 6 --csv
     done
 done
 
