@@ -385,14 +385,13 @@ int main(int argc, char *argv[])
         colNamesTime.push_back("Solving");
         colNamesTime.push_back("Error");
 
-        std::string name = "";
-        for(index_t i = 1; i < argc; i++)
-            if ((std::string) argv[i] != "--csv")
-                name += (std::string) argv[i];
-
         std::string fullname = "";
         for(index_t i = 0; i < argc; i++)
             fullname += (std::string) argv[i] + " ";
+
+        std::string name = "-g" + std::to_string(geometry) + "--" + (isogeometric ? "isogeometric" : "nonisogeometric")
+                + "--" + (interpolation ? "interpolation" : "projection") + "-p" + std::to_string(discrete_p)
+                + "-r" + std::to_string(discrete_r) + "-l" + std::to_string(numRefine);
 
         std::string path = "../../gismo_results/results/g" + std::to_string(geometry);
 
