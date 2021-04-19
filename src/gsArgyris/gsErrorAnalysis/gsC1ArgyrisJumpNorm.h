@@ -94,6 +94,7 @@ public:
                     QuRule_L.mapTo(domItCorner.col(0), domItCorner.col(1), quNodes_L, quWeights);
 
                 ifaceMap.eval_into(domItCorner,domItCorner);
+                /*
                 if (domItCorner(1-side_L.direction(),0) > domItCorner(1-side_L.direction(),1) && dom_R.size() >= dom_L.size()) // integral border switched
                 {
                     gsMatrix<T> temp_domItCorner = domItCorner;
@@ -106,15 +107,22 @@ public:
                     domItCorner.col(1) = temp_domItCorner.col(0);
                     domItCorner.col(0) = temp_domItCorner.col(1);
                 }
+                */
 
                 dom_R.size() >= dom_L.size() ? QuRule_L.mapTo(domItCorner.col(0), domItCorner.col(1), quNodes_L, quWeights):
                     QuRule_R.mapTo(domItCorner.col(0), domItCorner.col(1), quNodes_R, quWeights);
+
+                quWeights = quWeights.cwiseAbs(); // if at the interface the direction is not the same
+
+                bool switch_side = false;
+                if (side_L.direction() != side_R.direction())
+                    switch_side = true;
 
                 // Evaluate on quadrature points
                 evaluateb(patch_L, quNodes_L, patch_R, quNodes_R, basisPtr, exactSol);
 
                 // Accumulate value from the current element (squared)
-                computeb(side_L, quWeights, value);
+                computeb(side_L, quWeights, value, switch_side);
 
             }
             m_value(numInt) = takeRoot(value);
@@ -185,7 +193,8 @@ protected:
     // assemble on element
     inline T computeb(boxSide side,
                       gsVector<T> const      & quWeights,
-                      T & accumulated)
+                      T & accumulated,
+                      bool switched_side)
     {
 
         T sum(0.0);
@@ -205,6 +214,7 @@ protected:
 
             // f2ders : N X 1
             sum += weight * ( (f1pders - f2pders).transpose() * unormal ).squaredNorm() ;
+
             //sum += weight * ( (f1ders - f2ders).transpose() * normal ).squaredNorm() ;
         }
         accumulated += sum;
