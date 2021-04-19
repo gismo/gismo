@@ -65,7 +65,7 @@ public:
         gsInfo << "Basis minus 1: " << m_basis_minus[1] << "\n";
         gsInfo << "Basis geo 1: " << m_basis_geo[1] << "\n";
 
-        gsInfo << "basis g1: " << m_basis_g1.basis(0) << "\n";
+        gsInfo << "basis g1: " << m_basis_g1 << "\n";
         gsInfo << "kindOfEdge " << kindOfEdge[0] << " : " << kindOfEdge[1] << " : " << true << "\n";
 */
     }

@@ -3,9 +3,9 @@ echo "P = 3, R = 1"
 #echo ./bin/biharmonic_argyris_example -g -1 -l 4
 #./bin/biharmonic_argyris_example -g -1 -l 4
 
-for rr in 2
+for rr in 3
 do
-    for pp in 3 4
+    for pp in 4
     do
         for i in 1000 1012 1100 1100
         do
