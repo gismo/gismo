@@ -1,4 +1,4 @@
-/** @file gsApproxArgyrisVertexBasis.h
+/** @file gsC1ArgyrisVertexBasisProjection.h
 
     @brief Provides assembler for a G1 Basis for multiPatch.
 
@@ -13,14 +13,14 @@
 
 #pragma once
 
-#include <gsArgyris/gsApproxArgyrisVertexBasisVisitor.h>
+#include <gsArgyris/gsC1ArgyrisVertexBasisProjectionVisitor.h>
 
 
 namespace gismo
 {
 
-template<short_t d, class T, class bhVisitor = gsApproxArgyrisVertexBasisVisitor<d, T>>
-class gsApproxArgyrisVertexBasis : public gsAssembler<T>
+template<short_t d, class T, class bhVisitor = gsC1ArgyrisVertexBasisProjectionVisitor<d, T>>
+class gsC1ArgyrisVertexBasisProjection : public gsAssembler<T>
 {
 private:
     typedef typename std::vector<gsC1ArgyrisAuxiliaryPatch<d,T>> ArgyrisAuxPatchContainer;
@@ -29,12 +29,12 @@ public:
     typedef gsAssembler<T> Base;
 
 public:
-    gsApproxArgyrisVertexBasis(ArgyrisAuxPatchContainer & auxPatches,
-                          gsApproxGluingData<d, T> & approxGluingData,
-                          const index_t corner,
-                          const std::vector<index_t> & sideContainer,
-                          const real_t sigma,
-                          const gsOptionList & optionList)
+    gsC1ArgyrisVertexBasisProjection(ArgyrisAuxPatchContainer & auxPatches,
+                                     gsApproxGluingData<d, T> & approxGluingData,
+                                     const index_t corner,
+                                     const std::vector<index_t> & sideContainer,
+                                     const real_t sigma,
+                                     const gsOptionList & optionList)
             : m_auxPatches(auxPatches), m_approxGluingData(approxGluingData), m_corner(corner), m_sigma(sigma), m_optionList(optionList)
     {
         // Collect the needed basis
@@ -120,7 +120,7 @@ protected:
 
 
 template <short_t d, class T, class bhVisitor>
-void gsApproxArgyrisVertexBasis<d, T, bhVisitor>::constructSolution(gsMultiPatch<T> & result)
+void gsC1ArgyrisVertexBasisProjection<d, T, bhVisitor>::constructSolution(gsMultiPatch<T> & result)
 {
 
     result.clear();
@@ -157,7 +157,7 @@ void gsApproxArgyrisVertexBasis<d, T, bhVisitor>::constructSolution(gsMultiPatch
 }
 
 template <short_t d, class T, class bhVisitor>
-void gsApproxArgyrisVertexBasis<d, T, bhVisitor>::refresh()
+void gsC1ArgyrisVertexBasisProjection<d, T, bhVisitor>::refresh()
 {
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper map(m_basis_g1);
@@ -191,7 +191,7 @@ void gsApproxArgyrisVertexBasis<d, T, bhVisitor>::refresh()
 } // refresh()
 
 template <short_t d, class T, class bhVisitor>
-void gsApproxArgyrisVertexBasis<d, T, bhVisitor>::assemble()
+void gsC1ArgyrisVertexBasisProjection<d, T, bhVisitor>::assemble()
 {
     // Reserve sparse system
     const index_t nz = gsAssemblerOptions::numColNz(m_basis_g1,2,1,0.333333);
@@ -216,7 +216,7 @@ void gsApproxArgyrisVertexBasis<d, T, bhVisitor>::assemble()
 } // assemble()
 
 template <short_t d, class T, class bhVisitor>
-void gsApproxArgyrisVertexBasis<d, T, bhVisitor>::apply(bhVisitor & visitor, int patchIndex)
+void gsC1ArgyrisVertexBasisProjection<d, T, bhVisitor>::apply(bhVisitor & visitor, int patchIndex)
 {
 #pragma omp parallel
     {
@@ -269,7 +269,7 @@ void gsApproxArgyrisVertexBasis<d, T, bhVisitor>::apply(bhVisitor & visitor, int
 } // apply
 
 template <short_t d, class T, class bhVisitor>
-void gsApproxArgyrisVertexBasis<d, T, bhVisitor>::solve()
+void gsC1ArgyrisVertexBasisProjection<d, T, bhVisitor>::solve()
 {
     gsSparseSolver<real_t>::LU solver;
 

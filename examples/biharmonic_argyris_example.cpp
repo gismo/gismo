@@ -18,7 +18,7 @@
 
 # include <gsAssembler/gsG1BiharmonicAssembler.h>
 # include <gsArgyris/gsC1Argyris.h>
-# include <gsArgyris/gsErrorAnalysis/gsArgyrisNorms.h>
+# include <gsArgyris/gsErrorAnalysis/gsC1ArgyrisNorms.h>
 # include <gsArgyris/gsErrorAnalysis/gsC1ArgyrisJumpNorm.h>
 
 # include <gsArgyris/gsC1ArgyrisIO.h>
@@ -291,7 +291,7 @@ int main(int argc, char *argv[])
         gsInfo<< "." <<std::flush;// Linear solving done
 
         mappedBasis.init(mb_argyris, sparseMatrix_argyris.transpose());
-        gsArgyrisNorms<real_t> argyrisNorms(mp, mappedBasis, solution);
+        gsC1ArgyrisNorms<real_t> argyrisNorms(mp, mappedBasis, solution);
         argyrisNorms.compute();
         gsC1ArgyrisJumpNorm<real_t> c1ArgyrisJumpNorm(mp, mappedBasis, solution);
         c1ArgyrisJumpNorm.compute();

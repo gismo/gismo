@@ -1,4 +1,4 @@
-/** @file gsApproxArgyrisEdgeBasisVisitor.h
+/** @file gsC1ArgyrisEdgeBasisProjectionVisitor.h
 
     @brief Visitor for the G1 Basis.
 
@@ -19,11 +19,11 @@
 namespace gismo
 {
 template <short_t d, class T>
-class gsApproxArgyrisEdgeBasisVisitor
+class gsC1ArgyrisEdgeBasisProjectionVisitor
 {
 public:
 
-    gsApproxArgyrisEdgeBasisVisitor()
+    gsC1ArgyrisEdgeBasisProjectionVisitor()
     {
     }
 

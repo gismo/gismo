@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsArgyris/gsC1ArgyrisAuxiliaryPatch.h>
-#include <gsArgyris/gsApproxArgyrisVertexBasis.h>
+#include <gsArgyris/gsC1ArgyrisVertexBasisProjection.h>
 
 
 
@@ -165,8 +165,8 @@ public:
                 }
                 else
                 {
-                    gsApproxArgyrisVertexBasis<d, T> approxArgyrisVertexBasis(auxPatchSingle, approxGluingData,
-                                                                              m_vertexIndices[i], sideContainer, sigma, m_optionList);
+                    gsC1ArgyrisVertexBasisProjection<d, T> approxArgyrisVertexBasis(auxPatchSingle, approxGluingData,
+                                                                                    m_vertexIndices[i], sideContainer, sigma, m_optionList);
                     approxArgyrisVertexBasis.setBasisVertex(result_1);
                 }
 

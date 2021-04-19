@@ -18,7 +18,7 @@
 #include <gsArgyris/gsC1ArgyrisAuxiliaryPatch.h>
 
 #include <gsArgyris/gsGluingData/gsApproxGluingData.h>
-#include <gsArgyris/gsApproxArgyrisEdgeBasis.h>
+#include <gsArgyris/gsC1ArgyrisEdgeBasisProjection.h>
 
 namespace gismo
 {

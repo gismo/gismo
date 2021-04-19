@@ -15,11 +15,11 @@ namespace gismo
 
 
     template <class T>
-    class gsArgyrisNormsVisitor
+    class gsC1ArgyrisNormsVisitor
     {
     public:
 
-        gsArgyrisNormsVisitor()
+        gsC1ArgyrisNormsVisitor()
         {
             f2param = false;
 

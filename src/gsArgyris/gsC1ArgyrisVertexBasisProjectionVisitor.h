@@ -16,11 +16,11 @@
 namespace gismo
 {
     template <short_t d, class T>
-    class gsApproxArgyrisVertexBasisVisitor
+    class gsC1ArgyrisVertexBasisProjectionVisitor
     {
     public:
 
-    gsApproxArgyrisVertexBasisVisitor()
+    gsC1ArgyrisVertexBasisProjectionVisitor()
     {
     }
 

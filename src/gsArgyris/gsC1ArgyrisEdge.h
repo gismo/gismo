@@ -17,7 +17,7 @@
 #include <gsArgyris/gsC1ArgyrisAuxiliaryPatch.h>
 
 #include <gsArgyris/gsGluingData/gsApproxGluingData.h>
-#include <gsArgyris/gsApproxArgyrisEdgeBasis.h>
+#include <gsArgyris/gsC1ArgyrisEdgeBasisProjection.h>
 
 namespace gismo
 {
@@ -74,8 +74,8 @@ public:
         }
         else
         {
-            gsApproxArgyrisEdgeBasis<d, T> approxArgyrisEdgeBasis(m_auxPatches, approxGluingData, 0, m_optionList);
-            gsApproxArgyrisEdgeBasis<d, T> approxArgyrisEdgeBasis2(m_auxPatches, approxGluingData, 1, m_optionList);
+            gsC1ArgyrisEdgeBasisProjection<d, T> approxArgyrisEdgeBasis(m_auxPatches, approxGluingData, 0, m_optionList);
+            gsC1ArgyrisEdgeBasisProjection<d, T> approxArgyrisEdgeBasis2(m_auxPatches, approxGluingData, 1, m_optionList);
 
             approxArgyrisEdgeBasis.setG1BasisEdge(result_1);
             approxArgyrisEdgeBasis2.setG1BasisEdge(result_2);
@@ -167,7 +167,7 @@ public:
             }
             else
             {
-                gsApproxArgyrisEdgeBasis<d, T> approxArgyrisEdgeBasis(m_auxPatches, 0, m_optionList);
+                gsC1ArgyrisEdgeBasisProjection<d, T> approxArgyrisEdgeBasis(m_auxPatches, 0, m_optionList);
                 approxArgyrisEdgeBasis.setG1BasisEdge(result_1);
             }
         }

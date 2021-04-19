@@ -7,7 +7,7 @@
     Author(s): A. Mantzaflaris & P. Weinmueller
 */
 
-#include <gsArgyris/gsErrorAnalysis/gsArgyrisNormsVisitor.h>
+#include <gsArgyris/gsErrorAnalysis/gsC1ArgyrisNormsVisitor.h>
 
 
 #pragma once
@@ -20,15 +20,15 @@ namespace gismo
  *
  * \ingroup Assembler
 */
-    template <class T, class Visitor = gsArgyrisNormsVisitor<T> >
-    class gsArgyrisNorms
+    template <class T, class Visitor = gsC1ArgyrisNormsVisitor<T> >
+    class gsC1ArgyrisNorms
     {
 
     public:
 
-        gsArgyrisNorms(const gsMultiPatch<T> & multiPatch,
-                     const gsMappedBasis<2, T> & multiBasis,
-                     const gsFunctionWithDerivatives<T> &exactSolution)
+        gsC1ArgyrisNorms(const gsMultiPatch<T> & multiPatch,
+                         const gsMappedBasis<2, T> & multiBasis,
+                         const gsFunctionWithDerivatives<T> &exactSolution)
                 : patchesPtr( &multiPatch ), basisPtr( &multiBasis ), exactSol(exactSolution)
         {
         }

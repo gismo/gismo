@@ -1,4 +1,4 @@
-/** @file gsApproxArgyrisEdgeBasis.h
+/** @file gsC1ArgyrisEdgeBasisProjection.h
 
     @brief Provides assembler for a G1 Basis for multiPatch.
 
@@ -15,14 +15,14 @@
 
 
 #include <gsArgyris/gsGluingData/gsApproxGluingData.h>
-#include <gsArgyris/gsApproxArgyrisEdgeBasisVisitor.h>
+#include <gsArgyris/gsC1ArgyrisEdgeBasisProjectionVisitor.h>
 
 
 
 namespace gismo
 {
-template<short_t d, class T, class bhVisitor = gsApproxArgyrisEdgeBasisVisitor<d, T>>
-class gsApproxArgyrisEdgeBasis : public gsAssembler<T>
+template<short_t d, class T, class bhVisitor = gsC1ArgyrisEdgeBasisProjectionVisitor<d, T>>
+class gsC1ArgyrisEdgeBasisProjection : public gsAssembler<T>
 {
 private:
     typedef typename std::vector<gsC1ArgyrisAuxiliaryPatch<d,T>> ArgyrisAuxPatchContainer;
@@ -31,13 +31,13 @@ public:
     typedef gsAssembler<T> Base;
 
 public:
-    gsApproxArgyrisEdgeBasis() { };
+    gsC1ArgyrisEdgeBasisProjection() { };
 
-    gsApproxArgyrisEdgeBasis(ArgyrisAuxPatchContainer & auxPatches,
-                        gsApproxGluingData<d, T> & approxGluingData,
-                        index_t patchID,
-                        const gsOptionList & optionList,
-                        const bool & isBoundary = false)
+    gsC1ArgyrisEdgeBasisProjection(ArgyrisAuxPatchContainer & auxPatches,
+                                   gsApproxGluingData<d, T> & approxGluingData,
+                                   index_t patchID,
+                                   const gsOptionList & optionList,
+                                   const bool & isBoundary = false)
         : m_auxPatches(auxPatches), m_approxGluingData(approxGluingData), m_patchID(patchID), m_optionList(optionList), m_isBoundary(isBoundary)
     {
 
@@ -52,10 +52,10 @@ public:
         m_basis_geo = m_auxPatches[patchID].getArygrisBasisRotated().getBasisGeo(m_side);
     }
 
-    gsApproxArgyrisEdgeBasis(ArgyrisAuxPatchContainer & auxPatches,
-                    index_t patchID,
-                    const gsOptionList & optionList,
-                    const bool & isBoundary = true)
+    gsC1ArgyrisEdgeBasisProjection(ArgyrisAuxPatchContainer & auxPatches,
+                                   index_t patchID,
+                                   const gsOptionList & optionList,
+                                   const bool & isBoundary = true)
     : m_auxPatches(auxPatches), m_patchID(patchID), m_optionList(optionList), m_isBoundary(isBoundary)
     {
         m_side = m_auxPatches[patchID].side();
@@ -105,7 +105,7 @@ protected:
 }; // class gsG1BasisEdge
 
 template <short_t d, class T, class bhVisitor>
-void gsApproxArgyrisEdgeBasis<d, T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
+void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 {
     result.clear();
 
@@ -202,7 +202,7 @@ void gsApproxArgyrisEdgeBasis<d, T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & 
 } // setG1BasisEdge
 
 template <short_t d, class T, class bhVisitor>
-void gsApproxArgyrisEdgeBasis<d, T,bhVisitor>::constructSolution(const gsMatrix<> & solVector, gsMultiPatch<T> & result)
+void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::constructSolution(const gsMatrix<> & solVector, gsMultiPatch<T> & result)
 {
     // Dim is the same for all basis functions
     const index_t dim = ( 0!=solVector.cols() ? solVector.cols() :  m_ddof[0].cols() );
@@ -233,7 +233,7 @@ void gsApproxArgyrisEdgeBasis<d, T,bhVisitor>::constructSolution(const gsMatrix<
 }
 
 template <short_t d, class T, class bhVisitor>
-void gsApproxArgyrisEdgeBasis<d, T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
+void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
 {
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper map(m_basis_g1);
@@ -254,7 +254,7 @@ void gsApproxArgyrisEdgeBasis<d, T,bhVisitor>::refresh(index_t bfID, std::string
 } // refresh()
 
 template <short_t d, class T, class bhVisitor>
-void gsApproxArgyrisEdgeBasis<d, T,bhVisitor>::assemble(index_t bfID, std::string typeBf)
+void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::assemble(index_t bfID, std::string typeBf)
 {
     // Reserve sparse system
     const index_t nz = gsAssemblerOptions::numColNz(m_basis_g1,2,1,0.333333);
@@ -281,7 +281,7 @@ void gsApproxArgyrisEdgeBasis<d, T,bhVisitor>::assemble(index_t bfID, std::strin
 } // assemble()
 
 template <short_t d, class T, class bhVisitor>
-void gsApproxArgyrisEdgeBasis<d, T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, std::string typeBf)
+void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, std::string typeBf)
 {
 #pragma omp parallel
     {
