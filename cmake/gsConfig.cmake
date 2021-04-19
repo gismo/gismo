@@ -17,9 +17,9 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO ${replacementFlags} CACHE INTERNAL "" FORCE)
 
 if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   #fixme: enable for Darwin/clang (probably no export explicit template instantiations)
-#  set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-#  set(CMAKE_C_VISIBILITY_PRESET   hidden)
-#  set(CMAKE_VISIBILITY_INLINES_HIDDEN 1 )
+  set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+  set(CMAKE_C_VISIBILITY_PRESET   hidden)
+  set(CMAKE_VISIBILITY_INLINES_HIDDEN 1 )
 endif()
 
 # Set a default coefficient numeric types if not specified
@@ -193,7 +193,7 @@ if (MINGW)
   endif()
 elseif(NOT MSVC AND NOT POLICY CMP0063 AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   #fixme: enable for Darwin/clang (probably no export explicit template instantiations)
-#  check_cxx_compiler_flag(-fvisibility=hidden visibility)
+  check_cxx_compiler_flag(-fvisibility=hidden visibility)
     if (visibility) # for object libraries with cmake less than 3.3
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -fvisibility-inlines-hidden")
