@@ -302,11 +302,11 @@ public:
                             gsTensorBSplineBasis<d, T> basis_vertex_1 = dynamic_cast<gsTensorBSplineBasis<d, real_t> &>(multiBasis.basis(
                                     patch_1));
 
-                            //index_t p_tilde_1 = math::max(basis_vertex_1.degree(0) - 2, 2);
-                            //index_t p_tilde_2 = math::max(basis_vertex_1.degree(1) - 2, 2);
+                            index_t p_tilde_1 = math::max(basis_vertex_1.degree(0) - 2, 2);
+                            index_t p_tilde_2 = math::max(basis_vertex_1.degree(1) - 2, 2);
 
-                            //basis_vertex_1.degreeElevate(p_tilde_1 - 1, 0);
-                            //basis_vertex_1.degreeElevate(p_tilde_2 - 1, 1);
+                            basis_vertex_1.degreeElevate(p_tilde_1 - 1, 0);
+                            basis_vertex_1.degreeElevate(p_tilde_2 - 1, 1);
 
                             m_bases[patch_1].setVertexBasis(basis_vertex_1, vertex_1);
                             m_bases[patch_1].setKindOfVertex(0, vertex_1);
@@ -330,14 +330,14 @@ public:
                         {
                             gsTensorBSplineBasis<d, T> basis_vertex_1 = dynamic_cast<gsTensorBSplineBasis<d, real_t> &>(multiBasis.basis(patch_1));
 
-                            //index_t p_tilde_1 = math::max(basis_vertex_1.degree(0)-2,2);
-                            //index_t p_tilde_2 = math::max(basis_vertex_1.degree(1)-2,2);
+                            index_t p_tilde_1 = math::max(basis_vertex_1.degree(0)-2,2);
+                            index_t p_tilde_2 = math::max(basis_vertex_1.degree(1)-2,2);
 
                             //p_tilde_1 = m_mp.isBoundary(patch_1, side_0) ? 1 : p_tilde_1;
                             //p_tilde_1 = m_mp.isBoundary(patch_1, side_1) ? 1 : p_tilde_2;
 
-                            //basis_vertex_1.degreeElevate(p_tilde_1-1,0);
-                            //basis_vertex_1.degreeElevate(p_tilde_2-1,1);
+                            basis_vertex_1.degreeElevate(p_tilde_1-1,0);
+                            basis_vertex_1.degreeElevate(p_tilde_2-1,1);
 
                             //index_t r = m_optionList.getInt("discreteRegularity");
                             //if (r > 1)
