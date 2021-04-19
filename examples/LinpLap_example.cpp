@@ -1,11 +1,11 @@
 /** @file poisson_example.cpp
-brief Tutorial on how to use G+Smo to solve the Poisson equation,
-see the \ref PoissonTutorial
+brief Tutorial on how to use G+Smo to solve the p-Laplace equation,
+specififcally -Div(|u| ^{p-2} \nabla u) + \lambda |u|^{\alpha} u = f
 This file is part of the G+Smo library.
 This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at http://mozilla.org/MPL/2.0/.
-Author(s):
+Author(s): Stefan Takacs, Stefan Tyoler
 */
 
 //! [Include namespace]
@@ -42,6 +42,9 @@ int main(int argc, char* argv[])
 	real_t tau_max = 1;
 	index_t subdiv = 1;
 	index_t bc = 1;
+  real_t lambda = 0;
+  real_t alpha = p-2; //default Eigenvalue problem (if f=0)
+  real_t gamma = 1;//l - 2. / p + 0.01;
 	bool prec = false;
 	gsCmdLine cmd("Linearized p-Laplace example");
 
@@ -63,13 +66,14 @@ int main(int argc, char* argv[])
 	cmd.addSwitch("", "prec", "Preconditioning switch", prec);
 	cmd.addReal("", "epsR", "regularizing parameter", epsR);
 	cmd.addInt("", "bc", "Type of Boundary conditions on all boundaries", bc);
+  cmd.addReal("","lambda","Parameter for lambda",lambda);
+  cmd.addReal("","alpha","Parameter for alpha",alpha);
+  cmd.addReal("","gamma","Parameter for gamma",gamma);
 	try { cmd.getValues(argc, argv); }
 	catch (int rv) { return rv; }
 
 	real_t eps_ = eps;
 	real_t p_ = p;
-	real_t ip = 1.8;
-	real_t ieps = 1;
 
 	gsInfo << "Printing command line arguments:\n"
 		<< "eps               = " << eps << "\n"
@@ -118,36 +122,36 @@ int main(int argc, char* argv[])
 
 	//! [Function data]
 
-	double gamma = 2;
-	int l = 3;
-	double lambda = 2.2;//l - 2. / p + 0.01;
+	double omega = 2;
+	int l = 2;
 
 						// Define source function
-	gsFunctionExpr<> f1("-(2*" + std::to_string(lambda) + "^2*(0.5+(x-1)*x+(y-1)*y)^(" + std::to_string(lambda) + "/2)*(" + std::to_string(eps*eps) + "+" + std::to_string(lambda) + "^2*(0.5+(x-1)*x+(y-1)*y)^(" + std::to_string(lambda) + "-1))^(" + std::to_string(p) + "/2)*(2*" + std::to_string(lambda) + "*(2+" + std::to_string(lambda) + "*(" + std::to_string(p) + "-1)-" + std::to_string(p) + ")*(0.5+(x-1)*x+(y-1)*y)^(" + std::to_string(lambda) + ")+" + std::to_string(eps*eps) + "*(1+2*(x-1)*x+2*(y-1)*y)))/(2*" + std::to_string(lambda) + "^2*(0.5+(x-1)*x+(y-1)*y)^(" + std::to_string(lambda) + ")+" + std::to_string(eps*eps) + "*(1+2*(x-1)*x+2*(y-1)*y))^2", 2);
+	gsFunctionExpr<> f1("-((" + std::to_string(gamma) + "^2*(x^2 + y^2)^(" + std::to_string(gamma) + "/2)*(" + std::to_string(eps) + "^2 + " + std::to_string(gamma) + "^2*(x^2 + y^2)^(-1 + " + std::to_string(gamma) + "))^(" + std::to_string(p) + "/2)*(" + std::to_string(eps) + "^2*(x^2 + y^2) + " + std::to_string(gamma) + "*(2 + " + std::to_string(gamma) + "*(-1 + " + std::to_string(p) + ") - " + std::to_string(p) + ")*(x^2 + y^2)^" + std::to_string(gamma) + "))/(" + std::to_string(eps) + "^2*(x^2 + y^2) + " + std::to_string(gamma) + "^2*(x^2 + y^2)^" + std::to_string(gamma) + ")^2)", 2);
 	//gsFunctionExpr<> f1("-4*(" + std::to_string(eps*eps) + "+4*(x^2+y^2))^((" + std::to_string(p) + "-4)/2)*(" + std::to_string(eps*eps) + "+2*" + std::to_string(p) + "*(x^2+y^2))", 2);
-	gsFunctionExpr<> f2("2*" + std::to_string(gamma) + "^2*pi^2*(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*pi^2*cos(" + std::to_string(gamma) + "*pi*(x+y))^2)^((" + std::to_string(p) + "-4)/2)*(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*(" + std::to_string(p) + "-1)*pi^2*cos(" + std::to_string(gamma) + "*pi*(x+y))^2)*sin(" + std::to_string(gamma) + "*pi*(x+y))", 2);
-	gsFunctionExpr<> f3("8*pi^2*(" + std::to_string(eps*eps) + "+2*pi^2+pi^2*(-(" + std::to_string(p) + "-2)*cos(4*pi*y)-cos(4*pi*x)*(" + std::to_string(p) + "-2+2*(" + std::to_string(p) + "-1)*cos(4*pi*y))))*(" + std::to_string(eps*eps) + "+2*pi^2-pi^2*(cos(4*pi*(x-y))+cos(4*pi*(x+y))))^((" + std::to_string(p) + "-4)/2)*(sin(2*pi*x)*sin(2*pi*y))", 2);
-	gsFunctionExpr<> f4("(" + std::to_string(eps*eps) + "+cos(x)^2)^(" + std::to_string(p) + "/2-2)*(" + std::to_string(eps*eps) + "+(" + std::to_string(p) + "-1)*cos(x)^2)*sin(x)", 2);
+	gsFunctionExpr<> f2("2*" + std::to_string(omega) + "^2*pi^2*(" + std::to_string(eps*eps) + "+2*" + std::to_string(omega) + "^2*pi^2*cos(" + std::to_string(omega) + "*pi*(x+y))^2)^((" + std::to_string(p) + "-4)/2)*(" + std::to_string(eps*eps) + "+2*" + std::to_string(omega) + "^2*(" + std::to_string(p) + "-1)*pi^2*cos(" + std::to_string(omega) + "*pi*(x+y))^2)*sin(" + std::to_string(omega) + "*pi*(x+y))+ " + std::to_string(lambda) + "*abs(sin(" + std::to_string(omega) + "*pi*(x+y)))^" + std::to_string(alpha) +"*sin(" + std::to_string(omega) + "*pi*(x+y))", 2);
+	gsFunctionExpr<> f3("8*pi^2*(" + std::to_string(eps*eps) + "+2*pi^2+pi^2*(-(" + std::to_string(p) + "-2)*cos(4*pi*y)-cos(4*pi*x)*(" + std::to_string(p) + "-2+2*(" + std::to_string(p) + "-1)*cos(4*pi*y))))*(" + std::to_string(eps*eps) + "+2*pi^2-pi^2*(cos(4*pi*(x-y))+cos(4*pi*(x+y))))^((" + std::to_string(p) + "-4)/2)*(sin(2*pi*x)*sin(2*pi*y))+" + std::to_string(lambda) + "*abs(sin(2*pi*x)*sin(2*pi*y))^" + std::to_string(alpha) +"*sin(2*pi*x)*sin(2*pi*y)", 2);
+	gsFunctionExpr<> f4("(" + std::to_string(eps*eps) + "+cos(x)^2)^(" + std::to_string(p) + "/2-2)*(" + std::to_string(eps*eps) + "+(" + std::to_string(p) + "-1)*cos(x)^2)*sin(x) + " + std::to_string(lambda) + "* abs(sin(x))^" + std::to_string(alpha) +"*sin(x)", 2);
 	gsFunctionExpr<> f5("1", 2);
 
 	// Define exact solution (optional)
-	gsFunctionExpr<> u1("((x-0.5)^2+(y-0.5)^2)^(" + std::to_string(lambda) + "/2)", 2);
-	gsFunctionExpr<> u2("sin(" + std::to_string(gamma) + "*pi*(x+y))", 2);
+	gsFunctionExpr<> u1("(x^2+y^2)^(" + std::to_string(gamma) + "/2)", 2);
+	gsFunctionExpr<> u2("sin(" + std::to_string(omega) + "*pi*(x+y))", 2);
 	gsFunctionExpr<> u3("sin(2*pi*x)*sin(2*pi*y)", 2);
 	gsFunctionExpr<> u4("sin(x)", 2);
 
-	gsFunctionExpr<> u2_derEast(std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*(1+y))", 2);
-	gsFunctionExpr<> u2_derWest("-" + std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*y)", 2);
-	gsFunctionExpr<> u2_derNorth(std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*(x+1))", 2);
-	gsFunctionExpr<> u2_derSouth("-" + std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*x)", 2);
+	gsFunctionExpr<> u2_derEast("(" + std::to_string(eps*eps) + "+2*cos(" + std::to_string(omega) + "*pi*(x+y))^2*" + std::to_string(omega) + "^2*pi^2)^((" + std::to_string(p) + "-2)/2)*(" + std::to_string(omega) + "*pi*cos(pi*" + std::to_string(omega) + "*(x+y)))", 2);
+	gsFunctionExpr<> u2_derWest("(" + std::to_string(eps*eps) + "+2*cos(" + std::to_string(omega) + "*pi*(x+y))^2*" + std::to_string(omega) + "^2*pi^2)^((" + std::to_string(p) + "-2)/2)*(-" + std::to_string(omega) + "*pi*cos(pi*" + std::to_string(omega) + "*(x+y)))", 2);
+	gsFunctionExpr<> u2_derNorth("(" + std::to_string(eps*eps) + "+2*cos(" + std::to_string(omega) + "*pi*(x+y))^2*" + std::to_string(omega) + "^2*pi^2)^((" + std::to_string(p) + "-2)/2)*(" + std::to_string(omega) + "*pi*cos(pi*" + std::to_string(omega) + "*(x+y)))", 2);
+	gsFunctionExpr<> u2_derSouth("(" + std::to_string(eps*eps) + "+2*cos(" + std::to_string(omega) + "*pi*(x+y))^2*" + std::to_string(omega) + "^2*pi^2)^((" + std::to_string(p) + "-2)/2)*(-" + std::to_string(omega) + "*pi*cos(pi*" + std::to_string(omega) + "*(x+y)))", 2);
 
 	gsFunctionExpr<> f = f2;
 	gsFunctionExpr<> u = u2;
+ 
 	gsFunctionExpr<> B("(" + u.expression() + ")*exp(x*(1-x)*y*(1-y))", 2);
 	gsFunctionExpr<> Z("0", 2);
 	gsFunctionExpr<> L("x+y", 2);
 
-	gsFunctionExpr<> u0 = L;
+	gsFunctionExpr<> u0 = Z;
 
 
 	// Print out source function and solution
@@ -161,7 +165,7 @@ int main(int argc, char* argv[])
 	// Define Geometry, must be a gsMultiPatch object
 	//gsMultiPatch<> patches;
 
-	gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquareDeg(k));
+	gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(1,0,0));
 
 	//! [Geometry data]
 
@@ -183,15 +187,15 @@ int main(int argc, char* argv[])
 	else
 	{
 		bcInfo.addCondition(0, boundary::west, condition_type::neumann, &u2_derWest);
-		bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &u);
-		bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &u);
-		bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &u);
+		bcInfo.addCondition(0, boundary::east, condition_type::neumann, &u2_derEast);
+		bcInfo.addCondition(0, boundary::north, condition_type::neumann, &u2_derNorth);
+		bcInfo.addCondition(0, boundary::south, condition_type::neumann, &u2_derSouth);
 		//bcInfo.addCornerValue(boundary::southwest, 0);
 
 		hbcInfo.addCondition(0, boundary::west, condition_type::neumann, &Z);
 		hbcInfo.addCondition(0, boundary::east, condition_type::neumann, &Z);
 		hbcInfo.addCondition(0, boundary::north, condition_type::neumann, &Z);
-		hbcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &Z);
+		hbcInfo.addCondition(0, boundary::south, condition_type::neumann, &Z);
 		//hbcInfo.addCornerValue(boundary::southwest,0);
 	}
 	//! [Boundary conditions]
@@ -206,36 +210,18 @@ int main(int argc, char* argv[])
 	{
 		refine_basis.uniformRefine();
 	}
+  refine_basis[0].setDegreePreservingMultiplicity(k);
   refine_basis.reduceContinuity(reduceCont);
-
-	////////////// Setup solver and solve //////////////
-	// Initialize Solver
-	// Setup method for handling Dirichlet boundaries, options:
-	//
-	// * elimination: Eliminate the Dirichlet DoFs from the linear system.
-	//
-	// * nitsche: Keep the Dirichlet DoFs and enforce the boundary
-	//
-	// condition weakly by a penalty term.
-	// Setup method for handling patch interfaces, options:
-	//
-	// * glue:Glue patches together by merging DoFs across an interface into one.
-	//   This only works for conforming interfaces
-	//
-	// * dg: Use discontinuous Galerkin-like coupling between adjacent patches.
-	//       (This option might not be available yet)
-
-	//not used
 
 	//int n = refine_basis.size();
 
-	gsMatrix<real_t> w_ = projectL2(patch, refine_basis, L);
+	gsMatrix<real_t> w_ = projectL2(patch, refine_basis, u0);
 	//gsMatrix<real_t> w_ = gsMatrix<real_t>::Zero(n, 1);
 
 	if (str == 2) { hbcInfo = bcInfo; }
 
-	gsLinpLapPde<real_t> pde(patch, bcInfo, f, eps, p, w_);
-	gsLinpLapPde<real_t> pde_(patch, hbcInfo, f, eps_, p, w_);
+	gsLinpLapPde<real_t> pde(patch, bcInfo, f, eps, p, w_, lambda, alpha);
+	gsLinpLapPde<real_t> pde_(patch, hbcInfo, f, eps_, p, w_, lambda, alpha);
 
 	gsLinpLapAssembler<real_t> A;
 	A.initialize(pde, epsR, refine_basis, opt, subdiv);
@@ -267,16 +253,10 @@ int main(int argc, char* argv[])
 	//gsField<> solnew;
 
 	gsInfo << "eps = " << eps << " , p = " << p << " , k = " << k << " , lambda = " << lambda << "\n";
-	gsInfo << "Dofs      & CPU time & L_p error& L_p rate & F error  & F rate   & N_max    & _p       & _eps     & ||rh||_{\ell^2} \n";
+	gsInfo << "Dofs      & CPU time & L_p error& L_p rate & F error  & F rate   & N_max     & ||rh||_{\ell^2} \n";
 
 	for (int i = startrefine; i < num; i++)
 	{
-		if (prec)
-		{
-			p_ = math::max(p, ip - (i - startrefine)*(ip - p) / (5 - startrefine));
-			eps_ = math::max(eps, ieps * std::pow( eps/ieps, real_t(i - startrefine)/(5 - startrefine) )); //reach the true parameter after 5 iterations
-		}
-
 		//transfer recent solution to finer mesh. with elimination it only transfers free DoFs and not Dirichlet values.
 		refine_basis.uniformRefine_withTransfer(transfer, bcInfo, opt2);
 
@@ -299,18 +279,15 @@ int main(int argc, char* argv[])
 		pde.w = transfer * pde.w; //update w
 		pde.p = p_;
 		pde.eps = eps_;
-		pde_.w = pde.w;
-		pde_.p = p_;
-		pde_.eps = eps_;
 
 		A.initialize(pde, epsR, refine_basis, opt, subdiv);
-		rA.initialize(pde_, epsR, refine_basis, opt, subdiv, prec);
+		//rA.initialize(pde_, epsR, refine_basis, opt, subdiv, prec);
 
 		A.assemble();
-		rA.assemble();
+		//rA.assemble();
 
 		Kh = A.matrix();
-		Kh_ = rA.matrix();
+		//Kh_ = rA.matrix();
 
 		fh = A.rhs();
 		//fh_ = rA.rhs();
@@ -334,7 +311,17 @@ int main(int argc, char* argv[])
 
 		do
 		{
-			gsSparseSolver<>::LU solver(Kh_);
+      /*
+      gsConjugateGradient<> solver1(Kh);
+      solver1.setCalcEigenvalues(true);
+      dummy=gsMatrix<real_t>::Zero(fh.size(), 1);
+      solver1.solve(fh, dummy);
+      double cg_cond = solver1.getConditionNumber();
+   
+      gsInfo<<cg_cond<<"\n";
+      */
+
+		  gsSparseSolver<>::LU solver(Kh);
 			step = solver.solve(-rh);
 
 			//gsInfo << (rh.transpose()*step).value()/(rh.norm()*step.norm()) << "\n";
@@ -357,13 +344,13 @@ int main(int argc, char* argv[])
 			pde_.w = pde.w;
 
 			A.initialize(pde, epsR, refine_basis, opt);
-			rA.initialize(pde_, epsR, refine_basis, opt, subdiv, prec);
+			//rA.initialize(pde_, epsR, refine_basis, opt, subdiv, prec);
 
 			A.assemble();
-			rA.assemble();
+			//rA.assemble();
 
 			Kh = A.matrix(); //compute new lhs matrix to compute residuum of the nonlinear problem --> Kh(uh)*uh-fh
-			Kh_ = rA.matrix();
+			//Kh_ = rA.matrix();
 
 			fh = A.rhs();
 			//fh_ = rA.rhs();
@@ -420,8 +407,8 @@ int main(int argc, char* argv[])
           << std::setprecision(2) << std::scientific << std::setw(8) << e_F << " & "
           << "   -     & "
           << std::setw(8) << iter << " & " 
-          << std::setprecision(2) << std::fixed << std::setw(8) << p_ << " & "
-          << std::setprecision(2) << std::fixed << std::setw(8) << eps_ << " & " 
+          //<< std::setprecision(2) << std::fixed << std::setw(8) << p_ << " & "
+          //<< std::setprecision(2) << std::fixed << std::setw(8) << eps_ << " & " 
           << std::setprecision(2) << std::scientific << std::setw(8) << math::sqrt((rh.transpose()*rh).value()) << "\n";
 		}
 		else
@@ -435,8 +422,8 @@ int main(int argc, char* argv[])
           << std::setprecision(2) << std::scientific << std::setw(8) << e_F << " &"
           << std::setprecision(4) << std::fixed << std::setw(9) << F_rate << " & "
           << std::setw(8) << iter << " & "
-          << std::setprecision(2) << std::fixed << std::setw(8) << p_ << " & "
-          << std::setprecision(2) << std::fixed << std::setw(8) << eps_ << " & " 
+          //<< std::setprecision(2) << std::fixed << std::setw(8) << p_ << " & "
+          //<< std::setprecision(2) << std::fixed << std::setw(8) << eps_ << " & " 
           << std::setprecision(2) << std::scientific << std::setw(8) << math::sqrt((rh.transpose()*rh).value()) << "\n";
 		}
 	}

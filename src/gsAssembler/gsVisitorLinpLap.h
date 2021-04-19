@@ -112,8 +112,7 @@ namespace gismo
 					gsMatrix<T> wGrad = physGrad * w_;
 					sum += weight * (wGrad.transpose() * wGrad).value();
 				}
-				//gsInfo << sum << "\n";
-				if (sum < 0.5) //good value for the gradient?
+				if (sum < 0.1*h*h) //good value for the gradient?
 				{
 					eps = math::max(eps_, eps);
 					//gsInfo<<"yes \n";
@@ -134,17 +133,11 @@ namespace gismo
 
 				eps = pde_ptr->eps;
 
-				if (math::sqrt((wGrad.transpose() * wGrad).value())<0.1)  //pointwise regularization
-				{
-					//eps=0.1;
-				}
-
 				T a = pow(eps * eps + (wGrad.transpose() * wGrad).value(), (pde_ptr->p - 2) / 2);
-				//if(prec){a=math::max(a,math::pow(0.05,pde_ptr->p-2));}
 
 				localJ += weight * (pow(eps * eps + (wGrad.transpose() * wGrad).value(), (pde_ptr->p) / 2) / (pde_ptr->p) - (rhsVals.col(k).transpose()*wVal).value());
 				localRhs.noalias() += weight * (bVals.col(k) * rhsVals.col(k).transpose());
-				localMat.noalias() += weight * a * (physGrad.transpose() * physGrad);
+				localMat.noalias() += weight * (a * (physGrad.transpose() * physGrad) + pde_ptr->lambda * pow(wVal.value()*wVal.value(),pde_ptr->alpha/2) * bVals.col(k) * bVals.col(k).transpose());
 			}
 		}
 

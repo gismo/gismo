@@ -36,6 +36,9 @@ int main(int argc, char* argv[])
     index_t subdiv = 1;
     index_t bc = 1;
     index_t startrefine = 1;
+    real_t lambda = 0;
+    real_t alpha = p-2; //default Eigenvalue problem (if f=0)
+    real_t gamma = 1;
     std::string solver_type("lu");
 
     gsCmdLine cmd("Linearized p-Laplace example");
@@ -54,6 +57,9 @@ int main(int argc, char* argv[])
     cmd.addSwitch("", "fin", "After computation, wait until button is pressed", require_fin);
     cmd.addInt("", "bc", "Type of Boundary conditions on all boundaries", bc);
     cmd.addInt("", "startrefine", "Number of refinement steps before entering nested iteration", startrefine);
+    cmd.addReal("","lambda","Parameter for lambda",lambda);
+    cmd.addReal("","alpha","Parameter for alpha",alpha);
+    cmd.addReal("","gamma","Parameter for gamma",gamma);
     cmd.addString("", "solver", "Solver to be used (lu, cg, cg-mg, gmres, gmres-mg)", solver_type);
     try { cmd.getValues(argc, argv); }
     catch (int rv) { return rv; }
@@ -104,9 +110,8 @@ int main(int argc, char* argv[])
 
     //! [Function data]
 
-    real_t gamma = 2;
+    real_t omega = 2;
     index_t l = 3;
-    real_t lambda = 2.2;//l - 2. / p + 0.01;
 
     gsFunctionExpr<> u; // Exact solution
     gsFunctionExpr<> u_derEast;
@@ -117,27 +122,32 @@ int main(int argc, char* argv[])
 
     if (problemId == 1)
     {
-        f = gsFunctionExpr<>("-(2*" + std::to_string(lambda) + "^2*(0.5+(x-1)*x+(y-1)*y)^(" + std::to_string(lambda) + "/2)*(" + std::to_string(eps*eps) + "+" + std::to_string(lambda) + "^2*(0.5+(x-1)*x+(y-1)*y)^(" + std::to_string(lambda) + "-1))^(" + std::to_string(p) + "/2)*(2*" + std::to_string(lambda) + "*(2+" + std::to_string(lambda) + "*(" + std::to_string(p) + "-1)-" + std::to_string(p) + ")*(0.5+(x-1)*x+(y-1)*y)^(" + std::to_string(lambda) + ")+" + std::to_string(eps*eps) + "*(1+2*(x-1)*x+2*(y-1)*y)))/(2*" + std::to_string(lambda) + "^2*(0.5+(x-1)*x+(y-1)*y)^(" + std::to_string(lambda) + ")+" + std::to_string(eps*eps) + "*(1+2*(x-1)*x+2*(y-1)*y))^2", 2);
-        u = gsFunctionExpr<>("((x-0.5)^2+(y-0.5)^2)^(" + std::to_string(lambda) + "/2)", 2);
+        f = 	gsFunctionExpr<>("-((" + std::to_string(gamma) + "^2*(x^2 + y^2)^(" + std::to_string(gamma) + "/2)*(" + std::to_string(eps) + "^2 + " + std::to_string(gamma) + "^2*(x^2 + y^2)^(-1 + " + std::to_string(gamma) + "))^(" + std::to_string(p) + "/2)*(" + std::to_string(eps) + "^2*(x^2 + y^2) + " + std::to_string(gamma) + "*(2 + " + std::to_string(gamma) + "*(-1 + " + std::to_string(p) + ") - " + std::to_string(p) + ")*(x^2 + y^2)^" + std::to_string(gamma) + "))/(" + std::to_string(eps) + "^2*(x^2 + y^2) + " + std::to_string(gamma) + "^2*(x^2 + y^2)^" + std::to_string(gamma) + ")^2)", 2);
+        u = gsFunctionExpr<>("(x^2+y^2)^(" + std::to_string(gamma) + "/2)", 2);
 
     }
     else if (problemId == 2)
     {
-        f = gsFunctionExpr<>("2*" + std::to_string(gamma) + "^2*pi^2*(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*pi^2*cos(" + std::to_string(gamma) + "*pi*(x+y))^2)^((" + std::to_string(p) + "-4)/2)*(" + std::to_string(eps*eps) + "+2*" + std::to_string(gamma) + "^2*(" + std::to_string(p) + "-1)*pi^2*cos(" + std::to_string(gamma) + "*pi*(x+y))^2)*sin(" + std::to_string(gamma) + "*pi*(x+y))", 2);
-        u = gsFunctionExpr<>("sin(" + std::to_string(gamma) + "*pi*(x+y))", 2);
-        u_derEast = gsFunctionExpr<>(std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*(1+y))", 2);
-        u_derWest = gsFunctionExpr<>("-" + std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*y)", 2);
-        u_derNorth = gsFunctionExpr<>(std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*(x+1))", 2);
-        u_derSouth = gsFunctionExpr<>("-" + std::to_string(gamma) + "*pi*cos(pi*" + std::to_string(gamma) + "*x)", 2);
+        f = gsFunctionExpr<>("2*" + std::to_string(omega) + "^2*pi^2*(" + std::to_string(eps*eps) + "+2*" + std::to_string(omega) + "^2*pi^2*cos(" + std::to_string(omega) + "*pi*(x+y))^2)^((" + std::to_string(p) + "-4)/2)*(" + std::to_string(eps*eps) + "+2*" + std::to_string(omega) + "^2*(" + std::to_string(p) + "-1)*pi^2*cos(" + std::to_string(omega) + "*pi*(x+y))^2)*sin(" + std::to_string(omega) + "*pi*(x+y))+ " + std::to_string(lambda) + "*abs(sin(" + std::to_string(omega) + "*pi*(x+y)))^" + std::to_string(alpha) +"*sin(" + std::to_string(omega) + "*pi*(x+y))", 2);
+        
+        u =	gsFunctionExpr<>("sin(" + std::to_string(omega) + "*pi*(x+y))", 2);
+        
+        u_derEast = gsFunctionExpr<>("(" + std::to_string(eps*eps) + "+2*cos(" + std::to_string(omega) + "*pi*(x+y))^2*" + std::to_string(omega) + "^2*pi^2)^((" + std::to_string(p) + "-2)/2)*(" + std::to_string(omega) + "*pi*cos(pi*" + std::to_string(omega) + "*(x+y)))", 2);
+        u_derWest = gsFunctionExpr<>("(" + std::to_string(eps*eps) + "+2*cos(" + std::to_string(omega) + "*pi*(x+y))^2*" + std::to_string(omega) + "^2*pi^2)^((" + std::to_string(p) + "-2)/2)*(-" + std::to_string(omega) + "*pi*cos(pi*" + std::to_string(omega) + "*(x+y)))", 2);
+        u_derNorth = gsFunctionExpr<>("(" + std::to_string(eps*eps) + "+2*cos(" + std::to_string(omega) + "*pi*(x+y))^2*" + std::to_string(omega) + "^2*pi^2)^((" + std::to_string(p) + "-2)/2)*(" + std::to_string(omega) + "*pi*cos(pi*" + std::to_string(omega) + "*(x+y)))", 2);
+        u_derSouth = gsFunctionExpr<>("(" + std::to_string(eps*eps) + "+2*cos(" + std::to_string(omega) + "*pi*(x+y))^2*" + std::to_string(omega) + "^2*pi^2)^((" + std::to_string(p) + "-2)/2)*(-" + std::to_string(omega) + "*pi*cos(pi*" + std::to_string(omega) + "*(x+y)))", 2);
+        
     }
     else if (problemId == 3)
     {
-        f = gsFunctionExpr<>("8*pi^2*(" + std::to_string(eps*eps) + "+2*pi^2+pi^2*(-(" + std::to_string(p) + "-2)*cos(4*pi*y)-cos(4*pi*x)*(" + std::to_string(p) + "-2+2*(" + std::to_string(p) + "-1)*cos(4*pi*y))))*(" + std::to_string(eps*eps) + "+2*pi^2-pi^2*(cos(4*pi*(x-y))+cos(4*pi*(x+y))))^((" + std::to_string(p) + "-4)/2)*(sin(2*pi*x)*sin(2*pi*y))", 2);
+        f = gsFunctionExpr<>("8*pi^2*(" + std::to_string(eps*eps) + "+2*pi^2+pi^2*(-(" + std::to_string(p) + "-2)*cos(4*pi*y)-cos(4*pi*x)*(" + std::to_string(p) + "-2+2*(" + std::to_string(p) + "-1)*cos(4*pi*y))))*(" + std::to_string(eps*eps) + "+2*pi^2-pi^2*(cos(4*pi*(x-y))+cos(4*pi*(x+y))))^((" + std::to_string(p) + "-4)/2)*(sin(2*pi*x)*sin(2*pi*y))+" + std::to_string(lambda) + "*abs(sin(2*pi*x)*sin(2*pi*y))^" + std::to_string(alpha) +"*sin(2*pi*x)*sin(2*pi*y)", 2);
+        
         u = gsFunctionExpr<>("sin(2*pi*x)*sin(2*pi*y)", 2);
     }
     else if (problemId == 4)
     {
-        f = gsFunctionExpr<>("(" + std::to_string(eps*eps) + "+cos(x)^2)^(" + std::to_string(p) + "/2-2)*(" + std::to_string(eps*eps) + "+(" + std::to_string(p) + "-1)*cos(x)^2)*sin(x)", 2);
+        f = gsFunctionExpr<>("(" + std::to_string(eps*eps) + "+cos(x)^2)^(" + std::to_string(p) + "/2-2)*(" + std::to_string(eps*eps) + "+(" + std::to_string(p) + "-1)*cos(x)^2)*sin(x) + " + std::to_string(lambda) + "* abs(sin(x))^" + std::to_string(alpha) +"*sin(x)", 2);
+        
         u = gsFunctionExpr<>("sin(x)", 2);
     }
     else if (problemId == 5)
@@ -151,7 +161,11 @@ int main(int argc, char* argv[])
     }
 
     // Initial guess
-    gsFunctionExpr<> u0("x+y",2);
+    gsFunctionExpr<> L("x+y",2);
+   	gsFunctionExpr<> B("(" + u.expression() + ")*exp(x*(1-x)*y*(1-y))", 2);
+	  gsFunctionExpr<> Z("0", 2);
+     
+     gsFunctionExpr<> u0 = Z;
 
     // Print out source function and solution
     gsInfo << "Source function " << f << "\n";
@@ -161,7 +175,7 @@ int main(int argc, char* argv[])
 
 
     //! [Geometry data]
-    gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquareDeg(k));
+   	gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(1,0,0));
     //! [Geometry data]
 
     //! [Boundary conditions]
@@ -176,9 +190,9 @@ int main(int argc, char* argv[])
     else
     {
           bcInfo.addCondition(0, boundary::west, condition_type::neumann, &u_derWest);
-          bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &u);
-          bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &u);
-          bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &u);
+          bcInfo.addCondition(0, boundary::east, condition_type::neumann, &u_derEast);
+          bcInfo.addCondition(0, boundary::north, condition_type::neumann, &u_derNorth);
+          bcInfo.addCondition(0, boundary::south, condition_type::neumann, &u_derSouth);
     }
     //! [Boundary conditions]
 
@@ -188,8 +202,9 @@ int main(int argc, char* argv[])
     gsMultiBasis<> basis(patch);
     for (index_t i = 0; i < startrefine; i++)
           basis.uniformRefine();
+    basis[0].setDegreePreservingMultiplicity(k);
     basis.reduceContinuity(reduceCont);
-
+    
     // Setup for solving
     gsMatrix<real_t> w = projectL2(patch, basis, u0);  // initial guess on coarsest grid
     gsLinpLapPde<real_t> pde(patch, bcInfo, f, eps, p, w);

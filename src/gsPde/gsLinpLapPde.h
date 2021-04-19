@@ -25,6 +25,8 @@ namespace gismo
 
 	This class describes a linearized Laplace PDE, with an arbitrary right-hand side
 	function.
+ 
+  - Div(|\nabla w|^{p-2} \nabla u) + \lambda* |w|^{\alpha} * u = f 
 
 	\ingroup Pde
 	\ingroup pdeclass
@@ -46,8 +48,10 @@ namespace gismo
 			const T &eps_,
 			const T &p_,
 			const gsMatrix<T> &w_,
+      const T &lambda_ = 0,
+      const T &alpha_ = 0,
 			const gsFunction<T>           * = NULL)
-			: gsPde<T>(domain, bc), eps(eps_), p(p_), w(w_), m_rhs(rhs)
+			: gsPde<T>(domain, bc), eps(eps_), p(p_), w(w_), lambda(lambda_), alpha(alpha_), m_rhs(rhs)
 		{
 			m_unknownDim.setOnes(1);
 		}
@@ -71,7 +75,7 @@ namespace gismo
 		/// Prints the object as a string.
 		virtual std::ostream &print(std::ostream &os) const
 		{
-			os << "Poisson's equation  -\u0394u = f ,  with:\n";
+			os << "Linearized p-Laplace equation  -\u0394u = f ,  with:\n";
 			os << "Source function f= " << m_rhs << ".\n";
 			return os;
 		}
@@ -90,6 +94,8 @@ namespace gismo
 		}
 
 	public:
+    T lambda;
+    T alpha;
 		T eps;
 		T p;
 		gsMatrix<T> w;

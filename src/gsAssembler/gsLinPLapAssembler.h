@@ -14,6 +14,7 @@ Author(s):
 
 #include <gsAssembler/gsVisitorLinpLap.h> // Stiffness volume integrals
 #include <gsAssembler/gsVisitorNeumannLinpLap.h> 
+#include <gsAssembler/gsVisitorNeumann.h> 
 #include <gsAssembler/gsVisitorNitscheLinpLap.h> // Nitsche boundary integrals
 #include <gsAssembler/gsVisitorDg.h>      // DG interface integrals
 
@@ -270,7 +271,7 @@ namespace gismo
 		push1<gsVisitorLinpLap<T> >(gsVisitorLinpLap<T>(*m_pde_ptr, eps_, subdiv, prec));
 
 		// Enforce Neumann boundary conditions
-		push1<gsVisitorNeumannLinpLap<T>>(m_pde_ptr->bc().neumannSides());
+		Base::template push<gsVisitorNeumann<T> >(m_pde_ptr->bc().neumannSides());
 
 		switch (m_options.getInt("DirichletStrategy"))
 		{
