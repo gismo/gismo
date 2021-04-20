@@ -184,7 +184,7 @@ int main(int argc, char* argv[])
 		hbcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &Z);
 		hbcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &Z);
 	}
-	else
+	else if (bc==2)
 	{
 		bcInfo.addCondition(0, boundary::west, condition_type::neumann, &u2_derWest);
 		bcInfo.addCondition(0, boundary::east, condition_type::neumann, &u2_derEast);
@@ -198,6 +198,20 @@ int main(int argc, char* argv[])
 		hbcInfo.addCondition(0, boundary::south, condition_type::neumann, &Z);
 		//hbcInfo.addCornerValue(boundary::southwest,0);
 	}
+  else
+  {
+     bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, &u2);
+		bcInfo.addCondition(0, boundary::east, condition_type::neumann, &u2_derEast);
+		bcInfo.addCondition(0, boundary::north, condition_type::neumann, &u2_derNorth);
+		bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &u2);
+		//bcInfo.addCornerValue(boundary::southwest, 0);
+
+		hbcInfo.addCondition(0, boundary::west, condition_type::dirichlet, &Z);
+		hbcInfo.addCondition(0, boundary::east, condition_type::neumann, &Z);
+		hbcInfo.addCondition(0, boundary::north, condition_type::neumann, &Z);
+		hbcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &Z);
+		//hbcInfo.addCornerValue(boundary::southwest,0);
+  }
 	//! [Boundary conditions]
 
 	//! [Refinement]
