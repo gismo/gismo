@@ -117,10 +117,10 @@ void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::setG1BasisEdge(gsMultiPatch
 
     gsMultiPatch<> g1EdgeBasis, g1EdgeBasis2;
     index_t bfID_init = 3;
-    if (m_optionList.getSwitch("twoPatch"))
+    if (m_optionList.getSwitch("noVertex"))
         bfID_init = 0;
 
-    if (m_isBoundary && m_optionList.getSwitch("twoPatch"))
+    if (m_isBoundary && m_optionList.getSwitch("noVertex"))
         bfID_init = 2;
 
     for (index_t bfID = bfID_init; bfID < n_plus - bfID_init; bfID++) // first 3 and last 3 bf are eliminated
@@ -155,10 +155,10 @@ void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::setG1BasisEdge(gsMultiPatch
 
 
     bfID_init = 2;
-    if (m_optionList.getSwitch("twoPatch"))
+    if (m_optionList.getSwitch("noVertex"))
         bfID_init = 0;
 
-    if (m_isBoundary && m_optionList.getSwitch("twoPatch"))
+    if (m_isBoundary && m_optionList.getSwitch("noVertex"))
         bfID_init = 2;
 
     for (index_t bfID = bfID_init; bfID < n_minus-bfID_init; bfID++)  // first 2 and last 2 bf are eliminated

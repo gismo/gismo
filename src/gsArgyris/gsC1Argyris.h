@@ -204,7 +204,7 @@ public:
             // Assume that plus/minus space is the same as the inner space
             gsBSplineBasis<> basis_plus, basis_minus;
 
-            if (m_optionList.getSwitch("twoPatch"))
+            if (m_optionList.getSwitch("noVertex"))
             {
                 basis_plus = basis_1;
                 basis_minus = basis_1;
@@ -235,6 +235,9 @@ public:
 */
             //basis_plus = basis_1;
             //basis_minus = basis_1;
+
+            //basis_edge_1.reduceContinuity(1);
+            //gsInfo << "basis boundary: " << basis_edge_1 << "\n";
 
             m_bases[patch_1].setEdgeBasis(basis_edge_1, side_1);
 
@@ -274,10 +277,11 @@ public:
                     basis_vertex_1.reduceContinuity(r-1);
 */
 
+
                 m_bases[patch_1].setVertexBasis(basis_vertex_1, vertex_1);
                 m_bases[patch_1].setKindOfVertex(-1, vertex_1);
             }
-            else if (patchIndex.size() > 1 && !m_optionList.getSwitch("twoPatch"))
+            else if (patchIndex.size() > 1 && !m_optionList.getSwitch("noVertex"))
             {
                 gsMultiPatch<> temp_mp;
                 for (size_t j = 0; j < patchIndex.size(); j++)
@@ -301,13 +305,13 @@ public:
                         {
                             gsTensorBSplineBasis<d, T> basis_vertex_1 = dynamic_cast<gsTensorBSplineBasis<d, real_t> &>(multiBasis.basis(
                                     patch_1));
-
+/*
                             index_t p_tilde_1 = math::max(basis_vertex_1.degree(0) - 2, 2);
                             index_t p_tilde_2 = math::max(basis_vertex_1.degree(1) - 2, 2);
 
                             basis_vertex_1.degreeElevate(p_tilde_1 - 1, 0);
                             basis_vertex_1.degreeElevate(p_tilde_2 - 1, 1);
-
+*/
                             m_bases[patch_1].setVertexBasis(basis_vertex_1, vertex_1);
                             m_bases[patch_1].setKindOfVertex(0, vertex_1);
                         }
@@ -336,7 +340,7 @@ public:
                             //p_tilde_1 = m_mp.isBoundary(patch_1, side_0) ? 1 : p_tilde_1;
                             //p_tilde_1 = m_mp.isBoundary(patch_1, side_1) ? 1 : p_tilde_2;
 
-                            basis_vertex_1.degreeElevate(p_tilde_1-1,0);
+                            basis_vertex_1.degreeElevate(p_tilde_1-1,0); // Keep smoothness
                             basis_vertex_1.degreeElevate(p_tilde_2-1,1);
 
                             //index_t r = m_optionList.getInt("discreteRegularity");
@@ -404,8 +408,77 @@ public:
         {
             const patchSide & bit = m_mp.boundaries()[numBdy];
 
-            gsC1ArgyrisEdge<d, T> c1ArgyrisEdge(m_mp, m_bases, bit, numBdy, m_optionList);
-            c1ArgyrisEdge.saveBasisBoundary(m_system);
+            if (m_optionList.getSwitch("simplified"))
+            {
+                index_t np = bit.patch;
+                index_t dim_u = m_bases[np].getEdgeBasis(bit.side().index()).component(0).size();
+                index_t dim_v = m_bases[np].getEdgeBasis(bit.side().index()).component(1).size();
+
+                shift_row = 0; shift_col = 0;
+                for(index_t np_temp = 0; np_temp < np; ++np_temp) {
+                    shift_row += m_bases[np_temp].size_rows();
+                    shift_col += m_bases[np_temp].size_cols();
+                }
+                shift_row += m_bases[np].rowBegin(bit.side().index());
+                shift_col += m_bases[np].colBegin(bit.side().index());
+
+                index_t row_i = 0;
+
+                if (dim_u-5 > 0 && dim_v-5 > 0)
+                    switch (bit.side().index()) {
+                        case 1:
+                            for (index_t i = 0; i < 2; ++i) // u
+                                for (index_t j = 3; j < dim_v-3; ++j) // v
+                                {
+                                    m_system.insert(shift_row + row_i,shift_col + j*dim_u+i) = 1.0;
+                                    ++row_i;
+                                }
+                            m_system.insert(shift_row + row_i,shift_col + 2*dim_u+1) = 1.0;
+                            ++row_i;
+                            m_system.insert(shift_row + row_i,shift_col + (dim_v-3)*dim_u+1) = 1.0;
+                            break;
+                        case 2:
+                            for (index_t i = dim_u-1; i > dim_u-3; --i) // v
+                                for (index_t j = 3; j < dim_v-3; ++j) // u
+                                {
+                                    m_system.insert(shift_row + row_i,shift_col + j*dim_u+i) = 1.0;
+                                    ++row_i;
+                                }
+                            m_system.insert(shift_row + row_i,shift_col + 2*dim_u+dim_u-2) = 1.0;
+                            ++row_i;
+                            m_system.insert(shift_row + row_i,shift_col + (dim_v-3)*dim_u+dim_u-2) = 1.0;
+                            break;
+                        case 3:
+                            for (index_t j = 0; j < 2; ++j) // v
+                                for (index_t i = 3; i < dim_u-3; ++i) // u
+                                {
+                                    m_system.insert(shift_row + row_i,shift_col + j*dim_u+i) = 1.0;
+                                    ++row_i;
+                                }
+                            m_system.insert(shift_row + row_i,shift_col + 1*dim_u+2) = 1.0;
+                            ++row_i;
+                            m_system.insert(shift_row + row_i,shift_col + 1*dim_u+dim_u-3) = 1.0;
+                            break;
+                        case 4:
+                            for (index_t j = dim_v-1; j > dim_v-3; --j) // v
+                                for (index_t i = 3; i < dim_u-3; ++i) // u
+                                {
+                                    m_system.insert(shift_row + row_i,shift_col + j*dim_u+i) = 1.0;
+                                    ++row_i;
+                                }
+                            m_system.insert(shift_row + row_i,shift_col + (dim_v-2)*dim_u+2) = 1.0;
+                            ++row_i;
+                            m_system.insert(shift_row + row_i,shift_col + (dim_v-2)*dim_u+dim_u-3) = 1.0;
+                            break;
+                        default:
+                            gsInfo << "Wrong side index!\n";
+                }
+            }
+            else
+            {
+                gsC1ArgyrisEdge<d, T> c1ArgyrisEdge(m_mp, m_bases, bit, numBdy, m_optionList);
+                c1ArgyrisEdge.saveBasisBoundary(m_system);
+            }
         }
         // Compute Vertex Basis functions
         for (size_t numVer = 0; numVer < m_mp.vertices().size(); numVer++)
@@ -419,9 +492,62 @@ public:
                 vertIndex.push_back(allcornerLists[j].m_index);
             }
 
-            gsC1ArgyrisVertex<d, T> c1ArgyrisVertex(m_mp, m_bases, patchIndex, vertIndex, numVer, m_optionList);
-            c1ArgyrisVertex.saveBasisVertex(m_system);
+            if (patchIndex.size() == 1 && m_optionList.getSwitch("simplified"))
+            {
+                index_t np = patchIndex[0];
+                index_t dim_u = m_bases[np].getVertexBasis(vertIndex[0]).component(0).size();
+                index_t dim_v = m_bases[np].getVertexBasis(vertIndex[0]).component(1).size();
 
+                shift_row = 0, shift_col = 0;
+                for(index_t np_temp = 0; np_temp < np; ++np_temp) {
+                    shift_row += m_bases[np_temp].size_rows();
+                    shift_col += m_bases[np_temp].size_cols();
+                }
+                shift_row += m_bases[np].rowBegin(vertIndex[0]+4);
+                shift_col += m_bases[np].colBegin(vertIndex[0]+4);
+
+                switch (vertIndex[0]) {
+                    case 1:
+                        m_system.insert(shift_row + 0,shift_col + 1*dim_u+1) = 1.0; // interior
+                        m_system.insert(shift_row + 1,shift_col + 0*dim_u+0) = 1.0; // bdy
+                        m_system.insert(shift_row + 2,shift_col + 0*dim_u+1) = 1.0;
+                        m_system.insert(shift_row + 3,shift_col + 0*dim_u+2) = 1.0;
+                        m_system.insert(shift_row + 4,shift_col + 1*dim_u+0) = 1.0;
+                        m_system.insert(shift_row + 5,shift_col + 2*dim_u+0) = 1.0;
+                        break;
+                    case 2:
+                        m_system.insert(shift_row + 0,shift_col + 1*dim_u+dim_u-2) = 1.0; // interior
+                        m_system.insert(shift_row + 1,shift_col + 0*dim_u+dim_u-1) = 1.0; // bdy
+                        m_system.insert(shift_row + 2,shift_col + 0*dim_u+dim_u-2) = 1.0;
+                        m_system.insert(shift_row + 3,shift_col + 0*dim_u+dim_u-3) = 1.0;
+                        m_system.insert(shift_row + 4,shift_col + 1*dim_u+dim_u-1) = 1.0;
+                        m_system.insert(shift_row + 5,shift_col + 2*dim_u+dim_u-1) = 1.0;
+                        break;
+                    case 3:
+                        m_system.insert(shift_row + 0,shift_col + (dim_v-2)*dim_u+1) = 1.0; // interior
+                        m_system.insert(shift_row + 1,shift_col + (dim_v-1)*dim_u+0) = 1.0; // bdy
+                        m_system.insert(shift_row + 2,shift_col + (dim_v-1)*dim_u+1) = 1.0;
+                        m_system.insert(shift_row + 3,shift_col + (dim_v-1)*dim_u+2) = 1.0;
+                        m_system.insert(shift_row + 4,shift_col + (dim_v-2)*dim_u+0) = 1.0;
+                        m_system.insert(shift_row + 5,shift_col + (dim_v-3)*dim_u+0) = 1.0;
+                        break;
+                    case 4:
+                        m_system.insert(shift_row + 0,shift_col + (dim_v-2)*dim_u+dim_u-2) = 1.0; // interior
+                        m_system.insert(shift_row + 1,shift_col + (dim_v-1)*dim_u+dim_u-1) = 1.0; // bdy
+                        m_system.insert(shift_row + 2,shift_col + (dim_v-1)*dim_u+dim_u-2) = 1.0;
+                        m_system.insert(shift_row + 3,shift_col + (dim_v-1)*dim_u+dim_u-3) = 1.0;
+                        m_system.insert(shift_row + 4,shift_col + (dim_v-2)*dim_u+dim_u-1) = 1.0;
+                        m_system.insert(shift_row + 5,shift_col + (dim_v-3)*dim_u+dim_u-1) = 1.0;
+                        break;
+                    default:
+                        gsInfo << "Wrong side index!\n";
+                }
+            }
+            else
+            {
+                gsC1ArgyrisVertex<d, T> c1ArgyrisVertex(m_mp, m_bases, patchIndex, vertIndex, numVer, m_optionList);
+                c1ArgyrisVertex.saveBasisVertex(m_system);
+            }
         }
 
         m_system.makeCompressed();

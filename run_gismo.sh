@@ -1,19 +1,19 @@
 # Run gismo files
-echo "P = 3, R = 1"
+echo "Solve and save biharmonic example with Argyris space!"
 #echo ./bin/biharmonic_argyris_example -g -1 -l 4
 #./bin/biharmonic_argyris_example -g -1 -l 4
 
-for rr in 3
+for rr in 1
 do
     for pp in 4
     do
-        for i in 1000 1012 1100 1100
+        for i in 1000 1012 1020 1100 1110 1120
         do
-        echo ./bin/biharmonic_argyris_example -g $i -p $pp -r $rr -l 6 --csv
-        ./bin/biharmonic_argyris_example -g $i -p $pp -r $rr -l 6 --csv
+        echo ./bin/biharmonic_argyris_example -g $i -p $pp -r $rr -l 6 --simplified --csv
+        ./bin/biharmonic_argyris_example -g $i -p $pp -r $rr -l 6 --simplified --csv
 
-        echo ./bin/biharmonic_argyris_example -g $i -p $pp -r $rr -l 6 --interpolation --csv
-        ./bin/biharmonic_argyris_example -g $i -p $pp -r $rr -l 6 --interpolation --csv
+        echo ./bin/biharmonic_argyris_example -g $i -p $pp -r $rr -l 6 --simplified --interpolation --csv
+        ./bin/biharmonic_argyris_example -g $i -p $pp -r $rr -l 6 --simplified --interpolation --csv
         done
     done
 done

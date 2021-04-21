@@ -82,7 +82,7 @@ public:
         }
 
         // Compute Kernel (before parametrizeBack)
-        if (m_optionList.getSwitch("twoPatch"))
+        if (m_optionList.getSwitch("noVertex"))
             computeKernel(result_1, result_2, side_1);
 
         // parametrizeBasisBack
@@ -136,12 +136,12 @@ public:
         reparametrizeSinglePatch(side_1);
 
         gsMultiPatch<> result_1;
-        if (m_optionList.getSwitch("twoPatch"))
+        if (m_optionList.getSwitch("noVertex"))
         {
             gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[0].getArygrisBasisRotated().getEdgeBasis(m_auxPatches[0].side()); // 0 -> u, 1 -> v
 
             std::vector<index_t> shift_bf(2);
-            shift_bf[0] = m_optionList.getSwitch("twoPatch") ? 2 : 3;
+            shift_bf[0] = m_optionList.getSwitch("noVertex") ? 2 : 3;
             shift_bf[1] = 2;
             index_t dim_u = basis_edge.component(0).size();
             index_t dim_v = basis_edge.component(1).size();
@@ -278,7 +278,7 @@ public:
 
             index_t bfID_init = 3;
 
-            if (m_optionList.getSwitch("twoPatch"))
+            if (m_optionList.getSwitch("noVertex"))
                 bfID_init = 2;
 
             for (index_t bfID = bfID_init; bfID < n_plus - bfID_init; bfID++) // first 3 and last 3 bf are eliminated
@@ -311,7 +311,7 @@ public:
             }
 
             bfID_init = 2;
-            if (m_optionList.getSwitch("twoPatch"))
+            if (m_optionList.getSwitch("noVertex"))
                 bfID_init = 0;
 
             for (index_t bfID = bfID_init; bfID < n_minus-bfID_init; bfID++)  // first 2 and last 2 bf are eliminated
@@ -358,7 +358,7 @@ public:
 
         index_t bfID_init = 3;
 
-        if (m_optionList.getSwitch("twoPatch"))
+        if (m_optionList.getSwitch("noVertex"))
             bfID_init = 2;
 
         for (index_t bfID = bfID_init; bfID < n_plus - bfID_init; bfID++) // first 3 and last 3 bf are eliminated

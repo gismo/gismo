@@ -36,7 +36,8 @@ public:
                 : m_mp(mp), m_patchID(patchID)
     {
         info = optionList.getSwitch("info");
-        twoPatch = optionList.getSwitch("twoPatch");
+        noVertex = optionList.getSwitch("noVertex");
+        simplified = optionList.getSwitch("simplified");
 
         basisG1Container.resize(9);
 
@@ -154,19 +155,21 @@ public:
         {
             if (m_mp.isBoundary(m_patchID,i+1)) // +1 of side index
             {
-                if (twoPatch)
+                if (noVertex)
                     rowContainer[1+i] = basisPlusContainer[i].size()+basisMinusContainer[i].size() - 8;
+                else if (simplified)
+                    rowContainer[1+i] = math::max( ((i+1 > 2) ? dim_u*2 : dim_v*2 ) - 10, 0);
                 else
                     rowContainer[1+i] = math::max(basisPlusContainer[i].size()+basisMinusContainer[i].size() - 10, 0);
-                kindOfEdge[i] = false;
+                kindOfEdge[i] = false; // bdy
             }
             else
             {
-                if (twoPatch)
+                if (noVertex)
                     rowContainer[1+i] = basisPlusContainer[i].size()+basisMinusContainer[i].size();
                 else
                     rowContainer[1+i] = math::max(basisPlusContainer[i].size()+basisMinusContainer[i].size() - 10, 0);
-                kindOfEdge[i] = true;
+                kindOfEdge[i] = true; // interface
             }
 
         }
@@ -174,7 +177,7 @@ public:
         // Vertex basis functions
         for (index_t i = 0; i<4; ++i)
         {
-            if (twoPatch)
+            if (noVertex)
             {
                 if (basisG1Container[4+i+1].size() == 1)
                     rowContainer[1+4+i] = 0;
@@ -250,19 +253,22 @@ public:
             index_t num = 0;
             if (offset == 0)
             {
-                index_t bdy_shift = twoPatch ? 4 : 6;
+                index_t bdy_shift = noVertex ? 4 : 6;
                 if (!kindOfEdge[side_id - 1])
-                    num = basisPlusContainer[side_id - 1].size() - bdy_shift; // Boundary
+                    if (simplified)
+                        num = basisG1Container[0].component(side_id < 3 ? 1 : 0).size() - bdy_shift; // Boundary
+                    else
+                        num = basisPlusContainer[side_id - 1].size() - bdy_shift; // Boundary
                 else
-                    num = basisPlusContainer[side_id - 1].size() - (twoPatch ? 0 : 6); // Interface
+                    num = basisPlusContainer[side_id - 1].size() - (noVertex ? 0 : 6); // Interface
             }
             else if (offset == 1)
             {
-                index_t bdy_shift = twoPatch ? 4 : 6;
+                index_t bdy_shift = noVertex ? 4 : 6;
                 if (!kindOfEdge[side_id - 1])
                     num = basisMinusContainer[side_id - 1].size() - bdy_shift; // Boundary might not used and wrong
                 else
-                    num = basisMinusContainer[side_id - 1].size() - (twoPatch ? 0 : 4); // Interface
+                    num = basisMinusContainer[side_id - 1].size() - (noVertex ? 0 : 4); // Interface
             } else
                 gsInfo << "Offset > 1 is not implemented! \n";
 
@@ -275,11 +281,11 @@ public:
                 index_t start = rowBegin(side_id); // The first num basis functions
 
                 if (offset == 1) {
-                    index_t bdy_shift = twoPatch ? 4 : 6;
+                    index_t bdy_shift = noVertex ? 4 : 6;
                     if (!kindOfEdge[side_id - 1])
                         start += basisPlusContainer[side_id - 1].size() - bdy_shift; // Boundary
                     else
-                        start += basisPlusContainer[side_id - 1].size() - (twoPatch ? 0 : 6); // Interface
+                        start += basisPlusContainer[side_id - 1].size() - (noVertex ? 0 : 6); // Interface
                 }
 
                 for (index_t i = start; i < start + num; i++, ii++) // Single basis function
@@ -292,7 +298,7 @@ public:
             index_t corner_id = side.index(); // + 4 already included!
             if (offset == 0 && rows(corner_id ) != 0) {
 
-                if (twoPatch) {
+                if (noVertex) {
                     index_t ii = 0;
                     gsMatrix<index_t> indizes(3, 1);
                     index_t start = rowBegin(corner_id); // The first 3 basis functions
@@ -319,7 +325,7 @@ public:
                     return null;
                 }
             }
-            else if (offset == 1 && !twoPatch)
+            else if (offset == 1 && !noVertex)
             {
                 index_t ii = 0;
                 gsMatrix<index_t> indizes(6, 1);
@@ -485,7 +491,7 @@ protected:
     gsMultiPatch<T> m_mp;
     index_t m_patchID;
 
-    bool info, twoPatch;
+    bool info, noVertex, simplified;
 
     std::vector<gsTensorBSplineBasis<d, T>> basisG1Container;
 

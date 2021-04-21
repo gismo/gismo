@@ -62,7 +62,7 @@ public:
 
         reparametrizeVertexPatches();
 
-        if (m_optionList.getSwitch("twoPatch") && m_patchesAroundVertex.size() == 1)
+        if (m_optionList.getSwitch("noVertex") && m_patchesAroundVertex.size() == 1)
         {
             gsMultiPatch<> g1Basis;
             gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[0].getArygrisBasisRotated().getVertexBasis(
@@ -86,7 +86,7 @@ public:
 
             basisVertexResult.push_back(g1Basis);
         }
-        else if (!m_optionList.getSwitch("twoPatch"))
+        else if (!m_optionList.getSwitch("noVertex"))
         {
             // Compute Sigma
             real_t sigma = computeSigma(m_vertexIndices);
@@ -239,7 +239,7 @@ public:
                 points.setZero(2,2);
                 points(0,1) = 1.0;
 
-                if (m_patchesAroundVertex.size() == 2 && !m_optionList.getSwitch("twoPatch"))
+                if (m_patchesAroundVertex.size() == 2 && !m_optionList.getSwitch("noVertex"))
                     for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
                         for (size_t i = 0; i < basisVertexResult[np].nPatches(); ++i)
                             gsInfo << i << " : " << basisVertexResult[np].patch(i).deriv(points.col(0)) << "\n\n";
@@ -280,7 +280,7 @@ public:
 /*
                 gsInfo << "\n";
 
-                if (m_patchesAroundVertex.size() == 2 && !m_optionList.getSwitch("twoPatch"))
+                if (m_patchesAroundVertex.size() == 2 && !m_optionList.getSwitch("noVertex"))
                     for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
                         for (size_t i = 0; i < basisVertexResult[np].nPatches(); ++i)
                             gsInfo << i << " : " << basisVertexResult[np].patch(i).deriv(points.col(1-np)) << "\n\n";
@@ -302,7 +302,7 @@ public:
         points(0,1) = 1.0;
 
 
-        if (m_patchesAroundVertex.size() == 2 && !m_optionList.getSwitch("twoPatch"))
+        if (m_patchesAroundVertex.size() == 2 && !m_optionList.getSwitch("noVertex"))
             for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
                 for (size_t i = 0; i < basisVertexResult[np].nPatches(); ++i)
                     gsInfo << basisVertexResult[np].patch(i).deriv(points.col(1-np)) << "\n\n";

@@ -57,6 +57,7 @@ public:
             kindOfEdge[localdir] = m_auxPatches[0].getArygrisBasisRotated().isInterface(sideContainer[dir]);
 
         }
+
 /*
         gsInfo << "Basis plus: " << m_basis_plus[0] << "\n";
         gsInfo << "Basis minus: " << m_basis_minus[0] << "\n";
