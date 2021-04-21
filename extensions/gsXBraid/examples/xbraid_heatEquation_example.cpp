@@ -20,6 +20,15 @@ using namespace gismo;
 
 namespace gismo {
 
+  enum class gsXBraid_tmethod
+  {
+    FE_FE = 1, // forward Euler   (all grids)
+    BE_BE = 2, // backward Euler  (all grids)
+    CN_CN = 3, // Crank-Nicholson (all grids)
+    FE_BE = 4, // forward Euler   (fine grid), backward Euler (coarser grids)
+    CN_BE = 5  // Crank-Nicholson (fine grid), backward Euler (coarser grids)      
+  };
+
 /**
    \brief Derived class implementing the XBraid wrapper for the heat equation
 */
@@ -31,8 +40,8 @@ private:
   index_t numRefine, numElevate, numIncrease;
 
   // Temporal discretisation parameters
-  index_t numTime;
-  T tstart, tstop, theta, tstep;
+  index_t numSteps, tmethod;
+  T tstart, tstop, tstep;
 
   // Spatial discretization
   gsMultiPatch<T> patches;
@@ -59,20 +68,20 @@ private:
   gsXBraid_app(const gsMpiComm& comm,
                const T&         tstart,
                const T&         tstop,
-               const T&         theta,
-               index_t          numTime,
+               index_t          tmethod,
+               index_t          numSteps,
                index_t          numRefine,
                index_t          numElevate,
                index_t          numIncrease)
-    : gsXBraid< gsVector<T> >::gsXBraid(comm, tstart, tstop, (int)numTime),
+    : gsXBraid< gsVector<T> >::gsXBraid(comm, tstart, tstop, (int)numSteps),
       numRefine(numRefine),
       numElevate(numElevate),
       numIncrease(numIncrease),
-      numTime(numTime),
+      numSteps(numSteps),
+      tmethod(tmethod),
       tstart(tstart),
       tstop(tstop),
-      theta(theta),
-      tstep( (tstop-tstart)/numTime ),
+      tstep( (tstop-tstart)/numSteps ),
       patches(*gsNurbsCreator<>::BSplineSquareDeg(2)),
       bases(patches),
       g_D(0,2), g_N(1,2),
@@ -152,16 +161,54 @@ private:
       
       gsSparseSolver<>::CGDiagonal solver;
       sol.setZero(M.numDofs());
-      
-      for ( int i = 1; i<=numTime; ++i) // for all timesteps
-        // Compute the system for the timestep i (rhs is assumed constant wrt time)
-        sol = solver.compute(M.matrix() +
-                             tstep*theta*K.matrix()
-                             ).solve(tstep*K.rhs() +
-                                     (M.matrix()-tstep*(1.0-theta)*K.matrix())*sol);
-      
-      gsInfo << "norm of the solution = " << sol.norm() << "\n"
-             << "wall time = " << clock.stop() << std::endl;
+
+      switch((gsXBraid_tmethod)tmethod) {
+      case gsXBraid_tmethod::FE_FE:
+      case gsXBraid_tmethod::FE_BE:
+        // Forward Euler method
+        
+        for ( int i = 1; i<=numSteps; ++i) // for all timesteps
+          // Compute the system for the timestep i (rhs is assumed constant wrt time)
+          sol = solver.compute(M.matrix()
+                               ).solve(tstep*K.rhs() +
+                                       (M.matrix()-tstep*K.matrix())*sol);
+        
+        gsInfo << "norm of the solution = " << sol.norm() << "\n"
+               << "wall time = " << clock.stop() << std::endl;
+        break;
+
+      case gsXBraid_tmethod::BE_BE:
+        // Backward Euler method
+        
+        for ( int i = 1; i<=numSteps; ++i) // for all timesteps
+          // Compute the system for the timestep i (rhs is assumed constant wrt time)
+          sol = solver.compute(M.matrix() +
+                               tstep*K.matrix()
+                               ).solve(tstep*K.rhs() +
+                                       (M.matrix())*sol);
+        
+        gsInfo << "norm of the solution = " << sol.norm() << "\n"
+               << "wall time = " << clock.stop() << std::endl;
+        break;
+
+      case gsXBraid_tmethod::CN_CN:
+      case gsXBraid_tmethod::CN_BE:
+        // Crank-Nicholson method
+        
+        for ( int i = 1; i<=numSteps; ++i) // for all timesteps
+          // Compute the system for the timestep i (rhs is assumed constant wrt time)
+          sol = solver.compute(M.matrix() +
+                               tstep*0.5*K.matrix()
+                               ).solve(tstep*K.rhs() +
+                                       (M.matrix()-tstep*0.5*K.matrix())*sol);
+        
+        gsInfo << "norm of the solution = " << sol.norm() << "\n"
+               << "wall time = " << clock.stop() << std::endl;
+        break;
+
+      default:
+        throw std::runtime_error("Unsupported time-stepping method");
+      }
     }
   }
 
@@ -177,31 +224,31 @@ private:
     std::string fn("pde/poisson2d_bvp.xml");
     
     // Spatial discretisation parameters
-    index_t numRefine   = 2;
-    index_t numElevate  = 0;
-    index_t numIncrease = 0;
+    index_t numRefine     = 2;
+    index_t numElevate    = 0;
+    index_t numIncrease   = 0;
     
     // Temporal discretisation parameters
-    index_t numTime    = 40;
-    T       theta      = 0.5;
-    T       tfinal     = 0.1;
+    index_t numSteps      = 40;
+    index_t tmethod       = (index_t)gsXBraid_tmethod::CN_CN;
+    T       tfinal        = 0.1;
     
     // Parallel-in-time multigrid parameters
-    index_t CFactor    = 2;
-    index_t access     = 1;
-    index_t maxIter    = 100;
-    index_t maxLevel   = 30;
-    index_t minCLevel  = 2;
-    index_t numFMG     = 1;
-    index_t numFMGVcyc = 1;
-    index_t numMaxRef  = 1;
-    index_t numRelax   = 1;
-    index_t numStorage =-1;
-    index_t print      = 2;
-    index_t tnorm      = 2; // 1-norm, 2-norm, inf-norm
+    index_t CFactor       = 2;
+    index_t access        = 1;
+    index_t maxIter       = 100;
+    index_t maxLevel      = 30;
+    index_t minCLevel     = 2;
+    index_t numFMG        = 1;
+    index_t numFMGVcyc    = 1;
+    index_t numMaxRef     = 1;
+    index_t numRelax      = 1;
+    index_t numStorage    =-1;
+    index_t print         = 2;
+    index_t tnorm         = 2; // 1-norm, 2-norm, inf-norm
     
-    T       absTol     = 1e-10;
-    T       relTol     = 1e-3;
+    T       absTol        = 1e-10;
+    T       relTol        = 1e-3;
 
     bool    fmg           = false;
     bool    incrMaxLevels = false;
@@ -223,9 +270,9 @@ private:
     cmd.addInt( "r", "uniformRefine", "Number of uniform h-refinement steps to perform before solving",  numRefine );
 
     // Temporal diescretisation parameters
-    cmd.addInt( "n",  "timeSteps", "Number of parallel-in-time steps", numTime );
-    cmd.addReal( "t", "time", "Final time", tfinal );
-    cmd.addReal( "T", "theta", "Implicitness parameter of the two-level theta scheme", theta);
+    cmd.addInt( "n",  "numSteps", "Number of parallel-in-time steps", numSteps );
+    cmd.addInt( "T", "tmethod", "Time-stepping scheme", tmethod);
+    cmd.addReal( "t", "tfinal", "Final time", tfinal );
 
     // Parallel-in-time multigrid parameters
     cmd.addInt( "",   "numStorage", "Number of storage of the parallel-in-time multigrid solver", numStorage );
@@ -254,7 +301,7 @@ private:
     cmd.getValues(argc,argv);
 
     // Create instance
-    gsXBraid_app<T> app(comm, 0.0, tfinal, theta, numTime, numRefine, numElevate, numIncrease);
+    gsXBraid_app<T> app(comm, 0.0, tfinal, tmethod, numSteps, numRefine, numElevate, numIncrease);
 
     if (absTol != 1e-10)
       app.SetAbsTol(absTol);
@@ -328,12 +375,72 @@ private:
     
     // Solve spatial problem
     gsSparseSolver<>::CGDiagonal solver;
-    *u_ptr = solver.compute(M.matrix() +
-                            tstep*theta*K.matrix()
-                            ).solveWithGuess(tstep*K.rhs() +
-                                             (M.matrix()-tstep*(1.0-theta)*K.matrix())*(*u_ptr),
-                                             *ustop_ptr);
-    
+
+    switch((gsXBraid_tmethod)tmethod) {
+    case gsXBraid_tmethod::FE_FE:
+      // Forward Euler method (all grids)
+      *u_ptr = solver.compute(M.matrix()
+                              ).solveWithGuess(tstep*K.rhs() +
+                                               (M.matrix()-tstep*K.matrix())*(*u_ptr),
+                                               *ustop_ptr);
+      break;
+      
+    case gsXBraid_tmethod::FE_BE:
+      if (static_cast<gsXBraidStepStatus&>(pstatus).level() == 0) {
+        // Forward Euler method (fine grid)
+        *u_ptr = solver.compute(M.matrix()
+                                ).solveWithGuess(tstep*K.rhs() +
+                                                 (M.matrix()-tstep*K.matrix())*(*u_ptr),
+                                                 *ustop_ptr);
+      } else {
+        // Backward Euler method (coarse grids)
+        *u_ptr = solver.compute(M.matrix() +
+                                tstep*K.matrix()
+                                ).solveWithGuess(tstep*K.rhs() +
+                                                 (M.matrix())*(*u_ptr),
+                                                 *ustop_ptr);
+      }
+      break;
+
+    case gsXBraid_tmethod::BE_BE:
+      // Backward Euler method (all grids)
+      *u_ptr = solver.compute(M.matrix() +
+                              tstep*K.matrix()
+                              ).solveWithGuess(tstep*K.rhs() +
+                                               (M.matrix())*(*u_ptr),
+                                               *ustop_ptr);
+      break;
+
+    case gsXBraid_tmethod::CN_CN:
+      // Crank-Nicholson method (all grids)
+      *u_ptr = solver.compute(M.matrix() +
+                              tstep*0.5*K.matrix()
+                              ).solveWithGuess(tstep*K.rhs() +
+                                               (M.matrix()-tstep*0.5*K.matrix())*(*u_ptr),
+                                               *ustop_ptr);
+      break;
+      
+    case gsXBraid_tmethod::CN_BE:
+      if (static_cast<gsXBraidStepStatus&>(pstatus).level() == 0) {
+        *u_ptr = solver.compute(M.matrix() +
+                                tstep*0.5*K.matrix()
+                                ).solveWithGuess(tstep*K.rhs() +
+                                                 (M.matrix()-tstep*0.5*K.matrix())*(*u_ptr),
+                                                 *ustop_ptr);
+      } else {
+        // Backward Euler method (coarse grids)
+        *u_ptr = solver.compute(M.matrix() +
+                                tstep*K.matrix()
+                                ).solveWithGuess(tstep*K.rhs() +
+                                                 (M.matrix())*(*u_ptr),
+                                                 *ustop_ptr);
+      }
+      break;
+
+    default:
+      throw std::runtime_error("Unsupported time-stepping method");
+    }
+      
     // Carry out adaptive refinement in time
     if (static_cast<gsXBraidStepStatus&>(pstatus).level() == 0) {
       braid_Real error = static_cast<gsXBraidStepStatus&>(pstatus).error();

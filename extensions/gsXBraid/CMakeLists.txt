@@ -128,3 +128,20 @@ set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${XBRAID_INCLUDE_DIR}
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
   DESTINATION include/gismo/gsXBraid
   FILES_MATCHING PATTERN "*.h")
+
+# Add example files
+include_directories(${CODIPACK_INCLUDE_DIR})
+aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR}/examples FILES)
+foreach(file ${FILES})
+  add_gismo_executable(${file})
+  get_filename_component(tarname ${file} NAME_WE) # name without extension
+  set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
+  set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
+  if( GISMO_WITH_MPI )
+    target_include_directories(${tarname} PRIVATE ${MPI_INCLUDE_PATH})
+  endif()
+  # Install the example executables (optionally)
+  install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
+endforeach(file ${FILES})
+
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
