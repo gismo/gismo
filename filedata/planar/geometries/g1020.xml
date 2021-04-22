@@ -16,9 +16,9 @@ B-splines meeting along one side
     </Basis>
     <coefs geoDim="2">
       0.0 0.0 
-      0.0 1.0
+      0.4 0.0
 
-      0.4 0.0 
+      0.0 1.0 
       0.6 1.1
     </coefs>
   </Geometry>

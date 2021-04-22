@@ -82,7 +82,7 @@ public:
         }
 
         // Compute Kernel (before parametrizeBack)
-        if (m_optionList.getSwitch("noVertex"))
+        if (m_optionList.getSwitch("twoPatch"))
             computeKernel(result_1, result_2, side_1);
 
         // parametrizeBasisBack
@@ -204,9 +204,13 @@ public:
             shift_col += m_bases[np].size_cols();
         }
 
-        index_t ii = 0;
+        index_t ii = m_optionList.getSwitch("noVertex") ? 3 : 0;
         for (index_t i = m_bases[patch_1].rowBegin(side_1); i < m_bases[patch_1].rowEnd(side_1); ++i, ++ii)
         {
+            if (ii+3 > m_bases[patch_1].getBasisPlus(side_1).size()-1 && ii < m_bases[patch_1].getBasisPlus(side_1).size()
+                && m_optionList.getSwitch("noVertex"))
+                ii += 5;
+
             index_t jj = 0;
             for (index_t j = m_bases[patch_1].colBegin(side_1);
                  j < m_bases[patch_1].colEnd(side_1); ++j, ++jj) {
@@ -223,15 +227,102 @@ public:
             shift_col += m_bases[np].size_cols();
         }
 
-        ii = 0;
+        ii = m_optionList.getSwitch("noVertex") ? 3 : 0;
         for (index_t i = m_bases[patch_2].rowBegin(side_2); i < m_bases[patch_2].rowEnd(side_2); ++i, ++ii)
         {
+            if (ii+3 > m_bases[patch_2].getBasisPlus(side_2).size()-1 && ii < m_bases[patch_1].getBasisPlus(side_1).size()
+                && m_optionList.getSwitch("noVertex"))
+                ii += 5;
+
             index_t jj = 0;
             for (index_t j = m_bases[patch_2].colBegin(side_2);
                  j < m_bases[patch_2].colEnd(side_2); ++j, ++jj)
                 if (basisEdgeResult[1].patch(ii).coef(jj, 0) * basisEdgeResult[1].patch(ii).coef(jj, 0) > 1e-25)
                     system.insert(shift_row + i, shift_col + j) = basisEdgeResult[1].patch(ii).coef(jj, 0);
         }
+
+    }
+
+    void saveBasisVertex(std::vector<std::vector<gsMultiPatch<T>>> & vertex_bf)
+    {
+
+        for (index_t i = 0; i < 2; i++) {
+            index_t side = i == 0 ? side_1 : side_2;
+            index_t patch = i == 0 ? patch_1 : patch_2;
+
+            gsMultiPatch<T> basis_1, basis_2;
+
+            index_t size_plus = m_bases[patch].getBasisPlus(side).size();
+            index_t size_minus = m_bases[patch].getBasisMinus(side).size();
+
+            basis_1.addPatch(basisEdgeResult[i].patch(0));
+            basis_1.addPatch(basisEdgeResult[i].patch(1));
+            basis_1.addPatch(basisEdgeResult[i].patch(2));
+            basis_1.addPatch(basisEdgeResult[i].patch(size_plus));
+            basis_1.addPatch(basisEdgeResult[i].patch(size_plus + 1));
+
+            basis_2.addPatch(basisEdgeResult[i].patch(size_plus - 1));
+            basis_2.addPatch(basisEdgeResult[i].patch(size_plus - 2));
+            basis_2.addPatch(basisEdgeResult[i].patch(size_plus - 3));
+            basis_2.addPatch(basisEdgeResult[i].patch(size_plus + size_minus - 1));
+            basis_2.addPatch(basisEdgeResult[i].patch(size_plus + size_minus - 2));
+/*
+            for (index_t ii = 0; ii < 5; ii++)
+            {
+                vertex_bf[patch][(side-1)].addPatch(basis_1.patch(ii)); // -1 bcs of c++ counting
+                vertex_bf[patch][(side-1)].addPatch(basis_2.patch(ii));
+            }
+*/
+
+
+            for (index_t ii = 0; ii < 5; ii++)
+                if (i == 1)
+                    switch (side) {
+                        case 1:
+                            vertex_bf[patch][(side-1)*2 + 0].addPatch(basis_2.patch(ii)); // -1 bcs of c++ counting // vertex 1
+                            vertex_bf[patch][(side-1)*2 + 1].addPatch(basis_1.patch(ii)); // vertex 3
+                            break;
+                        case 2:
+                            vertex_bf[patch][(side-1)*2 + 0].addPatch(basis_1.patch(ii)); // vertex 2
+                            vertex_bf[patch][(side-1)*2 + 1].addPatch(basis_2.patch(ii)); // vertex 4
+                            break;
+                        case 3:
+                            vertex_bf[patch][(side-1)*2 + 0].addPatch(basis_1.patch(ii)); // vertex 1
+                            vertex_bf[patch][(side-1)*2 + 1].addPatch(basis_2.patch(ii)); // vertex 2
+                            break;
+                        case 4:
+                            vertex_bf[patch][(side-1)*2 + 0].addPatch(basis_2.patch(ii)); // vertex 3
+                            vertex_bf[patch][(side-1)*2 + 1].addPatch(basis_1.patch(ii)); // vertex 4
+                            break;
+                        default:
+                            gsInfo << "Wrong side index\n";
+                            break;
+                    }
+                else if (i == 0)
+                    switch (side) {
+                        case 1:
+                            vertex_bf[patch][(side-1)*2 + 0].addPatch(basis_1.patch(ii)); // -1 bcs of c++ counting // vertex 1
+                            vertex_bf[patch][(side-1)*2 + 1].addPatch(basis_2.patch(ii)); // vertex 3
+                            break;
+                        case 2:
+                            vertex_bf[patch][(side-1)*2 + 0].addPatch(basis_2.patch(ii)); // vertex 2
+                            vertex_bf[patch][(side-1)*2 + 1].addPatch(basis_1.patch(ii)); // vertex 4
+                            break;
+                        case 3:
+                            vertex_bf[patch][(side-1)*2 + 0].addPatch(basis_2.patch(ii)); // vertex 1
+                            vertex_bf[patch][(side-1)*2 + 1].addPatch(basis_1.patch(ii)); // vertex 2
+                            break;
+                        case 4:
+                            vertex_bf[patch][(side-1)*2 + 0].addPatch(basis_1.patch(ii)); // vertex 3
+                            vertex_bf[patch][(side-1)*2 + 1].addPatch(basis_2.patch(ii)); // vertex 4
+                            break;
+                        default:
+                            gsInfo << "Wrong side index\n";
+                            break;
+                    }
+
+        }
+
     }
 
     void saveBasisBoundary(gsSparseMatrix<T> & system)

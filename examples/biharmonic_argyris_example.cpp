@@ -56,6 +56,7 @@ int main(int argc, char *argv[])
     bool interpolation = false;
 
     bool noVertex = false;
+    bool twoPatch = false;
     bool simplified = false;
 
     gsCmdLine cmd("Solving biharmonic equation with Argyris space.");
@@ -80,6 +81,7 @@ int main(int argc, char *argv[])
     cmd.addSwitch( "interpolation", "Interpolate the basis functions", interpolation );
 
     cmd.addSwitch("noVertex","Using no vertex space",noVertex);
+    cmd.addSwitch("twoPatch","Two Patch case",twoPatch);
     cmd.addSwitch("simplified","Simplified Argyris space",simplified);
 
     // Output features
@@ -271,7 +273,7 @@ int main(int argc, char *argv[])
         gsInfo<<"\tAssembly of mapping:\t"<< time_mat(l, 0) <<"\t[s]\n";
 
         time.restart();
-        gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(mp, mappedBasis, bcInfo, bcInfo2, source, noVertex);
+        gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(mp, mappedBasis, bcInfo, bcInfo2, source, twoPatch);
         gsInfo<<"\tDegrees of freedom:\t"<< g1BiharmonicAssembler.numDofs() <<"\n";
         g1BiharmonicAssembler.assemble();
         gsInfo<< "." <<std::flush;// Assemblying done

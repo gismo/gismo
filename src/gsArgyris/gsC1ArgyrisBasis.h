@@ -37,6 +37,7 @@ public:
     {
         info = optionList.getSwitch("info");
         noVertex = optionList.getSwitch("noVertex");
+        twoPatch = optionList.getSwitch("twoPatch");
         simplified = optionList.getSwitch("simplified");
 
         basisG1Container.resize(9);
@@ -155,7 +156,7 @@ public:
         {
             if (m_mp.isBoundary(m_patchID,i+1)) // +1 of side index
             {
-                if (noVertex)
+                if (twoPatch)
                     rowContainer[1+i] = basisPlusContainer[i].size()+basisMinusContainer[i].size() - 8;
                 else if (simplified)
                     rowContainer[1+i] = math::max( ((i+1 > 2) ? dim_u*2 : dim_v*2 ) - 10, 0);
@@ -165,7 +166,7 @@ public:
             }
             else
             {
-                if (noVertex)
+                if (twoPatch)
                     rowContainer[1+i] = basisPlusContainer[i].size()+basisMinusContainer[i].size();
                 else
                     rowContainer[1+i] = math::max(basisPlusContainer[i].size()+basisMinusContainer[i].size() - 10, 0);
@@ -491,7 +492,7 @@ protected:
     gsMultiPatch<T> m_mp;
     index_t m_patchID;
 
-    bool info, noVertex, simplified;
+    bool info, noVertex, twoPatch, simplified;
 
     std::vector<gsTensorBSplineBasis<d, T>> basisG1Container;
 
