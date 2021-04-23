@@ -45,6 +45,7 @@ int main(int argc, char* argv[])
   real_t lambda = 0;
   real_t alpha = p-2; //default Eigenvalue problem (if f=0)
   real_t gamma = 1;//l - 2. / p + 0.01;
+  index_t initial=1;
 	bool prec = false;
 	gsCmdLine cmd("Linearized p-Laplace example");
 
@@ -69,6 +70,7 @@ int main(int argc, char* argv[])
   cmd.addReal("","lambda","Parameter for lambda",lambda);
   cmd.addReal("","alpha","Parameter for alpha",alpha);
   cmd.addReal("","gamma","Parameter for gamma",gamma);
+  cmd.addInt("","initial","Choice for initial guess u_0",initial);
 	try { cmd.getValues(argc, argv); }
 	catch (int rv) { return rv; }
 
@@ -146,12 +148,22 @@ int main(int argc, char* argv[])
 
 	gsFunctionExpr<> f = f2;
 	gsFunctionExpr<> u = u2;
- 
-	gsFunctionExpr<> B("(" + u.expression() + ")*exp(x*(1-x)*y*(1-y))", 2);
-	gsFunctionExpr<> Z("0", 2);
-	gsFunctionExpr<> L("x+y", 2);
-
-	gsFunctionExpr<> u0 = Z;
+  gsFunctionExpr<> u0;
+  
+  gsFunctionExpr<> Z("0",2);
+  
+  if(initial==1)
+  {
+	  u0 = gsFunctionExpr<>("0", 2);
+  }
+  else if(initial==2)
+  {
+    u0 = gsFunctionExpr<>("x+y", 2);
+  }
+  else if(initial==3)
+  {
+    u0 = gsFunctionExpr<>("(" + u.expression() + ")*exp(x*(1-x)*y*(1-y))", 2);
+  }
 
 
 	// Print out source function and solution
@@ -284,7 +296,7 @@ int main(int argc, char* argv[])
 		gsInfo << pde.w.size() << "\n";
 		*/
 
-		//int n = refine_basis.size();
+		int n = refine_basis.size();
 
 		//start with 0 solution for every mesh for now, later with transfer.
 		//pde.w = gsMatrix<real_t>::Zero(n, 1);
@@ -293,18 +305,31 @@ int main(int argc, char* argv[])
 		pde.w = transfer * pde.w; //update w
 		pde.p = p_;
 		pde.eps = eps_;
+   
+    if(prec)
+    {
+      pde_.w = gsMatrix<real_t>::Zero(n, 1); //update w
+		  pde_.p = p;
+		  pde_.eps = 1;
+    }
+    else
+    {
+      pde_.w=pde.w;
+      pde_.p=pde.p;
+      pde_.eps=pde.eps;
+    }
 
 		A.initialize(pde, epsR, refine_basis, opt, subdiv);
-		//rA.initialize(pde_, epsR, refine_basis, opt, subdiv, prec);
+		rA.initialize(pde_, epsR, refine_basis, opt, subdiv/*, prec*/);
 
 		A.assemble();
-		//rA.assemble();
+		rA.assemble();
 
 		Kh = A.matrix();
-		//Kh_ = rA.matrix();
-
+		Kh_ = rA.matrix();
+   
 		fh = A.rhs();
-		//fh_ = rA.rhs();
+		fh_ = rA.rhs();
 
 		//Jh = A.energy();
 
@@ -335,14 +360,14 @@ int main(int argc, char* argv[])
       gsInfo<<cg_cond<<"\n";
       */
 
-		  gsSparseSolver<>::LU solver(Kh);
+		  gsSparseSolver<>::LU solver(Kh_);
 			step = solver.solve(-rh);
 
 			//gsInfo << (rh.transpose()*step).value()/(rh.norm()*step.norm()) << "\n";
 
 			//std::cin.get();
 
-			if (prec && eps_<epsR) { tau = 2 * eps_ / epsR; }
+			if (prec) {tau = 2./pow(eps,p-2);}
 			else
 			{
         if (tau_min == 1 && tau_max == 1)
@@ -355,19 +380,19 @@ int main(int argc, char* argv[])
 			solVector = solVector + tau * step;
 
 			pde.w = addDirVal(A, solVector); //add Dirichlet values to current solution and set as new w.
-			pde_.w = pde.w;
+			if(!prec){pde_.w = pde.w;}
 
 			A.initialize(pde, epsR, refine_basis, opt);
-			//rA.initialize(pde_, epsR, refine_basis, opt, subdiv, prec);
+			rA.initialize(pde_, epsR, refine_basis, opt, subdiv/*, prec*/);
 
 			A.assemble();
-			//rA.assemble();
+			rA.assemble();
 
 			Kh = A.matrix(); //compute new lhs matrix to compute residuum of the nonlinear problem --> Kh(uh)*uh-fh
-			//Kh_ = rA.matrix();
+			Kh_ = rA.matrix();
 
 			fh = A.rhs();
-			//fh_ = rA.rhs();
+			fh_ = rA.rhs();
 
 			//Jh = A.energy();
 

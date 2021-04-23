@@ -39,6 +39,7 @@ int main(int argc, char* argv[])
     real_t lambda = 0;
     real_t alpha = p-2; //default Eigenvalue problem (if f=0)
     real_t gamma = 1;
+    index_t initial = 1;
     std::string solver_type("lu");
 
     gsCmdLine cmd("Linearized p-Laplace example");
@@ -60,6 +61,7 @@ int main(int argc, char* argv[])
     cmd.addReal("","lambda","Parameter for lambda",lambda);
     cmd.addReal("","alpha","Parameter for alpha",alpha);
     cmd.addReal("","gamma","Parameter for gamma",gamma);
+    cmd.addInt("","initial","Choice for initial guess u_0",initial);
     cmd.addString("", "solver", "Solver to be used (lu, cg, cg-mg, gmres, gmres-mg)", solver_type);
     try { cmd.getValues(argc, argv); }
     catch (int rv) { return rv; }
@@ -160,12 +162,22 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    // Initial guess
-    gsFunctionExpr<> L("x+y",2);
-   	gsFunctionExpr<> B("(" + u.expression() + ")*exp(x*(1-x)*y*(1-y))", 2);
-	  gsFunctionExpr<> Z("0", 2);
-     
-     gsFunctionExpr<> u0 = Z;
+    gsFunctionExpr<> u0;
+  
+    gsFunctionExpr<> Z("0",2);
+  
+    if(initial==1)
+    {
+	      u0 = gsFunctionExpr<>("0", 2);
+    }
+    else if(initial==2)
+    {
+        u0 = gsFunctionExpr<>("x+y", 2);
+    }
+    else if(initial==3)
+    {
+        u0 = gsFunctionExpr<>("(" + u.expression() + ")*exp(x*(1-x)*y*(1-y))", 2);
+    }
 
     // Print out source function and solution
     gsInfo << "Source function " << f << "\n";
@@ -179,20 +191,47 @@ int main(int argc, char* argv[])
     //! [Geometry data]
 
     //! [Boundary conditions]
-    gsBoundaryConditions<> bcInfo;
+   	gsBoundaryConditions<> bcInfo;
+	  gsBoundaryConditions<> hbcInfo;
     if (bc == 1)
-    {
-          bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, &u);
-          bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &u);
-          bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &u);
-          bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &u);
+	  {
+		    bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, &u);
+		    bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &u);
+		    bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &u);
+		    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &u);
+
+		    hbcInfo.addCondition(0, boundary::west, condition_type::dirichlet, &Z);
+		    hbcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &Z);
+		    hbcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &Z);
+		    hbcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &Z);
+	  }
+	  else if (bc==2)
+	  {
+		    bcInfo.addCondition(0, boundary::west, condition_type::neumann, &u_derWest);
+		    bcInfo.addCondition(0, boundary::east, condition_type::neumann, &u_derEast);
+		    bcInfo.addCondition(0, boundary::north, condition_type::neumann, &u_derNorth);
+		    bcInfo.addCondition(0, boundary::south, condition_type::neumann, &u_derSouth);
+		    //bcInfo.addCornerValue(boundary::southwest, 0);
+
+		    hbcInfo.addCondition(0, boundary::west, condition_type::neumann, &Z);
+		    hbcInfo.addCondition(0, boundary::east, condition_type::neumann, &Z);
+		    hbcInfo.addCondition(0, boundary::north, condition_type::neumann, &Z);
+		    hbcInfo.addCondition(0, boundary::south, condition_type::neumann, &Z);
+		    //hbcInfo.addCornerValue(boundary::southwest,0);
     }
     else
     {
-          bcInfo.addCondition(0, boundary::west, condition_type::neumann, &u_derWest);
-          bcInfo.addCondition(0, boundary::east, condition_type::neumann, &u_derEast);
-          bcInfo.addCondition(0, boundary::north, condition_type::neumann, &u_derNorth);
-          bcInfo.addCondition(0, boundary::south, condition_type::neumann, &u_derSouth);
+        bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, &u);
+		    bcInfo.addCondition(0, boundary::east, condition_type::neumann, &u_derEast);
+		    bcInfo.addCondition(0, boundary::north, condition_type::neumann, &u_derNorth);
+		    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &u);
+		    //bcInfo.addCornerValue(boundary::southwest, 0);
+
+		    hbcInfo.addCondition(0, boundary::west, condition_type::dirichlet, &Z);
+		    hbcInfo.addCondition(0, boundary::east, condition_type::neumann, &Z);
+		    hbcInfo.addCondition(0, boundary::north, condition_type::neumann, &Z);
+		    hbcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &Z);
+		    //hbcInfo.addCornerValue(boundary::southwest,0);
     }
     //! [Boundary conditions]
 
@@ -238,9 +277,10 @@ int main(int argc, char* argv[])
 
         real_t tol_k = i==startrefine ? tol0 : tol;
 
+/*
         gsInfo << "   " << 0 << " (initial res "
                << std::setprecision(4) << std::scientific << final_res_sq << ")\n";
-
+*/
 
         do
         {
@@ -292,6 +332,7 @@ int main(int argc, char* argv[])
 
             iter++;
 
+/*
             if (solver_type=="lu")
                 gsInfo << "   " << iter << " (lin solver: obtained res "
                        << std::setprecision(4) << std::scientific << final_res_sq << ")\n";
@@ -302,7 +343,7 @@ int main(int argc, char* argv[])
             else if (solver_type=="gmres"||solver_type=="gmres-mg")
                 gsInfo << "   " << iter << " (lin solver: " << ls_iter << " iterations to reach res "
                        << std::setprecision(4) << std::scientific << final_res_sq << ")\n";
-
+*/
         } while (iter < maxiter && final_res_sq>tol_k*tol_k*initial_res_sq);
 
         std::clock_t c_end = std::clock();
@@ -365,7 +406,7 @@ gsMatrix<real_t> projectL2(const gsMultiPatch<real_t> &mp, const gsMultiBasis<re
     gsGenericAssembler<> assembler(mp,mb);
     gsSparseMatrix<> mass = assembler.assembleMass();
     gsMatrix<> moments = assembler.assembleMoments(g);
-      gsSparseSolver<real_t>::LU solver(mass);
+    gsSparseSolver<real_t>::LU solver(mass);
     return solver.solve(moments);
 }
 
