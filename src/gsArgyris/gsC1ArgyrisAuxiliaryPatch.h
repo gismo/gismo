@@ -461,6 +461,11 @@ public:
             rotationNum = 0;
     }
 
+    void setNumberOfRotation(index_t numRot)
+    {
+        rotationNum = numRot;
+    }
+
     const index_t getNumberOfRotation(){
         return rotationNum;
     }

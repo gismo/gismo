@@ -82,7 +82,7 @@ public:
         }
 
         // Compute Kernel (before parametrizeBack)
-        if (m_optionList.getSwitch("twoPatch"))
+        if (m_optionList.getSwitch("twoPatch") || m_optionList.getSwitch("noVertex"))
             computeKernel(result_1, result_2, side_1);
 
         // parametrizeBasisBack
