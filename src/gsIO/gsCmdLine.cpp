@@ -488,9 +488,11 @@ std::string & gsCmdLine::getMessage()
 #ifdef GISMO_BUILD_PYBIND11
 
 namespace py = pybind11;
-void pybind11_init_gsCmdLine(py::module &m) {
+void pybind11_init_gsCmdLine(py::module &m)
+{
+  using gsClass = gsCmdLine;
 
-  py::class_<gsCmdLine>(m, "gsCmdLine")
+  py::class_<gsClass>(m, "gsCmdLine")
 
     // Constructors
     .def(py::init<const std::string&>())
@@ -503,28 +505,28 @@ void pybind11_init_gsCmdLine(py::module &m) {
          bool>())
 
     // Member functions
-    .def("addNewInt", &gsCmdLine::addNewInt)
-    .def("getInt", &gsCmdLine::getInt)
+    .def("addNewInt", &gsClass::addNewInt)
+    .def("getInt", &gsClass::getInt)
 
-     .def("addMultiInt", &gsCmdLine::addMultiInt)
+     .def("addMultiInt", &gsClass::addMultiInt)
 
-    .def("addReal", &gsCmdLine::addReal)
-    .def("addMultiReal", &gsCmdLine::addMultiReal)
+    .def("addReal", &gsClass::addReal)
+    .def("addMultiReal", &gsClass::addMultiReal)
 
-    .def("addString", &gsCmdLine::addString)
-    .def("addMultiString", &gsCmdLine::addMultiString)
-
-    .def("addSwitch",
-         (void (gsCmdLine::*)(const std::string&, const std::string&, const std::string&, bool&))
-         &gsCmdLine::addSwitch)
+    .def("addString", &gsClass::addString)
+    .def("addMultiString", &gsClass::addMultiString)
 
     .def("addSwitch",
-         (void (gsCmdLine::*)(const std::string&, const std::string&, bool&))
-         &gsCmdLine::addSwitch)
+         (void (gsClass::*)(const std::string&, const std::string&, const std::string&, bool&))
+         &gsClass::addSwitch)
 
-    .def("addPlainString", &gsCmdLine::addPlainString)
+    .def("addSwitch",
+         (void (gsClass::*)(const std::string&, const std::string&, bool&))
+         &gsClass::addSwitch)
 
-    .def("getValues", [](gsCmdLine& self,
+    .def("addPlainString", &gsClass::addPlainString)
+
+    .def("getValues", [](gsClass& self,
                          std::vector<std::string> args) {
                         std::vector<char *> cstrs;
                         cstrs.reserve(args.size());
@@ -532,11 +534,11 @@ void pybind11_init_gsCmdLine(py::module &m) {
                         self.getValues(cstrs.size(), cstrs.data());
                       })
 
-    .def_static("printVersion", &gsCmdLine::printVersion)
+    .def_static("printVersion", &gsClass::printVersion)
 
-    .def("getMessage", &gsCmdLine::getMessage)
+    .def("getMessage", &gsClass::getMessage)
 
-    .def("valid", [](gsCmdLine self,
+    .def("valid", [](gsClass self,
                      std::vector<std::string> args) {
                     std::vector<char *> cstrs;
                     cstrs.reserve(args.size());
@@ -544,8 +546,8 @@ void pybind11_init_gsCmdLine(py::module &m) {
                     return self.valid(cstrs.size(), cstrs.data());
                   })
 
-    .def("setExceptionHandling", &gsCmdLine::setExceptionHandling)
-    .def("getExceptionHandling", &gsCmdLine::getExceptionHandling)
+    .def("setExceptionHandling", &gsClass::setExceptionHandling)
+    .def("getExceptionHandling", &gsClass::getExceptionHandling)
     ;
 }
 

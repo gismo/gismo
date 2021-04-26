@@ -73,17 +73,15 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsOptionList opt = cmd.getOptionList();
-
     // Default case is levels:=refinements, so replace invalid default accordingly
-    if (levels <0) { levels = refinements; opt.setInt( "MG.Levels", levels ); }
+    if (levels <0) { levels = refinements; cmd.setInt( "MG.Levels", levels ); }
     // The smoothers know their defaults, so remove the invalid default
-    if (damping<0) { opt.remove( "MG.Damping" ); }
+    if (damping<0) { cmd.remove( "MG.Damping" ); }
 
     // Define assembler options
-    opt.remove( "DG" );
-    opt.addInt( "MG.InterfaceStrategy", "", (index_t)( dg      ? iFace::dg          : iFace::conforming      ) );
-    opt.addInt( "MG.DirichletStrategy", "", (index_t)( nitsche ? dirichlet::nitsche : dirichlet::elimination ) );
+    cmd.remove( "DG" );
+    cmd.addInt( "MG.InterfaceStrategy", "", (index_t)( dg      ? iFace::dg          : iFace::conforming      ) );
+    cmd.addInt( "MG.DirichletStrategy", "", (index_t)( nitsche ? dirichlet::nitsche : dirichlet::elimination ) );
 
     if ( ! gsFileManager::fileExists(geometry) )
     {
@@ -92,7 +90,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    gsInfo << "Run multiGrid_example with options:\n" << opt << "\n";
+    gsInfo << "Run multiGrid_example with options:\n" << cmd << "\n";
 
     /******************* Define geometry ********************/
 
@@ -223,8 +221,8 @@ int main(int argc, char *argv[])
         mb,
         bc,
         gsConstantFunction<>(1,mp.geoDim()),
-        (dirichlet::strategy) opt.getInt("MG.DirichletStrategy"),
-        (iFace::strategy)     opt.getInt("MG.InterfaceStrategy")
+        (dirichlet::strategy) cmd.getInt("MG.DirichletStrategy"),
+        (iFace::strategy)     cmd.getInt("MG.InterfaceStrategy")
     );
     assembler.assemble();
 
@@ -237,13 +235,13 @@ int main(int argc, char *argv[])
     std::vector< gsSparseMatrix<real_t,RowMajor> > transferMatrices;
     std::vector< gsMultiBasis<real_t> > multiBases; // only needed for subspace corrected mass smoother
 
-    gsGridHierarchy<>::buildByCoarsening(give(mb), bc, opt.getGroup("MG"))
+    gsGridHierarchy<>::buildByCoarsening(give(mb), bc, cmd.getGroup("MG"))
         .moveMultiBasesTo(multiBases)
         .moveTransferMatricesTo(transferMatrices)
         .clear();
 
     gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( assembler.matrix(), transferMatrices );
-    mg->setOptions( opt.getGroup("MG") );
+    mg->setOptions( cmd.getGroup("MG") );
 
     std::vector<real_t> patchLocalDampingParameters;
 
@@ -259,11 +257,11 @@ int main(int argc, char *argv[])
         else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" || smoother == "Hybrid" || smoother == "hyb" )
         {
             smootherOp = setupSubspaceCorrectedMassSmoother( i, mg->numLevels(), mg->matrix(i), multiBases[i], bc,
-                opt.getGroup("MG"), patchLocalDampingParameters );
+                cmd.getGroup("MG"), patchLocalDampingParameters );
 
             if ( smoother == "Hybrid" || smoother == "hyb" )
             {
-                smootherOp->setOptions( opt.getGroup("MG") );
+                smootherOp->setOptions( cmd.getGroup("MG") );
                 smootherOp = gsCompositePrecOp<>::make( makeGaussSeidelOp(mg->matrix(i)), smootherOp );
             }
         }
@@ -273,7 +271,7 @@ int main(int argc, char *argv[])
                       "\n  SubspaceCorrectedMassSmoother (scms)\n  Hybrid (hyb)\n\n";
             return EXIT_FAILURE;
         }
-        smootherOp->setOptions( opt.getGroup("MG") );
+        smootherOp->setOptions( cmd.getGroup("MG") );
         // Handle the extra-smooth option. On the finest grid level, there is nothing to handle.
         if (extrasmooth && i < mg->numLevels()-1 )
         {
@@ -288,11 +286,11 @@ int main(int argc, char *argv[])
 
     if (iterativeSolver=="cg")
         gsConjugateGradient<>( assembler.matrix(), mg )
-            .setOptions( opt.getGroup("Solver") )
+            .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
     else if (iterativeSolver=="d")
         gsGradientMethod<>( assembler.matrix(), mg )
-            .setOptions( opt.getGroup("Solver") )
+            .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
     else
     {
@@ -320,7 +318,7 @@ int main(int argc, char *argv[])
     {
         gsFileData<> fd;
         std::time_t time = std::time(NULL);
-        fd.add(opt);
+        fd.add(cmd);
         fd.add(x);
         fd.addComment(std::string("multiGrid_example   Timestamp:")+std::ctime(&time));
         fd.save(fn);

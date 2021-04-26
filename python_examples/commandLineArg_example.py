@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python
 
 """"
     @file commandLineArg_example.py
@@ -15,6 +15,8 @@
 """
 
 import sys
+sys.path.append('/user/amantzaf/home/root/pybind11/build/lib')
+
 import pygismo as gs
 
 # Variables that will take values from the command line
