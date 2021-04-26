@@ -65,6 +65,9 @@ PYBIND11_MODULE(pygismo, m) {
   matrix.attr("__version__") = GISMO_VERSION;
   matrix.doc() = "G+Smo (Geometry + Simulation Modules): Matrix module";
   
+  gismo::pybind11_init_gsMatrix<real_t>(matrix,"Real"); //gsMatrixReal
+  gismo::pybind11_init_gsMatrix<index_t>(matrix,"Int"); //gsMatrixInt
+  
   py::module modelling = m.def_submodule("modelling");
 
   modelling.attr("__name__") = "pygismo.modelling";
@@ -89,6 +92,9 @@ PYBIND11_MODULE(pygismo, m) {
   nurbs.attr("__version__") = GISMO_VERSION;
   nurbs.doc() = "G+Smo (Geometry + Simulation Modules): NURBS module";
 
+  gismo::pybind11_init_gsBSpline( nurbs );
+
+  
   py::module pde = m.def_submodule("pde");
 
   pde.attr("__name__") = "pygismo.pde";

@@ -492,6 +492,7 @@ void pybind11_init_gsCmdLine(py::module &m) {
 
   py::class_<gsCmdLine>(m, "gsCmdLine")
 
+    // Constructors
     .def(py::init<const std::string&>())
 
     .def(py::init<const std::string&,
@@ -501,6 +502,7 @@ void pybind11_init_gsCmdLine(py::module &m) {
          const char,
          bool>())
 
+    // Member functions
     .def("addNewInt", &gsCmdLine::addNewInt)
     .def("getInt", &gsCmdLine::getInt)
 
