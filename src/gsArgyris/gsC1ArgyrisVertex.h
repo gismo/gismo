@@ -62,7 +62,7 @@ public:
 
         reparametrizeVertexPatches();
 
-        if (m_optionList.getSwitch("noVertex") && m_patchesAroundVertex.size() == 1)
+        if (m_optionList.getSwitch("twoPatch") && m_patchesAroundVertex.size() == 1)
         {
             gsMultiPatch<> g1Basis;
             gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[0].getArygrisBasisRotated().getVertexBasis(
@@ -86,7 +86,7 @@ public:
 
             basisVertexResult.push_back(g1Basis);
         }
-        else if (!m_optionList.getSwitch("noVertex"))
+        else if (!m_optionList.getSwitch("twoPatch"))
         {
             // Compute Sigma
             real_t sigma = computeSigma(m_vertexIndices);
@@ -361,7 +361,7 @@ public:
         mp_vertex.computeTopology();
 
         gsMatrix<T> coeffs_mat;
-        coeffs_mat.setZero(mp_vertex.nPatches()*8, mp_vertex.nInterfaces()*5 + mp_vertex.nPatches()*4);
+        coeffs_mat.setZero(mp_vertex.nPatches()*4, mp_vertex.nInterfaces()*5 ); // *8, + mp_vertex.nPatches()*4
 
         gsMatrix<> points(2, 1);
         points.setZero();
@@ -405,6 +405,7 @@ public:
             }
         }
         // Correction term
+/*
         std::vector<size_t> interface_indices;
         index_t patchID_next = 0;
         for(size_t i = 0; i < patchesAroundVertex.size(); i++)
@@ -464,17 +465,25 @@ public:
 
 
         }
+*/
 
 
-
-        gsInfo << "coeffs_mat " << coeffs_mat << "\n";
+        //gsInfo << "coeffs_mat " << coeffs_mat << "\n";
+        real_t threshold = 1e-8;
         Eigen::FullPivLU<gsMatrix<>> KernelVertex(coeffs_mat);
-        KernelVertex.setThreshold(1e-5);
+        KernelVertex.setThreshold(threshold);
+        //gsInfo << "Coefs: " << coefs_corner << "\n";
+        while (KernelVertex.dimensionOfKernel() < mp_vertex.nInterfaces()+3)
+        {
+            threshold += 1e-8;
+            KernelVertex.setThreshold(threshold);
+        }
         gsMatrix<T> kernel = KernelVertex.kernel();
-        gsInfo << "Kernel: " << kernel << "\n";
-        gsInfo << "Kernel dim: " << KernelVertex.dimensionOfKernel() << "\n";
 
-        std::vector<gsMultiPatch<T>> result(patchesAroundVertex.size());
+        //gsInfo << "Kernel: " << kernel << "\n";
+        //gsInfo << "Kernel dim: " << KernelVertex.dimensionOfKernel() << "\n";
+
+        basisVertexResult.resize(patchesAroundVertex.size());
         for(size_t i = 0; i < patchesAroundVertex.size(); i++) {
             for (index_t kernel_dim = 0; kernel_dim < kernel.cols(); kernel_dim++) {
                 gsMatrix<> coef_bf, coef_bf_singleU, coef_bf_singleV;
@@ -510,7 +519,24 @@ public:
                 gsGeometry<>::uPtr geo_tempU = basis_temp.makeGeometry(coef_bf_singleU);
                 gsGeometry<>::uPtr geo_tempV = basis_temp.makeGeometry(coef_bf_singleV);
                 gsMatrix<> coef_bf_corr;
+                coef_bf_corr.setZero(vertexAuxiliary_bf[i][0].patch(0).coefs().rows(), 1);
+                coef_bf_corr(0,0) = coef_bf_singleU(0,0);
+                coef_bf_corr(1,0) = coef_bf_singleU(1,0);
+                coef_bf_corr(basis_temp.component(0).size(),0) = coef_bf_singleU(basis_temp.component(0).size(),0);
+                coef_bf_corr(basis_temp.component(0).size()+1,0) = coef_bf_singleU(basis_temp.component(0).size()+1,0);
+
+                //gsInfo << "coef_bf_corr: " << coef_bf_corr << "\n";
+                //gsInfo << "coef_bf: " << coef_bf << "\n";
+                coef_bf -= coef_bf_corr;
+
 /*
+                gsGeometry<>::uPtr geo_temp = basis_temp.makeGeometry(coef_bf);
+                gsInfo << "Patch: " << i << "\n";
+                gsInfo << "eval: " << geo_temp->eval(points)(0,0) << "\n";
+                gsInfo << "deriv: " << geo_temp->deriv(points)(0,0) << "\n";
+                gsInfo << "deriv: " << geo_temp->deriv(points)(1,0) << "\n";
+                gsInfo << "deriv2: " << geo_temp->deriv2(points)(2,0) << "\n";
+
                 coef_bf_corr.setZero(vertexAuxiliary_bf[i][0].patch(0).coefs().rows(), 1);
                 coef_bf_corr(0,0) = geo_tempU->eval(points)(0,0);
                 coef_bf -= coef_bf_corr;
@@ -534,32 +560,33 @@ public:
                         basis_temp.deriv2Single(basis_temp.component(0).size()+1,points)(2,0);
                 coef_bf -= coef_bf_corr;
 */
-                result[i].addPatch(basis_temp.makeGeometry(coef_bf));
+                basisVertexResult[i].addPatch(basis_temp.makeGeometry(coef_bf));
             }
         }
 
         for(size_t i = 0; i < m_patchesAroundVertex.size(); i++)
-            m_auxPatches[i].parametrizeBasisBack(result[i]); // parametrizeBasisBack
+            m_auxPatches[i].parametrizeBasisBack(basisVertexResult[i]); // parametrizeBasisBack
 
-        std::string fileName;
-        std::string basename = "NoVerticesBasisFunctions" + util::to_string(numVer);
-        gsParaviewCollection collection(basename);
-
-        for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
+        if (m_optionList.getSwitch("plot"))
         {
-            if (result.size() != 0)
-                for (size_t i = 0; i < result[np].nPatches(); ++i)
-                {
-                    fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
-                    gsField<> temp_field(m_mp.patch(m_patchesAroundVertex[np]), result[np].patch(i));
-                    gsWriteParaview(temp_field, fileName, 5000);
-                    collection.addTimestep(fileName, i, "0.vts");
+            std::string fileName;
+            std::string basename = "NoVerticesBasisFunctions" + util::to_string(numVer);
+            gsParaviewCollection collection(basename);
 
-                }
+            for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
+            {
+                if (basisVertexResult.size() != 0)
+                    for (size_t i = 0; i < basisVertexResult[np].nPatches(); ++i)
+                    {
+                        fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
+                        gsField<> temp_field(m_mp.patch(m_patchesAroundVertex[np]), basisVertexResult[np].patch(i));
+                        gsWriteParaview(temp_field, fileName, 5000);
+                        collection.addTimestep(fileName, i, "0.vts");
+
+                    }
+            }
+            collection.save();
         }
-        collection.save();
-
-        gsWriteParaview(result[0], "hoffentlich",2000);
     }
 
     void saveBasisVertex(gsSparseMatrix<T> & system)

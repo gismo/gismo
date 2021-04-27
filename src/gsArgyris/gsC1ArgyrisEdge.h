@@ -82,7 +82,7 @@ public:
         }
 
         // Compute Kernel (before parametrizeBack)
-        if (m_optionList.getSwitch("twoPatch") || m_optionList.getSwitch("noVertex"))
+        if (m_optionList.getSwitch("twoPatch"))
             computeKernel(result_1, result_2, side_1);
 
         // parametrizeBasisBack
@@ -136,12 +136,12 @@ public:
         reparametrizeSinglePatch(side_1);
 
         gsMultiPatch<> result_1;
-        if (m_optionList.getSwitch("noVertex"))
+        if (m_optionList.getSwitch("twoPatch"))
         {
             gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[0].getArygrisBasisRotated().getEdgeBasis(m_auxPatches[0].side()); // 0 -> u, 1 -> v
 
             std::vector<index_t> shift_bf(2);
-            shift_bf[0] = m_optionList.getSwitch("noVertex") ? 2 : 3;
+            shift_bf[0] = 2;
             shift_bf[1] = 2;
             index_t dim_u = basis_edge.component(0).size();
             index_t dim_v = basis_edge.component(1).size();
@@ -204,11 +204,11 @@ public:
             shift_col += m_bases[np].size_cols();
         }
 
-        index_t ii = m_optionList.getSwitch("noVertex") ? 3 : 0;
+        index_t ii = m_optionList.getSwitch("C1Vertex") ? 3 : 0;
         for (index_t i = m_bases[patch_1].rowBegin(side_1); i < m_bases[patch_1].rowEnd(side_1); ++i, ++ii)
         {
             if (ii+3 > m_bases[patch_1].getBasisPlus(side_1).size()-1 && ii < m_bases[patch_1].getBasisPlus(side_1).size()
-                && m_optionList.getSwitch("noVertex"))
+                && m_optionList.getSwitch("C1Vertex"))
                 ii += 5;
 
             index_t jj = 0;
@@ -227,11 +227,11 @@ public:
             shift_col += m_bases[np].size_cols();
         }
 
-        ii = m_optionList.getSwitch("noVertex") ? 3 : 0;
+        ii = m_optionList.getSwitch("C1Vertex") ? 3 : 0;
         for (index_t i = m_bases[patch_2].rowBegin(side_2); i < m_bases[patch_2].rowEnd(side_2); ++i, ++ii)
         {
             if (ii+3 > m_bases[patch_2].getBasisPlus(side_2).size()-1 && ii < m_bases[patch_1].getBasisPlus(side_1).size()
-                && m_optionList.getSwitch("noVertex"))
+                && m_optionList.getSwitch("C1Vertex"))
                 ii += 5;
 
             index_t jj = 0;
@@ -369,7 +369,7 @@ public:
 
             index_t bfID_init = 3;
 
-            if (m_optionList.getSwitch("noVertex"))
+            if (m_optionList.getSwitch("twoPatch"))
                 bfID_init = 2;
 
             for (index_t bfID = bfID_init; bfID < n_plus - bfID_init; bfID++) // first 3 and last 3 bf are eliminated
@@ -402,7 +402,7 @@ public:
             }
 
             bfID_init = 2;
-            if (m_optionList.getSwitch("noVertex"))
+            if (m_optionList.getSwitch("twoPatch"))
                 bfID_init = 0;
 
             for (index_t bfID = bfID_init; bfID < n_minus-bfID_init; bfID++)  // first 2 and last 2 bf are eliminated
@@ -449,7 +449,7 @@ public:
 
         index_t bfID_init = 3;
 
-        if (m_optionList.getSwitch("noVertex"))
+        if (m_optionList.getSwitch("twoPatch"))
             bfID_init = 2;
 
         for (index_t bfID = bfID_init; bfID < n_plus - bfID_init; bfID++) // first 3 and last 3 bf are eliminated

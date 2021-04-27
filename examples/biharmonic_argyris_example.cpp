@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 
     bool interpolation = false;
 
-    bool noVertex = false;
+    bool C1Vertex = false;
     bool twoPatch = false;
     bool simplified = false;
 
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 
     cmd.addSwitch( "interpolation", "Interpolate the basis functions", interpolation );
 
-    cmd.addSwitch("noVertex","Using no vertex space",noVertex);
+    cmd.addSwitch("C1Vertex","Using C^1 vertex space",C1Vertex);
     cmd.addSwitch("twoPatch","Two Patch case",twoPatch);
     cmd.addSwitch("simplified","Simplified Argyris space",simplified);
 

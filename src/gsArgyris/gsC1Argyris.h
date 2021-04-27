@@ -204,7 +204,7 @@ public:
             // Assume that plus/minus space is the same as the inner space
             gsBSplineBasis<> basis_plus, basis_minus;
 
-            if (m_optionList.getSwitch("noVertex"))
+            if (m_optionList.getSwitch("twoPatch"))
             {
                 basis_plus = basis_1;
                 basis_minus = basis_1;
@@ -281,7 +281,7 @@ public:
                 m_bases[patch_1].setVertexBasis(basis_vertex_1, vertex_1);
                 m_bases[patch_1].setKindOfVertex(-1, vertex_1);
             }
-            else if (patchIndex.size() > 1 && !m_optionList.getSwitch("noVertex"))
+            else if (patchIndex.size() > 1)
             {
                 gsMultiPatch<> temp_mp;
                 for (size_t j = 0; j < patchIndex.size(); j++)
@@ -315,9 +315,12 @@ public:
                             m_bases[patch_1].setVertexBasis(basis_vertex_1, vertex_1);
                             m_bases[patch_1].setKindOfVertex(0, vertex_1);
                         }
+
+                        if (m_optionList.getSwitch("C1Vertex"))
+                            m_bases[patch_1].setValenceOfVertex(temp_mp.nInterfaces(), vertex_1);
                     }
                 }
-                else // Interface-Boundary vertex
+                else if (patchIndex.size() > temp_mp.interfaces().size() && !m_optionList.getSwitch("twoPatch"))// Interface-Boundary vertex
                 {
                     for (size_t j = 0; j < patchIndex.size(); j++)
                     {
@@ -414,7 +417,7 @@ public:
 
             gsC1ArgyrisEdge<d, T> c1ArgyrisEdge(m_mp, m_bases, item, numInt, m_optionList);
             c1ArgyrisEdge.saveBasisInterface(m_system);
-            if (m_optionList.getSwitch("noVertex"))
+            if (m_optionList.getSwitch("C1Vertex"))
                 c1ArgyrisEdge.saveBasisVertex(vertex_bf);
         }
         // Compute Edge Basis functions
@@ -506,9 +509,10 @@ public:
                 vertIndex.push_back(allcornerLists[j].m_index);
             }
 
-            if (patchIndex.size() > 2 && m_optionList.getSwitch("noVertex"))
+            if (patchIndex.size() > 2 && m_optionList.getSwitch("C1Vertex"))
             {
                 gsC1ArgyrisVertex<d, T> c1ArgyrisVertex(m_mp, m_bases, patchIndex, vertIndex, numVer, vertex_bf, m_optionList);
+                c1ArgyrisVertex.saveBasisVertex(m_system);
             }
             else if (patchIndex.size() == 1 && m_optionList.getSwitch("simplified"))
             {

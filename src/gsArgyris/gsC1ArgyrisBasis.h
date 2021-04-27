@@ -36,7 +36,7 @@ public:
                 : m_mp(mp), m_patchID(patchID)
     {
         info = optionList.getSwitch("info");
-        noVertex = optionList.getSwitch("noVertex");
+        C1Vertex = optionList.getSwitch("C1Vertex");
         twoPatch = optionList.getSwitch("twoPatch");
         simplified = optionList.getSwitch("simplified");
 
@@ -55,6 +55,11 @@ public:
         // For topology
         kindOfEdge.resize(4);
         kindOfVertex.resize(4);
+
+        // For C1 Basis at vertex
+        valenceOfVertex.resize(4);
+        for (size_t i = 0; i<valenceOfVertex.size(); i++)
+            valenceOfVertex[i] = 6; // to get for boundary vertex == 6
 
         // For boundary
         numDofsVertex.resize(4);
@@ -106,6 +111,8 @@ public:
     // 1 Interface boundary vertey
     void setKindOfVertex(index_t i, index_t corner) { kindOfVertex[corner-1] = i; }
     index_t getKindOfVertex(index_t corner) { return kindOfVertex[corner-1]; }
+
+    void setValenceOfVertex(index_t i, index_t corner) { valenceOfVertex[corner-1] = i+3; } // valence plus 3
 
     void setNumDofsVertex(index_t i, index_t corner) { numDofsVertex[corner-1] = i; }
 
@@ -178,7 +185,7 @@ public:
         // Vertex basis functions
         for (index_t i = 0; i<4; ++i)
         {
-            if (noVertex)
+            if (twoPatch)
             {
                 if (basisG1Container[4+i+1].size() == 1)
                     rowContainer[1+4+i] = 0;
@@ -186,7 +193,7 @@ public:
                     rowContainer[1+4+i] = 4;
             }
             else
-                rowContainer[1+4+i] = 6;
+                rowContainer[1+4+i] = valenceOfVertex[i];
         }
 
 
@@ -254,22 +261,22 @@ public:
             index_t num = 0;
             if (offset == 0)
             {
-                index_t bdy_shift = noVertex ? 4 : 6;
+                index_t bdy_shift = twoPatch ? 4 : 6;
                 if (!kindOfEdge[side_id - 1])
                     if (simplified)
                         num = basisG1Container[0].component(side_id < 3 ? 1 : 0).size() - bdy_shift; // Boundary
                     else
                         num = basisPlusContainer[side_id - 1].size() - bdy_shift; // Boundary
                 else
-                    num = basisPlusContainer[side_id - 1].size() - (noVertex ? 0 : 6); // Interface
+                    num = basisPlusContainer[side_id - 1].size() - (twoPatch ? 0 : 6); // Interface
             }
             else if (offset == 1)
             {
-                index_t bdy_shift = noVertex ? 4 : 6;
+                index_t bdy_shift = twoPatch ? 4 : 6;
                 if (!kindOfEdge[side_id - 1])
                     num = basisMinusContainer[side_id - 1].size() - bdy_shift; // Boundary might not used and wrong
                 else
-                    num = basisMinusContainer[side_id - 1].size() - (noVertex ? 0 : 4); // Interface
+                    num = basisMinusContainer[side_id - 1].size() - (twoPatch ? 0 : 4); // Interface
             } else
                 gsInfo << "Offset > 1 is not implemented! \n";
 
@@ -282,11 +289,11 @@ public:
                 index_t start = rowBegin(side_id); // The first num basis functions
 
                 if (offset == 1) {
-                    index_t bdy_shift = noVertex ? 4 : 6;
+                    index_t bdy_shift = twoPatch ? 4 : 6;
                     if (!kindOfEdge[side_id - 1])
                         start += basisPlusContainer[side_id - 1].size() - bdy_shift; // Boundary
                     else
-                        start += basisPlusContainer[side_id - 1].size() - (noVertex ? 0 : 6); // Interface
+                        start += basisPlusContainer[side_id - 1].size() - (twoPatch ? 0 : 6); // Interface
                 }
 
                 for (index_t i = start; i < start + num; i++, ii++) // Single basis function
@@ -299,7 +306,7 @@ public:
             index_t corner_id = side.index(); // + 4 already included!
             if (offset == 0 && rows(corner_id ) != 0) {
 
-                if (noVertex) {
+                if (twoPatch) {
                     index_t ii = 0;
                     gsMatrix<index_t> indizes(3, 1);
                     index_t start = rowBegin(corner_id); // The first 3 basis functions
@@ -311,11 +318,11 @@ public:
                 } else if (kindOfVertex[corner_id - 4 - 1] != 0)
                 {
                     index_t ii = 0;
-                    gsMatrix<index_t> indizes(6 - numDofsVertex[corner_id - 4 - 1], 1);
+                    gsMatrix<index_t> indizes(valenceOfVertex[corner_id - 4 - 1] - numDofsVertex[corner_id - 4 - 1], 1);
                     index_t corner_id = side.index(); // + 4 already included!
                     index_t start = rowBegin(corner_id); // The first 3 basis functions
                     for (index_t i = start + numDofsVertex[corner_id - 4 - 1];
-                         i < start + 6; i++, ii++) // Single basis function
+                         i < start + valenceOfVertex[corner_id - 4 - 1]; i++, ii++) // Single basis function
                         indizes(ii, 0) = i;
                     return indizes;
                 }
@@ -326,13 +333,13 @@ public:
                     return null;
                 }
             }
-            else if (offset == 1 && !noVertex)
+            else if (offset == 1 && !twoPatch)
             {
                 index_t ii = 0;
-                gsMatrix<index_t> indizes(6, 1);
+                gsMatrix<index_t> indizes(valenceOfVertex[corner_id - 4 - 1], 1);
                 index_t start = rowBegin(corner_id); // The first 3 basis functions
                 for (index_t i = start;
-                     i < start + 6; i++, ii++) // Single basis function
+                     i < start + valenceOfVertex[corner_id - 4 - 1]; i++, ii++) // Single basis function
                     indizes(ii, 0) = i;
                 return indizes;
             }
@@ -492,7 +499,7 @@ protected:
     gsMultiPatch<T> m_mp;
     index_t m_patchID;
 
-    bool info, noVertex, twoPatch, simplified;
+    bool info, C1Vertex, twoPatch, simplified;
 
     std::vector<gsTensorBSplineBasis<d, T>> basisG1Container;
 
@@ -507,6 +514,7 @@ protected:
 
     std::vector<bool> kindOfEdge;
     std::vector<index_t> kindOfVertex;
+    std::vector<index_t> valenceOfVertex;
 
     std::vector<index_t> numDofsVertex;
 
