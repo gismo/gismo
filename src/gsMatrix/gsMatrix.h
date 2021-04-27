@@ -204,10 +204,18 @@ public:
     { return std::make_pair(this->rows(), this->cols() ); }
 
     /// \brief Returns the \a i-th element of the vectorization of the matrix
-    T   at (index_t i) const { return *(this->data()+i);}
+    T   at (index_t i) const
+    {
+        GISMO_ASSERT(i<this->size(), "Access invalid position "<<i<<" of gsMatrix of size "<<this->size());
+        return *(this->data()+i);
+    }
 
     /// \brief Returns the \a i-th element of the vectorization of the matrix
-    T & at (index_t i)       { return *(this->data()+i);}
+    T & at (index_t i)
+    {
+        GISMO_ASSERT(i<this->size(), "Access invalid position "<<i<<" of gsMatrix of size "<<this->size());
+        return *(this->data()+i);
+    }
 
     // \brief Returns the last element of the matrix (maximum row and column)
     //T   lastCoeff() { return *(this->data()+this->size()-1);}
