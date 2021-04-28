@@ -376,7 +376,7 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(*this);
-        this->m_fd->flags |= NEED_VALUE;
+        this->m_fd->flags |= NEED_VALUE | NEED_ACTIVE;
     }
 
     index_t cardinality_impl() const { return m_d * m_fd->actives.rows(); }
@@ -729,13 +729,13 @@ public:
     const gsFeSpace<T> & rowVar() const {return *this;}
 
     gsDofMapper & mapper()
-    {return const_cast<gsDofMapper &>(mapper());}
-
-    const gsDofMapper & mapper() const
     {
         GISMO_ASSERT(NULL!=m_sd, "Space/mapper not properly initialized.");
         return m_sd->mapper;
     }
+
+    const gsDofMapper & mapper() const
+    {return const_cast<gsFeSpace*>(this)->mapper();}
 
     inline const gsMatrix<T> & fixedPart() const {return m_sd->fixedDofs;}
     gsMatrix<T> & fixedPart() {return m_sd->fixedDofs;}
@@ -2627,7 +2627,9 @@ public:
 
     index_t rows() const { return _u.data().dim.first; }
     index_t cols() const
-    { return 2*_u.data().values[2].rows() / (1+_u.data().dim.first); }
+    {   return rows();
+        //return 2*_u.data().values[2].rows() / (1+_u.data().dim.first);
+    }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -3424,7 +3426,7 @@ public:
         const index_t mr  = ml.rows();
         const index_t mb  = ml.cols() / mr;
 
-        GISMO_ASSERT(_M.cols()==_M.rows(),"Matrix must be square!");
+        GISMO_ASSERT(_M.cols()==_M.rows(),"Matrix must be square: "<< _M.rows()<<" x "<< _M.cols() << " expr: "<< _M );
         // GISMO_ASSERT(_M.cardinality()==_u.cardinality(),"cardinality must match, but card(M)="<<_M.cardinality()<<" and card(u)="<<_u.cardinality());
 
         res.setZero(mr, sr * mr);

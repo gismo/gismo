@@ -306,7 +306,7 @@ public:
         }
         else
         {
-            gsDebug<<"- No source for "<< sym.m_fs <<"\n";
+            gsDebug<<"\ngsExprHelper: No source for ["<< sym <<"]\n";
             // eg. mutable var?
         }
     }

@@ -328,7 +328,7 @@ T gsExprEvaluator<T>::compute_impl(const E & expr)
     m_value = _op::init();
     m_elWise.clear();
     if ( storeElWise )
-        m_elWise.reserve(m_exprdata->multiBasis().totalElements());
+        m_elWise.resize(m_exprdata->multiBasis().totalElements());
 
 #pragma omp parallel
 {
