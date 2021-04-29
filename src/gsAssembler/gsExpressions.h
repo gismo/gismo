@@ -1307,9 +1307,8 @@ public:
         // const index_t r  = _u.cols() / cb;
         const index_t r  = _u.cardinality();
         res.resize(r, 1);
-        for (index_t i = 0; i!=r; ++i){
+        for (index_t i = 0; i!=r; ++i)
             res(i,0) = tmp.middleCols(i*cb,cb).trace();
-        }
         return res;
     }
 
@@ -1942,13 +1941,16 @@ public:
         // Assumes: derivatives are in _u.data().values[1]
         // gsExprHelper acounts for compositions/physical expressions
         // so that derivs are directly computed
-        tmp = _u.data().values[1].reshapeCol(k, cols(), rows()).transpose();
+        tmp = _u.data().values[1].reshapeCol(k, cols(), cardinality_impl()).transpose();
         return tmp;
     }
 
-    index_t rows() const { return _u.data().values[1].rows() / cols(); }
+    index_t rows() const { return 1 /*==u.dim()*/; }
 
     index_t cols() const { return _u.source().domainDim(); }
+
+    index_t cardinality_impl() const
+    { return _u.data().values[1].rows() / cols(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -2609,14 +2611,14 @@ public:
 public:
     hess_expr(const E & u) : _u(u)
     {
-        //gsInfo << "expression is space ? "<<E::Space <<"\n"; _u.print(gsInfo);
+        //gsInfo << "\n-expression is space ? "<<E::Space <<"\n"; _u.print(gsInfo);
         //GISMO_ASSERT(1==_u.dim(),"hess(.) requires 1D variable");
     }
 
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
         const gsFuncData<Scalar> & dd = _u.data();
-        const index_t sz = cols();
+        const index_t sz = cardinality_impl();
         res.resize(dd.dim.first, sz*dd.dim.first);
         secDerToHessian(dd.values[2].col(k), dd.dim.first, res);
         res.resize(dd.dim.first, res.cols()*dd.dim.first);
@@ -2631,6 +2633,13 @@ public:
         //return 2*_u.data().values[2].rows() / (1+_u.data().dim.first);
     }
 
+    index_t cardinality_impl() const
+    {
+        return 2*_u.data().values[2].rows()/
+            (_u.data().dim.first*(1+_u.data().dim.first));
+        //gsDebugVar(_u.data().values.front().rows());//empty!
+    }
+    
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u);
@@ -2653,8 +2662,8 @@ protected:
 
 public:
     typedef T Scalar;
-    enum{Space = 0};
-
+    enum{Space = 0, ScalarValued = 0, ColBlocks = 0 };
+    
     hess_expr(const gsFeSolution<T> & u) : _u(u) { }
 
     mutable gsMatrix<T> res;
@@ -2683,10 +2692,7 @@ public:
 
     }
 
-    index_t rows() const
-    {
-        return _u.dim(); // * _u.targetDim()  // number of components
-    }
+    index_t rows() const { return _u.parDim(); }
 
     index_t cols() const
     {// second derivatives in the columns; i.e. [d11, d22, d33, d12, d13, d23]
@@ -2928,6 +2934,7 @@ public:
         if (  1 == _v.cardinality() ) //second is not ColBlocks
         {
             res.resize(ur, vc*nb);
+            GISMO_ASSERT(tmpA.cols()==uc*nb, "Dimension error.. "<< tmpA.cols()<<"!="<<uc*nb );
             GISMO_ASSERT(1==_v.cardinality(), "Dimension error");
             //gsInfo<<"cols = "<<res.cols()<<"; rows = "<<res.rows()<<"\n";
             for (index_t i = 0; i!=nb; ++i)
@@ -3420,14 +3427,14 @@ public:
 
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
-        MatExprType sl = _u.eval(k);
-        const index_t sr  = sl.rows();
-        MatExprType ml = _M.eval(k);
-        const index_t mr  = ml.rows();
-        const index_t mb  = ml.cols() / mr;
+        MatExprType sl   = _u.eval(k);
+        const index_t sr = sl.rows();
+        MatExprType ml   = _M.eval(k);
+        const index_t mr = ml.rows();
+        const index_t mb = ml.cols() / mr;
 
         GISMO_ASSERT(_M.cols()==_M.rows(),"Matrix must be square: "<< _M.rows()<<" x "<< _M.cols() << " expr: "<< _M );
-        // GISMO_ASSERT(_M.cardinality()==_u.cardinality(),"cardinality must match, but card(M)="<<_M.cardinality()<<" and card(u)="<<_u.cardinality());
+        GISMO_ASSERT(_M.cardinality()==_u.cols(),"cardinality must match vector, but card(M)="<<_M.cardinality()<<" and cols(u)="<<_u.cols());
 
         res.setZero(mr, sr * mr);
         for (index_t i = 0; i!=sr; ++i)
@@ -3437,15 +3444,19 @@ public:
     }
 
     index_t rows() const { return _M.rows(); }
-    index_t cols() const { return _u.rows() * _M.rows(); }
+    index_t cols() const { return _M.rows(); } //_u.rows()
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _M.parse(evList); }
 
-
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
+    index_t cardinality_impl() const {
+        GISMO_ERROR("A");
+        return 0;
+    }
+    
     void print(std::ostream &os) const
     { os << "sum("; _M.print(os); os<<","; _u.print(os); os<<")"; }
 
@@ -3486,6 +3497,8 @@ public:
                      "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in - operation:\n" << _u <<" minus \n" << _v );
         GISMO_ASSERT(_u.cols() == _v.cols(),
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in - operation:\n" << _u <<" minus \n" << _v );
+        GISMO_ASSERT(_u.cardinality() == _u.cardinality(),
+                     "Cardinality "<< _u.cardinality()<<" != "<< _v.cardinality());
         //return (_u.eval(k) - _v.eval(k) ).eval();
         return (_u.eval(k) - _v.eval(k) ); // any temporary matrices eval(.) will leak mem.
     }
@@ -3496,10 +3509,16 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }
 
+    index_t cardinality_impl() const
+    {
+        GISMO_ASSERT(_u.cardinality() == _u.cardinality(),
+                     "Cardinality "<< _u.cardinality()<<" != "<< _v.cardinality());
+        return _u.cardinality();
+    }
+    
     void print(std::ostream &os) const
     { os << "("; _u.print(os); os<<" - ";_v.print(os); os << ")";}
 };

@@ -77,9 +77,12 @@ int main(int argc, char *argv[])
 
     // Get the map and function
     geometryMap G = A.getMap(mp);
-    gsFunctionExpr<> ff;
-    ff = gsFunctionExpr<>("cos(pi*x/8) * sin(pi*y/8)", 2);
+    gsFunctionExpr<> ff("cos(pi*x/8) * sin(pi*y/8)", 2);
+    //gsFunctionExpr<> lapff("- cos(pi*x/8) * sin(pi*y/8) * (pi^2)/32", 2);
+    gsFunctionExpr<> bilapff("cos(pi*x/8) * sin(pi*y/8) * (pi^4)/1024", 2);
+    
     auto f = A.getCoeff(ff, G);
+    auto blf = A.getCoeff(bilapff, G);
 
     // Solution vector and solution variable
     gsMatrix<> sVector;
@@ -92,8 +95,8 @@ int main(int argc, char *argv[])
     //! [Solver loop]
     gsSparseSolver<>::CGDiagonal solver;
         
-    gsVector<> l2err(numRefine+1), h1err(numRefine+1), linferr(numRefine+1),
-        b2err(numRefine+1), b1err(numRefine+1), binferr(numRefine+1);
+    gsVector<> l2err(numRefine+1), h1err(numRefine+1),
+        h2err(numRefine+1), linferr(numRefine+1);
     gsVector<index_t>  CGiter(numRefine+1);
     gsInfo<< "(dot1=assembled, dot2=solved, dot3=got_error)\n"
         "\nDoFs: ";
@@ -128,10 +131,14 @@ int main(int argc, char *argv[])
         //A.assemble(  u * u.tr(), u * f );
 
         // Poisson
-        A.assemble( igrad(u,G) * igrad(u,G).tr() * meas(G), - u * ilapl(f) * meas(G) );
+        //A.assemble( igrad(u,G) * igrad(u,G).tr() * meas(G), - u * ilapl(f) * meas(G) );
 
-        // Biharmonic (note: needs more boundary conditions to work)
-        //A.assemble(  ilapl(u,G) * ilapl(u,G).tr() * meas(G), - u * ilapl(f) * meas(G) );
+        // Biharmonic
+        A.assemble(  ilapl(u,G) * ilapl(u,G).tr() * meas(G),
+                     u * blf * meas(G) );
+
+        auto g_N = f;//A.getBdrFunction(); // Neumann term
+        A.assembleRhsBc( igrad(u,G) * nv(G) * ilapl(g_N), bc.dirichletSides() );
 
         gsInfo<< "." <<std::flush;// Assemblying done
 
@@ -144,6 +151,8 @@ int main(int argc, char *argv[])
         l2err[r]= math::sqrt( ev.integral( (f - s).sqNorm()*meas(G) ) / ev.integral(f.sqNorm()*meas(G)) );
 
         h1err[r]= l2err[r] + math::sqrt(ev.integral( ( igrad(f) - grad(s)*jac(G).inv() ).sqNorm()*meas(G) )/ev.integral( igrad(f).sqNorm()*meas(G) ) );
+
+        h2err[r]= h1err[r] + math::sqrt(ev.integral( ( ihess(f) - ihess(s,G) ).sqNorm()*meas(G) )/ev.integral( ihess(f).sqNorm()*meas(G) ) );
         
         linferr[r] = ev.max( f-s ) / ev.max(f);
         
@@ -155,11 +164,15 @@ int main(int argc, char *argv[])
 
     //! [Error and convergence rates]
     gsInfo<<"\n* Error\n";
+    gsInfo<< "H2    "<<std::scientific<<h2err.transpose()<<"\n";
     gsInfo<< "H1    "<<std::scientific<<h1err.transpose()<<"\n";
     gsInfo<< "L2    "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
     gsInfo<< "Linf  "<<std::scientific<<linferr.transpose()<<"\n";
 
     gsInfo<<"\n* EoC\n";
+    gsInfo<< "H2c   0 "<< std::fixed<<std::setprecision(2)
+          <<( h2err.head(numRefine).array() /
+              h2err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
     gsInfo<< "H1c   0 "<< std::fixed<<std::setprecision(2)
           <<( h1err.head(numRefine).array() /
               h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";

@@ -1086,9 +1086,8 @@ gsMatrix<index_t>  gsHTensorBasis<d,T>::
 boundaryOffset(boxSide const & s,index_t offset, index_t level) const
 {
     //get information on the side
-    index_t k   = s.direction();
-    bool par = s.parameter();
-
+    //index_t k   = s.direction();
+    //bool par = s.parameter();
     return this->m_bases[level]->boundaryOffset(s, offset);
 }
 

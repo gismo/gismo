@@ -512,6 +512,9 @@ private:
 
             if (isMatrix)
             {
+                GISMO_ASSERT( rowInd0.rows()*rd==localMat.rows() && colInd0.rows()*cd==localMat.cols(),
+                              "Invalid local matrix (expected "<<rowInd0.rows()*rd <<"x"<< colInd0.rows()*cd <<"), got\n" << localMat );
+                                
                 //if (&rowInd0!=&colInd0)
                 colMap.localToGlobal(colInd0, patchInd, colInd);
                 GISMO_ASSERT( colMap.boundarySize()==fixedDofs.size(),

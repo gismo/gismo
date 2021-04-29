@@ -162,7 +162,7 @@ private:
     void _parse(const expr::_expr<E1> & a1)
     {
         a1.parse(*this);
-        a1.print(gsInfo);
+        //a1.print(gsInfo);
     }
 
     template <class E1, class... Rest>
@@ -306,7 +306,7 @@ public:
         }
         else
         {
-            gsDebug<<"\ngsExprHelper: No source for ["<< sym <<"]\n";
+            gsDebug<<"\ngsExprHelper: No source for ["<< sym <<"] (bc?)\n";
             // eg. mutable var?
         }
     }
