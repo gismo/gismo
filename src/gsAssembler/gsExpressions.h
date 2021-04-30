@@ -2673,11 +2673,30 @@ public:
 
         const gsDofMapper & map = _u.mapper();
 
-        index_t numActs = _u.data().values[0].rows();
-        index_t numDers = cols();
+        const index_t numActs = _u.data().values[0].rows();
+        const index_t pdim = _u.parDim();
+        index_t numDers = pdim*(pdim+1)/2;
         gsMatrix<T> deriv2;
 
-        res.setZero(rows(), cols());
+        if (1==_u.dim())
+        {
+            res.setZero(numDers,1);
+            for (index_t i = 0; i!=numActs; ++i)
+            {
+                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,0);
+                deriv2 = _u.data().values[2].block(i*numDers,k,numDers,1);
+                if ( map.is_free_index(ii) ) // DoF value is in the solVector
+                    res += _u.coefs().at(ii) * deriv2;
+                else
+                    res +=_u.fixedPart().at( map.global_to_bindex(ii) ) * deriv2;
+            }
+            secDerToHessian(res, pdim, deriv2);
+            res.swap(deriv2);
+            res.resize(pdim,pdim);
+            return res;
+        }
+
+        res.setZero(rows(), numDers);
         for (index_t c = 0; c!= _u.dim(); c++)
             for (index_t i = 0; i!=numActs; ++i)
             {
