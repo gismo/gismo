@@ -657,8 +657,9 @@ int main(int argc, char *argv[])
 
     gsInfo<< "* Jacobian  (map):\t";
     result = ev.eval( jac(G), point );
+    // note: transpose() below should not be needed!
     if (verbose)
-        gsInfo  <<"Result:\n"<<result<<"\n"
+        gsInfo  <<"Result:\n"<<result.transpose()<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
     // Note: deriv(.) returns a column with the gradients
     // transposition is required to obtain Jacobian matrix
@@ -668,7 +669,7 @@ int main(int argc, char *argv[])
     result = ev.eval( grad(u_sol), point );
     // note: transpose() below should not be needed!
     if (verbose)
-        gsInfo  <<"Result:\n"<<result<<"\n"
+        gsInfo  <<"Result:\n"<<result.transpose()<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
     // Note: deriv(.) returns columns filled with gradients
     // transposition is required to obtain the gradients in the rows
@@ -754,13 +755,13 @@ int main(int argc, char *argv[])
       - summ_expr
     */
 
-    gsInfo<< "* summ:\t";
-    result = ev.eval(summ(u2.tr(),jac(u2)).tr(),point);
-    if (verbose)
-        gsInfo  <<"Result:\n"<<result<<"\n";
-                // <<"Exact:\n"<<exact<<"\n";
-    // gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
-    gsInfo<<"passed (no exact check)\n";
+    // gsInfo<< "* summ:\t";
+    // result = ev.eval(summ(u2.tr(),jac(u2)).tr(),point);
+    // if (verbose)
+    //     gsInfo  <<"Result:\n"<<result<<"\n";
+    //             // <<"Exact:\n"<<exact<<"\n";
+    // // gsInfo<<( (result-exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+    // gsInfo<<"passed (no exact check)\n";
 
     /*
       Computes the second derivatives on the geometry
@@ -775,11 +776,9 @@ int main(int argc, char *argv[])
     gsWarn<<"The following expressions have different formats:\n";
 
 
-    // THIS ONE DOES NOT COMPILE
-    /*
-      result = ev.eval( hess(u_sol), point );
-      gsInfo<< "* Hess (solution): \n"<<result<<"\n";
-    */
+    result = ev.eval( hess(u_sol), point );
+    gsInfo<< "* Hess (solution): \n"<<result<<"\n";
+
     index_t numDers = mp.domainDim() * (mp.domainDim() + 1) / 2;
     result.resize(mp.targetDim() * numDers,exact.cols());
     gsInfo<< "* Deriv2 (geometryMap): \n"<<exact<<"\n";
