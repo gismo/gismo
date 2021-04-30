@@ -3509,8 +3509,9 @@ public:
         //GISMO_STATIC_ASSERT((int)E1::ColBlocks == (int)E2::ColBlocks, "Cannot subtract if the number of colums do not agree.");
     }
 
-    AutoReturn_t
-    eval(const index_t k) const
+    mutable gsMatrix<Scalar> res;
+    //AutoReturn_t
+    const gsMatrix<Scalar> & eval(const index_t k) const
     {
         GISMO_ASSERT(_u.rows() == _v.rows(),
                      "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in - operation:\n" << _u <<" minus \n" << _v );
@@ -3519,7 +3520,9 @@ public:
         GISMO_ASSERT(_u.cardinality() == _u.cardinality(),
                      "Cardinality "<< _u.cardinality()<<" != "<< _v.cardinality());
         //return (_u.eval(k) - _v.eval(k) ).eval();
-        return (_u.eval(k) - _v.eval(k) ); // any temporary matrices eval(.) will leak mem.
+        //return (_u.eval(k) - _v.eval(k) ); // any temporary matrices eval(.) will leak mem.
+        res = _u.eval(k) - _v.eval(k);
+        return res;
     }
 
     index_t rows() const { return _u.rows(); }
