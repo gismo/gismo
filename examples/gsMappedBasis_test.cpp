@@ -128,16 +128,14 @@ int main(int argc, char *argv[])
         gsInfo<< A.numDofs() <<std::flush;
 
         // Compute the system matrix and right-hand side
-        //A.assemble(  u * u.tr(), u * f );
+//        A.assemble(  u * u.tr(), u * f );
 
         // Poisson
-        //A.assemble( igrad(u,G) * igrad(u,G).tr() * meas(G), - u * ilapl(f) * meas(G) );
+//        A.assemble( igrad(u,G) * igrad(u,G).tr() * meas(G), - u * ilapl(f) * meas(G) );
 
         // Biharmonic
-        A.assemble(  ilapl(u,G) * ilapl(u,G).tr() * meas(G),
-                     u * blf * meas(G) );
-
-        auto g_N = f;//A.getBdrFunction(); // Neumann term
+        A.assemble(  ilapl(u,G) * ilapl(u,G).tr() * meas(G), u * blf * meas(G) );
+        auto g_N = f;// A.getBdrFunction(); // Neumann term
         A.assembleRhsBc( igrad(u,G) * nv(G) * ilapl(g_N), bc.dirichletSides() );
 
         gsInfo<< "." <<std::flush;// Assemblying done
@@ -152,8 +150,12 @@ int main(int argc, char *argv[])
 
         h1err[r]= l2err[r] + math::sqrt(ev.integral( ( igrad(f) - grad(s)*jac(G).inv() ).sqNorm()*meas(G) )/ev.integral( igrad(f).sqNorm()*meas(G) ) );
 
-        h2err[r]= h1err[r] + math::sqrt(ev.integral( ( ihess(f) - ihess(s,G) ).sqNorm()*meas(G) )/ev.integral( ihess(f).sqNorm()*meas(G) ) );
-        
+        h2err[r]=// h1err[r] +
+            math::sqrt(
+                ev.integral( ( ihess(f) - ihess(s,G) ).sqNorm()*meas(G) )
+                //       /ev.integral( ihess(f).sqNorm()*meas(G) )
+                );
+
         linferr[r] = ev.max( f-s ) / ev.max(f);
         
         gsInfo<< ". " <<std::flush; // Error computations done
