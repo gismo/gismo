@@ -102,6 +102,7 @@ namespace gismo
 
 			real_t eps = pde_ptr->eps; //simplicity
 
+/*
 			if (prec)      //elementwise regularization
 			{
 				real_t sum = 0;
@@ -114,10 +115,11 @@ namespace gismo
 				}
 				if (sum < 0.1*h*h) //good value for the gradient?
 				{
-					eps = math::max(eps_, eps);
+					//eps = math::max(eps_, eps);
 					//gsInfo<<"yes \n";
 				}
 			}
+*/
 
 			for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
 			{

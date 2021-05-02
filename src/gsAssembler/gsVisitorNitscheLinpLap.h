@@ -171,7 +171,7 @@ namespace gismo
 				const T h = element.getCellSize();
 				const T a_pen = pow(eps * eps + ((dirData.col(k) - wVal).transpose() * (dirData.col(k) - wVal)).value() / (h * h), (p - 2) / 2);
 				const T a = pow(eps * eps + (wGrad.transpose() * wGrad).value(), (p - 2) / 2);
-				const T mu = a_pen * penalty / h;
+				const T mu = /*a_pen **/ penalty / h;
 
 				// Sum up quadrature point evaluations
 				localRhs.noalias() -= weight * ((-mu * bVals)

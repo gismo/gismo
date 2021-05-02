@@ -367,7 +367,7 @@ int main(int argc, char* argv[])
 
 			//std::cin.get();
 
-			if (prec) {tau = 2./pow(eps,p-2);}
+			if (prec) {tau = 2./(pow(eps,p-2)+(p-1)*pow(eps*eps+8*M_PI*M_PI,(p-2)/2));}
 			else
 			{
         if (tau_min == 1 && tau_max == 1)
