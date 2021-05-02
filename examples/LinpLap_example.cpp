@@ -480,49 +480,13 @@ int main(int argc, char* argv[])
  Project Function g to discrete space with basis mb by solving Mh*uh=fh for uh
  where fh_i=<g,phi_i> the moment vector and Mh_ij=<phi_j,phi_i> the mass matrix
  */
-gsMatrix<real_t> projectL2(gsMultiPatch<real_t> mp, gsMultiBasis<real_t> mb, gsField<real_t> g)
+gsMatrix<real_t> projectL2(const gsMultiPatch<real_t> &mp, const gsMultiBasis<real_t> &mb, const gsFunction<real_t> &g)
 {
-	gsSparseSolver<real_t>::LU solver;
-	gsAssembler<> MA;
-
-	gsOptionList opt = gsAssembler<>::defaultOptions();
-	opt.setInt("DirichletValues", dirichlet::l2Projection);
-	opt.setInt("DirichletStrategy", dirichlet::elimination);
-	opt.setInt("InterfaceStrategy", iFace::conforming);
-
-	gsBoundaryConditions<real_t> bcInfo;
-
-	bcInfo.addCondition(0, boundary::west, condition_type::neumann, 0);
-	bcInfo.addCondition(0, boundary::east, condition_type::neumann, 0);
-	bcInfo.addCondition(0, boundary::north, condition_type::neumann, 0);
-	bcInfo.addCondition(0, boundary::south, condition_type::neumann, 0);
-
-	gsPoissonPde<real_t> pde(mp, bcInfo, g.function());
-
-	MA.initialize(pde, mb, opt);
-
-	gsDofMapper mapper; // Gets the indices mapped from Basis --> Matrix
-
-	mb.getMapper((dirichlet::strategy)opt.getInt("DirichletStrategy"),
-		(iFace::strategy)opt.getInt("InterfaceStrategy"),
-		bcInfo, mapper, 0);
-
-	gsSparseSystem<> sys(mapper);
-	sys.reserve(MA.multiBasis(0), MA.options(), MA.pde().numRhs()); // reserving enough space is crutial for performance!
-	MA.setSparseSystem(sys);
-
-	MA.push<gsVisitorMass<real_t>>();
-
-	gsSparseMatrix<real_t, 1> Mh = MA.matrix();
-
-	MA.push<gsVisitorMoments<real_t>>(gsVisitorMoments<real_t>(g.function()));
-
-	MA.finalize();
-
-	gsMatrix<real_t> fh = MA.rhs();
-
-	solver.compute(Mh);
-	return solver.solve(fh);
+    gsGenericAssembler<> assembler(mp,mb);
+    gsSparseMatrix<> mass = assembler.assembleMass();
+    gsMatrix<> moments = assembler.assembleMoments(g);
+    gsSparseSolver<real_t>::LU solver(mass);
+    return solver.solve(moments);
 }
 
 gsMatrix<real_t> projectL2(gsMultiPatch<real_t> mp, gsMultiBasis<real_t> mb, gsFunction<real_t> &g)

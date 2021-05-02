@@ -127,22 +127,6 @@ namespace gismo
 				w_(i, 0) = w(actives(i), 0);
 			}
 
-			/*
-			if (prec)
-			{
-				real_t sum = 0;
-				for (index_t k = 0; k < quWeights.rows(); ++k)
-				{
-					transformGradients(md, k, bGrads, pGrads);
-					gsMatrix<T> wGrad = pGrads * w_;
-					sum += (wGrad.transpose() * wGrad).value();
-				}
-				if (sum / (quWeights.rows()) < 5)
-				{
-					eps = 0.1;
-				}
-			}
-			*/
 
 			for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
 			{
@@ -171,7 +155,7 @@ namespace gismo
 				const T h = element.getCellSize();
 				const T a_pen = pow(eps * eps + ((dirData.col(k) - wVal).transpose() * (dirData.col(k) - wVal)).value() / (h * h), (p - 2) / 2);
 				const T a = pow(eps * eps + (wGrad.transpose() * wGrad).value(), (p - 2) / 2);
-				const T mu = /*a_pen **/ penalty / h;
+				const T mu = a_pen * penalty / h;
 
 				// Sum up quadrature point evaluations
 				localRhs.noalias() -= weight * ((-mu * bVals)

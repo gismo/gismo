@@ -130,7 +130,7 @@ int main(int argc, char* argv[])
     }
     else if (problemId == 2)
     {
-        f = gsFunctionExpr<>("2*" + std::to_string(omega) + "^2*pi^2*(" + std::to_string(eps*eps) + "+2*" + std::to_string(omega) + "^2*pi^2*cos(" + std::to_string(omega) + "*pi*(x+y))^2)^((" + std::to_string(p) + "-4)/2)*(" + std::to_string(eps*eps) + "+2*" + std::to_string(omega) + "^2*(" + std::to_string(p) + "-1)*pi^2*cos(" + std::to_string(omega) + "*pi*(x+y))^2)*sin(" + std::to_string(omega) + "*pi*(x+y))+ " + std::to_string(lambda) + "*abs(sin(" + std::to_string(omega) + "*pi*(x+y)))^" + std::to_string(alpha) +"*sin(" + std::to_string(omega) + "*pi*(x+y))", 2);
+        f	= gsFunctionExpr<>("2*" + std::to_string(omega) + "^2*pi^2*(" + std::to_string(eps*eps) + "+2*" + std::to_string(omega) + "^2*pi^2*cos(" + std::to_string(omega) + "*pi*(x+y))^2)^((" + std::to_string(p) + "-4)/2)*(" + std::to_string(eps*eps) + "+2*" + std::to_string(omega) + "^2*(" + std::to_string(p) + "-1)*pi^2*cos(" + std::to_string(omega) + "*pi*(x+y))^2)*sin(" + std::to_string(omega) + "*pi*(x+y))+ " + std::to_string(lambda) + "*abs(sin(" + std::to_string(omega) + "*pi*(x+y)))^" + std::to_string(alpha) +"*sin(" + std::to_string(omega) + "*pi*(x+y))", 2);
         
         u =	gsFunctionExpr<>("sin(" + std::to_string(omega) + "*pi*(x+y))", 2);
         
@@ -245,8 +245,9 @@ int main(int argc, char* argv[])
     basis.reduceContinuity(reduceCont);
     
     // Setup for solving
+    if (str == 2) { hbcInfo = bcInfo; }
     gsMatrix<real_t> w = projectL2(patch, basis, u0);  // initial guess on coarsest grid
-    gsLinpLapPde<real_t> pde(patch, bcInfo, f, eps, p, w);
+    gsLinpLapPde<real_t> pde(patch, bcInfo, f, eps, p, w, lambda, alpha);
 
     gsInfo << "eps = " << eps << " , p = " << p << " , k = " << k << " , lambda = " << lambda << "\n";
     gsInfo << "Dofs       &CPU time  &L_p error& L_p rate  &F error  & F rate    &iter      &p         &eps       &||rh||_{\ell^2} \n";
@@ -258,7 +259,7 @@ int main(int argc, char* argv[])
     {
         gsSparseMatrix<real_t, RowMajor> transfer;
         basis.uniformRefine_withTransfer(transfer, bcInfo, opt);
-        pde.w = transfer * pde.w; // get initial guess from coaeser grid // Here, the Dirichlet values are not the eaxct L2-projection -- ST
+        pde.w = transfer * pde.w; // get initial guess from coaeser grid // Here, the Dirichlet values are not the exact L2-projection -- ST
         transfers.push_back(give(transfer));
 
         std::clock_t c_start = std::clock();
