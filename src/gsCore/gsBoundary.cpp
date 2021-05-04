@@ -162,7 +162,7 @@ boxComponent::location boxComponent::locationForDirection(index_t direction) con
 
 void boxComponent::setLocationForDirection(index_t direction, boxComponent::location par)
 {
-    const index_t diff = par - parameter(direction);
+    const index_t diff = par - locationForDirection(direction);
     if (diff)
     {
         index_t factor = 1;

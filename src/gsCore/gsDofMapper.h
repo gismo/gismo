@@ -416,6 +416,10 @@ public:
         return std::binary_search(m_tagged.begin(),m_tagged.end(),gl);
     }
 
+    /// Returns the number of components present in the mapper
+    inline index_t numComponents() const
+    { return static_cast<index_t>(m_dofs.size()); }
+
     /// Returns the total number of dofs (free and eliminated).
     inline index_t size() const
     {

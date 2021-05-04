@@ -25,12 +25,11 @@ public:
     typedef typename E::Scalar Scalar;
 
 private:
-
     typename E::Nested_t _u;
     typename gsGeometryMap<Scalar>::Nested_t _G;
 
 public:
-    enum{ Space = E::Space };
+    enum{ Space = E::Space, ScalarValued= 0, ColBlocks= 0};
 
     var1_expr(const E & u, const gsGeometryMap<Scalar> & G) : _u(u), _G(G) { }
 
@@ -48,29 +47,24 @@ public:
         return result;
     }
 
-    const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {return eval_impl(_u,k); }
 
     index_t rows() const { return 1; }
+
     index_t cols() const { return _u.dim(); }
 
-    void setFlag() const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
+        evList.add(_u);
+        evList.add(_G);
         _u.data().flags |= NEED_GRAD | NEED_ACTIVE;
-        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
-    }
-
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
-    {
-        evList.push_sorted_unique(&_u.source());
-        _u.data().flags |= NEED_GRAD;
         _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
     index_t cardinality_impl() const { return _u.cardinality_impl(); }
-
-    enum{rowSpan = E::rowSpan, colSpan = 0};
 
     void print(std::ostream &os) const { os << "var1("; _u.print(os); os <<")"; }
 
@@ -110,7 +104,7 @@ private:
     eval_impl(const U & u, const index_t k)  const
     {
         GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
-        solGrad_expr<Scalar> sGrad =  solGrad_expr<Scalar>(_u);
+        grad_expr<gsFeSolution<Scalar>> sGrad =  grad_expr<gsFeSolution<Scalar>>(_u);
         res.resize(rows(), cols()); // rows()*
 
         normal = _G.data().normal(k);// not normalized to unit length
@@ -136,14 +130,13 @@ public:
     typedef typename E1::Scalar Scalar;
 
 private:
-
     typename E1::Nested_t _u;
     typename E2::Nested_t _v;
     typename gsGeometryMap<Scalar>::Nested_t _G;
     typename E3::Nested_t _Ef;
 
 public:
-    enum{ Space = E1::Space };
+    enum{ Space = 2, ScalarValued= 0, ColBlocks= 0 };
 
     var2_expr( const E1 & u, const E2 & v, const gsGeometryMap<Scalar> & G, _expr<E3> const& Ef) : _u(u),_v(v), _G(G), _Ef(Ef) { }
 
@@ -226,33 +219,25 @@ public:
 
     index_t rows() const
     {
-        return 1; // because the resulting matrix has scalar entries for every combination of active basis functions
+        return 0; // because the resulting matrix has scalar entries for every combination of active basis functions
     }
 
     index_t cols() const
     {
-        return 1; // because the resulting matrix has scalar entries for every combination of active basis functions
+        return 0; // because the resulting matrix has scalar entries for every combination of active basis functions
     }
 
-    void setFlag() const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
+        evList.add(_u);
+        evList.add(_G);
         _u.data().flags |= NEED_GRAD;
         _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
-        _Ef.setFlag();
-    }
-
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
-    {
-        evList.push_sorted_unique(&_u.source());
-        _u.data().flags |= NEED_GRAD;
-        _G.data().flags |=  NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
-        _Ef.setFlag();
+        evList.parse(_Ef);
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
-
-    enum{rowSpan = 1, colSpan = 1};
 
     void print(std::ostream &os) const { os << "var2("; _u.print(os); os <<")"; }
 };
@@ -261,16 +246,13 @@ public:
 template<class E1, class E2>
 class deriv2dot_expr : public _expr<deriv2dot_expr<E1, E2> >
 {
-public:
-    typedef typename E1::Scalar Scalar;
-
-private:
-
     typename E1::Nested_t _u;
     typename E2::Nested_t _v;
 
 public:
-    enum{ Space = E1::Space };
+    enum{ Space = E1::Space, ScalarValued= 0, ColBlocks= 0 };
+
+    typedef typename E1::Scalar Scalar;
 
     deriv2dot_expr(const E1 & u, const E2 & v) : _u(u), _v(v) { }
 
@@ -288,22 +270,14 @@ public:
         return cols_impl(_u);
     }
 
-    void setFlag() const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
-        _u.data().flags |= NEED_DERIV2;
-        _v.setFlag();
-    }
-
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
-    {
-        evList.push_sorted_unique(&_u.source());
+        evList.add(_u);
         _u.data().flags |= NEED_DERIV2;
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
-
-    enum{rowSpan = E1::rowSpan, colSpan = E2::rowSpan};
 
     void print(std::ostream &os) const { os << "deriv2("; _u.print(os); _v.print(os); os <<")"; }
 
@@ -366,7 +340,7 @@ private:
             So we simply evaluate for every active basis function v_k the product hess(c).v_k
         */
 
-        solHess_expr<Scalar> sHess = solHess_expr<Scalar>(_u);
+        hess_expr<gsFeSolution<Scalar>> sHess = hess_expr<gsFeSolution<Scalar>>(_u);
         tmp = sHess.eval(k);
         vEv = _v.eval(k);
         res = vEv * tmp;
@@ -421,16 +395,13 @@ private:
 template<class E>
 class deriv2_expr : public _expr<deriv2_expr<E> >
 {
-public:
-    typedef typename E::Scalar Scalar;
-
-private:
-
     typename E::Nested_t _u;
 
 public:
-    enum {ColBlocks = E::rowSpan };
-    enum{ Space = E::Space };
+    // enum {ColBlocks = E::rowSpan }; // ????
+    enum{ Space = E::Space, ScalarValued= 0, ColBlocks = (1==E::Space?1:0) };
+
+    typedef typename E::Scalar Scalar;
 
     deriv2_expr(const E & u) : _u(u) { }
 
@@ -448,14 +419,9 @@ public:
         return _u.source().domainDim() * ( _u.source().domainDim() + 1 ) / 2;
     }
 
-    void setFlag() const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
-        _u.data().flags |= NEED_DERIV2|NEED_ACTIVE;
-    }
-
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
-    {
-        evList.push_sorted_unique(&_u.source());
+        _u.parse(evList);
         _u.data().flags |= NEED_DERIV2;
     }
 
@@ -463,8 +429,6 @@ public:
     const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
 
     index_t cardinality_impl() const { return _u.cardinality_impl(); }
-
-    enum{rowSpan = E::rowSpan, colSpan = E::colSpan};
 
     void print(std::ostream &os) const { os << "deriv2("; _u.print(os); os <<")"; }
 
@@ -533,12 +497,15 @@ class flatdot_expr  : public _expr<flatdot_expr<E1,E2,E3> >
 {
 public:
     typedef typename E1::Scalar Scalar;
-    enum {ScalarValued = 0, Space = E1::Space};
+
 private:
     typename E1::Nested_t _A;
     typename E2::Nested_t _B;
     typename E3::Nested_t _C;
     mutable gsMatrix<Scalar> eA, eB, eC, tmp, res;
+
+public:
+    enum {Space = E1::Space, ScalarValued = 1, ColBlocks= 0};
 
 public:
 
@@ -558,8 +525,8 @@ public:
         eC = _C.eval(k);
 
         GISMO_ASSERT(Bc==_A.rows(), "Dimensions: "<<Bc<<","<< _A.rows()<< "do not match");
-        GISMO_STATIC_ASSERT(E1::rowSpan, "First entry should be rowSpan"  );
-        GISMO_STATIC_ASSERT(E2::colSpan, "Second entry should be colSpan.");
+        GISMO_STATIC_ASSERT(E1::Space==1, "First entry should be rowSpan"  );
+        GISMO_STATIC_ASSERT(E2::Space==2, "Second entry should be colSpan.");
 
         res.resize(An, Bn);
 
@@ -578,18 +545,16 @@ public:
         return res;
     }
 
-    index_t rows() const { return 1; }
-    index_t cols() const { return 1; }
+    index_t rows() const { return 0; }
+    index_t cols() const { return 0; }
     void setFlag() const { _A.setFlag();_B.setFlag();_C.setFlag(); }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _A.parse(evList);_B.parse(evList);_C.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _A.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _B.colVar(); }
     index_t cardinality_impl() const { return _A.cardinality_impl(); }
-
-    enum{rowSpan = E1::rowSpan, colSpan = E2::colSpan};
 
     void print(std::ostream &os) const { os << "flatdot("; _A.print(os);_B.print(os);_C.print(os); os<<")"; }
 };
@@ -603,8 +568,6 @@ class flatdot2_expr  : public _expr<flatdot2_expr<E1,E2,E3> >
 {
 public:
     typedef typename E1::Scalar Scalar;
-    enum {ScalarValued = 0, Space = E1::Space};
-    enum {ColBlocks = 0 };
 
 private:
     typename E1::Nested_t _A;
@@ -613,6 +576,7 @@ private:
     mutable gsMatrix<Scalar> eA, eB, eC, res, tmp;
 
 public:
+    enum {Space = E1::Space, ScalarValued = 1, ColBlocks = 0};
 
     flatdot2_expr(_expr<E1> const& A, _expr<E2> const& B, _expr<E3> const& C) : _A(A),_B(B),_C(C)
     {
@@ -629,8 +593,8 @@ public:
         eC = _C.eval(k);
 
         GISMO_ASSERT(_B.rows()==_A.cols(), "Dimensions: "<<_B.rows()<<","<< _A.cols()<< "do not match");
-        GISMO_STATIC_ASSERT(E1::rowSpan, "First entry should be rowSpan");
-        GISMO_STATIC_ASSERT(E2::colSpan, "Second entry should be colSpan.");
+        GISMO_STATIC_ASSERT(E1::Space==1, "First entry should be rowSpan");
+        GISMO_STATIC_ASSERT(E2::Space==2, "Second entry should be colSpan.");
         GISMO_ASSERT(_C.cols()==_B.rows(), "Dimensions: "<<_C.rows()<<","<< _B.rows()<< "do not match");
 
         res.resize(An, Bn);
@@ -644,18 +608,15 @@ public:
         return res;
     }
 
-    index_t rows() const { return 1; }
-    index_t cols() const { return 1; }
-    void setFlag() const { _A.setFlag();_B.setFlag();_C.setFlag(); }
+    index_t rows() const { return 0; }
+    index_t cols() const { return 0; }
 
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     { _A.parse(evList);_B.parse(evList);_C.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _A.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _B.colVar(); }
     index_t cardinality_impl() const { return _A.cardinality_impl(); }
-
-    enum{rowSpan = E1::rowSpan, colSpan = E2::colSpan};
 
     void print(std::ostream &os) const { os << "flatdot2("; _A.print(os);_B.print(os);_C.print(os); os<<")"; }
 };
@@ -672,6 +633,8 @@ class cartcov_expr : public _expr<cartcov_expr<T> >
 
 public:
     typedef T Scalar;
+
+    enum {Space = 0, ScalarValued = 0, ColBlocks = 0};
 
     cartcov_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
@@ -725,17 +688,13 @@ public:
 
     index_t cols() const { return 3; }
 
-    enum{rowSpan = 0, colSpan = 0};
-
     static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
     static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
 
-    void setFlag() const { _G.data().flags |= NEED_NORMAL|NEED_DERIV; }
-
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_G.source());
+        evList.add(_G);
         _G.data().flags |= NEED_NORMAL|NEED_DERIV;
     }
 
@@ -749,6 +708,8 @@ class cartcovinv_expr : public _expr<cartcovinv_expr<T> >
 
 public:
     typedef T Scalar;
+
+    enum {Space = 0, ScalarValued = 0, ColBlocks = 0};
 
     cartcovinv_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
@@ -764,17 +725,13 @@ public:
 
     index_t cols() const { return 3; }
 
-    enum{rowSpan = 0, colSpan = 0};
-
     static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
     static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
 
-    void setFlag() const { _G.data().flags |= NEED_NORMAL|NEED_DERIV; }
-
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_G.source());
+        evList.add(_G);
         _G.data().flags |= NEED_NORMAL|NEED_DERIV;
     }
 
@@ -794,6 +751,8 @@ class cartcon_expr : public _expr<cartcon_expr<T> >
 
 public:
     typedef T Scalar;
+
+    enum {Space = 0, ScalarValued = 0, ColBlocks = 0};
 
     cartcon_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
@@ -847,17 +806,13 @@ public:
 
     index_t cols() const { return 3; }
 
-    enum{rowSpan = 0, colSpan = 0};
-
     static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
     static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
 
-    void setFlag() const { _G.data().flags |= NEED_NORMAL|NEED_DERIV; }
-
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_G.source());
+        evList.add(_G);
         _G.data().flags |= NEED_NORMAL|NEED_DERIV;
     }
 
@@ -871,6 +826,8 @@ class cartconinv_expr : public _expr<cartconinv_expr<T> >
 
 public:
     typedef T Scalar;
+
+    enum {Space = 0, ScalarValued = 0, ColBlocks = 0};
 
     cartconinv_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
@@ -886,17 +843,13 @@ public:
 
     index_t cols() const { return 3; }
 
-    enum{rowSpan = 0, colSpan = 0};
-
     static const gsFeSpace<Scalar> & rowVar() { return gsNullExpr<Scalar>::get(); }
     static const gsFeSpace<Scalar> & colVar() { return gsNullExpr<Scalar>::get(); }
 
-    void setFlag() const { _G.data().flags |= NEED_NORMAL|NEED_DERIV; }
-
-    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    void parse(gsExprHelper<Scalar> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        evList.push_sorted_unique(&_G.source());
+        evList.add(_G);
         _G.data().flags |= NEED_NORMAL|NEED_DERIV;
     }
 
@@ -1328,16 +1281,16 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> E(util::to_string(E_modulus),3);
     gsFunctionExpr<> nu(util::to_string(PoissonRatio),3);
     gsMaterialMatrix<real_t> materialMat(mp, E, nu);
-    variable mm = A.getCoeff(materialMat); // evaluates in the parametric domain, but the class transforms E and nu to physical
+    auto mm = A.getCoeff(materialMat); // evaluates in the parametric domain, but the class transforms E and nu to physical
 
     gsFunctionExpr<> t(util::to_string(thickness), 3);
-    variable tt = A.getCoeff(t, G); // evaluates in the physical domain
+    auto tt = A.getCoeff(t, G); // evaluates in the physical domain
 
     gsFunctionExpr<> mult2t("1","0","0","0","1","0","0","0","2",3);
-    variable m2 = A.getCoeff(mult2t, G); // evaluates in the physical domain
+    auto m2 = A.getCoeff(mult2t, G); // evaluates in the physical domain
 
     gsConstantFunction<> force(tmp,3);
-    variable ff = A.getCoeff(force,G); // evaluates in the physical domain
+    auto ff = A.getCoeff(force,G); // evaluates in the physical domain
 
     gsSparseSolver<>::CGDiagonal solver;
 
@@ -1346,7 +1299,7 @@ int main(int argc, char *argv[])
     //! [System assembly]
 
     // Initialize the system
-    A.initSystem(false);
+    A.initSystem();
 
     gsInfo<<"Number of degrees of freedom: "<< A.numDofs() <<"\n"<<std::flush;
 
@@ -1413,7 +1366,13 @@ int main(int argc, char *argv[])
     real_t alpha_r = 1e3;
     A.assembleLhsRhsBc
     (
-        alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var2(u,u,defG,nv(G).tr()) )
+//        alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var2(u,u,defG,nv(G).tr()) )
+//        +
+
+        alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val()
+        *
+        ( var2(u,u,defG,nv(G).tr()) )
+
         +
         alpha_r * ( ( var1(u,defG) * nv(G) ) * ( var1(u,defG) * nv(G) ).tr() )
         ,
@@ -1471,7 +1430,7 @@ int main(int argc, char *argv[])
         for (index_t it = 0; it != itMax; ++it)
         {
 
-            A.initSystem(false);
+            A.initSystem();
             // assemble system
             A.assemble(
                 (
@@ -1500,8 +1459,8 @@ int main(int argc, char *argv[])
             );
             A.assembleLhsRhsBc
             (
-                alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var2(u,u,defG,nv(G).tr()) )
-                +
+//                alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var2(u,u,defG,nv(G).tr()) )
+//                +
                 alpha_r * ( ( var1(u,defG) * nv(G) ) * ( var1(u,defG) * nv(G) ).tr() )
                 ,
                 -alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var1(u,defG) * nv(G) )

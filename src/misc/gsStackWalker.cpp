@@ -267,13 +267,20 @@ void gsStackWalker(CONTEXT* context)
     STACKFRAME frame = { 0 };
     
     /* setup initial stack frame */
-    frame.AddrPC.Offset         = context->Eip;
     frame.AddrPC.Mode           = AddrModeFlat;
-    frame.AddrStack.Offset      = context->Esp;
     frame.AddrStack.Mode        = AddrModeFlat;
-    frame.AddrFrame.Offset      = context->Ebp;
     frame.AddrFrame.Mode        = AddrModeFlat;
-       
+#ifdef _M_IX86
+    frame.AddrPC.Offset         = context->Eip;
+    frame.AddrStack.Offset      = context->Esp;
+    frame.AddrFrame.Offset      = context->Ebp;
+#endif
+#ifdef _M_AMD64
+    frame.AddrPC.Offset         = context->Rip;
+    frame.AddrStack.Offset      = context->Rsp;
+    frame.AddrFrame.Offset      = context->Rbp;
+#endif
+
     gsInfo<< "CALL STACK:\n";
     // StackWalk64
     while (StackWalk(IMAGE_FILE_MACHINE_I386 ,

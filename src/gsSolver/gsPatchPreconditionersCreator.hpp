@@ -16,7 +16,7 @@
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsMatrixOp.h>
-#include <gsAssembler/gsExprAssembler.h>
+//#include <gsAssembler/gsExprAssembler.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
 namespace gismo
@@ -67,28 +67,28 @@ void eliminateDirichlet1D(const gsBoundaryConditions<T>& bc,
 template<typename T>
 gsSparseMatrix<T> assembleMass(const gsBasis<T>& basis)
 {
-    gsExprAssembler<T> mass(1,1);
-    gsMultiBasis<T> mb(basis);
-    mass.setIntegrationElements(mb);
-    typename gsExprAssembler<T>::space u = mass.getSpace(mb);
-    mass.initMatrix();
-    mass.assemble( u * u.tr() );
+    // gsExprAssembler<T> mass(1,1);
+    // gsMultiBasis<T> mb(basis);
+    // mass.setIntegrationElements(mb);
+    // typename gsExprAssembler<T>::space u = mass.getSpace(mb);
+    // mass.initMatrix();
+    // mass.assemble( u * u.tr() );
     gsSparseMatrix<T> result;
-    mass.matrix_into(result);
-    return result;
+    // mass.matrix_into(result);
+     return result;
 }
 
 template<typename T>
 gsSparseMatrix<T> assembleStiffness(const gsBasis<T>& basis)
 {
-    gsExprAssembler<T> stiff(1,1);
-    gsMultiBasis<T> mb(basis);
-    stiff.setIntegrationElements(mb);
-    typename gsExprAssembler<T>::space u = stiff.getSpace(mb);
-    stiff.initMatrix();
-    stiff.assemble( grad(u) * grad(u).tr() );
+    // gsExprAssembler<T> stiff(1,1);
+    // gsMultiBasis<T> mb(basis);
+    // stiff.setIntegrationElements(mb);
+    // typename gsExprAssembler<T>::space u = stiff.getSpace(mb);
+    // stiff.initMatrix();
+    // stiff.assemble( grad(u) * grad(u).tr() );
     gsSparseMatrix<T> result;
-    stiff.matrix_into(result);
+    //stiff.matrix_into(result);
     return result;
 }
 
@@ -266,7 +266,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     const gsBoundaryConditions<T>& bc,
     const gsOptionList& opt,
     T alpha,
-    T beta
+    T beta,
+    T gamma
     )
 {
     GISMO_ASSERT ( beta != 0, "gsPatchPreconditionersCreator<T>::fastDiagonalizationOp() does not work for beta==0." );
@@ -303,6 +304,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     std::vector<OpPtr> QTop(d);
     gsMatrix<T> ev;
 
+    T avg_term = gamma;
+
     // Now, setup the Q's and update the D's
     for ( index_t i=0; i<d; ++i )
     {
@@ -310,6 +313,14 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         ges.compute(local_stiff[i], local_mass[i], Eigen::ComputeEigenvectors);
         // Q^T M Q = I, or M = Q^{-T} Q^{-1}
         // Q^T K Q = D, or K = Q^{-T} D Q^{-1}
+
+        if (gamma != T(0))
+        {
+            gsMatrix<T> etrans = ges.eigenvectors().transpose()*local_mass[i]*gsMatrix<T>::Ones(local_mass[i].rows(),1);
+            GISMO_ASSERT((etrans.block(1, 0, etrans.rows()-1, 1).array() < T(1)/100000000).all(),
+                "gsPatchPreconditionerCreator::fastDiagonalizationOp: gamma!=0 only allowed for pure Neumann.");
+            avg_term *= etrans(0,0) * etrans(0,0);
+        }
 
         // From the eigenvalues, we setup the matrix D already in an Kroneckerized way.
         const evVector & D = ges.eigenvalues();
@@ -333,7 +344,10 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         QTop[i] = makeMatrixOp( matrOp->matrix().transpose() );
     }
 
-    GISMO_ASSERT( glob == 1, "Internal error." );
+    GISMO_ASSERT( glob == 1,
+        "gsPatchPreconditionerCreator::fastDiagonalizationOp: Internal error." );
+
+    diag(0,0) += avg_term;
 
     for ( index_t l=0; l<sz; ++l )
         diag( l, 0 ) = 1/diag( l, 0 );

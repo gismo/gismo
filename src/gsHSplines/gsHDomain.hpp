@@ -45,7 +45,7 @@ namespace
         typedef bool return_type;
 
         // initialize result as true
-        static const return_type init = true;
+        static return_type init() {return true;}
 
         template<short_t d, class T >
         static void visitLeaf(gismo::kdnode<d,T> * leafNode , int level, return_type & res)
@@ -63,7 +63,7 @@ namespace
         typedef bool return_type;
 
         // initialize result as true
-        static const return_type init = true;
+        static return_type init() {return true;}
 
         template<short_t d, class T >
         static void visitLeaf(gismo::kdnode<d,T> * leafNode , int level, return_type & res)
@@ -81,7 +81,7 @@ namespace
 
         // initialize result as a max possible value, since we are looking
         // for a minimum
-        static const return_type init = 1000000;
+        static return_type init() {return 1000000;}
 
         template<short_t d, class T >
         static void visitLeaf(gismo::kdnode<d,T> * leafNode , int , return_type & res)
@@ -99,7 +99,7 @@ namespace
 
         // initialize result as a minimum possible value, since we are
         // looking for a maximum
-        static const return_type init = -1;
+        static return_type init() {return -1;}
 
         template<short_t d, class T >
         static void visitLeaf(gismo::kdnode<d,T> * leafNode , int , return_type & res)
@@ -452,13 +452,24 @@ int gsHDomain<d,T>::query4(point const & lower, point const & upper,
 
 template<short_t d, class T >
 std::pair<typename gsHDomain<d,T>::point, typename gsHDomain<d,T>::point>
+gsHDomain<d,T>::queryLevelCell(point const & lower, point const & upper,
+               int level) const
+{
+    std::pair<point,point> tmp = boxSearch< get_cell_visitor >(lower,upper,level,m_root);
+    global2localIndex(tmp.first,level,tmp.first);
+    global2localIndex(tmp.second,level,tmp.second);
+    return tmp;
+}
+
+template<short_t d, class T >
+std::pair<typename gsHDomain<d,T>::point, typename gsHDomain<d,T>::point>
 gsHDomain<d,T>::select_part(point const & k1, point const & k2,
                             point const & k3, point const & k4)
 {
     // intersect boxes
     std::pair<point,point> result;
 
-    for ( unsigned i = 0; i<d; ++i)
+    for ( short_t i = 0; i<d; ++i)
     {
         //find the lower left corner
         result.first[i]  = ( k1[i] >= k3[i] ? k1[i] : k3[i] );
@@ -494,7 +505,7 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
                   "boxSearch: Wrong order of points defining the box (or empty box): "
                   << qBox.first.transpose() <<", "<< qBox.second.transpose() <<".\n" );
 
-    typename visitor::return_type res = visitor::init;
+    typename visitor::return_type res = visitor::init();
 
 /*  // under construction
     node * curNode = m_root;
@@ -694,7 +705,7 @@ template<typename visitor>
 typename visitor::return_type
 gsHDomain<d,T>::nodeSearch() const
 {
-    typename visitor::return_type i = visitor::init;
+    typename visitor::return_type i = visitor::init();
 
     node * curNode = m_root;
 
@@ -754,7 +765,7 @@ template<typename visitor>
 typename visitor::return_type
 gsHDomain<d,T>::leafSearch() const
 {
-    typename visitor::return_type i = visitor::init;
+    typename visitor::return_type i = visitor::init();
 
     node * curNode = m_root;
 

@@ -669,13 +669,14 @@ gsParametrization<T>::LocalNeighbourhood::LocalNeighbourhood(const gsHalfEdgeMes
                  "Vertex with index " << vertexIndex << " does either not exist (< 1) or is not an inner vertex (> "
                  << meshInfo.getNumberOfInnerVertices() << ").");
 
+    gsVertex<T> tmp;
     m_vertexIndex = vertexIndex;
     std::queue<typename gsHalfEdgeMesh<T>::Halfedge>
         allHalfedges = meshInfo.getOppositeHalfedges(m_vertexIndex, innerVertex);
     std::queue<typename gsHalfEdgeMesh<T>::Halfedge> nonFittingHalfedges;
     m_neighbours.appendNextHalfedge(allHalfedges.front());
-    m_angles.push_back((*meshInfo.getVertex(allHalfedges.front().getOrigin()) - *meshInfo.getVertex(m_vertexIndex))
-                       .angle((*meshInfo.getVertex(allHalfedges.front().getEnd())
+    tmp = *meshInfo.getVertex(allHalfedges.front().getOrigin()) - *meshInfo.getVertex(m_vertexIndex);
+    m_angles.push_back(tmp.angle((*meshInfo.getVertex(allHalfedges.front().getEnd())
                                - *meshInfo.getVertex(vertexIndex))));
     m_neighbourDistances.push_back(allHalfedges.front().getLength());
     allHalfedges.pop();
@@ -684,9 +685,9 @@ gsParametrization<T>::LocalNeighbourhood::LocalNeighbourhood(const gsHalfEdgeMes
         if (m_neighbours.isAppendableAsNext(allHalfedges.front()))
         {
             m_neighbours.appendNextHalfedge(allHalfedges.front());
+            tmp = *meshInfo.getVertex(allHalfedges.front().getOrigin()) - *meshInfo.getVertex(m_vertexIndex);
             m_angles
-                .push_back((*meshInfo.getVertex(allHalfedges.front().getOrigin()) - *meshInfo.getVertex(m_vertexIndex))
-                           .angle((*meshInfo.getVertex(allHalfedges.front().getEnd())
+                .push_back(tmp.angle((*meshInfo.getVertex(allHalfedges.front().getEnd())
                                    - *meshInfo.getVertex(m_vertexIndex))));
             m_neighbourDistances.push_back(allHalfedges.front().getLength());
             allHalfedges.pop();
@@ -699,9 +700,9 @@ gsParametrization<T>::LocalNeighbourhood::LocalNeighbourhood(const gsHalfEdgeMes
         else if (m_neighbours.isAppendableAsPrev(allHalfedges.front()))
         {
             m_neighbours.appendPrevHalfedge(allHalfedges.front());
+            tmp = *meshInfo.getVertex(allHalfedges.front().getOrigin()) - *meshInfo.getVertex(m_vertexIndex);
             m_angles
-                .push_front((*meshInfo.getVertex(allHalfedges.front().getOrigin()) - *meshInfo.getVertex(m_vertexIndex))
-                            .angle((*meshInfo.getVertex(allHalfedges.front().getEnd())
+                .push_front(tmp.angle((*meshInfo.getVertex(allHalfedges.front().getEnd())
                                     - *meshInfo.getVertex(m_vertexIndex))));
             m_neighbourDistances.push_back(allHalfedges.front().getLength());
             allHalfedges.pop();

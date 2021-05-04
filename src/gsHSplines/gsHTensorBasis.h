@@ -259,6 +259,7 @@ public:
     gsHTensorBasis & operator=(gsHTensorBasis&& other)
     {
         m_deg     = std::move(other.m_deg);
+        freeAll( m_bases );
         m_bases   = std::move(other.m_bases);
         m_xmatrix = std::move(other.m_xmatrix);
         m_tree    = std::move(other.m_tree);
@@ -517,10 +518,25 @@ public:
 
     void elementSupport_into(const index_t i, gsMatrix<index_t, d, 2>& result) const
     {
-        unsigned lvl = levelOf(i);
-
+        index_t lvl = levelOf(i);
         m_bases[lvl]->elementSupport_into(m_xmatrix[lvl][ i - m_xmatrix_offset[lvl] ],
                                           result);
+    }
+
+    gsMatrix<T> elementInSupportOf(index_t j) const
+    {
+        index_t lvl = levelOf(j);
+        gsMatrix<index_t,d,2> sup;
+        m_bases[lvl]->elementSupport_into(m_xmatrix[lvl][j-m_xmatrix_offset[lvl]], sup);
+        std::pair<point,point> box =  m_tree.queryLevelCell(sup.col(0),sup.col(1),lvl);
+        for ( short_t i = 0; i!=d; ++i) //get intersection
+        {
+            box.first[i]  = ( sup(i,0) >= box.first[i]  ? sup(i,0) : box.first[i] );
+            box.second[i] = ( sup(i,1) <= box.second[i] ? sup(i,1) : box.second[i]);
+        }
+        sup.col(0) = (box.first+box.second)/2;
+        sup.col(1) = sup.col(0).array() + 1;
+        return m_bases[lvl]->elementDom(sup);
     }
 
     GISMO_UPTR_FUNCTION_PURE(gsHTensorBasis, clone)
@@ -777,7 +793,7 @@ public:
     index_t flatTensorIndexOf(const index_t i) const
     {
 
-        const int level = this->levelOf(i);
+        const index_t level = this->levelOf(i);
 
         const index_t offset = this->m_xmatrix_offset[level];
         const index_t ind_in_level = this->m_xmatrix[level][i - offset];

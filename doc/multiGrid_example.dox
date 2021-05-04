@@ -3,9 +3,172 @@ namespace gismo {
 
 \page multiGrid_example multiGrid_example.cpp
 
+We consider the Poisson boundary value problem (for simplicity here
+only with Dirichlet conditions):
+\f{eqnarray*}{
+           -\Delta u &=& f \quad \text{in} \quad \Omega,         \\
+                   u &=& g \quad \text{on} \quad \partial\Omega.
+\f}
+Its variational form is: Find \f$ u\in V_g \f$ such that
+\f[
+    \int_\Omega \nabla u \nabla v \text{ d} x = \int_\Omega f v \text{ d}x
+\f]
+for all \f$ u\in V_0 \f$.
 
-<!-- more info on the file examples/multiGrid_example.cpp goes here -->
+For a hierarchy of grids with levels \f$\ell=0 \mbox{ (=coarsest)},
+1,2,\ldots,L \mbox{ (=finest)} \f$, we have subspaces
+\f$ V_\ell \subset H^1(\Omega) \f$ and
+\f[
+    V_{\ell,g} = V_\ell \cap V_g
+    \quad\mbox{and}\quad
+    V_{\ell,0} = V_\ell \cap V_0.
+\f]
+On each of the levels, we have a linear system
+\f[
+    A_\ell \; \underline u_\ell = \underline f_\ell.
+\f]
 
+The relation between these spaces are realized for \f$ \ell = 0,1,\ldots,L-1 \f$
+by transfer matrices
+\f[
+    P_\ell \in \mathbb R^{\dim V_{\ell+1} \times \dim V_\ell}\;,
+\f]
+which represent the canonical embedding
+\f[
+    V_{\ell} \rightarrow V_{\ell+1}.
+\f]
+
+Having the matrix \f$ A_L \f$ on the finest grid level, we can set up the
+fine-grid matrices via the Galerkin principle:
+\f[
+      A_{\ell} = P_\ell^{\top} A_{\ell+1} P_\ell.
+      \qquad (*)
+\f]
+
+Now, we discuss the example file *multiGrid_example.cpp*. After reading the
+command line arguments, we read in the geometry file and modify the geometry
+as desired:
+
+\snippet multiGrid_example.cpp Define Geometry
+\snippet multiGrid_example.cpp Define Geometry2
+
+Then, we set up the right-hand-side \f$ f \f$ and a \a gsBoundaryConditions
+object based on the command line arguments:
+
+\snippet multiGrid_example.cpp Define Source
+
+Then, we extract the basis from the multi patch object to obtain a
+multi basis.
+
+\snippet multiGrid_example.cpp Define Basis
+
+There are a few possibilities to modify the geometry, which can be activated using
+the command line and which can found in the full listings.
+
+Since the multigrid solver also works for a discontinuous Galerkin (dG) setting, we
+allow to modify the discretizations in order to obtain non-matching discretizations
+at the interfaces as a more appropriate test case for a dG setting.
+
+\snippet multiGrid_example.cpp Define Non Matching
+
+We set the spline degree as required at the command line. Moreover, we apply the
+given number of uniform refinement steps.
+
+\snippet multiGrid_example.cpp Set degree and refine
+
+Now, we assemble the linear system and the right-hand side using the \a gsPoissionAssembler.
+
+\snippet multiGrid_example.cpp Assemble
+
+Here, we set up a vector that stores the transfer matrices. Moreover, we set up data
+structures that are needed for the subspace corrected mass smoother.
+
+\snippet multiGrid_example.cpp Define vectors
+
+The class \a gsGridHierarchy allows to set up a grid hierarchy. In a Finite Element setting,
+the coarsening of meshes is a non-trivial task. For tensor-product grids in Isogeometric
+Analysis, the coarsening of grids is a rather simple task. Therefore, we use a coarsening
+algorithm (alternatively, the class also provides refinement strategies).
+
+The function has to know the boundary conditions and the assembler options in order to know
+about the eliminated dofs (particularly on the Dirichlet boundary) and the coupled dofs on
+the interfaces between the patches.
+
+In any case, we have to export the transfer matrices \f$ P_\ell \f$. The subspace corrected
+mass smoother also requires the \a gsMultiBasis objects for all grid levels.
+
+If one wants to apply this to systems of PDEs, it is expected to have individual grid
+hierarchies for all of the variables.
+
+We use a unnamed temporary object, which means that the object cleaned up immediately after
+exporting the data.
+
+\snippet multiGrid_example.cpp Setup grid hierarchy
+
+Having the transfer matrices, we set up the multigrid object. The class \a gsMultiGrid is
+purely algebraic, so it assumes as inputs only matrices (as \a gsSparseMatrix or
+\a gsLinearOperator for matrix-free implementations) and vectors (as a \gsMatrix).
+
+It is possible to provide the stiffness matrices for all grid levels, the prolongation operators,
+the restriction operators and the solver for the coarsest grid level, all of them as
+\a gsLinearOperator.
+
+However, it is sufficient to provide the stiffness matrix for the *finest grid* as a
+\a gsSparseMatrix and all of the transfer matrices as a RowMajor \a gsSparseMatrix, as we do
+here. In this case
+
+ - the stiffness matrices on the coarse levels are constructed by the Galerkin principle (*),
+ - the transfer matrices are used as prolongation operators, and
+ - the transposed transfer matrices are used as restriction operators.
+
+With the member setOptions, we provide various settings, like the number of presmoothing steps,
+the number of post smoothing steps, and the type of the cycle (1 = V-cycle and 2 = W-cycle).
+These options can also be set using the corresponding member functions.
+
+\snippet multiGrid_example.cpp Setup multigrid
+
+If we do not provide a coarse solver explicitly, a LU solver will be set up automatically with
+the first multigrid cycle that is applied. Since we are solving an elliptic problem in this
+example file, we explicitly set up a Cholesky solver.
+
+Here, mg->matrix(0) refers to the matrix on the coarsest grid level.
+
+\snippet multiGrid_example.cpp Define coarse solver
+
+The smoothers have to be provided for the grid levels \f$ \ell=1, 2, \ldots, L \f$. Depending
+on the command line options, we use
+ - a Richardson smoother,
+ - a Jacobi smoother,
+ - a Gauss-Seidel smoother,
+ - a subspace corrected mass smoother, or
+ - a hybrid smoother (subspace corrected mass smoother + Gauss-Seidel smoother).
+
+The subspace corrected mass smoother is a multi-patch version as introduced in
+
+ - S. Takacs. Robust approximation error estimates and multigrid solvers for isogeometric multi-patch discretizations.
+Mathematical Models and Methods in Applied Sciences, vol. 28 (10), p. 1899 -- 1928, 2018.
+ - C. Hofreither and S. Takacs. Robust multigrid for Isogeometric Analysis based on stable splittings of spline spaces.
+SIAM J. on Numerical Analysis, vol. 55 (4), p. 2004 -- 2024, 2017.
+
+\snippet multiGrid_example.cpp Define smoothers
+
+We now provide the smoother with the respective options (like damping parameters).
+
+\snippet multiGrid_example.cpp Define smoothers2
+
+Finally, we provide the smoother to the multigrid object.
+
+\snippet multiGrid_example.cpp Define smoothers3
+
+We use a random vector as initial guess.
+
+\snippet multiGrid_example.cpp Initial guess
+
+As a next step, we solve the linear system using either a conjugate gradient solver
+with multigrid preconditioner or by iterating multigrid itself. The latter is to be
+represented as preconditioned gradient (=Richardson) solver.
+
+\snippet multiGrid_example.cpp Solve
 
 \section multiGrid_exampleAnnotated Annotated source file
 

@@ -345,6 +345,8 @@ public:
     typedef std::list<util::reference_wrapper<const boundary_condition<T> > > bcRefList;
 public:
 
+    gsBoundaryConditions() : m_patches(nullptr) { }
+
     /*
     gsBoundaryConditions & operator= (uPtr other)
     {
