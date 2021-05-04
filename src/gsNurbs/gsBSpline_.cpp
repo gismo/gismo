@@ -34,6 +34,9 @@ void pybind11_init_gsBSpline(py::module &m)
            "Returns the coeffcient matrix (as a reference)") //there are 2 versions of coefs()
     .def("numCoefs", &Class::numCoefs, "Returns the number of coefficients")
     .def("sample", &Class::sample, "Returns samples on the Bspline curve")
+    .def("eval", &Class::eval, "Returns the evaluation of the Bspline curve on the input")
+    .def("eval_into", &Class::eval_into, "Evaluation of the Bspline curve on the input")
+    //define eval(..)   // This is defined in gsCore/gsGeometry.h
     ;
 }
 

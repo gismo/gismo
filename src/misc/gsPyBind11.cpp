@@ -93,6 +93,7 @@ PYBIND11_MODULE(pygismo, m) {
   nurbs.doc() = "G+Smo (Geometry + Simulation Modules): NURBS module";
 
   gismo::pybind11_init_gsBSpline( nurbs );
+  gismo::pybind11_init_gsKnotVector( nurbs );
 
   
   py::module pde = m.def_submodule("pde");
