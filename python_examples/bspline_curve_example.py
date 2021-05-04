@@ -15,7 +15,7 @@
 """
 
 import sys
-sys.path.append('/user/amantzaf/home/root/pybind11/build/lib')
+sys.path.append('/Users/graziellacarboni/gismo/build/lib')
  
 import pygismo as gs
 import numpy as np
@@ -30,4 +30,40 @@ print("Degree:", b.degree(0))
 
 print("Samples:", b.sample(10))
 
-print("Coefficients:", b.coefs())
+print("Coefficients:\n", b.coefs())
+
+u = np.array([0.5])
+print(f"Evaluation of the Bspline on {u[0]}:\n", b.eval(u))
+
+
+val = np.empty(2)
+b.eval_into(u,val)
+print(f"Evaluation of the Bspline on {u[0]} with void function:\n", val)
+
+upts = np.linspace(0,1,5)
+'''
+eval and eval_into take in input a matrix u of size d x N, where each column of u represents one evaluation point
+print(f"Evaluation of the Bspline on {u[x] for x in range(len(upts))}:\n", b.eval(upts))
+
+vals = np.empty([2,5])
+b.eval_into(upts,vals)
+print(f"Evaluation of the Bspline on {u[x] for x in range(len(upts))} with void function:\n", vals)
+'''
+
+b.insertKnot(u, 2)
+print("Number of coefficients after knot-insertion:\n", b.numCoefs())
+
+b.degreeElevate(1,0)
+print("Augmented Degree: ", b.degree(0))
+
+
+print(f"First derivatives of the Bspline on {u[0]}:\n", b.deriv(u))
+derival = np.empty(2)
+b.deriv_into(u, derival)
+print(f"First derivatives of the Bspline on {u[0]} with void function:\n", derival)
+
+
+print(f"Second derivatives of the Bspline on {u[0]}:\n", b.deriv2(u))
+deriv2val = np.empty(2)
+deriv2val = b.deriv2(u)
+print(f"Second derivatives of the Bspline on {u[0]} with void function:\n", deriv2val)
