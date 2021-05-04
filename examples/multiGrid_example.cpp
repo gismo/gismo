@@ -318,7 +318,7 @@ int main(int argc, char *argv[])
     {
         gsFileData<> fd;
         std::time_t time = std::time(NULL);
-        fd.add(cmd);
+        fd.add((gsOptionList)cmd);
         fd.add(x);
         fd.addComment(std::string("multiGrid_example   Timestamp:")+std::ctime(&time));
         fd.save(fn);
