@@ -42,6 +42,8 @@ PYBIND11_MODULE(pygismo, m) {
   core.attr("__name__") = "pygismo.core";
   core.attr("__version__") = GISMO_VERSION;
   core.doc() = "G+Smo (Geometry + Simulation Modules): Core module";
+  
+  gismo::pybind11_init_gsFunction( core );
 
   py::module hsplines = m.def_submodule("hsplines");
 
