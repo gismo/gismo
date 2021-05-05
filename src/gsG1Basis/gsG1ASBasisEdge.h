@@ -57,6 +57,10 @@ public:
 
         // Basis for the G1 basis
         m_basis_g1 = m_basis.basis(0);
+
+//        gsTensorBSplineBasis<2, T> basis_edge_ab = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(m_basis_g1.basis(0));
+//        gsInfo << "Basis edge 0: " << basis_edge_ab.component(0).knots().asMatrix() << "\n";
+//        gsInfo << "Basis edge 1: " << basis_edge_ab.component(1).knots().asMatrix() << "\n";
     }
 
     // Computed the gluing data globally

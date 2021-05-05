@@ -95,22 +95,33 @@ public:
             basis_minus[i].evalSingle_into(0, md.points.row(i),b_0_minus);
             basis_minus[i].evalSingle_into(1, md.points.row(i),b_1_minus);
 
+
+            // Point zero
+            gsMatrix<> zero;
+            zero.setZero(2,1);
+
             c_0.push_back(b_0 + b_1);
             c_1.push_back((h_geo / p) * b_1);
-
 
             c_0_minus.push_back(b_0_minus + b_1_minus);
             c_1_minus.push_back(h_geo/ (p-1) * b_1_minus);
 
-            // TODO IF CASE
-            // WORKS ONLY FOR p=3 AND r=1
+            gsMatrix<> der_b_1_plus_0, der2_b_1_plus_0, der2_b_2_plus_0;
+            basis_plus[i].derivSingle_into(1, zero.row(i), der_b_1_plus_0);
+            basis_plus[i].deriv2Single_into(1, zero.row(i), der2_b_1_plus_0);
+            basis_plus[i].deriv2Single_into(2, zero.row(i), der2_b_2_plus_0);
+
+            real_t factor_c_1_plus = 1/der_b_1_plus_0(0,0);
+            real_t factor2_c_1_plus = -der2_b_1_plus_0(0,0)/(der_b_1_plus_0(0,0)*der2_b_2_plus_0(0,0));
+            real_t factor_c_2_plus = 1/der2_b_2_plus_0(0,0);
+
             c_0_plus.push_back(b_0_plus + b_1_plus + b_2_plus);
-            c_1_plus.push_back((h_geo / p) * (b_1_plus + 3 * b_2_plus));
-            c_2_plus.push_back((h_geo * h_geo / (p * (p-1))) * 2 * b_2_plus);
+            c_1_plus.push_back(factor_c_1_plus * b_1_plus + factor2_c_1_plus * b_2_plus);
+            c_2_plus.push_back(factor_c_2_plus * b_2_plus );
 
             c_0_plus_deriv.push_back(b_0_plus_deriv + b_1_plus_deriv + b_2_plus_deriv);
-            c_1_plus_deriv.push_back((h_geo / p) * (b_1_plus_deriv + 3 * b_2_plus_deriv));
-            c_2_plus_deriv.push_back((h_geo * h_geo / (p * (p-1))) * 2 * b_2_plus_deriv);
+            c_1_plus_deriv.push_back(factor_c_1_plus * b_1_plus_deriv + factor2_c_1_plus * b_2_plus_deriv);
+            c_2_plus_deriv.push_back(factor_c_2_plus * b_2_plus_deriv);
         }
 
 //        if (g1OptionList.getInt("gluingData") == gluingData::global)
