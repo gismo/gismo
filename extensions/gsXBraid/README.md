@@ -4,7 +4,7 @@ G+Smo extension for the [XBraid - Parallel-in-time Solver Package](https://githu
 
 |CMake flags|```-DGISMO_WITH_XBRAID=ON``` (default ```OFF```)|
 |--:|---|
-|Required additional CMake flags||
+|Required additional CMake flags|```-DGISMO_WITH_MPI=ON``` (recommended)<br>```-DGISMO_WITH_OPENMP=ON``` (optionally)|
 |License|[MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/)|
 |OS support|Linux, Windows, macOS|
 |Status|completed|
@@ -20,7 +20,7 @@ __Table of content__
 
 __Introdution__
 
-The gsXBraid extension builds on the open-source
+The XBraid extension builds on the open-source
 [XBraid](https://github.com/XBraid/xbraid) package developed at [
 Lawrence Livermore National
 Laboratory](https://computation.llnl.gov/projects/parallel-time-integration-multigrid/),
@@ -29,9 +29,9 @@ institutions](https://github.com/XBraid/xbraid/wiki/Team). XBraid is a
 non-intrusive, optimal-scaling parallel-in-time solver that builds on
 multigrid reduction techniques (multigrid-reduction-in-time or MGRIT).
 
-The gsXBraid extension provides a generic wrapper to XBraid's C++
+The XBraid extension provides a generic wrapper to XBraid's C++
 interface that can be easily customized by deriving an application
-from the class `gsXBraid<T>` and overriding certain virtual methods:
+from the class `gsXBraid<T>` and overriding some or all virtual methods:
 
 ```cpp
 virtual braid_Int Access(braid_Vector, BraidAccessStatus&);
@@ -53,14 +53,14 @@ __Usage example__
 
 The file ```xbraid_heatEquation_example.cpp``` illustrates the basic usage of the gsXBraid extension.
 
-1.  Configuration and compilation
+1.  Configuration and compilation (MPI-only mode)
     ```bash
     mkdir build
     cd build
     cmake .. -DGISMO_WITH_XBRAID=ON -DGISMO_WITH_MPI=ON
     make xbraid_heatEquation_example -j4
     ```
-2.  Execution
+2.  Execution (MPI-only mode)
     ```bash
     mpirun -np <NPROC> ./bin/xbraid_heatEquation_example -n 250 -r 6 -i 3
     ```
@@ -68,6 +68,32 @@ The file ```xbraid_heatEquation_example.cpp``` illustrates the basic usage of th
     This will solve the two-dimensional heat equation on a unit square
     with 250 time steps in the time interval [0, 0.1] using <NPROC>
     MPI processes. The spatial domain is 6 times regularly refined in
+    space (h-refinement) and the approximation order is increased 3
+    times (p-refinement). Order elevation instead of order increase
+    can be achieved by replacing `-i` by `-e`.
+
+    For a complete list of command-line argument run
+    ```bash
+    ./bin/xbraid_heatEquation_example -h
+    ```
+    
+3.  Configuration and compilation (MPI-OpenMP mode)
+    ```bash
+    mkdir build
+    cd build
+    cmake .. -DGISMO_WITH_XBRAID=ON -DGISMO_WITH_MPI=ON -DGISMO_WITH_OPENMP=ON
+    make xbraid_heatEquation_example -j4
+    ```
+    
+4.  Execution (MPI-OpenMP mode)
+    ```bash
+    OMP_NUM_THREADS=<NTHREAD> mpirun -np <NPROC> ./bin/xbraid_heatEquation_example -n 250 -r 6 -i 3
+    ```
+
+    This will solve the two-dimensional heat equation on a unit square
+    with 250 time steps in the time interval [0, 0.1] using <NPROC>
+    MPI processes and <NTHREAD> OpenMP threads per MPI process. 
+    As before, the spatial domain is 6 times regularly refined in
     space (h-refinement) and the approximation order is increased 3
     times (p-refinement). Order elevation instead of order increase
     can be achieved by replacing `-i` by `-e`.
