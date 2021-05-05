@@ -101,6 +101,7 @@ int main(int argc, char *argv[])
     gsInfo<< "(dot1=assembled, dot2=solved, dot3=got_error)\n"
         "\nDoFs: ";
 
+
     for( index_t r = 0; r<=numRefine; ++r)
     {
         fd.read(fn + util::to_string(init_knots++) + ".xml.gz");
@@ -147,15 +148,12 @@ int main(int argc, char *argv[])
         gsInfo<< "." <<std::flush; // Linear solving done
 
         l2err[r]= math::sqrt( ev.integral( (f - s).sqNorm()*meas(G) ) / ev.integral(f.sqNorm()*meas(G)) );
-
         h1err[r]= l2err[r] + math::sqrt(ev.integral( ( igrad(f) - grad(s)*jac(G).inv() ).sqNorm()*meas(G) )/ev.integral( igrad(f).sqNorm()*meas(G) ) );
-
         h2err[r]=// h1err[r] +
             math::sqrt(
                 ev.integral( ( ihess(f) - ihess(s,G) ).sqNorm()*meas(G) )
                 //       /ev.integral( ihess(f).sqNorm()*meas(G) )
                 );
-
         linferr[r] = ev.max( f-s ) / ev.max(f);
         
         gsInfo<< ". " <<std::flush; // Error computations done
@@ -172,6 +170,7 @@ int main(int argc, char *argv[])
     gsInfo<< "Linf  "<<std::scientific<<linferr.transpose()<<"\n";
 
     gsInfo<<"\n* EoC\n";
+
     gsInfo<< "H2c   0 "<< std::fixed<<std::setprecision(2)
           <<( h2err.head(numRefine).array() /
               h2err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";

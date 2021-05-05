@@ -151,9 +151,7 @@ public:
                 {
                     gsMatrix<> coefs;
                     coefs.setZero(dim_u * dim_v, 1);
-
                     coefs(j * dim_u + i, 0) = 1;
-
                     result_1.addPatch(basis_edge.makeGeometry(coefs));
                 }
             }
@@ -164,6 +162,10 @@ public:
             if (m_optionList.getSwitch("interpolation"))
             {
                 interpolateBasisBoundary(result_1);
+            }
+            else if (m_optionList.getSwitch("simplified"))
+            {
+                // Do nothing
             }
             else
             {
@@ -430,6 +432,77 @@ public:
                 else
                     result_2.addPatch(*interpolant);
             }
+        }
+    }
+
+    void saveSimplifiedBasisBoundary(const patchSide & bit, gsSparseMatrix<T> & system)
+    {
+        if (m_optionList.getSwitch("simplified"))
+        {
+            index_t np = bit.patch;
+            index_t dim_u = m_bases[np].getEdgeBasis(bit.side().index()).component(0).size();
+            index_t dim_v = m_bases[np].getEdgeBasis(bit.side().index()).component(1).size();
+
+            index_t shift_row = 0;
+            index_t shift_col = 0;
+            for(index_t np_temp = 0; np_temp < np; ++np_temp) {
+                shift_row += m_bases[np_temp].size_rows();
+                shift_col += m_bases[np_temp].size_cols();
+            }
+            shift_row += m_bases[np].rowBegin(bit.side().index());
+            shift_col += m_bases[np].colBegin(bit.side().index());
+
+            index_t row_i = 0;
+
+            if (dim_u-5 > 0 && dim_v-5 > 0)
+                switch (bit.side().index()) {
+                    case 1:
+                        for (index_t i = 0; i < 2; ++i) // u
+                            for (index_t j = 3; j < dim_v-3; ++j) // v
+                            {
+                                system.insert(shift_row + row_i,shift_col + j*dim_u+i) = 1.0;
+                                ++row_i;
+                            }
+                        system.insert(shift_row + row_i,shift_col + 2*dim_u+1) = 1.0;
+                        ++row_i;
+                        system.insert(shift_row + row_i,shift_col + (dim_v-3)*dim_u+1) = 1.0;
+                        break;
+                    case 2:
+                        for (index_t i = dim_u-1; i > dim_u-3; --i) // v
+                            for (index_t j = 3; j < dim_v-3; ++j) // u
+                            {
+                                system.insert(shift_row + row_i,shift_col + j*dim_u+i) = 1.0;
+                                ++row_i;
+                            }
+                        system.insert(shift_row + row_i,shift_col + 2*dim_u+dim_u-2) = 1.0;
+                        ++row_i;
+                        system.insert(shift_row + row_i,shift_col + (dim_v-3)*dim_u+dim_u-2) = 1.0;
+                        break;
+                    case 3:
+                        for (index_t j = 0; j < 2; ++j) // v
+                            for (index_t i = 3; i < dim_u-3; ++i) // u
+                            {
+                                system.insert(shift_row + row_i,shift_col + j*dim_u+i) = 1.0;
+                                ++row_i;
+                            }
+                        system.insert(shift_row + row_i,shift_col + 1*dim_u+2) = 1.0;
+                        ++row_i;
+                        system.insert(shift_row + row_i,shift_col + 1*dim_u+dim_u-3) = 1.0;
+                        break;
+                    case 4:
+                        for (index_t j = dim_v-1; j > dim_v-3; --j) // v
+                            for (index_t i = 3; i < dim_u-3; ++i) // u
+                            {
+                                system.insert(shift_row + row_i,shift_col + j*dim_u+i) = 1.0;
+                                ++row_i;
+                            }
+                        system.insert(shift_row + row_i,shift_col + (dim_v-2)*dim_u+2) = 1.0;
+                        ++row_i;
+                        system.insert(shift_row + row_i,shift_col + (dim_v-2)*dim_u+dim_u-3) = 1.0;
+                        break;
+                    default:
+                        gsInfo << "Wrong side index!\n";
+                }
         }
     }
 

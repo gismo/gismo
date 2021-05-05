@@ -196,8 +196,6 @@ public:
                 rowContainer[1+4+i] = valenceOfVertex[i];
         }
 
-
-
         if (info)
         {
             gsInfo << "Patch: " << m_patchID << "\n";

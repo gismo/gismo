@@ -1,6 +1,6 @@
-#/** @file biharmonic_argyris_example.cpp
+#/** @file biharmonic_nitsche_example.cpp
 
-    @brief Example using the Argyris space for solving biharmonic equation
+    @brief Example using the Nitsche method for solving biharmonic equation
 
     This file is part of the G+Smo library.
 
@@ -12,20 +12,11 @@
 */
 # include <omp.h>
 
-
 //! [Include namespace]
 #include <gismo.h>
 
-# include <gsAssembler/gsG1BiharmonicAssembler.h>
-# include <gsArgyris/gsC1Argyris.h>
-# include <gsArgyris/gsErrorAnalysis/gsC1ArgyrisNorms.h>
-# include <gsArgyris/gsErrorAnalysis/gsC1ArgyrisJumpNorm.h>
+# include <gsAssembler/gsBiharmonicNitscheAssembler.h>
 
-# include <gsArgyris/gsC1ArgyrisIO.h>
-
-# include <gsMSplines/gsMappedBasis.h>
-
-#include <boost/filesystem.hpp>
 
 using namespace gismo;
 //! [Include namespace]
@@ -59,7 +50,7 @@ int main(int argc, char *argv[])
     bool twoPatch = false;
     bool simplified = false;
 
-    gsCmdLine cmd("Solving biharmonic equation with Argyris space.");
+    gsCmdLine cmd("Solving biharmonic equation with Nitsche method.");
     cmd.addPlainString("filename", "G+Smo input geometry file.", input);
     cmd.addInt( "g", "geometry", "Which geometry",  geometry );
 
@@ -122,9 +113,6 @@ int main(int argc, char *argv[])
     gsFileData<> fd;
     gsMultiPatch<> mp;
     gsMultiBasis<> mb;
-
-    // For input/output stuff
-    gsC1ArgyrisIO c1ArgyrisIO;
 
     gsOptionList optionList = cmd.getOptionList();
     gsInfo << optionList << "\n";
@@ -197,7 +185,7 @@ int main(int argc, char *argv[])
     //! [Read geometry]
 
     //! [Check the input data]
-    c1ArgyrisIO.checkInput(mp, optionList);
+
     //! [Check the input data]
 
     //! [Boundary condition]
@@ -213,24 +201,21 @@ int main(int argc, char *argv[])
     //! [Boundary condition]
 
     //! [Initialise the discrete space]
-    // TODO
     mb = gsMultiBasis<>(mp);
-    gsC1Argyris<2, real_t> c1Argyris(mp, optionList);
-    gsMappedBasis<2,real_t> mappedBasis;
-    /*
-    std::vector<gsBasis<real_t> *> test = c1Argyris.getBases();
-    gsMultiBasis<> mb_temp(test, mp.topology());
-    gsInfo << "TEST: " << mb_temp.nBases() << "\n";
-    gsInfo << "TEST 2: " << mb_temp[0].size() << "\n";
-    */
+    index_t numDegree = discrete_p - mb.maxCwiseDegree();
+    for (int i = 0; i < numDegree; ++i)
+        mb.degreeElevate();
+
     if (last)
     {
         // h-refine
         for (int l =0; l < numRefine; ++l)
-             c1Argyris.uniformRefine();
+            mb.uniformRefine();
 
         numRefine = 0;
     }
+    else
+        mb.uniformRefine();
     //! [Initialise the discrete space]
 
     gsSparseSolver<>::CGDiagonal solver;
@@ -241,80 +226,59 @@ int main(int argc, char *argv[])
     gsMatrix<> time_mat(numRefine+1, 4);
     normerr.setZero(); jumperrRate.setZero();
 
-    gsInfo<< "(dot1=got_argyris_space, dot2=assembled, dot3=solved, dot4=got_error)\n";
+    gsMultiPatch<> mpsol;
+    gsInfo<< "(dot1=none, dot2=assembled, dot3=solved, dot4=got_error)\n";
     gsStopwatch time;
     for( index_t l = 0; l<=numRefine; ++l)
     {
         gsInfo<<"--------------------------------------------------------------\n";
-        time.restart();
-        gsSparseMatrix<> sparseMatrix_argyris;
-        gsMultiBasis<> mb_argyris;
-
-        c1Argyris.init();
-        c1Argyris.createArgyrisSpace(); // Slow TODO
-
-        if (plot) {
-            gsInfo << "Plot start \n";
-            c1Argyris.writeParaviewSinglePatch(0, "inner");
-            c1Argyris.writeParaviewSinglePatch(0, "edge");
-            c1Argyris.writeParaviewSinglePatch(0, "vertex");
-
-            c1Argyris.writeParaviewSinglePatch(1, "inner");
-            c1Argyris.writeParaviewSinglePatch(1, "edge");
-            c1Argyris.writeParaviewSinglePatch(1, "vertex");
-            gsInfo << "Plot end \n";
-        }
-
-        c1Argyris.getMultiBasis(mb_argyris);
-        sparseMatrix_argyris = c1Argyris.getSystem();
-        mappedBasis.init(mb_argyris, sparseMatrix_argyris.transpose());
-        gsInfo<< "." <<std::flush;// Construction of Argyris space done
-        time_mat(l, 0) = time.stop();
-        gsInfo<<"\tAssembly of mapping:\t"<< time_mat(l, 0) <<"\t[s]\n";
 
         time.restart();
-        gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(mp, mappedBasis, bcInfo, bcInfo2, source, twoPatch);
-        gsInfo<<"\tDegrees of freedom:\t"<< g1BiharmonicAssembler.numDofs() <<"\n";
-        g1BiharmonicAssembler.assemble();
+        gsBiharmonicNitscheAssembler<real_t> biharmonicNitscheAssembler(mp, mb, bcInfo, bcInfo2, source);
+        gsInfo<<"\tDegrees of freedom:\t"<< biharmonicNitscheAssembler.numDofs() <<"\n";
+        biharmonicNitscheAssembler.assemble();
         gsInfo<< "." <<std::flush;// Assemblying done
+
         time_mat(l, 1) = time.stop();
         gsInfo<<"\tSystem assembly:\t"<<time_mat(l, 1)<<"\t[s]\n";
 
         time.restart();
         gsSparseSolver<real_t>::CGDiagonal solver;
-        solver.compute(g1BiharmonicAssembler.matrix());
-        gsMatrix<real_t> solVector= solver.solve(g1BiharmonicAssembler.rhs());
+        solver.compute(biharmonicNitscheAssembler.matrix());
+        gsMatrix<real_t> solVector= solver.solve(biharmonicNitscheAssembler.rhs());
         time_mat(l, 2) = time.stop();
         gsInfo<<"\tSolving system:\t\t"<<time_mat(l, 2)<<"\t[s]\n";
 
         time.restart();
-        gsMatrix<real_t> solFull;
-        g1BiharmonicAssembler.constructSolution(solVector, solFull);
-        sparseMatrix_argyris = solFull.asDiagonal() * sparseMatrix_argyris;
-        c1Argyris.setSystem(sparseMatrix_argyris);
+        biharmonicNitscheAssembler.constructSolution(solVector, mpsol);
         gsInfo<< "." <<std::flush;// Linear solving done
 
-        mappedBasis.init(mb_argyris, sparseMatrix_argyris.transpose());
-        gsC1ArgyrisNorms<real_t> argyrisNorms(mp, mappedBasis, solution);
-        argyrisNorms.compute();
-        gsC1ArgyrisJumpNorm<real_t> c1ArgyrisJumpNorm(mp, mappedBasis, solution);
-        c1ArgyrisJumpNorm.compute();
+        // TODO Error
+        gsField<> solField(mp, mpsol);
+        real_t errorH2Semi = solField.distanceH2(solution, false);
+        real_t errorH1Semi = solField.distanceH1(solution, false);
+        normerr(l,2) = solField.distanceL2(solution, false);
+        normerr(l,4) = math::sqrt(errorH1Semi*errorH1Semi + normerr(l,2)*normerr(l,2));
+        normerr(l,6) = math::sqrt(errorH2Semi*errorH2Semi + errorH1Semi*errorH1Semi + normerr(l,2)*normerr(l,2));
+
         time_mat(l, 3) = time.stop();
         gsInfo<<"\tError computations:\t"<<time_mat(l, 3)<<"\t[s]\n";
 
         // Collecting data
-        normerr(l,0) = c1Argyris.getMinMeshSize();
+        /*
+        normerr(l,0) = mb.basis(0).getMinCellLength();
         normerr(l,1) = g1BiharmonicAssembler.numDofs();
 
         normerr(l,2) = argyrisNorms.valueL2();
         normerr(l,4) = math::sqrt(argyrisNorms.valueH1() * argyrisNorms.valueH1() + normerr(l,2) * normerr(l,2));
         normerr(l,6) = math::sqrt(argyrisNorms.valueH2() * argyrisNorms.valueH2() +
-                argyrisNorms.valueH1() * argyrisNorms.valueH1() + normerr(l,2) * normerr(l,2));
+                                  argyrisNorms.valueH1() * argyrisNorms.valueH1() + normerr(l,2) * normerr(l,2));
         jumperr.row(l) = c1ArgyrisJumpNorm.value();
+         */
         gsInfo<< ". " <<std::flush;// Error computations done
 
         // TODO Refine spaces
-        c1Argyris.uniformRefine();
+        mb.uniformRefine();
     }
     //! [Solver loop]
 
@@ -330,11 +294,11 @@ int main(int argc, char *argv[])
     {
 
         normerr.block(1,3, numRefine, 1) = ( normerr.col(2).head(numRefine).array() /
-                normerr.col(2).tail(numRefine).array() ).log() / std::log(2.0); // L2
+                                             normerr.col(2).tail(numRefine).array() ).log() / std::log(2.0); // L2
         normerr.block(1, 5, numRefine, 1)  = ( normerr.col(4).head(numRefine).array() /
-                normerr.col(4).tail(numRefine).array() ).log() / std::log(2.0); // H1
+                                               normerr.col(4).tail(numRefine).array() ).log() / std::log(2.0); // H1
         normerr.block(1, 7, numRefine, 1)  = ( normerr.col(6).head(numRefine).array() /
-                normerr.col(6).tail(numRefine).array() ).log() / std::log(2.0); // H2
+                                               normerr.col(6).tail(numRefine).array() ).log() / std::log(2.0); // H2
 
         gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
               << normerr.col(3).transpose() <<"\n";
@@ -343,15 +307,6 @@ int main(int argc, char *argv[])
         gsInfo<<   "EoC (H2): "<< std::fixed<<std::setprecision(2)
               << normerr.col(7).transpose() <<"\n";
 
-        for (size_t numInt = 0; numInt < mp.interfaces().size(); numInt++ )
-        {
-            gsVector<> singleInterr = jumperr.col(numInt);
-            jumperrRate.block(1, numInt, numRefine, 1) = ( singleInterr.head(numRefine).array() /
-                                        singleInterr.tail(numRefine).array() ).log() / std::log(2.0);
-            gsInfo<<   "EoC (Interface " + util::to_string(numInt) + "): "<< std::fixed<<std::setprecision(2)
-              << jumperrRate.col(numInt).transpose() <<"\n";
-        }
-
     }
     //! [Error and convergence rates]
 
@@ -359,84 +314,20 @@ int main(int argc, char *argv[])
     if (plot)
     {
         gsInfo<<"Plotting in Paraview...\n";
-        c1Argyris.plotParaview("G1Biharmonic",10000);
+        gsField<> solField(mp, mpsol);
+        gsWriteParaview<>(solField, "BiharmonicNitsche", 5000);
         mp.uniformRefine(3);
         gsWriteParaview(mp,"Geometry_init",1000,true);
     }
     //! [Export visualization in ParaView]
 
     //! [Save results to csv file]
-    if (csv)
-    {
-        std::vector<std::string> colNames, colNamesJump, colNamesTime;
-        colNames.push_back("h");
-        colNames.push_back("dofs");
-        colNames.push_back("L2");
-        colNames.push_back("Rate");
-        colNames.push_back("H1");
-        colNames.push_back("Rate");
-        colNames.push_back("H2");
-        colNames.push_back("Rate");
-
-        for (size_t numInt = 0; numInt < mp.interfaces().size(); numInt++ )
-        {
-            colNamesJump.push_back("Interface" + util::to_string(numInt) );
-            colNamesJump.push_back("Rate");
-        }
-
-        colNamesTime.push_back("Mapping");
-        colNamesTime.push_back("System");
-        colNamesTime.push_back("Solving");
-        colNamesTime.push_back("Error");
-
-        std::string fullname = "";
-        for(index_t i = 0; i < argc; i++)
-            fullname += (std::string) argv[i] + " ";
-
-        std::string name = "-g" + std::to_string(geometry) + "--" + (isogeometric ? "isogeometric" : "nonisogeometric")
-                + "--" + (interpolation ? "interpolation" : "projection") +
-                (simplified ? "--simplified" : "") +
-                "-p" + std::to_string(discrete_p) +
-                "-r" + std::to_string(discrete_r) +
-                "-l" + std::to_string(numRefine);
-
-        std::string path = "../../gismo_results/results/g" + std::to_string(geometry);
-
-        std::string command = "mkdir " + path;
-        system(command.c_str());
-
-        path += "/" + name + ".csv";
-
-        std::ofstream file(path);
-        c1ArgyrisIO.writeLineString(file, "Command", fullname);
-        c1ArgyrisIO.writeBlockMatrix(file, "Error", normerr, colNames, true);
-        c1ArgyrisIO.writeBlockMatrix(file, "Jump", jumperr, jumperrRate, colNamesJump);
-        c1ArgyrisIO.writeBlockMatrix(file, "Time", time_mat, colNamesTime);
-        file.close();
-    }
     //! [Save results to csv file]
 
     //! [Save mesh to csv file]
-    if (mesh) {
-        std::string path = "../../gismo_results/results/g" + std::to_string(geometry);
-
-        std::string command = "mkdir " + path;
-        system(command.c_str());
-
-        c1ArgyrisIO.saveMesh(path, mp, mb, 100);
-    }
     //! [Save mesh to csv file]
 
     //! [Save solution to csv file]
-    if (csv_sol) {
-        //unsigned resolution = 100/mp.nPatches();
-        std::string path = "../../gismo_results/results/g" + std::to_string(geometry);
-
-        std::string command = "mkdir " + path;
-        system(command.c_str());
-
-        c1ArgyrisIO.saveSolution(path, mp, mb, solVal, 50);
-    }
     //! [Save solution to csv file]
 
     return EXIT_SUCCESS;
