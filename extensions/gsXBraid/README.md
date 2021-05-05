@@ -62,15 +62,23 @@ The file ```xbraid_heatEquation_example.cpp``` illustrates the basic usage of th
     ```
 2.  Execution (MPI-only mode)
     ```bash
-    mpirun -np <NPROC> ./bin/xbraid_heatEquation_example -n 250 -r 6 -i 3
+    mpirun -np <NPROC> --hostfile <HOSTFILE> ./bin/xbraid_heatEquation_example -n 250 -r 6 -i 3
     ```
 
     This will solve the two-dimensional heat equation on a unit square
     with 250 time steps in the time interval [0, 0.1] using <NPROC>
-    MPI processes. The spatial domain is 6 times regularly refined in
-    space (h-refinement) and the approximation order is increased 3
-    times (p-refinement). Order elevation instead of order increase
-    can be achieved by replacing `-i` by `-e`.
+    MPI processes. The `hostfile` should have the following structure
+    
+    ```text
+    node0 slots=#slots max_slots=#maximum slots
+    node1 slots=#slots max_slots=#maximum slots
+    ...
+    ```
+    
+    The spatial domain is 6 times regularly refined in space (h-refinement) 
+    and the approximation order is increased 3 times (p-refinement). 
+    Order elevation instead of order increase can be achieved by replacing 
+    the switch`-i` by `-e`.
 
     For a complete list of command-line argument run
     ```bash
@@ -87,18 +95,8 @@ The file ```xbraid_heatEquation_example.cpp``` illustrates the basic usage of th
     
 4.  Execution (MPI-OpenMP mode)
     ```bash
-    OMP_NUM_THREADS=<NTHREAD> mpirun -np <NPROC> ./bin/xbraid_heatEquation_example -n 250 -r 6 -i 3
+    mpirun -np <NPROC> --hostfile <HOSTFILE> -x OMP_NUM_THREADS=<NTHREAD> ./bin/xbraid_heatEquation_example -n 250 -r 6 -i 3
     ```
 
-    This will solve the two-dimensional heat equation on a unit square
-    with 250 time steps in the time interval [0, 0.1] using <NPROC>
-    MPI processes and <NTHREAD> OpenMP threads per MPI process. 
-    As before, the spatial domain is 6 times regularly refined in
-    space (h-refinement) and the approximation order is increased 3
-    times (p-refinement). Order elevation instead of order increase
-    can be achieved by replacing `-i` by `-e`.
-
-    For a complete list of command-line argument run
-    ```bash
-    ./bin/xbraid_heatEquation_example -h
-    ```
+    The additional parameter `-x OMP_NUM_THREADS=<NTHREAD>` ensures that
+    each MPI process executes `NTHREAD` OpenMP threads in parallel.
