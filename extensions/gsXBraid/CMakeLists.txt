@@ -129,6 +129,9 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}
   DESTINATION include/gismo/gsXBraid
   FILES_MATCHING PATTERN "*.h")
 
+# add filedata folder
+add_definitions(-DXBRAID_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/filedata/") 
+
 # Add example files
 include_directories(${CODIPACK_INCLUDE_DIR})
 aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR}/examples FILES)
