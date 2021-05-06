@@ -54,13 +54,16 @@ __Usage example__
 The file ```xbraid_heatEquation_example.cpp``` illustrates the basic usage of the gsXBraid extension.
 
 1.  Configuration and compilation (MPI-only mode)
+
     ```bash
     mkdir build
     cd build
     cmake .. -DGISMO_WITH_XBRAID=ON -DGISMO_WITH_MPI=ON
     make xbraid_heatEquation_example -j4
     ```
+    
 2.  Execution (MPI-only mode)
+
     ```bash
     mpirun -np <NPROC> --hostfile <HOSTFILE> ./bin/xbraid_heatEquation_example -n 250 -r 6 -i 3
     ```
@@ -86,6 +89,7 @@ The file ```xbraid_heatEquation_example.cpp``` illustrates the basic usage of th
     ```
     
 3.  Configuration and compilation (MPI-OpenMP mode)
+
     ```bash
     mkdir build
     cd build
@@ -94,9 +98,16 @@ The file ```xbraid_heatEquation_example.cpp``` illustrates the basic usage of th
     ```
     
 4.  Execution (MPI-OpenMP mode)
+
     ```bash
     mpirun -np <NPROC> --hostfile <HOSTFILE> -x OMP_NUM_THREADS=<NTHREAD> ./bin/xbraid_heatEquation_example -n 250 -r 6 -i 3
     ```
 
     The additional parameter `-x OMP_NUM_THREADS=<NTHREAD>` ensures that
-    each MPI process executes `NTHREAD` OpenMP threads in parallel.
+    each MPI process executes `NTHREAD` OpenMP threads in parallel. The `-x` 
+    flag is not supported by all MPI implementations. If it does not work
+    try
+    
+    ```bash
+    mpirun -np <NPROC> --hostfile <HOSTFILE> -env OMP_NUM_THREADS <NTHREAD> ./bin/xbraid_heatEquation_example -n 250 -r 6 -i 3
+    ```
