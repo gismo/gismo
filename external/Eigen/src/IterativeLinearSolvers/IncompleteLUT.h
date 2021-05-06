@@ -186,14 +186,19 @@ protected:
       }
     };
 
+public:
+    FactorType m_lu;
+  
 protected:
 
-    FactorType m_lu;
     RealScalar m_droptol;
     int m_fillfactor;
     bool m_analysisIsOk;
     bool m_factorizationIsOk;
     ComputationInfo m_info;
+
+public:
+  
     PermutationMatrix<Dynamic,Dynamic,StorageIndex> m_P;     // Fill-reducing permutation
     PermutationMatrix<Dynamic,Dynamic,StorageIndex> m_Pinv;  // Inverse permutation
 };

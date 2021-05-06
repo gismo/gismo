@@ -13,6 +13,7 @@
 
 #include <gismo.h>
 #include <gsXBraid/gsXBraid.h>
+#include "gsXBraidMultigrid.h"
 
 using namespace gismo;
 
@@ -22,11 +23,11 @@ namespace gismo {
 
   enum class gsXBraid_typeMethod
   {
-    FE_FE = 1, // forward Euler   (all grids)
-    BE_BE = 2, // backward Euler  (all grids)
-    CN_CN = 3, // Crank-Nicholson (all grids)
-    FE_BE = 4, // forward Euler   (fine grid), backward Euler (coarser grids)
-    CN_BE = 5  // Crank-Nicholson (fine grid), backward Euler (coarser grids)      
+    FE_FE = 0, // forward Euler   (all grids)
+    BE_BE = 1, // backward Euler  (all grids)
+    CN_CN = 2, // Crank-Nicholson (all grids)
+    FE_BE = 3, // forward Euler   (fine grid), backward Euler (coarser grids)
+    CN_BE = 4  // Crank-Nicholson (fine grid), backward Euler (coarser grids)      
   };
 
 /**
@@ -43,15 +44,15 @@ private:
   index_t numSteps, typeMethod;
   T tstart, tstop, tstep;
 
-  // Spatial discretization
+  // Spatial discretizations
   gsMultiPatch<T> mp;
-  gsMultiBasis<T> bases;
+  gsMultiBasis<T> basisH, basisL;
   
   // Boundary conditions
   gsBoundaryConditions<T> bc;
 
   // Assembler options
-  gsOptionList Aopt;
+  gsOptionList Aopt, Sopt, Topt;
   
   // Expression assembler
   gsExprAssembler<T> K, M;
@@ -60,9 +61,14 @@ private:
   // Solution
   gsVector<T> sol;
 
-  // Solver
-  typedef typename gsSparseSolver<>::CGDiagonal solver;
+  // Single-grid solver
+  typedef typename gsSparseSolver<T>::CGDiagonal solver;  
   solver* m_solver;
+
+  // Multigrid solver
+  typedef typename gsSparseSolver<T>::LU lu;
+  gsXBraidMultigrid<T, lu, gsCDRAssembler<T> >* m_mgsolver;
+  gsMatrix<T> hp;
   
   typedef typename gsExprAssembler<T>::geometryMap geometryMap;
   typedef typename gsExprAssembler<T>::variable    variable;
@@ -100,7 +106,8 @@ private:
     if (this->id() == 0) gsInfo << "Loaded file " << fd.lastPath() << "\n";
 
     fd.getId(0, mp); // id=0: Multipatch domain
-    bases = gsMultiBasis<T>(mp);
+    basisH = gsMultiBasis<T>(mp);
+    basisL = gsMultiBasis<T>(mp);
     
     fd.getId(1, f); // id=1: right-hand side function
     if (this->id() == 0) gsInfo << "Source function " << f << "\n";
@@ -115,43 +122,83 @@ private:
     if (this->id() == 0) gsInfo << "Manufactured solution:\n" << ms << "\n";
     
     fd.getId(5, Aopt); // id=5: assembler options
+    if (this->id() == 0) gsInfo << "Assembler options:\n" << Aopt << "\n";
     K.setOptions(Aopt);
     M.setOptions(Aopt);
 
+    fd.getId(6, Topt); // id=6: multigrid-in-time options
+    if (this->id() == 0) gsInfo << "Multigrid-in-time options:\n" << Topt << "\n";
+
+    this->SetCFactor(Topt.getInt("CFactor"));
+    this->SetMaxIter(Topt.getInt("maxIter"));
+    this->SetMaxLevels(Topt.getInt("maxLevel"));
+    this->SetMaxRefinements(Topt.getInt("numMaxRef"));
+    this->SetMinCoarse(Topt.getInt("minCLevel"));
+    this->SetNFMG(Topt.getInt("numFMG"));
+    this->SetNFMGVcyc(Topt.getInt("numFMGVcyc"));
+    this->SetNRelax(Topt.getInt("numRelax"));
+    this->SetAccessLevel(Topt.getInt("access"));
+    this->SetPrintLevel(Topt.getInt("print"));
+    this->SetStorage(Topt.getInt("numStorage"));
+    this->SetTemporalNorm(Topt.getInt("norm"));
+
+    if (Topt.getInt("tol") == 1)
+      this->SetAbsTol(Topt.getReal("absTol"));
+    else
+      this->SetRelTol(Topt.getReal("relTol"));
+    
+    if (Topt.getSwitch("fmg")) this->SetFMG();
+    if (Topt.getSwitch("incrMaxLevels")) this->SetIncrMaxLevels();
+    if (Topt.getSwitch("periodic"))      this->SetPeriodic(1); else this->SetPeriodic(0);
+    if (Topt.getSwitch("refine"))        this->SetRefine(1);   else this->SetRefine(0);
+    if (Topt.getSwitch("sequential"))    this->SetSeqSoln(1);  else this->SetSeqSoln(0);
+    if (Topt.getSwitch("skip"))          this->SetSkip(1);     else this->SetSkip(0);
+    if (Topt.getSwitch("spatial"))       this->SetSpatialCoarsenAndRefine();
+    
+    fd.getId(7, Sopt); // id=6: spatial solver options
+    if (this->id() == 0) gsInfo << "Spatial solver options:\n" << Sopt << "\n";
+
     // Elevate and p-refine the basis to order k + numElevate
-    // where k is the highest degree in the bases
+    // where k is the highest degree in the basisH
     if ( numElevate > -1 )
     {
         // Find maximum degree with respect to all the variables
-        int tmp = bases.maxDegree(0);
+        int tmp = basisH.maxDegree(0);
         for (short_t j = 1; j < mp.parDim(); ++j )
-            if ( tmp < bases.maxDegree(j) )
-                tmp = bases.maxDegree(j);
+            if ( tmp < basisH.maxDegree(j) )
+                tmp = basisH.maxDegree(j);
 
         // Elevate all degrees uniformly
         tmp += numElevate;
-        bases.setDegree(tmp);
+        basisH.setDegree(tmp);
+        basisL.setDegree(tmp);
     }
 
     // Increase and p-refine the basis
     if (numIncrease > 0)
-      bases.degreeIncrease(numIncrease);
-      
+    {
+      basisH.degreeIncrease(numIncrease);
+      basisL.degreeIncrease(numIncrease);  
+    }
+    
     // h-refine the basis
     for (int i = 0; i < numRefine; ++i)
-        bases.uniformRefine();
+    {
+      basisH.uniformRefine();
+      basisL.uniformRefine();    
+    }    
     
     // Set the basis
-    K.setIntegrationElements(bases);
-    M.setIntegrationElements(bases);   
+    K.setIntegrationElements(basisH);
+    M.setIntegrationElements(basisH);   
 
     // Set the geometry map
     geometryMap G_K = K.getMap(mp);
     geometryMap G_M = M.getMap(mp);
 
     // Set the discretization space
-    space u_K = K.getSpace(bases);
-    space u_M = M.getSpace(bases);
+    space u_K = K.getSpace(basisH);
+    space u_M = M.getSpace(basisH);
     u_K.setInterfaceCont(0);
     u_M.setInterfaceCont(0);
     u_K.addBc( bc.get("Dirichlet") );
@@ -245,7 +292,7 @@ private:
                                     char**           argv)
   {
     // Problem parameters
-    std::string fn(XBRAID_DATA_DIR"pde/heat2d_square_ibvp.xml");
+    std::string fn(XBRAID_DATA_DIR"pde/heat2d_square_ibvp1.xml");
     
     // Spatial discretisation parameters
     index_t numRefine     = 2;
@@ -254,32 +301,8 @@ private:
     
     // Temporal discretisation parameters
     index_t numSteps      = 40;
-    index_t typeMethod    = (index_t)gsXBraid_typeMethod::CN_CN;
+    index_t typeMethod    = (index_t)gsXBraid_typeMethod::CN_BE;
     T       tfinal        = 0.1;
-    
-    // Parallel-in-time multigrid parameters
-    index_t CFactor       = 2;
-    index_t access        = 1;
-    index_t maxIter       = 100;
-    index_t maxLevel      = 30;
-    index_t minCLevel     = 2;
-    index_t numFMG        = 1;
-    index_t numFMGVcyc    = 1;
-    index_t numMaxRef     = 1;
-    index_t numRelax      = 1;
-    index_t numStorage    =-1;
-    index_t print         = 2;
-    index_t tnorm         = 2; // 1-norm, 2-norm, inf-norm
-    
-    T       absTol        = 1e-10;
-    T       relTol        = 1e-3;
-
-    bool    fmg           = false;
-    bool    incrMaxLevels = false;
-    bool    periodic      = false;
-    bool    refine        = false;
-    bool    sequential    = false;
-    bool    skip          = true;
     
     gsCmdLine cmd("Tutorial on solving a Heat equation problem using parallel-in-time multigrid.");
 
@@ -297,64 +320,11 @@ private:
     cmd.addInt( "n",  "numSteps", "Number of parallel-in-time steps", numSteps );
     cmd.addInt( "T", "typeMethod", "Time-stepping scheme", typeMethod);
     cmd.addReal( "t", "tfinal", "Final time", tfinal );
-
-    // Parallel-in-time multigrid parameters
-    cmd.addInt( "",   "numStorage", "Number of storage of the parallel-in-time multigrid solver", numStorage );
-    cmd.addInt( "A",  "access", "Access level (neve [=0], =after finished [=1(default)], each iteration [=2]", access );
-    cmd.addInt( "C",  "CFactor", "Coarsening factor of the parallel-in-time multigrid solver", CFactor );
-    cmd.addInt( "F",  "numFMG", "Number of full multigrid steps of the parallel-in-time multigrid solver", numFMG );
-    cmd.addInt( "L",  "maxLevel", "Maximum numbers of parallel-in-time multigrid levels", maxLevel );
-    cmd.addInt( "M",  "maxIter", "Maximum iteration numbers  of the parallel-in-time multigrid solver", maxIter );
-    cmd.addInt( "N",  "norm", "Temporal norm of the parallel-in-time multigrid solver (1-norm [=1], 2-norm [=2(default)], inf-norm [=3])", tnorm );
-    cmd.addInt( "P",  "print", "Print level (no output [=0], =runtime inforation [=1], run statistics [=2(default)], debug [=3])", print );
-    cmd.addInt( "R",  "numMaxRef", "Maximum number of refinements of the parallel-in-time multigrid solver", numMaxRef );
-    cmd.addInt( "V",  "numFMGVcyc", "Number of full multigrid V-cycles of the parallel-in-time multigrid solver", numFMGVcyc );
-    cmd.addInt( "X",  "numRelax", "Number of relaxation steps of the parallel-in-time multigrid solver", numRelax );
-    cmd.addInt( "l",  "minCLevel", "Minimum level of the parallel-in-time multigrid solver", minCLevel );
-    
-    cmd.addReal( "",  "absTol", "Absolute tolerance of the parallel-in-time multigrid solver", absTol );
-    cmd.addReal( "",  "relTol", "Relative tolerance of the parallel-in-time multigrid solver", relTol );
-
-    cmd.addSwitch( "fmg" , "Perform full multigrid (default is off)", fmg);
-    cmd.addSwitch( "incrMaxLevels" , "Increase the maximum number of parallel-in-time multigrid levels after performing a refinement (default is off)", incrMaxLevels);
-    cmd.addSwitch( "periodic" , "Periodic time grid (default is off)", periodic);
-    cmd.addSwitch( "refine" , "Perform refinement in time (default off)", refine);
-    cmd.addSwitch( "sequential", "Set the initial guess of the parallel-in-time multigrid solver as the sequential time stepping solution (default is off)", sequential);
-    cmd.addSwitch( "skip" , "Skip all work on the first down cycle of the parallel-in-time multigrid solver (default on)", skip);
     
     cmd.getValues(argc,argv);
 
     // Create instance
     gsXBraid_app<T> app(comm, 0.0, tfinal, typeMethod, numSteps, numRefine, numElevate, numIncrease, fn);
-
-    if (absTol != 1e-10)
-      app.SetAbsTol(absTol);
-    else if (relTol != 1e-3)
-      app.SetRelTol(relTol);
-    else
-      app.SetAbsTol(absTol);
-
-    app.SetCFactor(CFactor);
-    app.SetMaxIter(maxIter);
-    app.SetMaxLevels(maxLevel);
-    app.SetMaxRefinements(numMaxRef);
-    app.SetMinCoarse(minCLevel);
-    app.SetNFMG(numFMG);
-    app.SetNFMGVcyc(numFMGVcyc);
-    app.SetNRelax(numRelax);
-    app.SetAccessLevel(access);
-    app.SetPrintLevel(print);
-    app.SetStorage(numStorage);
-    app.SetTemporalNorm(tnorm);
-
-    if (fmg)           app.SetFMG();
-    if (incrMaxLevels) app.SetIncrMaxLevels();
-    if (periodic)      app.SetPeriodic(1); else app.SetPeriodic(0);
-    if (refine)        app.SetRefine(1);   else app.SetRefine(0);
-    if (sequential)    app.SetSeqSoln(1);  else app.SetSeqSoln(0);
-    if (skip)          app.SetSkip(1);     else app.SetSkip(0);
-
-    //app.SetSpatialCoarsenAndRefine();
     
     return app;
   }
