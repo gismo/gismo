@@ -99,8 +99,9 @@ int main(int argc, char* argv[])
         gsInfo << "DirichletStrategy unknown.";
         return 1;
     }
-
-    opt.setInt("DirichletStrategy", dirichlet::nitsche);
+    
+   	gsOptionList opt2 = opt;
+	  opt2.setInt("DirichletStrategy", dirichlet::nitsche);
 
     real_t e_0 = 0;
     real_t e_F = 0;
@@ -253,12 +254,15 @@ int main(int argc, char* argv[])
     gsInfo << "Dofs       &CPU time  &L_p error& L_p rate  &F error  & F rate    &iter      &p         &eps       &||rh||_{\ell^2} \n";
 
     gsMatrix<> solVector;
+    
+    gsLinpLapAssembler<real_t> A;
+    A.initialize(pde, eps, basis, opt, subdiv);
 
     std::vector< gsSparseMatrix<real_t, RowMajor> > transfers;
     for (index_t i = startrefine; i < num; i++)
     {
         gsSparseMatrix<real_t, RowMajor> transfer;
-        basis.uniformRefine_withTransfer(transfer, bcInfo, opt);
+        basis.uniformRefine_withTransfer(transfer, bcInfo, opt2);
         pde.w = transfer * pde.w; // get initial guess from coaeser grid // Here, the Dirichlet values are not the exact L2-projection -- ST
         transfers.push_back(give(transfer));
 
