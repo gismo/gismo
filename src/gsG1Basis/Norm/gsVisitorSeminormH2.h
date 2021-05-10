@@ -37,7 +37,7 @@ public:
         gsVector<index_t> numQuadNodes( d );
         for (unsigned i = 0; i < d; ++i)
         {
-            numQuadNodes[i] = 2*basis.degree(i) + 1;
+            numQuadNodes[i] = basis.degree(i) + 1;
         }
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
@@ -66,8 +66,8 @@ public:
         basis.deriv2_into(quNodes,deriv2Data);
         geoEval.evaluateAt(quNodes);
 
-        f1ders.setZero(2,actives.rows());
-        f1ders2.setZero(3,actives.rows());
+        f1ders.setZero(2,quNodes.cols());
+        f1ders2.setZero(3,quNodes.cols());
         for (index_t i = 0; i < sol_sparse->rows(); i++)
             for (index_t j = 0; j < actives.rows(); j++)
             {
@@ -77,8 +77,9 @@ public:
 
 
         // get the gradients to columns
-        f1ders.resize(quNodes.rows(), quNodes.cols() );
-        //f1ders2.transposeInPlace();
+//        f1ders.resize(quNodes.rows(), quNodes.cols() );
+
+//        f1ders2.transposeInPlace();
 
         // Evaluate second function (defined of physical domain)
 
@@ -107,7 +108,6 @@ public:
             {
                 gsMatrix<T> geoMapDeriv1 = geo.deriv(qN); // First derivative of the geometric mapping with respect to the parameter coordinates
                 gsMatrix<T> geoMapDeriv2 = geo.deriv2(qN); // Second derivative of the geometric mapping with respect to the parameter coordinates
-
 
 //            FIRST FUNDAMENTAL FORM: G = J^T * J
 //
@@ -300,7 +300,6 @@ public:
 //                                +  (surfParametricLaplace.bottomRows(6) - f2ders2.col(k).bottomRows(6)).squaredNorm());
 //                                +  2 * (surfParametricLaplace.bottomRows(3) - f2ders2.col(k).bottomRows(3)).squaredNorm()
                                 );
-                gsInfo << "sum: " << weight * ( (surfParametricLaplace - f2ders2.col(k)).squaredNorm() ) << "\n";
 
 
             }
@@ -327,6 +326,8 @@ public:
             }
         }
         accumulated += sum;
+
+
         return sum;
     }
 

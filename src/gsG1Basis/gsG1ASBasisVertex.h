@@ -329,6 +329,8 @@ template <class T, class bhVisitor>
 void gsG1ASBasisVertex<T,bhVisitor>::solve()
 {
     gsSparseSolver<real_t>::CGDiagonal solver;
+//    gsSparseSolver<real_t>::LU solver;
+
 
 //    gsInfo << "rhs: " << m_f.at(4).rhs() << "\n";
 

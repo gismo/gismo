@@ -62,7 +62,7 @@ public:
        // Evaluate basis functions on element
         basis.eval_into(quNodes,basisData);
 
-        f1vals.setZero(1,actives.rows());
+        f1vals.setZero(1,quNodes.cols());
         for (index_t i = 0; i < sol_sparse->rows(); i++) // -1 bcs of interior solution
             for (index_t j = 0; j < actives.rows(); j++)
                 f1vals += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * basisData.row(j);

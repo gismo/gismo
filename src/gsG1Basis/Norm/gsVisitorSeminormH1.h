@@ -62,7 +62,7 @@ public:
         // Evaluate basis functions on element
         basis.deriv_into(quNodes,bGrads);
 
-        f1ders.setZero(2,actives.rows());
+        f1ders.setZero(2,quNodes.cols());
         for (index_t i = 0; i < sol_sparse->rows(); i++)
             for (index_t j = 0; j < actives.rows(); j++)
                 f1ders += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * bGrads.block(2*j,0,2,f1ders.dim().second);
