@@ -53,8 +53,8 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
                                       const boundaryInterface & bi)
                                       : m_g1(mp[bi.first().patch]),
                                         m_g2(mp[bi.second().patch]),
-                                        m_b1(basis[bi.first().patch]),
-                                        m_b2(basis[bi.second().patch])// in most cases they are just the other way around
+                                        m_b1(&(basis[bi.first().patch])),
+                                        m_b2(&(basis[bi.second().patch]))// in most cases they are just the other way around
 {
     //gsInfo << "patches: " << bi.first().patch << " and " << bi.second().patch << "\n";
     m_flipSide2 = false;
@@ -126,7 +126,7 @@ void gsRemapInterface<T>::constructBreaks() {
     for(size_t i = 0; i < boundariesPatch1.size(); i++)
         if(boundariesPatch1[i].index() == m_side1.index())
         {
-            domIt1 = m_b1.makeDomainIterator( boundariesPatch1[i] );
+            domIt1 = m_b1->makeDomainIterator( boundariesPatch1[i] );
             patchSide1 = boundariesPatch1[i];
             startPatch1 = m_parameterbounds.first.col(0);
         }
@@ -134,7 +134,7 @@ void gsRemapInterface<T>::constructBreaks() {
     for(size_t i = 0; i < boundariesPatch2.size(); i++)
         if(boundariesPatch2[i].index() == m_side2.index())
         {
-            domIt2 = m_b2.makeDomainIterator(boundariesPatch2[i]);
+            domIt2 = m_b2->makeDomainIterator(boundariesPatch2[i]);
             patchSide2 = boundariesPatch2[i];
             if(m_flipSide2)
                 startPatch2 = m_parameterbounds.second.col(1);
@@ -652,9 +652,9 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
 template<class T>
 memory::unique_ptr< gsDomainIterator<T> > gsRemapInterface<T>::makeDomainIterator() const
 {
-    if (m_isMatching) return m_b1.makeDomainIterator(m_side1);
+    if (m_isMatching) return m_b1->makeDomainIterator(m_side1);
 
-    gsTensorDomainBoundaryIterator<T> * tdi = new gsTensorDomainBoundaryIterator<T> (m_b1, m_side1);
+    gsTensorDomainBoundaryIterator<T> * tdi = new gsTensorDomainBoundaryIterator<T> (*m_b1, m_side1);
 
     std::vector<T> newBreaks = getPointsOnInterface();
     gsInfo << "newBreaks: \n";

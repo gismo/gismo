@@ -103,8 +103,8 @@ private:
     const gsGeometry<T> & m_g2;
 
     // The bases to consider
-    const gsBasis<T> & m_b1;
-    const gsBasis<T> & m_b2;
+    const gsBasis<T>* m_b1;
+    const gsBasis<T>* m_b2;
 
     gsMatrix<T> m_breakpoints;
     typename gsFunction<T>::Ptr m_fittedInterface;
