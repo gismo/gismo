@@ -96,41 +96,11 @@ template <class T>
 void gsRemapInterface<T>::constructBreaks() {
     // computes break points per element
 
-    //const gsBasis <T> &B1 = m_g1->basis();
-    //const gsBasis <T> &B2 = m_g2->basis();
+    typename gsBasis<T>::domainIter domIt1 = m_b1->makeDomainIterator(static_cast<boxSide>(m_side1));
+    typename gsBasis<T>::domainIter domIt2 = m_b2->makeDomainIterator(static_cast<boxSide>(m_side2));
 
-    // Get the interface of the patches
-    // TODO: can be moved to the constructor?!
-    gsMultiPatch<T> firstPatch(*m_g1);
-    gsMultiPatch<T> secondPatch(*m_g2);
-    firstPatch.computeTopology(); secondPatch.computeTopology();
-    std::vector<patchSide > boundariesPatch1 = firstPatch.boundaries();
-    std::vector<patchSide > boundariesPatch2 = secondPatch.boundaries();
-    patchSide patchSide1, patchSide2;
-
-    typename gsBasis<T>::domainIter domIt1, domIt2;
-    gsMatrix<T> startPatch1, startPatch2;
-
-    // Check which sides contain a part of the common interface
-    for(size_t i = 0; i < boundariesPatch1.size(); i++)
-        if(boundariesPatch1[i].index() == m_side1.index())
-        {
-            domIt1 = m_b1->makeDomainIterator( boundariesPatch1[i] );
-            patchSide1 = boundariesPatch1[i];
-            startPatch1 = m_parameterBounds1.col(0);
-        }
-
-    for(size_t i = 0; i < boundariesPatch2.size(); i++)
-        if(boundariesPatch2[i].index() == m_side2.index())
-        {
-            domIt2 = m_b2->makeDomainIterator(boundariesPatch2[i]);
-            patchSide2 = boundariesPatch2[i];
-            if(m_flipSide2)
-                startPatch2 = m_parameterBounds2.col(1);
-            else
-                startPatch2 = m_parameterBounds2.col(0);
-        }
-
+    gsMatrix<T> startPatch1 = m_parameterBounds1.col(0);
+    gsMatrix<T> startPatch2 = m_parameterBounds2.col(m_flipSide2 ? 1 : 0);
 
     // Compute interface knots in physical domain by evaluating left and right geometry maps at the knot values
     size_t numelP1 = domIt1->numElements();
@@ -285,7 +255,7 @@ void gsRemapInterface<T>::constructBreaks() {
 
         // Determine fixed coordinate of patch2 -> Use here patch2 because we compute the Interfacemap of patch1!!!
         // fixedDir ==  0 corresponds to fixed u and 1 corresponds to a fixed v
-        index_t fixedDir = patchSide1.direction();
+        index_t fixedDir = m_side1.direction();
 
         gsMatrix<T> G2_parametric_LC;
         for (index_t i = 0; i < physicalBreaks.cols(); i++) {
@@ -356,7 +326,7 @@ void gsRemapInterface<T>::constructBreaks() {
     }
     else
     {
-        // ?
+        GISMO_ENSURE(0, "Not implemented for d!=2.");
     }
 
 }
