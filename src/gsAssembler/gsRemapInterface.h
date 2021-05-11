@@ -63,6 +63,9 @@ public:
     /// Returns the break points
     const gsMatrix<T> & breakPoints() const { return m_breakpoints; }
 
+    /// Prints the state of the object
+    virtual std::ostream & print(std::ostream& os) const override;
+
 private:
 
     // Computes \a m_parameterBounds1 and \a m_parameterBounds2 for the affine linear setting
@@ -137,6 +140,10 @@ private:
 
 }; // End gsRemapInterface
 
+/// Prints the state of the object
+template <class T>
+inline std::ostream & operator<<(std::ostream& os, const gsRemapInterface<T>& remapIf)
+{ return remapIf.print(os); }
 
 } // End namespace gismo
 

@@ -1034,5 +1034,17 @@ void gsRemapInterface<T>::changeDir(const boundaryInterface & bi)
 
 }
 
-} // End namespace gismo
+template <class T>
+std::ostream& gsRemapInterface<T>::print(std::ostream& os) const
+{
+    os << "gsRemapInterface:"
+       << "\n    First side:  " << m_side1
+       << "\n    Second side: " << m_side2
+       << "\n    Matching:    " << ( m_isMatching ? "yes (affine-linear map is used)" : "no")
+       << "\n    Flip side2:  " << ( m_flipSide2 ? "true" : "false")
+       << "\n";
+    return os;
+}
 
+
+} // End namespace gismo
