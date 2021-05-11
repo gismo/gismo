@@ -17,6 +17,9 @@
 
 # include <gsAssembler/gsBiharmonicNitscheAssembler.h>
 
+// Maybe shift or do sth else
+# include <gsArgyris/gsErrorAnalysis/gsC1NitscheNorms.h>
+
 
 using namespace gismo;
 //! [Include namespace]
@@ -49,6 +52,8 @@ int main(int argc, char *argv[])
     bool C1Vertex = false;
     bool twoPatch = false;
     bool simplified = false;
+
+    real_t mu = 100;
 
     gsCmdLine cmd("Solving biharmonic equation with Nitsche method.");
     cmd.addPlainString("filename", "G+Smo input geometry file.", input);
@@ -83,6 +88,8 @@ int main(int argc, char *argv[])
     cmd.addSwitch( "csv", "Save the output to a csv file", csv );
     cmd.addSwitch( "mesh", "Save the mesh to a csv file", mesh );
     cmd.addSwitch( "solution", "Save the solution to a csv file", csv_sol );
+
+    cmd.addReal("m" , "mu", "Mu for Nitsche", mu);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
@@ -218,6 +225,8 @@ int main(int argc, char *argv[])
         mb.uniformRefine();
     //! [Initialise the discrete space]
 
+    gsInfo << "Basis: " << mb.basis(0) << "\n";
+
     gsSparseSolver<>::CGDiagonal solver;
 
     //! [Solver loop]
@@ -234,7 +243,7 @@ int main(int argc, char *argv[])
         gsInfo<<"--------------------------------------------------------------\n";
 
         time.restart();
-        gsBiharmonicNitscheAssembler<real_t> biharmonicNitscheAssembler(mp, mb, bcInfo, bcInfo2, source);
+        gsBiharmonicNitscheAssembler<real_t> biharmonicNitscheAssembler(mp, mb, bcInfo, bcInfo2, source, optionList);
         gsInfo<<"\tDegrees of freedom:\t"<< biharmonicNitscheAssembler.numDofs() <<"\n";
         biharmonicNitscheAssembler.assemble();
         gsInfo<< "." <<std::flush;// Assemblying done
@@ -254,10 +263,11 @@ int main(int argc, char *argv[])
         gsInfo<< "." <<std::flush;// Linear solving done
 
         // TODO Error
-        gsField<> solField(mp, mpsol);
-        real_t errorH2Semi = solField.distanceH2(solution, false);
-        real_t errorH1Semi = solField.distanceH1(solution, false);
-        normerr(l,2) = solField.distanceL2(solution, false);
+        gsC1NitscheNorms<real_t> c1NitscheNorms(mp, mpsol, solution);
+        c1NitscheNorms.compute();
+        real_t errorH2Semi = c1NitscheNorms.valueH2();
+        real_t errorH1Semi = c1NitscheNorms.valueH1();
+        normerr(l,2) = c1NitscheNorms.valueL2();
         normerr(l,4) = math::sqrt(errorH1Semi*errorH1Semi + normerr(l,2)*normerr(l,2));
         normerr(l,6) = math::sqrt(errorH2Semi*errorH2Semi + errorH1Semi*errorH1Semi + normerr(l,2)*normerr(l,2));
 

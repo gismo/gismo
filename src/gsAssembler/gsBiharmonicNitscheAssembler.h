@@ -59,11 +59,14 @@ namespace gismo
                                gsMultiBasis<T> const         & bases,
                                gsBoundaryConditions<T> const & bconditions,
                                gsBoundaryConditions<T> const & bconditions2,
-                               const gsFunction<T>           & rhs)
+                               const gsFunction<T>           & rhs,
+                               gsOptionList const & optionList)
                 : m_ppde(patches,bconditions,bconditions2,rhs)
         {
             m_options.setInt("DirichletStrategy", dirichlet::elimination);
             m_options.setInt("InterfaceStrategy",  iFace::glue);
+
+            m_options.addReal("mu", "Mu", optionList.getReal("mu"));
 
             Base::initialize(m_ppde, bases, m_options);
         }

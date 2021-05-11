@@ -15,11 +15,11 @@ namespace gismo
 
 
     template <class T>
-    class gsC1ArgyrisNormsVisitor
+    class gsC1NitscheNormsVisitor
     {
     public:
 
-        gsC1ArgyrisNormsVisitor()
+        gsC1NitscheNormsVisitor()
         {
             f2param = false;
 
@@ -44,7 +44,7 @@ namespace gismo
 
         // Evaluate on element.
         void evaluate(const gsGeometry<T> & geometry,
-                      const gsMappedBasis<2, T> * basisPtr,
+                      const gsMultiPatch<T> * discreteSol,
                       const gsFunctionWithDerivatives<T> & exactSol,
                       gsMatrix<T> & quNodes)
         {
@@ -65,7 +65,7 @@ namespace gismo
 
             geometry.computeMap(md);
             std::vector<gsMatrix<T>> basisData;
-            basisPtr->evalAllDers_into(patchIndex, md.points, 2, basisData);
+            discreteSol->patch(patchIndex).evalAllDers_into(md.points, 2, basisData);
 
             // Sum up the row-wise solution
             for (index_t i = 0; i < basisData[0].rows(); i++)

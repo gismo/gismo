@@ -39,6 +39,8 @@ namespace gismo
                         const gsOptionList & options,
                         gsQuadRule<T>    & rule)
         {
+            mu = options.getReal("mu");
+
             side = bi.first().side();
             const int dir = side.direction();
 
@@ -122,23 +124,23 @@ namespace gismo
                 transformLaplaceHgrad(md2, k, basisDers2, basis2Ders2, physBasisLaplace2);
 
                 const T h = element.getCellSize();
-                const T mu = 100 / (0 != h ? h : 1);
+                const T mu_h = mu / (0 != h ? h : 1);
 
-                localMatrix1.noalias() += weight * (- 0.5 * physBasisGrad1.transpose() * unormal * physBasisLaplace1
-                                                    - 0.5 * (physBasisGrad1.transpose() * unormal * physBasisLaplace1).transpose()
-                                                + mu * (physBasisGrad1.transpose() * unormal) * (physBasisGrad1.transpose() * unormal).transpose());
+                localMatrix1.noalias() += weight * (- physBasisGrad1.transpose() * unormal * physBasisLaplace1
+                                                    - (physBasisGrad1.transpose() * unormal * physBasisLaplace1).transpose()
+                                                + mu_h * (physBasisGrad1.transpose() * unormal) * (physBasisGrad1.transpose() * unormal).transpose());
 
-                localMatrix2.noalias() += weight * ( - 0.5 * physBasisGrad2.transpose() * unormal * physBasisLaplace2
-                                                    - 0.5 * (physBasisGrad2.transpose() * unormal * physBasisLaplace2).transpose()
-                                                    + mu * (physBasisGrad2.transpose() * unormal) * (physBasisGrad2.transpose() * unormal).transpose());
+                localMatrix2.noalias() += weight * ( - physBasisGrad2.transpose() * unormal * physBasisLaplace2
+                                                    - (physBasisGrad2.transpose() * unormal * physBasisLaplace2).transpose()
+                                                    + mu_h * (physBasisGrad2.transpose() * unormal) * (physBasisGrad2.transpose() * unormal).transpose());
 
-                localMatrix12.noalias() += weight * (+ 0.5 *physBasisGrad1.transpose() * unormal * physBasisLaplace2
-                                                    + 0.5 *(physBasisGrad2.transpose() * unormal * physBasisLaplace1).transpose()
-                                                    - mu * (physBasisGrad1.transpose() * unormal) * (physBasisGrad2.transpose() * unormal).transpose());
+                localMatrix12.noalias() += weight * (physBasisGrad1.transpose() * unormal * physBasisLaplace2
+                                                    + (physBasisGrad2.transpose() * unormal * physBasisLaplace1).transpose()
+                                                    - mu_h * (physBasisGrad1.transpose() * unormal) * (physBasisGrad2.transpose() * unormal).transpose());
 
-                localMatrix21.noalias() += weight * (0.5 *physBasisGrad2.transpose() * unormal * physBasisLaplace1
-                                                     + 0.5 *(physBasisGrad1.transpose() * unormal * physBasisLaplace2).transpose()
-                                                     - mu * (physBasisGrad2.transpose() * unormal) * (physBasisGrad1.transpose() * unormal).transpose());
+                localMatrix21.noalias() += weight * (physBasisGrad2.transpose() * unormal * physBasisLaplace1
+                                                     + (physBasisGrad1.transpose() * unormal * physBasisLaplace2).transpose()
+                                                     - mu_h * (physBasisGrad2.transpose() * unormal) * (physBasisGrad1.transpose() * unormal).transpose());
             }
         }
 
@@ -186,6 +188,8 @@ namespace gismo
         gsMatrix<T> localRhs1, localRhs2;
 
         gsMapData<T> md1, md2;
+
+        real_t mu;
     };
 
 
