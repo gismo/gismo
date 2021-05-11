@@ -38,23 +38,15 @@ public:
     /// Constructor which takes a multipatch and a boundary interface, useful if the interface is fully matching
     gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & basis, const boundaryInterface & bi);
 
-    /// Constructor for the class which takes two geometries
-    gsRemapInterface(const gsGeometry<T> & g1, const gsGeometry<T> & g2, const gsBasis<T>* basis1, const gsBasis<T>* basis2) : m_g1(g1), m_g2(g2), m_b1(*basis1), m_b2(*basis2)
-    {
-        GISMO_ASSERT(m_g1.geoDim() == m_g2.geoDim(), "The two given geometries do not have the same dimension!");
-        findInterface();
-        constructReparam();
-        if(!m_isMatching)
-            constructBreaks();
-   }
-
+private:
     /// Helper to compute the closest point to lti on the other patch via Newton's method
     gsMatrix<T> closestPoint(const gsMatrix<T> b_null, const gsGeometry<T> & R, const gsMatrix<T> & lti);
 
     // rename: getPointsOnInterface() --> check eval_into, then evaluate both g1 and g2 and check equality
-
+    /// TODO: docs
     const std::vector<T> getPointsOnInterface() const;
 
+public:
     const typename gsFunction<T>::Ptr & giveInterfaceMap() const { return m_fittedInterface; }
     //const boxSide & giveSide() const { return m_side; }
 
@@ -74,6 +66,28 @@ public:
 
     /// Returns the break points
     const gsMatrix<T> & breakPoints() const { return m_breakpoints; }
+
+private:
+    // Member to enrich a matrix of 1D points to a matrix of m_domain.geoDim() points
+    void enrichToVector(const short_t boundarySide, const gsGeometry<T> & geo, const gsMatrix<T> & intervals, gsMatrix<T> & pts);
+
+    // Find the interface between the two incoming patches
+    void findInterface(const boundaryInterface& bi);
+
+    // Check if the incoming patches are matching or not
+    bool checkIfMatching();
+
+    // Check if the incoming evaluation points are out of bounds because of rounding errors
+    gsMatrix<T> checkIfInBound(const gsMatrix<T> & u) const;
+
+    // Change dir direction of the parameterization of the patches
+    void changeDir(const boundaryInterface & bi);
+
+    // Constructs the reparametrization \a m_reparamInterfaceMap
+    void constructReparam();
+
+    // Cconstructs the breakpoints \a m_breakpoints
+    void constructBreaks();
 
 private:
     // flag if the interfaces are matching
@@ -103,27 +117,6 @@ private:
     // A single matrix has the structure [lower, upper]^T
     std::pair<gsMatrix<T>, gsMatrix<T> > m_parameterbounds;
 
-    // Member to enrich a matrix of 1D points to a matrix of m_domain.geoDim() points
-    void enrichToVector(const short_t boundarySide, const gsGeometry<T> & geo, const gsMatrix<T> & intervals, gsMatrix<T> & pts);
-
-    // Find the interface between the two incoming patches
-    void findInterface();
-    void findInterface(const boundaryInterface& bi);
-
-    // Check if the incoming patches are matching or not
-    bool checkIfMatching();
-
-    // Check if the incoming evaluation points are out of bounds because of rounding errors
-    gsMatrix<T> checkIfInBound(const gsMatrix<T> & u) const;
-
-    // Change dir direction of the parameterization of the patches
-    void changeDir(const boundaryInterface & bi);
-
-    // Constructs the reparametrization \a m_reparamInterfaceMap
-    void constructReparam();
-
-    // Cconstructs the breakpoints \a m_breakpoints
-    void constructBreaks();
 
 }; // End gsRemapInterface
 
