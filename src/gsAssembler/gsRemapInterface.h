@@ -86,36 +86,48 @@ private:
     // Constructs the reparametrization \a m_reparamInterfaceMap
     void constructReparam();
 
-    // Cconstructs the breakpoints \a m_breakpoints
+    // Constructs the breakpoints \a m_breakpoints
     void constructBreaks();
 
+    /// Computes \a m_parameterBounds1 and \a m_parameterBounds2 for the affine linear setting
+    static gsMatrix<T> getParameterBounds(const gsGeometry<T>& geo, boxSide s, index_t dim);
+
 private:
-    // flag if the interfaces are matching
-    // if true then an affine map is created -> faster since no inversions etc. must be performed
-    bool m_isMatching;
-
-    // flag which says whether the orientation of the second side is fliped
-    // this is important for reparameterization, especially for constructing the breakpoints
-    bool m_flipSide2;
-
-    // The geometries to consider
+    /// Geometry of first patch
     const gsGeometry<T> & m_g1;
+    /// Geometry of second patch
     const gsGeometry<T> & m_g2;
 
-    // The bases to consider
+    /// Basis on first patch
     const gsBasis<T>* m_b1;
+    /// Basis on second patch
     const gsBasis<T>* m_b2;
 
-    gsMatrix<T> m_breakpoints;
-    typename gsFunction<T>::Ptr m_fittedInterface;
-
-    // Store which boundary is the interface for patch 1 and patch 2, respectively
+    /// Side of first patch which constitutes interface
     patchSide m_side1;
+    /// Side of second patch which constitutes interface
     patchSide m_side2;
 
-    // Store the parameter bounds for both patches
-    // A single matrix has the structure [lower, upper]^T
-    std::pair<gsMatrix<T>, gsMatrix<T> > m_parameterbounds;
+    /// @brief True iff the interfaces are matching
+    /// If true then an affine linear map is created, which is much faster
+    bool m_isMatching;
+
+    /// @brief True iff the orientation of the second side is fliped
+    /// This is important for reparameterization, especially for constructing the breakpoints
+    bool m_flipSide2;
+
+    /// Union of breakpoints of both bases
+    gsMatrix<T> m_breakpoints;
+
+    /// The fitted interface itself
+    typename gsFunction<T>::Ptr m_fittedInterface;
+
+    /// @brief The bounds of the box that constitute the interface on the parameter domain for first patch
+    /// The matrix has the structure [lower_1, ..., lower_d \\ upper_1, ..., upper_d ]
+    gsMatrix<T> m_parameterBounds1;
+    /// @brief The bounds of the box that constitute the interface on the parameter domain for first patch
+    /// The matrix has the structure [lower_1, ..., lower_d \\ upper_1, ..., upper_d ]
+    gsMatrix<T> m_parameterBounds2;
 
 
 }; // End gsRemapInterface
