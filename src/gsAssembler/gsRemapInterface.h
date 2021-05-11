@@ -26,6 +26,7 @@ template <class T>
 class gsRemapInterface : public gsFunction<T>
 {
 public:
+
     /// Shared pointer for gsRemapInterface
     typedef memory::shared_ptr< gsRemapInterface > Ptr;
 
@@ -35,26 +36,21 @@ public:
     /// Unique pointer to domain iterator
     typedef memory::unique_ptr< gsDomainIterator<T> > domainIterUPtr;
 
+public:
+
     /// Constructor which takes a multipatch and a boundary interface, useful if the interface is fully matching
     gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & basis, const boundaryInterface & bi);
 
-private:
-    /// Helper to compute the closest point to lti on the other patch via Newton's method
-    gsMatrix<T> closestPoint(const gsMatrix<T> b_null, const gsGeometry<T> & R, const gsMatrix<T> & lti);
-
-    // rename: getPointsOnInterface() --> check eval_into, then evaluate both g1 and g2 and check equality
-    /// TODO: docs
-    const std::vector<T> getPointsOnInterface() const;
-
 public:
-    const typename gsFunction<T>::Ptr & giveInterfaceMap() const { return m_fittedInterface; }
-    //const boxSide & giveSide() const { return m_side; }
 
-    /// Computes parametric values on the boundary from patch1 to the corresponding boundary values on patch2
+    /// Returns the interface map
+    const typename gsFunction<T>::Ptr & interfaceMap() const { return m_fittedInterface; }
+
+    /// Returns parametric values on the boundary from patch1 to the corresponding boundary values on patch2
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
-    /// Returns arameter dimension of the domain
-    virtual short_t domainDim() const { return m_g1.geoDim(); }
+    /// Returns parameter dimension of the domain
+    virtual short_t domainDim() const { return m_g1->geoDim(); }
 
     /// Returns a domain iterator
     domainIterUPtr makeDomainIterator() const;
@@ -68,8 +64,20 @@ public:
     const gsMatrix<T> & breakPoints() const { return m_breakpoints; }
 
 private:
+
+    // Computes \a m_parameterBounds1 and \a m_parameterBounds2 for the affine linear setting
+    static gsMatrix<T> parameterBounds(const gsGeometry<T>& geo, boxSide s, index_t dim);
+
+    // Helper to compute the closest point to lti on the other patch via Newton's method
+    gsMatrix<T> closestPoint(const gsMatrix<T> b_null, const gsGeometry<T> & R, const gsMatrix<T> & lti);
+
+    // rename: getPointsOnInterface() --> check eval_into, then evaluate both g1 and g2 and check equality
+    // TODO: docs
+    const std::vector<T> getPointsOnInterface() const;
+
+
     // Member to enrich a matrix of 1D points to a matrix of m_domain.geoDim() points
-    void enrichToVector(const short_t boundarySide, const gsGeometry<T> & geo, const gsMatrix<T> & intervals, gsMatrix<T> & pts);
+    void enrichToVector(boxSide boundarySide, const gsGeometry<T> & geo, const gsMatrix<T> & intervals, gsMatrix<T> & pts);
 
     // Find the interface between the two incoming patches
     void findInterface(const boundaryInterface& bi);
@@ -89,19 +97,16 @@ private:
     // Constructs the breakpoints \a m_breakpoints
     void constructBreaks();
 
-    /// Computes \a m_parameterBounds1 and \a m_parameterBounds2 for the affine linear setting
-    static gsMatrix<T> getParameterBounds(const gsGeometry<T>& geo, boxSide s, index_t dim);
-
 private:
     /// Geometry of first patch
-    const gsGeometry<T> & m_g1;
+    const gsGeometry<T> * m_g1;
     /// Geometry of second patch
-    const gsGeometry<T> & m_g2;
+    const gsGeometry<T> * m_g2;
 
     /// Basis on first patch
-    const gsBasis<T>* m_b1;
+    const gsBasis<T> * m_b1;
     /// Basis on second patch
-    const gsBasis<T>* m_b2;
+    const gsBasis<T> * m_b2;
 
     /// Side of first patch which constitutes interface
     patchSide m_side1;
