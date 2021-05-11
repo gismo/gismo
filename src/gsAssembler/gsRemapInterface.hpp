@@ -32,6 +32,20 @@
 
 namespace gismo {
 
+template <class T>
+gsMatrix<T> getParameterBounds( const gsGeometry<T>& geo, boxSide s, index_t dim )
+{
+    gsMatrix<T> result(dim, 2);
+    for (index_t i = 0; i<dim; ++i)
+    {
+        gsMatrix<T> pr = geo.parameterRange();
+        if (s.direction()==i)
+            result(i,0) = result(i,1) = pr( i, s.parameter() == false ? 0 : 1 );
+        else
+            result.row(i) = pr.row(i);
+    }
+    return result;
+}
 
 template <class T>
 gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
@@ -46,10 +60,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
     m_flipSide2 = false;
     m_isMatching = checkIfMatching();
 
-    if (domainDim() > 2)
-    {
-        GISMO_ENSURE(m_isMatching == true, "Can handle non-matching interfaces only for 2 dimensions.");
-    }
+    GISMO_ENSURE(m_isMatching || domainDim() <= 2, "Can handle non-matching interfaces only for 2 dimensions.");
 
     //gsInfo << "equal corners: " << sameCorners << "\n";
 
@@ -61,124 +72,16 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
     }
     else
     {
-
         m_side1 = bi.first();
         m_side2 = bi.second();
 
         std::vector<boxCorner> corners;
         gsMatrix<T> inversCorners;
 
-        m_parameterbounds.first.resize(domainDim(), 2);
-        m_parameterbounds.second.resize(domainDim(), 2);
-
         //gsInfo << "the follwing patches match: " << m_g1.id() << " and " << m_g2.id() << "\n";
 
-        switch (m_side1.index()) {
-            case 1:
-                m_parameterbounds.first.row(1) = mp[bi.first().patch].parameterRange().row(1);
-                m_parameterbounds.first(0, 0) = //mp[bi.first().patch].parameterRange()(0, 0);
-                m_parameterbounds.first(0, 1) = mp[bi.first().patch].parameterRange()(0, 0);
-
-                if(domainDim() == 3)
-                    m_parameterbounds.first.row(2) = mp[bi.first().patch].parameterRange().row(2);
-
-                break;
-            case 2:
-                m_parameterbounds.first.row(1) = mp[bi.first().patch].parameterRange().row(1);
-                m_parameterbounds.first(0, 0) = //mp[bi.first().patch].parameterRange()(0, 1);
-                m_parameterbounds.first(0, 1) = mp[bi.first().patch].parameterRange()(0, 1);
-
-                if(domainDim() == 3)
-                    m_parameterbounds.first.row(2) = mp[bi.first().patch].parameterRange().row(2);
-
-                break;
-            case 3:
-                m_parameterbounds.first.row(0) = mp[bi.first().patch].parameterRange().row(0);
-                m_parameterbounds.first(1, 0) = //mp[bi.first().patch].parameterRange()(1, 0);
-                m_parameterbounds.first(1, 1) = mp[bi.first().patch].parameterRange()(1, 0);
-
-                if(domainDim() == 3)
-                    m_parameterbounds.first.row(2) = mp[bi.first().patch].parameterRange().row(2);
-
-                break;
-            case 4:
-                m_parameterbounds.first.row(0) = mp[bi.first().patch].parameterRange().row(0);
-                m_parameterbounds.first(1, 0) = //mp[bi.first().patch].parameterRange()(1, 1);
-                m_parameterbounds.first(1, 1) = mp[bi.first().patch].parameterRange()(1, 1);
-
-                if(domainDim() == 3)
-                    m_parameterbounds.first.row(2) = mp[bi.first().patch].parameterRange().row(2);
-
-                break;
-            case 5: // for 3D case
-                m_parameterbounds.first.row(0) = mp[bi.first().patch].parameterRange().row(0);
-                m_parameterbounds.first.row(1) = mp[bi.first().patch].parameterRange().row(1);
-                m_parameterbounds.first(2, 0) = //mp[bi.first().patch].parameterRange()(2, 0);
-                m_parameterbounds.first(2, 1) = mp[bi.first().patch].parameterRange()(2, 0);
-                break;
-            case 6: // for 3D case
-                m_parameterbounds.first.row(0) = mp[bi.first().patch].parameterRange().row(0);
-                m_parameterbounds.first.row(1) = mp[bi.first().patch].parameterRange().row(1);
-                m_parameterbounds.first(2, 0) = //mp[bi.first().patch].parameterRange()(2, 1);
-                m_parameterbounds.first(2, 1) = mp[bi.first().patch].parameterRange()(2, 1);
-                break;
-        }
-
-        switch (m_side2.index()) {
-
-            case 1:
-                m_parameterbounds.second.row(1) = mp[bi.second().patch].parameterRange().row(1);
-                m_parameterbounds.second(0, 0) = //mp[bi.second().patch].parameterRange()(0, 0);
-                m_parameterbounds.second(0, 1) = mp[bi.second().patch].parameterRange()(0, 0);
-
-                if(domainDim() == 3)
-                    m_parameterbounds.second.row(2) = mp[bi.second().patch].parameterRange().row(2);
-
-                break;
-            case 2:
-                m_parameterbounds.second.row(1) = mp[bi.second().patch].parameterRange().row(1);
-                m_parameterbounds.second(0, 0) = //mp[bi.second().patch].parameterRange()(0, 1);
-                m_parameterbounds.second(0, 1) = mp[bi.second().patch].parameterRange()(0, 1);
-
-                if(domainDim() == 3)
-                    m_parameterbounds.second.row(2) = mp[bi.second().patch].parameterRange().row(2);
-
-                break;
-            case 3:
-                m_parameterbounds.second.row(0) = mp[bi.second().patch].parameterRange().row(0);
-                m_parameterbounds.second(1, 0) = //mp[bi.second().patch].parameterRange()(1, 0);
-                m_parameterbounds.second(1, 1) = mp[bi.second().patch].parameterRange()(1, 0);
-
-                if(domainDim() == 3)
-                    m_parameterbounds.second.row(2) = mp[bi.second().patch].parameterRange().row(2);
-
-                break;
-            case 4:
-                m_parameterbounds.second.row(0) = mp[bi.second().patch].parameterRange().row(0);
-                m_parameterbounds.second(1, 0) = //mp[bi.second().patch].parameterRange()(1, 1);
-                m_parameterbounds.second(1, 1) = mp[bi.second().patch].parameterRange()(1, 1);
-
-                if(domainDim() == 3)
-                    m_parameterbounds.second.row(2) = mp[bi.second().patch].parameterRange().row(2);
-
-                break;
-            case 5: // for 3D case
-                m_parameterbounds.second.row(0) = mp[bi.second().patch].parameterRange().row(0);
-                m_parameterbounds.second.row(1) = mp[bi.second().patch].parameterRange().row(1);
-                m_parameterbounds.second(2, 0) = //mp[bi.second().patch].parameterRange()(2, 0);
-                m_parameterbounds.second(2, 1) = mp[bi.second().patch].parameterRange()(2, 0);
-                break;
-            case 6: // for 3D case
-                m_parameterbounds.second.row(0) = mp[bi.second().patch].parameterRange().row(0);
-                m_parameterbounds.second.row(1) = mp[bi.second().patch].parameterRange().row(1);
-                m_parameterbounds.second(2, 0) = //mp[bi.second().patch].parameterRange()(2, 1);
-                m_parameterbounds.second(2, 1) = mp[bi.second().patch].parameterRange()(2, 1);
-                break;
-        }
-        //gsInfo << "parameterRange: \n" << mp[bi.second().patch].parameterRange() << "\n";
-        //gsInfo << "parameter bound one : \n" << m_parameterbounds.first << "\n";
-        //gsInfo << "parameter bound two: \n" << m_parameterbounds.second << "\n";
-        //gsInfo << "side: \n" << m_side2.index() << "\n";
+        m_parameterbounds.first  = getParameterBounds( mp[bi.first().patch], m_side1, domainDim() );
+        m_parameterbounds.second = getParameterBounds( mp[bi.second().patch], m_side2, domainDim() );
 
         changeDir(bi);
     }
