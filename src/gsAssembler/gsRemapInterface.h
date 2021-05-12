@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Seiler, R. Schneckenleitner
+    Author(s): A. Seiler, R. Schneckenleitner, S. Takacs
     Created on: 2018-06-12
 */
 
@@ -16,8 +16,7 @@
 #pragma once
 
 #include <gsCore/gsAffineFunction.h>
-#include <gsModeling/gsCurveFitting.h>
-#include <gsModeling/gsFitting.h>
+#include <gsCore/gsBoundary.h>
 
 namespace gismo {
 
@@ -33,13 +32,15 @@ public:
     /// Unique pointer for gsRemapInterface
     typedef memory::unique_ptr< gsRemapInterface > uPtr;
 
-    /// Unique pointer to domain iterator
-    typedef memory::unique_ptr< gsDomainIterator<T> > domainIterUPtr;
-
 public:
 
+    enum {
+        notAffine = -1,
+        alwaysAffine = 0
+    };
+
     /// Constructor which takes a multipatch and a boundary interface, useful if the interface is fully matching
-    gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & basis, const boundaryInterface & bi);
+    gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & basis, const boundaryInterface & bi, index_t checkAffine = 1);
 
 public:
 
@@ -53,15 +54,16 @@ public:
     virtual short_t domainDim() const { return m_g1->geoDim(); }
 
     /// Returns a domain iterator
-    domainIterUPtr makeDomainIterator() const;
+    typename gsDomainIterator<T>::uPtr makeDomainIterator() const;
 
-    /// @brief Returns true iff the discretization is matching.
-    ///
-    /// In this case, the mapping is only affine-linear.
+    /// @brief Returns true iff the discretization is matching
     bool isMatching() const { return m_isMatching; }
 
+    /// @brief Returns true iff the discretization is affine
+    bool isAffine() const { return m_isAffine; }
+
     /// Returns the break points
-    const gsMatrix<T> & breakPoints() const { return m_breakpoints; }
+    const std::vector< std::vector<T> > & breakPoints() const { return m_breakpoints; }
 
     /// Prints the state of the object
     virtual std::ostream & print(std::ostream& os) const override;
@@ -71,22 +73,24 @@ private:
     // Computes \a m_parameterBounds1 and \a m_parameterBounds2 for the affine linear setting
     static gsMatrix<T> parameterBounds(const gsGeometry<T>& geo, boxSide s, index_t dim);
 
+    /// Checks if affine mapping between the incoming patches is correct
+    bool checkIfAffine( index_t steps );
+
+    /// Computes the box which represents the intersection of sides of incoming patches
+    void computeBoundingBox();
+
+    /// Constructs the breakpoints \a m_breakpoints if we have affine mapping
+    void constructBreaksAffine();
+
+
     // Helper to compute the closest point to lti on the other patch via Newton's method
     gsMatrix<T> closestPoint(const gsMatrix<T> b_null, const gsGeometry<T> & R, const gsMatrix<T> & lti);
-
-    // rename: getPointsOnInterface() --> check eval_into, then evaluate both g1 and g2 and check equality
-    // TODO: docs
-    const std::vector<T> getPointsOnInterface() const;
-
 
     // Member to enrich a matrix of 1D points to a matrix of m_domain.geoDim() points
     void enrichToVector(boxSide boundarySide, const gsGeometry<T> & geo, const gsMatrix<T> & intervals, gsMatrix<T> & pts);
 
     // Find the interface between the two incoming patches
     void findInterface(const boundaryInterface& bi);
-
-    // Check if the incoming patches are matching or not
-    bool checkIfMatching();
 
     // Check if the incoming evaluation points are out of bounds because of rounding errors
     gsMatrix<T> checkIfInBound(const gsMatrix<T> & u) const;
@@ -97,8 +101,8 @@ private:
     // Constructs the reparametrization \a m_reparamInterfaceMap
     void constructReparam();
 
-    // Constructs the breakpoints \a m_breakpoints
-    void constructBreaks();
+    // Constructs the breakpoints \a m_breakpoints in 2D if we do not have affine mapping
+    void constructBreaksNotAffine();
 
 private:
     /// Geometry of first patch
@@ -117,18 +121,23 @@ private:
     patchSide m_side2;
 
     /// @brief True iff the interfaces are matching
-    /// If true then an affine linear map is created, which is much faster
     bool m_isMatching;
+
+    /// @brief True iff the reparameterization is affine linear
+    bool m_isAffine;
 
     /// @brief True iff the orientation of the second side is fliped
     /// This is important for reparameterization, especially for constructing the breakpoints
     bool m_flipSide2;
 
     /// Union of breakpoints of both bases
-    gsMatrix<T> m_breakpoints;
+    std::vector< std::vector<T> > m_breakpoints;
 
     /// The fitted interface itself
     typename gsFunction<T>::Ptr m_fittedInterface;
+
+    /// The inverse of the fitted interface
+    typename gsFunction<T>::Ptr m_fittedInterface_inverse;
 
     /// @brief The bounds of the box that constitute the interface on the parameter domain for first patch
     /// The matrix has the structure [lower_1, ..., lower_d \\ upper_1, ..., upper_d ]
