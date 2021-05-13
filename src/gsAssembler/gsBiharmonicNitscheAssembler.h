@@ -157,6 +157,9 @@ namespace gismo
 
         // Assembly is done, compress the matrix
         Base::finalize();
+
+        //gsInfo << Base::m_system.matrix().toDense() << "\n";
+        //gsInfo << Base::m_system.rhs() << "\n";
     }
 
 

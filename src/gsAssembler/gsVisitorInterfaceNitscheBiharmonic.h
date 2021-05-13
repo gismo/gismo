@@ -41,8 +41,9 @@ namespace gismo
         {
             mu = options.getReal("mu");
 
-            side = bi.first().side();
-            const int dir = side.direction();
+            side1 = bi.first().side();
+            side2 = bi.second().side();
+            const int dir = side1.direction();
 
             gsVector<int> numQuadNodes ( basis1.dim() );
             for (int i = 0; i < basis1.dim(); ++i)
@@ -53,8 +54,8 @@ namespace gismo
             rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
             // Set Geometry evaluation flags
-            md1.flags = NEED_VALUE | NEED_2ND_DER | NEED_LAPLACIAN | NEED_MEASURE | NEED_GRAD_TRANSFORM;
-            md2.flags = NEED_VALUE | NEED_2ND_DER | NEED_LAPLACIAN | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+            md1.flags = NEED_VALUE | NEED_2ND_DER | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+            md2.flags = NEED_VALUE | NEED_2ND_DER | NEED_MEASURE | NEED_GRAD_TRANSFORM;
         }
 
         // Evaluate on element.
@@ -77,8 +78,8 @@ namespace gismo
             numActive2 = actives2.rows();
 
             // Evaluate basis gradients on element
-            basis1.evalAllDers_into(md1.points, 3, basisData1);
-            basis2.evalAllDers_into(md2.points, 3, basisData2);
+            basis1.evalAllDers_into(md1.points, 2, basisData1);
+            basis2.evalAllDers_into(md2.points, 2, basisData2);
 
             // Compute geometry related values
             geo1.computeMap(md1);
@@ -110,11 +111,13 @@ namespace gismo
             for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
             {
                 // Compute the outer normal vector on the side
-                outerNormal(md1, k, side, unormal);
+                outerNormal(md1, k, side1, unormal1);
+                outerNormal(md2, k, side2, unormal2);
 
                 // Multiply quadrature weight by the measure of normal
-                const T weight = quWeights[k] * unormal.norm();
-                unormal.normalize();
+                const T weight = quWeights[k] * md1.measure(k);
+                unormal1.normalize();
+                unormal2.normalize();
                 //Get gradients of the physical space
                 transformGradients(md1, k, basisDers1, physBasisGrad1);
                 transformGradients(md2, k, basisDers2, physBasisGrad2);
@@ -126,21 +129,25 @@ namespace gismo
                 const T h = element.getCellSize();
                 const T mu_h = mu / (0 != h ? h : 1);
 
-                localMatrix1.noalias() += weight * (- physBasisGrad1.transpose() * unormal * physBasisLaplace1
-                                                    - (physBasisGrad1.transpose() * unormal * physBasisLaplace1).transpose()
-                                                + mu_h * (physBasisGrad1.transpose() * unormal) * (physBasisGrad1.transpose() * unormal).transpose());
+                localMatrix1.noalias() += weight * ( physBasisGrad1.transpose() * unormal1 * physBasisLaplace1
+                                                    + (physBasisGrad1.transpose() * unormal1 * physBasisLaplace1).transpose()
+                                                - mu_h * (physBasisGrad1.transpose() * unormal1) * (physBasisGrad1.transpose() * unormal1).transpose());
 
-                localMatrix2.noalias() += weight * ( - physBasisGrad2.transpose() * unormal * physBasisLaplace2
-                                                    - (physBasisGrad2.transpose() * unormal * physBasisLaplace2).transpose()
-                                                    + mu_h * (physBasisGrad2.transpose() * unormal) * (physBasisGrad2.transpose() * unormal).transpose());
+                localMatrix2.noalias() += weight * ( physBasisGrad2.transpose() * unormal2 * physBasisLaplace2
+                                                    + (physBasisGrad2.transpose() * unormal2 * physBasisLaplace2).transpose()
+                                                    - mu_h * (physBasisGrad2.transpose() * unormal2) * (physBasisGrad2.transpose() * unormal2).transpose());
 
-                localMatrix12.noalias() += weight * (physBasisGrad1.transpose() * unormal * physBasisLaplace2
-                                                    + (physBasisGrad2.transpose() * unormal * physBasisLaplace1).transpose()
-                                                    - mu_h * (physBasisGrad1.transpose() * unormal) * (physBasisGrad2.transpose() * unormal).transpose());
+                localMatrix12.noalias() += weight * ( physBasisGrad1.transpose() * unormal1 * physBasisLaplace2
+                                                    + (physBasisGrad2.transpose() * unormal2 * physBasisLaplace1).transpose()
+                                                    - mu_h * (physBasisGrad1.transpose() * unormal1) * (physBasisGrad2.transpose() * unormal2).transpose());
 
-                localMatrix21.noalias() += weight * (physBasisGrad2.transpose() * unormal * physBasisLaplace1
-                                                     + (physBasisGrad1.transpose() * unormal * physBasisLaplace2).transpose()
-                                                     - mu_h * (physBasisGrad2.transpose() * unormal) * (physBasisGrad1.transpose() * unormal).transpose());
+                localMatrix21.noalias() += weight * (physBasisGrad2.transpose() * unormal2 * physBasisLaplace1
+                                                     + (physBasisGrad1.transpose() * unormal1 * physBasisLaplace2).transpose()
+                                                     - mu_h * (physBasisGrad2.transpose() * unormal2) * (physBasisGrad1.transpose() * unormal1).transpose());
+
+
+                //gsInfo << "mat1: " << localMatrix12 << "\n";
+                //gsInfo << "mat2: " << localMatrix21 << "\n";
             }
         }
 
@@ -170,7 +177,7 @@ namespace gismo
 
 
         // Neumann function
-        boxSide side;
+        boxSide side1, side2;
 
         // Basis values
         std::vector<gsMatrix<T>> basisData1, basisData2;
@@ -179,7 +186,7 @@ namespace gismo
         // Normal and Neumann values
         gsMatrix<T> physBasisGrad1, physBasisGrad2, physBasisLaplace1, physBasisLaplace2;
 
-        gsVector<T> unormal;
+        gsVector<T> unormal1, unormal2;
         gsMatrix<T> neuData;
         index_t numActive1, numActive2;
 

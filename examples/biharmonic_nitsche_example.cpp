@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
         gsInfo<<"\tSystem assembly:\t"<<time_mat(l, 1)<<"\t[s]\n";
 
         time.restart();
-        gsSparseSolver<real_t>::CGDiagonal solver;
+        gsSparseSolver<real_t>::LU solver;
         solver.compute(biharmonicNitscheAssembler.matrix());
         gsMatrix<real_t> solVector= solver.solve(biharmonicNitscheAssembler.rhs());
         time_mat(l, 2) = time.stop();
