@@ -34,7 +34,7 @@ namespace gismo {
    \brief Derived class implementing the XBraid wrapper for the heat equation
 */
 template<typename T>
-class gsXBraid_app : public gsXBraid< gsVector<T> >
+class gsXBraid_app : public gsXBraid< gsMatrix<T> >
 {
 private:
   // Spatial discretisation parameters
@@ -46,7 +46,7 @@ private:
 
   // Spatial discretizations
   gsMultiPatch<T> mp;
-  gsMultiBasis<T> basisH, basisL;
+  gsMultiBasis<T> basesH, basesL;
   
   // Boundary conditions
   gsBoundaryConditions<T> bc;
@@ -59,15 +59,15 @@ private:
   gsFunctionExpr<T> f, u0, ms;
   
   // Solution
-  gsVector<T> sol;
+  gsMatrix<T> sol;
 
   // Single-grid solver
-  typedef typename gsSparseSolver<T>::CGDiagonal solver;  
-  solver* m_solver;
-
+  typedef typename gsSparseSolver<T>::CGDiagonal solver_old;
+  solver_old* m_solver_old;
+  
   // Multigrid solver
-  typedef typename gsSparseSolver<T>::LU lu;
-  gsXBraidMultigrid<T, lu, gsCDRAssembler<T> >* m_mgsolver;
+  typedef gsXBraidMultigrid<T, typename gsSparseSolver<T>::LU , gsCDRAssembler<T> > solver_mg;
+  solver_mg* m_solver;
   gsMatrix<T> hp;
   
   typedef typename gsExprAssembler<T>::geometryMap geometryMap;
@@ -86,7 +86,7 @@ private:
                index_t          numElevate,
                index_t          numIncrease,
                std::string&     fn)
-    : gsXBraid< gsVector<T> >::gsXBraid(comm, tstart, tstop, (int)numSteps),
+    : gsXBraid< gsMatrix<T> >::gsXBraid(comm, tstart, tstop, (int)numSteps),
       numRefine(numRefine),
       numElevate(numElevate),
       numIncrease(numIncrease),
@@ -96,18 +96,19 @@ private:
       tstop(tstop),
       tstep( (tstop-tstart)/numSteps ),
       K(1,1), M(1,1),
-      m_solver(new solver)
+      m_solver_old(nullptr),
+      m_solver(nullptr)
   {
     /////////////////////////////////////////////////////////////////////////////////////////////
     //                           Code for heat equation starts here                            //
     /////////////////////////////////////////////////////////////////////////////////////////////
-
+    
     gsFileData<T> fd(fn);
     if (this->id() == 0) gsInfo << "Loaded file " << fd.lastPath() << "\n";
 
     fd.getId(0, mp); // id=0: Multipatch domain
-    basisH = gsMultiBasis<T>(mp);
-    basisL = gsMultiBasis<T>(mp);
+    basesH = gsMultiBasis<T>(mp);
+    basesL = gsMultiBasis<T>(mp);
     
     fd.getId(1, f); // id=1: right-hand side function
     if (this->id() == 0) gsInfo << "Source function " << f << "\n";
@@ -142,63 +143,63 @@ private:
     this->SetStorage(Topt.getInt("numStorage"));
     this->SetTemporalNorm(Topt.getInt("norm"));
 
-    if (Topt.getInt("tol") == 1)
-      this->SetAbsTol(Topt.getReal("absTol"));
-    else
-      this->SetRelTol(Topt.getReal("relTol"));
-    
-    if (Topt.getSwitch("fmg")) this->SetFMG();
+    if (Topt.getSwitch("fmg"))           this->SetFMG();
     if (Topt.getSwitch("incrMaxLevels")) this->SetIncrMaxLevels();
     if (Topt.getSwitch("periodic"))      this->SetPeriodic(1); else this->SetPeriodic(0);
     if (Topt.getSwitch("refine"))        this->SetRefine(1);   else this->SetRefine(0);
     if (Topt.getSwitch("sequential"))    this->SetSeqSoln(1);  else this->SetSeqSoln(0);
     if (Topt.getSwitch("skip"))          this->SetSkip(1);     else this->SetSkip(0);
     if (Topt.getSwitch("spatial"))       this->SetSpatialCoarsenAndRefine();
+    if (Topt.getSwitch("tol"))           this->SetAbsTol(Topt.getReal("absTol"));
+    else                                 this->SetRelTol(Topt.getReal("relTol"));    
     
     fd.getId(7, Sopt); // id=6: spatial solver options
     if (this->id() == 0) gsInfo << "Spatial solver options:\n" << Sopt << "\n";
-
-    // Elevate and p-refine the basis to order k + numElevate
-    // where k is the highest degree in the basisH
+    
+    int numLevels = 9; // todo!!!!
+    hp = gsMatrix<>::Zero(numLevels-1);
+    
+    // Elevate and p-refine the bases to order k + numElevate
+    // where k is the highest degree in the basesH
     if ( numElevate > -1 )
     {
         // Find maximum degree with respect to all the variables
-        int tmp = basisH.maxDegree(0);
+        int tmp = basesH.maxDegree(0);
         for (short_t j = 1; j < mp.parDim(); ++j )
-            if ( tmp < basisH.maxDegree(j) )
-                tmp = basisH.maxDegree(j);
+            if ( tmp < basesH.maxDegree(j) )
+                tmp = basesH.maxDegree(j);
 
         // Elevate all degrees uniformly
         tmp += numElevate;
-        basisH.setDegree(tmp);
-        basisL.setDegree(tmp);
+        basesH.setDegree(tmp);
+        basesL.setDegree(tmp);
     }
 
-    // Increase and p-refine the basis
+    // Increase and p-refine the bases
     if (numIncrease > 0)
     {
-      basisH.degreeIncrease(numIncrease);
-      basisL.degreeIncrease(numIncrease);  
+      basesH.degreeIncrease(numIncrease);
+      basesL.degreeIncrease(numIncrease);  
     }
     
-    // h-refine the basis
+    // h-refine the bases
     for (int i = 0; i < numRefine; ++i)
     {
-      basisH.uniformRefine();
-      basisL.uniformRefine();    
+      basesH.uniformRefine();
+      basesL.uniformRefine();    
     }    
     
-    // Set the basis
-    K.setIntegrationElements(basisH);
-    M.setIntegrationElements(basisH);   
+    // Set the bases
+    K.setIntegrationElements(basesH);
+    M.setIntegrationElements(basesH);   
 
     // Set the geometry map
     geometryMap G_K = K.getMap(mp);
     geometryMap G_M = M.getMap(mp);
 
     // Set the discretization space
-    space u_K = K.getSpace(basisH);
-    space u_M = M.getSpace(basisH);
+    space u_K = K.getSpace(basesH);
+    space u_M = M.getSpace(basesH);
     u_K.setInterfaceCont(0);
     u_M.setInterfaceCont(0);
     u_K.addBc( bc.get("Dirichlet") );
@@ -220,6 +221,30 @@ private:
     variable g_Neumann = K.getBdrFunction();
     K.assembleRhsBc(u_K * g_Neumann.val() * nv(G_K).norm(), bc.neumannSides() );
 
+    // Initialize the solver
+    if (Sopt.getInt("numLevels") == 0)
+    {
+      // Single grid solver
+      m_solver_old = new solver_old();
+      m_solver_old->setMaxIterations(Sopt.getInt("maxIter"));
+      m_solver_old->setTolerance(Sopt.getReal("tol"));
+    } else
+    {
+      // Multigrid solver
+      m_solver = new solver_mg(mp, basesL, bc);
+      m_solver->setMaxIter(Sopt.getInt("maxIter"));
+      m_solver->setTolerance(Sopt.getReal("tol"));
+      m_solver->setNumLevels(Sopt.getInt("numLevels"));
+      m_solver->setNumSmoothing(Sopt.getInt("numSmoothing"));
+      m_solver->setTypeBCHandling(Sopt.getInt("bcHandling"));
+      m_solver->setTypeCycle_h(Sopt.getInt("cycle_h"));
+      m_solver->setTypeCycle_p(Sopt.getInt("cycle_p"));
+      m_solver->setTypeLumping(Sopt.getInt("lumping"));
+      m_solver->setTypeProjection(Sopt.getInt("projection"));
+      m_solver->setTypeSmoother(Sopt.getInt("smoother"));
+      m_solver->setTypeSolver(Sopt.getInt("solver"));
+    }
+    
     if (this->id() == 0) {
       gsStopwatch clock;
       clock.restart();
@@ -234,8 +259,9 @@ private:
         for ( int i = 1; i<=numSteps; ++i) // for all timesteps
           // Compute the system for the timestep i (rhs is assumed constant wrt time)
           sol = m_solver->compute(M.matrix()
-                                  ).solve(tstep*K.rhs() +
-                                          (M.matrix()-tstep*K.matrix())*sol);
+                                  ).solveWithGuess(tstep*K.rhs() +
+                                                   (M.matrix()-tstep*K.matrix())*sol,
+                                                   sol);
         break;
         
       case gsXBraid_typeMethod::BE_BE:
@@ -245,8 +271,9 @@ private:
           // Compute the system for the timestep i (rhs is assumed constant wrt time)
           sol = m_solver->compute(M.matrix() +
                                   tstep*K.matrix()
-                                  ).solve(tstep*K.rhs() +
-                                          (M.matrix())*sol);        
+                                  ).solveWithGuess(tstep*K.rhs() +
+                                                   (M.matrix())*sol,
+                                                   sol); 
         break;
         
       case gsXBraid_typeMethod::CN_CN:
@@ -257,8 +284,9 @@ private:
           // Compute the system for the timestep i (rhs is assumed constant wrt time)
           sol = m_solver->compute(M.matrix() +
                                   tstep*0.5*K.matrix()
-                                  ).solve(tstep*K.rhs() +
-                                          (M.matrix()-tstep*0.5*K.matrix())*sol);        
+                                  ).solveWithGuess(tstep*K.rhs() +
+                                                   (M.matrix()-tstep*0.5*K.matrix())*sol,
+                                                   sol);
         break;
         
       default:
@@ -283,7 +311,8 @@ private:
   /// Destructor
   virtual ~gsXBraid_app()
   {
-    delete m_solver;
+    if(m_solver_old)    delete m_solver_old;
+    if(m_solver) delete m_solver;
   }
   
   /// Creates instance from command line argument
@@ -303,7 +332,7 @@ private:
     index_t numSteps      = 40;
     index_t typeMethod    = (index_t)gsXBraid_typeMethod::CN_BE;
     T       tfinal        = 0.1;
-    
+        
     gsCmdLine cmd("Tutorial on solving a Heat equation problem using parallel-in-time multigrid.");
 
     // Problem parameters
@@ -336,7 +365,7 @@ private:
     override
 #endif
   {
-    gsVector<T>* u = new gsVector<T>(M.numDofs());
+    gsMatrix<T>* u = new gsMatrix<T>(M.numDofs(), 1);
     
     if (t != tstart) {
       // Intermediate solution
@@ -354,23 +383,23 @@ private:
   braid_Int Step(braid_Vector    u,
                  braid_Vector    ustop,
                  braid_Vector    fstop,
-                 BraidStepStatus &pstatus)
+                 BraidStepStatus &status)
 #if __cplusplus >= 201103L || _MSC_VER >= 1600
     override
 #endif
   {
-    gsVector<T>* u_ptr = (gsVector<T>*) u;
-    gsVector<T>* ustop_ptr = (gsVector<T>*) ustop;
+    gsMatrix<T>* u_ptr = (gsMatrix<T>*) u;
+    gsMatrix<T>* ustop_ptr = (gsMatrix<T>*) ustop;
 
     // XBraid forcing
     if (fstop != NULL) {
-      gsVector<T>* fstop_ptr = (gsVector<T>*) fstop;
+      gsMatrix<T>* fstop_ptr = (gsMatrix<T>*) fstop;
       *u_ptr += *fstop_ptr;
     }
     
     // Get time step information
     std::pair<braid_Real, braid_Real> time =
-      static_cast<gsXBraidStepStatus&>(pstatus).timeInterval();
+      static_cast<gsXBraidStepStatus&>(status).timeInterval();
     T tstep(time.second - time.first);
     
     switch((gsXBraid_typeMethod)typeMethod) {
@@ -383,7 +412,7 @@ private:
       break;
       
     case gsXBraid_typeMethod::FE_BE:
-      if (static_cast<gsXBraidStepStatus&>(pstatus).level() == 0) {
+      if (static_cast<gsXBraidStepStatus&>(status).level() == 0) {
         // Forward Euler method (fine grid)
         *u_ptr = m_solver->compute(M.matrix()
                                    ).solveWithGuess(tstep*K.rhs() +
@@ -418,7 +447,7 @@ private:
       break;
       
     case gsXBraid_typeMethod::CN_BE:
-      if (static_cast<gsXBraidStepStatus&>(pstatus).level() == 0) {
+      if (static_cast<gsXBraidStepStatus&>(status).level() == 0) {
         *u_ptr = m_solver->compute(M.matrix() +
                                    tstep*0.5*K.matrix()
                                    ).solveWithGuess(tstep*K.rhs() +
@@ -439,13 +468,13 @@ private:
     }
       
     // Carry out adaptive refinement in time
-    if (static_cast<gsXBraidStepStatus&>(pstatus).level() == 0) {
-      braid_Real error = static_cast<gsXBraidStepStatus&>(pstatus).error();
+    if (static_cast<gsXBraidStepStatus&>(status).level() == 0) {
+      braid_Real error = static_cast<gsXBraidStepStatus&>(status).error();
       if (error != braid_Real(-1.0)) {
         braid_Int rfactor = (braid_Int) std::ceil( std::sqrt( error / 1e-3) );
-        pstatus.SetRFactor(rfactor);
+        status.SetRFactor(rfactor);
       } else
-        pstatus.SetRFactor(1);
+        status.SetRFactor(1);
     }
     
     return braid_Int(0);
@@ -464,15 +493,15 @@ private:
 
   /// Handles access for input/output
   braid_Int Access(braid_Vector       u,
-                   BraidAccessStatus &astatus)
+                   BraidAccessStatus &status)
 #if __cplusplus >= 201103L || _MSC_VER >= 1600
     override
 #endif
   {
-    if(static_cast<gsXBraidAccessStatus&>(astatus).done() &&
-       static_cast<gsXBraidAccessStatus&>(astatus).timeIndex() ==
-       static_cast<gsXBraidAccessStatus&>(astatus).times()) {
-      gsVector<T>* u_ptr = (gsVector<T>*) u;
+    if (static_cast<gsXBraidAccessStatus&>(status).done() &&
+        static_cast<gsXBraidAccessStatus&>(status).timeIndex() ==
+        static_cast<gsXBraidAccessStatus&>(status).times()) {
+      gsMatrix<T>* u_ptr = (gsMatrix<T>*) u;
       gsInfo << "norm of the solution = " << u_ptr->norm() << std::endl;    
     }
     return braid_Int(0);
@@ -486,9 +515,13 @@ private:
     override
 #endif
   {
-    gsInfo << "Coarsen\n";
-    gsVector<T> *fu_ptr = (gsVector<T>*) fu;    
-    gsVector<T>* cu     = new gsVector<T>();
+    gsInfo << "Coarsen on level = "
+           << static_cast<gsXBraidCoarsenRefStatus&>(status).level()
+           << " of "
+           << static_cast<gsXBraidCoarsenRefStatus&>(status).levels()
+           << "\n";
+    gsMatrix<T> *fu_ptr = (gsMatrix<T>*) fu;    
+    gsMatrix<T>* cu     = new gsMatrix<T>();
     *cu = *fu_ptr;
     *cu_ptr = (braid_Vector) cu;
     return braid_Int(0);
@@ -502,9 +535,13 @@ private:
     override
 #endif
   {
-    gsInfo << "Refine\n";
-    gsVector<T> *cu_ptr = (gsVector<T>*) cu;    
-    gsVector<T>* fu     = new gsVector<T>();
+    gsInfo << "Refine on level = "
+           << static_cast<gsXBraidCoarsenRefStatus&>(status).level()
+           << " of "
+           << static_cast<gsXBraidCoarsenRefStatus&>(status).levels()
+           << "\n";
+    gsMatrix<T> *cu_ptr = (gsMatrix<T>*) cu;    
+    gsMatrix<T>* fu     = new gsMatrix<T>();
     *fu = *cu_ptr;
     *fu_ptr = (braid_Vector) fu;
     return braid_Int(0);
