@@ -345,67 +345,68 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
         physicalBreaks.col(numBreaksPatch1+c) = physicalKnotsP2.col(c);
 
     // compute the corresponding parameter values in one patch, here of patch1
-        gsSortedVector<T> parameterBreaks;
+    gsSortedVector<T> parameterBreaks;
 
-        // Determine fixed coordinate of patch2 -> Use here patch2 because we compute the Interfacemap of patch1!!!
-        // fixedDir ==  0 corresponds to fixed u and 1 corresponds to a fixed v
-        index_t fixedDir = m_side1.direction();
+    // Determine fixed coordinate of patch2 -> Use here patch2 because we compute the Interfacemap of patch1!!!
+    // fixedDir ==  0 corresponds to fixed u and 1 corresponds to a fixed v
+    index_t fixedDir = m_side1.direction();
 
-        gsMatrix<T> G2_parametric_LC;
-        for (index_t i = 0; i < physicalBreaks.cols(); i++) {
-            // computes the preimages of the breakpoints for each of the two patches
-            m_g1->invertPoints(physicalBreaks.col(i), G2_parametric_LC); // not exact, we have rounding errors
-            // taking care of the rounding errors by iterating over the vector and checking the absolute value between the current
-            // preimage and the already available ones
-            if (fixedDir == 1)
-            {
-                if (parameterBreaks.size() == 0)
-                    parameterBreaks.push_sorted_unique(G2_parametric_LC(0, 0)); // sort w.r.t. u direction
-                else
-                {
-                    index_t j = 0;
-                    gsVector<bool> roundingError = gsVector<bool>::Constant(parameterBreaks.size(), true);
-
-                    for (typename gsSortedVector<T>::iterator it = parameterBreaks.begin();
-                         it != parameterBreaks.end(); it++)
-                    {
-                        if (math::abs(G2_parametric_LC(0, 0) - *it) > 1.e-4) {
-                            roundingError(j) = false;
-                        }
-                        j++;
-                    }
-                    if (( false == roundingError.array() ).all())
-                        parameterBreaks.push_sorted_unique(G2_parametric_LC(0, 0)); // sort w.r.t. u direction
-
-
-                }
-            }
+    gsMatrix<T> G2_parametric_LC;
+    for (index_t i = 0; i < physicalBreaks.cols(); i++) {
+        // computes the preimages of the breakpoints for each of the two patches
+        m_g1->invertPoints(physicalBreaks.col(i), G2_parametric_LC); // not exact, we have rounding errors
+        // taking care of the rounding errors by iterating over the vector and checking the absolute value between the current
+        // preimage and the already available ones
+        if (fixedDir == 1)
+        {
+            if (parameterBreaks.size() == 0)
+                parameterBreaks.push_sorted_unique(G2_parametric_LC(0, 0)); // sort w.r.t. u direction
             else
             {
-                if (parameterBreaks.size() == 0)
-                    parameterBreaks.push_sorted_unique(G2_parametric_LC(1, 0)); // sort w.r.t. v direction
-                else
+                index_t j = 0;
+                gsVector<bool> roundingError = gsVector<bool>::Constant(parameterBreaks.size(), true);
+
+                for (typename gsSortedVector<T>::iterator it = parameterBreaks.begin();
+                     it != parameterBreaks.end(); it++)
                 {
-                    index_t j = 0;
-                    gsVector<bool> roundingError = gsVector<bool>::Constant(parameterBreaks.size(), true);
-
-                    for (typename gsSortedVector<T>::iterator it = parameterBreaks.begin();
-                         it != parameterBreaks.end(); it++)
-                    {
-                        if (math::abs(G2_parametric_LC(1, 0) - *it) > 1.e-4)
-                            roundingError(j) = false;
-
-                        j++;
+                    if (math::abs(G2_parametric_LC(0, 0) - *it) > 1.e-4) {
+                        roundingError(j) = false;
                     }
-                    if (( false == roundingError.array() ).all())
-                        parameterBreaks.push_sorted_unique(G2_parametric_LC(1, 0)); // sort w.r.t. v direction
+                    j++;
                 }
-            }
+                if (( false == roundingError.array() ).all())
+                    parameterBreaks.push_sorted_unique(G2_parametric_LC(0, 0)); // sort w.r.t. u direction
 
+
+            }
+        }
+        else
+        {
+            if (parameterBreaks.size() == 0)
+                parameterBreaks.push_sorted_unique(G2_parametric_LC(1, 0)); // sort w.r.t. v direction
+            else
+            {
+                index_t j = 0;
+                gsVector<bool> roundingError = gsVector<bool>::Constant(parameterBreaks.size(), true);
+
+                for (typename gsSortedVector<T>::iterator it = parameterBreaks.begin();
+                     it != parameterBreaks.end(); it++)
+                {
+                    if (math::abs(G2_parametric_LC(1, 0) - *it) > 1.e-4)
+                        roundingError(j) = false;
+
+                    j++;
+                }
+                if (( false == roundingError.array() ).all())
+                    parameterBreaks.push_sorted_unique(G2_parametric_LC(1, 0)); // sort w.r.t. v direction
+            }
         }
 
-        m_breakpoints.resize(2);
-        m_breakpoints[1-fixedDir] = parameterBreaks;
+    }
+
+    m_breakpoints.resize(2);
+    m_breakpoints[1-fixedDir] = parameterBreaks;
+
 }
 
 
@@ -415,201 +416,199 @@ void gsRemapInterface<T>::constructReparam()
     const index_t numIntervals = 11; // ?
     const index_t numGeometries = 2;
 
-    {
+    // Assume tensor structure
+    // now create samples for both patches
+    // the knot intervals can be different, e.g.,
+    //----------------------------
+    //-                          -
+    //----------------------------
+    //    --------
+    //    -      -
+    //    --------
+    gsMatrix<T> t_vals = gsMatrix<T>::Zero(numGeometries, numIntervals);
+    T firstKnot, lastKnot;
+    gsVector<T> upper(1), lower(1);
+    gsVector<unsigned> numPoints(1);
+    numPoints << numIntervals;
 
-        // Assume tensor structure
-        // now create samples for both patches
-        // the knot intervals can be different, e.g.,
-        //----------------------------
-        //-                          -
-        //----------------------------
-        //    --------
-        //    -      -
-        //    --------
-        gsMatrix<T> t_vals = gsMatrix<T>::Zero(numGeometries, numIntervals);
-        T firstKnot, lastKnot;
-        gsVector<T> upper(1), lower(1);
-        gsVector<unsigned> numPoints(1);
-        numPoints << numIntervals;
-
-        //gsInfo << "parameterbounds: \n" << m_parameterBounds2 << "\n";
-        //gsInfo << "patch: \n" << m_g2->id() << "\n";
-        for (index_t np = 0; np < numGeometries; np++) {
-            if (np == 0)
+    //gsInfo << "parameterbounds: \n" << m_parameterBounds2 << "\n";
+    //gsInfo << "patch: \n" << m_g2->id() << "\n";
+    for (index_t np = 0; np < numGeometries; np++) {
+        if (np == 0)
+        {
+            if (m_side1.index() == 3 || m_side1.index() == 4) // v is fixed
             {
-                if (m_side1.index() == 3 || m_side1.index() == 4) // v is fixed
-                {
-                    firstKnot = m_parameterBounds1(0, 0);
-                    lastKnot = m_parameterBounds1(0, 1);
-                }
-                else // u is fixed
-                {
-                    firstKnot = m_parameterBounds1(1, 0);
-                    lastKnot = m_parameterBounds1(1, 1);
-                }
-            } else {
-                if (m_side2.index() == 3 || m_side2.index() == 4) // v is fixed
-                {
-                    firstKnot = m_parameterBounds2(0, 0);
-                    lastKnot = m_parameterBounds2(0, 1);
-                }
-                else // u is fixed
-                {
-                    firstKnot = m_parameterBounds2(1, 0);
-                    lastKnot = m_parameterBounds2(1, 1);
-                }
+                firstKnot = m_parameterBounds1(0, 0);
+                lastKnot = m_parameterBounds1(0, 1);
             }
-
-            lower(0) = firstKnot;
-            upper(0) = lastKnot;
-
-            //gsInfo << "lower:\n" << firstKnot << "\n upper:\n" << lastKnot << std::endl;
-
-            //t_vals.row(np) = uniformPointGrid(lower, upper, numIntervals); // uniformly distributed samples between the overlapping part of the interface
-            t_vals.row(np) = gsPointGrid(lower, upper, numPoints);
-
-        }
-
-        gsMatrix<T> samples_left, samples_right;
-        gsMatrix<T> find_start_value;
-
-        // Get the corresponding edges
-        //Edge 1, {(u,v) : u = 0}
-        //Edge 2, {(u,v) : u = 1}
-        //Edge 3, {(u,v) : v = 0}
-        //Edge 4, {(u,v) : v = 1}
-
-        //gsInfo << "left boundary: " << m_interfacePatch1 << "\n";
-        //gsInfo << "right boundary: " << m_interfacePatch2 << "\n";
-
-        //gsMatrix<T> vals2dPatch1(t_vals.rows()+1, t_vals.cols()), vals2dPatch2(t_vals.rows()+1, t_vals.cols());
-        // TODO: use already available information
-        gsMatrix<T> vals2dPatch1, vals2dPatch2;
-        enrichToVector(m_side1, *m_g1, t_vals.row(0), vals2dPatch1);
-        enrichToVector(m_side2, *m_g2, t_vals.row(1), vals2dPatch2);
-
-        m_g1->eval_into(vals2dPatch1, samples_left);
-        m_g2->eval_into(vals2dPatch2, samples_right);
-
-        //gsInfo << "vals2dPatch1:\n" << GEO_L_ref.coefs() << "\n vals2dPatch2:\n" << GEO_R_ref.coefs() << std::endl;
-        //gsInfo << "vals2dPatch1:\n" << vals2dPatch1 << "\n vals2dPatch2:\n" << vals2dPatch2 << std::endl;
-        //std::cout << "samples left:\n" << samples_left << "\n samples right:\n" << samples_right << std::endl;
-
-        gsMatrix<T> B(numIntervals, m_g1->geoDim());
-
-        for (index_t i = 0; i < t_vals.cols(); i++)
-        {
-            // find a suitable start value for the Newton iteration
-            find_start_value = (samples_right.colwise()) - samples_left.col(i);
-
-            size_t row, col;
-
-            find_start_value.colwise().squaredNorm().minCoeff(&row, &col);
-
-            gsVector<T> b_null = samples_right.col(col);
-
-            // Pass on g2 if one wants to find a mapping from interface1 to interface2
-            //gsMatrix<T> b = closestPoint(b_null, g2, samples_left.col(i));
-
-            // this gives the same result as above
-            m_g2->newtonRaphson(samples_left.col(i), b_null, true, 10e-6, 100);
-            //gsInfo << "newton: " << b_null << "\n";
-
-            // TODO: Check if the order of the coefficients has an impact on the mapping regarding assembling aso.
-            B.row(i) = b_null.transpose(); // to be in the correct order
-
-        }
-
-        // the coefficients to fit
-        //std::cout << "B:\n" << B << std::endl;
-
-        // check the error
-        // assume that the right map is the identity
-        gsMatrix<T> eval_orig, eval_fit, B2, id;
-
-        gsKnotVector<T> KV(t_vals(0, 0), t_vals(0, numIntervals - 1), 5, 4);
-
-        gsCurveFitting<T> fit(t_vals.row(0).transpose(), B, KV);
-
-        fit.compute();
-        m_intfMap = fit.curve().clone();
-        std::cout << "Hi, I'm the resulting curve: \n" << *m_intfMap << std::endl;
-
-        unsigned errorInterval = 10;
-        gsVector<unsigned > errorSamples(1);
-        errorSamples << errorInterval;
-
-        gsMatrix<T> eval_points;// = gsMatrix<T>::Zero(numGeometries, errorInterval);
-
-        for (index_t np = 0; np < numGeometries; np++)
-        {
-            gsVector<T> lowerVal(1), upperVal(1);
-            lowerVal << t_vals(np, 0);
-            upperVal << t_vals(np, numIntervals - 1);
-            //gsMatrix<T> grid = uniformPointGrid(lowerVal, upperVal, errorInterval);
-            gsMatrix<T> grid = gsPointGrid(lowerVal, upperVal, errorSamples);
-            eval_points.conservativeResize(np + 1, grid.cols()); // to check the error
-            eval_points.row(np) = grid;
-        }
-
-        m_intfMap->eval_into(eval_points.row(0), eval_fit);
-        //eval_fit(0,0) -= 0.0001; // do a nasty slight correction since the first entry is out of the domain of definition due to rounding errors
-
-        // TODO: also here use already available information
-        enrichToVector(m_side2, *m_g2, eval_points.row(1), id);
-
-        m_g2->eval_into(eval_fit, eval_orig);
-        m_g2->eval_into(id, B2);
-        //gsInfo << "b2: \n" << id.transpose() << " and eval_orig: \n" << eval_fit.transpose() << "\n";
-
-        // do test
-        /*
-        for(index_t c = 0; c < eval_fit.cols(); c++)
-        {
-            if(std::isnan(eval_orig.col(c).squaredNorm()))
+            else // u is fixed
             {
-                switch (m_side2.index())
-                {
-                    case 1 :
-                        // u = value of the first knot in u direction
-                        eval_fit(0, c) += 10e-4;
-                        eval_fit(1, c) += 10e-4;
-                        break;
-                    case 2 :
-                        //u = value of the last knot in u direction
-                        eval_fit(0, c) -= 10e-4;
-                        eval_fit(1, c) += 10e-4;
-                        break;
-                    case 3 :
-                        //v = value of the first knot in v direction;
-                        eval_fit(0, c) += 10e-4;
-                        eval_fit(1, c) += 10e-4;
-                        break;
-                    case 4 :
-                        //v = value of the last knot in v direction
-                        eval_fit(0, c) += 10e-4;
-                        eval_fit(1, c) -= 10e-4;
-                        break;
-                }
-                m_g2->eval_into(eval_fit, eval_orig);
+                firstKnot = m_parameterBounds1(1, 0);
+                lastKnot = m_parameterBounds1(1, 1);
+            }
+        } else {
+            if (m_side2.index() == 3 || m_side2.index() == 4) // v is fixed
+            {
+                firstKnot = m_parameterBounds2(0, 0);
+                lastKnot = m_parameterBounds2(0, 1);
+            }
+            else // u is fixed
+            {
+                firstKnot = m_parameterBounds2(1, 0);
+                lastKnot = m_parameterBounds2(1, 1);
             }
         }
-    */
-        //end test
 
-        T error = 0;
+        lower(0) = firstKnot;
+        upper(0) = lastKnot;
 
-        for (index_t i = 0; i < eval_points.cols(); i++)
-            error += (id.col(i) - eval_fit.col(i)).squaredNorm();
-            //error += (eval_orig.col(i) - B2.col(i)).squaredNorm();
+        //gsInfo << "lower:\n" << firstKnot << "\n upper:\n" << lastKnot << std::endl;
 
-        error = math::sqrt(error);
+        //t_vals.row(np) = uniformPointGrid(lower, upper, numIntervals); // uniformly distributed samples between the overlapping part of the interface
+        t_vals.row(np) = gsPointGrid(lower, upper, numPoints);
 
-        //if(error > 0.5)
-        //    gsInfo << "patch 1: \n" << eval_orig << " and patch 2: \n" << B2 << "\n";
-
-        std::cout << "Error: " << error << std::endl;
     }
+
+    gsMatrix<T> samples_left, samples_right;
+    gsMatrix<T> find_start_value;
+
+    // Get the corresponding edges
+    //Edge 1, {(u,v) : u = 0}
+    //Edge 2, {(u,v) : u = 1}
+    //Edge 3, {(u,v) : v = 0}
+    //Edge 4, {(u,v) : v = 1}
+
+    //gsInfo << "left boundary: " << m_interfacePatch1 << "\n";
+    //gsInfo << "right boundary: " << m_interfacePatch2 << "\n";
+
+    //gsMatrix<T> vals2dPatch1(t_vals.rows()+1, t_vals.cols()), vals2dPatch2(t_vals.rows()+1, t_vals.cols());
+    // TODO: use already available information
+    gsMatrix<T> vals2dPatch1, vals2dPatch2;
+    enrichToVector(m_side1, *m_g1, t_vals.row(0), vals2dPatch1);
+    enrichToVector(m_side2, *m_g2, t_vals.row(1), vals2dPatch2);
+
+    m_g1->eval_into(vals2dPatch1, samples_left);
+    m_g2->eval_into(vals2dPatch2, samples_right);
+
+    //gsInfo << "vals2dPatch1:\n" << GEO_L_ref.coefs() << "\n vals2dPatch2:\n" << GEO_R_ref.coefs() << std::endl;
+    //gsInfo << "vals2dPatch1:\n" << vals2dPatch1 << "\n vals2dPatch2:\n" << vals2dPatch2 << std::endl;
+    //std::cout << "samples left:\n" << samples_left << "\n samples right:\n" << samples_right << std::endl;
+
+    gsMatrix<T> B(numIntervals, m_g1->geoDim());
+
+    for (index_t i = 0; i < t_vals.cols(); i++)
+    {
+        // find a suitable start value for the Newton iteration
+        find_start_value = (samples_right.colwise()) - samples_left.col(i);
+
+        size_t row, col;
+
+        find_start_value.colwise().squaredNorm().minCoeff(&row, &col);
+
+        gsVector<T> b_null = samples_right.col(col);
+
+        // Pass on g2 if one wants to find a mapping from interface1 to interface2
+        //gsMatrix<T> b = closestPoint(b_null, g2, samples_left.col(i));
+
+        // this gives the same result as above
+        m_g2->newtonRaphson(samples_left.col(i), b_null, true, 10e-6, 100);
+        //gsInfo << "newton: " << b_null << "\n";
+
+        // TODO: Check if the order of the coefficients has an impact on the mapping regarding assembling aso.
+        B.row(i) = b_null.transpose(); // to be in the correct order
+
+    }
+
+    // the coefficients to fit
+    //std::cout << "B:\n" << B << std::endl;
+
+    // check the error
+    // assume that the right map is the identity
+    gsMatrix<T> eval_orig, eval_fit, B2, id;
+
+    gsKnotVector<T> KV(t_vals(0, 0), t_vals(0, numIntervals - 1), 5, 4);
+
+    gsCurveFitting<T> fit(t_vals.row(0).transpose(), B, KV);
+
+    fit.compute();
+    m_intfMap = fit.curve().clone();
+    std::cout << "Hi, I'm the resulting curve: \n" << *m_intfMap << std::endl;
+
+    unsigned errorInterval = 10;
+    gsVector<unsigned > errorSamples(1);
+    errorSamples << errorInterval;
+
+    gsMatrix<T> eval_points;// = gsMatrix<T>::Zero(numGeometries, errorInterval);
+
+    for (index_t np = 0; np < numGeometries; np++)
+    {
+        gsVector<T> lowerVal(1), upperVal(1);
+        lowerVal << t_vals(np, 0);
+        upperVal << t_vals(np, numIntervals - 1);
+        //gsMatrix<T> grid = uniformPointGrid(lowerVal, upperVal, errorInterval);
+        gsMatrix<T> grid = gsPointGrid(lowerVal, upperVal, errorSamples);
+        eval_points.conservativeResize(np + 1, grid.cols()); // to check the error
+        eval_points.row(np) = grid;
+    }
+
+    m_intfMap->eval_into(eval_points.row(0), eval_fit);
+    //eval_fit(0,0) -= 0.0001; // do a nasty slight correction since the first entry is out of the domain of definition due to rounding errors
+
+    // TODO: also here use already available information
+    enrichToVector(m_side2, *m_g2, eval_points.row(1), id);
+
+    m_g2->eval_into(eval_fit, eval_orig);
+    m_g2->eval_into(id, B2);
+    //gsInfo << "b2: \n" << id.transpose() << " and eval_orig: \n" << eval_fit.transpose() << "\n";
+
+    // do test
+    /*
+    for(index_t c = 0; c < eval_fit.cols(); c++)
+    {
+        if(std::isnan(eval_orig.col(c).squaredNorm()))
+        {
+            switch (m_side2.index())
+            {
+                case 1 :
+                    // u = value of the first knot in u direction
+                    eval_fit(0, c) += 10e-4;
+                    eval_fit(1, c) += 10e-4;
+                    break;
+                case 2 :
+                    //u = value of the last knot in u direction
+                    eval_fit(0, c) -= 10e-4;
+                    eval_fit(1, c) += 10e-4;
+                    break;
+                case 3 :
+                    //v = value of the first knot in v direction;
+                    eval_fit(0, c) += 10e-4;
+                    eval_fit(1, c) += 10e-4;
+                    break;
+                case 4 :
+                    //v = value of the last knot in v direction
+                    eval_fit(0, c) += 10e-4;
+                    eval_fit(1, c) -= 10e-4;
+                    break;
+            }
+            m_g2->eval_into(eval_fit, eval_orig);
+        }
+    }
+*/
+    //end test
+
+    T error = 0;
+
+    for (index_t i = 0; i < eval_points.cols(); i++)
+        error += (id.col(i) - eval_fit.col(i)).squaredNorm();
+        //error += (eval_orig.col(i) - B2.col(i)).squaredNorm();
+
+    error = math::sqrt(error);
+
+    //if(error > 0.5)
+    //    gsInfo << "patch 1: \n" << eval_orig << " and patch 2: \n" << B2 << "\n";
+
+    std::cout << "Error: " << error << std::endl;
+
 }
 
 template <class T>
