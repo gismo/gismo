@@ -1,6 +1,6 @@
 /** @file gsRemapInterface.h
 
-    @brief Provides a mapping from the patch side of geometry one to the corresponding patch side of geometry two
+    @brief Provides a mapping between the corresponding sides of two patches sharing an interface
 
     This file is part of the G+Smo library.
 
@@ -31,11 +31,13 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
       m_side1(bi.first()), m_side2(bi.second()),
       m_isMatching(true), m_isAffine(true), m_flipSide2(false)
 {
+    GISMO_ASSERT( m_g1->geoDim()==m_g2->geoDim(), "gsRemapInterface: Dimensions do not agree." );
+
     // First we construct the affine mapping
     computeBoundingBox();
 
     // Setup the affine mapping
-    m_fittedInterface = gsAffineFunction<T>::make(bi.dirMap(m_side1), bi.dirOrientation(m_side1), m_parameterBounds1, m_parameterBounds2);
+    m_intfMap = gsAffineFunction<T>::make(bi.dirMap(m_side1), bi.dirOrientation(m_side1), m_parameterBounds1, m_parameterBounds2);
 
     // Next, we check (if so desired by called) if the affine mapping coincides with the real mapping
     GISMO_ASSERT( checkAffine >= notAffine, "gsRemapInterface: Parameter checkAffine has invalid value." );
@@ -48,7 +50,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
     {
         // For computing the breaks, we need the reverse mapping as well
         // TODO: do not need this to be a member
-        m_fittedInterface_inverse = gsAffineFunction<T>::make(bi.dirMap(m_side2), bi.dirOrientation(m_side2), m_parameterBounds2, m_parameterBounds1);
+        m_intfMap_inverse = gsAffineFunction<T>::make(bi.dirMap(m_side2), bi.dirOrientation(m_side2), m_parameterBounds2, m_parameterBounds1);
         constructBreaksAffine();
     }
     else
@@ -93,7 +95,7 @@ bool gsRemapInterface<T>::checkIfAffine(index_t steps)
     return  (
                 m_g1->eval(points)
                 -
-                m_g2->eval(m_fittedInterface->eval(points))
+                m_g2->eval(m_intfMap->eval(points))
             ).norm() < (T)(1.e-6);
 }
 
@@ -175,12 +177,12 @@ void gsRemapInterface<T>::constructBreaksAffine()
 
     const typename gsBasis<T>::domainIter domIt2 = m_b2->makeDomainIterator(m_side2);
     for (; domIt2->good(); domIt2->next())
-        addBreaks(m_breakpoints, m_parameterBounds1, m_fittedInterface_inverse->eval(domIt2->upperCorner()));
+        addBreaks(m_breakpoints, m_parameterBounds1, m_intfMap_inverse->eval(domIt2->upperCorner()));
 
 }
 
 
-//// Used for the non-affine case
+// Used for the non-affine case
 
 
 template <class T>
@@ -279,7 +281,7 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
 
 
 
-    /// do the same for patch 2 as above
+    // do the same for patch 2 as above
     m_g2->eval_into(startPatch2, dummy);
     physicalKnotsP2.col(0) = dummy;
 
@@ -333,7 +335,7 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
     }
     //gsInfo << "physical knots 2: \n" << physicalKnotsP2 << "\n";
 
-    /// store all the physical points in one vector
+    // store all the physical points in one vector
     gsMatrix<T> physicalBreaks(domainDim(), numBreaksPatch1+numBreaksPatch2); // Assume m_g1->geoDim() == m_g2->geoDim()
 
     for (index_t c = 0; c < numBreaksPatch1; c++)
@@ -530,8 +532,8 @@ void gsRemapInterface<T>::constructReparam()
         gsCurveFitting<T> fit(t_vals.row(0).transpose(), B, KV);
 
         fit.compute();
-        m_fittedInterface = fit.curve().clone();
-        std::cout << "Hi, I'm the resulting curve: \n" << *m_fittedInterface << std::endl;
+        m_intfMap = fit.curve().clone();
+        std::cout << "Hi, I'm the resulting curve: \n" << *m_intfMap << std::endl;
 
         unsigned errorInterval = 10;
         gsVector<unsigned > errorSamples(1);
@@ -550,7 +552,7 @@ void gsRemapInterface<T>::constructReparam()
             eval_points.row(np) = grid;
         }
 
-        m_fittedInterface->eval_into(eval_points.row(0), eval_fit);
+        m_intfMap->eval_into(eval_points.row(0), eval_fit);
         //eval_fit(0,0) -= 0.0001; // do a nasty slight correction since the first entry is out of the domain of definition due to rounding errors
 
         // TODO: also here use already available information
@@ -618,7 +620,7 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
 
     if (m_isAffine)
     {
-        m_fittedInterface->eval_into(u, result);
+        m_intfMap->eval_into(u, result);
     }
     else
     {
@@ -627,7 +629,7 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
         const index_t fixedDir = m_side1.direction();
         // v is fixed => loop over u values
 
-        m_fittedInterface->eval_into(checkIfInBound(u.row(!fixedDir)), result); /// ????
+        m_intfMap->eval_into(checkIfInBound(u.row(!fixedDir)), result); // ????
 
         // need here the second basis since result store points in the second geometry
         if (const gsTensorBSplineBasis<2, T> *tb = dynamic_cast<const gsTensorBSplineBasis<2, T> * >(&m_g2->basis()))
@@ -1019,15 +1021,18 @@ template <class T>
 std::ostream& gsRemapInterface<T>::print(std::ostream& os) const
 {
     os << "gsRemapInterface:"
-       << "\n    First side:  " << m_side1
-       << "\n    Second side: " << m_side2
-       << "\n    Is Affine:   " << ( m_isAffine   ? "yes"  : "no")
-       << "\n    Matching:    " << ( m_isMatching ? "yes"  : "no")
-       << "\n    Flip side2:  " << ( m_flipSide2  ? "true" : "false");
+       << "\n    First side:      " << m_side1
+       << "\n    Second side:     " << m_side2
+       << "\n    Is Affine:       " << ( m_isAffine   ? "yes" : "no")
+       << "\n    Matching:        " << ( m_isMatching ? "yes" : "no")
+       << "\n    Flip side 2:     " << ( m_flipSide2  ? "yes" : "no")
+       << "\n    Bounding box 1:\n" << m_parameterBounds1
+       << "\n    Bounding box 2:\n" << m_parameterBounds2;
+
 
     for (size_t i=0; i<m_breakpoints.size(); ++i)
     {
-        os << "\n    Beakpoints:";
+        os << "\n    Beakpoints:    ";
         if ( m_breakpoints[i].size() <= 10 )
         {
             for (size_t j=0; j<m_breakpoints[i].size(); ++j)

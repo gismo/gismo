@@ -1,6 +1,6 @@
 /** @file gsRemapInterface.h
 
-    @brief Provides a mapping from the patch side of geometry one to the corresponding patch side of geometry two
+    @brief Provides a mapping between the corresponding sides of two patches sharing an interface
 
     This file is part of the G+Smo library.
 
@@ -20,7 +20,34 @@
 
 namespace gismo {
 
-/// Provides a mapping from the patch side of geometry one to the corresponding patch side of geometry two
+/** @brief Provides a mapping between the corresponding sides of two patches sharing an interface
+  *
+  * Have two patches \f$ \Omega_1 = G_1( \widehat \Omega_1 )\f$ and \f$ \Omega_2 = G_2( \widehat \Omega_2 )\f$
+  * with geometry functions \f$ G_1 \f$ and \f$ G_2 \f$ and parameter domains \f$ \widehat \Omega_1 \f$ and
+  * \f$ \widehat \Omega_2 \f$.
+  *
+  * This class represents an interface \f[ \Gamma := G_1( \widehat S_1 ) \cap G_2( \widehat S_2 ), \f] where
+  * \f$ \widehat S_1 \f$ and \f$ \widehat S_2 \f$ are sides of the corresponding parameter domains (i.e., whole
+  * edges or whole faces). The indices of the patches, as well as the corresponding sides (as \a boxSide)
+  * are prescribed by the incoming \a boundaryInterface.
+  *
+  * The pre-images of the interface \f$ \Gamma \f$ are \f$ \widehat \Gamma_1 := G_1^{-1}( \Gamma ) \f$
+  * and \f$ \widehat \Gamma_2 := G_2^{-1}( \Gamma ) \f$.
+  *
+  * We say the interface is \em matching if \f[ \Gamma = G_1( \widehat S_1 ) = G_2( \widehat S_2 ). \f]
+  * In this case, the pre-images of the interface \f$ \Gamma \f$ are the whole sides, i.e.,
+  * \f$ \widehat \Gamma_1 = \widehat S_1 \f$ and \f$ \widehat \Gamma_2 = \widehat S_2 \f$. Otherwise,
+  * the pre-images are only subsets of the sides.
+  *
+  * We say the interface is \em affine if \f$ G_1^{-1} \circ G_2 \f$ or, euqivalently \f$ G_2^{-1} \circ G_1 \f$
+  * is an affine-linear function. In this case, this class uses that affine-linear function.
+  *
+  * If the mapping is found out not to be affine-linear, this class constructs an approximation of the interface
+  * map. This is available only if \f$ \Omega_1 \f$ and \f$ \Omega_2 \f$ are two dimensional, i.e., the interface
+  * itself is one dimensional. We refer to this as the 2D case.
+  *
+  * @ingroup Assembler
+ **/
 template <class T>
 class gsRemapInterface : public gsFunction<T>
 {
@@ -35,42 +62,60 @@ public:
 public:
 
     enum {
-        notAffine = -1,
-        alwaysAffine = 0
+        notAffine = -1,    ///< Instructs constructor not to use an affine mapping
+        alwaysAffine = 0   ///< Instructs constructor always to use an affine mapping
     };
 
-    /// Constructor which takes a multipatch and a boundary interface, useful if the interface is fully matching
-    gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & basis, const boundaryInterface & bi, index_t checkAffine = 1);
+    /// @brief Constructor
+    ///
+    /// @param  mp          The multi-patch object
+    /// @param  mb          The multi-basis object
+    /// @param  bi          The boundary interface (specifying the patches and their \a patchSide s)
+    /// @param  checkAffine The number of interior points (per direction) in point grid used to
+    ///                     check if the mapping is affine. If set to i, the grid consits of i interor
+    ///                     point and the two boundary points per direction, so \f$ (i+2)^d \f$ points.
+    ///                     For \a alwaysAffine or \a notAffine, no checks are performed.
+    gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & mb, const boundaryInterface & bi, index_t checkAffine = 1);
 
 public:
 
-    /// Returns the interface map
-    const typename gsFunction<T>::Ptr & interfaceMap() const { return m_fittedInterface; }
+    /// @brief Returns the interface map
+    ///
+    /// Interfaces map \f$ \widehat \Gamma_1 \rightarrow \widehat \Gamma_2 \f$ that represents
+    /// \f$ G_2^{-1} \circ G_1 \f$
+    const typename gsFunction<T>::Ptr & interfaceMap() const { return m_intfMap; }
 
-    /// Returns parametric values on the boundary from patch1 to the corresponding boundary values on patch2
+    /// @brief Evaluates the interface map
+    ///
+    /// Interfaces map \f$ \widehat \Gamma_1 \rightarrow \widehat \Gamma_2 \f$ that represents
+    /// \f$ G_2^{-1} \circ G_1 \f$
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
-    /// Returns parameter dimension of the domain
+    /// @brief Returns parameter dimension of the domains
     virtual short_t domainDim() const { return m_g1->geoDim(); }
 
-    /// Returns a domain iterator
+    /// @brief Returns a domain iterator
+    ///
+    /// The domain iterator lives on \f$ \widehat \Gamma_1 \f$. Its break points are the union of
+    /// the brakpoints of the basis on \f$ \widehat \Omega_1 \f$ and the breakpoints of the basis
+    /// on \f$ \widehat \Omega_2 \f$, mapped to \f$ \widehat \Omega_1 \f$.
     typename gsDomainIterator<T>::uPtr makeDomainIterator() const;
 
-    /// @brief Returns true iff the discretization is matching
+    /// @brief Returns true iff the interface is matching
     bool isMatching() const { return m_isMatching; }
 
-    /// @brief Returns true iff the discretization is affine
+    /// @brief Returns true iff the interface is affine
     bool isAffine() const { return m_isAffine; }
 
-    /// Returns the break points
+    /// @brief Returns the break points used in \ref makeDomainIterator
     const std::vector< std::vector<T> > & breakPoints() const { return m_breakpoints; }
 
-    /// Prints the state of the object
+    /// @brief Prints the state of the object
     virtual std::ostream & print(std::ostream& os) const override;
 
 private:
 
-    // Computes \a m_parameterBounds1 and \a m_parameterBounds2 for the affine linear setting
+    /// Computes \a m_parameterBounds1 and \a m_parameterBounds2 for the affine linear setting
     static gsMatrix<T> parameterBounds(const gsGeometry<T>& geo, boxSide s, index_t dim);
 
     /// Checks if affine mapping between the incoming patches is correct
@@ -82,74 +127,66 @@ private:
     /// Constructs the breakpoints \a m_breakpoints if we have affine mapping
     void constructBreaksAffine();
 
-
-    // Helper to compute the closest point to lti on the other patch via Newton's method
+    /// Helper to compute the closest point to lti on the other patch via Newton's method
     gsMatrix<T> closestPoint(const gsMatrix<T> b_null, const gsGeometry<T> & R, const gsMatrix<T> & lti);
 
-    // Member to enrich a matrix of 1D points to a matrix of m_domain.geoDim() points
+    /// Member to enrich a matrix of 1D points to a matrix of m_domain.geoDim() points
     void enrichToVector(boxSide boundarySide, const gsGeometry<T> & geo, const gsMatrix<T> & intervals, gsMatrix<T> & pts);
 
-    // Find the interface between the two incoming patches
+    /// Find the interface between the two incoming patches
     void findInterface(const boundaryInterface& bi);
 
-    // Check if the incoming evaluation points are out of bounds because of rounding errors
+    /// Check if the incoming evaluation points are out of bounds because of rounding errors
     gsMatrix<T> checkIfInBound(const gsMatrix<T> & u) const;
 
-    // Change dir direction of the parameterization of the patches
+    /// Change direction of the parameterization of the patches
     void changeDir(const boundaryInterface & bi);
 
-    // Constructs the reparametrization \a m_reparamInterfaceMap
+    /// Constructs the reparametrization \a m_intfMap
     void constructReparam();
 
-    // Constructs the breakpoints \a m_breakpoints in 2D if we do not have affine mapping
+    /// Constructs the breakpoints \a m_breakpoints in 2D if we do not have affine mapping
     void constructBreaksNotAffine();
 
 private:
-    /// Geometry of first patch
-    const gsGeometry<T> * m_g1;
-    /// Geometry of second patch
-    const gsGeometry<T> * m_g2;
+    const gsGeometry<T> * m_g1;                       ///< Geometry of first patch
+    const gsGeometry<T> * m_g2;                       ///< Geometry of second patch
 
-    /// Basis on first patch
-    const gsBasis<T> * m_b1;
-    /// Basis on second patch
-    const gsBasis<T> * m_b2;
+    const gsBasis<T> * m_b1;                          ///< Basis on first patch
+    const gsBasis<T> * m_b2;                          ///< Basis on second patch
 
-    /// Side of first patch which constitutes interface
-    patchSide m_side1;
-    /// Side of second patch which constitutes interface
-    patchSide m_side2;
+    patchSide m_side1;                                ///< Side \f$ \widehat S_1 \f$ of first patch
+    patchSide m_side2;                                ///< Side \f$ \widehat S_2 \f$ of second patch
 
-    /// @brief True iff the interfaces are matching
-    bool m_isMatching;
-
-    /// @brief True iff the reparameterization is affine linear
-    bool m_isAffine;
+    bool m_isMatching;                                ///< True iff the interface is matching
+    bool m_isAffine;                                  ///< True iff the interface is affine
 
     /// @brief True iff the orientation of the second side is fliped
     /// This is important for reparameterization, especially for constructing the breakpoints
     bool m_flipSide2;
 
-    /// Union of breakpoints of both bases
-    std::vector< std::vector<T> > m_breakpoints;
+    std::vector< std::vector<T> > m_breakpoints;      ///< Union of breakpoints of both bases
 
-    /// The fitted interface itself
-    typename gsFunction<T>::Ptr m_fittedInterface;
+    typename gsFunction<T>::Ptr m_intfMap;            ///< The fitted interface itself
+    typename gsFunction<T>::Ptr m_intfMap_inverse;    ///< The inverse of the fitted interface
 
-    /// The inverse of the fitted interface
-    typename gsFunction<T>::Ptr m_fittedInterface_inverse;
-
-    /// @brief The bounds of the box that constitute the interface on the parameter domain for first patch
-    /// The matrix has the structure [lower_1, ..., lower_d \\ upper_1, ..., upper_d ]
+    /// @brief The bounds of the box that represents \f$ \widehat \Gamma_1 \f$
+    ///
+    /// If \f$ \widehat \Gamma_1 = (a,b)\times (c,d) \times (e,f) \f$, the matrix
+    /// has the structure
+    /// \f[ \begin{pmatrix} a & c & e \\ b & d & f \end{pmatrix} \f]
     gsMatrix<T> m_parameterBounds1;
-    /// @brief The bounds of the box that constitute the interface on the parameter domain for first patch
-    /// The matrix has the structure [lower_1, ..., lower_d \\ upper_1, ..., upper_d ]
+
+    /// @brief The bounds of the box that represents \f$ \widehat \Gamma_2 \f$
+    ///
+    /// See \ref m_parameterBounds1
     gsMatrix<T> m_parameterBounds2;
 
 
 }; // End gsRemapInterface
 
-/// Prints the state of the object
+/// @brief   Prints the state of the object
+/// @relates gsRemapInterface
 template <class T>
 inline std::ostream & operator<<(std::ostream& os, const gsRemapInterface<T>& remapIf)
 { return remapIf.print(os); }
