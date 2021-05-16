@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+
+  <!-- Computational domain -->
+  <MultiPatch parDim="2" id="0">
+    <patches type="id_range">500 500</patches>
+    <boundary>
+      500 3 500 4 500 1 500 2
+    </boundary>
+  </MultiPatch>
+
+  <!-- Right-hand side function -->
+  <Function type="FunctionExpr" id="1" dim="2">0</Function>
+
+  <!-- The boundary conditions (multipatch=number of patches)-->
+  <boundaryConditions id="2" multipatch="2">
+    <Function type="FunctionExpr" dim="2" index="0">1</Function>
+    <Function type="FunctionExpr" dim="2" index="1">0</Function>
+
+    <!-- Dirichlet conditions (patch,side) -->
+    <bc type="Dirichlet" function="0" unknown="0">
+      0 2
+    </bc>
+    
+    <bc type="Dirichlet" function="0.1" unknown="0">
+      0 1
+    </bc>
+
+    <!-- Neumann conditions (patch,side)-->
+    <bc unknown="0" type="Neumann" function="1">
+    </bc>
+  </boundaryConditions>
+
+  <!-- The manufactured exact solution (for reference) -->
+  <Function type="FunctionExpr" id="3" dim="2">sin(pi*x) * sin(pi*y)</Function>
+
+  <!-- Assembler options -->
+ <OptionList id="4">
+  <int label="DirichletStrategy" desc="Method for enforcement of Dirichlet BCs [11..14]" value="11"/>
+  <int label="DirichletValues" desc="Method for computation of Dirichlet DoF values [100..103]" value="101"/>
+  <int label="InterfaceStrategy" desc="Method of treatment of patch interfaces [0..3]" value="1"/>
+  <real label="bdA" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="2"/>
+  <int label="bdB" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="1"/>
+  <real label="bdO" desc="Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]" value="0.333"/>
+  <real label="quA" desc="Number of quadrature points: quA*deg + quB" value="1"/>
+  <int  label="quB" desc="Number of quadrature points: quA*deg + quB" value="1"/>
+  <int label="quRule" desc="Quadrature rule [1:GaussLegendre,2:GaussLobatto]" value="1"/>
+
+ </OptionList>
+
+
+  <!-- other options -->
+
+  <!-- Spline data -->
+  <Geometry type="TensorNurbs2" id="500">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2" parDim="2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="1"> 00000.0 0.0 1.0 1.00000  </KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1"> 0.00000   0.00000   1.00000   1.00000   </KnotVector>
+    </Basis>
+   </Basis>
+   <weights>1 1 1 1 </weights>
+  </Basis>
+  <coefs geoDim="2">
+    0 0
+    1 0
+    0 1 
+    1 1
+    </coefs>
+ </Geometry>
+
+</xml>

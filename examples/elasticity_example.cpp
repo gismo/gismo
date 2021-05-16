@@ -117,38 +117,75 @@ int main(int argc, char *argv[])
 
     /// --------------------------------------------------
 
-    gsVector<> pt(2);
-    pt.setConstant(0.5);
+    //gsVector<> pt(2);
+    //pt.setConstant(0.5);
+
     // gsLinearMaterial<> matf(1,0.3);
     // variable mat = A.getCoeff(matf, G);
 
-    /*
-        E           , E*(1-nu)  ,0
-        E*(1-nu)    , E         ,0
-        0           , 0         , 0.5*E*(1-2*nu)
+    /* plane strain
+                  		  1-nu           , nu	     , 0
+       E/(1+nu)(1-2nu)		* nu  		 , 1-nu      , 0
+                  		  0          	 , 0         , (1-2nu)/2
+       
+       plane stress
+                  		  1 	         , nu	     , 0
+       E/(1-nu^2)		* nu  		 , 1         , 0
+                  		  0          	 , 0         , (1-nu)/2
      */
+
+    bool bl_plane_stress = True;
+
     real_t E = 1;
     real_t nu = 0.3;
-    gsMatrix<> C(3,3);
-    C.row(0)<<E           , E*(1-nu)  ,0;
-    C.row(1)<<E*(1-nu)    , E         ,0;
-    C.row(2)<<0           , 0         , 0.5*E*(1-2*nu)  ;
-    C.resize(9,1);
+
+    if (bl_plane_stress)
+    {
+       real_t mm_factor = E/(1-pow(nu,2));
+       gsMatrix<> C(3,3);
+       C.row(0)<<mm_factor   , mm_factor*nu  ,0;
+       C.row(1)<<mm_factor*nu, mm_factor     ,0;
+       C.row(2)<<0           , 0             ,mm_factor*((1-nu)/2);
+       C.resize(9,1);
+    }
+
 
     gsConstantFunction<> Cfun(C,2);
     variable mat = A.getCoeff(Cfun, G);
 
-    gsInfo<<ev.eval(reshape(mat,3,3),pt)<<"\n";
+    //gsInfo<<ev.eval(reshape(mat,3,3),pt)<<"\n";
 
-    space v = A.getSpace(dbasis,2);
-
-
-    gsInfo<<ev.eval(v,pt)<<"\n";
+    //space v = A.getSpace(dbasis,2);
 
 
-    gsInfo<<ev.eval(jac(v).tr()*jac(v),pt)<<"\n";
+    //gsInfo<<ev.eval(v,pt)<<"\n";
 
 
+    //gsInfo<<ev.eval(jac(v).tr()*jac(v),pt)<<"\n";
+
+    /* assemble proposal
+       assemble weak form: int( w K u )dOmega = int( w f )dOmega
+     			   K = B^T D B
+
+       
+ 				N_1,x , 0 
+       2D Case:		B_i = 	0, N_1,y	, with i being shape function index
+    				N_1,y , N_1,x
+
+
+       assembly of B-matrix for multiple trial functions
+	
+		N_1,x , 0 	N_2,x , 0
+	B = 	0 , N_1,y	0 , N_2,y	...
+    		N_1,y , N_1,x 	N_2,y , N_2,x
+
+       this should probably go into an _expr as in kirchhoff-love example.
+
+       possible to get derivatives from jac(u) within that expression and then just rearrange them accordingly? 
+	
+    */ 
+
+    // A.assemble(setB(u,G).transpose() * mat * setB(u,G) * u * meas(G), u * f * meas(G));
 
     /// --------------------------------------------------
 
