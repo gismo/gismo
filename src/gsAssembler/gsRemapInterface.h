@@ -139,11 +139,8 @@ private:
     /// Check if the incoming evaluation points are out of bounds because of rounding errors
     gsMatrix<T> checkIfInBound(const gsMatrix<T> & u) const;
 
-    /// Change direction of the parameterization of the patches
-    void changeDir(const boundaryInterface & bi);
-
-    /// Constructs the reparametrization \a m_intfMap
-    void constructReparam();
+    /// Constructs the reparametrization \a m_intfMap in the non-affine case
+    void constructReparam(const boundaryInterface & bi);
 
     /// Constructs the breakpoints \a m_breakpoints in 2D if we do not have affine mapping
     void constructBreaksNotAffine();
@@ -160,10 +157,6 @@ private:
 
     bool m_isMatching;                                ///< True iff the interface is matching
     bool m_isAffine;                                  ///< True iff the interface is affine
-
-    /// @brief True iff the orientation of the second side is fliped
-    /// This is important for reparameterization, especially for constructing the breakpoints
-    bool m_flipSide2;
 
     std::vector< std::vector<T> > m_breakpoints;      ///< Union of breakpoints of both bases
 

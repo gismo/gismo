@@ -29,7 +29,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
     : m_g1(&(mp[bi.first().patch])), m_g2(&(mp[bi.second().patch])),
       m_b1(&(basis[bi.first().patch])), m_b2(&(basis[bi.second().patch])),
       m_side1(bi.first()), m_side2(bi.second()),
-      m_isMatching(true), m_isAffine(true), m_flipSide2(false)
+      m_isMatching(true), m_isAffine(true)
 {
     GISMO_ASSERT( m_g1->geoDim()==m_g2->geoDim(), "gsRemapInterface: Dimensions do not agree." );
 
@@ -69,8 +69,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
             GISMO_ASSERT( (pb2-m_parameterBounds2).norm() < 1.e-4, "??");
             gsInfo << "Result of findInterface coincides with result of computeBoundingBox.\n";
         }
-        changeDir(bi);
-        constructReparam();
+        constructReparam(bi);
         constructBreaksNotAffine();
     }
 
@@ -206,7 +205,7 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
     const typename gsBasis<T>::domainIter domIt2 = m_b2->makeDomainIterator(static_cast<boxSide>(m_side2));
 
     const gsMatrix<T> startPatch1 = m_parameterBounds1.col(0);
-    const gsMatrix<T> startPatch2 = m_parameterBounds2.col(m_flipSide2 ? 1 : 0);
+    const gsMatrix<T> startPatch2 = m_parameterBounds2.col(0);
 
     // Compute interface knots in physical domain by evaluating left and right geometry maps at the knot values
     const size_t numelP1 = domIt1->numElements();
@@ -299,7 +298,7 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
     {
         if (m_side2.index() == 3 || m_side2.index() == 4)
         {
-            if (domIt2->lowerCorner()(0,0) > startPatch2(0,0) && domIt2->lowerCorner()(0,0) < std::max(m_parameterBounds2(0,1), m_parameterBounds2(0,0)))
+            if (domIt2->lowerCorner()(0,0) > startPatch2(0,0) && domIt2->lowerCorner()(0,0) < m_parameterBounds2(0,1))
             {
                 m_g2->eval_into(domIt2->lowerCorner(), dummy);
                 physicalKnotsP2.col(numBreaksPatch2) = dummy;
@@ -310,7 +309,7 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
         {
             if(m_side2.index() == 1 || m_side2.index() == 2)
             {
-                if (domIt2->lowerCorner()(1,0) > startPatch2(1,0) && domIt2->lowerCorner()(1,0) < std::max(m_parameterBounds2(1,1), m_parameterBounds2(1,0)))
+                if (domIt2->lowerCorner()(1,0) > startPatch2(1,0) && domIt2->lowerCorner()(1,0) < m_parameterBounds2(1,1))
                 {
                     m_g2->eval_into(domIt2->lowerCorner(), dummy);
                     physicalKnotsP2.col(numBreaksPatch2) = dummy;
@@ -324,7 +323,7 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
     // add only the breakpoints within the parameter bounds
     if (m_side2.index() == 3 || m_side2.index() == 4)
     {
-        if (domIt2->upperCorner()(0,0) <= std::max(m_parameterBounds2(0,1), m_parameterBounds2(0,0)))
+        if (domIt2->upperCorner()(0,0) <= m_parameterBounds2(0,1))
         {
             m_g2->eval_into(domIt2->upperCorner(), dummy);
             physicalKnotsP2.col(numBreaksPatch2) = dummy;
@@ -335,7 +334,7 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
     {
         if (m_side2.index() == 1 || m_side2.index() == 2)
         {
-            if(domIt2->upperCorner()(1,0) <= std::max(m_parameterBounds2(1,1), m_parameterBounds2(1,0)))
+            if(domIt2->upperCorner()(1,0) <= m_parameterBounds2(1,1))
             {
                 m_g2->eval_into(domIt2->upperCorner(), dummy);
                 physicalKnotsP2.col(numBreaksPatch2) = dummy;
@@ -421,12 +420,37 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
 
 
 template <class T>
-void gsRemapInterface<T>::constructReparam()
+void gsRemapInterface<T>::constructReparam(const boundaryInterface & bi)
 {
     // assert domainDim()==2 taken care by constructor
 
     const index_t numIntervals = 11; // ?
     const index_t numGeometries = 2;
+
+    // Check if side 2 is to be flipped
+    bool flipSide2 = false;
+
+    if(m_side1.direction() == 1)
+    {
+        if(bi.dirOrientation()(0) == 0)
+        {
+            if(m_side2.direction() == 0) //change v parameters
+                { flipSide2=true; }
+            else if(m_side2.direction() == 1) // change u parameters
+                { flipSide2=true; }
+        }
+    }
+
+    if(m_side1.direction() == 0)
+    {
+        if(bi.dirOrientation()(1) == 0)
+        {
+            if(m_side2.direction() == 0) //change v parameters
+                { flipSide2=true; }
+            else if(m_side2.direction() == 1) // change u parameters
+                { flipSide2=true; }
+        }
+    }
 
     // Assume tensor structure
     // now create samples for both patches
@@ -461,13 +485,13 @@ void gsRemapInterface<T>::constructReparam()
         } else {
             if (m_side2.index() == 3 || m_side2.index() == 4) // v is fixed
             {
-                firstKnot = m_parameterBounds2(0, 0);
-                lastKnot = m_parameterBounds2(0, 1);
+                firstKnot = m_parameterBounds2(0, flipSide2 ? 1 : 0);
+                lastKnot = m_parameterBounds2(0, flipSide2 ? 0 : 1);
             }
             else // u is fixed
             {
-                firstKnot = m_parameterBounds2(1, 0);
-                lastKnot = m_parameterBounds2(1, 1);
+                firstKnot = m_parameterBounds2(1, flipSide2 ? 1 : 0);
+                lastKnot = m_parameterBounds2(1, flipSide2 ? 0 : 1);
             }
         }
 
@@ -1001,35 +1025,6 @@ gsMatrix<T> gsRemapInterface<T>::checkIfInBound(const gsMatrix<T> & u) const
 }
 
 template <class T>
-void gsRemapInterface<T>::changeDir(const boundaryInterface & bi)
-{
-    // assert domainDim()==2 taken care by constructor
-    if(m_side1.direction() == 1)
-    {
-        if(bi.dirOrientation()(0) == 0)
-        {
-            if(m_side2.direction() == 0) //change v parameters
-                { std::swap( m_parameterBounds2(1,0), m_parameterBounds2(1,1) ); m_flipSide2=true; }
-            else if(m_side2.direction() == 1) // change u parameters
-                { std::swap( m_parameterBounds2(0,0), m_parameterBounds2(0,1) ); m_flipSide2=true; }
-        }
-    }
-
-    if(m_side1.direction() == 0)
-    {
-        if(bi.dirOrientation()(1) == 0)
-        {
-            if(m_side2.direction() == 0) //change v parameters
-                { std::swap( m_parameterBounds2(1,0), m_parameterBounds2(1,1) ); m_flipSide2=true; }
-            else if(m_side2.direction() == 1) // change u parameters
-                { std::swap( m_parameterBounds2(0,0), m_parameterBounds2(0,1) ); m_flipSide2=true; }
-        }
-    }
-
-
-}
-
-template <class T>
 std::ostream& gsRemapInterface<T>::print(std::ostream& os) const
 {
     os << "gsRemapInterface:"
@@ -1037,7 +1032,6 @@ std::ostream& gsRemapInterface<T>::print(std::ostream& os) const
        << "\n    Second side:     " << m_side2
        << "\n    Is Affine:       " << ( m_isAffine   ? "yes" : "no")
        << "\n    Matching:        " << ( m_isMatching ? "yes" : "no")
-       << "\n    Flip side 2:     " << ( m_flipSide2  ? "yes" : "no")
        << "\n    Bounding box 1:\n" << m_parameterBounds1
        << "\n    Bounding box 2:\n" << m_parameterBounds2;
 
