@@ -40,8 +40,9 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
     m_intfMap = gsAffineFunction<T>::make(bi.dirMap(m_side1), bi.dirOrientation(m_side1), m_parameterBounds1, m_parameterBounds2);
 
     // Next, we check (if so desired by called) if the affine mapping coincides with the real mapping
-    GISMO_ASSERT( checkAffine >= notAffine, "gsRemapInterface: Parameter checkAffine has invalid value." );
-    if (checkAffine==alwaysAffine)
+    GISMO_ASSERT( checkAffine > 0 || checkAffine == neverAffine || checkAffine == alwaysAffine,
+        "gsRemapInterface: Parameter checkAffine has invalid value:" << checkAffine );
+    if (checkAffine==neverAffine)
         m_isAffine = false;
     else if (checkAffine > 0)
         m_isAffine = checkIfAffine(checkAffine);
@@ -56,8 +57,18 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
     else
     {
         m_isMatching = false;
-        GISMO_ENSURE(m_isAffine || domainDim() <= 2, "gsRemapInterface: Can handle non-matching interfaces only for 2 dimensions.");
-        findInterface(bi);
+        GISMO_ENSURE( m_isAffine || domainDim() <= 2,
+            "gsRemapInterface: Can handle non-affine interfaces only for 2 dimensions." );
+
+        {
+            // TODO: this is for testing purposes
+            // Does findInterface do anything new compared to computeBoundingBox?
+            gsMatrix<T> pb1 = m_parameterBounds1, pb2 = m_parameterBounds2;
+            findInterface(bi);
+            GISMO_ASSERT( (pb1-m_parameterBounds1).norm() < 1.e-4, "??");
+            GISMO_ASSERT( (pb2-m_parameterBounds2).norm() < 1.e-4, "??");
+            gsInfo << "Result of findInterface coincides with result of computeBoundingBox.\n";
+        }
         changeDir(bi);
         constructReparam();
         constructBreaksNotAffine();
@@ -187,8 +198,7 @@ void gsRemapInterface<T>::constructBreaksAffine()
 
 template <class T>
 void gsRemapInterface<T>::constructBreaksNotAffine() {
-    GISMO_ENSURE(domainDim()==2, "Not implemented for d!=2.");
-
+    // assert domainDim()==2 taken care by constructor
 
     // computes break points per element
 
@@ -413,6 +423,8 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
 template <class T>
 void gsRemapInterface<T>::constructReparam()
 {
+    // assert domainDim()==2 taken care by constructor
+
     const index_t numIntervals = 11; // ?
     const index_t numGeometries = 2;
 
@@ -505,7 +517,8 @@ void gsRemapInterface<T>::constructReparam()
 
         find_start_value.colwise().squaredNorm().minCoeff(&row, &col);
 
-        gsVector<T> b_null = samples_right.col(col);
+        //gsVector<T> b_null = samples_right.col(col);
+        gsVector<T> b_null = vals2dPatch2.col(col);
 
         // Pass on g2 if one wants to find a mapping from interface1 to interface2
         //gsMatrix<T> b = closestPoint(b_null, g2, samples_left.col(i));
@@ -614,8 +627,8 @@ void gsRemapInterface<T>::constructReparam()
 template <class T>
 void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
-    GISMO_ASSERT(u.rows() == domainDim(), "gsRemapInterface<T>::eval_into: "
-        "The rows of the evaluation points must be equal to the dimension of the domain.");
+    GISMO_ASSERT( u.rows() == domainDim(), "gsRemapInterface<T>::eval_into: "
+        "The rows of the evaluation points must be equal to the dimension of the domain." );
 
     if (m_isAffine)
     {
@@ -720,7 +733,7 @@ void gsRemapInterface<T>::enrichToVector(const boxSide         boundarySide,
 template <class T>
 void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
 {
-
+    // assert domainDim()==2 taken care by constructor
     GISMO_UNUSED(bi);
 
     // first find the sides of the patches which belong to the interface
@@ -990,7 +1003,7 @@ gsMatrix<T> gsRemapInterface<T>::checkIfInBound(const gsMatrix<T> & u) const
 template <class T>
 void gsRemapInterface<T>::changeDir(const boundaryInterface & bi)
 {
-
+    // assert domainDim()==2 taken care by constructor
     if(m_side1.direction() == 1)
     {
         if(bi.dirOrientation()(0) == 0)

@@ -62,7 +62,7 @@ public:
 public:
 
     enum {
-        notAffine = -1,    ///< Instructs constructor not to use an affine mapping
+        neverAffine = -1,  ///< Instructs constructor not to use an affine mapping
         alwaysAffine = 0   ///< Instructs constructor always to use an affine mapping
     };
 
