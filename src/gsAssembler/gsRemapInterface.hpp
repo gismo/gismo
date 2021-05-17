@@ -56,7 +56,6 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
     }
     else
     {
-        m_isMatching = false;
         GISMO_ENSURE( m_isAffine || domainDim() <= 2,
             "gsRemapInterface: Can handle non-affine interfaces only for 2 dimensions." );
 
