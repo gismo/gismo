@@ -150,16 +150,14 @@ private:
     const gsBasis<T> * m_b1;                          ///< Basis on first patch
     const gsBasis<T> * m_b2;                          ///< Basis on second patch
 
-    patchSide m_side1;                                ///< Side \f$ \widehat S_1 \f$ of first patch
-    patchSide m_side2;                                ///< Side \f$ \widehat S_2 \f$ of second patch
+    boundaryInterface m_bi;                           ///< Corresponding boundary interface
 
     bool m_isMatching;                                ///< True iff the interface is matching
     bool m_isAffine;                                  ///< True iff the interface is affine
 
     std::vector< std::vector<T> > m_breakpoints;      ///< Union of breakpoints of both bases
 
-    typename gsFunction<T>::Ptr m_intfMap;            ///< The fitted interface itself
-    typename gsFunction<T>::Ptr m_intfMap_inverse;    ///< The inverse of the fitted interface
+    typename gsFunction<T>::Ptr m_intfMap;            ///< The interface map itself
 
     /// @brief The bounds of the box that represents \f$ \widehat \Gamma_1 \f$
     ///
