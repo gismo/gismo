@@ -75,7 +75,8 @@ public:
     ///                     check if the mapping is affine. If set to i, the grid consits of i interor
     ///                     point and the two boundary points per direction, so \f$ (i+2)^d \f$ points.
     ///                     For \a alwaysAffine or \a notAffine, no checks are performed.
-    gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & mb, const boundaryInterface & bi, index_t checkAffine = 1);
+    gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & mb,
+                     const boundaryInterface & bi, index_t checkAffine = 1);
 
 public:
 
@@ -115,14 +116,11 @@ public:
 
 private:
 
-    /// Computes \a m_parameterBounds1 and \a m_parameterBounds2 for the affine linear setting
-    static gsMatrix<T> parameterBounds(const gsGeometry<T>& geo, boxSide s, index_t dim);
-
-    /// Checks if affine mapping between the incoming patches is correct
-    bool checkIfAffine( index_t steps );
-
     /// Computes the box which represents the intersection of sides of incoming patches
     void computeBoundingBox();
+
+    /// Checks if affine mapping between the incoming patches is correct
+    bool checkIfAffine(index_t steps);
 
     /// Constructs the breakpoints \a m_breakpoints if we have affine mapping
     void constructBreaksAffine();

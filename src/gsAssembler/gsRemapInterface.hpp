@@ -64,8 +64,8 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
             // Does findInterface do anything new compared to computeBoundingBox?
             gsMatrix<T> pb1 = m_parameterBounds1, pb2 = m_parameterBounds2;
             findInterface(bi);
-            GISMO_ASSERT( (pb1-m_parameterBounds1).norm() < 1.e-4, "??");
-            GISMO_ASSERT( (pb2-m_parameterBounds2).norm() < 1.e-4, "??");
+            GISMO_ASSERT( (pb1-m_parameterBounds1).norm() < 1.e-4, "??" << pb1 << "\n\n" << m_parameterBounds1);
+            GISMO_ASSERT( (pb2-m_parameterBounds2).norm() < 1.e-4, "??" << pb2 << "\n\n" << m_parameterBounds2);
             gsInfo << "Result of findInterface coincides with result of computeBoundingBox.\n";
         }
         constructReparam(bi);
@@ -76,13 +76,15 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
 
 // Used for the affine case
 
+namespace {
 template <class T>
-gsMatrix<T> gsRemapInterface<T>::parameterBounds(const gsGeometry<T> & geo, boxSide s, index_t dim)
+gsMatrix<T> parameterBounds(const gsGeometry<T> & geo, boxSide s)
 {
+    gsMatrix<T> pr = geo.parameterRange();
+    const index_t dim = pr.rows();
     gsMatrix<T> result(dim, 2);
     for (index_t i = 0; i<dim; ++i)
     {
-        gsMatrix<T> pr = geo.parameterRange();
         if (s.direction()==i)
             result(i,0) = result(i,1) = pr( i, s.parameter() == false ? 0 : 1 );
         else
@@ -91,6 +93,68 @@ gsMatrix<T> gsRemapInterface<T>::parameterBounds(const gsGeometry<T> & geo, boxS
     return result;
 }
 
+template <class T>
+gsMatrix<T> transferParameterBounds(const gsGeometry<T> & g1, const gsGeometry<T> & g2,
+                const gsMatrix<T> & parameterBounds1, const gsMatrix<T> & parameterBounds2, T tolerance)
+{
+    gsVector<T> transfered[2];
+    for (index_t j=0; j<2; ++j)
+    {
+        transfered[j] = parameterBounds1.col(j); // initial guess
+        g1.newtonRaphson( g2.eval(parameterBounds2).col(j), transfered[j], true, tolerance, 100 );
+    }
+
+    gsMatrix<T> result(transfered[0].rows(), 2);
+    for (index_t i=0; i<transfered[0].rows(); ++i)
+    {
+        result(i,0) = std::min( transfered[0][i], transfered[1][i] );
+        result(i,1) = std::max( transfered[0][i], transfered[1][i] );
+    }
+    return result;
+
+}
+
+}
+
+template <class T>
+void gsRemapInterface<T>::computeBoundingBox()
+{
+    const T equalityTolerance = 0;
+    const T newtonTolerance = 1e-8;
+
+    m_parameterBounds1 = parameterBounds(*m_g1,m_side1);
+    m_parameterBounds2 = parameterBounds(*m_g2,m_side2);
+
+    gsMatrix<T> parameterBounds1trafsferedTo2
+        = transferParameterBounds(*m_g2,*m_g1,m_parameterBounds2,m_parameterBounds1,newtonTolerance);
+    gsMatrix<T> parameterBounds2trafsferedTo1
+        = transferParameterBounds(*m_g1,*m_g2,m_parameterBounds1,m_parameterBounds2,newtonTolerance);
+
+    for (index_t i=0; i<domainDim(); ++i)
+    {
+        if (parameterBounds2trafsferedTo1(i,0)>m_parameterBounds1(i,0)+equalityTolerance)
+        {
+            m_parameterBounds1(i,0) = parameterBounds2trafsferedTo1(i,0);
+            m_isMatching = false;
+        }
+        if (parameterBounds2trafsferedTo1(i,1)<m_parameterBounds1(i,1)-equalityTolerance)
+        {
+            m_parameterBounds1(i,1) = parameterBounds2trafsferedTo1(i,1);
+            m_isMatching = false;
+        }
+
+        if (parameterBounds1trafsferedTo2(i,0)>m_parameterBounds2(i,0)+equalityTolerance)
+        {
+            m_parameterBounds2(i,0) = parameterBounds1trafsferedTo2(i,0);
+            m_isMatching = false;
+        }
+        if (parameterBounds1trafsferedTo2(i,1)<m_parameterBounds2(i,1)-equalityTolerance)
+        {
+            m_parameterBounds2(i,1) = parameterBounds1trafsferedTo2(i,1);
+            m_isMatching = false;
+        }
+    }
+}
 
 template <class T>
 bool gsRemapInterface<T>::checkIfAffine(index_t steps)
@@ -108,54 +172,10 @@ bool gsRemapInterface<T>::checkIfAffine(index_t steps)
             ).norm() < (T)(1.e-6);
 }
 
-template <class T>
-void gsRemapInterface<T>::computeBoundingBox()
-{
-    const T tolerance = 0; // TODO: Consider interface only as non-matching if tolerance is exceeded
-    // TODO: Simplify. It is enough to call newtonRaphson only twice (never cll m_g2->newtonRaphson)
-
-    m_parameterBounds1 = parameterBounds( *m_g1, m_side1, domainDim() );
-    m_parameterBounds2 = parameterBounds( *m_g2, m_side2, domainDim() );
-
-    gsMatrix<T> phys2 = m_g2->eval(m_parameterBounds2);
-
-    gsVector<T> parameterBoundsFrom2_lower = m_parameterBounds1.col(0);
-    m_g1->newtonRaphson( phys2.col(0), parameterBoundsFrom2_lower, true, 10e-6, 100 );
-
-    gsVector<T> parameterBoundsFrom2_upper = m_parameterBounds1.col(1);
-    m_g1->newtonRaphson( phys2.col(1), parameterBoundsFrom2_upper, true, 10e-6, 100 );
-
-    gsMatrix<T> phys1 = m_g1->eval(m_parameterBounds1);
-
-    gsVector<T> parameterBoundsFrom1_lower = m_parameterBounds2.col(0);
-    m_g2->newtonRaphson( phys1.col(0), parameterBoundsFrom1_lower, true, 10e-6, 100 );
-
-    gsVector<T> parameterBoundsFrom1_upper = m_parameterBounds2.col(1);
-    m_g2->newtonRaphson( phys1.col(1), parameterBoundsFrom1_upper, true, 10e-6, 100 );
-
-    for (index_t i=0; i<domainDim(); ++i)
-    {
-        if (parameterBoundsFrom2_upper[i]<parameterBoundsFrom2_lower[i])
-            std::swap( parameterBoundsFrom2_upper[i], parameterBoundsFrom2_lower[i] );
-        if (parameterBoundsFrom2_lower[i]>m_parameterBounds1(i,0))
-            { m_parameterBounds1(i,0) = parameterBoundsFrom2_lower[i]; m_isMatching = false; }
-        if (parameterBoundsFrom2_upper[i]<m_parameterBounds1(i,1))
-            { m_parameterBounds1(i,1) = parameterBoundsFrom2_upper[i]; m_isMatching = false; }
-
-        if (parameterBoundsFrom1_upper[i]<parameterBoundsFrom1_lower[i])
-            std::swap( parameterBoundsFrom1_upper[i], parameterBoundsFrom1_lower[i] );
-        if (parameterBoundsFrom1_lower[i]>m_parameterBounds2(i,0))
-            { m_parameterBounds2(i,0) = parameterBoundsFrom1_lower[i]; m_isMatching = false; }
-        if (parameterBoundsFrom1_upper[i]<m_parameterBounds2(i,1))
-            { m_parameterBounds2(i,1) = parameterBoundsFrom1_upper[i]; m_isMatching = false; }
-
-    }
-
-}
 
 namespace {
 template <class T, class Vector>
-inline void addBreaks( std::vector< std::vector<T> >& breaks, const gsMatrix<T>& parameterBounds, const Vector& point )
+inline void addBreaks(std::vector< std::vector<T> >& breaks, const gsMatrix<T>& parameterBounds, const Vector& point)
 {
     const T tolerance = 1.e-5;
     const index_t dim = point.rows();
