@@ -210,7 +210,9 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
     // Compute interface knots in physical domain by evaluating left and right geometry maps at the knot values
     const size_t numelP1 = domIt1->numElements();
     const size_t numelP2 = domIt2->numElements();
-    gsMatrix <T> physicalKnotsP1(m_g1->geoDim(), numelP1 + 1), physicalKnotsP2(m_g2->geoDim(), numelP2 + 1), dummy;
+    gsMatrix<T> physicalKnotsP1(m_g1->geoDim(), numelP1 + 1);
+    gsMatrix<T> physicalKnotsP2(m_g2->geoDim(), numelP2 + 1);
+    gsMatrix<T> dummy;
 
     domIt1->reset();
     domIt2->reset();
@@ -223,49 +225,29 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
     // loop over all elements of the boundary with interface part, but evaluate only element corners on the real interface
     for (; domIt1->good(); domIt1->next())
     {
-        if (m_side1.index() == 3 || m_side1.index() == 4) // v is fix
+        if (m_side1.direction() == 1) // v is fix
         {
             if (domIt1->lowerCorner()(0,0) > startPatch1(0,0) && domIt1->lowerCorner()(0,0) <= m_parameterBounds1(0,1))
             {
-                // An ansatz for 3D??
-                //if(domainDim() == 2 || (domainDim() == 3 &&
-                //                        domIt1->lowerCorner()(2,0) > startPatch1(2,0) &&
-                //                        domIt1->lowerCorner()(2,0) <= m_parameterBounds1(2,1)))
-                //{
                 m_g1->eval_into(domIt1->lowerCorner(), dummy);
                 physicalKnotsP1.col(numBreaksPatch1) = dummy;
                 numBreaksPatch1++;
-                //}
             }
         }
-        else
+        else if (m_side1.direction() == 0) // u is fix
         {
-            if (m_side1.index() == 1 || m_side1.index() == 2) // u is fix
+            if (domIt1->lowerCorner()(1,0) > startPatch1(1,0) && domIt1->lowerCorner()(1,0) <= m_parameterBounds1(1,1))
             {
-                if (domIt1->lowerCorner()(1,0) > startPatch1(1,0) && domIt1->lowerCorner()(1,0) <= m_parameterBounds1(1,1))
-                {
-                    m_g1->eval_into(domIt1->lowerCorner(), dummy);
-                    physicalKnotsP1.col(numBreaksPatch1) = dummy;
-                    numBreaksPatch1++;
-                }
+                m_g1->eval_into(domIt1->lowerCorner(), dummy);
+                physicalKnotsP1.col(numBreaksPatch1) = dummy;
+                numBreaksPatch1++;
             }
-            // for the 3D case??
-            //else // w is fix
-            //{
-            //    if((domIt1->lowerCorner()(0,0) > startPatch1(0,0) && domIt1->lowerCorner()(0,0) <= m_parameterBounds1(0,1))
-            //            && (domIt1->lowerCorner()(1,0) > startPatch1(1,0) && domIt1->lowerCorner()(1,0) <= m_parameterBounds1(1,1)))
-            //    {
-            //        m_g1->eval_into(domIt1->lowerCorner(), dummy);
-            //        physicalKnotsP1.col(numBreaksPatch1) = dummy;
-            //        numBreaksPatch1++;
-            //    }
-            //}
         }
         //domIt1->next();
     }
 
     // evaluate the last point of the interface, i.e., this last point must also be within the parameter bound
-    if (m_side1.index() == 3 || m_side1.index() == 4)
+    if (m_side1.direction() == 1)
     {
         if (domIt1->upperCorner()(0,0) <= m_parameterBounds1(0,1))
         {
@@ -274,16 +256,13 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
             numBreaksPatch1++;
         }
     }
-    else
+    else if (m_side1.direction() == 0)
     {
-        if (m_side1.index() == 1 || m_side1.index() == 2)
+        if (domIt1->upperCorner()(1,0) <= m_parameterBounds1(1,1))
         {
-            if (domIt1->upperCorner()(1,0) <= m_parameterBounds1(1,1))
-            {
-                m_g1->eval_into(domIt1->upperCorner(), dummy);
-                physicalKnotsP1.col(numBreaksPatch1) = dummy;
-                numBreaksPatch1++;
-            }
+            m_g1->eval_into(domIt1->upperCorner(), dummy);
+            physicalKnotsP1.col(numBreaksPatch1) = dummy;
+            numBreaksPatch1++;
         }
     }
     //gsInfo << "physical knots 1: \n" << physicalKnotsP1 << "\n";
@@ -296,7 +275,7 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
 
     for (; domIt2->good(); domIt2->next()) // for (index_t i = 0; i < numelP2; i++)
     {
-        if (m_side2.index() == 3 || m_side2.index() == 4)
+        if (m_side2.direction() == 1)
         {
             if (domIt2->lowerCorner()(0,0) > startPatch2(0,0) && domIt2->lowerCorner()(0,0) < m_parameterBounds2(0,1))
             {
@@ -305,23 +284,20 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
                 numBreaksPatch2++;
             }
         }
-        else
+        else if(m_side2.direction() == 0)
         {
-            if(m_side2.index() == 1 || m_side2.index() == 2)
+            if (domIt2->lowerCorner()(1,0) > startPatch2(1,0) && domIt2->lowerCorner()(1,0) < m_parameterBounds2(1,1))
             {
-                if (domIt2->lowerCorner()(1,0) > startPatch2(1,0) && domIt2->lowerCorner()(1,0) < m_parameterBounds2(1,1))
-                {
-                    m_g2->eval_into(domIt2->lowerCorner(), dummy);
-                    physicalKnotsP2.col(numBreaksPatch2) = dummy;
-                    numBreaksPatch2++;
-                }
+                m_g2->eval_into(domIt2->lowerCorner(), dummy);
+                physicalKnotsP2.col(numBreaksPatch2) = dummy;
+                numBreaksPatch2++;
             }
         }
         //domIt2->next();
     }
 
     // add only the breakpoints within the parameter bounds
-    if (m_side2.index() == 3 || m_side2.index() == 4)
+    if (m_side2.direction() == 1)
     {
         if (domIt2->upperCorner()(0,0) <= m_parameterBounds2(0,1))
         {
@@ -330,16 +306,13 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
             numBreaksPatch2++;// to get the number of entries
         }
     }
-    else
+    else if (m_side2.direction() == 0)
     {
-        if (m_side2.index() == 1 || m_side2.index() == 2)
+        if(domIt2->upperCorner()(1,0) <= m_parameterBounds2(1,1))
         {
-            if(domIt2->upperCorner()(1,0) <= m_parameterBounds2(1,1))
-            {
-                m_g2->eval_into(domIt2->upperCorner(), dummy);
-                physicalKnotsP2.col(numBreaksPatch2) = dummy;
-                numBreaksPatch2++;
-            }
+            m_g2->eval_into(domIt2->upperCorner(), dummy);
+            physicalKnotsP2.col(numBreaksPatch2) = dummy;
+            numBreaksPatch2++;
         }
     }
     //gsInfo << "physical knots 2: \n" << physicalKnotsP2 << "\n";
@@ -472,7 +445,7 @@ void gsRemapInterface<T>::constructReparam(const boundaryInterface & bi)
     for (index_t np = 0; np < numGeometries; np++) {
         if (np == 0)
         {
-            if (m_side1.index() == 3 || m_side1.index() == 4) // v is fixed
+            if (m_side1.direction() == 1) // v is fixed
             {
                 firstKnot = m_parameterBounds1(0, 0);
                 lastKnot = m_parameterBounds1(0, 1);
@@ -483,7 +456,7 @@ void gsRemapInterface<T>::constructReparam(const boundaryInterface & bi)
                 lastKnot = m_parameterBounds1(1, 1);
             }
         } else {
-            if (m_side2.index() == 3 || m_side2.index() == 4) // v is fixed
+            if (m_side2.direction() == 1) // v is fixed
             {
                 firstKnot = m_parameterBounds2(0, flipSide2 ? 1 : 0);
                 lastKnot = m_parameterBounds2(0, flipSide2 ? 0 : 1);
@@ -854,7 +827,7 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
             bound = 2;
 
         //gsInfo << "bound: \n" << inverseMaps.col(bound) << " and parameter Image: \n" << parIm << "\n";
-        if (m_side1.index() == 3 || m_side1.index() == 4) //sort w.r.t u
+        if (m_side1.direction() == 1) //sort w.r.t u
         {
             if (parIm(0, 0) < inverseMaps.col(bound)(0, 0))
             {
@@ -865,7 +838,7 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
                 m_parameterBounds1.col(0) = inverseMaps.col(bound);
             }
         }
-        else if (m_side1.index() == 1 || m_side1.index() == 2) // sort w.r.t v
+        else if (m_side1.direction() == 0) // sort w.r.t v
         {
             if (parIm(1, 0) < inverseMaps.col(bound)(1, 0))
             {
@@ -882,7 +855,7 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
 
         if(completeOnPatch2 == false && corners(0) == 0)
         {
-            if (m_side1.index() == 3 || m_side1.index() == 4) //sort w.r.t u
+            if (m_side1.direction() == 1) //sort w.r.t u
             {
                 //m_parameterBounds1.row(0) = m_g1->parameterRange().row(0);
                 m_parameterBounds1(0, 0) = inverseMaps.col(0)(0);
@@ -891,25 +864,25 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
                 //m_parameterBounds1(1, 1) = inverseMaps.col(0)(1);
                 m_parameterBounds1(1, 1) = inverseMaps.col(2)(1);
             }
-            else if (m_side1.index() == 1 || m_side1.index() == 2) // sort w.r.t v
+            else if (m_side1.direction() == 0) // sort w.r.t v
             {
                 m_parameterBounds1(0, 0) = inverseMaps.col(0)(0);
                 m_parameterBounds1(0, 1) = inverseMaps.col(0)(0);
-                m_parameterBounds1(1, 0) = inverseMaps.col(0)(1) < inverseMaps.col(2)(1) ? inverseMaps.col(0)(1) : inverseMaps.col(2)(1);
-                m_parameterBounds1(1, 1) = inverseMaps.col(0)(1) < inverseMaps.col(2)(1) ? inverseMaps.col(2)(1) : inverseMaps.col(0)(1);
+                m_parameterBounds1(1, 0) = std::min( inverseMaps.col(0)(1), inverseMaps.col(2)(1) );
+                m_parameterBounds1(1, 1) = std::max( inverseMaps.col(2)(1), inverseMaps.col(0)(1) );
             }
         }
         else
         {
-            if (m_side1.index() == 3 || m_side1.index() == 4) //sort w.r.t u
+            if (m_side1.direction() == 1) //sort w.r.t u
             {
                 m_parameterBounds1.row(0) = m_g1->parameterRange().row(0);
-                m_parameterBounds1(1, 0) = m_side1.index() == 3 ? m_g1->parameterRange()(1,0) : m_g1->parameterRange()(1,1); //inverseMaps.col(0)(1);
+                m_parameterBounds1(1, 0) = m_g1->parameterRange()(0,m_side1.parameter()); //inverseMaps.col(0)(1);
                 m_parameterBounds1(1, 1) = m_parameterBounds1(1,0); //inverseMaps.col(0)(1);
             }
-            else if (m_side1.index() == 1 || m_side1.index() == 2) // sort w.r.t v
+            else if (m_side1.direction() == 0) // sort w.r.t v
             {
-                m_parameterBounds1(0, 0) = m_side1.index() == 1 ? m_g1->parameterRange()(0,0) : m_g1->parameterRange()(0,1); //inverseMaps.col(0)(0);
+                m_parameterBounds1(0, 0) =  m_g1->parameterRange()(0,m_side1.parameter()); //inverseMaps.col(0)(0);
                 m_parameterBounds1(0, 1) = m_parameterBounds1(0, 0);//inverseMaps.col(0)(0);
                 m_parameterBounds1.row(1) = m_g1->parameterRange().row(1);
             }
@@ -925,7 +898,7 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
         if (parIm.isApprox(inverseMaps.col(1), 1e-6))
             bound = 3;
 
-        if (m_side2.index() == 3 || m_side2.index() == 4) //sort w.r.t u
+        if (m_side2.direction() == 1) //sort w.r.t u
         {
             if (parIm(0, 0) < inverseMaps.col(bound)(0, 0))
             {
@@ -936,7 +909,7 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
                 m_parameterBounds2.col(0) = inverseMaps.col(bound);
             }
         }
-        else if (m_side2.index() == 1 || m_side2.index() == 2) // sort w.r.t v
+        else if (m_side2.direction() == 0) // sort w.r.t v
         {
             if (parIm(1, 0) < inverseMaps.col(bound)(1, 0))
             {
@@ -954,7 +927,7 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
     {
         if(completeOnPatch1 == false && corners(1) == 0)
         {
-            if (m_side2.index() == 3 || m_side2.index() == 4) //sort w.r.t u
+            if (m_side2.direction() == 1) //sort w.r.t u
             {
                 m_parameterBounds2(0, 0) = inverseMaps.col(1)(0);
                 m_parameterBounds2(0, 1) = inverseMaps.col(3)(0);
@@ -962,25 +935,25 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
                 m_parameterBounds2(1, 0) = inverseMaps.col(1)(1);
                 m_parameterBounds2(1, 1) = inverseMaps.col(3)(1);
             }
-            else if (m_side2.index() == 1 || m_side2.index() == 2) // sort w.r.t v
+            else if (m_side2.direction() == 0) // sort w.r.t v
             {
                 m_parameterBounds2(0, 0) = inverseMaps.col(1)(0);
                 m_parameterBounds2(0, 1) = inverseMaps.col(1)(0);
-                m_parameterBounds2(1, 0) = inverseMaps.col(1)(1) < inverseMaps.col(3)(1) ? inverseMaps.col(1)(1) : inverseMaps.col(3)(1);
-                m_parameterBounds2(1, 1) = inverseMaps.col(1)(1) < inverseMaps.col(3)(1) ? inverseMaps.col(3)(1) : inverseMaps.col(1)(1);
+                m_parameterBounds2(1, 0) = std::min( inverseMaps.col(1)(1), inverseMaps.col(3)(1) );
+                m_parameterBounds2(1, 1) = std::max( inverseMaps.col(3)(1), inverseMaps.col(1)(1) );
             }
         }
         else
         {
-            if (m_side2.index() == 3 || m_side2.index() == 4) //sort w.r.t u
+            if (m_side2.direction() == 1) //sort w.r.t u
             {
                 m_parameterBounds2.row(0) = m_g2->parameterRange().row(0);
-                m_parameterBounds2(1, 0) = m_side2.index() == 3 ? m_g2->parameterRange()(1, 0) : m_g2->parameterRange()(1, 1);//inverseMaps.col(1)(1);
+                m_parameterBounds2(1, 0) = m_g2->parameterRange()(1, m_side2.parameter());//inverseMaps.col(1)(1);
                 m_parameterBounds2(1, 1) = m_parameterBounds2(1, 0); //inverseMaps.col(1)(1);
             }
-            else if (m_side2.index() == 1 || m_side2.index() == 2) // sort w.r.t v
+            else if (m_side2.direction() == 0) // sort w.r.t v
             {
-                m_parameterBounds2(0, 0) = m_side2.index() == 1 ? m_g2->parameterRange()(0, 0) : m_g2->parameterRange()(0, 1);//inverseMaps.col(1)(0);
+                m_parameterBounds2(0, 0) = m_g2->parameterRange()(0, m_side2.parameter());//inverseMaps.col(1)(0);
                 m_parameterBounds2(0, 1) = m_parameterBounds2(0, 0); //inverseMaps.col(1)(0);
                 m_parameterBounds2.row(1) = m_g2->parameterRange().row(1);
             }
