@@ -36,7 +36,6 @@ public:
                 : m_mp(mp), m_patchID(patchID)
     {
         info = optionList.getSwitch("info");
-        C1Vertex = optionList.getSwitch("C1Vertex");
         twoPatch = optionList.getSwitch("twoPatch");
         simplified = optionList.getSwitch("simplified");
 
@@ -497,7 +496,7 @@ protected:
     gsMultiPatch<T> m_mp;
     index_t m_patchID;
 
-    bool info, C1Vertex, twoPatch, simplified;
+    bool info, twoPatch, simplified;
 
     std::vector<gsTensorBSplineBasis<d, T>> basisG1Container;
 

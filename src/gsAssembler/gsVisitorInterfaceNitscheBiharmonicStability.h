@@ -26,11 +26,11 @@ namespace gismo
  * Where v is the test function and \f[ \Gamma \f] is the boundary.
  */
     template <class T>
-    class gsVisitorInterfaceNitscheBiharmonic
+    class gsVisitorInterfaceNitscheBiharmonicStability
     {
     public:
 
-        gsVisitorInterfaceNitscheBiharmonic(const gsPde<T> & )
+        gsVisitorInterfaceNitscheBiharmonicStability(const gsPde<T> & )
         { }
 
         void initialize(const gsBasis<T> & basis1,
@@ -110,14 +110,9 @@ namespace gismo
 
             for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
             {
-                // Compute the outer normal vector on the side
-                outerNormal(md1, k, side1, unormal1);
-                outerNormal(md2, k, side2, unormal2);
-
                 // Multiply quadrature weight by the measure of normal
                 const T weight = quWeights[k] * md1.measure(k);
-                unormal1.normalize();
-                unormal2.normalize();
+
                 //Get gradients of the physical space
                 transformGradients(md1, k, basisDers1, physBasisGrad1);
                 transformGradients(md2, k, basisDers2, physBasisGrad2);
@@ -127,27 +122,11 @@ namespace gismo
                 transformLaplaceHgrad(md2, k, basisDers2, basis2Ders2, physBasisLaplace2);
 
                 const T h = element.getCellSize();
-                const T mu_h = mu ; // / (0 != h ? h : 1);
+                const T mu_h = mu / (0 != h ? h : 1);
 
-                localMatrix1.noalias() += weight * ( physBasisGrad1.transpose() * unormal1 * physBasisLaplace1
-                                                    + (physBasisGrad1.transpose() * unormal1 * physBasisLaplace1).transpose()
-                                                - mu_h * (physBasisGrad1.transpose() * unormal1) * (physBasisGrad1.transpose() * unormal1).transpose());
+                localMatrix1.noalias() += weight * (physBasisLaplace1.transpose() * physBasisLaplace1);
 
-                localMatrix2.noalias() += weight * ( physBasisGrad2.transpose() * unormal2 * physBasisLaplace2
-                                                    + (physBasisGrad2.transpose() * unormal2 * physBasisLaplace2).transpose()
-                                                    - mu_h * (physBasisGrad2.transpose() * unormal2) * (physBasisGrad2.transpose() * unormal2).transpose());
-
-                localMatrix12.noalias() += weight * ( physBasisGrad1.transpose() * unormal1 * physBasisLaplace2
-                                                    + (physBasisGrad2.transpose() * unormal2 * physBasisLaplace1).transpose()
-                                                    - mu_h * (physBasisGrad1.transpose() * unormal1) * (physBasisGrad2.transpose() * unormal2).transpose());
-
-                localMatrix21.noalias() += weight * (physBasisGrad2.transpose() * unormal2 * physBasisLaplace1
-                                                     + (physBasisGrad1.transpose() * unormal1 * physBasisLaplace2).transpose()
-                                                     - mu_h * (physBasisGrad2.transpose() * unormal2) * (physBasisGrad1.transpose() * unormal1).transpose());
-
-
-                //gsInfo << "mat1: " << localMatrix1 << "\n";
-                //gsInfo << "mat2: " << localMatrix21 << "\n";
+                localMatrix2.noalias() += weight * (physBasisLaplace2.transpose() * physBasisLaplace2);
             }
         }
 
@@ -168,9 +147,6 @@ namespace gismo
 
             // Add contributions to the system matrix and right-hand side
             system.push(localMatrix2, localRhs2, actives2, eliminatedDofs[0], 0, 0);
-
-            system.push(localMatrix12, localRhs1, actives1, actives2, eliminatedDofs[0], 0, 0);
-            system.push(localMatrix21, localRhs2, actives2, actives1, eliminatedDofs[0], 0, 0);
         }
 
     protected:

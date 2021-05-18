@@ -48,18 +48,6 @@ public:
         for (size_t np = 0; np < m_mp.nPatches(); ++np)
             multiBasis.basis(np).setDegree(m_optionList.getInt("discreteDegree"));
 
-
-        //index_t p = multiBasis.minCwiseDegree();
-        //index_t r = m_optionList.getInt("regularity");
-
-        // Pre-uniformRefine TODO delete
-        //multiBasis.uniformRefine(3, p-r);
-
-/*
-        multiBasis.basis(0).uniformRefine();
-        multiBasis.basis(1).degreeIncrease();
-*/
-        //init();
     }
 
     void createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVector<T> & kv2,
@@ -128,7 +116,6 @@ public:
 
             gsBSplineBasis<> basis_plus(kv_plus);
             gsBSplineBasis<> basis_minus(kv_minus);
-
 
             createGluingDataSpace(kv_1, kv_2, kv_patch_1, kv_patch_2, kv_gluingData);
 

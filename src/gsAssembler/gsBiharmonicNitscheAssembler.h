@@ -22,6 +22,7 @@
 #include <gsAssembler/gsVisitorNeumann.h>
 #include <gsAssembler/gsVisitorNeumannBiharmonic.h>
 #include <gsAssembler/gsVisitorInterfaceNitscheBiharmonic.h>
+#include <gsAssembler/gsVisitorInterfaceNitscheBiharmonicStability.h>
 
 namespace gismo
 {
@@ -75,6 +76,11 @@ namespace gismo
 
         void assemble();
 
+        //stability
+        void pushInterface();
+        void apply(gsVisitorInterfaceNitscheBiharmonicStability<T> & visitor,
+                   const boundaryInterface & bi);
+
     protected:
 
         // fixme: add constructor and remove this
@@ -86,6 +92,9 @@ namespace gismo
         using Base::m_ddof;
         using Base::m_options;
         using Base::m_system;
+
+        // for stabilization
+        gsSparseSystem<> m_system_stab;
     };
 
     template <class T, class bhVisitor>
@@ -139,6 +148,33 @@ namespace gismo
         //Base::template push<gsVisitorNeumann<T> >(
         //        m_ppde.bcFirstKind().neumannSides() );
 
+        // For the stability parameter
+        gsSparseMatrix<> matrix_B = m_system.matrix();
+        m_system_stab = m_system;
+        m_system_stab.setZero();
+        pushInterface();
+        gsSparseMatrix<> matrix_A = m_system_stab.matrix();
+
+        gsDofMapper mapper = m_system.colMapper(0);
+        size_t size_patch1 = mapper.freeSize()/2;
+        gsInfo << "size: " << size_patch1 << "\n";
+        Eigen::MatrixXd A = matrix_A.toDense();
+        Eigen::MatrixXd B = matrix_B.toDense();
+        Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> ges;
+        //ges.compute(A.block(0,0,size_patch1,size_patch1), B.block(0,0,size_patch1,size_patch1));
+        //gsInfo << "Det: " << B.determinant() << "\n";
+        //gsInfo << "A: " << A << "\n";
+        //gsInfo << "B: " << B << "\n";
+        //gsInfo << "The (complex) numerators of the generalzied eigenvalues are: " << ges.alphas().transpose() << "\n";
+        //gsInfo << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << "\n";
+        //gsInfo << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().transpose() << "\n";
+        //gsInfo << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().real().transpose() << "\n";
+        //gsMatrix<> eigenvalues = ges.eigenvalues().real();
+        //real_t lambdamax = eigenvalues.maxCoeff() * 2;
+        real_t lambdamax = m_options.getReal("mu");
+        //m_options.setReal("mu", lambdamax);
+        gsInfo << "Max lambda: " << lambdamax << "\n";
+
         // Neumann conditions of second kind // TODO Rename to Laplace
         Base::template push<gsVisitorNeumannBiharmonic<T> >(
                 m_ppde.bcSecondKind().laplaceSides() );
@@ -162,7 +198,69 @@ namespace gismo
         //gsInfo << Base::m_system.rhs() << "\n";
     }
 
+    template <class T, class bhVisitor>
+    void gsBiharmonicNitscheAssembler<T,bhVisitor>::pushInterface()
+    {
+        gsVisitorInterfaceNitscheBiharmonicStability<T> visitor(*m_pde_ptr);
 
+        const gsMultiPatch<T> & mp = m_pde_ptr->domain();
+        for ( typename gsMultiPatch<T>::const_iiterator
+                      it = mp.iBegin(); it != mp.iEnd(); ++it )
+        {
+            const boundaryInterface & iFace = //recover master elemen
+                    ( m_bases[0][it->first() .patch].numElements(it->first() .side() ) <
+                      m_bases[0][it->second().patch].numElements(it->second().side() ) ?
+                      it->getInverse() : *it );
+
+            apply(visitor, iFace);
+        }
+    }
+
+    template <class T, class bhVisitor>
+    void gsBiharmonicNitscheAssembler<T,bhVisitor>::apply(gsVisitorInterfaceNitscheBiharmonicStability<T> & visitor,
+                               const boundaryInterface & bi)
+    {
+        gsRemapInterface<T> interfaceMap(m_pde_ptr->patches(), m_bases[0], bi);
+
+        const index_t patchIndex1      = bi.first().patch;
+        const index_t patchIndex2      = bi.second().patch;
+        const gsBasis<T> & B1 = m_bases[0][patchIndex1];// (!) unknown 0
+        const gsBasis<T> & B2 = m_bases[0][patchIndex2];
+
+        gsQuadRule<T> quRule ; // Quadrature rule
+        gsMatrix<T> quNodes1, quNodes2;// Mapped nodes
+        gsVector<T> quWeights;         // Mapped weights
+
+        // Initialize
+        visitor.initialize(B1, B2, bi, m_options, quRule);
+
+        const gsGeometry<T> & patch1 = m_pde_ptr->patches()[patchIndex1];
+        const gsGeometry<T> & patch2 = m_pde_ptr->patches()[patchIndex2];
+
+        // Initialize domain element iterators
+        typename gsBasis<T>::domainIter domIt = interfaceMap.makeDomainIterator();
+        //int count = 0;
+
+        // iterate over all boundary grid cells on the "left"
+        for (; domIt->good(); domIt->next() )
+        {
+            //count++;
+
+            // Compute the quadrature rule on both sides
+            quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes1, quWeights);
+            interfaceMap.eval_into(quNodes1,quNodes2);
+
+            // Perform required evaluations on the quadrature nodes
+            visitor.evaluate(B1, patch1, B2, patch2, quNodes1, quNodes2);
+
+            // Assemble on element
+            visitor.assemble(*domIt,*domIt, quWeights);
+
+            // Push to global patch matrix (m_rhs is filled in place)
+            visitor.localToGlobal(patchIndex1, patchIndex2, m_ddof, m_system_stab);
+        }
+
+    }
 } // namespace gismo
 
 
