@@ -60,8 +60,8 @@ int main(int argc, char *argv[])
     cmd.addSwitch("",  "Nitsche",               "Use Nitsche method for Dirichlet boundary conditions", nitsche);
     cmd.addInt   ("l", "MG.Levels",             "Number of levels to use for multigrid iteration", levels);
     cmd.addInt   ("c", "MG.NumCycles",          "Number of multi-grid cycles", cycles);
-    cmd.addInt   ("",  "MG.Presmooth",          "Number of pre-smoothing steps", presmooth);
-    cmd.addInt   ("",  "MG.Postsmooth",         "Number of post-smoothing steps", postsmooth);
+    cmd.addInt   ("",  "MG.NumPreSmooth",       "Number of pre-smoothing steps", presmooth);
+    cmd.addInt   ("",  "MG.NumPostSmooth",      "Number of post-smoothing steps", postsmooth);
     cmd.addSwitch("",  "MG.Extrasmooth",        "Doubles the number of smoothing steps for each coarser level", extrasmooth);
     cmd.addString("s", "MG.Smoother",           "Smoothing method", smoother);
     cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother", damping);
