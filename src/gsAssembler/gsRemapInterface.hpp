@@ -54,16 +54,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
         GISMO_ENSURE( m_isAffine || domainDim() <= 2,
             "gsRemapInterface: Can handle non-affine interfaces only for 2 dimensions." );
 
-        {
-            // TODO: this is for testing purposes
-            // Does findInterface do anything new compared to computeBoundingBox?
-            gsMatrix<T> pb1 = m_parameterBounds1, pb2 = m_parameterBounds2;
-            findInterface(bi);
-            GISMO_ASSERT( (pb1-m_parameterBounds1).norm() < 1.e-4, "??" << pb1 << "\n\n" << m_parameterBounds1);
-            GISMO_ASSERT( (pb2-m_parameterBounds2).norm() < 1.e-4, "??" << pb2 << "\n\n" << m_parameterBounds2);
-            gsInfo << "Result of findInterface coincides with result of computeBoundingBox.\n";
-        }
-        constructReparam(bi);
+        constructReparam();
         constructBreaksNotAffine();
     }
 
@@ -410,7 +401,7 @@ void gsRemapInterface<T>::constructBreaksNotAffine() {
 
 
 template <class T>
-void gsRemapInterface<T>::constructReparam(const boundaryInterface & bi)
+void gsRemapInterface<T>::constructReparam()
 {
     // assert domainDim()==2 taken care by constructor
 
@@ -422,7 +413,7 @@ void gsRemapInterface<T>::constructReparam(const boundaryInterface & bi)
 
     if(m_bi.first().direction() == 1)
     {
-        if(bi.dirOrientation()(0) == 0)
+        if(m_bi.dirOrientation()(0) == 0)
         {
             if(m_bi.second().direction() == 0) //change v parameters
                 { flipSide2=true; }
@@ -433,7 +424,7 @@ void gsRemapInterface<T>::constructReparam(const boundaryInterface & bi)
 
     if(m_bi.first().direction() == 0)
     {
-        if(bi.dirOrientation()(1) == 0)
+        if(m_bi.dirOrientation()(1) == 0)
         {
             if(m_bi.second().direction() == 0) //change v parameters
                 { flipSide2=true; }
@@ -742,242 +733,6 @@ void gsRemapInterface<T>::enrichToVector(const boxSide         boundarySide,
                 pts.row(i) = intervals;
         }
     }
-}
-
-template <class T>
-void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
-{
-    // assert domainDim()==2 taken care by constructor
-    GISMO_UNUSED(bi);
-
-    // first find the sides of the patches which belong to the interface
-    const index_t nCorners = 1 << m_g1->geoDim();
-    gsMatrix<T> inverseMaps = gsMatrix<T>::Zero(m_g1->geoDim(), 4); // matrix to store the preimages of the corresponding verices on the interface
-    gsVector<index_t> corners(2); // vector to store the index of the corner which lies on the other patch, 0-th entry is the index of the corner for the first patch and vice versa
-    corners.setZero();
-
-    bool completeOnPatch2 = false, completeOnPatch1 = false; // check if one side of the patches is completely contained in the other side
-
-    // two columns for the lower and the upper bound
-    m_parameterBounds1.resize(m_g1->geoDim(), 2);
-    m_parameterBounds2.resize(m_g1->geoDim(), 2);
-
-    // matrix to store the coefficients of the corner values
-    gsMatrix<T> c = gsMatrix<T>::Zero(1, m_g1->geoDim());
-
-    // find the side for the second patch, and the corner(s) of the first patch which lies on the interface
-    gsVector<bool> onGeo;
-
-    // this is the case if there are no matching corners
-    for (index_t i = 1; i <= nCorners; i++)
-    {
-        c = m_g1->coefAtCorner(i).transpose();
-
-        // Be aware of two matching vertices-> due to rounding errors on of the vertices can be on two sides maybe!
-        gsMatrix<T> parLoc;
-
-        std::vector<boxSide> side = m_g2->locateOn(c, onGeo, parLoc, false); // gives an empty side
-
-        //for(size_t i = 0; i < side.size(); i++)
-        //    gsInfo << "boundary patch: " << side[i] << "\n";
-
-        if (onGeo(0) == true)
-        {
-            //inverseMaps.col(1) = parLoc;
-
-            if (corners(0) == 0)
-            {
-                inverseMaps.col(1) = parLoc;
-                corners(0) = i;
-                //gsInfo << "corner: " << i << " and parametric loc.: \n" << parLoc << "\n";
-            }
-            else
-            {
-                // in case 2 corners lie on the interface of patch 2
-                inverseMaps.col(3) = parLoc;
-                completeOnPatch2 = true; // side of patch1 is completely contained in the corresponding side of patch2 or the patches are fully matching
-                //gsInfo << "corner: " << i << " and parametric loc.: \n" << parLoc << "\n";
-            }
-        }
-
-    }
-
-    // do the same for the first patch, i.e., finding the side for patch1 and the corner(s) for patch2
-    for (index_t i = 1; i <= nCorners; i++)
-    {
-        c = m_g2->coefAtCorner(i).transpose();
-
-        gsMatrix<T> parLoc;
-        std::vector<boxSide> side = m_g1->locateOn(c, onGeo, parLoc, false);
-        //gsInfo << " onGeo: \n" << onGeo(0) << "\n";
-        //for(size_t i = 0; i < side.size(); i++)
-        //    gsInfo << " side: \n" << side[i] << "\n";
-
-        if (onGeo(0) == 1)
-        {
-            if (corners(1) == 0)
-            {
-                inverseMaps.col(0) = parLoc;
-                corners(1) = i;
-                //gsInfo << "corner: " << i << " and parametric loc.: \n" << parLoc << "\n";
-            } else {   // in case 2 corners lie on the interface of patch 1
-                inverseMaps.col(2) = parLoc;
-                completeOnPatch1 = true;
-            }
-        }
-
-    }
-
-
-
-    // store the parametric bounds of the overlap for each patch, order the points w.r.t. the non fixed boundary side
-    // so far the code is not very nice -> room for improvement!!!
-    // Maybe considering the exact values instead of approximations would be better
-    gsMatrix<T> parIm;
-    if (completeOnPatch2 == false
-                   && corners(0) != 0) // if the interface does not overlap entirely or if the side of patch2 is not a proper subset of the corresponding side of patch1
-    {
-        m_g1->invertPoints(m_g1->coefAtCorner(corners(0)).transpose(), parIm);
-
-        index_t bound = 0;
-        if (parIm.isApprox(inverseMaps.col(0), 1e-6))
-            bound = 2;
-
-        //gsInfo << "bound: \n" << inverseMaps.col(bound) << " and parameter Image: \n" << parIm << "\n";
-        if (m_bi.first().direction() == 1) //sort w.r.t u
-        {
-            if (parIm(0, 0) < inverseMaps.col(bound)(0, 0))
-            {
-                m_parameterBounds1.col(0) = parIm;
-                m_parameterBounds1.col(1) = inverseMaps.col(bound);
-            } else {
-                m_parameterBounds1.col(1) = parIm;
-                m_parameterBounds1.col(0) = inverseMaps.col(bound);
-            }
-        }
-        else if (m_bi.first().direction() == 0) // sort w.r.t v
-        {
-            if (parIm(1, 0) < inverseMaps.col(bound)(1, 0))
-            {
-                m_parameterBounds1.col(0) = parIm;
-                m_parameterBounds1.col(1) = inverseMaps.col(bound);
-            } else {
-                m_parameterBounds1.col(1) = parIm;
-                m_parameterBounds1.col(0) = inverseMaps.col(bound);
-            }
-        }
-    }
-    else // one side of patch1 is completely contained in patch2
-    {
-
-        if(completeOnPatch2 == false && corners(0) == 0)
-        {
-            if (m_bi.first().direction() == 1) //sort w.r.t u
-            {
-                //m_parameterBounds1.row(0) = m_g1->parameterRange().row(0);
-                m_parameterBounds1(0, 0) = inverseMaps.col(0)(0);
-                m_parameterBounds1(0, 1) = inverseMaps.col(2)(0);
-                m_parameterBounds1(1, 0) = inverseMaps.col(0)(1);
-                //m_parameterBounds1(1, 1) = inverseMaps.col(0)(1);
-                m_parameterBounds1(1, 1) = inverseMaps.col(2)(1);
-            }
-            else if (m_bi.first().direction() == 0) // sort w.r.t v
-            {
-                m_parameterBounds1(0, 0) = inverseMaps.col(0)(0);
-                m_parameterBounds1(0, 1) = inverseMaps.col(0)(0);
-                m_parameterBounds1(1, 0) = std::min( inverseMaps.col(0)(1), inverseMaps.col(2)(1) );
-                m_parameterBounds1(1, 1) = std::max( inverseMaps.col(2)(1), inverseMaps.col(0)(1) );
-            }
-        }
-        else
-        {
-            if (m_bi.first().direction() == 1) //sort w.r.t u
-            {
-                m_parameterBounds1.row(0) = m_g1->parameterRange().row(0);
-                m_parameterBounds1(1, 0) = m_g1->parameterRange()(0,m_bi.first().parameter()); //inverseMaps.col(0)(1);
-                m_parameterBounds1(1, 1) = m_parameterBounds1(1,0); //inverseMaps.col(0)(1);
-            }
-            else if (m_bi.first().direction() == 0) // sort w.r.t v
-            {
-                m_parameterBounds1(0, 0) =  m_g1->parameterRange()(0,m_bi.first().parameter()); //inverseMaps.col(0)(0);
-                m_parameterBounds1(0, 1) = m_parameterBounds1(0, 0);//inverseMaps.col(0)(0);
-                m_parameterBounds1.row(1) = m_g1->parameterRange().row(1);
-            }
-        }
-    }
-
-    // do the same for patch2 as before for patch1
-    if (completeOnPatch1 == false && corners(1) != 0)
-    {
-        m_g2->invertPoints(m_g2->coefAtCorner(corners(1)).transpose(), parIm);
-
-        index_t bound = 1;
-        if (parIm.isApprox(inverseMaps.col(1), 1e-6))
-            bound = 3;
-
-        if (m_bi.second().direction() == 1) //sort w.r.t u
-        {
-            if (parIm(0, 0) < inverseMaps.col(bound)(0, 0))
-            {
-                m_parameterBounds2.col(0) = parIm;
-                m_parameterBounds2.col(1) = inverseMaps.col(bound);
-            } else {
-                m_parameterBounds2.col(1) = parIm;
-                m_parameterBounds2.col(0) = inverseMaps.col(bound);
-            }
-        }
-        else if (m_bi.second().direction() == 0) // sort w.r.t v
-        {
-            if (parIm(1, 0) < inverseMaps.col(bound)(1, 0))
-            {
-                m_parameterBounds2.col(0) = parIm;
-                m_parameterBounds2.col(1) = inverseMaps.col(bound);
-            }
-            else
-            {
-                m_parameterBounds2.col(1) = parIm;
-                m_parameterBounds2.col(0) = inverseMaps.col(bound);
-            }
-        }
-    }
-    else
-    {
-        if(completeOnPatch1 == false && corners(1) == 0)
-        {
-            if (m_bi.second().direction() == 1) //sort w.r.t u
-            {
-                m_parameterBounds2(0, 0) = inverseMaps.col(1)(0);
-                m_parameterBounds2(0, 1) = inverseMaps.col(3)(0);
-                //m_parameterBounds2.row(0) = m_g2->parameterRange().row(0);
-                m_parameterBounds2(1, 0) = inverseMaps.col(1)(1);
-                m_parameterBounds2(1, 1) = inverseMaps.col(3)(1);
-            }
-            else if (m_bi.second().direction() == 0) // sort w.r.t v
-            {
-                m_parameterBounds2(0, 0) = inverseMaps.col(1)(0);
-                m_parameterBounds2(0, 1) = inverseMaps.col(1)(0);
-                m_parameterBounds2(1, 0) = std::min( inverseMaps.col(1)(1), inverseMaps.col(3)(1) );
-                m_parameterBounds2(1, 1) = std::max( inverseMaps.col(3)(1), inverseMaps.col(1)(1) );
-            }
-        }
-        else
-        {
-            if (m_bi.second().direction() == 1) //sort w.r.t u
-            {
-                m_parameterBounds2.row(0) = m_g2->parameterRange().row(0);
-                m_parameterBounds2(1, 0) = m_g2->parameterRange()(1, m_bi.second().parameter());//inverseMaps.col(1)(1);
-                m_parameterBounds2(1, 1) = m_parameterBounds2(1, 0); //inverseMaps.col(1)(1);
-            }
-            else if (m_bi.second().direction() == 0) // sort w.r.t v
-            {
-                m_parameterBounds2(0, 0) = m_g2->parameterRange()(0, m_bi.second().parameter());//inverseMaps.col(1)(0);
-                m_parameterBounds2(0, 1) = m_parameterBounds2(0, 0); //inverseMaps.col(1)(0);
-                m_parameterBounds2.row(1) = m_g2->parameterRange().row(1);
-            }
-        }
-    }
-
-    //gsInfo << "Init parameterbounds: \n" << m_parameterBounds1 << " \n and \n " << m_parameterBounds2 << "\n";
 }
 
 template <class T>

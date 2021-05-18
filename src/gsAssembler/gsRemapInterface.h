@@ -131,14 +131,11 @@ private:
     /// Member to enrich a matrix of 1D points to a matrix of m_domain.geoDim() points
     void enrichToVector(boxSide boundarySide, const gsGeometry<T> & geo, const gsMatrix<T> & intervals, gsMatrix<T> & pts);
 
-    /// Find the interface between the two incoming patches
-    void findInterface(const boundaryInterface& bi);
-
     /// Check if the incoming evaluation points are out of bounds because of rounding errors
     gsMatrix<T> checkIfInBound(const gsMatrix<T> & u) const;
 
     /// Constructs the reparametrization \a m_intfMap in the non-affine case
-    void constructReparam(const boundaryInterface & bi);
+    void constructReparam();
 
     /// Constructs the breakpoints \a m_breakpoints in 2D if we do not have affine mapping
     void constructBreaksNotAffine();
