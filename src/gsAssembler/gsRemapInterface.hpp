@@ -47,20 +47,17 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
     else if (checkAffine > 0)
         m_isAffine = checkIfAffine(checkAffine);
 
-    if (m_isAffine)
-        constructBreaksAffine();
-    else
+    if (!m_isAffine)
     {
         GISMO_ENSURE( m_isAffine || domainDim() <= 2,
             "gsRemapInterface: Can handle non-affine interfaces only for 2 dimensions." );
 
         constructReparam();
-        constructBreaksNotAffine();
     }
 
-}
+    constructBreaks();
 
-// Used for the affine case
+}
 
 namespace {
 template <class T>
@@ -81,13 +78,13 @@ gsMatrix<T> parameterBounds(const gsGeometry<T> & geo, boxSide s)
 
 template <class T>
 gsMatrix<T> transferParameterBounds(const gsGeometry<T> & g1, const gsGeometry<T> & g2,
-                const gsMatrix<T> & parameterBounds1, const gsMatrix<T> & parameterBounds2, T tolerance)
+                const gsMatrix<T> & parameterBounds1, const gsMatrix<T> & parameterBounds2, T solverTolerance)
 {
     gsVector<T> transfered[2];
     for (index_t j=0; j<2; ++j)
     {
         transfered[j] = parameterBounds1.col(j); // initial guess
-        g1.newtonRaphson( g2.eval(parameterBounds2).col(j), transfered[j], true, tolerance, 100 );
+        g1.newtonRaphson( g2.eval(parameterBounds2).col(j), transfered[j], true, solverTolerance, 100 );
     }
 
     gsMatrix<T> result(transfered[0].rows(), 2);
@@ -106,15 +103,15 @@ template <class T>
 void gsRemapInterface<T>::computeBoundingBox()
 {
     const T equalityTolerance = 0;
-    const T newtonTolerance = 1e-8;
+    const T solverTolerance = 1e-8;
 
     m_parameterBounds1 = parameterBounds(*m_g1,m_bi.first());
     m_parameterBounds2 = parameterBounds(*m_g2,m_bi.second());
 
     gsMatrix<T> parameterBounds1trafsferedTo2
-        = transferParameterBounds(*m_g2,*m_g1,m_parameterBounds2,m_parameterBounds1,newtonTolerance);
+        = transferParameterBounds(*m_g2,*m_g1,m_parameterBounds2,m_parameterBounds1,solverTolerance);
     gsMatrix<T> parameterBounds2trafsferedTo1
-        = transferParameterBounds(*m_g1,*m_g2,m_parameterBounds1,m_parameterBounds2,newtonTolerance);
+        = transferParameterBounds(*m_g1,*m_g2,m_parameterBounds1,m_parameterBounds2,solverTolerance);
 
     for (index_t i=0; i<domainDim(); ++i)
     {
@@ -161,9 +158,9 @@ bool gsRemapInterface<T>::checkIfAffine(index_t steps)
 
 namespace {
 template <class T, class Vector>
-inline void addBreaks(std::vector< std::vector<T> >& breaks, const gsMatrix<T>& parameterBounds, const Vector& point)
+inline void addBreaks(std::vector< std::vector<T> >& breaks, const gsMatrix<T>& parameterBounds,
+    const Vector& point, const T equalityTolerance)
 {
-    const T tolerance = 1.e-5;
     const index_t dim = point.rows();
     for (index_t d=0; d<dim; ++d)
     {
@@ -171,8 +168,8 @@ inline void addBreaks(std::vector< std::vector<T> >& breaks, const gsMatrix<T>& 
         if ( parameterBounds(d,0) <= t && t <= parameterBounds(d,1) )
         {
             // As in gsSortedVector::push_sorted_unique
-            typename std::vector<T>::iterator pos = std::lower_bound(breaks[d].begin(), breaks[d].end(), t-tolerance );
-            if ( pos == breaks[d].end() || *pos > t+tolerance ) // If not found
+            typename std::vector<T>::iterator pos = std::lower_bound(breaks[d].begin(), breaks[d].end(), t-equalityTolerance );
+            if ( pos == breaks[d].end() || *pos > t+equalityTolerance ) // If not found
                 breaks[d].insert(pos, t);
         }
     }
@@ -180,222 +177,37 @@ inline void addBreaks(std::vector< std::vector<T> >& breaks, const gsMatrix<T>& 
 }
 
 template <class T>
-void gsRemapInterface<T>::constructBreaksAffine()
+void gsRemapInterface<T>::constructBreaks()
 {
+    const T solverTolerance = 1e-8;
+    const T equalityTolerance = 1e-5;
 
-    gsAffineFunction<T> intfMap_inverse(m_bi.dirMap(m_bi.second()), m_bi.dirOrientation(m_bi.second()),
-        m_parameterBounds2, m_parameterBounds1);
     m_breakpoints.resize(domainDim());
 
     const typename gsBasis<T>::domainIter domIt1 = m_b1->makeDomainIterator(m_bi.first());
-    addBreaks(m_breakpoints, m_parameterBounds1, m_parameterBounds1.col(0));
+    addBreaks(m_breakpoints, m_parameterBounds1, m_parameterBounds1.col(0), equalityTolerance);
     for (; domIt1->good(); domIt1->next())
-        addBreaks(m_breakpoints, m_parameterBounds1, domIt1->upperCorner());
-    addBreaks(m_breakpoints, m_parameterBounds1, m_parameterBounds1.col(1));
+        addBreaks(m_breakpoints, m_parameterBounds1, domIt1->upperCorner(), equalityTolerance);
+    addBreaks(m_breakpoints, m_parameterBounds1, m_parameterBounds1.col(1), equalityTolerance);
 
     const typename gsBasis<T>::domainIter domIt2 = m_b2->makeDomainIterator(m_bi.second());
-    for (; domIt2->good(); domIt2->next())
-        addBreaks(m_breakpoints, m_parameterBounds1, intfMap_inverse.eval(domIt2->upperCorner()));
-
-}
-
-
-// Used for the non-affine case
-
-
-template <class T>
-void gsRemapInterface<T>::constructBreaksNotAffine() {
-    // assert domainDim()==2 taken care by constructor
-
-    // computes break points per element
-
-    const typename gsBasis<T>::domainIter domIt1 = m_b1->makeDomainIterator(static_cast<boxSide>(m_bi.first()));
-    const typename gsBasis<T>::domainIter domIt2 = m_b2->makeDomainIterator(static_cast<boxSide>(m_bi.second()));
-
-    const gsMatrix<T> startPatch1 = m_parameterBounds1.col(0);
-    const gsMatrix<T> startPatch2 = m_parameterBounds2.col(0);
-
-    // Compute interface knots in physical domain by evaluating left and right geometry maps at the knot values
-    const size_t numelP1 = domIt1->numElements();
-    const size_t numelP2 = domIt2->numElements();
-    gsMatrix<T> physicalKnotsP1(m_g1->geoDim(), numelP1 + 1);
-    gsMatrix<T> physicalKnotsP2(m_g2->geoDim(), numelP2 + 1);
-    gsMatrix<T> dummy;
-
-    domIt1->reset();
-    domIt2->reset();
-    index_t numBreaksPatch1 = 1, numBreaksPatch2 = 1; // vars to count the entries in the physical breakpoints
-
-    // evaluate the first point of the interface
-    m_g1->eval_into(startPatch1, dummy);
-    physicalKnotsP1.col(0) = dummy;
-
-    // loop over all elements of the boundary with interface part, but evaluate only element corners on the real interface
-    for (; domIt1->good(); domIt1->next())
+    if (m_isAffine)
     {
-        if (m_bi.first().direction() == 1) // v is fix
-        {
-            if (domIt1->lowerCorner()(0,0) > startPatch1(0,0) && domIt1->lowerCorner()(0,0) <= m_parameterBounds1(0,1))
-            {
-                m_g1->eval_into(domIt1->lowerCorner(), dummy);
-                physicalKnotsP1.col(numBreaksPatch1) = dummy;
-                numBreaksPatch1++;
-            }
-        }
-        else if (m_bi.first().direction() == 0) // u is fix
-        {
-            if (domIt1->lowerCorner()(1,0) > startPatch1(1,0) && domIt1->lowerCorner()(1,0) <= m_parameterBounds1(1,1))
-            {
-                m_g1->eval_into(domIt1->lowerCorner(), dummy);
-                physicalKnotsP1.col(numBreaksPatch1) = dummy;
-                numBreaksPatch1++;
-            }
-        }
-        //domIt1->next();
-    }
+        gsAffineFunction<T> intfMap_inverse(m_bi.dirMap(m_bi.second()), m_bi.dirOrientation(m_bi.second()),
+            m_parameterBounds2, m_parameterBounds1);
 
-    // evaluate the last point of the interface, i.e., this last point must also be within the parameter bound
-    if (m_bi.first().direction() == 1)
+        for (; domIt2->good(); domIt2->next())
+            addBreaks(m_breakpoints, m_parameterBounds1, intfMap_inverse.eval(domIt2->upperCorner()), equalityTolerance);
+    }
+    else
     {
-        if (domIt1->upperCorner()(0,0) <= m_parameterBounds1(0,1))
+        gsVector<T> breakpoint_transfered = m_parameterBounds1.col(0); // initial guess
+        for (; domIt2->good(); domIt2->next())
         {
-            m_g1->eval_into(domIt1->upperCorner(), dummy);
-            physicalKnotsP1.col(numBreaksPatch1) = dummy;
-            numBreaksPatch1++;
+            m_g1->newtonRaphson( m_g2->eval(domIt2->upperCorner()), breakpoint_transfered, true, solverTolerance, 100 );
+            addBreaks(m_breakpoints, m_parameterBounds1, breakpoint_transfered, equalityTolerance);
         }
     }
-    else if (m_bi.first().direction() == 0)
-    {
-        if (domIt1->upperCorner()(1,0) <= m_parameterBounds1(1,1))
-        {
-            m_g1->eval_into(domIt1->upperCorner(), dummy);
-            physicalKnotsP1.col(numBreaksPatch1) = dummy;
-            numBreaksPatch1++;
-        }
-    }
-    //gsInfo << "physical knots 1: \n" << physicalKnotsP1 << "\n";
-
-
-
-    // do the same for patch 2 as above
-    m_g2->eval_into(startPatch2, dummy);
-    physicalKnotsP2.col(0) = dummy;
-
-    for (; domIt2->good(); domIt2->next()) // for (index_t i = 0; i < numelP2; i++)
-    {
-        if (m_bi.second().direction() == 1)
-        {
-            if (domIt2->lowerCorner()(0,0) > startPatch2(0,0) && domIt2->lowerCorner()(0,0) < m_parameterBounds2(0,1))
-            {
-                m_g2->eval_into(domIt2->lowerCorner(), dummy);
-                physicalKnotsP2.col(numBreaksPatch2) = dummy;
-                numBreaksPatch2++;
-            }
-        }
-        else if(m_bi.second().direction() == 0)
-        {
-            if (domIt2->lowerCorner()(1,0) > startPatch2(1,0) && domIt2->lowerCorner()(1,0) < m_parameterBounds2(1,1))
-            {
-                m_g2->eval_into(domIt2->lowerCorner(), dummy);
-                physicalKnotsP2.col(numBreaksPatch2) = dummy;
-                numBreaksPatch2++;
-            }
-        }
-        //domIt2->next();
-    }
-
-    // add only the breakpoints within the parameter bounds
-    if (m_bi.second().direction() == 1)
-    {
-        if (domIt2->upperCorner()(0,0) <= m_parameterBounds2(0,1))
-        {
-            m_g2->eval_into(domIt2->upperCorner(), dummy);
-            physicalKnotsP2.col(numBreaksPatch2) = dummy;
-            numBreaksPatch2++;// to get the number of entries
-        }
-    }
-    else if (m_bi.second().direction() == 0)
-    {
-        if(domIt2->upperCorner()(1,0) <= m_parameterBounds2(1,1))
-        {
-            m_g2->eval_into(domIt2->upperCorner(), dummy);
-            physicalKnotsP2.col(numBreaksPatch2) = dummy;
-            numBreaksPatch2++;
-        }
-    }
-    //gsInfo << "physical knots 2: \n" << physicalKnotsP2 << "\n";
-
-    // store all the physical points in one vector
-    gsMatrix<T> physicalBreaks(domainDim(), numBreaksPatch1+numBreaksPatch2); // Assume m_g1->geoDim() == m_g2->geoDim()
-
-    for (index_t c = 0; c < numBreaksPatch1; c++)
-        physicalBreaks.col(c) = physicalKnotsP1.col(c);
-
-    for (index_t c = 0; c < numBreaksPatch2; c++)
-        physicalBreaks.col(numBreaksPatch1+c) = physicalKnotsP2.col(c);
-
-    // compute the corresponding parameter values in one patch, here of patch1
-    gsSortedVector<T> parameterBreaks;
-
-    // Determine fixed coordinate of patch2 -> Use here patch2 because we compute the Interfacemap of patch1!!!
-    // fixedDir ==  0 corresponds to fixed u and 1 corresponds to a fixed v
-    index_t fixedDir = m_bi.first().direction();
-
-    gsMatrix<T> G2_parametric_LC;
-    for (index_t i = 0; i < physicalBreaks.cols(); i++) {
-        // computes the preimages of the breakpoints for each of the two patches
-        m_g1->invertPoints(physicalBreaks.col(i), G2_parametric_LC); // not exact, we have rounding errors
-        // taking care of the rounding errors by iterating over the vector and checking the absolute value between the current
-        // preimage and the already available ones
-        if (fixedDir == 1)
-        {
-            if (parameterBreaks.size() == 0)
-                parameterBreaks.push_sorted_unique(G2_parametric_LC(0, 0)); // sort w.r.t. u direction
-            else
-            {
-                index_t j = 0;
-                gsVector<bool> roundingError = gsVector<bool>::Constant(parameterBreaks.size(), true);
-
-                for (typename gsSortedVector<T>::iterator it = parameterBreaks.begin();
-                     it != parameterBreaks.end(); it++)
-                {
-                    if (math::abs(G2_parametric_LC(0, 0) - *it) > 1.e-4) {
-                        roundingError(j) = false;
-                    }
-                    j++;
-                }
-                if (( false == roundingError.array() ).all())
-                    parameterBreaks.push_sorted_unique(G2_parametric_LC(0, 0)); // sort w.r.t. u direction
-
-
-            }
-        }
-        else
-        {
-            if (parameterBreaks.size() == 0)
-                parameterBreaks.push_sorted_unique(G2_parametric_LC(1, 0)); // sort w.r.t. v direction
-            else
-            {
-                index_t j = 0;
-                gsVector<bool> roundingError = gsVector<bool>::Constant(parameterBreaks.size(), true);
-
-                for (typename gsSortedVector<T>::iterator it = parameterBreaks.begin();
-                     it != parameterBreaks.end(); it++)
-                {
-                    if (math::abs(G2_parametric_LC(1, 0) - *it) > 1.e-4)
-                        roundingError(j) = false;
-
-                    j++;
-                }
-                if (( false == roundingError.array() ).all())
-                    parameterBreaks.push_sorted_unique(G2_parametric_LC(1, 0)); // sort w.r.t. v direction
-            }
-        }
-
-    }
-
-    m_breakpoints.resize(2);
-    m_breakpoints[1-fixedDir] = parameterBreaks;
 
 }
 

@@ -122,8 +122,8 @@ private:
     /// Checks if affine mapping between the incoming patches is correct
     bool checkIfAffine(index_t steps);
 
-    /// Constructs the breakpoints \a m_breakpoints if we have affine mapping
-    void constructBreaksAffine();
+    /// Constructs the breakpoints \a m_breakpoints
+    void constructBreaks();
 
     /// Helper to compute the closest point to lti on the other patch via Newton's method
     gsMatrix<T> closestPoint(const gsMatrix<T> b_null, const gsGeometry<T> & R, const gsMatrix<T> & lti);
@@ -136,9 +136,6 @@ private:
 
     /// Constructs the reparametrization \a m_intfMap in the non-affine case
     void constructReparam();
-
-    /// Constructs the breakpoints \a m_breakpoints in 2D if we do not have affine mapping
-    void constructBreaksNotAffine();
 
 private:
     const gsGeometry<T> * m_g1;                       ///< Geometry of first patch
@@ -154,6 +151,7 @@ private:
 
     std::vector< std::vector<T> > m_breakpoints;      ///< Union of breakpoints of both bases
 
+    // TODO: This is only the interface map in the affine case, otherwise it is the fitting curve.
     typename gsFunction<T>::Ptr m_intfMap;            ///< The interface map itself
 
     /// @brief The bounds of the box that represents \f$ \widehat \Gamma_1 \f$
