@@ -25,11 +25,14 @@ template <class T>
 gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
                                       const gsMultiBasis<T>   & basis,
                                       const boundaryInterface & bi,
-                                      index_t checkAffine)
+                                      index_t checkAffine,
+                                      T equalityTolerance,
+                                      T newtonTolerance)
     : m_g1(&(mp[bi.first().patch])), m_g2(&(mp[bi.second().patch])),
       m_b1(&(basis[bi.first().patch])), m_b2(&(basis[bi.second().patch])),
       m_bi(bi),
-      m_isMatching(true), m_isAffine(true)
+      m_isMatching(true), m_isAffine(true),
+      m_equalityTolerance(equalityTolerance), m_newtonTolerance(newtonTolerance)
 {
     GISMO_ASSERT( m_g1->geoDim()==m_g2->geoDim(), "gsRemapInterface: Dimensions do not agree." );
 
@@ -37,7 +40,12 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
     computeBoundingBox();
 
     // Setup the affine mapping
-    m_intfMap = gsAffineFunction<T>::make(bi.dirMap(m_bi.first()), bi.dirOrientation(m_bi.first()), m_parameterBounds1, m_parameterBounds2);
+    m_intfMap = gsAffineFunction<T>::make(
+        bi.dirMap(m_bi.first()),
+        bi.dirOrientation(m_bi.first()),
+        m_parameterBounds1,
+        m_parameterBounds2
+        );
 
     // Next, we check (if so desired by called) if the affine mapping coincides with the real mapping
     GISMO_ASSERT( checkAffine > 0 || checkAffine == neverAffine || checkAffine == alwaysAffine,
@@ -102,36 +110,33 @@ gsMatrix<T> transferParameterBounds(const gsGeometry<T> & g1, const gsGeometry<T
 template <class T>
 void gsRemapInterface<T>::computeBoundingBox()
 {
-    const T equalityTolerance = 0;
-    const T solverTolerance = 1e-8;
-
     m_parameterBounds1 = parameterBounds(*m_g1,m_bi.first());
     m_parameterBounds2 = parameterBounds(*m_g2,m_bi.second());
 
     gsMatrix<T> parameterBounds1trafsferedTo2
-        = transferParameterBounds(*m_g2,*m_g1,m_parameterBounds2,m_parameterBounds1,solverTolerance);
+        = transferParameterBounds(*m_g2,*m_g1,m_parameterBounds2,m_parameterBounds1,m_newtonTolerance);
     gsMatrix<T> parameterBounds2trafsferedTo1
-        = transferParameterBounds(*m_g1,*m_g2,m_parameterBounds1,m_parameterBounds2,solverTolerance);
+        = transferParameterBounds(*m_g1,*m_g2,m_parameterBounds1,m_parameterBounds2,m_newtonTolerance);
 
     for (index_t i=0; i<domainDim(); ++i)
     {
-        if (parameterBounds2trafsferedTo1(i,0)>m_parameterBounds1(i,0)+equalityTolerance)
+        if (parameterBounds2trafsferedTo1(i,0)>m_parameterBounds1(i,0)+m_equalityTolerance)
         {
             m_parameterBounds1(i,0) = parameterBounds2trafsferedTo1(i,0);
             m_isMatching = false;
         }
-        if (parameterBounds2trafsferedTo1(i,1)<m_parameterBounds1(i,1)-equalityTolerance)
+        if (parameterBounds2trafsferedTo1(i,1)<m_parameterBounds1(i,1)-m_equalityTolerance)
         {
             m_parameterBounds1(i,1) = parameterBounds2trafsferedTo1(i,1);
             m_isMatching = false;
         }
 
-        if (parameterBounds1trafsferedTo2(i,0)>m_parameterBounds2(i,0)+equalityTolerance)
+        if (parameterBounds1trafsferedTo2(i,0)>m_parameterBounds2(i,0)+m_equalityTolerance)
         {
             m_parameterBounds2(i,0) = parameterBounds1trafsferedTo2(i,0);
             m_isMatching = false;
         }
-        if (parameterBounds1trafsferedTo2(i,1)<m_parameterBounds2(i,1)-equalityTolerance)
+        if (parameterBounds1trafsferedTo2(i,1)<m_parameterBounds2(i,1)-m_equalityTolerance)
         {
             m_parameterBounds2(i,1) = parameterBounds1trafsferedTo2(i,1);
             m_isMatching = false;
@@ -152,7 +157,7 @@ bool gsRemapInterface<T>::checkIfAffine(index_t steps)
                 m_g1->eval(points)
                 -
                 m_g2->eval(m_intfMap->eval(points))
-            ).norm() < (T)(1.e-6);
+            ).norm() < (T)(m_equalityTolerance);
 }
 
 
@@ -179,16 +184,13 @@ inline void addBreaks(std::vector< std::vector<T> >& breaks, const gsMatrix<T>& 
 template <class T>
 void gsRemapInterface<T>::constructBreaks()
 {
-    const T solverTolerance = 1e-8;
-    const T equalityTolerance = 1e-5;
-
     m_breakpoints.resize(domainDim());
 
     const typename gsBasis<T>::domainIter domIt1 = m_b1->makeDomainIterator(m_bi.first());
-    addBreaks(m_breakpoints, m_parameterBounds1, m_parameterBounds1.col(0), equalityTolerance);
+    addBreaks(m_breakpoints, m_parameterBounds1, m_parameterBounds1.col(0), m_equalityTolerance);
     for (; domIt1->good(); domIt1->next())
-        addBreaks(m_breakpoints, m_parameterBounds1, domIt1->upperCorner(), equalityTolerance);
-    addBreaks(m_breakpoints, m_parameterBounds1, m_parameterBounds1.col(1), equalityTolerance);
+        addBreaks(m_breakpoints, m_parameterBounds1, domIt1->upperCorner(), m_equalityTolerance);
+    addBreaks(m_breakpoints, m_parameterBounds1, m_parameterBounds1.col(1), m_equalityTolerance);
 
     const typename gsBasis<T>::domainIter domIt2 = m_b2->makeDomainIterator(m_bi.second());
     if (m_isAffine)
@@ -197,15 +199,15 @@ void gsRemapInterface<T>::constructBreaks()
             m_parameterBounds2, m_parameterBounds1);
 
         for (; domIt2->good(); domIt2->next())
-            addBreaks(m_breakpoints, m_parameterBounds1, intfMap_inverse.eval(domIt2->upperCorner()), equalityTolerance);
+            addBreaks(m_breakpoints, m_parameterBounds1, intfMap_inverse.eval(domIt2->upperCorner()), m_equalityTolerance);
     }
     else
     {
         gsVector<T> breakpoint_transfered = m_parameterBounds1.col(0); // initial guess
         for (; domIt2->good(); domIt2->next())
         {
-            m_g1->newtonRaphson( m_g2->eval(domIt2->upperCorner()), breakpoint_transfered, true, solverTolerance, 100 );
-            addBreaks(m_breakpoints, m_parameterBounds1, breakpoint_transfered, equalityTolerance);
+            m_g1->newtonRaphson( m_g2->eval(domIt2->upperCorner()), breakpoint_transfered, true, m_newtonTolerance, 100 );
+            addBreaks(m_breakpoints, m_parameterBounds1, breakpoint_transfered, m_equalityTolerance);
         }
     }
 
@@ -341,7 +343,7 @@ void gsRemapInterface<T>::constructReparam()
         //gsMatrix<T> b = closestPoint(b_null, g2, samples_left.col(i));
 
         // this gives the same result as above
-        m_g2->newtonRaphson(samples_left.col(i), b_null, true, 10e-6, 100);
+        m_g2->newtonRaphson(samples_left.col(i), b_null, true, m_newtonTolerance, 100);
         //gsInfo << "newton: " << b_null << "\n";
 
         // TODO: Check if the order of the coefficients has an impact on the mapping regarding assembling aso.

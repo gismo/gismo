@@ -68,15 +68,22 @@ public:
 
     /// @brief Constructor
     ///
-    /// @param  mp          The multi-patch object
-    /// @param  mb          The multi-basis object
-    /// @param  bi          The boundary interface (specifying the patches and their \a patchSide s)
-    /// @param  checkAffine The number of interior points (per direction) in point grid used to
-    ///                     check if the mapping is affine. If set to i, the grid consits of i interor
-    ///                     point and the two boundary points per direction, so \f$ (i+2)^d \f$ points.
-    ///                     For \a alwaysAffine or \a notAffine, no checks are performed.
-    gsRemapInterface(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & mb,
-                     const boundaryInterface & bi, index_t checkAffine = 1);
+    /// @param  mp                 The multi-patch object
+    /// @param  mb                 The multi-basis object
+    /// @param  bi                 The boundary interface (specifying the patches and their \a patchSide s)
+    /// @param  checkAffine        The number of interior points (per direction) in point grid used to
+    ///                            check if the mapping is affine. If set to i, the grid consits of i interor
+    ///                            point and the two boundary points per direction, so \f$ (i+2)^d \f$ points.
+    ///                            For \a alwaysAffine or \a notAffine, no checks are performed.
+    /// @param  equalityTolerance  Points are considered equal iff difference is smaller.
+    /// @param  newtonTolerance    Tolerance for Newton solvers (should be significantly smaller than
+    ///                            equalityTolerance)
+    gsRemapInterface(const gsMultiPatch<T> & mp,
+                     const gsMultiBasis<T> & mb,
+                     const boundaryInterface & bi,
+                     index_t checkAffine = 1,
+                     T equalityTolerance = 1e-5,
+                     T newtonTolerance = 1e-8);
 
 public:
 
@@ -166,6 +173,8 @@ private:
     /// See \ref m_parameterBounds1
     gsMatrix<T> m_parameterBounds2;
 
+    T m_equalityTolerance;                            ///< Tolerance for considering points to be equal
+    T m_newtonTolerance;                              ///< Tolerance for Newton solver
 
 }; // End gsRemapInterface
 
