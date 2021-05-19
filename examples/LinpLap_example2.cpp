@@ -40,7 +40,6 @@ int main(int argc, char* argv[])
     real_t alpha = p-2; //default Eigenvalue problem (if f=0)
     real_t gamma = 1;
     index_t l=1;
-    real_t p_ = 2./(l-gamma);
     index_t initial = 1;
     std::string solver_type("lu");
 
@@ -63,7 +62,7 @@ int main(int argc, char* argv[])
     cmd.addReal("","lambda","Parameter for lambda",lambda);
     cmd.addReal("","alpha","Parameter for alpha",alpha);
     cmd.addReal("","gamma","Parameter for gamma",gamma);
-    cmd.addInt("","regularity","Regularity of u",l);
+    cmd.addInt("l","regularity","Regularity of u",l);
     cmd.addInt("","initial","Choice for initial guess u_0",initial);
     cmd.addString("", "solver", "Solver to be used (lu, cg, cg-mg, gmres, gmres-mg)", solver_type);
     try { cmd.getValues(argc, argv); }
