@@ -1,4 +1,4 @@
-/** @file poisson_example.cpp
+/** @file LinpLap_example.cpp
 brief Tutorial on how to use G+Smo to solve the Poisson equation,
 see the \ref PoissonTutorial
 This file is part of the G+Smo library.
@@ -39,6 +39,8 @@ int main(int argc, char* argv[])
     real_t lambda = 0;
     real_t alpha = p-2; //default Eigenvalue problem (if f=0)
     real_t gamma = 1;
+    index_t l=1;
+    real_t p_ = 2./(l-gamma);
     index_t initial = 1;
     std::string solver_type("lu");
 
@@ -61,6 +63,7 @@ int main(int argc, char* argv[])
     cmd.addReal("","lambda","Parameter for lambda",lambda);
     cmd.addReal("","alpha","Parameter for alpha",alpha);
     cmd.addReal("","gamma","Parameter for gamma",gamma);
+    cmd.addInt("","regularity","Regularity of u",l);
     cmd.addInt("","initial","Choice for initial guess u_0",initial);
     cmd.addString("", "solver", "Solver to be used (lu, cg, cg-mg, gmres, gmres-mg)", solver_type);
     try { cmd.getValues(argc, argv); }
@@ -100,6 +103,8 @@ int main(int argc, char* argv[])
         return 1;
     }
     
+    real_t p_ = 2./(l-gamma);
+    
    	gsOptionList opt2 = opt;
 	  opt2.setInt("DirichletStrategy", dirichlet::nitsche);
 
@@ -114,7 +119,6 @@ int main(int argc, char* argv[])
     //! [Function data]
 
     real_t omega = 2;
-    index_t l = 3;
 
     gsFunctionExpr<> u; // Exact solution
     gsFunctionExpr<> u_derEast;
@@ -156,6 +160,7 @@ int main(int argc, char* argv[])
     else if (problemId == 5)
     {
         f = gsFunctionExpr<>("1", 2);
+        u = gsFunctionExpr<>("(" + std::to_string(p) + "-1)/" + std::to_string(p) + "*(1/2)^(1/(" + std::to_string(p) + "-1))*(1-(x^2+y^2)^(" + std::to_string(p) + "/(2*(" + std::to_string(p) + "-1))))", 2);
     }
     else
     {
@@ -188,7 +193,8 @@ int main(int argc, char* argv[])
 
 
     //! [Geometry data]
-   	gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(1,0,0));
+   	//gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(1,-1,-1));
+    gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::NurbsDisk());
     //! [Geometry data]
 
     //! [Boundary conditions]
@@ -250,7 +256,7 @@ int main(int argc, char* argv[])
     gsMatrix<real_t> w = projectL2(patch, basis, u0);  // initial guess on coarsest grid
     gsLinpLapPde<real_t> pde(patch, bcInfo, f, eps, p, w, lambda, alpha);
 
-    gsInfo << "eps = " << eps << " , p = " << p << " , k = " << k << " , lambda = " << lambda << "\n";
+    gsInfo << "eps = " << eps << " , p = " << p << " , k = " << k << " , l = " << l << " , p_= " << p_ << "\n";
     gsInfo << "Dofs       &CPU time  &L_p error& L_p rate  &F error  & F rate    &iter      &p         &eps       &||rh||_{\ell^2} \n";
 
     gsMatrix<> solVector;
@@ -357,6 +363,8 @@ int main(int argc, char* argv[])
         gsMultiPatch<> mpsol;
         A.constructSolution(solVector, mpsol); //construct solution from the free DoFs via the assembler that is set to elimination.
         gsField<> sol(A.patches(), mpsol);
+        
+        gsWriteParaview(sol, "solution");
 
         e_0old = e_0;
         e_Fold = e_F;
