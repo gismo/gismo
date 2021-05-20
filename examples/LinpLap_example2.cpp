@@ -192,8 +192,8 @@ int main(int argc, char* argv[])
 
 
     //! [Geometry data]
-   	//gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(1,-1,-1));
-    gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::NurbsDisk());
+   	gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(1,-0.5,-0.5));
+    //gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::NurbsDisk());
     //! [Geometry data]
 
     //! [Boundary conditions]
