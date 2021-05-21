@@ -48,6 +48,22 @@ void showCorners3D( const gsGeometry<>& geo )
 
 }
 
+gsTensorBSpline<2,real_t>::uPtr BSplineFancySquare()
+{
+
+    gsKnotVector<real_t> KV (0,1,0,3);
+
+    gsMatrix<> C(9,2);
+    C <<  0.00,0.00,  0.00,0.25,  0.00,1.00,
+          0.25,0.00,  0.25,0.25,  0.25,1.00,
+          1.00,0.00,  1.00,0.25,  1.00,1.00;
+
+    gsInfo << "KV.degree() = " << KV.degree() << "\n";
+
+    return gsTensorBSpline<2,real_t>::uPtr(new gsTensorBSpline<2,real_t>(KV,KV, give(C)));
+
+}
+
 int main(int argc, char* argv[])
 {
 
@@ -607,7 +623,6 @@ int main(int argc, char* argv[])
     }
     {
         gsInfo << "************* Test 11 *************\n";
-        // xlow, ylow, xup, yup, rotate
         gsMultiPatch<> mp(*gsNurbsCreator<>::NurbsQuarterAnnulus(1,2));
         mp = mp.uniformSplit();
 
@@ -650,9 +665,58 @@ int main(int argc, char* argv[])
 
         GISMO_ENSURE ( (expected - out.transpose()).norm() < 1.e-4, "");
     }
+    {
+        gsInfo << "************* Test 12 *************\n";
 
+        std::vector< gsGeometry<>* > pc;
+        pc.push_back( BSplineFancySquare().release() );
+        pc.push_back( gsNurbsCreator<>::BSplineRectangle(0,1,1,2).release() );
+        gsMultiPatch<> mp(pc); // consumes ptrs
+        mp.addInterface( 1, boxSide(boundary::south), 0, boxSide(boundary::east));
 
-    // TODO: Tests for non-linear cases, like IETI footpring, etc.; still matching
+        GISMO_ENSURE ( mp.nInterfaces() == 1, "mp.nInterfaces() == "<<mp.nInterfaces());
+        const boundaryInterface &bi = *(mp.iBegin());
+        gsInfo << bi.first() << "\n";
+        gsInfo << bi.second() << "\n";
+
+        gsInfo << "First Patch " << bi.first().patch << ":\n"; showCorners(mp[bi.first().patch]);
+        gsInfo << "Second Patch " << bi.second().patch << ":\n"; showCorners(mp[bi.second().patch]);
+
+        gsMultiBasis<> mb(mp); // extract basis
+
+        gsRemapInterface<real_t> ri(mp,mb,bi,checkAffine);
+
+        gsInfo << ri << "\n";
+
+        gsMatrix<> in(5,2);
+
+        in <<
+              0,    0,
+              0.25, 0,
+              0.5,  0,
+              0.75, 0,
+              1,    0;
+
+        gsInfo << "In:\n" << in << "\n\n";
+
+        gsMatrix<> expected(5,2);
+
+        expected <<
+              1,    0,
+              1,    0.366025,
+              1,    0.618034,
+              1,    0.822876,
+              1,    1;
+
+        gsInfo << "Expected:\n" << expected << "\n\n";
+
+        gsMatrix<> out;
+        ri.eval_into(in.transpose(),out);
+
+        gsInfo << "Out:\n" << out.transpose() << "\n\n";
+
+        GISMO_ENSURE ( (expected - out.transpose()).norm() < 1.e-4, "");
+    }
 
     return 0;
 }

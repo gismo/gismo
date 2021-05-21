@@ -126,10 +126,10 @@ private:
     /// Computes the box which represents the intersection of sides of incoming patches
     void constructInterfaceBox();
 
-    /// Checks if affine mapping between the incoming patches is correct
-    bool checkIfAffine(index_t steps);
+    /// Estimates error between geometry1 and geometry2 after repearametrization on physical domain
+    T estimateReparamError(index_t steps) const;
 
-    /// Constructs the reparametrization \a m_intfMap in the non-affine case
+    /// Constructs the fitting curve \a m_intfMap in the non-affine case
     void constructFittingCurve();
 
     /// Constructs the breakpoints \a m_breakpoints

@@ -53,7 +53,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
     if (checkAffine==neverAffine)
         m_isAffine = false;
     else if (checkAffine > 0)
-        m_isAffine = checkIfAffine(checkAffine);
+        m_isAffine = estimateReparamError(checkAffine) < m_equalityTolerance;
 
     if (!m_isAffine)
     {
@@ -120,44 +120,56 @@ void gsRemapInterface<T>::constructInterfaceBox()
 
     for (index_t i=0; i<domainDim(); ++i)
     {
+        GISMO_ASSERT( parameterBounds2trafsferedTo1(i,0)<m_parameterBounds1(i,1)+m_equalityTolerance,
+            "gsRemapInterface::constructInterfaceBox: Cannot find interface." );
         if (parameterBounds2trafsferedTo1(i,0)>m_parameterBounds1(i,0)+m_equalityTolerance)
         {
-            m_parameterBounds1(i,0) = parameterBounds2trafsferedTo1(i,0);
-            m_isMatching = false;
-        }
-        if (parameterBounds2trafsferedTo1(i,1)<m_parameterBounds1(i,1)-m_equalityTolerance)
-        {
-            m_parameterBounds1(i,1) = parameterBounds2trafsferedTo1(i,1);
+            m_parameterBounds1(i,0) = std::min(parameterBounds2trafsferedTo1(i,0),m_parameterBounds1(i,1));
             m_isMatching = false;
         }
 
-        if (parameterBounds1trafsferedTo2(i,0)>m_parameterBounds2(i,0)+m_equalityTolerance)
+        GISMO_ASSERT( parameterBounds2trafsferedTo1(i,1)>m_parameterBounds1(i,0)-m_equalityTolerance,
+            "gsRemapInterface::constructInterfaceBox: Cannot find interface." );
+        if (parameterBounds2trafsferedTo1(i,1)<m_parameterBounds1(i,1)-m_equalityTolerance)
         {
-            m_parameterBounds2(i,0) = parameterBounds1trafsferedTo2(i,0);
+            m_parameterBounds1(i,1) = std::max(parameterBounds2trafsferedTo1(i,1),m_parameterBounds1(i,0));
             m_isMatching = false;
         }
+
+        GISMO_ASSERT( parameterBounds1trafsferedTo2(i,0)<m_parameterBounds2(i,1)+m_equalityTolerance,
+            "gsRemapInterface::constructInterfaceBox: Cannot find interface." );
+        if (parameterBounds1trafsferedTo2(i,0)>m_parameterBounds2(i,0)+m_equalityTolerance)
+        {
+            m_parameterBounds2(i,0) = std::min(parameterBounds1trafsferedTo2(i,0),m_parameterBounds2(i,1));
+            m_isMatching = false;
+        }
+
+        GISMO_ASSERT( parameterBounds1trafsferedTo2(i,1)>m_parameterBounds2(i,0)-m_equalityTolerance,
+            "gsRemapInterface::constructInterfaceBox: Cannot find interface." );
         if (parameterBounds1trafsferedTo2(i,1)<m_parameterBounds2(i,1)-m_equalityTolerance)
         {
-            m_parameterBounds2(i,1) = parameterBounds1trafsferedTo2(i,1);
+            m_parameterBounds2(i,1) = std::max(parameterBounds1trafsferedTo2(i,1),m_parameterBounds2(i,0));
             m_isMatching = false;
         }
     }
 }
 
 template <class T>
-bool gsRemapInterface<T>::checkIfAffine(index_t steps)
+T gsRemapInterface<T>::estimateReparamError(index_t steps) const
 {
     gsVector<T> lower = m_parameterBounds1.col(0);
     gsVector<T> upper = m_parameterBounds1.col(1);
     gsVector<unsigned> numberGridPoints = gsVector<unsigned>::Constant(domainDim(),2+steps);
     numberGridPoints[m_bi.first().direction()] = 1;
-    gsMatrix<T> points = gsPointGrid(lower,upper,numberGridPoints);
+    gsMatrix<T> points1 = gsPointGrid(lower,upper,numberGridPoints);
+    gsMatrix<T> points2;
+    eval_into(points1, points2);
 
     return  (
-                m_g1->eval(points)
+                m_g1->eval(points1)
                 -
-                m_g2->eval(m_intfMap->eval(points))
-            ).norm() < (T)(m_equalityTolerance);
+                m_g2->eval(points2)
+            ).template lpNorm<Eigen::Infinity>();
 }
 
 namespace {
@@ -292,7 +304,7 @@ void gsRemapInterface<T>::constructFittingCurve()
 
     //gsInfo << "vals2dPatch1:\n" << GEO_L_ref.coefs() << "\n vals2dPatch2:\n" << GEO_R_ref.coefs() << std::endl;
     //gsInfo << "vals2dPatch1:\n" << vals2dPatch1 << "\n vals2dPatch2:\n" << vals2dPatch2 << std::endl;
-    //std::cout << "samples left:\n" << samples_left << "\n samples right:\n" << samples_right << std::endl;
+    //gsInfo << "samples left:\n" << samples_left << "\n samples right:\n" << samples_right << std::endl;
 
     gsMatrix<T> B(numIntervals, m_g1->geoDim());
 
@@ -321,7 +333,7 @@ void gsRemapInterface<T>::constructFittingCurve()
     }
 
     // the coefficients to fit
-    //std::cout << "B:\n" << B << std::endl;
+    //gsInfo << "B:\n" << B << std::endl;
 
     // check the error
     // assume that the right map is the identity
@@ -333,82 +345,6 @@ void gsRemapInterface<T>::constructFittingCurve()
 
     fit.compute();
     m_intfMap = fit.curve().clone();
-    std::cout << "Hi, I'm the resulting curve: \n" << *m_intfMap << std::endl;
-
-    unsigned errorInterval = 10;
-    gsVector<unsigned > errorSamples(1);
-    errorSamples << errorInterval;
-
-    gsMatrix<T> eval_points;// = gsMatrix<T>::Zero(numGeometries, errorInterval);
-
-    for (index_t np = 0; np < numGeometries; np++)
-    {
-        gsVector<T> lowerVal(1), upperVal(1);
-        lowerVal << t_vals(np, 0);
-        upperVal << t_vals(np, numIntervals - 1);
-        //gsMatrix<T> grid = uniformPointGrid(lowerVal, upperVal, errorInterval);
-        gsMatrix<T> grid = gsPointGrid(lowerVal, upperVal, errorSamples);
-        eval_points.conservativeResize(np + 1, grid.cols()); // to check the error
-        eval_points.row(np) = grid;
-    }
-
-    m_intfMap->eval_into(eval_points.row(0), eval_fit);
-    //eval_fit(0,0) -= 0.0001; // do a nasty slight correction since the first entry is out of the domain of definition due to rounding errors
-
-    // TODO: also here use already available information
-    enrichToVector<T>(eval_points.row(1), m_bi.second().direction(), m_parameterBounds2, id);
-
-    m_g2->eval_into(eval_fit, eval_orig);
-    m_g2->eval_into(id, B2);
-    //gsInfo << "b2: \n" << id.transpose() << " and eval_orig: \n" << eval_fit.transpose() << "\n";
-
-    // do test
-    /*
-    for(index_t c = 0; c < eval_fit.cols(); c++)
-    {
-        if(std::isnan(eval_orig.col(c).squaredNorm()))
-        {
-            switch (m_bi.second().index())
-            {
-                case 1 :
-                    // u = value of the first knot in u direction
-                    eval_fit(0, c) += 10e-4;
-                    eval_fit(1, c) += 10e-4;
-                    break;
-                case 2 :
-                    //u = value of the last knot in u direction
-                    eval_fit(0, c) -= 10e-4;
-                    eval_fit(1, c) += 10e-4;
-                    break;
-                case 3 :
-                    //v = value of the first knot in v direction;
-                    eval_fit(0, c) += 10e-4;
-                    eval_fit(1, c) += 10e-4;
-                    break;
-                case 4 :
-                    //v = value of the last knot in v direction
-                    eval_fit(0, c) += 10e-4;
-                    eval_fit(1, c) -= 10e-4;
-                    break;
-            }
-            m_g2->eval_into(eval_fit, eval_orig);
-        }
-    }
-*/
-    //end test
-
-    T error = 0;
-
-    for (index_t i = 0; i < eval_points.cols(); i++)
-        error += (id.col(i) - eval_fit.col(i)).squaredNorm();
-        //error += (eval_orig.col(i) - B2.col(i)).squaredNorm();
-
-    error = math::sqrt(error);
-
-    //if(error > 0.5)
-    //    gsInfo << "patch 1: \n" << eval_orig << " and patch 2: \n" << B2 << "\n";
-
-    std::cout << "Error: " << error << std::endl;
 
 }
 
@@ -576,6 +512,10 @@ std::ostream& gsRemapInterface<T>::print(std::ostream& os) const
                 os << "  " << m_breakpoints[i][j];
         }
     }
+    if (!m_isAffine)
+        os << "\n    Fitting curve:\n" << *m_intfMap;
+    os << "\n    Error of reparam:   " << estimateReparamError(20);
+
     os << "\n";
     return os;
 }
