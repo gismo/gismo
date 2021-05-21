@@ -197,26 +197,20 @@ void gsRemapInterface<T>::constructFittingCurve()
 {
     // assert domainDim()==2 taken care by constructor
 
-    const index_t numIntervals = 11; // ?
+    // Some settings, TODO: make them configurable
+    const index_t numSamplePoints = 11;
+    const index_t intervalsOfFittingCurve = 5;
+    const index_t degreeOfFittingCurve = 3;
 
-    // Check if side 2 is to be flipped
-    bool flipSide2 = false;
+    const short_t direction1 = m_bi.first().direction();
+    const short_t direction2 = m_bi.second().direction();
 
-    if(m_bi.first().direction() == 1)
-    {
-        if(m_bi.dirOrientation()(0) == 0)
-        {
-            flipSide2=true;
-        }
-    }
+    // In 2d, there is one tangential direction
+    const short_t tangential1 = ! direction1;
+    const short_t tangential2 = ! direction2;
 
-    if(m_bi.first().direction() == 0)
-    {
-        if(m_bi.dirOrientation()(1) == 0)
-        {
-            flipSide2=true;
-        }
-    }
+    // In 2d, the second side could have same or flipped direction
+    const bool flipSide2 = (m_bi.dirOrientation()(tangential1) == 0);
 
     // Assume tensor structure
     // now create samples for both patches
@@ -227,87 +221,44 @@ void gsRemapInterface<T>::constructFittingCurve()
     //    --------
     //    -      -
     //    --------
-    gsMatrix<T> t_vals = gsMatrix<T>::Zero(2, numIntervals);
-    T firstKnot, lastKnot;
-    gsVector<T> upper(1), lower(1);
+    gsMatrix<T> t_vals1, t_vals2;
+    gsMatrix<T> points1, points2;
     gsVector<unsigned> numPoints(1);
-    numPoints << numIntervals;
-
-    //gsInfo << "parameterbounds: \n" << m_parameterBounds2 << "\n";
-    //gsInfo << "patch: \n" << m_g2->id() << "\n";
-    if (m_bi.first().direction() == 1) // v is fixed
+    numPoints[0] = numSamplePoints;
     {
-        firstKnot = m_parameterBounds1(0, 0);
-        lastKnot = m_parameterBounds1(0, 1);
+        gsVector<T> lower(1), upper(1);
+        lower[0] = m_parameterBounds1(tangential1, 0);
+        upper[0] = m_parameterBounds1(tangential1, 1);
+        t_vals1 = gsPointGrid(lower, upper, numPoints);
+        enrichToVector<T>(t_vals1, m_bi.first().direction(),  m_parameterBounds1, points1);
     }
-    else // u is fixed
     {
-        firstKnot = m_parameterBounds1(1, 0);
-        lastKnot = m_parameterBounds1(1, 1);
+        gsVector<T> lower(1), upper(1);
+        lower[0] = m_parameterBounds2(tangential2, flipSide2 ? 1 : 0);
+        upper[0] = m_parameterBounds2(tangential2, flipSide2 ? 0 : 1);
+        t_vals2 = gsPointGrid(lower, upper, numPoints);
+        enrichToVector<T>(t_vals2, m_bi.second().direction(), m_parameterBounds2, points2);
     }
-    lower(0) = firstKnot;
-    upper(0) = lastKnot;
-    t_vals.row(0) = gsPointGrid(lower, upper, numPoints);
 
-    if (m_bi.second().direction() == 1) // v is fixed
-    {
-        firstKnot = m_parameterBounds2(0, flipSide2 ? 1 : 0);
-        lastKnot = m_parameterBounds2(0, flipSide2 ? 0 : 1);
-    }
-    else // u is fixed
-    {
-        firstKnot = m_parameterBounds2(1, flipSide2 ? 1 : 0);
-        lastKnot = m_parameterBounds2(1, flipSide2 ? 0 : 1);
-    }
-    lower(0) = firstKnot;
-    upper(0) = lastKnot;
-    t_vals.row(1) = gsPointGrid(lower, upper, numPoints);
+    gsMatrix<T> physPoints1, physPoints2;
+    m_g1->eval_into(points1, physPoints1);
+    m_g2->eval_into(points2, physPoints2);
 
-
-    gsMatrix<T> samples_left, samples_right;
+    gsMatrix<T> B(numSamplePoints, m_g1->geoDim());
     gsMatrix<T> find_start_value;
-
-    // Get the corresponding edges
-    //Edge 1, {(u,v) : u = 0}
-    //Edge 2, {(u,v) : u = 1}
-    //Edge 3, {(u,v) : v = 0}
-    //Edge 4, {(u,v) : v = 1}
-
-    //gsInfo << "left boundary: " << m_interfacePatch1 << "\n";
-    //gsInfo << "right boundary: " << m_interfacePatch2 << "\n";
-
-    //gsMatrix<T> vals2dPatch1(t_vals.rows()+1, t_vals.cols()), vals2dPatch2(t_vals.rows()+1, t_vals.cols());
-    // TODO: use already available information
-    gsMatrix<T> vals2dPatch1, vals2dPatch2;
-    enrichToVector<T>(t_vals.row(0), m_bi.first().direction(),  m_parameterBounds1, vals2dPatch1);
-    enrichToVector<T>(t_vals.row(1), m_bi.second().direction(), m_parameterBounds2, vals2dPatch2);
-
-    m_g1->eval_into(vals2dPatch1, samples_left);
-    m_g2->eval_into(vals2dPatch2, samples_right);
-
-    //gsInfo << "vals2dPatch1:\n" << GEO_L_ref.coefs() << "\n vals2dPatch2:\n" << GEO_R_ref.coefs() << std::endl;
-    //gsInfo << "vals2dPatch1:\n" << vals2dPatch1 << "\n vals2dPatch2:\n" << vals2dPatch2 << std::endl;
-    //gsInfo << "samples left:\n" << samples_left << "\n samples right:\n" << samples_right << std::endl;
-
-    gsMatrix<T> B(numIntervals, m_g1->geoDim());
-
-    for (index_t i = 0; i < t_vals.cols(); i++)
+    for (index_t i = 0; i < physPoints1.cols(); i++)
     {
         // find a suitable start value for the Newton iteration
-        find_start_value = (samples_right.colwise()) - samples_left.col(i);
+        find_start_value = (physPoints2.colwise()) - physPoints1.col(i);
 
         size_t row, col;
 
         find_start_value.colwise().squaredNorm().minCoeff(&row, &col);
 
-        //gsVector<T> b_null = samples_right.col(col);
-        gsVector<T> b_null = vals2dPatch2.col(col);
-
-        // Pass on g2 if one wants to find a mapping from interface1 to interface2
-        //gsMatrix<T> b = closestPoint(b_null, g2, samples_left.col(i));
+        gsVector<T> b_null = points2.col(col);
 
         // this gives the same result as above
-        m_g2->newtonRaphson(samples_left.col(i), b_null, true, m_newtonTolerance, 100);
+        m_g2->newtonRaphson(physPoints1.col(i), b_null, true, m_newtonTolerance, 100);
         //gsInfo << "newton: " << b_null << "\n";
 
         // TODO: Check if the order of the coefficients has an impact on the mapping regarding assembling aso.
@@ -315,12 +266,10 @@ void gsRemapInterface<T>::constructFittingCurve()
 
     }
 
-    // the coefficients to fit
-    //gsInfo << "B:\n" << B << std::endl;
-
-    gsKnotVector<T> KV(t_vals(0, 0), t_vals(0, numIntervals - 1), 5, 4);
-
-    gsCurveFitting<T> fit(t_vals.row(0).transpose(), B, KV);
+    // Use equidstant knot vector for fitting curve
+    gsKnotVector<T> KV(m_parameterBounds1(tangential1, 0), m_parameterBounds1(tangential1, 1),
+        intervalsOfFittingCurve, degreeOfFittingCurve+1);
+    gsCurveFitting<T> fit(t_vals1.transpose(), B, KV);
     fit.compute();
 
     m_intfMap = fit.curve().clone();
