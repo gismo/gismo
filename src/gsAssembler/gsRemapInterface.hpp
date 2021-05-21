@@ -198,7 +198,6 @@ void gsRemapInterface<T>::constructFittingCurve()
     // assert domainDim()==2 taken care by constructor
 
     const index_t numIntervals = 11; // ?
-    const index_t numGeometries = 2;
 
     // Check if side 2 is to be flipped
     bool flipSide2 = false;
@@ -207,10 +206,7 @@ void gsRemapInterface<T>::constructFittingCurve()
     {
         if(m_bi.dirOrientation()(0) == 0)
         {
-            if(m_bi.second().direction() == 0) //change v parameters
-                { flipSide2=true; }
-            else if(m_bi.second().direction() == 1) // change u parameters
-                { flipSide2=true; }
+            flipSide2=true;
         }
     }
 
@@ -218,10 +214,7 @@ void gsRemapInterface<T>::constructFittingCurve()
     {
         if(m_bi.dirOrientation()(1) == 0)
         {
-            if(m_bi.second().direction() == 0) //change v parameters
-                { flipSide2=true; }
-            else if(m_bi.second().direction() == 1) // change u parameters
-                { flipSide2=true; }
+            flipSide2=true;
         }
     }
 
@@ -234,7 +227,7 @@ void gsRemapInterface<T>::constructFittingCurve()
     //    --------
     //    -      -
     //    --------
-    gsMatrix<T> t_vals = gsMatrix<T>::Zero(numGeometries, numIntervals);
+    gsMatrix<T> t_vals = gsMatrix<T>::Zero(2, numIntervals);
     T firstKnot, lastKnot;
     gsVector<T> upper(1), lower(1);
     gsVector<unsigned> numPoints(1);
@@ -242,41 +235,34 @@ void gsRemapInterface<T>::constructFittingCurve()
 
     //gsInfo << "parameterbounds: \n" << m_parameterBounds2 << "\n";
     //gsInfo << "patch: \n" << m_g2->id() << "\n";
-    for (index_t np = 0; np < numGeometries; np++) {
-        if (np == 0)
-        {
-            if (m_bi.first().direction() == 1) // v is fixed
-            {
-                firstKnot = m_parameterBounds1(0, 0);
-                lastKnot = m_parameterBounds1(0, 1);
-            }
-            else // u is fixed
-            {
-                firstKnot = m_parameterBounds1(1, 0);
-                lastKnot = m_parameterBounds1(1, 1);
-            }
-        } else {
-            if (m_bi.second().direction() == 1) // v is fixed
-            {
-                firstKnot = m_parameterBounds2(0, flipSide2 ? 1 : 0);
-                lastKnot = m_parameterBounds2(0, flipSide2 ? 0 : 1);
-            }
-            else // u is fixed
-            {
-                firstKnot = m_parameterBounds2(1, flipSide2 ? 1 : 0);
-                lastKnot = m_parameterBounds2(1, flipSide2 ? 0 : 1);
-            }
-        }
-
-        lower(0) = firstKnot;
-        upper(0) = lastKnot;
-
-        //gsInfo << "lower:\n" << firstKnot << "\n upper:\n" << lastKnot << std::endl;
-
-        //t_vals.row(np) = uniformPointGrid(lower, upper, numIntervals); // uniformly distributed samples between the overlapping part of the interface
-        t_vals.row(np) = gsPointGrid(lower, upper, numPoints);
-
+    if (m_bi.first().direction() == 1) // v is fixed
+    {
+        firstKnot = m_parameterBounds1(0, 0);
+        lastKnot = m_parameterBounds1(0, 1);
     }
+    else // u is fixed
+    {
+        firstKnot = m_parameterBounds1(1, 0);
+        lastKnot = m_parameterBounds1(1, 1);
+    }
+    lower(0) = firstKnot;
+    upper(0) = lastKnot;
+    t_vals.row(0) = gsPointGrid(lower, upper, numPoints);
+
+    if (m_bi.second().direction() == 1) // v is fixed
+    {
+        firstKnot = m_parameterBounds2(0, flipSide2 ? 1 : 0);
+        lastKnot = m_parameterBounds2(0, flipSide2 ? 0 : 1);
+    }
+    else // u is fixed
+    {
+        firstKnot = m_parameterBounds2(1, flipSide2 ? 1 : 0);
+        lastKnot = m_parameterBounds2(1, flipSide2 ? 0 : 1);
+    }
+    lower(0) = firstKnot;
+    upper(0) = lastKnot;
+    t_vals.row(1) = gsPointGrid(lower, upper, numPoints);
+
 
     gsMatrix<T> samples_left, samples_right;
     gsMatrix<T> find_start_value;
@@ -332,15 +318,11 @@ void gsRemapInterface<T>::constructFittingCurve()
     // the coefficients to fit
     //gsInfo << "B:\n" << B << std::endl;
 
-    // check the error
-    // assume that the right map is the identity
-    gsMatrix<T> eval_orig, eval_fit, B2, id;
-
     gsKnotVector<T> KV(t_vals(0, 0), t_vals(0, numIntervals - 1), 5, 4);
 
     gsCurveFitting<T> fit(t_vals.row(0).transpose(), B, KV);
-
     fit.compute();
+
     m_intfMap = fit.curve().clone();
 
 }
